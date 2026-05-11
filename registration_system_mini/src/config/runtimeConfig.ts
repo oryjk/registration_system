@@ -98,3 +98,17 @@ export function isRuntimeVisibleActivity(
   }
   return parseRuntimeDateTime(activity.holding_date) > now.getTime();
 }
+
+export function isRuntimeVisibleChallengeSummary(
+  summary: { challenge: { holding_date: string; status?: string | null } },
+  config: MiniAppRuntimeConfig,
+  now: Date = new Date(),
+) {
+  if (summary.challenge.status === "cancelled") {
+    return false;
+  }
+  if (!config.home.hide_matches_after_holding_time) {
+    return true;
+  }
+  return parseRuntimeDateTime(summary.challenge.holding_date) > now.getTime();
+}

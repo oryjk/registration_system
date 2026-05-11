@@ -10,7 +10,7 @@ import { getMyActivities, getMyAttendance, listUsers } from "@/api/user";
 import { useTeamContext } from "@/stores/teamContext";
 import { getCustomNavMetrics } from "@/utils/customNav";
 import { hasManualLogout } from "@/utils/authStorage";
-import { isRuntimeVisibleActivity, loadMiniAppRuntimeConfig } from "@/config/runtimeConfig";
+import { isRuntimeVisibleActivity, isRuntimeVisibleChallengeSummary, loadMiniAppRuntimeConfig } from "@/config/runtimeConfig";
 import { buildAttendanceSummary, buildChallengeCards, buildHomeMatchCards, buildPublicHomeMatchCards } from "@/utils/viewModels";
 import type { ChallengeCardViewModel, HomeMatchCardViewModel } from "@/types/viewModels";
 import type { BackendUser } from "@/types/backend";
@@ -125,10 +125,11 @@ function resetUserRelatedHomeData() {
 async function loadPublicHomeData() {
   const runtimeConfig = await loadMiniAppRuntimeConfig();
   const now = new Date();
+  const challengeFetchLimit = Math.min(runtimeConfig.home.challenge_card_limit * 5, 50);
   const [activityPage, users, challengeSummaries] = await Promise.all([
     listActivities({ page: 1, pageSize: runtimeConfig.home.activity_fetch_page_size }),
     listUsers(),
-    listChallenges({ limit: runtimeConfig.home.challenge_card_limit, sort: "credit_desc", auth: false }),
+    listChallenges({ limit: challengeFetchLimit, sort: "credit_desc", auth: false }),
   ]);
   const teamRegistrationCountsByActivityId = buildTeamRegistrationCountsBySourceActivityId(activityPage.items);
   const activeActivities = activityPage.items
@@ -150,7 +151,9 @@ async function loadPublicHomeData() {
     usersById,
     limit: runtimeConfig.home.match_card_limit,
   });
-  challengeCards.value = buildChallengeCards(challengeSummaries).slice(0, runtimeConfig.home.challenge_card_limit);
+  challengeCards.value = buildChallengeCards(
+    challengeSummaries.filter((summary) => isRuntimeVisibleChallengeSummary(summary, runtimeConfig, now)),
+  ).slice(0, runtimeConfig.home.challenge_card_limit);
 }
 
 function openTab(path: string) {
@@ -225,11 +228,12 @@ async function loadPageData(options?: { preserveContent?: boolean }) {
 
     const runtimeConfig = await loadMiniAppRuntimeConfig();
     const now = new Date();
+    const challengeFetchLimit = Math.min(runtimeConfig.home.challenge_card_limit * 5, 50);
     const [activityPage, myActivityRecords, attendanceRecords, challengeSummaries, users] = await Promise.all([
       listActivities({ page: 1, pageSize: runtimeConfig.home.activity_fetch_page_size }),
       getMyActivities(),
       getMyAttendance(),
-      listChallenges({ teamId: currentTeam.value.id, limit: runtimeConfig.home.challenge_card_limit, sort: "credit_desc" }),
+      listChallenges({ teamId: currentTeam.value.id, limit: challengeFetchLimit, sort: "credit_desc" }),
       listUsers(),
       syncUnreadCount({ skipEnsure: true }),
     ]);
@@ -268,7 +272,9 @@ async function loadPageData(options?: { preserveContent?: boolean }) {
       leave: summary.leave,
       late: summary.late,
     };
-    challengeCards.value = buildChallengeCards(challengeSummaries).slice(0, runtimeConfig.home.challenge_card_limit);
+    challengeCards.value = buildChallengeCards(
+      challengeSummaries.filter((summary) => isRuntimeVisibleChallengeSummary(summary, runtimeConfig, now)),
+    ).slice(0, runtimeConfig.home.challenge_card_limit);
     hasLoadedOnce.value = true;
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : "首页数据加载失败";

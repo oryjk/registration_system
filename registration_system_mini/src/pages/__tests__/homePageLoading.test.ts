@@ -46,11 +46,13 @@ describe("home page loading states", () => {
     expect(homePageSource.includes("function resetUserRelatedHomeData")).toEqual(true);
     expect(homePageSource.includes("async function loadPublicHomeData")).toEqual(true);
     expect(homePageSource.includes("buildPublicHomeMatchCards")).toEqual(true);
-    expect(homePageSource.includes('import { isRuntimeVisibleActivity, loadMiniAppRuntimeConfig } from "@/config/runtimeConfig";')).toEqual(true);
+    expect(homePageSource.includes("isRuntimeVisibleChallengeSummary")).toEqual(true);
     expect(homePageSource.includes("const runtimeConfig = await loadMiniAppRuntimeConfig();")).toEqual(true);
+    expect(homePageSource.includes("const challengeFetchLimit = Math.min(runtimeConfig.home.challenge_card_limit * 5, 50);")).toEqual(true);
     expect(homePageSource.includes("pageSize: runtimeConfig.home.activity_fetch_page_size")).toEqual(true);
-    expect(homePageSource.includes("limit: runtimeConfig.home.challenge_card_limit")).toEqual(true);
+    expect(homePageSource.includes("limit: challengeFetchLimit")).toEqual(true);
     expect(homePageSource.includes("isRuntimeVisibleActivity(item, runtimeConfig, now)")).toEqual(true);
+    expect(homePageSource.includes("isRuntimeVisibleChallengeSummary(summary, runtimeConfig, now)")).toEqual(true);
     expect(homePageSource.includes("runtimeConfig.home.match_card_limit")).toEqual(true);
     expect(homePageSource.includes("if (hasManualLogout())")).toEqual(true);
     expect(homePageSource.includes("await loadPublicHomeData();")).toEqual(true);

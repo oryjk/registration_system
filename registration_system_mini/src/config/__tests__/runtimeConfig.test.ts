@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
   defaultMiniAppRuntimeConfig,
+  isRuntimeVisibleChallengeSummary,
   isRuntimeVisibleActivity,
   sanitizeMiniAppRuntimeConfig,
 } from "../runtimeConfig";
@@ -75,6 +76,38 @@ describe("mini app runtime config", () => {
     expect(
       isRuntimeVisibleActivity(
         { holding_date: "2026-05-12T12:00:00", status: 2 },
+        config,
+        now,
+      ),
+    ).toEqual(false);
+  });
+
+  test("applies the same holding time rule to home challenge opportunities", () => {
+    const config = sanitizeMiniAppRuntimeConfig({
+      home: {
+        ...defaultMiniAppRuntimeConfig.home,
+        hide_matches_after_holding_time: true,
+      },
+    });
+    const now = new Date("2026-05-11T12:00:00");
+
+    expect(
+      isRuntimeVisibleChallengeSummary(
+        { challenge: { holding_date: "2026-05-11T11:59:59", status: "open" } },
+        config,
+        now,
+      ),
+    ).toEqual(false);
+    expect(
+      isRuntimeVisibleChallengeSummary(
+        { challenge: { holding_date: "2026-05-11T12:00:01", status: "open" } },
+        config,
+        now,
+      ),
+    ).toEqual(true);
+    expect(
+      isRuntimeVisibleChallengeSummary(
+        { challenge: { holding_date: "2026-05-12T12:00:00", status: "cancelled" } },
         config,
         now,
       ),
