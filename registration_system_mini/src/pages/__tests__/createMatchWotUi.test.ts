@@ -60,14 +60,14 @@ describe("create match Wot UI integration", () => {
     expect(source.includes('minute: "分"')).toEqual(true);
   });
 
-  test("uses Wot input and textarea components for editable fields", async () => {
+  test("uses native input and Wot textarea components for editable fields", async () => {
     const source = await read("src/components/MatchPublishForm.vue");
 
-    expect((source.match(/<wd-input/g)?.length ?? 0) >= 7).toEqual(true);
+    expect(source.includes("<wd-input")).toEqual(false);
+    expect((source.match(/<input/g)?.length ?? 0) >= 7).toEqual(true);
     expect(source.match(/<wd-textarea/g)?.length).toEqual(1);
-    expect(source.includes("<input")).toEqual(false);
     expect(source.includes("<textarea")).toEqual(false);
-    expect(source.includes("custom-input-class=\"create-wot-input-inner\"")).toEqual(true);
+    expect(source.includes("create-native-input")).toEqual(true);
     expect(source.includes("custom-textarea-class=\"create-wot-textarea-inner\"")).toEqual(true);
   });
 

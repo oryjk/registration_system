@@ -46,8 +46,6 @@ const thirdTimeTitle = computed(() => (isChallenge.value ? "选择结束时间" 
 const secondTimePlaceholder = computed(() => (isChallenge.value ? "请选择开始时间" : "请选择报名开始时间"));
 const thirdTimePlaceholder = computed(() => (isChallenge.value ? "请选择结束时间" : "请选择报名截止时间"));
 
-const fieldBoxStyle =
-  "width:100%;height:88rpx;min-height:88rpx;padding:0 22rpx;border-radius:24rpx;border:2rpx solid #d7ddd2;background:#f4f6f0;box-shadow:inset 0 2rpx 0 rgba(255,255,255,0.74);box-sizing:border-box;";
 const textareaBoxStyle =
   "width:100%;min-height:260rpx;padding:22rpx;border-radius:24rpx;border:2rpx solid #d7ddd2;background:#f4f6f0;--wot-textarea-bg:#f4f6f0;box-shadow:inset 0 2rpx 0 rgba(255,255,255,0.74);box-sizing:border-box;";
 const datetimePickerStyle = "width:100%;display:block;";
@@ -110,50 +108,40 @@ function formatDateTimeColumn(type: string, value: string) {
       <view class="create-form-grid">
         <view class="create-form-item create-form-item-full">
           <wd-text custom-class="create-form-label" color="#111310" :text="titleLabel" />
-          <wd-input
+          <input
             v-model="form.name"
-            no-border
-            clearable
+            class="create-native-input"
             :placeholder="titlePlaceholder"
-            :custom-style="fieldBoxStyle"
-            custom-class="create-wot-input"
-            custom-input-class="create-wot-input-inner"
+            placeholder-class="create-native-placeholder"
           />
         </view>
         <view class="create-form-item">
           <wd-text custom-class="create-form-label" color="#111310" :text="playersLabel" />
-          <wd-input
+          <input
             v-model="form.playersPerTeam"
-            no-border
+            class="create-native-input"
             type="number"
             :placeholder="playersPlaceholder"
-            :custom-style="fieldBoxStyle"
-            custom-class="create-wot-input"
-            custom-input-class="create-wot-input-inner"
+            placeholder-class="create-native-placeholder"
           />
         </view>
         <view v-if="!isChallenge" class="create-form-item">
           <wd-text custom-class="create-form-label" color="#111310" text="对手" />
-          <wd-input
+          <input
             v-model="form.opposing"
-            no-border
-            clearable
+            class="create-native-input"
             placeholder="例如：XX联队"
-            :custom-style="fieldBoxStyle"
-            custom-class="create-wot-input"
-            custom-input-class="create-wot-input-inner"
+            placeholder-class="create-native-placeholder"
           />
         </view>
         <view v-else class="create-form-item">
           <wd-text custom-class="create-form-label" color="#111310" text="预计费用/人" />
-          <wd-input
+          <input
             v-model="form.feePerPerson"
-            no-border
+            class="create-native-input"
             type="digit"
             placeholder="25"
-            :custom-style="fieldBoxStyle"
-            custom-class="create-wot-input"
-            custom-input-class="create-wot-input-inner"
+            placeholder-class="create-native-placeholder"
           />
         </view>
         <view class="create-form-item create-form-item-full">
@@ -224,14 +212,11 @@ function formatDateTimeColumn(type: string, value: string) {
           {{ form.location ? "重新选择" : "选择地点" }}
         </view>
       </view>
-      <wd-input
+      <input
         v-model="form.location"
-        no-border
-        clearable
-        :custom-style="fieldBoxStyle"
-        custom-class="create-wot-input create-location-input"
-        custom-input-class="create-wot-input-inner"
+        class="create-native-input create-location-input"
         placeholder="输入球场/地址，或使用地图选择"
+        placeholder-class="create-native-placeholder"
         @input="handleLocationInput"
       />
       <view v-if="form.locationLatitude != null && form.locationLongitude != null" class="create-location-box">
@@ -264,38 +249,32 @@ function formatDateTimeColumn(type: string, value: string) {
       <view v-if="form.enableCheckIn" class="create-form-grid" style="margin-top: 20rpx;">
         <view class="create-form-item">
           <wd-text custom-class="create-form-label" color="#111310" text="签到半径" />
-          <wd-input
+          <input
             v-model="form.checkInRadiusMeters"
-            no-border
+            class="create-native-input"
             type="number"
             placeholder="200"
-            :custom-style="fieldBoxStyle"
-            custom-class="create-wot-input"
-            custom-input-class="create-wot-input-inner"
+            placeholder-class="create-native-placeholder"
           />
         </view>
         <view class="create-form-item">
           <wd-text custom-class="create-form-label" color="#111310" text="提前开放" />
-          <wd-input
+          <input
             v-model="form.openMinutesBefore"
-            no-border
+            class="create-native-input"
             type="number"
             placeholder="60"
-            :custom-style="fieldBoxStyle"
-            custom-class="create-wot-input"
-            custom-input-class="create-wot-input-inner"
+            placeholder-class="create-native-placeholder"
           />
         </view>
         <view class="create-form-item">
           <wd-text custom-class="create-form-label" color="#111310" text="赛后关闭" />
-          <wd-input
+          <input
             v-model="form.closeMinutesAfter"
-            no-border
+            class="create-native-input"
             type="number"
             placeholder="45"
-            :custom-style="fieldBoxStyle"
-            custom-class="create-wot-input"
-            custom-input-class="create-wot-input-inner"
+            placeholder-class="create-native-placeholder"
           />
         </view>
         <view class="create-form-item">
@@ -370,7 +349,7 @@ function formatDateTimeColumn(type: string, value: string) {
 }
 
 .create-input,
-:deep(.create-wot-input),
+.create-native-input,
 :deep(.create-wot-textarea-container) {
   width: 100%;
   min-height: 88rpx;
@@ -384,24 +363,21 @@ function formatDateTimeColumn(type: string, value: string) {
   box-sizing: border-box;
 }
 
-.create-input {
+.create-input,
+.create-native-input {
   display: flex;
   align-items: center;
 }
 
-:deep(.create-wot-input) {
-  display: flex;
-  align-items: center;
-}
-
-:deep(.create-wot-input-inner) {
-  width: 100%;
+.create-native-input {
   height: 88rpx;
-  min-height: 88rpx;
   line-height: 88rpx;
-  color: #171814;
+}
+
+.create-native-placeholder {
+  color: #c7c9c5;
   font-size: 28rpx;
-  background: transparent;
+  line-height: 88rpx;
 }
 
 .create-input-static {

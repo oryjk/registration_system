@@ -34,8 +34,10 @@ describe("activities page sections", () => {
     ).text();
 
     expect(source.includes("function openPublishTypeSheet")).toEqual(true);
-    expect(source.includes("<wd-action-sheet")).toEqual(true);
-    expect(source.includes("publishTypeActions")).toEqual(true);
+    expect(source.includes("publish-sheet-overlay")).toEqual(true);
+    expect(source.includes("handlePublishTeamChallenge")).toEqual(true);
+    expect(source.includes("handlePublishIndividualChallenge")).toEqual(true);
+    expect(source.includes("<wd-action-sheet")).toEqual(false);
     expect(source.includes('itemList: ["球队约队", "散人约队"]')).toEqual(false);
     expect(source.includes('url: "/pages/matches/create/index"')).toEqual(true);
     expect(source.includes('url: "/pages/challenges/create-individual/index"')).toEqual(true);
