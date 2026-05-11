@@ -3,7 +3,7 @@ import { computed, reactive, ref, watch } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
 import MatchPublishForm from "@/components/MatchPublishForm.vue";
-import { toBackendDateTime, type MatchPublishFormModel } from "@/components/matchPublishForm";
+import type { MatchPublishFormModel } from "@/components/matchPublishForm";
 import { createActivity } from "@/api/activity";
 import { useTeamContext } from "@/stores/teamContext";
 import { getCustomNavMetrics } from "@/utils/customNav";
@@ -74,6 +74,15 @@ const pageStyle = computed(() => ({
 function handleLocationInput() {
   form.locationLatitude = null;
   form.locationLongitude = null;
+}
+
+function pad(value: number) {
+  return String(value).padStart(2, "0");
+}
+
+function toBackendDateTime(timestamp: number) {
+  const date = new Date(timestamp);
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:00`;
 }
 
 function initDefaultForm() {

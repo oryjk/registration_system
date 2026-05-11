@@ -15,13 +15,3 @@ export interface MatchPublishFormModel {
   openMinutesBefore?: string | number;
   closeMinutesAfter?: string | number;
 }
-
-function pad(value: number) {
-  return String(value).padStart(2, "0");
-}
-
-export function toBackendDateTime(timestamp: number) {
-  const date = new Date(timestamp);
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:00`;
-}
-

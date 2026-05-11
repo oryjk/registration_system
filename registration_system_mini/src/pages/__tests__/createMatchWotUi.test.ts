@@ -30,7 +30,9 @@ describe("create match Wot UI integration", () => {
     expect(source.includes('选择报名截止时间')).toEqual(true);
     expect(source.includes('placeholder="YYYY-MM-DD hh:mm:ss"')).toEqual(false);
     expect(source.includes("displayDateTime")).toEqual(true);
-    expect(pageSource.includes("toBackendDateTime")).toEqual(true);
+    expect(pageSource.includes('import type { MatchPublishFormModel } from "@/components/matchPublishForm"')).toEqual(true);
+    expect(pageSource.includes('import { toBackendDateTime')).toEqual(false);
+    expect(pageSource.includes("function toBackendDateTime")).toEqual(true);
     expect(source.includes("function displayDateTime")).toEqual(true);
     expect(pageSource.includes("MatchPublishForm")).toEqual(true);
   });

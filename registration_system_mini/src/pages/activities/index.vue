@@ -4,7 +4,7 @@ import { onShow } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
 import BottomTabBar from "@/components/BottomTabBar.vue";
 import MatchPublishForm from "@/components/MatchPublishForm.vue";
-import { toBackendDateTime, type MatchPublishFormModel } from "@/components/matchPublishForm";
+import type { MatchPublishFormModel } from "@/components/matchPublishForm";
 import { acceptChallenge, createChallenge, listChallenges } from "@/api/challenge";
 import { useNotificationCenter } from "@/stores/notificationCenter";
 import { useTeamContext } from "@/stores/teamContext";
@@ -118,6 +118,15 @@ function weekdayLabel(key: string) {
 function monthDayNumber(key: string) {
   const date = new Date(`${key}T00:00:00`);
   return String(date.getDate()).padStart(2, "0");
+}
+
+function pad(value: number) {
+  return String(value).padStart(2, "0");
+}
+
+function toBackendDateTime(timestamp: number) {
+  const date = new Date(timestamp);
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:00`;
 }
 
 function defaultPublishDate() {

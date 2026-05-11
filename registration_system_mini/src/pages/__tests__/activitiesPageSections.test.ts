@@ -35,10 +35,13 @@ describe("activities page sections", () => {
     ).text();
 
     expect(source.includes('import MatchPublishForm from "@/components/MatchPublishForm.vue"')).toEqual(true);
-    expect(source.includes('import { toBackendDateTime')).toEqual(true);
+    expect(source.includes('import type { MatchPublishFormModel } from "@/components/matchPublishForm"')).toEqual(true);
+    expect(source.includes('from "@/components/matchPublishForm";')).toEqual(true);
+    expect(source.includes('import { toBackendDateTime')).toEqual(false);
     expect(source.includes('<MatchPublishForm')).toEqual(true);
     expect(source.includes('mode="challenge"')).toEqual(true);
     expect(source.includes('v-if="publishForm.kind === \'team\'"')).toEqual(true);
+    expect(source.includes("function toBackendDateTime")).toEqual(true);
     expect(source.includes("toBackendDateTime(publishForm.holdingDate)")).toEqual(true);
     expect(source.includes("holding_date: toBackendDateTime(publishForm.holdingDate)")).toEqual(true);
     expect(source.includes("start_time: toBackendDateTime(publishForm.startTime)")).toEqual(true);
