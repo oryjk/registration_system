@@ -1,0 +1,23 @@
+use crate::bootstrap::app::AppState;
+use crate::shared::ports::TokenServicePort;
+use crate::user::adapters::{PostgresUserRepository, create_admin_router, create_app_router};
+use crate::user::application::UserService;
+use axum::Router;
+use sqlx::PgPool;
+use std::sync::Arc;
+
+pub fn build_user_service(
+    pool: &PgPool,
+    token_service: Arc<dyn TokenServicePort>,
+) -> Arc<UserService> {
+    let repository = Arc::new(PostgresUserRepository::new(pool.clone()));
+    Arc::new(UserService::new(repository, token_service))
+}
+
+pub fn build_admin_user_router() -> Router<AppState> {
+    create_admin_router()
+}
+
+pub fn build_app_user_router() -> Router<AppState> {
+    create_app_router()
+}

@@ -1,0 +1,46 @@
+use crate::bootstrap::app::AppState;
+use crate::bootstrap::config::AppConfig;
+use crate::payment::adapters::{
+    MockWxPayGateway, PostgresPaymentBillingAdapter, PostgresPaymentOrderRepository,
+    RealWxPayGateway, create_router,
+};
+use crate::payment::application::PaymentService;
+use crate::team::adapters::PostgresTeamRepository;
+use crate::user::adapters::PostgresUserRepository;
+use axum::Router;
+use sqlx::PgPool;
+use std::sync::Arc;
+
+pub fn build_payment_service(pool: &PgPool, app_config: &AppConfig) -> Arc<PaymentService> {
+    let repository = Arc::new(PostgresPaymentOrderRepository::new(pool.clone()));
+    let billing_port = Arc::new(PostgresPaymentBillingAdapter::new(pool.clone()));
+    let team_repository = Arc::new(PostgresTeamRepository::new(pool.clone()));
+    let user_repository = Arc::new(PostgresUserRepository::new(pool.clone()));
+    let wx_pay_gateway: Arc<dyn crate::payment::ports::WxPayGateway> = if app_config.wx_pay.use_mock
+        || app_config.wx.app_id.is_empty()
+        || app_config.wx_pay.mch_id.is_empty()
+        || app_config.wx_pay.api_key.is_empty()
+    {
+        Arc::new(MockWxPayGateway)
+    } else {
+        Arc::new(RealWxPayGateway::new(
+            app_config.wx.app_id.clone(),
+            app_config.wx_pay.mch_id.clone(),
+            app_config.wx_pay.api_key.clone(),
+            app_config.wx_pay.api_base_url.clone(),
+            app_config.payment_notify_url(),
+        ))
+    };
+
+    Arc::new(PaymentService::new(
+        repository,
+        billing_port,
+        wx_pay_gateway,
+        team_repository,
+        user_repository,
+    ))
+}
+
+pub fn build_payment_router() -> Router<AppState> {
+    create_router()
+}

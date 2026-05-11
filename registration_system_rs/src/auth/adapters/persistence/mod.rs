@@ -1,0 +1,3 @@
+mod postgres_admin_user_repository;
+
+pub use postgres_admin_user_repository::PostgresAdminUserRepository;

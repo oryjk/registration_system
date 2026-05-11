@@ -1,0 +1,60 @@
+# System files
+.DS_Store
+Thumbs.db
+
+# Local environment files
+.env
+.env.*
+!.env.example
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Dependencies
+node_modules/
+
+# Frontend build outputs
+dist/
+dist-ssr/
+coverage/
+*.tsbuildinfo
+.eslintcache
+*.timestamp-*-*.mjs
+
+# Test and browser reports
+test-results/
+playwright-report/
+__screenshots__/
+cypress/videos/
+cypress/screenshots/
+.playwright-mcp/
+
+# Rust build outputs
+target/
+
+# IDE/editor files
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.hbuilderx/
+
+# Local generated screenshots and temporary artifacts
+tmp-*.png
+tmp-*.jpg
+tmp-*.jpeg
+mini-ux-prototype*.png
+
+# Monorepo conversion backups
+.git-backups/
+.worktrees/
+worktrees/

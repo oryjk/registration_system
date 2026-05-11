@@ -1,0 +1,40 @@
+const TOKEN_KEY = "registration_system_mini_token";
+const CURRENT_TEAM_KEY = "registration_system_mini_current_team_id";
+const MANUAL_LOGOUT_KEY = "registration_system_mini_manual_logout";
+
+export function getAccessToken(): string {
+  return uni.getStorageSync(TOKEN_KEY) || "";
+}
+
+export function setAccessToken(token: string): void {
+  uni.setStorageSync(TOKEN_KEY, token);
+  uni.removeStorageSync(MANUAL_LOGOUT_KEY);
+}
+
+export function clearAccessToken(): void {
+  uni.removeStorageSync(TOKEN_KEY);
+}
+
+export function getCurrentTeamId(): string {
+  return uni.getStorageSync(CURRENT_TEAM_KEY) || "";
+}
+
+export function setCurrentTeamId(teamId: string): void {
+  uni.setStorageSync(CURRENT_TEAM_KEY, teamId);
+}
+
+export function clearCurrentTeamId(): void {
+  uni.removeStorageSync(CURRENT_TEAM_KEY);
+}
+
+export function hasManualLogout(): boolean {
+  return uni.getStorageSync(MANUAL_LOGOUT_KEY) === "1";
+}
+
+export function setManualLogout(): void {
+  uni.setStorageSync(MANUAL_LOGOUT_KEY, "1");
+}
+
+export function clearManualLogout(): void {
+  uni.removeStorageSync(MANUAL_LOGOUT_KEY);
+}

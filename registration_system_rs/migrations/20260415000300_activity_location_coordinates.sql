@@ -1,0 +1,3 @@
+ALTER TABLE rs_activity
+    ADD COLUMN IF NOT EXISTS location_latitude DOUBLE PRECISION NULL,
+    ADD COLUMN IF NOT EXISTS location_longitude DOUBLE PRECISION NULL;

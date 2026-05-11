@@ -1,0 +1,132 @@
+{
+  "easycom": {
+    "autoscan": true,
+    "custom": {
+      "^wd-(.*)": "wot-design-uni/components/wd-$1/wd-$1.vue"
+    }
+  },
+  "pages": [
+    {
+      "path": "pages/home/index",
+      "style": {
+        "navigationBarTitleText": "首页",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/activities/index",
+      "style": {
+        "navigationBarTitleText": "约队大厅",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/teams/index",
+      "style": {
+        "navigationBarTitleText": "统计",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/teams/manage/index",
+      "style": {
+        "navigationBarTitleText": "球队管理",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/user/index",
+      "style": {
+        "navigationBarTitleText": "我的",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/user/matches/index",
+      "style": {
+        "navigationBarTitleText": "我的比赛",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/matches/detail",
+      "style": {
+        "navigationBarTitleText": "比赛详情",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/matches/create/index",
+      "style": {
+        "navigationBarTitleText": "创建比赛",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/challenges/detail",
+      "style": {
+        "navigationBarTitleText": "约队详情",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/notifications/index",
+      "style": {
+        "navigationBarTitleText": "消息中心",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/billing/index",
+      "style": {
+        "navigationBarTitleText": "账单明细",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/profile/setup/index",
+      "style": {
+        "navigationBarTitleText": "完善资料",
+        "navigationStyle": "custom"
+      }
+    }
+  ],
+  "tabBar": {
+    "color": "#8C8F99",
+    "selectedColor": "#111827",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/home/index",
+        "text": "首页",
+        "iconPath": "static/tab-png/home.png",
+        "selectedIconPath": "static/tab-png/home-active.png"
+      },
+      {
+        "pagePath": "pages/activities/index",
+        "text": "约队",
+        "iconPath": "static/tab-png/challenge.png",
+        "selectedIconPath": "static/tab-png/challenge-active.png"
+      },
+      {
+        "pagePath": "pages/teams/index",
+        "text": "统计",
+        "iconPath": "static/tab-png/stats.png",
+        "selectedIconPath": "static/tab-png/stats-active.png"
+      },
+      {
+        "pagePath": "pages/user/index",
+        "text": "我的",
+        "iconPath": "static/tab-png/user.png",
+        "selectedIconPath": "static/tab-png/user-active.png"
+      }
+    ]
+  },
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "赛事报名",
+    "navigationBarBackgroundColor": "#f3f4f6",
+    "backgroundColor": "#f3f4f6"
+  }
+}

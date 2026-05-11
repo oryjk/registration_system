@@ -1,0 +1,36 @@
+{
+  "name": "赛事报名",
+  "appid": "__UNI__REGISTRATION_SYSTEM_MINI",
+  "description": "赛事报名与球队管理微信小程序",
+  "versionName": "1.0.0",
+  "versionCode": "100",
+  "transformPx": false,
+  "app-plus": {
+    "usingComponents": true,
+    "nvueStyleCompiler": "uni-app",
+    "compilerVersion": 3
+  },
+  "mp-weixin": {
+    "appid": "",
+    "requiredPrivateInfos": [
+      "getLocation",
+      "chooseLocation"
+    ],
+    "permission": {
+      "scope.userLocation": {
+        "desc": "用于首页定位展示当前区域，并在地图中查看当前位置。"
+      }
+    },
+    "setting": {
+      "urlCheck": false
+    },
+    "optimization": {
+      "subPackages": false
+    },
+    "usingComponents": true
+  },
+  "uniStatistics": {
+    "enable": false
+  },
+  "vueVersion": "3"
+}

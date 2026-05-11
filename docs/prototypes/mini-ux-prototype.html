@@ -1,0 +1,861 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>小程序体验优化原型</title>
+    <style>
+      :root {
+        --ink: #171915;
+        --muted: #646b5f;
+        --line: #dfe4d8;
+        --paper: #fbfcf7;
+        --panel: #ffffff;
+        --soft: #f0f3ea;
+        --accent: #c9ff19;
+        --blue: #285cff;
+        --danger: #b42318;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: #e9ede2;
+        color: var(--ink);
+        font-family:
+          ui-sans-serif,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+      }
+
+      button,
+      input,
+      textarea,
+      select {
+        font: inherit;
+      }
+
+      .workspace {
+        display: grid;
+        grid-template-columns: minmax(280px, 420px) minmax(390px, 1fr);
+        gap: 42px;
+        width: min(1180px, calc(100vw - 48px));
+        margin: 0 auto;
+        padding: 40px 0;
+      }
+
+      .brief {
+        position: sticky;
+        top: 32px;
+        align-self: start;
+      }
+
+      .eyebrow {
+        margin: 0 0 14px;
+        font-size: 13px;
+        font-weight: 900;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 42px;
+        line-height: 1.02;
+        letter-spacing: 0;
+      }
+
+      .brief-copy {
+        margin: 18px 0 0;
+        color: var(--muted);
+        font-size: 16px;
+        line-height: 1.7;
+      }
+
+      .principles {
+        display: grid;
+        gap: 10px;
+        margin-top: 28px;
+      }
+
+      .principle {
+        display: grid;
+        grid-template-columns: 34px 1fr;
+        gap: 12px;
+        padding: 14px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.52);
+      }
+
+      .principle-mark {
+        display: grid;
+        place-items: center;
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        background: var(--ink);
+        color: var(--accent);
+        font-weight: 900;
+      }
+
+      .principle-title {
+        display: block;
+        font-size: 15px;
+        font-weight: 900;
+      }
+
+      .principle-text {
+        display: block;
+        margin-top: 3px;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.55;
+      }
+
+      .device-wrap {
+        display: grid;
+        place-items: center;
+      }
+
+      .device {
+        width: 390px;
+        height: 844px;
+        border: 12px solid #121411;
+        border-radius: 34px;
+        background: var(--paper);
+        box-shadow: 0 30px 90px rgba(26, 31, 21, 0.24);
+        overflow: hidden;
+      }
+
+      .screen {
+        position: relative;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(251, 252, 247, 0.94)),
+          repeating-linear-gradient(90deg, rgba(23, 25, 21, 0.025) 0 1px, transparent 1px 12px);
+      }
+
+      .status {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        height: 34px;
+        padding: 0 22px;
+        font-size: 12px;
+        font-weight: 900;
+      }
+
+      .appbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 18px 12px;
+      }
+
+      .app-title {
+        display: block;
+        font-size: 24px;
+        font-weight: 950;
+        line-height: 1;
+      }
+
+      .app-subtitle {
+        display: block;
+        margin-top: 4px;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .icon-button {
+        width: 40px;
+        height: 40px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+        color: var(--ink);
+        font-size: 18px;
+        font-weight: 900;
+      }
+
+      .content {
+        flex: 1;
+        overflow: auto;
+        padding: 0 16px 92px;
+        scrollbar-width: none;
+      }
+
+      .content::-webkit-scrollbar {
+        display: none;
+      }
+
+      .view {
+        display: none;
+      }
+
+      .view.active {
+        display: block;
+      }
+
+      .hero-panel {
+        display: grid;
+        gap: 14px;
+        padding: 16px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+      }
+
+      .hero-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+      }
+
+      .tag {
+        display: inline-flex;
+        align-items: center;
+        height: 24px;
+        padding: 0 8px;
+        border-radius: 6px;
+        background: var(--soft);
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 900;
+      }
+
+      .tag.dark {
+        background: var(--ink);
+        color: var(--accent);
+      }
+
+      .hero-main {
+        margin: 0;
+        font-size: 26px;
+        line-height: 1.08;
+        letter-spacing: 0;
+      }
+
+      .meta {
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 800;
+        line-height: 1.55;
+      }
+
+      .metric-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+      }
+
+      .metric {
+        padding: 10px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--soft);
+      }
+
+      .metric-label {
+        display: block;
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 900;
+      }
+
+      .metric-value {
+        display: block;
+        margin-top: 5px;
+        font-size: 20px;
+        font-weight: 950;
+      }
+
+      .section {
+        margin-top: 14px;
+        padding: 14px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+      }
+
+      .section-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 12px;
+      }
+
+      .section-title {
+        font-size: 15px;
+        font-weight: 950;
+      }
+
+      .section-action {
+        border: 0;
+        background: transparent;
+        color: var(--blue);
+        font-size: 12px;
+        font-weight: 900;
+      }
+
+      .list {
+        display: grid;
+        gap: 8px;
+      }
+
+      .row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 12px;
+        align-items: center;
+        padding: 11px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fff;
+      }
+
+      .row-title {
+        display: block;
+        font-size: 14px;
+        font-weight: 950;
+      }
+
+      .row-meta {
+        display: block;
+        margin-top: 3px;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 760;
+      }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 54px;
+        height: 28px;
+        padding: 0 9px;
+        border-radius: 6px;
+        background: var(--soft);
+        color: var(--ink);
+        font-size: 12px;
+        font-weight: 900;
+      }
+
+      .pill.green {
+        background: var(--accent);
+      }
+
+      .pill.red {
+        background: #ffe7e2;
+        color: var(--danger);
+      }
+
+      .primary {
+        width: 100%;
+        height: 46px;
+        border: 0;
+        border-radius: 8px;
+        background: var(--ink);
+        color: var(--accent);
+        font-weight: 950;
+      }
+
+      .secondary {
+        height: 40px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--soft);
+        color: var(--ink);
+        font-weight: 900;
+      }
+
+      .split {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+
+      .tabs {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 0;
+        padding: 8px 10px 14px;
+        border-top: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.94);
+        backdrop-filter: blur(18px);
+      }
+
+      .tab {
+        display: grid;
+        gap: 3px;
+        place-items: center;
+        border: 0;
+        border-radius: 8px;
+        background: transparent;
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 900;
+      }
+
+      .tab-icon {
+        display: grid;
+        place-items: center;
+        width: 26px;
+        height: 26px;
+        border-radius: 6px;
+        background: transparent;
+        font-size: 15px;
+      }
+
+      .tab.active {
+        color: var(--ink);
+      }
+
+      .tab.active .tab-icon {
+        background: var(--accent);
+      }
+
+      .segment {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 6px;
+        padding: 6px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--soft);
+      }
+
+      .segment button {
+        height: 34px;
+        border: 0;
+        border-radius: 6px;
+        background: transparent;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 900;
+      }
+
+      .segment button.active {
+        background: var(--panel);
+        color: var(--ink);
+      }
+
+      .progress {
+        height: 8px;
+        overflow: hidden;
+        border-radius: 999px;
+        background: var(--soft);
+      }
+
+      .progress span {
+        display: block;
+        width: 78%;
+        height: 100%;
+        background: var(--accent);
+      }
+
+      .roster {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 8px;
+      }
+
+      .avatar-tile {
+        min-height: 82px;
+        padding: 8px 5px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fff;
+        text-align: center;
+      }
+
+      .avatar {
+        display: grid;
+        place-items: center;
+        width: 34px;
+        height: 34px;
+        margin: 0 auto 7px;
+        border-radius: 50%;
+        background: var(--ink);
+        color: white;
+        font-size: 13px;
+        font-weight: 950;
+      }
+
+      .avatar-tile.selected {
+        border-color: #9fca00;
+        background: #fbfff0;
+      }
+
+      .tile-name {
+        display: block;
+        font-size: 12px;
+        font-weight: 900;
+      }
+
+      .tile-status {
+        display: block;
+        margin-top: 2px;
+        color: var(--muted);
+        font-size: 10px;
+        font-weight: 850;
+      }
+
+      .form {
+        display: grid;
+        gap: 8px;
+      }
+
+      .field {
+        width: 100%;
+        min-height: 42px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--soft);
+        color: var(--ink);
+        padding: 0 12px;
+        font-size: 13px;
+        font-weight: 800;
+      }
+
+      textarea.field {
+        min-height: 70px;
+        padding-top: 10px;
+        resize: none;
+      }
+
+      .order-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+      }
+
+      .mini-button {
+        height: 28px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: var(--soft);
+        color: var(--ink);
+        font-size: 11px;
+        font-weight: 900;
+      }
+
+      .mini-button.danger {
+        color: var(--danger);
+      }
+
+      @media (max-width: 860px) {
+        .workspace {
+          grid-template-columns: 1fr;
+          width: min(430px, calc(100vw - 24px));
+          padding: 18px 0;
+        }
+
+        .brief {
+          position: static;
+        }
+
+        h1 {
+          font-size: 32px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="workspace">
+      <aside class="brief">
+        <p class="eyebrow">UX prototype</p>
+        <h1>把小程序整理成「比赛优先」的操作工具</h1>
+        <p class="brief-copy">
+          这个 HTML 原型先验证信息架构和视觉密度：常用动作放在页面首屏，管理功能收进明确分区，减少堆叠卡片和重复入口。
+        </p>
+        <div class="principles">
+          <div class="principle">
+            <span class="principle-mark">1</span>
+            <div>
+              <span class="principle-title">每页一个主任务</span>
+              <span class="principle-text">我的页看状态，比赛页完成报名/签到，球队页管理队员，账单页处理钱和订单。</span>
+            </div>
+          </div>
+          <div class="principle">
+            <span class="principle-mark">2</span>
+            <div>
+              <span class="principle-title">管理入口不抢主流程</span>
+              <span class="principle-text">队长能力保留，但放进“设置/复盘/队员”分区，不和报名按钮抢注意力。</span>
+            </div>
+          </div>
+          <div class="principle">
+            <span class="principle-mark">3</span>
+            <div>
+              <span class="principle-title">浅底黑字，荧光绿只做行动</span>
+              <span class="principle-text">减少大面积渐变和装饰，页面更像高频使用的运动工具。</span>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <section class="device-wrap">
+        <div class="device">
+          <div class="screen">
+            <div class="status">
+              <span>09:41</span>
+              <span>5G 100%</span>
+            </div>
+            <header class="appbar">
+              <div>
+                <span class="app-title" id="title">我的</span>
+                <span class="app-subtitle" id="subtitle">当前球队：周末野球 FC</span>
+              </div>
+              <button class="icon-button" aria-label="消息">·</button>
+            </header>
+
+            <div class="content">
+              <section class="view active" data-view="mine">
+                <div class="hero-panel">
+                  <div class="hero-row">
+                    <div>
+                      <span class="tag dark">队长</span>
+                      <h2 class="hero-main">陈小北</h2>
+                      <p class="meta">手机号已绑定 · 本周 1 场比赛待处理</p>
+                    </div>
+                    <span class="pill green">信用 82</span>
+                  </div>
+                  <div class="metric-grid">
+                    <div class="metric"><span class="metric-label">比赛</span><span class="metric-value">18</span></div>
+                    <div class="metric"><span class="metric-label">球队</span><span class="metric-value">2</span></div>
+                    <div class="metric"><span class="metric-label">余额</span><span class="metric-value">¥96</span></div>
+                  </div>
+                  <button class="primary">查看今晚比赛</button>
+                </div>
+
+                <div class="section">
+                  <div class="section-head">
+                    <span class="section-title">下一场</span>
+                    <button class="section-action">全部比赛</button>
+                  </div>
+                  <div class="row">
+                    <div>
+                      <span class="row-title">周五晚 8 人制</span>
+                      <span class="row-meta">05/15 20:00 · 城南足球公园</span>
+                    </div>
+                    <span class="pill green">已报名</span>
+                  </div>
+                </div>
+
+                <div class="section">
+                  <div class="section-head">
+                    <span class="section-title">待办</span>
+                    <button class="section-action">处理</button>
+                  </div>
+                  <div class="list">
+                    <div class="row">
+                      <div>
+                        <span class="row-title">2 名队员未表态</span>
+                        <span class="row-meta">赛前 24 小时建议提醒</span>
+                      </div>
+                      <span class="pill">提醒</span>
+                    </div>
+                    <div class="row">
+                      <div>
+                        <span class="row-title">会员 12 天后到期</span>
+                        <span class="row-meta">续费后保持信用权益</span>
+                      </div>
+                      <span class="pill">续费</span>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section class="view" data-view="match">
+                <div class="hero-panel">
+                  <div class="hero-row">
+                    <div>
+                      <span class="tag dark">球队报名</span>
+                      <h2 class="hero-main">周五晚 8 人制</h2>
+                      <p class="meta">05/15 20:00-22:00 · 城南足球公园</p>
+                    </div>
+                    <span class="pill">8v8</span>
+                  </div>
+                  <div class="progress"><span></span></div>
+                  <div class="split">
+                    <button class="primary">提交报名 7/8</button>
+                    <button class="secondary">现场签到</button>
+                  </div>
+                </div>
+
+                <div class="section">
+                  <div class="section-head">
+                    <span class="section-title">队员状态</span>
+                    <button class="section-action">批量管理</button>
+                  </div>
+                  <div class="roster">
+                    <div class="avatar-tile selected"><span class="avatar">陈</span><span class="tile-name">陈小北</span><span class="tile-status">已报名</span></div>
+                    <div class="avatar-tile selected"><span class="avatar">林</span><span class="tile-name">林飞</span><span class="tile-status">已报名</span></div>
+                    <div class="avatar-tile"><span class="avatar">周</span><span class="tile-name">周野</span><span class="tile-status">待定</span></div>
+                    <div class="avatar-tile"><span class="avatar">许</span><span class="tile-name">许一</span><span class="tile-status">请假</span></div>
+                  </div>
+                </div>
+
+                <div class="section">
+                  <div class="section-head">
+                    <span class="section-title">签到设置</span>
+                    <button class="section-action">保存</button>
+                  </div>
+                  <div class="split">
+                    <input class="field" value="200 米" />
+                    <input class="field" value="提前 60 分" />
+                  </div>
+                </div>
+
+                <div class="section">
+                  <div class="section-head">
+                    <span class="section-title">赛后互评</span>
+                    <span class="tag">比赛结束后</span>
+                  </div>
+                  <select class="field"><option>5 分 · 到场准时</option></select>
+                  <textarea class="field" placeholder="记录对手沟通、到场、比赛体验"></textarea>
+                </div>
+              </section>
+
+              <section class="view" data-view="team">
+                <div class="segment">
+                  <button class="active">队员</button>
+                  <button>创建</button>
+                  <button>加入</button>
+                </div>
+                <div class="section">
+                  <div class="section-head">
+                    <span class="section-title">周末野球 FC</span>
+                    <span class="tag dark">12 人</span>
+                  </div>
+                  <div class="form">
+                    <select class="field"><option>选择用户：王同学</option></select>
+                    <select class="field"><option>角色：队员</option></select>
+                    <input class="field" placeholder="球衣号，可选" />
+                    <button class="primary">添加队员</button>
+                  </div>
+                </div>
+
+                <div class="section">
+                  <div class="section-head">
+                    <span class="section-title">队员列表</span>
+                    <button class="section-action">只看异常</button>
+                  </div>
+                  <div class="list">
+                    <div class="row">
+                      <div><span class="row-title">林飞</span><span class="row-meta">领队 · 9 号 · 正常</span></div>
+                      <span class="pill">编辑</span>
+                    </div>
+                    <div class="row">
+                      <div><span class="row-title">周野</span><span class="row-meta">队员 · 无号码 · 正常</span></div>
+                      <span class="pill red">冻结</span>
+                    </div>
+                    <div class="row">
+                      <div><span class="row-title">许一</span><span class="row-meta">副队长 · 17 号 · 已冻结</span></div>
+                      <span class="pill">恢复</span>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section class="view" data-view="wallet">
+                <div class="hero-panel">
+                  <span class="tag dark">钱包</span>
+                  <h2 class="hero-main">¥96.00</h2>
+                  <p class="meta">累计充值 ¥480 · 累计扣费 ¥384 · 罚款 ¥0</p>
+                  <div class="split">
+                    <input class="field" value="30" />
+                    <button class="primary">充值</button>
+                  </div>
+                </div>
+
+                <div class="section">
+                  <div class="section-head">
+                    <span class="section-title">支付订单</span>
+                    <button class="section-action">刷新</button>
+                  </div>
+                  <div class="list">
+                    <div class="row">
+                      <div><span class="row-title">钱包充值 · 待支付</span><span class="row-meta">ORD20260510001</span></div>
+                      <div class="order-actions"><button class="mini-button">同步</button><button class="mini-button danger">取消</button></div>
+                    </div>
+                    <div class="row">
+                      <div><span class="row-title">球队会员 · 已支付</span><span class="row-meta">小程序球队会员续费</span></div>
+                      <span class="pill green">¥30</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="section">
+                  <div class="section-head">
+                    <span class="section-title">最近流水</span>
+                    <button class="section-action">筛选</button>
+                  </div>
+                  <div class="list">
+                    <div class="row">
+                      <div><span class="row-title">活动扣费</span><span class="row-meta">周五晚 8 人制</span></div>
+                      <span class="pill red">-¥24</span>
+                    </div>
+                    <div class="row">
+                      <div><span class="row-title">充值</span><span class="row-meta">微信支付</span></div>
+                      <span class="pill green">+¥100</span>
+                    </div>
+                  </div>
+                </div>
+              </section>
+            </div>
+
+            <nav class="tabs" aria-label="原型页面切换">
+              <button class="tab active" data-target="mine" data-title="我的" data-subtitle="当前球队：周末野球 FC">
+                <span class="tab-icon">⌂</span><span>我的</span>
+              </button>
+              <button class="tab" data-target="match" data-title="比赛" data-subtitle="报名、签到、互评放在一条主线">
+                <span class="tab-icon">◉</span><span>比赛</span>
+              </button>
+              <button class="tab" data-target="team" data-title="球队" data-subtitle="队员管理和入队流程集中处理">
+                <span class="tab-icon">▦</span><span>球队</span>
+              </button>
+              <button class="tab" data-target="wallet" data-title="账单" data-subtitle="充值、订单、流水分层展示">
+                <span class="tab-icon">¥</span><span>账单</span>
+              </button>
+            </nav>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const tabs = document.querySelectorAll(".tab");
+      const views = document.querySelectorAll(".view");
+      const title = document.querySelector("#title");
+      const subtitle = document.querySelector("#subtitle");
+
+      tabs.forEach((tab) => {
+        tab.addEventListener("click", () => {
+          tabs.forEach((item) => item.classList.remove("active"));
+          views.forEach((item) => item.classList.remove("active"));
+          tab.classList.add("active");
+          document.querySelector(`[data-view="${tab.dataset.target}"]`).classList.add("active");
+          title.textContent = tab.dataset.title;
+          subtitle.textContent = tab.dataset.subtitle;
+        });
+      });
+    </script>
+  </body>
+</html>
