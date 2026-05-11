@@ -70,6 +70,13 @@
       }
     },
     {
+      "path": "pages/challenges/create-individual/index",
+      "style": {
+        "navigationBarTitleText": "创建散人约队",
+        "navigationStyle": "custom"
+      }
+    },
+    {
       "path": "pages/notifications/index",
       "style": {
         "navigationBarTitleText": "消息中心",

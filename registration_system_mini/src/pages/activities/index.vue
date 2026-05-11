@@ -3,9 +3,7 @@ import { computed, reactive, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
 import BottomTabBar from "@/components/BottomTabBar.vue";
-import MatchPublishForm from "@/components/MatchPublishForm.vue";
-import type { MatchPublishFormModel } from "@/components/matchPublishForm";
-import { acceptChallenge, createChallenge, listChallenges } from "@/api/challenge";
+import { acceptChallenge, listChallenges } from "@/api/challenge";
 import { useNotificationCenter } from "@/stores/notificationCenter";
 import { useTeamContext } from "@/stores/teamContext";
 import { getCustomNavMetrics } from "@/utils/customNav";
@@ -26,7 +24,6 @@ const isLoading = ref(false);
 const errorMessage = ref("");
 const submitting = ref(false);
 const rawChallenges = ref<BackendChallengeSummary[]>([]);
-const showCreateForm = ref(false);
 const showFilterPanel = ref(false);
 const searchDraft = ref("");
 const activeQuickFilter = ref<QuickFilter>("recommended");
@@ -43,29 +40,6 @@ const filters = reactive<{
   sort: "credit_desc",
   includeClosed: false,
 });
-
-const publishForm = reactive({
-  kind: "team" as "team" | "individual",
-  name: "周末友谊赛约队",
-  title: "周末友谊赛约队",
-  date: "",
-  startTime: 0,
-  endTime: 0,
-  holdingDate: 0,
-  location: "",
-  locationLatitude: null as number | null,
-  locationLongitude: null as number | null,
-  playersPerTeam: "8",
-  feePerPerson: "",
-  opposing: "",
-  description: "",
-  note: "",
-}) satisfies MatchPublishFormModel & {
-  kind: "team" | "individual";
-  title: string;
-  date: string;
-  note: string;
-};
 
 const canPublish = computed(() => !!currentTeam.value?.canManageTeam);
 
@@ -118,40 +92,6 @@ function weekdayLabel(key: string) {
 function monthDayNumber(key: string) {
   const date = new Date(`${key}T00:00:00`);
   return String(date.getDate()).padStart(2, "0");
-}
-
-function pad(value: number) {
-  return String(value).padStart(2, "0");
-}
-
-function toBackendDateTime(timestamp: number) {
-  const date = new Date(timestamp);
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:00`;
-}
-
-function defaultPublishDate() {
-  const now = new Date();
-  now.setDate(now.getDate() + 1);
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-}
-
-function defaultPublishDateTime(hour = 20, minute = 0) {
-  const date = new Date(`${defaultPublishDate()}T${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}:00`);
-  return date.getTime();
-}
-
-function dateKeyFromTimestamp(timestamp: number) {
-  const date = new Date(timestamp);
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-}
-
-function timeKeyFromTimestamp(timestamp: number) {
-  const date = new Date(timestamp);
-  return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
-}
-
-function timestampFromDateTime(date: string, time: string) {
-  return new Date(`${date}T${time}:00`).getTime();
 }
 
 const calendarDays = computed(() => {
@@ -223,10 +163,6 @@ async function loadPageData() {
       return;
     }
 
-    if (!publishForm.date) {
-      publishForm.date = defaultPublishDate();
-    }
-
     const [challenges] = await Promise.all([
       listChallenges({
         teamId: currentTeam.value.id,
@@ -285,6 +221,28 @@ function openStatusSheet() {
       if (!option) return;
       filters.status = option.value;
       void loadPageData();
+    },
+  });
+}
+
+function openPublishTypeSheet() {
+  if (!canPublish.value) return;
+
+  uni.showActionSheet({
+    itemList: ["球队约队", "散人约队"],
+    success: ({ tapIndex }) => {
+      if (tapIndex === 0) {
+        uni.navigateTo({
+          url: "/pages/matches/create/index",
+        });
+        return;
+      }
+
+      if (tapIndex === 1) {
+        uni.navigateTo({
+          url: "/pages/challenges/create-individual/index",
+        });
+      }
     },
   });
 }
@@ -394,155 +352,8 @@ async function handleAccept(card: ChallengeCardViewModel) {
   }
 }
 
-function resetPublishForm() {
-  publishForm.kind = "team";
-  publishForm.note = "";
-  publishForm.description = "";
-  publishForm.feePerPerson = "";
-  publishForm.location = "";
-  publishForm.locationLatitude = null;
-  publishForm.locationLongitude = null;
-  publishForm.name = "周末友谊赛约队";
-  publishForm.title = "周末友谊赛约队";
-  publishForm.playersPerTeam = "8";
-  publishForm.holdingDate = defaultPublishDateTime(20);
-  publishForm.startTime = publishForm.holdingDate;
-  publishForm.endTime = defaultPublishDateTime(22);
-  publishForm.date = defaultPublishDate();
-}
-
-async function handleCreateChallenge() {
-  if (!currentTeam.value || !currentTeam.value.canManageTeam || submitting.value) return;
-  syncLegacyPublishFields();
-
-  if (!publishForm.name.trim() || !publishForm.location.trim() || !publishForm.holdingDate) {
-    uni.showToast({
-      title: "请补全标题、时间和场地",
-      icon: "none",
-    });
-    return;
-  }
-
-  const playersPerTeam = Number(publishForm.playersPerTeam || 0);
-  const feePerPerson = publishForm.feePerPerson ? Number(publishForm.feePerPerson) : null;
-
-  if (!Number.isFinite(playersPerTeam) || playersPerTeam <= 0) {
-    uni.showToast({
-      title: "请填写正确的人数",
-      icon: "none",
-    });
-    return;
-  }
-
-  if (feePerPerson !== null && (!Number.isFinite(feePerPerson) || feePerPerson < 0)) {
-    uni.showToast({
-      title: "请填写正确的费用",
-      icon: "none",
-    });
-    return;
-  }
-
-  if (!publishForm.startTime || !publishForm.endTime || publishForm.startTime >= publishForm.endTime) {
-    uni.showToast({
-      title: "请选择正确的约队时间",
-      icon: "none",
-    });
-    return;
-  }
-
-  submitting.value = true;
-  try {
-    const challenge = await createChallenge({
-      kind: publishForm.kind,
-      host_team_id: currentTeam.value.id,
-      title: publishForm.name.trim(),
-      holding_date: toBackendDateTime(publishForm.holdingDate),
-      start_time: toBackendDateTime(publishForm.startTime),
-      end_time: toBackendDateTime(publishForm.endTime),
-      location: publishForm.location.trim(),
-      location_latitude: publishForm.locationLatitude ?? undefined,
-      location_longitude: publishForm.locationLongitude ?? undefined,
-      players_per_team: playersPerTeam,
-      fee_per_person: feePerPerson !== null ? feePerPerson.toFixed(2) : undefined,
-      note: (publishForm.description || publishForm.note).trim() || undefined,
-    });
-
-    showCreateForm.value = false;
-    resetPublishForm();
-    prependCreatedChallenge(challenge);
-    uni.showToast({
-      title: "约队已发布",
-      icon: "none",
-    });
-  } catch (error) {
-    uni.showToast({
-      title: error instanceof Error ? error.message : "发布失败",
-      icon: "none",
-    });
-  } finally {
-    submitting.value = false;
-  }
-}
-
-function handlePublishLocationInput() {
-  publishForm.locationLatitude = null;
-  publishForm.locationLongitude = null;
-}
-
-async function handleChoosePublishLocation() {
-  try {
-    const location = await uni.chooseLocation({});
-    publishForm.location = location.name || location.address || "";
-    publishForm.locationLatitude = location.latitude;
-    publishForm.locationLongitude = location.longitude;
-  } catch (error) {
-    uni.showToast({
-      title: "未选择地点",
-      icon: "none",
-    });
-  }
-}
-
-function syncLegacyPublishFields() {
-  publishForm.title = publishForm.name;
-  publishForm.note = publishForm.description;
-  if (publishForm.holdingDate) {
-    publishForm.date = dateKeyFromTimestamp(publishForm.holdingDate);
-  } else if (publishForm.date) {
-    publishForm.holdingDate = timestampFromDateTime(publishForm.date, "20:00");
-  }
-}
-
-function handleIndividualDateChange(event: Event) {
-  const detail = event as Event & { detail?: { value?: string } };
-  const value = detail.detail?.value;
-  if (!value) return;
-  publishForm.date = value;
-  const startTimeKey = publishForm.startTime ? timeKeyFromTimestamp(publishForm.startTime) : "20:00";
-  const endTimeKey = publishForm.endTime ? timeKeyFromTimestamp(publishForm.endTime) : "22:00";
-  publishForm.holdingDate = timestampFromDateTime(value, startTimeKey);
-  publishForm.startTime = publishForm.holdingDate;
-  publishForm.endTime = timestampFromDateTime(value, endTimeKey);
-}
-
-function handleIndividualTimeChange(field: "startTime" | "endTime", event: Event) {
-  const detail = event as Event & { detail?: { value?: string } };
-  const value = detail.detail?.value;
-  if (!value) return;
-  const date = publishForm.date || defaultPublishDate();
-  publishForm.date = date;
-  const timestamp = timestampFromDateTime(date, value);
-  publishForm[field] = timestamp;
-  if (field === "startTime") {
-    publishForm.holdingDate = timestamp;
-  }
-}
-
 onShow(() => {
   uni.hideTabBar({ animation: false });
-  if (!publishForm.holdingDate) {
-    resetPublishForm();
-  }
   void loadPageData();
 });
 </script>
@@ -567,9 +378,9 @@ onShow(() => {
       </view>
       <view
         :class="['hall-publish-button', !canPublish ? 'hall-publish-button-disabled' : '']"
-        @tap="canPublish ? (showCreateForm = !showCreateForm) : null"
+        @tap="openPublishTypeSheet"
       >
-        {{ showCreateForm ? "收起发布" : "发布约队" }}
+        发布约队
       </view>
     </view>
 
@@ -607,106 +418,6 @@ onShow(() => {
       </view>
       <view class="hall-filter-action hall-filter-action-strong" @tap="showFilterPanel = !showFilterPanel">
         <text>{{ showFilterPanel ? "收起筛选" : "筛选" }}</text>
-      </view>
-    </view>
-
-    <view v-if="showCreateForm" class="hall-panel">
-      <view class="hall-panel-head">
-        <view>
-          <view class="hall-panel-title">发布约队</view>
-          <view class="hall-panel-caption">
-            {{ publishForm.kind === "team" ? "发布一场球队对球队的约战。" : "发布一场面向散人的报名局。" }}
-          </view>
-        </view>
-        <text class="hall-count-chip">可接约 {{ openCount }}</text>
-      </view>
-
-      <view class="hall-form-grid">
-        <view class="hall-form-item hall-form-item-full">
-          <text class="hall-form-label">类型</text>
-          <view class="hall-kind-switch">
-            <view
-              :class="['hall-kind-chip', publishForm.kind === 'team' ? 'hall-kind-chip-active' : '']"
-              @tap="publishForm.kind = 'team'"
-            >
-              球队约队
-            </view>
-            <view
-              :class="['hall-kind-chip', publishForm.kind === 'individual' ? 'hall-kind-chip-active' : '']"
-              @tap="publishForm.kind = 'individual'"
-            >
-              散人约队
-            </view>
-          </view>
-          <text v-if="publishForm.kind === 'individual'" class="hall-form-tip">散人约队同一时间只能接一场。</text>
-        </view>
-
-        <MatchPublishForm
-          v-if="publishForm.kind === 'team'"
-          class="hall-form-item-full"
-          :model-value="publishForm"
-          mode="challenge"
-          :show-check-in="false"
-          @location-input="handlePublishLocationInput"
-          @choose-location="handleChoosePublishLocation"
-        />
-
-        <template v-else>
-        <view class="hall-form-item hall-form-item-full">
-          <text class="hall-form-label">标题</text>
-          <input
-            v-model="publishForm.name"
-            class="hall-input"
-            placeholder="例如：周三晚散人局，还缺 4 人"
-          />
-        </view>
-        <view class="hall-form-item">
-          <text class="hall-form-label">日期</text>
-          <picker mode="date" :value="publishForm.date" @change="handleIndividualDateChange">
-            <view class="hall-picker">{{ publishForm.date || "选择日期" }}</view>
-          </picker>
-        </view>
-        <view class="hall-form-item">
-          <text class="hall-form-label">招募人数</text>
-          <input v-model="publishForm.playersPerTeam" class="hall-input" type="number" placeholder="14" />
-        </view>
-        <view class="hall-form-item">
-          <text class="hall-form-label">开始时间</text>
-          <picker mode="time" :value="timeKeyFromTimestamp(publishForm.startTime)" @change="handleIndividualTimeChange('startTime', $event)">
-            <view class="hall-picker">{{ timeKeyFromTimestamp(publishForm.startTime) }}</view>
-          </picker>
-        </view>
-        <view class="hall-form-item">
-          <text class="hall-form-label">结束时间</text>
-          <picker mode="time" :value="timeKeyFromTimestamp(publishForm.endTime)" @change="handleIndividualTimeChange('endTime', $event)">
-            <view class="hall-picker">{{ timeKeyFromTimestamp(publishForm.endTime) }}</view>
-          </picker>
-        </view>
-        <view class="hall-form-item hall-form-item-full">
-          <text class="hall-form-label">场地</text>
-          <input v-model="publishForm.location" class="hall-input" placeholder="填写球场名称" />
-        </view>
-        <view class="hall-form-item">
-          <text class="hall-form-label">预计费用/人</text>
-          <input v-model="publishForm.feePerPerson" class="hall-input" type="digit" placeholder="25" />
-        </view>
-        <view class="hall-form-item hall-form-item-full">
-          <text class="hall-form-label">备注</text>
-          <textarea
-            v-model="publishForm.description"
-            class="hall-textarea"
-            maxlength="200"
-            placeholder="例如：缺后卫和门将，守时优先"
-          />
-        </view>
-        </template>
-      </view>
-
-      <view class="hall-panel-actions">
-        <view class="hall-ghost-button" @tap="showCreateForm = false">先不发了</view>
-        <view class="hall-primary-button" @tap="handleCreateChallenge">
-          {{ submitting ? "提交中..." : "确认发布" }}
-        </view>
       </view>
     </view>
 
@@ -1074,119 +785,6 @@ onShow(() => {
   font-size: 24rpx;
   line-height: 1.5;
   color: #72766c;
-}
-
-.hall-count-chip {
-  padding: 12rpx 18rpx;
-  border-radius: 999rpx;
-  background: #f2f7db;
-  color: #4f6700;
-  font-size: 24rpx;
-  font-weight: 800;
-}
-
-.hall-form-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18rpx;
-  margin-top: 22rpx;
-}
-
-.hall-form-item {
-  display: flex;
-  flex-direction: column;
-  gap: 12rpx;
-}
-
-.hall-form-item-full {
-  grid-column: 1 / -1;
-}
-
-.hall-form-label {
-  font-size: 24rpx;
-  color: #62675f;
-  font-weight: 700;
-}
-
-.hall-form-tip {
-  font-size: 22rpx;
-  color: #6a705f;
-}
-
-.hall-kind-switch {
-  display: flex;
-  gap: 12rpx;
-}
-
-.hall-kind-chip {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 160rpx;
-  height: 76rpx;
-  padding: 0 22rpx;
-  border-radius: 999rpx;
-  background: #f1f3ec;
-  color: #4a4f47;
-  font-size: 26rpx;
-  font-weight: 800;
-}
-
-.hall-kind-chip-active {
-  background: #111111;
-  color: #c8ff00;
-}
-
-.hall-input,
-.hall-picker,
-.hall-textarea {
-  min-height: 88rpx;
-  padding: 0 22rpx;
-  border-radius: 24rpx;
-  background: #f3f5ef;
-  color: #161814;
-  font-size: 28rpx;
-  box-sizing: border-box;
-}
-
-.hall-picker {
-  display: flex;
-  align-items: center;
-}
-
-.hall-textarea {
-  min-height: 176rpx;
-  padding: 22rpx;
-}
-
-.hall-panel-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 18rpx;
-  margin-top: 24rpx;
-}
-
-.hall-primary-button,
-.hall-ghost-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 188rpx;
-  height: 88rpx;
-  padding: 0 24rpx;
-  border-radius: 999rpx;
-  font-size: 28rpx;
-  font-weight: 900;
-}
-
-.hall-primary-button {
-  background: #c8ff00;
-  color: #111111;
-}
-
-.hall-ghost-button {
-  background: #f1f3ec;
-  color: #41453f;
 }
 
 .hall-filter-switch-row {

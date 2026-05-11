@@ -18,33 +18,42 @@ describe("activities page sections", () => {
     expect(source.includes("const individualHallCards = computed")).toEqual(true);
   });
 
-  test("uses team manager permission for team challenges and sends challenge kind when publishing", async () => {
+  test("uses team manager permission for accepting team challenges", async () => {
     const source = await Bun.file(
       "/Users/carlwang/registration_system/registration_system_mini/src/pages/activities/index.vue",
     ).text();
 
     expect(source.includes("currentTeam.value?.canManageTeam")).toEqual(true);
-    expect(source.includes("kind: publishForm.kind")).toEqual(true);
     expect(source.includes('card.kind === "team"')).toEqual(true);
     expect(source.includes("散人约队同一时间只能接一场")).toEqual(true);
   });
 
-  test("reuses match publish form for team challenge creation", async () => {
+  test("opens a publish type sheet and navigates to dedicated create pages", async () => {
     const source = await Bun.file(
       "/Users/carlwang/registration_system/registration_system_mini/src/pages/activities/index.vue",
     ).text();
 
-    expect(source.includes('import MatchPublishForm from "@/components/MatchPublishForm.vue"')).toEqual(true);
-    expect(source.includes('import type { MatchPublishFormModel } from "@/components/matchPublishForm"')).toEqual(true);
-    expect(source.includes('from "@/components/matchPublishForm";')).toEqual(true);
-    expect(source.includes('import { toBackendDateTime')).toEqual(false);
-    expect(source.includes('<MatchPublishForm')).toEqual(true);
-    expect(source.includes('mode="challenge"')).toEqual(true);
-    expect(source.includes('v-if="publishForm.kind === \'team\'"')).toEqual(true);
-    expect(source.includes("function toBackendDateTime")).toEqual(true);
-    expect(source.includes("toBackendDateTime(publishForm.holdingDate)")).toEqual(true);
-    expect(source.includes("holding_date: toBackendDateTime(publishForm.holdingDate)")).toEqual(true);
-    expect(source.includes("start_time: toBackendDateTime(publishForm.startTime)")).toEqual(true);
-    expect(source.includes("end_time: toBackendDateTime(publishForm.endTime)")).toEqual(true);
+    expect(source.includes("function openPublishTypeSheet")).toEqual(true);
+    expect(source.includes("uni.showActionSheet")).toEqual(true);
+    expect(source.includes('itemList: ["球队约队", "散人约队"]')).toEqual(true);
+    expect(source.includes('url: "/pages/matches/create/index"')).toEqual(true);
+    expect(source.includes('url: "/pages/challenges/create-individual/index"')).toEqual(true);
+    expect(source.includes("createChallenge")).toEqual(false);
+    expect(source.includes("<MatchPublishForm")).toEqual(false);
+    expect(source.includes("showCreateForm")).toEqual(false);
+  });
+
+  test("registers individual challenge creation page", async () => {
+    const pages = await Bun.file(
+      "/Users/carlwang/registration_system/registration_system_mini/src/pages.json",
+    ).text();
+    const source = await Bun.file(
+      "/Users/carlwang/registration_system/registration_system_mini/src/pages/challenges/create-individual/index.vue",
+    ).text();
+
+    expect(pages.includes('"path": "pages/challenges/create-individual/index"')).toEqual(true);
+    expect(source.includes('createChallenge')).toEqual(true);
+    expect(source.includes('kind: "individual"')).toEqual(true);
+    expect(source.includes("散人约队同一时间只能接一场")).toEqual(true);
   });
 });
