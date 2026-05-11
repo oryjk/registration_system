@@ -11,6 +11,7 @@ import { useTeamContext } from "@/stores/teamContext";
 import { getCustomNavMetrics } from "@/utils/customNav";
 import { hasManualLogout } from "@/utils/authStorage";
 import { isRuntimeVisibleActivity, isRuntimeVisibleChallengeSummary, loadMiniAppRuntimeConfig } from "@/config/runtimeConfig";
+import { getCurrentYearDateRange } from "@/utils/dateRange";
 import { buildAttendanceSummary, buildChallengeCards, buildHomeMatchCards, buildPublicHomeMatchCards } from "@/utils/viewModels";
 import type { ChallengeCardViewModel, HomeMatchCardViewModel } from "@/types/viewModels";
 import type { BackendUser } from "@/types/backend";
@@ -91,7 +92,7 @@ function progressSplitLeft(requiredPlayers: number, maxPlayers: number) {
 function statusClass(status: string) {
   if (status === "参加") return "home-status home-status-join";
   if (status === "请假") return "home-status home-status-leave";
-  if (status === "迟到") return "home-status home-status-late";
+  if (status === "缺席") return "home-status home-status-late";
   return "home-status home-status-pending";
 }
 
@@ -228,11 +229,12 @@ async function loadPageData(options?: { preserveContent?: boolean }) {
 
     const runtimeConfig = await loadMiniAppRuntimeConfig();
     const now = new Date();
+    const attendanceDateRange = getCurrentYearDateRange(now);
     const challengeFetchLimit = Math.min(runtimeConfig.home.challenge_card_limit * 5, 50);
     const [activityPage, myActivityRecords, attendanceRecords, challengeSummaries, users] = await Promise.all([
       listActivities({ page: 1, pageSize: runtimeConfig.home.activity_fetch_page_size }),
       getMyActivities(),
-      getMyAttendance(),
+      getMyAttendance(attendanceDateRange),
       listChallenges({ teamId: currentTeam.value.id, limit: challengeFetchLimit, sort: "credit_desc" }),
       listUsers(),
       syncUnreadCount({ skipEnsure: true }),
@@ -505,7 +507,7 @@ onUnload(() => {
           <view class="section-headline">
             <view>
               <text class="section-headline-title">球队数据</text>
-              <text class="section-caption">首页只展示真实出勤摘要，不做假统计。</text>
+              <text class="section-caption">首页只展示今年以来真实出勤摘要。</text>
             </view>
             <view class="section-link" @tap="openTab('/pages/teams/index')">查看统计</view>
           </view>
@@ -525,7 +527,7 @@ onUnload(() => {
           </view>
           <view class="digest-card">
             <text class="digest-value">{{ personalDigest.late }}</text>
-            <text class="digest-label">迟到</text>
+            <text class="digest-label">缺席</text>
           </view>
         </view>
         </template>

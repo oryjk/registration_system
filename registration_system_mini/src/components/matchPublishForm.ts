@@ -9,6 +9,9 @@ export interface MatchPublishFormModel {
   opposing: string;
   description: string;
   playersPerTeam: string | number;
+  color: string;
+  opposingColor: string;
+  matchKind?: "external" | "internal";
   feePerPerson?: string | number;
   enableCheckIn?: boolean;
   checkInRadiusMeters?: string | number;

@@ -1,6 +1,6 @@
 use crate::team::domain::{
     ActivityTeamReview, DomainError, Team, TeamAdminInfo, TeamCreditTransaction, TeamMember,
-    TeamMemberWithInfo, UpdateTeamFields,
+    TeamMemberAttendanceRecord, TeamMemberWithInfo, UpdateTeamFields,
 };
 use async_trait::async_trait;
 use chrono::NaiveDateTime;
@@ -79,6 +79,15 @@ pub trait TeamRepository: Send + Sync {
         user_id: i64,
     ) -> Result<Option<i8>, DomainError>;
     async fn list_members(&self, team_id: &str) -> Result<Vec<TeamMember>, DomainError>;
+    async fn list_members_for_management(
+        &self,
+        team_id: &str,
+    ) -> Result<Vec<TeamMember>, DomainError>;
+    async fn list_member_attendance_records(
+        &self,
+        team_id: &str,
+        user_id: i64,
+    ) -> Result<Vec<TeamMemberAttendanceRecord>, DomainError>;
     async fn list_user_teams(&self, user_id: i64) -> Result<Vec<Team>, DomainError>;
     /// 管理后台：查询队员列表（含球员信息）
     async fn list_members_with_info(

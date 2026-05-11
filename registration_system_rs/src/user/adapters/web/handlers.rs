@@ -3,7 +3,7 @@ use crate::shared::api_response::ApiResponse;
 use crate::shared::auth::ActorKind;
 use crate::shared::error::AppError;
 use crate::shared::http_error::HttpError;
-use crate::shared::upload::{avatar_upload_dir, build_public_upload_url, detect_image_extension};
+use crate::shared::upload::{detect_image_extension, save_minio_bytes};
 use crate::user::adapters::web::dto::{
     AdminCreatePlayerRequest, AdminUpdatePlayerRequest, BindPhoneNumberRequest, PlayerDto,
     PlayerListDto, TokenVerifyDto, UpdateProfileRequest, UserActivityRecordDto,
@@ -198,22 +198,15 @@ pub async fn upload_avatar_handler(
     let extension = detect_image_extension(content_type.as_deref(), file_name.as_deref())
         .ok_or_else(|| AppError::Validation("头像仅支持 jpg/png/webp".to_string()))?;
 
-    let upload_dir = avatar_upload_dir();
-    tokio::fs::create_dir_all(&upload_dir)
-        .await
-        .map_err(|error| AppError::internal(format!("创建头像目录失败: {error}")))?;
-
     let file_name = format!("user-{}-{}.{}", actor.id, Uuid::new_v4(), extension);
-    let file_path = upload_dir.join(&file_name);
-    tokio::fs::write(&file_path, &avatar_bytes)
-        .await
-        .map_err(|error| AppError::internal(format!("保存头像失败: {error}")))?;
-
-    let avatar_url = build_public_upload_url(
+    let object_key = format!("avatars/{file_name}");
+    let avatar_url = save_minio_bytes(
         &state.config,
-        &headers,
-        &format!("/uploads/avatars/{file_name}"),
-    );
+        &object_key,
+        &avatar_bytes,
+        content_type.as_deref(),
+    )
+    .await?;
     let user = state
         .services
         .user_service

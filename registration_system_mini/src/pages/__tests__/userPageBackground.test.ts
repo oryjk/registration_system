@@ -39,12 +39,14 @@ describe("mine page background rendering", () => {
     expect(userPageSource.includes("mine-hero-heading")).toEqual(false);
   });
 
-  test("keeps the profile shell mounted while switching teams instead of inserting a full-page loading block", async () => {
+  test("uses a skeleton on first load instead of inserting a temporary loading card", async () => {
     const userPageSource = await Bun.file(
       "/Users/carlwang/registration_system/registration_system_mini/src/pages/user/index.vue",
     ).text();
 
-    expect(userPageSource.includes('v-if="showInitialLoadingState" class="mine-empty"')).toEqual(true);
+    expect(userPageSource.includes('v-if="showInitialLoadingState" class="mine-skeleton-stack"')).toEqual(true);
+    expect(userPageSource.includes('class="mine-skeleton-profile"')).toEqual(true);
+    expect(userPageSource.includes("正在加载个人中心")).toEqual(false);
     expect(userPageSource.includes('v-else-if="isLoading" class="mine-empty"')).toEqual(false);
     expect(userPageSource.includes('class="team-switch-status"')).toEqual(false);
   });

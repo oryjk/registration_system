@@ -9,8 +9,8 @@ use crate::team::adapters::web::dto::{
     BatchUpdateMemberStatusRequest, CreateTeamRequest, JoinTeamRequest,
     SubmitActivityReviewRequest, TeamAdminInfoDto, TeamCreditOverviewDto, TeamCreditPenaltyRequest,
     TeamCreditTransactionDto, TeamDetailDto, TeamDetailForAdminDto, TeamDto,
-    TeamLogoUploadResponse, TeamMembershipRechargeRequest, TeamPasswordInfoDto, TeamSummaryDto,
-    UpdateTeamMemberRequest, UpdateTeamRequest,
+    TeamLogoUploadResponse, TeamMemberAttendanceDto, TeamMembershipRechargeRequest,
+    TeamPasswordInfoDto, TeamSummaryDto, UpdateTeamMemberRequest, UpdateTeamRequest,
 };
 use crate::team::application::{
     AddTeamMemberCommand, CreateTeamCommand, SubmitActivityReviewCommand, TeamApplicationError,
@@ -404,6 +404,21 @@ pub async fn update_member_handler(
         .await
         .map_err(team_http_error)?;
     Ok(Json(ApiResponse::message("更新队员成功")))
+}
+
+pub async fn member_attendance_handler(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path((team_id, user_id)): Path<(String, i64)>,
+) -> Result<Json<ApiResponse<TeamMemberAttendanceDto>>, HttpError> {
+    let principal = team_principal(state.actor(&headers)?);
+    let attendance = state
+        .services
+        .team_service
+        .get_member_attendance_records(&principal, &team_id, user_id)
+        .await
+        .map_err(team_http_error)?;
+    Ok(Json(ApiResponse::success(TeamMemberAttendanceDto::from(attendance))))
 }
 
 pub async fn batch_remove_members_handler(

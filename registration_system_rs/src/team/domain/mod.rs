@@ -8,8 +8,8 @@ pub use credit::{
 };
 pub use error::DomainError;
 pub use team::{
-    ActivityTeamReview, Team, TeamAdminInfo, TeamCreditTransaction, TeamMember, TeamMemberWithInfo,
-    UpdateTeamFields,
+    ActivityTeamReview, Team, TeamAdminInfo, TeamCreditTransaction, TeamMember,
+    TeamMemberAttendanceRecord, TeamMemberWithInfo, UpdateTeamFields,
 };
 
 #[cfg(test)]

@@ -45,7 +45,7 @@ export function toStandLabel(stand: number): string {
     case 2:
       return "请假";
     case 3:
-      return "迟到";
+      return "缺席";
     default:
       return "待定";
   }
@@ -234,7 +234,7 @@ export function buildHomeMatchCards({
       const signupScope = activity.source_activity_id ? "internal" : "external";
       const myStatus = toStandLabel(myRecordByActivityId[activity.id]?.stand ?? 0);
       const remainingPlayers = Math.max(requiredPlayers - joinedPlayers, 0);
-      const canRegister = maxPlayers <= 0 || joinedPlayers < maxPlayers || myStatus === "参加" || myStatus === "迟到";
+      const canRegister = maxPlayers <= 0 || joinedPlayers < maxPlayers || myStatus === "参加" || myStatus === "缺席";
       const participantAvatars = registrations
         .filter((item) => item.stand === 1)
         .slice(0, 5)

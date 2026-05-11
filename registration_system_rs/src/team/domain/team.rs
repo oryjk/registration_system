@@ -51,6 +51,18 @@ pub struct TeamMember {
     pub updated_at: NaiveDateTime,
 }
 
+#[derive(Debug, Clone)]
+pub struct TeamMemberAttendanceRecord {
+    pub activity_id: String,
+    pub activity_name: String,
+    pub holding_date: NaiveDateTime,
+    pub location: String,
+    pub stand: i8,
+    pub registration_count: i32,
+    pub operation_time: Option<NaiveDateTime>,
+    pub registered: bool,
+}
+
 /// 球队后台管理员信息
 #[derive(Debug, Clone)]
 pub struct TeamAdminInfo {

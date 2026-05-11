@@ -4,8 +4,8 @@ use crate::activity::domain::Activity;
 use crate::activity::ports::ActivityRepository;
 use crate::team::domain::{
     DEFAULT_TEAM_CREDIT_SCORE, DomainError, Team, TeamAdminInfo, TeamCreditTransaction, TeamMember,
-    TeamMemberWithInfo, clamp_credit_score, membership_credit_delta, membership_price,
-    rating_to_credit_delta,
+    TeamMemberAttendanceRecord, TeamMemberWithInfo, clamp_credit_score, membership_credit_delta,
+    membership_price, rating_to_credit_delta,
 };
 use crate::team::ports::{ActivityReviewRecord, MembershipRechargeRecord, TeamRepository};
 use chrono::Duration;
@@ -24,6 +24,11 @@ pub struct CreateTeamCommand {
 pub struct TeamDetail {
     pub team: Team,
     pub members: Vec<TeamMember>,
+}
+
+#[derive(Debug, Clone)]
+pub struct TeamMemberAttendance {
+    pub records: Vec<TeamMemberAttendanceRecord>,
 }
 
 /// 管理后台球队详情（队员含球员信息 + 负责管理员列表）
@@ -306,7 +311,7 @@ impl TeamService {
         let team = self.get_team(team_id).await?;
         let members = self
             .repository
-            .list_members(team_id)
+            .list_members_for_management(team_id)
             .await
             .map_err(|error| {
                 TeamApplicationError::internal(format!("查询球队成员失败: {error}"))
@@ -634,6 +639,36 @@ impl TeamService {
             )
             .await
             .map_err(|error| TeamApplicationError::internal(format!("更新成员失败: {error}")))
+    }
+
+    pub async fn get_member_attendance_records(
+        &self,
+        principal: &TeamPrincipal,
+        team_id: &str,
+        target_user_id: i64,
+    ) -> Result<TeamMemberAttendance, TeamApplicationError> {
+        let team = self.get_team(team_id).await?;
+        self.ensure_team_manager(principal, &team).await?;
+
+        if !self
+            .repository
+            .get_member_status(team_id, target_user_id)
+            .await
+            .map_err(|error| TeamApplicationError::internal(format!("检查成员状态失败: {error}")))?
+            .is_some()
+        {
+            return Err(TeamApplicationError::NotFound(
+                "该用户不是球队成员".to_string(),
+            ));
+        }
+
+        let records = self
+            .repository
+            .list_member_attendance_records(team_id, target_user_id)
+            .await
+            .map_err(|error| TeamApplicationError::internal(format!("查询队员出场记录失败: {error}")))?;
+
+        Ok(TeamMemberAttendance { records })
     }
 
     /// 管理后台：球队详情（队员含球员名字/头像/手机号，以及负责管理员列表）
@@ -1058,7 +1093,8 @@ mod tests {
     use crate::activity::ports::ActivityRepository;
     use crate::team::domain::{
         ActivityTeamReview, DEFAULT_TEAM_CREDIT_SCORE, DomainError, Team, TeamAdminInfo,
-        TeamCreditTransaction, TeamMember, TeamMemberWithInfo, UpdateTeamFields,
+        TeamCreditTransaction, TeamMember, TeamMemberAttendanceRecord, TeamMemberWithInfo,
+        UpdateTeamFields,
     };
     use crate::team::ports::TeamRepository;
     use async_trait::async_trait;
@@ -1070,6 +1106,7 @@ mod tests {
     struct FakeTeamRepository {
         teams: Mutex<HashMap<String, Team>>,
         members: Mutex<HashMap<String, Vec<TeamMember>>>,
+        member_attendance_records: Mutex<HashMap<(String, i64), Vec<TeamMemberAttendanceRecord>>>,
         credit_transactions: Mutex<HashMap<String, Vec<TeamCreditTransaction>>>,
         reviews: Mutex<HashMap<(String, String), ActivityTeamReview>>,
     }
@@ -1218,6 +1255,36 @@ mod tests {
                 .lock()
                 .expect("members mutex poisoned")
                 .get(team_id)
+                .cloned()
+                .unwrap_or_default()
+                .into_iter()
+                .filter(|member| member.status == 1)
+                .collect())
+        }
+
+        async fn list_members_for_management(
+            &self,
+            team_id: &str,
+        ) -> Result<Vec<TeamMember>, DomainError> {
+            Ok(self
+                .members
+                .lock()
+                .expect("members mutex poisoned")
+                .get(team_id)
+                .cloned()
+                .unwrap_or_default())
+        }
+
+        async fn list_member_attendance_records(
+            &self,
+            team_id: &str,
+            user_id: i64,
+        ) -> Result<Vec<TeamMemberAttendanceRecord>, DomainError> {
+            Ok(self
+                .member_attendance_records
+                .lock()
+                .expect("member attendance records mutex poisoned")
+                .get(&(team_id.to_string(), user_id))
                 .cloned()
                 .unwrap_or_default())
         }
@@ -1595,6 +1662,165 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn team_detail_includes_frozen_members_for_management_view() {
+        let repository = Arc::new(FakeTeamRepository::default());
+        let now = Utc::now().naive_utc();
+        repository
+            .create(&Team {
+                id: "team-a".to_string(),
+                name: "A".to_string(),
+                description: None,
+                logo_url: None,
+                captain_id: Some(1),
+                join_password_hash: None,
+                status: 1,
+                credit_score: DEFAULT_TEAM_CREDIT_SCORE,
+                vip_until: None,
+                created_at: now,
+                updated_at: now,
+            })
+            .await
+            .expect("create team");
+
+        repository
+            .members
+            .lock()
+            .expect("members mutex poisoned")
+            .insert(
+                "team-a".to_string(),
+                vec![
+                    TeamMember {
+                        id: 1,
+                        team_id: "team-a".to_string(),
+                        user_id: 1,
+                        role: "captain".to_string(),
+                        jersey_number: Some("10".to_string()),
+                        joined_at: now,
+                        status: 1,
+                        created_at: now,
+                        updated_at: now,
+                    },
+                    TeamMember {
+                        id: 2,
+                        team_id: "team-a".to_string(),
+                        user_id: 2,
+                        role: "member".to_string(),
+                        jersey_number: Some("7".to_string()),
+                        joined_at: now,
+                        status: 0,
+                        created_at: now,
+                        updated_at: now,
+                    },
+                ],
+            );
+
+        let service = TeamService::new(
+            repository,
+            Arc::new(DummyActivityRepository {
+                activities: Mutex::new(HashMap::new()),
+            }),
+        );
+
+        let detail = service
+            .get_team_detail("team-a")
+            .await
+            .expect("get team detail");
+
+        assert_eq!(detail.members.len(), 2);
+        assert!(
+            detail
+                .members
+                .iter()
+                .any(|member| member.user_id == 2 && member.status == 0)
+        );
+    }
+
+    #[tokio::test]
+    async fn captain_can_view_member_attendance_records_with_unregistered_matches() {
+        let repository = Arc::new(FakeTeamRepository::default());
+        let now = Utc::now().naive_utc();
+        repository
+            .create(&Team {
+                id: "team-a".to_string(),
+                name: "A".to_string(),
+                description: None,
+                logo_url: None,
+                captain_id: Some(1),
+                join_password_hash: None,
+                status: 1,
+                credit_score: DEFAULT_TEAM_CREDIT_SCORE,
+                vip_until: None,
+                created_at: now,
+                updated_at: now,
+            })
+            .await
+            .expect("create team");
+        repository
+            .members
+            .lock()
+            .expect("members mutex poisoned")
+            .insert(
+                "team-a".to_string(),
+                vec![TeamMember {
+                    id: 2,
+                    team_id: "team-a".to_string(),
+                    user_id: 2,
+                    role: "member".to_string(),
+                    jersey_number: Some("7".to_string()),
+                    joined_at: now,
+                    status: 1,
+                    created_at: now,
+                    updated_at: now,
+                }],
+            );
+        repository
+            .member_attendance_records
+            .lock()
+            .expect("member attendance records mutex poisoned")
+            .insert(
+                ("team-a".to_string(), 2),
+                vec![
+                    TeamMemberAttendanceRecord {
+                        activity_id: "activity-joined".to_string(),
+                        activity_name: "周三友谊赛".to_string(),
+                        holding_date: now,
+                        location: "东安湖球场".to_string(),
+                        stand: 1,
+                        registration_count: 1,
+                        operation_time: Some(now),
+                        registered: true,
+                    },
+                    TeamMemberAttendanceRecord {
+                        activity_id: "activity-unregistered".to_string(),
+                        activity_name: "周末训练赛".to_string(),
+                        holding_date: now,
+                        location: "洺悦御府球场".to_string(),
+                        stand: 0,
+                        registration_count: 0,
+                        operation_time: None,
+                        registered: false,
+                    },
+                ],
+            );
+
+        let service = TeamService::new(
+            repository,
+            Arc::new(DummyActivityRepository {
+                activities: Mutex::new(HashMap::new()),
+            }),
+        );
+
+        let attendance = service
+            .get_member_attendance_records(&TeamPrincipal::user(1), "team-a", 2)
+            .await
+            .expect("get member attendance records");
+
+        assert_eq!(attendance.records.len(), 2);
+        assert!(attendance.records.iter().any(|record| record.registered));
+        assert!(attendance.records.iter().any(|record| !record.registered));
+    }
+
+    #[tokio::test]
     async fn captain_can_submit_post_match_review_and_raise_opponent_credit() {
         let repository = Arc::new(FakeTeamRepository::default());
         let now = Utc::now().naive_utc();
@@ -1616,6 +1842,7 @@ mod tests {
             color: None,
             opposing_color: None,
             players_per_team: Some(7),
+            match_kind: Some("external".to_string()),
             source_activity_id: None,
             team_registration_count: None,
             team_checkin_configs: vec![],

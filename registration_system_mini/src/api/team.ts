@@ -4,6 +4,7 @@ import type {
   BackendTeamCreditTransaction,
   BackendTeamDetail,
   BackendTeamLogoUploadResult,
+  BackendTeamMemberAttendance,
   BackendTeamPasswordInfo,
   BackendTeamSummary,
   BackendApiResponse,
@@ -147,6 +148,13 @@ export function updateTeamMember(
     url: `/teams/${teamId}/members/${userId}`,
     method: "PATCH",
     data: payload,
+    auth: true,
+  });
+}
+
+export function getTeamMemberAttendance(teamId: string, userId: number) {
+  return requestApi<BackendTeamMemberAttendance>({
+    url: `/teams/${teamId}/members/${userId}/attendance`,
     auth: true,
   });
 }

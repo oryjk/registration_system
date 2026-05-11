@@ -24,6 +24,7 @@ pub struct CreateActivityRequest {
     pub color: Option<String>,
     pub opposing_color: Option<String>,
     pub players_per_team: Option<i32>,
+    pub match_kind: Option<String>,
     pub team_checkin_configs: Option<Vec<CreateActivityCheckInConfigRequest>>,
 }
 
@@ -85,6 +86,7 @@ pub struct UpdateActivityRequest {
     pub color: Option<Option<String>>,
     pub opposing_color: Option<Option<String>>,
     pub players_per_team: Option<Option<i32>>,
+    pub match_kind: Option<String>,
 }
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -106,6 +108,7 @@ pub struct ActivityDto {
     pub color: Option<String>,
     pub opposing_color: Option<String>,
     pub players_per_team: Option<i32>,
+    pub match_kind: Option<String>,
     pub source_activity_id: Option<String>,
     pub team_registration_count: Option<i32>,
     pub team_checkin_configs: Vec<ActivityTeamCheckInConfigDto>,
@@ -131,6 +134,7 @@ impl From<Activity> for ActivityDto {
             color: value.color,
             opposing_color: value.opposing_color,
             players_per_team: value.players_per_team,
+            match_kind: value.match_kind,
             source_activity_id: value.source_activity_id,
             team_registration_count: value.team_registration_count,
             team_checkin_configs: value

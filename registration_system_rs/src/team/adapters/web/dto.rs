@@ -1,6 +1,9 @@
-use crate::team::application::{TeamCreditOverview, TeamDetail, TeamDetailForAdmin, TeamSummary};
+use crate::team::application::{
+    TeamCreditOverview, TeamDetail, TeamDetailForAdmin, TeamMemberAttendance, TeamSummary,
+};
 use crate::team::domain::{
-    Team, TeamAdminInfo, TeamCreditTransaction, TeamMember, TeamMemberWithInfo,
+    Team, TeamAdminInfo, TeamCreditTransaction, TeamMember, TeamMemberAttendanceRecord,
+    TeamMemberWithInfo,
 };
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
@@ -171,6 +174,50 @@ impl From<TeamDetail> for TeamDetailDto {
         Self {
             team: TeamDto::from(value.team),
             members: value.members.into_iter().map(TeamMemberDto::from).collect(),
+        }
+    }
+}
+
+#[derive(Debug, Serialize, ToSchema)]
+pub struct TeamMemberAttendanceRecordDto {
+    pub activity_id: String,
+    pub activity_name: String,
+    pub holding_date: chrono::NaiveDateTime,
+    pub location: String,
+    pub stand: i8,
+    pub registration_count: i32,
+    pub operation_time: Option<chrono::NaiveDateTime>,
+    pub registered: bool,
+}
+
+impl From<TeamMemberAttendanceRecord> for TeamMemberAttendanceRecordDto {
+    fn from(value: TeamMemberAttendanceRecord) -> Self {
+        Self {
+            activity_id: value.activity_id,
+            activity_name: value.activity_name,
+            holding_date: value.holding_date,
+            location: value.location,
+            stand: value.stand,
+            registration_count: value.registration_count,
+            operation_time: value.operation_time,
+            registered: value.registered,
+        }
+    }
+}
+
+#[derive(Debug, Serialize, ToSchema)]
+pub struct TeamMemberAttendanceDto {
+    pub records: Vec<TeamMemberAttendanceRecordDto>,
+}
+
+impl From<TeamMemberAttendance> for TeamMemberAttendanceDto {
+    fn from(value: TeamMemberAttendance) -> Self {
+        Self {
+            records: value
+                .records
+                .into_iter()
+                .map(TeamMemberAttendanceRecordDto::from)
+                .collect(),
         }
     }
 }

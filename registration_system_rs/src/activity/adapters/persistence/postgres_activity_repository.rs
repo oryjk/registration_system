@@ -27,6 +27,7 @@ struct ActivityRow {
     pub color: Option<String>,
     pub opposing_color: Option<String>,
     pub players_per_team: Option<i32>,
+    pub match_kind: Option<String>,
     pub source_activity_id: Option<String>,
     pub team_registration_count: Option<i32>,
     pub created_at: NaiveDateTime,
@@ -72,6 +73,7 @@ mod tests {
             color: None,
             opposing_color: None,
             players_per_team: None,
+            match_kind: Some("external".to_string()),
             source_activity_id: None,
             team_registration_count: None,
             created_at: now,
@@ -106,6 +108,7 @@ impl From<ActivityRow> for Activity {
             color: row.color,
             opposing_color: row.opposing_color,
             players_per_team: row.players_per_team,
+            match_kind: row.match_kind,
             source_activity_id: row.source_activity_id.map(|value| trim_activity_id(&value)),
             team_registration_count: row.team_registration_count,
             team_checkin_configs: vec![],
@@ -219,15 +222,15 @@ impl PostgresActivityRepository {
     }
 }
 
-const ACTIVITY_COLS: &str = "id, cover, start_time, end_time, holding_date, location, location_latitude, location_longitude, name, opposing, status, description, home_team_id, away_team_id, color, opposing_color, players_per_team, source_activity_id, team_registration_count, created_at, updated_at";
+const ACTIVITY_COLS: &str = "id, cover, start_time, end_time, holding_date, location, location_latitude, location_longitude, name, opposing, status, description, home_team_id, away_team_id, color, opposing_color, players_per_team, match_kind, source_activity_id, team_registration_count, created_at, updated_at";
 
 #[async_trait]
 impl ActivityRepository for PostgresActivityRepository {
     async fn create(&self, activity: &Activity) -> Result<(), DomainError> {
         sqlx::query(
             r#"INSERT INTO rs_activity (id, cover, start_time, end_time, holding_date, location, location_latitude, location_longitude, name, opposing, status,
-               description, home_team_id, away_team_id, color, opposing_color, players_per_team, source_activity_id, team_registration_count, created_at, updated_at)
-               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)"#,
+               description, home_team_id, away_team_id, color, opposing_color, players_per_team, match_kind, source_activity_id, team_registration_count, created_at, updated_at)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)"#,
         )
         .bind(&activity.id).bind(&activity.cover)
         .bind(activity.start_time).bind(activity.end_time).bind(activity.holding_date)
@@ -235,6 +238,7 @@ impl ActivityRepository for PostgresActivityRepository {
         .bind(&activity.name).bind(&activity.opposing).bind(activity.status as i16)
         .bind(&activity.description).bind(&activity.home_team_id).bind(&activity.away_team_id)
         .bind(&activity.color).bind(&activity.opposing_color).bind(activity.players_per_team)
+        .bind(activity.match_kind.as_deref().unwrap_or("external"))
         .bind(&activity.source_activity_id).bind(activity.team_registration_count)
         .bind(activity.created_at).bind(activity.updated_at)
         .execute(&self.pool).await.map_err(|e| DomainError::Infrastructure(e.to_string()))?;
@@ -404,6 +408,7 @@ impl ActivityRepository for PostgresActivityRepository {
         update_field!("color", fields.color);
         update_field!("opposing_color", fields.opposing_color);
         update_field!("players_per_team", fields.players_per_team);
+        update_field!("match_kind", fields.match_kind);
         update_field!("source_activity_id", fields.source_activity_id);
         update_field!("team_registration_count", fields.team_registration_count);
         Ok(())

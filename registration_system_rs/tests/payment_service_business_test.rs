@@ -11,7 +11,8 @@ use registration_system_backend::payment::ports::{
 use registration_system_backend::shared::auth::{ActorContext, ActorKind};
 use registration_system_backend::team::domain::{
     ActivityTeamReview, DEFAULT_TEAM_CREDIT_SCORE, DomainError as TeamDomainError, Team,
-    TeamAdminInfo, TeamCreditTransaction, TeamMember, TeamMemberWithInfo, UpdateTeamFields,
+    TeamAdminInfo, TeamCreditTransaction, TeamMember, TeamMemberAttendanceRecord,
+    TeamMemberWithInfo, UpdateTeamFields,
 };
 use registration_system_backend::team::ports::{
     ActivityReviewRecord, MembershipRechargeRecord, TeamRepository,
@@ -266,7 +267,10 @@ impl UserRepository for FakeUserRepository {
         unimplemented!()
     }
 
-    async fn find_activities(&self, _user_id: i64) -> Result<Vec<UserActivityRecord>, UserDomainError> {
+    async fn find_activities(
+        &self,
+        _user_id: i64,
+    ) -> Result<Vec<UserActivityRecord>, UserDomainError> {
         unimplemented!()
     }
 
@@ -405,6 +409,21 @@ impl TeamRepository for FakeTeamRepository {
     }
 
     async fn list_members(&self, _team_id: &str) -> Result<Vec<TeamMember>, TeamDomainError> {
+        unimplemented!()
+    }
+
+    async fn list_members_for_management(
+        &self,
+        _team_id: &str,
+    ) -> Result<Vec<TeamMember>, TeamDomainError> {
+        unimplemented!()
+    }
+
+    async fn list_member_attendance_records(
+        &self,
+        _team_id: &str,
+        _user_id: i64,
+    ) -> Result<Vec<TeamMemberAttendanceRecord>, TeamDomainError> {
         unimplemented!()
     }
 
@@ -575,7 +594,10 @@ async fn create_recharge_order_persists_order_and_prepay_info() {
         trade_state: Some("NOTPAY".to_string()),
     }));
     let team_repository = Arc::new(FakeTeamRepository::with_team(sample_team("team-1", 42)));
-    let user_repository = Arc::new(FakeUserRepository::with_user(sample_user(42, "stored-openid-42")));
+    let user_repository = Arc::new(FakeUserRepository::with_user(sample_user(
+        42,
+        "stored-openid-42",
+    )));
     let service = PaymentService::new(
         repository.clone(),
         billing_port,
@@ -611,7 +633,10 @@ async fn create_recharge_order_uses_actor_openid_when_payload_openid_missing() {
         trade_state: Some("NOTPAY".to_string()),
     }));
     let team_repository = Arc::new(FakeTeamRepository::with_team(sample_team("team-1", 42)));
-    let user_repository = Arc::new(FakeUserRepository::with_user(sample_user(42, "stored-openid-42")));
+    let user_repository = Arc::new(FakeUserRepository::with_user(sample_user(
+        42,
+        "stored-openid-42",
+    )));
     let service = PaymentService::new(
         repository,
         billing_port,
@@ -654,7 +679,10 @@ async fn sync_order_status_marks_order_paid_and_applies_recharge() {
         trade_state: Some("SUCCESS".to_string()),
     }));
     let team_repository = Arc::new(FakeTeamRepository::with_team(sample_team("team-1", 7)));
-    let user_repository = Arc::new(FakeUserRepository::with_user(sample_user(7, "stored-openid-7")));
+    let user_repository = Arc::new(FakeUserRepository::with_user(sample_user(
+        7,
+        "stored-openid-7",
+    )));
     let service = PaymentService::new(
         repository.clone(),
         billing_port.clone(),
@@ -690,7 +718,10 @@ async fn create_team_membership_order_persists_membership_metadata() {
         trade_state: Some("NOTPAY".to_string()),
     }));
     let team_repository = Arc::new(FakeTeamRepository::with_team(sample_team("team-88", 88)));
-    let user_repository = Arc::new(FakeUserRepository::with_user(sample_user(88, "stored-openid-88")));
+    let user_repository = Arc::new(FakeUserRepository::with_user(sample_user(
+        88,
+        "stored-openid-88",
+    )));
     let service = PaymentService::new(
         repository.clone(),
         billing_port,
@@ -733,7 +764,10 @@ async fn create_team_membership_order_uses_actor_openid_when_payload_openid_miss
         trade_state: Some("NOTPAY".to_string()),
     }));
     let team_repository = Arc::new(FakeTeamRepository::with_team(sample_team("team-88", 88)));
-    let user_repository = Arc::new(FakeUserRepository::with_user(sample_user(88, "stored-openid-88")));
+    let user_repository = Arc::new(FakeUserRepository::with_user(sample_user(
+        88,
+        "stored-openid-88",
+    )));
     let service = PaymentService::new(
         repository,
         billing_port,
@@ -798,7 +832,10 @@ async fn sync_order_status_applies_team_membership_credit() {
         trade_state: Some("SUCCESS".to_string()),
     }));
     let team_repository = Arc::new(FakeTeamRepository::with_team(sample_team("team-9", 9)));
-    let user_repository = Arc::new(FakeUserRepository::with_user(sample_user(9, "stored-openid-9")));
+    let user_repository = Arc::new(FakeUserRepository::with_user(sample_user(
+        9,
+        "stored-openid-9",
+    )));
     let service = PaymentService::new(
         repository.clone(),
         billing_port.clone(),

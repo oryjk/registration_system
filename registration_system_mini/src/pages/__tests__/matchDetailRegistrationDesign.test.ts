@@ -100,4 +100,23 @@ describe("match detail registration design", () => {
     expect(source.includes("applyIndividualRegistrationState(0, 0)")).toEqual(true);
     expect(source.includes("currentStatus.value = toStandLabel(stand);")).toEqual(true);
   });
+
+  test("keeps match information visible after manual logout and gates only signup", async () => {
+    const source = await Bun.file(
+      "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/detail.vue",
+    ).text();
+
+    expect(source.includes('import { hasManualLogout } from "@/utils/authStorage";')).toEqual(true);
+    expect(source.includes('const isGuestMode = ref(false);')).toEqual(true);
+    expect(source.includes('if (isGuestMode.value) return "登录后报名";')).toEqual(true);
+    expect(source.includes('<text v-if="!isGuestMode" class="individual-cta-side">免费</text>')).toEqual(true);
+    expect(source.indexOf("const [activity, activityUsers, users, activityPage] = await Promise.all") < source.indexOf("await ensureSessionReady();")).toEqual(
+      true,
+    );
+    expect(source.includes("async function handleGuestLogin")).toEqual(true);
+    expect(source.includes("resumeSessionBootstrap();")).toEqual(true);
+    expect(source.includes("await refreshSessionContext();")).toEqual(true);
+    expect(source.includes('uni.switchTab({ url: "/pages/user/index" });')).toEqual(true);
+    expect(source.includes("await handleGuestLogin();")).toEqual(true);
+  });
 });

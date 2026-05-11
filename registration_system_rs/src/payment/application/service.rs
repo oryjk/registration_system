@@ -65,7 +65,10 @@ impl PaymentService {
         actor: &ActorContext,
         provided_openid: Option<&str>,
     ) -> Result<String, AppError> {
-        if let Some(openid) = provided_openid.map(str::trim).filter(|value| !value.is_empty()) {
+        if let Some(openid) = provided_openid
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+        {
             return Ok(openid.to_string());
         }
 

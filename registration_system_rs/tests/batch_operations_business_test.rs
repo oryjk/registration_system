@@ -12,7 +12,8 @@ use registration_system_backend::team::application::{
 };
 use registration_system_backend::team::domain::{
     ActivityTeamReview, DEFAULT_TEAM_CREDIT_SCORE, DomainError as TeamDomainError, Team,
-    TeamAdminInfo, TeamCreditTransaction, TeamMember, TeamMemberWithInfo, UpdateTeamFields,
+    TeamAdminInfo, TeamCreditTransaction, TeamMember, TeamMemberAttendanceRecord,
+    TeamMemberWithInfo, UpdateTeamFields,
 };
 use registration_system_backend::team::ports::{
     ActivityReviewRecord, MembershipRechargeRecord, TeamRepository,
@@ -47,6 +48,7 @@ fn sample_activity(activity_id: &str) -> Activity {
         color: None,
         opposing_color: None,
         players_per_team: Some(8),
+        match_kind: Some("external".to_string()),
         source_activity_id: None,
         team_registration_count: None,
         team_checkin_configs: vec![],
@@ -357,6 +359,21 @@ impl TeamRepository for FakeTeamRepository {
     }
 
     async fn list_members(&self, _team_id: &str) -> Result<Vec<TeamMember>, TeamDomainError> {
+        Ok(Vec::new())
+    }
+
+    async fn list_members_for_management(
+        &self,
+        _team_id: &str,
+    ) -> Result<Vec<TeamMember>, TeamDomainError> {
+        Ok(Vec::new())
+    }
+
+    async fn list_member_attendance_records(
+        &self,
+        _team_id: &str,
+        _user_id: i64,
+    ) -> Result<Vec<TeamMemberAttendanceRecord>, TeamDomainError> {
         Ok(Vec::new())
     }
 

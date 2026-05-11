@@ -150,6 +150,21 @@ fn is_capacity_stand(stand: i8) -> bool {
     matches!(stand, 1 | 3)
 }
 
+fn normalize_match_kind(value: Option<String>) -> Result<String, ActivityApplicationError> {
+    match value
+        .as_deref()
+        .map(str::trim)
+        .filter(|item| !item.is_empty())
+    {
+        None => Ok("external".to_string()),
+        Some("external") => Ok("external".to_string()),
+        Some("internal") => Ok("internal".to_string()),
+        Some(_) => Err(ActivityApplicationError::Validation(
+            "比赛类型必须是 external 或 internal".to_string(),
+        )),
+    }
+}
+
 #[cfg(test)]
 fn is_frozen_during_activity(
     activity_holding_date: chrono::NaiveDateTime,
@@ -181,6 +196,7 @@ pub struct CreateActivityCommand {
     pub color: Option<String>,
     pub opposing_color: Option<String>,
     pub players_per_team: Option<i32>,
+    pub match_kind: Option<String>,
     pub team_checkin_configs: Vec<CreateActivityCheckInConfigCommand>,
 }
 
@@ -216,6 +232,7 @@ pub struct UpdateActivityCommand {
     pub color: Option<Option<String>>,
     pub opposing_color: Option<Option<String>>,
     pub players_per_team: Option<Option<i32>>,
+    pub match_kind: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -296,6 +313,7 @@ impl ActivityService {
 
         let color = validate_optional_hex_color(command.color, "球服颜色")?;
         let opposing_color = validate_optional_hex_color(command.opposing_color, "对手球服颜色")?;
+        let match_kind = normalize_match_kind(command.match_kind)?;
         let (location_latitude, location_longitude) =
             validate_location_coordinates(command.location_latitude, command.location_longitude)?;
 
@@ -318,6 +336,7 @@ impl ActivityService {
             color,
             opposing_color,
             players_per_team: command.players_per_team,
+            match_kind: Some(match_kind),
             source_activity_id: None,
             team_registration_count: None,
             team_checkin_configs: vec![],
@@ -670,7 +689,34 @@ impl ActivityService {
         command: UpdateActivityCommand,
     ) -> Result<(), ActivityApplicationError> {
         if !actor.is_admin() {
-            return Err(ActivityApplicationError::Forbidden);
+            if !actor.is_user() {
+                return Err(ActivityApplicationError::Forbidden);
+            }
+
+            let activity = self.get_activity(activity_id).await?;
+            if activity.source_activity_id.is_some() {
+                return Err(ActivityApplicationError::Forbidden);
+            }
+
+            let home_team_id = activity
+                .home_team_id
+                .as_deref()
+                .ok_or(ActivityApplicationError::Forbidden)?;
+            let role = self
+                .team_access_port
+                .find_active_member_role(home_team_id, actor.id)
+                .await
+                .map_err(ActivityApplicationError::internal)?;
+
+            if !role.as_deref().is_some_and(is_team_manager_role) {
+                return Err(ActivityApplicationError::Forbidden);
+            }
+
+            if chrono::Local::now().naive_local() >= activity.holding_date {
+                return Err(ActivityApplicationError::Validation(
+                    "比赛开始后不能修改比赛信息".to_string(),
+                ));
+            }
         }
         let color = validate_optional_hex_color_patch(command.color, "球服颜色")?;
         let opposing_color =
@@ -698,6 +744,7 @@ impl ActivityService {
                     color: color.as_ref().map(|v| v.as_deref()),
                     opposing_color: opposing_color.as_ref().map(|v| v.as_deref()),
                     players_per_team: command.players_per_team,
+                    match_kind: command.match_kind.as_deref(),
                     source_activity_id: None,
                     team_registration_count: None,
                 },
@@ -872,6 +919,7 @@ impl ActivityService {
             color: source_activity.color.clone(),
             opposing_color: source_activity.opposing_color.clone(),
             players_per_team: Some(registration_count),
+            match_kind: source_activity.match_kind.clone(),
             source_activity_id: Some(source_activity.id.clone()),
             team_registration_count: Some(registration_count),
             team_checkin_configs: vec![],
@@ -1173,8 +1221,8 @@ impl ActivityService {
 mod tests {
     use super::{
         ActivityService, CreateActivityCheckInConfigCommand, CreateActivityCommand,
-        UpdateActivityCommand, UpdateMyStandCommand, is_frozen_during_activity,
-        is_hex_color, validate_optional_hex_color,
+        UpdateActivityCommand, UpdateMyStandCommand, is_frozen_during_activity, is_hex_color,
+        validate_optional_hex_color,
     };
     use crate::activity::application::error::ActivityApplicationError;
     use crate::activity::application::principal::ActivityPrincipal;
@@ -1405,6 +1453,7 @@ mod tests {
         location_latitude: Option<Option<f64>>,
         location_longitude: Option<Option<f64>>,
         players_per_team: Option<Option<i32>>,
+        match_kind: Option<String>,
         team_registration_count: Option<Option<i32>>,
     }
 
@@ -1480,6 +1529,7 @@ mod tests {
                     location_latitude: fields.location_latitude,
                     location_longitude: fields.location_longitude,
                     players_per_team: fields.players_per_team,
+                    match_kind: fields.match_kind.map(str::to_string),
                     team_registration_count: fields.team_registration_count,
                 });
             Ok(())
@@ -1740,6 +1790,7 @@ mod tests {
             color: None,
             opposing_color: None,
             players_per_team: Some(7),
+            match_kind: Some("external".to_string()),
             source_activity_id: None,
             team_registration_count: None,
             team_checkin_configs: vec![],
@@ -1807,6 +1858,7 @@ mod tests {
             color: None,
             opposing_color: None,
             players_per_team: Some(7),
+            match_kind: Some("external".to_string()),
             source_activity_id: Some("activity-1".to_string()),
             team_registration_count: Some(7),
             team_checkin_configs: vec![],
@@ -1856,6 +1908,7 @@ mod tests {
                     color: None,
                     opposing_color: None,
                     players_per_team: None,
+                    match_kind: None,
                     team_checkin_configs: vec![],
                 },
             )
@@ -1867,6 +1920,43 @@ mod tests {
         assert_eq!(created[0].id, activity.id);
         assert_eq!(created[0].location_latitude, Some(22.518014));
         assert_eq!(created[0].location_longitude, Some(113.947308));
+    }
+
+    #[tokio::test]
+    async fn create_activity_persists_match_kind() {
+        let repository = Arc::new(RecordingActivityRepository::default());
+        let service = ActivityService::new(repository.clone(), None, Arc::new(DummyTeamAccessPort));
+        let now = Utc::now().naive_utc();
+
+        let activity = service
+            .create_activity(
+                &ActivityPrincipal::admin(1, true),
+                CreateActivityCommand {
+                    cover: None,
+                    start_time: now,
+                    end_time: now + Duration::hours(2),
+                    holding_date: now + Duration::days(1),
+                    location: "深圳湾体育中心".to_string(),
+                    location_latitude: None,
+                    location_longitude: None,
+                    name: "队内训练赛".to_string(),
+                    opposing: None,
+                    description: None,
+                    home_team_id: None,
+                    away_team_id: None,
+                    color: None,
+                    opposing_color: None,
+                    players_per_team: None,
+                    match_kind: Some("internal".to_string()),
+                    team_checkin_configs: vec![],
+                },
+            )
+            .await
+            .expect("create should succeed");
+
+        assert_eq!(activity.match_kind.as_deref(), Some("internal"));
+        let created = repository.created.lock().expect("created mutex poisoned");
+        assert_eq!(created[0].match_kind.as_deref(), Some("internal"));
     }
 
     #[tokio::test]
@@ -1895,6 +1985,7 @@ mod tests {
                     color: None,
                     opposing_color: None,
                     players_per_team: Some(8),
+                    match_kind: None,
                     team_checkin_configs: vec![CreateActivityCheckInConfigCommand {
                         team_id: "team-1".to_string(),
                         enabled: true,
@@ -1981,6 +2072,7 @@ mod tests {
                     color: None,
                     opposing_color: None,
                     players_per_team: None,
+                    match_kind: None,
                 },
             )
             .await
@@ -1994,8 +2086,76 @@ mod tests {
                 location_latitude: Some(None),
                 location_longitude: Some(None),
                 players_per_team: None,
+                match_kind: None,
                 team_registration_count: None,
             }
         );
+    }
+
+    #[tokio::test]
+    async fn team_manager_can_update_own_future_activity() {
+        let repository = Arc::new(RecordingActivityRepository::default());
+        let now = Utc::now().naive_utc();
+        *repository
+            .found_activity
+            .lock()
+            .expect("found_activity mutex poisoned") = Some(Activity {
+            id: "activity-1".to_string(),
+            cover: None,
+            start_time: now + Duration::days(1),
+            end_time: now + Duration::days(1) + Duration::hours(2),
+            holding_date: now + Duration::days(1),
+            location: "旧球场".to_string(),
+            location_latitude: None,
+            location_longitude: None,
+            name: "旧比赛".to_string(),
+            opposing: None,
+            status: 0,
+            description: None,
+            home_team_id: Some("team-1".to_string()),
+            away_team_id: None,
+            color: None,
+            opposing_color: None,
+            players_per_team: Some(8),
+            match_kind: Some("external".to_string()),
+            source_activity_id: None,
+            team_registration_count: None,
+            team_checkin_configs: vec![],
+            created_at: now,
+            updated_at: now,
+        });
+        let service =
+            ActivityService::new(repository.clone(), None, Arc::new(TeamManagerAccessPort));
+
+        service
+            .update_activity(
+                &ActivityPrincipal::user(7),
+                "activity-1",
+                UpdateActivityCommand {
+                    cover: None,
+                    start_time: Some(now + Duration::days(2)),
+                    end_time: Some(now + Duration::days(2) + Duration::hours(2)),
+                    holding_date: Some(now + Duration::days(2)),
+                    location: Some("新球场".to_string()),
+                    location_latitude: Some(Some(22.1)),
+                    location_longitude: Some(Some(113.9)),
+                    name: Some("新比赛".to_string()),
+                    opposing: Some(Some("新对手".to_string())),
+                    description: None,
+                    home_team_id: None,
+                    away_team_id: None,
+                    color: Some(Some("#2f6bff".to_string())),
+                    opposing_color: Some(Some("#d9ff16".to_string())),
+                    players_per_team: Some(Some(8)),
+                    match_kind: Some("external".to_string()),
+                },
+            )
+            .await
+            .expect("team manager should update own future activity");
+
+        let updated = repository.updated.lock().expect("updated mutex poisoned");
+        assert_eq!(updated.len(), 1);
+        assert_eq!(updated[0].activity_id, "activity-1");
+        assert_eq!(updated[0].match_kind.as_deref(), Some("external"));
     }
 }

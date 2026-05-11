@@ -68,6 +68,7 @@ pub async fn create_activity_handler(
                 color: payload.color,
                 opposing_color: payload.opposing_color,
                 players_per_team: payload.players_per_team,
+                match_kind: payload.match_kind,
                 team_checkin_configs: payload
                     .team_checkin_configs
                     .unwrap_or_default()
@@ -393,6 +394,7 @@ pub async fn update_activity_handler(
                 color: payload.color,
                 opposing_color: payload.opposing_color,
                 players_per_team: payload.players_per_team,
+                match_kind: payload.match_kind,
             },
         )
         .await

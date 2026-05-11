@@ -18,6 +18,7 @@ pub struct UpdateActivityFields<'a> {
     pub color: Option<Option<&'a str>>,
     pub opposing_color: Option<Option<&'a str>>,
     pub players_per_team: Option<Option<i32>>,
+    pub match_kind: Option<&'a str>,
     pub source_activity_id: Option<Option<&'a str>>,
     pub team_registration_count: Option<Option<i32>>,
 }
@@ -97,6 +98,7 @@ pub struct Activity {
     pub color: Option<String>,
     pub opposing_color: Option<String>,
     pub players_per_team: Option<i32>,
+    pub match_kind: Option<String>,
     pub source_activity_id: Option<String>,
     pub team_registration_count: Option<i32>,
     pub team_checkin_configs: Vec<ActivityTeamCheckInConfig>,

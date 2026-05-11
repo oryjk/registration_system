@@ -96,6 +96,7 @@ struct ActivityRow {
     color: Option<String>,
     opposing_color: Option<String>,
     players_per_team: Option<i32>,
+    match_kind: Option<String>,
     source_activity_id: Option<String>,
     team_registration_count: Option<i32>,
     created_at: NaiveDateTime,
@@ -151,6 +152,7 @@ impl From<ActivityRow> for Activity {
             color: row.color,
             opposing_color: row.opposing_color,
             players_per_team: row.players_per_team,
+            match_kind: row.match_kind,
             source_activity_id: row.source_activity_id,
             team_registration_count: row.team_registration_count,
             team_checkin_configs: vec![],
@@ -653,7 +655,7 @@ impl ChallengeRepository for PostgresChallengeRepository {
                     SELECT
                         id, cover, start_time, end_time, holding_date, location, location_latitude, location_longitude,
                         name, opposing, status, description, home_team_id, away_team_id, color, opposing_color,
-                        players_per_team, source_activity_id, team_registration_count, created_at, updated_at
+                        players_per_team, match_kind, source_activity_id, team_registration_count, created_at, updated_at
                     FROM rs_activity
                     WHERE id = $1
                     "#,
@@ -749,11 +751,11 @@ impl ChallengeRepository for PostgresChallengeRepository {
             INSERT INTO rs_activity (
                 id, cover, start_time, end_time, holding_date, location, location_latitude, location_longitude,
                 name, opposing, status, description, home_team_id, away_team_id, color, opposing_color,
-                players_per_team, source_activity_id, team_registration_count, created_at, updated_at
+                players_per_team, match_kind, source_activity_id, team_registration_count, created_at, updated_at
             ) VALUES (
                 $1, $2, $3, $4, $5, $6, $7, $8,
                 $9, $10, $11, $12, $13, $14, $15, $16,
-                $17, $18, $19, $20, $21
+                $17, $18, $19, $20, $21, $22
             )
             "#,
         )
@@ -774,6 +776,7 @@ impl ChallengeRepository for PostgresChallengeRepository {
         .bind(&activity.color)
         .bind(&activity.opposing_color)
         .bind(activity.players_per_team)
+        .bind(activity.match_kind.as_deref().unwrap_or("external"))
         .bind(&activity.source_activity_id)
         .bind(activity.team_registration_count)
         .bind(activity.created_at)

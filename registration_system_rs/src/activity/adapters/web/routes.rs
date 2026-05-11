@@ -5,7 +5,8 @@ use crate::activity::adapters::web::handlers::{
     list_activities_handler, list_activity_users_handler, list_registrations_with_info_handler,
     resolve_location_handler, search_locations_handler, submit_activity_checkin_handler,
     update_activity_handler, update_my_stand_handler, update_status_handler,
-    update_team_checkin_config_handler, update_team_registration_handler, update_user_stand_handler,
+    update_team_checkin_config_handler, update_team_registration_handler,
+    update_user_stand_handler,
 };
 use crate::bootstrap::app::AppState;
 use axum::{
@@ -38,7 +39,10 @@ fn shared_router() -> Router<AppState> {
             post(submit_activity_checkin_handler),
         )
         .route("/:activity_id/users", get(list_activity_users_handler))
-        .route("/:activity_id", get(get_activity_handler))
+        .route(
+            "/:activity_id",
+            get(get_activity_handler).patch(update_activity_handler),
+        )
 }
 
 fn admin_router() -> Router<AppState> {
@@ -54,7 +58,6 @@ fn admin_router() -> Router<AppState> {
         )
         .route("/:activity_id/status", patch(update_status_handler))
         .route("/:activity_id/backfill", post(backfill_activity_handler))
-        .route("/:activity_id", patch(update_activity_handler))
         .route(
             "/:activity_id/registrations",
             get(list_registrations_with_info_handler).post(admin_register_user_handler),

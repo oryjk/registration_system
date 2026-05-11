@@ -428,6 +428,7 @@ impl ChallengeService {
             color: None,
             opposing_color: None,
             players_per_team: Some(challenge.players_per_team),
+            match_kind: Some("external".to_string()),
             source_activity_id: None,
             team_registration_count: None,
             team_checkin_configs: vec![],

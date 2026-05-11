@@ -16,6 +16,9 @@ import { getTeamDetail, submitTeamActivityReview } from "@/api/team";
 import { listUsers } from "@/api/user";
 import { useCurrentLocation } from "@/stores/currentLocation";
 import { useTeamContext } from "@/stores/teamContext";
+import { resumeSessionBootstrap } from "@/stores/appSession";
+import { canShowTeamRegistrationTab } from "./registrationVisibility";
+import { hasManualLogout } from "@/utils/authStorage";
 import type {
   BackendActivity,
   BackendActivityCheckInRecord,
@@ -26,7 +29,7 @@ import type {
 import { getCustomNavMetrics } from "@/utils/customNav";
 import { resolveUserDisplayName, toStandLabel } from "@/utils/viewModels";
 
-const { currentTeam, currentUser, ensureSessionReady } = useTeamContext();
+const { currentTeam, currentUser, ensureSessionReady, refreshSessionContext } = useTeamContext();
 const { ensureCurrentLocation } = useCurrentLocation();
 
 const navMetrics = getCustomNavMetrics();
@@ -56,6 +59,8 @@ const reviewForm = ref({
   comment: "",
 });
 const reviewSubmitted = ref(false);
+const isGuestMode = ref(false);
+const isGuestLoginSubmitting = ref(false);
 
 let countdownTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -92,11 +97,12 @@ const remainingPlayersLabel = computed(() => {
 });
 
 const matchWeekdayLabel = computed(() => (match.value ? formatWeekday(match.value.holding_date) : "周日"));
-const eventToneLabel = computed(() => `${matchWeekdayLabel.value}友谊赛`);
 const dateLine = computed(() => {
   if (!match.value) return "";
   return `${formatMonthDay(match.value.holding_date)} ${formatWeekday(match.value.holding_date)} ${formatClock(match.value.start_time)}`;
 });
+const matchDateLabel = computed(() => (match.value ? `${formatMonthDay(match.value.holding_date)} ${formatWeekday(match.value.holding_date)}` : ""));
+const matchClockLabel = computed(() => (match.value ? formatClock(match.value.start_time) : ""));
 
 const matchStartTimestamp = computed(() => {
   if (!match.value) return 0;
@@ -126,6 +132,13 @@ const participantPreview = computed(() =>
   }),
 );
 
+const matchKindLabel = computed(() => (match.value?.match_kind === "internal" ? "队内内战" : "对外友谊赛"));
+const homeTeamLabel = computed(() => currentTeam.value?.name || "主队");
+const displayOpponentLabel = computed(() => match.value?.opposing || opponentTeam.value?.name || "对手待定");
+const homeTeamColor = computed(() => match.value?.color?.trim() || "#2f6bff");
+const awayTeamColor = computed(() => match.value?.opposing_color?.trim() || "#d9ff16");
+const matchLocation = computed(() => match.value?.location || "");
+
 const opponentTeam = computed(() => {
   if (!match.value || !currentTeam.value) return null;
   const teamIds = [match.value.home_team_id, match.value.away_team_id].filter((value): value is string => !!value);
@@ -142,8 +155,18 @@ const interestCards = computed(() =>
   })),
 );
 
-const individualCtaLabel = computed(() => (currentStatus.value === "参加" ? "取消报名" : "立即报名"));
-const canUseTeamRegistration = computed(() => !!currentTeam.value?.canManageTeam && !match.value?.source_activity_id);
+const individualCtaLabel = computed(() => {
+  if (isGuestMode.value) return "登录后报名";
+  return currentStatus.value === "参加" ? "取消报名" : "立即报名";
+});
+const canUseTeamRegistration = computed(() =>
+  canShowTeamRegistrationTab({
+    currentTeamId: currentTeam.value?.id,
+    canManageTeam: currentTeam.value?.canManageTeam,
+    sourceActivityId: match.value?.source_activity_id,
+    homeTeamId: match.value?.home_team_id,
+  }),
+);
 const teamRegistrationCountOptions = Array.from({ length: 7 }, (_, index) => {
   const value = index + 5;
   return { value, label: `${value} 人制` };
@@ -227,6 +250,23 @@ function avatarColor(userId: number) {
   return palette[userId % palette.length];
 }
 
+function openMatchLocation() {
+  if (!match.value || match.value.location_latitude == null || match.value.location_longitude == null) {
+    uni.showToast({
+      title: "暂无可打开的地图定位",
+      icon: "none",
+    });
+    return;
+  }
+
+  uni.openLocation({
+    latitude: Number(match.value.location_latitude),
+    longitude: Number(match.value.location_longitude),
+    name: match.value.name,
+    address: match.value.location,
+  });
+}
+
 async function loadPageData() {
   if (!matchId.value) return;
 
@@ -234,7 +274,6 @@ async function loadPageData() {
   errorMessage.value = "";
 
   try {
-    await ensureSessionReady();
     const [activity, activityUsers, users, activityPage] = await Promise.all([
       getActivity(matchId.value),
       getActivityUsers(matchId.value),
@@ -242,42 +281,60 @@ async function loadPageData() {
       listActivities({ page: 1, pageSize: 100 }),
     ]);
 
-    const teamIds = [activity.home_team_id, activity.away_team_id].filter((teamId): teamId is string => !!teamId);
-    const fetchedTeams = await Promise.all(teamIds.map(async (teamId) => (await getTeamDetail(teamId)).team));
-    const derivedActivity =
-      currentTeam.value?.id
-        ? activityPage.items.find(
-            (item) => isActiveTeamRegistrationActivity(item) && item.source_activity_id === activity.id && item.home_team_id === currentTeam.value?.id,
-          ) ?? null
-        : null;
-    const initialRegistrationCount =
-      derivedActivity?.team_registration_count ?? activity.team_registration_count ?? activity.players_per_team ?? 5;
-
     match.value = activity;
     registrations.value = activityUsers;
+    usersById.value = Object.fromEntries(users.map((item) => [item.id, item]));
+    relatedActivities.value = activityPage.items.filter((item) => item.id !== activity.id && item.status === 0).slice(0, 2);
     sourceTeamRegistrationCount.value = activity.source_activity_id
       ? 0
       : activityPage.items
           .filter((item) => isActiveTeamRegistrationActivity(item) && item.source_activity_id === activity.id)
           .reduce((total, item) => total + Number(item.team_registration_count ?? 0), 0);
-    existingTeamDerivedActivity.value = derivedActivity;
-    teamRegistrationCount.value = clampTeamRegistrationCount(initialRegistrationCount);
-    usersById.value = Object.fromEntries(users.map((item) => [item.id, item]));
-    teamsById.value = Object.fromEntries(fetchedTeams.map((team) => [team.id, team]));
-    relatedActivities.value = activityPage.items.filter((item) => item.id !== activity.id && item.status === 0).slice(0, 2);
-    currentStatus.value = toStandLabel(activityUsers.find((item) => item.user_id === currentUser.value?.id)?.stand ?? 0);
-    if (!canUseTeamRegistration.value) {
+    existingTeamDerivedActivity.value = null;
+    currentStatus.value = "待定";
+    teamsById.value = {};
+    isGuestMode.value = hasManualLogout();
+
+    if (isGuestMode.value) {
+      registrationMode.value = "individual";
+      return;
+    }
+
+    try {
+      await ensureSessionReady();
+
+      const teamIds = [activity.home_team_id, activity.away_team_id].filter((teamId): teamId is string => !!teamId);
+      const fetchedTeams = await Promise.all(teamIds.map(async (teamId) => (await getTeamDetail(teamId)).team));
+      const derivedActivity =
+        currentTeam.value?.id
+          ? activityPage.items.find(
+              (item) => isActiveTeamRegistrationActivity(item) && item.source_activity_id === activity.id && item.home_team_id === currentTeam.value?.id,
+            ) ?? null
+          : null;
+      const initialRegistrationCount =
+        derivedActivity?.team_registration_count ?? activity.team_registration_count ?? activity.players_per_team ?? 5;
+
+      isGuestMode.value = false;
+      existingTeamDerivedActivity.value = derivedActivity;
+      teamRegistrationCount.value = clampTeamRegistrationCount(initialRegistrationCount);
+      teamsById.value = Object.fromEntries(fetchedTeams.map((team) => [team.id, team]));
+      currentStatus.value = toStandLabel(activityUsers.find((item) => item.user_id === currentUser.value?.id)?.stand ?? 0);
+      if (!canUseTeamRegistration.value) {
+        registrationMode.value = "individual";
+      }
+      const config = activity.source_activity_id
+        ? null
+        : activity.team_checkin_configs.find((item) => item.team_id === currentTeam.value?.id);
+      checkInForm.value = {
+        enabled: config?.enabled ?? false,
+        radiusMeters: config?.radius_meters ?? 200,
+        openMinutesBefore: config?.open_minutes_before ?? 60,
+        closeMinutesAfter: config?.close_minutes_after ?? 45,
+      };
+    } catch (_sessionError) {
+      isGuestMode.value = true;
       registrationMode.value = "individual";
     }
-    const config = activity.source_activity_id
-      ? null
-      : activity.team_checkin_configs.find((item) => item.team_id === currentTeam.value?.id);
-    checkInForm.value = {
-      enabled: config?.enabled ?? false,
-      radiusMeters: config?.radius_meters ?? 200,
-      openMinutesBefore: config?.open_minutes_before ?? 60,
-      closeMinutesAfter: config?.close_minutes_after ?? 45,
-    };
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : "比赛报名页加载失败";
   } finally {
@@ -374,8 +431,46 @@ function confirmRegistrationAction(options: { title: string; content: string; co
   });
 }
 
+function getCurrentPageRoute() {
+  const pages = getCurrentPages();
+  const currentPage = pages[pages.length - 1];
+  return currentPage?.route ? `/${currentPage.route}` : "";
+}
+
+async function handleGuestLogin() {
+  if (isGuestLoginSubmitting.value) return;
+
+  isGuestLoginSubmitting.value = true;
+  const fromRoute = getCurrentPageRoute();
+  resumeSessionBootstrap();
+  uni.showLoading({
+    title: "登录中...",
+    mask: true,
+  });
+
+  try {
+    await refreshSessionContext();
+    uni.$emit("session:login-completed", { fromRoute });
+    if (!currentUser.value || !currentTeam.value) {
+      uni.switchTab({ url: "/pages/user/index" });
+      return;
+    }
+
+    await loadPageData();
+  } catch (error) {
+    uni.switchTab({ url: "/pages/user/index" });
+  } finally {
+    uni.hideLoading();
+    isGuestLoginSubmitting.value = false;
+  }
+}
+
 async function handleSelectIndividualSignup() {
   if (!match.value || submittingStatus.value) return;
+  if (isGuestMode.value) {
+    await handleGuestLogin();
+    return;
+  }
   if (currentStatus.value === "参加") {
     await handleCancelIndividualSignup();
     return;
@@ -692,36 +787,62 @@ onUnload(() => {
       <view v-if="registrationMode === 'individual'" class="individual-mode-shell">
         <view class="hero-black-card">
           <view class="hero-black-copy">
-            <text class="hero-tone-badge">{{ eventToneLabel }}</text>
+            <text class="hero-tone-badge">{{ matchKindLabel }}</text>
             <text class="hero-black-title">{{ match.name }}</text>
-            <view class="hero-meta-row">
-              <text class="hero-meta-icon">◷</text>
-              <text class="hero-meta-text">{{ dateLine }}</text>
+
+            <view class="matchup-stage">
+              <view class="matchup-side matchup-side-home">
+                <text class="matchup-role">主队</text>
+                <text class="matchup-name">{{ homeTeamLabel }}</text>
+                <view class="matchup-kit">
+                  <view class="matchup-jersey" :style="{ '--jersey-color': homeTeamColor }">
+                    <view class="matchup-jersey-body">
+                      <view class="matchup-jersey-collar" />
+                      <view class="matchup-jersey-stripe" />
+                    </view>
+                  </view>
+                  <text class="matchup-kit-label">球服</text>
+                </view>
+              </view>
+
+              <view class="matchup-center">
+                <view class="matchup-vs">VS</view>
+                <text class="matchup-date">{{ matchDateLabel }}</text>
+                <text class="matchup-time">{{ matchClockLabel }}</text>
+                <view class="matchup-location" @tap="openMatchLocation">
+                  <text class="matchup-location-text">{{ matchLocation }}</text>
+                  <text v-if="matchLocation && match.location_latitude != null && match.location_longitude != null" class="matchup-location-arrow">›</text>
+                </view>
+              </view>
+
+              <view class="matchup-side matchup-side-away">
+                <text class="matchup-role">客队</text>
+                <text class="matchup-name">{{ displayOpponentLabel }}</text>
+                <view class="matchup-kit">
+                  <text class="matchup-kit-label">球服</text>
+                  <view class="matchup-jersey matchup-jersey-mirror" :style="{ '--jersey-color': awayTeamColor }">
+                    <view class="matchup-jersey-body">
+                      <view class="matchup-jersey-collar" />
+                      <view class="matchup-jersey-stripe" />
+                    </view>
+                  </view>
+                </view>
+              </view>
             </view>
-            <view class="hero-meta-row">
-              <text class="hero-meta-icon">⌖</text>
-              <text class="hero-meta-text">{{ match.location }}</text>
-            </view>
-          </view>
-          <view class="hero-visual-stage">
-            <text class="hero-watermark">FOOTBALL</text>
-            <view class="hero-net hero-net-left" />
-            <view class="hero-net hero-net-right" />
-            <view class="hero-card-ball hero-card-ball-main" />
           </view>
         </view>
 
         <view class="registration-card countdown-card">
           <view class="countdown-head">
-            <view>
+            <view class="countdown-head-top">
               <text class="section-title">报名截止</text>
-              <text class="countdown-time">{{ countdownText }}</text>
+              <view class="countdown-total">
+                <text class="countdown-total-label">已报</text>
+                <text class="countdown-total-strong">{{ joinedCount }}</text>
+                <text class="countdown-total-denominator">/{{ requiredPlayers || "?" }}</text>
+              </view>
             </view>
-            <view class="countdown-total">
-              已报
-              <text class="countdown-total-strong">{{ joinedCount }}</text>
-              /{{ requiredPlayers || "?" }}
-            </view>
+            <text class="countdown-time">{{ countdownText }}</text>
           </view>
 
           <view class="progress-track">
@@ -752,7 +873,7 @@ onUnload(() => {
 
           <view class="individual-cta-button" @tap="handleSelectIndividualSignup">
             <text class="individual-cta-main">{{ submittingStatus ? "提交中..." : individualCtaLabel }}</text>
-            <text class="individual-cta-side">免费</text>
+            <text v-if="!isGuestMode" class="individual-cta-side">免费</text>
           </view>
         </view>
 
@@ -1339,7 +1460,7 @@ onUnload(() => {
 .hero-black-card {
   padding: 30rpx;
   background: linear-gradient(140deg, #222222 0%, #1c1c1c 54%, #2a2a2a 100%);
-  min-height: 330rpx;
+  min-height: 390rpx;
 }
 
 .hero-black-copy {
@@ -1348,7 +1469,7 @@ onUnload(() => {
   display: flex;
   flex-direction: column;
   gap: 12rpx;
-  max-width: 56%;
+  width: 100%;
 }
 
 .hero-tone-badge {
@@ -1369,21 +1490,211 @@ onUnload(() => {
   font-weight: 900;
 }
 
-.hero-meta-row {
+.matchup-stage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 170rpx minmax(0, 1fr);
+  align-items: center;
+  gap: 16rpx;
+  margin-top: 18rpx;
+}
+
+.matchup-side {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+  min-width: 0;
+}
+
+.matchup-side-away {
+  align-items: flex-end;
+  text-align: right;
+}
+
+.matchup-role {
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 22rpx;
+  line-height: 1;
+  font-weight: 900;
+}
+
+.matchup-name {
+  width: 100%;
+  color: #ffffff;
+  font-size: 34rpx;
+  line-height: 1.15;
+  font-weight: 900;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.matchup-kit {
+  display: inline-flex;
+  align-items: center;
+  gap: 8rpx;
+  width: fit-content;
+  padding: 10rpx 12rpx;
+  border-radius: 16rpx;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1rpx solid rgba(255, 255, 255, 0.1);
+}
+
+.matchup-kit-label {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 22rpx;
+  line-height: 1;
+  font-weight: 800;
+}
+
+.matchup-jersey {
+  position: relative;
+  width: 58rpx;
+  height: 52rpx;
+  flex-shrink: 0;
+  overflow: visible;
+}
+
+.matchup-jersey::before,
+.matchup-jersey::after {
+  content: "";
+  position: absolute;
+  top: 7rpx;
+  z-index: 0;
+  width: 23rpx;
+  height: 29rpx;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.14) 0%, rgba(0, 0, 0, 0.08) 100%),
+    var(--jersey-color);
+  border-radius: 10rpx 10rpx 8rpx 8rpx;
+  box-shadow:
+    inset 0 -5rpx 0 rgba(0, 0, 0, 0.16),
+    inset 0 1rpx 0 rgba(255, 255, 255, 0.24);
+}
+
+.matchup-jersey::before {
+  left: 0;
+  transform: rotate(-18deg);
+}
+
+.matchup-jersey::after {
+  right: 0;
+  transform: rotate(18deg);
+}
+
+.matchup-jersey-body {
+  position: absolute;
+  left: 50%;
+  top: 2rpx;
+  z-index: 1;
+  width: 39rpx;
+  height: 48rpx;
+  transform: translateX(-50%);
+  border-radius: 12rpx 12rpx 10rpx 10rpx;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.2) 0 18%, transparent 19% 55%, rgba(0, 0, 0, 0.1) 56% 100%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.22) 0%, rgba(0, 0, 0, 0.1) 100%),
+    var(--jersey-color);
+  box-shadow:
+    inset 0 -7rpx 0 rgba(0, 0, 0, 0.16),
+    inset 0 1rpx 0 rgba(255, 255, 255, 0.28),
+    0 6rpx 14rpx rgba(0, 0, 0, 0.22);
+  overflow: hidden;
+}
+
+.matchup-jersey-collar {
+  position: absolute;
+  left: 50%;
+  top: -1rpx;
+  width: 19rpx;
+  height: 14rpx;
+  transform: translateX(-50%);
+  border-radius: 0 0 999rpx 999rpx;
+  background: rgba(24, 24, 24, 0.34);
+  border: 3rpx solid rgba(255, 255, 255, 0.26);
+  border-top: 0;
+}
+
+.matchup-jersey-stripe {
+  position: absolute;
+  left: 50%;
+  top: 18rpx;
+  width: 4rpx;
+  height: 23rpx;
+  transform: translateX(-50%);
+  border-radius: 999rpx;
+  background: rgba(255, 255, 255, 0.38);
+  box-shadow:
+    -9rpx 0 0 rgba(255, 255, 255, 0.16),
+    9rpx 0 0 rgba(0, 0, 0, 0.1);
+}
+
+.matchup-jersey-mirror {
+  transform: scaleX(-1);
+}
+
+.matchup-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8rpx;
+  min-width: 0;
+  text-align: center;
+}
+
+.matchup-vs {
   display: flex;
   align-items: center;
-  gap: 12rpx;
-}
-
-.hero-meta-icon {
-  color: #f2f2f2;
-  font-size: 24rpx;
-}
-
-.hero-meta-text {
-  color: rgba(255, 255, 255, 0.86);
+  justify-content: center;
+  width: 74rpx;
+  height: 74rpx;
+  border-radius: 999rpx;
+  background: rgba(217, 255, 22, 0.14);
+  border: 1rpx solid rgba(217, 255, 22, 0.42);
+  color: #d9ff16;
   font-size: 28rpx;
-  line-height: 1.4;
+  line-height: 1;
+  font-weight: 900;
+}
+
+.matchup-date {
+  color: rgba(255, 255, 255, 0.84);
+  font-size: 22rpx;
+  line-height: 1.2;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.matchup-time {
+  color: #ffffff;
+  font-size: 30rpx;
+  line-height: 1;
+  font-weight: 900;
+}
+
+.matchup-location {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4rpx;
+  max-width: 172rpx;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.matchup-location-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 22rpx;
+  line-height: 1.25;
+  text-decoration: underline;
+  text-underline-offset: 5rpx;
+}
+
+.matchup-location-arrow {
+  flex-shrink: 0;
+  font-size: 26rpx;
+  line-height: 1;
+  font-weight: 900;
 }
 
 .hero-visual-stage {
@@ -1458,9 +1769,16 @@ onUnload(() => {
 
 .countdown-head {
   display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+
+.countdown-head-top {
+  display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 18rpx;
+  min-width: 0;
 }
 
 .section-title {
@@ -1473,7 +1791,6 @@ onUnload(() => {
 
 .countdown-time {
   display: block;
-  margin-top: 12rpx;
   color: #131313;
   font-size: 62rpx;
   line-height: 1;
@@ -1481,17 +1798,30 @@ onUnload(() => {
 }
 
 .countdown-total {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 6rpx;
   color: #6b6b6b;
   font-size: 30rpx;
-  line-height: 1.4;
+  line-height: 1;
   font-weight: 700;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .countdown-total-strong {
   color: #d0ea14;
   font-size: 52rpx;
   font-weight: 900;
-  margin: 0 6rpx;
+  line-height: 0.9;
+}
+
+.countdown-total-label,
+.countdown-total-denominator {
+  color: #6b6b6b;
+  font-size: 30rpx;
+  line-height: 1;
+  font-weight: 700;
 }
 
 .progress-track {

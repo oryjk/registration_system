@@ -8,6 +8,7 @@ import { getAttendanceRanking, getMyAttendance } from "@/api/user";
 import { useTeamContext } from "@/stores/teamContext";
 import { hasManualLogout } from "@/utils/authStorage";
 import { getCustomNavMetrics } from "@/utils/customNav";
+import { getCurrentYearDateRange } from "@/utils/dateRange";
 import type {
   BackendAttendanceRankingItem,
   BackendUserAttendanceRecord,
@@ -38,7 +39,7 @@ const pageStyle = computed(() => ({
 
 function attendanceClass(attendance: string) {
   if (attendance === "参加") return "stats-status stats-status-join";
-  if (attendance === "迟到") return "stats-status stats-status-late";
+  if (attendance === "缺席") return "stats-status stats-status-late";
   if (attendance === "请假") return "stats-status stats-status-leave";
   return "stats-status stats-status-pending";
 }
@@ -70,9 +71,10 @@ async function loadPageData() {
 
   try {
     await ensureSessionReady();
+    const attendanceDateRange = getCurrentYearDateRange();
     const [attendance, ranking] = await Promise.all([
-      getMyAttendance(),
-      getAttendanceRanking(),
+      getMyAttendance(attendanceDateRange),
+      getAttendanceRanking(attendanceDateRange),
       syncUnreadCount({ skipEnsure: true }),
     ]);
     attendanceRecords.value = attendance;
@@ -108,13 +110,23 @@ onUnload(() => {
 
     <template v-if="!requiresLogin">
       <view v-if="errorMessage" class="stats-empty">{{ errorMessage }}</view>
-      <view v-else-if="isLoading" class="stats-empty">正在加载统计...</view>
+      <view v-else-if="isLoading" class="stats-skeleton-stack">
+        <view class="stats-skeleton-card stats-skeleton-hero" />
+        <view class="stats-skeleton-grid">
+          <view class="stats-skeleton-card" />
+          <view class="stats-skeleton-card" />
+          <view class="stats-skeleton-card" />
+          <view class="stats-skeleton-card" />
+        </view>
+        <view class="stats-skeleton-card stats-skeleton-list" />
+      </view>
 
+      <template v-else>
       <view class="stats-hero">
         <view>
           <text class="stats-hero-tag">本队概览</text>
           <text class="stats-hero-title">{{ currentTeamName }}</text>
-          <text class="stats-hero-copy">当前页面展示真实出勤记录、个人出勤率和本队成员排行。</text>
+          <text class="stats-hero-copy">当前页面展示今年以来的真实出勤记录、个人出勤率和本队成员排行。</text>
         </view>
         <view class="stats-hero-rate">{{ personalSummary.attendanceRate }}</view>
       </view>
@@ -130,7 +142,7 @@ onUnload(() => {
         </view>
         <view class="stats-digest-card">
           <text class="stats-digest-value">{{ personalSummary.late }}</text>
-          <text class="stats-digest-label">迟到</text>
+          <text class="stats-digest-label">缺席</text>
         </view>
         <view class="stats-digest-card">
           <text class="stats-digest-value">{{ personalSummary.pending }}</text>
@@ -142,7 +154,7 @@ onUnload(() => {
         <view class="stats-card-head">
           <view>
             <text class="stats-card-title">我的出勤记录</text>
-            <text class="stats-card-caption">按真实比赛报名状态统计。</text>
+            <text class="stats-card-caption">按今年以来真实比赛报名状态统计。</text>
           </view>
         </view>
 
@@ -165,7 +177,7 @@ onUnload(() => {
         <view class="stats-card-head">
           <view>
             <text class="stats-card-title">当前球队出勤排行</text>
-            <text class="stats-card-caption">先按全局记录统计，再筛当前球队成员。</text>
+            <text class="stats-card-caption">先按今年以来全局记录统计，再筛当前球队成员。</text>
           </view>
         </view>
 
@@ -181,6 +193,7 @@ onUnload(() => {
         </view>
         <view v-else class="stats-empty">当前球队还没有可展示的排行数据。</view>
       </view>
+      </template>
     </template>
 
     <BottomTabBar current="stats" />
@@ -432,5 +445,55 @@ onUnload(() => {
   color: #6c7168;
   font-size: 28rpx;
   line-height: 1.6;
+}
+
+.stats-skeleton-stack,
+.stats-skeleton-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.stats-skeleton-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 18rpx;
+  margin-top: 20rpx;
+}
+
+.stats-skeleton-card {
+  height: 132rpx;
+  border-radius: 28rpx;
+  background: #eef2e8;
+}
+
+.stats-skeleton-hero {
+  height: 230rpx;
+  background: #202020;
+}
+
+.stats-skeleton-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16rpx;
+}
+
+.stats-skeleton-list {
+  height: 280rpx;
+  background: #ffffff;
+}
+
+.stats-skeleton-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.72) 50%, transparent 100%);
+  animation: stats-skeleton-shimmer 1.2s ease-in-out infinite;
+}
+
+@keyframes stats-skeleton-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
 }
 </style>

@@ -1,6 +1,6 @@
 use crate::team::domain::{
     ActivityTeamReview, DomainError, Team, TeamAdminInfo, TeamCreditTransaction, TeamMember,
-    TeamMemberWithInfo, UpdateTeamFields,
+    TeamMemberAttendanceRecord, TeamMemberWithInfo, UpdateTeamFields,
 };
 use crate::team::ports::{ActivityReviewRecord, MembershipRechargeRecord, TeamRepository};
 use async_trait::async_trait;
@@ -138,6 +138,33 @@ impl From<TeamMemberRow> for TeamMember {
             status: row.status as i8,
             created_at: row.created_at,
             updated_at: row.updated_at,
+        }
+    }
+}
+
+#[derive(Debug, FromRow)]
+struct TeamMemberAttendanceRecordRow {
+    pub activity_id: String,
+    pub activity_name: String,
+    pub holding_date: NaiveDateTime,
+    pub location: String,
+    pub stand: i16,
+    pub registration_count: i32,
+    pub operation_time: Option<NaiveDateTime>,
+    pub registered: bool,
+}
+
+impl From<TeamMemberAttendanceRecordRow> for TeamMemberAttendanceRecord {
+    fn from(row: TeamMemberAttendanceRecordRow) -> Self {
+        Self {
+            activity_id: row.activity_id,
+            activity_name: row.activity_name,
+            holding_date: row.holding_date,
+            location: row.location,
+            stand: row.stand as i8,
+            registration_count: row.registration_count,
+            operation_time: row.operation_time,
+            registered: row.registered,
         }
     }
 }
@@ -463,6 +490,67 @@ impl TeamRepository for PostgresTeamRepository {
         .bind(team_id)
         .fetch_all(&self.pool).await.map_err(|e| DomainError::Infrastructure(e.to_string()))?;
         Ok(rows.into_iter().map(TeamMember::from).collect())
+    }
+
+    async fn list_members_for_management(
+        &self,
+        team_id: &str,
+    ) -> Result<Vec<TeamMember>, DomainError> {
+        let rows = sqlx::query_as::<_, TeamMemberRow>(
+            r#"SELECT id, team_id, user_id, role, jersey_number, joined_at, status, created_at, updated_at
+               FROM rs_team_members
+               WHERE team_id = $1
+               ORDER BY
+                 CASE WHEN status = 1 THEN 0 ELSE 1 END,
+                 CASE role
+                   WHEN 'captain'      THEN 0
+                   WHEN 'leader'       THEN 1
+                   WHEN 'vice_captain' THEN 2
+                   ELSE 3
+                 END,
+                 joined_at ASC"#,
+        )
+        .bind(team_id)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
+        Ok(rows.into_iter().map(TeamMember::from).collect())
+    }
+
+    async fn list_member_attendance_records(
+        &self,
+        team_id: &str,
+        user_id: i64,
+    ) -> Result<Vec<TeamMemberAttendanceRecord>, DomainError> {
+        let rows = sqlx::query_as::<_, TeamMemberAttendanceRecordRow>(
+            r#"
+            SELECT
+                BTRIM(a.id) AS activity_id,
+                a.name AS activity_name,
+                a.holding_date,
+                a.location,
+                COALESCE(ua.stand, 0)::smallint AS stand,
+                COALESCE(ua.registration_count, 0) AS registration_count,
+                ua.operation_time,
+                (ua.user_id IS NOT NULL) AS registered
+            FROM rs_activity a
+            LEFT JOIN rs_user_activity ua
+                ON BTRIM(ua.activity_id) = BTRIM(a.id)
+               AND ua.user_id = $2
+            WHERE a.home_team_id = $1 OR a.away_team_id = $1
+            ORDER BY a.holding_date DESC
+            "#,
+        )
+        .bind(team_id)
+        .bind(user_id)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
+
+        Ok(rows
+            .into_iter()
+            .map(TeamMemberAttendanceRecord::from)
+            .collect())
     }
 
     async fn list_user_teams(&self, user_id: i64) -> Result<Vec<Team>, DomainError> {

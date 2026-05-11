@@ -32,6 +32,8 @@ const titleLabel = computed(() => (isChallenge.value ? "约队标题" : "比赛�
 const titlePlaceholder = computed(() => (isChallenge.value ? "例如：周五晚 8 人制约队" : "例如：周五晚友谊赛"));
 const playersLabel = computed(() => (isChallenge.value ? "人数" : "比赛人制"));
 const playersPlaceholder = computed(() => (isChallenge.value ? "8" : "例如：8"));
+const colorLabel = computed(() => (isChallenge.value ? "主队球服" : "本队球服"));
+const opposingColorLabel = computed(() => (isChallenge.value ? "对手球服" : "对方球服"));
 const descriptionLabel = computed(() => (isChallenge.value ? "备注" : "说明"));
 const descriptionPlaceholder = computed(() =>
   isChallenge.value ? "例如：强度中高，守时优先" : "可选补充场地、人数、集合要求",
@@ -45,6 +47,14 @@ const secondTimeTitle = computed(() => (isChallenge.value ? "选择开始时间"
 const thirdTimeTitle = computed(() => (isChallenge.value ? "选择结束时间" : "选择报名截止时间"));
 const secondTimePlaceholder = computed(() => (isChallenge.value ? "请选择开始时间" : "请选择报名开始时间"));
 const thirdTimePlaceholder = computed(() => (isChallenge.value ? "请选择结束时间" : "请选择报名截止时间"));
+const colorOptions = [
+  { name: "深蓝", value: "#2F6BFF" },
+  { name: "荧光绿", value: "#C8FF00" },
+  { name: "橙红", value: "#FF6B35" },
+  { name: "紫红", value: "#B34DFF" },
+  { name: "墨黑", value: "#111310" },
+  { name: "白银", value: "#D8DDE6" },
+];
 
 const textareaBoxStyle =
   "width:100%;min-height:260rpx;padding:22rpx;border-radius:24rpx;border:2rpx solid #d7ddd2;background:#f4f6f0;--wot-textarea-bg:#f4f6f0;box-shadow:inset 0 2rpx 0 rgba(255,255,255,0.74);box-sizing:border-box;";
@@ -56,6 +66,10 @@ const formLabelStyle = "display:block;font-size:26rpx;font-weight:800;line-heigh
 function updateField<K extends keyof MatchPublishFormModel>(key: K, value: MatchPublishFormModel[K]) {
   form.value[key] = value;
   emit("update:modelValue", form.value);
+}
+
+function setColorField(key: "color" | "opposingColor", value: string) {
+  updateField(key, value);
 }
 
 function handleCheckInSwitchChange(event: Event) {
@@ -106,6 +120,23 @@ function formatDateTimeColumn(type: string, value: string) {
     <view class="create-card">
       <view class="create-card-title">基础信息</view>
       <view class="create-form-grid">
+        <view v-if="!isChallenge" class="create-form-item create-form-item-full">
+          <wd-text custom-class="create-form-label" color="#111310" text="比赛类型" />
+          <view class="match-kind-segment">
+            <view
+              :class="['match-kind-option', form.matchKind !== 'internal' ? 'match-kind-option-active' : '']"
+              @tap="updateField('matchKind', 'external')"
+            >
+              对外友谊赛
+            </view>
+            <view
+              :class="['match-kind-option', form.matchKind === 'internal' ? 'match-kind-option-active' : '']"
+              @tap="updateField('matchKind', 'internal')"
+            >
+              队内内战
+            </view>
+          </view>
+        </view>
         <view class="create-form-item create-form-item-full">
           <wd-text custom-class="create-form-label" color="#111310" :text="titleLabel" />
           <input
@@ -133,6 +164,34 @@ function formatDateTimeColumn(type: string, value: string) {
             placeholder="例如：XX联队"
             placeholder-class="create-native-placeholder"
           />
+        </view>
+        <view v-if="!isChallenge" class="create-form-item">
+          <wd-text custom-class="create-form-label" color="#111310" :text="colorLabel" />
+          <view class="color-select-grid">
+            <view
+              v-for="option in colorOptions"
+              :key="option.value"
+              :class="['color-option', form.color === option.value ? 'color-option-active' : '']"
+              @tap="setColorField('color', option.value)"
+            >
+              <view class="color-swatch" :style="{ backgroundColor: option.value }" />
+              <text class="color-option-text">{{ option.name }}</text>
+            </view>
+          </view>
+        </view>
+        <view v-if="!isChallenge" class="create-form-item">
+          <wd-text custom-class="create-form-label" color="#111310" :text="opposingColorLabel" />
+          <view class="color-select-grid">
+            <view
+              v-for="option in colorOptions"
+              :key="`op-${option.value}`"
+              :class="['color-option', form.opposingColor === option.value ? 'color-option-active' : '']"
+              @tap="setColorField('opposingColor', option.value)"
+            >
+              <view class="color-swatch" :style="{ backgroundColor: option.value }" />
+              <text class="color-option-text">{{ option.name }}</text>
+            </view>
+          </view>
         </view>
         <view v-else class="create-form-item">
           <wd-text custom-class="create-form-label" color="#111310" text="预计费用/人" />
@@ -331,6 +390,32 @@ function formatDateTimeColumn(type: string, value: string) {
   padding-top: 4rpx;
 }
 
+.match-kind-segment {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10rpx;
+  padding: 8rpx;
+  border-radius: 24rpx;
+  background: #edf1e8;
+}
+
+.match-kind-option {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 74rpx;
+  border-radius: 18rpx;
+  color: #5f645c;
+  font-size: 26rpx;
+  font-weight: 900;
+}
+
+.match-kind-option-active {
+  background: #c8ff00;
+  color: #111310;
+  box-shadow: 0 8rpx 18rpx rgba(90, 115, 0, 0.14);
+}
+
 .create-form-item {
   display: flex;
   flex-direction: column;
@@ -340,6 +425,48 @@ function formatDateTimeColumn(type: string, value: string) {
 
 .create-form-item-full {
   grid-column: 1 / -1;
+}
+
+.color-select-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12rpx;
+}
+
+.color-option {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+  min-width: 0;
+  min-height: 76rpx;
+  padding: 0 14rpx;
+  border-radius: 20rpx;
+  border: 2rpx solid #d7ddd2;
+  background: #f4f6f0;
+  box-sizing: border-box;
+}
+
+.color-option-active {
+  border-color: #111310;
+  background: #eef8d6;
+}
+
+.color-swatch {
+  width: 28rpx;
+  height: 28rpx;
+  border-radius: 50%;
+  border: 2rpx solid rgba(17, 19, 16, 0.12);
+  flex-shrink: 0;
+}
+
+.color-option-text {
+  min-width: 0;
+  font-size: 22rpx;
+  font-weight: 800;
+  color: #111310;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .create-form-label {

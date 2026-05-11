@@ -19,6 +19,14 @@ pub fn team_logo_upload_dir() -> PathBuf {
     upload_root_dir().join("team-logos")
 }
 
+pub fn build_minio_public_url(config: &AppConfig, object_key: &str) -> String {
+    format!(
+        "{}/{}",
+        config.upload.minio_public_url_prefix.trim_end_matches('/'),
+        object_key.trim_start_matches('/')
+    )
+}
+
 pub fn build_public_upload_url(
     config: &AppConfig,
     headers: &HeaderMap,
@@ -69,7 +77,7 @@ pub async fn save_upload_bytes(
         .trim()
         .eq_ignore_ascii_case("minio")
     {
-        return save_to_minio(config, object_key, bytes).await;
+        return save_to_minio(config, object_key, bytes, None).await;
     }
 
     tokio::fs::create_dir_all(&local_dir)
@@ -97,10 +105,20 @@ pub async fn save_upload_bytes(
     ))
 }
 
+pub async fn save_minio_bytes(
+    config: &AppConfig,
+    object_key: &str,
+    bytes: &[u8],
+    content_type: Option<&str>,
+) -> Result<String, AppError> {
+    save_to_minio(config, object_key, bytes, content_type).await
+}
+
 async fn save_to_minio(
     config: &AppConfig,
     object_key: &str,
     bytes: &[u8],
+    content_type: Option<&str>,
 ) -> Result<String, AppError> {
     let credentials = Credentials::new(
         config.upload.minio_access_key.clone(),
@@ -120,20 +138,20 @@ async fn save_to_minio(
         .build();
     let client = Client::from_conf(s3_config);
 
-    client
+    let mut request = client
         .put_object()
         .bucket(&config.upload.minio_bucket)
         .key(object_key.trim_start_matches('/'))
-        .body(ByteStream::from(bytes.to_vec()))
+        .body(ByteStream::from(bytes.to_vec()));
+    if let Some(value) = content_type.filter(|value| !value.trim().is_empty()) {
+        request = request.content_type(value);
+    }
+    request
         .send()
         .await
         .map_err(|error| AppError::internal(format!("上传 MinIO 失败: {error}")))?;
 
-    Ok(format!(
-        "{}/{}",
-        config.upload.minio_public_url_prefix.trim_end_matches('/'),
-        object_key.trim_start_matches('/')
-    ))
+    Ok(build_minio_public_url(config, object_key))
 }
 
 fn resolve_public_base_url(config: &AppConfig, headers: &HeaderMap) -> String {
@@ -165,7 +183,7 @@ fn resolve_public_base_url(config: &AppConfig, headers: &HeaderMap) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::build_public_upload_url;
+    use super::{build_minio_public_url, build_public_upload_url};
     use crate::bootstrap::config::AppConfig;
     use axum::http::{HeaderMap, HeaderValue};
 
@@ -193,5 +211,16 @@ mod tests {
         let url = build_public_upload_url(&config, &headers, "uploads/avatars/user.png");
 
         assert_eq!(url, "http://127.0.0.1:8080/uploads/avatars/user.png");
+    }
+
+    #[test]
+    fn minio_public_url_ignores_local_storage_backend() {
+        let mut config = AppConfig::for_test("0.1.0");
+        config.upload.storage_backend = "local".to_string();
+        config.upload.minio_public_url_prefix = "https://cdn.example.com/registration".to_string();
+
+        let url = build_minio_public_url(&config, "avatars/user.png");
+
+        assert_eq!(url, "https://cdn.example.com/registration/avatars/user.png");
     }
 }

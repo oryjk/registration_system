@@ -59,11 +59,40 @@ export function createActivity(payload: {
   color?: string;
   opposing_color?: string;
   players_per_team?: number;
+  match_kind?: "external" | "internal";
   team_checkin_configs?: BackendCreateActivityCheckInConfig[];
 }) {
   return requestApi<BackendActivity>({
     url: "/activity",
     method: "POST",
+    data: payload,
+    auth: true,
+  });
+}
+
+export function updateActivity(
+  activityId: string,
+  payload: {
+    name?: string;
+    location?: string;
+    location_latitude?: number | null;
+    location_longitude?: number | null;
+    holding_date?: string;
+    start_time?: string;
+    end_time?: string;
+    opposing?: string | null;
+    description?: string | null;
+    home_team_id?: string | null;
+    away_team_id?: string | null;
+    color?: string | null;
+    opposing_color?: string | null;
+    players_per_team?: number | null;
+    match_kind?: "external" | "internal";
+  },
+) {
+  return requestApi<void>({
+    url: `/activity/${activityId}`,
+    method: "PATCH",
     data: payload,
     auth: true,
   });

@@ -18,7 +18,8 @@ use registration_system_backend::notification::ports::NotificationRepository;
 use registration_system_backend::shared::auth::{ActorContext, ActorKind};
 use registration_system_backend::team::domain::{
     ActivityTeamReview, DEFAULT_TEAM_CREDIT_SCORE, DomainError as TeamDomainError, Team,
-    TeamAdminInfo, TeamCreditTransaction, TeamMember, TeamMemberWithInfo, UpdateTeamFields,
+    TeamAdminInfo, TeamCreditTransaction, TeamMember, TeamMemberAttendanceRecord,
+    TeamMemberWithInfo, UpdateTeamFields,
 };
 use registration_system_backend::team::ports::{
     ActivityReviewRecord, MembershipRechargeRecord, TeamRepository,
@@ -526,6 +527,21 @@ impl TeamRepository for FakeTeamRepository {
             .get(team_id)
             .cloned()
             .unwrap_or_default())
+    }
+
+    async fn list_members_for_management(
+        &self,
+        team_id: &str,
+    ) -> Result<Vec<TeamMember>, TeamDomainError> {
+        self.list_members(team_id).await
+    }
+
+    async fn list_member_attendance_records(
+        &self,
+        _team_id: &str,
+        _user_id: i64,
+    ) -> Result<Vec<TeamMemberAttendanceRecord>, TeamDomainError> {
+        Ok(Vec::new())
     }
 
     async fn list_user_teams(&self, _user_id: i64) -> Result<Vec<Team>, TeamDomainError> {

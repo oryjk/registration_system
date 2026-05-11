@@ -197,6 +197,21 @@ export interface BackendTeamDetail {
   members: BackendTeamMember[];
 }
 
+export interface BackendTeamMemberAttendanceRecord {
+  activity_id: string;
+  activity_name: string;
+  holding_date: string;
+  location: string;
+  stand: number;
+  registration_count: number;
+  operation_time?: string | null;
+  registered: boolean;
+}
+
+export interface BackendTeamMemberAttendance {
+  records: BackendTeamMemberAttendanceRecord[];
+}
+
 export interface BackendTeamCreditOverview {
   team: BackendTeam;
   trust_label: string;
@@ -239,6 +254,7 @@ export interface BackendActivity {
   color?: string | null;
   opposing_color?: string | null;
   players_per_team?: number | null;
+  match_kind?: "external" | "internal" | null;
   source_activity_id?: string | null;
   team_registration_count?: number | null;
   team_checkin_configs: BackendActivityTeamCheckInConfig[];

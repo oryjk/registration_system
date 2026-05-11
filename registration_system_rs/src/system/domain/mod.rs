@@ -153,9 +153,7 @@ impl MiniAppRuntimeConfig {
             billing: MiniAppBillingRuntimeConfig {
                 recent_order_limit: 10,
             },
-            notifications: MiniAppNotificationsRuntimeConfig {
-                list_limit: 50,
-            },
+            notifications: MiniAppNotificationsRuntimeConfig { list_limit: 50 },
         }
     }
 
@@ -167,18 +165,11 @@ impl MiniAppRuntimeConfig {
         self.matches.related_activity_limit = self.matches.related_activity_limit.clamp(1, 10);
         self.matches.participant_avatar_limit = self.matches.participant_avatar_limit.clamp(1, 10);
         self.matches.capacity_extra_slots = self.matches.capacity_extra_slots.clamp(0, 20);
-        self.checkin.default_radius_meters = self
-            .checkin
-            .default_radius_meters
-            .clamp(50, 5000);
-        self.checkin.default_open_minutes_before = self
-            .checkin
-            .default_open_minutes_before
-            .clamp(0, 1440);
-        self.checkin.default_close_minutes_after = self
-            .checkin
-            .default_close_minutes_after
-            .clamp(0, 1440);
+        self.checkin.default_radius_meters = self.checkin.default_radius_meters.clamp(50, 5000);
+        self.checkin.default_open_minutes_before =
+            self.checkin.default_open_minutes_before.clamp(0, 1440);
+        self.checkin.default_close_minutes_after =
+            self.checkin.default_close_minutes_after.clamp(0, 1440);
         self.billing.recent_order_limit = self.billing.recent_order_limit.clamp(1, 50);
         self.notifications.list_limit = self.notifications.list_limit.clamp(1, 100);
 

@@ -33,6 +33,16 @@ async fn accept_with_activity_deduplicates_shared_team_members() {
 
     sqlx::query(
         r#"
+        ALTER TABLE rs_activity
+            ADD COLUMN IF NOT EXISTS match_kind VARCHAR(16) NOT NULL DEFAULT 'external'
+        "#,
+    )
+    .execute(&pool)
+    .await
+    .expect("activity match_kind column should exist in test database");
+
+    sqlx::query(
+        r#"
         CREATE TABLE IF NOT EXISTS rs_challenge_individual_acceptances (
             id BIGSERIAL PRIMARY KEY,
             challenge_id CHAR(36) NOT NULL REFERENCES rs_challenges (id) ON DELETE CASCADE,
@@ -72,6 +82,7 @@ async fn accept_with_activity_deduplicates_shared_team_members() {
         color: None,
         opposing_color: None,
         players_per_team: Some(8),
+        match_kind: Some("external".to_string()),
         source_activity_id: None,
         team_registration_count: None,
         team_checkin_configs: vec![],

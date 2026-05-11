@@ -6,6 +6,7 @@ import {
   addTeamMember,
   batchUpdateTeamMemberStatus,
   createTeam,
+  getTeamMemberAttendance,
   getTeamPasswordInfo,
   joinTeam,
   removeTeamMember,
@@ -16,9 +17,9 @@ import {
 } from "@/api/team";
 import { useTeamContext } from "@/stores/teamContext";
 import { listUsers, searchUsers } from "@/api/user";
-import type { BackendTeamMember, BackendTeamSummary, BackendUser } from "@/types/backend";
+import type { BackendTeamMember, BackendTeamMemberAttendanceRecord, BackendTeamSummary, BackendUser } from "@/types/backend";
 import { getCustomNavMetrics } from "@/utils/customNav";
-import { resolveUserDisplayName } from "@/utils/viewModels";
+import { resolveUserDisplayName, toStandLabel } from "@/utils/viewModels";
 
 const { currentTeam, currentUser, teamDetailsById, ensureSessionReady, refreshSessionContext } = useTeamContext();
 const navMetrics = getCustomNavMetrics();
@@ -38,6 +39,10 @@ const userSearchResults = ref<BackendUser[]>([]);
 const selectedCandidate = ref<BackendUser | null>(null);
 const editMemberPopupVisible = ref(false);
 const editingMemberId = ref<number | null>(null);
+const attendancePopupVisible = ref(false);
+const attendanceLoading = ref(false);
+const attendanceMemberId = ref<number | null>(null);
+const attendanceRecords = ref<BackendTeamMemberAttendanceRecord[]>([]);
 const logoUploading = ref(false);
 const maxLogoSizeBytes = 1024 * 1024;
 
@@ -82,9 +87,28 @@ const currentMembers = computed<BackendTeamMember[]>(() => {
   const teamId = currentTeam.value?.id;
   return teamId ? teamDetailsById.value[teamId]?.members ?? [] : [];
 });
+const leadershipRoleOrder: Record<string, number> = {
+  captain: 0,
+  leader: 1,
+  vice_captain: 2,
+};
+const leadershipMembers = computed(() =>
+  currentMembers.value
+    .filter((member) => member.status === 1 && member.role in leadershipRoleOrder)
+    .slice()
+    .sort((left, right) => leadershipRoleOrder[left.role] - leadershipRoleOrder[right.role] || left.user_id - right.user_id),
+);
+const regularMembers = computed(() => currentMembers.value.filter((member) => member.status === 1 && !(member.role in leadershipRoleOrder)));
+const frozenMembers = computed(() => currentMembers.value.filter((member) => member.status !== 1));
 
 const memberIds = computed(() => new Set(currentMembers.value.map((member) => member.user_id)));
 const editingMember = computed(() => (editingMemberId.value ? currentMemberByUserId(editingMemberId.value) : null));
+const attendanceMember = computed(() => (attendanceMemberId.value ? currentMemberByUserId(attendanceMemberId.value) : null));
+const attendanceSummary = computed(() => ({
+  attended: attendanceRecords.value.filter((record) => record.registered && record.stand === 1).length,
+  leave: attendanceRecords.value.filter((record) => record.registered && record.stand === 2).length,
+  unregistered: attendanceRecords.value.filter((record) => !record.registered).length,
+}));
 const pageStyle = computed(() => ({
   paddingTop: `${navMetrics.pageTopPadding + 8}px`,
 }));
@@ -118,8 +142,38 @@ function memberStatusLabel(status: number) {
   return status === 1 ? "正常" : "已冻结";
 }
 
+function attendanceStatusLabel(record: BackendTeamMemberAttendanceRecord) {
+  if (!record.registered) return "未报名";
+  return toStandLabel(record.stand);
+}
+
+function attendanceStatusClass(record: BackendTeamMemberAttendanceRecord) {
+  if (!record.registered) return "attendance-status attendance-status-unregistered";
+  if (record.stand === 1) return "attendance-status attendance-status-joined";
+  if (record.stand === 2) return "attendance-status attendance-status-leave";
+  if (record.stand === 3) return "attendance-status attendance-status-late";
+  return "attendance-status attendance-status-pending";
+}
+
+function formatAttendanceDate(isoText: string) {
+  const date = new Date(isoText.replace(" ", "T"));
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  return `${month}/${day} ${hours}:${minutes}`;
+}
+
 function memberName(userId: number) {
   return resolveUserDisplayName(usersById.value[userId]);
+}
+
+function memberAvatarUrl(userId: number) {
+  return usersById.value[userId]?.avatar_url?.trim() || "";
+}
+
+function memberInitial(userId: number) {
+  return memberName(userId).slice(0, 1) || "队";
 }
 
 function currentMemberByUserId(userId: number) {
@@ -154,6 +208,12 @@ function closeEditMemberPopup() {
   editingMemberId.value = null;
   editMemberForm.role = "member";
   editMemberForm.jerseyNumber = "";
+}
+
+function closeAttendancePopup() {
+  attendancePopupVisible.value = false;
+  attendanceMemberId.value = null;
+  attendanceRecords.value = [];
 }
 
 function syncTeamProfileForm() {
@@ -220,6 +280,22 @@ function handleEditMember(member: BackendTeamMember) {
   editMemberForm.role = member.role;
   editMemberForm.jerseyNumber = member.jersey_number ?? "";
   editMemberPopupVisible.value = true;
+}
+
+async function handleOpenMemberAttendance(member: BackendTeamMember) {
+  if (!currentTeam.value || attendanceLoading.value) return;
+  attendanceMemberId.value = member.user_id;
+  attendancePopupVisible.value = true;
+  attendanceLoading.value = true;
+  attendanceRecords.value = [];
+  try {
+    const result = await getTeamMemberAttendance(currentTeam.value.id, member.user_id);
+    attendanceRecords.value = result.records;
+  } catch (error) {
+    uni.showToast({ title: error instanceof Error ? error.message : "出场记录加载失败", icon: "none" });
+  } finally {
+    attendanceLoading.value = false;
+  }
 }
 
 async function handleUpdateTeamProfile() {
@@ -636,20 +712,85 @@ onShow(async () => {
           </view>
         </view>
 
-        <view class="team-result-list">
-          <view v-for="member in currentMembers" :key="member.user_id" class="member-card">
-            <view>
-              <text class="team-result-title">{{ memberName(member.user_id) }}</text>
-              <text class="team-result-meta">
-                {{ roleLabel(member.role) }} · {{ member.jersey_number || "无号码" }} · {{ memberStatusLabel(member.status) }}
-              </text>
-            </view>
-            <view class="member-actions">
-              <view class="member-link" @tap.stop="handleEditMember(member)">编辑</view>
-              <view class="member-link" @tap.stop="handleToggleMemberStatus(member)">{{ member.status === 1 ? "冻结" : "恢复" }}</view>
-              <view v-if="member.role !== 'captain'" class="member-link member-link-danger" @tap.stop="handleRemoveMember(member)">移除</view>
+        <view class="member-section">
+          <view class="member-section-header">
+            <text class="member-section-title">管理角色</text>
+            <text class="member-section-count">{{ leadershipMembers.length }} 人</text>
+          </view>
+          <view v-if="leadershipMembers.length" class="team-result-list member-section-list">
+            <view v-for="member in leadershipMembers" :key="member.user_id" class="member-card member-card-leadership" @tap="handleOpenMemberAttendance(member)">
+              <image v-if="memberAvatarUrl(member.user_id)" class="member-avatar" :src="memberAvatarUrl(member.user_id)" mode="aspectFill" />
+              <view v-else class="member-avatar member-avatar-fallback">{{ memberInitial(member.user_id) }}</view>
+              <view class="member-main">
+                <view class="member-title-row">
+                  <text class="team-result-title member-name">{{ memberName(member.user_id) }}</text>
+                  <text class="member-role-badge">{{ roleLabel(member.role) }}</text>
+                </view>
+                <text class="team-result-meta">
+                  {{ member.jersey_number || "无号码" }} · {{ memberStatusLabel(member.status) }}
+                </text>
+              </view>
+              <view class="member-actions">
+                <view class="member-link" @tap.stop="handleEditMember(member)">编辑</view>
+                <view class="member-link" @tap.stop="handleToggleMemberStatus(member)">{{ member.status === 1 ? "冻结" : "恢复" }}</view>
+                <view v-if="member.role !== 'captain'" class="member-link member-link-danger" @tap.stop="handleRemoveMember(member)">移除</view>
+              </view>
             </view>
           </view>
+          <view v-else class="empty-box member-section-empty">暂未设置队长、领队或队务。</view>
+        </view>
+
+        <view class="member-section">
+          <view class="member-section-header">
+            <text class="member-section-title">普通队员</text>
+            <text class="member-section-count">{{ regularMembers.length }} 人</text>
+          </view>
+          <view v-if="regularMembers.length" class="team-result-list member-section-list">
+            <view v-for="member in regularMembers" :key="member.user_id" class="member-card" @tap="handleOpenMemberAttendance(member)">
+              <image v-if="memberAvatarUrl(member.user_id)" class="member-avatar" :src="memberAvatarUrl(member.user_id)" mode="aspectFill" />
+              <view v-else class="member-avatar member-avatar-fallback">{{ memberInitial(member.user_id) }}</view>
+              <view class="member-main">
+                <text class="team-result-title member-name">{{ memberName(member.user_id) }}</text>
+                <text class="team-result-meta">
+                  {{ roleLabel(member.role) }} · {{ member.jersey_number || "无号码" }} · {{ memberStatusLabel(member.status) }}
+                </text>
+              </view>
+              <view class="member-actions">
+                <view class="member-link" @tap.stop="handleEditMember(member)">编辑</view>
+                <view class="member-link" @tap.stop="handleToggleMemberStatus(member)">{{ member.status === 1 ? "冻结" : "恢复" }}</view>
+                <view class="member-link member-link-danger" @tap.stop="handleRemoveMember(member)">移除</view>
+              </view>
+            </view>
+          </view>
+          <view v-else class="empty-box member-section-empty">暂无普通队员。</view>
+        </view>
+
+        <view class="member-section">
+          <view class="member-section-header">
+            <text class="member-section-title">冻结队员</text>
+            <text class="member-section-count">{{ frozenMembers.length }} 人</text>
+          </view>
+          <view v-if="frozenMembers.length" class="team-result-list member-section-list">
+            <view v-for="member in frozenMembers" :key="member.user_id" class="member-card member-card-frozen" @tap="handleOpenMemberAttendance(member)">
+              <image v-if="memberAvatarUrl(member.user_id)" class="member-avatar member-avatar-muted" :src="memberAvatarUrl(member.user_id)" mode="aspectFill" />
+              <view v-else class="member-avatar member-avatar-fallback member-avatar-muted">{{ memberInitial(member.user_id) }}</view>
+              <view class="member-main">
+                <view class="member-title-row">
+                  <text class="team-result-title member-name">{{ memberName(member.user_id) }}</text>
+                  <text v-if="member.role in leadershipRoleOrder" class="member-role-badge member-role-badge-muted">{{ roleLabel(member.role) }}</text>
+                </view>
+                <text class="team-result-meta">
+                  {{ member.jersey_number || "无号码" }} · {{ memberStatusLabel(member.status) }}
+                </text>
+              </view>
+              <view class="member-actions">
+                <view class="member-link" @tap.stop="handleEditMember(member)">编辑</view>
+                <view class="member-link" @tap.stop="handleToggleMemberStatus(member)">恢复</view>
+                <view v-if="member.role !== 'captain'" class="member-link member-link-danger" @tap.stop="handleRemoveMember(member)">移除</view>
+              </view>
+            </view>
+          </view>
+          <view v-else class="empty-box member-section-empty">暂无冻结队员。</view>
         </view>
       </view>
     </view>
@@ -690,6 +831,67 @@ onShow(async () => {
         <view class="primary-button" @tap="handleUpdateMember">
           {{ submitting ? "保存中..." : "保存队员" }}
         </view>
+      </view>
+    </wd-popup>
+
+    <wd-popup
+      v-model="attendancePopupVisible"
+      position="bottom"
+      custom-class="member-attendance-popup"
+      :close-on-click-modal="!attendanceLoading"
+      safe-area-inset-bottom
+      root-portal
+      @close="closeAttendancePopup"
+    >
+      <view class="member-attendance-sheet">
+        <view class="member-edit-header">
+          <view class="attendance-profile">
+            <image
+              v-if="attendanceMember && memberAvatarUrl(attendanceMember.user_id)"
+              class="member-avatar"
+              :src="memberAvatarUrl(attendanceMember.user_id)"
+              mode="aspectFill"
+            />
+            <view v-else class="member-avatar member-avatar-fallback">
+              {{ attendanceMember ? memberInitial(attendanceMember.user_id) : "队" }}
+            </view>
+            <view>
+              <text class="member-edit-kicker">队员出场记录</text>
+              <text class="member-edit-title">{{ attendanceMember ? memberName(attendanceMember.user_id) : "队员" }}</text>
+            </view>
+          </view>
+          <view class="member-edit-close" @tap="closeAttendancePopup">关闭</view>
+        </view>
+
+        <view class="attendance-summary-grid">
+          <view class="attendance-summary-card">
+            <text class="attendance-summary-value">{{ attendanceSummary.attended }}</text>
+            <text class="attendance-summary-label">参加</text>
+          </view>
+          <view class="attendance-summary-card">
+            <text class="attendance-summary-value">{{ attendanceSummary.leave }}</text>
+            <text class="attendance-summary-label">请假</text>
+          </view>
+          <view class="attendance-summary-card">
+            <text class="attendance-summary-value">{{ attendanceSummary.unregistered }}</text>
+            <text class="attendance-summary-label">未报名</text>
+          </view>
+        </view>
+
+        <view v-if="attendanceLoading" class="empty-box attendance-empty">正在加载出场记录...</view>
+        <scroll-view v-else-if="attendanceRecords.length" class="attendance-list" scroll-y>
+          <view v-for="record in attendanceRecords" :key="record.activity_id" class="attendance-item">
+            <view class="attendance-item-main">
+              <text class="attendance-item-title">{{ record.activity_name }}</text>
+              <text class="attendance-item-meta">{{ formatAttendanceDate(record.holding_date) }} · {{ record.location }}</text>
+            </view>
+            <view class="attendance-item-side">
+              <text :class="attendanceStatusClass(record)">{{ attendanceStatusLabel(record) }}</text>
+              <text class="attendance-item-count">{{ record.registration_count }} 人</text>
+            </view>
+          </view>
+        </scroll-view>
+        <view v-else class="empty-box attendance-empty">暂无球队比赛记录。</view>
       </view>
     </wd-popup>
   </view>
@@ -1067,12 +1269,58 @@ onShow(async () => {
   flex: 1;
 }
 
+.member-section {
+  margin-top: 30rpx;
+}
+
+.member-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18rpx;
+}
+
+.member-section-title {
+  color: #10110f;
+  font-size: 30rpx;
+  font-weight: 900;
+}
+
+.member-section-count {
+  min-width: 88rpx;
+  height: 46rpx;
+  padding: 0 18rpx;
+  border-radius: 999rpx;
+  background: #edf0e7;
+  color: #5f665a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22rpx;
+  font-weight: 900;
+  box-sizing: border-box;
+}
+
+.member-section-list {
+  margin-top: 14rpx;
+}
+
+.member-section-empty {
+  margin-top: 14rpx;
+}
+
 :deep(.member-edit-popup) {
   border-radius: 34rpx 34rpx 0 0;
   background: #ffffff;
 }
 
-.member-edit-sheet {
+:deep(.member-attendance-popup) {
+  border-radius: 34rpx 34rpx 0 0;
+  background: #ffffff;
+}
+
+.member-edit-sheet,
+.member-attendance-sheet {
   padding: 34rpx 30rpx 38rpx;
   background: #ffffff;
   border-radius: 34rpx 34rpx 0 0;
@@ -1118,6 +1366,140 @@ onShow(async () => {
   margin-top: 14rpx;
 }
 
+.attendance-profile {
+  display: flex;
+  align-items: center;
+  gap: 18rpx;
+  min-width: 0;
+}
+
+.attendance-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12rpx;
+  margin: 20rpx 0 18rpx;
+}
+
+.attendance-summary-card {
+  min-width: 0;
+  padding: 18rpx 10rpx;
+  border-radius: 22rpx;
+  background: #f3f5ef;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.attendance-summary-value {
+  display: block;
+  color: #10110f;
+  font-size: 34rpx;
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+.attendance-summary-label {
+  display: block;
+  margin-top: 6rpx;
+  color: #6a7165;
+  font-size: 22rpx;
+  font-weight: 800;
+}
+
+.attendance-list {
+  max-height: 58vh;
+}
+
+.attendance-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18rpx;
+  padding: 20rpx 0;
+  border-bottom: 1rpx solid #edf0e7;
+}
+
+.attendance-item:last-child {
+  border-bottom: 0;
+}
+
+.attendance-item-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.attendance-item-title {
+  display: block;
+  color: #10110f;
+  font-size: 28rpx;
+  font-weight: 900;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attendance-item-meta {
+  display: block;
+  margin-top: 8rpx;
+  color: #6a7165;
+  font-size: 22rpx;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attendance-item-side {
+  width: 124rpx;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8rpx;
+}
+
+.attendance-status {
+  height: 42rpx;
+  padding: 0 14rpx;
+  border-radius: 999rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22rpx;
+  font-weight: 900;
+  box-sizing: border-box;
+}
+
+.attendance-status-joined {
+  background: #dff7e7;
+  color: #146c3e;
+}
+
+.attendance-status-leave {
+  background: #fff2d6;
+  color: #9a5a00;
+}
+
+.attendance-status-late {
+  background: #e2ecff;
+  color: #264d9b;
+}
+
+.attendance-status-pending,
+.attendance-status-unregistered {
+  background: #edf0e7;
+  color: #5f665a;
+}
+
+.attendance-item-count {
+  color: #8a9184;
+  font-size: 20rpx;
+  font-weight: 800;
+}
+
+.attendance-empty {
+  margin-top: 18rpx;
+}
+
 .member-card {
   display: flex;
   align-items: center;
@@ -1126,6 +1508,78 @@ onShow(async () => {
   padding: 22rpx;
   border-radius: 24rpx;
   background: #f5f7f1;
+}
+
+.member-card-leadership {
+  background: #fbfff0;
+  border: 2rpx solid rgba(200, 255, 0, 0.7);
+}
+
+.member-card-frozen {
+  background: #eef1ea;
+  opacity: 0.86;
+}
+
+.member-avatar {
+  width: 76rpx;
+  height: 76rpx;
+  border-radius: 22rpx;
+  flex-shrink: 0;
+  overflow: hidden;
+  background: #111310;
+}
+
+.member-avatar-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #c8ff00;
+  font-size: 30rpx;
+  font-weight: 900;
+}
+
+.member-avatar-muted {
+  filter: grayscale(1);
+  opacity: 0.68;
+}
+
+.member-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.member-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  min-width: 0;
+}
+
+.member-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.member-role-badge {
+  flex-shrink: 0;
+  height: 42rpx;
+  padding: 0 16rpx;
+  border-radius: 999rpx;
+  background: #10110f;
+  color: #c8ff00;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22rpx;
+  font-weight: 900;
+  box-sizing: border-box;
+}
+
+.member-role-badge-muted {
+  background: #dfe4d9;
+  color: #5f665a;
 }
 
 .member-actions {
