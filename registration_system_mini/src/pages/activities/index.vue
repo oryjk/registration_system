@@ -3,6 +3,8 @@ import { computed, reactive, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
 import BottomTabBar from "@/components/BottomTabBar.vue";
+import MatchPublishForm from "@/components/MatchPublishForm.vue";
+import { toBackendDateTime, type MatchPublishFormModel } from "@/components/matchPublishForm";
 import { acceptChallenge, createChallenge, listChallenges } from "@/api/challenge";
 import { useNotificationCenter } from "@/stores/notificationCenter";
 import { useTeamContext } from "@/stores/teamContext";
@@ -44,15 +46,26 @@ const filters = reactive<{
 
 const publishForm = reactive({
   kind: "team" as "team" | "individual",
+  name: "周末友谊赛约队",
   title: "周末友谊赛约队",
   date: "",
-  startTime: "20:00",
-  endTime: "22:00",
+  startTime: 0,
+  endTime: 0,
+  holdingDate: 0,
   location: "",
+  locationLatitude: null as number | null,
+  locationLongitude: null as number | null,
   playersPerTeam: "8",
   feePerPerson: "",
+  opposing: "",
+  description: "",
   note: "",
-});
+}) satisfies MatchPublishFormModel & {
+  kind: "team" | "individual";
+  title: string;
+  date: string;
+  note: string;
+};
 
 const canPublish = computed(() => !!currentTeam.value?.canManageTeam);
 
@@ -107,14 +120,29 @@ function monthDayNumber(key: string) {
   return String(date.getDate()).padStart(2, "0");
 }
 
-function combineDateTime(date: string, time: string) {
-  return `${date}T${time}:00`;
-}
-
 function defaultPublishDate() {
   const now = new Date();
   now.setDate(now.getDate() + 1);
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+}
+
+function defaultPublishDateTime(hour = 20, minute = 0) {
+  const date = new Date(`${defaultPublishDate()}T${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}:00`);
+  return date.getTime();
+}
+
+function dateKeyFromTimestamp(timestamp: number) {
+  const date = new Date(timestamp);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function timeKeyFromTimestamp(timestamp: number) {
+  const date = new Date(timestamp);
+  return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+}
+
+function timestampFromDateTime(date: string, time: string) {
+  return new Date(`${date}T${time}:00`).getTime();
 }
 
 const calendarDays = computed(() => {
@@ -360,18 +388,27 @@ async function handleAccept(card: ChallengeCardViewModel) {
 function resetPublishForm() {
   publishForm.kind = "team";
   publishForm.note = "";
+  publishForm.description = "";
   publishForm.feePerPerson = "";
   publishForm.location = "";
+  publishForm.locationLatitude = null;
+  publishForm.locationLongitude = null;
+  publishForm.name = "周末友谊赛约队";
   publishForm.title = "周末友谊赛约队";
   publishForm.playersPerTeam = "8";
+  publishForm.holdingDate = defaultPublishDateTime(20);
+  publishForm.startTime = publishForm.holdingDate;
+  publishForm.endTime = defaultPublishDateTime(22);
   publishForm.date = defaultPublishDate();
 }
 
 async function handleCreateChallenge() {
   if (!currentTeam.value || !currentTeam.value.canManageTeam || submitting.value) return;
-  if (!publishForm.title.trim() || !publishForm.location.trim() || !publishForm.date) {
+  syncLegacyPublishFields();
+
+  if (!publishForm.name.trim() || !publishForm.location.trim() || !publishForm.holdingDate) {
     uni.showToast({
-      title: "请补全标题、日期和场地",
+      title: "请补全标题、时间和场地",
       icon: "none",
     });
     return;
@@ -396,19 +433,29 @@ async function handleCreateChallenge() {
     return;
   }
 
+  if (!publishForm.startTime || !publishForm.endTime || publishForm.startTime >= publishForm.endTime) {
+    uni.showToast({
+      title: "请选择正确的约队时间",
+      icon: "none",
+    });
+    return;
+  }
+
   submitting.value = true;
   try {
     const challenge = await createChallenge({
       kind: publishForm.kind,
       host_team_id: currentTeam.value.id,
-      title: publishForm.title.trim(),
-      holding_date: combineDateTime(publishForm.date, publishForm.startTime),
-      start_time: combineDateTime(publishForm.date, publishForm.startTime),
-      end_time: combineDateTime(publishForm.date, publishForm.endTime),
+      title: publishForm.name.trim(),
+      holding_date: toBackendDateTime(publishForm.holdingDate),
+      start_time: toBackendDateTime(publishForm.startTime),
+      end_time: toBackendDateTime(publishForm.endTime),
       location: publishForm.location.trim(),
+      location_latitude: publishForm.locationLatitude ?? undefined,
+      location_longitude: publishForm.locationLongitude ?? undefined,
       players_per_team: playersPerTeam,
       fee_per_person: feePerPerson !== null ? feePerPerson.toFixed(2) : undefined,
-      note: publishForm.note.trim() || undefined,
+      note: (publishForm.description || publishForm.note).trim() || undefined,
     });
 
     showCreateForm.value = false;
@@ -428,8 +475,65 @@ async function handleCreateChallenge() {
   }
 }
 
+function handlePublishLocationInput() {
+  publishForm.locationLatitude = null;
+  publishForm.locationLongitude = null;
+}
+
+async function handleChoosePublishLocation() {
+  try {
+    const location = await uni.chooseLocation({});
+    publishForm.location = location.name || location.address || "";
+    publishForm.locationLatitude = location.latitude;
+    publishForm.locationLongitude = location.longitude;
+  } catch (error) {
+    uni.showToast({
+      title: "未选择地点",
+      icon: "none",
+    });
+  }
+}
+
+function syncLegacyPublishFields() {
+  publishForm.title = publishForm.name;
+  publishForm.note = publishForm.description;
+  if (publishForm.holdingDate) {
+    publishForm.date = dateKeyFromTimestamp(publishForm.holdingDate);
+  } else if (publishForm.date) {
+    publishForm.holdingDate = timestampFromDateTime(publishForm.date, "20:00");
+  }
+}
+
+function handleIndividualDateChange(event: Event) {
+  const detail = event as Event & { detail?: { value?: string } };
+  const value = detail.detail?.value;
+  if (!value) return;
+  publishForm.date = value;
+  const startTimeKey = publishForm.startTime ? timeKeyFromTimestamp(publishForm.startTime) : "20:00";
+  const endTimeKey = publishForm.endTime ? timeKeyFromTimestamp(publishForm.endTime) : "22:00";
+  publishForm.holdingDate = timestampFromDateTime(value, startTimeKey);
+  publishForm.startTime = publishForm.holdingDate;
+  publishForm.endTime = timestampFromDateTime(value, endTimeKey);
+}
+
+function handleIndividualTimeChange(field: "startTime" | "endTime", event: Event) {
+  const detail = event as Event & { detail?: { value?: string } };
+  const value = detail.detail?.value;
+  if (!value) return;
+  const date = publishForm.date || defaultPublishDate();
+  publishForm.date = date;
+  const timestamp = timestampFromDateTime(date, value);
+  publishForm[field] = timestamp;
+  if (field === "startTime") {
+    publishForm.holdingDate = timestamp;
+  }
+}
+
 onShow(() => {
   uni.hideTabBar({ animation: false });
+  if (!publishForm.holdingDate) {
+    resetPublishForm();
+  }
   void loadPageData();
 });
 </script>
@@ -527,34 +631,46 @@ onShow(() => {
           </view>
           <text v-if="publishForm.kind === 'individual'" class="hall-form-tip">散人约队同一时间只能接一场。</text>
         </view>
+
+        <MatchPublishForm
+          v-if="publishForm.kind === 'team'"
+          class="hall-form-item-full"
+          :model-value="publishForm"
+          mode="challenge"
+          :show-check-in="false"
+          @location-input="handlePublishLocationInput"
+          @choose-location="handleChoosePublishLocation"
+        />
+
+        <template v-else>
         <view class="hall-form-item hall-form-item-full">
           <text class="hall-form-label">标题</text>
           <input
-            v-model="publishForm.title"
+            v-model="publishForm.name"
             class="hall-input"
-            :placeholder="publishForm.kind === 'team' ? '例如：周五晚 8 人制约队' : '例如：周三晚散人局，还缺 4 人'"
+            placeholder="例如：周三晚散人局，还缺 4 人"
           />
         </view>
         <view class="hall-form-item">
           <text class="hall-form-label">日期</text>
-          <picker mode="date" :value="publishForm.date" @change="publishForm.date = $event.detail.value">
+          <picker mode="date" :value="publishForm.date" @change="handleIndividualDateChange">
             <view class="hall-picker">{{ publishForm.date || "选择日期" }}</view>
           </picker>
         </view>
         <view class="hall-form-item">
-          <text class="hall-form-label">{{ publishForm.kind === "team" ? "人数" : "招募人数" }}</text>
-          <input v-model="publishForm.playersPerTeam" class="hall-input" type="number" :placeholder="publishForm.kind === 'team' ? '8' : '14'" />
+          <text class="hall-form-label">招募人数</text>
+          <input v-model="publishForm.playersPerTeam" class="hall-input" type="number" placeholder="14" />
         </view>
         <view class="hall-form-item">
           <text class="hall-form-label">开始时间</text>
-          <picker mode="time" :value="publishForm.startTime" @change="publishForm.startTime = $event.detail.value">
-            <view class="hall-picker">{{ publishForm.startTime }}</view>
+          <picker mode="time" :value="timeKeyFromTimestamp(publishForm.startTime)" @change="handleIndividualTimeChange('startTime', $event)">
+            <view class="hall-picker">{{ timeKeyFromTimestamp(publishForm.startTime) }}</view>
           </picker>
         </view>
         <view class="hall-form-item">
           <text class="hall-form-label">结束时间</text>
-          <picker mode="time" :value="publishForm.endTime" @change="publishForm.endTime = $event.detail.value">
-            <view class="hall-picker">{{ publishForm.endTime }}</view>
+          <picker mode="time" :value="timeKeyFromTimestamp(publishForm.endTime)" @change="handleIndividualTimeChange('endTime', $event)">
+            <view class="hall-picker">{{ timeKeyFromTimestamp(publishForm.endTime) }}</view>
           </picker>
         </view>
         <view class="hall-form-item hall-form-item-full">
@@ -568,12 +684,13 @@ onShow(() => {
         <view class="hall-form-item hall-form-item-full">
           <text class="hall-form-label">备注</text>
           <textarea
-            v-model="publishForm.note"
+            v-model="publishForm.description"
             class="hall-textarea"
             maxlength="200"
-            :placeholder="publishForm.kind === 'team' ? '例如：强度中高，守时优先' : '例如：缺后卫和门将，守时优先'"
+            placeholder="例如：缺后卫和门将，守时优先"
           />
         </view>
+        </template>
       </view>
 
       <view class="hall-panel-actions">

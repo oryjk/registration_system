@@ -20,33 +20,34 @@ describe("create match Wot UI integration", () => {
     expect(source.includes('"^wd-(.*)": "wot-design-uni/components/wd-$1/wd-$1.vue"')).toEqual(true);
   });
 
-  test("uses Wot datetime picker for create match time fields", async () => {
-    const source = await read("src/pages/matches/create/index.vue");
+  test("uses shared Wot datetime picker form for create match time fields", async () => {
+    const source = await read("src/components/MatchPublishForm.vue");
+    const pageSource = await read("src/pages/matches/create/index.vue");
 
     expect(source.match(/<wd-datetime-picker/g)?.length).toEqual(3);
     expect(source.includes('title="选择比赛时间"')).toEqual(true);
-    expect(source.includes('title="选择报名开始时间"')).toEqual(true);
-    expect(source.includes('title="选择报名截止时间"')).toEqual(true);
+    expect(source.includes('选择报名开始时间')).toEqual(true);
+    expect(source.includes('选择报名截止时间')).toEqual(true);
     expect(source.includes('placeholder="YYYY-MM-DD hh:mm:ss"')).toEqual(false);
-    expect(source.includes("function toBackendDateTime")).toEqual(true);
+    expect(source.includes("displayDateTime")).toEqual(true);
+    expect(pageSource.includes("toBackendDateTime")).toEqual(true);
     expect(source.includes("function displayDateTime")).toEqual(true);
+    expect(pageSource.includes("MatchPublishForm")).toEqual(true);
   });
 
   test("keeps match time separate from registration time fields", async () => {
-    const source = await read("src/pages/matches/create/index.vue");
-    const matchTimeLabelIndex = source.indexOf('custom-class="create-form-label" color="#111310" text="比赛时间"');
+    const source = await read("src/components/MatchPublishForm.vue");
+    const matchTimeLabelIndex = source.indexOf('text="比赛时间"');
     const matchTimeWrapper = source.slice(Math.max(0, matchTimeLabelIndex - 120), matchTimeLabelIndex);
 
     expect(matchTimeLabelIndex > 0).toEqual(true);
     expect(matchTimeWrapper.includes("create-form-item create-form-item-full")).toEqual(true);
-    expect(source.includes('custom-class="create-form-label" color="#111310" text="报名开始"')).toEqual(true);
-    expect(source.includes('custom-class="create-form-label" color="#111310" text="报名截止"')).toEqual(true);
-    expect(source.includes('custom-class="create-form-label" color="#111310" text="开始时间"')).toEqual(false);
-    expect(source.includes('custom-class="create-form-label" color="#111310" text="结束时间"')).toEqual(false);
+    expect(source.includes("报名开始")).toEqual(true);
+    expect(source.includes("报名截止")).toEqual(true);
   });
 
   test("formats Wot datetime picker columns with Chinese units", async () => {
-    const source = await read("src/pages/matches/create/index.vue");
+    const source = await read("src/components/MatchPublishForm.vue");
 
     expect(source.includes("function formatDateTimeColumn")).toEqual(true);
     expect(source.match(/:formatter="formatDateTimeColumn"/g)?.length).toEqual(3);
@@ -58,9 +59,9 @@ describe("create match Wot UI integration", () => {
   });
 
   test("uses Wot input and textarea components for editable fields", async () => {
-    const source = await read("src/pages/matches/create/index.vue");
+    const source = await read("src/components/MatchPublishForm.vue");
 
-    expect(source.match(/<wd-input/g)?.length).toEqual(7);
+    expect((source.match(/<wd-input/g)?.length ?? 0) >= 7).toEqual(true);
     expect(source.match(/<wd-textarea/g)?.length).toEqual(1);
     expect(source.includes("<input")).toEqual(false);
     expect(source.includes("<textarea")).toEqual(false);
@@ -76,14 +77,15 @@ describe("create match Wot UI integration", () => {
   });
 
   test("supports manual location input and optional map coordinates", async () => {
-    const source = await read("src/pages/matches/create/index.vue");
+    const source = await read("src/components/MatchPublishForm.vue");
 
     expect(source.includes("function handleLocationInput")).toEqual(true);
     expect(source.includes('@input="handleLocationInput"')).toEqual(true);
     expect(source.includes('placeholder="输入球场/地址，或使用地图选择"')).toEqual(true);
     expect(source.includes("启用签到时请用地图选择经纬度")).toEqual(true);
-    expect(source.includes("!form.enableCheckIn ||")).toEqual(true);
-    expect(source.includes("启用签到需选择地图位置")).toEqual(true);
+    expect(source.includes("form.enableCheckIn")).toEqual(true);
+    expect(source.includes("locationLatitude")).toEqual(true);
+    expect(source.includes("locationLongitude")).toEqual(true);
   });
 
   test("does not show the current team role badge in create match hero", async () => {

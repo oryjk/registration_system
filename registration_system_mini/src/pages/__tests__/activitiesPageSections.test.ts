@@ -28,4 +28,20 @@ describe("activities page sections", () => {
     expect(source.includes('card.kind === "team"')).toEqual(true);
     expect(source.includes("散人约队同一时间只能接一场")).toEqual(true);
   });
+
+  test("reuses match publish form for team challenge creation", async () => {
+    const source = await Bun.file(
+      "/Users/carlwang/registration_system/registration_system_mini/src/pages/activities/index.vue",
+    ).text();
+
+    expect(source.includes('import MatchPublishForm from "@/components/MatchPublishForm.vue"')).toEqual(true);
+    expect(source.includes('import { toBackendDateTime')).toEqual(true);
+    expect(source.includes('<MatchPublishForm')).toEqual(true);
+    expect(source.includes('mode="challenge"')).toEqual(true);
+    expect(source.includes('v-if="publishForm.kind === \'team\'"')).toEqual(true);
+    expect(source.includes("toBackendDateTime(publishForm.holdingDate)")).toEqual(true);
+    expect(source.includes("holding_date: toBackendDateTime(publishForm.holdingDate)")).toEqual(true);
+    expect(source.includes("start_time: toBackendDateTime(publishForm.startTime)")).toEqual(true);
+    expect(source.includes("end_time: toBackendDateTime(publishForm.endTime)")).toEqual(true);
+  });
 });
