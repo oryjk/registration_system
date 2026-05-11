@@ -257,17 +257,22 @@ def import_users(my_cur, pg_cur, mysql_to_pg_user_id: dict[int, int]) -> None:
     my_cur.execute("SELECT * FROM rs_user_info ORDER BY id ASC")
     rows = my_cur.fetchall()
 
-    seen_open_ids: set[str] = set()
+    rows_by_open_id: dict[str, list[dict[str, Any]]] = {}
+    for row in rows:
+        open_id = normalize_text(row["open_id"])
+        if not open_id:
+            continue
+        rows_by_open_id.setdefault(open_id, []).append(row)
+
     inserted = 0
     skipped = 0
 
-    for row in rows:
-        open_id = normalize_text(row["open_id"])
-        if not open_id or open_id in seen_open_ids:
-            skipped += 1
-            continue
+    def user_priority(row: dict[str, Any]) -> tuple[int, datetime, int]:
+        latest_login_date = normalize_dt(row["latest_login_date"]) or normalize_dt(row["create_time"]) or datetime.min
+        return (int(row["status"] or 0), latest_login_date, int(row["id"]))
 
-        seen_open_ids.add(open_id)
+    for open_id, duplicate_rows in rows_by_open_id.items():
+        row = max(duplicate_rows, key=user_priority)
         mysql_id = int(row["id"])
         nickname = normalize_text(row["nickname"])
         real_name = normalize_text(row["real_name"])
@@ -275,7 +280,7 @@ def import_users(my_cur, pg_cur, mysql_to_pg_user_id: dict[int, int]) -> None:
         username = normalize_text(row["username"])
         phone_number = normalize_text(row["phone_number"])
         is_manager = 1 if normalize_boolish(row["is_manager"]) else 0
-        status = int(row["status"] or 1)
+        status = int(row["status"]) if row["status"] is not None else 1
         create_time = normalize_dt(row["create_time"]) or datetime.now()
         latest_login_date = normalize_dt(row["latest_login_date"]) or create_time
 
@@ -318,7 +323,9 @@ def import_users(my_cur, pg_cur, mysql_to_pg_user_id: dict[int, int]) -> None:
             ),
         )
         new_id = int(pg_cur.fetchone()[0])
-        mysql_to_pg_user_id[mysql_id] = new_id
+        for duplicate_row in duplicate_rows:
+            mysql_to_pg_user_id[int(duplicate_row["id"])] = new_id
+        skipped += len(duplicate_rows) - 1
         inserted += 1
 
     print(f"  用户导入：新增/更新 {inserted}，跳过 {skipped}")
@@ -534,6 +541,8 @@ def import_activities(my_cur, pg_cur, team_id_map: dict[str, str]) -> None:
             home_team_id = team_id_map.get(home_team_id, home_team_id)
         if away_team_id:
             away_team_id = team_id_map.get(away_team_id, away_team_id)
+        if home_team_id is None and away_team_id is None:
+            home_team_id = team_id_map["target"]
 
         description = normalize_text(row["description"]) or None
         status = int(row["status"] or 0)

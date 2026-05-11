@@ -13,6 +13,7 @@ import { getMyActivities } from "@/api/user";
 import { useTeamContext } from "@/stores/teamContext";
 import { clearSession } from "@/stores/appSession";
 import { getCustomNavMetrics } from "@/utils/customNav";
+import { getCurrentYearDateRange, isDateInRange } from "@/utils/dateRange";
 import { isMockWxPaymentParams, isPaymentCancelled, normalizeWxPaymentParams, requestWxPayment } from "@/utils/payment";
 import type { BackendBillingFlowRecord, BackendTeamCreditTransaction } from "@/types/backend";
 import {
@@ -157,6 +158,7 @@ async function loadPageData(options?: { preserveContent?: boolean }) {
     const recordByActivityId = Object.fromEntries(
       myActivityRecords.map((item) => [item.activity_id, item]),
     );
+    const currentYearDateRange = getCurrentYearDateRange();
     const relatedActivityIds = new Set(myActivityRecords.map((item) => item.activity_id));
     const todayStart = todayStartTimestamp();
     const isActivityRelated = (activity: (typeof activityPage.items)[number]) =>
@@ -164,6 +166,9 @@ async function loadPageData(options?: { preserveContent?: boolean }) {
       (!!activeTeamId &&
         (activity.home_team_id === activeTeamId || activity.away_team_id === activeTeamId));
     const allRelatedActivities = activityPage.items.filter(isActivityRelated);
+    const currentYearRelatedActivities = allRelatedActivities.filter((activity) =>
+      isDateInRange(activity.holding_date, currentYearDateRange),
+    );
     const futureTeamRelatedActivities = allRelatedActivities
       .filter(
         (activity) =>
@@ -183,10 +188,10 @@ async function loadPageData(options?: { preserveContent?: boolean }) {
         myStatus: toStandLabel(recordByActivityId[activity.id]?.stand ?? 0),
       }));
 
-    const totalHours = allRelatedActivities.length * 2;
+    const totalHours = currentYearRelatedActivities.length * 2;
 
     overviewDigest.value = {
-      activityCount: allRelatedActivities.length,
+      activityCount: currentYearRelatedActivities.length,
       teamCount: teamProfiles.value.length,
       totalHoursLabel: `${Math.round(totalHours)} h`,
     };
@@ -440,7 +445,7 @@ onUnload(() => {
             <view class="profile-stat-item">
               <view class="profile-stat-icon">赛</view>
               <view class="profile-stat-copy">
-                <text class="profile-stat-label">参加活动</text>
+                <text class="profile-stat-label">今年活动</text>
                 <text class="profile-stat-value">{{ overviewDigest.activityCount }}<text class="profile-stat-unit"> 次</text></text>
               </view>
             </view>
@@ -454,7 +459,7 @@ onUnload(() => {
             <view class="profile-stat-item">
               <view class="profile-stat-icon profile-stat-icon-orange">时</view>
               <view class="profile-stat-copy">
-                <text class="profile-stat-label">累计时长</text>
+                <text class="profile-stat-label">今年时长</text>
                 <text class="profile-stat-value">{{ overviewDigest.totalHoursLabel }}</text>
               </view>
             </view>

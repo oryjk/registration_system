@@ -9,13 +9,9 @@ import type {
 } from "@/types/backend";
 import { getApiBaseUrl } from "@/config/apiBase";
 import { getAccessToken } from "@/utils/authStorage";
+import type { DateRangeParams } from "@/utils/dateRange";
 import { buildQueryString } from "@/utils/queryString";
 import { ApiRequestError, requestApi } from "@/utils/request";
-
-export interface AttendanceDateRangeParams {
-  startDate?: string;
-  endDate?: string;
-}
 
 export function loginWithOpenId(payload: {
   open_id: string;
@@ -104,7 +100,7 @@ export function getMyActivities() {
   });
 }
 
-export function getMyAttendance(params?: AttendanceDateRangeParams) {
+export function getMyAttendance(params?: DateRangeParams) {
   const queryString = buildQueryString({
     startDate: params?.startDate,
     endDate: params?.endDate,
@@ -116,7 +112,7 @@ export function getMyAttendance(params?: AttendanceDateRangeParams) {
   });
 }
 
-export function getAttendanceRanking(params?: AttendanceDateRangeParams) {
+export function getAttendanceRanking(params?: DateRangeParams) {
   const queryString = buildQueryString({
     startDate: params?.startDate,
     endDate: params?.endDate,
