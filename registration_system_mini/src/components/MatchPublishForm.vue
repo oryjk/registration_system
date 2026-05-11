@@ -47,7 +47,7 @@ const secondTimePlaceholder = computed(() => (isChallenge.value ? "请选择开�
 const thirdTimePlaceholder = computed(() => (isChallenge.value ? "请选择结束时间" : "请选择报名截止时间"));
 
 const fieldBoxStyle =
-  "width:100%;min-height:88rpx;padding:0 22rpx;border-radius:24rpx;border:2rpx solid #d7ddd2;background:#f4f6f0;box-shadow:inset 0 2rpx 0 rgba(255,255,255,0.74);box-sizing:border-box;";
+  "width:100%;height:88rpx;min-height:88rpx;padding:0 22rpx;border-radius:24rpx;border:2rpx solid #d7ddd2;background:#f4f6f0;box-shadow:inset 0 2rpx 0 rgba(255,255,255,0.74);box-sizing:border-box;";
 const textareaBoxStyle =
   "width:100%;min-height:260rpx;padding:22rpx;border-radius:24rpx;border:2rpx solid #d7ddd2;background:#f4f6f0;--wot-textarea-bg:#f4f6f0;box-shadow:inset 0 2rpx 0 rgba(255,255,255,0.74);box-sizing:border-box;";
 const datetimePickerStyle = "width:100%;display:block;";
@@ -396,7 +396,9 @@ function formatDateTimeColumn(type: string, value: string) {
 
 :deep(.create-wot-input-inner) {
   width: 100%;
+  height: 88rpx;
   min-height: 88rpx;
+  line-height: 88rpx;
   color: #171814;
   font-size: 28rpx;
   background: transparent;

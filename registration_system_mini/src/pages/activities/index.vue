@@ -25,6 +25,7 @@ const errorMessage = ref("");
 const submitting = ref(false);
 const rawChallenges = ref<BackendChallengeSummary[]>([]);
 const showFilterPanel = ref(false);
+const publishTypeSheetVisible = ref(false);
 const searchDraft = ref("");
 const activeQuickFilter = ref<QuickFilter>("recommended");
 const selectedDateKey = ref("");
@@ -42,6 +43,10 @@ const filters = reactive<{
 });
 
 const canPublish = computed(() => !!currentTeam.value?.canManageTeam);
+const publishTypeActions = [
+  { name: "球队约队", subname: "创建一场正式比赛，由球队管理者发布" },
+  { name: "散人约队", subname: "创建面向球员个人报名的约队" },
+];
 
 const statusOptions: Array<{ label: string; value: ChallengeStatusFilter }> = [
   { label: "全部状态", value: "all" },
@@ -227,24 +232,23 @@ function openStatusSheet() {
 
 function openPublishTypeSheet() {
   if (!canPublish.value) return;
+  publishTypeSheetVisible.value = true;
+}
 
-  uni.showActionSheet({
-    itemList: ["球队约队", "散人约队"],
-    success: ({ tapIndex }) => {
-      if (tapIndex === 0) {
-        uni.navigateTo({
-          url: "/pages/matches/create/index",
-        });
-        return;
-      }
+function handlePublishTypeSelect(event: Event) {
+  const detail = event as Event & { detail?: { index?: number } };
+  if (detail.detail?.index === 0) {
+    uni.navigateTo({
+      url: "/pages/matches/create/index",
+    });
+    return;
+  }
 
-      if (tapIndex === 1) {
-        uni.navigateTo({
-          url: "/pages/challenges/create-individual/index",
-        });
-      }
-    },
-  });
+  if (detail.detail?.index === 1) {
+    uni.navigateTo({
+      url: "/pages/challenges/create-individual/index",
+    });
+  }
 }
 
 function toggleIncludeClosed() {
@@ -433,6 +437,14 @@ onShow(() => {
         <switch :checked="filters.includeClosed" color="#c8ff00" @change="toggleIncludeClosed" />
       </view>
     </view>
+
+    <wd-action-sheet
+      v-model="publishTypeSheetVisible"
+      title="发布约队"
+      cancel-text="取消"
+      :actions="publishTypeActions"
+      @select="handlePublishTypeSelect"
+    />
 
     <view v-if="hallCards.length" class="hall-sections">
       <view class="hall-section">
