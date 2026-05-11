@@ -11,7 +11,7 @@ DEPLOY_ENV_FILE="${DEPLOY_ENV_FILE:-${SCRIPT_DIR}/registration_system_rs/.env}"
 
 BRANCH="${DEPLOY_BRANCH:-main}"
 BUILD_HOST="${BUILD_HOST:-out109}"
-BUILD_DIR="${BUILD_DIR:-/home/wangrui/projects/registration_system}"
+BUILD_DIR="${BUILD_DIR:-/home/wangrui/projects/registration_system_repo}"
 DEPLOY_DIR="${DEPLOY_DIR:-/home/wangrui/projects/registration_system}"
 
 HARBOR_REGISTRY="${HARBOR_REGISTRY:-harbor.oryjk.cn:82}"
@@ -27,6 +27,8 @@ LATEST_REF="${HARBOR_REGISTRY}/${HARBOR_PROJECT}/${IMAGE_NAME}:latest"
 CONTAINER_NAME="${CONTAINER_NAME:-registration-system-backend-rs}"
 HOST_PORT="${HOST_PORT:-18080}"
 APP_PORT="${APP_PORT:-18080}"
+LOG_DIR="${LOG_DIR:-${DEPLOY_DIR}/registration_system_rs/logs}"
+UPLOAD_DIR="${UPLOAD_DIR:-${DEPLOY_DIR}/registration_system_rs/uploads}"
 NGINX_CONTAINER="${NGINX_CONTAINER:-nginx}"
 NGINX_CONFIG_PATH="${NGINX_CONFIG_PATH:-/mnt/e/docker_data/nginx/config/default.conf}"
 NGINX_BACKUP_SUFFIX="$(date +%Y%m%d%H%M%S)"
@@ -71,7 +73,7 @@ if [ ! -f "${DEPLOY_ENV_FILE}" ]; then
 fi
 
 echo "📄 同步后端 .env 到 ${BUILD_HOST}:${REMOTE_ENV_FILE}"
-ssh "${BUILD_HOST}" "mkdir -p '${DEPLOY_DIR}/registration_system_rs/logs' '${DEPLOY_DIR}/registration_system_rs/uploads'"
+ssh "${BUILD_HOST}" "mkdir -p '${LOG_DIR}' '${UPLOAD_DIR}'"
 scp "${DEPLOY_ENV_FILE}" "${BUILD_HOST}:${REMOTE_ENV_FILE}" >/dev/null
 
 echo "🔐 登录 Harbor on ${BUILD_HOST}"
@@ -120,12 +122,12 @@ printf '%s' "${HARBOR_PASSWORD}" \
 
 echo "📥 拉取镜像并启动新容器"
 ssh "${BUILD_HOST}" \
-    "DEPLOY_DIR='${DEPLOY_DIR}' IMAGE_REF='${IMAGE_REF}' CONTAINER_NAME='${CONTAINER_NAME}' HOST_PORT='${HOST_PORT}' APP_PORT='${APP_PORT}' REMOTE_ENV_FILE='${REMOTE_ENV_FILE}' DOCKER_CONFIG='${DEPLOY_DOCKER_CONFIG}' bash -s" << 'EOF'
+    "DEPLOY_DIR='${DEPLOY_DIR}' IMAGE_REF='${IMAGE_REF}' CONTAINER_NAME='${CONTAINER_NAME}' HOST_PORT='${HOST_PORT}' APP_PORT='${APP_PORT}' REMOTE_ENV_FILE='${REMOTE_ENV_FILE}' DOCKER_CONFIG='${DEPLOY_DOCKER_CONFIG}' LOG_DIR='${LOG_DIR}' UPLOAD_DIR='${UPLOAD_DIR}' bash -s" << 'EOF'
 set -euo pipefail
 export DOCKER_CONFIG
 
-mkdir -p "${DEPLOY_DIR}/registration_system_rs/logs" "${DEPLOY_DIR}/registration_system_rs/uploads"
-chown -R 10001:10001 "${DEPLOY_DIR}/registration_system_rs/logs" "${DEPLOY_DIR}/registration_system_rs/uploads" 2>/dev/null || true
+mkdir -p "${LOG_DIR}" "${UPLOAD_DIR}"
+chmod 777 "${LOG_DIR}" "${UPLOAD_DIR}" 2>/dev/null || true
 
 docker pull "${IMAGE_REF}"
 docker rm -f "${CONTAINER_NAME}" >/dev/null 2>&1 || true
@@ -134,16 +136,26 @@ docker run -d \
     --name "${CONTAINER_NAME}" \
     --restart unless-stopped \
     -p "${HOST_PORT}:${APP_PORT}" \
+    --workdir /app \
     --env-file "${REMOTE_ENV_FILE}" \
     -e APP_HOST=0.0.0.0 \
     -e APP_PORT="${APP_PORT}" \
-    -v "${DEPLOY_DIR}/registration_system_rs/logs:/app/logs" \
-    -v "${DEPLOY_DIR}/registration_system_rs/uploads:/app/uploads" \
+    -v "${LOG_DIR}:/app/logs" \
+    -v "${UPLOAD_DIR}:/app/uploads" \
     "${IMAGE_REF}"
 
-sleep 5
+for _ in $(seq 1 20); do
+    if curl -fsS "http://127.0.0.1:${HOST_PORT}/health" >/dev/null 2>&1; then
+        docker ps --filter "name=${CONTAINER_NAME}"
+        exit 0
+    fi
+    sleep 2
+done
+
+echo "❌ 新容器健康检查失败，输出最近日志："
 docker ps --filter "name=${CONTAINER_NAME}"
-curl -fsS "http://127.0.0.1:${HOST_PORT}/health" >/dev/null
+docker logs --tail 200 "${CONTAINER_NAME}" 2>&1 || true
+exit 1
 EOF
 
 echo "🌐 更新 Nginx /regist-v2/ 路由"
