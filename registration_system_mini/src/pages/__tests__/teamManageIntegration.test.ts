@@ -68,6 +68,12 @@ describe("team manage real backend integration", () => {
     const source = await Bun.file(
       "/Users/carlwang/registration_system/registration_system_mini/src/pages/teams/manage/index.vue",
     ).text();
+    const memberManager = await Bun.file(
+      "/Users/carlwang/registration_system/registration_system_mini/src/pages/teams/manage/components/TeamMemberManager.vue",
+    ).text();
+    const candidateSearch = await Bun.file(
+      "/Users/carlwang/registration_system/registration_system_mini/src/pages/teams/manage/components/MemberCandidateSearch.vue",
+    ).text();
     const userApi = await Bun.file(
       "/Users/carlwang/registration_system/registration_system_mini/src/api/user.ts",
     ).text();
@@ -88,11 +94,32 @@ describe("team manage real backend integration", () => {
     expect(source.includes("teamProfileForm.logoUrl")).toEqual(true);
     expect(source.includes("handleSearchUsers")).toEqual(true);
     expect(source.includes("userSearchResults")).toEqual(true);
-    expect(source.includes("candidate.avatar_url")).toEqual(true);
-    expect(source.includes("handleSelectCandidate")).toEqual(true);
+    expect(source.includes("TeamMemberManager")).toEqual(true);
+    expect(candidateSearch.includes("candidate.avatar_url")).toEqual(true);
+    expect(source.includes("handleCandidateTap")).toEqual(true);
+    expect(source.includes('@candidate-tap="handleCandidateTap"')).toEqual(true);
     expect(userApi.includes("export function searchUsers")).toEqual(true);
     expect(userApi.includes('url: `/user/search')).toEqual(true);
     expect(backendUserRoutes.includes('.route("/search", get(search_users_handler))')).toEqual(true);
     expect(searchUsersBlock.includes("ActorKind::Admin")).toEqual(false);
+  });
+
+  test("team member manager delegates candidate search and member sections to focused components", async () => {
+    const memberManager = await Bun.file(
+      "/Users/carlwang/registration_system/registration_system_mini/src/pages/teams/manage/components/TeamMemberManager.vue",
+    ).text();
+    const candidateSearch = await Bun.file(
+      "/Users/carlwang/registration_system/registration_system_mini/src/pages/teams/manage/components/MemberCandidateSearch.vue",
+    ).text();
+    const memberSection = await Bun.file(
+      "/Users/carlwang/registration_system/registration_system_mini/src/pages/teams/manage/components/TeamMemberSection.vue",
+    ).text();
+
+    expect(memberManager.includes("MemberCandidateSearch")).toEqual(true);
+    expect(memberManager.includes("TeamMemberSection")).toEqual(true);
+    expect(memberManager.includes("v-for=\"candidate in userSearchResults\"")).toEqual(false);
+    expect(candidateSearch.includes('emit("candidateTap", candidate)')).toEqual(true);
+    expect(memberSection.includes('emit("openMemberAttendance", member)')).toEqual(true);
+    expect(memberSection.includes('emit("removeMember", member)')).toEqual(true);
   });
 });

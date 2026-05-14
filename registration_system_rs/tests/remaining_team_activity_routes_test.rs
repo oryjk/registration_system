@@ -73,7 +73,7 @@ async fn activity_admin_mutation_route_requires_auth_instead_of_404() {
                 .uri("/api/activity/activity-1/check-in-config")
                 .header("content-type", "application/json")
                 .body(Body::from(
-                    r#"{"team_id":"team-1","enabled":true,"radius_meters":200,"open_minutes_before":60,"close_minutes_after":45}"#,
+                    r#"{"team_id":1,"enabled":true,"radius_meters":200,"open_minutes_before":60,"close_minutes_after":45}"#,
                 ))
                 .unwrap(),
         )

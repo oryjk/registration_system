@@ -1,9 +1,10 @@
 use crate::team::application::{
-    TeamCreditOverview, TeamDetail, TeamDetailForAdmin, TeamMemberAttendance, TeamSummary,
+    TeamAttendanceSummary, TeamCreditOverview, TeamDetail, TeamDetailForAdmin,
+    TeamMemberAttendance, TeamSummary,
 };
 use crate::team::domain::{
-    Team, TeamAdminInfo, TeamCreditTransaction, TeamMember, TeamMemberAttendanceRecord,
-    TeamMemberWithInfo,
+    Team, TeamAdminInfo, TeamAttendanceRankingItem, TeamCreditTransaction, TeamMember,
+    TeamMemberAttendanceRecord, TeamMemberWithInfo,
 };
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
@@ -19,7 +20,7 @@ pub struct CreateTeamRequest {
 
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct JoinTeamRequest {
-    pub team_id: String,
+    pub team_id: i64,
     pub password: Option<String>,
 }
 
@@ -49,7 +50,7 @@ pub struct UpdateTeamMemberRequest {
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct SubmitActivityReviewRequest {
     pub activity_id: String,
-    pub reviewer_team_id: String,
+    pub reviewer_team_id: i64,
     pub rating: i8,
     pub comment: Option<String>,
 }
@@ -68,7 +69,7 @@ pub struct TeamCreditPenaltyRequest {
 
 #[derive(Debug, Serialize, ToSchema)]
 pub struct TeamDto {
-    pub id: String,
+    pub id: i64,
     pub name: String,
     pub description: Option<String>,
     pub logo_url: Option<String>,
@@ -107,7 +108,7 @@ impl From<Team> for TeamDto {
 
 #[derive(Debug, Serialize, ToSchema)]
 pub struct TeamSummaryDto {
-    pub id: String,
+    pub id: i64,
     pub name: String,
     pub description: Option<String>,
     pub logo_url: Option<String>,
@@ -223,8 +224,58 @@ impl From<TeamMemberAttendance> for TeamMemberAttendanceDto {
 }
 
 #[derive(Debug, Serialize, ToSchema)]
+pub struct TeamAttendanceRankingItemDto {
+    pub user_id: i64,
+    pub user_name: String,
+    pub avatar_url: Option<String>,
+    pub total_count: i64,
+    pub attended_count: i64,
+    pub leave_count: i64,
+    pub late_count: i64,
+    pub unregistered_count: i64,
+}
+
+impl From<TeamAttendanceRankingItem> for TeamAttendanceRankingItemDto {
+    fn from(value: TeamAttendanceRankingItem) -> Self {
+        Self {
+            user_id: value.user_id,
+            user_name: value.user_name,
+            avatar_url: value.avatar_url,
+            total_count: value.total_count,
+            attended_count: value.attended_count,
+            leave_count: value.leave_count,
+            late_count: value.late_count,
+            unregistered_count: value.unregistered_count,
+        }
+    }
+}
+
+#[derive(Debug, Serialize, ToSchema)]
+pub struct TeamAttendanceSummaryDto {
+    pub my_records: Vec<TeamMemberAttendanceRecordDto>,
+    pub ranking: Vec<TeamAttendanceRankingItemDto>,
+}
+
+impl From<TeamAttendanceSummary> for TeamAttendanceSummaryDto {
+    fn from(value: TeamAttendanceSummary) -> Self {
+        Self {
+            my_records: value
+                .my_records
+                .into_iter()
+                .map(TeamMemberAttendanceRecordDto::from)
+                .collect(),
+            ranking: value
+                .ranking
+                .into_iter()
+                .map(TeamAttendanceRankingItemDto::from)
+                .collect(),
+        }
+    }
+}
+
+#[derive(Debug, Serialize, ToSchema)]
 pub struct TeamPasswordInfoDto {
-    pub team_id: String,
+    pub team_id: i64,
     pub requires_password: bool,
 }
 
@@ -248,7 +299,7 @@ impl From<TeamCreditOverview> for TeamCreditOverviewDto {
 #[derive(Debug, Serialize, ToSchema)]
 pub struct TeamCreditTransactionDto {
     pub id: i64,
-    pub team_id: String,
+    pub team_id: i64,
     pub activity_id: Option<String>,
     pub transaction_type: String,
     pub delta: i32,
@@ -259,7 +310,7 @@ pub struct TeamCreditTransactionDto {
     pub amount: Option<Decimal>,
     pub membership_months: Option<i32>,
     pub note: Option<String>,
-    pub reviewer_team_id: Option<String>,
+    pub reviewer_team_id: Option<i64>,
     pub created_by_user_id: Option<i64>,
     pub created_by_admin_id: Option<i64>,
     pub created_at: chrono::NaiveDateTime,

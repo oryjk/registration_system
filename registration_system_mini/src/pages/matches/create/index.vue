@@ -15,6 +15,7 @@ const submitting = ref(false);
 const loadingActivity = ref(false);
 const pageMode = ref<"create" | "edit">("create");
 const activityId = ref("");
+const skipNextHoldingDateLink = ref(false);
 const form = reactive<MatchPublishFormModel>({
   name: "",
   location: "",
@@ -35,12 +36,33 @@ const form = reactive<MatchPublishFormModel>({
   closeMinutesAfter: 45,
 });
 
+function normalizeToMinute(timestamp: number) {
+  const date = new Date(timestamp);
+  date.setSeconds(0, 0);
+  return date.getTime();
+}
+
+function defaultRegistrationStartTime() {
+  return normalizeToMinute(Date.now());
+}
+
+function defaultRegistrationEndTime(holdingDate: number) {
+  return holdingDate - 2 * 60 * 60 * 1000;
+}
+
 watch(
   () => form.holdingDate,
   (val) => {
-    if (val > 0 && !form.startTime && !form.endTime) {
-      form.startTime = val - 2 * 24 * 60 * 60 * 1000;
-      form.endTime = val - 60 * 60 * 1000;
+    if (skipNextHoldingDateLink.value) {
+      skipNextHoldingDateLink.value = false;
+      return;
+    }
+
+    if (val > 0) {
+      if (!form.startTime) {
+        form.startTime = defaultRegistrationStartTime();
+      }
+      form.endTime = defaultRegistrationEndTime(val);
     }
   },
 );
@@ -93,14 +115,21 @@ function parseBackendDateTime(value?: string | null) {
   return Number.isFinite(timestamp) ? timestamp : 0;
 }
 
+function defaultMatchDateTime() {
+  const date = new Date();
+  date.setHours(20, 0, 0, 0);
+  return date.getTime();
+}
+
 function initDefaultForm() {
+  const defaultHoldingDate = defaultMatchDateTime();
   form.name = "";
   form.location = "";
   form.locationLatitude = null;
   form.locationLongitude = null;
-  form.holdingDate = 0;
-  form.startTime = 0;
-  form.endTime = 0;
+  form.holdingDate = defaultHoldingDate;
+  form.startTime = defaultRegistrationStartTime();
+  form.endTime = defaultRegistrationEndTime(defaultHoldingDate);
   form.opposing = "";
   form.description = "";
   form.playersPerTeam = "";
@@ -139,6 +168,7 @@ function applyActivityToForm(activity: Awaited<ReturnType<typeof getActivity>>) 
   form.location = activity.location ?? "";
   form.locationLatitude = activity.location_latitude ?? null;
   form.locationLongitude = activity.location_longitude ?? null;
+  skipNextHoldingDateLink.value = true;
   form.holdingDate = parseBackendDateTime(activity.holding_date);
   form.startTime = parseBackendDateTime(activity.start_time);
   form.endTime = parseBackendDateTime(activity.end_time);

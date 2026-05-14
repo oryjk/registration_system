@@ -1,0 +1,43 @@
+# 后端重构发现记录
+
+## 2026-05-12
+
+- `team` 已完成读写仓储分离，`TeamService` 只保留兼容 facade。
+- 当前应用层大文件行数：`activity/service.rs` 约 1221 行，`challenge/service.rs` 约 526 行，`billing/service.rs` 约 429 行，`user/service.rs` 约 426 行，`payment/service.rs` 约 395 行。
+- `challenge` 目前仍是单一 `ChallengeService` + 单一 `ChallengeRepository`。业务包含：创建约队、接约队、取消约队、球队列表、公开列表、管理端列表、详情。
+- `challenge` 已依赖 `TeamQueryRepository`，适合先抽权限/团队访问检查，再拆 use case。
+- `challenge` 应用层已拆出：`commands`、`queries`、`permission`、`notifier`、创建/接约/取消/列表/详情 use case。`ChallengeService` 保持 public API 作为 facade。
+- `ChallengeRepository` 已拆为 `ChallengeQueryRepository` / `ChallengeCommandRepository`。Postgres 暂时仍由 `PostgresChallengeRepository` 同时实现两个 trait，SQL 文件搬迁可后续单独做。
+- `billing` 已拆出 `commands`、`read_models`、`error`、`use_cases`。`BillingService` 只做 facade 转发。
+- `BillingRepository` 已拆为 `BillingQueryRepository` / `BillingCommandRepository`。Postgres 暂时仍由 `PostgresBillingRepository` 同时实现两个 trait；SQL 通过内部 `do_*` 方法复用，避免大规模搬动 SQL。
+- `payment` 依赖微信网关、用户仓储、球队查询、账单端口，下一步应优先拆应用层 use case，再考虑 `PaymentOrderRepository` 读写拆分。
+- `payment` 已拆出 `commands`、`read_models`、`openid_resolver`、`order_no` 和 use cases。`PaymentService` 已变为 facade。
+- `PaymentOrderRepository` 已拆成 `PaymentOrderQueryRepository` / `PaymentOrderCommandRepository`，Postgres 和测试 fake 已同步。
+- `user` 被 `payment` 的 openid 解析依赖，拆 `UserRepository` 读写 port 时需要同步 payment openid resolver、用户模块测试 fake、bootstrap。
+- `user` 应用层已拆出 `commands`、`read_models`、`permissions` 和 login/profile/query/manage player use cases。`UserService` 已变为兼容 facade，公开方法签名保持不变。
+- `UserRepository` 已拆成 `UserQueryRepository` / `UserCommandRepository`。`PaymentOpenIdResolver` 只依赖查询 port；Postgres 暂时仍由 `PostgresUserRepository` 同时实现两个 trait，并通过内部方法复用球员列表 SQL。
+- `system` 应用层已拆出 `commands`、`read_models`、`permissions` 和 map settings / mini app runtime config use cases。`SystemSettingsService` 已变为 facade。
+- `SystemSettingsRepository` 已拆成 `SystemSettingsQueryRepository` / `SystemSettingsCommandRepository`。`activity` 的 `ConfiguredLocationSearchGateway` 只依赖系统设置读侧 port。
+- `wx` 模块体量较小，`WechatApi` 是外部网关 port，不适合按读写仓储拆分。当前已拆出登录、access token、手机号 use case，`WxService` 只做 facade。
+- `auth` 已拆出 `commands`、`read_models`、`permissions` 和登录/校验管理员/管理员管理 use cases。`AuthService` 已变为 facade。
+- `AdminUserRepository` 已拆成 `AdminUserQueryRepository` / `AdminUserCommandRepository`。Postgres 仍由 `PostgresAdminUserRepository` 同时实现两个 trait。
+- `notification` 已拆出 `permissions` 和发送通知、查询/标记通知 use cases。`NotificationService` 已变为 facade。
+- `NotificationRepository` 已拆成 `NotificationQueryRepository` / `NotificationCommandRepository`。`challenge` 测试 fake 已同步新构造方式。
+- 球队 ID 数字化迁移已落地：`rs_teams.id` 为 `BIGINT`，球队相关引用列全部改为 `BIGINT`，并保留 `rs_teams.legacy_id` 作为历史映射。
+- `rs_admin_team_assignment.team_id` 已补齐与 `rs_teams(id)` 的物理外键。
+- `rs_user_billings.activity_id` 已补齐到 `rs_activity(id)` 的物理外键。
+- billing 领域命名已进一步统一到 activity：应用层 `GameExpense*` 已改为 `ActivityExpense*`，账单类型改为 `activity_fee` / `activity_fee_reversal`。
+- `rs_user_monthly_balance.game_fee_amount` 已改为 `activity_fee_amount`。
+- 开发库账单/订单旧数据已按用户要求清空，相关账户与基金汇总已重置。
+- 仅靠 skill 触发不足以稳定保证后端任务持续维护工作文档，因此已把约束同步写入后端子项目 `AGENTS.md` / `CLAUDE.md`。
+- 后端全量 `clippy` 暴露出一批 team ID 数字化后的机械性借用写法，说明这轮 schema/类型迁移虽然功能正确，但还有一层静态质量收尾需要补。
+- `remaining_team_activity_routes_test` 中仍有字符串 `team_id` 测试数据，造成鉴权前先触发 DTO 校验 `422`；这属于测试数据过期，不是运行时路由回归。
+- `rs_recharge_records.transaction_no` 当前兼具“微信交易号”和“后台手工充值凭证”双重语义，因此不适合直接改造成 `rs_payment_orders` 的外键列。
+- 新增独立的 `payment_order_no` 更符合边界：payment 模块只为系统内支付成功写这个字段，billing 后台手工充值继续使用 `transaction_no`。
+- `PaymentBillingPort` 的真实职责是“支付成功后的结算落账”，与 billing 模块并非一一对应，改名为 `PaymentSettlementPort` 后边界更清晰。
+- 订单状态 `paid` 不等于结算一定已完成。为支持“订单已 paid，但下游落账中断”的自愈路径，`sync_order_status` / 微信回调在命中已支付订单时仍应允许再次进入 settlement adapter。
+- 充值入账幂等最稳的落点是数据库唯一约束：`rs_recharge_records.payment_order_no` 唯一后，adapter 可通过“先插充值记录，冲突则短路”避免重复加余额。
+- Postgres 的 `ON CONFLICT (col)` 不能命中部分唯一索引；这轮真实测试已经验证过，最终改为普通唯一索引后行为正确。
+- `rs_activity_order` 不是支付订单，而是活动费用快照。它按 `activity_id` 唯一保存费用描述、单人费用和人数，结算流程也会 upsert 这张表。
+- 按用户最新约束，除报名、活动、用户外无需兼容旧数据，因此 `rs_activity_order` 直接重命名为 `rs_activity_fee_snapshots`，并重命名唯一约束和外键约束。
+- 为降低小程序结算接口影响，保留既有 `/api/order` 和 `/api/admin/orders` 路由组；仅把费用快照子路径改为 `/activity-fee-snapshots`，自动费用计算子路径改为 `/fee/auto-calculate`。

@@ -226,7 +226,7 @@ type ChallengeSort = 'holding_date_asc' | 'holding_date_desc' | 'created_at_desc
 const router = useRouter()
 
 const teamOptions = ref<TeamSummary[]>([])
-const selectedTeamId = ref('')
+const selectedTeamId = ref<number | ''>('')
 const keyword = ref('')
 const includeClosed = ref(false)
 const statusFilter = ref<ChallengeStatusFilter>('all')

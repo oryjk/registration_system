@@ -1,30 +1,42 @@
-use crate::auth::domain::{AdminUser, DomainError};
-use crate::auth::ports::AdminUserRepository;
-use crate::shared::auth::{ActorContext, ActorKind};
+use crate::auth::application::commands::RegisterAdminCommand;
+use crate::auth::application::permissions::AdminPermissionChecker;
+use crate::auth::application::read_models::AdminLoginResult;
+use crate::auth::application::use_cases::{
+    AdminLoginUseCase, ManageAdminUseCase, VerifyAdminUseCase,
+};
+use crate::auth::domain::AdminUser;
+use crate::auth::ports::{AdminUserCommandRepository, AdminUserQueryRepository};
+use crate::shared::auth::ActorContext;
 use crate::shared::error::AppError;
 use crate::shared::ports::TokenServicePort;
 use std::sync::Arc;
 
-#[derive(Debug, Clone)]
-pub struct AdminLoginResult {
-    pub access_token: String,
-    pub admin: AdminUser,
-}
-
 #[derive(Clone)]
 pub struct AuthService {
-    repository: Arc<dyn AdminUserRepository>,
-    token_service: Arc<dyn TokenServicePort>,
+    login_use_case: AdminLoginUseCase,
+    verify_admin_use_case: VerifyAdminUseCase,
+    manage_admin_use_case: ManageAdminUseCase,
 }
 
 impl AuthService {
     pub fn new(
-        repository: Arc<dyn AdminUserRepository>,
+        query_repository: Arc<dyn AdminUserQueryRepository>,
+        command_repository: Arc<dyn AdminUserCommandRepository>,
         token_service: Arc<dyn TokenServicePort>,
     ) -> Self {
+        let permission_checker = AdminPermissionChecker::new(query_repository.clone());
         Self {
-            repository,
-            token_service,
+            login_use_case: AdminLoginUseCase::new(
+                query_repository.clone(),
+                command_repository.clone(),
+                token_service,
+            ),
+            verify_admin_use_case: VerifyAdminUseCase::new(permission_checker.clone()),
+            manage_admin_use_case: ManageAdminUseCase::new(
+                query_repository,
+                command_repository,
+                permission_checker,
+            ),
         }
     }
 
@@ -33,49 +45,11 @@ impl AuthService {
         username: &str,
         password: &str,
     ) -> Result<AdminLoginResult, AppError> {
-        let admin = self
-            .repository
-            .find_by_username(username)
-            .await
-            .map_err(|error| AppError::internal(format!("查询管理员失败: {error}")))?
-            .ok_or(AppError::Unauthorized)?;
-
-        if admin.status != 1 {
-            return Err(AppError::Forbidden);
-        }
-
-        let password_ok = bcrypt::verify(password, &admin.password_hash)
-            .map_err(|error| AppError::internal(format!("校验管理员密码失败: {error}")))?;
-
-        if !password_ok {
-            return Err(AppError::Unauthorized);
-        }
-
-        self.repository
-            .update_last_login(admin.id)
-            .await
-            .map_err(|error| AppError::internal(format!("更新管理员登录时间失败: {error}")))?;
-
-        let access_token = self
-            .token_service
-            .issue_admin_token(admin.id, admin.is_super_admin == 1)?;
-
-        Ok(AdminLoginResult {
-            access_token,
-            admin,
-        })
+        self.login_use_case.execute(username, password).await
     }
 
     pub async fn verify_admin(&self, actor: &ActorContext) -> Result<AdminUser, AppError> {
-        if actor.actor_kind != ActorKind::Admin {
-            return Err(AppError::Forbidden);
-        }
-
-        self.repository
-            .find_by_id(actor.id)
-            .await
-            .map_err(|error| AppError::internal(format!("查询管理员失败: {error}")))?
-            .ok_or_else(|| AppError::NotFound("管理员不存在".to_string()))
+        self.verify_admin_use_case.execute(actor).await
     }
 
     pub async fn register_admin(
@@ -86,46 +60,21 @@ impl AuthService {
         nickname: Option<&str>,
         is_super_admin: bool,
     ) -> Result<AdminUser, AppError> {
-        let current_admin = self.verify_admin(actor).await?;
-        if current_admin.is_super_admin != 1 {
-            return Err(AppError::Forbidden);
-        }
-        if username.trim().is_empty() || password.trim().is_empty() {
-            return Err(AppError::Validation("用户名和密码不能为空".to_string()));
-        }
-        if self
-            .repository
-            .find_by_username(username)
-            .await
-            .map_err(|error| AppError::internal(format!("检查管理员账号失败: {error}")))?
-            .is_some()
-        {
-            return Err(AppError::Conflict("管理员用户名已存在".to_string()));
-        }
-        let password_hash = bcrypt::hash(password, bcrypt::DEFAULT_COST)
-            .map_err(|error| AppError::internal(format!("生成管理员密码失败: {error}")))?;
-        self.repository
-            .create(
-                username,
-                &password_hash,
-                nickname.unwrap_or(username),
-                is_super_admin,
+        self.manage_admin_use_case
+            .register_admin(
+                actor,
+                RegisterAdminCommand {
+                    username,
+                    password,
+                    nickname,
+                    is_super_admin,
+                },
             )
             .await
-            .map_err(|e| match e {
-                DomainError::AdminAlreadyExists => {
-                    AppError::Conflict("管理员用户名已存在".to_string())
-                }
-                e => AppError::internal(format!("创建管理员失败: {e}")),
-            })
     }
 
     pub async fn list_admins(&self, actor: &ActorContext) -> Result<Vec<AdminUser>, AppError> {
-        self.verify_admin(actor).await?;
-        self.repository
-            .list()
-            .await
-            .map_err(|error| AppError::internal(format!("查询管理员列表失败: {error}")))
+        self.manage_admin_use_case.list_admins(actor).await
     }
 
     pub async fn update_admin_status(
@@ -134,27 +83,14 @@ impl AuthService {
         admin_id: i64,
         status: i8,
     ) -> Result<(), AppError> {
-        let current_admin = self.verify_admin(actor).await?;
-        if current_admin.is_super_admin != 1 {
-            return Err(AppError::Forbidden);
-        }
-        self.repository
-            .update_status(admin_id, status)
+        self.manage_admin_use_case
+            .update_admin_status(actor, admin_id, status)
             .await
-            .map_err(|error| AppError::internal(format!("更新管理员状态失败: {error}")))
     }
 
     pub async fn delete_admin(&self, actor: &ActorContext, admin_id: i64) -> Result<(), AppError> {
-        let current_admin = self.verify_admin(actor).await?;
-        if current_admin.is_super_admin != 1 {
-            return Err(AppError::Forbidden);
-        }
-        if current_admin.id == admin_id {
-            return Err(AppError::Validation("不能删除当前登录管理员".to_string()));
-        }
-        self.repository
-            .delete(admin_id)
+        self.manage_admin_use_case
+            .delete_admin(actor, admin_id)
             .await
-            .map_err(|error| AppError::internal(format!("删除管理员失败: {error}")))
     }
 }

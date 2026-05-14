@@ -3,11 +3,11 @@
 ## 日志
 
 - 开始审计：扫描小程序功能是否接入后端真实接口。
-- 完成第一轮小程序静态扫描：发现多数页面调用 `src/api`，但仍有“队长代报名接口待接入”和底部导航“待接入”提示。
-- 完成后端 `/api/*` 路由扫描：小程序侧后端能力覆盖较多，但 `/api/system` 未挂载，管理专用活动代报名仍只在 `/api/admin/activities`。
-- 完成页面功能对照：主页面数据基本接真实接口，但球队报名、签到 UI、球队创建/加入/成员管理、支付/会员充值、手机号等功能未完整接入。
-- 补充扫描“待接入/mock/TODO”关键字：确认创建球队入口为占位 toast，比赛详情队长代报名为占位提示。
-- 错误记录：在根目录执行 `git status` 失败，因为根目录不是 Git 仓库；此工作区三个子项目各自为 Git 仓库。
+- 完成第一轮小程序静态扫描：当时发现多数页面调用 `src/api`，但仍有“队长代报名接口待接入”和底部导航“待接入”提示。
+- 完成后端 `/api/*` 路由扫描：当时小程序侧后端能力覆盖较多，但 `/api/system` 未挂载，管理专用活动代报名仍只在 `/api/admin/activities`。
+- 完成页面功能对照：当时主页面数据基本接真实接口，但球队报名、签到 UI、球队创建/加入/成员管理、支付/会员充值、手机号等功能未完整接入。
+- 补充扫描“待接入/mock/TODO”关键字：当时确认创建球队入口为占位 toast，比赛详情队长代报名为占位提示。
+- 早期错误记录：曾在根目录执行 `git status` 失败并判断为非根仓库；当前工作区已是根目录统一管理的 monorepo Git 仓库，以根目录状态为准。
 - 实现创建/加入球队页面，接入 `createTeam`、`searchTeams`、`joinTeam`、`getTeamPasswordInfo`。
 - 实现队长代报名：小程序调用 `submitTeamRegistration`，后端新增 `/api/activity/:activity_id/team-registration`。
 - 实现比赛签到入口：比赛详情页调用 `submitActivityCheckIn` 与当前位置 store。
@@ -22,3 +22,43 @@
 - 新增剩余功能集成测试并确认 RED：5 个功能组测试失败，证明当前缺口可被测试捕获。
 - 实现剩余功能：手机号绑定、队员管理、赛后互评、签到配置修改、钱包充值/订单、后端地图位置路由与小程序位置反查。
 - 验证：小程序目标测试 30 passed；小程序 type-check 通过；后端 cargo check 通过；activity_checkin_service_business_test 5 passed；remaining_team_activity_routes_test 4 passed。
+- 后续状态同步：小程序已接入 `/api/system/mini-app-runtime-config` 等系统配置能力；早期 `/api/system` 未挂载的发现已过时。
+- 后续状态同步：`home`、`matches/detail`、`teams/manage`、`activities` 已完成一轮 SFC 拆分，新的结构规范见 `registration_system_mini/docs/mini-architecture.md`。
+- 后续状态同步：当前小程序全量 `bun test` 为 109 pass / 0 fail，`bun run type-check` 与 `bun run build:mp-weixin` 通过。
+- 2026-05-13：开始整理当前版本产品说明书、技术说明书、数据库关联关系文档。
+- 2026-05-13：读取根目录与三个子项目的 `AGENTS.md`、`CLAUDE.md`，确认文档、架构和验证约束。
+- 2026-05-13：盘点后端路由、迁移、domain/application/use case、前端 routes/pages/services/api。
+- 2026-05-13：确认当前后端 `/api/admin/*` 和 `/api/*` 的模块挂载关系。
+- 2026-05-13：确认后端支持 MinIO/S3 兼容上传配置，头像上传当前直接写入 MinIO。
+- 2026-05-13：新增 `docs/product-spec-current.md`，按用户侧、管理端、后端能力梳理已完成/未完成/待产品讨论项。
+- 2026-05-13：新增 `docs/technical-spec-current.md`，梳理 monorepo、技术栈、后端六边形架构、前端结构、接口前缀、存储、外部服务、权限和技术债。
+- 2026-05-13：新增 `docs/database-relations-current.md`，按表族、外键关系、Mermaid ER 图和 schema 风险整理数据库关联。
+- 2026-05-13：用户确认球队 ID 目标形态为数据库自增数字 ID。
+- 2026-05-13：新增球队 ID 数字化迁移计划 `docs/superpowers/plans/2026-05-13-team-id-bigserial-migration.md`。
+- 2026-05-13：已完成 `registration_system_rs/migrations/20260513000100_team_id_bigserial.sql`，将球队主键和全部球队引用列切到 `BIGINT`，并保留 `rs_teams.legacy_id`。
+- 2026-05-13：已新增 `registration_system_rs/tests/team_id_numeric_schema_test.rs`，验证球队相关列为 `bigint`，并验证 `rs_user_billings.activity_id -> rs_activity(id)` 外键存在。
+- 2026-05-13：已完成后端 `i64`、小程序 `number`、管理端 `number` 的球队 ID 类型同步。
+- 2026-05-13：已重新更新产品说明书、技术说明书和数据库关联关系文档，去掉球队 ID “待实施”的过期描述。
+- 2026-05-13：已完成 `registration_system_rs/migrations/20260513000200_rename_user_billings_game_id_to_activity_id.sql`，将 `rs_user_billings.game_id` 统一为 `activity_id` 并补齐外键。
+- 2026-05-13：已完成 `registration_system_rs/migrations/20260513000300_unify_billing_activity_terms.sql`，统一 billing 领域命名到 activity，并清空开发库旧订单/账单/结算数据，重置账户汇总。
+- 2026-05-13：已在根目录 `AGENTS.md` / `CLAUDE.md` 中写入复杂任务默认采用 `planning-with-files`，并持续维护 `task_plan.md`、`findings.md`、`progress.md` 的规则。
+- 2026-05-13：已在 `registration_system_rs`、`registration_system_mini`、`registration_system_backend_fe` 的 `AGENTS.md` / `CLAUDE.md` 中同步写入同类约束。
+- 2026-05-13：按用户要求，本轮未新增检查脚本，仅先落地规范层和流程层。
+- 2026-05-13：执行后端全量验证，`cargo clippy --all-targets -- -D warnings` 初次失败，原因是若干 `.bind(&team_id)` 风格问题；已修复。
+- 2026-05-13：执行后端全量 `cargo test` 时发现 `remaining_team_activity_routes_test` 使用了过期字符串 `team_id` 测试数据，已改为数字 `team_id`。
+- 2026-05-13：修复后重新验证通过：`cargo clippy --all-targets -- -D warnings`、`cargo test`。
+- 2026-05-13：开始收口 billing/order schema 与 payment 结算边界，先重新核对 `PaymentBillingPort`、`rs_recharge_records`、`rs_team_membership_orders` 和现有迁移。
+- 2026-05-13：确认 `transaction_no` 同时用于支付回调和后台手工充值，不能直接改成支付订单外键；改为新增专用 `payment_order_no` 物理关联列。
+- 2026-05-13：将 `PaymentBillingPort` 重命名为 `PaymentSettlementPort`，并把 `PostgresPaymentBillingAdapter` 重命名为 `PostgresPaymentSettlementAdapter`。
+- 2026-05-13：调整 `HandlePaidOrderUseCase`，使已支付订单在再次同步/回调时仍可进入结算逻辑，由持久化层负责幂等拦截，避免“订单已 paid 但未完成入账”无法自愈。
+- 2026-05-13：新增迁移 `registration_system_rs/migrations/20260513000400_payment_settlement_guards.sql`，为 `rs_recharge_records` 增加 `payment_order_no` 外键和唯一索引，并为 `rs_team_membership_orders.transaction_id` 增加唯一索引。
+- 2026-05-13：新增测试 `payment_settlement_schema_test.rs`、`payment_settlement_adapter_postgres_test.rs`，验证 schema 收口和充值入账幂等性。
+- 2026-05-13：首次真实数据库幂等测试失败，原因是对部分唯一索引使用了 `ON CONFLICT (payment_order_no)`；已改为普通唯一索引后通过。
+- 2026-05-13：执行 `sqlx migrate run`，新迁移 `20260513000400_payment_settlement_guards` 已成功应用。
+- 2026-05-13：验证通过：`cargo test --test payment_service_business_test --test payment_settlement_schema_test --test payment_settlement_adapter_postgres_test -- --nocapture`、`cargo clippy --all-targets -- -D warnings`、`cargo test`。
+- 2026-05-14：开始收口 `rs_activity_order` 命名，确认它是活动费用快照而非支付订单。
+- 2026-05-14：新增并验证红测 `activity_fee_snapshot_schema_test`，要求 `rs_activity_fee_snapshots` 替代 `rs_activity_order` 并保留到 `rs_activity(id)` 的外键。
+- 2026-05-14：新增迁移 `20260514000100_rename_activity_order_to_fee_snapshots.sql`，执行 `sqlx migrate run` 成功应用。
+- 2026-05-14：后端 billing 领域、application、ports、Postgres repository、web DTO/OpenAPI 收口为 `ActivityFeeSnapshot` / `UpsertActivityFeeSnapshot`。
+- 2026-05-14：管理端 dashboard/service 改为 `listActivityFeeSnapshots` 和 `费用快照` 指标。
+- 2026-05-14：验证通过：`cargo fmt --check`、`cargo test --test activity_fee_snapshot_schema_test -- --nocapture`、`cargo check --tests`、`sqlx migrate run`、`cargo clippy --all-targets -- -D warnings`、`cargo test`、管理端 `bun run type-check`。

@@ -1,6 +1,7 @@
 use crate::activity::domain::Activity;
 use crate::challenge::domain::{
-    Challenge, ChallengeDetail, ChallengeKind, ChallengeStatus, ChallengeSummary,
+    Challenge, ChallengeDetail, ChallengeIndividualParticipant, ChallengeKind, ChallengeStatus,
+    ChallengeSummary,
 };
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
@@ -9,7 +10,7 @@ use utoipa::{IntoParams, ToSchema};
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct CreateChallengeRequest {
     pub kind: String,
-    pub host_team_id: String,
+    pub host_team_id: i64,
     pub title: String,
     pub holding_date: chrono::NaiveDateTime,
     pub start_time: chrono::NaiveDateTime,
@@ -25,12 +26,12 @@ pub struct CreateChallengeRequest {
 
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct AcceptChallengeRequest {
-    pub guest_team_id: Option<String>,
+    pub guest_team_id: Option<i64>,
 }
 
 #[derive(Debug, Deserialize, IntoParams)]
 pub struct ChallengeListQuery {
-    pub team_id: Option<String>,
+    pub team_id: Option<i64>,
     pub keyword: Option<String>,
     pub status: Option<String>,
     pub include_closed: Option<bool>,
@@ -77,9 +78,9 @@ pub struct ChallengeDto {
     pub id: String,
     pub title: String,
     pub kind: ChallengeKindDto,
-    pub host_team_id: String,
+    pub host_team_id: i64,
     pub host_user_id: i64,
-    pub guest_team_id: Option<String>,
+    pub guest_team_id: Option<i64>,
     pub accepted_by_user_id: Option<i64>,
     pub activity_id: Option<String>,
     pub holding_date: chrono::NaiveDateTime,
@@ -169,8 +170,8 @@ pub struct ActivityRefDto {
     pub start_time: chrono::NaiveDateTime,
     pub end_time: chrono::NaiveDateTime,
     pub location: String,
-    pub home_team_id: Option<String>,
-    pub away_team_id: Option<String>,
+    pub home_team_id: Option<i64>,
+    pub away_team_id: Option<i64>,
     pub players_per_team: Option<i32>,
 }
 
@@ -194,6 +195,24 @@ impl From<Activity> for ActivityRefDto {
 pub struct ChallengeDetailDto {
     pub summary: ChallengeSummaryDto,
     pub activity: Option<ActivityRefDto>,
+    pub individual_participants: Vec<ChallengeIndividualParticipantDto>,
+}
+
+#[derive(Debug, Serialize, ToSchema)]
+pub struct ChallengeIndividualParticipantDto {
+    pub user_id: i64,
+    pub display_name: String,
+    pub avatar_url: Option<String>,
+}
+
+impl From<ChallengeIndividualParticipant> for ChallengeIndividualParticipantDto {
+    fn from(value: ChallengeIndividualParticipant) -> Self {
+        Self {
+            user_id: value.user_id,
+            display_name: value.display_name,
+            avatar_url: value.avatar_url,
+        }
+    }
 }
 
 impl From<ChallengeDetail> for ChallengeDetailDto {
@@ -201,6 +220,11 @@ impl From<ChallengeDetail> for ChallengeDetailDto {
         Self {
             summary: ChallengeSummaryDto::from(value.summary),
             activity: value.activity.map(ActivityRefDto::from),
+            individual_participants: value
+                .individual_participants
+                .into_iter()
+                .map(ChallengeIndividualParticipantDto::from)
+                .collect(),
         }
     }
 }

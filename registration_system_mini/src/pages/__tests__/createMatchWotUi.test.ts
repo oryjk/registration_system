@@ -20,12 +20,15 @@ describe("create match Wot UI integration", () => {
     expect(source.includes('"^wd-(.*)": "wot-design-uni/components/wd-$1/wd-$1.vue"')).toEqual(true);
   });
 
-  test("uses shared Wot datetime picker form for create match time fields", async () => {
+  test("uses calendar date and time pickers for create match time fields", async () => {
     const source = await read("src/components/MatchPublishForm.vue");
     const pageSource = await read("src/pages/matches/create/index.vue");
 
+    expect(source.match(/<wd-calendar/g)?.length).toEqual(1);
     expect(source.match(/<wd-datetime-picker/g)?.length).toEqual(3);
-    expect(source.includes('title="选择比赛时间"')).toEqual(true);
+    expect(source.includes('title="选择比赛日期"')).toEqual(true);
+    expect(source.includes('title="选择开球时间"')).toEqual(true);
+    expect(source.includes('placeholder="20:00"')).toEqual(true);
     expect(source.includes('选择报名开始时间')).toEqual(true);
     expect(source.includes('选择报名截止时间')).toEqual(true);
     expect(source.includes('placeholder="YYYY-MM-DD hh:mm:ss"')).toEqual(false);
@@ -37,13 +40,13 @@ describe("create match Wot UI integration", () => {
     expect(pageSource.includes("MatchPublishForm")).toEqual(true);
   });
 
-  test("keeps match time separate from registration time fields", async () => {
+  test("keeps match date and clock separate from registration time fields", async () => {
     const source = await read("src/components/MatchPublishForm.vue");
-    const matchTimeLabelIndex = source.indexOf('text="比赛时间"');
-    const matchTimeWrapper = source.slice(Math.max(0, matchTimeLabelIndex - 120), matchTimeLabelIndex);
+    const matchDateLabelIndex = source.indexOf('text="比赛日期"');
+    const matchClockLabelIndex = source.indexOf('text="开球时间"');
 
-    expect(matchTimeLabelIndex > 0).toEqual(true);
-    expect(matchTimeWrapper.includes("create-form-item create-form-item-full")).toEqual(true);
+    expect(matchDateLabelIndex > 0).toEqual(true);
+    expect(matchClockLabelIndex > matchDateLabelIndex).toEqual(true);
     expect(source.includes("报名开始")).toEqual(true);
     expect(source.includes("报名截止")).toEqual(true);
   });
@@ -95,5 +98,15 @@ describe("create match Wot UI integration", () => {
 
     expect(source.includes("create-hero-role")).toEqual(false);
     expect(source.includes("myRoleLabel")).toEqual(false);
+  });
+
+  test("links registration default times to the selected match time", async () => {
+    const source = await read("src/pages/matches/create/index.vue");
+
+    expect(source.includes("function defaultRegistrationStartTime")).toEqual(true);
+    expect(source.includes("function defaultRegistrationEndTime")).toEqual(true);
+    expect(source.includes("return holdingDate - 2 * 60 * 60 * 1000")).toEqual(true);
+    expect(source.includes("form.endTime = defaultRegistrationEndTime(val);")).toEqual(true);
+    expect(source.includes("date.setHours(20, 0, 0, 0);")).toEqual(true);
   });
 });

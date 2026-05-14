@@ -71,7 +71,11 @@ pub fn build_app_services(
         billing_service,
         wx_service: build_wx_service(config),
         payment_service: build_payment_service(pool, config),
-        system_settings_service: build_system_service(system_settings_repository, config),
+        system_settings_service: build_system_service(
+            system_settings_repository.clone(),
+            system_settings_repository,
+            config,
+        ),
     }
 }
 

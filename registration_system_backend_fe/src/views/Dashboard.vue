@@ -127,7 +127,7 @@ const statCards = computed(() => {
       value: s?.monthlyActivityCount ?? '—',
     },
     { label: '注册用户', icon: '👤', iconBg: 'bg-info/10', value: s?.playerCount ?? '—' },
-    { label: '订单数量', icon: '💰', iconBg: 'bg-warning/10', value: s?.orderCount ?? '—' },
+    { label: '费用快照', icon: '💰', iconBg: 'bg-warning/10', value: s?.feeSnapshotCount ?? '—' },
   ]
 })
 

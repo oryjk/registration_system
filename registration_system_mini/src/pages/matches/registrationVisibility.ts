@@ -1,8 +1,8 @@
 export interface TeamRegistrationVisibilityInput {
-  currentTeamId?: string | null;
+  currentTeamId?: number | null;
   canManageTeam?: boolean | null;
   sourceActivityId?: string | null;
-  homeTeamId?: string | null;
+  homeTeamId?: number | null;
 }
 
 export function canShowTeamRegistrationTab(input: TeamRegistrationVisibilityInput): boolean {

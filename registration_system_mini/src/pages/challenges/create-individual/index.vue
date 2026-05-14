@@ -16,7 +16,7 @@ const form = reactive({
   startTime: "20:00",
   endTime: "22:00",
   location: "",
-  playersPerTeam: "14",
+  playersPerTeam: "8",
   feePerPerson: "",
   note: "",
 });
@@ -61,12 +61,17 @@ function handleEndTimeChange(event: Event) {
   form.endTime = detail.detail?.value ?? form.endTime;
 }
 
+function handleFormatChange(event: Event) {
+  const detail = event as Event & { detail?: { value?: number | string } };
+  form.playersPerTeam = Number(detail.detail?.value ?? 1) === 0 ? "5" : "8";
+}
+
 function validateForm() {
   if (!currentTeam.value?.canManageTeam) return "只有队长或领队可以发布散人约队";
   if (!form.title.trim() || !form.date || !form.location.trim()) return "请补全标题、日期和场地";
 
   const playersPerTeam = Number(form.playersPerTeam || 0);
-  if (!Number.isFinite(playersPerTeam) || playersPerTeam <= 0) return "请填写正确的招募人数";
+  if (!Number.isFinite(playersPerTeam) || ![5, 8].includes(playersPerTeam)) return "请选择 5 人制或 8 人制";
 
   const feePerPerson = form.feePerPerson ? Number(form.feePerPerson) : null;
   if (feePerPerson !== null && (!Number.isFinite(feePerPerson) || feePerPerson < 0)) return "请填写正确的费用";
@@ -155,8 +160,10 @@ onShow(async () => {
           </picker>
         </view>
         <view class="create-form-item">
-          <text class="create-form-label">招募人数</text>
-          <input v-model="form.playersPerTeam" class="create-input" type="number" placeholder="14" />
+          <text class="create-form-label">赛制</text>
+          <picker :value="form.playersPerTeam === '5' ? 0 : 1" :range="['5 人制（共 10 人）', '8 人制（共 16 人）']" @change="handleFormatChange">
+            <view class="create-input create-picker">{{ form.playersPerTeam }} 人制 · 共 {{ Number(form.playersPerTeam) * 2 }} 人</view>
+          </picker>
         </view>
         <view class="create-form-item">
           <text class="create-form-label">开始时间</text>

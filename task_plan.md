@@ -99,3 +99,96 @@
 3. [completed] 子项目 `.git` 元数据已移出工作树并备份到根目录外。
 4. [completed] 新增根 `.gitignore`，覆盖 `.env`、依赖目录、构建产物、Rust `target/`、日志、Playwright 产物、临时截图和系统文件。
 5. [completed] 文档更新：根 README、小程序 README、后端 README 和当前任务计划已同步 monorepo 状态。
+
+## 2026-05-13 产品与技术文档整理
+
+目标：基于当前代码生成当前版本产品说明书、技术说明书、数据库关联关系文档。
+
+阶段：
+1. [completed] 盘点后端路由、数据库迁移、前端页面和服务封装
+2. [completed] 归纳已完成/未完成/待产品讨论功能
+3. [completed] 编写 docs/product-spec-current.md
+4. [completed] 编写 docs/technical-spec-current.md
+5. [completed] 编写 docs/database-relations-current.md
+6. [completed] 验证文档引用的代码事实
+
+当前输出：
+
+- `docs/product-spec-current.md`
+- `docs/technical-spec-current.md`
+- `docs/database-relations-current.md`
+
+关键结论：
+
+- 小程序主功能基本已接真实接口，比赛、约队、球队管理、统计、账单、通知、资料等都有当前版本能力。
+- 管理端已覆盖核心运营页面，但 ActivityList/TeamDetail 拆分和部分新增字段同步仍未完全完成。
+- 后端大部分模块已进入六边形/use case 拆分形态。
+- 球队 ID 数字化迁移已完成：数据库为 `BIGINT`，后端为 `i64`，前端为 `number`。
+- billing 可用但财务模型仍需产品化讨论，不宜视为最终账务模型。
+
+后续已新增计划：
+
+- [completed] 按 `docs/superpowers/plans/2026-05-13-team-id-bigserial-migration.md` 完成球队 ID 数字化迁移。
+
+## 2026-05-13 协作文档规范固化
+
+目标：把“复杂任务默认维护 `task_plan.md` / `findings.md` / `progress.md`”固化到仓库协作文档中，减少对单次会话记忆的依赖。
+
+阶段：
+1. [completed] 盘点根目录和三个子项目的 `AGENTS.md` / `CLAUDE.md`
+2. [completed] 在根目录写入文档维护规范和 `planning-with-files` 默认流程
+3. [completed] 在 `registration_system_rs`、`registration_system_mini`、`registration_system_backend_fe` 写入同类约束
+4. [completed] 同步更新工作文档，记录本次规则固化结果
+
+约束：
+
+- 本轮先做规范层和流程层，不新增检查脚本。
+- 保持规则简洁明确，避免和现有项目约定冲突。
+
+## 2026-05-13 后端全量验证
+
+目标：在 `game_id -> activity_id` 和 billing 命名统一后，执行一次后端完整静态检查与全量测试，确认没有跨模块回归。
+
+阶段：
+1. [completed] 执行 `cargo clippy --all-targets -- -D warnings`
+2. [completed] 修复 clippy 暴露的机械性借用问题
+3. [completed] 执行 `cargo test`
+4. [completed] 修复过期字符串 `team_id` 测试数据并重新验证
+5. [completed] 同步工作文档记录验证结果
+
+## 2026-05-13 billing/order schema 与支付结算边界收口
+
+目标：在不重写 billing 产品逻辑的前提下，先把 payment 成功后的结算边界、充值记录物理关联和重复回调幂等性补齐。
+
+阶段：
+1. [completed] 盘点 `payment` / `billing` / `order` 当前 schema 与 port 边界
+2. [completed] 将 `PaymentBillingPort` 收敛为 `PaymentSettlementPort`
+3. [completed] 新增 `rs_recharge_records.payment_order_no` 并补齐到 `rs_payment_orders(order_no)` 的物理关联
+4. [completed] 为充值记录和球队会员订单补充唯一约束，支撑支付回调幂等
+5. [completed] 调整支付成功处理逻辑，使已支付订单可重复触发结算但不重复入账
+6. [completed] 执行迁移、专项测试、`cargo clippy` 与全量 `cargo test`
+
+当前输出：
+
+- `registration_system_rs/migrations/20260513000400_payment_settlement_guards.sql`
+- `registration_system_rs/src/payment/ports/payment_settlement_port.rs`
+- `registration_system_rs/src/payment/adapters/persistence/postgres_payment_settlement_adapter.rs`
+- `registration_system_rs/tests/payment_settlement_schema_test.rs`
+- `registration_system_rs/tests/payment_settlement_adapter_postgres_test.rs`
+
+## 2026-05-14 activity fee snapshot 命名收口
+
+目标：把误导性的 `rs_activity_order` / `ActivityOrder` 收口为活动费用快照语义，避免与支付订单、会员订单混淆。
+
+阶段：
+1. [completed] 新增红测 `activity_fee_snapshot_schema_test`，约束新表存在、旧表不存在、`activity_id` 外键保留
+2. [completed] 新增 migration `20260514000100_rename_activity_order_to_fee_snapshots.sql`，直接重命名旧表和约束
+3. [completed] 后端 billing 领域、use case、repository、DTO 和 OpenAPI 改为 `ActivityFeeSnapshot`
+4. [completed] 管理端 dashboard/service 改为费用快照统计，不再显示“订单数量”
+5. [completed] 执行迁移、后端完整验证、管理端 type-check，并同步当前文档
+
+当前输出：
+
+- `registration_system_rs/migrations/20260514000100_rename_activity_order_to_fee_snapshots.sql`
+- `registration_system_rs/tests/activity_fee_snapshot_schema_test.rs`
+- `registration_system_rs/src/billing/application/use_cases/activity_fee_snapshots.rs`

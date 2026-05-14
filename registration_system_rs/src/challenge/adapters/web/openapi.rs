@@ -1,8 +1,9 @@
 #![allow(dead_code)]
 
 use super::dto::{
-    AcceptChallengeRequest, ActivityRefDto, ChallengeDetailDto, ChallengeDto, ChallengeListQuery,
-    ChallengeStatusDto, ChallengeSummaryDto, CreateChallengeRequest,
+    AcceptChallengeRequest, ActivityRefDto, ChallengeDetailDto, ChallengeDto,
+    ChallengeIndividualParticipantDto, ChallengeListQuery, ChallengeStatusDto, ChallengeSummaryDto,
+    CreateChallengeRequest,
 };
 use crate::shared::api_response::{ApiResponse, EmptyData};
 use crate::shared::openapi::BearerSecurityAddon;
@@ -102,6 +103,7 @@ fn cancel_challenge_doc() {}
             ChallengeDto,
             ChallengeSummaryDto,
             ChallengeDetailDto,
+            ChallengeIndividualParticipantDto,
             ChallengeStatusDto,
             ActivityRefDto
         )

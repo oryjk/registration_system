@@ -492,7 +492,7 @@ pub async fn update_team_registration_handler(
         .update_team_registration(
             &principal,
             &activity_id,
-            &payload.team_id,
+            payload.team_id,
             payload.registration_count,
         )
         .await
@@ -514,7 +514,7 @@ pub async fn cancel_team_registration_handler(
     state
         .services
         .activity_service
-        .cancel_team_registration(&principal, &activity_id, &payload.team_id)
+        .cancel_team_registration(&principal, &activity_id, payload.team_id)
         .await
         .map_err(activity_http_error)?;
 

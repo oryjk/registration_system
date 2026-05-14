@@ -1,15 +1,18 @@
 use crate::billing::adapters::web::dto::{
-    ActivityBillingSummaryDto, ActivityOrderDto, ActivitySettlementSummaryDto,
-    AutoCalculateFeeRequest, AutoCalculateFeeResultDto, BalanceCalibrationRecordDto,
-    BillingFlowResultDto, CalculatePenaltiesRequest, CalculatePenaltiesResultDto,
-    CalibrateBalanceRequest, CalibrationResultDto, CreateActivityOrderRequest, GameExpenseRequest,
-    GameExpenseResultDto, PenaltyRequest, PenaltyResultDto, RechargeRequest, RechargeResultDto,
-    SettleActivityExpenseRequest, TransactionRecordDto, UserAccountDto,
+    ActivityBillingSummaryDto, ActivityExpenseRequest, ActivityExpenseResultDto,
+    ActivityFeeSnapshotDto, ActivitySettlementSummaryDto, AutoCalculateFeeRequest,
+    AutoCalculateFeeResultDto, BalanceCalibrationRecordDto, BillingFlowResultDto,
+    CalculatePenaltiesRequest, CalculatePenaltiesResultDto, CalibrateBalanceRequest,
+    CalibrationResultDto, PenaltyRequest, PenaltyResultDto, RechargeRequest, RechargeResultDto,
+    SettleActivityExpenseRequest, TransactionRecordDto, UpsertActivityFeeSnapshotRequest,
+    UserAccountDto,
 };
 use crate::billing::application::{
-    CalibrateBalanceCommand, CreateActivityOrderCommand, GameExpenseCommand, PenaltyCommand,
-    RechargeCommand, SettleActivityExpenseCommand,
+    ActivityExpenseCommand, CalibrateBalanceCommand, PenaltyCommand, RechargeCommand,
+    SettleActivityExpenseCommand, SettleActivityExpenseItemCommand,
+    UpsertActivityFeeSnapshotCommand,
 };
+use crate::billing::domain::{SettlementMode, SettlementParticipantScope};
 use crate::bootstrap::app::AppState;
 use crate::shared::api_response::ApiResponse;
 use crate::shared::http_error::HttpError;
@@ -57,18 +60,18 @@ pub async fn get_user_balance_handler(
     )))
 }
 
-pub async fn create_activity_order_handler(
+pub async fn upsert_activity_fee_snapshot_handler(
     State(state): State<AppState>,
     headers: HeaderMap,
-    Json(payload): Json<CreateActivityOrderRequest>,
-) -> Result<Json<ApiResponse<ActivityOrderDto>>, HttpError> {
+    Json(payload): Json<UpsertActivityFeeSnapshotRequest>,
+) -> Result<Json<ApiResponse<ActivityFeeSnapshotDto>>, HttpError> {
     let actor = state.actor(&headers)?;
-    let order = state
+    let snapshot = state
         .services
         .billing_service
-        .create_activity_order(
+        .upsert_activity_fee_snapshot(
             &actor,
-            CreateActivityOrderCommand {
+            UpsertActivityFeeSnapshotCommand {
                 activity_id: payload.activity_id,
                 description: payload.description,
                 fee: payload.fee,
@@ -78,8 +81,8 @@ pub async fn create_activity_order_handler(
         .await?;
 
     Ok(Json(ApiResponse::with_message(
-        "活动订单创建成功",
-        ActivityOrderDto::from(order),
+        "活动费用快照保存成功",
+        ActivityFeeSnapshotDto::from(snapshot),
     )))
 }
 
@@ -126,18 +129,18 @@ pub async fn recharge_handler(
     )))
 }
 
-pub async fn game_expense_handler(
+pub async fn activity_expense_handler(
     State(state): State<AppState>,
     headers: HeaderMap,
-    Json(payload): Json<GameExpenseRequest>,
-) -> Result<Json<ApiResponse<GameExpenseResultDto>>, HttpError> {
+    Json(payload): Json<ActivityExpenseRequest>,
+) -> Result<Json<ApiResponse<ActivityExpenseResultDto>>, HttpError> {
     let actor = state.actor(&headers)?;
     let result = state
         .services
         .billing_service
-        .add_game_expense(
+        .add_activity_expense(
             &actor,
-            GameExpenseCommand {
+            ActivityExpenseCommand {
                 activity_id: payload.activity_id,
                 total_amount: payload.total_amount,
                 user_ids: payload.user_ids,
@@ -148,7 +151,7 @@ pub async fn game_expense_handler(
 
     Ok(Json(ApiResponse::with_message(
         "扣费成功",
-        GameExpenseResultDto::from(result),
+        ActivityExpenseResultDto::from(result),
     )))
 }
 
@@ -257,26 +260,33 @@ pub async fn user_transactions_handler(
     )))
 }
 
-pub async fn get_order_handler(
+pub async fn get_activity_fee_snapshot_handler(
     State(state): State<AppState>,
     Path(activity_id): Path<String>,
-) -> Result<Json<ApiResponse<Option<ActivityOrderDto>>>, HttpError> {
-    let order = state
+) -> Result<Json<ApiResponse<Option<ActivityFeeSnapshotDto>>>, HttpError> {
+    let snapshot = state
         .services
         .billing_service
-        .get_order_by_id(&activity_id)
+        .get_activity_fee_snapshot_by_activity_id(&activity_id)
         .await?;
     Ok(Json(ApiResponse::success(
-        order.map(ActivityOrderDto::from),
+        snapshot.map(ActivityFeeSnapshotDto::from),
     )))
 }
 
-pub async fn list_orders_handler(
+pub async fn list_activity_fee_snapshots_handler(
     State(state): State<AppState>,
-) -> Result<Json<ApiResponse<Vec<ActivityOrderDto>>>, HttpError> {
-    let items = state.services.billing_service.list_orders().await?;
+) -> Result<Json<ApiResponse<Vec<ActivityFeeSnapshotDto>>>, HttpError> {
+    let items = state
+        .services
+        .billing_service
+        .list_activity_fee_snapshots()
+        .await?;
     Ok(Json(ApiResponse::success(
-        items.into_iter().map(ActivityOrderDto::from).collect(),
+        items
+            .into_iter()
+            .map(ActivityFeeSnapshotDto::from)
+            .collect(),
     )))
 }
 
@@ -325,6 +335,25 @@ pub async fn settle_activity_expense_handler(
             SettleActivityExpenseCommand {
                 activity_id,
                 total_amount: payload.total_amount,
+                mode: payload
+                    .mode
+                    .as_deref()
+                    .map(SettlementMode::from)
+                    .unwrap_or(SettlementMode::Aa),
+                participant_scope: payload
+                    .participant_scope
+                    .as_deref()
+                    .map(SettlementParticipantScope::from)
+                    .unwrap_or(SettlementParticipantScope::RegisteredAttendees),
+                items: payload
+                    .items
+                    .unwrap_or_default()
+                    .into_iter()
+                    .map(|item| SettleActivityExpenseItemCommand {
+                        user_id: item.user_id,
+                        amount: item.amount,
+                    })
+                    .collect(),
                 description: payload.description,
             },
         )

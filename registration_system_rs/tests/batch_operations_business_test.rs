@@ -6,18 +6,18 @@ use registration_system_backend::activity::domain::{
     ActivityTeamCheckInConfig, DomainError as ActivityDomainError, RegistrationListPage,
     RegistrationStandCounts, UpdateActivityFields,
 };
-use registration_system_backend::activity::ports::{ActivityRepository, ActivityTeamAccessPort};
+use registration_system_backend::activity::ports::{
+    ActivityCommandRepository, ActivityQueryRepository, ActivityTeamAccessPort,
+};
 use registration_system_backend::team::application::{
     TeamApplicationError, TeamPrincipal, TeamService,
 };
 use registration_system_backend::team::domain::{
     ActivityTeamReview, DEFAULT_TEAM_CREDIT_SCORE, DomainError as TeamDomainError, Team,
-    TeamAdminInfo, TeamCreditTransaction, TeamMember, TeamMemberAttendanceRecord,
-    TeamMemberWithInfo, UpdateTeamFields,
+    TeamAdminInfo, TeamAttendanceRankingItem, TeamCreditTransaction, TeamMember,
+    TeamMemberAttendanceRecord, TeamMemberWithInfo, UpdateTeamFields,
 };
-use registration_system_backend::team::ports::{
-    ActivityReviewRecord, MembershipRechargeRecord, TeamRepository,
-};
+use registration_system_backend::team::ports::{TeamCommandRepository, TeamQueryRepository};
 use std::sync::{Arc, Mutex};
 
 fn activity_admin_principal(is_super_admin: bool) -> ActivityPrincipal {
@@ -57,10 +57,10 @@ fn sample_activity(activity_id: &str) -> Activity {
     }
 }
 
-fn sample_team(team_id: &str) -> Team {
+fn sample_team(team_id: i64) -> Team {
     let now = Utc::now().naive_utc();
     Team {
-        id: team_id.to_string(),
+        id: team_id,
         name: "测试球队".to_string(),
         description: None,
         logo_url: None,
@@ -80,11 +80,7 @@ struct FakeActivityRepository {
 }
 
 #[async_trait]
-impl ActivityRepository for FakeActivityRepository {
-    async fn create(&self, _activity: &Activity) -> Result<(), ActivityDomainError> {
-        unimplemented!()
-    }
-
+impl ActivityQueryRepository for FakeActivityRepository {
     async fn list_page(
         &self,
         _status_filter: Option<i8>,
@@ -101,63 +97,12 @@ impl ActivityRepository for FakeActivityRepository {
     async fn find_derived_by_source_and_team(
         &self,
         _source_activity_id: &str,
-        _team_id: &str,
+        _team_id: i64,
     ) -> Result<Option<Activity>, ActivityDomainError> {
         Ok(None)
     }
 
-    async fn delete_many(&self, _ids: &[String]) -> Result<(), ActivityDomainError> {
-        unimplemented!()
-    }
-
-    async fn update_status(
-        &self,
-        _activity_id: &str,
-        _status: i8,
-    ) -> Result<(), ActivityDomainError> {
-        unimplemented!()
-    }
-
-    async fn update_activity(
-        &self,
-        _activity_id: &str,
-        _fields: UpdateActivityFields<'_>,
-    ) -> Result<(), ActivityDomainError> {
-        unimplemented!()
-    }
-
     async fn find_ongoing_activity(&self) -> Result<Option<Activity>, ActivityDomainError> {
-        unimplemented!()
-    }
-
-    async fn upsert_registration(
-        &self,
-        activity_id: &str,
-        user_id: i64,
-        stand: i8,
-        registration_count: i32,
-    ) -> Result<(), ActivityDomainError> {
-        self.upsert_calls.lock().unwrap().push((
-            activity_id.to_string(),
-            user_id,
-            stand,
-            registration_count,
-        ));
-        Ok(())
-    }
-
-    async fn delete_registration(
-        &self,
-        _activity_id: &str,
-        _user_id: i64,
-    ) -> Result<u64, ActivityDomainError> {
-        unimplemented!()
-    }
-
-    async fn backfill_team_member_registrations(
-        &self,
-        _activity_id: &str,
-    ) -> Result<u64, ActivityDomainError> {
         unimplemented!()
     }
 
@@ -205,6 +150,81 @@ impl ActivityRepository for FakeActivityRepository {
         Ok(Vec::new())
     }
 
+    async fn find_team_checkin_config(
+        &self,
+        _activity_id: &str,
+        _team_id: i64,
+    ) -> Result<Option<ActivityTeamCheckInConfig>, ActivityDomainError> {
+        Ok(None)
+    }
+
+    async fn find_checkin_record(
+        &self,
+        _activity_id: &str,
+        _team_id: i64,
+        _user_id: i64,
+    ) -> Result<Option<ActivityCheckInRecord>, ActivityDomainError> {
+        Ok(None)
+    }
+}
+
+#[async_trait]
+impl ActivityCommandRepository for FakeActivityRepository {
+    async fn create(&self, _activity: &Activity) -> Result<(), ActivityDomainError> {
+        unimplemented!()
+    }
+
+    async fn delete_many(&self, _ids: &[String]) -> Result<(), ActivityDomainError> {
+        unimplemented!()
+    }
+
+    async fn update_status(
+        &self,
+        _activity_id: &str,
+        _status: i8,
+    ) -> Result<(), ActivityDomainError> {
+        unimplemented!()
+    }
+
+    async fn update_activity(
+        &self,
+        _activity_id: &str,
+        _fields: UpdateActivityFields<'_>,
+    ) -> Result<(), ActivityDomainError> {
+        unimplemented!()
+    }
+
+    async fn upsert_registration(
+        &self,
+        activity_id: &str,
+        user_id: i64,
+        stand: i8,
+        registration_count: i32,
+    ) -> Result<(), ActivityDomainError> {
+        self.upsert_calls.lock().unwrap().push((
+            activity_id.to_string(),
+            user_id,
+            stand,
+            registration_count,
+        ));
+        Ok(())
+    }
+
+    async fn delete_registration(
+        &self,
+        _activity_id: &str,
+        _user_id: i64,
+    ) -> Result<u64, ActivityDomainError> {
+        unimplemented!()
+    }
+
+    async fn backfill_team_member_registrations(
+        &self,
+        _activity_id: &str,
+    ) -> Result<u64, ActivityDomainError> {
+        unimplemented!()
+    }
+
     async fn upsert_team_checkin_config(
         &self,
         _config: &ActivityTeamCheckInConfig,
@@ -212,28 +232,11 @@ impl ActivityRepository for FakeActivityRepository {
         Ok(())
     }
 
-    async fn find_team_checkin_config(
-        &self,
-        _activity_id: &str,
-        _team_id: &str,
-    ) -> Result<Option<ActivityTeamCheckInConfig>, ActivityDomainError> {
-        Ok(None)
-    }
-
     async fn record_checkin(
         &self,
         record: &ActivityCheckInRecord,
     ) -> Result<ActivityCheckInRecord, ActivityDomainError> {
         Ok(record.clone())
-    }
-
-    async fn find_checkin_record(
-        &self,
-        _activity_id: &str,
-        _team_id: &str,
-        _user_id: i64,
-    ) -> Result<Option<ActivityCheckInRecord>, ActivityDomainError> {
-        Ok(None)
     }
 }
 
@@ -244,7 +247,7 @@ struct FakeActivityTeamAccessPort;
 impl ActivityTeamAccessPort for FakeActivityTeamAccessPort {
     async fn find_active_member_role(
         &self,
-        _team_id: &str,
+        _team_id: i64,
         _user_id: i64,
     ) -> Result<Option<String>, String> {
         Ok(None)
@@ -252,17 +255,13 @@ impl ActivityTeamAccessPort for FakeActivityTeamAccessPort {
 }
 
 #[derive(Default)]
-struct FakeTeamRepository {
+struct FakeTeamStore {
     batch_update_calls: Mutex<Vec<(String, Vec<i64>, i8)>>,
 }
 
 #[async_trait]
-impl TeamRepository for FakeTeamRepository {
-    async fn create(&self, _team: &Team) -> Result<(), TeamDomainError> {
-        unimplemented!()
-    }
-
-    async fn find_by_id(&self, team_id: &str) -> Result<Option<Team>, TeamDomainError> {
+impl TeamQueryRepository for FakeTeamStore {
+    async fn find_by_id(&self, team_id: i64) -> Result<Option<Team>, TeamDomainError> {
         Ok(Some(sample_team(team_id)))
     }
 
@@ -278,102 +277,45 @@ impl TeamRepository for FakeTeamRepository {
         unimplemented!()
     }
 
-    async fn update(
-        &self,
-        _team_id: &str,
-        _fields: UpdateTeamFields<'_>,
-    ) -> Result<(), TeamDomainError> {
-        unimplemented!()
-    }
-
-    async fn delete(&self, _team_id: &str) -> Result<(), TeamDomainError> {
-        unimplemented!()
-    }
-
-    async fn add_member(
-        &self,
-        _team_id: &str,
-        _user_id: i64,
-        _role: &str,
-        _jersey_number: Option<&str>,
-    ) -> Result<(), TeamDomainError> {
-        unimplemented!()
-    }
-
-    async fn reactivate_member(
-        &self,
-        _team_id: &str,
-        _user_id: i64,
-        _role: &str,
-        _jersey_number: Option<&str>,
-    ) -> Result<(), TeamDomainError> {
-        unimplemented!()
-    }
-
-    async fn remove_member(&self, _team_id: &str, _user_id: i64) -> Result<(), TeamDomainError> {
-        unimplemented!()
-    }
-
-    async fn batch_remove_members(
-        &self,
-        _team_id: &str,
-        _user_ids: &[i64],
-    ) -> Result<u64, TeamDomainError> {
-        unimplemented!()
-    }
-
-    async fn update_member(
-        &self,
-        _team_id: &str,
-        _user_id: i64,
-        _role: Option<&str>,
-        _jersey_number: Option<Option<&str>>,
-    ) -> Result<(), TeamDomainError> {
-        unimplemented!()
-    }
-
-    async fn batch_update_member_status(
-        &self,
-        team_id: &str,
-        user_ids: &[i64],
-        status: i8,
-    ) -> Result<u64, TeamDomainError> {
-        self.batch_update_calls.lock().unwrap().push((
-            team_id.to_string(),
-            user_ids.to_vec(),
-            status,
-        ));
-        Ok(user_ids.len() as u64)
-    }
-
-    async fn is_member(&self, _team_id: &str, _user_id: i64) -> Result<bool, TeamDomainError> {
+    async fn is_member(&self, _team_id: i64, _user_id: i64) -> Result<bool, TeamDomainError> {
         unimplemented!()
     }
 
     async fn get_member_status(
         &self,
-        _team_id: &str,
+        _team_id: i64,
         _user_id: i64,
     ) -> Result<Option<i8>, TeamDomainError> {
         unimplemented!()
     }
 
-    async fn list_members(&self, _team_id: &str) -> Result<Vec<TeamMember>, TeamDomainError> {
+    async fn list_members(&self, _team_id: i64) -> Result<Vec<TeamMember>, TeamDomainError> {
         Ok(Vec::new())
     }
 
     async fn list_members_for_management(
         &self,
-        _team_id: &str,
+        _team_id: i64,
     ) -> Result<Vec<TeamMember>, TeamDomainError> {
         Ok(Vec::new())
     }
 
     async fn list_member_attendance_records(
         &self,
-        _team_id: &str,
+        _team_id: i64,
         _user_id: i64,
+        _start_date: Option<&str>,
+        _end_date: Option<&str>,
     ) -> Result<Vec<TeamMemberAttendanceRecord>, TeamDomainError> {
+        Ok(Vec::new())
+    }
+
+    async fn list_team_attendance_ranking(
+        &self,
+        _team_id: i64,
+        _start_date: Option<&str>,
+        _end_date: Option<&str>,
+    ) -> Result<Vec<TeamAttendanceRankingItem>, TeamDomainError> {
         Ok(Vec::new())
     }
 
@@ -383,29 +325,21 @@ impl TeamRepository for FakeTeamRepository {
 
     async fn list_members_with_info(
         &self,
-        _team_id: &str,
+        _team_id: i64,
     ) -> Result<Vec<TeamMemberWithInfo>, TeamDomainError> {
-        unimplemented!()
-    }
-
-    async fn assign_admin(&self, _team_id: &str, _admin_id: i64) -> Result<(), TeamDomainError> {
-        unimplemented!()
-    }
-
-    async fn unassign_admin(&self, _team_id: &str, _admin_id: i64) -> Result<(), TeamDomainError> {
         unimplemented!()
     }
 
     async fn list_team_admins_with_info(
         &self,
-        _team_id: &str,
+        _team_id: i64,
     ) -> Result<Vec<TeamAdminInfo>, TeamDomainError> {
         unimplemented!()
     }
 
     async fn is_admin_assigned(
         &self,
-        _team_id: &str,
+        _team_id: i64,
         _admin_id: i64,
     ) -> Result<bool, TeamDomainError> {
         Ok(false)
@@ -417,7 +351,7 @@ impl TeamRepository for FakeTeamRepository {
 
     async fn list_credit_transactions(
         &self,
-        _team_id: &str,
+        _team_id: i64,
         _limit: i64,
     ) -> Result<Vec<TeamCreditTransaction>, TeamDomainError> {
         Ok(Vec::new())
@@ -426,28 +360,111 @@ impl TeamRepository for FakeTeamRepository {
     async fn find_activity_review(
         &self,
         _activity_id: &str,
-        _reviewer_team_id: &str,
+        _reviewer_team_id: i64,
     ) -> Result<Option<ActivityTeamReview>, TeamDomainError> {
         Ok(None)
+    }
+}
+
+#[async_trait]
+impl TeamCommandRepository for FakeTeamStore {
+    async fn create(&self, team: &Team) -> Result<Team, TeamDomainError> {
+        Ok(team.clone())
+    }
+
+    async fn update(
+        &self,
+        _team_id: i64,
+        _fields: UpdateTeamFields<'_>,
+    ) -> Result<(), TeamDomainError> {
+        unimplemented!()
+    }
+
+    async fn delete(&self, _team_id: i64) -> Result<(), TeamDomainError> {
+        unimplemented!()
+    }
+
+    async fn add_member(
+        &self,
+        _team_id: i64,
+        _user_id: i64,
+        _role: &str,
+        _jersey_number: Option<&str>,
+    ) -> Result<(), TeamDomainError> {
+        unimplemented!()
+    }
+
+    async fn reactivate_member(
+        &self,
+        _team_id: i64,
+        _user_id: i64,
+        _role: &str,
+        _jersey_number: Option<&str>,
+    ) -> Result<(), TeamDomainError> {
+        unimplemented!()
+    }
+
+    async fn remove_member(&self, _team_id: i64, _user_id: i64) -> Result<(), TeamDomainError> {
+        unimplemented!()
+    }
+
+    async fn batch_remove_members(
+        &self,
+        _team_id: i64,
+        _user_ids: &[i64],
+    ) -> Result<u64, TeamDomainError> {
+        unimplemented!()
+    }
+
+    async fn update_member(
+        &self,
+        _team_id: i64,
+        _user_id: i64,
+        _role: Option<&str>,
+        _jersey_number: Option<Option<&str>>,
+    ) -> Result<(), TeamDomainError> {
+        unimplemented!()
+    }
+
+    async fn batch_update_member_status(
+        &self,
+        team_id: i64,
+        user_ids: &[i64],
+        status: i8,
+    ) -> Result<u64, TeamDomainError> {
+        self.batch_update_calls.lock().unwrap().push((
+            team_id.to_string(),
+            user_ids.to_vec(),
+            status,
+        ));
+        Ok(user_ids.len() as u64)
+    }
+
+    async fn assign_admin(&self, _team_id: i64, _admin_id: i64) -> Result<(), TeamDomainError> {
+        unimplemented!()
+    }
+
+    async fn unassign_admin(&self, _team_id: i64, _admin_id: i64) -> Result<(), TeamDomainError> {
+        unimplemented!()
     }
 
     async fn record_activity_review(
         &self,
-        _record: ActivityReviewRecord<'_>,
+        _record: registration_system_backend::team::ports::ActivityReviewRecord<'_>,
     ) -> Result<Team, TeamDomainError> {
         unimplemented!()
     }
 
     async fn record_membership_recharge(
         &self,
-        _record: MembershipRechargeRecord<'_>,
+        _record: registration_system_backend::team::ports::MembershipRechargeRecord<'_>,
     ) -> Result<Team, TeamDomainError> {
         unimplemented!()
     }
 
     async fn record_credit_penalty(
         &self,
-        _team_id: &str,
+        _team_id: i64,
         _admin_id: i64,
         _points: i32,
         _reason: &str,
@@ -462,6 +479,7 @@ impl TeamRepository for FakeTeamRepository {
 async fn batch_update_user_stand_uses_single_upsert_semantics_for_each_user() {
     let repository = Arc::new(FakeActivityRepository::default());
     let service = ActivityService::new(
+        repository.clone(),
         repository.clone(),
         None,
         Arc::new(FakeActivityTeamAccessPort),
@@ -490,14 +508,15 @@ async fn batch_update_user_stand_uses_single_upsert_semantics_for_each_user() {
 
 #[tokio::test]
 async fn batch_update_member_status_rejects_invalid_status_values() {
-    let repository = Arc::new(FakeTeamRepository::default());
+    let repository = Arc::new(FakeTeamStore::default());
     let service = TeamService::new(
+        repository.clone(),
         repository.clone(),
         Arc::new(FakeActivityRepository::default()),
     );
 
     let error = service
-        .batch_update_member_status(&team_admin_principal(true), "team-1", &[11, 22], 2)
+        .batch_update_member_status(&team_admin_principal(true), 1, &[11, 22], 2)
         .await
         .expect_err("非法状态值应被拒绝");
 

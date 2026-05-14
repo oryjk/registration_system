@@ -1,0 +1,64 @@
+# 后端重构进度
+
+## 2026-05-12
+
+- 已完成 `team` 模块一轮重构并通过 `cargo fmt --check`、`cargo clippy --all-targets -- -D warnings`、`cargo test`。
+- 开始制定跨模块重构计划。
+- 当前准备处理 `challenge` 模块，目标是先拆应用层 use case，保持 API 行为稳定。
+- 已完成 `challenge` 应用层拆分，`cargo clippy --all-targets -- -D warnings`、`cargo test --test challenge_service_business_test`、`cargo test --test challenge_repository_postgres_test` 通过。
+- 已完成 `challenge` repository 读写 trait 拆分，专项测试和完整 `cargo test` 通过。
+- 已完成 `billing` 应用层拆分、Service facade 化、读写 port 拆分；`cargo clippy --all-targets -- -D warnings`、账单/支付相关专项测试和完整 `cargo test` 均通过。
+- 已完成 `payment` 应用层拆分、Service facade 化、支付订单读写 port 拆分；支付专项测试和完整 `cargo test` 通过。
+- 已完成 `user` 应用层拆分、Service facade 化；`cargo fmt --check`、`cargo clippy --all-targets -- -D warnings`、`cargo test --test user_player_scope_test`、`cargo test --test payment_service_business_test`、`cargo test` 均通过。
+- 已完成 `user` repository 读写 port 拆分，并同步 `payment` openid resolver、bootstrap 和测试 fake；`cargo fmt --check`、`cargo clippy --all-targets -- -D warnings`、`cargo test --test user_player_scope_test`、`cargo test --test payment_service_business_test`、`cargo test` 均通过。
+- 已完成 `system` 应用层拆分、Service facade 化、系统设置读写 port 拆分；`cargo fmt --check`、`cargo test system::application::service::tests`、`cargo clippy --all-targets -- -D warnings`、`cargo test` 均通过。
+- 已完成 `wx` 应用层拆分、Service facade 化；`cargo fmt --check`、`cargo test --test wx_payment_test`、`cargo clippy --all-targets -- -D warnings` 均通过。
+- 已完成 `auth` 应用层拆分、Service facade 化、管理员仓储读写 port 拆分；`cargo fmt --check`、`cargo test --test openapi_api_test`、`cargo test --test health_api_test`、`cargo clippy --all-targets -- -D warnings`、`cargo test` 均通过。
+- 已完成 `notification` 应用层拆分、Service facade 化、通知仓储读写 port 拆分；`cargo fmt --check`、`cargo test --test notification_service_business_test`、`cargo test --test challenge_service_business_test`、`cargo clippy --all-targets -- -D warnings`、`cargo test` 均通过。
+- 已开始 `activity` 拆分。Task 1 已完成：抽出 `commands.rs`、`read_models.rs`、`validation.rs`，保持 `ActivityService` 行为不变；`cargo fmt --check`、`cargo test activity::application::service::tests` 通过。
+- `activity` Task 2 已完成：抽出 `permission.rs` 和 `ActivityPermissionChecker`，先替换创建/更新比赛权限判断；`cargo fmt --check`、`team_manager_can_create_activity_with_initial_checkin_config`、`team_manager_can_update_own_future_activity`、`cargo test activity::application::service::tests` 通过。
+- `activity` Task 3 已完成：抽出 `QueryActivityUseCase`，迁移活动列表/详情/进行中/报名列表查询；`cargo fmt --check`、`cargo test activity::application::service::tests`、`cargo test --test remaining_team_activity_routes_test` 通过。
+- `activity` Task 4 已完成：抽出 `ActivityLocationUseCase`，迁移地点搜索和坐标反查；`cargo fmt --check`、地点相关 3 个专项测试通过。
+- `activity` Task 5 已完成：抽出 `ManageRegistrationUseCase`，迁移个人/管理员/批量报名和删除报名逻辑；`cargo fmt --check`、报名相关 2 个专项测试、`cargo test --test batch_operations_business_test` 通过。
+- `activity` Task 6 已完成：抽出 `ManageActivityUseCase`，迁移活动创建/更新/状态/删除/回填逻辑；`cargo fmt --check`、活动管理相关 5 个专项测试通过。
+- `activity` Task 7 已完成：抽出 `TeamRegistrationUseCase`，迁移球队报名和取消球队报名逻辑；`cargo fmt --check`、取消球队报名专项测试、`cargo test --test challenge_service_business_test` 通过。
+- `activity` Task 8 已完成：抽出 `ActivityCheckInUseCase`，迁移签到配置和签到提交逻辑；`cargo fmt --check`、`cargo test --test activity_checkin_service_business_test`、签到配置专项测试通过。
+- `activity` Task 9 已完成：`ActivityService` 已收敛为 facade（构造 use case + public API 转发）；`cargo fmt --check`、`cargo clippy --all-targets -- -D warnings`、`cargo test` 通过。
+- `activity` Task 10 已完成：新增 `ActivityQueryRepository` / `ActivityCommandRepository`，应用层 use case 改为按读写端口依赖，`ActivityService::new` 改为接收 query/command 两个端口；专项测试、`remaining_team_activity_routes_test`、`cargo clippy --all-targets -- -D warnings`、`cargo test` 均通过。
+- `activity` Task 11 已完成：拆分 `PostgresActivityRepository` 持久化适配器，抽出 `models.rs`、`query.rs`、`command.rs`，原入口文件缩小为仓储结构和 trait 委托；`cargo fmt --check`、`cargo test activity::adapters::persistence`、`cargo test --test activity_checkin_service_business_test`、`cargo clippy --all-targets -- -D warnings`、`cargo test` 均通过。
+- `activity` 后续清理已完成：移除旧兼容 `ActivityRepository` 大 trait 和 blanket impl，`PostgresActivityRepository` 与测试 fake 均显式实现 `ActivityQueryRepository` / `ActivityCommandRepository`，`team` 信用用例改为只依赖 activity 读端口。
+- 2026-05-13：完成 `migrations/20260513000100_team_id_bigserial.sql`，球队主键改为 `BIGINT`，保留 `legacy_id`，并同步全部球队外键列。
+- 2026-05-13：新增 `tests/team_id_numeric_schema_test.rs`，验证球队相关列为 `bigint` 且 `rs_user_billings.activity_id` 外键存在。
+- 2026-05-13：完成后端球队 ID 类型从 `String` 到 `i64` 的同步，`cargo check` 与 `cargo check --tests` 通过。
+- 2026-05-13：完成 billing 领域命名统一：`GameExpense*` -> `ActivityExpense*`，`add_game_expenses` -> `add_activity_expenses`，`/game-expense` -> `/activity-expense`。
+- 2026-05-13：完成 `migrations/20260513000300_unify_billing_activity_terms.sql` 并执行 `sqlx migrate run`，统一 `billing_type` 默认值为 `activity_fee`，重命名 `activity_fee_amount`，并清空开发库订单/账单/结算旧数据。
+- 2026-05-13：验证通过：`cargo check`、`cargo check --tests`、`cargo test --test billing_repository_postgres_test`、`cargo test --test billing_service_business_test`、`cargo test --test team_id_numeric_schema_test`。
+- 2026-05-13：已在 `registration_system_rs/AGENTS.md` 和 `registration_system_rs/CLAUDE.md` 中补充复杂任务默认维护 `task_plan.md`、`findings.md`、`progress.md` 的要求，并要求同步根目录三份文档。
+- 2026-05-13：执行 `cargo clippy --all-targets -- -D warnings`，修复 `activity` / `challenge` / `payment` 持久化代码以及 `challenge_repository_postgres_test` 中的 `needless_borrows_for_generic_args`。
+- 2026-05-13：执行全量 `cargo test` 时修复 `remaining_team_activity_routes_test` 的过期字符串 `team_id` 测试数据，恢复 `401` 鉴权语义验证。
+- 2026-05-13：最终全量验证通过：`cargo clippy --all-targets -- -D warnings`、`cargo test`。
+- 2026-05-13：开始处理 payment/billing/order 的第二步收口，重新审阅 `payment/ports/payment_billing_port.rs`、`postgres_payment_billing_adapter.rs`、`handle_paid_order.rs` 和相关迁移。
+- 2026-05-13：确认 `transaction_no` 不能直接绑定支付订单，因此新增专用字段 `rs_recharge_records.payment_order_no` 作为系统内支付订单关联。
+- 2026-05-13：新增 `payment_settlement_port.rs`，把 `PaymentBillingPort` / `TeamMembershipSettlement` 重构为 `PaymentSettlementPort`、`RechargePaymentSettlement`、`TeamMembershipPaymentSettlement`。
+- 2026-05-13：新增 `postgres_payment_settlement_adapter.rs`，将充值入账改为“先插 `rs_recharge_records`，成功后再加余额”，通过唯一约束实现数据库级幂等。
+- 2026-05-13：调整 `HandlePaidOrderUseCase`，已支付订单再次同步时会复用已有 `transaction_id` 再次进入 settlement port，以支持历史半完成状态自愈。
+- 2026-05-13：新增迁移 `20260513000400_payment_settlement_guards.sql`，补充 `rs_recharge_records.payment_order_no -> rs_payment_orders(order_no)` 外键，以及 `payment_order_no` / `rs_team_membership_orders.transaction_id` 唯一索引。
+- 2026-05-13：新增 `payment_settlement_schema_test.rs` 与 `payment_settlement_adapter_postgres_test.rs`，并更新 `payment_service_business_test.rs` 以覆盖已支付订单重复同步场景。
+- 2026-05-13：首次幂等测试失败，原因是部分唯一索引无法作为 `ON CONFLICT (payment_order_no)` 的冲突目标；已改为普通唯一索引并重新通过。
+- 2026-05-13：执行 `sqlx migrate run`，成功应用 `20260513000400_payment_settlement_guards`。
+- 2026-05-13：验证通过：
+  - `cargo test --test payment_service_business_test --test payment_settlement_schema_test --test payment_settlement_adapter_postgres_test -- --nocapture`
+  - `cargo clippy --all-targets -- -D warnings`
+  - `cargo test`
+- 2026-05-14：新增 `tests/activity_fee_snapshot_schema_test.rs`，验证费用快照新表、旧表移除和 `activity_id` 外键。
+- 2026-05-14：新增并执行 `migrations/20260514000100_rename_activity_order_to_fee_snapshots.sql`，将 `rs_activity_order` 重命名为 `rs_activity_fee_snapshots`。
+- 2026-05-14：完成后端 `ActivityOrder` -> `ActivityFeeSnapshot`、`CreateActivityOrder` -> `UpsertActivityFeeSnapshot` 命名收口，费用快照 API 子路径改为 `/activity-fee-snapshots`。
+- 2026-05-14：管理端 `listOrders` / `orderCount` 改为 `listActivityFeeSnapshots` / `feeSnapshotCount`，仪表盘显示“费用快照”。
+- 2026-05-14：验证通过：
+  - `cargo fmt --check`
+  - `cargo test --test activity_fee_snapshot_schema_test -- --nocapture`
+  - `cargo check --tests`
+  - `sqlx migrate run`
+  - `cargo clippy --all-targets -- -D warnings`
+  - `cargo test`
+  - 管理端 `bun run type-check`

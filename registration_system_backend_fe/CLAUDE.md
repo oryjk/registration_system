@@ -11,6 +11,7 @@
 1. 先确认改动位于 `views`、`services`、`stores`、`router` 还是 `utils/request.ts`
 2. 若涉及接口变化，先核对后端，再更新 `services`
 3. 最后回到具体页面或状态管理层收口
+4. 复杂任务默认走 `planning-with-files`，并同步更新根目录和管理后台目录下的 `task_plan.md`、`findings.md`、`progress.md`
 
 ## 特别注意
 

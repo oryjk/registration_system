@@ -6,8 +6,7 @@ use async_trait::async_trait;
 use chrono::NaiveDateTime;
 
 #[async_trait]
-pub trait ActivityRepository: Send + Sync {
-    async fn create(&self, activity: &Activity) -> Result<(), DomainError>;
+pub trait ActivityQueryRepository: Send + Sync {
     async fn list_page(
         &self,
         status_filter: Option<i8>,
@@ -18,32 +17,9 @@ pub trait ActivityRepository: Send + Sync {
     async fn find_derived_by_source_and_team(
         &self,
         source_activity_id: &str,
-        team_id: &str,
+        team_id: i64,
     ) -> Result<Option<Activity>, DomainError>;
-    async fn delete_many(&self, ids: &[String]) -> Result<(), DomainError>;
-    async fn update_status(&self, activity_id: &str, status: i8) -> Result<(), DomainError>;
-    async fn update_activity(
-        &self,
-        activity_id: &str,
-        fields: UpdateActivityFields<'_>,
-    ) -> Result<(), DomainError>;
     async fn find_ongoing_activity(&self) -> Result<Option<Activity>, DomainError>;
-    async fn upsert_registration(
-        &self,
-        activity_id: &str,
-        user_id: i64,
-        stand: i8,
-        registration_count: i32,
-    ) -> Result<(), DomainError>;
-    async fn delete_registration(
-        &self,
-        activity_id: &str,
-        user_id: i64,
-    ) -> Result<u64, DomainError>;
-    async fn backfill_team_member_registrations(
-        &self,
-        activity_id: &str,
-    ) -> Result<u64, DomainError>;
     async fn list_registrations(
         &self,
         activity_id: &str,
@@ -62,23 +38,51 @@ pub trait ActivityRepository: Send + Sync {
         &self,
         activity_id: &str,
     ) -> Result<Vec<ActivityTeamCheckInConfig>, DomainError>;
+    async fn find_team_checkin_config(
+        &self,
+        activity_id: &str,
+        team_id: i64,
+    ) -> Result<Option<ActivityTeamCheckInConfig>, DomainError>;
+    async fn find_checkin_record(
+        &self,
+        activity_id: &str,
+        team_id: i64,
+        user_id: i64,
+    ) -> Result<Option<ActivityCheckInRecord>, DomainError>;
+}
+
+#[async_trait]
+pub trait ActivityCommandRepository: Send + Sync {
+    async fn create(&self, activity: &Activity) -> Result<(), DomainError>;
+    async fn delete_many(&self, ids: &[String]) -> Result<(), DomainError>;
+    async fn update_status(&self, activity_id: &str, status: i8) -> Result<(), DomainError>;
+    async fn update_activity(
+        &self,
+        activity_id: &str,
+        fields: UpdateActivityFields<'_>,
+    ) -> Result<(), DomainError>;
+    async fn upsert_registration(
+        &self,
+        activity_id: &str,
+        user_id: i64,
+        stand: i8,
+        registration_count: i32,
+    ) -> Result<(), DomainError>;
+    async fn delete_registration(
+        &self,
+        activity_id: &str,
+        user_id: i64,
+    ) -> Result<u64, DomainError>;
+    async fn backfill_team_member_registrations(
+        &self,
+        activity_id: &str,
+    ) -> Result<u64, DomainError>;
     async fn upsert_team_checkin_config(
         &self,
         config: &ActivityTeamCheckInConfig,
     ) -> Result<(), DomainError>;
-    async fn find_team_checkin_config(
-        &self,
-        activity_id: &str,
-        team_id: &str,
-    ) -> Result<Option<ActivityTeamCheckInConfig>, DomainError>;
     async fn record_checkin(
         &self,
         record: &ActivityCheckInRecord,
     ) -> Result<ActivityCheckInRecord, DomainError>;
-    async fn find_checkin_record(
-        &self,
-        activity_id: &str,
-        team_id: &str,
-        user_id: i64,
-    ) -> Result<Option<ActivityCheckInRecord>, DomainError>;
 }

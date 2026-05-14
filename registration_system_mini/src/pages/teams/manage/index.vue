@@ -2,29 +2,46 @@
 import { computed, reactive, ref, watch } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
+import MemberAttendancePopup from "./components/MemberAttendancePopup.vue";
+import MemberEditPopup from "./components/MemberEditPopup.vue";
+import TeamCreatePanel from "./components/TeamCreatePanel.vue";
+import TeamJoinPanel from "./components/TeamJoinPanel.vue";
+import TeamMemberManager from "./components/TeamMemberManager.vue";
+import TeamProfilePanel from "./components/TeamProfilePanel.vue";
 import {
-  addTeamMember,
-  batchUpdateTeamMemberStatus,
-  createTeam,
-  getTeamMemberAttendance,
-  getTeamPasswordInfo,
-  joinTeam,
-  removeTeamMember,
-  searchTeams,
-  updateTeam,
-  updateTeamMember,
-  uploadTeamLogo,
-} from "@/api/team";
+  addMemberToTeam,
+  checkTeamRequiresPassword,
+  createTeamFromForm,
+  joinTeamFromForm,
+  loadTeamMemberAttendance,
+  loadUsersById,
+  removeMemberFromTeam,
+  saveTeamProfile,
+  searchTeamCandidates,
+  searchTeamsByKeyword,
+  setTeamMemberStatus,
+  updateTeamMemberFromForm,
+  uploadCurrentTeamLogo,
+} from "./teamManageActions";
 import { useTeamContext } from "@/stores/teamContext";
-import { listUsers, searchUsers } from "@/api/user";
 import type { BackendTeamMember, BackendTeamMemberAttendanceRecord, BackendTeamSummary, BackendUser } from "@/types/backend";
 import { getCustomNavMetrics } from "@/utils/customNav";
 import { resolveUserDisplayName, toStandLabel } from "@/utils/viewModels";
+import {
+  attendanceStatusClass,
+  attendanceStatusLabel as resolveAttendanceStatusLabel,
+  buildAttendanceGroups,
+  buildAttendanceSummary,
+  formatAttendanceDate,
+  resolveVisibleMode,
+  splitTeamMembers,
+  type TeamManageMode,
+} from "./teamManageState";
 
 const { currentTeam, currentUser, teamDetailsById, ensureSessionReady, refreshSessionContext } = useTeamContext();
 const navMetrics = getCustomNavMetrics();
 
-const activeMode = ref<"profile" | "create" | "join" | "members">("profile");
+const activeMode = ref<TeamManageMode>("profile");
 const submitting = ref(false);
 const searching = ref(false);
 const userSearching = ref(false);
@@ -43,6 +60,7 @@ const attendancePopupVisible = ref(false);
 const attendanceLoading = ref(false);
 const attendanceMemberId = ref<number | null>(null);
 const attendanceRecords = ref<BackendTeamMemberAttendanceRecord[]>([]);
+const collapsedAttendanceYears = ref<string[]>([]);
 const logoUploading = ref(false);
 const maxLogoSizeBytes = 1024 * 1024;
 
@@ -67,13 +85,6 @@ const editMemberForm = reactive({
   role: "member",
   jerseyNumber: "",
 });
-const memberRoleOptions = [
-  { value: "member", label: "队员" },
-  { value: "vice_captain", label: "队务" },
-  { value: "leader", label: "领队" },
-  { value: "captain", label: "队长" },
-];
-
 const canCreate = computed(() => !!createForm.name.trim() && !submitting.value);
 const canJoin = computed(() => !!selectedTeam.value && !submitting.value);
 const canManageMembers = computed(() => !!currentTeam.value?.canManageTeam);
@@ -87,41 +98,22 @@ const currentMembers = computed<BackendTeamMember[]>(() => {
   const teamId = currentTeam.value?.id;
   return teamId ? teamDetailsById.value[teamId]?.members ?? [] : [];
 });
-const leadershipRoleOrder: Record<string, number> = {
-  captain: 0,
-  leader: 1,
-  vice_captain: 2,
-};
-const leadershipMembers = computed(() =>
-  currentMembers.value
-    .filter((member) => member.status === 1 && member.role in leadershipRoleOrder)
-    .slice()
-    .sort((left, right) => leadershipRoleOrder[left.role] - leadershipRoleOrder[right.role] || left.user_id - right.user_id),
-);
-const regularMembers = computed(() => currentMembers.value.filter((member) => member.status === 1 && !(member.role in leadershipRoleOrder)));
-const frozenMembers = computed(() => currentMembers.value.filter((member) => member.status !== 1));
+const groupedMembers = computed(() => splitTeamMembers(currentMembers.value));
+const leadershipMembers = computed(() => groupedMembers.value.leadershipMembers);
+const regularMembers = computed(() => groupedMembers.value.regularMembers);
+const frozenMembers = computed(() => groupedMembers.value.frozenMembers);
 
 const memberIds = computed(() => new Set(currentMembers.value.map((member) => member.user_id)));
 const editingMember = computed(() => (editingMemberId.value ? currentMemberByUserId(editingMemberId.value) : null));
 const attendanceMember = computed(() => (attendanceMemberId.value ? currentMemberByUserId(attendanceMemberId.value) : null));
-const attendanceSummary = computed(() => ({
-  attended: attendanceRecords.value.filter((record) => record.registered && record.stand === 1).length,
-  leave: attendanceRecords.value.filter((record) => record.registered && record.stand === 2).length,
-  unregistered: attendanceRecords.value.filter((record) => !record.registered).length,
-}));
+const attendanceSummary = computed(() => buildAttendanceSummary(attendanceRecords.value));
+const attendanceGroups = computed(() => buildAttendanceGroups(attendanceRecords.value, collapsedAttendanceYears.value));
 const pageStyle = computed(() => ({
   paddingTop: `${navMetrics.pageTopPadding + 8}px`,
 }));
 
 function syncVisibleMode() {
-  if (hasCurrentTeam.value && (activeMode.value === "create" || activeMode.value === "join")) {
-    activeMode.value = "profile";
-    return;
-  }
-
-  if (!hasCurrentTeam.value && (activeMode.value === "profile" || activeMode.value === "members")) {
-    activeMode.value = "create";
-  }
+  activeMode.value = resolveVisibleMode(hasCurrentTeam.value, activeMode.value);
 }
 
 watch(hasCurrentTeam, () => {
@@ -134,34 +126,16 @@ function resetJoinSelection() {
   joinPassword.value = "";
 }
 
-function roleLabel(role: string) {
-  return memberRoleOptions.find((item) => item.value === role)?.label ?? "队员";
-}
-
-function memberStatusLabel(status: number) {
-  return status === 1 ? "正常" : "已冻结";
-}
-
 function attendanceStatusLabel(record: BackendTeamMemberAttendanceRecord) {
-  if (!record.registered) return "未报名";
-  return toStandLabel(record.stand);
+  return resolveAttendanceStatusLabel(record, toStandLabel);
 }
 
-function attendanceStatusClass(record: BackendTeamMemberAttendanceRecord) {
-  if (!record.registered) return "attendance-status attendance-status-unregistered";
-  if (record.stand === 1) return "attendance-status attendance-status-joined";
-  if (record.stand === 2) return "attendance-status attendance-status-leave";
-  if (record.stand === 3) return "attendance-status attendance-status-late";
-  return "attendance-status attendance-status-pending";
-}
-
-function formatAttendanceDate(isoText: string) {
-  const date = new Date(isoText.replace(" ", "T"));
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  const hours = String(date.getHours()).padStart(2, "0");
-  const minutes = String(date.getMinutes()).padStart(2, "0");
-  return `${month}/${day} ${hours}:${minutes}`;
+function toggleAttendanceYear(year: string) {
+  if (collapsedAttendanceYears.value.includes(year)) {
+    collapsedAttendanceYears.value = collapsedAttendanceYears.value.filter((item) => item !== year);
+  } else {
+    collapsedAttendanceYears.value = [...collapsedAttendanceYears.value, year];
+  }
 }
 
 function memberName(userId: number) {
@@ -214,6 +188,7 @@ function closeAttendancePopup() {
   attendancePopupVisible.value = false;
   attendanceMemberId.value = null;
   attendanceRecords.value = [];
+  collapsedAttendanceYears.value = [];
 }
 
 function syncTeamProfileForm() {
@@ -261,7 +236,7 @@ async function handleChooseTeamLogo() {
     logoUploading.value = true;
     uni.showLoading({ title: "上传 Logo 中...", mask: true });
     const uploadPath = await resolveUploadableLogoPath(filePath);
-    const uploaded = await uploadTeamLogo(currentTeam.value.id, uploadPath);
+    const uploaded = await uploadCurrentTeamLogo(currentTeam.value.id, uploadPath);
     teamProfileForm.logoUrl = uploaded.logo_url;
     await refreshSessionContext();
     syncTeamProfileForm();
@@ -288,8 +263,9 @@ async function handleOpenMemberAttendance(member: BackendTeamMember) {
   attendancePopupVisible.value = true;
   attendanceLoading.value = true;
   attendanceRecords.value = [];
+  collapsedAttendanceYears.value = [];
   try {
-    const result = await getTeamMemberAttendance(currentTeam.value.id, member.user_id);
+    const result = await loadTeamMemberAttendance(currentTeam.value.id, member.user_id);
     attendanceRecords.value = result.records;
   } catch (error) {
     uni.showToast({ title: error instanceof Error ? error.message : "出场记录加载失败", icon: "none" });
@@ -306,10 +282,10 @@ async function handleUpdateTeamProfile() {
 
   submitting.value = true;
   try {
-    await updateTeam(currentTeam.value.id, {
+    await saveTeamProfile(currentTeam.value.id, {
       name: teamProfileForm.name.trim(),
       description: teamProfileForm.description.trim() || null,
-      logo_url: teamProfileForm.logoUrl.trim() || null,
+      logoUrl: teamProfileForm.logoUrl.trim() || null,
     });
     await refreshSessionContext();
     syncTeamProfileForm();
@@ -332,7 +308,7 @@ async function handleSearchUsers() {
   selectedCandidate.value = null;
   memberForm.userId = "";
   try {
-    const users = await searchUsers(keyword, 8);
+    const users = await searchTeamCandidates(keyword, 8);
     userSearchResults.value = users;
     usersById.value = {
       ...usersById.value,
@@ -372,10 +348,10 @@ async function handleCreateTeam() {
 
   submitting.value = true;
   try {
-    await createTeam({
+    await createTeamFromForm({
       name: createForm.name.trim(),
       description: createForm.description.trim() || undefined,
-      join_password: createForm.joinPassword.trim() || undefined,
+      joinPassword: createForm.joinPassword.trim() || undefined,
     });
     await refreshSessionContext();
     uni.showToast({ title: "球队已创建", icon: "none" });
@@ -397,7 +373,7 @@ async function handleSearchTeams() {
   searching.value = true;
   resetJoinSelection();
   try {
-    searchResults.value = await searchTeams(keyword);
+    searchResults.value = await searchTeamsByKeyword(keyword);
   } catch (error) {
     uni.showToast({ title: error instanceof Error ? error.message : "搜索球队失败", icon: "none" });
   } finally {
@@ -409,8 +385,7 @@ async function handleSelectTeam(team: BackendTeamSummary) {
   selectedTeam.value = team;
   joinPassword.value = "";
   try {
-    const info = await getTeamPasswordInfo(team.id);
-    selectedTeamRequiresPassword.value = info.requires_password;
+    selectedTeamRequiresPassword.value = await checkTeamRequiresPassword(team.id);
   } catch (error) {
     selectedTeamRequiresPassword.value = false;
     uni.showToast({ title: error instanceof Error ? error.message : "密码信息加载失败", icon: "none" });
@@ -430,8 +405,8 @@ async function handleJoinTeam() {
 
   submitting.value = true;
   try {
-    await joinTeam({
-      team_id: selectedTeam.value.id,
+    await joinTeamFromForm({
+      teamId: selectedTeam.value.id,
       password: joinPassword.value.trim() || undefined,
     });
     await refreshSessionContext();
@@ -454,10 +429,10 @@ async function handleAddMember() {
 
   submitting.value = true;
   try {
-    await addTeamMember(currentTeam.value.id, {
-      user_id: userId,
+    await addMemberToTeam(currentTeam.value.id, {
+      userId,
       role: memberForm.role,
-      jersey_number: memberForm.jerseyNumber.trim() || undefined,
+      jerseyNumber: memberForm.jerseyNumber.trim() || undefined,
     });
     await refreshSessionContext();
     resetMemberForm();
@@ -474,9 +449,9 @@ async function handleUpdateMember() {
 
   submitting.value = true;
   try {
-    await updateTeamMember(currentTeam.value.id, editingMemberId.value, {
+    await updateTeamMemberFromForm(currentTeam.value.id, editingMemberId.value, {
       role: editMemberForm.role,
-      jersey_number: editMemberForm.jerseyNumber.trim() || null,
+      jerseyNumber: editMemberForm.jerseyNumber.trim() || null,
     });
     await refreshSessionContext();
     closeEditMemberPopup();
@@ -497,7 +472,7 @@ async function handleRemoveMember(member: BackendTeamMember) {
 
   submitting.value = true;
   try {
-    await removeTeamMember(currentTeam.value.id, member.user_id);
+    await removeMemberFromTeam(currentTeam.value.id, member.user_id);
     await refreshSessionContext();
     if (editingMemberId.value === member.user_id) {
       closeEditMemberPopup();
@@ -516,10 +491,7 @@ async function handleToggleMemberStatus(member: BackendTeamMember) {
 
   submitting.value = true;
   try {
-    await batchUpdateTeamMemberStatus(currentTeam.value.id, {
-      user_ids: [member.user_id],
-      status: nextStatus,
-    });
+    await setTeamMemberStatus(currentTeam.value.id, member.user_id, nextStatus);
     await refreshSessionContext();
     uni.showToast({ title: nextStatus === 1 ? "队员已恢复" : "队员已冻结", icon: "none" });
   } catch (error) {
@@ -534,8 +506,7 @@ onShow(async () => {
   syncVisibleMode();
   syncTeamProfileForm();
   try {
-    const users = await listUsers();
-    usersById.value = Object.fromEntries(users.map((user) => [user.id, user]));
+    usersById.value = await loadUsersById();
   } catch (_error) {
     usersById.value = {};
   }
@@ -543,6 +514,7 @@ onShow(async () => {
 </script>
 
 <template>
+  <page-meta :page-style="attendancePopupVisible ? 'overflow: hidden;' : ''" />
   <view class="team-manage-page" :style="pageStyle">
     <AppTabHeader title="球队管理" showBack />
 
@@ -563,337 +535,95 @@ onShow(async () => {
       </template>
     </view>
 
-    <view v-if="activeMode === 'profile'" class="form-card">
-      <text class="form-title">当前球队资料</text>
-      <view v-if="!currentTeam" class="empty-box">请先创建或加入球队。</view>
-      <view v-else-if="!canManageMembers" class="empty-box">只有队长或领队可以修改球队资料。</view>
-      <view v-else>
-        <view class="form-field">
-          <text class="form-label">球队名称</text>
-          <input v-model="teamProfileForm.name" class="form-input" placeholder="输入球队名称" />
-        </view>
-        <view class="form-field">
-          <text class="form-label">球队 Logo</text>
-          <view class="team-logo-field">
-            <view class="team-logo-preview">
-              <image v-if="teamProfileForm.logoUrl" class="team-logo-image" :src="teamProfileForm.logoUrl" mode="aspectFill" />
-              <text v-else class="team-logo-fallback">{{ currentTeam?.name?.slice(0, 1) || "队" }}</text>
-            </view>
-            <view class="team-logo-main">
-              <view class="team-logo-button" @tap="handleChooseTeamLogo">
-                {{ logoUploading ? "上传中..." : "选择图片上传" }}
-              </view>
-              <text class="team-logo-note">支持 jpg/png/webp，超过 1MB 会先尝试压缩。</text>
-            </view>
-          </view>
-        </view>
-        <view class="form-field">
-          <text class="form-label">球队介绍</text>
-          <textarea v-model="teamProfileForm.description" class="form-textarea" placeholder="球队风格、城市或活动时间" />
-        </view>
-        <view :class="['primary-button', canUpdateTeamProfile ? '' : 'primary-button-disabled']" @tap="handleUpdateTeamProfile">
-          {{ submitting ? "保存中..." : "保存球队资料" }}
-        </view>
-      </view>
-    </view>
+    <TeamProfilePanel
+      v-if="activeMode === 'profile'"
+      :current-team="currentTeam"
+      :can-manage-members="canManageMembers"
+      :form="teamProfileForm"
+      :logo-uploading="logoUploading"
+      :can-update="canUpdateTeamProfile"
+      :submitting="submitting"
+      @choose-logo="handleChooseTeamLogo"
+      @submit="handleUpdateTeamProfile"
+    />
 
-    <view v-else-if="activeMode === 'create'" class="form-card">
-      <text class="form-title">新球队资料</text>
-      <view class="form-field">
-        <text class="form-label">球队名称</text>
-        <input v-model="createForm.name" class="form-input" placeholder="例如：周末野球 FC" />
-      </view>
-      <view class="form-field">
-        <text class="form-label">球队介绍</text>
-        <textarea v-model="createForm.description" class="form-textarea" placeholder="一句话说明球队风格、城市或活动时间" />
-      </view>
-      <view class="form-field">
-        <text class="form-label">入队密码</text>
-        <input v-model="createForm.joinPassword" class="form-input" placeholder="可选，留空则无需密码" password />
-      </view>
-      <view :class="['primary-button', canCreate ? '' : 'primary-button-disabled']" @tap="handleCreateTeam">
-        {{ submitting ? "创建中..." : "创建球队" }}
-      </view>
-    </view>
+    <TeamCreatePanel
+      v-else-if="activeMode === 'create'"
+      :form="createForm"
+      :can-create="canCreate"
+      :submitting="submitting"
+      @submit="handleCreateTeam"
+    />
 
-    <view v-else-if="activeMode === 'join'" class="form-card">
-      <text class="form-title">查找已有球队</text>
-      <view class="search-row">
-        <input v-model="searchKeyword" class="form-input search-input" placeholder="输入球队名称" confirm-type="search" @confirm="handleSearchTeams" />
-        <view class="search-button" @tap="handleSearchTeams">{{ searching ? "搜索中" : "搜索" }}</view>
-      </view>
+    <TeamJoinPanel
+      v-else-if="activeMode === 'join'"
+      v-model:search-keyword="searchKeyword"
+      v-model:join-password="joinPassword"
+      :searching="searching"
+      :search-results="searchResults"
+      :selected-team="selectedTeam"
+      :selected-team-requires-password="selectedTeamRequiresPassword"
+      :can-join="canJoin"
+      :submitting="submitting"
+      @search="handleSearchTeams"
+      @select-team="handleSelectTeam"
+      @join="handleJoinTeam"
+    />
 
-      <view v-if="searchResults.length" class="team-result-list">
-        <view
-          v-for="team in searchResults"
-          :key="team.id"
-          :class="['team-result-card', selectedTeam?.id === team.id ? 'team-result-card-active' : '']"
-          @tap="handleSelectTeam(team)"
-        >
-          <view>
-            <text class="team-result-title">{{ team.name }}</text>
-            <text class="team-result-meta">{{ team.member_count }} 人 · 信用 {{ team.credit_score }} · {{ team.trust_label }}</text>
-          </view>
-          <text class="team-result-action">{{ selectedTeam?.id === team.id ? "已选择" : "选择" }}</text>
-        </view>
-      </view>
-      <view v-else class="empty-box">搜索后会展示可加入的球队。</view>
+    <TeamMemberManager
+      v-else
+      :current-team="currentTeam"
+      :can-manage-members="canManageMembers"
+      v-model:user-search-keyword="userSearchKeyword"
+      :user-searching="userSearching"
+      :user-search-results="userSearchResults"
+      :selected-candidate="selectedCandidate"
+      :member-form="memberForm"
+      :leadership-members="leadershipMembers"
+      :regular-members="regularMembers"
+      :frozen-members="frozenMembers"
+      :submitting="submitting"
+      :member-name="memberName"
+      :member-avatar-url="memberAvatarUrl"
+      :member-initial="memberInitial"
+      :is-current-member="isCurrentMember"
+      :is-captain-member="isCaptainMember"
+      :candidate-action-label="candidateActionLabel"
+      @search-users="handleSearchUsers"
+      @candidate-tap="handleCandidateTap"
+      @add-member="handleAddMember"
+      @open-member-attendance="handleOpenMemberAttendance"
+      @edit-member="handleEditMember"
+      @toggle-member-status="handleToggleMemberStatus"
+      @remove-member="handleRemoveMember"
+    />
 
-      <view v-if="selectedTeam" class="join-panel">
-        <text class="form-label">加入 {{ selectedTeam.name }}</text>
-        <input
-          v-if="selectedTeamRequiresPassword"
-          v-model="joinPassword"
-          class="form-input"
-          placeholder="请输入入队密码"
-          password
-        />
-        <view v-else class="open-team-note">该球队无需入队密码。</view>
-        <view :class="['primary-button', canJoin ? '' : 'primary-button-disabled']" @tap="handleJoinTeam">
-          {{ submitting ? "加入中..." : "确认加入" }}
-        </view>
-      </view>
-    </view>
-
-    <view v-else class="form-card">
-      <text class="form-title">队员管理</text>
-      <view v-if="!currentTeam" class="empty-box">请先创建或加入球队。</view>
-      <view v-else-if="!canManageMembers" class="empty-box">只有队长或领队可以管理队员。</view>
-      <view v-else>
-        <text class="form-label">添加队员</text>
-        <view>
-          <view class="search-row member-search-row">
-            <input
-              v-model="userSearchKeyword"
-              class="form-input search-input"
-              placeholder="输入昵称、姓名或用户名"
-              confirm-type="search"
-              @confirm="handleSearchUsers"
-            />
-            <view class="search-button" @tap="handleSearchUsers">{{ userSearching ? "搜索中" : "搜索" }}</view>
-          </view>
-          <view v-if="userSearchResults.length" class="candidate-list">
-            <view
-              v-for="candidate in userSearchResults"
-              :key="candidate.id"
-              :class="['candidate-card', selectedCandidate?.id === candidate.id ? 'candidate-card-active' : '']"
-              @tap="handleCandidateTap(candidate)"
-            >
-              <image v-if="candidate.avatar_url" class="candidate-avatar" :src="candidate.avatar_url" mode="aspectFill" />
-              <view v-else class="candidate-avatar candidate-avatar-fallback">{{ resolveUserDisplayName(candidate).slice(0, 1) }}</view>
-              <view class="candidate-main">
-                <text class="team-result-title">{{ resolveUserDisplayName(candidate) }}</text>
-                <text class="team-result-meta">{{ candidate.username || "微信用户" }}</text>
-              </view>
-              <text :class="['team-result-action', isCurrentMember(candidate.id) && !isCaptainMember(candidate.id) ? 'team-result-action-danger' : '']">
-                {{ candidateActionLabel(candidate) }}
-              </text>
-            </view>
-          </view>
-        </view>
-        <wd-picker
-          v-model="memberForm.role"
-          title="选择角色"
-          placeholder="请选择角色"
-          :columns="memberRoleOptions"
-          value-key="value"
-          label-key="label"
-          confirm-button-text="确定"
-          cancel-button-text="取消"
-          custom-class="member-role-picker"
-          custom-cell-class="member-role-picker-cell"
-          custom-value-class="member-role-picker-value"
-        />
-
-        <input v-model="memberForm.jerseyNumber" class="form-input" placeholder="球衣号，可选" />
-        <view class="member-action-row">
-          <view class="primary-button member-submit" @tap="handleAddMember">
-            {{ submitting ? "提交中..." : "添加队员" }}
-          </view>
-        </view>
-
-        <view class="member-section">
-          <view class="member-section-header">
-            <text class="member-section-title">管理角色</text>
-            <text class="member-section-count">{{ leadershipMembers.length }} 人</text>
-          </view>
-          <view v-if="leadershipMembers.length" class="team-result-list member-section-list">
-            <view v-for="member in leadershipMembers" :key="member.user_id" class="member-card member-card-leadership" @tap="handleOpenMemberAttendance(member)">
-              <image v-if="memberAvatarUrl(member.user_id)" class="member-avatar" :src="memberAvatarUrl(member.user_id)" mode="aspectFill" />
-              <view v-else class="member-avatar member-avatar-fallback">{{ memberInitial(member.user_id) }}</view>
-              <view class="member-main">
-                <view class="member-title-row">
-                  <text class="team-result-title member-name">{{ memberName(member.user_id) }}</text>
-                  <text class="member-role-badge">{{ roleLabel(member.role) }}</text>
-                </view>
-                <text class="team-result-meta">
-                  {{ member.jersey_number || "无号码" }} · {{ memberStatusLabel(member.status) }}
-                </text>
-              </view>
-              <view class="member-actions">
-                <view class="member-link" @tap.stop="handleEditMember(member)">编辑</view>
-                <view class="member-link" @tap.stop="handleToggleMemberStatus(member)">{{ member.status === 1 ? "冻结" : "恢复" }}</view>
-                <view v-if="member.role !== 'captain'" class="member-link member-link-danger" @tap.stop="handleRemoveMember(member)">移除</view>
-              </view>
-            </view>
-          </view>
-          <view v-else class="empty-box member-section-empty">暂未设置队长、领队或队务。</view>
-        </view>
-
-        <view class="member-section">
-          <view class="member-section-header">
-            <text class="member-section-title">普通队员</text>
-            <text class="member-section-count">{{ regularMembers.length }} 人</text>
-          </view>
-          <view v-if="regularMembers.length" class="team-result-list member-section-list">
-            <view v-for="member in regularMembers" :key="member.user_id" class="member-card" @tap="handleOpenMemberAttendance(member)">
-              <image v-if="memberAvatarUrl(member.user_id)" class="member-avatar" :src="memberAvatarUrl(member.user_id)" mode="aspectFill" />
-              <view v-else class="member-avatar member-avatar-fallback">{{ memberInitial(member.user_id) }}</view>
-              <view class="member-main">
-                <text class="team-result-title member-name">{{ memberName(member.user_id) }}</text>
-                <text class="team-result-meta">
-                  {{ roleLabel(member.role) }} · {{ member.jersey_number || "无号码" }} · {{ memberStatusLabel(member.status) }}
-                </text>
-              </view>
-              <view class="member-actions">
-                <view class="member-link" @tap.stop="handleEditMember(member)">编辑</view>
-                <view class="member-link" @tap.stop="handleToggleMemberStatus(member)">{{ member.status === 1 ? "冻结" : "恢复" }}</view>
-                <view class="member-link member-link-danger" @tap.stop="handleRemoveMember(member)">移除</view>
-              </view>
-            </view>
-          </view>
-          <view v-else class="empty-box member-section-empty">暂无普通队员。</view>
-        </view>
-
-        <view class="member-section">
-          <view class="member-section-header">
-            <text class="member-section-title">冻结队员</text>
-            <text class="member-section-count">{{ frozenMembers.length }} 人</text>
-          </view>
-          <view v-if="frozenMembers.length" class="team-result-list member-section-list">
-            <view v-for="member in frozenMembers" :key="member.user_id" class="member-card member-card-frozen" @tap="handleOpenMemberAttendance(member)">
-              <image v-if="memberAvatarUrl(member.user_id)" class="member-avatar member-avatar-muted" :src="memberAvatarUrl(member.user_id)" mode="aspectFill" />
-              <view v-else class="member-avatar member-avatar-fallback member-avatar-muted">{{ memberInitial(member.user_id) }}</view>
-              <view class="member-main">
-                <view class="member-title-row">
-                  <text class="team-result-title member-name">{{ memberName(member.user_id) }}</text>
-                  <text v-if="member.role in leadershipRoleOrder" class="member-role-badge member-role-badge-muted">{{ roleLabel(member.role) }}</text>
-                </view>
-                <text class="team-result-meta">
-                  {{ member.jersey_number || "无号码" }} · {{ memberStatusLabel(member.status) }}
-                </text>
-              </view>
-              <view class="member-actions">
-                <view class="member-link" @tap.stop="handleEditMember(member)">编辑</view>
-                <view class="member-link" @tap.stop="handleToggleMemberStatus(member)">恢复</view>
-                <view v-if="member.role !== 'captain'" class="member-link member-link-danger" @tap.stop="handleRemoveMember(member)">移除</view>
-              </view>
-            </view>
-          </view>
-          <view v-else class="empty-box member-section-empty">暂无冻结队员。</view>
-        </view>
-      </view>
-    </view>
-
-    <wd-popup
+    <MemberEditPopup
       v-model="editMemberPopupVisible"
-      position="bottom"
-      custom-class="member-edit-popup"
-      :close-on-click-modal="!submitting"
-      safe-area-inset-bottom
-      root-portal
+      :member="editingMember"
+      :member-name="editingMember ? memberName(editingMember.user_id) : '队员'"
+      :form="editMemberForm"
+      :submitting="submitting"
       @close="closeEditMemberPopup"
-    >
-      <view class="member-edit-sheet">
-        <view class="member-edit-header">
-          <view>
-            <text class="member-edit-kicker">编辑队员</text>
-            <text class="member-edit-title">{{ editingMember ? memberName(editingMember.user_id) : "队员" }}</text>
-          </view>
-          <view class="member-edit-close" @tap="closeEditMemberPopup">取消</view>
-        </view>
+      @submit="handleUpdateMember"
+    />
 
-        <wd-picker
-          v-model="editMemberForm.role"
-          title="选择角色"
-          placeholder="请选择角色"
-          :columns="memberRoleOptions"
-          value-key="value"
-          label-key="label"
-          confirm-button-text="确定"
-          cancel-button-text="取消"
-          custom-class="member-role-picker"
-          custom-cell-class="member-role-picker-cell"
-          custom-value-class="member-role-picker-value"
-        />
-
-        <input v-model="editMemberForm.jerseyNumber" class="form-input member-edit-input" placeholder="球衣号，可选" />
-        <view class="primary-button" @tap="handleUpdateMember">
-          {{ submitting ? "保存中..." : "保存队员" }}
-        </view>
-      </view>
-    </wd-popup>
-
-    <wd-popup
+    <MemberAttendancePopup
       v-model="attendancePopupVisible"
-      position="bottom"
-      custom-class="member-attendance-popup"
-      :close-on-click-modal="!attendanceLoading"
-      safe-area-inset-bottom
-      root-portal
+      :member="attendanceMember"
+      :member-name="attendanceMember ? memberName(attendanceMember.user_id) : '队员'"
+      :member-avatar-url="attendanceMember ? memberAvatarUrl(attendanceMember.user_id) : ''"
+      :member-initial="attendanceMember ? memberInitial(attendanceMember.user_id) : '队'"
+      :loading="attendanceLoading"
+      :records="attendanceRecords"
+      :summary="attendanceSummary"
+      :groups="attendanceGroups"
+      :format-attendance-date="formatAttendanceDate"
+      :attendance-status-class="attendanceStatusClass"
+      :attendance-status-label="attendanceStatusLabel"
       @close="closeAttendancePopup"
-    >
-      <view class="member-attendance-sheet">
-        <view class="member-edit-header">
-          <view class="attendance-profile">
-            <image
-              v-if="attendanceMember && memberAvatarUrl(attendanceMember.user_id)"
-              class="member-avatar"
-              :src="memberAvatarUrl(attendanceMember.user_id)"
-              mode="aspectFill"
-            />
-            <view v-else class="member-avatar member-avatar-fallback">
-              {{ attendanceMember ? memberInitial(attendanceMember.user_id) : "队" }}
-            </view>
-            <view>
-              <text class="member-edit-kicker">队员出场记录</text>
-              <text class="member-edit-title">{{ attendanceMember ? memberName(attendanceMember.user_id) : "队员" }}</text>
-            </view>
-          </view>
-          <view class="member-edit-close" @tap="closeAttendancePopup">关闭</view>
-        </view>
-
-        <view class="attendance-summary-grid">
-          <view class="attendance-summary-card">
-            <text class="attendance-summary-value">{{ attendanceSummary.attended }}</text>
-            <text class="attendance-summary-label">参加</text>
-          </view>
-          <view class="attendance-summary-card">
-            <text class="attendance-summary-value">{{ attendanceSummary.leave }}</text>
-            <text class="attendance-summary-label">请假</text>
-          </view>
-          <view class="attendance-summary-card">
-            <text class="attendance-summary-value">{{ attendanceSummary.unregistered }}</text>
-            <text class="attendance-summary-label">未报名</text>
-          </view>
-        </view>
-
-        <view v-if="attendanceLoading" class="empty-box attendance-empty">正在加载出场记录...</view>
-        <scroll-view v-else-if="attendanceRecords.length" class="attendance-list" scroll-y>
-          <view v-for="record in attendanceRecords" :key="record.activity_id" class="attendance-item">
-            <view class="attendance-item-main">
-              <text class="attendance-item-title">{{ record.activity_name }}</text>
-              <text class="attendance-item-meta">{{ formatAttendanceDate(record.holding_date) }} · {{ record.location }}</text>
-            </view>
-            <view class="attendance-item-side">
-              <text :class="attendanceStatusClass(record)">{{ attendanceStatusLabel(record) }}</text>
-              <text class="attendance-item-count">{{ record.registration_count }} 人</text>
-            </view>
-          </view>
-        </scroll-view>
-        <view v-else class="empty-box attendance-empty">暂无球队比赛记录。</view>
-      </view>
-    </wd-popup>
+      @toggle-year="toggleAttendanceYear"
+    />
   </view>
 </template>
 
@@ -905,8 +635,7 @@ onShow(async () => {
   box-sizing: border-box;
 }
 
-.team-manage-hero,
-.form-card {
+.team-manage-hero {
   border-radius: 32rpx;
   background: #ffffff;
   box-shadow: 0 18rpx 36rpx rgba(16, 17, 15, 0.06);
@@ -917,16 +646,13 @@ onShow(async () => {
 }
 
 .team-manage-kicker,
-.form-label,
-.team-result-meta,
 .team-manage-copy {
   color: #6a7165;
   font-size: 24rpx;
   font-weight: 700;
 }
 
-.team-manage-title,
-.form-title {
+.team-manage-title {
   display: block;
   color: #10110f;
   font-weight: 900;
@@ -971,636 +697,5 @@ onShow(async () => {
 .mode-chip-active {
   background: #10110f;
   color: #c8ff00;
-}
-
-.form-card {
-  padding: 30rpx;
-}
-
-.form-title {
-  margin-bottom: 24rpx;
-  font-size: 34rpx;
-}
-
-.form-field {
-  margin-top: 20rpx;
-}
-
-.form-label {
-  display: block;
-  margin-bottom: 10rpx;
-}
-
-.form-input,
-.form-textarea {
-  width: 100%;
-  border-radius: 22rpx;
-  background: #f3f5ef;
-  color: #111310;
-  font-size: 28rpx;
-  font-weight: 700;
-  box-sizing: border-box;
-}
-
-.form-input {
-  height: 86rpx;
-  padding: 0 22rpx;
-}
-
-.form-textarea {
-  min-height: 150rpx;
-  padding: 22rpx;
-}
-
-.primary-button,
-.search-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 24rpx;
-  background: #c8ff00;
-  color: #10110f;
-  font-size: 28rpx;
-  font-weight: 900;
-}
-
-.primary-button {
-  height: 88rpx;
-  margin-top: 28rpx;
-}
-
-.primary-button-disabled {
-  opacity: 0.45;
-}
-
-.search-row {
-  display: flex;
-  gap: 12rpx;
-}
-
-.search-input {
-  flex: 1;
-}
-
-.search-button {
-  width: 136rpx;
-  height: 86rpx;
-}
-
-.team-logo-field {
-  display: flex;
-  align-items: center;
-  gap: 20rpx;
-  padding: 20rpx;
-  border-radius: 24rpx;
-  background: #f3f5ef;
-}
-
-.team-logo-preview {
-  width: 104rpx;
-  height: 104rpx;
-  border-radius: 28rpx;
-  flex-shrink: 0;
-  overflow: hidden;
-  background: #10110f;
-}
-
-.team-logo-image,
-.team-logo-fallback {
-  width: 100%;
-  height: 100%;
-}
-
-.team-logo-fallback {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #c8ff00;
-  font-size: 38rpx;
-  font-weight: 900;
-}
-
-.team-logo-main {
-  flex: 1;
-  min-width: 0;
-}
-
-.team-logo-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 190rpx;
-  height: 66rpx;
-  padding: 0 22rpx;
-  border-radius: 999rpx;
-  background: #10110f;
-  color: #c8ff00;
-  font-size: 24rpx;
-  font-weight: 900;
-  box-sizing: border-box;
-}
-
-.team-logo-note {
-  display: block;
-  margin-top: 10rpx;
-  color: #6a7165;
-  font-size: 22rpx;
-  font-weight: 700;
-  line-height: 1.35;
-}
-
-.team-result-list {
-  display: flex;
-  flex-direction: column;
-  gap: 14rpx;
-  margin-top: 22rpx;
-}
-
-.team-result-card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 18rpx;
-  padding: 22rpx;
-  border-radius: 24rpx;
-  background: #f5f7f1;
-  border: 2rpx solid transparent;
-}
-
-.team-result-card-active {
-  border-color: #c8ff00;
-  background: #fbfff0;
-}
-
-.team-result-title {
-  display: block;
-  color: #111310;
-  font-size: 30rpx;
-  font-weight: 900;
-}
-
-.team-result-meta {
-  display: block;
-  margin-top: 6rpx;
-}
-
-.team-result-action {
-  color: #111310;
-  font-size: 24rpx;
-  font-weight: 900;
-}
-
-.team-result-action-danger {
-  color: #b42318;
-}
-
-.join-panel,
-.empty-box,
-.open-team-note {
-  margin-top: 22rpx;
-  padding: 22rpx;
-  border-radius: 24rpx;
-  background: #f3f5ef;
-}
-
-.empty-box,
-.open-team-note {
-  color: #6b7166;
-  font-size: 26rpx;
-  font-weight: 700;
-}
-
-.member-search-row {
-  margin-top: 14rpx;
-}
-
-.candidate-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12rpx;
-  margin-top: 14rpx;
-}
-
-.candidate-card {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-  padding: 16rpx;
-  border-radius: 22rpx;
-  background: #ffffff;
-  border: 2rpx solid transparent;
-}
-
-.candidate-card-active {
-  border-color: #c8ff00;
-  background: #fbfff0;
-}
-
-.candidate-avatar {
-  width: 68rpx;
-  height: 68rpx;
-  border-radius: 20rpx;
-  flex-shrink: 0;
-  overflow: hidden;
-}
-
-.candidate-avatar-fallback {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #111310;
-  color: #c8ff00;
-  font-size: 28rpx;
-  font-weight: 900;
-}
-
-.candidate-main {
-  flex: 1;
-  min-width: 0;
-}
-
-.member-search-empty {
-  margin-top: 14rpx;
-}
-
-.member-role-picker {
-  width: 100%;
-  display: block;
-  margin-top: 14rpx;
-}
-
-:deep(.member-role-picker-cell) {
-  width: 100%;
-  height: 86rpx;
-  padding: 0 22rpx;
-  border-radius: 22rpx;
-  background: #f3f5ef;
-  color: #111310;
-  box-sizing: border-box;
-}
-
-:deep(.member-role-picker-value) {
-  color: #111310;
-  font-size: 28rpx;
-  font-weight: 900;
-}
-
-.member-action-row {
-  display: flex;
-  align-items: center;
-  gap: 14rpx;
-}
-
-.secondary-button {
-  width: 150rpx;
-  height: 88rpx;
-  margin-top: 28rpx;
-  border-radius: 24rpx;
-  background: #e3e7dd;
-  color: #31352d;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 26rpx;
-  font-weight: 900;
-}
-
-.member-submit {
-  flex: 1;
-}
-
-.member-section {
-  margin-top: 30rpx;
-}
-
-.member-section-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 18rpx;
-}
-
-.member-section-title {
-  color: #10110f;
-  font-size: 30rpx;
-  font-weight: 900;
-}
-
-.member-section-count {
-  min-width: 88rpx;
-  height: 46rpx;
-  padding: 0 18rpx;
-  border-radius: 999rpx;
-  background: #edf0e7;
-  color: #5f665a;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 22rpx;
-  font-weight: 900;
-  box-sizing: border-box;
-}
-
-.member-section-list {
-  margin-top: 14rpx;
-}
-
-.member-section-empty {
-  margin-top: 14rpx;
-}
-
-:deep(.member-edit-popup) {
-  border-radius: 34rpx 34rpx 0 0;
-  background: #ffffff;
-}
-
-:deep(.member-attendance-popup) {
-  border-radius: 34rpx 34rpx 0 0;
-  background: #ffffff;
-}
-
-.member-edit-sheet,
-.member-attendance-sheet {
-  padding: 34rpx 30rpx 38rpx;
-  background: #ffffff;
-  border-radius: 34rpx 34rpx 0 0;
-}
-
-.member-edit-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 20rpx;
-  margin-bottom: 22rpx;
-}
-
-.member-edit-kicker {
-  display: block;
-  color: #6a7165;
-  font-size: 24rpx;
-  font-weight: 800;
-}
-
-.member-edit-title {
-  display: block;
-  margin-top: 8rpx;
-  color: #10110f;
-  font-size: 38rpx;
-  font-weight: 900;
-}
-
-.member-edit-close {
-  height: 58rpx;
-  padding: 0 22rpx;
-  border-radius: 999rpx;
-  background: #edf0e7;
-  color: #5d6458;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 24rpx;
-  font-weight: 900;
-}
-
-.member-edit-input {
-  margin-top: 14rpx;
-}
-
-.attendance-profile {
-  display: flex;
-  align-items: center;
-  gap: 18rpx;
-  min-width: 0;
-}
-
-.attendance-summary-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12rpx;
-  margin: 20rpx 0 18rpx;
-}
-
-.attendance-summary-card {
-  min-width: 0;
-  padding: 18rpx 10rpx;
-  border-radius: 22rpx;
-  background: #f3f5ef;
-  text-align: center;
-  box-sizing: border-box;
-}
-
-.attendance-summary-value {
-  display: block;
-  color: #10110f;
-  font-size: 34rpx;
-  font-weight: 900;
-  line-height: 1.1;
-}
-
-.attendance-summary-label {
-  display: block;
-  margin-top: 6rpx;
-  color: #6a7165;
-  font-size: 22rpx;
-  font-weight: 800;
-}
-
-.attendance-list {
-  max-height: 58vh;
-}
-
-.attendance-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 18rpx;
-  padding: 20rpx 0;
-  border-bottom: 1rpx solid #edf0e7;
-}
-
-.attendance-item:last-child {
-  border-bottom: 0;
-}
-
-.attendance-item-main {
-  flex: 1;
-  min-width: 0;
-}
-
-.attendance-item-title {
-  display: block;
-  color: #10110f;
-  font-size: 28rpx;
-  font-weight: 900;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.attendance-item-meta {
-  display: block;
-  margin-top: 8rpx;
-  color: #6a7165;
-  font-size: 22rpx;
-  font-weight: 700;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.attendance-item-side {
-  width: 124rpx;
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 8rpx;
-}
-
-.attendance-status {
-  height: 42rpx;
-  padding: 0 14rpx;
-  border-radius: 999rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 22rpx;
-  font-weight: 900;
-  box-sizing: border-box;
-}
-
-.attendance-status-joined {
-  background: #dff7e7;
-  color: #146c3e;
-}
-
-.attendance-status-leave {
-  background: #fff2d6;
-  color: #9a5a00;
-}
-
-.attendance-status-late {
-  background: #e2ecff;
-  color: #264d9b;
-}
-
-.attendance-status-pending,
-.attendance-status-unregistered {
-  background: #edf0e7;
-  color: #5f665a;
-}
-
-.attendance-item-count {
-  color: #8a9184;
-  font-size: 20rpx;
-  font-weight: 800;
-}
-
-.attendance-empty {
-  margin-top: 18rpx;
-}
-
-.member-card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16rpx;
-  padding: 22rpx;
-  border-radius: 24rpx;
-  background: #f5f7f1;
-}
-
-.member-card-leadership {
-  background: #fbfff0;
-  border: 2rpx solid rgba(200, 255, 0, 0.7);
-}
-
-.member-card-frozen {
-  background: #eef1ea;
-  opacity: 0.86;
-}
-
-.member-avatar {
-  width: 76rpx;
-  height: 76rpx;
-  border-radius: 22rpx;
-  flex-shrink: 0;
-  overflow: hidden;
-  background: #111310;
-}
-
-.member-avatar-fallback {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #c8ff00;
-  font-size: 30rpx;
-  font-weight: 900;
-}
-
-.member-avatar-muted {
-  filter: grayscale(1);
-  opacity: 0.68;
-}
-
-.member-main {
-  flex: 1;
-  min-width: 0;
-}
-
-.member-title-row {
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
-  min-width: 0;
-}
-
-.member-name {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.member-role-badge {
-  flex-shrink: 0;
-  height: 42rpx;
-  padding: 0 16rpx;
-  border-radius: 999rpx;
-  background: #10110f;
-  color: #c8ff00;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 22rpx;
-  font-weight: 900;
-  box-sizing: border-box;
-}
-
-.member-role-badge-muted {
-  background: #dfe4d9;
-  color: #5f665a;
-}
-
-.member-actions {
-  display: flex;
-  gap: 12rpx;
-  flex-shrink: 0;
-}
-
-.member-link {
-  min-width: 54rpx;
-  height: 52rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #111310;
-  font-size: 24rpx;
-  font-weight: 900;
-  line-height: 1;
-}
-
-.member-link-danger {
-  color: #b42318;
 }
 </style>

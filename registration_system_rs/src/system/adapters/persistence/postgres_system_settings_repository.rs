@@ -1,7 +1,7 @@
 use crate::system::domain::{
     MapProvider, MapProviderSettings, MapServiceSettings, MiniAppRuntimeConfig,
 };
-use crate::system::ports::SystemSettingsRepository;
+use crate::system::ports::{SystemSettingsCommandRepository, SystemSettingsQueryRepository};
 use async_trait::async_trait;
 use chrono::NaiveDateTime;
 use sqlx::{FromRow, PgPool};
@@ -54,7 +54,7 @@ impl PostgresSystemSettingsRepository {
 }
 
 #[async_trait]
-impl SystemSettingsRepository for PostgresSystemSettingsRepository {
+impl SystemSettingsQueryRepository for PostgresSystemSettingsRepository {
     async fn get_map_settings(&self) -> Result<Option<MapServiceSettings>, String> {
         let row = sqlx::query_as::<_, MapSettingsRow>(
             r#"
@@ -79,6 +79,28 @@ impl SystemSettingsRepository for PostgresSystemSettingsRepository {
         row.map(MapServiceSettings::try_from).transpose()
     }
 
+    async fn get_mini_app_runtime_config(&self) -> Result<Option<MiniAppRuntimeConfig>, String> {
+        let row = sqlx::query_scalar::<_, serde_json::Value>(
+            r#"
+            SELECT config_value
+            FROM rs_system_runtime_configs
+            WHERE config_key = $1
+            "#,
+        )
+        .bind(MiniAppRuntimeConfig::CONFIG_KEY)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|error| error.to_string())?;
+
+        row.map(serde_json::from_value::<MiniAppRuntimeConfig>)
+            .transpose()
+            .map(|config| config.map(MiniAppRuntimeConfig::sanitize))
+            .map_err(|error| error.to_string())
+    }
+}
+
+#[async_trait]
+impl SystemSettingsCommandRepository for PostgresSystemSettingsRepository {
     async fn upsert_map_settings(
         &self,
         settings: &MapServiceSettings,
@@ -132,25 +154,6 @@ impl SystemSettingsRepository for PostgresSystemSettingsRepository {
         .map_err(|error| error.to_string())?;
 
         MapServiceSettings::try_from(row)
-    }
-
-    async fn get_mini_app_runtime_config(&self) -> Result<Option<MiniAppRuntimeConfig>, String> {
-        let row = sqlx::query_scalar::<_, serde_json::Value>(
-            r#"
-            SELECT config_value
-            FROM rs_system_runtime_configs
-            WHERE config_key = $1
-            "#,
-        )
-        .bind(MiniAppRuntimeConfig::CONFIG_KEY)
-        .fetch_optional(&self.pool)
-        .await
-        .map_err(|error| error.to_string())?;
-
-        row.map(serde_json::from_value::<MiniAppRuntimeConfig>)
-            .transpose()
-            .map(|config| config.map(MiniAppRuntimeConfig::sanitize))
-            .map_err(|error| error.to_string())
     }
 
     async fn upsert_mini_app_runtime_config(

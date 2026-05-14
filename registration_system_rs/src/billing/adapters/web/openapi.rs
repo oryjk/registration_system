@@ -1,13 +1,13 @@
 #![allow(dead_code)]
 
 use super::dto::{
-    ActivityBillingSummaryDto, ActivityOrderDto, ActivitySettlementBatchDto,
-    ActivitySettlementSummaryDto, AutoCalculateFeeRequest, AutoCalculateFeeResultDto,
-    BalanceCalibrationRecordDto, BillingFlowRecordDto, BillingFlowResultDto,
-    CalculatePenaltiesRequest, CalculatePenaltiesResultDto, CalibrateBalanceRequest,
-    CalibrationResultDto, CreateActivityOrderRequest, GameExpenseRequest, GameExpenseResultDto,
-    PenaltyRequest, PenaltyResultDto, RechargeRequest, RechargeResultDto,
-    SettleActivityExpenseRequest, TransactionRecordDto, UserAccountDto,
+    ActivityBillingSummaryDto, ActivityExpenseRequest, ActivityExpenseResultDto,
+    ActivityFeeSnapshotDto, ActivitySettlementBatchDto, ActivitySettlementSummaryDto,
+    AutoCalculateFeeRequest, AutoCalculateFeeResultDto, BalanceCalibrationRecordDto,
+    BillingFlowRecordDto, BillingFlowResultDto, CalculatePenaltiesRequest,
+    CalculatePenaltiesResultDto, CalibrateBalanceRequest, CalibrationResultDto, PenaltyRequest,
+    PenaltyResultDto, RechargeRequest, RechargeResultDto, SettleActivityExpenseRequest,
+    TransactionRecordDto, UpsertActivityFeeSnapshotRequest, UserAccountDto,
 };
 use super::handlers::TransactionQuery;
 use crate::shared::api_response::{ApiResponse, EmptyData};
@@ -56,16 +56,16 @@ fn recharge_doc() {}
 
 #[utoipa::path(
     post,
-    path = "/game-expense",
+    path = "/activity-expense",
     tag = "Account",
     security(("bearer_auth" = [])),
-    request_body = GameExpenseRequest,
+    request_body = ActivityExpenseRequest,
     responses(
-        (status = 200, description = "添加比赛费用成功", body = ApiResponse<GameExpenseResultDto>),
+        (status = 200, description = "添加活动费用成功", body = ApiResponse<ActivityExpenseResultDto>),
         (status = 401, description = "未授权", body = ApiResponse<EmptyData>)
     )
 )]
-fn game_expense_doc() {}
+fn activity_expense_doc() {}
 
 #[utoipa::path(
     post,
@@ -136,44 +136,44 @@ fn user_transactions_doc() {}
 
 #[utoipa::path(
     post,
-    path = "/orders",
-    tag = "Order",
+    path = "/activity-fee-snapshots",
+    tag = "Billing",
     security(("bearer_auth" = [])),
-    request_body = CreateActivityOrderRequest,
+    request_body = UpsertActivityFeeSnapshotRequest,
     responses(
-        (status = 200, description = "创建活动订单成功", body = ApiResponse<ActivityOrderDto>),
+        (status = 200, description = "保存活动费用快照成功", body = ApiResponse<ActivityFeeSnapshotDto>),
         (status = 401, description = "未授权", body = ApiResponse<EmptyData>)
     )
 )]
-fn create_activity_order_doc() {}
+fn upsert_activity_fee_snapshot_doc() {}
 
 #[utoipa::path(
     get,
-    path = "/orders",
-    tag = "Order",
+    path = "/activity-fee-snapshots",
+    tag = "Billing",
     responses(
-        (status = 200, description = "查询活动订单列表成功", body = ApiResponse<Vec<ActivityOrderDto>>)
+        (status = 200, description = "查询活动费用快照列表成功", body = ApiResponse<Vec<ActivityFeeSnapshotDto>>)
     )
 )]
-fn list_orders_doc() {}
+fn list_activity_fee_snapshots_doc() {}
 
 #[utoipa::path(
     get,
-    path = "/orders/{id}",
-    tag = "Order",
+    path = "/activity-fee-snapshots/{id}",
+    tag = "Billing",
     params(
         ("id" = String, Path, description = "活动 ID")
     ),
     responses(
-        (status = 200, description = "查询活动订单成功", body = ApiResponse<Option<ActivityOrderDto>>)
+        (status = 200, description = "查询活动费用快照成功", body = ApiResponse<Option<ActivityFeeSnapshotDto>>)
     )
 )]
-fn get_order_doc() {}
+fn get_activity_fee_snapshot_doc() {}
 
 #[utoipa::path(
     get,
     path = "/activities/{id}/settlement",
-    tag = "Order",
+    tag = "Billing",
     security(("bearer_auth" = [])),
     params(
         ("id" = String, Path, description = "活动 ID")
@@ -188,7 +188,7 @@ fn get_activity_settlement_doc() {}
 #[utoipa::path(
     post,
     path = "/activities/{id}/settlement",
-    tag = "Order",
+    tag = "Billing",
     security(("bearer_auth" = [])),
     params(
         ("id" = String, Path, description = "活动 ID")
@@ -203,8 +203,8 @@ fn settle_activity_expense_doc() {}
 
 #[utoipa::path(
     post,
-    path = "/orders/auto-calculate",
-    tag = "Order",
+    path = "/fee/auto-calculate",
+    tag = "Billing",
     request_body = AutoCalculateFeeRequest,
     responses(
         (status = 200, description = "自动计算费用成功", body = ApiResponse<AutoCalculateFeeResultDto>)
@@ -215,7 +215,7 @@ fn auto_calculate_fee_doc() {}
 #[utoipa::path(
     post,
     path = "/billing/calculate-penalties",
-    tag = "Order",
+    tag = "Billing",
     security(("bearer_auth" = [])),
     request_body = CalculatePenaltiesRequest,
     responses(
@@ -228,7 +228,7 @@ fn calculate_penalties_doc() {}
 #[utoipa::path(
     get,
     path = "/activities/billing",
-    tag = "Order",
+    tag = "Billing",
     security(("bearer_auth" = [])),
     responses(
         (status = 200, description = "查询活动账单汇总成功", body = ApiResponse<Vec<ActivityBillingSummaryDto>>),
@@ -240,7 +240,7 @@ fn activities_billing_doc() {}
 #[utoipa::path(
     get,
     path = "/users/billing",
-    tag = "Order",
+    tag = "Billing",
     security(("bearer_auth" = [])),
     responses(
         (status = 200, description = "查询用户账单汇总成功", body = ApiResponse<Vec<UserAccountDto>>),
@@ -252,7 +252,7 @@ fn users_billing_doc() {}
 #[utoipa::path(
     get,
     path = "/my-billing-flow",
-    tag = "Order",
+    tag = "Billing",
     security(("bearer_auth" = [])),
     responses(
         (status = 200, description = "查询当前用户账单流水成功", body = ApiResponse<BillingFlowResultDto>),
@@ -264,7 +264,7 @@ fn list_my_billings_doc() {}
 #[utoipa::path(
     get,
     path = "/users/{user_id}/billing-flow",
-    tag = "Order",
+    tag = "Billing",
     security(("bearer_auth" = [])),
     params(
         ("user_id" = i64, Path, description = "用户 ID")
@@ -282,7 +282,7 @@ fn user_billing_flow_doc() {}
         get_my_balance_doc,
         get_user_balance_doc,
         recharge_doc,
-        game_expense_doc,
+        activity_expense_doc,
         penalty_doc,
         calibrate_balance_doc,
         balance_calibrations_doc,
@@ -293,7 +293,7 @@ fn user_billing_flow_doc() {}
         schemas(
             ApiResponse<Option<UserAccountDto>>,
             ApiResponse<RechargeResultDto>,
-            ApiResponse<GameExpenseResultDto>,
+            ApiResponse<ActivityExpenseResultDto>,
             ApiResponse<PenaltyResultDto>,
             ApiResponse<CalibrationResultDto>,
             ApiResponse<Vec<BalanceCalibrationRecordDto>>,
@@ -304,11 +304,11 @@ fn user_billing_flow_doc() {}
             TransactionRecordDto,
             BalanceCalibrationRecordDto,
             RechargeResultDto,
-            GameExpenseResultDto,
+            ActivityExpenseResultDto,
             PenaltyResultDto,
             CalibrationResultDto,
             RechargeRequest,
-            GameExpenseRequest,
+            ActivityExpenseRequest,
             PenaltyRequest,
             CalibrateBalanceRequest
         )
@@ -323,9 +323,9 @@ pub struct AccountApiDoc;
 #[derive(OpenApi)]
 #[openapi(
     paths(
-        create_activity_order_doc,
-        list_orders_doc,
-        get_order_doc,
+        upsert_activity_fee_snapshot_doc,
+        list_activity_fee_snapshots_doc,
+        get_activity_fee_snapshot_doc,
         get_activity_settlement_doc,
         settle_activity_expense_doc,
         auto_calculate_fee_doc,
@@ -337,9 +337,9 @@ pub struct AccountApiDoc;
     ),
     components(
         schemas(
-            ApiResponse<ActivityOrderDto>,
-            ApiResponse<Vec<ActivityOrderDto>>,
-            ApiResponse<Option<ActivityOrderDto>>,
+            ApiResponse<ActivityFeeSnapshotDto>,
+            ApiResponse<Vec<ActivityFeeSnapshotDto>>,
+            ApiResponse<Option<ActivityFeeSnapshotDto>>,
             ApiResponse<ActivitySettlementSummaryDto>,
             ApiResponse<AutoCalculateFeeResultDto>,
             ApiResponse<CalculatePenaltiesResultDto>,
@@ -349,7 +349,7 @@ pub struct AccountApiDoc;
             ApiResponse<EmptyData>,
             EmptyData,
             UserAccountDto,
-            ActivityOrderDto,
+            ActivityFeeSnapshotDto,
             BillingFlowRecordDto,
             BillingFlowResultDto,
             ActivityBillingSummaryDto,
@@ -358,15 +358,15 @@ pub struct AccountApiDoc;
             PenaltyResultDto,
             AutoCalculateFeeResultDto,
             CalculatePenaltiesResultDto,
-            CreateActivityOrderRequest,
+            UpsertActivityFeeSnapshotRequest,
             AutoCalculateFeeRequest,
             SettleActivityExpenseRequest,
             CalculatePenaltiesRequest
         )
     ),
     tags(
-        (name = "Order", description = "订单、账单汇总与费用计算")
+        (name = "Billing", description = "账单汇总、费用快照与费用计算")
     ),
     modifiers(&BearerSecurityAddon)
 )]
-pub struct OrderApiDoc;
+pub struct BillingApiDoc;

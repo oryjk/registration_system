@@ -1,7 +1,7 @@
 import { http } from '@/utils/request'
 
 export interface Team {
-  id: string
+  id: number
   name: string
   description: string | null
   logo_url: string | null
@@ -44,7 +44,7 @@ export interface TeamDetailForAdmin {
 
 export interface TeamCreditTransaction {
   id: number
-  team_id: string
+  team_id: number
   activity_id: string | null
   transaction_type: string
   delta: number
@@ -54,7 +54,7 @@ export interface TeamCreditTransaction {
   amount: string | null
   membership_months: number | null
   note: string | null
-  reviewer_team_id: string | null
+  reviewer_team_id: number | null
   created_by_user_id: number | null
   created_by_admin_id: number | null
   created_at: string
@@ -101,44 +101,44 @@ export const listTeams = (activeOnly = false) =>
 export const adminListTeams = (activeOnly = false) =>
   http.get<TeamSummary[]>('/teams/admin-list', { params: activeOnly ? { status: 'active' } : {} })
 
-export const assignAdmin = (teamId: string, adminId: number) =>
+export const assignAdmin = (teamId: number, adminId: number) =>
   http.post<void>(`/teams/${teamId}/admin-managers`, { admin_id: adminId })
 
-export const unassignAdmin = (teamId: string, adminId: number) =>
+export const unassignAdmin = (teamId: number, adminId: number) =>
   http.delete<void>(`/teams/${teamId}/admin-managers/${adminId}`)
 
-export const listTeamAdmins = (teamId: string) =>
+export const listTeamAdmins = (teamId: number) =>
   http.get<TeamAdminInfo[]>(`/teams/${teamId}/admin-managers`)
 
-export const getTeamAdminDetail = (teamId: string) =>
+export const getTeamAdminDetail = (teamId: number) =>
   http.get<TeamDetailForAdmin>(`/teams/${teamId}/admin-detail`)
 
-export const getTeamCreditTransactions = (teamId: string, limit = 20) =>
+export const getTeamCreditTransactions = (teamId: number, limit = 20) =>
   http.get<TeamCreditTransaction[]>(`/teams/${teamId}/credit/transactions`, {
     params: { limit },
   })
 
 export const createTeam = (data: CreateTeamPayload) => http.post<Team>('/teams/admin', data)
 
-export const updateTeam = (teamId: string, data: UpdateTeamPayload) =>
+export const updateTeam = (teamId: number, data: UpdateTeamPayload) =>
   http.patch<void>(`/teams/${teamId}`, data)
 
-export const deleteTeam = (teamId: string) => http.delete<void>(`/teams/${teamId}`)
+export const deleteTeam = (teamId: number) => http.delete<void>(`/teams/${teamId}`)
 
-export const addMember = (teamId: string, data: AddMemberPayload) =>
+export const addMember = (teamId: number, data: AddMemberPayload) =>
   http.post<void>(`/teams/${teamId}/members`, data)
 
-export const updateMember = (teamId: string, userId: number, data: UpdateMemberPayload) =>
+export const updateMember = (teamId: number, userId: number, data: UpdateMemberPayload) =>
   http.patch<void>(`/teams/${teamId}/members/${userId}`, data)
 
-export const removeMember = (teamId: string, userId: number) =>
+export const removeMember = (teamId: number, userId: number) =>
   http.delete<void>(`/teams/${teamId}/members/${userId}`)
 
-export const batchRemoveMembers = (teamId: string, userIds: number[]) =>
+export const batchRemoveMembers = (teamId: number, userIds: number[]) =>
   http.delete<number>(`/teams/${teamId}/members/batch`, { data: { user_ids: userIds } })
 
-export const batchUpdateMemberStatus = (teamId: string, userIds: number[], status: number) =>
+export const batchUpdateMemberStatus = (teamId: number, userIds: number[], status: number) =>
   http.patch<number>(`/teams/${teamId}/members/batch`, { user_ids: userIds, status })
 
-export const applyTeamCreditPenalty = (teamId: string, points: number, reason: string) =>
+export const applyTeamCreditPenalty = (teamId: number, points: number, reason: string) =>
   http.post<TeamCreditOverview>(`/teams/${teamId}/credit/penalties`, { points, reason })

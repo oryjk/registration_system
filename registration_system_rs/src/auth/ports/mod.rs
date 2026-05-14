@@ -1,3 +1,3 @@
 mod admin_user_repository;
 
-pub use admin_user_repository::AdminUserRepository;
+pub use admin_user_repository::{AdminUserCommandRepository, AdminUserQueryRepository};

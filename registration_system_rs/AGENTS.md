@@ -57,6 +57,10 @@ cargo run
 - 管理后台专用接口只挂载在 `/api/admin/*`，不要再复用到 `/api/*`。
 - 改动接口时，顺带检查管理端 `../registration_system_backend_fe/src/services/` 与小程序 `../registration_system_mini/src/api/` 是否需要同步。
 - 若现有持久化文件命名仍带旧痕迹，只在当前任务需要时局部修正，不做无关批量重命名。
+- 涉及后端代码、迁移、测试或后端文档的复杂任务，默认采用 `planning-with-files` 流程，并同步维护：
+  - `../task_plan.md`、`../findings.md`、`../progress.md`
+  - `task_plan.md`、`findings.md`、`progress.md`
+- 最终回复前，必须确认上述工作文档已经反映当前后端改动和验证结果。
 
 ## 环境与数据
 

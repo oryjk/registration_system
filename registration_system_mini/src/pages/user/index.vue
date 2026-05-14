@@ -3,6 +3,12 @@ import { computed, ref } from "vue";
 import { onLoad, onShow, onUnload } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
 import BottomTabBar from "@/components/BottomTabBar.vue";
+import MineHeroProfile from "./components/MineHeroProfile.vue";
+import MineMatchSection from "./components/MineMatchSection.vue";
+import type { MineMatchSummary } from "./components/MineMatchSection.vue";
+import MineMiniCards from "./components/MineMiniCards.vue";
+import MineSkeleton from "./components/MineSkeleton.vue";
+import MineWalletSection from "./components/MineWalletSection.vue";
 import minePageBackgroundUrl from "@/static/backgrounds/mine-page-bg.jpg";
 import { listActivities } from "@/api/activity";
 import { getMyBalance, getMyBillingFlow } from "@/api/billing";
@@ -40,15 +46,7 @@ const isSwitchingTeam = ref(false);
 const isPayingMembership = ref(false);
 const hasLoadedOnce = ref(false);
 const errorMessage = ref("");
-const myMatches = ref<
-  Array<{
-    id: string;
-    title: string;
-    dateLabel: string;
-    venue: string;
-    myStatus: string;
-  }>
->([]);
+const myMatches = ref<MineMatchSummary[]>([]);
 const billingRecords = ref<BackendBillingFlowRecord[]>([]);
 const creditTransactions = ref<BackendTeamCreditTransaction[]>([]);
 const overviewDigest = ref({
@@ -218,7 +216,7 @@ async function loadPageData(options?: { preserveContent?: boolean }) {
   }
 }
 
-function handleSwitchTeam(teamId: string) {
+function handleSwitchTeam(teamId: number) {
   if (!teamId || currentTeam.value?.id === teamId || isSwitchingTeam.value) {
     return;
   }
@@ -385,163 +383,49 @@ onUnload(() => {
     <view class="mine-page-content" :style="contentStyle">
       <view class="mine-hero">
 
-        <view v-if="showInitialLoadingState" class="mine-skeleton-stack">
-          <view class="mine-skeleton-profile">
-            <view class="mine-skeleton-avatar" />
-            <view class="mine-skeleton-copy">
-              <view class="mine-skeleton-line mine-skeleton-line-title" />
-              <view class="mine-skeleton-line mine-skeleton-line-body" />
-              <view class="mine-skeleton-line mine-skeleton-line-short" />
-            </view>
-          </view>
-          <view class="mine-skeleton-stats">
-            <view class="mine-skeleton-stat" />
-            <view class="mine-skeleton-stat" />
-            <view class="mine-skeleton-stat" />
-            <view class="mine-skeleton-stat" />
-          </view>
-        </view>
+        <MineSkeleton v-if="showInitialLoadingState" />
 
-        <view v-else class="profile-shell">
-          <view class="profile-main-row">
-            <view class="profile-avatar">
-              <image
-                v-if="currentUser?.avatar_url"
-                class="profile-avatar-image"
-                :src="currentUser.avatar_url"
-                mode="aspectFill"
-              />
-              <text v-else>{{ avatarToken }}</text>
-            </view>
-            <view class="profile-copy">
-              <view class="profile-name-row">
-                <text class="profile-name">{{ displayName }}</text>
-                <text class="profile-badge">{{ teamBadgeLabel }}</text>
-              </view>
-              <text class="profile-handle">{{ displayHandle }}</text>
-              <view class="profile-actions-row">
-                <text class="profile-edit-chip" @tap.stop="handleEditProfile">编辑资料</text>
-                <text class="profile-edit-chip profile-logout-chip" @tap.stop="handleLogout">退出登录</text>
-              </view>
-              <text class="profile-team-line">当前球队 · {{ currentTeam?.name || "未加入球队" }}</text>
-            </view>
-            <text class="profile-chevron">›</text>
-          </view>
-
-          <scroll-view class="team-switch-scroll" scroll-x>
-            <view class="team-switch-row">
-              <view
-                v-for="team in teamProfiles"
-                :key="team.id"
-                :class="['team-chip', currentTeam?.id === team.id ? 'team-chip-active' : '', isSwitchingTeam ? 'team-chip-pending' : '']"
-                @tap.stop="handleSwitchTeam(team.id)"
-              >
-                <text class="team-chip-name">{{ team.name }}</text>
-              </view>
-            </view>
-          </scroll-view>
-
-          <view class="profile-stats-row">
-            <view class="profile-stat-item">
-              <view class="profile-stat-icon">赛</view>
-              <view class="profile-stat-copy">
-                <text class="profile-stat-label">今年活动</text>
-                <text class="profile-stat-value">{{ overviewDigest.activityCount }}<text class="profile-stat-unit"> 次</text></text>
-              </view>
-            </view>
-            <view class="profile-stat-item">
-              <view class="profile-stat-icon profile-stat-icon-blue">队</view>
-              <view class="profile-stat-copy">
-                <text class="profile-stat-label">加入球队</text>
-                <text class="profile-stat-value">{{ overviewDigest.teamCount }}<text class="profile-stat-unit"> 支</text></text>
-              </view>
-            </view>
-            <view class="profile-stat-item">
-              <view class="profile-stat-icon profile-stat-icon-orange">时</view>
-              <view class="profile-stat-copy">
-                <text class="profile-stat-label">今年时长</text>
-                <text class="profile-stat-value">{{ overviewDigest.totalHoursLabel }}</text>
-              </view>
-            </view>
-            <view class="profile-stat-item">
-              <view class="profile-stat-icon profile-stat-icon-green">天</view>
-              <view class="profile-stat-copy">
-                <text class="profile-stat-label">加入当前球队</text>
-                <text class="profile-stat-value">{{ currentTeamJoinedDaysLabel }}</text>
-              </view>
-            </view>
-          </view>
-        </view>
+        <MineHeroProfile
+          v-else
+          :current-user="currentUser"
+          :current-team="currentTeam"
+          :team-profiles="teamProfiles"
+          :is-switching-team="isSwitchingTeam"
+          :display-name="displayName"
+          :display-handle="displayHandle"
+          :avatar-token="avatarToken"
+          :team-badge-label="teamBadgeLabel"
+          :overview-digest="overviewDigest"
+          :current-team-joined-days-label="currentTeamJoinedDaysLabel"
+          @edit-profile="handleEditProfile"
+          @logout="handleLogout"
+          @switch-team="handleSwitchTeam"
+        />
       </view>
 
       <view class="mine-sections">
-        <view class="section-card">
-          <view class="section-row">
-            <view class="section-row-title">我的比赛</view>
-            <view class="section-row-link" @tap="openUserMatches">全部比赛</view>
-          </view>
-          <view v-if="myMatches.length">
-            <view
-              v-for="match in myMatches"
-              :key="match.id"
-              class="compact-record-card"
-              @tap="openMatchDetail(match.id)"
-            >
-              <view class="compact-record-cover" />
-              <view class="compact-record-copy">
-                <text :class="statusClass(match.myStatus)">{{ match.myStatus }}</text>
-                <text class="compact-record-title">{{ match.title }}</text>
-                <text class="compact-record-meta">{{ match.dateLabel }} · {{ match.venue }}</text>
-              </view>
-              <view class="compact-record-action">去报名</view>
-            </view>
-          </view>
-          <view v-else class="compact-empty">当前球队下还没有可展示的比赛记录。</view>
-        </view>
+        <MineMatchSection
+          :matches="myMatches"
+          :status-class="statusClass"
+          @open-all="openUserMatches"
+          @open-match="openMatchDetail"
+        />
 
-        <view class="section-card">
-          <view class="section-row">
-            <view class="section-row-title">我的钱包</view>
-            <view class="section-row-link" @tap="openBilling">全部账单</view>
-          </view>
-          <view class="wallet-hero-row">
-            <view>
-              <text class="wallet-balance-label">当前余额</text>
-              <text class="wallet-balance-value">{{ walletSummary.balanceLabel }}</text>
-            </view>
-            <view class="wallet-action" @tap="openBilling">查看账单</view>
-          </view>
-          <view class="compact-record-card compact-record-card-light">
-            <view class="compact-record-cover compact-record-cover-wallet" />
-            <view class="compact-record-copy">
-              <text class="compact-record-title">{{ walletRecordTitle }}</text>
-              <text class="compact-record-meta">{{ walletRecordMeta }}</text>
-            </view>
-            <view class="wallet-chip">{{ walletSummary.totalExpenseLabel }}</view>
-          </view>
-        </view>
+        <MineWalletSection
+          :wallet-summary="walletSummary"
+          :wallet-record-title="walletRecordTitle"
+          :wallet-record-meta="walletRecordMeta"
+          @open-billing="openBilling"
+        />
 
-        <view class="mini-card-grid">
-          <view class="mini-card" @tap="openNotifications">
-            <view class="mini-card-head">
-              <text class="mini-card-title">消息中心</text>
-              <text class="mini-card-link">进入</text>
-            </view>
-            <text class="mini-card-copy">{{ messageSummary }}</text>
-          </view>
-
-          <view class="mini-card">
-            <view class="mini-card-head">
-              <text class="mini-card-title">球队信用</text>
-              <text class="mini-card-link">{{ currentTeam?.trustLabel || "待积累" }}</text>
-            </view>
-            <text class="mini-card-score">{{ currentTeam?.creditScore ?? 0 }} 分</text>
-            <text class="mini-card-copy">{{ creditCardSummary }}</text>
-            <view v-if="currentTeam?.canManageTeam" class="membership-action" @tap="handleMembershipRenewal">
-              {{ isPayingMembership ? "续费中..." : "续费会员" }}
-            </view>
-          </view>
-        </view>
+        <MineMiniCards
+          :current-team="currentTeam"
+          :message-summary="messageSummary"
+          :credit-card-summary="creditCardSummary"
+          :is-paying-membership="isPayingMembership"
+          @open-notifications="openNotifications"
+          @renew-membership="handleMembershipRenewal"
+        />
 
         <view class="mine-bottom-spacer" />
 
@@ -591,550 +475,11 @@ onUnload(() => {
   padding-bottom: 4rpx;
 }
 
-.profile-shell {
-  margin-top: 0;
-  padding: 28rpx 26rpx 22rpx;
-  border-radius: 34rpx;
-  background: rgba(255, 255, 255, 0.94);
-  box-shadow: 0 24rpx 52rpx rgba(17, 17, 17, 0.08);
-  border: 2rpx solid rgba(255, 255, 255, 0.6);
-}
-
-.profile-main-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 18rpx;
-}
-
-.profile-avatar {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 116rpx;
-  height: 116rpx;
-  border-radius: 999rpx;
-  background: #1b1c19;
-  color: #c8ff00;
-  font-size: 42rpx;
-  font-weight: 900;
-  overflow: hidden;
-  flex-shrink: 0;
-  border: 4rpx solid #edff6a;
-  box-shadow: 0 14rpx 26rpx rgba(177, 205, 0, 0.25);
-}
-
-.profile-avatar-image {
-  width: 100%;
-  height: 100%;
-}
-
-.profile-copy {
-  min-width: 0;
-  flex: 1;
-}
-
-.profile-name-row {
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
-  flex-wrap: wrap;
-}
-
-.profile-name {
-  font-size: 40rpx;
-  color: #10110f;
-  font-weight: 900;
-}
-
-.profile-badge {
-  padding: 8rpx 16rpx;
-  border-radius: 999rpx;
-  background: linear-gradient(135deg, #5d81ff 0%, #4771f3 100%);
-  color: #ffffff;
-  font-size: 22rpx;
-  font-weight: 900;
-}
-
-.profile-handle,
-.profile-team-line {
-  display: block;
-  margin-top: 8rpx;
-  font-size: 24rpx;
-  color: #6c7168;
-}
-
-.profile-actions-row {
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
-  margin-top: 10rpx;
-}
-
-.profile-edit-chip {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 42rpx;
-  padding: 0 18rpx;
-  border-radius: 999rpx;
-  background: #f3f4f6;
-  color: #4f544c;
-  font-size: 22rpx;
-  font-weight: 800;
-}
-
-.profile-logout-chip {
-  background: #fff0f1;
-  color: #d14c63;
-}
-
-.profile-chevron {
-  margin-left: 8rpx;
-  color: #8f9488;
-  font-size: 40rpx;
-  line-height: 1;
-}
-
-.team-switch-scroll {
-  margin-top: 18rpx;
-}
-
-.team-switch-row {
-  display: inline-flex;
-  gap: 12rpx;
-}
-
-.team-chip {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 156rpx;
-  height: 70rpx;
-  padding: 0 22rpx;
-  border-radius: 24rpx;
-  background: rgba(239, 241, 234, 0.92);
-}
-
-.team-chip-pending {
-  pointer-events: none;
-}
-
-.team-chip-active {
-  background: #d8ff1d;
-  box-shadow: 0 10rpx 20rpx rgba(169, 206, 0, 0.24);
-}
-
-.team-chip-name {
-  display: block;
-  font-size: 28rpx;
-  color: #171814;
-  font-weight: 900;
-}
-
-.team-chip-meta {
-  display: none;
-}
-
-.profile-stats-row {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18rpx 12rpx;
-  margin-top: 22rpx;
-  padding-top: 18rpx;
-  border-top: 2rpx solid rgba(20, 21, 18, 0.06);
-}
-
-.profile-stat-item {
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
-  min-width: 0;
-}
-
-.profile-stat-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 52rpx;
-  height: 52rpx;
-  border-radius: 18rpx;
-  background: rgba(200, 255, 0, 0.2);
-  color: #4d6500;
-  font-size: 24rpx;
-  font-weight: 900;
-  flex-shrink: 0;
-}
-
-.profile-stat-icon-blue {
-  background: rgba(81, 129, 255, 0.14);
-  color: #4f74ec;
-}
-
-.profile-stat-icon-orange {
-  background: rgba(255, 176, 48, 0.16);
-  color: #d27e00;
-}
-
-.profile-stat-icon-green {
-  background: rgba(21, 128, 61, 0.12);
-  color: #15803d;
-}
-
-.profile-stat-copy {
-  min-width: 0;
-  flex: 1;
-}
-
-.profile-stat-label {
-  display: block;
-  font-size: 20rpx;
-  color: #7a7f76;
-  font-weight: 700;
-}
-
-.profile-stat-value {
-  display: block;
-  margin-top: 6rpx;
-  font-size: 22rpx;
-  color: #161713;
-  font-weight: 900;
-}
-
-.profile-stat-unit {
-  font-size: 20rpx;
-}
-
 .mine-sections {
   margin-top: 16rpx;
 }
 
-.section-card {
-  margin-top: 18rpx;
-  padding: 24rpx;
-  border-radius: 28rpx;
-  background: rgba(255, 255, 255, 0.92);
-  border: 2rpx solid rgba(255, 255, 255, 0.7);
-  box-shadow: 0 18rpx 40rpx rgba(17, 17, 17, 0.06);
-}
-
-.section-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16rpx;
-}
-
-.section-row-title {
-  font-size: 30rpx;
-  color: #141512;
-  font-weight: 900;
-}
-
-.section-row-link {
-  color: #6a7067;
-  font-size: 22rpx;
-  font-weight: 800;
-}
-
-.compact-record-card {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-  margin-top: 18rpx;
-  padding: 18rpx;
-  border-radius: 24rpx;
-  background: rgba(253, 254, 252, 0.94);
-  box-shadow: inset 0 0 0 2rpx rgba(17, 17, 17, 0.04);
-}
-
-.compact-record-card-light {
-  background: rgba(249, 250, 244, 0.98);
-}
-
-.compact-record-cover {
-  width: 108rpx;
-  height: 84rpx;
-  border-radius: 20rpx;
-  background:
-    radial-gradient(circle at 24% 24%, rgba(200, 255, 0, 0.3), transparent 24%),
-    linear-gradient(135deg, rgba(37, 41, 31, 0.98) 0%, rgba(59, 66, 48, 0.98) 100%);
-  flex-shrink: 0;
-}
-
-.compact-record-cover-wallet {
-  background:
-    radial-gradient(circle at 24% 24%, rgba(255, 213, 50, 0.26), transparent 24%),
-    linear-gradient(135deg, rgba(31, 35, 28, 0.95) 0%, rgba(79, 86, 63, 0.95) 100%);
-}
-
-.compact-record-copy {
-  min-width: 0;
-  flex: 1;
-}
-
-.compact-record-title {
-  display: block;
-  margin-top: 8rpx;
-  font-size: 30rpx;
-  color: #141512;
-  font-weight: 900;
-  line-height: 1.3;
-}
-
-.compact-record-meta {
-  display: block;
-  margin-top: 8rpx;
-  font-size: 22rpx;
-  color: #6a7067;
-  line-height: 1.5;
-}
-
-.compact-record-action,
-.wallet-action {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 138rpx;
-  height: 68rpx;
-  padding: 0 20rpx;
-  border-radius: 999rpx;
-  background: #d6ff1f;
-  color: #151611;
-  font-size: 28rpx;
-  font-weight: 900;
-  flex-shrink: 0;
-}
-
-.wallet-hero-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 18rpx;
-  margin-top: 18rpx;
-}
-
-.wallet-balance-label {
-  display: block;
-  font-size: 22rpx;
-  color: #7a7f76;
-  font-weight: 700;
-}
-
-.wallet-balance-value {
-  display: block;
-  margin-top: 8rpx;
-  font-size: 54rpx;
-  color: #141512;
-  font-weight: 900;
-}
-
-.wallet-chip {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 112rpx;
-  height: 54rpx;
-  padding: 0 16rpx;
-  border-radius: 999rpx;
-  background: #eff6d7;
-  color: #4e6900;
-  font-size: 24rpx;
-  font-weight: 900;
-  flex-shrink: 0;
-}
-
-.mini-card-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18rpx;
-  margin-top: 18rpx;
-}
-
 .mine-bottom-spacer {
   height: calc(168rpx + env(safe-area-inset-bottom));
-}
-
-.mini-card {
-  padding: 22rpx;
-  border-radius: 24rpx;
-  background: rgba(255, 255, 255, 0.9);
-  box-shadow: 0 18rpx 34rpx rgba(17, 17, 17, 0.05);
-}
-
-.mini-card-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14rpx;
-}
-
-.mini-card-title {
-  font-size: 28rpx;
-  color: #151611;
-  font-weight: 900;
-}
-
-.mini-card-link {
-  font-size: 22rpx;
-  color: #6a7067;
-  font-weight: 800;
-}
-
-.mini-card-score {
-  display: block;
-  margin-top: 14rpx;
-  font-size: 42rpx;
-  color: #171814;
-  font-weight: 900;
-}
-
-.mini-card-copy {
-  display: block;
-  margin-top: 10rpx;
-  font-size: 24rpx;
-  color: #6d7269;
-  line-height: 1.5;
-}
-
-.membership-action {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 54rpx;
-  margin-top: 16rpx;
-  padding: 0 20rpx;
-  border-radius: 999rpx;
-  background: #c8ff00;
-  color: #10110f;
-  font-size: 24rpx;
-  font-weight: 900;
-}
-
-.user-status {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 96rpx;
-  height: 44rpx;
-  padding: 0 16rpx;
-  border-radius: 999rpx;
-  font-size: 20rpx;
-  font-weight: 800;
-}
-
-.user-status-join {
-  background: #eef8d6;
-  color: #456100;
-}
-
-.user-status-leave {
-  background: #f1f3ef;
-  color: #5d625a;
-}
-
-.user-status-late {
-  background: #fff1df;
-  color: #ad6900;
-}
-
-.user-status-pending {
-  background: #eceef3;
-  color: #5d6475;
-}
-
-.compact-empty {
-  margin-top: 16rpx;
-  font-size: 24rpx;
-  color: #72776e;
-  line-height: 1.6;
-}
-
-.mine-skeleton-stack,
-.mine-skeleton-profile,
-.mine-skeleton-line,
-.mine-skeleton-avatar,
-.mine-skeleton-stat {
-  position: relative;
-  overflow: hidden;
-}
-
-.mine-skeleton-stack {
-  padding: 28rpx;
-  border-radius: 32rpx;
-  background: rgba(255, 255, 255, 0.9);
-  box-shadow: 0 24rpx 48rpx rgba(15, 23, 42, 0.08);
-}
-
-.mine-skeleton-profile {
-  display: flex;
-  align-items: center;
-  gap: 20rpx;
-}
-
-.mine-skeleton-avatar {
-  width: 112rpx;
-  height: 112rpx;
-  border-radius: 36rpx;
-  background: #e5eadf;
-  flex-shrink: 0;
-}
-
-.mine-skeleton-copy {
-  flex: 1;
-  min-width: 0;
-}
-
-.mine-skeleton-line {
-  height: 24rpx;
-  border-radius: 999rpx;
-  background: #e5eadf;
-}
-
-.mine-skeleton-line + .mine-skeleton-line {
-  margin-top: 16rpx;
-}
-
-.mine-skeleton-line-title {
-  width: 58%;
-  height: 34rpx;
-}
-
-.mine-skeleton-line-body {
-  width: 76%;
-}
-
-.mine-skeleton-line-short {
-  width: 46%;
-}
-
-.mine-skeleton-stats {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16rpx;
-  margin-top: 28rpx;
-}
-
-.mine-skeleton-stat {
-  height: 112rpx;
-  border-radius: 24rpx;
-  background: #eef2e8;
-}
-
-.mine-skeleton-profile::after,
-.mine-skeleton-line::after,
-.mine-skeleton-avatar::after,
-.mine-skeleton-stat::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  transform: translateX(-100%);
-  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.78) 50%, transparent 100%);
-  animation: mine-skeleton-shimmer 1.2s ease-in-out infinite;
-}
-
-@keyframes mine-skeleton-shimmer {
-  100% {
-    transform: translateX(100%);
-  }
 }
 </style>

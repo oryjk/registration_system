@@ -18,7 +18,7 @@ describe("buildTeamProfiles", () => {
       7,
       [
         {
-          id: "team-1",
+          id: 1,
           name: "银河联队",
           description: "周末踢球",
           logo_url: null,
@@ -31,9 +31,9 @@ describe("buildTeamProfiles", () => {
         },
       ],
       {
-        "team-1": {
+        1: {
           team: {
-            id: "team-1",
+            id: 1,
             name: "银河联队",
             description: "周末踢球",
             logo_url: null,
@@ -54,7 +54,7 @@ describe("buildTeamProfiles", () => {
 
     expect(profiles).toEqual([
       {
-        id: "team-1",
+        id: 1,
         name: "银河联队",
         description: "周末踢球",
         logoUrl: "",
@@ -130,7 +130,7 @@ describe("resolveUserDisplayHandle", () => {
 describe("buildHomeMatchCards", () => {
   test("filters activities by current team and merges my stand and registration counts", () => {
     const cards = buildHomeMatchCards({
-      teamId: "team-1",
+      teamId: 1,
       activities: [
         {
           id: "activity-1",
@@ -145,8 +145,8 @@ describe("buildHomeMatchCards", () => {
           opposing: "红队",
           cover: null,
           description: null,
-          home_team_id: "team-1",
-          away_team_id: "team-2",
+          home_team_id: 1,
+          away_team_id: 2,
           color: null,
           opposing_color: null,
           players_per_team: 8,
@@ -165,8 +165,8 @@ describe("buildHomeMatchCards", () => {
           opposing: null,
           cover: null,
           description: null,
-          home_team_id: "team-9",
-          away_team_id: "team-3",
+          home_team_id: 9,
+          away_team_id: 3,
           color: null,
           opposing_color: null,
           players_per_team: 6,
@@ -256,6 +256,7 @@ describe("buildHomeMatchCards", () => {
         opponent: "红队",
         formatLabel: "8 人制",
         requiredPlayers: 8,
+        maxPlayers: 10,
         joinedPlayers: 2,
         absentPlayers: 1,
         latePlayers: 1,
@@ -277,6 +278,9 @@ describe("buildHomeMatchCards", () => {
           },
         ],
         remainingPlayersLabel: "还差 6 人",
+        signupScope: "external",
+        signupScopeLabel: "比赛报名",
+        canRegister: true,
       },
     ]);
   });
@@ -380,7 +384,7 @@ describe("buildChallengeCards", () => {
           id: "challenge-1",
           title: "周六夜场 8 人制约队",
           kind: "team",
-          host_team_id: "team-a",
+          host_team_id: 1,
           host_user_id: 7,
           guest_team_id: null,
           accepted_by_user_id: null,
@@ -416,9 +420,9 @@ describe("buildChallengeCards", () => {
           id: "challenge-2",
           title: "工作日晚场 6 人制",
           kind: "team",
-          host_team_id: "team-b",
+          host_team_id: 2,
           host_user_id: 8,
-          guest_team_id: "team-c",
+          guest_team_id: 3,
           accepted_by_user_id: 9,
           activity_id: "activity-99",
           holding_date: "2026-04-21T20:30:00",
@@ -518,7 +522,7 @@ describe("buildChallengeCards", () => {
           id: "challenge-individual-1",
           title: "周三晚散人局",
           kind: "individual",
-          host_team_id: "team-a",
+          host_team_id: 1,
           host_user_id: 7,
           guest_team_id: null,
           accepted_by_user_id: null,
@@ -529,7 +533,7 @@ describe("buildChallengeCards", () => {
           location: "北门测试球场",
           location_latitude: null,
           location_longitude: null,
-          players_per_team: 14,
+          players_per_team: 8,
           fee_per_person: "35.00",
           note: "缺 4 人，守时优先",
           status: "open",
@@ -565,7 +569,7 @@ describe("buildChallengeCards", () => {
         weekdayLabel: "周四",
         timeRangeLabel: "20:00-22:00",
         venue: "北门测试球场",
-        formatLabel: "14 人",
+        formatLabel: "8 人制",
         feeLabel: "预计 ¥35.00/人",
         priceLabel: "¥35/人",
         statusLabel: "可报名",
@@ -573,11 +577,11 @@ describe("buildChallengeCards", () => {
         relationLabel: "我已报名",
         note: "缺 4 人，守时优先",
         teamInitial: "银",
-        quickTags: ["散人局", "10/14", "我已报名"],
+        quickTags: ["散人局", "10/16", "我已报名"],
         primaryActionLabel: "看详情",
         canAccept: false,
         acceptedCount: 10,
-        capacity: 14,
+        capacity: 16,
         currentUserJoined: true,
         activityId: "",
       },
@@ -593,7 +597,7 @@ describe("filterChallengeSummariesByScope", () => {
           id: "challenge-open",
           title: "公开可接约",
           kind: "team",
-          host_team_id: "team-a",
+          host_team_id: 1,
           host_user_id: 7,
           guest_team_id: null,
           accepted_by_user_id: null,
@@ -629,7 +633,7 @@ describe("filterChallengeSummariesByScope", () => {
           id: "challenge-mine",
           title: "我发布的约队",
           kind: "team",
-          host_team_id: "team-me",
+          host_team_id: 1,
           host_user_id: 9,
           guest_team_id: null,
           accepted_by_user_id: null,
@@ -665,7 +669,7 @@ describe("filterChallengeSummariesByScope", () => {
           id: "challenge-cancelled",
           title: "已取消记录",
           kind: "team",
-          host_team_id: "team-b",
+          host_team_id: 2,
           host_user_id: 10,
           guest_team_id: null,
           accepted_by_user_id: null,

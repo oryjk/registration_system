@@ -1,16 +1,25 @@
 use crate::shared::error::AppError;
+use crate::wx::application::use_cases::{
+    GetWechatAccessTokenUseCase, GetWechatPhoneNumberUseCase, WechatLoginUseCase,
+};
 use crate::wx::domain::{PhoneNumberResult, WechatAccessToken, WechatLoginSession};
 use crate::wx::ports::WechatApi;
 use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct WxService {
-    api: Arc<dyn WechatApi>,
+    login_use_case: WechatLoginUseCase,
+    get_access_token_use_case: GetWechatAccessTokenUseCase,
+    get_phone_number_use_case: GetWechatPhoneNumberUseCase,
 }
 
 impl WxService {
     pub fn new(api: Arc<dyn WechatApi>) -> Self {
-        Self { api }
+        Self {
+            login_use_case: WechatLoginUseCase::new(api.clone()),
+            get_access_token_use_case: GetWechatAccessTokenUseCase::new(api.clone()),
+            get_phone_number_use_case: GetWechatPhoneNumberUseCase::new(api),
+        }
     }
 
     pub async fn login(
@@ -18,31 +27,14 @@ impl WxService {
         js_code: &str,
         grant_type: Option<&str>,
     ) -> Result<WechatLoginSession, AppError> {
-        if js_code.trim().is_empty() {
-            return Err(AppError::Validation("js_code 不能为空".to_string()));
-        }
-
-        self.api
-            .login(js_code, grant_type.unwrap_or("authorization_code"))
-            .await
-            .map_err(|error| AppError::internal(format!("微信登录失败: {error}")))
+        self.login_use_case.execute(js_code, grant_type).await
     }
 
     pub async fn get_access_token(&self) -> Result<WechatAccessToken, AppError> {
-        self.api
-            .get_access_token()
-            .await
-            .map_err(|error| AppError::internal(format!("获取微信 access_token 失败: {error}")))
+        self.get_access_token_use_case.execute().await
     }
 
     pub async fn get_phone_number(&self, code: &str) -> Result<PhoneNumberResult, AppError> {
-        if code.trim().is_empty() {
-            return Err(AppError::Validation("code 不能为空".to_string()));
-        }
-
-        self.api
-            .get_phone_number(code)
-            .await
-            .map_err(|error| AppError::internal(format!("获取微信手机号失败: {error}")))
+        self.get_phone_number_use_case.execute(code).await
     }
 }

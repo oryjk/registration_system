@@ -1,7 +1,7 @@
 import { http } from '@/utils/request'
 
 export interface PlayerTeam {
-  team_id: string
+  team_id: number
   team_name: string
   role: string
   jersey_number: string | null

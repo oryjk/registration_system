@@ -6,22 +6,21 @@ use registration_system_backend::payment::domain::{
     TeamMembershipPaymentOrder, WxMiniPaymentParams,
 };
 use registration_system_backend::payment::ports::{
-    PaymentBillingPort, PaymentOrderRepository, TeamMembershipSettlement, WxPayGateway,
+    PaymentOrderCommandRepository, PaymentOrderQueryRepository, PaymentSettlementPort,
+    RechargePaymentSettlement, TeamMembershipPaymentSettlement, WxPayGateway,
 };
 use registration_system_backend::shared::auth::{ActorContext, ActorKind};
 use registration_system_backend::team::domain::{
     ActivityTeamReview, DEFAULT_TEAM_CREDIT_SCORE, DomainError as TeamDomainError, Team,
-    TeamAdminInfo, TeamCreditTransaction, TeamMember, TeamMemberAttendanceRecord,
-    TeamMemberWithInfo, UpdateTeamFields,
+    TeamAdminInfo, TeamAttendanceRankingItem, TeamCreditTransaction, TeamMember,
+    TeamMemberAttendanceRecord, TeamMemberWithInfo,
 };
-use registration_system_backend::team::ports::{
-    ActivityReviewRecord, MembershipRechargeRecord, TeamRepository,
-};
+use registration_system_backend::team::ports::TeamQueryRepository;
 use registration_system_backend::user::domain::{
     DomainError as UserDomainError, PlayerAdminListQuery, PlayerListResult, PlayerTeamSummary,
     User, UserActivityRecord, UserAttendanceRanking, UserAttendanceRecord,
 };
-use registration_system_backend::user::ports::UserRepository;
+use registration_system_backend::user::ports::{UserCommandRepository, UserQueryRepository};
 use rust_decimal::Decimal;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -48,16 +47,7 @@ impl FakePaymentOrderRepository {
 }
 
 #[async_trait]
-impl PaymentOrderRepository for FakePaymentOrderRepository {
-    async fn create(&self, order: &PaymentOrder) -> Result<i64, DomainError> {
-        let mut orders = self.orders.lock().unwrap();
-        if orders.contains_key(&order.order_no) {
-            return Err(DomainError::DuplicateOrder);
-        }
-        orders.insert(order.order_no.clone(), order.clone());
-        Ok(orders.len() as i64)
-    }
-
+impl PaymentOrderQueryRepository for FakePaymentOrderRepository {
     async fn find_by_order_no(&self, order_no: &str) -> Result<Option<PaymentOrder>, DomainError> {
         Ok(self.get(order_no))
     }
@@ -78,6 +68,30 @@ impl PaymentOrderRepository for FakePaymentOrderRepository {
         orders.sort_by(|left, right| right.order_no.cmp(&left.order_no));
         orders.truncate(limit as usize);
         Ok(orders)
+    }
+
+    async fn find_team_membership_order(
+        &self,
+        order_no: &str,
+    ) -> Result<Option<TeamMembershipPaymentOrder>, DomainError> {
+        Ok(self
+            .team_membership_orders
+            .lock()
+            .unwrap()
+            .get(order_no)
+            .cloned())
+    }
+}
+
+#[async_trait]
+impl PaymentOrderCommandRepository for FakePaymentOrderRepository {
+    async fn create(&self, order: &PaymentOrder) -> Result<i64, DomainError> {
+        let mut orders = self.orders.lock().unwrap();
+        if orders.contains_key(&order.order_no) {
+            return Err(DomainError::DuplicateOrder);
+        }
+        orders.insert(order.order_no.clone(), order.clone());
+        Ok(orders.len() as i64)
     }
 
     async fn update_status(
@@ -132,45 +146,32 @@ impl PaymentOrderRepository for FakePaymentOrderRepository {
         items.insert(order.order_no.clone(), order.clone());
         Ok(items.len() as i64)
     }
-
-    async fn find_team_membership_order(
-        &self,
-        order_no: &str,
-    ) -> Result<Option<TeamMembershipPaymentOrder>, DomainError> {
-        Ok(self
-            .team_membership_orders
-            .lock()
-            .unwrap()
-            .get(order_no)
-            .cloned())
-    }
 }
 
 #[derive(Default)]
-struct FakePaymentBillingPort {
-    recharges: Mutex<Vec<(i64, Decimal, String)>>,
+struct FakePaymentSettlementPort {
+    recharges: Mutex<Vec<(String, i64, Decimal, String)>>,
     memberships: Mutex<Vec<MembershipRecord>>,
 }
 
 #[async_trait]
-impl PaymentBillingPort for FakePaymentBillingPort {
-    async fn apply_recharge(
+impl PaymentSettlementPort for FakePaymentSettlementPort {
+    async fn settle_recharge_payment(
         &self,
-        user_id: i64,
-        amount: Decimal,
-        transaction_id: &str,
-        _description: &str,
+        settlement: RechargePaymentSettlement<'_>,
     ) -> Result<(), DomainError> {
-        self.recharges
-            .lock()
-            .unwrap()
-            .push((user_id, amount, transaction_id.to_string()));
+        self.recharges.lock().unwrap().push((
+            settlement.order_no.to_string(),
+            settlement.user_id,
+            settlement.amount,
+            settlement.transaction_id.to_string(),
+        ));
         Ok(())
     }
 
-    async fn apply_team_membership_order(
+    async fn settle_team_membership_payment(
         &self,
-        settlement: TeamMembershipSettlement<'_>,
+        settlement: TeamMembershipPaymentSettlement<'_>,
     ) -> Result<(), DomainError> {
         self.memberships.lock().unwrap().push((
             settlement.order_no.to_string(),
@@ -186,8 +187,8 @@ impl PaymentBillingPort for FakePaymentBillingPort {
 }
 
 #[derive(Default)]
-struct FakeTeamRepository {
-    teams: Mutex<HashMap<String, Team>>,
+struct FakeTeamStore {
+    teams: Mutex<HashMap<i64, Team>>,
 }
 
 #[derive(Default)]
@@ -206,7 +207,7 @@ impl FakeUserRepository {
 }
 
 #[async_trait]
-impl UserRepository for FakeUserRepository {
+impl UserQueryRepository for FakeUserRepository {
     async fn find_by_open_id(&self, _open_id: &str) -> Result<Option<User>, UserDomainError> {
         unimplemented!()
     }
@@ -220,36 +221,6 @@ impl UserRepository for FakeUserRepository {
     }
 
     async fn search(&self, _keyword: &str, _limit: i64) -> Result<Vec<User>, UserDomainError> {
-        unimplemented!()
-    }
-
-    async fn create(&self, _user: &User) -> Result<User, UserDomainError> {
-        unimplemented!()
-    }
-
-    async fn touch_login(&self, _user_id: i64) -> Result<(), UserDomainError> {
-        unimplemented!()
-    }
-
-    async fn update_profile(
-        &self,
-        _user_id: i64,
-        _nickname: Option<&str>,
-        _real_name: Option<&str>,
-        _avatar_url: Option<&str>,
-    ) -> Result<(), UserDomainError> {
-        unimplemented!()
-    }
-
-    async fn update_fields(
-        &self,
-        _user_id: i64,
-        _fields: registration_system_backend::user::domain::UpdateUserFields<'_>,
-    ) -> Result<(), UserDomainError> {
-        unimplemented!()
-    }
-
-    async fn delete(&self, _user_id: i64) -> Result<(), UserDomainError> {
         unimplemented!()
     }
 
@@ -301,10 +272,43 @@ impl UserRepository for FakeUserRepository {
     }
 }
 
-impl FakeTeamRepository {
+#[async_trait]
+impl UserCommandRepository for FakeUserRepository {
+    async fn create(&self, _user: &User) -> Result<User, UserDomainError> {
+        unimplemented!()
+    }
+
+    async fn touch_login(&self, _user_id: i64) -> Result<(), UserDomainError> {
+        unimplemented!()
+    }
+
+    async fn update_profile(
+        &self,
+        _user_id: i64,
+        _nickname: Option<&str>,
+        _real_name: Option<&str>,
+        _avatar_url: Option<&str>,
+    ) -> Result<(), UserDomainError> {
+        unimplemented!()
+    }
+
+    async fn update_fields(
+        &self,
+        _user_id: i64,
+        _fields: registration_system_backend::user::domain::UpdateUserFields<'_>,
+    ) -> Result<(), UserDomainError> {
+        unimplemented!()
+    }
+
+    async fn delete(&self, _user_id: i64) -> Result<(), UserDomainError> {
+        unimplemented!()
+    }
+}
+
+impl FakeTeamStore {
     fn with_team(team: Team) -> Self {
         let mut teams = HashMap::new();
-        teams.insert(team.id.clone(), team);
+        teams.insert(team.id, team);
         Self {
             teams: Mutex::new(teams),
         }
@@ -312,13 +316,9 @@ impl FakeTeamRepository {
 }
 
 #[async_trait]
-impl TeamRepository for FakeTeamRepository {
-    async fn create(&self, _team: &Team) -> Result<(), TeamDomainError> {
-        unimplemented!()
-    }
-
-    async fn find_by_id(&self, team_id: &str) -> Result<Option<Team>, TeamDomainError> {
-        Ok(self.teams.lock().unwrap().get(team_id).cloned())
+impl TeamQueryRepository for FakeTeamStore {
+    async fn find_by_id(&self, team_id: i64) -> Result<Option<Team>, TeamDomainError> {
+        Ok(self.teams.lock().unwrap().get(&team_id).cloned())
     }
 
     async fn find_by_name(&self, _name: &str) -> Result<Option<Team>, TeamDomainError> {
@@ -333,97 +333,45 @@ impl TeamRepository for FakeTeamRepository {
         unimplemented!()
     }
 
-    async fn update(
-        &self,
-        _team_id: &str,
-        _fields: UpdateTeamFields<'_>,
-    ) -> Result<(), TeamDomainError> {
-        unimplemented!()
-    }
-
-    async fn delete(&self, _team_id: &str) -> Result<(), TeamDomainError> {
-        unimplemented!()
-    }
-
-    async fn add_member(
-        &self,
-        _team_id: &str,
-        _user_id: i64,
-        _role: &str,
-        _jersey_number: Option<&str>,
-    ) -> Result<(), TeamDomainError> {
-        unimplemented!()
-    }
-
-    async fn reactivate_member(
-        &self,
-        _team_id: &str,
-        _user_id: i64,
-        _role: &str,
-        _jersey_number: Option<&str>,
-    ) -> Result<(), TeamDomainError> {
-        unimplemented!()
-    }
-
-    async fn remove_member(&self, _team_id: &str, _user_id: i64) -> Result<(), TeamDomainError> {
-        unimplemented!()
-    }
-
-    async fn batch_remove_members(
-        &self,
-        _team_id: &str,
-        _user_ids: &[i64],
-    ) -> Result<u64, TeamDomainError> {
-        unimplemented!()
-    }
-
-    async fn update_member(
-        &self,
-        _team_id: &str,
-        _user_id: i64,
-        _role: Option<&str>,
-        _jersey_number: Option<Option<&str>>,
-    ) -> Result<(), TeamDomainError> {
-        unimplemented!()
-    }
-
-    async fn batch_update_member_status(
-        &self,
-        _team_id: &str,
-        _user_ids: &[i64],
-        _status: i8,
-    ) -> Result<u64, TeamDomainError> {
-        unimplemented!()
-    }
-
-    async fn is_member(&self, _team_id: &str, _user_id: i64) -> Result<bool, TeamDomainError> {
+    async fn is_member(&self, _team_id: i64, _user_id: i64) -> Result<bool, TeamDomainError> {
         unimplemented!()
     }
 
     async fn get_member_status(
         &self,
-        _team_id: &str,
+        _team_id: i64,
         _user_id: i64,
     ) -> Result<Option<i8>, TeamDomainError> {
         unimplemented!()
     }
 
-    async fn list_members(&self, _team_id: &str) -> Result<Vec<TeamMember>, TeamDomainError> {
+    async fn list_members(&self, _team_id: i64) -> Result<Vec<TeamMember>, TeamDomainError> {
         unimplemented!()
     }
 
     async fn list_members_for_management(
         &self,
-        _team_id: &str,
+        _team_id: i64,
     ) -> Result<Vec<TeamMember>, TeamDomainError> {
         unimplemented!()
     }
 
     async fn list_member_attendance_records(
         &self,
-        _team_id: &str,
+        _team_id: i64,
         _user_id: i64,
+        _start_date: Option<&str>,
+        _end_date: Option<&str>,
     ) -> Result<Vec<TeamMemberAttendanceRecord>, TeamDomainError> {
+        unimplemented!()
+    }
+
+    async fn list_team_attendance_ranking(
+        &self,
+        _team_id: i64,
+        _start_date: Option<&str>,
+        _end_date: Option<&str>,
+    ) -> Result<Vec<TeamAttendanceRankingItem>, TeamDomainError> {
         unimplemented!()
     }
 
@@ -433,29 +381,21 @@ impl TeamRepository for FakeTeamRepository {
 
     async fn list_members_with_info(
         &self,
-        _team_id: &str,
+        _team_id: i64,
     ) -> Result<Vec<TeamMemberWithInfo>, TeamDomainError> {
-        unimplemented!()
-    }
-
-    async fn assign_admin(&self, _team_id: &str, _admin_id: i64) -> Result<(), TeamDomainError> {
-        unimplemented!()
-    }
-
-    async fn unassign_admin(&self, _team_id: &str, _admin_id: i64) -> Result<(), TeamDomainError> {
         unimplemented!()
     }
 
     async fn list_team_admins_with_info(
         &self,
-        _team_id: &str,
+        _team_id: i64,
     ) -> Result<Vec<TeamAdminInfo>, TeamDomainError> {
         unimplemented!()
     }
 
     async fn is_admin_assigned(
         &self,
-        _team_id: &str,
+        _team_id: i64,
         _admin_id: i64,
     ) -> Result<bool, TeamDomainError> {
         Ok(false)
@@ -467,7 +407,7 @@ impl TeamRepository for FakeTeamRepository {
 
     async fn list_credit_transactions(
         &self,
-        _team_id: &str,
+        _team_id: i64,
         _limit: i64,
     ) -> Result<Vec<TeamCreditTransaction>, TeamDomainError> {
         Ok(Vec::new())
@@ -476,35 +416,9 @@ impl TeamRepository for FakeTeamRepository {
     async fn find_activity_review(
         &self,
         _activity_id: &str,
-        _reviewer_team_id: &str,
+        _reviewer_team_id: i64,
     ) -> Result<Option<ActivityTeamReview>, TeamDomainError> {
         Ok(None)
-    }
-
-    async fn record_activity_review(
-        &self,
-        _record: ActivityReviewRecord<'_>,
-    ) -> Result<Team, TeamDomainError> {
-        unimplemented!()
-    }
-
-    async fn record_membership_recharge(
-        &self,
-        _record: MembershipRechargeRecord<'_>,
-    ) -> Result<Team, TeamDomainError> {
-        unimplemented!()
-    }
-
-    async fn record_credit_penalty(
-        &self,
-        _team_id: &str,
-        _admin_id: i64,
-        _points: i32,
-        _reason: &str,
-        _score_before: i32,
-        _score_after: i32,
-    ) -> Result<Team, TeamDomainError> {
-        unimplemented!()
     }
 }
 
@@ -561,10 +475,10 @@ fn user_actor(id: i64) -> ActorContext {
     }
 }
 
-fn sample_team(team_id: &str, captain_id: i64) -> Team {
+fn sample_team(team_id: i64, captain_id: i64) -> Team {
     let now = Utc::now().naive_utc();
     Team {
-        id: team_id.to_string(),
+        id: team_id,
         name: "银河联队".to_string(),
         description: None,
         logo_url: None,
@@ -587,20 +501,21 @@ fn sample_user(user_id: i64, open_id: &str) -> User {
 #[tokio::test]
 async fn create_recharge_order_persists_order_and_prepay_info() {
     let repository = Arc::new(FakePaymentOrderRepository::default());
-    let billing_port = Arc::new(FakePaymentBillingPort::default());
+    let settlement_port = Arc::new(FakePaymentSettlementPort::default());
     let gateway = Arc::new(FakeWxPayGateway::new(PaymentQueryResult {
         paid: false,
         transaction_id: None,
         trade_state: Some("NOTPAY".to_string()),
     }));
-    let team_repository = Arc::new(FakeTeamRepository::with_team(sample_team("team-1", 42)));
+    let team_repository = Arc::new(FakeTeamStore::with_team(sample_team(1, 42)));
     let user_repository = Arc::new(FakeUserRepository::with_user(sample_user(
         42,
         "stored-openid-42",
     )));
     let service = PaymentService::new(
         repository.clone(),
-        billing_port,
+        repository.clone(),
+        settlement_port,
         gateway.clone(),
         team_repository,
         user_repository,
@@ -626,20 +541,21 @@ async fn create_recharge_order_persists_order_and_prepay_info() {
 #[tokio::test]
 async fn create_recharge_order_uses_actor_openid_when_payload_openid_missing() {
     let repository = Arc::new(FakePaymentOrderRepository::default());
-    let billing_port = Arc::new(FakePaymentBillingPort::default());
+    let settlement_port = Arc::new(FakePaymentSettlementPort::default());
     let gateway = Arc::new(FakeWxPayGateway::new(PaymentQueryResult {
         paid: false,
         transaction_id: None,
         trade_state: Some("NOTPAY".to_string()),
     }));
-    let team_repository = Arc::new(FakeTeamRepository::with_team(sample_team("team-1", 42)));
+    let team_repository = Arc::new(FakeTeamStore::with_team(sample_team(1, 42)));
     let user_repository = Arc::new(FakeUserRepository::with_user(sample_user(
         42,
         "stored-openid-42",
     )));
     let service = PaymentService::new(
+        repository.clone(),
         repository,
-        billing_port,
+        settlement_port,
         gateway.clone(),
         team_repository,
         user_repository,
@@ -672,20 +588,21 @@ async fn sync_order_status_marks_order_paid_and_applies_recharge() {
         created_at: Some(Utc::now().naive_utc()),
         updated_at: Some(Utc::now().naive_utc()),
     });
-    let billing_port = Arc::new(FakePaymentBillingPort::default());
+    let settlement_port = Arc::new(FakePaymentSettlementPort::default());
     let gateway = Arc::new(FakeWxPayGateway::new(PaymentQueryResult {
         paid: true,
         transaction_id: Some("wx-tx-001".to_string()),
         trade_state: Some("SUCCESS".to_string()),
     }));
-    let team_repository = Arc::new(FakeTeamRepository::with_team(sample_team("team-1", 7)));
+    let team_repository = Arc::new(FakeTeamStore::with_team(sample_team(1, 7)));
     let user_repository = Arc::new(FakeUserRepository::with_user(sample_user(
         7,
         "stored-openid-7",
     )));
     let service = PaymentService::new(
         repository.clone(),
-        billing_port.clone(),
+        repository.clone(),
+        settlement_port.clone(),
         gateway,
         team_repository,
         user_repository,
@@ -701,30 +618,32 @@ async fn sync_order_status_marks_order_paid_and_applies_recharge() {
     assert_eq!(stored.status, PaymentOrderStatus::Paid);
     assert_eq!(stored.transaction_id.as_deref(), Some("wx-tx-001"));
 
-    let recharges = billing_port.recharges.lock().unwrap();
+    let recharges = settlement_port.recharges.lock().unwrap();
     assert_eq!(recharges.len(), 1);
-    assert_eq!(recharges[0].0, 7);
-    assert_eq!(recharges[0].1, Decimal::new(880, 2));
-    assert_eq!(recharges[0].2, "wx-tx-001");
+    assert_eq!(recharges[0].0, "order-001");
+    assert_eq!(recharges[0].1, 7);
+    assert_eq!(recharges[0].2, Decimal::new(880, 2));
+    assert_eq!(recharges[0].3, "wx-tx-001");
 }
 
 #[tokio::test]
 async fn create_team_membership_order_persists_membership_metadata() {
     let repository = Arc::new(FakePaymentOrderRepository::default());
-    let billing_port = Arc::new(FakePaymentBillingPort::default());
+    let settlement_port = Arc::new(FakePaymentSettlementPort::default());
     let gateway = Arc::new(FakeWxPayGateway::new(PaymentQueryResult {
         paid: false,
         transaction_id: None,
         trade_state: Some("NOTPAY".to_string()),
     }));
-    let team_repository = Arc::new(FakeTeamRepository::with_team(sample_team("team-88", 88)));
+    let team_repository = Arc::new(FakeTeamStore::with_team(sample_team(88, 88)));
     let user_repository = Arc::new(FakeUserRepository::with_user(sample_user(
         88,
         "stored-openid-88",
     )));
     let service = PaymentService::new(
         repository.clone(),
-        billing_port,
+        repository.clone(),
+        settlement_port,
         gateway,
         team_repository,
         user_repository,
@@ -734,7 +653,7 @@ async fn create_team_membership_order_persists_membership_metadata() {
         .create_team_membership_order(
             &user_actor(88),
             registration_system_backend::payment::application::CreateTeamMembershipOrderCommand {
-                team_id: "team-88".to_string(),
+                team_id: 88,
                 months: 2,
                 openid: Some("openid-88".to_string()),
                 note: Some("修复信用".to_string()),
@@ -748,7 +667,7 @@ async fn create_team_membership_order_persists_membership_metadata() {
         .await
         .unwrap()
         .expect("应保存会员订单元数据");
-    assert_eq!(stored.team_id, "team-88");
+    assert_eq!(stored.team_id, 88);
     assert_eq!(stored.months, 2);
     assert_eq!(stored.credit_delta, 12);
     assert_eq!(stored.amount, Decimal::new(6000, 2));
@@ -757,20 +676,21 @@ async fn create_team_membership_order_persists_membership_metadata() {
 #[tokio::test]
 async fn create_team_membership_order_uses_actor_openid_when_payload_openid_missing() {
     let repository = Arc::new(FakePaymentOrderRepository::default());
-    let billing_port = Arc::new(FakePaymentBillingPort::default());
+    let settlement_port = Arc::new(FakePaymentSettlementPort::default());
     let gateway = Arc::new(FakeWxPayGateway::new(PaymentQueryResult {
         paid: false,
         transaction_id: None,
         trade_state: Some("NOTPAY".to_string()),
     }));
-    let team_repository = Arc::new(FakeTeamRepository::with_team(sample_team("team-88", 88)));
+    let team_repository = Arc::new(FakeTeamStore::with_team(sample_team(88, 88)));
     let user_repository = Arc::new(FakeUserRepository::with_user(sample_user(
         88,
         "stored-openid-88",
     )));
     let service = PaymentService::new(
+        repository.clone(),
         repository,
-        billing_port,
+        settlement_port,
         gateway.clone(),
         team_repository,
         user_repository,
@@ -780,7 +700,7 @@ async fn create_team_membership_order_uses_actor_openid_when_payload_openid_miss
         .create_team_membership_order(
             &user_actor(88),
             registration_system_backend::payment::application::CreateTeamMembershipOrderCommand {
-                team_id: "team-88".to_string(),
+                team_id: 88,
                 months: 2,
                 openid: None,
                 note: Some("修复信用".to_string()),
@@ -814,7 +734,7 @@ async fn sync_order_status_applies_team_membership_credit() {
     repository
         .create_team_membership_order(&TeamMembershipPaymentOrder {
             order_no: "membership-001".to_string(),
-            team_id: "team-9".to_string(),
+            team_id: 9,
             user_id: 9,
             months: 1,
             credit_delta: 6,
@@ -825,20 +745,21 @@ async fn sync_order_status_applies_team_membership_credit() {
         .await
         .unwrap();
 
-    let billing_port = Arc::new(FakePaymentBillingPort::default());
+    let settlement_port = Arc::new(FakePaymentSettlementPort::default());
     let gateway = Arc::new(FakeWxPayGateway::new(PaymentQueryResult {
         paid: true,
         transaction_id: Some("wx-team-001".to_string()),
         trade_state: Some("SUCCESS".to_string()),
     }));
-    let team_repository = Arc::new(FakeTeamRepository::with_team(sample_team("team-9", 9)));
+    let team_repository = Arc::new(FakeTeamStore::with_team(sample_team(9, 9)));
     let user_repository = Arc::new(FakeUserRepository::with_user(sample_user(
         9,
         "stored-openid-9",
     )));
     let service = PaymentService::new(
         repository.clone(),
-        billing_port.clone(),
+        repository.clone(),
+        settlement_port.clone(),
         gateway,
         team_repository,
         user_repository,
@@ -850,7 +771,7 @@ async fn sync_order_status_applies_team_membership_credit() {
         .unwrap();
 
     assert!(result.paid);
-    let memberships = billing_port.memberships.lock().unwrap();
+    let memberships = settlement_port.memberships.lock().unwrap();
     assert_eq!(memberships.len(), 1);
     assert_eq!(memberships[0].0, "membership-001");
     assert_eq!(memberships[0].1, 9);
@@ -858,4 +779,58 @@ async fn sync_order_status_applies_team_membership_credit() {
     assert_eq!(memberships[0].3, Decimal::new(3000, 2));
     assert_eq!(memberships[0].4, 6);
     assert_eq!(memberships[0].5, "wx-team-001");
+}
+
+#[tokio::test]
+async fn sync_order_status_is_idempotent_for_already_paid_recharge_order() {
+    let repository = Arc::new(FakePaymentOrderRepository::default());
+    repository.insert(PaymentOrder {
+        id: Some(3),
+        order_no: "order-paid-001".to_string(),
+        user_id: 11,
+        amount: Decimal::new(990, 2),
+        order_type: PaymentOrderType::Recharge,
+        status: PaymentOrderStatus::Paid,
+        prepay_id: Some("prepay-paid".to_string()),
+        transaction_id: Some("wx-paid-001".to_string()),
+        description: Some("账户充值".to_string()),
+        paid_at: Some(Utc::now().naive_utc()),
+        cancelled_at: None,
+        created_at: Some(Utc::now().naive_utc()),
+        updated_at: Some(Utc::now().naive_utc()),
+    });
+
+    let settlement_port = Arc::new(FakePaymentSettlementPort::default());
+    let gateway = Arc::new(FakeWxPayGateway::new(PaymentQueryResult {
+        paid: true,
+        transaction_id: Some("wx-paid-001".to_string()),
+        trade_state: Some("SUCCESS".to_string()),
+    }));
+    let team_repository = Arc::new(FakeTeamStore::with_team(sample_team(11, 11)));
+    let user_repository = Arc::new(FakeUserRepository::with_user(sample_user(
+        11,
+        "stored-openid-11",
+    )));
+    let service = PaymentService::new(
+        repository.clone(),
+        repository,
+        settlement_port.clone(),
+        gateway,
+        team_repository,
+        user_repository,
+    );
+
+    service
+        .sync_order_status(&user_actor(11), "order-paid-001")
+        .await
+        .unwrap();
+    service
+        .sync_order_status(&user_actor(11), "order-paid-001")
+        .await
+        .unwrap();
+
+    let recharges = settlement_port.recharges.lock().unwrap();
+    assert_eq!(recharges.len(), 2);
+    assert_eq!(recharges[0].0, "order-paid-001");
+    assert_eq!(recharges[1].0, "order-paid-001");
 }

@@ -15,11 +15,13 @@ export function clearAccessToken(): void {
   uni.removeStorageSync(TOKEN_KEY);
 }
 
-export function getCurrentTeamId(): string {
-  return uni.getStorageSync(CURRENT_TEAM_KEY) || "";
+export function getCurrentTeamId(): number | null {
+  const value = uni.getStorageSync(CURRENT_TEAM_KEY);
+  const numericValue = Number(value);
+  return Number.isFinite(numericValue) && numericValue > 0 ? numericValue : null;
 }
 
-export function setCurrentTeamId(teamId: string): void {
+export function setCurrentTeamId(teamId: number): void {
   uni.setStorageSync(CURRENT_TEAM_KEY, teamId);
 }
 

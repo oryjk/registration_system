@@ -54,8 +54,8 @@ export function createActivity(payload: {
   end_time: string;
   opposing?: string;
   description?: string;
-  home_team_id?: string;
-  away_team_id?: string;
+  home_team_id?: number;
+  away_team_id?: number;
   color?: string;
   opposing_color?: string;
   players_per_team?: number;
@@ -82,8 +82,8 @@ export function updateActivity(
     end_time?: string;
     opposing?: string | null;
     description?: string | null;
-    home_team_id?: string | null;
-    away_team_id?: string | null;
+    home_team_id?: number | null;
+    away_team_id?: number | null;
     color?: string | null;
     opposing_color?: string | null;
     players_per_team?: number | null;
@@ -138,7 +138,7 @@ export function updateMyStand(activityId: string, payload: { stand: number; regi
 export function submitTeamRegistration(
   activityId: string,
   payload: {
-    team_id: string;
+    team_id: number;
     registration_count: number;
   },
 ) {
@@ -150,7 +150,7 @@ export function submitTeamRegistration(
   });
 }
 
-export function cancelTeamRegistration(activityId: string, payload: { team_id: string }) {
+export function cancelTeamRegistration(activityId: string, payload: { team_id: number }) {
   return requestApi<void>({
     url: `/activity/${activityId}/team-registration`,
     method: "DELETE",
@@ -162,7 +162,7 @@ export function cancelTeamRegistration(activityId: string, payload: { team_id: s
 export function updateTeamCheckInConfig(
   activityId: string,
   payload: {
-    team_id: string;
+    team_id: number;
     enabled: boolean;
     radius_meters: number;
     open_minutes_before: number;
@@ -180,7 +180,7 @@ export function updateTeamCheckInConfig(
 export function submitActivityCheckIn(
   activityId: string,
   payload: {
-    team_id: string;
+    team_id: number;
     latitude: number;
     longitude: number;
   },

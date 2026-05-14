@@ -7,7 +7,7 @@ use registration_system_backend::user::domain::{
     DomainError, PlayerAdminListQuery, PlayerListResult, PlayerTeamSummary, UpdateUserFields, User,
     UserActivityRecord, UserAttendanceRanking, UserAttendanceRecord,
 };
-use registration_system_backend::user::ports::UserRepository;
+use registration_system_backend::user::ports::{UserCommandRepository, UserQueryRepository};
 use std::sync::{Arc, Mutex};
 
 #[derive(Default)]
@@ -17,7 +17,7 @@ struct RecordingUserRepository {
 }
 
 #[async_trait]
-impl UserRepository for RecordingUserRepository {
+impl UserQueryRepository for RecordingUserRepository {
     async fn find_by_open_id(&self, _open_id: &str) -> Result<Option<User>, DomainError> {
         unimplemented!()
     }
@@ -36,36 +36,6 @@ impl UserRepository for RecordingUserRepository {
             .unwrap()
             .push((keyword.to_string(), limit));
         Ok(Vec::new())
-    }
-
-    async fn create(&self, _user: &User) -> Result<User, DomainError> {
-        unimplemented!()
-    }
-
-    async fn touch_login(&self, _user_id: i64) -> Result<(), DomainError> {
-        unimplemented!()
-    }
-
-    async fn update_profile(
-        &self,
-        _user_id: i64,
-        _nickname: Option<&str>,
-        _real_name: Option<&str>,
-        _avatar_url: Option<&str>,
-    ) -> Result<(), DomainError> {
-        unimplemented!()
-    }
-
-    async fn update_fields(
-        &self,
-        _user_id: i64,
-        _fields: UpdateUserFields<'_>,
-    ) -> Result<(), DomainError> {
-        unimplemented!()
-    }
-
-    async fn delete(&self, _user_id: i64) -> Result<(), DomainError> {
-        unimplemented!()
     }
 
     async fn list_players_admin(
@@ -117,6 +87,39 @@ impl UserRepository for RecordingUserRepository {
     }
 }
 
+#[async_trait]
+impl UserCommandRepository for RecordingUserRepository {
+    async fn create(&self, _user: &User) -> Result<User, DomainError> {
+        unimplemented!()
+    }
+
+    async fn touch_login(&self, _user_id: i64) -> Result<(), DomainError> {
+        unimplemented!()
+    }
+
+    async fn update_profile(
+        &self,
+        _user_id: i64,
+        _nickname: Option<&str>,
+        _real_name: Option<&str>,
+        _avatar_url: Option<&str>,
+    ) -> Result<(), DomainError> {
+        unimplemented!()
+    }
+
+    async fn update_fields(
+        &self,
+        _user_id: i64,
+        _fields: UpdateUserFields<'_>,
+    ) -> Result<(), DomainError> {
+        unimplemented!()
+    }
+
+    async fn delete(&self, _user_id: i64) -> Result<(), DomainError> {
+        unimplemented!()
+    }
+}
+
 struct FakeTokenService;
 
 impl TokenServicePort for FakeTokenService {
@@ -156,7 +159,11 @@ fn user_actor(id: i64) -> ActorContext {
 #[tokio::test]
 async fn non_super_admin_player_list_is_scoped_to_managed_teams() {
     let repository = Arc::new(RecordingUserRepository::default());
-    let service = UserService::new(repository.clone(), Arc::new(FakeTokenService));
+    let service = UserService::new(
+        repository.clone(),
+        repository.clone(),
+        Arc::new(FakeTokenService),
+    );
 
     service
         .list_players(
@@ -180,7 +187,11 @@ async fn non_super_admin_player_list_is_scoped_to_managed_teams() {
 #[tokio::test]
 async fn super_admin_player_list_remains_unscoped() {
     let repository = Arc::new(RecordingUserRepository::default());
-    let service = UserService::new(repository.clone(), Arc::new(FakeTokenService));
+    let service = UserService::new(
+        repository.clone(),
+        repository.clone(),
+        Arc::new(FakeTokenService),
+    );
 
     service
         .list_players(
@@ -201,7 +212,11 @@ async fn super_admin_player_list_remains_unscoped() {
 #[tokio::test]
 async fn search_users_delegates_for_authenticated_user() {
     let repository = Arc::new(RecordingUserRepository::default());
-    let service = UserService::new(repository.clone(), Arc::new(FakeTokenService));
+    let service = UserService::new(
+        repository.clone(),
+        repository.clone(),
+        Arc::new(FakeTokenService),
+    );
 
     let users = service
         .search_users(&user_actor(8), "alice", 10)

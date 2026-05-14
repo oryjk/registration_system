@@ -4,7 +4,7 @@
 
 ## 当前状态
 
-当前小程序已经从原型骨架推进到真实接口接入阶段，已经落下列页面结构：
+当前小程序已经从原型骨架推进到真实接口接入和页面结构收敛阶段，已经落下列页面结构：
 
 - 首页
 - 约队大厅
@@ -12,9 +12,15 @@
 - 我的
 - 比赛详情
 - 约队详情
+- 比赛创建/编辑
+- 球队创建、加入与成员管理
+- 散人约队创建
+- 我的比赛
 - 账单明细
+- 通知
+- 资料完善
 
-其中首页、约队、统计、我的四个主页面已经按当前产品方向组织信息层级；活动、约队、球队、账单、通知、微信登录/手机号、支付等主要流程已通过 `src/api/` 接入后端。`src/mock/` 仅作为历史原型数据留存，不应作为新增功能的数据来源。
+其中首页、约队、统计、我的四个主页面已经按当前产品方向组织信息层级；活动、约队、球队、账单、通知、微信登录/手机号、支付、运行配置等主要流程已通过 `src/api/` 接入后端。`src/mock/` 仅作为历史原型数据留存，当前页面未直接引用，不应作为新增功能的数据来源。
 
 ## 产品方案
 
@@ -22,7 +28,7 @@
 
 - `docs/plans/2026-04-15-mini-product-design.md`
 
-该方案与当前页面结构一致，核心方向是：
+该方案与当前页面结构的主方向一致，但它仍是产品规划文档，不代表每个指标和细节都已完整落地。核心方向是：
 
 - 首页优先承载“待处理比赛中心”
 - 约队走轻量撮合闭环
@@ -43,8 +49,14 @@
 非 tab 页面包括：
 
 - 比赛详情：`pages/matches/detail`
+- 比赛创建/编辑：`pages/matches/create/index`
 - 约队详情：`pages/challenges/detail`
+- 散人约队创建：`pages/challenges/create-individual/index`
+- 球队管理：`pages/teams/manage/index`
+- 我的比赛：`pages/user/matches/index`
 - 账单明细：`pages/billing/index`
+- 通知：`pages/notifications/index`
+- 资料完善：`pages/profile/setup/index`
 
 ## 目录结构
 
@@ -59,6 +71,8 @@ src/
   types/         # 类型定义
   utils/         # 请求、登录态存储、工具函数
 ```
+
+页面局部组件、`*Actions.ts` / `*State.ts` 等拆分约定见 `docs/mini-architecture.md`。
 
 ## 本地开发
 
@@ -104,12 +118,15 @@ ${VITE_API_BASE_URL}${url}
 
 - 已有统一请求层和登录态存储入口
 - 已有“当前球队”全局上下文切换能力
-- 首页、约队、统计、我的页面已按产品方案完成原型级信息架构
+- 首页、约队、统计、我的页面已按产品方案完成信息架构，并持续按大 SFC 拆分规范收敛
 - 当前 `src/api/` 已覆盖活动、约队、球队、用户、账单、通知、系统配置、支付和微信能力
 - 首页运行参数通过后端 `/api/system/mini-app-runtime-config` 下发，前端在 `src/config/runtimeConfig.ts` 中提供默认值和兜底逻辑
+- 已拆分的重点页面包括 `home`、`activities`、`matches/detail`、`teams/manage`、`teams/index`、`user/index`、`user/matches`、`challenges/detail`
+- `matches/detail` 已进一步按页面级组合逻辑和报名展示组件拆分，详情见 `docs/mini-architecture.md`
 
 ## 开发建议
 
 - 提交前至少执行 `bun run type-check`
 - 涉及路由或页面结构变动时，补跑 `bun run build:mp-weixin`
 - 改字段时以 `registration_system_rs/` 后端 DTO 和实际 JSON 返回为准
+- 前端页面、样式、交互和小程序 UI 调整不要求机械按 TDD 开发；涉及路由、接口、权限、数据提交或共享逻辑时再按风险补充测试

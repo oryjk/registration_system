@@ -1,8 +1,9 @@
-mod payment_billing_port;
 mod payment_order_repository;
+mod payment_settlement_port;
 mod wx_pay_gateway;
 
-pub use payment_billing_port::PaymentBillingPort;
-pub use payment_billing_port::TeamMembershipSettlement;
-pub use payment_order_repository::PaymentOrderRepository;
+pub use payment_order_repository::{PaymentOrderCommandRepository, PaymentOrderQueryRepository};
+pub use payment_settlement_port::{
+    PaymentSettlementPort, RechargePaymentSettlement, TeamMembershipPaymentSettlement,
+};
 pub use wx_pay_gateway::WxPayGateway;

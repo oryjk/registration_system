@@ -5,17 +5,18 @@ use crate::system::adapters::{
 };
 use crate::system::application::SystemSettingsService;
 use crate::system::domain::{MapProvider, MapProviderSettings, MapServiceSettings};
-use crate::system::ports::SystemSettingsRepository;
+use crate::system::ports::{SystemSettingsCommandRepository, SystemSettingsQueryRepository};
 use axum::Router;
 use sqlx::PgPool;
 use std::sync::Arc;
 
-pub fn build_system_settings_repository(pool: &PgPool) -> Arc<dyn SystemSettingsRepository> {
+pub fn build_system_settings_repository(pool: &PgPool) -> Arc<PostgresSystemSettingsRepository> {
     Arc::new(PostgresSystemSettingsRepository::new(pool.clone()))
 }
 
 pub fn build_system_service(
-    repository: Arc<dyn SystemSettingsRepository>,
+    query_repository: Arc<dyn SystemSettingsQueryRepository>,
+    command_repository: Arc<dyn SystemSettingsCommandRepository>,
     config: &AppConfig,
 ) -> Arc<SystemSettingsService> {
     let defaults = MapServiceSettings {
@@ -32,7 +33,11 @@ pub fn build_system_service(
         },
     };
 
-    Arc::new(SystemSettingsService::with_repository(repository, defaults))
+    Arc::new(SystemSettingsService::with_repository(
+        query_repository,
+        command_repository,
+        defaults,
+    ))
 }
 
 pub fn build_admin_system_router() -> Router<AppState> {

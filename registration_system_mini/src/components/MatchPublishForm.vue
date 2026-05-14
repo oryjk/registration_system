@@ -59,9 +59,22 @@ const colorOptions = [
 const textareaBoxStyle =
   "width:100%;min-height:260rpx;padding:22rpx;border-radius:24rpx;border:2rpx solid #d7ddd2;background:#f4f6f0;--wot-textarea-bg:#f4f6f0;box-shadow:inset 0 2rpx 0 rgba(255,255,255,0.74);box-sizing:border-box;";
 const datetimePickerStyle = "width:100%;display:block;";
+const pickerCellStyle =
+  "width:100%;min-height:88rpx;padding:0 22rpx;border-radius:24rpx;border:2rpx solid #d7ddd2;background:#f4f6f0;box-shadow:inset 0 2rpx 0 rgba(255,255,255,0.74);box-sizing:border-box;";
 const cardTitleStyle = "display:block;font-size:30rpx;font-weight:900;line-height:1.35;color:#111310;";
 const cardCaptionStyle = "display:block;margin-top:8rpx;font-size:24rpx;font-weight:700;line-height:1.45;color:#111310;";
 const formLabelStyle = "display:block;font-size:26rpx;font-weight:800;line-height:1.35;color:#111310;";
+const defaultMatchClock = "20:00";
+
+const matchDateValue = computed({
+  get: () => (form.value.holdingDate ? startOfDay(form.value.holdingDate) : null),
+  set: (value: number | null) => updateMatchDate(value),
+});
+
+const matchClockValue = computed({
+  get: () => (form.value.holdingDate ? formatClock(form.value.holdingDate) : ""),
+  set: (value: string | number) => updateMatchClock(String(value || defaultMatchClock)),
+});
 
 function updateField<K extends keyof MatchPublishFormModel>(key: K, value: MatchPublishFormModel[K]) {
   form.value[key] = value;
@@ -89,10 +102,61 @@ function pad(value: number) {
   return String(value).padStart(2, "0");
 }
 
+function startOfDay(timestamp: number) {
+  const date = new Date(timestamp);
+  date.setHours(0, 0, 0, 0);
+  return date.getTime();
+}
+
+function parseClock(value: string) {
+  const [hourText, minuteText] = value.split(":");
+  const hour = Math.min(Math.max(Number(hourText) || 0, 0), 23);
+  const minute = Math.min(Math.max(Number(minuteText) || 0, 0), 59);
+  return { hour, minute };
+}
+
+function formatClock(timestamp: number) {
+  const date = new Date(timestamp);
+  return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function combineDateAndClock(dateTimestamp: number, clock: string) {
+  const date = new Date(dateTimestamp);
+  const { hour, minute } = parseClock(clock);
+  date.setHours(hour, minute, 0, 0);
+  return date.getTime();
+}
+
+function updateMatchDate(value: number | null) {
+  if (!value) {
+    updateField("holdingDate", 0);
+    return;
+  }
+
+  updateField("holdingDate", combineDateAndClock(value, matchClockValue.value || defaultMatchClock));
+}
+
+function updateMatchClock(value: string) {
+  const dateTimestamp = form.value.holdingDate || Date.now();
+  updateField("holdingDate", combineDateAndClock(dateTimestamp, value || defaultMatchClock));
+}
+
 function defaultDateTimeValue(offsetHours = 0) {
   const date = new Date();
   date.setHours(date.getHours() + offsetHours);
   return date.getTime();
+}
+
+function displayMatchDate(value: number | number[]) {
+  if (Array.isArray(value) || !value) return "";
+  const date = new Date(value);
+  return `${date.getFullYear()}年${pad(date.getMonth() + 1)}月${pad(date.getDate())}日`;
+}
+
+function displayClock(items: Array<{ value: string | number }>) {
+  if (!items.length) return "";
+  const [hour, minute] = items.map((item) => Number(item.value));
+  return `${pad(hour)}:${pad(minute)}`;
 }
 
 function displayDateTime(items: Array<{ value: string | number }>) {
@@ -203,17 +267,32 @@ function formatDateTimeColumn(type: string, value: string) {
             placeholder-class="create-native-placeholder"
           />
         </view>
-        <view class="create-form-item create-form-item-full">
-          <wd-text custom-class="create-form-label" color="#111310" text="比赛时间" />
+        <view class="create-form-item">
+          <wd-text custom-class="create-form-label" color="#111310" text="比赛日期" />
+          <wd-calendar
+            v-model="matchDateValue"
+            type="date"
+            title="选择比赛日期"
+            placeholder="请选择比赛日期"
+            confirm-text="确定"
+            :display-format="displayMatchDate"
+            :custom-style="pickerCellStyle"
+            custom-class="create-wot-calendar"
+            custom-value-class="create-wot-datetime-value"
+            root-portal
+          />
+        </view>
+        <view class="create-form-item">
+          <wd-text custom-class="create-form-label" color="#111310" text="开球时间" />
           <wd-datetime-picker
-            v-model="form.holdingDate"
-            type="datetime"
-            title="选择比赛时间"
-            placeholder="请选择比赛时间"
+            v-model="matchClockValue"
+            type="time"
+            title="选择开球时间"
+            placeholder="20:00"
             confirm-button-text="确定"
             cancel-button-text="取消"
-            :default-value="defaultDateTimeValue()"
-            :display-format="displayDateTime"
+            :default-value="defaultMatchClock"
+            :display-format="displayClock"
             :formatter="formatDateTimeColumn"
             :custom-style="datetimePickerStyle"
             custom-class="create-wot-datetime"

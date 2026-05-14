@@ -90,9 +90,9 @@ export interface BackendChallenge {
   id: string;
   title: string;
   kind: BackendChallengeKind;
-  host_team_id: string;
+  host_team_id: number;
   host_user_id: number;
-  guest_team_id?: string | null;
+  guest_team_id?: number | null;
   accepted_by_user_id?: number | null;
   activity_id?: string | null;
   holding_date: string;
@@ -132,14 +132,21 @@ export interface BackendChallengeActivityRef {
   start_time: string;
   end_time: string;
   location: string;
-  home_team_id?: string | null;
-  away_team_id?: string | null;
+  home_team_id?: number | null;
+  away_team_id?: number | null;
   players_per_team?: number | null;
+}
+
+export interface BackendChallengeIndividualParticipant {
+  user_id: number;
+  display_name: string;
+  avatar_url?: string | null;
 }
 
 export interface BackendChallengeDetail {
   summary: BackendChallengeSummary;
   activity?: BackendChallengeActivityRef | null;
+  individual_participants: BackendChallengeIndividualParticipant[];
 }
 
 export interface BackendNotification {
@@ -163,7 +170,7 @@ export interface BackendNotificationMarkAllReadResult {
 }
 
 export interface BackendTeam {
-  id: string;
+  id: number;
   name: string;
   description?: string | null;
   logo_url?: string | null;
@@ -180,7 +187,7 @@ export interface BackendTeamSummary extends BackendTeam {
 }
 
 export interface BackendTeamPasswordInfo {
-  team_id: string;
+  team_id: number;
   requires_password: boolean;
 }
 
@@ -212,6 +219,22 @@ export interface BackendTeamMemberAttendance {
   records: BackendTeamMemberAttendanceRecord[];
 }
 
+export interface BackendTeamAttendanceRankingItem {
+  user_id: number;
+  user_name: string;
+  avatar_url?: string | null;
+  total_count: number;
+  attended_count: number;
+  leave_count: number;
+  late_count: number;
+  unregistered_count: number;
+}
+
+export interface BackendTeamAttendanceSummary {
+  my_records: BackendTeamMemberAttendanceRecord[];
+  ranking: BackendTeamAttendanceRankingItem[];
+}
+
 export interface BackendTeamCreditOverview {
   team: BackendTeam;
   trust_label: string;
@@ -220,7 +243,7 @@ export interface BackendTeamCreditOverview {
 
 export interface BackendTeamCreditTransaction {
   id: number;
-  team_id: string;
+  team_id: number;
   activity_id?: string | null;
   transaction_type: string;
   delta: number;
@@ -230,7 +253,7 @@ export interface BackendTeamCreditTransaction {
   amount?: string | null;
   membership_months?: number | null;
   note?: string | null;
-  reviewer_team_id?: string | null;
+  reviewer_team_id?: number | null;
   created_by_user_id?: number | null;
   created_by_admin_id?: number | null;
   created_at: string;
@@ -249,8 +272,8 @@ export interface BackendActivity {
   opposing?: string | null;
   cover?: string | null;
   description?: string | null;
-  home_team_id?: string | null;
-  away_team_id?: string | null;
+  home_team_id?: number | null;
+  away_team_id?: number | null;
   color?: string | null;
   opposing_color?: string | null;
   players_per_team?: number | null;
@@ -261,7 +284,7 @@ export interface BackendActivity {
 }
 
 export interface BackendCreateActivityCheckInConfig {
-  team_id: string;
+  team_id: number;
   enabled: boolean;
   radius_meters: number;
   open_minutes_before: number;
@@ -318,7 +341,7 @@ export interface BackendRegistration {
 }
 
 export interface BackendActivityTeamCheckInConfig {
-  team_id: string;
+  team_id: number;
   enabled: boolean;
   radius_meters: number;
   open_minutes_before: number;
@@ -331,7 +354,7 @@ export interface BackendActivityTeamCheckInConfig {
 
 export interface BackendActivityCheckInRecord {
   activity_id: string;
-  team_id: string;
+  team_id: number;
   user_id: number;
   distance_meters: number;
   checked_in_at: string;
@@ -405,4 +428,45 @@ export interface BackendBillingFlowRecord {
 export interface BackendBillingFlowResult {
   records: BackendBillingFlowRecord[];
   final_balance: string;
+}
+
+export type BackendSettlementMode = "aa" | "manual";
+export type BackendSettlementParticipantScope = "registered_attendees" | "custom_users";
+
+export interface BackendActivitySettlementItem {
+  user_id: number;
+  user_name?: string | null;
+  fee?: string | null;
+  billed: boolean;
+  billing_id?: number | null;
+}
+
+export interface BackendActivitySettlementBatch {
+  batch_no: number;
+  operation_type: string;
+  mode: BackendSettlementMode | string;
+  participant_scope: BackendSettlementParticipantScope | string;
+  reversal_of_batch_no?: number | null;
+  description: string;
+  total_amount: string;
+  aa_fee: string;
+  user_count: number;
+  created_by_admin_id?: number | null;
+  created_at: string;
+}
+
+export interface BackendActivitySettlementSummary {
+  activity_id: string;
+  mode?: BackendSettlementMode | string | null;
+  participant_scope?: BackendSettlementParticipantScope | string | null;
+  description?: string | null;
+  total_amount?: string | null;
+  aa_fee?: string | null;
+  attending_user_count: number;
+  settled_user_count: number;
+  settled: boolean;
+  settled_at?: string | null;
+  current_batch_no?: number | null;
+  history: BackendActivitySettlementBatch[];
+  items: BackendActivitySettlementItem[];
 }

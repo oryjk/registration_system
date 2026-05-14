@@ -1,5 +1,5 @@
 use crate::notification::domain::{DomainError, Notification};
-use crate::notification::ports::NotificationRepository;
+use crate::notification::ports::{NotificationCommandRepository, NotificationQueryRepository};
 use async_trait::async_trait;
 use chrono::NaiveDateTime;
 use sqlx::{FromRow, PgPool, Postgres, QueryBuilder};
@@ -47,7 +47,7 @@ impl PostgresNotificationRepository {
 }
 
 #[async_trait]
-impl NotificationRepository for PostgresNotificationRepository {
+impl NotificationCommandRepository for PostgresNotificationRepository {
     async fn create_many(&self, notifications: &[Notification]) -> Result<(), DomainError> {
         if notifications.is_empty() {
             return Ok(());
@@ -79,6 +79,25 @@ impl NotificationRepository for PostgresNotificationRepository {
         Ok(())
     }
 
+    async fn mark_all_read(&self, user_id: i64) -> Result<u64, DomainError> {
+        let result = sqlx::query(
+            r#"
+            UPDATE rs_user_notifications
+            SET read_at = NOW(), updated_at = NOW()
+            WHERE user_id = $1 AND read_at IS NULL
+            "#,
+        )
+        .bind(user_id)
+        .execute(&self.pool)
+        .await
+        .map_err(|error| DomainError::Infrastructure(error.to_string()))?;
+
+        Ok(result.rows_affected())
+    }
+}
+
+#[async_trait]
+impl NotificationQueryRepository for PostgresNotificationRepository {
     async fn list_for_user(
         &self,
         user_id: i64,
@@ -115,21 +134,5 @@ impl NotificationRepository for PostgresNotificationRepository {
         .fetch_one(&self.pool)
         .await
         .map_err(|error| DomainError::Infrastructure(error.to_string()))
-    }
-
-    async fn mark_all_read(&self, user_id: i64) -> Result<u64, DomainError> {
-        let result = sqlx::query(
-            r#"
-            UPDATE rs_user_notifications
-            SET read_at = NOW(), updated_at = NOW()
-            WHERE user_id = $1 AND read_at IS NULL
-            "#,
-        )
-        .bind(user_id)
-        .execute(&self.pool)
-        .await
-        .map_err(|error| DomainError::Infrastructure(error.to_string()))?;
-
-        Ok(result.rows_affected())
     }
 }

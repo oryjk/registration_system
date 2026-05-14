@@ -10,8 +10,13 @@ pub fn build_user_service(
     pool: &PgPool,
     token_service: Arc<dyn TokenServicePort>,
 ) -> Arc<UserService> {
-    let repository = Arc::new(PostgresUserRepository::new(pool.clone()));
-    Arc::new(UserService::new(repository, token_service))
+    let query_repository = Arc::new(PostgresUserRepository::new(pool.clone()));
+    let command_repository = Arc::new(PostgresUserRepository::new(pool.clone()));
+    Arc::new(UserService::new(
+        query_repository,
+        command_repository,
+        token_service,
+    ))
 }
 
 pub fn build_admin_user_router() -> Router<AppState> {

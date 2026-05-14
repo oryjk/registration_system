@@ -12,7 +12,7 @@ pub struct CreateRechargeOrderRequest {
 
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct CreateTeamMembershipOrderRequest {
-    pub team_id: String,
+    pub team_id: i64,
     pub months: i32,
     pub openid: Option<String>,
     pub note: Option<String>,

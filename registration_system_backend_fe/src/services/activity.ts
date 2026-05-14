@@ -13,8 +13,8 @@ export interface Activity {
   opposing: string | null
   cover: string | null
   description: string | null
-  home_team_id: string | null
-  away_team_id: string | null
+  home_team_id: number | null
+  away_team_id: number | null
   color: string | null
   opposing_color: string | null
   players_per_team: number | null
@@ -22,7 +22,7 @@ export interface Activity {
 }
 
 export interface ActivityTeamCheckinConfig {
-  team_id: string
+  team_id: number
   enabled: boolean
   radius_meters: number
   open_minutes_before: number
@@ -93,8 +93,8 @@ export interface CreateActivityPayload {
   opposing?: string
   cover?: string
   description?: string
-  home_team_id?: string
-  away_team_id?: string
+  home_team_id?: number
+  away_team_id?: number
   color?: string
   opposing_color?: string
   players_per_team?: number
@@ -111,15 +111,15 @@ export interface UpdateActivityPayload {
   opposing?: string | null
   cover?: string | null
   description?: string | null
-  home_team_id?: string | null
-  away_team_id?: string | null
+  home_team_id?: number | null
+  away_team_id?: number | null
   color?: string | null
   opposing_color?: string | null
   players_per_team?: number | null
 }
 
 export interface UpdateActivityCheckinConfigPayload {
-  team_id: string
+  team_id: number
   enabled: boolean
   radius_meters: number
   open_minutes_before: number

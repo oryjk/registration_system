@@ -2,6 +2,8 @@ import { http } from '@/utils/request'
 
 export interface ActivitySettlementSummary {
   activity_id: string
+  mode: 'aa' | 'manual' | string | null
+  participant_scope: 'registered_attendees' | 'custom_users' | string | null
   description: string | null
   total_amount: string | null
   aa_fee: string | null
@@ -11,11 +13,14 @@ export interface ActivitySettlementSummary {
   settled_at: string | null
   current_batch_no: number | null
   history: ActivitySettlementBatch[]
+  items: ActivitySettlementItem[]
 }
 
 export interface ActivitySettlementBatch {
   batch_no: number
   operation_type: 'settle' | 'reverse' | string
+  mode: 'aa' | 'manual' | string
+  participant_scope: 'registered_attendees' | 'custom_users' | string
   reversal_of_batch_no: number | null
   description: string
   total_amount: string
@@ -25,8 +30,24 @@ export interface ActivitySettlementBatch {
   created_at: string
 }
 
+export interface ActivitySettlementItem {
+  user_id: number
+  user_name: string | null
+  fee: string | null
+  billed: boolean
+  billing_id: number | null
+}
+
+export interface SettleActivityExpenseItemPayload {
+  user_id: number
+  amount?: number | string | null
+}
+
 export interface SettleActivityExpensePayload {
-  total_amount: number
+  total_amount: number | string
+  mode?: 'aa' | 'manual'
+  participant_scope?: 'registered_attendees' | 'custom_users'
+  items?: SettleActivityExpenseItemPayload[]
   description?: string
 }
 
@@ -38,7 +59,7 @@ export const settleActivityExpense = (
   data: SettleActivityExpensePayload,
 ) => http.post<ActivitySettlementSummary>(`/orders/activities/${activityId}/settlement`, data)
 
-export interface ActivityOrder {
+export interface ActivityFeeSnapshot {
   id: number
   activity_id: string
   description: string
@@ -67,7 +88,8 @@ export interface UserAccountSummary {
   total_penalty: string
 }
 
-export const listOrders = () => http.get<ActivityOrder[]>('/orders')
+export const listActivityFeeSnapshots = () =>
+  http.get<ActivityFeeSnapshot[]>('/orders/activity-fee-snapshots')
 
 export const getActivitiesBilling = () =>
   http.get<ActivityBillingSummary[]>('/orders/activities/billing')

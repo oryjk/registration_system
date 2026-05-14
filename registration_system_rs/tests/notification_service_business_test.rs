@@ -2,7 +2,9 @@ use async_trait::async_trait;
 use chrono::Utc;
 use registration_system_backend::notification::application::NotificationService;
 use registration_system_backend::notification::domain::{DomainError, Notification};
-use registration_system_backend::notification::ports::NotificationRepository;
+use registration_system_backend::notification::ports::{
+    NotificationCommandRepository, NotificationQueryRepository,
+};
 use registration_system_backend::shared::auth::{ActorContext, ActorKind};
 use std::sync::{Arc, Mutex};
 
@@ -12,7 +14,7 @@ struct FakeNotificationRepository {
 }
 
 #[async_trait]
-impl NotificationRepository for FakeNotificationRepository {
+impl NotificationCommandRepository for FakeNotificationRepository {
     async fn create_many(&self, notifications: &[Notification]) -> Result<(), DomainError> {
         self.items
             .lock()
@@ -21,6 +23,22 @@ impl NotificationRepository for FakeNotificationRepository {
         Ok(())
     }
 
+    async fn mark_all_read(&self, user_id: i64) -> Result<u64, DomainError> {
+        let now = Utc::now().naive_utc();
+        let mut count = 0;
+        for item in self.items.lock().unwrap().iter_mut() {
+            if item.user_id == user_id && item.read_at.is_none() {
+                item.read_at = Some(now);
+                item.updated_at = now;
+                count += 1;
+            }
+        }
+        Ok(count)
+    }
+}
+
+#[async_trait]
+impl NotificationQueryRepository for FakeNotificationRepository {
     async fn list_for_user(
         &self,
         user_id: i64,
@@ -50,19 +68,6 @@ impl NotificationRepository for FakeNotificationRepository {
             .filter(|item| item.user_id == user_id && item.read_at.is_none())
             .count() as i64)
     }
-
-    async fn mark_all_read(&self, user_id: i64) -> Result<u64, DomainError> {
-        let now = Utc::now().naive_utc();
-        let mut count = 0;
-        for item in self.items.lock().unwrap().iter_mut() {
-            if item.user_id == user_id && item.read_at.is_none() {
-                item.read_at = Some(now);
-                item.updated_at = now;
-                count += 1;
-            }
-        }
-        Ok(count)
-    }
 }
 
 fn user_actor(id: i64) -> ActorContext {
@@ -76,7 +81,7 @@ fn user_actor(id: i64) -> ActorContext {
 #[tokio::test]
 async fn notification_service_tracks_unread_and_mark_all_read() {
     let repository = Arc::new(FakeNotificationRepository::default());
-    let service = NotificationService::new(repository);
+    let service = NotificationService::new(repository.clone(), repository);
 
     service
         .send_to_users(

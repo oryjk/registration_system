@@ -243,6 +243,10 @@ Actual:
   - `src/pages/__tests__/matchDetailRegistrationDesign.test.ts`
   - `src/pages/__tests__/teamManageIntegration.test.ts`
 
+Current status note, 2026-05-12:
+- The static expectation failures above have since been fixed during the mini SFC refactor work.
+- Latest mini verification after the refactors: `bun test` 109 pass / 0 fail, `bun run type-check` pass, `bun run build:mp-weixin` pass.
+
 ## Final Verification
 
 - [x] Run `git diff --check`.
@@ -258,3 +262,6 @@ Actual final verification:
 - `bun run type-check` passed.
 - Targeted runtime-config/home tests passed.
 - Full `bun test` has pre-existing/static assertion failures listed above.
+
+Current status note, 2026-05-12:
+- Full mini `bun test` now passes; see the note above.

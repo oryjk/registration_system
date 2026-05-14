@@ -1,9 +1,12 @@
 use crate::billing::domain::{
-    ActivityBillingSummary, ActivityOrder, ActivitySettlementBatch, ActivitySettlementSummary,
-    BalanceCalibrationRecord, BillingFlowRecord, BillingFlowResult, DomainError, PenaltyCandidate,
-    TransactionRecord, UserAccount, UserBillingRecord,
+    ActivityBillingSummary, ActivityFeeSnapshot, ActivitySettlementBatch, ActivitySettlementItem,
+    ActivitySettlementSummary, BalanceCalibrationRecord, BillingFlowRecord, BillingFlowResult,
+    DomainError, PenaltyCandidate, SettlementMode, SettlementParticipantScope, TransactionRecord,
+    UserAccount, UserBillingRecord,
 };
-use crate::billing::ports::BillingRepository;
+use crate::billing::ports::{
+    BillingCommandRepository, BillingQueryRepository, SettlementCharge, SettlementRequest,
+};
 use async_trait::async_trait;
 use chrono::{NaiveDate, NaiveDateTime, Utc};
 use rust_decimal::Decimal;
@@ -45,7 +48,7 @@ impl From<UserAccountRow> for UserAccount {
 }
 
 #[derive(Debug, FromRow)]
-struct ActivityOrderRow {
+struct ActivityFeeSnapshotRow {
     pub id: i64,
     pub activity_id: String,
     pub description: String,
@@ -56,8 +59,8 @@ struct ActivityOrderRow {
     pub updated_at: NaiveDateTime,
 }
 
-impl From<ActivityOrderRow> for ActivityOrder {
-    fn from(row: ActivityOrderRow) -> Self {
+impl From<ActivityFeeSnapshotRow> for ActivityFeeSnapshot {
+    fn from(row: ActivityFeeSnapshotRow) -> Self {
         Self {
             id: row.id,
             activity_id: row.activity_id,
@@ -75,7 +78,7 @@ impl From<ActivityOrderRow> for ActivityOrder {
 struct UserBillingRecordRow {
     pub id: i64,
     pub user_id: i64,
-    pub game_id: String,
+    pub activity_id: String,
     pub fee: Decimal,
     pub billing_type: String,
     pub description: Option<String>,
@@ -90,7 +93,7 @@ impl From<UserBillingRecordRow> for UserBillingRecord {
         Self {
             id: row.id,
             user_id: row.user_id,
-            game_id: row.game_id,
+            activity_id: row.activity_id,
             fee: row.fee,
             billing_type: row.billing_type,
             description: row.description,
@@ -148,6 +151,8 @@ struct ActivityBillingSummaryRow {
 #[derive(Debug, FromRow)]
 struct ActivitySettlementSummaryRow {
     pub activity_id: String,
+    pub settlement_mode: Option<String>,
+    pub participant_scope: Option<String>,
     pub description: Option<String>,
     pub total_amount: Option<Decimal>,
     pub aa_fee: Option<Decimal>,
@@ -162,6 +167,11 @@ impl From<ActivitySettlementSummaryRow> for ActivitySettlementSummary {
     fn from(row: ActivitySettlementSummaryRow) -> Self {
         Self {
             activity_id: row.activity_id,
+            mode: row.settlement_mode.as_deref().map(SettlementMode::from),
+            participant_scope: row
+                .participant_scope
+                .as_deref()
+                .map(SettlementParticipantScope::from),
             description: row.description,
             total_amount: row.total_amount,
             aa_fee: row.aa_fee,
@@ -171,6 +181,27 @@ impl From<ActivitySettlementSummaryRow> for ActivitySettlementSummary {
             settled_at: row.settled_at,
             current_batch_no: row.current_batch_no,
             history: Vec::new(),
+            items: Vec::new(),
+        }
+    }
+}
+
+#[derive(Debug, FromRow)]
+struct ActivitySettlementItemRow {
+    pub user_id: i64,
+    pub user_name: Option<String>,
+    pub fee: Option<Decimal>,
+    pub billing_id: Option<i64>,
+}
+
+impl From<ActivitySettlementItemRow> for ActivitySettlementItem {
+    fn from(row: ActivitySettlementItemRow) -> Self {
+        Self {
+            user_id: row.user_id,
+            user_name: row.user_name,
+            fee: row.fee,
+            billed: row.billing_id.is_some(),
+            billing_id: row.billing_id,
         }
     }
 }
@@ -179,6 +210,8 @@ impl From<ActivitySettlementSummaryRow> for ActivitySettlementSummary {
 struct ActivitySettlementBatchRow {
     pub batch_no: i32,
     pub operation_type: String,
+    pub settlement_mode: String,
+    pub participant_scope: String,
     pub reversal_of_batch_no: Option<i32>,
     pub description: String,
     pub total_amount: Decimal,
@@ -193,6 +226,8 @@ impl From<ActivitySettlementBatchRow> for ActivitySettlementBatch {
         Self {
             batch_no: row.batch_no,
             operation_type: row.operation_type,
+            mode: SettlementMode::from(row.settlement_mode.as_str()),
+            participant_scope: SettlementParticipantScope::from(row.participant_scope.as_str()),
             reversal_of_batch_no: row.reversal_of_batch_no,
             description: row.description,
             total_amount: row.total_amount,
@@ -210,6 +245,8 @@ struct ActiveSettlementBatchRow {
     pub batch_no: i32,
     pub total_amount: Decimal,
     pub aa_fee: Decimal,
+    pub settlement_mode: String,
+    pub participant_scope: String,
     pub user_count: i32,
 }
 
@@ -245,11 +282,261 @@ struct SettlementBatchInsert<'a> {
     description: String,
     total_amount: Decimal,
     aa_fee: Decimal,
+    settlement_mode: SettlementMode,
+    participant_scope: SettlementParticipantScope,
     user_count: i32,
     created_by_admin_id: Option<i64>,
 }
 
+#[derive(Debug, Clone)]
+struct ResolvedSettlementCharge {
+    user_id: i64,
+    amount: Decimal,
+}
+
 impl PostgresBillingRepository {
+    async fn do_upsert_activity_fee_snapshot(
+        &self,
+        activity_id: &str,
+        description: &str,
+        fee: Decimal,
+        total: i32,
+    ) -> Result<ActivityFeeSnapshot, DomainError> {
+        sqlx::query(
+            r#"INSERT INTO rs_activity_fee_snapshots (activity_id, description, fee, total, activity_holding_time, create_time, updated_at)
+               VALUES ($1, $2, $3, $4, NULL, NOW(), NOW())
+               ON CONFLICT (activity_id) DO UPDATE SET
+                   description = EXCLUDED.description,
+                   fee = EXCLUDED.fee,
+                   total = EXCLUDED.total,
+                   updated_at = NOW()"#,
+        )
+        .bind(activity_id)
+        .bind(description)
+        .bind(fee)
+        .bind(total)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
+
+        let row = sqlx::query_as::<_, ActivityFeeSnapshotRow>(
+            "SELECT id, activity_id, description, fee, total, activity_holding_time, create_time, updated_at FROM rs_activity_fee_snapshots WHERE activity_id = $1",
+        )
+        .bind(activity_id)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
+        Ok(ActivityFeeSnapshot::from(row))
+    }
+
+    async fn do_settle_activity_expense(
+        &self,
+        activity_id: &str,
+        total_amount: Decimal,
+        description: Option<&str>,
+        created_by_admin_id: Option<i64>,
+    ) -> Result<ActivitySettlementSummary, DomainError> {
+        self.do_settle_activity_expense_with_charges(SettlementRequest {
+            activity_id,
+            mode: SettlementMode::Aa,
+            participant_scope: SettlementParticipantScope::RegisteredAttendees,
+            total_amount,
+            charges: &[],
+            description,
+            created_by_admin_id,
+        })
+        .await
+    }
+
+    async fn do_settle_activity_expense_with_charges(
+        &self,
+        request: SettlementRequest<'_>,
+    ) -> Result<ActivitySettlementSummary, DomainError> {
+        let SettlementRequest {
+            activity_id,
+            mode,
+            participant_scope,
+            total_amount,
+            charges,
+            description,
+            created_by_admin_id,
+        } = request;
+
+        let mut tx = self
+            .pool
+            .begin()
+            .await
+            .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
+
+        let activity_status =
+            sqlx::query_scalar::<_, i16>("SELECT status FROM rs_activity WHERE id = $1")
+                .bind(activity_id)
+                .fetch_optional(&mut *tx)
+                .await
+                .map_err(|e| DomainError::Infrastructure(e.to_string()))?
+                .ok_or_else(|| DomainError::Validation("活动不存在".to_string()))?;
+
+        if activity_status != 2 {
+            return Err(DomainError::Validation("仅已结束比赛可结算".to_string()));
+        }
+
+        let resolved_charges = Self::resolve_settlement_charges(
+            &mut tx,
+            activity_id,
+            mode,
+            participant_scope,
+            total_amount,
+            charges,
+        )
+        .await?;
+
+        let user_count = resolved_charges.len() as i32;
+        let aa_fee = if mode == SettlementMode::Aa {
+            (total_amount / Decimal::from(user_count)).round_dp(2)
+        } else {
+            Decimal::ZERO
+        };
+        let order_description = description.unwrap_or("赛后 AA 扣费");
+        let mut next_batch_no = Self::next_batch_no(&mut *tx, activity_id).await?;
+
+        if let Some(active_batch) = Self::get_active_settlement_batch(&mut *tx, activity_id).await?
+        {
+            let reverse_batch_id = Self::create_settlement_batch(
+                &mut *tx,
+                SettlementBatchInsert {
+                    activity_id,
+                    batch_no: next_batch_no,
+                    operation_type: "reverse",
+                    reversal_of_batch_id: Some(active_batch.id),
+                    description: format!("冲正第{}批结算", active_batch.batch_no),
+                    total_amount: -active_batch.total_amount,
+                    aa_fee: -active_batch.aa_fee,
+                    settlement_mode: SettlementMode::from(active_batch.settlement_mode.as_str()),
+                    participant_scope: SettlementParticipantScope::from(
+                        active_batch.participant_scope.as_str(),
+                    ),
+                    user_count: active_batch.user_count,
+                    created_by_admin_id,
+                },
+            )
+            .await?;
+            next_batch_no += 1;
+
+            let prior_billings = sqlx::query_as::<_, (i64, Decimal)>(
+                r#"
+                SELECT user_id, fee
+                FROM rs_user_billings
+                WHERE settlement_batch_id = $1
+                ORDER BY id ASC
+                "#,
+            )
+            .bind(active_batch.id)
+            .fetch_all(&mut *tx)
+            .await
+            .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
+
+            for (user_id, previous_fee) in prior_billings {
+                let reverse_fee = -previous_fee;
+                sqlx::query_scalar::<_, i64>(
+                    r#"
+                    INSERT INTO rs_user_billings (
+                        user_id, activity_id, fee, billing_type, description, billing_date, settlement_batch_id, status, created_at, updated_at
+                    ) VALUES ($1, $2, $3, 'activity_fee_reversal', $4, $5, $6, 1, NOW(), NOW())
+                    RETURNING id
+                    "#,
+                )
+                .bind(user_id)
+                .bind(activity_id)
+                .bind(reverse_fee)
+                .bind(format!("冲正第{}批结算", active_batch.batch_no))
+                .bind(Utc::now().date_naive())
+                .bind(reverse_batch_id)
+                .fetch_one(&mut *tx)
+                .await
+                .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
+
+                sqlx::query(
+                    "UPDATE rs_user_accounts SET balance = balance - $1, total_expense = total_expense + $2, last_updated = NOW(), updated_at = NOW() WHERE user_id = $3",
+                )
+                .bind(reverse_fee)
+                .bind(reverse_fee)
+                .bind(user_id)
+                .execute(&mut *tx)
+                .await
+                .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
+            }
+        }
+
+        let settle_batch_id = Self::create_settlement_batch(
+            &mut *tx,
+            SettlementBatchInsert {
+                activity_id,
+                batch_no: next_batch_no,
+                operation_type: "settle",
+                reversal_of_batch_id: None,
+                description: order_description.to_string(),
+                total_amount,
+                aa_fee,
+                settlement_mode: mode,
+                participant_scope,
+                user_count,
+                created_by_admin_id,
+            },
+        )
+        .await?;
+
+        sqlx::query(
+            r#"INSERT INTO rs_activity_fee_snapshots (activity_id, description, fee, total, activity_holding_time, create_time, updated_at)
+               VALUES ($1, $2, $3, $4, NULL, NOW(), NOW())
+               ON CONFLICT (activity_id) DO UPDATE SET
+                   description = EXCLUDED.description,
+                   fee = EXCLUDED.fee,
+                   total = EXCLUDED.total,
+                   updated_at = NOW()"#,
+        )
+        .bind(activity_id)
+        .bind(order_description)
+        .bind(aa_fee)
+        .bind(user_count)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
+
+        let billing_date = Utc::now().date_naive();
+        for charge in resolved_charges {
+            Self::ensure_user_account(&mut *tx, charge.user_id).await?;
+
+            sqlx::query_scalar::<_, i64>(
+                "INSERT INTO rs_user_billings (user_id, activity_id, fee, billing_type, description, billing_date, settlement_batch_id, status, created_at, updated_at) VALUES ($1, $2, $3, 'activity_fee', $4, $5, $6, 1, NOW(), NOW()) RETURNING id",
+            )
+            .bind(charge.user_id)
+            .bind(activity_id)
+            .bind(charge.amount)
+            .bind(Some(order_description))
+            .bind(billing_date)
+            .bind(settle_batch_id)
+            .fetch_one(&mut *tx)
+            .await
+            .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
+
+            sqlx::query(
+                "UPDATE rs_user_accounts SET balance = balance - $1, total_expense = total_expense + $2, last_updated = NOW(), updated_at = NOW() WHERE user_id = $3",
+            )
+            .bind(charge.amount)
+            .bind(charge.amount)
+            .bind(charge.user_id)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
+        }
+
+        tx.commit()
+            .await
+            .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
+
+        Self::fetch_activity_settlement_summary(&self.pool, activity_id).await
+    }
+
     pub fn new(pool: PgPool) -> Self {
         Self { pool }
     }
@@ -270,6 +557,101 @@ impl PostgresBillingRepository {
         Ok(())
     }
 
+    async fn resolve_settlement_charges(
+        tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+        activity_id: &str,
+        mode: SettlementMode,
+        participant_scope: SettlementParticipantScope,
+        total_amount: Decimal,
+        charges: &[SettlementCharge],
+    ) -> Result<Vec<ResolvedSettlementCharge>, DomainError> {
+        let mut user_ids = match participant_scope {
+            SettlementParticipantScope::RegisteredAttendees => sqlx::query_scalar::<_, i64>(
+                "SELECT user_id FROM rs_user_activity WHERE activity_id = $1 AND stand = 1 ORDER BY user_id",
+            )
+            .bind(activity_id)
+            .fetch_all(&mut **tx)
+            .await
+            .map_err(|e| DomainError::Infrastructure(e.to_string()))?,
+            SettlementParticipantScope::CustomUsers => {
+                if charges.is_empty() {
+                    return Err(DomainError::Validation("指定扣费人员不能为空".to_string()));
+                }
+                charges.iter().map(|charge| charge.user_id).collect()
+            }
+        };
+
+        user_ids.sort_unstable();
+        user_ids.dedup();
+
+        if user_ids.is_empty() {
+            return Err(DomainError::Validation(
+                "当前没有可结算的参赛球员".to_string(),
+            ));
+        }
+
+        match mode {
+            SettlementMode::Aa => {
+                let aa_fee = (total_amount / Decimal::from(user_ids.len() as i64)).round_dp(2);
+                Ok(user_ids
+                    .into_iter()
+                    .map(|user_id| ResolvedSettlementCharge {
+                        user_id,
+                        amount: aa_fee,
+                    })
+                    .collect())
+            }
+            SettlementMode::Manual => {
+                let mut manual_charges = charges
+                    .iter()
+                    .map(|charge| {
+                        let amount = charge.amount.ok_or_else(|| {
+                            DomainError::Validation("手动扣费金额不能为空".to_string())
+                        })?;
+                        if amount <= Decimal::ZERO {
+                            return Err(DomainError::Validation(
+                                "手动扣费金额必须大于 0".to_string(),
+                            ));
+                        }
+                        Ok(ResolvedSettlementCharge {
+                            user_id: charge.user_id,
+                            amount,
+                        })
+                    })
+                    .collect::<Result<Vec<_>, DomainError>>()?;
+                manual_charges.sort_by_key(|charge| charge.user_id);
+
+                let mut manual_user_ids = manual_charges
+                    .iter()
+                    .map(|charge| charge.user_id)
+                    .collect::<Vec<_>>();
+                manual_user_ids.sort_unstable();
+                manual_user_ids.dedup();
+                if manual_user_ids.len() != manual_charges.len() {
+                    return Err(DomainError::Validation("手动扣费人员不能重复".to_string()));
+                }
+                if participant_scope == SettlementParticipantScope::RegisteredAttendees
+                    && manual_user_ids != user_ids
+                {
+                    return Err(DomainError::Validation(
+                        "手动扣费人员必须与出勤人员一致".to_string(),
+                    ));
+                }
+
+                let actual_total = manual_charges
+                    .iter()
+                    .fold(Decimal::ZERO, |sum, charge| sum + charge.amount);
+                if actual_total != total_amount {
+                    return Err(DomainError::Validation(
+                        "手动扣费明细合计必须等于结算总金额".to_string(),
+                    ));
+                }
+
+                Ok(manual_charges)
+            }
+        }
+    }
+
     async fn fetch_activity_settlement_summary(
         pool: &PgPool,
         activity_id: &str,
@@ -277,7 +659,8 @@ impl PostgresBillingRepository {
         let row = sqlx::query_as::<_, ActivitySettlementSummaryRow>(
             r#"
             WITH active_batch AS (
-                SELECT b.id, b.batch_no, b.description, b.total_amount, b.aa_fee, b.user_count, b.created_at
+                SELECT b.id, b.batch_no, b.description, b.total_amount, b.aa_fee,
+                       b.settlement_mode, b.participant_scope, b.user_count, b.created_at
                 FROM rs_activity_settlement_batches b
                 LEFT JOIN rs_activity_settlement_batches reversed
                     ON reversed.reversal_of_batch_id = b.id
@@ -295,9 +678,11 @@ impl PostgresBillingRepository {
             )
             SELECT
                 $1::CHAR(36) AS activity_id,
+                active_batch.settlement_mode,
+                active_batch.participant_scope,
                 active_batch.description,
                 active_batch.total_amount,
-                active_batch.aa_fee,
+                CASE WHEN active_batch.settlement_mode = 'aa' THEN active_batch.aa_fee ELSE NULL END AS aa_fee,
                 COALESCE(attending.attending_user_count, 0) AS attending_user_count,
                 COALESCE(active_batch.user_count, 0) AS settled_user_count,
                 active_batch.id IS NOT NULL AS settled,
@@ -318,6 +703,8 @@ impl PostgresBillingRepository {
                 SELECT
                 b.batch_no,
                 b.operation_type,
+                b.settlement_mode,
+                b.participant_scope,
                 source.batch_no AS reversal_of_batch_no,
                 b.description,
                 b.total_amount,
@@ -341,7 +728,72 @@ impl PostgresBillingRepository {
             .into_iter()
             .map(ActivitySettlementBatch::from)
             .collect();
+        summary.items = Self::fetch_activity_settlement_items(pool, activity_id).await?;
         Ok(summary)
+    }
+
+    async fn fetch_activity_settlement_items(
+        pool: &PgPool,
+        activity_id: &str,
+    ) -> Result<Vec<ActivitySettlementItem>, DomainError> {
+        let rows = sqlx::query_as::<_, ActivitySettlementItemRow>(
+            r#"
+            WITH active_batch AS (
+                SELECT b.id, b.participant_scope
+                FROM rs_activity_settlement_batches b
+                LEFT JOIN rs_activity_settlement_batches reversed
+                    ON reversed.reversal_of_batch_id = b.id
+                   AND reversed.operation_type = 'reverse'
+                WHERE b.activity_id = $1
+                  AND b.operation_type = 'settle'
+                  AND reversed.id IS NULL
+                ORDER BY b.batch_no DESC
+                LIMIT 1
+            ),
+            active_billing AS (
+                SELECT ub.user_id, ub.fee, ub.id AS billing_id
+                FROM rs_user_billings ub
+                INNER JOIN active_batch ab ON ab.id = ub.settlement_batch_id
+                WHERE ub.billing_type = 'activity_fee'
+            ),
+            attendee_items AS (
+                SELECT
+                    ua.user_id,
+                    billing.fee,
+                    billing.billing_id
+                FROM rs_user_activity ua
+                LEFT JOIN active_billing billing ON billing.user_id = ua.user_id
+                WHERE ua.activity_id = $1
+                  AND ua.stand = 1
+            )
+            SELECT
+                selected.user_id,
+                COALESCE(NULLIF(u.real_name, ''), NULLIF(u.nickname, ''), u.username) AS user_name,
+                selected.fee,
+                selected.billing_id
+            FROM (
+                SELECT user_id, fee, billing_id
+                FROM attendee_items
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM active_batch WHERE participant_scope = 'custom_users'
+                )
+                UNION ALL
+                SELECT user_id, fee, billing_id
+                FROM active_billing
+                WHERE EXISTS (
+                    SELECT 1 FROM active_batch WHERE participant_scope = 'custom_users'
+                )
+            ) selected
+            LEFT JOIN rs_user_info u ON u.id = selected.user_id
+            ORDER BY selected.user_id ASC
+            "#,
+        )
+        .bind(activity_id)
+        .fetch_all(pool)
+        .await
+        .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
+
+        Ok(rows.into_iter().map(ActivitySettlementItem::from).collect())
     }
 
     async fn get_active_settlement_batch<'a>(
@@ -350,7 +802,8 @@ impl PostgresBillingRepository {
     ) -> Result<Option<ActiveSettlementBatchRow>, DomainError> {
         sqlx::query_as::<_, ActiveSettlementBatchRow>(
             r#"
-            SELECT b.id, b.batch_no, b.total_amount, b.aa_fee, b.user_count
+            SELECT b.id, b.batch_no, b.total_amount, b.aa_fee,
+                   b.settlement_mode, b.participant_scope, b.user_count
             FROM rs_activity_settlement_batches b
             LEFT JOIN rs_activity_settlement_batches reversed
                 ON reversed.reversal_of_batch_id = b.id
@@ -396,9 +849,11 @@ impl PostgresBillingRepository {
                 description,
                 total_amount,
                 aa_fee,
+                settlement_mode,
+                participant_scope,
                 user_count,
                 created_by_admin_id
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
             RETURNING id
             "#,
         )
@@ -409,6 +864,8 @@ impl PostgresBillingRepository {
         .bind(batch.description)
         .bind(batch.total_amount)
         .bind(batch.aa_fee)
+        .bind(batch.settlement_mode.as_str())
+        .bind(batch.participant_scope.as_str())
         .bind(batch.user_count)
         .bind(batch.created_by_admin_id)
         .fetch_one(executor)
@@ -417,9 +874,8 @@ impl PostgresBillingRepository {
     }
 }
 
-#[async_trait]
-impl BillingRepository for PostgresBillingRepository {
-    async fn get_user_account(&self, user_id: i64) -> Result<Option<UserAccount>, DomainError> {
+impl PostgresBillingRepository {
+    async fn do_get_user_account(&self, user_id: i64) -> Result<Option<UserAccount>, DomainError> {
         let row = sqlx::query_as::<_, UserAccountRow>(
             r#"SELECT id, user_id, balance, total_recharge, total_expense, total_penalty,
                       last_updated, version, status, created_at, updated_at
@@ -432,249 +888,48 @@ impl BillingRepository for PostgresBillingRepository {
         Ok(row.map(UserAccount::from))
     }
 
-    async fn create_activity_order(
+    async fn do_get_activity_fee_snapshot(
         &self,
         activity_id: &str,
-        description: &str,
-        fee: Decimal,
-        total: i32,
-    ) -> Result<ActivityOrder, DomainError> {
-        sqlx::query(
-            r#"INSERT INTO rs_activity_order (activity_id, description, fee, total, activity_holding_time, create_time, updated_at)
-               VALUES ($1, $2, $3, $4, NULL, NOW(), NOW())
-               ON CONFLICT (activity_id) DO UPDATE SET
-                   description = EXCLUDED.description,
-                   fee = EXCLUDED.fee,
-                   total = EXCLUDED.total,
-                   updated_at = NOW()"#,
-        )
-        .bind(activity_id).bind(description).bind(fee).bind(total)
-        .execute(&self.pool).await.map_err(|e| DomainError::Infrastructure(e.to_string()))?;
-
-        let row = sqlx::query_as::<_, ActivityOrderRow>(
-            "SELECT id, activity_id, description, fee, total, activity_holding_time, create_time, updated_at FROM rs_activity_order WHERE activity_id = $1",
-        )
-        .bind(activity_id)
-        .fetch_one(&self.pool).await.map_err(|e| DomainError::Infrastructure(e.to_string()))?;
-        Ok(ActivityOrder::from(row))
-    }
-
-    async fn get_activity_order(
-        &self,
-        activity_id: &str,
-    ) -> Result<Option<ActivityOrder>, DomainError> {
-        let row = sqlx::query_as::<_, ActivityOrderRow>(
-            "SELECT id, activity_id, description, fee, total, activity_holding_time, create_time, updated_at FROM rs_activity_order WHERE activity_id = $1",
+    ) -> Result<Option<ActivityFeeSnapshot>, DomainError> {
+        let row = sqlx::query_as::<_, ActivityFeeSnapshotRow>(
+            "SELECT id, activity_id, description, fee, total, activity_holding_time, create_time, updated_at FROM rs_activity_fee_snapshots WHERE activity_id = $1",
         )
         .bind(activity_id)
         .fetch_optional(&self.pool).await.map_err(|e| DomainError::Infrastructure(e.to_string()))?;
-        Ok(row.map(ActivityOrder::from))
+        Ok(row.map(ActivityFeeSnapshot::from))
     }
 
-    async fn list_activity_orders(&self) -> Result<Vec<ActivityOrder>, DomainError> {
-        let rows = sqlx::query_as::<_, ActivityOrderRow>(
-            "SELECT id, activity_id, description, fee, total, activity_holding_time, create_time, updated_at FROM rs_activity_order ORDER BY create_time DESC",
+    async fn do_list_activity_fee_snapshots(
+        &self,
+    ) -> Result<Vec<ActivityFeeSnapshot>, DomainError> {
+        let rows = sqlx::query_as::<_, ActivityFeeSnapshotRow>(
+            "SELECT id, activity_id, description, fee, total, activity_holding_time, create_time, updated_at FROM rs_activity_fee_snapshots ORDER BY create_time DESC",
         )
         .fetch_all(&self.pool).await.map_err(|e| DomainError::Infrastructure(e.to_string()))?;
-        Ok(rows.into_iter().map(ActivityOrder::from).collect())
+        Ok(rows.into_iter().map(ActivityFeeSnapshot::from).collect())
     }
 
-    async fn get_activity_settlement_summary(
+    async fn do_get_activity_settlement_summary(
         &self,
         activity_id: &str,
     ) -> Result<ActivitySettlementSummary, DomainError> {
         Self::fetch_activity_settlement_summary(&self.pool, activity_id).await
     }
 
-    async fn settle_activity_expense(
-        &self,
-        activity_id: &str,
-        total_amount: Decimal,
-        description: Option<&str>,
-        created_by_admin_id: Option<i64>,
-    ) -> Result<ActivitySettlementSummary, DomainError> {
-        let mut tx = self
-            .pool
-            .begin()
-            .await
-            .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
-
-        let activity_status =
-            sqlx::query_scalar::<_, i16>("SELECT status FROM rs_activity WHERE id = $1")
-                .bind(activity_id)
-                .fetch_optional(&mut *tx)
-                .await
-                .map_err(|e| DomainError::Infrastructure(e.to_string()))?
-                .ok_or_else(|| DomainError::Validation("活动不存在".to_string()))?;
-
-        if activity_status != 2 {
-            return Err(DomainError::Validation("仅已结束比赛可结算".to_string()));
-        }
-
-        let user_ids = sqlx::query_scalar::<_, i64>(
-            "SELECT user_id FROM rs_user_activity WHERE activity_id = $1 AND stand = 1 ORDER BY user_id",
-        )
-        .bind(activity_id)
-        .fetch_all(&mut *tx)
-        .await
-        .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
-
-        if user_ids.is_empty() {
-            return Err(DomainError::Validation(
-                "当前没有可结算的参赛球员".to_string(),
-            ));
-        }
-
-        let user_count = user_ids.len() as i32;
-        let aa_fee = (total_amount / Decimal::from(user_count)).round_dp(2);
-        let order_description = description.unwrap_or("赛后 AA 扣费");
-        let mut next_batch_no = Self::next_batch_no(&mut *tx, activity_id).await?;
-
-        if let Some(active_batch) = Self::get_active_settlement_batch(&mut *tx, activity_id).await?
-        {
-            let reverse_batch_id = Self::create_settlement_batch(
-                &mut *tx,
-                SettlementBatchInsert {
-                    activity_id,
-                    batch_no: next_batch_no,
-                    operation_type: "reverse",
-                    reversal_of_batch_id: Some(active_batch.id),
-                    description: format!("冲正第{}批结算", active_batch.batch_no),
-                    total_amount: -active_batch.total_amount,
-                    aa_fee: -active_batch.aa_fee,
-                    user_count: active_batch.user_count,
-                    created_by_admin_id,
-                },
-            )
-            .await?;
-            next_batch_no += 1;
-
-            let prior_billings = sqlx::query_as::<_, (i64, Decimal)>(
-                r#"
-                SELECT user_id, fee
-                FROM rs_user_billings
-                WHERE settlement_batch_id = $1
-                ORDER BY id ASC
-                "#,
-            )
-            .bind(active_batch.id)
-            .fetch_all(&mut *tx)
-            .await
-            .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
-
-            for (user_id, previous_fee) in prior_billings {
-                let reverse_fee = -previous_fee;
-                sqlx::query_scalar::<_, i64>(
-                    r#"
-                    INSERT INTO rs_user_billings (
-                        user_id, game_id, fee, billing_type, description, billing_date, settlement_batch_id, status, created_at, updated_at
-                    ) VALUES ($1, $2, $3, 'game_fee_reversal', $4, $5, $6, 1, NOW(), NOW())
-                    RETURNING id
-                    "#,
-                )
-                .bind(user_id)
-                .bind(activity_id)
-                .bind(reverse_fee)
-                .bind(format!("冲正第{}批结算", active_batch.batch_no))
-                .bind(Utc::now().date_naive())
-                .bind(reverse_batch_id)
-                .fetch_one(&mut *tx)
-                .await
-                .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
-
-                sqlx::query(
-                    "UPDATE rs_user_accounts SET balance = balance - $1, total_expense = total_expense + $2, last_updated = NOW(), updated_at = NOW() WHERE user_id = $3",
-                )
-                .bind(reverse_fee)
-                .bind(reverse_fee)
-                .bind(user_id)
-                .execute(&mut *tx)
-                .await
-                .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
-            }
-        }
-
-        let settle_batch_id = Self::create_settlement_batch(
-            &mut *tx,
-            SettlementBatchInsert {
-                activity_id,
-                batch_no: next_batch_no,
-                operation_type: "settle",
-                reversal_of_batch_id: None,
-                description: order_description.to_string(),
-                total_amount,
-                aa_fee,
-                user_count,
-                created_by_admin_id,
-            },
-        )
-        .await?;
-
-        sqlx::query(
-            r#"INSERT INTO rs_activity_order (activity_id, description, fee, total, activity_holding_time, create_time, updated_at)
-               VALUES ($1, $2, $3, $4, NULL, NOW(), NOW())
-               ON CONFLICT (activity_id) DO UPDATE SET
-                   description = EXCLUDED.description,
-                   fee = EXCLUDED.fee,
-                   total = EXCLUDED.total,
-                   updated_at = NOW()"#,
-        )
-        .bind(activity_id)
-        .bind(order_description)
-        .bind(aa_fee)
-        .bind(user_count)
-        .execute(&mut *tx)
-        .await
-        .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
-
-        let billing_date = Utc::now().date_naive();
-        for user_id in user_ids {
-            Self::ensure_user_account(&mut *tx, user_id).await?;
-
-            sqlx::query_scalar::<_, i64>(
-                "INSERT INTO rs_user_billings (user_id, game_id, fee, billing_type, description, billing_date, settlement_batch_id, status, created_at, updated_at) VALUES ($1, $2, $3, 'game_fee', $4, $5, $6, 1, NOW(), NOW()) RETURNING id",
-            )
-            .bind(user_id)
-            .bind(activity_id)
-            .bind(aa_fee)
-            .bind(Some(order_description))
-            .bind(billing_date)
-            .bind(settle_batch_id)
-            .fetch_one(&mut *tx)
-            .await
-            .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
-
-            sqlx::query(
-                "UPDATE rs_user_accounts SET balance = balance - $1, total_expense = total_expense + $2, last_updated = NOW(), updated_at = NOW() WHERE user_id = $3",
-            )
-            .bind(aa_fee)
-            .bind(aa_fee)
-            .bind(user_id)
-            .execute(&mut *tx)
-            .await
-            .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
-        }
-
-        tx.commit()
-            .await
-            .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
-
-        Self::fetch_activity_settlement_summary(&self.pool, activity_id).await
-    }
-
-    async fn list_user_billings(
+    async fn do_list_user_billings(
         &self,
         user_id: i64,
     ) -> Result<Vec<UserBillingRecord>, DomainError> {
         let rows = sqlx::query_as::<_, UserBillingRecordRow>(
-            "SELECT id, user_id, game_id, fee, billing_type, description, billing_date, status, created_at, updated_at FROM rs_user_billings WHERE user_id = $1 ORDER BY billing_date DESC, id DESC",
+            "SELECT id, user_id, activity_id, fee, billing_type, description, billing_date, status, created_at, updated_at FROM rs_user_billings WHERE user_id = $1 ORDER BY billing_date DESC, id DESC",
         )
         .bind(user_id)
         .fetch_all(&self.pool).await.map_err(|e| DomainError::Infrastructure(e.to_string()))?;
         Ok(rows.into_iter().map(UserBillingRecord::from).collect())
     }
 
-    async fn recharge(
+    async fn do_recharge(
         &self,
         user_id: i64,
         amount: Decimal,
@@ -709,7 +964,7 @@ impl BillingRepository for PostgresBillingRepository {
         Ok(id)
     }
 
-    async fn add_game_expenses(
+    async fn do_add_activity_expenses(
         &self,
         activity_id: &str,
         user_ids: &[i64],
@@ -727,7 +982,7 @@ impl BillingRepository for PostgresBillingRepository {
         for user_id in user_ids {
             Self::ensure_user_account(&mut *tx, *user_id).await?;
             let id: i64 = sqlx::query_scalar(
-                "INSERT INTO rs_user_billings (user_id, game_id, fee, billing_type, description, billing_date, status, created_at, updated_at) VALUES ($1, $2, $3, 'game_fee', $4, $5, 1, NOW(), NOW()) RETURNING id",
+                "INSERT INTO rs_user_billings (user_id, activity_id, fee, billing_type, description, billing_date, status, created_at, updated_at) VALUES ($1, $2, $3, 'activity_fee', $4, $5, 1, NOW(), NOW()) RETURNING id",
             )
             .bind(*user_id).bind(activity_id).bind(fee).bind(description).bind(billing_date)
             .fetch_one(&mut *tx).await.map_err(|e| DomainError::Infrastructure(e.to_string()))?;
@@ -746,7 +1001,7 @@ impl BillingRepository for PostgresBillingRepository {
         Ok(ids)
     }
 
-    async fn add_penalty(
+    async fn do_add_penalty(
         &self,
         user_id: i64,
         month_key: &str,
@@ -798,7 +1053,7 @@ impl BillingRepository for PostgresBillingRepository {
         Ok((penalty_id, Some(fund_id)))
     }
 
-    async fn calibrate_balance(
+    async fn do_calibrate_balance(
         &self,
         user_id: i64,
         target_balance: Decimal,
@@ -831,7 +1086,7 @@ impl BillingRepository for PostgresBillingRepository {
         Ok((id, target_balance))
     }
 
-    async fn list_balance_calibrations(
+    async fn do_list_balance_calibrations(
         &self,
     ) -> Result<Vec<BalanceCalibrationRecord>, DomainError> {
         let rows = sqlx::query_as::<_, BalanceCalibrationRecordRow>(
@@ -851,7 +1106,7 @@ impl BillingRepository for PostgresBillingRepository {
             .collect())
     }
 
-    async fn list_transactions(
+    async fn do_list_transactions(
         &self,
         user_id: i64,
         limit: i64,
@@ -865,7 +1120,7 @@ impl BillingRepository for PostgresBillingRepository {
         .fetch_all(&self.pool).await.map_err(|e| DomainError::Infrastructure(e.to_string()))?;
 
         let expense_rows = sqlx::query(
-            "SELECT id, user_id, fee, description, game_id, created_at FROM rs_user_billings WHERE user_id = $1 ORDER BY created_at DESC LIMIT $2",
+            "SELECT id, user_id, fee, description, activity_id, created_at FROM rs_user_billings WHERE user_id = $1 ORDER BY created_at DESC LIMIT $2",
         )
         .bind(user_id).bind(normalized_limit)
         .fetch_all(&self.pool).await.map_err(|e| DomainError::Infrastructure(e.to_string()))?;
@@ -896,7 +1151,7 @@ impl BillingRepository for PostgresBillingRepository {
                 record_type: "expense".to_string(),
                 amount: -amount,
                 description: row.get("description"),
-                activity_id: row.get("game_id"),
+                activity_id: row.get("activity_id"),
                 created_at: row.get("created_at"),
             });
         }
@@ -918,13 +1173,13 @@ impl BillingRepository for PostgresBillingRepository {
         Ok(result)
     }
 
-    async fn list_activities_billing(&self) -> Result<Vec<ActivityBillingSummary>, DomainError> {
+    async fn do_list_activities_billing(&self) -> Result<Vec<ActivityBillingSummary>, DomainError> {
         let rows = sqlx::query_as::<_, ActivityBillingSummaryRow>(
             r#"SELECT TO_CHAR(a.holding_date, 'YYYY-MM') AS month_key,
                       a.id AS activity_id, a.name AS activity_name, a.holding_date, a.location,
                       ao.total, ao.fee, ua.user_id, ua.stand, ua.registration_count
                FROM rs_activity a
-               LEFT JOIN rs_activity_order ao ON ao.activity_id = a.id
+               LEFT JOIN rs_activity_fee_snapshots ao ON ao.activity_id = a.id
                LEFT JOIN rs_user_activity ua ON ua.activity_id = a.id
                ORDER BY a.holding_date DESC, a.id DESC, ua.user_id ASC"#,
         )
@@ -934,7 +1189,7 @@ impl BillingRepository for PostgresBillingRepository {
         Ok(rows.into_iter().map(ActivityBillingSummary::from).collect())
     }
 
-    async fn list_users_billing(&self) -> Result<Vec<UserAccount>, DomainError> {
+    async fn do_list_users_billing(&self) -> Result<Vec<UserAccount>, DomainError> {
         let rows = sqlx::query_as::<_, UserAccountRow>(
             "SELECT id, user_id, balance, total_recharge, total_expense, total_penalty, last_updated, version, status, created_at, updated_at FROM rs_user_accounts ORDER BY user_id ASC",
         )
@@ -942,9 +1197,12 @@ impl BillingRepository for PostgresBillingRepository {
         Ok(rows.into_iter().map(UserAccount::from).collect())
     }
 
-    async fn get_user_billing_flow(&self, user_id: i64) -> Result<BillingFlowResult, DomainError> {
-        let account = self.get_user_account(user_id).await?;
-        let transactions = self.list_transactions(user_id, 500).await?;
+    async fn do_get_user_billing_flow(
+        &self,
+        user_id: i64,
+    ) -> Result<BillingFlowResult, DomainError> {
+        let account = self.do_get_user_account(user_id).await?;
+        let transactions = self.do_list_transactions(user_id, 500).await?;
         let calibration_rows = sqlx::query_as::<_, BalanceCalibrationRecordRow>(
             r#"SELECT uba.id, uba.user_id,
                       COALESCE(NULLIF(u.real_name, ''), NULLIF(u.nickname, ''), u.username) AS user_name,
@@ -1035,7 +1293,7 @@ impl BillingRepository for PostgresBillingRepository {
         })
     }
 
-    async fn calculate_monthly_penalty_candidates(
+    async fn do_calculate_monthly_penalty_candidates(
         &self,
         month_key: &str,
     ) -> Result<Vec<PenaltyCandidate>, DomainError> {
@@ -1122,5 +1380,150 @@ impl BillingRepository for PostgresBillingRepository {
         }
 
         Ok(result)
+    }
+}
+
+#[async_trait]
+impl BillingQueryRepository for PostgresBillingRepository {
+    async fn get_user_account(&self, user_id: i64) -> Result<Option<UserAccount>, DomainError> {
+        self.do_get_user_account(user_id).await
+    }
+
+    async fn get_activity_fee_snapshot(
+        &self,
+        activity_id: &str,
+    ) -> Result<Option<ActivityFeeSnapshot>, DomainError> {
+        self.do_get_activity_fee_snapshot(activity_id).await
+    }
+
+    async fn list_activity_fee_snapshots(&self) -> Result<Vec<ActivityFeeSnapshot>, DomainError> {
+        self.do_list_activity_fee_snapshots().await
+    }
+
+    async fn get_activity_settlement_summary(
+        &self,
+        activity_id: &str,
+    ) -> Result<ActivitySettlementSummary, DomainError> {
+        self.do_get_activity_settlement_summary(activity_id).await
+    }
+
+    async fn list_user_billings(
+        &self,
+        user_id: i64,
+    ) -> Result<Vec<UserBillingRecord>, DomainError> {
+        self.do_list_user_billings(user_id).await
+    }
+
+    async fn list_balance_calibrations(
+        &self,
+    ) -> Result<Vec<BalanceCalibrationRecord>, DomainError> {
+        self.do_list_balance_calibrations().await
+    }
+
+    async fn list_transactions(
+        &self,
+        user_id: i64,
+        limit: i64,
+    ) -> Result<Vec<TransactionRecord>, DomainError> {
+        self.do_list_transactions(user_id, limit).await
+    }
+
+    async fn list_activities_billing(&self) -> Result<Vec<ActivityBillingSummary>, DomainError> {
+        self.do_list_activities_billing().await
+    }
+
+    async fn list_users_billing(&self) -> Result<Vec<UserAccount>, DomainError> {
+        self.do_list_users_billing().await
+    }
+
+    async fn get_user_billing_flow(&self, user_id: i64) -> Result<BillingFlowResult, DomainError> {
+        self.do_get_user_billing_flow(user_id).await
+    }
+
+    async fn calculate_monthly_penalty_candidates(
+        &self,
+        month_key: &str,
+    ) -> Result<Vec<PenaltyCandidate>, DomainError> {
+        self.do_calculate_monthly_penalty_candidates(month_key)
+            .await
+    }
+}
+
+#[async_trait]
+impl BillingCommandRepository for PostgresBillingRepository {
+    async fn upsert_activity_fee_snapshot(
+        &self,
+        activity_id: &str,
+        description: &str,
+        fee: Decimal,
+        total: i32,
+    ) -> Result<ActivityFeeSnapshot, DomainError> {
+        self.do_upsert_activity_fee_snapshot(activity_id, description, fee, total)
+            .await
+    }
+
+    async fn settle_activity_expense(
+        &self,
+        activity_id: &str,
+        total_amount: Decimal,
+        description: Option<&str>,
+        created_by_admin_id: Option<i64>,
+    ) -> Result<ActivitySettlementSummary, DomainError> {
+        self.do_settle_activity_expense(activity_id, total_amount, description, created_by_admin_id)
+            .await
+    }
+
+    async fn settle_activity_expense_with_charges(
+        &self,
+        request: SettlementRequest<'_>,
+    ) -> Result<ActivitySettlementSummary, DomainError> {
+        self.do_settle_activity_expense_with_charges(request).await
+    }
+
+    async fn recharge(
+        &self,
+        user_id: i64,
+        amount: Decimal,
+        payment_method: &str,
+        transaction_no: Option<&str>,
+        description: Option<&str>,
+    ) -> Result<i64, DomainError> {
+        self.do_recharge(user_id, amount, payment_method, transaction_no, description)
+            .await
+    }
+
+    async fn add_activity_expenses(
+        &self,
+        activity_id: &str,
+        user_ids: &[i64],
+        fee: Decimal,
+        description: Option<&str>,
+    ) -> Result<Vec<i64>, DomainError> {
+        self.do_add_activity_expenses(activity_id, user_ids, fee, description)
+            .await
+    }
+
+    async fn add_penalty(
+        &self,
+        user_id: i64,
+        month_key: &str,
+        amount: Decimal,
+        reason: &str,
+        created_by: Option<i64>,
+    ) -> Result<(i64, Option<i64>), DomainError> {
+        self.do_add_penalty(user_id, month_key, amount, reason, created_by)
+            .await
+    }
+
+    async fn calibrate_balance(
+        &self,
+        user_id: i64,
+        target_balance: Decimal,
+        effective_time: chrono::NaiveDateTime,
+        reason: &str,
+        created_by: Option<i64>,
+    ) -> Result<(i64, Decimal), DomainError> {
+        self.do_calibrate_balance(user_id, target_balance, effective_time, reason, created_by)
+            .await
     }
 }

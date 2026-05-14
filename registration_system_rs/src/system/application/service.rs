@@ -1,25 +1,17 @@
-use crate::shared::auth::{ActorContext, ActorKind};
+use crate::shared::auth::ActorContext;
 use crate::shared::error::AppError;
-use crate::system::domain::{MapProvider, MapServiceSettings, MiniAppRuntimeConfig};
-use crate::system::ports::SystemSettingsRepository;
+use crate::system::application::commands::UpdateMapSettingsCommand;
+use crate::system::application::read_models::MapPreviewSettings;
+use crate::system::application::use_cases::{MapSettingsUseCase, MiniAppRuntimeConfigUseCase};
+use crate::system::domain::{MapServiceSettings, MiniAppRuntimeConfig};
+use crate::system::ports::{SystemSettingsCommandRepository, SystemSettingsQueryRepository};
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-#[derive(Debug, Clone)]
-pub struct UpdateMapSettingsCommand {
-    pub settings: MapServiceSettings,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct MapPreviewSettings {
-    pub selected_provider: MapProvider,
-    pub tencent_map_key: String,
-}
-
 #[derive(Clone)]
 pub struct SystemSettingsService {
-    repository: Arc<dyn SystemSettingsRepository>,
-    defaults: MapServiceSettings,
+    map_settings_use_case: MapSettingsUseCase,
+    mini_app_runtime_config_use_case: MiniAppRuntimeConfigUseCase,
 }
 
 impl Default for SystemSettingsService {
@@ -30,19 +22,29 @@ impl Default for SystemSettingsService {
 
 impl SystemSettingsService {
     pub fn new() -> Self {
+        let repository = Arc::new(InMemorySystemSettingsRepository::default());
         Self::with_repository(
-            Arc::new(InMemorySystemSettingsRepository::default()),
+            repository.clone(),
+            repository,
             MapServiceSettings::defaults(),
         )
     }
 
     pub fn with_repository(
-        repository: Arc<dyn SystemSettingsRepository>,
+        query_repository: Arc<dyn SystemSettingsQueryRepository>,
+        command_repository: Arc<dyn SystemSettingsCommandRepository>,
         defaults: MapServiceSettings,
     ) -> Self {
         Self {
-            repository,
-            defaults: defaults.sanitize(),
+            map_settings_use_case: MapSettingsUseCase::new(
+                query_repository.clone(),
+                command_repository.clone(),
+                defaults,
+            ),
+            mini_app_runtime_config_use_case: MiniAppRuntimeConfigUseCase::new(
+                query_repository,
+                command_repository,
+            ),
         }
     }
 
@@ -50,20 +52,16 @@ impl SystemSettingsService {
         &self,
         actor: &ActorContext,
     ) -> Result<MapServiceSettings, AppError> {
-        self.ensure_super_admin(actor)?;
-        self.load_settings().await
+        self.map_settings_use_case.get_map_settings(actor).await
     }
 
     pub async fn get_map_preview_settings(
         &self,
         actor: &ActorContext,
     ) -> Result<MapPreviewSettings, AppError> {
-        self.ensure_admin(actor)?;
-        let settings = self.load_settings().await?;
-        Ok(MapPreviewSettings {
-            selected_provider: settings.selected_provider,
-            tencent_map_key: settings.tencent.key,
-        })
+        self.map_settings_use_case
+            .get_map_preview_settings(actor)
+            .await
     }
 
     pub async fn update_map_settings(
@@ -71,22 +69,15 @@ impl SystemSettingsService {
         actor: &ActorContext,
         command: UpdateMapSettingsCommand,
     ) -> Result<MapServiceSettings, AppError> {
-        self.ensure_super_admin(actor)?;
-        let settings = command.settings.sanitize();
-        self.repository
-            .upsert_map_settings(&settings)
+        self.map_settings_use_case
+            .update_map_settings(actor, command)
             .await
-            .map_err(|error| AppError::internal(format!("保存地图设置失败: {error}")))
     }
 
     pub async fn get_mini_app_runtime_config(&self) -> Result<MiniAppRuntimeConfig, AppError> {
-        Ok(self
-            .repository
+        self.mini_app_runtime_config_use_case
             .get_mini_app_runtime_config()
             .await
-            .map_err(|error| AppError::internal(format!("读取小程序运行配置失败: {error}")))?
-            .unwrap_or_else(MiniAppRuntimeConfig::defaults)
-            .sanitize())
     }
 
     pub async fn update_mini_app_runtime_config(
@@ -94,36 +85,9 @@ impl SystemSettingsService {
         actor: &ActorContext,
         config: MiniAppRuntimeConfig,
     ) -> Result<MiniAppRuntimeConfig, AppError> {
-        self.ensure_super_admin(actor)?;
-        let config = config.sanitize();
-        self.repository
-            .upsert_mini_app_runtime_config(&config)
+        self.mini_app_runtime_config_use_case
+            .update_mini_app_runtime_config(actor, config)
             .await
-            .map_err(|error| AppError::internal(format!("保存小程序运行配置失败: {error}")))
-    }
-
-    async fn load_settings(&self) -> Result<MapServiceSettings, AppError> {
-        Ok(self
-            .repository
-            .get_map_settings()
-            .await
-            .map_err(|error| AppError::internal(format!("读取地图设置失败: {error}")))?
-            .unwrap_or_else(|| self.defaults.clone()))
-    }
-
-    fn ensure_admin(&self, actor: &ActorContext) -> Result<(), AppError> {
-        if actor.actor_kind != ActorKind::Admin {
-            return Err(AppError::Forbidden);
-        }
-        Ok(())
-    }
-
-    fn ensure_super_admin(&self, actor: &ActorContext) -> Result<(), AppError> {
-        self.ensure_admin(actor)?;
-        if !actor.is_super_admin {
-            return Err(AppError::Forbidden);
-        }
-        Ok(())
     }
 }
 
@@ -134,21 +98,24 @@ struct InMemorySystemSettingsRepository {
 }
 
 #[async_trait::async_trait]
-impl SystemSettingsRepository for InMemorySystemSettingsRepository {
+impl SystemSettingsQueryRepository for InMemorySystemSettingsRepository {
     async fn get_map_settings(&self) -> Result<Option<MapServiceSettings>, String> {
         Ok(self.settings.read().await.clone())
     }
 
+    async fn get_mini_app_runtime_config(&self) -> Result<Option<MiniAppRuntimeConfig>, String> {
+        Ok(self.mini_app_runtime_config.read().await.clone())
+    }
+}
+
+#[async_trait::async_trait]
+impl SystemSettingsCommandRepository for InMemorySystemSettingsRepository {
     async fn upsert_map_settings(
         &self,
         settings: &MapServiceSettings,
     ) -> Result<MapServiceSettings, String> {
         *self.settings.write().await = Some(settings.clone());
         Ok(settings.clone())
-    }
-
-    async fn get_mini_app_runtime_config(&self) -> Result<Option<MiniAppRuntimeConfig>, String> {
-        Ok(self.mini_app_runtime_config.read().await.clone())
     }
 
     async fn upsert_mini_app_runtime_config(
@@ -162,8 +129,9 @@ impl SystemSettingsRepository for InMemorySystemSettingsRepository {
 
 #[cfg(test)]
 mod tests {
-    use super::{SystemSettingsService, UpdateMapSettingsCommand};
+    use super::SystemSettingsService;
     use crate::shared::auth::{ActorContext, ActorKind};
+    use crate::system::application::UpdateMapSettingsCommand;
     use crate::system::domain::{
         MapProvider, MapProviderSettings, MapServiceSettings, MiniAppRuntimeConfig,
     };

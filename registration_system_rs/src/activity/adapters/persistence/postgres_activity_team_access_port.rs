@@ -17,7 +17,7 @@ impl PostgresActivityTeamAccessPort {
 impl ActivityTeamAccessPort for PostgresActivityTeamAccessPort {
     async fn find_active_member_role(
         &self,
-        team_id: &str,
+        team_id: i64,
         user_id: i64,
     ) -> Result<Option<String>, String> {
         let row: Option<(String,)> = sqlx::query_as(

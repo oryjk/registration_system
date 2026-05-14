@@ -9,12 +9,12 @@ declare const Bun: {
 const miniRoot = "/Users/carlwang/registration_system/registration_system_mini";
 
 const secondaryPages = [
-  { path: "src/pages/teams/manage/index.vue", title: "球队管理" },
-  { path: "src/pages/matches/create/index.vue", title: "创建比赛" },
-  { path: "src/pages/challenges/detail.vue", title: "约队详情" },
-  { path: "src/pages/notifications/index.vue", title: "消息中心" },
-  { path: "src/pages/billing/index.vue", title: "账单明细" },
-  { path: "src/pages/profile/setup/index.vue", title: "完善资料" },
+  { path: "src/pages/teams/manage/index.vue", title: "球队管理", titleBinding: 'title="球队管理"' },
+  { path: "src/pages/matches/create/index.vue", title: "创建比赛", titleBinding: ':title="pageMode === \'edit\' ? \'编辑比赛\' : \'创建比赛\'"' },
+  { path: "src/pages/challenges/detail.vue", title: "约队详情", titleBinding: 'title="约队详情"' },
+  { path: "src/pages/notifications/index.vue", title: "消息中心", titleBinding: 'title="消息中心"' },
+  { path: "src/pages/billing/index.vue", title: "账单明细", titleBinding: 'title="账单明细"' },
+  { path: "src/pages/profile/setup/index.vue", title: "完善资料", titleBinding: ':title="headerTitle"' },
 ];
 
 describe("PageBackButton", () => {
@@ -33,7 +33,7 @@ describe("PageBackButton", () => {
       const source = await Bun.file(`${miniRoot}/${page.path}`).text();
 
       expect(source.includes('import AppTabHeader from "@/components/AppTabHeader.vue";')).toEqual(true);
-      expect(source.includes(`<AppTabHeader title="${page.title}" showBack`)).toEqual(true);
+      expect(source.includes(`<AppTabHeader ${page.titleBinding} showBack`)).toEqual(true);
       expect(source.includes('import PageBackButton from "@/components/PageBackButton.vue";')).toEqual(false);
       expect(source.includes("<PageBackButton")).toEqual(false);
     });

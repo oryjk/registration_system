@@ -1,14 +1,15 @@
-use crate::billing::application::{CalibrationResult, GameExpenseResult, PenaltyResult};
+use crate::billing::application::{ActivityExpenseResult, CalibrationResult, PenaltyResult};
 use crate::billing::domain::{
-    ActivityBillingSummary, ActivityOrder, ActivitySettlementBatch, ActivitySettlementSummary,
-    BalanceCalibrationRecord, BillingFlowRecord, BillingFlowResult, TransactionRecord, UserAccount,
+    ActivityBillingSummary, ActivityFeeSnapshot, ActivitySettlementBatch, ActivitySettlementItem,
+    ActivitySettlementSummary, BalanceCalibrationRecord, BillingFlowRecord, BillingFlowResult,
+    TransactionRecord, UserAccount,
 };
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
 #[derive(Debug, Deserialize, ToSchema)]
-pub struct CreateActivityOrderRequest {
+pub struct UpsertActivityFeeSnapshotRequest {
     pub activity_id: String,
     pub description: String,
     #[schema(value_type = String)]
@@ -27,7 +28,7 @@ pub struct RechargeRequest {
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
-pub struct GameExpenseRequest {
+pub struct ActivityExpenseRequest {
     pub activity_id: String,
     #[schema(value_type = String)]
     pub total_amount: Decimal,
@@ -63,7 +64,17 @@ pub struct AutoCalculateFeeRequest {
 pub struct SettleActivityExpenseRequest {
     #[schema(value_type = String)]
     pub total_amount: Decimal,
+    pub mode: Option<String>,
+    pub participant_scope: Option<String>,
+    pub items: Option<Vec<SettleActivityExpenseItemRequest>>,
     pub description: Option<String>,
+}
+
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct SettleActivityExpenseItemRequest {
+    pub user_id: i64,
+    #[schema(value_type = Option<String>)]
+    pub amount: Option<Decimal>,
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
@@ -97,7 +108,7 @@ impl From<UserAccount> for UserAccountDto {
 }
 
 #[derive(Debug, Serialize, ToSchema)]
-pub struct ActivityOrderDto {
+pub struct ActivityFeeSnapshotDto {
     pub id: i64,
     pub activity_id: String,
     pub description: String,
@@ -106,8 +117,8 @@ pub struct ActivityOrderDto {
     pub total: i32,
 }
 
-impl From<ActivityOrder> for ActivityOrderDto {
-    fn from(value: ActivityOrder) -> Self {
+impl From<ActivityFeeSnapshot> for ActivityFeeSnapshotDto {
+    fn from(value: ActivityFeeSnapshot) -> Self {
         Self {
             id: value.id,
             activity_id: value.activity_id,
@@ -258,6 +269,8 @@ impl From<ActivityBillingSummary> for ActivityBillingSummaryDto {
 #[derive(Debug, Serialize, ToSchema)]
 pub struct ActivitySettlementSummaryDto {
     pub activity_id: String,
+    pub mode: Option<String>,
+    pub participant_scope: Option<String>,
     pub description: Option<String>,
     #[schema(value_type = Option<String>)]
     pub total_amount: Option<Decimal>,
@@ -269,12 +282,15 @@ pub struct ActivitySettlementSummaryDto {
     pub settled_at: Option<chrono::NaiveDateTime>,
     pub current_batch_no: Option<i32>,
     pub history: Vec<ActivitySettlementBatchDto>,
+    pub items: Vec<ActivitySettlementItemDto>,
 }
 
 #[derive(Debug, Serialize, ToSchema)]
 pub struct ActivitySettlementBatchDto {
     pub batch_no: i32,
     pub operation_type: String,
+    pub mode: String,
+    pub participant_scope: String,
     pub reversal_of_batch_no: Option<i32>,
     pub description: String,
     #[schema(value_type = String)]
@@ -286,11 +302,35 @@ pub struct ActivitySettlementBatchDto {
     pub created_at: chrono::NaiveDateTime,
 }
 
+#[derive(Debug, Serialize, ToSchema)]
+pub struct ActivitySettlementItemDto {
+    pub user_id: i64,
+    pub user_name: Option<String>,
+    #[schema(value_type = Option<String>)]
+    pub fee: Option<Decimal>,
+    pub billed: bool,
+    pub billing_id: Option<i64>,
+}
+
+impl From<ActivitySettlementItem> for ActivitySettlementItemDto {
+    fn from(value: ActivitySettlementItem) -> Self {
+        Self {
+            user_id: value.user_id,
+            user_name: value.user_name,
+            fee: value.fee,
+            billed: value.billed,
+            billing_id: value.billing_id,
+        }
+    }
+}
+
 impl From<ActivitySettlementBatch> for ActivitySettlementBatchDto {
     fn from(value: ActivitySettlementBatch) -> Self {
         Self {
             batch_no: value.batch_no,
             operation_type: value.operation_type,
+            mode: value.mode.as_str().to_string(),
+            participant_scope: value.participant_scope.as_str().to_string(),
             reversal_of_batch_no: value.reversal_of_batch_no,
             description: value.description,
             total_amount: value.total_amount,
@@ -306,6 +346,10 @@ impl From<ActivitySettlementSummary> for ActivitySettlementSummaryDto {
     fn from(value: ActivitySettlementSummary) -> Self {
         Self {
             activity_id: value.activity_id,
+            mode: value.mode.map(|mode| mode.as_str().to_string()),
+            participant_scope: value
+                .participant_scope
+                .map(|scope| scope.as_str().to_string()),
             description: value.description,
             total_amount: value.total_amount,
             aa_fee: value.aa_fee,
@@ -319,6 +363,11 @@ impl From<ActivitySettlementSummary> for ActivitySettlementSummaryDto {
                 .into_iter()
                 .map(ActivitySettlementBatchDto::from)
                 .collect(),
+            items: value
+                .items
+                .into_iter()
+                .map(ActivitySettlementItemDto::from)
+                .collect(),
         }
     }
 }
@@ -329,7 +378,7 @@ pub struct RechargeResultDto {
 }
 
 #[derive(Debug, Serialize, ToSchema)]
-pub struct GameExpenseResultDto {
+pub struct ActivityExpenseResultDto {
     pub activity_id: String,
     #[schema(value_type = String)]
     pub total_amount: Decimal,
@@ -339,8 +388,8 @@ pub struct GameExpenseResultDto {
     pub billing_ids: Vec<i64>,
 }
 
-impl From<GameExpenseResult> for GameExpenseResultDto {
-    fn from(value: GameExpenseResult) -> Self {
+impl From<ActivityExpenseResult> for ActivityExpenseResultDto {
+    fn from(value: ActivityExpenseResult) -> Self {
         Self {
             activity_id: value.activity_id,
             total_amount: value.total_amount,

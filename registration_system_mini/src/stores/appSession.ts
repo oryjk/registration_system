@@ -21,7 +21,7 @@ import { isUnauthorizedError } from "@/utils/request";
 
 const currentUser = ref<BackendUser | null>(null);
 const myTeams = ref<BackendTeam[]>([]);
-const teamDetailsById = ref<Record<string, BackendTeamDetail>>({});
+const teamDetailsById = ref<Record<number, BackendTeamDetail>>({});
 const currentTeamId = ref(getCurrentTeamId());
 const bootstrapError = ref("");
 const isBootstrapping = ref(false);
@@ -40,14 +40,14 @@ const currentTeam = computed<TeamProfileViewModel | null>(() => {
   return teamProfiles.value.find((item) => item.id === currentTeamId.value) ?? teamProfiles.value[0];
 });
 
-function persistCurrentTeam(teamId: string) {
+function persistCurrentTeam(teamId: number) {
   currentTeamId.value = teamId;
   setCurrentTeamId(teamId);
 }
 
 function selectAvailableTeam() {
   if (!teamProfiles.value.length) {
-    currentTeamId.value = "";
+    currentTeamId.value = null;
     clearCurrentTeamId();
     return;
   }
@@ -61,7 +61,7 @@ function resetSessionState() {
   currentUser.value = null;
   myTeams.value = [];
   teamDetailsById.value = {};
-  currentTeamId.value = "";
+  currentTeamId.value = null;
   bootstrapError.value = "";
 }
 
@@ -175,7 +175,7 @@ export function resumeSessionBootstrap() {
 }
 
 export function useAppSession() {
-  function switchTeam(teamId: string) {
+  function switchTeam(teamId: number) {
     if (!teamProfiles.value.some((item) => item.id === teamId)) {
       return;
     }

@@ -5,9 +5,9 @@ describe("match registration visibility", () => {
   test("hides team registration when the current team is the publishing team", () => {
     expect(
       canShowTeamRegistrationTab({
-        currentTeamId: "team-a",
+        currentTeamId: 1,
         canManageTeam: true,
-        homeTeamId: "team-a",
+        homeTeamId: 1,
       }),
     ).toEqual(false);
   });
@@ -15,9 +15,9 @@ describe("match registration visibility", () => {
   test("hides team registration for derived team-signup activities", () => {
     expect(
       canShowTeamRegistrationTab({
-        currentTeamId: "team-a",
+        currentTeamId: 1,
         canManageTeam: true,
-        homeTeamId: "team-b",
+        homeTeamId: 2,
         sourceActivityId: "activity-1",
       }),
     ).toEqual(false);
@@ -26,9 +26,9 @@ describe("match registration visibility", () => {
   test("shows team registration only for managers on non-derived activities of other teams", () => {
     expect(
       canShowTeamRegistrationTab({
-        currentTeamId: "team-a",
+        currentTeamId: 1,
         canManageTeam: true,
-        homeTeamId: "team-b",
+        homeTeamId: 2,
       }),
     ).toEqual(true);
   });

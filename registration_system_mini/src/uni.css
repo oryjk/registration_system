@@ -15,6 +15,42 @@ button::after {
   border: none;
 }
 
+:root,
+page {
+  --app-primary: #c8ff00;
+  --app-primary-text: #111310;
+}
+
+.wd-segmented.app-segment,
+.wd-segmented.scope-segment {
+  padding: 8rpx;
+  border-radius: 999rpx;
+  background: #e9eee1;
+}
+
+.wd-segmented.app-segment .wd-segmented__item,
+.wd-segmented.scope-segment .wd-segmented__item {
+  min-height: 64rpx;
+  line-height: 64rpx;
+  border-radius: 999rpx;
+  color: #5f675b;
+  font-size: 26rpx;
+  font-weight: 850;
+}
+
+.wd-segmented.app-segment .wd-segmented__item.is-active,
+.wd-segmented.scope-segment .wd-segmented__item.is-active {
+  color: var(--app-primary-text);
+  font-weight: 900;
+}
+
+.wd-segmented.app-segment .wd-segmented__item--active,
+.wd-segmented.scope-segment .wd-segmented__item--active {
+  border-radius: 999rpx;
+  background: var(--app-primary);
+  box-shadow: 0 8rpx 18rpx rgba(90, 115, 0, 0.14);
+}
+
 .page-shell {
   min-height: 100vh;
   padding: 28rpx 24rpx 44rpx;

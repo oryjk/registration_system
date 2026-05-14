@@ -4,14 +4,22 @@ use crate::payment::domain::{
 use async_trait::async_trait;
 
 #[async_trait]
-pub trait PaymentOrderRepository: Send + Sync {
-    async fn create(&self, order: &PaymentOrder) -> Result<i64, DomainError>;
+pub trait PaymentOrderQueryRepository: Send + Sync {
     async fn find_by_order_no(&self, order_no: &str) -> Result<Option<PaymentOrder>, DomainError>;
     async fn find_by_user_id(
         &self,
         user_id: i64,
         limit: i64,
     ) -> Result<Vec<PaymentOrder>, DomainError>;
+    async fn find_team_membership_order(
+        &self,
+        order_no: &str,
+    ) -> Result<Option<TeamMembershipPaymentOrder>, DomainError>;
+}
+
+#[async_trait]
+pub trait PaymentOrderCommandRepository: Send + Sync {
+    async fn create(&self, order: &PaymentOrder) -> Result<i64, DomainError>;
     async fn update_status(
         &self,
         order_no: &str,
@@ -33,8 +41,4 @@ pub trait PaymentOrderRepository: Send + Sync {
         &self,
         order: &TeamMembershipPaymentOrder,
     ) -> Result<i64, DomainError>;
-    async fn find_team_membership_order(
-        &self,
-        order_no: &str,
-    ) -> Result<Option<TeamMembershipPaymentOrder>, DomainError>;
 }

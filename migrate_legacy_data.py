@@ -296,7 +296,10 @@ def import_users(my_cur, pg_cur, mysql_to_pg_user_id: dict[int, int]) -> None:
                 username = EXCLUDED.username,
                 nickname = EXCLUDED.nickname,
                 real_name = EXCLUDED.real_name,
-                avatar_url = EXCLUDED.avatar_url,
+                avatar_url = CASE
+                    WHEN rs_user_info.avatar_url LIKE 'http%' THEN rs_user_info.avatar_url
+                    ELSE EXCLUDED.avatar_url
+                END,
                 phone_number = EXCLUDED.phone_number,
                 is_manager = EXCLUDED.is_manager,
                 status = EXCLUDED.status,

@@ -1,12 +1,12 @@
 use crate::bootstrap::app::AppState;
 use crate::team::adapters::web::handlers::{
     add_member_handler, admin_create_team_handler, admin_list_teams_handler,
-    admin_team_detail_handler, assign_admin_handler, batch_remove_members_handler,
-    batch_update_member_status_handler, create_team_handler, delete_team_handler, get_team_handler,
-    join_team_handler, list_team_admins_handler, list_team_credit_transactions_handler,
-    list_teams_handler, member_attendance_handler, my_teams_handler, password_info_handler,
-    recharge_team_membership_handler, remove_member_handler, search_teams_handler,
-    submit_activity_review_handler,
+    admin_team_detail_handler, assign_admin_handler, attendance_summary_handler,
+    batch_remove_members_handler, batch_update_member_status_handler, create_team_handler,
+    delete_team_handler, get_team_handler, join_team_handler, list_team_admins_handler,
+    list_team_credit_transactions_handler, list_teams_handler, member_attendance_handler,
+    my_teams_handler, password_info_handler, recharge_team_membership_handler,
+    remove_member_handler, search_teams_handler, submit_activity_review_handler,
     team_credit_overview_handler, team_credit_penalty_handler, unassign_admin_handler,
     update_member_handler, update_team_handler, upload_team_logo_handler, user_teams_handler,
 };
@@ -34,6 +34,7 @@ fn shared_router() -> Router<AppState> {
             post(recharge_team_membership_handler),
         )
         .route("/:id/credit/penalties", post(team_credit_penalty_handler))
+        .route("/:id/attendance-summary", get(attendance_summary_handler))
         .route("/:id/members", post(add_member_handler))
         .route("/:id/logo", post(upload_team_logo_handler))
         .route(

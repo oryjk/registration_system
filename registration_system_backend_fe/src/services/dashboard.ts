@@ -1,13 +1,13 @@
 import { adminListTeams } from '@/services/team'
 import { listActivities } from '@/services/activity'
 import { listPlayers } from '@/services/player'
-import { listOrders } from '@/services/billing'
+import { listActivityFeeSnapshots } from '@/services/billing'
 
 export interface DashboardStats {
   teamCount: number
   monthlyActivityCount: number
   playerCount: number
-  orderCount: number
+  feeSnapshotCount: number
 }
 
 export const fetchDashboardStats = async (): Promise<DashboardStats> => {
@@ -17,13 +17,13 @@ export const fetchDashboardStats = async (): Promise<DashboardStats> => {
       counts: { total: 0 },
     })),
     listPlayers({ page: 1, page_size: 1 }).catch(() => ({ total: 0 })),
-    listOrders().catch(() => []),
+    listActivityFeeSnapshots().catch(() => []),
   ])
 
   return {
     teamCount: teams.length,
     monthlyActivityCount: activities.counts.total,
     playerCount: (players as { total: number }).total,
-    orderCount: orders.length,
+    feeSnapshotCount: orders.length,
   }
 }

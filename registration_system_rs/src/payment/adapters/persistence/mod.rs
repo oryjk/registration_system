@@ -1,5 +1,5 @@
-mod postgres_payment_billing_adapter;
 mod postgres_payment_order_repository;
+mod postgres_payment_settlement_adapter;
 
-pub use postgres_payment_billing_adapter::PostgresPaymentBillingAdapter;
 pub use postgres_payment_order_repository::PostgresPaymentOrderRepository;
+pub use postgres_payment_settlement_adapter::PostgresPaymentSettlementAdapter;

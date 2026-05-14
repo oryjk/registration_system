@@ -69,13 +69,13 @@ describe("system info helpers", () => {
     delete runtime.uni;
   });
 
-  test("app tab header should rely on mount-safe platform helpers instead of component-level onShow", async () => {
+  test("app tab header should rely on platform helpers instead of component-level onShow", async () => {
     const headerSource = await Bun.file(
       "/Users/carlwang/registration_system/registration_system_mini/src/components/AppTabHeader.vue",
     ).text();
 
-    expect(headerSource.includes('import { computed, onMounted, ref } from "vue";')).toEqual(true);
-    expect(headerSource.includes("onMounted(() => {")).toEqual(true);
+    expect(headerSource.includes('import { getAppPlatform } from "@/utils/systemInfo";')).toEqual(true);
+    expect(headerSource.includes("isOpenLocationSupported(getAppPlatform())")).toEqual(true);
     expect(headerSource.includes("onShow(() => {")).toEqual(false);
   });
 });

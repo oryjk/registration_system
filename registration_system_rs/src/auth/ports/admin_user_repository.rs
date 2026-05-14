@@ -2,10 +2,14 @@ use crate::auth::domain::{AdminUser, DomainError};
 use async_trait::async_trait;
 
 #[async_trait]
-pub trait AdminUserRepository: Send + Sync {
+pub trait AdminUserQueryRepository: Send + Sync {
     async fn find_by_id(&self, admin_id: i64) -> Result<Option<AdminUser>, DomainError>;
     async fn find_by_username(&self, username: &str) -> Result<Option<AdminUser>, DomainError>;
     async fn list(&self) -> Result<Vec<AdminUser>, DomainError>;
+}
+
+#[async_trait]
+pub trait AdminUserCommandRepository: Send + Sync {
     async fn create(
         &self,
         username: &str,

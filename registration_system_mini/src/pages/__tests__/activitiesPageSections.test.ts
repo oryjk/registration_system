@@ -11,9 +11,12 @@ describe("activities page sections", () => {
     const source = await Bun.file(
       "/Users/carlwang/registration_system/registration_system_mini/src/pages/activities/index.vue",
     ).text();
+    const sections = await Bun.file(
+      "/Users/carlwang/registration_system/registration_system_mini/src/pages/activities/components/ChallengeHallSections.vue",
+    ).text();
 
-    expect(source.includes("球队约队")).toEqual(true);
-    expect(source.includes("散人约队")).toEqual(true);
+    expect(sections.includes("球队约队")).toEqual(true);
+    expect(sections.includes("散人约队")).toEqual(true);
     expect(source.includes("const teamHallCards = computed")).toEqual(true);
     expect(source.includes("const individualHallCards = computed")).toEqual(true);
   });
@@ -22,19 +25,29 @@ describe("activities page sections", () => {
     const source = await Bun.file(
       "/Users/carlwang/registration_system/registration_system_mini/src/pages/activities/index.vue",
     ).text();
+    const sections = await Bun.file(
+      "/Users/carlwang/registration_system/registration_system_mini/src/pages/activities/components/ChallengeHallSections.vue",
+    ).text();
+    const card = await Bun.file(
+      "/Users/carlwang/registration_system/registration_system_mini/src/pages/activities/components/ChallengeHallCard.vue",
+    ).text();
 
     expect(source.includes("currentTeam.value?.canManageTeam")).toEqual(true);
     expect(source.includes('card.kind === "team"')).toEqual(true);
-    expect(source.includes("散人约队同一时间只能接一场")).toEqual(true);
+    expect(sections.includes("散人约队同一时间只能接一场")).toEqual(true);
+    expect(card.includes('props.variant === "team"')).toEqual(true);
   });
 
   test("opens a publish type sheet and navigates to dedicated create pages", async () => {
     const source = await Bun.file(
       "/Users/carlwang/registration_system/registration_system_mini/src/pages/activities/index.vue",
     ).text();
+    const publishTypeSheet = await Bun.file(
+      "/Users/carlwang/registration_system/registration_system_mini/src/pages/activities/components/PublishTypeSheet.vue",
+    ).text();
 
     expect(source.includes("function openPublishTypeSheet")).toEqual(true);
-    expect(source.includes("publish-sheet-overlay")).toEqual(true);
+    expect(publishTypeSheet.includes("publish-sheet-overlay")).toEqual(true);
     expect(source.includes("handlePublishTeamChallenge")).toEqual(true);
     expect(source.includes("handlePublishIndividualChallenge")).toEqual(true);
     expect(source.includes("<wd-action-sheet")).toEqual(false);

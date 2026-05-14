@@ -15,7 +15,7 @@ pub struct UpdateTeamFields<'a> {
 
 #[derive(Debug, Clone)]
 pub struct Team {
-    pub id: String,
+    pub id: i64,
     pub name: String,
     pub description: Option<String>,
     pub logo_url: Option<String>,
@@ -41,7 +41,7 @@ impl Team {
 #[derive(Debug, Clone)]
 pub struct TeamMember {
     pub id: i64,
-    pub team_id: String,
+    pub team_id: i64,
     pub user_id: i64,
     pub role: String,
     pub jersey_number: Option<String>,
@@ -61,6 +61,18 @@ pub struct TeamMemberAttendanceRecord {
     pub registration_count: i32,
     pub operation_time: Option<NaiveDateTime>,
     pub registered: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct TeamAttendanceRankingItem {
+    pub user_id: i64,
+    pub user_name: String,
+    pub avatar_url: Option<String>,
+    pub total_count: i64,
+    pub attended_count: i64,
+    pub leave_count: i64,
+    pub late_count: i64,
+    pub unregistered_count: i64,
 }
 
 /// 球队后台管理员信息
@@ -87,7 +99,7 @@ pub struct TeamMemberWithInfo {
 #[derive(Debug, Clone)]
 pub struct TeamCreditTransaction {
     pub id: i64,
-    pub team_id: String,
+    pub team_id: i64,
     pub activity_id: Option<String>,
     pub transaction_type: String,
     pub delta: i32,
@@ -97,7 +109,7 @@ pub struct TeamCreditTransaction {
     pub amount: Option<Decimal>,
     pub membership_months: Option<i32>,
     pub note: Option<String>,
-    pub reviewer_team_id: Option<String>,
+    pub reviewer_team_id: Option<i64>,
     pub created_by_user_id: Option<i64>,
     pub created_by_admin_id: Option<i64>,
     pub created_at: NaiveDateTime,
@@ -107,9 +119,9 @@ pub struct TeamCreditTransaction {
 pub struct ActivityTeamReview {
     pub id: i64,
     pub activity_id: String,
-    pub reviewer_team_id: String,
+    pub reviewer_team_id: i64,
     pub reviewer_user_id: i64,
-    pub reviewee_team_id: String,
+    pub reviewee_team_id: i64,
     pub rating: i8,
     pub credit_delta: i32,
     pub comment: Option<String>,

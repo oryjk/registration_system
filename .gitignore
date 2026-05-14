@@ -37,6 +37,9 @@ cypress/screenshots/
 # Rust build outputs
 target/
 
+# Python cache
+__pycache__/
+
 # IDE/editor files
 .idea/
 .vscode/*

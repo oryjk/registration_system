@@ -49,6 +49,13 @@
       }
     },
     {
+      "path": "pages/home/matches/index",
+      "style": {
+        "navigationBarTitleText": "全部比赛",
+        "navigationStyle": "custom"
+      }
+    },
+    {
       "path": "pages/matches/detail",
       "style": {
         "navigationBarTitleText": "比赛详情",

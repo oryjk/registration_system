@@ -21,7 +21,7 @@ export function createRechargeOrder(payload: {
 }
 
 export function createTeamMembershipOrder(payload: {
-  team_id: string;
+  team_id: number;
   months: number;
   openid?: string;
   note?: string;

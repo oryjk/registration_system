@@ -5,9 +5,9 @@ export type ChallengeStatus = 'open' | 'matched' | 'cancelled'
 export interface Challenge {
   id: string
   title: string
-  host_team_id: string
+  host_team_id: number
   host_user_id: number
-  guest_team_id: string | null
+  guest_team_id: number | null
   accepted_by_user_id: number | null
   activity_id: string | null
   holding_date: string
@@ -45,8 +45,8 @@ export interface ChallengeActivityRef {
   start_time: string
   end_time: string
   location: string
-  home_team_id: string | null
-  away_team_id: string | null
+  home_team_id: number | null
+  away_team_id: number | null
   players_per_team: number | null
 }
 
@@ -56,7 +56,7 @@ export interface ChallengeDetail {
 }
 
 export const adminListChallenges = (params: {
-  team_id?: string
+  team_id?: number
   keyword?: string
   status?: ChallengeStatus
   include_closed?: boolean

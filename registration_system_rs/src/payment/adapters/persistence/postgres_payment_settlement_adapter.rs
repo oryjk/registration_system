@@ -1,29 +1,27 @@
 use crate::payment::domain::DomainError;
-use crate::payment::ports::{PaymentBillingPort, TeamMembershipSettlement};
+use crate::payment::ports::{
+    PaymentSettlementPort, RechargePaymentSettlement, TeamMembershipPaymentSettlement,
+};
 use async_trait::async_trait;
 use chrono::Duration;
-use rust_decimal::Decimal;
 use sqlx::PgPool;
 
 #[derive(Clone)]
-pub struct PostgresPaymentBillingAdapter {
+pub struct PostgresPaymentSettlementAdapter {
     pool: PgPool,
 }
 
-impl PostgresPaymentBillingAdapter {
+impl PostgresPaymentSettlementAdapter {
     pub fn new(pool: PgPool) -> Self {
         Self { pool }
     }
 }
 
 #[async_trait]
-impl PaymentBillingPort for PostgresPaymentBillingAdapter {
-    async fn apply_recharge(
+impl PaymentSettlementPort for PostgresPaymentSettlementAdapter {
+    async fn settle_recharge_payment(
         &self,
-        user_id: i64,
-        amount: Decimal,
-        transaction_id: &str,
-        description: &str,
+        settlement: RechargePaymentSettlement<'_>,
     ) -> Result<(), DomainError> {
         let mut tx = self
             .pool
@@ -36,22 +34,54 @@ impl PaymentBillingPort for PostgresPaymentBillingAdapter {
                VALUES ($1, 0.00, 0.00, 0.00, 0.00, NOW(), 1, 1, NOW(), NOW())
                ON CONFLICT (user_id) DO UPDATE SET updated_at = NOW()"#,
         )
-        .bind(user_id)
+        .bind(settlement.user_id)
         .execute(&mut *tx)
         .await
         .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
 
+        let recharge_record_id = sqlx::query_scalar::<_, i64>(
+            r#"
+            INSERT INTO rs_recharge_records (
+                user_id,
+                amount,
+                payment_method,
+                transaction_no,
+                payment_order_no,
+                recharge_date,
+                description,
+                status,
+                created_at,
+                updated_at
+            ) VALUES ($1, $2, 'wechat', $3, $4, CURRENT_DATE, $5, 1, NOW(), NOW())
+            ON CONFLICT (payment_order_no) DO NOTHING
+            RETURNING id
+            "#,
+        )
+        .bind(settlement.user_id)
+        .bind(settlement.amount)
+        .bind(settlement.transaction_id)
+        .bind(settlement.order_no)
+        .bind(settlement.description)
+        .fetch_optional(&mut *tx)
+        .await
+        .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
+
+        if recharge_record_id.is_none() {
+            tx.commit()
+                .await
+                .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
+            return Ok(());
+        }
+
         sqlx::query(
             "UPDATE rs_user_accounts SET balance = balance + $1, total_recharge = total_recharge + $2, last_updated = NOW(), version = version + 1, updated_at = NOW() WHERE user_id = $3",
         )
-        .bind(amount).bind(amount).bind(user_id)
-        .execute(&mut *tx).await.map_err(|e| DomainError::Infrastructure(e.to_string()))?;
-
-        sqlx::query(
-            "INSERT INTO rs_recharge_records (user_id, amount, payment_method, transaction_no, recharge_date, description, status, created_at, updated_at) VALUES ($1, $2, 'wechat', $3, CURRENT_DATE, $4, 1, NOW(), NOW())",
-        )
-        .bind(user_id).bind(amount).bind(transaction_id).bind(description)
-        .execute(&mut *tx).await.map_err(|e| DomainError::Infrastructure(e.to_string()))?;
+        .bind(settlement.amount)
+        .bind(settlement.amount)
+        .bind(settlement.user_id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
 
         tx.commit()
             .await
@@ -59,9 +89,9 @@ impl PaymentBillingPort for PostgresPaymentBillingAdapter {
         Ok(())
     }
 
-    async fn apply_team_membership_order(
+    async fn settle_team_membership_payment(
         &self,
-        settlement: TeamMembershipSettlement<'_>,
+        settlement: TeamMembershipPaymentSettlement<'_>,
     ) -> Result<(), DomainError> {
         let mut tx = self
             .pool
@@ -79,7 +109,7 @@ impl PaymentBillingPort for PostgresPaymentBillingAdapter {
         .flatten();
 
         if existing_applied_at.is_some() {
-            tx.rollback()
+            tx.commit()
                 .await
                 .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
             return Ok(());

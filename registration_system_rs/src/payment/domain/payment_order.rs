@@ -90,7 +90,7 @@ pub struct PaymentQueryResult {
 #[derive(Debug, Clone)]
 pub struct TeamMembershipPaymentOrder {
     pub order_no: String,
-    pub team_id: String,
+    pub team_id: i64,
     pub user_id: i64,
     pub months: i32,
     pub credit_delta: i32,

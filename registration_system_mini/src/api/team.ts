@@ -1,5 +1,6 @@
 import type {
   BackendTeam,
+  BackendTeamAttendanceSummary,
   BackendTeamCreditOverview,
   BackendTeamCreditTransaction,
   BackendTeamDetail,
@@ -13,6 +14,7 @@ import { getApiBaseUrl } from "@/config/apiBase";
 import { getAccessToken } from "@/utils/authStorage";
 import { buildQueryString } from "@/utils/queryString";
 import { ApiRequestError, requestApi } from "@/utils/request";
+import type { DateRangeParams } from "@/utils/dateRange";
 
 export function createTeam(payload: {
   name: string;
@@ -36,7 +38,7 @@ export function searchTeams(keyword: string) {
   });
 }
 
-export function joinTeam(payload: { team_id: string; password?: string }) {
+export function joinTeam(payload: { team_id: number; password?: string }) {
   return requestApi<void>({
     url: "/teams/join",
     method: "POST",
@@ -52,14 +54,14 @@ export function getMyTeams() {
   });
 }
 
-export function getTeamDetail(teamId: string) {
+export function getTeamDetail(teamId: number) {
   return requestApi<BackendTeamDetail>({
     url: `/teams/${teamId}`,
     auth: true,
   });
 }
 
-export function getTeamPasswordInfo(teamId: string) {
+export function getTeamPasswordInfo(teamId: number) {
   return requestApi<BackendTeamPasswordInfo>({
     url: `/teams/${teamId}/password-info`,
     auth: true,
@@ -67,7 +69,7 @@ export function getTeamPasswordInfo(teamId: string) {
 }
 
 export function updateTeam(
-  teamId: string,
+  teamId: number,
   payload: {
     name?: string;
     description?: string | null;
@@ -83,7 +85,7 @@ export function updateTeam(
   });
 }
 
-export async function uploadTeamLogo(teamId: string, filePath: string) {
+export async function uploadTeamLogo(teamId: number, filePath: string) {
   const token = getAccessToken();
 
   return new Promise<BackendTeamLogoUploadResult>((resolve, reject) => {
@@ -121,7 +123,7 @@ export async function uploadTeamLogo(teamId: string, filePath: string) {
 }
 
 export function addTeamMember(
-  teamId: string,
+  teamId: number,
   payload: {
     user_id: number;
     role?: string;
@@ -137,7 +139,7 @@ export function addTeamMember(
 }
 
 export function updateTeamMember(
-  teamId: string,
+  teamId: number,
   userId: number,
   payload: {
     role?: string;
@@ -152,14 +154,26 @@ export function updateTeamMember(
   });
 }
 
-export function getTeamMemberAttendance(teamId: string, userId: number) {
+export function getTeamMemberAttendance(teamId: number, userId: number) {
   return requestApi<BackendTeamMemberAttendance>({
     url: `/teams/${teamId}/members/${userId}/attendance`,
     auth: true,
   });
 }
 
-export function removeTeamMember(teamId: string, userId: number) {
+export function getTeamAttendanceSummary(teamId: number, params?: DateRangeParams) {
+  const queryString = buildQueryString({
+    startDate: params?.startDate,
+    endDate: params?.endDate,
+  });
+
+  return requestApi<BackendTeamAttendanceSummary>({
+    url: `/teams/${teamId}/attendance-summary${queryString ? `?${queryString}` : ""}`,
+    auth: true,
+  });
+}
+
+export function removeTeamMember(teamId: number, userId: number) {
   return requestApi<void>({
     url: `/teams/${teamId}/members/${userId}`,
     method: "DELETE",
@@ -168,7 +182,7 @@ export function removeTeamMember(teamId: string, userId: number) {
 }
 
 export function batchUpdateTeamMemberStatus(
-  teamId: string,
+  teamId: number,
   payload: {
     user_ids: number[];
     status: number;
@@ -182,14 +196,14 @@ export function batchUpdateTeamMemberStatus(
   });
 }
 
-export function getTeamCreditOverview(teamId: string) {
+export function getTeamCreditOverview(teamId: number) {
   return requestApi<BackendTeamCreditOverview>({
     url: `/teams/${teamId}/credit`,
     auth: true,
   });
 }
 
-export function getTeamCreditTransactions(teamId: string, limit = 20) {
+export function getTeamCreditTransactions(teamId: number, limit = 20) {
   return requestApi<BackendTeamCreditTransaction[]>({
     url: `/teams/${teamId}/credit/transactions?limit=${limit}`,
     auth: true,
@@ -197,10 +211,10 @@ export function getTeamCreditTransactions(teamId: string, limit = 20) {
 }
 
 export function submitTeamActivityReview(
-  teamId: string,
+  teamId: number,
   payload: {
     activity_id: string;
-    reviewer_team_id: string;
+    reviewer_team_id: number;
     rating: number;
     comment?: string;
   },
@@ -214,7 +228,7 @@ export function submitTeamActivityReview(
 }
 
 export function rechargeTeamMembership(
-  teamId: string,
+  teamId: number,
   payload: {
     months: number;
     note?: string;

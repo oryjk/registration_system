@@ -7,7 +7,7 @@ use crate::activity::ports::LocationSearchGateway;
 use crate::bootstrap::app::AppState;
 use crate::bootstrap::config::AppConfig;
 use crate::system::domain::{MapProvider, MapProviderSettings, MapServiceSettings};
-use crate::system::ports::SystemSettingsRepository;
+use crate::system::ports::SystemSettingsQueryRepository;
 use axum::Router;
 use sqlx::PgPool;
 use std::sync::Arc;
@@ -15,7 +15,7 @@ use std::sync::Arc;
 pub fn build_activity_service(
     pool: &PgPool,
     config: &AppConfig,
-    settings_repository: Arc<dyn SystemSettingsRepository>,
+    settings_repository: Arc<dyn SystemSettingsQueryRepository>,
 ) -> Arc<ActivityService> {
     let repository = Arc::new(PostgresActivityRepository::new(pool.clone()));
     let team_access_port = Arc::new(PostgresActivityTeamAccessPort::new(pool.clone()));
@@ -37,6 +37,7 @@ pub fn build_activity_service(
     );
 
     Arc::new(ActivityService::new(
+        repository.clone(),
         repository,
         Some(location_search_gateway),
         team_access_port,

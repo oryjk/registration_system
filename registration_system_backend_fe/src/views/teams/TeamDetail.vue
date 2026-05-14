@@ -55,526 +55,45 @@
       <span class="text-base-content font-medium">{{ detail.team.name }}</span>
     </div>
 
-    <!-- 球队基本信息卡片 -->
-    <div class="card bg-base-100 border border-base-300 shadow-sm">
-      <div class="card-body p-5">
-        <div class="flex items-start justify-between gap-4">
-          <div class="flex items-center gap-4">
-            <div v-if="detail.team.logo_url" class="avatar">
-              <div class="w-16 rounded-xl"><img :src="detail.team.logo_url" /></div>
-            </div>
-            <div
-              v-else
-              class="w-16 h-16 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                class="h-9 w-9 text-primary"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-              >
-                <path
-                  d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"
-                />
-              </svg>
-            </div>
-            <div>
-              <div class="flex items-center gap-2">
-                <h2 class="text-xl font-bold">{{ detail.team.name }}</h2>
-                <span
-                  class="badge"
-                  :class="detail.team.status === 1 ? 'badge-success' : 'badge-error'"
-                >
-                  {{ detail.team.status === 1 ? '正常' : '已解散' }}
-                </span>
-              </div>
-              <p class="text-sm text-base-content/60 mt-1">
-                {{ detail.team.description || '暂无简介' }}
-              </p>
-              <p class="text-xs text-base-content/40 mt-1 font-mono">ID: {{ detail.team.id }}</p>
-            </div>
-          </div>
-          <button class="btn btn-sm btn-outline gap-1 flex-shrink-0" @click="openEditModal">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="h-4 w-4"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-            >
-              <path
-                d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"
-              />
-            </svg>
-            编辑
-          </button>
-        </div>
+    <TeamProfilePanel
+      :detail="detail"
+      :captain-member="captainMember"
+      :leader-member="leaderMember"
+      :vice-captain-member="viceCaptainMember"
+      @edit="openEditModal"
+      @set-captain="openSetCaptainModal"
+      @set-leader="openSetLeaderModal"
+      @set-vice-captain="openSetViceCaptainModal"
+    />
 
-        <!-- 统计 -->
-        <div class="flex flex-wrap gap-4 mt-4 pt-4 border-t border-base-200">
-          <div class="flex items-center gap-2 text-sm">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="h-4 w-4 text-primary"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-            >
-              <path
-                d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5z"
-              />
-            </svg>
-            <span
-              ><strong>{{ detail.member_count }}</strong> 名成员</span
-            >
-          </div>
-          <!-- 队长 -->
-          <div class="flex items-center gap-2">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="h-4 w-4 text-warning"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-            >
-              <path
-                d="M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"
-              />
-            </svg>
-            <span class="text-sm">队长：</span>
-            <template v-if="captainMember">
-              <div class="avatar placeholder">
-                <div class="w-6 h-6 rounded-full bg-warning text-warning-content overflow-hidden">
-                  <img
-                    v-if="captainMember.avatar_url"
-                    :src="captainMember.avatar_url"
-                    class="w-full h-full object-cover"
-                  />
-                  <span v-else class="text-xs font-bold">{{
-                    (captainMember.real_name || captainMember.nickname).charAt(0)
-                  }}</span>
-                </div>
-              </div>
-              <span class="text-sm font-medium">{{
-                captainMember.real_name || captainMember.nickname
-              }}</span>
-            </template>
-            <span v-else class="text-sm text-warning">未设置</span>
-            <button class="btn btn-xs btn-ghost" @click="openSetCaptainModal">更换</button>
-          </div>
-          <!-- 领队 -->
-          <div class="flex items-center gap-2">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="h-4 w-4 text-primary"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-            >
-              <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z" />
-            </svg>
-            <span class="text-sm">领队：</span>
-            <template v-if="leaderMember">
-              <div class="avatar placeholder">
-                <div class="w-6 h-6 rounded-full bg-primary text-primary-content overflow-hidden">
-                  <img
-                    v-if="leaderMember.avatar_url"
-                    :src="leaderMember.avatar_url"
-                    class="w-full h-full object-cover"
-                  />
-                  <span v-else class="text-xs font-bold">{{
-                    (leaderMember.real_name || leaderMember.nickname).charAt(0)
-                  }}</span>
-                </div>
-              </div>
-              <span class="text-sm font-medium">{{
-                leaderMember.real_name || leaderMember.nickname
-              }}</span>
-            </template>
-            <span v-else class="text-sm text-base-content/40">未设置</span>
-            <button class="btn btn-xs btn-ghost" @click="openSetLeaderModal">更换</button>
-          </div>
-          <!-- 二场队长 -->
-          <div class="flex items-center gap-2">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="h-4 w-4 text-secondary"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-            >
-              <path
-                d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"
-              />
-            </svg>
-            <span class="text-sm">二场队长：</span>
-            <template v-if="viceCaptainMember">
-              <div class="avatar placeholder">
-                <div
-                  class="w-6 h-6 rounded-full bg-secondary text-secondary-content overflow-hidden"
-                >
-                  <img
-                    v-if="viceCaptainMember.avatar_url"
-                    :src="viceCaptainMember.avatar_url"
-                    class="w-full h-full object-cover"
-                  />
-                  <span v-else class="text-xs font-bold">{{
-                    (viceCaptainMember.real_name || viceCaptainMember.nickname).charAt(0)
-                  }}</span>
-                </div>
-              </div>
-              <span class="text-sm font-medium">{{
-                viceCaptainMember.real_name || viceCaptainMember.nickname
-              }}</span>
-            </template>
-            <span v-else class="text-sm text-base-content/40">未设置</span>
-            <button class="btn btn-xs btn-ghost" @click="openSetViceCaptainModal">更换</button>
-          </div>
-        </div>
-      </div>
-    </div>
+    <TeamCreditPanel
+      :detail="detail"
+      :credit-transactions="creditTransactions"
+      :applying-credit-penalty="applyingCreditPenalty"
+      @penalty="handleCreditPenalty"
+    />
 
-    <div class="card bg-base-100 border border-base-300 shadow-sm">
-      <div class="card-body p-5">
-        <div class="flex items-start justify-between gap-4">
-          <div>
-            <h3 class="font-bold text-base">球队信用</h3>
-            <p class="text-xs text-base-content/50 mt-0.5">
-              赛后互评、会员修复和后台罚扣都会写入信用流水。
-            </p>
-          </div>
-          <div class="flex items-center gap-2">
-            <span class="badge" :class="detail.team.is_vip ? 'badge-warning' : 'badge-ghost'">
-              {{ detail.team.is_vip ? '会员中' : '普通队' }}
-            </span>
-            <span class="badge badge-outline">{{ detail.team.trust_label }}</span>
-          </div>
-        </div>
+    <TeamAdminPanel
+      v-if="isSuperAdmin"
+      :assigned-admins="detail.assigned_admins"
+      @assign="openAssignAdminModal"
+      @unassign="handleUnassignAdmin"
+    />
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4">
-          <div class="rounded-2xl bg-base-200 p-4">
-            <div class="text-xs text-base-content/50">当前信用</div>
-            <div class="text-3xl font-black mt-1">{{ detail.team.credit_score }}</div>
-          </div>
-          <div class="rounded-2xl bg-base-200 p-4">
-            <div class="text-xs text-base-content/50">信用标签</div>
-            <div class="text-base font-semibold mt-1">{{ detail.team.trust_label }}</div>
-          </div>
-          <div class="rounded-2xl bg-base-200 p-4">
-            <div class="text-xs text-base-content/50">会员到期</div>
-            <div class="text-base font-semibold mt-1">{{ formatDateTime(detail.team.vip_until) }}</div>
-          </div>
-        </div>
-
-        <div class="flex flex-wrap gap-2 mt-4">
-          <button
-            class="btn btn-sm btn-outline btn-error"
-            :disabled="applyingCreditPenalty"
-            @click="handleCreditPenalty(5)"
-          >
-            罚扣 5 分
-          </button>
-          <button
-            class="btn btn-sm btn-outline btn-error"
-            :disabled="applyingCreditPenalty"
-            @click="handleCreditPenalty(10)"
-          >
-            罚扣 10 分
-          </button>
-          <button
-            class="btn btn-sm btn-outline btn-error"
-            :disabled="applyingCreditPenalty"
-            @click="handleCreditPenalty(20)"
-          >
-            罚扣 20 分
-          </button>
-        </div>
-
-        <div class="overflow-x-auto mt-4">
-          <table class="table table-sm">
-            <thead>
-              <tr>
-                <th>时间</th>
-                <th>类型</th>
-                <th>变化</th>
-                <th>说明</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-if="!creditTransactions.length">
-                <td colspan="4" class="text-center text-base-content/50 py-4">暂无信用流水</td>
-              </tr>
-              <tr v-for="item in creditTransactions" :key="item.id">
-                <td class="whitespace-nowrap">{{ formatDateTime(item.created_at) }}</td>
-                <td>{{ transactionTypeLabel(item.transaction_type) }}</td>
-                <td>
-                  <span :class="item.delta >= 0 ? 'text-success font-semibold' : 'text-error font-semibold'">
-                    {{ item.delta >= 0 ? `+${item.delta}` : item.delta }}
-                  </span>
-                  <span class="text-xs text-base-content/50 ml-2">
-                    {{ item.score_before }} → {{ item.score_after }}
-                  </span>
-                </td>
-                <td>{{ item.note || '系统记录' }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- 球队管理员（超级管理员专用） -->
-    <div v-if="isSuperAdmin" class="card bg-base-100 border border-base-300 shadow-sm">
-      <div class="card-body p-5">
-        <div class="flex items-center justify-between mb-4">
-          <div>
-            <h3 class="font-bold text-base">后台管理员</h3>
-            <p class="text-xs text-base-content/50 mt-0.5">分配后，该管理员可登录后台管理此球队</p>
-          </div>
-          <button class="btn btn-sm btn-primary gap-1" @click="openAssignAdminModal">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="h-4 w-4"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-            >
-              <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
-            </svg>
-            分配管理员
-          </button>
-        </div>
-
-        <div
-          v-if="!detail?.assigned_admins?.length"
-          class="flex items-center gap-2 text-sm text-base-content/40 py-2"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="h-4 w-4"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-          >
-            <path
-              d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"
-            />
-          </svg>
-          暂未分配管理员
-        </div>
-
-        <div v-else class="flex flex-wrap gap-2">
-          <div
-            v-for="admin in detail.assigned_admins"
-            :key="admin.admin_id"
-            class="flex items-center gap-2 px-3 py-2 bg-base-200 rounded-xl"
-          >
-            <div
-              class="w-7 h-7 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0"
-            >
-              <span class="text-xs font-bold text-primary">{{
-                (admin.nickname || admin.username).charAt(0).toUpperCase()
-              }}</span>
-            </div>
-            <div class="leading-none">
-              <p class="text-sm font-semibold">{{ admin.nickname || admin.username }}</p>
-              <p class="text-xs text-base-content/50">@{{ admin.username }}</p>
-            </div>
-            <button
-              class="btn btn-ghost btn-xs btn-square text-error ml-1"
-              @click="handleUnassignAdmin(admin.admin_id)"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                class="h-3.5 w-3.5"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-              >
-                <path
-                  d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"
-                />
-              </svg>
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 成员列表 -->
-    <div class="card bg-base-100 border border-base-300 shadow-sm">
-      <div class="card-body p-5">
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="font-bold text-base">队员列表（{{ detail.member_count }}）</h3>
-          <button class="btn btn-primary btn-sm gap-1" @click="openBatchAddModal">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="h-4 w-4"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-            >
-              <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
-            </svg>
-            添加队员
-          </button>
-        </div>
-
-        <div
-          v-if="hasSelectedMembers"
-          class="flex items-center gap-3 p-3 bg-primary/5 rounded-xl border border-primary/10 mb-4"
-        >
-          <span class="text-sm"
-            >已选 <strong>{{ selectedMemberIds.length }}</strong> 人</span
-          >
-          <div class="flex-1"></div>
-          <button class="btn btn-sm btn-ghost" @click="selectedMemberIds = []">清空</button>
-          <button class="btn btn-sm btn-error btn-outline gap-1" @click="openBatchRemoveModal">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="h-4 w-4"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-            >
-              <path
-                d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"
-              />
-            </svg>
-            批量移除
-          </button>
-          <button class="btn btn-sm btn-warning btn-outline gap-1" @click="handleBatchFreeze">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="h-4 w-4"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-            >
-              <path
-                d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"
-              />
-            </svg>
-            批量冻结
-          </button>
-          <button class="btn btn-sm btn-success btn-outline gap-1" @click="handleBatchUnfreeze">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="h-4 w-4"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-            >
-              <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
-            </svg>
-            批量解冻
-          </button>
-        </div>
-
-        <div
-          v-if="detail.members.length === 0"
-          class="flex flex-col items-center py-10 text-base-content/40"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="h-10 w-10"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-          >
-            <path
-              d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5z"
-            />
-          </svg>
-          <p class="mt-2 text-sm">暂无队员</p>
-        </div>
-
-        <div v-else class="overflow-x-auto">
-          <table class="table table-zebra table-sm">
-            <thead>
-              <tr>
-                <th class="w-10">
-                  <label class="flex justify-center">
-                    <input
-                      type="checkbox"
-                      class="checkbox checkbox-sm"
-                      :checked="allMembersSelected"
-                      @change="toggleSelectAllMembers"
-                    />
-                  </label>
-                </th>
-                <th>球员</th>
-                <th>手机号</th>
-                <th>角色</th>
-                <th>号码</th>
-                <th>加入时间</th>
-                <th class="text-right">操作</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="member in detail.members" :key="member.user_id">
-                <td>
-                  <label class="flex justify-center">
-                    <input
-                      type="checkbox"
-                      class="checkbox checkbox-sm"
-                      :checked="isMemberSelected(member.user_id)"
-                      @change="toggleSelectMember(member.user_id)"
-                    />
-                  </label>
-                </td>
-                <td>
-                  <div class="flex items-center gap-2.5">
-                    <div
-                      class="w-9 h-9 rounded-full overflow-hidden flex-shrink-0"
-                      :class="member.avatar_url ? '' : roleColors[member.role] || 'bg-base-300'"
-                    >
-                      <img
-                        v-if="member.avatar_url"
-                        :src="member.avatar_url"
-                        class="w-full h-full object-cover"
-                        @error="(e) => ((e.target as HTMLImageElement).style.display = 'none')"
-                      />
-                      <div v-else class="w-full h-full flex items-center justify-center">
-                        <span class="text-sm font-bold">{{
-                          (member.real_name || member.nickname || '?').charAt(0)
-                        }}</span>
-                      </div>
-                    </div>
-                    <div>
-                      <p class="font-semibold text-sm leading-none">
-                        {{ member.real_name || member.nickname }}
-                      </p>
-                      <p
-                        v-if="member.real_name && member.nickname !== member.real_name"
-                        class="text-xs text-base-content/50 mt-0.5"
-                      >
-                        @{{ member.nickname }}
-                      </p>
-                    </div>
-                  </div>
-                </td>
-                <td class="text-sm font-mono text-base-content/60">
-                  {{ member.phone_number || '—' }}
-                </td>
-                <td>
-                  <span
-                    class="badge badge-sm"
-                    :class="roleBadgeClass[member.role] || 'badge-ghost'"
-                  >
-                    {{ member.role_label }}
-                  </span>
-                </td>
-                <td class="text-sm">
-                  {{ member.jersey_number ? '#' + member.jersey_number : '—' }}
-                </td>
-                <td class="text-xs text-base-content/50">{{ formatDate(member.joined_at) }}</td>
-                <td class="text-right">
-                  <div class="flex gap-1 justify-end">
-                    <button class="btn btn-xs btn-outline" @click="openSetRoleModal(member)">
-                      设置角色
-                    </button>
-                    <button
-                      class="btn btn-xs btn-error btn-outline"
-                      @click="confirmRemoveMember(member)"
-                    >
-                      移除
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
+    <TeamMemberPanel
+      :detail="detail"
+      :selected-member-ids="selectedMemberIds"
+      :all-members-selected="allMembersSelected"
+      @add="openBatchAddModal"
+      @clear-selection="selectedMemberIds = []"
+      @batch-remove="openBatchRemoveModal"
+      @batch-freeze="handleBatchFreeze"
+      @batch-unfreeze="handleBatchUnfreeze"
+      @toggle-select-all="toggleSelectAllMembers"
+      @toggle-member="toggleSelectMember"
+      @set-role="openSetRoleModal"
+      @remove="confirmRemoveMember"
+    />
   </div>
 
   <!-- ═══════════════════════════════════════════════════════
@@ -1411,231 +930,41 @@
     <form method="dialog" class="modal-backdrop"><button>关闭</button></form>
   </dialog>
 
-  <!-- ═══════════════════════════════════════════════════════
-       编辑球队弹窗
-  ═══════════════════════════════════════════════════════ -->
-  <dialog ref="editModalRef" class="modal">
-    <div class="modal-box max-w-lg">
-      <h3 class="text-lg font-bold mb-4">编辑球队信息</h3>
-      <div v-if="editError" class="alert alert-error py-2.5 mb-4 text-sm">{{ editError }}</div>
-      <form @submit.prevent="handleEdit" class="flex flex-col gap-4">
-        <label class="flex flex-col gap-1.5">
-          <span class="text-sm font-semibold">球队名称</span>
-          <input v-model="editForm.name" type="text" class="input input-bordered border-2 h-11" />
-        </label>
-        <label class="flex flex-col gap-1.5">
-          <span class="text-sm font-semibold">简介</span>
-          <textarea
-            v-model="editForm.description"
-            rows="3"
-            class="textarea textarea-bordered border-2 resize-none"
-          ></textarea>
-        </label>
-        <label class="flex flex-col gap-1.5">
-          <span class="text-sm font-semibold">队徽 URL</span>
-          <input
-            v-model="editForm.logo_url"
-            type="url"
-            class="input input-bordered border-2 h-11"
-          />
-        </label>
-        <label class="flex flex-col gap-1.5">
-          <span class="text-sm font-semibold">状态</span>
-          <select v-model.number="editForm.status" class="select select-bordered border-2 h-11">
-            <option :value="1">正常</option>
-            <option :value="0">解散</option>
-          </select>
-        </label>
-        <div class="modal-action">
-          <button type="button" class="btn btn-ghost" @click="editModalRef?.close()">取消</button>
-          <button type="submit" class="btn btn-primary" :disabled="editing">
-            <span v-if="editing" class="loading loading-spinner loading-sm"></span>
-            保存
-          </button>
-        </div>
-      </form>
-    </div>
-    <form method="dialog" class="modal-backdrop"><button>关闭</button></form>
-  </dialog>
+  <TeamEditDialog
+    ref="editDialogRef"
+    v-model:form="editForm"
+    :editing="editing"
+    :edit-error="editError"
+    @submit="handleEdit"
+  />
 
-  <!-- 设置角色弹窗 -->
-  <dialog ref="setRoleModalRef" class="modal">
-    <div class="modal-box max-w-sm">
-      <h3 class="text-lg font-bold mb-1">设置角色</h3>
-      <div v-if="setRoleTarget" class="flex items-center gap-3 p-3 bg-base-200 rounded-xl mb-4">
-        <div class="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 bg-base-300">
-          <img
-            v-if="setRoleTarget.avatar_url"
-            :src="setRoleTarget.avatar_url"
-            class="w-full h-full object-cover"
-          />
-          <div v-else class="w-full h-full flex items-center justify-center">
-            <span class="font-bold">{{
-              (setRoleTarget.real_name || setRoleTarget.nickname).charAt(0)
-            }}</span>
-          </div>
-        </div>
-        <div>
-          <p class="font-semibold">{{ setRoleTarget.real_name || setRoleTarget.nickname }}</p>
-          <p
-            v-if="setRoleTarget.nickname !== setRoleTarget.real_name"
-            class="text-xs text-base-content/50"
-          >
-            @{{ setRoleTarget.nickname }}
-          </p>
-        </div>
-      </div>
-      <form @submit.prevent="handleSetRole" class="flex flex-col gap-4">
-        <label class="flex flex-col gap-1.5">
-          <span class="text-sm font-semibold">角色</span>
-          <select v-model="setRoleForm.role" class="select select-bordered border-2 h-11">
-            <option value="member">队员</option>
-            <option value="captain">队长</option>
-            <option value="leader">领队</option>
-            <option value="vice_captain">二场队长</option>
-          </select>
-        </label>
-        <label class="flex flex-col gap-1.5">
-          <span class="text-sm font-semibold">号码</span>
-          <input
-            v-model="setRoleForm.jersey_number"
-            type="text"
-            placeholder="球衣号码（可选）"
-            class="input input-bordered border-2 h-11"
-          />
-        </label>
-        <div class="modal-action">
-          <button type="button" class="btn btn-ghost" @click="setRoleModalRef?.close()">
-            取消
-          </button>
-          <button type="submit" class="btn btn-primary" :disabled="settingRole">
-            <span v-if="settingRole" class="loading loading-spinner loading-sm"></span>
-            保存
-          </button>
-        </div>
-      </form>
-    </div>
-    <form method="dialog" class="modal-backdrop"><button>关闭</button></form>
-  </dialog>
+  <TeamSetRoleDialog
+    ref="setRoleDialogRef"
+    v-model:form="setRoleForm"
+    :target="setRoleTarget"
+    :setting-role="settingRole"
+    @submit="handleSetRole"
+  />
 
-  <!-- 移除成员确认 -->
-  <dialog ref="removeMemberModalRef" class="modal">
-    <div class="modal-box max-w-sm">
-      <h3 class="text-lg font-bold">确认移除</h3>
-      <p class="py-4 text-base-content/70">
-        确定要将
-        <strong>{{
-          removingMember ? removingMember.real_name || removingMember.nickname : ''
-        }}</strong>
-        从球队移除吗？
-      </p>
-      <div class="modal-action">
-        <button class="btn btn-ghost" @click="removeMemberModalRef?.close()">取消</button>
-        <button class="btn btn-error" :disabled="removingMemberLoading" @click="handleRemoveMember">
-          <span v-if="removingMemberLoading" class="loading loading-spinner loading-sm"></span>
-          确认移除
-        </button>
-      </div>
-    </div>
-    <form method="dialog" class="modal-backdrop"><button>关闭</button></form>
-  </dialog>
+  <TeamMemberConfirmDialogs
+    ref="memberConfirmDialogsRef"
+    :removing-member="removingMember"
+    :removing-member-loading="removingMemberLoading"
+    :selected-member-count="selectedMemberIds.length"
+    :batch-removing="batchRemoving"
+    @remove="handleRemoveMember"
+    @batch-remove="handleBatchRemove"
+  />
 
-  <!-- 批量移除确认 -->
-  <dialog ref="batchRemoveModalRef" class="modal">
-    <div class="modal-box max-w-sm">
-      <h3 class="text-lg font-bold">确认批量移除</h3>
-      <p class="py-4 text-base-content/70">
-        确定要将选中的 <strong>{{ selectedMemberIds.length }}</strong> 名队员从球队移除吗？
-      </p>
-      <div class="modal-action">
-        <button class="btn btn-ghost" @click="batchRemoveModalRef?.close()">取消</button>
-        <button class="btn btn-error" :disabled="batchRemoving" @click="handleBatchRemove">
-          <span v-if="batchRemoving" class="loading loading-spinner loading-sm"></span>
-          确认移除
-        </button>
-      </div>
-    </div>
-    <form method="dialog" class="modal-backdrop"><button>关闭</button></form>
-  </dialog>
-
-  <!-- ═══════════════════════════════════════════════════════
-       分配球队管理员弹窗（超级管理员专用）
-  ═══════════════════════════════════════════════════════ -->
-  <dialog ref="assignAdminModalRef" class="modal">
-    <div class="modal-box max-w-lg">
-      <h3 class="text-lg font-bold mb-1">分配球队管理员</h3>
-      <p class="text-sm text-base-content/50 mb-4">
-        选择一名管理员负责管理该球队，被分配后可登录后台查看和管理此球队
-      </p>
-
-      <div v-if="allAdmins.length === 0" class="flex justify-center py-8">
-        <span class="loading loading-spinner loading-md text-primary"></span>
-      </div>
-
-      <div
-        v-else
-        class="max-h-72 overflow-y-auto flex flex-col gap-1 border border-base-200 rounded-xl p-2 mb-4"
-      >
-        <div
-          v-for="admin in availableAdmins"
-          :key="admin.id"
-          class="flex items-center gap-3 p-2.5 rounded-lg cursor-pointer transition-colors"
-          :class="
-            selectedAdminToAssign?.id === admin.id
-              ? 'bg-primary/10 ring-1 ring-primary'
-              : 'hover:bg-base-200'
-          "
-          @click="selectedAdminToAssign = admin"
-        >
-          <div
-            class="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0"
-          >
-            <span class="text-sm font-bold text-primary">{{
-              (admin.nickname || admin.username).charAt(0).toUpperCase()
-            }}</span>
-          </div>
-          <div class="flex-1 min-w-0">
-            <p class="text-sm font-semibold leading-none">{{ admin.nickname || admin.username }}</p>
-            <p class="text-xs text-base-content/50 mt-0.5">@{{ admin.username }}</p>
-          </div>
-          <svg
-            v-if="selectedAdminToAssign?.id === admin.id"
-            xmlns="http://www.w3.org/2000/svg"
-            class="h-5 w-5 text-primary"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-          >
-            <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
-          </svg>
-        </div>
-        <div
-          v-if="availableAdmins.length === 0"
-          class="text-center text-sm text-base-content/40 py-6"
-        >
-          所有管理员均已被分配
-        </div>
-      </div>
-
-      <div v-if="assignAdminError" class="alert alert-error py-2 text-sm mb-3">
-        {{ assignAdminError }}
-      </div>
-
-      <div class="modal-action">
-        <button type="button" class="btn btn-ghost" @click="assignAdminModalRef?.close()">
-          取消
-        </button>
-        <button
-          class="btn btn-primary"
-          :disabled="!selectedAdminToAssign || assigningAdmin"
-          @click="handleAssignAdmin"
-        >
-          <span v-if="assigningAdmin" class="loading loading-spinner loading-sm"></span>
-          确认分配
-        </button>
-      </div>
-    </div>
-    <form method="dialog" class="modal-backdrop"><button>关闭</button></form>
-  </dialog>
+  <TeamAssignAdminDialog
+    ref="assignAdminDialogRef"
+    v-model:selected-admin="selectedAdminToAssign"
+    :all-admins="allAdmins"
+    :available-admins="availableAdmins"
+    :assigning-admin="assigningAdmin"
+    :assign-admin-error="assignAdminError"
+    @submit="handleAssignAdmin"
+  />
 </template>
 
 <script setup lang="ts">
@@ -1661,9 +990,18 @@ import {
 import { listPlayers, type Player } from '@/services/player'
 import { listAdmins, type AdminUser } from '@/services/auth'
 import { useAdminStore } from '@/stores/admin'
+import TeamAdminPanel from './TeamAdminPanel.vue'
+import TeamAssignAdminDialog from './TeamAssignAdminDialog.vue'
+import TeamCreditPanel from './TeamCreditPanel.vue'
+import TeamEditDialog from './TeamEditDialog.vue'
+import TeamMemberConfirmDialogs from './TeamMemberConfirmDialogs.vue'
+import TeamMemberPanel from './TeamMemberPanel.vue'
+import TeamProfilePanel from './TeamProfilePanel.vue'
+import TeamSetRoleDialog from './TeamSetRoleDialog.vue'
+import { roleBadgeClass, roleBgClass } from './team-detail.model'
 
 const route = useRoute()
-const teamId = computed(() => route.params.id as string)
+const teamId = computed(() => Number(route.params.id))
 
 const adminStore = useAdminStore()
 const isSuperAdmin = computed(() => adminStore.isSuperAdmin)
@@ -1683,28 +1021,7 @@ const viceCaptainMember = computed(
 )
 const currentMemberIds = computed(() => new Set(detail.value?.members.map((m) => m.user_id) ?? []))
 
-const roleColors: Record<string, string> = {
-  captain: 'bg-warning text-warning-content',
-  leader: 'bg-primary text-primary-content',
-  vice_captain: 'bg-secondary text-secondary-content',
-}
-const roleBgClass: Record<string, string> = {
-  captain: 'bg-warning text-warning-content',
-  leader: 'bg-primary text-primary-content',
-  vice_captain: 'bg-secondary text-secondary-content',
-  member: 'bg-base-300',
-}
-const roleBadgeClass: Record<string, string> = {
-  captain: 'badge-warning',
-  leader: 'badge-primary',
-  vice_captain: 'badge-secondary',
-  member: 'badge-ghost',
-}
-
 const selectedMemberIds = ref<number[]>([])
-const hasSelectedMembers = computed(() => selectedMemberIds.value.length > 0)
-
-const isMemberSelected = (userId: number) => selectedMemberIds.value.includes(userId)
 
 const toggleSelectMember = (userId: number) => {
   const idx = selectedMemberIds.value.indexOf(userId)
@@ -1728,33 +1045,6 @@ const toggleSelectAllMembers = () => {
     members.forEach((m) => {
       if (!selectedMemberIds.value.includes(m.user_id)) selectedMemberIds.value.push(m.user_id)
     })
-  }
-}
-
-const formatDate = (d: string) =>
-  new Date(d).toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' })
-
-const formatDateTime = (d: string | null) =>
-  d
-    ? new Date(d).toLocaleString('zh-CN', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-      })
-    : '未开通'
-
-const transactionTypeLabel = (type: string) => {
-  switch (type) {
-    case 'match_review':
-      return '赛后互评'
-    case 'membership_recharge':
-      return '会员充值'
-    case 'manual_penalty':
-      return '后台罚扣'
-    default:
-      return '信用变动'
   }
 }
 
@@ -2114,7 +1404,7 @@ const handleSetViceCaptain = async () => {
 }
 
 // ─────────────── 编辑球队 ───────────────
-const editModalRef = ref<HTMLDialogElement>()
+const editDialogRef = ref<InstanceType<typeof TeamEditDialog>>()
 const editing = ref(false)
 const editError = ref('')
 const editForm = reactive({ name: '', description: '', logo_url: '', status: 1 })
@@ -2127,7 +1417,7 @@ const openEditModal = () => {
   editForm.logo_url = t.logo_url || ''
   editForm.status = t.status
   editError.value = ''
-  editModalRef.value?.showModal()
+  editDialogRef.value?.showModal()
 }
 
 const handleEdit = async () => {
@@ -2141,7 +1431,7 @@ const handleEdit = async () => {
       status: editForm.status,
     })
     await fetchDetail()
-    editModalRef.value?.close()
+    editDialogRef.value?.close()
   } catch (e: unknown) {
     editError.value = (e as Error).message || '保存失败'
   } finally {
@@ -2150,7 +1440,7 @@ const handleEdit = async () => {
 }
 
 // ─────────────── 设置角色 ───────────────
-const setRoleModalRef = ref<HTMLDialogElement>()
+const setRoleDialogRef = ref<InstanceType<typeof TeamSetRoleDialog>>()
 const settingRole = ref(false)
 const setRoleTarget = ref<TeamMemberWithInfo | null>(null)
 const setRoleForm = reactive({ role: 'member', jersey_number: '' })
@@ -2159,7 +1449,7 @@ const openSetRoleModal = (member: TeamMemberWithInfo) => {
   setRoleTarget.value = member
   setRoleForm.role = member.role
   setRoleForm.jersey_number = member.jersey_number || ''
-  setRoleModalRef.value?.showModal()
+  setRoleDialogRef.value?.showModal()
 }
 
 const handleSetRole = async () => {
@@ -2177,7 +1467,7 @@ const handleSetRole = async () => {
       await updateTeam(teamId.value, { captain_id: null })
     }
     await fetchDetail()
-    setRoleModalRef.value?.close()
+    setRoleDialogRef.value?.close()
   } catch (e: unknown) {
     toast.error((e as Error).message || '操作失败')
   } finally {
@@ -2186,13 +1476,13 @@ const handleSetRole = async () => {
 }
 
 // ─────────────── 移除成员 ───────────────
-const removeMemberModalRef = ref<HTMLDialogElement>()
+const memberConfirmDialogsRef = ref<InstanceType<typeof TeamMemberConfirmDialogs>>()
 const removingMember = ref<TeamMemberWithInfo | null>(null)
 const removingMemberLoading = ref(false)
 
 const confirmRemoveMember = (member: TeamMemberWithInfo) => {
   removingMember.value = member
-  removeMemberModalRef.value?.showModal()
+  memberConfirmDialogsRef.value?.showRemove()
 }
 
 const handleRemoveMember = async () => {
@@ -2204,7 +1494,7 @@ const handleRemoveMember = async () => {
     }
     await removeMember(teamId.value, removingMember.value.user_id)
     await fetchDetail()
-    removeMemberModalRef.value?.close()
+    memberConfirmDialogsRef.value?.closeRemove()
     removingMember.value = null
   } catch (e: unknown) {
     toast.error((e as Error).message || '移除失败')
@@ -2214,7 +1504,7 @@ const handleRemoveMember = async () => {
 }
 
 // ─────────────── 管理员分配（超级管理员专用） ───────────────
-const assignAdminModalRef = ref<HTMLDialogElement>()
+const assignAdminDialogRef = ref<InstanceType<typeof TeamAssignAdminDialog>>()
 const allAdmins = ref<AdminUser[]>([])
 const selectedAdminToAssign = ref<AdminUser | null>(null)
 const assigningAdmin = ref(false)
@@ -2238,7 +1528,7 @@ const openAssignAdminModal = async () => {
       allAdmins.value = []
     }
   }
-  assignAdminModalRef.value?.showModal()
+  assignAdminDialogRef.value?.showModal()
 }
 
 const handleAssignAdmin = async () => {
@@ -2248,7 +1538,7 @@ const handleAssignAdmin = async () => {
   try {
     await assignAdmin(teamId.value, selectedAdminToAssign.value.id)
     await fetchDetail()
-    assignAdminModalRef.value?.close()
+    assignAdminDialogRef.value?.close()
   } catch (e: unknown) {
     assignAdminError.value = (e as Error).message || '分配失败'
   } finally {
@@ -2268,11 +1558,10 @@ const handleUnassignAdmin = async (adminId: number) => {
 
 // ─────────────── 批量操作 ───────────────
 const batchRemoving = ref(false)
-const batchRemoveModalRef = ref<HTMLDialogElement>()
 
 const openBatchRemoveModal = () => {
   batchRemoving.value = false
-  batchRemoveModalRef.value?.showModal()
+  memberConfirmDialogsRef.value?.showBatchRemove()
 }
 
 const handleBatchRemove = async () => {
@@ -2287,7 +1576,7 @@ const handleBatchRemove = async () => {
     }
     await batchRemoveMembers(teamId.value, selectedMemberIds.value)
     await fetchDetail()
-    batchRemoveModalRef.value?.close()
+    memberConfirmDialogsRef.value?.closeBatchRemove()
   } catch (e: unknown) {
     toast.error((e as Error).message || '批量移除失败')
   } finally {

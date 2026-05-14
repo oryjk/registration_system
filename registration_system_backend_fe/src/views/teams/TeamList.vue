@@ -417,7 +417,7 @@ const fetchTeams = async () => {
   }
 }
 
-const goToDetail = (teamId: string) => router.push(`/teams/${teamId}`)
+const goToDetail = (teamId: number) => router.push(`/teams/${teamId}`)
 
 const openCreateModal = () => {
   createError.value = ''

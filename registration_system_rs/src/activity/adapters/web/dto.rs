@@ -19,8 +19,8 @@ pub struct CreateActivityRequest {
     pub name: String,
     pub opposing: Option<String>,
     pub description: Option<String>,
-    pub home_team_id: Option<String>,
-    pub away_team_id: Option<String>,
+    pub home_team_id: Option<i64>,
+    pub away_team_id: Option<i64>,
     pub color: Option<String>,
     pub opposing_color: Option<String>,
     pub players_per_team: Option<i32>,
@@ -30,7 +30,7 @@ pub struct CreateActivityRequest {
 
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct CreateActivityCheckInConfigRequest {
-    pub team_id: String,
+    pub team_id: i64,
     pub enabled: bool,
     pub radius_meters: i32,
     pub open_minutes_before: i32,
@@ -50,7 +50,7 @@ pub struct UpdateMyStandRequest {
 
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct UpdateTeamCheckInConfigRequest {
-    pub team_id: String,
+    pub team_id: i64,
     pub enabled: bool,
     pub radius_meters: i32,
     pub open_minutes_before: i32,
@@ -59,7 +59,7 @@ pub struct UpdateTeamCheckInConfigRequest {
 
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct SubmitActivityCheckInRequest {
-    pub team_id: String,
+    pub team_id: i64,
     pub latitude: f64,
     pub longitude: f64,
 }
@@ -81,8 +81,8 @@ pub struct UpdateActivityRequest {
     pub name: Option<String>,
     pub opposing: Option<Option<String>>,
     pub description: Option<Option<String>>,
-    pub home_team_id: Option<Option<String>>,
-    pub away_team_id: Option<Option<String>>,
+    pub home_team_id: Option<Option<i64>>,
+    pub away_team_id: Option<Option<i64>>,
     pub color: Option<Option<String>>,
     pub opposing_color: Option<Option<String>>,
     pub players_per_team: Option<Option<i32>>,
@@ -103,8 +103,8 @@ pub struct ActivityDto {
     pub opposing: Option<String>,
     pub cover: Option<String>,
     pub description: Option<String>,
-    pub home_team_id: Option<String>,
-    pub away_team_id: Option<String>,
+    pub home_team_id: Option<i64>,
+    pub away_team_id: Option<i64>,
     pub color: Option<String>,
     pub opposing_color: Option<String>,
     pub players_per_team: Option<i32>,
@@ -148,7 +148,7 @@ impl From<Activity> for ActivityDto {
 
 #[derive(Debug, Serialize, ToSchema)]
 pub struct ActivityTeamCheckInConfigDto {
-    pub team_id: String,
+    pub team_id: i64,
     pub enabled: bool,
     pub radius_meters: i32,
     pub open_minutes_before: i32,
@@ -394,13 +394,13 @@ pub struct BatchUpdateStandRequest {
 
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct TeamRegistrationRequest {
-    pub team_id: String,
+    pub team_id: i64,
     pub registration_count: i32,
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct TeamRegistrationCancelRequest {
-    pub team_id: String,
+    pub team_id: i64,
 }
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -418,7 +418,7 @@ pub struct BackfillActivityDto {
 #[derive(Debug, Serialize, ToSchema)]
 pub struct ActivityCheckInRecordDto {
     pub activity_id: String,
-    pub team_id: String,
+    pub team_id: i64,
     pub user_id: i64,
     pub distance_meters: i32,
     pub checked_in_at: NaiveDateTime,

@@ -1,10 +1,11 @@
 use crate::billing::adapters::web::handlers::{
-    activities_billing_handler, auto_calculate_fee_handler, balance_calibrations_handler,
-    calculate_penalties_handler, calibrate_balance_handler, create_activity_order_handler,
-    game_expense_handler, get_activity_settlement_handler, get_my_balance_handler,
-    get_order_handler, get_user_balance_handler, list_my_billings_handler, list_orders_handler,
+    activities_billing_handler, activity_expense_handler, auto_calculate_fee_handler,
+    balance_calibrations_handler, calculate_penalties_handler, calibrate_balance_handler,
+    get_activity_fee_snapshot_handler, get_activity_settlement_handler, get_my_balance_handler,
+    get_user_balance_handler, list_activity_fee_snapshots_handler, list_my_billings_handler,
     penalty_handler, recharge_handler, settle_activity_expense_handler, transactions_handler,
-    user_billing_flow_handler, user_transactions_handler, users_billing_handler,
+    upsert_activity_fee_snapshot_handler, user_billing_flow_handler, user_transactions_handler,
+    users_billing_handler,
 };
 use crate::bootstrap::app::AppState;
 use axum::{
@@ -17,7 +18,7 @@ pub fn create_account_router() -> Router<AppState> {
         .route("/balance", get(get_my_balance_handler))
         .route("/:user_id/balance", get(get_user_balance_handler))
         .route("/recharge", post(recharge_handler))
-        .route("/game-expense", post(game_expense_handler))
+        .route("/activity-expense", post(activity_expense_handler))
         .route("/penalty", post(penalty_handler))
         .route("/calibrate-balance", post(calibrate_balance_handler))
         .route("/balance-calibrations", get(balance_calibrations_handler))
@@ -28,15 +29,18 @@ pub fn create_account_router() -> Router<AppState> {
 pub fn create_order_router() -> Router<AppState> {
     Router::new()
         .route(
-            "/orders",
-            post(create_activity_order_handler).get(list_orders_handler),
+            "/activity-fee-snapshots",
+            post(upsert_activity_fee_snapshot_handler).get(list_activity_fee_snapshots_handler),
         )
-        .route("/orders/:id", get(get_order_handler))
+        .route(
+            "/activity-fee-snapshots/:id",
+            get(get_activity_fee_snapshot_handler),
+        )
         .route(
             "/activities/:id/settlement",
             get(get_activity_settlement_handler).post(settle_activity_expense_handler),
         )
-        .route("/orders/auto-calculate", post(auto_calculate_fee_handler))
+        .route("/fee/auto-calculate", post(auto_calculate_fee_handler))
         .route(
             "/billing/calculate-penalties",
             post(calculate_penalties_handler),

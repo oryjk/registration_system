@@ -7,9 +7,9 @@ use crate::shared::upload::{detect_image_extension, save_upload_bytes, team_logo
 use crate::team::adapters::web::dto::{
     AddTeamMemberRequest, AdminCreateTeamRequest, AssignAdminRequest, BatchRemoveMembersRequest,
     BatchUpdateMemberStatusRequest, CreateTeamRequest, JoinTeamRequest,
-    SubmitActivityReviewRequest, TeamAdminInfoDto, TeamCreditOverviewDto, TeamCreditPenaltyRequest,
-    TeamCreditTransactionDto, TeamDetailDto, TeamDetailForAdminDto, TeamDto,
-    TeamLogoUploadResponse, TeamMemberAttendanceDto, TeamMembershipRechargeRequest,
+    SubmitActivityReviewRequest, TeamAdminInfoDto, TeamAttendanceSummaryDto, TeamCreditOverviewDto,
+    TeamCreditPenaltyRequest, TeamCreditTransactionDto, TeamDetailDto, TeamDetailForAdminDto,
+    TeamDto, TeamLogoUploadResponse, TeamMemberAttendanceDto, TeamMembershipRechargeRequest,
     TeamPasswordInfoDto, TeamSummaryDto, UpdateTeamMemberRequest, UpdateTeamRequest,
 };
 use crate::team::application::{
@@ -38,6 +38,14 @@ pub struct TeamSearchQuery {
 #[derive(Debug, Deserialize, IntoParams)]
 pub struct TeamCreditTransactionsQuery {
     pub limit: Option<i64>,
+}
+
+#[derive(Debug, Deserialize, IntoParams)]
+pub struct TeamAttendanceSummaryQuery {
+    #[serde(rename = "startDate")]
+    pub start_date: Option<String>,
+    #[serde(rename = "endDate")]
+    pub end_date: Option<String>,
 }
 
 fn team_principal(actor: ActorContext) -> TeamPrincipal {
@@ -142,12 +150,12 @@ pub async fn search_teams_handler(
 
 pub async fn get_team_handler(
     State(state): State<AppState>,
-    Path(team_id): Path<String>,
+    Path(team_id): Path<i64>,
 ) -> Result<Json<ApiResponse<TeamDetailDto>>, HttpError> {
     let detail = state
         .services
         .team_service
-        .get_team_detail(&team_id)
+        .get_team_detail(team_id)
         .await
         .map_err(team_http_error)?;
 
@@ -163,7 +171,7 @@ pub async fn join_team_handler(
     state
         .services
         .team_service
-        .join_team(&principal, &payload.team_id, payload.password.as_deref())
+        .join_team(&principal, payload.team_id, payload.password.as_deref())
         .await
         .map_err(team_http_error)?;
 
@@ -208,7 +216,7 @@ pub async fn user_teams_handler(
 pub async fn update_team_handler(
     State(state): State<AppState>,
     headers: HeaderMap,
-    Path(team_id): Path<String>,
+    Path(team_id): Path<i64>,
     Json(payload): Json<UpdateTeamRequest>,
 ) -> Result<Json<ApiResponse<()>>, HttpError> {
     let principal = team_principal(state.actor(&headers)?);
@@ -217,7 +225,7 @@ pub async fn update_team_handler(
         .team_service
         .update_team(
             &principal,
-            &team_id,
+            team_id,
             UpdateTeamCommand {
                 name: payload.name,
                 description: payload.description,
@@ -236,7 +244,7 @@ pub async fn update_team_handler(
 pub async fn upload_team_logo_handler(
     State(state): State<AppState>,
     headers: HeaderMap,
-    Path(team_id): Path<String>,
+    Path(team_id): Path<i64>,
     mut multipart: Multipart,
 ) -> Result<Json<ApiResponse<TeamLogoUploadResponse>>, HttpError> {
     let principal = team_principal(state.actor(&headers)?);
@@ -292,7 +300,7 @@ pub async fn upload_team_logo_handler(
         .team_service
         .update_team(
             &principal,
-            &team_id,
+            team_id,
             UpdateTeamCommand {
                 name: None,
                 description: None,
@@ -314,13 +322,13 @@ pub async fn upload_team_logo_handler(
 pub async fn delete_team_handler(
     State(state): State<AppState>,
     headers: HeaderMap,
-    Path(team_id): Path<String>,
+    Path(team_id): Path<i64>,
 ) -> Result<Json<ApiResponse<()>>, HttpError> {
     let principal = team_principal(state.actor(&headers)?);
     state
         .services
         .team_service
-        .delete_team(&principal, &team_id)
+        .delete_team(&principal, team_id)
         .await
         .map_err(team_http_error)?;
     Ok(Json(ApiResponse::message("球队删除成功")))
@@ -328,12 +336,12 @@ pub async fn delete_team_handler(
 
 pub async fn password_info_handler(
     State(state): State<AppState>,
-    Path(team_id): Path<String>,
+    Path(team_id): Path<i64>,
 ) -> Result<Json<ApiResponse<TeamPasswordInfoDto>>, HttpError> {
     let requires_password = state
         .services
         .team_service
-        .get_team_password_info(&team_id)
+        .get_team_password_info(team_id)
         .await
         .map_err(team_http_error)?;
 
@@ -346,7 +354,7 @@ pub async fn password_info_handler(
 pub async fn add_member_handler(
     State(state): State<AppState>,
     headers: HeaderMap,
-    Path(team_id): Path<String>,
+    Path(team_id): Path<i64>,
     Json(payload): Json<AddTeamMemberRequest>,
 ) -> Result<Json<ApiResponse<()>>, HttpError> {
     let principal = team_principal(state.actor(&headers)?);
@@ -355,7 +363,7 @@ pub async fn add_member_handler(
         .team_service
         .add_member(
             &principal,
-            &team_id,
+            team_id,
             AddTeamMemberCommand {
                 user_id: payload.user_id,
                 role: payload.role,
@@ -370,13 +378,13 @@ pub async fn add_member_handler(
 pub async fn remove_member_handler(
     State(state): State<AppState>,
     headers: HeaderMap,
-    Path((team_id, user_id)): Path<(String, i64)>,
+    Path((team_id, user_id)): Path<(i64, i64)>,
 ) -> Result<Json<ApiResponse<()>>, HttpError> {
     let principal = team_principal(state.actor(&headers)?);
     state
         .services
         .team_service
-        .remove_member(&principal, &team_id, user_id)
+        .remove_member(&principal, team_id, user_id)
         .await
         .map_err(team_http_error)?;
     Ok(Json(ApiResponse::message("移除队员成功")))
@@ -385,7 +393,7 @@ pub async fn remove_member_handler(
 pub async fn update_member_handler(
     State(state): State<AppState>,
     headers: HeaderMap,
-    Path((team_id, user_id)): Path<(String, i64)>,
+    Path((team_id, user_id)): Path<(i64, i64)>,
     Json(payload): Json<UpdateTeamMemberRequest>,
 ) -> Result<Json<ApiResponse<()>>, HttpError> {
     let principal = team_principal(state.actor(&headers)?);
@@ -394,7 +402,7 @@ pub async fn update_member_handler(
         .team_service
         .update_member(
             &principal,
-            &team_id,
+            team_id,
             user_id,
             UpdateTeamMemberCommand {
                 role: payload.role,
@@ -409,29 +417,61 @@ pub async fn update_member_handler(
 pub async fn member_attendance_handler(
     State(state): State<AppState>,
     headers: HeaderMap,
-    Path((team_id, user_id)): Path<(String, i64)>,
+    Path((team_id, user_id)): Path<(i64, i64)>,
+    Query(query): Query<TeamAttendanceSummaryQuery>,
 ) -> Result<Json<ApiResponse<TeamMemberAttendanceDto>>, HttpError> {
     let principal = team_principal(state.actor(&headers)?);
     let attendance = state
         .services
         .team_service
-        .get_member_attendance_records(&principal, &team_id, user_id)
+        .get_member_attendance_records(
+            &principal,
+            team_id,
+            user_id,
+            query.start_date.as_deref(),
+            query.end_date.as_deref(),
+        )
         .await
         .map_err(team_http_error)?;
-    Ok(Json(ApiResponse::success(TeamMemberAttendanceDto::from(attendance))))
+    Ok(Json(ApiResponse::success(TeamMemberAttendanceDto::from(
+        attendance,
+    ))))
+}
+
+pub async fn attendance_summary_handler(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(team_id): Path<i64>,
+    Query(query): Query<TeamAttendanceSummaryQuery>,
+) -> Result<Json<ApiResponse<TeamAttendanceSummaryDto>>, HttpError> {
+    let principal = team_principal(state.actor(&headers)?);
+    let summary = state
+        .services
+        .team_service
+        .get_team_attendance_summary(
+            &principal,
+            team_id,
+            query.start_date.as_deref(),
+            query.end_date.as_deref(),
+        )
+        .await
+        .map_err(team_http_error)?;
+    Ok(Json(ApiResponse::success(TeamAttendanceSummaryDto::from(
+        summary,
+    ))))
 }
 
 pub async fn batch_remove_members_handler(
     State(state): State<AppState>,
     headers: HeaderMap,
-    Path(team_id): Path<String>,
+    Path(team_id): Path<i64>,
     Json(payload): Json<BatchRemoveMembersRequest>,
 ) -> Result<Json<ApiResponse<u64>>, HttpError> {
     let principal = team_principal(state.actor(&headers)?);
     let removed_count = state
         .services
         .team_service
-        .batch_remove_members(&principal, &team_id, &payload.user_ids)
+        .batch_remove_members(&principal, team_id, &payload.user_ids)
         .await
         .map_err(team_http_error)?;
     Ok(Json(ApiResponse::with_message(
@@ -443,14 +483,14 @@ pub async fn batch_remove_members_handler(
 pub async fn batch_update_member_status_handler(
     State(state): State<AppState>,
     headers: HeaderMap,
-    Path(team_id): Path<String>,
+    Path(team_id): Path<i64>,
     Json(payload): Json<BatchUpdateMemberStatusRequest>,
 ) -> Result<Json<ApiResponse<u64>>, HttpError> {
     let principal = team_principal(state.actor(&headers)?);
     let updated_count = state
         .services
         .team_service
-        .batch_update_member_status(&principal, &team_id, &payload.user_ids, payload.status)
+        .batch_update_member_status(&principal, team_id, &payload.user_ids, payload.status)
         .await
         .map_err(team_http_error)?;
     Ok(Json(ApiResponse::with_message(
@@ -491,13 +531,13 @@ pub async fn admin_create_team_handler(
 pub async fn admin_team_detail_handler(
     State(state): State<AppState>,
     headers: HeaderMap,
-    Path(team_id): Path<String>,
+    Path(team_id): Path<i64>,
 ) -> Result<Json<ApiResponse<TeamDetailForAdminDto>>, HttpError> {
     let principal = team_principal(state.actor(&headers)?);
     let detail = state
         .services
         .team_service
-        .get_team_detail_for_admin(&principal, &team_id)
+        .get_team_detail_for_admin(&principal, team_id)
         .await
         .map_err(team_http_error)?;
     Ok(Json(ApiResponse::success(TeamDetailForAdminDto::from(
@@ -509,14 +549,14 @@ pub async fn admin_team_detail_handler(
 pub async fn assign_admin_handler(
     State(state): State<AppState>,
     headers: HeaderMap,
-    Path(team_id): Path<String>,
+    Path(team_id): Path<i64>,
     Json(payload): Json<AssignAdminRequest>,
 ) -> Result<Json<ApiResponse<()>>, HttpError> {
     let principal = team_principal(state.actor(&headers)?);
     state
         .services
         .team_service
-        .assign_admin_to_team(&principal, &team_id, payload.admin_id)
+        .assign_admin_to_team(&principal, team_id, payload.admin_id)
         .await
         .map_err(team_http_error)?;
     Ok(Json(ApiResponse::message("管理员分配成功")))
@@ -526,13 +566,13 @@ pub async fn assign_admin_handler(
 pub async fn unassign_admin_handler(
     State(state): State<AppState>,
     headers: HeaderMap,
-    Path((team_id, admin_id)): Path<(String, i64)>,
+    Path((team_id, admin_id)): Path<(i64, i64)>,
 ) -> Result<Json<ApiResponse<()>>, HttpError> {
     let principal = team_principal(state.actor(&headers)?);
     state
         .services
         .team_service
-        .unassign_admin_from_team(&principal, &team_id, admin_id)
+        .unassign_admin_from_team(&principal, team_id, admin_id)
         .await
         .map_err(team_http_error)?;
     Ok(Json(ApiResponse::message("管理员取消分配成功")))
@@ -542,13 +582,13 @@ pub async fn unassign_admin_handler(
 pub async fn list_team_admins_handler(
     State(state): State<AppState>,
     headers: HeaderMap,
-    Path(team_id): Path<String>,
+    Path(team_id): Path<i64>,
 ) -> Result<Json<ApiResponse<Vec<TeamAdminInfoDto>>>, HttpError> {
     let principal = team_principal(state.actor(&headers)?);
     let admins = state
         .services
         .team_service
-        .list_team_assigned_admins(&principal, &team_id)
+        .list_team_assigned_admins(&principal, team_id)
         .await
         .map_err(team_http_error)?;
     Ok(Json(ApiResponse::success(
@@ -558,12 +598,12 @@ pub async fn list_team_admins_handler(
 
 pub async fn team_credit_overview_handler(
     State(state): State<AppState>,
-    Path(team_id): Path<String>,
+    Path(team_id): Path<i64>,
 ) -> Result<Json<ApiResponse<TeamCreditOverviewDto>>, HttpError> {
     let overview = state
         .services
         .team_service
-        .get_credit_overview(&team_id)
+        .get_credit_overview(team_id)
         .await
         .map_err(team_http_error)?;
 
@@ -574,13 +614,13 @@ pub async fn team_credit_overview_handler(
 
 pub async fn list_team_credit_transactions_handler(
     State(state): State<AppState>,
-    Path(team_id): Path<String>,
+    Path(team_id): Path<i64>,
     Query(query): Query<TeamCreditTransactionsQuery>,
 ) -> Result<Json<ApiResponse<Vec<TeamCreditTransactionDto>>>, HttpError> {
     let items = state
         .services
         .team_service
-        .list_credit_transactions(&team_id, query.limit.unwrap_or(20))
+        .list_credit_transactions(team_id, query.limit.unwrap_or(20))
         .await
         .map_err(team_http_error)?;
 
@@ -595,7 +635,7 @@ pub async fn list_team_credit_transactions_handler(
 pub async fn submit_activity_review_handler(
     State(state): State<AppState>,
     headers: HeaderMap,
-    Path(team_id): Path<String>,
+    Path(team_id): Path<i64>,
     Json(payload): Json<SubmitActivityReviewRequest>,
 ) -> Result<Json<ApiResponse<TeamCreditOverviewDto>>, HttpError> {
     let principal = team_principal(state.actor(&headers)?);
@@ -604,7 +644,7 @@ pub async fn submit_activity_review_handler(
         .team_service
         .submit_activity_review(
             &principal,
-            &team_id,
+            team_id,
             SubmitActivityReviewCommand {
                 activity_id: payload.activity_id,
                 reviewer_team_id: payload.reviewer_team_id,
@@ -624,7 +664,7 @@ pub async fn submit_activity_review_handler(
 pub async fn recharge_team_membership_handler(
     State(state): State<AppState>,
     headers: HeaderMap,
-    Path(team_id): Path<String>,
+    Path(team_id): Path<i64>,
     Json(payload): Json<TeamMembershipRechargeRequest>,
 ) -> Result<Json<ApiResponse<TeamCreditOverviewDto>>, HttpError> {
     let principal = team_principal(state.actor(&headers)?);
@@ -633,7 +673,7 @@ pub async fn recharge_team_membership_handler(
         .team_service
         .recharge_membership(
             &principal,
-            &team_id,
+            team_id,
             TeamMembershipRechargeCommand {
                 months: payload.months,
                 note: payload.note,
@@ -651,7 +691,7 @@ pub async fn recharge_team_membership_handler(
 pub async fn team_credit_penalty_handler(
     State(state): State<AppState>,
     headers: HeaderMap,
-    Path(team_id): Path<String>,
+    Path(team_id): Path<i64>,
     Json(payload): Json<TeamCreditPenaltyRequest>,
 ) -> Result<Json<ApiResponse<TeamCreditOverviewDto>>, HttpError> {
     let principal = team_principal(state.actor(&headers)?);
@@ -660,7 +700,7 @@ pub async fn team_credit_penalty_handler(
         .team_service
         .apply_credit_penalty(
             &principal,
-            &team_id,
+            team_id,
             TeamCreditPenaltyCommand {
                 points: payload.points,
                 reason: payload.reason,

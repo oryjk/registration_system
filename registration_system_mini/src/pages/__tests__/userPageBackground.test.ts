@@ -22,9 +22,13 @@ describe("mine page background rendering", () => {
     const userPageSource = await Bun.file(
       "/Users/carlwang/registration_system/registration_system_mini/src/pages/user/index.vue",
     ).text();
+    const heroProfileSource = await Bun.file(
+      "/Users/carlwang/registration_system/registration_system_mini/src/pages/user/components/MineHeroProfile.vue",
+    ).text();
 
     expect(userPageSource.includes('class="mine-hero"')).toEqual(true);
-    expect(userPageSource.includes('class="profile-stats-row"')).toEqual(true);
+    expect(userPageSource.includes("<MineHeroProfile")).toEqual(true);
+    expect(heroProfileSource.includes('class="profile-stats-row"')).toEqual(true);
     expect(userPageSource.includes('class="overview-card"')).toEqual(false);
   });
 
@@ -43,9 +47,13 @@ describe("mine page background rendering", () => {
     const userPageSource = await Bun.file(
       "/Users/carlwang/registration_system/registration_system_mini/src/pages/user/index.vue",
     ).text();
+    const skeletonSource = await Bun.file(
+      "/Users/carlwang/registration_system/registration_system_mini/src/pages/user/components/MineSkeleton.vue",
+    ).text();
 
-    expect(userPageSource.includes('v-if="showInitialLoadingState" class="mine-skeleton-stack"')).toEqual(true);
-    expect(userPageSource.includes('class="mine-skeleton-profile"')).toEqual(true);
+    expect(userPageSource.includes('<MineSkeleton v-if="showInitialLoadingState"')).toEqual(true);
+    expect(skeletonSource.includes('class="mine-skeleton-stack"')).toEqual(true);
+    expect(skeletonSource.includes('class="mine-skeleton-profile"')).toEqual(true);
     expect(userPageSource.includes("正在加载个人中心")).toEqual(false);
     expect(userPageSource.includes('v-else-if="isLoading" class="mine-empty"')).toEqual(false);
     expect(userPageSource.includes('class="team-switch-status"')).toEqual(false);

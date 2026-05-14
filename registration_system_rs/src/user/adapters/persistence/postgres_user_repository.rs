@@ -2,7 +2,7 @@ use crate::user::domain::{
     DomainError, PlayerAdminListQuery, PlayerListResult, PlayerTeamSummary, PlayerWithTeams,
     UpdateUserFields, User, UserActivityRecord, UserAttendanceRanking, UserAttendanceRecord,
 };
-use crate::user::ports::UserRepository;
+use crate::user::ports::{UserCommandRepository, UserQueryRepository};
 use async_trait::async_trait;
 use chrono::NaiveDateTime;
 use sqlx::{FromRow, PgPool};
@@ -146,7 +146,7 @@ impl PostgresUserRepository {
 }
 
 #[async_trait]
-impl UserRepository for PostgresUserRepository {
+impl UserQueryRepository for PostgresUserRepository {
     async fn find_by_open_id(&self, open_id: &str) -> Result<Option<User>, DomainError> {
         let row = sqlx::query_as::<_, UserRow>(
             r#"
@@ -225,151 +225,6 @@ impl UserRepository for PostgresUserRepository {
         .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
 
         Ok(rows.into_iter().map(User::from).collect())
-    }
-
-    async fn create(&self, user: &User) -> Result<User, DomainError> {
-        let id: i64 = sqlx::query_scalar(
-            r#"
-            INSERT INTO rs_user_info (
-                open_id, union_id, username, nickname, real_name, avatar_url,
-                phone_number, is_manager, status, create_time, latest_login_date
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-            RETURNING id
-            "#,
-        )
-        .bind(&user.open_id)
-        .bind(&user.union_id)
-        .bind(&user.username)
-        .bind(&user.nickname)
-        .bind(&user.real_name)
-        .bind(&user.avatar_url)
-        .bind(&user.phone_number)
-        .bind(user.is_manager as i16)
-        .bind(user.status as i16)
-        .bind(user.create_time)
-        .bind(user.latest_login_date)
-        .fetch_one(&self.pool)
-        .await
-        .map_err(|e| {
-            if let sqlx::Error::Database(db) = &e
-                && db.code().as_deref() == Some("23505")
-            {
-                return DomainError::UserAlreadyExists;
-            }
-            DomainError::Infrastructure(e.to_string())
-        })?;
-
-        self.find_by_id(id)
-            .await?
-            .ok_or_else(|| DomainError::Infrastructure("创建用户后无法读取记录".to_string()))
-    }
-
-    async fn touch_login(&self, user_id: i64) -> Result<(), DomainError> {
-        sqlx::query("UPDATE rs_user_info SET latest_login_date = NOW() WHERE id = $1")
-            .bind(user_id)
-            .execute(&self.pool)
-            .await
-            .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
-        Ok(())
-    }
-
-    async fn update_profile(
-        &self,
-        user_id: i64,
-        nickname: Option<&str>,
-        real_name: Option<&str>,
-        avatar_url: Option<&str>,
-    ) -> Result<(), DomainError> {
-        if let Some(value) = nickname {
-            sqlx::query("UPDATE rs_user_info SET nickname = $1 WHERE id = $2")
-                .bind(value)
-                .bind(user_id)
-                .execute(&self.pool)
-                .await
-                .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
-        }
-        if let Some(value) = real_name {
-            sqlx::query("UPDATE rs_user_info SET real_name = $1 WHERE id = $2")
-                .bind(value)
-                .bind(user_id)
-                .execute(&self.pool)
-                .await
-                .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
-        }
-        if let Some(value) = avatar_url {
-            sqlx::query("UPDATE rs_user_info SET avatar_url = $1 WHERE id = $2")
-                .bind(value)
-                .bind(user_id)
-                .execute(&self.pool)
-                .await
-                .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
-        }
-        Ok(())
-    }
-
-    async fn update_fields(
-        &self,
-        user_id: i64,
-        fields: UpdateUserFields<'_>,
-    ) -> Result<(), DomainError> {
-        self.update_profile(
-            user_id,
-            fields.nickname,
-            fields.real_name,
-            fields.avatar_url,
-        )
-        .await?;
-
-        if let Some(value) = fields.phone_number {
-            sqlx::query("UPDATE rs_user_info SET phone_number = $1 WHERE id = $2")
-                .bind(value)
-                .bind(user_id)
-                .execute(&self.pool)
-                .await
-                .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
-        }
-        if let Some(value) = fields.is_manager {
-            sqlx::query("UPDATE rs_user_info SET is_manager = $1 WHERE id = $2")
-                .bind(if value { 1_i16 } else { 0_i16 })
-                .bind(user_id)
-                .execute(&self.pool)
-                .await
-                .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
-        }
-        if let Some(value) = fields.status {
-            sqlx::query("UPDATE rs_user_info SET status = $1 WHERE id = $2")
-                .bind(value as i16)
-                .bind(user_id)
-                .execute(&self.pool)
-                .await
-                .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
-        }
-        if let Some(value) = fields.leave_start_time {
-            sqlx::query("UPDATE rs_user_info SET leave_start_time = $1 WHERE id = $2")
-                .bind(value)
-                .bind(user_id)
-                .execute(&self.pool)
-                .await
-                .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
-        }
-        if let Some(value) = fields.leave_end_time {
-            sqlx::query("UPDATE rs_user_info SET leave_end_time = $1 WHERE id = $2")
-                .bind(value)
-                .bind(user_id)
-                .execute(&self.pool)
-                .await
-                .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
-        }
-        Ok(())
-    }
-
-    async fn delete(&self, user_id: i64) -> Result<(), DomainError> {
-        sqlx::query("DELETE FROM rs_user_info WHERE id = $1")
-            .bind(user_id)
-            .execute(&self.pool)
-            .await
-            .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
-        Ok(())
     }
 
     async fn find_activities(&self, user_id: i64) -> Result<Vec<UserActivityRecord>, DomainError> {
@@ -479,6 +334,171 @@ impl UserRepository for PostgresUserRepository {
     }
 
     async fn list_players_admin(
+        &self,
+        query: PlayerAdminListQuery<'_>,
+    ) -> Result<PlayerListResult, DomainError> {
+        self.do_list_players_admin(query).await
+    }
+
+    async fn find_player_teams(
+        &self,
+        user_ids: &[i64],
+    ) -> Result<Vec<(i64, PlayerTeamSummary)>, DomainError> {
+        self.do_find_player_teams(user_ids).await
+    }
+}
+
+#[async_trait]
+impl UserCommandRepository for PostgresUserRepository {
+    async fn create(&self, user: &User) -> Result<User, DomainError> {
+        let id: i64 = sqlx::query_scalar(
+            r#"
+            INSERT INTO rs_user_info (
+                open_id, union_id, username, nickname, real_name, avatar_url,
+                phone_number, is_manager, status, create_time, latest_login_date
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+            RETURNING id
+            "#,
+        )
+        .bind(&user.open_id)
+        .bind(&user.union_id)
+        .bind(&user.username)
+        .bind(&user.nickname)
+        .bind(&user.real_name)
+        .bind(&user.avatar_url)
+        .bind(&user.phone_number)
+        .bind(user.is_manager as i16)
+        .bind(user.status as i16)
+        .bind(user.create_time)
+        .bind(user.latest_login_date)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| {
+            if let sqlx::Error::Database(db) = &e
+                && db.code().as_deref() == Some("23505")
+            {
+                return DomainError::UserAlreadyExists;
+            }
+            DomainError::Infrastructure(e.to_string())
+        })?;
+
+        UserQueryRepository::find_by_id(self, id)
+            .await?
+            .ok_or_else(|| DomainError::Infrastructure("创建用户后无法读取记录".to_string()))
+    }
+
+    async fn touch_login(&self, user_id: i64) -> Result<(), DomainError> {
+        sqlx::query("UPDATE rs_user_info SET latest_login_date = NOW() WHERE id = $1")
+            .bind(user_id)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
+        Ok(())
+    }
+
+    async fn update_profile(
+        &self,
+        user_id: i64,
+        nickname: Option<&str>,
+        real_name: Option<&str>,
+        avatar_url: Option<&str>,
+    ) -> Result<(), DomainError> {
+        if let Some(value) = nickname {
+            sqlx::query("UPDATE rs_user_info SET nickname = $1 WHERE id = $2")
+                .bind(value)
+                .bind(user_id)
+                .execute(&self.pool)
+                .await
+                .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
+        }
+        if let Some(value) = real_name {
+            sqlx::query("UPDATE rs_user_info SET real_name = $1 WHERE id = $2")
+                .bind(value)
+                .bind(user_id)
+                .execute(&self.pool)
+                .await
+                .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
+        }
+        if let Some(value) = avatar_url {
+            sqlx::query("UPDATE rs_user_info SET avatar_url = $1 WHERE id = $2")
+                .bind(value)
+                .bind(user_id)
+                .execute(&self.pool)
+                .await
+                .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
+        }
+        Ok(())
+    }
+
+    async fn update_fields(
+        &self,
+        user_id: i64,
+        fields: UpdateUserFields<'_>,
+    ) -> Result<(), DomainError> {
+        UserCommandRepository::update_profile(
+            self,
+            user_id,
+            fields.nickname,
+            fields.real_name,
+            fields.avatar_url,
+        )
+        .await?;
+
+        if let Some(value) = fields.phone_number {
+            sqlx::query("UPDATE rs_user_info SET phone_number = $1 WHERE id = $2")
+                .bind(value)
+                .bind(user_id)
+                .execute(&self.pool)
+                .await
+                .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
+        }
+        if let Some(value) = fields.is_manager {
+            sqlx::query("UPDATE rs_user_info SET is_manager = $1 WHERE id = $2")
+                .bind(if value { 1_i16 } else { 0_i16 })
+                .bind(user_id)
+                .execute(&self.pool)
+                .await
+                .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
+        }
+        if let Some(value) = fields.status {
+            sqlx::query("UPDATE rs_user_info SET status = $1 WHERE id = $2")
+                .bind(value as i16)
+                .bind(user_id)
+                .execute(&self.pool)
+                .await
+                .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
+        }
+        if let Some(value) = fields.leave_start_time {
+            sqlx::query("UPDATE rs_user_info SET leave_start_time = $1 WHERE id = $2")
+                .bind(value)
+                .bind(user_id)
+                .execute(&self.pool)
+                .await
+                .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
+        }
+        if let Some(value) = fields.leave_end_time {
+            sqlx::query("UPDATE rs_user_info SET leave_end_time = $1 WHERE id = $2")
+                .bind(value)
+                .bind(user_id)
+                .execute(&self.pool)
+                .await
+                .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
+        }
+        Ok(())
+    }
+
+    async fn delete(&self, user_id: i64) -> Result<(), DomainError> {
+        sqlx::query("DELETE FROM rs_user_info WHERE id = $1")
+            .bind(user_id)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
+        Ok(())
+    }
+}
+
+impl PostgresUserRepository {
+    async fn do_list_players_admin(
         &self,
         query: PlayerAdminListQuery<'_>,
     ) -> Result<PlayerListResult, DomainError> {
@@ -602,7 +622,7 @@ impl UserRepository for PostgresUserRepository {
 
         // 批量查询这批球员的球队归属
         let user_ids: Vec<i64> = rows.iter().map(|r| r.id).collect();
-        let team_rows = self.find_player_teams(&user_ids).await?;
+        let team_rows = self.do_find_player_teams(&user_ids).await?;
 
         // 按 user_id 聚合球队信息
         let mut teams_map: std::collections::HashMap<i64, Vec<PlayerTeamSummary>> =
@@ -631,7 +651,7 @@ impl UserRepository for PostgresUserRepository {
         Ok(PlayerListResult { items, total })
     }
 
-    async fn find_player_teams(
+    async fn do_find_player_teams(
         &self,
         user_ids: &[i64],
     ) -> Result<Vec<(i64, PlayerTeamSummary)>, DomainError> {

@@ -5,6 +5,7 @@ use crate::challenge::adapters::web::dto::{
 };
 use crate::challenge::application::{
     AcceptChallengeCommand, AdminChallengeListQuery, CreateChallengeCommand,
+    TeamChallengeListRequest,
 };
 use crate::challenge::domain::{ChallengeKind, ChallengeStatus};
 use crate::shared::api_response::ApiResponse;
@@ -91,18 +92,20 @@ pub async fn list_challenges_handler(
                 },
             )
             .await?
-    } else if let (Some(actor), Some(team_id)) = (actor, query.team_id.as_deref()) {
+    } else if let (Some(actor), Some(team_id)) = (actor, query.team_id) {
         state
             .services
             .challenge_service
             .list_for_team(
                 &actor,
-                team_id,
-                query.keyword.as_deref(),
-                status,
-                query.include_closed.unwrap_or(false),
-                query.limit.unwrap_or(20),
-                query.sort.as_deref().unwrap_or("holding_date_asc"),
+                TeamChallengeListRequest {
+                    team_id,
+                    keyword: query.keyword.as_deref(),
+                    status,
+                    include_closed: query.include_closed.unwrap_or(false),
+                    limit: query.limit.unwrap_or(20),
+                    sort: query.sort.as_deref().unwrap_or("holding_date_asc"),
+                },
             )
             .await?
     } else {

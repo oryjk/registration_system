@@ -6,7 +6,7 @@ use async_trait::async_trait;
 
 #[derive(Debug, Clone, Copy)]
 pub struct TeamChallengeListQuery<'a> {
-    pub team_id: &'a str,
+    pub team_id: i64,
     pub user_id: i64,
     pub keyword: Option<&'a str>,
     pub status: Option<ChallengeStatus>,
@@ -17,8 +17,8 @@ pub struct TeamChallengeListQuery<'a> {
 
 #[derive(Debug, Clone, Copy)]
 pub struct AdminChallengeRepositoryQuery<'a> {
-    pub accessible_team_ids: Option<&'a [String]>,
-    pub team_id: Option<&'a str>,
+    pub accessible_team_ids: Option<&'a [i64]>,
+    pub team_id: Option<i64>,
     pub keyword: Option<&'a str>,
     pub status: Option<ChallengeStatus>,
     pub include_closed: bool,
@@ -27,8 +27,7 @@ pub struct AdminChallengeRepositoryQuery<'a> {
 }
 
 #[async_trait]
-pub trait ChallengeRepository: Send + Sync {
-    async fn create(&self, challenge: &Challenge) -> Result<(), DomainError>;
+pub trait ChallengeQueryRepository: Send + Sync {
     async fn find_by_id(&self, challenge_id: &str) -> Result<Option<Challenge>, DomainError>;
     async fn list_for_team(
         &self,
@@ -51,10 +50,15 @@ pub trait ChallengeRepository: Send + Sync {
         start_time: chrono::NaiveDateTime,
         end_time: chrono::NaiveDateTime,
     ) -> Result<bool, DomainError>;
+}
+
+#[async_trait]
+pub trait ChallengeCommandRepository: Send + Sync {
+    async fn create(&self, challenge: &Challenge) -> Result<(), DomainError>;
     async fn accept_with_activity(
         &self,
         challenge_id: &str,
-        guest_team_id: &str,
+        guest_team_id: i64,
         accepted_by_user_id: i64,
         activity: &Activity,
     ) -> Result<Challenge, DomainError>;

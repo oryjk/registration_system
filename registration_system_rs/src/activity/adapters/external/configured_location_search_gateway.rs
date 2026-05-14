@@ -1,19 +1,19 @@
 use crate::activity::adapters::{AmapLocationSearchGateway, TencentLocationSearchGateway};
 use crate::activity::ports::{LocationSearchGateway, LocationSearchResult};
 use crate::system::domain::{MapProvider, MapServiceSettings};
-use crate::system::ports::SystemSettingsRepository;
+use crate::system::ports::SystemSettingsQueryRepository;
 use async_trait::async_trait;
 use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct ConfiguredLocationSearchGateway {
-    repository: Arc<dyn SystemSettingsRepository>,
+    repository: Arc<dyn SystemSettingsQueryRepository>,
     defaults: MapServiceSettings,
 }
 
 impl ConfiguredLocationSearchGateway {
     pub fn new(
-        repository: Arc<dyn SystemSettingsRepository>,
+        repository: Arc<dyn SystemSettingsQueryRepository>,
         defaults: MapServiceSettings,
     ) -> Self {
         Self {

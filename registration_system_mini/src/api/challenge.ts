@@ -3,7 +3,7 @@ import { buildQueryString } from "@/utils/queryString";
 import { requestApi } from "@/utils/request";
 
 export function listChallenges(params: {
-  teamId?: string;
+  teamId?: number;
   keyword?: string;
   status?: "open" | "matched" | "cancelled";
   includeClosed?: boolean;
@@ -35,7 +35,7 @@ export function getChallengeDetail(challengeId: string) {
 
 export function createChallenge(payload: {
   kind: "team" | "individual";
-  host_team_id: string;
+  host_team_id: number;
   title: string;
   holding_date: string;
   start_time: string;
@@ -55,7 +55,7 @@ export function createChallenge(payload: {
   });
 }
 
-export function acceptChallenge(challengeId: string, guestTeamId?: string) {
+export function acceptChallenge(challengeId: string, guestTeamId?: number) {
   return requestApi<BackendChallenge>({
     url: `/challenges/${challengeId}/accept`,
     method: "POST",

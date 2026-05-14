@@ -43,6 +43,7 @@ describe("remaining mini real backend integrations", () => {
   test("team manage page exposes real team member management operations", async () => {
     const teamApi = await read(`${miniRoot}/src/api/team.ts`);
     const page = await read(`${miniRoot}/src/pages/teams/manage/index.vue`);
+    const state = await read(`${miniRoot}/src/pages/teams/manage/teamManageState.ts`);
 
     expect(teamApi.includes("export function addTeamMember")).toEqual(true);
     expect(teamApi.includes('url: `/teams/${teamId}/members`')).toEqual(true);
@@ -52,7 +53,9 @@ describe("remaining mini real backend integrations", () => {
     expect(teamApi.includes("export function batchUpdateTeamMemberStatus")).toEqual(true);
     expect(teamApi.includes('url: `/teams/${teamId}/members/batch`')).toEqual(true);
 
-    expect(page.includes("memberMode")).toEqual(true);
+    expect(state.includes('export type TeamManageMode = "profile" | "create" | "join" | "members";')).toEqual(true);
+    expect(page.includes("activeMode = ref<TeamManageMode>")).toEqual(true);
+    expect(page.includes("activeMode === 'members'")).toEqual(true);
     expect(page.includes("handleAddMember")).toEqual(true);
     expect(page.includes("handleUpdateMember")).toEqual(true);
     expect(page.includes("handleRemoveMember")).toEqual(true);
@@ -64,15 +67,24 @@ describe("remaining mini real backend integrations", () => {
     const activityApi = await read(`${miniRoot}/src/api/activity.ts`);
     const teamApi = await read(`${miniRoot}/src/api/team.ts`);
     const page = await read(`${miniRoot}/src/pages/matches/detail.vue`);
+    const pageLogic = await read(`${miniRoot}/src/pages/matches/useMatchDetailPage.ts`);
+    const actions = await read(`${miniRoot}/src/pages/matches/detailActions.ts`);
+    const teamRegistration = await read(`${miniRoot}/src/pages/matches/components/MatchTeamRegistration.vue`);
+    const checkInSettings = await read(`${miniRoot}/src/pages/matches/components/TeamCheckInSettingsCard.vue`);
+    const activityReview = await read(`${miniRoot}/src/pages/matches/components/TeamActivityReviewCard.vue`);
 
     expect(activityApi.includes("export function updateTeamCheckInConfig")).toEqual(true);
     expect(teamApi.includes("submitTeamActivityReview")).toEqual(true);
-    expect(page.includes("updateTeamCheckInConfig")).toEqual(true);
-    expect(page.includes("submitTeamActivityReview")).toEqual(true);
-    expect(page.includes("handleSaveCheckInConfig")).toEqual(true);
-    expect(page.includes("handleSubmitActivityReview")).toEqual(true);
-    expect(page.includes("签到设置")).toEqual(true);
-    expect(page.includes("赛后互评")).toEqual(true);
+    expect(actions.includes("updateTeamCheckInConfig")).toEqual(true);
+    expect(actions.includes("submitTeamActivityReview")).toEqual(true);
+    expect(pageLogic.includes("saveMatchCheckInConfig")).toEqual(true);
+    expect(pageLogic.includes("submitMatchActivityReview")).toEqual(true);
+    expect(pageLogic.includes("handleSaveCheckInConfig")).toEqual(true);
+    expect(pageLogic.includes("handleSubmitActivityReview")).toEqual(true);
+    expect(page.includes("MatchTeamRegistration")).toEqual(true);
+    expect(teamRegistration.includes("TeamCheckInSettingsCard")).toEqual(true);
+    expect(checkInSettings.includes("签到设置")).toEqual(true);
+    expect(activityReview.includes("赛后互评")).toEqual(true);
   });
 
   test("billing page supports recharge orders and payment order management", async () => {

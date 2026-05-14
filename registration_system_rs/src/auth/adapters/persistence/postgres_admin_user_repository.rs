@@ -1,5 +1,5 @@
 use crate::auth::domain::{AdminUser, DomainError};
-use crate::auth::ports::AdminUserRepository;
+use crate::auth::ports::{AdminUserCommandRepository, AdminUserQueryRepository};
 use async_trait::async_trait;
 use chrono::NaiveDateTime;
 use sqlx::{FromRow, PgPool};
@@ -45,7 +45,7 @@ impl PostgresAdminUserRepository {
 }
 
 #[async_trait]
-impl AdminUserRepository for PostgresAdminUserRepository {
+impl AdminUserQueryRepository for PostgresAdminUserRepository {
     async fn find_by_id(&self, admin_id: i64) -> Result<Option<AdminUser>, DomainError> {
         let row = sqlx::query_as::<_, AdminUserRow>(
             r#"
@@ -98,7 +98,10 @@ impl AdminUserRepository for PostgresAdminUserRepository {
 
         Ok(rows.into_iter().map(AdminUser::from).collect())
     }
+}
 
+#[async_trait]
+impl AdminUserCommandRepository for PostgresAdminUserRepository {
     async fn create(
         &self,
         username: &str,
@@ -128,7 +131,7 @@ impl AdminUserRepository for PostgresAdminUserRepository {
             DomainError::Infrastructure(e.to_string())
         })?;
 
-        self.find_by_id(id)
+        AdminUserQueryRepository::find_by_id(self, id)
             .await?
             .ok_or_else(|| DomainError::Infrastructure("创建管理员后读取失败".to_string()))
     }

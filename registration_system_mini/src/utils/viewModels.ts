@@ -203,7 +203,7 @@ export function buildHomeMatchCards({
   usersById,
   limit,
 }: {
-  teamId: string;
+  teamId: number;
   activities: BackendActivity[];
   myActivityRecords: BackendUserActivityRecord[];
   registrationsByActivityId: Record<string, BackendRegistration[]>;
@@ -428,7 +428,7 @@ function buildChallengeTags(summary: BackendChallengeSummary, relationLabel: str
   if (summary.challenge.kind === "individual") {
     return [
       "散人局",
-      `${summary.accepted_count}/${summary.challenge.players_per_team}`,
+      `${summary.accepted_count}/${challengeSignupCapacity(summary)}`,
       relationLabel,
     ].filter((value, index, values) => !!value && values.indexOf(value) === index);
   }
@@ -457,12 +457,17 @@ function toChallengePrimaryActionLabel(summary: BackendChallengeSummary): string
   return "看详情";
 }
 
+function challengeSignupCapacity(summary: BackendChallengeSummary): number {
+  return summary.challenge.kind === "individual" ? summary.challenge.players_per_team * 2 : summary.challenge.players_per_team;
+}
+
 export function buildChallengeCards(
   summaries: BackendChallengeSummary[],
 ): ChallengeCardViewModel[] {
   return summaries.map((summary) => {
     const relationLabel = toChallengeRelationLabel(summary);
     const isIndividual = summary.challenge.kind === "individual";
+    const capacity = challengeSignupCapacity(summary);
 
     return {
       id: summary.challenge.id,
@@ -477,7 +482,7 @@ export function buildChallengeCards(
       weekdayLabel: formatWeekdayLabel(summary.challenge.holding_date),
       timeRangeLabel: formatTimeRangeLabel(summary.challenge.start_time, summary.challenge.end_time),
       venue: summary.challenge.location,
-      formatLabel: isIndividual ? `${summary.challenge.players_per_team} 人` : `${summary.challenge.players_per_team} 人制`,
+      formatLabel: `${summary.challenge.players_per_team} 人制`,
       feeLabel: summary.challenge.fee_per_person
         ? `预计 ${formatCurrency(summary.challenge.fee_per_person)}/人`
         : "费用待定",
@@ -493,7 +498,7 @@ export function buildChallengeCards(
       primaryActionLabel: toChallengePrimaryActionLabel(summary),
       canAccept: summary.can_accept,
       acceptedCount: summary.accepted_count,
-      capacity: summary.challenge.players_per_team,
+      capacity,
       currentUserJoined: summary.current_user_joined,
       activityId: summary.challenge.activity_id ?? "",
     };

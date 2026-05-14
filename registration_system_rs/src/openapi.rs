@@ -1,6 +1,6 @@
 use crate::activity::adapters::web::ActivityApiDoc;
 use crate::auth::adapters::web::AuthApiDoc;
-use crate::billing::adapters::web::{AccountApiDoc, OrderApiDoc};
+use crate::billing::adapters::web::{AccountApiDoc, BillingApiDoc};
 use crate::challenge::adapters::web::ChallengeApiDoc;
 use crate::notification::adapters::web::NotificationApiDoc;
 use crate::payment::adapters::web::PaymentApiDoc;
@@ -57,8 +57,8 @@ pub fn build_openapi_document() -> OpenApi {
     openapi.merge(OpenApi::default().nest("/api/account", AccountApiDoc::openapi()));
     openapi.merge(OpenApi::default().nest("/api/admin/account", AccountApiDoc::openapi()));
 
-    openapi.merge(OpenApi::default().nest("/api/order", OrderApiDoc::openapi()));
-    openapi.merge(OpenApi::default().nest("/api/admin/orders", OrderApiDoc::openapi()));
+    openapi.merge(OpenApi::default().nest("/api/order", BillingApiDoc::openapi()));
+    openapi.merge(OpenApi::default().nest("/api/admin/orders", BillingApiDoc::openapi()));
 
     normalize_paths(&mut openapi);
     openapi
