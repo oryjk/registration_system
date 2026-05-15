@@ -211,3 +211,8 @@
 
 - 散人约队详情页顶部 `AppTabHeader` 已通过 `pageTitle` 显示“散人报名”，`ChallengeIndividualRegistration` 内部再渲染一个“散人报名”大胶囊属于重复信息。
 - 删除内部 tabs 不影响报名截止卡、立即报名/取消报名按钮、回到大厅入口和比赛说明区域。
+
+## 2026-05-15 部署脚本 nginx heredoc 发现
+
+- `deploy_out109_registration_rs.sh` 在 nginx 配置更新步骤里把 Python heredoc 放进本地双引号 SSH 命令，配置文本中的 `$host`、`$remote_addr` 会先被本地 `zsh set -u` 展开，导致部署在 `host: parameter not set` 处退出。
+- 修复方向是把 Python 代码通过本地 quoted heredoc 传给远端 `python3 -`，并让 Python 从环境变量读取 nginx 容器名、配置路径和备份后缀，避免 nginx 配置变量被本地 shell 展开。

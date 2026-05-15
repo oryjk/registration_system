@@ -87,3 +87,6 @@
 - 2026-05-15：按静态稿微调小程序首页配色，只改样式颜色值：背景、banner、比赛卡片、约队机会和球队数据卡统一到暖黑/草地绿/雾灰体系。验证通过：`bun run type-check`、`bun run build:mp-weixin`、`git diff --check`。
 - 2026-05-15：按静态稿微调小程序首页字体排版，只改字号、字重、行高和中文负字距；banner/日期保留重点，卡片正文和标签降重。验证通过：`bun run type-check`、`bun run build:mp-weixin`、`git diff --check`。
 - 2026-05-15：移除散人报名详情页 header 下方重复的“散人报名”胶囊，只保留页面 header 标题。验证通过：`bun test src/pages/__tests__/activitiesPageSections.test.ts`、`bun run type-check`、`bun run build:mp-weixin`、`git diff --check`。
+- 2026-05-15：已提交并推送业务改动到 `main`，提交为 `2ab3877 支持场馆约队与首页体验优化`；部署脚本已使用本地 `registration_system_rs/.env` 中的 Harbor 密码启动部署。
+- 2026-05-15：首次部署已完成后端镜像构建与 Harbor 推送，并在 out109 启动新容器；随后卡在 nginx 配置更新，错误为 `host: parameter not set`。
+- 2026-05-15：定位为部署脚本 nginx 更新段的 heredoc 被本地双引号 SSH 命令包裹，导致 `$host` 等 nginx 变量被本地 `zsh set -u` 展开；已修改为 quoted heredoc + Python 读取环境变量，并通过 `zsh -n deploy_out109_registration_rs.sh`。

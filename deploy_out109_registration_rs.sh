@@ -160,25 +160,27 @@ EOF
 
 echo "🌐 更新 Nginx /regist-v2/ 路由"
 ssh "${BUILD_HOST}" \
-    "NGINX_CONTAINER='${NGINX_CONTAINER}' NGINX_CONFIG_PATH='${NGINX_CONFIG_PATH}' NGINX_BACKUP_SUFFIX='${NGINX_BACKUP_SUFFIX}' python3 - <<'EOF'
+    "NGINX_CONTAINER='${NGINX_CONTAINER}' NGINX_CONFIG_PATH='${NGINX_CONFIG_PATH}' NGINX_BACKUP_SUFFIX='${NGINX_BACKUP_SUFFIX}' python3 -" << 'EOF'
+import os
 from pathlib import Path
 import subprocess
 
-config_path = Path('${NGINX_CONFIG_PATH}')
+config_path = Path(os.environ['NGINX_CONFIG_PATH'])
 text = config_path.read_text()
-needle = \"\"\"    location /regist/ {\n        proxy_pass http://host.docker.internal:8000/apid/;\n        # proxy_pass http://192.168.1.70:5678/api;\n        proxy_set_header Host $host;\n        proxy_set_header X-Real-IP $remote_addr;\n        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n        proxy_set_header X-Forwarded-Proto $scheme;\n        proxy_buffer_size 128k;\n        proxy_buffers 4 256k;\n        proxy_busy_buffers_size 256k;\n\n    }\n\"\"\"
-insert = needle + \"\"\"\n    location /regist-v2/ {\n        proxy_pass http://host.docker.internal:18080/;\n        proxy_set_header Host $host;\n        proxy_set_header X-Real-IP $remote_addr;\n        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n        proxy_set_header X-Forwarded-Proto $scheme;\n        proxy_buffer_size 128k;\n        proxy_buffers 4 256k;\n        proxy_busy_buffers_size 256k;\n\n    }\n\"\"\"
+needle = """    location /regist/ {\n        proxy_pass http://host.docker.internal:8000/apid/;\n        # proxy_pass http://192.168.1.70:5678/api;\n        proxy_set_header Host $host;\n        proxy_set_header X-Real-IP $remote_addr;\n        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n        proxy_set_header X-Forwarded-Proto $scheme;\n        proxy_buffer_size 128k;\n        proxy_buffers 4 256k;\n        proxy_busy_buffers_size 256k;\n\n    }\n"""
+insert = needle + """
+    location /regist-v2/ {\n        proxy_pass http://host.docker.internal:18080/;\n        proxy_set_header Host $host;\n        proxy_set_header X-Real-IP $remote_addr;\n        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n        proxy_set_header X-Forwarded-Proto $scheme;\n        proxy_buffer_size 128k;\n        proxy_buffers 4 256k;\n        proxy_busy_buffers_size 256k;\n\n    }\n"""
 
-if \"location /regist-v2/\" not in text:
+if "location /regist-v2/" not in text:
     if needle not in text:
         raise SystemExit('nginx config anchor not found')
-    backup_path = config_path.with_name(config_path.name + f'.bak-{\"${NGINX_BACKUP_SUFFIX}\"}')
+    backup_path = config_path.with_name(config_path.name + f'.bak-{os.environ["NGINX_BACKUP_SUFFIX"]}')
     backup_path.write_text(text)
     config_path.write_text(text.replace(needle, insert, 1))
 
-subprocess.run(['docker', 'exec', '${NGINX_CONTAINER}', 'nginx', '-t'], check=True)
-subprocess.run(['docker', 'exec', '${NGINX_CONTAINER}', 'nginx', '-s', 'reload'], check=True)
-EOF"
+subprocess.run(['docker', 'exec', os.environ['NGINX_CONTAINER'], 'nginx', '-t'], check=True)
+subprocess.run(['docker', 'exec', os.environ['NGINX_CONTAINER'], 'nginx', '-s', 'reload'], check=True)
+EOF
 
 echo "🔎 验证线上入口"
 ssh "${BUILD_HOST}" "curl -fsS http://127.0.0.1:${HOST_PORT}/health && echo && curl -kfsS https://oryjk.cn:82/regist-v2/health"
