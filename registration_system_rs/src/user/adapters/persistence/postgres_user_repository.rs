@@ -14,6 +14,7 @@ struct PlayerAdminRow {
     pub real_name: String,
     pub avatar_url: String,
     pub phone_number: String,
+    pub is_venue: bool,
     pub status: i16,
     pub create_time: NaiveDateTime,
     pub latest_login_date: NaiveDateTime,
@@ -41,6 +42,7 @@ struct UserRow {
     pub avatar_url: String,
     pub phone_number: String,
     pub is_manager: i16,
+    pub is_venue: bool,
     pub status: i16,
     pub create_time: NaiveDateTime,
     pub latest_login_date: NaiveDateTime,
@@ -60,6 +62,7 @@ impl From<UserRow> for User {
             avatar_url: row.avatar_url,
             phone_number: row.phone_number,
             is_manager: row.is_manager as i8,
+            is_venue: if row.is_venue { 1 } else { 0 },
             status: row.status as i8,
             create_time: row.create_time,
             latest_login_date: row.latest_login_date,
@@ -151,7 +154,7 @@ impl UserQueryRepository for PostgresUserRepository {
         let row = sqlx::query_as::<_, UserRow>(
             r#"
             SELECT id, open_id, union_id, username, nickname, real_name, avatar_url,
-                   phone_number, is_manager, status, create_time, latest_login_date,
+                   phone_number, is_manager, is_venue, status, create_time, latest_login_date,
                    leave_start_time, leave_end_time
             FROM rs_user_info
             WHERE open_id = $1
@@ -169,7 +172,7 @@ impl UserQueryRepository for PostgresUserRepository {
         let row = sqlx::query_as::<_, UserRow>(
             r#"
             SELECT id, open_id, union_id, username, nickname, real_name, avatar_url,
-                   phone_number, is_manager, status, create_time, latest_login_date,
+                   phone_number, is_manager, is_venue, status, create_time, latest_login_date,
                    leave_start_time, leave_end_time
             FROM rs_user_info
             WHERE id = $1
@@ -187,7 +190,7 @@ impl UserQueryRepository for PostgresUserRepository {
         let rows = sqlx::query_as::<_, UserRow>(
             r#"
             SELECT id, open_id, union_id, username, nickname, real_name, avatar_url,
-                   phone_number, is_manager, status, create_time, latest_login_date,
+                   phone_number, is_manager, is_venue, status, create_time, latest_login_date,
                    leave_start_time, leave_end_time
             FROM rs_user_info
             WHERE status = 1
@@ -206,7 +209,7 @@ impl UserQueryRepository for PostgresUserRepository {
         let rows = sqlx::query_as::<_, UserRow>(
             r#"
             SELECT id, open_id, union_id, username, nickname, real_name, avatar_url,
-                   phone_number, is_manager, status, create_time, latest_login_date,
+                   phone_number, is_manager, is_venue, status, create_time, latest_login_date,
                    leave_start_time, leave_end_time
             FROM rs_user_info
             WHERE status = 1 AND (
@@ -355,8 +358,8 @@ impl UserCommandRepository for PostgresUserRepository {
             r#"
             INSERT INTO rs_user_info (
                 open_id, union_id, username, nickname, real_name, avatar_url,
-                phone_number, is_manager, status, create_time, latest_login_date
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                phone_number, is_manager, is_venue, status, create_time, latest_login_date
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
             RETURNING id
             "#,
         )
@@ -368,6 +371,7 @@ impl UserCommandRepository for PostgresUserRepository {
         .bind(&user.avatar_url)
         .bind(&user.phone_number)
         .bind(user.is_manager as i16)
+        .bind(user.is_venue == 1)
         .bind(user.status as i16)
         .bind(user.create_time)
         .bind(user.latest_login_date)
@@ -455,6 +459,14 @@ impl UserCommandRepository for PostgresUserRepository {
         if let Some(value) = fields.is_manager {
             sqlx::query("UPDATE rs_user_info SET is_manager = $1 WHERE id = $2")
                 .bind(if value { 1_i16 } else { 0_i16 })
+                .bind(user_id)
+                .execute(&self.pool)
+                .await
+                .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
+        }
+        if let Some(value) = fields.is_venue {
+            sqlx::query("UPDATE rs_user_info SET is_venue = $1 WHERE id = $2")
+                .bind(value)
                 .bind(user_id)
                 .execute(&self.pool)
                 .await
@@ -574,7 +586,7 @@ impl PostgresUserRepository {
             &format!(
                 r#"
             SELECT DISTINCT u.id, u.nickname, u.real_name, u.avatar_url, u.phone_number,
-                   u.status, u.create_time, u.latest_login_date,
+                   u.is_venue, u.status, u.create_time, u.latest_login_date,
                    u.leave_start_time, u.leave_end_time
             FROM rs_user_info u
             WHERE ($1::text IS NULL OR u.nickname ILIKE $1 OR u.real_name ILIKE $1 OR u.phone_number ILIKE $1)
@@ -639,6 +651,7 @@ impl PostgresUserRepository {
                 real_name: r.real_name,
                 avatar_url: r.avatar_url,
                 phone_number: r.phone_number,
+                is_venue: if r.is_venue { 1 } else { 0 },
                 status: r.status as i8,
                 create_time: r.create_time,
                 latest_login_date: r.latest_login_date,

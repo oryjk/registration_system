@@ -71,8 +71,8 @@ function handleBannerTap() {
   min-height: 124rpx;
   padding: 18rpx 22rpx;
   border-radius: 24rpx;
-  background: #ffffff;
-  box-shadow: 0 20rpx 40rpx rgba(17, 17, 17, 0.06);
+  background: #fffdf8;
+  box-shadow: 0 20rpx 40rpx rgba(43, 55, 38, 0.08);
 }
 
 .team-hero-main {
@@ -90,7 +90,7 @@ function handleBannerTap() {
   width: 72rpx;
   height: 72rpx;
   border-radius: 999rpx;
-  background: #171717;
+  background: #172018;
   flex-shrink: 0;
   overflow: hidden;
 }
@@ -101,9 +101,9 @@ function handleBannerTap() {
 }
 
 .team-hero-logo-text {
-  color: #c8ff00;
+  color: #b9f24b;
   font-size: 34rpx;
-  font-weight: 900;
+  font-weight: 800;
 }
 
 .team-hero-copy {
@@ -118,24 +118,26 @@ function handleBannerTap() {
 
 .team-hero-name {
   font-size: 30rpx;
-  color: #111111;
-  font-weight: 900;
+  line-height: 1.22;
+  color: #172018;
+  font-weight: 800;
 }
 
 .team-hero-role {
   padding: 8rpx 16rpx;
   border-radius: 999rpx;
-  background: #c8ff00;
-  color: #111111;
+  background: #9be22b;
+  color: #172018;
   font-size: 20rpx;
-  font-weight: 900;
+  line-height: 1;
+  font-weight: 700;
 }
 
 .team-hero-meta {
   display: block;
   margin-top: 6rpx;
   font-size: 21rpx;
-  color: #5f645c;
+  color: #5f685b;
   line-height: 1.45;
 }
 
@@ -147,11 +149,11 @@ function handleBannerTap() {
   height: 56rpx;
   padding: 0 20rpx;
   border-radius: 999rpx;
-  border: 2rpx solid #111111;
-  color: #111111;
+  border: 2rpx solid #172018;
+  color: #172018;
   font-size: 22rpx;
-  font-weight: 900;
-  background: #ffffff;
+  font-weight: 800;
+  background: #fffdf8;
   flex-shrink: 0;
 }
 
@@ -166,15 +168,16 @@ function handleBannerTap() {
   padding: 24rpx 24rpx;
   border-radius: 24rpx;
   background:
-    radial-gradient(circle at 30% 40%, rgba(200, 255, 0, 0.15), transparent 35%),
-    linear-gradient(135deg, #121212 0%, #1d1d1c 58%, #262624 100%);
+    radial-gradient(circle at 30% 40%, rgba(185, 242, 75, 0.18), transparent 35%),
+    linear-gradient(135deg, #162017 0%, #223120 100%);
+  box-shadow: 0 18rpx 34rpx rgba(31, 47, 28, 0.18);
 }
 
 .home-banner::before {
   content: "";
   position: absolute;
   inset: 0;
-  background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1rpx, transparent 1rpx);
+  background-image: radial-gradient(rgba(255, 253, 248, 0.07) 1rpx, transparent 1rpx);
   background-size: 12rpx 12rpx;
   opacity: 0.35;
 }
@@ -188,18 +191,19 @@ function handleBannerTap() {
 }
 
 .home-banner-title {
-  font-size: 60rpx;
-  line-height: 1;
-  color: #ffffff;
-  font-weight: 900;
-  letter-spacing: -3rpx;
+  font-size: 58rpx;
+  line-height: 1.06;
+  color: #fffdf8;
+  font-weight: 800;
+  letter-spacing: 0;
 }
 
 .home-banner-subtitle {
   margin-top: 14rpx;
   font-size: 28rpx;
-  color: #c8ff00;
-  font-weight: 900;
+  line-height: 1.2;
+  color: #b9f24b;
+  font-weight: 700;
 }
 
 .home-banner-button {
@@ -211,10 +215,10 @@ function handleBannerTap() {
   margin-top: 20rpx;
   padding: 0 22rpx;
   border-radius: 999rpx;
-  background: #c8ff00;
-  color: #111111;
+  background: #9be22b;
+  color: #172018;
   font-size: 24rpx;
-  font-weight: 900;
+  font-weight: 800;
 }
 
 .home-banner-goal {
@@ -222,10 +226,10 @@ function handleBannerTap() {
   top: 22rpx;
   right: 160rpx;
   z-index: 2;
-  color: #c8ff00;
+  color: #b9f24b;
   font-size: 24rpx;
   font-style: italic;
-  font-weight: 900;
+  font-weight: 800;
   transform: rotate(-10deg);
 }
 
@@ -237,8 +241,8 @@ function handleBannerTap() {
   width: 188rpx;
   height: 150rpx;
   background:
-    linear-gradient(120deg, transparent 0 18%, rgba(255,255,255,0.88) 18% 20%, transparent 20% 38%, rgba(255,255,255,0.88) 38% 40%, transparent 40% 58%, rgba(255,255,255,0.88) 58% 60%, transparent 60% 100%),
-    linear-gradient(90deg, transparent 0 18%, rgba(255,255,255,0.88) 18% 20%, transparent 20% 38%, rgba(255,255,255,0.88) 38% 40%, transparent 40% 58%, rgba(255,255,255,0.88) 58% 60%, transparent 60% 100%);
+    linear-gradient(120deg, transparent 0 18%, rgba(255,253,248,0.86) 18% 20%, transparent 20% 38%, rgba(255,253,248,0.86) 38% 40%, transparent 40% 58%, rgba(255,253,248,0.86) 58% 60%, transparent 60% 100%),
+    linear-gradient(90deg, transparent 0 18%, rgba(255,253,248,0.86) 18% 20%, transparent 20% 38%, rgba(255,253,248,0.86) 38% 40%, transparent 40% 58%, rgba(255,253,248,0.86) 58% 60%, transparent 60% 100%);
   opacity: 0.9;
   clip-path: polygon(18% 0, 100% 0, 100% 100%, 48% 100%);
 }
@@ -252,7 +256,7 @@ function handleBannerTap() {
   height: 154rpx;
   border-radius: 999rpx;
   background:
-    radial-gradient(circle at 35% 35%, #ffffff 0%, #f0f0f0 38%, #1a1a1a 39%, #1a1a1a 48%, #f0f0f0 49%, #ffffff 62%, #d9d9d9 100%);
+    radial-gradient(circle at 35% 35%, #ffffff 0%, #f4f2ea 38%, #1c231d 39%, #1c231d 48%, #e6e4dc 49%, #ffffff 62%, #d6d6d0 100%);
   box-shadow: inset -16rpx -18rpx 30rpx rgba(0, 0, 0, 0.18);
   transform: rotate(-18deg);
 }

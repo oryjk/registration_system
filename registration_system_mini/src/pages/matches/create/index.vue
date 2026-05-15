@@ -16,6 +16,7 @@ const loadingActivity = ref(false);
 const pageMode = ref<"create" | "edit">("create");
 const activityId = ref("");
 const skipNextHoldingDateLink = ref(false);
+const timePickerVisible = ref(false);
 const form = reactive<MatchPublishFormModel>({
   name: "",
   location: "",
@@ -42,12 +43,12 @@ function normalizeToMinute(timestamp: number) {
   return date.getTime();
 }
 
-function defaultRegistrationStartTime() {
-  return normalizeToMinute(Date.now());
+function defaultRegistrationStartTime(holdingDate: number) {
+  return normalizeToMinute(holdingDate - 24 * 60 * 60 * 1000);
 }
 
 function defaultRegistrationEndTime(holdingDate: number) {
-  return holdingDate - 2 * 60 * 60 * 1000;
+  return normalizeToMinute(holdingDate - 60 * 60 * 1000);
 }
 
 watch(
@@ -59,9 +60,7 @@ watch(
     }
 
     if (val > 0) {
-      if (!form.startTime) {
-        form.startTime = defaultRegistrationStartTime();
-      }
+      form.startTime = defaultRegistrationStartTime(val);
       form.endTime = defaultRegistrationEndTime(val);
     }
   },
@@ -128,7 +127,7 @@ function initDefaultForm() {
   form.locationLatitude = null;
   form.locationLongitude = null;
   form.holdingDate = defaultHoldingDate;
-  form.startTime = defaultRegistrationStartTime();
+  form.startTime = defaultRegistrationStartTime(defaultHoldingDate);
   form.endTime = defaultRegistrationEndTime(defaultHoldingDate);
   form.opposing = "";
   form.description = "";
@@ -161,6 +160,14 @@ function handleChooseLocation() {
       });
     },
   });
+}
+
+function handleTimePickerOpen() {
+  timePickerVisible.value = true;
+}
+
+function handleTimePickerClose() {
+  timePickerVisible.value = false;
 }
 
 function applyActivityToForm(activity: Awaited<ReturnType<typeof getActivity>>) {
@@ -300,6 +307,7 @@ onShow(async () => {
 </script>
 
 <template>
+  <page-meta :page-style="timePickerVisible ? 'overflow: hidden;' : ''" />
   <view class="create-match-page" :style="pageStyle">
     <AppTabHeader :title="pageMode === 'edit' ? '编辑比赛' : '创建比赛'" showBack />
 
@@ -307,11 +315,6 @@ onShow(async () => {
       <view>
         <wd-text custom-class="create-hero-tag" color="#111310" :text="pageMode === 'edit' ? '编辑比赛' : '创建比赛'" />
         <wd-text custom-class="create-hero-title" color="#111310" :text="currentTeam?.name || '当前球队'" />
-        <wd-text
-          custom-class="create-hero-copy"
-          color="#111310"
-          :text="pageMode === 'edit' ? '可修改未开始比赛的时间、地点、对手和球服颜色。' : '创建后默认归属当前球队，并自动回填本队成员报名。'"
-        />
       </view>
     </view>
 
@@ -333,6 +336,8 @@ onShow(async () => {
       :time-valid-message="timeValidMessage"
       @location-input="handleLocationInput"
       @choose-location="handleChooseLocation"
+      @time-picker-open="handleTimePickerOpen"
+      @time-picker-close="handleTimePickerClose"
     />
 
     <view class="create-submit-row">

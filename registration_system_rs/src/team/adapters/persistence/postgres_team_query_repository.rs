@@ -113,7 +113,7 @@ impl TeamQueryRepository for PostgresTeamQueryRepository {
 
     async fn list_members(&self, team_id: i64) -> Result<Vec<TeamMember>, DomainError> {
         let rows = sqlx::query_as::<_, TeamMemberRow>(
-            r#"SELECT id, team_id, user_id, role, jersey_number, joined_at, status, created_at, updated_at
+            r#"SELECT id, team_id, user_id, role, jersey_number, is_member, joined_at, status, created_at, updated_at
                FROM rs_team_members WHERE team_id = $1 AND status = 1 ORDER BY joined_at ASC"#,
         )
         .bind(team_id)
@@ -126,7 +126,7 @@ impl TeamQueryRepository for PostgresTeamQueryRepository {
         team_id: i64,
     ) -> Result<Vec<TeamMember>, DomainError> {
         let rows = sqlx::query_as::<_, TeamMemberRow>(
-            r#"SELECT id, team_id, user_id, role, jersey_number, joined_at, status, created_at, updated_at
+            r#"SELECT id, team_id, user_id, role, jersey_number, is_member, joined_at, status, created_at, updated_at
                FROM rs_team_members
                WHERE team_id = $1
                ORDER BY
@@ -257,7 +257,7 @@ impl TeamQueryRepository for PostgresTeamQueryRepository {
     ) -> Result<Vec<TeamMemberWithInfo>, DomainError> {
         let rows = sqlx::query_as::<_, TeamMemberWithInfoRow>(
             r#"
-            SELECT tm.user_id, tm.role, tm.jersey_number, tm.joined_at,
+            SELECT tm.user_id, tm.role, tm.jersey_number, tm.is_member, tm.joined_at,
                    u.nickname, u.real_name, u.avatar_url, u.phone_number
             FROM rs_team_members tm
             JOIN rs_user_info u ON u.id = tm.user_id

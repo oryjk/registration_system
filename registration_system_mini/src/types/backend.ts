@@ -13,6 +13,7 @@ export interface BackendUser {
   avatar_url: string;
   phone_number: string;
   is_manager: boolean;
+  is_venue: boolean;
 }
 
 export interface BackendUserLoginResponse {
@@ -90,7 +91,7 @@ export interface BackendChallenge {
   id: string;
   title: string;
   kind: BackendChallengeKind;
-  host_team_id: number;
+  host_team_id?: number | null;
   host_user_id: number;
   guest_team_id?: number | null;
   accepted_by_user_id?: number | null;
@@ -195,6 +196,7 @@ export interface BackendTeamMember {
   user_id: number;
   role: string;
   jersey_number?: string | null;
+  is_member: boolean;
   joined_at: string;
   status: number;
 }

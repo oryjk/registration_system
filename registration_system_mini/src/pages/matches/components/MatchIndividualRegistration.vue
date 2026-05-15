@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from "vue";
 import type { BackendActivity } from "@/types/backend";
 import type { TeamProfileViewModel } from "@/types/viewModels";
 import IndividualCountdownCard from "./IndividualCountdownCard.vue";
@@ -6,8 +7,9 @@ import IndividualInfoCard from "./IndividualInfoCard.vue";
 import IndividualMatchupHero from "./IndividualMatchupHero.vue";
 import IndividualPromoBanner from "./IndividualPromoBanner.vue";
 import InterestMatchGrid from "./InterestMatchGrid.vue";
+import TeamMemberRegistrationBoard from "./TeamMemberRegistrationBoard.vue";
 
-defineProps<{
+const props = defineProps<{
   match: BackendActivity;
   matchKindLabel: string;
   homeTeamLabel: string;
@@ -34,6 +36,11 @@ defineProps<{
   individualCtaLabel: string;
   isGuestMode: boolean;
   currentTeam: TeamProfileViewModel | null;
+  teamMemberRegistrationGroups: {
+    joined: Array<{ userId: number; name: string; avatarUrl: string; tone: string; jerseyNumber: string; isCurrentUser: boolean }>;
+    leave: Array<{ userId: number; name: string; avatarUrl: string; tone: string; jerseyNumber: string; isCurrentUser: boolean }>;
+    pending: Array<{ userId: number; name: string; avatarUrl: string; tone: string; jerseyNumber: string; isCurrentUser: boolean }>;
+  };
   interestCards: Array<{
     id: string;
     title: string;
@@ -45,8 +52,14 @@ defineProps<{
 const emit = defineEmits<{
   (event: "openLocation"): void;
   (event: "selectIndividualSignup"): void;
+  (event: "selectTeamMemberStand", value: 0 | 1 | 2): void;
   (event: "openMatchDetail", matchId: string): void;
 }>();
+
+const showTeamMemberRegistrationBoard = computed(() => {
+  const groups = props.teamMemberRegistrationGroups;
+  return groups.joined.length + groups.leave.length + groups.pending.length > 0;
+});
 
 function handleOpenLocation() {
   emit("openLocation");
@@ -54,6 +67,10 @@ function handleOpenLocation() {
 
 function handleSelectIndividualSignup() {
   emit("selectIndividualSignup");
+}
+
+function handleSelectTeamMemberStand(stand: 0 | 1 | 2) {
+  emit("selectTeamMemberStand", stand);
 }
 
 function handleOpenMatchDetail(matchId: string) {
@@ -87,7 +104,14 @@ function handleOpenMatchDetail(matchId: string) {
       :submitting-status="submittingStatus"
       :individual-cta-label="individualCtaLabel"
       :is-guest-mode="isGuestMode"
+      :show-cta="!showTeamMemberRegistrationBoard"
       @select-individual-signup="handleSelectIndividualSignup"
+    />
+    <TeamMemberRegistrationBoard
+      v-if="showTeamMemberRegistrationBoard"
+      :groups="teamMemberRegistrationGroups"
+      :submitting-status="submittingStatus"
+      @select-stand="handleSelectTeamMemberStand"
     />
     <IndividualInfoCard :credit-score="currentTeam?.creditScore ?? 0" />
     <IndividualPromoBanner />

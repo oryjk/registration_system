@@ -4,6 +4,7 @@ use crate::challenge::domain::{Challenge, ChallengeStatus};
 use crate::challenge::ports::{ChallengeCommandRepository, ChallengeQueryRepository};
 use crate::shared::auth::{ActorContext, ActorKind};
 use crate::shared::error::AppError;
+use crate::user::ports::UserQueryRepository;
 use std::sync::Arc;
 
 #[derive(Clone)]
@@ -11,6 +12,7 @@ pub struct CancelChallengeUseCase {
     query_repository: Arc<dyn ChallengeQueryRepository>,
     command_repository: Arc<dyn ChallengeCommandRepository>,
     team_access_checker: ChallengeTeamAccessChecker,
+    user_repository: Arc<dyn UserQueryRepository>,
     notifier: ChallengeNotifier,
 }
 
@@ -19,12 +21,14 @@ impl CancelChallengeUseCase {
         query_repository: Arc<dyn ChallengeQueryRepository>,
         command_repository: Arc<dyn ChallengeCommandRepository>,
         team_access_checker: ChallengeTeamAccessChecker,
+        user_repository: Arc<dyn UserQueryRepository>,
         notifier: ChallengeNotifier,
     ) -> Self {
         Self {
             query_repository,
             command_repository,
             team_access_checker,
+            user_repository,
             notifier,
         }
     }
@@ -45,12 +49,25 @@ impl CancelChallengeUseCase {
             .map_err(|error| AppError::internal(format!("查询约队失败: {error}")))?
             .ok_or_else(|| AppError::NotFound("约队不存在".to_string()))?;
 
-        if !self
-            .team_access_checker
-            .is_team_manager(challenge.host_team_id, actor.id)
-            .await?
-        {
-            return Err(AppError::Forbidden);
+        if let Some(host_team_id) = challenge.host_team_id {
+            if !self
+                .team_access_checker
+                .is_team_manager(host_team_id, actor.id)
+                .await?
+            {
+                return Err(AppError::Forbidden);
+            }
+        } else {
+            let user = self
+                .user_repository
+                .find_by_id(actor.id)
+                .await
+                .map_err(|error| AppError::internal(format!("查询用户身份失败: {error}")))?
+                .ok_or_else(|| AppError::NotFound("用户不存在".to_string()))?;
+
+            if challenge.host_user_id != actor.id || user.is_venue != 1 {
+                return Err(AppError::Forbidden);
+            }
         }
         if challenge.status != ChallengeStatus::Open {
             return Err(AppError::Conflict("当前约队不可取消".to_string()));

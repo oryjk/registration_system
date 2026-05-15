@@ -134,3 +134,80 @@
 - 用户已确认除报名、活动、用户外其他数据不需要兼容，因此这轮直接把旧表重命名为 `rs_activity_fee_snapshots`，不保留旧表或兼容视图。
 - 结算接口仍挂在既有 `/api/order` 和 `/api/admin/orders` 路由组下，避免影响小程序比赛结算；仅费用快照子路径改为 `/activity-fee-snapshots`，并把自动费用计算子路径改为 `/fee/auto-calculate`。
 - 管理端 dashboard 原先用“活动订单数”做 `订单数量`，现在改成 `费用快照`，避免和 `payment` 模块的真实支付订单混淆。
+
+## 2026-05-14 队员会员标识发现
+
+- 用户确认“球队的队员是否会员”是队员属性，不是现有球队 VIP、球队会员续费或 `team_membership` 支付体系。
+- 后端 `rs_team_members` 当前只有 `role`、`jersey_number`、`joined_at`、`status` 等字段，没有队员会员字段。
+- 后端小程序侧队员详情使用 `TeamMemberDto`；管理端详情使用 `TeamMemberWithInfoDto`，两者都需要返回 `is_member`。
+- 后端成员写入路径集中在 `TeamCommandRepository.add_member`、`reactivate_member`、`update_member`，应用层命令是 `AddTeamMemberCommand` 和 `UpdateTeamMemberCommand`。
+- 小程序成员管理入口位于 `registration_system_mini/src/pages/teams/manage/*`，类型入口是 `src/types/backend.ts` 与 `src/api/team.ts`。
+- 管理端成员管理入口位于 `registration_system_backend_fe/src/services/team.ts`、`src/views/teams/TeamMemberPanel.vue`、`src/views/teams/TeamSetRoleDialog.vue`。
+
+## 2026-05-15 小程序报名详情三栏头像列表发现
+
+- 用户希望三栏中的头像列表回到此前报名详情里的轻量头像列表样式，而不是大卡片或胶囊人员列表。
+- 小程序已有模式在 `IndividualCountdownCard` 和约队个人进度卡中：头像叠放、白色描边、旁边用文案/区域标题说明人数。
+- 三栏状态本身已经提供“报名 / 请假 / 未报名”和人数，因此列表内部不再需要重复显示姓名与球衣号。
+- 点击头像查看姓名采用区域内姓名条，而不是全局 toast 或 popup，原因是反馈位置更稳定，也不会和小程序页面滚动/弹层裁剪互相影响。
+
+## 2026-05-15 小程序散人约队报名页发现
+
+- 散人约队已有个人报名与取消报名接口能力，问题主要在 UI 仍使用约队详情样式，与比赛报名页的操作不一致。
+- 散人约队没有球队三栏状态区域，因此应对齐比赛报名页中的个人报名 tab、黑色信息卡和报名截止卡，而不是复用球队队员状态卡。
+- 球队约队详情包含队长接约/取消约队流程，不应被散人报名页视觉改造影响。
+
+## 2026-05-15 场馆角色与发布权限发现
+
+- 小程序约队大厅 `registration_system_mini/src/pages/activities/index.vue` 的 `canPublish` 当前等于 `!!currentTeam.value?.canManageTeam`；发布类型弹层打开前只依赖当前球队管理权限。
+- 小程序散人约队创建页 `registration_system_mini/src/pages/challenges/create-individual/index.vue` 当前要求 `currentTeam.value?.canManageTeam`，并调用 `createChallenge` 传入 `host_team_id: currentTeam.value.id`。
+- 小程序 `createChallenge` API 类型要求 `host_team_id: number`；`BackendChallenge.host_team_id` 也是必填 number。
+- 小程序会话 `BackendUser` 只有 `is_manager`，`TeamProfileViewModel` 只有球队内 `myRole/canManageTeam`；没有当前用户是否为场馆的稳定字段。
+- 后端 `CreateChallengeRequest` 要求 `host_team_id: i64`；`CreateChallengeUseCase` 会先查询该球队，再校验 actor 是该球队队长或领队。
+- 数据库 `rs_challenges.host_team_id` 当前为非空，并且外键到 `rs_teams(id)`；summary 查询大量 `INNER JOIN rs_teams host ON host.id = c.host_team_id`，因此新增真正场馆发布主体会影响 DTO、查询、列表、详情和前端展示。
+- 用户 domain 目前有 `is_manager`，但语义更像旧的管理标识，不足以表达“场馆经营者/发布方”；管理后台球员 service 当前也没有场馆角色字段。
+- 如果把场馆临时建模成特殊球队，改动最小，但会污染球队语义；如果新增 `venue` 实体或 `user_role = venue`，需要同步权限、展示名和 challenge 发布者模型。
+- 用户确认采用方案 B：在用户上新增 `is_venue` 布尔身份，作为附加身份而不是互斥角色。
+- `is_venue` 不影响球员身份；场馆用户仍可以作为普通用户报名散人约队，也可以保留球队成员/队长/领队关系。
+- 场馆发布约队不创建虚拟球队，而是允许 `rs_challenges.host_team_id` 为空；后端通过 `host_user_id` 记录场馆发布者。
+- 小程序无当前球队时仍应能加载约队大厅；有球队时继续携带 `teamId` 获得当前球队关系和接约权限。
+- 场馆发布的球队约队第一支球队报名时就应生成“等待对手”的活动，方便第一支球队队员提前报名/请假；第二支球队应战后更新该活动的对手并约成。
+
+## 2026-05-15 小程序当前发布身份切换发现
+
+- 当前“当前球队”仍服务首页、统计、报名、队费等上下文，不适合直接等同于“当前发布主体”。
+- 发布身份应是会话级派生状态：可管理球队产生球队身份，`BackendUser.is_venue` 产生场馆身份；普通队员身份不进入发布身份列表。
+- `registration_system_mini/src/pages/challenges/create-individual/index.vue` 是球队约队和散人约队都能复用的发布页；使用当前身份后，队长/领队身份和场馆身份可以走同一套 `createChallenge`。
+- `host_team_id` 的语义变得清晰：当前身份是球队时传当前身份的 `teamId`；当前身份是场馆时不传，由后端按场馆发布处理。
+- 用户同时是场馆和队长时，切换当前球队不能强制把场馆身份冲掉；只有当前发布身份本来就是球队身份时，切换到另一支可管理球队才跟随更新。
+
+## 2026-05-15 `/api/order/my-billing-flow` 性能发现
+
+- 小程序“我的”页 `loadPageData()` 原先把 `getMyBillingFlow()` 放在首屏 `Promise.all` 中，因此该接口慢会直接拖慢“我的”页整体加载，也会拖慢“我的钱包”卡片展示。
+- 后端 `get_user_billing_flow` 不是简单分页查询：它会查询账户、充值记录、活动扣费、月度罚款、余额校准，再在 Rust 中按时间排序并重放余额，生成每条流水后的余额。
+- 当前远程数据库账单相关表暂无记录，单条 SQL 执行计划很快；但从代码结构看，真实数据量增长时该接口仍属于重接口，不适合放在“我的”页首屏。
+- 原有索引只有单列 `user_id` 或日期索引，最近流水查询使用 `WHERE user_id = ? ORDER BY created_at DESC LIMIT ?`，更适合补 `(user_id, created_at DESC)` 复合索引。
+- 处理策略：我的页只用 `/api/account/balance` 展示余额摘要和查看入口；完整流水继续在账单明细二级页加载。
+
+## 2026-05-15 首页约队机会排序与详情跳转发现
+
+- 首页“约队机会”数据来自 `pages/home/index.vue` 中的 `listChallenges`，此前游客态和登录态都使用 `sort: "credit_desc"`，导致高信用但时间更早的约队可能排在更靠前位置。
+- 首页会先按运行配置过滤可见约队，再 `slice` 截取展示数量；因此仅依赖后端排序不够稳，过滤后仍需要在前端按 `holding_date` 和 `start_time` 倒序排序后再截断。
+- `HomeOpportunityList` 原先只展示卡片，没有 emit 点击事件；详情页路由已存在于 `pages.json`，路径为 `/pages/challenges/detail?id=...`。
+
+## 2026-05-15 小程序首页配色微调发现
+
+- 当前首页视觉不舒服的主因是纯黑与荧光绿对比过硬，浅灰背景与白卡层次偏弱。
+- 用户明确要求先画静态页面确认，再只改配色；真实代码改动应限定在样式颜色值，避免动结构和业务逻辑。
+- 最终配色方向采用暖黑/墨绿黑 `#172018`、草地绿 `#9be22b` / `#b9f24b`、暖白 `#fffdf8`、雾灰绿背景和柔和珊瑚红状态色。
+
+## 2026-05-15 小程序首页字体排版微调发现
+
+- 首页原本多个层级同时使用 `font-weight: 900`，导致标题、卡片正文、标签和按钮视觉重量接近，页面显得吵。
+- 不需要引入自定义字体；小程序端沿用系统中文字体更稳，主要调整字号、字重、行高和中文负字距。
+- 最终策略：banner 和日期重点信息保留较强字重；卡片标题降到 800 左右；正文信息降到 520/650；标签和按钮保留 750/800，形成更清楚的阅读层级。
+
+## 2026-05-15 散人报名详情重复标签移除发现
+
+- 散人约队详情页顶部 `AppTabHeader` 已通过 `pageTitle` 显示“散人报名”，`ChallengeIndividualRegistration` 内部再渲染一个“散人报名”大胶囊属于重复信息。
+- 删除内部 tabs 不影响报名截止卡、立即报名/取消报名按钮、回到大厅入口和比赛说明区域。

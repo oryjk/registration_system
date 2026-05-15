@@ -189,9 +189,10 @@ impl UserService {
         real_name: String,
         nickname: Option<String>,
         phone_number: Option<String>,
+        is_venue: Option<bool>,
     ) -> Result<User, AppError> {
         self.manage_player_use_case
-            .admin_create_player(actor, real_name, nickname, phone_number)
+            .admin_create_player(actor, real_name, nickname, phone_number, is_venue)
             .await
     }
 

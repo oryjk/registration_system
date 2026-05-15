@@ -10,6 +10,7 @@ const props = defineProps<{
   form: {
     role: string;
     jerseyNumber: string;
+    isMember: boolean;
   };
   submitting: boolean;
 }>();
@@ -31,6 +32,11 @@ function handleClose() {
 
 function handleSubmit() {
   emit("submit");
+}
+
+function handleMemberSwitchChange(event: Event) {
+  const detail = (event as unknown as { detail?: { value?: boolean } }).detail;
+  props.form.isMember = !!detail?.value;
 }
 </script>
 
@@ -68,6 +74,13 @@ function handleSubmit() {
       />
 
       <input v-model="form.jerseyNumber" class="form-input member-edit-input" placeholder="球衣号，可选" />
+      <view class="member-setting-row">
+        <view>
+          <text class="member-setting-title">队员会员</text>
+          <text class="member-setting-copy">保存后会显示在队员信息里</text>
+        </view>
+        <switch :checked="form.isMember" color="#c8ff00" @change="handleMemberSwitchChange" />
+      </view>
       <view class="primary-button" @tap="handleSubmit">
         {{ submitting ? "保存中..." : "保存队员" }}
       </view>
@@ -159,6 +172,37 @@ function handleSubmit() {
 
 .member-edit-input {
   margin-top: 14rpx;
+}
+
+.member-setting-row {
+  min-height: 88rpx;
+  margin-top: 14rpx;
+  padding: 16rpx 18rpx;
+  border-radius: 22rpx;
+  background: #f3f5ef;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18rpx;
+  box-sizing: border-box;
+}
+
+.member-setting-title,
+.member-setting-copy {
+  display: block;
+}
+
+.member-setting-title {
+  color: #111310;
+  font-size: 28rpx;
+  font-weight: 900;
+}
+
+.member-setting-copy {
+  margin-top: 4rpx;
+  color: #6a7165;
+  font-size: 22rpx;
+  font-weight: 700;
 }
 
 .primary-button {

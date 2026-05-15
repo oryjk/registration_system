@@ -116,8 +116,8 @@ function handleMatchTap(match: HomeMatchCardViewModel) {
   gap: 18rpx;
   padding: 20rpx;
   border-radius: 28rpx;
-  background: #ffffff;
-  box-shadow: 0 22rpx 44rpx rgba(17, 17, 17, 0.06);
+  background: #fffdf8;
+  box-shadow: 0 22rpx 44rpx rgba(43, 55, 38, 0.1);
 }
 
 .home-match-card-tapping {
@@ -130,8 +130,8 @@ function handleMatchTap(match: HomeMatchCardViewModel) {
   min-height: 240rpx;
   padding: 18rpx 16rpx;
   border-radius: 24rpx;
-  background: #1b1b1b;
-  color: #ffffff;
+  background: linear-gradient(180deg, #172018 0%, #202a1f 100%);
+  color: #fffdf8;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -140,13 +140,13 @@ function handleMatchTap(match: HomeMatchCardViewModel) {
 .home-match-month {
   font-size: 28rpx;
   opacity: 0.92;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .home-match-weekday {
   margin-top: 8rpx;
-  font-size: 48rpx;
-  font-weight: 900;
+  font-size: 46rpx;
+  font-weight: 800;
 }
 
 .home-match-time-chip {
@@ -158,19 +158,21 @@ function handleMatchTap(match: HomeMatchCardViewModel) {
   margin-top: auto;
   padding: 18rpx 8rpx;
   border-radius: 22rpx;
-  background: #c8ff00;
-  color: #111111;
+  background: #9be22b;
+  color: #172018;
 }
 
 .home-match-time {
   font-size: 38rpx;
-  font-weight: 900;
+  line-height: 1.05;
+  font-weight: 800;
 }
 
 .home-match-time-note {
   margin-top: 6rpx;
   font-size: 20rpx;
-  font-weight: 800;
+  line-height: 1.25;
+  font-weight: 700;
 }
 
 .home-match-body {
@@ -188,9 +190,9 @@ function handleMatchTap(match: HomeMatchCardViewModel) {
 .home-match-title {
   flex: 1;
   font-size: 32rpx;
-  line-height: 1.3;
-  color: #111111;
-  font-weight: 900;
+  line-height: 1.32;
+  color: #172018;
+  font-weight: 800;
 }
 
 .home-match-tags {
@@ -205,37 +207,38 @@ function handleMatchTap(match: HomeMatchCardViewModel) {
   padding: 10rpx 16rpx;
   border-radius: 999rpx;
   font-size: 22rpx;
-  font-weight: 800;
+  line-height: 1;
+  font-weight: 700;
 }
 
 .home-scope-internal {
-  background: #eef8d6;
-  color: #486600;
+  background: #eff8de;
+  color: #3c681b;
 }
 
 .home-scope-external {
-  background: #171814;
-  color: #c8ff00;
+  background: #172018;
+  color: #b9f24b;
 }
 
 .home-stage-red {
-  background: #ffe9ea;
-  color: #d34c61;
+  background: #fff0ef;
+  color: #d85d6a;
 }
 
 .home-stage-blue {
-  background: #ecf0ff;
-  color: #4663d4;
+  background: #edf0ff;
+  color: #5b70d6;
 }
 
 .home-stage-dark {
-  background: #eceee8;
-  color: #4d534b;
+  background: #edf3e4;
+  color: #42503f;
 }
 
 .home-stage-muted {
-  background: #f0f1ed;
-  color: #7c8178;
+  background: #eef2e9;
+  color: #767f71;
 }
 
 .home-match-meta {
@@ -243,7 +246,8 @@ function handleMatchTap(match: HomeMatchCardViewModel) {
   margin-top: 10rpx;
   font-size: 26rpx;
   line-height: 1.5;
-  color: #5d625b;
+  color: #5f685b;
+  font-weight: 500;
 }
 
 .home-progress-row {
@@ -257,7 +261,7 @@ function handleMatchTap(match: HomeMatchCardViewModel) {
 .home-progress-value {
   font-size: 26rpx;
   font-weight: 700;
-  color: #1d1e1b;
+  color: #172018;
 }
 
 .home-progress-track {
@@ -266,7 +270,7 @@ function handleMatchTap(match: HomeMatchCardViewModel) {
   height: 16rpx;
   margin-top: 10rpx;
   border-radius: 999rpx;
-  background: #e9ece2;
+  background: #e3ebdc;
   overflow: hidden;
 }
 
@@ -276,14 +280,14 @@ function handleMatchTap(match: HomeMatchCardViewModel) {
   top: 0;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, #b6ff00 0%, #d6ff5e 100%);
+  background: linear-gradient(90deg, #9be22b 0%, #b9f24b 100%);
 }
 
 .home-progress-fill-extra {
   position: absolute;
   top: 0;
   height: 100%;
-  background: #ff4d3d;
+  background: #ed6a5a;
 }
 
 .home-progress-split {
@@ -292,8 +296,8 @@ function handleMatchTap(match: HomeMatchCardViewModel) {
   width: 4rpx;
   height: 22rpx;
   border-radius: 999rpx;
-  background: #ffffff;
-  box-shadow: 0 0 0 2rpx rgba(17, 17, 17, 0.06);
+  background: #fffdf8;
+  box-shadow: 0 0 0 2rpx rgba(43, 55, 38, 0.08);
   transform: translateX(-50%);
 }
 
@@ -314,7 +318,7 @@ function handleMatchTap(match: HomeMatchCardViewModel) {
   height: 42rpx;
   margin-left: -10rpx;
   border-radius: 999rpx;
-  border: 4rpx solid #ffffff;
+  border: 4rpx solid #fffdf8;
   overflow: hidden;
   display: flex;
   align-items: center;
@@ -331,15 +335,15 @@ function handleMatchTap(match: HomeMatchCardViewModel) {
 }
 
 .home-avatar-text {
-  color: #ffffff;
+  color: #fffdf8;
   font-size: 18rpx;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .home-avatar-summary {
   font-size: 24rpx;
-  color: #51584f;
-  font-weight: 700;
+  color: #5f685b;
+  font-weight: 600;
 }
 
 .home-match-bottom {
@@ -354,17 +358,18 @@ function handleMatchTap(match: HomeMatchCardViewModel) {
   padding: 14rpx 18rpx;
   border-radius: 999rpx;
   font-size: 24rpx;
-  font-weight: 800;
+  line-height: 1;
+  font-weight: 700;
 }
 
 .home-status-join {
-  background: #eef8d6;
-  color: #426000;
+  background: #eff8de;
+  color: #3c681b;
 }
 
 .home-status-leave {
-  background: #f2f3ef;
-  color: #5d625b;
+  background: #edf3e4;
+  color: #5f685b;
 }
 
 .home-status-late {
@@ -373,8 +378,8 @@ function handleMatchTap(match: HomeMatchCardViewModel) {
 }
 
 .home-status-pending {
-  background: #eceef4;
-  color: #5c6274;
+  background: #edf0ff;
+  color: #5b70d6;
 }
 
 .home-match-button {
@@ -385,14 +390,14 @@ function handleMatchTap(match: HomeMatchCardViewModel) {
   height: 62rpx;
   padding: 0 24rpx;
   border-radius: 999rpx;
-  background: #111111;
-  color: #ffffff;
+  background: #172018;
+  color: #fffdf8;
   font-size: 26rpx;
-  font-weight: 900;
+  font-weight: 800;
 }
 
 .home-match-button-disabled {
-  background: #d7dcd0;
-  color: #686d64;
+  background: #dfe7d8;
+  color: #767f71;
 }
 </style>

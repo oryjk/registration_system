@@ -41,22 +41,24 @@ defineProps<{
 .digest-card {
   padding: 26rpx 18rpx;
   border-radius: 28rpx;
-  background: #ffffff;
-  box-shadow: 0 18rpx 36rpx rgba(17, 17, 17, 0.05);
+  background: #fffdf8;
+  box-shadow: 0 18rpx 36rpx rgba(43, 55, 38, 0.08);
 }
 
 .digest-value {
   display: block;
   font-size: 48rpx;
-  color: #111111;
-  font-weight: 900;
+  line-height: 1.08;
+  color: #172018;
+  font-weight: 800;
 }
 
 .digest-label {
   display: block;
   margin-top: 10rpx;
   font-size: 24rpx;
-  color: #666b63;
-  font-weight: 700;
+  color: #5f685b;
+  line-height: 1.35;
+  font-weight: 600;
 }
 </style>

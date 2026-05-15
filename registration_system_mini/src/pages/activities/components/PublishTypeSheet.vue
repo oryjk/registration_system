@@ -35,7 +35,7 @@ function handlePublishIndividual() {
           <view class="publish-sheet-option-mark">赛</view>
           <view class="publish-sheet-option-copy">
             <view class="publish-sheet-option-title">球队约队</view>
-            <view class="publish-sheet-option-text">创建一场正式比赛，由球队管理者发布</view>
+            <view class="publish-sheet-option-text">用当前身份发布球队约队</view>
           </view>
         </view>
 

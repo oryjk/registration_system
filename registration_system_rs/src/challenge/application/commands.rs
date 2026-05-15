@@ -4,7 +4,7 @@ use rust_decimal::Decimal;
 #[derive(Debug, Clone)]
 pub struct CreateChallengeCommand {
     pub kind: ChallengeKind,
-    pub host_team_id: i64,
+    pub host_team_id: Option<i64>,
     pub title: String,
     pub holding_date: chrono::NaiveDateTime,
     pub start_time: chrono::NaiveDateTime,

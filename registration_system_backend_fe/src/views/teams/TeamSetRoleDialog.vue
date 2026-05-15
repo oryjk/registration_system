@@ -35,6 +35,13 @@
             class="input input-bordered border-2 h-11"
           />
         </label>
+        <label class="flex items-center justify-between gap-4 rounded-xl border border-base-300 bg-base-100 px-4 py-3">
+          <div>
+            <span class="block text-sm font-semibold">队员会员</span>
+            <span class="block text-xs text-base-content/50 mt-0.5">用于在队员信息中区分会员身份</span>
+          </div>
+          <input v-model="form.is_member" type="checkbox" class="toggle toggle-primary" />
+        </label>
         <div class="modal-action">
           <button type="button" class="btn btn-ghost" @click="close">取消</button>
           <button type="submit" class="btn btn-primary" :disabled="settingRole">
@@ -55,6 +62,7 @@ import type { TeamMemberWithInfo } from '@/services/team'
 export interface TeamSetRoleFormState {
   role: string
   jersey_number: string
+  is_member: boolean
 }
 
 defineProps<{

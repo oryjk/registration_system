@@ -76,7 +76,7 @@ impl JoinTeamUseCase {
         match member_status {
             Some(0) => {
                 self.command_repository
-                    .reactivate_member(team_id, principal.id, "member", None)
+                    .reactivate_member(team_id, principal.id, "member", None, false)
                     .await
                     .map_err(|error| {
                         TeamApplicationError::internal(format!("重新加入球队失败: {error}"))
@@ -84,7 +84,7 @@ impl JoinTeamUseCase {
             }
             _ => {
                 self.command_repository
-                    .add_member(team_id, principal.id, "member", None)
+                    .add_member(team_id, principal.id, "member", None, false)
                     .await
                     .map_err(|error| {
                         TeamApplicationError::internal(format!("加入球队失败: {error}"))

@@ -67,6 +67,7 @@ impl UserProfileUseCase {
                     avatar_url: command.avatar_url,
                     phone_number: None,
                     is_manager: command.is_manager,
+                    is_venue: command.is_venue,
                     status: command.status,
                     leave_start_time: command.leave_start_time,
                     leave_end_time: command.leave_end_time,

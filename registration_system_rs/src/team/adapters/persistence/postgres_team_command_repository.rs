@@ -136,15 +136,17 @@ impl TeamCommandRepository for PostgresTeamCommandRepository {
         user_id: i64,
         role: &str,
         jersey_number: Option<&str>,
+        is_member: bool,
     ) -> Result<(), DomainError> {
         sqlx::query(
-            r#"INSERT INTO rs_team_members (team_id, user_id, role, jersey_number, joined_at, status, created_at, updated_at)
-               VALUES ($1, $2, $3, $4, NOW(), 1, NOW(), NOW())"#,
+            r#"INSERT INTO rs_team_members (team_id, user_id, role, jersey_number, is_member, joined_at, status, created_at, updated_at)
+               VALUES ($1, $2, $3, $4, $5, NOW(), 1, NOW(), NOW())"#,
         )
         .bind(team_id)
         .bind(user_id)
         .bind(role)
         .bind(jersey_number)
+        .bind(is_member)
         .execute(&self.pool)
         .await
         .map_err(|e| {
@@ -164,13 +166,15 @@ impl TeamCommandRepository for PostgresTeamCommandRepository {
         user_id: i64,
         role: &str,
         jersey_number: Option<&str>,
+        is_member: bool,
     ) -> Result<(), DomainError> {
         sqlx::query(
-            r#"UPDATE rs_team_members SET status = 1, role = $1, jersey_number = $2, joined_at = NOW(), updated_at = NOW()
-               WHERE team_id = $3 AND user_id = $4"#,
+            r#"UPDATE rs_team_members SET status = 1, role = $1, jersey_number = $2, is_member = $3, joined_at = NOW(), updated_at = NOW()
+               WHERE team_id = $4 AND user_id = $5"#,
         )
         .bind(role)
         .bind(jersey_number)
+        .bind(is_member)
         .bind(team_id)
         .bind(user_id)
         .execute(&self.pool)
@@ -213,6 +217,7 @@ impl TeamCommandRepository for PostgresTeamCommandRepository {
         user_id: i64,
         role: Option<&str>,
         jersey_number: Option<Option<&str>>,
+        is_member: Option<bool>,
     ) -> Result<(), DomainError> {
         if let Some(value) = role {
             sqlx::query(
@@ -228,6 +233,17 @@ impl TeamCommandRepository for PostgresTeamCommandRepository {
         if let Some(value) = jersey_number {
             sqlx::query(
                 "UPDATE rs_team_members SET jersey_number = $1, updated_at = NOW() WHERE team_id = $2 AND user_id = $3",
+            )
+            .bind(value)
+            .bind(team_id)
+            .bind(user_id)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
+        }
+        if let Some(value) = is_member {
+            sqlx::query(
+                "UPDATE rs_team_members SET is_member = $1, updated_at = NOW() WHERE team_id = $2 AND user_id = $3",
             )
             .bind(value)
             .bind(team_id)

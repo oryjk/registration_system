@@ -5,8 +5,6 @@ defineProps<{
     totalExpenseLabel: string;
     latestExpenseLabel: string;
   };
-  walletRecordTitle: string;
-  walletRecordMeta: string;
 }>();
 
 const emit = defineEmits<{
@@ -31,11 +29,11 @@ function handleOpenBilling() {
       </view>
       <view class="wallet-action" @tap="handleOpenBilling">查看账单</view>
     </view>
-    <view class="compact-record-card compact-record-card-light">
+    <view class="compact-record-card compact-record-card-light" @tap="handleOpenBilling">
       <view class="compact-record-cover compact-record-cover-wallet" />
       <view class="compact-record-copy">
-        <text class="compact-record-title">{{ walletRecordTitle }}</text>
-        <text class="compact-record-meta">{{ walletRecordMeta }}</text>
+        <text class="compact-record-title">账单明细已移到二级页面</text>
+        <text class="compact-record-meta">充值、扣费、罚款和流水余额点击后查看</text>
       </view>
       <view class="wallet-chip">{{ walletSummary.totalExpenseLabel }}</view>
     </view>

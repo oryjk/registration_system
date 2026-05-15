@@ -159,6 +159,7 @@
                     <p class="text-xs text-base-content/40 leading-snug whitespace-nowrap">
                       ID: {{ player.id }}
                     </p>
+                    <span v-if="player.is_venue" class="badge badge-xs badge-primary badge-outline mt-1">场馆</span>
                   </div>
                 </div>
               </td>

@@ -91,6 +91,7 @@ impl FakeTeamStore {
         user_id: i64,
         role: &str,
         jersey_number: Option<&str>,
+        is_member: bool,
     ) -> Result<(), DomainError> {
         let mut members = self.members.lock().expect("members mutex poisoned");
         members.entry(team_id).or_default().push(TeamMember {
@@ -99,6 +100,7 @@ impl FakeTeamStore {
             user_id,
             role: role.to_string(),
             jersey_number: jersey_number.map(str::to_string),
+            is_member,
             joined_at: Utc::now().naive_utc(),
             status: 1,
             created_at: Utc::now().naive_utc(),
@@ -113,6 +115,7 @@ impl FakeTeamStore {
         _user_id: i64,
         _role: &str,
         _jersey_number: Option<&str>,
+        _is_member: bool,
     ) -> Result<(), DomainError> {
         Ok(())
     }
@@ -135,6 +138,7 @@ impl FakeTeamStore {
         _user_id: i64,
         _role: Option<&str>,
         _jersey_number: Option<Option<&str>>,
+        _is_member: Option<bool>,
     ) -> Result<(), DomainError> {
         Ok(())
     }
@@ -565,8 +569,9 @@ impl TeamCommandRepository for FakeTeamStore {
         user_id: i64,
         role: &str,
         jersey_number: Option<&str>,
+        is_member: bool,
     ) -> Result<(), DomainError> {
-        FakeTeamStore::add_member(self, team_id, user_id, role, jersey_number).await
+        FakeTeamStore::add_member(self, team_id, user_id, role, jersey_number, is_member).await
     }
 
     async fn reactivate_member(
@@ -575,8 +580,10 @@ impl TeamCommandRepository for FakeTeamStore {
         user_id: i64,
         role: &str,
         jersey_number: Option<&str>,
+        is_member: bool,
     ) -> Result<(), DomainError> {
-        FakeTeamStore::reactivate_member(self, team_id, user_id, role, jersey_number).await
+        FakeTeamStore::reactivate_member(self, team_id, user_id, role, jersey_number, is_member)
+            .await
     }
 
     async fn remove_member(&self, team_id: i64, user_id: i64) -> Result<(), DomainError> {
@@ -597,8 +604,9 @@ impl TeamCommandRepository for FakeTeamStore {
         user_id: i64,
         role: Option<&str>,
         jersey_number: Option<Option<&str>>,
+        is_member: Option<bool>,
     ) -> Result<(), DomainError> {
-        FakeTeamStore::update_member(self, team_id, user_id, role, jersey_number).await
+        FakeTeamStore::update_member(self, team_id, user_id, role, jersey_number, is_member).await
     }
 
     async fn batch_update_member_status(
@@ -784,6 +792,7 @@ async fn team_detail_includes_frozen_members_for_management_view() {
                     user_id: 1,
                     role: "captain".to_string(),
                     jersey_number: Some("10".to_string()),
+                    is_member: false,
                     joined_at: now,
                     status: 1,
                     created_at: now,
@@ -795,6 +804,7 @@ async fn team_detail_includes_frozen_members_for_management_view() {
                     user_id: 2,
                     role: "member".to_string(),
                     jersey_number: Some("7".to_string()),
+                    is_member: false,
                     joined_at: now,
                     status: 0,
                     created_at: now,
@@ -854,6 +864,7 @@ async fn captain_can_view_member_attendance_records_with_unregistered_matches() 
                 user_id: 2,
                 role: "member".to_string(),
                 jersey_number: Some("7".to_string()),
+                is_member: false,
                 joined_at: now,
                 status: 1,
                 created_at: now,
@@ -941,6 +952,7 @@ async fn team_member_can_view_year_attendance_summary_with_avatar_ranking() {
                     user_id: 1,
                     role: "captain".to_string(),
                     jersey_number: Some("10".to_string()),
+                    is_member: false,
                     joined_at: now,
                     status: 1,
                     created_at: now,
@@ -952,6 +964,7 @@ async fn team_member_can_view_year_attendance_summary_with_avatar_ranking() {
                     user_id: 2,
                     role: "member".to_string(),
                     jersey_number: Some("7".to_string()),
+                    is_member: false,
                     joined_at: now,
                     status: 1,
                     created_at: now,

@@ -78,7 +78,7 @@ function handlePrimaryAction() {
       <view class="hall-card-action-column">
         <text class="hall-score-chip">{{ scoreLabel }}</text>
         <view class="hall-card-button" @tap.stop="handlePrimaryAction">
-          {{ submitting && card.canAccept ? "处理中..." : card.primaryActionLabel }}
+          {{ submitting && (card.canAccept || card.currentUserJoined) ? "处理中..." : card.primaryActionLabel }}
         </view>
       </view>
     </view>

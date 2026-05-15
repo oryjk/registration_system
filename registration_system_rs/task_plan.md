@@ -89,3 +89,35 @@
 3. [completed] 后端 domain/application/ports/persistence/web 命名收口为 `ActivityFeeSnapshot`
 4. [completed] 管理端费用快照统计同步
 5. [completed] 执行后端和管理端验证并同步根目录文档
+
+## 2026-05-14 队员会员标识
+
+目标：为 `rs_team_members` 增加独立的队员会员标识，并通过成员增改查接口返回和保存。
+
+阶段：
+1. [completed] 新增迁移 `20260514000200_team_member_is_member.sql`
+2. [completed] 贯通 `TeamMember` / `TeamMemberWithInfo`、DTO、commands、repository port
+3. [completed] 贯通 PostgreSQL add/reactivate/update/list 查询
+4. [completed] 更新测试 fake 和 schema 测试
+5. [completed] 执行 `cargo fmt --check`、`cargo check --tests`、专项测试、`cargo clippy --all-targets -- -D warnings`
+## 2026-05-15 场馆角色与约队发布权限
+
+目标：评估并实现“场馆”也可发布球队约队和散人约队的后端权限模型。
+
+阶段：
+1. [completed] 盘点 challenge 创建 DTO、use case、权限校验、repository 查询
+2. [completed] 盘点 `rs_challenges` 当前 schema 对 `host_team_id` 的硬依赖
+3. [completed] 盘点 user domain/DTO 中现有身份字段
+4. [completed] 按方案 B 新增用户级 `is_venue` 附加身份
+5. [completed] 迁移 `rs_user_info.is_venue`，并允许 `rs_challenges.host_team_id` 为空
+6. [completed] 创建/取消/接约 use case 支持场馆发布分支
+7. [completed] summary 查询从主队内连接改为可空主队，场馆发布展示用户名兜底
+8. [completed] 补充 schema 和 challenge business 测试
+9. [completed] 执行后端专项测试与 clippy
+
+约束：
+
+- 当前后端禁止非用户 actor 发布约队。
+- `is_venue` 不是互斥角色，不能阻止用户继续参与报名或保留球队成员身份。
+- `host_team_id = None` 只允许 `is_venue = true` 的用户发布；`host_team_id = Some` 继续走队长/领队校验。
+- 场馆发布的球队约队两阶段撮合：第一支球队占位后仍为 `open`，但会生成“等待对手”的活动；第二支不同球队接约后才 `matched` 并更新同一活动。

@@ -13,6 +13,7 @@ export interface Player {
   real_name: string
   avatar_url: string
   phone_number: string
+  is_venue: boolean
   status: number
   status_label: string
   create_time: string
@@ -44,12 +45,14 @@ export interface CreatePlayerPayload {
   real_name: string
   nickname?: string
   phone_number?: string
+  is_venue?: boolean
 }
 
 export interface UpdatePlayerPayload {
   real_name?: string
   nickname?: string
   phone_number?: string
+  is_venue?: boolean
 }
 
 export interface FreezePlayerPayload {

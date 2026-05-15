@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import type { BackendUser } from "@/types/backend";
-import type { TeamProfileViewModel } from "@/types/viewModels";
+import type { CurrentIdentityViewModel, TeamProfileViewModel } from "@/types/viewModels";
 
 defineProps<{
+  availableIdentities: CurrentIdentityViewModel[];
+  currentIdentity: CurrentIdentityViewModel | null;
   currentUser: BackendUser | null;
   currentTeam: TeamProfileViewModel | null;
   teamProfiles: TeamProfileViewModel[];
@@ -22,6 +24,7 @@ defineProps<{
 const emit = defineEmits<{
   (event: "editProfile"): void;
   (event: "logout"): void;
+  (event: "switchIdentity", identityId: string): void;
   (event: "switchTeam", teamId: number): void;
 }>();
 
@@ -35,6 +38,10 @@ function handleLogout() {
 
 function handleSwitchTeam(teamId: number) {
   emit("switchTeam", teamId);
+}
+
+function handleSwitchIdentity(identityId: string) {
+  emit("switchIdentity", identityId);
 }
 </script>
 
@@ -77,6 +84,28 @@ function handleSwitchTeam(teamId: number) {
         </view>
       </view>
     </scroll-view>
+
+    <view v-if="availableIdentities.length" class="identity-section">
+      <view class="identity-section-head">
+        <text class="identity-section-label">当前身份</text>
+        <text class="identity-section-value">
+          {{ currentIdentity ? `${currentIdentity.label} · ${currentIdentity.roleLabel}` : "请选择发布身份" }}
+        </text>
+      </view>
+      <scroll-view class="identity-switch-scroll" scroll-x>
+        <view class="identity-switch-row">
+          <view
+            v-for="identity in availableIdentities"
+            :key="identity.id"
+            :class="['identity-chip', currentIdentity?.id === identity.id ? 'identity-chip-active' : '']"
+            @tap.stop="handleSwitchIdentity(identity.id)"
+          >
+            <text class="identity-chip-role">{{ identity.roleLabel }}</text>
+            <text class="identity-chip-name">{{ identity.label }}</text>
+          </view>
+        </view>
+      </scroll-view>
+    </view>
 
     <view class="profile-stats-row">
       <view class="profile-stat-item">
@@ -250,6 +279,103 @@ function handleSwitchTeam(teamId: number) {
   font-size: 28rpx;
   color: #171814;
   font-weight: 900;
+}
+
+.identity-section {
+  margin-top: 18rpx;
+  padding: 18rpx;
+  border-radius: 28rpx;
+  background: rgba(247, 248, 244, 0.92);
+}
+
+.identity-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.identity-section-label,
+.identity-section-value {
+  font-weight: 900;
+}
+
+.identity-section-label {
+  flex: 0 0 auto;
+  font-size: 24rpx;
+  color: #4f544c;
+}
+
+.identity-section-value {
+  min-width: 0;
+  flex: 1;
+  color: #171814;
+  font-size: 24rpx;
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.identity-switch-scroll {
+  margin-top: 14rpx;
+}
+
+.identity-switch-row {
+  display: inline-flex;
+  gap: 12rpx;
+}
+
+.identity-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 10rpx;
+  max-width: 420rpx;
+  height: 64rpx;
+  padding: 0 18rpx;
+  border-radius: 22rpx;
+  background: #ffffff;
+  border: 2rpx solid rgba(20, 21, 18, 0.08);
+  box-sizing: border-box;
+}
+
+.identity-chip-active {
+  background: #111310;
+  border-color: #111310;
+  box-shadow: 0 12rpx 24rpx rgba(17, 19, 16, 0.16);
+}
+
+.identity-chip-role,
+.identity-chip-name {
+  display: block;
+  font-weight: 900;
+}
+
+.identity-chip-role {
+  flex: 0 0 auto;
+  padding: 6rpx 10rpx;
+  border-radius: 999rpx;
+  background: #e8f4c4;
+  color: #526a00;
+  font-size: 20rpx;
+}
+
+.identity-chip-active .identity-chip-role {
+  background: #c8ff00;
+  color: #111310;
+}
+
+.identity-chip-name {
+  min-width: 0;
+  color: #171814;
+  font-size: 24rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.identity-chip-active .identity-chip-name {
+  color: #ffffff;
 }
 
 .profile-stats-row {

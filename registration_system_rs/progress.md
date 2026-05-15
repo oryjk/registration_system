@@ -62,3 +62,22 @@
   - `cargo clippy --all-targets -- -D warnings`
   - `cargo test`
   - 管理端 `bun run type-check`
+- 2026-05-14：新增 `migrations/20260514000200_team_member_is_member.sql`，为 `rs_team_members` 增加 `is_member boolean not null default false`。
+- 2026-05-14：后端已贯通 `TeamMember` / `TeamMemberWithInfo`、web DTO、commands、repository port、PostgreSQL 持久化和测试 fake。
+- 2026-05-14：新增 `tests/team_member_is_member_schema_test.rs`。
+- 2026-05-14：验证通过：`cargo fmt --check`、`cargo check --tests`、`cargo test --test team_member_is_member_schema_test -- --nocapture`、`cargo test team::application::service::tests -- --nocapture`、`cargo clippy --all-targets -- -D warnings`。
+## 2026-05-15 场馆角色与约队发布权限
+
+- 已读取后端协作文档。
+- 已盘点 challenge 创建、列表、详情、持久化和 `rs_challenges` 初始迁移。
+- 已确认当前实现把发布主体强绑定到球队，场馆能力需要先确认建模方案。
+- 已新增迁移 `migrations/20260515000100_user_venue_identity_and_challenge_host.sql`，新增 `rs_user_info.is_venue` 并放开 `rs_challenges.host_team_id` 非空约束。
+- 已贯通 `User`/`PlayerWithTeams`、更新命令、Web DTO、PostgreSQL user repository 和 admin player 创建/更新。
+- 已将 challenge domain/command/DTO/repository 的 `host_team_id` 改为可空，并调整列表、详情和管理端 summary 查询。
+- 已在 `CreateChallengeUseCase` 和 `CancelChallengeUseCase` 注入 `UserQueryRepository`，支持场馆无主队发布/取消；队长/领队分支保持不变。
+- 已调整 `AcceptChallengeUseCase`，场馆发布球队约队被接约后生成活动时不创建虚拟主队。
+- 已新增 `tests/user_is_venue_schema_test.rs` 并扩展 `tests/challenge_service_business_test.rs`。
+- 验证通过：`cargo test --test user_is_venue_schema_test --test challenge_service_business_test -- --nocapture`；`cargo clippy --all-targets -- -D warnings`。
+- 已按场馆撮合两支球队语义调整 `accept_as_host_team` 仓储命令：第一支球队接约时生成待对手活动，第二支球队接约时复用 `accept_with_activity` 更新同一活动。
+- 已新增并通过业务测试 `venue_team_challenge_creates_pending_activity_then_second_team_confirms_opponent`。
+- 追加验证通过：`cargo test --test challenge_service_business_test -- --nocapture`；`cargo clippy --all-targets -- -D warnings`。

@@ -62,3 +62,28 @@
 - 2026-05-14：后端 billing 领域、application、ports、Postgres repository、web DTO/OpenAPI 收口为 `ActivityFeeSnapshot` / `UpsertActivityFeeSnapshot`。
 - 2026-05-14：管理端 dashboard/service 改为 `listActivityFeeSnapshots` 和 `费用快照` 指标。
 - 2026-05-14：验证通过：`cargo fmt --check`、`cargo test --test activity_fee_snapshot_schema_test -- --nocapture`、`cargo check --tests`、`sqlx migrate run`、`cargo clippy --all-targets -- -D warnings`、`cargo test`、管理端 `bun run type-check`。
+- 2026-05-14：开始实现队员会员标识。已确认该标识不同于球队会员/球队 VIP，需要挂载在 `rs_team_members` 和队员 DTO 上。
+- 2026-05-14：已读取后端、管理端、小程序协作文档，并盘点 TeamMember domain、repository port、web DTO、handler、迁移表结构和两个前端队员管理入口。
+- 2026-05-14：已完成后端 `is_member` 迁移、DTO、repository、use case、schema 测试；小程序和管理端已同步显示/编辑。
+- 2026-05-14：验证通过：后端 `cargo fmt --check`、`cargo check --tests`、`cargo test --test team_member_is_member_schema_test -- --nocapture`、`cargo test team::application::service::tests -- --nocapture`、`cargo clippy --all-targets -- -D warnings`；小程序 `bun run type-check`；管理端 `bun run type-check`。
+- 2026-05-15：按用户反馈，将小程序比赛报名详情三栏中的人员展示从胶囊卡片改为轻量叠放头像列表；当前用户头像以黑色描边和“我”标记突出；点击头像可在对应区域显示姓名和状态，选中头像有轻微放大和上浮动效；三栏头像已放大到 72rpx；验证通过：小程序 `bun run type-check`。
+- 2026-05-15：散人约队详情已分流到比赛报名式个人报名视图，标题改为“散人报名”，报名/取消报名操作收敛到报名截止卡内部，按钮费用读取约队费用信息，地址可点击打开地图，移除黑色信息卡中间 `JOIN` 圆标，并补齐倒计时、比赛说明、底部 banner 与“回到大厅”按钮；球队约队详情保持原结构；验证通过：小程序 `bun run type-check`。
+- 2026-05-15：约队大厅散人卡片已支持未报名显示报名、已报名显示取消报名；报名和取消报名均增加二次确认；验证通过：小程序 `bun run type-check`、`bun test src/utils/__tests__/viewModels.test.ts`。
+- 2026-05-15：开始阅读“场馆角色与约队发布权限”需求；已读取根目录、小程序、后端、管理端 `AGENTS.md` / `CLAUDE.md`。
+- 2026-05-15：已定位小程序发布入口：约队大厅 `canPublish` 依赖当前球队 `canManageTeam`，散人约队创建页也要求当前球队管理权限并传 `host_team_id`。
+- 2026-05-15：已定位后端发布权限：`CreateChallengeRequest.host_team_id` 必填，`CreateChallengeUseCase` 校验 actor 必须是该球队队长或领队。
+- 2026-05-15：已确认当前数据库约队表和 summary 查询都强依赖 `host_team_id -> rs_teams`；新增真正场馆主体会比单纯前端放权更大，需要先确认产品建模。
+- 2026-05-15：按方案 B 落地用户级 `is_venue` 叠加身份；新增迁移 `20260515000100_user_venue_identity_and_challenge_host.sql`，允许场馆发布约队时 `host_team_id` 为空。
+- 2026-05-15：后端已贯通 `User`/DTO/repository/admin player 创建更新，challenge 创建/取消/接约/列表/详情已支持场馆发布分支。
+- 2026-05-15：小程序已同步 `BackendUser.is_venue`、`BackendChallenge.host_team_id?: number | null`，场馆可发布球队约队和散人约队；无当前球队时约队大厅仍加载公开列表。
+- 2026-05-15：管理端球员列表、创建/编辑弹窗和 service 类型已支持 `is_venue`，展示“场馆”标识并提示仍可作为球员报名。
+- 2026-05-15：验证通过：后端 `cargo test --test user_is_venue_schema_test --test challenge_service_business_test -- --nocapture`、`cargo clippy --all-targets -- -D warnings`；小程序 `bun run type-check`、目标 `bun test`；管理端 `bun run type-check`。
+- 2026-05-15：根据用户澄清，修正场馆球队约队为两阶段撮合：第一支球队接约时生成“等待对手”的活动并进入最近比赛，第二支球队接约时更新同一活动为双方比赛；新增后端业务测试和小程序卡片文案测试。验证通过：`cargo test --test challenge_service_business_test -- --nocapture`、`cargo clippy --all-targets -- -D warnings`、小程序 `bun run type-check`、小程序目标 `bun test`、管理端 `bun run type-check`。
+- 2026-05-15：小程序新增当前发布身份切换。`appSession` 现在派生并持久化可用发布身份，“我的”页头像卡支持在可管理球队身份和场馆身份之间切换；约队大厅发布权限读取 `currentIdentity`；球队约队和散人约队创建页统一按当前身份提交，球队身份传 `host_team_id`，场馆身份不传。
+- 2026-05-15：已新增 `stores/currentIdentity.ts` 和对应单元测试，更新约队页面静态测试。验证通过：`bun test src/stores/__tests__/currentIdentity.test.ts src/pages/__tests__/activitiesPageSections.test.ts src/utils/__tests__/viewModels.test.ts src/utils/__tests__/profileCompletion.test.ts`；`bun run type-check`。
+- 2026-05-15：排查 `/api/order/my-billing-flow` 慢接口。确认“我的”页原先首屏等待该接口；后端该接口会合并充值、活动扣费、月度罚款和余额校准并重放余额。已新增迁移 `20260515000200_billing_flow_recent_indexes.sql`，为最近流水查询补充复合索引，并已执行 `sqlx migrate run` 应用到当前数据库。
+- 2026-05-15：小程序“我的”页钱包卡片已移除 `getMyBillingFlow()`，只调用 `/api/account/balance` 展示余额摘要，点击“查看账单/全部账单”进入二级账单页加载明细。验证通过：`cargo test --test billing_flow_indexes_schema_test -- --nocapture`、小程序目标 `bun test`、小程序 `bun run type-check`、`git diff --check`。`cargo fmt --check` 当前被既有 Rust 格式化差异阻塞，非本轮新增索引文件导致。
+- 2026-05-15：修正首页“约队机会”排序与跳转。首页约队请求改为 `holding_date_desc`，并在运行配置过滤后按 `holding_date`、`start_time` 倒序排序再截取；`HomeOpportunityList` 卡片点击后跳转 `/pages/challenges/detail?id=...`。验证通过：`bun test src/pages/__tests__/homePageLoading.test.ts`、`bun run type-check`、`bun run build:mp-weixin`、`git diff --check`。
+- 2026-05-15：按静态稿微调小程序首页配色，只改样式颜色值：背景、banner、比赛卡片、约队机会和球队数据卡统一到暖黑/草地绿/雾灰体系。验证通过：`bun run type-check`、`bun run build:mp-weixin`、`git diff --check`。
+- 2026-05-15：按静态稿微调小程序首页字体排版，只改字号、字重、行高和中文负字距；banner/日期保留重点，卡片正文和标签降重。验证通过：`bun run type-check`、`bun run build:mp-weixin`、`git diff --check`。
+- 2026-05-15：移除散人报名详情页 header 下方重复的“散人报名”胶囊，只保留页面 header 标题。验证通过：`bun test src/pages/__tests__/activitiesPageSections.test.ts`、`bun run type-check`、`bun run build:mp-weixin`、`git diff --check`。

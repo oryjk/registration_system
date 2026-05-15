@@ -41,3 +41,22 @@
 - `rs_activity_order` 不是支付订单，而是活动费用快照。它按 `activity_id` 唯一保存费用描述、单人费用和人数，结算流程也会 upsert 这张表。
 - 按用户最新约束，除报名、活动、用户外无需兼容旧数据，因此 `rs_activity_order` 直接重命名为 `rs_activity_fee_snapshots`，并重命名唯一约束和外键约束。
 - 为降低小程序结算接口影响，保留既有 `/api/order` 和 `/api/admin/orders` 路由组；仅把费用快照子路径改为 `/activity-fee-snapshots`，自动费用计算子路径改为 `/fee/auto-calculate`。
+
+## 2026-05-14 队员会员标识
+
+- `is_member` 是 `rs_team_members` 上的队员属性，不复用 `rs_teams.is_vip` 或 payment/team_membership 概念。
+- 新增成员和重新激活成员默认 `is_member = false`，旧客户端不传字段时行为保持兼容。
+- `TeamMemberDto` 和 `TeamMemberWithInfoDto` 都需要返回 `is_member`，分别服务小程序和管理端。
+- 后端 schema 测试约束 `rs_team_members.is_member` 为 `boolean NOT NULL DEFAULT false`。
+## 2026-05-15 场馆角色与约队发布权限发现
+
+- `CreateChallengeRequest.host_team_id` 当前必填，DTO、domain、repository、前端类型都沿用该假设。
+- `CreateChallengeUseCase` 当前明确要求 actor 是 user，并通过 `ChallengeTeamAccessChecker::is_team_manager` 校验队长/领队。
+- `rs_challenges.host_team_id` 非空外键到 `rs_teams(id)`；summary 查询使用 `INNER JOIN rs_teams host`，所以不能仅把 `host_team_id` 置空而不改查询。
+- 当前 `User`/`UserDto` 只有 `is_manager`，没有更清晰的用户角色枚举或场馆身份。
+- 管理端球员管理目前只支持基本资料、冻结、球队关系展示，尚无用户角色/场馆身份编辑。
+- 方案 B 已确认并实现为 `rs_user_info.is_venue boolean not null default false`，保持用户/球员身份叠加。
+- 场馆发布不创建虚拟球队，因此 `rs_challenges.host_team_id` 改为可空，外键删除行为改为 `ON DELETE SET NULL`。
+- 创建约队时：有 `host_team_id` 走队长/领队校验；无 `host_team_id` 走 `is_venue` 校验。
+- 用户澄清场馆球队约队应撮合两支球队，且第一支球队占位后应能组织队员报名，因此第一支球队接约时就生成 `away_team_id = NULL`、`opposing = 等待对手` 的活动。
+- 现有 `guest_team_id` 保留给第二支球队；第二支球队接约时更新同一个活动，设置 `away_team_id = 第二支球队` 和双方对阵文案。

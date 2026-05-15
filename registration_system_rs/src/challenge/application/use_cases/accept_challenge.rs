@@ -80,14 +80,6 @@ impl AcceptChallengeUseCase {
             .guest_team_id
             .ok_or_else(|| AppError::Validation("球队约队需要选择接约球队".to_string()))?;
 
-        if challenge.host_team_id == guest_team_id {
-            return Err(AppError::Validation("不能接自己发布的约队".to_string()));
-        }
-
-        let host_team = self
-            .team_access_checker
-            .get_team(challenge.host_team_id, "查询主队失败", "主队不存在")
-            .await?;
         let guest_team = self
             .team_access_checker
             .get_team(guest_team_id, "查询客队失败", "接约球队不存在")
@@ -101,6 +93,30 @@ impl AcceptChallengeUseCase {
             return Err(AppError::Forbidden);
         }
 
+        if let Some(host_team_id) = challenge.host_team_id {
+            if host_team_id == guest_team_id {
+                return Err(AppError::Validation("不能接自己发布的约队".to_string()));
+            }
+            let host_team = self
+                .team_access_checker
+                .get_team(host_team_id, "查询主队失败", "主队不存在")
+                .await?;
+            return self
+                .match_team_challenge(actor, challenge_id, challenge, host_team, guest_team)
+                .await;
+        }
+
+        self.reserve_venue_team_challenge(actor, challenge_id, challenge, guest_team)
+            .await
+    }
+
+    async fn reserve_venue_team_challenge(
+        &self,
+        actor: &ActorContext,
+        challenge_id: &str,
+        challenge: Challenge,
+        host_team: crate::team::domain::Team,
+    ) -> Result<Challenge, AppError> {
         let now = Utc::now().naive_utc();
         let activity = Activity {
             id: Uuid::new_v4().to_string(),
@@ -112,11 +128,60 @@ impl AcceptChallengeUseCase {
             location_latitude: challenge.location_latitude,
             location_longitude: challenge.location_longitude,
             name: challenge.title.clone(),
+            opposing: Some("等待对手".to_string()),
+            status: 0,
+            description: challenge.note.clone(),
+            home_team_id: Some(host_team.id),
+            away_team_id: None,
+            color: None,
+            opposing_color: None,
+            players_per_team: Some(challenge.players_per_team),
+            match_kind: Some("external".to_string()),
+            source_activity_id: None,
+            team_registration_count: None,
+            team_checkin_configs: vec![],
+            created_at: now,
+            updated_at: now,
+        };
+
+        self.command_repository
+            .accept_as_host_team(challenge_id, host_team.id, actor.id, &activity)
+            .await
+            .map_err(|error| match error {
+                crate::challenge::domain::DomainError::Conflict(message) => {
+                    AppError::Conflict(message)
+                }
+                other => AppError::internal(format!("报名场馆约队失败: {other}")),
+            })
+    }
+
+    async fn match_team_challenge(
+        &self,
+        actor: &ActorContext,
+        challenge_id: &str,
+        challenge: Challenge,
+        host_team: crate::team::domain::Team,
+        guest_team: crate::team::domain::Team,
+    ) -> Result<Challenge, AppError> {
+        let now = Utc::now().naive_utc();
+        let activity = Activity {
+            id: challenge
+                .activity_id
+                .clone()
+                .unwrap_or_else(|| Uuid::new_v4().to_string()),
+            cover: None,
+            start_time: challenge.start_time,
+            end_time: challenge.end_time,
+            holding_date: challenge.holding_date,
+            location: challenge.location.clone(),
+            location_latitude: challenge.location_latitude,
+            location_longitude: challenge.location_longitude,
+            name: challenge.title.clone(),
             opposing: Some(format!("{} vs {}", host_team.name, guest_team.name)),
             status: 0,
             description: challenge.note.clone(),
-            home_team_id: Some(challenge.host_team_id),
-            away_team_id: Some(guest_team_id),
+            home_team_id: Some(host_team.id),
+            away_team_id: Some(guest_team.id),
             color: None,
             opposing_color: None,
             players_per_team: Some(challenge.players_per_team),
@@ -130,7 +195,7 @@ impl AcceptChallengeUseCase {
 
         let challenge = self
             .command_repository
-            .accept_with_activity(challenge_id, guest_team_id, actor.id, &activity)
+            .accept_with_activity(challenge_id, guest_team.id, actor.id, &activity)
             .await
             .map_err(|error| AppError::internal(format!("接约失败: {error}")))?;
 

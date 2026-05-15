@@ -128,6 +128,7 @@ export function addTeamMember(
     user_id: number;
     role?: string;
     jersey_number?: string;
+    is_member?: boolean;
   },
 ) {
   return requestApi<void>({
@@ -144,6 +145,7 @@ export function updateTeamMember(
   payload: {
     role?: string;
     jersey_number?: string | null;
+    is_member?: boolean;
   },
 ) {
   return requestApi<void>({

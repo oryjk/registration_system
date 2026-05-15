@@ -22,6 +22,7 @@ export interface TeamMemberWithInfo {
   role: string
   role_label: string
   jersey_number: string | null
+  is_member: boolean
   joined_at: string
   nickname: string
   real_name: string
@@ -87,11 +88,13 @@ export interface AddMemberPayload {
   user_id: number
   role?: string
   jersey_number?: string
+  is_member?: boolean
 }
 
 export interface UpdateMemberPayload {
   role?: string
   jersey_number?: string | null
+  is_member?: boolean
 }
 
 export const listTeams = (activeOnly = false) =>

@@ -7,6 +7,7 @@ defineProps<{
   card: ChallengeCardViewModel;
   canAccept: boolean;
   canCancel: boolean;
+  canCancelIndividualAcceptance: boolean;
   actionLoading: boolean;
 }>();
 
@@ -15,6 +16,7 @@ defineEmits<{
   openMatchDetail: [matchId: string];
   accept: [];
   cancel: [];
+  cancelIndividualAcceptance: [];
 }>();
 </script>
 
@@ -30,6 +32,9 @@ defineEmits<{
     </view>
     <view v-else-if="canAccept" class="challenge-primary-button" @tap="$emit('accept')">
       {{ actionLoading ? "处理中..." : card.kind === "team" ? "以当前球队接约" : "报名" }}
+    </view>
+    <view v-else-if="canCancelIndividualAcceptance" class="challenge-danger-button" @tap="$emit('cancelIndividualAcceptance')">
+      {{ actionLoading ? "处理中..." : "取消报名" }}
     </view>
     <view v-else-if="canCancel" class="challenge-danger-button" @tap="$emit('cancel')">
       {{ actionLoading ? "处理中..." : "取消约队" }}

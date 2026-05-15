@@ -35,7 +35,7 @@ export function getChallengeDetail(challengeId: string) {
 
 export function createChallenge(payload: {
   kind: "team" | "individual";
-  host_team_id: number;
+  host_team_id?: number;
   title: string;
   holding_date: string;
   start_time: string;
@@ -70,6 +70,14 @@ export function cancelChallenge(challengeId: string) {
   return requestApi<BackendChallenge>({
     url: `/challenges/${challengeId}/cancel`,
     method: "POST",
+    auth: true,
+  });
+}
+
+export function cancelIndividualChallengeAcceptance(challengeId: string) {
+  return requestApi<BackendChallenge>({
+    url: `/challenges/${challengeId}/individual-acceptance`,
+    method: "DELETE",
     auth: true,
   });
 }

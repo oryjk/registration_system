@@ -5,16 +5,21 @@ import { wxLogin } from "@/api/wx";
 import type { BackendTeam, BackendTeamDetail, BackendUser } from "@/types/backend";
 import type { TeamProfileViewModel } from "@/types/viewModels";
 import { resolveSessionBootstrapMode } from "@/stores/bootstrapStrategy";
+import { buildAvailableIdentities, findCurrentIdentity, resolveCurrentIdentitySelection } from "@/stores/currentIdentity";
 import {
   clearAccessToken,
+  clearCurrentIdentitySelection,
   clearManualLogout,
   clearCurrentTeamId,
   getAccessToken,
+  getCurrentIdentitySelection,
   getCurrentTeamId,
   hasManualLogout,
   setManualLogout,
   setAccessToken,
+  setCurrentIdentitySelection,
   setCurrentTeamId,
+  type StoredCurrentIdentitySelection,
 } from "@/utils/authStorage";
 import { buildTeamProfiles } from "@/utils/viewModels";
 import { isUnauthorizedError } from "@/utils/request";
@@ -23,6 +28,7 @@ const currentUser = ref<BackendUser | null>(null);
 const myTeams = ref<BackendTeam[]>([]);
 const teamDetailsById = ref<Record<number, BackendTeamDetail>>({});
 const currentTeamId = ref(getCurrentTeamId());
+const currentIdentitySelection = ref<StoredCurrentIdentitySelection | null>(getCurrentIdentitySelection());
 const bootstrapError = ref("");
 const isBootstrapping = ref(false);
 
@@ -40,9 +46,21 @@ const currentTeam = computed<TeamProfileViewModel | null>(() => {
   return teamProfiles.value.find((item) => item.id === currentTeamId.value) ?? teamProfiles.value[0];
 });
 
+const availableIdentities = computed(() => buildAvailableIdentities(currentUser.value, teamProfiles.value));
+const currentIdentity = computed(() => findCurrentIdentity(currentIdentitySelection.value, availableIdentities.value));
+
 function persistCurrentTeam(teamId: number) {
   currentTeamId.value = teamId;
   setCurrentTeamId(teamId);
+}
+
+function persistCurrentIdentity(selection: StoredCurrentIdentitySelection | null) {
+  currentIdentitySelection.value = selection;
+  if (selection) {
+    setCurrentIdentitySelection(selection);
+  } else {
+    clearCurrentIdentitySelection();
+  }
 }
 
 function selectAvailableTeam() {
@@ -57,11 +75,21 @@ function selectAvailableTeam() {
   persistCurrentTeam(matchedTeam.id);
 }
 
+function selectAvailableIdentity() {
+  const selection = resolveCurrentIdentitySelection(
+    getCurrentIdentitySelection(),
+    availableIdentities.value,
+    currentTeamId.value,
+  );
+  persistCurrentIdentity(selection);
+}
+
 function resetSessionState() {
   currentUser.value = null;
   myTeams.value = [];
   teamDetailsById.value = {};
   currentTeamId.value = null;
+  currentIdentitySelection.value = null;
   bootstrapError.value = "";
 }
 
@@ -92,6 +120,7 @@ async function loadTeamContext() {
   myTeams.value = teams;
   teamDetailsById.value = Object.fromEntries(detailEntries);
   selectAvailableTeam();
+  selectAvailableIdentity();
 }
 
 async function loginAndBootstrap() {
@@ -166,6 +195,7 @@ export async function refreshSessionContext() {
 export function clearSession() {
   clearAccessToken();
   clearCurrentTeamId();
+  clearCurrentIdentitySelection();
   setManualLogout();
   resetSessionState();
 }
@@ -180,7 +210,23 @@ export function useAppSession() {
       return;
     }
 
+    const shouldFollowTeamIdentity = currentIdentitySelection.value?.kind === "team";
     persistCurrentTeam(teamId);
+    if (shouldFollowTeamIdentity && teamProfiles.value.some((item) => item.id === teamId && item.canManageTeam)) {
+      persistCurrentIdentity({ kind: "team", teamId });
+      return;
+    }
+
+    selectAvailableIdentity();
+  }
+
+  function switchIdentity(identityId: string) {
+    const identity = availableIdentities.value.find((item) => item.id === identityId);
+    if (!identity) {
+      return;
+    }
+
+    persistCurrentIdentity(identity.kind === "team" ? { kind: "team", teamId: identity.teamId } : { kind: "venue" });
   }
 
   return {
@@ -189,10 +235,13 @@ export function useAppSession() {
     teamProfiles,
     currentTeamId,
     currentTeam,
+    availableIdentities,
+    currentIdentity,
     teamDetailsById,
     bootstrapError,
     isBootstrapping,
     switchTeam,
+    switchIdentity,
     ensureSessionReady,
     refreshSessionContext,
   };

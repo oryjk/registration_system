@@ -175,10 +175,10 @@ const changePage = (page: number) => {
 const createDialogRef = ref<InstanceType<typeof PlayerEditDialog>>()
 const creating = ref(false)
 const createError = ref('')
-const createForm = reactive({ real_name: '', nickname: '', phone_number: '' })
+const createForm = reactive({ real_name: '', nickname: '', phone_number: '', is_venue: false })
 
 const openCreateModal = () => {
-  Object.assign(createForm, { real_name: '', nickname: '', phone_number: '' })
+  Object.assign(createForm, { real_name: '', nickname: '', phone_number: '', is_venue: false })
   createError.value = ''
   createDialogRef.value?.showModal()
 }
@@ -191,6 +191,7 @@ const handleCreate = async () => {
       real_name: createForm.real_name,
       nickname: createForm.nickname || undefined,
       phone_number: createForm.phone_number || undefined,
+      is_venue: createForm.is_venue,
     })
     await fetchPlayers()
     createDialogRef.value?.close()
@@ -206,7 +207,7 @@ const editDialogRef = ref<InstanceType<typeof PlayerEditDialog>>()
 const editing = ref(false)
 const editError = ref('')
 const editingPlayer = ref<Player | null>(null)
-const editForm = reactive({ real_name: '', nickname: '', phone_number: '' })
+const editForm = reactive({ real_name: '', nickname: '', phone_number: '', is_venue: false })
 
 const openEditModal = (player: Player) => {
   editingPlayer.value = player
@@ -214,6 +215,7 @@ const openEditModal = (player: Player) => {
     real_name: player.real_name,
     nickname: player.nickname,
     phone_number: player.phone_number,
+    is_venue: player.is_venue,
   })
   editError.value = ''
   editDialogRef.value?.showModal()
@@ -228,6 +230,7 @@ const handleEdit = async () => {
       real_name: editForm.real_name || undefined,
       nickname: editForm.nickname || undefined,
       phone_number: editForm.phone_number || undefined,
+      is_venue: editForm.is_venue,
     })
     await fetchPlayers()
     editDialogRef.value?.close()

@@ -4,6 +4,7 @@ import {
   cancelIndividualRegistration,
   cancelTeamRegistrationForMatch,
   saveMatchCheckInConfig,
+  submitIndividualLeave,
   submitIndividualRegistration,
   submitMatchActivityReview,
   submitMatchCheckIn,
@@ -24,6 +25,7 @@ import type {
   BackendActivityCheckInRecord,
   BackendRegistration,
   BackendTeam,
+  BackendTeamMember,
   BackendUser,
 } from "@/types/backend";
 import { getCustomNavMetrics } from "@/utils/customNav";
@@ -64,6 +66,7 @@ export function useMatchDetailPage() {
   const registrations = ref<BackendRegistration[]>([]);
   const usersById = ref<Record<number, BackendUser>>({});
   const teamsById = ref<Record<number, BackendTeam>>({});
+  const currentTeamMembers = ref<BackendTeamMember[]>([]);
   const relatedActivities = ref<BackendActivity[]>([]);
   const sourceTeamRegistrationCount = ref(0);
   const existingTeamDerivedActivity = ref<BackendActivity | null>(null);
@@ -145,6 +148,30 @@ export function useMatchDetailPage() {
       };
     }),
   );
+  const registrationByUserId = computed(() => Object.fromEntries(registrations.value.map((item) => [item.user_id, item])));
+  const activeTeamMembers = computed(() => currentTeamMembers.value.filter((member) => member.status === 1));
+  const teamMemberRegistrationGroups = computed(() => {
+    const toCard = (member: BackendTeamMember) => {
+      const user = usersById.value[member.user_id];
+      return {
+        userId: member.user_id,
+        name: resolveUserDisplayName(user),
+        avatarUrl: user?.avatar_url ?? "",
+        tone: avatarColor(member.user_id),
+        jerseyNumber: member.jersey_number ?? "",
+        isCurrentUser: member.user_id === currentUser.value?.id,
+      };
+    };
+
+    return {
+      joined: activeTeamMembers.value.filter((member) => registrationByUserId.value[member.user_id]?.stand === 1).map(toCard),
+      leave: activeTeamMembers.value.filter((member) => registrationByUserId.value[member.user_id]?.stand === 2).map(toCard),
+      pending: activeTeamMembers.value.filter((member) => {
+        const stand = registrationByUserId.value[member.user_id]?.stand ?? 0;
+        return stand !== 1 && stand !== 2;
+      }).map(toCard),
+    };
+  });
 
   const matchKindLabel = computed(() => (match.value?.match_kind === "internal" ? "队内内战" : "对外友谊赛"));
   const homeTeamLabel = computed(() => currentTeam.value?.name || "主队");
@@ -260,6 +287,7 @@ export function useMatchDetailPage() {
       existingTeamDerivedActivity.value = null;
       currentStatus.value = "待定";
       teamsById.value = {};
+      currentTeamMembers.value = [];
       settlementSummary.value = null;
       settlementForm.value = createDefaultSettlementForm();
       settlementSearchKeyword.value = "";
@@ -286,6 +314,7 @@ export function useMatchDetailPage() {
         existingTeamDerivedActivity.value = context.derivedActivity;
         teamRegistrationCount.value = clampTeamRegistrationCount(context.initialRegistrationCount);
         teamsById.value = context.teamsById;
+        currentTeamMembers.value = context.currentTeamMembers;
         currentStatus.value = toStandLabel(context.currentUserStand);
         if (!canUseTeamRegistration.value) {
           registrationMode.value = "individual";
@@ -545,6 +574,48 @@ export function useMatchDetailPage() {
     }
   }
 
+  async function handleSelectTeamMemberStand(stand: 0 | 1 | 2) {
+    if (!match.value || submittingStatus.value) return;
+    if (isGuestMode.value) {
+      await handleGuestLogin();
+      return;
+    }
+
+    const nextLabel = stand === 1 ? "报名" : stand === 2 ? "请假" : "设为未报名";
+    const confirmed = await confirmRegistrationAction({
+      title: `确认${nextLabel}`,
+      content: stand === 0 ? `确认将「${match.value.name}」状态改为未报名？` : `确认${nextLabel}参加「${match.value.name}」？`,
+      confirmText: nextLabel,
+    });
+    if (!confirmed) return;
+
+    submittingStatus.value = true;
+    try {
+      await ensureSessionReady();
+      if (stand === 1) {
+        await submitIndividualRegistration(match.value.id);
+        applyIndividualRegistrationState(1, 1);
+      } else if (stand === 2) {
+        await submitIndividualLeave(match.value.id);
+        applyIndividualRegistrationState(2, 0);
+      } else {
+        await cancelIndividualRegistration(match.value.id);
+        applyIndividualRegistrationState(0, 0);
+      }
+      uni.showToast({
+        title: stand === 1 ? "报名成功" : stand === 2 ? "已请假" : "已设为未报名",
+        icon: "none",
+      });
+    } catch (error) {
+      uni.showToast({
+        title: error instanceof Error ? error.message : `${nextLabel}失败`,
+        icon: "none",
+      });
+    } finally {
+      submittingStatus.value = false;
+    }
+  }
+
   async function handleTeamSubmit() {
     if (!match.value || submittingStatus.value) return;
     if (!canUseTeamRegistration.value || !currentTeam.value) {
@@ -796,6 +867,7 @@ export function useMatchDetailPage() {
     progressExtraWidth,
     progressSplitLeft,
     participantPreview,
+    teamMemberRegistrationGroups,
     remainingPlayersLabel,
     submittingStatus,
     individualCtaLabel,
@@ -829,6 +901,7 @@ export function useMatchDetailPage() {
     teamSubmitLabel,
     openMatchLocation,
     handleSelectIndividualSignup,
+    handleSelectTeamMemberStand,
     openMatchDetail,
     handleCheckIn,
     handleCheckInSwitchChange,

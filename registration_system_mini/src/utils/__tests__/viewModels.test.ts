@@ -45,8 +45,8 @@ describe("buildTeamProfiles", () => {
             is_vip: true,
           },
           members: [
-            { user_id: 7, role: "captain", jersey_number: "10", joined_at: "2026-04-01T00:00:00", status: 1 },
-            { user_id: 8, role: "member", jersey_number: "11", joined_at: "2026-04-02T00:00:00", status: 1 },
+            { user_id: 7, role: "captain", jersey_number: "10", is_member: true, joined_at: "2026-04-01T00:00:00", status: 1 },
+            { user_id: 8, role: "member", jersey_number: "11", is_member: false, joined_at: "2026-04-02T00:00:00", status: 1 },
           ],
         },
       },
@@ -86,6 +86,7 @@ describe("resolveUserDisplayName", () => {
         avatar_url: "",
         phone_number: "",
         is_manager: false,
+        is_venue: false,
       }),
     ).toEqual("微信用户 9022");
   });
@@ -101,6 +102,7 @@ describe("resolveUserDisplayName", () => {
         avatar_url: "",
         phone_number: "",
         is_manager: false,
+        is_venue: false,
       }),
     ).toEqual("王睿");
   });
@@ -122,6 +124,7 @@ describe("resolveUserDisplayHandle", () => {
         avatar_url: "",
         phone_number: "",
         is_manager: false,
+        is_venue: false,
       }),
     ).toEqual("已登录，待补充昵称或姓名");
   });
@@ -231,6 +234,7 @@ describe("buildHomeMatchCards", () => {
           avatar_url: "https://example.com/7.png",
           phone_number: "",
           is_manager: false,
+          is_venue: false,
         },
         8: {
           id: 8,
@@ -241,6 +245,7 @@ describe("buildHomeMatchCards", () => {
           avatar_url: "",
           phone_number: "",
           is_manager: false,
+          is_venue: false,
         },
       },
       limit: 5,
@@ -560,7 +565,7 @@ describe("buildChallengeCards", () => {
         id: "challenge-individual-1",
         title: "周三晚散人局",
         kind: "individual",
-        hostTeamName: "银河联队",
+        hostTeamName: "散人约球",
         creditScore: 82,
         trustLabel: "稳定赴约",
         dateLabel: "04/23 20:00",
@@ -576,9 +581,9 @@ describe("buildChallengeCards", () => {
         statusTone: "open",
         relationLabel: "我已报名",
         note: "缺 4 人，守时优先",
-        teamInitial: "银",
+        teamInitial: "散",
         quickTags: ["散人局", "10/16", "我已报名"],
-        primaryActionLabel: "看详情",
+        primaryActionLabel: "取消报名",
         canAccept: false,
         acceptedCount: 10,
         capacity: 16,
@@ -586,6 +591,88 @@ describe("buildChallengeCards", () => {
         activityId: "",
       },
     ]);
+  });
+
+  test("maps venue team challenges with the first team waiting for an opponent", () => {
+    const cards = buildChallengeCards([
+      {
+        challenge: {
+          id: "challenge-venue-team-1",
+          title: "场馆撮合 8 人制",
+          kind: "team",
+          host_team_id: 2,
+          host_user_id: 30,
+          guest_team_id: null,
+          accepted_by_user_id: 8,
+          activity_id: null,
+          holding_date: "2026-04-25T20:00:00",
+          start_time: "2026-04-25T20:00:00",
+          end_time: "2026-04-25T22:00:00",
+          location: "城东足球公园 3 号场",
+          location_latitude: null,
+          location_longitude: null,
+          players_per_team: 8,
+          fee_per_person: "30.00",
+          note: null,
+          status: "open",
+          accepted_at: "2026-04-21T10:00:00",
+          cancelled_at: null,
+          created_at: "2026-04-20T12:00:00",
+          updated_at: "2026-04-21T10:00:00",
+        },
+        host_team_name: "柏林二队",
+        host_team_credit_score: 88,
+        host_team_trust_label: "稳定赴约",
+        guest_team_name: null,
+        guest_team_credit_score: null,
+        guest_team_trust_label: null,
+        current_team_relation: "host",
+        accepted_count: 0,
+        current_user_joined: false,
+        can_accept: false,
+      },
+      {
+        challenge: {
+          id: "challenge-venue-team-1",
+          title: "场馆撮合 8 人制",
+          kind: "team",
+          host_team_id: 2,
+          host_user_id: 30,
+          guest_team_id: null,
+          accepted_by_user_id: 8,
+          activity_id: null,
+          holding_date: "2026-04-25T20:00:00",
+          start_time: "2026-04-25T20:00:00",
+          end_time: "2026-04-25T22:00:00",
+          location: "城东足球公园 3 号场",
+          location_latitude: null,
+          location_longitude: null,
+          players_per_team: 8,
+          fee_per_person: "30.00",
+          note: null,
+          status: "open",
+          accepted_at: "2026-04-21T10:00:00",
+          cancelled_at: null,
+          created_at: "2026-04-20T12:00:00",
+          updated_at: "2026-04-21T10:00:00",
+        },
+        host_team_name: "柏林二队",
+        host_team_credit_score: 88,
+        host_team_trust_label: "稳定赴约",
+        guest_team_name: null,
+        guest_team_credit_score: null,
+        guest_team_trust_label: null,
+        current_team_relation: "viewer",
+        accepted_count: 0,
+        current_user_joined: false,
+        can_accept: true,
+      },
+    ]);
+
+    expect(cards[0].relationLabel).toEqual("等待对手");
+    expect(cards[0].primaryActionLabel).toEqual("等待对手");
+    expect(cards[1].relationLabel).toEqual("可接约");
+    expect(cards[1].primaryActionLabel).toEqual("去应战");
   });
 });
 

@@ -3,8 +3,8 @@ use crate::challenge::application::notifier::ChallengeNotifier;
 use crate::challenge::application::permission::ChallengeTeamAccessChecker;
 use crate::challenge::application::queries::{AdminChallengeListQuery, TeamChallengeListRequest};
 use crate::challenge::application::use_cases::{
-    AcceptChallengeUseCase, CancelChallengeUseCase, CreateChallengeUseCase,
-    GetChallengeDetailUseCase, ListChallengesUseCase,
+    AcceptChallengeUseCase, CancelChallengeUseCase, CancelIndividualAcceptanceUseCase,
+    CreateChallengeUseCase, GetChallengeDetailUseCase, ListChallengesUseCase,
 };
 use crate::challenge::domain::{Challenge, ChallengeDetail, ChallengeStatus, ChallengeSummary};
 use crate::challenge::ports::{ChallengeCommandRepository, ChallengeQueryRepository};
@@ -12,12 +12,14 @@ use crate::notification::application::NotificationService;
 use crate::shared::auth::ActorContext;
 use crate::shared::error::AppError;
 use crate::team::ports::TeamQueryRepository;
+use crate::user::ports::UserQueryRepository;
 use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct ChallengeService {
     accept_challenge_use_case: AcceptChallengeUseCase,
     cancel_challenge_use_case: CancelChallengeUseCase,
+    cancel_individual_acceptance_use_case: CancelIndividualAcceptanceUseCase,
     create_challenge_use_case: CreateChallengeUseCase,
     get_challenge_detail_use_case: GetChallengeDetailUseCase,
     list_challenges_use_case: ListChallengesUseCase,
@@ -28,6 +30,7 @@ impl ChallengeService {
         query_repository: Arc<dyn ChallengeQueryRepository>,
         command_repository: Arc<dyn ChallengeCommandRepository>,
         team_repository: Arc<dyn TeamQueryRepository>,
+        user_repository: Arc<dyn UserQueryRepository>,
         notification_service: Arc<NotificationService>,
     ) -> Self {
         let team_access_checker = ChallengeTeamAccessChecker::new(team_repository.clone());
@@ -45,11 +48,17 @@ impl ChallengeService {
                 query_repository.clone(),
                 command_repository.clone(),
                 team_access_checker.clone(),
+                user_repository.clone(),
                 notifier.clone(),
+            ),
+            cancel_individual_acceptance_use_case: CancelIndividualAcceptanceUseCase::new(
+                query_repository.clone(),
+                command_repository.clone(),
             ),
             create_challenge_use_case: CreateChallengeUseCase::new(
                 command_repository,
                 team_access_checker.clone(),
+                user_repository,
                 notifier,
             ),
             get_challenge_detail_use_case: GetChallengeDetailUseCase::new(query_repository.clone()),
@@ -86,6 +95,16 @@ impl ChallengeService {
         challenge_id: &str,
     ) -> Result<Challenge, AppError> {
         self.cancel_challenge_use_case
+            .execute(actor, challenge_id)
+            .await
+    }
+
+    pub async fn cancel_individual_acceptance(
+        &self,
+        actor: &ActorContext,
+        challenge_id: &str,
+    ) -> Result<Challenge, AppError> {
+        self.cancel_individual_acceptance_use_case
             .execute(actor, challenge_id)
             .await
     }

@@ -19,7 +19,7 @@ import { isRuntimeVisibleActivity, isRuntimeVisibleChallengeSummary, loadMiniApp
 import { getCurrentYearDateRange } from "@/utils/dateRange";
 import { buildAttendanceSummary, buildChallengeCards, buildHomeMatchCards, buildPublicHomeMatchCards } from "@/utils/viewModels";
 import type { ChallengeCardViewModel, HomeMatchCardViewModel } from "@/types/viewModels";
-import type { BackendUser } from "@/types/backend";
+import type { BackendChallengeSummary, BackendUser } from "@/types/backend";
 
 const { currentTeam, ensureSessionReady } = useTeamContext();
 const { syncUnreadCount } = useNotificationCenter();
@@ -128,6 +128,14 @@ function resetUserRelatedHomeData() {
   challengeCards.value = [];
 }
 
+function sortChallengeSummariesByHoldingTimeDesc(summaries: BackendChallengeSummary[]) {
+  return [...summaries].sort((left, right) => {
+    const dateOrder = right.challenge.holding_date.localeCompare(left.challenge.holding_date);
+    if (dateOrder !== 0) return dateOrder;
+    return right.challenge.start_time.localeCompare(left.challenge.start_time);
+  });
+}
+
 async function loadPublicHomeData() {
   const runtimeConfig = await loadMiniAppRuntimeConfig();
   const now = new Date();
@@ -135,7 +143,7 @@ async function loadPublicHomeData() {
   const [activityPage, users, challengeSummaries] = await Promise.all([
     listActivities({ page: 1, pageSize: runtimeConfig.home.activity_fetch_page_size }),
     listUsers(),
-    listChallenges({ limit: challengeFetchLimit, sort: "credit_desc", auth: false }),
+    listChallenges({ limit: challengeFetchLimit, sort: "holding_date_desc", auth: false }),
   ]);
   const teamRegistrationCountsByActivityId = buildTeamRegistrationCountsBySourceActivityId(activityPage.items);
   const activeActivities = activityPage.items
@@ -158,7 +166,9 @@ async function loadPublicHomeData() {
     limit: runtimeConfig.home.match_card_limit,
   });
   challengeCards.value = buildChallengeCards(
-    challengeSummaries.filter((summary) => isRuntimeVisibleChallengeSummary(summary, runtimeConfig, now)),
+    sortChallengeSummariesByHoldingTimeDesc(
+      challengeSummaries.filter((summary) => isRuntimeVisibleChallengeSummary(summary, runtimeConfig, now)),
+    ),
   ).slice(0, runtimeConfig.home.challenge_card_limit);
 }
 
@@ -168,6 +178,12 @@ function openTab(path: string) {
 
 function openAllPendingMatches() {
   uni.navigateTo({ url: "/pages/home/matches/index" });
+}
+
+function openChallengeDetail(challengeId: string) {
+  uni.navigateTo({
+    url: `/pages/challenges/detail?id=${challengeId}`,
+  });
 }
 
 function handleManageTap() {
@@ -244,7 +260,7 @@ async function loadPageData(options?: { preserveContent?: boolean }) {
       listActivities({ page: 1, pageSize: runtimeConfig.home.activity_fetch_page_size }),
       getMyActivities(),
       getMyAttendance(attendanceDateRange),
-      listChallenges({ teamId: currentTeam.value.id, limit: challengeFetchLimit, sort: "credit_desc" }),
+      listChallenges({ teamId: currentTeam.value.id, limit: challengeFetchLimit, sort: "holding_date_desc" }),
       listUsers(),
       syncUnreadCount({ skipEnsure: true }),
     ]);
@@ -284,7 +300,9 @@ async function loadPageData(options?: { preserveContent?: boolean }) {
       late: summary.late,
     };
     challengeCards.value = buildChallengeCards(
-      challengeSummaries.filter((summary) => isRuntimeVisibleChallengeSummary(summary, runtimeConfig, now)),
+      sortChallengeSummariesByHoldingTimeDesc(
+        challengeSummaries.filter((summary) => isRuntimeVisibleChallengeSummary(summary, runtimeConfig, now)),
+      ),
     ).slice(0, runtimeConfig.home.challenge_card_limit);
     hasLoadedOnce.value = true;
   } catch (error) {
@@ -380,6 +398,7 @@ onUnload(() => {
           v-if="challengeCards.length"
           :cards="challengeCards"
           :challenge-stage-class="challengeStageClass"
+          @open-challenge="openChallengeDetail"
         />
         <view v-else class="home-empty">当前还没有可关注的约队机会。你可以去大厅发布一条，或等待其他球队发起。</view>
 
@@ -406,8 +425,8 @@ onUnload(() => {
   min-height: 100vh;
   padding: 0 28rpx 164rpx;
   background:
-    radial-gradient(circle at top left, rgba(200, 255, 0, 0.12), transparent 24%),
-    linear-gradient(180deg, #ffffff 0%, #f4f5f0 100%);
+    radial-gradient(circle at top left, rgba(155, 226, 43, 0.16), transparent 24%),
+    linear-gradient(180deg, #ffffff 0%, #f5f7f1 48%, #eef2e9 100%);
   box-sizing: border-box;
 }
 
@@ -434,11 +453,11 @@ onUnload(() => {
   height: 48rpx;
   padding: 0 18rpx;
   border-radius: 999rpx;
-  background: rgba(17, 17, 17, 0.88);
-  color: #ffffff;
+  background: rgba(23, 32, 24, 0.9);
+  color: #fffdf8;
   font-size: 22rpx;
-  font-weight: 800;
-  box-shadow: 0 12rpx 24rpx rgba(17, 17, 17, 0.16);
+  font-weight: 700;
+  box-shadow: 0 12rpx 24rpx rgba(43, 55, 38, 0.18);
 }
 
 .section-headline {
@@ -462,39 +481,40 @@ onUnload(() => {
   width: 40rpx;
   height: 40rpx;
   border-radius: 999rpx;
-  background: #ffefe4;
-  color: #ff6422;
+  background: #fff0df;
+  color: #e86d37;
   font-size: 22rpx;
-  font-weight: 900;
+  font-weight: 800;
 }
 
 .section-headline-title {
   display: block;
-  font-size: 40rpx;
-  color: #111111;
-  font-weight: 900;
+  font-size: 38rpx;
+  line-height: 1.15;
+  color: #172018;
+  font-weight: 800;
 }
 
 .section-caption {
   display: block;
   margin-top: 8rpx;
   font-size: 24rpx;
-  color: #656a62;
-  line-height: 1.5;
+  color: #5f685b;
+  line-height: 1.55;
 }
 
 .section-link {
-  color: #171814;
+  color: #172018;
   font-size: 28rpx;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .home-empty {
   margin-top: 24rpx;
   padding: 28rpx;
   border-radius: 28rpx;
-  background: #ffffff;
-  color: #676c64;
+  background: #fffdf8;
+  color: #5f685b;
   font-size: 28rpx;
   line-height: 1.6;
 }

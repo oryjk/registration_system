@@ -1,11 +1,13 @@
 import { http } from '@/utils/request'
 
 export type ChallengeStatus = 'open' | 'matched' | 'cancelled'
+export type ChallengeKind = 'team' | 'individual'
 
 export interface Challenge {
   id: string
   title: string
-  host_team_id: number
+  kind: ChallengeKind
+  host_team_id: number | null
   host_user_id: number
   guest_team_id: number | null
   accepted_by_user_id: number | null

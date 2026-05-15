@@ -57,7 +57,8 @@ impl ListChallengesUseCase {
                 ChallengeKind::Team => {
                     can_manage_team
                         && item.challenge.status == ChallengeStatus::Open
-                        && item.challenge.host_team_id != query.team_id
+                        && item.challenge.host_team_id != Some(query.team_id)
+                        && item.challenge.guest_team_id != Some(query.team_id)
                 }
                 ChallengeKind::Individual => {
                     item.challenge.status == ChallengeStatus::Open

@@ -21,12 +21,14 @@ pub struct AddTeamMemberCommand {
     pub user_id: i64,
     pub role: Option<String>,
     pub jersey_number: Option<String>,
+    pub is_member: Option<bool>,
 }
 
 #[derive(Debug, Clone)]
 pub struct UpdateTeamMemberCommand {
     pub role: Option<String>,
     pub jersey_number: Option<Option<String>>,
+    pub is_member: Option<bool>,
 }
 
 #[derive(Debug, Clone)]

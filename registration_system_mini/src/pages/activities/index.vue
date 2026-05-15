@@ -8,7 +8,7 @@ import ActivitiesToolbar from "./components/ActivitiesToolbar.vue";
 import type { ActivityQuickFilter } from "./components/ActivitiesToolbar.vue";
 import ChallengeHallSections from "./components/ChallengeHallSections.vue";
 import PublishTypeSheet from "./components/PublishTypeSheet.vue";
-import { acceptChallenge, listChallenges } from "@/api/challenge";
+import { acceptChallenge, cancelIndividualChallengeAcceptance, listChallenges } from "@/api/challenge";
 import { useNotificationCenter } from "@/stores/notificationCenter";
 import { useTeamContext } from "@/stores/teamContext";
 import { getCustomNavMetrics } from "@/utils/customNav";
@@ -21,11 +21,13 @@ type ChallengeSort = "holding_date_asc" | "holding_date_desc" | "created_at_desc
 type ChallengeStatusFilter = "all" | BackendChallengeStatus;
 type QuickFilter = ActivityQuickFilter;
 
-const { currentTeam, ensureSessionReady } = useTeamContext();
+const { currentIdentity, currentTeam, ensureSessionReady } = useTeamContext();
 const { syncUnreadCount } = useNotificationCenter();
 const navMetrics = getCustomNavMetrics();
 
 const isLoading = ref(false);
+const isRefreshing = ref(false);
+const hasLoadedOnce = ref(false);
 const errorMessage = ref("");
 const submitting = ref(false);
 const rawChallenges = ref<BackendChallengeSummary[]>([]);
@@ -46,7 +48,7 @@ const filters = reactive<{
   includeClosed: false,
 });
 
-const canPublish = computed(() => !!currentTeam.value?.canManageTeam);
+const canPublish = computed(() => !!currentIdentity.value);
 const quickFilters: Array<{ key: QuickFilter; label: string }> = [
   { key: "recommended", label: "推荐" },
   { key: "team", label: "球队约队" },
@@ -143,20 +145,22 @@ function ensureSelectedDate(challenges: BackendChallengeSummary[]) {
   }
 }
 
-async function loadPageData() {
-  isLoading.value = true;
+async function loadPageData(options?: { preserveContent?: boolean }) {
+  const preserveContent = !!options?.preserveContent && hasLoadedOnce.value;
+
+  if (preserveContent) {
+    isRefreshing.value = true;
+  } else {
+    isLoading.value = true;
+  }
   errorMessage.value = "";
 
   try {
     await ensureSessionReady();
-    if (!currentTeam.value) {
-      rawChallenges.value = [];
-      return;
-    }
 
     const [challenges] = await Promise.all([
       listChallenges({
-        teamId: currentTeam.value.id,
+        teamId: currentTeam.value?.id,
         keyword: filters.keyword || undefined,
         status: filters.status === "all" ? undefined : filters.status,
         includeClosed: filters.includeClosed,
@@ -168,11 +172,16 @@ async function loadPageData() {
 
     rawChallenges.value = challenges;
     ensureSelectedDate(challenges);
+    hasLoadedOnce.value = true;
   } catch (error) {
     const message = error instanceof Error ? error.message : "约队大厅加载失败";
     errorMessage.value = message.includes("已退出登录") ? "" : message;
   } finally {
-    isLoading.value = false;
+    if (preserveContent) {
+      isRefreshing.value = false;
+    } else {
+      isLoading.value = false;
+    }
   }
 }
 
@@ -205,7 +214,7 @@ function closePublishTypeSheet() {
 function handlePublishTeamChallenge() {
   closePublishTypeSheet();
   uni.navigateTo({
-    url: "/pages/matches/create/index",
+    url: "/pages/challenges/create-individual/index?kind=team",
   });
 }
 
@@ -237,20 +246,28 @@ function applyAcceptedChallengeState(challenge: BackendChallenge, card: Challeng
     if (summary.challenge.id !== challenge.id) return summary;
 
     const isIndividual = challenge.kind === "individual";
+    const isTeamReservedByCurrentTeam =
+      !isIndividual &&
+      challenge.status === "open" &&
+      challenge.host_team_id === currentTeam.value?.id &&
+      !challenge.guest_team_id;
     return {
       ...summary,
       challenge,
-      guest_team_name: isIndividual ? summary.guest_team_name : currentTeam.value?.name ?? summary.guest_team_name,
-      guest_team_credit_score: isIndividual ? summary.guest_team_credit_score : currentTeam.value?.creditScore ?? summary.guest_team_credit_score,
-      guest_team_trust_label: isIndividual ? summary.guest_team_trust_label : currentTeam.value?.trustLabel ?? summary.guest_team_trust_label,
-      current_team_relation: isIndividual ? summary.current_team_relation : "guest",
+      host_team_name: isTeamReservedByCurrentTeam ? currentTeam.value?.name ?? summary.host_team_name : summary.host_team_name,
+      host_team_credit_score: isTeamReservedByCurrentTeam ? currentTeam.value?.creditScore ?? summary.host_team_credit_score : summary.host_team_credit_score,
+      host_team_trust_label: isTeamReservedByCurrentTeam ? currentTeam.value?.trustLabel ?? summary.host_team_trust_label : summary.host_team_trust_label,
+      guest_team_name: isIndividual || isTeamReservedByCurrentTeam ? summary.guest_team_name : currentTeam.value?.name ?? summary.guest_team_name,
+      guest_team_credit_score: isIndividual || isTeamReservedByCurrentTeam ? summary.guest_team_credit_score : currentTeam.value?.creditScore ?? summary.guest_team_credit_score,
+      guest_team_trust_label: isIndividual || isTeamReservedByCurrentTeam ? summary.guest_team_trust_label : currentTeam.value?.trustLabel ?? summary.guest_team_trust_label,
+      current_team_relation: isIndividual ? summary.current_team_relation : isTeamReservedByCurrentTeam ? "host" : "guest",
       accepted_count: isIndividual ? summary.accepted_count + 1 : summary.accepted_count,
       current_user_joined: isIndividual ? true : summary.current_user_joined,
       can_accept: false,
     };
   });
 
-  if (challenge.activity_id) {
+  if (challenge.activity_id && challenge.status === "matched") {
     openMatchDetail(challenge.activity_id);
     return;
   }
@@ -258,6 +275,20 @@ function applyAcceptedChallengeState(challenge: BackendChallenge, card: Challeng
   if (!isIndividualChallenge(card)) {
     syncUnreadCount({ skipEnsure: true });
   }
+}
+
+function applyCancelledIndividualChallengeState(challenge: BackendChallenge) {
+  rawChallenges.value = rawChallenges.value.map((summary) => {
+    if (summary.challenge.id !== challenge.id) return summary;
+
+    return {
+      ...summary,
+      challenge,
+      accepted_count: Math.max(summary.accepted_count - 1, 0),
+      current_user_joined: false,
+      can_accept: challenge.status === "open",
+    };
+  });
 }
 
 function isIndividualChallenge(card: ChallengeCardViewModel) {
@@ -285,8 +316,13 @@ function prependCreatedChallenge(challenge: BackendChallenge) {
 }
 
 async function handlePrimaryAction(card: ChallengeCardViewModel) {
-  if (card.activityId) {
+  if (card.activityId && card.statusTone === "matched") {
     openMatchDetail(card.activityId);
+    return;
+  }
+
+  if (card.kind === "individual" && card.currentUserJoined) {
+    await handleCancelIndividualAcceptance(card);
     return;
   }
 
@@ -298,9 +334,54 @@ async function handlePrimaryAction(card: ChallengeCardViewModel) {
   openChallengeDetail(card.id);
 }
 
+async function handleCancelIndividualAcceptance(card: ChallengeCardViewModel) {
+  if (submitting.value || card.kind !== "individual" || !card.currentUserJoined) return;
+
+  uni.showModal({
+    title: "确认取消报名",
+    content: `确认取消「${card.title}」的报名？取消后可重新报名。`,
+    confirmText: "取消报名",
+    cancelText: "再想想",
+    success: async (result) => {
+      if (!result.confirm) return;
+      submitting.value = true;
+      try {
+        const challenge = await cancelIndividualChallengeAcceptance(card.id);
+        applyCancelledIndividualChallengeState(challenge);
+        uni.showToast({
+          title: "已取消报名",
+          icon: "none",
+        });
+      } catch (error) {
+        uni.showToast({
+          title: error instanceof Error ? error.message : "取消报名失败",
+          icon: "none",
+        });
+      } finally {
+        submitting.value = false;
+      }
+    },
+  });
+}
+
 async function handleAccept(card: ChallengeCardViewModel) {
   if (submitting.value) return;
   if (card.kind === "team" && (!currentTeam.value || !currentTeam.value.canManageTeam)) return;
+
+  const confirmed = await new Promise<boolean>((resolve) => {
+    uni.showModal({
+      title: card.kind === "team" ? "确认接约" : "确认报名",
+      content:
+        card.kind === "team"
+          ? `确认以当前球队接约「${card.title}」？`
+          : `确认报名参加「${card.title}」？`,
+      confirmText: card.kind === "team" ? "确认接约" : "确认报名",
+      cancelText: "再想想",
+      success: (result) => resolve(!!result.confirm),
+      fail: () => resolve(false),
+    });
+  });
+  if (!confirmed) return;
 
   submitting.value = true;
   try {
@@ -322,13 +403,17 @@ async function handleAccept(card: ChallengeCardViewModel) {
 
 onShow(() => {
   uni.hideTabBar({ animation: false });
-  void loadPageData();
+  void loadPageData({ preserveContent: hasLoadedOnce.value });
 });
 </script>
 
 <template>
   <view class="hall-page" :style="pageStyle">
     <AppTabHeader title="约队大厅" />
+
+    <view v-if="isRefreshing" class="hall-refresh-mask">
+      <view class="hall-refresh-chip">更新中...</view>
+    </view>
 
     <view v-if="errorMessage && !isLogoutBlockedError" class="hall-empty">{{ errorMessage }}</view>
     <ActivitiesSkeleton v-else-if="isLoading" />
@@ -366,20 +451,42 @@ onShow(() => {
     <view v-else class="hall-empty hall-empty-spacious">
       当前筛选条件下还没有约队记录，可以切换日期、标签，或者直接发布一条新的约队。
     </view>
+    </template>
 
     <BottomTabBar current="challenge" />
-    </template>
   </view>
 </template>
 
 <style scoped>
 .hall-page {
+  position: relative;
   min-height: 100vh;
   padding: calc(env(safe-area-inset-top) + 36rpx) 28rpx 164rpx;
   background:
     radial-gradient(circle at top right, rgba(200, 255, 0, 0.14), transparent 28%),
     linear-gradient(180deg, #ffffff 0%, #f5f6f2 100%);
   box-sizing: border-box;
+}
+
+.hall-refresh-mask {
+  position: fixed;
+  top: calc(env(safe-area-inset-top) + 104rpx);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.hall-refresh-chip {
+  padding: 12rpx 22rpx;
+  border-radius: 999rpx;
+  background: rgba(17, 19, 16, 0.86);
+  color: #ffffff;
+  font-size: 24rpx;
+  font-weight: 800;
+  box-shadow: 0 14rpx 30rpx rgba(17, 19, 16, 0.16);
 }
 
 .hall-header {

@@ -87,4 +87,31 @@ describe("home page loading states", () => {
     expect(homePageSource.includes("function handleSessionLoginCompleted")).toEqual(true);
     expect(homePageSource.includes("void loadPageData({ preserveContent: true });")).toEqual(true);
   });
+
+  test("orders home challenge opportunities by match time descending before limiting", async () => {
+    const homePageSource = await Bun.file(
+      "/Users/carlwang/registration_system/registration_system_mini/src/pages/home/index.vue",
+    ).text();
+
+    expect(homePageSource.includes('sort: "holding_date_desc"')).toEqual(true);
+    expect(homePageSource.includes("function sortChallengeSummariesByHoldingTimeDesc")).toEqual(true);
+    expect(homePageSource.includes("right.challenge.holding_date.localeCompare(left.challenge.holding_date)")).toEqual(true);
+    expect(homePageSource.includes("right.challenge.start_time.localeCompare(left.challenge.start_time)")).toEqual(true);
+    expect(homePageSource.includes("sortChallengeSummariesByHoldingTimeDesc(")).toEqual(true);
+  });
+
+  test("opens challenge detail when tapping any home opportunity card", async () => {
+    const homePageSource = await Bun.file(
+      "/Users/carlwang/registration_system/registration_system_mini/src/pages/home/index.vue",
+    ).text();
+    const opportunityListSource = await Bun.file(
+      "/Users/carlwang/registration_system/registration_system_mini/src/pages/home/components/HomeOpportunityList.vue",
+    ).text();
+
+    expect(homePageSource.includes('function openChallengeDetail(challengeId: string)')).toEqual(true);
+    expect(homePageSource.includes("url: `/pages/challenges/detail?id=${challengeId}`")).toEqual(true);
+    expect(homePageSource.includes('@open-challenge="openChallengeDetail"')).toEqual(true);
+    expect(opportunityListSource.includes('(event: "openChallenge", challengeId: string): void;')).toEqual(true);
+    expect(opportunityListSource.includes('@tap="handleOpenChallenge(card.id)"')).toEqual(true);
+  });
 });

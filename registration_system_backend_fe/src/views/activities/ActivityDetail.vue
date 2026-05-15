@@ -239,6 +239,7 @@ const settlementPlayerById = computed(() => {
         real_name: item.real_name,
         avatar_url: item.avatar_url,
         phone_number: item.phone_number,
+        is_venue: false,
         status: 1,
         status_label: '',
         create_time: '',

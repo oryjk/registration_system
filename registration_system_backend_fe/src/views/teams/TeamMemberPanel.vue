@@ -98,6 +98,7 @@
               <th>球员</th>
               <th>手机号</th>
               <th>角色</th>
+              <th>会员</th>
               <th>号码</th>
               <th>加入时间</th>
               <th class="text-right">操作</th>
@@ -152,6 +153,14 @@
               <td>
                 <span class="badge badge-sm" :class="roleBadgeClass[member.role] || 'badge-ghost'">
                   {{ member.role_label }}
+                </span>
+              </td>
+              <td>
+                <span
+                  class="badge badge-sm"
+                  :class="member.is_member ? 'badge-primary' : 'badge-ghost'"
+                >
+                  {{ member.is_member ? '队员会员' : '普通队员' }}
                 </span>
               </td>
               <td class="text-sm">

@@ -16,6 +16,7 @@ defineProps<{
   submittingStatus: boolean;
   individualCtaLabel: string;
   isGuestMode: boolean;
+  showCta?: boolean;
 }>();
 
 defineEmits<{
@@ -63,7 +64,7 @@ defineEmits<{
       <text class="countdown-avatars-note">{{ remainingPlayersLabel }}</text>
     </view>
 
-    <view class="individual-cta-button" @tap="$emit('selectIndividualSignup')">
+    <view v-if="showCta !== false" class="individual-cta-button" @tap="$emit('selectIndividualSignup')">
       <text class="individual-cta-main">{{ submittingStatus ? "提交中..." : individualCtaLabel }}</text>
       <text v-if="!isGuestMode" class="individual-cta-side">免费</text>
     </view>

@@ -34,6 +34,13 @@
             placeholder="可选"
           />
         </label>
+        <label class="flex items-center gap-3 rounded-box border border-base-300 bg-base-200/40 px-4 py-3">
+          <input v-model="form.is_venue" type="checkbox" class="toggle toggle-primary" />
+          <span class="flex flex-col gap-0.5">
+            <span class="text-sm font-semibold">场馆身份</span>
+            <span class="text-xs text-base-content/55">可发布球队约队和散人约队，仍可作为球员报名。</span>
+          </span>
+        </label>
         <div class="modal-action">
           <button type="button" class="btn btn-ghost" @click="close">取消</button>
           <button type="submit" class="btn btn-primary" :disabled="submitting">
@@ -54,6 +61,7 @@ export interface PlayerEditFormState {
   real_name: string
   nickname: string
   phone_number: string
+  is_venue: boolean
 }
 
 defineProps<{

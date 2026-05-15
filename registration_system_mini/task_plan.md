@@ -1,0 +1,115 @@
+# 小程序任务计划
+
+## 2026-05-14 队员会员标识
+
+目标：在球队管理页面支持设置并展示“队员是否会员”，该标识来自后端 `team_members.is_member`，不等同于球队 VIP。
+
+阶段：
+1. [completed] 同步 `BackendTeamMember` 与 `src/api/team.ts` 请求 payload
+2. [completed] 添加队员表单增加“队员会员”开关
+3. [completed] 编辑队员弹窗增加“队员会员”开关
+4. [completed] 队员列表卡片展示会员/普通区分
+5. [completed] 执行 `bun run type-check`
+
+## 2026-05-15 报名详情队员三栏头像列表
+
+目标：比赛报名详情页保留“报名 / 请假 / 未报名”三块区域，但人员展示改回已有报名详情里的轻量头像列表样式，避免大卡片/胶囊列表显得过重。
+
+阶段：
+1. [completed] 对照 `IndividualCountdownCard` 与约队详情头像栈样式
+2. [completed] 将 `TeamMemberRegistrationBoard` 的人员展示从胶囊卡片改为头像栈
+3. [completed] 当前用户使用头像描边和“我”标记突出
+4. [completed] 点击头像后在对应区域显示姓名和状态，再点同一头像收起
+5. [completed] 选中头像增加轻微放大和上浮动效
+6. [completed] 执行 `bun run type-check`
+
+## 2026-05-15 散人约队报名页对齐比赛报名
+
+目标：散人约队详情中的个人报名区域对齐比赛报名页风格和操作，只是不展示球队三栏状态卡。
+
+阶段：
+1. [completed] 保留球队约队详情旧结构，散人约队单独分流
+2. [completed] 新增散人约队个人报名视图，使用比赛报名式 tab、黑色信息卡和报名截止卡
+3. [completed] 报名/取消报名操作收敛到报名截止卡内部
+4. [completed] 散人约队页面标题改为“比赛报名”
+5. [completed] 执行 `bun run type-check`
+
+## 2026-05-15 场馆角色与约队发布权限
+
+目标：在小程序端支持“队长/领队或场馆”发布约队，最终覆盖球队约队与散人约队。
+
+阶段：
+1. [completed] 盘点约队大厅发布入口和发布类型弹层
+2. [completed] 盘点散人约队创建页和 `createChallenge` API 入参
+3. [completed] 盘点会话上下文当前可用的用户/球队权限字段
+4. [completed] 同步 `BackendUser.is_venue` 与可空 `BackendChallenge.host_team_id`
+5. [completed] 约队大厅发布权限改为队长/领队或场馆
+6. [completed] 场馆发布球队约队时跳转到约队创建页并不传 `host_team_id`
+7. [completed] 场馆发布者可在详情页取消自己发布的无主队约队
+8. [completed] 无当前球队时仍加载公开约队大厅
+9. [completed] 执行 `bun run type-check` 和目标 `bun test`
+
+## 2026-05-15 当前发布身份切换
+
+目标：在“我的”页支持切换当前发布身份，并让约队创建使用当前身份判断发布主体。
+
+阶段：
+1. [completed] 盘点 `appSession`、当前球队切换和“我的”页 profile card
+2. [completed] 新增当前身份派生 helper 与持久化 storage
+3. [completed] 在 `MineHeroProfile` 增加“当前身份”切换条
+4. [completed] 约队大厅发布权限改为 `currentIdentity`
+5. [completed] 约队创建页按当前身份提交 `host_team_id`
+6. [completed] 更新并执行目标测试、`bun run type-check`
+
+## 2026-05-15 我的页钱包加载优化
+
+目标：避免 `/api/order/my-billing-flow` 慢接口影响“我的”页首屏和钱包卡片展示，把完整账单明细留在二级页面。
+
+阶段：
+1. [completed] 确认“我的”页首屏调用了 `getMyBillingFlow`
+2. [completed] 钱包卡片改为只依赖 `getMyBalance`
+3. [completed] 钱包卡片保留“查看账单/全部账单”入口
+4. [completed] 账单明细页继续使用 `getMyBillingFlow`
+5. [completed] 更新静态测试和执行 `bun run type-check`
+
+## 2026-05-15 首页约队机会排序与详情跳转
+
+目标：首页“约队机会”按比赛时间倒序展示，并支持点击任意约队进入约队详情。
+
+阶段：
+1. [completed] 定位首页约队加载逻辑和 `HomeOpportunityList`
+2. [completed] 首页约队请求改为 `holding_date_desc`
+3. [completed] 本地按 `holding_date`、`start_time` 倒序排序后再截取展示数量
+4. [completed] `HomeOpportunityList` 增加 `openChallenge` 事件
+5. [completed] 首页接收事件并跳转 `/pages/challenges/detail`
+6. [completed] 更新并执行目标测试、类型检查和小程序构建
+
+## 2026-05-15 首页配色微调
+
+目标：只调整首页颜色观感，不改变结构和业务逻辑。
+
+阶段：
+1. [completed] 制作独立静态配色稿 `../docs/home-color-preview.html`
+2. [completed] 用户确认仅改配色
+3. [completed] 调整首页背景、banner、比赛卡片、约队机会卡和球队数据卡颜色
+4. [completed] 执行 `bun run type-check`、`bun run build:mp-weixin` 和 `git diff --check`
+
+## 2026-05-15 首页字体排版微调
+
+目标：只调整首页字体层级，让标题、正文、标签和按钮的视觉重量更清晰。
+
+阶段：
+1. [completed] 制作独立静态字体稿 `../docs/home-typography-preview.html`
+2. [completed] 用户确认字体排版方向
+3. [completed] 调整首页相关组件的字号、字重、行高和 banner 中文字距
+4. [completed] 执行 `bun run type-check`、`bun run build:mp-weixin` 和 `git diff --check`
+
+## 2026-05-15 散人报名重复标题移除
+
+目标：散人报名详情页顶部已有 header 标识，移除内容区重复的“散人报名”胶囊。
+
+阶段：
+1. [completed] 定位重复胶囊在 `ChallengeIndividualRegistration`
+2. [completed] 删除重复 tabs 模板和样式
+3. [completed] 增加静态测试约束不回归
+4. [completed] 执行目标测试、类型检查、构建和 `git diff --check`

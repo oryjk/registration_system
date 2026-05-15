@@ -17,6 +17,7 @@ describe("needsProfileCompletion", () => {
         avatar_url: "https://example.com/avatar.png",
         phone_number: "",
         is_manager: false,
+        is_venue: false,
       }),
     ).toEqual(true);
   });
@@ -32,6 +33,7 @@ describe("needsProfileCompletion", () => {
         avatar_url: "",
         phone_number: "",
         is_manager: false,
+        is_venue: false,
       }),
     ).toEqual(true);
   });
@@ -47,6 +49,7 @@ describe("needsProfileCompletion", () => {
         avatar_url: "https://example.com/avatar.png",
         phone_number: "",
         is_manager: false,
+        is_venue: false,
       }),
     ).toEqual(false);
   });

@@ -41,10 +41,11 @@ function roleBadgeClass() {
 }
 
 function statusMeta(member: BackendTeamMember) {
+  const memberLabel = member.is_member ? "队员会员" : "普通队员";
   if (props.variant === "regular") {
-    return `${roleLabel(member.role)} · ${member.jersey_number || "无号码"} · ${memberStatusLabel(member.status)}`;
+    return `${roleLabel(member.role)} · ${memberLabel} · ${member.jersey_number || "无号码"} · ${memberStatusLabel(member.status)}`;
   }
-  return `${member.jersey_number || "无号码"} · ${memberStatusLabel(member.status)}`;
+  return `${memberLabel} · ${member.jersey_number || "无号码"} · ${memberStatusLabel(member.status)}`;
 }
 
 function toggleLabel(member: BackendTeamMember) {
@@ -89,6 +90,9 @@ function handleRemoveMember(member: BackendTeamMember) {
           <view class="member-title-row">
             <text class="team-result-title member-name">{{ memberName(member.user_id) }}</text>
             <text v-if="showRoleBadge(member)" :class="roleBadgeClass()">{{ roleLabel(member.role) }}</text>
+            <text :class="['member-type-badge', member.is_member ? 'member-type-badge-vip' : 'member-type-badge-regular']">
+              {{ member.is_member ? "会员" : "普通" }}
+            </text>
           </view>
           <text class="team-result-meta">{{ statusMeta(member) }}</text>
         </view>
@@ -256,6 +260,29 @@ function handleRemoveMember(member: BackendTeamMember) {
 .member-role-badge-muted {
   background: #dfe4d9;
   color: #5f665a;
+}
+
+.member-type-badge {
+  flex-shrink: 0;
+  height: 42rpx;
+  padding: 0 14rpx;
+  border-radius: 999rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22rpx;
+  font-weight: 900;
+  box-sizing: border-box;
+}
+
+.member-type-badge-vip {
+  background: #c8ff00;
+  color: #10110f;
+}
+
+.member-type-badge-regular {
+  background: #e6eadf;
+  color: #6a7165;
 }
 
 .member-actions {

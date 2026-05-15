@@ -89,6 +89,25 @@ describe("mine page background rendering", () => {
     expect(userPageSource.includes("handleMembershipRenewal")).toEqual(true);
   });
 
+  test("keeps slow billing flow out of the mine page wallet card", async () => {
+    const userPageSource = await Bun.file(
+      "/Users/carlwang/registration_system/registration_system_mini/src/pages/user/index.vue",
+    ).text();
+    const walletSource = await Bun.file(
+      "/Users/carlwang/registration_system/registration_system_mini/src/pages/user/components/MineWalletSection.vue",
+    ).text();
+    const billingPageSource = await Bun.file(
+      "/Users/carlwang/registration_system/registration_system_mini/src/pages/billing/index.vue",
+    ).text();
+
+    expect(userPageSource.includes("getMyBillingFlow")).toEqual(false);
+    expect(userPageSource.includes("getMyBalance")).toEqual(true);
+    expect(userPageSource.includes('url: "/pages/billing/index"')).toEqual(true);
+    expect(walletSource.includes("查看账单")).toEqual(true);
+    expect(walletSource.includes("账单明细已移到二级页面")).toEqual(true);
+    expect(billingPageSource.includes("getMyBillingFlow")).toEqual(true);
+  });
+
   test("reloads mine page data after the floating login prompt finishes login", async () => {
     const userPageSource = await Bun.file(
       "/Users/carlwang/registration_system/registration_system_mini/src/pages/user/index.vue",

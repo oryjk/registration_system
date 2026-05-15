@@ -1,7 +1,7 @@
 import { getActivity, getActivityUsers, listActivities } from "@/api/activity";
 import { getTeamDetail } from "@/api/team";
 import { listUsers } from "@/api/user";
-import type { BackendActivity, BackendRegistration, BackendTeam, BackendUser } from "@/types/backend";
+import type { BackendActivity, BackendRegistration, BackendTeam, BackendTeamMember, BackendUser } from "@/types/backend";
 import { isActiveTeamRegistrationActivity } from "./detailState";
 
 export interface PublicMatchDetailData {
@@ -18,6 +18,7 @@ export interface AuthenticatedMatchDetailContext {
   derivedActivity: BackendActivity | null;
   initialRegistrationCount: number;
   currentUserStand: number;
+  currentTeamMembers: BackendTeamMember[];
   checkInConfig: BackendActivity["team_checkin_configs"][number] | null;
 }
 
@@ -52,7 +53,9 @@ export async function loadAuthenticatedMatchDetailContext(params: {
 }): Promise<AuthenticatedMatchDetailContext> {
   const { activity, activityUsers, activityPageItems, currentTeamId, currentUserId } = params;
   const teamIds = [activity.home_team_id, activity.away_team_id].filter((teamId): teamId is number => typeof teamId === "number");
-  const fetchedTeams = await Promise.all(teamIds.map(async (teamId) => (await getTeamDetail(teamId)).team));
+  const fetchedTeamDetails = await Promise.all(teamIds.map(async (teamId) => getTeamDetail(teamId)));
+  const fetchedTeams = fetchedTeamDetails.map((detail) => detail.team);
+  const currentTeamMembers = fetchedTeamDetails.find((detail) => detail.team.id === currentTeamId)?.members ?? [];
   const derivedActivity = currentTeamId
     ? activityPageItems.find(
         (item) => isActiveTeamRegistrationActivity(item) && item.source_activity_id === activity.id && item.home_team_id === currentTeamId,
@@ -64,6 +67,7 @@ export async function loadAuthenticatedMatchDetailContext(params: {
     derivedActivity,
     initialRegistrationCount: derivedActivity?.team_registration_count ?? activity.team_registration_count ?? activity.players_per_team ?? 5,
     currentUserStand: activityUsers.find((item) => item.user_id === currentUserId)?.stand ?? 0,
+    currentTeamMembers,
     checkInConfig: activity.source_activity_id
       ? null
       : activity.team_checkin_configs.find((item) => item.team_id === currentTeamId) ?? null,

@@ -5,7 +5,7 @@ import { memberRoleOptions } from "../teamManageState";
 import MemberCandidateSearch from "./MemberCandidateSearch.vue";
 import TeamMemberSection from "./TeamMemberSection.vue";
 
-defineProps<{
+const props = defineProps<{
   currentTeam: TeamProfileViewModel | null;
   canManageMembers: boolean;
   userSearchKeyword: string;
@@ -16,6 +16,7 @@ defineProps<{
     userId: string;
     role: string;
     jerseyNumber: string;
+    isMember: boolean;
   };
   leadershipMembers: BackendTeamMember[];
   regularMembers: BackendTeamMember[];
@@ -50,6 +51,11 @@ function handleCandidateTap(candidate: BackendUser) {
 
 function handleAddMember() {
   emit("addMember");
+}
+
+function handleMemberSwitchChange(event: Event) {
+  const detail = (event as unknown as { detail?: { value?: boolean } }).detail;
+  props.memberForm.isMember = !!detail?.value;
 }
 
 function handleOpenMemberAttendance(member: BackendTeamMember) {
@@ -103,6 +109,13 @@ function handleRemoveMember(member: BackendTeamMember) {
       />
 
       <input v-model="memberForm.jerseyNumber" class="form-input" placeholder="球衣号，可选" />
+      <view class="member-setting-row">
+        <view>
+          <text class="member-setting-title">队员会员</text>
+          <text class="member-setting-copy">用于在队员信息中区分会员身份</text>
+        </view>
+        <switch :checked="memberForm.isMember" color="#c8ff00" @change="handleMemberSwitchChange" />
+      </view>
       <view class="member-action-row">
         <view class="primary-button member-submit" @tap="handleAddMember">
           {{ submitting ? "提交中..." : "添加队员" }}
@@ -245,6 +258,37 @@ function handleRemoveMember(member: BackendTeamMember) {
   display: flex;
   align-items: center;
   gap: 14rpx;
+}
+
+.member-setting-row {
+  min-height: 88rpx;
+  margin-top: 14rpx;
+  padding: 16rpx 18rpx;
+  border-radius: 22rpx;
+  background: #f3f5ef;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18rpx;
+  box-sizing: border-box;
+}
+
+.member-setting-title,
+.member-setting-copy {
+  display: block;
+}
+
+.member-setting-title {
+  color: #111310;
+  font-size: 28rpx;
+  font-weight: 900;
+}
+
+.member-setting-copy {
+  margin-top: 4rpx;
+  color: #6a7165;
+  font-size: 22rpx;
+  font-weight: 700;
 }
 
 .member-submit {

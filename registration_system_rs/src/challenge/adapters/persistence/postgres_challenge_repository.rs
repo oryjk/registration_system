@@ -54,13 +54,13 @@ impl PostgresChallengeRepository {
                 c.cancelled_at,
                 c.created_at,
                 c.updated_at,
-                host.name AS host_team_name,
-                host.credit_score AS host_team_credit_score,
+                COALESCE(host.name, NULLIF(users.real_name, ''), NULLIF(users.nickname, ''), NULLIF(users.username, ''), '场馆约队') AS host_team_name,
+                COALESCE(host.credit_score, 100) AS host_team_credit_score,
                 CASE
-                    WHEN host.credit_score >= 90 THEN '金牌信用'
-                    WHEN host.credit_score >= 80 THEN '稳定赴约'
-                    WHEN host.credit_score >= 70 THEN '评价稳定'
-                    WHEN host.credit_score >= 60 THEN '活跃新队'
+                    WHEN COALESCE(host.credit_score, 100) >= 90 THEN '金牌信用'
+                    WHEN COALESCE(host.credit_score, 100) >= 80 THEN '稳定赴约'
+                    WHEN COALESCE(host.credit_score, 100) >= 70 THEN '评价稳定'
+                    WHEN COALESCE(host.credit_score, 100) >= 60 THEN '活跃新队'
                     ELSE '风险较高'
                 END AS host_team_trust_label,
                 guest.name AS guest_team_name,
@@ -89,7 +89,8 @@ impl PostgresChallengeRepository {
                 END AS current_user_joined,
                 false AS can_accept
             FROM rs_challenges c
-            INNER JOIN rs_teams host ON host.id = c.host_team_id
+            LEFT JOIN rs_teams host ON host.id = c.host_team_id
+            INNER JOIN rs_user_info users ON users.id = c.host_user_id
             LEFT JOIN rs_teams guest ON guest.id = c.guest_team_id
             WHERE c.id = $1
             "#,
@@ -154,13 +155,13 @@ impl ChallengeQueryRepository for PostgresChallengeRepository {
                 c.cancelled_at,
                 c.created_at,
                 c.updated_at,
-                host.name AS host_team_name,
-                host.credit_score AS host_team_credit_score,
+                COALESCE(host.name, NULLIF(users.real_name, ''), NULLIF(users.nickname, ''), NULLIF(users.username, ''), '场馆约队') AS host_team_name,
+                COALESCE(host.credit_score, 100) AS host_team_credit_score,
                 CASE
-                    WHEN host.credit_score >= 90 THEN '金牌信用'
-                    WHEN host.credit_score >= 80 THEN '稳定赴约'
-                    WHEN host.credit_score >= 70 THEN '评价稳定'
-                    WHEN host.credit_score >= 60 THEN '活跃新队'
+                    WHEN COALESCE(host.credit_score, 100) >= 90 THEN '金牌信用'
+                    WHEN COALESCE(host.credit_score, 100) >= 80 THEN '稳定赴约'
+                    WHEN COALESCE(host.credit_score, 100) >= 70 THEN '评价稳定'
+                    WHEN COALESCE(host.credit_score, 100) >= 60 THEN '活跃新队'
                     ELSE '风险较高'
                 END AS host_team_trust_label,
                 guest.name AS guest_team_name,
@@ -191,7 +192,8 @@ impl ChallengeQueryRepository for PostgresChallengeRepository {
                 ) AS current_user_joined,
                 false AS can_accept
             FROM rs_challenges c
-            INNER JOIN rs_teams host ON host.id = c.host_team_id
+            LEFT JOIN rs_teams host ON host.id = c.host_team_id
+            INNER JOIN rs_user_info users ON users.id = c.host_user_id
             LEFT JOIN rs_teams guest ON guest.id = c.guest_team_id
             "#,
         );
@@ -253,7 +255,7 @@ impl ChallengeQueryRepository for PostgresChallengeRepository {
             .map(ChallengeSummary::from)
             .map(|mut summary| {
                 summary.current_team_relation = Some(
-                    if summary.challenge.host_team_id == query.team_id {
+                    if summary.challenge.host_team_id == Some(query.team_id) {
                         "host"
                     } else if summary.challenge.guest_team_id == Some(query.team_id) {
                         "guest"
@@ -263,7 +265,8 @@ impl ChallengeQueryRepository for PostgresChallengeRepository {
                     .to_string(),
                 );
                 summary.can_accept = summary.challenge.status == ChallengeStatus::Open
-                    && summary.challenge.host_team_id != query.team_id;
+                    && summary.challenge.host_team_id != Some(query.team_id)
+                    && summary.challenge.guest_team_id != Some(query.team_id);
                 summary
             })
             .collect())
@@ -302,13 +305,13 @@ impl ChallengeQueryRepository for PostgresChallengeRepository {
                 c.cancelled_at,
                 c.created_at,
                 c.updated_at,
-                host.name AS host_team_name,
-                host.credit_score AS host_team_credit_score,
+                COALESCE(host.name, NULLIF(users.real_name, ''), NULLIF(users.nickname, ''), NULLIF(users.username, ''), '场馆约队') AS host_team_name,
+                COALESCE(host.credit_score, 100) AS host_team_credit_score,
                 CASE
-                    WHEN host.credit_score >= 90 THEN '金牌信用'
-                    WHEN host.credit_score >= 80 THEN '稳定赴约'
-                    WHEN host.credit_score >= 70 THEN '评价稳定'
-                    WHEN host.credit_score >= 60 THEN '活跃新队'
+                    WHEN COALESCE(host.credit_score, 100) >= 90 THEN '金牌信用'
+                    WHEN COALESCE(host.credit_score, 100) >= 80 THEN '稳定赴约'
+                    WHEN COALESCE(host.credit_score, 100) >= 70 THEN '评价稳定'
+                    WHEN COALESCE(host.credit_score, 100) >= 60 THEN '活跃新队'
                     ELSE '风险较高'
                 END AS host_team_trust_label,
                 guest.name AS guest_team_name,
@@ -330,7 +333,8 @@ impl ChallengeQueryRepository for PostgresChallengeRepository {
                 false AS current_user_joined,
                 false AS can_accept
             FROM rs_challenges c
-            INNER JOIN rs_teams host ON host.id = c.host_team_id
+            LEFT JOIN rs_teams host ON host.id = c.host_team_id
+            INNER JOIN rs_user_info users ON users.id = c.host_user_id
             LEFT JOIN rs_teams guest ON guest.id = c.guest_team_id
             WHERE 1 = 1
             "#,
@@ -595,44 +599,70 @@ impl ChallengeCommandRepository for PostgresChallengeRepository {
             return Err(DomainError::Conflict("该约队当前不可接".to_string()));
         }
 
-        sqlx::query(
-            r#"
-            INSERT INTO rs_activity (
-                id, cover, start_time, end_time, holding_date, location, location_latitude, location_longitude,
-                name, opposing, status, description, home_team_id, away_team_id, color, opposing_color,
-                players_per_team, match_kind, source_activity_id, team_registration_count, created_at, updated_at
-            ) VALUES (
-                $1, $2, $3, $4, $5, $6, $7, $8,
-                $9, $10, $11, $12, $13, $14, $15, $16,
-                $17, $18, $19, $20, $21, $22
-            )
-            "#,
+        let existing_activity_id = sqlx::query_scalar::<_, Option<String>>(
+            "SELECT activity_id FROM rs_challenges WHERE id = $1",
         )
-        .bind(&activity.id)
-        .bind(&activity.cover)
-        .bind(activity.start_time)
-        .bind(activity.end_time)
-        .bind(activity.holding_date)
-        .bind(&activity.location)
-        .bind(activity.location_latitude)
-        .bind(activity.location_longitude)
-        .bind(&activity.name)
-        .bind(&activity.opposing)
-        .bind(activity.status as i16)
-        .bind(&activity.description)
-        .bind(activity.home_team_id)
-        .bind(activity.away_team_id)
-        .bind(&activity.color)
-        .bind(&activity.opposing_color)
-        .bind(activity.players_per_team)
-        .bind(activity.match_kind.as_deref().unwrap_or("external"))
-        .bind(&activity.source_activity_id)
-        .bind(activity.team_registration_count)
-        .bind(activity.created_at)
-        .bind(activity.updated_at)
-        .execute(&mut *tx)
+        .bind(challenge_id)
+        .fetch_one(&mut *tx)
         .await
         .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
+
+        if existing_activity_id.is_some() {
+            sqlx::query(
+                r#"
+                UPDATE rs_activity
+                SET opposing = $1,
+                    away_team_id = $2,
+                    updated_at = NOW()
+                WHERE id = $3
+                "#,
+            )
+            .bind(&activity.opposing)
+            .bind(activity.away_team_id)
+            .bind(&activity.id)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
+        } else {
+            sqlx::query(
+                r#"
+                INSERT INTO rs_activity (
+                    id, cover, start_time, end_time, holding_date, location, location_latitude, location_longitude,
+                    name, opposing, status, description, home_team_id, away_team_id, color, opposing_color,
+                    players_per_team, match_kind, source_activity_id, team_registration_count, created_at, updated_at
+                ) VALUES (
+                    $1, $2, $3, $4, $5, $6, $7, $8,
+                    $9, $10, $11, $12, $13, $14, $15, $16,
+                    $17, $18, $19, $20, $21, $22
+                )
+                "#,
+            )
+            .bind(&activity.id)
+            .bind(&activity.cover)
+            .bind(activity.start_time)
+            .bind(activity.end_time)
+            .bind(activity.holding_date)
+            .bind(&activity.location)
+            .bind(activity.location_latitude)
+            .bind(activity.location_longitude)
+            .bind(&activity.name)
+            .bind(&activity.opposing)
+            .bind(activity.status as i16)
+            .bind(&activity.description)
+            .bind(activity.home_team_id)
+            .bind(activity.away_team_id)
+            .bind(&activity.color)
+            .bind(&activity.opposing_color)
+            .bind(activity.players_per_team)
+            .bind(activity.match_kind.as_deref().unwrap_or("external"))
+            .bind(&activity.source_activity_id)
+            .bind(activity.team_registration_count)
+            .bind(activity.created_at)
+            .bind(activity.updated_at)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
+        }
 
         sqlx::query(
             r#"
@@ -685,6 +715,142 @@ impl ChallengeCommandRepository for PostgresChallengeRepository {
             WHERE id = $1
             "#,
         )
+        .bind(challenge_id)
+        .fetch_one(&mut *tx)
+        .await
+        .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
+
+        tx.commit()
+            .await
+            .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
+
+        Ok(Challenge::from(row))
+    }
+
+    async fn accept_as_host_team(
+        &self,
+        challenge_id: &str,
+        host_team_id: i64,
+        accepted_by_user_id: i64,
+        activity: &Activity,
+    ) -> Result<Challenge, DomainError> {
+        let mut tx = self
+            .pool
+            .begin()
+            .await
+            .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
+
+        let row = sqlx::query_as::<_, ChallengeRow>(
+            r#"
+            SELECT
+                id, title, kind, host_team_id, host_user_id, guest_team_id, accepted_by_user_id, activity_id,
+                holding_date, start_time, end_time, location, location_latitude, location_longitude,
+                players_per_team, fee_per_person, note, status, accepted_at, cancelled_at, created_at, updated_at
+            FROM rs_challenges
+            WHERE id = $1
+            FOR UPDATE
+            "#,
+        )
+        .bind(challenge_id)
+        .fetch_optional(&mut *tx)
+        .await
+        .map_err(|e| DomainError::Infrastructure(e.to_string()))?
+        .ok_or_else(|| DomainError::NotFound("约队不存在".to_string()))?;
+
+        let challenge = Challenge::from(row);
+
+        if challenge.status != ChallengeStatus::Open {
+            tx.rollback()
+                .await
+                .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
+            return Err(DomainError::Conflict("该约队当前不可接".to_string()));
+        }
+        if challenge.kind != ChallengeKind::Team || challenge.host_team_id.is_some() {
+            tx.rollback()
+                .await
+                .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
+            return Err(DomainError::Conflict(
+                "已有球队报名，等待另一支球队接约".to_string(),
+            ));
+        }
+
+        sqlx::query(
+            r#"
+            INSERT INTO rs_activity (
+                id, cover, start_time, end_time, holding_date, location, location_latitude, location_longitude,
+                name, opposing, status, description, home_team_id, away_team_id, color, opposing_color,
+                players_per_team, match_kind, source_activity_id, team_registration_count, created_at, updated_at
+            ) VALUES (
+                $1, $2, $3, $4, $5, $6, $7, $8,
+                $9, $10, $11, $12, $13, $14, $15, $16,
+                $17, $18, $19, $20, $21, $22
+            )
+            "#,
+        )
+        .bind(&activity.id)
+        .bind(&activity.cover)
+        .bind(activity.start_time)
+        .bind(activity.end_time)
+        .bind(activity.holding_date)
+        .bind(&activity.location)
+        .bind(activity.location_latitude)
+        .bind(activity.location_longitude)
+        .bind(&activity.name)
+        .bind(&activity.opposing)
+        .bind(activity.status as i16)
+        .bind(&activity.description)
+        .bind(activity.home_team_id)
+        .bind(activity.away_team_id)
+        .bind(&activity.color)
+        .bind(&activity.opposing_color)
+        .bind(activity.players_per_team)
+        .bind(activity.match_kind.as_deref().unwrap_or("external"))
+        .bind(&activity.source_activity_id)
+        .bind(activity.team_registration_count)
+        .bind(activity.created_at)
+        .bind(activity.updated_at)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
+
+        sqlx::query(
+            r#"
+            INSERT INTO rs_user_activity (activity_id, user_id, stand, registration_count, paid, operation_time, created_at, updated_at)
+            SELECT $1, members.user_id, 0, 0, 0, NOW(), NOW(), NOW()
+            FROM (
+                SELECT DISTINCT tm.user_id
+                FROM rs_team_members tm
+                WHERE tm.team_id = $2 AND tm.status = 1
+            ) members
+            WHERE NOT EXISTS (
+                SELECT 1 FROM rs_user_activity ua WHERE ua.activity_id = $1 AND ua.user_id = members.user_id
+            )
+            "#,
+        )
+        .bind(&activity.id)
+        .bind(host_team_id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
+
+        let row = sqlx::query_as::<_, ChallengeRow>(
+            r#"
+            UPDATE rs_challenges
+            SET host_team_id = $1,
+                accepted_by_user_id = $2,
+                activity_id = $3,
+                accepted_at = NOW(),
+                updated_at = NOW()
+            WHERE id = $4
+            RETURNING
+                id, title, kind, host_team_id, host_user_id, guest_team_id, accepted_by_user_id, activity_id,
+                holding_date, start_time, end_time, location, location_latitude, location_longitude,
+                players_per_team, fee_per_person, note, status, accepted_at, cancelled_at, created_at, updated_at
+            "#,
+        )
+        .bind(host_team_id)
+        .bind(accepted_by_user_id)
+        .bind(&activity.id)
         .bind(challenge_id)
         .fetch_one(&mut *tx)
         .await
@@ -789,6 +955,102 @@ impl ChallengeCommandRepository for PostgresChallengeRepository {
             UPDATE rs_challenges
             SET status = $2,
                 accepted_at = CASE WHEN $2 = 'matched' THEN COALESCE(accepted_at, NOW()) ELSE accepted_at END,
+                updated_at = NOW()
+            WHERE id = $1
+            RETURNING
+                id, title, kind, host_team_id, host_user_id, guest_team_id, accepted_by_user_id, activity_id,
+                holding_date, start_time, end_time, location, location_latitude, location_longitude,
+                players_per_team, fee_per_person, note, status, accepted_at, cancelled_at, created_at, updated_at
+            "#,
+        )
+        .bind(challenge_id)
+        .bind(next_status)
+        .fetch_one(&mut *tx)
+        .await
+        .map_err(|error| DomainError::Infrastructure(error.to_string()))?;
+
+        tx.commit()
+            .await
+            .map_err(|error| DomainError::Infrastructure(error.to_string()))?;
+
+        Ok(Challenge::from(row))
+    }
+
+    async fn cancel_individual_acceptance(
+        &self,
+        challenge_id: &str,
+        user_id: i64,
+    ) -> Result<Challenge, DomainError> {
+        let mut tx = self
+            .pool
+            .begin()
+            .await
+            .map_err(|error| DomainError::Infrastructure(error.to_string()))?;
+
+        let challenge = sqlx::query_as::<_, ChallengeRow>(
+            r#"
+            SELECT
+                id, title, kind, host_team_id, host_user_id, guest_team_id, accepted_by_user_id, activity_id,
+                holding_date, start_time, end_time, location, location_latitude, location_longitude,
+                players_per_team, fee_per_person, note, status, accepted_at, cancelled_at, created_at, updated_at
+            FROM rs_challenges
+            WHERE id = $1
+            FOR UPDATE
+            "#,
+        )
+        .bind(challenge_id)
+        .fetch_optional(&mut *tx)
+        .await
+        .map_err(|error| DomainError::Infrastructure(error.to_string()))?
+        .ok_or_else(|| DomainError::NotFound("约队不存在".to_string()))?;
+
+        if challenge.kind != "individual" {
+            tx.rollback()
+                .await
+                .map_err(|error| DomainError::Infrastructure(error.to_string()))?;
+            return Err(DomainError::Validation(
+                "只有散人约队支持取消个人报名".to_string(),
+            ));
+        }
+
+        let delete_result = sqlx::query(
+            "DELETE FROM rs_challenge_individual_acceptances WHERE challenge_id = $1 AND user_id = $2",
+        )
+        .bind(challenge_id)
+        .bind(user_id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|error| DomainError::Infrastructure(error.to_string()))?;
+
+        if delete_result.rows_affected() == 0 {
+            tx.rollback()
+                .await
+                .map_err(|error| DomainError::Infrastructure(error.to_string()))?;
+            return Err(DomainError::Conflict("你还没有报名这场散人约队".to_string()));
+        }
+
+        let accepted_count = sqlx::query_scalar::<_, i64>(
+            r#"
+            SELECT COUNT(*)
+            FROM rs_challenge_individual_acceptances
+            WHERE challenge_id = $1
+            "#,
+        )
+        .bind(challenge_id)
+        .fetch_one(&mut *tx)
+        .await
+        .map_err(|error| DomainError::Infrastructure(error.to_string()))?;
+        let signup_capacity = challenge.players_per_team * 2;
+        let next_status = if accepted_count >= i64::from(signup_capacity) {
+            "matched"
+        } else {
+            "open"
+        };
+
+        let row = sqlx::query_as::<_, ChallengeRow>(
+            r#"
+            UPDATE rs_challenges
+            SET status = $2,
                 updated_at = NOW()
             WHERE id = $1
             RETURNING

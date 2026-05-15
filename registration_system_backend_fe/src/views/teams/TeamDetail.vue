@@ -392,6 +392,7 @@
                 real_name: member.real_name,
                 avatar_url: member.avatar_url,
                 phone_number: member.phone_number,
+                is_venue: false,
                 status: 1,
                 status_label: '',
                 create_time: '',
@@ -609,6 +610,7 @@
                 real_name: member.real_name,
                 avatar_url: member.avatar_url,
                 phone_number: member.phone_number,
+                is_venue: false,
                 status: 1,
                 status_label: '',
                 create_time: '',
@@ -820,6 +822,7 @@
                 real_name: member.real_name,
                 avatar_url: member.avatar_url,
                 phone_number: member.phone_number,
+                is_venue: false,
                 status: 1,
                 status_label: '',
                 create_time: '',
@@ -1219,6 +1222,7 @@ const openSetCaptainModal = () => {
         real_name: captainMember.value.real_name,
         avatar_url: captainMember.value.avatar_url,
         phone_number: captainMember.value.phone_number,
+        is_venue: false,
         status: 1,
         status_label: '',
         create_time: '',
@@ -1297,6 +1301,7 @@ const openSetLeaderModal = () => {
         real_name: leaderMember.value.real_name,
         avatar_url: leaderMember.value.avatar_url,
         phone_number: leaderMember.value.phone_number,
+        is_venue: false,
         status: 1,
         status_label: '',
         create_time: '',
@@ -1371,6 +1376,7 @@ const openSetViceCaptainModal = () => {
         real_name: viceCaptainMember.value.real_name,
         avatar_url: viceCaptainMember.value.avatar_url,
         phone_number: viceCaptainMember.value.phone_number,
+        is_venue: false,
         status: 1,
         status_label: '',
         create_time: '',
@@ -1443,12 +1449,13 @@ const handleEdit = async () => {
 const setRoleDialogRef = ref<InstanceType<typeof TeamSetRoleDialog>>()
 const settingRole = ref(false)
 const setRoleTarget = ref<TeamMemberWithInfo | null>(null)
-const setRoleForm = reactive({ role: 'member', jersey_number: '' })
+const setRoleForm = reactive({ role: 'member', jersey_number: '', is_member: false })
 
 const openSetRoleModal = (member: TeamMemberWithInfo) => {
   setRoleTarget.value = member
   setRoleForm.role = member.role
   setRoleForm.jersey_number = member.jersey_number || ''
+  setRoleForm.is_member = member.is_member
   setRoleDialogRef.value?.showModal()
 }
 
@@ -1460,6 +1467,7 @@ const handleSetRole = async () => {
     await updateMember(teamId.value, setRoleTarget.value.user_id, {
       role: setRoleForm.role,
       jersey_number: setRoleForm.jersey_number || null,
+      is_member: setRoleForm.is_member,
     })
     if (setRoleForm.role === 'captain') {
       await updateTeam(teamId.value, { captain_id: setRoleTarget.value.user_id })

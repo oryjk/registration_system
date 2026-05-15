@@ -239,6 +239,7 @@ pub async fn update_user_by_id_handler(
                 real_name: payload.real_name.as_deref(),
                 avatar_url: payload.avatar_url.as_deref(),
                 is_manager: payload.is_manager,
+                is_venue: payload.is_venue,
                 status: payload.status,
                 leave_start_time: payload.leave_start_time,
                 leave_end_time: payload.leave_end_time,
@@ -438,6 +439,7 @@ pub async fn admin_create_player_handler(
             payload.real_name,
             payload.nickname,
             payload.phone_number,
+            payload.is_venue,
         )
         .await?;
     Ok(Json(ApiResponse::with_message(
@@ -482,6 +484,7 @@ pub async fn admin_update_player_handler(
             crate::user::application::UpdateUserCommand {
                 nickname: payload.nickname.as_deref(),
                 real_name: payload.real_name.as_deref(),
+                is_venue: payload.is_venue,
                 status: payload.status,
                 leave_start_time: payload.freeze_start_time.map(Some),
                 leave_end_time: payload.freeze_end_time,

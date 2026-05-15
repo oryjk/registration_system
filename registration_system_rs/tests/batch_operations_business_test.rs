@@ -390,6 +390,7 @@ impl TeamCommandRepository for FakeTeamStore {
         _user_id: i64,
         _role: &str,
         _jersey_number: Option<&str>,
+        _is_member: bool,
     ) -> Result<(), TeamDomainError> {
         unimplemented!()
     }
@@ -400,6 +401,7 @@ impl TeamCommandRepository for FakeTeamStore {
         _user_id: i64,
         _role: &str,
         _jersey_number: Option<&str>,
+        _is_member: bool,
     ) -> Result<(), TeamDomainError> {
         unimplemented!()
     }
@@ -422,6 +424,7 @@ impl TeamCommandRepository for FakeTeamStore {
         _user_id: i64,
         _role: Option<&str>,
         _jersey_number: Option<Option<&str>>,
+        _is_member: Option<bool>,
     ) -> Result<(), TeamDomainError> {
         unimplemented!()
     }

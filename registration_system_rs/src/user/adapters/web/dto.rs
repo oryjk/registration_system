@@ -20,6 +20,7 @@ pub struct UpdateProfileRequest {
     pub real_name: Option<String>,
     pub avatar_url: Option<String>,
     pub is_manager: Option<bool>,
+    pub is_venue: Option<bool>,
     pub status: Option<i8>,
     pub leave_start_time: Option<Option<chrono::NaiveDateTime>>,
     pub leave_end_time: Option<Option<chrono::NaiveDateTime>>,
@@ -40,6 +41,7 @@ pub struct UserDto {
     pub avatar_url: String,
     pub phone_number: String,
     pub is_manager: bool,
+    pub is_venue: bool,
 }
 
 impl From<User> for UserDto {
@@ -53,6 +55,7 @@ impl From<User> for UserDto {
             avatar_url: value.avatar_url,
             phone_number: value.phone_number,
             is_manager: value.is_manager == 1,
+            is_venue: value.is_venue == 1,
         }
     }
 }
@@ -167,6 +170,7 @@ pub struct PlayerDto {
     pub real_name: String,
     pub avatar_url: String,
     pub phone_number: String,
+    pub is_venue: bool,
     pub status: i8,
     pub status_label: String,
     pub create_time: chrono::NaiveDateTime,
@@ -193,6 +197,7 @@ impl From<PlayerWithTeams> for PlayerDto {
             real_name: v.real_name,
             avatar_url: v.avatar_url,
             phone_number: v.phone_number,
+            is_venue: v.is_venue == 1,
             status: v.status,
             status_label,
             create_time: v.create_time,
@@ -215,6 +220,7 @@ pub struct AdminCreatePlayerRequest {
     pub real_name: String,
     pub nickname: Option<String>,
     pub phone_number: Option<String>,
+    pub is_venue: Option<bool>,
 }
 
 /// 管理员更新球员信息（含冻结管理）
@@ -223,6 +229,7 @@ pub struct AdminUpdatePlayerRequest {
     pub real_name: Option<String>,
     pub nickname: Option<String>,
     pub phone_number: Option<String>,
+    pub is_venue: Option<bool>,
     /// None = 不修改；Some(1) = 解冻/正常；Some(0) = 冻结
     pub status: Option<i8>,
     /// 冻结开始时间，status=0 时必须传

@@ -20,6 +20,8 @@ const emit = defineEmits<{
   (event: "update:modelValue", value: MatchPublishFormModel): void;
   (event: "locationInput"): void;
   (event: "chooseLocation"): void;
+  (event: "timePickerOpen"): void;
+  (event: "timePickerClose"): void;
 }>();
 
 const form = computed({
@@ -58,23 +60,9 @@ const colorOptions = [
 
 const textareaBoxStyle =
   "width:100%;min-height:260rpx;padding:22rpx;border-radius:24rpx;border:2rpx solid #d7ddd2;background:#f4f6f0;--wot-textarea-bg:#f4f6f0;box-shadow:inset 0 2rpx 0 rgba(255,255,255,0.74);box-sizing:border-box;";
-const datetimePickerStyle = "width:100%;display:block;";
-const pickerCellStyle =
-  "width:100%;min-height:88rpx;padding:0 22rpx;border-radius:24rpx;border:2rpx solid #d7ddd2;background:#f4f6f0;box-shadow:inset 0 2rpx 0 rgba(255,255,255,0.74);box-sizing:border-box;";
 const cardTitleStyle = "display:block;font-size:30rpx;font-weight:900;line-height:1.35;color:#111310;";
 const cardCaptionStyle = "display:block;margin-top:8rpx;font-size:24rpx;font-weight:700;line-height:1.45;color:#111310;";
 const formLabelStyle = "display:block;font-size:26rpx;font-weight:800;line-height:1.35;color:#111310;";
-const defaultMatchClock = "20:00";
-
-const matchDateValue = computed({
-  get: () => (form.value.holdingDate ? startOfDay(form.value.holdingDate) : null),
-  set: (value: number | null) => updateMatchDate(value),
-});
-
-const matchClockValue = computed({
-  get: () => (form.value.holdingDate ? formatClock(form.value.holdingDate) : ""),
-  set: (value: string | number) => updateMatchClock(String(value || defaultMatchClock)),
-});
 
 function updateField<K extends keyof MatchPublishFormModel>(key: K, value: MatchPublishFormModel[K]) {
   form.value[key] = value;
@@ -98,47 +86,16 @@ function handleChooseLocation() {
   emit("chooseLocation");
 }
 
+function handleTimePickerOpen() {
+  emit("timePickerOpen");
+}
+
+function handleTimePickerClose() {
+  emit("timePickerClose");
+}
+
 function pad(value: number) {
   return String(value).padStart(2, "0");
-}
-
-function startOfDay(timestamp: number) {
-  const date = new Date(timestamp);
-  date.setHours(0, 0, 0, 0);
-  return date.getTime();
-}
-
-function parseClock(value: string) {
-  const [hourText, minuteText] = value.split(":");
-  const hour = Math.min(Math.max(Number(hourText) || 0, 0), 23);
-  const minute = Math.min(Math.max(Number(minuteText) || 0, 0), 59);
-  return { hour, minute };
-}
-
-function formatClock(timestamp: number) {
-  const date = new Date(timestamp);
-  return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
-}
-
-function combineDateAndClock(dateTimestamp: number, clock: string) {
-  const date = new Date(dateTimestamp);
-  const { hour, minute } = parseClock(clock);
-  date.setHours(hour, minute, 0, 0);
-  return date.getTime();
-}
-
-function updateMatchDate(value: number | null) {
-  if (!value) {
-    updateField("holdingDate", 0);
-    return;
-  }
-
-  updateField("holdingDate", combineDateAndClock(value, matchClockValue.value || defaultMatchClock));
-}
-
-function updateMatchClock(value: string) {
-  const dateTimestamp = form.value.holdingDate || Date.now();
-  updateField("holdingDate", combineDateAndClock(dateTimestamp, value || defaultMatchClock));
 }
 
 function defaultDateTimeValue(offsetHours = 0) {
@@ -147,35 +104,18 @@ function defaultDateTimeValue(offsetHours = 0) {
   return date.getTime();
 }
 
-function displayMatchDate(value: number | number[]) {
-  if (Array.isArray(value) || !value) return "";
+function displayDateTimeLabel(value: number) {
+  if (!value) return "";
   const date = new Date(value);
-  return `${date.getFullYear()}年${pad(date.getMonth() + 1)}月${pad(date.getDate())}日`;
-}
-
-function displayClock(items: Array<{ value: string | number }>) {
-  if (!items.length) return "";
-  const [hour, minute] = items.map((item) => Number(item.value));
-  return `${pad(hour)}:${pad(minute)}`;
+  const weekday = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"][date.getDay()] ?? "";
+  return `${pad(date.getMonth() + 1)}月${pad(date.getDate())}日 ${weekday} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
 function displayDateTime(items: Array<{ value: string | number }>) {
   if (!items.length) return "";
   const [year, month, day, hour, minute] = items.map((item) => Number(item.value));
   const date = new Date(year, month - 1, day, hour, minute);
-  return `${pad(date.getMonth() + 1)}月${pad(date.getDate())}日 ${pad(date.getHours())}:${pad(date.getMinutes())}`;
-}
-
-function formatDateTimeColumn(type: string, value: string) {
-  const unitMap: Record<string, string> = {
-    year: "年",
-    month: "月",
-    date: "日",
-    hour: "时",
-    minute: "分",
-    second: "秒",
-  };
-  return `${value}${unitMap[type] ?? ""}`;
+  return displayDateTimeLabel(date.getTime());
 }
 </script>
 
@@ -267,72 +207,80 @@ function formatDateTimeColumn(type: string, value: string) {
             placeholder-class="create-native-placeholder"
           />
         </view>
-        <view class="create-form-item">
-          <wd-text custom-class="create-form-label" color="#111310" text="比赛日期" />
-          <wd-calendar
-            v-model="matchDateValue"
-            type="date"
-            title="选择比赛日期"
-            placeholder="请选择比赛日期"
-            confirm-text="确定"
-            :display-format="displayMatchDate"
-            :custom-style="pickerCellStyle"
-            custom-class="create-wot-calendar"
-            custom-value-class="create-wot-datetime-value"
-            root-portal
-          />
-        </view>
-        <view class="create-form-item">
-          <wd-text custom-class="create-form-label" color="#111310" text="开球时间" />
-          <wd-datetime-picker
-            v-model="matchClockValue"
-            type="time"
-            title="选择开球时间"
-            placeholder="20:00"
-            confirm-button-text="确定"
-            cancel-button-text="取消"
-            :default-value="defaultMatchClock"
-            :display-format="displayClock"
-            :formatter="formatDateTimeColumn"
-            :custom-style="datetimePickerStyle"
-            custom-class="create-wot-datetime"
-            custom-cell-class="create-wot-datetime-cell"
-            custom-value-class="create-wot-datetime-value"
-          />
-        </view>
-        <view class="create-form-item">
-          <wd-text custom-class="create-form-label" color="#111310" :text="secondTimeLabel" />
-          <wd-datetime-picker
-            v-model="form.startTime"
-            type="datetime"
-            :title="secondTimeTitle"
-            :placeholder="secondTimePlaceholder"
-            confirm-button-text="确定"
-            cancel-button-text="取消"
-            :display-format="displayDateTime"
-            :formatter="formatDateTimeColumn"
-            :custom-style="datetimePickerStyle"
-            custom-class="create-wot-datetime"
-            custom-cell-class="create-wot-datetime-cell"
-            custom-value-class="create-wot-datetime-value"
-          />
-        </view>
-        <view class="create-form-item">
-          <wd-text custom-class="create-form-label" color="#111310" :text="thirdTimeLabel" />
-          <wd-datetime-picker
-            v-model="form.endTime"
-            type="datetime"
-            :title="thirdTimeTitle"
-            :placeholder="thirdTimePlaceholder"
-            confirm-button-text="确定"
-            cancel-button-text="取消"
-            :display-format="displayDateTime"
-            :formatter="formatDateTimeColumn"
-            :custom-style="datetimePickerStyle"
-            custom-class="create-wot-datetime"
-            custom-cell-class="create-wot-datetime-cell"
-            custom-value-class="create-wot-datetime-value"
-          />
+        <view class="create-time-section create-form-item-full">
+          <view class="create-time-grid">
+            <wd-calendar
+              v-model="form.holdingDate"
+              type="datetime"
+              title="选择比赛时间"
+              placeholder="请选择比赛时间"
+              confirm-text="确定"
+              :display-format="displayDateTime"
+              custom-class="create-wot-calendar"
+              root-portal
+              @open="handleTimePickerOpen"
+              @cancel="handleTimePickerClose"
+              @confirm="handleTimePickerClose"
+            >
+              <view class="create-time-tile">
+                <text class="create-time-label">比赛时间</text>
+                <view class="create-time-value-row">
+                  <text :class="['create-time-value', !form.holdingDate ? 'create-time-value-placeholder' : '']">
+                    {{ displayDateTimeLabel(form.holdingDate) || "请选择比赛时间" }}
+                  </text>
+                  <text class="create-time-arrow">›</text>
+                </view>
+              </view>
+            </wd-calendar>
+
+            <wd-calendar
+              v-model="form.startTime"
+              type="datetime"
+              :title="secondTimeTitle"
+              :placeholder="secondTimePlaceholder"
+              confirm-text="确定"
+              :display-format="displayDateTime"
+              custom-class="create-wot-calendar"
+              root-portal
+              @open="handleTimePickerOpen"
+              @cancel="handleTimePickerClose"
+              @confirm="handleTimePickerClose"
+            >
+              <view class="create-time-tile">
+                <text class="create-time-label">{{ secondTimeLabel }}</text>
+                <view class="create-time-value-row">
+                  <text :class="['create-time-value', !form.startTime ? 'create-time-value-placeholder' : '']">
+                    {{ displayDateTimeLabel(form.startTime) || secondTimePlaceholder }}
+                  </text>
+                  <text class="create-time-arrow">›</text>
+                </view>
+              </view>
+            </wd-calendar>
+
+            <wd-calendar
+              v-model="form.endTime"
+              type="datetime"
+              :title="thirdTimeTitle"
+              :placeholder="thirdTimePlaceholder"
+              confirm-text="确定"
+              :display-format="displayDateTime"
+              custom-class="create-wot-calendar"
+              root-portal
+              @open="handleTimePickerOpen"
+              @cancel="handleTimePickerClose"
+              @confirm="handleTimePickerClose"
+            >
+              <view class="create-time-tile">
+                <text class="create-time-label">{{ thirdTimeLabel }}</text>
+                <view class="create-time-value-row">
+                  <text :class="['create-time-value', !form.endTime ? 'create-time-value-placeholder' : '']">
+                    {{ displayDateTimeLabel(form.endTime) || thirdTimePlaceholder }}
+                  </text>
+                  <text class="create-time-arrow">›</text>
+                </view>
+              </view>
+            </wd-calendar>
+          </view>
         </view>
         <view v-if="timeValidMessage" class="create-time-error create-form-item-full">
           {{ timeValidMessage }}
@@ -365,7 +313,7 @@ function formatDateTimeColumn(type: string, value: string) {
         <wd-textarea
           v-model="form.description"
           no-border
-          maxlength="120"
+          :maxlength="120"
           :custom-style="textareaBoxStyle"
           :placeholder="descriptionPlaceholder"
           custom-class="create-wot-textarea"
@@ -626,27 +574,78 @@ function formatDateTimeColumn(type: string, value: string) {
   width: 100%;
 }
 
-.create-wot-datetime {
+.create-time-section {
+  margin-top: 2rpx;
+}
+
+.create-time-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 18rpx;
+}
+
+.create-wot-calendar {
   width: 100%;
   display: block;
 }
 
-:deep(.create-wot-datetime-cell) {
+.create-time-tile {
   width: 100%;
-  min-height: 88rpx;
-  padding: 0 22rpx;
+  min-height: 116rpx;
+  padding: 18rpx 22rpx;
   border-radius: 24rpx;
   border: 2rpx solid #d7ddd2;
   background: #f4f6f0;
   box-shadow: inset 0 2rpx 0 rgba(255, 255, 255, 0.74);
-  color: #171814;
   box-sizing: border-box;
+  display: grid;
+  grid-template-columns: 148rpx minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18rpx;
 }
 
-:deep(.create-wot-datetime-value) {
+.create-time-tile:active {
+  border-color: #aeb8a7;
+  background: #eef2e8;
+}
+
+.create-time-label {
+  display: block;
+  color: #111310;
+  font-size: 28rpx;
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+.create-time-value-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12rpx;
+}
+
+.create-time-value {
+  min-width: 0;
+  flex: 1;
   color: #171814;
   font-size: 28rpx;
   font-weight: 800;
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.create-time-value-placeholder {
+  color: #9aa096;
+}
+
+.create-time-arrow {
+  flex: 0 0 auto;
+  color: #a3aaa0;
+  font-size: 46rpx;
+  font-weight: 500;
+  line-height: 1;
 }
 
 .create-pick-button {

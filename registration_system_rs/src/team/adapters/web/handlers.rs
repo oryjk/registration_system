@@ -368,6 +368,7 @@ pub async fn add_member_handler(
                 user_id: payload.user_id,
                 role: payload.role,
                 jersey_number: payload.jersey_number,
+                is_member: payload.is_member,
             },
         )
         .await
@@ -407,6 +408,7 @@ pub async fn update_member_handler(
             UpdateTeamMemberCommand {
                 role: payload.role,
                 jersey_number: payload.jersey_number,
+                is_member: payload.is_member,
             },
         )
         .await

@@ -39,12 +39,14 @@ pub struct AddTeamMemberRequest {
     pub user_id: i64,
     pub role: Option<String>,
     pub jersey_number: Option<String>,
+    pub is_member: Option<bool>,
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct UpdateTeamMemberRequest {
     pub role: Option<String>,
     pub jersey_number: Option<Option<String>>,
+    pub is_member: Option<bool>,
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
@@ -148,6 +150,7 @@ pub struct TeamMemberDto {
     pub user_id: i64,
     pub role: String,
     pub jersey_number: Option<String>,
+    pub is_member: bool,
     pub joined_at: chrono::NaiveDateTime,
     pub status: i8,
 }
@@ -158,6 +161,7 @@ impl From<TeamMember> for TeamMemberDto {
             user_id: value.user_id,
             role: value.role,
             jersey_number: value.jersey_number,
+            is_member: value.is_member,
             joined_at: value.joined_at,
             status: value.status,
         }
@@ -355,6 +359,7 @@ pub struct TeamMemberWithInfoDto {
     pub role: String,
     pub role_label: String,
     pub jersey_number: Option<String>,
+    pub is_member: bool,
     pub joined_at: chrono::NaiveDateTime,
     pub nickname: String,
     pub real_name: String,
@@ -375,6 +380,7 @@ impl From<TeamMemberWithInfo> for TeamMemberWithInfoDto {
             role: v.role,
             role_label,
             jersey_number: v.jersey_number,
+            is_member: v.is_member,
             joined_at: v.joined_at,
             nickname: v.nickname,
             real_name: v.real_name,

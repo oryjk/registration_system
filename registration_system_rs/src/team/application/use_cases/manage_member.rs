@@ -61,6 +61,7 @@ impl ManageMemberUseCase {
                         command.user_id,
                         command.role.as_deref().unwrap_or("member"),
                         command.jersey_number.as_deref(),
+                        command.is_member.unwrap_or(false),
                     )
                     .await
                     .map_err(|error| {
@@ -74,6 +75,7 @@ impl ManageMemberUseCase {
                         command.user_id,
                         command.role.as_deref().unwrap_or("member"),
                         command.jersey_number.as_deref(),
+                        command.is_member.unwrap_or(false),
                     )
                     .await
                     .map_err(|error| match error {
@@ -196,6 +198,7 @@ impl ManageMemberUseCase {
                 target_user_id,
                 command.role.as_deref(),
                 command.jersey_number.as_ref().map(|value| value.as_deref()),
+                command.is_member,
             )
             .await
             .map_err(|error| TeamApplicationError::internal(format!("更新成员失败: {error}")))

@@ -16,6 +16,16 @@ export interface TeamProfileViewModel {
   isVip: boolean;
 }
 
+export type CurrentIdentityKind = "team" | "venue";
+
+export interface CurrentIdentityViewModel {
+  kind: CurrentIdentityKind;
+  id: string;
+  label: string;
+  roleLabel: string;
+  teamId?: number;
+}
+
 export interface HomeMatchCardViewModel {
   id: string;
   title: string;

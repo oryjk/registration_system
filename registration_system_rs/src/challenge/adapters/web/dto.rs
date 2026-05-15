@@ -10,7 +10,7 @@ use utoipa::{IntoParams, ToSchema};
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct CreateChallengeRequest {
     pub kind: String,
-    pub host_team_id: i64,
+    pub host_team_id: Option<i64>,
     pub title: String,
     pub holding_date: chrono::NaiveDateTime,
     pub start_time: chrono::NaiveDateTime,
@@ -78,7 +78,7 @@ pub struct ChallengeDto {
     pub id: String,
     pub title: String,
     pub kind: ChallengeKindDto,
-    pub host_team_id: i64,
+    pub host_team_id: Option<i64>,
     pub host_user_id: i64,
     pub guest_team_id: Option<i64>,
     pub accepted_by_user_id: Option<i64>,

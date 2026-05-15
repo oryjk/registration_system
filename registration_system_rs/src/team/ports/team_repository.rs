@@ -95,6 +95,7 @@ pub trait TeamCommandRepository: Send + Sync {
         user_id: i64,
         role: &str,
         jersey_number: Option<&str>,
+        is_member: bool,
     ) -> Result<(), DomainError>;
     async fn reactivate_member(
         &self,
@@ -102,6 +103,7 @@ pub trait TeamCommandRepository: Send + Sync {
         user_id: i64,
         role: &str,
         jersey_number: Option<&str>,
+        is_member: bool,
     ) -> Result<(), DomainError>;
     async fn remove_member(&self, team_id: i64, user_id: i64) -> Result<(), DomainError>;
     async fn batch_remove_members(
@@ -115,6 +117,7 @@ pub trait TeamCommandRepository: Send + Sync {
         user_id: i64,
         role: Option<&str>,
         jersey_number: Option<Option<&str>>,
+        is_member: Option<bool>,
     ) -> Result<(), DomainError>;
     async fn batch_update_member_status(
         &self,

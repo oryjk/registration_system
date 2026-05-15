@@ -22,6 +22,13 @@ export function cancelIndividualRegistration(activityId: string) {
   });
 }
 
+export function submitIndividualLeave(activityId: string) {
+  return updateMyStand(activityId, {
+    stand: 2,
+    registration_count: 0,
+  });
+}
+
 export function submitTeamRegistrationForMatch(activityId: string, teamId: number, registrationCount: number) {
   return submitTeamRegistration(activityId, {
     team_id: teamId,

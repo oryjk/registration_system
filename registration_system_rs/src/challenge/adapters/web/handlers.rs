@@ -189,3 +189,21 @@ pub async fn cancel_challenge_handler(
         ChallengeDto::from(challenge),
     )))
 }
+
+pub async fn cancel_individual_acceptance_handler(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(challenge_id): Path<String>,
+) -> Result<Json<ApiResponse<ChallengeDto>>, HttpError> {
+    let actor = state.actor(&headers)?;
+    let challenge = state
+        .services
+        .challenge_service
+        .cancel_individual_acceptance(&actor, &challenge_id)
+        .await?;
+
+    Ok(Json(ApiResponse::with_message(
+        "散人报名已取消",
+        ChallengeDto::from(challenge),
+    )))
+}

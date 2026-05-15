@@ -43,6 +43,7 @@ impl ManagePlayerUseCase {
         real_name: String,
         nickname: Option<String>,
         phone_number: Option<String>,
+        is_venue: Option<bool>,
     ) -> Result<User, AppError> {
         ensure_admin(actor)?;
         if real_name.trim().is_empty() {
@@ -53,6 +54,7 @@ impl ManagePlayerUseCase {
         let mut user = User::new(open_id, None, None, nickname, None);
         user.real_name = real_name.trim().to_string();
         user.phone_number = phone_number.unwrap_or_default();
+        user.is_venue = if is_venue.unwrap_or(false) { 1 } else { 0 };
 
         self.command_repository
             .create(&user)

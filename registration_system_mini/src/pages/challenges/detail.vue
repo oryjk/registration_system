@@ -1,28 +1,35 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { onLoad } from "@dcloudio/uni-app";
+import { onLoad, onUnload } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
-import { acceptChallenge, cancelChallenge, getChallengeDetail } from "@/api/challenge";
+import { acceptChallenge, cancelChallenge, cancelIndividualChallengeAcceptance, getChallengeDetail } from "@/api/challenge";
 import { useTeamContext } from "@/stores/teamContext";
 import type { BackendChallenge, BackendChallengeDetail } from "@/types/backend";
 import { getCustomNavMetrics } from "@/utils/customNav";
+import { isOpenLocationSupported } from "@/utils/location";
+import { getAppPlatform } from "@/utils/systemInfo";
 import { buildChallengeCards } from "@/utils/viewModels";
 import ChallengeActions from "./components/ChallengeActions.vue";
 import ChallengeDetailSkeleton from "./components/ChallengeDetailSkeleton.vue";
 import ChallengeHeroCard from "./components/ChallengeHeroCard.vue";
-import ChallengeIndividualProgressCard from "./components/ChallengeIndividualProgressCard.vue";
+import ChallengeIndividualRegistration from "./components/ChallengeIndividualRegistration.vue";
 import ChallengeInfoCard from "./components/ChallengeInfoCard.vue";
 import ChallengeTeamProgressCard from "./components/ChallengeTeamProgressCard.vue";
 import { buildIndividualParticipantPreview } from "./detailState";
+import { formatCountdown } from "../matches/detailState";
 
 const { currentTeam, currentUser, ensureSessionReady } = useTeamContext();
 const navMetrics = getCustomNavMetrics();
+const canUseOpenLocation = isOpenLocationSupported(getAppPlatform());
 
 const challengeId = ref("");
 const isLoading = ref(false);
 const actionLoading = ref(false);
 const errorMessage = ref("");
 const detail = ref<BackendChallengeDetail | null>(null);
+const nowTick = ref(Date.now());
+
+let countdownTimer: ReturnType<typeof setInterval> | null = null;
 
 const card = computed(() => {
   if (!detail.value) return null;
@@ -53,16 +60,27 @@ const card = computed(() => {
 const canCancel = computed(
   () =>
     !!detail.value &&
-    !!currentTeam.value &&
-    currentTeam.value.canManageTeam &&
-    detail.value.summary.challenge.host_team_id === currentTeam.value.id &&
-    detail.value.summary.challenge.status === "open",
+    detail.value.summary.challenge.status === "open" &&
+    ((!!currentTeam.value &&
+      currentTeam.value.canManageTeam &&
+      detail.value.summary.challenge.host_team_id === currentTeam.value.id) ||
+      (detail.value.summary.challenge.host_team_id == null &&
+        detail.value.summary.challenge.host_user_id === currentUser.value?.id &&
+        !!currentUser.value?.is_venue)),
+);
+const canCancelIndividualAcceptance = computed(
+  () =>
+    !!detail.value &&
+    detail.value.summary.challenge.kind === "individual" &&
+    detail.value.summary.current_user_joined &&
+    detail.value.summary.challenge.status !== "cancelled",
 );
 const canAccept = computed(() => !!card.value?.canAccept);
 const individualProgressPercent = computed(() => {
   if (!card.value || card.value.kind !== "individual") return 0;
   return Math.min(100, Math.round((card.value.acceptedCount / Math.max(card.value.capacity, 1)) * 100));
 });
+const individualProgressWidth = computed(() => `${individualProgressPercent.value}%`);
 const individualRemainingCount = computed(() => {
   if (!card.value || card.value.kind !== "individual") return 0;
   return Math.max(card.value.capacity - card.value.acceptedCount, 0);
@@ -76,6 +94,26 @@ const individualAvatarNote = computed(() => {
   const hiddenCount = Math.max(card.value.acceptedCount - individualParticipantPreview.value.length, 0);
   return hiddenCount > 0 ? `已显示 ${individualParticipantPreview.value.length} 人，另有 ${hiddenCount} 人` : "已报名球员";
 });
+const individualActionLabel = computed(() => {
+  if (actionLoading.value) return "处理中...";
+  if (!card.value) return "立即报名";
+  if (card.value.currentUserJoined) return "取消报名";
+  if (!canAccept.value) return individualRemainingCount.value <= 0 ? "已满员" : "暂不可报名";
+  return "立即报名";
+});
+const challengeStartTimestamp = computed(() => {
+  const challenge = detail.value?.summary.challenge;
+  if (!challenge) return 0;
+  return new Date((challenge.start_time || challenge.holding_date).replace(" ", "T")).getTime();
+});
+const individualCountdownText = computed(() => formatCountdown(challengeStartTimestamp.value - nowTick.value));
+const pageTitle = computed(() => (card.value?.kind === "individual" ? "散人报名" : "约队详情"));
+const canOpenChallengeLocation = computed(
+  () =>
+    !!detail.value &&
+    detail.value.summary.challenge.location_latitude != null &&
+    detail.value.summary.challenge.location_longitude != null,
+);
 const pageStyle = computed(() => ({
   paddingTop: `${navMetrics.pageTopPadding + 8}px`,
 }));
@@ -99,6 +137,13 @@ function applyAcceptedChallengeDetail(challenge: BackendChallenge) {
   if (!detail.value) return;
 
   const isIndividual = challenge.kind === "individual";
+  const activityHomeTeamId = challenge.host_team_id ?? challenge.guest_team_id ?? null;
+  const activityAwayTeamId = challenge.host_team_id != null ? challenge.guest_team_id ?? null : null;
+  const isTeamReservedByCurrentTeam =
+    !isIndividual &&
+    challenge.status === "open" &&
+    challenge.host_team_id === currentTeam.value?.id &&
+    !challenge.guest_team_id;
   const existingParticipants = detail.value.individual_participants ?? [];
   const individualParticipants =
     isIndividual && currentUser.value && !existingParticipants.some((item) => item.user_id === currentUser.value?.id)
@@ -117,10 +162,13 @@ function applyAcceptedChallengeDetail(challenge: BackendChallenge) {
     summary: {
       ...detail.value.summary,
       challenge,
-      guest_team_name: isIndividual ? detail.value.summary.guest_team_name : currentTeam.value?.name ?? detail.value.summary.guest_team_name,
-      guest_team_credit_score: isIndividual ? detail.value.summary.guest_team_credit_score : currentTeam.value?.creditScore ?? detail.value.summary.guest_team_credit_score,
-      guest_team_trust_label: isIndividual ? detail.value.summary.guest_team_trust_label : currentTeam.value?.trustLabel ?? detail.value.summary.guest_team_trust_label,
-      current_team_relation: isIndividual ? detail.value.summary.current_team_relation : "guest",
+      host_team_name: isTeamReservedByCurrentTeam ? currentTeam.value?.name ?? detail.value.summary.host_team_name : detail.value.summary.host_team_name,
+      host_team_credit_score: isTeamReservedByCurrentTeam ? currentTeam.value?.creditScore ?? detail.value.summary.host_team_credit_score : detail.value.summary.host_team_credit_score,
+      host_team_trust_label: isTeamReservedByCurrentTeam ? currentTeam.value?.trustLabel ?? detail.value.summary.host_team_trust_label : detail.value.summary.host_team_trust_label,
+      guest_team_name: isIndividual || isTeamReservedByCurrentTeam ? detail.value.summary.guest_team_name : currentTeam.value?.name ?? detail.value.summary.guest_team_name,
+      guest_team_credit_score: isIndividual || isTeamReservedByCurrentTeam ? detail.value.summary.guest_team_credit_score : currentTeam.value?.creditScore ?? detail.value.summary.guest_team_credit_score,
+      guest_team_trust_label: isIndividual || isTeamReservedByCurrentTeam ? detail.value.summary.guest_team_trust_label : currentTeam.value?.trustLabel ?? detail.value.summary.guest_team_trust_label,
+      current_team_relation: isIndividual ? detail.value.summary.current_team_relation : isTeamReservedByCurrentTeam ? "host" : "guest",
       accepted_count: isIndividual ? detail.value.summary.accepted_count + 1 : detail.value.summary.accepted_count,
       current_user_joined: isIndividual ? true : detail.value.summary.current_user_joined,
       can_accept: false,
@@ -133,8 +181,8 @@ function applyAcceptedChallengeDetail(challenge: BackendChallenge) {
           start_time: challenge.start_time,
           end_time: challenge.end_time,
           location: challenge.location,
-          home_team_id: challenge.host_team_id,
-          away_team_id: challenge.guest_team_id,
+          home_team_id: activityHomeTeamId,
+          away_team_id: activityAwayTeamId,
           players_per_team: challenge.players_per_team,
         }
       : detail.value.activity,
@@ -155,8 +203,42 @@ function applyCancelledChallengeDetail(challenge: BackendChallenge) {
   };
 }
 
+function applyCancelledIndividualAcceptanceDetail(challenge: BackendChallenge) {
+  if (!detail.value) return;
+  const userId = currentUser.value?.id;
+
+  detail.value = {
+    ...detail.value,
+    summary: {
+      ...detail.value.summary,
+      challenge,
+      accepted_count: Math.max(detail.value.summary.accepted_count - 1, 0),
+      current_user_joined: false,
+      can_accept: challenge.status === "open",
+    },
+    individual_participants: userId
+      ? detail.value.individual_participants.filter((item) => item.user_id !== userId)
+      : detail.value.individual_participants,
+  };
+}
+
 async function handleAccept() {
   if (!card.value || !canAccept.value || actionLoading.value) return;
+
+  const confirmed = await new Promise<boolean>((resolve) => {
+    uni.showModal({
+      title: card.value?.kind === "team" ? "确认接约" : "确认报名",
+      content:
+        card.value?.kind === "team"
+          ? `确认以当前球队接约「${card.value?.title ?? "约队"}」？`
+          : `确认报名参加「${card.value?.title ?? "散人约队"}」？`,
+      confirmText: card.value?.kind === "team" ? "确认接约" : "确认报名",
+      cancelText: "再想想",
+      success: (result) => resolve(!!result.confirm),
+      fail: () => resolve(false),
+    });
+  });
+  if (!confirmed) return;
 
   actionLoading.value = true;
   try {
@@ -197,9 +279,66 @@ async function handleCancel() {
   }
 }
 
+async function handleCancelIndividualAcceptance() {
+  if (!canCancelIndividualAcceptance.value || actionLoading.value) return;
+
+  uni.showModal({
+    title: "确认取消报名",
+    content: `确认取消「${card.value?.title ?? "散人约队"}」的报名？取消后可重新报名。`,
+    confirmText: "取消报名",
+    cancelText: "再想想",
+    success: async (result) => {
+      if (!result.confirm) return;
+      actionLoading.value = true;
+      try {
+        const challenge = await cancelIndividualChallengeAcceptance(challengeId.value);
+        applyCancelledIndividualAcceptanceDetail(challenge);
+        uni.showToast({
+          title: "已取消报名",
+          icon: "none",
+        });
+      } catch (error) {
+        uni.showToast({
+          title: error instanceof Error ? error.message : "取消报名失败",
+          icon: "none",
+        });
+      } finally {
+        actionLoading.value = false;
+      }
+    },
+  });
+}
+
 function openActivities() {
   uni.switchTab({
     url: "/pages/activities/index",
+  });
+}
+
+function openChallengeLocation() {
+  const challenge = detail.value?.summary.challenge;
+  if (!challenge || challenge.location_latitude == null || challenge.location_longitude == null) {
+    uni.showToast({
+      title: "暂无可打开的地图定位",
+      icon: "none",
+    });
+    return;
+  }
+
+  if (!canUseOpenLocation) {
+    uni.showToast({
+      title: "开发者工具不支持地图打开，请真机测试",
+      icon: "none",
+      duration: 2800,
+    });
+    return;
+  }
+
+  uni.openLocation({
+    latitude: Number(challenge.location_latitude),
+    longitude: Number(challenge.location_longitude),
+    name: challenge.title,
+    address: challenge.location,
   });
 }
 
@@ -209,42 +348,71 @@ function openMatchDetail(matchId: string) {
   });
 }
 
+function startCountdownTimer() {
+  if (countdownTimer) clearInterval(countdownTimer);
+  countdownTimer = setInterval(() => {
+    nowTick.value = Date.now();
+  }, 1000);
+}
+
 onLoad((options) => {
   challengeId.value = options?.id ?? "";
+  startCountdownTimer();
   void loadPageData();
+});
+
+onUnload(() => {
+  if (countdownTimer) {
+    clearInterval(countdownTimer);
+    countdownTimer = null;
+  }
 });
 </script>
 
 <template>
   <view class="challenge-detail-page" :style="pageStyle">
-    <AppTabHeader title="约队详情" showBack />
+    <AppTabHeader :title="pageTitle" showBack />
 
     <view v-if="errorMessage" class="challenge-empty">{{ errorMessage }}</view>
     <ChallengeDetailSkeleton v-else-if="isLoading" />
 
     <view v-if="detail && card">
-      <ChallengeHeroCard :card="card" />
-      <ChallengeInfoCard :card="card" :detail="detail" />
-      <ChallengeTeamProgressCard v-if="card.kind === 'team'" :detail="detail" />
-      <ChallengeIndividualProgressCard
-        v-else
+      <ChallengeIndividualRegistration
+        v-if="card.kind === 'individual'"
         :card="card"
-        :individual-progress-percent="individualProgressPercent"
+        :action-label="individualActionLabel"
+        :can-accept="canAccept"
+        :can-cancel-individual-acceptance="canCancelIndividualAcceptance"
+        :action-loading="actionLoading"
+        :countdown-text="individualCountdownText"
+        :progress-width="individualProgressWidth"
         :individual-remaining-count="individualRemainingCount"
         :individual-participant-preview="individualParticipantPreview"
         :individual-avatar-note="individualAvatarNote"
-      />
-      <ChallengeActions
-        :activity="detail.activity"
-        :card="card"
-        :can-accept="canAccept"
-        :can-cancel="canCancel"
-        :action-loading="actionLoading"
-        @open-activities="openActivities"
-        @open-match-detail="openMatchDetail"
+        :can-open-location="canOpenChallengeLocation"
         @accept="handleAccept"
-        @cancel="handleCancel"
+        @cancel-individual-acceptance="handleCancelIndividualAcceptance"
+        @open-location="openChallengeLocation"
+        @open-activities="openActivities"
       />
+      <template v-else>
+        <ChallengeHeroCard :card="card" />
+        <ChallengeInfoCard :card="card" :detail="detail" />
+        <ChallengeTeamProgressCard :detail="detail" />
+        <ChallengeActions
+          :activity="detail.summary.challenge.status === 'matched' ? detail.activity : null"
+          :card="card"
+          :can-accept="canAccept"
+          :can-cancel="canCancel"
+          :can-cancel-individual-acceptance="canCancelIndividualAcceptance"
+          :action-loading="actionLoading"
+          @open-activities="openActivities"
+          @open-match-detail="openMatchDetail"
+          @accept="handleAccept"
+          @cancel="handleCancel"
+          @cancel-individual-acceptance="handleCancelIndividualAcceptance"
+        />
+      </template>
     </view>
   </view>
 </template>

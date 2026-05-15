@@ -192,3 +192,158 @@
 - `registration_system_rs/migrations/20260514000100_rename_activity_order_to_fee_snapshots.sql`
 - `registration_system_rs/tests/activity_fee_snapshot_schema_test.rs`
 - `registration_system_rs/src/billing/application/use_cases/activity_fee_snapshots.rs`
+
+## 2026-05-14 队员会员标识
+
+目标：为球队内队员增加独立的“是否会员”标识，并在小程序与管理端队员信息展示/编辑处区分会员与普通队员。
+
+阶段：
+1. [completed] 盘点后端 `rs_team_members`、TeamMember DTO、仓储和前端队员管理入口
+2. [completed] 后端新增 `rs_team_members.is_member` 并贯通 add/update/list 接口
+3. [completed] 小程序队员添加、编辑、列表展示同步 `is_member`
+4. [completed] 管理端队员详情与设置弹窗同步 `is_member`
+5. [completed] 执行后端、小程序、管理端最小充分验证
+
+约束：
+
+- `team.is_vip` / `team_membership` 仍表示球队会员/球队续费，不与队员会员混用。
+- 新字段挂在 `rs_team_members`，命名为 `is_member`。
+- 前端普通 UI 修改不按 TDD；后端字段和接口行为需要补充或运行相关验证。
+
+## 2026-05-15 小程序报名详情三栏头像列表
+
+目标：保留比赛报名详情页“报名 / 请假 / 未报名”三栏状态，同时把人员列表调整回已有报名详情的轻量头像栈样式。
+
+阶段：
+1. [completed] 对照现有报名详情头像栈视觉语言
+2. [completed] 将三栏人员展示从胶囊卡片改为叠放头像
+3. [completed] 当前用户用描边和“我”标记突出
+4. [completed] 点击头像后在对应区域显示姓名和状态，再点同一头像收起
+5. [completed] 选中头像增加轻微放大和上浮动效
+6. [completed] 执行小程序 `bun run type-check`
+
+## 2026-05-15 小程序散人约队报名页对齐比赛报名
+
+目标：散人约队详情中的报名页对齐比赛报名页风格和操作，只是不展示球队三栏状态卡。
+
+阶段：
+1. [completed] 散人约队单独分流，球队约队详情保持原结构
+2. [completed] 新增比赛报名式散人个人报名视图
+3. [completed] 报名/取消报名操作收敛到报名截止卡内部
+4. [completed] 散人约队详情页标题改为“比赛报名”
+5. [completed] 执行小程序 `bun run type-check`
+
+## 2026-05-15 场馆角色与约队发布权限
+
+目标：新增“场馆”发布主体/角色，使场馆也可以发布球队约队和散人约队，同时保留现有队长/领队发布权限。
+
+阶段：
+1. [completed] 阅读根目录、小程序、后端、管理端协作文档与现有工作文档
+2. [completed] 盘点小程序约队大厅、发布入口、球队上下文与散人约队创建页
+3. [completed] 盘点后端 challenge 创建 DTO、use case、repository 与数据库约束
+4. [completed] 盘点用户/球员管理字段和管理端可编辑入口
+5. [completed] 按方案 B 新增用户级 `is_venue` 叠加身份
+6. [completed] 后端允许场馆用户在不绑定球队的情况下发布球队约队和散人约队
+7. [completed] 小程序发布入口、创建页和约队详情同步场馆权限
+8. [completed] 管理端球员列表/编辑弹窗支持查看和维护场馆身份
+9. [completed] 执行后端、小程序、管理端最小充分验证
+
+约束：
+
+- `is_venue` 是用户的附加身份，不与球员/队员身份互斥；场馆用户仍可报名散人约队和参与现有球队/活动流程。
+- `host_team_id = NULL` 只表示场馆发布；`host_team_id = Some(team_id)` 仍沿用队长/领队权限。
+- 场馆发布的球队约队采用两阶段撮合：第一支球队报名后继续保持 `open`，写入 `host_team_id` 并生成“等待对手”的活动；第二支球队接约后更新同一活动为 `home_team_id vs away_team_id`。
+
+## 2026-05-15 小程序当前发布身份切换
+
+目标：在小程序“我的”页新增当前身份切换，让用户可在可管理球队身份和场馆身份之间切换；约队创建统一读取当前身份决定是否传 `host_team_id`。
+
+阶段：
+1. [completed] 盘点 `appSession`、当前球队切换、我的页头像卡和约队创建页
+2. [completed] 新增当前身份 view model、派生规则和本地持久化
+3. [completed] 在“我的”页 `MineHeroProfile` 增加当前身份切换 UI
+4. [completed] 约队大厅发布权限改为读取 `currentIdentity`
+5. [completed] 球队约队与散人约队创建页统一读取 `currentIdentity`，球队身份传 `host_team_id`，场馆身份不传
+6. [completed] 更新小程序目标测试并执行类型检查
+
+约束：
+
+- 当前身份只表达“发布主体”，只包含可管理球队和场馆；普通队员参与报名仍走当前球队/当前用户，不需要切换成发布身份。
+- 用户选择场馆身份后，切换当前球队不会自动覆盖场馆身份；用户选择球队身份后，切换到另一支可管理球队会跟随到该球队身份。
+
+## 2026-05-15 我的页钱包接口性能拆分
+
+目标：排查 `/api/order/my-billing-flow` 耗时原因，避免该重接口阻塞小程序“我的”页首屏和“我的钱包”卡片展示。
+
+阶段：
+1. [completed] 定位小程序“我的”页是否调用 `getMyBillingFlow`
+2. [completed] 定位后端 `/api/order/my-billing-flow` handler/use case/repository
+3. [completed] 检查当前数据库执行计划和账单相关索引
+4. [completed] 新增最近流水查询复合索引迁移
+5. [completed] “我的”页钱包卡片移除 `getMyBillingFlow`，只保留余额摘要和查看账单入口
+6. [completed] 保留账单二级页继续加载明细流水
+7. [completed] 执行后端 schema 测试、小程序目标测试、类型检查和迁移
+
+约束：
+
+- `/api/order/my-billing-flow` 仍用于账单明细页；本轮不改变接口返回结构，避免影响管理端或已有账单页面。
+- “我的”页只调用轻量 `/api/account/balance` 展示余额和累计扣费，明细放到 `/pages/billing/index` 二级页。
+
+## 2026-05-15 首页约队机会排序与详情跳转
+
+目标：修正小程序首页“约队机会”列表顺序，并支持点击任意约队卡片进入约队详情。
+
+阶段：
+1. [completed] 定位首页约队机会数据来源与卡片组件
+2. [completed] 将首页约队列表请求从信用分排序改为比赛时间倒序
+3. [completed] 在前端过滤运行配置后再次按日期和开始时间倒序排序，再截取首页展示数量
+4. [completed] 给首页约队卡片增加点击事件并跳转 `/pages/challenges/detail`
+5. [completed] 更新小程序静态测试并执行目标测试、类型检查和小程序构建
+
+约束：
+
+- 本轮只改小程序首页展示和跳转，不改变约队大厅排序筛选和后端接口结构。
+- 日期倒序按 `holding_date` 降序，同一天再按 `start_time` 降序。
+
+## 2026-05-15 小程序首页配色微调
+
+目标：在不改变页面结构、模板和业务逻辑的前提下，把首页从“纯黑 + 荧光绿”的高刺激配色调整为更耐看的暖黑/草地绿/雾灰体系。
+
+阶段：
+1. [completed] 先制作静态配色稿 `docs/home-color-preview.html`
+2. [completed] 用户确认只改配色，不改代码结构
+3. [completed] 调整首页背景、banner、比赛卡片、约队机会和球队数据卡配色
+4. [completed] 执行小程序类型检查、构建和空白差异检查
+
+约束：
+
+- 只修改样式颜色相关值，不改模板结构、脚本逻辑、接口、排序、跳转或组件边界。
+
+## 2026-05-15 小程序首页字体排版微调
+
+目标：在已确认的首页配色基础上，优化字体层级，让页面从“全部极粗”变为标题、正文、标签和按钮各有不同权重。
+
+阶段：
+1. [completed] 复制配色稿并制作字体排版静态稿 `docs/home-typography-preview.html`
+2. [completed] 用户确认字体排版方向
+3. [completed] 调整首页标题、banner、比赛卡、约队卡和数据卡的字号、字重与行高
+4. [completed] 执行小程序类型检查、构建和空白差异检查
+
+约束：
+
+- 不引入自定义字体；只使用系统字体并调整 `font-size`、`font-weight`、`line-height` 和 `letter-spacing`。
+- 不改模板结构、脚本逻辑、接口、排序、跳转或组件边界。
+
+## 2026-05-15 散人报名详情重复标签移除
+
+目标：移除散人约队详情页 header 下方重复的“散人报名”胶囊，保留顶部 header 作为页面身份表达。
+
+阶段：
+1. [completed] 定位重复区域在 `ChallengeIndividualRegistration.vue`
+2. [completed] 增加静态测试约束散人报名组件不再渲染重复 tabs
+3. [completed] 删除重复 tabs 模板和对应样式
+4. [completed] 执行目标测试、小程序类型检查、构建和空白差异检查
+
+约束：
+
+- 不改变散人报名卡片、报名/取消报名逻辑、接口和页面 header 标题。

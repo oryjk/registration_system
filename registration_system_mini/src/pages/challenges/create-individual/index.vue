@@ -1,14 +1,15 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from "vue";
-import { onShow } from "@dcloudio/uni-app";
+import { onLoad, onShow } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
 import { createChallenge } from "@/api/challenge";
 import { useTeamContext } from "@/stores/teamContext";
 import { getCustomNavMetrics } from "@/utils/customNav";
 
-const { currentTeam, ensureSessionReady } = useTeamContext();
+const { currentIdentity, ensureSessionReady } = useTeamContext();
 const navMetrics = getCustomNavMetrics();
 const submitting = ref(false);
+const challengeKind = ref<"team" | "individual">("individual");
 
 const form = reactive({
   title: "周三晚散人局",
@@ -24,10 +25,19 @@ const form = reactive({
 const pageStyle = computed(() => ({
   paddingTop: `${navMetrics.pageTopPadding + 8}px`,
 }));
+const heroCopy = computed(() => {
+  if (challengeKind.value === "individual") {
+    return "散人约队同一时间只能接一场，发布后球员可直接报名。";
+  }
+
+  return currentIdentity.value?.kind === "venue"
+    ? "场馆发布后，两支球队可以依次应战，第一支球队占位后会先生成等待对手的比赛。"
+    : "球队发布后，其他球队队长或领队可以接约。";
+});
 
 const canSubmit = computed(
   () =>
-    !!currentTeam.value?.canManageTeam &&
+    !!currentIdentity.value &&
     !!form.title.trim() &&
     !!form.date &&
     !!form.startTime &&
@@ -66,8 +76,12 @@ function handleFormatChange(event: Event) {
   form.playersPerTeam = Number(detail.detail?.value ?? 1) === 0 ? "5" : "8";
 }
 
+function canPublishChallenge() {
+  return !!currentIdentity.value;
+}
+
 function validateForm() {
-  if (!currentTeam.value?.canManageTeam) return "只有队长或领队可以发布散人约队";
+  if (!canPublishChallenge()) return "请先在我的页面选择球队或场馆身份";
   if (!form.title.trim() || !form.date || !form.location.trim()) return "请补全标题、日期和场地";
 
   const playersPerTeam = Number(form.playersPerTeam || 0);
@@ -85,9 +99,9 @@ async function handleSubmit() {
   if (submitting.value) return;
 
   const message = validateForm();
-  if (message || !currentTeam.value) {
+  if (message) {
     uni.showToast({
-      title: message || "请先选择球队",
+      title: message,
       icon: "none",
     });
     return;
@@ -97,8 +111,8 @@ async function handleSubmit() {
   submitting.value = true;
   try {
     const challenge = await createChallenge({
-      kind: "individual",
-      host_team_id: currentTeam.value.id,
+      kind: challengeKind.value,
+      host_team_id: currentIdentity.value?.kind === "team" ? currentIdentity.value.teamId : undefined,
       title: form.title.trim(),
       holding_date: combineDateTime(form.date, form.startTime),
       start_time: combineDateTime(form.date, form.startTime),
@@ -110,7 +124,7 @@ async function handleSubmit() {
     });
 
     uni.showToast({
-      title: "散人约队已发布",
+      title: challengeKind.value === "team" ? "球队约队已发布" : "散人约队已发布",
       icon: "none",
     });
     uni.redirectTo({
@@ -132,17 +146,32 @@ onShow(async () => {
     form.date = defaultPublishDate();
   }
 });
+
+onLoad((options) => {
+  challengeKind.value = options?.kind === "team" ? "team" : "individual";
+  if (challengeKind.value === "team" && form.title === "周三晚散人局") {
+    form.title = "周三晚球队约队";
+  }
+});
 </script>
 
 <template>
   <view class="individual-create-page" :style="pageStyle">
-    <AppTabHeader title="散人约队" showBack />
+    <AppTabHeader :title="challengeKind === 'team' ? '球队约队' : '散人约队'" showBack />
 
     <view class="create-hero">
       <view>
-        <wd-text custom-class="create-hero-tag" color="#111310" text="散人约队" />
-        <wd-text custom-class="create-hero-title" color="#111310" :text="currentTeam?.name || '当前球队'" />
-        <wd-text custom-class="create-hero-copy" color="#111310" text="散人约队同一时间只能接一场，发布后球员可直接报名。" />
+        <wd-text custom-class="create-hero-tag" color="#111310" :text="challengeKind === 'team' ? '球队约队' : '散人约队'" />
+        <wd-text
+          custom-class="create-hero-title"
+          color="#111310"
+          :text="currentIdentity ? `${currentIdentity.label} · ${currentIdentity.roleLabel}` : '请选择发布身份'"
+        />
+        <wd-text
+          custom-class="create-hero-copy"
+          color="#111310"
+          :text="heroCopy"
+        />
       </view>
     </view>
 
@@ -200,7 +229,7 @@ onShow(async () => {
 
     <view class="create-submit-row">
       <view :class="['create-submit-button', !canSubmit ? 'create-submit-button-disabled' : '']" @tap="handleSubmit">
-        {{ submitting ? "发布中..." : "发布散人约队" }}
+        {{ submitting ? "发布中..." : challengeKind === "team" ? "发布球队约队" : "发布散人约队" }}
       </view>
     </view>
   </view>

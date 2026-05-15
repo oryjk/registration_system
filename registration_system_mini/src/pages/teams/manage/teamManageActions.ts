@@ -76,12 +76,14 @@ export function addMemberToTeam(
     userId: number;
     role?: string;
     jerseyNumber?: string;
+    isMember?: boolean;
   },
 ) {
   return addTeamMember(teamId, {
     user_id: payload.userId,
     role: payload.role,
     jersey_number: payload.jerseyNumber,
+    is_member: payload.isMember,
   });
 }
 
@@ -91,11 +93,13 @@ export function updateTeamMemberFromForm(
   payload: {
     role?: string;
     jerseyNumber?: string | null;
+    isMember?: boolean;
   },
 ) {
   return updateTeamMember(teamId, userId, {
     role: payload.role,
     jersey_number: payload.jerseyNumber,
+    is_member: payload.isMember,
   });
 }
 

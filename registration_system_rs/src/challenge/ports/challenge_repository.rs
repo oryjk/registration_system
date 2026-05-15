@@ -62,7 +62,19 @@ pub trait ChallengeCommandRepository: Send + Sync {
         accepted_by_user_id: i64,
         activity: &Activity,
     ) -> Result<Challenge, DomainError>;
+    async fn accept_as_host_team(
+        &self,
+        challenge_id: &str,
+        host_team_id: i64,
+        accepted_by_user_id: i64,
+        activity: &Activity,
+    ) -> Result<Challenge, DomainError>;
     async fn accept_individual(
+        &self,
+        challenge_id: &str,
+        user_id: i64,
+    ) -> Result<Challenge, DomainError>;
+    async fn cancel_individual_acceptance(
         &self,
         challenge_id: &str,
         user_id: i64,

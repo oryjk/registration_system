@@ -105,7 +105,7 @@ impl CreateTeamUseCase {
 
         if let Some(captain_id) = captain_id {
             self.command_repository
-                .add_member(team.id, captain_id, "captain", None)
+                .add_member(team.id, captain_id, "captain", None, false)
                 .await
                 .map_err(|error| {
                     TeamApplicationError::internal(format!("添加队长成员失败: {error}"))

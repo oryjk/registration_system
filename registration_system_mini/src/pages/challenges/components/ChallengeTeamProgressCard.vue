@@ -1,9 +1,19 @@
 <script setup lang="ts">
+import { computed } from "vue";
 import type { BackendChallengeDetail } from "@/types/backend";
 
-defineProps<{
+const props = defineProps<{
   detail: BackendChallengeDetail;
 }>();
+
+const hostTeamConfirmed = computed(() => props.detail.summary.challenge.host_team_id != null);
+const guestTeamConfirmed = computed(() => !!props.detail.summary.guest_team_name);
+const hostTeamName = computed(() => (hostTeamConfirmed.value ? props.detail.summary.host_team_name : "等待接约"));
+const hostTeamInitial = computed(() => (hostTeamConfirmed.value ? hostTeamName.value.slice(0, 1) || "队" : "?"));
+const hostTeamMeta = computed(() => (hostTeamConfirmed.value ? "主队" : "未确定"));
+const guestTeamName = computed(() => props.detail.summary.guest_team_name || "等待接约");
+const guestTeamInitial = computed(() => (guestTeamConfirmed.value ? guestTeamName.value.slice(0, 1) || "队" : "?"));
+const guestTeamMeta = computed(() => (guestTeamConfirmed.value ? "已确定" : "未确定"));
 </script>
 
 <template>
@@ -17,15 +27,15 @@ defineProps<{
 
     <view class="vs-shell">
       <view class="vs-team">
-        <view class="vs-logo">{{ detail.summary.host_team_name.slice(0, 1) }}</view>
-        <text class="vs-name">{{ detail.summary.host_team_name }}</text>
-        <text class="vs-meta">主队</text>
+        <view :class="['vs-logo', !hostTeamConfirmed ? 'vs-logo-muted' : '']">{{ hostTeamInitial }}</view>
+        <text class="vs-name">{{ hostTeamName }}</text>
+        <text class="vs-meta">{{ hostTeamMeta }}</text>
       </view>
       <text class="vs-divider">VS</text>
       <view class="vs-team">
-        <view class="vs-logo vs-logo-muted">{{ detail.summary.guest_team_name ? detail.summary.guest_team_name.slice(0, 1) : "?" }}</view>
-        <text class="vs-name">{{ detail.summary.guest_team_name || "等待接约" }}</text>
-        <text class="vs-meta">{{ detail.summary.guest_team_name ? "已确定" : "未确定" }}</text>
+        <view :class="['vs-logo', !guestTeamConfirmed ? 'vs-logo-muted' : '']">{{ guestTeamInitial }}</view>
+        <text class="vs-name">{{ guestTeamName }}</text>
+        <text class="vs-meta">{{ guestTeamMeta }}</text>
       </view>
     </view>
   </view>

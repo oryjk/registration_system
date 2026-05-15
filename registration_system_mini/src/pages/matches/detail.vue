@@ -29,6 +29,7 @@ const {
   progressExtraWidth,
   progressSplitLeft,
   participantPreview,
+  teamMemberRegistrationGroups,
   remainingPlayersLabel,
   submittingStatus,
   individualCtaLabel,
@@ -62,6 +63,7 @@ const {
   teamSubmitLabel,
   openMatchLocation,
   handleSelectIndividualSignup,
+  handleSelectTeamMemberStand,
   openMatchDetail,
   handleCheckIn,
   handleCheckInSwitchChange,
@@ -127,9 +129,11 @@ const {
         :individual-cta-label="individualCtaLabel"
         :is-guest-mode="isGuestMode"
         :current-team="currentTeam"
+        :team-member-registration-groups="teamMemberRegistrationGroups"
         :interest-cards="interestCards"
         @open-location="openMatchLocation"
         @select-individual-signup="handleSelectIndividualSignup"
+        @select-team-member-stand="handleSelectTeamMemberStand"
         @open-match-detail="openMatchDetail"
       />
 

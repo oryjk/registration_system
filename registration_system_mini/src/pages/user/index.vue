@@ -11,7 +11,7 @@ import MineSkeleton from "./components/MineSkeleton.vue";
 import MineWalletSection from "./components/MineWalletSection.vue";
 import minePageBackgroundUrl from "@/static/backgrounds/mine-page-bg.jpg";
 import { listActivities } from "@/api/activity";
-import { getMyBalance, getMyBillingFlow } from "@/api/billing";
+import { getMyBalance } from "@/api/billing";
 import { createTeamMembershipOrder, syncPaymentOrderStatus } from "@/api/payment";
 import { useNotificationCenter } from "@/stores/notificationCenter";
 import { getTeamCreditTransactions } from "@/api/team";
@@ -21,9 +21,8 @@ import { clearSession } from "@/stores/appSession";
 import { getCustomNavMetrics } from "@/utils/customNav";
 import { getCurrentYearDateRange, isDateInRange } from "@/utils/dateRange";
 import { isMockWxPaymentParams, isPaymentCancelled, normalizeWxPaymentParams, requestWxPayment } from "@/utils/payment";
-import type { BackendBillingFlowRecord, BackendTeamCreditTransaction } from "@/types/backend";
+import type { BackendTeamCreditTransaction } from "@/types/backend";
 import {
-  buildBillingSummary,
   formatCreditTransactionLabel,
   formatDateTimeLabel,
   resolveUserDisplayHandle,
@@ -32,9 +31,12 @@ import {
 } from "@/utils/viewModels";
 
 const {
+  availableIdentities,
+  currentIdentity,
   currentTeam,
   currentUser,
   teamProfiles,
+  switchIdentity,
   switchTeam,
   ensureSessionReady,
 } = useTeamContext();
@@ -47,7 +49,6 @@ const isPayingMembership = ref(false);
 const hasLoadedOnce = ref(false);
 const errorMessage = ref("");
 const myMatches = ref<MineMatchSummary[]>([]);
-const billingRecords = ref<BackendBillingFlowRecord[]>([]);
 const creditTransactions = ref<BackendTeamCreditTransaction[]>([]);
 const overviewDigest = ref({
   activityCount: 0,
@@ -68,19 +69,10 @@ const teamBadgeLabel = computed(() => currentTeam.value?.myRoleLabel || "未登�
 const messageSummary = computed(() =>
   unreadCount.value > 0 ? `约队发布、约成、取消等消息共 ${unreadCount.value} 条未读` : "约队发布、约成、取消等消息会先站内通知",
 );
-const latestBillingRecord = computed(() => billingRecords.value[0] ?? null);
 const latestCreditRecord = computed(() => creditTransactions.value[0] ?? null);
 const contentStyle = computed(() => ({
   paddingTop: `${navMetrics.pageTopPadding + 8}px`,
 }));
-const walletRecordTitle = computed(
-  () => latestBillingRecord.value?.description || latestBillingRecord.value?.type_name || "还没有账单流水",
-);
-const walletRecordMeta = computed(() =>
-  latestBillingRecord.value
-    ? `${formatDateTimeLabel(latestBillingRecord.value.created_at)} · ${latestBillingRecord.value.amount}`
-    : "充值、扣费和结算会展示在这里",
-);
 const creditCardSummary = computed(() =>
   latestCreditRecord.value
     ? `${formatCreditTransactionLabel(latestCreditRecord.value)} · ${formatDateTimeLabel(latestCreditRecord.value.created_at)}`
@@ -126,10 +118,6 @@ function todayStartTimestamp() {
   return date.getTime();
 }
 
-function shouldShowWalletRecord(record: BackendBillingFlowRecord) {
-  return record.record_type !== "penalty" && !record.type_name.includes("罚款");
-}
-
 async function loadPageData(options?: { preserveContent?: boolean }) {
   const preserveContent = !!options?.preserveContent && hasLoadedOnce.value;
 
@@ -144,11 +132,10 @@ async function loadPageData(options?: { preserveContent?: boolean }) {
     await ensureSessionReady();
 
     const activeTeamId = currentTeam.value?.id;
-    const [activityPage, myActivityRecords, balance, billingFlow, teamCreditItems] = await Promise.all([
+    const [activityPage, myActivityRecords, balance, teamCreditItems] = await Promise.all([
       listActivities({ page: 1, pageSize: 100 }),
       getMyActivities(),
       getMyBalance(),
-      getMyBillingFlow(),
       activeTeamId ? getTeamCreditTransactions(activeTeamId, 5) : Promise.resolve([]),
     ]);
     await syncUnreadCount({ skipEnsure: true });
@@ -194,15 +181,11 @@ async function loadPageData(options?: { preserveContent?: boolean }) {
       totalHoursLabel: `${Math.round(totalHours)} h`,
     };
 
-    const walletVisibleRecords = billingFlow.records.filter(shouldShowWalletRecord);
-    billingRecords.value = walletVisibleRecords;
     creditTransactions.value = teamCreditItems;
-    const billingSummary = buildBillingSummary(balance, billingFlow);
-    const latestExpense = walletVisibleRecords.find((item) => Number(item.amount) < 0);
     walletSummary.value = {
-      balanceLabel: billingSummary.balanceLabel,
-      totalExpenseLabel: billingSummary.totalExpenseLabel,
-      latestExpenseLabel: latestExpense ? `-${Math.abs(Number(latestExpense.amount)).toFixed(2)}` : "暂无支出",
+      balanceLabel: balance ? `¥${Number(balance.balance).toFixed(2)}` : "¥0.00",
+      totalExpenseLabel: balance ? `¥${Number(balance.total_expense).toFixed(2)}` : "¥0.00",
+      latestExpenseLabel: "进入账单查看",
     };
     hasLoadedOnce.value = true;
   } catch (error) {
@@ -223,6 +206,14 @@ function handleSwitchTeam(teamId: number) {
 
   switchTeam(teamId);
   void loadPageData({ preserveContent: true });
+}
+
+function handleSwitchIdentity(identityId: string) {
+  if (!identityId || currentIdentity.value?.id === identityId) {
+    return;
+  }
+
+  switchIdentity(identityId);
 }
 
 function handleEditProfile() {
@@ -275,7 +266,6 @@ function resetPageState() {
   isSwitchingTeam.value = false;
   errorMessage.value = "已退出登录，请点击顶部卡片重新登录";
   myMatches.value = [];
-  billingRecords.value = [];
   creditTransactions.value = [];
   overviewDigest.value = {
     activityCount: 0,
@@ -387,6 +377,8 @@ onUnload(() => {
 
         <MineHeroProfile
           v-else
+          :available-identities="availableIdentities"
+          :current-identity="currentIdentity"
           :current-user="currentUser"
           :current-team="currentTeam"
           :team-profiles="teamProfiles"
@@ -399,6 +391,7 @@ onUnload(() => {
           :current-team-joined-days-label="currentTeamJoinedDaysLabel"
           @edit-profile="handleEditProfile"
           @logout="handleLogout"
+          @switch-identity="handleSwitchIdentity"
           @switch-team="handleSwitchTeam"
         />
       </view>
@@ -413,8 +406,6 @@ onUnload(() => {
 
         <MineWalletSection
           :wallet-summary="walletSummary"
-          :wallet-record-title="walletRecordTitle"
-          :wallet-record-meta="walletRecordMeta"
           @open-billing="openBilling"
         />
 

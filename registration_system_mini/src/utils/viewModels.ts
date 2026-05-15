@@ -405,7 +405,9 @@ function toChallengeRelationLabel(summary: BackendChallengeSummary): string {
   }
 
   if (relation === "host") {
-    return challenge.status === "matched" ? "我发起的约队" : "我发布的约队";
+    return challenge.host_team_id && challenge.accepted_by_user_id && !challenge.guest_team_id
+      ? "等待对手"
+      : challenge.status === "matched" ? "我发起的约队" : "我发布的约队";
   }
   if (relation === "guest") {
     return "我已接约";
@@ -440,13 +442,19 @@ function buildChallengeTags(summary: BackendChallengeSummary, relationLabel: str
 
 function toChallengePrimaryActionLabel(summary: BackendChallengeSummary): string {
   if (summary.challenge.kind === "individual") {
+    if (summary.current_user_joined) {
+      return "取消报名";
+    }
     if (summary.can_accept) {
       return "去报名";
     }
     return "看详情";
   }
-  if (summary.challenge.activity_id) {
+  if (summary.challenge.activity_id && summary.challenge.status === "matched") {
     return "去报名";
+  }
+  if (summary.challenge.kind === "team" && summary.challenge.host_team_id && summary.challenge.accepted_by_user_id && !summary.challenge.guest_team_id) {
+    return summary.current_team_relation === "host" ? "等待对手" : "去应战";
   }
   if (summary.can_accept) {
     return "去接约";
@@ -473,7 +481,7 @@ export function buildChallengeCards(
       id: summary.challenge.id,
       title: summary.challenge.title,
       kind: summary.challenge.kind,
-      hostTeamName: summary.host_team_name,
+      hostTeamName: isIndividual ? "散人约球" : summary.host_team_name,
       creditScore: summary.host_team_credit_score,
       trustLabel: summary.host_team_trust_label,
       dateLabel: formatDateLabel(summary.challenge.holding_date),
@@ -493,7 +501,7 @@ export function buildChallengeCards(
       statusTone: toChallengeTone(summary.challenge.status),
       relationLabel,
       note: summary.challenge.note ?? "",
-      teamInitial: summary.host_team_name.slice(0, 1) || "队",
+      teamInitial: isIndividual ? "散" : summary.host_team_name.slice(0, 1) || "队",
       quickTags: buildChallengeTags(summary, relationLabel),
       primaryActionLabel: toChallengePrimaryActionLabel(summary),
       canAccept: summary.can_accept,
