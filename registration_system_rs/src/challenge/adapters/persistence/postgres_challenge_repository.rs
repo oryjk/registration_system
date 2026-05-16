@@ -330,7 +330,25 @@ impl ChallengeQueryRepository for PostgresChallengeRepository {
                     FROM rs_challenge_individual_acceptances acceptances
                     WHERE acceptances.challenge_id = c.id
                 ), 0) AS accepted_count,
-                false AS current_user_joined,
+                CASE
+                    WHEN
+            "#,
+        );
+        query_builder.push_bind(query.viewer_user_id);
+        query_builder.push(
+            r#"
+                    ::bigint IS NULL THEN false
+                    ELSE EXISTS(
+                        SELECT 1
+                        FROM rs_challenge_individual_acceptances acceptances
+                        WHERE acceptances.challenge_id = c.id AND acceptances.user_id =
+            "#,
+        );
+        query_builder.push_bind(query.viewer_user_id);
+        query_builder.push(
+            r#"
+                    )
+                END AS current_user_joined,
                 false AS can_accept
             FROM rs_challenges c
             LEFT JOIN rs_teams host ON host.id = c.host_team_id

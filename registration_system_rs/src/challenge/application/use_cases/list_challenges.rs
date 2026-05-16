@@ -73,6 +73,7 @@ impl ListChallengesUseCase {
 
     pub async fn list_public(
         &self,
+        viewer_user_id: Option<i64>,
         keyword: Option<&str>,
         status: Option<ChallengeStatus>,
         include_closed: bool,
@@ -83,6 +84,7 @@ impl ListChallengesUseCase {
             .list_for_admin(AdminChallengeRepositoryQuery {
                 accessible_team_ids: None,
                 team_id: None,
+                viewer_user_id,
                 keyword,
                 status,
                 include_closed,
@@ -120,6 +122,7 @@ impl ListChallengesUseCase {
             .list_for_admin(AdminChallengeRepositoryQuery {
                 accessible_team_ids: accessible_team_ids.as_deref(),
                 team_id: query.team_id,
+                viewer_user_id: None,
                 keyword: query.keyword.as_deref(),
                 status: query.status,
                 include_closed: query.include_closed,

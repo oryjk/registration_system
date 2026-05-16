@@ -121,6 +121,7 @@ impl ChallengeService {
 
     pub async fn list_public(
         &self,
+        viewer_user_id: Option<i64>,
         keyword: Option<&str>,
         status: Option<ChallengeStatus>,
         include_closed: bool,
@@ -128,7 +129,7 @@ impl ChallengeService {
         sort: &str,
     ) -> Result<Vec<ChallengeSummary>, AppError> {
         self.list_challenges_use_case
-            .list_public(keyword, status, include_closed, limit, sort)
+            .list_public(viewer_user_id, keyword, status, include_closed, limit, sort)
             .await
     }
 

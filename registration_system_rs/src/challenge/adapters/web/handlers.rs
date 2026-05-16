@@ -109,10 +109,14 @@ pub async fn list_challenges_handler(
             )
             .await?
     } else {
+        let viewer_user_id = actor
+            .filter(|actor| actor.actor_kind == crate::shared::auth::ActorKind::User)
+            .map(|actor| actor.id);
         state
             .services
             .challenge_service
             .list_public(
+                viewer_user_id,
                 query.keyword.as_deref(),
                 status,
                 query.include_closed.unwrap_or(false),

@@ -163,27 +163,38 @@ impl ChallengeQueryRepository for FakeChallengeRepository {
 
         Ok(items
             .into_iter()
-            .map(|challenge| ChallengeSummary {
-                host_team_name: challenge
-                    .host_team_id
-                    .map(|value| value.to_string())
-                    .unwrap_or_else(|| "场馆约队".to_string()),
-                host_team_credit_score: 90,
-                host_team_trust_label: "稳定赴约".to_string(),
-                guest_team_name: challenge.guest_team_id.map(|value| value.to_string()),
-                guest_team_credit_score: Some(85),
-                guest_team_trust_label: Some("稳定赴约".to_string()),
-                current_team_relation: None,
-                accepted_count: self
+            .map(|challenge| {
+                let accepted_count = self
                     .individual_acceptances
                     .lock()
                     .unwrap()
                     .get(&challenge.id)
                     .map(|items| items.len() as i32)
-                    .unwrap_or(0),
-                current_user_joined: false,
-                can_accept: false,
-                challenge,
+                    .unwrap_or(0);
+                let current_user_joined = query.viewer_user_id.is_some_and(|viewer_id| {
+                    self.individual_acceptances
+                        .lock()
+                        .unwrap()
+                        .get(&challenge.id)
+                        .is_some_and(|items| items.contains(&viewer_id))
+                });
+
+                ChallengeSummary {
+                    host_team_name: challenge
+                        .host_team_id
+                        .map(|value| value.to_string())
+                        .unwrap_or_else(|| "场馆约队".to_string()),
+                    host_team_credit_score: 90,
+                    host_team_trust_label: "稳定赴约".to_string(),
+                    guest_team_name: challenge.guest_team_id.map(|value| value.to_string()),
+                    guest_team_credit_score: Some(85),
+                    guest_team_trust_label: Some("稳定赴约".to_string()),
+                    current_team_relation: None,
+                    accepted_count,
+                    current_user_joined,
+                    can_accept: false,
+                    challenge,
+                }
             })
             .collect())
     }
@@ -449,7 +460,7 @@ async fn public_challenge_list_does_not_require_current_user_or_team() {
     challenge_repository.create(&open_challenge).await.unwrap();
 
     let items = service
-        .list_public(None, None, false, 20, "holding_date_asc")
+        .list_public(None, None, None, false, 20, "holding_date_asc")
         .await
         .unwrap();
 
@@ -457,6 +468,59 @@ async fn public_challenge_list_does_not_require_current_user_or_team() {
     assert_eq!(items[0].challenge.id, "public-open");
     assert_eq!(items[0].current_team_relation, None);
     assert!(!items[0].can_accept);
+}
+
+#[tokio::test]
+async fn logged_in_public_challenge_list_marks_joined_individual_challenges() {
+    let challenge_repository = Arc::new(FakeChallengeRepository::default());
+    let team_repository = Arc::new(FakeTeamStore::new(Vec::new()));
+    let service = ChallengeService::new(
+        challenge_repository.clone(),
+        challenge_repository.clone(),
+        team_repository,
+        Arc::new(FakeUserStore::default()),
+        notification_service(),
+    );
+    let holding_date = Utc::now().naive_utc() + Duration::days(2);
+    let challenge = Challenge {
+        id: "joined-individual".to_string(),
+        title: "已报名散人局".to_string(),
+        kind: ChallengeKind::Individual,
+        host_team_id: None,
+        host_user_id: 7,
+        guest_team_id: None,
+        accepted_by_user_id: None,
+        activity_id: None,
+        holding_date,
+        start_time: holding_date,
+        end_time: holding_date + Duration::hours(2),
+        location: "公开球场".to_string(),
+        location_latitude: None,
+        location_longitude: None,
+        players_per_team: 8,
+        fee_per_person: None,
+        note: None,
+        status: ChallengeStatus::Open,
+        accepted_at: None,
+        cancelled_at: None,
+        created_at: holding_date - Duration::days(1),
+        updated_at: holding_date - Duration::days(1),
+    };
+    challenge_repository.create(&challenge).await.unwrap();
+    challenge_repository
+        .accept_individual(&challenge.id, 42)
+        .await
+        .unwrap();
+
+    let items = service
+        .list_public(Some(42), None, None, false, 20, "holding_date_asc")
+        .await
+        .unwrap();
+
+    assert_eq!(items.len(), 1);
+    assert_eq!(items[0].challenge.id, "joined-individual");
+    assert_eq!(items[0].accepted_count, 1);
+    assert!(items[0].current_user_joined);
 }
 
 struct FakeTeamStore {

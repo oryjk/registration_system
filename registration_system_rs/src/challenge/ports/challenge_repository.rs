@@ -19,6 +19,7 @@ pub struct TeamChallengeListQuery<'a> {
 pub struct AdminChallengeRepositoryQuery<'a> {
     pub accessible_team_ids: Option<&'a [i64]>,
     pub team_id: Option<i64>,
+    pub viewer_user_id: Option<i64>,
     pub keyword: Option<&'a str>,
     pub status: Option<ChallengeStatus>,
     pub include_closed: bool,

@@ -92,3 +92,11 @@
 - `cargo fmt --check` 当前仍被既有 challenge 文件格式化差异阻塞；本轮仅使用 `rustfmt --edition 2024 src/wx/adapters/api/real_wechat_api.rs` 格式化了修改文件，未扩大无关 diff。
 - 已修复微信成功响应 `errcode=0, errmsg=ok` 被误判为错误的问题；现在只有非 0 errcode 才按微信 API 错误处理，并新增单元测试。
 - 已在 out109 增加服务器侧飞书健康告警，cron 每分钟执行，连续失败 3 次才发送告警，恢复后发送恢复通知。
+
+## 2026-05-16 登录态公开约队列表报名状态
+
+- 已确认首页无当前球队时会走公开约队列表；旧后端公开列表未计算 `current_user_joined`，导致已报名散人局在首页仍显示“去报名”，再次点击后报名接口返回 409。
+- 已为公开约队列表增加可选 `viewer_user_id`，登录态用户访问 `/api/challenges` 且不带 `team_id` 时也会计算散人报名关系。
+- 已更新 `ChallengeRepository` 查询端口、`ListChallengesUseCase`、`ChallengeService`、web handler 和 PostgreSQL 查询实现。
+- 已新增业务测试 `logged_in_public_challenge_list_marks_joined_individual_challenges`。
+- 验证通过：`cargo test --test challenge_service_business_test -- --nocapture`、`cargo check --tests`、`cargo clippy --all-targets -- -D warnings`。
