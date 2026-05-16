@@ -81,3 +81,12 @@
 - 已按场馆撮合两支球队语义调整 `accept_as_host_team` 仓储命令：第一支球队接约时生成待对手活动，第二支球队接约时复用 `accept_with_activity` 更新同一活动。
 - 已新增并通过业务测试 `venue_team_challenge_creates_pending_activity_then_second_team_confirms_opponent`。
 - 追加验证通过：`cargo test --test challenge_service_business_test -- --nocapture`；`cargo clippy --all-targets -- -D warnings`。
+
+## 2026-05-16 微信手机号响应解析修复
+
+- 已排查生产日志中的 `/api/wx/getPhoneNumber` 500，定位到 `RealWechatApi::get_phone_number` 解码微信响应失败。
+- 已新增 `real_wechat_api` 单元测试，复现微信官方 `phone_info.phoneNumber` payload 在旧 DTO 下无法解析的问题。
+- 已为 `PhoneInfoResponse` 增加 camelCase 反序列化，后端继续向小程序返回 `phone_number`。
+- 已将手机号接口响应解析改为读取原始 body 后解析；解析失败时错误信息包含 status、content-type 和 body 摘要，便于线上继续定位非 JSON/网关异常。
+- 验证通过：`cargo test wx::adapters::api::real_wechat_api::tests -- --nocapture`、`cargo clippy --all-targets -- -D warnings`。
+- `cargo fmt --check` 当前仍被既有 challenge 文件格式化差异阻塞；本轮仅使用 `rustfmt --edition 2024 src/wx/adapters/api/real_wechat_api.rs` 格式化了修改文件，未扩大无关 diff。

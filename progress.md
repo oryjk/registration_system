@@ -90,3 +90,6 @@
 - 2026-05-15：已提交并推送业务改动到 `main`，提交为 `2ab3877 支持场馆约队与首页体验优化`；部署脚本已使用本地 `registration_system_rs/.env` 中的 Harbor 密码启动部署。
 - 2026-05-15：首次部署已完成后端镜像构建与 Harbor 推送，并在 out109 启动新容器；随后卡在 nginx 配置更新，错误为 `host: parameter not set`。
 - 2026-05-15：定位为部署脚本 nginx 更新段的 heredoc 被本地双引号 SSH 命令包裹，导致 `$host` 等 nginx 变量被本地 `zsh set -u` 展开；已修改为 quoted heredoc + Python 读取环境变量，并通过 `zsh -n deploy_out109_registration_rs.sh`。
+- 2026-05-16：修复 `/api/wx/getPhoneNumber` 获取手机号失败。根因是微信 `phone_info.phoneNumber` 为 camelCase，后端 DTO 只认 `phone_number`，导致正常微信响应解码失败；已为 `PhoneInfoResponse` 增加 camelCase 映射。
+- 2026-05-16：手机号响应解析失败时现在会记录 status、content-type 和 body 摘要，避免线上只看到 `error decoding response body`。
+- 2026-05-16：验证通过：`cargo test wx::adapters::api::real_wechat_api::tests -- --nocapture`、`cargo clippy --all-targets -- -D warnings`。`cargo fmt --check` 仍被既有 challenge 文件格式化差异阻塞，本轮未扩大格式化范围。

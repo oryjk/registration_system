@@ -357,3 +357,19 @@
 约束：
 
 - 不改变散人报名卡片、报名/取消报名逻辑、接口和页面 header 标题。
+
+## 2026-05-16 微信手机号响应解析修复
+
+目标：修复小程序编辑资料时 `/api/wx/getPhoneNumber` 获取手机号失败的问题。
+
+阶段：
+1. [completed] 定位后端 wx 模块调用链
+2. [completed] 用单元测试复现微信 `phone_info.phoneNumber` 响应无法解析
+3. [completed] 修复微信手机号响应 DTO 的 camelCase 映射
+4. [completed] 增强手机号响应解析失败日志，保留 status、content-type、body 摘要
+5. [completed] 执行后端目标测试和 clippy
+
+约束：
+
+- 不改变小程序对本系统 API 的 `phone_number` 字段契约。
+- 不改前端调用与用户资料保存逻辑。

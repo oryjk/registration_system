@@ -60,3 +60,10 @@
 - 创建约队时：有 `host_team_id` 走队长/领队校验；无 `host_team_id` 走 `is_venue` 校验。
 - 用户澄清场馆球队约队应撮合两支球队，且第一支球队占位后应能组织队员报名，因此第一支球队接约时就生成 `away_team_id = NULL`、`opposing = 等待对手` 的活动。
 - 现有 `guest_team_id` 保留给第二支球队；第二支球队接约时更新同一个活动，设置 `away_team_id = 第二支球队` 和双方对阵文案。
+
+## 2026-05-16 微信手机号响应解析发现
+
+- `/api/wx/getPhoneNumber` 的失败点在 `src/wx/adapters/api/real_wechat_api.rs`，原代码直接用 `response.json::<WechatErrorResponse>()` 解析微信响应，失败时只保留 `error decoding response body`，缺少上游 body 证据。
+- 微信手机号接口成功响应中的 `phone_info` 字段使用 camelCase，例如 `phoneNumber`，而现有 `PhoneInfoResponse` 只声明了 Rust 字段 `phone_number`，没有 `serde(rename_all = "camelCase")`，因此正常 JSON 也会解码失败。
+- 小程序调用仍期望后端返回 snake_case 的 `phone_number`；修复应限定在外部微信响应 DTO，不改变本系统 API 契约。
+- 为后续排查微信网关、反代或网络异常，手机号响应解析失败时应记录 HTTP status、content-type 和原始 body 摘要。

@@ -2,6 +2,7 @@ use crate::wx::domain::{DomainError, PhoneNumberResult, WechatAccessToken, Wecha
 use crate::wx::ports::WechatApi;
 use async_trait::async_trait;
 use reqwest::Client;
+use reqwest::Response;
 use serde::Deserialize;
 
 #[derive(Clone)]
@@ -21,8 +22,10 @@ impl RealWechatApi {
     }
 }
 
+const WECHAT_RESPONSE_SNIPPET_MAX_CHARS: usize = 500;
+
 #[derive(Debug, Deserialize)]
-struct WechatErrorResponse {
+struct WechatResponse {
     errcode: Option<i64>,
     errmsg: Option<String>,
     openid: Option<String>,
@@ -35,8 +38,54 @@ struct WechatErrorResponse {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct PhoneInfoResponse {
     phone_number: String,
+}
+
+async fn decode_wechat_response(
+    response: Response,
+    context: &str,
+) -> Result<WechatResponse, DomainError> {
+    let status = response.status();
+    let content_type = response
+        .headers()
+        .get(reqwest::header::CONTENT_TYPE)
+        .and_then(|value| value.to_str().ok())
+        .unwrap_or("-")
+        .to_string();
+    let body = response
+        .text()
+        .await
+        .map_err(|e| DomainError::ApiError(format!("读取{context}响应失败: {e}")))?;
+
+    parse_wechat_response(&body, context, &status.to_string(), &content_type)
+}
+
+fn parse_wechat_response(
+    body: &str,
+    context: &str,
+    status: &str,
+    content_type: &str,
+) -> Result<WechatResponse, DomainError> {
+    serde_json::from_str::<WechatResponse>(body).map_err(|e| {
+        DomainError::ApiError(format!(
+            "解析{context}响应失败: {e}; status={status}; content_type={content_type}; body={}",
+            summarize_body(body)
+        ))
+    })
+}
+
+fn summarize_body(body: &str) -> String {
+    let mut snippet: String = body
+        .chars()
+        .flat_map(|ch| ch.escape_default())
+        .take(WECHAT_RESPONSE_SNIPPET_MAX_CHARS)
+        .collect();
+    if body.chars().count() > WECHAT_RESPONSE_SNIPPET_MAX_CHARS {
+        snippet.push_str("...");
+    }
+    snippet
 }
 
 #[async_trait]
@@ -62,7 +111,7 @@ impl WechatApi for RealWechatApi {
             .map_err(|e| DomainError::ApiError(format!("微信 jscode2session 返回非 2xx: {e}")))?;
 
         let payload = response
-            .json::<WechatErrorResponse>()
+            .json::<WechatResponse>()
             .await
             .map_err(|e| DomainError::ApiError(format!("解析微信登录响应失败: {e}")))?;
 
@@ -99,7 +148,7 @@ impl WechatApi for RealWechatApi {
             .map_err(|e| DomainError::ApiError(format!("微信 access_token 返回非 2xx: {e}")))?;
 
         let payload = response
-            .json::<WechatErrorResponse>()
+            .json::<WechatResponse>()
             .await
             .map_err(|e| DomainError::ApiError(format!("解析 access_token 响应失败: {e}")))?;
 
@@ -136,10 +185,7 @@ impl WechatApi for RealWechatApi {
                 DomainError::ApiError(format!("微信 getuserphonenumber 返回非 2xx: {e}"))
             })?;
 
-        let payload = response
-            .json::<WechatErrorResponse>()
-            .await
-            .map_err(|e| DomainError::ApiError(format!("解析微信手机号响应失败: {e}")))?;
+        let payload = decode_wechat_response(response, "微信手机号").await?;
 
         if let Some(errcode) = payload.errcode {
             return Err(DomainError::ApiError(format!(
@@ -156,5 +202,43 @@ impl WechatApi for RealWechatApi {
             .ok_or_else(|| DomainError::ApiError("微信手机号响应缺少 phone_number".to_string()))?;
 
         Ok(PhoneNumberResult { phone_number })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_wechat_phone_response_error_keeps_upstream_body_summary() {
+        let error = parse_wechat_response(
+            "<html>bad gateway</html>",
+            "微信手机号",
+            "200 OK",
+            "text/html",
+        )
+        .expect_err("html response should not decode as wechat json");
+
+        let message = error.to_string();
+        assert!(message.contains("解析微信手机号响应失败"));
+        assert!(message.contains("status=200 OK"));
+        assert!(message.contains("content_type=text/html"));
+        assert!(message.contains("body=<html>bad gateway</html>"));
+    }
+
+    #[test]
+    fn parse_wechat_phone_response_accepts_phone_info_payload() {
+        let payload = parse_wechat_response(
+            r#"{"errcode":0,"phone_info":{"phoneNumber":"13800138000","purePhoneNumber":"13800138000","countryCode":"86"}}"#,
+            "微信手机号",
+            "200 OK",
+            "application/json",
+        )
+        .expect("official wechat phone_info payload should decode");
+
+        assert_eq!(
+            payload.phone_info.map(|info| info.phone_number),
+            Some("13800138000".to_string())
+        );
     }
 }

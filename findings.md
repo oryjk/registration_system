@@ -216,3 +216,10 @@
 
 - `deploy_out109_registration_rs.sh` 在 nginx 配置更新步骤里把 Python heredoc 放进本地双引号 SSH 命令，配置文本中的 `$host`、`$remote_addr` 会先被本地 `zsh set -u` 展开，导致部署在 `host: parameter not set` 处退出。
 - 修复方向是把 Python 代码通过本地 quoted heredoc 传给远端 `python3 -`，并让 Python 从环境变量读取 nginx 容器名、配置路径和备份后缀，避免 nginx 配置变量被本地 shell 展开。
+
+## 2026-05-16 微信手机号响应解析发现
+
+- 小程序编辑资料页通过 `registration_system_mini/src/api/wx.ts` 调用 `/wx/getPhoneNumber`，前端仍只需要本系统返回的 `phone_number`。
+- 后端失败点在 `registration_system_rs/src/wx/adapters/api/real_wechat_api.rs`；原实现直接 `response.json()`，解析失败时日志只剩 `error decoding response body`。
+- 微信手机号接口成功响应的 `phone_info` 内部字段是 `phoneNumber`，不是 Rust DTO 字段名 `phone_number`；缺少 serde camelCase 映射会导致正常响应也解码失败。
+- 后端修复应限定在微信外部响应 DTO 和解析诊断，不需要改变小程序 API 契约。

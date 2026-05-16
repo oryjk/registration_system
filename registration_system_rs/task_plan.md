@@ -121,3 +121,19 @@
 - `is_venue` 不是互斥角色，不能阻止用户继续参与报名或保留球队成员身份。
 - `host_team_id = None` 只允许 `is_venue = true` 的用户发布；`host_team_id = Some` 继续走队长/领队校验。
 - 场馆发布的球队约队两阶段撮合：第一支球队占位后仍为 `open`，但会生成“等待对手”的活动；第二支不同球队接约后才 `matched` 并更新同一活动。
+
+## 2026-05-16 微信手机号响应解析修复
+
+目标：修复 `/api/wx/getPhoneNumber` 在线上解析微信手机号响应失败的问题，并让未来上游异常响应可从日志中直接定位。
+
+阶段：
+1. [completed] 定位 `/api/wx/getPhoneNumber` 调用链和 `RealWechatApi::get_phone_number`
+2. [completed] 新增单元测试复现微信官方 `phone_info.phoneNumber` 响应无法解析的问题
+3. [completed] 将 `PhoneInfoResponse` 改为 camelCase 反序列化，兼容微信官方字段
+4. [completed] 手机号响应改为先读取原始 body，再在解析失败时附带 status、content-type 和 body 摘要
+5. [completed] 执行目标测试与 `cargo clippy --all-targets -- -D warnings`
+
+约束：
+
+- 不改变小程序接口返回结构，后端仍返回 `phone_number`。
+- 本轮只修改微信外部网关 adapter，不调整 handler、use case、前端调用。
