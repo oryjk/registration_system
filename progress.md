@@ -93,3 +93,5 @@
 - 2026-05-16：修复 `/api/wx/getPhoneNumber` 获取手机号失败。根因是微信 `phone_info.phoneNumber` 为 camelCase，后端 DTO 只认 `phone_number`，导致正常微信响应解码失败；已为 `PhoneInfoResponse` 增加 camelCase 映射。
 - 2026-05-16：手机号响应解析失败时现在会记录 status、content-type 和 body 摘要，避免线上只看到 `error decoding response body`。
 - 2026-05-16：验证通过：`cargo test wx::adapters::api::real_wechat_api::tests -- --nocapture`、`cargo clippy --all-targets -- -D warnings`。`cargo fmt --check` 仍被既有 challenge 文件格式化差异阻塞，本轮未扩大格式化范围。
+- 2026-05-16：修复微信成功响应 `errcode=0, errmsg=ok` 被误判为错误的问题；现在只有非 0 errcode 才按微信 API 错误处理。
+- 2026-05-16：在 out109 增加飞书健康告警脚本 `/home/wangrui/projects/registration_system/ops/registration_health_monitor.sh`，cron 每分钟执行，连续失败 3 次才发送告警，恢复后发送恢复通知；飞书 webhook 存放在远端私有 env 文件中。

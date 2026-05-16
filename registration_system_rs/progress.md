@@ -90,3 +90,5 @@
 - 已将手机号接口响应解析改为读取原始 body 后解析；解析失败时错误信息包含 status、content-type 和 body 摘要，便于线上继续定位非 JSON/网关异常。
 - 验证通过：`cargo test wx::adapters::api::real_wechat_api::tests -- --nocapture`、`cargo clippy --all-targets -- -D warnings`。
 - `cargo fmt --check` 当前仍被既有 challenge 文件格式化差异阻塞；本轮仅使用 `rustfmt --edition 2024 src/wx/adapters/api/real_wechat_api.rs` 格式化了修改文件，未扩大无关 diff。
+- 已修复微信成功响应 `errcode=0, errmsg=ok` 被误判为错误的问题；现在只有非 0 errcode 才按微信 API 错误处理，并新增单元测试。
+- 已在 out109 增加服务器侧飞书健康告警，cron 每分钟执行，连续失败 3 次才发送告警，恢复后发送恢复通知。

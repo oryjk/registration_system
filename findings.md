@@ -223,3 +223,5 @@
 - 后端失败点在 `registration_system_rs/src/wx/adapters/api/real_wechat_api.rs`；原实现直接 `response.json()`，解析失败时日志只剩 `error decoding response body`。
 - 微信手机号接口成功响应的 `phone_info` 内部字段是 `phoneNumber`，不是 Rust DTO 字段名 `phone_number`；缺少 serde camelCase 映射会导致正常响应也解码失败。
 - 后端修复应限定在微信外部响应 DTO 和解析诊断，不需要改变小程序 API 契约。
+- 微信成功响应会带 `errcode=0, errmsg=ok`；后端不能把“存在 errcode”直接当失败，只应在 `errcode != 0` 时返回微信 API 错误。
+- Docker healthcheck 本身只标记 `healthy/unhealthy`，不会自动通知；飞书告警适合放在服务器侧 cron 脚本，连续失败 3 次后发送，避免部署重启误报。

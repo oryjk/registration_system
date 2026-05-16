@@ -67,3 +67,5 @@
 - 微信手机号接口成功响应中的 `phone_info` 字段使用 camelCase，例如 `phoneNumber`，而现有 `PhoneInfoResponse` 只声明了 Rust 字段 `phone_number`，没有 `serde(rename_all = "camelCase")`，因此正常 JSON 也会解码失败。
 - 小程序调用仍期望后端返回 snake_case 的 `phone_number`；修复应限定在外部微信响应 DTO，不改变本系统 API 契约。
 - 为后续排查微信网关、反代或网络异常，手机号响应解析失败时应记录 HTTP status、content-type 和原始 body 摘要。
+- 微信成功响应会带 `errcode=0, errmsg=ok`；后端只应把非 0 errcode 视为微信 API 错误。
+- 飞书健康告警应放在服务器侧监控脚本而非业务进程内，避免业务代码耦合告警渠道；当前采用 cron 每分钟检查 Docker health、本机 health 和公网 `/regist-v2/health`。

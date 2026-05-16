@@ -367,7 +367,9 @@
 2. [completed] 用单元测试复现微信 `phone_info.phoneNumber` 响应无法解析
 3. [completed] 修复微信手机号响应 DTO 的 camelCase 映射
 4. [completed] 增强手机号响应解析失败日志，保留 status、content-type、body 摘要
-5. [completed] 执行后端目标测试和 clippy
+5. [completed] 修复 `errcode=0, errmsg=ok` 成功响应误判
+6. [completed] 配置 out109 飞书健康告警，连续失败 3 次才发送
+7. [completed] 执行后端目标测试和 clippy
 
 约束：
 

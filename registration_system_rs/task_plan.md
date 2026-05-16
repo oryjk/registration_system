@@ -131,7 +131,9 @@
 2. [completed] 新增单元测试复现微信官方 `phone_info.phoneNumber` 响应无法解析的问题
 3. [completed] 将 `PhoneInfoResponse` 改为 camelCase 反序列化，兼容微信官方字段
 4. [completed] 手机号响应改为先读取原始 body，再在解析失败时附带 status、content-type 和 body 摘要
-5. [completed] 执行目标测试与 `cargo clippy --all-targets -- -D warnings`
+5. [completed] 修复 `errcode=0, errmsg=ok` 成功响应误判
+6. [completed] 配置 out109 飞书健康告警，连续失败 3 次才发送
+7. [completed] 执行目标测试与 `cargo clippy --all-targets -- -D warnings`
 
 约束：
 

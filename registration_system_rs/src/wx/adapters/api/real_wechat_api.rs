@@ -115,10 +115,10 @@ impl WechatApi for RealWechatApi {
             .await
             .map_err(|e| DomainError::ApiError(format!("解析微信登录响应失败: {e}")))?;
 
-        if let Some(errcode) = payload.errcode {
+        if payload.errcode.is_some_and(|errcode| errcode != 0) {
             return Err(DomainError::ApiError(format!(
                 "微信登录错误 errcode={}, errmsg={}",
-                errcode,
+                payload.errcode.unwrap_or_default(),
                 payload.errmsg.unwrap_or_default()
             )));
         }
@@ -152,10 +152,10 @@ impl WechatApi for RealWechatApi {
             .await
             .map_err(|e| DomainError::ApiError(format!("解析 access_token 响应失败: {e}")))?;
 
-        if let Some(errcode) = payload.errcode {
+        if payload.errcode.is_some_and(|errcode| errcode != 0) {
             return Err(DomainError::ApiError(format!(
                 "获取微信 access_token 错误 errcode={}, errmsg={}",
-                errcode,
+                payload.errcode.unwrap_or_default(),
                 payload.errmsg.unwrap_or_default()
             )));
         }
@@ -187,10 +187,10 @@ impl WechatApi for RealWechatApi {
 
         let payload = decode_wechat_response(response, "微信手机号").await?;
 
-        if let Some(errcode) = payload.errcode {
+        if payload.errcode.is_some_and(|errcode| errcode != 0) {
             return Err(DomainError::ApiError(format!(
                 "获取微信手机号错误 errcode={}, errmsg={}",
-                errcode,
+                payload.errcode.unwrap_or_default(),
                 payload.errmsg.unwrap_or_default()
             )));
         }
@@ -240,5 +240,18 @@ mod tests {
             payload.phone_info.map(|info| info.phone_number),
             Some("13800138000".to_string())
         );
+    }
+
+    #[test]
+    fn wechat_success_errcode_zero_is_not_an_error() {
+        let payload = parse_wechat_response(
+            r#"{"errcode":0,"errmsg":"ok","phone_info":{"phoneNumber":"13800138000"}}"#,
+            "微信手机号",
+            "200 OK",
+            "application/json",
+        )
+        .expect("errcode 0 is a successful wechat response");
+
+        assert!(payload.errcode.is_none_or(|errcode| errcode == 0));
     }
 }
