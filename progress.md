@@ -69,6 +69,7 @@
 - 2026-05-15：按用户反馈，将小程序比赛报名详情三栏中的人员展示从胶囊卡片改为轻量叠放头像列表；当前用户头像以黑色描边和“我”标记突出；点击头像可在对应区域显示姓名和状态，选中头像有轻微放大和上浮动效；三栏头像已放大到 72rpx；验证通过：小程序 `bun run type-check`。
 - 2026-05-15：散人约队详情已分流到比赛报名式个人报名视图，标题改为“散人报名”，报名/取消报名操作收敛到报名截止卡内部，按钮费用读取约队费用信息，地址可点击打开地图，移除黑色信息卡中间 `JOIN` 圆标，并补齐倒计时、比赛说明、底部 banner 与“回到大厅”按钮；球队约队详情保持原结构；验证通过：小程序 `bun run type-check`。
 - 2026-05-15：约队大厅散人卡片已支持未报名显示报名、已报名显示取消报名；报名和取消报名均增加二次确认；验证通过：小程序 `bun run type-check`、`bun test src/utils/__tests__/viewModels.test.ts`。
+- 2026-05-16：小程序“我的钱包”卡片移除二级页面说明内嵌卡片和“账单明细已移到二级页面”文案，保留余额与查看账单入口；验证通过：小程序 `bun run type-check`、`bun test src/pages/__tests__/userPageBackground.test.ts`。
 - 2026-05-15：开始阅读“场馆角色与约队发布权限”需求；已读取根目录、小程序、后端、管理端 `AGENTS.md` / `CLAUDE.md`。
 - 2026-05-15：已定位小程序发布入口：约队大厅 `canPublish` 依赖当前球队 `canManageTeam`，散人约队创建页也要求当前球队管理权限并传 `host_team_id`。
 - 2026-05-15：已定位后端发布权限：`CreateChallengeRequest.host_team_id` 必填，`CreateChallengeUseCase` 校验 actor 必须是该球队队长或领队。
@@ -95,3 +96,31 @@
 - 2026-05-16：验证通过：`cargo test wx::adapters::api::real_wechat_api::tests -- --nocapture`、`cargo clippy --all-targets -- -D warnings`。`cargo fmt --check` 仍被既有 challenge 文件格式化差异阻塞，本轮未扩大格式化范围。
 - 2026-05-16：修复微信成功响应 `errcode=0, errmsg=ok` 被误判为错误的问题；现在只有非 0 errcode 才按微信 API 错误处理。
 - 2026-05-16：在 out109 增加飞书健康告警脚本 `/home/wangrui/projects/registration_system/ops/registration_health_monitor.sh`，cron 每分钟执行，连续失败 3 次才发送告警，恢复后发送恢复通知；飞书 webhook 存放在远端私有 env 文件中。
+- 2026-05-16：小程序“我的”页头像昵称旁的徽标已修正为登录状态与球队状态分离：无用户才显示“未登录”，已登录但未加入球队显示“未加入球队”；已补充我的页静态回归约束。
+- 2026-05-16：首页顶部球队卡片已改为必须存在 `currentTeam` 才展示；已登录但未加入球队时不再显示“我的球队”空壳卡片，并补充首页静态回归约束。
+- 2026-05-16：首页“最近要处理的比赛”改为登录后的待办区：有球队时保留当前球队比赛并追加当前用户已报名的散人约队；登录无球队时只展示已报名散人约队，无相关报名则隐藏该区域；游客态仅提示登录后可查看；散人约队待办状态显示为“已报名”。
+- 2026-05-16：首页“约队机会”列表已改为与待办比赛一致的比赛卡片样式，保留原点击进入约队详情逻辑；类型标签移到右上角并按散人/球队区分颜色。
+- 2026-05-16：首页“约队机会”卡片底部按钮已复用约队大厅的报名/取消报名/接约操作逻辑，散人报名和取消报名均保留二次确认。
+- 2026-05-16：首页“约队机会”报名/取消报名成功后，已改为基于同一份约队原始数据同步刷新机会列表和“最近要处理的比赛”待办；验证通过：小程序 `bun test src/pages/__tests__/homePageLoading.test.ts src/utils/__tests__/viewModels.test.ts`、`bun run type-check`。
+- 2026-05-16：修正公开散人局在后端 `can_accept=false` 但状态为 open 时首页按钮仍显示“看详情”的问题；开放散人局现在显示“去报名”并进入确认报名流程；验证通过：小程序 `bun test src/utils/__tests__/viewModels.test.ts src/pages/__tests__/homePageLoading.test.ts`、`bun run type-check`。
+- 2026-05-16：修正登录态无当前球队访问公开约队列表时未返回 `current_user_joined` 的问题；后端 `/api/challenges` 不带 `team_id` 但带用户登录态时会计算散人报名关系，首页已报名散人局可显示“取消报名”而不是再次“去报名”；验证通过：后端 `cargo test --test challenge_service_business_test -- --nocapture`、`cargo check --tests`、`cargo clippy --all-targets -- -D warnings`，小程序 `bun test src/utils/__tests__/viewModels.test.ts src/pages/__tests__/homePageLoading.test.ts`、`bun run type-check`。
+- 2026-05-16：小程序比赛报名详情页和散人报名/约队详情页已支持微信分享与朋友圈分享，分享路径携带对应 `id`，标题优先使用已加载名称；验证通过：小程序 `bun test src/pages/__tests__/matchDetailRegistrationDesign.test.ts src/pages/__tests__/activitiesPageSections.test.ts`、`bun run type-check`。
+- 2026-05-16：小程序首页和约队大厅也已支持微信分享与朋友圈分享；比赛报名详情、散人报名/约队详情、首页、约队大厅统一使用 `src/static/share/share-cover.png` 分享封面，封面路径集中在 `src/utils/share.ts`。
+- 2026-05-16：小程序新增应用级不存在页面兜底：`App.vue` 注册 `onPageNotFound`，遇到不存在路径时统一 `reLaunch` 到首页 `/pages/home/index`。
+- 2026-05-16：小程序冷启动改为游客优先：`App.vue` 只恢复本地已有 token，不再无 token 时自动微信登录；首页和约队大厅默认加载公开约队数据，报名/接约/发布等动作再触发登录。
+- 2026-05-16：修复退出登录后强制刷新又恢复登录态的问题；退出动作统一清理 token、当前球队和当前身份，`restoreSessionFromStorage()` 会检查手动退出标记，旧登录请求返回时也会被会话版本检查拦截，避免退出后 token 被写回；验证通过：小程序 `bun test src/stores/__tests__/appSession.test.ts src/utils/__tests__/authStorage.test.ts`、`bun run type-check`、`git diff --check`。
+- 2026-05-16：修复清缓存后停留在“我的”页刷新会自动登录的问题；个人中心无本地 token 时直接展示未登录态，不再无条件调用 `ensureSessionReady()`，未登录资料卡显示“去登录”并由用户主动触发登录；验证通过：小程序 `bun test src/pages/__tests__/userPageBackground.test.ts src/stores/__tests__/appSession.test.ts src/utils/__tests__/authStorage.test.ts`、`bun run type-check`、`git diff --check`。
+- 2026-05-17：修复首页“最近要处理的比赛”进入详情再返回会刷新抖动的问题；待办卡片跳转详情成功后设置一次性跳过标记，返回首页时跳过当次 `onShow` 刷新，其他进入首页路径仍保留刷新；验证通过：小程序 `bun test src/pages/__tests__/homePageLoading.test.ts`、`bun run type-check`、`git diff --check`。
+- 2026-05-17：在独立分支 `codex/tabbar-fab-menu` 上将小程序自定义 tabbar 中间创建按钮改为截图风格展开态：保留常驻 tabbar 原有颜色/底座/尺寸，只在点击后显示全屏暗色模糊遮罩、三个圆形快捷入口（创建比赛、创建散人约球、创建球队）和中心按钮 `+ / ×` 过渡动画；验证通过：小程序 `bun test src/components/__tests__/bottomTabBarAssets.test.ts`、`bun run type-check`、`bun run build:mp-weixin`、`git diff --check`。
+- 2026-05-17：开始实现资料页手机号绑定运行配置。后端 `MiniAppRuntimeConfig` 新增 `profile.require_phone_binding`，默认 `false` 并兼容旧 JSON；小程序资料页改为读取运行配置后再决定是否显示/提交手机号绑定。
+- 2026-05-17：验证通过：小程序 `bun test src/config/__tests__/runtimeConfig.test.ts src/pages/__tests__/miniRemainingFeaturesIntegration.test.ts`、`bun run type-check`、`bun run build:mp-weixin`；后端 `cargo test system::application::service::tests -- --nocapture`、`cargo check --tests`；touched system 文件 `rustfmt --edition 2024 --check`；根目录 `git diff --check`。全量 `cargo fmt --check` 仍被既有 challenge 文件格式差异阻塞，未扩大格式化范围。
+
+## 2026-05-17 首页 onShow 策略改造（A 方案 + 下拉刷新）
+
+- 移除上一轮的 `shouldSkipNextShowRefresh`；首页 `onShow` 改为三分支："首次加载 / 事件标志 reload / 遮蔽时长 < 2 分钟 skip"。
+- 新增 `onHide`（记 `hiddenAt` + 清 `navigatingMatchId`）、`onPullDownRefresh`（await `loadPageData` + `stopPullDownRefresh`）。
+- 新增事件 `home:data-may-changed`：首页 `onLoad/onUnload` 订阅解绑，详情页关键 mutation 后 emit。
+- 详情页 emit 落点：`pages/matches/useMatchDetailPage.ts` 6 处（个人报名/取消、队员设报名/请假/未报名、球队报名/取消）；`pages/challenges/detail.vue` 3 处（接约、取消整条、取消散人个人接约）。
+- `pages.json` 首页：`enablePullDownRefresh: true`、`backgroundColor: "#eef2e9"`、`backgroundTextStyle: "dark"`。
+- `homePageLoading.test.ts`：替换钉死断言，新增 `pages.json` `enablePullDownRefresh` 断言。
+- 验证通过：`bun run type-check`；`bun test src/pages/__tests__/homePageLoading.test.ts` 9 pass / 0 fail；`bun test` 134 pass / 1 fail，唯一失败为 pre-existing `pageBackButton.test.ts` 中 `challenges/detail.vue` 标题动态化遗留（已 stash 验证非本轮引入）。

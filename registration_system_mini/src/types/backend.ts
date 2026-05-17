@@ -406,6 +406,9 @@ export interface BackendMiniAppRuntimeConfig {
   notifications: {
     list_limit: number;
   };
+  profile: {
+    require_phone_binding: boolean;
+  };
 }
 
 export interface BackendUserAccount {

@@ -119,7 +119,7 @@ function updateChargeAmount(userId: number, event: Event) {
           <view v-else class="candidate-avatar candidate-avatar-fallback">{{ resolveUserDisplayName(user).slice(0, 1) }}</view>
           <view class="candidate-main">
             <text class="candidate-title">{{ resolveUserDisplayName(user) }}</text>
-            <text class="candidate-meta">{{ user.username || "微信用户" }}</text>
+            <text class="candidate-meta">{{ user.username || "未命名用户" }}</text>
           </view>
           <text class="candidate-action">加入</text>
         </view>

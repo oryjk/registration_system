@@ -3,7 +3,8 @@ use crate::system::application::{
 };
 use crate::system::domain::{
     MiniAppBillingRuntimeConfig, MiniAppCheckinRuntimeConfig, MiniAppHomeRuntimeConfig,
-    MiniAppMatchesRuntimeConfig, MiniAppNotificationsRuntimeConfig, MiniAppRuntimeConfig,
+    MiniAppMatchesRuntimeConfig, MiniAppNotificationsRuntimeConfig, MiniAppProfileRuntimeConfig,
+    MiniAppRuntimeConfig,
 };
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
@@ -141,6 +142,11 @@ pub struct MiniAppNotificationsRuntimeConfigDto {
     pub list_limit: u8,
 }
 
+#[derive(Debug, Clone, Default, Serialize, Deserialize, ToSchema)]
+pub struct MiniAppProfileRuntimeConfigDto {
+    pub require_phone_binding: bool,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct MiniAppRuntimeConfigDto {
     pub home: MiniAppHomeRuntimeConfigDto,
@@ -148,6 +154,8 @@ pub struct MiniAppRuntimeConfigDto {
     pub checkin: MiniAppCheckinRuntimeConfigDto,
     pub billing: MiniAppBillingRuntimeConfigDto,
     pub notifications: MiniAppNotificationsRuntimeConfigDto,
+    #[serde(default)]
+    pub profile: MiniAppProfileRuntimeConfigDto,
 }
 
 impl From<MiniAppRuntimeConfig> for MiniAppRuntimeConfigDto {
@@ -174,6 +182,9 @@ impl From<MiniAppRuntimeConfig> for MiniAppRuntimeConfigDto {
             },
             notifications: MiniAppNotificationsRuntimeConfigDto {
                 list_limit: value.notifications.list_limit,
+            },
+            profile: MiniAppProfileRuntimeConfigDto {
+                require_phone_binding: value.profile.require_phone_binding,
             },
         }
     }
@@ -203,6 +214,9 @@ impl From<MiniAppRuntimeConfigDto> for MiniAppRuntimeConfig {
             },
             notifications: MiniAppNotificationsRuntimeConfig {
                 list_limit: value.notifications.list_limit,
+            },
+            profile: MiniAppProfileRuntimeConfig {
+                require_phone_binding: value.profile.require_phone_binding,
             },
         }
     }

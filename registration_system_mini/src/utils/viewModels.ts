@@ -128,7 +128,7 @@ export function resolveUserDisplayName(user: BackendUser | null | undefined): st
     return "未登录";
   }
 
-  return pickFirstNonEmpty([user.real_name, user.nickname, user.username]) || `微信用户 ${user.id}`;
+  return pickFirstNonEmpty([user.real_name, user.nickname, user.username]) || `用户 ${user.id}`;
 }
 
 export function resolveUserDisplayHandle(user: BackendUser | null | undefined): string {
@@ -251,6 +251,7 @@ export function buildHomeMatchCards({
 
       return {
         id: activity.id,
+        detailUrl: `/pages/matches/detail?id=${activity.id}`,
         title: activity.name,
         dateLabel: formatDateLabel(activity.holding_date),
         stage: toActivityStatusLabel(activity.status),
@@ -279,17 +280,25 @@ export function buildHomeMatchCards({
 
 export function buildPublicHomeMatchCards({
   activities,
+  myActivityRecords,
   registrationsByActivityId,
   teamRegistrationCountsByActivityId,
   usersById,
+  defaultStatusLabel = "待登录",
   limit,
 }: {
   activities: BackendActivity[];
+  myActivityRecords?: BackendUserActivityRecord[];
   registrationsByActivityId: Record<string, BackendRegistration[]>;
   teamRegistrationCountsByActivityId?: Record<string, number>;
   usersById?: Record<number, BackendUser>;
+  defaultStatusLabel?: string;
   limit?: number;
 }): HomeMatchCardViewModel[] {
+  const myRecordByActivityId = Object.fromEntries(
+    (myActivityRecords ?? []).map((item) => [item.activity_id, item]),
+  );
+
   return activities
     .sort((left, right) => left.holding_date.localeCompare(right.holding_date))
     .slice(0, limit ?? activities.length)
@@ -306,6 +315,8 @@ export function buildPublicHomeMatchCards({
       const requiredPlayers = activity.players_per_team ?? 0;
       const maxPlayers = maxPlayersForActivity(requiredPlayers);
       const signupScope = activity.source_activity_id ? "internal" : "external";
+      const myRecord = myRecordByActivityId[activity.id];
+      const myStatus = myRecord ? toStandLabel(myRecord.stand) : defaultStatusLabel;
       const remainingPlayers = Math.max(requiredPlayers - joinedPlayers, 0);
       const participantAvatars = registrations
         .filter((item) => item.stand === 1)
@@ -323,6 +334,7 @@ export function buildPublicHomeMatchCards({
 
       return {
         id: activity.id,
+        detailUrl: `/pages/matches/detail?id=${activity.id}`,
         title: activity.name,
         dateLabel: formatDateLabel(activity.holding_date),
         stage: toActivityStatusLabel(activity.status),
@@ -337,7 +349,7 @@ export function buildPublicHomeMatchCards({
         absentPlayers,
         latePlayers,
         pendingPlayers,
-        myStatus: "待登录",
+        myStatus,
         highlight:
           requiredPlayers > 0
             ? `当前 ${joinedPlayers} 人参加，还差 ${remainingPlayers} 人达标`
@@ -345,6 +357,60 @@ export function buildPublicHomeMatchCards({
         participantAvatars,
         remainingPlayersLabel: remainingPlayers > 0 ? `还差 ${remainingPlayers} 人` : "已满员",
         canRegister: maxPlayers <= 0 || joinedPlayers < maxPlayers,
+      };
+    });
+}
+
+function toIndividualChallengeStageLabel(status: string): string {
+  switch (status) {
+    case "matched":
+      return "已满员";
+    case "cancelled":
+      return "已取消";
+    default:
+      return "报名中";
+  }
+}
+
+export function buildJoinedIndividualHomeMatchCards({
+  summaries,
+  limit,
+}: {
+  summaries: BackendChallengeSummary[];
+  limit?: number;
+}): HomeMatchCardViewModel[] {
+  return summaries
+    .filter((summary) => summary.challenge.kind === "individual" && summary.current_user_joined && summary.challenge.status !== "cancelled")
+    .sort((left, right) => left.challenge.holding_date.localeCompare(right.challenge.holding_date))
+    .slice(0, limit ?? summaries.length)
+    .map((summary) => {
+      const capacity = challengeSignupCapacity(summary);
+      const joinedPlayers = summary.accepted_count;
+      const remainingPlayers = Math.max(capacity - joinedPlayers, 0);
+
+      return {
+        id: summary.challenge.id,
+        detailUrl: `/pages/challenges/detail?id=${summary.challenge.id}`,
+        title: summary.challenge.title,
+        dateLabel: formatDateLabel(summary.challenge.holding_date),
+        stage: toIndividualChallengeStageLabel(summary.challenge.status),
+        signupScope: "external",
+        signupScopeLabel: "散人报名",
+        venue: summary.challenge.location,
+        opponent: "散人局",
+        formatLabel: `${summary.challenge.players_per_team} 人制`,
+        requiredPlayers: capacity,
+        maxPlayers: capacity,
+        joinedPlayers,
+        absentPlayers: 0,
+        latePlayers: 0,
+        pendingPlayers: 0,
+        myStatus: "已报名",
+        highlight: remainingPlayers > 0 ? `当前 ${joinedPlayers} 人报名，还差 ${remainingPlayers} 人满员` : "已满员",
+        participantAvatars: [],
+        remainingPlayersLabel: remainingPlayers > 0 ? `还差 ${remainingPlayers} 人` : "已满员",
+        canRegister: true,
+        actionLabel: "去查看",
       };
     });
 }
@@ -445,7 +511,7 @@ function toChallengePrimaryActionLabel(summary: BackendChallengeSummary): string
     if (summary.current_user_joined) {
       return "取消报名";
     }
-    if (summary.can_accept) {
+    if (summary.can_accept || summary.challenge.status === "open") {
       return "去报名";
     }
     return "看详情";

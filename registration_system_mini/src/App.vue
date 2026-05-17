@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { onHide, onLaunch, onShow } from "@dcloudio/uni-app";
-import { ensureSessionReady, useAppSession } from "@/stores/appSession";
+import { onHide, onLaunch, onPageNotFound, onShow } from "@dcloudio/uni-app";
+import { restoreSessionFromStorage, useAppSession } from "@/stores/appSession";
 import { syncUnreadCount } from "@/stores/notificationCenter";
 import { isProfileSetupPage, needsProfileCompletion, PROFILE_SETUP_PAGE_PATH } from "@/utils/profileCompletion";
 
+const HOME_PAGE_PATH = "/pages/home/index";
 const { currentUser } = useAppSession();
 let profileSetupNavigationPending = false;
 
@@ -31,13 +32,15 @@ function maybeNavigateToProfileSetup() {
 
 onLaunch(() => {
   console.log("registration_system_mini launch");
-  ensureSessionReady()
+  restoreSessionFromStorage()
     .then(async () => {
-      await syncUnreadCount({ skipEnsure: true });
+      if (currentUser.value) {
+        await syncUnreadCount({ skipEnsure: true });
+      }
       maybeNavigateToProfileSetup();
     })
     .catch((error) => {
-      console.warn("session bootstrap failed", error);
+      console.warn("session restore failed", error);
     });
 });
 
@@ -48,6 +51,13 @@ onShow(() => {
 
 onHide(() => {
   console.log("registration_system_mini hide");
+});
+
+onPageNotFound((options) => {
+  console.warn("page not found, relaunch home", options);
+  uni.reLaunch({
+    url: HOME_PAGE_PATH,
+  });
 });
 </script>
 

@@ -162,4 +162,32 @@ describe("match detail registration design", () => {
     expect(pageLogic.includes('uni.switchTab({ url: "/pages/user/index" });')).toEqual(true);
     expect(pageLogic.includes("await handleGuestLogin();")).toEqual(true);
   });
+
+  test("enables WeChat sharing for match and challenge registration detail pages", async () => {
+    const matchDetail = await Bun.file(
+      "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/detail.vue",
+    ).text();
+    const matchPageLogic = await Bun.file(
+      "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/useMatchDetailPage.ts",
+    ).text();
+    const challengeDetail = await Bun.file(
+      "/Users/carlwang/registration_system/registration_system_mini/src/pages/challenges/detail.vue",
+    ).text();
+    const shareUtils = await Bun.file(
+      "/Users/carlwang/registration_system/registration_system_mini/src/utils/share.ts",
+    ).text();
+
+    expect(matchDetail.includes("onShareAppMessage")).toEqual(true);
+    expect(matchDetail.includes("onShareTimeline")).toEqual(true);
+    expect(matchDetail.includes("path: sharePath.value")).toEqual(true);
+    expect(matchDetail.includes("imageUrl: DEFAULT_SHARE_IMAGE_URL")).toEqual(true);
+    expect(matchDetail.includes("query: `id=${matchId.value || match.value?.id || \"\"}`")).toEqual(true);
+    expect(matchPageLogic.includes("matchId,")).toEqual(true);
+    expect(challengeDetail.includes("onShareAppMessage")).toEqual(true);
+    expect(challengeDetail.includes("onShareTimeline")).toEqual(true);
+    expect(challengeDetail.includes("path: sharePath.value")).toEqual(true);
+    expect(challengeDetail.includes("imageUrl: DEFAULT_SHARE_IMAGE_URL")).toEqual(true);
+    expect(challengeDetail.includes("query: `id=${challengeId.value || card.value?.id || \"\"}`")).toEqual(true);
+    expect(shareUtils.includes('"/static/share/share-cover.png"')).toEqual(true);
+  });
 });

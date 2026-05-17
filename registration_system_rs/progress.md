@@ -100,3 +100,11 @@
 - 已更新 `ChallengeRepository` 查询端口、`ListChallengesUseCase`、`ChallengeService`、web handler 和 PostgreSQL 查询实现。
 - 已新增业务测试 `logged_in_public_challenge_list_marks_joined_individual_challenges`。
 - 验证通过：`cargo test --test challenge_service_business_test -- --nocapture`、`cargo check --tests`、`cargo clippy --all-targets -- -D warnings`。
+
+## 2026-05-17 小程序手机号绑定运行配置
+
+- 已在 `MiniAppRuntimeConfig` 增加 `profile.require_phone_binding`，默认 `false`。
+- `profile` 字段已加 `serde(default)`，旧 `mini_app` JSON 缺少该 section 时仍可反序列化并 sanitize。
+- `MiniAppRuntimeConfigDto` 已同步新增 profile DTO，并给 PATCH payload 的 profile 加默认值，兼容旧配置提交。
+- 已新增测试 `mini_app_runtime_config_deserializes_old_json_without_profile_section`，并在默认配置测试中断言 `require_phone_binding=false`。
+- 验证通过：`cargo test system::application::service::tests -- --nocapture`；`cargo check --tests`；`rustfmt --edition 2024 --check src/system/domain/mod.rs src/system/adapters/web/dto.rs src/system/application/service.rs`；根目录 `git diff --check`。全量 `cargo fmt --check` 仍被既有 challenge 文件格式差异阻塞，未扩大格式化范围。

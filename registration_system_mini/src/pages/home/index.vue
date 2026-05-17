@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { onLoad, onShow, onUnload } from "@dcloudio/uni-app";
+import { onHide, onLoad, onPullDownRefresh, onShareAppMessage, onShareTimeline, onShow, onUnload } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
 import BottomTabBar from "@/components/BottomTabBar.vue";
 import HomeDigestGrid from "./components/HomeDigestGrid.vue";
@@ -9,17 +9,18 @@ import HomeMatchList from "./components/HomeMatchList.vue";
 import HomeOpportunityList from "./components/HomeOpportunityList.vue";
 import HomeSkeleton from "./components/HomeSkeleton.vue";
 import { getActivityUsers, listActivities } from "@/api/activity";
-import { listChallenges } from "@/api/challenge";
+import { acceptChallenge, cancelIndividualChallengeAcceptance, listChallenges } from "@/api/challenge";
 import { useNotificationCenter } from "@/stores/notificationCenter";
 import { getMyActivities, getMyAttendance, listUsers } from "@/api/user";
 import { useTeamContext } from "@/stores/teamContext";
 import { getCustomNavMetrics } from "@/utils/customNav";
-import { hasManualLogout } from "@/utils/authStorage";
+import { getAccessToken, hasManualLogout } from "@/utils/authStorage";
 import { isRuntimeVisibleActivity, isRuntimeVisibleChallengeSummary, loadMiniAppRuntimeConfig } from "@/config/runtimeConfig";
 import { getCurrentYearDateRange } from "@/utils/dateRange";
-import { buildAttendanceSummary, buildChallengeCards, buildHomeMatchCards, buildPublicHomeMatchCards } from "@/utils/viewModels";
+import { DEFAULT_SHARE_IMAGE_URL } from "@/utils/share";
+import { buildAttendanceSummary, buildChallengeCards, buildHomeMatchCards, buildJoinedIndividualHomeMatchCards } from "@/utils/viewModels";
 import type { ChallengeCardViewModel, HomeMatchCardViewModel } from "@/types/viewModels";
-import type { BackendChallengeSummary, BackendUser } from "@/types/backend";
+import type { BackendChallenge, BackendChallengeSummary, BackendUser } from "@/types/backend";
 
 const { currentTeam, ensureSessionReady } = useTeamContext();
 const { syncUnreadCount } = useNotificationCenter();
@@ -30,8 +31,14 @@ const hasLoadedOnce = ref(false);
 const errorMessage = ref("");
 const isGuestMode = ref(false);
 const navigatingMatchId = ref("");
+const hiddenAt = ref<number | null>(null);
+const pendingReloadFromEvent = ref(false);
+const HIDDEN_RELOAD_THRESHOLD_MS = 2 * 60 * 1000;
+const submitting = ref(false);
 const teamMatches = ref<HomeMatchCardViewModel[]>([]);
+const rawTeamMatchCards = ref<HomeMatchCardViewModel[]>([]);
 const challengeCards = ref<ChallengeCardViewModel[]>([]);
+const rawChallengeSummaries = ref<BackendChallengeSummary[]>([]);
 const personalDigest = ref({
   attendanceRate: "0%",
   attended: 0,
@@ -49,6 +56,20 @@ const contentStyle = computed(() => ({
   paddingTop: `${navMetrics.pageTopPadding + 8}px`,
 }));
 const showInitialLoadingState = computed(() => isLoading.value && !hasLoadedOnce.value);
+const shouldShowMatchSection = computed(() => isGuestMode.value || !!currentTeam.value || teamMatches.value.length > 0);
+const showMatchSectionLink = computed(() => !isGuestMode.value && (!!currentTeam.value || teamMatches.value.length > 0));
+const matchSectionTitle = computed(() => "最近要处理的比赛");
+const matchSectionLinkLabel = computed(() => (currentTeam.value ? "全部比赛" : "进入大厅"));
+const matchEmptyText = computed(() => {
+  if (isGuestMode.value) return "登录后可以查看最近要处理的比赛";
+  if (!currentTeam.value) return "";
+  return "当前球队还没有可展示的比赛，等后台录入活动后这里会自动刷新。";
+});
+const opportunityCaption = computed(() => {
+  if (isGuestMode.value) return "公开约队可先浏览，接约和报名需要登录。";
+  if (!currentTeam.value) return "可报名的散人约队会在这里展示。";
+  return "只看当前球队值得优先关注的真实约队。";
+});
 const teamMetaLine = computed(() => {
   if (!currentTeam.value) {
     return "登录后加载当前球队信息";
@@ -57,6 +78,8 @@ const teamMetaLine = computed(() => {
   return `${currentTeam.value.creditScore} 分信用 · 近期 ${teamMatches.value.length} 场待处理比赛`;
 });
 const manageButtonLabel = computed(() => (currentTeam.value?.canManageTeam ? "球队管理" : "我的"));
+const shareTitle = "约球开踢：组队、报名、上场";
+const sharePath = "/pages/home/index";
 
 function isActiveTeamRegistrationActivity(activity: { source_activity_id?: string | null; status?: number | null }) {
   return !!activity.source_activity_id && activity.status !== 3;
@@ -125,7 +148,9 @@ function resetUserRelatedHomeData() {
     leave: 0,
     late: 0,
   };
+  teamMatches.value = [];
   challengeCards.value = [];
+  rawTeamMatchCards.value = [];
 }
 
 function sortChallengeSummariesByHoldingTimeDesc(summaries: BackendChallengeSummary[]) {
@@ -136,40 +161,114 @@ function sortChallengeSummariesByHoldingTimeDesc(summaries: BackendChallengeSumm
   });
 }
 
-async function loadPublicHomeData() {
+function buildVisibleChallengeCards(
+  summaries: BackendChallengeSummary[],
+  runtimeConfig: Awaited<ReturnType<typeof loadMiniAppRuntimeConfig>>,
+  now: Date,
+) {
+  return buildChallengeCards(
+    sortChallengeSummariesByHoldingTimeDesc(
+      summaries.filter((summary) => isRuntimeVisibleChallengeSummary(summary, runtimeConfig, now)),
+    ),
+  ).slice(0, runtimeConfig.home.challenge_card_limit);
+}
+
+function rebuildOpportunityCards(runtimeConfig: Awaited<ReturnType<typeof loadMiniAppRuntimeConfig>>, now: Date) {
+  challengeCards.value = buildVisibleChallengeCards(rawChallengeSummaries.value, runtimeConfig, now);
+}
+
+function rebuildChallengeDerivedHomeCards(runtimeConfig: Awaited<ReturnType<typeof loadMiniAppRuntimeConfig>>, now: Date) {
+  rebuildOpportunityCards(runtimeConfig, now);
+
+  if (isGuestMode.value) return;
+
+  const joinedIndividualCards = buildJoinedIndividualTodos(rawChallengeSummaries.value, runtimeConfig, now);
+  if (!currentTeam.value) {
+    teamMatches.value = joinedIndividualCards;
+    return;
+  }
+
+  teamMatches.value = sortHomeMatchCardsByDate([...rawTeamMatchCards.value, ...joinedIndividualCards]).slice(
+    0,
+    runtimeConfig.home.match_card_limit,
+  );
+}
+
+function applyAcceptedChallengeState(challenge: BackendChallenge, card: ChallengeCardViewModel) {
+  rawChallengeSummaries.value = rawChallengeSummaries.value.map((summary) => {
+    if (summary.challenge.id !== challenge.id) return summary;
+
+    const isIndividual = challenge.kind === "individual";
+    const isTeamReservedByCurrentTeam =
+      !isIndividual &&
+      challenge.status === "open" &&
+      challenge.host_team_id === currentTeam.value?.id &&
+      !challenge.guest_team_id;
+
+    return {
+      ...summary,
+      challenge,
+      host_team_name: isTeamReservedByCurrentTeam ? currentTeam.value?.name ?? summary.host_team_name : summary.host_team_name,
+      host_team_credit_score: isTeamReservedByCurrentTeam ? currentTeam.value?.creditScore ?? summary.host_team_credit_score : summary.host_team_credit_score,
+      host_team_trust_label: isTeamReservedByCurrentTeam ? currentTeam.value?.trustLabel ?? summary.host_team_trust_label : summary.host_team_trust_label,
+      guest_team_name: isIndividual || isTeamReservedByCurrentTeam ? summary.guest_team_name : currentTeam.value?.name ?? summary.guest_team_name,
+      guest_team_credit_score: isIndividual || isTeamReservedByCurrentTeam ? summary.guest_team_credit_score : currentTeam.value?.creditScore ?? summary.guest_team_credit_score,
+      guest_team_trust_label: isIndividual || isTeamReservedByCurrentTeam ? summary.guest_team_trust_label : currentTeam.value?.trustLabel ?? summary.guest_team_trust_label,
+      current_team_relation: isIndividual ? summary.current_team_relation : isTeamReservedByCurrentTeam ? "host" : "guest",
+      accepted_count: isIndividual ? summary.accepted_count + 1 : summary.accepted_count,
+      current_user_joined: isIndividual ? true : summary.current_user_joined,
+      can_accept: false,
+    };
+  });
+
+  if (challenge.activity_id && challenge.status === "matched") {
+    openMatchDetail(challenge.activity_id);
+    return;
+  }
+
+  if (card.kind !== "individual") {
+    syncUnreadCount({ skipEnsure: true });
+  }
+}
+
+function applyCancelledIndividualChallengeState(challenge: BackendChallenge) {
+  rawChallengeSummaries.value = rawChallengeSummaries.value.map((summary) => {
+    if (summary.challenge.id !== challenge.id) return summary;
+
+    return {
+      ...summary,
+      challenge,
+      accepted_count: Math.max(summary.accepted_count - 1, 0),
+      current_user_joined: false,
+      can_accept: challenge.status === "open",
+    };
+  });
+}
+
+function buildJoinedIndividualTodos(
+  summaries: BackendChallengeSummary[],
+  runtimeConfig: Awaited<ReturnType<typeof loadMiniAppRuntimeConfig>>,
+  now: Date,
+) {
+  return buildJoinedIndividualHomeMatchCards({
+    summaries: summaries.filter((summary) => isRuntimeVisibleChallengeSummary(summary, runtimeConfig, now)),
+    limit: runtimeConfig.home.match_card_limit,
+  });
+}
+
+function sortHomeMatchCardsByDate(cards: HomeMatchCardViewModel[]) {
+  return [...cards].sort((left, right) => left.dateLabel.localeCompare(right.dateLabel));
+}
+
+async function loadOpportunityCards(options?: {
+  auth?: boolean;
+}) {
   const runtimeConfig = await loadMiniAppRuntimeConfig();
   const now = new Date();
   const challengeFetchLimit = Math.min(runtimeConfig.home.challenge_card_limit * 5, 50);
-  const [activityPage, users, challengeSummaries] = await Promise.all([
-    listActivities({ page: 1, pageSize: runtimeConfig.home.activity_fetch_page_size }),
-    listUsers(),
-    listChallenges({ limit: challengeFetchLimit, sort: "holding_date_desc", auth: false }),
-  ]);
-  const teamRegistrationCountsByActivityId = buildTeamRegistrationCountsBySourceActivityId(activityPage.items);
-  const activeActivities = activityPage.items
-    .filter((item) => !item.source_activity_id)
-    .filter((item) => isRuntimeVisibleActivity(item, runtimeConfig, now))
-    .sort((left, right) => left.holding_date.localeCompare(right.holding_date))
-    .slice(0, runtimeConfig.home.match_card_limit);
-  const registrationsByActivityId = Object.fromEntries(
-    await Promise.all(
-      activeActivities.map(async (activity) => [activity.id, await getActivityUsers(activity.id)] as const),
-    ),
-  );
-  const usersById = Object.fromEntries(users.map((item: BackendUser) => [item.id, item]));
-
-  teamMatches.value = buildPublicHomeMatchCards({
-    activities: activeActivities,
-    registrationsByActivityId,
-    teamRegistrationCountsByActivityId,
-    usersById,
-    limit: runtimeConfig.home.match_card_limit,
-  });
-  challengeCards.value = buildChallengeCards(
-    sortChallengeSummariesByHoldingTimeDesc(
-      challengeSummaries.filter((summary) => isRuntimeVisibleChallengeSummary(summary, runtimeConfig, now)),
-    ),
-  ).slice(0, runtimeConfig.home.challenge_card_limit);
+  const challengeSummaries = await listChallenges({ limit: challengeFetchLimit, sort: "holding_date_desc", auth: options?.auth ?? false });
+  rawChallengeSummaries.value = challengeSummaries;
+  rebuildChallengeDerivedHomeCards(runtimeConfig, now);
 }
 
 function openTab(path: string) {
@@ -177,12 +276,22 @@ function openTab(path: string) {
 }
 
 function openAllPendingMatches() {
+  if (!currentTeam.value) {
+    uni.switchTab({ url: "/pages/activities/index" });
+    return;
+  }
   uni.navigateTo({ url: "/pages/home/matches/index" });
 }
 
 function openChallengeDetail(challengeId: string) {
   uni.navigateTo({
     url: `/pages/challenges/detail?id=${challengeId}`,
+  });
+}
+
+function openMatchDetail(activityId: string) {
+  uni.navigateTo({
+    url: `/pages/matches/detail?id=${activityId}`,
   });
 }
 
@@ -205,13 +314,106 @@ function handleMatchTap(match: HomeMatchCardViewModel) {
   }
   navigatingMatchId.value = match.id;
   uni.navigateTo({
-    url: `/pages/matches/detail?id=${match.id}`,
-    complete: () => {
-      setTimeout(() => {
-        navigatingMatchId.value = "";
-      }, 500);
+    url: match.detailUrl,
+    fail: () => {
+      navigatingMatchId.value = "";
     },
   });
+}
+
+async function handleOpportunityPrimaryAction(card: ChallengeCardViewModel) {
+  if (card.activityId && card.statusTone === "matched") {
+    openMatchDetail(card.activityId);
+    return;
+  }
+
+  if (card.kind === "individual" && card.currentUserJoined) {
+    await handleCancelIndividualAcceptance(card);
+    return;
+  }
+
+  if (card.kind === "individual" && card.statusTone === "open") {
+    await handleAcceptChallenge(card);
+    return;
+  }
+
+  if (card.canAccept) {
+    await handleAcceptChallenge(card);
+    return;
+  }
+
+  openChallengeDetail(card.id);
+}
+
+async function handleCancelIndividualAcceptance(card: ChallengeCardViewModel) {
+  if (submitting.value || card.kind !== "individual" || !card.currentUserJoined) return;
+
+  uni.showModal({
+    title: "确认取消报名",
+    content: `确认取消「${card.title}」的报名？取消后可重新报名。`,
+    confirmText: "取消报名",
+    cancelText: "再想想",
+    success: async (result) => {
+      if (!result.confirm) return;
+      submitting.value = true;
+      try {
+        const challenge = await cancelIndividualChallengeAcceptance(card.id);
+        applyCancelledIndividualChallengeState(challenge);
+        const runtimeConfig = await loadMiniAppRuntimeConfig();
+        rebuildChallengeDerivedHomeCards(runtimeConfig, new Date());
+        uni.showToast({
+          title: "已取消报名",
+          icon: "none",
+        });
+      } catch (error) {
+        uni.showToast({
+          title: error instanceof Error ? error.message : "取消报名失败",
+          icon: "none",
+        });
+      } finally {
+        submitting.value = false;
+      }
+    },
+  });
+}
+
+async function handleAcceptChallenge(card: ChallengeCardViewModel) {
+  if (submitting.value) return;
+  if (card.kind === "team" && (!currentTeam.value || !currentTeam.value.canManageTeam)) return;
+
+  const confirmed = await new Promise<boolean>((resolve) => {
+    uni.showModal({
+      title: card.kind === "team" ? "确认接约" : "确认报名",
+      content:
+        card.kind === "team"
+          ? `确认以当前球队接约「${card.title}」？`
+          : `确认报名参加「${card.title}」？`,
+      confirmText: card.kind === "team" ? "确认接约" : "确认报名",
+      cancelText: "再想想",
+      success: (result) => resolve(!!result.confirm),
+      fail: () => resolve(false),
+    });
+  });
+  if (!confirmed) return;
+
+  submitting.value = true;
+  try {
+    const challenge = await acceptChallenge(card.id, card.kind === "team" ? currentTeam.value?.id : undefined);
+    applyAcceptedChallengeState(challenge, card);
+    const runtimeConfig = await loadMiniAppRuntimeConfig();
+    rebuildChallengeDerivedHomeCards(runtimeConfig, new Date());
+    uni.showToast({
+      title: card.kind === "team" ? "接约成功" : "报名成功",
+      icon: "none",
+    });
+  } catch (error) {
+    uni.showToast({
+      title: error instanceof Error ? error.message : "接约失败",
+      icon: "none",
+    });
+  } finally {
+    submitting.value = false;
+  }
 }
 
 function formatMatchDateBlock(dateLabel: string) {
@@ -237,10 +439,11 @@ async function loadPageData(options?: { preserveContent?: boolean }) {
   errorMessage.value = "";
 
   try {
-    if (hasManualLogout()) {
+    if (hasManualLogout() || !getAccessToken()) {
       isGuestMode.value = true;
       resetUserRelatedHomeData();
-      await loadPublicHomeData();
+      teamMatches.value = [];
+      await loadOpportunityCards();
       hasLoadedOnce.value = true;
       return;
     }
@@ -249,6 +452,14 @@ async function loadPageData(options?: { preserveContent?: boolean }) {
     await ensureSessionReady();
     if (!currentTeam.value) {
       resetUserRelatedHomeData();
+      const runtimeConfig = await loadMiniAppRuntimeConfig();
+      const now = new Date();
+      const challengeFetchLimit = Math.min(runtimeConfig.home.challenge_card_limit * 5, 50);
+      const challengeSummaries = await listChallenges({ limit: challengeFetchLimit, sort: "holding_date_desc", auth: true });
+      rawChallengeSummaries.value = challengeSummaries;
+      rawTeamMatchCards.value = [];
+      rebuildChallengeDerivedHomeCards(runtimeConfig, now);
+      hasLoadedOnce.value = true;
       return;
     }
 
@@ -264,6 +475,7 @@ async function loadPageData(options?: { preserveContent?: boolean }) {
       listUsers(),
       syncUnreadCount({ skipEnsure: true }),
     ]);
+    rawChallengeSummaries.value = challengeSummaries;
     const usersById = Object.fromEntries(users.map((item: BackendUser) => [item.id, item]));
     const teamRegistrationCountsByActivityId = buildTeamRegistrationCountsBySourceActivityId(activityPage.items);
 
@@ -282,7 +494,7 @@ async function loadPageData(options?: { preserveContent?: boolean }) {
       ),
     );
 
-    teamMatches.value = buildHomeMatchCards({
+    const teamMatchCards = buildHomeMatchCards({
       teamId: currentTeam.value.id,
       activities: focusedActivities,
       myActivityRecords,
@@ -291,6 +503,8 @@ async function loadPageData(options?: { preserveContent?: boolean }) {
       usersById,
       limit: runtimeConfig.home.match_card_limit,
     });
+    rawTeamMatchCards.value = teamMatchCards;
+    rebuildChallengeDerivedHomeCards(runtimeConfig, now);
 
     const summary = buildAttendanceSummary(attendanceRecords);
     personalDigest.value = {
@@ -299,11 +513,6 @@ async function loadPageData(options?: { preserveContent?: boolean }) {
       leave: summary.leave,
       late: summary.late,
     };
-    challengeCards.value = buildChallengeCards(
-      sortChallengeSummariesByHoldingTimeDesc(
-        challengeSummaries.filter((summary) => isRuntimeVisibleChallengeSummary(summary, runtimeConfig, now)),
-      ),
-    ).slice(0, runtimeConfig.home.challenge_card_limit);
     hasLoadedOnce.value = true;
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : "首页数据加载失败";
@@ -320,19 +529,67 @@ function handleSessionLoginCompleted() {
   void loadPageData({ preserveContent: true });
 }
 
+function handleHomeDataMayChanged() {
+  pendingReloadFromEvent.value = true;
+}
+
 onShow(() => {
   uni.hideTabBar({ animation: false });
-  if (navigatingMatchId.value) return;
-  void loadPageData({ preserveContent: hasLoadedOnce.value });
+
+  if (!hasLoadedOnce.value) {
+    void loadPageData();
+    return;
+  }
+
+  if (pendingReloadFromEvent.value) {
+    pendingReloadFromEvent.value = false;
+    hiddenAt.value = null;
+    void loadPageData({ preserveContent: true });
+    return;
+  }
+
+  const hiddenDuration = hiddenAt.value === null ? 0 : Date.now() - hiddenAt.value;
+  hiddenAt.value = null;
+  if (hiddenDuration < HIDDEN_RELOAD_THRESHOLD_MS) return;
+  void loadPageData({ preserveContent: true });
+});
+
+onHide(() => {
+  hiddenAt.value = Date.now();
+  if (navigatingMatchId.value) {
+    navigatingMatchId.value = "";
+  }
+});
+
+onPullDownRefresh(async () => {
+  try {
+    await loadPageData({ preserveContent: hasLoadedOnce.value });
+  } finally {
+    uni.stopPullDownRefresh();
+  }
 });
 
 onLoad(() => {
   uni.$on("session:login-completed", handleSessionLoginCompleted);
+  uni.$on("home:data-may-changed", handleHomeDataMayChanged);
 });
 
 onUnload(() => {
   uni.$off("session:login-completed", handleSessionLoginCompleted);
+  uni.$off("home:data-may-changed", handleHomeDataMayChanged);
 });
+
+onShareAppMessage(() => ({
+  title: shareTitle,
+  path: sharePath,
+  imageUrl: DEFAULT_SHARE_IMAGE_URL,
+}));
+
+onShareTimeline(() => ({
+  title: shareTitle,
+  query: "",
+  imageUrl: DEFAULT_SHARE_IMAGE_URL,
+}));
 </script>
 
 <template>
@@ -358,16 +615,16 @@ onUnload(() => {
           @banner-tap="openTab('/pages/activities/index')"
         />
 
-        <view class="section-headline">
+        <view v-if="shouldShowMatchSection" class="section-headline">
           <view class="section-headline-left">
             <text class="section-fire">热</text>
-            <text class="section-headline-title">最近要处理的比赛</text>
+            <text class="section-headline-title">{{ matchSectionTitle }}</text>
           </view>
-          <view class="section-link" @tap="openAllPendingMatches">全部比赛</view>
+          <view v-if="showMatchSectionLink" class="section-link" @tap="openAllPendingMatches">{{ matchSectionLinkLabel }}</view>
         </view>
 
         <HomeMatchList
-          v-if="teamMatches.length"
+          v-if="shouldShowMatchSection && teamMatches.length"
           :matches="teamMatches"
           :is-guest-mode="isGuestMode"
           :navigating-match-id="navigatingMatchId"
@@ -380,15 +637,15 @@ onUnload(() => {
           :status-class="statusClass"
           @match-tap="handleMatchTap"
         />
-        <view v-else class="home-empty">
-          {{ isGuestMode ? "当前还没有可展示的公开比赛。" : "当前球队还没有可展示的比赛，等后台录入活动后这里会自动刷新。" }}
+        <view v-else-if="shouldShowMatchSection" class="home-empty">
+          {{ matchEmptyText }}
         </view>
 
         <view class="section-headline">
           <view>
             <text class="section-headline-title">约队机会</text>
             <text class="section-caption">
-              {{ isGuestMode ? "公开约队可先浏览，接约和报名需要登录。" : "只看当前球队值得优先关注的真实约队。" }}
+              {{ opportunityCaption }}
             </text>
           </view>
           <view class="section-link" @tap="openTab('/pages/activities/index')">进入大厅</view>
@@ -398,11 +655,13 @@ onUnload(() => {
           v-if="challengeCards.length"
           :cards="challengeCards"
           :challenge-stage-class="challengeStageClass"
+          :submitting="submitting"
           @open-challenge="openChallengeDetail"
+          @primary-action="handleOpportunityPrimaryAction"
         />
         <view v-else class="home-empty">当前还没有可关注的约队机会。你可以去大厅发布一条，或等待其他球队发起。</view>
 
-        <template v-if="!isGuestMode">
+        <template v-if="currentTeam">
           <view class="section-headline">
             <view>
               <text class="section-headline-title">球队数据</text>

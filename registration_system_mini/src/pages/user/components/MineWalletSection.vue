@@ -29,14 +29,6 @@ function handleOpenBilling() {
       </view>
       <view class="wallet-action" @tap="handleOpenBilling">查看账单</view>
     </view>
-    <view class="compact-record-card compact-record-card-light" @tap="handleOpenBilling">
-      <view class="compact-record-cover compact-record-cover-wallet" />
-      <view class="compact-record-copy">
-        <text class="compact-record-title">账单明细已移到二级页面</text>
-        <text class="compact-record-meta">充值、扣费、罚款和流水余额点击后查看</text>
-      </view>
-      <view class="wallet-chip">{{ walletSummary.totalExpenseLabel }}</view>
-    </view>
   </view>
 </template>
 
@@ -107,71 +99,4 @@ function handleOpenBilling() {
   flex-shrink: 0;
 }
 
-.compact-record-card {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-  margin-top: 18rpx;
-  padding: 18rpx;
-  border-radius: 24rpx;
-  background: rgba(253, 254, 252, 0.94);
-  box-shadow: inset 0 0 0 2rpx rgba(17, 17, 17, 0.04);
-}
-
-.compact-record-card-light {
-  background: rgba(249, 250, 244, 0.98);
-}
-
-.compact-record-cover {
-  width: 108rpx;
-  height: 84rpx;
-  border-radius: 20rpx;
-  background:
-    radial-gradient(circle at 24% 24%, rgba(200, 255, 0, 0.3), transparent 24%),
-    linear-gradient(135deg, rgba(37, 41, 31, 0.98) 0%, rgba(59, 66, 48, 0.98) 100%);
-  flex-shrink: 0;
-}
-
-.compact-record-cover-wallet {
-  background:
-    radial-gradient(circle at 24% 24%, rgba(255, 213, 50, 0.26), transparent 24%),
-    linear-gradient(135deg, rgba(31, 35, 28, 0.95) 0%, rgba(79, 86, 63, 0.95) 100%);
-}
-
-.compact-record-copy {
-  min-width: 0;
-  flex: 1;
-}
-
-.compact-record-title {
-  display: block;
-  margin-top: 8rpx;
-  font-size: 30rpx;
-  color: #141512;
-  font-weight: 900;
-  line-height: 1.3;
-}
-
-.compact-record-meta {
-  display: block;
-  margin-top: 8rpx;
-  font-size: 22rpx;
-  color: #6a7067;
-  line-height: 1.5;
-}
-
-.wallet-chip {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 112rpx;
-  height: 54rpx;
-  padding: 0 16rpx;
-  border-radius: 999rpx;
-  background: #eff6d7;
-  color: #4e6900;
-  font-size: 24rpx;
-  font-weight: 900;
-  flex-shrink: 0;
-}
 </style>

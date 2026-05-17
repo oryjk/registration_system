@@ -56,7 +56,7 @@ function handleCandidateTap(candidate: BackendUser) {
         <view v-else class="candidate-avatar candidate-avatar-fallback">{{ resolveUserDisplayName(candidate).slice(0, 1) }}</view>
         <view class="candidate-main">
           <text class="team-result-title">{{ resolveUserDisplayName(candidate) }}</text>
-          <text class="team-result-meta">{{ candidate.username || "微信用户" }}</text>
+          <text class="team-result-meta">{{ candidate.username || "未命名用户" }}</text>
         </view>
         <text :class="['team-result-action', isCurrentMember(candidate.id) && !isCaptainMember(candidate.id) ? 'team-result-action-danger' : '']">
           {{ candidateActionLabel(candidate) }}

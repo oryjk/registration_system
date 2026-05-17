@@ -1,11 +1,10 @@
 <template>
   <view class="promo-banner">
     <view class="promo-copy">
-      <text class="promo-kicker">闪动杯 FlashX Cup</text>
+      <text class="promo-kicker">东安杯</text>
       <text class="promo-title">全民足球赛 火热报名中</text>
       <view class="promo-button">查看详情</view>
     </view>
-    <view class="promo-cup" />
     <view class="promo-ball" />
   </view>
 </template>
@@ -72,42 +71,9 @@
   font-weight: 900;
 }
 
-.promo-cup {
-  position: absolute;
-  right: 86rpx;
-  bottom: -8rpx;
-  width: 122rpx;
-  height: 148rpx;
-  border-radius: 24rpx 24rpx 34rpx 34rpx;
-  background: linear-gradient(180deg, #ffba4b 0%, #c77807 100%);
-  box-shadow:
-    inset -10rpx -14rpx 18rpx rgba(0, 0, 0, 0.18),
-    0 18rpx 28rpx rgba(0, 0, 0, 0.2);
-  transform: rotate(12deg);
-}
-
-.promo-cup::before,
-.promo-cup::after {
-  content: "";
-  position: absolute;
-  top: 24rpx;
-  width: 36rpx;
-  height: 64rpx;
-  border: 8rpx solid rgba(255, 196, 94, 0.85);
-  border-radius: 50%;
-}
-
-.promo-cup::before {
-  left: -24rpx;
-}
-
-.promo-cup::after {
-  right: -24rpx;
-}
-
 .promo-ball {
   position: absolute;
-  right: 26rpx;
+  right: 40rpx;
   bottom: 22rpx;
   width: 74rpx;
   height: 74rpx;

@@ -95,7 +95,7 @@ function handleMatchTap(match: HomeMatchCardViewModel) {
           <text v-if="!isGuestMode" :class="statusClass(match.myStatus)">我的状态：{{ match.myStatus }}</text>
           <text v-else class="home-status home-status-pending">登录后报名</text>
           <view :class="['home-match-button', !match.canRegister ? 'home-match-button-disabled' : '']">
-            {{ match.canRegister ? "去报名" : "已满员" }}
+            {{ match.actionLabel || (match.canRegister ? "去报名" : "已满员") }}
           </view>
         </view>
       </view>

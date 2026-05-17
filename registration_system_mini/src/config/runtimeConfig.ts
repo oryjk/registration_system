@@ -26,6 +26,9 @@ export const defaultMiniAppRuntimeConfig: MiniAppRuntimeConfig = {
   notifications: {
     list_limit: 50,
   },
+  profile: {
+    require_phone_binding: false,
+  },
 };
 
 type RuntimeConfigInput = Partial<{
@@ -34,6 +37,7 @@ type RuntimeConfigInput = Partial<{
   checkin: Partial<MiniAppRuntimeConfig["checkin"]>;
   billing: Partial<MiniAppRuntimeConfig["billing"]>;
   notifications: Partial<MiniAppRuntimeConfig["notifications"]>;
+  profile: Partial<MiniAppRuntimeConfig["profile"]>;
 }>;
 
 function clampNumber(value: unknown, fallback: number, min: number, max: number) {
@@ -69,6 +73,12 @@ export function sanitizeMiniAppRuntimeConfig(input?: RuntimeConfigInput | null):
     },
     notifications: {
       list_limit: clampNumber(input?.notifications?.list_limit, defaults.notifications.list_limit, 1, 100),
+    },
+    profile: {
+      require_phone_binding:
+        typeof input?.profile?.require_phone_binding === "boolean"
+          ? input.profile.require_phone_binding
+          : defaults.profile.require_phone_binding,
     },
   };
 }

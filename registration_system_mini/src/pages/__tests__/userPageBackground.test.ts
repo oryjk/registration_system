@@ -104,7 +104,8 @@ describe("mine page background rendering", () => {
     expect(userPageSource.includes("getMyBalance")).toEqual(true);
     expect(userPageSource.includes('url: "/pages/billing/index"')).toEqual(true);
     expect(walletSource.includes("查看账单")).toEqual(true);
-    expect(walletSource.includes("账单明细已移到二级页面")).toEqual(true);
+    expect(walletSource.includes("账单明细已移到二级页面")).toEqual(false);
+    expect(walletSource.includes("compact-record-card")).toEqual(false);
     expect(billingPageSource.includes("getMyBillingFlow")).toEqual(true);
   });
 
@@ -117,5 +118,33 @@ describe("mine page background rendering", () => {
     expect(userPageSource.includes('uni.$off("session:login-completed", handleSessionLoginCompleted);')).toEqual(true);
     expect(userPageSource.includes("function handleSessionLoginCompleted")).toEqual(true);
     expect(userPageSource.includes("void loadPageData();")).toEqual(true);
+  });
+
+  test("does not label a logged-in user without a team as unauthenticated", async () => {
+    const userPageSource = await Bun.file(
+      "/Users/carlwang/registration_system/registration_system_mini/src/pages/user/index.vue",
+    ).text();
+
+    expect(userPageSource.includes('if (!currentUser.value) return "未登录";')).toEqual(true);
+    expect(userPageSource.includes('return currentTeam.value?.myRoleLabel || "未加入球队";')).toEqual(true);
+  });
+
+  test("keeps mine page in guest mode when local token is missing", async () => {
+    const userPageSource = await Bun.file(
+      "/Users/carlwang/registration_system/registration_system_mini/src/pages/user/index.vue",
+    ).text();
+    const heroProfileSource = await Bun.file(
+      "/Users/carlwang/registration_system/registration_system_mini/src/pages/user/components/MineHeroProfile.vue",
+    ).text();
+
+    expect(userPageSource.includes('import { getAccessToken } from "@/utils/authStorage";')).toEqual(true);
+    expect(userPageSource.includes("if (!getAccessToken())")).toEqual(true);
+    expect(userPageSource.indexOf("if (!getAccessToken())") < userPageSource.indexOf("await ensureSessionReady();")).toEqual(true);
+    expect(userPageSource.includes('resetPageState("登录后可以查看你的比赛、出勤、钱包和球队数据");')).toEqual(true);
+    expect(userPageSource.includes("async function handleLogin()")).toEqual(true);
+    expect(userPageSource.includes("await refreshSessionContext();")).toEqual(true);
+    expect(userPageSource.includes('@login="handleLogin"')).toEqual(true);
+    expect(heroProfileSource.includes('currentUser ? "编辑资料" : "去登录"')).toEqual(true);
+    expect(heroProfileSource.includes('v-if="currentUser" class="profile-edit-chip profile-logout-chip"')).toEqual(true);
   });
 });

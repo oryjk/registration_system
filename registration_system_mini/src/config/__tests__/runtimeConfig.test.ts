@@ -30,6 +30,19 @@ describe("mini app runtime config", () => {
     expect(config.matches.participant_avatar_limit).toEqual(1);
     expect(config.matches.capacity_extra_slots).toEqual(20);
     expect(config.checkin).toEqual(defaultMiniAppRuntimeConfig.checkin);
+    expect(config.profile.require_phone_binding).toEqual(false);
+  });
+
+  test("keeps profile phone binding hidden by default and accepts backend opt-in", () => {
+    expect(defaultMiniAppRuntimeConfig.profile.require_phone_binding).toEqual(false);
+    expect(sanitizeMiniAppRuntimeConfig({}).profile.require_phone_binding).toEqual(false);
+    expect(
+      sanitizeMiniAppRuntimeConfig({
+        profile: {
+          require_phone_binding: true,
+        },
+      }).profile.require_phone_binding,
+    ).toEqual(true);
   });
 
   test("hides past matches when configured to hide by holding time", () => {

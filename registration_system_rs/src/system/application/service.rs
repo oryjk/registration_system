@@ -246,6 +246,41 @@ mod tests {
         assert_eq!(config, MiniAppRuntimeConfig::defaults());
         assert_eq!(config.home.match_card_limit, 2);
         assert!(config.home.hide_matches_after_holding_time);
+        assert!(!config.profile.require_phone_binding);
+    }
+
+    #[test]
+    fn mini_app_runtime_config_deserializes_old_json_without_profile_section() {
+        let value = serde_json::json!({
+            "home": {
+                "match_card_limit": 2,
+                "challenge_card_limit": 2,
+                "activity_fetch_page_size": 100,
+                "hide_matches_after_holding_time": true
+            },
+            "matches": {
+                "related_activity_limit": 2,
+                "participant_avatar_limit": 5,
+                "capacity_extra_slots": 2
+            },
+            "checkin": {
+                "default_radius_meters": 200,
+                "default_open_minutes_before": 60,
+                "default_close_minutes_after": 45
+            },
+            "billing": {
+                "recent_order_limit": 10
+            },
+            "notifications": {
+                "list_limit": 50
+            }
+        });
+
+        let config = serde_json::from_value::<MiniAppRuntimeConfig>(value)
+            .expect("old runtime config json should remain readable")
+            .sanitize();
+
+        assert!(!config.profile.require_phone_binding);
     }
 
     #[tokio::test]

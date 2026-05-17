@@ -4,13 +4,14 @@ import { getCurrentUser, loginWithOpenId } from "@/api/user";
 import { wxLogin } from "@/api/wx";
 import type { BackendTeam, BackendTeamDetail, BackendUser } from "@/types/backend";
 import type { TeamProfileViewModel } from "@/types/viewModels";
-import { resolveSessionBootstrapMode } from "@/stores/bootstrapStrategy";
+import { resolveSessionBootstrapMode, resolveStoredSessionStrategy } from "@/stores/bootstrapStrategy";
 import { buildAvailableIdentities, findCurrentIdentity, resolveCurrentIdentitySelection } from "@/stores/currentIdentity";
 import {
-  clearAccessToken,
   clearCurrentIdentitySelection,
+  clearLocalSessionStorage,
   clearManualLogout,
   clearCurrentTeamId,
+  clearAccessToken,
   getAccessToken,
   getCurrentIdentitySelection,
   getCurrentTeamId,
@@ -33,6 +34,7 @@ const bootstrapError = ref("");
 const isBootstrapping = ref(false);
 
 let bootstrapPromise: Promise<void> | null = null;
+let sessionVersion = 0;
 
 const teamProfiles = computed<TeamProfileViewModel[]>(() =>
   currentUser.value ? buildTeamProfiles(currentUser.value.id, myTeams.value, teamDetailsById.value) : [],
@@ -123,17 +125,30 @@ async function loadTeamContext() {
   selectAvailableIdentity();
 }
 
-async function loginAndBootstrap() {
+function assertSessionVersion(version: number) {
+  if (version !== sessionVersion || hasManualLogout()) {
+    clearLocalSessionStorage();
+    resetSessionState();
+    throw new Error("已退出登录，请点击顶部卡片重新登录");
+  }
+}
+
+async function loginAndBootstrap(sessionBootstrapVersion: number) {
   const code = await requestWechatCode();
+  assertSessionVersion(sessionBootstrapVersion);
   const wxSession = await wxLogin(code);
+  assertSessionVersion(sessionBootstrapVersion);
   const loginResult = await loginWithOpenId({
     open_id: wxSession.openid,
     union_id: wxSession.unionid ?? undefined,
   });
+  assertSessionVersion(sessionBootstrapVersion);
 
   setAccessToken(loginResult.access_token);
+  assertSessionVersion(sessionBootstrapVersion);
   currentUser.value = loginResult.user;
   await loadTeamContext();
+  assertSessionVersion(sessionBootstrapVersion);
 }
 
 async function bootstrapFromExistingToken() {
@@ -147,6 +162,12 @@ export async function ensureSessionReady(force = false) {
   }
 
   bootstrapPromise = (async () => {
+    if (force && hasManualLogout()) {
+      sessionVersion += 1;
+      clearManualLogout();
+    }
+
+    const sessionBootstrapVersion = sessionVersion;
     isBootstrapping.value = true;
     bootstrapError.value = "";
 
@@ -174,7 +195,7 @@ export async function ensureSessionReady(force = false) {
         }
       }
 
-      await loginAndBootstrap();
+      await loginAndBootstrap(sessionBootstrapVersion);
     } catch (error) {
       resetSessionState();
       bootstrapError.value = error instanceof Error ? error.message : "会话初始化失败";
@@ -192,15 +213,40 @@ export async function refreshSessionContext() {
   await ensureSessionReady(true);
 }
 
+export async function restoreSessionFromStorage() {
+  const strategy = resolveStoredSessionStrategy({
+    hasAccessToken: !!getAccessToken(),
+    isManuallyLoggedOut: hasManualLogout(),
+  });
+
+  if (strategy === "guest") {
+    if (hasManualLogout()) {
+      clearLocalSessionStorage();
+    }
+    resetSessionState();
+    return;
+  }
+
+  try {
+    await bootstrapFromExistingToken();
+  } catch (error) {
+    if (!isUnauthorizedError(error)) {
+      throw error;
+    }
+    clearAccessToken();
+    resetSessionState();
+  }
+}
+
 export function clearSession() {
-  clearAccessToken();
-  clearCurrentTeamId();
-  clearCurrentIdentitySelection();
+  sessionVersion += 1;
+  clearLocalSessionStorage();
   setManualLogout();
   resetSessionState();
 }
 
 export function resumeSessionBootstrap() {
+  sessionVersion += 1;
   clearManualLogout();
 }
 
@@ -244,5 +290,6 @@ export function useAppSession() {
     switchIdentity,
     ensureSessionReady,
     refreshSessionContext,
+    restoreSessionFromStorage,
   };
 }

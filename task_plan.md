@@ -375,3 +375,37 @@
 
 - 不改变小程序对本系统 API 的 `phone_number` 字段契约。
 - 不改前端调用与用户资料保存逻辑。
+
+## 2026-05-17 首页 onShow 策略改造（A 方案）
+
+目标：上一轮"`shouldSkipNextShowRefresh` 单点跳过"补丁未能消除"进入比赛详情再返回首页"的抖动；本轮改造为事件驱动 + 遮蔽时长阈值（A 方案），并接入下拉刷新作为用户主动出口。
+
+阶段：
+1. [completed] 调研：首页数据来源、影响首页的详情页 mutation、事件总线现状、pages.json、被钉死的测试断言
+2. [completed] 首页 `index.vue`：移除 `shouldSkipNextShowRefresh`；新增 `hiddenAt` / `pendingReloadFromEvent` / `HIDDEN_RELOAD_THRESHOLD_MS = 2 * 60 * 1000`；`onShow` 改为三分支策略；`onHide` 记 `hiddenAt` 并同步清 `navigatingMatchId`
+3. [completed] 详情页 emit `home:data-may-changed`：比赛详情 6 处 + 约队详情 3 处
+4. [completed] `pages.json` 首页接入下拉刷新；`onPullDownRefresh` await `loadPageData` 后 `stopPullDownRefresh`
+5. [completed] 测试断言同步：替换 `shouldSkipNextShowRefresh` 钉死的两条断言，新增 `enablePullDownRefresh` 断言
+6. [completed] 验证：`bun run type-check`、`bun test src/pages/__tests__/homePageLoading.test.ts`、`bun test`
+
+约束：
+
+- 不做局部 patch，事件不带 payload；统一靠 `onShow` reload 配合下拉刷新
+- 未覆盖的低频 mutation 依赖时间窗口和下拉刷新兜底
+- 不修改后端
+
+## 2026-05-17 小程序资料页手机号绑定运行配置
+
+目标：把资料页“需要绑定手机号”做成后端小程序运行配置，默认不展示手机号绑定区域，也不触发绑定提交。
+
+阶段：
+1. [completed] 后端 `mini_app` runtime config 新增 `profile.require_phone_binding`
+2. [completed] 后端默认值为 `false`，并兼容旧 JSON 缺少 `profile` section 的存量配置
+3. [completed] 小程序运行配置类型、默认值和 sanitize 同步 `profile.require_phone_binding`
+4. [completed] 资料页按配置显示手机号输入/微信绑定按钮，并且只有配置开启时才提交手机号绑定
+5. [completed] 执行前后端最小充分验证
+
+约束：
+
+- 复用已有 `/api/system/mini-app-runtime-config`，不新增接口。
+- 只做用户侧显示/提交门控，不新增后台配置编辑 UI。
