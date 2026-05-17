@@ -39,6 +39,12 @@ describe("bottom tab bar assets", () => {
     expect(tabBarSource.includes("create-menu-action-left")).toEqual(true);
     expect(tabBarSource.includes("create-menu-action-center")).toEqual(true);
     expect(tabBarSource.includes("create-menu-action-right")).toEqual(true);
+    expect(tabBarSource.includes("create-menu-icon-match")).toEqual(true);
+    expect(tabBarSource.includes("create-menu-icon-ball")).toEqual(true);
+    expect(tabBarSource.includes("create-menu-icon-team")).toEqual(true);
+    expect(tabBarSource.includes('<text class="create-menu-action-icon">赛</text>')).toEqual(false);
+    expect(tabBarSource.includes('<text class="create-menu-action-icon">约</text>')).toEqual(false);
+    expect(tabBarSource.includes('<text class="create-menu-action-icon">队</text>')).toEqual(false);
     expect(tabBarSource.includes("创建比赛")).toEqual(true);
     expect(tabBarSource.includes("创建散人约球")).toEqual(true);
     expect(tabBarSource.includes("创建球队")).toEqual(true);

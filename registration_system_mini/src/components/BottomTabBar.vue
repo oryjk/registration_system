@@ -162,21 +162,41 @@ function handleCreateIndividualChallenge() {
       <view class="create-menu-actions" @tap.stop>
         <view class="create-menu-action create-menu-action-left" @tap="handleCreateMatch">
           <view class="create-menu-action-button">
-            <text class="create-menu-action-icon">赛</text>
+            <view class="create-menu-action-icon create-menu-icon-match">
+              <view class="create-menu-field-line" />
+              <view class="create-menu-field-circle" />
+            </view>
           </view>
           <text class="create-menu-action-label">创建比赛</text>
         </view>
 
         <view class="create-menu-action create-menu-action-center" @tap="handleCreateIndividualChallenge">
           <view class="create-menu-action-button">
-            <text class="create-menu-action-icon">约</text>
+            <view class="create-menu-action-icon create-menu-icon-ball">
+              <view class="create-menu-ball-panel create-menu-ball-panel-top" />
+              <view class="create-menu-ball-panel create-menu-ball-panel-left" />
+              <view class="create-menu-ball-panel create-menu-ball-panel-right" />
+            </view>
           </view>
           <text class="create-menu-action-label">创建散人约球</text>
         </view>
 
         <view class="create-menu-action create-menu-action-right" @tap="handleCreateTeam">
           <view class="create-menu-action-button">
-            <text class="create-menu-action-icon">队</text>
+            <view class="create-menu-action-icon create-menu-icon-team">
+              <view class="create-menu-person create-menu-person-side">
+                <view class="create-menu-person-head" />
+                <view class="create-menu-person-body" />
+              </view>
+              <view class="create-menu-person create-menu-person-main">
+                <view class="create-menu-person-head" />
+                <view class="create-menu-person-body" />
+              </view>
+              <view class="create-menu-person create-menu-person-side">
+                <view class="create-menu-person-head" />
+                <view class="create-menu-person-body" />
+              </view>
+            </view>
           </view>
           <text class="create-menu-action-label">创建球队</text>
         </view>
@@ -289,9 +309,117 @@ function handleCreateIndividualChallenge() {
 }
 
 .create-menu-action-icon {
-  color: #c8ff00;
-  font-size: 38rpx;
-  font-weight: 900;
+  position: relative;
+  width: 54rpx;
+  height: 54rpx;
+}
+
+.create-menu-icon-match {
+  border: 6rpx solid #c8ff00;
+  border-radius: 14rpx;
+  box-sizing: border-box;
+}
+
+.create-menu-field-line {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 6rpx;
+  margin-left: -3rpx;
+  background: #c8ff00;
+}
+
+.create-menu-field-circle {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 18rpx;
+  height: 18rpx;
+  margin-left: -9rpx;
+  margin-top: -9rpx;
+  border: 5rpx solid #c8ff00;
+  border-radius: 999rpx;
+  box-sizing: border-box;
+  background: rgba(82, 83, 82, 0.96);
+}
+
+.create-menu-icon-ball {
+  border: 6rpx solid #c8ff00;
+  border-radius: 999rpx;
+  box-sizing: border-box;
+}
+
+.create-menu-ball-panel {
+  position: absolute;
+  background: #c8ff00;
+  border-radius: 999rpx;
+}
+
+.create-menu-ball-panel-top {
+  left: 50%;
+  top: 10rpx;
+  width: 16rpx;
+  height: 16rpx;
+  margin-left: -8rpx;
+}
+
+.create-menu-ball-panel-left {
+  left: 9rpx;
+  bottom: 10rpx;
+  width: 18rpx;
+  height: 8rpx;
+  transform: rotate(35deg);
+}
+
+.create-menu-ball-panel-right {
+  right: 9rpx;
+  bottom: 10rpx;
+  width: 18rpx;
+  height: 8rpx;
+  transform: rotate(-35deg);
+}
+
+.create-menu-icon-team {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 2rpx;
+}
+
+.create-menu-person {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.create-menu-person-main {
+  transform: translateY(-4rpx);
+}
+
+.create-menu-person-head {
+  width: 16rpx;
+  height: 16rpx;
+  border-radius: 999rpx;
+  background: #c8ff00;
+}
+
+.create-menu-person-body {
+  width: 20rpx;
+  height: 22rpx;
+  margin-top: 3rpx;
+  border-radius: 12rpx 12rpx 5rpx 5rpx;
+  background: #c8ff00;
+}
+
+.create-menu-person-side .create-menu-person-head {
+  width: 13rpx;
+  height: 13rpx;
+}
+
+.create-menu-person-side .create-menu-person-body {
+  width: 16rpx;
+  height: 18rpx;
 }
 
 .create-menu-action-label {
