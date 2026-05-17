@@ -6,6 +6,7 @@ import {
   buildChallengeCards,
   buildNotificationItems,
   buildHomeMatchCards,
+  buildJoinedIndividualHomeMatchCards,
   buildTeamProfiles,
   filterChallengeSummariesByScope,
   resolveUserDisplayHandle,
@@ -88,7 +89,7 @@ describe("resolveUserDisplayName", () => {
         is_manager: false,
         is_venue: false,
       }),
-    ).toEqual("微信用户 9022");
+    ).toEqual("用户 9022");
   });
 
   test("uses real name first when available", () => {
@@ -254,6 +255,7 @@ describe("buildHomeMatchCards", () => {
     expect(cards).toEqual([
       {
         id: "activity-1",
+        detailUrl: "/pages/matches/detail?id=activity-1",
         title: "周四友谊赛",
         dateLabel: "04/16 20:00",
         stage: "报名中",
@@ -288,6 +290,57 @@ describe("buildHomeMatchCards", () => {
         canRegister: true,
       },
     ]);
+  });
+});
+
+describe("buildJoinedIndividualHomeMatchCards", () => {
+  test("maps joined individual challenges into home todo cards", () => {
+    const cards = buildJoinedIndividualHomeMatchCards({
+      summaries: [
+        {
+          challenge: {
+            id: "challenge-1",
+            title: "周五散人局",
+            kind: "individual",
+            host_team_id: null,
+            host_user_id: 8,
+            guest_team_id: null,
+            accepted_by_user_id: null,
+            activity_id: null,
+            holding_date: "2026-04-18T20:00:00",
+            start_time: "2026-04-18T20:00:00",
+            end_time: "2026-04-18T22:00:00",
+            location: "C 场",
+            location_latitude: null,
+            location_longitude: null,
+            players_per_team: 8,
+            fee_per_person: "35",
+            note: null,
+            status: "open",
+            accepted_at: null,
+            cancelled_at: null,
+            created_at: "2026-04-17T12:00:00",
+            updated_at: "2026-04-17T12:00:00",
+          },
+          host_team_name: "散人约球",
+          host_team_credit_score: 0,
+          host_team_trust_label: "",
+          guest_team_name: null,
+          guest_team_credit_score: null,
+          guest_team_trust_label: null,
+          current_team_relation: null,
+          accepted_count: 5,
+          current_user_joined: true,
+          can_accept: false,
+        },
+      ],
+    });
+
+    expect(cards[0].id).toEqual("challenge-1");
+    expect(cards[0].detailUrl).toEqual("/pages/challenges/detail?id=challenge-1");
+    expect(cards[0].signupScopeLabel).toEqual("散人报名");
+    expect(cards[0].myStatus).toEqual("已报名");
+    expect(cards[0].actionLabel).toEqual("去查看");
   });
 });
 
@@ -591,6 +644,51 @@ describe("buildChallengeCards", () => {
         activityId: "",
       },
     ]);
+  });
+
+  test("keeps open individual challenges actionable when backend can_accept is false", () => {
+    const cards = buildChallengeCards([
+      {
+        challenge: {
+          id: "challenge-individual-open",
+          title: "周三晚散人局",
+          kind: "individual",
+          host_team_id: null,
+          host_user_id: 7,
+          guest_team_id: null,
+          accepted_by_user_id: null,
+          activity_id: null,
+          holding_date: "2026-04-23T20:00:00",
+          start_time: "2026-04-23T20:00:00",
+          end_time: "2026-04-23T22:00:00",
+          location: "北门测试球场",
+          location_latitude: null,
+          location_longitude: null,
+          players_per_team: 8,
+          fee_per_person: "35.00",
+          note: null,
+          status: "open",
+          accepted_at: null,
+          cancelled_at: null,
+          created_at: "2026-04-20T12:00:00",
+          updated_at: "2026-04-20T12:00:00",
+        },
+        host_team_name: "场馆发布",
+        host_team_credit_score: 0,
+        host_team_trust_label: "信用待评",
+        guest_team_name: null,
+        guest_team_credit_score: null,
+        guest_team_trust_label: null,
+        current_team_relation: "viewer",
+        accepted_count: 1,
+        current_user_joined: false,
+        can_accept: false,
+      },
+    ]);
+
+    expect(cards[0].statusLabel).toEqual("可报名");
+    expect(cards[0].relationLabel).toEqual("可报名");
+    expect(cards[0].primaryActionLabel).toEqual("去报名");
   });
 
   test("maps venue team challenges with the first team waiting for an opponent", () => {

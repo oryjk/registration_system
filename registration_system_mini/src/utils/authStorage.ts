@@ -78,3 +78,9 @@ export function setManualLogout(): void {
 export function clearManualLogout(): void {
   uni.removeStorageSync(MANUAL_LOGOUT_KEY);
 }
+
+export function clearLocalSessionStorage(): void {
+  clearAccessToken();
+  clearCurrentTeamId();
+  clearCurrentIdentitySelection();
+}

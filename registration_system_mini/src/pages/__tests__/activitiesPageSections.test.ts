@@ -47,7 +47,10 @@ describe("activities page sections", () => {
     ).text();
 
     expect(source.includes("function openPublishTypeSheet")).toEqual(true);
-    expect(publishTypeSheet.includes("publish-sheet-overlay")).toEqual(true);
+    expect(publishTypeSheet.includes("publish-menu-overlay")).toEqual(true);
+    expect(publishTypeSheet.includes("publish-menu-overlay-open")).toEqual(true);
+    expect(publishTypeSheet.includes("publish-menu-action")).toEqual(true);
+    expect(publishTypeSheet.includes("cubic-bezier(0.22, 1, 0.36, 1)")).toEqual(true);
     expect(source.includes("handlePublishTeamChallenge")).toEqual(true);
     expect(source.includes("handlePublishIndividualChallenge")).toEqual(true);
     expect(source.includes("<wd-action-sheet")).toEqual(false);
@@ -72,6 +75,8 @@ describe("activities page sections", () => {
     expect(source.includes('createChallenge')).toEqual(true);
     expect(source.includes("challengeKind.value")).toEqual(true);
     expect(source.includes('options?.kind === "team"')).toEqual(true);
+    expect(source.includes("now.setDate(now.getDate() + 1)")).toEqual(false);
+    expect(source.includes("form.date = defaultPublishDate();")).toEqual(true);
     expect(source.includes('host_team_id: currentIdentity.value?.kind === "team" ? currentIdentity.value.teamId : undefined')).toEqual(true);
     expect(source.includes("请先在我的页面选择球队或场馆身份")).toEqual(true);
     expect(source.includes("散人约队同一时间只能接一场")).toEqual(true);
@@ -114,5 +119,32 @@ describe("activities page sections", () => {
     expect(detailSource.includes('card.value?.kind === "individual" ? "散人报名" : "约队详情"')).toEqual(true);
     expect(individualRegistrationSource.includes('class="challenge-tabs"')).toEqual(false);
     expect(individualRegistrationSource.includes('class="challenge-tab-active"')).toEqual(false);
+  });
+
+  test("enables sharing for the challenge hall with the default share cover", async () => {
+    const source = await Bun.file(
+      "/Users/carlwang/registration_system/registration_system_mini/src/pages/activities/index.vue",
+    ).text();
+
+    expect(source.includes("onShareAppMessage")).toEqual(true);
+    expect(source.includes("onShareTimeline")).toEqual(true);
+    expect(source.includes('const shareTitle = "约队大厅：看看可报名的散人局";')).toEqual(true);
+    expect(source.includes('const sharePath = "/pages/activities/index";')).toEqual(true);
+    expect(source.includes("imageUrl: DEFAULT_SHARE_IMAGE_URL")).toEqual(true);
+  });
+
+  test("loads public challenge hall data as guest and logs in only for actions", async () => {
+    const source = await Bun.file(
+      "/Users/carlwang/registration_system/registration_system_mini/src/pages/activities/index.vue",
+    ).text();
+
+    expect(source.includes('import { getAccessToken } from "@/utils/authStorage";')).toEqual(true);
+    expect(source.includes("const isGuestMode = computed(() => !getAccessToken());")).toEqual(true);
+    expect(source.includes("if (!isGuestMode.value)")).toEqual(true);
+    expect(source.includes("teamId: isGuestMode.value ? undefined : currentTeam.value?.id")).toEqual(true);
+    expect(source.includes("auth: !isGuestMode.value")).toEqual(true);
+    expect(source.includes("async function requireLoginForHallAction")).toEqual(true);
+    expect(source.includes("await ensureSessionReady(true);")).toEqual(true);
+    expect(source.includes("const loggedIn = await requireLoginForHallAction();")).toEqual(true);
   });
 });

@@ -113,3 +113,32 @@
 2. [completed] 删除重复 tabs 模板和样式
 3. [completed] 增加静态测试约束不回归
 4. [completed] 执行目标测试、类型检查、构建和 `git diff --check`
+
+## 2026-05-17 首页 onShow 策略改造（A 方案）
+
+目标：上一轮"`shouldSkipNextShowRefresh` 单点跳过"补丁未能消除抖动；改为事件驱动 + 遮蔽时长阈值的整体策略，并接入下拉刷新作为主动出口。
+
+阶段：
+1. [completed] 调研：首页数据来源、影响首页的详情页 mutation、事件总线现状、pages.json 下拉刷新现状、被钉死的测试断言
+2. [completed] 首页 `index.vue`：移除 `shouldSkipNextShowRefresh`；新增 `hiddenAt` / `pendingReloadFromEvent` / `HIDDEN_RELOAD_THRESHOLD_MS=2分钟`；`onShow` 改为「首次加载 → 事件触发显式 reload → 否则按遮蔽时长阈值 skip」；新增 `onHide` 记 `hiddenAt` 并清 `navigatingMatchId`
+3. [completed] 详情页 emit `home:data-may-changed`：比赛详情个人/球队报名相关六处 + 约队详情接约/取消整条/取消个人接约三处
+4. [completed] `pages.json` 首页开 `enablePullDownRefresh`、`backgroundColor`、`backgroundTextStyle`；`onPullDownRefresh` await `loadPageData` 后 `stopPullDownRefresh`
+5. [completed] `homePageLoading.test.ts`：替换钉死 `shouldSkipNextShowRefresh` 的两条断言为新策略断言
+6. [completed] 验证：`bun run type-check`、`bun test src/pages/__tests__/homePageLoading.test.ts`（9 pass）、`bun test`（135 中 1 fail 是 pre-existing `pageBackButton` detail.vue 标题动态化导致，与本轮无关）
+
+约束：
+
+- `home:data-may-changed` 不带 payload，由首页 `onShow` 统一 reload，不做局部 patch
+- 未覆盖的低频 mutation（签到、互评、结算、约队创建、比赛创建）依赖时间窗口（2 分钟）和下拉刷新兜底
+- 不修改后端、不修改约队大厅页内的就地 patch 流程
+
+## 2026-05-17 资料页手机号绑定配置门控
+
+目标：资料页默认不展示手机号绑定区域，只有后端小程序运行配置显式开启时才显示并允许绑定。
+
+阶段：
+1. [completed] `BackendMiniAppRuntimeConfig` 增加 `profile.require_phone_binding`
+2. [completed] `runtimeConfig` 默认值和 sanitize 默认 `require_phone_binding=false`
+3. [completed] `pages/profile/setup` 在 `onShow` 加载运行配置并用 `shouldShowPhoneBinding` 控制手机号区域
+4. [completed] 保存资料和微信手机号授权都受 `shouldShowPhoneBinding` 门控
+5. [completed] 执行目标测试、类型检查和小程序构建

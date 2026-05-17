@@ -4,6 +4,7 @@ import { onLoad, onShow } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
 import { bindMyPhoneNumber, updateMyProfile, uploadMyAvatar } from "@/api/user";
 import { getPhoneNumber } from "@/api/wx";
+import { loadMiniAppRuntimeConfig } from "@/config/runtimeConfig";
 import { useTeamContext } from "@/stores/teamContext";
 import { getCustomNavMetrics } from "@/utils/customNav";
 import { needsProfileCompletion } from "@/utils/profileCompletion";
@@ -23,6 +24,7 @@ const avatarPreview = ref("");
 const avatarLocalPath = ref("");
 const isSaving = ref(false);
 const isBindingPhone = ref(false);
+const shouldShowPhoneBinding = ref(false);
 const pageMode = ref<"setup" | "edit">("setup");
 
 const canSubmit = computed(() => !!nicknameInput.value.trim() && !!avatarPreview.value);
@@ -63,6 +65,11 @@ function hydrateFormFromCurrentUser() {
   phoneInput.value = user.phone_number?.trim() || "";
   avatarPreview.value = user.avatar_url?.trim() || "";
   avatarLocalPath.value = "";
+}
+
+async function hydrateRuntimeConfig() {
+  const config = await loadMiniAppRuntimeConfig();
+  shouldShowPhoneBinding.value = config.profile.require_phone_binding;
 }
 
 function handleChooseAvatar(event: ChooseAvatarEvent) {
@@ -119,7 +126,7 @@ async function handleSubmit() {
       nickname,
       avatar_url: avatarUrl,
     });
-    if (phoneInput.value.trim()) {
+    if (shouldShowPhoneBinding.value && phoneInput.value.trim()) {
       await bindMyPhoneNumber({
         phone_number: phoneInput.value.trim(),
       });
@@ -143,6 +150,10 @@ async function handleSubmit() {
 }
 
 async function handleGetPhoneNumber(event: Event) {
+  if (!shouldShowPhoneBinding.value) {
+    return;
+  }
+
   const detail = event as Event & { detail?: { code?: string; errMsg?: string } };
   const code = detail.detail?.code?.trim() || "";
   if (!code) {
@@ -181,13 +192,14 @@ onLoad((options) => {
 
 onShow(async () => {
   try {
-    await ensureSessionReady();
+    await Promise.all([ensureSessionReady(), hydrateRuntimeConfig()]);
     hydrateFormFromCurrentUser();
 
     if (!isEditMode.value && !needsProfileCompletion(currentUser.value)) {
       goBackToApp();
     }
   } catch (error) {
+    shouldShowPhoneBinding.value = false;
     uni.showToast({
       title: error instanceof Error ? error.message : "加载资料失败",
       icon: "none",
@@ -215,7 +227,7 @@ onShow(async () => {
 
         <!-- #ifdef MP-WEIXIN -->
         <button class="profile-setup-avatar-button" open-type="chooseAvatar" @chooseavatar="handleChooseAvatar">
-          选择微信头像
+          选择头像
         </button>
         <!-- #endif -->
 
@@ -238,7 +250,7 @@ onShow(async () => {
         />
       </view>
 
-      <view class="profile-setup-form">
+      <view v-if="shouldShowPhoneBinding" class="profile-setup-form">
         <text class="profile-setup-label">手机号</text>
         <view class="profile-phone-row">
           <input
@@ -251,7 +263,7 @@ onShow(async () => {
           />
           <!-- #ifdef MP-WEIXIN -->
           <button class="profile-phone-button" open-type="getPhoneNumber" @getphonenumber="handleGetPhoneNumber">
-            {{ isBindingPhone ? "绑定中" : "微信绑定" }}
+            {{ isBindingPhone ? "绑定中" : "一键绑定" }}
           </button>
           <!-- #endif -->
         </view>

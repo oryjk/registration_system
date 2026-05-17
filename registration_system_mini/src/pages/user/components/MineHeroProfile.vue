@@ -2,7 +2,7 @@
 import type { BackendUser } from "@/types/backend";
 import type { CurrentIdentityViewModel, TeamProfileViewModel } from "@/types/viewModels";
 
-defineProps<{
+const props = defineProps<{
   availableIdentities: CurrentIdentityViewModel[];
   currentIdentity: CurrentIdentityViewModel | null;
   currentUser: BackendUser | null;
@@ -23,16 +23,25 @@ defineProps<{
 
 const emit = defineEmits<{
   (event: "editProfile"): void;
+  (event: "login"): void;
   (event: "logout"): void;
   (event: "switchIdentity", identityId: string): void;
   (event: "switchTeam", teamId: number): void;
 }>();
 
 function handleEditProfile() {
+  if (!props.currentUser) {
+    emit("login");
+    return;
+  }
   emit("editProfile");
 }
 
 function handleLogout() {
+  if (!props.currentUser) {
+    emit("login");
+    return;
+  }
   emit("logout");
 }
 
@@ -64,8 +73,8 @@ function handleSwitchIdentity(identityId: string) {
         </view>
         <text class="profile-handle">{{ displayHandle }}</text>
         <view class="profile-actions-row">
-          <text class="profile-edit-chip" @tap.stop="handleEditProfile">编辑资料</text>
-          <text class="profile-edit-chip profile-logout-chip" @tap.stop="handleLogout">退出登录</text>
+          <text class="profile-edit-chip" @tap.stop="handleEditProfile">{{ currentUser ? "编辑资料" : "去登录" }}</text>
+          <text v-if="currentUser" class="profile-edit-chip profile-logout-chip" @tap.stop="handleLogout">退出登录</text>
         </view>
         <text class="profile-team-line">当前球队 · {{ currentTeam?.name || "未加入球队" }}</text>
       </view>

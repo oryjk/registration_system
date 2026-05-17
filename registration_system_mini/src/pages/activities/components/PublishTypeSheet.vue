@@ -23,160 +23,149 @@ function handlePublishIndividual() {
 </script>
 
 <template>
-  <view v-if="visible" class="publish-sheet-overlay" @tap="handleClose">
-    <view class="publish-sheet" @tap.stop>
-      <view class="publish-sheet-header">
-        <view class="publish-sheet-title">发布约队</view>
-        <view class="publish-sheet-close" @tap="handleClose">×</view>
+  <view :class="['publish-menu-overlay', visible ? 'publish-menu-overlay-open' : '']" @tap="handleClose">
+    <view class="publish-menu-backdrop" />
+    <view class="publish-menu-actions" @tap.stop>
+      <view class="publish-menu-action publish-menu-action-left" @tap="handlePublishTeam">
+        <view class="publish-menu-action-button">
+          <text class="publish-menu-action-icon">队</text>
+        </view>
+        <text class="publish-menu-action-label">球队约队</text>
       </view>
 
-      <view class="publish-sheet-options">
-        <view class="publish-sheet-option" @tap="handlePublishTeam">
-          <view class="publish-sheet-option-mark">赛</view>
-          <view class="publish-sheet-option-copy">
-            <view class="publish-sheet-option-title">球队约队</view>
-            <view class="publish-sheet-option-text">用当前身份发布球队约队</view>
-          </view>
+      <view class="publish-menu-action publish-menu-action-right" @tap="handlePublishIndividual">
+        <view class="publish-menu-action-button publish-menu-action-button-light">
+          <text class="publish-menu-action-icon">人</text>
         </view>
-
-        <view class="publish-sheet-option" @tap="handlePublishIndividual">
-          <view class="publish-sheet-option-mark publish-sheet-option-mark-light">人</view>
-          <view class="publish-sheet-option-copy">
-            <view class="publish-sheet-option-title">散人约队</view>
-            <view class="publish-sheet-option-text">创建面向球员个人报名的约队</view>
-          </view>
-        </view>
+        <text class="publish-menu-action-label">散人约队</text>
       </view>
 
-      <view class="publish-sheet-cancel" @tap="handleClose">取消</view>
+      <view class="publish-menu-close" @tap="handleClose">
+        <text class="publish-menu-close-symbol">×</text>
+      </view>
     </view>
   </view>
 </template>
 
 <style scoped>
-.publish-sheet-overlay {
+.publish-menu-overlay {
   position: fixed;
   inset: 0;
   z-index: 120;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  background: rgba(17, 19, 16, 0.62);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 240ms ease;
 }
 
-.publish-sheet {
-  width: calc(100% - 48rpx);
-  margin: 0 24rpx calc(env(safe-area-inset-bottom) + 22rpx);
-  padding: 38rpx 44rpx 40rpx;
-  border-radius: 32rpx;
-  background: #ffffff;
-  box-sizing: border-box;
-  box-shadow: 0 -18rpx 54rpx rgba(17, 19, 16, 0.14);
+.publish-menu-overlay-open {
+  opacity: 1;
+  pointer-events: auto;
 }
 
-.publish-sheet-header {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 52rpx;
-}
-
-.publish-sheet-title {
-  color: #111310;
-  font-size: 32rpx;
-  font-weight: 900;
-  line-height: 1.3;
-}
-
-.publish-sheet-close {
+.publish-menu-backdrop {
   position: absolute;
-  right: -12rpx;
-  top: 50%;
-  width: 56rpx;
-  height: 56rpx;
-  margin-top: -28rpx;
-  color: #5f625b;
-  font-size: 44rpx;
-  line-height: 52rpx;
-  text-align: center;
+  inset: 0;
+  background: rgba(17, 24, 39, 0.42);
+  backdrop-filter: blur(12rpx);
 }
 
-.publish-sheet-options {
+.publish-menu-actions {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(132rpx + env(safe-area-inset-bottom));
+  height: 300rpx;
+  pointer-events: none;
+}
+
+.publish-menu-action {
+  position: absolute;
   display: flex;
   flex-direction: column;
-  gap: 18rpx;
-  margin-top: 48rpx;
-}
-
-.publish-sheet-option {
-  display: flex;
   align-items: center;
-  gap: 22rpx;
-  min-height: 112rpx;
-  padding: 20rpx 22rpx;
-  border-radius: 28rpx;
-  background: #f7f8f4;
-  box-sizing: border-box;
-}
-
-.publish-sheet-option:active {
-  background: #eef1e8;
-}
-
-.publish-sheet-option-mark {
-  flex: 0 0 64rpx;
-  width: 64rpx;
-  height: 64rpx;
-  border-radius: 22rpx;
-  background: #c8ff00;
-  color: #111310;
-  font-size: 28rpx;
-  font-weight: 900;
-  line-height: 64rpx;
-  text-align: center;
-}
-
-.publish-sheet-option-mark-light {
-  background: #111310;
+  gap: 18rpx;
+  width: 190rpx;
   color: #ffffff;
-}
-
-.publish-sheet-option-copy {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  align-items: baseline;
-  gap: 14rpx;
-}
-
-.publish-sheet-option-title {
-  flex: 0 0 auto;
-  color: #111310;
-  font-size: 30rpx;
+  font-size: 25rpx;
   font-weight: 900;
-  line-height: 1.35;
+  text-align: center;
+  opacity: 0;
+  transform: translateY(70rpx) scale(0.82);
+  transition: opacity 260ms ease, transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: auto;
 }
 
-.publish-sheet-option-text {
-  flex: 1;
-  min-width: 0;
-  color: #747970;
-  font-size: 24rpx;
-  font-weight: 600;
-  line-height: 1.45;
+.publish-menu-overlay-open .publish-menu-action {
+  opacity: 1;
+  transform: translateY(0) scale(1);
 }
 
-.publish-sheet-cancel {
+.publish-menu-action-left {
+  left: 128rpx;
+  bottom: 76rpx;
+  transition-delay: 30ms;
+}
+
+.publish-menu-action-right {
+  right: 128rpx;
+  bottom: 76rpx;
+  transition-delay: 90ms;
+}
+
+.publish-menu-action-button,
+.publish-menu-close {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 82rpx;
-  margin-top: 34rpx;
   border-radius: 999rpx;
-  background: #eef0ed;
-  color: #111310;
-  font-size: 30rpx;
+  box-shadow: 0 16rpx 38rpx rgba(0, 0, 0, 0.26);
+}
+
+.publish-menu-action-button {
+  width: 116rpx;
+  height: 116rpx;
+  background: rgba(82, 83, 82, 0.96);
+}
+
+.publish-menu-action-button-light {
+  background: rgba(64, 66, 62, 0.96);
+}
+
+.publish-menu-action-icon {
+  color: #c8ff00;
+  font-size: 38rpx;
   font-weight: 900;
+}
+
+.publish-menu-action-label {
+  line-height: 1.25;
+  text-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.45);
+}
+
+.publish-menu-close {
+  position: absolute;
+  left: 50%;
+  bottom: -18rpx;
+  width: 96rpx;
+  height: 96rpx;
+  margin-left: -48rpx;
+  background: #c8ff00;
+  color: #111111;
+  opacity: 0;
+  transform: translateY(72rpx) rotate(-90deg) scale(0.84);
+  transition: opacity 260ms ease, transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: 130ms;
+  pointer-events: auto;
+}
+
+.publish-menu-overlay-open .publish-menu-close {
+  opacity: 1;
+  transform: translateY(0) rotate(0deg) scale(1);
+}
+
+.publish-menu-close-symbol {
+  font-size: 46rpx;
+  font-weight: 900;
+  line-height: 1;
 }
 </style>

@@ -26,7 +26,7 @@ function handleBannerTap() {
 
 <template>
   <view>
-    <view v-if="!isGuestMode" class="team-hero-card">
+    <view v-if="!isGuestMode && currentTeam" class="team-hero-card">
       <view class="team-hero-main">
         <view class="team-hero-logo">
           <image
@@ -39,8 +39,8 @@ function handleBannerTap() {
         </view>
         <view class="team-hero-copy">
           <view class="team-hero-title-row">
-            <text class="team-hero-name">{{ currentTeam?.name || "我的球队" }}</text>
-            <text v-if="currentTeam" class="team-hero-role">{{ currentTeam.myRoleLabel }}</text>
+            <text class="team-hero-name">{{ currentTeam.name }}</text>
+            <text class="team-hero-role">{{ currentTeam.myRoleLabel }}</text>
           </view>
           <text class="team-hero-meta">{{ teamMetaLine }}</text>
         </view>

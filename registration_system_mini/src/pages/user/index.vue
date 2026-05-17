@@ -18,6 +18,7 @@ import { getTeamCreditTransactions } from "@/api/team";
 import { getMyActivities } from "@/api/user";
 import { useTeamContext } from "@/stores/teamContext";
 import { clearSession } from "@/stores/appSession";
+import { getAccessToken } from "@/utils/authStorage";
 import { getCustomNavMetrics } from "@/utils/customNav";
 import { getCurrentYearDateRange, isDateInRange } from "@/utils/dateRange";
 import { isMockWxPaymentParams, isPaymentCancelled, normalizeWxPaymentParams, requestWxPayment } from "@/utils/payment";
@@ -39,6 +40,7 @@ const {
   switchIdentity,
   switchTeam,
   ensureSessionReady,
+  refreshSessionContext,
 } = useTeamContext();
 const { unreadCount, syncUnreadCount, setUnreadCount } = useNotificationCenter();
 const navMetrics = getCustomNavMetrics();
@@ -65,7 +67,10 @@ const displayName = computed(() => resolveUserDisplayName(currentUser.value));
 const displayHandle = computed(() => resolveUserDisplayHandle(currentUser.value));
 const showInitialLoadingState = computed(() => isLoading.value && !hasLoadedOnce.value);
 const avatarToken = computed(() => displayName.value.slice(0, 1) || "我");
-const teamBadgeLabel = computed(() => currentTeam.value?.myRoleLabel || "未登录");
+const teamBadgeLabel = computed(() => {
+  if (!currentUser.value) return "未登录";
+  return currentTeam.value?.myRoleLabel || "未加入球队";
+});
 const messageSummary = computed(() =>
   unreadCount.value > 0 ? `约队发布、约成、取消等消息共 ${unreadCount.value} 条未读` : "约队发布、约成、取消等消息会先站内通知",
 );
@@ -129,6 +134,12 @@ async function loadPageData(options?: { preserveContent?: boolean }) {
   errorMessage.value = "";
 
   try {
+    if (!getAccessToken()) {
+      resetPageState("登录后可以查看你的比赛、出勤、钱包和球队数据");
+      hasLoadedOnce.value = true;
+      return;
+    }
+
     await ensureSessionReady();
 
     const activeTeamId = currentTeam.value?.id;
@@ -261,10 +272,10 @@ function confirmDialog(options: { title: string; content: string }): Promise<boo
   });
 }
 
-function resetPageState() {
+function resetPageState(message = "已退出登录，请点击顶部卡片重新登录") {
   hasLoadedOnce.value = false;
   isSwitchingTeam.value = false;
-  errorMessage.value = "已退出登录，请点击顶部卡片重新登录";
+  errorMessage.value = message;
   myMatches.value = [];
   creditTransactions.value = [];
   overviewDigest.value = {
@@ -282,6 +293,29 @@ function resetPageState() {
 
 function handleSessionLoginCompleted() {
   void loadPageData();
+}
+
+async function handleLogin() {
+  if (currentUser.value) {
+    return;
+  }
+
+  uni.showLoading({
+    title: "登录中...",
+    mask: true,
+  });
+
+  try {
+    await refreshSessionContext();
+    await loadPageData();
+  } catch (error) {
+    uni.showToast({
+      title: error instanceof Error ? error.message : "登录失败",
+      icon: "none",
+    });
+  } finally {
+    uni.hideLoading();
+  }
 }
 
 async function handleLogout() {
@@ -390,6 +424,7 @@ onUnload(() => {
           :overview-digest="overviewDigest"
           :current-team-joined-days-label="currentTeamJoinedDaysLabel"
           @edit-profile="handleEditProfile"
+          @login="handleLogin"
           @logout="handleLogout"
           @switch-identity="handleSwitchIdentity"
           @switch-team="handleSwitchTeam"

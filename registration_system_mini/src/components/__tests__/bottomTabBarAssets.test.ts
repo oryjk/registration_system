@@ -24,5 +24,75 @@ describe("bottom tab bar assets", () => {
 
     expect(tabBarSource.includes('<view class="custom-tabbar-shell">')).toEqual(true);
     expect(tabBarSource.includes('<view class="custom-tabbar">')).toEqual(true);
+    expect(tabBarSource.includes(":class=\"['custom-tabbar', isOpen ? 'custom-tabbar-open' : '']\"")).toEqual(false);
+  });
+
+  test("opens a radial create menu from the center tab button", async () => {
+    const tabBarSource = await Bun.file(
+      "/Users/carlwang/registration_system/registration_system_mini/src/components/BottomTabBar.vue",
+    ).text();
+
+    expect(tabBarSource.includes("custom-tab-plus-open")).toEqual(true);
+    expect(tabBarSource.includes('{{ isOpen ? "×" : "+" }}')).toEqual(true);
+    expect(tabBarSource.includes("create-menu-overlay-open")).toEqual(true);
+    expect(tabBarSource.includes("create-menu-backdrop")).toEqual(true);
+    expect(tabBarSource.includes("create-menu-action-left")).toEqual(true);
+    expect(tabBarSource.includes("create-menu-action-center")).toEqual(true);
+    expect(tabBarSource.includes("create-menu-action-right")).toEqual(true);
+    expect(tabBarSource.includes("创建比赛")).toEqual(true);
+    expect(tabBarSource.includes("创建散人约球")).toEqual(true);
+    expect(tabBarSource.includes("创建球队")).toEqual(true);
+    expect(tabBarSource.includes('url: "/pages/challenges/create-individual/index?kind=individual"')).toEqual(true);
+    expect(tabBarSource.includes("transition: opacity 260ms ease, transform 280ms cubic-bezier")).toEqual(true);
+    expect(tabBarSource.includes("backdrop-filter: blur")).toEqual(true);
+    expect(tabBarSource.includes("custom-tabbar-open")).toEqual(false);
+    expect(tabBarSource.includes("fab-sheet")).toEqual(false);
+  });
+
+  test("keeps bottom tab icons large enough to balance the center create button", async () => {
+    const globalStyles = await Bun.file(
+      "/Users/carlwang/registration_system/registration_system_mini/src/uni.css",
+    ).text();
+
+    expect(globalStyles.includes("width: 58rpx;")).toEqual(true);
+    expect(globalStyles.includes("height: 52rpx;")).toEqual(true);
+    expect(globalStyles.includes("width: 48rpx;")).toEqual(true);
+    expect(globalStyles.includes("height: 48rpx;")).toEqual(true);
+    expect(globalStyles.includes("width: 40rpx;")).toEqual(false);
+    expect(globalStyles.includes("height: 40rpx;")).toEqual(false);
+  });
+
+  test("uses an opaque bottom tab bar background", async () => {
+    const globalStyles = await Bun.file(
+      "/Users/carlwang/registration_system/registration_system_mini/src/uni.css",
+    ).text();
+
+    expect(globalStyles.includes("background: #ffffff;")).toEqual(true);
+    expect(globalStyles.includes("background: rgba(255, 255, 255, 0.96);")).toEqual(false);
+  });
+
+  test("keeps icon labels visually close to their tab icons", async () => {
+    const globalStyles = await Bun.file(
+      "/Users/carlwang/registration_system/registration_system_mini/src/uni.css",
+    ).text();
+    const customTabItemBlock = globalStyles.slice(
+      globalStyles.indexOf(".custom-tab-item {"),
+      globalStyles.indexOf(".custom-tab-icon-shell {"),
+    );
+
+    expect(customTabItemBlock.includes("gap: 0;")).toEqual(true);
+    expect(customTabItemBlock.includes("gap: 6rpx;")).toEqual(false);
+    expect(globalStyles.includes("margin-top: -2rpx;")).toEqual(true);
+  });
+
+  test("does not add an oversized center cutout behind the create button", async () => {
+    const globalStyles = await Bun.file(
+      "/Users/carlwang/registration_system/registration_system_mini/src/uni.css",
+    ).text();
+
+    expect(globalStyles.includes(".custom-tabbar::before")).toEqual(false);
+    expect(globalStyles.includes("top: -58rpx;")).toEqual(false);
+    expect(globalStyles.includes("height: 132rpx;")).toEqual(false);
+    expect(globalStyles.includes(".custom-tab-item-center .custom-tab-label")).toEqual(false);
   });
 });

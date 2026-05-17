@@ -95,6 +95,8 @@ pub struct MiniAppRuntimeConfig {
     pub checkin: MiniAppCheckinRuntimeConfig,
     pub billing: MiniAppBillingRuntimeConfig,
     pub notifications: MiniAppNotificationsRuntimeConfig,
+    #[serde(default)]
+    pub profile: MiniAppProfileRuntimeConfig,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -129,6 +131,11 @@ pub struct MiniAppNotificationsRuntimeConfig {
     pub list_limit: u8,
 }
 
+#[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct MiniAppProfileRuntimeConfig {
+    pub require_phone_binding: bool,
+}
+
 impl MiniAppRuntimeConfig {
     pub const CONFIG_KEY: &'static str = "mini_app";
 
@@ -154,6 +161,7 @@ impl MiniAppRuntimeConfig {
                 recent_order_limit: 10,
             },
             notifications: MiniAppNotificationsRuntimeConfig { list_limit: 50 },
+            profile: MiniAppProfileRuntimeConfig::default(),
         }
     }
 

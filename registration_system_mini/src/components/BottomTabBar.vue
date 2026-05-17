@@ -63,7 +63,7 @@ function switchTab(path: string) {
 }
 
 function openSheet() {
-  isOpen.value = true;
+  isOpen.value = !isOpen.value;
 }
 
 function closeSheet() {
@@ -99,6 +99,13 @@ function handleCreateTeam() {
     url: "/pages/teams/manage/index",
   });
 }
+
+function handleCreateIndividualChallenge() {
+  closeSheet();
+  uni.navigateTo({
+    url: "/pages/challenges/create-individual/index?kind=individual",
+  });
+}
 </script>
 
 <template>
@@ -123,9 +130,9 @@ function handleCreateTeam() {
         <text class="custom-tab-label">{{ item.label }}</text>
       </view>
 
-      <view class="custom-tab-item custom-tab-item-active">
-        <view class="custom-tab-plus" @tap="openSheet">
-          <text class="custom-tab-plus-symbol">+</text>
+      <view class="custom-tab-item custom-tab-item-center">
+        <view :class="['custom-tab-plus', isOpen ? 'custom-tab-plus-open' : '']" @tap="openSheet">
+          <text class="custom-tab-plus-symbol">{{ isOpen ? "×" : "+" }}</text>
         </view>
         <text class="custom-tab-label custom-tab-label-active">创建</text>
       </view>
@@ -150,30 +157,145 @@ function handleCreateTeam() {
       </view>
     </view>
 
-    <view v-if="isOpen" class="fab-overlay" @tap="closeSheet">
-      <view class="fab-sheet" @tap.stop>
-        <view class="fab-sheet-handle" />
-        <view class="fab-sheet-title">快捷创建</view>
-        <view class="fab-sheet-caption">创建比赛或球队后，会自动刷新你的当前球队上下文。</view>
-
-        <view class="fab-option-grid">
-          <view class="fab-option-card fab-option-card-dark" @tap="handleCreateMatch">
-            <view class="fab-option-icon">赛</view>
-            <view class="fab-option-title">创建比赛</view>
-            <view class="fab-option-text">
-              {{ currentTeam ? `当前球队：${currentTeam.name}` : "请先完成登录并加入球队" }}
-            </view>
+    <view :class="['create-menu-overlay', isOpen ? 'create-menu-overlay-open' : '']" @tap="closeSheet">
+      <view class="create-menu-backdrop" />
+      <view class="create-menu-actions" @tap.stop>
+        <view class="create-menu-action create-menu-action-left" @tap="handleCreateMatch">
+          <view class="create-menu-action-button">
+            <text class="create-menu-action-icon">赛</text>
           </view>
-
-          <view class="fab-option-card" @tap="handleCreateTeam">
-            <view class="fab-option-icon fab-option-icon-light">队</view>
-            <view class="fab-option-title">创建球队</view>
-            <view class="fab-option-text">创建新球队，也可以搜索已有球队申请加入。</view>
-          </view>
+          <text class="create-menu-action-label">创建比赛</text>
         </view>
 
-        <view class="fab-sheet-close" @tap="closeSheet">×</view>
+        <view class="create-menu-action create-menu-action-center" @tap="handleCreateIndividualChallenge">
+          <view class="create-menu-action-button">
+            <text class="create-menu-action-icon">约</text>
+          </view>
+          <text class="create-menu-action-label">创建散人约球</text>
+        </view>
+
+        <view class="create-menu-action create-menu-action-right" @tap="handleCreateTeam">
+          <view class="create-menu-action-button">
+            <text class="create-menu-action-icon">队</text>
+          </view>
+          <text class="create-menu-action-label">创建球队</text>
+        </view>
       </view>
     </view>
   </view>
 </template>
+
+<style scoped>
+.custom-tabbar-shell {
+  pointer-events: none;
+}
+
+.custom-tabbar {
+  pointer-events: auto;
+}
+
+.custom-tab-plus {
+  transition: transform 220ms ease;
+}
+
+.custom-tab-plus-open {
+  transform: rotate(135deg);
+}
+
+.create-menu-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 54;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 240ms ease;
+}
+
+.create-menu-overlay-open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.create-menu-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(17, 24, 39, 0.42);
+  backdrop-filter: blur(12rpx);
+}
+
+.create-menu-actions {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(132rpx + env(safe-area-inset-bottom));
+  height: 300rpx;
+  pointer-events: none;
+}
+
+.create-menu-action {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18rpx;
+  width: 180rpx;
+  color: #ffffff;
+  font-size: 25rpx;
+  font-weight: 900;
+  text-align: center;
+  opacity: 0;
+  transform: translateY(70rpx) scale(0.82);
+  transition: opacity 260ms ease, transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: auto;
+}
+
+.create-menu-overlay-open .create-menu-action {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.create-menu-action-left {
+  left: 76rpx;
+  bottom: 20rpx;
+  transition-delay: 20ms;
+}
+
+.create-menu-action-center {
+  left: 50%;
+  bottom: 106rpx;
+  transform: translateX(-50%) translateY(70rpx) scale(0.82);
+  transition-delay: 70ms;
+}
+
+.create-menu-overlay-open .create-menu-action-center {
+  transform: translateX(-50%) translateY(0) scale(1);
+}
+
+.create-menu-action-right {
+  right: 76rpx;
+  bottom: 20rpx;
+  transition-delay: 120ms;
+}
+
+.create-menu-action-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 116rpx;
+  height: 116rpx;
+  border-radius: 999rpx;
+  background: rgba(82, 83, 82, 0.96);
+  box-shadow: 0 16rpx 38rpx rgba(0, 0, 0, 0.26);
+}
+
+.create-menu-action-icon {
+  color: #c8ff00;
+  font-size: 38rpx;
+  font-weight: 900;
+}
+
+.create-menu-action-label {
+  line-height: 1.25;
+  text-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.45);
+}
+</style>

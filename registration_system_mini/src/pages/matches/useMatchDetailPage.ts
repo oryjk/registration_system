@@ -531,6 +531,7 @@ export function useMatchDetailPage() {
       await ensureSessionReady();
       await submitIndividualRegistration(match.value.id);
       applyIndividualRegistrationState(1, 1);
+      uni.$emit("home:data-may-changed");
       uni.showToast({
         title: "报名成功",
         icon: "none",
@@ -560,6 +561,7 @@ export function useMatchDetailPage() {
       await ensureSessionReady();
       await cancelIndividualRegistration(match.value.id);
       applyIndividualRegistrationState(0, 0);
+      uni.$emit("home:data-may-changed");
       uni.showToast({
         title: "已取消报名",
         icon: "none",
@@ -602,6 +604,7 @@ export function useMatchDetailPage() {
         await cancelIndividualRegistration(match.value.id);
         applyIndividualRegistrationState(0, 0);
       }
+      uni.$emit("home:data-may-changed");
       uni.showToast({
         title: stand === 1 ? "报名成功" : stand === 2 ? "已请假" : "已设为未报名",
         icon: "none",
@@ -646,6 +649,7 @@ export function useMatchDetailPage() {
           0,
         );
         existingTeamDerivedActivity.value = null;
+        uni.$emit("home:data-may-changed");
         uni.showToast({
           title: "球队报名已取消",
           icon: "none",
@@ -655,6 +659,7 @@ export function useMatchDetailPage() {
 
       const derivedActivity = await submitTeamRegistrationForMatch(match.value.id, currentTeam.value.id, registrationCount);
       existingTeamDerivedActivity.value = derivedActivity;
+      uni.$emit("home:data-may-changed");
       uni.showToast({
         title: "球队报名已发起",
         icon: "none",
@@ -845,6 +850,7 @@ export function useMatchDetailPage() {
   });
 
   return {
+    matchId,
     pageStyle,
     contentStyle,
     errorMessage,

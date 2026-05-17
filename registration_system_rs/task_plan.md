@@ -139,3 +139,14 @@
 
 - 不改变小程序接口返回结构，后端仍返回 `phone_number`。
 - 本轮只修改微信外部网关 adapter，不调整 handler、use case、前端调用。
+
+## 2026-05-17 小程序资料页手机号绑定运行配置
+
+目标：复用现有系统运行配置接口，为小程序资料页提供“是否需要手机号绑定”的后端配置，默认关闭。
+
+阶段：
+1. [completed] `system/domain` 的 `MiniAppRuntimeConfig` 增加 `profile.require_phone_binding`
+2. [completed] 新增 profile 默认值 `false`，并通过 serde default 兼容旧 `mini_app` JSON
+3. [completed] `system/adapters/web/dto` 同步 profile DTO，PATCH 旧 payload 缺少 profile 时默认 false
+4. [completed] 增加旧 JSON 反序列化兼容测试和默认值断言
+5. [completed] 执行后端 system 专项测试和编译验证

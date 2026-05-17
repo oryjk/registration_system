@@ -195,6 +195,16 @@
 - 首页会先按运行配置过滤可见约队，再 `slice` 截取展示数量；因此仅依赖后端排序不够稳，过滤后仍需要在前端按 `holding_date` 和 `start_time` 倒序排序后再截断。
 - `HomeOpportunityList` 原先只展示卡片，没有 emit 点击事件；详情页路由已存在于 `pages.json`，路径为 `/pages/challenges/detail?id=...`。
 
+## 2026-05-16 小程序退出登录后刷新状态发现
+
+- `clearSession()` 必须清理 token、当前球队、当前身份并写入 `registration_system_mini_manual_logout` 手动退出标记；退出后本地不应继续存在 token。
+- 冷启动入口 `App.vue` 调用 `restoreSessionFromStorage()`；此前该恢复逻辑只根据本地 token 决定是否恢复登录态，未检查手动退出标记。
+- 因此用户手动退出后，如果本地仍残留 token，强制刷新可能重新按 token 恢复登录态；合理策略是退出动作直接删除 token，手动退出标记优先于 token 恢复，并在冷启动时清理残留登录缓存。
+- 异步登录流程也需要防止退出后旧请求回写 token；会话版本变化后，旧请求即使返回也应被拦截并再次清理本地会话。
+- 清缓存后自动登录的直接来源不是 token 残留，而是手动退出标记也被清掉后，个人中心页面层无条件调用 `ensureSessionReady()`；个人中心应在无 token 时停留游客态，用户点击“去登录”才触发微信登录。
+- 首页待办详情返回抖动来自 `onShow()` 刷新：待办卡片进入详情后回退也会触发 `loadPageData({ preserveContent: true })`，导致刷新遮罩和卡片重算；应在待办详情跳转成功后跳过下一次首页 `onShow` 刷新。
+- 小程序 tabbar 是页面内自定义 `BottomTabBar.vue`，不是微信 `custom-tab-bar` 目录；中间创建按钮适合直接在该组件里实现 FAB 展开菜单和动画，但常驻 tabbar 的颜色、底座和尺寸应继续沿用项目原有样式。
+
 ## 2026-05-15 小程序首页配色微调发现
 
 - 当前首页视觉不舒服的主因是纯黑与荧光绿对比过硬，浅灰背景与白卡层次偏弱。
@@ -225,3 +235,19 @@
 - 后端修复应限定在微信外部响应 DTO 和解析诊断，不需要改变小程序 API 契约。
 - 微信成功响应会带 `errcode=0, errmsg=ok`；后端不能把“存在 errcode”直接当失败，只应在 `errcode != 0` 时返回微信 API 错误。
 - Docker healthcheck 本身只标记 `healthy/unhealthy`，不会自动通知；飞书告警适合放在服务器侧 cron 脚本，连续失败 3 次后发送，避免部署重启误报。
+
+## 2026-05-17 首页 onShow 策略改造发现
+
+- 上一轮的 `shouldSkipNextShowRefresh` 只覆盖"最近要处理的比赛"卡片这一种入口，且 flag 在 `uni.navigateTo` 的 success 异步回调里设；其它入口（约队卡、tab 切换、管理页等）回首页仍 reload，是抖动主因。
+- `navigatingMatchId` 用 `setTimeout(500ms)` 异步清是次要抖动源；改成 `onHide` 同步清更稳定。
+- 简版 A 方案（事件标志 + 遮蔽时长阈值 + 下拉刷新）足以覆盖用户原始抱怨：看一眼回来 → 时间窗口 skip；操作过回来 → 事件标志 reload；长时间离开回来 → 兜底 reload；主动求最新 → 下拉刷新。
+- 没做局部 patch（事件不带 payload）：用户在详情页操作的约队/比赛**未必落在首页 limit 截取的列表里**，patch 难稳定生效；统一 reload 简单可靠，浮标"更新中..."可接受。
+- pages.json `navigationStyle: custom` 不影响 `enablePullDownRefresh`；下拉露出的 `backgroundColor` 必须和页面渐变底色（`#eef2e9`）对齐，否则会闪白边。
+- `homePageLoading.test.ts` 把上一轮 `shouldSkipNextShowRefresh` 整套源码字符串钉死，改造时必须同步更新断言。已确认 `pageBackButton.test.ts` 中 `challenges/detail.vue` 失败为 pre-existing（标题已改成动态 `:title="pageTitle"`，测试仍要求字符串绑定），与本轮无关。
+
+## 2026-05-17 资料页手机号绑定配置发现
+
+- 后端已有公开系统运行配置接口 `GET /api/system/mini-app-runtime-config`，小程序已有 `loadMiniAppRuntimeConfig()` fallback；本需求适合复用该链路，不需要新增接口。
+- `rs_system_runtime_configs` 存的是 JSON；新增 `profile` section 时必须给 `MiniAppRuntimeConfig.profile` 加 `serde(default)`，否则线上旧 `mini_app` JSON 缺少字段会导致读取配置失败。
+- 用户要求“默认不显示，也就是不绑定”，因此默认值应是 `profile.require_phone_binding=false`，小程序配置加载失败时也应沿用默认隐藏。
+- 当前资料页手机号绑定原本是可选字段；本轮只做显示和提交门控，不新增“手机号必填”校验。

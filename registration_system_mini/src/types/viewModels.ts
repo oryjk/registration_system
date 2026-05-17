@@ -28,6 +28,7 @@ export interface CurrentIdentityViewModel {
 
 export interface HomeMatchCardViewModel {
   id: string;
+  detailUrl: string;
   title: string;
   dateLabel: string;
   stage: string;
@@ -52,6 +53,7 @@ export interface HomeMatchCardViewModel {
   }>;
   remainingPlayersLabel: string;
   canRegister: boolean;
+  actionLabel?: string;
 }
 
 export interface AttendanceSummaryViewModel {

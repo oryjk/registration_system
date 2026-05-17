@@ -1,12 +1,16 @@
 <script setup lang="ts">
+import { computed } from "vue";
+import { onShareAppMessage, onShareTimeline } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
 import MatchDetailSkeleton from "./components/MatchDetailSkeleton.vue";
 import MatchIndividualRegistration from "./components/MatchIndividualRegistration.vue";
 import MatchTeamRegistration from "./components/MatchTeamRegistration.vue";
 import TeamSettlementCard from "./components/TeamSettlementCard.vue";
+import { DEFAULT_SHARE_IMAGE_URL } from "@/utils/share";
 import { useMatchDetailPage } from "./useMatchDetailPage";
 
 const {
+  matchId,
   pageStyle,
   contentStyle,
   errorMessage,
@@ -79,6 +83,25 @@ const {
   handleSubmitSettlement,
   handleTeamSubmit,
 } = useMatchDetailPage();
+
+const shareTitle = computed(() => {
+  if (!match.value) return "邀请你参加比赛报名";
+  return `邀请你报名：${match.value.name}`;
+});
+
+const sharePath = computed(() => `/pages/matches/detail?id=${matchId.value || match.value?.id || ""}`);
+
+onShareAppMessage(() => ({
+  title: shareTitle.value,
+  path: sharePath.value,
+  imageUrl: DEFAULT_SHARE_IMAGE_URL,
+}));
+
+onShareTimeline(() => ({
+  title: shareTitle.value,
+  query: `id=${matchId.value || match.value?.id || ""}`,
+  imageUrl: DEFAULT_SHARE_IMAGE_URL,
+}));
 </script>
 
 <template>

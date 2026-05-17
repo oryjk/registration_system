@@ -28,12 +28,18 @@ describe("remaining mini real backend integrations", () => {
   test("profile setup binds WeChat phone number through real backend APIs", async () => {
     const wxApi = await read(`${miniRoot}/src/api/wx.ts`);
     const userApi = await read(`${miniRoot}/src/api/user.ts`);
+    const runtimeConfig = await read(`${miniRoot}/src/config/runtimeConfig.ts`);
     const page = await read(`${miniRoot}/src/pages/profile/setup/index.vue`);
 
+    expect(runtimeConfig.includes("require_phone_binding: false")).toEqual(true);
     expect(wxApi.includes("export function getPhoneNumber")).toEqual(true);
     expect(wxApi.includes('url: "/wx/getPhoneNumber"')).toEqual(true);
     expect(userApi.includes("export function bindMyPhoneNumber")).toEqual(true);
     expect(userApi.includes('url: "/user/phone"')).toEqual(true);
+    expect(page.includes("loadMiniAppRuntimeConfig")).toEqual(true);
+    expect(page.includes("shouldShowPhoneBinding.value = config.profile.require_phone_binding")).toEqual(true);
+    expect(page.includes('v-if="shouldShowPhoneBinding"')).toEqual(true);
+    expect(page.includes("shouldShowPhoneBinding.value && phoneInput.value.trim()")).toEqual(true);
     expect(page.includes('open-type="getPhoneNumber"')).toEqual(true);
     expect(page.includes("@getphonenumber=\"handleGetPhoneNumber\"")).toEqual(true);
     expect(page.includes("getPhoneNumber")).toEqual(true);

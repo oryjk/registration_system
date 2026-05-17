@@ -69,3 +69,10 @@
 - 为后续排查微信网关、反代或网络异常，手机号响应解析失败时应记录 HTTP status、content-type 和原始 body 摘要。
 - 微信成功响应会带 `errcode=0, errmsg=ok`；后端只应把非 0 errcode 视为微信 API 错误。
 - 飞书健康告警应放在服务器侧监控脚本而非业务进程内，避免业务代码耦合告警渠道；当前采用 cron 每分钟检查 Docker health、本机 health 和公网 `/regist-v2/health`。
+
+## 2026-05-17 小程序手机号绑定运行配置发现
+
+- `MiniAppRuntimeConfig` 通过 `rs_system_runtime_configs.config_value` 保存为 JSON；新增字段必须考虑旧 JSON 兼容。
+- `profile.require_phone_binding` 属于小程序运行配置的 profile section，默认 `false`，语义是控制小程序资料页是否展示和触发手机号绑定。
+- `MiniAppRuntimeConfigDto` 也需要给 `profile` 加 `serde(default)`，否则管理端或脚本用旧 payload PATCH 配置时会因为缺少新 section 而失败。
+- 该配置不涉及数据库迁移；持久化仍复用 `mini_app` config key。

@@ -765,7 +765,7 @@ page {
   bottom: 0;
   height: calc(108rpx + env(safe-area-inset-bottom));
   padding: 0 18rpx env(safe-area-inset-bottom);
-  background: rgba(255, 255, 255, 0.96);
+  background: #ffffff;
   border-top: 2rpx solid #e5e7eb;
   display: grid;
   grid-template-columns: 1fr 1fr 132rpx 1fr 1fr;
@@ -779,13 +779,13 @@ page {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6rpx;
+  gap: 0;
   height: 100%;
 }
 
 .custom-tab-icon-shell {
   position: relative;
-  width: 52rpx;
+  width: 58rpx;
   height: 52rpx;
   display: flex;
   align-items: center;
@@ -793,8 +793,8 @@ page {
 }
 
 .custom-tab-icon-image {
-  width: 40rpx;
-  height: 40rpx;
+  width: 48rpx;
+  height: 48rpx;
 }
 
 .custom-tab-badge {
@@ -814,6 +814,7 @@ page {
 }
 
 .custom-tab-label {
+  margin-top: -2rpx;
   font-size: 22rpx;
   color: #9ca3af;
   font-weight: 600;

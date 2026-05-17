@@ -75,3 +75,45 @@
 
 - `pages/challenges/detail.vue` 的 `pageTitle` 已经在散人约队时显示“散人报名”。
 - `ChallengeIndividualRegistration.vue` 里的 `challenge-tabs` 只重复展示同一文案，没有切换功能；删除后首屏更聚焦到核心报名卡。
+
+## 2026-05-16 退出登录后刷新状态发现
+
+- 我的页退出登录调用 `clearSession()`，会清理 token、当前球队、当前身份并写入手动退出标记。
+- App 冷启动调用 `restoreSessionFromStorage()`；如果该恢复逻辑只看 token，就可能在本地仍残留 token 时重新恢复登录态。
+- 正确策略是两层保证：退出动作本身必须删除 token；同时冷启动看到手动退出后直接进入游客态并清理残留 token、当前球队和当前身份选择。
+- 由于登录流程存在异步请求，退出后旧登录请求返回时也不能再次写入 token；需要在 token 写入前后检查会话版本和手动退出标记。
+
+## 2026-05-16 清缓存后自动登录发现
+
+- 清除缓存会同时删除 token 和 `registration_system_mini_manual_logout` 手动退出标记；此时 App 冷启动恢复本身会保持游客态。
+- 自动登录来自页面层：个人中心 `onShow -> loadPageData()` 原先无条件调用 `ensureSessionReady()`，在无 token 且无手动退出标记时会走微信登录。
+- 个人中心应和首页一致采用游客优先：无 token 时展示未登录态，点击“去登录”才主动触发 `refreshSessionContext()`。
+
+## 2026-05-17 首页待办详情返回抖动发现
+
+- 首页 `onShow()` 当前会在每次页面显示时调用 `loadPageData({ preserveContent: hasLoadedOnce.value })`。
+- 从“最近要处理的比赛”卡片进入报名详情再回退，也会触发首页 `onShow()`；虽然不会重新显示首屏骨架屏，但会进入 `isRefreshing` 并重算卡片，造成视觉抖动。
+- 待办卡片跳转详情属于短路径查看，返回时可以跳过下一次首页 `onShow` 刷新；登录完成、tab 切换等其他路径仍应保留刷新。
+
+## 2026-05-17 自定义 Tabbar 快捷菜单发现
+
+- 当前项目的 tabbar 实际由 `src/components/BottomTabBar.vue` 页面内自定义组件渲染，`pages.json` 仍保留原生 tabBar 配置用于 `switchTab` 页面声明。
+- 现有中间创建按钮已经是自定义入口，适合改成截图里的 FAB 展开态，不需要接入微信 `custom-tab-bar` 目录。
+- 截图风格只应影响点击后的展开态；常驻 tabbar 的颜色、底座、尺寸和选中态应继续沿用项目原来的 `uni.css` 样式。
+- 展开态更适合覆盖一个全屏暗色模糊遮罩，三个快捷入口围绕中心按钮展开；纯底部抽屉不符合目标视觉。
+
+## 2026-05-17 首页 onShow 策略改造发现
+
+- 上一轮加的 `shouldSkipNextShowRefresh` 只覆盖"最近要处理的比赛"卡片入口，且 flag 在 `uni.navigateTo` 的 success 异步回调里设置，跨平台时机不稳；其他入口（约队卡、tab 切换、管理页、个人中心）回首页都还是 reload。
+- 抖动的次级来源：`navigatingMatchId` 用 `setTimeout(500ms)` 异步清；改成 `onHide` 同步清，时机更准且避免可能的回弹。
+- 简版"事件标志 + 遮蔽时长阈值"已经覆盖用户原始抱怨："看一眼详情就回来" → 时间窗口短路径 skip；"做了报名/接约再回来" → 事件触发显式 reload；"两分钟以上离开再回来" → 兜底 reload；"任何时候用户主动想要最新" → 下拉刷新。
+- 没做局部 patch（事件不带 payload），原因：详情页操作过的约队/比赛**可能根本不在首页 limit 截取的列表里**，patch 难以稳定生效；统一 reload 简单可靠，"更新中..."浮标可接受。
+- pages.json 首页 `navigationStyle: custom` 不影响 `enablePullDownRefresh`；下拉时露出的 `backgroundColor` 需要和页面渐变底色对齐（`#eef2e9`），否则会闪一截白边。
+- `homePageLoading.test.ts` 把上一轮 `shouldSkipNextShowRefresh` 整套源码字符串钉死，是上一轮约束不回归的副作用；新策略改造时必须同步更新断言，否则会误以为是回归。
+
+## 2026-05-17 资料页手机号绑定配置发现
+
+- 小程序资料页原本始终渲染手机号输入和微信绑定按钮，并且保存资料时只要 `phoneInput` 有值就会调用 `/api/user/phone`。
+- `loadMiniAppRuntimeConfig()` 已经提供接口失败 fallback，默认配置适合作为“隐藏手机号绑定区域”的兜底。
+- 显示门控和提交门控需要同时加：只隐藏 UI 不够，旧 `phoneInput` 或历史用户手机号仍可能在保存资料时触发绑定请求。
+- 本轮不把手机号纳入 `canSubmit`，因为用户要求是“默认不显示/不绑定”，不是开启后强制必填。

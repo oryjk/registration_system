@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { onLoad, onUnload } from "@dcloudio/uni-app";
+import { onLoad, onShareAppMessage, onShareTimeline, onUnload } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
 import { acceptChallenge, cancelChallenge, cancelIndividualChallengeAcceptance, getChallengeDetail } from "@/api/challenge";
 import { useTeamContext } from "@/stores/teamContext";
 import type { BackendChallenge, BackendChallengeDetail } from "@/types/backend";
 import { getCustomNavMetrics } from "@/utils/customNav";
 import { isOpenLocationSupported } from "@/utils/location";
+import { DEFAULT_SHARE_IMAGE_URL } from "@/utils/share";
 import { getAppPlatform } from "@/utils/systemInfo";
 import { buildChallengeCards } from "@/utils/viewModels";
 import ChallengeActions from "./components/ChallengeActions.vue";
@@ -108,6 +109,11 @@ const challengeStartTimestamp = computed(() => {
 });
 const individualCountdownText = computed(() => formatCountdown(challengeStartTimestamp.value - nowTick.value));
 const pageTitle = computed(() => (card.value?.kind === "individual" ? "散人报名" : "约队详情"));
+const shareTitle = computed(() => {
+  if (!card.value) return "邀请你查看约队报名";
+  return card.value.kind === "individual" ? `邀请你报名：${card.value.title}` : `邀请你接约：${card.value.title}`;
+});
+const sharePath = computed(() => `/pages/challenges/detail?id=${challengeId.value || card.value?.id || ""}`);
 const canOpenChallengeLocation = computed(
   () =>
     !!detail.value &&
@@ -244,6 +250,7 @@ async function handleAccept() {
   try {
     const challenge = await acceptChallenge(challengeId.value, card.value.kind === "team" ? currentTeam.value?.id : undefined);
     applyAcceptedChallengeDetail(challenge);
+    uni.$emit("home:data-may-changed");
     uni.showToast({
       title: card.value.kind === "team" ? "接约成功" : "报名成功",
       icon: "none",
@@ -265,6 +272,7 @@ async function handleCancel() {
   try {
     const challenge = await cancelChallenge(challengeId.value);
     applyCancelledChallengeDetail(challenge);
+    uni.$emit("home:data-may-changed");
     uni.showToast({
       title: "约队已取消",
       icon: "none",
@@ -293,6 +301,7 @@ async function handleCancelIndividualAcceptance() {
       try {
         const challenge = await cancelIndividualChallengeAcceptance(challengeId.value);
         applyCancelledIndividualAcceptanceDetail(challenge);
+        uni.$emit("home:data-may-changed");
         uni.showToast({
           title: "已取消报名",
           icon: "none",
@@ -367,6 +376,18 @@ onUnload(() => {
     countdownTimer = null;
   }
 });
+
+onShareAppMessage(() => ({
+  title: shareTitle.value,
+  path: sharePath.value,
+  imageUrl: DEFAULT_SHARE_IMAGE_URL,
+}));
+
+onShareTimeline(() => ({
+  title: shareTitle.value,
+  query: `id=${challengeId.value || card.value?.id || ""}`,
+  imageUrl: DEFAULT_SHARE_IMAGE_URL,
+}));
 </script>
 
 <template>

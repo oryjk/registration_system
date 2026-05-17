@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from "vue";
-import { onShow } from "@dcloudio/uni-app";
+import { onShareAppMessage, onShareTimeline, onShow } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
 import BottomTabBar from "@/components/BottomTabBar.vue";
 import ActivitiesSkeleton from "./components/ActivitiesSkeleton.vue";
@@ -12,6 +12,8 @@ import { acceptChallenge, cancelIndividualChallengeAcceptance, listChallenges } 
 import { useNotificationCenter } from "@/stores/notificationCenter";
 import { useTeamContext } from "@/stores/teamContext";
 import { getCustomNavMetrics } from "@/utils/customNav";
+import { getAccessToken } from "@/utils/authStorage";
+import { DEFAULT_SHARE_IMAGE_URL } from "@/utils/share";
 import type { BackendChallenge, BackendChallengeSummary, BackendChallengeStatus } from "@/types/backend";
 import type { ChallengeCardViewModel } from "@/types/viewModels";
 import { buildChallengeCards, filterChallengeSummariesByScope } from "@/utils/viewModels";
@@ -60,6 +62,7 @@ const quickFilters: Array<{ key: QuickFilter; label: string }> = [
 ];
 
 const isLogoutBlockedError = computed(() => errorMessage.value.includes("已退出登录"));
+const isGuestMode = computed(() => !getAccessToken());
 const pageStyle = computed(() => ({
   paddingTop: `${navMetrics.pageTopPadding + 8}px`,
 }));
@@ -133,6 +136,8 @@ const filteredSummaries = computed(() => {
 const hallCards = computed<ChallengeCardViewModel[]>(() => buildChallengeCards(filteredSummaries.value));
 const teamHallCards = computed(() => hallCards.value.filter((item) => item.kind === "team"));
 const individualHallCards = computed(() => hallCards.value.filter((item) => item.kind === "individual"));
+const shareTitle = "约队大厅：看看可报名的散人局";
+const sharePath = "/pages/activities/index";
 
 function ensureSelectedDate(challenges: BackendChallengeSummary[]) {
   const nextSevenKeys = calendarDays.value.map((item) => item.key);
@@ -156,19 +161,25 @@ async function loadPageData(options?: { preserveContent?: boolean }) {
   errorMessage.value = "";
 
   try {
-    await ensureSessionReady();
+    if (!isGuestMode.value) {
+      await ensureSessionReady();
+    }
 
-    const [challenges] = await Promise.all([
-      listChallenges({
-        teamId: currentTeam.value?.id,
-        keyword: filters.keyword || undefined,
-        status: filters.status === "all" ? undefined : filters.status,
-        includeClosed: filters.includeClosed,
-        limit: 50,
-        sort: filters.sort,
-      }),
-      syncUnreadCount({ skipEnsure: true }),
-    ]);
+    const challenges = await listChallenges({
+      teamId: isGuestMode.value ? undefined : currentTeam.value?.id,
+      keyword: filters.keyword || undefined,
+      status: filters.status === "all" ? undefined : filters.status,
+      includeClosed: filters.includeClosed,
+      limit: 50,
+      sort: filters.sort,
+      auth: !isGuestMode.value,
+    });
+
+    if (!isGuestMode.value) {
+      void syncUnreadCount({ skipEnsure: true }).catch(() => {
+        // 未读数不影响约队大厅公开内容展示。
+      });
+    }
 
     rawChallenges.value = challenges;
     ensureSelectedDate(challenges);
@@ -182,6 +193,21 @@ async function loadPageData(options?: { preserveContent?: boolean }) {
     } else {
       isLoading.value = false;
     }
+  }
+}
+
+async function requireLoginForHallAction() {
+  if (!isGuestMode.value) return true;
+
+  try {
+    await ensureSessionReady(true);
+    return true;
+  } catch (error) {
+    uni.showToast({
+      title: error instanceof Error ? error.message : "登录失败",
+      icon: "none",
+    });
+    return false;
   }
 }
 
@@ -202,8 +228,20 @@ function selectDate(key: string) {
   selectedDateKey.value = key;
 }
 
-function openPublishTypeSheet() {
-  if (!canPublish.value) return;
+async function openPublishTypeSheet() {
+  if (isGuestMode.value) {
+    const loggedIn = await requireLoginForHallAction();
+    if (!loggedIn) return;
+    await loadPageData({ preserveContent: true });
+  }
+
+  if (!canPublish.value) {
+    uni.showToast({
+      title: "请先在我的页面选择球队或场馆身份",
+      icon: "none",
+    });
+    return;
+  }
   publishTypeSheetVisible.value = true;
 }
 
@@ -326,6 +364,11 @@ async function handlePrimaryAction(card: ChallengeCardViewModel) {
     return;
   }
 
+  if (card.kind === "individual" && card.statusTone === "open") {
+    await handleAccept(card);
+    return;
+  }
+
   if (card.canAccept) {
     await handleAccept(card);
     return;
@@ -336,6 +379,8 @@ async function handlePrimaryAction(card: ChallengeCardViewModel) {
 
 async function handleCancelIndividualAcceptance(card: ChallengeCardViewModel) {
   if (submitting.value || card.kind !== "individual" || !card.currentUserJoined) return;
+  const loggedIn = await requireLoginForHallAction();
+  if (!loggedIn) return;
 
   uni.showModal({
     title: "确认取消报名",
@@ -366,6 +411,8 @@ async function handleCancelIndividualAcceptance(card: ChallengeCardViewModel) {
 
 async function handleAccept(card: ChallengeCardViewModel) {
   if (submitting.value) return;
+  const loggedIn = await requireLoginForHallAction();
+  if (!loggedIn) return;
   if (card.kind === "team" && (!currentTeam.value || !currentTeam.value.canManageTeam)) return;
 
   const confirmed = await new Promise<boolean>((resolve) => {
@@ -405,6 +452,18 @@ onShow(() => {
   uni.hideTabBar({ animation: false });
   void loadPageData({ preserveContent: hasLoadedOnce.value });
 });
+
+onShareAppMessage(() => ({
+  title: shareTitle,
+  path: sharePath,
+  imageUrl: DEFAULT_SHARE_IMAGE_URL,
+}));
+
+onShareTimeline(() => ({
+  title: shareTitle,
+  query: "",
+  imageUrl: DEFAULT_SHARE_IMAGE_URL,
+}));
 </script>
 
 <template>
