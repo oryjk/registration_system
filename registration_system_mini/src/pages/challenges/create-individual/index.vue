@@ -17,6 +17,8 @@ const form = reactive({
   startTime: "20:00",
   endTime: "22:00",
   location: "",
+  locationLatitude: null as number | null,
+  locationLongitude: null as number | null,
   playersPerTeam: "8",
   feePerPerson: "",
   note: "",
@@ -75,6 +77,27 @@ function handleFormatChange(event: Event) {
   form.playersPerTeam = Number(detail.detail?.value ?? 1) === 0 ? "5" : "8";
 }
 
+function handleLocationInput() {
+  form.locationLatitude = null;
+  form.locationLongitude = null;
+}
+
+function handleChooseLocation() {
+  uni.chooseLocation({
+    success(location) {
+      form.location = location.name || location.address || "";
+      form.locationLatitude = location.latitude;
+      form.locationLongitude = location.longitude;
+    },
+    fail() {
+      uni.showToast({
+        title: "未选择地点",
+        icon: "none",
+      });
+    },
+  });
+}
+
 function canPublishChallenge() {
   return !!currentIdentity.value;
 }
@@ -117,6 +140,8 @@ async function handleSubmit() {
       start_time: combineDateTime(form.date, form.startTime),
       end_time: combineDateTime(form.date, form.endTime),
       location: form.location.trim(),
+      location_latitude: form.locationLatitude ?? undefined,
+      location_longitude: form.locationLongitude ?? undefined,
       players_per_team: Number(form.playersPerTeam),
       fee_per_person: feePerPerson !== null ? feePerPerson.toFixed(2) : undefined,
       note: form.note.trim() || undefined,
@@ -213,7 +238,20 @@ onLoad((options) => {
       <view class="create-form-grid">
         <view class="create-form-item create-form-item-full">
           <text class="create-form-label">场地</text>
-          <input v-model="form.location" class="create-input" placeholder="填写球场名称" />
+          <view class="create-location-row">
+            <input
+              v-model="form.location"
+              class="create-input create-location-input"
+              placeholder="填写球场名称"
+              @input="handleLocationInput"
+            />
+            <view class="create-location-button" @tap="handleChooseLocation">
+              {{ form.location ? "重新选择" : "选择地点" }}
+            </view>
+          </view>
+          <view v-if="form.locationLatitude != null && form.locationLongitude != null" class="create-location-hint">
+            已选择地图位置，详情页可直接打开地图。
+          </view>
         </view>
         <view class="create-form-item">
           <text class="create-form-label">预计费用/人</text>
@@ -340,6 +378,44 @@ onLoad((options) => {
 .create-textarea {
   min-height: 176rpx;
   padding: 22rpx;
+  line-height: 1.5;
+}
+
+.create-location-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 150rpx;
+  align-items: center;
+  gap: 14rpx;
+}
+
+.create-location-input {
+  width: auto;
+  min-width: 0;
+}
+
+.create-location-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 150rpx;
+  height: 88rpx;
+  padding: 0 14rpx;
+  border-radius: 24rpx;
+  background: #111310;
+  color: #ffffff;
+  font-size: 23rpx;
+  font-weight: 900;
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+
+.create-location-hint {
+  padding: 16rpx 18rpx;
+  border-radius: 20rpx;
+  background: #eef8d6;
+  color: #526a00;
+  font-size: 22rpx;
+  font-weight: 800;
   line-height: 1.5;
 }
 

@@ -82,6 +82,26 @@ describe("activities page sections", () => {
     expect(source.includes("散人约队同一时间只能接一场")).toEqual(true);
   });
 
+  test("supports map location picking when creating an individual challenge", async () => {
+    const source = await Bun.file(
+      "/Users/carlwang/registration_system/registration_system_mini/src/pages/challenges/create-individual/index.vue",
+    ).text();
+
+    expect(source.includes("function handleChooseLocation")).toEqual(true);
+    expect(source.includes("uni.chooseLocation")).toEqual(true);
+    expect(source.includes("function handleLocationInput")).toEqual(true);
+    expect(source.includes("@input=\"handleLocationInput\"")).toEqual(true);
+    expect(source.includes("@tap=\"handleChooseLocation\"")).toEqual(true);
+    expect(source.includes("create-location-row")).toEqual(true);
+    expect(source.includes("grid-template-columns: minmax(0, 1fr) 150rpx")).toEqual(true);
+    expect(source.includes("create-location-head")).toEqual(false);
+    expect(source.includes("locationLatitude: null as number | null")).toEqual(true);
+    expect(source.includes("locationLongitude: null as number | null")).toEqual(true);
+    expect(source.includes("location_latitude: form.locationLatitude ?? undefined")).toEqual(true);
+    expect(source.includes("location_longitude: form.locationLongitude ?? undefined")).toEqual(true);
+    expect(source.includes("已选择地图位置，详情页可直接打开地图。")).toEqual(true);
+  });
+
   test("mine profile exposes current identity switch next to team switch", async () => {
     const minePageSource = await Bun.file(
       "/Users/carlwang/registration_system/registration_system_mini/src/pages/user/index.vue",

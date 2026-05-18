@@ -28,7 +28,7 @@ export function formatWeekday(value: string) {
 }
 
 export function formatCountdown(distance: number) {
-  if (distance <= 0) return "00 : 00 : 00";
+  if (distance <= 0) return "已截止";
   const seconds = Math.floor(distance / 1000);
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);

@@ -60,7 +60,7 @@ defineEmits<{
     <view class="registration-card countdown-card">
       <view class="countdown-head">
         <view class="countdown-head-top">
-          <text class="section-title">报名截止</text>
+          <text class="section-title">开场倒计时</text>
           <view class="countdown-total">
             <text class="countdown-total-label">已报</text>
             <text class="countdown-total-strong">{{ card.acceptedCount }}</text>

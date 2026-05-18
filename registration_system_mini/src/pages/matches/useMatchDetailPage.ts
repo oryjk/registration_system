@@ -116,17 +116,22 @@ export function useMatchDetailPage() {
 
   const dateLine = computed(() => {
     if (!match.value) return "";
-    return `${formatMonthDay(match.value.holding_date)} ${formatWeekday(match.value.holding_date)} ${formatClock(match.value.start_time)}`;
+    return `${formatMonthDay(match.value.holding_date)} ${formatWeekday(match.value.holding_date)} ${formatClock(match.value.holding_date)}`;
   });
   const matchDateLabel = computed(() => (match.value ? `${formatMonthDay(match.value.holding_date)} ${formatWeekday(match.value.holding_date)}` : ""));
-  const matchClockLabel = computed(() => (match.value ? formatClock(match.value.start_time) : ""));
+  const matchClockLabel = computed(() => (match.value ? formatClock(match.value.holding_date) : ""));
 
   const matchStartTimestamp = computed(() => {
     if (!match.value) return 0;
-    return parseDateValue(match.value.start_time || match.value.holding_date).getTime();
+    return parseDateValue(match.value.holding_date).getTime();
   });
 
-  const countdownText = computed(() => formatCountdown(matchStartTimestamp.value - nowTick.value));
+  const registrationDeadlineTimestamp = computed(() => {
+    if (!match.value) return 0;
+    return parseDateValue(match.value.end_time || match.value.holding_date).getTime();
+  });
+
+  const countdownText = computed(() => formatCountdown(registrationDeadlineTimestamp.value - nowTick.value));
 
   const heroMetaChips = computed(() => {
     if (!match.value) return [];
@@ -193,7 +198,7 @@ export function useMatchDetailPage() {
     relatedActivities.value.slice(0, 2).map((item) => ({
       id: item.id,
       title: item.name,
-      dateLine: `${formatMonthDay(item.holding_date)} ${formatClock(item.start_time)}`,
+      dateLine: `${formatMonthDay(item.holding_date)} ${formatClock(item.holding_date)}`,
       venue: item.location,
     })),
   );
