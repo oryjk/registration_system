@@ -49,6 +49,22 @@ describe("match detail registration design", () => {
     expect(source.includes("interestCards")).toEqual(true);
   });
 
+  test("uses activity registration deadline for the countdown and holding date for match clock", async () => {
+    const pageLogic = await Bun.file(
+      "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/useMatchDetailPage.ts",
+    ).text();
+    const state = await Bun.file(
+      "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/detailState.ts",
+    ).text();
+
+    expect(pageLogic.includes("const registrationDeadlineTimestamp = computed")).toEqual(true);
+    expect(pageLogic.includes("parseDateValue(match.value.end_time || match.value.holding_date).getTime()")).toEqual(true);
+    expect(pageLogic.includes("formatCountdown(registrationDeadlineTimestamp.value - nowTick.value)")).toEqual(true);
+    expect(pageLogic.includes("formatClock(match.value.holding_date)")).toEqual(true);
+    expect(pageLogic.includes("formatClock(match.value.start_time)")).toEqual(false);
+    expect(state.includes('if (distance <= 0) return "已截止";')).toEqual(true);
+  });
+
   test("renders the team registration view with versus header, registration form, and a team submit bar", async () => {
     const source = await Bun.file(
       "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/detail.vue",
@@ -189,5 +205,14 @@ describe("match detail registration design", () => {
     expect(challengeDetail.includes("imageUrl: DEFAULT_SHARE_IMAGE_URL")).toEqual(true);
     expect(challengeDetail.includes("query: `id=${challengeId.value || card.value?.id || \"\"}`")).toEqual(true);
     expect(shareUtils.includes('"/static/share/share-cover.png"')).toEqual(true);
+  });
+
+  test("labels individual challenge countdown by match start because challenge has no registration deadline field", async () => {
+    const individualRegistration = await Bun.file(
+      "/Users/carlwang/registration_system/registration_system_mini/src/pages/challenges/components/ChallengeIndividualRegistration.vue",
+    ).text();
+
+    expect(individualRegistration.includes("开场倒计时")).toEqual(true);
+    expect(individualRegistration.includes("报名截止")).toEqual(false);
   });
 });
