@@ -18,8 +18,8 @@ const emit = defineEmits<{
 }>();
 
 const teamRegistrationCountModel = computed({
-  get: () => props.teamRegistrationCount,
-  set: (value) => emit("update:teamRegistrationCount", Number(value)),
+  get: () => [props.teamRegistrationCount],
+  set: (value) => emit("update:teamRegistrationCount", Number(value[0])),
 });
 </script>
 

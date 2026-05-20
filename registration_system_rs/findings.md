@@ -76,3 +76,34 @@
 - `profile.require_phone_binding` 属于小程序运行配置的 profile section，默认 `false`，语义是控制小程序资料页是否展示和触发手机号绑定。
 - `MiniAppRuntimeConfigDto` 也需要给 `profile` 加 `serde(default)`，否则管理端或脚本用旧 payload PATCH 配置时会因为缺少新 section 而失败。
 - 该配置不涉及数据库迁移；持久化仍复用 `mini_app` config key。
+
+## 2026-05-17 管理端报名列表过滤
+
+- `registration_scope=team` 对应 `rs_activity.source_activity_id IS NOT NULL`，用于球队报名派生活动。
+- `kind=individual` 对应 `rs_challenges.kind = 'individual'`，用于散人约队报名。
+- `activity.match_kind=internal` 是比赛类型“队内内战”，不能用于散人报名过滤。
+
+## 2026-05-17 管理端约队/散人报名编辑删除
+
+- `CancelChallengeUseCase` 原先只允许 `ActorKind::User`，管理端即使可见约队也无法取消；本轮扩展为管理员可按后台权限取消。
+- 更新接口需要保持六边形边界：application 使用 `UpdateChallengeCommand`，port 层使用 `UpdateChallengeFields`，避免 repository port 反向依赖 application command。
+- 可编辑字段只覆盖 `rs_challenges` 自身基础信息；`kind`、主客队、报名关系和 `activity_id` 不应通过后台编辑接口修改。
+- 普通管理员对无球队主体的场馆/散人记录没有球队授权锚点，因此仅超管可处理这类记录。
+
+## 2026-05-17 后台创建散人报名
+
+- `host_user_id` 是 `rs_user_info` 用户 ID；后台创建需要显式传入该 ID，不能复用管理员 ID。
+- `CreateChallengeUseCase` 现在有两条创建分支：用户端分支仍使用当前用户；管理员分支只允许超管代场馆用户创建 `individual`。
+- 后台创建校验发布用户 `is_venue=1`，保持与用户端无球队主体发布规则一致。
+
+## 2026-05-17 散人报名详情完整名单
+
+- `PostgresChallengeRepository::get_detail` 已经查询 `rs_challenge_individual_acceptances` 并组装 `individual_participants`，但 SQL 末尾有 `LIMIT 12`，会导致报名人数超过 12 时管理端详情页漏人。
+- 管理端详情页是运营核对名单场景，应返回完整报名人员列表；列表页仍可只看 `accepted_count`，不受影响。
+- 管理端列表页也需要头像昵称用于扫视，但不应拉完整名单；本轮在 summary 上增加前 3 人 `individual_participant_preview`，通过一次窗口函数查询按 challenge 批量装配。
+
+## 2026-05-20 球队活动报名人数上限发现
+
+- `/activity/:activity_id/my-stand` 对应后端 `ManageRegistrationUseCase::update_my_stand`。
+- 旧逻辑中的 `ensure_registration_capacity` 会按 `players_per_team + 2` 做最大人数限制，并返回“本场报名已满员”。
+- 当前产品规则是不限制球队活动个人报名最大人数，因此后端应直接 upsert 报名状态，不再统计容量人数。

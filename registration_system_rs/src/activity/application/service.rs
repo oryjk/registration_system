@@ -78,11 +78,12 @@ impl ActivityService {
     pub async fn list_activities(
         &self,
         status_filter: Option<i8>,
+        registration_scope: Option<&str>,
         page: u32,
         page_size: u32,
     ) -> Result<ActivityListPage, ActivityApplicationError> {
         self.query_activity_use_case
-            .list_activities(status_filter, page, page_size)
+            .list_activities(status_filter, registration_scope, page, page_size)
             .await
     }
 

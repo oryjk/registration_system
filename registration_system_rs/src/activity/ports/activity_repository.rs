@@ -10,6 +10,7 @@ pub trait ActivityQueryRepository: Send + Sync {
     async fn list_page(
         &self,
         status_filter: Option<i8>,
+        registration_scope: Option<&str>,
         page: u32,
         page_size: u32,
     ) -> Result<ActivityListPage, DomainError>;

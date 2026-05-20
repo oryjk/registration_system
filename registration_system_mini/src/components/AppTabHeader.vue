@@ -11,10 +11,12 @@ const props = withDefaults(
     title: string;
     showBack?: boolean;
     showLocation?: boolean;
+    plain?: boolean;
   }>(),
   {
     showBack: false,
     showLocation: false,
+    plain: false,
   },
 );
 
@@ -107,7 +109,7 @@ async function handleRefreshLocation() {
 </script>
 
 <template>
-  <view class="app-tab-header-shell" :style="shellStyle">
+  <view :class="['app-tab-header-shell', props.plain ? 'app-tab-header-shell-plain' : '']" :style="shellStyle">
     <view class="app-tab-header" :style="contentStyle">
       <view class="app-tab-header-left">
         <view v-if="props.showBack" class="app-tab-header-back" @tap="handleBack">
@@ -171,6 +173,12 @@ async function handleRefreshLocation() {
   backdrop-filter: blur(20rpx);
   -webkit-backdrop-filter: blur(20rpx);
   box-sizing: border-box;
+}
+
+.app-tab-header-shell-plain {
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 .app-tab-header {

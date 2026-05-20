@@ -150,3 +150,89 @@
 3. [completed] `system/adapters/web/dto` 同步 profile DTO，PATCH 旧 payload 缺少 profile 时默认 false
 4. [completed] 增加旧 JSON 反序列化兼容测试和默认值断言
 5. [completed] 执行后端 system 专项测试和编译验证
+
+## 2026-05-17 管理端报名列表过滤
+
+目标：为管理端拆分“活动报名”和“散人报名”提供后端过滤能力。
+
+阶段：
+1. [completed] 活动列表接口新增 `registration_scope=team|direct`
+2. [completed] 约队列表接口新增 `kind=team|individual`
+3. [completed] 更新 repository port/use case/web handler 传参
+4. [in_progress] 补充/更新后端业务测试并运行验证
+
+验证更新：
+- [completed] 后端 `cargo test --test challenge_service_business_test admin_can_filter_individual_challenges -- --nocapture`
+- [completed] 后端 `cargo check --tests`
+- [completed] 后端 `cargo clippy --all-targets -- -D warnings`
+- [completed] 管理端 `bun run type-check`
+- [completed] 管理端 `bun run build`
+- [blocked] 管理端 `bun run lint` 被既有非本轮问题阻塞
+
+## 2026-05-17 管理端约队/散人报名编辑删除后端接口
+
+目标：为管理端提供约队/散人报名编辑和删除能力，删除按取消状态处理。
+
+阶段：
+1. [completed] 新增管理员取消 open 约队业务测试
+2. [completed] 新增管理员更新 open 约队基础字段业务测试
+3. [completed] 新增 `UpdateChallengeCommand`、`UpdateChallengeUseCase` 和 repository 更新端口
+4. [completed] PostgreSQL repository 支持更新标题、时间、场地、坐标、人数、费用和备注
+5. [completed] Web 层新增 `PATCH /:id`，并更新 OpenAPI
+6. [completed] 取消用例允许管理员按权限取消 open 约队
+7. [completed] 执行目标测试、`cargo check --tests`、`cargo clippy --all-targets -- -D warnings`
+
+约束：
+
+- 不新增物理删除接口。
+- 不允许编辑已约成或已取消记录。
+- 不在 handler 或 repository 中承载业务权限；权限在 application use case 内完成。
+
+## 2026-05-17 后台创建散人报名接口
+
+目标：允许超管通过后台创建散人报名，发布主体仍落到小程序用户。
+
+阶段：
+1. [completed] 新增超管代用户创建散人报名测试
+2. [completed] 新增普通管理员禁止创建测试
+3. [completed] 新增后台创建拒绝球队约队测试
+4. [completed] `CreateChallengeCommand` / `CreateChallengeRequest` 增加 `host_user_id`
+5. [completed] `CreateChallengeUseCase` 区分用户端创建和管理员后台创建
+6. [completed] 执行 challenge 业务测试、`cargo check --tests`、`cargo clippy --all-targets -- -D warnings`
+
+约束：
+
+- 用户端创建不能代其他用户发布。
+- 管理端创建只支持超管创建散人报名。
+- 管理端创建必须指定存在且具备场馆身份的小程序用户。
+
+## 2026-05-17 散人报名详情完整报名名单
+
+目标：后端详情接口为管理端返回完整散人报名人员列表，避免运营详情页漏人。
+
+阶段：
+1. [completed] 确认 `ChallengeDetail` / DTO 已有 `individual_participants`
+2. [completed] 新增 Postgres 仓储测试覆盖 13 个报名者完整返回
+3. [completed] 移除详情报名人员查询的 `LIMIT 12`
+4. [completed] 列表 summary 增加 `individual_participant_preview` 前 3 人预览
+5. [completed] 执行目标测试、`cargo check --tests`、`cargo clippy`
+
+## 2026-05-19 活动报名 team scope 修复
+
+目标：修复 `/api/admin/activities?registration_scope=team` 漏掉直接球队活动的问题。
+
+阶段：
+1. [completed] 用数据库确认东安洺悦联队报名中活动 `home_team_id` 有值但 `source_activity_id` 为空
+2. [completed] 新增 Postgres 仓储回归测试覆盖该场景
+3. [completed] 调整 activity list SQL 的 team/direct scope 判断
+4. [completed] 执行目标测试和 `cargo check --tests`
+
+## 2026-05-20 球队活动报名取消人数上限
+
+目标：后端不再限制球队活动个人报名最大人数，`players_per_team` 只作为最低成行人数。
+
+阶段：
+1. [completed] 定位 `/activity/:id/my-stand` 后端 use case
+2. [completed] 新增回归测试覆盖超过 `players_per_team + 2` 后仍可报名
+3. [completed] 移除容量校验和无用 helper
+4. [completed] 执行后端目标测试、`cargo check --tests` 和 diff 检查

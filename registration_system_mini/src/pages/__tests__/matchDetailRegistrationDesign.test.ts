@@ -157,6 +157,104 @@ describe("match detail registration design", () => {
     expect(pageLogic.includes("currentStatus.value = toStandLabel(stand);")).toEqual(true);
   });
 
+  test("uses a custom confirm dialog for team member registration choices", async () => {
+    const detail = await Bun.file(
+      "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/detail.vue",
+    ).text();
+    const individual = await Bun.file(
+      "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/components/MatchIndividualRegistration.vue",
+    ).text();
+    const board = await Bun.file(
+      "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/components/TeamMemberRegistrationBoard.vue",
+    ).text();
+
+    expect(detail.includes("<page-meta")).toEqual(true);
+    expect(detail.includes("teamMemberDialogVisible ? 'overflow: hidden;' : ''")).toEqual(true);
+    expect(individual.includes('@dialog-visibility-change="handleTeamMemberDialogVisibilityChange"')).toEqual(true);
+    expect(individual.includes('emit("dialogVisibilityChange", visible);')).toEqual(true);
+    expect(board.includes("member-floating-action")).toEqual(true);
+    expect(board.includes("statusDialogMode")).toEqual(true);
+    expect(board.includes("statusDialogConfig")).toEqual(true);
+    expect(board.includes("team-member-dialog-mask")).toEqual(true);
+    expect(board.includes("team-member-dialog-actions")).toEqual(true);
+    expect(board.includes('emit("dialogVisibilityChange", true);')).toEqual(true);
+    expect(board.includes('emit("dialogVisibilityChange", false);')).toEqual(true);
+    expect(board.includes('title: "选择报名状态"')).toEqual(true);
+    expect(board.includes('secondaryText: "请假"')).toEqual(true);
+    expect(board.includes('primaryText: "报名"')).toEqual(true);
+    expect(board.includes('primaryText: "取消报名"')).toEqual(true);
+    expect(board.includes("handleDialogPrimaryAction")).toEqual(true);
+    expect(board.includes("handleDialogSecondaryAction")).toEqual(true);
+    expect(board.includes("handleSelectStand(2)")).toEqual(true);
+    expect(board.includes('import { useDialog } from "@wot-ui/ui";')).toEqual(false);
+    expect(board.includes("<wd-dialog")).toEqual(false);
+    expect(board.includes(".confirm({")).toEqual(false);
+    expect(board.includes("wd-message-box")).toEqual(false);
+  });
+
+  test("turns the lower team member area into a switchable status operation panel", async () => {
+    const board = await Bun.file(
+      "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/components/TeamMemberRegistrationBoard.vue",
+    ).text();
+
+    expect(board.includes('const selectedGroup = ref<MemberGroupKey>("joined");')).toEqual(true);
+    expect(board.includes("selectedGroup.value = value;")).toEqual(true);
+    expect(board.includes("const memberSummaryLabel = computed")).toEqual(true);
+    expect(board.includes('return `${total}人`;')).toEqual(true);
+    expect(board.includes('<text class="section-title">队员状态</text>')).toEqual(true);
+    expect(board.includes("member-segment")).toEqual(true);
+    expect(board.includes("member-segment-item")).toEqual(true);
+    expect(board.includes("member-segment-item-active")).toEqual(true);
+    expect(board.includes("handleSelectGroup(section.key)")).toEqual(true);
+    expect(board.includes("const activeSection = computed")).toEqual(true);
+    expect(board.includes("activeSection.members.length")).toEqual(true);
+    expect(board.includes("v-for=\"member in activeSection.members\"")).toEqual(true);
+    expect(board.includes("selectedMember?.group === activeSection.key")).toEqual(true);
+    expect(board.includes("member-panel")).toEqual(true);
+    expect(board.includes("member-panel-title")).toEqual(true);
+    expect(board.includes("member-panel-count")).toEqual(true);
+    expect(board.includes("member-status-column")).toEqual(false);
+  });
+
+  test("shows required players as the minimum threshold without capping signups", async () => {
+    const pageLogic = await Bun.file(
+      "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/useMatchDetailPage.ts",
+    ).text();
+    const countdown = await Bun.file(
+      "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/components/IndividualCountdownCard.vue",
+    ).text();
+
+    expect(pageLogic.includes("requiredPlayers.value + 2")).toEqual(false);
+    expect(pageLogic.includes("isAtRegistrationCapacity")).toEqual(false);
+    expect(pageLogic.includes('title: "本场已满员"')).toEqual(false);
+    expect(pageLogic.includes("joinedRegistrations.value.map((item) =>")).toEqual(true);
+    expect(pageLogic.includes("joinedRegistrations.value.slice(0, 5)")).toEqual(false);
+    expect(countdown.includes("countdown-progress-meta")).toEqual(true);
+    expect(countdown.includes("avatar-wall")).toEqual(true);
+    expect(countdown.includes("handleSelectParticipant")).toEqual(true);
+    expect(countdown.includes("selectedParticipant")).toEqual(true);
+    expect(countdown.includes("mini-avatar-selected")).toEqual(true);
+    expect(countdown.includes("countdown-selected-participant")).toEqual(true);
+    expect(countdown.includes("countdown-selected-name")).toEqual(true);
+    expect(countdown.includes("countdown-selected-avatar")).toEqual(false);
+    const state = await Bun.file(
+      "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/detailState.ts",
+    ).text();
+    expect(state.includes('"已达成行人数"')).toEqual(true);
+    expect(state.includes("overflowVisualWidth")).toEqual(true);
+  });
+
+  test("renders team member status avatars without selection borders", async () => {
+    const board = await Bun.file(
+      "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/components/TeamMemberRegistrationBoard.vue",
+    ).text();
+
+    expect(board.includes("member-avatar-selected")).toEqual(true);
+    expect(board.includes("border: 4rpx solid #ffffff")).toEqual(false);
+    expect(board.includes("border-color: #171717")).toEqual(false);
+    expect(board.includes("member-avatar-current .member-avatar")).toEqual(false);
+  });
+
   test("keeps match information visible after manual logout and gates only signup", async () => {
     const pageLogic = await Bun.file(
       "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/useMatchDetailPage.ts",

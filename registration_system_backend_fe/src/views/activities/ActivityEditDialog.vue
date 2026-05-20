@@ -28,6 +28,112 @@
             <input v-model="form.opposing" type="text" class="input input-bordered border-2 h-11" />
           </label>
           <label class="flex flex-col gap-1.5">
+            <span class="text-sm font-semibold">主队球服</span>
+            <div
+              class="flex items-center gap-2 rounded-lg border border-base-300 bg-base-100 px-3 py-2"
+            >
+              <div class="flex items-center gap-3">
+                <span
+                  class="h-6 w-6 rounded-md border border-base-300"
+                  :style="{ backgroundColor: form.color || 'transparent' }"
+                ></span>
+                <span
+                  class="font-mono text-sm"
+                  :class="form.color ? 'text-base-content' : 'text-base-content/40'"
+                >
+                  {{ form.color || '未设置' }}
+                </span>
+              </div>
+              <div class="ml-auto flex items-center gap-2">
+                <div class="dropdown dropdown-end">
+                  <button type="button" tabindex="0" class="btn btn-outline btn-xs">选色</button>
+                  <div
+                    tabindex="0"
+                    class="dropdown-content z-50 mt-2 rounded-2xl border border-base-300 bg-base-100 p-2 shadow-xl"
+                  >
+                    <div class="grid grid-cols-8 gap-1.5">
+                      <button
+                        v-for="color in COMMON_JERSEY_COLORS"
+                        :key="`home-${color}`"
+                        type="button"
+                        class="h-6 w-6 rounded-md border transition-transform hover:scale-105"
+                        :class="
+                          form.color === color
+                            ? 'border-base-content ring-2 ring-primary/40'
+                            : 'border-base-300/80'
+                        "
+                        :style="{ backgroundColor: color }"
+                        :title="color"
+                        @click="setColor('color', color)"
+                      ></button>
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  class="btn btn-ghost btn-xs"
+                  :disabled="!form.color"
+                  @click="setColor('color', '')"
+                >
+                  清空
+                </button>
+              </div>
+            </div>
+          </label>
+          <label class="flex flex-col gap-1.5">
+            <span class="text-sm font-semibold">客队球服</span>
+            <div
+              class="flex items-center gap-2 rounded-lg border border-base-300 bg-base-100 px-3 py-2"
+            >
+              <div class="flex items-center gap-3">
+                <span
+                  class="h-6 w-6 rounded-md border border-base-300"
+                  :style="{ backgroundColor: form.opposing_color || 'transparent' }"
+                ></span>
+                <span
+                  class="font-mono text-sm"
+                  :class="form.opposing_color ? 'text-base-content' : 'text-base-content/40'"
+                >
+                  {{ form.opposing_color || '未设置' }}
+                </span>
+              </div>
+              <div class="ml-auto flex items-center gap-2">
+                <div class="dropdown dropdown-end">
+                  <button type="button" tabindex="0" class="btn btn-outline btn-xs">选色</button>
+                  <div
+                    tabindex="0"
+                    class="dropdown-content z-50 mt-2 rounded-2xl border border-base-300 bg-base-100 p-2 shadow-xl"
+                  >
+                    <div class="grid grid-cols-8 gap-1.5">
+                      <button
+                        v-for="color in COMMON_JERSEY_COLORS"
+                        :key="`away-${color}`"
+                        type="button"
+                        class="h-6 w-6 rounded-md border transition-transform hover:scale-105"
+                        :class="
+                          form.opposing_color === color
+                            ? 'border-base-content ring-2 ring-primary/40'
+                            : 'border-base-300/80'
+                        "
+                        :style="{ backgroundColor: color }"
+                        :title="color"
+                        @click="setColor('opposing_color', color)"
+                      ></button>
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  class="btn btn-ghost btn-xs"
+                  :disabled="!form.opposing_color"
+                  @click="setColor('opposing_color', '')"
+                >
+                  清空
+                </button>
+              </div>
+            </div>
+          </label>
+          <label class="flex flex-col gap-1.5">
             <span class="text-sm font-semibold">举办日期</span>
             <input
               v-model="form.holding_date"
@@ -108,7 +214,10 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import {
+  COMMON_JERSEY_COLORS,
   MATCH_FORMAT_OPTIONS,
+  normalizeHexColor,
+  type ActivityColorField,
   type MatchFormatOption,
 } from '@/views/activities/activity-detail.model'
 
@@ -118,6 +227,8 @@ export interface ActivityEditFormState {
   location_latitude: number | null
   location_longitude: number | null
   opposing: string
+  color: string
+  opposing_color: string
   holding_date: string
   start_time: string
   end_time: string
@@ -141,6 +252,10 @@ const emit = defineEmits<{
 }>()
 
 const dialogRef = ref<HTMLDialogElement>()
+
+const setColor = (field: ActivityColorField, color: string) => {
+  form.value[field] = normalizeHexColor(color)
+}
 
 const showModal = () => dialogRef.value?.showModal()
 const close = () => dialogRef.value?.close()

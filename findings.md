@@ -251,3 +251,91 @@
 - `rs_system_runtime_configs` 存的是 JSON；新增 `profile` section 时必须给 `MiniAppRuntimeConfig.profile` 加 `serde(default)`，否则线上旧 `mini_app` JSON 缺少字段会导致读取配置失败。
 - 用户要求“默认不显示，也就是不绑定”，因此默认值应是 `profile.require_phone_binding=false`，小程序配置加载失败时也应沿用默认隐藏。
 - 当前资料页手机号绑定原本是可选字段；本轮只做显示和提交门控，不新增“手机号必填”校验。
+
+## 2026-05-17 管理端报名拆分
+
+- 小程序“创建散人约队”页面 `registration_system_mini/src/pages/challenges/create-individual/index.vue` 调用 `createChallenge`，提交字段是 `kind: "individual"`。
+- 后端散人报名不写 `rs_activity.match_kind=internal`；发布写 `rs_challenges.kind='individual'`，用户报名写 `rs_challenge_individual_acceptances`。
+- `activity.match_kind=internal` 是比赛类型“队内内战”，不是散人报名分类。
+- 球队报名派生活动通过 `rs_activity.source_activity_id IS NOT NULL` 识别，派生活动记录 `team_registration_count`。
+
+## 2026-05-17 管理端约队/散人报名编辑删除
+
+- 当前“删除”按软删除处理，即调用取消逻辑把 `rs_challenges.status` 置为 `cancelled`，保留报名、通知和历史关联数据。
+- 约队编辑不应修改 `kind`、`host_team_id`、`guest_team_id`、报名关系或 `activity_id`，否则已生成比赛和报名关系会产生跨表不一致。
+- 后端管理权限应与后台列表可见范围保持一致：超管全量；普通管理员仅限已分配球队相关记录；场馆/散人这种无球队主体的全局记录仅超管处理。
+- 前端列表页和详情页都需要操作入口，但表单和确认框应抽成独立组件，避免 `ChallengeList.vue` 继续超过 600 行并复制详情页逻辑。
+
+## 2026-05-17 后台创建散人报名
+
+- `rs_challenges.host_user_id` 指向小程序用户表，不是管理员表；后台创建不能直接用 admin id 当发布人。
+- 后台创建散人报名采用“超管代用户发布”模型，表单显式填写发布用户 ID。
+- 无球队主体的散人报名创建仍要求该发布用户具备场馆身份，沿用用户端场馆发布权限语义。
+- 为避免误用，管理员创建分支只允许 `kind=individual`，不开放球队约队后台创建。
+- `ChallengeEditDialog` 使用 DaisyUI input/textarea 放进两列 grid 时，需要给控件显式 `w-full`；否则控件按默认宽度收缩，编辑弹窗会出现输入框不齐和留白异常。
+
+## 2026-05-17 散人报名详情报名人员发现
+
+- 后端 `ChallengeDetailDto` 已包含 `individual_participants`，字段为 `user_id`、`display_name`、`avatar_url`；管理端此前只定义并渲染了 summary/activity，导致详情页没有报名人员信息。
+- 后端 Postgres 详情查询原先对报名人员加了 `LIMIT 12`，但管理端详情页用于运营核对名单，应返回完整报名列表；本轮已用 13 人仓储测试钉住该行为。
+- 散人报名列表页适合展示轻量预览而不是完整名单；后端 summary 使用 `individual_participant_preview` 返回每条散人局前 3 个报名人员，详情页继续使用完整 `individual_participants`。
+
+## 2026-05-19 活动报名列表为空发现
+
+- 管理端活动报名页固定请求 `/api/admin/activities?registration_scope=team`。
+- 后端旧 SQL 把 `team` scope 定义为 `source_activity_id IS NOT NULL`，只包含球队报名派生活动。
+- 当前数据库中东安洺悦联队的报名中活动有 `home_team_id=1`、`source_activity_id=NULL`，因此被旧 scope 条件过滤，页面统计和列表都显示 0。
+- 管理端“活动报名”的真实语义应是有球队参与、可管理球队内部球员报名的活动；判断条件应基于 `home_team_id IS NOT NULL OR away_team_id IS NOT NULL`，而不是仅基于是否从源活动派生。
+
+## 2026-05-19 活动报名列表信息补全发现
+
+- 管理端 `Activity` 列表 DTO 已包含本次展示所需字段：`color`、`opposing_color`、`holding_date`、`start_time`、`end_time`。
+- 当前业务语义中 `holding_date` 是比赛时间，`start_time` / `end_time` 是报名开始和报名截止时间；列表不能再把 `start_time` / `end_time` 标成比赛时间段。
+- 倒计时应以报名截止 `end_time` 为准，过期后显示“已截止”。
+- 页面文案应使用“结束报名倒计时”，比“截止倒计时”更贴近运营实际含义。
+
+## 2026-05-19 小程序球队活动报名人数上限发现
+
+- 小程序比赛报名详情原先在 `useMatchDetailPage.ts` 中把 `maxPlayers` 算为 `players_per_team + 2`。
+- 该值不只是展示用，还用于 `isAtRegistrationCapacity`，达到后会阻止个人报名并提示“本场已满员”。
+- 对球队活动来说当前产品规则是先不限制最大报名人数，因此 `/players_per_team` 只能作为最低成行人数提示，不能作为满员上限或报名拦截条件。
+- 进度条中的分割线仍需要保留，用于标记最低成行人数；超出部分只做压缩视觉提示，不按容量比例表达最大值。
+
+## 2026-05-20 后端球队活动报名人数上限发现
+
+- 后端用户个人报名链路是 `PATCH /activity/:activity_id/my-stand` -> `ActivityService::update_my_stand` -> `ManageRegistrationUseCase::update_my_stand`。
+- 旧后端逻辑会先查活动 `players_per_team`，再按 `players_per_team + 2` 和当前容量报名数决定是否返回“本场报名已满员”。
+- 该限制和当前“球队活动先不限制最大报名人数”的规则冲突，应移除；散人约队 challenge 的容量规则不属于本次改动范围。
+
+## 2026-05-20 比赛报名下半区职责重构发现
+
+- 上半张卡已经承担倒计时、`已报 N / 8`、成行状态和已报名头像总览；如果下半区继续把三组人同时展开，会和上方“已报名”信息形成明显重复。
+- 更合适的职责分离是：上半区做全局概览，下半区做状态切换和报名操作，这样页面焦点更清楚。
+- `TeamMemberRegistrationBoard.vue` 适合改成单一 `selectedGroup` 驱动：默认跟随当前用户所在分组，只渲染 `activeSection.members`，避免三组列表同时占满页面高度。
+- 右上角摘要如果继续写 `10/18` 会和上方人数表达撞车；改成 `18人` 更像总览信息，不会和“最低成行人数”语义混淆。
+
+## 2026-05-20 小程序比赛报名状态按钮发现
+
+- `TeamMemberRegistrationBoard` 原先在卡片内部放置“我要报名 / 我要请假 / 未报名”三按钮，占用内容区且页面滚动后不可见。
+- 当前用户状态可以通过 `groups.joined/leave/pending` 中的 `isCurrentUser` 判断，不需要额外接口字段。
+- 用户要求已报名后的“取消报名”语义等同请假，因此已报名状态的 action sheet 应提交 `stand=2`，不是 `stand=0`。
+
+## 2026-05-20 Wot UI v2 Dialog 迁移发现
+
+- Wot UI 官方当前文档使用 v2：npm 包名为 `@wot-ui/ui`，Dialog 组件为 `<wd-dialog />`，函数式 hook 为 `useDialog()`。
+- 项目原先使用 `wot-design-uni@1.14.0`，对应弹窗组件是 `<wd-message-box />` 和 `useMessage()`；本轮按用户要求迁移到 v2，不再沿用 1.x 兼容写法。
+- v2 Dialog 适合快速接入标准能力，但在这页强定制视觉下并不是最终最优解；这块最终收口为自定义业务弹窗。
+- v2 `wd-picker` 的 `modelValue` 类型为数组，即使单列选择器也需要用 `[value]` 作为 v-model，并在 setter 中取第一个值回写业务字段。
+- `@wot-ui/ui@2.0.8` npm 包以源码形式发布，当前项目 `vue-tsc` 会直接检查依赖源码并触发第三方包内部类型错误；本轮通过 `tsconfig.paths` 为 `@wot-ui/ui` 提供本地类型声明，只影响类型解析，实际运行打包仍走 npm 包。
+- Wot Dialog 的默认视觉偏标准组件库风格，和当前比赛报名页的黑/荧光绿、较克制圆角体系不一致；本页面适合通过 `custom-class` 和 CSS 变量局部覆盖，不做全局主题改动。
+- 当前函数式 Dialog 调用没有直接配置 `lockScroll` 的入口；小程序里更稳的方案不是额外铺透明 fixed 视图，而是把可见状态上抛到页面根节点，用 `page-meta` 设置 `overflow: hidden`，这样不会误伤弹窗按钮点击。
+- 报名截止卡头像预览是否完整显示，取决于 `useMatchDetailPage.ts` 的 `participantPreview` 是否截断，而不是 `IndividualCountdownCard.vue` 自身模板逻辑。
+- 队员报名状态三栏头像的边框、当前用户描边和选中高亮都集中在 `TeamMemberRegistrationBoard.vue` 的 `.member-avatar*` 样式块里，单独改这里就能收掉边框而不影响其它页面。
+
+## 2026-05-20 小程序微信 CI 本地上传工具发现
+
+- 共享 CLI 放在本机目录 `/Users/carlwang/.local/share/mini-program-ci-cli`，两个项目只保留很薄的一层 `scripts/mini-ci.mjs` 转发脚本。
+- 项目本地敏感配置放在 `.env.ci.local`，并通过 `*.local` 规则被 git 忽略，适合存放私钥路径和机器人编号。
+- `registration_system_mini/src/manifest.json` 是标准 JSON，而 `football_insight_mini/src/manifest.json` 带注释；共享 CLI 需要用 `JSON5` 解析，不能直接 `JSON.parse`。
+- `registration_system_mini` 的真实 `preview` 已成功走到微信 CI 服务端，但被微信后台拒绝，错误是 `invalid ip: 125.70.163.152`，说明私钥和 CLI 都已生效，当前阻塞点是微信侧 IP 白名单。
+- `football_insight_mini` 在补入私钥后，`bun run mp:preview` 已成功生成预览二维码，输出路径为 `dist/build/mp-weixin/preview-qrcode.jpg`。

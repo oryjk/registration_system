@@ -15,6 +15,7 @@ impl PostgresActivityRepository {
     pub(super) async fn list_page_query(
         &self,
         status_filter: Option<i8>,
+        registration_scope: Option<&str>,
         page: u32,
         page_size: u32,
     ) -> Result<ActivityListPage, DomainError> {
@@ -27,6 +28,7 @@ impl PostgresActivityRepository {
             cancelled: i64,
         }
 
+        let scope_bind = registration_scope;
         let counts_row = sqlx::query_as::<_, CountsRow>(
             r#"SELECT
                  COUNT(*)::bigint AS total,
@@ -34,8 +36,12 @@ impl PostgresActivityRepository {
                  COUNT(*) FILTER (WHERE status = 1)::bigint AS ongoing,
                  COUNT(*) FILTER (WHERE status = 2)::bigint AS ended,
                  COUNT(*) FILTER (WHERE status = 3)::bigint AS cancelled
-               FROM rs_activity"#,
+               FROM rs_activity
+               WHERE ($1::text IS NULL)
+                  OR ($1 = 'team' AND (home_team_id IS NOT NULL OR away_team_id IS NOT NULL))
+                  OR ($1 = 'direct' AND home_team_id IS NULL AND away_team_id IS NULL)"#,
         )
+        .bind(scope_bind)
         .fetch_one(&self.pool)
         .await
         .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
@@ -44,9 +50,15 @@ impl PostgresActivityRepository {
 
         let (total_filtered,): (i64,) = sqlx::query_as(
             r#"SELECT COUNT(*)::bigint FROM rs_activity
-               WHERE ($1::smallint IS NULL OR status = $1)"#,
+               WHERE ($1::smallint IS NULL OR status = $1)
+                 AND (
+                   ($2::text IS NULL)
+                   OR ($2 = 'team' AND (home_team_id IS NOT NULL OR away_team_id IS NOT NULL))
+                   OR ($2 = 'direct' AND home_team_id IS NULL AND away_team_id IS NULL)
+                 )"#,
         )
         .bind(status_bind)
+        .bind(scope_bind)
         .fetch_one(&self.pool)
         .await
         .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
@@ -57,10 +69,16 @@ impl PostgresActivityRepository {
         let rows = sqlx::query_as::<_, ActivityRow>(&format!(
             "SELECT {ACTIVITY_COLS} FROM rs_activity
              WHERE ($1::smallint IS NULL OR status = $1)
+               AND (
+                 ($2::text IS NULL)
+                 OR ($2 = 'team' AND (home_team_id IS NOT NULL OR away_team_id IS NOT NULL))
+                 OR ($2 = 'direct' AND home_team_id IS NULL AND away_team_id IS NULL)
+               )
              ORDER BY holding_date DESC
-             LIMIT $2 OFFSET $3",
+             LIMIT $3 OFFSET $4",
         ))
         .bind(status_bind)
+        .bind(scope_bind)
         .bind(limit)
         .bind(offset)
         .fetch_all(&self.pool)

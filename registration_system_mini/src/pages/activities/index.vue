@@ -468,7 +468,7 @@ onShareTimeline(() => ({
 
 <template>
   <view class="hall-page" :style="pageStyle">
-    <AppTabHeader title="约队大厅" />
+    <AppTabHeader title="约队大厅" plain />
 
     <view v-if="isRefreshing" class="hall-refresh-mask">
       <view class="hall-refresh-chip">更新中...</view>

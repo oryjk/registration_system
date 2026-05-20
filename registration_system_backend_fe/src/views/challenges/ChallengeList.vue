@@ -5,14 +5,24 @@
     >
       <div class="flex items-center justify-between gap-4">
         <div>
-          <h2 class="text-xl font-bold">约队管理</h2>
+          <h2 class="text-xl font-bold">{{ pageTitle }}</h2>
           <p class="mt-0.5 text-sm text-base-content/60">
-            已切成全局运营视角，可按球队、关键词、状态和排序查看当前约队盘面。
+            {{ pageDescription }}
           </p>
         </div>
-        <button class="btn btn-outline btn-sm" :disabled="loading" @click="fetchChallenges">
-          刷新
-        </button>
+        <div class="flex flex-wrap justify-end gap-2">
+          <button
+            v-if="isIndividualRegistrationPage"
+            class="btn btn-primary btn-sm"
+            :disabled="loading || saving"
+            @click="openCreateDialog"
+          >
+            创建散人报名
+          </button>
+          <button class="btn btn-outline btn-sm" :disabled="loading" @click="fetchChallenges">
+            刷新
+          </button>
+        </div>
       </div>
 
       <div class="grid grid-cols-2 gap-4 xl:grid-cols-4">
@@ -34,71 +44,85 @@
         </div>
       </div>
 
-      <div class="rounded-xl border border-base-300 bg-base-100 px-4 py-4 shadow-sm">
-        <div class="grid grid-cols-1 gap-3 xl:grid-cols-5">
-          <label class="form-control">
-            <div class="label py-1">
-              <span class="label-text text-xs text-base-content/60">球队筛选</span>
-            </div>
-            <select v-model="selectedTeamId" class="select select-bordered" :disabled="loading" @change="fetchChallenges">
-              <option value="">全部可见球队</option>
-              <option v-for="team in teamOptions" :key="team.id" :value="team.id">
-                {{ team.name }}
-              </option>
-            </select>
-          </label>
+      <div class="rounded-xl border border-base-300 bg-base-100 px-4 py-3 shadow-sm">
+        <div class="flex flex-col gap-3 2xl:flex-row 2xl:items-center 2xl:justify-between">
+          <div class="flex flex-wrap gap-2">
+            <button
+              v-for="filter in statusFilters"
+              :key="filter.value"
+              class="btn btn-sm"
+              :class="statusFilter === filter.value ? 'btn-primary' : 'btn-outline'"
+              @click="applyStatusFilter(filter.value)"
+            >
+              {{ filter.label }}
+            </button>
+          </div>
 
-          <label class="form-control xl:col-span-2">
-            <div class="label py-1">
-              <span class="label-text text-xs text-base-content/60">关键词</span>
-            </div>
-            <div class="join w-full">
-              <input
-                v-model.trim="keyword"
-                class="input input-bordered join-item w-full"
-                placeholder="搜标题、主客队、场地"
+          <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-[minmax(10rem,14rem)_minmax(9rem,12rem)_auto] xl:items-center 2xl:justify-end">
+            <label class="flex items-center gap-2 text-xs text-base-content/60">
+              <span class="shrink-0">{{
+                isIndividualRegistrationPage ? '发布身份' : '球队'
+              }}</span>
+              <select
+                v-model="selectedTeamId"
+                class="select select-bordered select-xs h-8 min-h-0 w-full border-base-300 bg-base-100"
                 :disabled="loading"
-                @keyup.enter="fetchChallenges"
+                @change="fetchChallenges"
+              >
+                <option value="">
+                  {{ isIndividualRegistrationPage ? '全部发布身份' : '全部可见球队' }}
+                </option>
+                <option v-for="team in teamOptions" :key="team.id" :value="team.id">
+                  {{ team.name }}
+                </option>
+              </select>
+            </label>
+
+            <label class="flex items-center gap-2 text-xs text-base-content/60">
+              <span class="shrink-0">排序</span>
+              <select
+                v-model="sort"
+                class="select select-bordered select-xs h-8 min-h-0 w-full border-base-300 bg-base-100"
+                :disabled="loading"
+                @change="fetchChallenges"
+              >
+                <option value="holding_date_asc">比赛时间优先</option>
+                <option value="holding_date_desc">时间倒序</option>
+                <option value="created_at_desc">最新发布</option>
+                <option value="credit_desc">信用优先</option>
+              </select>
+            </label>
+
+            <label class="flex h-8 cursor-pointer items-center justify-between gap-2 rounded-lg border border-base-300 bg-base-100 px-3 text-xs text-base-content/60 sm:col-span-2 xl:col-span-1 xl:min-w-36">
+              <span>包含已取消</span>
+              <input
+                v-model="includeClosed"
+                type="checkbox"
+                class="toggle toggle-sm toggle-primary"
+                @change="fetchChallenges"
               />
-              <button class="btn btn-primary join-item" :disabled="loading" @click="fetchChallenges">
-                搜索
-              </button>
-            </div>
-          </label>
-
-          <label class="form-control">
-            <div class="label py-1">
-              <span class="label-text text-xs text-base-content/60">排序</span>
-            </div>
-            <select v-model="sort" class="select select-bordered" :disabled="loading" @change="fetchChallenges">
-              <option value="holding_date_asc">比赛时间优先</option>
-              <option value="holding_date_desc">时间倒序</option>
-              <option value="created_at_desc">最新发布</option>
-              <option value="credit_desc">信用优先</option>
-            </select>
-          </label>
-
-          <label class="label cursor-pointer gap-3 rounded-xl border border-base-300 px-3 py-2 xl:mt-8">
-            <span class="label-text text-sm">包含已取消</span>
-            <input
-              v-model="includeClosed"
-              type="checkbox"
-              class="toggle toggle-sm toggle-primary"
-              @change="fetchChallenges"
-            />
-          </label>
+            </label>
+          </div>
         </div>
 
-        <div class="mt-3 flex flex-wrap gap-2">
-          <button
-            v-for="filter in statusFilters"
-            :key="filter.value"
-            class="btn btn-sm"
-            :class="statusFilter === filter.value ? 'btn-primary' : 'btn-outline'"
-            @click="applyStatusFilter(filter.value)"
-          >
-            {{ filter.label }}
-          </button>
+        <div class="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+          <label class="text-xs text-base-content/60 sm:shrink-0">关键词</label>
+          <div class="join w-full sm:max-w-xl">
+            <input
+              v-model.trim="keyword"
+              class="input input-bordered input-sm join-item min-h-0 w-full border-base-300 bg-base-100"
+              :placeholder="isIndividualRegistrationPage ? '搜散人局标题、场地' : '搜标题、主客队、场地'"
+              :disabled="loading"
+              @keyup.enter="fetchChallenges"
+            />
+            <button
+              class="btn btn-primary btn-sm join-item min-h-0 px-5"
+              :disabled="loading"
+              @click="fetchChallenges"
+            >
+              搜索
+            </button>
+          </div>
         </div>
       </div>
     </section>
@@ -132,8 +156,8 @@
       class="card border border-base-300 bg-base-100 shadow-sm"
     >
       <div class="card-body items-center py-16 text-center text-base-content/50">
-        <p class="text-base font-semibold">当前条件下没有约队记录</p>
-        <p class="text-sm">可以切换球队、状态或关键词重新查询。</p>
+        <p class="text-base font-semibold">{{ emptyTitle }}</p>
+        <p class="text-sm">可以切换状态、关键词或排序重新查询。</p>
       </div>
     </div>
 
@@ -152,6 +176,9 @@
                 <span class="badge" :class="statusBadgeClass(item.challenge.status)">
                   {{ statusLabel(item.challenge.status) }}
                 </span>
+                <span class="badge badge-outline">
+                  {{ item.challenge.kind === 'individual' ? '散人报名' : '球队约队' }}
+                </span>
               </div>
               <p class="mt-1 text-sm text-base-content/60">
                 {{ formatDateTime(item.challenge.holding_date) }} · {{ item.challenge.location }}
@@ -163,7 +190,56 @@
             </div>
           </div>
 
-          <div class="grid grid-cols-1 gap-3 rounded-2xl border border-base-300 bg-base-200/40 p-4 md:grid-cols-2">
+          <div
+            v-if="item.challenge.kind === 'individual'"
+            class="grid grid-cols-1 gap-3 rounded-2xl border border-base-300 bg-base-200/40 p-4 md:grid-cols-3"
+          >
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-wide text-base-content/45">发布方</p>
+              <p class="mt-1 font-semibold">{{ item.host_team_name }}</p>
+              <p class="mt-1 text-sm text-base-content/60">散人局发布身份</p>
+            </div>
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-wide text-base-content/45">报名人数</p>
+              <p class="mt-1 font-semibold">{{ item.accepted_count }} / {{ individualCapacity(item) }}</p>
+              <p class="mt-1 text-sm text-base-content/60">
+                剩余 {{ Math.max(individualCapacity(item) - item.accepted_count, 0) }} 个名额
+              </p>
+            </div>
+            <div class="min-w-0">
+              <p class="text-xs font-semibold uppercase tracking-wide text-base-content/45">报名人员</p>
+              <div v-if="item.individual_participant_preview.length" class="mt-2 flex items-center gap-2">
+                <div class="avatar-group -space-x-2">
+                  <div
+                    v-for="participant in item.individual_participant_preview"
+                    :key="participant.user_id"
+                    class="avatar placeholder"
+                    :title="participant.display_name"
+                  >
+                    <div class="h-8 w-8 overflow-hidden rounded-full border border-base-100 bg-primary/10 text-primary">
+                      <img
+                        v-if="participant.avatar_url"
+                        :src="participant.avatar_url"
+                        :alt="participant.display_name"
+                        class="h-full w-full object-cover"
+                      />
+                      <span v-else class="text-xs font-bold">{{ participantInitial(participant.display_name) }}</span>
+                    </div>
+                  </div>
+                </div>
+                <p class="min-w-0 truncate text-sm font-semibold">
+                  {{ participantPreviewLabel(item) }}
+                </p>
+              </div>
+              <p v-else class="mt-2 text-sm text-base-content/60">暂无报名人员</p>
+              <p class="mt-1 text-xs text-base-content/50">小程序端直接报名散人局</p>
+            </div>
+          </div>
+
+          <div
+            v-else
+            class="grid grid-cols-1 gap-3 rounded-2xl border border-base-300 bg-base-200/40 p-4 md:grid-cols-2"
+          >
             <div>
               <p class="text-xs font-semibold uppercase tracking-wide text-base-content/45">发起球队</p>
               <p class="mt-1 font-semibold">{{ item.host_team_name }}</p>
@@ -187,6 +263,9 @@
           <div class="flex flex-wrap gap-2">
             <span class="badge badge-outline">{{ item.challenge.players_per_team }} 人制</span>
             <span class="badge badge-outline">{{ feeLabel(item.challenge.fee_per_person) }}</span>
+            <span v-if="item.challenge.kind === 'individual'" class="badge badge-success badge-outline">
+              {{ item.accepted_count }}/{{ individualCapacity(item) }} 已报名
+            </span>
             <span v-if="item.challenge.activity_id" class="badge badge-info badge-outline">已生成比赛</span>
             <span v-if="item.current_team_relation" class="badge badge-neutral badge-outline">
               {{ relationLabel(item.current_team_relation) }}
@@ -199,6 +278,22 @@
 
           <div class="card-actions justify-between">
             <button class="btn btn-ghost btn-sm">查看详情</button>
+            <div class="flex flex-wrap justify-end gap-2">
+              <button
+                class="btn btn-outline btn-sm"
+                :disabled="item.challenge.status !== 'open' || saving"
+                @click.stop="openEditDialog(item)"
+              >
+                编辑
+              </button>
+              <button
+                class="btn btn-error btn-outline btn-sm"
+                :disabled="item.challenge.status !== 'open' || saving"
+                @click.stop="openCancelDialog(item)"
+              >
+                删除
+              </button>
+            </div>
             <RouterLink
               v-if="item.challenge.activity_id"
               :to="`/activities/${item.challenge.activity_id}`"
@@ -211,19 +306,58 @@
         </div>
       </article>
     </div>
+
+    <ChallengeEditDialog
+      :open="Boolean(editingItem)"
+      :challenge="editingItem?.challenge ?? null"
+      mode="edit"
+      :saving="saving"
+      :error="actionError"
+      @close="closeEditDialog"
+      @submit="submitEdit"
+    />
+    <ChallengeEditDialog
+      :open="creating"
+      :challenge="null"
+      mode="create"
+      :saving="saving"
+      :error="actionError"
+      @close="closeCreateDialog"
+      @submit="submitCreate"
+    />
+    <ChallengeCancelDialog
+      :open="Boolean(cancelItem)"
+      :challenge="cancelItem?.challenge ?? null"
+      :saving="saving"
+      :error="actionError"
+      @close="closeCancelDialog"
+      @confirm="submitCancel"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { adminListChallenges, type ChallengeStatus, type ChallengeSummary } from '@/services/challenge'
+import { useRoute, useRouter } from 'vue-router'
+import {
+  adminListChallenges,
+  cancelAdminChallenge,
+  createAdminChallenge,
+  type ChallengeKind,
+  type ChallengeStatus,
+  type ChallengeSummary,
+  type UpdateChallengePayload,
+  updateAdminChallenge,
+} from '@/services/challenge'
 import { adminListTeams, type TeamSummary } from '@/services/team'
+import ChallengeCancelDialog from './ChallengeCancelDialog.vue'
+import ChallengeEditDialog from './ChallengeEditDialog.vue'
 
 type ChallengeStatusFilter = 'all' | ChallengeStatus
 type ChallengeSort = 'holding_date_asc' | 'holding_date_desc' | 'created_at_desc' | 'credit_desc'
 
 const router = useRouter()
+const route = useRoute()
 
 const teamOptions = ref<TeamSummary[]>([])
 const selectedTeamId = ref<number | ''>('')
@@ -232,8 +366,26 @@ const includeClosed = ref(false)
 const statusFilter = ref<ChallengeStatusFilter>('all')
 const sort = ref<ChallengeSort>('holding_date_asc')
 const loading = ref(false)
+const saving = ref(false)
 const loadError = ref('')
+const actionError = ref('')
 const challenges = ref<ChallengeSummary[]>([])
+const creating = ref(false)
+const editingItem = ref<ChallengeSummary | null>(null)
+const cancelItem = ref<ChallengeSummary | null>(null)
+const pageKind = computed<ChallengeKind | undefined>(() =>
+  route.meta.challengeKind === 'individual' ? 'individual' : undefined,
+)
+const isIndividualRegistrationPage = computed(() => pageKind.value === 'individual')
+const pageTitle = computed(() => (isIndividualRegistrationPage.value ? '散人报名' : '约队管理'))
+const pageDescription = computed(() =>
+  isIndividualRegistrationPage.value
+    ? '查看小程序散人约队报名情况，按状态、关键词和排序追踪散人局进展。'
+    : '已切成全局运营视角，可按球队、关键词、状态和排序查看当前约队盘面。',
+)
+const emptyTitle = computed(() =>
+  isIndividualRegistrationPage.value ? '当前条件下没有散人报名记录' : '当前条件下没有约队记录',
+)
 
 const statusFilters: Array<{ label: string; value: ChallengeStatusFilter }> = [
   { label: '全部状态', value: 'all' },
@@ -301,6 +453,109 @@ function feeLabel(value: string | null) {
   return `¥${Number(value).toFixed(2)}/人`
 }
 
+function participantInitial(name: string) {
+  return (name.trim().charAt(0) || '?').toUpperCase()
+}
+
+function participantPreviewLabel(item: ChallengeSummary) {
+  const first = item.individual_participant_preview[0]
+  if (!first) return '暂无报名人员'
+  const remainingCount = item.accepted_count - 1
+  return remainingCount > 0 ? `${first.display_name} 等 ${item.accepted_count} 人` : first.display_name
+}
+
+function individualCapacity(item: ChallengeSummary) {
+  return item.challenge.players_per_team * 2
+}
+
+function openEditDialog(item: ChallengeSummary) {
+  actionError.value = ''
+  editingItem.value = item
+}
+
+function openCreateDialog() {
+  actionError.value = ''
+  creating.value = true
+}
+
+function closeCreateDialog() {
+  if (saving.value) return
+  creating.value = false
+  actionError.value = ''
+}
+
+function closeEditDialog() {
+  if (saving.value) return
+  editingItem.value = null
+  actionError.value = ''
+}
+
+function openCancelDialog(item: ChallengeSummary) {
+  actionError.value = ''
+  cancelItem.value = item
+}
+
+function closeCancelDialog() {
+  if (saving.value) return
+  cancelItem.value = null
+  actionError.value = ''
+}
+
+async function submitCreate(payload: UpdateChallengePayload & { host_user_id?: number }) {
+  if (!payload.host_user_id) {
+    actionError.value = '发布用户 ID 必须大于 0'
+    return
+  }
+
+  saving.value = true
+  actionError.value = ''
+  try {
+    await createAdminChallenge({
+      ...payload,
+      kind: 'individual',
+      host_user_id: payload.host_user_id,
+      host_team_id: null,
+    })
+    creating.value = false
+    await fetchChallenges()
+  } catch (error) {
+    actionError.value = error instanceof Error ? error.message : '创建失败'
+  } finally {
+    saving.value = false
+  }
+}
+
+async function submitEdit(payload: UpdateChallengePayload) {
+  if (!editingItem.value) return
+
+  saving.value = true
+  actionError.value = ''
+  try {
+    await updateAdminChallenge(editingItem.value.challenge.id, payload)
+    editingItem.value = null
+    await fetchChallenges()
+  } catch (error) {
+    actionError.value = error instanceof Error ? error.message : '保存失败'
+  } finally {
+    saving.value = false
+  }
+}
+
+async function submitCancel() {
+  if (!cancelItem.value) return
+  saving.value = true
+  actionError.value = ''
+  try {
+    await cancelAdminChallenge(cancelItem.value.challenge.id)
+    cancelItem.value = null
+    await fetchChallenges()
+  } catch (error) {
+    actionError.value = error instanceof Error ? error.message : '删除失败'
+  } finally {
+    saving.value = false
+  }
+}
+
 async function fetchTeams() {
   teamOptions.value = await adminListTeams()
 }
@@ -313,6 +568,7 @@ async function fetchChallenges() {
       team_id: selectedTeamId.value || undefined,
       keyword: keyword.value || undefined,
       status: statusFilter.value === 'all' ? undefined : statusFilter.value,
+      kind: pageKind.value,
       include_closed: includeClosed.value,
       limit: 100,
       sort: sort.value,

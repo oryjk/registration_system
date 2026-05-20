@@ -34,6 +34,12 @@ const router = createRouter({
           meta: { title: '活动报名' },
         },
         {
+          path: 'individual-registrations',
+          name: 'individual-registrations',
+          component: () => import('@/views/challenges/ChallengeList.vue'),
+          meta: { title: '散人报名', challengeKind: 'individual' },
+        },
+        {
           path: 'challenges',
           name: 'challenges',
           component: () => import('@/views/challenges/ChallengeList.vue'),

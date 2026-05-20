@@ -97,6 +97,7 @@ pub struct ChallengeSummary {
     pub accepted_count: i32,
     pub current_user_joined: bool,
     pub can_accept: bool,
+    pub individual_participant_preview: Vec<ChallengeIndividualParticipant>,
 }
 
 #[derive(Debug, Clone)]

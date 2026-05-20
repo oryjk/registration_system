@@ -38,6 +38,13 @@ function handleMemberSwitchChange(event: Event) {
   const detail = (event as unknown as { detail?: { value?: boolean } }).detail;
   props.form.isMember = !!detail?.value;
 }
+
+const roleModel = computed({
+  get: () => [props.form.role],
+  set: (value) => {
+    props.form.role = String(value[0] || "member");
+  },
+});
 </script>
 
 <template>
@@ -60,7 +67,7 @@ function handleMemberSwitchChange(event: Event) {
       </view>
 
       <wd-picker
-        v-model="form.role"
+        v-model="roleModel"
         title="选择角色"
         placeholder="请选择角色"
         :columns="memberRoleOptions"

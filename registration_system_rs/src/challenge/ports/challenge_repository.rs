@@ -1,8 +1,23 @@
 use crate::activity::domain::Activity;
 use crate::challenge::domain::{
-    Challenge, ChallengeDetail, ChallengeStatus, ChallengeSummary, DomainError,
+    Challenge, ChallengeDetail, ChallengeKind, ChallengeStatus, ChallengeSummary, DomainError,
 };
 use async_trait::async_trait;
+use rust_decimal::Decimal;
+
+#[derive(Debug, Clone, Copy)]
+pub struct UpdateChallengeFields<'a> {
+    pub title: &'a str,
+    pub holding_date: chrono::NaiveDateTime,
+    pub start_time: chrono::NaiveDateTime,
+    pub end_time: chrono::NaiveDateTime,
+    pub location: &'a str,
+    pub location_latitude: Option<f64>,
+    pub location_longitude: Option<f64>,
+    pub players_per_team: i32,
+    pub fee_per_person: Option<Decimal>,
+    pub note: Option<&'a str>,
+}
 
 #[derive(Debug, Clone, Copy)]
 pub struct TeamChallengeListQuery<'a> {
@@ -10,6 +25,7 @@ pub struct TeamChallengeListQuery<'a> {
     pub user_id: i64,
     pub keyword: Option<&'a str>,
     pub status: Option<ChallengeStatus>,
+    pub kind: Option<ChallengeKind>,
     pub include_closed: bool,
     pub limit: i64,
     pub sort: &'a str,
@@ -22,6 +38,7 @@ pub struct AdminChallengeRepositoryQuery<'a> {
     pub viewer_user_id: Option<i64>,
     pub keyword: Option<&'a str>,
     pub status: Option<ChallengeStatus>,
+    pub kind: Option<ChallengeKind>,
     pub include_closed: bool,
     pub limit: i64,
     pub sort: &'a str,
@@ -79,6 +96,11 @@ pub trait ChallengeCommandRepository: Send + Sync {
         &self,
         challenge_id: &str,
         user_id: i64,
+    ) -> Result<Challenge, DomainError>;
+    async fn update(
+        &self,
+        challenge_id: &str,
+        fields: UpdateChallengeFields<'_>,
     ) -> Result<Challenge, DomainError>;
     async fn cancel(
         &self,

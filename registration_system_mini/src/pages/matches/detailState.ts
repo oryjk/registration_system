@@ -55,19 +55,23 @@ export function clampTeamRegistrationCount(value: number) {
   return Math.min(Math.max(Math.round(value), 5), 11);
 }
 
-export function buildRegistrationProgress(joinedCount: number, requiredPlayers: number, maxPlayers: number) {
-  const denominator = Math.max(maxPlayers || requiredPlayers, 1);
+export function buildRegistrationProgress(joinedCount: number, requiredPlayers: number) {
+  const threshold = Math.max(requiredPlayers, 1);
+  const overflow = Math.max(joinedCount - threshold, 0);
+  const overflowVisualWidth = overflow > 0 ? Math.min(10 + overflow * 4, 24) : 0;
+  const baseWidth = overflow > 0 ? 100 - overflowVisualWidth : Math.min((joinedCount / threshold) * 100, 100);
+
   return {
-    baseWidth: `${Math.min((Math.min(joinedCount, requiredPlayers) / denominator) * 100, 100)}%`,
-    extraWidth: `${Math.min((Math.max(joinedCount - requiredPlayers, 0) / denominator) * 100, 100)}%`,
-    splitLeft: `${Math.min((requiredPlayers / denominator) * 100, 100)}%`,
+    baseWidth: `${baseWidth}%`,
+    extraWidth: `${overflowVisualWidth}%`,
+    splitLeft: `${baseWidth}%`,
   };
 }
 
 export function buildRemainingPlayersLabel(joinedCount: number, requiredPlayers: number) {
   if (!requiredPlayers) return "人数待定";
   const left = Math.max(requiredPlayers - joinedCount, 0);
-  return left > 0 ? `还差 ${left} 人成行` : "人数已齐";
+  return left > 0 ? `还差 ${left} 人成行` : "已达成行人数";
 }
 
 export function applyIndividualRegistrationPatch(

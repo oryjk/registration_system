@@ -409,3 +409,186 @@
 
 - 复用已有 `/api/system/mini-app-runtime-config`，不新增接口。
 - 只做用户侧显示/提交门控，不新增后台配置编辑 UI。
+
+## 2026-05-17 管理端活动报名与散人报名拆分
+
+目标：管理端“活动报名”只展示球队报名派生活动，新增“散人报名”入口展示散人约队报名进展，避免把 `activity.match_kind=internal` 误当成散人报名。
+
+阶段：
+1. [completed] 读取小程序散人约队发布和报名链路，确认散人报名走 `rs_challenges.kind = 'individual'` 与 `rs_challenge_individual_acceptances`
+2. [completed] 后端活动列表新增 `registration_scope=team|direct` 过滤
+3. [completed] 后端约队列表新增 `kind=team|individual` 过滤
+4. [completed] 管理端新增“散人报名”菜单和路由，并复用约队列表按 `kind=individual` 查询
+5. [completed] 执行后端与管理端验证
+
+## 2026-05-17 管理端约队/散人报名编辑删除
+
+目标：后台管理中为约队管理和散人报名提供编辑与删除能力；删除采用取消状态，不做物理删除。
+
+阶段：
+1. [completed] 后端补充管理员编辑和取消的业务测试
+2. [completed] 后端新增 `PATCH /api/admin/challenges/:id`，并允许管理员取消 open 约队
+3. [completed] 管理端列表页和详情页增加编辑/删除入口
+4. [completed] 抽离 `ChallengeEditDialog` 与 `ChallengeCancelDialog`，避免列表/详情重复堆叠表单逻辑
+5. [completed] 执行后端与管理端验证
+
+约束：
+
+- 仅允许编辑/取消 `open` 状态记录。
+- 超管可处理全部 open 约队；普通管理员只处理自己被分配球队相关的 open 约队；无球队主体的记录仅超管可处理。
+- 编辑字段限定为标题、时间、场地、坐标、人数、费用和备注，不改变类型、主客队、报名关系或关联活动。
+
+## 2026-05-17 后台创建散人报名
+
+目标：散人报名后台页面补齐创建入口，由超管指定发布用户后创建 `kind=individual` 的散人局。
+
+阶段：
+1. [completed] 后端新增超管代用户创建散人报名业务测试
+2. [completed] 后端创建命令和 DTO 增加可选 `host_user_id`
+3. [completed] 后端限制管理员创建仅支持 `individual`，且必须指定场馆发布用户
+4. [completed] 管理端散人报名页新增“创建散人报名”按钮和表单
+5. [completed] 执行后端、管理端验证
+6. [completed] 修复管理端 `ChallengeEditDialog` 表单宽度和间距，避免编辑/创建弹窗控件收缩错位
+
+约束：
+
+- 管理员账号不直接写入 `rs_challenges.host_user_id`；后台创建必须指定小程序用户 ID。
+- 普通管理员不能创建；超管可创建。
+- 后台创建只支持散人报名，不复用为球队约队创建入口。
+
+## 2026-05-17 散人报名详情展示报名人员
+
+目标：管理端散人报名详情页展示已报名人员头像和名称，帮助运营直接核对报名名单。
+
+阶段：
+1. [completed] 核对后端详情接口，确认 `ChallengeDetailDto.individual_participants` 已存在
+2. [completed] 管理端 challenge service 补充报名人员类型
+3. [completed] 管理端详情页新增“报名人员”卡片，展示头像、名称和用户 ID
+4. [completed] 后端仓储测试覆盖详情返回完整报名名单，并移除详情名单 12 人限制
+5. [completed] 执行后端目标测试、编译检查和管理端验证
+6. [completed] 散人报名列表卡片增加报名人员预览头像和昵称
+
+## 2026-05-19 活动报名列表为空修复
+
+目标：修复管理后台活动报名页传 `registration_scope=team` 后漏掉东安洺悦联队等直接球队活动的问题。
+
+阶段：
+1. [completed] 对照管理端请求参数、后端 SQL scope 条件和当前数据库活动数据
+2. [completed] 新增后端仓储回归测试，复现 `home_team_id` 有值但 `source_activity_id` 为空时被过滤
+3. [completed] 将 team scope 调整为有主队或客队的活动
+4. [completed] 同步管理端/后端注释与页面描述
+5. [completed] 执行后端目标测试、`cargo check --tests`、管理端 `bun run type-check`
+
+## 2026-05-19 活动详情编辑球服颜色
+
+目标：管理端活动详情编辑弹窗支持设置主队和客队球服颜色，对齐小程序发布表单体验。
+
+阶段：
+1. [completed] 确认后端和管理端已有 `color` / `opposing_color` 字段
+2. [completed] 复用管理端已有颜色选择样式，在详情编辑弹窗增加主队/客队球服色块选择
+3. [completed] 保存详情编辑时提交 `color` / `opposing_color`
+4. [completed] 将活动列表和详情编辑共用颜色常量与颜色标准化 helper
+5. [completed] 执行管理端类型检查和 diff 检查
+
+## 2026-05-19 活动报名列表信息补全
+
+目标：管理端活动报名列表卡片直接展示双方球队球服颜色、比赛时间、报名开始/结束时间和报名截止倒计时。
+
+阶段：
+1. [completed] 确认活动列表接口已返回 `color` / `opposing_color` / `holding_date` / `start_time` / `end_time`
+2. [completed] 明确 `holding_date` 为比赛时间，`start_time` / `end_time` 为报名窗口
+3. [completed] 在活动报名列表卡片补充比赛时间、报名时间、截止倒计时和主客队球服色块
+4. [completed] 倒计时改为基于分钟 tick 自动刷新，过期显示“已截止”
+5. [completed] 本地页面确认列表密度与文案，执行管理端 `bun run type-check` 和根目录 `git diff --check`
+
+## 2026-05-19 小程序球队活动报名取消人数上限
+
+目标：球队活动的个人报名不再按 `players_per_team + 2` 限制最大报名人数，详情页 `/人数` 仅表示最低成行人数。
+
+阶段：
+1. [completed] 定位比赛报名详情容量逻辑在 `pages/matches/useMatchDetailPage.ts`
+2. [completed] 红测复现 `requiredPlayers + 2` 和 `/上限` 展示仍存在
+3. [completed] 移除前端容量上限计算和“本场已满员”拦截
+4. [completed] 报名截止卡保留 `已报 N / 最低成行人数`，文案改为“已达成行人数”
+5. [completed] 执行小程序目标测试、类型检查和 diff 检查
+
+## 2026-05-20 后端球队活动报名取消人数上限
+
+目标：后端个人报名接口不再按 `players_per_team + 2` 拒绝球队活动报名，保持前后端规则一致。
+
+阶段：
+1. [completed] 定位小程序报名接口调用 `/activity/:id/my-stand`
+2. [completed] 定位后端 `ManageRegistrationUseCase` 中的 `players_per_team + 2` 容量校验
+3. [completed] 新增后端红测复现超过 `players_per_team + 2` 后仍应允许报名
+4. [completed] 移除后端容量校验和无用 `is_capacity_stand` helper
+5. [completed] 执行后端目标测试、编译检查和 diff 检查
+
+## 2026-05-20 小程序比赛报名底部状态按钮
+
+目标：将队员报名状态的三个按钮合并为底部固定横条按钮，点击后弹出报名/请假选项。
+
+阶段：
+1. [completed] 定位 `TeamMemberRegistrationBoard` 中的三按钮操作区
+2. [completed] 根据当前用户状态计算底部按钮文案和颜色
+3. [completed] 未报名/已请假时弹出“我要报名 / 我要请假”
+4. [completed] 已报名时弹出“取消报名（请假）”，并提交请假状态
+5. [completed] 执行小程序目标测试、类型检查和 diff 检查
+
+## 2026-05-20 小程序球队报名 Wot UI v2 Dialog
+
+目标：球队报名底部按钮改用 Wot UI v2 的 confirm Dialog，支持右上角关闭按钮，并按未报名、已报名、已请假三种状态展示对应操作。
+
+阶段：
+1. [completed] 安装 Wot UI 官方 skills 到小程序 `.agents/skills`
+2. [completed] 将小程序 Wot 依赖从 `wot-design-uni@1.x` 升级为 `@wot-ui/ui@2.x`
+3. [completed] 更新 `pages.json` easycom 到 `@wot-ui/ui`
+4. [completed] 将队员报名弹窗改为 `<wd-dialog /> + useDialog().confirm()`
+5. [completed] 按 v2 `wd-picker` 数组 model 调整已有 picker 绑定
+6. [completed] 执行小程序目标测试、类型检查和微信小程序构建
+
+补充：
+
+- Wot UI v2 迁移保留。
+- 队员报名状态弹窗这一处，最终已从 `wd-dialog + useDialog().confirm()` 收口为页面内自定义业务弹窗，以提高风格一致性和可控性。
+
+## 2026-05-20 小程序球队报名 Dialog 视觉与锁滚动
+
+目标：让队员报名弹窗风格贴合比赛报名页，并避免弹窗打开后背景继续滑动。
+
+阶段：
+1. [completed] 确认 Wot Dialog 底层 Popup 默认锁滚动在当前函数式调用里不够稳定
+2. [completed] 给队员报名弹窗增加本页面专属圆角、底色、按钮和关闭按钮样式
+3. [completed] 将弹窗可见状态上抛到详情页根节点，并用 `page-meta` 锁定整页滚动
+4. [completed] 执行小程序目标测试、类型检查、微信小程序构建和 diff 检查
+
+## 2026-05-20 报名头像展示收口
+
+目标：让报名截止卡展示全部已报名队员头像，并让三栏状态区头像更大且无边框。
+
+阶段：
+1. [completed] 去掉报名截止卡头像预览的前 5 人截断
+2. [completed] 放大报名截止卡头像并支持换行展示
+3. [completed] 移除三栏状态头像的边框高亮，只保留选中放大
+4. [completed] 执行目标静态测试
+
+## 2026-05-20 比赛报名下半区职责重构
+
+目标：把比赛报名详情页下半区从“三块同时展开”改成“切换式状态操作面板”，让上方负责全局概览，下方负责状态查看和操作。
+
+阶段：
+1. [completed] 将 `TeamMemberRegistrationBoard` 标题收口为“队员状态”，右上角摘要改为总人数
+2. [completed] 用 `已报名 / 请假 / 未报名` 状态切换条替代三块同时展开区域
+3. [completed] 默认按当前用户所在分组选中，并只展示当前选中分组头像
+4. [completed] 保留头像放大与昵称显示，并与底部浮动操作按钮共存
+5. [completed] 补充目标静态测试约束并执行小程序验证
+
+## 2026-05-20 小程序微信 CI 本地上传工具
+
+目标：为 `registration_system_mini` 和 `football_insight_mini` 接入一套共享的微信官方 `miniprogram-ci` 本地 CLI，并在各项目内提供最短命令。
+
+阶段：
+1. [completed] 设计共享 CLI + 项目内短命令封装方案
+2. [completed] 在本机共享目录实现 `preview` / `upload` CLI
+3. [completed] 为两个小程序项目接入 `mp:preview` / `mp:upload`
+4. [completed] 补齐 README 和 `.env.ci.local.example`
+5. [completed] 用真实私钥验证两项目 CI 链路并记录阻塞点

@@ -1,12 +1,17 @@
-use crate::challenge::application::commands::{AcceptChallengeCommand, CreateChallengeCommand};
+use crate::challenge::application::commands::{
+    AcceptChallengeCommand, CreateChallengeCommand, UpdateChallengeCommand,
+};
 use crate::challenge::application::notifier::ChallengeNotifier;
 use crate::challenge::application::permission::ChallengeTeamAccessChecker;
-use crate::challenge::application::queries::{AdminChallengeListQuery, TeamChallengeListRequest};
+use crate::challenge::application::queries::{
+    AdminChallengeListQuery, PublicChallengeListQuery, TeamChallengeListRequest,
+};
 use crate::challenge::application::use_cases::{
     AcceptChallengeUseCase, CancelChallengeUseCase, CancelIndividualAcceptanceUseCase,
     CreateChallengeUseCase, GetChallengeDetailUseCase, ListChallengesUseCase,
+    UpdateChallengeUseCase,
 };
-use crate::challenge::domain::{Challenge, ChallengeDetail, ChallengeStatus, ChallengeSummary};
+use crate::challenge::domain::{Challenge, ChallengeDetail, ChallengeSummary};
 use crate::challenge::ports::{ChallengeCommandRepository, ChallengeQueryRepository};
 use crate::notification::application::NotificationService;
 use crate::shared::auth::ActorContext;
@@ -23,6 +28,7 @@ pub struct ChallengeService {
     create_challenge_use_case: CreateChallengeUseCase,
     get_challenge_detail_use_case: GetChallengeDetailUseCase,
     list_challenges_use_case: ListChallengesUseCase,
+    update_challenge_use_case: UpdateChallengeUseCase,
 }
 
 impl ChallengeService {
@@ -48,6 +54,7 @@ impl ChallengeService {
                 query_repository.clone(),
                 command_repository.clone(),
                 team_access_checker.clone(),
+                team_repository.clone(),
                 user_repository.clone(),
                 notifier.clone(),
             ),
@@ -56,16 +63,21 @@ impl ChallengeService {
                 command_repository.clone(),
             ),
             create_challenge_use_case: CreateChallengeUseCase::new(
-                command_repository,
+                command_repository.clone(),
                 team_access_checker.clone(),
-                user_repository,
-                notifier,
+                user_repository.clone(),
+                notifier.clone(),
             ),
             get_challenge_detail_use_case: GetChallengeDetailUseCase::new(query_repository.clone()),
             list_challenges_use_case: ListChallengesUseCase::new(
-                query_repository,
-                team_repository,
-                team_access_checker,
+                query_repository.clone(),
+                team_repository.clone(),
+                team_access_checker.clone(),
+            ),
+            update_challenge_use_case: UpdateChallengeUseCase::new(
+                query_repository.clone(),
+                command_repository.clone(),
+                team_repository.clone(),
             ),
         }
     }
@@ -99,6 +111,17 @@ impl ChallengeService {
             .await
     }
 
+    pub async fn update_challenge(
+        &self,
+        actor: &ActorContext,
+        challenge_id: &str,
+        command: UpdateChallengeCommand,
+    ) -> Result<Challenge, AppError> {
+        self.update_challenge_use_case
+            .execute(actor, challenge_id, command)
+            .await
+    }
+
     pub async fn cancel_individual_acceptance(
         &self,
         actor: &ActorContext,
@@ -121,16 +144,9 @@ impl ChallengeService {
 
     pub async fn list_public(
         &self,
-        viewer_user_id: Option<i64>,
-        keyword: Option<&str>,
-        status: Option<ChallengeStatus>,
-        include_closed: bool,
-        limit: i64,
-        sort: &str,
+        query: PublicChallengeListQuery<'_>,
     ) -> Result<Vec<ChallengeSummary>, AppError> {
-        self.list_challenges_use_case
-            .list_public(viewer_user_id, keyword, status, include_closed, limit, sort)
-            .await
+        self.list_challenges_use_case.list_public(query).await
     }
 
     pub async fn get_detail(

@@ -3,13 +3,14 @@ use chrono::{Duration, Utc};
 use registration_system_backend::activity::domain::Activity;
 use registration_system_backend::challenge::application::{
     AcceptChallengeCommand, AdminChallengeListQuery, ChallengeService, CreateChallengeCommand,
+    PublicChallengeListQuery, UpdateChallengeCommand,
 };
 use registration_system_backend::challenge::domain::{
     Challenge, ChallengeDetail, ChallengeKind, ChallengeStatus, ChallengeSummary, DomainError,
 };
 use registration_system_backend::challenge::ports::{
     AdminChallengeRepositoryQuery, ChallengeCommandRepository, ChallengeQueryRepository,
-    TeamChallengeListQuery,
+    TeamChallengeListQuery, UpdateChallengeFields,
 };
 use registration_system_backend::notification::application::NotificationService;
 use registration_system_backend::notification::domain::{
@@ -65,6 +66,7 @@ impl ChallengeQueryRepository for FakeChallengeRepository {
                     .status
                     .is_none_or(|expected| challenge.status == expected)
             })
+            .filter(|challenge| query.kind.is_none_or(|expected| challenge.kind == expected))
             .filter(|challenge| {
                 challenge.status == ChallengeStatus::Open
                     || challenge.host_team_id == Some(query.team_id)
@@ -121,6 +123,7 @@ impl ChallengeQueryRepository for FakeChallengeRepository {
                     guest_team_name: challenge.guest_team_id.map(|value| value.to_string()),
                     guest_team_credit_score: Some(85),
                     guest_team_trust_label: Some("稳定赴约".to_string()),
+                    individual_participant_preview: Vec::new(),
                     challenge,
                 }
             })
@@ -145,6 +148,7 @@ impl ChallengeQueryRepository for FakeChallengeRepository {
                     .status
                     .is_none_or(|expected| challenge.status == expected)
             })
+            .filter(|challenge| query.kind.is_none_or(|expected| challenge.kind == expected))
             .filter(|challenge| {
                 query.team_id.is_none_or(|expected| {
                     challenge.host_team_id == Some(expected)
@@ -179,9 +183,9 @@ impl ChallengeQueryRepository for FakeChallengeRepository {
                         .is_some_and(|items| items.contains(&viewer_id))
                 });
 
-                ChallengeSummary {
-                    host_team_name: challenge
-                        .host_team_id
+                    ChallengeSummary {
+                        host_team_name: challenge
+                            .host_team_id
                         .map(|value| value.to_string())
                         .unwrap_or_else(|| "场馆约队".to_string()),
                     host_team_credit_score: 90,
@@ -190,11 +194,12 @@ impl ChallengeQueryRepository for FakeChallengeRepository {
                     guest_team_credit_score: Some(85),
                     guest_team_trust_label: Some("稳定赴约".to_string()),
                     current_team_relation: None,
-                    accepted_count,
-                    current_user_joined,
-                    can_accept: false,
-                    challenge,
-                }
+                        accepted_count,
+                        current_user_joined,
+                        can_accept: false,
+                        individual_participant_preview: Vec::new(),
+                        challenge,
+                    }
             })
             .collect())
     }
@@ -239,6 +244,7 @@ impl ChallengeQueryRepository for FakeChallengeRepository {
                         accepted_count,
                         current_user_joined,
                         can_accept: false,
+                        individual_participant_preview: Vec::new(),
                     },
                     activity: None,
                     individual_participants: Vec::new(),
@@ -330,7 +336,9 @@ impl ChallengeCommandRepository for FakeChallengeRepository {
             return Err(DomainError::Conflict("该约队当前不可接".to_string()));
         }
         if challenge.host_team_id.is_some() {
-            return Err(DomainError::Conflict("已有球队报名，等待另一支球队接约".to_string()));
+            return Err(DomainError::Conflict(
+                "已有球队报名，等待另一支球队接约".to_string(),
+            ));
         }
         challenge.host_team_id = Some(host_team_id);
         challenge.accepted_by_user_id = Some(accepted_by_user_id);
@@ -382,7 +390,9 @@ impl ChallengeCommandRepository for FakeChallengeRepository {
             .ok_or_else(|| DomainError::Conflict("你还没有报名这场散人约队".to_string()))?;
 
         if !accepted_users.remove(&user_id) {
-            return Err(DomainError::Conflict("你还没有报名这场散人约队".to_string()));
+            return Err(DomainError::Conflict(
+                "你还没有报名这场散人约队".to_string(),
+            ));
         }
         let accepted_count = accepted_users.len() as i32;
         drop(acceptances);
@@ -396,6 +406,29 @@ impl ChallengeCommandRepository for FakeChallengeRepository {
         } else {
             ChallengeStatus::Open
         };
+        challenge.updated_at = Utc::now().naive_utc();
+        Ok(challenge.clone())
+    }
+
+    async fn update(
+        &self,
+        challenge_id: &str,
+        fields: UpdateChallengeFields<'_>,
+    ) -> Result<Challenge, DomainError> {
+        let mut items = self.challenges.lock().unwrap();
+        let challenge = items
+            .get_mut(challenge_id)
+            .ok_or_else(|| DomainError::NotFound("challenge not found".to_string()))?;
+        challenge.title = fields.title.to_string();
+        challenge.holding_date = fields.holding_date;
+        challenge.start_time = fields.start_time;
+        challenge.end_time = fields.end_time;
+        challenge.location = fields.location.to_string();
+        challenge.location_latitude = fields.location_latitude;
+        challenge.location_longitude = fields.location_longitude;
+        challenge.players_per_team = fields.players_per_team;
+        challenge.fee_per_person = fields.fee_per_person;
+        challenge.note = fields.note.map(ToString::to_string);
         challenge.updated_at = Utc::now().naive_utc();
         Ok(challenge.clone())
     }
@@ -460,7 +493,15 @@ async fn public_challenge_list_does_not_require_current_user_or_team() {
     challenge_repository.create(&open_challenge).await.unwrap();
 
     let items = service
-        .list_public(None, None, None, false, 20, "holding_date_asc")
+        .list_public(PublicChallengeListQuery {
+            viewer_user_id: None,
+            keyword: None,
+            status: None,
+            kind: None,
+            include_closed: false,
+            limit: 20,
+            sort: "holding_date_asc",
+        })
         .await
         .unwrap();
 
@@ -513,7 +554,15 @@ async fn logged_in_public_challenge_list_marks_joined_individual_challenges() {
         .unwrap();
 
     let items = service
-        .list_public(Some(42), None, None, false, 20, "holding_date_asc")
+        .list_public(PublicChallengeListQuery {
+            viewer_user_id: Some(42),
+            keyword: None,
+            status: None,
+            kind: None,
+            include_closed: false,
+            limit: 20,
+            sort: "holding_date_asc",
+        })
         .await
         .unwrap();
 
@@ -968,6 +1017,7 @@ async fn captain_can_create_challenge() {
             CreateChallengeCommand {
                 kind: ChallengeKind::Team,
                 host_team_id: Some(1),
+                host_user_id: None,
                 title: "周六夜场 8 人制约队".to_string(),
                 holding_date,
                 start_time: holding_date,
@@ -986,6 +1036,201 @@ async fn captain_can_create_challenge() {
     assert_eq!(challenge.host_team_id, Some(1));
     assert_eq!(challenge.host_user_id, 7);
     assert_eq!(challenge.status, ChallengeStatus::Open);
+}
+
+#[tokio::test]
+async fn super_admin_can_cancel_open_challenge() {
+    let repository = Arc::new(FakeChallengeRepository::default());
+    let team_repository = Arc::new(FakeTeamStore::new(vec![sample_team(1, 7, "银河联队")]));
+    let service = ChallengeService::new(
+        repository.clone(),
+        repository.clone(),
+        team_repository,
+        Arc::new(FakeUserStore::default()),
+        notification_service(),
+    );
+    let holding_date = Utc::now().naive_utc() + Duration::days(3);
+    let challenge = sample_challenge("admin-cancel", 1, 7, holding_date, ChallengeKind::Team, 8);
+    repository.create(&challenge).await.unwrap();
+
+    let cancelled = service
+        .cancel_challenge(&admin_actor(900, true), &challenge.id)
+        .await
+        .expect("super admin should cancel an open challenge");
+
+    assert_eq!(cancelled.status, ChallengeStatus::Cancelled);
+    assert!(cancelled.cancelled_at.is_some());
+}
+
+#[tokio::test]
+async fn super_admin_can_update_open_challenge_basic_fields() {
+    let repository = Arc::new(FakeChallengeRepository::default());
+    let team_repository = Arc::new(FakeTeamStore::new(vec![sample_team(1, 7, "银河联队")]));
+    let service = ChallengeService::new(
+        repository.clone(),
+        repository.clone(),
+        team_repository,
+        Arc::new(FakeUserStore::default()),
+        notification_service(),
+    );
+    let holding_date = Utc::now().naive_utc() + Duration::days(3);
+    let challenge = sample_challenge("admin-update", 1, 7, holding_date, ChallengeKind::Team, 8);
+    repository.create(&challenge).await.unwrap();
+
+    let next_start_time = holding_date + Duration::hours(1);
+    let updated = service
+        .update_challenge(
+            &admin_actor(900, true),
+            &challenge.id,
+            UpdateChallengeCommand {
+                title: "后台调整后的约队".to_string(),
+                holding_date: next_start_time,
+                start_time: next_start_time,
+                end_time: next_start_time + Duration::hours(2),
+                location: "后台 2 号场".to_string(),
+                location_latitude: Some(30.66),
+                location_longitude: Some(104.06),
+                players_per_team: 9,
+                fee_per_person: Some(Decimal::new(3200, 2)),
+                note: Some("后台补充说明".to_string()),
+            },
+        )
+        .await
+        .expect("super admin should update an open challenge");
+
+    assert_eq!(updated.title, "后台调整后的约队");
+    assert_eq!(updated.location, "后台 2 号场");
+    assert_eq!(updated.start_time, next_start_time);
+    assert_eq!(updated.end_time, next_start_time + Duration::hours(2));
+    assert_eq!(updated.players_per_team, 9);
+    assert_eq!(updated.fee_per_person, Some(Decimal::new(3200, 2)));
+    assert_eq!(updated.note.as_deref(), Some("后台补充说明"));
+}
+
+#[tokio::test]
+async fn super_admin_can_create_individual_challenge_for_host_user() {
+    let repository = Arc::new(FakeChallengeRepository::default());
+    let team_repository = Arc::new(FakeTeamStore::new(Vec::new()));
+    let user_repository = Arc::new(FakeUserStore::with_users(vec![sample_user(30, true)]));
+    let service = ChallengeService::new(
+        repository.clone(),
+        repository.clone(),
+        team_repository,
+        user_repository,
+        notification_service(),
+    );
+    let holding_date = Utc::now().naive_utc() + Duration::days(3);
+
+    let challenge = service
+        .create_challenge(
+            &admin_actor(900, true),
+            CreateChallengeCommand {
+                kind: ChallengeKind::Individual,
+                host_team_id: None,
+                host_user_id: Some(30),
+                title: "后台创建散人报名".to_string(),
+                holding_date,
+                start_time: holding_date,
+                end_time: holding_date + Duration::hours(2),
+                location: "后台 1 号场".to_string(),
+                location_latitude: None,
+                location_longitude: None,
+                players_per_team: 8,
+                fee_per_person: Some(Decimal::new(2500, 2)),
+                note: Some("后台代场馆发布".to_string()),
+            },
+        )
+        .await
+        .expect("super admin should create individual challenge for a user");
+
+    assert_eq!(challenge.kind, ChallengeKind::Individual);
+    assert_eq!(challenge.host_team_id, None);
+    assert_eq!(challenge.host_user_id, 30);
+    assert_eq!(challenge.status, ChallengeStatus::Open);
+}
+
+#[tokio::test]
+async fn non_super_admin_cannot_create_individual_challenge_from_backend() {
+    let repository = Arc::new(FakeChallengeRepository::default());
+    let team_repository = Arc::new(FakeTeamStore::new(Vec::new()));
+    let user_repository = Arc::new(FakeUserStore::with_users(vec![sample_user(30, true)]));
+    let service = ChallengeService::new(
+        repository.clone(),
+        repository,
+        team_repository,
+        user_repository,
+        notification_service(),
+    );
+    let holding_date = Utc::now().naive_utc() + Duration::days(3);
+
+    let error = service
+        .create_challenge(
+            &admin_actor(901, false),
+            CreateChallengeCommand {
+                kind: ChallengeKind::Individual,
+                host_team_id: None,
+                host_user_id: Some(30),
+                title: "后台创建散人报名".to_string(),
+                holding_date,
+                start_time: holding_date,
+                end_time: holding_date + Duration::hours(2),
+                location: "后台 1 号场".to_string(),
+                location_latitude: None,
+                location_longitude: None,
+                players_per_team: 8,
+                fee_per_person: None,
+                note: None,
+            },
+        )
+        .await
+        .expect_err("non-super admin should not create backend individual challenge");
+
+    assert!(matches!(
+        error,
+        registration_system_backend::shared::error::AppError::Forbidden
+    ));
+}
+
+#[tokio::test]
+async fn super_admin_backend_create_rejects_team_challenge_kind() {
+    let repository = Arc::new(FakeChallengeRepository::default());
+    let team_repository = Arc::new(FakeTeamStore::new(Vec::new()));
+    let user_repository = Arc::new(FakeUserStore::with_users(vec![sample_user(30, true)]));
+    let service = ChallengeService::new(
+        repository.clone(),
+        repository,
+        team_repository,
+        user_repository,
+        notification_service(),
+    );
+    let holding_date = Utc::now().naive_utc() + Duration::days(3);
+
+    let error = service
+        .create_challenge(
+            &admin_actor(900, true),
+            CreateChallengeCommand {
+                kind: ChallengeKind::Team,
+                host_team_id: None,
+                host_user_id: Some(30),
+                title: "后台误建球队约队".to_string(),
+                holding_date,
+                start_time: holding_date,
+                end_time: holding_date + Duration::hours(2),
+                location: "后台 1 号场".to_string(),
+                location_latitude: None,
+                location_longitude: None,
+                players_per_team: 8,
+                fee_per_person: None,
+                note: None,
+            },
+        )
+        .await
+        .expect_err("backend challenge create should be individual only");
+
+    assert!(matches!(
+        error,
+        registration_system_backend::shared::error::AppError::Validation(_)
+    ));
 }
 
 #[tokio::test]
@@ -1008,6 +1253,7 @@ async fn leader_can_create_team_challenge() {
             CreateChallengeCommand {
                 kind: ChallengeKind::Team,
                 host_team_id: Some(1),
+                host_user_id: None,
                 title: "领队发起的球队约队".to_string(),
                 holding_date,
                 start_time: holding_date,
@@ -1028,7 +1274,8 @@ async fn leader_can_create_team_challenge() {
 }
 
 #[tokio::test]
-async fn venue_user_can_create_team_challenge_without_host_team_and_still_join_individual_challenge() {
+async fn venue_user_can_create_team_challenge_without_host_team_and_still_join_individual_challenge()
+ {
     let repository = Arc::new(FakeChallengeRepository::default());
     let team_repository = Arc::new(FakeTeamStore::new(vec![sample_team(2, 8, "柏林二队")]));
     let user_repository = Arc::new(FakeUserStore::with_users(vec![sample_user(30, true)]));
@@ -1047,6 +1294,7 @@ async fn venue_user_can_create_team_challenge_without_host_team_and_still_join_i
             CreateChallengeCommand {
                 kind: ChallengeKind::Team,
                 host_team_id: None,
+                host_user_id: None,
                 title: "场馆组织球队约队".to_string(),
                 holding_date,
                 start_time: holding_date,
@@ -1112,6 +1360,7 @@ async fn regular_user_cannot_create_challenge_without_host_team() {
             CreateChallengeCommand {
                 kind: ChallengeKind::Individual,
                 host_team_id: None,
+                host_user_id: None,
                 title: "普通用户散人约队".to_string(),
                 holding_date,
                 start_time: holding_date,
@@ -1155,6 +1404,7 @@ async fn accepting_challenge_marks_it_matched_and_generates_activity() {
             CreateChallengeCommand {
                 kind: ChallengeKind::Team,
                 host_team_id: Some(1),
+                host_user_id: None,
                 title: "工作日晚场 6 人制".to_string(),
                 holding_date,
                 start_time: holding_date,
@@ -1214,6 +1464,7 @@ async fn venue_team_challenge_creates_pending_activity_then_second_team_confirms
             CreateChallengeCommand {
                 kind: ChallengeKind::Team,
                 host_team_id: None,
+                host_user_id: None,
                 title: "场馆撮合球队约队".to_string(),
                 holding_date,
                 start_time: holding_date,
@@ -1509,6 +1760,7 @@ async fn team_cannot_accept_its_own_challenge() {
             CreateChallengeCommand {
                 kind: ChallengeKind::Team,
                 host_team_id: Some(1),
+                host_user_id: None,
                 title: "周二练习赛".to_string(),
                 holding_date,
                 start_time: holding_date,
@@ -1560,6 +1812,7 @@ async fn admin_can_list_challenges_across_managed_teams() {
             CreateChallengeCommand {
                 kind: ChallengeKind::Team,
                 host_team_id: Some(1),
+                host_user_id: None,
                 title: "A 队周末约队".to_string(),
                 holding_date,
                 start_time: holding_date,
@@ -1581,6 +1834,7 @@ async fn admin_can_list_challenges_across_managed_teams() {
             CreateChallengeCommand {
                 kind: ChallengeKind::Team,
                 host_team_id: Some(2),
+                host_user_id: None,
                 title: "B 队夜场约队".to_string(),
                 holding_date: holding_date + Duration::days(1),
                 start_time: holding_date + Duration::days(1),
@@ -1603,6 +1857,7 @@ async fn admin_can_list_challenges_across_managed_teams() {
                 team_id: None,
                 keyword: None,
                 status: None,
+                kind: None,
                 include_closed: false,
                 limit: 50,
                 sort: "holding_date_asc".to_string(),
@@ -1612,4 +1867,82 @@ async fn admin_can_list_challenges_across_managed_teams() {
         .expect("super admin should list all challenges");
 
     assert_eq!(items.len(), 2);
+}
+
+#[tokio::test]
+async fn admin_can_filter_individual_challenges() {
+    let repository = Arc::new(FakeChallengeRepository::default());
+    let team_repository = Arc::new(FakeTeamStore::new(vec![sample_team(2, 8, "柏林二队")]));
+    let service = ChallengeService::new(
+        repository.clone(),
+        repository,
+        team_repository,
+        Arc::new(FakeUserStore::with_users(vec![sample_user(7, true)])),
+        notification_service(),
+    );
+    let holding_date = Utc::now().naive_utc() + Duration::days(2);
+
+    service
+        .create_challenge(
+            &user_actor(7),
+            CreateChallengeCommand {
+                kind: ChallengeKind::Individual,
+                host_team_id: None,
+                host_user_id: None,
+                title: "散人晚场".to_string(),
+                holding_date,
+                start_time: holding_date,
+                end_time: holding_date + Duration::hours(2),
+                location: "主城 1 号场".to_string(),
+                location_latitude: None,
+                location_longitude: None,
+                players_per_team: 8,
+                fee_per_person: None,
+                note: None,
+            },
+        )
+        .await
+        .expect("individual challenge should be created");
+
+    service
+        .create_challenge(
+            &user_actor(8),
+            CreateChallengeCommand {
+                kind: ChallengeKind::Team,
+                host_team_id: Some(2),
+                host_user_id: None,
+                title: "球队约队".to_string(),
+                holding_date: holding_date + Duration::days(1),
+                start_time: holding_date + Duration::days(1),
+                end_time: holding_date + Duration::days(1) + Duration::hours(2),
+                location: "主城 2 号场".to_string(),
+                location_latitude: None,
+                location_longitude: None,
+                players_per_team: 8,
+                fee_per_person: None,
+                note: None,
+            },
+        )
+        .await
+        .expect("team challenge should be created");
+
+    let items = service
+        .list_for_admin(
+            &admin_actor(900, true),
+            AdminChallengeListQuery {
+                team_id: None,
+                keyword: None,
+                status: None,
+                kind: Some(ChallengeKind::Individual),
+                include_closed: false,
+                limit: 50,
+                sort: "holding_date_asc".to_string(),
+            },
+        )
+        .await
+        .expect("super admin should list individual challenges");
+
+    assert_eq!(items.len(), 1);
+    assert_eq!(items[0].challenge.kind, ChallengeKind::Individual);
+    assert_eq!(items[0].challenge.title, "散人晚场");
 }

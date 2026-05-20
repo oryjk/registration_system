@@ -36,7 +36,7 @@
 
   <div v-else-if="detail" class="flex flex-col gap-6">
     <div class="flex items-center gap-2 text-sm text-base-content/50">
-      <RouterLink to="/challenges" class="hover:text-primary transition-colors">约队管理</RouterLink>
+      <RouterLink :to="backRoute" class="hover:text-primary transition-colors">{{ detailTitle }}</RouterLink>
       <span>/</span>
       <span class="text-base-content font-medium">{{ detail.summary.challenge.title }}</span>
     </div>
@@ -58,7 +58,21 @@
           </div>
 
           <div class="flex gap-2">
-            <RouterLink to="/challenges" class="btn btn-outline btn-sm">返回列表</RouterLink>
+            <RouterLink :to="backRoute" class="btn btn-outline btn-sm">返回列表</RouterLink>
+            <button
+              class="btn btn-outline btn-sm"
+              :disabled="detail.summary.challenge.status !== 'open' || saving"
+              @click="openEditDialog"
+            >
+              编辑
+            </button>
+            <button
+              class="btn btn-error btn-outline btn-sm"
+              :disabled="detail.summary.challenge.status !== 'open' || saving"
+              @click="openCancelDialog"
+            >
+              删除
+            </button>
             <RouterLink
               v-if="detail.activity"
               :to="`/activities/${detail.activity.id}`"
@@ -153,19 +167,96 @@
         </div>
       </article>
     </section>
+
+    <section v-if="isIndividualChallenge" class="card border border-base-300 bg-base-100 shadow-sm">
+      <div class="card-body p-5">
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <h3 class="card-title text-base">报名人员</h3>
+          <span class="text-sm text-base-content/60">
+            {{ detail.summary.accepted_count }} / {{ individualCapacity }} 已报名
+          </span>
+        </div>
+
+        <div v-if="detail.individual_participants.length" class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <div
+            v-for="participant in detail.individual_participants"
+            :key="participant.user_id"
+            class="flex items-center gap-3 rounded-2xl border border-base-300 bg-base-200/40 p-3"
+          >
+            <div class="avatar placeholder">
+              <div class="h-11 w-11 overflow-hidden rounded-full bg-primary/10 text-primary">
+                <img
+                  v-if="participant.avatar_url"
+                  :src="participant.avatar_url"
+                  :alt="participant.display_name"
+                  class="h-full w-full object-cover"
+                />
+                <span v-else class="text-sm font-bold">{{ participantInitial(participant.display_name) }}</span>
+              </div>
+            </div>
+            <div class="min-w-0">
+              <p class="truncate text-sm font-semibold">{{ participant.display_name }}</p>
+              <p class="mt-0.5 text-xs text-base-content/50">用户 ID {{ participant.user_id }}</p>
+            </div>
+          </div>
+        </div>
+
+        <p v-else class="mt-4 rounded-2xl border border-dashed border-base-300 bg-base-200/40 px-4 py-6 text-center text-sm text-base-content/50">
+          暂无报名人员
+        </p>
+      </div>
+    </section>
+
+    <ChallengeEditDialog
+      :open="editOpen"
+      :challenge="detail.summary.challenge"
+      :saving="saving"
+      :error="actionError"
+      @close="closeEditDialog"
+      @submit="submitEdit"
+    />
+    <ChallengeCancelDialog
+      :open="cancelOpen"
+      :challenge="detail.summary.challenge"
+      :saving="saving"
+      :error="actionError"
+      @close="closeCancelDialog"
+      @confirm="submitCancel"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { getAdminChallengeDetail, type ChallengeDetail, type ChallengeStatus } from '@/services/challenge'
+import {
+  cancelAdminChallenge,
+  getAdminChallengeDetail,
+  type ChallengeDetail,
+  type ChallengeStatus,
+  type UpdateChallengePayload,
+  updateAdminChallenge,
+} from '@/services/challenge'
+import ChallengeCancelDialog from './ChallengeCancelDialog.vue'
+import ChallengeEditDialog from './ChallengeEditDialog.vue'
 
 const route = useRoute()
 
 const loading = ref(true)
+const saving = ref(false)
 const loadError = ref('')
+const actionError = ref('')
 const detail = ref<ChallengeDetail | null>(null)
+const editOpen = ref(false)
+const cancelOpen = ref(false)
+
+const isIndividualChallenge = computed(() => detail.value?.summary.challenge.kind === 'individual')
+const detailTitle = computed(() => (isIndividualChallenge.value ? '散人报名' : '约队管理'))
+const backRoute = computed(() => (isIndividualChallenge.value ? '/individual-registrations' : '/challenges'))
+const individualCapacity = computed(() => {
+  const playersPerTeam = detail.value?.summary.challenge.players_per_team ?? 0
+  return playersPerTeam * 2
+})
 
 function statusLabel(status: ChallengeStatus) {
   switch (status) {
@@ -204,6 +295,64 @@ function formatDateTime(value: string) {
 function feeLabel(value: string | null) {
   if (!value) return '费用待定'
   return `¥${Number(value).toFixed(2)}/人`
+}
+
+function participantInitial(name: string) {
+  return (name.trim().charAt(0) || '?').toUpperCase()
+}
+
+function openEditDialog() {
+  if (!detail.value) return
+  actionError.value = ''
+  editOpen.value = true
+}
+
+function closeEditDialog() {
+  if (saving.value) return
+  editOpen.value = false
+  actionError.value = ''
+}
+
+function openCancelDialog() {
+  actionError.value = ''
+  cancelOpen.value = true
+}
+
+function closeCancelDialog() {
+  if (saving.value) return
+  cancelOpen.value = false
+  actionError.value = ''
+}
+
+async function submitEdit(payload: UpdateChallengePayload) {
+  if (!detail.value) return
+
+  saving.value = true
+  actionError.value = ''
+  try {
+    await updateAdminChallenge(detail.value.summary.challenge.id, payload)
+    editOpen.value = false
+    await fetchDetail()
+  } catch (error) {
+    actionError.value = error instanceof Error ? error.message : '保存失败'
+  } finally {
+    saving.value = false
+  }
+}
+
+async function submitCancel() {
+  if (!detail.value) return
+  saving.value = true
+  actionError.value = ''
+  try {
+    await cancelAdminChallenge(detail.value.summary.challenge.id)
+    cancelOpen.value = false
+    await fetchDetail()
+  } catch (error) {
+    actionError.value = error instanceof Error ? error.message : '删除失败'
+  } finally {
+    saving.value = false
+  }
 }
 
 async function fetchDetail() {

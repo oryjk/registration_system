@@ -117,3 +117,35 @@
 - `loadMiniAppRuntimeConfig()` 已经提供接口失败 fallback，默认配置适合作为“隐藏手机号绑定区域”的兜底。
 - 显示门控和提交门控需要同时加：只隐藏 UI 不够，旧 `phoneInput` 或历史用户手机号仍可能在保存资料时触发绑定请求。
 - 本轮不把手机号纳入 `canSubmit`，因为用户要求是“默认不显示/不绑定”，不是开启后强制必填。
+
+## 2026-05-19 球队活动报名人数上限发现
+
+- `pages/matches/useMatchDetailPage.ts` 原先把 `maxPlayers` 定义为 `requiredPlayers + 2`，其中 `requiredPlayers` 来自 `activity.players_per_team`。
+- 这个上限同时影响报名截止卡的人数语义和个人报名 CTA 的满员拦截。
+- 球队活动当前只需要展示“达到成行人数”的进度；`/players_per_team` 可以保留作为最低成行人数，但不能限制最大报名人数。
+- 成行人数分割线应该保留在进度条里；超过成行人数后的红色段只表示“超过最低人数”，不再承担容量比例含义。
+
+## 2026-05-20 比赛报名状态按钮发现
+
+- `TeamMemberRegistrationBoard` 已有当前用户标记 `isCurrentUser`，可直接派生当前用户处于已报名、已请假或未报名状态。
+- 三个并排按钮放在内容卡片中，滚动后不可见；底部固定横条更符合高频操作位置。
+- “取消报名”在已报名状态下按用户要求等同请假，应提交 `stand=2`。
+
+## 2026-05-20 Wot UI v2 Dialog 迁移发现
+
+- 官方 Wot UI v2 Dialog 写法为 `<wd-dialog />` 搭配 `useDialog().confirm()`；项目原先的 `wot-design-uni@1.14.0` 只提供 `<wd-message-box />` 和 `useMessage()`。
+- 用户要求使用最新 2.x，因此本轮不保留 1.x MessageBox 兼容路径，easycom 统一指向 `@wot-ui/ui/components/wd-$1/wd-$1.vue`。
+- 右上角关闭按钮、遮罩、动作按钮这些标准能力用 Wot 接入很快，但要完全贴合当前报名页风格时，函数式 Dialog 的收益会迅速下降。
+- v2 `wd-picker` 的单列选择器也使用数组 model，旧的 number/string v-model 会在类型检查中报错，需要包装为 `[value]`。
+- `@wot-ui/ui@2.0.8` npm 包当前以 TS/Vue 源码发布，`vue-tsc` 会检查依赖源码并暴露第三方包内部类型问题；本轮为 `@wot-ui/ui` 增加本地类型声明映射，只约束项目实际使用到的 `useDialog()` 类型，不影响运行时构建路径。
+- Wot Dialog 默认圆角和蓝色按钮与当前报名页不协调；这次最终没有继续深调 Wot Dialog，而是直接收口为页面内自定义业务弹窗。
+- 这次反复不生效的根因主要有两个：一是函数式 Dialog 的真实节点不在组件 scoped 样式作用域里；二是用透明 fixed 层锁滚动会拦截点击，容易把按钮一起挡住。最终稳定方案是把弹窗可见状态上抛到 `pages/matches/detail.vue`，用 `page-meta` 做页面级 `overflow: hidden`，同时弹窗本体完全由业务组件自己渲染。
+- 报名截止卡顶部头像预览原先只取 `joinedRegistrations.value.slice(0, 5)`，所以已报 10 人时也只会展示 5 个头像；要显示完整已报名队员，需要直接遍历全部 `joinedRegistrations`。
+- 队员报名状态三栏原先通过 `border`、`border-color` 和 `box-shadow` 突出当前用户与选中态；如果视觉要求是“完全无边框，只靠放大”，这些样式都要从头像容器上移除。
+
+## 2026-05-20 比赛报名下半区职责重构发现
+
+- 当前页面最自然的职责边界是：`IndividualCountdownCard` 负责整体报名概览，`TeamMemberRegistrationBoard` 负责队员状态查看和操作。
+- 如果 `TeamMemberRegistrationBoard` 同时展开“已报名 / 请假 / 未报名”三块大区域，会和上方“已报名头像总览”形成重复，并让页面重心下沉。
+- 新结构用 `selectedGroup` 切换当前分组，用 `activeSection` 只渲染一个分组列表，更符合“操作面板”而不是“第二张概览卡”的定位。
+- 右上角摘要改成总人数 `N人` 后，可以避开上方 `/8` 的最低成行人数语义，不会再次制造“上限/阈值”混淆。

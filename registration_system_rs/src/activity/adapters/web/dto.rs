@@ -223,6 +223,8 @@ pub struct ListActivitiesQuery {
     pub page_size: Option<u32>,
     /// -1 或未传：全部；0–3：按活动状态筛选
     pub status: Option<i8>,
+    /// 不传：全部；team：有球队参与、可做球队内部报名的活动；direct：无球队归属的直接活动
+    pub registration_scope: Option<String>,
 }
 
 #[derive(Debug, Deserialize, IntoParams)]

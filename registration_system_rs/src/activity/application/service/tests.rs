@@ -65,6 +65,7 @@ impl ActivityQueryRepository for DummyActivityRepository {
     async fn list_page(
         &self,
         _status_filter: Option<i8>,
+        _registration_scope: Option<&str>,
         _page: u32,
         _page_size: u32,
     ) -> Result<ActivityListPage, DomainError> {
@@ -223,6 +224,8 @@ struct RecordingActivityRepository {
     created: Mutex<Vec<Activity>>,
     found_activity: Mutex<Option<Activity>>,
     derived_activity: Mutex<Option<Activity>>,
+    existing_registrations: Mutex<Vec<ActivityRegistration>>,
+    capacity_registration_count: Mutex<i64>,
     updated: Mutex<Vec<RecordedUpdate>>,
     status_updates: Mutex<Vec<(String, i8)>>,
     upserted_registrations: Mutex<Vec<RecordedRegistration>>,
@@ -253,6 +256,7 @@ impl ActivityQueryRepository for RecordingActivityRepository {
     async fn list_page(
         &self,
         _status_filter: Option<i8>,
+        _registration_scope: Option<&str>,
         _page: u32,
         _page_size: u32,
     ) -> Result<ActivityListPage, DomainError> {
@@ -287,11 +291,18 @@ impl ActivityQueryRepository for RecordingActivityRepository {
         &self,
         _activity_id: &str,
     ) -> Result<Vec<ActivityRegistration>, DomainError> {
-        Ok(Vec::new())
+        Ok(self
+            .existing_registrations
+            .lock()
+            .expect("existing_registrations mutex poisoned")
+            .clone())
     }
 
     async fn count_capacity_registrations(&self, _activity_id: &str) -> Result<i64, DomainError> {
-        Ok(0)
+        Ok(*self
+            .capacity_registration_count
+            .lock()
+            .expect("capacity_registration_count mutex poisoned"))
     }
 
     async fn list_registrations_with_info_page(
@@ -623,6 +634,76 @@ async fn update_my_stand_attending_upserts_current_user_registration() {
             .lock()
             .expect("deleted_registrations mutex poisoned")
             .is_empty()
+    );
+}
+
+#[tokio::test]
+async fn update_my_stand_allows_signup_after_required_players_plus_two() {
+    let repository = Arc::new(RecordingActivityRepository::default());
+    let now = Utc::now().naive_utc();
+    *repository
+        .found_activity
+        .lock()
+        .expect("found_activity mutex poisoned") = Some(Activity {
+        id: "activity-1".to_string(),
+        cover: None,
+        start_time: now,
+        end_time: now + Duration::hours(2),
+        holding_date: now,
+        location: "测试球场".to_string(),
+        location_latitude: None,
+        location_longitude: None,
+        name: "测试比赛".to_string(),
+        opposing: None,
+        status: 0,
+        description: None,
+        home_team_id: Some(1),
+        away_team_id: Some(2),
+        color: None,
+        opposing_color: None,
+        players_per_team: Some(8),
+        match_kind: Some("external".to_string()),
+        source_activity_id: None,
+        team_registration_count: None,
+        team_checkin_configs: vec![],
+        created_at: now,
+        updated_at: now,
+    });
+    *repository
+        .capacity_registration_count
+        .lock()
+        .expect("capacity_registration_count mutex poisoned") = 10;
+    let service = ActivityService::new(
+        repository.clone(),
+        repository.clone(),
+        None,
+        Arc::new(DummyTeamAccessPort),
+    );
+
+    service
+        .update_my_stand(
+            &ActivityPrincipal::user(99),
+            "activity-1",
+            UpdateMyStandCommand {
+                stand: 1,
+                registration_count: 1,
+            },
+        )
+        .await
+        .expect("signup should not be capped by players_per_team plus extra slots");
+
+    assert_eq!(
+        repository
+            .upserted_registrations
+            .lock()
+            .expect("upserted_registrations mutex poisoned")
+            .as_slice(),
+        &[RecordedRegistration {
+            activity_id: "activity-1".to_string(),
+            user_id: 99,
+            stand: 1,
+            registration_count: 1,
+        }]
     );
 }
 

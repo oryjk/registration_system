@@ -11,6 +11,7 @@ use utoipa::{IntoParams, ToSchema};
 pub struct CreateChallengeRequest {
     pub kind: String,
     pub host_team_id: Option<i64>,
+    pub host_user_id: Option<i64>,
     pub title: String,
     pub holding_date: chrono::NaiveDateTime,
     pub start_time: chrono::NaiveDateTime,
@@ -29,11 +30,27 @@ pub struct AcceptChallengeRequest {
     pub guest_team_id: Option<i64>,
 }
 
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct UpdateChallengeRequest {
+    pub title: String,
+    pub holding_date: chrono::NaiveDateTime,
+    pub start_time: chrono::NaiveDateTime,
+    pub end_time: chrono::NaiveDateTime,
+    pub location: String,
+    pub location_latitude: Option<f64>,
+    pub location_longitude: Option<f64>,
+    pub players_per_team: i32,
+    #[schema(value_type = Option<String>)]
+    pub fee_per_person: Option<Decimal>,
+    pub note: Option<String>,
+}
+
 #[derive(Debug, Deserialize, IntoParams)]
 pub struct ChallengeListQuery {
     pub team_id: Option<i64>,
     pub keyword: Option<String>,
     pub status: Option<String>,
+    pub kind: Option<String>,
     pub include_closed: Option<bool>,
     pub limit: Option<i64>,
     pub sort: Option<String>,
@@ -142,6 +159,7 @@ pub struct ChallengeSummaryDto {
     pub accepted_count: i32,
     pub current_user_joined: bool,
     pub can_accept: bool,
+    pub individual_participant_preview: Vec<ChallengeIndividualParticipantDto>,
 }
 
 impl From<ChallengeSummary> for ChallengeSummaryDto {
@@ -158,6 +176,11 @@ impl From<ChallengeSummary> for ChallengeSummaryDto {
             accepted_count: value.accepted_count,
             current_user_joined: value.current_user_joined,
             can_accept: value.can_accept,
+            individual_participant_preview: value
+                .individual_participant_preview
+                .into_iter()
+                .map(ChallengeIndividualParticipantDto::from)
+                .collect(),
         }
     }
 }

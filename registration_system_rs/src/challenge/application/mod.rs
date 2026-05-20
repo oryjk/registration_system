@@ -5,6 +5,6 @@ mod queries;
 mod service;
 mod use_cases;
 
-pub use commands::{AcceptChallengeCommand, CreateChallengeCommand};
-pub use queries::{AdminChallengeListQuery, TeamChallengeListRequest};
+pub use commands::{AcceptChallengeCommand, CreateChallengeCommand, UpdateChallengeCommand};
+pub use queries::{AdminChallengeListQuery, PublicChallengeListQuery, TeamChallengeListRequest};
 pub use service::ChallengeService;
