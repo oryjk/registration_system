@@ -7,7 +7,9 @@
       <div class="flex items-center justify-between gap-4">
         <div>
           <h2 class="text-xl font-bold">活动报名</h2>
-          <p class="mt-0.5 text-sm text-base-content/60">管理比赛活动，查看和操作球员报名状态</p>
+          <p class="mt-0.5 text-sm text-base-content/60">
+            查看有球队参与的比赛，管理每支球队内部球员报名状态
+          </p>
         </div>
         <button class="btn btn-primary gap-2" @click="openCreateModal">
           <svg
@@ -198,7 +200,7 @@
                         d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z"
                       />
                     </svg>
-                    {{ formatTime(activity.start_time) }} – {{ formatTime(activity.end_time) }}
+                    比赛：{{ formatDateTime(activity.holding_date) }}
                   </span>
                   <span v-if="activity.opposing" class="flex items-center gap-1">
                     <svg
@@ -213,6 +215,66 @@
                     </svg>
                     对阵：{{ activity.opposing }}
                   </span>
+                  <span v-if="activity.team_registration_count" class="flex items-center gap-1">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      class="h-3.5 w-3.5"
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                    >
+                      <path
+                        d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5z"
+                      />
+                    </svg>
+                    球队报名：{{ activity.team_registration_count }} 人
+                  </span>
+                </div>
+                <div
+                  class="mt-2 grid grid-cols-1 gap-2 text-xs text-base-content/60 md:grid-cols-2 xl:grid-cols-4"
+                >
+                  <div class="rounded-lg bg-base-200/70 px-3 py-2">
+                    <p class="text-base-content/45">开始报名</p>
+                    <p class="mt-0.5 font-medium text-base-content">
+                      {{ formatDateTime(activity.start_time) }}
+                    </p>
+                  </div>
+                  <div class="rounded-lg bg-base-200/70 px-3 py-2">
+                    <p class="text-base-content/45">结束报名</p>
+                    <p class="mt-0.5 font-medium text-base-content">
+                      {{ formatDateTime(activity.end_time) }}
+                    </p>
+                  </div>
+                  <div
+                    class="rounded-lg px-3 py-2"
+                    :class="
+                      isRegistrationClosed(activity.end_time)
+                        ? 'bg-base-200/70'
+                        : 'bg-warning/10 text-warning'
+                    "
+                  >
+                    <p class="text-current/70">结束报名倒计时</p>
+                    <p class="mt-0.5 font-semibold tabular-nums">
+                      {{ formatRegistrationCountdown(activity.end_time) }}
+                    </p>
+                  </div>
+                  <div
+                    class="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 rounded-lg bg-base-200/70 px-3 py-2"
+                  >
+                    <span class="flex items-center gap-1.5">
+                      <span
+                        class="h-3.5 w-3.5 rounded-full border border-base-300"
+                        :style="{ backgroundColor: jerseyColorValue(activity.color) }"
+                      ></span>
+                      主队 {{ jerseyColorLabel(activity.color) }}
+                    </span>
+                    <span class="flex items-center gap-1.5">
+                      <span
+                        class="h-3.5 w-3.5 rounded-full border border-base-300"
+                        :style="{ backgroundColor: jerseyColorValue(activity.opposing_color) }"
+                      ></span>
+                      客队 {{ jerseyColorLabel(activity.opposing_color) }}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -504,7 +566,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, reactive } from 'vue'
+import { ref, computed, onMounted, onUnmounted, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { toast } from '@/utils/toast'
 import TencentLocationPickerModal from '@/components/TencentLocationPickerModal.vue'
@@ -521,6 +583,11 @@ import {
   type CreateActivityPayload,
 } from '@/services/activity'
 import type { AppliedLocationSelection } from '@/views/activities/location-picker.model'
+import {
+  COMMON_JERSEY_COLORS,
+  normalizeHexColor,
+  type ActivityColorField,
+} from '@/views/activities/activity-detail.model'
 
 const router = useRouter()
 const MATCH_FORMAT_OPTIONS = [5, 6, 7, 8, 11] as const
@@ -539,6 +606,8 @@ const listPage = ref(1)
 const listPageSize = ref(20)
 const loading = ref(false)
 const filterStatus = ref(-1)
+const nowTick = ref(Date.now())
+let countdownTimer: ReturnType<typeof setInterval> | null = null
 
 const listTotalPages = computed(() => Math.max(1, Math.ceil(listTotal.value / listPageSize.value)))
 
@@ -574,8 +643,35 @@ const goDetail = (id: string) => router.push(`/activities/${id}`)
 
 const formatMonth = (d: string) => new Date(d).toLocaleDateString('zh-CN', { month: 'short' })
 const formatDay = (d: string) => new Date(d).getDate().toString().padStart(2, '0')
-const formatTime = (d: string) =>
-  new Date(d).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+const formatDateTime = (d: string) =>
+  new Date(d).toLocaleString('zh-CN', {
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+
+const isRegistrationClosed = (endTime: string) => new Date(endTime).getTime() <= nowTick.value
+
+const formatRegistrationCountdown = (endTime: string) => {
+  const distance = new Date(endTime).getTime() - nowTick.value
+  if (distance <= 0) return '已截止'
+
+  const minute = 60 * 1000
+  const hour = 60 * minute
+  const day = 24 * hour
+  const days = Math.floor(distance / day)
+  const hours = Math.floor((distance % day) / hour)
+  const minutes = Math.floor((distance % hour) / minute)
+
+  if (days > 0) return `${days}天 ${hours}小时`
+  if (hours > 0) return `${hours}小时 ${minutes}分钟`
+  return `${Math.max(minutes, 1)}分钟`
+}
+
+const jerseyColorValue = (color: string | null) => color || 'transparent'
+
+const jerseyColorLabel = (color: string | null) => color || '未设置'
 
 const statusActions = (status: number): Record<number, string> => {
   const all: Record<number, string> = {
@@ -607,6 +703,7 @@ const fetchList = async () => {
       page: listPage.value,
       page_size: listPageSize.value,
       status: filterStatus.value,
+      registration_scope: 'team',
     })
     activityItems.value = res.items
     listTotal.value = res.total
@@ -644,49 +741,6 @@ const form = reactive({
   players_per_team: null as number | null,
 })
 
-type ColorField = 'color' | 'opposing_color'
-const HEX_COLOR_RE = /^#[0-9a-f]{6}$/i
-const COMMON_JERSEY_COLORS = [
-  '#FFFFFF',
-  '#F5F5F5',
-  '#D1D5DB',
-  '#9CA3AF',
-  '#4B5563',
-  '#111827',
-  '#000000',
-  '#7C3AED',
-  '#EC4899',
-  '#F43F5E',
-  '#DC2626',
-  '#EA580C',
-  '#F97316',
-  '#F59E0B',
-  '#EAB308',
-  '#84CC16',
-  '#22C55E',
-  '#16A34A',
-  '#10B981',
-  '#14B8A6',
-  '#06B6D4',
-  '#0EA5E9',
-  '#3B82F6',
-  '#2563EB',
-  '#1D4ED8',
-  '#4338CA',
-  '#6366F1',
-  '#8B5CF6',
-  '#A855F7',
-  '#C026D3',
-  '#BE123C',
-  '#7F1D1D',
-]
-
-const normalizeHexColor = (value: string) => {
-  const trimmed = value.trim()
-  if (!trimmed) return ''
-  return HEX_COLOR_RE.test(trimmed) ? trimmed.toUpperCase() : ''
-}
-
 const playersPerTeamFromMatchFormat = (matchFormat: MatchFormatOption) => matchFormat * 2 - 1
 
 const inferMatchFormat = (
@@ -708,11 +762,11 @@ const onMatchFormatChange = (target: {
     : null
 }
 
-const selectColor = (field: ColorField, color: string) => {
+const selectColor = (field: ActivityColorField, color: string) => {
   form[field] = normalizeHexColor(color)
 }
 
-const clearColor = (field: ColorField) => {
+const clearColor = (field: ActivityColorField) => {
   form[field] = ''
 }
 
@@ -837,5 +891,17 @@ const handleDelete = async () => {
   }
 }
 
-onMounted(fetchList)
+onMounted(() => {
+  countdownTimer = setInterval(() => {
+    nowTick.value = Date.now()
+  }, 60 * 1000)
+  fetchList()
+})
+
+onUnmounted(() => {
+  if (countdownTimer) {
+    clearInterval(countdownTimer)
+    countdownTimer = null
+  }
+})
 </script>

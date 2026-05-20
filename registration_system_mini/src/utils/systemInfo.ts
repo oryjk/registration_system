@@ -27,7 +27,7 @@ export function getAppPlatform() {
 
 export function getWindowMetrics(): WindowMetrics {
   if (typeof uni !== "undefined" && typeof uni.getWindowInfo === "function") {
-    const windowInfo = uni.getWindowInfo() || {};
+    const windowInfo = (uni.getWindowInfo() || {}) as Partial<WindowMetrics>;
     return {
       windowWidth: windowInfo.windowWidth || 375,
       statusBarHeight: windowInfo.statusBarHeight || 20,

@@ -28,6 +28,7 @@ impl ActivityQueryRepository for InMemoryActivityRepository {
     async fn list_page(
         &self,
         _status_filter: Option<i8>,
+        _registration_scope: Option<&str>,
         page: u32,
         page_size: u32,
     ) -> Result<ActivityListPage, DomainError> {

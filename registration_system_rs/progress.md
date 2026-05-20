@@ -108,3 +108,54 @@
 - `MiniAppRuntimeConfigDto` 已同步新增 profile DTO，并给 PATCH payload 的 profile 加默认值，兼容旧配置提交。
 - 已新增测试 `mini_app_runtime_config_deserializes_old_json_without_profile_section`，并在默认配置测试中断言 `require_phone_binding=false`。
 - 验证通过：`cargo test system::application::service::tests -- --nocapture`；`cargo check --tests`；`rustfmt --edition 2024 --check src/system/domain/mod.rs src/system/adapters/web/dto.rs src/system/application/service.rs`；根目录 `git diff --check`。全量 `cargo fmt --check` 仍被既有 challenge 文件格式差异阻塞，未扩大格式化范围。
+
+## 2026-05-17 管理端报名列表过滤
+
+- 已新增 activity list port/use case/handler/repository 的 `registration_scope` 参数。
+- 已新增 challenge list DTO/use case/repository 的 `kind` 参数。
+- 已更新 fake repositories 和新增 `admin_can_filter_individual_challenges` 测试。
+
+- 17:25 验证通过：后端专项测试、`cargo check --tests`、`cargo clippy --all-targets -- -D warnings`；管理端 `bun run type-check`、`bun run build`。
+- 17:25 `bun run lint` 未通过，失败点为既有 `ActivitySettlementPanel.vue` / `PlayerFilterBar.vue` / `PlayerFreezeDialog.vue` prop 直接变更和 `PlayerList.vue` 未使用导入，非本轮改动文件。
+
+## 2026-05-17 管理端约队/散人报名编辑删除
+
+- 已新增管理员取消和编辑业务测试，并确认红测先失败于缺少更新 command/service 方法。
+- 已实现 `UpdateChallengeUseCase`、`UpdateChallengeFields`、Postgres 更新方法和 `PATCH /api/admin/challenges/:id`。
+- 已扩展取消用例支持管理员取消 open 约队，普通管理员按已分配球队范围校验。
+- 验证通过：`cargo test --test challenge_service_business_test super_admin_can_ -- --nocapture`。
+- 验证通过：`cargo check --tests`。
+- 验证通过：`cargo clippy --all-targets -- -D warnings`。
+
+## 2026-05-17 后台创建散人报名
+
+- 已新增并通过业务测试：`super_admin_can_create_individual_challenge_for_host_user`、`non_super_admin_cannot_create_individual_challenge_from_backend`、`super_admin_backend_create_rejects_team_challenge_kind`。
+- 已为创建命令和 web DTO 增加 `host_user_id`，并保持用户端不传时使用当前用户。
+- 已在创建 use case 中限制管理员创建为超管 + 散人报名 + 场馆发布用户。
+- 验证通过：`cargo test --test challenge_service_business_test -- --nocapture`。
+- 验证通过：`cargo check --tests`。
+- 验证通过：`cargo clippy --all-targets -- -D warnings`。
+
+## 2026-05-17 散人报名详情完整名单
+
+- 已新增仓储测试 `detail_returns_all_individual_participants`，插入 13 个散人报名者并断言详情返回 13 条名单；初始失败为实际只返回 12。
+- 已移除 `PostgresChallengeRepository::get_detail` 中报名人员查询的 `LIMIT 12`。
+- 验证通过：`cargo test --test challenge_repository_postgres_test detail_returns_all_individual_participants -- --nocapture`。
+- 验证通过：`cargo check --tests`。
+- 验证通过：`cargo clippy --all-targets -- -D warnings`。
+- 已为 challenge summary 增加 `individual_participant_preview`，Postgres 列表查询后批量装配每条散人局前 3 个报名者头像/昵称。
+
+## 2026-05-19 活动报名 team scope 修复
+
+- 已确认 `/api/admin/activities?registration_scope=team` 旧 SQL 只查 `source_activity_id IS NOT NULL`，漏掉直接创建但归属球队的活动。
+- 当前数据库里东安洺悦联队报名中的 `周四友谊赛` 等活动 `home_team_id=1` 且 `source_activity_id=NULL`，因此旧查询返回 0。
+- 已新增 `tests/activity_repository_scope_test.rs`，红灯复现后将 team scope 改为 `home_team_id IS NOT NULL OR away_team_id IS NOT NULL`，direct scope 改为无主客队活动。
+- 验证通过：`cargo test --test activity_repository_scope_test -- --nocapture`、`cargo check --tests`。
+
+## 2026-05-20 球队活动报名取消人数上限
+
+- 已确认后端个人报名 use case 仍按 `players_per_team + 2` 限制容量。
+- 已新增 `update_my_stand_allows_signup_after_required_players_plus_two` 回归测试。
+- 已移除 `ManageRegistrationUseCase` 中的容量校验，个人报名不再因人数超过 `players_per_team + 2` 被拒绝。
+- 已删除不再使用的 `is_capacity_stand`。
+- 验证通过：`cargo test activity::application::service::tests::update_my_stand_ -- --nocapture`、`cargo check --tests`、根目录 `git diff --check`。

@@ -17,7 +17,7 @@ describe("create match Wot UI integration", () => {
     const source = await read("src/pages.json");
 
     expect(source.includes('"easycom"')).toEqual(true);
-    expect(source.includes('"^wd-(.*)": "wot-design-uni/components/wd-$1/wd-$1.vue"')).toEqual(true);
+    expect(source.includes('"^wd-(.*)": "@wot-ui/ui/components/wd-$1/wd-$1.vue"')).toEqual(true);
   });
 
   test("uses calendar datetime pickers for create match time fields", async () => {

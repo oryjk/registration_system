@@ -103,10 +103,22 @@ pub async fn list_activities_handler(
         Some(s) if (0..=3).contains(&s) => Some(s),
         _ => None,
     };
+    let registration_scope = query
+        .registration_scope
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty());
+    if let Some(scope) = registration_scope
+        && !matches!(scope, "team" | "direct")
+    {
+        return Err(HttpError(crate::shared::error::AppError::Validation(
+            "无效的报名活动范围".to_string(),
+        )));
+    }
     let page_data = state
         .services
         .activity_service
-        .list_activities(status_filter, page, page_size)
+        .list_activities(status_filter, registration_scope, page, page_size)
         .await
         .map_err(activity_http_error)?;
     Ok(Json(ApiResponse::success(ActivityListPageDto::from(

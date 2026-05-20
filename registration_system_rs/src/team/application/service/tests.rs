@@ -681,6 +681,7 @@ impl ActivityQueryRepository for DummyActivityRepository {
     async fn list_page(
         &self,
         _status_filter: Option<i8>,
+        _registration_scope: Option<&str>,
         _page: u32,
         _page_size: u32,
     ) -> Result<ActivityListPage, ActivityDomainError> {

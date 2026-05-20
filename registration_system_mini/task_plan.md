@@ -142,3 +142,63 @@
 3. [completed] `pages/profile/setup` 在 `onShow` 加载运行配置并用 `shouldShowPhoneBinding` 控制手机号区域
 4. [completed] 保存资料和微信手机号授权都受 `shouldShowPhoneBinding` 门控
 5. [completed] 执行目标测试、类型检查和小程序构建
+
+## 2026-05-19 球队活动报名取消人数上限
+
+目标：球队活动个人报名暂不限制最大报名人数，详情页 `已报 N / 人数` 仅表示最低成行人数。
+
+阶段：
+1. [completed] 定位 `players_per_team + 2` 上限来源
+2. [completed] 新增目标测试约束不再出现容量上限逻辑
+3. [completed] 移除满员拦截并调整进度条计算
+4. [completed] 倒计时卡保留 `已报 N / 最低成行人数`
+5. [completed] 执行目标测试、类型检查和 diff 检查
+
+## 2026-05-20 比赛报名底部状态按钮
+
+目标：队员报名状态操作合并为底部固定横条按钮，通过弹出选项选择报名或请假。
+
+阶段：
+1. [completed] 移除卡片内三按钮操作区
+2. [completed] 新增底部固定浮动按钮，按当前用户状态切换颜色和文案
+3. [completed] 未报名/已请假时提供报名和请假选项
+4. [completed] 已报名时提供“取消报名（请假）”，提交请假状态
+5. [completed] 执行目标测试、类型检查和 diff 检查
+
+## 2026-05-20 球队报名 Wot UI v2 Dialog
+
+目标：球队报名底部操作按钮使用 Wot UI v2 confirm Dialog，并支持右上角关闭按钮。
+
+阶段：
+1. [completed] 安装 Wot UI 官方 skills 到小程序 `.agents/skills`
+2. [completed] 迁移依赖：`wot-design-uni@1.x` -> `@wot-ui/ui@2.x`
+3. [completed] 更新 easycom 配置与静态测试
+4. [completed] 队员报名操作改为 `<wd-dialog /> + useDialog().confirm()`
+5. [completed] 同步 v2 `wd-picker` 单列数组值迁移
+6. [completed] 执行目标测试、类型检查和微信小程序构建验证
+
+补充：
+
+- Wot UI v2 迁移本身保留。
+- 队员报名状态弹窗这一处，最终已从 `wd-dialog + useDialog().confirm()` 收口为页面内自定义业务弹窗，以提高风格一致性和可控性。
+
+## 2026-05-20 球队报名 Dialog 视觉与锁滚动
+
+目标：优化队员报名弹窗圆角、按钮配色和打开后的背景滚动行为，并收口为页面内自定义业务弹窗。
+
+阶段：
+1. [completed] 调整弹窗局部视觉样式，并最终替换为自定义业务弹窗结构
+2. [completed] 将弹窗可见状态上抛到比赛详情页，并通过 `page-meta` 锁定页面滚动
+3. [completed] 补充本地 Wot 类型声明和静态测试约束
+4. [completed] 执行目标测试、类型检查、微信小程序构建和 diff 检查
+
+## 2026-05-20 比赛报名下半区职责重构
+
+目标：把比赛报名详情页下半区改成切换式状态操作面板，避免与上方报名概览重复。
+
+阶段：
+1. [completed] 将下半区标题与右侧摘要改为“队员状态”与总人数
+2. [completed] 用状态切换条替代三块同时展开的状态区域
+3. [completed] 默认定位到当前用户所在分组，并只展示当前分组头像
+4. [completed] 保留头像点选昵称与底部状态按钮
+5. [completed] 补充静态测试并执行小程序验证

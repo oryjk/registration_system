@@ -131,10 +131,6 @@ pub(crate) fn haversine_distance_meters(
     (earth_radius_meters * c).round() as i32
 }
 
-pub(crate) fn is_capacity_stand(stand: i8) -> bool {
-    matches!(stand, 1 | 3)
-}
-
 pub(crate) fn normalize_match_kind(
     value: Option<String>,
 ) -> Result<String, ActivityApplicationError> {

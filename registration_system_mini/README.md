@@ -130,3 +130,32 @@ ${VITE_API_BASE_URL}${url}
 - 涉及路由或页面结构变动时，补跑 `bun run build:mp-weixin`
 - 改字段时以 `registration_system_rs/` 后端 DTO 和实际 JSON 返回为准
 - 前端页面、样式、交互和小程序 UI 调整不要求机械按 TDD 开发；涉及路由、接口、权限、数据提交或共享逻辑时再按风险补充测试
+
+## 微信 CI 上传
+
+本项目已经接入本机共享的微信小程序 CI CLI，可以直接在项目内执行：
+
+```bash
+bun run mp:preview
+bun run mp:upload
+```
+
+首次使用前：
+
+1. 复制 `.env.ci.local.example` 为 `.env.ci.local`
+2. 填写真实私钥路径 `MINI_PROGRAM_PRIVATE_KEY_PATH`
+3. 如需覆盖机器人编号，可修改 `MINI_PROGRAM_CI_ROBOT`
+
+示例：
+
+```bash
+bun run mp:preview -- --robot 2 --desc "本地预览"
+bun run mp:upload -- --robot 2 --version 1.0.1 --desc "提交体验版"
+```
+
+说明：
+
+- 命令会先自动执行 `bun run build:mp-weixin`
+- 然后调用微信官方 `miniprogram-ci`
+- `preview` 默认在 `dist/build/mp-weixin/preview-qrcode.jpg` 输出预览二维码
+- `upload` 如果不传 `--version`，会按当前版本自动 `+1`，例如 `1.0.30 -> 1.0.31`

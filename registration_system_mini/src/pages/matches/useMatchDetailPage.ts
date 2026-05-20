@@ -95,7 +95,7 @@ export function useMatchDetailPage() {
   let countdownTimer: ReturnType<typeof setInterval> | null = null;
 
   const pageStyle = computed(() => ({
-    paddingBottom: registrationMode.value === "team" && canUseTeamRegistration.value ? "188rpx" : "96rpx",
+    paddingBottom: registrationMode.value === "team" && canUseTeamRegistration.value ? "188rpx" : "156rpx",
   }));
 
   const contentStyle = computed(() => ({
@@ -105,9 +105,7 @@ export function useMatchDetailPage() {
   const joinedRegistrations = computed(() => registrations.value.filter((item) => item.stand === 1 || item.stand === 3));
   const joinedCount = computed(() => joinedRegistrations.value.length + sourceTeamRegistrationCount.value);
   const requiredPlayers = computed(() => match.value?.players_per_team ?? 0);
-  const maxPlayers = computed(() => (requiredPlayers.value > 0 ? requiredPlayers.value + 2 : 0));
-  const isAtRegistrationCapacity = computed(() => maxPlayers.value > 0 && joinedCount.value >= maxPlayers.value);
-  const registrationProgress = computed(() => buildRegistrationProgress(joinedCount.value, requiredPlayers.value, maxPlayers.value));
+  const registrationProgress = computed(() => buildRegistrationProgress(joinedCount.value, requiredPlayers.value));
   const progressBaseWidth = computed(() => registrationProgress.value.baseWidth);
   const progressExtraWidth = computed(() => registrationProgress.value.extraWidth);
   const progressSplitLeft = computed(() => registrationProgress.value.splitLeft);
@@ -143,7 +141,7 @@ export function useMatchDetailPage() {
   });
 
   const participantPreview = computed(() =>
-    joinedRegistrations.value.slice(0, 5).map((item) => {
+    joinedRegistrations.value.map((item) => {
       const user = usersById.value[item.user_id];
       return {
         id: item.user_id,
@@ -516,14 +514,6 @@ export function useMatchDetailPage() {
       await handleCancelIndividualSignup();
       return;
     }
-    if (isAtRegistrationCapacity.value) {
-      uni.showToast({
-        title: "本场已满员",
-        icon: "none",
-      });
-      return;
-    }
-
     const confirmed = await confirmRegistrationAction({
       title: "确认报名",
       content: `确认报名参加「${match.value.name}」？`,
@@ -532,6 +522,7 @@ export function useMatchDetailPage() {
     if (!confirmed) return;
 
     submittingStatus.value = true;
+    uni.showLoading({ title: "提交中...", mask: true });
     try {
       await ensureSessionReady();
       await submitIndividualRegistration(match.value.id);
@@ -547,6 +538,7 @@ export function useMatchDetailPage() {
         icon: "none",
       });
     } finally {
+      uni.hideLoading();
       submittingStatus.value = false;
     }
   }
@@ -562,6 +554,7 @@ export function useMatchDetailPage() {
     if (!confirmed) return;
 
     submittingStatus.value = true;
+    uni.showLoading({ title: "提交中...", mask: true });
     try {
       await ensureSessionReady();
       await cancelIndividualRegistration(match.value.id);
@@ -577,6 +570,7 @@ export function useMatchDetailPage() {
         icon: "none",
       });
     } finally {
+      uni.hideLoading();
       submittingStatus.value = false;
     }
   }
@@ -589,14 +583,18 @@ export function useMatchDetailPage() {
     }
 
     const nextLabel = stand === 1 ? "报名" : stand === 2 ? "请假" : "设为未报名";
-    const confirmed = await confirmRegistrationAction({
-      title: `确认${nextLabel}`,
-      content: stand === 0 ? `确认将「${match.value.name}」状态改为未报名？` : `确认${nextLabel}参加「${match.value.name}」？`,
-      confirmText: nextLabel,
-    });
-    if (!confirmed) return;
 
+    // Since the UI now has a custom popup for selection, we can skip the uni.showModal confirmation here,
+    // or keep it if we still want a double confirmation.
+    // The user asked for "做成一个二次确认的弹窗，来选择是报名还是请假", which means the popup ITSELF is the confirmation.
+    // So we can remove this `confirmRegistrationAction` entirely for the TeamMemberStand action!
+    // We will just directly submit.
+
+    // Check if we need to remove `if (!confirmed) return;` which was in the deleted block above.
+    // Wait, the previous replacement already replaced the whole confirm block.
+    // Let's replace the submittingStatus block.
     submittingStatus.value = true;
+    uni.showLoading({ title: "提交中...", mask: true });
     try {
       await ensureSessionReady();
       if (stand === 1) {
@@ -620,6 +618,7 @@ export function useMatchDetailPage() {
         icon: "none",
       });
     } finally {
+      uni.hideLoading();
       submittingStatus.value = false;
     }
   }

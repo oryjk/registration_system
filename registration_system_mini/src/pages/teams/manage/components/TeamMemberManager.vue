@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from "vue";
 import type { BackendTeamMember, BackendUser } from "@/types/backend";
 import type { TeamProfileViewModel } from "@/types/viewModels";
 import { memberRoleOptions } from "../teamManageState";
@@ -58,6 +59,13 @@ function handleMemberSwitchChange(event: Event) {
   props.memberForm.isMember = !!detail?.value;
 }
 
+const roleModel = computed({
+  get: () => [props.memberForm.role],
+  set: (value) => {
+    props.memberForm.role = String(value[0] || "member");
+  },
+});
+
 function handleOpenMemberAttendance(member: BackendTeamMember) {
   emit("openMemberAttendance", member);
 }
@@ -95,7 +103,7 @@ function handleRemoveMember(member: BackendTeamMember) {
         @candidate-tap="handleCandidateTap"
       />
       <wd-picker
-        v-model="memberForm.role"
+        v-model="roleModel"
         title="选择角色"
         placeholder="请选择角色"
         :columns="memberRoleOptions"

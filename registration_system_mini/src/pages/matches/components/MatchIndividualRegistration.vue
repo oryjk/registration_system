@@ -54,6 +54,7 @@ const emit = defineEmits<{
   (event: "selectIndividualSignup"): void;
   (event: "selectTeamMemberStand", value: 0 | 1 | 2): void;
   (event: "openMatchDetail", matchId: string): void;
+  (event: "dialogVisibilityChange", visible: boolean): void;
 }>();
 
 const showTeamMemberRegistrationBoard = computed(() => {
@@ -75,6 +76,10 @@ function handleSelectTeamMemberStand(stand: 0 | 1 | 2) {
 
 function handleOpenMatchDetail(matchId: string) {
   emit("openMatchDetail", matchId);
+}
+
+function handleTeamMemberDialogVisibilityChange(visible: boolean) {
+  emit("dialogVisibilityChange", visible);
 }
 </script>
 
@@ -112,6 +117,7 @@ function handleOpenMatchDetail(matchId: string) {
       :groups="teamMemberRegistrationGroups"
       :submitting-status="submittingStatus"
       @select-stand="handleSelectTeamMemberStand"
+      @dialog-visibility-change="handleTeamMemberDialogVisibilityChange"
     />
     <IndividualInfoCard :credit-score="currentTeam?.creditScore ?? 0" />
     <IndividualPromoBanner />

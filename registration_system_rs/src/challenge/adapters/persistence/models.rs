@@ -134,6 +134,7 @@ impl From<ChallengeSummaryRow> for ChallengeSummary {
             accepted_count: row.accepted_count,
             current_user_joined: row.current_user_joined,
             can_accept: row.can_accept,
+            individual_participant_preview: Vec::new(),
         }
     }
 }
@@ -207,6 +208,24 @@ impl From<ChallengeIndividualParticipantRow> for ChallengeIndividualParticipant 
             user_id: row.user_id,
             display_name: row.display_name,
             avatar_url: row.avatar_url,
+        }
+    }
+}
+
+#[derive(Debug, FromRow)]
+pub struct ChallengeIndividualParticipantPreviewRow {
+    pub(super) challenge_id: String,
+    user_id: i64,
+    display_name: String,
+    avatar_url: Option<String>,
+}
+
+impl ChallengeIndividualParticipantPreviewRow {
+    pub fn into_participant(self) -> ChallengeIndividualParticipant {
+        ChallengeIndividualParticipant {
+            user_id: self.user_id,
+            display_name: self.display_name,
+            avatar_url: self.avatar_url,
         }
     }
 }

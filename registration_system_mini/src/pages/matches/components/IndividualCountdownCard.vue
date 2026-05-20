@@ -1,5 +1,7 @@
 <script setup lang="ts">
-defineProps<{
+import { computed, ref } from "vue";
+
+const props = defineProps<{
   joinedCount: number;
   requiredPlayers: number;
   countdownText: string;
@@ -22,6 +24,14 @@ defineProps<{
 defineEmits<{
   selectIndividualSignup: [];
 }>();
+
+const selectedParticipantId = ref<number | null>(null);
+
+const selectedParticipant = computed(() => props.participantPreview.find((participant) => participant.id === selectedParticipantId.value) ?? null);
+
+function handleSelectParticipant(participantId: number) {
+  selectedParticipantId.value = selectedParticipantId.value === participantId ? null : participantId;
+}
 </script>
 
 <template>
@@ -38,6 +48,10 @@ defineEmits<{
       <text class="countdown-time">{{ countdownText }}</text>
     </view>
 
+    <view class="countdown-progress-meta">
+      <text class="countdown-avatars-note">{{ remainingPlayersLabel }}</text>
+    </view>
+
     <view class="progress-track">
       <view class="progress-fill" :style="{ width: progressBaseWidth }" />
       <view class="progress-fill-extra" :style="{ left: progressSplitLeft, width: progressExtraWidth }" />
@@ -45,12 +59,13 @@ defineEmits<{
     </view>
 
     <view class="countdown-avatars">
-      <view class="avatar-stack">
+      <view class="avatar-wall">
         <view
           v-for="participant in participantPreview"
           :key="participant.id"
-          class="mini-avatar"
+          :class="['mini-avatar', selectedParticipantId === participant.id ? 'mini-avatar-selected' : '']"
           :style="{ background: participant.tone }"
+          @tap="handleSelectParticipant(participant.id)"
         >
           <image
             v-if="participant.avatarUrl"
@@ -61,7 +76,9 @@ defineEmits<{
           <text v-else class="mini-avatar-text">{{ participant.name.slice(0, 1) }}</text>
         </view>
       </view>
-      <text class="countdown-avatars-note">{{ remainingPlayersLabel }}</text>
+      <view v-if="selectedParticipant" class="countdown-selected-participant">
+        <text class="countdown-selected-name">{{ selectedParticipant.name }}</text>
+      </view>
     </view>
 
     <view v-if="showCta !== false" class="individual-cta-button" @tap="$emit('selectIndividualSignup')">
@@ -72,6 +89,26 @@ defineEmits<{
 </template>
 
 <style scoped>
+.countdown-selected-participant {
+  display: inline-flex;
+  align-items: center;
+  gap: 12rpx;
+  min-height: 58rpx;
+  margin-top: 16rpx;
+  padding: 10rpx 16rpx;
+  border-radius: 999rpx;
+  background: #f3f5ef;
+  animation: countdown-selected-chip-enter 180ms ease;
+  box-sizing: border-box;
+}
+
+.countdown-selected-name {
+  color: #171717;
+  font-size: 24rpx;
+  line-height: 1.2;
+  font-weight: 800;
+}
+
 .registration-card {
   position: relative;
   overflow: hidden;
@@ -145,10 +182,17 @@ defineEmits<{
 .progress-track {
   position: relative;
   height: 18rpx;
-  margin-top: 24rpx;
+  margin-top: 20rpx;
   border-radius: 999rpx;
   background: #eceef3;
   overflow: hidden;
+}
+
+.countdown-progress-meta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  margin-top: 22rpx;
 }
 
 .progress-fill {
@@ -179,30 +223,37 @@ defineEmits<{
 }
 
 .countdown-avatars {
-  display: flex;
-  align-items: center;
-  gap: 20rpx;
   margin-top: 24rpx;
 }
 
-.avatar-stack {
+.avatar-wall {
   display: flex;
-  align-items: center;
+  flex-wrap: wrap;
+  width: 100%;
+  row-gap: 12rpx;
+  padding-left: 12rpx;
 }
 
 .mini-avatar {
   position: relative;
-  width: 58rpx;
-  height: 58rpx;
-  margin-left: -10rpx;
-  border: 4rpx solid #ffffff;
+  width: 72rpx;
+  height: 72rpx;
+  margin-left: -12rpx;
   border-radius: 50%;
   overflow: hidden;
   box-sizing: border-box;
+  transition: transform 180ms ease, box-shadow 180ms ease;
+  transform-origin: center center;
 }
 
 .mini-avatar:first-child {
   margin-left: 0;
+}
+
+.mini-avatar-selected {
+  z-index: 2;
+  transform: translateY(-4rpx) scale(1.16);
+  box-shadow: 0 10rpx 20rpx rgba(17, 17, 17, 0.16);
 }
 
 .mini-avatar-image {
@@ -212,14 +263,27 @@ defineEmits<{
 
 .mini-avatar-text {
   color: #ffffff;
-  font-size: 24rpx;
+  font-size: 28rpx;
   font-weight: 800;
 }
 
 .countdown-avatars-note {
   color: #303030;
-  font-size: 30rpx;
-  font-weight: 700;
+  font-size: 28rpx;
+  line-height: 1.25;
+  font-weight: 800;
+}
+
+@keyframes countdown-selected-chip-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6rpx);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .individual-cta-button {

@@ -208,3 +208,66 @@
 - `pages/profile/setup/index.vue` 已在 `onShow` 并行加载 session 与运行配置，默认隐藏手机号区域；配置开启时才显示手机号输入和微信绑定按钮。
 - 保存资料时现在只有 `shouldShowPhoneBinding=true` 且手机号非空才调用 `bindMyPhoneNumber`；微信授权手机号入口也受同一门控保护。
 - 验证通过：`bun test src/config/__tests__/runtimeConfig.test.ts src/pages/__tests__/miniRemainingFeaturesIntegration.test.ts`；`bun run type-check`；`bun run build:mp-weixin`；根目录 `git diff --check`。
+
+## 2026-05-19 球队活动报名取消人数上限
+
+- 已在 `useMatchDetailPage.ts` 移除 `players_per_team + 2` 的 `maxPlayers` 和 `isAtRegistrationCapacity`。
+- 个人报名入口不再因达到前端容量上限提示“本场已满员”。
+- `IndividualCountdownCard` 右上角保留 `已报 N / 最低成行人数`，但不再把该人数作为最大容量。
+- 达到成行人数后提示“已达成行人数”，仍允许继续报名。
+- 进度条保留最低成行人数分割线；超过成行人数后显示压缩的红色超额段。
+- 验证通过：`bun test src/pages/__tests__/matchDetailRegistrationDesign.test.ts`、`bun run type-check`、根目录 `git diff --check`。
+
+## 2026-05-20 比赛报名底部状态按钮
+
+- 已将队员报名状态的三按钮改为底部固定浮动横条按钮。
+- 按当前用户状态切换按钮颜色：未报名/已请假为黑色，已报名为荧光绿。
+- 未报名/已请假时弹出“我要报名 / 我要请假”；已报名时弹出“取消报名（请假）”。
+- 已报名状态下的取消报名会提交请假状态 `stand=2`。
+- 验证通过：`bun test src/pages/__tests__/matchDetailRegistrationDesign.test.ts`、`bun run type-check`、根目录 `git diff --check`。
+
+## 2026-05-20 球队报名 Wot UI v2 Dialog
+
+- 12:19 已按官方文档执行 `npx skills add wot-ui/open-wot`，skills 已安装到 `registration_system_mini/.agents/skills`。
+- 已升级依赖为 `@wot-ui/ui@2.0.8`，移除 `wot-design-uni`，并更新 `pages.json` easycom 规则。
+- `TeamMemberRegistrationBoard` 这块曾试接 `<wd-dialog /> + useDialog().confirm()`，后续已因页面风格一致性要求改回自定义业务弹窗；Wot v2 迁移成果继续用于 `wd-picker` 等组件。
+- 未报名：弹窗显示“请假 / 报名”；报名提交 `stand=1`，请假提交 `stand=2`，关闭不提交。
+- 已报名：弹窗显示“再想想 / 取消报名”；确认取消报名提交 `stand=2`，取消或关闭不提交。
+- 已请假：弹窗显示“再想想 / 报名”；确认报名提交 `stand=1`，取消或关闭不提交。
+- 已同步修正 v2 `wd-picker` 单列选择器数组 model：比赛人制、队员角色新增、队员角色编辑。
+- 已为 `@wot-ui/ui` 增加本地类型声明映射，避免 `vue-tsc` 直接检查第三方包源码；运行时和微信小程序构建仍使用 npm 包。
+- 验证通过：`bun test src/pages/__tests__/matchDetailRegistrationDesign.test.ts src/pages/__tests__/createMatchWotUi.test.ts`、`bun run type-check`、`bun run build:mp-weixin`、根目录 `git diff --check`。
+
+## 2026-05-20 球队报名 Dialog 视觉与锁滚动
+
+- 队员报名弹窗已改为页面内自定义业务弹窗：浅暖底、24rpx 圆角、荧光绿报名按钮、黑色取消报名按钮、浅灰辅助按钮。
+- 背景滚动锁已改为页面级方案：`TeamMemberRegistrationBoard` 上抛弹窗可见状态，`pages/matches/detail.vue` 用 `<page-meta :page-style=\"teamMemberDialogVisible ? 'overflow: hidden;' : ''\" />` 锁定整页滚动。
+- 已移除这一块对 Wot 函数式 Dialog 的依赖，弹窗结构、关闭按钮、动作按钮和遮罩均由页面组件自身控制，避免 root-portal、scoped 样式和默认按钮体系带来的偏差。
+- 已补充静态测试断言和本地 Wot 类型声明。
+- 验证通过：`bun test src/pages/__tests__/matchDetailRegistrationDesign.test.ts`、`bun run type-check`、`bun run build:mp-weixin`、根目录 `git diff --check`。
+
+## 2026-05-20 报名头像展示收口
+
+- 报名截止卡中的头像预览已从截断预览改为展示全部已报名队员头像，不再只显示前 5 个。
+- 报名截止卡头像尺寸已加大，并支持换行展示更多报名头像。
+- 队员报名状态三栏中的头像已移除边框高亮；当前用户和选中态都不再通过描边区分，只保留选中放大效果与“我”标记。
+- 三栏头像尺寸已同步放大，横向排列也从重叠栈改为更清晰的间隔排列。
+- 验证通过：`bun test src/pages/__tests__/matchDetailRegistrationDesign.test.ts`。
+
+## 2026-05-20 比赛报名下半区职责重构
+
+- 已将 `TeamMemberRegistrationBoard` 重构为“队员状态”切换式操作面板，不再同时展开三块状态区。
+- 已新增 `selectedGroup`，默认跟随当前用户所在分组；页面仅显示 `activeSection` 的头像列表。
+- 右上角摘要已调整为 `N人`，下半区和上半区的概览语义已经拆开。
+- 头像点选后的昵称展示、底部浮动状态按钮和自定义业务弹窗仍保留。
+- 已补充静态测试约束新结构：状态切换条、单区展示、旧三栏类名不再出现。
+
+## 2026-05-20 小程序微信 CI 本地上传工具
+
+- 已接入项目内 `scripts/mini-ci.mjs`，封装共享 CLI。
+- 已在 `package.json` 增加 `mp:preview`、`mp:upload`。
+- 已在 `src/manifest.json` 写入真实 `appid=wx0b5cef0e7f1af280`。
+- 已补充 `.env.ci.local.example` 和 README 使用说明。
+- 已创建本地 `.env.ci.local`，使用 `/Users/carlwang/Downloads/private.wx0b5cef0e7f1af280.key` 作为私钥路径，并确认该文件被 git 忽略。
+- 验证通过：`bun run type-check`。
+- 真实 CI 验证结果：`bun run mp:preview` 已完成构建并请求微信 CI，但被微信返回 `invalid ip: 125.70.163.152`，当前需在微信后台补白名单。

@@ -1,5 +1,7 @@
 use crate::challenge::application::permission::ChallengeTeamAccessChecker;
-use crate::challenge::application::queries::{AdminChallengeListQuery, TeamChallengeListRequest};
+use crate::challenge::application::queries::{
+    AdminChallengeListQuery, PublicChallengeListQuery, TeamChallengeListRequest,
+};
 use crate::challenge::domain::{ChallengeKind, ChallengeStatus, ChallengeSummary};
 use crate::challenge::ports::{
     AdminChallengeRepositoryQuery, ChallengeQueryRepository, TeamChallengeListQuery,
@@ -45,6 +47,7 @@ impl ListChallengesUseCase {
                 user_id: actor.id,
                 keyword: query.keyword,
                 status: query.status,
+                kind: query.kind,
                 include_closed: query.include_closed,
                 limit: query.limit,
                 sort: query.sort,
@@ -73,23 +76,19 @@ impl ListChallengesUseCase {
 
     pub async fn list_public(
         &self,
-        viewer_user_id: Option<i64>,
-        keyword: Option<&str>,
-        status: Option<ChallengeStatus>,
-        include_closed: bool,
-        limit: i64,
-        sort: &str,
+        query: PublicChallengeListQuery<'_>,
     ) -> Result<Vec<ChallengeSummary>, AppError> {
         self.query_repository
             .list_for_admin(AdminChallengeRepositoryQuery {
                 accessible_team_ids: None,
                 team_id: None,
-                viewer_user_id,
-                keyword,
-                status,
-                include_closed,
-                limit,
-                sort,
+                viewer_user_id: query.viewer_user_id,
+                keyword: query.keyword,
+                status: query.status,
+                kind: query.kind,
+                include_closed: query.include_closed,
+                limit: query.limit,
+                sort: query.sort,
             })
             .await
             .map_err(|error| AppError::internal(format!("查询公开约队列表失败: {error}")))
@@ -125,6 +124,7 @@ impl ListChallengesUseCase {
                 viewer_user_id: None,
                 keyword: query.keyword.as_deref(),
                 status: query.status,
+                kind: query.kind,
                 include_closed: query.include_closed,
                 limit: query.limit,
                 sort: &query.sort,

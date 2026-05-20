@@ -1,7 +1,6 @@
 use crate::activity::application::commands::UpdateMyStandCommand;
 use crate::activity::application::error::ActivityApplicationError;
 use crate::activity::application::principal::ActivityPrincipal;
-use crate::activity::application::validation::is_capacity_stand;
 use crate::activity::ports::{ActivityCommandRepository, ActivityQueryRepository};
 use std::collections::BTreeSet;
 use std::sync::Arc;
@@ -43,11 +42,6 @@ impl ManageRegistrationUseCase {
             return Ok(());
         }
 
-        if is_capacity_stand(command.stand) {
-            self.ensure_registration_capacity(activity_id, actor.id)
-                .await?;
-        }
-
         self.command_repository
             .upsert_registration(
                 activity_id,
@@ -59,57 +53,6 @@ impl ManageRegistrationUseCase {
             .map_err(|error| {
                 ActivityApplicationError::internal(format!("更新报名状态失败: {error}"))
             })
-    }
-
-    async fn ensure_registration_capacity(
-        &self,
-        activity_id: &str,
-        user_id: i64,
-    ) -> Result<(), ActivityApplicationError> {
-        let activity = self
-            .query_repository
-            .find_by_id(activity_id)
-            .await
-            .map_err(|error| {
-                ActivityApplicationError::internal(format!("查询活动详情失败: {error}"))
-            })?
-            .ok_or_else(|| ActivityApplicationError::NotFound("活动不存在".to_string()))?;
-        let Some(required_players) = activity.players_per_team else {
-            return Ok(());
-        };
-        let max_capacity = i64::from(required_players + 2);
-        if max_capacity <= 0 {
-            return Ok(());
-        }
-
-        let registrations = self
-            .query_repository
-            .list_registrations(activity_id)
-            .await
-            .map_err(|error| {
-                ActivityApplicationError::internal(format!("查询报名状态失败: {error}"))
-            })?;
-        let current_user_already_counts = registrations
-            .iter()
-            .any(|item| item.user_id == user_id && is_capacity_stand(item.stand));
-        if current_user_already_counts {
-            return Ok(());
-        }
-
-        let current_count = self
-            .query_repository
-            .count_capacity_registrations(activity_id)
-            .await
-            .map_err(|error| {
-                ActivityApplicationError::internal(format!("统计报名人数失败: {error}"))
-            })?;
-        if current_count >= max_capacity {
-            return Err(ActivityApplicationError::Validation(
-                "本场报名已满员".to_string(),
-            ));
-        }
-
-        Ok(())
     }
 
     pub async fn update_user_stand(

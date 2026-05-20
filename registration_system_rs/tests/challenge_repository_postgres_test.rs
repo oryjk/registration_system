@@ -1,13 +1,174 @@
 use chrono::{Duration, Local};
 use registration_system_backend::activity::domain::Activity;
 use registration_system_backend::challenge::adapters::PostgresChallengeRepository;
-use registration_system_backend::challenge::ports::ChallengeCommandRepository;
+use registration_system_backend::challenge::ports::{
+    ChallengeCommandRepository, ChallengeQueryRepository,
+};
 use sqlx::PgPool;
 use uuid::Uuid;
 
 fn test_database_url() -> Option<String> {
     let _ = dotenvy::from_filename(".env");
     std::env::var("DATABASE_URL").ok()
+}
+
+#[tokio::test]
+async fn detail_returns_all_individual_participants() {
+    let Some(database_url) = test_database_url() else {
+        return;
+    };
+
+    let pool = PgPool::connect(&database_url)
+        .await
+        .expect("test database should connect");
+    let repo = PostgresChallengeRepository::new(pool.clone());
+
+    sqlx::query(
+        r#"
+        ALTER TABLE rs_challenges
+            ADD COLUMN IF NOT EXISTS kind VARCHAR(20) NOT NULL DEFAULT 'team'
+        "#,
+    )
+    .execute(&pool)
+    .await
+    .expect("challenge kind column should exist in test database");
+
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS rs_challenge_individual_acceptances (
+            id BIGSERIAL PRIMARY KEY,
+            challenge_id CHAR(36) NOT NULL REFERENCES rs_challenges (id) ON DELETE CASCADE,
+            user_id BIGINT NOT NULL REFERENCES rs_user_info (id) ON DELETE CASCADE,
+            created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+            CONSTRAINT uq_challenge_individual_acceptance UNIQUE (challenge_id, user_id)
+        )
+        "#,
+    )
+    .execute(&pool)
+    .await
+    .expect("individual acceptance table should exist in test database");
+
+    let challenge_id = Uuid::new_v4().to_string();
+    let now = Local::now().naive_local();
+    let start_time = now + Duration::days(3);
+    let end_time = start_time + Duration::hours(2);
+
+    sqlx::query(
+        r#"
+        SELECT setval(
+            pg_get_serial_sequence('rs_user_info', 'id'),
+            GREATEST((SELECT COALESCE(MAX(id), 0) FROM rs_user_info), 1)
+        )
+        "#,
+    )
+    .execute(&pool)
+    .await
+    .expect("user id sequence should align with existing data");
+
+    let host_user_id: i64 = sqlx::query_scalar(
+        r#"
+        INSERT INTO rs_user_info (
+            open_id, username, nickname, real_name, avatar_url, phone_number,
+            is_manager, status, create_time, latest_login_date
+        )
+        VALUES ($1, 'detail-host', '详情场馆', '详情场馆', '', '', 1, 1, NOW(), NOW())
+        RETURNING id
+        "#,
+    )
+    .bind(format!("test-detail-host-{challenge_id}"))
+    .fetch_one(&pool)
+    .await
+    .expect("host user should insert");
+
+    let mut participant_ids = Vec::new();
+    for index in 0..13 {
+        let user_id: i64 = sqlx::query_scalar(
+            r#"
+            INSERT INTO rs_user_info (
+                open_id, username, nickname, real_name, avatar_url, phone_number,
+                is_manager, status, create_time, latest_login_date
+            )
+            VALUES ($1, $2, $3, $3, $4, '', 1, 1, NOW(), NOW())
+            RETURNING id
+            "#,
+        )
+        .bind(format!("test-detail-participant-{challenge_id}-{index}"))
+        .bind(format!("detail-participant-{index}"))
+        .bind(format!("报名用户{index}"))
+        .bind(format!("https://example.com/avatar-{index}.png"))
+        .fetch_one(&pool)
+        .await
+        .expect("participant should insert");
+        participant_ids.push(user_id);
+    }
+
+    sqlx::query(
+        r#"
+        INSERT INTO rs_challenges (
+            id, title, kind, host_team_id, host_user_id, holding_date, start_time, end_time,
+            location, players_per_team, status, created_at, updated_at
+        ) VALUES (
+            $1, '散人详情名单测试', 'individual', NULL, $2, $3, $4, $5,
+            '详情名单球场', 8, 'open', NOW(), NOW()
+        )
+        "#,
+    )
+    .bind(&challenge_id)
+    .bind(host_user_id)
+    .bind(start_time)
+    .bind(start_time)
+    .bind(end_time)
+    .execute(&pool)
+    .await
+    .expect("challenge should insert");
+
+    for user_id in &participant_ids {
+        sqlx::query(
+            r#"
+            INSERT INTO rs_challenge_individual_acceptances (challenge_id, user_id, created_at, updated_at)
+            VALUES ($1, $2, NOW(), NOW())
+            "#,
+        )
+        .bind(&challenge_id)
+        .bind(user_id)
+        .execute(&pool)
+        .await
+        .expect("acceptance should insert");
+    }
+
+    let detail = repo
+        .get_detail(&challenge_id, None)
+        .await
+        .expect("detail should load")
+        .expect("detail should exist");
+
+    sqlx::query("DELETE FROM rs_challenges WHERE id = $1")
+        .bind(&challenge_id)
+        .execute(&pool)
+        .await
+        .ok();
+    sqlx::query("DELETE FROM rs_user_info WHERE id = ANY($1)")
+        .bind(&participant_ids)
+        .execute(&pool)
+        .await
+        .ok();
+    sqlx::query("DELETE FROM rs_user_info WHERE id = $1")
+        .bind(host_user_id)
+        .execute(&pool)
+        .await
+        .ok();
+
+    assert_eq!(detail.summary.accepted_count, 13);
+    assert_eq!(detail.individual_participants.len(), 13);
+    assert_eq!(
+        detail.individual_participants[0].display_name,
+        "报名用户0"
+    );
+    assert_eq!(
+        detail.individual_participants[12].avatar_url.as_deref(),
+        Some("https://example.com/avatar-12.png")
+    );
 }
 
 #[tokio::test]

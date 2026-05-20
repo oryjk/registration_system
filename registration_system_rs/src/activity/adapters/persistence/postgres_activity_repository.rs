@@ -23,10 +23,12 @@ impl ActivityQueryRepository for PostgresActivityRepository {
     async fn list_page(
         &self,
         status_filter: Option<i8>,
+        registration_scope: Option<&str>,
         page: u32,
         page_size: u32,
     ) -> Result<ActivityListPage, DomainError> {
-        self.list_page_query(status_filter, page, page_size).await
+        self.list_page_query(status_filter, registration_scope, page, page_size)
+            .await
     }
 
     async fn find_by_id(&self, activity_id: &str) -> Result<Option<Activity>, DomainError> {

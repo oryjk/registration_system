@@ -2,6 +2,50 @@ import type { RegistrationStandCounts } from '@/services/activity'
 
 export const MATCH_FORMAT_OPTIONS = [5, 6, 7, 8, 11] as const
 export type MatchFormatOption = (typeof MATCH_FORMAT_OPTIONS)[number]
+export type ActivityColorField = 'color' | 'opposing_color'
+
+export const COMMON_JERSEY_COLORS = [
+  '#FFFFFF',
+  '#F5F5F5',
+  '#D1D5DB',
+  '#9CA3AF',
+  '#4B5563',
+  '#111827',
+  '#000000',
+  '#7C3AED',
+  '#EC4899',
+  '#F43F5E',
+  '#DC2626',
+  '#EA580C',
+  '#F97316',
+  '#F59E0B',
+  '#EAB308',
+  '#84CC16',
+  '#22C55E',
+  '#16A34A',
+  '#10B981',
+  '#14B8A6',
+  '#06B6D4',
+  '#0EA5E9',
+  '#3B82F6',
+  '#2563EB',
+  '#1D4ED8',
+  '#4338CA',
+  '#6366F1',
+  '#8B5CF6',
+  '#A855F7',
+  '#C026D3',
+  '#BE123C',
+  '#7F1D1D',
+]
+
+const HEX_COLOR_RE = /^#[0-9a-f]{6}$/i
+
+export const normalizeHexColor = (value: string | null | undefined) => {
+  const trimmed = value?.trim() ?? ''
+  if (!trimmed) return ''
+  return HEX_COLOR_RE.test(trimmed) ? trimmed.toUpperCase() : ''
+}
 
 export const formatDateTime = (date: string) =>
   new Date(date).toLocaleString('zh-CN', {

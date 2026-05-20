@@ -18,6 +18,9 @@ export interface Activity {
   color: string | null
   opposing_color: string | null
   players_per_team: number | null
+  match_kind: 'external' | 'internal' | null
+  source_activity_id: string | null
+  team_registration_count: number | null
   team_checkin_configs: ActivityTeamCheckinConfig[]
 }
 
@@ -168,6 +171,8 @@ export interface ListActivitiesParams {
   page_size?: number
   /** -1 全部；0–3 按活动状态 */
   status?: number
+  /** team = 有球队参与、可做球队内部报名的活动；direct = 无球队归属的直接活动 */
+  registration_scope?: 'team' | 'direct'
 }
 
 export const listActivities = async (params?: ListActivitiesParams): Promise<ActivityListPage> => {

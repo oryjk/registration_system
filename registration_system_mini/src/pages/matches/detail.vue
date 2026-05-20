@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import { onShareAppMessage, onShareTimeline } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
 import MatchDetailSkeleton from "./components/MatchDetailSkeleton.vue";
@@ -90,6 +90,11 @@ const shareTitle = computed(() => {
 });
 
 const sharePath = computed(() => `/pages/matches/detail?id=${matchId.value || match.value?.id || ""}`);
+const teamMemberDialogVisible = ref(false);
+
+function handleTeamMemberDialogVisibilityChange(visible: boolean) {
+  teamMemberDialogVisible.value = visible;
+}
 
 onShareAppMessage(() => ({
   title: shareTitle.value,
@@ -105,6 +110,7 @@ onShareTimeline(() => ({
 </script>
 
 <template>
+  <page-meta :page-style="teamMemberDialogVisible ? 'overflow: hidden;' : ''" />
   <view class="registration-page" :style="pageStyle">
     <AppTabHeader title="比赛报名" showBack showLocation />
 
@@ -158,6 +164,7 @@ onShareTimeline(() => ({
         @select-individual-signup="handleSelectIndividualSignup"
         @select-team-member-stand="handleSelectTeamMemberStand"
         @open-match-detail="openMatchDetail"
+        @dialog-visibility-change="handleTeamMemberDialogVisibilityChange"
       />
 
       <MatchTeamRegistration

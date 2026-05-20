@@ -1,11 +1,11 @@
 use crate::bootstrap::app::AppState;
 use crate::challenge::adapters::web::dto::{
     AcceptChallengeRequest, ChallengeDetailDto, ChallengeDto, ChallengeListQuery,
-    ChallengeSummaryDto, CreateChallengeRequest,
+    ChallengeSummaryDto, CreateChallengeRequest, UpdateChallengeRequest,
 };
 use crate::challenge::application::{
     AcceptChallengeCommand, AdminChallengeListQuery, CreateChallengeCommand,
-    TeamChallengeListRequest,
+    PublicChallengeListQuery, TeamChallengeListRequest, UpdateChallengeCommand,
 };
 use crate::challenge::domain::{ChallengeKind, ChallengeStatus};
 use crate::shared::api_response::ApiResponse;
@@ -37,6 +37,7 @@ pub async fn create_challenge_handler(
             CreateChallengeCommand {
                 kind,
                 host_team_id: payload.host_team_id,
+                host_user_id: payload.host_user_id,
                 title: payload.title,
                 holding_date: payload.holding_date,
                 start_time: payload.start_time,
@@ -74,6 +75,16 @@ pub async fn list_challenges_handler(
         }
         None => None,
     };
+    let kind = match query.kind.as_deref() {
+        Some("team") => Some(ChallengeKind::Team),
+        Some("individual") => Some(ChallengeKind::Individual),
+        Some(_) => {
+            return Err(HttpError(crate::shared::error::AppError::Validation(
+                "无效的约队类型筛选".to_string(),
+            )));
+        }
+        None => None,
+    };
     let items = if let Some(actor) =
         actor.filter(|actor| actor.actor_kind == crate::shared::auth::ActorKind::Admin)
     {
@@ -86,6 +97,7 @@ pub async fn list_challenges_handler(
                     team_id: query.team_id,
                     keyword: query.keyword,
                     status,
+                    kind,
                     include_closed: query.include_closed.unwrap_or(false),
                     limit: query.limit.unwrap_or(50),
                     sort: query.sort.unwrap_or_else(|| "holding_date_asc".to_string()),
@@ -102,6 +114,7 @@ pub async fn list_challenges_handler(
                     team_id,
                     keyword: query.keyword.as_deref(),
                     status,
+                    kind,
                     include_closed: query.include_closed.unwrap_or(false),
                     limit: query.limit.unwrap_or(20),
                     sort: query.sort.as_deref().unwrap_or("holding_date_asc"),
@@ -115,14 +128,15 @@ pub async fn list_challenges_handler(
         state
             .services
             .challenge_service
-            .list_public(
+            .list_public(PublicChallengeListQuery {
                 viewer_user_id,
-                query.keyword.as_deref(),
+                keyword: query.keyword.as_deref(),
                 status,
-                query.include_closed.unwrap_or(false),
-                query.limit.unwrap_or(20),
-                query.sort.as_deref().unwrap_or("holding_date_asc"),
-            )
+                kind,
+                include_closed: query.include_closed.unwrap_or(false),
+                limit: query.limit.unwrap_or(20),
+                sort: query.sort.as_deref().unwrap_or("holding_date_asc"),
+            })
             .await?
     };
 
@@ -190,6 +204,40 @@ pub async fn cancel_challenge_handler(
 
     Ok(Json(ApiResponse::with_message(
         "约队已取消",
+        ChallengeDto::from(challenge),
+    )))
+}
+
+pub async fn update_challenge_handler(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(challenge_id): Path<String>,
+    Json(payload): Json<UpdateChallengeRequest>,
+) -> Result<Json<ApiResponse<ChallengeDto>>, HttpError> {
+    let actor = state.actor(&headers)?;
+    let challenge = state
+        .services
+        .challenge_service
+        .update_challenge(
+            &actor,
+            &challenge_id,
+            UpdateChallengeCommand {
+                title: payload.title,
+                holding_date: payload.holding_date,
+                start_time: payload.start_time,
+                end_time: payload.end_time,
+                location: payload.location,
+                location_latitude: payload.location_latitude,
+                location_longitude: payload.location_longitude,
+                players_per_team: payload.players_per_team,
+                fee_per_person: payload.fee_per_person,
+                note: payload.note,
+            },
+        )
+        .await?;
+
+    Ok(Json(ApiResponse::with_message(
+        "约队已更新",
         ChallengeDto::from(challenge),
     )))
 }

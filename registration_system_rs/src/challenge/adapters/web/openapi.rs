@@ -3,7 +3,7 @@
 use super::dto::{
     AcceptChallengeRequest, ActivityRefDto, ChallengeDetailDto, ChallengeDto,
     ChallengeIndividualParticipantDto, ChallengeListQuery, ChallengeStatusDto, ChallengeSummaryDto,
-    CreateChallengeRequest,
+    CreateChallengeRequest, UpdateChallengeRequest,
 };
 use crate::shared::api_response::{ApiResponse, EmptyData};
 use crate::shared::openapi::BearerSecurityAddon;
@@ -52,6 +52,23 @@ fn list_challenges_doc() {}
 fn get_challenge_detail_doc() {}
 
 #[utoipa::path(
+    patch,
+    path = "/{id}",
+    tag = "Challenge",
+    security(("bearer_auth" = [])),
+    params(
+        ("id" = String, Path, description = "约队 ID")
+    ),
+    request_body = UpdateChallengeRequest,
+    responses(
+        (status = 200, description = "更新约队成功", body = ApiResponse<ChallengeDto>),
+        (status = 401, description = "未授权", body = ApiResponse<EmptyData>),
+        (status = 404, description = "约队不存在", body = ApiResponse<EmptyData>)
+    )
+)]
+fn update_challenge_doc() {}
+
+#[utoipa::path(
     post,
     path = "/{id}/accept",
     tag = "Challenge",
@@ -88,6 +105,7 @@ fn cancel_challenge_doc() {}
         create_challenge_doc,
         list_challenges_doc,
         get_challenge_detail_doc,
+        update_challenge_doc,
         accept_challenge_doc,
         cancel_challenge_doc
     ),
@@ -99,6 +117,7 @@ fn cancel_challenge_doc() {}
             ApiResponse<EmptyData>,
             EmptyData,
             CreateChallengeRequest,
+            UpdateChallengeRequest,
             AcceptChallengeRequest,
             ChallengeDto,
             ChallengeSummaryDto,

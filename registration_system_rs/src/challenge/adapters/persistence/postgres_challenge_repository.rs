@@ -1,5 +1,6 @@
 use super::models::{
-    ActivityRow, ChallengeIndividualParticipantRow, ChallengeRow, ChallengeSummaryRow,
+    ActivityRow, ChallengeIndividualParticipantPreviewRow, ChallengeIndividualParticipantRow,
+    ChallengeRow, ChallengeSummaryRow,
 };
 use crate::activity::domain::Activity;
 use crate::challenge::domain::{
@@ -8,10 +9,11 @@ use crate::challenge::domain::{
 };
 use crate::challenge::ports::{
     AdminChallengeRepositoryQuery, ChallengeCommandRepository, ChallengeQueryRepository,
-    TeamChallengeListQuery,
+    TeamChallengeListQuery, UpdateChallengeFields,
 };
 use async_trait::async_trait;
 use chrono::NaiveDateTime;
+use std::collections::HashMap;
 use sqlx::{PgPool, Postgres, QueryBuilder};
 
 #[derive(Clone)]
@@ -102,6 +104,66 @@ impl PostgresChallengeRepository {
         .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
 
         Ok(row.map(ChallengeSummary::from))
+    }
+
+    async fn attach_individual_participant_preview(
+        &self,
+        items: Vec<ChallengeSummary>,
+    ) -> Result<Vec<ChallengeSummary>, DomainError> {
+        let challenge_ids = items
+            .iter()
+            .filter(|item| item.challenge.kind == ChallengeKind::Individual)
+            .map(|item| item.challenge.id.as_str())
+            .collect::<Vec<_>>();
+
+        if challenge_ids.is_empty() {
+            return Ok(items);
+        }
+
+        let rows = sqlx::query_as::<_, ChallengeIndividualParticipantPreviewRow>(
+            r#"
+            SELECT challenge_id, user_id, display_name, avatar_url
+            FROM (
+                SELECT
+                    acceptances.challenge_id,
+                    acceptances.user_id,
+                    COALESCE(NULLIF(users.real_name, ''), NULLIF(users.nickname, ''), NULLIF(users.username, ''), '球员') AS display_name,
+                    NULLIF(users.avatar_url, '') AS avatar_url,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY acceptances.challenge_id
+                        ORDER BY acceptances.created_at ASC, acceptances.id ASC
+                    ) AS row_number
+                FROM rs_challenge_individual_acceptances acceptances
+                INNER JOIN rs_user_info users ON users.id = acceptances.user_id
+                WHERE acceptances.challenge_id = ANY($1)
+            ) preview
+            WHERE row_number <= 3
+            ORDER BY challenge_id ASC, row_number ASC
+            "#,
+        )
+        .bind(&challenge_ids)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|error| DomainError::Infrastructure(error.to_string()))?;
+
+        let mut preview_by_challenge_id: HashMap<String, Vec<ChallengeIndividualParticipant>> =
+            HashMap::new();
+        for row in rows {
+            preview_by_challenge_id
+                .entry(row.challenge_id.clone())
+                .or_default()
+                .push(row.into_participant());
+        }
+
+        Ok(items
+            .into_iter()
+            .map(|mut item| {
+                if let Some(preview) = preview_by_challenge_id.remove(&item.challenge.id) {
+                    item.individual_participant_preview = preview;
+                }
+                item
+            })
+            .collect())
     }
 }
 
@@ -213,6 +275,12 @@ impl ChallengeQueryRepository for PostgresChallengeRepository {
                 .push_bind(status.as_db_str());
         }
 
+        if let Some(kind) = query.kind {
+            query_builder
+                .push(" AND c.kind = ")
+                .push_bind(kind.as_db_str());
+        }
+
         if let Some(keyword) = query
             .keyword
             .map(str::trim)
@@ -250,7 +318,7 @@ impl ChallengeQueryRepository for PostgresChallengeRepository {
             .await
             .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
 
-        Ok(rows
+        let items = rows
             .into_iter()
             .map(ChallengeSummary::from)
             .map(|mut summary| {
@@ -269,7 +337,9 @@ impl ChallengeQueryRepository for PostgresChallengeRepository {
                     && summary.challenge.guest_team_id != Some(query.team_id);
                 summary
             })
-            .collect())
+            .collect();
+
+        self.attach_individual_participant_preview(items).await
     }
 
     async fn list_for_admin(
@@ -368,6 +438,12 @@ impl ChallengeQueryRepository for PostgresChallengeRepository {
                 .push_bind(status.as_db_str());
         }
 
+        if let Some(kind) = query.kind {
+            query_builder
+                .push(" AND c.kind = ")
+                .push_bind(kind.as_db_str());
+        }
+
         if let Some(team_id) = query.team_id {
             query_builder
                 .push(" AND (c.host_team_id = ")
@@ -432,7 +508,8 @@ impl ChallengeQueryRepository for PostgresChallengeRepository {
             .await
             .map_err(|error| DomainError::Infrastructure(error.to_string()))?;
 
-        Ok(rows.into_iter().map(ChallengeSummary::from).collect())
+        let items = rows.into_iter().map(ChallengeSummary::from).collect();
+        self.attach_individual_participant_preview(items).await
     }
 
     async fn get_detail(
@@ -476,7 +553,6 @@ impl ChallengeQueryRepository for PostgresChallengeRepository {
                 INNER JOIN rs_user_info users ON users.id = acceptances.user_id
                 WHERE acceptances.challenge_id = $1
                 ORDER BY acceptances.created_at ASC, acceptances.id ASC
-                LIMIT 12
                 "#,
             )
             .bind(challenge_id)
@@ -1044,7 +1120,9 @@ impl ChallengeCommandRepository for PostgresChallengeRepository {
             tx.rollback()
                 .await
                 .map_err(|error| DomainError::Infrastructure(error.to_string()))?;
-            return Err(DomainError::Conflict("你还没有报名这场散人约队".to_string()));
+            return Err(DomainError::Conflict(
+                "你还没有报名这场散人约队".to_string(),
+            ));
         }
 
         let accepted_count = sqlx::query_scalar::<_, i64>(
@@ -1086,6 +1164,51 @@ impl ChallengeCommandRepository for PostgresChallengeRepository {
         tx.commit()
             .await
             .map_err(|error| DomainError::Infrastructure(error.to_string()))?;
+
+        Ok(Challenge::from(row))
+    }
+
+    async fn update(
+        &self,
+        challenge_id: &str,
+        fields: UpdateChallengeFields<'_>,
+    ) -> Result<Challenge, DomainError> {
+        let row = sqlx::query_as::<_, ChallengeRow>(
+            r#"
+            UPDATE rs_challenges
+            SET title = $2,
+                holding_date = $3,
+                start_time = $4,
+                end_time = $5,
+                location = $6,
+                location_latitude = $7,
+                location_longitude = $8,
+                players_per_team = $9,
+                fee_per_person = $10,
+                note = $11,
+                updated_at = NOW()
+            WHERE id = $1
+            RETURNING
+                id, title, kind, host_team_id, host_user_id, guest_team_id, accepted_by_user_id, activity_id,
+                holding_date, start_time, end_time, location, location_latitude, location_longitude,
+                players_per_team, fee_per_person, note, status, accepted_at, cancelled_at, created_at, updated_at
+            "#,
+        )
+        .bind(challenge_id)
+        .bind(fields.title)
+        .bind(fields.holding_date)
+        .bind(fields.start_time)
+        .bind(fields.end_time)
+        .bind(fields.location)
+        .bind(fields.location_latitude)
+        .bind(fields.location_longitude)
+        .bind(fields.players_per_team)
+        .bind(fields.fee_per_person)
+        .bind(fields.note)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|error| DomainError::Infrastructure(error.to_string()))?
+        .ok_or_else(|| DomainError::NotFound("约队不存在".to_string()))?;
 
         Ok(Challenge::from(row))
     }

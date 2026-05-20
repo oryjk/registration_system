@@ -38,19 +38,29 @@ impl CancelIndividualAcceptanceUseCase {
             .ok_or_else(|| AppError::NotFound("约队不存在".to_string()))?;
 
         if challenge.kind != ChallengeKind::Individual {
-            return Err(AppError::Validation("只有散人约队支持取消个人报名".to_string()));
+            return Err(AppError::Validation(
+                "只有散人约队支持取消个人报名".to_string(),
+            ));
         }
         if challenge.status == ChallengeStatus::Cancelled {
-            return Err(AppError::Conflict("已取消的散人约队不能取消报名".to_string()));
+            return Err(AppError::Conflict(
+                "已取消的散人约队不能取消报名".to_string(),
+            ));
         }
 
         self.command_repository
             .cancel_individual_acceptance(challenge_id, actor.id)
             .await
             .map_err(|error| match error {
-                crate::challenge::domain::DomainError::Conflict(message) => AppError::Conflict(message),
-                crate::challenge::domain::DomainError::NotFound(message) => AppError::NotFound(message),
-                crate::challenge::domain::DomainError::Validation(message) => AppError::Validation(message),
+                crate::challenge::domain::DomainError::Conflict(message) => {
+                    AppError::Conflict(message)
+                }
+                crate::challenge::domain::DomainError::NotFound(message) => {
+                    AppError::NotFound(message)
+                }
+                crate::challenge::domain::DomainError::Validation(message) => {
+                    AppError::Validation(message)
+                }
                 other => AppError::internal(format!("取消散人报名失败: {other}")),
             })
     }

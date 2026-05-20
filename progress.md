@@ -124,3 +124,134 @@
 - `pages.json` 首页：`enablePullDownRefresh: true`、`backgroundColor: "#eef2e9"`、`backgroundTextStyle: "dark"`。
 - `homePageLoading.test.ts`：替换钉死断言，新增 `pages.json` `enablePullDownRefresh` 断言。
 - 验证通过：`bun run type-check`；`bun test src/pages/__tests__/homePageLoading.test.ts` 9 pass / 0 fail；`bun test` 134 pass / 1 fail，唯一失败为 pre-existing `pageBackButton.test.ts` 中 `challenges/detail.vue` 标题动态化遗留（已 stash 验证非本轮引入）。
+
+## 2026-05-17 管理端活动报名与散人报名拆分
+
+- 17:15 已确认散人报名真实链路：小程序发布散人约队走 challenge，报名写 `rs_challenge_individual_acceptances`，不是 `activity.match_kind=internal`。
+- 17:15 已为后端活动列表补 `registration_scope` 参数，支持按球队派生活动过滤。
+- 17:15 已为后端约队列表补 `kind` 参数，支持管理端按 `individual` 查询散人报名。
+- 17:15 已在管理端新增 `/individual-registrations` 路由和侧边栏“散人报名”入口，并让活动报名页请求 `registration_scope=team`。
+
+## 2026-05-17 管理端约队/散人报名编辑删除
+
+- 18:20 已新增后端红测 `super_admin_can_cancel_open_challenge` 和 `super_admin_can_update_open_challenge_basic_fields`，初始失败为缺少 `UpdateChallengeCommand` 与 `ChallengeService::update_challenge`。
+- 18:30 已新增 challenge 更新 use case、repository port、Postgres `UPDATE ... RETURNING`、web DTO、handler、route 和 OpenAPI 文档。
+- 18:30 已将管理员取消接入既有取消用例；超管可取消全部 open 记录，普通管理员按已分配球队范围校验。
+- 18:35 管理端约队列表和详情页已增加“编辑/删除”入口；删除调用取消接口，编辑调用 `PATCH /api/admin/challenges/:id`。
+- 18:40 已抽离 `ChallengeEditDialog.vue` 与 `ChallengeCancelDialog.vue`，列表页降至 501 行，详情页 322 行。
+- 18:45 验证通过：后端 `cargo test --test challenge_service_business_test super_admin_can_ -- --nocapture`、`cargo check --tests`、`cargo clippy --all-targets -- -D warnings`；管理端 `bun run type-check`、`bun run build`；根目录 `git diff --check`。
+- 18:45 管理端 `bun run lint` 仍被既有非本轮文件阻塞：`ActivitySettlementPanel.vue`、`PlayerFilterBar.vue`、`PlayerFreezeDialog.vue`、`PlayerList.vue`。
+
+## 2026-05-17 后台创建散人报名
+
+- 18:45 已新增红测：超管可指定 `host_user_id` 创建 `kind=individual`，普通管理员不能创建，后台创建拒绝 `kind=team`。
+- 18:50 已为 `CreateChallengeCommand` / `CreateChallengeRequest` 增加可选 `host_user_id`；用户端创建默认仍使用当前用户。
+- 18:50 后端管理员创建分支要求超管、`kind=individual`、无 `host_team_id`，并校验指定发布用户存在且是场馆身份。
+- 18:55 管理端散人报名页已新增“创建散人报名”按钮；创建弹窗复用 `ChallengeEditDialog`，额外要求发布用户 ID。
+- 18:55 验证通过：`cargo test --test challenge_service_business_test -- --nocapture`、`cargo check --tests`、`cargo clippy --all-targets -- -D warnings`、管理端 `bun run type-check`、`bun run build`。
+- 19:10 修复管理端散人报名/约队编辑弹窗样式错位：`ChallengeEditDialog` 的 modal 和 input/textarea 统一全宽，表单 grid 改为分离横纵间距；验证通过：管理端 `bun run type-check`、`bun run build`。
+
+## 2026-05-17 散人报名详情展示报名人员
+
+- 19:25 已确认后端详情 DTO 已有 `individual_participants`，管理端 service 类型缺失且详情页未渲染。
+- 19:30 管理端 `ChallengeDetail.vue` 新增“报名人员”卡片，散人报名详情展示头像、名称、用户 ID 和已报名/容量统计；散人报名详情的面包屑和返回列表指向 `/individual-registrations`。
+- 19:35 新增后端仓储测试 `detail_returns_all_individual_participants`，红灯证明原 SQL 只返回 12 人；已移除详情报名人员查询的 `LIMIT 12`。
+- 19:40 验证通过：后端 `cargo test --test challenge_repository_postgres_test detail_returns_all_individual_participants -- --nocapture`；管理端 `bun run type-check`、`bun run build`。
+- 19:50 已为散人报名列表补充报名人员预览：后端 summary 返回 `individual_participant_preview` 前 3 人，管理端卡片展示头像、昵称和“等 N 人”文案；验证通过：后端目标测试、`cargo check --tests`、`cargo clippy --all-targets -- -D warnings`、管理端 `bun run type-check`、`bun run build`。
+
+## 2026-05-19 活动报名列表为空修复
+
+- 已复现用户截图问题：管理端活动报名页传 `registration_scope=team`，但后端旧 SQL 只查 `source_activity_id IS NOT NULL`，导致东安洺悦联队这类直接球队活动被过滤。
+- 当前数据库确认东安洺悦联队 `id=1`，报名中的 `周四友谊赛` 等活动 `home_team_id=1` 且 `source_activity_id=NULL`；按正确球队活动条件查询，报名中共有 4 条。
+- 已新增后端仓储测试 `activity_repository_scope_test.rs`，红灯复现后改为 `team` scope 按 `home_team_id/away_team_id` 判断，测试已通过。
+- 已同步后端 DTO 注释、管理端 service 注释和活动报名页说明文案。
+- 验证通过：`cargo test --test activity_repository_scope_test -- --nocapture`、`cargo check --tests`、管理端 `bun run type-check`。
+
+## 2026-05-19 活动详情编辑球服颜色
+
+- 已在管理端活动详情编辑弹窗增加“主队球服”和“客队球服”色块选择，支持清空。
+- 详情页打开编辑时会从活动详情回填 `color` / `opposing_color`，保存时通过 `updateActivity` 提交这两个字段。
+- 活动列表新建/编辑和详情编辑已共用 `COMMON_JERSEY_COLORS` 与 `normalizeHexColor`。
+- 验证通过：管理端 `bun run type-check`、根目录 `git diff --check`。
+- Playwright 新会话访问详情页会被重定向到登录页，无法复用用户当前 Chrome 登录态做弹窗截图验证。
+
+## 2026-05-19 活动报名列表信息补全
+
+- 已在管理端活动报名列表卡片展示比赛时间、开始报名时间、结束报名时间、报名截止倒计时、主队球服颜色和客队球服颜色。
+- 列表继续使用现有 `/api/admin/activities?registration_scope=team` 数据，不新增后端字段或接口。
+- 倒计时基于 `end_time` 计算，每分钟自动刷新；报名截止后显示“已截止”。
+- 验证通过：管理端 `bun run type-check`、根目录 `git diff --check`。
+- 已本地登录管理端并查看 `/activities` 页面，卡片内新增信息展示正常；倒计时文案调整为“结束报名倒计时”。
+
+## 2026-05-19 小程序球队活动报名取消人数上限
+
+- 已确认球队活动报名详情前端存在 `players_per_team + 2` 容量上限，并会在达到上限后提示“本场已满员”。
+- 已移除该容量上限和满员拦截；球队活动个人报名暂不限制最大报名人数。
+- 报名截止卡右上角保留“已报 N / 最低成行人数”，这里的 `/8` 不再代表最大上限。
+- 达到成行人数后的提示从“人数已齐”改为“已达成行人数”，避免误解为不能继续报名。
+- 进度条保留最低成行人数分割线；超过成行人数后的红色段采用压缩宽度提示超额，不再表示最大容量比例。
+- 验证通过：`bun test src/pages/__tests__/matchDetailRegistrationDesign.test.ts`、小程序 `bun run type-check`、根目录 `git diff --check`。
+
+## 2026-05-20 后端球队活动报名取消人数上限
+
+- 已确认小程序个人报名调用 `/activity/:activity_id/my-stand`，后端 `ManageRegistrationUseCase` 仍按 `players_per_team + 2` 做硬限制。
+- 已新增回归测试 `update_my_stand_allows_signup_after_required_players_plus_two`，红灯复现后端返回“本场报名已满员”。
+- 已移除后端个人报名容量校验；`players_per_team` 不再作为最大报名人数限制。
+- 已删除不再使用的 `is_capacity_stand` helper，避免编译警告。
+- 验证通过：`cargo test activity::application::service::tests::update_my_stand_ -- --nocapture`、`cargo check --tests`、根目录 `git diff --check`。
+
+## 2026-05-20 小程序比赛报名底部状态按钮
+
+- 已将 `TeamMemberRegistrationBoard` 内部三枚按钮移除，改为底部固定浮动横条按钮。
+- 未报名或已请假状态下，点击按钮弹出“我要报名 / 我要请假”。
+- 已报名状态下，点击按钮弹出“取消报名（请假）”，实际提交 `stand=2`。
+- 底部按钮按状态切换颜色：未报名/已请假为黑色，已报名为荧光绿。
+- 页面底部 padding 加大，避免固定按钮遮挡底部内容。
+- 验证通过：`bun test src/pages/__tests__/matchDetailRegistrationDesign.test.ts`、小程序 `bun run type-check`、根目录 `git diff --check`。
+
+## 2026-05-20 小程序球队报名 Wot UI v2 Dialog
+
+- 12:19 已按官方文档执行 `npx skills add wot-ui/open-wot`，安装 `wot-ui-v2`、`migrate-v1-to-v2` 等 skills 到 `registration_system_mini/.agents/skills`。
+- 已将小程序依赖从 `wot-design-uni@1.14.0` 迁移到 `@wot-ui/ui@2.0.8`，并将 easycom 规则改为 `@wot-ui/ui/components/wd-$1/wd-$1.vue`。
+- 队员报名状态弹窗这块最终没有保留 Wot 函数式 Dialog，而是改为页面内自定义业务弹窗；Wot v2 迁移成果继续保留给 `wd-picker` 等组件使用。
+- 未报名状态：确认按钮为“报名”并提交 `stand=1`，取消按钮为“请假”并提交 `stand=2`，右上角关闭不改变状态。
+- 已报名状态：确认按钮为“取消报名”并提交 `stand=2`，取消或关闭不改变状态。
+- 已请假状态：确认按钮为“报名”并提交 `stand=1`，取消或关闭不改变状态。
+- v2 `wd-picker` 的 `v-model` 迁移为数组值：球队报名人制、队员角色编辑、队员角色新增已同步调整。
+- 已为 `@wot-ui/ui` 增加本地类型声明映射，避免 `vue-tsc` 直接检查第三方包源码；运行时和微信小程序构建仍使用 npm 包。
+- 验证通过：`bun test src/pages/__tests__/matchDetailRegistrationDesign.test.ts src/pages/__tests__/createMatchWotUi.test.ts`（23 pass）；`bun run type-check`；`bun run build:mp-weixin`；根目录 `git diff --check`。
+
+## 2026-05-20 小程序球队报名 Dialog 视觉与锁滚动
+
+- 已将队员报名弹窗调整为当前页面风格的自定义业务弹窗：浅暖底、24rpx 圆角、黑/荧光绿确认按钮、浅灰辅助按钮、加粗标题和更克制关闭按钮。
+- 已改为页面级锁滚动：队员报名弹窗打开时通过 `pages/matches/detail.vue` 的 `page-meta` 对整页设置 `overflow: hidden`，不再使用透明 fixed 触摸拦截层。
+- 已扩展本地 `@wot-ui/ui` 类型声明，支持 `cancelButtonProps.customClass` 和按钮自定义 class。
+- 验证通过：`bun test src/pages/__tests__/matchDetailRegistrationDesign.test.ts`、`bun run type-check`、`bun run build:mp-weixin`、根目录 `git diff --check`。
+
+## 2026-05-20 小程序报名头像展示收口
+
+- 报名截止卡顶部头像预览已改为展示全部已报名队员头像，不再截断为前 5 个。
+- 顶部头像尺寸已放大，并允许换行展示 10 人及以上的报名头像。
+- 队员报名状态三栏头像已去掉黑白描边；当前用户和选中态都不再依赖边框，只保留“我”标记和选中放大效果。
+- 三栏头像尺寸已放大，排列从重叠栈改为更清晰的间隔排列。
+- 验证通过：`bun test src/pages/__tests__/matchDetailRegistrationDesign.test.ts`。
+
+## 2026-05-20 比赛报名下半区职责重构
+
+- 已将 `TeamMemberRegistrationBoard` 从“三块同时展开”的结构收口为“状态切换 + 单区展示”的操作面板。
+- 标题已缩短为“队员状态”，右上角摘要已改为总人数 `N人`。
+- 已新增 `selectedGroup` / `activeSection` 结构，默认按当前用户所在分组选中，只渲染当前分组头像列表。
+- 头像点选后的昵称展示和底部浮动状态按钮仍保留，没有与新的切换结构冲突。
+- 已补充目标静态测试，约束 `member-segment`、`activeSection` 和旧三栏结构不再回归。
+
+## 2026-05-20 小程序微信 CI 本地上传工具
+
+- 已在本机共享目录创建 `mini-program-ci-cli`，接入微信官方 `miniprogram-ci`，支持 `preview` 和 `upload`。
+- 已为 `registration_system_mini` 和 `football_insight_mini` 增加 `bun run mp:preview`、`bun run mp:upload`。
+- 已为两个项目补充 `.env.ci.local.example`、README 使用说明和脚本缺参提示。
+- 已为 `registration_system_mini` 写入本地 `.env.ci.local`，并确认被 `.gitignore` 忽略。
+- 已为 `football_insight_mini` 写入本地 `.env.ci.local`，并确认被 `.gitignore` 忽略。
+- 已为共享 CLI 增加 `JSON5` 解析，兼容带注释的 `manifest.json`。
+- 验证结果：
+  - `registration_system_mini`: `bun run type-check` 通过；`bun run mp:preview` 已完成构建并打到微信 CI，但被微信后台返回 `invalid ip: 125.70.163.152`。
+  - `football_insight_mini`: `bun run type-check` 通过；`bun run mp:preview` 成功，二维码已输出到 `dist/build/mp-weixin/preview-qrcode.jpg`。
