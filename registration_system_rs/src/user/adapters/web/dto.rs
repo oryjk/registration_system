@@ -146,7 +146,7 @@ impl From<UserAttendanceRanking> for UserAttendanceRankingDto {
 
 #[derive(Debug, Serialize, ToSchema)]
 pub struct PlayerTeamSummaryDto {
-    pub team_id: String,
+    pub team_id: i64,
     pub team_name: String,
     pub role: String,
     pub jersey_number: Option<String>,

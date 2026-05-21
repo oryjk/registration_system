@@ -236,3 +236,39 @@
 2. [completed] 新增回归测试覆盖超过 `players_per_team + 2` 后仍可报名
 3. [completed] 移除容量校验和无用 helper
 4. [completed] 执行后端目标测试、`cargo check --tests` 和 diff 检查
+
+## 2026-05-20 球员列表 bigint/text 500 修复
+
+目标：修复管理后台球员列表查询中 `bigint = text` 的 SQL 类型错误。
+
+阶段：
+1. [completed] 根据线上日志定位到 `user` 模块球员列表查询链路
+2. [completed] 确认 `PostgresUserRepository` 中残留 `tm.team_id::text` 和 `CAST(t.id AS TEXT)`
+3. [completed] 将球员列表 count/page/team summary 查询全部改为 bigint 直连
+4. [completed] 将 `PlayerTeamSummary.team_id`、web DTO 和 row struct 统一为 `i64`
+5. [completed] 增加 SQL 回归测试并执行后端验证
+
+## 2026-05-20 小程序首页装修配置后端支持
+
+目标：扩展 `mini_app` 运行配置，支持首页 hero/banner 装修配置数组，供管理后台保存和小程序读取。
+
+阶段：
+1. [completed] 补充旧 JSON 兼容和 banner sanitize 的后端测试
+2. [completed] 在 domain/DTO 中新增 `MiniAppHomeHeroBanner`
+3. [completed] 确保读取、更新、Postgres JSONB 保存均走 sanitize 后结构
+4. [completed] 执行 `system` 相关测试、`cargo check --tests` 和必要 clippy
+
+约束：
+- 不新增表，继续复用 `rs_system_runtime_configs.config_key = mini_app`。
+- 旧配置缺少 `hero_banners` 时必须能反序列化并回退默认卡片。
+
+## 2026-05-20 小程序装修图片 MinIO 上传接口
+
+目标：为管理后台提供小程序装修图片上传能力，图片统一上传到 MinIO 并返回公开 URL。
+
+阶段：
+1. [completed] 在 system web 层新增 multipart 上传 handler
+2. [completed] 复用 `detect_image_extension` 和 `save_minio_bytes`
+3. [completed] 新增 `/api/admin/system/mini-app-decoration/images` 路由
+4. [completed] 更新 OpenAPI 文档
+5. [completed] 执行 `cargo check --tests` 和 clippy

@@ -159,3 +159,26 @@
 - 已移除 `ManageRegistrationUseCase` 中的容量校验，个人报名不再因人数超过 `players_per_team + 2` 被拒绝。
 - 已删除不再使用的 `is_capacity_stand`。
 - 验证通过：`cargo test activity::application::service::tests::update_my_stand_ -- --nocapture`、`cargo check --tests`、根目录 `git diff --check`。
+
+## 2026-05-20 球员列表 bigint/text 500 修复
+
+- 已修复 `PostgresUserRepository::do_list_players_admin` 中两处 `JOIN rs_teams t ON t.id = tm.team_id::text`，改为 `t.id = tm.team_id`。
+- 已修复 `do_find_player_teams`，不再 `CAST(t.id AS TEXT)`，球队摘要 `team_id` 保持数字。
+- 已将 `PlayerTeamSummary.team_id`、`PlayerTeamSummaryDto.team_id`、`PlayerTeamRow.team_id` 从 `String` 改为 `i64`。
+- 已新增 `tests/player_repository_sql_regression_test.rs`，防止球员列表 SQL 再回退到 text cast。
+- 验证通过：`cargo test --test player_repository_sql_regression_test -- --nocapture`、`cargo check --tests`、`cargo clippy --all-targets -- -D warnings`、根目录 `git diff --check`。
+
+## 2026-05-20 小程序首页装修配置后端支持
+
+- 已开始在 `system` 模块扩展 `MiniAppRuntimeConfig.home`，目标字段为首页 hero/banner 装修数组。
+- 已确认本轮不新增迁移，仍使用 `rs_system_runtime_configs` 的 `mini_app` JSON 配置。
+- 已新增 `MiniAppHomeHeroBanner`，默认“约球开踢”卡片，旧 JSON 缺少 `hero_banners` 时可反序列化并回退默认值。
+- 已在 sanitize 中裁剪最多 10 条、按 `sort_order` 排序、丢弃空标题、空按钮文案回退“去看看”。
+- 验证通过：`cargo test system::application::service::tests -- --nocapture`、`cargo check --tests`、`cargo clippy --all-targets -- -D warnings`。
+
+## 2026-05-20 小程序装修图片 MinIO 上传接口
+
+- 已新增 `upload_mini_app_decoration_image_handler`，要求 super admin，接收 multipart `file`。
+- 已校验文件非空、大小不超过 5MB，格式仅支持 jpg/png/webp。
+- 已通过 `save_minio_bytes` 上传到 MinIO，object key 位于 `mini-app/home-banners/`。
+- 验证通过：`cargo check --tests`、`cargo clippy --all-targets -- -D warnings`。

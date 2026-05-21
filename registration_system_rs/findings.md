@@ -107,3 +107,19 @@
 - `/activity/:activity_id/my-stand` 对应后端 `ManageRegistrationUseCase::update_my_stand`。
 - 旧逻辑中的 `ensure_registration_capacity` 会按 `players_per_team + 2` 做最大人数限制，并返回“本场报名已满员”。
 - 当前产品规则是不限制球队活动个人报名最大人数，因此后端应直接 upsert 报名状态，不再统计容量人数。
+
+## 2026-05-20 球员列表 bigint/text 500 发现
+
+- 线上日志 `operator does not exist: bigint = text` 指向 SQL 比较两侧类型不一致。
+- 报错链路是 `list_players_handler -> ManagePlayerUseCase::list_players -> PostgresUserRepository::do_list_players_admin`。
+- `do_list_players_admin` 的总数查询和分页查询都还在用 `JOIN rs_teams t ON t.id = tm.team_id::text`。
+- `do_find_player_teams` 也保留了 `CAST(t.id AS TEXT) AS team_id` 和 `tm.team_id::text`。
+- 当前 schema 已经把 `rs_teams.id` 和 `rs_team_members.team_id` 迁移为 `BIGINT`，所以这里应按 Rust `i64` 与 SQL bigint 全链路处理。
+
+## 2026-05-20 小程序首页装修配置后端发现
+
+- `MiniAppRuntimeConfig` 当前通过 serde 直接存入 `rs_system_runtime_configs.config_value`，domain `sanitize()` 是保护默认值和范围的主要入口。
+- `MiniAppHomeRuntimeConfig` 新增字段如果没有 `#[serde(default)]`，旧 JSON 会反序列化失败；`hero_banners` 需要默认函数保证兼容。
+- `GET /api/system/mini-app-runtime-config` 不需要登录，适合小程序启动和首页直接读取；管理端更新接口已经要求 super admin。
+- 装修图片上传需要强制进入 MinIO，因此应复用用户头像链路里的 `save_minio_bytes`，而不是球队 Logo 使用的按配置 `save_upload_bytes`。
+- 对象 key 采用 `mini-app/home-banners/<uuid>.<ext>`，与头像和球队 Logo 目录分开，便于后续清理和权限管理。

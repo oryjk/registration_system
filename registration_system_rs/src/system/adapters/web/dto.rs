@@ -3,8 +3,8 @@ use crate::system::application::{
 };
 use crate::system::domain::{
     MiniAppBillingRuntimeConfig, MiniAppCheckinRuntimeConfig, MiniAppHomeRuntimeConfig,
-    MiniAppMatchesRuntimeConfig, MiniAppNotificationsRuntimeConfig, MiniAppProfileRuntimeConfig,
-    MiniAppRuntimeConfig,
+    MiniAppHomeHeroBanner, MiniAppMatchesRuntimeConfig, MiniAppNotificationsRuntimeConfig,
+    MiniAppProfileRuntimeConfig, MiniAppRuntimeConfig,
 };
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
@@ -116,6 +116,18 @@ pub struct MiniAppHomeRuntimeConfigDto {
     pub challenge_card_limit: u8,
     pub activity_fetch_page_size: u8,
     pub hide_matches_after_holding_time: bool,
+    #[serde(default)]
+    pub hero_banners: Vec<MiniAppHomeHeroBannerDto>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct MiniAppHomeHeroBannerDto {
+    pub title: String,
+    pub subtitle: String,
+    pub button_text: String,
+    pub image_url: String,
+    pub enabled: bool,
+    pub sort_order: i16,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
@@ -147,6 +159,11 @@ pub struct MiniAppProfileRuntimeConfigDto {
     pub require_phone_binding: bool,
 }
 
+#[derive(Debug, Clone, Serialize, ToSchema)]
+pub struct MiniAppDecorationImageUploadResponse {
+    pub image_url: String,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct MiniAppRuntimeConfigDto {
     pub home: MiniAppHomeRuntimeConfigDto,
@@ -166,6 +183,12 @@ impl From<MiniAppRuntimeConfig> for MiniAppRuntimeConfigDto {
                 challenge_card_limit: value.home.challenge_card_limit,
                 activity_fetch_page_size: value.home.activity_fetch_page_size,
                 hide_matches_after_holding_time: value.home.hide_matches_after_holding_time,
+                hero_banners: value
+                    .home
+                    .hero_banners
+                    .into_iter()
+                    .map(MiniAppHomeHeroBannerDto::from)
+                    .collect(),
             },
             matches: MiniAppMatchesRuntimeConfigDto {
                 related_activity_limit: value.matches.related_activity_limit,
@@ -198,6 +221,12 @@ impl From<MiniAppRuntimeConfigDto> for MiniAppRuntimeConfig {
                 challenge_card_limit: value.home.challenge_card_limit,
                 activity_fetch_page_size: value.home.activity_fetch_page_size,
                 hide_matches_after_holding_time: value.home.hide_matches_after_holding_time,
+                hero_banners: value
+                    .home
+                    .hero_banners
+                    .into_iter()
+                    .map(MiniAppHomeHeroBanner::from)
+                    .collect(),
             },
             matches: MiniAppMatchesRuntimeConfig {
                 related_activity_limit: value.matches.related_activity_limit,
@@ -218,6 +247,32 @@ impl From<MiniAppRuntimeConfigDto> for MiniAppRuntimeConfig {
             profile: MiniAppProfileRuntimeConfig {
                 require_phone_binding: value.profile.require_phone_binding,
             },
+        }
+    }
+}
+
+impl From<MiniAppHomeHeroBanner> for MiniAppHomeHeroBannerDto {
+    fn from(value: MiniAppHomeHeroBanner) -> Self {
+        Self {
+            title: value.title,
+            subtitle: value.subtitle,
+            button_text: value.button_text,
+            image_url: value.image_url,
+            enabled: value.enabled,
+            sort_order: value.sort_order,
+        }
+    }
+}
+
+impl From<MiniAppHomeHeroBannerDto> for MiniAppHomeHeroBanner {
+    fn from(value: MiniAppHomeHeroBannerDto) -> Self {
+        Self {
+            title: value.title,
+            subtitle: value.subtitle,
+            button_text: value.button_text,
+            image_url: value.image_url,
+            enabled: value.enabled,
+            sort_order: value.sort_order,
         }
     }
 }

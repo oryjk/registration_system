@@ -105,7 +105,7 @@ pub struct UserAttendanceRanking {
 /// 球员所在球队摘要（用于管理后台球员列表）
 #[derive(Debug, Clone)]
 pub struct PlayerTeamSummary {
-    pub team_id: String,
+    pub team_id: i64,
     pub team_name: String,
     pub role: String,
     pub jersey_number: Option<String>,

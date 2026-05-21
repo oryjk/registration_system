@@ -105,6 +105,48 @@ pub struct MiniAppHomeRuntimeConfig {
     pub challenge_card_limit: u8,
     pub activity_fetch_page_size: u8,
     pub hide_matches_after_holding_time: bool,
+    #[serde(default = "default_home_hero_banners")]
+    pub hero_banners: Vec<MiniAppHomeHeroBanner>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct MiniAppHomeHeroBanner {
+    pub title: String,
+    pub subtitle: String,
+    pub button_text: String,
+    pub image_url: String,
+    pub enabled: bool,
+    pub sort_order: i16,
+}
+
+impl MiniAppHomeHeroBanner {
+    pub fn default_banner() -> Self {
+        Self {
+            title: "约球开踢".to_string(),
+            subtitle: "组队 · 报名 · 上场".to_string(),
+            button_text: "去看看".to_string(),
+            image_url: String::new(),
+            enabled: true,
+            sort_order: 1,
+        }
+    }
+
+    pub fn sanitize(mut self) -> Option<Self> {
+        self.title = truncate_chars(self.title.trim(), 20);
+        self.subtitle = truncate_chars(self.subtitle.trim(), 30);
+        self.button_text = truncate_chars(self.button_text.trim(), 10);
+        self.image_url = truncate_chars(self.image_url.trim(), 512);
+
+        if self.title.is_empty() {
+            return None;
+        }
+
+        if self.button_text.is_empty() {
+            self.button_text = "去看看".to_string();
+        }
+
+        Some(self)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -146,6 +188,7 @@ impl MiniAppRuntimeConfig {
                 challenge_card_limit: 2,
                 activity_fetch_page_size: 100,
                 hide_matches_after_holding_time: true,
+                hero_banners: default_home_hero_banners(),
             },
             matches: MiniAppMatchesRuntimeConfig {
                 related_activity_limit: 2,
@@ -170,6 +213,7 @@ impl MiniAppRuntimeConfig {
         self.home.match_card_limit = self.home.match_card_limit.clamp(1, 10);
         self.home.challenge_card_limit = self.home.challenge_card_limit.clamp(1, 10);
         self.home.activity_fetch_page_size = self.home.activity_fetch_page_size.clamp(20, 100);
+        self.home.hero_banners = sanitize_home_hero_banners(self.home.hero_banners);
         self.matches.related_activity_limit = self.matches.related_activity_limit.clamp(1, 10);
         self.matches.participant_avatar_limit = self.matches.participant_avatar_limit.clamp(1, 10);
         self.matches.capacity_extra_slots = self.matches.capacity_extra_slots.clamp(0, 20);
@@ -187,4 +231,29 @@ impl MiniAppRuntimeConfig {
 
         self
     }
+}
+
+fn default_home_hero_banners() -> Vec<MiniAppHomeHeroBanner> {
+    vec![MiniAppHomeHeroBanner::default_banner()]
+}
+
+fn sanitize_home_hero_banners(
+    banners: Vec<MiniAppHomeHeroBanner>,
+) -> Vec<MiniAppHomeHeroBanner> {
+    let mut banners = banners
+        .into_iter()
+        .filter_map(MiniAppHomeHeroBanner::sanitize)
+        .take(10)
+        .collect::<Vec<_>>();
+
+    if banners.is_empty() {
+        return default_home_hero_banners();
+    }
+
+    banners.sort_by_key(|banner| banner.sort_order);
+    banners
+}
+
+fn truncate_chars(value: &str, max_chars: usize) -> String {
+    value.chars().take(max_chars).collect()
 }

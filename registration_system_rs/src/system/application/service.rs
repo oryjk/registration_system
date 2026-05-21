@@ -283,6 +283,90 @@ mod tests {
         assert!(!config.profile.require_phone_binding);
     }
 
+    #[test]
+    fn mini_app_runtime_config_deserializes_old_json_without_home_banners() {
+        let value = serde_json::json!({
+            "home": {
+                "match_card_limit": 2,
+                "challenge_card_limit": 2,
+                "activity_fetch_page_size": 100,
+                "hide_matches_after_holding_time": true
+            },
+            "matches": {
+                "related_activity_limit": 2,
+                "participant_avatar_limit": 5,
+                "capacity_extra_slots": 2
+            },
+            "checkin": {
+                "default_radius_meters": 200,
+                "default_open_minutes_before": 60,
+                "default_close_minutes_after": 45
+            },
+            "billing": {
+                "recent_order_limit": 10
+            },
+            "notifications": {
+                "list_limit": 50
+            },
+            "profile": {
+                "require_phone_binding": false
+            }
+        });
+
+        let config = serde_json::from_value::<MiniAppRuntimeConfig>(value)
+            .expect("old runtime config json should remain readable")
+            .sanitize();
+
+        assert_eq!(config.home.hero_banners.len(), 1);
+        assert_eq!(config.home.hero_banners[0].title, "约球开踢");
+        assert_eq!(config.home.hero_banners[0].button_text, "去看看");
+    }
+
+    #[tokio::test]
+    async fn mini_app_home_banners_are_sanitized_sorted_and_defaulted() {
+        let service = SystemSettingsService::new();
+        let mut config = MiniAppRuntimeConfig::defaults();
+        config.home.hero_banners = vec![
+            crate::system::domain::MiniAppHomeHeroBanner {
+                title: "   ".to_string(),
+                subtitle: "无标题应被丢弃".to_string(),
+                button_text: "查看".to_string(),
+                image_url: "https://example.com/ignored.png".to_string(),
+                enabled: true,
+                sort_order: 2,
+            },
+            crate::system::domain::MiniAppHomeHeroBanner {
+                title: "  球队约战  ".to_string(),
+                subtitle: "  找对手 · 约时间  ".to_string(),
+                button_text: "  开始  ".to_string(),
+                image_url: "  https://example.com/team.png  ".to_string(),
+                enabled: true,
+                sort_order: 9,
+            },
+            crate::system::domain::MiniAppHomeHeroBanner {
+                title: "散人开局".to_string(),
+                subtitle: "缺人就来".to_string(),
+                button_text: String::new(),
+                image_url: String::new(),
+                enabled: false,
+                sort_order: 1,
+            },
+        ];
+
+        let saved = service
+            .update_mini_app_runtime_config(&admin_actor(true), config)
+            .await
+            .expect("super admin should be able to update runtime config");
+
+        assert_eq!(saved.home.hero_banners.len(), 2);
+        assert_eq!(saved.home.hero_banners[0].title, "散人开局");
+        assert_eq!(saved.home.hero_banners[0].button_text, "去看看");
+        assert!(!saved.home.hero_banners[0].enabled);
+        assert_eq!(saved.home.hero_banners[1].title, "球队约战");
+        assert_eq!(saved.home.hero_banners[1].subtitle, "找对手 · 约时间");
+        assert_eq!(saved.home.hero_banners[1].image_url, "https://example.com/team.png");
+    }
+
     #[tokio::test]
     async fn super_admin_can_update_mini_app_runtime_config() {
         let service = SystemSettingsService::new();

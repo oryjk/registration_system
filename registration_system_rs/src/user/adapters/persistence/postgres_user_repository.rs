@@ -25,7 +25,7 @@ struct PlayerAdminRow {
 #[derive(Debug, FromRow)]
 struct PlayerTeamRow {
     pub user_id: i64,
-    pub team_id: String,
+    pub team_id: i64,
     pub team_name: String,
     pub role: String,
     pub jersey_number: Option<String>,
@@ -564,7 +564,7 @@ impl PostgresUserRepository {
                   SELECT 1
                   FROM rs_team_members tm
                   JOIN rs_admin_team_assignment ata ON ata.team_id = tm.team_id
-                  JOIN rs_teams t ON t.id = tm.team_id::text
+                  JOIN rs_teams t ON t.id = tm.team_id
                   WHERE tm.user_id = u.id
                     AND tm.status = 1
                     AND ata.admin_id = $4
@@ -602,7 +602,7 @@ impl PostgresUserRepository {
                   SELECT 1
                   FROM rs_team_members tm
                   JOIN rs_admin_team_assignment ata ON ata.team_id = tm.team_id
-                  JOIN rs_teams t ON t.id = tm.team_id::text
+                  JOIN rs_teams t ON t.id = tm.team_id
                   WHERE tm.user_id = u.id
                     AND tm.status = 1
                     AND ata.admin_id = $4
@@ -673,10 +673,10 @@ impl PostgresUserRepository {
         }
         let rows = sqlx::query_as::<_, PlayerTeamRow>(
             r#"
-            SELECT tm.user_id, CAST(t.id AS TEXT) AS team_id, t.name AS team_name,
+            SELECT tm.user_id, t.id AS team_id, t.name AS team_name,
                    tm.role, tm.jersey_number
             FROM rs_team_members tm
-            JOIN rs_teams t ON t.id = tm.team_id::text
+            JOIN rs_teams t ON t.id = tm.team_id
             WHERE tm.user_id = ANY($1)
               AND tm.status = 1
               AND t.status = 1
