@@ -9,7 +9,14 @@
         <span class="badge badge-outline">{{ activity.team_checkin_configs.length }} 条配置</span>
       </div>
 
-      <div class="mt-4 grid gap-3 md:grid-cols-2">
+      <div
+        v-if="teamIds.length === 0"
+        class="mt-4 rounded-2xl border border-dashed border-base-300 p-6 text-center text-sm text-base-content/55"
+      >
+        当前活动还没有设置主队或客队，暂不能配置球队签到。
+      </div>
+
+      <div v-else class="mt-4 grid gap-3 md:grid-cols-2">
         <div
           v-for="teamId in teamIds"
           :key="teamId"
@@ -48,6 +55,65 @@
             </div>
           </template>
           <p v-else class="mt-4 text-sm text-base-content/55">该队本场还没有开启签到。</p>
+
+          <div class="mt-4 border-t border-base-300/70 pt-4">
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <label
+                class="flex items-center justify-between gap-3 rounded-xl bg-base-100 px-3 py-2"
+              >
+                <span class="text-sm font-medium">启用签到</span>
+                <input
+                  v-model="checkinForm(teamId).enabled"
+                  type="checkbox"
+                  class="toggle toggle-primary toggle-sm"
+                />
+              </label>
+              <label class="flex flex-col gap-1">
+                <span class="text-xs text-base-content/55">签到半径（米）</span>
+                <input
+                  v-model.number="checkinForm(teamId).radius_meters"
+                  type="number"
+                  min="20"
+                  max="1000"
+                  class="input input-bordered h-10"
+                />
+              </label>
+              <label class="flex flex-col gap-1">
+                <span class="text-xs text-base-content/55">提前开放（分钟）</span>
+                <input
+                  v-model.number="checkinForm(teamId).open_minutes_before"
+                  type="number"
+                  min="0"
+                  max="1440"
+                  class="input input-bordered h-10"
+                />
+              </label>
+              <label class="flex flex-col gap-1">
+                <span class="text-xs text-base-content/55">延后关闭（分钟）</span>
+                <input
+                  v-model.number="checkinForm(teamId).close_minutes_after"
+                  type="number"
+                  min="0"
+                  max="1440"
+                  class="input input-bordered h-10"
+                />
+              </label>
+            </div>
+            <div class="mt-3 flex justify-end">
+              <button
+                type="button"
+                class="btn btn-primary btn-sm"
+                :disabled="savingTeamId === teamId"
+                @click="saveTeamConfig(teamId)"
+              >
+                <span
+                  v-if="savingTeamId === teamId"
+                  class="loading loading-spinner loading-xs"
+                ></span>
+                保存配置
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -55,13 +121,48 @@
 </template>
 
 <script setup lang="ts">
+import { reactive, watch } from 'vue'
 import type { Activity, ActivityTeamCheckinConfig } from '@/services/activity'
 import { formatDateTime } from './activity-detail.model'
 
 const props = defineProps<{
   activity: Activity
   teamIds: number[]
+  savingTeamId?: number | null
 }>()
+
+const emit = defineEmits<{
+  save: [
+    payload: {
+      team_id: number
+      enabled: boolean
+      radius_meters: number
+      open_minutes_before: number
+      close_minutes_after: number
+    },
+  ]
+}>()
+
+type CheckinConfigForm = {
+  enabled: boolean
+  radius_meters: number
+  open_minutes_before: number
+  close_minutes_after: number
+}
+
+const defaultForm = (): CheckinConfigForm => ({
+  enabled: false,
+  radius_meters: 150,
+  open_minutes_before: 60,
+  close_minutes_after: 30,
+})
+
+const forms = reactive<Record<number, CheckinConfigForm>>({})
+
+const checkinForm = (teamId: number) => {
+  forms[teamId] ??= defaultForm()
+  return forms[teamId]
+}
 
 const teamConfig = (teamId: number): ActivityTeamCheckinConfig | null =>
   props.activity.team_checkin_configs.find((item) => item.team_id === teamId) ?? null
@@ -71,4 +172,35 @@ const teamLabel = (teamId: number) => {
   if (teamId === props.activity.away_team_id) return '客队签到'
   return '球队签到'
 }
+
+const syncForms = () => {
+  props.teamIds.forEach((teamId) => {
+    const config = teamConfig(teamId)
+    forms[teamId] = config
+      ? {
+          enabled: config.enabled,
+          radius_meters: config.radius_meters,
+          open_minutes_before: config.open_minutes_before,
+          close_minutes_after: config.close_minutes_after,
+        }
+      : defaultForm()
+  })
+}
+
+const saveTeamConfig = (teamId: number) => {
+  const form = forms[teamId] ?? defaultForm()
+  emit('save', {
+    team_id: teamId,
+    enabled: form.enabled,
+    radius_meters: form.radius_meters,
+    open_minutes_before: form.open_minutes_before,
+    close_minutes_after: form.close_minutes_after,
+  })
+}
+
+watch(
+  () => [props.activity.id, props.activity.team_checkin_configs, props.teamIds] as const,
+  syncForms,
+  { immediate: true, deep: true },
+)
 </script>

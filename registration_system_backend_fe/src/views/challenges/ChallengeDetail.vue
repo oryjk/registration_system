@@ -173,7 +173,7 @@
         <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <h3 class="card-title text-base">报名人员</h3>
           <span class="text-sm text-base-content/60">
-            {{ detail.summary.accepted_count }} / {{ individualCapacity }} 已报名
+            {{ detail.summary.accepted_count }} / {{ individualMinPlayers }} 成行 · 最多 {{ individualMaxPlayers }} 人
           </span>
         </div>
 
@@ -253,9 +253,13 @@ const cancelOpen = ref(false)
 const isIndividualChallenge = computed(() => detail.value?.summary.challenge.kind === 'individual')
 const detailTitle = computed(() => (isIndividualChallenge.value ? '散人报名' : '约队管理'))
 const backRoute = computed(() => (isIndividualChallenge.value ? '/individual-registrations' : '/challenges'))
-const individualCapacity = computed(() => {
+const individualMinPlayers = computed(() => {
   const playersPerTeam = detail.value?.summary.challenge.players_per_team ?? 0
-  return playersPerTeam * 2
+  return detail.value?.summary.challenge.min_players ?? playersPerTeam * 2
+})
+const individualMaxPlayers = computed(() => {
+  const playersPerTeam = detail.value?.summary.challenge.players_per_team ?? 0
+  return detail.value?.summary.challenge.max_players ?? playersPerTeam * 2 + 4
 })
 
 function statusLabel(status: ChallengeStatus) {

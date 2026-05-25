@@ -44,6 +44,18 @@
           </div>
           <input v-model.number="form.players_per_team" type="number" min="1" class="input input-bordered h-11 w-full" :disabled="saving" />
         </label>
+        <label v-if="isIndividualForm" class="form-control">
+          <div class="label py-1">
+            <span class="label-text text-xs text-base-content/60">最少成行人数</span>
+          </div>
+          <input v-model="form.min_players" type="number" min="1" class="input input-bordered h-11 w-full" :placeholder="`${form.players_per_team * 2}`" :disabled="saving" />
+        </label>
+        <label v-if="isIndividualForm" class="form-control">
+          <div class="label py-1">
+            <span class="label-text text-xs text-base-content/60">最多报名人数</span>
+          </div>
+          <input v-model="form.max_players" type="number" min="1" class="input input-bordered h-11 w-full" :placeholder="`${form.players_per_team * 2 + 4}`" :disabled="saving" />
+        </label>
         <label class="form-control md:col-span-2">
           <div class="label py-1">
             <span class="label-text text-xs text-base-content/60">场地</span>
@@ -116,12 +128,15 @@ const form = reactive({
   location_latitude: '',
   location_longitude: '',
   players_per_team: 8,
+  min_players: '',
+  max_players: '',
   fee_per_person: '',
   note: '',
   host_user_id: null as number | null,
 })
 
 const visibleError = computed(() => localError.value || props.error || '')
+const isIndividualForm = computed(() => props.mode === 'create' || props.challenge?.kind === 'individual')
 
 watch(
   () => [props.open, props.challenge] as const,
@@ -138,6 +153,8 @@ watch(
       location_latitude: challenge.location_latitude?.toString() ?? '',
       location_longitude: challenge.location_longitude?.toString() ?? '',
       players_per_team: challenge.players_per_team,
+      min_players: challenge.min_players?.toString() ?? '',
+      max_players: challenge.max_players?.toString() ?? '',
       fee_per_person: challenge.fee_per_person ?? '',
       note: challenge.note ?? '',
       host_user_id: null,
@@ -160,6 +177,8 @@ watch(
       location_latitude: '',
       location_longitude: '',
       players_per_team: 8,
+      min_players: '',
+      max_players: '',
       fee_per_person: '',
       note: '',
       host_user_id: null,
@@ -190,6 +209,17 @@ function validateForm() {
   if (!form.title) return '标题不能为空'
   if (!form.location) return '场地不能为空'
   if (form.players_per_team <= 0) return '人数规格必须大于 0'
+  const minPlayers = optionalNumber(form.min_players)
+  const maxPlayers = optionalNumber(form.max_players)
+  if (isIndividualForm.value) {
+    if (minPlayers !== null && minPlayers <= 0) return '最少成行人数必须大于 0'
+    if (maxPlayers !== null && maxPlayers <= 0) return '最多报名人数必须大于 0'
+    const resolvedMinPlayers = minPlayers ?? form.players_per_team * 2
+    const resolvedMaxPlayers = maxPlayers ?? form.players_per_team * 2 + 4
+    if (resolvedMinPlayers > resolvedMaxPlayers) {
+      return '最少成行人数不能大于最多报名人数'
+    }
+  }
   if (new Date(form.end_time).getTime() <= new Date(form.start_time).getTime()) {
     return '结束时间必须晚于开始时间'
   }
@@ -212,6 +242,8 @@ function handleSubmit() {
     location_latitude: optionalNumber(form.location_latitude),
     location_longitude: optionalNumber(form.location_longitude),
     players_per_team: form.players_per_team,
+    min_players: isIndividualForm.value ? optionalNumber(form.min_players) : null,
+    max_players: isIndividualForm.value ? optionalNumber(form.max_players) : null,
     fee_per_person: form.fee_per_person || null,
     note: form.note || null,
     host_user_id: form.host_user_id ?? undefined,

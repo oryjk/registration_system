@@ -19,6 +19,8 @@ export interface Challenge {
   location_latitude: number | null
   location_longitude: number | null
   players_per_team: number
+  min_players: number | null
+  max_players: number | null
   fee_per_person: string | null
   note: string | null
   status: ChallengeStatus
@@ -76,6 +78,8 @@ export interface UpdateChallengePayload {
   location_latitude?: number | null
   location_longitude?: number | null
   players_per_team: number
+  min_players?: number | null
+  max_players?: number | null
   fee_per_person?: string | null
   note?: string | null
 }

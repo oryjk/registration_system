@@ -101,6 +101,8 @@ export interface CreateActivityPayload {
   color?: string
   opposing_color?: string
   players_per_team?: number
+  match_kind?: 'external' | 'internal'
+  team_checkin_configs?: CreateActivityCheckinConfigPayload[]
 }
 
 export interface UpdateActivityPayload {
@@ -119,6 +121,15 @@ export interface UpdateActivityPayload {
   color?: string | null
   opposing_color?: string | null
   players_per_team?: number | null
+  match_kind?: 'external' | 'internal' | null
+}
+
+export interface CreateActivityCheckinConfigPayload {
+  team_id: number
+  enabled: boolean
+  radius_meters: number
+  open_minutes_before: number
+  close_minutes_after: number
 }
 
 export interface UpdateActivityCheckinConfigPayload {

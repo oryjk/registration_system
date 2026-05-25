@@ -938,7 +938,10 @@
     v-model:form="editForm"
     :editing="editing"
     :edit-error="editError"
+    :uploading-logo="uploadingLogo"
+    :upload-logo-error="uploadLogoError"
     @submit="handleEdit"
+    @upload-logo="handleUploadLogo"
   />
 
   <TeamSetRoleDialog
@@ -979,6 +982,7 @@ import {
   getTeamAdminDetail,
   getTeamCreditTransactions,
   updateTeam,
+  uploadTeamLogo,
   addMember,
   updateMember,
   removeMember,
@@ -1413,6 +1417,8 @@ const handleSetViceCaptain = async () => {
 const editDialogRef = ref<InstanceType<typeof TeamEditDialog>>()
 const editing = ref(false)
 const editError = ref('')
+const uploadingLogo = ref(false)
+const uploadLogoError = ref('')
 const editForm = reactive({ name: '', description: '', logo_url: '', status: 1 })
 
 const openEditModal = () => {
@@ -1423,7 +1429,23 @@ const openEditModal = () => {
   editForm.logo_url = t.logo_url || ''
   editForm.status = t.status
   editError.value = ''
+  uploadLogoError.value = ''
   editDialogRef.value?.showModal()
+}
+
+const handleUploadLogo = async (file: File) => {
+  uploadingLogo.value = true
+  uploadLogoError.value = ''
+  try {
+    const res = await uploadTeamLogo(teamId.value, file)
+    editForm.logo_url = res.logo_url
+    await fetchDetail()
+    toast.success('队徽已上传')
+  } catch (e: unknown) {
+    uploadLogoError.value = (e as Error).message || '队徽上传失败'
+  } finally {
+    uploadingLogo.value = false
+  }
 }
 
 const handleEdit = async () => {

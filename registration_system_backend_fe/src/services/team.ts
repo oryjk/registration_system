@@ -67,6 +67,10 @@ export interface TeamCreditOverview {
   is_vip: boolean
 }
 
+export interface TeamLogoUploadResponse {
+  logo_url: string
+}
+
 export interface CreateTeamPayload {
   name: string
   description?: string
@@ -125,6 +129,14 @@ export const createTeam = (data: CreateTeamPayload) => http.post<Team>('/teams/a
 
 export const updateTeam = (teamId: number, data: UpdateTeamPayload) =>
   http.patch<void>(`/teams/${teamId}`, data)
+
+export const uploadTeamLogo = (teamId: number, file: File) => {
+  const formData = new FormData()
+  formData.append('file', file)
+  return http.post<TeamLogoUploadResponse>(`/teams/${teamId}/logo`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+}
 
 export const deleteTeam = (teamId: number) => http.delete<void>(`/teams/${teamId}`)
 

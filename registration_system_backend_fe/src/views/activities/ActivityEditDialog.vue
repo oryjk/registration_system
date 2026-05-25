@@ -28,6 +28,31 @@
             <input v-model="form.opposing" type="text" class="input input-bordered border-2 h-11" />
           </label>
           <label class="flex flex-col gap-1.5">
+            <span class="text-sm font-semibold">主队</span>
+            <select v-model="form.home_team_id" class="select select-bordered border-2 h-11">
+              <option :value="null">不设置</option>
+              <option v-for="team in teamOptions" :key="team.id" :value="team.id">
+                {{ team.name }}
+              </option>
+            </select>
+          </label>
+          <label class="flex flex-col gap-1.5">
+            <span class="text-sm font-semibold">客队</span>
+            <select v-model="form.away_team_id" class="select select-bordered border-2 h-11">
+              <option :value="null">不设置</option>
+              <option v-for="team in teamOptions" :key="team.id" :value="team.id">
+                {{ team.name }}
+              </option>
+            </select>
+          </label>
+          <label class="flex flex-col gap-1.5">
+            <span class="text-sm font-semibold">比赛类型</span>
+            <select v-model="form.match_kind" class="select select-bordered border-2 h-11">
+              <option value="external">外部对阵</option>
+              <option value="internal">队内训练</option>
+            </select>
+          </label>
+          <label class="flex flex-col gap-1.5">
             <span class="text-sm font-semibold">主队球服</span>
             <div
               class="flex items-center gap-2 rounded-lg border border-base-300 bg-base-100 px-3 py-2"
@@ -227,6 +252,9 @@ export interface ActivityEditFormState {
   location_latitude: number | null
   location_longitude: number | null
   opposing: string
+  home_team_id: number | null
+  away_team_id: number | null
+  match_kind: 'external' | 'internal'
   color: string
   opposing_color: string
   holding_date: string
@@ -241,6 +269,7 @@ export interface ActivityEditFormState {
 defineProps<{
   editing: boolean
   editError: string
+  teamOptions: Array<{ id: number; name: string }>
 }>()
 
 const form = defineModel<ActivityEditFormState>('form', { required: true })

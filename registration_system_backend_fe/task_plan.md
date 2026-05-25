@@ -1,5 +1,21 @@
 # 管理端任务计划
 
+## 2026-05-23 管理后台能力对齐小程序
+
+目标：审计管理后台相对小程序缺失的运营能力，重点覆盖发布比赛、创建比赛、活动、约队、球队等功能，确保后续后台不弱于小程序。
+
+阶段：
+1. [completed] 读取管理端协作文档和当前路由
+2. [completed] 盘点管理端 views/services 当前能力
+3. [completed] 对照小程序发布约队、创建比赛、球队管理路径
+4. [completed] 对照后端管理端路由和 DTO 能力
+5. [completed] 整理可执行缺口清单与实现优先级
+
+当前建议方向：
+- 第一优先级补齐运营创建/发布能力：球队约队创建、后台撮合接约、活动创建时选主客队和比赛类型。
+- 第二优先级补齐配置能力：创建/编辑签到配置、球队 Logo 上传、场馆/发布用户选择器。
+- 第三优先级做体验收敛：把活动创建表单和小程序 `MatchPublishForm` 关键字段语义对齐。
+
 ## 2026-05-14 队员会员标识
 
 目标：管理后台球队详情支持查看和编辑队员会员身份，与后端 `team_members.is_member` 保持一致。
@@ -116,3 +132,59 @@
 3. [completed] 增加报名开始、报名截止、截止倒计时和主客队球服色块展示
 4. [completed] 增加分钟级倒计时刷新
 5. [completed] 本地页面确认列表密度与文案，执行 `bun run type-check` 和 `git diff --check`
+
+## 2026-05-20 小程序首页装修配置管理后台
+
+目标：管理后台系统设置页支持维护小程序首页 hero/banner 装修配置，多条配置供小程序轮播。
+
+阶段：
+1. [completed] 在 `src/services/system.ts` 增加 mini app runtime config 类型与 GET/PATCH 封装
+2. [completed] 拆出小程序装修配置表单模型或组件，避免继续膨胀 `SystemSettings.vue`
+3. [completed] 系统设置页增加“小程序装修”区域，支持新增、删除、启用、排序和图片地址预览
+4. [completed] 保存时保持整份 runtime config 结构，不覆盖其它配置段
+5. [completed] 执行 `bun run type-check` 和必要构建
+
+## 2026-05-20 小程序装修图片上传管理端
+
+目标：小程序装修配置中支持直接选择本地图片上传，上传成功后回填图片地址。
+
+阶段：
+1. [completed] 在 `src/services/system.ts` 增加上传接口封装
+2. [completed] 在 `MiniAppDecorationPanel.vue` 图片地址旁增加上传按钮
+3. [completed] 上传中显示状态，失败显示错误，成功回填 `image_url`
+4. [completed] 执行目标测试、类型检查和构建
+
+## 2026-05-20 管理端 UI 规范化首轮
+
+目标：基于现有 DaisyUI + Tailwind 建立轻量后台 UI 规范，并先迁移系统设置页。
+
+阶段：
+1. [completed] 确认本轮不引入 shadcn，沿用 DaisyUI + Tailwind
+2. [completed] 在 `src/assets/main.css` 新增 `admin-*` 基础类和表单/按钮基线
+3. [completed] 重构 `SystemSettings.vue` 的布局和卡片层级
+4. [completed] 调整 `MiniAppDecorationPanel.vue` 对齐新规范
+5. [completed] 通过浏览器检查系统设置页，修复 sticky 保存条和深色主题变量
+6. [completed] 执行 `bun run type-check`、目标单测、`bun run build`
+
+## 2026-05-23 复用后端接口补齐管理端能力
+
+目标：只改管理端前端，把后端已支持且可直接复用的活动、签到和球队 Logo 能力接到页面上。
+
+阶段：
+1. [completed] 确认后端 DTO、路由和管理端 service 现状
+2. [completed] 活动新建/编辑表单补齐主队、客队、比赛类型
+3. [completed] 活动创建补齐球队签到初始配置，详情页补齐签到配置编辑
+4. [completed] 球队详情编辑弹窗补齐队徽上传
+5. [completed] 明确后台球队约队创建现有后端接口不可复用，暂不做入口
+6. [completed] 执行 `bun run type-check` 和目标 `git diff --check`
+
+## 2026-05-23 散人报名最少/最多人数配置
+
+目标：管理后台创建和编辑散人报名时可配置最少成行人数、最多报名人数，并在列表/详情中按新语义展示。
+
+阶段：
+1. [completed] `src/services/challenge.ts` 类型和 payload 增加 `min_players` / `max_players`
+2. [completed] `ChallengeEditDialog.vue` 散人表单增加两个人数输入与前端校验
+3. [completed] `ChallengeList.vue` 散人卡片展示 `已报 N / min 成行，最多 max`
+4. [completed] `ChallengeDetail.vue` 散人报名人员摘要展示成行人数和最多人数
+5. [completed] 执行 `bun run type-check` 和 `bun run build`

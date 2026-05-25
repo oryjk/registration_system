@@ -355,6 +355,31 @@
             />
           </label>
           <label class="flex flex-col gap-1.5">
+            <span class="text-sm font-semibold">主队</span>
+            <select v-model="form.home_team_id" class="select select-bordered border-2 h-11">
+              <option :value="null">不设置</option>
+              <option v-for="team in teamOptions" :key="team.id" :value="team.id">
+                {{ team.name }}
+              </option>
+            </select>
+          </label>
+          <label class="flex flex-col gap-1.5">
+            <span class="text-sm font-semibold">客队</span>
+            <select v-model="form.away_team_id" class="select select-bordered border-2 h-11">
+              <option :value="null">不设置</option>
+              <option v-for="team in teamOptions" :key="team.id" :value="team.id">
+                {{ team.name }}
+              </option>
+            </select>
+          </label>
+          <label class="flex flex-col gap-1.5">
+            <span class="text-sm font-semibold">比赛类型</span>
+            <select v-model="form.match_kind" class="select select-bordered border-2 h-11">
+              <option value="external">外部对阵</option>
+              <option value="internal">队内训练</option>
+            </select>
+          </label>
+          <label class="flex flex-col gap-1.5">
             <span class="text-sm font-semibold">球服颜色</span>
             <div
               class="flex items-center gap-2 rounded-lg border border-base-300 bg-base-100 px-3 py-2"
@@ -524,6 +549,59 @@
               placeholder="活动说明（可选）"
             ></textarea>
           </label>
+          <fieldset class="sm:col-span-2 rounded-xl border border-base-300 bg-base-200/40 p-4">
+            <div class="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <legend class="text-sm font-semibold">球队签到配置</legend>
+                <p class="mt-1 text-xs text-base-content/50">
+                  对已选择的主客队生成签到规则，创建后也可在详情页继续调整。
+                </p>
+              </div>
+              <label class="flex cursor-pointer items-center gap-2 text-sm">
+                <span>启用签到</span>
+                <input
+                  v-model="form.checkin_enabled"
+                  type="checkbox"
+                  class="toggle toggle-primary toggle-sm"
+                />
+              </label>
+            </div>
+            <div class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <label class="flex flex-col gap-1.5">
+                <span class="text-xs font-medium text-base-content/60">签到半径（米）</span>
+                <input
+                  v-model.number="form.checkin_radius_meters"
+                  type="number"
+                  min="20"
+                  max="1000"
+                  class="input input-bordered h-10"
+                  :disabled="!form.checkin_enabled"
+                />
+              </label>
+              <label class="flex flex-col gap-1.5">
+                <span class="text-xs font-medium text-base-content/60">提前开放（分钟）</span>
+                <input
+                  v-model.number="form.checkin_open_minutes_before"
+                  type="number"
+                  min="0"
+                  max="1440"
+                  class="input input-bordered h-10"
+                  :disabled="!form.checkin_enabled"
+                />
+              </label>
+              <label class="flex flex-col gap-1.5">
+                <span class="text-xs font-medium text-base-content/60">延后关闭（分钟）</span>
+                <input
+                  v-model.number="form.checkin_close_minutes_after"
+                  type="number"
+                  min="0"
+                  max="1440"
+                  class="input input-bordered h-10"
+                  :disabled="!form.checkin_enabled"
+                />
+              </label>
+            </div>
+          </fieldset>
         </div>
         <div class="modal-action">
           <button type="button" class="btn btn-ghost" @click="formModalRef?.close()">取消</button>
@@ -582,6 +660,7 @@ import {
   type ActivityStatusCounts,
   type CreateActivityPayload,
 } from '@/services/activity'
+import { adminListTeams, type TeamSummary } from '@/services/team'
 import type { AppliedLocationSelection } from '@/views/activities/location-picker.model'
 import {
   COMMON_JERSEY_COLORS,
@@ -594,6 +673,7 @@ const MATCH_FORMAT_OPTIONS = [5, 6, 7, 8, 11] as const
 type MatchFormatOption = (typeof MATCH_FORMAT_OPTIONS)[number]
 
 const activityItems = ref<Activity[]>([])
+const teamOptions = ref<TeamSummary[]>([])
 const listCounts = ref<ActivityStatusCounts>({
   total: 0,
   registering: 0,
@@ -731,6 +811,9 @@ const form = reactive({
   location_latitude: null as number | null,
   location_longitude: null as number | null,
   opposing: '',
+  home_team_id: null as number | null,
+  away_team_id: null as number | null,
+  match_kind: 'external' as 'external' | 'internal',
   color: '',
   opposing_color: '',
   holding_date: '',
@@ -739,6 +822,10 @@ const form = reactive({
   description: '',
   match_format: '' as '' | `${MatchFormatOption}`,
   players_per_team: null as number | null,
+  checkin_enabled: false,
+  checkin_radius_meters: 150,
+  checkin_open_minutes_before: 60,
+  checkin_close_minutes_after: 30,
 })
 
 const playersPerTeamFromMatchFormat = (matchFormat: MatchFormatOption) => matchFormat * 2 - 1
@@ -801,6 +888,9 @@ const openCreateModal = () => {
     location_latitude: null,
     location_longitude: null,
     opposing: '',
+    home_team_id: null,
+    away_team_id: null,
+    match_kind: 'external',
     color: '',
     opposing_color: '',
     holding_date: '',
@@ -809,6 +899,10 @@ const openCreateModal = () => {
     description: '',
     match_format: '',
     players_per_team: null,
+    checkin_enabled: false,
+    checkin_radius_meters: 150,
+    checkin_open_minutes_before: 60,
+    checkin_close_minutes_after: 30,
   })
   formError.value = ''
   formModalRef.value?.showModal()
@@ -822,6 +916,9 @@ const openEditModal = (activity: Activity) => {
     location_latitude: activity.location_latitude,
     location_longitude: activity.location_longitude,
     opposing: activity.opposing || '',
+    home_team_id: activity.home_team_id,
+    away_team_id: activity.away_team_id,
+    match_kind: activity.match_kind || 'external',
     color: normalizeHexColor(activity.color || ''),
     opposing_color: normalizeHexColor(activity.opposing_color || ''),
     holding_date: toLocal(activity.holding_date),
@@ -830,6 +927,10 @@ const openEditModal = (activity: Activity) => {
     description: activity.description || '',
     match_format: inferMatchFormat(activity.players_per_team),
     players_per_team: activity.players_per_team ?? null,
+    checkin_enabled: activity.team_checkin_configs.some((item) => item.enabled),
+    checkin_radius_meters: activity.team_checkin_configs[0]?.radius_meters ?? 150,
+    checkin_open_minutes_before: activity.team_checkin_configs[0]?.open_minutes_before ?? 60,
+    checkin_close_minutes_after: activity.team_checkin_configs[0]?.close_minutes_after ?? 30,
   })
   formError.value = ''
   formModalRef.value?.showModal()
@@ -839,6 +940,18 @@ const handleSubmit = async () => {
   submitting.value = true
   formError.value = ''
   try {
+    if (
+      form.home_team_id !== null &&
+      form.away_team_id !== null &&
+      form.home_team_id === form.away_team_id
+    ) {
+      formError.value = '主队和客队不能选择同一支球队'
+      return
+    }
+    const selectedTeamIds = [form.home_team_id, form.away_team_id].filter(
+      (teamId, index, teamIds): teamId is number =>
+        typeof teamId === 'number' && teamIds.indexOf(teamId) === index,
+    )
     const payload: CreateActivityPayload = {
       name: form.name,
       location: form.location,
@@ -848,13 +961,34 @@ const handleSubmit = async () => {
       start_time: form.start_time ? form.start_time + ':00' : '',
       end_time: form.end_time ? form.end_time + ':00' : '',
       opposing: form.opposing || undefined,
+      home_team_id: form.home_team_id ?? undefined,
+      away_team_id: form.away_team_id ?? undefined,
+      match_kind: form.match_kind,
       color: form.color || undefined,
       opposing_color: form.opposing_color || undefined,
       description: form.description || undefined,
       players_per_team: form.players_per_team ?? undefined,
     }
+    if (!editTarget.value && selectedTeamIds.length > 0) {
+      payload.team_checkin_configs = selectedTeamIds.map((teamId) => ({
+        team_id: teamId,
+        enabled: form.checkin_enabled,
+        radius_meters: form.checkin_radius_meters,
+        open_minutes_before: form.checkin_open_minutes_before,
+        close_minutes_after: form.checkin_close_minutes_after,
+      }))
+    }
     if (editTarget.value) {
-      await updateActivity(editTarget.value.id, payload)
+      await updateActivity(editTarget.value.id, {
+        ...payload,
+        opposing: form.opposing || null,
+        home_team_id: form.home_team_id,
+        away_team_id: form.away_team_id,
+        color: form.color || null,
+        opposing_color: form.opposing_color || null,
+        description: form.description || null,
+        players_per_team: form.players_per_team ?? null,
+      })
     } else {
       await createActivity(payload)
     }
@@ -895,6 +1029,13 @@ onMounted(() => {
   countdownTimer = setInterval(() => {
     nowTick.value = Date.now()
   }, 60 * 1000)
+  adminListTeams(true)
+    .then((teams) => {
+      teamOptions.value = teams
+    })
+    .catch((e: unknown) => {
+      toast.error((e as Error).message || '球队列表加载失败')
+    })
   fetchList()
 })
 

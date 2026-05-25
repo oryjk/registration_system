@@ -201,9 +201,9 @@
             </div>
             <div>
               <p class="text-xs font-semibold uppercase tracking-wide text-base-content/45">报名人数</p>
-              <p class="mt-1 font-semibold">{{ item.accepted_count }} / {{ individualCapacity(item) }}</p>
+              <p class="mt-1 font-semibold">{{ item.accepted_count }} / {{ individualMinPlayers(item) }} 成行</p>
               <p class="mt-1 text-sm text-base-content/60">
-                剩余 {{ Math.max(individualCapacity(item) - item.accepted_count, 0) }} 个名额
+                最多 {{ individualMaxPlayers(item) }} 人，剩余 {{ Math.max(individualMaxPlayers(item) - item.accepted_count, 0) }} 个名额
               </p>
             </div>
             <div class="min-w-0">
@@ -264,7 +264,7 @@
             <span class="badge badge-outline">{{ item.challenge.players_per_team }} 人制</span>
             <span class="badge badge-outline">{{ feeLabel(item.challenge.fee_per_person) }}</span>
             <span v-if="item.challenge.kind === 'individual'" class="badge badge-success badge-outline">
-              {{ item.accepted_count }}/{{ individualCapacity(item) }} 已报名
+              {{ item.accepted_count }}/{{ individualMinPlayers(item) }} 成行 · 最多 {{ individualMaxPlayers(item) }}
             </span>
             <span v-if="item.challenge.activity_id" class="badge badge-info badge-outline">已生成比赛</span>
             <span v-if="item.current_team_relation" class="badge badge-neutral badge-outline">
@@ -464,8 +464,12 @@ function participantPreviewLabel(item: ChallengeSummary) {
   return remainingCount > 0 ? `${first.display_name} 等 ${item.accepted_count} 人` : first.display_name
 }
 
-function individualCapacity(item: ChallengeSummary) {
-  return item.challenge.players_per_team * 2
+function individualMinPlayers(item: ChallengeSummary) {
+  return item.challenge.min_players ?? item.challenge.players_per_team * 2
+}
+
+function individualMaxPlayers(item: ChallengeSummary) {
+  return item.challenge.max_players ?? item.challenge.players_per_team * 2 + 4
 }
 
 function openEditDialog(item: ChallengeSummary) {

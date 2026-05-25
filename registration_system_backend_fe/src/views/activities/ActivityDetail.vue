@@ -67,7 +67,12 @@
       @edit="openEditModal"
     />
 
-    <ActivityCheckInPanel :activity="activity" :team-ids="activityCheckinTeamIds" />
+    <ActivityCheckInPanel
+      :activity="activity"
+      :team-ids="activityCheckinTeamIds"
+      :saving-team-id="checkinSavingTeamId"
+      @save="handleSaveCheckinConfig"
+    />
 
     <ActivitySettlementPanel
       v-model:search-keyword="settlementSearchKeyword"
@@ -118,6 +123,7 @@
     v-model:form="editForm"
     :editing="editing"
     :edit-error="editError"
+    :team-options="teamOptions"
     @clear-location="clearEditLocationCoordinates"
     @open-location="openEditLocationModal"
     @match-format-change="onEditMatchFormatChange"
@@ -178,6 +184,7 @@ import {
   getActivity,
   updateActivity,
   updateActivityStatus,
+  updateActivityCheckinConfig,
   listRegistrations,
   adminRegister,
   cancelRegistration,
@@ -186,6 +193,7 @@ import {
   type RegistrationWithInfo,
   type RegistrationStandCounts,
 } from '@/services/activity'
+import { adminListTeams, type TeamSummary } from '@/services/team'
 import { listPlayers, type Player } from '@/services/player'
 import type { AppliedLocationSelection } from '@/views/activities/location-picker.model'
 import {
@@ -207,6 +215,7 @@ const route = useRoute()
 const activityId = computed(() => route.params.id as string)
 
 const activity = ref<Activity | null>(null)
+const teamOptions = ref<TeamSummary[]>([])
 const regItems = ref<RegistrationWithInfo[]>([])
 const regCounts = ref<RegistrationStandCounts>({
   total: 0,
@@ -356,6 +365,10 @@ const fetchActivity = async () => {
   activity.value = res
 }
 
+const fetchTeams = async () => {
+  teamOptions.value = await adminListTeams(true)
+}
+
 const fetchSettlementSummary = async () => {
   settlementLoading.value = true
   settlementError.value = ''
@@ -400,7 +413,7 @@ const fetchAll = async () => {
   loading.value = true
   loadError.value = ''
   try {
-    await Promise.all([fetchActivity(), fetchRegistrations(), fetchSettlementSummary()])
+    await Promise.all([fetchActivity(), fetchTeams(), fetchRegistrations(), fetchSettlementSummary()])
   } catch (e: unknown) {
     loadError.value = (e as Error).message || '加载失败'
   } finally {
@@ -429,6 +442,9 @@ const editForm = reactive({
   location_latitude: null as number | null,
   location_longitude: null as number | null,
   opposing: '',
+  home_team_id: null as number | null,
+  away_team_id: null as number | null,
+  match_kind: 'external' as 'external' | 'internal',
   color: '',
   opposing_color: '',
   holding_date: '',
@@ -460,6 +476,9 @@ const openEditModal = () => {
     location_latitude: a.location_latitude,
     location_longitude: a.location_longitude,
     opposing: a.opposing || '',
+    home_team_id: a.home_team_id,
+    away_team_id: a.away_team_id,
+    match_kind: a.match_kind || 'external',
     color: normalizeHexColor(a.color),
     opposing_color: normalizeHexColor(a.opposing_color),
     holding_date: toLocalDateTimeInput(a.holding_date),
@@ -489,12 +508,23 @@ const handleEdit = async () => {
   editing.value = true
   editError.value = ''
   try {
+    if (
+      editForm.home_team_id !== null &&
+      editForm.away_team_id !== null &&
+      editForm.home_team_id === editForm.away_team_id
+    ) {
+      editError.value = '主队和客队不能选择同一支球队'
+      return
+    }
     await updateActivity(activityId.value, {
       name: editForm.name || undefined,
       location: editForm.location || undefined,
       location_latitude: editForm.location_latitude,
       location_longitude: editForm.location_longitude,
       opposing: editForm.opposing || null,
+      home_team_id: editForm.home_team_id,
+      away_team_id: editForm.away_team_id,
+      match_kind: editForm.match_kind,
       color: editForm.color || null,
       opposing_color: editForm.opposing_color || null,
       holding_date: editForm.holding_date ? editForm.holding_date + ':00' : undefined,
@@ -512,6 +542,26 @@ const handleEdit = async () => {
     editError.value = (e as Error).message || '保存失败'
   } finally {
     editing.value = false
+  }
+}
+
+const checkinSavingTeamId = ref<number | null>(null)
+
+const handleSaveCheckinConfig = async (payload: {
+  team_id: number
+  enabled: boolean
+  radius_meters: number
+  open_minutes_before: number
+  close_minutes_after: number
+}) => {
+  checkinSavingTeamId.value = payload.team_id
+  try {
+    activity.value = await updateActivityCheckinConfig(activityId.value, payload)
+    toast.success('签到配置已保存')
+  } catch (e: unknown) {
+    toast.error((e as Error).message || '签到配置保存失败')
+  } finally {
+    checkinSavingTeamId.value = null
   }
 }
 
