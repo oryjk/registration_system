@@ -6,6 +6,7 @@ use registration_system_backend::payment::domain::{
     TeamMembershipPaymentOrder, WxMiniPaymentParams,
 };
 use registration_system_backend::payment::ports::{
+    ActivityPaymentAcceptance, ActivityPaymentAccessPort, ActivityPaymentSettlement,
     PaymentOrderCommandRepository, PaymentOrderQueryRepository, PaymentSettlementPort,
     RechargePaymentSettlement, TeamMembershipPaymentSettlement, WxPayGateway,
 };
@@ -152,6 +153,43 @@ impl PaymentOrderCommandRepository for FakePaymentOrderRepository {
 struct FakePaymentSettlementPort {
     recharges: Mutex<Vec<(String, i64, Decimal, String)>>,
     memberships: Mutex<Vec<MembershipRecord>>,
+    activities: Mutex<Vec<(String, i64, String)>>,
+}
+
+#[derive(Default)]
+struct FakeActivityPaymentAccessPort {
+    acceptances: Mutex<HashMap<(String, i64), ActivityPaymentAcceptance>>,
+    attached_orders: Mutex<Vec<(String, i64, String)>>,
+}
+
+#[async_trait]
+impl ActivityPaymentAccessPort for FakeActivityPaymentAccessPort {
+    async fn find_individual_acceptance(
+        &self,
+        challenge_id: &str,
+        user_id: i64,
+    ) -> Result<Option<ActivityPaymentAcceptance>, DomainError> {
+        Ok(self
+            .acceptances
+            .lock()
+            .unwrap()
+            .get(&(challenge_id.to_string(), user_id))
+            .cloned())
+    }
+
+    async fn attach_payment_order(
+        &self,
+        challenge_id: &str,
+        user_id: i64,
+        order_no: &str,
+    ) -> Result<(), DomainError> {
+        self.attached_orders.lock().unwrap().push((
+            challenge_id.to_string(),
+            user_id,
+            order_no.to_string(),
+        ));
+        Ok(())
+    }
 }
 
 #[async_trait]
@@ -184,6 +222,18 @@ impl PaymentSettlementPort for FakePaymentSettlementPort {
         let _ = settlement.team_id;
         Ok(())
     }
+
+    async fn settle_activity_payment(
+        &self,
+        settlement: ActivityPaymentSettlement<'_>,
+    ) -> Result<(), DomainError> {
+        self.activities.lock().unwrap().push((
+            settlement.order_no.to_string(),
+            settlement.user_id,
+            settlement.transaction_id.to_string(),
+        ));
+        Ok(())
+    }
 }
 
 #[derive(Default)]
@@ -209,6 +259,10 @@ impl FakeUserRepository {
 #[async_trait]
 impl UserQueryRepository for FakeUserRepository {
     async fn find_by_open_id(&self, _open_id: &str) -> Result<Option<User>, UserDomainError> {
+        unimplemented!()
+    }
+
+    async fn find_by_username(&self, _username: &str) -> Result<Option<User>, UserDomainError> {
         unimplemented!()
     }
 
@@ -279,6 +333,14 @@ impl UserCommandRepository for FakeUserRepository {
     }
 
     async fn touch_login(&self, _user_id: i64) -> Result<(), UserDomainError> {
+        unimplemented!()
+    }
+
+    async fn update_password_hash(
+        &self,
+        _user_id: i64,
+        _password_hash: &str,
+    ) -> Result<(), UserDomainError> {
         unimplemented!()
     }
 
@@ -516,6 +578,7 @@ async fn create_recharge_order_persists_order_and_prepay_info() {
         repository.clone(),
         repository.clone(),
         settlement_port,
+        Arc::new(FakeActivityPaymentAccessPort::default()),
         gateway.clone(),
         team_repository,
         user_repository,
@@ -556,6 +619,7 @@ async fn create_recharge_order_uses_actor_openid_when_payload_openid_missing() {
         repository.clone(),
         repository,
         settlement_port,
+        Arc::new(FakeActivityPaymentAccessPort::default()),
         gateway.clone(),
         team_repository,
         user_repository,
@@ -603,6 +667,7 @@ async fn sync_order_status_marks_order_paid_and_applies_recharge() {
         repository.clone(),
         repository.clone(),
         settlement_port.clone(),
+        Arc::new(FakeActivityPaymentAccessPort::default()),
         gateway,
         team_repository,
         user_repository,
@@ -644,6 +709,7 @@ async fn create_team_membership_order_persists_membership_metadata() {
         repository.clone(),
         repository.clone(),
         settlement_port,
+        Arc::new(FakeActivityPaymentAccessPort::default()),
         gateway,
         team_repository,
         user_repository,
@@ -691,6 +757,7 @@ async fn create_team_membership_order_uses_actor_openid_when_payload_openid_miss
         repository.clone(),
         repository,
         settlement_port,
+        Arc::new(FakeActivityPaymentAccessPort::default()),
         gateway.clone(),
         team_repository,
         user_repository,
@@ -760,6 +827,7 @@ async fn sync_order_status_applies_team_membership_credit() {
         repository.clone(),
         repository.clone(),
         settlement_port.clone(),
+        Arc::new(FakeActivityPaymentAccessPort::default()),
         gateway,
         team_repository,
         user_repository,
@@ -815,6 +883,7 @@ async fn sync_order_status_is_idempotent_for_already_paid_recharge_order() {
         repository.clone(),
         repository,
         settlement_port.clone(),
+        Arc::new(FakeActivityPaymentAccessPort::default()),
         gateway,
         team_repository,
         user_repository,
@@ -833,4 +902,123 @@ async fn sync_order_status_is_idempotent_for_already_paid_recharge_order() {
     assert_eq!(recharges.len(), 2);
     assert_eq!(recharges[0].0, "order-paid-001");
     assert_eq!(recharges[1].0, "order-paid-001");
+}
+
+#[tokio::test]
+async fn sync_order_status_applies_activity_payment_settlement() {
+    let repository = Arc::new(FakePaymentOrderRepository::default());
+    repository.insert(PaymentOrder {
+        id: Some(4),
+        order_no: "activity-001".to_string(),
+        user_id: 12,
+        amount: Decimal::new(2500, 2),
+        order_type: PaymentOrderType::Activity,
+        status: PaymentOrderStatus::Unpaid,
+        prepay_id: Some("prepay-activity".to_string()),
+        transaction_id: None,
+        description: Some("散人报名：周三晚".to_string()),
+        paid_at: None,
+        cancelled_at: None,
+        created_at: Some(Utc::now().naive_utc()),
+        updated_at: Some(Utc::now().naive_utc()),
+    });
+
+    let settlement_port = Arc::new(FakePaymentSettlementPort::default());
+    let gateway = Arc::new(FakeWxPayGateway::new(PaymentQueryResult {
+        paid: true,
+        transaction_id: Some("wx-activity-001".to_string()),
+        trade_state: Some("SUCCESS".to_string()),
+    }));
+    let team_repository = Arc::new(FakeTeamStore::with_team(sample_team(12, 12)));
+    let user_repository = Arc::new(FakeUserRepository::with_user(sample_user(
+        12,
+        "stored-openid-12",
+    )));
+    let service = PaymentService::new(
+        repository.clone(),
+        repository.clone(),
+        settlement_port.clone(),
+        Arc::new(FakeActivityPaymentAccessPort::default()),
+        gateway,
+        team_repository,
+        user_repository,
+    );
+
+    let result = service
+        .sync_order_status(&user_actor(12), "activity-001")
+        .await
+        .unwrap();
+
+    assert!(result.paid);
+    let activities = settlement_port.activities.lock().unwrap();
+    assert_eq!(activities.len(), 1);
+    assert_eq!(activities[0].0, "activity-001");
+    assert_eq!(activities[0].1, 12);
+    assert_eq!(activities[0].2, "wx-activity-001");
+}
+
+#[tokio::test]
+async fn create_challenge_payment_order_persists_activity_order_and_links_acceptance() {
+    let repository = Arc::new(FakePaymentOrderRepository::default());
+    let settlement_port = Arc::new(FakePaymentSettlementPort::default());
+    let activity_payment_access = Arc::new(FakeActivityPaymentAccessPort::default());
+    activity_payment_access.acceptances.lock().unwrap().insert(
+        ("challenge-001".to_string(), 12),
+        ActivityPaymentAcceptance {
+            challenge_id: "challenge-001".to_string(),
+            user_id: 12,
+            title: "周三散人局".to_string(),
+            amount: Decimal::new(2500, 2),
+            payment_status: "unpaid".to_string(),
+            payment_deadline_at: None,
+        },
+    );
+    let gateway = Arc::new(FakeWxPayGateway::new(PaymentQueryResult {
+        paid: false,
+        transaction_id: None,
+        trade_state: Some("NOTPAY".to_string()),
+    }));
+    let team_repository = Arc::new(FakeTeamStore::with_team(sample_team(12, 12)));
+    let user_repository = Arc::new(FakeUserRepository::with_user(sample_user(
+        12,
+        "stored-openid-12",
+    )));
+    let service = PaymentService::new(
+        repository.clone(),
+        repository.clone(),
+        settlement_port,
+        activity_payment_access.clone(),
+        gateway.clone(),
+        team_repository,
+        user_repository,
+    );
+
+    let result = service
+        .create_challenge_payment_order(
+            &user_actor(12),
+            registration_system_backend::payment::application::CreateChallengePaymentOrderCommand {
+                challenge_id: "challenge-001".to_string(),
+                openid: None,
+            },
+        )
+        .await
+        .unwrap();
+
+    let stored = repository
+        .get(&result.order_no)
+        .expect("activity payment order should be stored");
+    assert_eq!(stored.order_type, PaymentOrderType::Activity);
+    assert_eq!(stored.amount, Decimal::new(2500, 2));
+    assert_eq!(stored.description.as_deref(), Some("散人报名：周三散人局"));
+
+    let attached_orders = activity_payment_access.attached_orders.lock().unwrap();
+    assert_eq!(attached_orders.len(), 1);
+    assert_eq!(attached_orders[0].0, "challenge-001");
+    assert_eq!(attached_orders[0].1, 12);
+    assert_eq!(attached_orders[0].2, result.order_no);
+
+    let created = gateway.created_orders.lock().unwrap();
+    assert_eq!(created.len(), 1);
+    assert_eq!(created[0].1, Decimal::new(2500, 2));
+    assert_eq!(created[0].2, "stored-openid-12");
 }

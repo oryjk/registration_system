@@ -385,6 +385,14 @@ impl TeamCommandRepository for FakeTeamStore {
         unimplemented!()
     }
 
+    async fn set_captain_member(
+        &self,
+        _team_id: i64,
+        _user_id: i64,
+    ) -> Result<(), TeamDomainError> {
+        unimplemented!()
+    }
+
     async fn add_member(
         &self,
         _team_id: i64,

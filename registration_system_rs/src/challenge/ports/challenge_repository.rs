@@ -1,6 +1,7 @@
 use crate::activity::domain::Activity;
 use crate::challenge::domain::{
     Challenge, ChallengeDetail, ChallengeKind, ChallengeStatus, ChallengeSummary, DomainError,
+    IndividualAcceptancePaymentStatus,
 };
 use async_trait::async_trait;
 use rust_decimal::Decimal;
@@ -15,8 +16,31 @@ pub struct UpdateChallengeFields<'a> {
     pub location_latitude: Option<f64>,
     pub location_longitude: Option<f64>,
     pub players_per_team: i32,
+    pub min_players: Option<i32>,
+    pub max_players: Option<i32>,
     pub fee_per_person: Option<Decimal>,
     pub note: Option<&'a str>,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct AcceptIndividualFields<'a> {
+    pub challenge_id: &'a str,
+    pub user_id: i64,
+    pub payment_status: IndividualAcceptancePaymentStatus,
+    pub payment_deadline_at: Option<chrono::NaiveDateTime>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ExpiredIndividualAcceptance {
+    pub challenge_id: String,
+    pub user_id: i64,
+}
+
+#[derive(Debug, Clone)]
+pub struct PostpaidUnpaidAcceptance {
+    pub challenge_id: String,
+    pub user_id: i64,
+    pub title: String,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -89,8 +113,7 @@ pub trait ChallengeCommandRepository: Send + Sync {
     ) -> Result<Challenge, DomainError>;
     async fn accept_individual(
         &self,
-        challenge_id: &str,
-        user_id: i64,
+        fields: AcceptIndividualFields<'_>,
     ) -> Result<Challenge, DomainError>;
     async fn cancel_individual_acceptance(
         &self,
@@ -107,4 +130,12 @@ pub trait ChallengeCommandRepository: Send + Sync {
         challenge_id: &str,
         cancelled_by_user_id: i64,
     ) -> Result<Challenge, DomainError>;
+    async fn cancel_expired_prepaid_acceptances(
+        &self,
+        now: chrono::NaiveDateTime,
+    ) -> Result<Vec<ExpiredIndividualAcceptance>, DomainError>;
+    async fn mark_postpaid_unpaid_acceptances_notified(
+        &self,
+        now: chrono::NaiveDateTime,
+    ) -> Result<Vec<PostpaidUnpaidAcceptance>, DomainError>;
 }

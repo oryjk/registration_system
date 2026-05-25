@@ -89,6 +89,7 @@ pub trait TeamCommandRepository: Send + Sync {
     async fn create(&self, team: &Team) -> Result<Team, DomainError>;
     async fn update(&self, team_id: i64, fields: UpdateTeamFields<'_>) -> Result<(), DomainError>;
     async fn delete(&self, team_id: i64) -> Result<(), DomainError>;
+    async fn set_captain_member(&self, team_id: i64, user_id: i64) -> Result<(), DomainError>;
     async fn add_member(
         &self,
         team_id: i64,

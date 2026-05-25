@@ -1,13 +1,13 @@
 use crate::bootstrap::app::AppState;
 use crate::user::adapters::web::handlers::{
-    admin_create_player_handler, admin_update_player_handler, attendance_ranking_for_user_handler,
-    attendance_ranking_handler, bind_phone_number_handler, current_user_handler,
-    delete_user_handler, freeze_player_handler, get_my_activities_handler,
-    get_my_attendance_handler, get_player_detail_handler, get_user_activities_handler,
-    get_user_attendance_handler, get_user_info_by_id_handler, list_players_handler,
-    list_user_infos_handler, list_users_handler, login_handler, search_users_handler,
-    unfreeze_player_handler, update_profile_handler, update_user_by_id_handler,
-    upload_avatar_handler, verify_handler,
+    admin_create_player_handler, admin_create_role_user_handler, admin_update_player_handler,
+    attendance_ranking_for_user_handler, attendance_ranking_handler, bind_phone_number_handler,
+    change_player_password_handler, current_user_handler, delete_user_handler,
+    freeze_player_handler, get_my_activities_handler, get_my_attendance_handler,
+    get_player_detail_handler, get_user_activities_handler, get_user_attendance_handler,
+    get_user_info_by_id_handler, list_players_handler, list_user_infos_handler, list_users_handler,
+    login_handler, password_login_handler, search_users_handler, unfreeze_player_handler,
+    update_profile_handler, update_user_by_id_handler, upload_avatar_handler, verify_handler,
 };
 use axum::{
     Router,
@@ -17,6 +17,7 @@ use axum::{
 fn shared_router() -> Router<AppState> {
     Router::new()
         .route("/login", post(login_handler))
+        .route("/password-login", post(password_login_handler))
         .route("/verify", post(verify_handler))
         .route("/", get(list_users_handler))
         .route("/infos", get(list_user_infos_handler))
@@ -50,9 +51,14 @@ fn admin_router() -> Router<AppState> {
             "/players",
             get(list_players_handler).post(admin_create_player_handler),
         )
+        .route("/players/role-users", post(admin_create_role_user_handler))
         .route(
             "/players/:user_id",
             get(get_player_detail_handler).patch(admin_update_player_handler),
+        )
+        .route(
+            "/players/:user_id/password",
+            patch(change_player_password_handler),
         )
         .route("/players/:user_id/freeze", post(freeze_player_handler))
         .route("/players/:user_id/unfreeze", post(unfreeze_player_handler))

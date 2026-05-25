@@ -7,6 +7,7 @@ use async_trait::async_trait;
 #[async_trait]
 pub trait UserQueryRepository: Send + Sync {
     async fn find_by_open_id(&self, open_id: &str) -> Result<Option<User>, DomainError>;
+    async fn find_by_username(&self, username: &str) -> Result<Option<User>, DomainError>;
     async fn find_by_id(&self, user_id: i64) -> Result<Option<User>, DomainError>;
     async fn list_active(&self) -> Result<Vec<User>, DomainError>;
     async fn search(&self, keyword: &str, limit: i64) -> Result<Vec<User>, DomainError>;
@@ -46,6 +47,11 @@ pub trait UserQueryRepository: Send + Sync {
 pub trait UserCommandRepository: Send + Sync {
     async fn create(&self, user: &User) -> Result<User, DomainError>;
     async fn touch_login(&self, user_id: i64) -> Result<(), DomainError>;
+    async fn update_password_hash(
+        &self,
+        user_id: i64,
+        password_hash: &str,
+    ) -> Result<(), DomainError>;
     async fn update_profile(
         &self,
         user_id: i64,

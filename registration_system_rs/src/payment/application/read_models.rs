@@ -11,3 +11,9 @@ pub struct CreateTeamMembershipOrderResult {
     pub order_no: String,
     pub params: WxMiniPaymentParams,
 }
+
+#[derive(Debug, Clone)]
+pub struct CreateChallengePaymentOrderResult {
+    pub order_no: String,
+    pub params: WxMiniPaymentParams,
+}

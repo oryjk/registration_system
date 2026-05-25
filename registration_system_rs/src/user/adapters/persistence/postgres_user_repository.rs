@@ -37,6 +37,7 @@ struct UserRow {
     pub open_id: String,
     pub union_id: Option<String>,
     pub username: String,
+    pub password_hash: Option<String>,
     pub nickname: String,
     pub real_name: String,
     pub avatar_url: String,
@@ -57,6 +58,7 @@ impl From<UserRow> for User {
             open_id: row.open_id,
             union_id: row.union_id,
             username: row.username,
+            password_hash: row.password_hash,
             nickname: row.nickname,
             real_name: row.real_name,
             avatar_url: row.avatar_url,
@@ -153,7 +155,7 @@ impl UserQueryRepository for PostgresUserRepository {
     async fn find_by_open_id(&self, open_id: &str) -> Result<Option<User>, DomainError> {
         let row = sqlx::query_as::<_, UserRow>(
             r#"
-            SELECT id, open_id, union_id, username, nickname, real_name, avatar_url,
+            SELECT id, open_id, union_id, username, password_hash, nickname, real_name, avatar_url,
                    phone_number, is_manager, is_venue, status, create_time, latest_login_date,
                    leave_start_time, leave_end_time
             FROM rs_user_info
@@ -168,10 +170,28 @@ impl UserQueryRepository for PostgresUserRepository {
         Ok(row.map(User::from))
     }
 
+    async fn find_by_username(&self, username: &str) -> Result<Option<User>, DomainError> {
+        let row = sqlx::query_as::<_, UserRow>(
+            r#"
+            SELECT id, open_id, union_id, username, password_hash, nickname, real_name, avatar_url,
+                   phone_number, is_manager, is_venue, status, create_time, latest_login_date,
+                   leave_start_time, leave_end_time
+            FROM rs_user_info
+            WHERE username = $1
+            "#,
+        )
+        .bind(username)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
+
+        Ok(row.map(User::from))
+    }
+
     async fn find_by_id(&self, user_id: i64) -> Result<Option<User>, DomainError> {
         let row = sqlx::query_as::<_, UserRow>(
             r#"
-            SELECT id, open_id, union_id, username, nickname, real_name, avatar_url,
+            SELECT id, open_id, union_id, username, password_hash, nickname, real_name, avatar_url,
                    phone_number, is_manager, is_venue, status, create_time, latest_login_date,
                    leave_start_time, leave_end_time
             FROM rs_user_info
@@ -189,7 +209,7 @@ impl UserQueryRepository for PostgresUserRepository {
     async fn list_active(&self) -> Result<Vec<User>, DomainError> {
         let rows = sqlx::query_as::<_, UserRow>(
             r#"
-            SELECT id, open_id, union_id, username, nickname, real_name, avatar_url,
+            SELECT id, open_id, union_id, username, password_hash, nickname, real_name, avatar_url,
                    phone_number, is_manager, is_venue, status, create_time, latest_login_date,
                    leave_start_time, leave_end_time
             FROM rs_user_info
@@ -208,7 +228,7 @@ impl UserQueryRepository for PostgresUserRepository {
         let pattern = format!("%{keyword}%");
         let rows = sqlx::query_as::<_, UserRow>(
             r#"
-            SELECT id, open_id, union_id, username, nickname, real_name, avatar_url,
+            SELECT id, open_id, union_id, username, password_hash, nickname, real_name, avatar_url,
                    phone_number, is_manager, is_venue, status, create_time, latest_login_date,
                    leave_start_time, leave_end_time
             FROM rs_user_info
@@ -357,15 +377,16 @@ impl UserCommandRepository for PostgresUserRepository {
         let id: i64 = sqlx::query_scalar(
             r#"
             INSERT INTO rs_user_info (
-                open_id, union_id, username, nickname, real_name, avatar_url,
+                open_id, union_id, username, password_hash, nickname, real_name, avatar_url,
                 phone_number, is_manager, is_venue, status, create_time, latest_login_date
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
             RETURNING id
             "#,
         )
         .bind(&user.open_id)
         .bind(&user.union_id)
         .bind(&user.username)
+        .bind(&user.password_hash)
         .bind(&user.nickname)
         .bind(&user.real_name)
         .bind(&user.avatar_url)
@@ -393,6 +414,20 @@ impl UserCommandRepository for PostgresUserRepository {
 
     async fn touch_login(&self, user_id: i64) -> Result<(), DomainError> {
         sqlx::query("UPDATE rs_user_info SET latest_login_date = NOW() WHERE id = $1")
+            .bind(user_id)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
+        Ok(())
+    }
+
+    async fn update_password_hash(
+        &self,
+        user_id: i64,
+        password_hash: &str,
+    ) -> Result<(), DomainError> {
+        sqlx::query("UPDATE rs_user_info SET password_hash = $1 WHERE id = $2")
+            .bind(password_hash)
             .bind(user_id)
             .execute(&self.pool)
             .await
@@ -559,6 +594,16 @@ impl PostgresUserRepository {
                 ($3 = false AND NOT EXISTS (SELECT 1 FROM rs_team_members tm WHERE tm.user_id = u.id AND tm.status = 1))
               )
               AND (
+                $5::text IS NULL OR
+                ($5 = 'venue' AND u.is_venue = true) OR
+                ($5 = 'captain' AND EXISTS (
+                  SELECT 1 FROM rs_team_members tm
+                  WHERE tm.user_id = u.id
+                    AND tm.status = 1
+                    AND tm.role = 'captain'
+                ))
+              )
+              AND (
                 $4::bigint IS NULL OR
                 EXISTS (
                   SELECT 1
@@ -577,6 +622,7 @@ impl PostgresUserRepository {
         .bind(status_val)
         .bind(query.has_team)
         .bind(query.admin_scope)
+        .bind(query.role)
         .fetch_one(&self.pool)
         .await
         .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
@@ -595,6 +641,16 @@ impl PostgresUserRepository {
                 $3::boolean IS NULL OR
                 ($3 = true  AND EXISTS (SELECT 1 FROM rs_team_members tm WHERE tm.user_id = u.id AND tm.status = 1)) OR
                 ($3 = false AND NOT EXISTS (SELECT 1 FROM rs_team_members tm WHERE tm.user_id = u.id AND tm.status = 1))
+              )
+              AND (
+                $7::text IS NULL OR
+                ($7 = 'venue' AND u.is_venue = true) OR
+                ($7 = 'captain' AND EXISTS (
+                  SELECT 1 FROM rs_team_members tm
+                  WHERE tm.user_id = u.id
+                    AND tm.status = 1
+                    AND tm.role = 'captain'
+                ))
               )
               AND (
                 $4::bigint IS NULL OR
@@ -621,6 +677,7 @@ impl PostgresUserRepository {
         .bind(query.admin_scope)
         .bind(query.page_size)
         .bind(offset)
+        .bind(query.role)
         .fetch_all(&self.pool)
         .await
         .map_err(|e| DomainError::Infrastructure(e.to_string()))?;

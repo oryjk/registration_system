@@ -1,5 +1,39 @@
 # 后端六边形重构计划
 
+## 2026-05-23 散人约队最少/最多人数配置
+
+目标：后端为散人约队支持 `min_players` / `max_players`，默认 `players_per_team * 2` / `players_per_team * 2 + 4`，报名只按 `max_players` 拦截，成行状态按 `min_players`。
+
+阶段：
+1. [in_progress] 定位 challenge 领域、DTO、仓储和测试中的容量计算
+2. [pending] 新增默认规则与报名校验测试
+3. [pending] 新增迁移和领域/DTO/command/port 字段
+4. [pending] 更新 Postgres 查询、创建、编辑和散人报名状态逻辑
+5. [pending] 执行后端验证
+
+约束：
+- 保持六边形边界，handler 只负责 DTO 转换。
+- 旧数据字段可为空，读取时按默认规则兜底。
+- 后台编辑允许 `max_players` 小于当前已报名人数，不踢人，只影响新增报名。
+
+## 2026-05-23 散人约队支付方式与支付截止
+
+目标：为散人约队增加支付方式、报名支付状态、支付截止处理、Activity 支付订单回写和赛后未支付通知。
+
+阶段：
+1. [completed] 盘点 challenge/payment/notification 当前链路
+2. [completed] 新增后端业务/仓储红测
+3. [completed] 新增数据库迁移和领域模型字段
+4. [completed] 调整散人报名写入支付状态与截止时间
+5. [completed] 新增散人约队支付下单接口，并接入支付成功回写
+6. [completed] 新增超时取消与赛后通知处理逻辑
+7. [completed] 执行后端验证
+
+约束：
+- 业务规则放在 application/domain，handler 只做协议适配。
+- 支付成功回写必须幂等。
+- 自动取消和赛后通知不能依赖前端触发。
+
 ## 目标
 
 把 `team` 模块已经采用的形态推广到其他后端模块：应用层按高内聚 use case 拆分，读写职责尽量分离，`Service` 只作为兼容 facade，handler/API 行为保持稳定。
@@ -272,3 +306,25 @@
 3. [completed] 新增 `/api/admin/system/mini-app-decoration/images` 路由
 4. [completed] 更新 OpenAPI 文档
 5. [completed] 执行 `cargo check --tests` 和 clippy
+
+## 2026-05-23 散人约队最少/最多人数配置
+
+目标：散人约队支持每场配置最少成行人数和最多报名人数，未配置时按 `players_per_team * 2` / `players_per_team * 2 + 4` 计算。
+
+阶段：
+1. [completed] 领域模型新增 `min_players` / `max_players` 和默认 helper
+2. [completed] 创建/更新命令、DTO、仓储 port 和 Postgres 持久化接入字段
+3. [completed] 报名拦截改用最多报名人数，成行状态改用最少成行人数
+4. [completed] 保持散人 `matched` 后未满员仍可继续报名
+5. [completed] 补充并通过 challenge 业务测试、`cargo check --tests`、clippy
+
+## 2026-05-24 队长/场馆角色账号管理
+
+目标：后端支持超级管理员创建队长、场馆两类小程序角色用户，设置账号密码，并能对这些角色用户冻结/解冻和修改密码。
+
+阶段：
+1. [completed] 梳理现有 `rs_user_info`、`rs_teams.captain_id`、`rs_team_members.role` 和管理员权限模型
+2. [completed] 新增 `password_hash` 持久化与账号密码登录 use case
+3. [completed] 新增超管创建队长/场馆账号 use case，队长创建时绑定具体球队
+4. [completed] 新增修改角色用户密码接口，冻结/解冻复用现有球员接口
+5. [completed] 补充业务测试并完成 `cargo check --tests`、clippy

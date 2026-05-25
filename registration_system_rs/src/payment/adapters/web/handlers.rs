@@ -1,11 +1,13 @@
 use crate::bootstrap::app::AppState;
 use crate::payment::adapters::web::dto::{
-    CancelOrderRequest, CancelOrderResultDto, CreateRechargeOrderRequest,
-    CreateRechargeOrderResultDto, CreateTeamMembershipOrderRequest,
-    CreateTeamMembershipOrderResultDto, OrderStatusDto, PaymentOrderDto, PaymentOrderStatusDto,
-    SyncOrderStatusDto, WxMiniPaymentParamsDto,
+    CancelOrderRequest, CancelOrderResultDto, CreateChallengePaymentOrderRequest,
+    CreateChallengePaymentOrderResultDto, CreateRechargeOrderRequest, CreateRechargeOrderResultDto,
+    CreateTeamMembershipOrderRequest, CreateTeamMembershipOrderResultDto, OrderStatusDto,
+    PaymentOrderDto, PaymentOrderStatusDto, SyncOrderStatusDto, WxMiniPaymentParamsDto,
 };
-use crate::payment::application::CreateTeamMembershipOrderCommand;
+use crate::payment::application::{
+    CreateChallengePaymentOrderCommand, CreateTeamMembershipOrderCommand,
+};
 use crate::shared::api_response::ApiResponse;
 use crate::shared::http_error::HttpError;
 use axum::Json;
@@ -70,6 +72,39 @@ pub async fn create_team_membership_order_handler(
     Ok(Json(ApiResponse::with_message(
         "球队会员订单创建成功",
         CreateTeamMembershipOrderResultDto {
+            order_no: result.order_no,
+            params: WxMiniPaymentParamsDto {
+                time_stamp: result.params.time_stamp,
+                nonce_str: result.params.nonce_str,
+                package: result.params.package,
+                sign_type: result.params.sign_type,
+                pay_sign: result.params.pay_sign,
+            },
+        },
+    )))
+}
+
+pub async fn create_challenge_payment_order_handler(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(payload): Json<CreateChallengePaymentOrderRequest>,
+) -> Result<Json<ApiResponse<CreateChallengePaymentOrderResultDto>>, HttpError> {
+    let actor = state.actor(&headers)?;
+    let result = state
+        .services
+        .payment_service
+        .create_challenge_payment_order(
+            &actor,
+            CreateChallengePaymentOrderCommand {
+                challenge_id: payload.challenge_id,
+                openid: payload.openid,
+            },
+        )
+        .await?;
+
+    Ok(Json(ApiResponse::with_message(
+        "散人报名支付订单创建成功",
+        CreateChallengePaymentOrderResultDto {
             order_no: result.order_no,
             params: WxMiniPaymentParamsDto {
                 time_stamp: result.params.time_stamp,

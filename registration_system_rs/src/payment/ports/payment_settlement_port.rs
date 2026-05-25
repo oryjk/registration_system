@@ -21,6 +21,12 @@ pub struct TeamMembershipPaymentSettlement<'a> {
     pub note: Option<&'a str>,
 }
 
+pub struct ActivityPaymentSettlement<'a> {
+    pub order_no: &'a str,
+    pub user_id: i64,
+    pub transaction_id: &'a str,
+}
+
 #[async_trait]
 pub trait PaymentSettlementPort: Send + Sync {
     async fn settle_recharge_payment(
@@ -31,5 +37,10 @@ pub trait PaymentSettlementPort: Send + Sync {
     async fn settle_team_membership_payment(
         &self,
         settlement: TeamMembershipPaymentSettlement<'_>,
+    ) -> Result<(), DomainError>;
+
+    async fn settle_activity_payment(
+        &self,
+        settlement: ActivityPaymentSettlement<'_>,
     ) -> Result<(), DomainError>;
 }

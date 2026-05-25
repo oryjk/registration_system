@@ -1,6 +1,7 @@
 mod challenge_repository;
 
 pub use challenge_repository::{
-    AdminChallengeRepositoryQuery, ChallengeCommandRepository, ChallengeQueryRepository,
+    AcceptIndividualFields, AdminChallengeRepositoryQuery, ChallengeCommandRepository,
+    ChallengeQueryRepository, ExpiredIndividualAcceptance, PostpaidUnpaidAcceptance,
     TeamChallengeListQuery, UpdateChallengeFields,
 };

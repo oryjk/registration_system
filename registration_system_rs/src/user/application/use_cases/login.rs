@@ -79,4 +79,44 @@ impl UserLoginUseCase {
 
         Ok(UserLoginResult { access_token, user })
     }
+
+    pub async fn execute_with_password(
+        &self,
+        username: &str,
+        password: &str,
+    ) -> Result<UserLoginResult, AppError> {
+        if username.trim().is_empty() || password.trim().is_empty() {
+            return Err(AppError::Validation("账号和密码不能为空".to_string()));
+        }
+
+        let user = self
+            .query_repository
+            .find_by_username(username.trim())
+            .await
+            .map_err(|error| AppError::internal(format!("查询用户失败: {error}")))?
+            .ok_or(AppError::Unauthorized)?;
+
+        let Some(password_hash) = user.password_hash.as_deref() else {
+            return Err(AppError::Unauthorized);
+        };
+        let password_ok = bcrypt::verify(password, password_hash)
+            .map_err(|error| AppError::internal(format!("校验密码失败: {error}")))?;
+        if !password_ok || user.status != 1 {
+            return Err(AppError::Unauthorized);
+        }
+
+        self.command_repository
+            .touch_login(user.id)
+            .await
+            .map_err(|error| AppError::internal(format!("更新登录时间失败: {error}")))?;
+        let user = self
+            .query_repository
+            .find_by_id(user.id)
+            .await
+            .map_err(|error| AppError::internal(format!("重新加载用户失败: {error}")))?
+            .ok_or_else(|| AppError::NotFound("用户不存在".to_string()))?;
+
+        let access_token = self.token_service.issue_token(ActorKind::User, user.id)?;
+        Ok(UserLoginResult { access_token, user })
+    }
 }

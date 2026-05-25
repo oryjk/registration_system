@@ -1,8 +1,8 @@
 use crate::bootstrap::app::AppState;
 use crate::bootstrap::config::AppConfig;
 use crate::payment::adapters::{
-    MockWxPayGateway, PostgresPaymentOrderRepository, PostgresPaymentSettlementAdapter,
-    RealWxPayGateway, create_router,
+    MockWxPayGateway, PostgresActivityPaymentAccessAdapter, PostgresPaymentOrderRepository,
+    PostgresPaymentSettlementAdapter, RealWxPayGateway, create_router,
 };
 use crate::payment::application::PaymentService;
 use crate::team::adapters::PostgresTeamQueryRepository;
@@ -15,6 +15,8 @@ pub fn build_payment_service(pool: &PgPool, app_config: &AppConfig) -> Arc<Payme
     let query_repository = Arc::new(PostgresPaymentOrderRepository::new(pool.clone()));
     let command_repository = Arc::new(PostgresPaymentOrderRepository::new(pool.clone()));
     let settlement_port = Arc::new(PostgresPaymentSettlementAdapter::new(pool.clone()));
+    let activity_payment_access_port =
+        Arc::new(PostgresActivityPaymentAccessAdapter::new(pool.clone()));
     let team_repository = Arc::new(PostgresTeamQueryRepository::new(pool.clone()));
     let user_repository = Arc::new(PostgresUserRepository::new(pool.clone()));
     let wx_pay_gateway: Arc<dyn crate::payment::ports::WxPayGateway> = if app_config.wx_pay.use_mock
@@ -37,6 +39,7 @@ pub fn build_payment_service(pool: &PgPool, app_config: &AppConfig) -> Arc<Payme
         query_repository,
         command_repository,
         settlement_port,
+        activity_payment_access_port,
         wx_pay_gateway,
         team_repository,
         user_repository,

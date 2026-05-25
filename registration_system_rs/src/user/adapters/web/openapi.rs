@@ -1,9 +1,11 @@
 #![allow(dead_code)]
 
 use super::dto::{
-    AdminCreatePlayerRequest, AdminUpdatePlayerRequest, PlayerDto, PlayerListDto, TokenVerifyDto,
-    UpdateProfileRequest, UserActivityRecordDto, UserAttendanceRankingDto, UserAttendanceRecordDto,
+    AdminChangePlayerPasswordRequest, AdminCreatePlayerRequest, AdminCreateRoleUserRequest,
+    AdminUpdatePlayerRequest, PlayerDto, PlayerListDto, TokenVerifyDto, UpdateProfileRequest,
+    UserActivityRecordDto, UserAttendanceRankingDto, UserAttendanceRecordDto,
     UserAvatarUploadResponse, UserDto, UserLoginRequest, UserLoginResponse,
+    UserPasswordLoginRequest,
 };
 use super::handlers::{
     DateRangeQuery, FreezePlayerRequest, PlayerListQuery, UploadAvatarRequest, UserSearchQuery,
@@ -22,6 +24,18 @@ use utoipa::OpenApi;
     )
 )]
 fn login_doc() {}
+
+#[utoipa::path(
+    post,
+    path = "/password-login",
+    tag = "User",
+    request_body = UserPasswordLoginRequest,
+    responses(
+        (status = 200, description = "用户账号密码登录成功", body = ApiResponse<UserLoginResponse>),
+        (status = 401, description = "账号或密码错误", body = ApiResponse<EmptyData>)
+    )
+)]
+fn password_login_doc() {}
 
 #[utoipa::path(
     post,
@@ -265,6 +279,20 @@ fn list_players_doc() {}
 fn admin_create_player_doc() {}
 
 #[utoipa::path(
+    post,
+    path = "/players/role-users",
+    tag = "User",
+    security(("bearer_auth" = [])),
+    request_body = AdminCreateRoleUserRequest,
+    responses(
+        (status = 200, description = "创建队长或场馆账号成功", body = ApiResponse<UserDto>),
+        (status = 401, description = "未授权", body = ApiResponse<EmptyData>),
+        (status = 403, description = "非超级管理员无权操作", body = ApiResponse<EmptyData>)
+    )
+)]
+fn admin_create_role_user_doc() {}
+
+#[utoipa::path(
     get,
     path = "/players/{user_id}",
     tag = "User",
@@ -294,6 +322,23 @@ fn get_player_detail_doc() {}
     )
 )]
 fn admin_update_player_doc() {}
+
+#[utoipa::path(
+    patch,
+    path = "/players/{user_id}/password",
+    tag = "User",
+    security(("bearer_auth" = [])),
+    params(
+        ("user_id" = i64, Path, description = "队长或场馆用户 ID")
+    ),
+    request_body = AdminChangePlayerPasswordRequest,
+    responses(
+        (status = 200, description = "修改队长或场馆账号密码成功", body = ApiResponse<UserDto>),
+        (status = 401, description = "未授权", body = ApiResponse<EmptyData>),
+        (status = 403, description = "非超级管理员无权操作", body = ApiResponse<EmptyData>)
+    )
+)]
+fn change_player_password_doc() {}
 
 #[utoipa::path(
     post,
@@ -330,6 +375,7 @@ fn unfreeze_player_doc() {}
 #[openapi(
     paths(
         login_doc,
+        password_login_doc,
         verify_doc,
         list_users_doc,
         list_user_infos_doc,
@@ -348,8 +394,10 @@ fn unfreeze_player_doc() {}
         delete_user_doc,
         list_players_doc,
         admin_create_player_doc,
+        admin_create_role_user_doc,
         get_player_detail_doc,
         admin_update_player_doc,
+        change_player_password_doc,
         freeze_player_doc,
         unfreeze_player_doc
     ),
@@ -369,6 +417,7 @@ fn unfreeze_player_doc() {}
             ApiResponse<EmptyData>,
             EmptyData,
             UserLoginRequest,
+            UserPasswordLoginRequest,
             UserLoginResponse,
             UpdateProfileRequest,
             UserDto,
@@ -378,6 +427,9 @@ fn unfreeze_player_doc() {}
             UserAttendanceRecordDto,
             UserAttendanceRankingDto,
             AdminCreatePlayerRequest,
+            AdminCreateRoleUserRequest,
+            super::dto::RoleUserKindDto,
+            AdminChangePlayerPasswordRequest,
             AdminUpdatePlayerRequest,
             PlayerDto,
             PlayerListDto,

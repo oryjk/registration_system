@@ -5,16 +5,18 @@ use super::models::{
 use crate::activity::domain::Activity;
 use crate::challenge::domain::{
     Challenge, ChallengeDetail, ChallengeIndividualParticipant, ChallengeKind, ChallengeStatus,
-    ChallengeSummary, DomainError,
+    ChallengeSummary, CurrentUserIndividualAcceptance, DomainError,
+    IndividualAcceptancePaymentStatus,
 };
 use crate::challenge::ports::{
-    AdminChallengeRepositoryQuery, ChallengeCommandRepository, ChallengeQueryRepository,
+    AcceptIndividualFields, AdminChallengeRepositoryQuery, ChallengeCommandRepository,
+    ChallengeQueryRepository, ExpiredIndividualAcceptance, PostpaidUnpaidAcceptance,
     TeamChallengeListQuery, UpdateChallengeFields,
 };
 use async_trait::async_trait;
 use chrono::NaiveDateTime;
-use std::collections::HashMap;
 use sqlx::{PgPool, Postgres, QueryBuilder};
+use std::collections::HashMap;
 
 #[derive(Clone)]
 pub struct PostgresChallengeRepository {
@@ -37,6 +39,7 @@ impl PostgresChallengeRepository {
                 c.id,
                 c.title,
                 c.kind,
+                c.payment_mode,
                 c.host_team_id,
                 c.host_user_id,
                 c.guest_team_id,
@@ -49,6 +52,8 @@ impl PostgresChallengeRepository {
                 c.location_latitude,
                 c.location_longitude,
                 c.players_per_team,
+                c.min_players,
+                c.max_players,
                 c.fee_per_person,
                 c.note,
                 c.status,
@@ -173,9 +178,9 @@ impl ChallengeQueryRepository for PostgresChallengeRepository {
         let row = sqlx::query_as::<_, ChallengeRow>(
             r#"
             SELECT
-                id, title, kind, host_team_id, host_user_id, guest_team_id, accepted_by_user_id, activity_id,
+                id, title, kind, payment_mode, host_team_id, host_user_id, guest_team_id, accepted_by_user_id, activity_id,
                 holding_date, start_time, end_time, location, location_latitude, location_longitude,
-                players_per_team, fee_per_person, note, status, accepted_at, cancelled_at, created_at, updated_at
+                players_per_team, min_players, max_players, fee_per_person, note, status, accepted_at, cancelled_at, created_at, updated_at
             FROM rs_challenges
             WHERE id = $1
             "#,
@@ -198,6 +203,7 @@ impl ChallengeQueryRepository for PostgresChallengeRepository {
                 c.id,
                 c.title,
                 c.kind,
+                c.payment_mode,
                 c.host_team_id,
                 c.host_user_id,
                 c.guest_team_id,
@@ -210,6 +216,8 @@ impl ChallengeQueryRepository for PostgresChallengeRepository {
                 c.location_latitude,
                 c.location_longitude,
                 c.players_per_team,
+                c.min_players,
+                c.max_players,
                 c.fee_per_person,
                 c.note,
                 c.status,
@@ -356,6 +364,7 @@ impl ChallengeQueryRepository for PostgresChallengeRepository {
                 c.id,
                 c.title,
                 c.kind,
+                c.payment_mode,
                 c.host_team_id,
                 c.host_user_id,
                 c.guest_team_id,
@@ -368,6 +377,8 @@ impl ChallengeQueryRepository for PostgresChallengeRepository {
                 c.location_latitude,
                 c.location_longitude,
                 c.players_per_team,
+                c.min_players,
+                c.max_players,
                 c.fee_per_person,
                 c.note,
                 c.status,
@@ -567,10 +578,39 @@ impl ChallengeQueryRepository for PostgresChallengeRepository {
             Vec::new()
         };
 
+        let current_user_acceptance = match (summary.challenge.kind, user_id) {
+            (ChallengeKind::Individual, Some(user_id)) => {
+                let row = sqlx::query_as::<_, (String, Option<NaiveDateTime>, Option<String>)>(
+                    r#"
+                    SELECT payment_status, payment_deadline_at, payment_order_no
+                    FROM rs_challenge_individual_acceptances
+                    WHERE challenge_id = $1 AND user_id = $2
+                    "#,
+                )
+                .bind(challenge_id)
+                .bind(user_id)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
+
+                row.map(|(payment_status, payment_deadline_at, payment_order_no)| {
+                    CurrentUserIndividualAcceptance {
+                        payment_status: IndividualAcceptancePaymentStatus::from_db_str(
+                            &payment_status,
+                        ),
+                        payment_deadline_at,
+                        payment_order_no,
+                    }
+                })
+            }
+            _ => None,
+        };
+
         Ok(Some(ChallengeDetail {
             summary,
             activity,
             individual_participants,
+            current_user_acceptance,
         }))
     }
 
@@ -626,19 +666,20 @@ impl ChallengeCommandRepository for PostgresChallengeRepository {
         sqlx::query(
             r#"
             INSERT INTO rs_challenges (
-                id, title, kind, host_team_id, host_user_id, guest_team_id, accepted_by_user_id, activity_id,
+                id, title, kind, payment_mode, host_team_id, host_user_id, guest_team_id, accepted_by_user_id, activity_id,
                 holding_date, start_time, end_time, location, location_latitude, location_longitude,
-                players_per_team, fee_per_person, note, status, accepted_at, cancelled_at, created_at, updated_at
+                players_per_team, min_players, max_players, fee_per_person, note, status, accepted_at, cancelled_at, created_at, updated_at
             ) VALUES (
-                $1, $2, $3, $4, $5, $6, $7, $8,
-                $9, $10, $11, $12, $13, $14,
-                $15, $16, $17, $18, $19, $20, $21, $22
+                $1, $2, $3, $4, $5, $6, $7, $8, $9,
+                $10, $11, $12, $13, $14, $15,
+                $16, $17, $18, $19, $20, $21, $22, $23, $24, $25
             )
             "#,
         )
         .bind(&challenge.id)
         .bind(&challenge.title)
         .bind(challenge.kind.as_db_str())
+        .bind(challenge.payment_mode.as_db_str())
         .bind(challenge.host_team_id)
         .bind(challenge.host_user_id)
         .bind(challenge.guest_team_id)
@@ -651,6 +692,8 @@ impl ChallengeCommandRepository for PostgresChallengeRepository {
         .bind(challenge.location_latitude)
         .bind(challenge.location_longitude)
         .bind(challenge.players_per_team)
+        .bind(challenge.min_players)
+        .bind(challenge.max_players)
         .bind(challenge.fee_per_person)
         .bind(&challenge.note)
         .bind(challenge.status.as_db_str())
@@ -802,9 +845,9 @@ impl ChallengeCommandRepository for PostgresChallengeRepository {
         let row = sqlx::query_as::<_, ChallengeRow>(
             r#"
             SELECT
-                id, title, kind, host_team_id, host_user_id, guest_team_id, accepted_by_user_id, activity_id,
+                id, title, kind, payment_mode, host_team_id, host_user_id, guest_team_id, accepted_by_user_id, activity_id,
                 holding_date, start_time, end_time, location, location_latitude, location_longitude,
-                players_per_team, fee_per_person, note, status, accepted_at, cancelled_at, created_at, updated_at
+                players_per_team, min_players, max_players, fee_per_person, note, status, accepted_at, cancelled_at, created_at, updated_at
             FROM rs_challenges
             WHERE id = $1
             "#,
@@ -837,9 +880,9 @@ impl ChallengeCommandRepository for PostgresChallengeRepository {
         let row = sqlx::query_as::<_, ChallengeRow>(
             r#"
             SELECT
-                id, title, kind, host_team_id, host_user_id, guest_team_id, accepted_by_user_id, activity_id,
+                id, title, kind, payment_mode, host_team_id, host_user_id, guest_team_id, accepted_by_user_id, activity_id,
                 holding_date, start_time, end_time, location, location_latitude, location_longitude,
-                players_per_team, fee_per_person, note, status, accepted_at, cancelled_at, created_at, updated_at
+                players_per_team, min_players, max_players, fee_per_person, note, status, accepted_at, cancelled_at, created_at, updated_at
             FROM rs_challenges
             WHERE id = $1
             FOR UPDATE
@@ -937,9 +980,9 @@ impl ChallengeCommandRepository for PostgresChallengeRepository {
                 updated_at = NOW()
             WHERE id = $4
             RETURNING
-                id, title, kind, host_team_id, host_user_id, guest_team_id, accepted_by_user_id, activity_id,
+                id, title, kind, payment_mode, host_team_id, host_user_id, guest_team_id, accepted_by_user_id, activity_id,
                 holding_date, start_time, end_time, location, location_latitude, location_longitude,
-                players_per_team, fee_per_person, note, status, accepted_at, cancelled_at, created_at, updated_at
+                players_per_team, min_players, max_players, fee_per_person, note, status, accepted_at, cancelled_at, created_at, updated_at
             "#,
         )
         .bind(host_team_id)
@@ -959,8 +1002,7 @@ impl ChallengeCommandRepository for PostgresChallengeRepository {
 
     async fn accept_individual(
         &self,
-        challenge_id: &str,
-        user_id: i64,
+        fields: AcceptIndividualFields<'_>,
     ) -> Result<Challenge, DomainError> {
         let mut tx = self
             .pool
@@ -971,15 +1013,15 @@ impl ChallengeCommandRepository for PostgresChallengeRepository {
         let row = sqlx::query_as::<_, ChallengeRow>(
             r#"
             SELECT
-                id, title, kind, host_team_id, host_user_id, guest_team_id, accepted_by_user_id, activity_id,
+                id, title, kind, payment_mode, host_team_id, host_user_id, guest_team_id, accepted_by_user_id, activity_id,
                 holding_date, start_time, end_time, location, location_latitude, location_longitude,
-                players_per_team, fee_per_person, note, status, accepted_at, cancelled_at, created_at, updated_at
+                players_per_team, min_players, max_players, fee_per_person, note, status, accepted_at, cancelled_at, created_at, updated_at
             FROM rs_challenges
             WHERE id = $1
             FOR UPDATE
             "#,
         )
-        .bind(challenge_id)
+        .bind(fields.challenge_id)
         .fetch_optional(&mut *tx)
         .await
         .map_err(|error| DomainError::Infrastructure(error.to_string()))?
@@ -1003,13 +1045,22 @@ impl ChallengeCommandRepository for PostgresChallengeRepository {
 
         let insert_result = sqlx::query(
             r#"
-            INSERT INTO rs_challenge_individual_acceptances (challenge_id, user_id, created_at, updated_at)
-            VALUES ($1, $2, NOW(), NOW())
+            INSERT INTO rs_challenge_individual_acceptances (
+                challenge_id,
+                user_id,
+                payment_status,
+                payment_deadline_at,
+                created_at,
+                updated_at
+            )
+            VALUES ($1, $2, $3, $4, NOW(), NOW())
             ON CONFLICT (challenge_id, user_id) DO NOTHING
             "#,
         )
-        .bind(challenge_id)
-        .bind(user_id)
+        .bind(fields.challenge_id)
+        .bind(fields.user_id)
+        .bind(fields.payment_status.as_db_str())
+        .bind(fields.payment_deadline_at)
         .execute(&mut *tx)
         .await
         .map_err(|error| DomainError::Infrastructure(error.to_string()))?;
@@ -1028,17 +1079,13 @@ impl ChallengeCommandRepository for PostgresChallengeRepository {
             WHERE challenge_id = $1
             "#,
         )
-        .bind(challenge_id)
+        .bind(fields.challenge_id)
         .fetch_one(&mut *tx)
         .await
         .map_err(|error| DomainError::Infrastructure(error.to_string()))?;
 
-        let signup_capacity = if row.kind == "individual" {
-            row.players_per_team * 2
-        } else {
-            row.players_per_team
-        };
-        let next_status = if accepted_count >= i64::from(signup_capacity) {
+        let challenge = Challenge::from(row);
+        let next_status = if accepted_count >= i64::from(challenge.min_signup_players()) {
             "matched"
         } else {
             "open"
@@ -1052,12 +1099,12 @@ impl ChallengeCommandRepository for PostgresChallengeRepository {
                 updated_at = NOW()
             WHERE id = $1
             RETURNING
-                id, title, kind, host_team_id, host_user_id, guest_team_id, accepted_by_user_id, activity_id,
+                id, title, kind, payment_mode, host_team_id, host_user_id, guest_team_id, accepted_by_user_id, activity_id,
                 holding_date, start_time, end_time, location, location_latitude, location_longitude,
-                players_per_team, fee_per_person, note, status, accepted_at, cancelled_at, created_at, updated_at
+                players_per_team, min_players, max_players, fee_per_person, note, status, accepted_at, cancelled_at, created_at, updated_at
             "#,
         )
-        .bind(challenge_id)
+        .bind(fields.challenge_id)
         .bind(next_status)
         .fetch_one(&mut *tx)
         .await
@@ -1084,9 +1131,9 @@ impl ChallengeCommandRepository for PostgresChallengeRepository {
         let challenge = sqlx::query_as::<_, ChallengeRow>(
             r#"
             SELECT
-                id, title, kind, host_team_id, host_user_id, guest_team_id, accepted_by_user_id, activity_id,
+                id, title, kind, payment_mode, host_team_id, host_user_id, guest_team_id, accepted_by_user_id, activity_id,
                 holding_date, start_time, end_time, location, location_latitude, location_longitude,
-                players_per_team, fee_per_person, note, status, accepted_at, cancelled_at, created_at, updated_at
+                players_per_team, min_players, max_players, fee_per_person, note, status, accepted_at, cancelled_at, created_at, updated_at
             FROM rs_challenges
             WHERE id = $1
             FOR UPDATE
@@ -1136,8 +1183,8 @@ impl ChallengeCommandRepository for PostgresChallengeRepository {
         .fetch_one(&mut *tx)
         .await
         .map_err(|error| DomainError::Infrastructure(error.to_string()))?;
-        let signup_capacity = challenge.players_per_team * 2;
-        let next_status = if accepted_count >= i64::from(signup_capacity) {
+        let challenge = Challenge::from(challenge);
+        let next_status = if accepted_count >= i64::from(challenge.min_signup_players()) {
             "matched"
         } else {
             "open"
@@ -1150,9 +1197,9 @@ impl ChallengeCommandRepository for PostgresChallengeRepository {
                 updated_at = NOW()
             WHERE id = $1
             RETURNING
-                id, title, kind, host_team_id, host_user_id, guest_team_id, accepted_by_user_id, activity_id,
+                id, title, kind, payment_mode, host_team_id, host_user_id, guest_team_id, accepted_by_user_id, activity_id,
                 holding_date, start_time, end_time, location, location_latitude, location_longitude,
-                players_per_team, fee_per_person, note, status, accepted_at, cancelled_at, created_at, updated_at
+                players_per_team, min_players, max_players, fee_per_person, note, status, accepted_at, cancelled_at, created_at, updated_at
             "#,
         )
         .bind(challenge_id)
@@ -1184,14 +1231,16 @@ impl ChallengeCommandRepository for PostgresChallengeRepository {
                 location_latitude = $7,
                 location_longitude = $8,
                 players_per_team = $9,
-                fee_per_person = $10,
-                note = $11,
+                min_players = $10,
+                max_players = $11,
+                fee_per_person = $12,
+                note = $13,
                 updated_at = NOW()
             WHERE id = $1
             RETURNING
-                id, title, kind, host_team_id, host_user_id, guest_team_id, accepted_by_user_id, activity_id,
+                id, title, kind, payment_mode, host_team_id, host_user_id, guest_team_id, accepted_by_user_id, activity_id,
                 holding_date, start_time, end_time, location, location_latitude, location_longitude,
-                players_per_team, fee_per_person, note, status, accepted_at, cancelled_at, created_at, updated_at
+                players_per_team, min_players, max_players, fee_per_person, note, status, accepted_at, cancelled_at, created_at, updated_at
             "#,
         )
         .bind(challenge_id)
@@ -1203,6 +1252,8 @@ impl ChallengeCommandRepository for PostgresChallengeRepository {
         .bind(fields.location_latitude)
         .bind(fields.location_longitude)
         .bind(fields.players_per_team)
+        .bind(fields.min_players)
+        .bind(fields.max_players)
         .bind(fields.fee_per_person)
         .bind(fields.note)
         .fetch_optional(&self.pool)
@@ -1224,9 +1275,9 @@ impl ChallengeCommandRepository for PostgresChallengeRepository {
             SET status = 'cancelled', cancelled_at = NOW(), updated_at = NOW()
             WHERE id = $1
             RETURNING
-                id, title, kind, host_team_id, host_user_id, guest_team_id, accepted_by_user_id, activity_id,
+                id, title, kind, payment_mode, host_team_id, host_user_id, guest_team_id, accepted_by_user_id, activity_id,
                 holding_date, start_time, end_time, location, location_latitude, location_longitude,
-                players_per_team, fee_per_person, note, status, accepted_at, cancelled_at, created_at, updated_at
+                players_per_team, min_players, max_players, fee_per_person, note, status, accepted_at, cancelled_at, created_at, updated_at
             "#,
         )
         .bind(challenge_id)
@@ -1235,5 +1286,102 @@ impl ChallengeCommandRepository for PostgresChallengeRepository {
         .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
 
         Ok(Challenge::from(row))
+    }
+
+    async fn cancel_expired_prepaid_acceptances(
+        &self,
+        now: NaiveDateTime,
+    ) -> Result<Vec<ExpiredIndividualAcceptance>, DomainError> {
+        let mut tx = self
+            .pool
+            .begin()
+            .await
+            .map_err(|error| DomainError::Infrastructure(error.to_string()))?;
+
+        let rows = sqlx::query_as::<_, (String, i64)>(
+            r#"
+            DELETE FROM rs_challenge_individual_acceptances a
+            USING rs_challenges c
+            WHERE a.challenge_id = c.id
+              AND c.kind = 'individual'
+              AND c.payment_mode = 'prepaid'
+              AND a.payment_status = 'unpaid'
+              AND a.payment_deadline_at IS NOT NULL
+              AND a.payment_deadline_at <= $1
+            RETURNING a.challenge_id, a.user_id
+            "#,
+        )
+        .bind(now)
+        .fetch_all(&mut *tx)
+        .await
+        .map_err(|error| DomainError::Infrastructure(error.to_string()))?;
+
+        let challenge_ids = rows
+            .iter()
+            .map(|(challenge_id, _)| challenge_id.as_str())
+            .collect::<Vec<_>>();
+        if !challenge_ids.is_empty() {
+            sqlx::query(
+                r#"
+                UPDATE rs_challenges
+                SET status = 'open',
+                    updated_at = NOW()
+                WHERE id = ANY($1)
+                  AND kind = 'individual'
+                  AND status <> 'cancelled'
+                "#,
+            )
+            .bind(&challenge_ids)
+            .execute(&mut *tx)
+            .await
+            .map_err(|error| DomainError::Infrastructure(error.to_string()))?;
+        }
+
+        tx.commit()
+            .await
+            .map_err(|error| DomainError::Infrastructure(error.to_string()))?;
+
+        Ok(rows
+            .into_iter()
+            .map(|(challenge_id, user_id)| ExpiredIndividualAcceptance {
+                challenge_id,
+                user_id,
+            })
+            .collect())
+    }
+
+    async fn mark_postpaid_unpaid_acceptances_notified(
+        &self,
+        now: NaiveDateTime,
+    ) -> Result<Vec<PostpaidUnpaidAcceptance>, DomainError> {
+        let rows = sqlx::query_as::<_, (String, i64, String)>(
+            r#"
+            UPDATE rs_challenge_individual_acceptances a
+            SET payment_notified_at = $1,
+                updated_at = NOW()
+            FROM rs_challenges c
+            WHERE a.challenge_id = c.id
+              AND c.kind = 'individual'
+              AND c.payment_mode = 'postpaid'
+              AND c.end_time <= $1
+              AND COALESCE(c.fee_per_person, 0.00) > 0
+              AND a.payment_status = 'unpaid'
+              AND a.payment_notified_at IS NULL
+            RETURNING a.challenge_id, a.user_id, c.title
+            "#,
+        )
+        .bind(now)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|error| DomainError::Infrastructure(error.to_string()))?;
+
+        Ok(rows
+            .into_iter()
+            .map(|(challenge_id, user_id, title)| PostpaidUnpaidAcceptance {
+                challenge_id,
+                user_id,
+                title,
+            })
+            .collect())
     }
 }

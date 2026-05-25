@@ -1,5 +1,24 @@
 # 后端重构发现记录
 
+## 2026-05-23 散人约队最少/最多人数配置发现
+
+- `Challenge::signup_capacity()` 当前既用于散人约队最大人数，也间接影响前端显示；需要拆成 `min_signup_players()` 和 `max_signup_players()` 这类明确语义。
+- `AcceptChallengeUseCase::accept_individual_challenge` 当前在应用层按 `accepted_count >= challenge.signup_capacity()` 拦截，应该改为按 `max_signup_players()` 拦截。
+- `PostgresChallengeRepository::accept_individual` 当前插入后按 `players_per_team * 2` 判断是否更新状态；新规则应按 `min_signup_players()` 判断是否已成行。
+- `UpdateChallengeFields` 当前只包含基础字段；后台编辑人数上下限需要从 DTO -> command -> fields -> repository 全链路传递。
+- 旧数据兼容更适合把 `min_players/max_players` 设计为 nullable，并在领域层提供默认计算，而不是一次性回填写死。
+
+## 2026-05-23 散人约队支付方式发现
+
+- `Challenge` 领域模型目前没有支付方式；`CreateChallengeCommand` 和 Web DTO 也没有 `payment_mode`。
+- `ChallengeCommandRepository::accept_individual` 目前只接收 `challenge_id` 和 `user_id`，因此无法写入支付状态、支付截止时间或订单关联。
+- `PaymentOrderType::Activity` 已存在，适合用于散人约队报名支付，但 `HandlePaidOrderUseCase` 目前只处理充值和球队会员。
+- 支付 settlement port 当前聚焦充值和球队会员；散人报名支付回写更适合通过 payment settlement port 新增 `settle_activity_payment`，由 PostgreSQL adapter 更新 `rs_challenge_individual_acceptances`。
+- 系统内通知模块已经存在，赛后未支付提醒应复用 notification application service。
+- `rs_challenge_individual_acceptances` 需要保存 `payment_status`、`payment_deadline_at`、`payment_order_no`、`payment_notified_at`，分别服务支付状态展示、赛前自动取消、支付回写和赛后通知去重。
+- 散人支付下单不应直接依赖 challenge repository；payment 模块新增 `ActivityPaymentAccessPort` 查询/关联散人报名，保持 payment 与 challenge 持久化细节解耦。
+- 自动处理任务放在 app bootstrap 后台 loop 中，每 60 秒执行一次；即使前端不打开详情页，赛前超时取消和赛后通知仍会发生。
+
 ## 2026-05-12
 
 - `team` 已完成读写仓储分离，`TeamService` 只保留兼容 facade。
@@ -123,3 +142,18 @@
 - `GET /api/system/mini-app-runtime-config` 不需要登录，适合小程序启动和首页直接读取；管理端更新接口已经要求 super admin。
 - 装修图片上传需要强制进入 MinIO，因此应复用用户头像链路里的 `save_minio_bytes`，而不是球队 Logo 使用的按配置 `save_upload_bytes`。
 - 对象 key 采用 `mini-app/home-banners/<uuid>.<ext>`，与头像和球队 Logo 目录分开，便于后续清理和权限管理。
+
+## 2026-05-23 散人约队最少/最多人数配置发现
+
+- `Challenge::signup_capacity()` 原本把散人容量固定为 `players_per_team * 2`，与“赛制”和“最多报名人数”两个概念混在一起。
+- 新规则需要三个独立语义：`players_per_team` 是赛制，`min_players` 是成行阈值，`max_players` 是报名上限。
+- 散人达到 `min_players` 后状态可变为 `matched`，但只要未达到 `max_players`，仍应继续允许报名；因此 application 接约入口不能把散人 `matched` 直接视为不可报名。
+- 后台把 `max_players` 改小到小于当前已报名人数时不应踢人，也不需要在 update use case 中查当前报名数；后续新增报名由 accept use case 拦截。
+
+## 2026-05-24 队长/场馆角色账号管理发现
+
+- 场馆身份是 `rs_user_info.is_venue`，和普通球员身份可叠加；创建场馆账号只需要设置该字段并保留普通用户属性。
+- 队长身份是球队关系，不是用户字段；现有约队发布和球队管理会看 `rs_teams.captain_id` 或成员角色 `captain/leader`。
+- 创建队长账号如果不绑定球队，后端无法证明该用户具备队长权限；因此本轮 `role=captain` 要求传 `team_id`，并在同一仓储方法中更新 `rs_teams.captain_id` 与 `rs_team_members.role='captain'`。
+- 账号密码登录需要 `rs_user_info.password_hash`，但历史 `username` 可能重复；数据库唯一索引只约束 `password_hash IS NOT NULL` 的账号用户，应用层额外用 `find_by_username` 拒绝账号冲突。
+- 修改密码接口限制为超级管理员，且目标用户必须是场馆或拥有 active captain 球队关系，避免误给普通用户开放角色账号管理能力。

@@ -6,10 +6,13 @@ use registration_system_backend::challenge::application::{
     PublicChallengeListQuery, UpdateChallengeCommand,
 };
 use registration_system_backend::challenge::domain::{
-    Challenge, ChallengeDetail, ChallengeKind, ChallengeStatus, ChallengeSummary, DomainError,
+    Challenge, ChallengeDetail, ChallengeKind, ChallengePaymentMode, ChallengeStatus,
+    ChallengeSummary, CurrentUserIndividualAcceptance, DomainError,
+    IndividualAcceptancePaymentStatus,
 };
 use registration_system_backend::challenge::ports::{
-    AdminChallengeRepositoryQuery, ChallengeCommandRepository, ChallengeQueryRepository,
+    AcceptIndividualFields, AdminChallengeRepositoryQuery, ChallengeCommandRepository,
+    ChallengeQueryRepository, ExpiredIndividualAcceptance, PostpaidUnpaidAcceptance,
     TeamChallengeListQuery, UpdateChallengeFields,
 };
 use registration_system_backend::notification::application::NotificationService;
@@ -40,6 +43,8 @@ struct FakeChallengeRepository {
     challenges: Mutex<HashMap<String, Challenge>>,
     created_activity: Mutex<Option<Activity>>,
     individual_acceptances: Mutex<HashMap<String, BTreeSet<i64>>>,
+    individual_acceptance_payments: Mutex<HashMap<(String, i64), CurrentUserIndividualAcceptance>>,
+    notified_postpaid_acceptances: Mutex<BTreeSet<(String, i64)>>,
 }
 
 #[async_trait]
@@ -183,9 +188,9 @@ impl ChallengeQueryRepository for FakeChallengeRepository {
                         .is_some_and(|items| items.contains(&viewer_id))
                 });
 
-                    ChallengeSummary {
-                        host_team_name: challenge
-                            .host_team_id
+                ChallengeSummary {
+                    host_team_name: challenge
+                        .host_team_id
                         .map(|value| value.to_string())
                         .unwrap_or_else(|| "场馆约队".to_string()),
                     host_team_credit_score: 90,
@@ -194,12 +199,12 @@ impl ChallengeQueryRepository for FakeChallengeRepository {
                     guest_team_credit_score: Some(85),
                     guest_team_trust_label: Some("稳定赴约".to_string()),
                     current_team_relation: None,
-                        accepted_count,
-                        current_user_joined,
-                        can_accept: false,
-                        individual_participant_preview: Vec::new(),
-                        challenge,
-                    }
+                    accepted_count,
+                    current_user_joined,
+                    can_accept: false,
+                    individual_participant_preview: Vec::new(),
+                    challenge,
+                }
             })
             .collect())
     }
@@ -248,6 +253,13 @@ impl ChallengeQueryRepository for FakeChallengeRepository {
                     },
                     activity: None,
                     individual_participants: Vec::new(),
+                    current_user_acceptance: user_id.and_then(|viewer_id| {
+                        self.individual_acceptance_payments
+                            .lock()
+                            .unwrap()
+                            .get(&(challenge.id.clone(), viewer_id))
+                            .cloned()
+                    }),
                 }
             }))
     }
@@ -354,24 +366,33 @@ impl ChallengeCommandRepository for FakeChallengeRepository {
 
     async fn accept_individual(
         &self,
-        challenge_id: &str,
-        user_id: i64,
+        fields: AcceptIndividualFields<'_>,
     ) -> Result<Challenge, DomainError> {
         let mut acceptances = self.individual_acceptances.lock().unwrap();
-        let accepted_users = acceptances.entry(challenge_id.to_string()).or_default();
+        let accepted_users = acceptances
+            .entry(fields.challenge_id.to_string())
+            .or_default();
 
-        if !accepted_users.insert(user_id) {
+        if !accepted_users.insert(fields.user_id) {
             return Err(DomainError::Conflict("你已接过这场散人约队".to_string()));
         }
+        self.individual_acceptance_payments.lock().unwrap().insert(
+            (fields.challenge_id.to_string(), fields.user_id),
+            CurrentUserIndividualAcceptance {
+                payment_status: fields.payment_status,
+                payment_deadline_at: fields.payment_deadline_at,
+                payment_order_no: None,
+            },
+        );
 
         let accepted_count = accepted_users.len() as i32;
         drop(acceptances);
 
         let mut items = self.challenges.lock().unwrap();
         let challenge = items
-            .get_mut(challenge_id)
+            .get_mut(fields.challenge_id)
             .ok_or_else(|| DomainError::NotFound("challenge not found".to_string()))?;
-        if accepted_count >= challenge.players_per_team {
+        if accepted_count >= challenge.min_signup_players() {
             challenge.status = ChallengeStatus::Matched;
             challenge.accepted_at = Some(Utc::now().naive_utc());
         }
@@ -401,7 +422,7 @@ impl ChallengeCommandRepository for FakeChallengeRepository {
         let challenge = items
             .get_mut(challenge_id)
             .ok_or_else(|| DomainError::NotFound("challenge not found".to_string()))?;
-        challenge.status = if accepted_count >= challenge.players_per_team {
+        challenge.status = if accepted_count >= challenge.min_signup_players() {
             ChallengeStatus::Matched
         } else {
             ChallengeStatus::Open
@@ -427,6 +448,8 @@ impl ChallengeCommandRepository for FakeChallengeRepository {
         challenge.location_latitude = fields.location_latitude;
         challenge.location_longitude = fields.location_longitude;
         challenge.players_per_team = fields.players_per_team;
+        challenge.min_players = fields.min_players;
+        challenge.max_players = fields.max_players;
         challenge.fee_per_person = fields.fee_per_person;
         challenge.note = fields.note.map(ToString::to_string);
         challenge.updated_at = Utc::now().naive_utc();
@@ -446,6 +469,82 @@ impl ChallengeCommandRepository for FakeChallengeRepository {
         challenge.cancelled_at = Some(Utc::now().naive_utc());
         challenge.updated_at = Utc::now().naive_utc();
         Ok(challenge.clone())
+    }
+
+    async fn cancel_expired_prepaid_acceptances(
+        &self,
+        now: chrono::NaiveDateTime,
+    ) -> Result<Vec<ExpiredIndividualAcceptance>, DomainError> {
+        let expired_keys = self
+            .individual_acceptance_payments
+            .lock()
+            .unwrap()
+            .iter()
+            .filter(|(_, acceptance)| {
+                acceptance.payment_status == IndividualAcceptancePaymentStatus::Unpaid
+                    && acceptance
+                        .payment_deadline_at
+                        .is_some_and(|deadline| deadline <= now)
+            })
+            .map(|((challenge_id, user_id), _)| (challenge_id.clone(), *user_id))
+            .collect::<Vec<_>>();
+
+        for (challenge_id, user_id) in &expired_keys {
+            self.individual_acceptance_payments
+                .lock()
+                .unwrap()
+                .remove(&(challenge_id.clone(), *user_id));
+            if let Some(users) = self
+                .individual_acceptances
+                .lock()
+                .unwrap()
+                .get_mut(challenge_id)
+            {
+                users.remove(user_id);
+            }
+            if let Some(challenge) = self.challenges.lock().unwrap().get_mut(challenge_id) {
+                challenge.status = ChallengeStatus::Open;
+                challenge.updated_at = now;
+            }
+        }
+
+        Ok(expired_keys
+            .into_iter()
+            .map(|(challenge_id, user_id)| ExpiredIndividualAcceptance {
+                challenge_id,
+                user_id,
+            })
+            .collect())
+    }
+
+    async fn mark_postpaid_unpaid_acceptances_notified(
+        &self,
+        now: chrono::NaiveDateTime,
+    ) -> Result<Vec<PostpaidUnpaidAcceptance>, DomainError> {
+        let challenges = self.challenges.lock().unwrap().clone();
+        let payment_items = self.individual_acceptance_payments.lock().unwrap().clone();
+        let mut notified = self.notified_postpaid_acceptances.lock().unwrap();
+        let mut result = Vec::new();
+
+        for ((challenge_id, user_id), acceptance) in payment_items {
+            let Some(challenge) = challenges.get(&challenge_id) else {
+                continue;
+            };
+            if challenge.payment_mode == ChallengePaymentMode::Postpaid
+                && challenge.end_time <= now
+                && acceptance.payment_status == IndividualAcceptancePaymentStatus::Unpaid
+                && !notified.contains(&(challenge_id.clone(), user_id))
+            {
+                notified.insert((challenge_id.clone(), user_id));
+                result.push(PostpaidUnpaidAcceptance {
+                    challenge_id,
+                    user_id,
+                    title: challenge.title.clone(),
+                });
+            }
+        }
+
+        Ok(result)
     }
 }
 
@@ -469,6 +568,7 @@ async fn public_challenge_list_does_not_require_current_user_or_team() {
         id: "public-open".to_string(),
         title: "公开约队".to_string(),
         kind: ChallengeKind::Team,
+        payment_mode: ChallengePaymentMode::Postpaid,
         host_team_id: Some(1),
         host_user_id: 1,
         guest_team_id: None,
@@ -481,6 +581,8 @@ async fn public_challenge_list_does_not_require_current_user_or_team() {
         location_latitude: None,
         location_longitude: None,
         players_per_team: 8,
+        min_players: None,
+        max_players: None,
         fee_per_person: None,
         note: None,
         status: ChallengeStatus::Open,
@@ -527,6 +629,7 @@ async fn logged_in_public_challenge_list_marks_joined_individual_challenges() {
         id: "joined-individual".to_string(),
         title: "已报名散人局".to_string(),
         kind: ChallengeKind::Individual,
+        payment_mode: ChallengePaymentMode::Postpaid,
         host_team_id: None,
         host_user_id: 7,
         guest_team_id: None,
@@ -539,6 +642,8 @@ async fn logged_in_public_challenge_list_marks_joined_individual_challenges() {
         location_latitude: None,
         location_longitude: None,
         players_per_team: 8,
+        min_players: None,
+        max_players: None,
         fee_per_person: None,
         note: None,
         status: ChallengeStatus::Open,
@@ -549,7 +654,12 @@ async fn logged_in_public_challenge_list_marks_joined_individual_challenges() {
     };
     challenge_repository.create(&challenge).await.unwrap();
     challenge_repository
-        .accept_individual(&challenge.id, 42)
+        .accept_individual(AcceptIndividualFields {
+            challenge_id: &challenge.id,
+            user_id: 42,
+            payment_status: IndividualAcceptancePaymentStatus::Unpaid,
+            payment_deadline_at: None,
+        })
         .await
         .unwrap();
 
@@ -594,6 +704,10 @@ impl FakeUserStore {
 #[async_trait]
 impl UserQueryRepository for FakeUserStore {
     async fn find_by_open_id(&self, _open_id: &str) -> Result<Option<User>, UserDomainError> {
+        unimplemented!()
+    }
+
+    async fn find_by_username(&self, _username: &str) -> Result<Option<User>, UserDomainError> {
         unimplemented!()
     }
 
@@ -903,6 +1017,7 @@ fn sample_user(user_id: i64, is_venue: bool) -> User {
         open_id: format!("openid-{user_id}"),
         union_id: None,
         username: format!("user-{user_id}"),
+        password_hash: None,
         nickname: format!("用户{user_id}"),
         real_name: String::new(),
         avatar_url: String::new(),
@@ -976,6 +1091,7 @@ fn sample_challenge(
         id: challenge_id.to_string(),
         title: format!("{challenge_id}-title"),
         kind,
+        payment_mode: ChallengePaymentMode::Postpaid,
         host_team_id: Some(host_team_id),
         host_user_id,
         guest_team_id: None,
@@ -988,6 +1104,8 @@ fn sample_challenge(
         location_latitude: None,
         location_longitude: None,
         players_per_team,
+        min_players: None,
+        max_players: None,
         fee_per_person: None,
         note: None,
         status: ChallengeStatus::Open,
@@ -1016,6 +1134,7 @@ async fn captain_can_create_challenge() {
             &user_actor(7),
             CreateChallengeCommand {
                 kind: ChallengeKind::Team,
+                payment_mode: ChallengePaymentMode::Postpaid,
                 host_team_id: Some(1),
                 host_user_id: None,
                 title: "周六夜场 8 人制约队".to_string(),
@@ -1026,6 +1145,8 @@ async fn captain_can_create_challenge() {
                 location_latitude: None,
                 location_longitude: None,
                 players_per_team: 8,
+                min_players: None,
+                max_players: None,
                 fee_per_person: Some(Decimal::new(2800, 2)),
                 note: Some("想约一场强度中高的友谊赛".to_string()),
             },
@@ -1091,6 +1212,8 @@ async fn super_admin_can_update_open_challenge_basic_fields() {
                 location_latitude: Some(30.66),
                 location_longitude: Some(104.06),
                 players_per_team: 9,
+                min_players: None,
+                max_players: None,
                 fee_per_person: Some(Decimal::new(3200, 2)),
                 note: Some("后台补充说明".to_string()),
             },
@@ -1126,6 +1249,7 @@ async fn super_admin_can_create_individual_challenge_for_host_user() {
             &admin_actor(900, true),
             CreateChallengeCommand {
                 kind: ChallengeKind::Individual,
+                payment_mode: ChallengePaymentMode::Postpaid,
                 host_team_id: None,
                 host_user_id: Some(30),
                 title: "后台创建散人报名".to_string(),
@@ -1136,6 +1260,8 @@ async fn super_admin_can_create_individual_challenge_for_host_user() {
                 location_latitude: None,
                 location_longitude: None,
                 players_per_team: 8,
+                min_players: None,
+                max_players: None,
                 fee_per_person: Some(Decimal::new(2500, 2)),
                 note: Some("后台代场馆发布".to_string()),
             },
@@ -1168,6 +1294,7 @@ async fn non_super_admin_cannot_create_individual_challenge_from_backend() {
             &admin_actor(901, false),
             CreateChallengeCommand {
                 kind: ChallengeKind::Individual,
+                payment_mode: ChallengePaymentMode::Postpaid,
                 host_team_id: None,
                 host_user_id: Some(30),
                 title: "后台创建散人报名".to_string(),
@@ -1178,6 +1305,8 @@ async fn non_super_admin_cannot_create_individual_challenge_from_backend() {
                 location_latitude: None,
                 location_longitude: None,
                 players_per_team: 8,
+                min_players: None,
+                max_players: None,
                 fee_per_person: None,
                 note: None,
             },
@@ -1210,6 +1339,7 @@ async fn super_admin_backend_create_rejects_team_challenge_kind() {
             &admin_actor(900, true),
             CreateChallengeCommand {
                 kind: ChallengeKind::Team,
+                payment_mode: ChallengePaymentMode::Postpaid,
                 host_team_id: None,
                 host_user_id: Some(30),
                 title: "后台误建球队约队".to_string(),
@@ -1220,6 +1350,8 @@ async fn super_admin_backend_create_rejects_team_challenge_kind() {
                 location_latitude: None,
                 location_longitude: None,
                 players_per_team: 8,
+                min_players: None,
+                max_players: None,
                 fee_per_person: None,
                 note: None,
             },
@@ -1252,6 +1384,7 @@ async fn leader_can_create_team_challenge() {
             &user_actor(18),
             CreateChallengeCommand {
                 kind: ChallengeKind::Team,
+                payment_mode: ChallengePaymentMode::Postpaid,
                 host_team_id: Some(1),
                 host_user_id: None,
                 title: "领队发起的球队约队".to_string(),
@@ -1262,6 +1395,8 @@ async fn leader_can_create_team_challenge() {
                 location_latitude: None,
                 location_longitude: None,
                 players_per_team: 8,
+                min_players: None,
+                max_players: None,
                 fee_per_person: None,
                 note: None,
             },
@@ -1293,6 +1428,7 @@ async fn venue_user_can_create_team_challenge_without_host_team_and_still_join_i
             &user_actor(30),
             CreateChallengeCommand {
                 kind: ChallengeKind::Team,
+                payment_mode: ChallengePaymentMode::Postpaid,
                 host_team_id: None,
                 host_user_id: None,
                 title: "场馆组织球队约队".to_string(),
@@ -1303,6 +1439,8 @@ async fn venue_user_can_create_team_challenge_without_host_team_and_still_join_i
                 location_latitude: None,
                 location_longitude: None,
                 players_per_team: 8,
+                min_players: None,
+                max_players: None,
                 fee_per_person: Some(Decimal::new(3000, 2)),
                 note: Some("场馆提供裁判和水".to_string()),
             },
@@ -1359,6 +1497,7 @@ async fn regular_user_cannot_create_challenge_without_host_team() {
             &user_actor(31),
             CreateChallengeCommand {
                 kind: ChallengeKind::Individual,
+                payment_mode: ChallengePaymentMode::Postpaid,
                 host_team_id: None,
                 host_user_id: None,
                 title: "普通用户散人约队".to_string(),
@@ -1369,6 +1508,8 @@ async fn regular_user_cannot_create_challenge_without_host_team() {
                 location_latitude: None,
                 location_longitude: None,
                 players_per_team: 8,
+                min_players: None,
+                max_players: None,
                 fee_per_person: None,
                 note: None,
             },
@@ -1403,6 +1544,7 @@ async fn accepting_challenge_marks_it_matched_and_generates_activity() {
             &user_actor(7),
             CreateChallengeCommand {
                 kind: ChallengeKind::Team,
+                payment_mode: ChallengePaymentMode::Postpaid,
                 host_team_id: Some(1),
                 host_user_id: None,
                 title: "工作日晚场 6 人制".to_string(),
@@ -1413,6 +1555,8 @@ async fn accepting_challenge_marks_it_matched_and_generates_activity() {
                 location_latitude: None,
                 location_longitude: None,
                 players_per_team: 6,
+                min_players: None,
+                max_players: None,
                 fee_per_person: None,
                 note: None,
             },
@@ -1463,6 +1607,7 @@ async fn venue_team_challenge_creates_pending_activity_then_second_team_confirms
             &user_actor(30),
             CreateChallengeCommand {
                 kind: ChallengeKind::Team,
+                payment_mode: ChallengePaymentMode::Postpaid,
                 host_team_id: None,
                 host_user_id: None,
                 title: "场馆撮合球队约队".to_string(),
@@ -1473,6 +1618,8 @@ async fn venue_team_challenge_creates_pending_activity_then_second_team_confirms
                 location_latitude: None,
                 location_longitude: None,
                 players_per_team: 8,
+                min_players: None,
+                max_players: None,
                 fee_per_person: Some(Decimal::new(3000, 2)),
                 note: None,
             },
@@ -1598,26 +1745,22 @@ async fn individual_challenge_accepts_users_until_capacity_is_full() {
         .await
         .expect("challenge should seed");
 
-    service
-        .accept_challenge(
-            &user_actor(21),
-            "challenge-individual-open",
-            AcceptChallengeCommand {
-                guest_team_id: None,
-            },
-        )
-        .await
-        .expect("first user should join individual challenge");
-    let accepted = service
-        .accept_challenge(
-            &user_actor(22),
-            "challenge-individual-open",
-            AcceptChallengeCommand {
-                guest_team_id: None,
-            },
-        )
-        .await
-        .expect("second user should fill remaining slot");
+    let mut accepted = None;
+    for user_id in 21..=24 {
+        accepted = Some(
+            service
+                .accept_challenge(
+                    &user_actor(user_id),
+                    "challenge-individual-open",
+                    AcceptChallengeCommand {
+                        guest_team_id: None,
+                    },
+                )
+                .await
+                .expect("user should join individual challenge before min players"),
+        );
+    }
+    let accepted = accepted.expect("challenge should have accepted users");
 
     assert_eq!(accepted.kind, ChallengeKind::Individual);
     assert_eq!(accepted.players_per_team, 2);
@@ -1625,7 +1768,101 @@ async fn individual_challenge_accepts_users_until_capacity_is_full() {
 }
 
 #[tokio::test]
-async fn individual_challenge_rejects_accept_when_capacity_is_full() {
+async fn individual_challenge_uses_custom_min_and_max_players() {
+    let repository = Arc::new(FakeChallengeRepository::default());
+    let team_repository = Arc::new(FakeTeamStore::new(vec![sample_team(1, 7, "银河联队")]));
+    let user_repository = Arc::new(FakeUserStore::with_users(vec![sample_user(30, true)]));
+    let service = ChallengeService::new(
+        repository.clone(),
+        repository.clone(),
+        team_repository,
+        user_repository,
+        notification_service(),
+    );
+    let holding_date = Utc::now().naive_utc() + Duration::days(2);
+
+    let challenge = service
+        .create_challenge(
+            &user_actor(30),
+            CreateChallengeCommand {
+                kind: ChallengeKind::Individual,
+                payment_mode: ChallengePaymentMode::Postpaid,
+                host_team_id: None,
+                host_user_id: None,
+                title: "10人成行14人封顶".to_string(),
+                holding_date,
+                start_time: holding_date,
+                end_time: holding_date + Duration::hours(2),
+                location: "测试球场".to_string(),
+                location_latitude: None,
+                location_longitude: None,
+                players_per_team: 5,
+                min_players: Some(10),
+                max_players: Some(14),
+                fee_per_person: None,
+                note: None,
+            },
+        )
+        .await
+        .expect("venue should create individual challenge with custom limits");
+
+    assert_eq!(challenge.min_players, Some(10));
+    assert_eq!(challenge.max_players, Some(14));
+    assert_eq!(challenge.min_signup_players(), 10);
+    assert_eq!(challenge.max_signup_players(), 14);
+
+    let mut accepted = None;
+    for user_id in 100..=109 {
+        accepted = Some(
+            service
+                .accept_challenge(
+                    &user_actor(user_id),
+                    &challenge.id,
+                    AcceptChallengeCommand {
+                        guest_team_id: None,
+                    },
+                )
+                .await
+                .expect("users before custom min should join"),
+        );
+    }
+    assert_eq!(
+        accepted.expect("tenth user should be accepted").status,
+        ChallengeStatus::Matched
+    );
+
+    for user_id in 110..=113 {
+        service
+            .accept_challenge(
+                &user_actor(user_id),
+                &challenge.id,
+                AcceptChallengeCommand {
+                    guest_team_id: None,
+                },
+            )
+            .await
+            .expect("users before custom max should join");
+    }
+
+    let error = service
+        .accept_challenge(
+            &user_actor(114),
+            &challenge.id,
+            AcceptChallengeCommand {
+                guest_team_id: None,
+            },
+        )
+        .await
+        .expect_err("fifteenth user should be rejected by custom max");
+
+    assert!(matches!(
+        error,
+        registration_system_backend::shared::error::AppError::Conflict(_)
+    ));
+}
+
+#[tokio::test]
+async fn individual_challenge_rejects_accept_when_default_max_players_is_full() {
     let repository = Arc::new(FakeChallengeRepository::default());
     let team_repository = Arc::new(FakeTeamStore::new(vec![sample_team(1, 7, "银河联队")]));
     let service = ChallengeService::new(
@@ -1649,27 +1886,29 @@ async fn individual_challenge_rejects_accept_when_capacity_is_full() {
         .await
         .expect("challenge should seed");
 
-    service
-        .accept_challenge(
-            &user_actor(21),
-            "challenge-individual-full",
-            AcceptChallengeCommand {
-                guest_team_id: None,
-            },
-        )
-        .await
-        .expect("first user should join");
+    for user_id in 21..=26 {
+        service
+            .accept_challenge(
+                &user_actor(user_id),
+                "challenge-individual-full",
+                AcceptChallengeCommand {
+                    guest_team_id: None,
+                },
+            )
+            .await
+            .expect("users before default max should join");
+    }
 
     let error = service
         .accept_challenge(
-            &user_actor(22),
+            &user_actor(27),
             "challenge-individual-full",
             AcceptChallengeCommand {
                 guest_team_id: None,
             },
         )
         .await
-        .expect_err("full individual challenge should reject more users");
+        .expect_err("seventh user should be rejected by default max");
 
     assert!(matches!(
         error,
@@ -1759,6 +1998,7 @@ async fn team_cannot_accept_its_own_challenge() {
             &user_actor(7),
             CreateChallengeCommand {
                 kind: ChallengeKind::Team,
+                payment_mode: ChallengePaymentMode::Postpaid,
                 host_team_id: Some(1),
                 host_user_id: None,
                 title: "周二练习赛".to_string(),
@@ -1769,6 +2009,8 @@ async fn team_cannot_accept_its_own_challenge() {
                 location_latitude: None,
                 location_longitude: None,
                 players_per_team: 5,
+                min_players: None,
+                max_players: None,
                 fee_per_person: None,
                 note: None,
             },
@@ -1811,6 +2053,7 @@ async fn admin_can_list_challenges_across_managed_teams() {
             &user_actor(7),
             CreateChallengeCommand {
                 kind: ChallengeKind::Team,
+                payment_mode: ChallengePaymentMode::Postpaid,
                 host_team_id: Some(1),
                 host_user_id: None,
                 title: "A 队周末约队".to_string(),
@@ -1821,6 +2064,8 @@ async fn admin_can_list_challenges_across_managed_teams() {
                 location_latitude: None,
                 location_longitude: None,
                 players_per_team: 8,
+                min_players: None,
+                max_players: None,
                 fee_per_person: None,
                 note: None,
             },
@@ -1833,6 +2078,7 @@ async fn admin_can_list_challenges_across_managed_teams() {
             &user_actor(8),
             CreateChallengeCommand {
                 kind: ChallengeKind::Team,
+                payment_mode: ChallengePaymentMode::Postpaid,
                 host_team_id: Some(2),
                 host_user_id: None,
                 title: "B 队夜场约队".to_string(),
@@ -1843,6 +2089,8 @@ async fn admin_can_list_challenges_across_managed_teams() {
                 location_latitude: None,
                 location_longitude: None,
                 players_per_team: 6,
+                min_players: None,
+                max_players: None,
                 fee_per_person: None,
                 note: None,
             },
@@ -1887,6 +2135,7 @@ async fn admin_can_filter_individual_challenges() {
             &user_actor(7),
             CreateChallengeCommand {
                 kind: ChallengeKind::Individual,
+                payment_mode: ChallengePaymentMode::Postpaid,
                 host_team_id: None,
                 host_user_id: None,
                 title: "散人晚场".to_string(),
@@ -1897,6 +2146,8 @@ async fn admin_can_filter_individual_challenges() {
                 location_latitude: None,
                 location_longitude: None,
                 players_per_team: 8,
+                min_players: None,
+                max_players: None,
                 fee_per_person: None,
                 note: None,
             },
@@ -1909,6 +2160,7 @@ async fn admin_can_filter_individual_challenges() {
             &user_actor(8),
             CreateChallengeCommand {
                 kind: ChallengeKind::Team,
+                payment_mode: ChallengePaymentMode::Postpaid,
                 host_team_id: Some(2),
                 host_user_id: None,
                 title: "球队约队".to_string(),
@@ -1919,6 +2171,8 @@ async fn admin_can_filter_individual_challenges() {
                 location_latitude: None,
                 location_longitude: None,
                 players_per_team: 8,
+                min_players: None,
+                max_players: None,
                 fee_per_person: None,
                 note: None,
             },
@@ -1945,4 +2199,268 @@ async fn admin_can_filter_individual_challenges() {
     assert_eq!(items.len(), 1);
     assert_eq!(items[0].challenge.kind, ChallengeKind::Individual);
     assert_eq!(items[0].challenge.title, "散人晚场");
+}
+
+#[tokio::test]
+async fn prepaid_individual_acceptance_gets_payment_deadline() {
+    let repository = Arc::new(FakeChallengeRepository::default());
+    let service = ChallengeService::new(
+        repository.clone(),
+        repository.clone(),
+        Arc::new(FakeTeamStore::new(Vec::new())),
+        Arc::new(FakeUserStore::with_users(vec![sample_user(7, true)])),
+        notification_service(),
+    );
+    let holding_date = Utc::now().naive_utc() + Duration::hours(3);
+    let challenge = service
+        .create_challenge(
+            &user_actor(7),
+            CreateChallengeCommand {
+                kind: ChallengeKind::Individual,
+                payment_mode: ChallengePaymentMode::Prepaid,
+                host_team_id: None,
+                host_user_id: None,
+                title: "赛前支付散人局".to_string(),
+                holding_date,
+                start_time: holding_date,
+                end_time: holding_date + Duration::hours(2),
+                location: "主城 1 号场".to_string(),
+                location_latitude: None,
+                location_longitude: None,
+                players_per_team: 8,
+                min_players: None,
+                max_players: None,
+                fee_per_person: Some(Decimal::new(2500, 2)),
+                note: None,
+            },
+        )
+        .await
+        .expect("prepaid challenge should be created");
+
+    service
+        .accept_challenge(
+            &user_actor(42),
+            &challenge.id,
+            AcceptChallengeCommand {
+                guest_team_id: None,
+            },
+        )
+        .await
+        .expect("user should join prepaid individual challenge");
+
+    let detail = service
+        .get_detail(&user_actor(42), &challenge.id)
+        .await
+        .unwrap()
+        .unwrap();
+    let acceptance = detail
+        .current_user_acceptance
+        .expect("current user acceptance should be returned");
+
+    assert_eq!(
+        acceptance.payment_status,
+        IndividualAcceptancePaymentStatus::Unpaid
+    );
+    let deadline = acceptance
+        .payment_deadline_at
+        .expect("prepaid challenge should get payment deadline");
+    let distance = deadline - Utc::now().naive_utc();
+    assert!(distance <= Duration::minutes(20));
+    assert!(distance > Duration::minutes(18));
+}
+
+#[tokio::test]
+async fn postpaid_individual_acceptance_has_no_payment_deadline() {
+    let repository = Arc::new(FakeChallengeRepository::default());
+    let service = ChallengeService::new(
+        repository.clone(),
+        repository.clone(),
+        Arc::new(FakeTeamStore::new(Vec::new())),
+        Arc::new(FakeUserStore::with_users(vec![sample_user(7, true)])),
+        notification_service(),
+    );
+    let holding_date = Utc::now().naive_utc() + Duration::hours(3);
+    let challenge = service
+        .create_challenge(
+            &user_actor(7),
+            CreateChallengeCommand {
+                kind: ChallengeKind::Individual,
+                payment_mode: ChallengePaymentMode::Postpaid,
+                host_team_id: None,
+                host_user_id: None,
+                title: "赛后支付散人局".to_string(),
+                holding_date,
+                start_time: holding_date,
+                end_time: holding_date + Duration::hours(2),
+                location: "主城 1 号场".to_string(),
+                location_latitude: None,
+                location_longitude: None,
+                players_per_team: 8,
+                min_players: None,
+                max_players: None,
+                fee_per_person: Some(Decimal::new(2500, 2)),
+                note: None,
+            },
+        )
+        .await
+        .expect("postpaid challenge should be created");
+
+    service
+        .accept_challenge(
+            &user_actor(42),
+            &challenge.id,
+            AcceptChallengeCommand {
+                guest_team_id: None,
+            },
+        )
+        .await
+        .expect("user should join postpaid individual challenge");
+
+    let detail = service
+        .get_detail(&user_actor(42), &challenge.id)
+        .await
+        .unwrap()
+        .unwrap();
+    let acceptance = detail
+        .current_user_acceptance
+        .expect("current user acceptance should be returned");
+
+    assert_eq!(
+        acceptance.payment_status,
+        IndividualAcceptancePaymentStatus::Unpaid
+    );
+    assert_eq!(acceptance.payment_deadline_at, None);
+}
+
+#[tokio::test]
+async fn process_individual_payments_cancels_expired_prepaid_acceptance() {
+    let repository = Arc::new(FakeChallengeRepository::default());
+    let service = ChallengeService::new(
+        repository.clone(),
+        repository.clone(),
+        Arc::new(FakeTeamStore::new(Vec::new())),
+        Arc::new(FakeUserStore::with_users(vec![sample_user(7, true)])),
+        notification_service(),
+    );
+    let holding_date = Utc::now().naive_utc() + Duration::minutes(10);
+    let challenge = service
+        .create_challenge(
+            &user_actor(7),
+            CreateChallengeCommand {
+                kind: ChallengeKind::Individual,
+                payment_mode: ChallengePaymentMode::Prepaid,
+                host_team_id: None,
+                host_user_id: None,
+                title: "即将开赛散人局".to_string(),
+                holding_date,
+                start_time: holding_date,
+                end_time: holding_date + Duration::hours(2),
+                location: "主城 1 号场".to_string(),
+                location_latitude: None,
+                location_longitude: None,
+                players_per_team: 8,
+                min_players: None,
+                max_players: None,
+                fee_per_person: Some(Decimal::new(2500, 2)),
+                note: None,
+            },
+        )
+        .await
+        .unwrap();
+
+    service
+        .accept_challenge(
+            &user_actor(42),
+            &challenge.id,
+            AcceptChallengeCommand {
+                guest_team_id: None,
+            },
+        )
+        .await
+        .unwrap();
+
+    let result = service
+        .process_individual_payments(holding_date + Duration::seconds(1))
+        .await
+        .unwrap();
+
+    assert_eq!(result.cancelled_count, 1);
+    let detail = service
+        .get_detail(&user_actor(42), &challenge.id)
+        .await
+        .unwrap()
+        .unwrap();
+    assert!(!detail.summary.current_user_joined);
+    assert!(detail.current_user_acceptance.is_none());
+}
+
+#[tokio::test]
+async fn process_individual_payments_notifies_postpaid_unpaid_once() {
+    let repository = Arc::new(FakeChallengeRepository::default());
+    let notification_repository = Arc::new(FakeNotificationRepository::default());
+    let service = ChallengeService::new(
+        repository.clone(),
+        repository.clone(),
+        Arc::new(FakeTeamStore::new(Vec::new())),
+        Arc::new(FakeUserStore::with_users(vec![sample_user(7, true)])),
+        Arc::new(NotificationService::new(
+            notification_repository.clone(),
+            notification_repository.clone(),
+        )),
+    );
+    let holding_date = Utc::now().naive_utc() - Duration::hours(3);
+    let challenge = service
+        .create_challenge(
+            &user_actor(7),
+            CreateChallengeCommand {
+                kind: ChallengeKind::Individual,
+                payment_mode: ChallengePaymentMode::Postpaid,
+                host_team_id: None,
+                host_user_id: None,
+                title: "已结束散人局".to_string(),
+                holding_date,
+                start_time: holding_date,
+                end_time: holding_date + Duration::hours(2),
+                location: "主城 1 号场".to_string(),
+                location_latitude: None,
+                location_longitude: None,
+                players_per_team: 8,
+                min_players: None,
+                max_players: None,
+                fee_per_person: Some(Decimal::new(2500, 2)),
+                note: None,
+            },
+        )
+        .await
+        .unwrap();
+
+    service
+        .accept_challenge(
+            &user_actor(42),
+            &challenge.id,
+            AcceptChallengeCommand {
+                guest_team_id: None,
+            },
+        )
+        .await
+        .unwrap();
+
+    let first = service
+        .process_individual_payments(Utc::now().naive_utc())
+        .await
+        .unwrap();
+    let second = service
+        .process_individual_payments(Utc::now().naive_utc() + Duration::minutes(1))
+        .await
+        .unwrap();
+
+    assert_eq!(first.notified_count, 1);
+    assert_eq!(second.notified_count, 0);
+    let notifications = notification_repository.items.lock().unwrap();
+    let due_notifications = notifications
+        .iter()
+        .filter(|item| item.kind == "challenge_payment_due" && item.user_id == 42)
+        .collect::<Vec<_>>();
+    assert_eq!(due_notifications.len(), 1);
+    assert!(due_notifications[0].content.contains("已结束散人局"));
 }

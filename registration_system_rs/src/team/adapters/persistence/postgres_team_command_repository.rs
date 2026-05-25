@@ -130,6 +130,40 @@ impl TeamCommandRepository for PostgresTeamCommandRepository {
         Ok(())
     }
 
+    async fn set_captain_member(&self, team_id: i64, user_id: i64) -> Result<(), DomainError> {
+        let mut tx = self
+            .pool
+            .begin()
+            .await
+            .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
+
+        sqlx::query("UPDATE rs_teams SET captain_id = $1, updated_at = NOW() WHERE id = $2")
+            .bind(user_id)
+            .bind(team_id)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
+
+        sqlx::query(
+            r#"
+            INSERT INTO rs_team_members (team_id, user_id, role, jersey_number, is_member, joined_at, status, created_at, updated_at)
+            VALUES ($1, $2, 'captain', NULL, false, NOW(), 1, NOW(), NOW())
+            ON CONFLICT (team_id, user_id)
+            DO UPDATE SET role = 'captain', status = 1, updated_at = NOW()
+            "#,
+        )
+        .bind(team_id)
+        .bind(user_id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
+
+        tx.commit()
+            .await
+            .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
+        Ok(())
+    }
+
     async fn add_member(
         &self,
         team_id: i64,

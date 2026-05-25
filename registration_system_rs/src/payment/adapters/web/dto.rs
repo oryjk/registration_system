@@ -19,6 +19,12 @@ pub struct CreateTeamMembershipOrderRequest {
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
+pub struct CreateChallengePaymentOrderRequest {
+    pub challenge_id: String,
+    pub openid: Option<String>,
+}
+
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct CancelOrderRequest {
     pub order_no: String,
 }
@@ -98,6 +104,12 @@ pub struct CreateRechargeOrderResultDto {
 
 #[derive(Debug, Serialize, ToSchema)]
 pub struct CreateTeamMembershipOrderResultDto {
+    pub order_no: String,
+    pub params: WxMiniPaymentParamsDto,
+}
+
+#[derive(Debug, Serialize, ToSchema)]
+pub struct CreateChallengePaymentOrderResultDto {
     pub order_no: String,
     pub params: WxMiniPaymentParamsDto,
 }

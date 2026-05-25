@@ -89,6 +89,7 @@ pub fn build_app(config: &AppConfig, pool: PgPool) -> Router {
         token_service,
         services,
     };
+    spawn_background_tasks(state.services.clone());
 
     Router::new()
         .route("/health", get(health_handler))
@@ -100,6 +101,22 @@ pub fn build_app(config: &AppConfig, pool: PgPool) -> Router {
         .layer(CorsLayer::permissive())
         .layer(middleware::from_fn(access_log_middleware))
         .with_state(state)
+}
+
+fn spawn_background_tasks(services: AppServices) {
+    tokio::spawn(async move {
+        let mut interval = tokio::time::interval(std::time::Duration::from_secs(60));
+        loop {
+            interval.tick().await;
+            if let Err(error) = services
+                .challenge_service
+                .process_individual_payments(chrono::Utc::now().naive_utc())
+                .await
+            {
+                tracing::warn!(error = %error, "处理散人约队支付状态失败");
+            }
+        }
+    });
 }
 
 pub fn build_test_app(app_version: &str) -> Router {

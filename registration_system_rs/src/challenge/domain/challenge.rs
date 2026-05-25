@@ -15,6 +15,19 @@ pub enum ChallengeKind {
     Individual,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ChallengePaymentMode {
+    Prepaid,
+    Postpaid,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum IndividualAcceptancePaymentStatus {
+    Unpaid,
+    Paid,
+    Cancelled,
+}
+
 impl ChallengeKind {
     pub fn as_db_str(self) -> &'static str {
         match self {
@@ -27,6 +40,40 @@ impl ChallengeKind {
         match value {
             "individual" => Self::Individual,
             _ => Self::Team,
+        }
+    }
+}
+
+impl ChallengePaymentMode {
+    pub fn as_db_str(self) -> &'static str {
+        match self {
+            Self::Prepaid => "prepaid",
+            Self::Postpaid => "postpaid",
+        }
+    }
+
+    pub fn from_db_str(value: &str) -> Self {
+        match value {
+            "prepaid" => Self::Prepaid,
+            _ => Self::Postpaid,
+        }
+    }
+}
+
+impl IndividualAcceptancePaymentStatus {
+    pub fn as_db_str(self) -> &'static str {
+        match self {
+            Self::Unpaid => "unpaid",
+            Self::Paid => "paid",
+            Self::Cancelled => "cancelled",
+        }
+    }
+
+    pub fn from_db_str(value: &str) -> Self {
+        match value {
+            "paid" => Self::Paid,
+            "cancelled" => Self::Cancelled,
+            _ => Self::Unpaid,
         }
     }
 }
@@ -54,6 +101,7 @@ pub struct Challenge {
     pub id: String,
     pub title: String,
     pub kind: ChallengeKind,
+    pub payment_mode: ChallengePaymentMode,
     pub host_team_id: Option<i64>,
     pub host_user_id: i64,
     pub guest_team_id: Option<i64>,
@@ -66,6 +114,8 @@ pub struct Challenge {
     pub location_latitude: Option<f64>,
     pub location_longitude: Option<f64>,
     pub players_per_team: i32,
+    pub min_players: Option<i32>,
+    pub max_players: Option<i32>,
     pub fee_per_person: Option<Decimal>,
     pub note: Option<String>,
     pub status: ChallengeStatus,
@@ -77,8 +127,19 @@ pub struct Challenge {
 
 impl Challenge {
     pub fn signup_capacity(&self) -> i32 {
+        self.max_signup_players()
+    }
+
+    pub fn min_signup_players(&self) -> i32 {
         match self.kind {
-            ChallengeKind::Individual => self.players_per_team * 2,
+            ChallengeKind::Individual => self.min_players.unwrap_or(self.players_per_team * 2),
+            ChallengeKind::Team => self.players_per_team,
+        }
+    }
+
+    pub fn max_signup_players(&self) -> i32 {
+        match self.kind {
+            ChallengeKind::Individual => self.max_players.unwrap_or(self.players_per_team * 2 + 4),
             ChallengeKind::Team => self.players_per_team,
         }
     }
@@ -108,10 +169,18 @@ pub struct ChallengeIndividualParticipant {
 }
 
 #[derive(Debug, Clone)]
+pub struct CurrentUserIndividualAcceptance {
+    pub payment_status: IndividualAcceptancePaymentStatus,
+    pub payment_deadline_at: Option<NaiveDateTime>,
+    pub payment_order_no: Option<String>,
+}
+
+#[derive(Debug, Clone)]
 pub struct ChallengeDetail {
     pub summary: ChallengeSummary,
     pub activity: Option<Activity>,
     pub individual_participants: Vec<ChallengeIndividualParticipant>,
+    pub current_user_acceptance: Option<CurrentUserIndividualAcceptance>,
 }
 
 #[cfg(test)]
@@ -125,6 +194,7 @@ mod tests {
             id: "challenge-a".to_string(),
             title: "测试约队".to_string(),
             kind,
+            payment_mode: ChallengePaymentMode::Postpaid,
             host_team_id: Some(1),
             host_user_id: 1,
             guest_team_id: None,
@@ -137,6 +207,8 @@ mod tests {
             location_latitude: None,
             location_longitude: None,
             players_per_team,
+            min_players: None,
+            max_players: None,
             fee_per_person: None,
             note: None,
             status: ChallengeStatus::Open,
@@ -148,20 +220,44 @@ mod tests {
     }
 
     #[test]
-    fn individual_challenge_capacity_uses_both_sides() {
+    fn individual_challenge_defaults_min_players_to_both_sides() {
         assert_eq!(
-            challenge(ChallengeKind::Individual, 8).signup_capacity(),
+            challenge(ChallengeKind::Individual, 8).min_signup_players(),
             16
         );
         assert_eq!(
-            challenge(ChallengeKind::Individual, 5).signup_capacity(),
+            challenge(ChallengeKind::Individual, 5).min_signup_players(),
             10
         );
+    }
+
+    #[test]
+    fn individual_challenge_defaults_max_players_to_both_sides_plus_buffer() {
+        assert_eq!(
+            challenge(ChallengeKind::Individual, 8).max_signup_players(),
+            20
+        );
+        assert_eq!(
+            challenge(ChallengeKind::Individual, 5).max_signup_players(),
+            14
+        );
+    }
+
+    #[test]
+    fn individual_challenge_can_override_signup_limits() {
+        let mut challenge = challenge(ChallengeKind::Individual, 8);
+        challenge.min_players = Some(10);
+        challenge.max_players = Some(14);
+
+        assert_eq!(challenge.min_signup_players(), 10);
+        assert_eq!(challenge.max_signup_players(), 14);
     }
 
     #[test]
     fn team_challenge_capacity_uses_opponent_side_only() {
         assert_eq!(challenge(ChallengeKind::Team, 8).signup_capacity(), 8);
         assert_eq!(challenge(ChallengeKind::Team, 5).signup_capacity(), 5);
+        assert_eq!(challenge(ChallengeKind::Team, 8).min_signup_players(), 8);
+        assert_eq!(challenge(ChallengeKind::Team, 8).max_signup_players(), 8);
     }
 }

@@ -1,7 +1,8 @@
 use crate::activity::domain::Activity;
 use crate::challenge::domain::{
-    Challenge, ChallengeDetail, ChallengeIndividualParticipant, ChallengeKind, ChallengeStatus,
-    ChallengeSummary,
+    Challenge, ChallengeDetail, ChallengeIndividualParticipant, ChallengeKind,
+    ChallengePaymentMode, ChallengeStatus, ChallengeSummary, CurrentUserIndividualAcceptance,
+    IndividualAcceptancePaymentStatus,
 };
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
@@ -10,6 +11,7 @@ use utoipa::{IntoParams, ToSchema};
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct CreateChallengeRequest {
     pub kind: String,
+    pub payment_mode: Option<String>,
     pub host_team_id: Option<i64>,
     pub host_user_id: Option<i64>,
     pub title: String,
@@ -20,6 +22,8 @@ pub struct CreateChallengeRequest {
     pub location_latitude: Option<f64>,
     pub location_longitude: Option<f64>,
     pub players_per_team: i32,
+    pub min_players: Option<i32>,
+    pub max_players: Option<i32>,
     #[schema(value_type = Option<String>)]
     pub fee_per_person: Option<Decimal>,
     pub note: Option<String>,
@@ -40,6 +44,8 @@ pub struct UpdateChallengeRequest {
     pub location_latitude: Option<f64>,
     pub location_longitude: Option<f64>,
     pub players_per_team: i32,
+    pub min_players: Option<i32>,
+    pub max_players: Option<i32>,
     #[schema(value_type = Option<String>)]
     pub fee_per_person: Option<Decimal>,
     pub note: Option<String>,
@@ -71,11 +77,45 @@ pub enum ChallengeKindDto {
     Individual,
 }
 
+#[derive(Debug, Serialize, ToSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum ChallengePaymentModeDto {
+    Prepaid,
+    Postpaid,
+}
+
+#[derive(Debug, Serialize, ToSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum IndividualAcceptancePaymentStatusDto {
+    Unpaid,
+    Paid,
+    Cancelled,
+}
+
 impl From<ChallengeKind> for ChallengeKindDto {
     fn from(value: ChallengeKind) -> Self {
         match value {
             ChallengeKind::Team => Self::Team,
             ChallengeKind::Individual => Self::Individual,
+        }
+    }
+}
+
+impl From<ChallengePaymentMode> for ChallengePaymentModeDto {
+    fn from(value: ChallengePaymentMode) -> Self {
+        match value {
+            ChallengePaymentMode::Prepaid => Self::Prepaid,
+            ChallengePaymentMode::Postpaid => Self::Postpaid,
+        }
+    }
+}
+
+impl From<IndividualAcceptancePaymentStatus> for IndividualAcceptancePaymentStatusDto {
+    fn from(value: IndividualAcceptancePaymentStatus) -> Self {
+        match value {
+            IndividualAcceptancePaymentStatus::Unpaid => Self::Unpaid,
+            IndividualAcceptancePaymentStatus::Paid => Self::Paid,
+            IndividualAcceptancePaymentStatus::Cancelled => Self::Cancelled,
         }
     }
 }
@@ -95,6 +135,7 @@ pub struct ChallengeDto {
     pub id: String,
     pub title: String,
     pub kind: ChallengeKindDto,
+    pub payment_mode: ChallengePaymentModeDto,
     pub host_team_id: Option<i64>,
     pub host_user_id: i64,
     pub guest_team_id: Option<i64>,
@@ -107,6 +148,8 @@ pub struct ChallengeDto {
     pub location_latitude: Option<f64>,
     pub location_longitude: Option<f64>,
     pub players_per_team: i32,
+    pub min_players: Option<i32>,
+    pub max_players: Option<i32>,
     #[schema(value_type = Option<String>)]
     pub fee_per_person: Option<Decimal>,
     pub note: Option<String>,
@@ -123,6 +166,7 @@ impl From<Challenge> for ChallengeDto {
             id: value.id,
             title: value.title,
             kind: ChallengeKindDto::from(value.kind),
+            payment_mode: ChallengePaymentModeDto::from(value.payment_mode),
             host_team_id: value.host_team_id,
             host_user_id: value.host_user_id,
             guest_team_id: value.guest_team_id,
@@ -135,6 +179,8 @@ impl From<Challenge> for ChallengeDto {
             location_latitude: value.location_latitude,
             location_longitude: value.location_longitude,
             players_per_team: value.players_per_team,
+            min_players: value.min_players,
+            max_players: value.max_players,
             fee_per_person: value.fee_per_person,
             note: value.note,
             status: ChallengeStatusDto::from(value.status),
@@ -219,6 +265,14 @@ pub struct ChallengeDetailDto {
     pub summary: ChallengeSummaryDto,
     pub activity: Option<ActivityRefDto>,
     pub individual_participants: Vec<ChallengeIndividualParticipantDto>,
+    pub current_user_acceptance: Option<CurrentUserIndividualAcceptanceDto>,
+}
+
+#[derive(Debug, Serialize, ToSchema)]
+pub struct CurrentUserIndividualAcceptanceDto {
+    pub payment_status: IndividualAcceptancePaymentStatusDto,
+    pub payment_deadline_at: Option<chrono::NaiveDateTime>,
+    pub payment_order_no: Option<String>,
 }
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -238,6 +292,16 @@ impl From<ChallengeIndividualParticipant> for ChallengeIndividualParticipantDto 
     }
 }
 
+impl From<CurrentUserIndividualAcceptance> for CurrentUserIndividualAcceptanceDto {
+    fn from(value: CurrentUserIndividualAcceptance) -> Self {
+        Self {
+            payment_status: IndividualAcceptancePaymentStatusDto::from(value.payment_status),
+            payment_deadline_at: value.payment_deadline_at,
+            payment_order_no: value.payment_order_no,
+        }
+    }
+}
+
 impl From<ChallengeDetail> for ChallengeDetailDto {
     fn from(value: ChallengeDetail) -> Self {
         Self {
@@ -248,6 +312,9 @@ impl From<ChallengeDetail> for ChallengeDetailDto {
                 .into_iter()
                 .map(ChallengeIndividualParticipantDto::from)
                 .collect(),
+            current_user_acceptance: value
+                .current_user_acceptance
+                .map(CurrentUserIndividualAcceptanceDto::from),
         }
     }
 }

@@ -68,4 +68,23 @@ impl ChallengeNotifier {
             .await?;
         Ok(())
     }
+
+    pub async fn postpaid_payment_due(
+        &self,
+        user_id: i64,
+        challenge_id: &str,
+        challenge_title: &str,
+    ) -> Result<(), AppError> {
+        self.notification_service
+            .send_to_users(
+                &[user_id],
+                "challenge_payment_due",
+                "散人报名待支付",
+                &format!("你参加的“{}”已结束，请完成报名费用支付。", challenge_title),
+                Some("challenge"),
+                Some(challenge_id),
+            )
+            .await?;
+        Ok(())
+    }
 }

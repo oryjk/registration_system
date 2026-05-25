@@ -1,3 +1,4 @@
+use crate::user::application::{CreateRoleUserCommand, RoleUserKind};
 use crate::user::domain::{
     PlayerListResult, PlayerTeamSummary, PlayerWithTeams, User, UserActivityRecord,
     UserAttendanceRanking, UserAttendanceRecord,
@@ -12,6 +13,12 @@ pub struct UserLoginRequest {
     pub username: Option<String>,
     pub nickname: Option<String>,
     pub avatar_url: Option<String>,
+}
+
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct UserPasswordLoginRequest {
+    pub username: String,
+    pub password: String,
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
@@ -221,6 +228,54 @@ pub struct AdminCreatePlayerRequest {
     pub nickname: Option<String>,
     pub phone_number: Option<String>,
     pub is_venue: Option<bool>,
+}
+
+#[derive(Debug, Deserialize, ToSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum RoleUserKindDto {
+    Captain,
+    Venue,
+}
+
+impl From<RoleUserKindDto> for RoleUserKind {
+    fn from(value: RoleUserKindDto) -> Self {
+        match value {
+            RoleUserKindDto::Captain => RoleUserKind::Captain,
+            RoleUserKindDto::Venue => RoleUserKind::Venue,
+        }
+    }
+}
+
+/// 超级管理员创建队长或场馆账号
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct AdminCreateRoleUserRequest {
+    pub role: RoleUserKindDto,
+    pub username: String,
+    pub password: String,
+    pub real_name: String,
+    pub nickname: Option<String>,
+    pub phone_number: Option<String>,
+    /// role=captain 时必填，创建后会绑定为该球队队长
+    pub team_id: Option<i64>,
+}
+
+impl From<AdminCreateRoleUserRequest> for CreateRoleUserCommand {
+    fn from(value: AdminCreateRoleUserRequest) -> Self {
+        Self {
+            role: value.role.into(),
+            username: value.username,
+            password: value.password,
+            real_name: value.real_name,
+            nickname: value.nickname,
+            phone_number: value.phone_number,
+            team_id: value.team_id,
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct AdminChangePlayerPasswordRequest {
+    pub password: String,
 }
 
 /// 管理员更新球员信息（含冻结管理）

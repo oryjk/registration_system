@@ -1,5 +1,34 @@
 # 后端重构进度
 
+## 2026-05-23 散人约队最少/最多人数配置
+
+- 已读取后端协作文档和当前 challenge 领域/DTO/command。
+- 已定位当前散人约队容量规则仍绑定到 `players_per_team * 2`。
+- 已将本轮目标写入后端 task_plan/findings/progress。
+- 下一步：新增后端测试，先约束默认 `max = players_per_team * 2 + 4` 和自定义上限拦截。
+
+## 2026-05-23 散人约队支付方式与支付截止
+
+- 已读取后端协作文档与当前 challenge/payment 关键链路。
+- 已确认当前散人报名无支付状态字段，支付模块 Activity 类型尚未回写散人报名。
+- 已将本轮目标写入后端 task_plan/findings/progress。
+- 下一步：新增后端红测覆盖散人约队支付方式和支付处理。
+- 已新增 `ChallengePaymentMode`、散人报名支付状态 read model，并补充赛前/赛后支付 deadline 业务测试。
+- 错误记录：首次执行 `cargo test --test challenge_service_business_test prepaid... postpaid...` 失败，原因是 Cargo 只接受一个测试名过滤器；改为执行整个测试文件。
+- 验证通过：`cargo test --test challenge_service_business_test -- --nocapture`，22 个 challenge 业务测试全部通过。
+- 已新增迁移 `20260523000100_challenge_individual_payment.sql`，为约队和散人报名增加支付方式/支付状态字段。
+- 已新增 `challenge_individual_payment_schema_test.rs`，验证通过：`cargo test --test challenge_individual_payment_schema_test -- --nocapture`。
+- 已扩展 `PaymentSettlementPort::settle_activity_payment`，支付成功时可回写 Activity 类型订单对应的散人报名。
+- 已新增 `POST /api/payment/challenge-individual` 后端处理链路，创建 Activity 类型支付订单并关联散人报名记录。
+- 验证通过：`cargo test --test payment_service_business_test -- --nocapture`，9 个 payment 业务测试全部通过。
+- 已新增散人约队支付状态后台处理：赛前支付过期未付自动取消报名，赛后支付比赛结束后未付发送一次系统通知。
+- 验证通过：`cargo test --test challenge_service_business_test -- --nocapture`，24 个 challenge 业务测试全部通过。
+- 已在 `build_app` 启动 60 秒间隔后台任务处理散人支付状态；验证通过：`cargo check --tests`。
+- 已补充最终后端验证：`cargo test --test challenge_individual_payment_schema_test -- --nocapture` 2 个 schema 测试通过；`cargo test --test payment_service_business_test -- --nocapture` 9 个 payment 业务测试通过。
+- 已执行最终静态验证：`cargo check --tests` 通过，`cargo clippy --all-targets -- -D warnings` 通过。
+- 已用 `rustfmt --edition 2024` 格式化本轮散人支付相关 Rust 文件；未对系统装修等无关既有改动做扩大格式化。
+- 全量 `cargo fmt --check` 仍失败于 `src/system/*`、`tests/challenge_repository_postgres_test.rs`、`tests/player_repository_sql_regression_test.rs` 等非本轮散人支付文件的既有格式差异。
+
 ## 2026-05-12
 
 - 已完成 `team` 模块一轮重构并通过 `cargo fmt --check`、`cargo clippy --all-targets -- -D warnings`、`cargo test`。
@@ -182,3 +211,24 @@
 - 已校验文件非空、大小不超过 5MB，格式仅支持 jpg/png/webp。
 - 已通过 `save_minio_bytes` 上传到 MinIO，object key 位于 `mini-app/home-banners/`。
 - 验证通过：`cargo check --tests`、`cargo clippy --all-targets -- -D warnings`。
+
+## 2026-05-23 散人约队最少/最多人数配置
+
+- 已新增迁移 `20260523000200_challenge_signup_limits.sql`，给 `rs_challenges` 增加 nullable `min_players` / `max_players` 与正数/大小关系约束。
+- 已在 `Challenge` 领域模型加入 `min_signup_players()` / `max_signup_players()`，并保留 `signup_capacity()` 表示最大报名人数。
+- 已将 create/update command、web DTO、handler、repository port、Postgres row model、insert/update/select 全链路接入 `min_players` / `max_players`。
+- 已让创建/更新散人约队校验人数规则；球队约队清空散人专用字段。
+- 已把散人新增报名容量拦截改为 `max_signup_players()`，把报名后/取消后状态判断改为 `min_signup_players()`。
+- 已调整业务语义：散人 `matched` 表示已达成行人数，不再表示不能继续报名；达到最多报名人数才拒绝新增报名。
+- 已新增/更新 challenge 业务测试，覆盖默认最少/最多人数、自定义 `10/14`、达到默认最多人数后拒绝。
+- 验证通过：`cargo test --test challenge_service_business_test -- --nocapture`、`cargo check --tests`、`cargo clippy --all-targets -- -D warnings`。
+
+## 2026-05-24 队长/场馆角色账号管理
+
+- 已新增迁移 `20260523000300_user_role_account_credentials.sql`，为 `rs_user_info` 增加 nullable `password_hash`，并给已设置密码的非空 `username` 建唯一索引。
+- 已扩展 `User` 领域模型、`UserQueryRepository::find_by_username`、`UserCommandRepository::update_password_hash` 和 Postgres 实现。
+- 已新增账号密码登录能力：`UserLoginUseCase::execute_with_password` 与 `POST /api/user/password-login`。
+- 已新增角色账号创建能力：超管调用 `POST /api/admin/users/players/role-users`，场馆设置 `is_venue`，队长要求 `team_id` 并通过 `TeamCommandRepository::set_captain_member` 同步球队队长和成员角色。
+- 已新增角色账号改密码能力：`PATCH /api/admin/users/players/:user_id/password`，并限制目标必须是场馆或 active captain。
+- 已扩展 `PlayerAdminListQuery.role` 和管理后台球员列表 SQL，支持 `role=venue|captain` 筛选。
+- 验证通过：`cargo test --test user_player_scope_test -- --nocapture`、`cargo check --tests`、`cargo clippy --all-targets -- -D warnings`。

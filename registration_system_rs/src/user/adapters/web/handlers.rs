@@ -5,10 +5,11 @@ use crate::shared::error::AppError;
 use crate::shared::http_error::HttpError;
 use crate::shared::upload::{detect_image_extension, save_minio_bytes};
 use crate::user::adapters::web::dto::{
-    AdminCreatePlayerRequest, AdminUpdatePlayerRequest, BindPhoneNumberRequest, PlayerDto,
-    PlayerListDto, TokenVerifyDto, UpdateProfileRequest, UserActivityRecordDto,
-    UserAttendanceRankingDto, UserAttendanceRecordDto, UserAvatarUploadResponse, UserDto,
-    UserLoginRequest, UserLoginResponse,
+    AdminChangePlayerPasswordRequest, AdminCreatePlayerRequest, AdminCreateRoleUserRequest,
+    AdminUpdatePlayerRequest, BindPhoneNumberRequest, PlayerDto, PlayerListDto, TokenVerifyDto,
+    UpdateProfileRequest, UserActivityRecordDto, UserAttendanceRankingDto, UserAttendanceRecordDto,
+    UserAvatarUploadResponse, UserDto, UserLoginRequest, UserLoginResponse,
+    UserPasswordLoginRequest,
 };
 use crate::user::domain::PlayerAdminListQuery;
 use axum::Json;
@@ -46,6 +47,26 @@ pub async fn login_handler(
             payload.nickname,
             payload.avatar_url,
         )
+        .await?;
+
+    Ok(Json(ApiResponse::with_message(
+        "用户登录成功",
+        UserLoginResponse {
+            access_token: result.access_token,
+            token_type: "Bearer",
+            user: UserDto::from(result.user),
+        },
+    )))
+}
+
+pub async fn password_login_handler(
+    State(state): State<AppState>,
+    Json(payload): Json<UserPasswordLoginRequest>,
+) -> Result<Json<ApiResponse<UserLoginResponse>>, HttpError> {
+    let result = state
+        .services
+        .user_service
+        .login_with_password(&payload.username, &payload.password)
         .await?;
 
     Ok(Json(ApiResponse::with_message(
@@ -405,6 +426,7 @@ pub struct PlayerListQuery {
     pub keyword: Option<String>,
     pub status: Option<i8>,
     pub has_team: Option<bool>,
+    pub role: Option<String>,
     pub page: Option<i64>,
     pub page_size: Option<i64>,
     pub sort_by: Option<String>,
@@ -444,6 +466,24 @@ pub async fn admin_create_player_handler(
         .await?;
     Ok(Json(ApiResponse::with_message(
         "球员创建成功",
+        UserDto::from(user),
+    )))
+}
+
+/// 管理后台：超级管理员创建队长/场馆账号
+pub async fn admin_create_role_user_handler(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(payload): Json<AdminCreateRoleUserRequest>,
+) -> Result<Json<ApiResponse<UserDto>>, HttpError> {
+    let actor = state.actor(&headers)?;
+    let user = state
+        .services
+        .user_service
+        .create_role_user(&actor, payload.into())
+        .await?;
+    Ok(Json(ApiResponse::with_message(
+        "角色用户创建成功",
         UserDto::from(user),
     )))
 }
@@ -502,6 +542,25 @@ pub async fn admin_update_player_handler(
     }
     Ok(Json(ApiResponse::with_message(
         "球员信息已更新",
+        UserDto::from(user),
+    )))
+}
+
+/// 管理后台：超级管理员修改队长/场馆账号密码
+pub async fn change_player_password_handler(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(user_id): Path<i64>,
+    Json(payload): Json<AdminChangePlayerPasswordRequest>,
+) -> Result<Json<ApiResponse<UserDto>>, HttpError> {
+    let actor = state.actor(&headers)?;
+    let user = state
+        .services
+        .user_service
+        .change_role_user_password(&actor, user_id, payload.password)
+        .await?;
+    Ok(Json(ApiResponse::with_message(
+        "密码已修改",
         UserDto::from(user),
     )))
 }
@@ -568,6 +627,7 @@ pub async fn list_players_handler(
                 keyword: query.keyword.as_deref(),
                 status: query.status,
                 has_team: query.has_team,
+                role: query.role.as_deref(),
                 page,
                 page_size,
                 sort_by: query.sort_by.as_deref(),

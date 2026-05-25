@@ -2,8 +2,13 @@ use crate::activity::domain::Activity;
 use crate::challenge::application::commands::AcceptChallengeCommand;
 use crate::challenge::application::notifier::ChallengeNotifier;
 use crate::challenge::application::permission::ChallengeTeamAccessChecker;
-use crate::challenge::domain::{Challenge, ChallengeKind, ChallengeStatus};
-use crate::challenge::ports::{ChallengeCommandRepository, ChallengeQueryRepository};
+use crate::challenge::domain::{
+    Challenge, ChallengeKind, ChallengePaymentMode, ChallengeStatus,
+    IndividualAcceptancePaymentStatus,
+};
+use crate::challenge::ports::{
+    AcceptIndividualFields, ChallengeCommandRepository, ChallengeQueryRepository,
+};
 use crate::shared::auth::{ActorContext, ActorKind};
 use crate::shared::error::AppError;
 use crate::team::ports::TeamQueryRepository;
@@ -54,15 +59,18 @@ impl AcceptChallengeUseCase {
             .map_err(|error| AppError::internal(format!("查询约队失败: {error}")))?
             .ok_or_else(|| AppError::NotFound("约队不存在".to_string()))?;
 
-        if challenge.status != ChallengeStatus::Open {
-            return Err(AppError::Conflict("该约队当前不可接".to_string()));
-        }
         match challenge.kind {
             ChallengeKind::Team => {
+                if challenge.status != ChallengeStatus::Open {
+                    return Err(AppError::Conflict("该约队当前不可接".to_string()));
+                }
                 self.accept_team_challenge(actor, challenge_id, challenge, command)
                     .await
             }
             ChallengeKind::Individual => {
+                if challenge.status == ChallengeStatus::Cancelled {
+                    return Err(AppError::Conflict("该约队当前不可接".to_string()));
+                }
                 self.accept_individual_challenge(actor, challenge_id, challenge)
                     .await
             }
@@ -241,7 +249,7 @@ impl AcceptChallengeUseCase {
             .await
             .map_err(|error| AppError::internal(format!("查询散人接约人数失败: {error}")))?;
 
-        if accepted_count >= i64::from(challenge.signup_capacity()) {
+        if accepted_count >= i64::from(challenge.max_signup_players()) {
             return Err(AppError::Conflict("该散人约队已满员".to_string()));
         }
 
@@ -261,7 +269,12 @@ impl AcceptChallengeUseCase {
         }
 
         self.command_repository
-            .accept_individual(challenge_id, actor.id)
+            .accept_individual(AcceptIndividualFields {
+                challenge_id,
+                user_id: actor.id,
+                payment_status: IndividualAcceptancePaymentStatus::Unpaid,
+                payment_deadline_at: calculate_payment_deadline(&challenge),
+            })
             .await
             .map_err(|error| match error {
                 crate::challenge::domain::DomainError::Conflict(message) => {
@@ -270,4 +283,18 @@ impl AcceptChallengeUseCase {
                 other => AppError::internal(format!("散人接约失败: {other}")),
             })
     }
+}
+
+fn calculate_payment_deadline(challenge: &Challenge) -> Option<chrono::NaiveDateTime> {
+    if challenge.payment_mode != ChallengePaymentMode::Prepaid {
+        return None;
+    }
+    if challenge
+        .fee_per_person
+        .is_none_or(|amount| amount <= rust_decimal::Decimal::ZERO)
+    {
+        return None;
+    }
+    let twenty_minutes_later = Utc::now().naive_utc() + chrono::Duration::minutes(20);
+    Some(std::cmp::min(twenty_minutes_later, challenge.start_time))
 }

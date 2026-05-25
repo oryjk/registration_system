@@ -2,8 +2,9 @@ use crate::payment::domain::{
     PaymentOrder, PaymentOrderStatus, PaymentOrderType, PaymentQueryResult,
 };
 use crate::payment::ports::{
-    PaymentOrderCommandRepository, PaymentOrderQueryRepository, PaymentSettlementPort,
-    RechargePaymentSettlement, TeamMembershipPaymentSettlement, WxPayGateway,
+    ActivityPaymentSettlement, PaymentOrderCommandRepository, PaymentOrderQueryRepository,
+    PaymentSettlementPort, RechargePaymentSettlement, TeamMembershipPaymentSettlement,
+    WxPayGateway,
 };
 use crate::shared::error::AppError;
 use chrono::Utc;
@@ -146,6 +147,15 @@ impl HandlePaidOrderUseCase {
                 })
                 .await
                 .map_err(|error| AppError::internal(format!("球队会员入账失败: {error}")))?;
+        } else if order.order_type == PaymentOrderType::Activity {
+            self.settlement_port
+                .settle_activity_payment(ActivityPaymentSettlement {
+                    order_no: &order.order_no,
+                    user_id: order.user_id,
+                    transaction_id,
+                })
+                .await
+                .map_err(|error| AppError::internal(format!("活动支付回写失败: {error}")))?;
         }
 
         Ok(())

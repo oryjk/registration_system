@@ -5,3 +5,9 @@ pub struct CreateTeamMembershipOrderCommand {
     pub openid: Option<String>,
     pub note: Option<String>,
 }
+
+#[derive(Debug, Clone)]
+pub struct CreateChallengePaymentOrderCommand {
+    pub challenge_id: String,
+    pub openid: Option<String>,
+}

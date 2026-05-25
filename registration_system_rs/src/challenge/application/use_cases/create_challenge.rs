@@ -50,6 +50,7 @@ impl CreateChallengeUseCase {
         if command.end_time <= command.start_time {
             return Err(AppError::Validation("结束时间必须晚于开始时间".to_string()));
         }
+        validate_signup_limits(command.kind, command.players_per_team, command.min_players, command.max_players)?;
 
         let host_user_id = match actor.actor_kind {
             ActorKind::User => self.resolve_user_host(actor, &command).await?,
@@ -57,10 +58,16 @@ impl CreateChallengeUseCase {
         };
 
         let now = Utc::now().naive_utc();
+        let (min_players, max_players) = match command.kind {
+            ChallengeKind::Individual => (command.min_players, command.max_players),
+            ChallengeKind::Team => (None, None),
+        };
+
         let challenge = Challenge {
             id: Uuid::new_v4().to_string(),
             title: command.title.trim().to_string(),
             kind: command.kind,
+            payment_mode: command.payment_mode,
             host_team_id: command.host_team_id,
             host_user_id,
             guest_team_id: None,
@@ -73,6 +80,8 @@ impl CreateChallengeUseCase {
             location_latitude: command.location_latitude,
             location_longitude: command.location_longitude,
             players_per_team: command.players_per_team,
+            min_players,
+            max_players,
             fee_per_person: command.fee_per_person,
             note: command
                 .note
@@ -163,4 +172,32 @@ impl CreateChallengeUseCase {
             Err(AppError::Forbidden)
         }
     }
+}
+
+pub(crate) fn validate_signup_limits(
+    kind: ChallengeKind,
+    players_per_team: i32,
+    min_players: Option<i32>,
+    max_players: Option<i32>,
+) -> Result<(), AppError> {
+    if kind != ChallengeKind::Individual {
+        return Ok(());
+    }
+
+    if min_players.is_some_and(|value| value <= 0) {
+        return Err(AppError::Validation("最少成行人数必须大于 0".to_string()));
+    }
+    if max_players.is_some_and(|value| value <= 0) {
+        return Err(AppError::Validation("最多报名人数必须大于 0".to_string()));
+    }
+
+    let resolved_min = min_players.unwrap_or(players_per_team * 2);
+    let resolved_max = max_players.unwrap_or(players_per_team * 2 + 4);
+    if resolved_min > resolved_max {
+        return Err(AppError::Validation(
+            "最少成行人数不能大于最多报名人数".to_string(),
+        ));
+    }
+
+    Ok(())
 }

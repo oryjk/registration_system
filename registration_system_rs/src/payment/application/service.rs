@@ -1,15 +1,18 @@
-use crate::payment::application::commands::CreateTeamMembershipOrderCommand;
+use crate::payment::application::commands::{
+    CreateChallengePaymentOrderCommand, CreateTeamMembershipOrderCommand,
+};
 use crate::payment::application::openid_resolver::PaymentOpenIdResolver;
 use crate::payment::application::read_models::{
-    CreateRechargeOrderResult, CreateTeamMembershipOrderResult,
+    CreateChallengePaymentOrderResult, CreateRechargeOrderResult, CreateTeamMembershipOrderResult,
 };
 use crate::payment::application::use_cases::{
-    CreateRechargeOrderUseCase, CreateTeamMembershipOrderUseCase, HandlePaidOrderUseCase,
-    QueryPaymentOrdersUseCase,
+    CreateChallengePaymentOrderUseCase, CreateRechargeOrderUseCase,
+    CreateTeamMembershipOrderUseCase, HandlePaidOrderUseCase, QueryPaymentOrdersUseCase,
 };
 use crate::payment::domain::{PaymentOrder, PaymentQueryResult};
 use crate::payment::ports::{
-    PaymentOrderCommandRepository, PaymentOrderQueryRepository, PaymentSettlementPort, WxPayGateway,
+    ActivityPaymentAccessPort, PaymentOrderCommandRepository, PaymentOrderQueryRepository,
+    PaymentSettlementPort, WxPayGateway,
 };
 use crate::shared::auth::ActorContext;
 use crate::shared::error::AppError;
@@ -21,6 +24,7 @@ use std::sync::Arc;
 #[derive(Clone)]
 pub struct PaymentService {
     create_recharge_order_use_case: CreateRechargeOrderUseCase,
+    create_challenge_payment_order_use_case: CreateChallengePaymentOrderUseCase,
     create_team_membership_order_use_case: CreateTeamMembershipOrderUseCase,
     handle_paid_order_use_case: HandlePaidOrderUseCase,
     query_orders_use_case: QueryPaymentOrdersUseCase,
@@ -31,6 +35,7 @@ impl PaymentService {
         query_repository: Arc<dyn PaymentOrderQueryRepository>,
         command_repository: Arc<dyn PaymentOrderCommandRepository>,
         settlement_port: Arc<dyn PaymentSettlementPort>,
+        activity_payment_access_port: Arc<dyn ActivityPaymentAccessPort>,
         wx_pay_gateway: Arc<dyn WxPayGateway>,
         team_repository: Arc<dyn TeamQueryRepository>,
         user_repository: Arc<dyn UserQueryRepository>,
@@ -40,6 +45,12 @@ impl PaymentService {
         Self {
             create_recharge_order_use_case: CreateRechargeOrderUseCase::new(
                 command_repository.clone(),
+                wx_pay_gateway.clone(),
+                openid_resolver.clone(),
+            ),
+            create_challenge_payment_order_use_case: CreateChallengePaymentOrderUseCase::new(
+                command_repository.clone(),
+                activity_payment_access_port,
                 wx_pay_gateway.clone(),
                 openid_resolver.clone(),
             ),
@@ -79,6 +90,16 @@ impl PaymentService {
         command: CreateTeamMembershipOrderCommand,
     ) -> Result<CreateTeamMembershipOrderResult, AppError> {
         self.create_team_membership_order_use_case
+            .execute(actor, command)
+            .await
+    }
+
+    pub async fn create_challenge_payment_order(
+        &self,
+        actor: &ActorContext,
+        command: CreateChallengePaymentOrderCommand,
+    ) -> Result<CreateChallengePaymentOrderResult, AppError> {
+        self.create_challenge_payment_order_use_case
             .execute(actor, command)
             .await
     }

@@ -563,6 +563,19 @@ impl TeamCommandRepository for FakeTeamStore {
         FakeTeamStore::delete(self, team_id).await
     }
 
+    async fn set_captain_member(&self, team_id: i64, user_id: i64) -> Result<(), DomainError> {
+        FakeTeamStore::update(
+            self,
+            team_id,
+            UpdateTeamFields {
+                captain_id: Some(Some(user_id)),
+                ..Default::default()
+            },
+        )
+        .await?;
+        FakeTeamStore::add_member(self, team_id, user_id, "captain", None, false).await
+    }
+
     async fn add_member(
         &self,
         team_id: i64,

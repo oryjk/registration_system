@@ -1,7 +1,8 @@
 use crate::shared::auth::ActorContext;
 use crate::shared::error::AppError;
 use crate::shared::ports::TokenServicePort;
-use crate::user::application::commands::UpdateUserCommand;
+use crate::team::ports::{TeamCommandRepository, TeamQueryRepository};
+use crate::user::application::commands::{CreateRoleUserCommand, UpdateUserCommand};
 use crate::user::application::read_models::UserLoginResult;
 use crate::user::application::use_cases::{
     ManagePlayerUseCase, UserLoginUseCase, UserProfileUseCase, UserQueryUseCase,
@@ -25,6 +26,8 @@ impl UserService {
     pub fn new(
         query_repository: Arc<dyn UserQueryRepository>,
         command_repository: Arc<dyn UserCommandRepository>,
+        team_query_repository: Arc<dyn TeamQueryRepository>,
+        team_command_repository: Arc<dyn TeamCommandRepository>,
         token_service: Arc<dyn TokenServicePort>,
     ) -> Self {
         Self {
@@ -38,7 +41,12 @@ impl UserService {
                 command_repository.clone(),
             ),
             query_use_case: UserQueryUseCase::new(query_repository.clone()),
-            manage_player_use_case: ManagePlayerUseCase::new(query_repository, command_repository),
+            manage_player_use_case: ManagePlayerUseCase::new(
+                query_repository,
+                command_repository,
+                team_query_repository,
+                team_command_repository,
+            ),
         }
     }
 
@@ -52,6 +60,16 @@ impl UserService {
     ) -> Result<UserLoginResult, AppError> {
         self.login_use_case
             .execute(open_id, union_id, username, nickname, avatar_url)
+            .await
+    }
+
+    pub async fn login_with_password(
+        &self,
+        username: &str,
+        password: &str,
+    ) -> Result<UserLoginResult, AppError> {
+        self.login_use_case
+            .execute_with_password(username, password)
             .await
     }
 
@@ -193,6 +211,27 @@ impl UserService {
     ) -> Result<User, AppError> {
         self.manage_player_use_case
             .admin_create_player(actor, real_name, nickname, phone_number, is_venue)
+            .await
+    }
+
+    pub async fn create_role_user(
+        &self,
+        actor: &ActorContext,
+        command: CreateRoleUserCommand,
+    ) -> Result<User, AppError> {
+        self.manage_player_use_case
+            .create_role_user(actor, command)
+            .await
+    }
+
+    pub async fn change_role_user_password(
+        &self,
+        actor: &ActorContext,
+        user_id: i64,
+        password: String,
+    ) -> Result<User, AppError> {
+        self.manage_player_use_case
+            .change_role_user_password(actor, user_id, password)
             .await
     }
 

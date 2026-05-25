@@ -9,7 +9,7 @@ use crate::challenge::application::queries::{
 use crate::challenge::application::use_cases::{
     AcceptChallengeUseCase, CancelChallengeUseCase, CancelIndividualAcceptanceUseCase,
     CreateChallengeUseCase, GetChallengeDetailUseCase, ListChallengesUseCase,
-    UpdateChallengeUseCase,
+    ProcessIndividualPaymentsResult, ProcessIndividualPaymentsUseCase, UpdateChallengeUseCase,
 };
 use crate::challenge::domain::{Challenge, ChallengeDetail, ChallengeSummary};
 use crate::challenge::ports::{ChallengeCommandRepository, ChallengeQueryRepository};
@@ -28,6 +28,7 @@ pub struct ChallengeService {
     create_challenge_use_case: CreateChallengeUseCase,
     get_challenge_detail_use_case: GetChallengeDetailUseCase,
     list_challenges_use_case: ListChallengesUseCase,
+    process_individual_payments_use_case: ProcessIndividualPaymentsUseCase,
     update_challenge_use_case: UpdateChallengeUseCase,
 }
 
@@ -73,6 +74,10 @@ impl ChallengeService {
                 query_repository.clone(),
                 team_repository.clone(),
                 team_access_checker.clone(),
+            ),
+            process_individual_payments_use_case: ProcessIndividualPaymentsUseCase::new(
+                command_repository.clone(),
+                notifier.clone(),
             ),
             update_challenge_use_case: UpdateChallengeUseCase::new(
                 query_repository.clone(),
@@ -167,5 +172,12 @@ impl ChallengeService {
         self.list_challenges_use_case
             .list_for_admin(actor, query)
             .await
+    }
+
+    pub async fn process_individual_payments(
+        &self,
+        now: chrono::NaiveDateTime,
+    ) -> Result<ProcessIndividualPaymentsResult, AppError> {
+        self.process_individual_payments_use_case.execute(now).await
     }
 }

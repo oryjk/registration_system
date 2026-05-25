@@ -1,6 +1,7 @@
 use crate::payment::domain::DomainError;
 use crate::payment::ports::{
-    PaymentSettlementPort, RechargePaymentSettlement, TeamMembershipPaymentSettlement,
+    ActivityPaymentSettlement, PaymentSettlementPort, RechargePaymentSettlement,
+    TeamMembershipPaymentSettlement,
 };
 use async_trait::async_trait;
 use chrono::Duration;
@@ -179,6 +180,37 @@ impl PaymentSettlementPort for PostgresPaymentSettlementAdapter {
         tx.commit()
             .await
             .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
+        Ok(())
+    }
+
+    async fn settle_activity_payment(
+        &self,
+        settlement: ActivityPaymentSettlement<'_>,
+    ) -> Result<(), DomainError> {
+        let result = sqlx::query(
+            r#"
+            UPDATE rs_challenge_individual_acceptances
+            SET payment_status = 'paid',
+                payment_order_no = $1,
+                updated_at = NOW()
+            WHERE payment_order_no = $1
+              AND user_id = $2
+              AND payment_status <> 'cancelled'
+            "#,
+        )
+        .bind(settlement.order_no)
+        .bind(settlement.user_id)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
+
+        if result.rows_affected() == 0 {
+            return Err(DomainError::Infrastructure(
+                "活动支付报名记录不存在".to_string(),
+            ));
+        }
+
+        let _ = settlement.transaction_id;
         Ok(())
     }
 }

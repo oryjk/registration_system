@@ -1,5 +1,6 @@
 use crate::bootstrap::app::AppState;
 use crate::shared::ports::TokenServicePort;
+use crate::team::adapters::{PostgresTeamCommandRepository, PostgresTeamQueryRepository};
 use crate::user::adapters::{PostgresUserRepository, create_admin_router, create_app_router};
 use crate::user::application::UserService;
 use axum::Router;
@@ -12,9 +13,13 @@ pub fn build_user_service(
 ) -> Arc<UserService> {
     let query_repository = Arc::new(PostgresUserRepository::new(pool.clone()));
     let command_repository = Arc::new(PostgresUserRepository::new(pool.clone()));
+    let team_query_repository = Arc::new(PostgresTeamQueryRepository::new(pool.clone()));
+    let team_command_repository = Arc::new(PostgresTeamCommandRepository::new(pool.clone()));
     Arc::new(UserService::new(
         query_repository,
         command_repository,
+        team_query_repository,
+        team_command_repository,
         token_service,
     ))
 }

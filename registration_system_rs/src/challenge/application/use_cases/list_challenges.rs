@@ -64,8 +64,8 @@ impl ListChallengesUseCase {
                         && item.challenge.guest_team_id != Some(query.team_id)
                 }
                 ChallengeKind::Individual => {
-                    item.challenge.status == ChallengeStatus::Open
-                        && item.accepted_count < item.challenge.signup_capacity()
+                    item.challenge.status != ChallengeStatus::Cancelled
+                        && item.accepted_count < item.challenge.max_signup_players()
                         && !item.current_user_joined
                 }
             };

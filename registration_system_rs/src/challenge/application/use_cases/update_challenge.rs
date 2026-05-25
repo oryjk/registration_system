@@ -1,4 +1,5 @@
 use crate::challenge::application::commands::UpdateChallengeCommand;
+use super::create_challenge::validate_signup_limits;
 use crate::challenge::domain::{Challenge, ChallengeStatus};
 use crate::challenge::ports::{
     ChallengeCommandRepository, ChallengeQueryRepository, UpdateChallengeFields,
@@ -49,7 +50,19 @@ impl UpdateChallengeUseCase {
         if challenge.status != ChallengeStatus::Open {
             return Err(AppError::Conflict("当前约队不可编辑".to_string()));
         }
+        validate_signup_limits(
+            challenge.kind,
+            command.players_per_team,
+            command.min_players,
+            command.max_players,
+        )?;
         self.ensure_admin_can_manage(actor, &challenge).await?;
+        let (min_players, max_players) = match challenge.kind {
+            crate::challenge::domain::ChallengeKind::Individual => {
+                (command.min_players, command.max_players)
+            }
+            crate::challenge::domain::ChallengeKind::Team => (None, None),
+        };
 
         self.command_repository
             .update(
@@ -63,6 +76,8 @@ impl UpdateChallengeUseCase {
                     location_latitude: command.location_latitude,
                     location_longitude: command.location_longitude,
                     players_per_team: command.players_per_team,
+                    min_players,
+                    max_players,
                     fee_per_person: command.fee_per_person,
                     note: command
                         .note

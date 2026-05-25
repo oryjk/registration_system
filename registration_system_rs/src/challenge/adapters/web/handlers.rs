@@ -7,7 +7,7 @@ use crate::challenge::application::{
     AcceptChallengeCommand, AdminChallengeListQuery, CreateChallengeCommand,
     PublicChallengeListQuery, TeamChallengeListRequest, UpdateChallengeCommand,
 };
-use crate::challenge::domain::{ChallengeKind, ChallengeStatus};
+use crate::challenge::domain::{ChallengeKind, ChallengePaymentMode, ChallengeStatus};
 use crate::shared::api_response::ApiResponse;
 use crate::shared::http_error::HttpError;
 use axum::Json;
@@ -29,6 +29,15 @@ pub async fn create_challenge_handler(
             )));
         }
     };
+    let payment_mode = match payload.payment_mode.as_deref().unwrap_or("postpaid") {
+        "prepaid" => ChallengePaymentMode::Prepaid,
+        "postpaid" => ChallengePaymentMode::Postpaid,
+        _ => {
+            return Err(HttpError(crate::shared::error::AppError::Validation(
+                "无效的支付方式".to_string(),
+            )));
+        }
+    };
     let challenge = state
         .services
         .challenge_service
@@ -36,6 +45,7 @@ pub async fn create_challenge_handler(
             &actor,
             CreateChallengeCommand {
                 kind,
+                payment_mode,
                 host_team_id: payload.host_team_id,
                 host_user_id: payload.host_user_id,
                 title: payload.title,
@@ -46,6 +56,8 @@ pub async fn create_challenge_handler(
                 location_latitude: payload.location_latitude,
                 location_longitude: payload.location_longitude,
                 players_per_team: payload.players_per_team,
+                min_players: payload.min_players,
+                max_players: payload.max_players,
                 fee_per_person: payload.fee_per_person,
                 note: payload.note,
             },
@@ -230,6 +242,8 @@ pub async fn update_challenge_handler(
                 location_latitude: payload.location_latitude,
                 location_longitude: payload.location_longitude,
                 players_per_team: payload.players_per_team,
+                min_players: payload.min_players,
+                max_players: payload.max_players,
                 fee_per_person: payload.fee_per_person,
                 note: payload.note,
             },

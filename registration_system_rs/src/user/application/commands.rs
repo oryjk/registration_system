@@ -9,3 +9,20 @@ pub struct UpdateUserCommand<'a> {
     pub leave_start_time: Option<Option<chrono::NaiveDateTime>>,
     pub leave_end_time: Option<Option<chrono::NaiveDateTime>>,
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RoleUserKind {
+    Captain,
+    Venue,
+}
+
+#[derive(Debug, Clone)]
+pub struct CreateRoleUserCommand {
+    pub role: RoleUserKind,
+    pub username: String,
+    pub password: String,
+    pub real_name: String,
+    pub nickname: Option<String>,
+    pub phone_number: Option<String>,
+    pub team_id: Option<i64>,
+}
