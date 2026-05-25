@@ -1,5 +1,34 @@
 # 小程序真实接口接入审计进度
 
+## 2026-05-23 散人约队最少/最多人数配置
+
+- 已读取根目录、后端、小程序和管理端协作文档。
+- 已确认当前工作区存在大量既有未提交改动，本轮只处理散人约队人数规则相关文件，不回滚无关改动。
+- 已定位现有容量计算：后端 `Challenge::signup_capacity()`、散人报名 use case、Postgres `accept_individual`，小程序 `viewModels.ts`/详情页，管理端 challenge 列表/详情。
+- 下一步：后端先补测试并新增 `min_players/max_players` 字段和默认规则。
+
+## 2026-05-23 散人约队支付方式与支付截止
+
+- 已确认本轮目标跨后端 `challenge/payment/notification` 与小程序 `challenges/create-individual`、`challenges/detail`。
+- 已确认工作区存在大量既有未提交改动，本轮只处理散人约队支付相关文件，不回滚无关内容。
+- 已开始重新核对当前代码：散人报名当前无支付字段，支付订单 Activity 类型尚未接入回写。
+- 下一步：先补后端红测，再实现迁移和业务逻辑。
+- 已完成后端支付链路：新增 `payment_mode`、散人报名支付状态字段、散人支付下单接口、支付成功回写、赛前超时自动取消和赛后未付通知后台任务。
+- 已完成小程序创建和详情接入：散人标题默认清空，新增赛前/赛后支付开关，详情页展示当前报名支付状态、赛前支付倒计时和去支付按钮。
+- 已修复小程序类型夹具缺少 `payment_mode` 的同步问题。
+- 验证通过：`registration_system_mini` 的 `bun run type-check`、`bun run build:mp-weixin`。
+- 验证通过：`registration_system_rs` 的 `cargo test --test challenge_service_business_test -- --nocapture`、`cargo test --test challenge_individual_payment_schema_test -- --nocapture`、`cargo test --test payment_service_business_test -- --nocapture`、`cargo check --tests`、`cargo clippy --all-targets -- -D warnings`。
+- 说明：全量 `cargo fmt --check` 仍被当前工作区中 system 装修、旧仓储测试和球员 SQL 回归测试等非本轮文件的格式差异阻塞；本轮散人支付相关 Rust 文件已用 `rustfmt --edition 2024` 单独格式化。
+
+## 2026-05-23 管理后台能力对齐小程序审计
+
+- 00:09 开始审计“后台管理有哪些功能缺失，不能比小程序弱”。
+- 已读取根目录和 `registration_system_backend_fe` 的 `AGENTS.md` / `CLAUDE.md`。
+- 已盘点管理端路由、侧边栏、`activity.ts`、`challenge.ts`、`team.ts`、`player.ts`、`billing.ts`。
+- 已盘点小程序 `pages/activities`、`pages/challenges/create-individual`、`pages/matches/create`、`MatchPublishForm` 和相关 API。
+- 已盘点后端 activity/challenge/team web routes、DTO 和 bootstrap router，确认管理端 `/api/admin` 下已有共享 activity/challenge 能力。
+- 初步结论：管理端已有列表、详情、编辑和部分创建能力，但发布球队约队、后台接约撮合、创建比赛时选择主客队/比赛类型/签到配置、球队 Logo 上传等能力弱于小程序。
+
 ## 日志
 
 - 开始审计：扫描小程序功能是否接入后端真实接口。
@@ -255,3 +284,84 @@
 - 验证结果：
   - `registration_system_mini`: `bun run type-check` 通过；`bun run mp:preview` 已完成构建并打到微信 CI，但被微信后台返回 `invalid ip: 125.70.163.152`。
   - `football_insight_mini`: `bun run type-check` 通过；`bun run mp:preview` 成功，二维码已输出到 `dist/build/mp-weixin/preview-qrcode.jpg`。
+
+## 2026-05-20 创建球队审核态与版本统一
+
+- 已新增 `scripts/sync-manifest-version.mjs`，在构建前用 `.env.ci.local` 中的 `MINI_PROGRAM_VERSION` 覆盖 `src/manifest.json`，并生成 `src/config/generatedMiniProgramVersion.ts`。
+- 已将 `prebuild:mp-weixin` 接入 `package.json`，并让 `scripts/mini-ci.mjs` 启动时也先执行版本同步，确保 build、upload、页面审核查询共用同一版本。
+- 已新增 `src/api/miniReview.ts`，查询 `https://match.oryjk.cn/mini-review/api/public/review-status`。
+- 已让 `pages/teams/manage/index.vue` 在进入页面时按 `project_code=registration_system_mini + 当前版本` 查询审核状态。
+- 已将 `TeamCreatePanel` 切分为正常态/审核态两种展示：审核态下球队名称为预置下拉、隐藏球队介绍、保留入队密码输入框。
+- 已继续收口上传版本闭环：`scripts/mini-ci.mjs` 现在会把解析出的 `uploadVersion` 显式传给共享 CLI，避免 wrapper 与共享 CLI 各自按基线推导版本。
+- 已在上传成功后再次执行 `syncManifestVersion()`，让 `.env.ci.local` 回写后的最新版本立即同步到 `src/manifest.json` 和 `src/config/generatedMiniProgramVersion.ts`，后续审核查询和下一次上传基线保持一致。
+- 已把 mini_review 提升为小程序启动基础状态，并新增 `shouldHideCreationEntrances` 全局派生值。
+- 审核态下现已全局隐藏这些入口：底部加号中的创建比赛/创建散人约球/创建球队，约队大厅发布按钮，以及无球队用户在球队管理页中的“创建球队”入口。
+- 已补充页面级兜底：即使手动输入创建比赛或创建散人/球队约队页面路径，审核态下也会提示并自动返回上一页；返回失败时回到首页。
+
+## 2026-05-20 审核态隐藏我的钱包
+
+- 已在 `pages/user/index.vue` 引入 `useMiniReviewStatus`。
+- 已用 `v-if="!shouldHideCreationEntrances"` 控制 `MineWalletSection`，审核态下不再展示“我的钱包”卡片。
+- 已补充 `userPageBackground.test.ts` 静态回归测试。
+- 验证通过：`bun test src/pages/__tests__/userPageBackground.test.ts`、`bun run type-check`。
+
+## 2026-05-20 后端球员列表 bigint/text 500 修复
+
+- 已修复管理后台球员列表 repository SQL 中的 bigint/text join 问题。
+- 已同步球员球队摘要 `team_id` 为数字类型，和当前管理端 `team_id: number` 保持一致。
+- 已新增 `player_repository_sql_regression_test.rs` 防止旧 cast 回归。
+- 验证通过：`cargo test --test player_repository_sql_regression_test -- --nocapture`、`cargo check --tests`、`cargo clippy --all-targets -- -D warnings`、`git diff --check`。
+
+## 2026-05-20 小程序首页装修配置
+
+- 开始实现后台可配置首页“约球开踢”卡片；用户确认顺序为先后端和管理后台，最后小程序。
+- 已确认本轮采用已有 `mini_app` 运行配置 JSON 扩展方案，不新增独立装修表。
+- 已读取根目录、后端、管理端、小程序 `AGENTS.md` / `CLAUDE.md`，并确认当前工作区已有多处未提交改动，本轮不回滚无关改动。
+- 已完成后端 `home.hero_banners` 扩展、管理后台装修面板和小程序首页轮播接入。
+- 验证通过：后端 `cargo test system::application::service::tests -- --nocapture`、`cargo check --tests`、`cargo clippy --all-targets -- -D warnings`；管理端 `bun run test:unit src/__tests__/mini-app-decoration.model.spec.ts`、`bun run type-check`、`bun run build`；小程序 `bun test src/config/__tests__/runtimeConfig.test.ts src/pages/__tests__/homePageLoading.test.ts`、`bun run type-check`、`bun run build:mp-weixin`；根目录 `git diff --check`。
+
+## 2026-05-20 小程序首页装修图片上传
+
+- 已新增后台系统接口 `POST /api/admin/system/mini-app-decoration/images`，接收 multipart `file`，校验 jpg/png/webp、5MB 上限，并强制通过 `save_minio_bytes` 上传到 MinIO。
+- 管理端 `MiniAppDecorationPanel` 已增加每条卡片的上传按钮，上传成功后自动回填图片 URL。
+- 验证通过：后端 `cargo check --tests`、`cargo clippy --all-targets -- -D warnings`；管理端 `bun run test:unit src/__tests__/mini-app-decoration.model.spec.ts`、`bun run type-check`、`bun run build`。
+
+## 2026-05-20 管理端 UI 规范化首轮
+
+- 已在 `registration_system_backend_fe/src/assets/main.css` 增加 `admin-page`、`admin-panel`、`admin-field`、`admin-action-bar` 等基础类，并统一 DaisyUI input/select/textarea/button 的后台基础视觉。
+- 已将 `SystemSettings.vue` 从大渐变/大圆角页面改为更紧凑的管理后台布局，保留地图配置和小程序装修的原有业务逻辑。
+- 已将 `MiniAppDecorationPanel.vue` 对齐新的 panel、field、label 规范，并保留图片上传、预览、新增、删除、排序能力。
+- 浏览器验证 `/system/settings` 时发现两个 sticky 保存条会在滚动上半区时显示下半区保存按钮；已将 `admin-action-bar` 改为普通内联操作条。
+- 浏览器验证深色主题时发现新增规范类部分文字使用浅色主题硬编码；已补齐 `--admin-text`、`--admin-text-strong`、`--admin-badge-bg` 等变量和 `data-theme='dark'` 覆盖。
+- 验证通过：管理端 `bun run type-check`、`bun run test:unit src/__tests__/mini-app-decoration.model.spec.ts src/__tests__/map-settings.model.spec.ts`、`bun run build`、根目录目标 `git diff --check`。
+
+## 2026-05-23 管理端复用现有后端接口
+
+- 已限制本轮范围为管理端前端，不修改 Rust 后端和小程序。
+- 已在 `src/services/activity.ts` 补充 `match_kind`、`team_checkin_configs` 和签到配置 payload 类型。
+- 已在活动列表新建/编辑弹窗接入主队、客队、比赛类型和创建时球队签到初始配置，并加入主客队不能相同的前端校验。
+- 已在活动详情编辑弹窗接入主队、客队、比赛类型；活动详情签到卡片支持按主客队编辑启用状态、签到半径、提前开放和延后关闭分钟数。
+- 已在 `src/services/team.ts` 增加 `uploadTeamLogo` multipart 上传封装；球队详情编辑弹窗支持选择本地队徽文件，上传后回填 `logo_url` 并刷新详情。
+- 已确认后台 admin 创建球队约队当前不能仅复用现有后端接口完成，原因是后端限制后台创建只支持散人报名；本轮不新增不可用入口。
+- 验证通过：`cd registration_system_backend_fe && bun run type-check`、根目录目标 `git diff --check`。
+
+## 2026-05-23 散人约队最少/最多人数配置
+
+- 已新增后端 `rs_challenges.min_players` / `max_players` nullable 字段迁移，旧数据通过领域默认值兜底。
+- 后端 `Challenge` 增加 `min_signup_players()` / `max_signup_players()`：散人默认最少 `players_per_team * 2`，最多 `players_per_team * 2 + 4`；球队仍按 `players_per_team`。
+- 创建/更新散人约队会校验最少和最多人数都大于 0，且最终最少人数不能大于最多人数；球队约队会清空这两个散人专用字段。
+- 散人报名达到最少人数后置为 `matched`，但在未达到最多人数前仍允许继续报名；达到最多人数后后端拒绝新增报名。
+- 管理端散人报名创建/编辑弹窗已支持配置最少成行人数和最多报名人数，列表/详情展示已改为成行人数与最多人数语义。
+- 小程序散人发布页已新增默认收起的“高级设置”，展开后可设置最少成行人数和最多报名人数；未填写时按默认规则提交。
+- 小程序散人约队详情、首页/大厅卡片和报名进度已使用成行人数与最多报名人数展示和拦截。
+- 验证通过：后端 `cargo test --test challenge_service_business_test -- --nocapture`、`cargo check --tests`、`cargo clippy --all-targets -- -D warnings`；管理端 `bun run type-check`、`bun run build`；小程序 `bun test src/utils/__tests__/viewModels.test.ts`、`bun run type-check`、`bun run build:mp-weixin`；根目录 `git diff --check`。
+
+## 2026-05-24 后端队长/场馆角色账号管理
+
+- 已新增 `rs_user_info.password_hash` 迁移，并为已设置密码的非空 `username` 建唯一索引。
+- 已扩展 `User` 领域模型、用户仓储 port/Postgres 实现，支持按 username 查询和更新密码 hash。
+- 已新增账号密码登录接口 `POST /api/user/password-login`，登录成功颁发小程序用户 token。
+- 已新增超管创建角色用户接口 `POST /api/admin/users/players/role-users`：`role=venue` 写 `is_venue`，`role=captain` 要求 `team_id` 并绑定球队队长。
+- 已新增超管修改角色用户密码接口 `PATCH /api/admin/users/players/:user_id/password`。
+- 已扩展球员列表查询参数 `role=venue|captain`，便于后台管理筛选这两类角色用户；冻结/解冻继续复用既有 `/players/:user_id/freeze` 和 `/unfreeze`。
+- 验证通过：后端 `cargo test --test user_player_scope_test -- --nocapture`、`cargo check --tests`、`cargo clippy --all-targets -- -D warnings`。

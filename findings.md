@@ -1,5 +1,58 @@
 # 小程序真实接口接入审计发现
 
+## 2026-05-23 散人约队最少/最多人数配置发现
+
+- 当前 `Challenge::signup_capacity()` 对散人约队使用 `players_per_team * 2`，这会把赛制和最大报名人数绑定在一起。
+- 当前散人报名拦截在 `AcceptChallengeUseCase::accept_individual_challenge`，依赖 `challenge.signup_capacity()`；Postgres `accept_individual` 写入后也用 `players_per_team * 2` 决定是否把约队置为 matched。
+- 小程序 `challengeSignupCapacity()`、详情页 `canAccept` 和进度显示都使用 `players_per_team * 2` 作为容量；管理端 `individualCapacity()` 也同样使用该规则。
+- 新规则需要区分：`players_per_team` 是赛制；`min_players` 是成行阈值；`max_players` 是报名上限。
+- 未配置时默认 `min_players = players_per_team * 2`、`max_players = players_per_team * 2 + 4`，因此旧数据不能简单把新列设成 NOT NULL 而无默认计算语义。
+- 散人约队达到最少成行人数后状态会变为 `matched`，但在达到最多报名人数前仍应允许继续报名；因此散人报名的可接条件不能再简单等同 `status == open`。
+- 管理端和小程序都应把 `players_per_team` 展示为赛制，把 `min_players` 展示为“成行人数”，把 `max_players` 展示为“最多报名人数”。
+
+## 2026-05-23 散人约队支付方式发现
+
+- 当前 `rs_challenges` 没有 `payment_mode` 字段，散人约队只保存 `fee_per_person`，无法区分赛前支付和赛后支付。
+- 当前 `rs_challenge_individual_acceptances` 只记录 `challenge_id/user_id/created_at/updated_at`，没有支付状态、支付截止时间和支付订单号。
+- 当前散人报名链路在 `AcceptChallengeUseCase::accept_individual_challenge`，报名成功后直接调用 `accept_individual(challenge_id, actor.id)`。
+- 支付模块已有 `PaymentOrderType::Activity`，但支付成功处理当前只结算 `Recharge` 和 `TeamMembership`，还没有把 Activity 支付回写到散人约队报名。
+- 系统内通知模块已存在，可复用 `NotificationService::send_to_users`，不需要从零实现通知系统。
+- 小程序创建散人约队页当前 `form.title` 默认是 `"周三晚散人局"`，需要清空；球队约队默认标题要谨慎处理，避免扩大用户明确要求的散人场景。
+- 小程序散人详情页已有报名/取消报名，但没有当前用户报名支付状态、支付倒计时或散人报名支付下单接口。
+- 本轮选择后端作为赛前支付截止和赛后未支付通知的唯一权威：小程序只展示 `current_user_acceptance` 并触发支付，不在前端自行判断是否取消报名。
+- 赛前支付的截止时间在散人报名时写入 `payment_deadline_at`，计算规则为 `min(now + 20min, challenge.start_time)`；赛后支付不写 deadline。
+- 赛后未支付提醒复用现有系统内通知模块，由后台轮询任务在比赛结束后标记一次并发送通知，避免依赖用户打开页面触发。
+
+## 2026-05-23 管理后台能力对齐小程序审计发现
+
+### 管理端当前已具备
+
+- 路由已有：`/teams`、`/activities`、`/individual-registrations`、`/challenges`、`/billing`、`/players`、`/system/settings`。
+- `registration_system_backend_fe/src/services/activity.ts` 已封装活动列表、创建、编辑、状态、删除、报名列表、手动报名、批量状态、取消报名、签到配置更新。
+- `registration_system_backend_fe/src/services/challenge.ts` 已封装约队列表、详情、创建、编辑、取消；创建 payload 当前只建散人报名。
+- 活动列表页 `ActivityList.vue` 有“新建活动”表单，能设置名称、地点、对手文本、球服颜色、比赛时间、报名开始/截止、几人制、简介。
+- 活动详情页 `ActivityDetail.vue` 能编辑活动、查看/管理报名、手动报名、批量改报名状态、取消报名、结算。
+- 约队列表/详情能查看球队约队和散人报名，能编辑/取消 open 状态约队；散人报名页可后台创建散人报名。
+- 球队管理能创建球队、编辑球队、成员管理、角色设置、管理员分配、信用处罚等；球员管理能设置 `is_venue` 场馆身份。
+
+### 相对小程序的核心缺口
+
+- 管理端没有“创建/发布球队约队”入口。小程序 `pages/activities/index.vue` 可选择球队约队/散人约队，并进入 `pages/challenges/create-individual/index.vue?kind=team`；管理端 `ChallengeList.vue` 只有散人报名页显示“创建散人报名”，且 `submitCreate()` 固定提交 `kind: 'individual'`、`host_team_id: null`。
+- 管理端没有约队“接约/撮合”操作。后端 `/api/admin/challenges/:id/accept` 已通过共享 challenge router 暴露，但管理端 service 没有 `acceptAdminChallenge`，页面也没有为后台运营选择接约球队的 UI。
+- 管理端创建活动/比赛没有主队/客队选择。service payload 支持 `home_team_id` / `away_team_id`，但 `ActivityList.vue` 创建表单只填“对阵队伍”文本，提交 payload 不含 `home_team_id`、`away_team_id`。
+- 管理端创建活动没有提交 `match_kind`。小程序创建比赛有“对外友谊赛/队内内战”，并提交 `match_kind`；管理端 activity service 类型有该字段，但创建/编辑 UI 未展示，`handleSubmit()` 也未提交。
+- 管理端创建活动没有签到配置创建能力。小程序创建比赛可以启用签到并提交 `team_checkin_configs`；管理端 `CreateActivityPayload` 类型当前没有 `team_checkin_configs`，创建表单也没有签到开关、半径和时间窗。
+- 管理端活动详情的签到卡片仅展示配置。`ActivityCheckInPanel.vue` 只展示 `team_checkin_configs`，没有调用已封装的 `updateActivityCheckinConfig()` 进行编辑。
+- 管理端球队 Logo 只支持 URL 输入。后端已有 `/api/admin/teams/:id/logo`，小程序已接 `uploadTeamLogo()`；管理端 `TeamList.vue`/`TeamDetail.vue`/`TeamEditDialog.vue` 仍让运营手填 `logo_url`，没有上传控件。
+- 管理端发布散人报名需要手填“发布用户 ID”，没有运营友好的场馆/用户选择器；球员 service 已可筛 `is_venue` 展示，但创建约队弹窗未复用球员搜索。
+
+### 后端接口侧判断
+
+- 活动创建接口 `POST /api/admin/activities` 复用 app shared router，后端 DTO 已支持 `home_team_id`、`away_team_id`、`match_kind`、`team_checkin_configs`。
+- 约队接口 `/api/admin/challenges` 复用 `/api/challenges` router，后端 DTO 支持 `kind`、`host_team_id`、`host_user_id`，并暴露 `/:id/accept`。
+- 因此很多缺口是管理端 UI/service 没接全，不是后端完全没有能力。
+- 但后台运营型“撮合两队”如果需要绕过普通队长权限、用管理员身份选择两队，应进一步确认后端 `accept_challenge` 对 Admin actor 的权限语义，必要时新增后台专用 use case。
+
 本文件记录审计过程中的关键发现。
 
 ## 小程序侧初步扫描
@@ -339,3 +392,59 @@
 - `registration_system_mini/src/manifest.json` 是标准 JSON，而 `football_insight_mini/src/manifest.json` 带注释；共享 CLI 需要用 `JSON5` 解析，不能直接 `JSON.parse`。
 - `registration_system_mini` 的真实 `preview` 已成功走到微信 CI 服务端，但被微信后台拒绝，错误是 `invalid ip: 125.70.163.152`，说明私钥和 CLI 都已生效，当前阻塞点是微信侧 IP 白名单。
 - `football_insight_mini` 在补入私钥后，`bun run mp:preview` 已成功生成预览二维码，输出路径为 `dist/build/mp-weixin/preview-qrcode.jpg`。
+
+## 2026-05-20 创建球队审核态与版本统一发现
+
+- `registration_system_mini` 现有 `mp:upload` 写入 mini_review 的版本来自 `manifest.versionName` 与 `.env.ci.local` 基线推导，但页面运行时此前没有稳定版本来源可直接复用。
+- 最稳的做法不是在小程序运行时直接解析 `manifest.json`，而是在构建前同步脚本中同时覆盖 `src/manifest.json` 和生成一个前端可直接 import 的版本常量文件。
+- `mini_review` 的公开查询接口已经满足需求：`GET https://match.oryjk.cn/mini-review/api/public/review-status?project_code=registration_system_mini&version=<version>`，返回核心字段 `is_reviewing`。
+- 审核态表单只影响创建球队页展示和提交载荷，不需要改后端 `registration_system_rs` 或 `mini-app-runtime-config`。
+- 共享 CLI 会在上传成功后把 `.env.ci.local` 的 `MINI_PROGRAM_VERSION` 回写为新版本；但如果项目层 wrapper 只在上传前同步 manifest，页面运行时版本会短暂落后一拍。
+- 因此项目层 `scripts/mini-ci.mjs` 需要两件额外动作：一是把本次解析出的 `uploadVersion` 显式透传给共享 CLI，避免两边各自推导；二是在上传成功后再次执行 manifest 同步，让 `manifest.json` 和 `generatedMiniProgramVersion.ts` 立刻追平到新基线。
+- 审核态不能只作用在创建球队页；它需要作为小程序启动即加载的全局基础状态，并驱动多个页面的入口显隐。
+- 审核状态未返回前，生产环境也应先隐藏所有创建入口，避免页面先闪出“创建比赛/散人约球/创建球队/发布约队”再消失。
+
+## 2026-05-20 审核态隐藏我的钱包发现
+
+- “我的钱包”入口在小程序 `pages/user/index.vue` 中通过 `MineWalletSection` 渲染。
+- 钱包/账单属于真实资金业务入口，审核态下应和创建类入口一样从首屏隐藏。
+- 现有 `stores/miniReview.ts` 已提供 `shouldHideCreationEntrances`，可以复用该全局审核态派生值，不需要新增第二套审核判断。
+
+## 2026-05-20 后端球员列表 bigint/text 500 发现
+
+- 管理后台球员列表的 500 根因是 `PostgresUserRepository` 中遗留的 `tm.team_id::text` 与 `CAST(t.id AS TEXT)`。
+- 这和球队 ID 数字化迁移后的 schema 冲突：`rs_teams.id` 与 `rs_team_members.team_id` 现在都是 bigint。
+- 修复范围应限制在球员列表和球员球队摘要链路，不需要改数据库迁移或前端请求参数。
+
+## 2026-05-20 小程序首页装修配置发现
+
+- 小程序首页“约球开踢”卡片目前硬编码在 `registration_system_mini/src/pages/home/components/HomeHeroSection.vue`，文字为“约球开踢 / 组队 · 报名 · 上场 / 去看看”，视觉为 CSS 装饰球场元素。
+- 后端已有小程序运行配置链路：小程序读取 `GET /api/system/mini-app-runtime-config`，管理端可通过 `PATCH /api/admin/system/mini-app-runtime-config` 保存整份 `mini_app` JSON 配置。
+- 当前 `MiniAppRuntimeConfig.home` 只有数量和过期过滤相关字段；首页装修配置适合新增为 `home.hero_banners` 数组，而不是新建表。
+- 管理后台 `SystemSettings.vue` 目前只管理地图配置；`src/services/system.ts` 仅封装地图配置，没有 mini app runtime config 类型和接口封装。
+- 设计约束：后台维护多条 banner，小程序端按启用项和排序展示；未配置或全部无效时回退默认“约球开踢”卡片，避免线上首页空白。
+- 图片上传不应写入运行配置本身的二进制内容；合理链路是后台上传图片到 MinIO，后端返回公开 URL，管理端把 URL 写入 `home.hero_banners[].image_url`。
+
+## 2026-05-20 管理端 UI 规范化发现
+
+- 当前管理端技术栈已经是 Tailwind 4 + DaisyUI 5，首轮 UI 规范不需要引入 shadcn；直接补一层轻量 `admin-*` utility 更符合现有项目。
+- 后台运营类页面应偏克制、紧凑、可扫读，避免大面积渐变、过大圆角和营销式 hero。
+- 全局表单控件适合统一为 1px 边框、较小圆角、明确 focus ring，让系统设置页和后续后台页面有一致的基础观感。
+- `SystemSettings.vue` 中地图设置和小程序装修保存是两个不同操作；如果两个保存条都用 sticky bottom，页面滚动到上半区时会显示下半区保存条，造成上下文错位。
+- 管理端已有深色主题切换，新增规范类不能写死浅色文字颜色；需要通过 CSS 变量同时覆盖 `data-theme='dark'`。
+
+## 2026-05-23 管理端复用后端接口发现
+
+- 后端 `CreateActivityRequest` 已支持 `home_team_id`、`away_team_id`、`match_kind` 和 `team_checkin_configs`，管理端此前只提交基础活动字段。
+- 后端 `UpdateActivityRequest` 已支持 `home_team_id`、`away_team_id` 和 `match_kind`，活动详情编辑弹窗此前没有暴露这些字段。
+- 后端已有 `PATCH /api/admin/activities/:activity_id/check-in-config`，管理端此前只展示签到配置，没有编辑入口。
+- 后端已有 `POST /api/admin/teams/:id/logo`，字段名为 multipart `file`，返回 `logo_url`，管理端此前只能手填队徽 URL。
+- 后端 `CreateChallengeUseCase::resolve_admin_host` 当前明确限制后台创建仅支持 `kind=individual` 且 `host_team_id` 必须为空；因此管理端不能只靠前端新增“创建球队约队”入口，否则会被后端校验拒绝。
+
+## 2026-05-24 后端队长/场馆角色账号管理发现
+
+- 当前场馆身份已经落在 `rs_user_info.is_venue`，可以直接复用；一个用户仍可同时是球员和场馆。
+- 当前队长身份不是用户表字段，而是 `rs_teams.captain_id` 以及 `rs_team_members.role='captain'`，因此创建队长用户必须绑定具体球队才会被现有发布/管理权限识别。
+- 现有小程序用户登录主要依赖微信 `open_id`；新增账号密码需要给 `rs_user_info` 增加 nullable `password_hash`，并提供账号密码登录接口，否则“设置账号和密码”没有登录闭环。
+- `username` 历史上不是唯一约束，只适合作为新建账号用户的登录名；迁移中的唯一索引应收窄到 `password_hash IS NOT NULL` 的账号用户，避免旧微信用户重复 username 阻塞迁移。
+- 超管创建角色用户需要和普通管理员创建球员区分；本轮新增专用 `/api/admin/users/players/role-users`，普通球员创建接口保持原语义。

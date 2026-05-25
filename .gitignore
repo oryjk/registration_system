@@ -61,3 +61,6 @@ mini-ux-prototype*.png
 .git-backups/
 .worktrees/
 worktrees/
+
+# WeChat Mini Program private key
+private.*.key
