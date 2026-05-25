@@ -22,9 +22,26 @@ describe("app route fallback", () => {
     const source = await Bun.file(
       "/Users/carlwang/registration_system/registration_system_mini/src/App.vue",
     ).text();
+    const reviewStore = await Bun.file(
+      "/Users/carlwang/registration_system/registration_system_mini/src/stores/miniReview.ts",
+    ).text();
 
     expect(source.includes("restoreSessionFromStorage")).toEqual(true);
     expect(source.includes('import { restoreSessionFromStorage, useAppSession } from "@/stores/appSession";')).toEqual(true);
+    expect(source.includes('import { preloadMiniReviewStatus } from "@/stores/miniReview";')).toEqual(true);
+    expect(source.includes("void preloadMiniReviewStatus();")).toEqual(true);
+    expect(reviewStore.includes("const forceMiniReviewMode = String(import.meta.env.VITE_FORCE_MINI_REVIEW_MODE || \"\").trim().toLowerCase() === \"true\";")).toEqual(true);
+    expect(reviewStore.includes("const shouldCheckMiniReview = import.meta.env.PROD;")).toEqual(true);
+    expect(reviewStore.includes("forceMiniReviewMode || (shouldCheckMiniReview")).toEqual(true);
+    expect(reviewStore.includes("if (forceMiniReviewMode)")).toEqual(true);
+    expect(reviewStore.includes("开发环境强制审核态")).toEqual(true);
+    expect(reviewStore.includes("console.info(`[mini-review] forced in dev: version=${MINI_PROGRAM_VERSION}, reviewing=true`);")).toEqual(true);
+    expect(reviewStore.includes("if (!shouldCheckMiniReview)")).toEqual(true);
+    expect(reviewStore.includes('console.info("[mini-review] skipped: non-production env");')).toEqual(true);
+    expect(reviewStore.includes("console.info(`[mini-review] loaded: version=${MINI_PROGRAM_VERSION}, reviewing=${status.is_reviewing}`);")).toEqual(true);
+    expect(reviewStore.includes("const shouldHideCreationEntrances = computed(")).toEqual(true);
+    expect(reviewStore.includes("!reviewStatusReady.value || !reviewStatusAvailable.value || reviewMode.value")).toEqual(true);
+    expect(reviewStore.includes("reviewMode.value = false;")).toEqual(true);
     expect(source.includes("ensureSessionReady")).toEqual(false);
     expect(source.includes("if (currentUser.value)")).toEqual(true);
   });

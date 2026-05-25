@@ -17,10 +17,13 @@ import { useNotificationCenter } from "@/stores/notificationCenter";
 import { getTeamCreditTransactions } from "@/api/team";
 import { getMyActivities } from "@/api/user";
 import { useTeamContext } from "@/stores/teamContext";
+import { useMiniReviewStatus } from "@/stores/miniReview";
 import { clearSession } from "@/stores/appSession";
 import { getAccessToken } from "@/utils/authStorage";
 import { getCustomNavMetrics } from "@/utils/customNav";
 import { getCurrentYearDateRange, isDateInRange } from "@/utils/dateRange";
+import { formatDateLabel } from "@/utils/datetime";
+import { attendanceStatusTone } from "@/utils/statusTone";
 import { isMockWxPaymentParams, isPaymentCancelled, normalizeWxPaymentParams, requestWxPayment } from "@/utils/payment";
 import type { BackendTeamCreditTransaction } from "@/types/backend";
 import {
@@ -42,6 +45,7 @@ const {
   ensureSessionReady,
   refreshSessionContext,
 } = useTeamContext();
+const { shouldHideCreationEntrances } = useMiniReviewStatus();
 const { unreadCount, syncUnreadCount, setUnreadCount } = useNotificationCenter();
 const navMetrics = getCustomNavMetrics();
 
@@ -97,20 +101,8 @@ const currentTeamJoinedDaysLabel = computed(() => {
   return `${days} 天`;
 });
 
-function formatDateLabel(isoText: string) {
-  const date = new Date(isoText.replace(" ", "T"));
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  const hours = String(date.getHours()).padStart(2, "0");
-  const minutes = String(date.getMinutes()).padStart(2, "0");
-  return `${month}/${day} ${hours}:${minutes}`;
-}
-
 function statusClass(status: string) {
-  if (status === "参加") return "user-status user-status-join";
-  if (status === "请假") return "user-status user-status-leave";
-  if (status === "缺席") return "user-status user-status-late";
-  return "user-status user-status-pending";
+  return `user-status user-status-${attendanceStatusTone(status)}`;
 }
 
 function parseDateTime(value: string) {
@@ -440,6 +432,7 @@ onUnload(() => {
         />
 
         <MineWalletSection
+          v-if="!shouldHideCreationEntrances"
           :wallet-summary="walletSummary"
           @open-billing="openBilling"
         />

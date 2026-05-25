@@ -35,6 +35,7 @@ export function getChallengeDetail(challengeId: string) {
 
 export function createChallenge(payload: {
   kind: "team" | "individual";
+  payment_mode?: "prepaid" | "postpaid";
   host_team_id?: number;
   title: string;
   holding_date: string;
@@ -44,6 +45,8 @@ export function createChallenge(payload: {
   location_latitude?: number;
   location_longitude?: number;
   players_per_team: number;
+  min_players?: number;
+  max_players?: number;
   fee_per_person?: string;
   note?: string;
 }) {

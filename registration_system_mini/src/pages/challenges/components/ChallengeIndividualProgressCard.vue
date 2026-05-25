@@ -23,11 +23,11 @@ defineProps<{
     <view class="individual-progress-shell">
       <view class="individual-progress-head">
         <view>
-          <text class="individual-progress-value">{{ card.acceptedCount }}/{{ card.capacity }}</text>
-          <text class="individual-progress-label">已报名 / 总名额</text>
+          <text class="individual-progress-value">{{ card.acceptedCount }}/{{ card.minPlayers }}</text>
+          <text class="individual-progress-label">已报名 / 成行人数</text>
         </view>
         <view class="individual-progress-side">
-          <text class="individual-progress-remain">还差 {{ individualRemainingCount }} 人</text>
+          <text class="individual-progress-remain">最多 {{ card.maxPlayers }} 人</text>
           <text class="individual-progress-format">{{ card.formatLabel }}</text>
         </view>
       </view>

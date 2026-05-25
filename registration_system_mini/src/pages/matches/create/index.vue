@@ -5,10 +5,12 @@ import AppTabHeader from "@/components/AppTabHeader.vue";
 import MatchPublishForm from "@/components/MatchPublishForm.vue";
 import type { MatchPublishFormModel } from "@/components/matchPublishForm";
 import { createActivity, getActivity, updateActivity } from "@/api/activity";
+import { preloadMiniReviewStatus, useMiniReviewStatus } from "@/stores/miniReview";
 import { useTeamContext } from "@/stores/teamContext";
 import { getCustomNavMetrics } from "@/utils/customNav";
 
 const { currentTeam, ensureSessionReady } = useTeamContext();
+const { shouldHideCreationEntrances } = useMiniReviewStatus();
 const navMetrics = getCustomNavMetrics();
 
 const submitting = ref(false);
@@ -208,6 +210,24 @@ async function loadEditActivity() {
   }
 }
 
+async function guardReviewMode() {
+  await preloadMiniReviewStatus();
+  if (!shouldHideCreationEntrances.value) return false;
+
+  uni.showToast({
+    title: "审核状态下暂不开放创建比赛",
+    icon: "none",
+  });
+  setTimeout(() => {
+    uni.navigateBack({
+      fail: () => {
+        uni.switchTab({ url: "/pages/home/index" });
+      },
+    });
+  }, 120);
+  return true;
+}
+
 async function handleSubmit() {
   if (!currentTeam.value || !currentTeam.value.canManageTeam) {
     uni.showToast({
@@ -298,6 +318,7 @@ onLoad((options) => {
 });
 
 onShow(async () => {
+  if (await guardReviewMode()) return;
   await ensureSessionReady();
   if (!form.holdingDate) {
     initDefaultForm();

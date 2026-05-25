@@ -3,16 +3,20 @@ import { computed, reactive, ref } from "vue";
 import { onLoad, onShow } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
 import { createChallenge } from "@/api/challenge";
+import { preloadMiniReviewStatus, useMiniReviewStatus } from "@/stores/miniReview";
 import { useTeamContext } from "@/stores/teamContext";
 import { getCustomNavMetrics } from "@/utils/customNav";
 
 const { currentIdentity, ensureSessionReady } = useTeamContext();
+const { shouldHideCreationEntrances } = useMiniReviewStatus();
 const navMetrics = getCustomNavMetrics();
 const submitting = ref(false);
 const challengeKind = ref<"team" | "individual">("individual");
+const advancedOpen = ref(false);
 
 const form = reactive({
-  title: "周三晚散人局",
+  title: "",
+  paymentMode: "postpaid" as "prepaid" | "postpaid",
   date: "",
   startTime: "20:00",
   endTime: "22:00",
@@ -20,6 +24,8 @@ const form = reactive({
   locationLatitude: null as number | null,
   locationLongitude: null as number | null,
   playersPerTeam: "8",
+  minPlayers: "",
+  maxPlayers: "",
   feePerPerson: "",
   note: "",
 });
@@ -47,6 +53,8 @@ const canSubmit = computed(
     !!form.location.trim() &&
     !submitting.value,
 );
+const defaultMinPlayers = computed(() => Number(form.playersPerTeam || 0) * 2);
+const defaultMaxPlayers = computed(() => Number(form.playersPerTeam || 0) * 2 + 4);
 
 function defaultPublishDate() {
   const now = new Date();
@@ -112,6 +120,16 @@ function validateForm() {
   const feePerPerson = form.feePerPerson ? Number(form.feePerPerson) : null;
   if (feePerPerson !== null && (!Number.isFinite(feePerPerson) || feePerPerson < 0)) return "请填写正确的费用";
 
+  if (challengeKind.value === "individual") {
+    const minPlayers = form.minPlayers ? Number(form.minPlayers) : null;
+    const maxPlayers = form.maxPlayers ? Number(form.maxPlayers) : null;
+    if (minPlayers !== null && (!Number.isFinite(minPlayers) || minPlayers <= 0)) return "请填写正确的最少成行人数";
+    if (maxPlayers !== null && (!Number.isFinite(maxPlayers) || maxPlayers <= 0)) return "请填写正确的最多报名人数";
+    const resolvedMinPlayers = minPlayers ?? defaultMinPlayers.value;
+    const resolvedMaxPlayers = maxPlayers ?? defaultMaxPlayers.value;
+    if (resolvedMinPlayers > resolvedMaxPlayers) return "最少成行人数不能大于最多报名人数";
+  }
+
   if (combineDateTime(form.date, form.endTime) <= combineDateTime(form.date, form.startTime)) return "结束时间必须晚于开始时间";
 
   return "";
@@ -130,10 +148,13 @@ async function handleSubmit() {
   }
 
   const feePerPerson = form.feePerPerson ? Number(form.feePerPerson) : null;
+  const minPlayers = challengeKind.value === "individual" && form.minPlayers ? Number(form.minPlayers) : null;
+  const maxPlayers = challengeKind.value === "individual" && form.maxPlayers ? Number(form.maxPlayers) : null;
   submitting.value = true;
   try {
     const challenge = await createChallenge({
       kind: challengeKind.value,
+      payment_mode: challengeKind.value === "individual" ? form.paymentMode : "postpaid",
       host_team_id: currentIdentity.value?.kind === "team" ? currentIdentity.value.teamId : undefined,
       title: form.title.trim(),
       holding_date: combineDateTime(form.date, form.startTime),
@@ -143,6 +164,8 @@ async function handleSubmit() {
       location_latitude: form.locationLatitude ?? undefined,
       location_longitude: form.locationLongitude ?? undefined,
       players_per_team: Number(form.playersPerTeam),
+      min_players: minPlayers ?? undefined,
+      max_players: maxPlayers ?? undefined,
       fee_per_person: feePerPerson !== null ? feePerPerson.toFixed(2) : undefined,
       note: form.note.trim() || undefined,
     });
@@ -164,7 +187,26 @@ async function handleSubmit() {
   }
 }
 
+async function guardReviewMode() {
+  await preloadMiniReviewStatus();
+  if (!shouldHideCreationEntrances.value) return false;
+
+  uni.showToast({
+    title: challengeKind.value === "team" ? "审核状态下暂不开放球队约队" : "审核状态下暂不开放散人约球",
+    icon: "none",
+  });
+  setTimeout(() => {
+    uni.navigateBack({
+      fail: () => {
+        uni.switchTab({ url: "/pages/home/index" });
+      },
+    });
+  }, 120);
+  return true;
+}
+
 onShow(async () => {
+  if (await guardReviewMode()) return;
   await ensureSessionReady();
   if (!form.date) {
     form.date = defaultPublishDate();
@@ -173,7 +215,7 @@ onShow(async () => {
 
 onLoad((options) => {
   challengeKind.value = options?.kind === "team" ? "team" : "individual";
-  if (challengeKind.value === "team" && form.title === "周三晚散人局") {
+  if (challengeKind.value === "team" && !form.title.trim()) {
     form.title = "周三晚球队约队";
   }
 });
@@ -215,7 +257,7 @@ onLoad((options) => {
         <view class="create-form-item">
           <text class="create-form-label">赛制</text>
           <picker :value="form.playersPerTeam === '5' ? 0 : 1" :range="['5 人制（共 10 人）', '8 人制（共 16 人）']" @change="handleFormatChange">
-            <view class="create-input create-picker">{{ form.playersPerTeam }} 人制 · 共 {{ Number(form.playersPerTeam) * 2 }} 人</view>
+            <view class="create-input create-picker">{{ form.playersPerTeam }} 人制 · 默认 {{ defaultMinPlayers }} 人开踢</view>
           </picker>
         </view>
         <view class="create-form-item">
@@ -229,6 +271,45 @@ onLoad((options) => {
           <picker mode="time" :value="form.endTime" @change="handleEndTimeChange">
             <view class="create-input create-picker">{{ form.endTime }}</view>
           </picker>
+        </view>
+        <view v-if="challengeKind === 'individual'" class="create-form-item create-form-item-full">
+          <text class="create-form-label">支付方式</text>
+          <view class="payment-mode-switch">
+            <view
+              :class="['payment-mode-option', form.paymentMode === 'postpaid' ? 'payment-mode-option-active' : '']"
+              @tap="form.paymentMode = 'postpaid'"
+            >
+              <text class="payment-mode-title">赛后支付</text>
+              <text class="payment-mode-desc">报名后可随时支付</text>
+            </view>
+            <view
+              :class="['payment-mode-option', form.paymentMode === 'prepaid' ? 'payment-mode-option-active' : '']"
+              @tap="form.paymentMode = 'prepaid'"
+            >
+              <text class="payment-mode-title">赛前支付</text>
+              <text class="payment-mode-desc">报名后 20 分钟内支付</text>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view v-if="challengeKind === 'individual'" class="create-card">
+      <view class="advanced-head" @tap="advancedOpen = !advancedOpen">
+        <view>
+          <view class="create-card-title">高级设置</view>
+          <text class="advanced-summary">默认 {{ defaultMinPlayers }} 人开踢，最多 {{ defaultMaxPlayers }} 人</text>
+        </view>
+        <text class="advanced-arrow">{{ advancedOpen ? "收起" : "展开" }}</text>
+      </view>
+      <view v-if="advancedOpen" class="create-form-grid advanced-form">
+        <view class="create-form-item">
+          <text class="create-form-label">最少成行人数</text>
+          <input v-model="form.minPlayers" class="create-input" type="number" :placeholder="`${defaultMinPlayers}`" />
+        </view>
+        <view class="create-form-item">
+          <text class="create-form-label">最多报名人数</text>
+          <input v-model="form.maxPlayers" class="create-input" type="number" :placeholder="`${defaultMaxPlayers}`" />
         </view>
       </view>
     </view>
@@ -417,6 +498,71 @@ onLoad((options) => {
   font-size: 22rpx;
   font-weight: 800;
   line-height: 1.5;
+}
+
+.payment-mode-switch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14rpx;
+}
+
+.payment-mode-option {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+  min-height: 112rpx;
+  padding: 18rpx;
+  border-radius: 24rpx;
+  border: 2rpx solid #d7ddd2;
+  background: #f4f6f0;
+  box-sizing: border-box;
+}
+
+.payment-mode-option-active {
+  border-color: #111310;
+  background: #eef8d6;
+}
+
+.payment-mode-title {
+  color: #111310;
+  font-size: 26rpx;
+  font-weight: 900;
+}
+
+.payment-mode-desc {
+  color: #687064;
+  font-size: 21rpx;
+  line-height: 1.35;
+  font-weight: 700;
+}
+
+.advanced-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18rpx;
+}
+
+.advanced-summary {
+  display: block;
+  margin-top: 8rpx;
+  color: #687064;
+  font-size: 22rpx;
+  font-weight: 700;
+}
+
+.advanced-arrow {
+  flex-shrink: 0;
+  padding: 12rpx 18rpx;
+  border-radius: 999rpx;
+  background: #eef8d6;
+  color: #526a00;
+  font-size: 22rpx;
+  font-weight: 900;
+}
+
+.advanced-form {
+  margin-top: 20rpx;
 }
 
 .create-submit-row {

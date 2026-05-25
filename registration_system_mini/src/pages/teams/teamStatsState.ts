@@ -1,3 +1,4 @@
+import { formatDateLabel, formatYearLabel } from "@/utils/datetime";
 import { toStandLabel } from "@/utils/viewModels";
 import type { BackendTeamAttendanceRankingItem, BackendTeamMemberAttendanceRecord } from "@/types/backend";
 
@@ -44,7 +45,7 @@ export function buildAttendanceGroups(
   const groups: AttendanceRecordGroup[] = [];
 
   for (const record of records) {
-    const year = formatYear(record.holding_date);
+    const year = formatYearLabel(record.holding_date);
     const lastGroup = groups[groups.length - 1];
     if (lastGroup?.year === year) {
       appendRecordToGroup(lastGroup, record);
@@ -88,19 +89,7 @@ export function attendanceStatusClass(record: BackendTeamMemberAttendanceRecord)
   return "stats-status stats-status-pending";
 }
 
-export function formatDateLabel(isoText: string) {
-  const date = new Date(isoText.replace(" ", "T"));
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  const hours = String(date.getHours()).padStart(2, "0");
-  const minutes = String(date.getMinutes()).padStart(2, "0");
-  return `${month}/${day} ${hours}:${minutes}`;
-}
-
-export function formatYear(isoText: string) {
-  const date = new Date(isoText.replace(" ", "T"));
-  return Number.isNaN(date.getTime()) ? "未知年份" : `${date.getFullYear()} 年`;
-}
+export { formatDateLabel, formatYearLabel };
 
 export function rankingInitial(item: BackendTeamAttendanceRankingItem) {
   return item.user_name.slice(0, 1) || "队";

@@ -96,6 +96,18 @@ describe("create match Wot UI integration", () => {
     expect(source.includes("myRoleLabel")).toEqual(false);
   });
 
+  test("guards create match page during review mode even with direct navigation", async () => {
+    const source = await read("src/pages/matches/create/index.vue");
+
+    expect(source.includes('import { preloadMiniReviewStatus, useMiniReviewStatus } from "@/stores/miniReview"')).toEqual(true);
+    expect(source.includes("async function guardReviewMode")).toEqual(true);
+    expect(source.includes("await preloadMiniReviewStatus();")).toEqual(true);
+    expect(source.includes("if (!shouldHideCreationEntrances.value) return false;")).toEqual(true);
+    expect(source.includes("审核状态下暂不开放创建比赛")).toEqual(true);
+    expect(source.includes("uni.navigateBack")).toEqual(true);
+    expect(source.includes('uni.switchTab({ url: "/pages/home/index" });')).toEqual(true);
+  });
+
   test("links registration default times to the selected match time", async () => {
     const source = await read("src/pages/matches/create/index.vue");
 

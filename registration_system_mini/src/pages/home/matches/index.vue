@@ -9,6 +9,8 @@ import { useTeamContext } from "@/stores/teamContext";
 import type { BackendUser } from "@/types/backend";
 import type { HomeMatchCardViewModel } from "@/types/viewModels";
 import { getCustomNavMetrics } from "@/utils/customNav";
+import { formatWeekdayLabel } from "@/utils/datetime";
+import { activityStageTone, attendanceStatusTone } from "@/utils/statusTone";
 import { buildHomeMatchCards } from "@/utils/viewModels";
 import HomeMatchList from "../components/HomeMatchList.vue";
 
@@ -59,17 +61,11 @@ function progressSplitLeft(requiredPlayers: number, maxPlayers: number) {
 }
 
 function statusClass(status: string) {
-  if (status === "参加") return "home-status home-status-join";
-  if (status === "请假") return "home-status home-status-leave";
-  if (status === "缺席") return "home-status home-status-late";
-  return "home-status home-status-pending";
+  return `home-status home-status-${attendanceStatusTone(status)}`;
 }
 
 function stageClass(stage: string) {
-  if (stage === "进行中") return "home-stage home-stage-blue";
-  if (stage === "已结束") return "home-stage home-stage-dark";
-  if (stage === "已取消") return "home-stage home-stage-muted";
-  return "home-stage home-stage-red";
+  return `home-stage home-stage-${activityStageTone(stage)}`;
 }
 
 function signupScopeClass(scope: HomeMatchCardViewModel["signupScope"]) {
@@ -79,8 +75,7 @@ function signupScopeClass(scope: HomeMatchCardViewModel["signupScope"]) {
 function formatMatchDateBlock(dateLabel: string) {
   const [monthDay, timeLabel] = dateLabel.split(" ");
   const [month, day] = monthDay.split("/");
-  const date = new Date(`2026-${month}-${day}T00:00:00`);
-  const weekday = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"][date.getDay()] ?? "待定";
+  const weekday = formatWeekdayLabel(`2026-${month}-${day}T00:00:00`);
   return {
     monthDay,
     weekday,

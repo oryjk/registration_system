@@ -9,6 +9,7 @@ import type { ActivityQuickFilter } from "./components/ActivitiesToolbar.vue";
 import ChallengeHallSections from "./components/ChallengeHallSections.vue";
 import PublishTypeSheet from "./components/PublishTypeSheet.vue";
 import { acceptChallenge, cancelIndividualChallengeAcceptance, listChallenges } from "@/api/challenge";
+import { useMiniReviewStatus } from "@/stores/miniReview";
 import { useNotificationCenter } from "@/stores/notificationCenter";
 import { useTeamContext } from "@/stores/teamContext";
 import { getCustomNavMetrics } from "@/utils/customNav";
@@ -24,6 +25,7 @@ type ChallengeStatusFilter = "all" | BackendChallengeStatus;
 type QuickFilter = ActivityQuickFilter;
 
 const { currentIdentity, currentTeam, ensureSessionReady } = useTeamContext();
+const { shouldHideCreationEntrances } = useMiniReviewStatus();
 const { syncUnreadCount } = useNotificationCenter();
 const navMetrics = getCustomNavMetrics();
 
@@ -50,7 +52,7 @@ const filters = reactive<{
   includeClosed: false,
 });
 
-const canPublish = computed(() => !!currentIdentity.value);
+const canPublish = computed(() => !!currentIdentity.value && !shouldHideCreationEntrances.value);
 const quickFilters: Array<{ key: QuickFilter; label: string }> = [
   { key: "recommended", label: "推荐" },
   { key: "team", label: "球队约队" },
@@ -508,7 +510,7 @@ onShareTimeline(() => ({
     />
 
     <view v-else class="hall-empty hall-empty-spacious">
-      当前筛选条件下还没有约队记录，可以切换日期、标签，或者直接发布一条新的约队。
+      当前筛选条件下还没有约队记录，可以切换日期或标签再看看。
     </view>
     </template>
 

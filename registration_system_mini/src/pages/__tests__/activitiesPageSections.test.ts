@@ -42,11 +42,16 @@ describe("activities page sections", () => {
     const source = await Bun.file(
       "/Users/carlwang/registration_system/registration_system_mini/src/pages/activities/index.vue",
     ).text();
+    const toolbar = await Bun.file(
+      "/Users/carlwang/registration_system/registration_system_mini/src/pages/activities/components/ActivitiesToolbar.vue",
+    ).text();
     const publishTypeSheet = await Bun.file(
       "/Users/carlwang/registration_system/registration_system_mini/src/pages/activities/components/PublishTypeSheet.vue",
     ).text();
 
     expect(source.includes("function openPublishTypeSheet")).toEqual(true);
+    expect(source.includes("shouldHideCreationEntrances")).toEqual(true);
+    expect(source.includes("const canPublish = computed(() => !!currentIdentity.value && !shouldHideCreationEntrances.value);")).toEqual(true);
     expect(publishTypeSheet.includes("publish-menu-overlay")).toEqual(true);
     expect(publishTypeSheet.includes("publish-menu-overlay-open")).toEqual(true);
     expect(publishTypeSheet.includes("publish-menu-action")).toEqual(true);
@@ -61,6 +66,7 @@ describe("activities page sections", () => {
     expect(source.includes("createChallenge")).toEqual(false);
     expect(source.includes("<MatchPublishForm")).toEqual(false);
     expect(source.includes("showCreateForm")).toEqual(false);
+    expect(toolbar.includes("v-if=\"canPublish\"")).toEqual(true);
   });
 
   test("registers individual challenge creation page", async () => {
@@ -80,6 +86,14 @@ describe("activities page sections", () => {
     expect(source.includes('host_team_id: currentIdentity.value?.kind === "team" ? currentIdentity.value.teamId : undefined')).toEqual(true);
     expect(source.includes("请先在我的页面选择球队或场馆身份")).toEqual(true);
     expect(source.includes("散人约队同一时间只能接一场")).toEqual(true);
+    expect(source.includes('import { preloadMiniReviewStatus, useMiniReviewStatus } from "@/stores/miniReview"')).toEqual(true);
+    expect(source.includes("async function guardReviewMode")).toEqual(true);
+    expect(source.includes("await preloadMiniReviewStatus();")).toEqual(true);
+    expect(source.includes("if (!shouldHideCreationEntrances.value) return false;")).toEqual(true);
+    expect(source.includes("审核状态下暂不开放散人约球")).toEqual(true);
+    expect(source.includes("审核状态下暂不开放球队约队")).toEqual(true);
+    expect(source.includes("uni.navigateBack")).toEqual(true);
+    expect(source.includes('uni.switchTab({ url: "/pages/home/index" });')).toEqual(true);
   });
 
   test("supports map location picking when creating an individual challenge", async () => {

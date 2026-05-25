@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onHide, onLaunch, onPageNotFound, onShow } from "@dcloudio/uni-app";
 import { restoreSessionFromStorage, useAppSession } from "@/stores/appSession";
+import { preloadMiniReviewStatus } from "@/stores/miniReview";
 import { syncUnreadCount } from "@/stores/notificationCenter";
 import { isProfileSetupPage, needsProfileCompletion, PROFILE_SETUP_PAGE_PATH } from "@/utils/profileCompletion";
 
@@ -32,6 +33,7 @@ function maybeNavigateToProfileSetup() {
 
 onLaunch(() => {
   console.log("registration_system_mini launch");
+  void preloadMiniReviewStatus();
   restoreSessionFromStorage()
     .then(async () => {
       if (currentUser.value) {

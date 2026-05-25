@@ -30,10 +30,11 @@ export async function requestRaw<TResponse, TBody extends RequestPayload = Recor
   options: RequestOptions<TBody>,
 ): Promise<TResponse> {
   const token = options.auth ? getAccessToken() : "";
+  const requestUrl = /^https?:\/\//i.test(options.url) ? options.url : `${getApiBaseUrl()}${options.url}`;
 
   return new Promise<TResponse>((resolve, reject) => {
     uni.request({
-      url: `${getApiBaseUrl()}${options.url}`,
+      url: requestUrl,
       method: (options.method ?? "GET") as never,
       data: options.data,
       header: {

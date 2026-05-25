@@ -1,13 +1,17 @@
 <script setup lang="ts">
+import { computed } from "vue";
+import { defaultMiniAppRuntimeConfig } from "@/config/runtimeConfig";
+import type { BackendMiniAppHomeHeroBanner } from "@/types/backend";
 import type { TeamProfileViewModel } from "@/types/viewModels";
 
-defineProps<{
+const props = defineProps<{
   currentTeam: TeamProfileViewModel | null;
   teamLogoUrl: string;
   teamInitial: string;
   teamMetaLine: string;
   manageButtonLabel: string;
   isGuestMode: boolean;
+  heroBanners: BackendMiniAppHomeHeroBanner[];
 }>();
 
 const emit = defineEmits<{
@@ -22,6 +26,13 @@ function handleManageTap() {
 function handleBannerTap() {
   emit("bannerTap");
 }
+
+const visibleHeroBanners = computed(() => {
+  const banners = props.heroBanners
+    .filter((banner) => banner.enabled && banner.title.trim())
+    .sort((left, right) => left.sort_order - right.sort_order);
+  return banners.length > 0 ? banners : defaultMiniAppRuntimeConfig.home.hero_banners;
+});
 </script>
 
 <template>
@@ -48,15 +59,56 @@ function handleBannerTap() {
       <view class="team-hero-button" @tap="handleManageTap">{{ manageButtonLabel }}</view>
     </view>
 
-    <view class="home-banner" @tap="handleBannerTap">
+    <swiper
+      v-if="visibleHeroBanners.length > 1"
+      class="home-banner-swiper"
+      circular
+      autoplay
+      :interval="4200"
+      :duration="420"
+      @tap="handleBannerTap"
+    >
+      <swiper-item v-for="banner in visibleHeroBanners" :key="`${banner.sort_order}-${banner.title}`">
+        <view class="home-banner">
+          <image
+            v-if="banner.image_url"
+            class="home-banner-image"
+            :src="banner.image_url"
+            mode="aspectFill"
+          />
+          <view class="home-banner-image-mask" />
+          <view class="home-banner-copy">
+            <text class="home-banner-title">{{ banner.title }}</text>
+            <text class="home-banner-subtitle">{{ banner.subtitle }}</text>
+            <view class="home-banner-button">{{ banner.button_text }}</view>
+          </view>
+          <template v-if="!banner.image_url">
+            <view class="home-banner-goal">GOAL!</view>
+            <view class="home-banner-net" />
+            <view class="home-banner-ball" />
+          </template>
+        </view>
+      </swiper-item>
+    </swiper>
+
+    <view v-else class="home-banner" @tap="handleBannerTap">
+      <image
+        v-if="visibleHeroBanners[0]?.image_url"
+        class="home-banner-image"
+        :src="visibleHeroBanners[0].image_url"
+        mode="aspectFill"
+      />
+      <view class="home-banner-image-mask" />
       <view class="home-banner-copy">
-        <text class="home-banner-title">约球开踢</text>
-        <text class="home-banner-subtitle">组队 · 报名 · 上场</text>
-        <view class="home-banner-button">去看看</view>
+        <text class="home-banner-title">{{ visibleHeroBanners[0]?.title }}</text>
+        <text class="home-banner-subtitle">{{ visibleHeroBanners[0]?.subtitle }}</text>
+        <view class="home-banner-button">{{ visibleHeroBanners[0]?.button_text }}</view>
       </view>
-      <view class="home-banner-goal">GOAL!</view>
-      <view class="home-banner-net" />
-      <view class="home-banner-ball" />
+      <template v-if="!visibleHeroBanners[0]?.image_url">
+        <view class="home-banner-goal">GOAL!</view>
+        <view class="home-banner-net" />
+        <view class="home-banner-ball" />
+      </template>
     </view>
   </view>
 </template>
@@ -157,6 +209,13 @@ function handleBannerTap() {
   flex-shrink: 0;
 }
 
+.home-banner-swiper {
+  margin-top: 18rpx;
+  height: 242rpx;
+  border-radius: 24rpx;
+  overflow: hidden;
+}
+
 .home-banner {
   position: relative;
   display: flex;
@@ -173,6 +232,11 @@ function handleBannerTap() {
   box-shadow: 0 18rpx 34rpx rgba(31, 47, 28, 0.18);
 }
 
+.home-banner-swiper .home-banner {
+  margin-top: 0;
+  height: 194rpx;
+}
+
 .home-banner::before {
   content: "";
   position: absolute;
@@ -180,6 +244,21 @@ function handleBannerTap() {
   background-image: radial-gradient(rgba(255, 253, 248, 0.07) 1rpx, transparent 1rpx);
   background-size: 12rpx 12rpx;
   opacity: 0.35;
+}
+
+.home-banner-image {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.home-banner-image-mask {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(100deg, rgba(17, 27, 16, 0.76) 0%, rgba(17, 27, 16, 0.42) 56%, rgba(17, 27, 16, 0.14) 100%);
 }
 
 .home-banner-copy {

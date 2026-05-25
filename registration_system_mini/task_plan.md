@@ -1,5 +1,21 @@
 # 小程序任务计划
 
+## 2026-05-23 散人约队支付方式与支付截止
+
+目标：创建散人约队时标题不再默认填入，并支持选择赛前支付/赛后支付；散人详情展示当前用户的支付状态、支付按钮和赛前支付倒计时。
+
+阶段：
+1. [completed] 盘点创建页、详情页、challenge/payment API 和类型
+2. [completed] 同步后端新增字段到 `BackendChallenge` / challenge API
+3. [completed] 创建页清空散人标题默认值并增加支付方式开关
+4. [completed] 详情页展示支付状态、支付按钮和赛前支付倒计时
+5. [completed] 接入散人约队支付下单与微信支付工具
+6. [completed] 执行类型检查和必要构建
+
+约束：
+- 小程序只负责展示和触发支付，超时取消与赛后通知以后端为准。
+- 视觉调整保持在现有散人报名页风格内，不重写页面结构。
+
 ## 2026-05-14 队员会员标识
 
 目标：在球队管理页面支持设置并展示“队员是否会员”，该标识来自后端 `team_members.is_member`，不等同于球队 VIP。
@@ -202,3 +218,48 @@
 3. [completed] 默认定位到当前用户所在分组，并只展示当前分组头像
 4. [completed] 保留头像点选昵称与底部状态按钮
 5. [completed] 补充静态测试并执行小程序验证
+
+## 2026-05-20 创建球队审核态与版本统一
+
+目标：创建球队页面在审核中时切换到审核专用表单，并保证审核查询版本与上传写入 mini_review 的版本一致。
+
+阶段：
+1. [completed] 盘点 `TeamCreatePanel`、`manifest.json`、`mini-ci.mjs` 和 mini_review 查询接口
+2. [completed] 增加构建前同步版本脚本，用 `.env.ci.local` 覆盖 manifest 版本
+3. [completed] 新增审核状态 API 与本地版本读取 helper
+4. [completed] 创建球队页接入审核态切换和预置球队名下拉
+5. [completed] 收口 `mp:upload` 版本闭环，确保 upload 实际版本、mini_review 记录版本和本地生成版本一致
+6. [completed] 将 mini_review 作为小程序启动基础状态，并在审核态下全局隐藏创建比赛/散人约球/创建球队/发布约队入口
+7. [in_progress] 执行 `bun run type-check`、必要时 `bun run build:mp-weixin`
+
+## 2026-05-20 审核态隐藏我的钱包
+
+目标：审核态下隐藏“我的”页里的钱包/账单入口。
+
+阶段：
+1. [completed] 定位 `MineWalletSection` 渲染位置
+2. [completed] 使用 `shouldHideCreationEntrances` 控制钱包卡片显隐
+3. [completed] 补充 `userPageBackground.test.ts` 静态测试
+4. [completed] 执行目标测试和 `bun run type-check`
+
+## 2026-05-20 首页装修配置接入
+
+目标：小程序首页读取后端 `home.hero_banners` 配置，支持单条展示和多条轮播，未配置时保持默认“约球开踢”卡片。
+
+阶段：
+1. [completed] 扩展 `BackendMiniAppRuntimeConfig.home.hero_banners` 类型
+2. [completed] 更新 `runtimeConfig` 默认值和 sanitize 逻辑
+3. [completed] 首页加载运行配置后传入 `HomeHeroSection`
+4. [completed] `HomeHeroSection` 按启用配置展示单卡/轮播，并支持图片背景
+5. [completed] 执行目标测试、类型检查和微信小程序构建
+
+## 2026-05-23 散人约队最少/最多人数配置
+
+目标：小程序发布散人约队时提供默认收起的高级设置，可配置最少成行人数和最多报名人数；未配置时按默认规则展示和提交。
+
+阶段：
+1. [completed] 后端类型和创建接口 payload 增加 `min_players` / `max_players`
+2. [completed] 散人发布页增加默认收起“高级设置”
+3. [completed] 发布页校验自定义人数，未填写时不提交字段
+4. [completed] 详情页、首页/大厅卡片和报名进度改用成行人数与最多人数
+5. [completed] 执行 view model 测试、类型检查和微信小程序构建

@@ -1,4 +1,6 @@
 import type { BackendActivity, BackendUserActivityRecord } from "@/types/backend";
+import { formatDateTimeWithWeekdayLabel, formatTimeLabel, parseDateValue } from "@/utils/datetime";
+import { matchStatusBadgeTone, type MatchStatusBadgeTone } from "@/utils/statusTone";
 import { toStandLabel } from "@/utils/viewModels";
 
 export type UserMatchScope = "future" | "past";
@@ -18,7 +20,7 @@ export interface UserMatchCard {
   opposingColor: string;
   locationLatitude: number | null;
   locationLongitude: number | null;
-  statusTone: "default" | "success" | "warning" | "muted";
+  statusTone: MatchStatusBadgeTone;
 }
 
 export function buildUserMatchCards(params: {
@@ -50,7 +52,7 @@ export function buildUserMatchCards(params: {
       return {
         id: activity.id,
         title: activity.name,
-        dateLabel: formatDateLabel(activity.holding_date),
+        dateLabel: formatDateTimeWithWeekdayLabel(activity.holding_date),
         timeLabel: formatTimeLabel(activity.start_time || activity.holding_date),
         venue: activity.location,
         opponent: activity.opposing?.trim() || "对手待定",
@@ -62,34 +64,19 @@ export function buildUserMatchCards(params: {
         opposingColor: activity.opposing_color?.trim() || "#C8FF00",
         locationLatitude: activity.location_latitude ?? null,
         locationLongitude: activity.location_longitude ?? null,
-        statusTone: statusTone(myStatus),
+        statusTone: matchStatusBadgeTone(myStatus),
       };
     });
 }
 
 function parseDateTime(value: string) {
-  return new Date(value.replace(" ", "T")).getTime();
+  return parseDateValue(value).getTime();
 }
 
 function todayStartTimestamp() {
   const date = new Date();
   date.setHours(0, 0, 0, 0);
   return date.getTime();
-}
-
-function formatDateLabel(isoText: string) {
-  const date = new Date(isoText.replace(" ", "T"));
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  const hours = String(date.getHours()).padStart(2, "0");
-  const minutes = String(date.getMinutes()).padStart(2, "0");
-  const weekday = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"][date.getDay()] ?? "";
-  return `${month}/${day} ${weekday} ${hours}:${minutes}`;
-}
-
-function formatTimeLabel(isoText: string) {
-  const date = new Date(isoText.replace(" ", "T"));
-  return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
 }
 
 function isRelatedActivity(activity: BackendActivity, activeTeamId: number | undefined, relatedActivityIds: Set<string>) {
@@ -104,11 +91,4 @@ function isPublisherEditable(activity: BackendActivity, activeTeamId?: number) {
   if (activity.source_activity_id) return false;
   if (activity.status === 2 || activity.status === 3) return false;
   return activity.home_team_id === activeTeamId;
-}
-
-function statusTone(status: string) {
-  if (status === "参加") return "success";
-  if (status === "请假") return "warning";
-  if (status === "缺席") return "warning";
-  return "muted";
 }

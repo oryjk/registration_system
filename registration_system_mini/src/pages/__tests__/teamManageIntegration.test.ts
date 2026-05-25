@@ -48,11 +48,19 @@ describe("team manage real backend integration", () => {
     const source = await Bun.file(
       "/Users/carlwang/registration_system/registration_system_mini/src/pages/teams/manage/index.vue",
     ).text();
+    const state = await Bun.file(
+      "/Users/carlwang/registration_system/registration_system_mini/src/pages/teams/manage/teamManageState.ts",
+    ).text();
 
     expect(source.includes("createTeam")).toEqual(true);
     expect(source.includes("searchTeams")).toEqual(true);
     expect(source.includes("joinTeam")).toEqual(true);
     expect(source.includes("refreshSessionContext")).toEqual(true);
+    expect(source.includes("shouldHideCreationEntrances")).toEqual(true);
+    expect(source.includes("const canShowCreateTeamEntry = computed(() => !shouldHideCreationEntrances.value);")).toEqual(true);
+    expect(source.includes("v-if=\"canShowCreateTeamEntry\"")).toEqual(true);
+    expect(state.includes("allowCreateTeamMode = true")).toEqual(true);
+    expect(state.includes('return allowCreateTeamMode ? "create" : "join";')).toEqual(true);
   });
 
   test("home team manage action opens the real team manage page instead of mine tab", async () => {

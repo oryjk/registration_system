@@ -9,6 +9,16 @@ export const defaultMiniAppRuntimeConfig: MiniAppRuntimeConfig = {
     challenge_card_limit: 2,
     activity_fetch_page_size: 100,
     hide_matches_after_holding_time: true,
+    hero_banners: [
+      {
+        title: "约球开踢",
+        subtitle: "组队 · 报名 · 上场",
+        button_text: "去看看",
+        image_url: "",
+        enabled: true,
+        sort_order: 1,
+      },
+    ],
   },
   matches: {
     related_activity_limit: 2,
@@ -46,6 +56,36 @@ function clampNumber(value: unknown, fallback: number, min: number, max: number)
   return Math.min(Math.max(Math.round(numberValue), min), max);
 }
 
+function truncateText(value: unknown, fallback: string, maxLength: number) {
+  const text = typeof value === "string" ? value.trim() : fallback;
+  return Array.from(text).slice(0, maxLength).join("");
+}
+
+function sanitizeHomeHeroBanners(value: unknown) {
+  const defaults = defaultMiniAppRuntimeConfig.home.hero_banners;
+  if (!Array.isArray(value)) return defaults;
+
+  const banners = value
+    .map((item, index) => {
+      const banner = item as Partial<MiniAppRuntimeConfig["home"]["hero_banners"][number]>;
+      const title = truncateText(banner.title, "", 20);
+      if (!title) return null;
+      return {
+        title,
+        subtitle: truncateText(banner.subtitle, "", 30),
+        button_text: truncateText(banner.button_text, "去看看", 10) || "去看看",
+        image_url: truncateText(banner.image_url, "", 512),
+        enabled: typeof banner.enabled === "boolean" ? banner.enabled : true,
+        sort_order: clampNumber(banner.sort_order, index + 1, -32768, 32767),
+      };
+    })
+    .filter((banner): banner is MiniAppRuntimeConfig["home"]["hero_banners"][number] => Boolean(banner))
+    .slice(0, 10)
+    .sort((left, right) => left.sort_order - right.sort_order);
+
+  return banners.length > 0 ? banners : defaults;
+}
+
 export function sanitizeMiniAppRuntimeConfig(input?: RuntimeConfigInput | null): MiniAppRuntimeConfig {
   const defaults = defaultMiniAppRuntimeConfig;
   return {
@@ -57,6 +97,7 @@ export function sanitizeMiniAppRuntimeConfig(input?: RuntimeConfigInput | null):
         typeof input?.home?.hide_matches_after_holding_time === "boolean"
           ? input.home.hide_matches_after_holding_time
           : defaults.home.hide_matches_after_holding_time,
+      hero_banners: sanitizeHomeHeroBanners(input?.home?.hero_banners),
     },
     matches: {
       related_activity_limit: clampNumber(input?.matches?.related_activity_limit, defaults.matches.related_activity_limit, 1, 10),

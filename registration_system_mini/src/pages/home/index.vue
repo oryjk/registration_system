@@ -19,8 +19,10 @@ import { isRuntimeVisibleActivity, isRuntimeVisibleChallengeSummary, loadMiniApp
 import { getCurrentYearDateRange } from "@/utils/dateRange";
 import { DEFAULT_SHARE_IMAGE_URL } from "@/utils/share";
 import { buildAttendanceSummary, buildChallengeCards, buildHomeMatchCards, buildJoinedIndividualHomeMatchCards } from "@/utils/viewModels";
+import { formatWeekdayLabel } from "@/utils/datetime";
+import { activityStageTone, attendanceStatusTone } from "@/utils/statusTone";
 import type { ChallengeCardViewModel, HomeMatchCardViewModel } from "@/types/viewModels";
-import type { BackendChallenge, BackendChallengeSummary, BackendUser } from "@/types/backend";
+import type { BackendChallenge, BackendChallengeSummary, BackendMiniAppHomeHeroBanner, BackendUser } from "@/types/backend";
 
 const { currentTeam, ensureSessionReady } = useTeamContext();
 const { syncUnreadCount } = useNotificationCenter();
@@ -39,6 +41,7 @@ const teamMatches = ref<HomeMatchCardViewModel[]>([]);
 const rawTeamMatchCards = ref<HomeMatchCardViewModel[]>([]);
 const challengeCards = ref<ChallengeCardViewModel[]>([]);
 const rawChallengeSummaries = ref<BackendChallengeSummary[]>([]);
+const homeHeroBanners = ref<BackendMiniAppHomeHeroBanner[]>([]);
 const personalDigest = ref({
   attendanceRate: "0%",
   attended: 0,
@@ -118,17 +121,11 @@ function progressSplitLeft(requiredPlayers: number, maxPlayers: number) {
 }
 
 function statusClass(status: string) {
-  if (status === "参加") return "home-status home-status-join";
-  if (status === "请假") return "home-status home-status-leave";
-  if (status === "缺席") return "home-status home-status-late";
-  return "home-status home-status-pending";
+  return `home-status home-status-${attendanceStatusTone(status)}`;
 }
 
 function stageClass(stage: string) {
-  if (stage === "进行中") return "home-stage home-stage-blue";
-  if (stage === "已结束") return "home-stage home-stage-dark";
-  if (stage === "已取消") return "home-stage home-stage-muted";
-  return "home-stage home-stage-red";
+  return `home-stage home-stage-${activityStageTone(stage)}`;
 }
 
 function signupScopeClass(scope: HomeMatchCardViewModel["signupScope"]) {
@@ -264,6 +261,7 @@ async function loadOpportunityCards(options?: {
   auth?: boolean;
 }) {
   const runtimeConfig = await loadMiniAppRuntimeConfig();
+  homeHeroBanners.value = runtimeConfig.home.hero_banners;
   const now = new Date();
   const challengeFetchLimit = Math.min(runtimeConfig.home.challenge_card_limit * 5, 50);
   const challengeSummaries = await listChallenges({ limit: challengeFetchLimit, sort: "holding_date_desc", auth: options?.auth ?? false });
@@ -360,6 +358,7 @@ async function handleCancelIndividualAcceptance(card: ChallengeCardViewModel) {
         const challenge = await cancelIndividualChallengeAcceptance(card.id);
         applyCancelledIndividualChallengeState(challenge);
         const runtimeConfig = await loadMiniAppRuntimeConfig();
+        homeHeroBanners.value = runtimeConfig.home.hero_banners;
         rebuildChallengeDerivedHomeCards(runtimeConfig, new Date());
         uni.showToast({
           title: "已取消报名",
@@ -401,6 +400,7 @@ async function handleAcceptChallenge(card: ChallengeCardViewModel) {
     const challenge = await acceptChallenge(card.id, card.kind === "team" ? currentTeam.value?.id : undefined);
     applyAcceptedChallengeState(challenge, card);
     const runtimeConfig = await loadMiniAppRuntimeConfig();
+    homeHeroBanners.value = runtimeConfig.home.hero_banners;
     rebuildChallengeDerivedHomeCards(runtimeConfig, new Date());
     uni.showToast({
       title: card.kind === "team" ? "接约成功" : "报名成功",
@@ -419,8 +419,7 @@ async function handleAcceptChallenge(card: ChallengeCardViewModel) {
 function formatMatchDateBlock(dateLabel: string) {
   const [monthDay, timeLabel] = dateLabel.split(" ");
   const [month, day] = monthDay.split("/");
-  const date = new Date(`2026-${month}-${day}T00:00:00`);
-  const weekday = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"][date.getDay()] ?? "待定";
+  const weekday = formatWeekdayLabel(`2026-${month}-${day}T00:00:00`);
   return {
     monthDay,
     weekday,
@@ -453,6 +452,7 @@ async function loadPageData(options?: { preserveContent?: boolean }) {
     if (!currentTeam.value) {
       resetUserRelatedHomeData();
       const runtimeConfig = await loadMiniAppRuntimeConfig();
+      homeHeroBanners.value = runtimeConfig.home.hero_banners;
       const now = new Date();
       const challengeFetchLimit = Math.min(runtimeConfig.home.challenge_card_limit * 5, 50);
       const challengeSummaries = await listChallenges({ limit: challengeFetchLimit, sort: "holding_date_desc", auth: true });
@@ -464,6 +464,7 @@ async function loadPageData(options?: { preserveContent?: boolean }) {
     }
 
     const runtimeConfig = await loadMiniAppRuntimeConfig();
+    homeHeroBanners.value = runtimeConfig.home.hero_banners;
     const now = new Date();
     const attendanceDateRange = getCurrentYearDateRange(now);
     const challengeFetchLimit = Math.min(runtimeConfig.home.challenge_card_limit * 5, 50);
@@ -611,6 +612,7 @@ onShareTimeline(() => ({
           :team-meta-line="teamMetaLine"
           :manage-button-label="manageButtonLabel"
           :is-guest-mode="isGuestMode"
+          :hero-banners="homeHeroBanners"
           @manage-tap="handleManageTap"
           @banner-tap="openTab('/pages/activities/index')"
         />

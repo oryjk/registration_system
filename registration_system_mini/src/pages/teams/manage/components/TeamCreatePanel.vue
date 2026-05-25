@@ -5,6 +5,8 @@ defineProps<{
     description: string;
     joinPassword: string;
   };
+  reviewMode: boolean;
+  reviewTeamNameOptions: string[];
   canCreate: boolean;
   submitting: boolean;
 }>();
@@ -23,9 +25,12 @@ function handleSubmit() {
     <text class="form-title">新球队资料</text>
     <view class="form-field">
       <text class="form-label">球队名称</text>
-      <input v-model="form.name" class="form-input" placeholder="例如：周末野球 FC" />
+      <picker v-if="reviewMode" :range="reviewTeamNameOptions" :value="Math.max(reviewTeamNameOptions.indexOf(form.name), 0)" @change="form.name = reviewTeamNameOptions[Number($event.detail.value)] || reviewTeamNameOptions[0] || ''">
+        <view class="form-input form-picker">{{ form.name || "请选择球队名称" }}</view>
+      </picker>
+      <input v-else v-model="form.name" class="form-input" placeholder="例如：周末野球 FC" />
     </view>
-    <view class="form-field">
+    <view v-if="!reviewMode" class="form-field">
       <text class="form-label">球队介绍</text>
       <textarea v-model="form.description" class="form-textarea" placeholder="一句话说明球队风格、城市或活动时间" />
     </view>
@@ -76,6 +81,11 @@ function handleSubmit() {
   font-size: 28rpx;
   font-weight: 700;
   box-sizing: border-box;
+}
+
+.form-picker {
+  display: flex;
+  align-items: center;
 }
 
 .form-input {

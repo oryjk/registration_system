@@ -1,5 +1,19 @@
 # 小程序进度记录
 
+## 2026-05-23 散人约队支付方式与支付截止
+
+- 已确认创建散人约队页仍有默认标题 `"周三晚散人局"`。
+- 已确认小程序支付 API 尚无散人约队支付下单封装。
+- 已将本轮目标写入小程序 task_plan/findings/progress。
+- 下一步等待后端字段和接口落地后同步小程序类型与页面。
+- 已同步后端新增字段：`BackendChallenge.payment_mode`、`BackendChallengeDetail.current_user_acceptance`、散人报名支付状态类型。
+- 已在 `src/api/payment.ts` 新增 `createChallengeIndividualPaymentOrder()`，用于详情页发起散人报名支付。
+- 已将创建散人约队标题默认值改为空；球队约队仍在 team 模式保留默认标题，避免扩大变更范围。
+- 已在创建页增加赛前支付/赛后支付开关，并提交 `payment_mode`。
+- 已在散人详情页支付面板展示：报名支付状态、赛前支付倒计时、去支付按钮；报名成功后重新拉详情以获取后端 deadline。
+- 已修复 `src/utils/__tests__/viewModels.test.ts` 中后端类型 fixture 缺少 `payment_mode` 的类型问题。
+- 验证通过：`bun run type-check`、`bun run build:mp-weixin`。
+
 ## 2026-05-14
 
 - 已新增 `BackendTeamMember.is_member`。
@@ -271,3 +285,39 @@
 - 已创建本地 `.env.ci.local`，使用 `/Users/carlwang/Downloads/private.wx0b5cef0e7f1af280.key` 作为私钥路径，并确认该文件被 git 忽略。
 - 验证通过：`bun run type-check`。
 - 真实 CI 验证结果：`bun run mp:preview` 已完成构建并请求微信 CI，但被微信返回 `invalid ip: 125.70.163.152`，当前需在微信后台补白名单。
+
+## 2026-05-20 创建球队审核态与版本统一
+
+- 已新增 `scripts/sync-manifest-version.mjs` 并生成 `src/config/generatedMiniProgramVersion.ts`。
+- 已将 `build:mp-weixin` 和 `mp:upload/mp:preview` 统一到同一版本同步逻辑。
+- 已新增 mini_review 审核状态查询封装。
+- 已完成创建球队页审核态渲染：名称下拉、球队介绍隐藏、入队密码保留。
+- 已继续收口 `mp:upload` 版本链路：`scripts/mini-ci.mjs` 现会把本次解析出的 `uploadVersion` 显式透传给共享 CLI，避免双方各自按基线推导版本。
+- 已在上传成功后再次执行 `syncManifestVersion()`；共享 CLI 回写 `.env.ci.local` 后，`src/manifest.json` 与 `src/config/generatedMiniProgramVersion.ts` 会立刻追平到最新上传版本。
+- 已把 mini_review 提升为小程序启动基础状态，并新增 `shouldHideCreationEntrances` 统一控制审核态显隐。
+- 审核态下已隐藏底部加号创建菜单、约队大厅发布按钮，以及球队管理页中的“创建球队”模式入口；非审核态再恢复显示。
+- 已为 `pages/matches/create/index.vue` 和 `pages/challenges/create-individual/index.vue` 增加审核态直达拦截：生产审核态下即使手动进页面，也会 toast 提示并 `navigateBack`，失败时回到首页。
+
+## 2026-05-20 审核态隐藏我的钱包
+
+- 已在 `pages/user/index.vue` 复用 `shouldHideCreationEntrances`。
+- 审核态下 `MineWalletSection` 不再渲染，因此“我的钱包 / 查看账单”入口会从“我的”页隐藏。
+- 已补充 `src/pages/__tests__/userPageBackground.test.ts` 回归测试。
+- 验证通过：`bun test src/pages/__tests__/userPageBackground.test.ts`、`bun run type-check`。
+
+## 2026-05-20 首页装修配置接入
+
+- 已在 `BackendMiniAppRuntimeConfig.home` 和 `runtimeConfig.ts` 中新增 `hero_banners`，默认值为“约球开踢”卡片。
+- 已让首页加载运行配置后同步 `homeHeroBanners`，并传给 `HomeHeroSection`。
+- `HomeHeroSection` 已支持：单条卡片普通展示，多条启用卡片使用 `swiper` 轮播；有图片时作为背景图，无图片时保留原球场装饰。
+- 已顺手修复 `viewModels.ts` 内部使用 `formatDateTimeLabel` 时的导出方式，避免类型检查找不到同文件函数名。
+- 验证通过：`bun test src/config/__tests__/runtimeConfig.test.ts src/pages/__tests__/homePageLoading.test.ts`、`bun run type-check`、`bun run build:mp-weixin`。
+
+## 2026-05-23 散人约队最少/最多人数配置
+
+- 已在 `src/types/backend.ts` 和 `src/api/challenge.ts` 接入 `min_players` / `max_players`。
+- 已在散人约队发布页新增默认收起的“高级设置”，展示默认 `人制 * 2` 成行、`人制 * 2 + 4` 最多；展开后可填写最少成行人数和最多报名人数。
+- 发布页提交时未填写高级设置则不传字段，由后端按默认规则计算；填写后会校验正数和最少不大于最多。
+- 已在 `viewModels.ts` 中把散人卡片 `capacity` 改为最多报名人数，同时新增 `minPlayers` / `maxPlayers`；散人已达成行人数显示为“已成行”。
+- 已在散人详情页和散人报名组件中使用成行人数显示进度、使用最多人数计算剩余名额和报名按钮可用性。
+- 验证通过：`bun test src/utils/__tests__/viewModels.test.ts`、`bun run type-check`、`bun run build:mp-weixin`。

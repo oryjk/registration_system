@@ -25,6 +25,7 @@ import {
 } from "./teamManageActions";
 import { useTeamContext } from "@/stores/teamContext";
 import type { BackendTeamMember, BackendTeamMemberAttendanceRecord, BackendTeamSummary, BackendUser } from "@/types/backend";
+import { MINI_PROGRAM_VERSION } from "@/config/generatedMiniProgramVersion";
 import { getCustomNavMetrics } from "@/utils/customNav";
 import { resolveUserDisplayName, toStandLabel } from "@/utils/viewModels";
 import {
@@ -37,8 +38,10 @@ import {
   splitTeamMembers,
   type TeamManageMode,
 } from "./teamManageState";
+import { preloadMiniReviewStatus, useMiniReviewStatus } from "@/stores/miniReview";
 
 const { currentTeam, currentUser, teamDetailsById, ensureSessionReady, refreshSessionContext } = useTeamContext();
+const { reviewMode, shouldHideCreationEntrances } = useMiniReviewStatus();
 const navMetrics = getCustomNavMetrics();
 
 const activeMode = ref<TeamManageMode>("profile");
@@ -63,6 +66,8 @@ const attendanceRecords = ref<BackendTeamMemberAttendanceRecord[]>([]);
 const collapsedAttendanceYears = ref<string[]>([]);
 const logoUploading = ref(false);
 const maxLogoSizeBytes = 1024 * 1024;
+const reviewTeamNameOptions = ["星火联队", "周末竞技 FC", "白银风暴", "东城野球会", "黑曜九号"];
+const createTeamReviewMode = reviewMode;
 
 const teamProfileForm = reactive({
   name: "",
@@ -113,9 +118,10 @@ const attendanceGroups = computed(() => buildAttendanceGroups(attendanceRecords.
 const pageStyle = computed(() => ({
   paddingTop: `${navMetrics.pageTopPadding + 8}px`,
 }));
+const canShowCreateTeamEntry = computed(() => !shouldHideCreationEntrances.value);
 
 function syncVisibleMode() {
-  activeMode.value = resolveVisibleMode(hasCurrentTeam.value, activeMode.value);
+  activeMode.value = resolveVisibleMode(hasCurrentTeam.value, activeMode.value, canShowCreateTeamEntry.value);
 }
 
 watch(hasCurrentTeam, () => {
@@ -199,6 +205,14 @@ function syncTeamProfileForm() {
   teamProfileForm.name = currentTeam.value?.name ?? "";
   teamProfileForm.description = currentTeam.value?.description ?? "";
   teamProfileForm.logoUrl = currentTeam.value?.logoUrl ?? "";
+}
+
+async function hydrateCreateTeamReviewMode() {
+  await preloadMiniReviewStatus();
+  if (createTeamReviewMode.value && !reviewTeamNameOptions.includes(createForm.name)) {
+    createForm.name = reviewTeamNameOptions[0] || "";
+    createForm.description = "";
+  }
 }
 
 async function getFileSize(filePath: string) {
@@ -355,7 +369,7 @@ async function handleCreateTeam() {
   try {
     await createTeamFromForm({
       name: createForm.name.trim(),
-      description: createForm.description.trim() || undefined,
+      description: createTeamReviewMode.value ? undefined : createForm.description.trim() || undefined,
       joinPassword: createForm.joinPassword.trim() || undefined,
     });
     await refreshSessionContext();
@@ -512,6 +526,7 @@ onShow(async () => {
   await ensureSessionReady();
   syncVisibleMode();
   syncTeamProfileForm();
+  await hydrateCreateTeamReviewMode();
   try {
     usersById.value = await loadUsersById();
   } catch (_error) {
@@ -537,7 +552,7 @@ onShow(async () => {
         <view :class="['mode-chip', activeMode === 'members' ? 'mode-chip-active' : '']" @tap="activeMode = 'members'">队员管理</view>
       </template>
       <template v-else>
-        <view :class="['mode-chip', activeMode === 'create' ? 'mode-chip-active' : '']" @tap="activeMode = 'create'">创建球队</view>
+        <view v-if="canShowCreateTeamEntry" :class="['mode-chip', activeMode === 'create' ? 'mode-chip-active' : '']" @tap="activeMode = 'create'">创建球队</view>
         <view :class="['mode-chip', activeMode === 'join' ? 'mode-chip-active' : '']" @tap="activeMode = 'join'">加入球队</view>
       </template>
     </view>
@@ -557,6 +572,8 @@ onShow(async () => {
     <TeamCreatePanel
       v-else-if="activeMode === 'create'"
       :form="createForm"
+      :review-mode="createTeamReviewMode"
+      :review-team-name-options="reviewTeamNameOptions"
       :can-create="canCreate"
       :submitting="submitting"
       @submit="handleCreateTeam"

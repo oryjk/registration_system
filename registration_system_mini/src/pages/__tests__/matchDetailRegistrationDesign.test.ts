@@ -53,8 +53,8 @@ describe("match detail registration design", () => {
     const pageLogic = await Bun.file(
       "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/useMatchDetailPage.ts",
     ).text();
-    const state = await Bun.file(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/detailState.ts",
+    const datetime = await Bun.file(
+      "/Users/carlwang/registration_system/registration_system_mini/src/utils/datetime.ts",
     ).text();
 
     expect(pageLogic.includes("const registrationDeadlineTimestamp = computed")).toEqual(true);
@@ -62,7 +62,7 @@ describe("match detail registration design", () => {
     expect(pageLogic.includes("formatCountdown(registrationDeadlineTimestamp.value - nowTick.value)")).toEqual(true);
     expect(pageLogic.includes("formatClock(match.value.holding_date)")).toEqual(true);
     expect(pageLogic.includes("formatClock(match.value.start_time)")).toEqual(false);
-    expect(state.includes('if (distance <= 0) return "已截止";')).toEqual(true);
+    expect(datetime.includes('if (distance <= 0) return "已截止";')).toEqual(true);
   });
 
   test("renders the team registration view with versus header, registration form, and a team submit bar", async () => {

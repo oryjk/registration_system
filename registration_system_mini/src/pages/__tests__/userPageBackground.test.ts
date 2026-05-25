@@ -109,6 +109,17 @@ describe("mine page background rendering", () => {
     expect(billingPageSource.includes("getMyBillingFlow")).toEqual(true);
   });
 
+  test("hides the wallet card on mine page during mini review mode", async () => {
+    const userPageSource = await Bun.file(
+      "/Users/carlwang/registration_system/registration_system_mini/src/pages/user/index.vue",
+    ).text();
+
+    expect(userPageSource.includes('import { useMiniReviewStatus } from "@/stores/miniReview";')).toEqual(true);
+    expect(userPageSource.includes("const { shouldHideCreationEntrances } = useMiniReviewStatus();")).toEqual(true);
+    expect(userPageSource.includes("<MineWalletSection")).toEqual(true);
+    expect(userPageSource.includes('v-if="!shouldHideCreationEntrances"')).toEqual(true);
+  });
+
   test("reloads mine page data after the floating login prompt finishes login", async () => {
     const userPageSource = await Bun.file(
       "/Users/carlwang/registration_system/registration_system_mini/src/pages/user/index.vue",

@@ -3,10 +3,12 @@ import { computed, ref } from "vue";
 import { onLoad, onShareAppMessage, onShareTimeline, onUnload } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
 import { acceptChallenge, cancelChallenge, cancelIndividualChallengeAcceptance, getChallengeDetail } from "@/api/challenge";
+import { createChallengeIndividualPaymentOrder, syncPaymentOrderStatus } from "@/api/payment";
 import { useTeamContext } from "@/stores/teamContext";
 import type { BackendChallenge, BackendChallengeDetail } from "@/types/backend";
 import { getCustomNavMetrics } from "@/utils/customNav";
 import { isOpenLocationSupported } from "@/utils/location";
+import { isMockWxPaymentParams, isPaymentCancelled, normalizeWxPaymentParams, requestWxPayment } from "@/utils/payment";
 import { DEFAULT_SHARE_IMAGE_URL } from "@/utils/share";
 import { getAppPlatform } from "@/utils/systemInfo";
 import { buildChallengeCards } from "@/utils/viewModels";
@@ -29,6 +31,13 @@ const actionLoading = ref(false);
 const errorMessage = ref("");
 const detail = ref<BackendChallengeDetail | null>(null);
 const nowTick = ref(Date.now());
+function challengeMinSignupPlayers(challenge: BackendChallenge) {
+  return challenge.kind === "individual" ? challenge.min_players ?? challenge.players_per_team * 2 : challenge.players_per_team;
+}
+
+function challengeMaxSignupPlayers(challenge: BackendChallenge) {
+  return challenge.kind === "individual" ? challenge.max_players ?? challenge.players_per_team * 2 + 4 : challenge.players_per_team;
+}
 
 let countdownTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -40,9 +49,9 @@ const card = computed(() => {
       ? !!currentTeam.value?.canManageTeam &&
         summary.challenge.status === "open" &&
         summary.challenge.host_team_id !== currentTeam.value?.id
-      : summary.challenge.status === "open" &&
+      : summary.challenge.status !== "cancelled" &&
         !summary.current_user_joined &&
-        summary.accepted_count < summary.challenge.players_per_team * 2;
+        summary.accepted_count < challengeMaxSignupPlayers(summary.challenge);
   const [item] = buildChallengeCards([
     {
       ...summary,
@@ -79,12 +88,12 @@ const canCancelIndividualAcceptance = computed(
 const canAccept = computed(() => !!card.value?.canAccept);
 const individualProgressPercent = computed(() => {
   if (!card.value || card.value.kind !== "individual") return 0;
-  return Math.min(100, Math.round((card.value.acceptedCount / Math.max(card.value.capacity, 1)) * 100));
+  return Math.min(100, Math.round((card.value.acceptedCount / Math.max(card.value.minPlayers, 1)) * 100));
 });
 const individualProgressWidth = computed(() => `${individualProgressPercent.value}%`);
 const individualRemainingCount = computed(() => {
   if (!card.value || card.value.kind !== "individual") return 0;
-  return Math.max(card.value.capacity - card.value.acceptedCount, 0);
+  return Math.max(card.value.maxPlayers - card.value.acceptedCount, 0);
 });
 const individualParticipantPreview = computed(() =>
   buildIndividualParticipantPreview(detail.value?.individual_participants ?? []),
@@ -108,6 +117,43 @@ const challengeStartTimestamp = computed(() => {
   return new Date((challenge.start_time || challenge.holding_date).replace(" ", "T")).getTime();
 });
 const individualCountdownText = computed(() => formatCountdown(challengeStartTimestamp.value - nowTick.value));
+const currentAcceptance = computed(() => detail.value?.current_user_acceptance ?? null);
+const paymentDeadlineTimestamp = computed(() => {
+  const deadline = currentAcceptance.value?.payment_deadline_at;
+  if (!deadline) return 0;
+  const timestamp = new Date(deadline.replace(" ", "T")).getTime();
+  return Number.isNaN(timestamp) ? 0 : timestamp;
+});
+const paymentCountdownText = computed(() => {
+  const challenge = detail.value?.summary.challenge;
+  if (
+    !challenge ||
+    challenge.kind !== "individual" ||
+    challenge.payment_mode !== "prepaid" ||
+    currentAcceptance.value?.payment_status !== "unpaid" ||
+    !paymentDeadlineTimestamp.value
+  ) {
+    return "";
+  }
+  return `支付倒计时 ${formatCountdown(paymentDeadlineTimestamp.value - nowTick.value)}`;
+});
+const paymentStatusLabel = computed(() => {
+  const challenge = detail.value?.summary.challenge;
+  const acceptance = currentAcceptance.value;
+  if (!challenge || challenge.kind !== "individual" || !acceptance) return "";
+  if (acceptance.payment_status === "paid") return "已支付";
+  if (acceptance.payment_status === "cancelled") return "已取消";
+  if (!challenge.fee_per_person || Number(challenge.fee_per_person) <= 0) return "无需支付";
+  return challenge.payment_mode === "prepaid" ? "待支付" : "赛后支付待完成";
+});
+const canPayChallenge = computed(() => {
+  const challenge = detail.value?.summary.challenge;
+  const acceptance = currentAcceptance.value;
+  if (!challenge || challenge.kind !== "individual" || !acceptance || actionLoading.value) return false;
+  if (!detail.value?.summary.current_user_joined || acceptance.payment_status !== "unpaid") return false;
+  if (!challenge.fee_per_person || Number(challenge.fee_per_person) <= 0) return false;
+  return !paymentDeadlineTimestamp.value || paymentDeadlineTimestamp.value > nowTick.value;
+});
 const pageTitle = computed(() => (card.value?.kind === "individual" ? "散人报名" : "约队详情"));
 const shareTitle = computed(() => {
   if (!card.value) return "邀请你查看约队报名";
@@ -220,11 +266,12 @@ function applyCancelledIndividualAcceptanceDetail(challenge: BackendChallenge) {
       challenge,
       accepted_count: Math.max(detail.value.summary.accepted_count - 1, 0),
       current_user_joined: false,
-      can_accept: challenge.status === "open",
+      can_accept: challenge.status !== "cancelled" && detail.value.summary.accepted_count < challengeMaxSignupPlayers(challenge),
     },
     individual_participants: userId
       ? detail.value.individual_participants.filter((item) => item.user_id !== userId)
       : detail.value.individual_participants,
+    current_user_acceptance: null,
   };
 }
 
@@ -249,7 +296,11 @@ async function handleAccept() {
   actionLoading.value = true;
   try {
     const challenge = await acceptChallenge(challengeId.value, card.value.kind === "team" ? currentTeam.value?.id : undefined);
-    applyAcceptedChallengeDetail(challenge);
+    if (card.value.kind === "individual") {
+      await loadPageData();
+    } else {
+      applyAcceptedChallengeDetail(challenge);
+    }
     uni.$emit("home:data-may-changed");
     uni.showToast({
       title: card.value.kind === "team" ? "接约成功" : "报名成功",
@@ -280,6 +331,34 @@ async function handleCancel() {
   } catch (error) {
     uni.showToast({
       title: error instanceof Error ? error.message : "取消失败",
+      icon: "none",
+    });
+  } finally {
+    actionLoading.value = false;
+  }
+}
+
+async function handlePayChallenge() {
+  if (!card.value || !canPayChallenge.value || actionLoading.value) return;
+
+  actionLoading.value = true;
+  try {
+    const order = await createChallengeIndividualPaymentOrder({
+      challenge_id: challengeId.value,
+    });
+    const paymentParams = normalizeWxPaymentParams(order.params);
+    if (paymentParams && !isMockWxPaymentParams(paymentParams)) {
+      await requestWxPayment(paymentParams);
+    }
+    await syncPaymentOrderStatus(order.order_no);
+    await loadPageData();
+    uni.showToast({
+      title: paymentParams ? "支付已提交" : "支付订单已创建",
+      icon: "none",
+    });
+  } catch (error) {
+    uni.showToast({
+      title: isPaymentCancelled(error) ? "已取消支付" : error instanceof Error ? error.message : "支付失败",
       icon: "none",
     });
   } finally {
@@ -411,8 +490,12 @@ onShareTimeline(() => ({
         :individual-participant-preview="individualParticipantPreview"
         :individual-avatar-note="individualAvatarNote"
         :can-open-location="canOpenChallengeLocation"
+        :payment-status-label="paymentStatusLabel"
+        :payment-countdown-text="paymentCountdownText"
+        :can-pay="canPayChallenge"
         @accept="handleAccept"
         @cancel-individual-acceptance="handleCancelIndividualAcceptance"
+        @pay="handlePayChallenge"
         @open-location="openChallengeLocation"
         @open-activities="openActivities"
       />

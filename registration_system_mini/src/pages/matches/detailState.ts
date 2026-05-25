@@ -1,48 +1,22 @@
 import type { BackendActivity, BackendActivityCheckInRecord, BackendRegistration } from "@/types/backend";
+import {
+  describeDaysUntil,
+  formatCountdown,
+  formatMonthDayLabel,
+  formatTimeLabel,
+  formatWeekdayLabel,
+  pad,
+  parseDateValue,
+} from "@/utils/datetime";
+
+export { describeDaysUntil, formatCountdown, pad, parseDateValue };
+
+export const formatMonthDay = formatMonthDayLabel;
+export const formatClock = formatTimeLabel;
+export const formatWeekday = formatWeekdayLabel;
 
 export function isActiveTeamRegistrationActivity(activity: BackendActivity) {
   return !!activity.source_activity_id && activity.status !== 3;
-}
-
-export function parseDateValue(value: string) {
-  return new Date(value.replace(" ", "T"));
-}
-
-export function pad(value: number) {
-  return String(value).padStart(2, "0");
-}
-
-export function formatMonthDay(value: string) {
-  const date = parseDateValue(value);
-  return `${pad(date.getMonth() + 1)}/${pad(date.getDate())}`;
-}
-
-export function formatClock(value: string) {
-  const date = parseDateValue(value);
-  return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
-}
-
-export function formatWeekday(value: string) {
-  const date = parseDateValue(value);
-  return ["周日", "周一", "周二", "周三", "周四", "周五", "周六"][date.getDay()] ?? "周日";
-}
-
-export function formatCountdown(distance: number) {
-  if (distance <= 0) return "已截止";
-  const seconds = Math.floor(distance / 1000);
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  const remainSeconds = seconds % 60;
-  return `${pad(hours)} : ${pad(minutes)} : ${pad(remainSeconds)}`;
-}
-
-export function describeDaysUntil(target: number, current: number) {
-  if (!target) return "时间待定";
-  const diff = target - current;
-  if (diff <= 0) return "即将开赛";
-  const days = Math.ceil(diff / (24 * 60 * 60 * 1000));
-  if (days <= 1) return "1天内开赛";
-  return `${days}天后开赛`;
 }
 
 export function avatarColor(userId: number) {

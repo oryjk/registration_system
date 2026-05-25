@@ -20,6 +20,13 @@ import type {
   NotificationItemViewModel,
   TeamProfileViewModel,
 } from "@/types/viewModels";
+import {
+  formatDateLabel,
+  formatDayNumberLabel,
+  formatMonthDayLabel,
+  formatTimeRangeLabel,
+  formatWeekdayLabel,
+} from "@/utils/datetime";
 
 function toRoleLabel(role: string): string {
   switch (role) {
@@ -81,41 +88,9 @@ function formatCompactCurrency(value: string | number | null | undefined): strin
   return `¥${amount.toFixed(2).replace(/\.?0+$/, "")}`;
 }
 
-function formatDateLabel(isoText: string): string {
-  const date = new Date(isoText.replace(" ", "T"));
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  const hours = String(date.getHours()).padStart(2, "0");
-  const minutes = String(date.getMinutes()).padStart(2, "0");
-  return `${month}/${day} ${hours}:${minutes}`;
-}
-
 export function formatDateTimeLabel(isoText: string | null | undefined): string {
   if (!isoText) return "未开通";
   return formatDateLabel(isoText);
-}
-
-function formatMonthDayLabel(isoText: string): string {
-  const date = new Date(isoText.replace(" ", "T"));
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${month}/${day}`;
-}
-
-function formatDayNumberLabel(isoText: string): string {
-  const date = new Date(isoText.replace(" ", "T"));
-  return String(date.getDate()).padStart(2, "0");
-}
-
-function formatWeekdayLabel(isoText: string): string {
-  const date = new Date(isoText.replace(" ", "T"));
-  return ["周日", "周一", "周二", "周三", "周四", "周五", "周六"][date.getDay()] ?? "待定";
-}
-
-function formatTimeRangeLabel(startTime: string, endTime: string): string {
-  const start = formatDateLabel(startTime).slice(-5);
-  const end = formatDateLabel(endTime).slice(-5);
-  return `${start}-${end}`;
 }
 
 function avatarTone(userId: number): string {
@@ -364,7 +339,7 @@ export function buildPublicHomeMatchCards({
 function toIndividualChallengeStageLabel(status: string): string {
   switch (status) {
     case "matched":
-      return "已满员";
+      return "已成行";
     case "cancelled":
       return "已取消";
     default:
@@ -384,9 +359,10 @@ export function buildJoinedIndividualHomeMatchCards({
     .sort((left, right) => left.challenge.holding_date.localeCompare(right.challenge.holding_date))
     .slice(0, limit ?? summaries.length)
     .map((summary) => {
+      const minPlayers = challengeMinSignupPlayers(summary);
       const capacity = challengeSignupCapacity(summary);
       const joinedPlayers = summary.accepted_count;
-      const remainingPlayers = Math.max(capacity - joinedPlayers, 0);
+      const remainingPlayers = Math.max(minPlayers - joinedPlayers, 0);
 
       return {
         id: summary.challenge.id,
@@ -399,16 +375,16 @@ export function buildJoinedIndividualHomeMatchCards({
         venue: summary.challenge.location,
         opponent: "散人局",
         formatLabel: `${summary.challenge.players_per_team} 人制`,
-        requiredPlayers: capacity,
+        requiredPlayers: minPlayers,
         maxPlayers: capacity,
         joinedPlayers,
         absentPlayers: 0,
         latePlayers: 0,
         pendingPlayers: 0,
         myStatus: "已报名",
-        highlight: remainingPlayers > 0 ? `当前 ${joinedPlayers} 人报名，还差 ${remainingPlayers} 人满员` : "已满员",
+        highlight: remainingPlayers > 0 ? `当前 ${joinedPlayers} 人报名，还差 ${remainingPlayers} 人成行` : "已成行",
         participantAvatars: [],
-        remainingPlayersLabel: remainingPlayers > 0 ? `还差 ${remainingPlayers} 人` : "已满员",
+        remainingPlayersLabel: remainingPlayers > 0 ? `还差 ${remainingPlayers} 人` : "已成行",
         canRegister: true,
         actionLabel: "去查看",
       };
@@ -450,7 +426,7 @@ export function buildBillingSummary(
 function toChallengeStatusLabel(kind: "team" | "individual", status: string): string {
   switch (status) {
     case "matched":
-      return kind === "individual" ? "已满员" : "已约成";
+      return kind === "individual" ? "已成行" : "已约成";
     case "cancelled":
       return "已取消";
     default:
@@ -467,7 +443,7 @@ function toChallengeRelationLabel(summary: BackendChallengeSummary): string {
     if (relation === "host") {
       return challenge.status === "matched" ? "我发起的散人局" : "我发布的散人局";
     }
-    return challenge.status === "matched" ? "已满员" : "可报名";
+    return challenge.status === "matched" ? "已成行" : "可报名";
   }
 
   if (relation === "host") {
@@ -496,7 +472,8 @@ function buildChallengeTags(summary: BackendChallengeSummary, relationLabel: str
   if (summary.challenge.kind === "individual") {
     return [
       "散人局",
-      `${summary.accepted_count}/${challengeSignupCapacity(summary)}`,
+      `${summary.accepted_count}/${challengeMinSignupPlayers(summary)}成行`,
+      `最多${challengeSignupCapacity(summary)}人`,
       relationLabel,
     ].filter((value, index, values) => !!value && values.indexOf(value) === index);
   }
@@ -532,7 +509,15 @@ function toChallengePrimaryActionLabel(summary: BackendChallengeSummary): string
 }
 
 function challengeSignupCapacity(summary: BackendChallengeSummary): number {
-  return summary.challenge.kind === "individual" ? summary.challenge.players_per_team * 2 : summary.challenge.players_per_team;
+  return summary.challenge.kind === "individual"
+    ? summary.challenge.max_players ?? summary.challenge.players_per_team * 2 + 4
+    : summary.challenge.players_per_team;
+}
+
+function challengeMinSignupPlayers(summary: BackendChallengeSummary): number {
+  return summary.challenge.kind === "individual"
+    ? summary.challenge.min_players ?? summary.challenge.players_per_team * 2
+    : summary.challenge.players_per_team;
 }
 
 export function buildChallengeCards(
@@ -542,6 +527,7 @@ export function buildChallengeCards(
     const relationLabel = toChallengeRelationLabel(summary);
     const isIndividual = summary.challenge.kind === "individual";
     const capacity = challengeSignupCapacity(summary);
+    const minPlayers = challengeMinSignupPlayers(summary);
 
     return {
       id: summary.challenge.id,
@@ -573,6 +559,8 @@ export function buildChallengeCards(
       canAccept: summary.can_accept,
       acceptedCount: summary.accepted_count,
       capacity,
+      minPlayers,
+      maxPlayers: capacity,
       currentUserJoined: summary.current_user_joined,
       activityId: summary.challenge.activity_id ?? "",
     };

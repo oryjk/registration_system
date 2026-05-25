@@ -23,7 +23,7 @@ describe("bottom tab bar assets", () => {
     ).text();
 
     expect(tabBarSource.includes('<view class="custom-tabbar-shell">')).toEqual(true);
-    expect(tabBarSource.includes('<view class="custom-tabbar">')).toEqual(true);
+    expect(tabBarSource.includes(":class=\"['custom-tabbar', shouldShowCreateEntry ? '' : 'custom-tabbar-no-create']\"")).toEqual(true);
     expect(tabBarSource.includes(":class=\"['custom-tabbar', isOpen ? 'custom-tabbar-open' : '']\"")).toEqual(false);
   });
 
@@ -42,6 +42,12 @@ describe("bottom tab bar assets", () => {
     expect(tabBarSource.includes("create-menu-icon-match")).toEqual(true);
     expect(tabBarSource.includes("create-menu-icon-ball")).toEqual(true);
     expect(tabBarSource.includes("create-menu-icon-team")).toEqual(true);
+    expect(tabBarSource.includes("shouldHideCreationEntrances")).toEqual(true);
+    expect(tabBarSource.includes("const shouldShowCreateEntry = computed(() => !shouldHideCreationEntrances.value);")).toEqual(true);
+    expect(tabBarSource.includes("custom-tabbar-no-create")).toEqual(true);
+    expect(tabBarSource.includes('<template v-if="shouldShowCreateEntry">')).toEqual(true);
+    expect(tabBarSource.includes('<template v-else>')).toEqual(true);
+    expect(tabBarSource.includes('v-if="shouldShowCreateEntry" :class="[\'create-menu-overlay\'')).toEqual(true);
     expect(tabBarSource.includes('<text class="create-menu-action-icon">赛</text>')).toEqual(false);
     expect(tabBarSource.includes('<text class="create-menu-action-icon">约</text>')).toEqual(false);
     expect(tabBarSource.includes('<text class="create-menu-action-icon">队</text>')).toEqual(false);

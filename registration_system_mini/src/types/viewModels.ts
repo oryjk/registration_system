@@ -99,6 +99,8 @@ export interface ChallengeCardViewModel {
   canAccept: boolean;
   acceptedCount: number;
   capacity: number;
+  minPlayers: number;
+  maxPlayers: number;
   currentUserJoined: boolean;
   activityId: string;
 }

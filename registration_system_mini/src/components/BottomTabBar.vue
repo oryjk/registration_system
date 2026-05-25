@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import { useNotificationCenter } from "@/stores/notificationCenter";
 import { useTeamContext } from "@/stores/teamContext";
+import { useMiniReviewStatus } from "@/stores/miniReview";
 import homeIconUrl from "@/static/tab-png/home.png";
 import homeActiveIconUrl from "@/static/tab-png/home-active.png";
 import challengeIconUrl from "@/static/tab-png/challenge.png";
@@ -19,7 +20,9 @@ const props = defineProps<{
 
 const { currentTeam } = useTeamContext();
 const { unreadCount } = useNotificationCenter();
+const { shouldHideCreationEntrances } = useMiniReviewStatus();
 const isOpen = ref(false);
+const shouldShowCreateEntry = computed(() => !shouldHideCreationEntrances.value);
 
 const items: Array<{
   key: TabKey;
@@ -63,6 +66,7 @@ function switchTab(path: string) {
 }
 
 function openSheet() {
+  if (!shouldShowCreateEntry.value) return;
   isOpen.value = !isOpen.value;
 }
 
@@ -110,54 +114,77 @@ function handleCreateIndividualChallenge() {
 
 <template>
   <view class="custom-tabbar-shell">
-    <view class="custom-tabbar">
-      <view
-        v-for="item in items.slice(0, 2)"
-        :key="item.key"
-        :class="['custom-tab-item', props.current === item.key ? 'custom-tab-item-active' : '']"
-        @tap="switchTab(item.path)"
-      >
-        <view class="custom-tab-icon-shell">
-          <image
-            class="custom-tab-icon-image"
-            :src="props.current === item.key ? item.activeIcon : item.icon"
-            mode="aspectFit"
-          />
-          <view v-if="item.key === 'mine' && unreadCount > 0" class="custom-tab-badge">
-            {{ unreadCount > 99 ? "99+" : unreadCount }}
+    <view :class="['custom-tabbar', shouldShowCreateEntry ? '' : 'custom-tabbar-no-create']">
+      <template v-if="shouldShowCreateEntry">
+        <view
+          v-for="item in items.slice(0, 2)"
+          :key="item.key"
+          :class="['custom-tab-item', props.current === item.key ? 'custom-tab-item-active' : '']"
+          @tap="switchTab(item.path)"
+        >
+          <view class="custom-tab-icon-shell">
+            <image
+              class="custom-tab-icon-image"
+              :src="props.current === item.key ? item.activeIcon : item.icon"
+              mode="aspectFit"
+            />
+            <view v-if="item.key === 'mine' && unreadCount > 0" class="custom-tab-badge">
+              {{ unreadCount > 99 ? "99+" : unreadCount }}
+            </view>
           </view>
+          <text class="custom-tab-label">{{ item.label }}</text>
         </view>
-        <text class="custom-tab-label">{{ item.label }}</text>
-      </view>
 
-      <view class="custom-tab-item custom-tab-item-center">
-        <view :class="['custom-tab-plus', isOpen ? 'custom-tab-plus-open' : '']" @tap="openSheet">
-          <text class="custom-tab-plus-symbol">{{ isOpen ? "×" : "+" }}</text>
-        </view>
-        <text class="custom-tab-label custom-tab-label-active">创建</text>
-      </view>
-
-      <view
-        v-for="item in items.slice(2)"
-        :key="item.key"
-        :class="['custom-tab-item', props.current === item.key ? 'custom-tab-item-active' : '']"
-        @tap="switchTab(item.path)"
-      >
-        <view class="custom-tab-icon-shell">
-          <image
-            class="custom-tab-icon-image"
-            :src="props.current === item.key ? item.activeIcon : item.icon"
-            mode="aspectFit"
-          />
-          <view v-if="item.key === 'mine' && unreadCount > 0" class="custom-tab-badge">
-            {{ unreadCount > 99 ? "99+" : unreadCount }}
+        <view class="custom-tab-item custom-tab-item-center">
+          <view :class="['custom-tab-plus', isOpen ? 'custom-tab-plus-open' : '']" @tap="openSheet">
+            <text class="custom-tab-plus-symbol">{{ isOpen ? "×" : "+" }}</text>
           </view>
+          <text class="custom-tab-label custom-tab-label-active">创建</text>
         </view>
-        <text class="custom-tab-label">{{ item.label }}</text>
-      </view>
+
+        <view
+          v-for="item in items.slice(2)"
+          :key="item.key"
+          :class="['custom-tab-item', props.current === item.key ? 'custom-tab-item-active' : '']"
+          @tap="switchTab(item.path)"
+        >
+          <view class="custom-tab-icon-shell">
+            <image
+              class="custom-tab-icon-image"
+              :src="props.current === item.key ? item.activeIcon : item.icon"
+              mode="aspectFit"
+            />
+            <view v-if="item.key === 'mine' && unreadCount > 0" class="custom-tab-badge">
+              {{ unreadCount > 99 ? "99+" : unreadCount }}
+            </view>
+          </view>
+          <text class="custom-tab-label">{{ item.label }}</text>
+        </view>
+      </template>
+
+      <template v-else>
+        <view
+          v-for="item in items"
+          :key="item.key"
+          :class="['custom-tab-item', props.current === item.key ? 'custom-tab-item-active' : '']"
+          @tap="switchTab(item.path)"
+        >
+          <view class="custom-tab-icon-shell">
+            <image
+              class="custom-tab-icon-image"
+              :src="props.current === item.key ? item.activeIcon : item.icon"
+              mode="aspectFit"
+            />
+            <view v-if="item.key === 'mine' && unreadCount > 0" class="custom-tab-badge">
+              {{ unreadCount > 99 ? "99+" : unreadCount }}
+            </view>
+          </view>
+          <text class="custom-tab-label">{{ item.label }}</text>
+        </view>
+      </template>
     </view>
 
-    <view :class="['create-menu-overlay', isOpen ? 'create-menu-overlay-open' : '']" @tap="closeSheet">
+    <view v-if="shouldShowCreateEntry" :class="['create-menu-overlay', isOpen ? 'create-menu-overlay-open' : '']" @tap="closeSheet">
       <view class="create-menu-backdrop" />
       <view class="create-menu-actions" @tap.stop>
         <view class="create-menu-action create-menu-action-left" @tap="handleCreateMatch">
@@ -212,6 +239,10 @@ function handleCreateIndividualChallenge() {
 
 .custom-tabbar {
   pointer-events: auto;
+}
+
+.custom-tabbar-no-create {
+  grid-template-columns: 1fr 1fr 1fr 1fr;
 }
 
 .custom-tab-plus {

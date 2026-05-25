@@ -86,11 +86,14 @@ export interface BackendCancelOrderResult {
 
 export type BackendChallengeStatus = "open" | "matched" | "cancelled";
 export type BackendChallengeKind = "team" | "individual";
+export type BackendChallengePaymentMode = "prepaid" | "postpaid";
+export type BackendChallengePaymentStatus = "unpaid" | "paid" | "cancelled";
 
 export interface BackendChallenge {
   id: string;
   title: string;
   kind: BackendChallengeKind;
+  payment_mode: BackendChallengePaymentMode;
   host_team_id?: number | null;
   host_user_id: number;
   guest_team_id?: number | null;
@@ -103,6 +106,8 @@ export interface BackendChallenge {
   location_latitude?: number | null;
   location_longitude?: number | null;
   players_per_team: number;
+  min_players?: number | null;
+  max_players?: number | null;
   fee_per_person?: string | null;
   note?: string | null;
   status: BackendChallengeStatus;
@@ -144,10 +149,17 @@ export interface BackendChallengeIndividualParticipant {
   avatar_url?: string | null;
 }
 
+export interface BackendCurrentUserIndividualAcceptance {
+  payment_status: BackendChallengePaymentStatus;
+  payment_deadline_at?: string | null;
+  payment_order_no?: string | null;
+}
+
 export interface BackendChallengeDetail {
   summary: BackendChallengeSummary;
   activity?: BackendChallengeActivityRef | null;
   individual_participants: BackendChallengeIndividualParticipant[];
+  current_user_acceptance?: BackendCurrentUserIndividualAcceptance | null;
 }
 
 export interface BackendNotification {
@@ -259,6 +271,13 @@ export interface BackendTeamCreditTransaction {
   created_by_user_id?: number | null;
   created_by_admin_id?: number | null;
   created_at: string;
+}
+
+export interface BackendMiniReviewStatus {
+  project_code: string;
+  version: string;
+  is_reviewing: boolean;
+  status_text: string;
 }
 
 export interface BackendActivity {
@@ -383,12 +402,22 @@ export interface BackendMapPreviewSettings {
   tencent_map_key: string;
 }
 
+export interface BackendMiniAppHomeHeroBanner {
+  title: string;
+  subtitle: string;
+  button_text: string;
+  image_url: string;
+  enabled: boolean;
+  sort_order: number;
+}
+
 export interface BackendMiniAppRuntimeConfig {
   home: {
     match_card_limit: number;
     challenge_card_limit: number;
     activity_fetch_page_size: number;
     hide_matches_after_holding_time: boolean;
+    hero_banners: BackendMiniAppHomeHeroBanner[];
   };
   matches: {
     related_activity_limit: number;

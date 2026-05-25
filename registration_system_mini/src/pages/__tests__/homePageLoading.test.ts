@@ -83,6 +83,7 @@ describe("home page loading states", () => {
     expect(homePageSource.includes("buildJoinedIndividualHomeMatchCards")).toEqual(true);
     expect(homePageSource.includes("isRuntimeVisibleChallengeSummary")).toEqual(true);
     expect(homePageSource.includes("const runtimeConfig = await loadMiniAppRuntimeConfig();")).toEqual(true);
+    expect(homePageSource.includes("homeHeroBanners.value = runtimeConfig.home.hero_banners;")).toEqual(true);
     expect(homePageSource.includes("const challengeFetchLimit = Math.min(runtimeConfig.home.challenge_card_limit * 5, 50);")).toEqual(true);
     expect(homePageSource.includes("pageSize: runtimeConfig.home.activity_fetch_page_size")).toEqual(true);
     expect(homePageSource.includes("limit: challengeFetchLimit")).toEqual(true);
@@ -103,6 +104,7 @@ describe("home page loading states", () => {
     expect(homePageSource.includes('v-if="errorMessage" class="home-empty"')).toEqual(false);
     expect(homePageSource.includes("{{ errorMessage }}")).toEqual(false);
     expect(homePageSource.includes("HomeHeroSection")).toEqual(true);
+    expect(homePageSource.includes(':hero-banners="homeHeroBanners"')).toEqual(true);
     expect(hero.includes('v-if="!isGuestMode && currentTeam" class="team-hero-card"')).toEqual(true);
     expect(hero.includes('{{ currentTeam?.name || "我的球队" }}')).toEqual(false);
     expect(homePageSource.includes('<view v-if="shouldShowMatchSection" class="section-headline">')).toEqual(true);
@@ -110,6 +112,8 @@ describe("home page loading states", () => {
     expect(matchList.includes("登录后报名")).toEqual(true);
     expect(homePageSource.includes("公开约队可先浏览，接约和报名需要登录。")).toEqual(true);
     expect(hero.includes('class="home-banner"')).toEqual(true);
+    expect(hero.includes("visibleHeroBanners.length > 1")).toEqual(true);
+    expect(hero.includes("<swiper")).toEqual(true);
   });
 
   test("reloads the home page after login completes on the same page", async () => {

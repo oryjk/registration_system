@@ -61,7 +61,8 @@ function handleOpenPublish() {
         />
       </view>
       <view
-        :class="['hall-publish-button', !canPublish ? 'hall-publish-button-disabled' : '']"
+        v-if="canPublish"
+        class="hall-publish-button"
         @tap="handleOpenPublish"
       >
         发布约队
@@ -139,12 +140,6 @@ function handleOpenPublish() {
   font-size: 30rpx;
   font-weight: 900;
   box-shadow: 0 14rpx 28rpx rgba(173, 214, 0, 0.18);
-}
-
-.hall-publish-button-disabled {
-  background: #d8dccf;
-  color: #70756c;
-  box-shadow: none;
 }
 
 .hall-quick-filters {

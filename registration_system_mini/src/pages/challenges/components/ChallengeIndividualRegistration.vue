@@ -16,11 +16,15 @@ defineProps<{
   individualParticipantPreview: IndividualParticipantPreview[];
   individualAvatarNote: string;
   canOpenLocation: boolean;
+  paymentStatusLabel: string;
+  paymentCountdownText: string;
+  canPay: boolean;
 }>();
 
 defineEmits<{
   accept: [];
   cancelIndividualAcceptance: [];
+  pay: [];
   openLocation: [];
   openActivities: [];
 }>();
@@ -50,7 +54,7 @@ defineEmits<{
 
           <view class="matchup-side matchup-side-away">
             <text class="matchup-role">名额</text>
-            <text class="matchup-name">{{ card.capacity }} 人</text>
+            <text class="matchup-name">最多 {{ card.maxPlayers }} 人</text>
             <text class="matchup-fee">{{ card.feeLabel }}</text>
           </view>
         </view>
@@ -64,7 +68,7 @@ defineEmits<{
           <view class="countdown-total">
             <text class="countdown-total-label">已报</text>
             <text class="countdown-total-strong">{{ card.acceptedCount }}</text>
-            <text class="countdown-total-denominator">/{{ card.capacity || "?" }}</text>
+            <text class="countdown-total-denominator">/{{ card.minPlayers || "?" }} 成行</text>
           </view>
         </view>
         <text class="countdown-time">{{ countdownText }}</text>
@@ -100,6 +104,20 @@ defineEmits<{
       >
         <text class="individual-cta-main">{{ actionLabel }}</text>
         <text v-if="!canCancelIndividualAcceptance && canAccept" class="individual-cta-side">{{ card.priceLabel }}</text>
+      </view>
+
+      <view v-if="paymentStatusLabel" class="payment-panel">
+        <view class="payment-panel-copy">
+          <text class="payment-panel-title">报名支付</text>
+          <text class="payment-panel-status">{{ paymentStatusLabel }}</text>
+          <text v-if="paymentCountdownText" class="payment-panel-countdown">{{ paymentCountdownText }}</text>
+        </view>
+        <view
+          :class="['payment-panel-button', !canPay || actionLoading ? 'payment-panel-button-disabled' : '']"
+          @tap="canPay && !actionLoading ? $emit('pay') : undefined"
+        >
+          去支付
+        </view>
       </view>
 
       <view class="hall-button" @tap="$emit('openActivities')">回到大厅</view>
@@ -447,6 +465,66 @@ defineEmits<{
 
 .individual-cta-button-disabled .individual-cta-main {
   color: #6b7067;
+}
+
+.payment-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rpx;
+  margin-top: 18rpx;
+  padding: 20rpx;
+  border-radius: 24rpx;
+  background: #f7f9f2;
+  border: 2rpx solid #e3e8d8;
+  box-sizing: border-box;
+}
+
+.payment-panel-copy {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 6rpx;
+  min-width: 0;
+}
+
+.payment-panel-title {
+  color: #171814;
+  font-size: 28rpx;
+  font-weight: 900;
+}
+
+.payment-panel-status {
+  color: #4f584b;
+  font-size: 24rpx;
+  font-weight: 800;
+}
+
+.payment-panel-countdown {
+  color: #d45732;
+  font-size: 24rpx;
+  font-weight: 900;
+}
+
+.payment-panel-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  min-width: 136rpx;
+  height: 64rpx;
+  padding: 0 24rpx;
+  border-radius: 999rpx;
+  background: #171814;
+  color: #ffffff;
+  font-size: 26rpx;
+  font-weight: 900;
+  box-sizing: border-box;
+}
+
+.payment-panel-button-disabled {
+  background: #d9ddd3;
+  color: #737a70;
 }
 
 </style>

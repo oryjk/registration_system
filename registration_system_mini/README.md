@@ -145,6 +145,10 @@ bun run mp:upload
 1. 复制 `.env.ci.local.example` 为 `.env.ci.local`
 2. 填写真实私钥路径 `MINI_PROGRAM_PRIVATE_KEY_PATH`
 3. 如需覆盖机器人编号，可修改 `MINI_PROGRAM_CI_ROBOT`
+4. 如需上传成功后自动写入审核记录，配置：
+   - `MINI_REVIEW_API_BASE_URL`
+   - `MINI_REVIEW_PROJECT_CODE`
+   - `MINI_REVIEW_INTERNAL_TOKEN`
 
 示例：
 
@@ -159,3 +163,9 @@ bun run mp:upload -- --robot 2 --version 1.0.1 --desc "提交体验版"
 - 然后调用微信官方 `miniprogram-ci`
 - `preview` 默认在 `dist/build/mp-weixin/preview-qrcode.jpg` 输出预览二维码
 - `upload` 如果不传 `--version`，会按当前版本自动 `+1`，例如 `1.0.30 -> 1.0.31`
+
+审核记录默认写入：
+
+- `project_code`: `registration_system_mini`
+- `is_reviewing`: `true`
+- `status_text`: `正在审核`

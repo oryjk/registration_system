@@ -1,5 +1,16 @@
 # 小程序发现记录
 
+## 2026-05-23 散人约队支付方式发现
+
+- `pages/challenges/create-individual/index.vue` 当前 `form.title` 默认 `"周三晚散人局"`，散人约队创建需要改为空值。
+- 同一创建页也支持 `kind=team`，原代码会在 team 模式把默认标题改为 `"周三晚球队约队"`；本轮要避免把散人标题默认值需求误扩大到球队约队。
+- `src/api/payment.ts` 当前只有充值、球队会员、订单查询/同步/取消，没有散人约队支付下单接口。
+- `pages/challenges/detail.vue` 和 `ChallengeIndividualRegistration` 当前只展示报名/取消报名，不展示当前用户散人报名支付状态。
+- 当前倒计时 `individualCountdownText` 是开场倒计时，不是支付截止倒计时；支付倒计时需要后端返回当前用户报名支付截止时间。
+- 小程序详情页应以 `BackendChallengeDetail.current_user_acceptance` 作为支付面板显示依据；未报名时不显示支付面板。
+- 报名成功后不能只本地 patch `accepted_count`，需要重新拉取详情，才能拿到后端写入的 `payment_deadline_at`。
+- 赛后支付没有倒计时，但仍可以直接展示支付按钮；赛前支付只有 deadline 未过期时才允许点击支付。
+
 ## 2026-05-14 队员会员标识
 
 - 小程序队员数据入口是 `src/types/backend.ts` 的 `BackendTeamMember` 和 `src/api/team.ts` 的 `addTeamMember` / `updateTeamMember`。
@@ -149,3 +160,33 @@
 - 如果 `TeamMemberRegistrationBoard` 同时展开“已报名 / 请假 / 未报名”三块大区域，会和上方“已报名头像总览”形成重复，并让页面重心下沉。
 - 新结构用 `selectedGroup` 切换当前分组，用 `activeSection` 只渲染一个分组列表，更符合“操作面板”而不是“第二张概览卡”的定位。
 - 右上角摘要改成总人数 `N人` 后，可以避开上方 `/8` 的最低成行人数语义，不会再次制造“上限/阈值”混淆。
+
+## 2026-05-20 创建球队审核态与版本统一发现
+
+- `TeamCreatePanel` 当前是纯展示组件，天然适合通过 props 切换“正常态 / 审核态”，不用拆第二个页面。
+- 如果直接在运行时代码里读取 `manifest.json`，uni-app / 小程序构建兼容性不够稳；更可靠的是构建前生成 `generatedMiniProgramVersion.ts`。
+- mini_review 公开查询接口是独立服务，不走当前小程序后端 `getApiBaseUrl()`；因此这里应直接请求完整 HTTPS 地址。
+- 共享 CLI 已经会在上传成功后把 `.env.ci.local` 的 `MINI_PROGRAM_VERSION` 回写为新版本，但如果项目层只在上传前做一次 manifest 同步，页面里的版本常量还会停在旧值。
+- 为了让审核查询版本、上传版本和下一次上传基线完全闭环，项目层 wrapper 必须显式传入本次 `uploadVersion`，并在共享 CLI 成功回写后再次同步 manifest/generated version。
+- 审核态是全局产品状态，不只是创建球队页的局部 UI；底部创建菜单、约队大厅发布按钮和球队管理页的“创建球队”模式都要跟随同一个全局开关。
+- 生产环境下，在 mini_review 状态尚未返回之前也应先隐藏创建入口，避免首屏闪出创建按钮后又消失。
+
+## 2026-05-20 审核态隐藏我的钱包发现
+
+- “我的钱包”卡片由 `pages/user/index.vue` 直接渲染 `MineWalletSection`。
+- 该卡片会进入账单明细二级页，属于审核态下不应暴露的资金业务入口。
+- 复用 `useMiniReviewStatus().shouldHideCreationEntrances` 控制卡片显隐即可，账单二级页和 billing API 本轮不需要改动。
+
+## 2026-05-20 首页装修配置接入发现
+
+- 首页运行配置已经在 `loadPageData()`、游客约队加载和接约/取消报名后刷新时读取；`hero_banners` 应在这些读取点同步更新，避免操作后回到旧卡片配置。
+- `HomeHeroSection` 是首页 hero 展示组件，适合只接收已 sanitize 的 banner 配置，不直接调用接口。
+- 小程序端仍需要本地默认“约球开踢”卡片，避免后台未配置、接口失败或全部停用时首页顶部为空。
+- 配置图片只需要作为背景图展示；没有图片时继续使用原 CSS 球场装饰，保持上线前默认视觉稳定。
+
+## 2026-05-23 散人约队最少/最多人数配置发现
+
+- 小程序发布页 `create-individual/index.vue` 同时支持球队约队和散人约队，因此人数高级设置必须只在 `challengeKind === "individual"` 时展示和提交。
+- `BackendChallenge` 原先没有 `min_players` / `max_players`，`viewModels.ts` 和详情页都把 `players_per_team * 2` 当散人容量。
+- 新语义下 `capacity` 更适合继续代表最多报名人数，同时新增 `minPlayers` / `maxPlayers` 给详情组件展示成行阈值和最多名额。
+- 散人 `matched` 应显示为“已成行”，不是“已满员”；满员要看 `accepted_count >= maxPlayers`。

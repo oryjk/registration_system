@@ -34,6 +34,18 @@ export function createTeamMembershipOrder(payload: {
   });
 }
 
+export function createChallengeIndividualPaymentOrder(payload: {
+  challenge_id: string;
+  openid?: string;
+}) {
+  return requestApi<BackendPaymentOrderResult>({
+    url: "/payment/challenge-individual",
+    method: "POST",
+    data: payload,
+    auth: true,
+  });
+}
+
 export function getPaymentOrderStatus(orderNo: string) {
   return requestApi<BackendPaymentOrderStatus>({
     url: `/payment/order/${orderNo}`,

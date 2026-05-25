@@ -15,13 +15,17 @@ const leadershipRoleOrder: Record<string, number> = {
   vice_captain: 2,
 };
 
-export function resolveVisibleMode(hasCurrentTeam: boolean, activeMode: TeamManageMode): TeamManageMode {
+export function resolveVisibleMode(hasCurrentTeam: boolean, activeMode: TeamManageMode, allowCreateTeamMode = true): TeamManageMode {
   if (hasCurrentTeam && (activeMode === "create" || activeMode === "join")) {
     return "profile";
   }
 
   if (!hasCurrentTeam && (activeMode === "profile" || activeMode === "members")) {
-    return "create";
+    return allowCreateTeamMode ? "create" : "join";
+  }
+
+  if (!allowCreateTeamMode && activeMode === "create") {
+    return "join";
   }
 
   return activeMode;
