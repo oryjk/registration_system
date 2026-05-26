@@ -50,7 +50,7 @@ function handlePrimaryAction(card: ChallengeCardViewModel) {
       <view class="hall-section-head">
         <view>
           <view class="hall-section-title">散人约队</view>
-          <view class="hall-section-caption">没满员就能报名，但散人约队同一时间只能接一场。</view>
+          <view class="hall-section-caption">未达报名上限就能报名，但散人约队同一时间只能接一场。</view>
         </view>
         <text class="hall-section-count">{{ individualHallCards.length }}</text>
       </view>

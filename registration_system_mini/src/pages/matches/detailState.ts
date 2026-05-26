@@ -32,13 +32,14 @@ export function clampTeamRegistrationCount(value: number) {
 export function buildRegistrationProgress(joinedCount: number, requiredPlayers: number) {
   const threshold = Math.max(requiredPlayers, 1);
   const overflow = Math.max(joinedCount - threshold, 0);
-  const overflowVisualWidth = overflow > 0 ? Math.min(10 + overflow * 4, 24) : 0;
-  const baseWidth = overflow > 0 ? 100 - overflowVisualWidth : Math.min((joinedCount / threshold) * 100, 100);
+  const splitPercent = 82;
+  const overflowVisualWidth = overflow > 0 ? Math.min(6 + overflow * 5, 100 - splitPercent) : 0;
+  const baseWidth = Math.min((joinedCount / threshold) * splitPercent, splitPercent);
 
   return {
     baseWidth: `${baseWidth}%`,
     extraWidth: `${overflowVisualWidth}%`,
-    splitLeft: `${baseWidth}%`,
+    splitLeft: `${splitPercent}%`,
   };
 }
 

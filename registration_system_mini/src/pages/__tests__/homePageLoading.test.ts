@@ -116,6 +116,24 @@ describe("home page loading states", () => {
     expect(hero.includes("<swiper")).toEqual(true);
   });
 
+  test("defers non-critical logged-in home data until after the first content paint", async () => {
+    const homePageSource = await Bun.file(
+      "/Users/carlwang/registration_system/registration_system_mini/src/pages/home/index.vue",
+    ).text();
+
+    expect(homePageSource.includes("async function hydrateDeferredHomeData")).toEqual(true);
+    expect(homePageSource.includes("let homeLoadVersion = 0;")).toEqual(true);
+    expect(homePageSource.includes("const loadVersion = ++homeLoadVersion;")).toEqual(true);
+    expect(homePageSource.includes("void hydrateDeferredHomeData({")).toEqual(true);
+    expect(homePageSource.includes("loadVersion,")).toEqual(true);
+    expect(homePageSource.includes("teamId: currentTeam.value.id,")).toEqual(true);
+    expect(homePageSource.includes("getMyAttendance(getCurrentYearDateRange(context.now))")).toEqual(true);
+    expect(homePageSource.includes("listUsers(),")).toEqual(true);
+    expect(homePageSource.includes("void syncUnreadCount({ skipEnsure: true }).catch")).toEqual(true);
+    expect(homePageSource.includes("const [activityPage, myActivityRecords, challengeSummaries] = await Promise.all([")).toEqual(true);
+    expect(homePageSource.includes("const [activityPage, myActivityRecords, attendanceRecords, challengeSummaries, users]")).toEqual(false);
+  });
+
   test("reloads the home page after login completes on the same page", async () => {
     const homePageSource = await Bun.file(
       "/Users/carlwang/registration_system/registration_system_mini/src/pages/home/index.vue",

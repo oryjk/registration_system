@@ -1,5 +1,20 @@
 # 小程序任务计划
 
+## 2026-05-25 首页首屏加载优化
+
+目标：减少首页首次展示等待时间，让非首屏关键请求不再拖住骨架屏退出。
+
+阶段：
+1. [completed] 盘点首页 `loadPageData()` 请求链路和 App/session bootstrap
+2. [completed] 区分首屏关键数据与后台可补齐数据
+3. [completed] 首页改为首屏先展示关键数据，后台补齐用户头像信息、个人出勤摘要和未读数
+4. [completed] 执行 `bun test src/pages/__tests__/homePageLoading.test.ts`、`bun run type-check`、`bun run build:mp-weixin` 和 diff 检查
+
+约束：
+- 本轮只动小程序端，不改后端接口。
+- 待办比赛报名人数仍通过 `getActivityUsers()` 保持首屏正确；后台补齐只影响头像姓名丰富度、个人摘要和通知未读状态。
+- 用户后续明确要求：小程序前端修改完默认只跑 `bun run type-check`，不跑 `build:mp-weixin` 以节约时间，除非另有明确要求。
+
 ## 2026-05-23 散人约队支付方式与支付截止
 
 目标：创建散人约队时标题不再默认填入，并支持选择赛前支付/赛后支付；散人详情展示当前用户的支付状态、支付按钮和赛前支付倒计时。
@@ -263,3 +278,13 @@
 3. [completed] 发布页校验自定义人数，未填写时不提交字段
 4. [completed] 详情页、首页/大厅卡片和报名进度改用成行人数与最多人数
 5. [completed] 执行 view model 测试、类型检查和微信小程序构建
+
+## 2026-05-25 比赛报名页色彩层级优化
+
+目标：让比赛报名页顶部报名模式栏与底部报名按钮形成清晰层级，去掉标题外层灰色包裹感。
+
+阶段：
+1. [completed] 定位截图对应的 `pages/matches/detail.vue` 报名模式栏样式
+2. [completed] 将当前报名模式改为深色标题标签，保留底部报名/修改状态按钮为荧光绿色主行动
+3. [completed] 移除报名模式栏外层灰色胶囊底座
+4. [completed] 执行 `bun run type-check`

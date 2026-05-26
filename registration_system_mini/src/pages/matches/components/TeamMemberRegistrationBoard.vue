@@ -348,7 +348,7 @@ function handleSelectMember(group: MemberGroupKey, member: TeamMemberCard) {
 }
 
 .member-segment-item-active {
-  background: #d9ff16;
+  background: #9be22b;
 }
 
 .member-segment-label {
@@ -510,7 +510,7 @@ function handleSelectMember(group: MemberGroupKey, member: TeamMemberCard) {
   position: fixed;
   left: 32rpx;
   right: 32rpx;
-  bottom: calc(env(safe-area-inset-bottom) + 24rpx);
+  bottom: calc(env(safe-area-inset-bottom) + 8rpx);
   z-index: 80;
 }
 
@@ -538,9 +538,9 @@ function handleSelectMember(group: MemberGroupKey, member: TeamMemberCard) {
 }
 
 .member-floating-action-joined {
-  background: #c8ff00;
-  color: #171717;
-  box-shadow: 0 18rpx 36rpx rgba(169, 224, 0, 0.28);
+  background: #171717;
+  color: #ffffff;
+  box-shadow: 0 18rpx 36rpx rgba(17, 17, 17, 0.22);
 }
 
 .member-floating-action-disabled {
@@ -636,9 +636,9 @@ function handleSelectMember(group: MemberGroupKey, member: TeamMemberCard) {
 }
 
 .team-member-dialog-action-accent {
-  background: #c8ff00;
-  color: #171717;
-  box-shadow: 0 12rpx 24rpx rgba(152, 204, 0, 0.22);
+  background: #171717;
+  color: #ffffff;
+  box-shadow: 0 12rpx 24rpx rgba(17, 17, 17, 0.22);
 }
 
 .team-member-dialog-action-danger {

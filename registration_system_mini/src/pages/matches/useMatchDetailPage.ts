@@ -67,7 +67,6 @@ export function useMatchDetailPage() {
   const usersById = ref<Record<number, BackendUser>>({});
   const teamsById = ref<Record<number, BackendTeam>>({});
   const currentTeamMembers = ref<BackendTeamMember[]>([]);
-  const relatedActivities = ref<BackendActivity[]>([]);
   const sourceTeamRegistrationCount = ref(0);
   const existingTeamDerivedActivity = ref<BackendActivity | null>(null);
   const currentStatus = ref("待定");
@@ -192,15 +191,6 @@ export function useMatchDetailPage() {
     return opponentId ? teamsById.value[opponentId] ?? null : null;
   });
 
-  const interestCards = computed(() =>
-    relatedActivities.value.slice(0, 2).map((item) => ({
-      id: item.id,
-      title: item.name,
-      dateLine: `${formatMonthDay(item.holding_date)} ${formatClock(item.holding_date)}`,
-      venue: item.location,
-    })),
-  );
-
   const individualCtaLabel = computed(() => {
     if (isGuestMode.value) return "登录后报名";
     return currentStatus.value === "参加" ? "取消报名" : "立即报名";
@@ -285,7 +275,6 @@ export function useMatchDetailPage() {
       match.value = activity;
       registrations.value = activityUsers;
       usersById.value = publicData.usersById;
-      relatedActivities.value = publicData.relatedActivities;
       sourceTeamRegistrationCount.value = publicData.sourceTeamRegistrationCount;
       existingTeamDerivedActivity.value = null;
       currentStatus.value = "待定";
@@ -827,12 +816,6 @@ export function useMatchDetailPage() {
     }
   }
 
-  function openMatchDetail(matchId: string) {
-    uni.navigateTo({
-      url: `/pages/matches/detail?id=${matchId}`,
-    });
-  }
-
   function startCountdownTimer() {
     if (countdownTimer) clearInterval(countdownTimer);
     countdownTimer = setInterval(() => {
@@ -883,7 +866,6 @@ export function useMatchDetailPage() {
     individualCtaLabel,
     isGuestMode,
     currentTeam,
-    interestCards,
     dateLine,
     heroMetaChips,
     opponentTeam,
@@ -912,7 +894,6 @@ export function useMatchDetailPage() {
     openMatchLocation,
     handleSelectIndividualSignup,
     handleSelectTeamMemberStand,
-    openMatchDetail,
     handleCheckIn,
     handleCheckInSwitchChange,
     handleSaveCheckInConfig,

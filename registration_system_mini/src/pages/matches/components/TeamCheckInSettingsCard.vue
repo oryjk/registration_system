@@ -22,7 +22,7 @@ defineEmits<{
         <text class="section-title">签到设置</text>
         <text class="checkin-copy">可开启定位签到，保存后队员可在比赛详情页签到。</text>
       </view>
-      <switch :checked="checkInForm.enabled" color="#c8ff00" @change="$emit('checkInSwitchChange', $event)" />
+      <switch :checked="checkInForm.enabled" color="#9be22b" @change="$emit('checkInSwitchChange', $event)" />
     </view>
     <view v-if="checkInForm.enabled" class="checkin-config-grid">
       <view class="checkin-config-item">
@@ -153,7 +153,7 @@ defineEmits<{
   height: 72rpx;
   padding: 0 22rpx;
   border-radius: 999rpx;
-  background: #c8ff00;
+  background: #9be22b;
   color: #10110f;
   font-size: 26rpx;
   font-weight: 900;

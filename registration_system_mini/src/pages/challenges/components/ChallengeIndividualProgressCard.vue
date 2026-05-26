@@ -16,7 +16,7 @@ defineProps<{
     <view class="challenge-card-head">
       <view>
         <text class="challenge-card-title">报名进度</text>
-        <text class="challenge-card-caption">散人局按个人报名凑满人数，满员后不可继续报名。</text>
+        <text class="challenge-card-caption">散人局达到最多报名人数后不可继续报名。</text>
       </view>
     </view>
 

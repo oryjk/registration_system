@@ -39,7 +39,6 @@ const {
   individualCtaLabel,
   isGuestMode,
   currentTeam,
-  interestCards,
   dateLine,
   heroMetaChips,
   opponentTeam,
@@ -68,7 +67,6 @@ const {
   openMatchLocation,
   handleSelectIndividualSignup,
   handleSelectTeamMemberStand,
-  openMatchDetail,
   handleCheckIn,
   handleCheckInSwitchChange,
   handleSaveCheckInConfig,
@@ -159,11 +157,9 @@ onShareTimeline(() => ({
         :is-guest-mode="isGuestMode"
         :current-team="currentTeam"
         :team-member-registration-groups="teamMemberRegistrationGroups"
-        :interest-cards="interestCards"
         @open-location="openMatchLocation"
         @select-individual-signup="handleSelectIndividualSignup"
         @select-team-member-stand="handleSelectTeamMemberStand"
-        @open-match-detail="openMatchDetail"
         @dialog-visibility-change="handleTeamMemberDialogVisibilityChange"
       />
 
@@ -240,9 +236,9 @@ onShareTimeline(() => ({
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
   gap: 12rpx;
-  padding: 10rpx;
+  padding: 0;
   border-radius: 999rpx;
-  background: #ececec;
+  background: transparent;
 }
 
 .registration-segment-item {
@@ -252,20 +248,22 @@ onShareTimeline(() => ({
   height: 74rpx;
   border-radius: 999rpx;
   font-size: 30rpx;
-  color: #2e2e2e;
+  color: #4d5549;
   font-weight: 800;
+  background: #eef1ea;
 }
 
 .registration-segment-item-active {
-  background: #c8ff00;
-  color: #171717;
+  background: #9be22b;
+  color: #171814;
+  box-shadow: 0 14rpx 28rpx rgba(155, 226, 43, 0.18);
 }
 
 .team-submit-bar {
   position: fixed;
   left: 24rpx;
   right: 24rpx;
-  bottom: calc(env(safe-area-inset-bottom) + 22rpx);
+  bottom: calc(env(safe-area-inset-bottom) + 8rpx);
   z-index: 40;
 }
 
@@ -275,11 +273,11 @@ onShareTimeline(() => ({
   justify-content: center;
   height: 94rpx;
   border-radius: 999rpx;
-  background: linear-gradient(180deg, #2f82ff 0%, #2b68f7 100%);
+  background: #171814;
   color: #ffffff;
   font-size: 34rpx;
   font-weight: 900;
-  box-shadow: 0 16rpx 28rpx rgba(43, 104, 247, 0.28);
+  box-shadow: 0 18rpx 36rpx rgba(17, 17, 17, 0.22);
 }
 
 .registration-empty {

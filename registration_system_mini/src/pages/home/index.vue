@@ -48,6 +48,20 @@ const personalDigest = ref({
   leave: 0,
   late: 0,
 });
+let homeLoadVersion = 0;
+
+type HomeRuntimeConfig = Awaited<ReturnType<typeof loadMiniAppRuntimeConfig>>;
+
+type HomeDeferredHydrationContext = {
+  loadVersion: number;
+  teamId: number;
+  focusedActivities: Awaited<ReturnType<typeof listActivities>>["items"];
+  myActivityRecords: Awaited<ReturnType<typeof getMyActivities>>;
+  registrationsByActivityId: Record<string, Awaited<ReturnType<typeof getActivityUsers>>>;
+  teamRegistrationCountsByActivityId: Record<string, number>;
+  runtimeConfig: HomeRuntimeConfig;
+  now: Date;
+};
 
 const teamInitial = computed(() => currentTeam.value?.name?.slice(0, 1) || "队");
 const teamLogoUrl = computed(() => currentTeam.value?.logoUrl || "");
@@ -80,7 +94,6 @@ const teamMetaLine = computed(() => {
 
   return `${currentTeam.value.creditScore} 分信用 · 近期 ${teamMatches.value.length} 场待处理比赛`;
 });
-const manageButtonLabel = computed(() => (currentTeam.value?.canManageTeam ? "球队管理" : "我的"));
 const shareTitle = "约球开踢：组队、报名、上场";
 const sharePath = "/pages/home/index";
 
@@ -191,6 +204,45 @@ function rebuildChallengeDerivedHomeCards(runtimeConfig: Awaited<ReturnType<type
   );
 }
 
+async function hydrateDeferredHomeData(context: HomeDeferredHydrationContext) {
+  void syncUnreadCount({ skipEnsure: true }).catch(() => {
+    // Notification count is nice-to-have for the home screen; keep first paint independent from it.
+  });
+
+  const [attendanceResult, usersResult] = await Promise.allSettled([
+    getMyAttendance(getCurrentYearDateRange(context.now)),
+    listUsers(),
+  ]);
+
+  if (context.loadVersion !== homeLoadVersion || currentTeam.value?.id !== context.teamId) {
+    return;
+  }
+
+  if (attendanceResult.status === "fulfilled") {
+    const summary = buildAttendanceSummary(attendanceResult.value);
+    personalDigest.value = {
+      attendanceRate: summary.attendanceRate,
+      attended: summary.attended,
+      leave: summary.leave,
+      late: summary.late,
+    };
+  }
+
+  if (usersResult.status === "fulfilled" && currentTeam.value?.id === context.teamId) {
+    const usersById = Object.fromEntries(usersResult.value.map((item: BackendUser) => [item.id, item]));
+    rawTeamMatchCards.value = buildHomeMatchCards({
+      teamId: currentTeam.value.id,
+      activities: context.focusedActivities,
+      myActivityRecords: context.myActivityRecords,
+      registrationsByActivityId: context.registrationsByActivityId,
+      teamRegistrationCountsByActivityId: context.teamRegistrationCountsByActivityId,
+      usersById,
+      limit: context.runtimeConfig.home.match_card_limit,
+    });
+    rebuildChallengeDerivedHomeCards(context.runtimeConfig, context.now);
+  }
+}
+
 function applyAcceptedChallengeState(challenge: BackendChallenge, card: ChallengeCardViewModel) {
   rawChallengeSummaries.value = rawChallengeSummaries.value.map((summary) => {
     if (summary.challenge.id !== challenge.id) return summary;
@@ -293,19 +345,11 @@ function openMatchDetail(activityId: string) {
   });
 }
 
-function handleManageTap() {
-  if (currentTeam.value?.canManageTeam) {
-    uni.navigateTo({ url: "/pages/teams/manage/index" });
-    return;
-  }
-  uni.switchTab({ url: "/pages/user/index" });
-}
-
 function handleMatchTap(match: HomeMatchCardViewModel) {
   if (navigatingMatchId.value) return;
   if (!match.canRegister) {
     uni.showToast({
-      title: "本场已满员",
+      title: "本场暂不可报名",
       icon: "none",
     });
     return;
@@ -428,6 +472,7 @@ function formatMatchDateBlock(dateLabel: string) {
 }
 
 async function loadPageData(options?: { preserveContent?: boolean }) {
+  const loadVersion = ++homeLoadVersion;
   const preserveContent = !!options?.preserveContent && hasLoadedOnce.value;
 
   if (preserveContent) {
@@ -466,18 +511,13 @@ async function loadPageData(options?: { preserveContent?: boolean }) {
     const runtimeConfig = await loadMiniAppRuntimeConfig();
     homeHeroBanners.value = runtimeConfig.home.hero_banners;
     const now = new Date();
-    const attendanceDateRange = getCurrentYearDateRange(now);
     const challengeFetchLimit = Math.min(runtimeConfig.home.challenge_card_limit * 5, 50);
-    const [activityPage, myActivityRecords, attendanceRecords, challengeSummaries, users] = await Promise.all([
+    const [activityPage, myActivityRecords, challengeSummaries] = await Promise.all([
       listActivities({ page: 1, pageSize: runtimeConfig.home.activity_fetch_page_size }),
       getMyActivities(),
-      getMyAttendance(attendanceDateRange),
       listChallenges({ teamId: currentTeam.value.id, limit: challengeFetchLimit, sort: "holding_date_desc" }),
-      listUsers(),
-      syncUnreadCount({ skipEnsure: true }),
     ]);
     rawChallengeSummaries.value = challengeSummaries;
-    const usersById = Object.fromEntries(users.map((item: BackendUser) => [item.id, item]));
     const teamRegistrationCountsByActivityId = buildTeamRegistrationCountsBySourceActivityId(activityPage.items);
 
     const activeActivities = activityPage.items.filter(
@@ -501,20 +541,21 @@ async function loadPageData(options?: { preserveContent?: boolean }) {
       myActivityRecords,
       registrationsByActivityId,
       teamRegistrationCountsByActivityId,
-      usersById,
       limit: runtimeConfig.home.match_card_limit,
     });
     rawTeamMatchCards.value = teamMatchCards;
     rebuildChallengeDerivedHomeCards(runtimeConfig, now);
-
-    const summary = buildAttendanceSummary(attendanceRecords);
-    personalDigest.value = {
-      attendanceRate: summary.attendanceRate,
-      attended: summary.attended,
-      leave: summary.leave,
-      late: summary.late,
-    };
     hasLoadedOnce.value = true;
+    void hydrateDeferredHomeData({
+      loadVersion,
+      teamId: currentTeam.value.id,
+      focusedActivities,
+      myActivityRecords,
+      registrationsByActivityId,
+      teamRegistrationCountsByActivityId,
+      runtimeConfig,
+      now,
+    });
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : "首页数据加载失败";
   } finally {
@@ -610,10 +651,8 @@ onShareTimeline(() => ({
           :team-logo-url="teamLogoUrl"
           :team-initial="teamInitial"
           :team-meta-line="teamMetaLine"
-          :manage-button-label="manageButtonLabel"
           :is-guest-mode="isGuestMode"
           :hero-banners="homeHeroBanners"
-          @manage-tap="handleManageTap"
           @banner-tap="openTab('/pages/activities/index')"
         />
 

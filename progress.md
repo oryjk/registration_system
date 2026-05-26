@@ -1,5 +1,22 @@
 # 小程序真实接口接入审计进度
 
+## 2026-05-25 小程序首页首屏加载排查
+
+- 21:58 已读取根目录/小程序协作文档、`docs/mini-architecture.md`、既有 `task_plan.md` / `findings.md` / `progress.md`。
+- 21:58 已对照截图 Network 和首页代码：首屏慢主要不是单一接口阻塞，而是首页骨架屏等待 session bootstrap、首页多接口并发和活动报名用户派生请求全部结束。
+- 21:58 已确认可小步优化项：`listUsers()`、`getMyAttendance()`、`syncUnreadCount()` 不属于首页主体首屏必需数据，可改为后台补齐，减少首屏等待尾延迟。
+- 22:00 已修改 `src/pages/home/index.vue`，新增后台补齐 helper 和 `homeLoadVersion` 防旧请求覆盖当前状态。
+- 22:01 已新增首页静态回归测试，约束 `getMyAttendance()`、`listUsers()`、`syncUnreadCount()` 不再阻塞登录态首页首屏主体。
+- 22:02 验证通过：小程序 `bun test src/pages/__tests__/homePageLoading.test.ts`、`bun run type-check`、`bun run build:mp-weixin`、根目录 `git diff --check`。
+
+## 2026-05-25 小程序登录 500 修复
+
+- 22:06 用户反馈前端修改后不需要 build，只需要静态类型检查；后续小程序前端改动默认按该规则执行。
+- 22:06 已排查截图中的 `GET /api/user/info 500`：后端查询 `rs_user_info.password_hash`，当前数据库迁移未应用到该列。
+- 22:06 `sqlx migrate info` 初始显示 `20260523000200_challenge_signup_limits` 和 `20260523000300_user_role_account_credentials` 为 pending。
+- 22:06 已执行 `sqlx migrate run`，成功应用上述两个迁移。
+- 22:06 已验证：`sqlx migrate info | tail` 显示两个迁移 installed；`information_schema.columns` 确认 `password_hash|character varying|YES`；小程序 `bun run type-check` 通过。
+
 ## 2026-05-23 散人约队最少/最多人数配置
 
 - 已读取根目录、后端、小程序和管理端协作文档。
@@ -365,3 +382,9 @@
 - 已新增超管修改角色用户密码接口 `PATCH /api/admin/users/players/:user_id/password`。
 - 已扩展球员列表查询参数 `role=venue|captain`，便于后台管理筛选这两类角色用户；冻结/解冻继续复用既有 `/players/:user_id/freeze` 和 `/unfreeze`。
 - 验证通过：后端 `cargo test --test user_player_scope_test -- --nocapture`、`cargo check --tests`、`cargo clippy --all-targets -- -D warnings`。
+
+## 2026-05-25 小程序比赛报名页色彩层级优化
+
+- 已在 `registration_system_mini/src/pages/matches/detail.vue` 调整报名模式栏：外层透明、去掉灰色胶囊底座，当前项改为深色标题标签。
+- 底部报名/修改状态按钮继续保留荧光绿，作为页面主行动色，避免标题状态和行动按钮颜色混用。
+- 验证通过：`cd registration_system_mini && bun run type-check`。

@@ -1,5 +1,15 @@
 # 小程序进度记录
 
+## 2026-05-25 首页首屏加载优化
+
+- 21:58 已定位首页首屏慢的代码路径：`loadPageData()` 等待过多非首屏关键请求，尤其是 `listUsers()`、全年 `getMyAttendance()` 和 `syncUnreadCount()`。
+- 21:58 已写入根目录与小程序工作文档。
+- 22:00 已在首页新增 `hydrateDeferredHomeData()`，首屏先展示关键卡片，再补头像/姓名、个人摘要和未读数。
+- 22:00 已增加 `homeLoadVersion` 与 `teamId` 校验，避免旧后台请求晚返回后覆盖新球队或新刷新结果。
+- 22:01 已新增 `homePageLoading.test.ts` 静态回归测试。
+- 22:02 验证通过：`bun test src/pages/__tests__/homePageLoading.test.ts`、`bun run type-check`、`bun run build:mp-weixin`、根目录 `git diff --check`。
+- 22:06 用户补充后续前端改动默认不需要 build，只跑静态类型检查；后续按该规则执行。
+
 ## 2026-05-23 散人约队支付方式与支付截止
 
 - 已确认创建散人约队页仍有默认标题 `"周三晚散人局"`。
@@ -321,3 +331,9 @@
 - 已在 `viewModels.ts` 中把散人卡片 `capacity` 改为最多报名人数，同时新增 `minPlayers` / `maxPlayers`；散人已达成行人数显示为“已成行”。
 - 已在散人详情页和散人报名组件中使用成行人数显示进度、使用最多人数计算剩余名额和报名按钮可用性。
 - 验证通过：`bun test src/utils/__tests__/viewModels.test.ts`、`bun run type-check`、`bun run build:mp-weixin`。
+
+## 2026-05-25 比赛报名页色彩层级优化
+
+- 已将 `src/pages/matches/detail.vue` 的报名模式栏外层从灰色胶囊底座改为透明，去掉截图里“标题外面套了一层”的感觉。
+- 已将当前报名模式选中态从荧光绿改为深色，未选中态使用浅中性色；底部报名/修改状态按钮继续保留荧光绿，作为主行动按钮。
+- 验证通过：`bun run type-check`。

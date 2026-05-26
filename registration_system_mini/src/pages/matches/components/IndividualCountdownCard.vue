@@ -165,7 +165,7 @@ function handleSelectParticipant(participantId: number) {
 }
 
 .countdown-total-strong {
-  color: #d0ea14;
+  color: #9be22b;
   font-size: 52rpx;
   font-weight: 900;
   line-height: 0.9;
@@ -201,7 +201,7 @@ function handleSelectParticipant(participantId: number) {
   top: 0;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, #d9ff16 0%, #b8ff00 100%);
+  background: linear-gradient(90deg, #9be22b 0%, #b9f24b 100%);
 }
 
 .progress-fill-extra {
@@ -294,8 +294,8 @@ function handleSelectParticipant(participantId: number) {
   height: 88rpx;
   margin-top: 26rpx;
   border-radius: 999rpx;
-  background: linear-gradient(180deg, #2f82ff 0%, #2b68f7 100%);
-  box-shadow: 0 14rpx 28rpx rgba(43, 104, 247, 0.22);
+  background: #171814;
+  box-shadow: 0 18rpx 36rpx rgba(17, 17, 17, 0.22);
 }
 
 .individual-cta-main,

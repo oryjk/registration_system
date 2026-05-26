@@ -9,19 +9,13 @@ const props = defineProps<{
   teamLogoUrl: string;
   teamInitial: string;
   teamMetaLine: string;
-  manageButtonLabel: string;
   isGuestMode: boolean;
   heroBanners: BackendMiniAppHomeHeroBanner[];
 }>();
 
 const emit = defineEmits<{
-  (event: "manageTap"): void;
   (event: "bannerTap"): void;
 }>();
-
-function handleManageTap() {
-  emit("manageTap");
-}
 
 function handleBannerTap() {
   emit("bannerTap");
@@ -56,7 +50,6 @@ const visibleHeroBanners = computed(() => {
           <text class="team-hero-meta">{{ teamMetaLine }}</text>
         </view>
       </view>
-      <view class="team-hero-button" @tap="handleManageTap">{{ manageButtonLabel }}</view>
     </view>
 
     <swiper
@@ -191,22 +184,6 @@ const visibleHeroBanners = computed(() => {
   font-size: 21rpx;
   color: #5f685b;
   line-height: 1.45;
-}
-
-.team-hero-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 136rpx;
-  height: 56rpx;
-  padding: 0 20rpx;
-  border-radius: 999rpx;
-  border: 2rpx solid #172018;
-  color: #172018;
-  font-size: 22rpx;
-  font-weight: 800;
-  background: #fffdf8;
-  flex-shrink: 0;
 }
 
 .home-banner-swiper {

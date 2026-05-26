@@ -212,7 +212,7 @@ function updateChargeAmount(userId: number, event: Event) {
 }
 
 .settlement-status-done {
-  background: #d9ff16;
+  background: #9be22b;
   color: #111310;
 }
 
@@ -325,7 +325,7 @@ function updateChargeAmount(userId: number, event: Event) {
   justify-content: center;
   border-radius: 22rpx;
   background: #111310;
-  color: #d9ff16;
+  color: #9be22b;
   font-size: 26rpx;
   font-weight: 900;
 }
@@ -364,7 +364,7 @@ function updateChargeAmount(userId: number, event: Event) {
   align-items: center;
   justify-content: center;
   background: #111310;
-  color: #d9ff16;
+  color: #9be22b;
   font-size: 26rpx;
   font-weight: 900;
 }
@@ -467,7 +467,7 @@ function updateChargeAmount(userId: number, event: Event) {
   align-items: center;
   justify-content: center;
   border-radius: 999rpx;
-  background: #c8ff00;
+  background: #9be22b;
   color: #10110f;
   font-size: 28rpx;
   font-weight: 900;

@@ -87,7 +87,7 @@ function handleMatchTap(match: HomeMatchCardViewModel) {
   if (navigatingMatchId.value) return;
   if (!match.canRegister) {
     uni.showToast({
-      title: "本场已满员",
+      title: "本场暂不可报名",
       icon: "none",
     });
     return;

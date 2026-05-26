@@ -16,15 +16,6 @@
   2. 当前目录的 `CLAUDE.md`
   3. 目标子项目目录下的 `AGENTS.md`
   4. 目标子项目目录下的 `CLAUDE.md`
-- 复杂任务默认采用 `planning-with-files` 工作方式，持续维护以下三份工作文档：
-  - `task_plan.md`：记录目标、阶段、状态和下一步。
-  - `findings.md`：记录关键发现、约束、决策和风险。
-  - `progress.md`：记录执行日志、已完成项和验证结果。
-- 若任务主要发生在某个子项目内，也要同步维护该子项目目录下对应的：
-  - `<subproject>/task_plan.md`
-  - `<subproject>/findings.md`
-  - `<subproject>/progress.md`
-- 对代码、迁移、接口、页面或文档做了实质改动后，最终回复前必须检查这些工作文档是否已同步到当前进度。
 
 ## 通用约定
 

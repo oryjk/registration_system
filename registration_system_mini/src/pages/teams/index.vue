@@ -45,9 +45,7 @@ const statsTabOptions = [
   { value: "ranking", label: "出勤排名" },
 ];
 
-function handleStatsTabChange(event: Event) {
-  const payload = event as Event & { value?: string | number; detail?: { value?: string | number } };
-  const value = payload.value ?? payload.detail?.value;
+function handleStatsTabChange(value: string) {
   statsTab.value = value === "ranking" ? "ranking" : "records";
 }
 
@@ -139,16 +137,16 @@ onUnload(() => {
           :my-summary="mySummary"
         />
         <view class="stats-tab-card">
-          <wd-segmented
-            :value="statsTab"
-            :options="statsTabOptions"
-            custom-class="stats-segment app-segment"
-            @change="handleStatsTabChange"
-          >
-            <template #label="{ option }">
-              <text>{{ option.value === "ranking" ? "出勤排名" : "出勤记录" }}</text>
-            </template>
-          </wd-segmented>
+          <view class="stats-segment">
+            <view
+              v-for="option in statsTabOptions"
+              :key="option.value"
+              :class="['stats-segment-item', statsTab === option.value ? 'stats-segment-item-active' : '']"
+              @tap="handleStatsTabChange(option.value)"
+            >
+              <text>{{ option.label }}</text>
+            </view>
+          </view>
 
           <AttendanceRecordCard
             v-if="statsTab === 'records'"
@@ -186,14 +184,38 @@ onUnload(() => {
 
 .stats-tab-card {
   margin-top: 16rpx;
-  padding: 18rpx 22rpx 22rpx;
+  padding: 16rpx 22rpx 22rpx;
   border-radius: 24rpx;
   background: #ffffff;
   border: 1rpx solid rgba(31, 35, 26, 0.07);
   box-shadow: 0 14rpx 32rpx rgba(20, 24, 16, 0.05);
 }
 
-:deep(.stats-segment) {
+.stats-segment {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12rpx;
   margin-bottom: 18rpx;
+  padding: 8rpx;
+  border-radius: 999rpx;
+  background: #e8ecdf;
+}
+
+.stats-segment-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  height: 72rpx;
+  border-radius: 999rpx;
+  color: #5d6458;
+  font-size: 28rpx;
+  font-weight: 900;
+}
+
+.stats-segment-item-active {
+  background: #10110f;
+  color: #9be22b;
+  box-shadow: 0 12rpx 22rpx rgba(16, 17, 15, 0.16);
 }
 </style>

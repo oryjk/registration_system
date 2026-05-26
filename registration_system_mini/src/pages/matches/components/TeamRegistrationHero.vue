@@ -75,7 +75,7 @@ defineProps<{
   align-self: flex-start;
   padding: 10rpx 18rpx;
   border-radius: 999rpx;
-  background: #d9ff16;
+  background: #9be22b;
   color: #181818;
   font-size: 24rpx;
   font-weight: 900;
@@ -144,7 +144,7 @@ defineProps<{
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 6rpx solid #d9ff16;
+  border: 6rpx solid #9be22b;
   background: #0f0f0f;
   color: #ffffff;
   font-size: 50rpx;
@@ -171,7 +171,7 @@ defineProps<{
   height: 42rpx;
   padding: 0 18rpx;
   border-radius: 999rpx;
-  background: #d9ff16;
+  background: #9be22b;
   color: #171717;
   font-size: 24rpx;
   font-weight: 900;
@@ -183,7 +183,7 @@ defineProps<{
 }
 
 .vs-mark {
-  color: #d9ff16;
+  color: #9be22b;
   font-size: 72rpx;
   line-height: 1;
   font-weight: 900;

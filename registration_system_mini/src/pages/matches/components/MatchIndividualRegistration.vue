@@ -5,8 +5,6 @@ import type { TeamProfileViewModel } from "@/types/viewModels";
 import IndividualCountdownCard from "./IndividualCountdownCard.vue";
 import IndividualInfoCard from "./IndividualInfoCard.vue";
 import IndividualMatchupHero from "./IndividualMatchupHero.vue";
-import IndividualPromoBanner from "./IndividualPromoBanner.vue";
-import InterestMatchGrid from "./InterestMatchGrid.vue";
 import TeamMemberRegistrationBoard from "./TeamMemberRegistrationBoard.vue";
 
 const props = defineProps<{
@@ -41,19 +39,12 @@ const props = defineProps<{
     leave: Array<{ userId: number; name: string; avatarUrl: string; tone: string; jerseyNumber: string; isCurrentUser: boolean }>;
     pending: Array<{ userId: number; name: string; avatarUrl: string; tone: string; jerseyNumber: string; isCurrentUser: boolean }>;
   };
-  interestCards: Array<{
-    id: string;
-    title: string;
-    dateLine: string;
-    venue: string;
-  }>;
 }>();
 
 const emit = defineEmits<{
   (event: "openLocation"): void;
   (event: "selectIndividualSignup"): void;
   (event: "selectTeamMemberStand", value: 0 | 1 | 2): void;
-  (event: "openMatchDetail", matchId: string): void;
   (event: "dialogVisibilityChange", visible: boolean): void;
 }>();
 
@@ -72,10 +63,6 @@ function handleSelectIndividualSignup() {
 
 function handleSelectTeamMemberStand(stand: 0 | 1 | 2) {
   emit("selectTeamMemberStand", stand);
-}
-
-function handleOpenMatchDetail(matchId: string) {
-  emit("openMatchDetail", matchId);
 }
 
 function handleTeamMemberDialogVisibilityChange(visible: boolean) {
@@ -120,8 +107,6 @@ function handleTeamMemberDialogVisibilityChange(visible: boolean) {
       @dialog-visibility-change="handleTeamMemberDialogVisibilityChange"
     />
     <IndividualInfoCard :credit-score="currentTeam?.creditScore ?? 0" />
-    <IndividualPromoBanner />
-    <InterestMatchGrid :interest-cards="interestCards" @open-match-detail="handleOpenMatchDetail" />
   </view>
 </template>
 

@@ -9,7 +9,6 @@ export interface PublicMatchDetailData {
   activityUsers: BackendRegistration[];
   usersById: Record<number, BackendUser>;
   activityPageItems: BackendActivity[];
-  relatedActivities: BackendActivity[];
   sourceTeamRegistrationCount: number;
 }
 
@@ -35,7 +34,6 @@ export async function loadPublicMatchDetailData(matchId: string): Promise<Public
     activityUsers,
     usersById: Object.fromEntries(users.map((item) => [item.id, item])),
     activityPageItems: activityPage.items,
-    relatedActivities: activityPage.items.filter((item) => item.id !== activity.id && item.status === 0).slice(0, 2),
     sourceTeamRegistrationCount: activity.source_activity_id
       ? 0
       : activityPage.items

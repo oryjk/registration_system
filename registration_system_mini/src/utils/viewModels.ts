@@ -71,10 +71,6 @@ export function toActivityStatusLabel(status: number): string {
   }
 }
 
-function maxPlayersForActivity(requiredPlayers: number): number {
-  return requiredPlayers > 0 ? requiredPlayers + 2 : 0;
-}
-
 function formatCurrency(value: string | number | null | undefined): string {
   const amount = typeof value === "number" ? value : Number(value ?? 0);
   return `¥${amount.toFixed(2)}`;
@@ -205,11 +201,9 @@ export function buildHomeMatchCards({
       const latePlayers = registrations.filter((item) => item.stand === 3).length;
       const pendingPlayers = registrations.filter((item) => item.stand !== 1 && item.stand !== 2 && item.stand !== 3).length;
       const requiredPlayers = activity.players_per_team ?? 0;
-      const maxPlayers = maxPlayersForActivity(requiredPlayers);
       const signupScope = activity.source_activity_id ? "internal" : "external";
       const myStatus = toStandLabel(myRecordByActivityId[activity.id]?.stand ?? 0);
       const remainingPlayers = Math.max(requiredPlayers - joinedPlayers, 0);
-      const canRegister = maxPlayers <= 0 || joinedPlayers < maxPlayers || myStatus === "参加" || myStatus === "缺席";
       const participantAvatars = registrations
         .filter((item) => item.stand === 1)
         .slice(0, 5)
@@ -236,7 +230,7 @@ export function buildHomeMatchCards({
         opponent: activity.opposing?.trim() || "待定",
         formatLabel: requiredPlayers > 0 ? `${requiredPlayers} 人制` : "人数待定",
         requiredPlayers,
-        maxPlayers,
+        maxPlayers: requiredPlayers,
         joinedPlayers,
         absentPlayers,
         latePlayers,
@@ -244,11 +238,13 @@ export function buildHomeMatchCards({
         myStatus,
         highlight:
           requiredPlayers > 0
-            ? `当前 ${joinedPlayers} 人参加，还差 ${remainingPlayers} 人达标`
+            ? remainingPlayers > 0
+              ? `当前 ${joinedPlayers} 人参加，还差 ${remainingPlayers} 人成行`
+              : "已达成行人数，仍可继续报名"
             : `当前 ${joinedPlayers} 人参加`,
         participantAvatars,
-        remainingPlayersLabel: remainingPlayers > 0 ? `还差 ${remainingPlayers} 人` : "已满员",
-        canRegister,
+        remainingPlayersLabel: remainingPlayers > 0 ? `还差 ${remainingPlayers} 人成行` : "已达成行",
+        canRegister: true,
       };
     });
 }
@@ -288,7 +284,6 @@ export function buildPublicHomeMatchCards({
       const latePlayers = registrations.filter((item) => item.stand === 3).length;
       const pendingPlayers = registrations.filter((item) => item.stand !== 1 && item.stand !== 2 && item.stand !== 3).length;
       const requiredPlayers = activity.players_per_team ?? 0;
-      const maxPlayers = maxPlayersForActivity(requiredPlayers);
       const signupScope = activity.source_activity_id ? "internal" : "external";
       const myRecord = myRecordByActivityId[activity.id];
       const myStatus = myRecord ? toStandLabel(myRecord.stand) : defaultStatusLabel;
@@ -319,7 +314,7 @@ export function buildPublicHomeMatchCards({
         opponent: activity.opposing?.trim() || "待定",
         formatLabel: requiredPlayers > 0 ? `${requiredPlayers} 人制` : "人数待定",
         requiredPlayers,
-        maxPlayers,
+        maxPlayers: requiredPlayers,
         joinedPlayers,
         absentPlayers,
         latePlayers,
@@ -327,11 +322,13 @@ export function buildPublicHomeMatchCards({
         myStatus,
         highlight:
           requiredPlayers > 0
-            ? `当前 ${joinedPlayers} 人参加，还差 ${remainingPlayers} 人达标`
+            ? remainingPlayers > 0
+              ? `当前 ${joinedPlayers} 人参加，还差 ${remainingPlayers} 人成行`
+              : "已达成行人数，仍可继续报名"
             : `当前 ${joinedPlayers} 人参加`,
         participantAvatars,
-        remainingPlayersLabel: remainingPlayers > 0 ? `还差 ${remainingPlayers} 人` : "已满员",
-        canRegister: maxPlayers <= 0 || joinedPlayers < maxPlayers,
+        remainingPlayersLabel: remainingPlayers > 0 ? `还差 ${remainingPlayers} 人成行` : "已达成行",
+        canRegister: true,
       };
     });
 }

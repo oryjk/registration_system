@@ -92,7 +92,7 @@ defineEmits<{
   align-self: flex-start;
   padding: 10rpx 18rpx;
   border-radius: 999rpx;
-  background: #d9ff16;
+  background: #9be22b;
   color: #181818;
   font-size: 24rpx;
   font-weight: 900;
@@ -264,7 +264,7 @@ defineEmits<{
   border-radius: 999rpx;
   background: rgba(217, 255, 22, 0.14);
   border: 1rpx solid rgba(217, 255, 22, 0.42);
-  color: #d9ff16;
+  color: #9be22b;
   font-size: 28rpx;
   line-height: 1;
   font-weight: 900;

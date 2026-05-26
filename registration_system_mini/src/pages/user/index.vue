@@ -225,6 +225,20 @@ function handleEditProfile() {
   });
 }
 
+function openTeamManage() {
+  if (!currentTeam.value?.canManageTeam) {
+    uni.showToast({
+      title: "只有队长或领队可以管理球队",
+      icon: "none",
+    });
+    return;
+  }
+
+  uni.navigateTo({
+    url: "/pages/teams/manage/index",
+  });
+}
+
 function openNotifications() {
   uni.navigateTo({
     url: "/pages/notifications/index",
@@ -418,6 +432,7 @@ onUnload(() => {
           @edit-profile="handleEditProfile"
           @login="handleLogin"
           @logout="handleLogout"
+          @manage-team="openTeamManage"
           @switch-identity="handleSwitchIdentity"
           @switch-team="handleSwitchTeam"
         />

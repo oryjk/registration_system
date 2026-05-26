@@ -1,5 +1,36 @@
 # 小程序真实接口接入审计计划
 
+## 2026-05-25 小程序首页首屏加载排查与优化
+
+目标：排查首页在微信开发者工具中首屏展示慢的问题，定位首屏阻塞链路，并在不改变业务语义的前提下缩短骨架屏等待时间。
+
+阶段：
+1. [completed] 读取根目录与小程序协作文档、既有工作文档
+2. [completed] 对照截图 Network 请求与首页/session 代码链路
+3. [completed] 将首页非首屏关键请求移到后台补齐，保留关键待办数据首屏正确
+4. [completed] 执行目标测试、类型检查并同步工作文档
+
+当前判断：
+- 首页首次登录态会先执行 session/team bootstrap，再等待首页 `Promise.all` 里的运行配置、活动、本人活动、全年出勤、约队、用户列表、未读通知，以及每个待办活动的报名用户请求。
+- 截图里 `user/infos` 约 54KB、`user/attendance`、`notifications/unread-count`、重复 `my-teams`/`info` 等请求都发生在首屏窗口内；其中部分不是首屏结构所必需。
+- 本轮优先小步优化小程序端首屏等待，不改后端接口。
+- 验证通过：小程序 `bun test src/pages/__tests__/homePageLoading.test.ts`、`bun run type-check`、`bun run build:mp-weixin`、根目录 `git diff --check`。
+
+## 2026-05-25 小程序登录 `/api/user/info` 500 排查
+
+目标：修复小程序点击登录后 `/api/user/info` 返回 500，错误为数据库缺少 `rs_user_info.password_hash` 列。
+
+阶段：
+1. [completed] 对照截图错误、后端 `/api/user/info` 查询链路和迁移文件
+2. [completed] 确认当前数据库迁移状态：`20260523000200`、`20260523000300` 均为 pending
+3. [completed] 执行 `sqlx migrate run`，应用两个非破坏性 schema 迁移
+4. [completed] 验证迁移状态、`password_hash` 列存在、小程序静态类型检查通过
+
+结论：
+- 本次登录错误不是前端问题；后端代码已经读取 `password_hash`，但当前数据库还没应用 `20260523000300_user_role_account_credentials.sql`。
+- 已应用迁移：`20260523000200_challenge_signup_limits`、`20260523000300_user_role_account_credentials`。
+- 以后前端改动默认只跑 `bun run type-check`；除非用户明确要求，不再为了节约时间执行 `build:mp-weixin`。
+
 ## 2026-05-23 散人约队最少/最多人数配置
 
 目标：散人约队支持后台和小程序配置每场最少成行人数、最多报名人数；小程序放在默认收起的高级设置中，未配置时按 `最少 = 人制 * 2`、`最多 = 人制 * 2 + 4`。
@@ -749,3 +780,17 @@
 - 队长身份仍沿用现有球队模型，不新增 `is_captain` 用户字段。
 - 冻结/解冻复用既有球员冻结接口。
 - 当前工作区已有多处未提交改动，本轮只处理后端角色账号相关文件，不回滚无关改动。
+
+## 2026-05-25 小程序比赛报名页色彩层级优化
+
+目标：小程序比赛报名页中，报名模式标题与底部报名按钮分离色彩职责，去掉标题外层灰色包裹。
+
+阶段：
+1. [completed] 定位小程序 `pages/matches/detail.vue` 报名模式栏样式
+2. [completed] 报名模式栏改为透明外层、深色当前态
+3. [completed] 保留底部报名/修改状态为荧光绿主按钮
+4. [completed] 执行小程序 `bun run type-check`
+
+约束：
+- 本轮只改小程序视觉样式，不涉及后端接口、管理端或业务状态流。
+- 当前工作区已有多处未提交改动，本轮不回滚无关改动。

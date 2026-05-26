@@ -23,7 +23,7 @@ describe("match detail registration design", () => {
     expect(source.includes("registrationMode === 'team'")).toEqual(true);
   });
 
-  test("renders the individual registration view with countdown, guide card, interest cards, and a primary CTA", async () => {
+  test("renders the individual registration view with countdown, guide card, and a primary CTA", async () => {
     const source = await Bun.file(
       "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/detail.vue",
     ).text();
@@ -36,17 +36,15 @@ describe("match detail registration design", () => {
     const info = await Bun.file(
       "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/components/IndividualInfoCard.vue",
     ).text();
-    const interest = await Bun.file(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/components/InterestMatchGrid.vue",
-    ).text();
 
     expect(source.includes("MatchIndividualRegistration")).toEqual(true);
     expect(individual.includes("IndividualCountdownCard")).toEqual(true);
     expect(countdown.includes("报名截止")).toEqual(true);
-    expect(interest.includes("你可能感兴趣")).toEqual(true);
     expect(info.includes("比赛说明")).toEqual(true);
     expect(countdown.includes("individual-cta-button")).toEqual(true);
-    expect(source.includes("interestCards")).toEqual(true);
+    expect(source.includes("interestCards")).toEqual(false);
+    expect(individual.includes("IndividualPromoBanner")).toEqual(false);
+    expect(individual.includes("InterestMatchGrid")).toEqual(false);
   });
 
   test("uses activity registration deadline for the countdown and holding date for match clock", async () => {
@@ -227,6 +225,7 @@ describe("match detail registration design", () => {
     expect(pageLogic.includes("requiredPlayers.value + 2")).toEqual(false);
     expect(pageLogic.includes("isAtRegistrationCapacity")).toEqual(false);
     expect(pageLogic.includes('title: "本场已满员"')).toEqual(false);
+    expect(pageLogic.includes("maxPlayersForActivity")).toEqual(false);
     expect(pageLogic.includes("joinedRegistrations.value.map((item) =>")).toEqual(true);
     expect(pageLogic.includes("joinedRegistrations.value.slice(0, 5)")).toEqual(false);
     expect(countdown.includes("countdown-progress-meta")).toEqual(true);
@@ -242,6 +241,8 @@ describe("match detail registration design", () => {
     ).text();
     expect(state.includes('"已达成行人数"')).toEqual(true);
     expect(state.includes("overflowVisualWidth")).toEqual(true);
+    expect(state.includes("const splitPercent = 82")).toEqual(true);
+    expect(state.includes('splitLeft: `${splitPercent}%`')).toEqual(true);
   });
 
   test("renders team member status avatars without selection borders", async () => {

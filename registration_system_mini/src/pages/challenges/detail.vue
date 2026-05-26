@@ -108,7 +108,7 @@ const individualActionLabel = computed(() => {
   if (actionLoading.value) return "处理中...";
   if (!card.value) return "立即报名";
   if (card.value.currentUserJoined) return "取消报名";
-  if (!canAccept.value) return individualRemainingCount.value <= 0 ? "已满员" : "暂不可报名";
+  if (!canAccept.value) return individualRemainingCount.value <= 0 ? "已达上限" : "暂不可报名";
   return "立即报名";
 });
 const challengeStartTimestamp = computed(() => {

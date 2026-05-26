@@ -25,6 +25,7 @@ const emit = defineEmits<{
   (event: "editProfile"): void;
   (event: "login"): void;
   (event: "logout"): void;
+  (event: "manageTeam"): void;
   (event: "switchIdentity", identityId: string): void;
   (event: "switchTeam", teamId: number): void;
 }>();
@@ -43,6 +44,10 @@ function handleLogout() {
     return;
   }
   emit("logout");
+}
+
+function handleManageTeam() {
+  emit("manageTeam");
 }
 
 function handleSwitchTeam(teamId: number) {
@@ -76,7 +81,10 @@ function handleSwitchIdentity(identityId: string) {
           <text class="profile-edit-chip" @tap.stop="handleEditProfile">{{ currentUser ? "编辑资料" : "去登录" }}</text>
           <text v-if="currentUser" class="profile-edit-chip profile-logout-chip" @tap.stop="handleLogout">退出登录</text>
         </view>
-        <text class="profile-team-line">当前球队 · {{ currentTeam?.name || "未加入球队" }}</text>
+        <view class="profile-team-row">
+          <text class="profile-team-line">当前球队 · {{ currentTeam?.name || "未加入球队" }}</text>
+          <text v-if="currentTeam?.canManageTeam" class="team-manage-chip" @tap.stop="handleManageTeam">球队管理</text>
+        </view>
       </view>
       <text class="profile-chevron">›</text>
     </view>
@@ -220,6 +228,32 @@ function handleSwitchIdentity(identityId: string) {
   margin-top: 8rpx;
   font-size: 24rpx;
   color: #6c7168;
+}
+
+.profile-team-row {
+  display: flex;
+  align-items: center;
+  gap: 14rpx;
+  margin-top: 8rpx;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.profile-team-row .profile-team-line {
+  margin-top: 0;
+}
+
+.team-manage-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 42rpx;
+  padding: 0 18rpx;
+  border-radius: 999rpx;
+  background: #10110f;
+  color: #ffffff;
+  font-size: 22rpx;
+  font-weight: 900;
 }
 
 .profile-actions-row {

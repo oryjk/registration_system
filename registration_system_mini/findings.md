@@ -1,5 +1,13 @@
 # 小程序发现记录
 
+## 2026-05-25 首页首屏加载发现
+
+- `pages/home/index.vue` 登录态首屏在设置 `hasLoadedOnce=true` 前等待 `ensureSessionReady()`、`loadMiniAppRuntimeConfig()`、`listActivities()`、`getMyActivities()`、`getMyAttendance()`、`listChallenges()`、`listUsers()`、`syncUnreadCount()` 和 `focusedActivities.map(getActivityUsers)`。
+- `listUsers()` 只为首页报名头像补全真实头像/姓名；缺省时 `buildHomeMatchCards()` 已能用 `U${user_id}` 和 tone 兜底，因此可以先用空 `usersById` 首屏展示，后台再替换头像。
+- `getMyAttendance()` 只影响 `HomeDigestGrid` 的个人出勤摘要；默认值已经是 `0%/0/0/0`，可后台补齐。
+- `syncUnreadCount({ skipEnsure: true })` 和首页主体展示无直接关系，可继续触发但不应在首页主 `Promise.all` 内等待。
+- 不适合把 `getActivityUsers()` 全部后台化，因为 `buildHomeMatchCards()` 的 `joinedPlayers/absentPlayers/latePlayers/pendingPlayers` 和 CTA 状态依赖报名用户列表，首屏错误会更明显。
+
 ## 2026-05-23 散人约队支付方式发现
 
 - `pages/challenges/create-individual/index.vue` 当前 `form.title` 默认 `"周三晚散人局"`，散人约队创建需要改为空值。
@@ -190,3 +198,9 @@
 - `BackendChallenge` 原先没有 `min_players` / `max_players`，`viewModels.ts` 和详情页都把 `players_per_team * 2` 当散人容量。
 - 新语义下 `capacity` 更适合继续代表最多报名人数，同时新增 `minPlayers` / `maxPlayers` 给详情组件展示成行阈值和最多名额。
 - 散人 `matched` 应显示为“已成行”，不是“已满员”；满员要看 `accepted_count >= maxPlayers`。
+
+## 2026-05-25 比赛报名页色彩层级发现
+
+- 截图中“顶部标题栏”实际对应比赛详情页的报名模式切换条 `.registration-segment`，不是通用 `AppTabHeader` 导航标题。
+- 当前只有一个报名模式可选时，灰色胶囊底座加荧光绿选中态会让这块看起来像主按钮，并和底部“已报名 · 修改状态”主行动抢同一视觉角色。
+- 本页更合适的层级是：报名模式/标题用深色或中性色表达页面状态，荧光绿留给底部实际报名操作。

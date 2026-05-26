@@ -140,7 +140,7 @@
 .registration-skeleton-line-chip {
   width: 132rpx;
   height: 42rpx;
-  background: #d9ff16;
+  background: #9be22b;
 }
 
 .registration-skeleton-line-title {

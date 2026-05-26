@@ -1,5 +1,23 @@
 # 小程序真实接口接入审计发现
 
+## 2026-05-25 小程序首页首屏加载发现
+
+- 首页 `src/pages/home/index.vue` 首次登录态会先 `await ensureSessionReady()`；该过程会请求 `/api/user/info`、`/api/teams/my-teams`，并对每个球队请求 `/api/teams/:id`。
+- App 启动 `src/App.vue` 也会 `restoreSessionFromStorage()`，所以首页打开时可能和应用级 session 恢复同时触发；`ensureSessionReady()` 内部有 `bootstrapPromise` 去重，但已完成/错峰情况下仍可能看到 `info`、`my-teams` 类请求在首屏附近出现。
+- 首页主加载随后等待 `Promise.all`：`/activity/infos`、`/user/activities`、`/user/attendance`、`/challenges`、`/user/infos`、`/notifications/unread-count`。
+- 首页还会对 `focusedActivities` 再并发请求 `/activity/:id/users`，待这些派生请求全部完成后才 `hasLoadedOnce=true`，骨架屏才消失。
+- 截图中 `user/infos?page=1&page_size=100` 约 54KB，是首屏里体积最大的请求之一；它只用于报名头像/姓名兜底，不应阻塞首页主体展示。
+- `getMyAttendance()` 拉全年出勤只用于首页底部个人摘要，`syncUnreadCount()` 只用于 tab/通知状态，也不应阻塞首屏主体展示。
+- 更稳的小步方案：首屏保留运行配置、活动、本人活动、约队和 focused activity 的报名用户请求；把 `listUsers()`、`getMyAttendance()`、`syncUnreadCount()` 改成首屏后后台补齐。
+
+## 2026-05-25 小程序登录 500 发现
+
+- 小程序点击登录后反复请求 `GET /api/user/info`，后端返回 500；toast 中错误为 `column "password_hash" does not exist`。
+- 后端链路为 `UserProfileUseCase::get_current_user -> PostgresUserRepository::find_by_id`，SQL 会读取 `rs_user_info.password_hash`。
+- 仓库迁移 `registration_system_rs/migrations/20260523000300_user_role_account_credentials.sql` 会给 `rs_user_info` 增加 `password_hash`；当前数据库迁移状态初始显示该迁移 pending。
+- 当前数据库还同时 pending `20260523000200_challenge_signup_limits`，位于缺失迁移之前；两个迁移内容都是非破坏性补列/约束。
+- 执行 `sqlx migrate run` 后，迁移状态显示 `20260523000200` 和 `20260523000300` 均 installed，`information_schema.columns` 确认 `rs_user_info.password_hash` 已存在且可空。
+
 ## 2026-05-23 散人约队最少/最多人数配置发现
 
 - 当前 `Challenge::signup_capacity()` 对散人约队使用 `players_per_team * 2`，这会把赛制和最大报名人数绑定在一起。
@@ -448,3 +466,9 @@
 - 现有小程序用户登录主要依赖微信 `open_id`；新增账号密码需要给 `rs_user_info` 增加 nullable `password_hash`，并提供账号密码登录接口，否则“设置账号和密码”没有登录闭环。
 - `username` 历史上不是唯一约束，只适合作为新建账号用户的登录名；迁移中的唯一索引应收窄到 `password_hash IS NOT NULL` 的账号用户，避免旧微信用户重复 username 阻塞迁移。
 - 超管创建角色用户需要和普通管理员创建球员区分；本轮新增专用 `/api/admin/users/players/role-users`，普通球员创建接口保持原语义。
+
+## 2026-05-25 小程序比赛报名页色彩层级发现
+
+- 用户截图里顶部“个人报名”绿条来自小程序比赛详情页 `registration-segment`，不是全局自定义导航栏 `AppTabHeader`。
+- 这块是报名模式/页面状态提示，和底部“已报名 · 修改状态”实际行动按钮不应共用荧光绿主色。
+- 去掉 `.registration-segment` 的灰色背景和 padding 后，能消除“标题外面套了一层”的视觉问题；当前态改深色后，荧光绿只留给真正提交/修改状态动作。
