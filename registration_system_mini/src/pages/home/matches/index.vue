@@ -9,7 +9,7 @@ import { useTeamContext } from "@/stores/teamContext";
 import type { BackendUser } from "@/types/backend";
 import type { HomeMatchCardViewModel } from "@/types/viewModels";
 import { getCustomNavMetrics } from "@/utils/customNav";
-import { formatWeekdayLabel } from "@/utils/datetime";
+import { formatBackendDateTime, formatWeekdayLabel } from "@/utils/datetime";
 import { activityStageTone, attendanceStatusTone } from "@/utils/statusTone";
 import { buildHomeMatchCards } from "@/utils/viewModels";
 import HomeMatchList from "../components/HomeMatchList.vue";
@@ -118,7 +118,12 @@ async function loadPageData() {
     const runtimeConfig = await loadMiniAppRuntimeConfig();
     const now = new Date();
     const [activityPage, myActivityRecords, users] = await Promise.all([
-      listActivities({ page: 1, pageSize: runtimeConfig.home.activity_fetch_page_size }),
+      listActivities({
+        page: 1,
+        pageSize: runtimeConfig.home.activity_fetch_page_size,
+        teamId: currentTeam.value.id,
+        holdingAfter: formatBackendDateTime(now),
+      }),
       getMyActivities(),
       listUsers(),
     ]);

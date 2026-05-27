@@ -24,6 +24,10 @@ export function avatarColor(userId: number) {
   return palette[userId % palette.length];
 }
 
+export function byUserIdAsc(left: { user_id: number }, right: { user_id: number }) {
+  return left.user_id - right.user_id;
+}
+
 export function clampTeamRegistrationCount(value: number) {
   if (!Number.isFinite(value)) return 5;
   return Math.min(Math.max(Math.round(value), 5), 11);

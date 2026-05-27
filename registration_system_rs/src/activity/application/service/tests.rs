@@ -66,6 +66,8 @@ impl ActivityQueryRepository for DummyActivityRepository {
         &self,
         _status_filter: Option<i8>,
         _registration_scope: Option<&str>,
+        _team_id: Option<i64>,
+        _holding_after: Option<chrono::NaiveDateTime>,
         _page: u32,
         _page_size: u32,
     ) -> Result<ActivityListPage, DomainError> {
@@ -257,6 +259,8 @@ impl ActivityQueryRepository for RecordingActivityRepository {
         &self,
         _status_filter: Option<i8>,
         _registration_scope: Option<&str>,
+        _team_id: Option<i64>,
+        _holding_after: Option<chrono::NaiveDateTime>,
         _page: u32,
         _page_size: u32,
     ) -> Result<ActivityListPage, DomainError> {

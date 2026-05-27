@@ -1,7 +1,7 @@
 use crate::team::application::error::TeamApplicationError;
 use crate::team::application::principal::TeamPrincipal;
 use crate::team::domain::Team;
-use crate::team::ports::TeamQueryRepository;
+use crate::team::ports::{MyTeamSummary, TeamQueryRepository};
 use std::sync::Arc;
 
 #[derive(Clone)]
@@ -24,6 +24,20 @@ impl GetUserTeamsUseCase {
 
         self.list_user_teams_for_target(principal, principal.id)
             .await
+    }
+
+    pub async fn list_my_team_summaries(
+        &self,
+        principal: &TeamPrincipal,
+    ) -> Result<Vec<MyTeamSummary>, TeamApplicationError> {
+        if !principal.is_user() {
+            return Err(TeamApplicationError::Forbidden);
+        }
+
+        self.query_repository
+            .list_my_team_summaries(principal.id)
+            .await
+            .map_err(|error| TeamApplicationError::internal(format!("查询我的球队摘要失败: {error}")))
     }
 
     pub async fn list_user_teams_for_target(

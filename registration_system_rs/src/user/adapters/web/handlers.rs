@@ -607,6 +607,20 @@ pub async fn unfreeze_player_handler(
     )))
 }
 
+/// 管理后台：移除场馆身份或删除独立场馆账号
+pub async fn remove_venue_handler(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(user_id): Path<i64>,
+) -> Result<Json<ApiResponse<Option<UserDto>>>, HttpError> {
+    let actor = state.actor(&headers)?;
+    let result = state.services.user_service.remove_venue(&actor, user_id).await?;
+    Ok(Json(ApiResponse::with_message(
+        "场馆已删除",
+        result.map(UserDto::from),
+    )))
+}
+
 /// 管理后台：球员列表（分页 + 搜索 + 过滤）
 pub async fn list_players_handler(
     State(state): State<AppState>,

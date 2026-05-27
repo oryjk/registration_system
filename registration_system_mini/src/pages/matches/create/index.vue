@@ -15,6 +15,7 @@ const navMetrics = getCustomNavMetrics();
 
 const submitting = ref(false);
 const loadingActivity = ref(false);
+const reviewGateReady = ref(false);
 const pageMode = ref<"create" | "edit">("create");
 const activityId = ref("");
 const skipNextHoldingDateLink = ref(false);
@@ -229,6 +230,8 @@ async function guardReviewMode() {
 }
 
 async function handleSubmit() {
+  if (await guardReviewMode()) return;
+
   if (!currentTeam.value || !currentTeam.value.canManageTeam) {
     uni.showToast({
       title: "只有队长或领队可以创建或编辑比赛",
@@ -318,7 +321,9 @@ onLoad((options) => {
 });
 
 onShow(async () => {
+  reviewGateReady.value = false;
   if (await guardReviewMode()) return;
+  reviewGateReady.value = true;
   await ensureSessionReady();
   if (!form.holdingDate) {
     initDefaultForm();
@@ -329,7 +334,7 @@ onShow(async () => {
 
 <template>
   <page-meta :page-style="timePickerVisible ? 'overflow: hidden;' : ''" />
-  <view class="create-match-page" :style="pageStyle">
+  <view v-if="reviewGateReady" class="create-match-page" :style="pageStyle">
     <AppTabHeader :title="pageMode === 'edit' ? '编辑比赛' : '创建比赛'" showBack />
 
     <view class="create-hero">

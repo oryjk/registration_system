@@ -115,14 +115,23 @@ function requestWechatCode(): Promise<string> {
 
 async function loadTeamContext() {
   const teams = await getMyTeams();
-  const detailEntries = await Promise.all(
-    teams.map(async (team) => [team.id, await getTeamDetail(team.id)] as const),
-  );
 
   myTeams.value = teams;
-  teamDetailsById.value = Object.fromEntries(detailEntries);
   selectAvailableTeam();
   selectAvailableIdentity();
+}
+
+async function ensureTeamDetailLoaded(teamId: number) {
+  if (teamDetailsById.value[teamId]) {
+    return teamDetailsById.value[teamId];
+  }
+
+  const detail = await getTeamDetail(teamId);
+  teamDetailsById.value = {
+    ...teamDetailsById.value,
+    [teamId]: detail,
+  };
+  return detail;
 }
 
 function assertSessionVersion(version: number) {
@@ -214,6 +223,10 @@ export async function refreshSessionContext() {
 }
 
 export async function restoreSessionFromStorage() {
+  if (bootstrapPromise) {
+    return bootstrapPromise;
+  }
+
   const strategy = resolveStoredSessionStrategy({
     hasAccessToken: !!getAccessToken(),
     isManuallyLoggedOut: hasManualLogout(),
@@ -227,15 +240,21 @@ export async function restoreSessionFromStorage() {
     return;
   }
 
-  try {
-    await bootstrapFromExistingToken();
-  } catch (error) {
-    if (!isUnauthorizedError(error)) {
-      throw error;
+  bootstrapPromise = (async () => {
+    try {
+      await bootstrapFromExistingToken();
+    } catch (error) {
+      if (!isUnauthorizedError(error)) {
+        throw error;
+      }
+      clearAccessToken();
+      resetSessionState();
+    } finally {
+      bootstrapPromise = null;
     }
-    clearAccessToken();
-    resetSessionState();
-  }
+  })();
+
+  return bootstrapPromise;
 }
 
 export function clearSession() {
@@ -284,6 +303,7 @@ export function useAppSession() {
     availableIdentities,
     currentIdentity,
     teamDetailsById,
+    ensureTeamDetailLoaded,
     bootstrapError,
     isBootstrapping,
     switchTeam,

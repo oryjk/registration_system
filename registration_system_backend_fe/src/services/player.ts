@@ -9,6 +9,7 @@ export interface PlayerTeam {
 
 export interface Player {
   id: number
+  username?: string
   nickname: string
   real_name: string
   avatar_url: string

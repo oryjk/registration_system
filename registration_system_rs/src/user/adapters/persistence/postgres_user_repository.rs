@@ -10,6 +10,7 @@ use sqlx::{FromRow, PgPool};
 #[derive(Debug, FromRow)]
 struct PlayerAdminRow {
     pub id: i64,
+    pub username: String,
     pub nickname: String,
     pub real_name: String,
     pub avatar_url: String,
@@ -631,7 +632,7 @@ impl PostgresUserRepository {
         let rows = sqlx::query_as::<_, PlayerAdminRow>(
             &format!(
                 r#"
-            SELECT DISTINCT u.id, u.nickname, u.real_name, u.avatar_url, u.phone_number,
+            SELECT DISTINCT u.id, u.username, u.nickname, u.real_name, u.avatar_url, u.phone_number,
                    u.is_venue, u.status, u.create_time, u.latest_login_date,
                    u.leave_start_time, u.leave_end_time
             FROM rs_user_info u
@@ -704,6 +705,7 @@ impl PostgresUserRepository {
             .into_iter()
             .map(|r| PlayerWithTeams {
                 id: r.id,
+                username: r.username,
                 nickname: r.nickname,
                 real_name: r.real_name,
                 avatar_url: r.avatar_url,

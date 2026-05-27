@@ -67,7 +67,13 @@ const router = createRouter({
           path: 'players',
           name: 'players',
           component: () => import('@/views/players/PlayerList.vue'),
-          meta: { title: '球员管理' },
+          meta: { title: '用户管理' },
+        },
+        {
+          path: 'venues',
+          name: 'venues',
+          component: () => import('@/views/venues/VenueList.vue'),
+          meta: { title: '场馆管理', requireSuperAdmin: true },
         },
         {
           path: 'admins',

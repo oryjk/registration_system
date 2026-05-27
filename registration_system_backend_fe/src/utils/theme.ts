@@ -1,11 +1,12 @@
 export type ThemeMode = 'light' | 'dark'
 
 const THEME_STORAGE_KEY = 'admin_theme'
+const DEFAULT_THEME: ThemeMode = 'light'
 
 export const getInitialTheme = (): ThemeMode => {
   const saved = localStorage.getItem(THEME_STORAGE_KEY)
   if (saved === 'light' || saved === 'dark') return saved
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+  return DEFAULT_THEME
 }
 
 export const applyTheme = (theme: ThemeMode) => {

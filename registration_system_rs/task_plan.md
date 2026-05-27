@@ -1,5 +1,23 @@
 # 后端六边形重构计划
 
+## 2026-05-27 后台场馆管理闭环
+
+目标：为后台管理补齐场馆管理能力，支持独立账号创建场馆、按小程序用户昵称搜索并设为场馆、场馆列表增删查改、活跃/冻结切换，并确保冻结后不能密码登录或发布比赛/散人报名。
+
+阶段：
+1. [completed] 盘点现有 `is_venue`、角色账号、用户搜索、冻结和场馆发布权限链路
+2. [completed] 先补后端测试，覆盖场馆管理查询/绑定/冻结约束
+3. [completed] 新增或收口场馆管理接口与 DTO，避免继续塞在泛球员页面里
+4. [completed] 将冻结态约束接入密码登录和场馆发布比赛/散人报名链路
+5. [completed] 执行后端验证并同步文档
+
+约束：
+
+- 场馆仍复用 `rs_user_info.is_venue`，不新建独立表。
+- “绑定为场馆”必须以真实用户 ID 为准，昵称搜索只作为后台选择器，不做模糊写库。
+- 冻结继续复用用户 `status` 语义，避免引入第二套场馆状态字段。
+- handler 只做协议适配，角色判断和冻结限制放在 application/use case。
+
 ## 2026-05-23 散人约队最少/最多人数配置
 
 目标：后端为散人约队支持 `min_players` / `max_players`，默认 `players_per_team * 2` / `players_per_team * 2 + 4`，报名只按 `max_players` 拦截，成行状态按 `min_players`。
@@ -328,3 +346,26 @@
 3. [completed] 新增超管创建队长/场馆账号 use case，队长创建时绑定具体球队
 4. [completed] 新增修改角色用户密码接口，冻结/解冻复用现有球员接口
 5. [completed] 补充业务测试并完成 `cargo check --tests`、clippy
+
+## 2026-05-27 首页活动/约队查询参数
+
+目标：支持小程序首页用轻量接口查询当前球队活动和未来约队，并避免会话初始化阻塞首屏业务请求。
+
+阶段：
+1. [completed] `/api/activity/infos` 增加 `team_id` 查询参数
+2. [completed] activity repository counts/page 查询均叠加 `team_id` 过滤
+3. [completed] `/api/challenges` 增加 `starts_after` 查询参数
+4. [completed] challenge list Postgres 查询按 `start_time > starts_after` 过滤
+5. [completed] `/api/teams/my-teams` 返回当前用户角色、成员数量和加入时间，避免首页再请求完整球队详情
+6. [completed] 增加 focused 回归测试并完成 `cargo check --tests`
+
+## 2026-05-27 `/api/activity/infos` 性能排查
+
+目标：确认 activity list 慢点是否在 SQL、数据库网络还是应用层，并做首轮低风险优化。
+
+阶段：
+1. [completed] 复测本地接口端到端耗时，确认不是本机 HTTP 连接问题
+2. [completed] 对 activity list 三条 SQL 执行 `EXPLAIN ANALYZE`
+3. [completed] 检查 `jd` / `peiqian` / `DATABASE_URL` 实际拓扑
+4. [completed] 将串行三次查询改为并发执行
+5. [completed] 执行 `cargo check --tests` 与 activity scope 回归测试

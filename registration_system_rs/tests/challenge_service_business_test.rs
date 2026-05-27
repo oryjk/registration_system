@@ -28,7 +28,7 @@ use registration_system_backend::team::domain::{
     TeamAdminInfo, TeamAttendanceRankingItem, TeamCreditTransaction, TeamMember,
     TeamMemberAttendanceRecord, TeamMemberWithInfo,
 };
-use registration_system_backend::team::ports::TeamQueryRepository;
+use registration_system_backend::team::ports::{MyTeamSummary, TeamQueryRepository};
 use registration_system_backend::user::domain::{
     DomainError as UserDomainError, PlayerAdminListQuery, PlayerListResult, PlayerTeamSummary,
     User, UserActivityRecord, UserAttendanceRanking, UserAttendanceRecord,
@@ -72,6 +72,11 @@ impl ChallengeQueryRepository for FakeChallengeRepository {
                     .is_none_or(|expected| challenge.status == expected)
             })
             .filter(|challenge| query.kind.is_none_or(|expected| challenge.kind == expected))
+            .filter(|challenge| {
+                query
+                    .starts_after
+                    .is_none_or(|starts_after| challenge.start_time > starts_after)
+            })
             .filter(|challenge| {
                 challenge.status == ChallengeStatus::Open
                     || challenge.host_team_id == Some(query.team_id)
@@ -154,6 +159,11 @@ impl ChallengeQueryRepository for FakeChallengeRepository {
                     .is_none_or(|expected| challenge.status == expected)
             })
             .filter(|challenge| query.kind.is_none_or(|expected| challenge.kind == expected))
+            .filter(|challenge| {
+                query
+                    .starts_after
+                    .is_none_or(|starts_after| challenge.start_time > starts_after)
+            })
             .filter(|challenge| {
                 query.team_id.is_none_or(|expected| {
                     challenge.host_team_id == Some(expected)
@@ -603,6 +613,7 @@ async fn public_challenge_list_does_not_require_current_user_or_team() {
             include_closed: false,
             limit: 20,
             sort: "holding_date_asc",
+            starts_after: None,
         })
         .await
         .unwrap();
@@ -672,6 +683,7 @@ async fn logged_in_public_challenge_list_marks_joined_individual_challenges() {
             include_closed: false,
             limit: 20,
             sort: "holding_date_asc",
+            starts_after: None,
         })
         .await
         .unwrap();
@@ -680,6 +692,93 @@ async fn logged_in_public_challenge_list_marks_joined_individual_challenges() {
     assert_eq!(items[0].challenge.id, "joined-individual");
     assert_eq!(items[0].accepted_count, 1);
     assert!(items[0].current_user_joined);
+}
+
+#[tokio::test]
+async fn public_challenge_list_can_filter_by_future_start_time() {
+    let challenge_repository = Arc::new(FakeChallengeRepository::default());
+    let team_repository = Arc::new(FakeTeamStore::new(Vec::new()));
+    let service = ChallengeService::new(
+        challenge_repository.clone(),
+        challenge_repository.clone(),
+        team_repository,
+        Arc::new(FakeUserStore::default()),
+        notification_service(),
+    );
+    let now = Utc::now().naive_utc();
+    let past_challenge = Challenge {
+        id: "past-challenge".to_string(),
+        title: "已开始约队".to_string(),
+        kind: ChallengeKind::Individual,
+        payment_mode: ChallengePaymentMode::Postpaid,
+        host_team_id: None,
+        host_user_id: 7,
+        guest_team_id: None,
+        accepted_by_user_id: None,
+        activity_id: None,
+        holding_date: now - Duration::hours(2),
+        start_time: now - Duration::hours(2),
+        end_time: now,
+        location: "旧球场".to_string(),
+        location_latitude: None,
+        location_longitude: None,
+        players_per_team: 8,
+        min_players: None,
+        max_players: None,
+        fee_per_person: None,
+        note: None,
+        status: ChallengeStatus::Open,
+        accepted_at: None,
+        cancelled_at: None,
+        created_at: now - Duration::days(1),
+        updated_at: now - Duration::days(1),
+    };
+    let future_challenge = Challenge {
+        id: "future-challenge".to_string(),
+        title: "未来约队".to_string(),
+        kind: ChallengeKind::Individual,
+        payment_mode: ChallengePaymentMode::Postpaid,
+        host_team_id: None,
+        host_user_id: 7,
+        guest_team_id: None,
+        accepted_by_user_id: None,
+        activity_id: None,
+        holding_date: now + Duration::hours(2),
+        start_time: now + Duration::hours(2),
+        end_time: now + Duration::hours(4),
+        location: "新球场".to_string(),
+        location_latitude: None,
+        location_longitude: None,
+        players_per_team: 8,
+        min_players: None,
+        max_players: None,
+        fee_per_person: None,
+        note: None,
+        status: ChallengeStatus::Open,
+        accepted_at: None,
+        cancelled_at: None,
+        created_at: now - Duration::days(1),
+        updated_at: now - Duration::days(1),
+    };
+    challenge_repository.create(&past_challenge).await.unwrap();
+    challenge_repository.create(&future_challenge).await.unwrap();
+
+    let items = service
+        .list_public(PublicChallengeListQuery {
+            viewer_user_id: None,
+            keyword: None,
+            status: None,
+            kind: None,
+            include_closed: false,
+            limit: 20,
+            sort: "holding_date_asc",
+            starts_after: Some(now),
+        })
+        .await
+        .unwrap();
+
+    assert_eq!(items.len(), 1);
+    assert_eq!(items[0].challenge.id, "future-challenge");
 }
 
 struct FakeTeamStore {
@@ -873,6 +972,29 @@ impl TeamQueryRepository for FakeTeamStore {
         unimplemented!()
     }
 
+    async fn list_my_team_summaries(
+        &self,
+        user_id: i64,
+    ) -> Result<Vec<MyTeamSummary>, TeamDomainError> {
+        let teams = self.teams.lock().unwrap();
+        let team_members = self.team_members.lock().unwrap();
+        Ok(teams
+            .values()
+            .filter_map(|team| {
+                let members = team_members.get(&team.id)?;
+                let self_member = members
+                    .iter()
+                    .find(|member| member.user_id == user_id && member.status == 1)?;
+                Some(MyTeamSummary {
+                    team: team.clone(),
+                    member_count: members.iter().filter(|member| member.status == 1).count(),
+                    my_role: self_member.role.clone(),
+                    joined_at: self_member.joined_at,
+                })
+            })
+            .collect())
+    }
+
     async fn list_members_with_info(
         &self,
         _team_id: i64,
@@ -1030,6 +1152,12 @@ fn sample_user(user_id: i64, is_venue: bool) -> User {
         leave_start_time: None,
         leave_end_time: None,
     }
+}
+
+fn sample_user_with_status(user_id: i64, is_venue: bool, status: i8) -> User {
+    let mut user = sample_user(user_id, is_venue);
+    user.status = status;
+    user
 }
 
 fn admin_actor(id: i64, is_super_admin: bool) -> ActorContext {
@@ -1516,6 +1644,53 @@ async fn regular_user_cannot_create_challenge_without_host_team() {
         )
         .await
         .expect_err("regular user should not create venue challenge");
+
+    assert!(matches!(
+        error,
+        registration_system_backend::shared::error::AppError::Forbidden
+    ));
+}
+
+#[tokio::test]
+async fn frozen_venue_user_cannot_create_challenge_without_host_team() {
+    let repository = Arc::new(FakeChallengeRepository::default());
+    let team_repository = Arc::new(FakeTeamStore::new(vec![]));
+    let user_repository = Arc::new(FakeUserStore::with_users(vec![sample_user_with_status(
+        30, true, 0,
+    )]));
+    let service = ChallengeService::new(
+        repository.clone(),
+        repository,
+        team_repository,
+        user_repository,
+        notification_service(),
+    );
+    let holding_date = Utc::now().naive_utc() + Duration::days(3);
+
+    let error = service
+        .create_challenge(
+            &user_actor(30),
+            CreateChallengeCommand {
+                kind: ChallengeKind::Individual,
+                payment_mode: ChallengePaymentMode::Postpaid,
+                host_team_id: None,
+                host_user_id: None,
+                title: "冻结场馆散人约队".to_string(),
+                holding_date,
+                start_time: holding_date,
+                end_time: holding_date + Duration::hours(2),
+                location: "城东足球公园 3 号场".to_string(),
+                location_latitude: None,
+                location_longitude: None,
+                players_per_team: 8,
+                min_players: None,
+                max_players: None,
+                fee_per_person: None,
+                note: None,
+            },
+        )
+        .await
+        .expect_err("冻结场馆不应继续发布散人约队");
 
     assert!(matches!(
         error,
@@ -2109,6 +2284,7 @@ async fn admin_can_list_challenges_across_managed_teams() {
                 include_closed: false,
                 limit: 50,
                 sort: "holding_date_asc".to_string(),
+                starts_after: None,
             },
         )
         .await
@@ -2191,6 +2367,7 @@ async fn admin_can_filter_individual_challenges() {
                 include_closed: false,
                 limit: 50,
                 sort: "holding_date_asc".to_string(),
+                starts_after: None,
             },
         )
         .await

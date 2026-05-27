@@ -1,5 +1,22 @@
 # 后端重构发现记录
 
+## 2026-05-27 access log 业务语义发现
+
+- access log 原本把所有请求统一记成“业务请求”，问题不在 tracing 配置，而在 `src/bootstrap/app.rs` 中间件 message 写死。
+- 当前日志字段已经有 method/path/query/body/status/latency，但缺少面向业务排查的稳定语义层，导致看本地日志时必须手动翻译接口路径。
+- 这类需求更适合放在 bootstrap 日志层做 method + path 语义映射，而不是分散到各个 handler 单独打印一条“业务日志”，否则口径容易不统一。
+- 动态路由需要单独做后缀分类，否则 `/api/activity/:id/team-registration`、`/api/teams/:id/logo` 这类接口仍会退化成泛化日志。
+
+## 2026-05-27 后台场馆管理发现
+
+- 现有后端已经有 `POST /api/admin/users/players/role-users` 和 `PATCH /api/admin/users/players/:user_id/password`，能创建独立场馆账号和改密码，但还没有独立的“场馆管理”查询/编辑入口。
+- 场馆身份仍然是 `rs_user_info.is_venue`，天然允许和普通球员身份叠加，因此“把小程序用户设为场馆”本质是对已有用户做更新，而不是创建新用户。
+- 用户端密码登录 `UserLoginUseCase::execute_with_password` 已经按 `user.status != 1` 拒绝，这意味着冻结后“不能登录”底层已具备，但需要确认场馆发布链路也显式拦截冻结用户。
+- 场馆发布约队/散人报名目前在 `challenge/application/use_cases/create_challenge.rs` 走 `user.is_venue == 1` 校验，还需要补 `status == 1` 约束。
+- 管理端当前只有泛球员管理页面和 `is_venue` 开关，没有独立场馆列表、搜索绑定小程序用户、独立账号创建/改密入口。
+- “删除场馆”需要按来源区分语义：`admin_role_user_*` 且带密码的独立账号可物理删除；已有小程序用户只移除 `is_venue`，保留原用户记录。
+- 场馆页要区分“独立账号”和“绑定用户”，前端不能只靠 `is_venue`；本轮通过在 player 列表 DTO 补 `username` 字段来判断来源。
+
 ## 2026-05-23 散人约队最少/最多人数配置发现
 
 - `Challenge::signup_capacity()` 当前既用于散人约队最大人数，也间接影响前端显示；需要拆成 `min_signup_players()` 和 `max_signup_players()` 这类明确语义。
@@ -157,3 +174,21 @@
 - 创建队长账号如果不绑定球队，后端无法证明该用户具备队长权限；因此本轮 `role=captain` 要求传 `team_id`，并在同一仓储方法中更新 `rs_teams.captain_id` 与 `rs_team_members.role='captain'`。
 - 账号密码登录需要 `rs_user_info.password_hash`，但历史 `username` 可能重复；数据库唯一索引只约束 `password_hash IS NOT NULL` 的账号用户，应用层额外用 `find_by_username` 拒绝账号冲突。
 - 修改密码接口限制为超级管理员，且目标用户必须是场馆或拥有 active captain 球队关系，避免误给普通用户开放角色账号管理能力。
+
+## 2026-05-27 首页活动/约队查询发现
+
+- `/api/activity/infos` 原先无法按具体球队过滤，首页只能宽拉取再前端筛选；新增 `team_id` 后可直接返回 `home_team_id = team_id OR away_team_id = team_id` 的活动。
+- activity list 有三组查询：状态 counts、filtered total、分页 rows；三者都需要一致叠加 `team_id`，否则前端分页/统计会和列表不一致。
+- counts 查询中的 `OR` scope 条件必须用括号包起来，再 `AND team_id`，否则 SQL 优先级会让 `team_id` 只作用于 `direct` 分支。
+- `/api/challenges` 的未来过滤适合放在通用列表 query 中，字段为 `starts_after`，Postgres 语义为 `c.start_time > starts_after`。
+- 未来约队机会和当前球队无关，首页不应走 `team_id` 分支；需要走 public/auth 列表，这样可以展示所有未来约队并保留当前用户的散人报名状态。
+- `/api/teams/my-teams` 原本只返回球队基础信息，小程序为了判断 `canManageTeam` 继续请求完整 `/api/teams/:id`；这会把首页活动/约队请求挡在 session bootstrap 后面。
+- 当前用户在球队内的 `role`、`joined_at` 和 active 成员数量都能在 `rs_team_members` 上一次查询得到，适合由 `/api/teams/my-teams` 作为轻量摘要返回。
+
+## 2026-05-27 `/api/activity/infos` 性能发现
+
+- 当前 activity list repository 会对 PostgreSQL 顺序执行 3 条查询：counts、filtered total、rows；当数据库在远端时，哪怕 SQL 本身极快，也会累计 3 次网络往返。
+- `EXPLAIN ANALYZE` 显示这 3 条 SQL 在数据库内部执行都在 `1ms` 内，且 `rs_activity` 当前只有 `105` 行，所以加索引不会显著改变这次接口耗时。
+- `DATABASE_URL=117.72.164.211:5432` 指向的是 `jd` 上 Docker 暴露的 PostgreSQL；`jd` 的 `5432` NAT 到本机容器 `172.17.0.3:5432`。
+- `peiqian` 上也有独立 PostgreSQL 暴露 `5432`，但从 `jd` 和本机直连 `peiqian:5432` 都是 `Connection refused`，说明当前业务流量并没有经由 `jd -> peiqian:5432`。
+- 本机到 `jd:5432` 的 TCP 建连耗时在 `44ms ~ 158ms` 间波动，远高于数据库内部执行时间，是当前接口慢的主要来源。

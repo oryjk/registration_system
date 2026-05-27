@@ -51,6 +51,7 @@ impl ListChallengesUseCase {
                 include_closed: query.include_closed,
                 limit: query.limit,
                 sort: query.sort,
+                starts_after: query.starts_after,
             })
             .await
             .map_err(|error| AppError::internal(format!("查询约队列表失败: {error}")))?;
@@ -89,6 +90,7 @@ impl ListChallengesUseCase {
                 include_closed: query.include_closed,
                 limit: query.limit,
                 sort: query.sort,
+                starts_after: query.starts_after,
             })
             .await
             .map_err(|error| AppError::internal(format!("查询公开约队列表失败: {error}")))
@@ -128,6 +130,7 @@ impl ListChallengesUseCase {
                 include_closed: query.include_closed,
                 limit: query.limit,
                 sort: &query.sort,
+                starts_after: query.starts_after,
             })
             .await
             .map_err(|error| AppError::internal(format!("查询后台约队列表失败: {error}")))

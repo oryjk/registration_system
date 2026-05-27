@@ -44,7 +44,8 @@ trap cleanup EXIT
 
 if [ -z "${HARBOR_PASSWORD}" ]; then
     if [ -t 0 ]; then
-        read -r -s -p "请输入 Harbor 密码: " HARBOR_PASSWORD
+        printf "请输入 Harbor 密码: "
+        read -r -s HARBOR_PASSWORD
         echo
     else
         echo "❌ 请通过 HARBOR_PASSWORD 环境变量传入 Harbor 密码"
@@ -56,7 +57,13 @@ echo "🚀 部署 registration_system_rs 到 ${BUILD_HOST}"
 echo "image: ${IMAGE_REF}"
 echo "branch: ${BRANCH}"
 
-git fetch origin "${BRANCH}"
+if command -v gtimeout >/dev/null 2>&1; then
+    gtimeout 30 git fetch origin "${BRANCH}"
+elif command -v timeout >/dev/null 2>&1; then
+    timeout 30 git fetch origin "${BRANCH}"
+else
+    git fetch origin "${BRANCH}"
+fi
 LOCAL_HEAD="$(git rev-parse "${BRANCH}")"
 REMOTE_HEAD="$(git rev-parse "origin/${BRANCH}")"
 

@@ -266,4 +266,22 @@ impl UserService {
             .unfreeze_player(actor, user_id)
             .await
     }
+
+    pub async fn mark_user_as_venue(
+        &self,
+        actor: &ActorContext,
+        user_id: i64,
+    ) -> Result<User, AppError> {
+        self.manage_player_use_case
+            .mark_user_as_venue(actor, user_id)
+            .await
+    }
+
+    pub async fn remove_venue(
+        &self,
+        actor: &ActorContext,
+        user_id: i64,
+    ) -> Result<Option<User>, AppError> {
+        self.manage_player_use_case.remove_venue(actor, user_id).await
+    }
 }

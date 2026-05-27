@@ -40,7 +40,14 @@ import {
 } from "./teamManageState";
 import { preloadMiniReviewStatus, useMiniReviewStatus } from "@/stores/miniReview";
 
-const { currentTeam, currentUser, teamDetailsById, ensureSessionReady, refreshSessionContext } = useTeamContext();
+const {
+  currentTeam,
+  currentUser,
+  teamDetailsById,
+  ensureSessionReady,
+  ensureTeamDetailLoaded,
+  refreshSessionContext,
+} = useTeamContext();
 const { reviewMode, shouldHideCreationEntrances } = useMiniReviewStatus();
 const navMetrics = getCustomNavMetrics();
 
@@ -524,6 +531,9 @@ async function handleToggleMemberStatus(member: BackendTeamMember) {
 
 onShow(async () => {
   await ensureSessionReady();
+  if (currentTeam.value) {
+    await ensureTeamDetailLoaded(currentTeam.value.id);
+  }
   syncVisibleMode();
   syncTeamProfileForm();
   await hydrateCreateTeamReviewMode();

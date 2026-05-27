@@ -6,7 +6,7 @@ use crate::team::domain::{
     ActivityTeamReview, DomainError, Team, TeamAdminInfo, TeamAttendanceRankingItem,
     TeamCreditTransaction, TeamMember, TeamMemberAttendanceRecord, TeamMemberWithInfo,
 };
-use crate::team::ports::TeamQueryRepository;
+use crate::team::ports::{MyTeamSummary, TeamQueryRepository};
 use async_trait::async_trait;
 use sqlx::PgPool;
 
@@ -249,6 +249,78 @@ impl TeamQueryRepository for PostgresTeamQueryRepository {
         .bind(user_id)
         .fetch_all(&self.pool).await.map_err(|e| DomainError::Infrastructure(e.to_string()))?;
         Ok(rows.into_iter().map(Team::from).collect())
+    }
+
+    async fn list_my_team_summaries(
+        &self,
+        user_id: i64,
+    ) -> Result<Vec<MyTeamSummary>, DomainError> {
+        #[derive(sqlx::FromRow)]
+        struct MyTeamSummaryRow {
+            id: i64,
+            name: String,
+            description: Option<String>,
+            logo_url: Option<String>,
+            captain_id: Option<i64>,
+            join_password_hash: Option<String>,
+            status: i16,
+            credit_score: i32,
+            vip_until: Option<chrono::NaiveDateTime>,
+            created_at: chrono::NaiveDateTime,
+            updated_at: chrono::NaiveDateTime,
+            member_count: i64,
+            my_role: String,
+            joined_at: chrono::NaiveDateTime,
+        }
+
+        let rows = sqlx::query_as::<_, MyTeamSummaryRow>(
+            r#"
+            SELECT
+                t.id, t.name, t.description, t.logo_url, t.captain_id, t.join_password_hash,
+                t.status, t.credit_score, t.vip_until, t.created_at, t.updated_at,
+                COALESCE(member_counts.member_count, 0)::bigint AS member_count,
+                tm.role AS my_role,
+                tm.joined_at
+            FROM rs_team_members tm
+            INNER JOIN rs_teams t ON t.id = tm.team_id
+            LEFT JOIN (
+                SELECT team_id, COUNT(*)::bigint AS member_count
+                FROM rs_team_members
+                WHERE status = 1
+                GROUP BY team_id
+            ) member_counts ON member_counts.team_id = t.id
+            WHERE tm.user_id = $1
+              AND tm.status = 1
+              AND t.status = 1
+            ORDER BY tm.joined_at DESC
+            "#,
+        )
+        .bind(user_id)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
+
+        Ok(rows
+            .into_iter()
+            .map(|row| MyTeamSummary {
+                team: Team {
+                    id: row.id,
+                    name: row.name,
+                    description: row.description,
+                    logo_url: row.logo_url,
+                    captain_id: row.captain_id,
+                    join_password_hash: row.join_password_hash,
+                    status: row.status as i8,
+                    credit_score: row.credit_score,
+                    vip_until: row.vip_until,
+                    created_at: row.created_at,
+                    updated_at: row.updated_at,
+                },
+                member_count: row.member_count.max(0) as usize,
+                my_role: row.my_role,
+                joined_at: row.joined_at,
+            })
+            .collect())
     }
 
     async fn list_members_with_info(

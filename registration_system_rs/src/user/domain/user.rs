@@ -118,6 +118,7 @@ pub struct PlayerTeamSummary {
 #[derive(Debug, Clone)]
 pub struct PlayerWithTeams {
     pub id: i64,
+    pub username: String,
     pub nickname: String,
     pub real_name: String,
     pub avatar_url: String,

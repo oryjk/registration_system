@@ -16,7 +16,7 @@ use registration_system_backend::team::domain::{
     TeamAdminInfo, TeamAttendanceRankingItem, TeamCreditTransaction, TeamMember,
     TeamMemberAttendanceRecord, TeamMemberWithInfo,
 };
-use registration_system_backend::team::ports::TeamQueryRepository;
+use registration_system_backend::team::ports::{MyTeamSummary, TeamQueryRepository};
 use registration_system_backend::user::domain::{
     DomainError as UserDomainError, PlayerAdminListQuery, PlayerListResult, PlayerTeamSummary,
     User, UserActivityRecord, UserAttendanceRanking, UserAttendanceRecord,
@@ -439,6 +439,13 @@ impl TeamQueryRepository for FakeTeamStore {
 
     async fn list_user_teams(&self, _user_id: i64) -> Result<Vec<Team>, TeamDomainError> {
         unimplemented!()
+    }
+
+    async fn list_my_team_summaries(
+        &self,
+        _user_id: i64,
+    ) -> Result<Vec<MyTeamSummary>, TeamDomainError> {
+        Ok(Vec::new())
     }
 
     async fn list_members_with_info(

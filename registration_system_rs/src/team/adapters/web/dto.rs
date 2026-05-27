@@ -6,6 +6,7 @@ use crate::team::domain::{
     Team, TeamAdminInfo, TeamAttendanceRankingItem, TeamCreditTransaction, TeamMember,
     TeamMemberAttendanceRecord, TeamMemberWithInfo,
 };
+use crate::team::ports::MyTeamSummary;
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
@@ -104,6 +105,47 @@ impl From<Team> for TeamDto {
             vip_until: value.vip_until,
             trust_label,
             is_vip,
+        }
+    }
+}
+
+#[derive(Debug, Serialize, ToSchema)]
+pub struct MyTeamDto {
+    pub id: i64,
+    pub name: String,
+    pub description: Option<String>,
+    pub logo_url: Option<String>,
+    pub captain_id: Option<i64>,
+    pub status: i8,
+    pub credit_score: i32,
+    pub vip_until: Option<chrono::NaiveDateTime>,
+    pub trust_label: String,
+    pub is_vip: bool,
+    pub member_count: usize,
+    pub my_role: String,
+    pub joined_at: chrono::NaiveDateTime,
+}
+
+impl From<MyTeamSummary> for MyTeamDto {
+    fn from(value: MyTeamSummary) -> Self {
+        let now = chrono::Utc::now().naive_utc();
+        let team = value.team;
+        let trust_label = team.trust_label_at(now);
+        let is_vip = team.is_vip_at(now);
+        Self {
+            id: team.id,
+            name: team.name,
+            description: team.description,
+            logo_url: team.logo_url,
+            captain_id: team.captain_id,
+            status: team.status,
+            credit_score: team.credit_score,
+            vip_until: team.vip_until,
+            trust_label,
+            is_vip,
+            member_count: value.member_count,
+            my_role: value.my_role,
+            joined_at: value.joined_at,
         }
     }
 }

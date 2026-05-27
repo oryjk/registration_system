@@ -143,7 +143,7 @@ export function buildTeamProfiles(
   return teams.map((team) => {
     const detail = detailsByTeamId[team.id];
     const selfMember = detail?.members.find((member) => member.user_id === currentUserId);
-    const myRole = selfMember?.role ?? "member";
+    const myRole = selfMember?.role ?? team.my_role ?? (team.captain_id === currentUserId ? "captain" : "member");
 
     return {
       id: team.id,
@@ -151,10 +151,10 @@ export function buildTeamProfiles(
       description: team.description ?? "",
       logoUrl: team.logo_url ?? "",
       status: team.status,
-      memberCount: detail?.members.length ?? 0,
+      memberCount: detail?.members.length ?? team.member_count ?? 0,
       myRole,
       myRoleLabel: toRoleLabel(myRole),
-      joinedAt: selfMember?.joined_at ?? "",
+      joinedAt: selfMember?.joined_at ?? team.joined_at ?? "",
       isCaptain: myRole === "captain",
       canManageTeam: myRole === "captain" || myRole === "leader",
       creditScore: team.credit_score,

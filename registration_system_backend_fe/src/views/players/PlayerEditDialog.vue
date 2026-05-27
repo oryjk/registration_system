@@ -1,7 +1,7 @@
 <template>
   <dialog ref="dialogRef" class="modal">
     <div class="modal-box max-w-md">
-      <h3 class="text-lg font-bold mb-4">{{ mode === 'create' ? '新建球员' : '编辑球员信息' }}</h3>
+      <h3 class="text-lg font-bold mb-4">{{ mode === 'create' ? '新建用户' : '编辑用户信息' }}</h3>
       <div v-if="error" class="alert alert-error py-2.5 mb-4 text-sm">{{ error }}</div>
       <form @submit.prevent="emit('submit')" class="flex flex-col gap-4">
         <label class="flex flex-col gap-1.5">
@@ -38,7 +38,7 @@
           <input v-model="form.is_venue" type="checkbox" class="toggle toggle-primary" />
           <span class="flex flex-col gap-0.5">
             <span class="text-sm font-semibold">场馆身份</span>
-            <span class="text-xs text-base-content/55">可发布球队约队和散人约队，仍可作为球员报名。</span>
+            <span class="text-xs text-base-content/55">可发布球队约队和散人约队，仍可作为用户参与报名。</span>
           </span>
         </label>
         <div class="modal-action">

@@ -129,12 +129,24 @@
           class="flex rounded-lg px-2 py-2"
           :class="sidebarCollapsed ? 'flex-col items-center gap-2' : 'items-center gap-3'"
         >
-          <div class="avatar placeholder">
-            <div class="w-9 rounded-full bg-primary text-primary-content">
-              <span class="text-sm font-bold">{{
-                adminInfo?.nickname?.charAt(0) || adminInfo?.username?.charAt(0) || 'A'
-              }}</span>
-            </div>
+          <div
+            class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary ring-1 ring-primary/20"
+            aria-hidden="true"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="h-5 w-5"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <circle cx="12" cy="12" r="10" />
+              <circle cx="12" cy="10" r="3" />
+              <path d="M7 20.7a5.5 5.5 0 0 1 10 0" />
+            </svg>
           </div>
           <div v-if="!sidebarCollapsed" class="min-w-0 flex-1">
             <p class="truncate text-sm font-semibold">
@@ -162,7 +174,7 @@
               class="dropdown-content menu menu-sm z-50 w-40 rounded-lg bg-base-100 p-1 shadow-lg border border-base-300"
             >
               <li>
-                <button @click="toggleTheme">{{ isDark ? '☀️ 亮色模式' : '🌙 深色模式' }}</button>
+                <button @click="toggleTheme">{{ isDark ? '切换亮色模式' : '切换深色模式' }}</button>
               </li>
               <li><button class="text-error" @click="handleLogout">退出登录</button></li>
             </ul>
@@ -278,12 +290,17 @@ const navItems: NavItem[] = [
   },
   {
     to: '/players',
-    label: '球员管理',
+    label: '用户管理',
     icon: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z',
   },
 ]
 
 const adminNavItems: NavItem[] = [
+  {
+    to: '/venues',
+    label: '场馆管理',
+    icon: 'M12 2 3 7v13h18V7l-9-5zm0 2.2L18 7v1h-1v10h-3v-6H10v6H7V8H6V7l6-2.8z',
+  },
   {
     to: '/admins',
     label: '管理员管理',

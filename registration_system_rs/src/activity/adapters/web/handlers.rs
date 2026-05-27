@@ -118,9 +118,29 @@ pub async fn list_activities_handler(
     let page_data = state
         .services
         .activity_service
-        .list_activities(status_filter, registration_scope, page, page_size)
+        .list_activities(
+            status_filter,
+            registration_scope,
+            query.team_id,
+            query.holding_after,
+            page,
+            page_size,
+        )
         .await
         .map_err(activity_http_error)?;
+
+    tracing::info!(
+        page,
+        page_size,
+        status_filter,
+        team_id = query.team_id,
+        holding_after = ?query.holding_after,
+        registration_scope = registration_scope.unwrap_or(""),
+        item_count = page_data.items.len(),
+        total = page_data.total,
+        "查询活动列表"
+    );
+
     Ok(Json(ApiResponse::success(ActivityListPageDto::from(
         page_data,
     ))))

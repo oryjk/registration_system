@@ -106,6 +106,17 @@ describe("create match Wot UI integration", () => {
     expect(source.includes("审核状态下暂不开放创建比赛")).toEqual(true);
     expect(source.includes("uni.navigateBack")).toEqual(true);
     expect(source.includes('uni.switchTab({ url: "/pages/home/index" });')).toEqual(true);
+    expect(source.includes('const reviewGateReady = ref(false);')).toEqual(true);
+    expect(source.includes('v-if="reviewGateReady"')).toEqual(true);
+    expect(source.includes("async function handleSubmit() {\n  if (await guardReviewMode()) return;")).toEqual(true);
+  });
+
+  test("syncs runtime version to the upload version before building", async () => {
+    const source = await read("scripts/mini-ci.mjs");
+
+    expect(source.includes("syncManifestVersion({ versionName: uploadVersion })")).toEqual(true);
+    expect(source.indexOf("syncManifestVersion({ versionName: uploadVersion })") < source.indexOf("spawn(\"node\", [cliPath")).toEqual(true);
+    expect(source.includes("MINI_PROGRAM_VERSION: uploadVersion")).toEqual(true);
   });
 
   test("links registration default times to the selected match time", async () => {

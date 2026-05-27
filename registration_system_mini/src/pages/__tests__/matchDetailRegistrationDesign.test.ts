@@ -226,7 +226,7 @@ describe("match detail registration design", () => {
     expect(pageLogic.includes("isAtRegistrationCapacity")).toEqual(false);
     expect(pageLogic.includes('title: "本场已满员"')).toEqual(false);
     expect(pageLogic.includes("maxPlayersForActivity")).toEqual(false);
-    expect(pageLogic.includes("joinedRegistrations.value.map((item) =>")).toEqual(true);
+    expect(pageLogic.includes("joinedRegistrations.value.map((item) =>")).toEqual(false);
     expect(pageLogic.includes("joinedRegistrations.value.slice(0, 5)")).toEqual(false);
     expect(countdown.includes("countdown-progress-meta")).toEqual(true);
     expect(countdown.includes("avatar-wall")).toEqual(true);
@@ -243,6 +243,22 @@ describe("match detail registration design", () => {
     expect(state.includes("overflowVisualWidth")).toEqual(true);
     expect(state.includes("const splitPercent = 82")).toEqual(true);
     expect(state.includes('splitLeft: `${splitPercent}%`')).toEqual(true);
+  });
+
+  test("orders match registration avatars by user id consistently", async () => {
+    const pageLogic = await Bun.file(
+      "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/useMatchDetailPage.ts",
+    ).text();
+    const state = await Bun.file(
+      "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/detailState.ts",
+    ).text();
+
+    expect(state.includes("export function byUserIdAsc")).toEqual(true);
+    expect(state.includes("left.user_id - right.user_id")).toEqual(true);
+    expect(pageLogic.includes("joinedRegistrations.value.map((item) =>")).toEqual(false);
+    expect(pageLogic.includes("sort(byUserIdAsc).map((item) =>")).toEqual(true);
+    expect(pageLogic.includes("activeTeamMembers.value.filter((member) => registrationByUserId.value[member.user_id]?.stand === 1).map(toCard)")).toEqual(false);
+    expect(pageLogic.includes("sort(byUserIdAsc).map(toCard)")).toEqual(true);
   });
 
   test("renders team member status avatars without selection borders", async () => {

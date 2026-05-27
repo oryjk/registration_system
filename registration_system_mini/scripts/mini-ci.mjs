@@ -96,9 +96,19 @@ async function main() {
   const forwardedArgs =
     command === "upload" && uploadVersion && versionArgIndex < 0 ? [...extraArgs, "--version", uploadVersion] : extraArgs;
 
-  syncManifestVersion();
+  if (command === "upload" && uploadVersion) {
+    syncManifestVersion({ versionName: uploadVersion });
+  } else {
+    syncManifestVersion();
+  }
+
+  const childEnv =
+    command === "upload" && uploadVersion
+      ? { ...process.env, MINI_PROGRAM_VERSION: uploadVersion }
+      : process.env;
 
   const child = spawn("node", [cliPath, command, projectRoot, ...forwardedArgs], {
+    env: childEnv,
     stdio: "inherit",
   });
 
@@ -116,7 +126,7 @@ async function main() {
   }
 
   if (command === "upload") {
-    syncManifestVersion();
+    syncManifestVersion({ versionName: uploadVersion });
     await postReviewRecord(uploadVersion);
   }
 

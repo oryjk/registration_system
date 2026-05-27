@@ -289,6 +289,12 @@ impl ChallengeQueryRepository for PostgresChallengeRepository {
                 .push_bind(kind.as_db_str());
         }
 
+        if let Some(starts_after) = query.starts_after {
+            query_builder
+                .push(" AND c.start_time > ")
+                .push_bind(starts_after);
+        }
+
         if let Some(keyword) = query
             .keyword
             .map(str::trim)
@@ -453,6 +459,12 @@ impl ChallengeQueryRepository for PostgresChallengeRepository {
             query_builder
                 .push(" AND c.kind = ")
                 .push_bind(kind.as_db_str());
+        }
+
+        if let Some(starts_after) = query.starts_after {
+            query_builder
+                .push(" AND c.start_time > ")
+                .push_bind(starts_after);
         }
 
         if let Some(team_id) = query.team_id {

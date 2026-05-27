@@ -6,12 +6,13 @@ use crate::user::adapters::web::handlers::{
     freeze_player_handler, get_my_activities_handler, get_my_attendance_handler,
     get_player_detail_handler, get_user_activities_handler, get_user_attendance_handler,
     get_user_info_by_id_handler, list_players_handler, list_user_infos_handler, list_users_handler,
-    login_handler, password_login_handler, search_users_handler, unfreeze_player_handler,
-    update_profile_handler, update_user_by_id_handler, upload_avatar_handler, verify_handler,
+    login_handler, password_login_handler, remove_venue_handler, search_users_handler,
+    unfreeze_player_handler, update_profile_handler, update_user_by_id_handler,
+    upload_avatar_handler, verify_handler,
 };
 use axum::{
     Router,
-    routing::{get, patch, post},
+    routing::{delete, get, patch, post},
 };
 
 fn shared_router() -> Router<AppState> {
@@ -62,6 +63,7 @@ fn admin_router() -> Router<AppState> {
         )
         .route("/players/:user_id/freeze", post(freeze_player_handler))
         .route("/players/:user_id/unfreeze", post(unfreeze_player_handler))
+        .route("/venues/:user_id", delete(remove_venue_handler))
 }
 
 pub fn create_admin_router() -> Router<AppState> {

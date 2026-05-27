@@ -23,7 +23,9 @@ pub fn init_tracing() -> anyhow::Result<()> {
     std::mem::forget(guard);
 
     let env_filter = tracing_subscriber::EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| "registration_system_backend=info,tower_http=info,sqlx=warn".into());
+        .unwrap_or_else(|_| {
+            "registration_system_backend=info,access_log=info,tower_http=info,sqlx=warn".into()
+        });
 
     tracing_subscriber::registry()
         .with(env_filter)

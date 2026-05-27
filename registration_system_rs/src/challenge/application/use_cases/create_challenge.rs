@@ -166,7 +166,7 @@ impl CreateChallengeUseCase {
             .map_err(|error| AppError::internal(format!("查询用户身份失败: {error}")))?
             .ok_or_else(|| AppError::NotFound("用户不存在".to_string()))?;
 
-        if user.is_venue == 1 {
+        if user.is_venue == 1 && user.status == 1 {
             Ok(())
         } else {
             Err(AppError::Forbidden)

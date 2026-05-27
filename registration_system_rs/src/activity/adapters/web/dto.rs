@@ -223,6 +223,10 @@ pub struct ListActivitiesQuery {
     pub page_size: Option<u32>,
     /// -1 或未传：全部；0–3：按活动状态筛选
     pub status: Option<i8>,
+    /// 不传：全部；传入球队 ID 时只返回该球队作为主队或客队参与的活动
+    pub team_id: Option<i64>,
+    /// 不传：不过滤；传入后只返回比赛时间晚于该时间的活动
+    pub holding_after: Option<NaiveDateTime>,
     /// 不传：全部；team：有球队参与、可做球队内部报名的活动；direct：无球队归属的直接活动
     pub registration_scope: Option<String>,
 }

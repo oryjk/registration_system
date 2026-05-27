@@ -247,6 +247,60 @@ impl ManagePlayerUseCase {
         self.get_user_info(user_id).await
     }
 
+    pub async fn mark_user_as_venue(
+        &self,
+        actor: &ActorContext,
+        user_id: i64,
+    ) -> Result<User, AppError> {
+        ensure_super_admin(actor)?;
+        self.get_user_info(user_id).await?;
+        self.command_repository
+            .update_fields(
+                user_id,
+                UpdateUserFields {
+                    is_venue: Some(true),
+                    ..Default::default()
+                },
+            )
+            .await
+            .map_err(|error| AppError::internal(format!("设置场馆身份失败: {error}")))?;
+
+        self.get_user_info(user_id).await
+    }
+
+    pub async fn remove_venue(
+        &self,
+        actor: &ActorContext,
+        user_id: i64,
+    ) -> Result<Option<User>, AppError> {
+        ensure_super_admin(actor)?;
+        let user = self.get_user_info(user_id).await?;
+        if user.is_venue != 1 {
+            return Err(AppError::Validation("目标用户当前不是场馆".to_string()));
+        }
+
+        if is_standalone_venue_account(&user) {
+            self.command_repository
+                .delete(user_id)
+                .await
+                .map_err(|error| AppError::internal(format!("删除场馆账号失败: {error}")))?;
+            return Ok(None);
+        }
+
+        self.command_repository
+            .update_fields(
+                user_id,
+                UpdateUserFields {
+                    is_venue: Some(false),
+                    ..Default::default()
+                },
+            )
+            .await
+            .map_err(|error| AppError::internal(format!("移除场馆身份失败: {error}")))?;
+
+        self.get_user_info(user_id).await.map(Some)
+    }
+
     async fn get_user_info(&self, target_user_id: i64) -> Result<User, AppError> {
         self.query_repository
             .find_by_id(target_user_id)
@@ -274,4 +328,8 @@ fn ensure_super_admin(actor: &ActorContext) -> Result<(), AppError> {
         return Err(AppError::Forbidden);
     }
     Ok(())
+}
+
+fn is_standalone_venue_account(user: &User) -> bool {
+    user.open_id.starts_with("admin_role_user_") && user.password_hash.is_some()
 }

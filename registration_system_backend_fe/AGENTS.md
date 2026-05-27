@@ -54,9 +54,6 @@ bun run test:e2e
 - 与后端联调时，以 `src/services/` 作为字段与返回结构的唯一前端落点。
 - 维持现有 `Tailwind + DaisyUI` 风格，不在单次任务中无关重做视觉体系。
 - 列表页优先消费后端分页结构，避免默认全量拉取后再前端过滤。
-- 管理后台复杂任务默认采用 `planning-with-files` 流程，并同步维护：
-  - `../task_plan.md`、`../findings.md`、`../progress.md`
-  - `task_plan.md`、`findings.md`、`progress.md`
 - 最终回复前，确认工作文档已经反映当前管理后台改动、受影响服务和验证结果。
 
 ## 联动后端

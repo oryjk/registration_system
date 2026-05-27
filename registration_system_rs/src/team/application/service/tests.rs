@@ -14,7 +14,8 @@ use crate::team::domain::{
     TeamMemberWithInfo, UpdateTeamFields,
 };
 use crate::team::ports::{
-    ActivityReviewRecord, MembershipRechargeRecord, TeamCommandRepository, TeamQueryRepository,
+    ActivityReviewRecord, MembershipRechargeRecord, MyTeamSummary, TeamCommandRepository,
+    TeamQueryRepository,
 };
 use async_trait::async_trait;
 use chrono::Utc;
@@ -247,6 +248,32 @@ impl FakeTeamStore {
                     .is_some_and(|items| items.iter().any(|member| member.user_id == user_id))
             })
             .cloned()
+            .collect())
+    }
+
+    async fn list_my_team_summaries(
+        &self,
+        user_id: i64,
+    ) -> Result<Vec<MyTeamSummary>, DomainError> {
+        let teams = self.teams.lock().expect("teams mutex poisoned");
+        let members = self.members.lock().expect("members mutex poisoned");
+        Ok(teams
+            .values()
+            .filter_map(|team| {
+                let team_members = members.get(&team.id)?;
+                let self_member = team_members
+                    .iter()
+                    .find(|member| member.user_id == user_id && member.status == 1)?;
+                Some(MyTeamSummary {
+                    team: team.clone(),
+                    member_count: team_members
+                        .iter()
+                        .filter(|member| member.status == 1)
+                        .count(),
+                    my_role: self_member.role.clone(),
+                    joined_at: self_member.joined_at,
+                })
+            })
             .collect())
     }
 
@@ -504,6 +531,13 @@ impl TeamQueryRepository for FakeTeamStore {
         FakeTeamStore::list_user_teams(self, user_id).await
     }
 
+    async fn list_my_team_summaries(
+        &self,
+        user_id: i64,
+    ) -> Result<Vec<MyTeamSummary>, DomainError> {
+        FakeTeamStore::list_my_team_summaries(self, user_id).await
+    }
+
     async fn list_members_with_info(
         &self,
         team_id: i64,
@@ -695,6 +729,8 @@ impl ActivityQueryRepository for DummyActivityRepository {
         &self,
         _status_filter: Option<i8>,
         _registration_scope: Option<&str>,
+        _team_id: Option<i64>,
+        _holding_after: Option<chrono::NaiveDateTime>,
         _page: u32,
         _page_size: u32,
     ) -> Result<ActivityListPage, ActivityDomainError> {

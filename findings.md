@@ -1,5 +1,11 @@
 # 小程序真实接口接入审计发现
 
+## 2026-05-27 后端 access log 业务语义发现
+
+- 当前本地后端日志里统一显示“业务请求”，根因是 `registration_system_rs/src/bootstrap/app.rs` 的 access log 中间件把所有请求都写死成了同一条 message。
+- 仅看 `method/path/query/body/status` 虽然能排查技术问题，但不利于直接按业务语义观察首页、登录、球队、活动等链路。
+- 更合适的做法是在日志层按 `HTTP method + path` 映射出稳定的业务语义，并为带动态参数的路径提供兜底分类，例如“报名球队活动”“上传球队 Logo”“删除用户活动报名”。
+
 ## 2026-05-25 小程序首页首屏加载发现
 
 - 首页 `src/pages/home/index.vue` 首次登录态会先 `await ensureSessionReady()`；该过程会请求 `/api/user/info`、`/api/teams/my-teams`，并对每个球队请求 `/api/teams/:id`。
@@ -472,3 +478,22 @@
 - 用户截图里顶部“个人报名”绿条来自小程序比赛详情页 `registration-segment`，不是全局自定义导航栏 `AppTabHeader`。
 - 这块是报名模式/页面状态提示，和底部“已报名 · 修改状态”实际行动按钮不应共用荧光绿主色。
 - 去掉 `.registration-segment` 的灰色背景和 padding 后，能消除“标题外面套了一层”的视觉问题；当前态改深色后，荧光绿只留给真正提交/修改状态动作。
+
+## 2026-05-27 小程序首页请求发现
+
+- 首页此前用 `/api/activity/infos?page=1&page_size=100` 宽拉取活动，再在前端按 `home_team_id/away_team_id` 过滤当前球队，导致首页拿到大量不需要的活动。
+- 活动列表后端已有 `registration_scope`，但缺少按具体球队过滤；本轮新增 `team_id` 参数，语义为只返回该球队作为主队或客队参与的活动。
+- 活动列表 counts SQL 需要把 scope 条件整体加括号后再叠加 `team_id`，否则 `AND` 会只绑定到最后一个 `OR` 分支，造成过滤统计不一致。
+- 首页约队机会不应传当前球队 `team_id`，否则只会看到与当前球队相关的约队；按用户要求应查询所有 `start_time > now` 的未来约队比赛。
+- 球队资料卡、信用分和首页“球队数据”摘要都属于统计页职责；首页不再展示，也不再为此拉取全年出勤数据。
+- 首页前两个业务请求看起来串行的根因是 `ensureSessionReady()` 会先请求 `/api/user/info`、`/api/teams/my-teams`，并继续等待 `/api/teams/:id` 完整详情；活动和约队请求只能在 session 完成后开始。
+- 首页首屏只需要当前球队身份和管理权限，不需要完整成员列表；因此 `/api/teams/my-teams` 返回 `my_role/member_count/joined_at` 后，小程序可以先完成身份选择，完整球队详情改为球队管理页按需懒加载。
+
+## 2026-05-27 `/api/activity/infos` 性能发现
+
+- 本机请求 `http://127.0.0.1:18080/api/activity/infos?page=1&page_size=6&team_id=1&holding_after=...` 的 `connect` 约 `0.2ms`，但 `starttransfer/total` 约 `0.64s ~ 0.97s`，说明慢点不在浏览器到本地服务。
+- `.env` 中 `DATABASE_URL` 指向 `117.72.164.211:5432`；`jd` 上 `5432` 实际是 Docker NAT 到容器 `172.17.0.3:5432`，当前这套库跑在 `jd`，不是再转发到 `peiqian:5432`。
+- `/api/activity/infos` 当前后端会对远端 PostgreSQL 顺序执行 3 条 SQL：状态 counts、filtered total、分页 rows。
+- 这 3 条 SQL 在数据库内部的 `EXPLAIN ANALYZE` 执行时间分别只有约 `0.171ms / 0.066ms / 0.121ms`，`rs_activity` 当前也只有 `105` 行，因此不是表扫描或缺索引导致的慢查询。
+- 本机到 `jd:5432` 的 TCP 建连约 `44ms / 95ms / 158ms`，抖动明显；这和接口整体 `0.6s+` 的慢点方向一致，主要成本在跨公网多次往返。
+- `jd -> peiqian` 的 ICMP RTT 约 `29ms`，但 `jd` 直连 `peiqian:5432` 返回 `Connection refused`；本机直连 `peiqian:5432` 也同样拒绝，说明当前 `peiqian` 这套 PostgreSQL 没有对外开放给这两条路径。

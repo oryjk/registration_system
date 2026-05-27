@@ -2,9 +2,9 @@
   <section class="sticky top-16 z-10 -mx-4 flex flex-col gap-4 bg-base-200 px-4 pb-4 pt-4 lg:-mx-6 lg:px-6">
     <div class="flex items-center justify-between gap-4">
       <div>
-        <h2 class="text-xl font-bold">球员管理</h2>
+        <h2 class="text-xl font-bold">用户管理</h2>
         <p class="mt-0.5 text-sm text-base-content/60">
-          管理通过小程序注册或手动录入的球员，支持查询、编辑、冻结和删除
+          管理平台注册用户，包含小程序注册、手动录入、球队成员和自由用户
         </p>
       </div>
       <button class="btn btn-primary gap-2" @click="emit('create')">
@@ -16,7 +16,7 @@
         >
           <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
         </svg>
-        新建球员
+        新建用户
       </button>
     </div>
 
@@ -24,7 +24,7 @@
       <div class="card-body p-4">
         <div class="flex flex-wrap items-end gap-3">
           <label class="flex min-w-[200px] flex-1 flex-col gap-1">
-            <span class="text-xs font-semibold text-base-content/60">搜索球员</span>
+            <span class="text-xs font-semibold text-base-content/60">搜索用户</span>
             <label class="input input-bordered flex h-10 items-center gap-2 border-2">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -56,11 +56,11 @@
           </label>
 
           <label class="flex w-36 flex-col gap-1">
-            <span class="text-xs font-semibold text-base-content/60">球队归属</span>
+            <span class="text-xs font-semibold text-base-content/60">球队状态</span>
             <select v-model="filters.has_team" class="select select-bordered h-10 border-2 text-sm">
               <option :value="undefined">全部</option>
               <option :value="true">已加入球队</option>
-              <option :value="false">自由球员</option>
+              <option :value="false">未加入球队</option>
             </select>
           </label>
 
@@ -71,7 +71,7 @@
 
           <div class="ml-auto flex items-center gap-2">
             <span class="text-sm text-base-content/50">
-              共 <strong class="text-base-content">{{ total }}</strong> 位球员
+              共 <strong class="text-base-content">{{ total }}</strong> 位用户
             </span>
           </div>
         </div>

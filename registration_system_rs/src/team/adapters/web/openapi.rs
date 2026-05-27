@@ -4,9 +4,9 @@ use super::dto::{
     AddTeamMemberRequest, AdminCreateTeamRequest, AssignAdminRequest, BatchRemoveMembersRequest,
     BatchUpdateMemberStatusRequest, CreateTeamRequest, JoinTeamRequest,
     SubmitActivityReviewRequest, TeamAdminInfoDto, TeamCreditOverviewDto, TeamCreditPenaltyRequest,
-    TeamCreditTransactionDto, TeamDetailDto, TeamDetailForAdminDto, TeamDto, TeamMemberDto,
-    TeamMemberWithInfoDto, TeamMembershipRechargeRequest, TeamPasswordInfoDto, TeamSummaryDto,
-    UpdateTeamMemberRequest, UpdateTeamRequest,
+    TeamCreditTransactionDto, TeamDetailDto, TeamDetailForAdminDto, TeamDto, MyTeamDto,
+    TeamMemberDto, TeamMemberWithInfoDto, TeamMembershipRechargeRequest, TeamPasswordInfoDto,
+    TeamSummaryDto, UpdateTeamMemberRequest, UpdateTeamRequest,
 };
 use super::handlers::{TeamCreditTransactionsQuery, TeamListQuery, TeamSearchQuery};
 use crate::shared::api_response::{ApiResponse, EmptyData};
@@ -67,7 +67,7 @@ fn join_team_doc() {}
     tag = "Team",
     security(("bearer_auth" = [])),
     responses(
-        (status = 200, description = "查询我的球队成功", body = ApiResponse<Vec<TeamDto>>),
+        (status = 200, description = "查询我的球队成功", body = ApiResponse<Vec<MyTeamDto>>),
         (status = 401, description = "未授权", body = ApiResponse<EmptyData>)
     )
 )]
@@ -422,6 +422,7 @@ fn unassign_admin_doc() {}
     components(
         schemas(
             ApiResponse<TeamDto>,
+            ApiResponse<Vec<MyTeamDto>>,
             ApiResponse<Vec<TeamSummaryDto>>,
             ApiResponse<Vec<TeamDto>>,
             ApiResponse<TeamPasswordInfoDto>,
@@ -446,6 +447,7 @@ fn unassign_admin_doc() {}
             BatchRemoveMembersRequest,
             BatchUpdateMemberStatusRequest,
             TeamDto,
+            MyTeamDto,
             TeamSummaryDto,
             TeamMemberDto,
             TeamDetailDto,

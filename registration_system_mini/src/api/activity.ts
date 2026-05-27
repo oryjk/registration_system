@@ -14,11 +14,15 @@ export function listActivities(params?: {
   page?: number;
   pageSize?: number;
   status?: number;
+  teamId?: number;
+  holdingAfter?: string;
 }) {
   const queryString = buildQueryString({
     page: params?.page,
     page_size: params?.pageSize,
     status: typeof params?.status === "number" ? params.status : undefined,
+    team_id: params?.teamId,
+    holding_after: params?.holdingAfter,
   });
 
   return requestApi<BackendActivityListPage>({

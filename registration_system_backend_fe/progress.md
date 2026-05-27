@@ -1,5 +1,16 @@
 # 管理端进度记录
 
+## 2026-05-27 后台场馆管理
+
+- 已读取根目录与管理端子项目协作文档，并确认本轮要同步维护管理端工作文档。
+- 已定位当前相关文件：`src/services/player.ts`、`src/views/players/*`、`src/router/index.ts`、`src/components/Layout.vue`。
+- 已确认现状只有泛球员管理页，没有独立场馆列表、昵称搜索绑定或独立账号创建入口。
+- 已新增 `src/services/venue.ts`，复用现有 `/users/players`、`/users/search`、`/users/players/role-users`、冻结/解冻、改密接口，并接入新的 `DELETE /users/venues/:id`。
+- 已新增 `src/views/venues/VenueList.vue`，支持独立账号创建、按昵称搜索绑定小程序用户、编辑、改密、冻结/解冻、删除/移除场馆。
+- 已在路由增加 `/venues`，并在 Layout 的超管导航中加入“场馆管理”入口。
+- 已将 `Player.username` 调整为可选字段，兼容既有用户/球队页面默认对象，同时支持场馆页区分独立账号来源。
+- 验证通过：`bun run type-check`、根目录 `git diff --check`。
+
 ## 2026-05-23 管理后台能力对齐小程序
 
 - 已读取管理端路由和侧边栏，确认当前页面入口：球队、约队、活动报名、散人报名、账单、球员、系统设置。

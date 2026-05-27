@@ -94,6 +94,9 @@ describe("activities page sections", () => {
     expect(source.includes("审核状态下暂不开放球队约队")).toEqual(true);
     expect(source.includes("uni.navigateBack")).toEqual(true);
     expect(source.includes('uni.switchTab({ url: "/pages/home/index" });')).toEqual(true);
+    expect(source.includes('const reviewGateReady = ref(false);')).toEqual(true);
+    expect(source.includes('v-if="reviewGateReady"')).toEqual(true);
+    expect(source.includes("async function handleSubmit() {\n  if (await guardReviewMode()) return;")).toEqual(true);
   });
 
   test("supports map location picking when creating an individual challenge", async () => {

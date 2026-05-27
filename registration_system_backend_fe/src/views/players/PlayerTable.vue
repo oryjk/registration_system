@@ -5,9 +5,9 @@
         <thead>
           <tr>
             <th class="w-10"></th>
-            <th>球员信息</th>
+            <th>用户信息</th>
             <th>手机号</th>
-            <th>所属球队</th>
+            <th>球队归属</th>
             <th>最近登录</th>
             <th>注册时间</th>
             <th>状态</th>
@@ -43,7 +43,7 @@
     </div>
 
     <div v-else-if="players.length === 0" class="flex flex-col items-center justify-center py-16 gap-3">
-      <p class="text-base-content/40 text-sm">暂无球员数据</p>
+      <p class="text-base-content/40 text-sm">暂无用户数据</p>
     </div>
 
     <div v-else :class="loading ? 'pointer-events-none opacity-70' : ''">
@@ -85,9 +85,9 @@
                   />
                 </label>
               </th>
-              <th>球员信息</th>
+              <th>用户信息</th>
               <th>手机号</th>
-              <th>所属球队</th>
+              <th>球队归属</th>
               <th class="select-none">
                 <SortButton
                   label="最近登录"
@@ -178,7 +178,7 @@
                     {{ team.team_name }}
                   </span>
                 </div>
-                <span v-else class="text-xs text-base-content/40">自由球员</span>
+                <span v-else class="text-xs text-base-content/40">未加入球队</span>
               </td>
               <td class="min-w-[130px]">
                 <span class="whitespace-nowrap text-xs text-base-content/60">{{

@@ -173,6 +173,7 @@ impl From<PlayerTeamSummary> for PlayerTeamSummaryDto {
 #[derive(Debug, Serialize, ToSchema)]
 pub struct PlayerDto {
     pub id: i64,
+    pub username: String,
     pub nickname: String,
     pub real_name: String,
     pub avatar_url: String,
@@ -200,6 +201,7 @@ impl From<PlayerWithTeams> for PlayerDto {
         };
         Self {
             id: v.id,
+            username: v.username,
             nickname: v.nickname,
             real_name: v.real_name,
             avatar_url: v.avatar_url,

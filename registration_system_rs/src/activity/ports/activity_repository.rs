@@ -11,6 +11,8 @@ pub trait ActivityQueryRepository: Send + Sync {
         &self,
         status_filter: Option<i8>,
         registration_scope: Option<&str>,
+        team_id: Option<i64>,
+        holding_after: Option<NaiveDateTime>,
         page: u32,
         page_size: u32,
     ) -> Result<ActivityListPage, DomainError>;

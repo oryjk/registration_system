@@ -9,8 +9,9 @@ use crate::team::adapters::web::dto::{
     BatchUpdateMemberStatusRequest, CreateTeamRequest, JoinTeamRequest,
     SubmitActivityReviewRequest, TeamAdminInfoDto, TeamAttendanceSummaryDto, TeamCreditOverviewDto,
     TeamCreditPenaltyRequest, TeamCreditTransactionDto, TeamDetailDto, TeamDetailForAdminDto,
-    TeamDto, TeamLogoUploadResponse, TeamMemberAttendanceDto, TeamMembershipRechargeRequest,
-    TeamPasswordInfoDto, TeamSummaryDto, UpdateTeamMemberRequest, UpdateTeamRequest,
+    MyTeamDto, TeamDto, TeamLogoUploadResponse, TeamMemberAttendanceDto,
+    TeamMembershipRechargeRequest, TeamPasswordInfoDto, TeamSummaryDto, UpdateTeamMemberRequest,
+    UpdateTeamRequest,
 };
 use crate::team::application::{
     AddTeamMemberCommand, CreateTeamCommand, SubmitActivityReviewCommand, TeamApplicationError,
@@ -181,17 +182,17 @@ pub async fn join_team_handler(
 pub async fn my_teams_handler(
     State(state): State<AppState>,
     headers: HeaderMap,
-) -> Result<Json<ApiResponse<Vec<TeamDto>>>, HttpError> {
+) -> Result<Json<ApiResponse<Vec<MyTeamDto>>>, HttpError> {
     let principal = team_principal(state.actor(&headers)?);
     let teams = state
         .services
         .team_service
-        .list_my_teams(&principal)
+        .list_my_team_summaries(&principal)
         .await
         .map_err(team_http_error)?;
 
     Ok(Json(ApiResponse::success(
-        teams.into_iter().map(TeamDto::from).collect(),
+        teams.into_iter().map(MyTeamDto::from).collect(),
     )))
 }
 

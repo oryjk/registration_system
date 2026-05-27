@@ -193,6 +193,9 @@ export interface BackendTeam {
   vip_until?: string | null;
   trust_label: string;
   is_vip: boolean;
+  member_count?: number;
+  my_role?: string;
+  joined_at?: string;
 }
 
 export interface BackendTeamSummary extends BackendTeam {

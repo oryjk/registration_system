@@ -2,14 +2,8 @@
 import { computed } from "vue";
 import { defaultMiniAppRuntimeConfig } from "@/config/runtimeConfig";
 import type { BackendMiniAppHomeHeroBanner } from "@/types/backend";
-import type { TeamProfileViewModel } from "@/types/viewModels";
 
 const props = defineProps<{
-  currentTeam: TeamProfileViewModel | null;
-  teamLogoUrl: string;
-  teamInitial: string;
-  teamMetaLine: string;
-  isGuestMode: boolean;
   heroBanners: BackendMiniAppHomeHeroBanner[];
 }>();
 
@@ -31,27 +25,6 @@ const visibleHeroBanners = computed(() => {
 
 <template>
   <view>
-    <view v-if="!isGuestMode && currentTeam" class="team-hero-card">
-      <view class="team-hero-main">
-        <view class="team-hero-logo">
-          <image
-            v-if="teamLogoUrl"
-            class="team-hero-logo-image"
-            :src="teamLogoUrl"
-            mode="aspectFill"
-          />
-          <text v-else class="team-hero-logo-text">{{ teamInitial }}</text>
-        </view>
-        <view class="team-hero-copy">
-          <view class="team-hero-title-row">
-            <text class="team-hero-name">{{ currentTeam.name }}</text>
-            <text class="team-hero-role">{{ currentTeam.myRoleLabel }}</text>
-          </view>
-          <text class="team-hero-meta">{{ teamMetaLine }}</text>
-        </view>
-      </view>
-    </view>
-
     <swiper
       v-if="visibleHeroBanners.length > 1"
       class="home-banner-swiper"
@@ -107,85 +80,6 @@ const visibleHeroBanners = computed(() => {
 </template>
 
 <style scoped>
-.team-hero-card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 22rpx;
-  margin-top: 16rpx;
-  min-height: 124rpx;
-  padding: 18rpx 22rpx;
-  border-radius: 24rpx;
-  background: #fffdf8;
-  box-shadow: 0 20rpx 40rpx rgba(43, 55, 38, 0.08);
-}
-
-.team-hero-main {
-  display: flex;
-  align-items: center;
-  gap: 20rpx;
-  min-width: 0;
-  flex: 1;
-}
-
-.team-hero-logo {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 72rpx;
-  height: 72rpx;
-  border-radius: 999rpx;
-  background: #172018;
-  flex-shrink: 0;
-  overflow: hidden;
-}
-
-.team-hero-logo-image {
-  width: 100%;
-  height: 100%;
-}
-
-.team-hero-logo-text {
-  color: #b9f24b;
-  font-size: 34rpx;
-  font-weight: 800;
-}
-
-.team-hero-copy {
-  min-width: 0;
-}
-
-.team-hero-title-row {
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
-}
-
-.team-hero-name {
-  font-size: 30rpx;
-  line-height: 1.22;
-  color: #172018;
-  font-weight: 800;
-}
-
-.team-hero-role {
-  padding: 8rpx 16rpx;
-  border-radius: 999rpx;
-  background: #9be22b;
-  color: #172018;
-  font-size: 20rpx;
-  line-height: 1;
-  font-weight: 700;
-}
-
-.team-hero-meta {
-  display: block;
-  margin-top: 6rpx;
-  font-size: 21rpx;
-  color: #5f685b;
-  line-height: 1.45;
-}
-
 .home-banner-swiper {
   margin-top: 18rpx;
   height: 242rpx;

@@ -1,5 +1,12 @@
 # 小程序真实接口接入审计进度
 
+## 2026-05-27 后端 access log 业务语义化
+
+- 已定位本地后端日志里统一打印“业务请求”的来源：`registration_system_rs/src/bootstrap/app.rs` 的 `access_log_middleware`。
+- 已将 access log 改为按接口路径和方法输出具体业务语义，并额外记录 `business` 字段，常见接口如活动列表、创建球队、账号密码登录、后台系统配置等都可直接读出含义。
+- 已补充后端单元测试覆盖静态路由和动态路由语义映射。
+- 验证通过：`cd registration_system_rs && cargo test describe_request_business --lib`、`cargo clippy --lib -- -D warnings`。
+
 ## 2026-05-25 小程序首页首屏加载排查
 
 - 21:58 已读取根目录/小程序协作文档、`docs/mini-architecture.md`、既有 `task_plan.md` / `findings.md` / `progress.md`。
@@ -388,3 +395,21 @@
 - 已在 `registration_system_mini/src/pages/matches/detail.vue` 调整报名模式栏：外层透明、去掉灰色胶囊底座，当前项改为深色标题标签。
 - 底部报名/修改状态按钮继续保留荧光绿，作为页面主行动色，避免标题状态和行动按钮颜色混用。
 - 验证通过：`cd registration_system_mini && bun run type-check`。
+
+## 2026-05-27 小程序首页请求收口
+
+- 已为后端 `/api/activity/infos` 增加 `team_id` 查询链路：DTO、handler、service、use case、repository port 和 Postgres SQL 均已接入。
+- 已修正 activity list counts 查询中的 scope 与 `team_id` 组合过滤括号，并新增仓储测试覆盖 `team_id` 只返回当前球队主/客队活动。
+- 已为 `/api/challenges` 增加 `starts_after` 查询链路：DTO、handler、application query、repository query 和 Postgres SQL 均已接入，按 `c.start_time > starts_after` 过滤。
+- 小程序首页现在用 `listActivities({ teamId: currentTeam.value.id })` 拉当前球队活动；约队机会用 `listChallenges({ startsAfter: formatBackendDateTime(now), sort: "holding_date_asc", auth: true })` 拉所有未来约队。
+- 首页已移除球队资料卡和“球队数据”摘要，不再调用 `getMyAttendance()`；球队数据继续放在统计页。
+- 已扩展 `/api/teams/my-teams` 返回 `member_count`、`my_role`、`joined_at`，小程序 session bootstrap 不再拉 `/api/teams/:id`；球队管理页进入时再调用 `ensureTeamDetailLoaded()` 懒加载完整成员详情。
+- 验证通过：后端 `cargo test --test activity_repository_scope_test -- --nocapture`、`cargo test --test challenge_service_business_test public_challenge_list_can_filter_by_future_start_time -- --nocapture`、`cargo check --tests`；小程序 `bun test src/stores/__tests__/appSession.test.ts src/stores/__tests__/currentIdentity.test.ts src/pages/__tests__/homePageLoading.test.ts`、`bun run type-check`；根目录 `git diff --check`。
+
+## 2026-05-27 `/api/activity/infos` 性能排查
+
+- 已复测本地 `127.0.0.1:18080` 活动列表接口，确认本机 HTTP 连接不是瓶颈，慢点出现在服务端开始回包前。
+- 已对 activity list 的 3 条 SQL 执行 `EXPLAIN ANALYZE`，确认数据库内部执行都在 `1ms` 内，不是索引缺失或大表扫描。
+- 已确认当前 `DATABASE_URL` 连接的是 `jd` 上 Docker 暴露的 PostgreSQL；`peiqian` 上也有独立 5432，但当前路径不可从本机或 `jd` 直连。
+- 已将 `registration_system_rs/src/activity/adapters/persistence/query.rs` 中原本串行的 counts / total / rows 三次查询改为 `tokio::try_join!` 并发执行，优先减少远端数据库 RTT 累积。
+- 验证通过：`cargo check --tests`、`cargo test --test activity_repository_scope_test -- --nocapture`。

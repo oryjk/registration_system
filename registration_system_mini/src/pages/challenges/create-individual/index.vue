@@ -11,6 +11,7 @@ const { currentIdentity, ensureSessionReady } = useTeamContext();
 const { shouldHideCreationEntrances } = useMiniReviewStatus();
 const navMetrics = getCustomNavMetrics();
 const submitting = ref(false);
+const reviewGateReady = ref(false);
 const challengeKind = ref<"team" | "individual">("individual");
 const advancedOpen = ref(false);
 
@@ -136,6 +137,8 @@ function validateForm() {
 }
 
 async function handleSubmit() {
+  if (await guardReviewMode()) return;
+
   if (submitting.value) return;
 
   const message = validateForm();
@@ -206,7 +209,9 @@ async function guardReviewMode() {
 }
 
 onShow(async () => {
+  reviewGateReady.value = false;
   if (await guardReviewMode()) return;
+  reviewGateReady.value = true;
   await ensureSessionReady();
   if (!form.date) {
     form.date = defaultPublishDate();
@@ -222,7 +227,7 @@ onLoad((options) => {
 </script>
 
 <template>
-  <view class="individual-create-page" :style="pageStyle">
+  <view v-if="reviewGateReady" class="individual-create-page" :style="pageStyle">
     <AppTabHeader :title="challengeKind === 'team' ? '球队约队' : '散人约队'" showBack />
 
     <view class="create-hero">

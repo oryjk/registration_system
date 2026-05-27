@@ -10,12 +10,15 @@ use crate::activity::domain::{
 };
 use chrono::NaiveDateTime;
 use sqlx::FromRow;
+use tokio::try_join;
 
 impl PostgresActivityRepository {
     pub(super) async fn list_page_query(
         &self,
         status_filter: Option<i8>,
         registration_scope: Option<&str>,
+        team_id: Option<i64>,
+        holding_after: Option<NaiveDateTime>,
         page: u32,
         page_size: u32,
     ) -> Result<ActivityListPage, DomainError> {
@@ -29,7 +32,11 @@ impl PostgresActivityRepository {
         }
 
         let scope_bind = registration_scope;
-        let counts_row = sqlx::query_as::<_, CountsRow>(
+        let status_bind: Option<i16> = status_filter.map(i16::from);
+        let offset = ((page.saturating_sub(1)) as i64).saturating_mul(page_size as i64);
+        let limit = page_size as i64;
+
+        let counts_future = sqlx::query_as::<_, CountsRow>(
             r#"SELECT
                  COUNT(*)::bigint AS total,
                  COUNT(*) FILTER (WHERE status = 0)::bigint AS registering,
@@ -37,36 +44,37 @@ impl PostgresActivityRepository {
                  COUNT(*) FILTER (WHERE status = 2)::bigint AS ended,
                  COUNT(*) FILTER (WHERE status = 3)::bigint AS cancelled
                FROM rs_activity
-               WHERE ($1::text IS NULL)
-                  OR ($1 = 'team' AND (home_team_id IS NOT NULL OR away_team_id IS NOT NULL))
-                  OR ($1 = 'direct' AND home_team_id IS NULL AND away_team_id IS NULL)"#,
+               WHERE (
+                    ($1::text IS NULL)
+                    OR ($1 = 'team' AND (home_team_id IS NOT NULL OR away_team_id IS NOT NULL))
+                    OR ($1 = 'direct' AND home_team_id IS NULL AND away_team_id IS NULL)
+                 )
+                 AND ($2::bigint IS NULL OR home_team_id = $2 OR away_team_id = $2)
+                 AND ($3::timestamp IS NULL OR holding_date > $3)"#,
         )
         .bind(scope_bind)
-        .fetch_one(&self.pool)
-        .await
-        .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
+        .bind(team_id)
+        .bind(holding_after)
+        .fetch_one(&self.pool);
 
-        let status_bind: Option<i16> = status_filter.map(i16::from);
-
-        let (total_filtered,): (i64,) = sqlx::query_as(
+        let total_filtered_future = sqlx::query_as(
             r#"SELECT COUNT(*)::bigint FROM rs_activity
                WHERE ($1::smallint IS NULL OR status = $1)
                  AND (
                    ($2::text IS NULL)
                    OR ($2 = 'team' AND (home_team_id IS NOT NULL OR away_team_id IS NOT NULL))
                    OR ($2 = 'direct' AND home_team_id IS NULL AND away_team_id IS NULL)
-                 )"#,
+                 )
+                 AND ($3::bigint IS NULL OR home_team_id = $3 OR away_team_id = $3)
+                 AND ($4::timestamp IS NULL OR holding_date > $4)"#,
         )
         .bind(status_bind)
         .bind(scope_bind)
-        .fetch_one(&self.pool)
-        .await
-        .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
+        .bind(team_id)
+        .bind(holding_after)
+        .fetch_one(&self.pool);
 
-        let offset = ((page.saturating_sub(1)) as i64).saturating_mul(page_size as i64);
-        let limit = page_size as i64;
-
-        let rows = sqlx::query_as::<_, ActivityRow>(&format!(
+        let rows_sql = format!(
             "SELECT {ACTIVITY_COLS} FROM rs_activity
              WHERE ($1::smallint IS NULL OR status = $1)
                AND (
@@ -74,16 +82,23 @@ impl PostgresActivityRepository {
                  OR ($2 = 'team' AND (home_team_id IS NOT NULL OR away_team_id IS NOT NULL))
                  OR ($2 = 'direct' AND home_team_id IS NULL AND away_team_id IS NULL)
                )
-             ORDER BY holding_date DESC
-             LIMIT $3 OFFSET $4",
-        ))
+               AND ($3::bigint IS NULL OR home_team_id = $3 OR away_team_id = $3)
+               AND ($4::timestamp IS NULL OR holding_date > $4)
+             ORDER BY holding_date ASC
+             LIMIT $5 OFFSET $6",
+        );
+        let rows_future = sqlx::query_as::<_, ActivityRow>(&rows_sql)
         .bind(status_bind)
         .bind(scope_bind)
+        .bind(team_id)
+        .bind(holding_after)
         .bind(limit)
         .bind(offset)
-        .fetch_all(&self.pool)
-        .await
-        .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
+        .fetch_all(&self.pool);
+
+        let (counts_row, (total_filtered,), rows) =
+            try_join!(counts_future, total_filtered_future, rows_future)
+                .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
 
         let items = rows.into_iter().map(Activity::from).collect();
 

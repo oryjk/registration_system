@@ -53,12 +53,12 @@ describe("home page loading states", () => {
     expect(pagesJson.includes('"enablePullDownRefresh": true')).toEqual(true);
   });
 
-  test('routes "all matches" from home page to stats instead of mine', async () => {
+  test('routes "all matches" from home page to the dedicated matches list', async () => {
     const homePageSource = await Bun.file(
       "/Users/carlwang/registration_system/registration_system_mini/src/pages/home/index.vue",
     ).text();
 
-    expect(homePageSource.includes(`@tap="openTab('/pages/teams/index')"`)).toEqual(true);
+    expect(homePageSource.includes('uni.navigateTo({ url: "/pages/home/matches/index" });')).toEqual(true);
     expect(homePageSource.includes(`@tap="openTab('/pages/user/index')">全部比赛`)).toEqual(false);
   });
 
@@ -85,7 +85,9 @@ describe("home page loading states", () => {
     expect(homePageSource.includes("const runtimeConfig = await loadMiniAppRuntimeConfig();")).toEqual(true);
     expect(homePageSource.includes("homeHeroBanners.value = runtimeConfig.home.hero_banners;")).toEqual(true);
     expect(homePageSource.includes("const challengeFetchLimit = Math.min(runtimeConfig.home.challenge_card_limit * 5, 50);")).toEqual(true);
-    expect(homePageSource.includes("pageSize: runtimeConfig.home.activity_fetch_page_size")).toEqual(true);
+    expect(homePageSource.includes("const activityFetchPageSize = Math.min(runtimeConfig.home.match_card_limit + HOME_ACTIVITY_FETCH_BUFFER, 12);")).toEqual(true);
+    expect(homePageSource.includes("pageSize: activityFetchPageSize")).toEqual(true);
+    expect(homePageSource.includes("holdingAfter: formatBackendDateTime(now)")).toEqual(true);
     expect(homePageSource.includes("limit: challengeFetchLimit")).toEqual(true);
     expect(homePageSource.includes("isRuntimeVisibleActivity(item, runtimeConfig, now)")).toEqual(true);
     expect(homePageSource.includes("isRuntimeVisibleChallengeSummary(summary, runtimeConfig, now)")).toEqual(true);
@@ -100,12 +102,14 @@ describe("home page loading states", () => {
     expect(homePageSource.includes("teamMatches.value = sortHomeMatchCardsByDate([...rawTeamMatchCards.value, ...joinedIndividualCards]).slice(")).toEqual(true);
     expect(homePageSource.includes("auth: options?.auth ?? false")).toEqual(true);
     expect(homePageSource.includes('uni.switchTab({ url: "/pages/activities/index" });')).toEqual(true);
-    expect(homePageSource.includes('<template v-if="currentTeam">')).toEqual(true);
+    expect(homePageSource.includes('<template v-if="currentTeam">')).toEqual(false);
+    expect(homePageSource.includes("HomeDigestGrid")).toEqual(false);
+    expect(homePageSource.includes("球队数据")).toEqual(false);
     expect(homePageSource.includes('v-if="errorMessage" class="home-empty"')).toEqual(false);
     expect(homePageSource.includes("{{ errorMessage }}")).toEqual(false);
     expect(homePageSource.includes("HomeHeroSection")).toEqual(true);
     expect(homePageSource.includes(':hero-banners="homeHeroBanners"')).toEqual(true);
-    expect(hero.includes('v-if="!isGuestMode && currentTeam" class="team-hero-card"')).toEqual(true);
+    expect(hero.includes('class="team-hero-card"')).toEqual(false);
     expect(hero.includes('{{ currentTeam?.name || "我的球队" }}')).toEqual(false);
     expect(homePageSource.includes('<view v-if="shouldShowMatchSection" class="section-headline">')).toEqual(true);
     expect(homePageSource.includes("HomeMatchList")).toEqual(true);
@@ -127,8 +131,9 @@ describe("home page loading states", () => {
     expect(homePageSource.includes("void hydrateDeferredHomeData({")).toEqual(true);
     expect(homePageSource.includes("loadVersion,")).toEqual(true);
     expect(homePageSource.includes("teamId: currentTeam.value.id,")).toEqual(true);
-    expect(homePageSource.includes("getMyAttendance(getCurrentYearDateRange(context.now))")).toEqual(true);
-    expect(homePageSource.includes("listUsers(),")).toEqual(true);
+    expect(homePageSource.includes("getMyAttendance(getCurrentYearDateRange(context.now))")).toEqual(false);
+    expect(homePageSource.includes("getMyAttendance")).toEqual(false);
+    expect(homePageSource.includes("listUsers().then(")).toEqual(true);
     expect(homePageSource.includes("void syncUnreadCount({ skipEnsure: true }).catch")).toEqual(true);
     expect(homePageSource.includes("const [activityPage, myActivityRecords, challengeSummaries] = await Promise.all([")).toEqual(true);
     expect(homePageSource.includes("const [activityPage, myActivityRecords, attendanceRecords, challengeSummaries, users]")).toEqual(false);
@@ -145,16 +150,18 @@ describe("home page loading states", () => {
     expect(homePageSource.includes("void loadPageData({ preserveContent: true });")).toEqual(true);
   });
 
-  test("orders home challenge opportunities by match time descending before limiting", async () => {
+  test("requests and orders future home challenge opportunities by match time ascending", async () => {
     const homePageSource = await Bun.file(
       "/Users/carlwang/registration_system/registration_system_mini/src/pages/home/index.vue",
     ).text();
 
-    expect(homePageSource.includes('sort: "holding_date_desc"')).toEqual(true);
-    expect(homePageSource.includes("function sortChallengeSummariesByHoldingTimeDesc")).toEqual(true);
-    expect(homePageSource.includes("right.challenge.holding_date.localeCompare(left.challenge.holding_date)")).toEqual(true);
-    expect(homePageSource.includes("right.challenge.start_time.localeCompare(left.challenge.start_time)")).toEqual(true);
-    expect(homePageSource.includes("sortChallengeSummariesByHoldingTimeDesc(")).toEqual(true);
+    expect(homePageSource.includes('sort: "holding_date_asc"')).toEqual(true);
+    expect(homePageSource.includes("startsAfter: formatBackendDateTime(now)")).toEqual(true);
+    expect(homePageSource.includes("function sortChallengeSummariesByHoldingTimeAsc")).toEqual(true);
+    expect(homePageSource.includes("left.challenge.holding_date.localeCompare(right.challenge.holding_date)")).toEqual(true);
+    expect(homePageSource.includes("left.challenge.start_time.localeCompare(right.challenge.start_time)")).toEqual(true);
+    expect(homePageSource.includes("sortChallengeSummariesByHoldingTimeAsc(")).toEqual(true);
+    expect(homePageSource.includes("teamId: currentTeam.value.id, limit: challengeFetchLimit")).toEqual(false);
   });
 
   test("opens challenge detail when tapping any home opportunity card", async () => {

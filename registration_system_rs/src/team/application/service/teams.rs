@@ -3,6 +3,7 @@ use crate::team::application::commands::{CreateTeamCommand, UpdateTeamCommand};
 use crate::team::application::read_models::{TeamDetail, TeamSummary};
 use crate::team::application::{TeamApplicationError, TeamPrincipal};
 use crate::team::domain::Team;
+use crate::team::ports::MyTeamSummary;
 
 impl TeamService {
     pub async fn create_team(
@@ -70,6 +71,15 @@ impl TeamService {
         principal: &TeamPrincipal,
     ) -> Result<Vec<Team>, TeamApplicationError> {
         self.get_user_teams_use_case.list_my_teams(principal).await
+    }
+
+    pub async fn list_my_team_summaries(
+        &self,
+        principal: &TeamPrincipal,
+    ) -> Result<Vec<MyTeamSummary>, TeamApplicationError> {
+        self.get_user_teams_use_case
+            .list_my_team_summaries(principal)
+            .await
     }
 
     pub async fn list_user_teams_for_target(

@@ -1,9 +1,9 @@
 <template>
   <dialog ref="freezeDialogRef" class="modal">
     <div class="modal-box max-w-md">
-      <h3 class="text-lg font-bold mb-1">冻结球员</h3>
+      <h3 class="text-lg font-bold mb-1">冻结用户</h3>
       <p class="text-sm text-base-content/50 mb-4">
-        冻结后球员将无法正常使用小程序功能。设置冻结期间后点击确认。
+        冻结后用户将无法正常使用小程序功能。设置冻结期间后点击确认。
       </p>
       <div v-if="freezeTarget" class="flex items-center gap-3 p-3 bg-base-200 rounded-xl mb-4">
         <div
@@ -61,8 +61,8 @@
     <div class="modal-box max-w-sm">
       <h3 class="text-lg font-bold">确认解冻</h3>
       <p class="py-4 text-base-content/70">
-        确定解冻球员 <strong>{{ unfreezeTarget?.real_name || unfreezeTarget?.nickname }}</strong
-        >？解冻后球员可正常使用小程序功能。
+        确定解冻用户 <strong>{{ unfreezeTarget?.real_name || unfreezeTarget?.nickname }}</strong
+        >？解冻后用户可正常使用小程序功能。
       </p>
       <div class="modal-action">
         <button class="btn btn-ghost" @click="closeUnfreeze">取消</button>
@@ -79,7 +79,7 @@
     <div class="modal-box max-w-sm">
       <h3 class="text-lg font-bold">确认删除</h3>
       <p class="py-4 text-base-content/70">
-        确定删除球员 <strong>{{ deletingPlayer?.real_name || deletingPlayer?.nickname }}</strong
+        确定删除用户 <strong>{{ deletingPlayer?.real_name || deletingPlayer?.nickname }}</strong
         >？该操作不可撤销，同时会删除其所有报名记录。
       </p>
       <div class="modal-action">
@@ -99,7 +99,7 @@
       <p class="py-4 text-base-content/70">
         确定删除选中的
         <strong>{{ selectedPlayerCount }}</strong>
-        名球员？该操作不可撤销，同时会删除其所有报名记录。
+        名用户？该操作不可撤销，同时会删除其所有报名记录。
       </p>
       <div class="modal-action">
         <button class="btn btn-ghost" @click="closeBatchDelete">取消</button>

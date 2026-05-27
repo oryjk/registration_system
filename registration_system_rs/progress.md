@@ -1,5 +1,26 @@
 # 后端重构进度
 
+## 2026-05-27 access log 业务语义化
+
+- 已定位 access log 中统一“业务请求”文案来自 `src/bootstrap/app.rs::access_log_middleware`。
+- 已新增 `describe_request_business()` / `describe_dynamic_request_business()`，按 method + path 为常见 app/admin 接口输出明确业务语义，并为动态路径提供分类兜底。
+- access log 现在除 `method/path/query/body/status/latency_ms` 外，还会记录 `business` 字段，message 本身也改为对应业务名称。
+- 已补充单元测试覆盖常见静态路由和动态路由。
+- 验证通过：`cargo test describe_request_business --lib`、`cargo clippy --lib -- -D warnings`。
+
+## 2026-05-27 后台场馆管理闭环
+
+- 已读取根目录与后端子项目协作文档，并确认本轮需要同步维护后端工作文档。
+- 已结合 memory 和当前代码确认：场馆身份复用 `rs_user_info.is_venue`，角色账号创建/改密后端底座已存在。
+- 已定位关键链路：`admin_players.rs`、`user/adapters/web/*`、`user/application/use_cases/login.rs`、`challenge/application/use_cases/create_challenge.rs`。
+- 已确认本轮后端重点缺口是：独立场馆管理接口、按昵称搜索绑定用户、冻结态发布拦截，以及对应测试。
+- 已新增后端测试：`user_player_scope_test` 覆盖绑定已有用户为场馆、移除场馆身份不误删已有用户、删除独立场馆账号；`challenge_service_business_test` 覆盖冻结场馆无法继续发布散人约队。
+- 已在 `ManagePlayerUseCase` / `UserService` 新增 `mark_user_as_venue`、`remove_venue`，并把“删除场馆”区分为删除独立账号或移除场馆身份。
+- 已新增 `DELETE /api/admin/users/venues/:user_id`，供管理端统一删除/移除场馆。
+- 已把场馆发布校验收紧为 `is_venue == 1 && status == 1`，冻结场馆不能再发起无球队主体的发布。
+- 已在 player 列表链路补 `username` 字段，供管理端区分独立账号和绑定用户。
+- 验证通过：`cargo test --test user_player_scope_test -- --nocapture`、`cargo test --test challenge_service_business_test frozen_venue_user_cannot_create_challenge_without_host_team -- --nocapture`、根目录 `git diff --check`。
+
 ## 2026-05-23 散人约队最少/最多人数配置
 
 - 已读取后端协作文档和当前 challenge 领域/DTO/command。
@@ -232,3 +253,21 @@
 - 已新增角色账号改密码能力：`PATCH /api/admin/users/players/:user_id/password`，并限制目标必须是场馆或 active captain。
 - 已扩展 `PlayerAdminListQuery.role` 和管理后台球员列表 SQL，支持 `role=venue|captain` 筛选。
 - 验证通过：`cargo test --test user_player_scope_test -- --nocapture`、`cargo check --tests`、`cargo clippy --all-targets -- -D warnings`。
+
+## 2026-05-27 首页活动/约队查询参数
+
+- 已将 `ListActivitiesQuery.team_id` 从 web DTO 传到 `ActivityService::list_activities`、`QueryActivityUseCase::list_activities` 和 `ActivityQueryRepository::list_page`。
+- `PostgresActivityRepository::list_page_query` 的 counts、filtered total、rows 查询均增加 `team_id` 条件，过滤主队或客队等于该球队的活动。
+- 已新增 `activity_list_can_filter_by_team_id` 仓储测试，并保留 `team_registration_scope_includes_direct_team_activity` 回归。
+- 已将 `ChallengeListQuery.starts_after` 传到 team/public/admin query structs 和 Postgres repository，列表 SQL 按 `c.start_time > starts_after` 过滤。
+- 已新增 `public_challenge_list_can_filter_by_future_start_time` 业务测试。
+- 已新增 `TeamQueryRepository::list_my_team_summaries` 和 `MyTeamDto`，`/api/teams/my-teams` 现在返回 `member_count`、`my_role`、`joined_at`，OpenAPI 已同步。
+- 验证通过：`cargo test --test activity_repository_scope_test -- --nocapture`、`cargo test --test challenge_service_business_test public_challenge_list_can_filter_by_future_start_time -- --nocapture`、`cargo check --tests`。
+
+## 2026-05-27 `/api/activity/infos` 性能排查
+
+- 已用 `curl -w` 复测本地接口，确认 `connect` 近似为 0、但 `starttransfer/total` 在 `0.6s+`，问题不在浏览器到服务端的本地网络。
+- 已对 activity list 三条 SQL 做 `EXPLAIN ANALYZE`，数据库内部执行总计不到 `1ms`，当前慢点不在 SQL 扫描。
+- 已确认 `117.72.164.211:5432` 是 `jd` 本机 Docker 暴露的 PostgreSQL；并额外确认 `peiqian` 上存在另一套独立 PostgreSQL，但当前从 `jd` 与本机都不能直连其 `5432`。
+- 已将 `src/activity/adapters/persistence/query.rs` 里的 counts / total / rows 三次查询改为 `tokio::try_join!` 并发执行，以减少远端数据库 RTT 累加。
+- 验证通过：`cargo check --tests`、`cargo test --test activity_repository_scope_test -- --nocapture`。

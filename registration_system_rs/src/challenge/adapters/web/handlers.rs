@@ -113,6 +113,7 @@ pub async fn list_challenges_handler(
                     include_closed: query.include_closed.unwrap_or(false),
                     limit: query.limit.unwrap_or(50),
                     sort: query.sort.unwrap_or_else(|| "holding_date_asc".to_string()),
+                    starts_after: query.starts_after,
                 },
             )
             .await?
@@ -130,6 +131,7 @@ pub async fn list_challenges_handler(
                     include_closed: query.include_closed.unwrap_or(false),
                     limit: query.limit.unwrap_or(20),
                     sort: query.sort.as_deref().unwrap_or("holding_date_asc"),
+                    starts_after: query.starts_after,
                 },
             )
             .await?
@@ -148,6 +150,7 @@ pub async fn list_challenges_handler(
                 include_closed: query.include_closed.unwrap_or(false),
                 limit: query.limit.unwrap_or(20),
                 sort: query.sort.as_deref().unwrap_or("holding_date_asc"),
+                starts_after: query.starts_after,
             })
             .await?
     };

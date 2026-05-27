@@ -9,6 +9,7 @@ export function listChallenges(params: {
   includeClosed?: boolean;
   limit?: number;
   sort?: "holding_date_asc" | "holding_date_desc" | "created_at_desc" | "credit_desc";
+  startsAfter?: string;
   auth?: boolean;
 }) {
   const queryString = buildQueryString({
@@ -18,6 +19,7 @@ export function listChallenges(params: {
     include_closed: params.includeClosed ? true : undefined,
     limit: params.limit,
     sort: params.sort,
+    starts_after: params.startsAfter,
   });
 
   return requestApi<BackendChallengeSummary[]>({

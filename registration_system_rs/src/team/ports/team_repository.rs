@@ -31,6 +31,14 @@ pub struct MembershipRechargeRecord<'a> {
     pub score_after: i32,
 }
 
+#[derive(Debug, Clone)]
+pub struct MyTeamSummary {
+    pub team: Team,
+    pub member_count: usize,
+    pub my_role: String,
+    pub joined_at: chrono::NaiveDateTime,
+}
+
 #[async_trait]
 pub trait TeamQueryRepository: Send + Sync {
     async fn find_by_id(&self, team_id: i64) -> Result<Option<Team>, DomainError>;
@@ -62,6 +70,10 @@ pub trait TeamQueryRepository: Send + Sync {
         end_date: Option<&str>,
     ) -> Result<Vec<TeamAttendanceRankingItem>, DomainError>;
     async fn list_user_teams(&self, user_id: i64) -> Result<Vec<Team>, DomainError>;
+    async fn list_my_team_summaries(
+        &self,
+        user_id: i64,
+    ) -> Result<Vec<MyTeamSummary>, DomainError>;
     async fn list_members_with_info(
         &self,
         team_id: i64,

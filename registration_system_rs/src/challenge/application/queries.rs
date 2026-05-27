@@ -1,4 +1,5 @@
 use crate::challenge::domain::{ChallengeKind, ChallengeStatus};
+use chrono::NaiveDateTime;
 
 #[derive(Debug, Clone, Copy)]
 pub struct TeamChallengeListRequest<'a> {
@@ -9,6 +10,7 @@ pub struct TeamChallengeListRequest<'a> {
     pub include_closed: bool,
     pub limit: i64,
     pub sort: &'a str,
+    pub starts_after: Option<NaiveDateTime>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -20,6 +22,7 @@ pub struct PublicChallengeListQuery<'a> {
     pub include_closed: bool,
     pub limit: i64,
     pub sort: &'a str,
+    pub starts_after: Option<NaiveDateTime>,
 }
 
 #[derive(Debug, Clone)]
@@ -31,4 +34,5 @@ pub struct AdminChallengeListQuery {
     pub include_closed: bool,
     pub limit: i64,
     pub sort: String,
+    pub starts_after: Option<NaiveDateTime>,
 }

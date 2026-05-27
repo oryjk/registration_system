@@ -17,7 +17,9 @@ use registration_system_backend::team::domain::{
     TeamAdminInfo, TeamAttendanceRankingItem, TeamCreditTransaction, TeamMember,
     TeamMemberAttendanceRecord, TeamMemberWithInfo, UpdateTeamFields,
 };
-use registration_system_backend::team::ports::{TeamCommandRepository, TeamQueryRepository};
+use registration_system_backend::team::ports::{
+    MyTeamSummary, TeamCommandRepository, TeamQueryRepository,
+};
 use std::sync::{Arc, Mutex};
 
 fn activity_admin_principal(is_super_admin: bool) -> ActivityPrincipal {
@@ -85,6 +87,8 @@ impl ActivityQueryRepository for FakeActivityRepository {
         &self,
         _status_filter: Option<i8>,
         _registration_scope: Option<&str>,
+        _team_id: Option<i64>,
+        _holding_after: Option<chrono::NaiveDateTime>,
         _page: u32,
         _page_size: u32,
     ) -> Result<ActivityListPage, ActivityDomainError> {
@@ -322,6 +326,13 @@ impl TeamQueryRepository for FakeTeamStore {
 
     async fn list_user_teams(&self, _user_id: i64) -> Result<Vec<Team>, TeamDomainError> {
         unimplemented!()
+    }
+
+    async fn list_my_team_summaries(
+        &self,
+        _user_id: i64,
+    ) -> Result<Vec<MyTeamSummary>, TeamDomainError> {
+        Ok(Vec::new())
     }
 
     async fn list_members_with_info(

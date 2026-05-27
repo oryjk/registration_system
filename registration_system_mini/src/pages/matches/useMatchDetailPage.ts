@@ -34,6 +34,7 @@ import {
   applyCheckInPatch,
   applyIndividualRegistrationPatch,
   avatarColor,
+  byUserIdAsc,
   buildRegistrationProgress,
   buildRemainingPlayersLabel,
   clampTeamRegistrationCount,
@@ -140,7 +141,7 @@ export function useMatchDetailPage() {
   });
 
   const participantPreview = computed(() =>
-    joinedRegistrations.value.map((item) => {
+    [...joinedRegistrations.value].sort(byUserIdAsc).map((item) => {
       const user = usersById.value[item.user_id];
       return {
         id: item.user_id,
@@ -166,12 +167,12 @@ export function useMatchDetailPage() {
     };
 
     return {
-      joined: activeTeamMembers.value.filter((member) => registrationByUserId.value[member.user_id]?.stand === 1).map(toCard),
-      leave: activeTeamMembers.value.filter((member) => registrationByUserId.value[member.user_id]?.stand === 2).map(toCard),
+      joined: activeTeamMembers.value.filter((member) => registrationByUserId.value[member.user_id]?.stand === 1).sort(byUserIdAsc).map(toCard),
+      leave: activeTeamMembers.value.filter((member) => registrationByUserId.value[member.user_id]?.stand === 2).sort(byUserIdAsc).map(toCard),
       pending: activeTeamMembers.value.filter((member) => {
         const stand = registrationByUserId.value[member.user_id]?.stand ?? 0;
         return stand !== 1 && stand !== 2;
-      }).map(toCard),
+      }).sort(byUserIdAsc).map(toCard),
     };
   });
 

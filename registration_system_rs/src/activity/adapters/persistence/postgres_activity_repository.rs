@@ -24,10 +24,19 @@ impl ActivityQueryRepository for PostgresActivityRepository {
         &self,
         status_filter: Option<i8>,
         registration_scope: Option<&str>,
+        team_id: Option<i64>,
+        holding_after: Option<NaiveDateTime>,
         page: u32,
         page_size: u32,
     ) -> Result<ActivityListPage, DomainError> {
-        self.list_page_query(status_filter, registration_scope, page, page_size)
+        self.list_page_query(
+            status_filter,
+            registration_scope,
+            team_id,
+            holding_after,
+            page,
+            page_size,
+        )
             .await
     }
 

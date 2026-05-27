@@ -21,11 +21,20 @@ impl QueryActivityUseCase {
         &self,
         status_filter: Option<i8>,
         registration_scope: Option<&str>,
+        team_id: Option<i64>,
+        holding_after: Option<chrono::NaiveDateTime>,
         page: u32,
         page_size: u32,
     ) -> Result<ActivityListPage, ActivityApplicationError> {
         self.repository
-            .list_page(status_filter, registration_scope, page, page_size)
+            .list_page(
+                status_filter,
+                registration_scope,
+                team_id,
+                holding_after,
+                page,
+                page_size,
+            )
             .await
             .map_err(|error| {
                 ActivityApplicationError::internal(format!("查询活动列表失败: {error}"))

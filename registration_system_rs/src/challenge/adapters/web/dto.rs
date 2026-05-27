@@ -60,6 +60,7 @@ pub struct ChallengeListQuery {
     pub include_closed: Option<bool>,
     pub limit: Option<i64>,
     pub sort: Option<String>,
+    pub starts_after: Option<chrono::NaiveDateTime>,
 }
 
 #[derive(Debug, Serialize, ToSchema)]

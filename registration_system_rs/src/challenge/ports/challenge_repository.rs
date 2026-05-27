@@ -53,6 +53,7 @@ pub struct TeamChallengeListQuery<'a> {
     pub include_closed: bool,
     pub limit: i64,
     pub sort: &'a str,
+    pub starts_after: Option<chrono::NaiveDateTime>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -66,6 +67,7 @@ pub struct AdminChallengeRepositoryQuery<'a> {
     pub include_closed: bool,
     pub limit: i64,
     pub sort: &'a str,
+    pub starts_after: Option<chrono::NaiveDateTime>,
 }
 
 #[async_trait]

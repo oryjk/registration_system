@@ -8,7 +8,8 @@ use registration_system_backend::team::domain::{
     TeamMemberWithInfo, UpdateTeamFields,
 };
 use registration_system_backend::team::ports::{
-    ActivityReviewRecord, MembershipRechargeRecord, TeamCommandRepository, TeamQueryRepository,
+    ActivityReviewRecord, MembershipRechargeRecord, MyTeamSummary, TeamCommandRepository,
+    TeamQueryRepository,
 };
 use registration_system_backend::user::application::{
     CreateRoleUserCommand, RoleUserKind, UserService,
@@ -21,6 +22,8 @@ use registration_system_backend::user::ports::{UserCommandRepository, UserQueryR
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
+type UpdatedFieldRecord = (i64, Option<bool>, Option<i8>);
+
 #[derive(Default)]
 struct RecordingUserRepository {
     admin_scopes: Mutex<Vec<Option<i64>>>,
@@ -28,6 +31,8 @@ struct RecordingUserRepository {
     users: Mutex<Vec<User>>,
     touched_logins: Mutex<Vec<i64>>,
     updated_password_hashes: Mutex<Vec<(i64, String)>>,
+    updated_fields: Mutex<Vec<UpdatedFieldRecord>>,
+    deleted_user_ids: Mutex<Vec<i64>>,
 }
 
 #[async_trait]
@@ -164,14 +169,43 @@ impl UserCommandRepository for RecordingUserRepository {
 
     async fn update_fields(
         &self,
-        _user_id: i64,
-        _fields: UpdateUserFields<'_>,
+        user_id: i64,
+        fields: UpdateUserFields<'_>,
     ) -> Result<(), DomainError> {
-        unimplemented!()
+        self.updated_fields
+            .lock()
+            .unwrap()
+            .push((user_id, fields.is_venue, fields.status));
+        if let Some(user) = self
+            .users
+            .lock()
+            .unwrap()
+            .iter_mut()
+            .find(|user| user.id == user_id)
+        {
+            if let Some(is_venue) = fields.is_venue {
+                user.is_venue = if is_venue { 1 } else { 0 };
+            }
+            if let Some(status) = fields.status {
+                user.status = status;
+            }
+            if let Some(phone_number) = fields.phone_number {
+                user.phone_number = phone_number.to_string();
+            }
+            if let Some(real_name) = fields.real_name {
+                user.real_name = real_name.to_string();
+            }
+            if let Some(nickname) = fields.nickname {
+                user.nickname = nickname.to_string();
+            }
+        }
+        Ok(())
     }
 
-    async fn delete(&self, _user_id: i64) -> Result<(), DomainError> {
-        unimplemented!()
+    async fn delete(&self, user_id: i64) -> Result<(), DomainError> {
+        self.deleted_user_ids.lock().unwrap().push(user_id);
+        self.users.lock().unwrap().retain(|user| user.id != user_id);
+        Ok(())
     }
 }
 
@@ -243,6 +277,13 @@ impl TeamQueryRepository for RecordingTeamRepository {
 
     async fn list_user_teams(&self, _user_id: i64) -> Result<Vec<Team>, TeamDomainError> {
         unimplemented!()
+    }
+
+    async fn list_my_team_summaries(
+        &self,
+        _user_id: i64,
+    ) -> Result<Vec<MyTeamSummary>, TeamDomainError> {
+        Ok(Vec::new())
     }
 
     async fn list_members_with_info(
@@ -728,4 +769,83 @@ async fn role_user_password_login_rejects_wrong_password() {
         .expect_err("密码错误时应拒绝登录");
 
     assert!(matches!(error, AppError::Unauthorized));
+}
+
+#[tokio::test]
+async fn super_admin_can_bind_existing_user_as_venue() {
+    let user_repository = Arc::new(RecordingUserRepository::default());
+    let mut existing = User::new("openid-existing".to_string(), None, None, Some("阿豪".to_string()), None);
+    existing.id = 18;
+    existing.real_name = "陈豪".to_string();
+    user_repository.users.lock().unwrap().push(existing);
+    let team_repository = Arc::new(RecordingTeamRepository::default());
+    let service = user_service(user_repository.clone(), team_repository);
+
+    let user = service
+        .mark_user_as_venue(&admin_actor(7, true), 18)
+        .await
+        .expect("超级管理员应能把已有用户设为场馆");
+
+    assert_eq!(user.id, 18);
+    assert_eq!(user.is_venue, 1);
+    assert_eq!(
+        user_repository.updated_fields.lock().unwrap().as_slice(),
+        &[(18, Some(true), None)]
+    );
+}
+
+#[tokio::test]
+async fn venue_identity_removal_keeps_existing_mini_user() {
+    let user_repository = Arc::new(RecordingUserRepository::default());
+    let mut existing =
+        User::new("openid-existing".to_string(), None, None, Some("球场老王".to_string()), None);
+    existing.id = 28;
+    existing.real_name = "王场长".to_string();
+    existing.is_venue = 1;
+    user_repository.users.lock().unwrap().push(existing);
+    let team_repository = Arc::new(RecordingTeamRepository::default());
+    let service = user_service(user_repository.clone(), team_repository);
+
+    let user = service
+        .remove_venue(&admin_actor(7, true), 28)
+        .await
+        .expect("已有小程序用户移除场馆身份应成功");
+
+    let user = user.expect("已有小程序用户移除场馆身份后应保留用户记录");
+    assert_eq!(user.id, 28);
+    assert_eq!(user.is_venue, 0);
+    assert!(user_repository.deleted_user_ids.lock().unwrap().is_empty());
+}
+
+#[tokio::test]
+async fn deleting_standalone_venue_account_removes_user_record() {
+    let user_repository = Arc::new(RecordingUserRepository::default());
+    let mut existing = User::new(
+        "admin_role_user_xxx".to_string(),
+        None,
+        Some("venue-a".to_string()),
+        Some("赛悦".to_string()),
+        None,
+    );
+    existing.id = 35;
+    existing.real_name = "赛悦体育".to_string();
+    existing.is_venue = 1;
+    existing.password_hash = Some(bcrypt::hash("secret123", bcrypt::DEFAULT_COST).unwrap());
+    user_repository.users.lock().unwrap().push(existing);
+    let team_repository = Arc::new(RecordingTeamRepository::default());
+    let service = user_service(user_repository.clone(), team_repository);
+
+    let result = service
+        .remove_venue(&admin_actor(7, true), 35)
+        .await
+        .expect("独立场馆账号应允许直接删除");
+
+    assert!(result.is_none());
+    assert_eq!(user_repository.deleted_user_ids.lock().unwrap().as_slice(), &[35]);
+    assert!(user_repository
+        .users
+        .lock()
+        .unwrap()
+        .iter()
+        .all(|user| user.id != 35));
 }

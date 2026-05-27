@@ -38,7 +38,8 @@ instance.interceptors.response.use(
         message = '登录已过期，请重新登录'
         removeToken()
         if (!window.location.pathname.includes('/login')) {
-          window.location.href = '/login'
+          const base = import.meta.env.BASE_URL || '/'
+          window.location.href = `${base.replace(/\/$/, '')}/login`
         }
       } else if (status === 403) {
         message = '权限不足'

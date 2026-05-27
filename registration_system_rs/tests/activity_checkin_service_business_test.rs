@@ -29,6 +29,8 @@ impl ActivityQueryRepository for InMemoryActivityRepository {
         &self,
         _status_filter: Option<i8>,
         _registration_scope: Option<&str>,
+        _team_id: Option<i64>,
+        _holding_after: Option<chrono::NaiveDateTime>,
         page: u32,
         page_size: u32,
     ) -> Result<ActivityListPage, DomainError> {
