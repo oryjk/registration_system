@@ -18,10 +18,27 @@ export interface Activity {
   color: string | null
   opposing_color: string | null
   players_per_team: number | null
+  team_capacity_limit: number | null
   match_kind: 'external' | 'internal' | null
   source_activity_id: string | null
   team_registration_count: number | null
+  registration_preview: ActivityRegistrationPreview
   team_checkin_configs: ActivityTeamCheckinConfig[]
+}
+
+export interface ActivityRegistrationPreview {
+  counts: RegistrationStandCounts
+  members: ActivityRegistrationPreviewMember[]
+}
+
+export interface ActivityRegistrationPreviewMember {
+  user_id: number
+  stand: number
+  registration_count: number
+  operation_time: string
+  nickname: string
+  real_name: string
+  avatar_url: string
 }
 
 export interface ActivityTeamCheckinConfig {
@@ -101,6 +118,7 @@ export interface CreateActivityPayload {
   color?: string
   opposing_color?: string
   players_per_team?: number
+  team_capacity_limit?: number
   match_kind?: 'external' | 'internal'
   team_checkin_configs?: CreateActivityCheckinConfigPayload[]
 }
@@ -121,6 +139,7 @@ export interface UpdateActivityPayload {
   color?: string | null
   opposing_color?: string | null
   players_per_team?: number | null
+  team_capacity_limit?: number | null
   match_kind?: 'external' | 'internal' | null
 }
 

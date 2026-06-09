@@ -28,6 +28,20 @@ export function byUserIdAsc(left: { user_id: number }, right: { user_id: number 
   return left.user_id - right.user_id;
 }
 
+function registrationTimestamp(value?: string | null) {
+  if (!value) return Number.POSITIVE_INFINITY;
+  const timestamp = parseDateValue(value).getTime();
+  return Number.isFinite(timestamp) ? timestamp : Number.POSITIVE_INFINITY;
+}
+
+export function byRegistrationTimeAsc(
+  left: { user_id: number; operation_time?: string | null },
+  right: { user_id: number; operation_time?: string | null },
+) {
+  const timeDiff = registrationTimestamp(left.operation_time) - registrationTimestamp(right.operation_time);
+  return timeDiff || byUserIdAsc(left, right);
+}
+
 export function clampTeamRegistrationCount(value: number) {
   if (!Number.isFinite(value)) return 5;
   return Math.min(Math.max(Math.round(value), 5), 11);

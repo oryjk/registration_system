@@ -65,32 +65,41 @@ export const formatTime = (date: string) =>
 
 export const toLocalDateTimeInput = (iso: string) => (iso ? iso.slice(0, 16) : '')
 
-export const playersPerTeamFromMatchFormat = (matchFormat: MatchFormatOption) =>
-  matchFormat * 2 - 1
+export const DEFAULT_TEAM_CAPACITY_MULTIPLIER = 2
+
+export const defaultTeamCapacityLimit = (playersPerTeam: number | null | undefined) =>
+  playersPerTeam == null ? null : playersPerTeam * DEFAULT_TEAM_CAPACITY_MULTIPLIER
+
+export const shouldRefreshDefaultTeamCapacityLimit = (
+  currentLimit: unknown,
+  currentPlayersPerTeam: number | null | undefined,
+) => {
+  if (currentLimit == null || currentLimit === '') return true
+  return currentLimit === defaultTeamCapacityLimit(currentPlayersPerTeam)
+}
+
+export const normalizeTeamCapacityLimit = (value: unknown) =>
+  typeof value === 'number' && Number.isFinite(value) ? value : null
 
 export const inferMatchFormat = (
   playersPerTeam: number | null | undefined,
 ): '' | `${MatchFormatOption}` => {
   if (playersPerTeam == null) return ''
-  const matched = MATCH_FORMAT_OPTIONS.find(
-    (option) => playersPerTeamFromMatchFormat(option) === playersPerTeam,
-  )
-  return matched ? (String(matched) as `${MatchFormatOption}`) : ''
+  return MATCH_FORMAT_OPTIONS.includes(playersPerTeam as MatchFormatOption)
+    ? (String(playersPerTeam) as `${MatchFormatOption}`)
+    : ''
 }
 
 export const buildRegistrationProgress = (
   playersPerTeam: number | null | undefined,
+  teamCapacityLimit: number | null | undefined,
   counts: RegistrationStandCounts,
 ) => {
-  const upperLimit = playersPerTeam ?? null
+  if (!playersPerTeam || playersPerTeam < 1) return null
+  const upperLimit = teamCapacityLimit ?? defaultTeamCapacityLimit(playersPerTeam)
   if (!upperLimit || upperLimit < 1) return null
 
-  const matchedFormat = MATCH_FORMAT_OPTIONS.find(
-    (option) => playersPerTeamFromMatchFormat(option) === upperLimit,
-  )
-  if (!matchedFormat) return null
-
-  const requiredCount = matchedFormat
+  const requiredCount = playersPerTeam
   const attendingCount = counts.attending
   const extraCapacity = Math.max(upperLimit - requiredCount, 0)
   const reachedRequirement = attendingCount >= requiredCount
@@ -101,7 +110,7 @@ export const buildRegistrationProgress = (
     : Math.round((attendingCount / requiredCount) * 100)
 
   return {
-    matchFormat: matchedFormat,
+    matchFormat: playersPerTeam,
     upperLimit,
     requiredCount,
     reachedRequirement,

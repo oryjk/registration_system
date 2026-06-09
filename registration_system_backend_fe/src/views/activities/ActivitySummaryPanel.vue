@@ -104,7 +104,9 @@
         </div>
         <div class="flex items-center gap-1.5 text-sm ml-auto text-base-content/50">
           共 <strong class="text-base-content">{{ regCounts.total }}</strong> 条报名记录
-          <span v-if="activity.players_per_team">（上限 {{ activity.players_per_team }} 人/队）</span>
+          <span v-if="activity.team_capacity_limit"
+            >（上限 {{ activity.team_capacity_limit }} 人/队）</span
+          >
         </div>
       </div>
 

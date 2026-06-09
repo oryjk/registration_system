@@ -204,9 +204,11 @@ import {
 } from '@/views/activities/settlement.model'
 import {
   buildRegistrationProgress,
+  defaultTeamCapacityLimit,
   inferMatchFormat,
+  normalizeTeamCapacityLimit,
   normalizeHexColor,
-  playersPerTeamFromMatchFormat,
+  shouldRefreshDefaultTeamCapacityLimit,
   toLocalDateTimeInput,
   type MatchFormatOption,
 } from '@/views/activities/activity-detail.model'
@@ -318,7 +320,11 @@ const activityCheckinTeamIds = computed(() =>
 )
 
 const registrationProgress = computed(() =>
-  buildRegistrationProgress(activity.value?.players_per_team, regCounts.value),
+  buildRegistrationProgress(
+    activity.value?.players_per_team,
+    activity.value?.team_capacity_limit,
+    regCounts.value,
+  ),
 )
 
 const syncSettlementCharges = () => {
@@ -452,14 +458,26 @@ const editForm = reactive({
   end_time: '',
   description: '',
   players_per_team: null as number | null,
+  team_capacity_limit: null as number | null,
   match_format: '' as '' | `${MatchFormatOption}`,
   status: 0,
 })
 
 const onEditMatchFormatChange = () => {
-  editForm.players_per_team = editForm.match_format
-    ? playersPerTeamFromMatchFormat(Number(editForm.match_format) as MatchFormatOption)
-    : null
+  const shouldRefreshLimit = shouldRefreshDefaultTeamCapacityLimit(
+    editForm.team_capacity_limit,
+    editForm.players_per_team,
+  )
+
+  if (!editForm.match_format) {
+    editForm.players_per_team = null
+    editForm.team_capacity_limit = null
+    return
+  }
+  editForm.players_per_team = Number(editForm.match_format)
+  if (shouldRefreshLimit) {
+    editForm.team_capacity_limit = defaultTeamCapacityLimit(editForm.players_per_team)
+  }
 }
 
 const clearEditLocationCoordinates = () => {
@@ -486,6 +504,7 @@ const openEditModal = () => {
     end_time: toLocalDateTimeInput(a.end_time),
     description: a.description || '',
     players_per_team: a.players_per_team ?? null,
+    team_capacity_limit: a.team_capacity_limit ?? defaultTeamCapacityLimit(a.players_per_team),
     match_format: inferMatchFormat(a.players_per_team),
     status: a.status,
   })
@@ -532,6 +551,7 @@ const handleEdit = async () => {
       end_time: editForm.end_time ? editForm.end_time + ':00' : undefined,
       description: editForm.description || null,
       players_per_team: editForm.players_per_team ?? null,
+      team_capacity_limit: normalizeTeamCapacityLimit(editForm.team_capacity_limit),
     })
     if (activity.value && editForm.status !== activity.value.status) {
       await updateActivityStatus(activityId.value, editForm.status)

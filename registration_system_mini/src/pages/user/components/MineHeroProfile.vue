@@ -61,7 +61,49 @@ function handleSwitchIdentity(identityId: string) {
 
 <template>
   <view class="profile-shell">
-    <view class="profile-main-row">
+    <view v-if="!currentUser" class="guest-hero">
+      <view class="guest-hero-main">
+        <view class="guest-avatar-wrap">
+          <view class="profile-avatar guest-avatar">
+            <text>{{ avatarToken }}</text>
+          </view>
+          <view class="guest-online-dot" />
+        </view>
+        <view class="guest-copy">
+          <view class="guest-kicker">PERSONAL HUB</view>
+          <text class="guest-title">立即登录，开始你的赛事旅程</text>
+          <text class="guest-description">登录后可同步你的比赛记录、球队身份、钱包账单与消息通知。</text>
+        </view>
+      </view>
+
+      <view class="guest-action-panel">
+        <view class="guest-action-copy">
+          <text class="guest-action-title">微信一键登录</text>
+          <text class="guest-action-text">无需手动填写，完成授权后立即恢复你的个人资料。</text>
+        </view>
+        <view class="guest-login-button" @tap.stop="handleEditProfile">
+          <text class="guest-login-button-text">微信一键登录</text>
+          <text class="guest-login-button-arrow">→</text>
+        </view>
+      </view>
+
+      <view class="guest-benefit-grid">
+        <view class="guest-benefit-card">
+          <text class="guest-benefit-label">比赛记录</text>
+          <text class="guest-benefit-value">登录后查看报名、出勤与赛程</text>
+        </view>
+        <view class="guest-benefit-card">
+          <text class="guest-benefit-label">球队身份</text>
+          <text class="guest-benefit-value">快速切换你的球队与发布身份</text>
+        </view>
+        <view class="guest-benefit-card guest-benefit-card-wide">
+          <text class="guest-benefit-label">钱包与通知</text>
+          <text class="guest-benefit-value">账单、信用、约队消息会在这里统一汇总</text>
+        </view>
+      </view>
+    </view>
+
+    <view v-else class="profile-main-row">
       <view class="profile-avatar">
         <image
           v-if="currentUser?.avatar_url"
@@ -78,7 +120,7 @@ function handleSwitchIdentity(identityId: string) {
         </view>
         <text class="profile-handle">{{ displayHandle }}</text>
         <view class="profile-actions-row">
-          <text class="profile-edit-chip" @tap.stop="handleEditProfile">{{ currentUser ? "编辑资料" : "去登录" }}</text>
+          <text class="profile-edit-chip" @tap.stop="handleEditProfile">{{ currentUser ? "编辑资料" : "微信一键登录" }}</text>
           <text v-if="currentUser" class="profile-edit-chip profile-logout-chip" @tap.stop="handleLogout">退出登录</text>
         </view>
         <view class="profile-team-row">
@@ -89,7 +131,7 @@ function handleSwitchIdentity(identityId: string) {
       <text class="profile-chevron">›</text>
     </view>
 
-    <scroll-view class="team-switch-scroll" scroll-x>
+    <scroll-view v-if="currentUser" class="team-switch-scroll" scroll-x>
       <view class="team-switch-row">
         <view
           v-for="team in teamProfiles"
@@ -102,7 +144,7 @@ function handleSwitchIdentity(identityId: string) {
       </view>
     </scroll-view>
 
-    <view v-if="availableIdentities.length" class="identity-section">
+    <view v-if="currentUser && availableIdentities.length" class="identity-section">
       <view class="identity-section-head">
         <text class="identity-section-label">当前身份</text>
         <text class="identity-section-value">
@@ -124,7 +166,7 @@ function handleSwitchIdentity(identityId: string) {
       </scroll-view>
     </view>
 
-    <view class="profile-stats-row">
+    <view v-if="currentUser" class="profile-stats-row">
       <view class="profile-stat-item">
         <view class="profile-stat-icon">赛</view>
         <view class="profile-stat-copy">
@@ -171,6 +213,178 @@ function handleSwitchIdentity(identityId: string) {
   display: flex;
   align-items: flex-start;
   gap: 18rpx;
+}
+
+.guest-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 24rpx;
+}
+
+.guest-hero-main {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+}
+
+.guest-avatar-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.guest-avatar {
+  width: 132rpx;
+  height: 132rpx;
+  box-shadow:
+    0 16rpx 34rpx rgba(177, 205, 0, 0.22),
+    0 0 0 10rpx rgba(200, 255, 0, 0.08);
+}
+
+.guest-online-dot {
+  position: absolute;
+  right: 6rpx;
+  bottom: 8rpx;
+  width: 22rpx;
+  height: 22rpx;
+  border-radius: 999rpx;
+  background: #c8ff00;
+  border: 4rpx solid #ffffff;
+  box-sizing: border-box;
+}
+
+.guest-copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.guest-kicker {
+  display: inline-flex;
+  align-items: center;
+  height: 36rpx;
+  padding: 0 14rpx;
+  border-radius: 999rpx;
+  background: rgba(17, 19, 16, 0.06);
+  color: #4d5349;
+  font-size: 20rpx;
+  font-weight: 900;
+  letter-spacing: 1rpx;
+}
+
+.guest-title {
+  display: block;
+  margin-top: 14rpx;
+  color: #10110f;
+  font-size: 38rpx;
+  line-height: 1.22;
+  font-weight: 900;
+}
+
+.guest-description {
+  display: block;
+  margin-top: 10rpx;
+  color: #656b61;
+  font-size: 24rpx;
+  line-height: 1.55;
+  font-weight: 700;
+}
+
+.guest-action-panel {
+  display: flex;
+  align-items: center;
+  gap: 18rpx;
+  padding: 22rpx 22rpx 22rpx 24rpx;
+  border-radius: 28rpx;
+  background:
+    linear-gradient(135deg, rgba(198, 255, 0, 0.2) 0%, rgba(255, 255, 255, 0.98) 45%, rgba(198, 255, 0, 0.08) 100%);
+  border: 2rpx solid rgba(182, 214, 0, 0.18);
+  box-shadow: inset 0 2rpx 0 rgba(255, 255, 255, 0.7);
+}
+
+.guest-action-copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.guest-action-title {
+  display: block;
+  color: #111310;
+  font-size: 30rpx;
+  line-height: 1.2;
+  font-weight: 900;
+}
+
+.guest-action-text {
+  display: block;
+  margin-top: 8rpx;
+  color: #66705c;
+  font-size: 22rpx;
+  line-height: 1.45;
+  font-weight: 700;
+}
+
+.guest-login-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10rpx;
+  min-width: 214rpx;
+  height: 86rpx;
+  padding: 0 26rpx;
+  border-radius: 999rpx;
+  background: #c8ff00;
+  color: #10110f;
+  box-shadow: 0 18rpx 32rpx rgba(179, 212, 0, 0.26);
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+
+.guest-login-button-text,
+.guest-login-button-arrow {
+  font-weight: 900;
+}
+
+.guest-login-button-text {
+  font-size: 28rpx;
+}
+
+.guest-login-button-arrow {
+  font-size: 28rpx;
+  line-height: 1;
+}
+
+.guest-benefit-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14rpx;
+}
+
+.guest-benefit-card {
+  min-width: 0;
+  padding: 22rpx 20rpx;
+  border-radius: 24rpx;
+  background: rgba(247, 248, 244, 0.94);
+  border: 2rpx solid rgba(17, 19, 16, 0.04);
+}
+
+.guest-benefit-card-wide {
+  grid-column: 1 / -1;
+}
+
+.guest-benefit-label {
+  display: block;
+  color: #151712;
+  font-size: 24rpx;
+  line-height: 1.2;
+  font-weight: 900;
+}
+
+.guest-benefit-value {
+  display: block;
+  margin-top: 10rpx;
+  color: #6e736a;
+  font-size: 22rpx;
+  line-height: 1.45;
+  font-weight: 700;
 }
 
 .profile-avatar {

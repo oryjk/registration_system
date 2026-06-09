@@ -20,43 +20,49 @@ describe("create match Wot UI integration", () => {
     expect(source.includes('"^wd-(.*)": "@wot-ui/ui/components/wd-$1/wd-$1.vue"')).toEqual(true);
   });
 
-  test("uses calendar datetime pickers for create match time fields", async () => {
+  test("uses native date and time pickers for create match time fields", async () => {
     const source = await read("src/components/MatchPublishForm.vue");
     const pageSource = await read("src/pages/matches/create/index.vue");
 
-    expect(source.match(/<wd-calendar/g)?.length).toEqual(3);
+    expect((source.match(/<picker/g)?.length ?? 0) >= 3).toEqual(true);
+    expect(source.includes('mode="date"')).toEqual(true);
+    expect(source.match(/mode="time"/g)?.length).toEqual(2);
     expect(source.includes("<wd-datetime-picker")).toEqual(false);
-    expect(source.includes('title="选择比赛时间"')).toEqual(true);
-    expect(source.includes('placeholder="请选择比赛时间"')).toEqual(true);
-    expect(source.includes('选择报名开始时间')).toEqual(true);
-    expect(source.includes('选择报名截止时间')).toEqual(true);
+    expect(source.includes("比赛日期")).toEqual(true);
+    expect(source.includes("比赛开始时间")).toEqual(true);
+    expect(source.includes("比赛结束时间")).toEqual(true);
+    expect(source.includes("报名开始")).toEqual(false);
+    expect(source.includes("报名截止")).toEqual(false);
     expect(source.includes('placeholder="YYYY-MM-DD hh:mm:ss"')).toEqual(false);
-    expect(source.includes("displayDateTime")).toEqual(true);
+    expect(source.includes("date-option-active")).toEqual(true);
+    expect(source.includes("displayTimeLabel")).toEqual(true);
     expect(pageSource.includes('import type { MatchPublishFormModel } from "@/components/matchPublishForm"')).toEqual(true);
     expect(pageSource.includes('import { toBackendDateTime')).toEqual(false);
     expect(pageSource.includes("function toBackendDateTime")).toEqual(true);
-    expect(source.includes("function displayDateTime")).toEqual(true);
+    expect(pageSource.includes("submittedAtTimestamp")).toEqual(true);
     expect(pageSource.includes("MatchPublishForm")).toEqual(true);
   });
 
-  test("combines match date and clock into one match time field", async () => {
+  test("shows date first, then start and end time for create match", async () => {
     const source = await read("src/components/MatchPublishForm.vue");
 
-    expect(source.includes("比赛时间")).toEqual(true);
-    expect(source.includes("比赛日期")).toEqual(false);
-    expect(source.includes("开球时间")).toEqual(false);
-    expect(source.includes('v-model="form.holdingDate"')).toEqual(true);
-    expect(source.includes('type="datetime"')).toEqual(true);
-    expect(source.includes("报名开始")).toEqual(true);
-    expect(source.includes("报名截止")).toEqual(true);
+    expect(source.includes("date-option-scroll")).toEqual(true);
+    expect(source.includes("比赛日期")).toEqual(true);
+    expect(source.includes("比赛开始时间")).toEqual(true);
+    expect(source.includes("比赛结束时间")).toEqual(true);
+    expect(source.includes("handleSelectDateOption")).toEqual(true);
+    expect(source.includes("handleMatchStartTimeChange")).toEqual(true);
+    expect(source.includes("handleMatchEndTimeChange")).toEqual(true);
   });
 
-  test("displays selected datetime values with weekday context", async () => {
+  test("displays selected date and time values with weekday context", async () => {
     const source = await read("src/components/MatchPublishForm.vue");
 
-    expect(source.includes("function displayDateTimeLabel")).toEqual(true);
+    expect(source.includes("function displayDateLabel")).toEqual(true);
+    expect(source.includes("function displayTimeLabel")).toEqual(true);
+    expect(source.includes("buildRecentDateOptions")).toEqual(true);
     expect(source.includes('"周日", "周一", "周二", "周三", "周四", "周五", "周六"')).toEqual(true);
-    expect(source.includes("return displayDateTimeLabel(date.getTime());")).toEqual(true);
+    expect(source.includes('return `${pad(date.getMonth() + 1)}月')).toEqual(true);
   });
 
   test("uses native input and Wot textarea components for editable fields", async () => {
@@ -119,15 +125,13 @@ describe("create match Wot UI integration", () => {
     expect(source.includes("MINI_PROGRAM_VERSION: uploadVersion")).toEqual(true);
   });
 
-  test("links registration default times to the selected match time", async () => {
+  test("derives registration times from submit time and match start time", async () => {
     const source = await read("src/pages/matches/create/index.vue");
 
-    expect(source.includes("function defaultRegistrationStartTime")).toEqual(true);
-    expect(source.includes("function defaultRegistrationEndTime")).toEqual(true);
-    expect(source.includes("holdingDate - 24 * 60 * 60 * 1000")).toEqual(true);
-    expect(source.includes("holdingDate - 60 * 60 * 1000")).toEqual(true);
-    expect(source.includes("form.startTime = defaultRegistrationStartTime(val);")).toEqual(true);
-    expect(source.includes("form.endTime = defaultRegistrationEndTime(val);")).toEqual(true);
-    expect(source.includes("date.setHours(20, 0, 0, 0);")).toEqual(true);
+    expect(source.includes("const submittedAtTimestamp = Date.now();")).toEqual(true);
+    expect(source.includes("const registrationDeadlineTimestamp = normalizeToMinute(form.holdingDate - 24 * 60 * 60 * 1000);")).toEqual(true);
+    expect(source.includes("start_time: toBackendDateTime(submittedAtTimestamp),")).toEqual(true);
+    expect(source.includes("end_time: toBackendDateTime(registrationDeadlineTimestamp),")).toEqual(true);
+    expect(source.includes("matchEndTime")).toEqual(true);
   });
 });

@@ -198,11 +198,10 @@
           <label class="flex flex-col gap-1.5">
             <span class="text-sm font-semibold">每队人数上限</span>
             <input
-              :value="form.players_per_team ?? ''"
+              v-model.number="form.team_capacity_limit"
               type="number"
               min="1"
               class="input input-bordered border-2 h-11"
-              readonly
             />
           </label>
           <label class="flex flex-col gap-1.5 sm:col-span-2">
@@ -262,6 +261,7 @@ export interface ActivityEditFormState {
   end_time: string
   description: string
   players_per_team: number | null
+  team_capacity_limit: number | null
   match_format: '' | `${MatchFormatOption}`
   status: number
 }

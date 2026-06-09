@@ -276,35 +276,121 @@
                     </span>
                   </div>
                 </div>
+                <div
+                  class="activity-registration-preview mt-3 rounded-xl border border-base-300/70 bg-base-200/40 px-3 py-2"
+                >
+                  <div class="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p class="text-sm font-bold text-base-content">当前报名情况</p>
+                      <p class="mt-0.5 text-xs text-base-content/50">
+                        共 {{ activity.registration_preview.counts.total }} 人 ·
+                        参加 {{ activity.registration_preview.counts.attending }} ·
+                        请假 {{ activity.registration_preview.counts.leave }} ·
+                        未表态 {{ activity.registration_preview.counts.unknown }}
+                      </p>
+                    </div>
+                    <span
+                      class="badge badge-sm"
+                      :class="
+                        activity.registration_preview.counts.attending > 0
+                          ? 'badge-success badge-outline'
+                          : 'badge-ghost'
+                      "
+                    >
+                      已报名 {{ activity.registration_preview.counts.attending }}
+                    </span>
+                  </div>
+
+                  <div
+                    v-if="activity.registration_preview.counts.total > 0"
+                    class="mt-2 space-y-1.5"
+                  >
+                    <div
+                      v-for="group in registrationPreviewGroups(activity)"
+                      :key="group.stand"
+                      class="flex min-h-9 items-start gap-3 rounded-lg bg-base-100/80 px-2.5 py-1.5"
+                    >
+                      <div class="flex w-16 flex-shrink-0 items-baseline justify-between gap-1 pt-1">
+                        <span class="text-xs font-semibold text-base-content/70">
+                          {{ group.label }}
+                        </span>
+                        <span class="text-xs tabular-nums text-base-content/45">
+                          {{ group.total }}
+                        </span>
+                      </div>
+                      <div v-if="group.members.length > 0" class="flex min-w-0 flex-1 flex-wrap gap-1.5">
+                        <div
+                          v-for="member in group.members"
+                          :key="`${activity.id}-${group.stand}-${member.user_id}`"
+                          class="flex min-w-0 max-w-[9rem] items-center gap-1.5 rounded-full border border-base-300/70 bg-base-100 py-0.5 pl-0.5 pr-2"
+                        >
+                          <div
+                            class="activity-preview-avatar h-6 w-6 flex-shrink-0 overflow-hidden rounded-full bg-base-300"
+                          >
+                            <img
+                              v-if="member.avatar_url"
+                              :src="member.avatar_url"
+                              class="h-full w-full object-cover"
+                              @error="(e) => ((e.target as HTMLImageElement).style.display = 'none')"
+                            />
+                            <div
+                              v-else
+                              class="flex h-full w-full items-center justify-center text-xs font-bold"
+                            >
+                              {{ previewMemberName(member).charAt(0) || '?' }}
+                            </div>
+                          </div>
+                          <span class="truncate text-xs font-medium text-base-content/80">
+                            {{ previewMemberName(member) }}
+                          </span>
+                        </div>
+                        <span
+                          v-if="group.total > group.members.length"
+                          class="inline-flex h-7 items-center rounded-full bg-base-300/70 px-2.5 text-xs font-semibold text-base-content/60"
+                        >
+                          +{{ group.total - group.members.length }}
+                        </span>
+                      </div>
+                      <p v-else class="pt-1 text-xs text-base-content/35">暂无队员</p>
+                    </div>
+                  </div>
+                  <p v-else class="mt-3 text-xs text-base-content/40">暂无队员报名状态。</p>
+                </div>
               </div>
             </div>
-            <!-- 操作按钮 -->
-            <div class="flex gap-1.5 flex-shrink-0" @click.stop>
-              <div class="dropdown dropdown-end">
-                <button tabindex="0" class="btn btn-ghost btn-xs btn-square">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    class="h-4 w-4"
-                    viewBox="0 0 24 24"
-                    fill="currentColor"
-                  >
-                    <path
-                      d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"
-                    />
-                  </svg>
-                </button>
-                <ul
-                  tabindex="0"
-                  class="dropdown-content menu menu-sm bg-base-100 rounded-box z-50 w-40 p-1 shadow-lg border border-base-200"
+            <div
+              class="activity-row-actions flex w-32 flex-shrink-0 flex-col items-stretch gap-2"
+              @click.stop
+            >
+              <button type="button" class="btn btn-xs btn-outline" @click="goDetail(activity.id)">
+                查看
+              </button>
+              <button type="button" class="btn btn-xs btn-outline" @click="openEditModal(activity)">
+                编辑
+              </button>
+              <template v-if="activity.status === 0">
+                <button
+                  type="button"
+                  class="btn btn-xs btn-success btn-outline"
+                  @click="changeStatus(activity.id, 2)"
                 >
-                  <li><a @click="goDetail(activity.id)">查看详情</a></li>
-                  <li><a @click="openEditModal(activity)">编辑</a></li>
-                  <li v-for="(label, s) in statusActions(activity.status)" :key="s">
-                    <a @click="changeStatus(activity.id, Number(s))">{{ label }}</a>
-                  </li>
-                  <li><a class="text-error" @click="confirmDelete(activity)">删除</a></li>
-                </ul>
-              </div>
+                  设为已结束
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-xs btn-warning btn-outline"
+                  @click="changeStatus(activity.id, 3)"
+                >
+                  设为已取消
+                </button>
+              </template>
+              <button
+                type="button"
+                class="btn btn-xs btn-error btn-outline"
+                @click="confirmDelete(activity)"
+              >
+                删除
+              </button>
             </div>
           </div>
         </div>
@@ -379,112 +465,114 @@
               <option value="internal">队内训练</option>
             </select>
           </label>
-          <label class="flex flex-col gap-1.5">
-            <span class="text-sm font-semibold">球服颜色</span>
-            <div
-              class="flex items-center gap-2 rounded-lg border border-base-300 bg-base-100 px-3 py-2"
-            >
-              <div class="flex items-center gap-3">
-                <span
-                  class="h-6 w-6 rounded-md border border-base-300"
-                  :style="{ backgroundColor: form.color || 'transparent' }"
-                ></span>
-                <span
-                  class="font-mono text-sm"
-                  :class="form.color ? 'text-base-content' : 'text-base-content/40'"
-                >
-                  {{ form.color || '未设置' }}
-                </span>
-              </div>
-              <div class="ml-auto flex items-center gap-2">
-                <div class="dropdown dropdown-end">
-                  <button type="button" tabindex="0" class="btn btn-outline btn-xs">选色</button>
-                  <div
-                    tabindex="0"
-                    class="dropdown-content z-50 mt-2 rounded-2xl border border-base-300 bg-base-100 p-2 shadow-xl"
+          <div class="activity-jersey-color-row grid gap-4 sm:col-span-2 sm:grid-cols-2">
+            <label class="flex flex-col gap-1.5">
+              <span class="text-sm font-semibold">球服颜色</span>
+              <div
+                class="flex items-center gap-2 rounded-lg border border-base-300 bg-base-100 px-3 py-2"
+              >
+                <div class="flex items-center gap-3">
+                  <span
+                    class="h-6 w-6 rounded-md border border-base-300"
+                    :style="{ backgroundColor: form.color || 'transparent' }"
+                  ></span>
+                  <span
+                    class="font-mono text-sm"
+                    :class="form.color ? 'text-base-content' : 'text-base-content/40'"
                   >
-                    <div class="grid grid-cols-8 gap-1.5">
-                      <button
-                        v-for="color in COMMON_JERSEY_COLORS"
-                        :key="`home-${color}`"
-                        type="button"
-                        class="h-6 w-6 rounded-md border transition-transform hover:scale-105"
-                        :class="
-                          form.color === color
-                            ? 'border-base-content ring-2 ring-primary/40'
-                            : 'border-base-300/80'
-                        "
-                        :style="{ backgroundColor: color }"
-                        :title="color"
-                        @click="selectColor('color', color)"
-                      ></button>
+                    {{ form.color || '未设置' }}
+                  </span>
+                </div>
+                <div class="ml-auto flex items-center gap-2">
+                  <div class="dropdown dropdown-end">
+                    <button type="button" tabindex="0" class="btn btn-outline btn-xs">选色</button>
+                    <div
+                      tabindex="0"
+                      class="dropdown-content z-50 mt-2 rounded-2xl border border-base-300 bg-base-100 p-2 shadow-xl"
+                    >
+                      <div class="grid grid-cols-8 gap-1.5">
+                        <button
+                          v-for="color in COMMON_JERSEY_COLORS"
+                          :key="`home-${color}`"
+                          type="button"
+                          class="h-6 w-6 rounded-md border transition-transform hover:scale-105"
+                          :class="
+                            form.color === color
+                              ? 'border-base-content ring-2 ring-primary/40'
+                              : 'border-base-300/80'
+                          "
+                          :style="{ backgroundColor: color }"
+                          :title="color"
+                          @click="selectColor('color', color)"
+                        ></button>
+                      </div>
                     </div>
                   </div>
-                </div>
-                <button
-                  type="button"
-                  class="btn btn-ghost btn-xs"
-                  :disabled="!form.color"
-                  @click="clearColor('color')"
-                >
-                  清空
-                </button>
-              </div>
-            </div>
-          </label>
-          <label class="flex flex-col gap-1.5">
-            <span class="text-sm font-semibold">对手球服颜色</span>
-            <div
-              class="flex items-center gap-2 rounded-lg border border-base-300 bg-base-100 px-3 py-2"
-            >
-              <div class="flex items-center gap-3">
-                <span
-                  class="h-6 w-6 rounded-md border border-base-300"
-                  :style="{ backgroundColor: form.opposing_color || 'transparent' }"
-                ></span>
-                <span
-                  class="font-mono text-sm"
-                  :class="form.opposing_color ? 'text-base-content' : 'text-base-content/40'"
-                >
-                  {{ form.opposing_color || '未设置' }}
-                </span>
-              </div>
-              <div class="ml-auto flex items-center gap-2">
-                <div class="dropdown dropdown-end">
-                  <button type="button" tabindex="0" class="btn btn-outline btn-xs">选色</button>
-                  <div
-                    tabindex="0"
-                    class="dropdown-content z-50 mt-2 rounded-2xl border border-base-300 bg-base-100 p-2 shadow-xl"
+                  <button
+                    type="button"
+                    class="btn btn-ghost btn-xs"
+                    :disabled="!form.color"
+                    @click="clearColor('color')"
                   >
-                    <div class="grid grid-cols-8 gap-1.5">
-                      <button
-                        v-for="color in COMMON_JERSEY_COLORS"
-                        :key="`away-${color}`"
-                        type="button"
-                        class="h-6 w-6 rounded-md border transition-transform hover:scale-105"
-                        :class="
-                          form.opposing_color === color
-                            ? 'border-base-content ring-2 ring-primary/40'
-                            : 'border-base-300/80'
-                        "
-                        :style="{ backgroundColor: color }"
-                        :title="color"
-                        @click="selectColor('opposing_color', color)"
-                      ></button>
+                    清空
+                  </button>
+                </div>
+              </div>
+            </label>
+            <label class="flex flex-col gap-1.5">
+              <span class="text-sm font-semibold">对手球服颜色</span>
+              <div
+                class="flex items-center gap-2 rounded-lg border border-base-300 bg-base-100 px-3 py-2"
+              >
+                <div class="flex items-center gap-3">
+                  <span
+                    class="h-6 w-6 rounded-md border border-base-300"
+                    :style="{ backgroundColor: form.opposing_color || 'transparent' }"
+                  ></span>
+                  <span
+                    class="font-mono text-sm"
+                    :class="form.opposing_color ? 'text-base-content' : 'text-base-content/40'"
+                  >
+                    {{ form.opposing_color || '未设置' }}
+                  </span>
+                </div>
+                <div class="ml-auto flex items-center gap-2">
+                  <div class="dropdown dropdown-end">
+                    <button type="button" tabindex="0" class="btn btn-outline btn-xs">选色</button>
+                    <div
+                      tabindex="0"
+                      class="dropdown-content z-50 mt-2 rounded-2xl border border-base-300 bg-base-100 p-2 shadow-xl"
+                    >
+                      <div class="grid grid-cols-8 gap-1.5">
+                        <button
+                          v-for="color in COMMON_JERSEY_COLORS"
+                          :key="`away-${color}`"
+                          type="button"
+                          class="h-6 w-6 rounded-md border transition-transform hover:scale-105"
+                          :class="
+                            form.opposing_color === color
+                              ? 'border-base-content ring-2 ring-primary/40'
+                              : 'border-base-300/80'
+                          "
+                          :style="{ backgroundColor: color }"
+                          :title="color"
+                          @click="selectColor('opposing_color', color)"
+                        ></button>
+                      </div>
                     </div>
                   </div>
+                  <button
+                    type="button"
+                    class="btn btn-ghost btn-xs"
+                    :disabled="!form.opposing_color"
+                    @click="clearColor('opposing_color')"
+                  >
+                    清空
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  class="btn btn-ghost btn-xs"
-                  :disabled="!form.opposing_color"
-                  @click="clearColor('opposing_color')"
-                >
-                  清空
-                </button>
               </div>
-            </div>
-          </label>
+            </label>
+          </div>
           <label class="flex flex-col gap-1.5">
             <span class="text-sm font-semibold">举办日期 <span class="text-error">*</span></span>
             <input
@@ -532,12 +620,11 @@
           <label class="flex flex-col gap-1.5">
             <span class="text-sm font-semibold">每队人数上限</span>
             <input
-              :value="form.players_per_team ?? ''"
+              v-model.number="form.team_capacity_limit"
               type="number"
               min="1"
               class="input input-bordered border-2 h-11"
               placeholder="选择几人制后自动计算"
-              readonly
             />
           </label>
           <label class="flex flex-col gap-1.5 sm:col-span-2">
@@ -645,7 +732,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, reactive } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter, type LocationQueryRaw } from 'vue-router'
 import { toast } from '@/utils/toast'
 import TencentLocationPickerModal from '@/components/TencentLocationPickerModal.vue'
 import {
@@ -657,6 +744,7 @@ import {
   STATUS_LABEL,
   STATUS_BADGE,
   type Activity,
+  type ActivityRegistrationPreviewMember,
   type ActivityStatusCounts,
   type CreateActivityPayload,
 } from '@/services/activity'
@@ -664,13 +752,22 @@ import { adminListTeams, type TeamSummary } from '@/services/team'
 import type { AppliedLocationSelection } from '@/views/activities/location-picker.model'
 import {
   COMMON_JERSEY_COLORS,
+  normalizeTeamCapacityLimit,
   normalizeHexColor,
+  shouldRefreshDefaultTeamCapacityLimit,
   type ActivityColorField,
 } from '@/views/activities/activity-detail.model'
 
 const router = useRouter()
+const route = useRoute()
 const MATCH_FORMAT_OPTIONS = [5, 6, 7, 8, 11] as const
 type MatchFormatOption = (typeof MATCH_FORMAT_OPTIONS)[number]
+const DEFAULT_TEAM_CAPACITY_MULTIPLIER = 2
+const DEFAULT_ACTIVITY_STATUS_FILTER = 0
+const DEFAULT_LIST_PAGE = 1
+const DEFAULT_LIST_PAGE_SIZE = 20
+const ACTIVITY_STATUS_FILTERS = [-1, 0, 1, 2, 3] as const
+const LIST_PAGE_SIZE_OPTIONS = [10, 20, 50] as const
 
 const activityItems = ref<Activity[]>([])
 const teamOptions = ref<TeamSummary[]>([])
@@ -682,14 +779,60 @@ const listCounts = ref<ActivityStatusCounts>({
   cancelled: 0,
 })
 const listTotal = ref(0)
-const listPage = ref(1)
-const listPageSize = ref(20)
+const listPage = ref(DEFAULT_LIST_PAGE)
+const listPageSize = ref(DEFAULT_LIST_PAGE_SIZE)
 const loading = ref(false)
-const filterStatus = ref(-1)
+const filterStatus = ref(DEFAULT_ACTIVITY_STATUS_FILTER)
 const nowTick = ref(Date.now())
 let countdownTimer: ReturnType<typeof setInterval> | null = null
 
 const listTotalPages = computed(() => Math.max(1, Math.ceil(listTotal.value / listPageSize.value)))
+
+const routeQueryValue = (value: unknown) => (Array.isArray(value) ? value[0] : value)
+
+const parseRouteInt = (value: unknown, fallback: number) => {
+  const parsed = Number.parseInt(String(routeQueryValue(value) ?? ''), 10)
+  return Number.isFinite(parsed) ? parsed : fallback
+}
+
+const normalizeRouteStatus = (value: unknown) => {
+  const parsed = parseRouteInt(value, DEFAULT_ACTIVITY_STATUS_FILTER)
+  return ACTIVITY_STATUS_FILTERS.includes(parsed as (typeof ACTIVITY_STATUS_FILTERS)[number])
+    ? parsed
+    : DEFAULT_ACTIVITY_STATUS_FILTER
+}
+
+const normalizeRoutePage = (value: unknown) => Math.max(1, parseRouteInt(value, DEFAULT_LIST_PAGE))
+
+const normalizeRoutePageSize = (value: unknown) => {
+  const parsed = parseRouteInt(value, DEFAULT_LIST_PAGE_SIZE)
+  return LIST_PAGE_SIZE_OPTIONS.includes(parsed as (typeof LIST_PAGE_SIZE_OPTIONS)[number])
+    ? parsed
+    : DEFAULT_LIST_PAGE_SIZE
+}
+
+const listRouteQuery = (): LocationQueryRaw => ({
+  ...route.query,
+  status: String(filterStatus.value),
+  page: String(listPage.value),
+  page_size: String(listPageSize.value),
+})
+
+const isSameListRouteQuery = () =>
+  routeQueryValue(route.query.status) === String(filterStatus.value) &&
+  routeQueryValue(route.query.page) === String(listPage.value) &&
+  routeQueryValue(route.query.page_size) === String(listPageSize.value)
+
+const applyListRouteQuery = () => {
+  filterStatus.value = normalizeRouteStatus(route.query.status)
+  listPage.value = normalizeRoutePage(route.query.page)
+  listPageSize.value = normalizeRoutePageSize(route.query.page_size)
+}
+
+const syncListStateToRoute = async () => {
+  if (isSameListRouteQuery()) return
+  await router.replace({ query: listRouteQuery() })
+}
 
 const filterTabCount = (status: number) => {
   const c = listCounts.value
@@ -701,14 +844,43 @@ const filterTabCount = (status: number) => {
   return 0
 }
 
+const previewMemberName = (member: ActivityRegistrationPreviewMember) =>
+  member.real_name || member.nickname || `用户 ${member.user_id}`
+
+const previewMembersByStand = (activity: Activity, stand: number) =>
+  activity.registration_preview.members.filter((member) => member.stand === stand)
+
+const registrationPreviewGroups = (activity: Activity) => [
+  {
+    stand: 1,
+    label: '已报名',
+    total: activity.registration_preview.counts.attending,
+    members: previewMembersByStand(activity, 1),
+  },
+  {
+    stand: 2,
+    label: '请假',
+    total: activity.registration_preview.counts.leave,
+    members: previewMembersByStand(activity, 2),
+  },
+  {
+    stand: 0,
+    label: '未表态',
+    total: activity.registration_preview.counts.unknown,
+    members: previewMembersByStand(activity, 0),
+  },
+]
+
 const onFilterStatus = async (status: number) => {
   filterStatus.value = status
   listPage.value = 1
+  await syncListStateToRoute()
   await fetchList()
 }
 
 const onListPageSizeChange = async () => {
   listPage.value = 1
+  await syncListStateToRoute()
   await fetchList()
 }
 
@@ -716,6 +888,7 @@ const goListPage = async (p: number) => {
   const next = Math.min(Math.max(1, p), listTotalPages.value)
   if (next === listPage.value) return
   listPage.value = next
+  await syncListStateToRoute()
   await fetchList()
 }
 
@@ -753,20 +926,6 @@ const jerseyColorValue = (color: string | null) => color || 'transparent'
 
 const jerseyColorLabel = (color: string | null) => color || '未设置'
 
-const statusActions = (status: number): Record<number, string> => {
-  const all: Record<number, string> = {
-    0: '设为报名中',
-    1: '设为进行中',
-    2: '设为已结束',
-    3: '取消活动',
-  }
-  const res: Record<number, string> = {}
-  for (const [k, v] of Object.entries(all)) {
-    if (Number(k) !== status) res[Number(k)] = v
-  }
-  return res
-}
-
 const changeStatus = async (id: string, status: number) => {
   try {
     await updateActivityStatus(id, status)
@@ -792,6 +951,7 @@ const fetchList = async () => {
     const maxPage = Math.max(1, Math.ceil(res.total / res.page_size))
     if (res.items.length === 0 && res.total > 0 && res.page > maxPage) {
       listPage.value = maxPage
+      await syncListStateToRoute()
       await fetchList()
       return
     }
@@ -822,31 +982,42 @@ const form = reactive({
   description: '',
   match_format: '' as '' | `${MatchFormatOption}`,
   players_per_team: null as number | null,
+  team_capacity_limit: null as number | null,
   checkin_enabled: false,
   checkin_radius_meters: 150,
   checkin_open_minutes_before: 60,
   checkin_close_minutes_after: 30,
 })
 
-const playersPerTeamFromMatchFormat = (matchFormat: MatchFormatOption) => matchFormat * 2 - 1
-
 const inferMatchFormat = (
   playersPerTeam: number | null | undefined,
 ): '' | `${MatchFormatOption}` => {
   if (playersPerTeam == null) return ''
-  const matched = MATCH_FORMAT_OPTIONS.find(
-    (option) => playersPerTeamFromMatchFormat(option) === playersPerTeam,
-  )
-  return matched ? (String(matched) as `${MatchFormatOption}`) : ''
+  return MATCH_FORMAT_OPTIONS.includes(playersPerTeam as MatchFormatOption)
+    ? (String(playersPerTeam) as `${MatchFormatOption}`)
+    : ''
 }
 
 const onMatchFormatChange = (target: {
   match_format: '' | `${MatchFormatOption}`
   players_per_team: number | null
+  team_capacity_limit: number | string | null
 }) => {
-  target.players_per_team = target.match_format
-    ? playersPerTeamFromMatchFormat(Number(target.match_format) as MatchFormatOption)
-    : null
+  const shouldRefreshLimit = shouldRefreshDefaultTeamCapacityLimit(
+    target.team_capacity_limit,
+    target.players_per_team,
+  )
+
+  if (!target.match_format) {
+    target.players_per_team = null
+    target.team_capacity_limit = null
+    return
+  }
+
+  target.players_per_team = Number(target.match_format)
+  if (shouldRefreshLimit) {
+    target.team_capacity_limit = target.players_per_team * DEFAULT_TEAM_CAPACITY_MULTIPLIER
+  }
 }
 
 const selectColor = (field: ActivityColorField, color: string) => {
@@ -899,6 +1070,7 @@ const openCreateModal = () => {
     description: '',
     match_format: '',
     players_per_team: null,
+    team_capacity_limit: null,
     checkin_enabled: false,
     checkin_radius_meters: 150,
     checkin_open_minutes_before: 60,
@@ -927,6 +1099,11 @@ const openEditModal = (activity: Activity) => {
     description: activity.description || '',
     match_format: inferMatchFormat(activity.players_per_team),
     players_per_team: activity.players_per_team ?? null,
+    team_capacity_limit:
+      activity.team_capacity_limit ??
+      (activity.players_per_team == null
+        ? null
+        : activity.players_per_team * DEFAULT_TEAM_CAPACITY_MULTIPLIER),
     checkin_enabled: activity.team_checkin_configs.some((item) => item.enabled),
     checkin_radius_meters: activity.team_checkin_configs[0]?.radius_meters ?? 150,
     checkin_open_minutes_before: activity.team_checkin_configs[0]?.open_minutes_before ?? 60,
@@ -968,6 +1145,7 @@ const handleSubmit = async () => {
       opposing_color: form.opposing_color || undefined,
       description: form.description || undefined,
       players_per_team: form.players_per_team ?? undefined,
+      team_capacity_limit: normalizeTeamCapacityLimit(form.team_capacity_limit) ?? undefined,
     }
     if (!editTarget.value && selectedTeamIds.length > 0) {
       payload.team_checkin_configs = selectedTeamIds.map((teamId) => ({
@@ -988,6 +1166,7 @@ const handleSubmit = async () => {
         opposing_color: form.opposing_color || null,
         description: form.description || null,
         players_per_team: form.players_per_team ?? null,
+        team_capacity_limit: normalizeTeamCapacityLimit(form.team_capacity_limit),
       })
     } else {
       await createActivity(payload)
@@ -1026,6 +1205,8 @@ const handleDelete = async () => {
 }
 
 onMounted(() => {
+  applyListRouteQuery()
+  void syncListStateToRoute()
   countdownTimer = setInterval(() => {
     nowTick.value = Date.now()
   }, 60 * 1000)

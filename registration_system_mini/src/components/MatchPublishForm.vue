@@ -20,8 +20,6 @@ const emit = defineEmits<{
   (event: "update:modelValue", value: MatchPublishFormModel): void;
   (event: "locationInput"): void;
   (event: "chooseLocation"): void;
-  (event: "timePickerOpen"): void;
-  (event: "timePickerClose"): void;
 }>();
 
 const form = computed({
@@ -43,12 +41,6 @@ const descriptionPlaceholder = computed(() =>
 const locationCaption = computed(() =>
   isChallenge.value ? "可直接输入文字地址，也可以使用地图选择场地。" : "可直接输入文字地址；启用签到时请用地图选择经纬度。",
 );
-const secondTimeLabel = computed(() => (isChallenge.value ? "开始时间" : "报名开始"));
-const thirdTimeLabel = computed(() => (isChallenge.value ? "结束时间" : "报名截止"));
-const secondTimeTitle = computed(() => (isChallenge.value ? "选择开始时间" : "选择报名开始时间"));
-const thirdTimeTitle = computed(() => (isChallenge.value ? "选择结束时间" : "选择报名截止时间"));
-const secondTimePlaceholder = computed(() => (isChallenge.value ? "请选择开始时间" : "请选择报名开始时间"));
-const thirdTimePlaceholder = computed(() => (isChallenge.value ? "请选择结束时间" : "请选择报名截止时间"));
 const colorOptions = [
   { name: "深蓝", value: "#2F6BFF" },
   { name: "荧光绿", value: "#C8FF00" },
@@ -86,36 +78,115 @@ function handleChooseLocation() {
   emit("chooseLocation");
 }
 
-function handleTimePickerOpen() {
-  emit("timePickerOpen");
-}
-
-function handleTimePickerClose() {
-  emit("timePickerClose");
-}
-
 function pad(value: number) {
   return String(value).padStart(2, "0");
 }
 
-function defaultDateTimeValue(offsetHours = 0) {
-  const date = new Date();
-  date.setHours(date.getHours() + offsetHours);
+function parsePickerDate(value: number) {
+  const date = value ? new Date(value) : new Date();
+  return Number.isFinite(date.getTime()) ? date : new Date();
+}
+
+function normalizeToMinute(timestamp: number) {
+  const date = new Date(timestamp);
+  date.setSeconds(0, 0);
   return date.getTime();
 }
 
-function displayDateTimeLabel(value: number) {
+function displayDateLabel(value: number) {
   if (!value) return "";
-  const date = new Date(value);
+  const date = parsePickerDate(value);
   const weekday = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"][date.getDay()] ?? "";
-  return `${pad(date.getMonth() + 1)}月${pad(date.getDate())}日 ${weekday} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  return `${pad(date.getMonth() + 1)}月${pad(date.getDate())}日 ${weekday}`;
 }
 
-function displayDateTime(items: Array<{ value: string | number }>) {
-  if (!items.length) return "";
-  const [year, month, day, hour, minute] = items.map((item) => Number(item.value));
-  const date = new Date(year, month - 1, day, hour, minute);
-  return displayDateTimeLabel(date.getTime());
+function displayTimeLabel(value: number) {
+  if (!value) return "";
+  const date = parsePickerDate(value);
+  return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function formatPickerDateValue(value: number) {
+  const date = parsePickerDate(value);
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+function formatPickerTimeValue(value: number) {
+  const date = parsePickerDate(value);
+  return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function mergeDate(baseValue: number, pickerValue: string) {
+  const date = parsePickerDate(baseValue);
+  const [year, month, day] = pickerValue.split("-").map((item) => Number(item));
+  date.setFullYear(year, (month || 1) - 1, day || 1);
+  return normalizeToMinute(date.getTime());
+}
+
+function mergeTime(baseValue: number, pickerValue: string) {
+  const date = parsePickerDate(baseValue || form.value.holdingDate);
+  const [hour, minute] = pickerValue.split(":").map((item) => Number(item));
+  date.setHours(hour || 0, minute || 0, 0, 0);
+  return normalizeToMinute(date.getTime());
+}
+
+function describeRelativeDay(index: number) {
+  if (index === 0) return "今天";
+  if (index === 1) return "明天";
+  return ["周日", "周一", "周二", "周三", "周四", "周五", "周六"][index % 7] ?? "";
+}
+
+function buildRecentDateOptions() {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(today.getTime() + index * 24 * 60 * 60 * 1000);
+    const timestamp = date.getTime();
+    return {
+      value: timestamp,
+      topLabel: index === 0 ? "今天" : ["周日", "周一", "周二", "周三", "周四", "周五", "周六"][date.getDay()] ?? "",
+      dayLabel: pad(date.getDate()),
+      monthLabel: `${pad(date.getMonth() + 1)}月`,
+      pickerValue: formatPickerDateValue(timestamp),
+    };
+  });
+}
+
+const recentDateOptions = computed(() => buildRecentDateOptions());
+const selectedDateValue = computed(() => formatPickerDateValue(form.value.holdingDate));
+
+function syncHoldingRelatedDate(nextDateTimestamp: number) {
+  const currentStartClock = formatPickerTimeValue(form.value.holdingDate);
+  const currentEndClock = formatPickerTimeValue(form.value.matchEndTime);
+  const nextHoldingDate = mergeTime(nextDateTimestamp, currentStartClock);
+  const nextMatchEndTime = mergeTime(nextDateTimestamp, currentEndClock);
+  updateField("holdingDate", nextHoldingDate);
+  updateField("matchEndTime", nextMatchEndTime);
+}
+
+function handleSelectDateOption(timestamp: number) {
+  syncHoldingRelatedDate(timestamp);
+}
+
+function handleDatePickerChange(event: Event) {
+  const detail = event as Event & { detail?: { value?: string } };
+  const nextValue = detail.detail?.value;
+  if (!nextValue) return;
+  syncHoldingRelatedDate(mergeDate(form.value.holdingDate, nextValue));
+}
+
+function handleMatchStartTimeChange(event: Event) {
+  const detail = event as Event & { detail?: { value?: string } };
+  const nextValue = detail.detail?.value;
+  if (!nextValue) return;
+  updateField("holdingDate", mergeTime(form.value.holdingDate, nextValue));
+}
+
+function handleMatchEndTimeChange(event: Event) {
+  const detail = event as Event & { detail?: { value?: string } };
+  const nextValue = detail.detail?.value;
+  if (!nextValue) return;
+  updateField("matchEndTime", mergeTime(form.value.matchEndTime || form.value.holdingDate, nextValue));
 }
 </script>
 
@@ -207,81 +278,57 @@ function displayDateTime(items: Array<{ value: string | number }>) {
             placeholder-class="create-native-placeholder"
           />
         </view>
+
         <view class="create-time-section create-form-item-full">
+          <view class="create-time-head">
+            <text class="create-time-title">比赛日期</text>
+            <picker mode="date" :value="selectedDateValue" @change="handleDatePickerChange">
+              <view class="create-date-picker-link">更多日期</view>
+            </picker>
+          </view>
+
+          <scroll-view class="date-option-scroll" scroll-x>
+            <view class="date-option-row">
+              <view
+                v-for="option in recentDateOptions"
+                :key="option.pickerValue"
+                :class="['date-option-card', selectedDateValue === option.pickerValue ? 'date-option-active' : '']"
+                @tap="handleSelectDateOption(option.value)"
+              >
+                <text class="date-option-top">{{ option.topLabel }}</text>
+                <text class="date-option-day">{{ option.dayLabel }}</text>
+                <text class="date-option-month">{{ option.monthLabel }}</text>
+              </view>
+            </view>
+          </scroll-view>
+
           <view class="create-time-grid">
-            <wd-calendar
-              v-model="form.holdingDate"
-              type="datetime"
-              title="选择比赛时间"
-              placeholder="请选择比赛时间"
-              confirm-text="确定"
-              :display-format="displayDateTime"
-              custom-class="create-wot-calendar"
-              root-portal
-              @open="handleTimePickerOpen"
-              @cancel="handleTimePickerClose"
-              @confirm="handleTimePickerClose"
-            >
+            <picker mode="time" :value="formatPickerTimeValue(form.holdingDate)" @change="handleMatchStartTimeChange">
               <view class="create-time-tile">
-                <text class="create-time-label">比赛时间</text>
+                <text class="create-time-label">比赛开始时间</text>
                 <view class="create-time-value-row">
                   <text :class="['create-time-value', !form.holdingDate ? 'create-time-value-placeholder' : '']">
-                    {{ displayDateTimeLabel(form.holdingDate) || "请选择比赛时间" }}
+                    {{ displayTimeLabel(form.holdingDate) || "请选择比赛开始时间" }}
                   </text>
                   <text class="create-time-arrow">›</text>
                 </view>
               </view>
-            </wd-calendar>
+            </picker>
 
-            <wd-calendar
-              v-model="form.startTime"
-              type="datetime"
-              :title="secondTimeTitle"
-              :placeholder="secondTimePlaceholder"
-              confirm-text="确定"
-              :display-format="displayDateTime"
-              custom-class="create-wot-calendar"
-              root-portal
-              @open="handleTimePickerOpen"
-              @cancel="handleTimePickerClose"
-              @confirm="handleTimePickerClose"
-            >
+            <picker mode="time" :value="formatPickerTimeValue(form.matchEndTime)" @change="handleMatchEndTimeChange">
               <view class="create-time-tile">
-                <text class="create-time-label">{{ secondTimeLabel }}</text>
+                <text class="create-time-label">比赛结束时间</text>
                 <view class="create-time-value-row">
-                  <text :class="['create-time-value', !form.startTime ? 'create-time-value-placeholder' : '']">
-                    {{ displayDateTimeLabel(form.startTime) || secondTimePlaceholder }}
+                  <text :class="['create-time-value', !form.matchEndTime ? 'create-time-value-placeholder' : '']">
+                    {{ displayTimeLabel(form.matchEndTime) || "请选择比赛结束时间" }}
                   </text>
                   <text class="create-time-arrow">›</text>
                 </view>
               </view>
-            </wd-calendar>
-
-            <wd-calendar
-              v-model="form.endTime"
-              type="datetime"
-              :title="thirdTimeTitle"
-              :placeholder="thirdTimePlaceholder"
-              confirm-text="确定"
-              :display-format="displayDateTime"
-              custom-class="create-wot-calendar"
-              root-portal
-              @open="handleTimePickerOpen"
-              @cancel="handleTimePickerClose"
-              @confirm="handleTimePickerClose"
-            >
-              <view class="create-time-tile">
-                <text class="create-time-label">{{ thirdTimeLabel }}</text>
-                <view class="create-time-value-row">
-                  <text :class="['create-time-value', !form.endTime ? 'create-time-value-placeholder' : '']">
-                    {{ displayDateTimeLabel(form.endTime) || thirdTimePlaceholder }}
-                  </text>
-                  <text class="create-time-arrow">›</text>
-                </view>
-              </view>
-            </wd-calendar>
+            </picker>
           </view>
         </view>
+
         <view v-if="timeValidMessage" class="create-time-error create-form-item-full">
           {{ timeValidMessage }}
         </view>
@@ -578,15 +625,96 @@ function displayDateTime(items: Array<{ value: string | number }>) {
   margin-top: 2rpx;
 }
 
+.create-time-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.create-time-title {
+  display: block;
+  color: #111310;
+  font-size: 28rpx;
+  font-weight: 900;
+}
+
+.create-date-picker-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 58rpx;
+  padding: 0 22rpx;
+  border-radius: 999rpx;
+  background: #eef2e8;
+  color: #4e544b;
+  font-size: 22rpx;
+  font-weight: 800;
+}
+
+.date-option-scroll {
+  margin-top: 18rpx;
+  white-space: nowrap;
+}
+
+.date-option-row {
+  display: inline-flex;
+  gap: 14rpx;
+  padding-right: 4rpx;
+}
+
+.date-option-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 132rpx;
+  min-height: 164rpx;
+  border-radius: 30rpx;
+  border: 2rpx solid #e7ebdf;
+  background: #ffffff;
+  box-shadow: 0 10rpx 24rpx rgba(17, 17, 17, 0.04);
+  box-sizing: border-box;
+}
+
+.date-option-active {
+  border-color: #c8ff00;
+  background: #c8ff00;
+  box-shadow: 0 18rpx 34rpx rgba(181, 214, 0, 0.24);
+}
+
+.date-option-top {
+  color: #61665f;
+  font-size: 24rpx;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.date-option-day {
+  margin-top: 10rpx;
+  color: #111310;
+  font-size: 60rpx;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.date-option-month {
+  margin-top: 8rpx;
+  color: #72776f;
+  font-size: 20rpx;
+  font-weight: 700;
+}
+
+.date-option-active .date-option-top,
+.date-option-active .date-option-month {
+  color: rgba(17, 19, 16, 0.72);
+}
+
 .create-time-grid {
   display: flex;
   flex-direction: column;
   gap: 18rpx;
-}
-
-.create-wot-calendar {
-  width: 100%;
-  display: block;
+  margin-top: 22rpx;
 }
 
 .create-time-tile {
@@ -599,14 +727,9 @@ function displayDateTime(items: Array<{ value: string | number }>) {
   box-shadow: inset 0 2rpx 0 rgba(255, 255, 255, 0.74);
   box-sizing: border-box;
   display: grid;
-  grid-template-columns: 148rpx minmax(0, 1fr) auto;
+  grid-template-columns: 180rpx minmax(0, 1fr) auto;
   align-items: center;
   gap: 18rpx;
-}
-
-.create-time-tile:active {
-  border-color: #aeb8a7;
-  background: #eef2e8;
 }
 
 .create-time-label {

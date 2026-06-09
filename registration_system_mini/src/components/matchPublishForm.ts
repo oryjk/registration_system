@@ -4,6 +4,7 @@ export interface MatchPublishFormModel {
   locationLatitude: number | null;
   locationLongitude: number | null;
   holdingDate: number;
+  matchEndTime: number;
   startTime: number;
   endTime: number;
   opposing: string;

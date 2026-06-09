@@ -155,7 +155,10 @@ describe("mine page background rendering", () => {
     expect(userPageSource.includes("async function handleLogin()")).toEqual(true);
     expect(userPageSource.includes("await refreshSessionContext();")).toEqual(true);
     expect(userPageSource.includes('@login="handleLogin"')).toEqual(true);
-    expect(heroProfileSource.includes('currentUser ? "编辑资料" : "去登录"')).toEqual(true);
+    expect(heroProfileSource.includes('v-if="!currentUser" class="guest-hero"')).toEqual(true);
+    expect(heroProfileSource.includes("立即登录，开始你的赛事旅程")).toEqual(true);
+    expect(heroProfileSource.includes("微信一键登录")).toEqual(true);
+    expect(heroProfileSource.includes('currentUser ? "编辑资料" : "微信一键登录"')).toEqual(true);
     expect(heroProfileSource.includes('v-if="currentUser" class="profile-edit-chip profile-logout-chip"')).toEqual(true);
   });
 });

@@ -245,7 +245,7 @@ describe("match detail registration design", () => {
     expect(state.includes('splitLeft: `${splitPercent}%`')).toEqual(true);
   });
 
-  test("orders match registration avatars by user id consistently", async () => {
+  test("orders match registration avatars by registration time consistently", async () => {
     const pageLogic = await Bun.file(
       "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/useMatchDetailPage.ts",
     ).text();
@@ -253,12 +253,12 @@ describe("match detail registration design", () => {
       "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/detailState.ts",
     ).text();
 
-    expect(state.includes("export function byUserIdAsc")).toEqual(true);
-    expect(state.includes("left.user_id - right.user_id")).toEqual(true);
+    expect(state.includes("export function byRegistrationTimeAsc")).toEqual(true);
+    expect(state.includes("operation_time")).toEqual(true);
     expect(pageLogic.includes("joinedRegistrations.value.map((item) =>")).toEqual(false);
-    expect(pageLogic.includes("sort(byUserIdAsc).map((item) =>")).toEqual(true);
+    expect(pageLogic.includes("sort(byRegistrationTimeAsc).map((item) =>")).toEqual(true);
     expect(pageLogic.includes("activeTeamMembers.value.filter((member) => registrationByUserId.value[member.user_id]?.stand === 1).map(toCard)")).toEqual(false);
-    expect(pageLogic.includes("sort(byUserIdAsc).map(toCard)")).toEqual(true);
+    expect(pageLogic.includes("sort(byMemberRegistrationTimeAsc).map(toCard)")).toEqual(true);
   });
 
   test("renders team member status avatars without selection borders", async () => {

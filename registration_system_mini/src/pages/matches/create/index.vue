@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from "vue";
+import { computed, reactive, ref } from "vue";
 import { onLoad, onShow } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
 import MatchPublishForm from "@/components/MatchPublishForm.vue";
@@ -18,14 +18,13 @@ const loadingActivity = ref(false);
 const reviewGateReady = ref(false);
 const pageMode = ref<"create" | "edit">("create");
 const activityId = ref("");
-const skipNextHoldingDateLink = ref(false);
-const timePickerVisible = ref(false);
 const form = reactive<MatchPublishFormModel>({
   name: "",
   location: "",
   locationLatitude: null as number | null,
   locationLongitude: null as number | null,
   holdingDate: 0,
+  matchEndTime: 0,
   startTime: 0,
   endTime: 0,
   opposing: "",
@@ -51,37 +50,18 @@ function defaultRegistrationStartTime(holdingDate: number) {
 }
 
 function defaultRegistrationEndTime(holdingDate: number) {
-  return normalizeToMinute(holdingDate - 60 * 60 * 1000);
+  return normalizeToMinute(holdingDate - 24 * 60 * 60 * 1000);
 }
 
-watch(
-  () => form.holdingDate,
-  (val) => {
-    if (skipNextHoldingDateLink.value) {
-      skipNextHoldingDateLink.value = false;
-      return;
-    }
-
-    if (val > 0) {
-      form.startTime = defaultRegistrationStartTime(val);
-      form.endTime = defaultRegistrationEndTime(val);
-    }
-  },
-);
-
 const timeValid = computed(() => {
-  if (!form.startTime || !form.endTime || !form.holdingDate) return false;
-  if (form.startTime >= form.endTime) return false;
-  if (form.startTime >= form.holdingDate) return false;
-  if (form.endTime >= form.holdingDate) return false;
+  if (!form.holdingDate || !form.matchEndTime) return false;
+  if (form.holdingDate >= form.matchEndTime) return false;
   return true;
 });
 
 const timeValidMessage = computed(() => {
-  if (!form.startTime || !form.endTime || !form.holdingDate) return "请选择报名时间和比赛时间";
-  if (form.startTime >= form.endTime) return "报名开始时间应早于报名截止时间";
-  if (form.startTime >= form.holdingDate) return "报名开始时间应早于比赛时间";
-  if (form.endTime >= form.holdingDate) return "报名截止时间应早于比赛时间";
+  if (!form.holdingDate || !form.matchEndTime) return "请选择比赛日期和开始结束时间";
+  if (form.holdingDate >= form.matchEndTime) return "比赛结束时间应晚于比赛开始时间";
   return "";
 });
 
@@ -93,8 +73,7 @@ const canSubmit = computed(
     !!form.location.trim() &&
     (!form.enableCheckIn || (form.locationLatitude != null && form.locationLongitude != null)) &&
     form.holdingDate > 0 &&
-    form.startTime > 0 &&
-    form.endTime > 0 &&
+    form.matchEndTime > 0 &&
     timeValid.value,
 );
 
@@ -120,7 +99,11 @@ function parseBackendDateTime(value?: string | null) {
 function defaultMatchDateTime() {
   const date = new Date();
   date.setHours(20, 0, 0, 0);
-  return date.getTime();
+  return normalizeToMinute(date.getTime());
+}
+
+function defaultMatchEndDateTime(holdingDate: number) {
+  return normalizeToMinute(holdingDate + 2 * 60 * 60 * 1000);
 }
 
 function initDefaultForm() {
@@ -130,6 +113,7 @@ function initDefaultForm() {
   form.locationLatitude = null;
   form.locationLongitude = null;
   form.holdingDate = defaultHoldingDate;
+  form.matchEndTime = defaultMatchEndDateTime(defaultHoldingDate);
   form.startTime = defaultRegistrationStartTime(defaultHoldingDate);
   form.endTime = defaultRegistrationEndTime(defaultHoldingDate);
   form.opposing = "";
@@ -165,21 +149,13 @@ function handleChooseLocation() {
   });
 }
 
-function handleTimePickerOpen() {
-  timePickerVisible.value = true;
-}
-
-function handleTimePickerClose() {
-  timePickerVisible.value = false;
-}
-
 function applyActivityToForm(activity: Awaited<ReturnType<typeof getActivity>>) {
   form.name = activity.name ?? "";
   form.location = activity.location ?? "";
   form.locationLatitude = activity.location_latitude ?? null;
   form.locationLongitude = activity.location_longitude ?? null;
-  skipNextHoldingDateLink.value = true;
   form.holdingDate = parseBackendDateTime(activity.holding_date);
+  form.matchEndTime = defaultMatchEndDateTime(form.holdingDate);
   form.startTime = parseBackendDateTime(activity.start_time);
   form.endTime = parseBackendDateTime(activity.end_time);
   form.opposing = activity.opposing ?? "";
@@ -255,14 +231,16 @@ async function handleSubmit() {
 
   submitting.value = true;
   try {
+    const submittedAtTimestamp = Date.now();
+    const registrationDeadlineTimestamp = normalizeToMinute(form.holdingDate - 24 * 60 * 60 * 1000);
     const basePayload = {
       name: form.name.trim(),
       location: form.location.trim(),
       location_latitude: form.locationLatitude ?? undefined,
       location_longitude: form.locationLongitude ?? undefined,
       holding_date: toBackendDateTime(form.holdingDate),
-      start_time: toBackendDateTime(form.startTime),
-      end_time: toBackendDateTime(form.endTime),
+      start_time: toBackendDateTime(submittedAtTimestamp),
+      end_time: toBackendDateTime(registrationDeadlineTimestamp),
       opposing: form.opposing.trim() || undefined,
       description: form.description.trim() || undefined,
       home_team_id: currentTeam.value.id,
@@ -333,7 +311,6 @@ onShow(async () => {
 </script>
 
 <template>
-  <page-meta :page-style="timePickerVisible ? 'overflow: hidden;' : ''" />
   <view v-if="reviewGateReady" class="create-match-page" :style="pageStyle">
     <AppTabHeader :title="pageMode === 'edit' ? '编辑比赛' : '创建比赛'" showBack />
 
@@ -362,8 +339,6 @@ onShow(async () => {
       :time-valid-message="timeValidMessage"
       @location-input="handleLocationInput"
       @choose-location="handleChooseLocation"
-      @time-picker-open="handleTimePickerOpen"
-      @time-picker-close="handleTimePickerClose"
     />
 
     <view class="create-submit-row">

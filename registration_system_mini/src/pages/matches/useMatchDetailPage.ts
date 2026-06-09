@@ -34,6 +34,7 @@ import {
   applyCheckInPatch,
   applyIndividualRegistrationPatch,
   avatarColor,
+  byRegistrationTimeAsc,
   byUserIdAsc,
   buildRegistrationProgress,
   buildRemainingPlayersLabel,
@@ -141,7 +142,7 @@ export function useMatchDetailPage() {
   });
 
   const participantPreview = computed(() =>
-    [...joinedRegistrations.value].sort(byUserIdAsc).map((item) => {
+    [...joinedRegistrations.value].sort(byRegistrationTimeAsc).map((item) => {
       const user = usersById.value[item.user_id];
       return {
         id: item.user_id,
@@ -154,6 +155,17 @@ export function useMatchDetailPage() {
   const registrationByUserId = computed(() => Object.fromEntries(registrations.value.map((item) => [item.user_id, item])));
   const activeTeamMembers = computed(() => currentTeamMembers.value.filter((member) => member.status === 1));
   const teamMemberRegistrationGroups = computed(() => {
+    const byMemberRegistrationTimeAsc = (left: BackendTeamMember, right: BackendTeamMember) =>
+      byRegistrationTimeAsc(
+        {
+          user_id: left.user_id,
+          operation_time: registrationByUserId.value[left.user_id]?.operation_time,
+        },
+        {
+          user_id: right.user_id,
+          operation_time: registrationByUserId.value[right.user_id]?.operation_time,
+        },
+      );
     const toCard = (member: BackendTeamMember) => {
       const user = usersById.value[member.user_id];
       return {
@@ -167,8 +179,8 @@ export function useMatchDetailPage() {
     };
 
     return {
-      joined: activeTeamMembers.value.filter((member) => registrationByUserId.value[member.user_id]?.stand === 1).sort(byUserIdAsc).map(toCard),
-      leave: activeTeamMembers.value.filter((member) => registrationByUserId.value[member.user_id]?.stand === 2).sort(byUserIdAsc).map(toCard),
+      joined: activeTeamMembers.value.filter((member) => registrationByUserId.value[member.user_id]?.stand === 1).sort(byMemberRegistrationTimeAsc).map(toCard),
+      leave: activeTeamMembers.value.filter((member) => registrationByUserId.value[member.user_id]?.stand === 2).sort(byMemberRegistrationTimeAsc).map(toCard),
       pending: activeTeamMembers.value.filter((member) => {
         const stand = registrationByUserId.value[member.user_id]?.stand ?? 0;
         return stand !== 1 && stand !== 2;
