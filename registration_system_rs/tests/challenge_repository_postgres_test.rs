@@ -12,6 +12,13 @@ fn test_database_url() -> Option<String> {
     std::env::var("DATABASE_URL").ok()
 }
 
+async fn ensure_activity_team_capacity_limit_column(pool: &PgPool) {
+    sqlx::query("ALTER TABLE rs_activity ADD COLUMN IF NOT EXISTS team_capacity_limit INT NULL")
+        .execute(pool)
+        .await
+        .expect("activity team_capacity_limit column should exist for challenge repository tests");
+}
+
 #[tokio::test]
 async fn detail_returns_all_individual_participants() {
     let Some(database_url) = test_database_url() else {
@@ -21,6 +28,7 @@ async fn detail_returns_all_individual_participants() {
     let pool = PgPool::connect(&database_url)
         .await
         .expect("test database should connect");
+    ensure_activity_team_capacity_limit_column(&pool).await;
     let repo = PostgresChallengeRepository::new(pool.clone());
 
     sqlx::query(
@@ -180,6 +188,7 @@ async fn accept_with_activity_deduplicates_shared_team_members() {
     let pool = PgPool::connect(&database_url)
         .await
         .expect("test database should connect");
+    ensure_activity_team_capacity_limit_column(&pool).await;
     let repo = PostgresChallengeRepository::new(pool.clone());
 
     sqlx::query(
@@ -242,9 +251,11 @@ async fn accept_with_activity_deduplicates_shared_team_members() {
         color: None,
         opposing_color: None,
         players_per_team: Some(8),
-        match_kind: Some("external".to_string()),
+        team_capacity_limit: None,
+            match_kind: Some("external".to_string()),
         source_activity_id: None,
         team_registration_count: None,
+        registration_preview: Default::default(),
         team_checkin_configs: vec![],
         created_at: now,
         updated_at: now,

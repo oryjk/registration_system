@@ -42,6 +42,9 @@ impl ManageRegistrationUseCase {
             return Ok(());
         }
 
+        self.ensure_capacity_available(activity_id, actor.id, command.stand)
+            .await?;
+
         self.command_repository
             .upsert_registration(
                 activity_id,
@@ -65,6 +68,9 @@ impl ManageRegistrationUseCase {
         if !actor.is_admin() && actor.id != user_id {
             return Err(ActivityApplicationError::Forbidden);
         }
+
+        self.ensure_capacity_available(activity_id, user_id, command.stand)
+            .await?;
 
         self.command_repository
             .upsert_registration(
@@ -108,6 +114,8 @@ impl ManageRegistrationUseCase {
             return Err(ActivityApplicationError::Forbidden);
         }
         self.ensure_activity_exists(activity_id).await?;
+        self.ensure_capacity_available(activity_id, user_id, stand)
+            .await?;
         self.command_repository
             .upsert_registration(activity_id, user_id, stand, registration_count)
             .await
@@ -131,6 +139,8 @@ impl ManageRegistrationUseCase {
         self.ensure_activity_exists(activity_id).await?;
         let unique_user_ids = user_ids.iter().copied().collect::<BTreeSet<_>>();
         for user_id in &unique_user_ids {
+            self.ensure_capacity_available(activity_id, *user_id, stand)
+                .await?;
             self.command_repository
                 .upsert_registration(activity_id, *user_id, stand, registration_count)
                 .await
@@ -139,6 +149,58 @@ impl ManageRegistrationUseCase {
                 })?;
         }
         Ok(unique_user_ids.len() as u64)
+    }
+
+    async fn ensure_capacity_available(
+        &self,
+        activity_id: &str,
+        user_id: i64,
+        next_stand: i8,
+    ) -> Result<(), ActivityApplicationError> {
+        if next_stand != 1 && next_stand != 3 {
+            return Ok(());
+        }
+
+        let activity = self
+            .query_repository
+            .find_by_id(activity_id)
+            .await
+            .map_err(|error| {
+                ActivityApplicationError::internal(format!("查询活动详情失败: {error}"))
+            })?
+            .ok_or_else(|| ActivityApplicationError::NotFound("活动不存在".to_string()))?;
+        let Some(limit) = activity.team_capacity_limit else {
+            return Ok(());
+        };
+
+        let registrations = self
+            .query_repository
+            .list_registrations(activity_id)
+            .await
+            .map_err(|error| {
+                ActivityApplicationError::internal(format!("查询报名记录失败: {error}"))
+            })?;
+        let already_counts = registrations
+            .iter()
+            .any(|item| item.user_id == user_id && (item.stand == 1 || item.stand == 3));
+        if already_counts {
+            return Ok(());
+        }
+
+        let current_count = self
+            .query_repository
+            .count_capacity_registrations(activity_id)
+            .await
+            .map_err(|error| {
+                ActivityApplicationError::internal(format!("查询报名人数失败: {error}"))
+            })?;
+        if current_count >= i64::from(limit) {
+            return Err(ActivityApplicationError::Validation(
+                "报名人数已满".to_string(),
+            ));
+        }
+
+        Ok(())
     }
 
     async fn ensure_activity_exists(

@@ -4,7 +4,7 @@ use crate::activity::domain::{
 use chrono::NaiveDateTime;
 use sqlx::FromRow;
 
-pub(super) const ACTIVITY_COLS: &str = "id, cover, start_time, end_time, holding_date, location, location_latitude, location_longitude, name, opposing, status, description, home_team_id, away_team_id, color, opposing_color, players_per_team, match_kind, source_activity_id, team_registration_count, created_at, updated_at";
+pub(super) const ACTIVITY_COLS: &str = "id, cover, start_time, end_time, holding_date, location, location_latitude, location_longitude, name, opposing, status, description, home_team_id, away_team_id, color, opposing_color, players_per_team, team_capacity_limit, match_kind, source_activity_id, team_registration_count, created_at, updated_at";
 
 #[derive(Debug, FromRow)]
 pub(super) struct ActivityRow {
@@ -25,6 +25,7 @@ pub(super) struct ActivityRow {
     pub color: Option<String>,
     pub opposing_color: Option<String>,
     pub players_per_team: Option<i32>,
+    pub team_capacity_limit: Option<i32>,
     pub match_kind: Option<String>,
     pub source_activity_id: Option<String>,
     pub team_registration_count: Option<i32>,
@@ -56,9 +57,11 @@ impl From<ActivityRow> for Activity {
             color: row.color,
             opposing_color: row.opposing_color,
             players_per_team: row.players_per_team,
+            team_capacity_limit: row.team_capacity_limit,
             match_kind: row.match_kind,
             source_activity_id: row.source_activity_id.map(|value| trim_activity_id(&value)),
             team_registration_count: row.team_registration_count,
+            registration_preview: Default::default(),
             team_checkin_configs: vec![],
             created_at: row.created_at,
             updated_at: row.updated_at,
@@ -198,6 +201,7 @@ mod tests {
             color: None,
             opposing_color: None,
             players_per_team: None,
+            team_capacity_limit: None,
             match_kind: Some("external".to_string()),
             source_activity_id: None,
             team_registration_count: None,

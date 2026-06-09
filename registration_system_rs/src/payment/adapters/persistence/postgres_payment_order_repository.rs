@@ -84,7 +84,7 @@ impl PaymentOrderQueryRepository for PostgresPaymentOrderRepository {
         limit: i64,
     ) -> Result<Vec<PaymentOrder>, DomainError> {
         let rows = sqlx::query(&format!(
-            "SELECT {ORDER_COLS} FROM rs_payment_orders WHERE user_id = $1 ORDER BY created_at DESC LIMIT $2"
+            "SELECT {ORDER_COLS} FROM rs_payment_orders WHERE user_id = $1 ORDER BY created_at DESC, id DESC LIMIT $2"
         ))
         .bind(user_id)
         .bind(limit)

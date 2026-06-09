@@ -1,5 +1,6 @@
 use crate::activity::domain::{
-    Activity, ActivityCheckInRecord, ActivityListPage, ActivityRegistration, RegistrationListPage,
+    Activity, ActivityCheckInRecord, ActivityListPage, ActivityRegistration,
+    ActivityRegistrationPreview, ActivityRegistrationPreviewMember, RegistrationListPage,
     RegistrationWithInfo,
 };
 use crate::activity::ports::LocationSearchResult;
@@ -24,6 +25,7 @@ pub struct CreateActivityRequest {
     pub color: Option<String>,
     pub opposing_color: Option<String>,
     pub players_per_team: Option<i32>,
+    pub team_capacity_limit: Option<i32>,
     pub match_kind: Option<String>,
     pub team_checkin_configs: Option<Vec<CreateActivityCheckInConfigRequest>>,
 }
@@ -86,6 +88,7 @@ pub struct UpdateActivityRequest {
     pub color: Option<Option<String>>,
     pub opposing_color: Option<Option<String>>,
     pub players_per_team: Option<Option<i32>>,
+    pub team_capacity_limit: Option<Option<i32>>,
     pub match_kind: Option<String>,
 }
 
@@ -108,9 +111,11 @@ pub struct ActivityDto {
     pub color: Option<String>,
     pub opposing_color: Option<String>,
     pub players_per_team: Option<i32>,
+    pub team_capacity_limit: Option<i32>,
     pub match_kind: Option<String>,
     pub source_activity_id: Option<String>,
     pub team_registration_count: Option<i32>,
+    pub registration_preview: ActivityRegistrationPreviewDto,
     pub team_checkin_configs: Vec<ActivityTeamCheckInConfigDto>,
 }
 
@@ -134,14 +139,66 @@ impl From<Activity> for ActivityDto {
             color: value.color,
             opposing_color: value.opposing_color,
             players_per_team: value.players_per_team,
+            team_capacity_limit: value.team_capacity_limit,
             match_kind: value.match_kind,
             source_activity_id: value.source_activity_id,
             team_registration_count: value.team_registration_count,
+            registration_preview: ActivityRegistrationPreviewDto::from(value.registration_preview),
             team_checkin_configs: value
                 .team_checkin_configs
                 .into_iter()
                 .map(|item| ActivityTeamCheckInConfigDto::from_config(item, value.holding_date))
                 .collect(),
+        }
+    }
+}
+
+#[derive(Debug, Serialize, ToSchema)]
+pub struct ActivityRegistrationPreviewDto {
+    pub counts: RegistrationStandCountsDto,
+    pub members: Vec<ActivityRegistrationPreviewMemberDto>,
+}
+
+impl From<ActivityRegistrationPreview> for ActivityRegistrationPreviewDto {
+    fn from(value: ActivityRegistrationPreview) -> Self {
+        Self {
+            counts: RegistrationStandCountsDto {
+                total: value.counts.total,
+                unknown: value.counts.unknown,
+                attending: value.counts.attending,
+                leave: value.counts.leave,
+                absent: value.counts.absent,
+            },
+            members: value
+                .members
+                .into_iter()
+                .map(ActivityRegistrationPreviewMemberDto::from)
+                .collect(),
+        }
+    }
+}
+
+#[derive(Debug, Serialize, ToSchema)]
+pub struct ActivityRegistrationPreviewMemberDto {
+    pub user_id: i64,
+    pub stand: i8,
+    pub registration_count: i32,
+    pub operation_time: NaiveDateTime,
+    pub nickname: String,
+    pub real_name: String,
+    pub avatar_url: String,
+}
+
+impl From<ActivityRegistrationPreviewMember> for ActivityRegistrationPreviewMemberDto {
+    fn from(value: ActivityRegistrationPreviewMember) -> Self {
+        Self {
+            user_id: value.user_id,
+            stand: value.stand,
+            registration_count: value.registration_count,
+            operation_time: value.operation_time,
+            nickname: value.nickname,
+            real_name: value.real_name,
+            avatar_url: value.avatar_url,
         }
     }
 }

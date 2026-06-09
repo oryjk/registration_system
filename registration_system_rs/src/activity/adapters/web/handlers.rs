@@ -68,6 +68,7 @@ pub async fn create_activity_handler(
                 color: payload.color,
                 opposing_color: payload.opposing_color,
                 players_per_team: payload.players_per_team,
+                team_capacity_limit: payload.team_capacity_limit,
                 match_kind: payload.match_kind,
                 team_checkin_configs: payload
                     .team_checkin_configs
@@ -426,6 +427,7 @@ pub async fn update_activity_handler(
                 color: payload.color,
                 opposing_color: payload.opposing_color,
                 players_per_team: payload.players_per_team,
+                team_capacity_limit: payload.team_capacity_limit,
                 match_kind: payload.match_kind,
             },
         )

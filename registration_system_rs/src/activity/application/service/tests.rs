@@ -241,6 +241,7 @@ struct RecordedUpdate {
     location_latitude: Option<Option<f64>>,
     location_longitude: Option<Option<f64>>,
     players_per_team: Option<Option<i32>>,
+    team_capacity_limit: Option<Option<i32>>,
     match_kind: Option<String>,
     team_registration_count: Option<Option<i32>>,
 }
@@ -380,6 +381,7 @@ impl ActivityCommandRepository for RecordingActivityRepository {
                 location_latitude: fields.location_latitude,
                 location_longitude: fields.location_longitude,
                 players_per_team: fields.players_per_team,
+                team_capacity_limit: fields.team_capacity_limit,
                 match_kind: fields.match_kind.map(str::to_string),
                 team_registration_count: fields.team_registration_count,
             });
@@ -593,9 +595,11 @@ async fn update_my_stand_attending_upserts_current_user_registration() {
         color: None,
         opposing_color: None,
         players_per_team: Some(7),
-        match_kind: Some("external".to_string()),
+        team_capacity_limit: None,
+            match_kind: Some("external".to_string()),
         source_activity_id: None,
         team_registration_count: None,
+        registration_preview: Default::default(),
         team_checkin_configs: vec![],
         created_at: now,
         updated_at: now,
@@ -666,9 +670,11 @@ async fn update_my_stand_allows_signup_after_required_players_plus_two() {
         color: None,
         opposing_color: None,
         players_per_team: Some(8),
-        match_kind: Some("external".to_string()),
+        team_capacity_limit: None,
+            match_kind: Some("external".to_string()),
         source_activity_id: None,
         team_registration_count: None,
+        registration_preview: Default::default(),
         team_checkin_configs: vec![],
         created_at: now,
         updated_at: now,
@@ -712,6 +718,76 @@ async fn update_my_stand_allows_signup_after_required_players_plus_two() {
 }
 
 #[tokio::test]
+async fn update_my_stand_rejects_attending_when_team_capacity_limit_is_full() {
+    let repository = Arc::new(RecordingActivityRepository::default());
+    let now = Utc::now().naive_utc();
+    *repository
+        .found_activity
+        .lock()
+        .expect("found_activity mutex poisoned") = Some(Activity {
+        id: "activity-1".to_string(),
+        cover: None,
+        start_time: now,
+        end_time: now + Duration::hours(2),
+        holding_date: now,
+        location: "测试球场".to_string(),
+        location_latitude: None,
+        location_longitude: None,
+        name: "测试比赛".to_string(),
+        opposing: None,
+        status: 0,
+        description: None,
+        home_team_id: Some(1),
+        away_team_id: Some(2),
+        color: None,
+        opposing_color: None,
+        players_per_team: Some(8),
+        team_capacity_limit: Some(10),
+        match_kind: Some("external".to_string()),
+        source_activity_id: None,
+        team_registration_count: None,
+        registration_preview: Default::default(),
+        team_checkin_configs: vec![],
+        created_at: now,
+        updated_at: now,
+    });
+    *repository
+        .capacity_registration_count
+        .lock()
+        .expect("capacity_registration_count mutex poisoned") = 10;
+    let service = ActivityService::new(
+        repository.clone(),
+        repository.clone(),
+        None,
+        Arc::new(DummyTeamAccessPort),
+    );
+
+    let err = service
+        .update_my_stand(
+            &ActivityPrincipal::user(99),
+            "activity-1",
+            UpdateMyStandCommand {
+                stand: 1,
+                registration_count: 1,
+            },
+        )
+        .await
+        .expect_err("signup should be rejected when team capacity limit is full");
+
+    assert_eq!(
+        err,
+        ActivityApplicationError::Validation("报名人数已满".to_string())
+    );
+    assert!(
+        repository
+            .upserted_registrations
+            .lock()
+            .expect("upserted_registrations mutex poisoned")
+            .is_empty()
+    );
+}
+
+#[tokio::test]
 async fn cancel_team_registration_marks_derived_activity_cancelled() {
     let repository = Arc::new(RecordingActivityRepository::default());
     let now = Utc::now().naive_utc();
@@ -736,9 +812,11 @@ async fn cancel_team_registration_marks_derived_activity_cancelled() {
         color: None,
         opposing_color: None,
         players_per_team: Some(7),
-        match_kind: Some("external".to_string()),
+        team_capacity_limit: None,
+            match_kind: Some("external".to_string()),
         source_activity_id: Some("activity-1".to_string()),
         team_registration_count: Some(7),
+        registration_preview: Default::default(),
         team_checkin_configs: vec![],
         created_at: now,
         updated_at: now,
@@ -795,7 +873,8 @@ async fn create_activity_persists_location_coordinates() {
                 color: None,
                 opposing_color: None,
                 players_per_team: None,
-                match_kind: None,
+                team_capacity_limit: None,
+            match_kind: None,
                 team_checkin_configs: vec![],
             },
         )
@@ -839,7 +918,8 @@ async fn create_activity_persists_match_kind() {
                 color: None,
                 opposing_color: None,
                 players_per_team: None,
-                match_kind: Some("internal".to_string()),
+                team_capacity_limit: None,
+            match_kind: Some("internal".to_string()),
                 team_checkin_configs: vec![],
             },
         )
@@ -881,7 +961,8 @@ async fn team_manager_can_create_activity_with_initial_checkin_config() {
                 color: None,
                 opposing_color: None,
                 players_per_team: Some(8),
-                match_kind: None,
+                team_capacity_limit: None,
+            match_kind: None,
                 team_checkin_configs: vec![CreateActivityCheckInConfigCommand {
                     team_id: 1,
                     enabled: true,
@@ -975,6 +1056,7 @@ async fn update_activity_can_clear_location_coordinates() {
                 color: None,
                 opposing_color: None,
                 players_per_team: None,
+                team_capacity_limit: None,
                 match_kind: None,
             },
         )
@@ -989,6 +1071,7 @@ async fn update_activity_can_clear_location_coordinates() {
             location_latitude: Some(None),
             location_longitude: Some(None),
             players_per_team: None,
+            team_capacity_limit: None,
             match_kind: None,
             team_registration_count: None,
         }
@@ -1020,9 +1103,11 @@ async fn team_manager_can_update_own_future_activity() {
         color: None,
         opposing_color: None,
         players_per_team: Some(8),
-        match_kind: Some("external".to_string()),
+        team_capacity_limit: None,
+            match_kind: Some("external".to_string()),
         source_activity_id: None,
         team_registration_count: None,
+        registration_preview: Default::default(),
         team_checkin_configs: vec![],
         created_at: now,
         updated_at: now,
@@ -1054,7 +1139,8 @@ async fn team_manager_can_update_own_future_activity() {
                 color: Some(Some("#2f6bff".to_string())),
                 opposing_color: Some(Some("#d9ff16".to_string())),
                 players_per_team: Some(Some(8)),
-                match_kind: Some("external".to_string()),
+                team_capacity_limit: None,
+            match_kind: Some("external".to_string()),
             },
         )
         .await

@@ -83,6 +83,7 @@ CREATE TABLE IF NOT EXISTS rs_activity (
     color VARCHAR(32) NULL,
     opposing_color VARCHAR(32) NULL,
     players_per_team INT NULL,
+    team_capacity_limit INT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
     CONSTRAINT fk_activity_home_team FOREIGN KEY (home_team_id) REFERENCES rs_teams (id),

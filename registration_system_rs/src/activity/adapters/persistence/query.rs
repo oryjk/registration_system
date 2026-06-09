@@ -4,11 +4,13 @@ use super::models::{
 };
 use super::postgres_activity_repository::PostgresActivityRepository;
 use crate::activity::domain::{
-    Activity, ActivityCheckInRecord, ActivityListPage, ActivityRegistration, ActivityStatusCounts,
+    Activity, ActivityCheckInRecord, ActivityListPage, ActivityRegistration,
+    ActivityRegistrationPreview, ActivityRegistrationPreviewMember, ActivityStatusCounts,
     ActivityTeamCheckInConfig, DomainError, RegistrationListPage, RegistrationStandCounts,
     RegistrationWithInfo,
 };
 use chrono::NaiveDateTime;
+use std::collections::HashMap;
 use sqlx::FromRow;
 use tokio::try_join;
 
@@ -84,7 +86,7 @@ impl PostgresActivityRepository {
                )
                AND ($3::bigint IS NULL OR home_team_id = $3 OR away_team_id = $3)
                AND ($4::timestamp IS NULL OR holding_date > $4)
-             ORDER BY holding_date ASC
+             ORDER BY holding_date DESC, id DESC
              LIMIT $5 OFFSET $6",
         );
         let rows_future = sqlx::query_as::<_, ActivityRow>(&rows_sql)
@@ -100,7 +102,15 @@ impl PostgresActivityRepository {
             try_join!(counts_future, total_filtered_future, rows_future)
                 .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
 
-        let items = rows.into_iter().map(Activity::from).collect();
+        let mut items: Vec<Activity> = rows.into_iter().map(Activity::from).collect();
+        let activity_ids = items
+            .iter()
+            .map(|activity| activity.id.clone())
+            .collect::<Vec<_>>();
+        let mut previews = self.load_registration_previews(&activity_ids).await?;
+        for activity in &mut items {
+            activity.registration_preview = previews.remove(&activity.id).unwrap_or_default();
+        }
 
         Ok(ActivityListPage {
             items,
@@ -115,6 +125,130 @@ impl PostgresActivityRepository {
                 cancelled: counts_row.cancelled,
             },
         })
+    }
+
+    async fn load_registration_previews(
+        &self,
+        activity_ids: &[String],
+    ) -> Result<HashMap<String, ActivityRegistrationPreview>, DomainError> {
+        if activity_ids.is_empty() {
+            return Ok(HashMap::new());
+        }
+
+        #[derive(Debug, FromRow)]
+        struct CountRow {
+            activity_id: String,
+            total: i64,
+            unknown: i64,
+            attending: i64,
+            leave: i64,
+            absent: i64,
+        }
+
+        #[derive(Debug, FromRow)]
+        struct MemberRow {
+            activity_id: String,
+            user_id: i64,
+            stand: i16,
+            registration_count: i32,
+            operation_time: NaiveDateTime,
+            nickname: String,
+            real_name: String,
+            avatar_url: String,
+        }
+
+        let counts_future = sqlx::query_as::<_, CountRow>(
+            r#"
+            SELECT BTRIM(ua.activity_id) AS activity_id,
+                   COUNT(*)::bigint AS total,
+                   COUNT(*) FILTER (WHERE ua.stand = 0)::bigint AS unknown,
+                   COUNT(*) FILTER (WHERE ua.stand = 1)::bigint AS attending,
+                   COUNT(*) FILTER (WHERE ua.stand = 2)::bigint AS leave,
+                   COUNT(*) FILTER (WHERE ua.stand = 3)::bigint AS absent
+            FROM rs_user_activity ua
+            JOIN rs_user_info u ON u.id = ua.user_id
+            WHERE BTRIM(ua.activity_id) = ANY($1)
+              AND u.status = 1
+            GROUP BY BTRIM(ua.activity_id)
+            "#,
+        )
+        .bind(activity_ids)
+        .fetch_all(&self.pool);
+
+        let members_future = sqlx::query_as::<_, MemberRow>(
+            r#"
+            SELECT activity_id, user_id, stand, registration_count, operation_time,
+                   nickname, real_name, avatar_url
+            FROM (
+                SELECT BTRIM(ua.activity_id) AS activity_id,
+                       ua.user_id,
+                       ua.stand,
+                       ua.registration_count,
+                       ua.operation_time,
+                       u.nickname,
+                       u.real_name,
+                       u.avatar_url,
+                       ROW_NUMBER() OVER (
+                           PARTITION BY BTRIM(ua.activity_id), ua.stand
+                           ORDER BY ua.operation_time ASC, ua.user_id ASC
+                       ) AS row_num
+                FROM rs_user_activity ua
+                JOIN rs_user_info u ON u.id = ua.user_id
+                WHERE BTRIM(ua.activity_id) = ANY($1)
+                  AND u.status = 1
+            ) ranked
+            WHERE row_num <= 8
+            ORDER BY activity_id ASC,
+                     CASE stand
+                       WHEN 1 THEN 0
+                       WHEN 3 THEN 1
+                       WHEN 2 THEN 2
+                       ELSE 3
+                     END,
+                     operation_time ASC,
+                     user_id ASC
+            "#,
+        )
+        .bind(activity_ids)
+        .fetch_all(&self.pool);
+
+        let (count_rows, member_rows) = try_join!(counts_future, members_future)
+            .map_err(|e| DomainError::Infrastructure(e.to_string()))?;
+
+        let mut previews = HashMap::new();
+        for row in count_rows {
+            previews.insert(
+                row.activity_id,
+                ActivityRegistrationPreview {
+                    counts: RegistrationStandCounts {
+                        total: row.total,
+                        unknown: row.unknown,
+                        attending: row.attending,
+                        leave: row.leave,
+                        absent: row.absent,
+                    },
+                    members: Vec::new(),
+                },
+            );
+        }
+
+        for row in member_rows {
+            previews
+                .entry(row.activity_id)
+                .or_insert_with(ActivityRegistrationPreview::default)
+                .members
+                .push(ActivityRegistrationPreviewMember {
+                    user_id: row.user_id,
+                    stand: row.stand as i8,
+                    registration_count: row.registration_count,
+                    operation_time: row.operation_time,
+                    nickname: row.nickname,
+                    real_name: row.real_name,
+                    avatar_url: row.avatar_url,
+                });
+        }
+
+        Ok(previews)
     }
 
     pub(super) async fn find_by_id_query(

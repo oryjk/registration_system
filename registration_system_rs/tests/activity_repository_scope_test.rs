@@ -22,6 +22,13 @@ async fn delete_activity(pool: &PgPool, activity_id: &str) {
         .ok();
 }
 
+async fn ensure_activity_team_capacity_limit_column(pool: &PgPool) {
+    sqlx::query("ALTER TABLE rs_activity ADD COLUMN IF NOT EXISTS team_capacity_limit INT NULL")
+        .execute(pool)
+        .await
+        .expect("activity team_capacity_limit column should exist for repository tests");
+}
+
 #[tokio::test]
 async fn team_registration_scope_includes_direct_team_activity() {
     let Some(database_url) = test_database_url() else {
@@ -31,6 +38,7 @@ async fn team_registration_scope_includes_direct_team_activity() {
     let pool = PgPool::connect(&database_url)
         .await
         .expect("test database should connect");
+    ensure_activity_team_capacity_limit_column(&pool).await;
     let repo = PostgresActivityRepository::new(pool.clone());
     let activity_id = Uuid::new_v4().to_string();
     let team_name = format!("活动报名范围测试队-{}", Uuid::new_v4());
@@ -95,6 +103,7 @@ async fn activity_list_can_filter_by_team_id() {
     let pool = PgPool::connect(&database_url)
         .await
         .expect("test database should connect");
+    ensure_activity_team_capacity_limit_column(&pool).await;
     let repo = PostgresActivityRepository::new(pool.clone());
     let target_activity_id = Uuid::new_v4().to_string();
     let other_activity_id = Uuid::new_v4().to_string();
@@ -189,6 +198,7 @@ async fn activity_list_can_filter_current_team_future_activities() {
     let pool = PgPool::connect(&database_url)
         .await
         .expect("test database should connect");
+    ensure_activity_team_capacity_limit_column(&pool).await;
     let repo = PostgresActivityRepository::new(pool.clone());
     let past_activity_id = Uuid::new_v4().to_string();
     let future_activity_id = Uuid::new_v4().to_string();

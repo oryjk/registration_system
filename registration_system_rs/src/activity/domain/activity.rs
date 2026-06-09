@@ -18,13 +18,14 @@ pub struct UpdateActivityFields<'a> {
     pub color: Option<Option<&'a str>>,
     pub opposing_color: Option<Option<&'a str>>,
     pub players_per_team: Option<Option<i32>>,
+    pub team_capacity_limit: Option<Option<i32>>,
     pub match_kind: Option<&'a str>,
     pub source_activity_id: Option<Option<&'a str>>,
     pub team_registration_count: Option<Option<i32>>,
 }
 
 /// 活动下各报名状态人数（管理后台统计条）
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct RegistrationStandCounts {
     pub total: i64,
     pub unknown: i64,
@@ -63,6 +64,24 @@ pub struct RegistrationListPage {
     pub counts: RegistrationStandCounts,
 }
 
+/// 活动列表卡片上的报名情况预览（管理后台用）
+#[derive(Debug, Clone, Default)]
+pub struct ActivityRegistrationPreview {
+    pub counts: RegistrationStandCounts,
+    pub members: Vec<ActivityRegistrationPreviewMember>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ActivityRegistrationPreviewMember {
+    pub user_id: i64,
+    pub stand: i8,
+    pub registration_count: i32,
+    pub operation_time: NaiveDateTime,
+    pub nickname: String,
+    pub real_name: String,
+    pub avatar_url: String,
+}
+
 /// 报名记录 + 球员基本信息（管理后台用）
 #[derive(Debug, Clone)]
 pub struct RegistrationWithInfo {
@@ -98,9 +117,11 @@ pub struct Activity {
     pub color: Option<String>,
     pub opposing_color: Option<String>,
     pub players_per_team: Option<i32>,
+    pub team_capacity_limit: Option<i32>,
     pub match_kind: Option<String>,
     pub source_activity_id: Option<String>,
     pub team_registration_count: Option<i32>,
+    pub registration_preview: ActivityRegistrationPreview,
     pub team_checkin_configs: Vec<ActivityTeamCheckInConfig>,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,

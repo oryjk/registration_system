@@ -15,6 +15,7 @@ pub struct CreateActivityCommand {
     pub color: Option<String>,
     pub opposing_color: Option<String>,
     pub players_per_team: Option<i32>,
+    pub team_capacity_limit: Option<i32>,
     pub match_kind: Option<String>,
     pub team_checkin_configs: Vec<CreateActivityCheckInConfigCommand>,
 }
@@ -51,6 +52,7 @@ pub struct UpdateActivityCommand {
     pub color: Option<Option<String>>,
     pub opposing_color: Option<Option<String>>,
     pub players_per_team: Option<Option<i32>>,
+    pub team_capacity_limit: Option<Option<i32>>,
     pub match_kind: Option<String>,
 }
 
