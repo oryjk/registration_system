@@ -1,4 +1,5 @@
 #[sqlx::test(migrations = "./migrations")]
+#[ignore = "requires PostgreSQL for sqlx migration integration tests"]
 async fn team_id_columns_are_bigint_after_migrations(pool: sqlx::PgPool) {
     let expected_columns = [
         ("rs_teams", "id"),
@@ -41,6 +42,7 @@ async fn team_id_columns_are_bigint_after_migrations(pool: sqlx::PgPool) {
 }
 
 #[sqlx::test(migrations = "./migrations")]
+#[ignore = "requires PostgreSQL for sqlx migration integration tests"]
 async fn billing_activity_id_has_activity_foreign_key_after_migrations(pool: sqlx::PgPool) {
     let count: (i64,) = sqlx::query_as(
         r#"
@@ -68,6 +70,7 @@ async fn billing_activity_id_has_activity_foreign_key_after_migrations(pool: sql
 }
 
 #[sqlx::test(migrations = "./migrations")]
+#[ignore = "requires PostgreSQL for sqlx migration integration tests"]
 async fn billing_activity_terms_are_applied_after_migrations(pool: sqlx::PgPool) {
     let billing_default: (Option<String>,) = sqlx::query_as(
         r#"

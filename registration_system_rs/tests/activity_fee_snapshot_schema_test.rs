@@ -1,4 +1,5 @@
 #[sqlx::test(migrations = "./migrations")]
+#[ignore = "requires PostgreSQL for sqlx migration integration tests"]
 async fn activity_fee_snapshot_table_replaces_activity_order(pool: sqlx::PgPool) {
     let new_table_count: (i64,) = sqlx::query_as(
         r#"
@@ -29,6 +30,7 @@ async fn activity_fee_snapshot_table_replaces_activity_order(pool: sqlx::PgPool)
 }
 
 #[sqlx::test(migrations = "./migrations")]
+#[ignore = "requires PostgreSQL for sqlx migration integration tests"]
 async fn activity_fee_snapshot_activity_id_keeps_activity_foreign_key(pool: sqlx::PgPool) {
     let count: (i64,) = sqlx::query_as(
         r#"

@@ -54,7 +54,7 @@
     <!-- 面包屑 -->
     <div class="flex items-center gap-2 text-sm text-base-content/50">
       <RouterLink to="/activities" class="hover:text-primary transition-colors"
-        >活动报名</RouterLink
+        >比赛报名</RouterLink
       >
       <span>/</span>
       <span class="text-base-content font-medium">{{ activity.name }}</span>
@@ -437,7 +437,7 @@ const changeRegStatus = async (userId: number, stand: number) => {
   }
 }
 
-// ── 编辑活动 ──
+// ── 编辑比赛 ──
 const editDialogRef = ref<InstanceType<typeof ActivityEditDialog>>()
 const editLocationPickerOpen = ref(false)
 const editing = ref(false)

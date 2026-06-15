@@ -301,6 +301,7 @@ export interface BackendActivity {
   color?: string | null;
   opposing_color?: string | null;
   players_per_team?: number | null;
+  team_capacity_limit?: number | null;
   match_kind?: "external" | "internal" | null;
   source_activity_id?: string | null;
   team_registration_count?: number | null;

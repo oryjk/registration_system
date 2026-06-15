@@ -68,10 +68,6 @@ function stageClass(stage: string) {
   return `home-stage home-stage-${activityStageTone(stage)}`;
 }
 
-function signupScopeClass(scope: HomeMatchCardViewModel["signupScope"]) {
-  return scope === "internal" ? "home-scope home-scope-internal" : "home-scope home-scope-external";
-}
-
 function formatMatchDateBlock(dateLabel: string) {
   const [monthDay, timeLabel] = dateLabel.split(" ");
   const [month, day] = monthDay.split("/");
@@ -179,7 +175,6 @@ onShow(() => {
         :progress-base-width="progressBaseWidth"
         :progress-extra-width="progressExtraWidth"
         :progress-split-left="progressSplitLeft"
-        :signup-scope-class="signupScopeClass"
         :stage-class="stageClass"
         :status-class="statusClass"
         @match-tap="handleMatchTap"

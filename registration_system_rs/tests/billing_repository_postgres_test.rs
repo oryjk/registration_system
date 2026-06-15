@@ -15,9 +15,10 @@ async fn billing_test_guard() -> tokio::sync::MutexGuard<'static, ()> {
     GUARD.get_or_init(|| Mutex::new(())).lock().await
 }
 
-fn test_database_url() -> Option<String> {
-    let _ = dotenvy::from_filename(".env");
-    std::env::var("DATABASE_URL").ok()
+fn test_database_url() -> String {
+    let _ = dotenvy::from_filename(".env.test");
+    std::env::var("TEST_DATABASE_URL")
+        .expect("TEST_DATABASE_URL must be set to run database integration tests")
 }
 
 #[derive(Debug, Clone)]
@@ -156,11 +157,10 @@ async fn create_finished_activity_with_registrations(
 }
 
 #[tokio::test]
+#[ignore = "requires TEST_DATABASE_URL and writes to a PostgreSQL test database"]
 async fn settle_activity_expense_bills_attending_users_once() {
     let _guard = billing_test_guard().await;
-    let Some(database_url) = test_database_url() else {
-        return;
-    };
+    let database_url = test_database_url();
 
     let pool = PgPool::connect(&database_url)
         .await
@@ -241,11 +241,10 @@ async fn settle_activity_expense_bills_attending_users_once() {
 }
 
 #[tokio::test]
+#[ignore = "requires TEST_DATABASE_URL and writes to a PostgreSQL test database"]
 async fn settle_activity_expense_can_resettle_by_reversing_previous_batch() {
     let _guard = billing_test_guard().await;
-    let Some(database_url) = test_database_url() else {
-        return;
-    };
+    let database_url = test_database_url();
 
     let pool = PgPool::connect(&database_url)
         .await
@@ -370,11 +369,10 @@ async fn settle_activity_expense_can_resettle_by_reversing_previous_batch() {
 }
 
 #[tokio::test]
+#[ignore = "requires TEST_DATABASE_URL and writes to a PostgreSQL test database"]
 async fn settle_activity_expense_supports_custom_user_aa_without_creating_registrations() {
     let _guard = billing_test_guard().await;
-    let Some(database_url) = test_database_url() else {
-        return;
-    };
+    let database_url = test_database_url();
 
     let pool = PgPool::connect(&database_url)
         .await
@@ -435,11 +433,10 @@ async fn settle_activity_expense_supports_custom_user_aa_without_creating_regist
 }
 
 #[tokio::test]
+#[ignore = "requires TEST_DATABASE_URL and writes to a PostgreSQL test database"]
 async fn settle_activity_expense_supports_manual_attendee_amounts() {
     let _guard = billing_test_guard().await;
-    let Some(database_url) = test_database_url() else {
-        return;
-    };
+    let database_url = test_database_url();
 
     let pool = PgPool::connect(&database_url)
         .await
@@ -491,11 +488,10 @@ async fn settle_activity_expense_supports_manual_attendee_amounts() {
 }
 
 #[tokio::test]
+#[ignore = "requires TEST_DATABASE_URL and writes to a PostgreSQL test database"]
 async fn settle_activity_expense_supports_manual_custom_user_amounts() {
     let _guard = billing_test_guard().await;
-    let Some(database_url) = test_database_url() else {
-        return;
-    };
+    let database_url = test_database_url();
 
     let pool = PgPool::connect(&database_url)
         .await

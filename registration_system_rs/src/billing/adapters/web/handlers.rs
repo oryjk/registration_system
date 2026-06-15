@@ -360,7 +360,7 @@ pub async fn settle_activity_expense_handler(
         .await?;
 
     Ok(Json(ApiResponse::with_message(
-        "比赛费用结算成功",
+        "活动费用结算成功",
         ActivitySettlementSummaryDto::from(summary),
     )))
 }

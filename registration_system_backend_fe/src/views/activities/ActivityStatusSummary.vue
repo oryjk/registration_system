@@ -1,7 +1,7 @@
 <template>
   <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
     <div class="stat rounded-xl border border-base-300 bg-base-100 px-5 py-4 shadow-sm">
-      <div class="stat-title text-xs">活动总数</div>
+      <div class="stat-title text-xs">比赛总数</div>
       <div class="stat-value text-2xl">{{ counts.total }}</div>
     </div>
     <div class="stat rounded-xl border border-base-300 bg-base-100 px-5 py-4 shadow-sm">

@@ -67,6 +67,28 @@ export function buildRemainingPlayersLabel(joinedCount: number, requiredPlayers:
   return left > 0 ? `还差 ${left} 人成行` : "已达成行人数";
 }
 
+export function resolveRegistrationCapacityState({
+  joinedCount,
+  teamCapacityLimit,
+  currentStatus,
+}: {
+  joinedCount: number;
+  teamCapacityLimit?: number | null;
+  currentStatus: string;
+}) {
+  const capacity = typeof teamCapacityLimit === "number" && Number.isFinite(teamCapacityLimit) && teamCapacityLimit > 0
+    ? teamCapacityLimit
+    : null;
+  const isAlreadyJoined = currentStatus === "参加";
+  const isFull = capacity !== null && joinedCount >= capacity && !isAlreadyJoined;
+
+  return {
+    capacity,
+    isFull,
+    label: capacity === null ? "" : `报名上限 ${capacity} 人`,
+  };
+}
+
 export function applyIndividualRegistrationPatch(
   registrations: BackendRegistration[],
   userId: number,

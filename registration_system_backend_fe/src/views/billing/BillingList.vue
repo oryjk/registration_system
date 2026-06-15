@@ -2,7 +2,7 @@
   <div class="flex flex-col gap-6">
     <div>
       <h2 class="text-xl font-bold">账单管理</h2>
-      <p class="text-sm text-base-content/60 mt-0.5">查看活动账单汇总、用户余额与交易流水</p>
+      <p class="text-sm text-base-content/60 mt-0.5">查看比赛账单汇总、用户余额与交易流水</p>
     </div>
 
     <!-- 加载中 -->
@@ -64,7 +64,7 @@
           :class="activeTab === 'activities' ? 'tab-active' : ''"
           @click="activeTab = 'activities'"
         >
-          活动账单
+          比赛账单
         </button>
         <button
           class="tab"
@@ -75,14 +75,14 @@
         </button>
       </div>
 
-      <!-- 活动账单表 -->
+      <!-- 比赛账单表 -->
       <div v-if="activeTab === 'activities'" class="card bg-base-100 border border-base-300 shadow-sm">
         <div class="overflow-x-auto">
           <table class="table table-zebra">
             <thead>
               <tr>
                 <th>月份</th>
-                <th>活动名称</th>
+                <th>比赛名称</th>
                 <th>日期</th>
                 <th>地点</th>
                 <th>人数</th>
@@ -91,7 +91,7 @@
             </thead>
             <tbody>
               <tr v-if="activityBillings.length === 0">
-                <td colspan="6" class="text-center py-12 text-base-content/40">暂无活动账单</td>
+                <td colspan="6" class="text-center py-12 text-base-content/40">暂无比赛账单</td>
               </tr>
               <tr v-for="item in activityBillings" :key="`${item.activity_id}-${item.user_id ?? 'all'}`">
                 <td>

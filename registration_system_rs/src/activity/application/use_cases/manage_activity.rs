@@ -40,7 +40,7 @@ impl ManageActivityUseCase {
         if !actor.is_admin() {
             let home_team_id = command.home_team_id.ok_or_else(|| {
                 ActivityApplicationError::Validation(
-                    "普通用户创建比赛时必须指定当前球队".to_string(),
+                    "普通用户创建活动时必须指定当前球队".to_string(),
                 )
             })?;
 
@@ -112,13 +112,13 @@ impl ManageActivityUseCase {
                 activity.home_team_id == Some(team_id) || activity.away_team_id == Some(team_id);
             if !participates {
                 return Err(ActivityApplicationError::Validation(
-                    "创建比赛时只能为参赛球队配置签到".to_string(),
+                    "创建活动时只能为参赛球队配置签到".to_string(),
                 ));
             }
 
             if activity.location_latitude.is_none() || activity.location_longitude.is_none() {
                 return Err(ActivityApplicationError::Validation(
-                    "比赛还没有配置场地经纬度，暂时不能保存签到配置".to_string(),
+                    "活动还没有配置场地经纬度，暂时不能保存签到配置".to_string(),
                 ));
             }
 
@@ -205,7 +205,7 @@ impl ManageActivityUseCase {
 
             if chrono::Local::now().naive_local() >= activity.holding_date {
                 return Err(ActivityApplicationError::Validation(
-                    "比赛开始后不能修改比赛信息".to_string(),
+                    "活动开始后不能修改活动信息".to_string(),
                 ));
             }
         }

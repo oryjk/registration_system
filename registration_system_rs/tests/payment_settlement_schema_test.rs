@@ -1,4 +1,5 @@
 #[sqlx::test(migrations = "./migrations")]
+#[ignore = "requires PostgreSQL for sqlx migration integration tests"]
 async fn recharge_records_has_payment_order_foreign_key_and_unique_index(pool: sqlx::PgPool) {
     let fk_count: (i64,) = sqlx::query_as(
         r#"
@@ -39,6 +40,7 @@ async fn recharge_records_has_payment_order_foreign_key_and_unique_index(pool: s
 }
 
 #[sqlx::test(migrations = "./migrations")]
+#[ignore = "requires PostgreSQL for sqlx migration integration tests"]
 async fn team_membership_orders_has_unique_transaction_id_index(pool: sqlx::PgPool) {
     let unique_index_count: (i64,) = sqlx::query_as(
         r#"

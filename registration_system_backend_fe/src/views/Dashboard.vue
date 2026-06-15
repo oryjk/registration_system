@@ -70,7 +70,7 @@
                 d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"
               />
             </svg>
-            活动报名
+            比赛报名
           </RouterLink>
           <RouterLink to="/challenges" class="btn btn-outline btn-sm gap-2">
             <svg
@@ -121,7 +121,7 @@ const statCards = computed(() => {
   return [
     { label: '球队总数', icon: '⚽', iconBg: 'bg-primary/10', value: s?.teamCount ?? '—' },
     {
-      label: '活动总数',
+      label: '比赛总数',
       icon: '📅',
       iconBg: 'bg-success/10',
       value: s?.monthlyActivityCount ?? '—',

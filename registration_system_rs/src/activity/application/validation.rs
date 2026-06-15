@@ -100,12 +100,12 @@ pub(crate) fn validate_checkin_window_minutes(
 ) -> Result<(i32, i32), ActivityApplicationError> {
     if !(0..=1440).contains(&open_minutes_before) {
         return Err(ActivityApplicationError::Validation(
-            "签到开放时间必须在比赛前 0 到 1440 分钟之间".to_string(),
+            "签到开放时间必须在活动前 0 到 1440 分钟之间".to_string(),
         ));
     }
     if !(0..=1440).contains(&close_minutes_after) {
         return Err(ActivityApplicationError::Validation(
-            "签到截止时间必须在比赛后 0 到 1440 分钟之间".to_string(),
+            "签到截止时间必须在活动后 0 到 1440 分钟之间".to_string(),
         ));
     }
     Ok((open_minutes_before, close_minutes_after))
@@ -143,7 +143,7 @@ pub(crate) fn normalize_match_kind(
         Some("external") => Ok("external".to_string()),
         Some("internal") => Ok("internal".to_string()),
         Some(_) => Err(ActivityApplicationError::Validation(
-            "比赛类型必须是 external 或 internal".to_string(),
+            "活动类型必须是 external 或 internal".to_string(),
         )),
     }
 }

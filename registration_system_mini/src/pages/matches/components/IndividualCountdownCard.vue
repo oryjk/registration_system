@@ -18,6 +18,7 @@ const props = defineProps<{
   submittingStatus: boolean;
   individualCtaLabel: string;
   isGuestMode: boolean;
+  ctaDisabled: boolean;
   showCta?: boolean;
 }>();
 
@@ -81,7 +82,11 @@ function handleSelectParticipant(participantId: number) {
       </view>
     </view>
 
-    <view v-if="showCta !== false" class="individual-cta-button" @tap="$emit('selectIndividualSignup')">
+    <view
+      v-if="showCta !== false"
+      :class="['individual-cta-button', ctaDisabled ? 'individual-cta-button-disabled' : '']"
+      @tap="ctaDisabled ? undefined : $emit('selectIndividualSignup')"
+    >
       <text class="individual-cta-main">{{ submittingStatus ? "提交中..." : individualCtaLabel }}</text>
       <text v-if="!isGuestMode" class="individual-cta-side">免费</text>
     </view>
@@ -296,6 +301,12 @@ function handleSelectParticipant(participantId: number) {
   border-radius: 999rpx;
   background: #171814;
   box-shadow: 0 18rpx 36rpx rgba(17, 17, 17, 0.22);
+}
+
+.individual-cta-button-disabled {
+  background: #dfe5d7;
+  color: #7d8676;
+  box-shadow: none;
 }
 
 .individual-cta-main,

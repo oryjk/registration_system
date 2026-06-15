@@ -5,6 +5,7 @@ use registration_system_backend::payment::ports::{
 use rust_decimal::Decimal;
 
 #[sqlx::test(migrations = "./migrations")]
+#[ignore = "requires PostgreSQL for sqlx migration integration tests"]
 async fn settle_recharge_payment_is_idempotent(pool: sqlx::PgPool) {
     sqlx::query(
         r#"

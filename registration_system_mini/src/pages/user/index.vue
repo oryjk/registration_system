@@ -225,13 +225,18 @@ function handleEditProfile() {
   });
 }
 
-function openTeamManage() {
-  if (!currentTeam.value?.canManageTeam) {
+function openTeamManage(teamId?: number) {
+  const targetTeam = teamId ? teamProfiles.value.find((team) => team.id === teamId) : currentTeam.value;
+  if (!targetTeam?.canManageTeam) {
     uni.showToast({
       title: "只有队长或领队可以管理球队",
       icon: "none",
     });
     return;
+  }
+
+  if (teamId && currentTeam.value?.id !== teamId) {
+    switchTeam(teamId);
   }
 
   uni.navigateTo({

@@ -142,7 +142,7 @@
   },
   "globalStyle": {
     "navigationBarTextStyle": "black",
-    "navigationBarTitleText": "赛事报名",
+    "navigationBarTitleText": "比赛报名",
     "navigationBarBackgroundColor": "#f3f4f6",
     "backgroundColor": "#f3f4f6"
   }

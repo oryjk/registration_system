@@ -48,7 +48,7 @@ impl ActivityCheckInUseCase {
 
         if activity.source_activity_id.is_some() {
             return Err(ActivityApplicationError::Validation(
-                "球队报名比赛不配置现场签到".to_string(),
+                "球队报名活动不配置现场签到".to_string(),
             ));
         }
 
@@ -76,7 +76,7 @@ impl ActivityCheckInUseCase {
 
         if activity.location_latitude.is_none() || activity.location_longitude.is_none() {
             return Err(ActivityApplicationError::Validation(
-                "比赛还没有配置场地经纬度，暂时不能开启签到".to_string(),
+                "活动还没有配置场地经纬度，暂时不能开启签到".to_string(),
             ));
         }
 

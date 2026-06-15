@@ -42,7 +42,7 @@ impl TeamRegistrationUseCase {
 
         if !(5..=11).contains(&registration_count) {
             return Err(ActivityApplicationError::Validation(
-                "比赛人制必须在 5-11 之间".to_string(),
+                "活动人制必须在 5-11 之间".to_string(),
             ));
         }
 
@@ -63,7 +63,7 @@ impl TeamRegistrationUseCase {
             .find_derived_by_source_and_team(activity_id, team_id)
             .await
             .map_err(|error| {
-                ActivityApplicationError::internal(format!("查询球队报名比赛失败: {error}"))
+                ActivityApplicationError::internal(format!("查询球队报名活动失败: {error}"))
             })?
         {
             if existing.status == 3 {
@@ -129,7 +129,7 @@ impl TeamRegistrationUseCase {
             .create(&derived_activity)
             .await
             .map_err(|error| {
-                ActivityApplicationError::internal(format!("创建球队报名比赛失败: {error}"))
+                ActivityApplicationError::internal(format!("创建球队报名活动失败: {error}"))
             })?;
         self.command_repository
             .backfill_team_member_registrations(&derived_activity.id)
@@ -163,7 +163,7 @@ impl TeamRegistrationUseCase {
             .find_derived_by_source_and_team(activity_id, team_id)
             .await
             .map_err(|error| {
-                ActivityApplicationError::internal(format!("查询球队报名比赛失败: {error}"))
+                ActivityApplicationError::internal(format!("查询球队报名活动失败: {error}"))
             })?
             .ok_or_else(|| ActivityApplicationError::NotFound("球队报名不存在".to_string()))?;
 

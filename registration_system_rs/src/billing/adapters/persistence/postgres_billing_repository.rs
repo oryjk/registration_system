@@ -377,7 +377,7 @@ impl PostgresBillingRepository {
                 .ok_or_else(|| DomainError::Validation("活动不存在".to_string()))?;
 
         if activity_status != 2 {
-            return Err(DomainError::Validation("仅已结束比赛可结算".to_string()));
+            return Err(DomainError::Validation("仅已结束活动可结算".to_string()));
         }
 
         let resolved_charges = Self::resolve_settlement_charges(
@@ -1249,7 +1249,7 @@ impl PostgresBillingRepository {
         for tx in transactions {
             let type_name = match tx.record_type.as_str() {
                 "recharge" => "充值",
-                "expense" => "比赛扣费",
+                "expense" => "活动扣费",
                 "penalty" => "月度罚款",
                 _ => "账单记录",
             };

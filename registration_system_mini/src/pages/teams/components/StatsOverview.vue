@@ -39,7 +39,7 @@ defineProps<{
     </view>
     <view class="stats-summary-item">
       <text class="stats-summary-value">{{ mySummary.unregistered }}</text>
-      <text class="stats-summary-label">未报名</text>
+      <text class="stats-summary-label">未打卡</text>
     </view>
     <view class="stats-summary-item">
       <text class="stats-summary-value">{{ mySummary.total }}</text>

@@ -1,4 +1,5 @@
 #[sqlx::test(migrations = "./migrations")]
+#[ignore = "requires PostgreSQL for sqlx migration integration tests"]
 async fn billing_flow_recent_indexes_exist_after_migrations(pool: sqlx::PgPool) {
     let expected_indexes = [
         "idx_recharge_records_user_created_at",

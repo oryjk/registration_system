@@ -33,6 +33,7 @@ const props = defineProps<{
   submittingStatus: boolean;
   individualCtaLabel: string;
   isGuestMode: boolean;
+  canSubmitIndividualRegistration: boolean;
   currentTeam: TeamProfileViewModel | null;
   teamMemberRegistrationGroups: {
     joined: Array<{ userId: number; name: string; avatarUrl: string; tone: string; jerseyNumber: string; isCurrentUser: boolean }>;
@@ -96,6 +97,7 @@ function handleTeamMemberDialogVisibilityChange(visible: boolean) {
       :submitting-status="submittingStatus"
       :individual-cta-label="individualCtaLabel"
       :is-guest-mode="isGuestMode"
+      :cta-disabled="!canSubmitIndividualRegistration"
       :show-cta="!showTeamMemberRegistrationBoard"
       @select-individual-signup="handleSelectIndividualSignup"
     />

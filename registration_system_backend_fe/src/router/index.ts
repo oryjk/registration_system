@@ -31,7 +31,7 @@ const router = createRouter({
           path: 'activities',
           name: 'activities',
           component: () => import('@/views/activities/ActivityList.vue'),
-          meta: { title: '活动报名' },
+          meta: { title: '比赛报名' },
         },
         {
           path: 'individual-registrations',
@@ -55,7 +55,7 @@ const router = createRouter({
           path: 'activities/:id',
           name: 'activity-detail',
           component: () => import('@/views/activities/ActivityDetail.vue'),
-          meta: { title: '活动详情' },
+          meta: { title: '比赛详情' },
         },
         {
           path: 'billing',

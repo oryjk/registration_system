@@ -1,4 +1,5 @@
 #[sqlx::test(migrations = "./migrations")]
+#[ignore = "requires PostgreSQL for sqlx migration integration tests"]
 async fn team_members_has_is_member_flag(pool: sqlx::PgPool) {
     let row: (String, String, Option<String>) = sqlx::query_as(
         r#"

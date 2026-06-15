@@ -33,7 +33,7 @@
             <h1 class="text-4xl font-black leading-tight tracking-tight">球队管理后台</h1>
           </div>
           <p class="text-lg opacity-90 max-w-md leading-relaxed">
-            统一管理球队、活动报名与账单，让俱乐部运营更高效。
+            统一管理球队、比赛报名与账单，让俱乐部运营更高效。
           </p>
         </div>
         <div class="flex flex-wrap gap-3 mt-4">
@@ -65,7 +65,7 @@
                 d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"
               />
             </svg>
-            <span class="text-sm font-medium">活动报名</span>
+            <span class="text-sm font-medium">比赛报名</span>
           </div>
           <div
             class="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2.5 rounded-lg border border-white/15"

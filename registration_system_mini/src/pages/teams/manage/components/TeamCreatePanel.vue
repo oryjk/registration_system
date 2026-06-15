@@ -32,7 +32,7 @@ function handleSubmit() {
     </view>
     <view v-if="!reviewMode" class="form-field">
       <text class="form-label">球队介绍</text>
-      <textarea v-model="form.description" class="form-textarea" placeholder="一句话说明球队风格、城市或活动时间" />
+      <textarea v-model="form.description" class="form-textarea" placeholder="一句话说明球队风格、城市或比赛时间" />
     </view>
     <view class="form-field">
       <text class="form-label">入队密码</text>

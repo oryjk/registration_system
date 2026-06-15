@@ -45,6 +45,7 @@ import {
   formatMonthDay,
   formatWeekday,
   parseDateValue,
+  resolveRegistrationCapacityState,
 } from "./detailState";
 import {
   buildRegisteredAttendeeCharges,
@@ -112,6 +113,14 @@ export function useMatchDetailPage() {
   const progressSplitLeft = computed(() => registrationProgress.value.splitLeft);
 
   const remainingPlayersLabel = computed(() => buildRemainingPlayersLabel(joinedCount.value, requiredPlayers.value));
+  const registrationCapacityState = computed(() =>
+    resolveRegistrationCapacityState({
+      joinedCount: joinedCount.value,
+      teamCapacityLimit: match.value?.team_capacity_limit,
+      currentStatus: currentStatus.value,
+    }),
+  );
+  const canSubmitIndividualRegistration = computed(() => !registrationCapacityState.value.isFull);
 
   const dateLine = computed(() => {
     if (!match.value) return "";
@@ -206,6 +215,7 @@ export function useMatchDetailPage() {
 
   const individualCtaLabel = computed(() => {
     if (isGuestMode.value) return "登录后报名";
+    if (registrationCapacityState.value.isFull) return "报名已满";
     return currentStatus.value === "参加" ? "取消报名" : "立即报名";
   });
   const canUseTeamRegistration = computed(() =>
@@ -516,6 +526,13 @@ export function useMatchDetailPage() {
       await handleCancelIndividualSignup();
       return;
     }
+    if (!canSubmitIndividualRegistration.value) {
+      uni.showToast({
+        title: "报名人数已满",
+        icon: "none",
+      });
+      return;
+    }
     const confirmed = await confirmRegistrationAction({
       title: "确认报名",
       content: `确认报名参加「${match.value.name}」？`,
@@ -585,6 +602,13 @@ export function useMatchDetailPage() {
     }
 
     const nextLabel = stand === 1 ? "报名" : stand === 2 ? "请假" : "设为未报名";
+    if (stand === 1 && !canSubmitIndividualRegistration.value) {
+      uni.showToast({
+        title: "报名人数已满",
+        icon: "none",
+      });
+      return;
+    }
 
     // Since the UI now has a custom popup for selection, we can skip the uni.showModal confirmation here,
     // or keep it if we still want a double confirmation.
@@ -875,6 +899,8 @@ export function useMatchDetailPage() {
     participantPreview,
     teamMemberRegistrationGroups,
     remainingPlayersLabel,
+    registrationCapacityState,
+    canSubmitIndividualRegistration,
     submittingStatus,
     individualCtaLabel,
     isGuestMode,

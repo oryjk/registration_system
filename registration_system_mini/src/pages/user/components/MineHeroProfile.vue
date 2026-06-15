@@ -25,7 +25,7 @@ const emit = defineEmits<{
   (event: "editProfile"): void;
   (event: "login"): void;
   (event: "logout"): void;
-  (event: "manageTeam"): void;
+  (event: "manageTeam", teamId?: number): void;
   (event: "switchIdentity", identityId: string): void;
   (event: "switchTeam", teamId: number): void;
 }>();
@@ -46,8 +46,8 @@ function handleLogout() {
   emit("logout");
 }
 
-function handleManageTeam() {
-  emit("manageTeam");
+function handleManageTeam(teamId?: number) {
+  emit("manageTeam", teamId);
 }
 
 function handleSwitchTeam(teamId: number) {
@@ -71,7 +71,7 @@ function handleSwitchIdentity(identityId: string) {
         </view>
         <view class="guest-copy">
           <view class="guest-kicker">PERSONAL HUB</view>
-          <text class="guest-title">立即登录，开始你的赛事旅程</text>
+          <text class="guest-title">立即登录，开始你的比赛旅程</text>
           <text class="guest-description">登录后可同步你的比赛记录、球队身份、钱包账单与消息通知。</text>
         </view>
       </view>
@@ -125,10 +125,34 @@ function handleSwitchIdentity(identityId: string) {
         </view>
         <view class="profile-team-row">
           <text class="profile-team-line">当前球队 · {{ currentTeam?.name || "未加入球队" }}</text>
-          <text v-if="currentTeam?.canManageTeam" class="team-manage-chip" @tap.stop="handleManageTeam">球队管理</text>
         </view>
       </view>
       <text class="profile-chevron">›</text>
+    </view>
+
+    <view v-if="currentUser && teamProfiles.some((team) => team.canManageTeam)" class="team-manage-card-list">
+      <view class="team-manage-card-head">
+        <text class="team-manage-card-title">球队管理</text>
+        <text class="team-manage-card-copy">进入队务后台</text>
+      </view>
+      <view class="team-manage-card-grid">
+        <view
+          v-for="team in teamProfiles.filter((item) => item.canManageTeam)"
+          :key="team.id"
+          :class="['team-manage-card', currentTeam?.id === team.id ? 'team-manage-card-active' : '', isSwitchingTeam ? 'team-manage-card-pending' : '']"
+          @tap.stop="handleManageTeam(team.id)"
+        >
+          <view class="team-manage-card-logo">
+            <image v-if="team.logoUrl" class="team-manage-card-logo-image" :src="team.logoUrl" mode="aspectFill" />
+            <text v-else>{{ team.name.slice(0, 1) || "队" }}</text>
+          </view>
+          <view class="team-manage-card-main">
+            <text class="team-manage-card-name">{{ team.name }}</text>
+            <text class="team-manage-card-meta">{{ team.myRoleLabel }} · {{ team.memberCount }} 人</text>
+          </view>
+          <text class="team-manage-card-arrow">›</text>
+        </view>
+      </view>
     </view>
 
     <scroll-view v-if="currentUser" class="team-switch-scroll" scroll-x>
@@ -170,7 +194,7 @@ function handleSwitchIdentity(identityId: string) {
       <view class="profile-stat-item">
         <view class="profile-stat-icon">赛</view>
         <view class="profile-stat-copy">
-          <text class="profile-stat-label">今年活动</text>
+          <text class="profile-stat-label">今年比赛</text>
           <text class="profile-stat-value">{{ overviewDigest.activityCount }}<text class="profile-stat-unit"> 次</text></text>
         </view>
       </view>
@@ -457,19 +481,6 @@ function handleSwitchIdentity(identityId: string) {
   margin-top: 0;
 }
 
-.team-manage-chip {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 42rpx;
-  padding: 0 18rpx;
-  border-radius: 999rpx;
-  background: #10110f;
-  color: #ffffff;
-  font-size: 22rpx;
-  font-weight: 900;
-}
-
 .profile-actions-row {
   display: flex;
   align-items: center;
@@ -500,6 +511,150 @@ function handleSwitchIdentity(identityId: string) {
   color: #8f9488;
   font-size: 40rpx;
   line-height: 1;
+}
+
+.team-manage-card-list {
+  margin-top: 20rpx;
+  padding: 22rpx 22rpx 24rpx;
+  border-radius: 32rpx;
+  background: rgba(255, 255, 255, 0.74);
+  border: 2rpx solid rgba(17, 19, 16, 0.06);
+  box-shadow:
+    0 18rpx 34rpx rgba(16, 17, 15, 0.06),
+    inset 0 2rpx 0 rgba(255, 255, 255, 0.72);
+}
+
+.team-manage-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.team-manage-card-title,
+.team-manage-card-name {
+  font-weight: 950;
+}
+
+.team-manage-card-title {
+  color: #111310;
+  font-size: 30rpx;
+}
+
+.team-manage-card-copy {
+  height: 40rpx;
+  padding: 0 16rpx;
+  border-radius: 999rpx;
+  background: #f1f5ec;
+  color: #73796d;
+  font-size: 22rpx;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.team-manage-card-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 14rpx;
+  margin-top: 16rpx;
+}
+
+.team-manage-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  min-height: 104rpx;
+  padding: 18rpx 20rpx;
+  border-radius: 28rpx;
+  background: #ffffff;
+  border: 2rpx solid rgba(17, 19, 16, 0.06);
+  box-shadow: 0 12rpx 24rpx rgba(16, 17, 15, 0.05);
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.team-manage-card::before {
+  content: "";
+  width: 8rpx;
+  align-self: stretch;
+  margin: -18rpx 2rpx -18rpx -20rpx;
+  border-radius: 999rpx;
+  background: #c8ff00;
+  flex-shrink: 0;
+}
+
+.team-manage-card-active {
+  background:
+    linear-gradient(135deg, rgba(200, 255, 0, 0.16) 0%, rgba(255, 255, 255, 0.98) 48%, rgba(255, 255, 255, 0.92) 100%);
+  border-color: rgba(166, 220, 0, 0.34);
+  box-shadow: 0 16rpx 30rpx rgba(166, 220, 0, 0.13);
+}
+
+.team-manage-card-pending {
+  pointer-events: none;
+  opacity: 0.72;
+}
+
+.team-manage-card-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 68rpx;
+  height: 68rpx;
+  border-radius: 24rpx;
+  overflow: hidden;
+  background: #eff4e9;
+  color: #111310;
+  font-size: 28rpx;
+  font-weight: 950;
+  flex-shrink: 0;
+  box-shadow: inset 0 0 0 2rpx rgba(17, 19, 16, 0.05);
+}
+
+.team-manage-card-logo-image {
+  width: 100%;
+  height: 100%;
+}
+
+.team-manage-card-main {
+  min-width: 0;
+  flex: 1;
+}
+
+.team-manage-card-name {
+  display: block;
+  overflow: hidden;
+  color: #111310;
+  font-size: 29rpx;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.team-manage-card-meta {
+  display: block;
+  margin-top: 5rpx;
+  color: #70786b;
+  font-size: 22rpx;
+  font-weight: 800;
+}
+
+.team-manage-card-arrow {
+  width: 44rpx;
+  height: 44rpx;
+  border-radius: 999rpx;
+  background: #c8ff00;
+  color: #111310;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 34rpx;
+  font-weight: 900;
+  line-height: 1;
+  flex-shrink: 0;
 }
 
 .team-switch-scroll {

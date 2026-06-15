@@ -70,7 +70,7 @@ const matchSectionLinkLabel = computed(() => (currentTeam.value ? "全部比赛"
 const matchEmptyText = computed(() => {
   if (isGuestMode.value) return "登录后可以查看最近要处理的比赛";
   if (!currentTeam.value) return "";
-  return "当前球队还没有可展示的比赛，等后台录入活动后这里会自动刷新。";
+  return "当前球队还没有可展示的比赛，等后台录入比赛后这里会自动刷新。";
 });
 const opportunityCaption = computed(() => {
   if (isGuestMode.value) return "公开约队可先浏览，接约和报名需要登录。";
@@ -122,10 +122,6 @@ function statusClass(status: string) {
 
 function stageClass(stage: string) {
   return `home-stage home-stage-${activityStageTone(stage)}`;
-}
-
-function signupScopeClass(scope: HomeMatchCardViewModel["signupScope"]) {
-  return scope === "internal" ? "home-scope home-scope-internal" : "home-scope home-scope-external";
 }
 
 function challengeStageClass(statusTone: ChallengeCardViewModel["statusTone"]) {
@@ -656,7 +652,6 @@ onShareTimeline(() => ({
           :progress-base-width="progressBaseWidth"
           :progress-extra-width="progressExtraWidth"
           :progress-split-left="progressSplitLeft"
-          :signup-scope-class="signupScopeClass"
           :stage-class="stageClass"
           :status-class="statusClass"
           @match-tap="handleMatchTap"

@@ -13,6 +13,12 @@ import {
   resolveUserDisplayName,
 } from "../viewModels";
 
+declare const Bun: {
+  file(path: string): {
+    text(): Promise<string>;
+  };
+};
+
 describe("buildTeamProfiles", () => {
   test("combines my teams with member details and current user role", () => {
     const profiles = buildTeamProfiles(
@@ -132,6 +138,15 @@ describe("resolveUserDisplayHandle", () => {
 });
 
 describe("buildHomeMatchCards", () => {
+  test("home match list shows only stage status instead of duplicated signup scope label", async () => {
+    const component = await Bun.file(
+      "/Users/carlwang/registration_system/registration_system_mini/src/pages/home/components/HomeMatchList.vue",
+    ).text();
+
+    expect(component.includes("{{ match.signupScopeLabel }}")).toEqual(false);
+    expect(component.includes("{{ match.stage }}")).toEqual(true);
+  });
+
   test("filters activities by current team and merges my stand and registration counts", () => {
     const cards = buildHomeMatchCards({
       teamId: 1,

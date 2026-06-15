@@ -59,4 +59,15 @@ describe('ActivityList actions', () => {
     )
     expect(detailSource).toContain('defaultTeamCapacityLimit(a.players_per_team)')
   })
+
+  it('requires a home team and groups registration date range in create form', () => {
+    expect(source).toContain('主队 <span class="text-error">*</span>')
+    expect(source).toContain('请选择主队，比赛报名列表只展示已关联球队的比赛')
+    expect(source).toContain('比赛与报名时间')
+    expect(source).toContain('报名时间范围')
+    expect(source).toContain(':max="form.end_time || undefined"')
+    expect(source).toContain(':min="form.start_time || undefined"')
+    expect(source).toContain('onRegistrationStartChange')
+    expect(source).toContain('onRegistrationEndChange')
+  })
 })

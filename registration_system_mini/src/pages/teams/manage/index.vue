@@ -4,6 +4,7 @@ import { onShow } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
 import MemberAttendancePopup from "./components/MemberAttendancePopup.vue";
 import MemberEditPopup from "./components/MemberEditPopup.vue";
+import TeamActivityAttendancePanel from "./components/TeamActivityAttendancePanel.vue";
 import TeamCreatePanel from "./components/TeamCreatePanel.vue";
 import TeamJoinPanel from "./components/TeamJoinPanel.vue";
 import TeamMemberManager from "./components/TeamMemberManager.vue";
@@ -33,6 +34,7 @@ import {
   attendanceStatusLabel as resolveAttendanceStatusLabel,
   buildAttendanceGroups,
   buildAttendanceSummary,
+  buildTeamActivityAttendanceSummaries,
   formatAttendanceDate,
   resolveVisibleMode,
   splitTeamMembers,
@@ -70,6 +72,8 @@ const attendancePopupVisible = ref(false);
 const attendanceLoading = ref(false);
 const attendanceMemberId = ref<number | null>(null);
 const attendanceRecords = ref<BackendTeamMemberAttendanceRecord[]>([]);
+const activityAttendanceLoading = ref(false);
+const activityAttendanceRecordsByUserId = ref<Record<number, BackendTeamMemberAttendanceRecord[]>>({});
 const collapsedAttendanceYears = ref<string[]>([]);
 const logoUploading = ref(false);
 const maxLogoSizeBytes = 1024 * 1024;
@@ -122,6 +126,14 @@ const editingMember = computed(() => (editingMemberId.value ? currentMemberByUse
 const attendanceMember = computed(() => (attendanceMemberId.value ? currentMemberByUserId(attendanceMemberId.value) : null));
 const attendanceSummary = computed(() => buildAttendanceSummary(attendanceRecords.value));
 const attendanceGroups = computed(() => buildAttendanceGroups(attendanceRecords.value, collapsedAttendanceYears.value));
+const activityAttendanceSummaries = computed(() =>
+  buildTeamActivityAttendanceSummaries(
+    activityAttendanceRecordsByUserId.value,
+    memberName,
+    memberAvatarUrl,
+    memberInitial,
+  ),
+);
 const pageStyle = computed(() => ({
   paddingTop: `${navMetrics.pageTopPadding + 8}px`,
 }));
@@ -134,6 +146,13 @@ function syncVisibleMode() {
 watch(hasCurrentTeam, () => {
   syncVisibleMode();
 });
+
+watch(
+  () => currentTeam.value?.id,
+  () => {
+    activityAttendanceRecordsByUserId.value = {};
+  },
+);
 
 function resetJoinSelection() {
   selectedTeam.value = null;
@@ -300,6 +319,35 @@ async function handleOpenMemberAttendance(member: BackendTeamMember) {
   }
 }
 
+async function loadTeamActivityAttendanceSummaries() {
+  const teamId = currentTeam.value?.id;
+  if (!teamId || activityAttendanceLoading.value) return;
+
+  activityAttendanceLoading.value = true;
+  activityAttendanceRecordsByUserId.value = {};
+  try {
+    await ensureTeamDetailLoaded(teamId);
+    const results = await Promise.all(
+      currentMembers.value.map(async (member) => {
+        const result = await loadTeamMemberAttendance(teamId, member.user_id);
+        return [member.user_id, result.records] as const;
+      }),
+    );
+    activityAttendanceRecordsByUserId.value = Object.fromEntries(results);
+  } catch (error) {
+    uni.showToast({ title: error instanceof Error ? error.message : "比赛出勤加载失败", icon: "none" });
+  } finally {
+    activityAttendanceLoading.value = false;
+  }
+}
+
+function handleSelectMode(mode: TeamManageMode) {
+  activeMode.value = mode;
+  if (mode === "attendance") {
+    void loadTeamActivityAttendanceSummaries();
+  }
+}
+
 async function handleUpdateTeamProfile() {
   if (!currentTeam.value || !canUpdateTeamProfile.value) {
     uni.showToast({ title: "请先补全球队名称", icon: "none" });
@@ -462,6 +510,7 @@ async function handleAddMember() {
       isMember: memberForm.isMember,
     });
     await refreshSessionContext();
+    activityAttendanceRecordsByUserId.value = {};
     resetMemberForm();
     uni.showToast({ title: "队员已添加", icon: "none" });
   } catch (error) {
@@ -482,6 +531,7 @@ async function handleUpdateMember() {
       isMember: editMemberForm.isMember,
     });
     await refreshSessionContext();
+    activityAttendanceRecordsByUserId.value = {};
     closeEditMemberPopup();
     uni.showToast({ title: "队员已更新", icon: "none" });
   } catch (error) {
@@ -502,6 +552,7 @@ async function handleRemoveMember(member: BackendTeamMember) {
   try {
     await removeMemberFromTeam(currentTeam.value.id, member.user_id);
     await refreshSessionContext();
+    activityAttendanceRecordsByUserId.value = {};
     if (editingMemberId.value === member.user_id) {
       closeEditMemberPopup();
     }
@@ -521,6 +572,7 @@ async function handleToggleMemberStatus(member: BackendTeamMember) {
   try {
     await setTeamMemberStatus(currentTeam.value.id, member.user_id, nextStatus);
     await refreshSessionContext();
+    activityAttendanceRecordsByUserId.value = {};
     uni.showToast({ title: nextStatus === 1 ? "队员已恢复" : "队员已冻结", icon: "none" });
   } catch (error) {
     uni.showToast({ title: error instanceof Error ? error.message : "状态更新失败", icon: "none" });
@@ -542,6 +594,9 @@ onShow(async () => {
   } catch (_error) {
     usersById.value = {};
   }
+  if (activeMode.value === "attendance") {
+    await loadTeamActivityAttendanceSummaries();
+  }
 });
 </script>
 
@@ -558,12 +613,13 @@ onShow(async () => {
 
     <view class="mode-switch">
       <template v-if="hasCurrentTeam">
-        <view :class="['mode-chip', activeMode === 'profile' ? 'mode-chip-active' : '']" @tap="activeMode = 'profile'">球队资料</view>
-        <view :class="['mode-chip', activeMode === 'members' ? 'mode-chip-active' : '']" @tap="activeMode = 'members'">队员管理</view>
+        <view :class="['mode-chip', activeMode === 'profile' ? 'mode-chip-active' : '']" @tap="handleSelectMode('profile')">球队资料</view>
+        <view :class="['mode-chip', activeMode === 'members' ? 'mode-chip-active' : '']" @tap="handleSelectMode('members')">队员管理</view>
+        <view :class="['mode-chip', activeMode === 'attendance' ? 'mode-chip-active' : '']" @tap="handleSelectMode('attendance')">比赛出勤</view>
       </template>
       <template v-else>
-        <view v-if="canShowCreateTeamEntry" :class="['mode-chip', activeMode === 'create' ? 'mode-chip-active' : '']" @tap="activeMode = 'create'">创建球队</view>
-        <view :class="['mode-chip', activeMode === 'join' ? 'mode-chip-active' : '']" @tap="activeMode = 'join'">加入球队</view>
+        <view v-if="canShowCreateTeamEntry" :class="['mode-chip', activeMode === 'create' ? 'mode-chip-active' : '']" @tap="handleSelectMode('create')">创建球队</view>
+        <view :class="['mode-chip', activeMode === 'join' ? 'mode-chip-active' : '']" @tap="handleSelectMode('join')">加入球队</view>
       </template>
     </view>
 
@@ -605,7 +661,7 @@ onShow(async () => {
     />
 
     <TeamMemberManager
-      v-else
+      v-else-if="activeMode === 'members'"
       :current-team="currentTeam"
       :can-manage-members="canManageMembers"
       v-model:user-search-keyword="userSearchKeyword"
@@ -630,6 +686,14 @@ onShow(async () => {
       @edit-member="handleEditMember"
       @toggle-member-status="handleToggleMemberStatus"
       @remove-member="handleRemoveMember"
+    />
+
+    <TeamActivityAttendancePanel
+      v-else-if="activeMode === 'attendance'"
+      :current-team="currentTeam"
+      :loading="activityAttendanceLoading"
+      :summaries="activityAttendanceSummaries"
+      :format-attendance-date="formatAttendanceDate"
     />
 
     <MemberEditPopup

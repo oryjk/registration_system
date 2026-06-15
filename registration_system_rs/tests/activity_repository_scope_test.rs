@@ -4,9 +4,10 @@ use registration_system_backend::activity::ports::ActivityQueryRepository;
 use sqlx::PgPool;
 use uuid::Uuid;
 
-fn test_database_url() -> Option<String> {
-    let _ = dotenvy::from_filename(".env");
-    std::env::var("DATABASE_URL").ok()
+fn test_database_url() -> String {
+    let _ = dotenvy::from_filename(".env.test");
+    std::env::var("TEST_DATABASE_URL")
+        .expect("TEST_DATABASE_URL must be set to run database integration tests")
 }
 
 async fn delete_activity(pool: &PgPool, activity_id: &str) {
@@ -30,10 +31,9 @@ async fn ensure_activity_team_capacity_limit_column(pool: &PgPool) {
 }
 
 #[tokio::test]
+#[ignore = "requires TEST_DATABASE_URL and writes to a PostgreSQL test database"]
 async fn team_registration_scope_includes_direct_team_activity() {
-    let Some(database_url) = test_database_url() else {
-        return;
-    };
+    let database_url = test_database_url();
 
     let pool = PgPool::connect(&database_url)
         .await
@@ -95,10 +95,9 @@ async fn team_registration_scope_includes_direct_team_activity() {
 }
 
 #[tokio::test]
+#[ignore = "requires TEST_DATABASE_URL and writes to a PostgreSQL test database"]
 async fn activity_list_can_filter_by_team_id() {
-    let Some(database_url) = test_database_url() else {
-        return;
-    };
+    let database_url = test_database_url();
 
     let pool = PgPool::connect(&database_url)
         .await
@@ -190,10 +189,9 @@ async fn activity_list_can_filter_by_team_id() {
 }
 
 #[tokio::test]
+#[ignore = "requires TEST_DATABASE_URL and writes to a PostgreSQL test database"]
 async fn activity_list_can_filter_current_team_future_activities() {
-    let Some(database_url) = test_database_url() else {
-        return;
-    };
+    let database_url = test_database_url();
 
     let pool = PgPool::connect(&database_url)
         .await

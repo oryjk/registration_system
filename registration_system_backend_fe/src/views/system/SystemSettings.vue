@@ -5,7 +5,7 @@
         <p class="admin-eyebrow">System Control</p>
         <h2 class="admin-title">系统设置</h2>
         <p class="admin-copy">
-          管理活动地点搜索、小程序首页装修等基础能力。这里的配置会直接影响管理端和小程序的线上体验。
+          管理比赛地点搜索、小程序首页装修等基础能力。这里的配置会直接影响管理端和小程序的线上体验。
         </p>
       </div>
       <div class="grid min-w-72 grid-cols-2 gap-3">
@@ -35,7 +35,7 @@
           <div class="admin-panel-header">
             <div>
               <h3 class="admin-section-title">服务商切换</h3>
-              <p class="admin-section-copy">选择活动地点搜索的实际执行服务。</p>
+              <p class="admin-section-copy">选择比赛地点搜索的实际执行服务。</p>
             </div>
             <span class="admin-badge">{{ currentProviderLabel }}</span>
           </div>
@@ -130,7 +130,7 @@
         <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h3 class="admin-section-title">保存地图设置</h3>
-            <p class="admin-section-copy">保存后，活动地点搜索会按当前所选服务商与配置立即生效。</p>
+            <p class="admin-section-copy">保存后，比赛地点搜索会按当前所选服务商与配置立即生效。</p>
           </div>
           <div class="flex items-center gap-3">
             <span v-if="saveMessage" class="text-sm text-success">{{ saveMessage }}</span>

@@ -11,11 +11,11 @@ import { getCustomNavMetrics } from "@/utils/customNav";
 import { getCurrentYearDateRange } from "@/utils/dateRange";
 import { resolveUserDisplayName } from "@/utils/viewModels";
 import type { BackendTeamAttendanceRankingItem, BackendTeamMemberAttendanceRecord } from "@/types/backend";
+import AttendanceCalendarCard from "./components/AttendanceCalendarCard.vue";
 import AttendanceRankingCard from "./components/AttendanceRankingCard.vue";
-import AttendanceRecordCard from "./components/AttendanceRecordCard.vue";
 import StatsOverview from "./components/StatsOverview.vue";
 import StatsSkeleton from "./components/StatsSkeleton.vue";
-import { buildAttendanceGroups, buildRecordSummary } from "./teamStatsState";
+import { buildAttendanceCalendarMonths, buildRecordSummary } from "./teamStatsState";
 
 const { currentTeam, currentUser, ensureSessionReady } = useTeamContext();
 const { syncUnreadCount } = useNotificationCenter();
@@ -27,7 +27,6 @@ const requiresLogin = ref(false);
 const myRecords = ref<BackendTeamMemberAttendanceRecord[]>([]);
 const myYearRecords = ref<BackendTeamMemberAttendanceRecord[]>([]);
 const rankingItems = ref<BackendTeamAttendanceRankingItem[]>([]);
-const collapsedYears = ref<string[]>([]);
 const statsTab = ref<"records" | "ranking">("records");
 
 const currentYear = new Date().getFullYear();
@@ -39,7 +38,7 @@ const myDisplayName = computed(() => resolveUserDisplayName(currentUser.value));
 const myAvatarUrl = computed(() => currentUser.value?.avatar_url?.trim() || "");
 const myInitial = computed(() => myDisplayName.value.slice(0, 1) || "我");
 const mySummary = computed(() => buildRecordSummary(myYearRecords.value));
-const attendanceGroups = computed(() => buildAttendanceGroups(myRecords.value, collapsedYears.value));
+const attendanceCalendarMonths = computed(() => buildAttendanceCalendarMonths(myRecords.value));
 const statsTabOptions = [
   { value: "records", label: "出勤记录" },
   { value: "ranking", label: "出勤排名" },
@@ -49,19 +48,10 @@ function handleStatsTabChange(value: string) {
   statsTab.value = value === "ranking" ? "ranking" : "records";
 }
 
-function toggleYear(year: string) {
-  if (collapsedYears.value.includes(year)) {
-    collapsedYears.value = collapsedYears.value.filter((item) => item !== year);
-  } else {
-    collapsedYears.value = [...collapsedYears.value, year];
-  }
-}
-
 function resetStatsData() {
   myRecords.value = [];
   myYearRecords.value = [];
   rankingItems.value = [];
-  collapsedYears.value = [];
 }
 
 async function loadPageData() {
@@ -148,12 +138,11 @@ onUnload(() => {
             </view>
           </view>
 
-          <AttendanceRecordCard
+          <AttendanceCalendarCard
             v-if="statsTab === 'records'"
             :my-records-count="myRecords.length"
-            :attendance-groups="attendanceGroups"
+            :calendar-months="attendanceCalendarMonths"
             embedded
-            @toggle-year="toggleYear"
           />
           <AttendanceRankingCard v-else :ranking-items="rankingItems" embedded />
         </view>

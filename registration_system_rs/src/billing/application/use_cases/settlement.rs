@@ -54,7 +54,7 @@ impl BillingSettlementUseCase {
                 command.description.as_deref(),
             )
             .await
-            .map_err(|error| AppError::internal(format!("比赛扣费失败: {error}")))?;
+            .map_err(|error| AppError::internal(format!("活动扣费失败: {error}")))?;
 
         Ok(ActivityExpenseResult {
             activity_id: command.activity_id,
@@ -113,7 +113,7 @@ impl BillingSettlementUseCase {
                 created_by_admin_id: (actor.actor_kind == ActorKind::Admin).then_some(actor.id),
             })
             .await
-            .map_err(|error| map_billing_domain_error("结算比赛费用失败", error))
+            .map_err(|error| map_billing_domain_error("结算活动费用失败", error))
     }
 
     async fn ensure_can_manage_activity_settlement(

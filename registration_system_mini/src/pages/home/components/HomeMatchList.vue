@@ -13,7 +13,6 @@ defineProps<{
   progressBaseWidth: (joinedPlayers: number, requiredPlayers: number, maxPlayers: number) => string;
   progressExtraWidth: (joinedPlayers: number, requiredPlayers: number, maxPlayers: number) => string;
   progressSplitLeft: (requiredPlayers: number, maxPlayers: number) => string;
-  signupScopeClass: (scope: HomeMatchCardViewModel["signupScope"]) => string;
   stageClass: (stage: string) => string;
   statusClass: (status: string) => string;
 }>();
@@ -48,7 +47,6 @@ function handleMatchTap(match: HomeMatchCardViewModel) {
         <view class="home-match-title-row">
           <text class="home-match-title">{{ match.title }}</text>
           <view class="home-match-tags">
-            <text :class="signupScopeClass(match.signupScope)">{{ match.signupScopeLabel }}</text>
             <text :class="stageClass(match.stage)">{{ match.stage }}</text>
           </view>
         </view>
@@ -202,23 +200,12 @@ function handleMatchTap(match: HomeMatchCardViewModel) {
   flex-shrink: 0;
 }
 
-.home-scope,
 .home-stage {
   padding: 10rpx 16rpx;
   border-radius: 999rpx;
   font-size: 22rpx;
   line-height: 1;
   font-weight: 700;
-}
-
-.home-scope-internal {
-  background: #eff8de;
-  color: #3c681b;
-}
-
-.home-scope-external {
-  background: #172018;
-  color: #b9f24b;
 }
 
 .home-stage-red {

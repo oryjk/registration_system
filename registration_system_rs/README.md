@@ -69,6 +69,22 @@ sqlx migrate run
 cargo run
 ```
 
+## 测试
+
+默认测试不会运行需要真实 PostgreSQL 的数据库集成测试：
+
+```bash
+cargo test
+```
+
+会写入测试数据库或依赖 `sqlx` 临时库的测试均已标记为 `#[ignore]`，需要显式执行：
+
+```bash
+TEST_DATABASE_URL=postgres://user:password@localhost:5432/registration_system_test make integration-test
+```
+
+直接连接仓储的集成测试只读取 `TEST_DATABASE_URL`，不要使用开发库或生产库地址。
+
 ## 默认管理员
 
 - 用户名：`admin`

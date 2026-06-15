@@ -90,7 +90,7 @@ function orderTypeLabel(type: BackendPaymentOrder["order_type"]) {
     case "team_membership":
       return "球队会员";
     case "activity":
-      return "活动订单";
+      return "比赛订单";
     default:
       return "钱包充值";
   }

@@ -330,4 +330,25 @@ describe("match detail registration design", () => {
     expect(individualRegistration.includes("开场倒计时")).toEqual(true);
     expect(individualRegistration.includes("报名截止")).toEqual(false);
   });
+
+  test("blocks new individual signup when the activity team capacity limit is full", async () => {
+    const pageLogic = await Bun.file(
+      "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/useMatchDetailPage.ts",
+    ).text();
+    const state = await Bun.file(
+      "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/detailState.ts",
+    ).text();
+    const countdown = await Bun.file(
+      "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/components/IndividualCountdownCard.vue",
+    ).text();
+
+    expect(state.includes("resolveRegistrationCapacityState")).toEqual(true);
+    expect(state.includes("teamCapacityLimit")).toEqual(true);
+    expect(pageLogic.includes("const registrationCapacityState = computed")).toEqual(true);
+    expect(pageLogic.includes("match.value?.team_capacity_limit")).toEqual(true);
+    expect(pageLogic.includes("registrationCapacityState.value.isFull")).toEqual(true);
+    expect(pageLogic.includes('title: "报名人数已满"')).toEqual(true);
+    expect(pageLogic.includes("canSubmitIndividualRegistration")).toEqual(true);
+    expect(countdown.includes("ctaDisabled")).toEqual(true);
+  });
 });

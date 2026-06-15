@@ -7,9 +7,10 @@ use registration_system_backend::challenge::ports::{
 use sqlx::PgPool;
 use uuid::Uuid;
 
-fn test_database_url() -> Option<String> {
-    let _ = dotenvy::from_filename(".env");
-    std::env::var("DATABASE_URL").ok()
+fn test_database_url() -> String {
+    let _ = dotenvy::from_filename(".env.test");
+    std::env::var("TEST_DATABASE_URL")
+        .expect("TEST_DATABASE_URL must be set to run database integration tests")
 }
 
 async fn ensure_activity_team_capacity_limit_column(pool: &PgPool) {
@@ -20,10 +21,9 @@ async fn ensure_activity_team_capacity_limit_column(pool: &PgPool) {
 }
 
 #[tokio::test]
+#[ignore = "requires TEST_DATABASE_URL and writes to a PostgreSQL test database"]
 async fn detail_returns_all_individual_participants() {
-    let Some(database_url) = test_database_url() else {
-        return;
-    };
+    let database_url = test_database_url();
 
     let pool = PgPool::connect(&database_url)
         .await
@@ -169,10 +169,7 @@ async fn detail_returns_all_individual_participants() {
 
     assert_eq!(detail.summary.accepted_count, 13);
     assert_eq!(detail.individual_participants.len(), 13);
-    assert_eq!(
-        detail.individual_participants[0].display_name,
-        "报名用户0"
-    );
+    assert_eq!(detail.individual_participants[0].display_name, "报名用户0");
     assert_eq!(
         detail.individual_participants[12].avatar_url.as_deref(),
         Some("https://example.com/avatar-12.png")
@@ -180,10 +177,9 @@ async fn detail_returns_all_individual_participants() {
 }
 
 #[tokio::test]
+#[ignore = "requires TEST_DATABASE_URL and writes to a PostgreSQL test database"]
 async fn accept_with_activity_deduplicates_shared_team_members() {
-    let Some(database_url) = test_database_url() else {
-        return;
-    };
+    let database_url = test_database_url();
 
     let pool = PgPool::connect(&database_url)
         .await
@@ -252,7 +248,7 @@ async fn accept_with_activity_deduplicates_shared_team_members() {
         opposing_color: None,
         players_per_team: Some(8),
         team_capacity_limit: None,
-            match_kind: Some("external".to_string()),
+        match_kind: Some("external".to_string()),
         source_activity_id: None,
         team_registration_count: None,
         registration_preview: Default::default(),

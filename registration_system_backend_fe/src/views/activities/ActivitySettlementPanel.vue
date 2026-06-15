@@ -123,7 +123,7 @@ const emit = defineEmits<{
             <div class="flex items-center justify-between gap-3">
               <h4 class="font-semibold">触发结算</h4>
               <span class="text-xs text-base-content/50">
-                {{ activityEnded ? '活动已结束，可执行结算' : '仅已结束活动可结算' }}
+                {{ activityEnded ? '比赛已结束，可执行结算' : '仅已结束比赛可结算' }}
               </span>
             </div>
 

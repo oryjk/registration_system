@@ -96,7 +96,7 @@ impl ManageTeamCreditUseCase {
             .is_some()
         {
             return Err(TeamApplicationError::Conflict(
-                "该场比赛已经提交过互评".to_string(),
+                "该场活动已经提交过互评".to_string(),
             ));
         }
 
@@ -112,8 +112,8 @@ impl ManageTeamCreditUseCase {
             .activity_repository
             .find_by_id(&command.activity_id)
             .await
-            .map_err(|error| TeamApplicationError::internal(format!("查询比赛失败: {error}")))?
-            .ok_or_else(|| TeamApplicationError::NotFound("比赛不存在".to_string()))?;
+            .map_err(|error| TeamApplicationError::internal(format!("查询活动失败: {error}")))?
+            .ok_or_else(|| TeamApplicationError::NotFound("活动不存在".to_string()))?;
 
         ensure_reviewable_activity(&activity, command.reviewer_team_id)?;
         let reviewee_team_id = opposing_team_id(&activity, command.reviewer_team_id)?;
@@ -248,7 +248,7 @@ fn ensure_reviewable_activity(
 ) -> Result<(), TeamApplicationError> {
     if activity.status != 2 {
         return Err(TeamApplicationError::Validation(
-            "只有已结束的比赛才允许互评".to_string(),
+            "只有已结束的活动才允许互评".to_string(),
         ));
     }
 
@@ -256,13 +256,13 @@ fn ensure_reviewable_activity(
     let away_team_id = activity.away_team_id;
     if home_team_id.is_none() || away_team_id.is_none() {
         return Err(TeamApplicationError::Validation(
-            "当前比赛尚未绑定双方球队".to_string(),
+            "当前活动尚未绑定双方球队".to_string(),
         ));
     }
 
     if home_team_id != Some(reviewer_team_id) && away_team_id != Some(reviewer_team_id) {
         return Err(TeamApplicationError::Validation(
-            "当前球队不在本场比赛中".to_string(),
+            "当前球队不在本场活动中".to_string(),
         ));
     }
 
@@ -281,7 +281,7 @@ fn opposing_team_id(
             Ok(home_team_id)
         }
         _ => Err(TeamApplicationError::Validation(
-            "当前球队不在本场比赛中".to_string(),
+            "当前球队不在本场活动中".to_string(),
         )),
     }
 }

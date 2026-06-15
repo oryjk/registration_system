@@ -1,4 +1,5 @@
 #[sqlx::test(migrations = "./migrations")]
+#[ignore = "requires PostgreSQL for sqlx migration integration tests"]
 async fn challenges_have_payment_mode_column(pool: sqlx::PgPool) {
     let row: (String, String, Option<String>) = sqlx::query_as(
         r#"
@@ -19,6 +20,7 @@ async fn challenges_have_payment_mode_column(pool: sqlx::PgPool) {
 }
 
 #[sqlx::test(migrations = "./migrations")]
+#[ignore = "requires PostgreSQL for sqlx migration integration tests"]
 async fn individual_acceptances_have_payment_tracking_columns(pool: sqlx::PgPool) {
     let columns = sqlx::query_as::<_, (String, String, String)>(
         r#"

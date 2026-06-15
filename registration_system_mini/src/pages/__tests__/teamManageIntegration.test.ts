@@ -63,13 +63,17 @@ describe("team manage real backend integration", () => {
     expect(state.includes('return allowCreateTeamMode ? "create" : "join";')).toEqual(true);
   });
 
-  test("home team manage action opens the real team manage page instead of mine tab", async () => {
-    const source = await Bun.file(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/home/index.vue",
+  test("team management entry points open the real team manage page", async () => {
+    const bottomTabBar = await Bun.file(
+      "/Users/carlwang/registration_system/registration_system_mini/src/components/BottomTabBar.vue",
+    ).text();
+    const minePage = await Bun.file(
+      "/Users/carlwang/registration_system/registration_system_mini/src/pages/user/index.vue",
     ).text();
 
-    expect(source.includes('uni.navigateTo({ url: "/pages/teams/manage/index" });')).toEqual(true);
-    expect(source.includes('uni.switchTab({ url: "/pages/user/index" });')).toEqual(true);
+    expect(bottomTabBar.includes('url: "/pages/teams/manage/index"')).toEqual(true);
+    expect(minePage.includes('url: "/pages/teams/manage/index"')).toEqual(true);
+    expect(minePage.includes("function openTeamManage(teamId?: number)")).toEqual(true);
   });
 
   test("team manage page edits team profile and searches users before adding members", async () => {
@@ -129,5 +133,38 @@ describe("team manage real backend integration", () => {
     expect(candidateSearch.includes('emit("candidateTap", candidate)')).toEqual(true);
     expect(memberSection.includes('emit("openMemberAttendance", member)')).toEqual(true);
     expect(memberSection.includes('emit("removeMember", member)')).toEqual(true);
+  });
+
+  test("mine page exposes managed teams as cards that open team manage page", async () => {
+    const minePage = await Bun.file(
+      "/Users/carlwang/registration_system/registration_system_mini/src/pages/user/index.vue",
+    ).text();
+    const heroProfile = await Bun.file(
+      "/Users/carlwang/registration_system/registration_system_mini/src/pages/user/components/MineHeroProfile.vue",
+    ).text();
+
+    expect(heroProfile.includes("team-manage-card-list")).toEqual(true);
+    expect(heroProfile.includes('emit("manageTeam", teamId)')).toEqual(true);
+    expect(heroProfile.includes("team.canManageTeam")).toEqual(true);
+    expect(minePage.includes("function openTeamManage(teamId?: number)")).toEqual(true);
+    expect(minePage.includes("switchTeam(teamId);")).toEqual(true);
+    expect(minePage.includes('url: "/pages/teams/manage/index"')).toEqual(true);
+  });
+
+  test("team manage page includes match attendance tab and panel", async () => {
+    const source = await Bun.file(
+      "/Users/carlwang/registration_system/registration_system_mini/src/pages/teams/manage/index.vue",
+    ).text();
+    const panel = await Bun.file(
+      "/Users/carlwang/registration_system/registration_system_mini/src/pages/teams/manage/components/TeamActivityAttendancePanel.vue",
+    ).text();
+
+    expect(source.includes("TeamActivityAttendancePanel")).toEqual(true);
+    expect(source.includes("activeMode === 'attendance'")).toEqual(true);
+    expect(source.includes("比赛出勤")).toEqual(true);
+    expect(source.includes("loadTeamActivityAttendanceSummaries")).toEqual(true);
+    expect(panel.includes("参加")).toEqual(true);
+    expect(panel.includes("请假")).toEqual(true);
+    expect(panel.includes("未打卡")).toEqual(true);
   });
 });

@@ -6,7 +6,7 @@
       <!-- 标题 -->
       <div class="flex items-center justify-between gap-4">
         <div>
-          <h2 class="text-xl font-bold">活动报名</h2>
+          <h2 class="text-xl font-bold">比赛报名</h2>
           <p class="mt-0.5 text-sm text-base-content/60">
             查看有球队参与的比赛，管理每支球队内部球员报名状态
           </p>
@@ -20,14 +20,14 @@
           >
             <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
           </svg>
-          新建活动
+          新建比赛
         </button>
       </div>
 
       <!-- 统计（全库汇总，与列表分页无关） -->
       <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <div class="stat rounded-xl border border-base-300 bg-base-100 px-5 py-4 shadow-sm">
-          <div class="stat-title text-xs">活动总数</div>
+          <div class="stat-title text-xs">比赛总数</div>
           <div class="stat-value text-2xl">{{ listCounts.total }}</div>
         </div>
         <div class="stat rounded-xl border border-base-300 bg-base-100 px-5 py-4 shadow-sm">
@@ -142,10 +142,10 @@
           d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"
         />
       </svg>
-      <p>暂无活动</p>
+      <p>暂无比赛</p>
     </div>
 
-    <!-- 活动列表 -->
+    <!-- 比赛列表 -->
     <div v-else class="flex flex-col gap-3">
       <div
         v-for="activity in activityItems"
@@ -400,13 +400,13 @@
 
   <!-- ═══ 新建/编辑弹窗 ═══ -->
   <dialog ref="formModalRef" class="modal">
-    <div class="modal-box max-w-2xl">
-      <h3 class="text-lg font-bold mb-4">{{ editTarget ? '编辑活动' : '新建活动' }}</h3>
+    <div class="modal-box max-w-3xl">
+      <h3 class="text-lg font-bold mb-4">{{ editTarget ? '编辑比赛' : '新建比赛' }}</h3>
       <div v-if="formError" class="alert alert-error py-2.5 mb-4 text-sm">{{ formError }}</div>
       <form @submit.prevent="handleSubmit" class="flex flex-col gap-4">
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <label class="flex flex-col gap-1.5 sm:col-span-2">
-            <span class="text-sm font-semibold">活动名称 <span class="text-error">*</span></span>
+            <span class="text-sm font-semibold">比赛名称 <span class="text-error">*</span></span>
             <input
               v-model="form.name"
               type="text"
@@ -441,9 +441,13 @@
             />
           </label>
           <label class="flex flex-col gap-1.5">
-            <span class="text-sm font-semibold">主队</span>
-            <select v-model="form.home_team_id" class="select select-bordered border-2 h-11">
-              <option :value="null">不设置</option>
+            <span class="text-sm font-semibold">主队 <span class="text-error">*</span></span>
+            <select
+              v-model="form.home_team_id"
+              required
+              class="select select-bordered border-2 h-11"
+            >
+              <option :value="null" disabled>请选择主队</option>
               <option v-for="team in teamOptions" :key="team.id" :value="team.id">
                 {{ team.name }}
               </option>
@@ -573,37 +577,71 @@
               </div>
             </label>
           </div>
-          <label class="flex flex-col gap-1.5">
-            <span class="text-sm font-semibold">举办日期 <span class="text-error">*</span></span>
-            <input
-              v-model="form.holding_date"
-              type="datetime-local"
-              required
-              class="input input-bordered border-2 h-11"
-            />
-          </label>
-          <label class="flex flex-col gap-1.5">
-            <span class="text-sm font-semibold"
-              >报名开始时间 <span class="text-error">*</span></span
-            >
-            <input
-              v-model="form.start_time"
-              type="datetime-local"
-              required
-              class="input input-bordered border-2 h-11"
-            />
-          </label>
-          <label class="flex flex-col gap-1.5">
-            <span class="text-sm font-semibold"
-              >报名截止时间 <span class="text-error">*</span></span
-            >
-            <input
-              v-model="form.end_time"
-              type="datetime-local"
-              required
-              class="input input-bordered border-2 h-11"
-            />
-          </label>
+          <fieldset
+            class="sm:col-span-2 rounded-2xl border border-primary/20 bg-primary/5 p-4 shadow-sm"
+          >
+            <div class="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <legend class="text-base font-bold text-base-content">比赛与报名时间</legend>
+                <p class="mt-1 text-xs text-base-content/55">
+                  先确定比赛开始时间，再在同一区块内选择报名开放和截止时间。
+                </p>
+              </div>
+              <span class="badge badge-primary badge-outline mt-1 w-fit">时间必填</span>
+            </div>
+            <div class="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[1fr_1.7fr]">
+              <label
+                class="flex flex-col gap-2 rounded-2xl border border-base-300 bg-base-100 p-3"
+              >
+                <span class="text-sm font-semibold"
+                  >比赛开始时间 <span class="text-error">*</span></span
+                >
+                <input
+                  v-model="form.holding_date"
+                  type="datetime-local"
+                  required
+                  class="input input-bordered input-lg h-14 border-2 text-base font-semibold"
+                />
+              </label>
+              <div class="rounded-2xl border border-base-300 bg-base-100 p-3">
+                <div class="mb-2 flex items-center justify-between gap-3">
+                  <span class="text-sm font-semibold"
+                    >报名时间范围 <span class="text-error">*</span></span
+                  >
+                  <span class="text-xs text-base-content/50">开始和截止联动选择</span>
+                </div>
+                <div class="grid grid-cols-1 items-end gap-3 md:grid-cols-[1fr_auto_1fr]">
+                  <label class="flex flex-col gap-1.5">
+                    <span class="text-xs font-medium text-base-content/60">报名开始</span>
+                    <input
+                      v-model="form.start_time"
+                      type="datetime-local"
+                      required
+                      :max="form.end_time || undefined"
+                      class="input input-bordered input-lg h-14 border-2 text-base font-semibold"
+                      @change="onRegistrationStartChange"
+                    />
+                  </label>
+                  <div class="hidden pb-4 text-base-content/35 md:block">至</div>
+                  <label class="flex flex-col gap-1.5">
+                    <span class="text-xs font-medium text-base-content/60">报名截止</span>
+                    <input
+                      v-model="form.end_time"
+                      type="datetime-local"
+                      required
+                      :min="form.start_time || undefined"
+                      :max="form.holding_date || undefined"
+                      class="input input-bordered input-lg h-14 border-2 text-base font-semibold"
+                      @change="onRegistrationEndChange"
+                    />
+                  </label>
+                </div>
+                <p class="mt-2 text-xs text-base-content/50">
+                  {{ registrationTimeHint }}
+                </p>
+              </div>
+            </div>
+          </fieldset>
           <label class="flex flex-col gap-1.5">
             <span class="text-sm font-semibold">几人制</span>
             <select
@@ -633,7 +671,7 @@
               v-model="form.description"
               rows="3"
               class="textarea textarea-bordered border-2 resize-none"
-              placeholder="活动说明（可选）"
+              placeholder="比赛说明（可选）"
             ></textarea>
           </label>
           <fieldset class="sm:col-span-2 rounded-xl border border-base-300 bg-base-200/40 p-4">
@@ -715,7 +753,7 @@
     <div class="modal-box max-w-sm">
       <h3 class="text-lg font-bold">确认删除</h3>
       <p class="py-4 text-base-content/70">
-        确定删除活动 <strong>{{ deletingActivity?.name }}</strong
+        确定删除比赛 <strong>{{ deletingActivity?.name }}</strong
         >？该操作不可撤销，同时会删除所有相关报名记录。
       </p>
       <div class="modal-action">
@@ -926,6 +964,30 @@ const jerseyColorValue = (color: string | null) => color || 'transparent'
 
 const jerseyColorLabel = (color: string | null) => color || '未设置'
 
+const registrationTimeHint = computed(() => {
+  if (!form.start_time || !form.end_time) return '报名开始和截止时间需要一起填写。'
+  const start = new Date(form.start_time).getTime()
+  const end = new Date(form.end_time).getTime()
+  if (!Number.isFinite(start) || !Number.isFinite(end)) return '请选择有效的报名时间范围。'
+  if (end <= start) return '报名截止时间必须晚于报名开始时间。'
+  if (form.holding_date && end > new Date(form.holding_date).getTime()) {
+    return '报名截止时间不能晚于比赛开始时间。'
+  }
+  return '报名窗口已设置，创建后会按该时间开放和截止报名。'
+})
+
+const onRegistrationStartChange = () => {
+  if (form.start_time && form.end_time && form.end_time < form.start_time) {
+    form.end_time = form.start_time
+  }
+}
+
+const onRegistrationEndChange = () => {
+  if (form.start_time && form.end_time && form.end_time < form.start_time) {
+    form.start_time = form.end_time
+  }
+}
+
 const changeStatus = async (id: string, status: number) => {
   try {
     await updateActivityStatus(id, status)
@@ -1123,6 +1185,18 @@ const handleSubmit = async () => {
       form.home_team_id === form.away_team_id
     ) {
       formError.value = '主队和客队不能选择同一支球队'
+      return
+    }
+    if (form.home_team_id === null) {
+      formError.value = '请选择主队，比赛报名列表只展示已关联球队的比赛'
+      return
+    }
+    if (form.start_time && form.end_time && form.end_time <= form.start_time) {
+      formError.value = '报名截止时间必须晚于报名开始时间'
+      return
+    }
+    if (form.holding_date && form.end_time && form.end_time > form.holding_date) {
+      formError.value = '报名截止时间不能晚于比赛开始时间'
       return
     }
     const selectedTeamIds = [form.home_team_id, form.away_team_id].filter(

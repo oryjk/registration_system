@@ -2,8 +2,8 @@
   <section class="sticky top-16 z-10 -mx-4 flex flex-col gap-4 bg-base-200 px-4 pb-3 pt-4 lg:-mx-6 lg:px-6">
     <div class="flex items-center justify-between gap-4">
       <div>
-        <h2 class="text-xl font-bold">活动报名</h2>
-        <p class="mt-0.5 text-sm text-base-content/60">管理比赛活动，查看和操作球员报名状态</p>
+        <h2 class="text-xl font-bold">比赛报名</h2>
+        <p class="mt-0.5 text-sm text-base-content/60">管理比赛，查看和操作球员报名状态</p>
       </div>
       <button class="btn btn-primary gap-2" @click="emit('create')">
         <svg
@@ -14,7 +14,7 @@
         >
           <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
         </svg>
-        新建活动
+        新建比赛
       </button>
     </div>
 

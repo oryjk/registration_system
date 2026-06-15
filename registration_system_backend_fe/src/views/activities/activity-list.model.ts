@@ -31,7 +31,7 @@ export const statusActions = (status: number): Record<number, string> => {
     0: '设为报名中',
     1: '设为进行中',
     2: '设为已结束',
-    3: '取消活动',
+    3: '取消比赛',
   }
   const result: Record<number, string> = {}
   for (const [key, label] of Object.entries(all)) {

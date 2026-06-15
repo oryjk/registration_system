@@ -13,7 +13,7 @@
         v-if="teamIds.length === 0"
         class="mt-4 rounded-2xl border border-dashed border-base-300 p-6 text-center text-sm text-base-content/55"
       >
-        当前活动还没有设置主队或客队，暂不能配置球队签到。
+        当前比赛还没有设置主队或客队，暂不能配置球队签到。
       </div>
 
       <div v-else class="mt-4 grid gap-3 md:grid-cols-2">

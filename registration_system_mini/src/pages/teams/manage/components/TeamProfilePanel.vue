@@ -55,7 +55,7 @@ function handleSubmit() {
       </view>
       <view class="form-field">
         <text class="form-label">球队介绍</text>
-        <textarea v-model="form.description" class="form-textarea" placeholder="球队风格、城市或活动时间" />
+        <textarea v-model="form.description" class="form-textarea" placeholder="球队风格、城市或比赛时间" />
       </view>
       <view :class="['primary-button', canUpdate ? '' : 'primary-button-disabled']" @tap="handleSubmit">
         {{ submitting ? "保存中..." : "保存球队资料" }}

@@ -37,6 +37,7 @@ const {
   remainingPlayersLabel,
   submittingStatus,
   individualCtaLabel,
+  canSubmitIndividualRegistration,
   isGuestMode,
   currentTeam,
   dateLine,
@@ -155,6 +156,7 @@ onShareTimeline(() => ({
         :submitting-status="submittingStatus"
         :individual-cta-label="individualCtaLabel"
         :is-guest-mode="isGuestMode"
+        :can-submit-individual-registration="canSubmitIndividualRegistration"
         :current-team="currentTeam"
         :team-member-registration-groups="teamMemberRegistrationGroups"
         @open-location="openMatchLocation"

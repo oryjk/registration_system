@@ -1,12 +1,12 @@
 <template>
   <dialog ref="dialogRef" class="modal">
     <div class="modal-box max-w-2xl">
-      <h3 class="text-lg font-bold mb-4">编辑活动</h3>
+      <h3 class="text-lg font-bold mb-4">编辑比赛</h3>
       <div v-if="editError" class="alert alert-error py-2.5 mb-4 text-sm">{{ editError }}</div>
       <form @submit.prevent="emit('submit')" class="flex flex-col gap-4">
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <label class="flex flex-col gap-1.5 sm:col-span-2">
-            <span class="text-sm font-semibold">活动名称</span>
+            <span class="text-sm font-semibold">比赛名称</span>
             <input v-model="form.name" type="text" class="input input-bordered border-2 h-11" />
           </label>
           <label class="flex flex-col gap-1.5">
