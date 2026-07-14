@@ -6,7 +6,7 @@
 
 **Architecture:** 按 `auth/user/team/match/system` 限界上下文组织，每个模块内部使用 `domain/application/ports/adapters`。Match 是唯一比赛聚合根；PostgreSQL 事务只存在于 adapter，Gin 只存在于 HTTP adapter/bootstrap。第一阶段先用新库运行完整 Match API，Rust 项目只读且不修改；旧库迁移和前端切换分别使用后续计划。
 
-**Tech Stack:** Go 1.22、Gin、pgx v5、sqlc、goose、OpenAPI/oapi-codegen、slog、testcontainers-go、PostgreSQL。
+**Tech Stack:** Go 1.26.5、Gin、pgx v5、sqlc、goose、OpenAPI/oapi-codegen、slog、testcontainers-go、PostgreSQL。
 
 ---
 
@@ -79,7 +79,7 @@ Expected: FAIL because the module and `NewRouter` do not exist.
 
 - [ ] **Step 3: Create the module and minimal Gin bootstrap**
 
-Initialize module `github.com/oryjk/registration_system/registration_system_go`. Implement `Config.Load()` for `HTTP_ADDR`, `DATABASE_URL`, `JWT_SECRET`, `WECHAT_APP_ID`, and `WECHAT_APP_SECRET`. Implement `NewRouter` with recovery/request logging middleware and `GET /health` returning the repository-standard response envelope.
+Initialize module `github.com/oryjk/registration_system/registration_system_go` with Go 1.26.5. Implement `Config.Load()` for `HTTP_ADDR`, `DATABASE_URL`, `JWT_SECRET`, `WECHAT_APP_ID`, and `WECHAT_APP_SECRET`. Implement `NewRouter` with recovery/request logging middleware and `GET /health` returning the repository-standard response envelope.
 
 ```go
 type Response[T any] struct {
@@ -757,7 +757,7 @@ cd registration_system_go
 gofmt -w .
 go test -race ./...
 go vet ./...
-go build ./cmd/api
+go build -o /tmp/registration-system-go-api ./cmd/api
 ```
 
 Expected: all commands exit 0 with no failing tests or vet diagnostics.
@@ -798,4 +798,4 @@ git commit -m "feat(go): complete match backend phase one"
 - admin defaults and per-Match overrides work;
 - OpenAPI contains only canonical Match routes;
 - Rust source remains byte-for-byte untouched by Phase 1 commits;
-- `go test -race ./...`, `go vet ./...`, and `go build ./cmd/api` pass.
+- `go test -race ./...`, `go vet ./...`, and `go build -o /tmp/registration-system-go-api ./cmd/api` pass.

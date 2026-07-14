@@ -1,12 +1,14 @@
 # 工作区说明（给 AI / Agent）
 
-本仓库是一个**赛事报名与球队管理**工作区，当前包含三个彼此协作的子项目：
+本仓库是一个**赛事报名与球队管理**工作区，当前包含五个彼此协作的子项目：
 
 | 目录 | 说明 | 技术栈 |
 | --- | --- | --- |
 | `registration_system_mini/` | 微信小程序端，面向球员/队员/普通用户 | `uni-app + Vue 3 + TypeScript + Vite` |
 | `registration_system_backend_fe/` | 管理后台，面向运营/管理员 | `Vue 3 + TypeScript + Vite + Tailwind 4 + DaisyUI 5` |
-| `registration_system_rs/` | 后台服务端，提供管理端与业务 API | `Rust + Axum + PostgreSQL + sqlx` |
+| `registration_system_admin_app/` | 移动管理 App，面向赛事运营/管理员 | `Flutter + Dart` |
+| `registration_system_go/` | 新后台服务端，优先承载认证、球队与比赛 API | `Go + Gin + PostgreSQL + pgx + sqlc` |
+| `registration_system_rs/` | 旧后台服务端，只作为业务与迁移参考 | `Rust + Axum + PostgreSQL + sqlx` |
 
 ## 文档规范
 
@@ -44,7 +46,9 @@
 
 - 小程序入口：`registration_system_mini/src/main.ts`、`src/pages.json`
 - 管理端入口：`registration_system_backend_fe/src/main.ts`、`src/router/index.ts`
-- 后端入口：`registration_system_rs/src/main.rs`、`src/lib.rs`、`src/bootstrap/`
+- 移动管理 App 入口：`registration_system_admin_app/lib/main.dart`
+- Go 后端入口：`registration_system_go/cmd/api/main.go`、`internal/bootstrap/`
+- Rust 参考后端入口：`registration_system_rs/src/main.rs`、`src/lib.rs`、`src/bootstrap/`
 
 ## 联动规则
 
@@ -56,7 +60,8 @@
 
 ## 质量要求
 
-- 后端提交前建议执行：`cargo clippy`、`cargo test`
+- Go 后端提交前执行：`gofmt -w .`、`go test -race ./...`、`go vet ./...`、`go build -o /tmp/registration-system-go-api ./cmd/api`
+- Rust 参考后端不再增加代码；仅在迁移核对需要时执行 `cargo test`
 - 管理端提交前建议执行：`bun run type-check`、`bun run lint`、必要时 `bun run build`
 - 小程序提交前建议执行：`bun run type-check`、必要时 `bun run build:mp-weixin`
 - 如因环境、依赖、耗时或任务范围原因未运行相关验证命令，必须在最终回复中说明未验证项和原因。

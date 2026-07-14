@@ -1,6 +1,6 @@
 # Claude / 对话助手工作区指南
 
-你正在 `registration_system` 工作区内协作。这里不是单仓单服务，而是由**小程序、管理端、Rust 后端**组成的多项目工作区。
+你正在 `registration_system` 工作区内协作。这里不是单仓单服务，而是由**小程序、Web 管理端、移动管理 App、Go 新后端和 Rust 参考后端**组成的多项目工作区。
 
 ## 先读什么
 
@@ -13,7 +13,9 @@
 
 - `registration_system_mini/`：用户侧小程序
 - `registration_system_backend_fe/`：管理后台
-- `registration_system_rs/`：后端服务
+- `registration_system_admin_app/`：移动管理 App
+- `registration_system_go/`：新后端服务
+- `registration_system_rs/`：只读业务与迁移参考
 
 ## 协作方式
 
@@ -21,6 +23,7 @@
 - 如果任务跨前后端，先定位依赖链，再决定改动顺序。
 - 任何接口、权限、字段、分页结构问题，都以当前代码实现为准，不靠猜测。
 - 当某个子项目已有既定技术路线时，优先延续现有风格，不另起一套。
+- 新后端功能只写入 `registration_system_go/`；未经用户重新明确，不修改 `registration_system_rs/`。
 - 代码可维护性是 AI 编程质量的基础：避免在大文件里继续堆叠职责，修改 `600` 行以上非声明式文件时要主动评估边界，`1000` 行以上优先考虑小步拆分。
 - 拆分按职责和变化原因进行；页面层、handler 层不要承载核心业务规则，优先沿用根目录 `AGENTS.md` 的“AI 编程与代码可维护性”约束。
 

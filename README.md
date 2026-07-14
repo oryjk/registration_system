@@ -1,19 +1,23 @@
 # registration_system
 
-赛事报名与球队管理 monorepo，当前由 3 个相互协作的子项目组成：
+赛事报名与球队管理 monorepo，当前由 5 个相互协作的子项目组成：
 
 | 目录 | 说明 | 技术栈 |
 | --- | --- | --- |
 | `registration_system_mini/` | 微信小程序端，面向球员/队员/普通用户 | `uni-app + Vue 3 + TypeScript + Vite` |
 | `registration_system_backend_fe/` | 管理后台，面向运营/管理员 | `Vue 3 + TypeScript + Vite + Tailwind 4 + DaisyUI 5` |
-| `registration_system_rs/` | 后台服务端，提供管理端与业务 API | `Rust + Axum + PostgreSQL + sqlx` |
+| `registration_system_admin_app/` | 移动管理 App，面向赛事运营/管理员 | `Flutter + Dart` |
+| `registration_system_go/` | 新后台服务端，优先实现认证、球队与比赛闭环 | `Go + Gin + PostgreSQL + pgx + sqlc` |
+| `registration_system_rs/` | 旧后台服务端，只作为业务与迁移参考 | `Rust + Axum + PostgreSQL + sqlx` |
 
 ## 文档入口
 
 - 工作区协作约定：`AGENTS.md`、`CLAUDE.md`
 - 小程序说明：`registration_system_mini/README.md`
 - 管理后台说明：`registration_system_backend_fe/README.md`
-- 后端说明：`registration_system_rs/README.md`
+- 移动管理 App 说明：`registration_system_admin_app/README.md`
+- Go 后端说明：`registration_system_go/README.md`
+- Rust 参考后端说明：`registration_system_rs/README.md`
 
 修改任一子项目之前，先读当前目录和目标子项目目录下的 `AGENTS.md` / `CLAUDE.md`。
 
@@ -23,7 +27,7 @@
 
 - 主分支：`main`
 - 远端：`git@github.com:oryjk/registration_system.git`
-- 三个子项目目录不再保留各自独立的 `.git` 元数据。
+- 子项目目录不再保留各自独立的 `.git` 元数据。
 
 查看状态、提交和推送时请在根目录执行：
 
@@ -38,18 +42,17 @@ git push origin main
 
 ## 推荐联调顺序
 
-### 1. 启动后端
+### 1. 启动 Go 后端
 
 ```bash
-cd registration_system_rs
+cd registration_system_go
 cp .env.example .env
-sqlx migrate run
-cargo run
+make run
 ```
 
 - `.env.example` 默认服务端口为 `18080`
-- OpenAPI 文档：`GET /api/openapi.json`
-- Swagger UI：`GET /api/docs/`
+- 第一阶段只覆盖认证、用户/球队权限和比赛闭环
+- Rust 后端保留为只读参考，不再承接新功能
 
 ### 2. 启动管理后台
 
