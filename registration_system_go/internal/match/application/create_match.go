@@ -1,0 +1,82 @@
+package application
+
+import (
+	"context"
+	"time"
+
+	"github.com/oryjk/registration_system/registration_system_go/internal/match/domain"
+	"github.com/oryjk/registration_system/registration_system_go/internal/match/ports"
+	sharedauth "github.com/oryjk/registration_system/registration_system_go/internal/shared/auth"
+	sharederror "github.com/oryjk/registration_system/registration_system_go/internal/shared/domain"
+)
+
+type CreateMatch struct {
+	repository    ports.Repository
+	teamAccess    ports.TeamAccess
+	defaultLimits ports.DefaultLimits
+	clock         ports.Clock
+}
+
+type CreateMatchCommand struct {
+	Name              string
+	PublicationMode   domain.PublicationMode
+	HostTeamID        int64
+	OpponentName      *string
+	PlayersPerTeam    int
+	HostCapacityLimit *int
+	StartTime         time.Time
+	EndTime           time.Time
+	Location          string
+	LocationLatitude  *float64
+	LocationLongitude *float64
+	Description       *string
+}
+
+type CreateMatchResult struct {
+	Match  domain.Match
+	Groups []domain.RegistrationGroup
+}
+
+func NewCreateMatch(repository ports.Repository, teamAccess ports.TeamAccess, defaultLimits ports.DefaultLimits, clock ports.Clock) CreateMatch {
+	return CreateMatch{repository: repository, teamAccess: teamAccess, defaultLimits: defaultLimits, clock: clock}
+}
+
+func (u CreateMatch) Execute(ctx context.Context, actor sharedauth.Actor, command CreateMatchCommand) (CreateMatchResult, error) {
+	if !actor.IsUser() {
+		return CreateMatchResult{}, sharederror.ErrForbidden
+	}
+	if err := u.teamAccess.EnsureManager(ctx, command.HostTeamID, actor.ID); err != nil {
+		return CreateMatchResult{}, err
+	}
+	var limits domain.IndividualLimits
+	var err error
+	if command.PublicationMode == domain.OnlineIndividual {
+		limits, err = u.defaultLimits.Resolve(ctx, command.PlayersPerTeam)
+		if err != nil {
+			return CreateMatchResult{}, err
+		}
+	}
+	match, groups, err := domain.NewMatch(domain.NewMatchInput{
+		Name:              command.Name,
+		PublicationMode:   command.PublicationMode,
+		HostTeamID:        command.HostTeamID,
+		CreatedByUserID:   actor.ID,
+		OpponentName:      command.OpponentName,
+		PlayersPerTeam:    command.PlayersPerTeam,
+		HostCapacityLimit: command.HostCapacityLimit,
+		StartTime:         command.StartTime,
+		EndTime:           command.EndTime,
+		Location:          command.Location,
+		LocationLatitude:  command.LocationLatitude,
+		LocationLongitude: command.LocationLongitude,
+		Description:       command.Description,
+		CreatedAt:         u.clock.Now(),
+	}, limits)
+	if err != nil {
+		return CreateMatchResult{}, err
+	}
+	if err := u.repository.CreateWithGroups(ctx, match, groups); err != nil {
+		return CreateMatchResult{}, sharederror.Wrap(sharederror.KindInternal, "创建比赛失败", err)
+	}
+	return CreateMatchResult{Match: match, Groups: groups}, nil
+}
