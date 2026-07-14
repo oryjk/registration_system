@@ -79,6 +79,16 @@ bun run dev:mp-weixin
 - 开发环境默认值：`http://127.0.0.1:18080/api`
 - 微信开发者工具导入目录：`registration_system_mini/dist/dev/mp-weixin`
 
+### 4. 启动移动管理 App
+
+```bash
+cd registration_system_admin_app
+flutter run
+```
+
+- 当前首版聚焦移动管理端入口、创建比赛和创建球队
+- iOS/Android 构建依赖本机 Flutter、Xcode 和 Android SDK 环境
+
 ## 前后端边界
 
 - 管理后台接口通常挂载在 `/api/admin`
@@ -92,5 +102,6 @@ bun run dev:mp-weixin
 
 - 后端已具备主要业务模块、迁移、集成测试和 OpenAPI 文档
 - 管理后台已落地登录、仪表盘、球队、活动、账单、球员、管理员、系统设置等页面
+- 移动管理 App 已初始化 Flutter iOS/Android 项目，并提供创建比赛、创建球队的首版页面
 - 小程序已接入主要真实接口：首页、约队、比赛详情、球队管理、账单、通知、个人中心等页面按真实 API 推进；`src/mock/` 仅作为历史原型数据留存
 - 小程序运行配置已支持通过后端 JSON 配置读取，例如首页比赛数量、约队数量、活动拉取数量和过期比赛过滤
