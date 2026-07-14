@@ -5,8 +5,8 @@
 阶段：
 
 1. [completed] Go 服务脚手架、健康路由和协作文档
-2. [in_progress] PostgreSQL schema 与 sqlc 边界
-3. [pending] Actor、JWT 与 Gin 鉴权
+2. [completed] PostgreSQL schema 与 sqlc 边界
+3. [in_progress] Actor、JWT 与 Gin 鉴权
 4. [pending] 微信登录和用户/球队最小能力
 5. [pending] Match 领域模型和发布用例
 6. [pending] 球队候选申请、选择和退出

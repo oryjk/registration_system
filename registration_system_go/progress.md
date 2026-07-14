@@ -11,3 +11,8 @@
 - Task 1 验证通过：`make verify`、`go test -race ./...`、`git diff --check`。
 - 已确认 `registration_system_rs/` 在 Task 1 保持零 diff。
 - 下一步：编写 PostgreSQL schema contract 红灯测试。
+- 已在 `local233` 创建独立 PostgreSQL 16 容器和空库 `registration_system_go`，确认本机外部连接可用且 public schema 表数量为 0。
+- 已完成 schema contract 红绿循环：红灯为 migration 目录不存在，绿灯为 8 张核心 Match 聚合表与约束存在。
+- 已固定 sqlc v1.31.1，生成 auth/team/match/system 四个持久化 adapter 类型包。
+- 已在远程开发库应用 goose version 1；核对为 9 张业务表、1 张 goose 版本表。
+- Task 2 验证通过：schema 专项测试、`go test ./...`、`go vet ./...`、`git diff --check`。

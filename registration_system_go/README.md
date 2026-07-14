@@ -27,6 +27,19 @@ go run ./cmd/api
 
 健康检查：`GET http://127.0.0.1:18080/health`。
 
+## 数据库版本管理
+
+数据库 migration 使用 goose，SQL 查询类型使用 sqlc：
+
+```bash
+make migrate-status
+make migrate-up
+make migrate-down
+make generate
+```
+
+所有 migration 位于 `db/migrations/`，查询位于 `db/queries/`。`DATABASE_URL` 只从本地环境读取，不提交真实密码。
+
 ## 验证
 
 ```bash
