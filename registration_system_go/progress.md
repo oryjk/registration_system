@@ -16,3 +16,6 @@
 - 已固定 sqlc v1.31.1，生成 auth/team/match/system 四个持久化 adapter 类型包。
 - 已在远程开发库应用 goose version 1；核对为 9 张业务表、1 张 goose 版本表。
 - Task 2 验证通过：schema 专项测试、`go test ./...`、`go vet ./...`、`git diff --check`。
+- 已完成 JWT TDD：用户/超级管理员 Actor 往返和错误签名拒绝测试通过。
+- 已完成 Gin auth middleware TDD：用户/管理员路由隔离、缺失 Token 401 和 Actor context 测试通过。
+- Task 3 验证通过：`go test -race ./internal/auth/... ./internal/shared/...`、`go vet ./...`。
