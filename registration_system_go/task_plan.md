@@ -7,8 +7,8 @@
 1. [completed] Go 服务脚手架、健康路由和协作文档
 2. [completed] PostgreSQL schema 与 sqlc 边界
 3. [completed] Actor、JWT 与 Gin 鉴权
-4. [in_progress] 微信登录和用户/球队最小能力
-5. [pending] Match 领域模型和发布用例
+4. [completed] 微信登录和用户/球队最小能力
+5. [in_progress] Match 领域模型和发布用例
 6. [pending] 球队候选申请、选择和退出
 7. [pending] 主队、客队与散人报名
 8. [pending] 后台默认人数和逐场调整
