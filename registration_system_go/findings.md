@@ -15,3 +15,10 @@
 - 容器使用 PostgreSQL 16，映射宿主机 5432，数据持久化在 `/opt/data/registration-system-go`。
 - 本机已经通过外部地址验证连接，初始 public schema 没有业务表。
 - 连接凭据只用于本地环境，不写入仓库；集成测试继续使用 testcontainers 隔离数据库。
+
+## 2026-07-15 管理端比赛闭环
+
+- 开发运行拓扑固定为本机 Go 进程连接 `127.0.0.1:5432` 的 PostgreSQL 容器；Go 服务和前端不容器化。
+- migration version 1 已应用，当前 `admin_users`、`users`、`teams`、`matches` 均为空。
+- `matches.created_by_user_id` 当前为非空，管理员创建比赛需要新增管理员创建来源并保持两种创建者互斥。
+- 管理比赛采用状态取消，不物理删除 Match 聚合数据。

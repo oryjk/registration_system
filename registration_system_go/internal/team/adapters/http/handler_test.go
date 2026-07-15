@@ -11,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 	authhttp "github.com/oryjk/registration_system/registration_system_go/internal/auth/adapters/http"
 	jwtadapter "github.com/oryjk/registration_system/registration_system_go/internal/auth/adapters/jwt"
+	sharedauth "github.com/oryjk/registration_system/registration_system_go/internal/shared/auth"
 	"github.com/oryjk/registration_system/registration_system_go/internal/team/domain"
 )
 
@@ -57,4 +58,12 @@ type fakeTeamQuery struct {
 func (f *fakeTeamQuery) ListByUser(_ context.Context, userID int64) ([]domain.TeamMembership, error) {
 	f.receivedUserID = userID
 	return f.items, f.err
+}
+
+func (f *fakeTeamQuery) ListActive(context.Context) ([]domain.Team, error) {
+	return nil, f.err
+}
+
+func (f *fakeTeamQuery) CreateTeam(context.Context, sharedauth.Actor, string, *string) (domain.Team, error) {
+	return domain.Team{}, f.err
 }

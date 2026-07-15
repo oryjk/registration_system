@@ -3,6 +3,8 @@ package bootstrap
 import (
 	"fmt"
 	"os"
+
+	"github.com/oryjk/registration_system/registration_system_go/internal/shared/configenv"
 )
 
 type Config struct {
@@ -14,6 +16,7 @@ type Config struct {
 }
 
 func LoadConfig() (Config, error) {
+	configenv.Load()
 	config := Config{
 		HTTPAddr:        envOrDefault("HTTP_ADDR", ":18080"),
 		DatabaseURL:     os.Getenv("DATABASE_URL"),

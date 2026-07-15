@@ -1,0 +1,30 @@
+:root,
+page {
+  --ink: #152019;
+  --muted: #69736c;
+  --line: #dfe5de;
+  --surface: #ffffff;
+  --canvas: #f4f6f2;
+  --accent: #d9ff43;
+  --accent-ink: #172006;
+  min-height: 100%;
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: "PingFang SC", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+}
+
+view,
+text,
+image,
+button,
+scroll-view {
+  box-sizing: border-box;
+}
+
+button {
+  margin: 0;
+}
+
+button::after {
+  border: 0;
+}

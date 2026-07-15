@@ -42,10 +42,14 @@ func NewCreateMatch(repository ports.Repository, teamAccess ports.TeamAccess, de
 }
 
 func (u CreateMatch) Execute(ctx context.Context, actor sharedauth.Actor, command CreateMatchCommand) (CreateMatchResult, error) {
-	if !actor.IsUser() {
+	if !actor.IsUser() && !actor.IsAdmin() {
 		return CreateMatchResult{}, sharederror.ErrForbidden
 	}
-	if err := u.teamAccess.EnsureManager(ctx, command.HostTeamID, actor.ID); err != nil {
+	if actor.IsUser() {
+		if err := u.teamAccess.EnsureManager(ctx, command.HostTeamID, actor.ID); err != nil {
+			return CreateMatchResult{}, err
+		}
+	} else if err := u.teamAccess.EnsureExists(ctx, command.HostTeamID); err != nil {
 		return CreateMatchResult{}, err
 	}
 	var limits domain.IndividualLimits
@@ -56,11 +60,18 @@ func (u CreateMatch) Execute(ctx context.Context, actor sharedauth.Actor, comman
 			return CreateMatchResult{}, err
 		}
 	}
+	var createdByUserID, createdByAdminID *int64
+	if actor.IsUser() {
+		createdByUserID = &actor.ID
+	} else {
+		createdByAdminID = &actor.ID
+	}
 	match, groups, err := domain.NewMatch(domain.NewMatchInput{
 		Name:              command.Name,
 		PublicationMode:   command.PublicationMode,
 		HostTeamID:        command.HostTeamID,
-		CreatedByUserID:   actor.ID,
+		CreatedByUserID:   createdByUserID,
+		CreatedByAdminID:  createdByAdminID,
 		OpponentName:      command.OpponentName,
 		PlayersPerTeam:    command.PlayersPerTeam,
 		HostCapacityLimit: command.HostCapacityLimit,

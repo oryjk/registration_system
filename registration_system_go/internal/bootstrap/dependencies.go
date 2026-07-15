@@ -1,0 +1,73 @@
+package bootstrap
+
+import (
+	"context"
+	"fmt"
+	"net/http"
+	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+	authhttp "github.com/oryjk/registration_system/registration_system_go/internal/auth/adapters/http"
+	"github.com/oryjk/registration_system/registration_system_go/internal/auth/adapters/jwt"
+	"github.com/oryjk/registration_system/registration_system_go/internal/auth/adapters/password"
+	authpostgres "github.com/oryjk/registration_system/registration_system_go/internal/auth/adapters/postgres"
+	"github.com/oryjk/registration_system/registration_system_go/internal/auth/adapters/wechat"
+	authapplication "github.com/oryjk/registration_system/registration_system_go/internal/auth/application"
+	"github.com/oryjk/registration_system/registration_system_go/internal/match/adapters/defaults"
+	matchhttp "github.com/oryjk/registration_system/registration_system_go/internal/match/adapters/http"
+	matchpostgres "github.com/oryjk/registration_system/registration_system_go/internal/match/adapters/postgres"
+	matchapplication "github.com/oryjk/registration_system/registration_system_go/internal/match/application"
+	"github.com/oryjk/registration_system/registration_system_go/internal/shared/adapters/clock"
+	teamhttp "github.com/oryjk/registration_system/registration_system_go/internal/team/adapters/http"
+	teampostgres "github.com/oryjk/registration_system/registration_system_go/internal/team/adapters/postgres"
+	teamapplication "github.com/oryjk/registration_system/registration_system_go/internal/team/application"
+	userpostgres "github.com/oryjk/registration_system/registration_system_go/internal/user/adapters/postgres"
+)
+
+const (
+	jwtTTL         = 24 * time.Hour
+	wechatEndpoint = "https://api.weixin.qq.com/sns/jscode2session"
+)
+
+func BuildDependencies(ctx context.Context, config Config) (Dependencies, func(), error) {
+	pool, err := pgxpool.New(ctx, config.DatabaseURL)
+	if err != nil {
+		return Dependencies{}, nil, fmt.Errorf("open PostgreSQL pool: %w", err)
+	}
+	closePool := func() { pool.Close() }
+	if err := pool.Ping(ctx); err != nil {
+		closePool()
+		return Dependencies{}, nil, fmt.Errorf("ping PostgreSQL: %w", err)
+	}
+
+	tokens, err := jwt.NewService(config.JWTSecret, jwtTTL)
+	if err != nil {
+		closePool()
+		return Dependencies{}, nil, fmt.Errorf("create JWT service: %w", err)
+	}
+	adminRepository := authpostgres.NewAdminRepository(pool)
+	adminService := authapplication.NewAdminService(adminRepository, password.Bcrypt{}, tokens)
+	adminAuthHandler := authhttp.NewAdminHandler(adminService)
+	authMiddleware := authhttp.NewMiddleware(tokens)
+
+	userRepository := userpostgres.NewRepository(pool)
+	wechatClient := wechat.NewClient(&http.Client{Timeout: 10 * time.Second}, wechatEndpoint, config.WechatAppID, config.WechatAppSecret)
+	wechatLogin := authapplication.NewWechatLogin(wechatClient, userRepository, tokens)
+	userAuthHandler := authhttp.NewHandler(wechatLogin)
+
+	teamRepository := teampostgres.NewRepository(pool)
+	teamService := teamapplication.NewQueryService(teamRepository)
+	teamHandler := teamhttp.NewHandler(teamService)
+
+	matchRepository := matchpostgres.NewRepository(pool)
+	matchClock := clock.System{}
+	createMatch := matchapplication.NewCreateMatch(matchRepository, teamService, defaults.Service{}, matchClock)
+	adminMatches := matchapplication.NewAdminMatchService(matchRepository, matchClock)
+	adminMatchHandler := matchhttp.NewAdminHandler(adminMatches, createMatch)
+
+	return Dependencies{
+		AuthMiddleware: &authMiddleware,
+		UserAuth:       userAuthHandler, AdminAuth: adminAuthHandler,
+		Teams: teamHandler, AdminMatches: adminMatchHandler,
+	}, closePool, nil
+}

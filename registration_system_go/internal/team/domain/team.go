@@ -1,6 +1,11 @@
 package domain
 
-import "time"
+import (
+	"strings"
+	"time"
+
+	sharederror "github.com/oryjk/registration_system/registration_system_go/internal/shared/domain"
+)
 
 type Role string
 
@@ -48,6 +53,22 @@ type Member struct {
 type TeamMembership struct {
 	Team   Team
 	Member Member
+}
+
+func NewTeam(name string, description *string) (Team, error) {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return Team{}, sharederror.New(sharederror.KindValidation, "球队名称不能为空")
+	}
+	if description != nil {
+		value := strings.TrimSpace(*description)
+		if value == "" {
+			description = nil
+		} else {
+			description = &value
+		}
+	}
+	return Team{Name: name, Description: description, Status: TeamActive}, nil
 }
 
 func (m Member) CanManageMatches() bool {

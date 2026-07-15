@@ -76,14 +76,16 @@ func (f *fakeUsers) Create(_ context.Context, user userdomain.User) (userdomain.
 var _ userports.Repository = (*fakeUsers)(nil)
 
 type fakeTokenService struct {
-	token string
+	token      string
+	adminSuper bool
 }
 
 func (f *fakeTokenService) IssueUser(context.Context, int64) (string, error) {
 	return f.token, nil
 }
 
-func (f *fakeTokenService) IssueAdmin(context.Context, int64, bool) (string, error) {
+func (f *fakeTokenService) IssueAdmin(_ context.Context, _ int64, isSuper bool) (string, error) {
+	f.adminSuper = isSuper
 	return f.token, nil
 }
 

@@ -17,15 +17,32 @@
 
 ## 本地运行
 
+Go API 直接在宿主机运行，Docker 只用于提供映射到本机 `5432` 端口的 PostgreSQL。
+
 ```bash
 cp .env.example .env
-set -a
-source .env
-set +a
-go run ./cmd/api
+make migrate-up
+make run
+```
+
+API 启动时会自动读取当前目录的 `.env`，系统已导出的环境变量优先。编译后也可以在项目目录直接运行：
+
+```bash
+go build -o ./api ./cmd/api
+./api
 ```
 
 健康检查：`GET http://127.0.0.1:18080/health`。
+
+## 初始化管理员
+
+数据库首次迁移后，在当前终端临时设置管理员账号和密码：
+
+```bash
+ADMIN_USERNAME=<username> ADMIN_PASSWORD='<password>' ADMIN_ROLE=super_admin make create-admin
+```
+
+初始化命令只允许在 `admin_users` 为空时执行，不会覆盖已有管理员。密码至少 10 个字符。
 
 ## 数据库版本管理
 
@@ -38,7 +55,7 @@ make migrate-down
 make generate
 ```
 
-所有 migration 位于 `db/migrations/`，查询位于 `db/queries/`。`DATABASE_URL` 只从本地环境读取，不提交真实密码。
+API 和管理员初始化命令会在进程内自动加载 `.env`；migration 命令会通过 Makefile 将 `.env` 注入 goose。所有 migration 位于 `db/migrations/`，查询位于 `db/queries/`。`DATABASE_URL` 只从本地环境读取，不提交真实密码。
 
 ## 验证
 

@@ -37,6 +37,9 @@ cypress/screenshots/
 # Rust build outputs
 target/
 
+# Go local build outputs
+/registration_system_go/api
+
 # Python cache
 __pycache__/
 

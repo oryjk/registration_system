@@ -11,6 +11,33 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const createTeam = `-- name: CreateTeam :one
+INSERT INTO teams (name, description, status)
+VALUES ($1, $2, 'active')
+RETURNING id, name, description, logo_url, captain_id, status, created_at, updated_at
+`
+
+type CreateTeamParams struct {
+	Name        string  `json:"name"`
+	Description *string `json:"description"`
+}
+
+func (q *Queries) CreateTeam(ctx context.Context, arg CreateTeamParams) (Team, error) {
+	row := q.db.QueryRow(ctx, createTeam, arg.Name, arg.Description)
+	var i Team
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Description,
+		&i.LogoUrl,
+		&i.CaptainID,
+		&i.Status,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getActiveTeamMember = `-- name: GetActiveTeamMember :one
 SELECT id, team_id, user_id, role, status, joined_at, created_at, updated_at
 FROM team_members
@@ -60,6 +87,42 @@ func (q *Queries) GetTeamByID(ctx context.Context, id int64) (Team, error) {
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const listActiveTeams = `-- name: ListActiveTeams :many
+SELECT id, name, description, logo_url, captain_id, status, created_at, updated_at
+FROM teams
+WHERE status = 'active'
+ORDER BY name, id
+`
+
+func (q *Queries) ListActiveTeams(ctx context.Context) ([]Team, error) {
+	rows, err := q.db.Query(ctx, listActiveTeams)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Team
+	for rows.Next() {
+		var i Team
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Description,
+			&i.LogoUrl,
+			&i.CaptainID,
+			&i.Status,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listActiveUserTeams = `-- name: ListActiveUserTeams :many

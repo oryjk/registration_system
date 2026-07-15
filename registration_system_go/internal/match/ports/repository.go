@@ -10,4 +10,22 @@ import (
 type Repository interface {
 	CreateWithGroups(context.Context, domain.Match, []domain.RegistrationGroup) error
 	FindByID(context.Context, uuid.UUID) (domain.Match, []domain.RegistrationGroup, bool, error)
+	FindForAdmin(context.Context, uuid.UUID) (AdminMatchItem, []domain.RegistrationGroup, bool, error)
+	ListForAdmin(context.Context, AdminMatchFilter) ([]AdminMatchItem, error)
+	CountForAdmin(context.Context, AdminMatchFilter) (int64, error)
+	UpdateDetails(context.Context, domain.Match) error
+	UpdateStatus(context.Context, domain.Match) error
+}
+
+type AdminMatchFilter struct {
+	Status *domain.MatchStatus
+	Search string
+	Limit  int
+	Offset int
+}
+
+type AdminMatchItem struct {
+	Match        domain.Match
+	HostTeamName string
+	AwayTeamName *string
 }

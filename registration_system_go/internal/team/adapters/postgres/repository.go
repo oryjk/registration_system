@@ -76,6 +76,26 @@ func (r *Repository) ListByUser(ctx context.Context, userID int64) ([]domain.Tea
 	return items, nil
 }
 
+func (r *Repository) ListActive(ctx context.Context) ([]domain.Team, error) {
+	rows, err := r.queries.ListActiveTeams(ctx)
+	if err != nil {
+		return nil, err
+	}
+	items := make([]domain.Team, 0, len(rows))
+	for _, row := range rows {
+		items = append(items, mapTeam(row))
+	}
+	return items, nil
+}
+
+func (r *Repository) Create(ctx context.Context, team domain.Team) (domain.Team, error) {
+	row, err := r.queries.CreateTeam(ctx, teamsqlc.CreateTeamParams{Name: team.Name, Description: team.Description})
+	if err != nil {
+		return domain.Team{}, err
+	}
+	return mapTeam(row), nil
+}
+
 func mapTeam(row teamsqlc.Team) domain.Team {
 	return domain.Team{
 		ID:          row.ID,

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -16,10 +17,16 @@ func main() {
 		slog.Error("load configuration", "error", err)
 		os.Exit(1)
 	}
+	dependencies, closeDependencies, err := bootstrap.BuildDependencies(context.Background(), config)
+	if err != nil {
+		slog.Error("build dependencies", "error", err)
+		os.Exit(1)
+	}
+	defer closeDependencies()
 
 	server := &http.Server{
 		Addr:              config.HTTPAddr,
-		Handler:           bootstrap.NewRouter(bootstrap.Dependencies{}),
+		Handler:           bootstrap.NewRouter(dependencies),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      15 * time.Second,

@@ -1,0 +1,82 @@
+export type PublicationMode = "offline_confirmed" | "online_team" | "online_individual";
+export type OpponentState = "no_recruitment" | "recruiting" | "confirmed";
+export type MatchStatus = "registering" | "ongoing" | "ended" | "cancelled";
+export type GroupKind = "host_team" | "guest_team" | "individual_opponent";
+export type GroupStatus = "open" | "closed" | "cancelled";
+
+export interface MatchItem {
+  id: string;
+  name: string;
+  publication_mode: PublicationMode;
+  opponent_state: OpponentState;
+  status: MatchStatus;
+  host_team_id: number;
+  host_team_name: string;
+  away_team_id: number | null;
+  away_team_name: string | null;
+  opponent_name: string | null;
+  players_per_team: number;
+  start_time: string;
+  end_time: string;
+  location: string;
+  location_latitude: number | null;
+  location_longitude: number | null;
+  description: string | null;
+  created_by_user_id: number | null;
+  created_by_admin_id: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RegistrationGroup {
+  id: string;
+  kind: GroupKind;
+  team_id: number | null;
+  min_players: number | null;
+  max_players: number | null;
+  status: GroupStatus;
+}
+
+export interface MatchDetail {
+  match: MatchItem;
+  groups: RegistrationGroup[];
+}
+
+export interface MatchListPage {
+  items: MatchItem[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+export interface MatchListQuery {
+  search?: string;
+  status?: MatchStatus;
+  page?: number;
+  page_size?: number;
+}
+
+export interface CreateMatchPayload {
+  name: string;
+  publication_mode: PublicationMode;
+  host_team_id: number;
+  opponent_name?: string | null;
+  players_per_team: number;
+  host_capacity_limit?: number | null;
+  start_time: string;
+  end_time: string;
+  location: string;
+  location_latitude?: number | null;
+  location_longitude?: number | null;
+  description?: string | null;
+}
+
+export interface UpdateMatchPayload {
+  name: string;
+  start_time: string;
+  end_time: string;
+  location: string;
+  location_latitude?: number | null;
+  location_longitude?: number | null;
+  description?: string | null;
+}

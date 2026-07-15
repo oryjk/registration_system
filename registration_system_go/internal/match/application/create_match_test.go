@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/oryjk/registration_system/registration_system_go/internal/match/domain"
+	"github.com/oryjk/registration_system/registration_system_go/internal/match/ports"
 	sharedauth "github.com/oryjk/registration_system/registration_system_go/internal/shared/auth"
 	sharederror "github.com/oryjk/registration_system/registration_system_go/internal/shared/domain"
 )
@@ -56,12 +57,16 @@ func TestCreateMatchRejectsOrdinaryMember(t *testing.T) {
 	}
 }
 
-func TestCreateMatchRejectsAdminActor(t *testing.T) {
+func TestCreateMatchAllowsAdminActorForExistingTeam(t *testing.T) {
 	useCase := NewCreateMatch(&fakeMatchRepository{}, &fakeTeamAccess{}, &fakeDefaultLimits{}, fixedClock())
 	actor := sharedauth.Actor{Kind: sharedauth.ActorAdmin, ID: 1, IsSuperAdmin: true}
 
-	if _, err := useCase.Execute(context.Background(), actor, validCreateCommand(domain.OnlineTeam)); !errors.Is(err, sharederror.ErrForbidden) {
-		t.Fatalf("expected forbidden, got %v", err)
+	result, err := useCase.Execute(context.Background(), actor, validCreateCommand(domain.OnlineTeam))
+	if err != nil {
+		t.Fatalf("create admin match: %v", err)
+	}
+	if result.Match.CreatedByAdminID == nil || *result.Match.CreatedByAdminID != actor.ID {
+		t.Fatalf("unexpected admin creator: %+v", result.Match)
 	}
 }
 
@@ -81,6 +86,21 @@ func (f *fakeMatchRepository) FindByID(context.Context, uuid.UUID) (domain.Match
 	return domain.Match{}, nil, false, nil
 }
 
+func (f *fakeMatchRepository) FindForAdmin(context.Context, uuid.UUID) (ports.AdminMatchItem, []domain.RegistrationGroup, bool, error) {
+	return ports.AdminMatchItem{}, nil, false, nil
+}
+
+func (f *fakeMatchRepository) ListForAdmin(context.Context, ports.AdminMatchFilter) ([]ports.AdminMatchItem, error) {
+	return nil, nil
+}
+
+func (f *fakeMatchRepository) CountForAdmin(context.Context, ports.AdminMatchFilter) (int64, error) {
+	return 0, nil
+}
+
+func (f *fakeMatchRepository) UpdateDetails(context.Context, domain.Match) error { return nil }
+func (f *fakeMatchRepository) UpdateStatus(context.Context, domain.Match) error  { return nil }
+
 type fakeTeamAccess struct {
 	err error
 }
@@ -88,6 +108,8 @@ type fakeTeamAccess struct {
 func (f *fakeTeamAccess) EnsureManager(context.Context, int64, int64) error {
 	return f.err
 }
+
+func (f *fakeTeamAccess) EnsureExists(context.Context, int64) error { return f.err }
 
 type fakeDefaultLimits struct {
 	limits                 domain.IndividualLimits

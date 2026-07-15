@@ -1,6 +1,6 @@
 # Claude / 对话助手工作区指南
 
-你正在 `registration_system` 工作区内协作。这里不是单仓单服务，而是由**小程序、Web 管理端、移动管理 App、Go 新后端和 Rust 参考后端**组成的多项目工作区。
+你正在 `registration_system` 工作区内协作。这里不是单仓单服务，而是由**旧版小程序、Go 配套小程序、旧版 Web 管理端、Go 配套管理端、移动管理 App、Go 新后端和 Rust 参考后端**组成的多项目工作区。
 
 ## 先读什么
 
@@ -12,7 +12,9 @@
 ## 子项目定位
 
 - `registration_system_mini/`：用户侧小程序
+- `registration_system_mini_go/`：只对接 Go 新后端契约的小程序/H5 新版本
 - `registration_system_backend_fe/`：管理后台
+- `registration_system_backend_fe_go/`：只对接 Go 新后端契约的 React 管理后台
 - `registration_system_admin_app/`：移动管理 App
 - `registration_system_go/`：新后端服务
 - `registration_system_rs/`：只读业务与迁移参考

@@ -9,6 +9,50 @@ import (
 	"context"
 )
 
+const countAdmins = `-- name: CountAdmins :one
+SELECT COUNT(*) FROM admin_users
+`
+
+func (q *Queries) CountAdmins(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countAdmins)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const createAdmin = `-- name: CreateAdmin :one
+INSERT INTO admin_users (username, password_hash, role, status)
+VALUES ($1, $2, $3, $4)
+RETURNING id, username, password_hash, role, status, created_at, updated_at
+`
+
+type CreateAdminParams struct {
+	Username     string `json:"username"`
+	PasswordHash string `json:"password_hash"`
+	Role         string `json:"role"`
+	Status       string `json:"status"`
+}
+
+func (q *Queries) CreateAdmin(ctx context.Context, arg CreateAdminParams) (AdminUser, error) {
+	row := q.db.QueryRow(ctx, createAdmin,
+		arg.Username,
+		arg.PasswordHash,
+		arg.Role,
+		arg.Status,
+	)
+	var i AdminUser
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.PasswordHash,
+		&i.Role,
+		&i.Status,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (openid, nickname, avatar_url)
 VALUES ($1, $2, $3)

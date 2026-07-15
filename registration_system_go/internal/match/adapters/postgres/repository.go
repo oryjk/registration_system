@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	matchsqlc "github.com/oryjk/registration_system/registration_system_go/internal/match/adapters/postgres/sqlc"
 	"github.com/oryjk/registration_system/registration_system_go/internal/match/domain"
+	"github.com/oryjk/registration_system/registration_system_go/internal/match/ports"
 )
 
 type database interface {
@@ -66,6 +67,71 @@ func (r *Repository) FindByID(ctx context.Context, matchID uuid.UUID) (domain.Ma
 	return mapMatch(row), groups, true, nil
 }
 
+func (r *Repository) FindForAdmin(ctx context.Context, matchID uuid.UUID) (ports.AdminMatchItem, []domain.RegistrationGroup, bool, error) {
+	row, err := r.queries.GetMatchForAdmin(ctx, pgUUID(matchID))
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ports.AdminMatchItem{}, nil, false, nil
+	}
+	if err != nil {
+		return ports.AdminMatchItem{}, nil, false, err
+	}
+	groupRows, err := r.queries.ListRegistrationGroupsByMatchID(ctx, pgUUID(matchID))
+	if err != nil {
+		return ports.AdminMatchItem{}, nil, false, err
+	}
+	groups := make([]domain.RegistrationGroup, 0, len(groupRows))
+	for _, groupRow := range groupRows {
+		groups = append(groups, mapGroup(groupRow))
+	}
+	return ports.AdminMatchItem{
+		Match: mapAdminDetailMatch(row), HostTeamName: row.HostTeamName, AwayTeamName: row.AwayTeamName,
+	}, groups, true, nil
+}
+
+func (r *Repository) ListForAdmin(ctx context.Context, filter ports.AdminMatchFilter) ([]ports.AdminMatchItem, error) {
+	var status *string
+	if filter.Status != nil {
+		value := string(*filter.Status)
+		status = &value
+	}
+	rows, err := r.queries.ListMatchesForAdmin(ctx, matchsqlc.ListMatchesForAdminParams{
+		Status: status, Search: filter.Search, LimitCount: int32(filter.Limit), OffsetCount: int32(filter.Offset),
+	})
+	if err != nil {
+		return nil, err
+	}
+	items := make([]ports.AdminMatchItem, 0, len(rows))
+	for _, row := range rows {
+		items = append(items, ports.AdminMatchItem{
+			Match: mapAdminListMatch(row), HostTeamName: row.HostTeamName, AwayTeamName: row.AwayTeamName,
+		})
+	}
+	return items, nil
+}
+
+func (r *Repository) CountForAdmin(ctx context.Context, filter ports.AdminMatchFilter) (int64, error) {
+	var status *string
+	if filter.Status != nil {
+		value := string(*filter.Status)
+		status = &value
+	}
+	return r.queries.CountMatchesForAdmin(ctx, matchsqlc.CountMatchesForAdminParams{Status: status, Search: filter.Search})
+}
+
+func (r *Repository) UpdateDetails(ctx context.Context, match domain.Match) error {
+	_, err := r.queries.UpdateMatchDetails(ctx, matchsqlc.UpdateMatchDetailsParams{
+		ID: pgUUID(match.ID), Name: match.Name, StartTime: pgTimestamp(match.StartTime), EndTime: pgTimestamp(match.EndTime),
+		Location: match.Location, LocationLatitude: match.LocationLatitude, LocationLongitude: match.LocationLongitude,
+		Description: match.Description,
+	})
+	return err
+}
+
+func (r *Repository) UpdateStatus(ctx context.Context, match domain.Match) error {
+	_, err := r.queries.UpdateMatchStatus(ctx, matchsqlc.UpdateMatchStatusParams{ID: pgUUID(match.ID), Status: string(match.Status)})
+	return err
+}
+
 func createMatchParams(match domain.Match) matchsqlc.CreateMatchParams {
 	return matchsqlc.CreateMatchParams{
 		ID:                pgUUID(match.ID),
@@ -84,6 +150,7 @@ func createMatchParams(match domain.Match) matchsqlc.CreateMatchParams {
 		LocationLongitude: match.LocationLongitude,
 		Description:       match.Description,
 		CreatedByUserID:   match.CreatedByUserID,
+		CreatedByAdminID:  match.CreatedByAdminID,
 	}
 }
 
@@ -117,8 +184,33 @@ func mapMatch(row matchsqlc.Match) domain.Match {
 		LocationLongitude: row.LocationLongitude,
 		Description:       row.Description,
 		CreatedByUserID:   row.CreatedByUserID,
+		CreatedByAdminID:  row.CreatedByAdminID,
 		CreatedAt:         row.CreatedAt.Time,
 		UpdatedAt:         row.UpdatedAt.Time,
+	}
+}
+
+func mapAdminDetailMatch(row matchsqlc.GetMatchForAdminRow) domain.Match {
+	return domain.Match{
+		ID: uuid.UUID(row.ID.Bytes), Name: row.Name, PublicationMode: domain.PublicationMode(row.PublicationMode),
+		OpponentState: domain.OpponentState(row.OpponentState), Status: domain.MatchStatus(row.Status),
+		HostTeamID: row.HostTeamID, AwayTeamID: row.AwayTeamID, OpponentName: row.OpponentName,
+		PlayersPerTeam: int(row.PlayersPerTeam), StartTime: row.StartTime.Time, EndTime: row.EndTime.Time,
+		Location: row.Location, LocationLatitude: row.LocationLatitude, LocationLongitude: row.LocationLongitude,
+		Description: row.Description, CreatedByUserID: row.CreatedByUserID, CreatedByAdminID: row.CreatedByAdminID,
+		CreatedAt: row.CreatedAt.Time, UpdatedAt: row.UpdatedAt.Time,
+	}
+}
+
+func mapAdminListMatch(row matchsqlc.ListMatchesForAdminRow) domain.Match {
+	return domain.Match{
+		ID: uuid.UUID(row.ID.Bytes), Name: row.Name, PublicationMode: domain.PublicationMode(row.PublicationMode),
+		OpponentState: domain.OpponentState(row.OpponentState), Status: domain.MatchStatus(row.Status),
+		HostTeamID: row.HostTeamID, AwayTeamID: row.AwayTeamID, OpponentName: row.OpponentName,
+		PlayersPerTeam: int(row.PlayersPerTeam), StartTime: row.StartTime.Time, EndTime: row.EndTime.Time,
+		Location: row.Location, LocationLatitude: row.LocationLatitude, LocationLongitude: row.LocationLongitude,
+		Description: row.Description, CreatedByUserID: row.CreatedByUserID, CreatedByAdminID: row.CreatedByAdminID,
+		CreatedAt: row.CreatedAt.Time, UpdatedAt: row.UpdatedAt.Time,
 	}
 }
 

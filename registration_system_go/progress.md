@@ -24,3 +24,18 @@
 - Task 4 验证通过：auth/user/team 全部专项测试、PostgreSQL 容器测试、`go test -race`、`go vet ./...`。
 - 已完成 Match domain TDD：三种发布模式、初始报名组、散人默认 8/10、对手名称/坐标/时间不变量测试通过。
 - 已完成 Match 创建用例与 PostgreSQL 事务仓储：创建 Match 和初始报名组原子提交，任一报名组写入失败时整体回滚。
+
+## 2026-07-15
+
+- 已确认本地 PostgreSQL 容器 migration version 1 正常，四个核心业务表当前为空。
+- 已开始管理员认证与比赛管理闭环，先补领域和应用层失败测试。
+- 已新增管理员领域、bcrypt 密码校验、JWT 登录、当前管理员查询和首个管理员初始化命令。
+- 已应用 migration version 2，比赛创建来源支持用户或管理员且保持二选一约束。
+- 已完成 `/api/admin/auth`、`/api/admin/teams` 和 `/api/admin/matches` 的真实依赖装配与 HTTP 路由。
+- 已完成比赛列表、详情、管理员创建、基础信息编辑和状态流转，并通过真实本地数据库接口联调。
+- 已完成 React + Ant Design 管理端的登录、受保护路由、比赛列表、详情和发布/编辑页面。
+- 已修复登录成功后的双重导航竞态，管理菜单改为语义化 Router 链接。
+- 已通过管理端 `type-check`、ESLint、生产构建，以及桌面和移动视口 Playwright E2E；截图未发现遮挡或横向裁切。
+- Go 非 PostgreSQL adapter 包已通过 race 测试，`go vet ./...`、API 和 adminctl 本机构建通过。
+- 按本地开发只保留一个 PostgreSQL 容器的约束，未运行会额外启动 PostgreSQL Testcontainers 的仓储测试。
+- `make run`、migration 和管理员初始化命令已自动加载 `./.env`；本机 Go API 通过 `127.0.0.1:5432` 连接 PostgreSQL 容器。

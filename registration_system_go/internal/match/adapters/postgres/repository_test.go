@@ -74,7 +74,7 @@ func newPersistableMatch(t *testing.T, userID, teamID int64) (domain.Match, []do
 		Name:            "周末约球",
 		PublicationMode: domain.OnlineTeam,
 		HostTeamID:      teamID,
-		CreatedByUserID: userID,
+		CreatedByUserID: int64Pointer(userID),
 		PlayersPerTeam:  8,
 		StartTime:       start,
 		EndTime:         start.Add(2 * time.Hour),
@@ -86,3 +86,5 @@ func newPersistableMatch(t *testing.T, userID, teamID int64) (domain.Match, []do
 	}
 	return match, groups
 }
+
+func int64Pointer(value int64) *int64 { return &value }

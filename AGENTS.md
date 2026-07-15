@@ -1,11 +1,13 @@
 # 工作区说明（给 AI / Agent）
 
-本仓库是一个**赛事报名与球队管理**工作区，当前包含五个彼此协作的子项目：
+本仓库是一个**赛事报名与球队管理**工作区，当前包含七个彼此协作的子项目：
 
 | 目录 | 说明 | 技术栈 |
 | --- | --- | --- |
 | `registration_system_mini/` | 微信小程序端，面向球员/队员/普通用户 | `uni-app + Vue 3 + TypeScript + Vite` |
+| `registration_system_mini_go/` | 对接 Go 新后端的小程序/H5 新版本 | `uni-app + Vue 3 + TypeScript + Vite + Bun` |
 | `registration_system_backend_fe/` | 管理后台，面向运营/管理员 | `Vue 3 + TypeScript + Vite + Tailwind 4 + DaisyUI 5` |
+| `registration_system_backend_fe_go/` | 对接 Go 新后端的管理后台新版本 | `React + TypeScript + Vite + Ant Design + Bun` |
 | `registration_system_admin_app/` | 移动管理 App，面向赛事运营/管理员 | `Flutter + Dart` |
 | `registration_system_go/` | 新后台服务端，优先承载认证、球队与比赛 API | `Go + Gin + PostgreSQL + pgx + sqlc` |
 | `registration_system_rs/` | 旧后台服务端，只作为业务与迁移参考 | `Rust + Axum + PostgreSQL + sqlx` |
@@ -45,7 +47,9 @@
 ## 子项目入口
 
 - 小程序入口：`registration_system_mini/src/main.ts`、`src/pages.json`
+- Go 配套小程序入口：`registration_system_mini_go/src/main.ts`、`src/pages.json`
 - 管理端入口：`registration_system_backend_fe/src/main.ts`、`src/router/index.ts`
+- Go 配套管理端入口：`registration_system_backend_fe_go/src/main.tsx`、`src/App.tsx`
 - 移动管理 App 入口：`registration_system_admin_app/lib/main.dart`
 - Go 后端入口：`registration_system_go/cmd/api/main.go`、`internal/bootstrap/`
 - Rust 参考后端入口：`registration_system_rs/src/main.rs`、`src/lib.rs`、`src/bootstrap/`
@@ -63,7 +67,9 @@
 - Go 后端提交前执行：`gofmt -w .`、`go test -race ./...`、`go vet ./...`、`go build -o /tmp/registration-system-go-api ./cmd/api`
 - Rust 参考后端不再增加代码；仅在迁移核对需要时执行 `cargo test`
 - 管理端提交前建议执行：`bun run type-check`、`bun run lint`、必要时 `bun run build`
+- Go 配套管理端提交前建议执行：`bun run type-check`、`bun run lint`、`bun run build`
 - 小程序提交前建议执行：`bun run type-check`、必要时 `bun run build:mp-weixin`
+- Go 配套小程序提交前建议执行：`bun run type-check`、`bun run build:h5`、必要时 `bun run build:mp-weixin`
 - 移动管理 App 提交前建议执行：`dart format lib test`、`flutter analyze`、`flutter test`、必要时 `flutter build apk --debug`
 - 如因环境、依赖、耗时或任务范围原因未运行相关验证命令，必须在最终回复中说明未验证项和原因。
 - TDD 规则：后端业务逻辑、仓储、路由等行为变更需要优先考虑 TDD 或补充后端测试；前端不要求每次按 TDD 开发，页面、样式、交互和小程序 UI 变更通常以类型检查、构建和人工/模拟器验证为主。

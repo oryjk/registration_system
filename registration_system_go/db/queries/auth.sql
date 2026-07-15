@@ -30,3 +30,11 @@ WHERE id = $1;
 SELECT id, username, password_hash, role, status, created_at, updated_at
 FROM admin_users
 WHERE username = $1;
+
+-- name: CountAdmins :one
+SELECT COUNT(*) FROM admin_users;
+
+-- name: CreateAdmin :one
+INSERT INTO admin_users (username, password_hash, role, status)
+VALUES ($1, $2, $3, $4)
+RETURNING id, username, password_hash, role, status, created_at, updated_at;

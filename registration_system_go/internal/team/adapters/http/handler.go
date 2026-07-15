@@ -6,12 +6,15 @@ import (
 	"github.com/gin-gonic/gin"
 	authhttp "github.com/oryjk/registration_system/registration_system_go/internal/auth/adapters/http"
 	sharedhttpapi "github.com/oryjk/registration_system/registration_system_go/internal/shared/adapters/httpapi"
+	sharedauth "github.com/oryjk/registration_system/registration_system_go/internal/shared/auth"
 	sharederror "github.com/oryjk/registration_system/registration_system_go/internal/shared/domain"
 	"github.com/oryjk/registration_system/registration_system_go/internal/team/domain"
 )
 
 type TeamQuery interface {
 	ListByUser(context.Context, int64) ([]domain.TeamMembership, error)
+	ListActive(context.Context) ([]domain.Team, error)
+	CreateTeam(context.Context, sharedauth.Actor, string, *string) (domain.Team, error)
 }
 
 type Handler struct {
@@ -58,4 +61,52 @@ func (h *Handler) MyTeams(c *gin.Context) {
 
 func (h *Handler) RegisterUserRoutes(group *gin.RouterGroup) {
 	group.GET("/teams/my", h.MyTeams)
+}
+
+func (h *Handler) AdminTeams(c *gin.Context) {
+	items, err := h.query.ListActive(c.Request.Context())
+	if err != nil {
+		sharedhttpapi.WriteError(c, err)
+		return
+	}
+	response := make([]TeamOptionResponse, 0, len(items))
+	for _, item := range items {
+		response = append(response, TeamOptionResponse{ID: item.ID, Name: item.Name, LogoURL: item.LogoURL})
+	}
+	sharedhttpapi.WriteSuccess(c, response)
+}
+
+type TeamOptionResponse struct {
+	ID      int64   `json:"id"`
+	Name    string  `json:"name"`
+	LogoURL *string `json:"logo_url"`
+}
+
+type CreateTeamRequest struct {
+	Name        string  `json:"name" binding:"required"`
+	Description *string `json:"description"`
+}
+
+func (h *Handler) AdminCreateTeam(c *gin.Context) {
+	actor, ok := authhttp.ActorFromContext(c)
+	if !ok || !actor.IsAdmin() {
+		sharedhttpapi.WriteError(c, sharederror.ErrUnauthorized)
+		return
+	}
+	var request CreateTeamRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		sharedhttpapi.WriteError(c, sharederror.New(sharederror.KindValidation, "球队名称不能为空"))
+		return
+	}
+	team, err := h.query.CreateTeam(c.Request.Context(), actor, request.Name, request.Description)
+	if err != nil {
+		sharedhttpapi.WriteError(c, err)
+		return
+	}
+	sharedhttpapi.WriteSuccess(c, TeamOptionResponse{ID: team.ID, Name: team.Name, LogoURL: team.LogoURL})
+}
+
+func (h *Handler) RegisterAdminRoutes(group *gin.RouterGroup) {
+	group.GET("/teams", h.AdminTeams)
+	group.POST("/teams", h.AdminCreateTeam)
 }

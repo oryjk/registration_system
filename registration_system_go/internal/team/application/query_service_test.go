@@ -65,3 +65,11 @@ func (f *fakeTeamRepository) FindByID(context.Context, int64) (domain.Team, bool
 func (f *fakeTeamRepository) ListByUser(context.Context, int64) ([]domain.TeamMembership, error) {
 	return nil, errors.New("not implemented")
 }
+
+func (f *fakeTeamRepository) ListActive(context.Context) ([]domain.Team, error) {
+	return nil, errors.New("not implemented")
+}
+
+func (f *fakeTeamRepository) Create(context.Context, domain.Team) (domain.Team, error) {
+	return domain.Team{}, errors.New("not implemented")
+}

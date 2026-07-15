@@ -3,6 +3,11 @@ SELECT id, name, description, logo_url, captain_id, status, created_at, updated_
 FROM teams
 WHERE id = $1;
 
+-- name: CreateTeam :one
+INSERT INTO teams (name, description, status)
+VALUES ($1, $2, 'active')
+RETURNING id, name, description, logo_url, captain_id, status, created_at, updated_at;
+
 -- name: GetActiveTeamMember :one
 SELECT id, team_id, user_id, role, status, joined_at, created_at, updated_at
 FROM team_members
@@ -27,3 +32,9 @@ WHERE tm.user_id = $1
   AND tm.status = 'active'
   AND t.status = 'active'
 ORDER BY tm.joined_at DESC, t.id;
+
+-- name: ListActiveTeams :many
+SELECT id, name, description, logo_url, captain_id, status, created_at, updated_at
+FROM teams
+WHERE status = 'active'
+ORDER BY name, id;

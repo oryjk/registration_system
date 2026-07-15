@@ -34,9 +34,10 @@ type Match struct {
 	LocationLatitude  *float64         `json:"location_latitude"`
 	LocationLongitude *float64         `json:"location_longitude"`
 	Description       *string          `json:"description"`
-	CreatedByUserID   int64            `json:"created_by_user_id"`
+	CreatedByUserID   *int64           `json:"created_by_user_id"`
 	CreatedAt         pgtype.Timestamp `json:"created_at"`
 	UpdatedAt         pgtype.Timestamp `json:"updated_at"`
+	CreatedByAdminID  *int64           `json:"created_by_admin_id"`
 }
 
 type MatchRegistration struct {

@@ -1,0 +1,20 @@
+{
+  "pages": [
+    {
+      "path": "pages/home/index",
+      "style": {
+        "navigationBarTitleText": "开踢",
+        "navigationStyle": "custom",
+        "enablePullDownRefresh": true,
+        "backgroundColor": "#f4f6f2",
+        "backgroundTextStyle": "dark"
+      }
+    }
+  ],
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "开踢",
+    "navigationBarBackgroundColor": "#f4f6f2",
+    "backgroundColor": "#f4f6f2"
+  }
+}

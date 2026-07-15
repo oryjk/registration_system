@@ -103,7 +103,7 @@ func validInput(mode PublicationMode) NewMatchInput {
 		Name:              "周末友谊赛",
 		PublicationMode:   mode,
 		HostTeamID:        7,
-		CreatedByUserID:   42,
+		CreatedByUserID:   int64Pointer(42),
 		PlayersPerTeam:    8,
 		HostCapacityLimit: intPointer(12),
 		StartTime:         start,

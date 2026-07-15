@@ -49,7 +49,8 @@ type Match struct {
 	LocationLatitude  *float64
 	LocationLongitude *float64
 	Description       *string
-	CreatedByUserID   int64
+	CreatedByUserID   *int64
+	CreatedByAdminID  *int64
 	CreatedAt         time.Time
 	UpdatedAt         time.Time
 }
@@ -58,7 +59,8 @@ type NewMatchInput struct {
 	Name              string
 	PublicationMode   PublicationMode
 	HostTeamID        int64
-	CreatedByUserID   int64
+	CreatedByUserID   *int64
+	CreatedByAdminID  *int64
 	OpponentName      *string
 	PlayersPerTeam    int
 	HostCapacityLimit *int
@@ -105,6 +107,7 @@ func NewMatch(input NewMatchInput, individualLimits IndividualLimits) (Match, []
 		LocationLongitude: input.LocationLongitude,
 		Description:       trimOptional(input.Description),
 		CreatedByUserID:   input.CreatedByUserID,
+		CreatedByAdminID:  input.CreatedByAdminID,
 		CreatedAt:         now,
 		UpdatedAt:         now,
 	}
@@ -170,6 +173,60 @@ func (m *Match) RecalculateIndividualOpponent(activePlayers int) error {
 	return nil
 }
 
+type UpdateMatchDetails struct {
+	Name              string
+	StartTime         time.Time
+	EndTime           time.Time
+	Location          string
+	LocationLatitude  *float64
+	LocationLongitude *float64
+	Description       *string
+}
+
+func (m *Match) UpdateDetails(input UpdateMatchDetails, now time.Time) error {
+	if m.Status == MatchEnded || m.Status == MatchCancelled {
+		return sharederror.New(sharederror.KindConflict, "已结束或已取消的比赛不能编辑")
+	}
+	validation := NewMatchInput{
+		Name: input.Name, PublicationMode: m.PublicationMode, HostTeamID: m.HostTeamID,
+		CreatedByUserID: m.CreatedByUserID, CreatedByAdminID: m.CreatedByAdminID,
+		OpponentName: m.OpponentName, PlayersPerTeam: m.PlayersPerTeam,
+		StartTime: input.StartTime, EndTime: input.EndTime, Location: input.Location,
+		LocationLatitude: input.LocationLatitude, LocationLongitude: input.LocationLongitude,
+	}
+	if err := validateNewMatchInput(validation); err != nil {
+		return err
+	}
+	m.Name = strings.TrimSpace(input.Name)
+	m.StartTime = input.StartTime
+	m.EndTime = input.EndTime
+	m.Location = strings.TrimSpace(input.Location)
+	m.LocationLatitude = input.LocationLatitude
+	m.LocationLongitude = input.LocationLongitude
+	m.Description = trimOptional(input.Description)
+	m.UpdatedAt = now
+	return nil
+}
+
+func (m *Match) ChangeStatus(next MatchStatus, now time.Time) error {
+	if m.Status == next {
+		return nil
+	}
+	allowed := false
+	switch m.Status {
+	case MatchRegistering:
+		allowed = next == MatchOngoing || next == MatchCancelled
+	case MatchOngoing:
+		allowed = next == MatchEnded || next == MatchCancelled
+	}
+	if !allowed {
+		return sharederror.New(sharederror.KindConflict, "比赛状态不能这样变更")
+	}
+	m.Status = next
+	m.UpdatedAt = now
+	return nil
+}
+
 func validateNewMatchInput(input NewMatchInput) error {
 	if strings.TrimSpace(input.Name) == "" {
 		return sharederror.New(sharederror.KindValidation, "比赛名称不能为空")
@@ -177,8 +234,13 @@ func validateNewMatchInput(input NewMatchInput) error {
 	if strings.TrimSpace(input.Location) == "" {
 		return sharederror.New(sharederror.KindValidation, "比赛场地不能为空")
 	}
-	if input.HostTeamID <= 0 || input.CreatedByUserID <= 0 {
-		return sharederror.New(sharederror.KindValidation, "发布球队或用户无效")
+	if input.HostTeamID <= 0 {
+		return sharederror.New(sharederror.KindValidation, "发布球队无效")
+	}
+	userCreator := input.CreatedByUserID != nil && *input.CreatedByUserID > 0
+	adminCreator := input.CreatedByAdminID != nil && *input.CreatedByAdminID > 0
+	if userCreator == adminCreator {
+		return sharederror.New(sharederror.KindValidation, "比赛创建者无效")
 	}
 	if input.PlayersPerTeam <= 0 {
 		return sharederror.New(sharederror.KindValidation, "每队人数必须大于 0")
