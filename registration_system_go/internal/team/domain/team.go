@@ -3,6 +3,7 @@ package domain
 import (
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	sharederror "github.com/oryjk/registration_system/registration_system_go/internal/shared/domain"
 )
@@ -22,6 +23,10 @@ const (
 	TeamActive TeamStatus = "active"
 	TeamFrozen TeamStatus = "frozen"
 )
+
+func (s TeamStatus) IsValid() bool {
+	return s == TeamActive || s == TeamFrozen
+}
 
 type MemberStatus string
 
@@ -56,9 +61,34 @@ type TeamMembership struct {
 }
 
 func NewTeam(name string, description *string) (Team, error) {
+	name, description, err := normalizeDetails(name, description)
+	if err != nil {
+		return Team{}, err
+	}
+	return Team{Name: name, Description: description, Status: TeamActive}, nil
+}
+
+func (t Team) Update(name string, description *string, status TeamStatus) (Team, error) {
+	name, description, err := normalizeDetails(name, description)
+	if err != nil {
+		return Team{}, err
+	}
+	if !status.IsValid() {
+		return Team{}, sharederror.New(sharederror.KindValidation, "球队状态无效")
+	}
+	t.Name = name
+	t.Description = description
+	t.Status = status
+	return t, nil
+}
+
+func normalizeDetails(name string, description *string) (string, *string, error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
-		return Team{}, sharederror.New(sharederror.KindValidation, "球队名称不能为空")
+		return "", nil, sharederror.New(sharederror.KindValidation, "球队名称不能为空")
+	}
+	if utf8.RuneCountInString(name) > 120 {
+		return "", nil, sharederror.New(sharederror.KindValidation, "球队名称不能超过 120 个字符")
 	}
 	if description != nil {
 		value := strings.TrimSpace(*description)
@@ -68,7 +98,7 @@ func NewTeam(name string, description *string) (Team, error) {
 			description = &value
 		}
 	}
-	return Team{Name: name, Description: description, Status: TeamActive}, nil
+	return name, description, nil
 }
 
 func (m Member) CanManageMatches() bool {

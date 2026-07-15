@@ -12,7 +12,7 @@ import Space from "antd/es/space";
 import Spin from "antd/es/spin";
 import Typography from "antd/es/typography";
 import dayjs, { type Dayjs } from "dayjs";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { createMatch, getMatch, updateMatch } from "../api/matches";
 import { createTeam, listTeamOptions } from "../api/teams";
@@ -37,11 +37,6 @@ interface MatchFormValues {
   description?: string;
 }
 
-interface TeamFormValues {
-  name: string;
-  description?: string;
-}
-
 const initialValues: Partial<MatchFormValues> = {
   publication_mode: "online_team",
   players_per_team: 8,
@@ -53,13 +48,14 @@ export default function MatchFormPage() {
   const editing = Boolean(id);
   const navigate = useNavigate();
   const [form] = Form.useForm<MatchFormValues>();
-  const [teamForm] = Form.useForm<TeamFormValues>();
+  const [confirmModal, modalContextHolder] = Modal.useModal();
+  const pendingTeamName = useRef("");
   const mode = Form.useWatch("publication_mode", form);
   const [teams, setTeams] = useState<TeamOption[]>([]);
   const [loading, setLoading] = useState(editing);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const [teamModalOpen, setTeamModalOpen] = useState(false);
+  const [teamSearch, setTeamSearch] = useState("");
   const [creatingTeam, setCreatingTeam] = useState(false);
 
   useEffect(() => {
@@ -129,16 +125,18 @@ export default function MatchFormPage() {
     }
   };
 
-  const submitTeam = async () => {
-    const values = await teamForm.validateFields();
+  const createAndSelectTeam = async (name: string, submitAfterCreate: boolean) => {
     setCreatingTeam(true);
     setError("");
     try {
-      const team = await createTeam({ name: values.name.trim(), description: values.description?.trim() || null });
+      const team = await createTeam({ name, description: null });
       setTeams((current) => [...current, team].sort((left, right) => left.name.localeCompare(right.name, "zh-CN")));
       form.setFieldValue("host_team_id", team.id);
-      teamForm.resetFields();
-      setTeamModalOpen(false);
+      setTeamSearch("");
+      pendingTeamName.current = "";
+      if (submitAfterCreate) {
+        queueMicrotask(() => form.submit());
+      }
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "球队创建失败");
     } finally {
@@ -146,8 +144,29 @@ export default function MatchFormPage() {
     }
   };
 
+  const selectOrConfirmTeam = (rawName: string, submitAfterCreate = false) => {
+    const name = rawName.trim();
+    if (!name || editing) return;
+    const existing = teams.find((team) => team.name.trim().localeCompare(name, "zh-CN", { sensitivity: "accent" }) === 0);
+    if (existing) {
+      form.setFieldValue("host_team_id", existing.id);
+      setTeamSearch("");
+      pendingTeamName.current = "";
+      if (submitAfterCreate) queueMicrotask(() => form.submit());
+      return;
+    }
+    confirmModal.confirm({
+      title: "球队不存在",
+      content: `是否创建“${name}”并设为本场比赛的主队？`,
+      okText: "创建并选择",
+      cancelText: "返回",
+      onOk: () => createAndSelectTeam(name, submitAfterCreate),
+    });
+  };
+
   return (
     <main className="match-form-page">
+      {modalContextHolder}
       <section className="page-heading detail-heading">
         <div className="detail-title-row">
           <Button type="text" shape="circle" icon={<ArrowLeftOutlined />} aria-label="返回" onClick={() => navigate(id ? `/matches/${id}` : "/matches")} />
@@ -169,6 +188,12 @@ export default function MatchFormPage() {
             disabled={submitting}
             requiredMark={false}
             onFinish={submit}
+            onFinishFailed={({ errorFields }) => {
+              const typedTeamName = teamSearch.trim() || pendingTeamName.current.trim();
+              if (!editing && typedTeamName && errorFields.some((field) => field.name[0] === "host_team_id")) {
+                selectOrConfirmTeam(typedTeamName, true);
+              }
+            }}
           >
           <div className="form-section">
             <div className="form-section-title"><Text className="panel-kicker">BASIC</Text><Title level={4}>比赛信息</Title></div>
@@ -181,15 +206,42 @@ export default function MatchFormPage() {
               </Form.Item>
               <Form.Item
                 name="host_team_id"
-                label={<span className="team-field-label"><span>主队</span>{!editing ? <Button type="link" size="small" icon={<PlusOutlined />} onClick={() => setTeamModalOpen(true)}>新建球队</Button> : null}</span>}
+                label="主队"
                 rules={[{ required: true, message: "请选择主队" }]}
               >
                 <Select
                   showSearch
-                  disabled={editing}
-                  optionFilterProp="label"
+                  allowClear
+                  disabled={editing || creatingTeam}
+                  searchValue={teamSearch}
+                  onSearch={(value) => {
+                    setTeamSearch(value);
+                    if (value.trim()) pendingTeamName.current = value;
+                  }}
+                  onInputKeyDown={(event) => {
+                    const input = event.currentTarget;
+                    queueMicrotask(() => { pendingTeamName.current = input.value; });
+                  }}
+                  onClear={() => { setTeamSearch(""); pendingTeamName.current = ""; }}
+                  onSelect={() => { setTeamSearch(""); pendingTeamName.current = ""; }}
+                  filterOption={(input, option) => String(option?.label || "").toLocaleLowerCase("zh-CN").includes(input.trim().toLocaleLowerCase("zh-CN"))}
                   placeholder={teams.length ? "选择主队" : "暂无可用球队"}
                   options={teams.map((team) => ({ value: team.id, label: team.name }))}
+                  notFoundContent={teamSearch.trim() ? (
+                    <div className="team-select-empty">
+                      <Text type="secondary">未找到“{teamSearch.trim()}”</Text>
+                      <Button
+                        type="link"
+                        size="small"
+                        icon={<PlusOutlined />}
+                        loading={creatingTeam}
+                        onMouseDown={(event) => event.preventDefault()}
+                        onClick={() => selectOrConfirmTeam(teamSearch)}
+                      >
+                        创建球队
+                      </Button>
+                    </div>
+                  ) : null}
                 />
               </Form.Item>
               <Form.Item name="players_per_team" label="每队人数" rules={[{ required: true }]}>
@@ -239,24 +291,6 @@ export default function MatchFormPage() {
         </Spin>
       </section>
 
-      <Modal
-        open={teamModalOpen}
-        title="新建球队"
-        okText="创建"
-        cancelText="取消"
-        confirmLoading={creatingTeam}
-        onOk={() => void submitTeam()}
-        onCancel={() => { setTeamModalOpen(false); teamForm.resetFields(); }}
-      >
-        <Form<TeamFormValues> form={teamForm} layout="vertical" requiredMark={false}>
-          <Form.Item name="name" label="球队名称" rules={[{ required: true, message: "请输入球队名称" }]}>
-            <Input maxLength={120} />
-          </Form.Item>
-          <Form.Item name="description" label="球队简介">
-            <Input.TextArea rows={3} maxLength={500} />
-          </Form.Item>
-        </Form>
-      </Modal>
     </main>
   );
 }

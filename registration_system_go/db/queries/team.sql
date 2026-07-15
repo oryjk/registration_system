@@ -33,8 +33,21 @@ WHERE tm.user_id = $1
   AND t.status = 'active'
 ORDER BY tm.joined_at DESC, t.id;
 
--- name: ListActiveTeams :many
+-- name: ListTeams :many
 SELECT id, name, description, logo_url, captain_id, status, created_at, updated_at
 FROM teams
-WHERE status = 'active'
+WHERE sqlc.narg('status')::text IS NULL OR status = sqlc.narg('status')::text
 ORDER BY name, id;
+
+-- name: UpdateTeam :one
+UPDATE teams
+SET name = $2,
+    description = $3,
+    status = $4,
+    updated_at = NOW()
+WHERE id = $1
+RETURNING id, name, description, logo_url, captain_id, status, created_at, updated_at;
+
+-- name: DeleteTeam :execrows
+DELETE FROM teams
+WHERE id = $1;

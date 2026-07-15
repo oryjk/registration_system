@@ -1,16 +1,22 @@
+import DeleteOutlined from "@ant-design/icons/es/icons/DeleteOutlined";
 import EyeOutlined from "@ant-design/icons/es/icons/EyeOutlined";
 import PlusOutlined from "@ant-design/icons/es/icons/PlusOutlined";
+import StopOutlined from "@ant-design/icons/es/icons/StopOutlined";
 import Alert from "antd/es/alert";
 import Button from "antd/es/button";
 import Grid from "antd/es/grid";
 import Input from "antd/es/input";
+import Popconfirm from "antd/es/popconfirm";
 import Select from "antd/es/select";
+import Space from "antd/es/space";
 import Table from "antd/es/table";
 import Tag from "antd/es/tag";
+import Tooltip from "antd/es/tooltip";
 import Typography from "antd/es/typography";
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { listMatches } from "../api/matches";
+import { deleteMatch, listMatches, updateMatchStatus } from "../api/matches";
+import { useAuth } from "../auth/useAuth";
 import type { MatchItem, MatchStatus } from "../types/match";
 import { matchStatusColors, matchStatusLabels, publicationModeLabels } from "./matchLabels";
 
@@ -26,6 +32,7 @@ function formatDateTime(value: string) {
 
 export default function MatchListPage() {
   const navigate = useNavigate();
+  const { admin } = useAuth();
   const screens = Grid.useBreakpoint();
   const compact = !(screens.md ?? false);
   const [items, setItems] = useState<MatchItem[]>([]);
@@ -36,6 +43,7 @@ export default function MatchListPage() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [actionKey, setActionKey] = useState("");
 
   const load = useCallback((shouldApply = alwaysApply) => {
     if (shouldApply()) {
@@ -64,6 +72,35 @@ export default function MatchListPage() {
     };
   }, [load]);
 
+  const cancelMatch = async (item: MatchItem) => {
+    const key = `cancel:${item.id}`;
+    setActionKey(key);
+    setError("");
+    try {
+      const updated = await updateMatchStatus(item.id, "cancelled");
+      setItems((current) => current.map((candidate) => candidate.id === item.id ? updated.match : candidate));
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "取消比赛失败");
+    } finally {
+      setActionKey("");
+    }
+  };
+
+  const removeMatch = async (item: MatchItem) => {
+    const key = `delete:${item.id}`;
+    setActionKey(key);
+    setError("");
+    try {
+      await deleteMatch(item.id);
+      setItems((current) => current.filter((candidate) => candidate.id !== item.id));
+      setTotal((current) => Math.max(0, current - 1));
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "删除比赛失败");
+    } finally {
+      setActionKey("");
+    }
+  };
+
   const columns = [
     {
       title: "比赛",
@@ -85,9 +122,27 @@ export default function MatchListPage() {
       render: (value: MatchStatus) => <Tag color={matchStatusColors[value]}>{matchStatusLabels[value]}</Tag>,
     },
     {
-      title: "", key: "action", width: 64, fixed: "right" as const,
+      title: "", key: "action", width: admin?.is_super_admin ? 144 : 104, fixed: "right" as const,
       render: (_: unknown, item: MatchItem) => (
-        <Button type="text" shape="circle" icon={<EyeOutlined />} aria-label={`查看${item.name}`} onClick={() => navigate(`/matches/${item.id}`)} />
+        <Space size={2}>
+          <Tooltip title="查看比赛">
+            <Button type="text" shape="circle" icon={<EyeOutlined />} aria-label={`查看${item.name}`} onClick={() => navigate(`/matches/${item.id}`)} />
+          </Tooltip>
+          {item.status === "registering" || item.status === "ongoing" ? (
+            <Popconfirm title={`取消“${item.name}”`} description="比赛取消后不可恢复。" okText="确认取消" cancelText="返回" onConfirm={() => void cancelMatch(item)}>
+              <Tooltip title="取消比赛">
+                <Button type="text" shape="circle" danger icon={<StopOutlined />} loading={actionKey === `cancel:${item.id}`} aria-label={`取消${item.name}`} />
+              </Tooltip>
+            </Popconfirm>
+          ) : null}
+          {admin?.is_super_admin ? (
+            <Popconfirm title={`永久删除“${item.name}”`} description="比赛及其报名、申请数据将永久删除。" okText="永久删除" okButtonProps={{ danger: true }} cancelText="返回" onConfirm={() => void removeMatch(item)}>
+              <Tooltip title="永久删除">
+                <Button type="text" shape="circle" danger icon={<DeleteOutlined />} loading={actionKey === `delete:${item.id}`} aria-label={`删除${item.name}`} />
+              </Tooltip>
+            </Popconfirm>
+          ) : null}
+        </Space>
       ),
     },
   ];

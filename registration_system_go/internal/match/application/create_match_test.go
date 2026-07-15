@@ -59,7 +59,7 @@ func TestCreateMatchRejectsOrdinaryMember(t *testing.T) {
 
 func TestCreateMatchAllowsAdminActorForExistingTeam(t *testing.T) {
 	useCase := NewCreateMatch(&fakeMatchRepository{}, &fakeTeamAccess{}, &fakeDefaultLimits{}, fixedClock())
-	actor := sharedauth.Actor{Kind: sharedauth.ActorAdmin, ID: 1, IsSuperAdmin: true}
+	actor := sharedauth.Actor{Kind: sharedauth.ActorAdmin, ID: 1, IsSuperAdmin: false}
 
 	result, err := useCase.Execute(context.Background(), actor, validCreateCommand(domain.OnlineTeam))
 	if err != nil {
@@ -100,6 +100,7 @@ func (f *fakeMatchRepository) CountForAdmin(context.Context, ports.AdminMatchFil
 
 func (f *fakeMatchRepository) UpdateDetails(context.Context, domain.Match) error { return nil }
 func (f *fakeMatchRepository) UpdateStatus(context.Context, domain.Match) error  { return nil }
+func (f *fakeMatchRepository) Delete(context.Context, uuid.UUID) (bool, error)   { return false, nil }
 
 type fakeTeamAccess struct {
 	err error

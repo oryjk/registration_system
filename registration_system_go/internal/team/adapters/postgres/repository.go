@@ -5,6 +5,8 @@ import (
 	"errors"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
+	sharederror "github.com/oryjk/registration_system/registration_system_go/internal/shared/domain"
 	teamsqlc "github.com/oryjk/registration_system/registration_system_go/internal/team/adapters/postgres/sqlc"
 	"github.com/oryjk/registration_system/registration_system_go/internal/team/domain"
 )
@@ -76,8 +78,13 @@ func (r *Repository) ListByUser(ctx context.Context, userID int64) ([]domain.Tea
 	return items, nil
 }
 
-func (r *Repository) ListActive(ctx context.Context) ([]domain.Team, error) {
-	rows, err := r.queries.ListActiveTeams(ctx)
+func (r *Repository) List(ctx context.Context, status *domain.TeamStatus) ([]domain.Team, error) {
+	var value *string
+	if status != nil {
+		statusValue := string(*status)
+		value = &statusValue
+	}
+	rows, err := r.queries.ListTeams(ctx, value)
 	if err != nil {
 		return nil, err
 	}
@@ -94,6 +101,28 @@ func (r *Repository) Create(ctx context.Context, team domain.Team) (domain.Team,
 		return domain.Team{}, err
 	}
 	return mapTeam(row), nil
+}
+
+func (r *Repository) Update(ctx context.Context, team domain.Team) (domain.Team, error) {
+	row, err := r.queries.UpdateTeam(ctx, teamsqlc.UpdateTeamParams{
+		ID: team.ID, Name: team.Name, Description: team.Description, Status: string(team.Status),
+	})
+	if err != nil {
+		return domain.Team{}, err
+	}
+	return mapTeam(row), nil
+}
+
+func (r *Repository) Delete(ctx context.Context, teamID int64) (bool, error) {
+	rowsAffected, err := r.queries.DeleteTeam(ctx, teamID)
+	if err != nil {
+		var postgresError *pgconn.PgError
+		if errors.As(err, &postgresError) && postgresError.Code == "23503" {
+			return false, sharederror.ErrConflict
+		}
+		return false, err
+	}
+	return rowsAffected > 0, nil
 }
 
 func mapTeam(row teamsqlc.Team) domain.Team {

@@ -38,6 +38,19 @@ func (q *Queries) CreateTeam(ctx context.Context, arg CreateTeamParams) (Team, e
 	return i, err
 }
 
+const deleteTeam = `-- name: DeleteTeam :execrows
+DELETE FROM teams
+WHERE id = $1
+`
+
+func (q *Queries) DeleteTeam(ctx context.Context, id int64) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteTeam, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const getActiveTeamMember = `-- name: GetActiveTeamMember :one
 SELECT id, team_id, user_id, role, status, joined_at, created_at, updated_at
 FROM team_members
@@ -87,42 +100,6 @@ func (q *Queries) GetTeamByID(ctx context.Context, id int64) (Team, error) {
 		&i.UpdatedAt,
 	)
 	return i, err
-}
-
-const listActiveTeams = `-- name: ListActiveTeams :many
-SELECT id, name, description, logo_url, captain_id, status, created_at, updated_at
-FROM teams
-WHERE status = 'active'
-ORDER BY name, id
-`
-
-func (q *Queries) ListActiveTeams(ctx context.Context) ([]Team, error) {
-	rows, err := q.db.Query(ctx, listActiveTeams)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []Team
-	for rows.Next() {
-		var i Team
-		if err := rows.Scan(
-			&i.ID,
-			&i.Name,
-			&i.Description,
-			&i.LogoUrl,
-			&i.CaptainID,
-			&i.Status,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
 }
 
 const listActiveUserTeams = `-- name: ListActiveUserTeams :many
@@ -186,4 +163,78 @@ func (q *Queries) ListActiveUserTeams(ctx context.Context, userID int64) ([]List
 		return nil, err
 	}
 	return items, nil
+}
+
+const listTeams = `-- name: ListTeams :many
+SELECT id, name, description, logo_url, captain_id, status, created_at, updated_at
+FROM teams
+WHERE $1::text IS NULL OR status = $1::text
+ORDER BY name, id
+`
+
+func (q *Queries) ListTeams(ctx context.Context, status *string) ([]Team, error) {
+	rows, err := q.db.Query(ctx, listTeams, status)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Team
+	for rows.Next() {
+		var i Team
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Description,
+			&i.LogoUrl,
+			&i.CaptainID,
+			&i.Status,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const updateTeam = `-- name: UpdateTeam :one
+UPDATE teams
+SET name = $2,
+    description = $3,
+    status = $4,
+    updated_at = NOW()
+WHERE id = $1
+RETURNING id, name, description, logo_url, captain_id, status, created_at, updated_at
+`
+
+type UpdateTeamParams struct {
+	ID          int64   `json:"id"`
+	Name        string  `json:"name"`
+	Description *string `json:"description"`
+	Status      string  `json:"status"`
+}
+
+func (q *Queries) UpdateTeam(ctx context.Context, arg UpdateTeamParams) (Team, error) {
+	row := q.db.QueryRow(ctx, updateTeam,
+		arg.ID,
+		arg.Name,
+		arg.Description,
+		arg.Status,
+	)
+	var i Team
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Description,
+		&i.LogoUrl,
+		&i.CaptainID,
+		&i.Status,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }

@@ -4,6 +4,8 @@ import LogoutOutlined from "@ant-design/icons/es/icons/LogoutOutlined";
 import MenuFoldOutlined from "@ant-design/icons/es/icons/MenuFoldOutlined";
 import MenuUnfoldOutlined from "@ant-design/icons/es/icons/MenuUnfoldOutlined";
 import SafetyCertificateOutlined from "@ant-design/icons/es/icons/SafetyCertificateOutlined";
+import ShopOutlined from "@ant-design/icons/es/icons/ShopOutlined";
+import TeamOutlined from "@ant-design/icons/es/icons/TeamOutlined";
 import Button from "antd/es/button";
 import Drawer from "antd/es/drawer";
 import Grid from "antd/es/grid";
@@ -17,12 +19,6 @@ import { useAuth } from "../auth/useAuth";
 
 const { Header, Sider, Content } = Layout;
 const { Text, Title } = Typography;
-
-const menuItems = [
-  { key: "/", icon: <DashboardOutlined />, label: <NavLink to="/">系统概览</NavLink> },
-  { key: "/matches", icon: <CalendarOutlined />, label: <NavLink to="/matches">比赛管理</NavLink> },
-  { key: "/access", icon: <SafetyCertificateOutlined />, label: <NavLink to="/access">接入状态</NavLink> },
-];
 
 function Brand() {
   return (
@@ -43,7 +39,14 @@ export function AppShell() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const location = useLocation();
   const { admin, logout } = useAuth();
-  const selectedMenuKey = location.pathname.startsWith("/matches") ? "/matches" : location.pathname;
+  const selectedMenuKey = location.pathname.startsWith("/matches") ? "/matches" : location.pathname.startsWith("/teams") ? "/teams" : location.pathname.startsWith("/admins") ? "/admins" : location.pathname;
+  const menuItems = [
+    { key: "/", icon: <DashboardOutlined />, label: <NavLink to="/">系统概览</NavLink> },
+    { key: "/matches", icon: <CalendarOutlined />, label: <NavLink to="/matches">比赛管理</NavLink> },
+    { key: "/teams", icon: <TeamOutlined />, label: <NavLink to="/teams">球队管理</NavLink> },
+    ...(admin?.is_super_admin ? [{ key: "/admins", icon: <ShopOutlined />, label: <NavLink to="/admins">场馆管理员</NavLink> }] : []),
+    { key: "/access", icon: <SafetyCertificateOutlined />, label: <NavLink to="/access">接入状态</NavLink> },
+  ];
 
   const menu = (
     <Menu

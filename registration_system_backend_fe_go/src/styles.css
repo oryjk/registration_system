@@ -398,7 +398,9 @@ select {
 
 .match-list-page,
 .match-detail-page,
-.match-form-page {
+.match-form-page,
+.team-list-page,
+.admin-list-page {
   width: 100%;
   max-width: 1420px;
   margin: 0 auto;
@@ -413,7 +415,8 @@ select {
   border: 1px solid #dce2dd;
 }
 
-.match-search {
+.match-search,
+.team-search {
   width: min(440px, 100%);
 }
 
@@ -424,6 +427,20 @@ select {
 .match-table-panel {
   margin-top: 0;
   padding-top: 8px;
+}
+
+.admin-table-panel {
+  margin-top: 0;
+  padding-top: 8px;
+}
+
+.team-table-panel {
+  margin-top: 0;
+  padding-top: 8px;
+}
+
+.modal-alert {
+  margin-bottom: 18px;
 }
 
 .match-name-cell {
@@ -439,6 +456,27 @@ select {
 
 .match-name-cell .ant-typography {
   font-size: 12px;
+}
+
+.team-name-cell {
+  display: flex;
+  min-width: 150px;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.team-name-cell .ant-typography {
+  font-size: 12px;
+}
+
+.team-name-cell .ant-tag {
+  width: fit-content;
+  margin-top: 4px;
+}
+
+.team-description {
+  display: block;
+  max-width: 420px;
 }
 
 .detail-heading {
@@ -506,15 +544,20 @@ select {
   width: 100%;
 }
 
-.team-field-label {
-  display: inline-flex;
+.team-select-empty {
+  display: flex;
+  min-height: 56px;
   align-items: center;
-  gap: 4px;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 2px;
 }
 
-.team-field-label .ant-btn {
-  height: auto;
-  padding-block: 0;
+.team-select-empty .ant-typography {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .form-actions {
@@ -606,6 +649,10 @@ select {
     padding-inline: 10px !important;
   }
 
+  .team-name-cell {
+    min-width: 0;
+  }
+
   .route-code {
     white-space: normal;
     overflow-wrap: anywhere;
@@ -630,6 +677,7 @@ select {
   }
 
   .match-search,
+  .team-search,
   .status-filter {
     width: 100%;
   }

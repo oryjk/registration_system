@@ -178,6 +178,19 @@ func (q *Queries) CreateRegistrationGroup(ctx context.Context, arg CreateRegistr
 	return i, err
 }
 
+const deleteMatch = `-- name: DeleteMatch :execrows
+DELETE FROM matches
+WHERE id = $1
+`
+
+func (q *Queries) DeleteMatch(ctx context.Context, id pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteMatch, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const getMatchByID = `-- name: GetMatchByID :one
 SELECT id, name, publication_mode, opponent_state, status, host_team_id, away_team_id, opponent_name, players_per_team, start_time, end_time, location, location_latitude, location_longitude, description, created_by_user_id, created_at, updated_at, created_by_admin_id
 FROM matches

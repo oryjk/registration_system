@@ -28,7 +28,7 @@ export default function AccessPage() {
         </header>
         <Descriptions column={{ xs: 1, sm: 2 }} colon={false}>
           <Descriptions.Item label="账号">{admin?.username || "--"}</Descriptions.Item>
-          <Descriptions.Item label="角色">{admin?.is_super_admin ? "超级管理员" : "管理员"}</Descriptions.Item>
+          <Descriptions.Item label="角色">{admin?.is_super_admin ? "超级管理员" : "场馆管理员"}</Descriptions.Item>
           <Descriptions.Item label="账号状态">
             <Tag color={admin?.status === "active" ? "success" : "warning"}>{admin?.status === "active" ? "已启用" : "已冻结"}</Tag>
           </Descriptions.Item>

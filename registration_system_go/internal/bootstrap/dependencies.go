@@ -62,7 +62,7 @@ func BuildDependencies(ctx context.Context, config Config) (Dependencies, func()
 	matchRepository := matchpostgres.NewRepository(pool)
 	matchClock := clock.System{}
 	createMatch := matchapplication.NewCreateMatch(matchRepository, teamService, defaults.Service{}, matchClock)
-	adminMatches := matchapplication.NewAdminMatchService(matchRepository, matchClock)
+	adminMatches := matchapplication.NewAdminMatchService(matchRepository, matchClock, adminService)
 	adminMatchHandler := matchhttp.NewAdminHandler(adminMatches, createMatch)
 
 	return Dependencies{

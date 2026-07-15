@@ -7,6 +7,7 @@
 ## 当前范围
 
 - 微信登录与 JWT 鉴权
+- 超级管理员创建和查看场馆管理员
 - 用户和球队角色
 - 三种比赛发布模式
 - 球队候选申请与选择
@@ -34,6 +35,16 @@ go build -o ./api ./cmd/api
 
 健康检查：`GET http://127.0.0.1:18080/health`。
 
+管理员接口：
+
+- `GET /api/admin/admins`：超级管理员查看管理员列表
+- `POST /api/admin/admins`：超级管理员创建场馆管理员
+- `GET/POST /api/admin/teams`：管理员筛选、查看和创建球队
+- `GET/PATCH/DELETE /api/admin/teams/:id`：管理员查看、更新和删除球队；已被比赛或申请引用的球队不能删除
+- `GET/POST /api/admin/matches`：超级管理员和场馆管理员查看、发布比赛
+- `PATCH /api/admin/matches/:id/status`：管理员按状态机取消或推进比赛
+- `DELETE /api/admin/matches/:id`：超级管理员永久删除任意状态比赛及其关联报名数据
+
 ## 初始化管理员
 
 数据库首次迁移后，在当前终端临时设置管理员账号和密码：
@@ -42,7 +53,7 @@ go build -o ./api ./cmd/api
 ADMIN_USERNAME=<username> ADMIN_PASSWORD='<password>' ADMIN_ROLE=super_admin make create-admin
 ```
 
-初始化命令只允许在 `admin_users` 为空时执行，不会覆盖已有管理员。密码至少 10 个字符。
+初始化命令只允许在 `admin_users` 为空时执行，不会覆盖已有管理员。密码至少 6 个字符。
 
 ## 数据库版本管理
 

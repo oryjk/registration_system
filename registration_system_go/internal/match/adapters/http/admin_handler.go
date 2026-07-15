@@ -21,6 +21,7 @@ type AdminMatchUseCase interface {
 	Get(context.Context, sharedauth.Actor, uuid.UUID) (application.AdminMatchDetail, error)
 	UpdateDetails(context.Context, sharedauth.Actor, uuid.UUID, domain.UpdateMatchDetails) (domain.Match, error)
 	ChangeStatus(context.Context, sharedauth.Actor, uuid.UUID, domain.MatchStatus) (domain.Match, error)
+	Delete(context.Context, sharedauth.Actor, uuid.UUID) error
 }
 
 type CreateMatchUseCase interface {
@@ -222,12 +223,25 @@ func (h *AdminHandler) ChangeStatus(c *gin.Context) {
 	sharedhttpapi.WriteSuccess(c, mapDetail(detail))
 }
 
+func (h *AdminHandler) Delete(c *gin.Context) {
+	actor, id, ok := actorAndMatchID(c)
+	if !ok {
+		return
+	}
+	if err := h.service.Delete(c.Request.Context(), actor, id); err != nil {
+		sharedhttpapi.WriteError(c, err)
+		return
+	}
+	sharedhttpapi.WriteSuccess(c, gin.H{"id": id.String()})
+}
+
 func (h *AdminHandler) RegisterRoutes(group *gin.RouterGroup) {
 	group.GET("/matches", h.List)
 	group.POST("/matches", h.Create)
 	group.GET("/matches/:id", h.Get)
 	group.PATCH("/matches/:id", h.Update)
 	group.PATCH("/matches/:id/status", h.ChangeStatus)
+	group.DELETE("/matches/:id", h.Delete)
 }
 
 func parseListQuery(c *gin.Context) (application.AdminMatchListQuery, error) {

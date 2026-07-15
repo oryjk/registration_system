@@ -52,6 +52,55 @@ func TestRepositoryRollsBackMatchWhenGroupInsertFails(t *testing.T) {
 	}
 }
 
+func TestRepositoryDeletesMatchAndCascadesBusinessData(t *testing.T) {
+	pool := testsupport.StartPostgres(t)
+	ctx := context.Background()
+	userID, teamID := seedMatchOwner(t, pool)
+	match, groups := newPersistableMatch(t, userID, teamID)
+	repository := NewRepository(pool)
+	if err := repository.CreateWithGroups(ctx, match, groups); err != nil {
+		t.Fatalf("create match: %v", err)
+	}
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO match_registrations (id, group_id, user_id)
+		VALUES ($1, $2, $3)`, uuid.New(), groups[0].ID, userID); err != nil {
+		t.Fatalf("seed registration: %v", err)
+	}
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO match_team_applications (id, match_id, applicant_team_id, introduction, created_by_user_id)
+		VALUES ($1, $2, $3, '申请参赛', $4)`, uuid.New(), match.ID, teamID, userID); err != nil {
+		t.Fatalf("seed team application: %v", err)
+	}
+
+	deleted, err := repository.Delete(ctx, match.ID)
+	if err != nil {
+		t.Fatalf("delete match: %v", err)
+	}
+	if !deleted {
+		t.Fatal("expected match to be deleted")
+	}
+
+	checks := []struct {
+		table string
+		query string
+		id    uuid.UUID
+	}{
+		{table: "matches", query: `SELECT COUNT(*) FROM matches WHERE id = $1`, id: match.ID},
+		{table: "match_registration_groups", query: `SELECT COUNT(*) FROM match_registration_groups WHERE match_id = $1`, id: match.ID},
+		{table: "match_registrations", query: `SELECT COUNT(*) FROM match_registrations WHERE group_id = $1`, id: groups[0].ID},
+		{table: "match_team_applications", query: `SELECT COUNT(*) FROM match_team_applications WHERE match_id = $1`, id: match.ID},
+	}
+	for _, check := range checks {
+		var count int
+		if err := pool.QueryRow(ctx, check.query, check.id).Scan(&count); err != nil {
+			t.Fatalf("count %s: %v", check.table, err)
+		}
+		if count != 0 {
+			t.Fatalf("expected %s to be deleted, found %d rows", check.table, count)
+		}
+	}
+}
+
 func seedMatchOwner(t *testing.T, pool interface {
 	QueryRow(context.Context, string, ...any) pgx.Row
 }) (int64, int64) {

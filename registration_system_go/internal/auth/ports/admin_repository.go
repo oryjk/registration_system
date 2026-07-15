@@ -9,6 +9,7 @@ import (
 type AdminRepository interface {
 	FindByUsername(context.Context, string) (domain.Admin, bool, error)
 	FindByID(context.Context, int64) (domain.Admin, bool, error)
+	List(context.Context) ([]domain.Admin, error)
 	Count(context.Context) (int64, error)
 	Create(context.Context, domain.Admin) (domain.Admin, error)
 }

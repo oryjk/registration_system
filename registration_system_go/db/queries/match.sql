@@ -87,6 +87,10 @@ SET status = $2,
 WHERE id = $1
 RETURNING *;
 
+-- name: DeleteMatch :execrows
+DELETE FROM matches
+WHERE id = $1;
+
 -- name: CreateRegistrationGroup :one
 INSERT INTO match_registration_groups (
     id,

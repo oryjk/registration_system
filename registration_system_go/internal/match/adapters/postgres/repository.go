@@ -132,6 +132,11 @@ func (r *Repository) UpdateStatus(ctx context.Context, match domain.Match) error
 	return err
 }
 
+func (r *Repository) Delete(ctx context.Context, id uuid.UUID) (bool, error) {
+	rowsAffected, err := r.queries.DeleteMatch(ctx, pgUUID(id))
+	return rowsAffected > 0, err
+}
+
 func createMatchParams(match domain.Match) matchsqlc.CreateMatchParams {
 	return matchsqlc.CreateMatchParams{
 		ID:                pgUUID(match.ID),

@@ -36,6 +36,24 @@ func TestAdminMatchListUsesAuthenticatedAdmin(t *testing.T) {
 	}
 }
 
+func TestSuperAdminDeletesMatch(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	matchID := uuid.New()
+	service := &fakeAdminMatches{}
+	handler := NewAdminHandler(service, &fakeCreateMatch{})
+	router := gin.New()
+	router.DELETE("/matches/:id", authhttp.NewMiddleware(fakeAdminTokens{}).RequireAdmin(), handler.Delete)
+	request := httptest.NewRequest(http.MethodDelete, "/matches/"+matchID.String(), nil)
+	request.Header.Set("Authorization", "Bearer admin-token")
+	response := httptest.NewRecorder()
+
+	router.ServeHTTP(response, request)
+
+	if response.Code != http.StatusOK || service.deletedID != matchID {
+		t.Fatalf("unexpected response %d: %s", response.Code, response.Body.String())
+	}
+}
+
 type fakeAdminTokens struct{}
 
 func (fakeAdminTokens) IssueUser(context.Context, int64) (string, error)        { return "", nil }
@@ -45,7 +63,8 @@ func (fakeAdminTokens) Parse(context.Context, string) (sharedauth.Actor, error) 
 }
 
 type fakeAdminMatches struct {
-	list application.AdminMatchListResult
+	list      application.AdminMatchListResult
+	deletedID uuid.UUID
 }
 
 func (f *fakeAdminMatches) List(context.Context, sharedauth.Actor, application.AdminMatchListQuery) (application.AdminMatchListResult, error) {
@@ -59,6 +78,10 @@ func (f *fakeAdminMatches) UpdateDetails(context.Context, sharedauth.Actor, uuid
 }
 func (f *fakeAdminMatches) ChangeStatus(context.Context, sharedauth.Actor, uuid.UUID, domain.MatchStatus) (domain.Match, error) {
 	return domain.Match{}, nil
+}
+func (f *fakeAdminMatches) Delete(_ context.Context, _ sharedauth.Actor, id uuid.UUID) error {
+	f.deletedID = id
+	return nil
 }
 
 type fakeCreateMatch struct{}

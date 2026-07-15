@@ -164,6 +164,40 @@ func (q *Queries) GetUserByOpenID(ctx context.Context, openid string) (User, err
 	return i, err
 }
 
+const listAdmins = `-- name: ListAdmins :many
+SELECT id, username, password_hash, role, status, created_at, updated_at
+FROM admin_users
+ORDER BY created_at DESC, id DESC
+`
+
+func (q *Queries) ListAdmins(ctx context.Context) ([]AdminUser, error) {
+	rows, err := q.db.Query(ctx, listAdmins)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AdminUser
+	for rows.Next() {
+		var i AdminUser
+		if err := rows.Scan(
+			&i.ID,
+			&i.Username,
+			&i.PasswordHash,
+			&i.Role,
+			&i.Status,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateUserProfile = `-- name: UpdateUserProfile :one
 UPDATE users
 SET nickname = $2,

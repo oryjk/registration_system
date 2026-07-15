@@ -24,6 +24,29 @@
 6. [completed] React 登录、比赛列表、详情和表单页面
 7. [completed] 本地 Go 服务、Docker PostgreSQL 与浏览器联调
 
+## 2026-07-15 场馆管理员管理
+
+1. [completed] 超级管理员权限校验和数据库角色复核
+2. [completed] 场馆管理员列表与创建 API
+3. [completed] 普通场馆管理员发布比赛权限测试
+4. [completed] React 列表、创建弹窗和超级管理员菜单
+5. [completed] 真实接口、桌面与移动端 E2E 联调
+
+## 2026-07-15 比赛列表危险操作
+
+1. [completed] 报名中和进行中比赛的列表取消操作
+2. [completed] 数据库当前角色驱动的超级管理员删除权限
+3. [completed] 任意比赛状态硬删除和 PostgreSQL 级联清理
+4. [completed] 桌面与移动端确认交互和浏览器验证
+
+## 2026-07-15 球队管理 CRUD
+
+1. [completed] 球队完整列表、详情、创建、更新和删除应用用例
+2. [completed] PostgreSQL/sqlc 更新与安全删除冲突映射
+3. [completed] React 球队管理列表、筛选、详情、创建、编辑和删除交互
+4. [completed] 真实接口查询、桌面与移动端 E2E 和截图验证
+5. [completed] 发布比赛时确认并静默创建不存在的主队
+
 约束：
 
 - Match 是唯一比赛聚合根。

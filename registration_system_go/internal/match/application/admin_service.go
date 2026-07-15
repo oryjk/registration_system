@@ -17,8 +17,9 @@ const (
 )
 
 type AdminMatchService struct {
-	repository ports.Repository
-	clock      ports.Clock
+	repository  ports.Repository
+	clock       ports.Clock
+	adminAccess ports.AdminAccess
 }
 
 type AdminMatchListQuery struct {
@@ -40,8 +41,8 @@ type AdminMatchDetail struct {
 	Groups []domain.RegistrationGroup
 }
 
-func NewAdminMatchService(repository ports.Repository, clock ports.Clock) AdminMatchService {
-	return AdminMatchService{repository: repository, clock: clock}
+func NewAdminMatchService(repository ports.Repository, clock ports.Clock, adminAccess ports.AdminAccess) AdminMatchService {
+	return AdminMatchService{repository: repository, clock: clock, adminAccess: adminAccess}
 }
 
 func (s AdminMatchService) List(ctx context.Context, actor sharedauth.Actor, query AdminMatchListQuery) (AdminMatchListResult, error) {
@@ -130,6 +131,20 @@ func (s AdminMatchService) ChangeStatus(ctx context.Context, actor sharedauth.Ac
 		return domain.Match{}, sharederror.Wrap(sharederror.KindInternal, "更新比赛状态失败", err)
 	}
 	return match, nil
+}
+
+func (s AdminMatchService) Delete(ctx context.Context, actor sharedauth.Actor, id uuid.UUID) error {
+	if err := s.adminAccess.EnsureSuperAdmin(ctx, actor); err != nil {
+		return err
+	}
+	deleted, err := s.repository.Delete(ctx, id)
+	if err != nil {
+		return sharederror.Wrap(sharederror.KindInternal, "删除比赛失败", err)
+	}
+	if !deleted {
+		return sharederror.New(sharederror.KindNotFound, "比赛不存在")
+	}
+	return nil
 }
 
 func validMatchStatus(status domain.MatchStatus) bool {

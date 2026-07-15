@@ -37,3 +37,7 @@ export function updateMatch(id: string, payload: UpdateMatchPayload) {
 export function updateMatchStatus(id: string, status: MatchStatus) {
   return request<MatchDetail>(`/matches/${id}/status`, { method: "PATCH", body: JSON.stringify({ status }) });
 }
+
+export function deleteMatch(id: string) {
+  return request<{ id: string }>(`/matches/${id}`, { method: "DELETE" });
+}

@@ -15,6 +15,7 @@ type Repository interface {
 	CountForAdmin(context.Context, AdminMatchFilter) (int64, error)
 	UpdateDetails(context.Context, domain.Match) error
 	UpdateStatus(context.Context, domain.Match) error
+	Delete(context.Context, uuid.UUID) (bool, error)
 }
 
 type AdminMatchFilter struct {
