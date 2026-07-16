@@ -23,7 +23,8 @@ type TeamQuery interface {
 }
 
 type Handler struct {
-	query TeamQuery
+	query   TeamQuery
+	members TeamMembers
 }
 
 type TeamMembershipResponse struct {
@@ -35,8 +36,8 @@ type TeamMembershipResponse struct {
 	JoinedAt    string  `json:"joined_at"`
 }
 
-func NewHandler(query TeamQuery) *Handler {
-	return &Handler{query: query}
+func NewHandler(query TeamQuery, members TeamMembers) *Handler {
+	return &Handler{query: query, members: members}
 }
 
 func (h *Handler) MyTeams(c *gin.Context) {
@@ -179,6 +180,7 @@ func (h *Handler) RegisterAdminRoutes(group *gin.RouterGroup) {
 	group.GET("/teams/:id", h.AdminGetTeam)
 	group.PATCH("/teams/:id", h.AdminUpdateTeam)
 	group.DELETE("/teams/:id", h.AdminDeleteTeam)
+	h.registerAdminMemberRoutes(group)
 }
 
 func adminActor(c *gin.Context) (sharedauth.Actor, bool) {
@@ -201,6 +203,19 @@ func adminActorAndTeamID(c *gin.Context) (sharedauth.Actor, int64, bool) {
 		return sharedauth.Actor{}, 0, false
 	}
 	return actor, teamID, true
+}
+
+func adminActorTeamAndUserID(c *gin.Context) (sharedauth.Actor, int64, int64, bool) {
+	actor, teamID, ok := adminActorAndTeamID(c)
+	if !ok {
+		return sharedauth.Actor{}, 0, 0, false
+	}
+	userID, err := strconv.ParseInt(c.Param("user_id"), 10, 64)
+	if err != nil || userID <= 0 {
+		sharedhttpapi.WriteError(c, sharederror.New(sharederror.KindValidation, "用户 ID 无效"))
+		return sharedauth.Actor{}, 0, 0, false
+	}
+	return actor, teamID, userID, true
 }
 
 func mapTeam(team domain.Team) TeamResponse {

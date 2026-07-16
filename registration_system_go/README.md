@@ -41,6 +41,10 @@ go build -o ./api ./cmd/api
 - `POST /api/admin/admins`：超级管理员创建场馆管理员
 - `GET/POST /api/admin/teams`：管理员筛选、查看和创建球队
 - `GET/PATCH/DELETE /api/admin/teams/:id`：管理员查看、更新和删除球队；已被比赛或申请引用的球队不能删除
+- `GET/POST /api/admin/teams/:id/members`：管理员查看和添加球队成员
+- `PATCH/DELETE /api/admin/teams/:id/members/:user_id`：管理员更新或移除球队成员
+- `GET /api/admin/teams/:id/member-candidates`：管理员按昵称或用户 ID 查询可添加球员
+- `PATCH /api/admin/teams/:id/captain`：管理员设置或取消队长；`user_id` 为 `null` 时取消
 - `GET/POST /api/admin/matches`：超级管理员和场馆管理员查看、发布比赛
 - `PATCH /api/admin/matches/:id/status`：管理员按状态机取消或推进比赛
 - `DELETE /api/admin/matches/:id`：超级管理员永久删除任意状态比赛及其关联报名数据

@@ -17,6 +17,14 @@ const (
 	RoleMember      Role = "member"
 )
 
+func (r Role) IsValid() bool {
+	return r == RoleCaptain || r == RoleLeader || r == RoleViceCaptain || r == RoleMember
+}
+
+func (r Role) CanAssignDirectly() bool {
+	return r.IsValid() && r != RoleCaptain
+}
+
 type TeamStatus string
 
 const (
@@ -34,6 +42,10 @@ const (
 	MemberActive   MemberStatus = "active"
 	MemberInactive MemberStatus = "inactive"
 )
+
+func (s MemberStatus) IsValid() bool {
+	return s == MemberActive || s == MemberInactive
+}
 
 type Team struct {
 	ID          int64
@@ -53,6 +65,18 @@ type Member struct {
 	Role     Role
 	Status   MemberStatus
 	JoinedAt time.Time
+}
+
+type MemberDetails struct {
+	Member
+	Nickname  string
+	AvatarURL *string
+}
+
+type MemberCandidate struct {
+	UserID    int64
+	Nickname  string
+	AvatarURL *string
 }
 
 type TeamMembership struct {

@@ -47,6 +47,13 @@
 4. [completed] 真实接口查询、桌面与移动端 E2E 和截图验证
 5. [completed] 发布比赛时确认并静默创建不存在的主队
 
+## 2026-07-15 球队成员与队长管理
+
+1. [completed] 成员角色、状态和当前队长保护规则
+2. [completed] 成员列表、候选人、添加、更新和移除 API
+3. [completed] 设置/取消队长的 PostgreSQL 原子更新
+4. [completed] 本地 PostgreSQL 与真实 HTTP 联调及全量验证
+
 约束：
 
 - Match 是唯一比赛聚合根。

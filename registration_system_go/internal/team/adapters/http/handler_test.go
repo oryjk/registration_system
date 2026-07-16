@@ -29,7 +29,7 @@ func TestMyTeamsHandlerUsesAuthenticatedUser(t *testing.T) {
 		Team:   domain.Team{ID: 7, Name: "东安联队", Status: domain.TeamActive},
 		Member: domain.Member{TeamID: 7, UserID: 42, Role: domain.RoleLeader, Status: domain.MemberActive},
 	}}}
-	handler := NewHandler(query)
+	handler := NewHandler(query, &fakeTeamMembers{})
 	router := gin.New()
 	router.GET("/teams", authhttp.NewMiddleware(tokens).RequireUser(), handler.MyTeams)
 	request := httptest.NewRequest(http.MethodGet, "/teams?user_id=999", nil)
@@ -54,7 +54,7 @@ func TestAdminTeamCRUDRoutes(t *testing.T) {
 	now := time.Date(2026, time.July, 15, 8, 30, 0, 0, time.UTC)
 	team := domain.Team{ID: 7, Name: "东安联队", Status: domain.TeamActive, CreatedAt: now, UpdatedAt: now}
 	query := &fakeTeamQuery{teams: []domain.Team{team}, team: team}
-	handler := NewHandler(query)
+	handler := NewHandler(query, &fakeTeamMembers{})
 	router := gin.New()
 	group := router.Group("")
 	group.Use(authhttp.NewMiddleware(fakeAdminTokens{}).RequireAdmin())

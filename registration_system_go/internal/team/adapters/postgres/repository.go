@@ -9,6 +9,7 @@ import (
 	sharederror "github.com/oryjk/registration_system/registration_system_go/internal/shared/domain"
 	teamsqlc "github.com/oryjk/registration_system/registration_system_go/internal/team/adapters/postgres/sqlc"
 	"github.com/oryjk/registration_system/registration_system_go/internal/team/domain"
+	"github.com/oryjk/registration_system/registration_system_go/internal/team/ports"
 )
 
 type Repository struct {
@@ -123,6 +124,80 @@ func (r *Repository) Delete(ctx context.Context, teamID int64) (bool, error) {
 		return false, err
 	}
 	return rowsAffected > 0, nil
+}
+
+func (r *Repository) ListMembers(ctx context.Context, teamID int64) ([]domain.MemberDetails, error) {
+	rows, err := r.queries.ListTeamMembers(ctx, teamID)
+	if err != nil {
+		return nil, err
+	}
+	items := make([]domain.MemberDetails, 0, len(rows))
+	for _, row := range rows {
+		items = append(items, domain.MemberDetails{
+			Member: domain.Member{
+				ID: row.ID, TeamID: row.TeamID, UserID: row.UserID,
+				Role: domain.Role(row.Role), Status: domain.MemberStatus(row.Status), JoinedAt: row.JoinedAt.Time,
+			},
+			Nickname: row.Nickname, AvatarURL: row.AvatarUrl,
+		})
+	}
+	return items, nil
+}
+
+func (r *Repository) ListMemberCandidates(ctx context.Context, teamID int64, search string, limit int) ([]domain.MemberCandidate, error) {
+	rows, err := r.queries.ListTeamMemberCandidates(ctx, teamsqlc.ListTeamMemberCandidatesParams{
+		TeamID: teamID, Search: search, Limit: int32(limit),
+	})
+	if err != nil {
+		return nil, err
+	}
+	items := make([]domain.MemberCandidate, 0, len(rows))
+	for _, row := range rows {
+		items = append(items, domain.MemberCandidate{UserID: row.ID, Nickname: row.Nickname, AvatarURL: row.AvatarUrl})
+	}
+	return items, nil
+}
+
+func (r *Repository) AddMember(ctx context.Context, teamID, userID int64, role domain.Role) error {
+	_, err := r.queries.AddTeamMember(ctx, teamsqlc.AddTeamMemberParams{TeamID: teamID, UserID: userID, Role: string(role)})
+	if err == nil {
+		return nil
+	}
+	var postgresError *pgconn.PgError
+	if errors.As(err, &postgresError) {
+		switch postgresError.Code {
+		case "23505":
+			return ports.ErrMemberAlreadyExists
+		case "23503":
+			return ports.ErrUserNotFound
+		}
+	}
+	return err
+}
+
+func (r *Repository) UpdateMember(ctx context.Context, teamID, userID int64, role domain.Role, status domain.MemberStatus) (bool, error) {
+	rowsAffected, err := r.queries.UpdateTeamMember(ctx, teamsqlc.UpdateTeamMemberParams{
+		TeamID: teamID, UserID: userID, Role: string(role), Status: string(status),
+	})
+	return rowsAffected > 0, err
+}
+
+func (r *Repository) RemoveMember(ctx context.Context, teamID, userID int64) (bool, error) {
+	rowsAffected, err := r.queries.RemoveTeamMember(ctx, teamsqlc.RemoveTeamMemberParams{TeamID: teamID, UserID: userID})
+	return rowsAffected > 0, err
+}
+
+func (r *Repository) SetCaptain(ctx context.Context, teamID int64, userID *int64) error {
+	var err error
+	if userID == nil {
+		_, err = r.queries.ClearTeamCaptain(ctx, teamID)
+	} else {
+		_, err = r.queries.SetTeamCaptain(ctx, teamsqlc.SetTeamCaptainParams{ID: teamID, UserID: *userID})
+	}
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ports.ErrMemberNotFound
+	}
+	return err
 }
 
 func mapTeam(row teamsqlc.Team) domain.Team {

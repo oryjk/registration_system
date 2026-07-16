@@ -3,6 +3,7 @@ import EditOutlined from "@ant-design/icons/es/icons/EditOutlined";
 import EyeOutlined from "@ant-design/icons/es/icons/EyeOutlined";
 import PlusOutlined from "@ant-design/icons/es/icons/PlusOutlined";
 import SearchOutlined from "@ant-design/icons/es/icons/SearchOutlined";
+import TeamOutlined from "@ant-design/icons/es/icons/TeamOutlined";
 import Alert from "antd/es/alert";
 import Button from "antd/es/button";
 import Descriptions from "antd/es/descriptions";
@@ -21,6 +22,7 @@ import Tooltip from "antd/es/tooltip";
 import Typography from "antd/es/typography";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createTeam, deleteTeam, getTeam, listTeams, updateTeam } from "../api/teams";
+import { TeamMemberManager } from "../components/TeamMemberManager";
 import type { SaveTeamPayload, Team, TeamStatus } from "../types/team";
 
 const { Text, Title } = Typography;
@@ -61,6 +63,7 @@ export default function TeamListPage() {
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [deletingID, setDeletingID] = useState<number | null>(null);
+  const [memberTeam, setMemberTeam] = useState<Team | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -158,12 +161,24 @@ export default function TeamListPage() {
         setDetailOpen(false);
         setDetail(null);
       }
+      if (memberTeam?.id === team.id) setMemberTeam(null);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "球队删除失败");
     } finally {
       setDeletingID(null);
     }
   };
+
+  const openMembers = (team: Team) => {
+    setDetailOpen(false);
+    setMemberTeam(team);
+  };
+
+  const handleMemberTeamChange = useCallback((updated: Team) => {
+    setItems((current) => current.map((item) => item.id === updated.id ? updated : item));
+    setDetail((current) => current?.id === updated.id ? updated : current);
+    setMemberTeam(updated);
+  }, []);
 
   const columns = [
     {
@@ -191,12 +206,15 @@ export default function TeamListPage() {
     {
       title: "",
       key: "actions",
-      width: compact ? 112 : 144,
+      width: compact ? 144 : 176,
       fixed: compact ? undefined : "right" as const,
       render: (_: unknown, team: Team) => (
         <Space size={2}>
           <Tooltip title={compact ? undefined : "查看球队"}>
             <Button type="text" shape="circle" icon={<EyeOutlined />} aria-label={`查看${team.name}`} onClick={() => void openDetail(team)} />
+          </Tooltip>
+          <Tooltip title={compact ? undefined : "管理成员"}>
+            <Button type="text" shape="circle" icon={<TeamOutlined />} aria-label={`管理${team.name}成员`} onClick={() => openMembers(team)} />
           </Tooltip>
           <Tooltip title={compact ? undefined : "编辑球队"}>
             <Button type="text" shape="circle" icon={<EditOutlined />} aria-label={`编辑${team.name}`} onClick={() => openEdit(team)} />
@@ -272,7 +290,14 @@ export default function TeamListPage() {
         </Form>
       </Modal>
 
-      <Drawer title="球队详情" width={compact ? 360 : 460} open={detailOpen} loading={detailLoading} onClose={() => setDetailOpen(false)}>
+      <Drawer
+        title="球队详情"
+        width={compact ? 360 : 460}
+        open={detailOpen}
+        loading={detailLoading}
+        extra={detail ? <Button icon={<TeamOutlined />} onClick={() => openMembers(detail)}>成员管理</Button> : null}
+        onClose={() => setDetailOpen(false)}
+      >
         {detail ? (
           <Descriptions column={1} bordered size="small">
             <Descriptions.Item label="球队名称">{detail.name}</Descriptions.Item>
@@ -284,6 +309,13 @@ export default function TeamListPage() {
           </Descriptions>
         ) : null}
       </Drawer>
+
+      <TeamMemberManager
+        open={Boolean(memberTeam)}
+        team={memberTeam}
+        onClose={() => setMemberTeam(null)}
+        onTeamChange={handleMemberTeamChange}
+      />
     </main>
   );
 }

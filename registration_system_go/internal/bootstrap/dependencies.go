@@ -57,7 +57,8 @@ func BuildDependencies(ctx context.Context, config Config) (Dependencies, func()
 
 	teamRepository := teampostgres.NewRepository(pool)
 	teamService := teamapplication.NewQueryService(teamRepository)
-	teamHandler := teamhttp.NewHandler(teamService)
+	teamMemberService := teamapplication.NewMemberService(teamRepository)
+	teamHandler := teamhttp.NewHandler(teamService, teamMemberService)
 
 	matchRepository := matchpostgres.NewRepository(pool)
 	matchClock := clock.System{}

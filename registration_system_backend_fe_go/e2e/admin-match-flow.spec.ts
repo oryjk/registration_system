@@ -11,6 +11,36 @@ async function login(page: Page) {
   await expect(page).toHaveURL(/\/$/);
 }
 
+async function loginWithMockAdmin(page: Page) {
+  await page.route("**/api/admin/auth/login", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        code: 0,
+        message: "ok",
+        data: {
+          access_token: "e2e-admin-token",
+          token_type: "Bearer",
+          admin: {
+            id: 1,
+            username: "e2e-admin",
+            role: "super_admin",
+            status: "active",
+            is_super_admin: true,
+            created_at: "2026-07-15T08:30:00Z",
+          },
+        },
+      }),
+    });
+  });
+  await page.goto("/login");
+  await page.getByPlaceholder("管理员账号").fill("e2e-admin");
+  await page.getByPlaceholder("密码").fill("e2e-password");
+  await page.locator('button[type="submit"]').click();
+  await expect(page).toHaveURL(/\/$/);
+}
+
 async function openNavigation(page: Page, name: string) {
   if ((page.viewportSize()?.width ?? 0) < 992) {
     await page.getByLabel("打开导航").click();
@@ -195,6 +225,101 @@ test("管理员可以增删查改球队", async ({ page }, testInfo) => {
   await page.getByRole("button", { name: /永\s*久\s*删\s*除/ }).click();
   await expect(page.getByText("西城联队")).toBeHidden();
   await page.screenshot({ path: testInfo.outputPath("team-management.png"), fullPage: true });
+});
+
+test("管理员可以管理球队成员和队长", async ({ page }, testInfo) => {
+  await loginWithMockAdmin(page);
+  const timestamp = "2026-07-15T08:30:00Z";
+  let team = {
+    id: 1,
+    name: "东安联队",
+    description: "周末八人制球队",
+    logo_url: null,
+    captain_id: 42 as number | null,
+    status: "active",
+    created_at: timestamp,
+    updated_at: timestamp,
+  };
+  let members = [
+    { id: 1, user_id: 42, nickname: "王队长", avatar_url: null, role: "captain", status: "active", joined_at: timestamp },
+    { id: 2, user_id: 43, nickname: "李队员", avatar_url: null, role: "member", status: "active", joined_at: timestamp },
+  ];
+  const candidates = [
+    { user_id: 44, nickname: "张新人", avatar_url: null },
+  ];
+
+  await page.route("**/api/admin/teams**", async (route) => {
+    const request = route.request();
+    const pathname = new URL(request.url()).pathname;
+    let data: unknown;
+
+    if (request.method() === "GET" && pathname.endsWith("/teams")) {
+      data = [team];
+    } else if (request.method() === "GET" && pathname.endsWith("/member-candidates")) {
+      data = candidates.filter((candidate) => !members.some((member) => member.user_id === candidate.user_id));
+    } else if (request.method() === "GET" && pathname.endsWith("/members")) {
+      data = { team, members };
+    } else if (request.method() === "POST" && pathname.endsWith("/members")) {
+      const payload = request.postDataJSON() as { user_id: number; role: string };
+      const candidate = candidates.find((item) => item.user_id === payload.user_id)!;
+      members = [...members, { id: 3, ...candidate, role: payload.role, status: "active", joined_at: timestamp }];
+      data = { team, members };
+    } else if (request.method() === "PATCH" && pathname.endsWith("/captain")) {
+      const payload = request.postDataJSON() as { user_id: number | null };
+      team = { ...team, captain_id: payload.user_id, updated_at: timestamp };
+      members = members.map((member) => ({
+        ...member,
+        role: payload.user_id === member.user_id ? "captain" : member.role === "captain" ? "member" : member.role,
+      }));
+      data = { team, members };
+    } else if (request.method() === "PATCH" && /\/members\/\d+$/.test(pathname)) {
+      const userID = Number(pathname.split("/").at(-1));
+      const payload = request.postDataJSON() as { role: string; status: string };
+      members = members.map((member) => member.user_id === userID ? { ...member, ...payload } : member);
+      data = { team, members };
+    } else if (request.method() === "DELETE" && /\/members\/\d+$/.test(pathname)) {
+      const userID = Number(pathname.split("/").at(-1));
+      members = members.filter((member) => member.user_id !== userID);
+      data = { team, members };
+    } else {
+      await route.fallback();
+      return;
+    }
+
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ code: 0, message: "ok", data }) });
+  });
+
+  await openNavigation(page, "球队管理");
+  await page.getByLabel("管理东安联队成员").click();
+  const memberDrawer = page.getByRole("dialog", { name: "东安联队 · 成员管理" });
+  await expect(memberDrawer.getByRole("row", { name: /王队长/ })).toBeVisible();
+  await expect(memberDrawer.getByRole("row", { name: /李队员/ })).toBeVisible();
+
+  const candidatesLoaded = page.waitForResponse((response) => new URL(response.url()).pathname.endsWith("/member-candidates"));
+  await memberDrawer.getByRole("button", { name: "添加成员" }).click();
+  await candidatesLoaded;
+  const addDialog = page.getByRole("dialog", { name: "添加球队成员" });
+  await addDialog.getByRole("combobox", { name: "选择球员" }).click();
+  await page.locator(".ant-select-item-option").filter({ hasText: "张新人 · ID 44" }).click();
+  await addDialog.getByRole("button", { name: /添\s*加/ }).click();
+  await expect(memberDrawer.getByText("张新人")).toBeVisible();
+
+  await memberDrawer.getByLabel("编辑李队员").click();
+  const editDialog = page.getByRole("dialog", { name: "编辑李队员" });
+  await editDialog.locator(".ant-select-selector").click();
+  await page.locator(".ant-select-item-option").filter({ hasText: "副队长" }).click();
+  await editDialog.getByText("冻结", { exact: true }).click();
+  await editDialog.getByRole("button", { name: /保\s*存/ }).click();
+
+  await memberDrawer.getByLabel("设置张新人为队长").click();
+  await page.getByRole("button", { name: /确\s*认/ }).click();
+  await expect(memberDrawer.getByText("当前队长").locator("..").getByText("张新人")).toBeVisible();
+
+  await memberDrawer.getByLabel("移除王队长").click();
+  await page.getByRole("button", { name: /^移\s*除$/ }).click();
+  await expect(memberDrawer.getByRole("row", { name: /王队长/ })).toBeHidden();
+
+  await page.screenshot({ path: testInfo.outputPath("team-members.png"), fullPage: true });
 });
 
 test("发布比赛时可以确认创建不存在的主队", async ({ page }, testInfo) => {
