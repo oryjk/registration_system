@@ -54,6 +54,37 @@
 3. [completed] 设置/取消队长的 PostgreSQL 原子更新
 4. [completed] 本地 PostgreSQL 与真实 HTTP 联调及全量验证
 
+## 2026-07-16 旧 MySQL 球队数据导入
+
+1. [completed] 只读核验旧 MySQL 与新 PostgreSQL 的球队表结构、数据量和重复情况
+2. [completed] 确认字段映射、冲突策略与导入边界
+3. [completed] 实现可重复执行、事务化且可审计的导入方式
+4. [completed] 先预演，再执行真实导入
+5. [completed] 核对导入前后数量、字段与约束，并运行相关验证
+
+### 头像显示修复
+
+1. [completed] 复现并确认目标 `avatar_url` 为无 Data URI 前缀的旧 JPEG Base64
+2. [completed] 为导入边界的头像规范化补充红绿测试
+3. [completed] 重跑真实导入更新头像并做浏览器验证
+
+错误记录：
+
+| 错误 | 尝试 | 处理 |
+| --- | --- | --- |
+| 系统 Python 缺少 `pymysql`，只读源库检查未启动 | 1 | 改用现有 MySQL CLI 或临时隔离依赖，不写入项目依赖 |
+| MySQL 8 `information_schema` 列名大小写导致解析 `KeyError` | 2 | 为查询列显式指定小写别名后重试；源库连接本身已成功 |
+| `git pull --rebase --autostash` 恢复本地改动时 `task_plan.md` 冲突 | 1 | 保留远端成员管理章节与本次导入章节，解决冲突并恢复未暂存状态 |
+| Task 1 首次领域红灯测试存在 Go range 变量语法错误 | 1 | 修正为遍历结构体值后重跑，要求仅因 `UpdateProfile` 缺失而失败 |
+| Task 2 sqlc 为扩展字段查询生成专用 Row，旧 `mapUser(authsqlc.User)` 不兼容 | 1 | mapper 改为显式字段参数，统一承接表模型与专用 Row 的同构字段 |
+| Task 4 聚焦 E2E 无法启动 Playwright Chromium 1228 | 1 | 安装当前 Playwright 版本对应的 Chromium 后重跑桌面与移动用例 |
+| Task 4 E2E 的 `getByText("张新")` 同时匹配真实姓名与昵称辅助文本 | 2 | 将断言收紧为精确文本匹配后复跑，不修改业务 UI |
+| Task 5 显式安装 MySQL 驱动 v1.9.3 连带将 goose 降到 v3.27.1 | 1 | 恢复 goose v3.27.2，改用 MySQL 驱动 v1.10.0 后执行 `go mod tidy` |
+| 正式迁移前目标球队数从早先 3 支变为 1 支 | 1 | 只读复核剩余球队为 `asdadsdd`、无比赛引用且不与源球队重名，保留该记录并继续 dry-run |
+| 首次真实 dry-run 从工作区根错误读取 `.env`，缺少 `DATABASE_URL` | 1 | 改为读取 `registration_system_go/.env` 后重跑；命令在连接前退出，无数据库写入 |
+| 现有 Chrome 控制插件初始化时报 `Cannot redefine property: process` | 1 | 不修改应用规避插件问题，改用项目 Playwright 桌面/移动 E2E 验证 Data URI 图片真实解码 |
+| 头像 E2E 复用了被 `betalpha-admin` 占用的 5175 端口并卡在登录页 | 1 | 保留其他项目进程，在 5177 启动本项目并显式设置 `PLAYWRIGHT_BASE_URL` 重跑 |
+
 约束：
 
 - Match 是唯一比赛聚合根。

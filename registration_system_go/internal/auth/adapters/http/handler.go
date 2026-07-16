@@ -27,10 +27,12 @@ type WechatLoginResponse struct {
 }
 
 type UserResponse struct {
-	ID        int64   `json:"id"`
-	Nickname  string  `json:"nickname"`
-	AvatarURL *string `json:"avatar_url"`
-	Status    string  `json:"status"`
+	ID          int64   `json:"id"`
+	Nickname    string  `json:"nickname"`
+	AvatarURL   *string `json:"avatar_url"`
+	RealName    *string `json:"real_name"`
+	PhoneNumber *string `json:"phone_number"`
+	Status      string  `json:"status"`
 }
 
 func NewHandler(wechatLogin WechatLoginUseCase) *Handler {
@@ -51,10 +53,8 @@ func (h *Handler) WechatLogin(c *gin.Context) {
 	sharedhttpapi.WriteSuccess(c, WechatLoginResponse{
 		Token: result.Token,
 		User: UserResponse{
-			ID:        result.User.ID,
-			Nickname:  result.User.Nickname,
-			AvatarURL: result.User.AvatarURL,
-			Status:    string(result.User.Status),
+			ID: result.User.ID, Nickname: result.User.Nickname, AvatarURL: result.User.AvatarURL,
+			RealName: result.User.RealName, PhoneNumber: result.User.PhoneNumber, Status: string(result.User.Status),
 		},
 	})
 }

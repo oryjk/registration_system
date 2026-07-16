@@ -60,7 +60,9 @@ SELECT tm.id,
        tm.status,
        tm.joined_at,
        u.nickname,
-       u.avatar_url
+       u.avatar_url,
+       u.real_name,
+       u.phone_number
 FROM team_members tm
 JOIN users u ON u.id = tm.user_id
 WHERE tm.team_id = $1
@@ -76,7 +78,7 @@ ORDER BY
     tm.user_id;
 
 -- name: ListTeamMemberCandidates :many
-SELECT u.id, u.nickname, u.avatar_url
+SELECT u.id, u.nickname, u.avatar_url, u.real_name, u.phone_number
 FROM users u
 WHERE u.status = 'active'
   AND NOT EXISTS (
@@ -88,6 +90,8 @@ WHERE u.status = 'active'
   AND (
       sqlc.arg('search')::text = ''
       OR u.nickname ILIKE '%' || sqlc.arg('search')::text || '%'
+      OR u.real_name ILIKE '%' || sqlc.arg('search')::text || '%'
+      OR u.phone_number ILIKE '%' || sqlc.arg('search')::text || '%'
       OR u.id::text = sqlc.arg('search')::text
   )
 ORDER BY u.nickname, u.id

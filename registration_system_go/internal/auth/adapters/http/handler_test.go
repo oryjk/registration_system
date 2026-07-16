@@ -14,9 +14,12 @@ import (
 
 func TestWechatLoginHandlerReturnsTokenAndUser(t *testing.T) {
 	gin.SetMode(gin.TestMode)
+	realName, phoneNumber := "王小明", "13800138000"
 	handler := NewHandler(&fakeWechatLogin{result: application.WechatLoginResult{
 		Token: "jwt-1",
-		User:  userdomain.User{ID: 42, OpenID: "openid-1", Status: userdomain.StatusActive},
+		User: userdomain.User{
+			ID: 42, OpenID: "openid-1", RealName: &realName, PhoneNumber: &phoneNumber, Status: userdomain.StatusActive,
+		},
 	}})
 	router := gin.New()
 	router.POST("/login", handler.WechatLogin)
@@ -31,6 +34,9 @@ func TestWechatLoginHandlerReturnsTokenAndUser(t *testing.T) {
 	}
 	if !bytes.Contains(response.Body.Bytes(), []byte(`"token":"jwt-1"`)) {
 		t.Fatalf("expected token in response: %s", response.Body.String())
+	}
+	if !bytes.Contains(response.Body.Bytes(), []byte(`"real_name":"王小明"`)) || !bytes.Contains(response.Body.Bytes(), []byte(`"phone_number":"13800138000"`)) {
+		t.Fatalf("expected player profile in response: %s", response.Body.String())
 	}
 }
 

@@ -35,6 +35,28 @@ func TestRepositoryMapsActiveLeaderMembership(t *testing.T) {
 	}
 }
 
+func TestRepositorySearchesMemberCandidatesByProfile(t *testing.T) {
+	pool := testsupport.StartPostgres(t)
+	ctx := context.Background()
+	var teamID, userID int64
+	if err := pool.QueryRow(ctx, `INSERT INTO teams (name) VALUES ('候选搜索球队') RETURNING id`).Scan(&teamID); err != nil {
+		t.Fatalf("seed team: %v", err)
+	}
+	if err := pool.QueryRow(ctx, `INSERT INTO users (openid, nickname, real_name, phone_number) VALUES ('candidate-openid', '小明', '王小明', '13800138000') RETURNING id`).Scan(&userID); err != nil {
+		t.Fatalf("seed candidate: %v", err)
+	}
+	repository := NewRepository(pool)
+	for _, search := range []string{"王小明", "13800138000"} {
+		candidates, err := repository.ListMemberCandidates(ctx, teamID, search, 50)
+		if err != nil || len(candidates) != 1 || candidates[0].UserID != userID {
+			t.Fatalf("search %q: candidates=%+v err=%v", search, candidates, err)
+		}
+		if candidates[0].RealName == nil || *candidates[0].RealName != "王小明" || candidates[0].PhoneNumber == nil {
+			t.Fatalf("missing profile fields: %+v", candidates[0])
+		}
+	}
+}
+
 func TestRepositoryManagesMembersAndCaptain(t *testing.T) {
 	databaseURL := os.Getenv("TEST_DATABASE_URL")
 	if databaseURL == "" {

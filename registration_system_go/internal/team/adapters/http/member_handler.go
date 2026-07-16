@@ -22,13 +22,15 @@ type TeamMembers interface {
 }
 
 type MemberResponse struct {
-	ID        int64               `json:"id"`
-	UserID    int64               `json:"user_id"`
-	Nickname  string              `json:"nickname"`
-	AvatarURL *string             `json:"avatar_url"`
-	Role      domain.Role         `json:"role"`
-	Status    domain.MemberStatus `json:"status"`
-	JoinedAt  time.Time           `json:"joined_at"`
+	ID          int64               `json:"id"`
+	UserID      int64               `json:"user_id"`
+	Nickname    string              `json:"nickname"`
+	AvatarURL   *string             `json:"avatar_url"`
+	RealName    *string             `json:"real_name"`
+	PhoneNumber *string             `json:"phone_number"`
+	Role        domain.Role         `json:"role"`
+	Status      domain.MemberStatus `json:"status"`
+	JoinedAt    time.Time           `json:"joined_at"`
 }
 
 type MemberManagementResponse struct {
@@ -37,9 +39,11 @@ type MemberManagementResponse struct {
 }
 
 type MemberCandidateResponse struct {
-	UserID    int64   `json:"user_id"`
-	Nickname  string  `json:"nickname"`
-	AvatarURL *string `json:"avatar_url"`
+	UserID      int64   `json:"user_id"`
+	Nickname    string  `json:"nickname"`
+	AvatarURL   *string `json:"avatar_url"`
+	RealName    *string `json:"real_name"`
+	PhoneNumber *string `json:"phone_number"`
 }
 
 func (h *Handler) AdminMembers(c *gin.Context) {
@@ -67,7 +71,10 @@ func (h *Handler) AdminMemberCandidates(c *gin.Context) {
 	}
 	response := make([]MemberCandidateResponse, 0, len(items))
 	for _, item := range items {
-		response = append(response, MemberCandidateResponse{UserID: item.UserID, Nickname: item.Nickname, AvatarURL: item.AvatarURL})
+		response = append(response, MemberCandidateResponse{
+			UserID: item.UserID, Nickname: item.Nickname, AvatarURL: item.AvatarURL,
+			RealName: item.RealName, PhoneNumber: item.PhoneNumber,
+		})
 	}
 	sharedhttpapi.WriteSuccess(c, response)
 }
@@ -170,6 +177,7 @@ func mapMemberManagement(result application.MemberManagementResult) MemberManage
 	for _, item := range result.Members {
 		members = append(members, MemberResponse{
 			ID: item.ID, UserID: item.UserID, Nickname: item.Nickname, AvatarURL: item.AvatarURL,
+			RealName: item.RealName, PhoneNumber: item.PhoneNumber,
 			Role: item.Role, Status: item.Status, JoinedAt: item.JoinedAt,
 		})
 	}

@@ -109,11 +109,13 @@ type TeamMember struct {
 }
 
 type User struct {
-	ID        int64            `json:"id"`
-	Openid    string           `json:"openid"`
-	Nickname  string           `json:"nickname"`
-	AvatarUrl *string          `json:"avatar_url"`
-	Status    string           `json:"status"`
-	CreatedAt pgtype.Timestamp `json:"created_at"`
-	UpdatedAt pgtype.Timestamp `json:"updated_at"`
+	ID          int64            `json:"id"`
+	Openid      string           `json:"openid"`
+	Nickname    string           `json:"nickname"`
+	AvatarUrl   *string          `json:"avatar_url"`
+	Status      string           `json:"status"`
+	CreatedAt   pgtype.Timestamp `json:"created_at"`
+	UpdatedAt   pgtype.Timestamp `json:"updated_at"`
+	RealName    *string          `json:"real_name"`
+	PhoneNumber *string          `json:"phone_number"`
 }

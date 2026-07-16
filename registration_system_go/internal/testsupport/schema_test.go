@@ -24,6 +24,12 @@ func TestInitialSchemaContainsMatchAggregateTables(t *testing.T) {
 	requireCheckConstraint(t, pool, "matches", "matches_publication_mode_check")
 }
 
+func TestUserProfileColumns(t *testing.T) {
+	pool := StartPostgres(t)
+	requireNullableColumn(t, pool, "users", "real_name", "character varying")
+	requireNullableColumn(t, pool, "users", "phone_number", "character varying")
+}
+
 type queryer interface {
 	QueryRow(context.Context, string, ...any) pgx.Row
 }
@@ -67,5 +73,24 @@ func requireCheckConstraint(t *testing.T, database queryer, table, constraint st
 	}
 	if !exists {
 		t.Errorf("expected check constraint %s on %s", constraint, table)
+	}
+}
+
+func requireNullableColumn(t *testing.T, database queryer, table, column, dataType string) {
+	t.Helper()
+	var actualType, nullable string
+	err := database.QueryRow(
+		context.Background(),
+		`SELECT data_type, is_nullable
+         FROM information_schema.columns
+         WHERE table_schema = 'public' AND table_name = $1 AND column_name = $2`,
+		table,
+		column,
+	).Scan(&actualType, &nullable)
+	if err != nil {
+		t.Fatalf("query column %s.%s: %v", table, column, err)
+	}
+	if actualType != dataType || nullable != "YES" {
+		t.Errorf("column %s.%s: type=%s nullable=%s", table, column, actualType, nullable)
 	}
 }

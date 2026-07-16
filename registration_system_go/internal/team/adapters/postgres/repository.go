@@ -139,6 +139,7 @@ func (r *Repository) ListMembers(ctx context.Context, teamID int64) ([]domain.Me
 				Role: domain.Role(row.Role), Status: domain.MemberStatus(row.Status), JoinedAt: row.JoinedAt.Time,
 			},
 			Nickname: row.Nickname, AvatarURL: row.AvatarUrl,
+			RealName: row.RealName, PhoneNumber: row.PhoneNumber,
 		})
 	}
 	return items, nil
@@ -153,7 +154,10 @@ func (r *Repository) ListMemberCandidates(ctx context.Context, teamID int64, sea
 	}
 	items := make([]domain.MemberCandidate, 0, len(rows))
 	for _, row := range rows {
-		items = append(items, domain.MemberCandidate{UserID: row.ID, Nickname: row.Nickname, AvatarURL: row.AvatarUrl})
+		items = append(items, domain.MemberCandidate{
+			UserID: row.ID, Nickname: row.Nickname, AvatarURL: row.AvatarUrl,
+			RealName: row.RealName, PhoneNumber: row.PhoneNumber,
+		})
 	}
 	return items, nil
 }

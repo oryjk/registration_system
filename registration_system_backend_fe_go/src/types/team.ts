@@ -28,6 +28,8 @@ export interface TeamMember {
   user_id: number;
   nickname: string;
   avatar_url: string | null;
+  real_name: string | null;
+  phone_number: string | null;
   role: TeamMemberRole;
   status: TeamMemberStatus;
   joined_at: string;
@@ -37,6 +39,8 @@ export interface TeamMemberCandidate {
   user_id: number;
   nickname: string;
   avatar_url: string | null;
+  real_name: string | null;
+  phone_number: string | null;
 }
 
 export interface TeamMemberManagement {
@@ -52,4 +56,16 @@ export interface AddTeamMemberPayload {
 export interface UpdateTeamMemberPayload {
   role: AssignableTeamMemberRole;
   status: TeamMemberStatus;
+}
+
+export interface UpdatePlayerProfilePayload {
+  real_name: string | null;
+  phone_number: string | null;
+}
+
+export interface PlayerProfile extends UpdatePlayerProfilePayload {
+  id: number;
+  nickname: string;
+  avatar_url: string | null;
+  status: "active" | "frozen";
 }

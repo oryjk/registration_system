@@ -21,7 +21,9 @@ import (
 	teamhttp "github.com/oryjk/registration_system/registration_system_go/internal/team/adapters/http"
 	teampostgres "github.com/oryjk/registration_system/registration_system_go/internal/team/adapters/postgres"
 	teamapplication "github.com/oryjk/registration_system/registration_system_go/internal/team/application"
+	userhttp "github.com/oryjk/registration_system/registration_system_go/internal/user/adapters/http"
 	userpostgres "github.com/oryjk/registration_system/registration_system_go/internal/user/adapters/postgres"
+	userapplication "github.com/oryjk/registration_system/registration_system_go/internal/user/application"
 )
 
 const (
@@ -51,6 +53,8 @@ func BuildDependencies(ctx context.Context, config Config) (Dependencies, func()
 	authMiddleware := authhttp.NewMiddleware(tokens)
 
 	userRepository := userpostgres.NewRepository(pool)
+	profileService := userapplication.NewProfileService(userRepository)
+	userProfileHandler := userhttp.NewHandler(profileService)
 	wechatClient := wechat.NewClient(&http.Client{Timeout: 10 * time.Second}, wechatEndpoint, config.WechatAppID, config.WechatAppSecret)
 	wechatLogin := authapplication.NewWechatLogin(wechatClient, userRepository, tokens)
 	userAuthHandler := authhttp.NewHandler(wechatLogin)
@@ -69,6 +73,6 @@ func BuildDependencies(ctx context.Context, config Config) (Dependencies, func()
 	return Dependencies{
 		AuthMiddleware: &authMiddleware,
 		UserAuth:       userAuthHandler, AdminAuth: adminAuthHandler,
-		Teams: teamHandler, AdminMatches: adminMatchHandler,
+		UserProfiles: userProfileHandler, Teams: teamHandler, AdminMatches: adminMatchHandler,
 	}, closePool, nil
 }

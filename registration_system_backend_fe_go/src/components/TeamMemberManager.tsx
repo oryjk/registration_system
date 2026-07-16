@@ -28,6 +28,7 @@ import {
   removeTeamMember,
   setTeamCaptain,
   updateTeamMember,
+  updatePlayerProfile,
 } from "../api/teams";
 import type {
   AssignableTeamMemberRole,
@@ -72,6 +73,8 @@ interface AddMemberFormValues {
 }
 
 interface EditMemberFormValues {
+  realName: string;
+  phoneNumber: string;
   role: AssignableTeamMemberRole;
   status: TeamMemberStatus;
 }
@@ -87,12 +90,12 @@ function formatDate(value: string) {
   return new Intl.DateTimeFormat("zh-CN", { dateStyle: "medium" }).format(new Date(value));
 }
 
-function displayName(member: Pick<TeamMember, "nickname" | "user_id">) {
-  return member.nickname.trim() || `用户 ${member.user_id}`;
+function displayName(member: Pick<TeamMember, "real_name" | "nickname" | "user_id">) {
+  return member.real_name?.trim() || member.nickname.trim() || `用户 ${member.user_id}`;
 }
 
-function memberInitial(member: Pick<TeamMember, "nickname" | "user_id">) {
-  return member.nickname.trim().slice(0, 1) || String(member.user_id).slice(-1);
+function memberInitial(member: Pick<TeamMember, "real_name" | "nickname" | "user_id">) {
+  return member.real_name?.trim().slice(0, 1) || member.nickname.trim().slice(0, 1) || String(member.user_id).slice(-1);
 }
 
 function errorMessage(reason: unknown, fallback: string) {
@@ -186,7 +189,12 @@ export function TeamMemberManager({ open, team, onClose, onTeamChange }: TeamMem
 
   const openEdit = (member: TeamMember) => {
     if (member.role === "captain") return;
-    editForm.setFieldsValue({ role: member.role, status: member.status });
+    editForm.setFieldsValue({
+      realName: member.real_name ?? "",
+      phoneNumber: member.phone_number ?? "",
+      role: member.role,
+      status: member.status,
+    });
     setEditingMember(member);
     setError("");
   };
@@ -201,12 +209,19 @@ export function TeamMemberManager({ open, team, onClose, onTeamChange }: TeamMem
     }
     setActionLoading(`edit-${editingMember.user_id}`);
     setError("");
+    let profileUpdated = false;
     try {
-      applyResult(await updateTeamMember(teamID, editingMember.user_id, values));
+      await updatePlayerProfile(editingMember.user_id, {
+        real_name: values.realName.trim() || null,
+        phone_number: values.phoneNumber.trim() || null,
+      });
+      profileUpdated = true;
+      applyResult(await updateTeamMember(teamID, editingMember.user_id, { role: values.role, status: values.status }));
       setEditingMember(null);
       editForm.resetFields();
     } catch (reason) {
-      setError(errorMessage(reason, "更新球队成员失败"));
+      const fallback = profileUpdated ? "球员资料已保存，但成员角色或状态更新失败" : "更新球员资料失败";
+      setError(errorMessage(reason, fallback));
     } finally {
       setActionLoading("");
     }
@@ -250,7 +265,11 @@ export function TeamMemberManager({ open, team, onClose, onTeamChange }: TeamMem
           <Avatar src={member.avatar_url} size={36}>{memberInitial(member)}</Avatar>
           <div>
             <strong>{displayName(member)}</strong>
-            <Text type="secondary">用户 ID {member.user_id}</Text>
+            <Text type="secondary">
+              {member.nickname.trim() && member.nickname.trim() !== displayName(member) ? `${member.nickname.trim()} · ` : ""}
+              用户 ID {member.user_id}
+            </Text>
+            {member.phone_number ? <Text type="secondary">{member.phone_number}</Text> : null}
             {compact ? (
               <Space size={4} wrap>
                 <Tag color={roleColors[member.role]}>{roleLabels[member.role]}</Tag>
@@ -389,7 +408,7 @@ export function TeamMemberManager({ open, team, onClose, onTeamChange }: TeamMem
         {candidateError ? <Alert className="modal-alert" type="error" showIcon message={candidateError} /> : null}
         <Form<AddMemberFormValues> form={addForm} layout="vertical" requiredMark={false} disabled={actionLoading === "add"}>
           <Form.Item label="查询球员">
-            <Input.Search allowClear enterButton="查询" placeholder="输入昵称或用户 ID" loading={candidatesLoading} onSearch={(value) => void loadCandidates(value)} />
+            <Input.Search allowClear enterButton="查询" placeholder="输入姓名、昵称、手机号或用户 ID" loading={candidatesLoading} onSearch={(value) => void loadCandidates(value)} />
           </Form.Item>
           <Form.Item name="userID" label="选择球员" rules={[{ required: true, message: "请选择需要添加的球员" }]}>
             <Select
@@ -400,7 +419,7 @@ export function TeamMemberManager({ open, team, onClose, onTeamChange }: TeamMem
               notFoundContent={candidatesLoading ? null : "没有可添加的球员"}
               options={candidates.map((candidate) => ({
                 value: candidate.user_id,
-                label: `${candidate.nickname.trim() || "未设置昵称"} · ID ${candidate.user_id}`,
+                label: `${candidate.real_name?.trim() || candidate.nickname.trim() || "未设置姓名"}${candidate.phone_number ? ` · ${candidate.phone_number}` : ""} · ID ${candidate.user_id}`,
               }))}
             />
           </Form.Item>
@@ -421,6 +440,12 @@ export function TeamMemberManager({ open, team, onClose, onTeamChange }: TeamMem
         destroyOnHidden
       >
         <Form<EditMemberFormValues> form={editForm} layout="vertical" requiredMark={false}>
+          <Form.Item name="realName" label="真实姓名" rules={[{ max: 120, message: "真实姓名不能超过 120 个字符" }]}>
+            <Input allowClear placeholder="未填写" autoComplete="name" />
+          </Form.Item>
+          <Form.Item name="phoneNumber" label="手机号" rules={[{ max: 32, message: "手机号不能超过 32 个字符" }]}>
+            <Input allowClear placeholder="未填写" inputMode="tel" autoComplete="tel" />
+          </Form.Item>
           <Form.Item name="role" label="成员角色" rules={[{ required: true }]}>
             <Select options={assignableRoleOptions} />
           </Form.Item>

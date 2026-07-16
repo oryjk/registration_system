@@ -225,7 +225,7 @@ func (q *Queries) ListActiveUserTeams(ctx context.Context, userID int64) ([]List
 }
 
 const listTeamMemberCandidates = `-- name: ListTeamMemberCandidates :many
-SELECT u.id, u.nickname, u.avatar_url
+SELECT u.id, u.nickname, u.avatar_url, u.real_name, u.phone_number
 FROM users u
 WHERE u.status = 'active'
   AND NOT EXISTS (
@@ -237,6 +237,8 @@ WHERE u.status = 'active'
   AND (
       $2::text = ''
       OR u.nickname ILIKE '%' || $2::text || '%'
+      OR u.real_name ILIKE '%' || $2::text || '%'
+      OR u.phone_number ILIKE '%' || $2::text || '%'
       OR u.id::text = $2::text
   )
 ORDER BY u.nickname, u.id
@@ -250,9 +252,11 @@ type ListTeamMemberCandidatesParams struct {
 }
 
 type ListTeamMemberCandidatesRow struct {
-	ID        int64   `json:"id"`
-	Nickname  string  `json:"nickname"`
-	AvatarUrl *string `json:"avatar_url"`
+	ID          int64   `json:"id"`
+	Nickname    string  `json:"nickname"`
+	AvatarUrl   *string `json:"avatar_url"`
+	RealName    *string `json:"real_name"`
+	PhoneNumber *string `json:"phone_number"`
 }
 
 func (q *Queries) ListTeamMemberCandidates(ctx context.Context, arg ListTeamMemberCandidatesParams) ([]ListTeamMemberCandidatesRow, error) {
@@ -264,7 +268,13 @@ func (q *Queries) ListTeamMemberCandidates(ctx context.Context, arg ListTeamMemb
 	var items []ListTeamMemberCandidatesRow
 	for rows.Next() {
 		var i ListTeamMemberCandidatesRow
-		if err := rows.Scan(&i.ID, &i.Nickname, &i.AvatarUrl); err != nil {
+		if err := rows.Scan(
+			&i.ID,
+			&i.Nickname,
+			&i.AvatarUrl,
+			&i.RealName,
+			&i.PhoneNumber,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -283,7 +293,9 @@ SELECT tm.id,
        tm.status,
        tm.joined_at,
        u.nickname,
-       u.avatar_url
+       u.avatar_url,
+       u.real_name,
+       u.phone_number
 FROM team_members tm
 JOIN users u ON u.id = tm.user_id
 WHERE tm.team_id = $1
@@ -300,14 +312,16 @@ ORDER BY
 `
 
 type ListTeamMembersRow struct {
-	ID        int64            `json:"id"`
-	TeamID    int64            `json:"team_id"`
-	UserID    int64            `json:"user_id"`
-	Role      string           `json:"role"`
-	Status    string           `json:"status"`
-	JoinedAt  pgtype.Timestamp `json:"joined_at"`
-	Nickname  string           `json:"nickname"`
-	AvatarUrl *string          `json:"avatar_url"`
+	ID          int64            `json:"id"`
+	TeamID      int64            `json:"team_id"`
+	UserID      int64            `json:"user_id"`
+	Role        string           `json:"role"`
+	Status      string           `json:"status"`
+	JoinedAt    pgtype.Timestamp `json:"joined_at"`
+	Nickname    string           `json:"nickname"`
+	AvatarUrl   *string          `json:"avatar_url"`
+	RealName    *string          `json:"real_name"`
+	PhoneNumber *string          `json:"phone_number"`
 }
 
 func (q *Queries) ListTeamMembers(ctx context.Context, teamID int64) ([]ListTeamMembersRow, error) {
@@ -328,6 +342,8 @@ func (q *Queries) ListTeamMembers(ctx context.Context, teamID int64) ([]ListTeam
 			&i.JoinedAt,
 			&i.Nickname,
 			&i.AvatarUrl,
+			&i.RealName,
+			&i.PhoneNumber,
 		); err != nil {
 			return nil, err
 		}

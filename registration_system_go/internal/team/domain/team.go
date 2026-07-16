@@ -69,14 +69,18 @@ type Member struct {
 
 type MemberDetails struct {
 	Member
-	Nickname  string
-	AvatarURL *string
+	Nickname    string
+	AvatarURL   *string
+	RealName    *string
+	PhoneNumber *string
 }
 
 type MemberCandidate struct {
-	UserID    int64
-	Nickname  string
-	AvatarURL *string
+	UserID      int64
+	Nickname    string
+	AvatarURL   *string
+	RealName    *string
+	PhoneNumber *string
 }
 
 type TeamMembership struct {

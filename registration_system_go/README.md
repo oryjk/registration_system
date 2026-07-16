@@ -43,8 +43,9 @@ go build -o ./api ./cmd/api
 - `GET/PATCH/DELETE /api/admin/teams/:id`：管理员查看、更新和删除球队；已被比赛或申请引用的球队不能删除
 - `GET/POST /api/admin/teams/:id/members`：管理员查看和添加球队成员
 - `PATCH/DELETE /api/admin/teams/:id/members/:user_id`：管理员更新或移除球队成员
-- `GET /api/admin/teams/:id/member-candidates`：管理员按昵称或用户 ID 查询可添加球员
+- `GET /api/admin/teams/:id/member-candidates`：管理员按真实姓名、昵称、手机号或用户 ID 查询可添加球员
 - `PATCH /api/admin/teams/:id/captain`：管理员设置或取消队长；`user_id` 为 `null` 时取消
+- `PATCH /api/admin/users/:id/profile`：管理员维护球员真实姓名和手机号
 - `GET/POST /api/admin/matches`：超级管理员和场馆管理员查看、发布比赛
 - `PATCH /api/admin/matches/:id/status`：管理员按状态机取消或推进比赛
 - `DELETE /api/admin/matches/:id`：超级管理员永久删除任意状态比赛及其关联报名数据
@@ -71,6 +72,22 @@ make generate
 ```
 
 API 和管理员初始化命令会在进程内自动加载 `.env`；migration 命令会通过 Makefile 将 `.env` 注入 goose。所有 migration 位于 `db/migrations/`，查询位于 `db/queries/`。`DATABASE_URL` 只从本地环境读取，不提交真实密码。
+
+## 旧球队数据导入
+
+导入命令从 `LEGACY_MYSQL_*` 环境变量读取旧 MySQL，只读获取球队、关联用户和成员关系；目标 PostgreSQL 使用现有 `DATABASE_URL`。先预演：
+
+```bash
+go run ./cmd/importlegacyteams --dry-run
+```
+
+确认汇总数量后正式导入：
+
+```bash
+go run ./cmd/importlegacyteams
+```
+
+目标写入位于单个事务内。dry-run 和任一步失败都会整体回滚；日志只输出新增/更新汇总，不输出连接串、openid、真实姓名或手机号。
 
 ## 验证
 

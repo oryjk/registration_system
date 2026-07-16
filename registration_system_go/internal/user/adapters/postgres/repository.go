@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	authsqlc "github.com/oryjk/registration_system/registration_system_go/internal/auth/adapters/postgres/sqlc"
@@ -25,7 +26,7 @@ func (r *Repository) FindByOpenID(ctx context.Context, openID string) (domain.Us
 	if err != nil {
 		return domain.User{}, false, err
 	}
-	return mapUser(row), true, nil
+	return mapUser(row.ID, row.Openid, row.Nickname, row.AvatarUrl, row.RealName, row.PhoneNumber, row.Status, row.CreatedAt.Time, row.UpdatedAt.Time), true, nil
 }
 
 func (r *Repository) FindByID(ctx context.Context, userID int64) (domain.User, bool, error) {
@@ -36,7 +37,7 @@ func (r *Repository) FindByID(ctx context.Context, userID int64) (domain.User, b
 	if err != nil {
 		return domain.User{}, false, err
 	}
-	return mapUser(row), true, nil
+	return mapUser(row.ID, row.Openid, row.Nickname, row.AvatarUrl, row.RealName, row.PhoneNumber, row.Status, row.CreatedAt.Time, row.UpdatedAt.Time), true, nil
 }
 
 func (r *Repository) Create(ctx context.Context, user domain.User) (domain.User, error) {
@@ -48,17 +49,23 @@ func (r *Repository) Create(ctx context.Context, user domain.User) (domain.User,
 	if err != nil {
 		return domain.User{}, err
 	}
-	return mapUser(row), nil
+	return mapUser(row.ID, row.Openid, row.Nickname, row.AvatarUrl, row.RealName, row.PhoneNumber, row.Status, row.CreatedAt.Time, row.UpdatedAt.Time), nil
 }
 
-func mapUser(row authsqlc.User) domain.User {
+func (r *Repository) UpdateProfile(ctx context.Context, user domain.User) (domain.User, error) {
+	row, err := r.queries.UpdateUserBasicProfile(ctx, authsqlc.UpdateUserBasicProfileParams{
+		ID: user.ID, RealName: user.RealName, PhoneNumber: user.PhoneNumber,
+	})
+	if err != nil {
+		return domain.User{}, err
+	}
+	return mapUser(row.ID, row.Openid, row.Nickname, row.AvatarUrl, row.RealName, row.PhoneNumber, row.Status, row.CreatedAt.Time, row.UpdatedAt.Time), nil
+}
+
+func mapUser(id int64, openID, nickname string, avatarURL, realName, phoneNumber *string, status string, createdAt, updatedAt time.Time) domain.User {
 	return domain.User{
-		ID:        row.ID,
-		OpenID:    row.Openid,
-		Nickname:  row.Nickname,
-		AvatarURL: row.AvatarUrl,
-		Status:    domain.Status(row.Status),
-		CreatedAt: row.CreatedAt.Time,
-		UpdatedAt: row.UpdatedAt.Time,
+		ID: id, OpenID: openID, Nickname: nickname, AvatarURL: avatarURL,
+		RealName: realName, PhoneNumber: phoneNumber, Status: domain.Status(status),
+		CreatedAt: createdAt, UpdatedAt: updatedAt,
 	}
 }

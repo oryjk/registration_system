@@ -73,6 +73,10 @@ func (f *fakeUsers) Create(_ context.Context, user userdomain.User) (userdomain.
 	return user, nil
 }
 
+func (f *fakeUsers) UpdateProfile(_ context.Context, user userdomain.User) (userdomain.User, error) {
+	return user, nil
+}
+
 var _ userports.Repository = (*fakeUsers)(nil)
 
 type fakeTokenService struct {

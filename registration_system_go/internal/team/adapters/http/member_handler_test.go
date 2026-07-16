@@ -16,13 +16,15 @@ import (
 
 func TestAdminMemberManagementRoutes(t *testing.T) {
 	gin.SetMode(gin.TestMode)
+	realName, phoneNumber := "王小明", "13800138000"
 	members := &fakeTeamMembers{result: application.MemberManagementResult{
 		Team: domain.Team{ID: 7, Name: "东安联队", Status: domain.TeamActive},
 		Members: []domain.MemberDetails{{
 			Member:   domain.Member{ID: 3, TeamID: 7, UserID: 42, Role: domain.RoleLeader, Status: domain.MemberActive},
 			Nickname: "小王",
+			RealName: &realName, PhoneNumber: &phoneNumber,
 		}},
-	}, candidates: []domain.MemberCandidate{{UserID: 43, Nickname: "小李"}}}
+	}, candidates: []domain.MemberCandidate{{UserID: 43, Nickname: "小李", RealName: &realName, PhoneNumber: &phoneNumber}}}
 	handler := NewHandler(&fakeTeamQuery{}, members)
 	router := gin.New()
 	group := router.Group("")
@@ -36,8 +38,8 @@ func TestAdminMemberManagementRoutes(t *testing.T) {
 		body     string
 		wantBody string
 	}{
-		{name: "list", method: http.MethodGet, path: "/teams/7/members", wantBody: `"nickname":"小王"`},
-		{name: "candidates", method: http.MethodGet, path: "/teams/7/member-candidates?search=小", wantBody: `"nickname":"小李"`},
+		{name: "list", method: http.MethodGet, path: "/teams/7/members", wantBody: `"real_name":"王小明"`},
+		{name: "candidates", method: http.MethodGet, path: "/teams/7/member-candidates?search=小", wantBody: `"phone_number":"13800138000"`},
 		{name: "add", method: http.MethodPost, path: "/teams/7/members", body: `{"user_id":43,"role":"member"}`, wantBody: `"name":"东安联队"`},
 		{name: "update", method: http.MethodPatch, path: "/teams/7/members/42", body: `{"role":"vice_captain","status":"active"}`, wantBody: `"members"`},
 		{name: "remove", method: http.MethodDelete, path: "/teams/7/members/42", wantBody: `"members"`},

@@ -7,6 +7,8 @@ import type {
   TeamMemberManagement,
   TeamStatus,
   UpdateTeamMemberPayload,
+  UpdatePlayerProfilePayload,
+  PlayerProfile,
 } from "../types/team";
 
 export function listTeamOptions() {
@@ -54,6 +56,13 @@ export function addTeamMember(teamID: number, payload: AddTeamMemberPayload) {
 
 export function updateTeamMember(teamID: number, userID: number, payload: UpdateTeamMemberPayload) {
   return request<TeamMemberManagement>(`/teams/${teamID}/members/${userID}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function updatePlayerProfile(userID: number, payload: UpdatePlayerProfilePayload) {
+  return request<PlayerProfile>(`/users/${userID}/profile`, {
     method: "PATCH",
     body: JSON.stringify(payload),
   });

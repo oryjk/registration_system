@@ -8,12 +8,14 @@ import (
 	matchhttp "github.com/oryjk/registration_system/registration_system_go/internal/match/adapters/http"
 	sharedhttp "github.com/oryjk/registration_system/registration_system_go/internal/shared/http"
 	teamhttp "github.com/oryjk/registration_system/registration_system_go/internal/team/adapters/http"
+	userhttp "github.com/oryjk/registration_system/registration_system_go/internal/user/adapters/http"
 )
 
 type Dependencies struct {
 	AuthMiddleware *authhttp.Middleware
 	UserAuth       *authhttp.Handler
 	AdminAuth      *authhttp.AdminHandler
+	UserProfiles   *userhttp.Handler
 	Teams          *teamhttp.Handler
 	AdminMatches   *matchhttp.AdminHandler
 }
@@ -47,6 +49,9 @@ func NewRouter(dependencies Dependencies) *gin.Engine {
 		}
 		if dependencies.Teams != nil {
 			dependencies.Teams.RegisterAdminRoutes(adminRoutes)
+		}
+		if dependencies.UserProfiles != nil {
+			dependencies.UserProfiles.RegisterAdminRoutes(adminRoutes)
 		}
 		if dependencies.AdminMatches != nil {
 			dependencies.AdminMatches.RegisterRoutes(adminRoutes)

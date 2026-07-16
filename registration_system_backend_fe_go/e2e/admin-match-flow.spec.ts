@@ -241,12 +241,22 @@ test("管理员可以管理球队成员和队长", async ({ page }, testInfo) =>
     updated_at: timestamp,
   };
   let members = [
-    { id: 1, user_id: 42, nickname: "王队长", avatar_url: null, role: "captain", status: "active", joined_at: timestamp },
-    { id: 2, user_id: 43, nickname: "李队员", avatar_url: null, role: "member", status: "active", joined_at: timestamp },
+    { id: 1, user_id: 42, nickname: "王队长", avatar_url: "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==", real_name: "王强", phone_number: "13800138000", role: "captain", status: "active", joined_at: timestamp },
+    { id: 2, user_id: 43, nickname: "李队员", avatar_url: null, real_name: "李雷", phone_number: null, role: "member", status: "active", joined_at: timestamp },
   ];
   const candidates = [
-    { user_id: 44, nickname: "张新人", avatar_url: null },
+    { user_id: 44, nickname: "张新人", avatar_url: null, real_name: "张新", phone_number: "13900139000" },
   ];
+
+  let profilePayload: { real_name: string | null; phone_number: string | null } | undefined;
+  await page.route("**/api/admin/users/*/profile", async (route) => {
+    const payload = route.request().postDataJSON() as { real_name: string | null; phone_number: string | null };
+    profilePayload = payload;
+    const userID = Number(new URL(route.request().url()).pathname.split("/").at(-2));
+    members = members.map((member) => member.user_id === userID ? { ...member, ...payload } : member);
+    const member = members.find((item) => item.user_id === userID)!;
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ code: 0, message: "ok", data: { ...member, id: userID } }) });
+  });
 
   await page.route("**/api/admin/teams**", async (route) => {
     const request = route.request();
@@ -292,32 +302,38 @@ test("管理员可以管理球队成员和队长", async ({ page }, testInfo) =>
   await openNavigation(page, "球队管理");
   await page.getByLabel("管理东安联队成员").click();
   const memberDrawer = page.getByRole("dialog", { name: "东安联队 · 成员管理" });
-  await expect(memberDrawer.getByRole("row", { name: /王队长/ })).toBeVisible();
-  await expect(memberDrawer.getByRole("row", { name: /李队员/ })).toBeVisible();
+  await expect(memberDrawer.getByRole("row", { name: /王强.*13800138000/ })).toBeVisible();
+  await expect(memberDrawer.locator(".ant-avatar img").first()).toBeVisible();
+  await expect.poll(() => memberDrawer.locator(".ant-avatar img").first().evaluate((image: HTMLImageElement) => image.naturalWidth)).toBeGreaterThan(0);
+  await expect(memberDrawer.getByRole("row", { name: /李雷/ })).toBeVisible();
 
   const candidatesLoaded = page.waitForResponse((response) => new URL(response.url()).pathname.endsWith("/member-candidates"));
   await memberDrawer.getByRole("button", { name: "添加成员" }).click();
   await candidatesLoaded;
   const addDialog = page.getByRole("dialog", { name: "添加球队成员" });
   await addDialog.getByRole("combobox", { name: "选择球员" }).click();
-  await page.locator(".ant-select-item-option").filter({ hasText: "张新人 · ID 44" }).click();
+  await page.locator(".ant-select-item-option").filter({ hasText: "张新 · 13900139000 · ID 44" }).click();
   await addDialog.getByRole("button", { name: /添\s*加/ }).click();
-  await expect(memberDrawer.getByText("张新人")).toBeVisible();
+  await expect(memberDrawer.getByText("张新", { exact: true })).toBeVisible();
 
-  await memberDrawer.getByLabel("编辑李队员").click();
-  const editDialog = page.getByRole("dialog", { name: "编辑李队员" });
+  await memberDrawer.getByLabel("编辑李雷").click();
+  const editDialog = page.getByRole("dialog", { name: "编辑李雷" });
+  await editDialog.getByRole("textbox", { name: "真实姓名" }).fill("李雷新");
+  await editDialog.getByRole("textbox", { name: "手机号" }).fill("13700137000");
   await editDialog.locator(".ant-select-selector").click();
   await page.locator(".ant-select-item-option").filter({ hasText: "副队长" }).click();
   await editDialog.getByText("冻结", { exact: true }).click();
   await editDialog.getByRole("button", { name: /保\s*存/ }).click();
+  await expect(memberDrawer.getByText("李雷新")).toBeVisible();
+  expect(profilePayload).toEqual({ real_name: "李雷新", phone_number: "13700137000" });
 
-  await memberDrawer.getByLabel("设置张新人为队长").click();
+  await memberDrawer.getByLabel("设置张新为队长").click();
   await page.getByRole("button", { name: /确\s*认/ }).click();
-  await expect(memberDrawer.getByText("当前队长").locator("..").getByText("张新人")).toBeVisible();
+  await expect(memberDrawer.getByText("当前队长").locator("..").getByText("张新")).toBeVisible();
 
-  await memberDrawer.getByLabel("移除王队长").click();
+  await memberDrawer.getByLabel("移除王强").click();
   await page.getByRole("button", { name: /^移\s*除$/ }).click();
-  await expect(memberDrawer.getByRole("row", { name: /王队长/ })).toBeHidden();
+  await expect(memberDrawer.getByRole("row", { name: /王强/ })).toBeHidden();
 
   await page.screenshot({ path: testInfo.outputPath("team-members.png"), fullPage: true });
 });

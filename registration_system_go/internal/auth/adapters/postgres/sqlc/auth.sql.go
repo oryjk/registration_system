@@ -7,6 +7,8 @@ package authsqlc
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const countAdmins = `-- name: CountAdmins :one
@@ -56,7 +58,7 @@ func (q *Queries) CreateAdmin(ctx context.Context, arg CreateAdminParams) (Admin
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (openid, nickname, avatar_url)
 VALUES ($1, $2, $3)
-RETURNING id, openid, nickname, avatar_url, status, created_at, updated_at
+RETURNING id, openid, nickname, avatar_url, real_name, phone_number, status, created_at, updated_at
 `
 
 type CreateUserParams struct {
@@ -65,14 +67,28 @@ type CreateUserParams struct {
 	AvatarUrl *string `json:"avatar_url"`
 }
 
-func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
+type CreateUserRow struct {
+	ID          int64            `json:"id"`
+	Openid      string           `json:"openid"`
+	Nickname    string           `json:"nickname"`
+	AvatarUrl   *string          `json:"avatar_url"`
+	RealName    *string          `json:"real_name"`
+	PhoneNumber *string          `json:"phone_number"`
+	Status      string           `json:"status"`
+	CreatedAt   pgtype.Timestamp `json:"created_at"`
+	UpdatedAt   pgtype.Timestamp `json:"updated_at"`
+}
+
+func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error) {
 	row := q.db.QueryRow(ctx, createUser, arg.Openid, arg.Nickname, arg.AvatarUrl)
-	var i User
+	var i CreateUserRow
 	err := row.Scan(
 		&i.ID,
 		&i.Openid,
 		&i.Nickname,
 		&i.AvatarUrl,
+		&i.RealName,
+		&i.PhoneNumber,
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -123,19 +139,33 @@ func (q *Queries) GetAdminByUsername(ctx context.Context, username string) (Admi
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, openid, nickname, avatar_url, status, created_at, updated_at
+SELECT id, openid, nickname, avatar_url, real_name, phone_number, status, created_at, updated_at
 FROM users
 WHERE id = $1
 `
 
-func (q *Queries) GetUserByID(ctx context.Context, id int64) (User, error) {
+type GetUserByIDRow struct {
+	ID          int64            `json:"id"`
+	Openid      string           `json:"openid"`
+	Nickname    string           `json:"nickname"`
+	AvatarUrl   *string          `json:"avatar_url"`
+	RealName    *string          `json:"real_name"`
+	PhoneNumber *string          `json:"phone_number"`
+	Status      string           `json:"status"`
+	CreatedAt   pgtype.Timestamp `json:"created_at"`
+	UpdatedAt   pgtype.Timestamp `json:"updated_at"`
+}
+
+func (q *Queries) GetUserByID(ctx context.Context, id int64) (GetUserByIDRow, error) {
 	row := q.db.QueryRow(ctx, getUserByID, id)
-	var i User
+	var i GetUserByIDRow
 	err := row.Scan(
 		&i.ID,
 		&i.Openid,
 		&i.Nickname,
 		&i.AvatarUrl,
+		&i.RealName,
+		&i.PhoneNumber,
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -144,19 +174,33 @@ func (q *Queries) GetUserByID(ctx context.Context, id int64) (User, error) {
 }
 
 const getUserByOpenID = `-- name: GetUserByOpenID :one
-SELECT id, openid, nickname, avatar_url, status, created_at, updated_at
+SELECT id, openid, nickname, avatar_url, real_name, phone_number, status, created_at, updated_at
 FROM users
 WHERE openid = $1
 `
 
-func (q *Queries) GetUserByOpenID(ctx context.Context, openid string) (User, error) {
+type GetUserByOpenIDRow struct {
+	ID          int64            `json:"id"`
+	Openid      string           `json:"openid"`
+	Nickname    string           `json:"nickname"`
+	AvatarUrl   *string          `json:"avatar_url"`
+	RealName    *string          `json:"real_name"`
+	PhoneNumber *string          `json:"phone_number"`
+	Status      string           `json:"status"`
+	CreatedAt   pgtype.Timestamp `json:"created_at"`
+	UpdatedAt   pgtype.Timestamp `json:"updated_at"`
+}
+
+func (q *Queries) GetUserByOpenID(ctx context.Context, openid string) (GetUserByOpenIDRow, error) {
 	row := q.db.QueryRow(ctx, getUserByOpenID, openid)
-	var i User
+	var i GetUserByOpenIDRow
 	err := row.Scan(
 		&i.ID,
 		&i.Openid,
 		&i.Nickname,
 		&i.AvatarUrl,
+		&i.RealName,
+		&i.PhoneNumber,
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -198,13 +242,57 @@ func (q *Queries) ListAdmins(ctx context.Context) ([]AdminUser, error) {
 	return items, nil
 }
 
+const updateUserBasicProfile = `-- name: UpdateUserBasicProfile :one
+UPDATE users
+SET real_name = $2,
+    phone_number = $3,
+    updated_at = NOW()
+WHERE id = $1
+RETURNING id, openid, nickname, avatar_url, real_name, phone_number, status, created_at, updated_at
+`
+
+type UpdateUserBasicProfileParams struct {
+	ID          int64   `json:"id"`
+	RealName    *string `json:"real_name"`
+	PhoneNumber *string `json:"phone_number"`
+}
+
+type UpdateUserBasicProfileRow struct {
+	ID          int64            `json:"id"`
+	Openid      string           `json:"openid"`
+	Nickname    string           `json:"nickname"`
+	AvatarUrl   *string          `json:"avatar_url"`
+	RealName    *string          `json:"real_name"`
+	PhoneNumber *string          `json:"phone_number"`
+	Status      string           `json:"status"`
+	CreatedAt   pgtype.Timestamp `json:"created_at"`
+	UpdatedAt   pgtype.Timestamp `json:"updated_at"`
+}
+
+func (q *Queries) UpdateUserBasicProfile(ctx context.Context, arg UpdateUserBasicProfileParams) (UpdateUserBasicProfileRow, error) {
+	row := q.db.QueryRow(ctx, updateUserBasicProfile, arg.ID, arg.RealName, arg.PhoneNumber)
+	var i UpdateUserBasicProfileRow
+	err := row.Scan(
+		&i.ID,
+		&i.Openid,
+		&i.Nickname,
+		&i.AvatarUrl,
+		&i.RealName,
+		&i.PhoneNumber,
+		&i.Status,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const updateUserProfile = `-- name: UpdateUserProfile :one
 UPDATE users
 SET nickname = $2,
     avatar_url = $3,
     updated_at = NOW()
 WHERE id = $1
-RETURNING id, openid, nickname, avatar_url, status, created_at, updated_at
+RETURNING id, openid, nickname, avatar_url, real_name, phone_number, status, created_at, updated_at
 `
 
 type UpdateUserProfileParams struct {
@@ -213,14 +301,28 @@ type UpdateUserProfileParams struct {
 	AvatarUrl *string `json:"avatar_url"`
 }
 
-func (q *Queries) UpdateUserProfile(ctx context.Context, arg UpdateUserProfileParams) (User, error) {
+type UpdateUserProfileRow struct {
+	ID          int64            `json:"id"`
+	Openid      string           `json:"openid"`
+	Nickname    string           `json:"nickname"`
+	AvatarUrl   *string          `json:"avatar_url"`
+	RealName    *string          `json:"real_name"`
+	PhoneNumber *string          `json:"phone_number"`
+	Status      string           `json:"status"`
+	CreatedAt   pgtype.Timestamp `json:"created_at"`
+	UpdatedAt   pgtype.Timestamp `json:"updated_at"`
+}
+
+func (q *Queries) UpdateUserProfile(ctx context.Context, arg UpdateUserProfileParams) (UpdateUserProfileRow, error) {
 	row := q.db.QueryRow(ctx, updateUserProfile, arg.ID, arg.Nickname, arg.AvatarUrl)
-	var i User
+	var i UpdateUserProfileRow
 	err := row.Scan(
 		&i.ID,
 		&i.Openid,
 		&i.Nickname,
 		&i.AvatarUrl,
+		&i.RealName,
+		&i.PhoneNumber,
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
