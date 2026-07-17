@@ -48,6 +48,10 @@ func (r *Repository) CreateWithGroups(ctx context.Context, match domain.Match, g
 	return tx.Commit(ctx)
 }
 
+func (r *Repository) CreateRegistration(ctx context.Context, registration domain.Registration) error {
+	return r.queries.CreateRegistration(ctx, createRegistrationParams(registration))
+}
+
 func (r *Repository) FindByID(ctx context.Context, matchID uuid.UUID) (domain.Match, []domain.RegistrationGroup, bool, error) {
 	row, err := r.queries.GetMatchByID(ctx, pgUUID(matchID))
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -137,6 +141,54 @@ func (r *Repository) Delete(ctx context.Context, id uuid.UUID) (bool, error) {
 	return rowsAffected > 0, err
 }
 
+func (r *Repository) ListRosterForGroup(ctx context.Context, group domain.RegistrationGroup) ([]ports.AdminRosterEntry, error) {
+	switch group.Kind {
+	case domain.GroupHostTeam, domain.GroupGuestTeam:
+		if group.TeamID == nil {
+			return nil, nil
+		}
+		rows, err := r.queries.ListTeamGroupRoster(ctx, matchsqlc.ListTeamGroupRosterParams{
+			GroupID: pgUUID(group.ID), TeamID: *group.TeamID,
+		})
+		if err != nil {
+			return nil, err
+		}
+		entries := make([]ports.AdminRosterEntry, 0, len(rows))
+		for _, row := range rows {
+			role := row.MemberRole
+			entries = append(entries, ports.AdminRosterEntry{
+				UserID: row.UserID, Nickname: row.Nickname, RealName: row.RealName, AvatarURL: row.AvatarUrl,
+				MemberRole: &role, Status: registrationStatusPointer(row.RegistrationStatus),
+			})
+		}
+		return entries, nil
+	case domain.GroupIndividualOpponent:
+		rows, err := r.queries.ListIndividualGroupRegistrations(ctx, pgUUID(group.ID))
+		if err != nil {
+			return nil, err
+		}
+		entries := make([]ports.AdminRosterEntry, 0, len(rows))
+		for _, row := range rows {
+			status := domain.RegistrationStatus(row.RegistrationStatus)
+			entries = append(entries, ports.AdminRosterEntry{
+				UserID: row.UserID, Nickname: row.Nickname, RealName: row.RealName, AvatarURL: row.AvatarUrl,
+				Status: &status,
+			})
+		}
+		return entries, nil
+	default:
+		return nil, nil
+	}
+}
+
+func registrationStatusPointer(value *string) *domain.RegistrationStatus {
+	if value == nil {
+		return nil
+	}
+	status := domain.RegistrationStatus(*value)
+	return &status
+}
+
 func createMatchParams(match domain.Match) matchsqlc.CreateMatchParams {
 	return matchsqlc.CreateMatchParams{
 		ID:                pgUUID(match.ID),
@@ -168,6 +220,18 @@ func createGroupParams(group domain.RegistrationGroup) matchsqlc.CreateRegistrat
 		MinPlayers: int32Pointer(group.MinPlayers),
 		MaxPlayers: int32Pointer(group.MaxPlayers),
 		Status:     string(group.Status),
+	}
+}
+
+func createRegistrationParams(registration domain.Registration) matchsqlc.CreateRegistrationParams {
+	return matchsqlc.CreateRegistrationParams{
+		ID:                pgUUID(registration.ID),
+		GroupID:           pgUUID(registration.GroupID),
+		UserID:            registration.UserID,
+		Status:            string(registration.Status),
+		RegistrationCount: int32(registration.RegistrationCount),
+		CreatedAt:         pgTimestamp(registration.CreatedAt),
+		UpdatedAt:         pgTimestamp(registration.UpdatedAt),
 	}
 }
 

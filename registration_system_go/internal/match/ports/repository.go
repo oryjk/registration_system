@@ -9,10 +9,12 @@ import (
 
 type Repository interface {
 	CreateWithGroups(context.Context, domain.Match, []domain.RegistrationGroup) error
+	CreateRegistration(context.Context, domain.Registration) error
 	FindByID(context.Context, uuid.UUID) (domain.Match, []domain.RegistrationGroup, bool, error)
 	FindForAdmin(context.Context, uuid.UUID) (AdminMatchItem, []domain.RegistrationGroup, bool, error)
 	ListForAdmin(context.Context, AdminMatchFilter) ([]AdminMatchItem, error)
 	CountForAdmin(context.Context, AdminMatchFilter) (int64, error)
+	ListRosterForGroup(context.Context, domain.RegistrationGroup) ([]AdminRosterEntry, error)
 	UpdateDetails(context.Context, domain.Match) error
 	UpdateStatus(context.Context, domain.Match) error
 	Delete(context.Context, uuid.UUID) (bool, error)
@@ -29,4 +31,15 @@ type AdminMatchItem struct {
 	Match        domain.Match
 	HostTeamName string
 	AwayTeamName *string
+}
+
+// AdminRosterEntry 是管理端报名组花名册中的一行：球队组包含全部成员
+// （Status 为 nil 表示尚未报名），散人组只包含已有报名记录的用户。
+type AdminRosterEntry struct {
+	UserID     int64
+	Nickname   string
+	RealName   *string
+	AvatarURL  *string
+	MemberRole *string
+	Status     *domain.RegistrationStatus
 }

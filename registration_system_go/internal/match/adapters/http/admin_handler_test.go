@@ -54,6 +54,40 @@ func TestSuperAdminDeletesMatch(t *testing.T) {
 	}
 }
 
+func TestAdminMatchDetailIncludesRosterRegistrations(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	matchID := uuid.New()
+	groupID := uuid.New()
+	teamID := int64(11)
+	attending := domain.RegistrationAttending
+	captain := "captain"
+	service := &fakeAdminMatches{detail: application.AdminMatchDetail{
+		Item:   ports.AdminMatchItem{Match: domain.Match{ID: matchID, Name: "周四友谊赛"}, HostTeamName: "洺悦御府"},
+		Groups: []domain.RegistrationGroup{{ID: groupID, MatchID: matchID, Kind: domain.GroupHostTeam, TeamID: &teamID, Status: domain.GroupOpen}},
+		Rosters: []application.AdminGroupRoster{{GroupID: groupID, Entries: []ports.AdminRosterEntry{
+			{UserID: 38, Nickname: "东安利马", MemberRole: &captain, Status: &attending},
+			{UserID: 40, Nickname: "阿东", MemberRole: nil, Status: nil},
+		}}},
+	}}
+	handler := NewAdminHandler(service, &fakeCreateMatch{})
+	router := gin.New()
+	router.GET("/matches/:id", authhttp.NewMiddleware(fakeAdminTokens{}).RequireAdmin(), handler.Get)
+	request := httptest.NewRequest(http.MethodGet, "/matches/"+matchID.String(), nil)
+	request.Header.Set("Authorization", "Bearer admin-token")
+	response := httptest.NewRecorder()
+
+	router.ServeHTTP(response, request)
+
+	if response.Code != http.StatusOK {
+		t.Fatalf("unexpected response %d: %s", response.Code, response.Body.String())
+	}
+	for _, expected := range []string{`"registrations"`, `"user_id":38`, `"status":"attending"`, `"user_id":40`, `"status":"unregistered"`} {
+		if !bytes.Contains(response.Body.Bytes(), []byte(expected)) {
+			t.Fatalf("expected %s in response: %s", expected, response.Body.String())
+		}
+	}
+}
+
 type fakeAdminTokens struct{}
 
 func (fakeAdminTokens) IssueUser(context.Context, int64) (string, error)        { return "", nil }
@@ -64,6 +98,7 @@ func (fakeAdminTokens) Parse(context.Context, string) (sharedauth.Actor, error) 
 
 type fakeAdminMatches struct {
 	list      application.AdminMatchListResult
+	detail    application.AdminMatchDetail
 	deletedID uuid.UUID
 }
 
@@ -71,7 +106,7 @@ func (f *fakeAdminMatches) List(context.Context, sharedauth.Actor, application.A
 	return f.list, nil
 }
 func (f *fakeAdminMatches) Get(context.Context, sharedauth.Actor, uuid.UUID) (application.AdminMatchDetail, error) {
-	return application.AdminMatchDetail{}, nil
+	return f.detail, nil
 }
 func (f *fakeAdminMatches) UpdateDetails(context.Context, sharedauth.Actor, uuid.UUID, domain.UpdateMatchDetails) (domain.Match, error) {
 	return domain.Match{}, nil

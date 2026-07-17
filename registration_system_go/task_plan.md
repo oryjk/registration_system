@@ -68,6 +68,14 @@
 2. [completed] 为导入边界的头像规范化补充红绿测试
 3. [completed] 重跑真实导入更新头像并做浏览器验证
 
+## 2026-07-16 洺悦御府历史比赛迁移
+
+1. [completed] 只读盘点旧 MySQL 比赛、报名与目标 Go Match 字段差异
+2. [completed] 确认历史比赛迁移边界与字段/状态映射
+3. [completed] 补齐缺失能力：migration 4 放宽约束；9 个未映射用户按用户决定走一次性 SQL 补迁（不写 Go 代码），阿祖重复账号合并到 #38
+4. [completed] dry-run 后只迁移洺悦御府关联历史比赛（96 插入 + 2 预置更新，1986 报名）
+5. [completed] 聚合对账并运行 Go 验证（gofmt/vet/build/`go test -race ./...` 全绿；按用户范围不运行 E2E）
+
 错误记录：
 
 | 错误 | 尝试 | 处理 |

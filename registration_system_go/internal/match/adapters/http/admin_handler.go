@@ -91,12 +91,24 @@ type MatchResponse struct {
 }
 
 type GroupResponse struct {
-	ID         string             `json:"id"`
-	Kind       domain.GroupKind   `json:"kind"`
-	TeamID     *int64             `json:"team_id"`
-	MinPlayers *int               `json:"min_players"`
-	MaxPlayers *int               `json:"max_players"`
-	Status     domain.GroupStatus `json:"status"`
+	ID            string                      `json:"id"`
+	Kind          domain.GroupKind            `json:"kind"`
+	TeamID        *int64                      `json:"team_id"`
+	MinPlayers    *int                        `json:"min_players"`
+	MaxPlayers    *int                        `json:"max_players"`
+	Status        domain.GroupStatus          `json:"status"`
+	Registrations []RegistrationEntryResponse `json:"registrations"`
+}
+
+// RegistrationEntryResponse 是报名组花名册中的一名队员；
+// Status 为 unregistered 表示该成员还没有报名记录。
+type RegistrationEntryResponse struct {
+	UserID     int64   `json:"user_id"`
+	Nickname   string  `json:"nickname"`
+	RealName   *string `json:"real_name"`
+	AvatarURL  *string `json:"avatar_url"`
+	MemberRole *string `json:"member_role"`
+	Status     string  `json:"status"`
 }
 
 type MatchDetailResponse struct {
@@ -302,12 +314,32 @@ func mapMatch(item ports.AdminMatchItem) MatchResponse {
 }
 
 func mapDetail(detail application.AdminMatchDetail) MatchDetailResponse {
+	rostersByGroup := make(map[uuid.UUID][]ports.AdminRosterEntry, len(detail.Rosters))
+	for _, roster := range detail.Rosters {
+		rostersByGroup[roster.GroupID] = roster.Entries
+	}
 	groups := make([]GroupResponse, 0, len(detail.Groups))
 	for _, group := range detail.Groups {
 		groups = append(groups, GroupResponse{
 			ID: group.ID.String(), Kind: group.Kind, TeamID: group.TeamID,
 			MinPlayers: group.MinPlayers, MaxPlayers: group.MaxPlayers, Status: group.Status,
+			Registrations: mapRegistrations(rostersByGroup[group.ID]),
 		})
 	}
 	return MatchDetailResponse{Match: mapMatch(detail.Item), Groups: groups}
+}
+
+func mapRegistrations(entries []ports.AdminRosterEntry) []RegistrationEntryResponse {
+	registrations := make([]RegistrationEntryResponse, 0, len(entries))
+	for _, entry := range entries {
+		status := "unregistered"
+		if entry.Status != nil {
+			status = string(*entry.Status)
+		}
+		registrations = append(registrations, RegistrationEntryResponse{
+			UserID: entry.UserID, Nickname: entry.Nickname, RealName: entry.RealName,
+			AvatarURL: entry.AvatarURL, MemberRole: entry.MemberRole, Status: status,
+		})
+	}
+	return registrations
 }

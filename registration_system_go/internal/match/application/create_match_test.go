@@ -102,6 +102,14 @@ func (f *fakeMatchRepository) UpdateDetails(context.Context, domain.Match) error
 func (f *fakeMatchRepository) UpdateStatus(context.Context, domain.Match) error  { return nil }
 func (f *fakeMatchRepository) Delete(context.Context, uuid.UUID) (bool, error)   { return false, nil }
 
+func (f *fakeMatchRepository) CreateRegistration(context.Context, domain.Registration) error {
+	return nil
+}
+
+func (f *fakeMatchRepository) ListRosterForGroup(context.Context, domain.RegistrationGroup) ([]ports.AdminRosterEntry, error) {
+	return nil, nil
+}
+
 type fakeTeamAccess struct {
 	err error
 }

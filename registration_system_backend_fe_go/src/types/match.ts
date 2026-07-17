@@ -3,6 +3,7 @@ export type OpponentState = "no_recruitment" | "recruiting" | "confirmed";
 export type MatchStatus = "registering" | "ongoing" | "ended" | "cancelled";
 export type GroupKind = "host_team" | "guest_team" | "individual_opponent";
 export type GroupStatus = "open" | "closed" | "cancelled";
+export type MatchRegistrationStatus = "unknown" | "attending" | "leave" | "absent" | "cancelled" | "unregistered";
 
 export interface MatchItem {
   id: string;
@@ -28,6 +29,15 @@ export interface MatchItem {
   updated_at: string;
 }
 
+export interface MatchRegistrationEntry {
+  user_id: number;
+  nickname: string;
+  real_name: string | null;
+  avatar_url: string | null;
+  member_role: string | null;
+  status: MatchRegistrationStatus;
+}
+
 export interface RegistrationGroup {
   id: string;
   kind: GroupKind;
@@ -35,6 +45,7 @@ export interface RegistrationGroup {
   min_players: number | null;
   max_players: number | null;
   status: GroupStatus;
+  registrations: MatchRegistrationEntry[];
 }
 
 export interface MatchDetail {

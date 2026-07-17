@@ -1,18 +1,20 @@
 import ArrowLeftOutlined from "@ant-design/icons/es/icons/ArrowLeftOutlined";
 import EditOutlined from "@ant-design/icons/es/icons/EditOutlined";
 import Alert from "antd/es/alert";
+import Avatar from "antd/es/avatar";
 import Button from "antd/es/button";
 import Descriptions from "antd/es/descriptions";
 import Modal from "antd/es/modal";
 import Space from "antd/es/space";
 import Table from "antd/es/table";
+import type { ColumnsType } from "antd/es/table";
 import Tag from "antd/es/tag";
 import Typography from "antd/es/typography";
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { getMatch, updateMatchStatus } from "../api/matches";
-import type { MatchDetail, MatchStatus, RegistrationGroup } from "../types/match";
-import { matchStatusColors, matchStatusLabels, opponentStateLabels, publicationModeLabels } from "./matchLabels";
+import type { MatchDetail, MatchRegistrationEntry, MatchRegistrationStatus, MatchStatus, RegistrationGroup } from "../types/match";
+import { matchStatusColors, matchStatusLabels, opponentStateLabels, publicationModeLabels, registrationStatusColors, registrationStatusLabels } from "./matchLabels";
 
 const { Text, Title } = Typography;
 const alwaysApply = () => true;
@@ -22,6 +24,42 @@ const groupLabels: Record<RegistrationGroup["kind"], string> = {
   guest_team: "客队报名组",
   individual_opponent: "散人对手组",
 };
+
+const memberRoleLabels: Record<string, string> = {
+  captain: "队长",
+  leader: "领队",
+  vice_captain: "副队长",
+  member: "队员",
+};
+
+function rosterColumns(kind: RegistrationGroup["kind"]): ColumnsType<MatchRegistrationEntry> {
+  const columns: ColumnsType<MatchRegistrationEntry> = [
+    {
+      title: "队员",
+      dataIndex: "nickname",
+      render: (_, record) => (
+        <Space>
+          <Avatar src={record.avatar_url || undefined}>{(record.nickname || String(record.user_id)).slice(0, 1)}</Avatar>
+          <span>{record.nickname || `用户 ${record.user_id}`}</span>
+          {record.real_name ? <Text type="secondary">{record.real_name}</Text> : null}
+        </Space>
+      ),
+    },
+  ];
+  if (kind !== "individual_opponent") {
+    columns.push({
+      title: "角色",
+      dataIndex: "member_role",
+      render: (value: string | null) => (value ? memberRoleLabels[value] || value : "--"),
+    });
+  }
+  columns.push({
+    title: "报名状态",
+    dataIndex: "status",
+    render: (value: MatchRegistrationStatus) => <Tag color={registrationStatusColors[value]}>{registrationStatusLabels[value]}</Tag>,
+  });
+  return columns;
+}
 
 function formatDateTime(value: string) {
   return new Intl.DateTimeFormat("zh-CN", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
@@ -145,6 +183,21 @@ export default function MatchDetailPage() {
               ]}
             />
           </section>
+
+          {(detail?.groups || []).map((group) => (
+            <section key={group.id} className="table-panel roster-table-panel">
+              <header className="panel-header">
+                <div><Text className="panel-kicker">ROSTER</Text><Title level={4}>{groupLabels[group.kind]} · 队员报名</Title></div>
+              </header>
+              <Table<MatchRegistrationEntry>
+                rowKey="user_id"
+                pagination={false}
+                dataSource={group.registrations}
+                locale={{ emptyText: "暂无报名记录" }}
+                columns={rosterColumns(group.kind)}
+              />
+            </section>
+          ))}
         </>
       ) : null}
 

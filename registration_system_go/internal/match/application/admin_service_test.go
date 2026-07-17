@@ -35,6 +35,52 @@ func TestAdminListMatchesRejectsUser(t *testing.T) {
 	}
 }
 
+func TestAdminGetMatchIncludesGroupRosters(t *testing.T) {
+	matchID := uuid.New()
+	teamID := int64(11)
+	hostGroup := domain.RegistrationGroup{ID: uuid.New(), MatchID: matchID, Kind: domain.GroupHostTeam, TeamID: &teamID, Status: domain.GroupOpen}
+	individualGroup := domain.RegistrationGroup{ID: uuid.New(), MatchID: matchID, Kind: domain.GroupIndividualOpponent, Status: domain.GroupOpen}
+	attending := domain.RegistrationAttending
+	captain := "captain"
+	member := "member"
+	repository := &fakeAdminMatchRepository{
+		match:  domain.Match{ID: matchID, Name: "周四友谊赛"},
+		groups: []domain.RegistrationGroup{hostGroup, individualGroup},
+		found:  true,
+		rosters: map[uuid.UUID][]ports.AdminRosterEntry{
+			hostGroup.ID: {
+				{UserID: 38, Nickname: "东安利马", MemberRole: &captain, Status: &attending},
+				{UserID: 40, Nickname: "阿东", MemberRole: &member},
+			},
+			individualGroup.ID: {
+				{UserID: 41, Nickname: "散人甲", Status: &attending},
+			},
+		},
+	}
+	service := NewAdminMatchService(repository, fixedClock(), &fakeAdminAccess{})
+
+	detail, err := service.Get(context.Background(), adminActor(3), matchID)
+	if err != nil {
+		t.Fatalf("get match: %v", err)
+	}
+	if len(detail.Rosters) != 2 {
+		t.Fatalf("expected rosters for both groups, got %+v", detail.Rosters)
+	}
+	if detail.Rosters[0].GroupID != hostGroup.ID || detail.Rosters[1].GroupID != individualGroup.ID {
+		t.Fatalf("rosters must align with group order: %+v", detail.Rosters)
+	}
+	hostEntries := detail.Rosters[0].Entries
+	if len(hostEntries) != 2 || hostEntries[0].UserID != 38 {
+		t.Fatalf("unexpected host roster: %+v", hostEntries)
+	}
+	if hostEntries[1].Status != nil {
+		t.Fatalf("member without registration must keep nil status: %+v", hostEntries[1])
+	}
+	if len(detail.Rosters[1].Entries) != 1 || detail.Rosters[1].Entries[0].UserID != 41 {
+		t.Fatalf("unexpected individual roster: %+v", detail.Rosters[1].Entries)
+	}
+}
+
 func TestAdminChangesMatchStatus(t *testing.T) {
 	id := uuid.New()
 	repository := &fakeAdminMatchRepository{match: domain.Match{ID: id, Status: domain.MatchRegistering}, found: true}
@@ -89,6 +135,7 @@ type fakeAdminMatchRepository struct {
 	items          []ports.AdminMatchItem
 	total          int64
 	found          bool
+	rosters        map[uuid.UUID][]ports.AdminRosterEntry
 	updatedDetails domain.Match
 	updatedStatus  domain.Match
 	deleteFound    bool
@@ -133,6 +180,14 @@ func (f *fakeAdminMatchRepository) UpdateStatus(_ context.Context, match domain.
 func (f *fakeAdminMatchRepository) Delete(_ context.Context, id uuid.UUID) (bool, error) {
 	f.deletedID = id
 	return f.deleteFound, nil
+}
+
+func (f *fakeAdminMatchRepository) CreateRegistration(context.Context, domain.Registration) error {
+	return nil
+}
+
+func (f *fakeAdminMatchRepository) ListRosterForGroup(_ context.Context, group domain.RegistrationGroup) ([]ports.AdminRosterEntry, error) {
+	return f.rosters[group.ID], nil
 }
 
 type fakeAdminAccess struct {

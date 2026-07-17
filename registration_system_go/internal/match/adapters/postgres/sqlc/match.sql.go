@@ -128,6 +128,44 @@ func (q *Queries) CreateMatch(ctx context.Context, arg CreateMatchParams) (Match
 	return i, err
 }
 
+const createRegistration = `-- name: CreateRegistration :exec
+INSERT INTO match_registrations (
+    id,
+    group_id,
+    user_id,
+    status,
+    registration_count,
+    created_at,
+    updated_at
+)
+VALUES (
+    $1, $2, $3, $4, $5, $6, $7
+)
+`
+
+type CreateRegistrationParams struct {
+	ID                pgtype.UUID      `json:"id"`
+	GroupID           pgtype.UUID      `json:"group_id"`
+	UserID            int64            `json:"user_id"`
+	Status            string           `json:"status"`
+	RegistrationCount int32            `json:"registration_count"`
+	CreatedAt         pgtype.Timestamp `json:"created_at"`
+	UpdatedAt         pgtype.Timestamp `json:"updated_at"`
+}
+
+func (q *Queries) CreateRegistration(ctx context.Context, arg CreateRegistrationParams) error {
+	_, err := q.db.Exec(ctx, createRegistration,
+		arg.ID,
+		arg.GroupID,
+		arg.UserID,
+		arg.Status,
+		arg.RegistrationCount,
+		arg.CreatedAt,
+		arg.UpdatedAt,
+	)
+	return err
+}
+
 const createRegistrationGroup = `-- name: CreateRegistrationGroup :one
 INSERT INTO match_registration_groups (
     id,
@@ -287,6 +325,61 @@ func (q *Queries) GetMatchForAdmin(ctx context.Context, id pgtype.UUID) (GetMatc
 	return i, err
 }
 
+const listIndividualGroupRegistrations = `-- name: ListIndividualGroupRegistrations :many
+SELECT r.user_id,
+       u.nickname,
+       u.avatar_url,
+       u.real_name,
+       r.status AS registration_status
+FROM match_registrations r
+JOIN users u ON u.id = r.user_id
+WHERE r.group_id = $1
+ORDER BY
+    CASE r.status
+        WHEN 'attending' THEN 0
+        WHEN 'unknown' THEN 1
+        WHEN 'leave' THEN 3
+        WHEN 'absent' THEN 4
+        ELSE 5
+    END,
+    r.created_at,
+    r.user_id
+`
+
+type ListIndividualGroupRegistrationsRow struct {
+	UserID             int64   `json:"user_id"`
+	Nickname           string  `json:"nickname"`
+	AvatarUrl          *string `json:"avatar_url"`
+	RealName           *string `json:"real_name"`
+	RegistrationStatus string  `json:"registration_status"`
+}
+
+func (q *Queries) ListIndividualGroupRegistrations(ctx context.Context, groupID pgtype.UUID) ([]ListIndividualGroupRegistrationsRow, error) {
+	rows, err := q.db.Query(ctx, listIndividualGroupRegistrations, groupID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListIndividualGroupRegistrationsRow
+	for rows.Next() {
+		var i ListIndividualGroupRegistrationsRow
+		if err := rows.Scan(
+			&i.UserID,
+			&i.Nickname,
+			&i.AvatarUrl,
+			&i.RealName,
+			&i.RegistrationStatus,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listMatchesForAdmin = `-- name: ListMatchesForAdmin :many
 SELECT m.id, m.name, m.publication_mode, m.opponent_state, m.status, m.host_team_id, m.away_team_id, m.opponent_name, m.players_per_team, m.start_time, m.end_time, m.location, m.location_latitude, m.location_longitude, m.description, m.created_by_user_id, m.created_at, m.updated_at, m.created_by_admin_id,
        host.name AS host_team_name,
@@ -410,6 +503,79 @@ func (q *Queries) ListRegistrationGroupsByMatchID(ctx context.Context, matchID p
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.CancelledAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listTeamGroupRoster = `-- name: ListTeamGroupRoster :many
+SELECT tm.user_id,
+       tm.role AS member_role,
+       u.nickname,
+       u.avatar_url,
+       u.real_name,
+       r.status AS registration_status
+FROM team_members tm
+JOIN users u ON u.id = tm.user_id
+LEFT JOIN match_registrations r
+    ON r.group_id = $1
+   AND r.user_id = tm.user_id
+WHERE tm.team_id = $2
+ORDER BY
+    CASE COALESCE(r.status, 'unregistered')
+        WHEN 'attending' THEN 0
+        WHEN 'unknown' THEN 1
+        WHEN 'unregistered' THEN 2
+        WHEN 'leave' THEN 3
+        WHEN 'absent' THEN 4
+        ELSE 5
+    END,
+    CASE tm.role
+        WHEN 'captain' THEN 0
+        WHEN 'leader' THEN 1
+        WHEN 'vice_captain' THEN 2
+        ELSE 3
+    END,
+    tm.joined_at,
+    tm.user_id
+`
+
+type ListTeamGroupRosterParams struct {
+	GroupID pgtype.UUID `json:"group_id"`
+	TeamID  int64       `json:"team_id"`
+}
+
+type ListTeamGroupRosterRow struct {
+	UserID             int64   `json:"user_id"`
+	MemberRole         string  `json:"member_role"`
+	Nickname           string  `json:"nickname"`
+	AvatarUrl          *string `json:"avatar_url"`
+	RealName           *string `json:"real_name"`
+	RegistrationStatus *string `json:"registration_status"`
+}
+
+func (q *Queries) ListTeamGroupRoster(ctx context.Context, arg ListTeamGroupRosterParams) ([]ListTeamGroupRosterRow, error) {
+	rows, err := q.db.Query(ctx, listTeamGroupRoster, arg.GroupID, arg.TeamID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListTeamGroupRosterRow
+	for rows.Next() {
+		var i ListTeamGroupRosterRow
+		if err := rows.Scan(
+			&i.UserID,
+			&i.MemberRole,
+			&i.Nickname,
+			&i.AvatarUrl,
+			&i.RealName,
+			&i.RegistrationStatus,
 		); err != nil {
 			return nil, err
 		}

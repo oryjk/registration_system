@@ -109,3 +109,68 @@ SELECT *
 FROM match_registration_groups
 WHERE match_id = $1
 ORDER BY created_at, id;
+
+-- name: CreateRegistration :exec
+INSERT INTO match_registrations (
+    id,
+    group_id,
+    user_id,
+    status,
+    registration_count,
+    created_at,
+    updated_at
+)
+VALUES (
+    $1, $2, $3, $4, $5, $6, $7
+);
+
+-- name: ListTeamGroupRoster :many
+SELECT tm.user_id,
+       tm.role AS member_role,
+       u.nickname,
+       u.avatar_url,
+       u.real_name,
+       r.status AS registration_status
+FROM team_members tm
+JOIN users u ON u.id = tm.user_id
+LEFT JOIN match_registrations r
+    ON r.group_id = $1
+   AND r.user_id = tm.user_id
+WHERE tm.team_id = $2
+ORDER BY
+    CASE COALESCE(r.status, 'unregistered')
+        WHEN 'attending' THEN 0
+        WHEN 'unknown' THEN 1
+        WHEN 'unregistered' THEN 2
+        WHEN 'leave' THEN 3
+        WHEN 'absent' THEN 4
+        ELSE 5
+    END,
+    CASE tm.role
+        WHEN 'captain' THEN 0
+        WHEN 'leader' THEN 1
+        WHEN 'vice_captain' THEN 2
+        ELSE 3
+    END,
+    tm.joined_at,
+    tm.user_id;
+
+-- name: ListIndividualGroupRegistrations :many
+SELECT r.user_id,
+       u.nickname,
+       u.avatar_url,
+       u.real_name,
+       r.status AS registration_status
+FROM match_registrations r
+JOIN users u ON u.id = r.user_id
+WHERE r.group_id = $1
+ORDER BY
+    CASE r.status
+        WHEN 'attending' THEN 0
+        WHEN 'unknown' THEN 1
+        WHEN 'leave' THEN 3
+        WHEN 'absent' THEN 4
+        ELSE 5
+    END,
+    r.created_at,
+    r.user_id;

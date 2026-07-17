@@ -137,3 +137,124 @@ func newPersistableMatch(t *testing.T, userID, teamID int64) (domain.Match, []do
 }
 
 func int64Pointer(value int64) *int64 { return &value }
+
+func TestRepositoryListsTeamGroupRoster(t *testing.T) {
+	pool := testsupport.StartPostgres(t)
+	ctx := context.Background()
+	userID, teamID := seedMatchOwner(t, pool)
+	match, groups := newPersistableMatch(t, userID, teamID)
+	repository := NewRepository(pool)
+	if err := repository.CreateWithGroups(ctx, match, groups); err != nil {
+		t.Fatalf("create match: %v", err)
+	}
+
+	var memberID int64
+	if err := pool.QueryRow(ctx, `INSERT INTO users (openid, nickname, real_name) VALUES ($1, $2, $3) RETURNING id`,
+		"member-"+uuid.NewString(), "阿东", "李东").Scan(&memberID); err != nil {
+		t.Fatalf("seed member user: %v", err)
+	}
+	if _, err := pool.Exec(ctx, `INSERT INTO team_members (team_id, user_id, role) VALUES ($1, $2, 'captain'), ($1, $3, 'member')`,
+		teamID, userID, memberID); err != nil {
+		t.Fatalf("seed team members: %v", err)
+	}
+
+	now := time.Date(2026, 7, 20, 12, 0, 0, 0, time.UTC)
+	registration, err := domain.NewRegistration(groups[0].ID, userID, domain.RegistrationAttending, 1, now)
+	if err != nil {
+		t.Fatalf("new registration: %v", err)
+	}
+	if err := repository.CreateRegistration(ctx, registration); err != nil {
+		t.Fatalf("create registration: %v", err)
+	}
+
+	entries, err := repository.ListRosterForGroup(ctx, groups[0])
+	if err != nil {
+		t.Fatalf("list roster: %v", err)
+	}
+	if len(entries) != 2 {
+		t.Fatalf("expected 2 roster entries, got %d: %+v", len(entries), entries)
+	}
+	attending := entries[0]
+	if attending.UserID != userID || attending.Status == nil || *attending.Status != domain.RegistrationAttending {
+		t.Fatalf("unexpected attending entry: %+v", attending)
+	}
+	if attending.MemberRole == nil || *attending.MemberRole != "captain" {
+		t.Fatalf("expected captain role, got %+v", attending.MemberRole)
+	}
+	unregistered := entries[1]
+	if unregistered.UserID != memberID || unregistered.Status != nil {
+		t.Fatalf("expected unregistered member without status, got %+v", unregistered)
+	}
+	if unregistered.Nickname != "阿东" || unregistered.RealName == nil || *unregistered.RealName != "李东" {
+		t.Fatalf("unexpected member profile: %+v", unregistered)
+	}
+}
+
+func TestRepositoryListsIndividualGroupRegistrations(t *testing.T) {
+	pool := testsupport.StartPostgres(t)
+	ctx := context.Background()
+	userID, teamID := seedMatchOwner(t, pool)
+	match, groups := newPersistableMatch(t, userID, teamID)
+	now := time.Date(2026, 7, 19, 12, 0, 0, 0, time.UTC)
+	individual := domain.NewIndividualGroup(match.ID, domain.IndividualLimits{MinPlayers: 8, MaxPlayers: 10}, now)
+	groups = append(groups, individual)
+	repository := NewRepository(pool)
+	if err := repository.CreateWithGroups(ctx, match, groups); err != nil {
+		t.Fatalf("create match: %v", err)
+	}
+
+	registration, err := domain.NewRegistration(individual.ID, userID, domain.RegistrationLeave, 1, now)
+	if err != nil {
+		t.Fatalf("new registration: %v", err)
+	}
+	if err := repository.CreateRegistration(ctx, registration); err != nil {
+		t.Fatalf("create registration: %v", err)
+	}
+
+	entries, err := repository.ListRosterForGroup(ctx, individual)
+	if err != nil {
+		t.Fatalf("list roster: %v", err)
+	}
+	if len(entries) != 1 {
+		t.Fatalf("expected 1 roster entry, got %d: %+v", len(entries), entries)
+	}
+	entry := entries[0]
+	if entry.UserID != userID || entry.Status == nil || *entry.Status != domain.RegistrationLeave {
+		t.Fatalf("unexpected individual entry: %+v", entry)
+	}
+	if entry.MemberRole != nil {
+		t.Fatalf("individual entry must not carry member role, got %+v", entry.MemberRole)
+	}
+}
+
+func TestRepositoryCreatesRegistration(t *testing.T) {
+	pool := testsupport.StartPostgres(t)
+	ctx := context.Background()
+	userID, teamID := seedMatchOwner(t, pool)
+	match, groups := newPersistableMatch(t, userID, teamID)
+	repository := NewRepository(pool)
+	if err := repository.CreateWithGroups(ctx, match, groups); err != nil {
+		t.Fatalf("create match: %v", err)
+	}
+
+	now := time.Date(2026, 7, 20, 12, 0, 0, 0, time.UTC)
+	registration, err := domain.NewRegistration(groups[0].ID, userID, domain.RegistrationAttending, 1, now)
+	if err != nil {
+		t.Fatalf("new registration: %v", err)
+	}
+	if err := repository.CreateRegistration(ctx, registration); err != nil {
+		t.Fatalf("create registration: %v", err)
+	}
+
+	var status string
+	var count int
+	err = pool.QueryRow(ctx,
+		`SELECT status, registration_count FROM match_registrations WHERE group_id=$1 AND user_id=$2`,
+		groups[0].ID, userID).Scan(&status, &count)
+	if err != nil {
+		t.Fatalf("query registration: %v", err)
+	}
+	if status != string(domain.RegistrationAttending) || count != 1 {
+		t.Fatalf("unexpected registration: status=%s count=%d", status, count)
+	}
+}

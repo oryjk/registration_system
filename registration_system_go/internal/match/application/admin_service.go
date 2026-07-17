@@ -37,8 +37,15 @@ type AdminMatchListResult struct {
 }
 
 type AdminMatchDetail struct {
-	Item   ports.AdminMatchItem
-	Groups []domain.RegistrationGroup
+	Item    ports.AdminMatchItem
+	Groups  []domain.RegistrationGroup
+	Rosters []AdminGroupRoster
+}
+
+// AdminGroupRoster 是某个报名组的队员报名花名册，与 Groups 按同一顺序对齐。
+type AdminGroupRoster struct {
+	GroupID uuid.UUID
+	Entries []ports.AdminRosterEntry
 }
 
 func NewAdminMatchService(repository ports.Repository, clock ports.Clock, adminAccess ports.AdminAccess) AdminMatchService {
@@ -87,7 +94,15 @@ func (s AdminMatchService) Get(ctx context.Context, actor sharedauth.Actor, id u
 	if !found {
 		return AdminMatchDetail{}, sharederror.New(sharederror.KindNotFound, "比赛不存在")
 	}
-	return AdminMatchDetail{Item: item, Groups: groups}, nil
+	rosters := make([]AdminGroupRoster, 0, len(groups))
+	for _, group := range groups {
+		entries, err := s.repository.ListRosterForGroup(ctx, group)
+		if err != nil {
+			return AdminMatchDetail{}, sharederror.Wrap(sharederror.KindInternal, "查询报名花名册失败", err)
+		}
+		rosters = append(rosters, AdminGroupRoster{GroupID: group.ID, Entries: entries})
+	}
+	return AdminMatchDetail{Item: item, Groups: groups, Rosters: rosters}, nil
 }
 
 func (s AdminMatchService) UpdateDetails(ctx context.Context, actor sharedauth.Actor, id uuid.UUID, input domain.UpdateMatchDetails) (domain.Match, error) {

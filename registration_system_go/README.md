@@ -89,6 +89,24 @@ go run ./cmd/importlegacyteams
 
 目标写入位于单个事务内。dry-run 和任一步失败都会整体回滚；日志只输出新增/更新汇总，不输出连接串、openid、真实姓名或手机号。
 
+## 旧比赛数据导入
+
+导入命令从 `LEGACY_PG_URL`（旧 PostgreSQL）只读获取指定球队的历史比赛和报名，写入目标 PostgreSQL（`DATABASE_URL`）。导入前必须确认目标库已有对应主队和 21 个成员用户（见“旧球队数据导入”）。
+
+先预演（需指定目标主队 ID 与队长用户 ID）：
+
+```bash
+go run ./cmd/importlegacymatches --dry-run --host-team-id 11 --captain-user-id 37
+```
+
+`unmapped_openids` 大于 0 表示有报名引用的目标用户不存在，导入会中止——需先补齐用户或与维护者确认后再正式导入：
+
+```bash
+go run ./cmd/importlegacymatches --host-team-id 11 --captain-user-id 37
+```
+
+历史比赛统一映射为 `offline_confirmed`；对手为“待定”或缺失的比赛会自动复用名为“待定”的占位客队。`players_per_team` 缺失补默认 8；报名 `stand` 0/1/2/3 映射为 `unknown`/`attending`/`leave`/`absent`，`registration_count` 为 0 时补 1。目标写入同样位于单个事务，dry-run 或任一步失败整体回滚。
+
 ## 验证
 
 ```bash
