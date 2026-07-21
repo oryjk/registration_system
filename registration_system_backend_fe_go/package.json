@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "VITE_API_BASE_URL=/go-api vite --host 0.0.0.0",
     "build": "tsc -b && vite build",
+    "build:nginx": "tsc -b && vite build --base=/registration-admin/",
     "type-check": "tsc -b --pretty false",
     "lint": "eslint .",
     "test:e2e": "playwright test"

@@ -10,9 +10,9 @@
 - 超级管理员创建和查看场馆管理员
 - 用户和球队角色
 - 三种比赛发布模式
-- 球队候选申请与选择
-- 队内报名与散人对手报名
-- 管理端人数默认配置
+- `online_team` 球队候选申请、选择与退出事务
+- 队内报名与散人对手报名数据模型（写入 API 待实现）
+- 散人人数默认规则（配置管理 API 待实现）
 
 订单、支付、账单、结算、签到和通知不在第一阶段范围内。Rust 后端保留为只读参考。
 
@@ -49,6 +49,20 @@ go build -o ./api ./cmd/api
 - `GET/POST /api/admin/matches`：超级管理员和场馆管理员查看、发布比赛
 - `PATCH /api/admin/matches/:id/status`：管理员按状态机取消或推进比赛
 - `DELETE /api/admin/matches/:id`：超级管理员永久删除任意状态比赛及其关联报名数据
+- `GET /api/admin/matches/:id/team-applications`：管理员查看整队候选申请
+- `POST /api/admin/matches/:id/team-applications/:application_id/select`：管理员选择客队
+- `POST /api/admin/matches/:id/team-applications/:application_id/withdraw`：管理员让已选客队退出并重开招募
+
+用户接口：
+
+- `POST /api/auth/wechat/login`：微信 code 登录并获取用户 JWT
+- `GET /api/teams/my`：查看当前用户所属球队
+- `GET /api/matches`：分页查询比赛，可按状态和关键词筛选
+- `GET /api/matches/:id`：查看比赛、报名组、各组已参赛人数和当前用户自己的报名状态
+- `GET /api/matches/:id/team-applications`：主队管理者查看全部申请；候选队管理者只查看自己球队的申请
+- `POST /api/matches/:id/team-applications`：候选球队队长或领队提交整队申请
+- `POST /api/matches/:id/team-applications/:application_id/select`：主队队长或领队选择客队
+- `POST /api/matches/:id/team-applications/:application_id/withdraw`：申请队撤回，或主客队管理者让已选客队退出
 
 ## 初始化管理员
 

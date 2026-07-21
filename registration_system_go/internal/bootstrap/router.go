@@ -12,12 +12,14 @@ import (
 )
 
 type Dependencies struct {
-	AuthMiddleware *authhttp.Middleware
-	UserAuth       *authhttp.Handler
-	AdminAuth      *authhttp.AdminHandler
-	UserProfiles   *userhttp.Handler
-	Teams          *teamhttp.Handler
-	AdminMatches   *matchhttp.AdminHandler
+	AuthMiddleware   *authhttp.Middleware
+	UserAuth         *authhttp.Handler
+	AdminAuth        *authhttp.AdminHandler
+	UserProfiles     *userhttp.Handler
+	Teams            *teamhttp.Handler
+	UserMatches      *matchhttp.UserHandler
+	AdminMatches     *matchhttp.AdminHandler
+	TeamApplications *matchhttp.TeamApplicationHandler
 }
 
 func NewRouter(dependencies Dependencies) *gin.Engine {
@@ -41,6 +43,12 @@ func NewRouter(dependencies Dependencies) *gin.Engine {
 		if dependencies.Teams != nil {
 			dependencies.Teams.RegisterUserRoutes(userRoutes)
 		}
+		if dependencies.UserMatches != nil {
+			dependencies.UserMatches.RegisterRoutes(userRoutes)
+		}
+		if dependencies.TeamApplications != nil {
+			dependencies.TeamApplications.RegisterUserRoutes(userRoutes)
+		}
 
 		adminRoutes := admin.Group("")
 		adminRoutes.Use(dependencies.AuthMiddleware.RequireAdmin())
@@ -55,6 +63,9 @@ func NewRouter(dependencies Dependencies) *gin.Engine {
 		}
 		if dependencies.AdminMatches != nil {
 			dependencies.AdminMatches.RegisterRoutes(adminRoutes)
+		}
+		if dependencies.TeamApplications != nil {
+			dependencies.TeamApplications.RegisterAdminRoutes(adminRoutes)
 		}
 	}
 	return router

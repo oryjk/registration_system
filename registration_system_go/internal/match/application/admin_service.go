@@ -12,8 +12,8 @@ import (
 )
 
 const (
-	defaultAdminPageSize = 20
-	maxAdminPageSize     = 100
+	defaultMatchPageSize = 20
+	maxMatchPageSize     = 100
 )
 
 type AdminMatchService struct {
@@ -63,10 +63,10 @@ func (s AdminMatchService) List(ctx context.Context, actor sharedauth.Actor, que
 		query.Page = 1
 	}
 	if query.PageSize <= 0 {
-		query.PageSize = defaultAdminPageSize
+		query.PageSize = defaultMatchPageSize
 	}
-	if query.PageSize > maxAdminPageSize {
-		query.PageSize = maxAdminPageSize
+	if query.PageSize > maxMatchPageSize {
+		query.PageSize = maxMatchPageSize
 	}
 	filter := ports.AdminMatchFilter{
 		Status: query.Status, Search: strings.TrimSpace(query.Search),

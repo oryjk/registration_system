@@ -1,5 +1,16 @@
 # Progress
 
+## 2026-07-21
+
+- 已将三种“约队模式”重新定义为 Match 的三种对手形成方式，明确 Match、RegistrationGroup、TeamApplication、Registration 的单一职责。
+- 已固定 `offline_confirmed` 不招募、`online_team` 选择整队、`online_individual` 按最小/最大人数确认和关闭的状态规则。
+- 已补充球队申请领域转换；非法终态跳转由 domain 返回冲突，不下放到 handler 或 SQL 各自判断。
+- 已实现用户侧比赛列表和详情 API；详情只返回各组已参赛人数和当前 JWT 用户自己的报名，不暴露其他人的花名册与资料。
+- 已实现 `online_team` 完整写入流程：候选队申请、主队/管理员选择、其他待选申请拒绝、客队退出与重新招募。
+- 选择和退出使用 PostgreSQL 行锁与单事务提交，Match、TeamApplication 和 guest_team 报名组保持原子一致。
+- 主队管理者/管理员可查看全部候选申请；候选队管理者只能查看自己所管理球队的申请。
+- 管理端后续新增页面明确要求桌面和手机响应式布局，并通过 Playwright 双视口验收。
+
 ## 2026-07-17
 
 - 已确认历史比赛与报名尚未迁移（目标 matches/报名均为 0），migration 4 与导入器代码已就绪，阻塞在 9 个未映射 openid。

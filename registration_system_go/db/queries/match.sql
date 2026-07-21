@@ -29,6 +29,12 @@ SELECT *
 FROM matches
 WHERE id = $1;
 
+-- name: GetMatchByIDForUpdate :one
+SELECT *
+FROM matches
+WHERE id = $1
+FOR UPDATE;
+
 -- name: GetMatchForAdmin :one
 SELECT m.*,
        host.name AS host_team_name,
@@ -110,6 +116,42 @@ FROM match_registration_groups
 WHERE match_id = $1
 ORDER BY created_at, id;
 
+-- name: GetActiveGuestGroupForUpdate :one
+SELECT *
+FROM match_registration_groups
+WHERE match_id = $1
+  AND kind = 'guest_team'
+  AND status <> 'cancelled'
+FOR UPDATE;
+
+-- name: UpdateRegistrationGroupState :exec
+UPDATE match_registration_groups
+SET status = $2,
+    cancelled_at = $3,
+    updated_at = $4
+WHERE id = $1;
+
+-- name: ListRegistrationGroupStatesForUser :many
+SELECT g.*,
+       COALESCE((
+           SELECT SUM(active.registration_count)
+           FROM match_registrations active
+           WHERE active.group_id = g.id
+             AND active.status = 'attending'
+       ), 0)::bigint AS attending_count,
+       mine.id AS my_registration_id,
+       mine.status AS my_registration_status,
+       mine.registration_count AS my_registration_count,
+       mine.created_at AS my_registration_created_at,
+       mine.updated_at AS my_registration_updated_at,
+       mine.cancelled_at AS my_registration_cancelled_at
+FROM match_registration_groups g
+LEFT JOIN match_registrations mine
+    ON mine.group_id = g.id
+   AND mine.user_id = sqlc.arg('user_id')
+WHERE g.match_id = sqlc.arg('match_id')
+ORDER BY g.created_at, g.id;
+
 -- name: CreateRegistration :exec
 INSERT INTO match_registrations (
     id,
@@ -123,6 +165,78 @@ INSERT INTO match_registrations (
 VALUES (
     $1, $2, $3, $4, $5, $6, $7
 );
+
+-- name: ListTeamApplications :many
+SELECT a.*, t.name AS applicant_team_name
+FROM match_team_applications a
+JOIN teams t ON t.id = a.applicant_team_id
+WHERE a.match_id = $1
+ORDER BY
+    CASE a.status
+        WHEN 'selected' THEN 0
+        WHEN 'pending' THEN 1
+        WHEN 'withdrawn' THEN 2
+        ELSE 3
+    END,
+    a.created_at,
+    a.id;
+
+-- name: ListTeamApplicationsForManager :many
+SELECT a.*, t.name AS applicant_team_name
+FROM match_team_applications a
+JOIN teams t ON t.id = a.applicant_team_id
+JOIN team_members tm
+  ON tm.team_id = a.applicant_team_id
+ AND tm.user_id = sqlc.arg('user_id')
+ AND tm.status = 'active'
+ AND tm.role IN ('captain', 'leader')
+WHERE a.match_id = sqlc.arg('match_id')
+ORDER BY a.created_at, a.id;
+
+-- name: GetTeamApplicationByIDForUpdate :one
+SELECT *
+FROM match_team_applications
+WHERE match_id = $1
+  AND id = $2
+FOR UPDATE;
+
+-- name: ListPendingTeamApplicationsForUpdate :many
+SELECT *
+FROM match_team_applications
+WHERE match_id = $1
+  AND status = 'pending'
+ORDER BY created_at, id
+FOR UPDATE;
+
+-- name: CreateTeamApplication :exec
+INSERT INTO match_team_applications (
+    id,
+    match_id,
+    applicant_team_id,
+    introduction,
+    status,
+    created_by_user_id,
+    selected_at,
+    withdrawn_at,
+    created_at,
+    updated_at
+)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10);
+
+-- name: UpdateTeamApplication :exec
+UPDATE match_team_applications
+SET status = $2,
+    selected_at = $3,
+    withdrawn_at = $4,
+    updated_at = $5
+WHERE id = $1;
+
+-- name: UpdateMatchOpponent :exec
+UPDATE matches
+SET away_team_id = $2,
+    opponent_state = $3,
+    updated_at = $4
+WHERE id = $1;
 
 -- name: ListTeamGroupRoster :many
 SELECT tm.user_id,

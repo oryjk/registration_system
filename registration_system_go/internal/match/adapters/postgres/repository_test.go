@@ -7,7 +7,11 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	matchapplication "github.com/oryjk/registration_system/registration_system_go/internal/match/application"
 	"github.com/oryjk/registration_system/registration_system_go/internal/match/domain"
+	"github.com/oryjk/registration_system/registration_system_go/internal/match/ports"
+	sharedauth "github.com/oryjk/registration_system/registration_system_go/internal/shared/auth"
+	sharederror "github.com/oryjk/registration_system/registration_system_go/internal/shared/domain"
 	"github.com/oryjk/registration_system/registration_system_go/internal/testsupport"
 )
 
@@ -225,6 +229,24 @@ func TestRepositoryListsIndividualGroupRegistrations(t *testing.T) {
 	if entry.MemberRole != nil {
 		t.Fatalf("individual entry must not carry member role, got %+v", entry.MemberRole)
 	}
+
+	item, states, found, err := repository.FindForUser(ctx, match.ID, userID)
+	if err != nil || !found || item.Match.ID != match.ID {
+		t.Fatalf("find user match detail: found=%t item=%+v err=%v", found, item, err)
+	}
+	var individualState *ports.UserGroupState
+	for index := range states {
+		if states[index].Group.ID == individual.ID {
+			individualState = &states[index]
+			break
+		}
+	}
+	if individualState == nil || individualState.MyRegistration == nil {
+		t.Fatalf("missing current user registration state: %+v", states)
+	}
+	if individualState.MyRegistration.Status != domain.RegistrationLeave || individualState.AttendingCount != 0 {
+		t.Fatalf("leave must not count as attending: %+v", individualState)
+	}
 }
 
 func TestRepositoryCreatesRegistration(t *testing.T) {
@@ -258,3 +280,113 @@ func TestRepositoryCreatesRegistration(t *testing.T) {
 		t.Fatalf("unexpected registration: status=%s count=%d", status, count)
 	}
 }
+
+func TestRepositoryPersistsTeamApplicationSelectionAndWithdrawalAtomically(t *testing.T) {
+	pool := testsupport.StartPostgres(t)
+	ctx := context.Background()
+	hostUserID, hostTeamID := seedMatchOwner(t, pool)
+	firstUserID, firstTeamID := seedApplicationTeam(t, pool, "候选一队")
+	secondUserID, secondTeamID := seedApplicationTeam(t, pool, "候选二队")
+	match, groups := newPersistableMatch(t, hostUserID, hostTeamID)
+	repository := NewRepository(pool)
+	if err := repository.CreateWithGroups(ctx, match, groups); err != nil {
+		t.Fatalf("create match: %v", err)
+	}
+
+	access := repositoryTestTeamAccess{managers: map[int64]int64{
+		hostTeamID: hostUserID, firstTeamID: firstUserID, secondTeamID: secondUserID,
+	}}
+	service := matchapplication.NewTeamApplicationService(repository, access, repositoryTestClock{now: match.CreatedAt.Add(time.Hour)})
+	first, err := service.Apply(ctx, sharedauth.Actor{Kind: sharedauth.ActorUser, ID: firstUserID}, match.ID, firstTeamID, "第一队申请")
+	if err != nil {
+		t.Fatalf("first application: %v", err)
+	}
+	second, err := service.Apply(ctx, sharedauth.Actor{Kind: sharedauth.ActorUser, ID: secondUserID}, match.ID, secondTeamID, "第二队申请")
+	if err != nil {
+		t.Fatalf("second application: %v", err)
+	}
+
+	selected, err := service.Select(ctx, sharedauth.Actor{Kind: sharedauth.ActorUser, ID: hostUserID}, match.ID, second.ID)
+	if err != nil {
+		t.Fatalf("select application: %v", err)
+	}
+	if selected.Status != domain.ApplicationSelected {
+		t.Fatalf("unexpected selected application: %+v", selected)
+	}
+	persistedMatch, persistedGroups, found, err := repository.FindByID(ctx, match.ID)
+	if err != nil || !found {
+		t.Fatalf("find selected match: found=%t err=%v", found, err)
+	}
+	if persistedMatch.AwayTeamID == nil || *persistedMatch.AwayTeamID != secondTeamID || persistedMatch.OpponentState != domain.OpponentConfirmed {
+		t.Fatalf("opponent selection not persisted: %+v", persistedMatch)
+	}
+	if len(persistedGroups) != 2 || persistedGroups[1].Kind != domain.GroupGuestTeam || persistedGroups[1].TeamID == nil || *persistedGroups[1].TeamID != secondTeamID {
+		t.Fatalf("guest group not persisted: %+v", persistedGroups)
+	}
+	applications, err := repository.ListApplications(ctx, match.ID)
+	if err != nil {
+		t.Fatalf("list applications: %v", err)
+	}
+	statuses := map[uuid.UUID]domain.ApplicationStatus{}
+	for _, item := range applications {
+		statuses[item.Application.ID] = item.Application.Status
+	}
+	if statuses[first.ID] != domain.ApplicationRejected || statuses[second.ID] != domain.ApplicationSelected {
+		t.Fatalf("application decisions not persisted: %+v", statuses)
+	}
+
+	withdrawn, err := service.Withdraw(ctx, sharedauth.Actor{Kind: sharedauth.ActorUser, ID: secondUserID}, match.ID, second.ID)
+	if err != nil {
+		t.Fatalf("withdraw selected application: %v", err)
+	}
+	if withdrawn.Status != domain.ApplicationWithdrawn {
+		t.Fatalf("unexpected withdrawn application: %+v", withdrawn)
+	}
+	persistedMatch, persistedGroups, found, err = repository.FindByID(ctx, match.ID)
+	if err != nil || !found || persistedMatch.AwayTeamID != nil || persistedMatch.OpponentState != domain.OpponentRecruiting {
+		t.Fatalf("reopened match not persisted: found=%t match=%+v err=%v", found, persistedMatch, err)
+	}
+	if persistedGroups[1].Status != domain.GroupCancelled || persistedGroups[1].CancelledAt == nil {
+		t.Fatalf("guest group cancellation not persisted: %+v", persistedGroups[1])
+	}
+}
+
+func seedApplicationTeam(t *testing.T, pool interface {
+	QueryRow(context.Context, string, ...any) pgx.Row
+}, name string) (int64, int64) {
+	t.Helper()
+	ctx := context.Background()
+	var userID, teamID int64
+	if err := pool.QueryRow(ctx, `INSERT INTO users (openid) VALUES ($1) RETURNING id`, "applicant-"+uuid.NewString()).Scan(&userID); err != nil {
+		t.Fatalf("seed applicant user: %v", err)
+	}
+	if err := pool.QueryRow(ctx, `INSERT INTO teams (name) VALUES ($1) RETURNING id`, name).Scan(&teamID); err != nil {
+		t.Fatalf("seed applicant team: %v", err)
+	}
+	if err := pool.QueryRow(ctx, `INSERT INTO team_members (team_id, user_id, role) VALUES ($1, $2, 'leader') RETURNING id`, teamID, userID).Scan(new(int64)); err != nil {
+		t.Fatalf("seed applicant manager: %v", err)
+	}
+	return userID, teamID
+}
+
+type repositoryTestTeamAccess struct {
+	managers map[int64]int64
+}
+
+func (a repositoryTestTeamAccess) EnsureManager(_ context.Context, teamID, userID int64) error {
+	if a.managers[teamID] != userID {
+		return sharederror.ErrForbidden
+	}
+	return nil
+}
+
+func (repositoryTestTeamAccess) EnsureExists(context.Context, int64) error { return nil }
+func (repositoryTestTeamAccess) EnsureActive(context.Context, int64) error { return nil }
+
+type repositoryTestClock struct {
+	now time.Time
+}
+
+func (c repositoryTestClock) Now() time.Time { return c.now }
+
+var _ ports.TeamAccess = repositoryTestTeamAccess{}

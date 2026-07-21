@@ -141,8 +141,8 @@ func (l IndividualLimits) Validate() error {
 	return nil
 }
 
-func (m *Match) ConfirmTeamOpponent(awayTeamID int64) error {
-	if m.PublicationMode != OnlineTeam || m.OpponentState != OpponentRecruiting {
+func (m *Match) ConfirmTeamOpponent(awayTeamID int64, now time.Time) error {
+	if m.Status != MatchRegistering || m.PublicationMode != OnlineTeam || m.OpponentState != OpponentRecruiting {
 		return sharederror.New(sharederror.KindConflict, "当前比赛不能选择球队对手")
 	}
 	if awayTeamID <= 0 || awayTeamID == m.HostTeamID {
@@ -150,26 +150,32 @@ func (m *Match) ConfirmTeamOpponent(awayTeamID int64) error {
 	}
 	m.AwayTeamID = &awayTeamID
 	m.OpponentState = OpponentConfirmed
+	m.UpdatedAt = now
 	return nil
 }
 
-func (m *Match) ReopenTeamRecruitment() error {
-	if m.PublicationMode != OnlineTeam || m.AwayTeamID == nil {
+func (m *Match) ReopenTeamRecruitment(now time.Time) error {
+	if m.Status != MatchRegistering || m.PublicationMode != OnlineTeam || m.OpponentState != OpponentConfirmed || m.AwayTeamID == nil {
 		return sharederror.New(sharederror.KindConflict, "当前比赛没有可退出的球队对手")
 	}
 	m.AwayTeamID = nil
 	m.OpponentState = OpponentRecruiting
+	m.UpdatedAt = now
 	return nil
 }
 
-func (m *Match) RecalculateIndividualOpponent(activePlayers int) error {
+func (m *Match) RecalculateIndividualOpponent(activePlayers, minPlayers int) error {
 	if m.PublicationMode != OnlineIndividual {
 		return sharederror.New(sharederror.KindConflict, "当前比赛不是散人对手模式")
 	}
-	if activePlayers < 0 {
-		return sharederror.New(sharederror.KindValidation, "报名人数不能为负数")
+	if activePlayers < 0 || minPlayers <= 0 {
+		return sharederror.New(sharederror.KindValidation, "散人报名人数规则无效")
 	}
-	m.OpponentState = OpponentRecruiting
+	if activePlayers >= minPlayers {
+		m.OpponentState = OpponentConfirmed
+	} else {
+		m.OpponentState = OpponentRecruiting
+	}
 	return nil
 }
 

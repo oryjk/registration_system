@@ -15,6 +15,7 @@ const MatchDetailPage = lazy(() => import("./pages/MatchDetailPage"));
 const MatchFormPage = lazy(() => import("./pages/MatchFormPage"));
 const TeamListPage = lazy(() => import("./pages/TeamListPage"));
 const AdminListPage = lazy(() => import("./pages/AdminListPage"));
+const routerBaseName = import.meta.env.BASE_URL.replace(/\/$/, "") || "/";
 
 function LoadingPage() {
   return <div className="route-loading" aria-label="页面加载中" />;
@@ -34,7 +35,7 @@ export default function App() {
         },
       }}
     >
-      <BrowserRouter>
+      <BrowserRouter basename={routerBaseName}>
         <AuthProvider>
           <Suspense fallback={<LoadingPage />}>
             <Routes>

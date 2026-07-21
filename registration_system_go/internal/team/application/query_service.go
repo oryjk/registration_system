@@ -45,6 +45,17 @@ func (s QueryService) EnsureExists(ctx context.Context, teamID int64) error {
 	return err
 }
 
+func (s QueryService) EnsureActive(ctx context.Context, teamID int64) error {
+	team, err := s.FindTeam(ctx, teamID)
+	if err != nil {
+		return err
+	}
+	if team.Status != domain.TeamActive {
+		return sharederror.New(sharederror.KindConflict, "球队已冻结，不能参与比赛")
+	}
+	return nil
+}
+
 func (s QueryService) ListByUser(ctx context.Context, userID int64) ([]domain.TeamMembership, error) {
 	items, err := s.repository.ListByUser(ctx, userID)
 	if err != nil {

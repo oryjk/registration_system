@@ -37,3 +37,35 @@ func NewTeamApplication(matchID uuid.UUID, applicantTeamID, createdByUserID int6
 	}
 	return TeamApplication{ID: uuid.New(), MatchID: matchID, ApplicantTeamID: applicantTeamID, Introduction: introduction, Status: ApplicationPending, CreatedByUserID: createdByUserID, CreatedAt: now, UpdatedAt: now}, nil
 }
+
+func (a *TeamApplication) Select(now time.Time) error {
+	if a.Status != ApplicationPending {
+		return sharederror.New(sharederror.KindConflict, "只有待选择的球队申请可以入选")
+	}
+	a.Status = ApplicationSelected
+	a.SelectedAt = &now
+	a.WithdrawnAt = nil
+	a.UpdatedAt = now
+	return nil
+}
+
+func (a *TeamApplication) Reject(now time.Time) error {
+	if a.Status != ApplicationPending {
+		return sharederror.New(sharederror.KindConflict, "只有待选择的球队申请可以拒绝")
+	}
+	a.Status = ApplicationRejected
+	a.SelectedAt = nil
+	a.WithdrawnAt = nil
+	a.UpdatedAt = now
+	return nil
+}
+
+func (a *TeamApplication) Withdraw(now time.Time) error {
+	if a.Status != ApplicationPending && a.Status != ApplicationSelected {
+		return sharederror.New(sharederror.KindConflict, "当前球队申请不能撤回")
+	}
+	a.Status = ApplicationWithdrawn
+	a.WithdrawnAt = &now
+	a.UpdatedAt = now
+	return nil
+}

@@ -123,8 +123,10 @@ export default function MatchDetailPage() {
   if (!detail && loading) return <div className="route-loading" />;
 
   const match = detail?.match;
+  const actions = match ? statusActions(match.status) : [];
+  const orderedActions = [...actions.filter((action) => action.danger), ...actions.filter((action) => !action.danger)];
   return (
-    <main className="match-detail-page">
+    <main className={`match-detail-page${actions.length ? " has-fixed-actions" : ""}`}>
       <section className="page-heading detail-heading">
         <div className="detail-title-row">
           <Button type="text" shape="circle" icon={<ArrowLeftOutlined />} aria-label="返回比赛列表" onClick={() => navigate("/matches")} />
@@ -133,14 +135,14 @@ export default function MatchDetailPage() {
             <Title level={2}>{match?.name || "比赛详情"}</Title>
           </div>
         </div>
-        {match ? (
-          <Space wrap>
-            {statusActions(match.status).map((action) => (
+        {match && actions.length ? (
+          <Space className="detail-actions" size={8} role="group" aria-label="比赛操作">
+            <Button icon={<EditOutlined />} onClick={() => navigate(`/matches/${id}/edit`)}>编辑</Button>
+            {orderedActions.map((action) => (
               <Button key={action.status} danger={action.danger} type={action.danger ? "default" : "primary"} onClick={() => setTargetStatus(action.status)}>
                 {action.label}
               </Button>
             ))}
-            <Button icon={<EditOutlined />} disabled={match.status === "ended" || match.status === "cancelled"} onClick={() => navigate(`/matches/${id}/edit`)}>编辑</Button>
           </Space>
         ) : null}
       </section>

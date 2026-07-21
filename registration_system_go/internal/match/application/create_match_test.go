@@ -120,6 +120,8 @@ func (f *fakeTeamAccess) EnsureManager(context.Context, int64, int64) error {
 
 func (f *fakeTeamAccess) EnsureExists(context.Context, int64) error { return f.err }
 
+func (f *fakeTeamAccess) EnsureActive(context.Context, int64) error { return f.err }
+
 type fakeDefaultLimits struct {
 	limits                 domain.IndividualLimits
 	receivedPlayersPerTeam int

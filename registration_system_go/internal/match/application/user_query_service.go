@@ -1,0 +1,84 @@
+package application
+
+import (
+	"context"
+	"strings"
+
+	"github.com/google/uuid"
+	"github.com/oryjk/registration_system/registration_system_go/internal/match/domain"
+	"github.com/oryjk/registration_system/registration_system_go/internal/match/ports"
+	sharedauth "github.com/oryjk/registration_system/registration_system_go/internal/shared/auth"
+	sharederror "github.com/oryjk/registration_system/registration_system_go/internal/shared/domain"
+)
+
+type UserMatchQueryService struct {
+	repository ports.UserMatchRepository
+}
+
+type UserMatchListQuery struct {
+	Status   *domain.MatchStatus
+	Search   string
+	Page     int
+	PageSize int
+}
+
+type UserMatchListResult struct {
+	Items    []ports.MatchItem
+	Total    int64
+	Page     int
+	PageSize int
+}
+
+type UserMatchDetail struct {
+	Item   ports.MatchItem
+	Groups []ports.UserGroupState
+}
+
+func NewUserMatchQueryService(repository ports.UserMatchRepository) UserMatchQueryService {
+	return UserMatchQueryService{repository: repository}
+}
+
+func (s UserMatchQueryService) List(ctx context.Context, actor sharedauth.Actor, query UserMatchListQuery) (UserMatchListResult, error) {
+	if !actor.IsUser() {
+		return UserMatchListResult{}, sharederror.ErrForbidden
+	}
+	if query.Status != nil && !validMatchStatus(*query.Status) {
+		return UserMatchListResult{}, sharederror.New(sharederror.KindValidation, "比赛状态筛选无效")
+	}
+	if query.Page <= 0 {
+		query.Page = 1
+	}
+	if query.PageSize <= 0 {
+		query.PageSize = defaultMatchPageSize
+	}
+	if query.PageSize > maxMatchPageSize {
+		query.PageSize = maxMatchPageSize
+	}
+	filter := ports.MatchListFilter{
+		Status: query.Status, Search: strings.TrimSpace(query.Search),
+		Limit: query.PageSize, Offset: (query.Page - 1) * query.PageSize,
+	}
+	items, err := s.repository.ListForUser(ctx, filter)
+	if err != nil {
+		return UserMatchListResult{}, sharederror.Wrap(sharederror.KindInternal, "查询比赛列表失败", err)
+	}
+	total, err := s.repository.CountForUser(ctx, filter)
+	if err != nil {
+		return UserMatchListResult{}, sharederror.Wrap(sharederror.KindInternal, "统计比赛失败", err)
+	}
+	return UserMatchListResult{Items: items, Total: total, Page: query.Page, PageSize: query.PageSize}, nil
+}
+
+func (s UserMatchQueryService) Get(ctx context.Context, actor sharedauth.Actor, id uuid.UUID) (UserMatchDetail, error) {
+	if !actor.IsUser() {
+		return UserMatchDetail{}, sharederror.ErrForbidden
+	}
+	item, groups, found, err := s.repository.FindForUser(ctx, id, actor.ID)
+	if err != nil {
+		return UserMatchDetail{}, sharederror.Wrap(sharederror.KindInternal, "查询比赛详情失败", err)
+	}
+	if !found {
+		return UserMatchDetail{}, sharederror.New(sharederror.KindNotFound, "比赛不存在")
+	}
+	return UserMatchDetail{Item: item, Groups: groups}, nil
+}

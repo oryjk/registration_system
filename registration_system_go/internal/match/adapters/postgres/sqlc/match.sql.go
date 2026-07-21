@@ -216,6 +216,51 @@ func (q *Queries) CreateRegistrationGroup(ctx context.Context, arg CreateRegistr
 	return i, err
 }
 
+const createTeamApplication = `-- name: CreateTeamApplication :exec
+INSERT INTO match_team_applications (
+    id,
+    match_id,
+    applicant_team_id,
+    introduction,
+    status,
+    created_by_user_id,
+    selected_at,
+    withdrawn_at,
+    created_at,
+    updated_at
+)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+`
+
+type CreateTeamApplicationParams struct {
+	ID              pgtype.UUID      `json:"id"`
+	MatchID         pgtype.UUID      `json:"match_id"`
+	ApplicantTeamID int64            `json:"applicant_team_id"`
+	Introduction    string           `json:"introduction"`
+	Status          string           `json:"status"`
+	CreatedByUserID int64            `json:"created_by_user_id"`
+	SelectedAt      pgtype.Timestamp `json:"selected_at"`
+	WithdrawnAt     pgtype.Timestamp `json:"withdrawn_at"`
+	CreatedAt       pgtype.Timestamp `json:"created_at"`
+	UpdatedAt       pgtype.Timestamp `json:"updated_at"`
+}
+
+func (q *Queries) CreateTeamApplication(ctx context.Context, arg CreateTeamApplicationParams) error {
+	_, err := q.db.Exec(ctx, createTeamApplication,
+		arg.ID,
+		arg.MatchID,
+		arg.ApplicantTeamID,
+		arg.Introduction,
+		arg.Status,
+		arg.CreatedByUserID,
+		arg.SelectedAt,
+		arg.WithdrawnAt,
+		arg.CreatedAt,
+		arg.UpdatedAt,
+	)
+	return err
+}
+
 const deleteMatch = `-- name: DeleteMatch :execrows
 DELETE FROM matches
 WHERE id = $1
@@ -229,6 +274,33 @@ func (q *Queries) DeleteMatch(ctx context.Context, id pgtype.UUID) (int64, error
 	return result.RowsAffected(), nil
 }
 
+const getActiveGuestGroupForUpdate = `-- name: GetActiveGuestGroupForUpdate :one
+SELECT id, match_id, kind, team_id, min_players, max_players, status, created_at, updated_at, cancelled_at
+FROM match_registration_groups
+WHERE match_id = $1
+  AND kind = 'guest_team'
+  AND status <> 'cancelled'
+FOR UPDATE
+`
+
+func (q *Queries) GetActiveGuestGroupForUpdate(ctx context.Context, matchID pgtype.UUID) (MatchRegistrationGroup, error) {
+	row := q.db.QueryRow(ctx, getActiveGuestGroupForUpdate, matchID)
+	var i MatchRegistrationGroup
+	err := row.Scan(
+		&i.ID,
+		&i.MatchID,
+		&i.Kind,
+		&i.TeamID,
+		&i.MinPlayers,
+		&i.MaxPlayers,
+		&i.Status,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.CancelledAt,
+	)
+	return i, err
+}
+
 const getMatchByID = `-- name: GetMatchByID :one
 SELECT id, name, publication_mode, opponent_state, status, host_team_id, away_team_id, opponent_name, players_per_team, start_time, end_time, location, location_latitude, location_longitude, description, created_by_user_id, created_at, updated_at, created_by_admin_id
 FROM matches
@@ -237,6 +309,40 @@ WHERE id = $1
 
 func (q *Queries) GetMatchByID(ctx context.Context, id pgtype.UUID) (Match, error) {
 	row := q.db.QueryRow(ctx, getMatchByID, id)
+	var i Match
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.PublicationMode,
+		&i.OpponentState,
+		&i.Status,
+		&i.HostTeamID,
+		&i.AwayTeamID,
+		&i.OpponentName,
+		&i.PlayersPerTeam,
+		&i.StartTime,
+		&i.EndTime,
+		&i.Location,
+		&i.LocationLatitude,
+		&i.LocationLongitude,
+		&i.Description,
+		&i.CreatedByUserID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.CreatedByAdminID,
+	)
+	return i, err
+}
+
+const getMatchByIDForUpdate = `-- name: GetMatchByIDForUpdate :one
+SELECT id, name, publication_mode, opponent_state, status, host_team_id, away_team_id, opponent_name, players_per_team, start_time, end_time, location, location_latitude, location_longitude, description, created_by_user_id, created_at, updated_at, created_by_admin_id
+FROM matches
+WHERE id = $1
+FOR UPDATE
+`
+
+func (q *Queries) GetMatchByIDForUpdate(ctx context.Context, id pgtype.UUID) (Match, error) {
+	row := q.db.QueryRow(ctx, getMatchByIDForUpdate, id)
 	var i Match
 	err := row.Scan(
 		&i.ID,
@@ -321,6 +427,37 @@ func (q *Queries) GetMatchForAdmin(ctx context.Context, id pgtype.UUID) (GetMatc
 		&i.CreatedByAdminID,
 		&i.HostTeamName,
 		&i.AwayTeamName,
+	)
+	return i, err
+}
+
+const getTeamApplicationByIDForUpdate = `-- name: GetTeamApplicationByIDForUpdate :one
+SELECT id, match_id, applicant_team_id, introduction, status, created_by_user_id, selected_at, withdrawn_at, created_at, updated_at
+FROM match_team_applications
+WHERE match_id = $1
+  AND id = $2
+FOR UPDATE
+`
+
+type GetTeamApplicationByIDForUpdateParams struct {
+	MatchID pgtype.UUID `json:"match_id"`
+	ID      pgtype.UUID `json:"id"`
+}
+
+func (q *Queries) GetTeamApplicationByIDForUpdate(ctx context.Context, arg GetTeamApplicationByIDForUpdateParams) (MatchTeamApplication, error) {
+	row := q.db.QueryRow(ctx, getTeamApplicationByIDForUpdate, arg.MatchID, arg.ID)
+	var i MatchTeamApplication
+	err := row.Scan(
+		&i.ID,
+		&i.MatchID,
+		&i.ApplicantTeamID,
+		&i.Introduction,
+		&i.Status,
+		&i.CreatedByUserID,
+		&i.SelectedAt,
+		&i.WithdrawnAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
@@ -476,6 +613,131 @@ func (q *Queries) ListMatchesForAdmin(ctx context.Context, arg ListMatchesForAdm
 	return items, nil
 }
 
+const listPendingTeamApplicationsForUpdate = `-- name: ListPendingTeamApplicationsForUpdate :many
+SELECT id, match_id, applicant_team_id, introduction, status, created_by_user_id, selected_at, withdrawn_at, created_at, updated_at
+FROM match_team_applications
+WHERE match_id = $1
+  AND status = 'pending'
+ORDER BY created_at, id
+FOR UPDATE
+`
+
+func (q *Queries) ListPendingTeamApplicationsForUpdate(ctx context.Context, matchID pgtype.UUID) ([]MatchTeamApplication, error) {
+	rows, err := q.db.Query(ctx, listPendingTeamApplicationsForUpdate, matchID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []MatchTeamApplication
+	for rows.Next() {
+		var i MatchTeamApplication
+		if err := rows.Scan(
+			&i.ID,
+			&i.MatchID,
+			&i.ApplicantTeamID,
+			&i.Introduction,
+			&i.Status,
+			&i.CreatedByUserID,
+			&i.SelectedAt,
+			&i.WithdrawnAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listRegistrationGroupStatesForUser = `-- name: ListRegistrationGroupStatesForUser :many
+SELECT g.id, g.match_id, g.kind, g.team_id, g.min_players, g.max_players, g.status, g.created_at, g.updated_at, g.cancelled_at,
+       COALESCE((
+           SELECT SUM(active.registration_count)
+           FROM match_registrations active
+           WHERE active.group_id = g.id
+             AND active.status = 'attending'
+       ), 0)::bigint AS attending_count,
+       mine.id AS my_registration_id,
+       mine.status AS my_registration_status,
+       mine.registration_count AS my_registration_count,
+       mine.created_at AS my_registration_created_at,
+       mine.updated_at AS my_registration_updated_at,
+       mine.cancelled_at AS my_registration_cancelled_at
+FROM match_registration_groups g
+LEFT JOIN match_registrations mine
+    ON mine.group_id = g.id
+   AND mine.user_id = $1
+WHERE g.match_id = $2
+ORDER BY g.created_at, g.id
+`
+
+type ListRegistrationGroupStatesForUserParams struct {
+	UserID  int64       `json:"user_id"`
+	MatchID pgtype.UUID `json:"match_id"`
+}
+
+type ListRegistrationGroupStatesForUserRow struct {
+	ID                        pgtype.UUID      `json:"id"`
+	MatchID                   pgtype.UUID      `json:"match_id"`
+	Kind                      string           `json:"kind"`
+	TeamID                    *int64           `json:"team_id"`
+	MinPlayers                *int32           `json:"min_players"`
+	MaxPlayers                *int32           `json:"max_players"`
+	Status                    string           `json:"status"`
+	CreatedAt                 pgtype.Timestamp `json:"created_at"`
+	UpdatedAt                 pgtype.Timestamp `json:"updated_at"`
+	CancelledAt               pgtype.Timestamp `json:"cancelled_at"`
+	AttendingCount            int64            `json:"attending_count"`
+	MyRegistrationID          pgtype.UUID      `json:"my_registration_id"`
+	MyRegistrationStatus      *string          `json:"my_registration_status"`
+	MyRegistrationCount       *int32           `json:"my_registration_count"`
+	MyRegistrationCreatedAt   pgtype.Timestamp `json:"my_registration_created_at"`
+	MyRegistrationUpdatedAt   pgtype.Timestamp `json:"my_registration_updated_at"`
+	MyRegistrationCancelledAt pgtype.Timestamp `json:"my_registration_cancelled_at"`
+}
+
+func (q *Queries) ListRegistrationGroupStatesForUser(ctx context.Context, arg ListRegistrationGroupStatesForUserParams) ([]ListRegistrationGroupStatesForUserRow, error) {
+	rows, err := q.db.Query(ctx, listRegistrationGroupStatesForUser, arg.UserID, arg.MatchID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListRegistrationGroupStatesForUserRow
+	for rows.Next() {
+		var i ListRegistrationGroupStatesForUserRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.MatchID,
+			&i.Kind,
+			&i.TeamID,
+			&i.MinPlayers,
+			&i.MaxPlayers,
+			&i.Status,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.CancelledAt,
+			&i.AttendingCount,
+			&i.MyRegistrationID,
+			&i.MyRegistrationStatus,
+			&i.MyRegistrationCount,
+			&i.MyRegistrationCreatedAt,
+			&i.MyRegistrationUpdatedAt,
+			&i.MyRegistrationCancelledAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listRegistrationGroupsByMatchID = `-- name: ListRegistrationGroupsByMatchID :many
 SELECT id, match_id, kind, team_id, min_players, max_players, status, created_at, updated_at, cancelled_at
 FROM match_registration_groups
@@ -503,6 +765,132 @@ func (q *Queries) ListRegistrationGroupsByMatchID(ctx context.Context, matchID p
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.CancelledAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listTeamApplications = `-- name: ListTeamApplications :many
+SELECT a.id, a.match_id, a.applicant_team_id, a.introduction, a.status, a.created_by_user_id, a.selected_at, a.withdrawn_at, a.created_at, a.updated_at, t.name AS applicant_team_name
+FROM match_team_applications a
+JOIN teams t ON t.id = a.applicant_team_id
+WHERE a.match_id = $1
+ORDER BY
+    CASE a.status
+        WHEN 'selected' THEN 0
+        WHEN 'pending' THEN 1
+        WHEN 'withdrawn' THEN 2
+        ELSE 3
+    END,
+    a.created_at,
+    a.id
+`
+
+type ListTeamApplicationsRow struct {
+	ID                pgtype.UUID      `json:"id"`
+	MatchID           pgtype.UUID      `json:"match_id"`
+	ApplicantTeamID   int64            `json:"applicant_team_id"`
+	Introduction      string           `json:"introduction"`
+	Status            string           `json:"status"`
+	CreatedByUserID   int64            `json:"created_by_user_id"`
+	SelectedAt        pgtype.Timestamp `json:"selected_at"`
+	WithdrawnAt       pgtype.Timestamp `json:"withdrawn_at"`
+	CreatedAt         pgtype.Timestamp `json:"created_at"`
+	UpdatedAt         pgtype.Timestamp `json:"updated_at"`
+	ApplicantTeamName string           `json:"applicant_team_name"`
+}
+
+func (q *Queries) ListTeamApplications(ctx context.Context, matchID pgtype.UUID) ([]ListTeamApplicationsRow, error) {
+	rows, err := q.db.Query(ctx, listTeamApplications, matchID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListTeamApplicationsRow
+	for rows.Next() {
+		var i ListTeamApplicationsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.MatchID,
+			&i.ApplicantTeamID,
+			&i.Introduction,
+			&i.Status,
+			&i.CreatedByUserID,
+			&i.SelectedAt,
+			&i.WithdrawnAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.ApplicantTeamName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listTeamApplicationsForManager = `-- name: ListTeamApplicationsForManager :many
+SELECT a.id, a.match_id, a.applicant_team_id, a.introduction, a.status, a.created_by_user_id, a.selected_at, a.withdrawn_at, a.created_at, a.updated_at, t.name AS applicant_team_name
+FROM match_team_applications a
+JOIN teams t ON t.id = a.applicant_team_id
+JOIN team_members tm
+  ON tm.team_id = a.applicant_team_id
+ AND tm.user_id = $1
+ AND tm.status = 'active'
+ AND tm.role IN ('captain', 'leader')
+WHERE a.match_id = $2
+ORDER BY a.created_at, a.id
+`
+
+type ListTeamApplicationsForManagerParams struct {
+	UserID  int64       `json:"user_id"`
+	MatchID pgtype.UUID `json:"match_id"`
+}
+
+type ListTeamApplicationsForManagerRow struct {
+	ID                pgtype.UUID      `json:"id"`
+	MatchID           pgtype.UUID      `json:"match_id"`
+	ApplicantTeamID   int64            `json:"applicant_team_id"`
+	Introduction      string           `json:"introduction"`
+	Status            string           `json:"status"`
+	CreatedByUserID   int64            `json:"created_by_user_id"`
+	SelectedAt        pgtype.Timestamp `json:"selected_at"`
+	WithdrawnAt       pgtype.Timestamp `json:"withdrawn_at"`
+	CreatedAt         pgtype.Timestamp `json:"created_at"`
+	UpdatedAt         pgtype.Timestamp `json:"updated_at"`
+	ApplicantTeamName string           `json:"applicant_team_name"`
+}
+
+func (q *Queries) ListTeamApplicationsForManager(ctx context.Context, arg ListTeamApplicationsForManagerParams) ([]ListTeamApplicationsForManagerRow, error) {
+	rows, err := q.db.Query(ctx, listTeamApplicationsForManager, arg.UserID, arg.MatchID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListTeamApplicationsForManagerRow
+	for rows.Next() {
+		var i ListTeamApplicationsForManagerRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.MatchID,
+			&i.ApplicantTeamID,
+			&i.Introduction,
+			&i.Status,
+			&i.CreatedByUserID,
+			&i.SelectedAt,
+			&i.WithdrawnAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.ApplicantTeamName,
 		); err != nil {
 			return nil, err
 		}
@@ -648,6 +1036,31 @@ func (q *Queries) UpdateMatchDetails(ctx context.Context, arg UpdateMatchDetails
 	return i, err
 }
 
+const updateMatchOpponent = `-- name: UpdateMatchOpponent :exec
+UPDATE matches
+SET away_team_id = $2,
+    opponent_state = $3,
+    updated_at = $4
+WHERE id = $1
+`
+
+type UpdateMatchOpponentParams struct {
+	ID            pgtype.UUID      `json:"id"`
+	AwayTeamID    *int64           `json:"away_team_id"`
+	OpponentState string           `json:"opponent_state"`
+	UpdatedAt     pgtype.Timestamp `json:"updated_at"`
+}
+
+func (q *Queries) UpdateMatchOpponent(ctx context.Context, arg UpdateMatchOpponentParams) error {
+	_, err := q.db.Exec(ctx, updateMatchOpponent,
+		arg.ID,
+		arg.AwayTeamID,
+		arg.OpponentState,
+		arg.UpdatedAt,
+	)
+	return err
+}
+
 const updateMatchStatus = `-- name: UpdateMatchStatus :one
 UPDATE matches
 SET status = $2,
@@ -686,4 +1099,57 @@ func (q *Queries) UpdateMatchStatus(ctx context.Context, arg UpdateMatchStatusPa
 		&i.CreatedByAdminID,
 	)
 	return i, err
+}
+
+const updateRegistrationGroupState = `-- name: UpdateRegistrationGroupState :exec
+UPDATE match_registration_groups
+SET status = $2,
+    cancelled_at = $3,
+    updated_at = $4
+WHERE id = $1
+`
+
+type UpdateRegistrationGroupStateParams struct {
+	ID          pgtype.UUID      `json:"id"`
+	Status      string           `json:"status"`
+	CancelledAt pgtype.Timestamp `json:"cancelled_at"`
+	UpdatedAt   pgtype.Timestamp `json:"updated_at"`
+}
+
+func (q *Queries) UpdateRegistrationGroupState(ctx context.Context, arg UpdateRegistrationGroupStateParams) error {
+	_, err := q.db.Exec(ctx, updateRegistrationGroupState,
+		arg.ID,
+		arg.Status,
+		arg.CancelledAt,
+		arg.UpdatedAt,
+	)
+	return err
+}
+
+const updateTeamApplication = `-- name: UpdateTeamApplication :exec
+UPDATE match_team_applications
+SET status = $2,
+    selected_at = $3,
+    withdrawn_at = $4,
+    updated_at = $5
+WHERE id = $1
+`
+
+type UpdateTeamApplicationParams struct {
+	ID          pgtype.UUID      `json:"id"`
+	Status      string           `json:"status"`
+	SelectedAt  pgtype.Timestamp `json:"selected_at"`
+	WithdrawnAt pgtype.Timestamp `json:"withdrawn_at"`
+	UpdatedAt   pgtype.Timestamp `json:"updated_at"`
+}
+
+func (q *Queries) UpdateTeamApplication(ctx context.Context, arg UpdateTeamApplicationParams) error {
+	_, err := q.db.Exec(ctx, updateTeamApplication,
+		arg.ID,
+		arg.Status,
+		arg.SelectedAt,
+		arg.WithdrawnAt,
+		arg.UpdatedAt,
+	)
+	return err
 }

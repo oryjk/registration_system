@@ -567,6 +567,15 @@ select {
   margin-bottom: 0 !important;
 }
 
+.detail-actions {
+  justify-content: flex-end;
+}
+
+.detail-actions .ant-btn {
+  flex: none;
+  white-space: nowrap;
+}
+
 .detail-panel,
 .form-panel {
   padding: 24px;
@@ -785,6 +794,37 @@ select {
   .detail-heading {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .detail-actions {
+    position: fixed;
+    z-index: 900;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: grid;
+    width: auto;
+    grid-template-columns: 0.8fr 1.1fr 1.2fr;
+    gap: 8px;
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+    background: #fff;
+    border-top: 1px solid #dce2dd;
+    box-shadow: 0 -4px 16px rgba(24, 33, 28, 0.1);
+  }
+
+  .detail-actions .ant-space-item,
+  .detail-actions .ant-btn {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .detail-actions .ant-btn {
+    height: 40px;
+    padding-inline: 10px;
+  }
+
+  .match-detail-page.has-fixed-actions {
+    padding-bottom: calc(72px + env(safe-area-inset-bottom));
   }
 
   .detail-panel,

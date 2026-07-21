@@ -20,17 +20,33 @@ type Repository interface {
 	Delete(context.Context, uuid.UUID) (bool, error)
 }
 
-type AdminMatchFilter struct {
+type MatchListFilter struct {
 	Status *domain.MatchStatus
 	Search string
 	Limit  int
 	Offset int
 }
 
-type AdminMatchItem struct {
+type AdminMatchFilter = MatchListFilter
+
+type MatchItem struct {
 	Match        domain.Match
 	HostTeamName string
 	AwayTeamName *string
+}
+
+type AdminMatchItem = MatchItem
+
+type UserGroupState struct {
+	Group          domain.RegistrationGroup
+	AttendingCount int
+	MyRegistration *domain.Registration
+}
+
+type UserMatchRepository interface {
+	ListForUser(context.Context, MatchListFilter) ([]MatchItem, error)
+	CountForUser(context.Context, MatchListFilter) (int64, error)
+	FindForUser(context.Context, uuid.UUID, int64) (MatchItem, []UserGroupState, bool, error)
 }
 
 // AdminRosterEntry 是管理端报名组花名册中的一行：球队组包含全部成员
