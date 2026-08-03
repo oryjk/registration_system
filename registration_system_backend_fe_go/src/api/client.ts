@@ -1,9 +1,10 @@
-import { clearAdminToken, getAdminToken } from "../auth/token-storage";
-import { getApiBaseUrl } from "../config/api";
+import { expireAdminSession } from "../auth/session-expiry";
+import { getAdminToken } from "../auth/token-storage";
+import { type AuthMode, buildApiUrl, getApiBaseUrl } from "../config/api";
 import type { ApiResponse } from "../types/api";
 
-interface RequestOptions extends RequestInit {
-  admin?: boolean;
+export interface RequestOptions extends RequestInit {
+  auth?: AuthMode;
 }
 
 export class ApiError extends Error {
@@ -22,10 +23,9 @@ export async function request<T>(
   path: string,
   options: RequestOptions = {},
 ): Promise<T> {
-  const { admin = true, headers, ...requestOptions } = options;
-  const prefix = admin ? "/api/admin" : "";
-  const token = admin ? getAdminToken() : null;
-  const response = await fetch(`${getApiBaseUrl()}${prefix}${path}`, {
+  const { auth = "required", headers, ...requestOptions } = options;
+  const token = auth === "required" ? getAdminToken() : null;
+  const response = await fetch(buildApiUrl(getApiBaseUrl(), auth, path), {
     ...requestOptions,
     headers: {
       "Content-Type": "application/json",
@@ -33,6 +33,9 @@ export async function request<T>(
       ...headers,
     },
   });
+  if (response.status === 401 && auth === "required") {
+    expireAdminSession();
+  }
 
   let body: Partial<ApiResponse<T>> | undefined;
   try {
@@ -45,10 +48,6 @@ export async function request<T>(
   }
 
   if (!response.ok || body.code !== 0) {
-    if (response.status === 401 && admin) {
-      clearAdminToken();
-      window.dispatchEvent(new Event("admin-auth-expired"));
-    }
     throw new ApiError(
       body.message || `请求失败 (${response.status})`,
       response.status,

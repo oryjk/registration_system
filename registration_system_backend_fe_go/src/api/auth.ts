@@ -7,6 +7,7 @@ import { request } from "./client";
 
 export function loginAdmin(username: string, password: string) {
   return request<AdminLoginResult>("/auth/login", {
+    auth: "login",
     method: "POST",
     body: JSON.stringify({ username, password }),
   });

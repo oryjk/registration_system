@@ -16,6 +16,7 @@ const publicPath = routePrefix(process.env.ADMIN_PUBLIC_PATH);
 const base = routePrefix(process.env.ADMIN_ROUTE_BASE);
 
 export default defineConfig({
+  access: {},
   antd: {
     appConfig: {},
     configProvider: {
@@ -35,6 +36,7 @@ export default defineConfig({
   fastRefresh: true,
   hash: true,
   history: { type: "browser" },
+  initialState: {},
   layout: {
     locale: false,
     ...defaultSettings,
@@ -45,10 +47,16 @@ export default defineConfig({
     default: "zh-CN",
   },
   manifest: {},
+  model: {},
   proxy: proxy[UMI_ENV as keyof typeof proxy],
   publicPath,
+  reactQuery: {},
   routePrefetch: {},
   routes,
   title: "开踢管理台",
   utoopack: {},
+  define: {
+    "process.env.ADMIN_API_BASE_URL":
+      process.env.ADMIN_API_BASE_URL?.trim() || "",
+  },
 });
