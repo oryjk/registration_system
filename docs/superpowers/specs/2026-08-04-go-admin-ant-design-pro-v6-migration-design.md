@@ -13,7 +13,7 @@ Ant Design Pro v6 不是单一依赖版本，而是一套完整的中后台应�
 ## 目标
 
 - 将 Go 管理后台完整迁移到 Ant Design Pro v6 架构。
-- 使用 Umi Max 4 管理路由、布局、初始化状态、权限、请求和 React Query。
+- 使用 Umi Max 4 管理路由、布局、初始化状态、权限和 React Query。
 - 使用 antd 6、ProComponents 3、CSS Variables、Tailwind CSS 4 和 antd-style 4 建立一致的运营后台设计语言。
 - 保留现有管理员认证、权限规则、API DTO、业务行为和可访问 URL。
 - 保留深绿色品牌方向和紧凑、克制、高信息密度的赛事运营台风格。
@@ -36,7 +36,7 @@ Ant Design Pro v6 不是单一依赖版本，而是一套完整的中后台应�
 
 - Node.js `>=20.0.0`
 - React 19
-- `antd` 6
+- `antd` 6.4.5，使用精确版本以匹配 Ant Design CLI 的离线元数据
 - `@ant-design/icons` 6
 - `@ant-design/pro-components` 3
 - `@umijs/max` 4
@@ -45,7 +45,7 @@ Ant Design Pro v6 不是单一依赖版本，而是一套完整的中后台应�
 - Tailwind CSS 4
 - Biome 2
 - TypeScript 6
-- `@ant-design/cli` 6.5.3
+- `@ant-design/cli` 6.5.3，使用精确版本
 
 Bun 继续负责依赖安装、锁文件和项目脚本入口。Umi Max 及模板中的 Node 脚本在 Node.js 20+ 环境运行；开发和生产构建由 Umi 的 utoopack 配置完成。不得以 Bun 原生兼容性为理由移除 Node 运行前提。
 
@@ -66,14 +66,13 @@ Bun 继续负责依赖安装、锁文件和项目脚本入口。Umi Max 及模�
 
 ```text
 config/config.ts
-  |-- Umi Max / utoopack / publicPath / proxy
+  |-- Umi Max / utoopack / publicPath / route base / proxy
   |-- antd 6 cssVar / locale / theme
-  |-- initialState / access / request / reactQuery / layout
+  |-- initialState / access / reactQuery / layout
   v
-src/app.tsx ------------------------ 全局运行时配置与错误边界
+src/app.tsx ------------------------ 全局运行时配置、认证失效与错误边界
   |-- getInitialState() ------------ Token 恢复与当前管理员
   |-- layout() --------------------- ProLayout 品牌、菜单、账号与退出
-  |-- request ---------------------- 请求错误适配
   v
 src/access.ts ---------------------- 登录态与超级管理员权限
   v
@@ -93,8 +92,9 @@ src/pages/* ------------------------ PageContainer / ProTable / ProForm
 - `hash` 和 utoopack。
 - 中文 locale。
 - antd `cssVar`、filled 表单风格与品牌 Token。
-- `initialState`、`access`、`layout`、`request` 和 `reactQuery` 插件。
+- `initialState`、`access`、`layout` 和 `reactQuery` 插件；不启用 Umi request 插件。
 - 开发代理 `/go-api` 到 `API_PROXY_TARGET`，默认 `http://127.0.0.1:18080`。
+- 浏览器 history，以及成对配置的资源 `publicPath` 和路由 `base`。
 - 默认根路径开发构建与 `/registration-admin/` Nginx 构建。
 - 路由预加载和稳定的构建产物 hash。
 
@@ -118,6 +118,20 @@ src/pages/* ------------------------ PageContainer / ProTable / ProForm
 
 受保护页面由 Umi access 规则统一拦截。`/admins` 同时要求超级管理员权限。未知路径进入 404。迁移后不再并存 React Router 的 `<Routes>`、`Navigate`、`Outlet` 或 `NavLink`。
 
+路由行为固定如下：
+
+| 路由 | 布局 | 权限 | 菜单 | 未认证/无权限行为 |
+| --- | --- | --- | --- | --- |
+| `/login` | 无 ProLayout | 公开 | 隐藏 | 已登录时返回目标 URL 或 `/` |
+| `/` | ProLayout | 已登录 | 系统概览 | 未登录跳转 `/login?redirect=<完整路径>` |
+| `/matches` 及子路由 | ProLayout | 已登录 | 比赛管理 | 未登录跳转并保留 path、query、hash |
+| `/teams` | ProLayout | 已登录 | 球队管理 | 未登录跳转并保留 path、query、hash |
+| `/admins` | ProLayout | 超级管理员 | 条件显示 | 未登录跳登录，已登录无权限跳 403 |
+| `/access` | ProLayout | 已登录 | 接入状态 | 未登录跳转并保留完整目标 URL |
+| `/403`、`/404` | 无业务菜单 | 按状态进入 | 隐藏 | 提供返回首页或登录入口 |
+
+普通构建设置 `publicPath = base = "/"`。Nginx 构建设置 `publicPath = base = "/registration-admin/"`，history 使用 browser 模式。Nginx 必须配置 `try_files $uri $uri/ /registration-admin/index.html`，确保 `/registration-admin/matches/:id` 等深链接刷新仍进入应用。应用内 redirect 参数使用相对于 route base 的 path、query 和 hash，不允许跳转到站外 URL。
+
 ## 认证与权限
 
 现有 Local Storage key `registration-admin-go.token.v1` 保持不变，避免本地联调状态无故失效。
@@ -127,9 +141,12 @@ src/pages/* ------------------------ PageContainer / ProTable / ProForm
 1. 无 Token 且不在登录页时，返回未认证状态。
 2. 有 Token 时调用现有 `/api/admin/auth/me`。
 3. 成功后返回当前管理员。
-4. 401、Token 无效或用户加载失败时清除 Token 并返回未认证状态。
+4. 仅当 `/auth/me` 返回 401 时清除 Token 并返回未认证状态。
+5. 超时、断网、5xx 或无法解析响应时保留 Token，返回带 `authBootstrapError` 的状态，由全页错误状态提供重试，不把临时服务故障伪装成登出。
 
-登录页继续调用 `/api/admin/auth/login`。成功后写入 Token、更新 Umi initial state，再跳转到登录前目标 URL 或首页。退出登录清除 Token、清空查询缓存和 initial state，再跳转 `/login`。
+登录页继续调用 `/api/admin/auth/login`。成功后写入 Token、更新 Umi initial state，再跳转到经过站内校验的目标 URL 或首页。登录请求本身的 401 只显示账号或密码错误，不触发全局过期流程。退出登录清除 Token、清空查询缓存和 initial state，再跳转 `/login`。
+
+认证请求按 `auth: "required" | "login" | "none"` 分类：管理端业务与 `/auth/me` 为 `required`，登录为 `login`，健康检查为 `none`。只有 `required` 请求的 401 进入全局过期处理。过期协调器在 Token 首次从有值变为空值时只派发一次事件；应用监听器幂等地清理 initial state 和 React Query cache，再执行一次登录跳转，避免并发 401 产生重复跳转或竞态。
 
 `src/access.ts` 只从 initial state 派生：
 
@@ -140,25 +157,28 @@ src/pages/* ------------------------ PageContainer / ProTable / ProForm
 
 ## 请求与服务端状态
 
-`src/api/client.ts` 继续是 Go API 协议适配边界：
+`src/api/client.ts` 是唯一 HTTP 客户端和 Go API 协议适配边界，不同时启用或封装 Umi request：
 
 - 管理端请求统一添加 `/api/admin` 前缀。
 - 自动附加 Bearer Token。
 - 严格解析 `{ code, message, data }`，仅 `code = 0` 视为成功。
 - 保留 `ApiError` 的 HTTP status、业务 code 和真实 message。
-- 401 触发统一认证过期流程。
+- 根据请求的 auth 分类处理 401。
 
 业务 API 函数继续位于 `src/api/`，不在页面直接拼 URL 或解析响应。
 
-React Query 位于 API 函数之上：
+React Query 是唯一服务端状态所有者，位于 API 函数之上：
 
 - 查询 key 按领域和参数稳定构造。
 - 比赛列表使用服务端分页参数作为 key。
 - 球队和管理员沿用后端当前的全量列表能力，不伪造分页接口。
 - 创建、编辑、取消、删除成功后只失效受影响的查询。
 - 表单提交等一次性命令可直接使用 mutation，不把编辑状态放入全局缓存。
+- 查询的 loading、error、retry 和刷新由 query hooks 统一提供；页面不再用 `useEffect` 复制远端数据到本地 state。
 
 页面只编排 loading、data、error、筛选和操作，不复制认证、请求解包或查询失效逻辑。
+
+所有 ProTable 均使用受控 `dataSource` 和 `loading`，不使用 ProTable 自带 `request`。比赛列表的分页和筛选变化更新 URL，URL 参数驱动 React Query key；mutation 成功后失效对应 key，React Query 刷新后将新数据传回 ProTable。这样不会出现 ProTable 请求层和 React Query 缓存层并存。
 
 ## 布局与视觉系统
 
@@ -197,13 +217,15 @@ Tailwind 4 仅用于清晰的页面布局、间距和响应式规则；组件外
 
 ### 系统概览
 
-- 使用 `PageContainer` 和可由现有健康、比赛、球队接口真实得到的数据。
-- 不显示模板图表、趋势、销售额或虚构统计。
-- API 技术细节继续放在接入状态页。
+- 使用 `PageContainer`，只查询现有 `/health`，不为了迁移额外请求比赛或球队列表。
+- 固定展示 API 在线状态、最近一次健康检查延迟、最近检查时间和手动重试动作。
+- 健康检查失败时保留上次检查时间，显示离线与真实错误；初次加载显示骨架或 Spin。
+- API 地址、管理前缀、鉴权方式和已接入路由清单放在接入状态页。
+- 不显示模板图表、趋势、销售额、比赛数量、球队数量或其他新增统计。
 
 ### 比赛列表与详情
 
-- 比赛列表使用 `ProTable` request 模式和真实服务端分页。
+- 比赛列表使用 React Query 加载真实服务端分页，并以受控 `dataSource` 交给 ProTable。
 - 关键词、状态、页码和页大小同步到 URL。
 - 查看、编辑、取消、永久删除的权限、确认和 payload 保持不变。
 - 详情使用 `PageContainer`、状态摘要、Descriptions 和报名组 ProTable。
@@ -242,16 +264,16 @@ Tailwind 4 仅用于清晰的页面布局、间距和响应式规则；组件外
 
 Ant Design CLI skill 保存在目标子项目的 `.agents/skills/antd/`，目标子项目 `AGENTS.md` 包含受管理的使用说明。
 
-仓库根目录新增 `.codex/config.toml`，使可信项目中的 Codex App、CLI 和 IDE 扩展共享 Ant Design MCP。配置使用 STDIO：
+仓库根目录新增 `.codex/config.toml`，使可信项目中的 Codex App、CLI 和 IDE 扩展共享 Ant Design MCP。项目精确锁定 antd 6.4.5，该版本存在于 Ant Design CLI 6.5.3 的离线元数据中。配置使用 STDIO，并通过 `-p` 指定包名与实际 `antd` 可执行文件：
 
 ```toml
 [mcp_servers.antd]
 command = "bunx"
-args = ["@ant-design/cli@6.5.3", "mcp", "--version", "6.4.3", "--lang", "zh"]
+args = ["-p", "@ant-design/cli@6.5.3", "antd", "mcp", "--version", "6.4.5", "--lang", "zh"]
 startup_timeout_sec = 30
 ```
 
-实现时以最终安装的 antd 6 精确版本更新 `--version`，不得保留错误的 5.x 固定值。配置完成后使用 `codex mcp list` 和实际 MCP 初始化验证；Codex 客户端需要刷新或重启后才会加载新服务器。
+`package.json`、锁文件和 MCP 的 antd 版本必须保持 6.4.5，不再留待实施阶段决定。配置完成后使用 `codex mcp list` 和实际 MCP 初始化验证；Codex 客户端需要刷新或重启后才会加载新服务器。
 
 ## 构建与部署兼容
 
@@ -268,6 +290,17 @@ Umi 环境配置代替 `import.meta.env`。API base URL 必须支持开发代理
 
 构建产物继续输出到 `dist/`。现有 Nginx 部署路径和 Go API 路由不变。
 
+环境变量和 URL 规则固定如下：
+
+| 变量 | 开发默认值 | 普通生产默认值 | Nginx 构建默认值 | 用途 |
+| --- | --- | --- | --- | --- |
+| `ADMIN_API_BASE_URL` | `/go-api` | 空字符串，同源 | 空字符串，同源 | 浏览器请求的服务根地址 |
+| `API_PROXY_TARGET` | `http://127.0.0.1:18080` | 不使用 | 不使用 | 仅 Umi dev server 代理目标 |
+| `ADMIN_PUBLIC_PATH` | `/` | `/` | `/registration-admin/` | 静态资源地址 |
+| `ADMIN_ROUTE_BASE` | `/` | `/` | `/registration-admin/` | Umi 路由 base |
+
+URL 组装先去除 base 末尾斜杠，再按请求分类追加一次路径：`required` 与 `login` 追加 `/api/admin`，`none` 不追加。调用方传入的 path 必须以 `/` 开头且不含 `/api/admin`。因此健康检查为 `${base}/health`，登录为 `${base}/api/admin/auth/login`，不会出现双重前缀。生产默认同源，不回退到 localhost。
+
 ## 测试与验收
 
 ### 静态与构建检查
@@ -277,9 +310,10 @@ Umi 环境配置代替 `import.meta.env`。API base URL 必须支持开发代理
 - `bun run lint`
 - `bun run build`
 - `bun run build:nginx`
-- `bunx @ant-design/cli@6.5.3 doctor --format json`
-- `bunx @ant-design/cli@6.5.3 usage ./src --format json`
-- `bunx @ant-design/cli@6.5.3 lint ./src --format json`
+- 使用 Nginx 等价 history fallback 从 `/registration-admin/` 启动构建产物，并直达、刷新 `/registration-admin/matches/<id>?tab=groups#roster`
+- `bunx -p @ant-design/cli@6.5.3 antd doctor --format json`
+- `bunx -p @ant-design/cli@6.5.3 antd usage ./src --format json`
+- `bunx -p @ant-design/cli@6.5.3 antd lint ./src --format json`
 - `git diff --check`
 
 ### E2E 行为
@@ -306,6 +340,7 @@ Umi 环境配置代替 `import.meta.env`。API base URL 必须支持开发代理
 - 表格列在移动端合理收敛。
 - Modal、Drawer、日期和选择控件不超出视口。
 - 浏览器控制台没有未捕获异常，关键请求没有路径回归。
+- Nginx 子路径下的登录跳转、嵌套路由直达、刷新和 404 均正常，静态资源请求保持在 `/registration-admin/`。
 
 ## 删除项
 
@@ -318,6 +353,13 @@ Umi 环境配置代替 `import.meta.env`。API base URL 必须支持开发代理
 - 旧的自建 AppShell 与已被 ProLayout 替代的全局 CSS。
 - Ant Design Pro 模板演示页、Mock、AI、图表、地图、Cloudflare Worker 和无关文档。
 - 迁移过程中的临时模板与一次性脚本。
+
+同步更新当前架构说明，不允许旧栈指令继续生效：
+
+- 根目录 `README.md` 中 Go 管理端技术栈、开发代理和构建说明。
+- 子项目 `README.md`、`.env.example` 和 `AGENTS.md`。
+- `AGENTS.md` 中 React Router 懒加载规则改为 Umi 路由与 access 规则。
+- 历史 spec/plan 保留，但明确由本设计取代，不回写历史内容。
 
 删除前必须通过搜索确认没有剩余引用。
 
