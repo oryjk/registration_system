@@ -316,6 +316,7 @@ export function TeamMemberManager({ open, team, onClose, onTeamChange }: TeamMem
                 <Button
                   type="text"
                   shape="circle"
+                  className={`captain-action${isCaptain ? " captain-action-current" : ""}`}
                   disabled={!isCaptain && member.status !== "active"}
                   loading={actionLoading === `captain-${member.user_id}`}
                   icon={<CrownOutlined />}

@@ -553,6 +553,25 @@ select {
   margin-inline-end: 0;
 }
 
+.captain-action:not(.captain-action-current):not(:disabled) {
+  color: #66736b;
+}
+
+.captain-action:not(.captain-action-current):not(:disabled):hover {
+  color: #1f6b48 !important;
+  background: #edf6f1 !important;
+}
+
+.captain-action-current:not(:disabled) {
+  color: #b77900 !important;
+  background: #fff7db !important;
+}
+
+.captain-action-current:not(:disabled):hover {
+  color: #8f5f00 !important;
+  background: #ffefb8 !important;
+}
+
 .detail-heading {
   align-items: center;
 }
