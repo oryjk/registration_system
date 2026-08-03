@@ -10,8 +10,8 @@ import Table from "antd/es/table";
 import Tag from "antd/es/tag";
 import Typography from "antd/es/typography";
 import { useEffect, useState } from "react";
+import { useModel } from "umi";
 import { createAdmin, listAdmins } from "../api/auth";
-import { useAuth } from "../auth/useAuth";
 import type { AdminUser, CreateAdminPayload } from "../types/auth";
 
 const { Text, Title } = Typography;
@@ -28,7 +28,8 @@ function formatDateTime(value: string) {
 }
 
 export default function AdminListPage() {
-  const { admin } = useAuth();
+  const { initialState } = useModel("@@initialState");
+  const admin = initialState?.currentAdmin;
   const screens = Grid.useBreakpoint();
   const compact = !(screens.md ?? false);
   const [form] = Form.useForm<AdminFormValues>();

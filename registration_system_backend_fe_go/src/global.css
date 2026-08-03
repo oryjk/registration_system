@@ -23,3 +23,41 @@ body {
   outline: 2px solid var(--kt-brand);
   outline-offset: 2px;
 }
+
+.ant-pro-layout .ant-pro-sider-logo {
+  height: 64px;
+  padding-inline: 16px;
+  border-block-end: 1px solid #2b3730;
+}
+
+.ant-pro-layout .ant-menu-dark,
+.ant-pro-layout .ant-menu-dark .ant-menu-sub,
+.ant-pro-layout .ant-menu-dark > .ant-menu {
+  background: var(--kt-brand-dark);
+}
+
+.ant-pro-layout .ant-pro-layout-content {
+  background: var(--kt-page-bg);
+}
+
+.layout-session-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.layout-current-admin {
+  padding: 4px 8px;
+  color: #415048;
+  font-size: 13px;
+}
+
+.page-container-icon {
+  color: var(--kt-brand);
+  font-size: 20px;
+}
+
+.access-contract-panel {
+  min-height: auto;
+  margin-top: 16px;
+}

@@ -23,6 +23,14 @@ export default defineConfig({
       variant: "filled",
       theme: {
         cssVar: true,
+        components: {
+          Layout: {
+            bodyBg: "#f3f6f4",
+            headerBg: "#ffffff",
+            headerHeight: 64,
+            siderBg: "#18211c",
+          },
+        },
         token: {
           borderRadius: 6,
           colorInfo: "#28704b",
@@ -58,5 +66,6 @@ export default defineConfig({
   define: {
     "process.env.ADMIN_API_BASE_URL":
       process.env.ADMIN_API_BASE_URL?.trim() || "",
+    "process.env.ADMIN_ROUTE_BASE": base,
   },
 });

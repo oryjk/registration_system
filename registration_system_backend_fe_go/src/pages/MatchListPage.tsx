@@ -14,9 +14,8 @@ import Tag from "antd/es/tag";
 import Tooltip from "antd/es/tooltip";
 import Typography from "antd/es/typography";
 import { useCallback, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useModel, useNavigate } from "umi";
 import { deleteMatch, listMatches, updateMatchStatus } from "../api/matches";
-import { useAuth } from "../auth/useAuth";
 import type { MatchItem, MatchStatus } from "../types/match";
 import {
   matchStatusColors,
@@ -40,7 +39,8 @@ function formatDateTime(value: string) {
 
 export default function MatchListPage() {
   const navigate = useNavigate();
-  const { admin } = useAuth();
+  const { initialState } = useModel("@@initialState");
+  const admin = initialState?.currentAdmin;
   const screens = Grid.useBreakpoint();
   const compact = !(screens.md ?? false);
   const [items, setItems] = useState<MatchItem[]>([]);

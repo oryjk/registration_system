@@ -1,13 +1,14 @@
 import LockOutlined from "@ant-design/icons/es/icons/LockOutlined";
 import UserOutlined from "@ant-design/icons/es/icons/UserOutlined";
+import ProFormText from "@ant-design/pro-components/es/form/components/Text";
+import { LoginForm } from "@ant-design/pro-components/es/form/layouts/LoginForm";
 import Alert from "antd/es/alert";
-import Button from "antd/es/button";
-import Form from "antd/es/form";
-import Input from "antd/es/input";
 import Typography from "antd/es/typography";
 import { useState } from "react";
-import { Navigate, useLocation } from "react-router-dom";
-import { useAuth } from "../auth/useAuth";
+import { history, Navigate, useLocation, useModel } from "umi";
+import { BrandMark } from "../components/BrandMark";
+import { useLoginMutation } from "../hooks/queries/useAuthQueries";
+import { sanitizeRedirect } from "../utils/auth-redirect";
 
 const { Text, Title } = Typography;
 
@@ -17,30 +18,40 @@ interface LoginFormValue {
 }
 
 export default function LoginPage() {
-  const { admin, login } = useAuth();
-  const [submitting, setSubmitting] = useState(false);
+  const { initialState, setInitialState } = useModel("@@initialState");
+  const loginMutation = useLoginMutation();
   const [error, setError] = useState("");
   const location = useLocation();
-  const destination = (location.state as { from?: string } | null)?.from || "/";
+  const destination = sanitizeRedirect(
+    new URLSearchParams(location.search).get("redirect"),
+  );
 
-  if (admin) return <Navigate to={destination} replace />;
+  if (initialState?.currentAdmin) return <Navigate to={destination} replace />;
 
   const submit = async (values: LoginFormValue) => {
-    setSubmitting(true);
     setError("");
     try {
-      await login(values.username, values.password);
+      const result = await loginMutation.mutateAsync(values);
+      await setInitialState((current) => {
+        const state = current || initialState;
+        if (!state) return current;
+
+        return {
+          ...state,
+          authBootstrapError: null,
+          currentAdmin: result.admin,
+        };
+      });
+      history.push(destination);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "登录失败");
-    } finally {
-      setSubmitting(false);
     }
   };
 
   return (
     <main className="login-page">
       <section className="login-brand-panel">
-        <div className="brand-symbol login-symbol">KT</div>
+        <BrandMark className="brand-symbol login-symbol" />
         <Text className="login-kicker">GO ADMIN CONSOLE</Text>
         <Title>开踢管理台</Title>
         <Text>赛事与球队运营</Text>
@@ -50,38 +61,38 @@ export default function LoginPage() {
           <Text className="page-kicker">ADMIN ACCESS</Text>
           <Title level={2}>管理员登录</Title>
           {error ? <Alert type="error" showIcon message={error} /> : null}
-          <Form<LoginFormValue>
-            layout="vertical"
-            size="large"
+          <LoginForm<LoginFormValue>
+            submitter={{
+              searchConfig: { submitText: "登录" },
+              submitButtonProps: {
+                block: true,
+                loading: loginMutation.isPending,
+                size: "large",
+              },
+            }}
             onFinish={submit}
-            requiredMark={false}
           >
-            <Form.Item
+            <ProFormText
               name="username"
               label="账号"
               rules={[{ required: true, message: "请输入管理员账号" }]}
-            >
-              <Input
-                prefix={<UserOutlined />}
-                autoComplete="username"
-                placeholder="管理员账号"
-              />
-            </Form.Item>
-            <Form.Item
+              fieldProps={{
+                prefix: <UserOutlined />,
+                autoComplete: "username",
+                placeholder: "管理员账号",
+              }}
+            />
+            <ProFormText.Password
               name="password"
               label="密码"
               rules={[{ required: true, message: "请输入密码" }]}
-            >
-              <Input.Password
-                prefix={<LockOutlined />}
-                autoComplete="current-password"
-                placeholder="密码"
-              />
-            </Form.Item>
-            <Button type="primary" htmlType="submit" block loading={submitting}>
-              登录
-            </Button>
-          </Form>
+              fieldProps={{
+                prefix: <LockOutlined />,
+                autoComplete: "current-password",
+                placeholder: "密码",
+              }}
+            />
+          </LoginForm>
         </div>
       </section>
     </main>

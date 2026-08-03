@@ -7,6 +7,7 @@ const defaultSettings: ProLayoutProps = {
   fixSiderbar: true,
   layout: "side",
   navTheme: "realDark",
+  siderWidth: 232,
   title: "开踢管理台",
 };
 
