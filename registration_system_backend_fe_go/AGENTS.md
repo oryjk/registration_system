@@ -2,7 +2,7 @@
 
 ## 项目定位
 
-对接 `../registration_system_go/` 的新管理后台。技术栈为 React、TypeScript、Vite、Ant Design 和 Bun。
+对接 `../registration_system_go/` 的新管理后台。技术栈为 Umi Max 4.6.51、React、TypeScript、Ant Design 6、ProComponents 3、React Query 5、Tailwind 4、antd-style、Biome、utoopack、Node 20+ 和 Bun。
 
 旧版 `../registration_system_backend_fe/` 只作为业务参考；接口、DTO、权限和响应结构以 Go 后端为准。
 
@@ -13,7 +13,7 @@
 - Go 尚未实现的管理端 handler 不在前端臆造请求和 DTO。
 - 页面放在 `src/pages/`，请求放在 `src/api/`，布局放在 `src/components/`。
 - 使用 Ant Design 组件与 `@ant-design/icons`，不手绘 SVG 图标。
-- 页面通过 React Router 懒加载，避免无关页面进入首包。
+- 页面、菜单和访问控制通过 Umi `config/routes.ts` 与 `access` 配置维护；按需页面加载由 Umi 处理，新增路由必须同步定义权限边界。
 
 ## 常用命令
 

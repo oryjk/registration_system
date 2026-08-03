@@ -1,0 +1,4 @@
+[mcp_servers.antd]
+command = "bunx"
+args = ["-p", "@ant-design/cli@6.5.3", "antd", "mcp", "--version", "6.4.5", "--lang", "zh"]
+startup_timeout_sec = 30

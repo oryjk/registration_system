@@ -4,9 +4,12 @@ const username = process.env.ADMIN_USERNAME;
 const password = process.env.ADMIN_PASSWORD;
 
 async function login(page: Page) {
+  if (!username || !password) {
+    throw new Error("ADMIN_USERNAME and ADMIN_PASSWORD are required");
+  }
   await page.goto("/login");
-  await page.getByPlaceholder("管理员账号").fill(username!);
-  await page.getByPlaceholder("密码").fill(password!);
+  await page.getByPlaceholder("管理员账号").fill(username);
+  await page.getByPlaceholder("密码").fill(password);
   await page.getByRole("button", { name: /登\s*录/ }).click();
   await expect(page).toHaveURL(/\/$/);
 }
@@ -581,8 +584,12 @@ test("管理员可以增删查改球队", async ({ page }, testInfo) => {
         description: string | null;
         status: "active" | "frozen";
       };
+      const existingTeam = teams.find((team) => team.id === id);
+      if (!existingTeam) {
+        throw new Error(`Missing mocked team: ${id}`);
+      }
       const updated = {
-        ...teams.find((team) => team.id === id)!,
+        ...existingTeam,
         ...payload,
         updated_at: timestamp,
       };
@@ -699,7 +706,10 @@ test("管理员可以管理球队成员和队长", async ({ page }, testInfo) =>
     members = members.map((member) =>
       member.user_id === userID ? { ...member, ...payload } : member,
     );
-    const member = members.find((item) => item.user_id === userID)!;
+    const member = members.find((item) => item.user_id === userID);
+    if (!member) {
+      throw new Error(`Missing mocked member: ${userID}`);
+    }
     await route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -735,7 +745,10 @@ test("管理员可以管理球队成员和队长", async ({ page }, testInfo) =>
       };
       const candidate = candidates.find(
         (item) => item.user_id === payload.user_id,
-      )!;
+      );
+      if (!candidate) {
+        throw new Error(`Missing mocked member candidate: ${payload.user_id}`);
+      }
       members = [
         ...members,
         {
