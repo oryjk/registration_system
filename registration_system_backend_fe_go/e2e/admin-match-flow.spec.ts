@@ -11,15 +11,19 @@ async function login(page: Page) {
   await expect(page).toHaveURL(/\/$/);
 }
 
-async function loginWithMockAdmin(page: Page) {
-  const admin = {
-    id: 1,
-    username: "e2e-admin",
-    role: "super_admin",
+function mockAdmin(isSuperAdmin: boolean) {
+  return {
+    id: isSuperAdmin ? 1 : 2,
+    username: isSuperAdmin ? "e2e-super-admin" : "e2e-venue-admin",
+    role: isSuperAdmin ? "super_admin" : "admin",
     status: "active",
-    is_super_admin: true,
+    is_super_admin: isSuperAdmin,
     created_at: "2026-07-15T08:30:00Z",
   };
+}
+
+async function loginWithMockAdmin(page: Page, isSuperAdmin = true) {
+  const admin = mockAdmin(isSuperAdmin);
   await page.route("**/api/admin/auth/login", async (route) => {
     await route.fulfill({
       status: 200,
@@ -43,7 +47,7 @@ async function loginWithMockAdmin(page: Page) {
     });
   });
   await page.goto("/login");
-  await page.getByPlaceholder("管理员账号").fill("e2e-admin");
+  await page.getByPlaceholder("管理员账号").fill(admin.username);
   await page.getByPlaceholder("密码").fill("e2e-password");
   await page.getByRole("button", { name: /登\s*录/ }).click();
   await expect(page).toHaveURL(/\/$/);
@@ -107,32 +111,52 @@ test("管理员可以登录并查看比赛详情", async ({ page }, testInfo) =>
   ).toBeVisible();
 });
 
-test("超级管理员可以创建场馆管理员", async ({ page }, testInfo) => {
-  test.skip(!username || !password, "需要 ADMIN_USERNAME 和 ADMIN_PASSWORD");
+test("普通管理员不能访问管理员管理权限路由", async ({ page }) => {
+  await loginWithMockAdmin(page, false);
 
-  await login(page);
+  await expect(page.getByRole("link", { name: "场馆管理员" })).toHaveCount(0);
+  await page.goto("/admins");
+  await expect(page.getByText("无权访问")).toBeVisible();
+  await expect(
+    page.getByText("当前管理员没有访问此页面的权限。"),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("main").getByText("场馆管理员", { exact: true }),
+  ).toHaveCount(0);
+});
+
+test("超级管理员创建管理员保持权限与 API payload 契约", async ({
+  page,
+}, testInfo) => {
+  await loginWithMockAdmin(page, true);
+  const createdAt = "2026-07-15T08:30:00Z";
+  let admins = [
+    {
+      ...mockAdmin(true),
+      username: "admin",
+      created_at: createdAt,
+    },
+  ];
   await page.route("**/api/admin/admins", async (route) => {
-    const createdAt = "2026-07-15T08:30:00Z";
-    const data =
-      route.request().method() === "POST"
-        ? {
-            id: 8,
-            username: "venue-e2e",
-            role: "admin",
-            status: "active",
-            is_super_admin: false,
-            created_at: createdAt,
-          }
-        : [
-            {
-              id: 1,
-              username: "admin",
-              role: "super_admin",
-              status: "active",
-              is_super_admin: true,
-              created_at: createdAt,
-            },
-          ];
+    const request = route.request();
+    let data: unknown;
+    if (request.method() === "POST") {
+      const payload = request.postDataJSON() as {
+        username: string;
+        password: string;
+      };
+      data = {
+        id: 8,
+        username: payload.username,
+        role: "admin",
+        status: "active",
+        is_super_admin: false,
+        created_at: createdAt,
+      };
+      admins = [data as (typeof admins)[number], ...admins];
+    } else {
+      data = admins;
+    }
     await route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -141,15 +165,31 @@ test("超级管理员可以创建场馆管理员", async ({ page }, testInfo) =>
   });
 
   await openNavigation(page, "场馆管理员");
-  await expect(page.getByRole("heading", { name: "场馆管理员" })).toBeVisible();
+  await expect(
+    page.getByRole("main").getByText("场馆管理员", { exact: true }),
+  ).toBeVisible();
   await page.getByRole("button", { name: "创建管理员" }).click();
   await page.getByLabel("登录账号").fill("venue-e2e");
   await page.getByLabel("初始密码").fill("venue-pass-123");
   await page.getByLabel("确认密码").fill("venue-pass-123");
+  const createRequest = page.waitForRequest(
+    (request) =>
+      request.method() === "POST" &&
+      new URL(request.url()).pathname.endsWith("/api/admin/admins"),
+  );
   await page
     .getByRole("dialog", { name: "创建场馆管理员" })
     .getByRole("button", { name: /创\s*建/ })
     .click();
+  const createPayload = (await createRequest).postDataJSON() as Record<
+    string,
+    unknown
+  >;
+
+  expect(createPayload).toEqual({
+    username: "venue-e2e",
+    password: "venue-pass-123",
+  });
 
   await expect(page.getByText("venue-e2e")).toBeVisible();
   await expect(
