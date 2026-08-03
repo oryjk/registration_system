@@ -1,5 +1,5 @@
 import { createReadStream } from "node:fs";
-import { stat } from "node:fs/promises";
+import { realpath, stat } from "node:fs/promises";
 import { createServer } from "node:http";
 import { extname, resolve, sep } from "node:path";
 
@@ -18,6 +18,7 @@ function normalizeBase(value) {
 const port = Number(option("--port", "5185"));
 const routeBase = normalizeBase(option("--base", "/"));
 const distRoot = resolve(process.cwd(), "dist");
+const canonicalDistRoot = await realpath(distRoot);
 const mimeTypes = new Map([
   [".css", "text/css; charset=utf-8"],
   [".html", "text/html; charset=utf-8"],
@@ -41,7 +42,22 @@ function sendText(response, statusCode, body) {
 }
 
 function insideDist(candidate) {
-  return candidate === distRoot || candidate.startsWith(`${distRoot}${sep}`);
+  return (
+    candidate === canonicalDistRoot ||
+    candidate.startsWith(`${canonicalDistRoot}${sep}`)
+  );
+}
+
+async function existingFile(candidate) {
+  try {
+    const canonicalCandidate = await realpath(candidate);
+    if (!insideDist(canonicalCandidate)) return null;
+
+    const details = await stat(canonicalCandidate);
+    return details.isFile() ? canonicalCandidate : null;
+  } catch {
+    return null;
+  }
 }
 
 async function resolveFile(pathname) {
@@ -55,16 +71,15 @@ async function resolveFile(pathname) {
 
   const relativePath = decoded.slice(routeBase.length);
   const candidate = resolve(distRoot, relativePath || "index.html");
-  if (!insideDist(candidate)) return null;
-
-  try {
-    const details = await stat(candidate);
-    if (details.isFile()) return candidate;
-  } catch {
-    if (extname(relativePath)) return null;
+  if (candidate !== distRoot && !candidate.startsWith(`${distRoot}${sep}`)) {
+    return null;
   }
 
-  return resolve(distRoot, "index.html");
+  const filePath = await existingFile(candidate);
+  if (filePath) return filePath;
+  if (extname(relativePath)) return null;
+
+  return existingFile(resolve(distRoot, "index.html"));
 }
 
 const server = createServer(async (request, response) => {

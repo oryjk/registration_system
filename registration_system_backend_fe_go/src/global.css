@@ -290,7 +290,6 @@ select {
   justify-content: flex-end;
   padding: 64px;
   overflow: hidden;
-  background-image: url("/login-football.jpg");
   background-position: center;
   background-size: cover;
   color: #fff;

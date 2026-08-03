@@ -50,7 +50,12 @@ export default function LoginPage() {
 
   return (
     <main className="login-page">
-      <section className="login-brand-panel">
+      <section
+        className="login-brand-panel"
+        style={{
+          backgroundImage: `url("${process.env.ADMIN_ROUTE_BASE}login-football.jpg")`,
+        }}
+      >
         <BrandMark className="brand-symbol login-symbol" />
         <Text className="login-kicker">GO ADMIN CONSOLE</Text>
         <Title>开踢管理台</Title>

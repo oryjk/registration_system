@@ -1,3 +1,5 @@
+import { symlink, unlink } from "node:fs/promises";
+import { resolve } from "node:path";
 import { expect, test } from "@playwright/test";
 
 const routeBase = process.env.PLAYWRIGHT_DIST_BASE;
@@ -14,6 +16,7 @@ test.describe("Nginx 子路径路由", () => {
     const consoleErrors: string[] = [];
     const failedRequests: string[] = [];
     const assetPaths: string[] = [];
+    const assetStatuses = new Map<string, number>();
 
     page.on("pageerror", (error) => pageErrors.push(error.message));
     page.on("console", (message) => {
@@ -28,6 +31,27 @@ test.describe("Nginx 子路径路由", () => {
       ) {
         assetPaths.push(new URL(request.url()).pathname);
       }
+    });
+    page.on("response", (response) => {
+      if (
+        ["script", "stylesheet", "font", "image"].includes(
+          response.request().resourceType(),
+        )
+      ) {
+        assetStatuses.set(new URL(response.url()).pathname, response.status());
+      }
+    });
+
+    const loginAssetPath = `${routeBase}login-football.jpg`;
+    await page.goto(`${routeBase}login`);
+    await expect(page.getByPlaceholder("管理员账号")).toBeVisible();
+    await expect.poll(() => assetStatuses.get(loginAssetPath)).toBe(200);
+    await page.reload();
+    await expect(page.getByPlaceholder("管理员账号")).toBeVisible();
+    await expect.poll(() => assetStatuses.get(loginAssetPath)).toBe(200);
+    await page.screenshot({
+      path: testInfo.outputPath("nginx-login.png"),
+      fullPage: true,
     });
 
     await page.addInitScript(() => {
@@ -109,6 +133,18 @@ test.describe("Nginx 子路径路由", () => {
       `${origin}${routeBase}%2e%2e%2fpackage.json`,
     );
     expect(traversal.status()).toBe(404);
+
+    const outsideLinkName = `outside-${testInfo.project.name}.json`;
+    const outsideLinkPath = resolve("dist", outsideLinkName);
+    await symlink(resolve("package.json"), outsideLinkPath);
+    try {
+      const symlinkTraversal = await request.get(
+        `${origin}${routeBase}${outsideLinkName}`,
+      );
+      expect(symlinkTraversal.status()).toBe(404);
+    } finally {
+      await unlink(outsideLinkPath);
+    }
 
     await page.goto(`${routeBase}unknown-route`);
     await expect(page.getByText("页面不存在")).toBeVisible();
