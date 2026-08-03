@@ -62,6 +62,7 @@ export default function LoginPage() {
           <Title level={2}>管理员登录</Title>
           {error ? <Alert type="error" showIcon message={error} /> : null}
           <LoginForm<LoginFormValue>
+            contentStyle={{ width: "100%", minWidth: 0 }}
             submitter={{
               searchConfig: { submitText: "登录" },
               submitButtonProps: {

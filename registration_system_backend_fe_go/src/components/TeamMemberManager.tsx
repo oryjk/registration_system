@@ -222,7 +222,7 @@ export function TeamMemberManager({
     <>
       <Drawer
         title={team ? `${team.name} · 成员管理` : "成员管理"}
-        width={compact ? "100%" : 780}
+        size={compact ? "100%" : 780}
         open={open}
         onClose={onClose}
         extra={

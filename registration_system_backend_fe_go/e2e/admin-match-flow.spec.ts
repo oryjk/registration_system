@@ -89,6 +89,141 @@ function matchItem(id: string, name: string, status: "registering" | "ended") {
   };
 }
 
+test("核心管理页面在桌面和移动视口保持一致", async ({ page }, testInfo) => {
+  const pageErrors: string[] = [];
+  const consoleErrors: string[] = [];
+  const failedRequests: string[] = [];
+  const timestamp = "2026-07-15T08:30:00Z";
+  const matchID = "11111111-1111-4111-8111-111111111111";
+  const visualMatch = matchItem(matchID, "视觉巡检赛", "registering");
+  const visualTeam = {
+    id: 1,
+    name: "视觉巡检队",
+    description: "运营端视觉回归数据",
+    logo_url: null,
+    captain_id: null,
+    status: "active",
+    created_at: timestamp,
+    updated_at: timestamp,
+  };
+
+  page.on("pageerror", (error) => pageErrors.push(error.message));
+  page.on("console", (message) => {
+    if (message.type() === "error") consoleErrors.push(message.text());
+  });
+  page.on("requestfailed", (request) => {
+    if (request.failure()?.errorText !== "net::ERR_ABORTED") {
+      failedRequests.push(request.url());
+    }
+  });
+
+  await page.goto("/login");
+  await expect(page.getByPlaceholder("管理员账号")).toBeVisible();
+  const loginViewport = await page.evaluate(() => ({
+    innerWidth: window.innerWidth,
+    scrollWidth: document.documentElement.scrollWidth,
+  }));
+  expect(loginViewport.scrollWidth).toBeLessThanOrEqual(
+    loginViewport.innerWidth,
+  );
+  const loginContainerSize = await page
+    .locator(".ant-pro-form-login-container")
+    .evaluate((element) => ({
+      clientWidth: element.clientWidth,
+      scrollWidth: element.scrollWidth,
+    }));
+  expect(loginContainerSize.scrollWidth).toBeLessThanOrEqual(
+    loginContainerSize.clientWidth,
+  );
+  await page.screenshot({
+    path: testInfo.outputPath("login.png"),
+    fullPage: true,
+  });
+
+  await loginWithMockAdmin(page);
+  await page.route("**/health", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ code: 0, message: "ok", data: { status: "ok" } }),
+    });
+  });
+  await page.route("**/api/admin/teams**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ code: 0, message: "ok", data: [visualTeam] }),
+    });
+  });
+  await page.route("**/api/admin/admins", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ code: 0, message: "ok", data: [mockAdmin(true)] }),
+    });
+  });
+  await page.route("**/api/admin/matches**", async (route) => {
+    const pathname = new URL(route.request().url()).pathname;
+    const data = pathname.endsWith(`/${matchID}`)
+      ? { match: visualMatch, groups: [] }
+      : { items: [visualMatch], total: 1, page: 1, page_size: 20 };
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ code: 0, message: "ok", data }),
+    });
+  });
+
+  const capture = async (name: string) => {
+    await page.screenshot({
+      path: testInfo.outputPath(`${name}.png`),
+      fullPage: true,
+    });
+  };
+
+  await page.goto("/");
+  await expect(page.getByText("服务概览", { exact: true })).toBeVisible();
+  await capture("dashboard");
+
+  await page.goto("/matches");
+  await expect(page.getByText("视觉巡检赛")).toBeVisible();
+  await capture("matches");
+
+  await page.goto("/matches/new");
+  await expect(page.getByLabel("比赛名称")).toBeVisible();
+  await capture("match-form");
+
+  await page.goto(`/matches/${matchID}`);
+  await expect(page.getByText("视觉巡检赛", { exact: true })).toBeVisible();
+  await capture("match-detail");
+
+  await page.goto("/teams");
+  await expect(page.getByText("视觉巡检队")).toBeVisible();
+  await capture("teams");
+
+  await page.goto("/admins");
+  await expect(page.getByText("e2e-super-admin")).toBeVisible();
+  await capture("admins");
+
+  await page.goto("/access");
+  await expect(
+    page.getByRole("main").getByText("接入状态", { exact: true }),
+  ).toBeVisible();
+  await capture("access");
+
+  await page.goto("/403");
+  await expect(page.getByText("无权访问")).toBeVisible();
+  await capture("forbidden");
+
+  await page.goto("/visual-unknown-route");
+  await expect(page.getByText("页面不存在")).toBeVisible();
+  await capture("not-found");
+
+  expect(pageErrors).toEqual([]);
+  expect(consoleErrors).toEqual([]);
+  expect(failedRequests).toEqual([]);
+});
+
 test("管理员可以登录并查看比赛详情", async ({ page }, testInfo) => {
   test.skip(!username || !password, "需要 ADMIN_USERNAME 和 ADMIN_PASSWORD");
 

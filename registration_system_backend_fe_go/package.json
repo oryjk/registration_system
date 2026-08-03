@@ -14,7 +14,8 @@
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "test": "jest",
-    "test:e2e": "playwright test"
+    "test:e2e": "cross-env PORT=5175 playwright test",
+    "test:e2e:nginx": "bun run build:nginx && cross-env PORT=5185 PLAYWRIGHT_DIST_BASE=/registration-admin/ PLAYWRIGHT_BASE_URL=http://127.0.0.1:5185/registration-admin/ playwright test e2e/admin-routing.spec.ts"
   },
   "dependencies": {
     "@ant-design/icons": "^6.2.3",

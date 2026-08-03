@@ -287,7 +287,7 @@ export default function MatchDetailPage() {
               <Descriptions.Item label="比赛场地">
                 {match.location}
               </Descriptions.Item>
-              <Descriptions.Item label="比赛说明" span={3}>
+              <Descriptions.Item label="比赛说明" span="filled">
                 {match.description || "无"}
               </Descriptions.Item>
             </Descriptions>

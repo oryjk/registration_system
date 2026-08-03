@@ -392,7 +392,7 @@ export default function TeamListPage() {
 
       <Drawer
         title="球队详情"
-        width={compact ? "100%" : 460}
+        size={compact ? "100%" : 460}
         open={Boolean(detailID)}
         loading={detailQuery.isFetching}
         extra={
