@@ -7,11 +7,19 @@ async function login(page: Page) {
   await page.goto("/login");
   await page.getByPlaceholder("管理员账号").fill(username!);
   await page.getByPlaceholder("密码").fill(password!);
-  await page.locator('button[type="submit"]').click();
+  await page.getByRole("button", { name: /登\s*录/ }).click();
   await expect(page).toHaveURL(/\/$/);
 }
 
 async function loginWithMockAdmin(page: Page) {
+  const admin = {
+    id: 1,
+    username: "e2e-admin",
+    role: "super_admin",
+    status: "active",
+    is_super_admin: true,
+    created_at: "2026-07-15T08:30:00Z",
+  };
   await page.route("**/api/admin/auth/login", async (route) => {
     await route.fulfill({
       status: 200,
@@ -22,22 +30,22 @@ async function loginWithMockAdmin(page: Page) {
         data: {
           access_token: "e2e-admin-token",
           token_type: "Bearer",
-          admin: {
-            id: 1,
-            username: "e2e-admin",
-            role: "super_admin",
-            status: "active",
-            is_super_admin: true,
-            created_at: "2026-07-15T08:30:00Z",
-          },
+          admin,
         },
       }),
+    });
+  });
+  await page.route("**/api/admin/auth/me", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ code: 0, message: "ok", data: admin }),
     });
   });
   await page.goto("/login");
   await page.getByPlaceholder("管理员账号").fill("e2e-admin");
   await page.getByPlaceholder("密码").fill("e2e-password");
-  await page.locator('button[type="submit"]').click();
+  await page.getByRole("button", { name: /登\s*录/ }).click();
   await expect(page).toHaveURL(/\/$/);
 }
 
@@ -219,6 +227,152 @@ test("比赛列表可以取消并永久删除比赛", async ({ page }, testInfo)
     path: testInfo.outputPath("match-actions.png"),
     fullPage: true,
   });
+});
+
+test("比赛筛选写入 URL 并在刷新后恢复", async ({ page }) => {
+  await loginWithMockAdmin(page);
+  const requestedQueries: string[] = [];
+  await page.route("**/api/admin/matches**", async (route) => {
+    const requestUrl = new URL(route.request().url());
+    if (
+      route.request().method() !== "GET" ||
+      !requestUrl.pathname.endsWith("/matches")
+    ) {
+      await route.fallback();
+      return;
+    }
+    requestedQueries.push(requestUrl.search);
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        code: 0,
+        message: "ok",
+        data: {
+          items: [
+            matchItem(
+              "11111111-1111-4111-8111-111111111111",
+              "周末筛选赛",
+              "registering",
+            ),
+          ],
+          total: 60,
+          page: Number(requestUrl.searchParams.get("page") || 1),
+          page_size: Number(requestUrl.searchParams.get("page_size") || 20),
+        },
+      }),
+    });
+  });
+
+  await page.goto(
+    "/matches?search=%E5%91%A8%E6%9C%AB&status=ongoing&page=2&page_size=50",
+  );
+  const search = page.getByPlaceholder("搜索比赛、场地或主队");
+  await expect(search).toHaveValue("周末");
+  await expect(page.locator(".status-filter")).toContainText("进行中");
+
+  await search.fill("  滨江  ");
+  await search.press("Enter");
+  await expect(page).toHaveURL(
+    /\/matches\?search=%E6%BB%A8%E6%B1%9F&status=ongoing&page_size=50$/,
+  );
+  await page.locator(".status-filter").click();
+  await page
+    .locator(".ant-select-item-option")
+    .filter({ hasText: "已结束" })
+    .click();
+  await expect(page).toHaveURL(
+    /\/matches\?search=%E6%BB%A8%E6%B1%9F&status=ended&page_size=50$/,
+  );
+
+  await page.reload();
+  await expect(search).toHaveValue("滨江");
+  await expect(page.locator(".status-filter")).toContainText("已结束");
+  expect(requestedQueries.at(-1)).toBe(
+    "?search=%E6%BB%A8%E6%B1%9F&status=ended&page=1&page_size=50",
+  );
+});
+
+test("比赛编辑保持 API payload 契约", async ({ page }) => {
+  await loginWithMockAdmin(page);
+  const matchID = "33333333-3333-4333-8333-333333333333";
+  const timestamp = "2026-07-15T08:30:00Z";
+  let storedMatch = matchItem(matchID, "待编辑比赛", "registering");
+
+  await page.route("**/api/admin/teams**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        code: 0,
+        message: "ok",
+        data: [
+          {
+            id: 1,
+            name: "开发联队",
+            description: null,
+            logo_url: null,
+            captain_id: null,
+            status: "active",
+            created_at: timestamp,
+            updated_at: timestamp,
+          },
+        ],
+      }),
+    });
+  });
+  await page.route("**/api/admin/matches**", async (route) => {
+    const request = route.request();
+    const pathname = new URL(request.url()).pathname;
+    let data: unknown;
+    if (request.method() === "PATCH" && pathname.endsWith(`/${matchID}`)) {
+      const payload = request.postDataJSON();
+      storedMatch = { ...storedMatch, ...payload };
+      data = { match: storedMatch, groups: [] };
+    } else if (request.method() === "GET" && pathname.endsWith(`/${matchID}`)) {
+      data = { match: storedMatch, groups: [] };
+    } else {
+      await route.fallback();
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ code: 0, message: "ok", data }),
+    });
+  });
+
+  await page.goto(`/matches/${matchID}/edit`);
+  await expect(page.getByLabel("比赛名称")).toHaveValue("待编辑比赛");
+  await page.getByLabel("比赛名称").fill("夏夜联赛更新");
+  await page.getByLabel("比赛场地").fill("滨江足球场 2 号场");
+  const updateRequest = page.waitForRequest(
+    (request) =>
+      request.method() === "PATCH" &&
+      new URL(request.url()).pathname.endsWith(`/api/admin/matches/${matchID}`),
+  );
+  await page.getByRole("button", { name: "保存比赛" }).click();
+  const updatePayload = (await updateRequest).postDataJSON() as Record<
+    string,
+    unknown
+  >;
+  expect(Object.keys(updatePayload).sort()).toEqual(
+    [
+      "description",
+      "end_time",
+      "location",
+      "location_latitude",
+      "location_longitude",
+      "name",
+      "start_time",
+    ].sort(),
+  );
+  expect(updatePayload).toMatchObject({
+    name: "夏夜联赛更新",
+    location: "滨江足球场 2 号场",
+  });
+  expect(updatePayload.start_time).toMatch(/^2026-07-21T.*Z$/);
+  expect(updatePayload.end_time).toMatch(/^2026-07-21T.*Z$/);
 });
 
 test("管理员可以增删查改球队", async ({ page }, testInfo) => {

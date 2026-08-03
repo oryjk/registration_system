@@ -1,5 +1,7 @@
-import ArrowLeftOutlined from "@ant-design/icons/es/icons/ArrowLeftOutlined";
 import PlusOutlined from "@ant-design/icons/es/icons/PlusOutlined";
+import { ProForm } from "@ant-design/pro-components/es/form/layouts/ProForm";
+import { PageContainer } from "@ant-design/pro-components/es/layout/components/PageContainer";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Alert from "antd/es/alert";
 import Button from "antd/es/button";
 import DatePicker from "antd/es/date-picker";
@@ -12,12 +14,21 @@ import Space from "antd/es/space";
 import Spin from "antd/es/spin";
 import Typography from "antd/es/typography";
 import dayjs, { type Dayjs } from "dayjs";
-import { useEffect, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { createMatch, getMatch, updateMatch } from "../api/matches";
+import { useRef, useState } from "react";
+import { history, useParams } from "umi";
 import { createTeam, listTeamOptions } from "../api/teams";
-import type { CreateMatchPayload, PublicationMode } from "../types/match";
-import type { TeamOption } from "../types/team";
+import { queryKeys } from "../hooks/queries/keys";
+import {
+  useCreateMatchMutation,
+  useMatchQuery,
+  useUpdateMatchMutation,
+} from "../hooks/queries/useMatchQueries";
+import type { PublicationMode } from "../types/match";
+import type { Team, TeamOption } from "../types/team";
+import {
+  buildCreateMatchPayload,
+  buildUpdateMatchPayload,
+} from "../utils/match-form-payload";
 import { publicationModeLabels } from "./matchLabels";
 
 const { RangePicker } = DatePicker;
@@ -46,86 +57,63 @@ const initialValues: Partial<MatchFormValues> = {
 export default function MatchFormPage() {
   const { id } = useParams();
   const editing = Boolean(id);
-  const navigate = useNavigate();
   const [form] = Form.useForm<MatchFormValues>();
   const [confirmModal, modalContextHolder] = Modal.useModal();
   const pendingTeamName = useRef("");
   const mode = Form.useWatch("publication_mode", form);
-  const [teams, setTeams] = useState<TeamOption[]>([]);
-  const [loading, setLoading] = useState(editing);
-  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [teamSearch, setTeamSearch] = useState("");
-  const [creatingTeam, setCreatingTeam] = useState(false);
-
-  useEffect(() => {
-    let active = true;
-    setLoading(true);
-    const teamPromise = listTeamOptions();
-    const detailPromise = id ? getMatch(id) : Promise.resolve(null);
-    Promise.all([teamPromise, detailPromise])
-      .then(([teamItems, detail]) => {
-        if (!active) return;
-        setTeams(teamItems);
-        if (detail) {
-          const match = detail.match;
-          form.setFieldsValue({
-            name: match.name,
-            publication_mode: match.publication_mode,
-            host_team_id: match.host_team_id,
-            opponent_name: match.opponent_name || undefined,
-            players_per_team: match.players_per_team,
-            time_range: [dayjs(match.start_time), dayjs(match.end_time)],
-            location: match.location,
-            location_latitude: match.location_latitude || undefined,
-            location_longitude: match.location_longitude || undefined,
-            description: match.description || undefined,
-          });
-        }
-      })
-      .catch((reason) => {
-        if (active)
-          setError(reason instanceof Error ? reason.message : "表单加载失败");
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, [form, id]);
+  const queryClient = useQueryClient();
+  const detailQuery = useMatchQuery(id || "");
+  const teamsQuery = useQuery({
+    queryKey: queryKeys.teamOptions,
+    queryFn: listTeamOptions,
+    retry: false,
+  });
+  const createMutation = useCreateMatchMutation();
+  const updateMutation = useUpdateMatchMutation();
+  const createTeamMutation = useMutation({
+    mutationFn: (name: string) => createTeam({ name, description: null }),
+    onSuccess: (team) => {
+      queryClient.setQueryData<Team[]>(queryKeys.teamOptions, (current = []) =>
+        [...current.filter((item) => item.id !== team.id), team].sort(
+          (left, right) => left.name.localeCompare(right.name, "zh-CN"),
+        ),
+      );
+    },
+  });
+  const teams: TeamOption[] = teamsQuery.data || [];
+  const submitting = createMutation.isPending || updateMutation.isPending;
+  const loading = detailQuery.isLoading || teamsQuery.isLoading;
+  const match = detailQuery.data?.match;
+  const formInitialValues: Partial<MatchFormValues> = match
+    ? {
+        name: match.name,
+        publication_mode: match.publication_mode,
+        host_team_id: match.host_team_id,
+        opponent_name: match.opponent_name || undefined,
+        players_per_team: match.players_per_team,
+        time_range: [dayjs(match.start_time), dayjs(match.end_time)],
+        location: match.location,
+        location_latitude: match.location_latitude ?? undefined,
+        location_longitude: match.location_longitude ?? undefined,
+        description: match.description || undefined,
+      }
+    : initialValues;
+  const formReady = !loading && (!editing || Boolean(match));
 
   const submit = async (values: MatchFormValues) => {
-    setSubmitting(true);
     setError("");
-    const shared = {
-      name: values.name.trim(),
-      start_time: values.time_range[0].toISOString(),
-      end_time: values.time_range[1].toISOString(),
-      location: values.location.trim(),
-      location_latitude: values.location_latitude ?? null,
-      location_longitude: values.location_longitude ?? null,
-      description: values.description?.trim() || null,
-    };
     try {
       const result = id
-        ? await updateMatch(id, shared)
-        : await createMatch({
-            ...shared,
-            publication_mode: values.publication_mode,
-            host_team_id: values.host_team_id,
-            opponent_name:
-              values.publication_mode === "offline_confirmed"
-                ? values.opponent_name?.trim() || null
-                : null,
-            players_per_team: values.players_per_team,
-            host_capacity_limit: values.host_capacity_limit ?? null,
-          } satisfies CreateMatchPayload);
-      navigate(`/matches/${result.match.id}`, { replace: true });
+        ? await updateMutation.mutateAsync({
+            id,
+            payload: buildUpdateMatchPayload(values),
+          })
+        : await createMutation.mutateAsync(buildCreateMatchPayload(values));
+      history.replace(`/matches/${result.match.id}`);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "比赛保存失败");
-    } finally {
-      setSubmitting(false);
     }
   };
 
@@ -133,15 +121,9 @@ export default function MatchFormPage() {
     name: string,
     submitAfterCreate: boolean,
   ) => {
-    setCreatingTeam(true);
     setError("");
     try {
-      const team = await createTeam({ name, description: null });
-      setTeams((current) =>
-        [...current, team].sort((left, right) =>
-          left.name.localeCompare(right.name, "zh-CN"),
-        ),
-      );
+      const team = await createTeamMutation.mutateAsync(name);
       form.setFieldValue("host_team_id", team.id);
       setTeamSearch("");
       pendingTeamName.current = "";
@@ -150,8 +132,6 @@ export default function MatchFormPage() {
       }
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "球队创建失败");
-    } finally {
-      setCreatingTeam(false);
     }
   };
 
@@ -180,239 +160,257 @@ export default function MatchFormPage() {
     });
   };
 
-  return (
-    <main className="match-form-page">
-      {modalContextHolder}
-      <section className="page-heading detail-heading">
-        <div className="detail-title-row">
-          <Button
-            type="text"
-            shape="circle"
-            icon={<ArrowLeftOutlined />}
-            aria-label="返回"
-            onClick={() => navigate(id ? `/matches/${id}` : "/matches")}
-          />
-          <div>
-            <Text className="page-kicker">MATCH EDITOR</Text>
-            <Title level={2}>{editing ? "编辑比赛" : "发布比赛"}</Title>
-          </div>
-        </div>
-      </section>
+  const loadError = detailQuery.error || teamsQuery.error;
+  const visibleError =
+    error ||
+    (loadError instanceof Error
+      ? loadError.message
+      : loadError
+        ? "表单加载失败"
+        : "");
 
-      {error ? (
+  return (
+    <PageContainer
+      className="match-form-page"
+      title={editing ? "编辑比赛" : "发布比赛"}
+      onBack={() => history.push(id ? `/matches/${id}` : "/matches")}
+    >
+      {modalContextHolder}
+      {visibleError ? (
         <Alert
           className="service-alert"
           type="error"
           showIcon
-          message={error}
+          message={visibleError}
+          action={
+            loadError ? (
+              <Button
+                size="small"
+                onClick={() => {
+                  void teamsQuery.refetch();
+                  if (id) void detailQuery.refetch();
+                }}
+              >
+                重试
+              </Button>
+            ) : null
+          }
         />
       ) : null}
 
       <section className="form-panel">
         <Spin spinning={loading}>
-          <Form<MatchFormValues>
-            form={form}
-            layout="vertical"
-            initialValues={initialValues}
-            disabled={submitting}
-            requiredMark={false}
-            onFinish={submit}
-            onFinishFailed={({ errorFields }) => {
-              const typedTeamName =
-                teamSearch.trim() || pendingTeamName.current.trim();
-              if (
-                !editing &&
-                typedTeamName &&
-                errorFields.some((field) => field.name[0] === "host_team_id")
-              ) {
-                selectOrConfirmTeam(typedTeamName, true);
-              }
-            }}
-          >
-            <div className="form-section">
-              <div className="form-section-title">
-                <Text className="panel-kicker">BASIC</Text>
-                <Title level={4}>比赛信息</Title>
-              </div>
-              <div className="form-grid">
-                <Form.Item
-                  name="name"
-                  label="比赛名称"
-                  rules={[{ required: true, message: "请输入比赛名称" }]}
-                >
-                  <Input maxLength={255} placeholder="例如：周末友谊赛" />
-                </Form.Item>
-                <Form.Item
-                  name="publication_mode"
-                  label="发布模式"
-                  rules={[{ required: true }]}
-                >
-                  <Select
-                    disabled={editing}
-                    options={Object.entries(publicationModeLabels).map(
-                      ([value, label]) => ({ value, label }),
-                    )}
-                  />
-                </Form.Item>
-                <Form.Item
-                  name="host_team_id"
-                  label="主队"
-                  rules={[{ required: true, message: "请选择主队" }]}
-                >
-                  <Select
-                    showSearch
-                    allowClear
-                    disabled={editing || creatingTeam}
-                    searchValue={teamSearch}
-                    onSearch={(value) => {
-                      setTeamSearch(value);
-                      if (value.trim()) pendingTeamName.current = value;
-                    }}
-                    onInputKeyDown={(event) => {
-                      const input = event.currentTarget;
-                      queueMicrotask(() => {
-                        pendingTeamName.current = input.value;
-                      });
-                    }}
-                    onClear={() => {
-                      setTeamSearch("");
-                      pendingTeamName.current = "";
-                    }}
-                    onSelect={() => {
-                      setTeamSearch("");
-                      pendingTeamName.current = "";
-                    }}
-                    filterOption={(input, option) =>
-                      String(option?.label || "")
-                        .toLocaleLowerCase("zh-CN")
-                        .includes(input.trim().toLocaleLowerCase("zh-CN"))
-                    }
-                    placeholder={teams.length ? "选择主队" : "暂无可用球队"}
-                    options={teams.map((team) => ({
-                      value: team.id,
-                      label: team.name,
-                    }))}
-                    notFoundContent={
-                      teamSearch.trim() ? (
-                        <div className="team-select-empty">
-                          <Text type="secondary">
-                            未找到“{teamSearch.trim()}”
-                          </Text>
-                          <Button
-                            type="link"
-                            size="small"
-                            icon={<PlusOutlined />}
-                            loading={creatingTeam}
-                            onMouseDown={(event) => event.preventDefault()}
-                            onClick={() => selectOrConfirmTeam(teamSearch)}
-                          >
-                            创建球队
-                          </Button>
-                        </div>
-                      ) : null
-                    }
-                  />
-                </Form.Item>
-                <Form.Item
-                  name="players_per_team"
-                  label="每队人数"
-                  rules={[{ required: true }]}
-                >
-                  <InputNumber
-                    min={1}
-                    max={30}
-                    disabled={editing}
-                    className="full-width-control"
-                  />
-                </Form.Item>
-                {mode === "offline_confirmed" ? (
+          {formReady ? (
+            <ProForm<MatchFormValues>
+              form={form}
+              layout="vertical"
+              initialValues={formInitialValues}
+              disabled={submitting}
+              dateFormatter={false}
+              requiredMark={false}
+              submitter={false}
+              onFinish={submit}
+              onFinishFailed={({ errorFields }) => {
+                const typedTeamName =
+                  teamSearch.trim() || pendingTeamName.current.trim();
+                if (
+                  !editing &&
+                  typedTeamName &&
+                  errorFields.some((field) => field.name[0] === "host_team_id")
+                ) {
+                  selectOrConfirmTeam(typedTeamName, true);
+                }
+              }}
+            >
+              <div className="form-section">
+                <div className="form-section-title">
+                  <Text className="panel-kicker">BASIC</Text>
+                  <Title level={4}>比赛信息</Title>
+                </div>
+                <div className="form-grid">
                   <Form.Item
-                    name="opponent_name"
-                    label="对手名称"
-                    rules={[{ required: true, message: "请输入线下对手名称" }]}
+                    name="name"
+                    label="比赛名称"
+                    rules={[{ required: true, message: "请输入比赛名称" }]}
                   >
-                    <Input maxLength={255} />
+                    <Input maxLength={255} placeholder="例如：周末友谊赛" />
                   </Form.Item>
-                ) : null}
-                {!editing ? (
-                  <Form.Item name="host_capacity_limit" label="主队报名上限">
+                  <Form.Item
+                    name="publication_mode"
+                    label="发布模式"
+                    rules={[{ required: true }]}
+                  >
+                    <Select
+                      disabled={editing}
+                      options={Object.entries(publicationModeLabels).map(
+                        ([value, label]) => ({ value, label }),
+                      )}
+                    />
+                  </Form.Item>
+                  <Form.Item
+                    name="host_team_id"
+                    label="主队"
+                    rules={[{ required: true, message: "请选择主队" }]}
+                  >
+                    <Select
+                      showSearch
+                      allowClear
+                      disabled={editing || createTeamMutation.isPending}
+                      searchValue={teamSearch}
+                      onSearch={(value) => {
+                        setTeamSearch(value);
+                        if (value.trim()) pendingTeamName.current = value;
+                      }}
+                      onInputKeyDown={(event) => {
+                        const input = event.currentTarget;
+                        queueMicrotask(() => {
+                          pendingTeamName.current = input.value;
+                        });
+                      }}
+                      onClear={() => {
+                        setTeamSearch("");
+                        pendingTeamName.current = "";
+                      }}
+                      onSelect={() => {
+                        setTeamSearch("");
+                        pendingTeamName.current = "";
+                      }}
+                      filterOption={(input, option) =>
+                        String(option?.label || "")
+                          .toLocaleLowerCase("zh-CN")
+                          .includes(input.trim().toLocaleLowerCase("zh-CN"))
+                      }
+                      placeholder={teams.length ? "选择主队" : "暂无可用球队"}
+                      options={teams.map((team) => ({
+                        value: team.id,
+                        label: team.name,
+                      }))}
+                      notFoundContent={
+                        teamSearch.trim() ? (
+                          <div className="team-select-empty">
+                            <Text type="secondary">
+                              未找到“{teamSearch.trim()}”
+                            </Text>
+                            <Button
+                              type="link"
+                              size="small"
+                              icon={<PlusOutlined />}
+                              loading={createTeamMutation.isPending}
+                              onMouseDown={(event) => event.preventDefault()}
+                              onClick={() => selectOrConfirmTeam(teamSearch)}
+                            >
+                              创建球队
+                            </Button>
+                          </div>
+                        ) : null
+                      }
+                    />
+                  </Form.Item>
+                  <Form.Item
+                    name="players_per_team"
+                    label="每队人数"
+                    rules={[{ required: true }]}
+                  >
                     <InputNumber
                       min={1}
-                      max={100}
+                      max={30}
+                      disabled={editing}
                       className="full-width-control"
                     />
                   </Form.Item>
-                ) : null}
+                  {mode === "offline_confirmed" ? (
+                    <Form.Item
+                      name="opponent_name"
+                      label="对手名称"
+                      rules={[
+                        { required: true, message: "请输入线下对手名称" },
+                      ]}
+                    >
+                      <Input maxLength={255} />
+                    </Form.Item>
+                  ) : null}
+                  {!editing ? (
+                    <Form.Item name="host_capacity_limit" label="主队报名上限">
+                      <InputNumber
+                        min={1}
+                        max={100}
+                        className="full-width-control"
+                      />
+                    </Form.Item>
+                  ) : null}
+                </div>
               </div>
-            </div>
 
-            <div className="form-section">
-              <div className="form-section-title">
-                <Text className="panel-kicker">SCHEDULE</Text>
-                <Title level={4}>时间与场地</Title>
+              <div className="form-section">
+                <div className="form-section-title">
+                  <Text className="panel-kicker">SCHEDULE</Text>
+                  <Title level={4}>时间与场地</Title>
+                </div>
+                <div className="form-grid">
+                  <Form.Item
+                    name="time_range"
+                    label="比赛时间"
+                    className="form-span-2"
+                    rules={[{ required: true, message: "请选择比赛时间" }]}
+                  >
+                    <RangePicker
+                      showTime
+                      format="YYYY-MM-DD HH:mm"
+                      className="full-width-control"
+                    />
+                  </Form.Item>
+                  <Form.Item
+                    name="location"
+                    label="比赛场地"
+                    className="form-span-2"
+                    rules={[{ required: true, message: "请输入比赛场地" }]}
+                  >
+                    <Input maxLength={255} />
+                  </Form.Item>
+                  <Form.Item name="location_latitude" label="纬度">
+                    <InputNumber
+                      min={-90}
+                      max={90}
+                      step={0.000001}
+                      className="full-width-control"
+                    />
+                  </Form.Item>
+                  <Form.Item name="location_longitude" label="经度">
+                    <InputNumber
+                      min={-180}
+                      max={180}
+                      step={0.000001}
+                      className="full-width-control"
+                    />
+                  </Form.Item>
+                  <Form.Item
+                    name="description"
+                    label="比赛说明"
+                    className="form-span-2"
+                  >
+                    <Input.TextArea rows={4} maxLength={1000} showCount />
+                  </Form.Item>
+                </div>
               </div>
-              <div className="form-grid">
-                <Form.Item
-                  name="time_range"
-                  label="比赛时间"
-                  className="form-span-2"
-                  rules={[{ required: true, message: "请选择比赛时间" }]}
-                >
-                  <RangePicker
-                    showTime
-                    format="YYYY-MM-DD HH:mm"
-                    className="full-width-control"
-                  />
-                </Form.Item>
-                <Form.Item
-                  name="location"
-                  label="比赛场地"
-                  className="form-span-2"
-                  rules={[{ required: true, message: "请输入比赛场地" }]}
-                >
-                  <Input maxLength={255} />
-                </Form.Item>
-                <Form.Item name="location_latitude" label="纬度">
-                  <InputNumber
-                    min={-90}
-                    max={90}
-                    step={0.000001}
-                    className="full-width-control"
-                  />
-                </Form.Item>
-                <Form.Item name="location_longitude" label="经度">
-                  <InputNumber
-                    min={-180}
-                    max={180}
-                    step={0.000001}
-                    className="full-width-control"
-                  />
-                </Form.Item>
-                <Form.Item
-                  name="description"
-                  label="比赛说明"
-                  className="form-span-2"
-                >
-                  <Input.TextArea rows={4} maxLength={1000} showCount />
-                </Form.Item>
-              </div>
-            </div>
 
-            <div className="form-actions">
-              <Space>
-                <Button
-                  onClick={() => navigate(id ? `/matches/${id}` : "/matches")}
-                >
-                  取消
-                </Button>
-                <Button type="primary" htmlType="submit" loading={submitting}>
-                  保存比赛
-                </Button>
-              </Space>
-            </div>
-          </Form>
+              <div className="form-actions">
+                <Space>
+                  <Button
+                    onClick={() =>
+                      history.push(id ? `/matches/${id}` : "/matches")
+                    }
+                  >
+                    取消
+                  </Button>
+                  <Button type="primary" htmlType="submit" loading={submitting}>
+                    保存比赛
+                  </Button>
+                </Space>
+              </div>
+            </ProForm>
+          ) : null}
         </Spin>
       </section>
-    </main>
+    </PageContainer>
   );
 }

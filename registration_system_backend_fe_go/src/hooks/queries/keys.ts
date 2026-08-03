@@ -5,6 +5,7 @@ export const queryKeys = {
   currentAdmin: ["currentAdmin"] as const,
   admins: ["admins"] as const,
   teams: ["teams"] as const,
+  teamOptions: ["teams", "options"] as const,
   team: (id: number) => ["teams", id] as const,
   teamMembers: (id: number) => ["teams", id, "members"] as const,
   matches: (query: MatchListQuery) => ["matches", query] as const,
