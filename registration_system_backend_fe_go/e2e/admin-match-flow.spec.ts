@@ -51,7 +51,7 @@ async function loginWithMockAdmin(page: Page) {
 
 async function openNavigation(page: Page, name: string) {
   if ((page.viewportSize()?.width ?? 0) < 992) {
-    await page.getByLabel("打开导航").click();
+    await page.getByRole("img", { name: "menu" }).click();
   }
   await page.getByRole("link", { name }).click();
 }
@@ -487,9 +487,7 @@ test("比赛编辑保持 API payload 契约", async ({ page }) => {
 });
 
 test("管理员可以增删查改球队", async ({ page }, testInfo) => {
-  test.skip(!username || !password, "需要 ADMIN_USERNAME 和 ADMIN_PASSWORD");
-
-  await login(page);
+  await loginWithMockAdmin(page);
   const timestamp = "2026-07-15T08:30:00Z";
   let teams = [
     {
@@ -565,7 +563,9 @@ test("管理员可以增删查改球队", async ({ page }, testInfo) => {
   });
 
   await openNavigation(page, "球队管理");
-  await expect(page.getByRole("heading", { name: "球队管理" })).toBeVisible();
+  await expect(
+    page.getByRole("main").getByText("球队管理", { exact: true }),
+  ).toBeVisible();
   await expect(page.getByText("东安联队")).toBeVisible();
 
   await page.getByRole("button", { name: "创建球队" }).click();
@@ -589,7 +589,7 @@ test("管理员可以增删查改球队", async ({ page }, testInfo) => {
 
   await page.getByLabel("删除西城联队").click();
   await page.getByRole("button", { name: /永\s*久\s*删\s*除/ }).click();
-  await expect(page.getByText("西城联队")).toBeHidden();
+  await expect(page.getByRole("row", { name: /西城联队/ })).toBeHidden();
   await page.screenshot({
     path: testInfo.outputPath("team-management.png"),
     fullPage: true,
@@ -789,7 +789,7 @@ test("管理员可以管理球队成员和队长", async ({ page }, testInfo) =>
   const editDialog = page.getByRole("dialog", { name: "编辑李雷" });
   await editDialog.getByRole("textbox", { name: "真实姓名" }).fill("李雷新");
   await editDialog.getByRole("textbox", { name: "手机号" }).fill("13700137000");
-  await editDialog.locator(".ant-select-selector").click();
+  await editDialog.getByRole("combobox", { name: "成员角色" }).click();
   await page
     .locator(".ant-select-item-option")
     .filter({ hasText: "副队长" })

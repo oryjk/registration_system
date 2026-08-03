@@ -13,9 +13,11 @@
       "!**/.umi-production",
       "!**/.umi-test",
       "!**/.umi-test-production",
+      "!**/.turbopack",
       "!**/dist",
       "!**/coverage",
       "!**/node_modules",
+      "!**/test-results",
       "!biome.json",
       "!bun.lock"
     ]

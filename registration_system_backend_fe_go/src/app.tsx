@@ -147,6 +147,21 @@ export function layout({
         </div>
       </div>
     ),
+    menuItemRender: (
+      item: { path?: string; onClick: () => void },
+      defaultDom: ReactNode,
+    ) => (
+      <a
+        href={item.path}
+        onClick={(event) => {
+          event.preventDefault();
+          item.onClick();
+          if (item.path) history.push(item.path);
+        }}
+      >
+        {defaultDom}
+      </a>
+    ),
     onPageChange: () => {
       if (
         !initialState?.currentAdmin &&
