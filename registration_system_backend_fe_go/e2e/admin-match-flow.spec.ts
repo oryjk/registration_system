@@ -293,6 +293,117 @@ test("比赛筛选写入 URL 并在刷新后恢复", async ({ page }) => {
   );
 });
 
+test("比赛创建保持 API payload 契约", async ({ page }) => {
+  await loginWithMockAdmin(page);
+  const matchID = "44444444-4444-4444-8444-444444444444";
+  const timestamp = "2026-07-15T08:30:00Z";
+
+  await page.route("**/api/admin/teams**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        code: 0,
+        message: "ok",
+        data: [
+          {
+            id: 1,
+            name: "开发联队",
+            description: null,
+            logo_url: null,
+            captain_id: null,
+            status: "active",
+            created_at: timestamp,
+            updated_at: timestamp,
+          },
+        ],
+      }),
+    });
+  });
+  await page.route("**/api/admin/matches", async (route) => {
+    if (route.request().method() !== "POST") {
+      await route.fallback();
+      return;
+    }
+    const payload = route.request().postDataJSON() as Record<string, unknown>;
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        code: 0,
+        message: "ok",
+        data: {
+          match: {
+            ...matchItem(matchID, String(payload.name), "registering"),
+            ...payload,
+          },
+          groups: [],
+        },
+      }),
+    });
+  });
+
+  await page.goto("/matches/new");
+  await page.getByLabel("比赛名称").fill("夏夜联赛");
+  const hostTeam = page.getByRole("combobox", { name: "主队", exact: true });
+  await hostTeam.click();
+  await hostTeam.press("ArrowDown");
+  await hostTeam.press("Enter");
+  const timeInputs = page.locator(".ant-picker-range input");
+  await timeInputs.nth(0).fill("2026-08-10 19:00");
+  await timeInputs.nth(0).press("Enter");
+  await timeInputs.nth(1).fill("2026-08-10 21:00");
+  await timeInputs.nth(1).press("Enter");
+  await expect(timeInputs.nth(0)).toHaveValue("2026-08-10 19:00");
+  await expect(timeInputs.nth(1)).toHaveValue("2026-08-10 21:00");
+  await page.getByLabel("比赛场地").fill("滨江足球场 1 号场");
+  await page.getByLabel("纬度").fill("30.123456");
+  await page.getByLabel("经度").fill("120.654321");
+  await page.getByLabel("比赛说明").fill("保留 API 字段测试");
+
+  const createRequest = page.waitForRequest(
+    (request) =>
+      request.method() === "POST" &&
+      new URL(request.url()).pathname.endsWith("/api/admin/matches"),
+  );
+  await page.getByRole("button", { name: "保存比赛" }).click();
+  const createPayload = (await createRequest).postDataJSON() as Record<
+    string,
+    unknown
+  >;
+  expect(Object.keys(createPayload).sort()).toEqual(
+    [
+      "description",
+      "end_time",
+      "host_capacity_limit",
+      "host_team_id",
+      "location",
+      "location_latitude",
+      "location_longitude",
+      "name",
+      "opponent_name",
+      "players_per_team",
+      "publication_mode",
+      "start_time",
+    ].sort(),
+  );
+  expect(createPayload).toMatchObject({
+    name: "夏夜联赛",
+    publication_mode: "online_team",
+    host_team_id: 1,
+    opponent_name: null,
+    players_per_team: 8,
+    host_capacity_limit: 12,
+    location: "滨江足球场 1 号场",
+    location_latitude: 30.123456,
+    location_longitude: 120.654321,
+    description: "保留 API 字段测试",
+  });
+  expect(createPayload.start_time).toMatch(/^2026-08-10T.*Z$/);
+  expect(createPayload.end_time).toMatch(/^2026-08-10T.*Z$/);
+  await expect(page).toHaveURL(`/matches/${matchID}`);
+});
+
 test("比赛编辑保持 API payload 契约", async ({ page }) => {
   await loginWithMockAdmin(page);
   const matchID = "33333333-3333-4333-8333-333333333333";
