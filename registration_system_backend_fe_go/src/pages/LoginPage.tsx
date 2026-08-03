@@ -50,14 +50,37 @@ export default function LoginPage() {
           <Text className="page-kicker">ADMIN ACCESS</Text>
           <Title level={2}>管理员登录</Title>
           {error ? <Alert type="error" showIcon message={error} /> : null}
-          <Form<LoginFormValue> layout="vertical" size="large" onFinish={submit} requiredMark={false}>
-            <Form.Item name="username" label="账号" rules={[{ required: true, message: "请输入管理员账号" }]}>
-              <Input prefix={<UserOutlined />} autoComplete="username" placeholder="管理员账号" />
+          <Form<LoginFormValue>
+            layout="vertical"
+            size="large"
+            onFinish={submit}
+            requiredMark={false}
+          >
+            <Form.Item
+              name="username"
+              label="账号"
+              rules={[{ required: true, message: "请输入管理员账号" }]}
+            >
+              <Input
+                prefix={<UserOutlined />}
+                autoComplete="username"
+                placeholder="管理员账号"
+              />
             </Form.Item>
-            <Form.Item name="password" label="密码" rules={[{ required: true, message: "请输入密码" }]}>
-              <Input.Password prefix={<LockOutlined />} autoComplete="current-password" placeholder="密码" />
+            <Form.Item
+              name="password"
+              label="密码"
+              rules={[{ required: true, message: "请输入密码" }]}
+            >
+              <Input.Password
+                prefix={<LockOutlined />}
+                autoComplete="current-password"
+                placeholder="密码"
+              />
             </Form.Item>
-            <Button type="primary" htmlType="submit" block loading={submitting}>登录</Button>
+            <Button type="primary" htmlType="submit" block loading={submitting}>
+              登录
+            </Button>
           </Form>
         </div>
       </section>

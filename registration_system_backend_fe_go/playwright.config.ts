@@ -9,8 +9,17 @@ export default defineConfig({
     trace: "retain-on-failure",
   },
   projects: [
-    { name: "desktop", use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 1000 } } },
-    { name: "mobile", use: { ...devices["iPhone 13"], browserName: "chromium" } },
+    {
+      name: "desktop",
+      use: {
+        ...devices["Desktop Chrome"],
+        viewport: { width: 1440, height: 1000 },
+      },
+    },
+    {
+      name: "mobile",
+      use: { ...devices["iPhone 13"], browserName: "chromium" },
+    },
   ],
   webServer: {
     command: "bun run dev -- --port 5175",

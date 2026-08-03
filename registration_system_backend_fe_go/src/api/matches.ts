@@ -1,4 +1,3 @@
-import { request } from "./client";
 import type {
   CreateMatchPayload,
   MatchDetail,
@@ -7,6 +6,7 @@ import type {
   MatchStatus,
   UpdateMatchPayload,
 } from "../types/match";
+import { request } from "./client";
 
 function buildQuery(query: MatchListQuery) {
   const params = new URLSearchParams();
@@ -27,15 +27,24 @@ export function getMatch(id: string) {
 }
 
 export function createMatch(payload: CreateMatchPayload) {
-  return request<MatchDetail>("/matches", { method: "POST", body: JSON.stringify(payload) });
+  return request<MatchDetail>("/matches", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }
 
 export function updateMatch(id: string, payload: UpdateMatchPayload) {
-  return request<MatchDetail>(`/matches/${id}`, { method: "PATCH", body: JSON.stringify(payload) });
+  return request<MatchDetail>(`/matches/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
 }
 
 export function updateMatchStatus(id: string, status: MatchStatus) {
-  return request<MatchDetail>(`/matches/${id}/status`, { method: "PATCH", body: JSON.stringify({ status }) });
+  return request<MatchDetail>(`/matches/${id}/status`, {
+    method: "PATCH",
+    body: JSON.stringify({ status }),
+  });
 }
 
 export function deleteMatch(id: string) {

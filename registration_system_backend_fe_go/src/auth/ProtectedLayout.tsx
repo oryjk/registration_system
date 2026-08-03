@@ -8,7 +8,11 @@ export function ProtectedLayout() {
   const location = useLocation();
 
   if (loading) {
-    return <div className="auth-loading"><Spin size="large" /></div>;
+    return (
+      <div className="auth-loading">
+        <Spin size="large" />
+      </div>
+    );
   }
   if (!admin) {
     return <Navigate to="/login" replace state={{ from: location.pathname }} />;

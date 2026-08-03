@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+:root {
+  --kt-accent: #b7d93d;
+  --kt-brand: #28704b;
+  --kt-brand-dark: #18211c;
+  --kt-page-bg: #f3f6f4;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--kt-page-bg);
+  font-family: Inter, "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
+:focus-visible {
+  outline: 2px solid var(--kt-brand);
+  outline-offset: 2px;
+}

@@ -27,8 +27,8 @@ import {
   listTeamMembers,
   removeTeamMember,
   setTeamCaptain,
-  updateTeamMember,
   updatePlayerProfile,
+  updateTeamMember,
 } from "../api/teams";
 import type {
   AssignableTeamMemberRole,
@@ -42,7 +42,10 @@ import type {
 
 const { Text } = Typography;
 
-const assignableRoleOptions: { label: string; value: AssignableTeamMemberRole }[] = [
+const assignableRoleOptions: {
+  label: string;
+  value: AssignableTeamMemberRole;
+}[] = [
   { label: "领队", value: "leader" },
   { label: "副队长", value: "vice_captain" },
   { label: "队员", value: "member" },
@@ -87,22 +90,41 @@ interface TeamMemberManagerProps {
 }
 
 function formatDate(value: string) {
-  return new Intl.DateTimeFormat("zh-CN", { dateStyle: "medium" }).format(new Date(value));
+  return new Intl.DateTimeFormat("zh-CN", { dateStyle: "medium" }).format(
+    new Date(value),
+  );
 }
 
-function displayName(member: Pick<TeamMember, "real_name" | "nickname" | "user_id">) {
-  return member.real_name?.trim() || member.nickname.trim() || `用户 ${member.user_id}`;
+function displayName(
+  member: Pick<TeamMember, "real_name" | "nickname" | "user_id">,
+) {
+  return (
+    member.real_name?.trim() ||
+    member.nickname.trim() ||
+    `用户 ${member.user_id}`
+  );
 }
 
-function memberInitial(member: Pick<TeamMember, "real_name" | "nickname" | "user_id">) {
-  return member.real_name?.trim().slice(0, 1) || member.nickname.trim().slice(0, 1) || String(member.user_id).slice(-1);
+function memberInitial(
+  member: Pick<TeamMember, "real_name" | "nickname" | "user_id">,
+) {
+  return (
+    member.real_name?.trim().slice(0, 1) ||
+    member.nickname.trim().slice(0, 1) ||
+    String(member.user_id).slice(-1)
+  );
 }
 
 function errorMessage(reason: unknown, fallback: string) {
   return reason instanceof Error ? reason.message : fallback;
 }
 
-export function TeamMemberManager({ open, team, onClose, onTeamChange }: TeamMemberManagerProps) {
+export function TeamMemberManager({
+  open,
+  team,
+  onClose,
+  onTeamChange,
+}: TeamMemberManagerProps) {
   const screens = Grid.useBreakpoint();
   const compact = !(screens.md ?? false);
   const [addForm] = Form.useForm<AddMemberFormValues>();
@@ -119,22 +141,28 @@ export function TeamMemberManager({ open, team, onClose, onTeamChange }: TeamMem
   const candidateRequestID = useRef(0);
   const teamID = team?.id;
 
-  const applyResult = useCallback((result: TeamMemberManagement) => {
-    setMembers(result.members);
-    onTeamChange(result.team);
-  }, [onTeamChange]);
+  const applyResult = useCallback(
+    (result: TeamMemberManagement) => {
+      setMembers(result.members);
+      onTeamChange(result.team);
+    },
+    [onTeamChange],
+  );
 
-  const loadMembers = useCallback(async (id: number) => {
-    setLoading(true);
-    setError("");
-    try {
-      applyResult(await listTeamMembers(id));
-    } catch (reason) {
-      setError(errorMessage(reason, "球队成员加载失败"));
-    } finally {
-      setLoading(false);
-    }
-  }, [applyResult]);
+  const loadMembers = useCallback(
+    async (id: number) => {
+      setLoading(true);
+      setError("");
+      try {
+        applyResult(await listTeamMembers(id));
+      } catch (reason) {
+        setError(errorMessage(reason, "球队成员加载失败"));
+      } finally {
+        setLoading(false);
+      }
+    },
+    [applyResult],
+  );
 
   useEffect(() => {
     if (!open || !teamID) return;
@@ -177,7 +205,12 @@ export function TeamMemberManager({ open, team, onClose, onTeamChange }: TeamMem
     setActionLoading("add");
     setCandidateError("");
     try {
-      applyResult(await addTeamMember(teamID, { user_id: values.userID, role: values.role }));
+      applyResult(
+        await addTeamMember(teamID, {
+          user_id: values.userID,
+          role: values.role,
+        }),
+      );
       setAddOpen(false);
       addForm.resetFields();
     } catch (reason) {
@@ -216,11 +249,18 @@ export function TeamMemberManager({ open, team, onClose, onTeamChange }: TeamMem
         phone_number: values.phoneNumber.trim() || null,
       });
       profileUpdated = true;
-      applyResult(await updateTeamMember(teamID, editingMember.user_id, { role: values.role, status: values.status }));
+      applyResult(
+        await updateTeamMember(teamID, editingMember.user_id, {
+          role: values.role,
+          status: values.status,
+        }),
+      );
       setEditingMember(null);
       editForm.resetFields();
     } catch (reason) {
-      const fallback = profileUpdated ? "球员资料已保存，但成员角色或状态更新失败" : "更新球员资料失败";
+      const fallback = profileUpdated
+        ? "球员资料已保存，但成员角色或状态更新失败"
+        : "更新球员资料失败";
       setError(errorMessage(reason, fallback));
     } finally {
       setActionLoading("");
@@ -232,7 +272,9 @@ export function TeamMemberManager({ open, team, onClose, onTeamChange }: TeamMem
     setActionLoading(`captain-${member.user_id}`);
     setError("");
     try {
-      applyResult(await setTeamCaptain(teamID, captain ? member.user_id : null));
+      applyResult(
+        await setTeamCaptain(teamID, captain ? member.user_id : null),
+      );
     } catch (reason) {
       setError(errorMessage(reason, captain ? "设置队长失败" : "取消队长失败"));
     } finally {
@@ -253,8 +295,18 @@ export function TeamMemberManager({ open, team, onClose, onTeamChange }: TeamMem
     }
   };
 
-  const activeCount = useMemo(() => members.reduce((total, member) => total + Number(member.status === "active"), 0), [members]);
-  const captain = useMemo(() => members.find((member) => member.role === "captain"), [members]);
+  const activeCount = useMemo(
+    () =>
+      members.reduce(
+        (total, member) => total + Number(member.status === "active"),
+        0,
+      ),
+    [members],
+  );
+  const captain = useMemo(
+    () => members.find((member) => member.role === "captain"),
+    [members],
+  );
 
   const columns = [
     {
@@ -262,51 +314,97 @@ export function TeamMemberManager({ open, team, onClose, onTeamChange }: TeamMem
       key: "member",
       render: (_: unknown, member: TeamMember) => (
         <div className="member-identity">
-          <Avatar src={member.avatar_url} size={36}>{memberInitial(member)}</Avatar>
+          <Avatar src={member.avatar_url} size={36}>
+            {memberInitial(member)}
+          </Avatar>
           <div>
             <strong>{displayName(member)}</strong>
             <Text type="secondary">
-              {member.nickname.trim() && member.nickname.trim() !== displayName(member) ? `${member.nickname.trim()} · ` : ""}
+              {member.nickname.trim() &&
+              member.nickname.trim() !== displayName(member)
+                ? `${member.nickname.trim()} · `
+                : ""}
               用户 ID {member.user_id}
             </Text>
-            {member.phone_number ? <Text type="secondary">{member.phone_number}</Text> : null}
+            {member.phone_number ? (
+              <Text type="secondary">{member.phone_number}</Text>
+            ) : null}
             {compact ? (
               <Space size={4} wrap>
-                <Tag color={roleColors[member.role]}>{roleLabels[member.role]}</Tag>
-                <Tag color={member.status === "active" ? "success" : "warning"}>{statusLabels[member.status]}</Tag>
+                <Tag color={roleColors[member.role]}>
+                  {roleLabels[member.role]}
+                </Tag>
+                <Tag color={member.status === "active" ? "success" : "warning"}>
+                  {statusLabels[member.status]}
+                </Tag>
               </Space>
             ) : null}
           </div>
         </div>
       ),
     },
-    ...(compact ? [] : [{
-      title: "角色",
-      dataIndex: "role",
-      width: 100,
-      render: (role: TeamMemberRole) => <Tag color={roleColors[role]}>{roleLabels[role]}</Tag>,
-    }]),
-    ...(compact ? [] : [{
-      title: "状态",
-      dataIndex: "status",
-      width: 100,
-      render: (status: TeamMemberStatus) => <Tag color={status === "active" ? "success" : "warning"}>{statusLabels[status]}</Tag>,
-    }]),
-    ...(compact ? [] : [{ title: "加入时间", dataIndex: "joined_at", width: 126, render: formatDate }]),
+    ...(compact
+      ? []
+      : [
+          {
+            title: "角色",
+            dataIndex: "role",
+            width: 100,
+            render: (role: TeamMemberRole) => (
+              <Tag color={roleColors[role]}>{roleLabels[role]}</Tag>
+            ),
+          },
+        ]),
+    ...(compact
+      ? []
+      : [
+          {
+            title: "状态",
+            dataIndex: "status",
+            width: 100,
+            render: (status: TeamMemberStatus) => (
+              <Tag color={status === "active" ? "success" : "warning"}>
+                {statusLabels[status]}
+              </Tag>
+            ),
+          },
+        ]),
+    ...(compact
+      ? []
+      : [
+          {
+            title: "加入时间",
+            dataIndex: "joined_at",
+            width: 126,
+            render: formatDate,
+          },
+        ]),
     {
       title: "",
       key: "actions",
       width: compact ? 124 : 138,
-      fixed: compact ? undefined : "right" as const,
+      fixed: compact ? undefined : ("right" as const),
       render: (_: unknown, member: TeamMember) => {
         const isCaptain = member.role === "captain";
         const memberName = displayName(member);
-        const captainTitle = isCaptain ? "取消队长" : member.status === "active" ? "设为队长" : "冻结成员不能设为队长";
+        const captainTitle = isCaptain
+          ? "取消队长"
+          : member.status === "active"
+            ? "设为队长"
+            : "冻结成员不能设为队长";
         return (
           <Space size={0}>
             <Popconfirm
-              title={isCaptain ? `取消${memberName}的队长身份` : `将${memberName}设为队长`}
-              description={isCaptain ? "取消后该成员将恢复为普通队员。" : "原队长将自动恢复为普通队员。"}
+              title={
+                isCaptain
+                  ? `取消${memberName}的队长身份`
+                  : `将${memberName}设为队长`
+              }
+              description={
+                isCaptain
+                  ? "取消后该成员将恢复为普通队员。"
+                  : "原队长将自动恢复为普通队员。"
+              }
               okText="确认"
               cancelText="返回"
               disabled={!isCaptain && member.status !== "active"}
@@ -324,7 +422,15 @@ export function TeamMemberManager({ open, team, onClose, onTeamChange }: TeamMem
                 />
               </Tooltip>
             </Popconfirm>
-            <Tooltip title={compact ? undefined : isCaptain ? "请先取消或更换队长" : "编辑成员"}>
+            <Tooltip
+              title={
+                compact
+                  ? undefined
+                  : isCaptain
+                    ? "请先取消或更换队长"
+                    : "编辑成员"
+              }
+            >
               <Button
                 type="text"
                 shape="circle"
@@ -367,22 +473,55 @@ export function TeamMemberManager({ open, team, onClose, onTeamChange }: TeamMem
         width={compact ? "100%" : 780}
         open={open}
         onClose={onClose}
-        extra={(
+        extra={
           <Space size={4}>
             <Tooltip title="刷新成员">
-              <Button shape="circle" type="text" icon={<ReloadOutlined />} aria-label="刷新成员" loading={loading} disabled={!teamID} onClick={() => teamID && void loadMembers(teamID)} />
+              <Button
+                shape="circle"
+                type="text"
+                icon={<ReloadOutlined />}
+                aria-label="刷新成员"
+                loading={loading}
+                disabled={!teamID}
+                onClick={() => teamID && void loadMembers(teamID)}
+              />
             </Tooltip>
-            <Button type="primary" icon={<PlusOutlined />} disabled={!teamID} onClick={openAdd}>添加成员</Button>
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              disabled={!teamID}
+              onClick={openAdd}
+            >
+              添加成员
+            </Button>
           </Space>
-        )}
+        }
       >
         <div className="member-summary">
-          <div><Text type="secondary">成员总数</Text><strong>{members.length}</strong></div>
-          <div><Text type="secondary">启用成员</Text><strong>{activeCount}</strong></div>
-          <div><Text type="secondary">当前队长</Text><strong>{captain ? displayName(captain) : "未指定"}</strong></div>
+          <div>
+            <Text type="secondary">成员总数</Text>
+            <strong>{members.length}</strong>
+          </div>
+          <div>
+            <Text type="secondary">启用成员</Text>
+            <strong>{activeCount}</strong>
+          </div>
+          <div>
+            <Text type="secondary">当前队长</Text>
+            <strong>{captain ? displayName(captain) : "未指定"}</strong>
+          </div>
         </div>
 
-        {error ? <Alert className="service-alert" type="error" showIcon closable message={error} onClose={() => setError("")} /> : null}
+        {error ? (
+          <Alert
+            className="service-alert"
+            type="error"
+            showIcon
+            closable
+            message={error}
+            onClose={() => setError("")}
+          />
+        ) : null}
 
         <Table<TeamMember>
           className="member-table"
@@ -390,9 +529,20 @@ export function TeamMemberManager({ open, team, onClose, onTeamChange }: TeamMem
           loading={loading}
           dataSource={members}
           columns={columns}
-          pagination={members.length > 20 ? { pageSize: 20, showSizeChanger: false } : false}
+          pagination={
+            members.length > 20
+              ? { pageSize: 20, showSizeChanger: false }
+              : false
+          }
           scroll={compact ? undefined : { x: 680 }}
-          locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无球队成员" /> }}
+          locale={{
+            emptyText: (
+              <Empty
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                description="暂无球队成员"
+              />
+            ),
+          }}
         />
       </Drawer>
 
@@ -406,17 +556,41 @@ export function TeamMemberManager({ open, team, onClose, onTeamChange }: TeamMem
         onCancel={() => setAddOpen(false)}
         destroyOnHidden
       >
-        {candidateError ? <Alert className="modal-alert" type="error" showIcon message={candidateError} /> : null}
-        <Form<AddMemberFormValues> form={addForm} layout="vertical" requiredMark={false} disabled={actionLoading === "add"}>
+        {candidateError ? (
+          <Alert
+            className="modal-alert"
+            type="error"
+            showIcon
+            message={candidateError}
+          />
+        ) : null}
+        <Form<AddMemberFormValues>
+          form={addForm}
+          layout="vertical"
+          requiredMark={false}
+          disabled={actionLoading === "add"}
+        >
           <Form.Item label="查询球员">
-            <Input.Search allowClear enterButton="查询" placeholder="输入姓名、昵称、手机号或用户 ID" loading={candidatesLoading} onSearch={(value) => void loadCandidates(value)} />
+            <Input.Search
+              allowClear
+              enterButton="查询"
+              placeholder="输入姓名、昵称、手机号或用户 ID"
+              loading={candidatesLoading}
+              onSearch={(value) => void loadCandidates(value)}
+            />
           </Form.Item>
-          <Form.Item name="userID" label="选择球员" rules={[{ required: true, message: "请选择需要添加的球员" }]}>
+          <Form.Item
+            name="userID"
+            label="选择球员"
+            rules={[{ required: true, message: "请选择需要添加的球员" }]}
+          >
             <Select
               showSearch
               optionFilterProp="label"
               loading={candidatesLoading}
-              placeholder={candidatesLoading ? "正在加载候选球员" : "请选择球员"}
+              placeholder={
+                candidatesLoading ? "正在加载候选球员" : "请选择球员"
+              }
               notFoundContent={candidatesLoading ? null : "没有可添加的球员"}
               options={candidates.map((candidate) => ({
                 value: candidate.user_id,
@@ -435,23 +609,54 @@ export function TeamMemberManager({ open, team, onClose, onTeamChange }: TeamMem
         open={Boolean(editingMember)}
         okText="保存"
         cancelText="取消"
-        confirmLoading={editingMember ? actionLoading === `edit-${editingMember.user_id}` : false}
+        confirmLoading={
+          editingMember
+            ? actionLoading === `edit-${editingMember.user_id}`
+            : false
+        }
         onOk={() => void submitEdit()}
         onCancel={() => setEditingMember(null)}
         destroyOnHidden
       >
-        <Form<EditMemberFormValues> form={editForm} layout="vertical" requiredMark={false}>
-          <Form.Item name="realName" label="真实姓名" rules={[{ max: 120, message: "真实姓名不能超过 120 个字符" }]}>
+        <Form<EditMemberFormValues>
+          form={editForm}
+          layout="vertical"
+          requiredMark={false}
+        >
+          <Form.Item
+            name="realName"
+            label="真实姓名"
+            rules={[{ max: 120, message: "真实姓名不能超过 120 个字符" }]}
+          >
             <Input allowClear placeholder="未填写" autoComplete="name" />
           </Form.Item>
-          <Form.Item name="phoneNumber" label="手机号" rules={[{ max: 32, message: "手机号不能超过 32 个字符" }]}>
-            <Input allowClear placeholder="未填写" inputMode="tel" autoComplete="tel" />
+          <Form.Item
+            name="phoneNumber"
+            label="手机号"
+            rules={[{ max: 32, message: "手机号不能超过 32 个字符" }]}
+          >
+            <Input
+              allowClear
+              placeholder="未填写"
+              inputMode="tel"
+              autoComplete="tel"
+            />
           </Form.Item>
           <Form.Item name="role" label="成员角色" rules={[{ required: true }]}>
             <Select options={assignableRoleOptions} />
           </Form.Item>
-          <Form.Item name="status" label="成员状态" rules={[{ required: true }]}>
-            <Segmented block options={[{ label: "启用", value: "active" }, { label: "冻结", value: "inactive" }]} />
+          <Form.Item
+            name="status"
+            label="成员状态"
+            rules={[{ required: true }]}
+          >
+            <Segmented
+              block
+              options={[
+                { label: "启用", value: "active" },
+                { label: "冻结", value: "inactive" },
+              ]}
+            />
           </Form.Item>
         </Form>
       </Modal>

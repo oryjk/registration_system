@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { getCurrentAdmin, loginAdmin } from "../api/auth";
 import type { AdminUser } from "../types/auth";
 import { AuthContext } from "./auth-context";
@@ -52,6 +58,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [logout]);
 
-  const value = useMemo(() => ({ admin, loading, login, logout }), [admin, loading, login, logout]);
+  const value = useMemo(
+    () => ({ admin, loading, login, logout }),
+    [admin, loading, login, logout],
+  );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

@@ -1,5 +1,5 @@
-import DashboardOutlined from "@ant-design/icons/es/icons/DashboardOutlined";
 import CalendarOutlined from "@ant-design/icons/es/icons/CalendarOutlined";
+import DashboardOutlined from "@ant-design/icons/es/icons/DashboardOutlined";
 import LogoutOutlined from "@ant-design/icons/es/icons/LogoutOutlined";
 import MenuFoldOutlined from "@ant-design/icons/es/icons/MenuFoldOutlined";
 import MenuUnfoldOutlined from "@ant-design/icons/es/icons/MenuUnfoldOutlined";
@@ -39,13 +39,43 @@ export function AppShell() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const location = useLocation();
   const { admin, logout } = useAuth();
-  const selectedMenuKey = location.pathname.startsWith("/matches") ? "/matches" : location.pathname.startsWith("/teams") ? "/teams" : location.pathname.startsWith("/admins") ? "/admins" : location.pathname;
+  const selectedMenuKey = location.pathname.startsWith("/matches")
+    ? "/matches"
+    : location.pathname.startsWith("/teams")
+      ? "/teams"
+      : location.pathname.startsWith("/admins")
+        ? "/admins"
+        : location.pathname;
   const menuItems = [
-    { key: "/", icon: <DashboardOutlined />, label: <NavLink to="/">系统概览</NavLink> },
-    { key: "/matches", icon: <CalendarOutlined />, label: <NavLink to="/matches">比赛管理</NavLink> },
-    { key: "/teams", icon: <TeamOutlined />, label: <NavLink to="/teams">球队管理</NavLink> },
-    ...(admin?.is_super_admin ? [{ key: "/admins", icon: <ShopOutlined />, label: <NavLink to="/admins">场馆管理员</NavLink> }] : []),
-    { key: "/access", icon: <SafetyCertificateOutlined />, label: <NavLink to="/access">接入状态</NavLink> },
+    {
+      key: "/",
+      icon: <DashboardOutlined />,
+      label: <NavLink to="/">系统概览</NavLink>,
+    },
+    {
+      key: "/matches",
+      icon: <CalendarOutlined />,
+      label: <NavLink to="/matches">比赛管理</NavLink>,
+    },
+    {
+      key: "/teams",
+      icon: <TeamOutlined />,
+      label: <NavLink to="/teams">球队管理</NavLink>,
+    },
+    ...(admin?.is_super_admin
+      ? [
+          {
+            key: "/admins",
+            icon: <ShopOutlined />,
+            label: <NavLink to="/admins">场馆管理员</NavLink>,
+          },
+        ]
+      : []),
+    {
+      key: "/access",
+      icon: <SafetyCertificateOutlined />,
+      label: <NavLink to="/access">接入状态</NavLink>,
+    },
   ];
 
   const menu = (
@@ -61,7 +91,12 @@ export function AppShell() {
   return (
     <Layout className="app-layout">
       {desktop ? (
-        <Sider className="app-sider" width={232} collapsedWidth={76} collapsed={collapsed}>
+        <Sider
+          className="app-sider"
+          width={232}
+          collapsedWidth={76}
+          collapsed={collapsed}
+        >
           <Brand />
           <nav aria-label="主导航">{menu}</nav>
           <Text className="sider-version">v0.1 · GO</Text>
@@ -73,22 +108,45 @@ export function AppShell() {
         width={252}
         open={!desktop && drawerOpen}
         onClose={() => setDrawerOpen(false)}
-        styles={{ body: { padding: 0, background: "#18211c" }, header: { display: "none" } }}
+        styles={{
+          body: { padding: 0, background: "#18211c" },
+          header: { display: "none" },
+        }}
       >
-        <div className="drawer-brand"><Brand /></div>
+        <div className="drawer-brand">
+          <Brand />
+        </div>
         {menu}
       </Drawer>
 
       <Layout>
         <Header className="app-header">
           <div className="header-leading">
-            <Tooltip title={desktop ? (collapsed ? "展开导航" : "收起导航") : "打开导航"}>
+            <Tooltip
+              title={
+                desktop ? (collapsed ? "展开导航" : "收起导航") : "打开导航"
+              }
+            >
               <Button
                 type="text"
                 shape="circle"
-                icon={desktop ? (collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />) : <MenuUnfoldOutlined />}
+                icon={
+                  desktop ? (
+                    collapsed ? (
+                      <MenuUnfoldOutlined />
+                    ) : (
+                      <MenuFoldOutlined />
+                    )
+                  ) : (
+                    <MenuUnfoldOutlined />
+                  )
+                }
                 aria-label={desktop ? "切换导航" : "打开导航"}
-                onClick={() => (desktop ? setCollapsed((value) => !value) : setDrawerOpen(true))}
+                onClick={() =>
+                  desktop
+                    ? setCollapsed((value) => !value)
+                    : setDrawerOpen(true)
+                }
               />
             </Tooltip>
             <div>
@@ -102,11 +160,19 @@ export function AppShell() {
               <Text>{admin?.username}</Text>
             </div>
             <Tooltip title="退出登录">
-              <Button type="text" shape="circle" icon={<LogoutOutlined />} aria-label="退出登录" onClick={logout} />
+              <Button
+                type="text"
+                shape="circle"
+                icon={<LogoutOutlined />}
+                aria-label="退出登录"
+                onClick={logout}
+              />
             </Tooltip>
           </div>
         </Header>
-        <Content className="app-content"><Outlet /></Content>
+        <Content className="app-content">
+          <Outlet />
+        </Content>
       </Layout>
     </Layout>
   );
