@@ -6,6 +6,7 @@
 | --- | --- | --- |
 | `registration_system_mini/` | 微信小程序端，面向球员/队员/普通用户 | `uni-app + Vue 3 + TypeScript + Vite` |
 | `registration_system_backend_fe/` | 管理后台，面向运营/管理员 | `Vue 3 + TypeScript + Vite + Tailwind 4 + DaisyUI 5` |
+| `registration_system_backend_fe_go/` | 对接 Go 新后端的管理后台 | `Umi Max + React + Ant Design 6 + ProComponents 3 + React Query 5 + Tailwind 4 + antd-style + Biome + utoopack + Bun` |
 | `registration_system_admin_app/` | 移动管理 App，面向赛事运营/管理员 | `Flutter + Dart` |
 | `registration_system_go/` | 新后台服务端，优先实现认证、球队与比赛闭环 | `Go + Gin + PostgreSQL + pgx + sqlc` |
 | `registration_system_rs/` | 旧后台服务端，只作为业务与迁移参考 | `Rust + Axum + PostgreSQL + sqlx` |
@@ -15,6 +16,7 @@
 - 工作区协作约定：`AGENTS.md`、`CLAUDE.md`
 - 小程序说明：`registration_system_mini/README.md`
 - 管理后台说明：`registration_system_backend_fe/README.md`
+- Go 配套管理后台说明：`registration_system_backend_fe_go/README.md`
 - 移动管理 App 说明：`registration_system_admin_app/README.md`
 - Go 后端说明：`registration_system_go/README.md`
 - Rust 参考后端说明：`registration_system_rs/README.md`
@@ -67,7 +69,21 @@ bun run dev
 - 如果 `VITE_API_BASE_URL` 为空，则浏览器请求 `/api/admin/*`，由 Vite 代理到 `http://localhost:18080`
 - 如果直接对接 Rust 后端默认端口，可将 `VITE_API_BASE_URL` 设为 `http://127.0.0.1:18080`
 
-### 3. 启动小程序
+### 3. 启动 Go 配套管理后台
+
+```bash
+cd registration_system_backend_fe_go
+bun install
+bun run dev
+```
+
+- 开发使用 `ADMIN_API_BASE_URL=/go-api`，由 Umi 代理到 Go 后端；可用 `API_PROXY_TARGET` 覆盖目标地址。
+- 管理端请求统一使用 `/api/admin`，健康检查使用 `/health`，响应契约为 `{ code, message, data }`。
+- 生产环境保持 API base 为空，由 Nginx 转发同源 `/api/admin/*` 和 `/health`。
+- `bun run build:nginx` 将前端构建到 `/registration-admin/` 路由基址；Nginx 必须配置 SPA fallback 到 `/registration-admin/index.html`。
+- 安装和脚本仍使用 Bun；Umi 运行时要求 Node.js 20 或更高版本。
+
+### 4. 启动小程序
 
 ```bash
 cd registration_system_mini
@@ -79,7 +95,7 @@ bun run dev:mp-weixin
 - 开发环境默认值：`http://127.0.0.1:18080/api`
 - 微信开发者工具导入目录：`registration_system_mini/dist/dev/mp-weixin`
 
-### 4. 启动移动管理 App
+### 5. 启动移动管理 App
 
 ```bash
 cd registration_system_admin_app
