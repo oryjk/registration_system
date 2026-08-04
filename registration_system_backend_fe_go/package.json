@@ -14,6 +14,8 @@
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "test": "jest",
+    "test:performance": "node --test scripts/*.test.mjs",
+    "perf:budget": "node scripts/entry-budget.mjs --max-gzip 220000",
     "test:e2e": "cross-env PORT=5175 playwright test",
     "test:e2e:nginx": "bun run build:nginx && cross-env PORT=5185 PLAYWRIGHT_DIST_BASE=/registration-admin/ PLAYWRIGHT_BASE_URL=http://127.0.0.1:5185/registration-admin/ playwright test e2e/admin-routing.spec.ts"
   },
