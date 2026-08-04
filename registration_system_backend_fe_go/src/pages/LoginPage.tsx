@@ -1,9 +1,7 @@
-import LockOutlined from "@ant-design/icons/es/icons/LockOutlined";
-import UserOutlined from "@ant-design/icons/es/icons/UserOutlined";
+import { LockOutlined, UserOutlined } from "@ant-design/icons";
 import ProFormText from "@ant-design/pro-components/es/form/components/Text";
 import { LoginForm } from "@ant-design/pro-components/es/form/layouts/LoginForm";
-import Alert from "antd/es/alert";
-import Typography from "antd/es/typography";
+import { Alert, Typography } from "antd";
 import { useState } from "react";
 import { history, Navigate, useLocation, useModel } from "umi";
 import { BrandMark } from "../components/BrandMark";

@@ -1,12 +1,11 @@
-import CheckCircleFilled from "@ant-design/icons/es/icons/CheckCircleFilled";
-import ClockCircleOutlined from "@ant-design/icons/es/icons/ClockCircleOutlined";
-import CloseCircleFilled from "@ant-design/icons/es/icons/CloseCircleFilled";
-import ReloadOutlined from "@ant-design/icons/es/icons/ReloadOutlined";
+import {
+  CheckCircleFilled,
+  ClockCircleOutlined,
+  CloseCircleFilled,
+  ReloadOutlined,
+} from "@ant-design/icons";
 import { PageContainer } from "@ant-design/pro-components/es/layout/components/PageContainer";
-import Alert from "antd/es/alert";
-import Button from "antd/es/button";
-import Space from "antd/es/space";
-import Typography from "antd/es/typography";
+import { Alert, Button, Space, Typography } from "antd";
 import { useHealthQuery } from "../hooks/queries/useSystemQueries";
 
 const { Text } = Typography;

@@ -1,8 +1,6 @@
-import SafetyCertificateOutlined from "@ant-design/icons/es/icons/SafetyCertificateOutlined";
+import { SafetyCertificateOutlined } from "@ant-design/icons";
 import { PageContainer } from "@ant-design/pro-components/es/layout/components/PageContainer";
-import Descriptions from "antd/es/descriptions";
-import Tag from "antd/es/tag";
-import Typography from "antd/es/typography";
+import { Descriptions, Tag, Typography } from "antd";
 import { useModel } from "umi";
 import { getApiBaseUrl } from "../config/api";
 

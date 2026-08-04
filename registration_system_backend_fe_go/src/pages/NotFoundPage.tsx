@@ -1,6 +1,5 @@
-import HomeOutlined from "@ant-design/icons/es/icons/HomeOutlined";
-import Button from "antd/es/button";
-import Result from "antd/es/result";
+import { HomeOutlined } from "@ant-design/icons";
+import { Button, Result } from "antd";
 import { history } from "umi";
 
 export default function NotFoundPage() {

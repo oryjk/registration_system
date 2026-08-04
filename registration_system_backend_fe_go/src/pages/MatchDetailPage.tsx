@@ -1,16 +1,17 @@
-import DeleteOutlined from "@ant-design/icons/es/icons/DeleteOutlined";
-import EditOutlined from "@ant-design/icons/es/icons/EditOutlined";
+import { DeleteOutlined, EditOutlined } from "@ant-design/icons";
 import { PageContainer } from "@ant-design/pro-components/es/layout/components/PageContainer";
 import ProTable, { type ProColumns } from "@ant-design/pro-components/es/table";
-import Alert from "antd/es/alert";
-import Avatar from "antd/es/avatar";
-import Button from "antd/es/button";
-import Descriptions from "antd/es/descriptions";
-import Modal from "antd/es/modal";
-import Popconfirm from "antd/es/popconfirm";
-import Space from "antd/es/space";
-import Tag from "antd/es/tag";
-import Typography from "antd/es/typography";
+import {
+  Alert,
+  Avatar,
+  Button,
+  Descriptions,
+  Modal,
+  Popconfirm,
+  Space,
+  Tag,
+  Typography,
+} from "antd";
 import { useState } from "react";
 import { history, useModel, useParams } from "umi";
 import {

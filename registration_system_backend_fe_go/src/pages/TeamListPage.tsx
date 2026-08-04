@@ -1,25 +1,29 @@
-import DeleteOutlined from "@ant-design/icons/es/icons/DeleteOutlined";
-import EditOutlined from "@ant-design/icons/es/icons/EditOutlined";
-import EyeOutlined from "@ant-design/icons/es/icons/EyeOutlined";
-import PlusOutlined from "@ant-design/icons/es/icons/PlusOutlined";
-import TeamOutlined from "@ant-design/icons/es/icons/TeamOutlined";
+import {
+  DeleteOutlined,
+  EditOutlined,
+  EyeOutlined,
+  PlusOutlined,
+  TeamOutlined,
+} from "@ant-design/icons";
 import { ModalForm } from "@ant-design/pro-components/es/form/layouts/ModalForm";
 import { PageContainer } from "@ant-design/pro-components/es/layout/components/PageContainer";
 import ProTable, { type ProColumns } from "@ant-design/pro-components/es/table";
-import Alert from "antd/es/alert";
-import Button from "antd/es/button";
-import Descriptions from "antd/es/descriptions";
-import Drawer from "antd/es/drawer";
-import Form from "antd/es/form";
-import Grid from "antd/es/grid";
-import Input from "antd/es/input";
-import Popconfirm from "antd/es/popconfirm";
-import Segmented from "antd/es/segmented";
-import Select from "antd/es/select";
-import Space from "antd/es/space";
-import Tag from "antd/es/tag";
-import Tooltip from "antd/es/tooltip";
-import Typography from "antd/es/typography";
+import {
+  Alert,
+  Button,
+  Descriptions,
+  Drawer,
+  Form,
+  Grid,
+  Input,
+  Popconfirm,
+  Segmented,
+  Select,
+  Space,
+  Tag,
+  Tooltip,
+  Typography,
+} from "antd";
 import { useMemo, useState } from "react";
 import { TeamMemberManager } from "../components/TeamMemberManager";
 import {

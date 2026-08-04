@@ -1,8 +1,4 @@
-import Alert from "antd/es/alert";
-import Form, { type FormInstance } from "antd/es/form";
-import Input from "antd/es/input";
-import Modal from "antd/es/modal";
-import Select from "antd/es/select";
+import { Alert, Form, type FormInstance, Input, Modal, Select } from "antd";
 import type {
   AssignableTeamMemberRole,
   TeamMemberCandidate,

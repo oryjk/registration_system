@@ -1,6 +1,5 @@
-import ArrowLeftOutlined from "@ant-design/icons/es/icons/ArrowLeftOutlined";
-import Button from "antd/es/button";
-import Result from "antd/es/result";
+import { ArrowLeftOutlined } from "@ant-design/icons";
+import { Button, Result } from "antd";
 import { history } from "umi";
 
 export default function ForbiddenPage() {

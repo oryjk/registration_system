@@ -1,19 +1,23 @@
-import DeleteOutlined from "@ant-design/icons/es/icons/DeleteOutlined";
-import EyeOutlined from "@ant-design/icons/es/icons/EyeOutlined";
-import PlusOutlined from "@ant-design/icons/es/icons/PlusOutlined";
-import StopOutlined from "@ant-design/icons/es/icons/StopOutlined";
+import {
+  DeleteOutlined,
+  EyeOutlined,
+  PlusOutlined,
+  StopOutlined,
+} from "@ant-design/icons";
 import { PageContainer } from "@ant-design/pro-components/es/layout/components/PageContainer";
 import ProTable, { type ProColumns } from "@ant-design/pro-components/es/table";
-import Alert from "antd/es/alert";
-import Button from "antd/es/button";
-import Grid from "antd/es/grid";
-import Input from "antd/es/input";
-import Popconfirm from "antd/es/popconfirm";
-import Select from "antd/es/select";
-import Space from "antd/es/space";
-import Tag from "antd/es/tag";
-import Tooltip from "antd/es/tooltip";
-import Typography from "antd/es/typography";
+import {
+  Alert,
+  Button,
+  Grid,
+  Input,
+  Popconfirm,
+  Select,
+  Space,
+  Tag,
+  Tooltip,
+  Typography,
+} from "antd";
 import { useEffect, useState } from "react";
 import { history, useLocation, useModel } from "umi";
 import {

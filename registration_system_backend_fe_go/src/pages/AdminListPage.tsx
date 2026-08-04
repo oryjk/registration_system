@@ -1,4 +1,4 @@
-import PlusOutlined from "@ant-design/icons/es/icons/PlusOutlined";
+import { PlusOutlined } from "@ant-design/icons";
 import { ModalForm } from "@ant-design/pro-components/es/form/layouts/ModalForm";
 import { PageContainer } from "@ant-design/pro-components/es/layout/components/PageContainer";
 import ProTable, { type ProColumns } from "@ant-design/pro-components/es/table";

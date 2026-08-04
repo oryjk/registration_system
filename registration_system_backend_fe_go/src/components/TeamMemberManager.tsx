@@ -1,13 +1,14 @@
-import PlusOutlined from "@ant-design/icons/es/icons/PlusOutlined";
-import ReloadOutlined from "@ant-design/icons/es/icons/ReloadOutlined";
-import Alert from "antd/es/alert";
-import Button from "antd/es/button";
-import Drawer from "antd/es/drawer";
-import Form from "antd/es/form";
-import Grid from "antd/es/grid";
-import Space from "antd/es/space";
-import Tooltip from "antd/es/tooltip";
-import Typography from "antd/es/typography";
+import { PlusOutlined, ReloadOutlined } from "@ant-design/icons";
+import {
+  Alert,
+  Button,
+  Drawer,
+  Form,
+  Grid,
+  Space,
+  Tooltip,
+  Typography,
+} from "antd";
 import { useEffect, useMemo, useState } from "react";
 import {
   useAddTeamMemberMutation,

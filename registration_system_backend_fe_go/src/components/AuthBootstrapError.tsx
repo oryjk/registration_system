@@ -1,6 +1,5 @@
-import ReloadOutlined from "@ant-design/icons/es/icons/ReloadOutlined";
-import Button from "antd/es/button";
-import Result from "antd/es/result";
+import { ReloadOutlined } from "@ant-design/icons";
+import { Button, Result } from "antd";
 
 interface AuthBootstrapErrorProps {
   message: string;

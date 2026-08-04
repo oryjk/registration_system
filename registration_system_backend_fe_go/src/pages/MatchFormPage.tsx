@@ -1,18 +1,20 @@
-import PlusOutlined from "@ant-design/icons/es/icons/PlusOutlined";
+import { PlusOutlined } from "@ant-design/icons";
 import { ProForm } from "@ant-design/pro-components/es/form/layouts/ProForm";
 import { PageContainer } from "@ant-design/pro-components/es/layout/components/PageContainer";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import Alert from "antd/es/alert";
-import Button from "antd/es/button";
-import DatePicker from "antd/es/date-picker";
-import Form from "antd/es/form";
-import Input from "antd/es/input";
-import InputNumber from "antd/es/input-number";
-import Modal from "antd/es/modal";
-import Select from "antd/es/select";
-import Space from "antd/es/space";
-import Spin from "antd/es/spin";
-import Typography from "antd/es/typography";
+import {
+  Alert,
+  Button,
+  DatePicker,
+  Form,
+  Input,
+  InputNumber,
+  Modal,
+  Select,
+  Space,
+  Spin,
+  Typography,
+} from "antd";
 import dayjs, { type Dayjs } from "dayjs";
 import { useRef, useState } from "react";
 import { history, useParams } from "umi";

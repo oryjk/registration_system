@@ -1,15 +1,15 @@
-import CrownOutlined from "@ant-design/icons/es/icons/CrownOutlined";
-import DeleteOutlined from "@ant-design/icons/es/icons/DeleteOutlined";
-import EditOutlined from "@ant-design/icons/es/icons/EditOutlined";
+import { CrownOutlined, DeleteOutlined, EditOutlined } from "@ant-design/icons";
 import ProTable, { type ProColumns } from "@ant-design/pro-components/es/table";
-import Avatar from "antd/es/avatar";
-import Button from "antd/es/button";
-import Empty from "antd/es/empty";
-import Popconfirm from "antd/es/popconfirm";
-import Space from "antd/es/space";
-import Tag from "antd/es/tag";
-import Tooltip from "antd/es/tooltip";
-import Typography from "antd/es/typography";
+import {
+  Avatar,
+  Button,
+  Empty,
+  Popconfirm,
+  Space,
+  Tag,
+  Tooltip,
+  Typography,
+} from "antd";
 import type { TeamMember } from "../../types/team";
 import {
   displayMemberName,

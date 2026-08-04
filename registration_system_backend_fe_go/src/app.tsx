@@ -1,6 +1,5 @@
-import LogoutOutlined from "@ant-design/icons/es/icons/LogoutOutlined";
-import Button from "antd/es/button";
-import Tooltip from "antd/es/tooltip";
+import { LogoutOutlined } from "@ant-design/icons";
+import { Button, Tooltip } from "antd";
 import { type ReactNode, useEffect } from "react";
 import { history, useModel, useQueryClient } from "umi";
 import { getCurrentAdmin } from "./api/auth";
