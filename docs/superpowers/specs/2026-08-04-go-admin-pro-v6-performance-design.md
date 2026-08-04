@@ -46,7 +46,7 @@ named imports from `antd`.
 
 ## Chosen Approach
 
-Use three layers of optimization.
+Use four layers of optimization.
 
 ### 1. Public Ant Design imports
 
@@ -87,7 +87,24 @@ admin display, logout, bootstrap error handling, and forbidden rendering.
 `routePrefetch` already defaults to `none`; keep that behavior explicit rather
 than introducing eager route downloads.
 
-### 3. Measured asset budget
+### 3. Remove unused global runtime payload
+
+The application does not use Umi locale APIs, but the locale plugin injects
+react-intl, Moment, Moment locales, and EventEmitter dependencies into every
+route. Disable that plugin and preserve Ant Design's Chinese component copy by
+returning `zh_CN` from the existing Ant Design runtime hook.
+
+The empty global `antd.appConfig` also enables Ant Design's App provider and
+loads message, modal, and notification runtime code on the public route. No
+page uses `App.useApp`, so remove the provider. Keep each page's existing
+context-safe APIs such as `Modal.useModal` unchanged.
+
+Ant Design 6 supports modern browsers. Set `BABEL_POLYFILL=none` in the shared
+dev and build commands so Umi does not inject its broad core-js entry. This is
+an explicit browser-support boundary; supporting older browsers requires
+restoring targeted polyfills and recalibrating the budget.
+
+### 4. Measured asset budget
 
 Add a small Node script that reads the generated production entry assets,
 calculates gzip size with the standard `zlib` API, prints a structured summary,
@@ -95,9 +112,13 @@ and fails when the public entry exceeds its budget. The script must use
 generated build metadata or generated HTML as the source of truth, rather than
 hard-coded chunk names.
 
-The initial budget is lower than the measured V5 value of 229,128 bytes. The
-exact threshold will be set from the first optimized build with a small,
-documented regression margin.
+The enforced budget is 220,000 gzip bytes, below the measured V5 value of
+229,128 bytes. The optimized clean build is 175,345 bytes, leaving 44,655
+bytes (20.3%) of headroom.
+
+The Nginx production E2E test records the scripts requested before the login
+page settles, maps those chunk basenames back through `dist/stats.json`, and
+asserts that the resulting module graph contains no ProComponents module.
 
 ## Runtime Flow
 
@@ -138,6 +159,28 @@ The implementation is complete only when all of the following pass:
 - authenticated routes preserve menus, access control, logout, and redirects
 - the same seven-run cold-context benchmark shows initial gzip below the V5
   baseline and median FCP no worse than the V5 baseline
+
+## Measured Result
+
+Both versions were exported to separate temporary directories, installed from
+their own lock files, built sequentially, served on separate local ports, and
+measured by alternating targets across seven fresh Chromium contexts.
+
+| Metric | V5 baseline | Optimized Pro v6 | Delta |
+| --- | ---: | ---: | ---: |
+| Clean production build | 3.88 s | 5.96 s | +2.08 s |
+| Initial uncompressed assets | 709,001 B | 519,722 B | -189,279 B |
+| Initial gzip assets | 229,128 B | 175,345 B | -53,783 B |
+| Median DOMContentLoaded | 28 ms | 38 ms | +10 ms |
+| Median FCP | 388 ms | 380 ms | -8 ms |
+| Median load | 28 ms | 52 ms | +24 ms |
+| Median request count | 10 | 16 | +6 |
+| Median transfer | 921,281 B | 931,062 B | +9,781 B |
+
+The phase meets its two user-visible gates: initial gzip is 23.5% below V5
+and median FCP is 8 ms faster. It does not make utoopack's production build
+faster than Vite, and DCL, load, request count, and transfer remain regressions
+that must be stated rather than hidden.
 
 ## Rollout
 
