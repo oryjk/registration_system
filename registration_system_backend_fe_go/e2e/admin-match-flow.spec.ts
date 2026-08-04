@@ -127,7 +127,7 @@ test("核心管理页面在桌面和移动视口保持一致", async ({ page }, 
     loginViewport.innerWidth,
   );
   const loginContainerSize = await page
-    .locator(".ant-pro-form-login-container")
+    .locator(".login-form-inner")
     .evaluate((element) => ({
       clientWidth: element.clientWidth,
       scrollWidth: element.scrollWidth,
