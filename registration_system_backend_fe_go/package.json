@@ -7,9 +7,9 @@
     "node": ">=20.0.0"
   },
   "scripts": {
-    "dev": "cross-env UMI_ENV=dev ADMIN_API_BASE_URL=/go-api max dev --host 0.0.0.0",
-    "build": "cross-env NODE_ENV=production ADMIN_PUBLIC_PATH=/ ADMIN_ROUTE_BASE=/ max build",
-    "build:nginx": "cross-env NODE_ENV=production ADMIN_PUBLIC_PATH=/registration-admin/ ADMIN_ROUTE_BASE=/registration-admin/ max build",
+    "dev": "cross-env BABEL_POLYFILL=none UMI_ENV=dev ADMIN_API_BASE_URL=/go-api max dev --host 0.0.0.0",
+    "build": "cross-env BABEL_POLYFILL=none NODE_ENV=production ADMIN_PUBLIC_PATH=/ ADMIN_ROUTE_BASE=/ max build",
+    "build:nginx": "cross-env BABEL_POLYFILL=none NODE_ENV=production ADMIN_PUBLIC_PATH=/registration-admin/ ADMIN_ROUTE_BASE=/registration-admin/ max build",
     "type-check": "tsc --noEmit",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",

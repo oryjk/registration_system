@@ -1,12 +1,46 @@
-import { symlink, unlink } from "node:fs/promises";
-import { resolve } from "node:path";
+import { readFile, symlink, unlink } from "node:fs/promises";
+import { basename, resolve } from "node:path";
 import { expect, test } from "@playwright/test";
 
 const routeBase = process.env.PLAYWRIGHT_DIST_BASE;
 const matchID = "11111111-1111-4111-8111-111111111111";
 
+interface BuildStats {
+  modules?: Array<{ name: string; chunks?: string[] }>;
+}
+
+async function modulesForChunks(chunks: Set<string>) {
+  const stats = JSON.parse(
+    await readFile(resolve("dist/stats.json"), "utf8"),
+  ) as BuildStats;
+
+  return (stats.modules || [])
+    .filter((module) => module.chunks?.some((chunk) => chunks.has(chunk)))
+    .map((module) => module.name);
+}
+
 test.describe("Nginx 子路径路由", () => {
   test.skip(!routeBase, "仅在 dist 路由验证中运行");
+
+  test("登录依赖图不加载 ProComponents", async ({ page }) => {
+    const requestedScripts = new Set<string>();
+    page.on("request", (request) => {
+      if (request.resourceType() === "script") {
+        requestedScripts.add(basename(new URL(request.url()).pathname));
+      }
+    });
+
+    await page.goto(`${routeBase}login`);
+    await expect(page.getByPlaceholder("管理员账号")).toBeVisible();
+    await page.waitForLoadState("networkidle");
+
+    const loginModules = await modulesForChunks(requestedScripts);
+    expect(
+      loginModules.filter((module) =>
+        module.includes("node_modules/@ant-design/pro-components/"),
+      ),
+    ).toEqual([]);
+  });
 
   test("深链接、刷新、静态资源和 404 保持在路由基址内", async ({
     page,

@@ -1,7 +1,5 @@
 import { LockOutlined, UserOutlined } from "@ant-design/icons";
-import ProFormText from "@ant-design/pro-components/es/form/components/Text";
-import { LoginForm } from "@ant-design/pro-components/es/form/layouts/LoginForm";
-import { Alert, Typography } from "antd";
+import { Alert, Button, Form, Input, Typography } from "antd";
 import { useState } from "react";
 import { history, Navigate, useLocation, useModel } from "umi";
 import { BrandMark } from "../components/BrandMark";
@@ -64,39 +62,43 @@ export default function LoginPage() {
           <Text className="page-kicker">ADMIN ACCESS</Text>
           <Title level={2}>管理员登录</Title>
           {error ? <Alert type="error" showIcon message={error} /> : null}
-          <LoginForm<LoginFormValue>
-            contentStyle={{ width: "100%", minWidth: 0 }}
-            submitter={{
-              searchConfig: { submitText: "登录" },
-              submitButtonProps: {
-                block: true,
-                loading: loginMutation.isPending,
-                size: "large",
-              },
-            }}
+          <Form<LoginFormValue>
+            layout="vertical"
             onFinish={submit}
+            requiredMark={false}
           >
-            <ProFormText
+            <Form.Item
               name="username"
               label="账号"
               rules={[{ required: true, message: "请输入管理员账号" }]}
-              fieldProps={{
-                prefix: <UserOutlined />,
-                autoComplete: "username",
-                placeholder: "管理员账号",
-              }}
-            />
-            <ProFormText.Password
+            >
+              <Input
+                prefix={<UserOutlined />}
+                autoComplete="username"
+                placeholder="管理员账号"
+              />
+            </Form.Item>
+            <Form.Item
               name="password"
               label="密码"
               rules={[{ required: true, message: "请输入密码" }]}
-              fieldProps={{
-                prefix: <LockOutlined />,
-                autoComplete: "current-password",
-                placeholder: "密码",
-              }}
-            />
-          </LoginForm>
+            >
+              <Input.Password
+                prefix={<LockOutlined />}
+                autoComplete="current-password"
+                placeholder="密码"
+              />
+            </Form.Item>
+            <Button
+              block
+              htmlType="submit"
+              loading={loginMutation.isPending}
+              size="large"
+              type="primary"
+            >
+              登录
+            </Button>
+          </Form>
         </div>
       </section>
     </main>

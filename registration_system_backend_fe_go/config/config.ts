@@ -18,7 +18,6 @@ const base = routePrefix(process.env.ADMIN_ROUTE_BASE);
 export default defineConfig({
   access: {},
   antd: {
-    appConfig: {},
     configProvider: {
       variant: "filled",
       theme: {
@@ -49,17 +48,14 @@ export default defineConfig({
     locale: false,
     ...defaultSettings,
   },
-  locale: {
-    antd: true,
-    baseNavigator: false,
-    default: "zh-CN",
-  },
   manifest: {},
   model: {},
   proxy: proxy[UMI_ENV as keyof typeof proxy],
   publicPath,
   reactQuery: {},
-  routePrefetch: {},
+  routePrefetch: {
+    defaultPrefetch: "none",
+  },
   routes,
   title: "开踢管理台",
   utoopack: {},

@@ -1,20 +1,38 @@
-import { LogoutOutlined } from "@ant-design/icons";
-import { Button, Tooltip } from "antd";
-import { type ReactNode, useEffect } from "react";
-import { history, useModel, useQueryClient } from "umi";
+import type { ConfigProviderProps } from "antd";
+import zhCN from "antd/locale/zh_CN";
+import { lazy, type ReactNode, Suspense } from "react";
+import { history } from "umi";
 import { getCurrentAdmin } from "./api/auth";
 import { ApiError } from "./api/client";
 import { expireAdminSession } from "./auth/session-expiry";
-import { clearAdminToken, getAdminToken } from "./auth/token-storage";
-import { AuthBootstrapError } from "./components/AuthBootstrapError";
+import { getAdminToken } from "./auth/token-storage";
 import { BrandMark } from "./components/BrandMark";
-import ForbiddenPage from "./pages/ForbiddenPage";
 import type { RuntimeInitialState } from "./types/runtime";
 import { buildLoginUrl, sanitizeRedirect } from "./utils/auth-redirect";
+
+const AdminLayoutChildren = lazy(() =>
+  import("./components/AdminLayoutRuntime").then((module) => ({
+    default: module.AdminLayoutChildren,
+  })),
+);
+const AdminLayoutSessionActions = lazy(() =>
+  import("./components/AdminLayoutRuntime").then((module) => ({
+    default: module.AdminLayoutSessionActions,
+  })),
+);
+const AdminLayoutForbidden = lazy(() =>
+  import("./components/AdminLayoutRuntime").then((module) => ({
+    default: module.AdminLayoutForbidden,
+  })),
+);
 
 async function fetchCurrentAdmin() {
   if (!getAdminToken()) return null;
   return getCurrentAdmin();
+}
+
+export function antd(config: ConfigProviderProps): ConfigProviderProps {
+  return { ...config, locale: zhCN };
 }
 
 export async function getInitialState(): Promise<RuntimeInitialState> {
@@ -52,75 +70,6 @@ function isPublicRoute(pathname: string) {
   return route === "/login" || route === "/403" || route === "/404";
 }
 
-function AuthSessionBridge({ children }: { children: ReactNode }) {
-  const queryClient = useQueryClient();
-  const { initialState, refresh, setInitialState } = useModel("@@initialState");
-
-  useEffect(() => {
-    const handleSessionExpired = () => {
-      queryClient.clear();
-      void setInitialState((current) =>
-        current
-          ? { ...current, authBootstrapError: null, currentAdmin: null }
-          : current,
-      );
-
-      if (!isPublicRoute(history.location.pathname)) {
-        history.push(buildLoginUrl(history.location));
-      }
-    };
-
-    window.addEventListener("admin-auth-expired", handleSessionExpired);
-    return () => {
-      window.removeEventListener("admin-auth-expired", handleSessionExpired);
-    };
-  }, [queryClient, setInitialState]);
-
-  if (initialState?.authBootstrapError) {
-    return (
-      <AuthBootstrapError
-        message={initialState.authBootstrapError}
-        onRetry={() => void refresh()}
-      />
-    );
-  }
-
-  return children;
-}
-
-function SessionActions() {
-  const queryClient = useQueryClient();
-  const { initialState, setInitialState } = useModel("@@initialState");
-
-  const logout = () => {
-    clearAdminToken();
-    queryClient.clear();
-    void setInitialState((current) =>
-      current
-        ? { ...current, authBootstrapError: null, currentAdmin: null }
-        : current,
-    );
-    history.push("/login");
-  };
-
-  return (
-    <div className="layout-session-actions">
-      <span className="layout-current-admin">
-        {initialState?.currentAdmin?.username}
-      </span>
-      <Tooltip title="退出登录">
-        <Button
-          type="text"
-          shape="circle"
-          icon={<LogoutOutlined />}
-          aria-label="退出登录"
-          onClick={logout}
-        />
-      </Tooltip>
-    </div>
-  );
-}
-
 export function layout({
   initialState,
 }: {
@@ -128,7 +77,11 @@ export function layout({
 }) {
   return {
     childrenRender: (children: ReactNode) => (
-      <AuthSessionBridge>{children}</AuthSessionBridge>
+      <Suspense fallback={null}>
+        <AdminLayoutChildren isPublicRoute={isPublicRoute}>
+          {children}
+        </AdminLayoutChildren>
+      </Suspense>
     ),
     footerRender: false,
     logo: <BrandMark />,
@@ -170,7 +123,15 @@ export function layout({
         history.push(buildLoginUrl(history.location));
       }
     },
-    rightContentRender: () => <SessionActions />,
-    unAccessible: <ForbiddenPage />,
+    rightContentRender: () => (
+      <Suspense fallback={null}>
+        <AdminLayoutSessionActions />
+      </Suspense>
+    ),
+    unAccessible: (
+      <Suspense fallback={null}>
+        <AdminLayoutForbidden />
+      </Suspense>
+    ),
   };
 }
