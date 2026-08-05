@@ -6,6 +6,15 @@
 
 本项目最低工具链为 Go 1.26.5；macOS 26 上不要回退到无法生成 `LC_UUID` 的旧 Go 1.22 工具链。
 
+## 推荐定位顺序
+
+1. `internal/bootstrap` 和目标模块 `adapters/http/routes.go`
+2. HTTP DTO / handler
+3. application use case
+4. ports
+5. adapters/postgres 与 `db/queries`
+6. `db/migrations`
+
 ## 架构约束
 
 - 按业务模块组织：`internal/<module>/domain|application|ports|adapters`。
@@ -16,6 +25,12 @@
 - SQL、pgx、sqlc 只能出现在 `adapters/postgres` 和数据库工具中。
 - handler 只做协议适配、Actor 提取、DTO 转换和错误映射。
 - 用户端与管理端使用独立的 `/api`、`/api/admin` 路由组。
+
+## 领域边界
+
+- 新功能优先形成小而高内聚的 use case，不建立全局巨型 service。
+- **Match 是唯一比赛聚合根**；报名阵营使用 RegistrationGroup，不复制比赛。
+- Rust 后端只读，不在本项目任务中补丁或同步实现。
 
 ## 开发约束
 
