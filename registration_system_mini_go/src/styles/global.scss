@@ -1,12 +1,12 @@
 :root,
 page {
-  --ink: #152019;
-  --muted: #69736c;
-  --line: #dfe5de;
+  --ink: #13251a;
+  --muted: #667068;
+  --line: #dde3dc;
   --surface: #ffffff;
-  --canvas: #f4f6f2;
-  --accent: #d9ff43;
-  --accent-ink: #172006;
+  --canvas: #f3f5f1;
+  --accent: #b8f229;
+  --accent-ink: #13251a;
   min-height: 100%;
   background: var(--canvas);
   color: var(--ink);
@@ -23,8 +23,32 @@ scroll-view {
 
 button {
   margin: 0;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  appearance: none;
+  transition: opacity 160ms ease-out, background-color 160ms ease-out, color 160ms ease-out, transform 160ms ease-out;
 }
 
 button::after {
   border: 0;
+}
+
+button:active {
+  opacity: 0.82;
+  transform: scale(0.985);
+}
+
+button[disabled] {
+  opacity: 0.48;
+}
+
+button:focus-visible {
+  box-shadow: 0 0 0 4rpx rgba(19, 37, 26, 0.22);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button {
+    transition: none;
+  }
 }

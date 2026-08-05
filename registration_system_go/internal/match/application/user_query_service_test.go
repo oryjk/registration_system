@@ -98,6 +98,20 @@ func TestUserMatchHomeLimitsAndTrimsEndedMatches(t *testing.T) {
 	}
 }
 
+func TestUserMatchHomeDoesNotReportMoreForSixEndedMatches(t *testing.T) {
+	ended := make([]ports.MatchItem, 6)
+	repository := &fakeUserMatchRepository{homeEnded: ended}
+	service := NewUserMatchQueryService(repository)
+
+	result, err := service.Home(context.Background(), userActor(42))
+	if err != nil {
+		t.Fatalf("get user match home: %v", err)
+	}
+	if len(result.EndedItems) != 6 || result.EndedHasMore {
+		t.Fatalf("expected six ended matches without more, got %+v", result)
+	}
+}
+
 func TestUserMatchHomeRejectsAdminActor(t *testing.T) {
 	service := NewUserMatchQueryService(&fakeUserMatchRepository{})
 	admin := sharedauth.Actor{Kind: sharedauth.ActorAdmin, ID: 1}

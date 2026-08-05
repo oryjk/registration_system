@@ -1,74 +1,91 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed } from "vue";
 import { onPullDownRefresh, onShow } from "@dcloudio/uni-app";
-import { getHealth } from "@/api/system";
-import type { TeamMembership, TeamRole } from "@/types/api";
+import { isUnauthorized } from "@/api/http";
 import { useSession } from "@/stores/session";
+import type { HomeActionMatch, HomeEndedMatch } from "@/types/api";
+import ActionMatchCard from "@/pages/home/components/ActionMatchCard.vue";
+import ActionMatchRow from "@/pages/home/components/ActionMatchRow.vue";
+import EndedMatchList from "@/pages/home/components/EndedMatchList.vue";
+import HomeBottomNav from "@/pages/home/components/HomeBottomNav.vue";
+import HomeHeader from "@/pages/home/components/HomeHeader.vue";
+import HomeHero from "@/pages/home/components/HomeHero.vue";
+import { useHomeMatches } from "@/pages/home/useHomeMatches";
 
-type ServiceState = "checking" | "online" | "offline";
+type HomeNavAction = "home" | "team" | "create" | "stats" | "profile";
 
-const { currentUser, teams, loading, errorMessage, isLoggedIn, login, logout, refreshTeams } = useSession();
-const serviceState = ref<ServiceState>("checking");
-const selectedTeamId = ref<number | null>(null);
+const {
+  currentUser,
+  loading: sessionLoading,
+  isLoggedIn,
+  login,
+  logout,
+  refreshTeams,
+} = useSession();
+const { homeData, loading, errorMessage, load, reset } = useHomeMatches();
 
-const selectedTeam = computed(() => teams.value.find((team) => team.id === selectedTeamId.value) || teams.value[0] || null);
-const displayName = computed(() => currentUser.value?.nickname.trim() || "球员");
-const avatarLetter = computed(() => Array.from(displayName.value)[0] || "球");
-const serviceLabel = computed(() => ({ checking: "连接中", online: "服务在线", offline: "服务离线" })[serviceState.value]);
+const primaryAction = computed(() => homeData.value?.action_items[0] || null);
+const secondaryActions = computed(() => homeData.value?.action_items.slice(1, 3) || []);
+const endedMatches = computed(() => homeData.value?.ended_items || []);
 
-const roleLabels: Record<TeamRole, string> = {
-  captain: "队长",
-  leader: "领队",
-  vice_captain: "副队长",
-  member: "队员",
-};
-
-function roleLabel(role: TeamRole) {
-  return roleLabels[role];
-}
-
-function joinedDate(value: string) {
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, "0")}`;
-}
-
-async function checkHealth() {
-  serviceState.value = "checking";
-  try {
-    await getHealth();
-    serviceState.value = "online";
-  } catch (_error) {
-    serviceState.value = "offline";
+async function loadHome() {
+  if (!isLoggedIn.value) {
+    reset();
+    return;
+  }
+  const error = await load();
+  if (isUnauthorized(error)) {
+    logout();
+    reset();
+    uni.showToast({ title: "登录已失效，请重新登录", icon: "none" });
   }
 }
 
 async function handleLogin() {
   try {
     await login();
-    uni.showToast({ title: "登录成功", icon: "success" });
+    await loadHome();
+    if (isLoggedIn.value) {
+      uni.showToast({ title: "登录成功", icon: "success" });
+    }
   } catch (error) {
     uni.showToast({ title: error instanceof Error ? error.message : "登录失败", icon: "none" });
   }
 }
 
-function handleLogout() {
-  uni.showModal({
-    title: "退出登录",
-    content: "退出后将清除当前设备上的登录状态。",
-    success: ({ confirm }) => {
-      if (confirm) logout();
-    },
-  });
-}
-
 async function refreshPage() {
-  await Promise.all([checkHealth(), refreshTeams()]);
+  if (isLoggedIn.value) {
+    await refreshTeams();
+    await loadHome();
+  }
 }
 
-onMounted(checkHealth);
+function showPlaceholder(title: string) {
+  uni.showToast({ title, icon: "none", duration: 1800 });
+}
+
+function openMatch(_match: HomeActionMatch | HomeEndedMatch) {
+  showPlaceholder("比赛详情页将在后续实现");
+}
+
+function handleNavigation(action: HomeNavAction) {
+  const messages: Record<Exclude<HomeNavAction, "home">, string> = {
+    team: "约队大厅将在后续实现",
+    create: "创建比赛将在后续实现",
+    stats: "统计页面将在后续实现",
+    profile: "个人中心将在后续实现",
+  };
+  if (action === "home") {
+    uni.pageScrollTo({ scrollTop: 0, duration: 180 });
+    return;
+  }
+  showPlaceholder(messages[action]);
+}
+
 onShow(() => {
-  if (isLoggedIn.value) void refreshTeams();
+  void loadHome();
 });
+
 onPullDownRefresh(async () => {
   await refreshPage();
   uni.stopPullDownRefresh();
@@ -78,119 +95,112 @@ onPullDownRefresh(async () => {
 <template>
   <view class="page">
     <view class="desktop-frame">
-      <view class="hero">
-        <image class="hero-image" src="/static/football-field.jpg" mode="aspectFill" />
-        <view class="hero-shade" />
+      <HomeHeader @select-location="showPlaceholder('位置选择将在后续实现')" />
 
-        <view class="topbar">
-          <view class="brand">
-            <view class="brand-mark"><text>KT</text></view>
-            <text class="brand-name">开踢</text>
+      <view class="page-content">
+        <HomeHero @open-team-hall="showPlaceholder('约队大厅将在后续实现')" />
+
+        <view v-if="!isLoggedIn" class="login-state">
+          <view class="login-copy">
+            <text class="state-kicker">PLAYER ACCESS</text>
+            <text class="state-title">登录后查看你的比赛</text>
+            <text class="state-note">待报名、进行中和最近结束的比赛会集中显示在这里。</text>
           </view>
-          <button class="service-pill" :class="`service-${serviceState}`" @click="checkHealth">
-            <view class="service-dot" />
-            <text>{{ serviceLabel }}</text>
-          </button>
-        </view>
-
-        <view class="hero-content">
-          <text class="hero-kicker">MATCH DAY</text>
-          <text class="hero-title">把下一场球，安排明白。</text>
-          <text class="hero-meta">球队 · 对手 · 报名</text>
-        </view>
-      </view>
-
-      <view class="content">
-        <view v-if="!isLoggedIn" class="session-panel">
-          <view class="session-copy">
-            <text class="section-eyebrow">PLAYER ACCESS</text>
-            <text class="section-title">进入你的球队空间</text>
-            <text class="section-note">你的身份与球队，将在这里汇合。</text>
-          </view>
-          <button class="primary-button" :loading="loading" :disabled="loading" @click="handleLogin">
+          <button class="primary-button" :loading="sessionLoading" :disabled="sessionLoading" @click="handleLogin">
             微信登录
           </button>
         </view>
 
         <template v-else>
-          <view class="profile-row">
+          <view class="account-strip">
             <view class="avatar">
               <image v-if="currentUser?.avatar_url" :src="currentUser.avatar_url" mode="aspectFill" />
-              <text v-else>{{ avatarLetter }}</text>
+              <text v-else>{{ Array.from(currentUser?.nickname || "球")[0] }}</text>
             </view>
-            <view class="profile-copy">
-              <text class="welcome">晚上好，{{ displayName }}</text>
-              <text class="profile-meta">{{ teams.length }} 支球队</text>
+            <view class="account-copy">
+              <text class="account-greeting">{{ currentUser?.nickname || "球员" }}，准备开踢</text>
+              <text class="account-note">球队赛程与报名状态</text>
             </view>
-            <button class="text-button" @click="handleLogout">退出</button>
           </view>
 
-          <view class="section-head">
-            <view>
-              <text class="section-eyebrow">MY TEAMS</text>
-              <text class="section-title">我的球队</text>
-            </view>
-            <button class="refresh-button" :loading="loading" :disabled="loading" @click="refreshTeams">刷新</button>
+          <view v-if="loading && !homeData" class="loading-state" aria-label="正在加载比赛">
+            <view class="skeleton skeleton-head" />
+            <view class="skeleton skeleton-card" />
+            <view class="skeleton skeleton-row" />
+            <view class="skeleton skeleton-row short" />
           </view>
 
-          <scroll-view v-if="teams.length" class="team-strip" scroll-x enhanced :show-scrollbar="false">
-            <view class="team-row">
+          <view v-else-if="errorMessage && !homeData" class="error-state">
+            <view class="error-mark">!</view>
+            <text class="state-title">比赛暂时没有加载出来</text>
+            <text class="state-note">{{ errorMessage }}</text>
+            <button class="retry-button" :loading="loading" :disabled="loading" @click="loadHome">重新加载</button>
+          </view>
+
+          <template v-else-if="homeData">
+            <view class="section-head first-section">
+              <view>
+                <view class="section-title-line">
+                  <text class="section-title">最近要处理的比赛</text>
+                  <text class="section-count">{{ homeData.action_items.length }}</text>
+                </view>
+                <text class="section-note">按紧迫程度展示与你相关的比赛</text>
+              </view>
+              <button class="section-link" @click="showPlaceholder('比赛列表将在后续实现')">全部比赛</button>
+            </view>
+
+            <view v-if="primaryAction" class="action-stack">
+              <ActionMatchCard :match="primaryAction" @open="openMatch" />
+              <ActionMatchRow v-for="match in secondaryActions" :key="match.id" :match="match" @open="openMatch" />
+            </view>
+            <view v-else class="compact-empty">
+              <view class="empty-check" aria-hidden="true">✓</view>
+              <view>
+                <text class="empty-title">暂时没有待处理比赛</text>
+                <text class="empty-note">新的报名或比赛安排会优先出现在这里。</text>
+              </view>
+            </view>
+
+            <view class="section-head ended-section">
+              <view>
+                <text class="section-title">已结束的比赛</text>
+                <text class="section-note">最近完成的比赛记录</text>
+              </view>
               <button
-                v-for="team in teams"
-                :key="team.id"
-                class="team-card"
-                :class="{ selected: selectedTeam?.id === team.id }"
-                @click="selectedTeamId = team.id"
+                v-if="homeData.ended_has_more"
+                class="section-link"
+                @click="showPlaceholder('更多比赛页面将在后续实现')"
               >
-                <view class="team-logo">
-                  <image v-if="team.logo_url" :src="team.logo_url" mode="aspectFill" />
-                  <text v-else>{{ Array.from(team.name)[0] || "队" }}</text>
-                </view>
-                <view class="team-copy">
-                  <text class="team-name">{{ team.name }}</text>
-                  <text class="team-role">{{ roleLabel(team.role) }} · {{ joinedDate(team.joined_at) }} 加入</text>
-                </view>
+                查看更多
               </button>
             </view>
-          </scroll-view>
 
-          <view v-else class="empty-state">
-            <view class="empty-number">00</view>
-            <view>
-              <text class="empty-title">还没有加入球队</text>
-              <text class="empty-note">暂未查询到所属球队。</text>
+            <EndedMatchList v-if="endedMatches.length" :matches="endedMatches" @open="openMatch" />
+            <view v-else class="compact-empty ended-empty">
+              <view class="empty-ring" aria-hidden="true" />
+              <view>
+                <text class="empty-title">还没有已结束比赛</text>
+                <text class="empty-note">完成比赛后，记录会保留在这里。</text>
+              </view>
             </view>
-          </view>
 
-          <view v-if="selectedTeam" class="team-detail">
-            <view class="detail-index">{{ String(teams.findIndex((team) => team.id === selectedTeam?.id) + 1).padStart(2, "0") }}</view>
-            <view class="detail-main">
-              <text class="detail-label">当前球队</text>
-              <text class="detail-title">{{ selectedTeam.name }}</text>
-              <text class="detail-description">{{ selectedTeam.description || "保持训练，等待下一场比赛。" }}</text>
+            <view v-if="errorMessage" class="inline-error">
+              <text>{{ errorMessage }}</text>
+              <button :disabled="loading" @click="loadHome">重试</button>
             </view>
-            <view class="role-badge">{{ roleLabel(selectedTeam.role) }}</view>
-          </view>
+          </template>
         </template>
-
-        <view v-if="errorMessage" class="error-banner">
-          <text>{{ errorMessage }}</text>
-        </view>
-
-        <view class="footer-line">
-          <text>GO SERVICE</text>
-          <view />
-          <text>2026</text>
-        </view>
       </view>
     </view>
+
+    <HomeBottomNav @activate="handleNavigation" />
   </view>
 </template>
 
 <style scoped lang="scss">
 .page {
   min-height: 100vh;
-  background: #e8ece6;
+  background: #e8ece7;
 }
 
 .desktop-frame {
@@ -199,448 +209,318 @@ onPullDownRefresh(async () => {
   background: var(--canvas);
 }
 
-.hero {
-  position: relative;
-  height: 600rpx;
-  min-height: 360px;
-  overflow: hidden;
-  color: #fff;
+.page-content {
+  padding: 0 32rpx calc(154rpx + env(safe-area-inset-bottom));
 }
 
-.hero-image,
-.hero-shade {
-  position: absolute;
-  inset: 0;
+.login-state,
+.error-state {
+  margin-top: 32rpx;
+  padding: 34rpx;
+  border: 2rpx solid var(--line);
+  border-radius: 20rpx;
+  background: var(--surface);
+}
+
+.login-copy {
+  display: flex;
+  flex-direction: column;
+}
+
+.state-kicker {
+  color: #718076;
+  font-size: 20rpx;
+  font-weight: 850;
+}
+
+.state-title {
+  font-size: 34rpx;
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+.state-kicker + .state-title {
+  margin-top: 8rpx;
+}
+
+.state-note {
+  margin-top: 12rpx;
+  color: var(--muted);
+  font-size: 24rpx;
+  line-height: 1.55;
+}
+
+.primary-button,
+.retry-button {
+  display: flex;
   width: 100%;
-  height: 100%;
+  min-height: 96rpx;
+  align-items: center;
+  justify-content: center;
+  margin-top: 28rpx;
+  border-radius: 12rpx;
+  background: var(--ink);
+  color: #fff;
+  font-size: 26rpx;
+  font-weight: 850;
+  line-height: 96rpx;
 }
 
-.hero-shade {
-  background: rgba(10, 17, 11, 0.42);
-}
-
-.topbar {
-  position: relative;
-  z-index: 1;
+.account-strip {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: calc(var(--status-bar-height, 0px) + 28rpx) 30rpx 0;
+  gap: 16rpx;
+  margin-top: 28rpx;
+  padding: 0 2rpx 24rpx;
+  border-bottom: 2rpx solid var(--line);
 }
 
-.brand {
+.avatar {
   display: flex;
-  align-items: center;
-  gap: 14rpx;
-}
-
-.brand-mark {
-  display: flex;
+  overflow: hidden;
   width: 64rpx;
   height: 64rpx;
   align-items: center;
   justify-content: center;
-  border: 2rpx solid rgba(255, 255, 255, 0.78);
-  background: rgba(20, 28, 21, 0.36);
-  font-size: 20rpx;
-  font-weight: 900;
-}
-
-.brand-name {
-  font-size: 34rpx;
-  font-weight: 900;
-}
-
-.service-pill {
-  display: flex;
-  min-height: 58rpx;
-  align-items: center;
-  gap: 10rpx;
-  padding: 0 18rpx;
-  border: 2rpx solid rgba(255, 255, 255, 0.38);
-  border-radius: 8rpx;
-  background: rgba(20, 28, 21, 0.42);
-  color: #fff;
-  font-size: 22rpx;
-  line-height: 1;
-  backdrop-filter: blur(14px);
-}
-
-.service-dot {
-  width: 12rpx;
-  height: 12rpx;
+  flex: none;
   border-radius: 50%;
-  background: #f5b83d;
-}
-
-.service-online .service-dot {
-  background: var(--accent);
-}
-
-.service-offline .service-dot {
-  background: #ff775f;
-}
-
-.hero-content {
-  position: absolute;
-  z-index: 1;
-  right: 30rpx;
-  bottom: 54rpx;
-  left: 30rpx;
-  display: flex;
-  flex-direction: column;
-}
-
-.hero-kicker,
-.section-eyebrow,
-.detail-label,
-.footer-line {
-  letter-spacing: 0;
-  font-size: 20rpx;
-  font-weight: 800;
-}
-
-.hero-kicker {
+  background: var(--ink);
   color: var(--accent);
-}
-
-.hero-title {
-  max-width: 620rpx;
-  margin-top: 14rpx;
-  font-size: 58rpx;
-  font-weight: 900;
-  line-height: 1.15;
-}
-
-.hero-meta {
-  margin-top: 22rpx;
-  color: rgba(255, 255, 255, 0.78);
-  font-size: 24rpx;
-}
-
-.content {
-  padding: 36rpx 28rpx calc(50rpx + env(safe-area-inset-bottom));
-}
-
-.session-panel {
-  display: grid;
-  gap: 30rpx;
-  padding-bottom: 36rpx;
-  border-bottom: 2rpx solid var(--line);
-}
-
-.session-copy {
-  display: flex;
-  flex-direction: column;
-}
-
-.section-eyebrow {
-  color: #75806f;
-}
-
-.section-title {
-  display: block;
-  margin-top: 8rpx;
-  font-size: 42rpx;
-  font-weight: 900;
-  line-height: 1.2;
-}
-
-.section-note {
-  margin-top: 12rpx;
-  color: var(--muted);
   font-size: 25rpx;
-  line-height: 1.6;
-}
-
-.primary-button {
-  display: flex;
-  width: 100%;
-  height: 94rpx;
-  align-items: center;
-  justify-content: center;
-  border-radius: 6rpx;
-  background: var(--ink);
-  color: #fff;
-  font-size: 28rpx;
-  font-weight: 800;
-}
-
-.profile-row {
-  display: flex;
-  align-items: center;
-  gap: 18rpx;
-  padding-bottom: 34rpx;
-  border-bottom: 2rpx solid var(--line);
-}
-
-.avatar,
-.team-logo {
-  display: flex;
-  overflow: hidden;
-  align-items: center;
-  justify-content: center;
-  background: var(--ink);
-  color: #fff;
   font-weight: 900;
 }
 
-.avatar,
 .avatar image {
-  width: 82rpx;
-  height: 82rpx;
+  width: 100%;
+  height: 100%;
 }
 
-.profile-copy {
+.account-copy {
   display: flex;
   min-width: 0;
-  flex: 1;
   flex-direction: column;
 }
 
-.welcome {
+.account-greeting {
   overflow: hidden;
-  font-size: 30rpx;
-  font-weight: 800;
+  font-size: 26rpx;
+  font-weight: 850;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.profile-meta {
-  margin-top: 6rpx;
+.account-note {
+  margin-top: 4rpx;
   color: var(--muted);
-  font-size: 22rpx;
-}
-
-.text-button,
-.refresh-button {
-  min-height: 58rpx;
-  padding: 0 18rpx;
-  border: 2rpx solid var(--line);
-  border-radius: 6rpx;
-  background: transparent;
-  color: var(--ink);
-  font-size: 22rpx;
-  line-height: 54rpx;
+  font-size: 20rpx;
 }
 
 .section-head {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  margin-top: 40rpx;
-}
-
-.team-strip {
-  width: calc(100% + 28rpx);
-  margin-top: 24rpx;
-}
-
-.team-row {
-  display: flex;
-  gap: 18rpx;
-  padding-right: 28rpx;
-}
-
-.team-card {
-  display: flex;
-  width: 520rpx;
-  min-width: 520rpx;
-  min-height: 142rpx;
-  align-items: center;
   gap: 20rpx;
-  padding: 22rpx;
-  border: 2rpx solid var(--line);
-  border-radius: 8rpx;
-  background: var(--surface);
-  text-align: left;
 }
 
-.team-card.selected {
-  border-color: var(--ink);
-  box-shadow: inset 8rpx 0 0 var(--accent);
+.first-section {
+  margin-top: 30rpx;
 }
 
-.team-logo,
-.team-logo image {
-  width: 80rpx;
-  height: 80rpx;
+.ended-section {
+  margin-top: 46rpx;
 }
 
-.team-copy {
-  display: flex;
-  min-width: 0;
-  flex: 1;
-  flex-direction: column;
-}
-
-.team-name {
-  overflow: hidden;
-  font-size: 28rpx;
-  font-weight: 900;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.team-role {
-  margin-top: 9rpx;
-  color: var(--muted);
-  font-size: 22rpx;
-}
-
-.empty-state {
+.section-title-line {
   display: flex;
   align-items: center;
-  gap: 28rpx;
-  margin-top: 24rpx;
-  padding: 32rpx 0;
-  border-top: 2rpx solid var(--line);
-  border-bottom: 2rpx solid var(--line);
+  gap: 12rpx;
 }
 
-.empty-number {
-  color: #bec5bc;
-  font-size: 68rpx;
+.section-title {
+  font-size: 35rpx;
   font-weight: 900;
+  line-height: 1.25;
+}
+
+.section-count {
+  display: flex;
+  min-width: 34rpx;
+  height: 34rpx;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8rpx;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 19rpx;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.section-note {
+  display: block;
+  margin-top: 7rpx;
+  color: var(--muted);
+  font-size: 21rpx;
+  line-height: 1.4;
+}
+
+.section-link {
+  display: flex;
+  min-width: 132rpx;
+  min-height: 96rpx;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 4rpx;
+  background: transparent;
+  color: var(--ink);
+  font-size: 23rpx;
+  font-weight: 850;
+  line-height: 96rpx;
+}
+
+.action-stack {
+  display: grid;
+  gap: 16rpx;
+  margin-top: 21rpx;
+}
+
+.compact-empty {
+  display: flex;
+  min-height: 146rpx;
+  align-items: center;
+  gap: 22rpx;
+  margin-top: 21rpx;
+  padding: 25rpx;
+  border: 2rpx dashed #cfd6cf;
+  border-radius: 18rpx;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.empty-check,
+.empty-ring {
+  display: flex;
+  width: 62rpx;
+  height: 62rpx;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  border-radius: 50%;
+  background: #e6f4c9;
+  color: #365300;
+  font-size: 30rpx;
+  font-weight: 900;
+}
+
+.empty-ring {
+  border: 6rpx solid #c8d0c9;
+  background: transparent;
+}
+
+.empty-title,
+.empty-note {
+  display: block;
 }
 
 .empty-title {
-  display: block;
-  font-size: 28rpx;
-  font-weight: 800;
+  font-size: 25rpx;
+  font-weight: 850;
 }
 
 .empty-note {
-  display: block;
-  margin-top: 8rpx;
+  margin-top: 7rpx;
   color: var(--muted);
-  font-size: 22rpx;
-  line-height: 1.5;
+  font-size: 21rpx;
+  line-height: 1.45;
 }
 
-.team-detail {
+.ended-empty {
+  margin-top: 20rpx;
+}
+
+.loading-state {
   display: grid;
-  grid-template-columns: 92rpx 1fr auto;
-  gap: 24rpx;
-  align-items: start;
-  margin-top: 30rpx;
-  padding: 28rpx;
-  border-radius: 8rpx;
-  background: var(--ink);
-  color: #fff;
+  gap: 16rpx;
+  margin-top: 32rpx;
 }
 
-.detail-index {
-  color: var(--accent);
-  font-size: 48rpx;
-  font-weight: 900;
+.skeleton {
+  border-radius: 12rpx;
+  background: #e5eae4;
+  animation: pulse 1.2s ease-in-out infinite alternate;
 }
 
-.detail-main {
+.skeleton-head { width: 58%; height: 44rpx; }
+.skeleton-card { height: 390rpx; }
+.skeleton-row { height: 108rpx; }
+.skeleton-row.short { width: 88%; }
+
+.error-state {
   display: flex;
-  min-width: 0;
+  align-items: flex-start;
   flex-direction: column;
 }
 
-.detail-label {
-  color: rgba(255, 255, 255, 0.55);
-}
-
-.detail-title {
-  margin-top: 10rpx;
-  font-size: 34rpx;
-  font-weight: 900;
-}
-
-.detail-description {
-  margin-top: 12rpx;
-  color: rgba(255, 255, 255, 0.72);
-  font-size: 22rpx;
-  line-height: 1.6;
-}
-
-.role-badge {
-  padding: 8rpx 12rpx;
-  border-radius: 4rpx;
-  background: var(--accent);
-  color: var(--accent-ink);
-  font-size: 20rpx;
-  font-weight: 900;
-}
-
-.error-banner {
-  margin-top: 24rpx;
-  padding: 20rpx;
-  border-left: 6rpx solid #e7573e;
-  background: #fff0ec;
-  color: #9d2f1d;
-  font-size: 23rpx;
-  line-height: 1.5;
-}
-
-.footer-line {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
+.error-mark {
+  display: flex;
+  width: 60rpx;
+  height: 60rpx;
   align-items: center;
-  gap: 18rpx;
-  margin-top: 48rpx;
-  color: #8a938b;
+  justify-content: center;
+  margin-bottom: 18rpx;
+  border-radius: 50%;
+  background: #fce4e0;
+  color: #a9332c;
+  font-size: 30rpx;
+  font-weight: 900;
 }
 
-.footer-line view {
-  height: 2rpx;
-  background: var(--line);
+.inline-error {
+  display: flex;
+  min-height: 72rpx;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+  margin-top: 22rpx;
+  padding: 14rpx 18rpx;
+  border-left: 6rpx solid #c53b34;
+  background: #fff0ed;
+  color: #812b26;
+  font-size: 21rpx;
+}
+
+.inline-error button {
+  min-width: 96rpx;
+  min-height: 96rpx;
+  background: transparent;
+  color: #812b26;
+  font-size: 21rpx;
+  font-weight: 850;
+  line-height: 96rpx;
+}
+
+@keyframes pulse {
+  from { opacity: 0.58; }
+  to { opacity: 1; }
 }
 
 @media (min-width: 768px) {
   .page {
-    padding: 32px;
+    padding: 28px 0;
   }
 
   .desktop-frame {
-    max-width: 1120px;
-    min-height: calc(100vh - 64px);
+    max-width: 420px;
+    min-height: calc(100vh - 56px);
     margin: 0 auto;
     overflow: hidden;
-    border: 1px solid #d8ded6;
-    box-shadow: 0 24px 70px rgba(25, 36, 27, 0.13);
+    border: 1px solid #d8ded7;
+    box-shadow: 0 22px 64px rgba(19, 37, 26, 0.13);
   }
+}
 
-  .hero {
-    height: 500px;
-  }
-
-  .hero-content,
-  .topbar {
-    right: 52px;
-    left: 52px;
-  }
-
-  .topbar {
-    padding: 36px 0 0;
-  }
-
-  .hero-title {
-    max-width: 680px;
-    font-size: 54px;
-  }
-
-  .content {
-    padding: 44px 52px 52px;
-  }
-
-  .session-panel {
-    grid-template-columns: 1fr 240px;
-    align-items: end;
-  }
-
-  .primary-button {
-    height: 52px;
-  }
-
-  .team-card {
-    width: 360px;
-    min-width: 360px;
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
   }
 }
 </style>

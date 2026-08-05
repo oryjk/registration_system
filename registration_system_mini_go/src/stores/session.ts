@@ -40,7 +40,11 @@ export async function login() {
     const result = await loginWithWechatCode(code);
     saveSession(result.token, result.user);
     currentUser.value = result.user;
-    await loadTeams();
+    try {
+      await loadTeams();
+    } catch (error) {
+      errorMessage.value = error instanceof Error ? error.message : "球队加载失败";
+    }
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : "登录失败";
     throw error;
