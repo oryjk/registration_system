@@ -34,6 +34,17 @@ type UserMatchDetail struct {
 	Groups []ports.UserGroupState
 }
 
+type UserMatchHomeResult struct {
+	ActionItems  []ports.HomeMatchItem
+	EndedItems   []ports.MatchItem
+	EndedHasMore bool
+}
+
+const (
+	homeActionLimit = 3
+	homeEndedLimit  = 6
+)
+
 func NewUserMatchQueryService(repository ports.UserMatchRepository) UserMatchQueryService {
 	return UserMatchQueryService{repository: repository}
 }
@@ -81,4 +92,23 @@ func (s UserMatchQueryService) Get(ctx context.Context, actor sharedauth.Actor, 
 		return UserMatchDetail{}, sharederror.New(sharederror.KindNotFound, "比赛不存在")
 	}
 	return UserMatchDetail{Item: item, Groups: groups}, nil
+}
+
+func (s UserMatchQueryService) Home(ctx context.Context, actor sharedauth.Actor) (UserMatchHomeResult, error) {
+	if !actor.IsUser() {
+		return UserMatchHomeResult{}, sharederror.ErrForbidden
+	}
+	actionItems, err := s.repository.ListHomeActionItems(ctx, actor.ID, homeActionLimit)
+	if err != nil {
+		return UserMatchHomeResult{}, sharederror.Wrap(sharederror.KindInternal, "查询待处理比赛失败", err)
+	}
+	endedItems, err := s.repository.ListHomeEndedItems(ctx, actor.ID, homeEndedLimit+1)
+	if err != nil {
+		return UserMatchHomeResult{}, sharederror.Wrap(sharederror.KindInternal, "查询已结束比赛失败", err)
+	}
+	hasMore := len(endedItems) > homeEndedLimit
+	if hasMore {
+		endedItems = endedItems[:homeEndedLimit]
+	}
+	return UserMatchHomeResult{ActionItems: actionItems, EndedItems: endedItems, EndedHasMore: hasMore}, nil
 }

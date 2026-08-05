@@ -43,10 +43,17 @@ type UserGroupState struct {
 	MyRegistration *domain.Registration
 }
 
+type HomeMatchItem struct {
+	Item  MatchItem
+	Group UserGroupState
+}
+
 type UserMatchRepository interface {
 	ListForUser(context.Context, MatchListFilter) ([]MatchItem, error)
 	CountForUser(context.Context, MatchListFilter) (int64, error)
 	FindForUser(context.Context, uuid.UUID, int64) (MatchItem, []UserGroupState, bool, error)
+	ListHomeActionItems(context.Context, int64, int) ([]HomeMatchItem, error)
+	ListHomeEndedItems(context.Context, int64, int) ([]MatchItem, error)
 }
 
 // AdminRosterEntry 是管理端报名组花名册中的一行：球队组包含全部成员
