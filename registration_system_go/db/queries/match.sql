@@ -73,6 +73,99 @@ WHERE (sqlc.narg('status')::text IS NULL OR m.status = sqlc.narg('status'))
       OR host.name ILIKE '%' || sqlc.arg('search') || '%'
   );
 
+-- name: ListHomeActionMatchesForUser :many
+SELECT m.*,
+       host.name AS host_team_name,
+       away.name AS away_team_name,
+       related_group.id AS group_id,
+       related_group.kind AS group_kind,
+       related_group.team_id AS group_team_id,
+       related_group.min_players AS group_min_players,
+       related_group.max_players AS group_max_players,
+       related_group.status AS group_status,
+       related_group.created_at AS group_created_at,
+       related_group.updated_at AS group_updated_at,
+       related_group.cancelled_at AS group_cancelled_at,
+       COALESCE((
+           SELECT SUM(active.registration_count)
+           FROM match_registrations active
+           WHERE active.group_id = related_group.id
+             AND active.status = 'attending'
+       ), 0)::bigint AS attending_count,
+       mine.id AS my_registration_id,
+       mine.status AS my_registration_status,
+       mine.registration_count AS my_registration_count,
+       mine.created_at AS my_registration_created_at,
+       mine.updated_at AS my_registration_updated_at,
+       mine.cancelled_at AS my_registration_cancelled_at
+FROM matches m
+JOIN teams host ON host.id = m.host_team_id
+LEFT JOIN teams away ON away.id = m.away_team_id
+JOIN LATERAL (
+    SELECT g.*
+    FROM match_registration_groups g
+    LEFT JOIN match_registrations own
+      ON own.group_id = g.id
+     AND own.user_id = sqlc.arg('user_id')
+    WHERE g.match_id = m.id
+      AND g.status <> 'cancelled'
+      AND (
+          own.id IS NOT NULL
+          OR (
+              g.team_id IS NOT NULL
+              AND EXISTS (
+                  SELECT 1
+                  FROM team_members tm
+                  WHERE tm.team_id = g.team_id
+                    AND tm.user_id = sqlc.arg('user_id')
+                    AND tm.status = 'active'
+              )
+          )
+      )
+    ORDER BY
+        CASE WHEN own.id IS NOT NULL THEN 0 ELSE 1 END,
+        CASE g.kind WHEN 'host_team' THEN 0 WHEN 'guest_team' THEN 1 ELSE 2 END,
+        g.created_at,
+        g.id
+    LIMIT 1
+) related_group ON TRUE
+LEFT JOIN match_registrations mine
+  ON mine.group_id = related_group.id
+ AND mine.user_id = sqlc.arg('user_id')
+WHERE m.status IN ('registering', 'ongoing')
+ORDER BY
+    CASE m.status WHEN 'ongoing' THEN 0 ELSE 1 END,
+    m.start_time,
+    m.id
+LIMIT sqlc.arg('limit_count');
+
+-- name: ListHomeEndedMatchesForUser :many
+SELECT m.*,
+       host.name AS host_team_name,
+       away.name AS away_team_name
+FROM matches m
+JOIN teams host ON host.id = m.host_team_id
+LEFT JOIN teams away ON away.id = m.away_team_id
+WHERE m.status = 'ended'
+  AND (
+      EXISTS (
+          SELECT 1
+          FROM team_members tm
+          WHERE tm.user_id = sqlc.arg('user_id')
+            AND tm.status = 'active'
+            AND (tm.team_id = m.host_team_id OR tm.team_id = m.away_team_id)
+      )
+      OR EXISTS (
+          SELECT 1
+          FROM match_registration_groups g
+          JOIN match_registrations registration ON registration.group_id = g.id
+          WHERE g.match_id = m.id
+            AND registration.user_id = sqlc.arg('user_id')
+      )
+  )
+ORDER BY m.start_time DESC, m.id
+LIMIT sqlc.arg('limit_count');
+
 -- name: UpdateMatchDetails :one
 UPDATE matches
 SET name = $2,

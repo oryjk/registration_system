@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	matchapplication "github.com/oryjk/registration_system/registration_system_go/internal/match/application"
 	"github.com/oryjk/registration_system/registration_system_go/internal/match/domain"
 	"github.com/oryjk/registration_system/registration_system_go/internal/match/ports"
@@ -279,6 +280,95 @@ func TestRepositoryCreatesRegistration(t *testing.T) {
 	if status != string(domain.RegistrationAttending) || count != 1 {
 		t.Fatalf("unexpected registration: status=%s count=%d", status, count)
 	}
+}
+
+func TestRepositoryListsUserHomeMatches(t *testing.T) {
+	pool := testsupport.StartPostgres(t)
+	ctx := context.Background()
+	actorID, actorTeamID := seedMatchOwner(t, pool)
+	unrelatedUserID, unrelatedTeamID := seedMatchOwner(t, pool)
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO team_members (team_id, user_id, role, status)
+		VALUES ($1, $2, 'member', 'active'), ($3, $4, 'member', 'active')`,
+		actorTeamID, actorID, unrelatedTeamID, unrelatedUserID); err != nil {
+		t.Fatalf("seed active memberships: %v", err)
+	}
+
+	now := time.Date(2026, 8, 6, 12, 0, 0, 0, time.UTC)
+	ongoingID, _ := seedHomeMatch(t, pool, actorID, actorTeamID, "正在进行", domain.MatchOngoing, now.Add(-time.Hour))
+	registeringID, registeringGroupID := seedHomeMatch(t, pool, actorID, actorTeamID, "等待报名", domain.MatchRegistering, now.Add(2*time.Hour))
+	seedHomeMatch(t, pool, unrelatedUserID, unrelatedTeamID, "无关比赛", domain.MatchRegistering, now.Add(time.Hour))
+
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO match_registrations (id, group_id, user_id, status, registration_count)
+		VALUES ($1, $2, $3, 'attending', 1), ($4, $2, $5, 'attending', 2)`,
+		uuid.New(), registeringGroupID, actorID, uuid.New(), unrelatedUserID); err != nil {
+		t.Fatalf("seed home registrations: %v", err)
+	}
+
+	endedIDs := make([]uuid.UUID, 0, 7)
+	for day := 1; day <= 7; day++ {
+		matchID, _ := seedHomeMatch(t, pool, actorID, actorTeamID, "已结束比赛", domain.MatchEnded, now.AddDate(0, 0, -day))
+		endedIDs = append(endedIDs, matchID)
+	}
+	seedHomeMatch(t, pool, unrelatedUserID, unrelatedTeamID, "无关历史比赛", domain.MatchEnded, now)
+
+	repository := NewRepository(pool)
+	actions, err := repository.ListHomeActionItems(ctx, actorID, 3)
+	if err != nil {
+		t.Fatalf("list home action matches: %v", err)
+	}
+	if len(actions) != 2 || actions[0].Item.Match.ID != ongoingID || actions[1].Item.Match.ID != registeringID {
+		t.Fatalf("unexpected action matches: %+v", actions)
+	}
+	registrationState := actions[1].Group
+	if registrationState.AttendingCount != 3 || registrationState.MyRegistration == nil || registrationState.MyRegistration.UserID != actorID {
+		t.Fatalf("unexpected registration state: %+v", registrationState)
+	}
+	if registrationState.MyRegistration.Status != domain.RegistrationAttending {
+		t.Fatalf("unexpected current registration: %+v", registrationState.MyRegistration)
+	}
+
+	ended, err := repository.ListHomeEndedItems(ctx, actorID, 7)
+	if err != nil {
+		t.Fatalf("list home ended matches: %v", err)
+	}
+	if len(ended) != 7 {
+		t.Fatalf("expected seven ended matches, got %d: %+v", len(ended), ended)
+	}
+	for index := range endedIDs {
+		if ended[index].Match.ID != endedIDs[index] {
+			t.Fatalf("ended order mismatch at %d: got %s want %s", index, ended[index].Match.ID, endedIDs[index])
+		}
+	}
+}
+
+func seedHomeMatch(
+	t *testing.T,
+	pool *pgxpool.Pool,
+	createdByUserID, teamID int64,
+	name string,
+	status domain.MatchStatus,
+	startTime time.Time,
+) (uuid.UUID, uuid.UUID) {
+	t.Helper()
+	ctx := context.Background()
+	matchID := uuid.New()
+	groupID := uuid.New()
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO matches (
+			id, name, publication_mode, opponent_state, status, host_team_id, opponent_name,
+			players_per_team, start_time, end_time, location, created_by_user_id
+		) VALUES ($1, $2, 'offline_confirmed', 'no_recruitment', $3, $4, '测试对手', 8, $5, $6, '测试球场', $7)`,
+		matchID, name, string(status), teamID, startTime, startTime.Add(2*time.Hour), createdByUserID); err != nil {
+		t.Fatalf("seed home match: %v", err)
+	}
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO match_registration_groups (id, match_id, kind, team_id, max_players, status)
+		VALUES ($1, $2, 'host_team', $3, 8, 'open')`, groupID, matchID, teamID); err != nil {
+		t.Fatalf("seed home group: %v", err)
+	}
+	return matchID, groupID
 }
 
 func TestRepositoryPersistsTeamApplicationSelectionAndWithdrawalAtomically(t *testing.T) {
