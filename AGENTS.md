@@ -14,12 +14,10 @@
 
 ## 文档规范
 
-- 工作区与子项目协作文档统一使用大写命名：`AGENTS.md`、`CLAUDE.md`。
+- 工作区与子项目协作文档统一使用 `AGENTS.md`（大写命名）。
 - 修改任一子项目前，先阅读：
-  1. 当前目录的 `AGENTS.md`
-  2. 当前目录的 `CLAUDE.md`
-  3. 目标子项目目录下的 `AGENTS.md`
-  4. 目标子项目目录下的 `CLAUDE.md`
+  1. 根目录的 `AGENTS.md`
+  2. 目标子项目目录下的 `AGENTS.md`
 
 ## 通用约定
 
@@ -56,11 +54,17 @@
 
 ## 联动规则
 
-- 改后端接口时，同时检查：
-  - `registration_system_backend_fe/src/services/`
-  - `registration_system_mini/src/api/`
+- 新后端功能只写入 `registration_system_go/`；未经用户明确同意，不修改 `registration_system_rs/`（只读参考）。
+- 改 Rust 后端时，联动检查对接 Rust 的老前端：`registration_system_backend_fe/src/services/`、`registration_system_mini/src/api/`。
+- 改 Go 后端时，联动检查对接 Go 的新前端：`registration_system_backend_fe_go/src/api/`、`registration_system_mini_go/src/api/`。
 - 改管理端或小程序页面时，确认接口字段与后端 DTO / JSON 实际返回一致。
 - 涉及认证、活动、球队、球员、账单等核心领域时，优先沿用既有命名与模块边界，不要把业务规则塞进页面层或 handler。
+
+## 常见工作顺序
+
+1. 先定位业务发生在哪个子项目（后端 / 管理端 / 小程序 / 移动 App）。
+2. 再确认是否涉及跨项目联动（参考上方「联动规则」对应链路）。
+3. 最后在对应子项目内执行最小必要修改和验证。
 
 ## 质量要求
 

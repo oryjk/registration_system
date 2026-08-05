@@ -1,15 +1,15 @@
-import { request } from "./client";
 import type {
   AddTeamMemberPayload,
+  PlayerProfile,
   SaveTeamPayload,
   Team,
   TeamMemberCandidate,
   TeamMemberManagement,
   TeamStatus,
-  UpdateTeamMemberPayload,
   UpdatePlayerProfilePayload,
-  PlayerProfile,
+  UpdateTeamMemberPayload,
 } from "../types/team";
+import { request } from "./client";
 
 export function listTeamOptions() {
   return request<Team[]>("/teams?status=active");
@@ -25,11 +25,17 @@ export function getTeam(id: number) {
 }
 
 export function createTeam(payload: SaveTeamPayload) {
-  return request<Team>("/teams", { method: "POST", body: JSON.stringify(payload) });
+  return request<Team>("/teams", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }
 
 export function updateTeam(id: number, payload: Required<SaveTeamPayload>) {
-  return request<Team>(`/teams/${id}`, { method: "PATCH", body: JSON.stringify(payload) });
+  return request<Team>(`/teams/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
 }
 
 export function deleteTeam(id: number) {
@@ -44,7 +50,9 @@ export function listTeamMemberCandidates(teamID: number, search = "") {
   const query = new URLSearchParams();
   if (search.trim()) query.set("search", search.trim());
   const suffix = query.size > 0 ? `?${query.toString()}` : "";
-  return request<TeamMemberCandidate[]>(`/teams/${teamID}/member-candidates${suffix}`);
+  return request<TeamMemberCandidate[]>(
+    `/teams/${teamID}/member-candidates${suffix}`,
+  );
 }
 
 export function addTeamMember(teamID: number, payload: AddTeamMemberPayload) {
@@ -54,14 +62,21 @@ export function addTeamMember(teamID: number, payload: AddTeamMemberPayload) {
   });
 }
 
-export function updateTeamMember(teamID: number, userID: number, payload: UpdateTeamMemberPayload) {
+export function updateTeamMember(
+  teamID: number,
+  userID: number,
+  payload: UpdateTeamMemberPayload,
+) {
   return request<TeamMemberManagement>(`/teams/${teamID}/members/${userID}`, {
     method: "PATCH",
     body: JSON.stringify(payload),
   });
 }
 
-export function updatePlayerProfile(userID: number, payload: UpdatePlayerProfilePayload) {
+export function updatePlayerProfile(
+  userID: number,
+  payload: UpdatePlayerProfilePayload,
+) {
   return request<PlayerProfile>(`/users/${userID}/profile`, {
     method: "PATCH",
     body: JSON.stringify(payload),
@@ -69,7 +84,9 @@ export function updatePlayerProfile(userID: number, payload: UpdatePlayerProfile
 }
 
 export function removeTeamMember(teamID: number, userID: number) {
-  return request<TeamMemberManagement>(`/teams/${teamID}/members/${userID}`, { method: "DELETE" });
+  return request<TeamMemberManagement>(`/teams/${teamID}/members/${userID}`, {
+    method: "DELETE",
+  });
 }
 
 export function setTeamCaptain(teamID: number, userID: number | null) {

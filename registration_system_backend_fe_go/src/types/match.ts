@@ -1,9 +1,18 @@
-export type PublicationMode = "offline_confirmed" | "online_team" | "online_individual";
+export type PublicationMode =
+  | "offline_confirmed"
+  | "online_team"
+  | "online_individual";
 export type OpponentState = "no_recruitment" | "recruiting" | "confirmed";
 export type MatchStatus = "registering" | "ongoing" | "ended" | "cancelled";
 export type GroupKind = "host_team" | "guest_team" | "individual_opponent";
 export type GroupStatus = "open" | "closed" | "cancelled";
-export type MatchRegistrationStatus = "unknown" | "attending" | "leave" | "absent" | "cancelled" | "unregistered";
+export type MatchRegistrationStatus =
+  | "unknown"
+  | "attending"
+  | "leave"
+  | "absent"
+  | "cancelled"
+  | "unregistered";
 
 export interface MatchItem {
   id: string;

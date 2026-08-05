@@ -1,8 +1,13 @@
+import type {
+  AdminLoginResult,
+  AdminUser,
+  CreateAdminPayload,
+} from "../types/auth";
 import { request } from "./client";
-import type { AdminLoginResult, AdminUser, CreateAdminPayload } from "../types/auth";
 
 export function loginAdmin(username: string, password: string) {
   return request<AdminLoginResult>("/auth/login", {
+    auth: "login",
     method: "POST",
     body: JSON.stringify({ username, password }),
   });
@@ -17,5 +22,8 @@ export function listAdmins() {
 }
 
 export function createAdmin(payload: CreateAdminPayload) {
-  return request<AdminUser>("/admins", { method: "POST", body: JSON.stringify(payload) });
+  return request<AdminUser>("/admins", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }

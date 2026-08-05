@@ -127,7 +127,7 @@ registration_system_rs/migrations/
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
 | `id` | `BIGSERIAL` | 关系 ID |
-| `team_id` | `CHAR(36)` | 球队 ID |
+| `team_id` | `BIGINT` | 球队 ID（球队数字化迁移后由 CHAR(36) 改为 BIGINT） |
 | `user_id` | `BIGINT` | 用户 ID |
 | `role` | `VARCHAR(32)` | 角色，例如 member、captain、leader、vice_captain |
 | `jersey_number` | `VARCHAR(16)` | 球衣号 |

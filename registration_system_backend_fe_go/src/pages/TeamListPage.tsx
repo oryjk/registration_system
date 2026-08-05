@@ -1,31 +1,42 @@
-import DeleteOutlined from "@ant-design/icons/es/icons/DeleteOutlined";
-import EditOutlined from "@ant-design/icons/es/icons/EditOutlined";
-import EyeOutlined from "@ant-design/icons/es/icons/EyeOutlined";
-import PlusOutlined from "@ant-design/icons/es/icons/PlusOutlined";
-import SearchOutlined from "@ant-design/icons/es/icons/SearchOutlined";
-import TeamOutlined from "@ant-design/icons/es/icons/TeamOutlined";
-import Alert from "antd/es/alert";
-import Button from "antd/es/button";
-import Descriptions from "antd/es/descriptions";
-import Drawer from "antd/es/drawer";
-import Form from "antd/es/form";
-import Grid from "antd/es/grid";
-import Input from "antd/es/input";
-import Modal from "antd/es/modal";
-import Popconfirm from "antd/es/popconfirm";
-import Segmented from "antd/es/segmented";
-import Select from "antd/es/select";
-import Space from "antd/es/space";
-import Table from "antd/es/table";
-import Tag from "antd/es/tag";
-import Tooltip from "antd/es/tooltip";
-import Typography from "antd/es/typography";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { createTeam, deleteTeam, getTeam, listTeams, updateTeam } from "../api/teams";
+import {
+  DeleteOutlined,
+  EditOutlined,
+  EyeOutlined,
+  PlusOutlined,
+  TeamOutlined,
+} from "@ant-design/icons";
+import { ModalForm } from "@ant-design/pro-components/es/form/layouts/ModalForm";
+import { PageContainer } from "@ant-design/pro-components/es/layout/components/PageContainer";
+import ProTable, { type ProColumns } from "@ant-design/pro-components/es/table";
+import {
+  Alert,
+  Button,
+  Descriptions,
+  Drawer,
+  Form,
+  Grid,
+  Input,
+  Popconfirm,
+  Segmented,
+  Select,
+  Space,
+  Tag,
+  Tooltip,
+  Typography,
+} from "antd";
+import { useMemo, useState } from "react";
 import { TeamMemberManager } from "../components/TeamMemberManager";
+import {
+  useCreateTeamMutation,
+  useDeleteTeamMutation,
+  useTeamQuery,
+  useTeamsQuery,
+  useUpdateTeamMutation,
+} from "../hooks/queries/useTeamQueries";
 import type { SaveTeamPayload, Team, TeamStatus } from "../types/team";
 
-const { Text, Title } = Typography;
+const { Search } = Input;
+const { Text } = Typography;
 
 interface TeamFormValues {
   name: string;
@@ -39,185 +50,197 @@ const statusLabels: Record<TeamStatus, string> = {
 };
 
 function formatDateTime(value: string) {
-  return new Intl.DateTimeFormat("zh-CN", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
+  return new Intl.DateTimeFormat("zh-CN", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(value));
 }
 
 function sortTeams(items: Team[]) {
-  return [...items].sort((left, right) => left.name.localeCompare(right.name, "zh-CN"));
+  return [...items].sort((left, right) =>
+    left.name.localeCompare(right.name, "zh-CN"),
+  );
+}
+
+function errorMessage(reason: unknown, fallback: string) {
+  return reason instanceof Error ? reason.message : fallback;
 }
 
 export default function TeamListPage() {
   const screens = Grid.useBreakpoint();
   const compact = !(screens.md ?? false);
   const [form] = Form.useForm<TeamFormValues>();
-  const [items, setItems] = useState<Team[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const teamsQuery = useTeamsQuery();
+  const createTeam = useCreateTeamMutation();
+  const updateTeam = useUpdateTeamMutation();
+  const deleteTeam = useDeleteTeamMutation();
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState<TeamStatus | undefined>();
+  const [status, setStatus] = useState<TeamStatus>();
   const [editing, setEditing] = useState<Team | null>(null);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [modalError, setModalError] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [detail, setDetail] = useState<Team | null>(null);
-  const [detailOpen, setDetailOpen] = useState(false);
-  const [detailLoading, setDetailLoading] = useState(false);
-  const [deletingID, setDeletingID] = useState<number | null>(null);
+  const [formOpen, setFormOpen] = useState(false);
+  const [formError, setFormError] = useState("");
+  const [detailID, setDetailID] = useState<number | null>(null);
   const [memberTeam, setMemberTeam] = useState<Team | null>(null);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError("");
-    try {
-      setItems(sortTeams(await listTeams()));
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "球队列表加载失败");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
-
+  const [actionError, setActionError] = useState("");
+  const [deletingID, setDeletingID] = useState<number | null>(null);
+  const detailQuery = useTeamQuery(detailID);
+  const items = useMemo(
+    () => sortTeams(teamsQuery.data || []),
+    [teamsQuery.data],
+  );
   const filteredItems = useMemo(() => {
     const keyword = search.trim().toLocaleLowerCase("zh-CN");
     return items.filter((item) => {
       const matchesStatus = !status || item.status === status;
-      const matchesKeyword = !keyword || item.name.toLocaleLowerCase("zh-CN").includes(keyword) || item.description?.toLocaleLowerCase("zh-CN").includes(keyword);
+      const matchesKeyword =
+        !keyword ||
+        item.name.toLocaleLowerCase("zh-CN").includes(keyword) ||
+        item.description?.toLocaleLowerCase("zh-CN").includes(keyword);
       return matchesStatus && Boolean(matchesKeyword);
     });
   }, [items, search, status]);
 
   const openCreate = () => {
     setEditing(null);
-    setModalError("");
+    setFormError("");
     form.setFieldsValue({ name: "", description: "", status: "active" });
-    setModalOpen(true);
+    setFormOpen(true);
   };
 
   const openEdit = (team: Team) => {
     setEditing(team);
-    setModalError("");
-    form.setFieldsValue({ name: team.name, description: team.description || "", status: team.status });
-    setModalOpen(true);
+    setFormError("");
+    form.setFieldsValue({
+      name: team.name,
+      description: team.description || "",
+      status: team.status,
+    });
+    setFormOpen(true);
   };
 
-  const closeModal = () => {
-    if (submitting) return;
-    setModalOpen(false);
-    setModalError("");
-  };
-
-  const submit = async () => {
-    let values: TeamFormValues;
-    try {
-      values = await form.validateFields();
-    } catch {
-      return;
-    }
+  const saveTeam = async (values: TeamFormValues) => {
     const payload: SaveTeamPayload = {
       name: values.name.trim(),
       description: values.description?.trim() || null,
     };
-    setSubmitting(true);
-    setModalError("");
+    setFormError("");
     try {
-      const saved = editing
-        ? await updateTeam(editing.id, { ...payload, status: values.status })
-        : await createTeam(payload);
-      setItems((current) => sortTeams(editing ? current.map((item) => item.id === saved.id ? saved : item) : [...current, saved]));
-      if (detail?.id === saved.id) setDetail(saved);
-      setModalOpen(false);
-      form.resetFields();
-    } catch (reason) {
-      setModalError(reason instanceof Error ? reason.message : "球队保存失败");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const openDetail = async (team: Team) => {
-    setDetail(team);
-    setDetailOpen(true);
-    setDetailLoading(true);
-    try {
-      setDetail(await getTeam(team.id));
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "球队详情加载失败");
-    } finally {
-      setDetailLoading(false);
-    }
-  };
-
-  const remove = async (team: Team) => {
-    setDeletingID(team.id);
-    setError("");
-    try {
-      await deleteTeam(team.id);
-      setItems((current) => current.filter((item) => item.id !== team.id));
-      if (detail?.id === team.id) {
-        setDetailOpen(false);
-        setDetail(null);
+      if (editing) {
+        await updateTeam.mutateAsync({
+          id: editing.id,
+          payload: { ...payload, status: values.status },
+        });
+      } else {
+        await createTeam.mutateAsync(payload);
       }
+      form.resetFields();
+      return true;
+    } catch (reason) {
+      setFormError(errorMessage(reason, "球队保存失败"));
+      return false;
+    }
+  };
+
+  const removeTeam = async (team: Team) => {
+    setDeletingID(team.id);
+    setActionError("");
+    try {
+      await deleteTeam.mutateAsync(team.id);
+      if (detailID === team.id) setDetailID(null);
       if (memberTeam?.id === team.id) setMemberTeam(null);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "球队删除失败");
+      setActionError(errorMessage(reason, "球队删除失败"));
     } finally {
       setDeletingID(null);
     }
   };
 
-  const openMembers = (team: Team) => {
-    setDetailOpen(false);
-    setMemberTeam(team);
-  };
-
-  const handleMemberTeamChange = useCallback((updated: Team) => {
-    setItems((current) => current.map((item) => item.id === updated.id ? updated : item));
-    setDetail((current) => current?.id === updated.id ? updated : current);
-    setMemberTeam(updated);
-  }, []);
-
-  const columns = [
+  const columns: ProColumns<Team>[] = [
     {
       title: "球队",
       dataIndex: "name",
-      render: (_: string, team: Team) => (
+      render: (_, team) => (
         <div className="team-name-cell">
           <strong>{team.name}</strong>
           <Text type="secondary">ID {team.id}</Text>
-          {compact ? <Tag color={team.status === "active" ? "success" : "warning"}>{statusLabels[team.status]}</Tag> : null}
+          {compact ? (
+            <Tag color={team.status === "active" ? "success" : "warning"}>
+              {statusLabels[team.status]}
+            </Tag>
+          ) : null}
         </div>
       ),
     },
-    ...(compact ? [] : [
-      { title: "简介", dataIndex: "description", render: (value: string | null) => <Text className="team-description" ellipsis={{ tooltip: value || undefined }}>{value || "--"}</Text> },
-      { title: "队长", dataIndex: "captain_id", width: 110, render: (value: number | null) => value ? `用户 ${value}` : "未指定" },
-    ]),
-    ...(compact ? [] : [{
-      title: "状态",
-      dataIndex: "status",
-      width: 100,
-      render: (value: TeamStatus) => <Tag color={value === "active" ? "success" : "warning"}>{statusLabels[value]}</Tag>,
-    }]),
-    ...(compact ? [] : [{ title: "更新时间", dataIndex: "updated_at", width: 180, render: formatDateTime }]),
+    ...(compact
+      ? []
+      : [
+          {
+            title: "简介",
+            dataIndex: "description",
+            ellipsis: true,
+            renderText: (value: string | null) => value || "--",
+          },
+          {
+            title: "队长",
+            dataIndex: "captain_id",
+            width: 110,
+            renderText: (value: number | null) =>
+              value ? `用户 ${value}` : "未指定",
+          },
+          {
+            title: "状态",
+            dataIndex: "status",
+            width: 100,
+            render: (_: unknown, team: Team) => (
+              <Tag color={team.status === "active" ? "success" : "warning"}>
+                {statusLabels[team.status]}
+              </Tag>
+            ),
+          },
+          {
+            title: "更新时间",
+            dataIndex: "updated_at",
+            width: 180,
+            renderText: formatDateTime,
+          },
+        ]),
     {
-      title: "",
+      title: "操作",
       key: "actions",
+      valueType: "option",
       width: compact ? 144 : 176,
-      fixed: compact ? undefined : "right" as const,
-      render: (_: unknown, team: Team) => (
+      fixed: "right",
+      render: (_, team) => (
         <Space size={2}>
           <Tooltip title={compact ? undefined : "查看球队"}>
-            <Button type="text" shape="circle" icon={<EyeOutlined />} aria-label={`查看${team.name}`} onClick={() => void openDetail(team)} />
+            <Button
+              type="text"
+              shape="circle"
+              icon={<EyeOutlined />}
+              aria-label={`查看${team.name}`}
+              onClick={() => setDetailID(team.id)}
+            />
           </Tooltip>
           <Tooltip title={compact ? undefined : "管理成员"}>
-            <Button type="text" shape="circle" icon={<TeamOutlined />} aria-label={`管理${team.name}成员`} onClick={() => openMembers(team)} />
+            <Button
+              type="text"
+              shape="circle"
+              icon={<TeamOutlined />}
+              aria-label={`管理${team.name}成员`}
+              onClick={() => {
+                setDetailID(null);
+                setMemberTeam(team);
+              }}
+            />
           </Tooltip>
           <Tooltip title={compact ? undefined : "编辑球队"}>
-            <Button type="text" shape="circle" icon={<EditOutlined />} aria-label={`编辑${team.name}`} onClick={() => openEdit(team)} />
+            <Button
+              type="text"
+              shape="circle"
+              icon={<EditOutlined />}
+              aria-label={`编辑${team.name}`}
+              onClick={() => openEdit(team)}
+            />
           </Tooltip>
           <Popconfirm
             title={`永久删除“${team.name}”`}
@@ -225,10 +248,17 @@ export default function TeamListPage() {
             okText="永久删除"
             okButtonProps={{ danger: true }}
             cancelText="返回"
-            onConfirm={() => void remove(team)}
+            onConfirm={() => removeTeam(team)}
           >
             <Tooltip title={compact ? undefined : "永久删除"}>
-              <Button type="text" shape="circle" danger icon={<DeleteOutlined />} loading={deletingID === team.id} aria-label={`删除${team.name}`} />
+              <Button
+                type="text"
+                shape="circle"
+                danger
+                icon={<DeleteOutlined />}
+                loading={deletingID === team.id}
+                aria-label={`删除${team.name}`}
+              />
             </Tooltip>
           </Popconfirm>
         </Space>
@@ -236,76 +266,188 @@ export default function TeamListPage() {
     },
   ];
 
-  return (
-    <main className="team-list-page">
-      <section className="page-heading">
-        <div>
-          <Text className="page-kicker">TEAM DIRECTORY</Text>
-          <Title level={2}>球队管理</Title>
-          <Text type="secondary">共 {items.length} 支球队</Text>
-        </div>
-        <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>创建球队</Button>
-      </section>
+  const listError = teamsQuery.error
+    ? errorMessage(teamsQuery.error, "球队列表加载失败")
+    : "";
+  const visibleError = actionError || listError;
+  const detail = detailQuery.data;
 
-      <section className="list-toolbar">
-        <Input allowClear prefix={<SearchOutlined />} placeholder="搜索球队名称或简介" className="team-search" value={search} onChange={(event) => setSearch(event.target.value)} />
+  return (
+    <PageContainer
+      title="球队管理"
+      content={`共 ${items.length} 支球队`}
+      extra={
+        <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
+          创建球队
+        </Button>
+      }
+    >
+      <div className="list-toolbar">
+        <Search
+          allowClear
+          placeholder="搜索球队名称或简介"
+          className="team-search"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+        />
         <Select<TeamStatus>
           allowClear
           placeholder="全部状态"
           className="status-filter"
           value={status}
-          options={Object.entries(statusLabels).map(([value, label]) => ({ value: value as TeamStatus, label }))}
+          options={Object.entries(statusLabels).map(([value, label]) => ({
+            value: value as TeamStatus,
+            label,
+          }))}
           onChange={setStatus}
         />
-      </section>
+      </div>
 
-      {error ? <Alert className="service-alert" type="error" showIcon message={error} closable onClose={() => setError("")} action={<Button size="small" onClick={() => void load()}>重新加载</Button>} /> : null}
-
-      <section className="table-panel team-table-panel">
-        <Table<Team>
-          rowKey="id"
-          loading={loading}
-          dataSource={filteredItems}
-          columns={columns}
-          scroll={compact ? undefined : { x: 900 }}
-          pagination={{ pageSize: 20, showSizeChanger: true, showTotal: (total) => `共 ${total} 支` }}
-          onRow={(team) => ({ onDoubleClick: () => void openDetail(team) })}
+      {visibleError ? (
+        <Alert
+          className="service-alert"
+          type="error"
+          showIcon
+          closable
+          message={visibleError}
+          onClose={() => setActionError("")}
+          action={
+            teamsQuery.isError ? (
+              <Button size="small" onClick={() => void teamsQuery.refetch()}>
+                重新加载
+              </Button>
+            ) : null
+          }
         />
-      </section>
+      ) : null}
 
-      <Modal open={modalOpen} title={editing ? "编辑球队" : "创建球队"} okText={editing ? "保存" : "创建"} cancelText="取消" confirmLoading={submitting} onOk={() => void submit()} onCancel={closeModal} destroyOnHidden>
-        {modalError ? <Alert className="modal-alert" type="error" showIcon message={modalError} /> : null}
-        <Form<TeamFormValues> form={form} layout="vertical" requiredMark={false} disabled={submitting}>
-          <Form.Item name="name" label="球队名称" rules={[{ required: true, whitespace: true, message: "请输入球队名称" }, { max: 120, message: "球队名称不能超过 120 个字符" }]}>
-            <Input maxLength={120} />
+      <ProTable<Team>
+        rowKey="id"
+        search={false}
+        options={false}
+        cardProps={{ className: "team-table-panel" }}
+        loading={teamsQuery.isFetching}
+        dataSource={filteredItems}
+        columns={columns}
+        scroll={{ x: compact ? 620 : 900 }}
+        pagination={{
+          pageSize: 20,
+          showSizeChanger: true,
+          showTotal: (total) => `共 ${total} 支`,
+        }}
+        onRow={(team) => ({ onDoubleClick: () => setDetailID(team.id) })}
+      />
+
+      <ModalForm<TeamFormValues>
+        form={form}
+        open={formOpen}
+        title={editing ? "编辑球队" : "创建球队"}
+        requiredMark={false}
+        onOpenChange={(open) => {
+          setFormOpen(open);
+          if (!open) setFormError("");
+        }}
+        submitter={{
+          searchConfig: {
+            submitText: editing ? "保存" : "创建",
+            resetText: "取消",
+          },
+        }}
+        modalProps={{ destroyOnHidden: true }}
+        onFinish={saveTeam}
+      >
+        {formError ? (
+          <Alert
+            className="modal-alert"
+            type="error"
+            showIcon
+            message={formError}
+          />
+        ) : null}
+        <Form.Item
+          name="name"
+          label="球队名称"
+          rules={[
+            { required: true, whitespace: true, message: "请输入球队名称" },
+            { max: 120, message: "球队名称不能超过 120 个字符" },
+          ]}
+        >
+          <Input maxLength={120} />
+        </Form.Item>
+        <Form.Item name="description" label="球队简介">
+          <Input.TextArea rows={4} maxLength={1000} showCount />
+        </Form.Item>
+        {editing ? (
+          <Form.Item
+            name="status"
+            label="球队状态"
+            rules={[{ required: true }]}
+          >
+            <Segmented
+              block
+              options={[
+                { label: "启用", value: "active" },
+                { label: "冻结", value: "frozen" },
+              ]}
+            />
           </Form.Item>
-          <Form.Item name="description" label="球队简介">
-            <Input.TextArea rows={4} maxLength={1000} showCount />
-          </Form.Item>
-          {editing ? (
-            <Form.Item name="status" label="球队状态" rules={[{ required: true }]}>
-              <Segmented block options={[{ label: "启用", value: "active" }, { label: "冻结", value: "frozen" }]} />
-            </Form.Item>
-          ) : null}
-        </Form>
-      </Modal>
+        ) : null}
+      </ModalForm>
 
       <Drawer
         title="球队详情"
-        width={compact ? 360 : 460}
-        open={detailOpen}
-        loading={detailLoading}
-        extra={detail ? <Button icon={<TeamOutlined />} onClick={() => openMembers(detail)}>成员管理</Button> : null}
-        onClose={() => setDetailOpen(false)}
+        size={compact ? "100%" : 460}
+        open={Boolean(detailID)}
+        loading={detailQuery.isFetching}
+        extra={
+          detail ? (
+            <Button
+              icon={<TeamOutlined />}
+              onClick={() => {
+                setDetailID(null);
+                setMemberTeam(detail);
+              }}
+            >
+              成员管理
+            </Button>
+          ) : null
+        }
+        onClose={() => setDetailID(null)}
       >
+        {detailQuery.error ? (
+          <Alert
+            type="error"
+            showIcon
+            message={errorMessage(detailQuery.error, "球队详情加载失败")}
+            action={
+              <Button size="small" onClick={() => void detailQuery.refetch()}>
+                重试
+              </Button>
+            }
+          />
+        ) : null}
         {detail ? (
           <Descriptions column={1} bordered size="small">
-            <Descriptions.Item label="球队名称">{detail.name}</Descriptions.Item>
-            <Descriptions.Item label="状态"><Tag color={detail.status === "active" ? "success" : "warning"}>{statusLabels[detail.status]}</Tag></Descriptions.Item>
-            <Descriptions.Item label="球队简介">{detail.description || "--"}</Descriptions.Item>
-            <Descriptions.Item label="队长">{detail.captain_id ? `用户 ${detail.captain_id}` : "未指定"}</Descriptions.Item>
-            <Descriptions.Item label="创建时间">{formatDateTime(detail.created_at)}</Descriptions.Item>
-            <Descriptions.Item label="更新时间">{formatDateTime(detail.updated_at)}</Descriptions.Item>
+            <Descriptions.Item label="球队名称">
+              {detail.name}
+            </Descriptions.Item>
+            <Descriptions.Item label="状态">
+              <Tag color={detail.status === "active" ? "success" : "warning"}>
+                {statusLabels[detail.status]}
+              </Tag>
+            </Descriptions.Item>
+            <Descriptions.Item label="球队简介">
+              {detail.description || "--"}
+            </Descriptions.Item>
+            <Descriptions.Item label="队长">
+              {detail.captain_id ? `用户 ${detail.captain_id}` : "未指定"}
+            </Descriptions.Item>
+            <Descriptions.Item label="创建时间">
+              {formatDateTime(detail.created_at)}
+            </Descriptions.Item>
+            <Descriptions.Item label="更新时间">
+              {formatDateTime(detail.updated_at)}
+            </Descriptions.Item>
           </Descriptions>
         ) : null}
       </Drawer>
@@ -314,8 +456,8 @@ export default function TeamListPage() {
         open={Boolean(memberTeam)}
         team={memberTeam}
         onClose={() => setMemberTeam(null)}
-        onTeamChange={handleMemberTeamChange}
+        onTeamChange={setMemberTeam}
       />
-    </main>
+    </PageContainer>
   );
 }
