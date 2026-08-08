@@ -2,7 +2,9 @@
 
 ## 项目定位
 
-微信小程序端，承载普通用户的报名、球队、活动、账单与个人中心相关流程。当前技术栈为 `uni-app + Vue 3 + TypeScript + Vite`。
+微信小程序/H5 端，承载普通用户的报名、球队、活动、账单与个人中心相关流程。当前技术栈为 `uni-app + Vue 3 + TypeScript + Vite`。
+
+本目录是唯一的用户端小程序代码库。`mini-rust-backend-final` 标记最后一个对接 Rust 后端的基线；后续 Go 后端切换直接在本项目内完成，不再创建或恢复 `registration_system_mini_go/`。
 
 ## 常用命令
 
@@ -44,6 +46,7 @@ src/
 - 修改大页面前，先按 [`docs/mini-architecture.md`](docs/mini-architecture.md) 判断是否应抽局部组件、`*Actions.ts` 或 `*State.ts`。
 - 新增接口优先放入 `src/api/<domain>.ts`，并补充对应类型。
 - 修改报名、球队、活动等核心流程时，确认字段与后端真实 JSON 一致。
+- 切换 Go 接口时逐项核对路由、DTO、响应 envelope 和登录态，不要把 Rust 的 `{ success, message, data }` 假设带入 Go 的 `{ code, message, data }` 契约。
 - 小程序环境差异较多，避免随意引入仅适用于 Web 的 API。
 - 页面 SFC 默认只承担页面编排：生命周期、加载状态、页面级表单状态、导航和组件事件 wiring。
 - 后端数据到页面展示模型的转换优先放在 `src/utils/viewModels.ts` 或页面局部 `*State.ts`，不要散落在模板里。

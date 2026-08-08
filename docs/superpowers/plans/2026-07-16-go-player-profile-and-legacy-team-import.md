@@ -1,5 +1,7 @@
 # Go Player Profile and Legacy Team Import Implementation Plan
 
+> **Archive note (2026-08-08):** This plan records the former two-mini-project structure. `registration_system_mini_go/` has been removed; current mini/H5 work belongs in `registration_system_mini/`. Paths below are retained as implementation history, not current instructions.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Add real name and phone number as maintained player profile fields, expose them in team management, and transactionally import the legacy team, users, memberships, and captain.

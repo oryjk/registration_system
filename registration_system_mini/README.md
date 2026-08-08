@@ -1,6 +1,10 @@
 # registration_system_mini
 
-赛事报名与球队管理系统的小程序端，面向球员、队员和普通用户，当前采用 `uni-app + Vue 3 + TypeScript + Vite`。
+赛事报名与球队管理系统的小程序/H5 端，面向球员、队员和普通用户，当前采用 `uni-app + Vue 3 + TypeScript + Vite`。这是工作区唯一的用户端小程序代码库，不再维护平行的 `registration_system_mini_go/`。
+
+## 后端迁移基线
+
+`mini-rust-backend-final` 标记本项目最后一个完整对接 Rust 后端的基线。该 tag 之后的改造在本目录内逐步切换到 `registration_system_go/`，必须以 Go 路由和 DTO 的实际代码为准；迁移完成前，未改造的页面仍按 Rust 接口契约运行。
 
 ## 当前状态
 
@@ -128,7 +132,7 @@ ${VITE_API_BASE_URL}${url}
 
 - 提交前至少执行 `bun run type-check`
 - 涉及路由或页面结构变动时，补跑 `bun run build:mp-weixin`
-- 改字段时以 `registration_system_rs/` 后端 DTO 和实际 JSON 返回为准
+- 改字段时以当前目标后端的 DTO 和实际 JSON 返回为准；迁移到 Go 的接口检查 `registration_system_go/`，尚未迁移的接口检查 `registration_system_rs/`
 - 前端页面、样式、交互和小程序 UI 调整不要求机械按 TDD 开发；涉及路由、接口、权限、数据提交或共享逻辑时再按风险补充测试
 
 ## 微信 CI 上传

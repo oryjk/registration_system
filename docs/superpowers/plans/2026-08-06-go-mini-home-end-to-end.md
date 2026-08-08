@@ -1,5 +1,7 @@
 # Go Mini Home End-to-End Implementation Plan
 
+> **Archive note (2026-08-08):** This completed plan targeted the former `registration_system_mini_go/` project, which has since been removed. Future mini/H5 implementation must use `registration_system_mini/`; paths below remain only as historical execution records.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Deliver the production uni-app home page backed by a dedicated authenticated Go user endpoint for actionable and recently ended matches.

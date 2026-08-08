@@ -1,5 +1,7 @@
 # Go 球员基础资料与旧球队导入设计
 
+> **归档说明（2026-08-08）：** 本文记录实施时的双小程序项目结构。`registration_system_mini_go/` 现已删除，后续用户端改造统一在 `registration_system_mini/` 完成；文中的旧路径仅用于还原历史决策，不可作为当前实施入口。
+
 ## 目标
 
 在 `registration_system_go` 中把真实姓名和手机号纳入球员基础信息，并将旧 MySQL `registration_system` 中的 1 支球队、21 名关联用户、21 条成员关系及队长引用导入新 PostgreSQL。保留目标库现有 3 支球队，不清库、不覆盖无关数据。
