@@ -11,6 +11,20 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countAttendingRegistrationsForGroup = `-- name: CountAttendingRegistrationsForGroup :one
+SELECT COALESCE(SUM(registration_count), 0)::bigint
+FROM match_registrations
+WHERE group_id = $1
+  AND status = 'attending'
+`
+
+func (q *Queries) CountAttendingRegistrationsForGroup(ctx context.Context, groupID pgtype.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countAttendingRegistrationsForGroup, groupID)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const countMatchesForAdmin = `-- name: CountMatchesForAdmin :one
 SELECT COUNT(*)
 FROM matches m
@@ -351,6 +365,40 @@ func (q *Queries) GetActiveGuestGroupForUpdate(ctx context.Context, matchID pgty
 	return i, err
 }
 
+const getActiveUserRegistrationInMatchForUpdate = `-- name: GetActiveUserRegistrationInMatchForUpdate :one
+SELECT registration.id, registration.group_id, registration.user_id, registration.status, registration.registration_count, registration.created_at, registration.updated_at, registration.cancelled_at
+FROM match_registrations registration
+JOIN match_registration_groups registration_group
+  ON registration_group.id = registration.group_id
+WHERE registration_group.match_id = $1
+  AND registration.user_id = $2
+  AND registration.status <> 'cancelled'
+ORDER BY registration.created_at, registration.id
+LIMIT 1
+FOR UPDATE OF registration
+`
+
+type GetActiveUserRegistrationInMatchForUpdateParams struct {
+	MatchID pgtype.UUID `json:"match_id"`
+	UserID  int64       `json:"user_id"`
+}
+
+func (q *Queries) GetActiveUserRegistrationInMatchForUpdate(ctx context.Context, arg GetActiveUserRegistrationInMatchForUpdateParams) (MatchRegistration, error) {
+	row := q.db.QueryRow(ctx, getActiveUserRegistrationInMatchForUpdate, arg.MatchID, arg.UserID)
+	var i MatchRegistration
+	err := row.Scan(
+		&i.ID,
+		&i.GroupID,
+		&i.UserID,
+		&i.Status,
+		&i.RegistrationCount,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.CancelledAt,
+	)
+	return i, err
+}
+
 const getMatchByID = `-- name: GetMatchByID :one
 SELECT id, name, publication_mode, opponent_state, status, host_team_id, away_team_id, opponent_name, players_per_team, start_time, end_time, location, location_latitude, location_longitude, description, created_by_user_id, created_at, updated_at, created_by_admin_id
 FROM matches
@@ -481,6 +529,37 @@ func (q *Queries) GetMatchForAdmin(ctx context.Context, id pgtype.UUID) (GetMatc
 	return i, err
 }
 
+const getRegistrationGroupForUpdate = `-- name: GetRegistrationGroupForUpdate :one
+SELECT id, match_id, kind, team_id, min_players, max_players, status, created_at, updated_at, cancelled_at
+FROM match_registration_groups
+WHERE match_id = $1
+  AND id = $2
+FOR UPDATE
+`
+
+type GetRegistrationGroupForUpdateParams struct {
+	MatchID pgtype.UUID `json:"match_id"`
+	GroupID pgtype.UUID `json:"group_id"`
+}
+
+func (q *Queries) GetRegistrationGroupForUpdate(ctx context.Context, arg GetRegistrationGroupForUpdateParams) (MatchRegistrationGroup, error) {
+	row := q.db.QueryRow(ctx, getRegistrationGroupForUpdate, arg.MatchID, arg.GroupID)
+	var i MatchRegistrationGroup
+	err := row.Scan(
+		&i.ID,
+		&i.MatchID,
+		&i.Kind,
+		&i.TeamID,
+		&i.MinPlayers,
+		&i.MaxPlayers,
+		&i.Status,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.CancelledAt,
+	)
+	return i, err
+}
+
 const getTeamApplicationByIDForUpdate = `-- name: GetTeamApplicationByIDForUpdate :one
 SELECT id, match_id, applicant_team_id, introduction, status, created_by_user_id, selected_at, withdrawn_at, created_at, updated_at
 FROM match_team_applications
@@ -508,6 +587,35 @@ func (q *Queries) GetTeamApplicationByIDForUpdate(ctx context.Context, arg GetTe
 		&i.WithdrawnAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getUserRegistrationForUpdate = `-- name: GetUserRegistrationForUpdate :one
+SELECT id, group_id, user_id, status, registration_count, created_at, updated_at, cancelled_at
+FROM match_registrations
+WHERE group_id = $1
+  AND user_id = $2
+FOR UPDATE
+`
+
+type GetUserRegistrationForUpdateParams struct {
+	GroupID pgtype.UUID `json:"group_id"`
+	UserID  int64       `json:"user_id"`
+}
+
+func (q *Queries) GetUserRegistrationForUpdate(ctx context.Context, arg GetUserRegistrationForUpdateParams) (MatchRegistration, error) {
+	row := q.db.QueryRow(ctx, getUserRegistrationForUpdate, arg.GroupID, arg.UserID)
+	var i MatchRegistration
+	err := row.Scan(
+		&i.ID,
+		&i.GroupID,
+		&i.UserID,
+		&i.Status,
+		&i.RegistrationCount,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.CancelledAt,
 	)
 	return i, err
 }
@@ -1410,6 +1518,50 @@ func (q *Queries) ListTeamGroupRoster(ctx context.Context, arg ListTeamGroupRost
 		return nil, err
 	}
 	return items, nil
+}
+
+const saveUserRegistration = `-- name: SaveUserRegistration :exec
+INSERT INTO match_registrations (
+    id,
+    group_id,
+    user_id,
+    status,
+    registration_count,
+    created_at,
+    updated_at,
+    cancelled_at
+)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+ON CONFLICT (group_id, user_id) DO UPDATE
+SET status = EXCLUDED.status,
+    registration_count = EXCLUDED.registration_count,
+    updated_at = EXCLUDED.updated_at,
+    cancelled_at = EXCLUDED.cancelled_at
+`
+
+type SaveUserRegistrationParams struct {
+	ID                pgtype.UUID      `json:"id"`
+	GroupID           pgtype.UUID      `json:"group_id"`
+	UserID            int64            `json:"user_id"`
+	Status            string           `json:"status"`
+	RegistrationCount int32            `json:"registration_count"`
+	CreatedAt         pgtype.Timestamp `json:"created_at"`
+	UpdatedAt         pgtype.Timestamp `json:"updated_at"`
+	CancelledAt       pgtype.Timestamp `json:"cancelled_at"`
+}
+
+func (q *Queries) SaveUserRegistration(ctx context.Context, arg SaveUserRegistrationParams) error {
+	_, err := q.db.Exec(ctx, saveUserRegistration,
+		arg.ID,
+		arg.GroupID,
+		arg.UserID,
+		arg.Status,
+		arg.RegistrationCount,
+		arg.CreatedAt,
+		arg.UpdatedAt,
+		arg.CancelledAt,
+	)
+	return err
 }
 
 const updateMatchDetails = `-- name: UpdateMatchDetails :one

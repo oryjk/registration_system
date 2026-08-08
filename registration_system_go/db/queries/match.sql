@@ -289,6 +289,56 @@ SET status = $2,
     updated_at = $4
 WHERE id = $1;
 
+-- name: GetRegistrationGroupForUpdate :one
+SELECT *
+FROM match_registration_groups
+WHERE match_id = sqlc.arg('match_id')
+  AND id = sqlc.arg('group_id')
+FOR UPDATE;
+
+-- name: GetUserRegistrationForUpdate :one
+SELECT *
+FROM match_registrations
+WHERE group_id = sqlc.arg('group_id')
+  AND user_id = sqlc.arg('user_id')
+FOR UPDATE;
+
+-- name: GetActiveUserRegistrationInMatchForUpdate :one
+SELECT registration.*
+FROM match_registrations registration
+JOIN match_registration_groups registration_group
+  ON registration_group.id = registration.group_id
+WHERE registration_group.match_id = sqlc.arg('match_id')
+  AND registration.user_id = sqlc.arg('user_id')
+  AND registration.status <> 'cancelled'
+ORDER BY registration.created_at, registration.id
+LIMIT 1
+FOR UPDATE OF registration;
+
+-- name: CountAttendingRegistrationsForGroup :one
+SELECT COALESCE(SUM(registration_count), 0)::bigint
+FROM match_registrations
+WHERE group_id = $1
+  AND status = 'attending';
+
+-- name: SaveUserRegistration :exec
+INSERT INTO match_registrations (
+    id,
+    group_id,
+    user_id,
+    status,
+    registration_count,
+    created_at,
+    updated_at,
+    cancelled_at
+)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+ON CONFLICT (group_id, user_id) DO UPDATE
+SET status = EXCLUDED.status,
+    registration_count = EXCLUDED.registration_count,
+    updated_at = EXCLUDED.updated_at,
+    cancelled_at = EXCLUDED.cancelled_at;
+
 -- name: ListRegistrationGroupStatesForUser :many
 SELECT g.*,
        COALESCE((

@@ -2,9 +2,15 @@ package ports
 
 import (
 	"context"
+	"errors"
 
 	"github.com/google/uuid"
 	"github.com/oryjk/registration_system/registration_system_go/internal/match/domain"
+)
+
+var (
+	ErrUserRegistrationConflict   = errors.New("user registration persistence conflict")
+	ErrUserRegistrationValidation = errors.New("user registration persistence validation failed")
 )
 
 type UserRegistrationRepository interface {

@@ -79,12 +79,15 @@ func BuildDependencies(ctx context.Context, config Config) (Dependencies, func()
 	adminMatchHandler := matchhttp.NewAdminHandler(adminMatches, createMatch)
 	teamApplications := matchapplication.NewTeamApplicationService(matchRepository, teamService, matchClock)
 	teamApplicationHandler := matchhttp.NewTeamApplicationHandler(teamApplications)
+	userRegistrations := matchapplication.NewUserRegistrationService(matchRepository, teamService, matchClock)
+	userRegistrationHandler := matchhttp.NewUserRegistrationHandler(userRegistrations)
 
 	return Dependencies{
 		AuthMiddleware: &authMiddleware,
 		UserAuth:       userAuthHandler, AdminAuth: adminAuthHandler,
 		TestAuth: testAuthHandler, H5TestLoginEnabled: config.H5TestLoginEnabled(),
 		UserProfiles: userProfileHandler, AppUsers: appUserHandler, ActiveUsers: appUserService, Teams: teamHandler, AppTeams: appTeamHandler,
-		UserMatches: userMatchHandler, AdminMatches: adminMatchHandler, TeamApplications: teamApplicationHandler,
+		UserMatches: userMatchHandler, UserRegistrations: userRegistrationHandler,
+		AdminMatches: adminMatchHandler, TeamApplications: teamApplicationHandler,
 	}, closePool, nil
 }

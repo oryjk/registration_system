@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
@@ -58,7 +59,7 @@ func (s UserRegistrationService) Put(ctx context.Context, actor sharedauth.Actor
 		if group.Status == domain.GroupCancelled {
 			return sharederror.New(sharederror.KindConflict, "报名组已取消")
 		}
-		if found && current.Status == command.Status && current.CancelledAt == nil {
+		if found && current.Status == command.Status && current.CancelledAt == nil && current.RegistrationCount == 1 {
 			result = current
 			return nil
 		}
@@ -94,7 +95,7 @@ func (s UserRegistrationService) Put(ctx context.Context, actor sharedauth.Actor
 			}
 		}
 		if err := tx.SaveRegistration(ctx, result); err != nil {
-			return wrapUserRegistrationStoreError("保存报名记录失败", err)
+			return mapUserRegistrationSaveError(err)
 		}
 		return updateIndividualRegistrationState(ctx, tx, &match, &group, projected, now)
 	})
@@ -142,7 +143,7 @@ func (s UserRegistrationService) Delete(ctx context.Context, actor sharedauth.Ac
 		current.Cancel(now)
 		result = current
 		if err := tx.SaveRegistration(ctx, result); err != nil {
-			return wrapUserRegistrationStoreError("取消报名失败", err)
+			return mapUserRegistrationSaveError(err)
 		}
 		return updateIndividualRegistrationState(ctx, tx, &match, &group, projected, now)
 	})
@@ -238,4 +239,15 @@ func updateIndividualRegistrationState(ctx context.Context, tx ports.UserRegistr
 
 func wrapUserRegistrationStoreError(message string, err error) error {
 	return sharederror.Wrap(sharederror.KindInternal, message, err)
+}
+
+func mapUserRegistrationSaveError(err error) error {
+	switch {
+	case errors.Is(err, ports.ErrUserRegistrationConflict):
+		return sharederror.New(sharederror.KindConflict, "报名状态冲突")
+	case errors.Is(err, ports.ErrUserRegistrationValidation):
+		return sharederror.New(sharederror.KindValidation, "报名数据无效")
+	default:
+		return wrapUserRegistrationStoreError("保存报名记录失败", err)
+	}
 }

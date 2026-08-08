@@ -13,7 +13,7 @@
 | `registration_system_mini/` | 用户侧小程序/H5，保留现有功能并在同一项目内从 Rust 切换到 Go | `uni-app + Vue 3 + TypeScript + Vite + Bun` | **Rust → Go** |
 | `registration_system_backend_fe/` | 管理后台（**老版 Vue**，功能完整、存量维护中） | `Vue 3 + TypeScript + Vite + Tailwind 4 + DaisyUI 5` | **Rust** |
 | `registration_system_backend_fe_go/` | 管理后台（**新版 React**，与 Go 后端同步演进，中期阶段） | `Umi Max + React + Ant Design 6 + ProComponents 3 + React Query 5 + Tailwind 4 + antd-style + Biome + utoopack + Bun` | **Go** |
-| `registration_system_admin_app/` | 移动管理 App，面向赛事运营/管理员（首版开发中） | `Flutter + Dart` | `/api/admin`（Go / Rust 均实现该契约，未绑死） |
+| `registration_system_admin_app/` | 移动管理 App，面向赛事运营/管理员（首版开发中） | `Flutter + Dart` | Rust `/api/admin`；Go `/api/v1/admin` |
 
 > 阶段说明：Rust 后端已完整可用但**不再增加代码**；Go 后端在第一阶段，已闭环覆盖微信登录 + JWT 鉴权 + 管理员体系、球队与成员管理、比赛三种发布模式与整队约队闭环、用户资料维护，但订单/支付/账单/结算/签到/通知**不在第一阶段**。`mini-rust-backend-final` 标记小程序最后一个 Rust 后端基线，此后的用户端改造统一进入 `registration_system_mini/`。
 
@@ -98,11 +98,12 @@ bun run dev:mp-weixin
 ```bash
 cd registration_system_go
 cp .env.example .env   # 默认 HTTP_ADDR=:18080
-make run
+go run ./cmd/api
 ```
 
 - 必填配置：`DATABASE_URL`、`JWT_SECRET`、`WECHAT_APP_ID`、`WECHAT_APP_SECRET`。
-- 健康检查 `GET /health`；管理端接口挂在 `/api/admin`；用户侧接口挂在 `/api`。
+- Go API 在宿主机直接运行，本地开发不需要 Docker；`DATABASE_URL` 指向已准备好的 PostgreSQL。
+- 健康检查 `GET /health`；管理端接口挂在 `/api/v1/admin`；小程序/H5 接口挂在 `/api/v1/app`。
 - 第一阶段不实现订单、支付、账单、结算、签到、通知。
 
 #### B2. 启动新版 React 管理后台
@@ -113,14 +114,14 @@ bun install
 bun run dev
 ```
 
-- 开发使用 `ADMIN_API_BASE_URL=/go-api`，由 Umi 代理 `/go-api → http://127.0.0.1:18080`（可用 `.env` 的 `API_PROXY_TARGET` 覆盖目标）；生产构建保持 API base 为空，由 Nginx 转发同源 `/api/admin/*` 和 `/health` 到 Go 后端。
-- 请求层对 `admin` 接口统一加前缀 `/api/admin`，`/health` 等用裸路径。
+- 开发使用 `ADMIN_API_BASE_URL=/go-api`，由 Umi 代理 `/go-api → http://127.0.0.1:18080`（可用 `.env` 的 `API_PROXY_TARGET` 覆盖目标）；生产构建保持 API base 为空，由 Nginx 转发同源 `/api/v1/admin/*` 和 `/health` 到 Go 后端。
+- 请求层对 `admin` 接口统一加前缀 `/api/v1/admin`，`/health` 等用裸路径。
 - 响应契约 `{ code, message, data }`，成功判定 `code === 0`。
 - 生产构建：`bun run build:nginx`（`ADMIN_PUBLIC_PATH` 与 `ADMIN_ROUTE_BASE` 均为 `/registration-admin/`）；Nginx 必须配置 `/registration-admin/` 到 `/registration-admin/index.html` 的 SPA fallback。
 
 #### B3. 小程序切换入口
 
-小程序对接 Go 后端的改造统一在 `registration_system_mini/` 内完成，不再启动或维护 `registration_system_mini_go/`。切换过程中必须逐项核对 `/api` 用户路由、`{ code, message, data }` 响应契约、登录态和已有业务页面；在对应改造落地前，不要假设现有请求层已经兼容 Go 后端。
+小程序对接 Go 后端的改造统一在 `registration_system_mini/` 内完成，不再启动或维护 `registration_system_mini_go/`。切换过程中必须逐项核对 `/api/v1/app` 用户路由、`{ code, message, data }` 响应契约、登录态和已有业务页面；在对应改造落地前，不要假设现有请求层已经兼容 Go 后端。
 
 ### C：移动管理 App（独立链路）
 
@@ -129,7 +130,7 @@ cd registration_system_admin_app
 flutter run
 ```
 
-- 对接工作区共有的 `/api/admin`（默认 `http://127.0.0.1:18080/api/admin`），Go 与 Rust 后端都实现了该契约，**未绑死任一后端**。
+- 后端地址可配置；Rust 管理接口使用 `/api/admin`，Go 管理接口使用 `/api/v1/admin`，切换后端时必须同步切换 base URL。
 - baseURL 在登录页可手填并持久化到 `SharedPreferences`（Android 模拟器需 `adb reverse tcp:18080 tcp:18080`）。
 - 首版聚焦：登录 + 工作台首页 + 创建比赛 + 创建球队（共 4 个页面）。
 
@@ -140,7 +141,7 @@ flutter run
 | 后端 | 管理端 | 用户侧 | 健康检查 |
 | --- | --- | --- | --- |
 | Rust（`registration_system_rs`） | `/api/admin` | `/api`（`/api/user`、`/api/teams`、`/api/activity`、`/api/challenges`、`/api/wx` 等） | `GET /health` |
-| Go（`registration_system_go`） | `/api/admin` | `/api`（`/api/auth/wechat/login`、`/api/teams`、`/api/matches` 等） | `GET /health` |
+| Go（`registration_system_go`） | `/api/v1/admin` | `/api/v1/app`（认证、球队、比赛等） | `GET /health` |
 
 ### 响应契约差异（重要）
 

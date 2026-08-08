@@ -51,6 +51,21 @@ func TestUserRegistrationRejectsServerOnlyStatuses(t *testing.T) {
 	}
 }
 
+func TestUserRegistrationNormalizesLegacyCountOnUserWrite(t *testing.T) {
+	createdAt := time.Date(2026, 8, 8, 8, 0, 0, 0, time.UTC)
+	updatedAt := createdAt.Add(time.Minute)
+	registration, err := NewRegistration(uuid.New(), 42, RegistrationAttending, 2, createdAt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := registration.ApplyUserStatus(RegistrationAttending, updatedAt); err != nil {
+		t.Fatal(err)
+	}
+	if registration.RegistrationCount != 1 || !registration.UpdatedAt.Equal(updatedAt) {
+		t.Fatalf("user write did not normalize legacy count: %+v", registration)
+	}
+}
+
 func TestIndividualCapacityAndOpponentRecalculate(t *testing.T) {
 	now := time.Date(2026, 8, 8, 8, 0, 0, 0, time.UTC)
 	matchID := uuid.New()

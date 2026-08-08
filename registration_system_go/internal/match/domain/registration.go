@@ -75,10 +75,11 @@ func (r *Registration) ApplyUserStatus(status RegistrationStatus, now time.Time)
 	default:
 		return sharederror.New(sharederror.KindValidation, "报名状态无效")
 	}
-	if r.Status == status && r.CancelledAt == nil {
+	if r.Status == status && r.CancelledAt == nil && r.RegistrationCount == 1 {
 		return nil
 	}
 	r.Status = status
+	r.RegistrationCount = 1
 	r.CancelledAt = nil
 	r.UpdatedAt = now
 	return nil

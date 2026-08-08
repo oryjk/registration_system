@@ -166,6 +166,12 @@ func TestUserRegistrationPutIsIdempotentAndReactivatesCancelledRow(t *testing.T)
 	if err != nil || !unchanged.UpdatedAt.Equal(now) {
 		t.Fatalf("idempotent put changed registration: %+v err=%v", unchanged, err)
 	}
+	existing.RegistrationCount = 2
+	repository.registrations[repository.group.ID] = []domain.Registration{existing}
+	normalized, err := service.Put(context.Background(), userActor(42), repository.match.ID, repository.group.ID, validRegistrationCommand())
+	if err != nil || normalized.RegistrationCount != 1 {
+		t.Fatalf("normalize legacy registration count: %+v err=%v", normalized, err)
+	}
 
 	existing.Cancel(now.Add(time.Minute))
 	repository.registrations[repository.group.ID] = []domain.Registration{existing}
@@ -221,6 +227,29 @@ func TestUserRegistrationRollsBackWhenDerivedStateWriteFails(t *testing.T) {
 	}
 }
 
+func TestUserRegistrationMapsPersistenceConstraintErrors(t *testing.T) {
+	now := time.Now()
+	tests := []struct {
+		name    string
+		store   error
+		wantErr error
+	}{
+		{name: "conflict", store: ports.ErrUserRegistrationConflict, wantErr: sharederror.ErrConflict},
+		{name: "validation", store: ports.ErrUserRegistrationValidation, wantErr: sharederror.ErrValidation},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			repository := newFakeUserRegistrationRepository(individualRegistrationFixture(now, 1, 2))
+			repository.saveRegistrationErr = test.store
+			service := NewUserRegistrationService(repository, &fakeRegistrationTeamAccess{}, fakeClock{now: now})
+			_, err := service.Put(context.Background(), userActor(42), repository.match.ID, repository.group.ID, validRegistrationCommand())
+			if !errors.Is(err, test.wantErr) {
+				t.Fatalf("expected %v, got %v", test.wantErr, err)
+			}
+		})
+	}
+}
+
 type registrationFixture struct {
 	match domain.Match
 	group domain.RegistrationGroup
@@ -254,6 +283,7 @@ type fakeUserRegistrationRepository struct {
 	inTransaction           bool
 	outsideTransactionWrite bool
 	updateGroupErr          error
+	saveRegistrationErr     error
 }
 
 func newFakeUserRegistrationRepository(fixture registrationFixture) *fakeUserRegistrationRepository {
@@ -316,6 +346,9 @@ func (f *fakeUserRegistrationRepository) CountAttendingForGroup(_ context.Contex
 
 func (f *fakeUserRegistrationRepository) SaveRegistration(_ context.Context, registration domain.Registration) error {
 	f.recordWrite()
+	if f.saveRegistrationErr != nil {
+		return f.saveRegistrationErr
+	}
 	items := f.registrations[registration.GroupID]
 	for index := range items {
 		if items[index].UserID == registration.UserID {

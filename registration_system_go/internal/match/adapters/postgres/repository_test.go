@@ -2,6 +2,8 @@ package postgres
 
 import (
 	"context"
+	"errors"
+	"sync"
 	"testing"
 	"time"
 
@@ -15,6 +17,87 @@ import (
 	sharederror "github.com/oryjk/registration_system/registration_system_go/internal/shared/domain"
 	"github.com/oryjk/registration_system/registration_system_go/internal/testsupport"
 )
+
+func TestUserRegistrationRepositoryPersistsCancellationAndReactivation(t *testing.T) {
+	pool := testsupport.StartPostgres(t)
+	ctx := context.Background()
+	ownerID, teamID := seedMatchOwner(t, pool)
+	userID := seedMatchUser(t, pool)
+	match, groups := newPersistableIndividualMatch(t, ownerID, teamID, 1, 2)
+	repository := NewRepository(pool)
+	if err := repository.CreateWithGroups(ctx, match, groups); err != nil {
+		t.Fatalf("create match: %v", err)
+	}
+	service := matchapplication.NewUserRegistrationService(repository, repositoryTestTeamAccess{}, repositoryTestClock{now: time.Date(2026, 8, 8, 12, 0, 0, 0, time.UTC)})
+
+	created, err := service.Put(ctx, sharedauth.Actor{Kind: sharedauth.ActorUser, ID: userID}, match.ID, groups[1].ID, matchapplication.PutMyRegistrationCommand{
+		Status: domain.RegistrationAttending, RegistrationCount: 1,
+	})
+	if err != nil {
+		t.Fatalf("put registration: %v", err)
+	}
+	cancelled, err := service.Delete(ctx, sharedauth.Actor{Kind: sharedauth.ActorUser, ID: userID}, match.ID, groups[1].ID)
+	if err != nil || cancelled.ID != created.ID || cancelled.Status != domain.RegistrationCancelled {
+		t.Fatalf("cancel registration: %+v err=%v", cancelled, err)
+	}
+	reactivated, err := service.Put(ctx, sharedauth.Actor{Kind: sharedauth.ActorUser, ID: userID}, match.ID, groups[1].ID, matchapplication.PutMyRegistrationCommand{
+		Status: domain.RegistrationAttending, RegistrationCount: 1,
+	})
+	if err != nil || reactivated.ID != created.ID || reactivated.CancelledAt != nil {
+		t.Fatalf("reactivate registration: %+v err=%v", reactivated, err)
+	}
+}
+
+func TestUserRegistrationCapacityRaceAllowsExactlyOneCommit(t *testing.T) {
+	pool := testsupport.StartPostgres(t)
+	ctx := context.Background()
+	ownerID, teamID := seedMatchOwner(t, pool)
+	userIDs := []int64{seedMatchUser(t, pool), seedMatchUser(t, pool)}
+	match, groups := newPersistableIndividualMatch(t, ownerID, teamID, 1, 1)
+	repository := NewRepository(pool)
+	if err := repository.CreateWithGroups(ctx, match, groups); err != nil {
+		t.Fatalf("create match: %v", err)
+	}
+	service := matchapplication.NewUserRegistrationService(repository, repositoryTestTeamAccess{}, repositoryTestClock{now: time.Date(2026, 8, 8, 12, 0, 0, 0, time.UTC)})
+
+	start := make(chan struct{})
+	errorsByUser := make([]error, len(userIDs))
+	var wait sync.WaitGroup
+	for index, userID := range userIDs {
+		wait.Add(1)
+		go func(index int, userID int64) {
+			defer wait.Done()
+			<-start
+			_, errorsByUser[index] = service.Put(ctx, sharedauth.Actor{Kind: sharedauth.ActorUser, ID: userID}, match.ID, groups[1].ID, matchapplication.PutMyRegistrationCommand{
+				Status: domain.RegistrationAttending, RegistrationCount: 1,
+			})
+		}(index, userID)
+	}
+	close(start)
+	wait.Wait()
+
+	successes, conflicts := 0, 0
+	for _, err := range errorsByUser {
+		switch {
+		case err == nil:
+			successes++
+		case errors.Is(err, sharederror.ErrConflict):
+			conflicts++
+		default:
+			t.Fatalf("unexpected registration result: %v", err)
+		}
+	}
+	if successes != 1 || conflicts != 1 {
+		t.Fatalf("expected one success and one conflict, got success=%d conflict=%d errors=%v", successes, conflicts, errorsByUser)
+	}
+	var attending int
+	if err := pool.QueryRow(ctx, `SELECT COALESCE(SUM(registration_count), 0) FROM match_registrations WHERE group_id = $1 AND status = 'attending'`, groups[1].ID).Scan(&attending); err != nil {
+		t.Fatalf("count registrations: %v", err)
+	}
+	if attending != 1 {
+		t.Fatalf("capacity exceeded: %d", attending)
+	}
+}
 
 func TestRepositoryCreatesAndFindsMatchWithGroups(t *testing.T) {
 	pool := testsupport.StartPostgres(t)
@@ -121,6 +204,17 @@ func seedMatchOwner(t *testing.T, pool interface {
 	return userID, teamID
 }
 
+func seedMatchUser(t *testing.T, pool interface {
+	QueryRow(context.Context, string, ...any) pgx.Row
+}) int64 {
+	t.Helper()
+	var userID int64
+	if err := pool.QueryRow(context.Background(), `INSERT INTO users (openid) VALUES ($1) RETURNING id`, "user-"+uuid.NewString()).Scan(&userID); err != nil {
+		t.Fatalf("seed user: %v", err)
+	}
+	return userID
+}
+
 func newPersistableMatch(t *testing.T, userID, teamID int64) (domain.Match, []domain.RegistrationGroup) {
 	t.Helper()
 	start := time.Date(2026, 7, 20, 18, 0, 0, 0, time.UTC)
@@ -137,6 +231,20 @@ func newPersistableMatch(t *testing.T, userID, teamID int64) (domain.Match, []do
 	}, domain.IndividualLimits{})
 	if err != nil {
 		t.Fatalf("new match: %v", err)
+	}
+	return match, groups
+}
+
+func newPersistableIndividualMatch(t *testing.T, userID, teamID int64, minPlayers, maxPlayers int) (domain.Match, []domain.RegistrationGroup) {
+	t.Helper()
+	start := time.Date(2026, 8, 20, 18, 0, 0, 0, time.UTC)
+	match, groups, err := domain.NewMatch(domain.NewMatchInput{
+		Name: "散人约球", PublicationMode: domain.OnlineIndividual, HostTeamID: teamID,
+		CreatedByUserID: int64Pointer(userID), PlayersPerTeam: minPlayers,
+		StartTime: start, EndTime: start.Add(2 * time.Hour), Location: "东安球场", CreatedAt: start.Add(-24 * time.Hour),
+	}, domain.IndividualLimits{MinPlayers: minPlayers, MaxPlayers: maxPlayers})
+	if err != nil {
+		t.Fatalf("new individual match: %v", err)
 	}
 	return match, groups
 }
