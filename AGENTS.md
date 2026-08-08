@@ -1,11 +1,10 @@
 # 工作区说明（给 AI / Agent）
 
-本仓库是一个**赛事报名与球队管理**工作区，当前包含七个彼此协作的子项目：
+本仓库是一个**赛事报名与球队管理**工作区，当前包含六个彼此协作的子项目：
 
 | 目录 | 说明 | 技术栈 |
 | --- | --- | --- |
-| `registration_system_mini/` | 微信小程序端，面向球员/队员/普通用户 | `uni-app + Vue 3 + TypeScript + Vite` |
-| `registration_system_mini_go/` | 对接 Go 新后端的小程序/H5 新版本 | `uni-app + Vue 3 + TypeScript + Vite + Bun` |
+| `registration_system_mini/` | 微信小程序/H5 端，面向球员/队员/普通用户；当前对接 Rust 旧后端，后续在本目录切换到 Go 后端 | `uni-app + Vue 3 + TypeScript + Vite` |
 | `registration_system_backend_fe/` | 管理后台，面向运营/管理员 | `Vue 3 + TypeScript + Vite + Tailwind 4 + DaisyUI 5` |
 | `registration_system_backend_fe_go/` | 对接 Go 新后端的管理后台新版本 | `React + TypeScript + Vite + Ant Design + Bun` |
 | `registration_system_admin_app/` | 移动管理 App，面向赛事运营/管理员 | `Flutter + Dart` |
@@ -45,7 +44,6 @@
 ## 子项目入口
 
 - 小程序入口：`registration_system_mini/src/main.ts`、`src/pages.json`
-- Go 配套小程序入口：`registration_system_mini_go/src/main.ts`、`src/pages.json`
 - 管理端入口：`registration_system_backend_fe/src/main.ts`、`src/router/index.ts`
 - Go 配套管理端入口：`registration_system_backend_fe_go/src/main.tsx`、`src/App.tsx`
 - 移动管理 App 入口：`registration_system_admin_app/lib/main.dart`
@@ -56,7 +54,8 @@
 
 - 新后端功能只写入 `registration_system_go/`；未经用户明确同意，不修改 `registration_system_rs/`（只读参考）。
 - 改 Rust 后端时，联动检查对接 Rust 的老前端：`registration_system_backend_fe/src/services/`、`registration_system_mini/src/api/`。
-- 改 Go 后端时，联动检查对接 Go 的新前端：`registration_system_backend_fe_go/src/api/`、`registration_system_mini_go/src/api/`。
+- 改 Go 后端时，联动检查对接 Go 的管理端：`registration_system_backend_fe_go/src/api/`；涉及小程序后端切换或用户端接口时，同时检查 `registration_system_mini/src/api/`。
+- `registration_system_mini/` 是唯一的小程序/H5 代码库；后端切换在该项目内完成，不再创建平行的 `registration_system_mini_go/` 项目。
 - 改管理端或小程序页面时，确认接口字段与后端 DTO / JSON 实际返回一致。
 - 涉及认证、活动、球队、球员、账单等核心领域时，优先沿用既有命名与模块边界，不要把业务规则塞进页面层或 handler。
 
@@ -73,7 +72,6 @@
 - 管理端提交前建议执行：`bun run type-check`、`bun run lint`、必要时 `bun run build`
 - Go 配套管理端提交前建议执行：`bun run type-check`、`bun run lint`、`bun run build`
 - 小程序提交前建议执行：`bun run type-check`、必要时 `bun run build:mp-weixin`
-- Go 配套小程序提交前建议执行：`bun run type-check`、`bun run build:h5`、必要时 `bun run build:mp-weixin`
 - 移动管理 App 提交前建议执行：`dart format lib test`、`flutter analyze`、`flutter test`、必要时 `flutter build apk --debug`
 - 如因环境、依赖、耗时或任务范围原因未运行相关验证命令，必须在最终回复中说明未验证项和原因。
 - TDD 规则：后端业务逻辑、仓储、路由等行为变更需要优先考虑 TDD 或补充后端测试；前端不要求每次按 TDD 开发，页面、样式、交互和小程序 UI 变更通常以类型检查、构建和人工/模拟器验证为主。
