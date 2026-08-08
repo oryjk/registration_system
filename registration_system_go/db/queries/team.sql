@@ -74,6 +74,28 @@ ORDER BY
         WHEN 'vice_captain' THEN 2
         ELSE 3
     END,
+	    tm.joined_at,
+	    tm.user_id;
+
+-- name: ListAppTeamMembers :many
+SELECT tm.user_id,
+       u.nickname,
+       u.avatar_url,
+       u.real_name,
+       tm.role,
+       tm.status,
+       tm.joined_at
+FROM team_members tm
+JOIN users u ON u.id = tm.user_id
+WHERE tm.team_id = $1
+ORDER BY
+    CASE tm.status WHEN 'active' THEN 0 ELSE 1 END,
+    CASE tm.role
+        WHEN 'captain' THEN 0
+        WHEN 'leader' THEN 1
+        WHEN 'vice_captain' THEN 2
+        ELSE 3
+    END,
     tm.joined_at,
     tm.user_id;
 

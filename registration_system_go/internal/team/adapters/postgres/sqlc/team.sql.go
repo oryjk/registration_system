@@ -224,6 +224,67 @@ func (q *Queries) ListActiveUserTeams(ctx context.Context, userID int64) ([]List
 	return items, nil
 }
 
+const listAppTeamMembers = `-- name: ListAppTeamMembers :many
+SELECT tm.user_id,
+       u.nickname,
+       u.avatar_url,
+       u.real_name,
+       tm.role,
+       tm.status,
+       tm.joined_at
+FROM team_members tm
+JOIN users u ON u.id = tm.user_id
+WHERE tm.team_id = $1
+ORDER BY
+    CASE tm.status WHEN 'active' THEN 0 ELSE 1 END,
+    CASE tm.role
+        WHEN 'captain' THEN 0
+        WHEN 'leader' THEN 1
+        WHEN 'vice_captain' THEN 2
+        ELSE 3
+    END,
+    tm.joined_at,
+    tm.user_id
+`
+
+type ListAppTeamMembersRow struct {
+	UserID    int64            `json:"user_id"`
+	Nickname  string           `json:"nickname"`
+	AvatarUrl *string          `json:"avatar_url"`
+	RealName  *string          `json:"real_name"`
+	Role      string           `json:"role"`
+	Status    string           `json:"status"`
+	JoinedAt  pgtype.Timestamp `json:"joined_at"`
+}
+
+func (q *Queries) ListAppTeamMembers(ctx context.Context, teamID int64) ([]ListAppTeamMembersRow, error) {
+	rows, err := q.db.Query(ctx, listAppTeamMembers, teamID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListAppTeamMembersRow
+	for rows.Next() {
+		var i ListAppTeamMembersRow
+		if err := rows.Scan(
+			&i.UserID,
+			&i.Nickname,
+			&i.AvatarUrl,
+			&i.RealName,
+			&i.Role,
+			&i.Status,
+			&i.JoinedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listTeamMemberCandidates = `-- name: ListTeamMemberCandidates :many
 SELECT u.id, u.nickname, u.avatar_url, u.real_name, u.phone_number
 FROM users u
@@ -307,8 +368,8 @@ ORDER BY
         WHEN 'vice_captain' THEN 2
         ELSE 3
     END,
-    tm.joined_at,
-    tm.user_id
+	    tm.joined_at,
+	    tm.user_id
 `
 
 type ListTeamMembersRow struct {

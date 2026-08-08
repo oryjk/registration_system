@@ -145,6 +145,22 @@ func (r *Repository) ListMembers(ctx context.Context, teamID int64) ([]domain.Me
 	return items, nil
 }
 
+func (r *Repository) ListAppMembers(ctx context.Context, teamID int64) ([]ports.AppMember, error) {
+	rows, err := r.queries.ListAppTeamMembers(ctx, teamID)
+	if err != nil {
+		return nil, err
+	}
+	items := make([]ports.AppMember, 0, len(rows))
+	for _, row := range rows {
+		items = append(items, ports.AppMember{
+			UserID: row.UserID, Nickname: row.Nickname, AvatarURL: row.AvatarUrl,
+			RealName: row.RealName, Role: domain.Role(row.Role), Status: domain.MemberStatus(row.Status),
+			JoinedAt: row.JoinedAt.Time,
+		})
+	}
+	return items, nil
+}
+
 func (r *Repository) ListMemberCandidates(ctx context.Context, teamID int64, search string, limit int) ([]domain.MemberCandidate, error) {
 	rows, err := r.queries.ListTeamMemberCandidates(ctx, teamsqlc.ListTeamMemberCandidatesParams{
 		TeamID: teamID, Search: search, Limit: int32(limit),

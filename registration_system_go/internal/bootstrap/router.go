@@ -21,6 +21,7 @@ type Dependencies struct {
 	ActiveUsers        authhttp.ActiveUserChecker
 	H5TestLoginEnabled bool
 	Teams              *teamhttp.Handler
+	AppTeams           *teamhttp.AppHandler
 	UserMatches        *matchhttp.UserHandler
 	AdminMatches       *matchhttp.AdminHandler
 	TeamApplications   *matchhttp.TeamApplicationHandler
@@ -56,6 +57,9 @@ func NewRouter(dependencies Dependencies) *gin.Engine {
 		}
 		if dependencies.Teams != nil {
 			dependencies.Teams.RegisterUserRoutes(userRoutes)
+		}
+		if dependencies.AppTeams != nil {
+			dependencies.AppTeams.RegisterRoutes(userRoutes)
 		}
 		if dependencies.UserMatches != nil {
 			dependencies.UserMatches.RegisterRoutes(userRoutes)
