@@ -1,6 +1,7 @@
 .PHONY: generate migrate-up migrate-down migrate-status create-admin fmt test vet build run verify
 
-export GOSUMDB := sum.golang.org
+export GOPROXY := https://goproxy.cn,direct
+export GOSUMDB := sum.golang.google.cn
 export GOTOOLCHAIN := go1.26.5
 
 SQLC_VERSION := v1.31.1

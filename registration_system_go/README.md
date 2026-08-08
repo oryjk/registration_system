@@ -20,6 +20,14 @@
 
 Go API 直接在宿主机运行，Docker 只用于提供映射到本机 `5432` 端口的 PostgreSQL。
 
+项目的 Makefile 固定使用国内 Go 模块代理 `https://goproxy.cn,direct` 和可在国内访问的 checksum database `sum.golang.google.cn`。本机直接运行 `go build`、`go test` 等命令时，建议同步设置全局 Go 环境：
+
+```bash
+go env -w GOPROXY=https://goproxy.cn,direct GOSUMDB=sum.golang.google.cn
+```
+
+不要通过 `GOSUMDB=off` 或通配 `GONOSUMDB` 关闭公开依赖的完整性校验。
+
 ```bash
 cp .env.example .env
 make migrate-up

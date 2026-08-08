@@ -37,6 +37,7 @@
 - 后端业务行为按 TDD 推进：先确认失败测试，再写最小实现。
 - 新增 SQL 前先确认 migration 和现有 query，禁止臆造字段。
 - 不使用重型 ORM；查询通过 sqlc 生成类型。
+- Go 模块下载使用 `GOPROXY=https://goproxy.cn,direct`，校验使用 `GOSUMDB=sum.golang.google.cn`；不要关闭公开依赖的 checksum 校验。
 - 不记录 JWT、微信 code、AppSecret、数据库连接串等敏感信息。
 - 第一阶段不实现订单、支付、账单、结算、签到和通知。
 
