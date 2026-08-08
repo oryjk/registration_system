@@ -1,0 +1,14 @@
+{
+  "legacy_mysql": {
+    "users": {},
+    "teams": {
+      "1": "11"
+    },
+    "memberships": {}
+  },
+  "legacy_postgres": {
+    "users": {},
+    "matches": {},
+    "registrations": {}
+  }
+}

@@ -36,7 +36,7 @@ func TestImporterIsIdempotentAndAssignsCaptain(t *testing.T) {
 	if err != nil {
 		t.Fatalf("second import: %v", err)
 	}
-	if report.UsersUpdated != 2 || report.TeamsUpdated != 1 || report.MembershipsUpdated != 2 {
+	if report.UsersSkipped != 2 || report.TeamsSkipped != 1 || report.MembershipsSkipped != 2 {
 		t.Fatalf("unexpected second report: %+v", report)
 	}
 
@@ -82,7 +82,7 @@ func TestImporterDryRunRollsBackAndDuplicateTeamRollsBack(t *testing.T) {
 	if _, err := pool.Exec(context.Background(), `INSERT INTO teams (name) VALUES ('重名球队'), ('重名球队')`); err != nil {
 		t.Fatalf("seed duplicate teams: %v", err)
 	}
-	if _, err := importer.Run(context.Background(), false); err == nil || !strings.Contains(err.Error(), "多个同名球队") {
+	if _, err := importer.Run(context.Background(), false); err == nil || !strings.Contains(err.Error(), "ambiguous") {
 		t.Fatalf("expected duplicate team error, got %v", err)
 	}
 	if err := pool.QueryRow(context.Background(), `SELECT COUNT(*) FROM users`).Scan(&users); err != nil || users != 0 {

@@ -3,6 +3,8 @@ package legacyteams
 import (
 	"context"
 	"time"
+
+	"github.com/oryjk/registration_system/registration_system_go/internal/migration/mapping"
 )
 
 type LegacyTeam struct {
@@ -48,10 +50,24 @@ type Source interface {
 }
 
 type Report struct {
-	UsersInserted       int
-	UsersUpdated        int
-	TeamsInserted       int
-	TeamsUpdated        int
-	MembershipsInserted int
-	MembershipsUpdated  int
+	UsersInserted             int
+	UsersUpdated              int
+	TeamsInserted             int
+	TeamsUpdated              int
+	MembershipsInserted       int
+	MembershipsUpdated        int
+	UsersSkipped              int
+	UsersTargetModified       int
+	TeamsSkipped              int
+	TeamsTargetModified       int
+	MembershipsSkipped        int
+	MembershipsTargetModified int
+	MembershipsInactivated    int
+	Conflicts                 int
+}
+
+type RunOptions struct {
+	DryRun           bool
+	Mode             mapping.Mode
+	ExplicitMappings mapping.Config
 }
