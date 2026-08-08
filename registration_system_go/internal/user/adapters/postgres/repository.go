@@ -8,6 +8,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	authsqlc "github.com/oryjk/registration_system/registration_system_go/internal/auth/adapters/postgres/sqlc"
 	"github.com/oryjk/registration_system/registration_system_go/internal/user/domain"
+	"github.com/oryjk/registration_system/registration_system_go/internal/user/ports"
 )
 
 type Repository struct {
@@ -60,6 +61,42 @@ func (r *Repository) UpdateProfile(ctx context.Context, user domain.User) (domai
 		return domain.User{}, err
 	}
 	return mapUser(row.ID, row.Openid, row.Nickname, row.AvatarUrl, row.RealName, row.PhoneNumber, row.Status, row.CreatedAt.Time, row.UpdatedAt.Time), nil
+}
+
+func (r *Repository) UpdateAppProfile(ctx context.Context, user domain.User) (domain.User, error) {
+	row, err := r.queries.UpdateUserAppProfile(ctx, authsqlc.UpdateUserAppProfileParams{
+		ID: user.ID, Nickname: user.Nickname, RealName: user.RealName,
+	})
+	if err != nil {
+		return domain.User{}, err
+	}
+	return mapUser(row.ID, row.Openid, row.Nickname, row.AvatarUrl, row.RealName, row.PhoneNumber, row.Status, row.CreatedAt.Time, row.UpdatedAt.Time), nil
+}
+
+func (r *Repository) ListActiveTestLoginUsers(ctx context.Context) ([]ports.TestLoginUser, error) {
+	rows, err := r.queries.ListActiveTestLoginUsers(ctx)
+	if err != nil {
+		return nil, err
+	}
+	items := make([]ports.TestLoginUser, 0)
+	indexByUserID := make(map[int64]int)
+	for _, row := range rows {
+		index, exists := indexByUserID[row.ID]
+		if !exists {
+			items = append(items, ports.TestLoginUser{User: mapUser(
+				row.ID, row.Openid, row.Nickname, row.AvatarUrl, row.RealName, row.PhoneNumber,
+				row.Status, row.CreatedAt.Time, row.UpdatedAt.Time,
+			)})
+			index = len(items) - 1
+			indexByUserID[row.ID] = index
+		}
+		if row.TeamID != nil && row.TeamName != nil && row.TeamRole != nil {
+			items[index].Teams = append(items[index].Teams, ports.TestLoginTeam{
+				ID: *row.TeamID, Name: *row.TeamName, Role: *row.TeamRole,
+			})
+		}
+	}
+	return items, nil
 }
 
 func mapUser(id int64, openID, nickname string, avatarURL, realName, phoneNumber *string, status string, createdAt, updatedAt time.Time) domain.User {

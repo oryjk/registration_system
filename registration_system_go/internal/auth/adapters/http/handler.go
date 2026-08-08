@@ -7,6 +7,7 @@ import (
 	"github.com/oryjk/registration_system/registration_system_go/internal/auth/application"
 	sharedhttpapi "github.com/oryjk/registration_system/registration_system_go/internal/shared/adapters/httpapi"
 	sharederror "github.com/oryjk/registration_system/registration_system_go/internal/shared/domain"
+	userdomain "github.com/oryjk/registration_system/registration_system_go/internal/user/domain"
 )
 
 type WechatLoginUseCase interface {
@@ -52,11 +53,15 @@ func (h *Handler) WechatLogin(c *gin.Context) {
 	}
 	sharedhttpapi.WriteSuccess(c, WechatLoginResponse{
 		Token: result.Token,
-		User: UserResponse{
-			ID: result.User.ID, Nickname: result.User.Nickname, AvatarURL: result.User.AvatarURL,
-			RealName: result.User.RealName, PhoneNumber: result.User.PhoneNumber, Status: string(result.User.Status),
-		},
+		User:  mapUserResponse(result.User),
 	})
+}
+
+func mapUserResponse(user userdomain.User) UserResponse {
+	return UserResponse{
+		ID: user.ID, Nickname: user.Nickname, AvatarURL: user.AvatarURL,
+		RealName: user.RealName, PhoneNumber: user.PhoneNumber, Status: string(user.Status),
+	}
 }
 
 func (h *Handler) RegisterPublicRoutes(group *gin.RouterGroup) {

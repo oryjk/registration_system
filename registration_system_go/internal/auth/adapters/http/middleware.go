@@ -1,12 +1,16 @@
 package authhttp
 
 import (
+	"context"
+	"errors"
 	"net/http"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/oryjk/registration_system/registration_system_go/internal/auth/ports"
+	sharedhttpapi "github.com/oryjk/registration_system/registration_system_go/internal/shared/adapters/httpapi"
 	sharedauth "github.com/oryjk/registration_system/registration_system_go/internal/shared/auth"
+	sharederror "github.com/oryjk/registration_system/registration_system_go/internal/shared/domain"
 	sharedhttp "github.com/oryjk/registration_system/registration_system_go/internal/shared/http"
 )
 
@@ -14,6 +18,10 @@ const actorContextKey = "authenticated_actor"
 
 type Middleware struct {
 	tokens ports.TokenService
+}
+
+type ActiveUserChecker interface {
+	EnsureActive(context.Context, int64) error
 }
 
 func NewMiddleware(tokens ports.TokenService) Middleware {
@@ -26,6 +34,27 @@ func (m Middleware) RequireUser() gin.HandlerFunc {
 
 func (m Middleware) RequireAdmin() gin.HandlerFunc {
 	return m.require(sharedauth.ActorAdmin)
+}
+
+func (m Middleware) RequireActiveUser(checker ActiveUserChecker) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		actor, ok := ActorFromContext(c)
+		if !ok || !actor.IsUser() {
+			abort(c, http.StatusUnauthorized, "unauthorized")
+			return
+		}
+		if err := checker.EnsureActive(c.Request.Context(), actor.ID); err != nil {
+			if errors.Is(err, sharederror.ErrUnauthorized) {
+				c.Abort()
+				sharedhttpapi.WriteError(c, sharederror.ErrUnauthorized)
+				return
+			}
+			c.Abort()
+			sharedhttpapi.WriteError(c, sharederror.Wrap(sharederror.KindInternal, "校验用户状态失败", err))
+			return
+		}
+		c.Next()
+	}
 }
 
 func ActorFromContext(c *gin.Context) (sharedauth.Actor, bool) {

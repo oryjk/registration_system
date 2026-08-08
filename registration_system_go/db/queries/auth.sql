@@ -29,6 +29,33 @@ SET real_name = $2,
 WHERE id = $1
 RETURNING id, openid, nickname, avatar_url, real_name, phone_number, status, created_at, updated_at;
 
+-- name: UpdateUserAppProfile :one
+UPDATE users
+SET nickname = $2,
+    real_name = $3,
+    updated_at = NOW()
+WHERE id = $1
+RETURNING id, openid, nickname, avatar_url, real_name, phone_number, status, created_at, updated_at;
+
+-- name: ListActiveTestLoginUsers :many
+SELECT u.id,
+       u.openid,
+       u.nickname,
+       u.avatar_url,
+       u.real_name,
+       u.phone_number,
+       u.status,
+       u.created_at,
+       u.updated_at,
+       t.id AS team_id,
+       t.name AS team_name,
+       tm.role AS team_role
+FROM users u
+LEFT JOIN team_members tm ON tm.user_id = u.id AND tm.status = 'active'
+LEFT JOIN teams t ON t.id = tm.team_id AND t.status = 'active'
+WHERE u.status = 'active'
+ORDER BY u.id, t.id;
+
 -- name: GetAdminByID :one
 SELECT id, username, password_hash, role, status, created_at, updated_at
 FROM admin_users

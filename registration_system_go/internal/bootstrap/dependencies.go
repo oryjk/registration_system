@@ -55,9 +55,13 @@ func BuildDependencies(ctx context.Context, config Config) (Dependencies, func()
 	userRepository := userpostgres.NewRepository(pool)
 	profileService := userapplication.NewProfileService(userRepository)
 	userProfileHandler := userhttp.NewHandler(profileService)
+	appUserService := userapplication.NewAppService(userRepository)
+	appUserHandler := userhttp.NewAppHandler(appUserService)
 	wechatClient := wechat.NewClient(&http.Client{Timeout: 10 * time.Second}, wechatEndpoint, config.WechatAppID, config.WechatAppSecret)
 	wechatLogin := authapplication.NewWechatLogin(wechatClient, userRepository, tokens)
 	userAuthHandler := authhttp.NewHandler(wechatLogin)
+	testLoginService := authapplication.NewTestLoginService(userRepository, tokens)
+	testAuthHandler := authhttp.NewTestHandler(testLoginService, config.H5TestDefaultUserID)
 
 	teamRepository := teampostgres.NewRepository(pool)
 	teamService := teamapplication.NewQueryService(teamRepository)
@@ -77,7 +81,8 @@ func BuildDependencies(ctx context.Context, config Config) (Dependencies, func()
 	return Dependencies{
 		AuthMiddleware: &authMiddleware,
 		UserAuth:       userAuthHandler, AdminAuth: adminAuthHandler,
-		UserProfiles: userProfileHandler, Teams: teamHandler,
+		TestAuth: testAuthHandler, H5TestLoginEnabled: config.H5TestLoginEnabled(),
+		UserProfiles: userProfileHandler, AppUsers: appUserHandler, ActiveUsers: appUserService, Teams: teamHandler,
 		UserMatches: userMatchHandler, AdminMatches: adminMatchHandler, TeamApplications: teamApplicationHandler,
 	}, closePool, nil
 }

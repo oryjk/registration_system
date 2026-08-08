@@ -208,6 +208,74 @@ func (q *Queries) GetUserByOpenID(ctx context.Context, openid string) (GetUserBy
 	return i, err
 }
 
+const listActiveTestLoginUsers = `-- name: ListActiveTestLoginUsers :many
+SELECT u.id,
+       u.openid,
+       u.nickname,
+       u.avatar_url,
+       u.real_name,
+       u.phone_number,
+       u.status,
+       u.created_at,
+       u.updated_at,
+       t.id AS team_id,
+       t.name AS team_name,
+       tm.role AS team_role
+FROM users u
+LEFT JOIN team_members tm ON tm.user_id = u.id AND tm.status = 'active'
+LEFT JOIN teams t ON t.id = tm.team_id AND t.status = 'active'
+WHERE u.status = 'active'
+ORDER BY u.id, t.id
+`
+
+type ListActiveTestLoginUsersRow struct {
+	ID          int64            `json:"id"`
+	Openid      string           `json:"openid"`
+	Nickname    string           `json:"nickname"`
+	AvatarUrl   *string          `json:"avatar_url"`
+	RealName    *string          `json:"real_name"`
+	PhoneNumber *string          `json:"phone_number"`
+	Status      string           `json:"status"`
+	CreatedAt   pgtype.Timestamp `json:"created_at"`
+	UpdatedAt   pgtype.Timestamp `json:"updated_at"`
+	TeamID      *int64           `json:"team_id"`
+	TeamName    *string          `json:"team_name"`
+	TeamRole    *string          `json:"team_role"`
+}
+
+func (q *Queries) ListActiveTestLoginUsers(ctx context.Context) ([]ListActiveTestLoginUsersRow, error) {
+	rows, err := q.db.Query(ctx, listActiveTestLoginUsers)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListActiveTestLoginUsersRow
+	for rows.Next() {
+		var i ListActiveTestLoginUsersRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Openid,
+			&i.Nickname,
+			&i.AvatarUrl,
+			&i.RealName,
+			&i.PhoneNumber,
+			&i.Status,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.TeamID,
+			&i.TeamName,
+			&i.TeamRole,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listAdmins = `-- name: ListAdmins :many
 SELECT id, username, password_hash, role, status, created_at, updated_at
 FROM admin_users
@@ -240,6 +308,50 @@ func (q *Queries) ListAdmins(ctx context.Context) ([]AdminUser, error) {
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateUserAppProfile = `-- name: UpdateUserAppProfile :one
+UPDATE users
+SET nickname = $2,
+    real_name = $3,
+    updated_at = NOW()
+WHERE id = $1
+RETURNING id, openid, nickname, avatar_url, real_name, phone_number, status, created_at, updated_at
+`
+
+type UpdateUserAppProfileParams struct {
+	ID       int64   `json:"id"`
+	Nickname string  `json:"nickname"`
+	RealName *string `json:"real_name"`
+}
+
+type UpdateUserAppProfileRow struct {
+	ID          int64            `json:"id"`
+	Openid      string           `json:"openid"`
+	Nickname    string           `json:"nickname"`
+	AvatarUrl   *string          `json:"avatar_url"`
+	RealName    *string          `json:"real_name"`
+	PhoneNumber *string          `json:"phone_number"`
+	Status      string           `json:"status"`
+	CreatedAt   pgtype.Timestamp `json:"created_at"`
+	UpdatedAt   pgtype.Timestamp `json:"updated_at"`
+}
+
+func (q *Queries) UpdateUserAppProfile(ctx context.Context, arg UpdateUserAppProfileParams) (UpdateUserAppProfileRow, error) {
+	row := q.db.QueryRow(ctx, updateUserAppProfile, arg.ID, arg.Nickname, arg.RealName)
+	var i UpdateUserAppProfileRow
+	err := row.Scan(
+		&i.ID,
+		&i.Openid,
+		&i.Nickname,
+		&i.AvatarUrl,
+		&i.RealName,
+		&i.PhoneNumber,
+		&i.Status,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
 const updateUserBasicProfile = `-- name: UpdateUserBasicProfile :one

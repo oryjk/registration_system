@@ -12,14 +12,18 @@ import (
 )
 
 type Dependencies struct {
-	AuthMiddleware   *authhttp.Middleware
-	UserAuth         *authhttp.Handler
-	AdminAuth        *authhttp.AdminHandler
-	UserProfiles     *userhttp.Handler
-	Teams            *teamhttp.Handler
-	UserMatches      *matchhttp.UserHandler
-	AdminMatches     *matchhttp.AdminHandler
-	TeamApplications *matchhttp.TeamApplicationHandler
+	AuthMiddleware     *authhttp.Middleware
+	UserAuth           *authhttp.Handler
+	TestAuth           *authhttp.TestHandler
+	AdminAuth          *authhttp.AdminHandler
+	UserProfiles       *userhttp.Handler
+	AppUsers           *userhttp.AppHandler
+	ActiveUsers        authhttp.ActiveUserChecker
+	H5TestLoginEnabled bool
+	Teams              *teamhttp.Handler
+	UserMatches        *matchhttp.UserHandler
+	AdminMatches       *matchhttp.AdminHandler
+	TeamApplications   *matchhttp.TeamApplicationHandler
 }
 
 func NewRouter(dependencies Dependencies) *gin.Engine {
@@ -29,17 +33,27 @@ func NewRouter(dependencies Dependencies) *gin.Engine {
 		c.JSON(http.StatusOK, sharedhttp.Success(gin.H{"status": "ok"}))
 	})
 
-	api := router.Group("/api")
+	v1 := router.Group("/api/v1")
+	app := v1.Group("/app")
 	if dependencies.UserAuth != nil {
-		dependencies.UserAuth.RegisterPublicRoutes(api)
+		dependencies.UserAuth.RegisterPublicRoutes(app)
 	}
-	admin := api.Group("/admin")
+	if dependencies.H5TestLoginEnabled && dependencies.TestAuth != nil {
+		dependencies.TestAuth.RegisterRoutes(app)
+	}
+	admin := v1.Group("/admin")
 	if dependencies.AdminAuth != nil {
 		dependencies.AdminAuth.RegisterPublicRoutes(admin)
 	}
 	if dependencies.AuthMiddleware != nil {
-		userRoutes := api.Group("")
+		userRoutes := app.Group("")
 		userRoutes.Use(dependencies.AuthMiddleware.RequireUser())
+		if dependencies.ActiveUsers != nil {
+			userRoutes.Use(dependencies.AuthMiddleware.RequireActiveUser(dependencies.ActiveUsers))
+		}
+		if dependencies.AppUsers != nil {
+			dependencies.AppUsers.RegisterAppRoutes(userRoutes)
+		}
 		if dependencies.Teams != nil {
 			dependencies.Teams.RegisterUserRoutes(userRoutes)
 		}

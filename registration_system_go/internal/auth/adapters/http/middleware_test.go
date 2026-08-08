@@ -2,6 +2,7 @@ package authhttp
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -9,7 +10,49 @@ import (
 
 	"github.com/gin-gonic/gin"
 	jwtadapter "github.com/oryjk/registration_system/registration_system_go/internal/auth/adapters/jwt"
+	sharederror "github.com/oryjk/registration_system/registration_system_go/internal/shared/domain"
 )
+
+func TestRequireActiveUserRejectsFrozenAccountBeforeHandler(t *testing.T) {
+	router, service := testRouter(t)
+	checker := &fakeActiveUserChecker{err: sharederror.ErrUnauthorized}
+	called := false
+	router.GET("/user", NewMiddleware(service).RequireUser(), NewMiddleware(service).RequireActiveUser(checker), func(c *gin.Context) {
+		called = true
+		c.Status(http.StatusNoContent)
+	})
+	token, err := service.IssueUser(context.Background(), 42)
+	if err != nil {
+		t.Fatalf("issue user token: %v", err)
+	}
+
+	response := performRequest(router, "/user", token)
+	if response.Code != http.StatusUnauthorized || called {
+		t.Fatalf("status=%d handler_called=%v", response.Code, called)
+	}
+}
+
+func TestRequireActiveUserReturnsInternalErrorForCheckerFailure(t *testing.T) {
+	router, service := testRouter(t)
+	checker := &fakeActiveUserChecker{err: errActiveUserLookup}
+	router.GET("/user", NewMiddleware(service).RequireUser(), NewMiddleware(service).RequireActiveUser(checker), func(c *gin.Context) {
+		c.Status(http.StatusNoContent)
+	})
+	token, err := service.IssueUser(context.Background(), 42)
+	if err != nil {
+		t.Fatalf("issue user token: %v", err)
+	}
+	response := performRequest(router, "/user", token)
+	if response.Code != http.StatusInternalServerError {
+		t.Fatalf("status=%d, want %d", response.Code, http.StatusInternalServerError)
+	}
+}
+
+var errActiveUserLookup = errors.New("lookup failed")
+
+type fakeActiveUserChecker struct{ err error }
+
+func (f *fakeActiveUserChecker) EnsureActive(context.Context, int64) error { return f.err }
 
 func TestRequireUserStoresUserActor(t *testing.T) {
 	router, service := testRouter(t)
