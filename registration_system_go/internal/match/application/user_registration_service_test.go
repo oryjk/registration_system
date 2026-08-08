@@ -16,7 +16,7 @@ import (
 func TestUserRegistrationPutIndividualUpdatesCapacityAndOpponent(t *testing.T) {
 	now := time.Date(2026, 8, 8, 10, 0, 0, 0, time.UTC)
 	repository := newFakeUserRegistrationRepository(individualRegistrationFixture(now, 1, 1))
-	service := NewUserRegistrationService(repository, &fakeRegistrationTeamAccess{}, fakeClock{now: now.Add(time.Hour)})
+	service := NewUserRegistrationService(repository, fakeClock{now: now.Add(time.Hour)})
 
 	registration, err := service.Put(context.Background(), userActor(42), repository.match.ID, repository.group.ID, PutMyRegistrationCommand{
 		Status: domain.RegistrationAttending, RegistrationCount: 1,
@@ -51,7 +51,7 @@ func TestUserRegistrationPutValidatesActorStatusAndCount(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			repository := newFakeUserRegistrationRepository(fixture)
-			service := NewUserRegistrationService(repository, &fakeRegistrationTeamAccess{}, fakeClock{now: now})
+			service := NewUserRegistrationService(repository, fakeClock{now: now})
 			_, err := service.Put(context.Background(), test.actor, repository.match.ID, repository.group.ID, test.command)
 			if !errors.Is(err, test.want) {
 				t.Fatalf("expected %v, got %v", test.want, err)
@@ -68,7 +68,7 @@ func TestUserRegistrationPutEnforcesGroupAuthorization(t *testing.T) {
 	t.Run("team group requires active membership", func(t *testing.T) {
 		fixture := teamRegistrationFixture(now, domain.GroupHostTeam, 7)
 		repository := newFakeUserRegistrationRepository(fixture)
-		service := NewUserRegistrationService(repository, &fakeRegistrationTeamAccess{}, fakeClock{now: now})
+		service := NewUserRegistrationService(repository, fakeClock{now: now})
 		_, err := service.Put(context.Background(), userActor(42), repository.match.ID, repository.group.ID, validRegistrationCommand())
 		if !errors.Is(err, sharederror.ErrForbidden) {
 			t.Fatalf("expected forbidden, got %v", err)
@@ -81,8 +81,8 @@ func TestUserRegistrationPutEnforcesGroupAuthorization(t *testing.T) {
 		fixture.match.AwayTeamID = &awayTeamID
 		fixture.match.OpponentState = domain.OpponentConfirmed
 		repository := newFakeUserRegistrationRepository(fixture)
-		access := &fakeRegistrationTeamAccess{members: map[int64]map[int64]bool{8: {42: true}}}
-		service := NewUserRegistrationService(repository, access, fakeClock{now: now})
+		repository.members = map[int64]map[int64]bool{8: {42: true}}
+		service := NewUserRegistrationService(repository, fakeClock{now: now})
 		if _, err := service.Put(context.Background(), userActor(42), repository.match.ID, repository.group.ID, validRegistrationCommand()); err != nil {
 			t.Fatalf("put selected guest registration: %v", err)
 		}
@@ -91,8 +91,8 @@ func TestUserRegistrationPutEnforcesGroupAuthorization(t *testing.T) {
 	t.Run("unselected guest group conflicts", func(t *testing.T) {
 		fixture := teamRegistrationFixture(now, domain.GroupGuestTeam, 8)
 		repository := newFakeUserRegistrationRepository(fixture)
-		access := &fakeRegistrationTeamAccess{members: map[int64]map[int64]bool{8: {42: true}}}
-		service := NewUserRegistrationService(repository, access, fakeClock{now: now})
+		repository.members = map[int64]map[int64]bool{8: {42: true}}
+		service := NewUserRegistrationService(repository, fakeClock{now: now})
 		_, err := service.Put(context.Background(), userActor(42), repository.match.ID, repository.group.ID, validRegistrationCommand())
 		if !errors.Is(err, sharederror.ErrConflict) {
 			t.Fatalf("expected conflict, got %v", err)
@@ -102,8 +102,8 @@ func TestUserRegistrationPutEnforcesGroupAuthorization(t *testing.T) {
 	t.Run("host member cannot join individual opponent", func(t *testing.T) {
 		fixture := individualRegistrationFixture(now, 1, 2)
 		repository := newFakeUserRegistrationRepository(fixture)
-		access := &fakeRegistrationTeamAccess{members: map[int64]map[int64]bool{7: {42: true}}}
-		service := NewUserRegistrationService(repository, access, fakeClock{now: now})
+		repository.members = map[int64]map[int64]bool{7: {42: true}}
+		service := NewUserRegistrationService(repository, fakeClock{now: now})
 		_, err := service.Put(context.Background(), userActor(42), repository.match.ID, repository.group.ID, validRegistrationCommand())
 		if !errors.Is(err, sharederror.ErrForbidden) {
 			t.Fatalf("expected forbidden, got %v", err)
@@ -113,7 +113,7 @@ func TestUserRegistrationPutEnforcesGroupAuthorization(t *testing.T) {
 	t.Run("individual group accepts attending only", func(t *testing.T) {
 		fixture := individualRegistrationFixture(now, 1, 2)
 		repository := newFakeUserRegistrationRepository(fixture)
-		service := NewUserRegistrationService(repository, &fakeRegistrationTeamAccess{}, fakeClock{now: now})
+		service := NewUserRegistrationService(repository, fakeClock{now: now})
 		_, err := service.Put(context.Background(), userActor(42), repository.match.ID, repository.group.ID, PutMyRegistrationCommand{Status: domain.RegistrationLeave, RegistrationCount: 1})
 		if !errors.Is(err, sharederror.ErrValidation) {
 			t.Fatalf("expected validation, got %v", err)
@@ -144,7 +144,7 @@ func TestUserRegistrationPutRejectsUnavailableOrConflictingRegistration(t *testi
 		t.Run(test.name, func(t *testing.T) {
 			repository := newFakeUserRegistrationRepository(individualRegistrationFixture(now, 1, 1))
 			test.mutate(repository)
-			service := NewUserRegistrationService(repository, &fakeRegistrationTeamAccess{}, fakeClock{now: now.Add(time.Minute)})
+			service := NewUserRegistrationService(repository, fakeClock{now: now.Add(time.Minute)})
 			_, err := service.Put(context.Background(), userActor(42), repository.match.ID, repository.group.ID, validRegistrationCommand())
 			if !errors.Is(err, sharederror.ErrConflict) {
 				t.Fatalf("expected conflict, got %v", err)
@@ -159,8 +159,8 @@ func TestUserRegistrationPutIsIdempotentAndReactivatesCancelledRow(t *testing.T)
 	repository := newFakeUserRegistrationRepository(fixture)
 	existing, _ := domain.NewRegistration(repository.group.ID, 42, domain.RegistrationAttending, 1, now)
 	repository.registrations[repository.group.ID] = []domain.Registration{existing}
-	access := &fakeRegistrationTeamAccess{members: map[int64]map[int64]bool{7: {42: true}}}
-	service := NewUserRegistrationService(repository, access, fakeClock{now: now.Add(time.Hour)})
+	repository.members = map[int64]map[int64]bool{7: {42: true}}
+	service := NewUserRegistrationService(repository, fakeClock{now: now.Add(time.Hour)})
 
 	unchanged, err := service.Put(context.Background(), userActor(42), repository.match.ID, repository.group.ID, validRegistrationCommand())
 	if err != nil || !unchanged.UpdatedAt.Equal(now) {
@@ -187,7 +187,7 @@ func TestUserRegistrationDeleteAllowsLostMembershipAndIsIdempotent(t *testing.T)
 	repository := newFakeUserRegistrationRepository(fixture)
 	existing, _ := domain.NewRegistration(repository.group.ID, 42, domain.RegistrationAttending, 1, now)
 	repository.registrations[repository.group.ID] = []domain.Registration{existing}
-	service := NewUserRegistrationService(repository, &fakeRegistrationTeamAccess{}, fakeClock{now: now.Add(time.Hour)})
+	service := NewUserRegistrationService(repository, fakeClock{now: now.Add(time.Hour)})
 
 	cancelled, err := service.Delete(context.Background(), userActor(42), repository.match.ID, repository.group.ID)
 	if err != nil || cancelled.Status != domain.RegistrationCancelled || cancelled.CancelledAt == nil {
@@ -197,7 +197,7 @@ func TestUserRegistrationDeleteAllowsLostMembershipAndIsIdempotent(t *testing.T)
 	if err != nil || repeated.CancelledAt == nil || !repeated.CancelledAt.Equal(*cancelled.CancelledAt) {
 		t.Fatalf("repeat cancellation must be stable: %+v err=%v", repeated, err)
 	}
-	if service.teams.(*fakeRegistrationTeamAccess).membershipChecks != 0 {
+	if repository.membershipChecks != 0 {
 		t.Fatal("delete must not require current team membership")
 	}
 }
@@ -205,7 +205,7 @@ func TestUserRegistrationDeleteAllowsLostMembershipAndIsIdempotent(t *testing.T)
 func TestUserRegistrationDeleteMissingReturnsNotFound(t *testing.T) {
 	now := time.Now()
 	repository := newFakeUserRegistrationRepository(teamRegistrationFixture(now, domain.GroupHostTeam, 7))
-	service := NewUserRegistrationService(repository, &fakeRegistrationTeamAccess{}, fakeClock{now: now})
+	service := NewUserRegistrationService(repository, fakeClock{now: now})
 	_, err := service.Delete(context.Background(), userActor(42), repository.match.ID, repository.group.ID)
 	if !errors.Is(err, sharederror.ErrNotFound) {
 		t.Fatalf("expected not found, got %v", err)
@@ -216,7 +216,7 @@ func TestUserRegistrationRollsBackWhenDerivedStateWriteFails(t *testing.T) {
 	now := time.Now()
 	repository := newFakeUserRegistrationRepository(individualRegistrationFixture(now, 1, 1))
 	repository.updateGroupErr = errors.New("write failed")
-	service := NewUserRegistrationService(repository, &fakeRegistrationTeamAccess{}, fakeClock{now: now.Add(time.Hour)})
+	service := NewUserRegistrationService(repository, fakeClock{now: now.Add(time.Hour)})
 
 	_, err := service.Put(context.Background(), userActor(42), repository.match.ID, repository.group.ID, validRegistrationCommand())
 	if !errors.Is(err, sharederror.ErrInternal) {
@@ -241,7 +241,7 @@ func TestUserRegistrationMapsPersistenceConstraintErrors(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			repository := newFakeUserRegistrationRepository(individualRegistrationFixture(now, 1, 2))
 			repository.saveRegistrationErr = test.store
-			service := NewUserRegistrationService(repository, &fakeRegistrationTeamAccess{}, fakeClock{now: now})
+			service := NewUserRegistrationService(repository, fakeClock{now: now})
 			_, err := service.Put(context.Background(), userActor(42), repository.match.ID, repository.group.ID, validRegistrationCommand())
 			if !errors.Is(err, test.wantErr) {
 				t.Fatalf("expected %v, got %v", test.wantErr, err)
@@ -284,6 +284,8 @@ type fakeUserRegistrationRepository struct {
 	outsideTransactionWrite bool
 	updateGroupErr          error
 	saveRegistrationErr     error
+	members                 map[int64]map[int64]bool
+	membershipChecks        int
 }
 
 func newFakeUserRegistrationRepository(fixture registrationFixture) *fakeUserRegistrationRepository {
@@ -344,6 +346,11 @@ func (f *fakeUserRegistrationRepository) CountAttendingForGroup(_ context.Contex
 	return count, nil
 }
 
+func (f *fakeUserRegistrationRepository) IsActiveTeamMember(_ context.Context, teamID, userID int64) (bool, error) {
+	f.membershipChecks++
+	return f.members[teamID][userID], nil
+}
+
 func (f *fakeUserRegistrationRepository) SaveRegistration(_ context.Context, registration domain.Registration) error {
 	f.recordWrite()
 	if f.saveRegistrationErr != nil {
@@ -390,28 +397,5 @@ func cloneRegistrations(source map[uuid.UUID][]domain.Registration) map[uuid.UUI
 	return cloned
 }
 
-type fakeRegistrationTeamAccess struct {
-	members          map[int64]map[int64]bool
-	membershipChecks int
-}
-
-func (f *fakeRegistrationTeamAccess) EnsureManager(context.Context, int64, int64) error { return nil }
-func (f *fakeRegistrationTeamAccess) EnsureExists(context.Context, int64) error         { return nil }
-func (f *fakeRegistrationTeamAccess) EnsureActive(context.Context, int64) error         { return nil }
-
-func (f *fakeRegistrationTeamAccess) EnsureActiveMember(_ context.Context, teamID, userID int64) error {
-	f.membershipChecks++
-	if !f.members[teamID][userID] {
-		return sharederror.ErrForbidden
-	}
-	return nil
-}
-
-func (f *fakeRegistrationTeamAccess) IsActiveMember(_ context.Context, teamID, userID int64) (bool, error) {
-	f.membershipChecks++
-	return f.members[teamID][userID], nil
-}
-
 var _ ports.UserRegistrationRepository = (*fakeUserRegistrationRepository)(nil)
 var _ ports.UserRegistrationTransaction = (*fakeUserRegistrationRepository)(nil)
-var _ ports.TeamAccess = (*fakeRegistrationTeamAccess)(nil)

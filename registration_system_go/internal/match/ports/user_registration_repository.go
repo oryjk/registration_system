@@ -23,6 +23,7 @@ type UserRegistrationTransaction interface {
 	FindUserRegistrationForUpdate(context.Context, uuid.UUID, int64) (domain.Registration, bool, error)
 	FindActiveUserRegistrationInMatchForUpdate(context.Context, uuid.UUID, int64) (domain.Registration, bool, error)
 	CountAttendingForGroup(context.Context, uuid.UUID) (int, error)
+	IsActiveTeamMember(context.Context, int64, int64) (bool, error)
 	SaveRegistration(context.Context, domain.Registration) error
 	UpdateGroup(context.Context, domain.RegistrationGroup) error
 	UpdateMatchOpponent(context.Context, domain.Match) error

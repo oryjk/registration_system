@@ -371,6 +371,7 @@ FROM match_registrations registration
 JOIN match_registration_groups registration_group
   ON registration_group.id = registration.group_id
 WHERE registration_group.match_id = $1
+  AND registration_group.status <> 'cancelled'
   AND registration.user_id = $2
   AND registration.status <> 'cancelled'
 ORDER BY registration.created_at, registration.id
@@ -618,6 +619,28 @@ func (q *Queries) GetUserRegistrationForUpdate(ctx context.Context, arg GetUserR
 		&i.CancelledAt,
 	)
 	return i, err
+}
+
+const isActiveTeamMember = `-- name: IsActiveTeamMember :one
+SELECT EXISTS (
+    SELECT 1
+    FROM team_members
+    WHERE team_id = $1
+      AND user_id = $2
+      AND status = 'active'
+)
+`
+
+type IsActiveTeamMemberParams struct {
+	TeamID int64 `json:"team_id"`
+	UserID int64 `json:"user_id"`
+}
+
+func (q *Queries) IsActiveTeamMember(ctx context.Context, arg IsActiveTeamMemberParams) (bool, error) {
+	row := q.db.QueryRow(ctx, isActiveTeamMember, arg.TeamID, arg.UserID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
 }
 
 const listHomeActionMatchesForUser = `-- name: ListHomeActionMatchesForUser :many

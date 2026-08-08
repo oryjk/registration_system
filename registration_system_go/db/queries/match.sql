@@ -309,6 +309,7 @@ FROM match_registrations registration
 JOIN match_registration_groups registration_group
   ON registration_group.id = registration.group_id
 WHERE registration_group.match_id = sqlc.arg('match_id')
+  AND registration_group.status <> 'cancelled'
   AND registration.user_id = sqlc.arg('user_id')
   AND registration.status <> 'cancelled'
 ORDER BY registration.created_at, registration.id
@@ -320,6 +321,15 @@ SELECT COALESCE(SUM(registration_count), 0)::bigint
 FROM match_registrations
 WHERE group_id = $1
   AND status = 'attending';
+
+-- name: IsActiveTeamMember :one
+SELECT EXISTS (
+    SELECT 1
+    FROM team_members
+    WHERE team_id = sqlc.arg('team_id')
+      AND user_id = sqlc.arg('user_id')
+      AND status = 'active'
+);
 
 -- name: SaveUserRegistration :exec
 INSERT INTO match_registrations (

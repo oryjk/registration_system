@@ -79,7 +79,7 @@ func BuildDependencies(ctx context.Context, config Config) (Dependencies, func()
 	adminMatchHandler := matchhttp.NewAdminHandler(adminMatches, createMatch)
 	teamApplications := matchapplication.NewTeamApplicationService(matchRepository, teamService, matchClock)
 	teamApplicationHandler := matchhttp.NewTeamApplicationHandler(teamApplications)
-	userRegistrations := matchapplication.NewUserRegistrationService(matchRepository, teamService, matchClock)
+	userRegistrations := matchapplication.NewUserRegistrationService(matchRepository, matchClock)
 	userRegistrationHandler := matchhttp.NewUserRegistrationHandler(userRegistrations)
 
 	return Dependencies{

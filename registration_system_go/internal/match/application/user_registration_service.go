@@ -14,7 +14,6 @@ import (
 
 type UserRegistrationService struct {
 	repository ports.UserRegistrationRepository
-	teams      ports.TeamAccess
 	clock      ports.Clock
 }
 
@@ -23,8 +22,8 @@ type PutMyRegistrationCommand struct {
 	RegistrationCount int
 }
 
-func NewUserRegistrationService(repository ports.UserRegistrationRepository, teams ports.TeamAccess, clock ports.Clock) UserRegistrationService {
-	return UserRegistrationService{repository: repository, teams: teams, clock: clock}
+func NewUserRegistrationService(repository ports.UserRegistrationRepository, clock ports.Clock) UserRegistrationService {
+	return UserRegistrationService{repository: repository, clock: clock}
 }
 
 func (s UserRegistrationService) Put(ctx context.Context, actor sharedauth.Actor, matchID, groupID uuid.UUID, command PutMyRegistrationCommand) (domain.Registration, error) {
@@ -53,7 +52,7 @@ func (s UserRegistrationService) Put(ctx context.Context, actor sharedauth.Actor
 		if activeFound && active.GroupID != groupID {
 			return sharederror.New(sharederror.KindConflict, "用户已在本场比赛的其他分组报名")
 		}
-		if err := s.authorizePut(ctx, actor.ID, match, group, command.Status); err != nil {
+		if err := authorizeUserRegistration(ctx, tx, actor.ID, match, group, command.Status); err != nil {
 			return err
 		}
 		if group.Status == domain.GroupCancelled {
@@ -186,25 +185,25 @@ func loadUserRegistrationContext(ctx context.Context, tx ports.UserRegistrationT
 	return match, group, nil
 }
 
-func (s UserRegistrationService) authorizePut(ctx context.Context, userID int64, match domain.Match, group domain.RegistrationGroup, status domain.RegistrationStatus) error {
+func authorizeUserRegistration(ctx context.Context, tx ports.UserRegistrationTransaction, userID int64, match domain.Match, group domain.RegistrationGroup, status domain.RegistrationStatus) error {
 	switch group.Kind {
 	case domain.GroupHostTeam:
 		if group.TeamID == nil || *group.TeamID != match.HostTeamID {
 			return sharederror.New(sharederror.KindConflict, "主队报名组状态不一致")
 		}
-		return s.teams.EnsureActiveMember(ctx, *group.TeamID, userID)
+		return ensureActiveRegistrationMember(ctx, tx, *group.TeamID, userID)
 	case domain.GroupGuestTeam:
 		if group.TeamID == nil || match.AwayTeamID == nil || match.OpponentState != domain.OpponentConfirmed || *group.TeamID != *match.AwayTeamID {
 			return sharederror.New(sharederror.KindConflict, "客队报名组尚未确认")
 		}
-		return s.teams.EnsureActiveMember(ctx, *group.TeamID, userID)
+		return ensureActiveRegistrationMember(ctx, tx, *group.TeamID, userID)
 	case domain.GroupIndividualOpponent:
 		if status != domain.RegistrationAttending {
 			return sharederror.New(sharederror.KindValidation, "散人报名组只支持参赛状态")
 		}
-		member, err := s.teams.IsActiveMember(ctx, match.HostTeamID, userID)
+		member, err := tx.IsActiveTeamMember(ctx, match.HostTeamID, userID)
 		if err != nil {
-			return err
+			return wrapUserRegistrationStoreError("查询球队成员身份失败", err)
 		}
 		if member {
 			return sharederror.ErrForbidden
@@ -213,6 +212,17 @@ func (s UserRegistrationService) authorizePut(ctx context.Context, userID int64,
 	default:
 		return sharederror.New(sharederror.KindConflict, "报名组类型无效")
 	}
+}
+
+func ensureActiveRegistrationMember(ctx context.Context, tx ports.UserRegistrationTransaction, teamID, userID int64) error {
+	member, err := tx.IsActiveTeamMember(ctx, teamID, userID)
+	if err != nil {
+		return wrapUserRegistrationStoreError("查询球队成员身份失败", err)
+	}
+	if !member {
+		return sharederror.ErrForbidden
+	}
+	return nil
 }
 
 func updateIndividualRegistrationState(ctx context.Context, tx ports.UserRegistrationTransaction, match *domain.Match, group *domain.RegistrationGroup, attending int, now time.Time) error {

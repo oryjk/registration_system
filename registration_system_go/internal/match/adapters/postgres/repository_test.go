@@ -28,7 +28,7 @@ func TestUserRegistrationRepositoryPersistsCancellationAndReactivation(t *testin
 	if err := repository.CreateWithGroups(ctx, match, groups); err != nil {
 		t.Fatalf("create match: %v", err)
 	}
-	service := matchapplication.NewUserRegistrationService(repository, repositoryTestTeamAccess{}, repositoryTestClock{now: time.Date(2026, 8, 8, 12, 0, 0, 0, time.UTC)})
+	service := matchapplication.NewUserRegistrationService(repository, repositoryTestClock{now: time.Date(2026, 8, 8, 12, 0, 0, 0, time.UTC)})
 
 	created, err := service.Put(ctx, sharedauth.Actor{Kind: sharedauth.ActorUser, ID: userID}, match.ID, groups[1].ID, matchapplication.PutMyRegistrationCommand{
 		Status: domain.RegistrationAttending, RegistrationCount: 1,
@@ -40,11 +40,97 @@ func TestUserRegistrationRepositoryPersistsCancellationAndReactivation(t *testin
 	if err != nil || cancelled.ID != created.ID || cancelled.Status != domain.RegistrationCancelled {
 		t.Fatalf("cancel registration: %+v err=%v", cancelled, err)
 	}
+	repeated, err := service.Delete(ctx, sharedauth.Actor{Kind: sharedauth.ActorUser, ID: userID}, match.ID, groups[1].ID)
+	if err != nil || repeated.ID != cancelled.ID || repeated.CancelledAt == nil || cancelled.CancelledAt == nil || !repeated.CancelledAt.Equal(*cancelled.CancelledAt) {
+		t.Fatalf("repeat cancellation must preserve the row and timestamp: %+v err=%v", repeated, err)
+	}
 	reactivated, err := service.Put(ctx, sharedauth.Actor{Kind: sharedauth.ActorUser, ID: userID}, match.ID, groups[1].ID, matchapplication.PutMyRegistrationCommand{
 		Status: domain.RegistrationAttending, RegistrationCount: 1,
 	})
 	if err != nil || reactivated.ID != created.ID || reactivated.CancelledAt != nil {
 		t.Fatalf("reactivate registration: %+v err=%v", reactivated, err)
+	}
+}
+
+func TestUserRegistrationRepositoryIgnoresRegistrationInCancelledGroup(t *testing.T) {
+	pool := testsupport.StartPostgres(t)
+	ctx := context.Background()
+	ownerID, hostTeamID := seedMatchOwner(t, pool)
+	userID := seedMatchUser(t, pool)
+	_, guestTeamID := seedApplicationTeam(t, pool, "已取消客队")
+	match, groups := newPersistableMatch(t, ownerID, hostTeamID)
+	repository := NewRepository(pool)
+	if err := repository.CreateWithGroups(ctx, match, groups); err != nil {
+		t.Fatalf("create match: %v", err)
+	}
+	cancelledGroupID := uuid.New()
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO match_registration_groups (
+			id, match_id, kind, team_id, max_players, status, cancelled_at
+		) VALUES ($1, $2, 'guest_team', $3, 8, 'cancelled', NOW())`,
+		cancelledGroupID, match.ID, guestTeamID); err != nil {
+		t.Fatalf("seed cancelled guest group: %v", err)
+	}
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO match_registrations (id, group_id, user_id, status, registration_count)
+		VALUES ($1, $2, $3, 'attending', 1)`, uuid.New(), cancelledGroupID, userID); err != nil {
+		t.Fatalf("seed registration in cancelled group: %v", err)
+	}
+
+	err := repository.WithinUserRegistrationTransaction(ctx, func(tx ports.UserRegistrationTransaction) error {
+		registration, found, err := tx.FindActiveUserRegistrationInMatchForUpdate(ctx, match.ID, userID)
+		if err != nil {
+			return err
+		}
+		if found {
+			t.Fatalf("cancelled group registration must not be active: %+v", registration)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("find active registration: %v", err)
+	}
+}
+
+func TestUserRegistrationMembershipCheckUsesTransactionConnection(t *testing.T) {
+	pool := testsupport.StartPostgres(t)
+	ctx := context.Background()
+	ownerID, teamID := seedMatchOwner(t, pool)
+	userID := seedMatchUser(t, pool)
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO team_members (team_id, user_id, role, status)
+		VALUES ($1, $2, 'member', 'active')`, teamID, userID); err != nil {
+		t.Fatalf("seed active member: %v", err)
+	}
+	match, groups := newPersistableMatch(t, ownerID, teamID)
+	if err := NewRepository(pool).CreateWithGroups(ctx, match, groups); err != nil {
+		t.Fatalf("create match: %v", err)
+	}
+
+	config := pool.Config()
+	config.MaxConns = 1
+	config.MinConns = 0
+	singleConnectionPool, err := pgxpool.NewWithConfig(ctx, config)
+	if err != nil {
+		t.Fatalf("open single-connection pool: %v", err)
+	}
+	t.Cleanup(singleConnectionPool.Close)
+	service := matchapplication.NewUserRegistrationService(
+		NewRepository(singleConnectionPool),
+		repositoryTestClock{now: time.Date(2026, 8, 8, 12, 0, 0, 0, time.UTC)},
+	)
+	operationContext, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+
+	registration, err := service.Put(
+		operationContext,
+		sharedauth.Actor{Kind: sharedauth.ActorUser, ID: userID},
+		match.ID,
+		groups[0].ID,
+		matchapplication.PutMyRegistrationCommand{Status: domain.RegistrationAttending, RegistrationCount: 1},
+	)
+	if err != nil || registration.UserID != userID {
+		t.Fatalf("put registration with one connection: %+v err=%v", registration, err)
 	}
 }
 
@@ -58,7 +144,7 @@ func TestUserRegistrationCapacityRaceAllowsExactlyOneCommit(t *testing.T) {
 	if err := repository.CreateWithGroups(ctx, match, groups); err != nil {
 		t.Fatalf("create match: %v", err)
 	}
-	service := matchapplication.NewUserRegistrationService(repository, repositoryTestTeamAccess{}, repositoryTestClock{now: time.Date(2026, 8, 8, 12, 0, 0, 0, time.UTC)})
+	service := matchapplication.NewUserRegistrationService(repository, repositoryTestClock{now: time.Date(2026, 8, 8, 12, 0, 0, 0, time.UTC)})
 
 	start := make(chan struct{})
 	errorsByUser := make([]error, len(userIDs))
