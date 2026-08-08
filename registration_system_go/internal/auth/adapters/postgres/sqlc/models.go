@@ -18,6 +18,18 @@ type AdminUser struct {
 	UpdatedAt    pgtype.Timestamp `json:"updated_at"`
 }
 
+type LegacyImportMapping struct {
+	SourceSystem       string             `json:"source_system"`
+	EntityType         string             `json:"entity_type"`
+	SourceID           string             `json:"source_id"`
+	TargetID           string             `json:"target_id"`
+	SourceUpdatedAt    pgtype.Timestamptz `json:"source_updated_at"`
+	SourceFingerprint  string             `json:"source_fingerprint"`
+	TargetFingerprint  string             `json:"target_fingerprint"`
+	FingerprintVersion int32              `json:"fingerprint_version"`
+	MigratedAt         pgtype.Timestamptz `json:"migrated_at"`
+}
+
 type Match struct {
 	ID                pgtype.UUID      `json:"id"`
 	Name              string           `json:"name"`

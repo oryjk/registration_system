@@ -70,7 +70,72 @@ WHERE (sqlc.narg('status')::text IS NULL OR m.status = sqlc.narg('status'))
       sqlc.arg('search')::text = ''
       OR m.name ILIKE '%' || sqlc.arg('search') || '%'
       OR m.location ILIKE '%' || sqlc.arg('search') || '%'
+	      OR host.name ILIKE '%' || sqlc.arg('search') || '%'
+	  );
+
+-- name: ListMatchesForUser :many
+SELECT m.*,
+       host.name AS host_team_name,
+       away.name AS away_team_name
+FROM matches m
+JOIN teams host ON host.id = m.host_team_id
+LEFT JOIN teams away ON away.id = m.away_team_id
+WHERE (sqlc.narg('status')::text IS NULL OR m.status = sqlc.narg('status'))
+  AND (
+      sqlc.arg('search')::text = ''
+      OR m.name ILIKE '%' || sqlc.arg('search') || '%'
+      OR m.location ILIKE '%' || sqlc.arg('search') || '%'
       OR host.name ILIKE '%' || sqlc.arg('search') || '%'
+  )
+  AND (
+      sqlc.arg('scope')::text = 'all'
+      OR EXISTS (
+          SELECT 1
+          FROM match_registration_groups registration_group
+          JOIN match_registrations registration ON registration.group_id = registration_group.id
+          WHERE registration_group.match_id = m.id
+            AND registration.user_id = sqlc.arg('user_id')
+            AND registration.status <> 'cancelled'
+      )
+      OR EXISTS (
+          SELECT 1
+          FROM team_members membership
+          WHERE membership.user_id = sqlc.arg('user_id')
+            AND membership.status = 'active'
+            AND (membership.team_id = m.host_team_id OR membership.team_id = m.away_team_id)
+      )
+  )
+ORDER BY m.start_time DESC, m.id
+LIMIT sqlc.arg('limit_count') OFFSET sqlc.arg('offset_count');
+
+-- name: CountMatchesForUser :one
+SELECT COUNT(*)
+FROM matches m
+JOIN teams host ON host.id = m.host_team_id
+WHERE (sqlc.narg('status')::text IS NULL OR m.status = sqlc.narg('status'))
+  AND (
+      sqlc.arg('search')::text = ''
+      OR m.name ILIKE '%' || sqlc.arg('search') || '%'
+      OR m.location ILIKE '%' || sqlc.arg('search') || '%'
+      OR host.name ILIKE '%' || sqlc.arg('search') || '%'
+  )
+  AND (
+      sqlc.arg('scope')::text = 'all'
+      OR EXISTS (
+          SELECT 1
+          FROM match_registration_groups registration_group
+          JOIN match_registrations registration ON registration.group_id = registration_group.id
+          WHERE registration_group.match_id = m.id
+            AND registration.user_id = sqlc.arg('user_id')
+            AND registration.status <> 'cancelled'
+      )
+      OR EXISTS (
+          SELECT 1
+          FROM team_members membership
+          WHERE membership.user_id = sqlc.arg('user_id')
+            AND membership.status = 'active'
+            AND (membership.team_id = m.host_team_id OR membership.team_id = m.away_team_id)
+      )
   );
 
 -- name: ListHomeActionMatchesForUser :many

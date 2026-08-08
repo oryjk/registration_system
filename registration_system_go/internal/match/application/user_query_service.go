@@ -16,11 +16,19 @@ type UserMatchQueryService struct {
 }
 
 type UserMatchListQuery struct {
+	Scope    MatchScope
 	Status   *domain.MatchStatus
 	Search   string
 	Page     int
 	PageSize int
 }
+
+type MatchScope = ports.MatchScope
+
+const (
+	MatchScopeAll  = ports.MatchScopeAll
+	MatchScopeMine = ports.MatchScopeMine
+)
 
 type UserMatchListResult struct {
 	Items    []ports.MatchItem
@@ -56,6 +64,12 @@ func (s UserMatchQueryService) List(ctx context.Context, actor sharedauth.Actor,
 	if query.Status != nil && !validMatchStatus(*query.Status) {
 		return UserMatchListResult{}, sharederror.New(sharederror.KindValidation, "比赛状态筛选无效")
 	}
+	if query.Scope == "" {
+		query.Scope = MatchScopeAll
+	}
+	if query.Scope != MatchScopeAll && query.Scope != MatchScopeMine {
+		return UserMatchListResult{}, sharederror.New(sharederror.KindValidation, "比赛范围筛选无效")
+	}
 	if query.Page <= 0 {
 		query.Page = 1
 	}
@@ -66,7 +80,7 @@ func (s UserMatchQueryService) List(ctx context.Context, actor sharedauth.Actor,
 		query.PageSize = maxMatchPageSize
 	}
 	filter := ports.MatchListFilter{
-		Status: query.Status, Search: strings.TrimSpace(query.Search),
+		Scope: query.Scope, UserID: actor.ID, Status: query.Status, Search: strings.TrimSpace(query.Search),
 		Limit: query.PageSize, Offset: (query.Page - 1) * query.PageSize,
 	}
 	items, err := s.repository.ListForUser(ctx, filter)

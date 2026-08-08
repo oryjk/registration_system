@@ -21,11 +21,20 @@ type Repository interface {
 }
 
 type MatchListFilter struct {
+	Scope  MatchScope
+	UserID int64
 	Status *domain.MatchStatus
 	Search string
 	Limit  int
 	Offset int
 }
+
+type MatchScope string
+
+const (
+	MatchScopeAll  MatchScope = "all"
+	MatchScopeMine MatchScope = "mine"
+)
 
 type AdminMatchFilter = MatchListFilter
 

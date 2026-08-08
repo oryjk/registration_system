@@ -318,11 +318,36 @@ func (r *Repository) CountForAdmin(ctx context.Context, filter ports.AdminMatchF
 }
 
 func (r *Repository) ListForUser(ctx context.Context, filter ports.MatchListFilter) ([]ports.MatchItem, error) {
-	return r.ListForAdmin(ctx, filter)
+	var status *string
+	if filter.Status != nil {
+		value := string(*filter.Status)
+		status = &value
+	}
+	rows, err := r.queries.ListMatchesForUser(ctx, matchsqlc.ListMatchesForUserParams{
+		Status: status, Search: filter.Search, Scope: string(filter.Scope), UserID: filter.UserID,
+		LimitCount: int32(filter.Limit), OffsetCount: int32(filter.Offset),
+	})
+	if err != nil {
+		return nil, err
+	}
+	items := make([]ports.MatchItem, 0, len(rows))
+	for _, row := range rows {
+		items = append(items, ports.MatchItem{
+			Match: mapUserListMatch(row), HostTeamName: row.HostTeamName, AwayTeamName: row.AwayTeamName,
+		})
+	}
+	return items, nil
 }
 
 func (r *Repository) CountForUser(ctx context.Context, filter ports.MatchListFilter) (int64, error) {
-	return r.CountForAdmin(ctx, filter)
+	var status *string
+	if filter.Status != nil {
+		value := string(*filter.Status)
+		status = &value
+	}
+	return r.queries.CountMatchesForUser(ctx, matchsqlc.CountMatchesForUserParams{
+		Status: status, Search: filter.Search, Scope: string(filter.Scope), UserID: filter.UserID,
+	})
 }
 
 func (r *Repository) ListHomeActionItems(ctx context.Context, userID int64, limit int) ([]ports.HomeMatchItem, error) {
@@ -528,6 +553,18 @@ func mapAdminDetailMatch(row matchsqlc.GetMatchForAdminRow) domain.Match {
 }
 
 func mapAdminListMatch(row matchsqlc.ListMatchesForAdminRow) domain.Match {
+	return domain.Match{
+		ID: uuid.UUID(row.ID.Bytes), Name: row.Name, PublicationMode: domain.PublicationMode(row.PublicationMode),
+		OpponentState: domain.OpponentState(row.OpponentState), Status: domain.MatchStatus(row.Status),
+		HostTeamID: row.HostTeamID, AwayTeamID: row.AwayTeamID, OpponentName: row.OpponentName,
+		PlayersPerTeam: int(row.PlayersPerTeam), StartTime: row.StartTime.Time, EndTime: row.EndTime.Time,
+		Location: row.Location, LocationLatitude: row.LocationLatitude, LocationLongitude: row.LocationLongitude,
+		Description: row.Description, CreatedByUserID: row.CreatedByUserID, CreatedByAdminID: row.CreatedByAdminID,
+		CreatedAt: row.CreatedAt.Time, UpdatedAt: row.UpdatedAt.Time,
+	}
+}
+
+func mapUserListMatch(row matchsqlc.ListMatchesForUserRow) domain.Match {
 	return domain.Match{
 		ID: uuid.UUID(row.ID.Bytes), Name: row.Name, PublicationMode: domain.PublicationMode(row.PublicationMode),
 		OpponentState: domain.OpponentState(row.OpponentState), Status: domain.MatchStatus(row.Status),

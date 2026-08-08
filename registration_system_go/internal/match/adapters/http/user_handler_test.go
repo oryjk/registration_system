@@ -72,6 +72,32 @@ func TestUserMatchRoutesReturnPrivacyScopedData(t *testing.T) {
 	}
 }
 
+func TestUserMatchListParsesScopeAndRejectsInvalidValue(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	service := &fakeUserMatches{list: application.UserMatchListResult{Page: 2, PageSize: 10}}
+	handler := NewUserHandler(service)
+	router := gin.New()
+	group := router.Group("")
+	group.Use(authhttp.NewMiddleware(fakeUserTokens{}).RequireUser())
+	handler.RegisterRoutes(group)
+
+	request := httptest.NewRequest(http.MethodGet, "/matches?scope=mine&status=ongoing&search=friend&page=2&page_size=10", nil)
+	request.Header.Set("Authorization", "Bearer user-token")
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+	if response.Code != http.StatusOK || service.query.Scope != application.MatchScopeMine || service.query.Status == nil || *service.query.Status != domain.MatchOngoing || service.query.Search != "friend" || service.query.Page != 2 || service.query.PageSize != 10 {
+		t.Fatalf("scope query not parsed: status=%d query=%+v body=%s", response.Code, service.query, response.Body.String())
+	}
+
+	request = httptest.NewRequest(http.MethodGet, "/matches?scope=team", nil)
+	request.Header.Set("Authorization", "Bearer user-token")
+	response = httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+	if response.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("invalid scope status=%d body=%s", response.Code, response.Body.String())
+	}
+}
+
 func TestUserMatchHomeReturnsUserScopedSummary(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	matchID := uuid.New()
@@ -143,10 +169,12 @@ type fakeUserMatches struct {
 	home    application.UserMatchHomeResult
 	actor   sharedauth.Actor
 	matchID uuid.UUID
+	query   application.UserMatchListQuery
 }
 
-func (f *fakeUserMatches) List(_ context.Context, actor sharedauth.Actor, _ application.UserMatchListQuery) (application.UserMatchListResult, error) {
+func (f *fakeUserMatches) List(_ context.Context, actor sharedauth.Actor, query application.UserMatchListQuery) (application.UserMatchListResult, error) {
 	f.actor = actor
+	f.query = query
 	return f.list, nil
 }
 

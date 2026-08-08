@@ -20,8 +20,8 @@ WHERE ($1::text IS NULL OR m.status = $1)
       $2::text = ''
       OR m.name ILIKE '%' || $2 || '%'
       OR m.location ILIKE '%' || $2 || '%'
-      OR host.name ILIKE '%' || $2 || '%'
-  )
+	      OR host.name ILIKE '%' || $2 || '%'
+	  )
 `
 
 type CountMatchesForAdminParams struct {
@@ -31,6 +31,56 @@ type CountMatchesForAdminParams struct {
 
 func (q *Queries) CountMatchesForAdmin(ctx context.Context, arg CountMatchesForAdminParams) (int64, error) {
 	row := q.db.QueryRow(ctx, countMatchesForAdmin, arg.Status, arg.Search)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countMatchesForUser = `-- name: CountMatchesForUser :one
+SELECT COUNT(*)
+FROM matches m
+JOIN teams host ON host.id = m.host_team_id
+WHERE ($1::text IS NULL OR m.status = $1)
+  AND (
+      $2::text = ''
+      OR m.name ILIKE '%' || $2 || '%'
+      OR m.location ILIKE '%' || $2 || '%'
+      OR host.name ILIKE '%' || $2 || '%'
+  )
+  AND (
+      $3::text = 'all'
+      OR EXISTS (
+          SELECT 1
+          FROM match_registration_groups registration_group
+          JOIN match_registrations registration ON registration.group_id = registration_group.id
+          WHERE registration_group.match_id = m.id
+            AND registration.user_id = $4
+            AND registration.status <> 'cancelled'
+      )
+      OR EXISTS (
+          SELECT 1
+          FROM team_members membership
+          WHERE membership.user_id = $4
+            AND membership.status = 'active'
+            AND (membership.team_id = m.host_team_id OR membership.team_id = m.away_team_id)
+      )
+  )
+`
+
+type CountMatchesForUserParams struct {
+	Status *string `json:"status"`
+	Search string  `json:"search"`
+	Scope  string  `json:"scope"`
+	UserID int64   `json:"user_id"`
+}
+
+func (q *Queries) CountMatchesForUser(ctx context.Context, arg CountMatchesForUserParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countMatchesForUser,
+		arg.Status,
+		arg.Search,
+		arg.Scope,
+		arg.UserID,
+	)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -849,6 +899,124 @@ func (q *Queries) ListMatchesForAdmin(ctx context.Context, arg ListMatchesForAdm
 	var items []ListMatchesForAdminRow
 	for rows.Next() {
 		var i ListMatchesForAdminRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.PublicationMode,
+			&i.OpponentState,
+			&i.Status,
+			&i.HostTeamID,
+			&i.AwayTeamID,
+			&i.OpponentName,
+			&i.PlayersPerTeam,
+			&i.StartTime,
+			&i.EndTime,
+			&i.Location,
+			&i.LocationLatitude,
+			&i.LocationLongitude,
+			&i.Description,
+			&i.CreatedByUserID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.CreatedByAdminID,
+			&i.HostTeamName,
+			&i.AwayTeamName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listMatchesForUser = `-- name: ListMatchesForUser :many
+SELECT m.id, m.name, m.publication_mode, m.opponent_state, m.status, m.host_team_id, m.away_team_id, m.opponent_name, m.players_per_team, m.start_time, m.end_time, m.location, m.location_latitude, m.location_longitude, m.description, m.created_by_user_id, m.created_at, m.updated_at, m.created_by_admin_id,
+       host.name AS host_team_name,
+       away.name AS away_team_name
+FROM matches m
+JOIN teams host ON host.id = m.host_team_id
+LEFT JOIN teams away ON away.id = m.away_team_id
+WHERE ($1::text IS NULL OR m.status = $1)
+  AND (
+      $2::text = ''
+      OR m.name ILIKE '%' || $2 || '%'
+      OR m.location ILIKE '%' || $2 || '%'
+      OR host.name ILIKE '%' || $2 || '%'
+  )
+  AND (
+      $3::text = 'all'
+      OR EXISTS (
+          SELECT 1
+          FROM match_registration_groups registration_group
+          JOIN match_registrations registration ON registration.group_id = registration_group.id
+          WHERE registration_group.match_id = m.id
+            AND registration.user_id = $4
+            AND registration.status <> 'cancelled'
+      )
+      OR EXISTS (
+          SELECT 1
+          FROM team_members membership
+          WHERE membership.user_id = $4
+            AND membership.status = 'active'
+            AND (membership.team_id = m.host_team_id OR membership.team_id = m.away_team_id)
+      )
+  )
+ORDER BY m.start_time DESC, m.id
+LIMIT $6 OFFSET $5
+`
+
+type ListMatchesForUserParams struct {
+	Status      *string `json:"status"`
+	Search      string  `json:"search"`
+	Scope       string  `json:"scope"`
+	UserID      int64   `json:"user_id"`
+	OffsetCount int32   `json:"offset_count"`
+	LimitCount  int32   `json:"limit_count"`
+}
+
+type ListMatchesForUserRow struct {
+	ID                pgtype.UUID      `json:"id"`
+	Name              string           `json:"name"`
+	PublicationMode   string           `json:"publication_mode"`
+	OpponentState     string           `json:"opponent_state"`
+	Status            string           `json:"status"`
+	HostTeamID        int64            `json:"host_team_id"`
+	AwayTeamID        *int64           `json:"away_team_id"`
+	OpponentName      *string          `json:"opponent_name"`
+	PlayersPerTeam    int32            `json:"players_per_team"`
+	StartTime         pgtype.Timestamp `json:"start_time"`
+	EndTime           pgtype.Timestamp `json:"end_time"`
+	Location          string           `json:"location"`
+	LocationLatitude  *float64         `json:"location_latitude"`
+	LocationLongitude *float64         `json:"location_longitude"`
+	Description       *string          `json:"description"`
+	CreatedByUserID   *int64           `json:"created_by_user_id"`
+	CreatedAt         pgtype.Timestamp `json:"created_at"`
+	UpdatedAt         pgtype.Timestamp `json:"updated_at"`
+	CreatedByAdminID  *int64           `json:"created_by_admin_id"`
+	HostTeamName      string           `json:"host_team_name"`
+	AwayTeamName      *string          `json:"away_team_name"`
+}
+
+func (q *Queries) ListMatchesForUser(ctx context.Context, arg ListMatchesForUserParams) ([]ListMatchesForUserRow, error) {
+	rows, err := q.db.Query(ctx, listMatchesForUser,
+		arg.Status,
+		arg.Search,
+		arg.Scope,
+		arg.UserID,
+		arg.OffsetCount,
+		arg.LimitCount,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListMatchesForUserRow
+	for rows.Next() {
+		var i ListMatchesForUserRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,

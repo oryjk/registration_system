@@ -182,7 +182,10 @@ func (h *UserHandler) RegisterRoutes(group *gin.RouterGroup) {
 }
 
 func parseUserListQuery(c *gin.Context) (application.UserMatchListQuery, error) {
-	query := application.UserMatchListQuery{Search: c.Query("search")}
+	query := application.UserMatchListQuery{Scope: application.MatchScope(c.Query("scope")), Search: c.Query("search")}
+	if query.Scope != "" && query.Scope != application.MatchScopeAll && query.Scope != application.MatchScopeMine {
+		return query, sharederror.New(sharederror.KindValidation, "比赛范围筛选无效")
+	}
 	if raw := c.Query("status"); raw != "" {
 		status := domain.MatchStatus(raw)
 		query.Status = &status

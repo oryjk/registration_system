@@ -31,6 +31,28 @@ func TestUserMatchQueryListsMatchesWithBoundedPagination(t *testing.T) {
 	}
 }
 
+func TestUserMatchQueryPassesAllAndMineScopes(t *testing.T) {
+	repository := &fakeUserMatchRepository{}
+	service := NewUserMatchQueryService(repository)
+	status := domain.MatchOngoing
+
+	if _, err := service.List(context.Background(), userActor(42), UserMatchListQuery{Status: &status, Search: " 友谊 ", Page: 2, PageSize: 10}); err != nil {
+		t.Fatal(err)
+	}
+	if repository.filter.Scope != MatchScopeAll || repository.filter.UserID != 42 || repository.filter.Status != &status || repository.filter.Search != "友谊" || repository.filter.Offset != 10 {
+		t.Fatalf("unexpected all filter: %+v", repository.filter)
+	}
+	if _, err := service.List(context.Background(), userActor(42), UserMatchListQuery{Scope: MatchScopeMine}); err != nil {
+		t.Fatal(err)
+	}
+	if repository.filter.Scope != MatchScopeMine || repository.filter.UserID != 42 {
+		t.Fatalf("unexpected mine filter: %+v", repository.filter)
+	}
+	if _, err := service.List(context.Background(), userActor(42), UserMatchListQuery{Scope: "team"}); !errors.Is(err, sharederror.ErrValidation) {
+		t.Fatalf("expected invalid scope validation, got %v", err)
+	}
+}
+
 func TestUserMatchQueryReturnsOnlyCurrentUsersRegistration(t *testing.T) {
 	matchID := uuid.New()
 	groupID := uuid.New()
