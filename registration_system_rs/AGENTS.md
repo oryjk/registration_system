@@ -62,6 +62,7 @@ cargo run
 ## 环境与数据
 
 - 配置主要来自 `.env` / `.env.example`
+- Cargo 依赖统一通过项目级 `.cargo/config.toml` 使用字节跳动 Dev Infra 的 `rsproxy.cn` sparse 镜像；Docker 构建复用同一配置。
 - 数据库为 PostgreSQL，不要误按 MySQL 假设编写 SQL
 - 涉及迁移时，优先保持可审阅、可回滚、非破坏性
 

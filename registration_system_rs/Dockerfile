@@ -10,17 +10,8 @@ RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list.d/debia
         libssl-dev \
     && rm -rf /var/lib/apt/lists/*
 
-RUN mkdir -p /app/.cargo \
-    && printf '%s\n' \
-        '[source.crates-io]' \
-        'replace-with = "rsproxy-sparse"' \
-        '[source.rsproxy-sparse]' \
-        'registry = "sparse+https://rsproxy.cn/index/"' \
-        '[net]' \
-        'git-fetch-with-cli = true' \
-        > /app/.cargo/config.toml
-
 COPY Cargo.toml Cargo.lock ./
+COPY .cargo ./.cargo
 COPY src ./src
 COPY migrations ./migrations
 COPY .env.example ./.env.example

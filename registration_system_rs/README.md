@@ -47,6 +47,10 @@ Rust 重构版球队报名系统后端。
 
 ## 快速开始
 
+项目通过 `.cargo/config.toml` 将 crates.io 替换为字节跳动 Dev Infra 提供的 `rsproxy.cn` sparse 镜像。本地在本目录执行 `cargo build`、`cargo test` 或 `cargo install` 时会自动使用该配置，无需修改用户级 `~/.cargo/config.toml`。
+
+Docker 构建复用同一份 Cargo 配置。Dockerfile 中的 Rust 和 Debian 基础镜像仍通过 DaoCloud 镜像代理拉取；`rsproxy.cn` 负责 Cargo crates 和索引，不是 Docker 容器镜像仓库。
+
 1. 复制环境变量模板
 
 ```bash
