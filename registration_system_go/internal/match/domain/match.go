@@ -164,17 +164,20 @@ func (m *Match) ReopenTeamRecruitment(now time.Time) error {
 	return nil
 }
 
-func (m *Match) RecalculateIndividualOpponent(activePlayers, minPlayers int) error {
+func (m *Match) RecalculateIndividualOpponent(activePlayers, minPlayers int, now time.Time) error {
 	if m.PublicationMode != OnlineIndividual {
 		return sharederror.New(sharederror.KindConflict, "当前比赛不是散人对手模式")
 	}
 	if activePlayers < 0 || minPlayers <= 0 {
 		return sharederror.New(sharederror.KindValidation, "散人报名人数规则无效")
 	}
+	nextState := OpponentRecruiting
 	if activePlayers >= minPlayers {
-		m.OpponentState = OpponentConfirmed
-	} else {
-		m.OpponentState = OpponentRecruiting
+		nextState = OpponentConfirmed
+	}
+	if m.OpponentState != nextState {
+		m.OpponentState = nextState
+		m.UpdatedAt = now
 	}
 	return nil
 }

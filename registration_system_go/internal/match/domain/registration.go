@@ -67,3 +67,33 @@ func NewRegistration(groupID uuid.UUID, userID int64, status RegistrationStatus,
 		UpdatedAt:         now,
 	}, nil
 }
+
+// ApplyUserStatus applies a status that an app user is allowed to choose.
+func (r *Registration) ApplyUserStatus(status RegistrationStatus, now time.Time) error {
+	switch status {
+	case RegistrationAttending, RegistrationLeave, RegistrationAbsent:
+	default:
+		return sharederror.New(sharederror.KindValidation, "报名状态无效")
+	}
+	if r.Status == status && r.CancelledAt == nil {
+		return nil
+	}
+	r.Status = status
+	r.CancelledAt = nil
+	r.UpdatedAt = now
+	return nil
+}
+
+// Cancel marks the registration as cancelled without changing an already-cancelled row.
+func (r *Registration) Cancel(now time.Time) {
+	if r.Status == RegistrationCancelled {
+		return
+	}
+	r.Status = RegistrationCancelled
+	r.CancelledAt = &now
+	r.UpdatedAt = now
+}
+
+func (r Registration) OccupiesCapacity() bool {
+	return r.Status == RegistrationAttending
+}

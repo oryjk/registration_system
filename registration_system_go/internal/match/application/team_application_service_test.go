@@ -212,6 +212,14 @@ func (f *fakeApplicationTeamAccess) EnsureActive(_ context.Context, teamID int64
 	return nil
 }
 
+func (f *fakeApplicationTeamAccess) EnsureActiveMember(_ context.Context, teamID, userID int64) error {
+	return f.EnsureManager(context.Background(), teamID, userID)
+}
+
+func (f *fakeApplicationTeamAccess) IsActiveMember(_ context.Context, teamID, userID int64) (bool, error) {
+	return f.managers[teamID][userID], nil
+}
+
 var _ ports.TeamApplicationRepository = (*fakeTeamApplicationRepository)(nil)
 var _ ports.TeamApplicationTransaction = (*fakeTeamApplicationRepository)(nil)
 var _ ports.TeamAccess = (*fakeApplicationTeamAccess)(nil)

@@ -44,6 +44,34 @@ func TestEnsureManagerRejectsMissingMembership(t *testing.T) {
 	}
 }
 
+func TestActiveMembershipQueries(t *testing.T) {
+	active := &fakeTeamRepository{membership: domain.Member{TeamID: 10, UserID: 42, Status: domain.MemberActive}}
+	service := NewQueryService(active)
+	if err := service.EnsureActiveMember(context.Background(), 10, 42); err != nil {
+		t.Fatalf("ensure active member: %v", err)
+	}
+	found, err := service.IsActiveMember(context.Background(), 10, 42)
+	if err != nil || !found {
+		t.Fatalf("is active member: found=%v err=%v", found, err)
+	}
+
+	missingService := NewQueryService(&fakeTeamRepository{})
+	if err := missingService.EnsureActiveMember(context.Background(), 10, 42); !errors.Is(err, sharederror.ErrForbidden) {
+		t.Fatalf("missing member should be forbidden, got %v", err)
+	}
+	found, err = missingService.IsActiveMember(context.Background(), 10, 42)
+	if err != nil || found {
+		t.Fatalf("missing member should return false: found=%v err=%v", found, err)
+	}
+}
+
+func TestActiveMembershipQueryWrapsRepositoryFailure(t *testing.T) {
+	service := NewQueryService(&fakeTeamRepository{err: errors.New("database unavailable")})
+	if _, err := service.IsActiveMember(context.Background(), 10, 42); !errors.Is(err, sharederror.ErrInternal) {
+		t.Fatalf("expected internal error, got %v", err)
+	}
+}
+
 func TestAdminListsAllTeams(t *testing.T) {
 	repository := &fakeTeamRepository{teams: []domain.Team{
 		{ID: 1, Name: "东安联队", Status: domain.TeamActive},

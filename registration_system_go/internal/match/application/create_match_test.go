@@ -122,6 +122,12 @@ func (f *fakeTeamAccess) EnsureExists(context.Context, int64) error { return f.e
 
 func (f *fakeTeamAccess) EnsureActive(context.Context, int64) error { return f.err }
 
+func (f *fakeTeamAccess) EnsureActiveMember(context.Context, int64, int64) error { return f.err }
+
+func (f *fakeTeamAccess) IsActiveMember(context.Context, int64, int64) (bool, error) {
+	return false, f.err
+}
+
 type fakeDefaultLimits struct {
 	limits                 domain.IndividualLimits
 	receivedPlayersPerTeam int

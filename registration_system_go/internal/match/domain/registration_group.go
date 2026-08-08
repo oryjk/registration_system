@@ -46,17 +46,20 @@ func NewIndividualGroup(matchID uuid.UUID, limits IndividualLimits, now time.Tim
 	return RegistrationGroup{ID: uuid.New(), MatchID: matchID, Kind: GroupIndividualOpponent, MinPlayers: &minPlayers, MaxPlayers: &maxPlayers, Status: GroupOpen, CreatedAt: now, UpdatedAt: now}
 }
 
-func (g *RegistrationGroup) RecalculateIndividualStatus(activePlayers int) error {
+func (g *RegistrationGroup) RecalculateIndividualStatus(activePlayers int, now time.Time) error {
 	if g.Kind != GroupIndividualOpponent || g.MinPlayers == nil || g.MaxPlayers == nil {
 		return sharederror.New(sharederror.KindConflict, "当前报名组不是散人对手组")
 	}
 	if activePlayers < 0 {
 		return sharederror.New(sharederror.KindValidation, "报名人数不能为负数")
 	}
+	nextStatus := GroupOpen
 	if activePlayers >= *g.MaxPlayers {
-		g.Status = GroupClosed
-	} else {
-		g.Status = GroupOpen
+		nextStatus = GroupClosed
+	}
+	if g.Status != nextStatus {
+		g.Status = nextStatus
+		g.UpdatedAt = now
 	}
 	return nil
 }

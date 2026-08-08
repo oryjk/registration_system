@@ -29,6 +29,25 @@ func (s QueryService) EnsureManager(ctx context.Context, teamID, userID int64) e
 	return nil
 }
 
+func (s QueryService) EnsureActiveMember(ctx context.Context, teamID, userID int64) error {
+	found, err := s.IsActiveMember(ctx, teamID, userID)
+	if err != nil {
+		return err
+	}
+	if !found {
+		return sharederror.ErrForbidden
+	}
+	return nil
+}
+
+func (s QueryService) IsActiveMember(ctx context.Context, teamID, userID int64) (bool, error) {
+	member, found, err := s.repository.FindActiveMember(ctx, teamID, userID)
+	if err != nil {
+		return false, sharederror.Wrap(sharederror.KindInternal, "查询球队成员身份失败", err)
+	}
+	return found && member.Status == domain.MemberActive, nil
+}
+
 func (s QueryService) FindTeam(ctx context.Context, teamID int64) (domain.Team, error) {
 	team, found, err := s.repository.FindByID(ctx, teamID)
 	if err != nil {

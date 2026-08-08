@@ -10,21 +10,21 @@ import (
 func TestIndividualOpponentStateFollowsMinimumPlayers(t *testing.T) {
 	match := Match{PublicationMode: OnlineIndividual, OpponentState: OpponentRecruiting}
 
-	if err := match.RecalculateIndividualOpponent(7, 8); err != nil {
+	if err := match.RecalculateIndividualOpponent(7, 8, time.Now()); err != nil {
 		t.Fatalf("recalculate below minimum: %v", err)
 	}
 	if match.OpponentState != OpponentRecruiting {
 		t.Fatalf("below minimum should recruit, got %s", match.OpponentState)
 	}
 
-	if err := match.RecalculateIndividualOpponent(8, 8); err != nil {
+	if err := match.RecalculateIndividualOpponent(8, 8, time.Now()); err != nil {
 		t.Fatalf("recalculate at minimum: %v", err)
 	}
 	if match.OpponentState != OpponentConfirmed {
 		t.Fatalf("minimum reached should confirm, got %s", match.OpponentState)
 	}
 
-	if err := match.RecalculateIndividualOpponent(6, 8); err != nil {
+	if err := match.RecalculateIndividualOpponent(6, 8, time.Now()); err != nil {
 		t.Fatalf("recalculate after cancellation: %v", err)
 	}
 	if match.OpponentState != OpponentRecruiting {
@@ -35,14 +35,14 @@ func TestIndividualOpponentStateFollowsMinimumPlayers(t *testing.T) {
 func TestIndividualGroupClosesAtMaximumAndReopensBelowIt(t *testing.T) {
 	group := NewIndividualGroup(uuid.New(), IndividualLimits{MinPlayers: 8, MaxPlayers: 10}, time.Now())
 
-	if err := group.RecalculateIndividualStatus(10); err != nil {
+	if err := group.RecalculateIndividualStatus(10, time.Now()); err != nil {
 		t.Fatalf("close full group: %v", err)
 	}
 	if group.Status != GroupClosed {
 		t.Fatalf("full group should close, got %s", group.Status)
 	}
 
-	if err := group.RecalculateIndividualStatus(9); err != nil {
+	if err := group.RecalculateIndividualStatus(9, time.Now()); err != nil {
 		t.Fatalf("reopen group: %v", err)
 	}
 	if group.Status != GroupOpen {

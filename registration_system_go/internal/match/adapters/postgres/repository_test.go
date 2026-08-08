@@ -525,6 +525,14 @@ func (a repositoryTestTeamAccess) EnsureManager(_ context.Context, teamID, userI
 func (repositoryTestTeamAccess) EnsureExists(context.Context, int64) error { return nil }
 func (repositoryTestTeamAccess) EnsureActive(context.Context, int64) error { return nil }
 
+func (a repositoryTestTeamAccess) EnsureActiveMember(ctx context.Context, teamID, userID int64) error {
+	return a.EnsureManager(ctx, teamID, userID)
+}
+
+func (a repositoryTestTeamAccess) IsActiveMember(_ context.Context, teamID, userID int64) (bool, error) {
+	return a.managers[teamID] == userID, nil
+}
+
 type repositoryTestClock struct {
 	now time.Time
 }
