@@ -3,10 +3,11 @@ package legacymatches
 import (
 	"context"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/oryjk/registration_system/registration_system_go/internal/migration/mapping"
 )
 
 // pendingTeamName 是对手为“待定”的历史比赛在目标库使用的占位客队名。
@@ -15,43 +16,57 @@ const pendingTeamName = "待定"
 // PostgresSource 从旧库（Rust 自身 PostgreSQL）只读加载球队 1 的历史比赛与报名。
 // 使用 RepeatableRead 事务保证快照一致；仅查询，不写入。
 type PostgresSource struct {
-	source *pgxpool.Pool
+	source sourcePool
 	teamID int64
 }
 
-func NewPostgresSource(source *pgxpool.Pool, teamID int64) PostgresSource {
+type sourcePool interface {
+	BeginTx(context.Context, pgx.TxOptions) (pgx.Tx, error)
+}
+
+func NewPostgresSource(source sourcePool, teamID int64) PostgresSource {
 	return PostgresSource{source: source, teamID: teamID}
 }
 
-func (s PostgresSource) Load(ctx context.Context) (Snapshot, error) {
+func (s PostgresSource) Load(ctx context.Context, options LoadOptions) (Snapshot, error) {
 	tx, err := s.source.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.RepeatableRead, AccessMode: pgx.ReadOnly})
 	if err != nil {
 		return Snapshot{}, fmt.Errorf("begin source transaction: %w", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	matches, err := loadMatches(ctx, tx, s.teamID)
+	matches, err := loadMatches(ctx, tx, s.teamID, options)
 	if err != nil {
 		return Snapshot{}, err
 	}
-	registrations, err := loadRegistrations(ctx, tx, s.teamID)
+	matchSourceIDs := make([]string, 0, len(matches))
+	for _, match := range matches {
+		matchSourceIDs = append(matchSourceIDs, match.SourceID)
+	}
+	users, registrations, err := loadRegistrations(ctx, tx, matchSourceIDs)
 	if err != nil {
 		return Snapshot{}, err
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return Snapshot{}, fmt.Errorf("finish source read: %w", err)
 	}
-	return Snapshot{Matches: matches, Registrations: registrations}, nil
+	return Snapshot{Matches: matches, Users: users, Registrations: registrations}, nil
 }
 
-func loadMatches(ctx context.Context, tx pgx.Tx, teamID int64) ([]LegacyMatch, error) {
+func loadMatches(ctx context.Context, tx pgx.Tx, teamID int64, options LoadOptions) ([]LegacyMatch, error) {
 	rows, err := tx.Query(ctx, `
         SELECT id, name, COALESCE(opposing,''), status, COALESCE(players_per_team,0),
                start_time, end_time, location, location_latitude, location_longitude,
                description, created_at, updated_at, COALESCE(home_team_id,0)
-        FROM rs_activity
-        WHERE home_team_id=$1 OR away_team_id=$1
-        ORDER BY created_at, id`, teamID)
+	        FROM rs_activity
+	        WHERE (home_team_id=$1 OR away_team_id=$1)
+	          AND (
+	              $4::boolean
+	              OR
+	              id = ANY($2::text[])
+	              OR (status IN (0,1) AND ($3::timestamptz IS NULL OR updated_at >= $3))
+	          )
+	        ORDER BY created_at, id`, teamID, options.TrackedMatchSourceIDs, options.Since, options.Mode == mapping.ModeFull)
 	if err != nil {
 		return nil, fmt.Errorf("query legacy activities: %w", err)
 	}
@@ -76,35 +91,58 @@ func loadMatches(ctx context.Context, tx pgx.Tx, teamID int64) ([]LegacyMatch, e
 	return matches, nil
 }
 
-func loadRegistrations(ctx context.Context, tx pgx.Tx, teamID int64) ([]LegacyRegistration, error) {
+func loadRegistrations(ctx context.Context, tx pgx.Tx, matchSourceIDs []string) ([]LegacyUser, []LegacyRegistration, error) {
+	if len(matchSourceIDs) == 0 {
+		return nil, nil, nil
+	}
 	rows, err := tx.Query(ctx, `
-        SELECT ua.activity_id, u.open_id, ua.stand, ua.registration_count,
-               ua.operation_time, ua.created_at, ua.updated_at
-        FROM rs_user_activity ua
-        JOIN rs_activity a ON a.id = ua.activity_id
-        JOIN rs_user_info u ON u.id = ua.user_id
-        WHERE a.home_team_id=$1 OR a.away_team_id=$1
-        ORDER BY ua.created_at, ua.id`, teamID)
+	        SELECT ua.activity_id, u.id, u.open_id, u.nickname, u.real_name,
+	               u.avatar_url, u.phone_number, u.status,
+	               ua.stand, ua.registration_count,
+	               ua.operation_time, ua.created_at, ua.updated_at
+	        FROM rs_user_activity ua
+	        JOIN rs_user_info u ON u.id = ua.user_id
+	        WHERE ua.activity_id = ANY($1::text[])
+	        ORDER BY ua.created_at, ua.id`, matchSourceIDs)
 	if err != nil {
-		return nil, fmt.Errorf("query legacy registrations: %w", err)
+		return nil, nil, fmt.Errorf("query legacy registrations: %w", err)
 	}
 	defer rows.Close()
+	usersByID := make(map[int64]LegacyUser)
 	var registrations []LegacyRegistration
 	for rows.Next() {
 		var registration LegacyRegistration
+		var user LegacyUser
 		if err := rows.Scan(
-			&registration.ActivitySourceID, &registration.OpenID, &registration.Stand,
+			&registration.ActivitySourceID, &user.SourceID, &user.OpenID, &user.Nickname,
+			&user.RealName, &user.AvatarURL, &user.PhoneNumber, &user.Status,
+			&registration.Stand,
 			&registration.RegistrationCount, &registration.OperationTime,
 			&registration.CreatedAt, &registration.UpdatedAt,
 		); err != nil {
-			return nil, fmt.Errorf("scan legacy registration: %w", err)
+			return nil, nil, fmt.Errorf("scan legacy registration: %w", err)
+		}
+		registration.UserSourceID = user.SourceID
+		registration.OpenID = user.OpenID
+		user.UpdatedAt = registration.UpdatedAt
+		if current, exists := usersByID[user.SourceID]; !exists || current.UpdatedAt.Before(user.UpdatedAt) {
+			usersByID[user.SourceID] = user
 		}
 		registrations = append(registrations, registration)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("iterate legacy registrations: %w", err)
+		return nil, nil, fmt.Errorf("iterate legacy registrations: %w", err)
 	}
-	return registrations, nil
+	userIDs := make([]int64, 0, len(usersByID))
+	for id := range usersByID {
+		userIDs = append(userIDs, id)
+	}
+	sort.Slice(userIDs, func(left, right int) bool { return userIDs[left] < userIDs[right] })
+	users := make([]LegacyUser, 0, len(userIDs))
+	for _, id := range userIDs {
+		users = append(users, usersByID[id])
+	}
+	return users, registrations, nil
 }
 
 // normalizedTimes 兜底零值时间，保证目标 created_at/updated_at 非空。

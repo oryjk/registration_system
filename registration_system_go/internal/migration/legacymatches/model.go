@@ -3,7 +3,26 @@ package legacymatches
 import (
 	"context"
 	"time"
+
+	"github.com/oryjk/registration_system/registration_system_go/internal/migration/mapping"
 )
+
+type LoadOptions struct {
+	Mode                  mapping.Mode
+	Since                 *time.Time
+	TrackedMatchSourceIDs []string
+}
+
+type LegacyUser struct {
+	SourceID    int64
+	OpenID      string
+	Nickname    string
+	RealName    string
+	AvatarURL   string
+	PhoneNumber string
+	Status      int
+	UpdatedAt   time.Time
+}
 
 // LegacyMatch 是旧库里一场历史比赛（rs_activity）在导入边界的投影。
 // 仅保留目标 Go Match 能承接的字段，丢弃 cover/color/holding_date 等装饰字段。
@@ -27,9 +46,10 @@ type LegacyMatch struct {
 }
 
 // LegacyRegistration 是旧库一条报名记录（rs_user_activity）的投影。
-// OpenID 用于把旧用户映射到目标 users.id；Stand 用 0/1/2/3 表达，由 importer 翻译。
+// UserSourceID 是 Rust PostgreSQL 用户主键；OpenID 只用于首次唯一匹配。
 type LegacyRegistration struct {
 	ActivitySourceID  string
+	UserSourceID      int64
 	OpenID            string
 	Stand             int
 	RegistrationCount int
@@ -41,22 +61,38 @@ type LegacyRegistration struct {
 // Snapshot 是只读源库加载结果，由 importer 消费。
 type Snapshot struct {
 	Matches       []LegacyMatch
+	Users         []LegacyUser
 	Registrations []LegacyRegistration
 }
 
 // Source 抽象只读源库，便于测试用 fakeSource 替换。
 type Source interface {
-	Load(context.Context) (Snapshot, error)
+	Load(context.Context, LoadOptions) (Snapshot, error)
 }
 
 // Report 汇总一次导入的写入与跳过情况，供命令行输出与对账。
 type Report struct {
-	MatchesInserted       int
-	MatchesUpdated        int
-	RegistrationsInserted int
-	RegistrationsUpdated  int
-	PendingTeamCreated    bool
-	// UnmappedOpenIDs 是报名引用但目标库 users 不存在的 openid 数量；
-	// 大于 0 时 Run 在写入前中止并返回错误，由调用方定夺。
-	UnmappedOpenIDs int
+	UsersInserted               int
+	UsersUpdated                int
+	UsersSkipped                int
+	UsersTargetModified         int
+	MatchesInserted             int
+	MatchesUpdated              int
+	MatchesSkipped              int
+	MatchesTargetModified       int
+	RegistrationsInserted       int
+	RegistrationsUpdated        int
+	RegistrationsSkipped        int
+	RegistrationsTargetModified int
+	RegistrationsCancelled      int
+	PendingTeamCreated          bool
+	OrphanReferences            int
+	Conflicts                   int
+}
+
+type RunOptions struct {
+	DryRun           bool
+	Mode             mapping.Mode
+	Since            *time.Time
+	ExplicitMappings mapping.Config
 }

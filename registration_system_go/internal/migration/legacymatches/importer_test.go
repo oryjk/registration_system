@@ -30,6 +30,7 @@ func TestImporterIsIdempotentAndMapsLegacyState(t *testing.T) {
 	now := time.Date(2025, 11, 27, 8, 0, 0, 0, time.UTC)
 	start := time.Date(2025, 11, 30, 19, 0, 0, 0, time.UTC)
 	snapshot := Snapshot{
+		Users: []LegacyUser{{SourceID: 901, OpenID: "player-openid", Nickname: "球员", Status: 1, UpdatedAt: now}},
 		Matches: []LegacyMatch{
 			{
 				SourceID: "match-real-opponent", Name: "周日友谊赛", Opposing: "叮叮猫",
@@ -44,8 +45,8 @@ func TestImporterIsIdempotentAndMapsLegacyState(t *testing.T) {
 		},
 		Registrations: []LegacyRegistration{
 			// stand=0 必须落到 unknown；registration_count=0 必须落到 1。
-			{ActivitySourceID: "match-real-opponent", OpenID: "player-openid", Stand: 0, RegistrationCount: 0, OperationTime: now, CreatedAt: now, UpdatedAt: now},
-			{ActivitySourceID: "match-pending", OpenID: "player-openid", Stand: 1, RegistrationCount: 1, OperationTime: now, CreatedAt: now, UpdatedAt: now},
+			{ActivitySourceID: "match-real-opponent", UserSourceID: 901, OpenID: "player-openid", Stand: 0, RegistrationCount: 0, OperationTime: now, CreatedAt: now, UpdatedAt: now},
+			{ActivitySourceID: "match-pending", UserSourceID: 901, OpenID: "player-openid", Stand: 1, RegistrationCount: 1, OperationTime: now, CreatedAt: now, UpdatedAt: now},
 		},
 	}
 	importer := NewImporter(pool, fakeSource{snapshot: snapshot}, hostTeamID, captainID)
@@ -54,16 +55,16 @@ func TestImporterIsIdempotentAndMapsLegacyState(t *testing.T) {
 	if err != nil {
 		t.Fatalf("first import: %v", err)
 	}
-	if report.MatchesInserted != 2 || report.RegistrationsInserted != 2 || !report.PendingTeamCreated || report.UnmappedOpenIDs != 0 {
+	if report.UsersUpdated != 1 || report.MatchesInserted != 2 || report.RegistrationsInserted != 2 || !report.PendingTeamCreated {
 		t.Fatalf("unexpected first report: %+v", report)
 	}
 
-	// 第二轮必须幂等：全部转为 update，不再新建“待定”球队。
+	// 第二轮必须幂等：全部跳过，不再新建“待定”球队。
 	report, err = importer.Run(ctx, false)
 	if err != nil {
 		t.Fatalf("second import: %v", err)
 	}
-	if report.MatchesUpdated != 2 || report.RegistrationsUpdated != 2 || report.PendingTeamCreated || report.UnmappedOpenIDs != 0 {
+	if report.UsersSkipped != 1 || report.MatchesSkipped != 2 || report.RegistrationsSkipped != 2 || report.PendingTeamCreated {
 		t.Fatalf("unexpected second report: %+v", report)
 	}
 
@@ -151,7 +152,7 @@ func TestImporterDryRunRollsBack(t *testing.T) {
 	}
 }
 
-func TestImporterAbortsOnUnmappedOpenID(t *testing.T) {
+func TestImporterAbortsOnOrphanPostgresUserReference(t *testing.T) {
 	pool := testsupport.StartPostgres(t)
 	ctx := context.Background()
 
@@ -170,16 +171,16 @@ func TestImporterAbortsOnUnmappedOpenID(t *testing.T) {
 			SourceID: "orphan-match", Name: "孤儿赛", Opposing: "盼盼", Status: 2, PlayersPerTeam: 8,
 			StartTime: start, EndTime: start.Add(2 * time.Hour), Location: "场地", CreatedAt: now, UpdatedAt: now, HomeTeamSourceID: 1,
 		}},
-		// 这个 openid 不在目标 users 里，必须中止。
+		// 报名引用的 PostgreSQL user_id 不在快照用户列表里，必须中止。
 		Registrations: []LegacyRegistration{{
-			ActivitySourceID: "orphan-match", OpenID: "ghost-openid", Stand: 1, RegistrationCount: 1,
+			ActivitySourceID: "orphan-match", UserSourceID: 999, OpenID: "ghost-openid", Stand: 1, RegistrationCount: 1,
 			OperationTime: now, CreatedAt: now, UpdatedAt: now,
 		}},
 	}
 	importer := NewImporter(pool, fakeSource{snapshot: snapshot}, hostTeamID, captainID)
 	_, err := importer.Run(ctx, false)
-	if err == nil || !strings.Contains(err.Error(), "目标用户不存在") {
-		t.Fatalf("expected unmapped openid abort, got %v", err)
+	if err == nil || !strings.Contains(err.Error(), "PostgreSQL 用户") {
+		t.Fatalf("expected orphan postgres user abort, got %v", err)
 	}
 
 	var matches int
@@ -195,4 +196,4 @@ type fakeSource struct {
 	snapshot Snapshot
 }
 
-func (f fakeSource) Load(context.Context) (Snapshot, error) { return f.snapshot, nil }
+func (f fakeSource) Load(context.Context, LoadOptions) (Snapshot, error) { return f.snapshot, nil }
