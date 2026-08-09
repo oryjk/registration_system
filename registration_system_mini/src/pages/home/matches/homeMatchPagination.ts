@@ -10,6 +10,14 @@ export interface HomeMatchPaginationState {
   pageSize: number;
 }
 
+export function isHomeMatchPaginationComplete(state: HomeMatchPaginationState): boolean {
+  if (state.total === 0) {
+    return state.nextPage > 1;
+  }
+
+  return state.sourceItems.length >= state.total;
+}
+
 function mergeLatestSourceItems(sourceItems: AppMatchSummary[], pageItems: AppMatchSummary[]): AppMatchSummary[] {
   const merged = new Map<string, AppMatchSummary>();
 
@@ -37,7 +45,7 @@ export async function loadNextVisiblePhaseBatch(
   now: Date,
   fetchPage: (page: number, pageSize: number) => Promise<AppMatchListResponse>,
 ): Promise<HomeMatchPaginationState> {
-  if (state.total > 0 && state.sourceItems.length >= state.total) {
+  if (isHomeMatchPaginationComplete(state)) {
     return state;
   }
 
@@ -61,14 +69,14 @@ export async function loadNextVisiblePhaseBatch(
     sourceItems.splice(0, sourceItems.length, ...mergedSourceItems);
 
     const visibleAfter = countVisibleItems(sourceItems, phase, now);
-    const nextTotal = Math.max(state.total, response.total, sourceItems.length);
+    const latestTotal = response.total;
 
     currentPage += 1;
-    if (visibleAfter > visibleBefore || sourceItems.length >= nextTotal) {
+    if (visibleAfter > visibleBefore || sourceItems.length >= latestTotal) {
       return {
         sourceItems,
         nextPage: currentPage,
-        total: nextTotal,
+        total: latestTotal,
         pageSize: state.pageSize,
       };
     }

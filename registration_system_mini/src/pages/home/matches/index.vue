@@ -10,7 +10,11 @@ import { formatWeekdayLabel } from "@/utils/datetime";
 import { attendanceStatusTone } from "@/utils/statusTone";
 import { groupMatchesByPhase, toGoHomeMatchCard } from "../homeMatchState";
 import HomeMatchList from "../components/HomeMatchList.vue";
-import { loadNextVisiblePhaseBatch, type HomeMatchPaginationState } from "./homeMatchPagination";
+import {
+  isHomeMatchPaginationComplete,
+  loadNextVisiblePhaseBatch,
+  type HomeMatchPaginationState,
+} from "./homeMatchPagination";
 
 type VisibleHomeMatchPhase = Exclude<AppMatchUiPhase, "excluded">;
 
@@ -52,10 +56,7 @@ const pageMeta = computed(() => PHASE_META[phase.value]);
 const contentStyle = computed(() => ({
   paddingTop: `${navMetrics.pageTopPadding + 8}px`,
 }));
-const sourceLoaded = computed(() =>
-  (paginationState.value.total > 0 && paginationState.value.sourceItems.length >= paginationState.value.total)
-  || (hasInitialized.value && paginationState.value.sourceItems.length === 0 && paginationState.value.nextPage > 1),
-);
+const sourceLoaded = computed(() => isHomeMatchPaginationComplete(paginationState.value));
 const visibleMatches = computed<HomeMatchCardViewModel[]>(() => {
   const grouped = groupMatchesByPhase(paginationState.value.sourceItems, phaseClock.value);
   return grouped[phase.value].map((item) => toGoHomeMatchCard(item as AppMatchSummary, phase.value));

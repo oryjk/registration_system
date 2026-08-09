@@ -134,4 +134,150 @@ describe("loadNextVisiblePhaseBatch", () => {
     expect(terminalCalls).toEqual([]);
     expect(terminalState).toEqual(loadedState);
   });
+
+  test("treats an empty first response as terminal and does not fetch again", async () => {
+    const calls: Array<{ page: number; pageSize: number }> = [];
+    const fetchPage = async (page: number, pageSize: number) => {
+      calls.push({ page, pageSize });
+      return {
+        items: [],
+        total: 0,
+        page,
+        page_size: pageSize,
+      };
+    };
+
+    const initialState: HomeMatchPaginationState = {
+      sourceItems: [],
+      nextPage: 1,
+      total: 0,
+      pageSize: 2,
+    };
+
+    const loadedState = await loadNextVisiblePhaseBatch(initialState, "upcoming", now, fetchPage);
+
+    expect(calls).toEqual([{ page: 1, pageSize: 2 }]);
+    expect(loadedState.total).toEqual(0);
+    expect(loadedState.nextPage).toEqual(2);
+    expect(loadedState.sourceItems).toEqual([]);
+
+    const terminalCalls: Array<{ page: number; pageSize: number }> = [];
+    const terminalState = await loadNextVisiblePhaseBatch(loadedState, "upcoming", now, async (page, pageSize) => {
+      terminalCalls.push({ page, pageSize });
+      throw new Error("should not fetch after empty-first response");
+    });
+
+    expect(terminalCalls).toEqual([]);
+    expect(terminalState).toEqual(loadedState);
+  });
+
+  test("stops when the latest total shrinks to the unique source row count", async () => {
+    const initialState: HomeMatchPaginationState = {
+      sourceItems: [
+        buildMatch({
+          id: "upcoming-a",
+          status: "registering",
+          name: "报名中 A",
+          start_time: "2026-08-09T13:00:00.000Z",
+          end_time: "2026-08-09T15:00:00.000Z",
+        }),
+        buildMatch({
+          id: "upcoming-b",
+          status: "registering",
+          name: "报名中 B",
+          start_time: "2026-08-09T13:30:00.000Z",
+          end_time: "2026-08-09T15:30:00.000Z",
+        }),
+      ],
+      nextPage: 2,
+      total: 10,
+      pageSize: 2,
+    };
+
+    const calls: Array<{ page: number; pageSize: number }> = [];
+    const fetchPage = async (page: number, pageSize: number) => {
+      calls.push({ page, pageSize });
+      if (page === 2) {
+        return {
+          items: [
+            buildMatch({
+              id: "cancelled-a",
+              status: "cancelled",
+              name: "已取消 A",
+              start_time: "2026-08-09T09:00:00.000Z",
+              end_time: "2026-08-09T10:00:00.000Z",
+            }),
+          ],
+          total: 3,
+          page,
+          page_size: pageSize,
+        };
+      }
+      throw new Error(`unexpected page ${page}`);
+    };
+
+    const loadedState = await loadNextVisiblePhaseBatch(initialState, "ended", now, fetchPage);
+
+    expect(calls).toEqual([{ page: 2, pageSize: 2 }]);
+    expect(loadedState.total).toEqual(3);
+    expect(loadedState.sourceItems.length).toEqual(3);
+    expect(new Set(loadedState.sourceItems.map((item) => item.id)).size).toEqual(3);
+    expect(loadedState.nextPage).toEqual(3);
+
+    const terminalCalls: Array<{ page: number; pageSize: number }> = [];
+    const terminalState = await loadNextVisiblePhaseBatch(loadedState, "ended", now, async (page, pageSize) => {
+      terminalCalls.push({ page, pageSize });
+      throw new Error("should not fetch after total shrink converges");
+    });
+
+    expect(terminalCalls).toEqual([]);
+    expect(terminalState).toEqual(loadedState);
+  });
+
+  test("treats an empty page after loaded rows as terminal", async () => {
+    const initialState: HomeMatchPaginationState = {
+      sourceItems: [
+        buildMatch({
+          id: "upcoming-a",
+          status: "registering",
+          name: "报名中 A",
+          start_time: "2026-08-09T13:00:00.000Z",
+          end_time: "2026-08-09T15:00:00.000Z",
+        }),
+      ],
+      nextPage: 2,
+      total: 10,
+      pageSize: 2,
+    };
+
+    const calls: Array<{ page: number; pageSize: number }> = [];
+    const fetchPage = async (page: number, pageSize: number) => {
+      calls.push({ page, pageSize });
+      if (page === 2) {
+        return {
+          items: [],
+          total: 10,
+          page,
+          page_size: pageSize,
+        };
+      }
+      throw new Error(`unexpected page ${page}`);
+    };
+
+    const loadedState = await loadNextVisiblePhaseBatch(initialState, "upcoming", now, fetchPage);
+
+    expect(calls).toEqual([{ page: 2, pageSize: 2 }]);
+    expect(loadedState.total).toEqual(1);
+    expect(loadedState.sourceItems.length).toEqual(1);
+    expect(loadedState.nextPage).toEqual(3);
+
+    const terminalCalls: Array<{ page: number; pageSize: number }> = [];
+    const terminalState = await loadNextVisiblePhaseBatch(loadedState, "upcoming", now, async (page, pageSize) => {
+      terminalCalls.push({ page, pageSize });
+      throw new Error("should not fetch after empty-after-loaded response");
+    });
+
+    expect(terminalCalls).toEqual([]);
+    expect(terminalState).toEqual(loadedState);
+  });
 });
