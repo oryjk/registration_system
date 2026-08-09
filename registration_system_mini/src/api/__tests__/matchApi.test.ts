@@ -6,10 +6,11 @@ const requestApi = async (options: unknown) => {
   capturedCalls.push(options);
   return {};
 };
+class MockApiRequestError extends Error {}
 
-mock.module("@/utils/request", () => ({ requestApi }));
+mock.module("@/utils/request", () => ({ ApiRequestError: MockApiRequestError, requestApi }));
 
-const { getMatchHome, listMyMatches } = await import("../match");
+const { getMatchDetail, getMatchHome, listMyMatches } = await import("../match");
 const { tryMockRequest } = await import("@/mock");
 
 describe("Go match API", () => {
@@ -28,6 +29,16 @@ describe("Go match API", () => {
 
     expect(capturedCalls[0]).toEqual({
       url: "/matches?scope=mine&page=2&page_size=20",
+      auth: true,
+    });
+  });
+
+  test("loads the authenticated Go match detail", async () => {
+    capturedCalls.length = 0;
+
+    await getMatchDetail("f7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c003");
+    expect(capturedCalls[0]).toEqual({
+      url: "/matches/f7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c003",
       auth: true,
     });
   });

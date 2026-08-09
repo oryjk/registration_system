@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { AppMatchSummary } from "@/types/match";
-import { toBackendActivity } from "../detailData";
+import { toBackendActivity, toBackendRegistration } from "../detailData";
 
 const goMatch: AppMatchSummary = {
   id: "f7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c003",
@@ -53,6 +53,38 @@ describe("Go match detail adapter", () => {
       players_per_team: goMatch.players_per_team,
       team_capacity_limit: goMatch.players_per_team,
       match_kind: "external",
+    });
+  });
+
+  test("uses the selected Go group for attendance and capacity", () => {
+    const activity = toBackendActivity(goMatch, {
+      id: "group-1",
+      kind: "host_team",
+      team_id: 101,
+      status: "closed",
+      min_players: 6,
+      max_players: 8,
+      attending_count: 7,
+      my_registration: { status: "attending", registration_count: 1 },
+    });
+
+    expect({
+      team_registration_count: activity.team_registration_count,
+      team_capacity_limit: activity.team_capacity_limit,
+    }).toEqual({ team_registration_count: 7, team_capacity_limit: 8 });
+  });
+
+  test("maps the current Go registration into the legacy participant record", () => {
+    expect(toBackendRegistration(
+      { status: "attending", registration_count: 1 },
+      37,
+      goMatch.updated_at,
+    )).toEqual({
+      user_id: 37,
+      stand: 1,
+      registration_count: 1,
+      paid: 0,
+      operation_time: goMatch.updated_at,
     });
   });
 });

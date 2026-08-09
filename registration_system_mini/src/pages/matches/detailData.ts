@@ -1,8 +1,8 @@
 import { getActivity, getActivityUsers, listActivities } from "@/api/activity";
-import { listMyMatches } from "@/api/match";
+import { getMatchDetail } from "@/api/match";
 import { getTeamDetail } from "@/api/team";
 import { listUsers } from "@/api/user";
-import type { AppMatchSummary } from "@/types/match";
+import type { AppMatchGroupDetail, AppMatchRegistration, AppMatchSummary } from "@/types/match";
 import type { BackendActivity, BackendRegistration, BackendTeam, BackendTeamMember, BackendUser } from "@/types/backend";
 import { isActiveTeamRegistrationActivity } from "./detailState";
 
@@ -12,6 +12,7 @@ export interface PublicMatchDetailData {
   usersById: Record<number, BackendUser>;
   activityPageItems: BackendActivity[];
   sourceTeamRegistrationCount: number;
+  myRegistration: AppMatchRegistration | null;
 }
 
 export interface AuthenticatedMatchDetailContext {
@@ -23,7 +24,7 @@ export interface AuthenticatedMatchDetailContext {
   checkInConfig: BackendActivity["team_checkin_configs"][number] | null;
 }
 
-const GO_MATCH_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+export const GO_MATCH_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function toLegacyActivityStatus(status: AppMatchSummary["status"]): number {
   switch (status) {
@@ -38,7 +39,7 @@ function toLegacyActivityStatus(status: AppMatchSummary["status"]): number {
   }
 }
 
-export function toBackendActivity(match: AppMatchSummary): BackendActivity {
+export function toBackendActivity(match: AppMatchSummary, group?: AppMatchGroupDetail): BackendActivity {
   return {
     id: match.id,
     name: match.name,
@@ -57,42 +58,68 @@ export function toBackendActivity(match: AppMatchSummary): BackendActivity {
     color: "#9be22b",
     opposing_color: "#0f766e",
     players_per_team: match.players_per_team,
-    team_capacity_limit: match.players_per_team,
+    team_capacity_limit: group?.max_players ?? match.players_per_team,
     match_kind: "external",
     source_activity_id: null,
-    team_registration_count: null,
+    team_registration_count: group?.attending_count ?? null,
     team_checkin_configs: [],
   };
 }
 
-async function findGoMatch(matchId: string): Promise<AppMatchSummary | null> {
-  const pageSize = 100;
-  let page = 1;
-
-  while (true) {
-    const result = await listMyMatches({ page, pageSize });
-    const match = result.items.find((item) => item.id === matchId);
-    if (match) return match;
-    if (!result.items.length || page * result.page_size >= result.total) return null;
-    page += 1;
+export function toLegacyRegistrationStand(status: AppMatchRegistration["status"] | null | undefined): number {
+  switch (status) {
+    case "attending":
+      return 1;
+    case "leave":
+      return 2;
+    case "absent":
+      return 3;
+    default:
+      return 0;
   }
 }
 
-async function loadActivityDetail(matchId: string): Promise<{ activity: BackendActivity; fromGo: boolean }> {
+export function toBackendRegistration(
+  registration: AppMatchRegistration,
+  currentUserId: number,
+  operationTime: string,
+): BackendRegistration {
+  return {
+    user_id: currentUserId,
+    stand: toLegacyRegistrationStand(registration.status),
+    registration_count: registration.registration_count,
+    paid: 0,
+    operation_time: operationTime,
+  };
+}
+
+async function loadActivityDetail(matchId: string): Promise<{
+  activity: BackendActivity;
+  fromGo: boolean;
+  myRegistration: AppMatchRegistration | null;
+  registrationOperationTime: string;
+}> {
   if (!GO_MATCH_ID_PATTERN.test(matchId)) {
-    return { activity: await getActivity(matchId), fromGo: false };
+    return { activity: await getActivity(matchId), fromGo: false, myRegistration: null, registrationOperationTime: "" };
   }
 
-  const goMatch = await findGoMatch(matchId);
-  if (goMatch) return { activity: toBackendActivity(goMatch), fromGo: true };
-
-  return { activity: await getActivity(matchId), fromGo: false };
+  const goDetail = await getMatchDetail(matchId);
+  const group = goDetail.groups.find((item) => item.my_registration) ?? goDetail.groups[0];
+  return {
+    activity: toBackendActivity(goDetail.match, group),
+    fromGo: true,
+    myRegistration: group?.my_registration ?? null,
+    registrationOperationTime: goDetail.match.updated_at,
+  };
 }
 
-export async function loadPublicMatchDetailData(matchId: string): Promise<PublicMatchDetailData> {
+export async function loadPublicMatchDetailData(matchId: string, currentUserId?: number): Promise<PublicMatchDetailData> {
   const detail = await loadActivityDetail(matchId);
+  const goActivityUsers = detail.fromGo && detail.myRegistration && currentUserId
+    ? [toBackendRegistration(detail.myRegistration, currentUserId, detail.registrationOperationTime)]
+    : [];
   const [activityUsers, users, activityPageItems] = await Promise.all([
-    detail.fromGo ? Promise.resolve<BackendRegistration[]>([]) : getActivityUsers(matchId),
+    detail.fromGo ? Promise.resolve(goActivityUsers) : getActivityUsers(matchId),
     listUsers(),
     detail.fromGo
       ? Promise.resolve<BackendActivity[]>([detail.activity])
@@ -104,11 +131,17 @@ export async function loadPublicMatchDetailData(matchId: string): Promise<Public
     activityUsers,
     usersById: Object.fromEntries(users.map((item) => [item.id, item])),
     activityPageItems,
-    sourceTeamRegistrationCount: detail.activity.source_activity_id
-      ? 0
-      : activityPageItems
-          .filter((item) => isActiveTeamRegistrationActivity(item) && item.source_activity_id === detail.activity.id)
-          .reduce((total, item) => total + Number(item.team_registration_count ?? 0), 0),
+    myRegistration: detail.myRegistration,
+    sourceTeamRegistrationCount: detail.fromGo
+      ? Math.max(
+          Number(detail.activity.team_registration_count ?? 0) - activityUsers.filter((item) => item.stand === 1 || item.stand === 3).length,
+          0,
+        )
+      : detail.activity.source_activity_id
+        ? 0
+        : activityPageItems
+            .filter((item) => isActiveTeamRegistrationActivity(item) && item.source_activity_id === detail.activity.id)
+            .reduce((total, item) => total + Number(item.team_registration_count ?? 0), 0),
   };
 }
 
@@ -116,10 +149,11 @@ export async function loadAuthenticatedMatchDetailContext(params: {
   activity: BackendActivity;
   activityUsers: BackendRegistration[];
   activityPageItems: BackendActivity[];
+  myRegistration?: AppMatchRegistration | null;
   currentTeamId?: number | null;
   currentUserId?: number;
 }): Promise<AuthenticatedMatchDetailContext> {
-  const { activity, activityUsers, activityPageItems, currentTeamId, currentUserId } = params;
+  const { activity, activityUsers, activityPageItems, myRegistration, currentTeamId, currentUserId } = params;
   const teamIds = [activity.home_team_id, activity.away_team_id].filter((teamId): teamId is number => typeof teamId === "number");
   const fetchedTeamDetails = await Promise.all(teamIds.map(async (teamId) => getTeamDetail(teamId)));
   const fetchedTeams = fetchedTeamDetails.map((detail) => detail.team);
@@ -134,7 +168,9 @@ export async function loadAuthenticatedMatchDetailContext(params: {
     teamsById: Object.fromEntries(fetchedTeams.map((team) => [team.id, team])),
     derivedActivity,
     initialRegistrationCount: derivedActivity?.team_registration_count ?? activity.team_registration_count ?? activity.players_per_team ?? 5,
-    currentUserStand: activityUsers.find((item) => item.user_id === currentUserId)?.stand ?? 0,
+    currentUserStand: myRegistration
+      ? toLegacyRegistrationStand(myRegistration.status)
+      : activityUsers.find((item) => item.user_id === currentUserId)?.stand ?? 0,
     currentTeamMembers,
     checkInConfig: activity.source_activity_id
       ? null

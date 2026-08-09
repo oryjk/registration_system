@@ -3,6 +3,7 @@ import type {
   AppHomeEndedMatch,
   AppHomeMatchGroup,
   AppMatchHomeResponse,
+  AppMatchDetailResponse,
   AppMatchStatus,
   AppMatchSummary,
 } from "@/types/match";
@@ -330,6 +331,32 @@ export function mockMyMatches(baseNow = Date.now()): AppMatchSummary[] {
 
 export function mockMatchHome(baseNow = Date.now()): AppMatchHomeResponse {
   return buildMatchHome(baseNow);
+}
+
+export function getMockMatchDetail(matchId: string, baseNow = Date.now()): AppMatchDetailResponse | undefined {
+  const match = buildMyMatches(baseNow).find((item) => item.id === matchId);
+  if (!match) return undefined;
+
+  const actionMatch = buildMatchHome(baseNow).action_items.find((item) => item.id === matchId);
+  const fallbackKind = match.publication_mode === "online_individual" ? "individual_opponent" : "host_team";
+  const registrationStatus = actionMatch?.group.my_registration_status;
+
+  return {
+    match,
+    groups: [{
+      id: actionMatch?.group.id ?? `${match.id}-group`,
+      kind: actionMatch?.group.kind ?? fallbackKind,
+      team_id: match.host_team_id,
+      status: actionMatch?.group.status ?? (match.status === "registering" ? "open" : "closed"),
+      min_players: actionMatch?.group.min_players ?? match.players_per_team,
+      max_players: actionMatch?.group.max_players ?? match.players_per_team,
+      attending_count: actionMatch?.group.attending_count ?? 0,
+      my_registration:
+        registrationStatus && registrationStatus !== "unknown" && registrationStatus !== "cancelled"
+          ? { status: registrationStatus, registration_count: registrationStatus === "attending" ? 1 : 0 }
+          : null,
+    }],
+  };
 }
 
 export function paginateMockMatches(matches: AppMatchSummary[], query: Record<string, string>) {

@@ -1,5 +1,6 @@
 export type AppMatchStatus = "registering" | "ongoing" | "ended" | "cancelled";
 export type AppMatchUiPhase = "upcoming" | "ongoing" | "ended" | "excluded";
+export type AppMatchRegistrationStatus = "unknown" | "attending" | "leave" | "absent" | "cancelled";
 
 export interface AppMatchPhaseSource {
   id: string;
@@ -50,6 +51,27 @@ export interface AppMatchSummary extends AppMatchPhaseSource {
   description: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface AppMatchRegistration {
+  status: Exclude<AppMatchRegistrationStatus, "unknown" | "cancelled"> | "cancelled";
+  registration_count: number;
+}
+
+export interface AppMatchGroupDetail {
+  id: string;
+  kind: AppHomeMatchGroup["kind"];
+  team_id: number | null;
+  status: AppHomeMatchGroup["status"];
+  min_players: number | null;
+  max_players: number | null;
+  attending_count: number;
+  my_registration: AppMatchRegistration | null;
+}
+
+export interface AppMatchDetailResponse {
+  match: AppMatchSummary;
+  groups: AppMatchGroupDetail[];
 }
 
 export interface AppMatchHomeResponse {

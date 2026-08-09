@@ -11,7 +11,7 @@ import {
   filterMockChallengeSummaries,
   getMockChallengeDetail,
 } from "./data/challenges";
-import { mockMatchHome, mockMyMatches, paginateMockMatches } from "./data/matches";
+import { getMockMatchDetail, mockMatchHome, mockMyMatches, paginateMockMatches } from "./data/matches";
 import { mockNotifications } from "./data/notifications";
 import { mockBillingFlow, mockPaymentOrders, mockUserAccount } from "./data/billing";
 import { defaultMiniAppRuntimeConfig } from "@/config/runtimeConfigDefaults";
@@ -372,6 +372,11 @@ const routes: MockRoute[] = [
     method: "GET",
     pattern: "/matches",
     handler: (req) => paginateMockMatches(mockMyMatches(), req.query),
+  },
+  {
+    method: "GET",
+    pattern: "/matches/:id",
+    handler: (req) => getMockMatchDetail(req.params.id) ?? undefined,
   },
   {
     method: "POST",

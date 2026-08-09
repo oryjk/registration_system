@@ -1,4 +1,4 @@
-import type { AppMatchHomeResponse, AppMatchListResponse } from "@/types/match";
+import type { AppMatchDetailResponse, AppMatchHomeResponse, AppMatchListResponse } from "@/types/match";
 import { buildQueryString } from "@/utils/queryString";
 import { requestApi } from "@/utils/request";
 
@@ -14,4 +14,8 @@ export function listMyMatches(params: { page: number; pageSize: number }) {
   });
 
   return requestApi<AppMatchListResponse>({ url: `/matches?${query}`, auth: true });
+}
+
+export function getMatchDetail(matchId: string) {
+  return requestApi<AppMatchDetailResponse>({ url: `/matches/${matchId}`, auth: true });
 }

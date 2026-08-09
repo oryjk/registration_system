@@ -13,7 +13,7 @@ import {
 } from "./detailActions";
 import { getActivitySettlement } from "@/api/billing";
 import { searchUsers } from "@/api/user";
-import { loadAuthenticatedMatchDetailContext, loadPublicMatchDetailData } from "./detailData";
+import { GO_MATCH_ID_PATTERN, loadAuthenticatedMatchDetailContext, loadPublicMatchDetailData, toLegacyRegistrationStand } from "./detailData";
 import { useCurrentLocation } from "@/stores/currentLocation";
 import { useTeamContext } from "@/stores/teamContext";
 import { resumeSessionBootstrap } from "@/stores/appSession";
@@ -294,7 +294,10 @@ export function useMatchDetailPage() {
     errorMessage.value = "";
 
     try {
-      const publicData = await loadPublicMatchDetailData(matchId.value);
+      if (GO_MATCH_ID_PATTERN.test(matchId.value)) {
+        await ensureSessionReady();
+      }
+      const publicData = await loadPublicMatchDetailData(matchId.value, currentUser.value?.id);
       const { activity, activityUsers } = publicData;
 
       match.value = activity;
@@ -302,7 +305,7 @@ export function useMatchDetailPage() {
       usersById.value = publicData.usersById;
       sourceTeamRegistrationCount.value = publicData.sourceTeamRegistrationCount;
       existingTeamDerivedActivity.value = null;
-      currentStatus.value = "待定";
+      currentStatus.value = toStandLabel(toLegacyRegistrationStand(publicData.myRegistration?.status));
       teamsById.value = {};
       currentTeamMembers.value = [];
       settlementSummary.value = null;
@@ -323,6 +326,7 @@ export function useMatchDetailPage() {
           activity,
           activityUsers,
           activityPageItems: publicData.activityPageItems,
+          myRegistration: publicData.myRegistration,
           currentTeamId: currentTeam.value?.id,
           currentUserId: currentUser.value?.id,
         });
