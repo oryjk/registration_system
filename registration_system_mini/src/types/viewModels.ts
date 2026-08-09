@@ -1,3 +1,5 @@
+import type { AppMatchUiPhase } from "@/types/match";
+
 export interface TeamProfileViewModel {
   id: number;
   name: string;
@@ -31,6 +33,11 @@ export interface HomeMatchCardViewModel {
   detailUrl: string;
   title: string;
   dateLabel: string;
+  phase: Exclude<AppMatchUiPhase, "excluded">;
+  dateNote: string;
+  showRegistrationProgress: boolean;
+  showParticipantAvatars: boolean;
+  canOpenDetail: boolean;
   stage: string;
   signupScopeLabel: string;
   signupScope: "external" | "internal";

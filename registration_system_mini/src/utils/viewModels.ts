@@ -20,6 +20,7 @@ import type {
   NotificationItemViewModel,
   TeamProfileViewModel,
 } from "@/types/viewModels";
+import type { AppMatchUiPhase } from "@/types/match";
 import {
   formatDateLabel,
   formatDayNumberLabel,
@@ -43,6 +44,37 @@ function toRoleLabel(role: string): string {
 
 function pickFirstNonEmpty(values: Array<string | null | undefined>): string {
   return values.find((value) => value?.trim())?.trim() ?? "";
+}
+
+type VisibleHomeMatchPhase = Exclude<AppMatchUiPhase, "excluded">;
+
+function attachLegacyHomeMatchMeta<T extends HomeMatchCardViewModel>(
+  card: T,
+): T {
+  Object.defineProperties(card, {
+    phase: { value: card.phase, enumerable: false, writable: true, configurable: true },
+    dateNote: { value: card.dateNote, enumerable: false, writable: true, configurable: true },
+    showRegistrationProgress: {
+      value: card.showRegistrationProgress,
+      enumerable: false,
+      writable: true,
+      configurable: true,
+    },
+    showParticipantAvatars: {
+      value: card.showParticipantAvatars,
+      enumerable: false,
+      writable: true,
+      configurable: true,
+    },
+    canOpenDetail: { value: card.canOpenDetail, enumerable: false, writable: true, configurable: true },
+  });
+  return card;
+}
+
+function toLegacyHomeMatchPhase(status: number): VisibleHomeMatchPhase {
+  if (status === 1) return "ongoing";
+  if (status === 2 || status === 3) return "ended";
+  return "upcoming";
 }
 
 export function toStandLabel(stand: number): string {
@@ -204,6 +236,7 @@ export function buildHomeMatchCards({
       const signupScope = activity.source_activity_id ? "internal" : "external";
       const myStatus = toStandLabel(myRecordByActivityId[activity.id]?.stand ?? 0);
       const remainingPlayers = Math.max(requiredPlayers - joinedPlayers, 0);
+      const phase = toLegacyHomeMatchPhase(activity.status);
       const participantAvatars = registrations
         .filter((item) => item.stand === 1)
         .slice(0, 5)
@@ -218,11 +251,16 @@ export function buildHomeMatchCards({
           };
         });
 
-      return {
+      return attachLegacyHomeMatchMeta({
         id: activity.id,
         detailUrl: `/pages/matches/detail?id=${activity.id}`,
         title: activity.name,
         dateLabel: formatDateLabel(activity.holding_date),
+        phase,
+        dateNote: phase === "ended" ? "比赛已结束" : phase === "ongoing" ? "报名已结束" : "截止报名",
+        showRegistrationProgress: phase !== "ended",
+        showParticipantAvatars: phase !== "ended",
+        canOpenDetail: true,
         stage: toActivityStatusLabel(activity.status),
         signupScope,
         signupScopeLabel: signupScope === "internal" ? "队内报名" : "比赛报名",
@@ -245,7 +283,7 @@ export function buildHomeMatchCards({
         participantAvatars,
         remainingPlayersLabel: remainingPlayers > 0 ? `还差 ${remainingPlayers} 人成行` : "已达成行",
         canRegister: true,
-      };
+      });
     });
 }
 
@@ -288,6 +326,7 @@ export function buildPublicHomeMatchCards({
       const myRecord = myRecordByActivityId[activity.id];
       const myStatus = myRecord ? toStandLabel(myRecord.stand) : defaultStatusLabel;
       const remainingPlayers = Math.max(requiredPlayers - joinedPlayers, 0);
+      const phase = toLegacyHomeMatchPhase(activity.status);
       const participantAvatars = registrations
         .filter((item) => item.stand === 1)
         .slice(0, 5)
@@ -302,11 +341,16 @@ export function buildPublicHomeMatchCards({
           };
         });
 
-      return {
+      return attachLegacyHomeMatchMeta({
         id: activity.id,
         detailUrl: `/pages/matches/detail?id=${activity.id}`,
         title: activity.name,
         dateLabel: formatDateLabel(activity.holding_date),
+        phase,
+        dateNote: phase === "ended" ? "比赛已结束" : phase === "ongoing" ? "报名已结束" : "截止报名",
+        showRegistrationProgress: phase !== "ended",
+        showParticipantAvatars: phase !== "ended",
+        canOpenDetail: true,
         stage: toActivityStatusLabel(activity.status),
         signupScope,
         signupScopeLabel: signupScope === "internal" ? "队内报名" : "比赛报名",
@@ -329,7 +373,7 @@ export function buildPublicHomeMatchCards({
         participantAvatars,
         remainingPlayersLabel: remainingPlayers > 0 ? `还差 ${remainingPlayers} 人成行` : "已达成行",
         canRegister: true,
-      };
+      });
     });
 }
 
@@ -360,12 +404,18 @@ export function buildJoinedIndividualHomeMatchCards({
       const capacity = challengeSignupCapacity(summary);
       const joinedPlayers = summary.accepted_count;
       const remainingPlayers = Math.max(minPlayers - joinedPlayers, 0);
+      const phase: VisibleHomeMatchPhase = summary.challenge.status === "matched" ? "ongoing" : "upcoming";
 
-      return {
+      return attachLegacyHomeMatchMeta({
         id: summary.challenge.id,
         detailUrl: `/pages/challenges/detail?id=${summary.challenge.id}`,
         title: summary.challenge.title,
         dateLabel: formatDateLabel(summary.challenge.holding_date),
+        phase,
+        dateNote: phase === "ongoing" ? "比赛进行中" : "截止报名",
+        showRegistrationProgress: true,
+        showParticipantAvatars: false,
+        canOpenDetail: true,
         stage: toIndividualChallengeStageLabel(summary.challenge.status),
         signupScope: "external",
         signupScopeLabel: "散人报名",
@@ -384,7 +434,7 @@ export function buildJoinedIndividualHomeMatchCards({
         remainingPlayersLabel: remainingPlayers > 0 ? `还差 ${remainingPlayers} 人` : "已成行",
         canRegister: true,
         actionLabel: "去查看",
-      };
+      });
     });
 }
 
