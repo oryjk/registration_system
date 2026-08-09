@@ -27,7 +27,7 @@ func TestGetWalletUsesAuthenticatedUser(t *testing.T) {
 	request.Header.Set("Authorization", "Bearer user-token")
 	response := httptest.NewRecorder()
 	router.ServeHTTP(response, request)
-	if response.Code != http.StatusOK || service.actor.ID != 37 || !strings.Contains(response.Body.String(), `"balance_cents":99`) {
+	if response.Code != http.StatusOK || service.actor.ID != 37 || !strings.Contains(response.Body.String(), `"balance_cents":99`) || strings.Contains(response.Body.String(), `"created_at"`) {
 		t.Fatalf("status=%d actor=%+v body=%s", response.Code, service.actor, response.Body.String())
 	}
 }

@@ -25,13 +25,13 @@ type Handler struct{ service WalletService }
 func NewHandler(service WalletService) *Handler { return &Handler{service: service} }
 
 type AccountResponse struct {
-	UserID              int64     `json:"user_id"`
-	BalanceCents        int64     `json:"balance_cents"`
-	TotalRechargedCents int64     `json:"total_recharged_cents"`
-	TotalSpentCents     int64     `json:"total_spent_cents"`
-	Version             int64     `json:"version"`
-	CreatedAt           time.Time `json:"created_at,omitempty"`
-	UpdatedAt           time.Time `json:"updated_at,omitempty"`
+	UserID              int64      `json:"user_id"`
+	BalanceCents        int64      `json:"balance_cents"`
+	TotalRechargedCents int64      `json:"total_recharged_cents"`
+	TotalSpentCents     int64      `json:"total_spent_cents"`
+	Version             int64      `json:"version"`
+	CreatedAt           *time.Time `json:"created_at,omitempty"`
+	UpdatedAt           *time.Time `json:"updated_at,omitempty"`
 }
 
 type TransactionResponse struct {
@@ -126,9 +126,18 @@ func walletActor(c *gin.Context) (sharedauth.Actor, bool) {
 }
 
 func mapAccount(account walletdomain.Account) AccountResponse {
-	return AccountResponse{
+	response := AccountResponse{
 		UserID: account.UserID, BalanceCents: account.BalanceCents,
 		TotalRechargedCents: account.TotalRechargedCents, TotalSpentCents: account.TotalSpentCents,
-		Version: account.Version, CreatedAt: account.CreatedAt, UpdatedAt: account.UpdatedAt,
+		Version: account.Version,
 	}
+	if !account.CreatedAt.IsZero() {
+		createdAt := account.CreatedAt
+		response.CreatedAt = &createdAt
+	}
+	if !account.UpdatedAt.IsZero() {
+		updatedAt := account.UpdatedAt
+		response.UpdatedAt = &updatedAt
+	}
+	return response
 }
