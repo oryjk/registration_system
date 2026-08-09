@@ -1,5 +1,5 @@
 import type { BackendApiResponse } from "@/types/backend";
-import { mockCurrentUser, mockUsers, mockMyActivities } from "./data/users";
+import { findMockUser, mockCurrentUser, mockUsers, mockMyActivities } from "./data/users";
 import { mockTeams, findMockTeam, TEAM_ID_HEXI, TEAM_ID_MINGYUE } from "./data/teams";
 import {
   getMockActivity,
@@ -47,6 +47,18 @@ interface MockRoute {
 }
 
 const mockTeamAttendanceActivityIds = ["act-001", "act-003", "act-005"];
+let mockAuthenticatedUserId = mockCurrentUser.id;
+
+function currentMockUser() {
+  return findMockUser(mockAuthenticatedUserId) ?? mockCurrentUser;
+}
+
+function buildMockMyTeams(userId: number) {
+  return mockTeams.flatMap((team) => {
+    const member = findMockTeam(team.id)?.members.find((item) => item.user_id === userId);
+    return member ? [{ ...team, my_role: member.role, joined_at: member.joined_at }] : [];
+  });
+}
 
 function buildMockTeamAttendanceRecords(teamId: number, userId: number) {
   const supportedTeamIds = [TEAM_ID_MINGYUE, TEAM_ID_HEXI];
@@ -75,12 +87,44 @@ function buildMockTeamAttendanceRecords(teamId: number, userId: number) {
 }
 
 function buildEnvelope<T>(data: T): BackendApiResponse<T> {
-  return { success: true, message: "ok", data };
+  return { code: 0, message: "ok", data };
 }
 
 /** 所有注册的 mock 路由 */
 const routes: MockRoute[] = [
   // ===== 认证 / 用户 =====
+  {
+    method: "POST",
+    pattern: "/auth/wechat/login",
+    handler: () => {
+      mockAuthenticatedUserId = mockCurrentUser.id;
+      return { token: "mock-token-wangrui", user: mockCurrentUser };
+    },
+  },
+  {
+    method: "GET",
+    pattern: "/test-auth/users",
+    handler: () => ({
+      items: mockUsers.slice(0, 6).map((user) => ({
+        id: user.id,
+        display_name: user.real_name || user.nickname || `用户 #${user.id}`,
+        avatar_url: user.avatar_url || null,
+        teams: buildMockMyTeams(user.id).map((team) => ({ id: team.id, name: team.name, role: team.my_role ?? "member" })),
+      })),
+      default_user_id: mockCurrentUser.id,
+    }),
+  },
+  {
+    method: "POST",
+    pattern: "/test-auth/login",
+    handler: (req) => {
+      const userId = Number((req.body as { user_id?: number } | undefined)?.user_id);
+      const user = findMockUser(userId);
+      if (!user) return undefined;
+      mockAuthenticatedUserId = user.id;
+      return { token: `mock-token-${user.id}`, user };
+    },
+  },
   {
     method: "POST",
     pattern: "/wx/login",
@@ -101,8 +145,21 @@ const routes: MockRoute[] = [
     handler: () => mockCurrentUser,
   },
   {
+    method: "GET",
+    pattern: "/users/me",
+    handler: () => currentMockUser(),
+  },
+  {
     method: "PATCH",
     pattern: "/user/info",
+    handler: (req) => {
+      const body = (req.body ?? {}) as Record<string, unknown>;
+      return { ...mockCurrentUser, ...body };
+    },
+  },
+  {
+    method: "PATCH",
+    pattern: "/users/me",
     handler: (req) => {
       const body = (req.body ?? {}) as Record<string, unknown>;
       return { ...mockCurrentUser, ...body };
@@ -148,11 +205,23 @@ const routes: MockRoute[] = [
   },
   {
     method: "GET",
+    pattern: "/teams/my",
+    handler: () => buildMockMyTeams(mockAuthenticatedUserId),
+  },
+  {
+    method: "GET",
     pattern: "/teams/:id",
     handler: (req) => {
       const teamId = Number(req.params.id);
-      return findMockTeam(teamId) ?? undefined;
+      const detail = findMockTeam(teamId);
+      if (!detail) return undefined;
+      return detail;
     },
+  },
+  {
+    method: "GET",
+    pattern: "/teams/:id/members",
+    handler: (req) => findMockTeam(Number(req.params.id))?.members ?? undefined,
   },
   {
     method: "GET",

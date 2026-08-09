@@ -78,6 +78,24 @@ func TestHealthRoute(t *testing.T) {
 	}
 }
 
+func TestLocalH5PreflightIsAllowed(t *testing.T) {
+	router := NewRouter(Dependencies{})
+	request := httptest.NewRequest(http.MethodOptions, "/api/v1/app/test-auth/users", nil)
+	request.Header.Set("Origin", "http://localhost:5175")
+	request.Header.Set("Access-Control-Request-Method", http.MethodGet)
+	request.Header.Set("Access-Control-Request-Headers", "authorization,content-type")
+	response := httptest.NewRecorder()
+
+	router.ServeHTTP(response, request)
+
+	if response.Code != http.StatusNoContent {
+		t.Fatalf("expected preflight status %d, got %d", http.StatusNoContent, response.Code)
+	}
+	if response.Header().Get("Access-Control-Allow-Origin") != "http://localhost:5175" {
+		t.Fatalf("unexpected allow origin %q", response.Header().Get("Access-Control-Allow-Origin"))
+	}
+}
+
 func TestSwaggerRoutesServeEmbeddedOpenAPI(t *testing.T) {
 	router := NewRouter(Dependencies{})
 

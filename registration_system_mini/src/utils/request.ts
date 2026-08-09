@@ -1,4 +1,4 @@
-import { getApiBaseUrl } from "@/config/apiBase";
+import { buildAppApiUrl, getApiBaseUrl } from "@/config/apiBase";
 import { getAccessToken } from "@/utils/authStorage";
 import { isMockEnabled, tryMockRequest } from "@/mock";
 import type { BackendApiResponse } from "@/types/backend";
@@ -24,7 +24,7 @@ export class ApiRequestError extends Error {
 }
 
 export function isUnauthorizedError(error: unknown): boolean {
-  return error instanceof ApiRequestError && (error.statusCode === 401 || error.statusCode === 403);
+  return error instanceof ApiRequestError && error.statusCode === 401;
 }
 
 export async function requestRaw<TResponse, TBody extends RequestPayload = Record<string, unknown>>(
@@ -32,7 +32,7 @@ export async function requestRaw<TResponse, TBody extends RequestPayload = Recor
 ): Promise<TResponse> {
   const token = options.auth ? getAccessToken() : "";
   const method = options.method ?? "GET";
-  const requestUrl = /^https?:\/\//i.test(options.url) ? options.url : `${getApiBaseUrl()}${options.url}`;
+  const requestUrl = /^https?:\/\//i.test(options.url) ? options.url : buildAppApiUrl(getApiBaseUrl(), options.url);
 
   // Mock 拦截：开发环境下通过 VITE_USE_MOCK 开启，直接返回 mock 数据，不发网络请求
   if (isMockEnabled()) {
@@ -76,8 +76,8 @@ export async function requestApi<TResponse, TBody extends RequestPayload = Recor
   options: RequestOptions<TBody>,
 ): Promise<TResponse> {
   const response = await requestRaw<BackendApiResponse<TResponse>, TBody>(options);
-  if (!response.success) {
-    throw new ApiRequestError(response.message || "请求失败");
+  if (response.code !== 0) {
+    throw new ApiRequestError(response.message || "请求失败", response.code || 0);
   }
 
   return (response.data ?? null) as TResponse;

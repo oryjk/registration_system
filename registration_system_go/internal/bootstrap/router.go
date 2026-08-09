@@ -35,6 +35,7 @@ type Dependencies struct {
 func NewRouter(dependencies Dependencies) *gin.Engine {
 	router := gin.New()
 	router.Use(gin.Logger(), gin.Recovery())
+	router.Use(localDevelopmentCORS())
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, sharedhttp.Success(gin.H{"status": "ok"}))
 	})

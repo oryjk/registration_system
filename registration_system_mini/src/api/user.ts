@@ -5,33 +5,38 @@ import type {
   BackendUser,
   BackendUserActivityRecord,
   BackendUserAttendanceRecord,
-  BackendUserLoginResponse,
 } from "@/types/backend";
+import type { AppUser } from "@/types/app";
 import { getApiBaseUrl } from "@/config/apiBase";
 import { getAccessToken } from "@/utils/authStorage";
 import type { DateRangeParams } from "@/utils/dateRange";
 import { buildQueryString } from "@/utils/queryString";
 import { ApiRequestError, requestApi } from "@/utils/request";
 
-export function loginWithOpenId(payload: {
-  open_id: string;
-  union_id?: string | null;
-  username?: string;
-  nickname?: string;
-  avatar_url?: string;
-}) {
-  return requestApi<BackendUserLoginResponse>({
-    url: "/user/login",
-    method: "POST",
-    data: payload,
+export function getMe() {
+  return requestApi<AppUser>({
+    url: "/users/me",
+    auth: true,
   });
 }
 
-export function getCurrentUser() {
-  return requestApi<BackendUser>({
-    url: "/user/info",
-    auth: true,
-  });
+export function toLegacyUser(user: AppUser): BackendUser {
+  return {
+    id: user.id,
+    open_id: "",
+    username: "",
+    nickname: user.nickname,
+    real_name: user.real_name ?? "",
+    avatar_url: user.avatar_url ?? "",
+    phone_number: user.phone_number ?? "",
+    is_manager: false,
+    is_venue: false,
+  };
+}
+
+/** 页面展示层暂时沿用旧模型，协议切换集中在 API 适配层。 */
+export async function getCurrentUser() {
+  return toLegacyUser(await getMe());
 }
 
 export function updateMyProfile(payload: {
@@ -39,12 +44,15 @@ export function updateMyProfile(payload: {
   real_name?: string;
   avatar_url?: string;
 }) {
-  return requestApi<BackendUser>({
-    url: "/user/info",
+  return requestApi<AppUser>({
+    url: "/users/me",
     method: "PATCH",
-    data: payload,
+    data: {
+      nickname: payload.nickname,
+      real_name: payload.real_name,
+    },
     auth: true,
-  });
+  }).then(toLegacyUser);
 }
 
 export function bindMyPhoneNumber(payload: { phone_number: string }) {
@@ -79,7 +87,7 @@ export async function uploadMyAvatar(filePath: string) {
           return;
         }
 
-        if (!parsed?.success || !parsed.data) {
+        if (parsed?.code !== 0 || !parsed.data) {
           reject(new ApiRequestError(parsed?.message || "头像上传失败", response.statusCode));
           return;
         }

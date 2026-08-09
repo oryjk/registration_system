@@ -1,7 +1,7 @@
 import { computed, ref } from "vue";
+import { listTestLoginUsers, testLogin, wechatLogin } from "@/api/auth";
 import { getMyTeams, getTeamDetail } from "@/api/team";
-import { getCurrentUser, loginWithOpenId } from "@/api/user";
-import { wxLogin } from "@/api/wx";
+import { getCurrentUser, toLegacyUser } from "@/api/user";
 import { isMockEnabled } from "@/mock";
 import type { BackendTeam, BackendTeamDetail, BackendUser } from "@/types/backend";
 import type { TeamProfileViewModel } from "@/types/viewModels";
@@ -157,17 +157,12 @@ async function bootstrapMockSession() {
 async function loginAndBootstrap(sessionBootstrapVersion: number) {
   const code = await requestWechatCode();
   assertSessionVersion(sessionBootstrapVersion);
-  const wxSession = await wxLogin(code);
-  assertSessionVersion(sessionBootstrapVersion);
-  const loginResult = await loginWithOpenId({
-    open_id: wxSession.openid,
-    union_id: wxSession.unionid ?? undefined,
-  });
+  const loginResult = await wechatLogin(code);
   assertSessionVersion(sessionBootstrapVersion);
 
-  setAccessToken(loginResult.access_token);
+  setAccessToken(loginResult.token);
   assertSessionVersion(sessionBootstrapVersion);
-  currentUser.value = loginResult.user;
+  currentUser.value = toLegacyUser(loginResult.user);
   await loadTeamContext();
   assertSessionVersion(sessionBootstrapVersion);
 }
@@ -237,7 +232,43 @@ export async function ensureSessionReady(force = false) {
 }
 
 export async function refreshSessionContext() {
+  // #ifdef H5
+  if (import.meta.env.MODE !== "production" && import.meta.env.VITE_ENABLE_H5_TEST_LOGIN === "true") {
+    const result = await listTestLoginUsers();
+    const defaultUserId = result.items.some((user) => user.id === result.default_user_id)
+      ? result.default_user_id
+      : result.items[0]?.id;
+    if (!defaultUserId) {
+      throw new Error("Go 后端没有可用的 H5 测试用户");
+    }
+    await loginWithTestUser(defaultUserId);
+    return;
+  }
+  // #endif
+
   await ensureSessionReady(true);
+}
+
+export async function loginWithTestUser(userId: number) {
+  const loginVersion = ++sessionVersion;
+  clearManualLogout();
+  isBootstrapping.value = true;
+  bootstrapError.value = "";
+
+  try {
+    const loginResult = await testLogin(userId);
+    assertSessionVersion(loginVersion);
+    setAccessToken(loginResult.token);
+    currentUser.value = toLegacyUser(loginResult.user);
+    await loadTeamContext();
+    assertSessionVersion(loginVersion);
+  } catch (error) {
+    resetSessionState();
+    bootstrapError.value = error instanceof Error ? error.message : "测试用户登录失败";
+    throw error;
+  } finally {
+    isBootstrapping.value = false;
+  }
 }
 
 export async function restoreSessionFromStorage() {
@@ -336,6 +367,7 @@ export function useAppSession() {
     switchIdentity,
     ensureSessionReady,
     refreshSessionContext,
+    loginWithTestUser,
     restoreSessionFromStorage,
   };
 }

@@ -5,6 +5,9 @@ import { useCurrentLocation } from "@/stores/currentLocation";
 import { isOpenLocationSupported } from "@/utils/location";
 import { getAppPlatform } from "@/utils/systemInfo";
 import FloatingLoginPrompt from "@/components/FloatingLoginPrompt.vue";
+// #ifdef H5
+import H5TestLoginPanel from "@/components/H5TestLoginPanel.vue";
+// #endif
 
 const props = withDefaults(
   defineProps<{
@@ -126,6 +129,10 @@ async function handleRefreshLocation() {
   </view>
 
   <FloatingLoginPrompt />
+
+  <!-- #ifdef H5 -->
+  <H5TestLoginPanel />
+  <!-- #endif -->
 
   <view v-if="showLocationSheet" class="location-sheet-mask" @tap="closeLocationSheet">
     <view class="location-sheet" @tap.stop>

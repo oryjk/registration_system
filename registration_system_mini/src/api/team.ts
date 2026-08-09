@@ -5,11 +5,13 @@ import type {
   BackendTeamCreditTransaction,
   BackendTeamDetail,
   BackendTeamLogoUploadResult,
+  BackendTeamMember,
   BackendTeamMemberAttendance,
   BackendTeamPasswordInfo,
   BackendTeamSummary,
   BackendApiResponse,
 } from "@/types/backend";
+import type { AppTeamDetail, AppTeamMember, MyTeam } from "@/types/app";
 import { getApiBaseUrl } from "@/config/apiBase";
 import { getAccessToken } from "@/utils/authStorage";
 import { buildQueryString } from "@/utils/queryString";
@@ -47,18 +49,72 @@ export function joinTeam(payload: { team_id: number; password?: string }) {
   });
 }
 
-export function getMyTeams() {
-  return requestApi<BackendTeam[]>({
-    url: "/teams/my-teams",
-    auth: true,
-  });
+function teamStatusNumber(status: string | number): number {
+  if (typeof status === "number") return status;
+  return status === "active" ? 1 : 0;
 }
 
-export function getTeamDetail(teamId: number) {
-  return requestApi<BackendTeamDetail>({
+function memberStatusNumber(status: string | number): number {
+  if (typeof status === "number") return status;
+  return status === "active" ? 1 : 0;
+}
+
+function toLegacyTeam(team: MyTeam | AppTeamDetail | BackendTeam): BackendTeam {
+  const item = team as MyTeam & Partial<BackendTeam>;
+  return {
+    id: item.id,
+    name: item.name,
+    description: item.description ?? null,
+    logo_url: item.logo_url ?? null,
+    captain_id: item.captain_id ?? null,
+    status: teamStatusNumber(item.status ?? 1),
+    credit_score: item.credit_score ?? 0,
+    vip_until: item.vip_until ?? null,
+    trust_label: item.trust_label ?? "暂无评价",
+    is_vip: item.is_vip ?? false,
+    member_count: item.member_count,
+    my_role: item.my_role ?? item.role,
+    joined_at: item.joined_at,
+  };
+}
+
+function toLegacyMember(member: AppTeamMember): BackendTeamMember {
+  return {
+    user_id: member.user_id,
+    role: member.role,
+    jersey_number: null,
+    is_member: member.status === "active",
+    joined_at: member.joined_at,
+    status: memberStatusNumber(member.status),
+  };
+}
+
+export async function getMyTeams() {
+  const teams = await requestApi<Array<MyTeam | BackendTeam>>({
+    url: "/teams/my",
+    auth: true,
+  });
+  return teams.map(toLegacyTeam);
+}
+
+export async function getTeamDetail(teamId: number) {
+  const detail = await requestApi<AppTeamDetail | BackendTeamDetail>({
     url: `/teams/${teamId}`,
     auth: true,
   });
+
+  if ("team" in detail) {
+    return detail;
+  }
+
+  const members = await requestApi<AppTeamMember[]>({
+    url: `/teams/${teamId}/members`,
+    auth: true,
+  });
+  return {
+    team: toLegacyTeam(detail),
+    members: members.map(toLegacyMember),
+  } satisfies BackendTeamDetail;
 }
 
 export function getTeamPasswordInfo(teamId: number) {
@@ -108,7 +164,7 @@ export async function uploadTeamLogo(teamId: number, filePath: string) {
           return;
         }
 
-        if (!parsed?.success || !parsed.data) {
+        if (parsed?.code !== 0 || !parsed.data) {
           reject(new ApiRequestError(parsed?.message || "球队 Logo 上传失败", response.statusCode));
           return;
         }
