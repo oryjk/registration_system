@@ -139,7 +139,7 @@ function handleMatchTap(match: HomeMatchCardViewModel) {
 
   navigatingMatchId.value = match.id;
   uni.navigateTo({
-    url: `/pages/matches/detail?id=${match.id}`,
+    url: match.detailUrl,
     complete: () => {
       setTimeout(() => {
         navigatingMatchId.value = "";

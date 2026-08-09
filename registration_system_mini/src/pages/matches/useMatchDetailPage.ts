@@ -96,6 +96,7 @@ export function useMatchDetailPage() {
   const isGuestLoginSubmitting = ref(false);
   const isGoMatchDetail = ref(false);
   const goRegistrationGroupId = ref("");
+  const preferredGoRegistrationGroupId = ref("");
 
   let countdownTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -301,7 +302,10 @@ export function useMatchDetailPage() {
       if (GO_MATCH_ID_PATTERN.test(matchId.value)) {
         await ensureSessionReady();
       }
-      const publicData = await loadPublicMatchDetailData(matchId.value, currentUser.value?.id);
+      const publicData = await loadPublicMatchDetailData(matchId.value, currentUser.value?.id, {
+        preferredGroupId: preferredGoRegistrationGroupId.value,
+        currentTeamId: currentTeam.value?.id,
+      });
       const { activity, activityUsers } = publicData;
 
       match.value = activity;
@@ -902,6 +906,7 @@ export function useMatchDetailPage() {
 
   onLoad((options) => {
     matchId.value = options?.id ?? "";
+    preferredGoRegistrationGroupId.value = options?.groupId ?? "";
     startCountdownTimer();
     void loadPageData();
   });

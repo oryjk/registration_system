@@ -245,7 +245,9 @@ export function toGoHomeMatchCard(
 
   return {
     id: item.id,
-    detailUrl: `/pages/matches/detail?id=${item.id}`,
+    detailUrl: actionMatch
+      ? `/pages/matches/detail?id=${item.id}&groupId=${actionMatch.group.id}`
+      : `/pages/matches/detail?id=${item.id}`,
     title: item.name,
     dateLabel: formatDateLabel(item.start_time),
     dateSource: item.start_time,

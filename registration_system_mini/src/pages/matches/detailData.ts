@@ -36,6 +36,11 @@ export interface MatchDetailDataLoaders {
   listUsers: typeof listUsers;
 }
 
+export interface MatchDetailGroupSelection {
+  preferredGroupId?: string;
+  currentTeamId?: number | null;
+}
+
 const defaultMatchDetailDataLoaders: MatchDetailDataLoaders = {
   getActivity,
   getActivityUsers,
@@ -111,8 +116,20 @@ export function toBackendRegistration(
   };
 }
 
-export function buildGoPublicMatchDetailData(goDetail: AppMatchDetailResponse, currentUserId?: number): PublicMatchDetailData {
-  const group = goDetail.groups.find((item) => item.my_registration) ?? goDetail.groups[0];
+export function buildGoPublicMatchDetailData(
+  goDetail: AppMatchDetailResponse,
+  currentUserId?: number,
+  selection: MatchDetailGroupSelection = {},
+): PublicMatchDetailData {
+  const group =
+    goDetail.groups.find((item) => item.my_registration) ??
+    goDetail.groups.find((item) => item.id === selection.preferredGroupId) ??
+    (selection.currentTeamId != null
+      ? goDetail.groups.find((item) => item.team_id === selection.currentTeamId)
+      : undefined) ??
+    goDetail.groups.find((item) => item.kind === "individual_opponent" && item.status === "open") ??
+    goDetail.groups.find((item) => item.status === "open") ??
+    goDetail.groups[0];
   const activity = toBackendActivity(goDetail.match, group);
   const myRegistration = group?.my_registration ?? null;
   const activityUsers = myRegistration && currentUserId
@@ -137,10 +154,11 @@ export function buildGoPublicMatchDetailData(goDetail: AppMatchDetailResponse, c
 export async function loadPublicMatchDetailData(
   matchId: string,
   currentUserId?: number,
+  selection: MatchDetailGroupSelection = {},
   loaders: MatchDetailDataLoaders = defaultMatchDetailDataLoaders,
 ): Promise<PublicMatchDetailData> {
   if (GO_MATCH_ID_PATTERN.test(matchId)) {
-    return buildGoPublicMatchDetailData(await loaders.getMatchDetail(matchId), currentUserId);
+    return buildGoPublicMatchDetailData(await loaders.getMatchDetail(matchId), currentUserId, selection);
   }
 
   const activity = await loaders.getActivity(matchId);

@@ -148,7 +148,131 @@ describe("Go match detail adapter", () => {
     expect(data.sourceTeamRegistrationCount).toEqual(0);
   });
 
-  test("loads a UUID detail without requesting legacy users or activities", async () => {
+  test("selects the unregistered current team's group when a match has two team groups", () => {
+    const data = buildGoPublicMatchDetailData({
+      match: goMatch,
+      groups: [
+        {
+          id: "a7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c101",
+          kind: "host_team",
+          team_id: 101,
+          status: "open",
+          min_players: 6,
+          max_players: 8,
+          attending_count: 6,
+          my_registration: null,
+        },
+        {
+          id: "a7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c102",
+          kind: "guest_team",
+          team_id: 102,
+          status: "open",
+          min_players: 6,
+          max_players: 8,
+          attending_count: 5,
+          my_registration: null,
+        },
+      ],
+    }, 37, { currentTeamId: 102 });
+
+    expect(data.goRegistrationGroupId).toEqual("a7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c102");
+    expect(data.activity.team_registration_count).toEqual(5);
+  });
+
+  test("prefers the action group's id over the current team fallback", () => {
+    const data = buildGoPublicMatchDetailData({
+      match: goMatch,
+      groups: [
+        {
+          id: "a7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c201",
+          kind: "host_team",
+          team_id: 101,
+          status: "open",
+          min_players: 6,
+          max_players: 8,
+          attending_count: 6,
+          my_registration: null,
+        },
+        {
+          id: "a7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c202",
+          kind: "guest_team",
+          team_id: 102,
+          status: "open",
+          min_players: 6,
+          max_players: 8,
+          attending_count: 5,
+          my_registration: null,
+        },
+      ],
+    }, 37, {
+      preferredGroupId: "a7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c202",
+      currentTeamId: 101,
+    });
+
+    expect(data.goRegistrationGroupId).toEqual("a7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c202");
+  });
+
+  test("selects an open individual opponent group when no team group applies", () => {
+    const data = buildGoPublicMatchDetailData({
+      match: goMatch,
+      groups: [
+        {
+          id: "a7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c301",
+          kind: "host_team",
+          team_id: 101,
+          status: "closed",
+          min_players: 6,
+          max_players: 8,
+          attending_count: 8,
+          my_registration: null,
+        },
+        {
+          id: "a7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c302",
+          kind: "individual_opponent",
+          team_id: null,
+          status: "open",
+          min_players: 6,
+          max_players: 8,
+          attending_count: 4,
+          my_registration: null,
+        },
+      ],
+    }, 37);
+
+    expect(data.goRegistrationGroupId).toEqual("a7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c302");
+  });
+
+  test("selects another open group before falling back to the first group", () => {
+    const data = buildGoPublicMatchDetailData({
+      match: goMatch,
+      groups: [
+        {
+          id: "a7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c401",
+          kind: "host_team",
+          team_id: 101,
+          status: "closed",
+          min_players: 6,
+          max_players: 8,
+          attending_count: 8,
+          my_registration: null,
+        },
+        {
+          id: "a7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c402",
+          kind: "guest_team",
+          team_id: 102,
+          status: "open",
+          min_players: 6,
+          max_players: 8,
+          attending_count: 4,
+          my_registration: null,
+        },
+      ],
+    }, 37);
+
+    expect(data.goRegistrationGroupId).toEqual("a7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c402");
+  });
+
+  test("loads the preferred UUID group without requesting legacy users or activities", async () => {
     const calls: string[] = [];
     const goDetail: AppMatchDetailResponse = {
       match: goMatch,
@@ -160,11 +284,23 @@ describe("Go match detail adapter", () => {
         min_players: 6,
         max_players: 8,
         attending_count: 1,
-        my_registration: { status: "attending", registration_count: 1 },
+        my_registration: null,
+      }, {
+        id: "a7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c004",
+        kind: "guest_team",
+        team_id: 102,
+        status: "open",
+        min_players: 6,
+        max_players: 8,
+        attending_count: 5,
+        my_registration: null,
       }],
     };
 
     const data = await loadPublicMatchDetailData(goMatch.id, 37, {
+      preferredGroupId: goDetail.groups[1].id,
+      currentTeamId: 101,
+    }, {
       getMatchDetail: async () => {
         calls.push("match-detail");
         return goDetail;
@@ -190,7 +326,7 @@ describe("Go match detail adapter", () => {
     expect(calls).toEqual(["match-detail"]);
     expect({ fromGo: data.fromGo, goRegistrationGroupId: data.goRegistrationGroupId }).toEqual({
       fromGo: true,
-      goRegistrationGroupId: goDetail.groups[0].id,
+      goRegistrationGroupId: goDetail.groups[1].id,
     });
   });
 });

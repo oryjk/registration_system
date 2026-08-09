@@ -307,6 +307,7 @@ describe("toGoHomeMatchCard", () => {
     expect(card.showRegistrationProgress).toEqual(true);
     expect(card.showParticipantAvatars).toEqual(true);
     expect(card.canOpenDetail).toEqual(true);
+    expect(card.detailUrl).toEqual("/pages/matches/detail?id=upcoming-card&groupId=group-upcoming");
   });
 
   test("maps list summaries into the shared card model", () => {
