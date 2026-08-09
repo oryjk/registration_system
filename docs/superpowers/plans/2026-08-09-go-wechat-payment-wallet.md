@@ -146,7 +146,7 @@
 
 ### Task 6: OpenAPI and operational documentation
 
-**Status:** Completed; pending the documentation commit.
+**Status:** Completed in `f28771a`.
 
 **Files:**
 - Modify: `registration_system_go/docs/openapi.yaml`
@@ -167,7 +167,7 @@
 
 ### Task 7: Full verification
 
-**Status:** In progress.
+**Status:** Completed; PostgreSQL integration tests were skipped because `TEST_DATABASE_URL` was not configured.
 
 **Files:**
 - Verify only; fix defects in the owning files with a new failing regression test first.
@@ -175,8 +175,8 @@
 **Interfaces:**
 - Produces a buildable API and a verification report that distinguishes unit/compile checks from optional database integration checks.
 
-- [ ] Run `gofmt -w .`.
-- [ ] Run `go test -race` for all packages that do not require PostgreSQL.
-- [ ] Run `TEST_DATABASE_URL=<isolated-url> go test -race ./internal/payment/adapters/postgres ./internal/wallet/adapters/postgres` only when a dedicated test database is available.
-- [ ] Run `go test -run '^$' ./...`, `go vet ./...`, `go build -o /tmp/registration-system-go-api ./cmd/api`, and `git diff --check`.
-- [ ] Inspect `git status`, verify no mini/Rust files changed, and commit any final regression/documentation fixes.
+- [x] Run `gofmt -w .`.
+- [x] Run `go test -race` for all packages that do not require PostgreSQL.
+- [x] Run `TEST_DATABASE_URL=<isolated-url> go test -race ./internal/payment/adapters/postgres ./internal/wallet/adapters/postgres` only when a dedicated test database is available. No dedicated URL was configured, so the adapters skipped explicitly.
+- [x] Run `go test -run '^$' ./...`, `go vet ./...`, `go build -o /tmp/registration-system-go-api ./cmd/api`, and `git diff --check`.
+- [x] Inspect `git status`, verify no mini/Rust files changed, and commit any final regression/documentation fixes.
