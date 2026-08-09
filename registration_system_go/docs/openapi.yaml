@@ -2,13 +2,2092 @@ openapi: 3.0.3
 info:
   title: Registration System Go API
   version: 1.0.0
+  description: 赛事报名与球队管理 Go 后端 HTTP API。
 servers:
   - url: http://127.0.0.1:18080
+    description: 本地开发服务
+tags:
+  - name: System
+  - name: App Auth
+  - name: App Users
+  - name: App Teams
+  - name: App Matches
+  - name: App Registrations
+  - name: App Team Applications
+  - name: Admin Auth
+  - name: Admin Users
+  - name: Admin Teams
+  - name: Admin Matches
+  - name: Admin Team Applications
+
+x-bearer-security: &bearerSecurity
+  - bearerAuth: []
+x-standard-errors: &standardErrors
+  "401":
+    $ref: "#/components/responses/Unauthorized"
+  "403":
+    $ref: "#/components/responses/Forbidden"
+  "404":
+    $ref: "#/components/responses/NotFound"
+  "409":
+    $ref: "#/components/responses/Conflict"
+  "422":
+    $ref: "#/components/responses/ValidationError"
+  "500":
+    $ref: "#/components/responses/InternalError"
+
 paths:
   /health:
     get:
       operationId: getHealth
+      tags: [System]
       summary: 健康检查
+      security: []
       responses:
         "200":
           description: 服务正常
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+
+  /api/v1/app/auth/wechat/login:
+    post:
+      operationId: loginAppWithWechat
+      tags: [App Auth]
+      summary: 微信登录
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WechatLoginRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/WechatLoginSuccess"
+        <<: *standardErrors
+
+  /api/v1/app/test-auth/users:
+    get:
+      operationId: listH5TestLoginUsers
+      tags: [App Auth]
+      summary: 列出 H5 测试登录账号
+      description: 仅用于 development/test 环境，且必须配置 ENABLE_H5_TEST_LOGIN=true 才会注册该接口。
+      security: []
+      responses:
+        "200":
+          description: 可选测试账号列表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TestLoginUsersEnvelope"
+        <<: *standardErrors
+
+  /api/v1/app/test-auth/login:
+    post:
+      operationId: loginAppAsH5TestUser
+      tags: [App Auth]
+      summary: 使用 H5 测试账号登录
+      description: 仅用于 development/test 环境，且必须配置 ENABLE_H5_TEST_LOGIN=true 才会注册该接口。
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TestLoginRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/WechatLoginSuccess"
+        <<: *standardErrors
+
+  /api/v1/app/users/me:
+    get:
+      operationId: getCurrentAppUser
+      tags: [App Users]
+      summary: 获取当前用户资料
+      security: *bearerSecurity
+      responses:
+        "200":
+          description: 当前用户资料
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProfileEnvelope"
+        <<: *standardErrors
+    patch:
+      operationId: updateCurrentAppUser
+      tags: [App Users]
+      summary: 更新当前用户资料
+      security: *bearerSecurity
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateMeRequest"
+      responses:
+        "200":
+          description: 更新后的用户资料
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProfileEnvelope"
+        <<: *standardErrors
+
+  /api/v1/app/teams/my:
+    get:
+      operationId: listCurrentUserTeams
+      tags: [App Teams]
+      summary: 获取当前用户的球队
+      security: *bearerSecurity
+      responses:
+        "200":
+          description: 球队成员关系列表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamMembershipListEnvelope"
+        <<: *standardErrors
+
+  /api/v1/app/teams/{id}:
+    get:
+      operationId: getAppTeam
+      tags: [App Teams]
+      summary: 获取球队详情
+      security: *bearerSecurity
+      parameters:
+        - $ref: "#/components/parameters/TeamID"
+      responses:
+        "200":
+          description: 球队详情
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AppTeamDetailEnvelope"
+        <<: *standardErrors
+
+  /api/v1/app/teams/{id}/members:
+    get:
+      operationId: listAppTeamMembers
+      tags: [App Teams]
+      summary: 获取球队成员
+      security: *bearerSecurity
+      parameters:
+        - $ref: "#/components/parameters/TeamID"
+      responses:
+        "200":
+          description: 球队成员列表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AppTeamMemberListEnvelope"
+        <<: *standardErrors
+
+  /api/v1/app/matches:
+    get:
+      operationId: listAppMatches
+      tags: [App Matches]
+      summary: 获取用户端比赛列表
+      security: *bearerSecurity
+      parameters:
+        - $ref: "#/components/parameters/MatchScope"
+        - $ref: "#/components/parameters/Search"
+        - $ref: "#/components/parameters/MatchStatus"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: 分页比赛列表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserMatchListEnvelope"
+        <<: *standardErrors
+
+  /api/v1/app/matches/home:
+    get:
+      operationId: getAppMatchHome
+      tags: [App Matches]
+      summary: 获取用户端比赛首页
+      security: *bearerSecurity
+      responses:
+        "200":
+          description: 待处理和已结束比赛摘要
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserMatchHomeEnvelope"
+        <<: *standardErrors
+
+  /api/v1/app/matches/{id}:
+    get:
+      operationId: getAppMatch
+      tags: [App Matches]
+      summary: 获取用户端比赛详情
+      security: *bearerSecurity
+      parameters:
+        - $ref: "#/components/parameters/MatchID"
+      responses:
+        "200":
+          description: 比赛与当前用户报名状态
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserMatchDetailEnvelope"
+        <<: *standardErrors
+
+  /api/v1/app/matches/{id}/groups/{group_id}/my-registration:
+    put:
+      operationId: putMyMatchRegistration
+      tags: [App Registrations]
+      summary: 创建或更新我的报名
+      security: *bearerSecurity
+      parameters:
+        - $ref: "#/components/parameters/MatchID"
+        - $ref: "#/components/parameters/GroupID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MyRegistrationRequest"
+      responses:
+        "200":
+          description: 当前报名结果
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MyRegistrationEnvelope"
+        <<: *standardErrors
+    delete:
+      operationId: deleteMyMatchRegistration
+      tags: [App Registrations]
+      summary: 取消我的报名
+      security: *bearerSecurity
+      parameters:
+        - $ref: "#/components/parameters/MatchID"
+        - $ref: "#/components/parameters/GroupID"
+      responses:
+        "200":
+          description: 取消后的报名记录
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MyRegistrationEnvelope"
+        <<: *standardErrors
+
+  /api/v1/app/matches/{id}/team-applications:
+    get:
+      operationId: listAppTeamApplications
+      tags: [App Team Applications]
+      summary: 获取比赛球队申请
+      security: *bearerSecurity
+      parameters:
+        - $ref: "#/components/parameters/MatchID"
+      responses:
+        "200":
+          description: 球队申请列表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamApplicationListEnvelope"
+        <<: *standardErrors
+    post:
+      operationId: createAppTeamApplication
+      tags: [App Team Applications]
+      summary: 提交球队申请
+      security: *bearerSecurity
+      parameters:
+        - $ref: "#/components/parameters/MatchID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTeamApplicationRequest"
+      responses:
+        "200":
+          description: 创建的球队申请
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamApplicationEnvelope"
+        <<: *standardErrors
+
+  /api/v1/app/matches/{id}/team-applications/{application_id}/select:
+    post:
+      operationId: selectAppTeamApplication
+      tags: [App Team Applications]
+      summary: 选中球队申请
+      security: *bearerSecurity
+      parameters:
+        - $ref: "#/components/parameters/MatchID"
+        - $ref: "#/components/parameters/ApplicationID"
+      responses:
+        "200":
+          description: 更新后的球队申请
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamApplicationEnvelope"
+        <<: *standardErrors
+
+  /api/v1/app/matches/{id}/team-applications/{application_id}/withdraw:
+    post:
+      operationId: withdrawAppTeamApplication
+      tags: [App Team Applications]
+      summary: 撤回球队申请
+      security: *bearerSecurity
+      parameters:
+        - $ref: "#/components/parameters/MatchID"
+        - $ref: "#/components/parameters/ApplicationID"
+      responses:
+        "200":
+          description: 更新后的球队申请
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamApplicationEnvelope"
+        <<: *standardErrors
+
+  /api/v1/admin/auth/login:
+    post:
+      operationId: loginAdmin
+      tags: [Admin Auth]
+      summary: 管理员登录
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminLoginRequest"
+      responses:
+        "200":
+          description: 管理员令牌与资料
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminLoginEnvelope"
+        <<: *standardErrors
+
+  /api/v1/admin/auth/me:
+    get:
+      operationId: getCurrentAdmin
+      tags: [Admin Auth]
+      summary: 获取当前管理员
+      security: *bearerSecurity
+      responses:
+        "200":
+          description: 当前管理员资料
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminEnvelope"
+        <<: *standardErrors
+
+  /api/v1/admin/admins:
+    get:
+      operationId: listAdmins
+      tags: [Admin Auth]
+      summary: 获取管理员列表
+      security: *bearerSecurity
+      responses:
+        "200":
+          description: 管理员列表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminListEnvelope"
+        <<: *standardErrors
+    post:
+      operationId: createAdmin
+      tags: [Admin Auth]
+      summary: 创建管理员
+      security: *bearerSecurity
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAdminRequest"
+      responses:
+        "200":
+          description: 创建的管理员
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminEnvelope"
+        <<: *standardErrors
+
+  /api/v1/admin/teams:
+    get:
+      operationId: listAdminTeams
+      tags: [Admin Teams]
+      summary: 获取球队列表
+      security: *bearerSecurity
+      parameters:
+        - $ref: "#/components/parameters/TeamStatus"
+      responses:
+        "200":
+          description: 球队列表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamListEnvelope"
+        <<: *standardErrors
+    post:
+      operationId: createAdminTeam
+      tags: [Admin Teams]
+      summary: 创建球队
+      security: *bearerSecurity
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTeamRequest"
+      responses:
+        "200":
+          description: 创建的球队
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamEnvelope"
+        <<: *standardErrors
+
+  /api/v1/admin/teams/{id}:
+    get:
+      operationId: getAdminTeam
+      tags: [Admin Teams]
+      summary: 获取球队详情
+      security: *bearerSecurity
+      parameters:
+        - $ref: "#/components/parameters/TeamID"
+      responses:
+        "200":
+          description: 球队详情
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamEnvelope"
+        <<: *standardErrors
+    patch:
+      operationId: updateAdminTeam
+      tags: [Admin Teams]
+      summary: 更新球队
+      security: *bearerSecurity
+      parameters:
+        - $ref: "#/components/parameters/TeamID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateTeamRequest"
+      responses:
+        "200":
+          description: 更新后的球队
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamEnvelope"
+        <<: *standardErrors
+    delete:
+      operationId: deleteAdminTeam
+      tags: [Admin Teams]
+      summary: 删除球队
+      security: *bearerSecurity
+      parameters:
+        - $ref: "#/components/parameters/TeamID"
+      responses:
+        "200":
+          description: 已删除球队 ID
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IntegerIDEnvelope"
+        <<: *standardErrors
+
+  /api/v1/admin/teams/{id}/members:
+    get:
+      operationId: listAdminTeamMembers
+      tags: [Admin Teams]
+      summary: 获取球队成员管理视图
+      security: *bearerSecurity
+      parameters:
+        - $ref: "#/components/parameters/TeamID"
+      responses:
+        "200":
+          description: 球队及成员
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MemberManagementEnvelope"
+        <<: *standardErrors
+    post:
+      operationId: addAdminTeamMember
+      tags: [Admin Teams]
+      summary: 添加球队成员
+      security: *bearerSecurity
+      parameters:
+        - $ref: "#/components/parameters/TeamID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddMemberRequest"
+      responses:
+        "200":
+          description: 更新后的球队及成员
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MemberManagementEnvelope"
+        <<: *standardErrors
+
+  /api/v1/admin/teams/{id}/member-candidates:
+    get:
+      operationId: listAdminTeamMemberCandidates
+      tags: [Admin Teams]
+      summary: 获取可添加成员候选人
+      security: *bearerSecurity
+      parameters:
+        - $ref: "#/components/parameters/TeamID"
+        - $ref: "#/components/parameters/Search"
+      responses:
+        "200":
+          description: 成员候选人列表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MemberCandidateListEnvelope"
+        <<: *standardErrors
+
+  /api/v1/admin/teams/{id}/members/{user_id}:
+    patch:
+      operationId: updateAdminTeamMember
+      tags: [Admin Teams]
+      summary: 更新球队成员
+      security: *bearerSecurity
+      parameters:
+        - $ref: "#/components/parameters/TeamID"
+        - $ref: "#/components/parameters/UserID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateMemberRequest"
+      responses:
+        "200":
+          description: 更新后的球队及成员
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MemberManagementEnvelope"
+        <<: *standardErrors
+    delete:
+      operationId: removeAdminTeamMember
+      tags: [Admin Teams]
+      summary: 移除球队成员
+      security: *bearerSecurity
+      parameters:
+        - $ref: "#/components/parameters/TeamID"
+        - $ref: "#/components/parameters/UserID"
+      responses:
+        "200":
+          description: 更新后的球队及成员
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MemberManagementEnvelope"
+        <<: *standardErrors
+
+  /api/v1/admin/teams/{id}/captain:
+    patch:
+      operationId: setAdminTeamCaptain
+      tags: [Admin Teams]
+      summary: 设置或清除球队队长
+      security: *bearerSecurity
+      parameters:
+        - $ref: "#/components/parameters/TeamID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetCaptainRequest"
+      responses:
+        "200":
+          description: 更新后的球队及成员
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MemberManagementEnvelope"
+        <<: *standardErrors
+
+  /api/v1/admin/users/{id}/profile:
+    patch:
+      operationId: updateAdminUserProfile
+      tags: [Admin Users]
+      summary: 更新球员资料
+      security: *bearerSecurity
+      parameters:
+        - $ref: "#/components/parameters/UserIDAsID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProfileRequest"
+      responses:
+        "200":
+          description: 更新后的球员资料
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProfileEnvelope"
+        <<: *standardErrors
+
+  /api/v1/admin/matches:
+    get:
+      operationId: listAdminMatches
+      tags: [Admin Matches]
+      summary: 获取管理端比赛列表
+      security: *bearerSecurity
+      parameters:
+        - $ref: "#/components/parameters/Search"
+        - $ref: "#/components/parameters/MatchStatus"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: 分页比赛列表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MatchListEnvelope"
+        <<: *standardErrors
+    post:
+      operationId: createAdminMatch
+      tags: [Admin Matches]
+      summary: 创建比赛
+      security: *bearerSecurity
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateMatchRequest"
+      responses:
+        "200":
+          description: 创建后的比赛详情
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MatchDetailEnvelope"
+        <<: *standardErrors
+
+  /api/v1/admin/matches/{id}:
+    get:
+      operationId: getAdminMatch
+      tags: [Admin Matches]
+      summary: 获取管理端比赛详情
+      security: *bearerSecurity
+      parameters:
+        - $ref: "#/components/parameters/MatchID"
+      responses:
+        "200":
+          description: 比赛详情与报名花名册
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MatchDetailEnvelope"
+        <<: *standardErrors
+    patch:
+      operationId: updateAdminMatch
+      tags: [Admin Matches]
+      summary: 更新比赛基本信息
+      security: *bearerSecurity
+      parameters:
+        - $ref: "#/components/parameters/MatchID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateMatchRequest"
+      responses:
+        "200":
+          description: 更新后的比赛详情
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MatchDetailEnvelope"
+        <<: *standardErrors
+    delete:
+      operationId: deleteAdminMatch
+      tags: [Admin Matches]
+      summary: 删除比赛
+      security: *bearerSecurity
+      parameters:
+        - $ref: "#/components/parameters/MatchID"
+      responses:
+        "200":
+          description: 已删除比赛 ID
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UUIDIDEnvelope"
+        <<: *standardErrors
+
+  /api/v1/admin/matches/{id}/status:
+    patch:
+      operationId: updateAdminMatchStatus
+      tags: [Admin Matches]
+      summary: 更新比赛状态
+      security: *bearerSecurity
+      parameters:
+        - $ref: "#/components/parameters/MatchID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateMatchStatusRequest"
+      responses:
+        "200":
+          description: 更新后的比赛详情
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MatchDetailEnvelope"
+        <<: *standardErrors
+
+  /api/v1/admin/matches/{id}/team-applications:
+    get:
+      operationId: listAdminTeamApplications
+      tags: [Admin Team Applications]
+      summary: 获取管理端球队申请
+      security: *bearerSecurity
+      parameters:
+        - $ref: "#/components/parameters/MatchID"
+      responses:
+        "200":
+          description: 球队申请列表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamApplicationListEnvelope"
+        <<: *standardErrors
+
+  /api/v1/admin/matches/{id}/team-applications/{application_id}/select:
+    post:
+      operationId: selectAdminTeamApplication
+      tags: [Admin Team Applications]
+      summary: 管理端选中球队申请
+      security: *bearerSecurity
+      parameters:
+        - $ref: "#/components/parameters/MatchID"
+        - $ref: "#/components/parameters/ApplicationID"
+      responses:
+        "200":
+          description: 更新后的球队申请
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamApplicationEnvelope"
+        <<: *standardErrors
+
+  /api/v1/admin/matches/{id}/team-applications/{application_id}/withdraw:
+    post:
+      operationId: withdrawAdminTeamApplication
+      tags: [Admin Team Applications]
+      summary: 管理端撤回球队申请
+      security: *bearerSecurity
+      parameters:
+        - $ref: "#/components/parameters/MatchID"
+        - $ref: "#/components/parameters/ApplicationID"
+      responses:
+        "200":
+          description: 更新后的球队申请
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamApplicationEnvelope"
+        <<: *standardErrors
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    TeamID:
+      name: id
+      in: path
+      required: true
+      description: 球队 ID
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
+    UserID:
+      name: user_id
+      in: path
+      required: true
+      description: 用户 ID
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
+    UserIDAsID:
+      name: id
+      in: path
+      required: true
+      description: 用户 ID
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
+    MatchID:
+      name: id
+      in: path
+      required: true
+      description: 比赛 UUID
+      schema:
+        type: string
+        format: uuid
+    GroupID:
+      name: group_id
+      in: path
+      required: true
+      description: 报名组 UUID
+      schema:
+        type: string
+        format: uuid
+    ApplicationID:
+      name: application_id
+      in: path
+      required: true
+      description: 球队申请 UUID
+      schema:
+        type: string
+        format: uuid
+    Page:
+      name: page
+      in: query
+      description: 页码
+      schema:
+        type: integer
+        format: int32
+        minimum: 1
+    PageSize:
+      name: page_size
+      in: query
+      description: 每页数量
+      schema:
+        type: integer
+        format: int32
+        minimum: 1
+    Search:
+      name: search
+      in: query
+      description: 名称或用户关键词
+      schema:
+        type: string
+    MatchStatus:
+      name: status
+      in: query
+      description: 比赛状态
+      schema:
+        $ref: "#/components/schemas/MatchStatus"
+    TeamStatus:
+      name: status
+      in: query
+      description: 球队状态
+      schema:
+        $ref: "#/components/schemas/TeamStatus"
+    MatchScope:
+      name: scope
+      in: query
+      description: 比赛范围
+      schema:
+        type: string
+        enum: [all, mine]
+
+  responses:
+    WechatLoginSuccess:
+      description: 登录成功
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/WechatLoginEnvelope"
+    Unauthorized:
+      description: 未登录或令牌无效
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Forbidden:
+      description: 权限不足
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFound:
+      description: 资源不存在
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Conflict:
+      description: 资源状态冲突
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    ValidationError:
+      description: 请求参数或业务输入无效
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    InternalError:
+      description: 服务内部错误
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+  schemas:
+    SuccessBase:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: integer
+          format: int32
+          enum: [0]
+        message:
+          type: string
+          example: ok
+    ErrorResponse:
+      type: object
+      required: [code, message, data]
+      properties:
+        code:
+          type: integer
+          format: int32
+          example: 422
+        message:
+          type: string
+        data:
+          nullable: true
+    HealthResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [ok]
+
+    PublicationMode:
+      type: string
+      enum: [offline_confirmed, online_team, online_individual]
+    OpponentState:
+      type: string
+      enum: [no_recruitment, recruiting, confirmed]
+    MatchStatus:
+      type: string
+      enum: [registering, ongoing, ended, cancelled]
+    GroupKind:
+      type: string
+      enum: [host_team, guest_team, individual_opponent]
+    GroupStatus:
+      type: string
+      enum: [open, closed, cancelled]
+    RegistrationStatus:
+      type: string
+      enum: [unknown, attending, leave, absent, cancelled]
+    WritableRegistrationStatus:
+      type: string
+      enum: [attending, leave, absent]
+    ApplicationStatus:
+      type: string
+      enum: [pending, selected, rejected, withdrawn]
+    TeamStatus:
+      type: string
+      enum: [active, frozen]
+    MemberStatus:
+      type: string
+      enum: [active, inactive]
+    MemberRole:
+      type: string
+      enum: [captain, leader, vice_captain, member]
+    AdminRole:
+      type: string
+      enum: [admin, super_admin]
+
+    WechatLoginRequest:
+      type: object
+      required: [js_code]
+      properties:
+        js_code:
+          type: string
+          minLength: 1
+    TestLoginRequest:
+      type: object
+      required: [user_id]
+      properties:
+        user_id:
+          type: integer
+          format: int64
+          minimum: 1
+    AdminLoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+          format: password
+    CreateAdminRequest:
+      allOf:
+        - $ref: "#/components/schemas/AdminLoginRequest"
+    UpdateMeRequest:
+      type: object
+      properties:
+        nickname:
+          type: string
+          nullable: true
+        real_name:
+          type: string
+          nullable: true
+    UpdateProfileRequest:
+      type: object
+      properties:
+        real_name:
+          type: string
+          nullable: true
+        phone_number:
+          type: string
+          nullable: true
+    CreateTeamRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+    UpdateTeamRequest:
+      type: object
+      required: [name, status]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        status:
+          $ref: "#/components/schemas/TeamStatus"
+    AddMemberRequest:
+      type: object
+      required: [user_id]
+      properties:
+        user_id:
+          type: integer
+          format: int64
+          minimum: 1
+        role:
+          $ref: "#/components/schemas/MemberRole"
+    UpdateMemberRequest:
+      type: object
+      required: [role, status]
+      properties:
+        role:
+          $ref: "#/components/schemas/MemberRole"
+        status:
+          $ref: "#/components/schemas/MemberStatus"
+    SetCaptainRequest:
+      type: object
+      required: [user_id]
+      properties:
+        user_id:
+          type: integer
+          format: int64
+          minimum: 1
+          nullable: true
+    CreateMatchRequest:
+      type: object
+      required: [name, publication_mode, host_team_id, players_per_team, start_time, end_time, location]
+      properties:
+        name:
+          type: string
+        publication_mode:
+          $ref: "#/components/schemas/PublicationMode"
+        host_team_id:
+          type: integer
+          format: int64
+        opponent_name:
+          type: string
+          nullable: true
+        players_per_team:
+          type: integer
+          format: int32
+        host_capacity_limit:
+          type: integer
+          format: int32
+          nullable: true
+        start_time:
+          type: string
+          format: date-time
+        end_time:
+          type: string
+          format: date-time
+        location:
+          type: string
+        location_latitude:
+          type: number
+          format: double
+          nullable: true
+        location_longitude:
+          type: number
+          format: double
+          nullable: true
+        description:
+          type: string
+          nullable: true
+    UpdateMatchRequest:
+      type: object
+      required: [name, start_time, end_time, location]
+      properties:
+        name:
+          type: string
+        start_time:
+          type: string
+          format: date-time
+        end_time:
+          type: string
+          format: date-time
+        location:
+          type: string
+        location_latitude:
+          type: number
+          format: double
+          nullable: true
+        location_longitude:
+          type: number
+          format: double
+          nullable: true
+        description:
+          type: string
+          nullable: true
+    UpdateMatchStatusRequest:
+      type: object
+      required: [status]
+      properties:
+        status:
+          $ref: "#/components/schemas/MatchStatus"
+    MyRegistrationRequest:
+      type: object
+      required: [status, registration_count]
+      properties:
+        status:
+          $ref: "#/components/schemas/WritableRegistrationStatus"
+        registration_count:
+          type: integer
+          format: int32
+          minimum: 1
+    CreateTeamApplicationRequest:
+      type: object
+      required: [team_id, introduction]
+      properties:
+        team_id:
+          type: integer
+          format: int64
+          minimum: 1
+        introduction:
+          type: string
+
+    User:
+      type: object
+      required: [id, nickname, avatar_url, real_name, phone_number, status]
+      properties:
+        id:
+          type: integer
+          format: int64
+        nickname:
+          type: string
+        avatar_url:
+          type: string
+          nullable: true
+        real_name:
+          type: string
+          nullable: true
+        phone_number:
+          type: string
+          nullable: true
+        status:
+          type: string
+    Profile:
+      allOf:
+        - $ref: "#/components/schemas/User"
+    WechatLogin:
+      type: object
+      required: [token, user]
+      properties:
+        token:
+          type: string
+        user:
+          $ref: "#/components/schemas/User"
+    TestLoginTeam:
+      type: object
+      required: [id, name, role]
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        role:
+          $ref: "#/components/schemas/MemberRole"
+    TestLoginUser:
+      type: object
+      required: [id, display_name, avatar_url, teams]
+      properties:
+        id:
+          type: integer
+          format: int64
+        display_name:
+          type: string
+        avatar_url:
+          type: string
+          nullable: true
+        teams:
+          type: array
+          items:
+            $ref: "#/components/schemas/TestLoginTeam"
+    TestLoginUsers:
+      type: object
+      required: [items, default_user_id]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/TestLoginUser"
+        default_user_id:
+          type: integer
+          format: int64
+    Admin:
+      type: object
+      required: [id, username, role, status, is_super_admin, created_at]
+      properties:
+        id:
+          type: integer
+          format: int64
+        username:
+          type: string
+        role:
+          $ref: "#/components/schemas/AdminRole"
+        status:
+          type: string
+        is_super_admin:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+    AdminLogin:
+      type: object
+      required: [access_token, token_type, admin]
+      properties:
+        access_token:
+          type: string
+        token_type:
+          type: string
+          enum: [Bearer]
+        admin:
+          $ref: "#/components/schemas/Admin"
+    TeamMembership:
+      type: object
+      required: [id, name, description, logo_url, role, joined_at]
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        logo_url:
+          type: string
+          nullable: true
+        role:
+          $ref: "#/components/schemas/MemberRole"
+        joined_at:
+          type: string
+          format: date-time
+    Team:
+      type: object
+      required: [id, name, description, logo_url, captain_id, status, created_at, updated_at]
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        logo_url:
+          type: string
+          nullable: true
+        captain_id:
+          type: integer
+          format: int64
+          nullable: true
+        status:
+          $ref: "#/components/schemas/TeamStatus"
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    AppTeamDetail:
+      type: object
+      required: [id, name, description, logo_url, captain_id, status, my_role]
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        logo_url:
+          type: string
+          nullable: true
+        captain_id:
+          type: integer
+          format: int64
+          nullable: true
+        status:
+          $ref: "#/components/schemas/TeamStatus"
+        my_role:
+          $ref: "#/components/schemas/MemberRole"
+    AppTeamMember:
+      type: object
+      required: [user_id, nickname, avatar_url, real_name, role, status, joined_at]
+      properties:
+        user_id:
+          type: integer
+          format: int64
+        nickname:
+          type: string
+        avatar_url:
+          type: string
+          nullable: true
+        real_name:
+          type: string
+          nullable: true
+        role:
+          $ref: "#/components/schemas/MemberRole"
+        status:
+          $ref: "#/components/schemas/MemberStatus"
+        joined_at:
+          type: string
+          format: date-time
+    Member:
+      type: object
+      required: [id, user_id, nickname, avatar_url, real_name, phone_number, role, status, joined_at]
+      properties:
+        id:
+          type: integer
+          format: int64
+        user_id:
+          type: integer
+          format: int64
+        nickname:
+          type: string
+        avatar_url:
+          type: string
+          nullable: true
+        real_name:
+          type: string
+          nullable: true
+        phone_number:
+          type: string
+          nullable: true
+        role:
+          $ref: "#/components/schemas/MemberRole"
+        status:
+          $ref: "#/components/schemas/MemberStatus"
+        joined_at:
+          type: string
+          format: date-time
+    MemberManagement:
+      type: object
+      required: [team, members]
+      properties:
+        team:
+          $ref: "#/components/schemas/Team"
+        members:
+          type: array
+          items:
+            $ref: "#/components/schemas/Member"
+    MemberCandidate:
+      type: object
+      required: [user_id, nickname, avatar_url, real_name, phone_number]
+      properties:
+        user_id:
+          type: integer
+          format: int64
+        nickname:
+          type: string
+        avatar_url:
+          type: string
+          nullable: true
+        real_name:
+          type: string
+          nullable: true
+        phone_number:
+          type: string
+          nullable: true
+
+    Match:
+      type: object
+      required: [id, name, publication_mode, opponent_state, status, host_team_id, host_team_name, away_team_id, away_team_name, opponent_name, players_per_team, start_time, end_time, location, location_latitude, location_longitude, description, created_by_user_id, created_by_admin_id, created_at, updated_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        publication_mode:
+          $ref: "#/components/schemas/PublicationMode"
+        opponent_state:
+          $ref: "#/components/schemas/OpponentState"
+        status:
+          $ref: "#/components/schemas/MatchStatus"
+        host_team_id:
+          type: integer
+          format: int64
+        host_team_name:
+          type: string
+        away_team_id:
+          type: integer
+          format: int64
+          nullable: true
+        away_team_name:
+          type: string
+          nullable: true
+        opponent_name:
+          type: string
+          nullable: true
+        players_per_team:
+          type: integer
+          format: int32
+        start_time:
+          type: string
+          format: date-time
+        end_time:
+          type: string
+          format: date-time
+        location:
+          type: string
+        location_latitude:
+          type: number
+          format: double
+          nullable: true
+        location_longitude:
+          type: number
+          format: double
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        created_by_user_id:
+          type: integer
+          format: int64
+          nullable: true
+        created_by_admin_id:
+          type: integer
+          format: int64
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    UserMatch:
+      type: object
+      required: [id, name, publication_mode, opponent_state, status, host_team_id, host_team_name, away_team_id, away_team_name, opponent_name, players_per_team, start_time, end_time, location, location_latitude, location_longitude, description, created_at, updated_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        publication_mode:
+          $ref: "#/components/schemas/PublicationMode"
+        opponent_state:
+          $ref: "#/components/schemas/OpponentState"
+        status:
+          $ref: "#/components/schemas/MatchStatus"
+        host_team_id:
+          type: integer
+          format: int64
+        host_team_name:
+          type: string
+        away_team_id:
+          type: integer
+          format: int64
+          nullable: true
+        away_team_name:
+          type: string
+          nullable: true
+        opponent_name:
+          type: string
+          nullable: true
+        players_per_team:
+          type: integer
+          format: int32
+        start_time:
+          type: string
+          format: date-time
+        end_time:
+          type: string
+          format: date-time
+        location:
+          type: string
+        location_latitude:
+          type: number
+          format: double
+          nullable: true
+        location_longitude:
+          type: number
+          format: double
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    RegistrationGroup:
+      type: object
+      required: [id, kind, team_id, min_players, max_players, status, registrations]
+      properties:
+        id:
+          type: string
+          format: uuid
+        kind:
+          $ref: "#/components/schemas/GroupKind"
+        team_id:
+          type: integer
+          format: int64
+          nullable: true
+        min_players:
+          type: integer
+          format: int32
+          nullable: true
+        max_players:
+          type: integer
+          format: int32
+          nullable: true
+        status:
+          $ref: "#/components/schemas/GroupStatus"
+        registrations:
+          type: array
+          items:
+            $ref: "#/components/schemas/RegistrationEntry"
+    RegistrationEntry:
+      type: object
+      required: [user_id, nickname, real_name, avatar_url, member_role, status]
+      properties:
+        user_id:
+          type: integer
+          format: int64
+        nickname:
+          type: string
+        real_name:
+          type: string
+          nullable: true
+        avatar_url:
+          type: string
+          nullable: true
+        member_role:
+          type: string
+          nullable: true
+          enum: [captain, leader, vice_captain, member]
+        status:
+          type: string
+          enum: [unregistered, unknown, attending, leave, absent, cancelled]
+    UserRegistration:
+      type: object
+      required: [status, registration_count]
+      properties:
+        status:
+          $ref: "#/components/schemas/RegistrationStatus"
+        registration_count:
+          type: integer
+          format: int32
+    UserRegistrationGroup:
+      type: object
+      required: [id, kind, team_id, min_players, max_players, status, attending_count, my_registration]
+      properties:
+        id:
+          type: string
+          format: uuid
+        kind:
+          $ref: "#/components/schemas/GroupKind"
+        team_id:
+          type: integer
+          format: int64
+          nullable: true
+        min_players:
+          type: integer
+          format: int32
+          nullable: true
+        max_players:
+          type: integer
+          format: int32
+          nullable: true
+        status:
+          $ref: "#/components/schemas/GroupStatus"
+        attending_count:
+          type: integer
+          format: int32
+        my_registration:
+          allOf:
+            - $ref: "#/components/schemas/UserRegistration"
+          nullable: true
+    MyRegistration:
+      type: object
+      required: [group_id, user_id, status, registration_count, updated_at]
+      properties:
+        group_id:
+          type: string
+          format: uuid
+        user_id:
+          type: integer
+          format: int64
+        status:
+          $ref: "#/components/schemas/RegistrationStatus"
+        registration_count:
+          type: integer
+          format: int32
+        updated_at:
+          type: string
+          format: date-time
+    TeamApplication:
+      type: object
+      required: [id, match_id, applicant_team_id, introduction, status, created_by_user_id, selected_at, withdrawn_at, created_at, updated_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        match_id:
+          type: string
+          format: uuid
+        applicant_team_id:
+          type: integer
+          format: int64
+        applicant_team_name:
+          type: string
+          description: 列表查询时返回；创建或状态变更响应中可能省略。
+        introduction:
+          type: string
+        status:
+          $ref: "#/components/schemas/ApplicationStatus"
+        created_by_user_id:
+          type: integer
+          format: int64
+        selected_at:
+          type: string
+          format: date-time
+          nullable: true
+        withdrawn_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    MatchDetail:
+      type: object
+      required: [match, groups]
+      properties:
+        match:
+          $ref: "#/components/schemas/Match"
+        groups:
+          type: array
+          items:
+            $ref: "#/components/schemas/RegistrationGroup"
+    UserMatchDetail:
+      type: object
+      required: [match, groups]
+      properties:
+        match:
+          $ref: "#/components/schemas/UserMatch"
+        groups:
+          type: array
+          items:
+            $ref: "#/components/schemas/UserRegistrationGroup"
+    MatchList:
+      type: object
+      required: [items, total, page, page_size]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Match"
+        total:
+          type: integer
+          format: int64
+        page:
+          type: integer
+          format: int32
+        page_size:
+          type: integer
+          format: int32
+    UserMatchList:
+      type: object
+      required: [items, total, page, page_size]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/UserMatch"
+        total:
+          type: integer
+          format: int64
+        page:
+          type: integer
+          format: int32
+        page_size:
+          type: integer
+          format: int32
+    UserHomeGroup:
+      type: object
+      required: [id, kind, status, min_players, max_players, attending_count, my_registration_status]
+      properties:
+        id:
+          type: string
+          format: uuid
+        kind:
+          $ref: "#/components/schemas/GroupKind"
+        status:
+          $ref: "#/components/schemas/GroupStatus"
+        min_players:
+          type: integer
+          format: int32
+          nullable: true
+        max_players:
+          type: integer
+          format: int32
+          nullable: true
+        attending_count:
+          type: integer
+          format: int32
+        my_registration_status:
+          allOf:
+            - $ref: "#/components/schemas/RegistrationStatus"
+          nullable: true
+    UserHomeActionMatch:
+      type: object
+      required: [id, name, status, host_team_name, opponent_name, players_per_team, start_time, end_time, location, group]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        status:
+          $ref: "#/components/schemas/MatchStatus"
+        host_team_name:
+          type: string
+        opponent_name:
+          type: string
+        players_per_team:
+          type: integer
+          format: int32
+        start_time:
+          type: string
+          format: date-time
+        end_time:
+          type: string
+          format: date-time
+        location:
+          type: string
+        group:
+          $ref: "#/components/schemas/UserHomeGroup"
+    UserHomeEndedMatch:
+      type: object
+      required: [id, name, status, host_team_name, opponent_name, start_time, end_time, location]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        status:
+          $ref: "#/components/schemas/MatchStatus"
+        host_team_name:
+          type: string
+        opponent_name:
+          type: string
+        start_time:
+          type: string
+          format: date-time
+        end_time:
+          type: string
+          format: date-time
+        location:
+          type: string
+    UserMatchHome:
+      type: object
+      required: [action_items, ended_items, ended_has_more]
+      properties:
+        action_items:
+          type: array
+          items:
+            $ref: "#/components/schemas/UserHomeActionMatch"
+        ended_items:
+          type: array
+          items:
+            $ref: "#/components/schemas/UserHomeEndedMatch"
+        ended_has_more:
+          type: boolean
+
+    WechatLoginEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: "#/components/schemas/WechatLogin"
+    TestLoginUsersEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: "#/components/schemas/TestLoginUsers"
+    ProfileEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: "#/components/schemas/Profile"
+    AdminLoginEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: "#/components/schemas/AdminLogin"
+    AdminEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: "#/components/schemas/Admin"
+    AdminListEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/Admin"
+    TeamMembershipListEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/TeamMembership"
+    AppTeamDetailEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: "#/components/schemas/AppTeamDetail"
+    AppTeamMemberListEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/AppTeamMember"
+    TeamEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: "#/components/schemas/Team"
+    TeamListEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/Team"
+    MemberManagementEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: "#/components/schemas/MemberManagement"
+    MemberCandidateListEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/MemberCandidate"
+    MatchDetailEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: "#/components/schemas/MatchDetail"
+    UserMatchDetailEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: "#/components/schemas/UserMatchDetail"
+    MatchListEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: "#/components/schemas/MatchList"
+    UserMatchListEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: "#/components/schemas/UserMatchList"
+    UserMatchHomeEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: "#/components/schemas/UserMatchHome"
+    MyRegistrationEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: "#/components/schemas/MyRegistration"
+    TeamApplicationEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: "#/components/schemas/TeamApplication"
+    TeamApplicationListEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/TeamApplication"
+    IntegerIDEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              required: [id]
+              properties:
+                id:
+                  type: integer
+                  format: int64
+    UUIDIDEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              required: [id]
+              properties:
+                id:
+                  type: string
+                  format: uuid
