@@ -91,10 +91,11 @@
 
 ### Task 4: Database schema, sqlc, and PostgreSQL adapters
 
-**Status:** Completed in `32bc885`; integration tests skip unless `TEST_DATABASE_URL` is explicit.
+**Status:** Completed in `32bc885`; merge review moved the schema to unique migration version 6 and added migration/source-conflict/concurrency guards. PostgreSQL integration tests skip unless `TEST_DATABASE_URL` is explicit.
 
 **Files:**
-- Create: `registration_system_go/db/migrations/00005_payment_wallet.sql`
+- Create: `registration_system_go/db/migrations/00006_payment_wallet.sql`
+- Create: `registration_system_go/db/migrations_test.go`
 - Create: `registration_system_go/db/queries/payment.sql`
 - Create: `registration_system_go/db/queries/wallet.sql`
 - Modify: `registration_system_go/sqlc.yaml`

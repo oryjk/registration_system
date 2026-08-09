@@ -4,10 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	paymentsqlc "github.com/oryjk/registration_system/registration_system_go/internal/payment/adapters/postgres/sqlc"
 	paymentdomain "github.com/oryjk/registration_system/registration_system_go/internal/payment/domain"
 	paymentports "github.com/oryjk/registration_system/registration_system_go/internal/payment/ports"
 	sharederror "github.com/oryjk/registration_system/registration_system_go/internal/shared/domain"
@@ -84,6 +87,126 @@ func TestCreditRechargeRejectsAmountMismatchWithoutCrediting(t *testing.T) {
 	}
 	if accounts != 0 {
 		t.Fatalf("wallet account created after rejected settlement")
+	}
+}
+
+func TestValidateRechargeTransactionRejectsMismatchedSource(t *testing.T) {
+	order := paymentdomain.Order{OrderNo: "P1", UserID: 37, AmountCents: 500}
+	transaction := paymentsqlc.WalletTransaction{
+		UserID: 37, Direction: "credit", Type: "recharge", AmountCents: 1,
+		SourceType: "payment_order", SourceID: "P1",
+	}
+
+	if err := validateRechargeTransaction(transaction, order); !errors.Is(err, sharederror.ErrConflict) {
+		t.Fatalf("validateRechargeTransaction() error=%v, want conflict", err)
+	}
+}
+
+func TestCreditRechargeRejectsConflictingSourceAndRollsBackPaidStatus(t *testing.T) {
+	pool := testsupport.OpenTestPostgres(t)
+	ctx := context.Background()
+	userID := seedPaymentUser(t, pool, "source-conflict")
+	order := mustPaymentOrder(t, uniquePaymentOrderNo("source-conflict"), userID, 500)
+	repository := NewRepository(pool)
+	if err := repository.Create(ctx, order); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `INSERT INTO wallet_accounts (user_id, balance_cents, total_recharged_cents) VALUES ($1, 1, 1)`, userID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `INSERT INTO wallet_transactions (id, user_id, direction, type, amount_cents, balance_after_cents, source_type, source_id) VALUES ($1, $2, 'credit', 'recharge', 1, 1, 'payment_order', $3)`, uuid.New(), userID, order.OrderNo); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := repository.CreditRecharge(ctx, paymentports.VerifiedPayment{OrderNo: order.OrderNo, AmountCents: 500, TransactionID: "wx-" + order.OrderNo, PaidAt: time.Now().UTC()})
+	if !errors.Is(err, sharederror.ErrConflict) {
+		t.Fatalf("CreditRecharge() error=%v, want conflict", err)
+	}
+	var status string
+	var balance int64
+	if err := pool.QueryRow(ctx, `SELECT status FROM payment_orders WHERE order_no=$1`, order.OrderNo).Scan(&status); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(ctx, `SELECT balance_cents FROM wallet_accounts WHERE user_id=$1`, userID).Scan(&balance); err != nil {
+		t.Fatal(err)
+	}
+	if status != "pending" || balance != 1 {
+		t.Fatalf("status=%q balance=%d", status, balance)
+	}
+}
+
+func TestCreditRechargeUsesSettlementTimeForWalletTimestamps(t *testing.T) {
+	pool := testsupport.OpenTestPostgres(t)
+	ctx := context.Background()
+	userID := seedPaymentUser(t, pool, "settlement-time")
+	order := mustPaymentOrder(t, uniquePaymentOrderNo("settlement-time"), userID, 500)
+	repository := NewRepository(pool)
+	if err := repository.Create(ctx, order); err != nil {
+		t.Fatal(err)
+	}
+	paidAt := time.Now().UTC().Add(-24 * time.Hour)
+	beforeSettlement := time.Now().UTC().Add(-time.Second)
+	if _, err := repository.CreditRecharge(ctx, paymentports.VerifiedPayment{OrderNo: order.OrderNo, AmountCents: 500, TransactionID: "wx-" + order.OrderNo, PaidAt: paidAt}); err != nil {
+		t.Fatal(err)
+	}
+	var transactionCreatedAt, accountUpdatedAt time.Time
+	if err := pool.QueryRow(ctx, `SELECT created_at FROM wallet_transactions WHERE source_type='payment_order' AND source_id=$1`, order.OrderNo).Scan(&transactionCreatedAt); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(ctx, `SELECT updated_at FROM wallet_accounts WHERE user_id=$1`, userID).Scan(&accountUpdatedAt); err != nil {
+		t.Fatal(err)
+	}
+	if transactionCreatedAt.Before(beforeSettlement) || accountUpdatedAt.Before(beforeSettlement) {
+		t.Fatalf("paid_at=%s transaction_created_at=%s account_updated_at=%s", paidAt, transactionCreatedAt, accountUpdatedAt)
+	}
+}
+
+func TestCreditRechargeConcurrentCallsCreditOnce(t *testing.T) {
+	pool := testsupport.OpenTestPostgres(t)
+	ctx := context.Background()
+	userID := seedPaymentUser(t, pool, "concurrent")
+	order := mustPaymentOrder(t, uniquePaymentOrderNo("concurrent"), userID, 500)
+	repository := NewRepository(pool)
+	if err := repository.Create(ctx, order); err != nil {
+		t.Fatal(err)
+	}
+	payment := paymentports.VerifiedPayment{OrderNo: order.OrderNo, AmountCents: 500, TransactionID: "wx-" + order.OrderNo, PaidAt: time.Now().UTC()}
+
+	results := make(chan paymentports.SettlementResult, 2)
+	errorsCh := make(chan error, 2)
+	var wait sync.WaitGroup
+	for range 2 {
+		wait.Add(1)
+		go func() {
+			defer wait.Done()
+			result, err := repository.CreditRecharge(ctx, payment)
+			results <- result
+			errorsCh <- err
+		}()
+	}
+	wait.Wait()
+	close(results)
+	close(errorsCh)
+	credited := 0
+	for err := range errorsCh {
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	for result := range results {
+		if result.Credited {
+			credited++
+		}
+	}
+	var balance, transactions int64
+	if err := pool.QueryRow(ctx, `SELECT balance_cents FROM wallet_accounts WHERE user_id=$1`, userID).Scan(&balance); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(ctx, `SELECT COUNT(*) FROM wallet_transactions WHERE source_type='payment_order' AND source_id=$1`, order.OrderNo).Scan(&transactions); err != nil {
+		t.Fatal(err)
+	}
+	if credited != 1 || balance != 500 || transactions != 1 {
+		t.Fatalf("credited=%d balance=%d transactions=%d", credited, balance, transactions)
 	}
 }
 

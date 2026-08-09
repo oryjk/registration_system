@@ -37,4 +37,3 @@ INSERT INTO wallet_transactions (
     source_type, source_id, description
 ) VALUES ($1, $2, 'debit', 'spend', $3, $4, $5, $6, $7)
 RETURNING *;
-

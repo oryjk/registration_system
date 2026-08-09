@@ -74,6 +74,21 @@ func TestQueryOrderMapsSuccessfulTrade(t *testing.T) {
 	}
 }
 
+func TestQueryOrderRejectsMismatchedOrderNumber(t *testing.T) {
+	server := signedServer(t, func(*testing.T, Values) Values {
+		return Values{
+			"return_code": "SUCCESS", "result_code": "SUCCESS", "appid": "app-1", "mch_id": "mch-1",
+			"trade_state": "NOTPAY", "out_trade_no": "P2",
+		}
+	})
+	defer server.Close()
+	client := newTestClient(t, server.URL)
+
+	if _, err := client.QueryOrder(context.Background(), "P1"); !errors.Is(err, paymentports.ErrProviderUnavailable) {
+		t.Fatalf("QueryOrder() error=%v, want provider unavailable", err)
+	}
+}
+
 func TestCloseOrderMapsOrderPaidAndSystemError(t *testing.T) {
 	for name, test := range map[string]struct {
 		errCode string

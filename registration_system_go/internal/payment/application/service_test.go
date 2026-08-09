@@ -39,6 +39,16 @@ func TestCreateRechargeRejectsNonUserAndZeroAmount(t *testing.T) {
 	}
 }
 
+func TestListRejectsInvalidPaymentStatus(t *testing.T) {
+	store := newFakePaymentStore()
+	service := NewService(store, store, &fakeGateway{}, store, fixedOrderNumbers{}, fixedClock{})
+
+	_, err := service.List(context.Background(), userActor(37), ListQuery{Status: paymentdomain.Status("unknown")})
+	if !errors.Is(err, sharederror.ErrValidation) {
+		t.Fatalf("List() error=%v, want validation", err)
+	}
+}
+
 func TestSyncPaidOrderCreditsWalletOnce(t *testing.T) {
 	store := newFakePaymentStore()
 	store.order = mustOrder(t, "P202608090002", 37, 500)

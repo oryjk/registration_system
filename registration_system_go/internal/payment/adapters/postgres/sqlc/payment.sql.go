@@ -113,19 +113,18 @@ UPDATE wallet_accounts
 SET balance_cents = balance_cents + $2,
     total_recharged_cents = total_recharged_cents + $2,
     version = version + 1,
-    updated_at = $3
+    updated_at = NOW()
 WHERE user_id = $1
 RETURNING user_id, balance_cents, total_recharged_cents, total_spent_cents, version, created_at, updated_at
 `
 
 type CreditRechargeWalletParams struct {
-	UserID       int64              `json:"user_id"`
-	BalanceCents int64              `json:"balance_cents"`
-	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+	UserID       int64 `json:"user_id"`
+	BalanceCents int64 `json:"balance_cents"`
 }
 
 func (q *Queries) CreditRechargeWallet(ctx context.Context, arg CreditRechargeWalletParams) (WalletAccount, error) {
-	row := q.db.QueryRow(ctx, creditRechargeWallet, arg.UserID, arg.BalanceCents, arg.UpdatedAt)
+	row := q.db.QueryRow(ctx, creditRechargeWallet, arg.UserID, arg.BalanceCents)
 	var i WalletAccount
 	err := row.Scan(
 		&i.UserID,
@@ -239,23 +238,45 @@ func (q *Queries) GetRechargeWalletAccountForUpdate(ctx context.Context, userID 
 	return i, err
 }
 
+const getRechargeWalletTransactionBySource = `-- name: GetRechargeWalletTransactionBySource :one
+SELECT id, user_id, direction, type, amount_cents, balance_after_cents, source_type, source_id, description, created_at FROM wallet_transactions
+WHERE source_type = 'payment_order' AND source_id = $1
+`
+
+func (q *Queries) GetRechargeWalletTransactionBySource(ctx context.Context, sourceID string) (WalletTransaction, error) {
+	row := q.db.QueryRow(ctx, getRechargeWalletTransactionBySource, sourceID)
+	var i WalletTransaction
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Direction,
+		&i.Type,
+		&i.AmountCents,
+		&i.BalanceAfterCents,
+		&i.SourceType,
+		&i.SourceID,
+		&i.Description,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const insertRechargeWalletTransaction = `-- name: InsertRechargeWalletTransaction :one
 INSERT INTO wallet_transactions (
     id, user_id, direction, type, amount_cents, balance_after_cents,
-    source_type, source_id, description, created_at
-) VALUES ($1, $2, 'credit', 'recharge', $3, $4, 'payment_order', $5, $6, $7)
+    source_type, source_id, description
+) VALUES ($1, $2, 'credit', 'recharge', $3, $4, 'payment_order', $5, $6)
 ON CONFLICT (source_type, source_id) DO NOTHING
 RETURNING id, user_id, direction, type, amount_cents, balance_after_cents, source_type, source_id, description, created_at
 `
 
 type InsertRechargeWalletTransactionParams struct {
-	ID                pgtype.UUID        `json:"id"`
-	UserID            int64              `json:"user_id"`
-	AmountCents       int64              `json:"amount_cents"`
-	BalanceAfterCents int64              `json:"balance_after_cents"`
-	SourceID          string             `json:"source_id"`
-	Description       string             `json:"description"`
-	CreatedAt         pgtype.Timestamptz `json:"created_at"`
+	ID                pgtype.UUID `json:"id"`
+	UserID            int64       `json:"user_id"`
+	AmountCents       int64       `json:"amount_cents"`
+	BalanceAfterCents int64       `json:"balance_after_cents"`
+	SourceID          string      `json:"source_id"`
+	Description       string      `json:"description"`
 }
 
 func (q *Queries) InsertRechargeWalletTransaction(ctx context.Context, arg InsertRechargeWalletTransactionParams) (WalletTransaction, error) {
@@ -266,7 +287,6 @@ func (q *Queries) InsertRechargeWalletTransaction(ctx context.Context, arg Inser
 		arg.BalanceAfterCents,
 		arg.SourceID,
 		arg.Description,
-		arg.CreatedAt,
 	)
 	var i WalletTransaction
 	err := row.Scan(

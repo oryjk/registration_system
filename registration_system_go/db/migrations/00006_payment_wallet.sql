@@ -72,4 +72,3 @@ CREATE INDEX wallet_transactions_user_created_idx ON wallet_transactions (user_i
 DROP TABLE IF EXISTS wallet_transactions;
 DROP TABLE IF EXISTS wallet_accounts;
 DROP TABLE IF EXISTS payment_orders;
-

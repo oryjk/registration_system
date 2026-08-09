@@ -93,8 +93,9 @@ func (c *Client) UnifiedOrder(ctx context.Context, request paymentports.UnifiedO
 }
 
 func (c *Client) QueryOrder(ctx context.Context, orderNo string) (paymentports.ProviderPayment, error) {
+	orderNo = strings.TrimSpace(orderNo)
 	values := c.baseRequest()
-	values["out_trade_no"] = strings.TrimSpace(orderNo)
+	values["out_trade_no"] = orderNo
 	response, err := c.post(ctx, "/pay/orderquery", values)
 	if err != nil {
 		return paymentports.ProviderPayment{}, err
@@ -102,10 +103,10 @@ func (c *Client) QueryOrder(ctx context.Context, orderNo string) (paymentports.P
 	if err := c.validateSuccess(response); err != nil {
 		return paymentports.ProviderPayment{}, err
 	}
-	result := paymentports.ProviderPayment{OrderNo: response["out_trade_no"]}
-	if result.OrderNo == "" {
-		result.OrderNo = strings.TrimSpace(orderNo)
+	if response["out_trade_no"] != orderNo {
+		return paymentports.ProviderPayment{}, providerUnavailable("WeChat order query identity mismatch", nil)
 	}
+	result := paymentports.ProviderPayment{OrderNo: response["out_trade_no"]}
 	if response["trade_state"] != "SUCCESS" {
 		return result, nil
 	}

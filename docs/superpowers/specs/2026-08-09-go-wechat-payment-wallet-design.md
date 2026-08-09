@@ -148,4 +148,3 @@ Mock 创建订单后保持 `pending`，调用同步接口后模拟支付成功�
 - PostgreSQL：使用明确提供的专用 `TEST_DATABASE_URL` 验证 migration、原子充值、重复通知和余额扣费；未配置时跳过，不连接未知开发/生产库，也不启动 Docker。
 - OpenAPI 漂移测试保证新增 Gin 路由全部出现在契约中。
 - 完成后执行 `gofmt -w .`、非数据库测试、`go test -race ./...`（环境允许时）、`go vet ./...`、API build 和 `git diff --check`。
-

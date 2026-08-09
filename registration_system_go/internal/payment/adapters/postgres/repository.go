@@ -142,6 +142,16 @@ func (r *Repository) CreditRecharge(ctx context.Context, payment paymentports.Ve
 		if order.TransactionID != payment.TransactionID {
 			return result, sharederror.ErrConflict
 		}
+		transaction, transactionErr := queries.GetRechargeWalletTransactionBySource(ctx, order.OrderNo)
+		if transactionErr != nil {
+			if errors.Is(transactionErr, pgx.ErrNoRows) {
+				return result, sharederror.ErrConflict
+			}
+			return result, transactionErr
+		}
+		if err := validateRechargeTransaction(transaction, order); err != nil {
+			return result, err
+		}
 		account, accountErr := queries.GetRechargeWalletAccountForUpdate(ctx, order.UserID)
 		if accountErr != nil {
 			return result, accountErr
@@ -170,9 +180,19 @@ func (r *Repository) CreditRecharge(ctx context.Context, payment paymentports.Ve
 	_, err = queries.InsertRechargeWalletTransaction(ctx, paymentsqlc.InsertRechargeWalletTransactionParams{
 		ID: pgUUID(uuid.New()), UserID: order.UserID, AmountCents: order.AmountCents,
 		BalanceAfterCents: account.BalanceCents + order.AmountCents, SourceID: order.OrderNo,
-		Description: "微信充值", CreatedAt: timestamptz(payment.PaidAt),
+		Description: "微信充值",
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
+		transaction, transactionErr := queries.GetRechargeWalletTransactionBySource(ctx, order.OrderNo)
+		if transactionErr != nil {
+			if errors.Is(transactionErr, pgx.ErrNoRows) {
+				return result, sharederror.ErrConflict
+			}
+			return result, transactionErr
+		}
+		if err := validateRechargeTransaction(transaction, order); err != nil {
+			return result, err
+		}
 		if err := tx.Commit(ctx); err != nil {
 			return result, err
 		}
@@ -182,7 +202,7 @@ func (r *Repository) CreditRecharge(ctx context.Context, payment paymentports.Ve
 		return result, mapConstraintError(err)
 	}
 	account, err = queries.CreditRechargeWallet(ctx, paymentsqlc.CreditRechargeWalletParams{
-		UserID: order.UserID, BalanceCents: order.AmountCents, UpdatedAt: timestamptz(payment.PaidAt),
+		UserID: order.UserID, BalanceCents: order.AmountCents,
 	})
 	if err != nil {
 		return result, err
@@ -191,6 +211,13 @@ func (r *Repository) CreditRecharge(ctx context.Context, payment paymentports.Ve
 		return result, err
 	}
 	return paymentports.SettlementResult{Order: mapOrder(paidRow), BalanceCents: account.BalanceCents, Credited: true}, nil
+}
+
+func validateRechargeTransaction(transaction paymentsqlc.WalletTransaction, order paymentdomain.Order) error {
+	if transaction.UserID != order.UserID || transaction.Direction != "credit" || transaction.Type != "recharge" || transaction.AmountCents != order.AmountCents || transaction.SourceType != "payment_order" || transaction.SourceID != order.OrderNo {
+		return sharederror.ErrConflict
+	}
+	return nil
 }
 
 func mapOrder(row paymentsqlc.PaymentOrder) paymentdomain.Order {

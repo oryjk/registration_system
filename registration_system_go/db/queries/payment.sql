@@ -59,11 +59,15 @@ RETURNING *;
 -- name: GetRechargeWalletAccountForUpdate :one
 SELECT * FROM wallet_accounts WHERE user_id = $1 FOR UPDATE;
 
+-- name: GetRechargeWalletTransactionBySource :one
+SELECT * FROM wallet_transactions
+WHERE source_type = 'payment_order' AND source_id = $1;
+
 -- name: InsertRechargeWalletTransaction :one
 INSERT INTO wallet_transactions (
     id, user_id, direction, type, amount_cents, balance_after_cents,
-    source_type, source_id, description, created_at
-) VALUES ($1, $2, 'credit', 'recharge', $3, $4, 'payment_order', $5, $6, $7)
+    source_type, source_id, description
+) VALUES ($1, $2, 'credit', 'recharge', $3, $4, 'payment_order', $5, $6)
 ON CONFLICT (source_type, source_id) DO NOTHING
 RETURNING *;
 
@@ -72,7 +76,6 @@ UPDATE wallet_accounts
 SET balance_cents = balance_cents + $2,
     total_recharged_cents = total_recharged_cents + $2,
     version = version + 1,
-    updated_at = $3
+    updated_at = NOW()
 WHERE user_id = $1
 RETURNING *;
-

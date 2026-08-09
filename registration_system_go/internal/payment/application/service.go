@@ -93,6 +93,9 @@ func (s *Service) List(ctx context.Context, actor sharedauth.Actor, query ListQu
 	if !actor.IsUser() && !actor.IsAdmin() {
 		return ListResult{}, sharederror.ErrForbidden
 	}
+	if query.Status != "" && query.Status != paymentdomain.StatusPending && query.Status != paymentdomain.StatusPaid && query.Status != paymentdomain.StatusCancelled && query.Status != paymentdomain.StatusFailed {
+		return ListResult{}, sharederror.New(sharederror.KindValidation, "支付订单状态筛选无效")
+	}
 	query.Page, query.PageSize = normalizePage(query.Page, query.PageSize)
 	filter := paymentports.OrderFilter{Status: query.Status, Search: strings.TrimSpace(query.Search), Limit: query.PageSize, Offset: (query.Page - 1) * query.PageSize}
 	if actor.IsUser() {
