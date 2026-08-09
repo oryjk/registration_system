@@ -87,11 +87,28 @@ describe("home page loading states", () => {
     expect(source.includes("upcomingMatches.value = [];")).toEqual(true);
     expect(source.includes("ongoingMatches.value = [];")).toEqual(true);
     expect(source.includes("endedMatches.value = [];")).toEqual(true);
+    expect(source.includes("let homeLoadVersion = 0;")).toEqual(true);
+    expect(source.includes("const loadVersion = ++homeLoadVersion;")).toEqual(true);
+    expect(source.includes("if (loadVersion !== homeLoadVersion) return;")).toEqual(true);
     expect(source.includes("await ensureSessionReady();")).toEqual(true);
     expect(source.includes("const response = await getMatchHome();")).toEqual(true);
     expect(source.includes("const sections = buildHomeMatchSections(response, new Date(), 2);")).toEqual(true);
     expect(source.includes("void syncUnreadCount({ skipEnsure: true }).catch")).toEqual(true);
     expect(source.includes("loadMiniAppRuntimeConfig")).toEqual(false);
+  });
+
+  test("guards initial failure with explicit error state and keeps empty states gated behind a successful load", async () => {
+    const source = await sourceFile(
+      "/Users/carlwang/registration_system/registration_system_mini/src/pages/home/index.vue",
+    ).text();
+
+    expect(source.includes('const errorMessage = ref("");')).toEqual(true);
+    expect(source.includes("const hasLoadedMatchData = ref(false);")).toEqual(true);
+    expect(source.includes("const showHomeLoadError = computed(() => !hasLoadedMatchData.value && !!errorMessage.value);")).toEqual(true);
+    expect(source.includes("errorMessage.value = error instanceof Error ? error.message : \"首页数据加载失败\";")).toEqual(true);
+    expect(source.includes('v-if="showHomeLoadError" class="home-empty home-empty-compact"')).toEqual(true);
+    expect(source.includes("@tap=\"handleRetryLoad\"")).toEqual(true);
+    expect(source.includes("点击重试")).toEqual(true);
   });
 
   test("reloads the home page after login completes on the same page", async () => {

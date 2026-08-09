@@ -26,6 +26,8 @@ const { syncUnreadCount } = useNotificationCenter();
 const isLoading = ref(false);
 const isRefreshing = ref(false);
 const hasLoadedOnce = ref(false);
+const hasLoadedMatchData = ref(false);
+const errorMessage = ref("");
 const isGuestMode = ref(false);
 const navigatingMatchId = ref("");
 const hiddenAt = ref<number | null>(null);
@@ -35,6 +37,7 @@ const upcomingMatches = ref<HomeMatchCardViewModel[]>([]);
 const ongoingMatches = ref<HomeMatchCardViewModel[]>([]);
 const endedMatches = ref<HomeMatchCardViewModel[]>([]);
 const homeHeroBanners = ref(defaultMiniAppRuntimeConfig.home.hero_banners);
+let homeLoadVersion = 0;
 
 type MatchSectionPhase = Exclude<AppMatchUiPhase, "excluded">;
 
@@ -46,6 +49,7 @@ const contentStyle = computed(() => ({
   paddingTop: `${navMetrics.pageTopPadding + 8}px`,
 }));
 const showInitialLoadingState = computed(() => isLoading.value && !hasLoadedOnce.value);
+const showHomeLoadError = computed(() => !hasLoadedMatchData.value && !!errorMessage.value);
 const upcomingEmptyText = computed(() => (
   isGuestMode.value
     ? "登录后可以查看最近要处理的比赛"
@@ -136,7 +140,12 @@ function handleMatchTap(match: HomeMatchCardViewModel) {
   });
 }
 
+function handleRetryLoad() {
+  void loadPageData();
+}
+
 async function loadPageData(options?: { preserveContent?: boolean }) {
+  const loadVersion = ++homeLoadVersion;
   const preserveContent = !!options?.preserveContent && hasLoadedOnce.value;
 
   if (preserveContent) {
@@ -144,35 +153,49 @@ async function loadPageData(options?: { preserveContent?: boolean }) {
   } else {
     isLoading.value = true;
   }
+  errorMessage.value = "";
 
   try {
     if (hasManualLogout() || !getAccessToken()) {
+      if (loadVersion !== homeLoadVersion) return;
       isGuestMode.value = true;
       clearMatchSections();
+      hasLoadedMatchData.value = true;
       hasLoadedOnce.value = true;
       return;
     }
 
     isGuestMode.value = false;
     await ensureSessionReady();
+    if (loadVersion !== homeLoadVersion) return;
     const response = await getMatchHome();
+    if (loadVersion !== homeLoadVersion) return;
     const sections = buildHomeMatchSections(response, new Date(), 2);
+    if (loadVersion !== homeLoadVersion) return;
 
     clearMatchSections();
     for (const section of sections) {
       applyMatchSection(section.phase, section.items);
     }
 
+    errorMessage.value = "";
+    hasLoadedMatchData.value = true;
     hasLoadedOnce.value = true;
     void syncUnreadCount({ skipEnsure: true }).catch(() => {
       // Notification count is nice-to-have for the home screen.
     });
   } catch (error) {
+    if (loadVersion !== homeLoadVersion) return;
+    errorMessage.value = error instanceof Error ? error.message : "首页数据加载失败";
+    if (!preserveContent) {
+      hasLoadedMatchData.value = false;
+    }
     uni.showToast({
-      title: error instanceof Error ? error.message : "首页数据加载失败",
+      title: errorMessage.value,
       icon: "none",
     });
   } finally {
+    if (loadVersion !== homeLoadVersion) return;
     if (preserveContent) {
       isRefreshing.value = false;
     } else {
@@ -265,56 +288,63 @@ onShareTimeline(() => ({
           @banner-tap="openTab('/pages/activities/index')"
         />
 
-        <NeoSectionHeader title="最近要处理的比赛" marker="热" :action-label="upcomingMatches.length ? '更多' : undefined" @action='openMatchList("upcoming")' />
-        <HomeMatchList
-          v-if="upcomingMatches.length"
-          variant="brutalist"
-          :matches="upcomingMatches"
-          :is-guest-mode="isGuestMode"
-          :navigating-match-id="navigatingMatchId"
-          :format-match-date-block="formatMatchDateBlock"
-          :progress-base-width="progressBaseWidth"
-          :progress-extra-width="progressExtraWidth"
-          :progress-split-left="progressSplitLeft"
-          :stage-class="stageClass"
-          :status-class="statusClass"
-          @match-tap="handleMatchTap"
-        />
-        <view v-else class="home-empty home-empty-compact">{{ upcomingEmptyText }}</view>
+        <view v-if="showHomeLoadError" class="home-empty home-empty-compact">
+          <view>{{ errorMessage }}</view>
+          <view class="home-empty-action" @tap="handleRetryLoad">点击重试</view>
+        </view>
 
-        <NeoSectionHeader v-if="!isGuestMode" title="进行中的比赛" marker="赛" :action-label="ongoingMatches.length ? '更多' : undefined" @action='openMatchList("ongoing")' />
-        <HomeMatchList
-          v-if="!isGuestMode && ongoingMatches.length"
-          variant="brutalist"
-          :matches="ongoingMatches"
-          :is-guest-mode="isGuestMode"
-          :navigating-match-id="navigatingMatchId"
-          :format-match-date-block="formatMatchDateBlock"
-          :progress-base-width="progressBaseWidth"
-          :progress-extra-width="progressExtraWidth"
-          :progress-split-left="progressSplitLeft"
-          :stage-class="stageClass"
-          :status-class="statusClass"
-          @match-tap="handleMatchTap"
-        />
-        <view v-else-if="!isGuestMode" class="home-empty home-empty-compact">当前没有进行中的比赛。</view>
+        <template v-else>
+          <NeoSectionHeader title="最近要处理的比赛" marker="热" :action-label="upcomingMatches.length ? '更多' : undefined" @action='openMatchList("upcoming")' />
+          <HomeMatchList
+            v-if="upcomingMatches.length"
+            variant="brutalist"
+            :matches="upcomingMatches"
+            :is-guest-mode="isGuestMode"
+            :navigating-match-id="navigatingMatchId"
+            :format-match-date-block="formatMatchDateBlock"
+            :progress-base-width="progressBaseWidth"
+            :progress-extra-width="progressExtraWidth"
+            :progress-split-left="progressSplitLeft"
+            :stage-class="stageClass"
+            :status-class="statusClass"
+            @match-tap="handleMatchTap"
+          />
+          <view v-else class="home-empty home-empty-compact">{{ upcomingEmptyText }}</view>
 
-        <NeoSectionHeader v-if="!isGuestMode" title="已结束的比赛" marker="终" :action-label="endedMatches.length ? '更多' : undefined" @action='openMatchList("ended")' />
-        <HomeMatchList
-          v-if="!isGuestMode && endedMatches.length"
-          variant="brutalist"
-          :matches="endedMatches"
-          :is-guest-mode="isGuestMode"
-          :navigating-match-id="navigatingMatchId"
-          :format-match-date-block="formatMatchDateBlock"
-          :progress-base-width="progressBaseWidth"
-          :progress-extra-width="progressExtraWidth"
-          :progress-split-left="progressSplitLeft"
-          :stage-class="stageClass"
-          :status-class="statusClass"
-          @match-tap="handleMatchTap"
-        />
-        <view v-else-if="!isGuestMode" class="home-empty home-empty-compact">当前没有已结束的比赛。</view>
+          <NeoSectionHeader v-if="!isGuestMode" title="进行中的比赛" marker="赛" :action-label="ongoingMatches.length ? '更多' : undefined" @action='openMatchList("ongoing")' />
+          <HomeMatchList
+            v-if="!isGuestMode && ongoingMatches.length"
+            variant="brutalist"
+            :matches="ongoingMatches"
+            :is-guest-mode="isGuestMode"
+            :navigating-match-id="navigatingMatchId"
+            :format-match-date-block="formatMatchDateBlock"
+            :progress-base-width="progressBaseWidth"
+            :progress-extra-width="progressExtraWidth"
+            :progress-split-left="progressSplitLeft"
+            :stage-class="stageClass"
+            :status-class="statusClass"
+            @match-tap="handleMatchTap"
+          />
+          <view v-else-if="!isGuestMode" class="home-empty home-empty-compact">当前没有进行中的比赛。</view>
+
+          <NeoSectionHeader v-if="!isGuestMode" title="已结束的比赛" marker="终" :action-label="endedMatches.length ? '更多' : undefined" @action='openMatchList("ended")' />
+          <HomeMatchList
+            v-if="!isGuestMode && endedMatches.length"
+            variant="brutalist"
+            :matches="endedMatches"
+            :is-guest-mode="isGuestMode"
+            :navigating-match-id="navigatingMatchId"
+            :format-match-date-block="formatMatchDateBlock"
+            :progress-base-width="progressBaseWidth"
+            :progress-extra-width="progressExtraWidth"
+            :progress-split-left="progressSplitLeft"
+            :stage-class="stageClass"
+            :status-class="statusClass"
+            @match-tap="handleMatchTap"
+          />
+          <view v-else-if="!isGuestMode" class="home-empty home-empty-compact">当前没有已结束的比赛。</view>
+        </template>
       </view>
     </view>
 
@@ -376,6 +406,20 @@ onShareTimeline(() => ({
   margin-bottom: 12rpx;
   padding: 22rpx 24rpx;
   font-size: 26rpx;
+}
+
+.home-empty-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 16rpx;
+  padding: 10rpx 18rpx;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-surface);
+  color: var(--neo-color-text);
+  font-size: 24rpx;
+  font-weight: 700;
 }
 
 /* #ifdef H5 */
