@@ -98,6 +98,21 @@ type MatchTeamApplication struct {
 	UpdatedAt       pgtype.Timestamp `json:"updated_at"`
 }
 
+type PaymentOrder struct {
+	OrderNo       string             `json:"order_no"`
+	UserID        int64              `json:"user_id"`
+	AmountCents   int64              `json:"amount_cents"`
+	Provider      string             `json:"provider"`
+	Channel       string             `json:"channel"`
+	Status        string             `json:"status"`
+	PrepayID      *string            `json:"prepay_id"`
+	TransactionID *string            `json:"transaction_id"`
+	PaidAt        pgtype.Timestamptz `json:"paid_at"`
+	CancelledAt   pgtype.Timestamptz `json:"cancelled_at"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
+}
+
 type Team struct {
 	ID          int64            `json:"id"`
 	Name        string           `json:"name"`
@@ -130,4 +145,27 @@ type User struct {
 	UpdatedAt   pgtype.Timestamp `json:"updated_at"`
 	RealName    *string          `json:"real_name"`
 	PhoneNumber *string          `json:"phone_number"`
+}
+
+type WalletAccount struct {
+	UserID              int64              `json:"user_id"`
+	BalanceCents        int64              `json:"balance_cents"`
+	TotalRechargedCents int64              `json:"total_recharged_cents"`
+	TotalSpentCents     int64              `json:"total_spent_cents"`
+	Version             int64              `json:"version"`
+	CreatedAt           pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt           pgtype.Timestamptz `json:"updated_at"`
+}
+
+type WalletTransaction struct {
+	ID                pgtype.UUID        `json:"id"`
+	UserID            int64              `json:"user_id"`
+	Direction         string             `json:"direction"`
+	Type              string             `json:"type"`
+	AmountCents       int64              `json:"amount_cents"`
+	BalanceAfterCents int64              `json:"balance_after_cents"`
+	SourceType        string             `json:"source_type"`
+	SourceID          string             `json:"source_id"`
+	Description       string             `json:"description"`
+	CreatedAt         pgtype.Timestamptz `json:"created_at"`
 }
