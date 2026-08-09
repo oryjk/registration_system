@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
+import { NeoSurface } from "@/components/neo";
 import { defaultMiniAppRuntimeConfig } from "@/config/runtimeConfig";
 import type { BackendMiniAppHomeHeroBanner } from "@/types/backend";
 
@@ -24,7 +25,13 @@ const visibleHeroBanners = computed(() => {
 </script>
 
 <template>
-  <view>
+  <NeoSurface
+    class="home-hero-shell"
+    variant="raised"
+    interactive
+    flush
+    @tap="handleBannerTap"
+  >
     <swiper
       v-if="visibleHeroBanners.length > 1"
       class="home-banner-swiper"
@@ -32,7 +39,6 @@ const visibleHeroBanners = computed(() => {
       autoplay
       :interval="4200"
       :duration="420"
-      @tap="handleBannerTap"
     >
       <swiper-item v-for="banner in visibleHeroBanners" :key="`${banner.sort_order}-${banner.title}`">
         <view class="home-banner">
@@ -57,7 +63,7 @@ const visibleHeroBanners = computed(() => {
       </swiper-item>
     </swiper>
 
-    <view v-else class="home-banner" @tap="handleBannerTap">
+    <view v-else class="home-banner">
       <image
         v-if="visibleHeroBanners[0]?.image_url"
         class="home-banner-image"
@@ -76,15 +82,18 @@ const visibleHeroBanners = computed(() => {
         <view class="home-banner-ball" />
       </template>
     </view>
-  </view>
+  </NeoSurface>
 </template>
 
 <style scoped>
-.home-banner-swiper {
+.home-hero-shell {
+  position: relative;
   margin-top: 18rpx;
+  background: var(--neo-color-hero);
+}
+
+.home-banner-swiper {
   height: 242rpx;
-  border-radius: 24rpx;
-  overflow: hidden;
 }
 
 .home-banner {
@@ -93,14 +102,10 @@ const visibleHeroBanners = computed(() => {
   align-items: stretch;
   justify-content: space-between;
   overflow: hidden;
-  margin-top: 18rpx;
+  margin-top: 0;
   min-height: 194rpx;
   padding: 24rpx 24rpx;
-  border-radius: 24rpx;
-  background:
-    radial-gradient(circle at 30% 40%, rgba(185, 242, 75, 0.18), transparent 35%),
-    linear-gradient(135deg, #162017 0%, #223120 100%);
-  box-shadow: 0 18rpx 34rpx rgba(31, 47, 28, 0.18);
+  background: var(--neo-color-hero);
 }
 
 .home-banner-swiper .home-banner {
@@ -112,9 +117,9 @@ const visibleHeroBanners = computed(() => {
   content: "";
   position: absolute;
   inset: 0;
-  background-image: radial-gradient(rgba(255, 253, 248, 0.07) 1rpx, transparent 1rpx);
-  background-size: 12rpx 12rpx;
-  opacity: 0.35;
+  background-image: linear-gradient(rgba(255, 253, 248, 0.08) 2rpx, transparent 2rpx), linear-gradient(90deg, rgba(255, 253, 248, 0.08) 2rpx, transparent 2rpx);
+  background-size: 22rpx 22rpx;
+  opacity: 0.28;
 }
 
 .home-banner-image {
@@ -129,7 +134,7 @@ const visibleHeroBanners = computed(() => {
   position: absolute;
   inset: 0;
   z-index: 1;
-  background: linear-gradient(100deg, rgba(17, 27, 16, 0.76) 0%, rgba(17, 27, 16, 0.42) 56%, rgba(17, 27, 16, 0.14) 100%);
+  background: linear-gradient(90deg, rgba(17, 19, 16, 0.78) 0%, rgba(17, 19, 16, 0.58) 54%, rgba(17, 19, 16, 0.3) 100%);
 }
 
 .home-banner-copy {
@@ -143,8 +148,8 @@ const visibleHeroBanners = computed(() => {
 .home-banner-title {
   font-size: 58rpx;
   line-height: 1.06;
-  color: #fffdf8;
-  font-weight: 800;
+  color: var(--neo-color-text-inverse);
+  font-weight: 900;
   letter-spacing: 0;
 }
 
@@ -152,8 +157,8 @@ const visibleHeroBanners = computed(() => {
   margin-top: 14rpx;
   font-size: 28rpx;
   line-height: 1.2;
-  color: #b9f24b;
-  font-weight: 700;
+  color: var(--neo-color-text-inverse);
+  font-weight: 800;
 }
 
 .home-banner-button {
@@ -164,11 +169,13 @@ const visibleHeroBanners = computed(() => {
   height: 54rpx;
   margin-top: 20rpx;
   padding: 0 22rpx;
-  border-radius: 999rpx;
-  background: #9be22b;
-  color: #172018;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-accent);
+  color: var(--neo-color-text);
   font-size: 24rpx;
-  font-weight: 800;
+  font-weight: 900;
+  box-shadow: 3rpx 3rpx 0 var(--neo-color-text-inverse);
 }
 
 .home-banner-goal {
@@ -176,7 +183,10 @@ const visibleHeroBanners = computed(() => {
   top: 22rpx;
   right: 160rpx;
   z-index: 2;
-  color: #b9f24b;
+  padding: 6rpx 10rpx;
+  border: var(--neo-border-default);
+  background: var(--neo-color-accent);
+  color: var(--neo-color-text);
   font-size: 24rpx;
   font-style: italic;
   font-weight: 800;
@@ -204,6 +214,7 @@ const visibleHeroBanners = computed(() => {
   z-index: 2;
   width: 154rpx;
   height: 154rpx;
+  border: var(--neo-border-strong);
   border-radius: 999rpx;
   background:
     radial-gradient(circle at 35% 35%, #ffffff 0%, #f4f2ea 38%, #1c231d 39%, #1c231d 48%, #e6e4dc 49%, #ffffff 62%, #d6d6d0 100%);

@@ -2,9 +2,9 @@
 import { computed } from "vue";
 import type { BackendActivity } from "@/types/backend";
 import type { TeamProfileViewModel } from "@/types/viewModels";
-import IndividualCountdownCard from "./IndividualCountdownCard.vue";
 import IndividualInfoCard from "./IndividualInfoCard.vue";
 import IndividualMatchupHero from "./IndividualMatchupHero.vue";
+import MatchRegistrationStatusCard from "./MatchRegistrationStatusCard.vue";
 import TeamMemberRegistrationBoard from "./TeamMemberRegistrationBoard.vue";
 
 const props = defineProps<{
@@ -19,10 +19,8 @@ const props = defineProps<{
   matchLocation: string;
   joinedCount: number;
   requiredPlayers: number;
+  maxPlayers: number;
   countdownText: string;
-  progressBaseWidth: string;
-  progressExtraWidth: string;
-  progressSplitLeft: string;
   participantPreview: Array<{
     id: number;
     name: string;
@@ -85,13 +83,11 @@ function handleTeamMemberDialogVisibilityChange(visible: boolean) {
       :match-location="matchLocation"
       @open-location="handleOpenLocation"
     />
-    <IndividualCountdownCard
+    <MatchRegistrationStatusCard
       :joined-count="joinedCount"
       :required-players="requiredPlayers"
+      :max-players="maxPlayers"
       :countdown-text="countdownText"
-      :progress-base-width="progressBaseWidth"
-      :progress-extra-width="progressExtraWidth"
-      :progress-split-left="progressSplitLeft"
       :participant-preview="participantPreview"
       :remaining-players-label="remainingPlayersLabel"
       :submitting-status="submittingStatus"

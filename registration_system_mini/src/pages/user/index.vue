@@ -3,13 +3,15 @@ import { computed, ref } from "vue";
 import { onLoad, onShow, onUnload } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
 import BottomTabBar from "@/components/BottomTabBar.vue";
-import MineHeroProfile from "./components/MineHeroProfile.vue";
+import type { NeoTagTone } from "@/components/neo";
+import MineProfileHero from "./components/MineProfileHero.vue";
+import MineTeamIdentityPanel from "./components/MineTeamIdentityPanel.vue";
+import MineStatsGrid from "./components/MineStatsGrid.vue";
 import MineMatchSection from "./components/MineMatchSection.vue";
-import type { MineMatchSummary } from "./components/MineMatchSection.vue";
-import MineMiniCards from "./components/MineMiniCards.vue";
+import MineServiceGrid from "./components/MineServiceGrid.vue";
 import MineSkeleton from "./components/MineSkeleton.vue";
 import MineWalletSection from "./components/MineWalletSection.vue";
-import minePageBackgroundUrl from "@/static/backgrounds/mine-page-bg.jpg";
+import type { MineMatchSummary, MineStatItem } from "./mineTypes";
 import { listActivities } from "@/api/activity";
 import { getMyBalance } from "@/api/billing";
 import { createTeamMembershipOrder, syncPaymentOrderStatus } from "@/api/payment";
@@ -29,7 +31,6 @@ import type { BackendTeamCreditTransaction } from "@/types/backend";
 import {
   formatCreditTransactionLabel,
   formatDateTimeLabel,
-  resolveUserDisplayHandle,
   resolveUserDisplayName,
   toStandLabel,
 } from "@/utils/viewModels";
@@ -43,6 +44,7 @@ const {
   switchIdentity,
   switchTeam,
   ensureSessionReady,
+  ensureTeamDetailLoaded,
   refreshSessionContext,
 } = useTeamContext();
 const { shouldHideCreationEntrances } = useMiniReviewStatus();
@@ -68,13 +70,8 @@ const walletSummary = ref({
 });
 
 const displayName = computed(() => resolveUserDisplayName(currentUser.value));
-const displayHandle = computed(() => resolveUserDisplayHandle(currentUser.value));
 const showInitialLoadingState = computed(() => isLoading.value && !hasLoadedOnce.value);
-const avatarToken = computed(() => displayName.value.slice(0, 1) || "我");
-const teamBadgeLabel = computed(() => {
-  if (!currentUser.value) return "未登录";
-  return currentTeam.value?.myRoleLabel || "未加入球队";
-});
+const visibleErrorMessage = computed(() => currentUser.value ? errorMessage.value : "");
 const messageSummary = computed(() =>
   unreadCount.value > 0 ? `约队发布、约成、取消等消息共 ${unreadCount.value} 条未读` : "约队发布、约成、取消等消息会先站内通知",
 );
@@ -89,10 +86,10 @@ const creditCardSummary = computed(() =>
 );
 const currentTeamJoinedDaysLabel = computed(() => {
   const joinedAt = currentTeam.value?.joinedAt;
-  if (!joinedAt) return "0 天";
+  if (!joinedAt) return "";
 
   const joinedTime = parseDateTime(joinedAt);
-  if (!Number.isFinite(joinedTime)) return "0 天";
+  if (!Number.isFinite(joinedTime)) return "";
 
   const todayStart = todayStartTimestamp();
   const joinedStart = new Date(joinedTime);
@@ -101,8 +98,46 @@ const currentTeamJoinedDaysLabel = computed(() => {
   return `${days} 天`;
 });
 
-function statusClass(status: string) {
-  return `user-status user-status-${attendanceStatusTone(status)}`;
+const mineStats = computed<MineStatItem[]>(() => [
+  {
+    key: "matches",
+    label: "今年比赛",
+    value: String(overviewDigest.value.activityCount),
+    unit: "次",
+    tone: "lime",
+  },
+  {
+    key: "teams",
+    label: "加入球队",
+    value: String(overviewDigest.value.teamCount),
+    unit: "支",
+    tone: "blue",
+  },
+  {
+    key: "hours",
+    label: "今年时长",
+    value: overviewDigest.value.totalHoursLabel,
+    tone: "amber",
+  },
+  {
+    key: "joinedDays",
+    label: "加入当前球队",
+    value: currentTeamJoinedDaysLabel.value || "0 天",
+    tone: "coral",
+  },
+]);
+
+function matchStatusTone(status: string): NeoTagTone {
+  switch (attendanceStatusTone(status)) {
+    case "join":
+      return "green";
+    case "leave":
+      return "muted";
+    case "late":
+      return "amber";
+    default:
+      return "blue";
+  }
 }
 
 function parseDateTime(value: string) {
@@ -135,6 +170,9 @@ async function loadPageData(options?: { preserveContent?: boolean }) {
     await ensureSessionReady();
 
     const activeTeamId = currentTeam.value?.id;
+    if (activeTeamId) {
+      await ensureTeamDetailLoaded(activeTeamId);
+    }
     const [activityPage, myActivityRecords, balance, teamCreditItems] = await Promise.all([
       listActivities({ page: 1, pageSize: 100 }),
       getMyActivities(),
@@ -412,63 +450,64 @@ onUnload(() => {
 
 <template>
   <view class="mine-page">
-    <image class="mine-page-bg" :src="minePageBackgroundUrl" mode="aspectFill" />
-    <view class="mine-page-overlay" />
     <AppTabHeader title="我的" />
     <view class="mine-page-content" :style="contentStyle">
-      <view class="mine-hero">
+      <MineSkeleton v-if="showInitialLoadingState" />
 
-        <MineSkeleton v-if="showInitialLoadingState" />
-
-        <MineHeroProfile
-          v-else
-          :available-identities="availableIdentities"
-          :current-identity="currentIdentity"
+      <template v-else>
+        <MineProfileHero
           :current-user="currentUser"
-          :current-team="currentTeam"
-          :team-profiles="teamProfiles"
-          :is-switching-team="isSwitchingTeam"
           :display-name="displayName"
-          :display-handle="displayHandle"
-          :avatar-token="avatarToken"
-          :team-badge-label="teamBadgeLabel"
-          :overview-digest="overviewDigest"
-          :current-team-joined-days-label="currentTeamJoinedDaysLabel"
+          :team-joined-days-label="currentTeamJoinedDaysLabel"
           @edit-profile="handleEditProfile"
           @login="handleLogin"
           @logout="handleLogout"
-          @manage-team="openTeamManage"
-          @switch-identity="handleSwitchIdentity"
-          @switch-team="handleSwitchTeam"
-        />
-      </view>
-
-      <view class="mine-sections">
-        <MineMatchSection
-          :matches="myMatches"
-          :status-class="statusClass"
-          @open-all="openUserMatches"
-          @open-match="openMatchDetail"
         />
 
-        <MineWalletSection
-          v-if="!shouldHideCreationEntrances"
-          :wallet-summary="walletSummary"
-          @open-billing="openBilling"
-        />
+        <view v-if="visibleErrorMessage" class="mine-error-banner">
+          <text class="mine-error-banner__label">数据加载失败</text>
+          <text class="mine-error-banner__message">{{ visibleErrorMessage }}</text>
+        </view>
 
-        <MineMiniCards
-          :current-team="currentTeam"
-          :message-summary="messageSummary"
-          :credit-card-summary="creditCardSummary"
-          :is-paying-membership="isPayingMembership"
-          @open-notifications="openNotifications"
-          @renew-membership="handleMembershipRenewal"
-        />
+        <template v-if="currentUser">
+          <MineTeamIdentityPanel
+            :available-identities="availableIdentities"
+            :current-identity="currentIdentity"
+            :current-team="currentTeam"
+            :team-profiles="teamProfiles"
+            :is-switching-team="isSwitchingTeam"
+            @manage-team="openTeamManage"
+            @switch-identity="handleSwitchIdentity"
+            @switch-team="handleSwitchTeam"
+          />
 
-        <view class="mine-bottom-spacer" />
+          <MineStatsGrid :items="mineStats" />
 
-      </view>
+          <MineMatchSection
+            :matches="myMatches"
+            :status-tone="matchStatusTone"
+            @open-all="openUserMatches"
+            @open-match="openMatchDetail"
+          />
+
+          <MineWalletSection
+            v-if="!shouldHideCreationEntrances"
+            :wallet-summary="walletSummary"
+            @open-billing="openBilling"
+          />
+
+          <MineServiceGrid
+            :current-team="currentTeam"
+            :message-summary="messageSummary"
+            :credit-card-summary="creditCardSummary"
+            :is-paying-membership="isPayingMembership"
+            @open-notifications="openNotifications"
+            @renew-membership="handleMembershipRenewal"
+          />
+        </template>
+      </template>
+
+      <view class="mine-bottom-spacer" />
 
       <BottomTabBar current="mine" />
     </view>
@@ -480,42 +519,45 @@ onUnload(() => {
   position: relative;
   min-height: 100vh;
   padding: 0 28rpx 0;
-  background: #f3f5ee;
+  background: var(--neo-color-page);
   box-sizing: border-box;
-  overflow: hidden;
-}
-
-.mine-page-bg,
-.mine-page-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-}
-
-.mine-page-bg {
-  z-index: 0;
-  height: 1380rpx;
-}
-
-.mine-page-overlay {
-  z-index: 1;
-  height: 100vh;
-  background:
-    linear-gradient(180deg, rgba(253, 253, 248, 0.16) 0%, rgba(246, 247, 236, 0.38) 18%, rgba(241, 244, 232, 0.72) 42%, #f3f5ee 70%);
 }
 
 .mine-page-content {
   position: relative;
-  z-index: 2;
+  width: 100%;
+  max-width: 900rpx;
+  margin: 0 auto;
+  box-sizing: border-box;
 }
 
-.mine-hero {
-  padding-bottom: 4rpx;
+.mine-error-banner {
+  margin-top: 22rpx;
+  padding: 18rpx 20rpx;
+  border: var(--neo-border-strong);
+  border-radius: var(--neo-radius-md);
+  background: var(--neo-color-danger-soft);
+  box-shadow: 6rpx 6rpx 0 var(--neo-color-text);
 }
 
-.mine-sections {
-  margin-top: 16rpx;
+.mine-error-banner__label,
+.mine-error-banner__message {
+  display: block;
+}
+
+.mine-error-banner__label {
+  color: var(--neo-color-text);
+  font-size: 23rpx;
+  font-weight: 900;
+}
+
+.mine-error-banner__message {
+  margin-top: 6rpx;
+  color: var(--neo-color-text-muted);
+  font-size: 22rpx;
+  font-weight: 700;
+  line-height: 1.45;
+  word-break: break-word;
 }
 
 .mine-bottom-spacer {

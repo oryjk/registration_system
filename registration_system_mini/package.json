@@ -29,7 +29,7 @@
     "@dcloudio/uni-mp-weixin": "3.0.0-4080420251103001",
     "@dcloudio/uni-mp-xhs": "3.0.0-4080420251103001",
     "@dcloudio/uni-quickapp-webview": "3.0.0-4080420251103001",
-    "@wot-ui/ui": "2.0.8",
+    "@wot-ui/ui": "2.3.0",
     "vue": "^3.4.21"
   },
   "devDependencies": {

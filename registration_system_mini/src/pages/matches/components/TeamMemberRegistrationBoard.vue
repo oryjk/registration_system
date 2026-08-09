@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
+import { NeoAvatarStack, NeoButton, NeoStickyActionBar, NeoSurface, NeoTag } from "@/components/neo";
 
 type TeamMemberCard = {
   userId: number;
@@ -74,6 +75,13 @@ const memberSections = computed(() => [
 ]);
 
 const activeSection = computed(() => memberSections.value.find((section) => section.key === selectedGroup.value) ?? memberSections.value[0]);
+
+const activeMemberAvatarItems = computed(() => activeSection.value.members.map((member) => ({
+  id: member.userId,
+  name: member.name,
+  avatarUrl: member.avatarUrl,
+  tone: member.tone,
+})));
 
 const memberSummaryLabel = computed(() => {
   const total = props.groups.joined.length + props.groups.leave.length + props.groups.pending.length;
@@ -182,10 +190,21 @@ function handleSelectMember(group: MemberGroupKey, member: TeamMemberCard) {
     isCurrentUser: member.isCurrentUser,
   };
 }
+
+function handleSelectMemberById(id: string | number) {
+  const member = activeSection.value.members.find((item) => item.userId === Number(id));
+  if (member) handleSelectMember(activeSection.value.key, member);
+}
+
+function memberStatusTone(group: MemberGroupKey) {
+  if (group === "joined") return "lime" as const;
+  if (group === "leave") return "amber" as const;
+  return "muted" as const;
+}
 </script>
 
 <template>
-  <view class="member-board registration-card">
+  <NeoSurface custom-class="member-board">
     <view class="member-board-head">
       <view>
         <text class="section-title">队员状态</text>
@@ -198,9 +217,10 @@ function handleSelectMember(group: MemberGroupKey, member: TeamMemberCard) {
         v-for="section in memberSections"
         :key="section.key"
         :class="['member-segment-item', selectedGroup === section.key ? 'member-segment-item-active' : '']"
+        hover-class="member-segment-item-pressed"
         @tap="handleSelectGroup(section.key)"
       >
-        <text class="member-segment-label">{{ section.statusLabel }}</text>
+        <NeoTag :tone="memberStatusTone(section.key)" size="sm">{{ section.statusLabel }}</NeoTag>
         <text class="member-segment-count">{{ section.countLabel }}</text>
       </view>
     </view>
@@ -211,25 +231,20 @@ function handleSelectMember(group: MemberGroupKey, member: TeamMemberCard) {
         <text class="member-panel-count">{{ activeSection.members.length }} 人</text>
       </view>
 
-      <view v-if="activeSection.members.length" class="member-avatar-row">
-        <view
-          v-for="member in activeSection.members"
-          :key="member.userId"
-          :class="[
-            'member-avatar-item',
-            member.isCurrentUser ? 'member-avatar-current' : '',
-            selectedMember?.group === activeSection.key && selectedMember.userId === member.userId ? 'member-avatar-selected' : '',
-          ]"
-          @tap="handleSelectMember(activeSection.key, member)"
-        >
-          <view class="member-avatar" :style="{ backgroundColor: member.tone }">
-            <image v-if="member.avatarUrl" class="member-avatar-image" :src="member.avatarUrl" mode="aspectFill" />
-            <text v-else class="member-avatar-text">{{ member.name.slice(0, 1) }}</text>
-          </view>
-          <text v-if="member.isCurrentUser" class="member-current-tag">我</text>
-        </view>
-      </view>
+      <NeoAvatarStack
+        v-if="activeSection.members.length"
+        :items="activeMemberAvatarItems"
+        :selected-id="selectedMember?.group === activeSection.key ? selectedMember.userId : null"
+        interactive
+        size="lg"
+        @select="handleSelectMemberById"
+      />
       <view v-else class="member-empty">{{ activeSection.emptyText }}</view>
+
+      <view v-if="activeSection.members.some((member) => member.isCurrentUser)" class="member-current-note">
+        <NeoTag tone="dark" size="sm">我的状态</NeoTag>
+        <text>{{ activeSection.statusLabel }}</text>
+      </view>
 
       <view v-if="selectedMember?.group === activeSection.key" class="member-name-panel">
         <text class="member-name-text">{{ selectedMember.name }}</text>
@@ -237,19 +252,17 @@ function handleSelectMember(group: MemberGroupKey, member: TeamMemberCard) {
       </view>
     </view>
 
-    <view class="member-floating-action-wrap">
-      <view
-        :class="[
-          'member-floating-action',
-          currentMemberStatus === 'joined' ? 'member-floating-action-joined' :
-          currentMemberStatus === 'leave' ? 'member-floating-action-leave' : 'member-floating-action-pending',
-          submittingStatus ? 'member-floating-action-disabled' : '',
-        ]"
-        @tap="handleOpenStatusDialog"
+    <NeoStickyActionBar>
+      <NeoButton
+        :variant="currentMemberStatus === 'leave' ? 'lime' : currentMemberStatus === 'joined' ? 'danger' : 'dark'"
+        block
+        :loading="submittingStatus"
+        :disabled="submittingStatus"
+        @click="handleOpenStatusDialog"
       >
-        <text>{{ floatingActionLabel }}</text>
-      </view>
-    </view>
+        {{ floatingActionLabel }}
+      </NeoButton>
+    </NeoStickyActionBar>
 
     <view v-if="statusDialogVisible && statusDialogConfig" class="team-member-dialog-mask">
       <view class="team-member-dialog" @tap.stop>
@@ -261,41 +274,31 @@ function handleSelectMember(group: MemberGroupKey, member: TeamMemberCard) {
           <view class="team-member-dialog-close" @tap="closeStatusDialog">×</view>
         </view>
         <view class="team-member-dialog-actions">
-          <view
-            class="team-member-dialog-action team-member-dialog-action-secondary"
-            :class="props.submittingStatus ? 'team-member-dialog-action-disabled' : ''"
-            @tap="handleDialogSecondaryAction"
-          >
+          <NeoButton variant="outline" block :disabled="props.submittingStatus" @click="handleDialogSecondaryAction">
             {{ statusDialogConfig.secondaryText }}
-          </view>
-          <view
-            class="team-member-dialog-action"
-            :class="[
-              statusDialogConfig.primaryTone === 'danger' ? 'team-member-dialog-action-danger' : 'team-member-dialog-action-accent',
-              props.submittingStatus ? 'team-member-dialog-action-disabled' : '',
-            ]"
-            @tap="handleDialogPrimaryAction"
+          </NeoButton>
+          <NeoButton
+            :variant="statusDialogConfig.primaryTone === 'danger' ? 'danger' : 'lime'"
+            block
+            :loading="props.submittingStatus"
+            :disabled="props.submittingStatus"
+            @click="handleDialogPrimaryAction"
           >
             {{ props.submittingStatus ? "提交中..." : statusDialogConfig.primaryText }}
-          </view>
+          </NeoButton>
         </view>
       </view>
     </view>
-  </view>
+  </NeoSurface>
 </template>
 
 <style scoped>
-.registration-card {
-  position: relative;
-  overflow: hidden;
-  border-radius: 28rpx;
-  box-sizing: border-box;
-}
-
 .member-board {
-  padding: 26rpx;
-  background: #ffffff;
-  box-shadow: 0 16rpx 36rpx rgba(10, 10, 10, 0.05);
+  position: relative;
+  border: var(--neo-border-strong);
+  border-radius: var(--neo-radius-md);
+  background: var(--neo-color-surface);
+  box-shadow: var(--neo-shadow-raised);
 }
 
 .member-board-head {
@@ -320,9 +323,10 @@ function handleSelectMember(group: MemberGroupKey, member: TeamMemberCard) {
   min-width: 86rpx;
   height: 54rpx;
   padding: 0 16rpx;
-  border-radius: 999rpx;
-  background: #f0f2ed;
-  color: #5f665b;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-muted);
+  color: var(--neo-color-text-muted);
   font-size: 24rpx;
   font-weight: 900;
   flex-shrink: 0;
@@ -331,15 +335,16 @@ function handleSelectMember(group: MemberGroupKey, member: TeamMemberCard) {
 .member-segment {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12rpx;
+  gap: var(--neo-segment-gap);
   margin-top: 22rpx;
 }
 
 .member-segment-item {
   min-width: 0;
   padding: 16rpx 12rpx;
-  border-radius: 22rpx;
-  background: #f3f5ef;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-surface);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -348,14 +353,13 @@ function handleSelectMember(group: MemberGroupKey, member: TeamMemberCard) {
 }
 
 .member-segment-item-active {
-  background: #9be22b;
+  background: var(--neo-color-accent);
+  box-shadow: var(--neo-shadow-pressed);
 }
 
-.member-segment-label {
-  color: #171717;
-  font-size: 24rpx;
-  line-height: 1.2;
-  font-weight: 800;
+.member-segment-item-pressed {
+  transform: translate(2rpx, 2rpx);
+  box-shadow: none;
 }
 
 .member-segment-count {
@@ -368,8 +372,9 @@ function handleSelectMember(group: MemberGroupKey, member: TeamMemberCard) {
 .member-panel {
   margin-top: 20rpx;
   padding: 20rpx;
-  border-radius: 26rpx;
-  background: #f4f5f2;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-muted);
 }
 
 .member-panel-head {
@@ -393,70 +398,18 @@ function handleSelectMember(group: MemberGroupKey, member: TeamMemberCard) {
   font-weight: 800;
 }
 
-.member-avatar-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  row-gap: 18rpx;
+.member-panel :deep(.neo-avatar-stack) {
   margin-top: 22rpx;
 }
 
-.member-avatar-item {
-  position: relative;
-  margin-right: 10rpx;
-  transition: transform 180ms ease;
-  transform-origin: center center;
-}
-
-.member-avatar-current {
-  z-index: 2;
-}
-
-.member-avatar-selected {
-  z-index: 3;
-  transform: translateY(-4rpx) scale(1.18);
-}
-
-.member-avatar {
-  width: 92rpx;
-  height: 92rpx;
-  overflow: hidden;
-  border-radius: 999rpx;
+.member-current-note {
   display: flex;
   align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
-}
-
-.member-avatar-image {
-  width: 100%;
-  height: 100%;
-}
-
-.member-avatar-text {
-  color: #ffffff;
-  font-size: 28rpx;
+  gap: 10rpx;
+  margin-top: 16rpx;
+  color: var(--neo-color-text);
+  font-size: 24rpx;
   font-weight: 900;
-}
-
-.member-current-tag {
-  position: absolute;
-  right: -5rpx;
-  bottom: -6rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 36rpx;
-  height: 36rpx;
-  padding: 0 8rpx;
-  border: 3rpx solid #ffffff;
-  border-radius: 999rpx;
-  background: #171717;
-  color: #ffffff;
-  font-size: 22rpx;
-  font-weight: 800;
-  line-height: 1;
-  box-sizing: border-box;
 }
 
 .member-name-panel {
@@ -499,52 +452,12 @@ function handleSelectMember(group: MemberGroupKey, member: TeamMemberCard) {
 .member-empty {
   margin-top: 16rpx;
   padding: 18rpx 20rpx;
-  border-radius: 999rpx;
-  background: rgba(255, 255, 255, 0.64);
-  color: #6a7065;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-surface);
+  color: var(--neo-color-text-muted);
   font-size: 24rpx;
   font-weight: 800;
-}
-
-.member-floating-action-wrap {
-  position: fixed;
-  left: 32rpx;
-  right: 32rpx;
-  bottom: calc(env(safe-area-inset-bottom) + 8rpx);
-  z-index: 80;
-}
-
-.member-floating-action {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 96rpx;
-  border-radius: 999rpx;
-  font-size: 32rpx;
-  line-height: 1;
-  font-weight: 900;
-  box-shadow: 0 18rpx 36rpx rgba(17, 17, 17, 0.2);
-}
-
-.member-floating-action-pending {
-  background: #171717;
-  color: #ffffff;
-}
-
-.member-floating-action-leave {
-  background: #4a4d48;
-  color: #ffffff;
-  box-shadow: 0 18rpx 36rpx rgba(74, 77, 72, 0.28);
-}
-
-.member-floating-action-joined {
-  background: #171717;
-  color: #ffffff;
-  box-shadow: 0 18rpx 36rpx rgba(17, 17, 17, 0.22);
-}
-
-.member-floating-action-disabled {
-  opacity: 0.7;
 }
 
 .team-member-dialog-mask {
@@ -616,39 +529,6 @@ function handleSelectMember(group: MemberGroupKey, member: TeamMemberCard) {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 18rpx;
   margin-top: 30rpx;
-}
-
-.team-member-dialog-action {
-  height: 84rpx;
-  border-radius: 16rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 30rpx;
-  font-weight: 900;
-  box-sizing: border-box;
-}
-
-.team-member-dialog-action-secondary {
-  background: #eef1e8;
-  border: 2rpx solid #d5dbca;
-  color: #2d332c;
-}
-
-.team-member-dialog-action-accent {
-  background: #171717;
-  color: #ffffff;
-  box-shadow: 0 12rpx 24rpx rgba(17, 17, 17, 0.22);
-}
-
-.team-member-dialog-action-danger {
-  background: #171717;
-  color: #ffffff;
-  box-shadow: 0 12rpx 24rpx rgba(17, 17, 17, 0.22);
-}
-
-.team-member-dialog-action-disabled {
-  opacity: 0.68;
 }
 
 @keyframes team-member-dialog-mask-fade-in {

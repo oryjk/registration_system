@@ -77,29 +77,31 @@ function handleRemoveMember(member: BackendTeamMember) {
     </view>
     <view v-if="members.length" class="team-result-list member-section-list">
       <view v-for="member in members" :key="member.user_id" :class="memberCardClass(member)" @tap="handleOpenMemberAttendance(member)">
-        <image
-          v-if="memberAvatarUrl(member.user_id)"
-          :class="['member-avatar', variant === 'frozen' ? 'member-avatar-muted' : '']"
-          :src="memberAvatarUrl(member.user_id)"
-          mode="aspectFill"
-        />
-        <view v-else :class="['member-avatar', 'member-avatar-fallback', variant === 'frozen' ? 'member-avatar-muted' : '']">
-          {{ memberInitial(member.user_id) }}
-        </view>
-        <view class="member-main">
-          <view class="member-title-row">
-            <text class="team-result-title member-name">{{ memberName(member.user_id) }}</text>
-            <text v-if="showRoleBadge(member)" :class="roleBadgeClass()">{{ roleLabel(member.role) }}</text>
-            <text :class="['member-type-badge', member.is_member ? 'member-type-badge-vip' : 'member-type-badge-regular']">
-              {{ member.is_member ? "会员" : "普通" }}
-            </text>
+        <view class="member-card-main">
+          <image
+            v-if="memberAvatarUrl(member.user_id)"
+            :class="['member-avatar', variant === 'frozen' ? 'member-avatar-muted' : '']"
+            :src="memberAvatarUrl(member.user_id)"
+            mode="aspectFill"
+          />
+          <view v-else :class="['member-avatar', 'member-avatar-fallback', variant === 'frozen' ? 'member-avatar-muted' : '']">
+            {{ memberInitial(member.user_id) }}
           </view>
-          <text class="team-result-meta">{{ statusMeta(member) }}</text>
+          <view class="member-main">
+            <view class="member-title-row">
+              <text class="team-result-title member-name">{{ memberName(member.user_id) }}</text>
+              <text v-if="showRoleBadge(member)" :class="roleBadgeClass()">{{ roleLabel(member.role) }}</text>
+              <text :class="['member-type-badge', member.is_member ? 'member-type-badge-vip' : 'member-type-badge-regular']">
+                {{ member.is_member ? "会员" : "普通" }}
+              </text>
+            </view>
+            <text class="team-result-meta">{{ statusMeta(member) }}</text>
+          </view>
         </view>
         <view class="member-actions">
-          <view class="member-link" @tap.stop="handleEditMember(member)">编辑</view>
-          <view class="member-link" @tap.stop="handleToggleMemberStatus(member)">{{ toggleLabel(member) }}</view>
-          <view v-if="member.role !== 'captain'" class="member-link member-link-danger" @tap.stop="handleRemoveMember(member)">移除</view>
+          <view class="member-link" hover-class="member-link-pressed" @tap.stop="handleEditMember(member)">编辑</view>
+          <view class="member-link" hover-class="member-link-pressed" @tap.stop="handleToggleMemberStatus(member)">{{ toggleLabel(member) }}</view>
+          <view v-if="member.role !== 'captain'" class="member-link member-link-danger" hover-class="member-link-pressed" @tap.stop="handleRemoveMember(member)">移除</view>
         </view>
       </view>
     </view>
@@ -129,9 +131,10 @@ function handleRemoveMember(member: BackendTeamMember) {
   min-width: 88rpx;
   height: 46rpx;
   padding: 0 18rpx;
-  border-radius: 999rpx;
-  background: #edf0e7;
-  color: #5f665a;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-xs);
+  background: var(--neo-color-accent);
+  color: var(--neo-color-text);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -154,9 +157,10 @@ function handleRemoveMember(member: BackendTeamMember) {
 .empty-box {
   margin-top: 22rpx;
   padding: 22rpx;
-  border-radius: 24rpx;
-  background: #f3f5ef;
-  color: #6b7166;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-muted);
+  color: var(--neo-color-text-muted);
   font-size: 26rpx;
   font-weight: 700;
 }
@@ -167,38 +171,47 @@ function handleRemoveMember(member: BackendTeamMember) {
 
 .member-card {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
   gap: 16rpx;
-  padding: 22rpx;
-  border-radius: 24rpx;
-  background: #f5f7f1;
+  padding: 18rpx;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-surface);
+  box-shadow: 4rpx 4rpx 0 var(--neo-color-text);
+  box-sizing: border-box;
+}
+
+.member-card-main {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  width: 100%;
 }
 
 .member-card-leadership {
-  background: #fbfff0;
-  border: 2rpx solid rgba(200, 255, 0, 0.7);
+  background: var(--neo-color-success);
 }
 
 .member-card-frozen {
-  background: #eef1ea;
+  background: var(--neo-color-muted);
   opacity: 0.86;
 }
 
 .member-avatar {
   width: 76rpx;
   height: 76rpx;
-  border-radius: 22rpx;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
   flex-shrink: 0;
   overflow: hidden;
-  background: #111310;
+  background: var(--neo-color-text);
 }
 
 .member-avatar-fallback {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #c8ff00;
+  color: var(--neo-color-accent);
   font-size: 30rpx;
   font-weight: 900;
 }
@@ -229,7 +242,7 @@ function handleRemoveMember(member: BackendTeamMember) {
 
 .team-result-title {
   display: block;
-  color: #111310;
+  color: var(--neo-color-text);
   font-size: 30rpx;
   font-weight: 900;
 }
@@ -237,7 +250,7 @@ function handleRemoveMember(member: BackendTeamMember) {
 .team-result-meta {
   display: block;
   margin-top: 6rpx;
-  color: #6a7165;
+  color: var(--neo-color-text-muted);
   font-size: 24rpx;
   font-weight: 700;
 }
@@ -246,9 +259,10 @@ function handleRemoveMember(member: BackendTeamMember) {
   flex-shrink: 0;
   height: 42rpx;
   padding: 0 16rpx;
-  border-radius: 999rpx;
-  background: #10110f;
-  color: #c8ff00;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-xs);
+  background: var(--neo-color-text);
+  color: var(--neo-color-accent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -258,15 +272,16 @@ function handleRemoveMember(member: BackendTeamMember) {
 }
 
 .member-role-badge-muted {
-  background: #dfe4d9;
-  color: #5f665a;
+  background: var(--neo-color-disabled);
+  color: var(--neo-color-text-muted);
 }
 
 .member-type-badge {
   flex-shrink: 0;
   height: 42rpx;
   padding: 0 14rpx;
-  border-radius: 999rpx;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-xs);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -276,34 +291,45 @@ function handleRemoveMember(member: BackendTeamMember) {
 }
 
 .member-type-badge-vip {
-  background: #c8ff00;
-  color: #10110f;
+  background: var(--neo-color-accent);
+  color: var(--neo-color-text);
 }
 
 .member-type-badge-regular {
-  background: #e6eadf;
-  color: #6a7165;
+  background: var(--neo-color-surface);
+  color: var(--neo-color-text-muted);
 }
 
 .member-actions {
   display: flex;
-  gap: 12rpx;
-  flex-shrink: 0;
+  gap: 10rpx;
+  width: 100%;
 }
 
 .member-link {
-  min-width: 54rpx;
-  height: 52rpx;
+  flex: 1;
+  min-width: 0;
+  height: 54rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #111310;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-xs);
+  background: var(--neo-color-surface);
+  color: var(--neo-color-text);
   font-size: 24rpx;
   font-weight: 900;
   line-height: 1;
+  box-shadow: 2rpx 2rpx 0 var(--neo-color-text);
+  box-sizing: border-box;
 }
 
 .member-link-danger {
-  color: #b42318;
+  background: var(--neo-color-danger-soft);
+}
+
+.member-link-pressed {
+  transform: translate(2rpx, 2rpx);
+  box-shadow: none;
 }
 </style>

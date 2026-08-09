@@ -64,6 +64,7 @@ onPageNotFound((options) => {
 </script>
 
 <style>
+@import "./styles/neo-tokens.css";
 @import "./uni.css";
 
 page {

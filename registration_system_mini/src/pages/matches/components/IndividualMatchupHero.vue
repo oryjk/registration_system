@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { BackendActivity } from "@/types/backend";
+import { NeoSurface, NeoTag } from "@/components/neo";
 
 defineProps<{
   match: BackendActivity;
@@ -19,9 +20,9 @@ defineEmits<{
 </script>
 
 <template>
-  <view class="hero-black-card">
+  <NeoSurface variant="dark" custom-class="hero-black-card">
     <view class="hero-black-copy">
-      <text class="hero-tone-badge">{{ matchKindLabel }}</text>
+      <NeoTag tone="lime" size="md">{{ matchKindLabel }}</NeoTag>
       <text class="hero-black-title">{{ match.name }}</text>
 
       <view class="matchup-stage">
@@ -64,7 +65,7 @@ defineEmits<{
         </view>
       </view>
     </view>
-  </view>
+  </NeoSurface>
 </template>
 
 <style scoped>
@@ -73,8 +74,10 @@ defineEmits<{
   min-height: 390rpx;
   padding: 30rpx;
   overflow: hidden;
-  border-radius: 28rpx;
-  background: linear-gradient(140deg, #222222 0%, #1c1c1c 54%, #2a2a2a 100%);
+  border: var(--neo-border-strong);
+  border-radius: var(--neo-radius-md);
+  background: var(--neo-color-hero);
+  box-shadow: var(--neo-shadow-raised);
   box-sizing: border-box;
 }
 
@@ -85,17 +88,6 @@ defineEmits<{
   flex-direction: column;
   gap: 12rpx;
   width: 100%;
-}
-
-.hero-tone-badge {
-  display: inline-flex;
-  align-self: flex-start;
-  padding: 10rpx 18rpx;
-  border-radius: 999rpx;
-  background: #9be22b;
-  color: #181818;
-  font-size: 24rpx;
-  font-weight: 900;
 }
 
 .hero-black-title {

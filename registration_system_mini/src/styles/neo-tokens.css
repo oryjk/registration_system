@@ -1,0 +1,179 @@
+:root,
+page {
+  /* Primitive */
+  --neo-primitive-ink: #111310;
+  --neo-primitive-surface: #fffdf8;
+  --neo-primitive-canvas: #f4f0e8;
+  --neo-primitive-hero: #172018;
+  --neo-primitive-lime: #b9f24b;
+  --neo-primitive-lime-soft: #dff8a8;
+  --neo-primitive-danger: #ff6b5f;
+  --neo-primitive-amber-soft: #ffe2a8;
+  --neo-primitive-blue-soft: #dce6ff;
+  --neo-primitive-red-soft: #ffd2cc;
+  --neo-primitive-muted: #ece9e1;
+  --neo-primitive-muted-strong: #e5e1d9;
+  --neo-primitive-track: #f0ece4;
+  --neo-primitive-skeleton-surface: #f7f3eb;
+  --neo-primitive-skeleton-block: #dedad2;
+  --neo-primitive-text-muted: #4d514b;
+  --neo-primitive-text-disabled: #666a63;
+
+  /* Semantic */
+  --neo-color-page: var(--neo-primitive-canvas);
+  --neo-color-surface: var(--neo-primitive-surface);
+  --neo-color-text: var(--neo-primitive-ink);
+  --neo-color-text-inverse: var(--neo-primitive-surface);
+  --neo-color-text-muted: var(--neo-primitive-text-muted);
+  --neo-color-text-disabled: var(--neo-primitive-text-disabled);
+  --neo-color-accent: var(--neo-primitive-lime);
+  --neo-color-hero: var(--neo-primitive-hero);
+  --neo-color-success: var(--neo-primitive-lime-soft);
+  --neo-color-danger: var(--neo-primitive-danger);
+  --neo-color-warning-soft: var(--neo-primitive-amber-soft);
+  --neo-color-danger-soft: var(--neo-primitive-red-soft);
+  --neo-color-info-soft: var(--neo-primitive-blue-soft);
+  --neo-color-muted: var(--neo-primitive-muted);
+  --neo-color-disabled: var(--neo-primitive-muted-strong);
+  --neo-color-track: var(--neo-primitive-track);
+  --neo-color-skeleton-surface: var(--neo-primitive-skeleton-surface);
+  --neo-color-skeleton-block: var(--neo-primitive-skeleton-block);
+  --neo-border-default: 2rpx solid var(--neo-color-text);
+  --neo-border-strong: 3rpx solid var(--neo-color-text);
+  --neo-radius-xs: 3rpx;
+  --neo-radius-sm: 4rpx;
+  --neo-radius-md: 6rpx;
+  --neo-radius-round: 999rpx;
+  --neo-shadow-raised: 8rpx 8rpx 0 var(--neo-color-text);
+  --neo-shadow-pressed: 4rpx 4rpx 0 var(--neo-color-text);
+  --neo-motion-press-offset: 4rpx;
+  --neo-motion-fast: 120ms ease;
+
+  /* Components */
+  --neo-surface-bg: var(--neo-color-surface);
+  --neo-surface-fg: var(--neo-color-text);
+  --neo-surface-border: var(--neo-border-strong);
+  --neo-surface-radius: var(--neo-radius-md);
+  --neo-surface-padding: 20rpx;
+  --neo-surface-shadow: var(--neo-shadow-raised);
+
+  --neo-button-bg: var(--neo-color-text);
+  --neo-button-fg: var(--neo-color-text-inverse);
+  --neo-button-border: var(--neo-border-default);
+  --neo-button-radius: var(--neo-radius-sm);
+  --neo-button-font-size-sm: 24rpx;
+  --neo-button-font-size-md: 26rpx;
+  --neo-button-height-sm: 48rpx;
+  --neo-button-height-md: 62rpx;
+
+  --neo-tag-border: var(--neo-border-default);
+  --neo-tag-radius: var(--neo-radius-sm);
+  --neo-tag-font-size-sm: 22rpx;
+  --neo-tag-font-size-md: 24rpx;
+
+  --neo-progress-track-bg: var(--neo-color-track);
+  --neo-progress-fill-bg: var(--neo-color-accent);
+  --neo-progress-extra-bg: var(--neo-color-danger);
+  --neo-progress-split-bg: var(--neo-color-text);
+  --neo-progress-height: 18rpx;
+  --neo-progress-radius: var(--neo-radius-xs);
+  --neo-progress-meta-font-size: 24rpx;
+  --neo-progress-meta-font-weight: 900;
+  --neo-progress-track-margin-top: 8rpx;
+
+  --neo-segment-height: 68rpx;
+  --neo-segment-gap: 8rpx;
+  --neo-segment-padding: 8rpx;
+  --neo-segment-radius: var(--neo-radius-sm);
+  --neo-segment-bg: var(--neo-color-muted);
+  --neo-segment-active-bg: var(--neo-color-accent);
+  --neo-segment-font-size: 26rpx;
+
+  --neo-avatar-size-sm: 52rpx;
+  --neo-avatar-size-md: 68rpx;
+  --neo-avatar-size-lg: 84rpx;
+  --neo-avatar-overlap: 14rpx;
+  --neo-avatar-overlap-negative: -14rpx;
+  --neo-avatar-border: 2rpx solid var(--neo-color-surface);
+  --neo-avatar-plus-bg: var(--neo-color-text);
+  --neo-avatar-plus-fg: var(--neo-color-text-inverse);
+
+  --neo-action-bar-bottom: 8rpx;
+  --neo-action-bar-padding: 14rpx;
+  --neo-action-bar-radius: var(--neo-radius-md);
+  --neo-action-bar-bg: var(--neo-color-surface);
+  --neo-action-bar-shadow: 8rpx 8rpx 0 var(--neo-color-text);
+
+  --neo-date-bg: var(--neo-color-text);
+  --neo-date-fg: var(--neo-color-text-inverse);
+  --neo-date-time-bg: var(--neo-color-accent);
+  --neo-date-time-fg: var(--neo-color-text);
+  --neo-date-width: 156rpx;
+  --neo-date-radius: var(--neo-radius-xs);
+
+  --app-primary: var(--neo-color-accent);
+  --app-primary-text: var(--neo-color-text);
+
+  /* Wot UI overlays keep the same Neo palette when rendered through root-portal. */
+  --wot-popup-bg: var(--neo-color-surface);
+  --wot-popup-radius: var(--neo-radius-md);
+  --wot-picker-bg: var(--neo-color-surface);
+  --wot-picker-action-color-confirm: var(--neo-color-text);
+  --wot-picker-action-color-cancel: var(--neo-color-text-muted);
+  --wot-picker-action-disabled-color: var(--neo-color-text-disabled);
+  --wot-picker-title-color: var(--neo-color-text);
+  --wot-picker-title-font-weight: 900;
+  --wot-picker-radius: var(--neo-radius-md);
+}
+
+/* Wot Picker is rendered through root-portal, so its Neo skin is global. */
+.wd-picker__popup {
+  border-top: var(--neo-border-strong);
+  border-radius: var(--neo-radius-md) var(--neo-radius-md) 0 0;
+  box-shadow: 0 -6rpx 0 var(--neo-color-text);
+}
+
+.wd-picker__wraper {
+  background: var(--neo-color-surface);
+}
+
+.wd-picker__toolbar {
+  min-height: 84rpx;
+  border-bottom: var(--neo-border-default);
+  background: var(--neo-color-surface);
+}
+
+.wd-picker__action {
+  color: var(--neo-color-text) !important;
+  font-size: 26rpx;
+  font-weight: 900;
+}
+
+.wd-picker__action--cancel {
+  color: var(--neo-color-text-muted) !important;
+}
+
+.wd-picker__title {
+  color: var(--neo-color-text) !important;
+  font-size: 30rpx;
+  font-weight: 900;
+}
+
+.wd-picker-view {
+  background: var(--neo-color-surface);
+}
+
+.wd-picker-view__column-item--active {
+  color: var(--neo-color-text);
+  font-weight: 900;
+}
+
+.wd-picker-view__roller {
+  border-top: var(--neo-border-default);
+  border-bottom: var(--neo-border-default);
+  background: var(--neo-color-accent) !important;
+}
+
+.wd-picker-view__mask {
+  background: transparent !important;
+}

@@ -58,6 +58,18 @@ src/
 - 不要为了普通前端改动机械新增单元测试或静态断言；只有涉及路由、接口调用、数据提交、权限、关键组件接入、共享工具函数或业务状态变化时，才按风险补充必要测试。
 - 前端纯视觉样式调整（颜色、边框、间距、宽度、字号、圆角、阴影等）不需要新增单元测试或静态断言；这类变更以截图/模拟器人工确认效果为准。
 
+## 跨端约束（H5 与小程序兼容）
+
+本项目同时面向 H5 和微信小程序，日常开发以 H5 为主，但必须保证小程序可编译可运行。
+
+- **统一使用 `uni.*` API**，不要直接调用 `wx.*`；`uni.*` 是 uni-app 的跨端封装，在 H5 和小程序里各有实现。
+  - ✅ `uni.request`、`uni.getStorageSync`、`uni.navigateTo`、`uni.login`
+  - ❌ `wx.request`、`wx.getStorageSync`、`wx.navigateTo`
+- **禁止使用浏览器 DOM API**：不写 `document.*`、`window.*`、`localStorage`、`sessionStorage`、`querySelector` 等；存储统一用 `uni.getStorageSync` / `uni.setStorageSync`。
+- **微信专属能力必须平台隔离**：`open-type="chooseAvatar"`、`open-type="getPhoneNumber"`、`wx.requestPayment` 等仅小程序可用，必须用条件编译 `<!-- #ifdef MP-WEIXIN -->` / `<!-- #ifndef MP-WEIXIN -->` 隔离，并提供 H5 降级路径或合理跳过。
+- **CSS 避免小程序不友好的特性**：不用 `:hover` 伪类（用 `hover-class` 替代）；`position: fixed` 注意小程序导航栏差异；百分比高度需确保父容器有明确高度；统一使用 `rpx` 单位，不要混用 `px`、`vw`、`rem`。
+- **新增页面或功能后**，定期执行 `bun run build:mp-weixin` 确认小程序可编译，避免 H5 运行正常但小程序编译失败的问题积累。
+
 ## 验证建议
 
 - 提交前至少执行 `bun run type-check`
@@ -68,3 +80,10 @@ src/
 
 - 不要提交真实小程序密钥、AppSecret、生产域名配置。
 - 不要在单次任务里顺手重写整套页面风格或路由结构。
+
+<!-- open-wot agent instructions start -->
+## Wot UI Agent Instructions
+
+Before generating or modifying wot-ui component code, read the project Skill at `.agents/skills/wot-ui-v2/SKILL.md` and query the configured `wot-ui` MCP server for version-accurate APIs and examples.
+
+<!-- open-wot agent instructions end -->

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { NeoSectionHeader, NeoSurface } from "@/components/neo";
 import type { TeamActivityAttendanceMember, TeamActivityAttendanceSummary } from "../teamManageState";
 import type { TeamProfileViewModel } from "@/types/viewModels";
 
@@ -15,13 +16,10 @@ function memberStatusClass(member: TeamActivityAttendanceMember) {
 </script>
 
 <template>
-  <view class="form-card attendance-panel">
+  <NeoSurface custom-class="form-card attendance-panel">
     <view class="attendance-panel-head">
-      <view>
-        <text class="form-title">比赛出勤</text>
-        <text class="attendance-panel-copy">按比赛查看当前球队每位队员的报名与打卡情况</text>
-      </view>
-      <view v-if="summaries.length" class="attendance-total-pill">
+      <NeoSectionHeader title="比赛出勤" marker="01" caption="按比赛查看当前球队每位队员的报名与打卡情况" />
+      <view v-if="summaries.length" class="attendance-total-badge">
         <text>{{ summaries.length }}</text>
         <text>场</text>
       </view>
@@ -73,22 +71,15 @@ function memberStatusClass(member: TeamActivityAttendanceMember) {
         </view>
       </view>
     </view>
-  </view>
+  </NeoSurface>
 </template>
 
 <style scoped>
 .form-card {
-  padding: 30rpx;
-  border-radius: 32rpx;
-  background: #ffffff;
-  box-shadow: 0 18rpx 36rpx rgba(16, 17, 15, 0.06);
-}
-
-.form-title {
-  display: block;
-  color: #10110f;
-  font-size: 34rpx;
-  font-weight: 900;
+  padding: 6rpx 24rpx 24rpx;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-md);
+  box-shadow: 8rpx 8rpx 0 var(--neo-color-text);
 }
 
 .attendance-panel {
@@ -96,43 +87,27 @@ function memberStatusClass(member: TeamActivityAttendanceMember) {
   overflow: hidden;
 }
 
-.attendance-panel::before {
-  content: "";
-  position: absolute;
-  top: -92rpx;
-  right: -72rpx;
-  width: 220rpx;
-  height: 220rpx;
-  border-radius: 999rpx;
-  background: rgba(200, 255, 0, 0.18);
-}
-
 .attendance-panel-head {
-  position: relative;
-  z-index: 1;
   display: flex;
-  align-items: flex-start;
+  align-items: flex-end;
   justify-content: space-between;
   gap: 20rpx;
   margin-bottom: 22rpx;
 }
 
-.attendance-panel-copy {
-  display: block;
-  margin-top: 8rpx;
-  color: #697064;
-  font-size: 24rpx;
-  line-height: 1.45;
-  font-weight: 700;
+:deep(.attendance-panel-head .neo-section-header) {
+  flex: 1;
+  margin-top: 30rpx;
 }
 
-.attendance-total-pill {
+.attendance-total-badge {
   min-width: 86rpx;
   height: 62rpx;
   padding: 0 16rpx;
-  border-radius: 999rpx;
-  background: #10110f;
-  color: #c8ff00;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-xs);
+  background: var(--neo-color-accent);
+  color: var(--neo-color-text);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -144,20 +119,17 @@ function memberStatusClass(member: TeamActivityAttendanceMember) {
 }
 
 .empty-box {
-  position: relative;
-  z-index: 1;
   margin-top: 22rpx;
   padding: 22rpx;
-  border-radius: 24rpx;
-  background: #f3f5ef;
-  color: #6b7166;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-warning-soft);
+  color: var(--neo-color-text-muted);
   font-size: 26rpx;
   font-weight: 700;
 }
 
 .activity-attendance-list {
-  position: relative;
-  z-index: 1;
   display: flex;
   flex-direction: column;
   gap: 18rpx;
@@ -165,10 +137,10 @@ function memberStatusClass(member: TeamActivityAttendanceMember) {
 
 .activity-attendance-card {
   padding: 22rpx;
-  border-radius: 28rpx;
-  background:
-    linear-gradient(135deg, rgba(16, 17, 15, 0.96) 0%, rgba(34, 38, 29, 0.96) 56%, rgba(44, 52, 31, 0.94) 100%);
-  box-shadow: 0 18rpx 34rpx rgba(16, 17, 15, 0.16);
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-hero);
+  box-shadow: 5rpx 5rpx 0 var(--neo-color-accent);
   overflow: hidden;
 }
 
@@ -186,7 +158,7 @@ function memberStatusClass(member: TeamActivityAttendanceMember) {
 
 .activity-name {
   display: block;
-  color: #ffffff;
+  color: var(--neo-color-text-inverse);
   font-size: 31rpx;
   line-height: 1.25;
   font-weight: 950;
@@ -211,9 +183,10 @@ function memberStatusClass(member: TeamActivityAttendanceMember) {
   min-width: 72rpx;
   height: 54rpx;
   padding: 0 14rpx;
-  border-radius: 18rpx;
-  background: rgba(200, 255, 0, 0.14);
-  color: #c8ff00;
+  border: 2rpx solid var(--neo-color-accent);
+  border-radius: var(--neo-radius-xs);
+  background: var(--neo-color-text);
+  color: var(--neo-color-accent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -234,24 +207,25 @@ function memberStatusClass(member: TeamActivityAttendanceMember) {
 .activity-stat {
   min-width: 0;
   padding: 16rpx 8rpx 14rpx;
-  border-radius: 22rpx;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-xs);
   text-align: center;
   box-sizing: border-box;
 }
 
 .activity-stat-joined {
-  background: rgba(200, 255, 0, 0.15);
-  color: #c8ff00;
+  background: var(--neo-color-success);
+  color: var(--neo-color-text);
 }
 
 .activity-stat-leave {
-  background: rgba(255, 183, 64, 0.16);
-  color: #ffbf51;
+  background: var(--neo-color-warning-soft);
+  color: var(--neo-color-text);
 }
 
 .activity-stat-unchecked {
-  background: rgba(255, 92, 92, 0.16);
-  color: #ff7474;
+  background: var(--neo-color-danger-soft);
+  color: var(--neo-color-text);
 }
 
 .activity-stat-value {
@@ -270,8 +244,9 @@ function memberStatusClass(member: TeamActivityAttendanceMember) {
 
 .activity-member-list {
   margin-top: 14rpx;
-  border-radius: 22rpx;
-  background: rgba(255, 255, 255, 0.08);
+  border: 2rpx solid rgba(255, 255, 255, 0.34);
+  border-radius: var(--neo-radius-sm);
+  background: rgba(255, 255, 255, 0.06);
   overflow: hidden;
 }
 
@@ -292,7 +267,8 @@ function memberStatusClass(member: TeamActivityAttendanceMember) {
 .activity-member-avatar {
   width: 54rpx;
   height: 54rpx;
-  border-radius: 18rpx;
+  border: 2rpx solid var(--neo-color-text-inverse);
+  border-radius: var(--neo-radius-xs);
   flex-shrink: 0;
   overflow: hidden;
   background: #f2f5ec;
@@ -334,7 +310,8 @@ function memberStatusClass(member: TeamActivityAttendanceMember) {
   min-width: 84rpx;
   height: 42rpx;
   padding: 0 14rpx;
-  border-radius: 999rpx;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-xs);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -345,17 +322,17 @@ function memberStatusClass(member: TeamActivityAttendanceMember) {
 }
 
 .activity-member-status-joined {
-  background: #c8ff00;
-  color: #10110f;
+  background: var(--neo-color-accent);
+  color: var(--neo-color-text);
 }
 
 .activity-member-status-leave {
-  background: #ffbf51;
-  color: #251600;
+  background: var(--neo-color-warning-soft);
+  color: var(--neo-color-text);
 }
 
 .activity-member-status-unchecked {
-  background: #ff6f6f;
-  color: #ffffff;
+  background: var(--neo-color-danger);
+  color: var(--neo-color-text);
 }
 </style>

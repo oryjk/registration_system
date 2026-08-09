@@ -3,6 +3,7 @@ import { computed, ref } from "vue";
 import { onHide, onLoad, onPullDownRefresh, onShareAppMessage, onShareTimeline, onShow, onUnload } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
 import BottomTabBar from "@/components/BottomTabBar.vue";
+import { NeoSectionHeader } from "@/components/neo";
 import HomeHeroSection from "./components/HomeHeroSection.vue";
 import HomeMatchList from "./components/HomeMatchList.vue";
 import HomeOpportunityList from "./components/HomeOpportunityList.vue";
@@ -635,16 +636,17 @@ onShareTimeline(() => ({
           @banner-tap="openTab('/pages/activities/index')"
         />
 
-        <view v-if="shouldShowMatchSection" class="section-headline">
-          <view class="section-headline-left">
-            <text class="section-fire">热</text>
-            <text class="section-headline-title">{{ matchSectionTitle }}</text>
-          </view>
-          <view v-if="showMatchSectionLink" class="section-link" @tap="openAllPendingMatches">{{ matchSectionLinkLabel }}</view>
-        </view>
+        <NeoSectionHeader
+          v-if="shouldShowMatchSection"
+          :title="matchSectionTitle"
+          marker="热"
+          :action-label="showMatchSectionLink ? matchSectionLinkLabel : undefined"
+          @action="openAllPendingMatches"
+        />
 
         <HomeMatchList
           v-if="shouldShowMatchSection && teamMatches.length"
+          variant="brutalist"
           :matches="teamMatches"
           :is-guest-mode="isGuestMode"
           :navigating-match-id="navigatingMatchId"
@@ -660,15 +662,12 @@ onShareTimeline(() => ({
           {{ matchEmptyText }}
         </view>
 
-        <view class="section-headline">
-          <view>
-            <text class="section-headline-title">约队机会</text>
-            <text class="section-caption">
-              {{ opportunityCaption }}
-            </text>
-          </view>
-          <view class="section-link" @tap="openTab('/pages/activities/index')">进入大厅</view>
-        </view>
+        <NeoSectionHeader
+          title="约队机会"
+          :caption="opportunityCaption"
+          action-label="进入大厅"
+          @action="openTab('/pages/activities/index')"
+        />
 
         <HomeOpportunityList
           v-if="challengeCards.length"
@@ -691,9 +690,7 @@ onShareTimeline(() => ({
 .home-page {
   min-height: 100vh;
   padding: 0 28rpx 164rpx;
-  background:
-    radial-gradient(circle at top left, rgba(155, 226, 43, 0.16), transparent 24%),
-    linear-gradient(180deg, #ffffff 0%, #f5f7f1 48%, #eef2e9 100%);
+  background: var(--neo-color-page);
   box-sizing: border-box;
 }
 
@@ -719,70 +716,40 @@ onShareTimeline(() => ({
   min-width: 132rpx;
   height: 48rpx;
   padding: 0 18rpx;
-  border-radius: 999rpx;
-  background: rgba(23, 32, 24, 0.9);
-  color: #fffdf8;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-text);
+  color: var(--neo-color-text-inverse);
   font-size: 22rpx;
   font-weight: 700;
-  box-shadow: 0 12rpx 24rpx rgba(43, 55, 38, 0.18);
-}
-
-.section-headline {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 18rpx;
-  margin-top: 30rpx;
-}
-
-.section-headline-left {
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
-}
-
-.section-fire {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 40rpx;
-  height: 40rpx;
-  border-radius: 999rpx;
-  background: #fff0df;
-  color: #e86d37;
-  font-size: 22rpx;
-  font-weight: 800;
-}
-
-.section-headline-title {
-  display: block;
-  font-size: 38rpx;
-  line-height: 1.15;
-  color: #172018;
-  font-weight: 800;
-}
-
-.section-caption {
-  display: block;
-  margin-top: 8rpx;
-  font-size: 24rpx;
-  color: #5f685b;
-  line-height: 1.55;
-}
-
-.section-link {
-  color: #172018;
-  font-size: 28rpx;
-  font-weight: 700;
+  box-shadow: 4rpx 4rpx 0 var(--neo-color-accent);
 }
 
 .home-empty {
   margin-top: 24rpx;
   padding: 28rpx;
-  border-radius: 28rpx;
-  background: #fffdf8;
-  color: #5f685b;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-surface);
+  color: var(--neo-color-text-muted);
   font-size: 28rpx;
   line-height: 1.6;
 }
+
+/* #ifdef H5 */
+.home-page {
+  width: 100%;
+  max-width: 750rpx;
+  margin: 0 auto;
+}
+
+.home-page :deep(.app-tab-header-shell),
+.home-page :deep(.custom-tabbar) {
+  left: 50%;
+  right: auto;
+  width: 100%;
+  max-width: 750rpx;
+  transform: translateX(-50%);
+}
+/* #endif */
 </style>

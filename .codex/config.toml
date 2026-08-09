@@ -2,3 +2,8 @@
 command = "bunx"
 args = ["-p", "@ant-design/cli@6.5.3", "antd", "mcp", "--version", "6.4.5", "--lang", "zh"]
 startup_timeout_sec = 30
+# open-wot managed mcp server start
+[mcp_servers.wot-ui]
+command = "npx"
+args = ["-y", "@wot-ui/cli@1.0.6", "mcp"]
+# open-wot managed mcp server end

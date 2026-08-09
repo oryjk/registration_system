@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { NeoButton, NeoSectionHeader, NeoSurface } from "@/components/neo";
 import type { BackendTeamSummary } from "@/types/backend";
 
 defineProps<{
@@ -44,8 +45,8 @@ function handleJoin() {
 </script>
 
 <template>
-  <view class="form-card">
-    <text class="form-title">查找已有球队</text>
+  <NeoSurface custom-class="form-card">
+    <NeoSectionHeader title="查找已有球队" marker="01" caption="搜索球队名称，选择后确认加入" />
     <view class="search-row">
       <input
         :value="searchKeyword"
@@ -55,7 +56,9 @@ function handleJoin() {
         @input="updateSearchKeyword"
         @confirm="handleSearch"
       />
-      <view class="search-button" @tap="handleSearch">{{ searching ? "搜索中" : "搜索" }}</view>
+      <NeoButton class="search-button" variant="lime" :loading="searching" @click="handleSearch">
+        {{ searching ? "搜索中" : "搜索" }}
+      </NeoButton>
     </view>
 
     <view v-if="searchResults.length" class="team-result-list">
@@ -85,32 +88,24 @@ function handleJoin() {
         @input="updateJoinPassword"
       />
       <view v-else class="open-team-note">该球队无需入队密码。</view>
-      <view :class="['primary-button', canJoin ? '' : 'primary-button-disabled']" @tap="handleJoin">
+      <NeoButton block :disabled="!canJoin" :loading="submitting" @click="handleJoin">
         {{ submitting ? "加入中..." : "确认加入" }}
-      </view>
+      </NeoButton>
     </view>
-  </view>
+  </NeoSurface>
 </template>
 
 <style scoped>
 .form-card {
-  padding: 30rpx;
-  border-radius: 32rpx;
-  background: #ffffff;
-  box-shadow: 0 18rpx 36rpx rgba(16, 17, 15, 0.06);
-}
-
-.form-title {
-  display: block;
-  margin-bottom: 24rpx;
-  color: #10110f;
-  font-size: 34rpx;
-  font-weight: 900;
+  padding: 6rpx 24rpx 24rpx;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-md);
+  box-shadow: 8rpx 8rpx 0 var(--neo-color-text);
 }
 
 .form-label,
 .team-result-meta {
-  color: #6a7165;
+  color: var(--neo-color-text-muted);
   font-size: 24rpx;
   font-weight: 700;
 }
@@ -118,44 +113,27 @@ function handleJoin() {
 .form-label {
   display: block;
   margin-bottom: 10rpx;
+  color: var(--neo-color-text);
+  font-weight: 900;
 }
 
 .form-input {
   width: 100%;
-  height: 86rpx;
-  padding: 0 22rpx;
-  border-radius: 22rpx;
-  background: #f3f5ef;
-  color: #111310;
+  height: 84rpx;
+  padding: 0 20rpx;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-muted);
+  color: var(--neo-color-text);
   font-size: 28rpx;
   font-weight: 700;
   box-sizing: border-box;
 }
 
-.primary-button,
-.search-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 24rpx;
-  background: #c8ff00;
-  color: #10110f;
-  font-size: 28rpx;
-  font-weight: 900;
-}
-
-.primary-button {
-  height: 88rpx;
-  margin-top: 28rpx;
-}
-
-.primary-button-disabled {
-  opacity: 0.45;
-}
-
 .search-row {
   display: flex;
   gap: 12rpx;
+  margin-top: 26rpx;
 }
 
 .search-input {
@@ -163,8 +141,8 @@ function handleJoin() {
 }
 
 .search-button {
-  width: 136rpx;
-  height: 86rpx;
+  width: 142rpx;
+  min-height: 84rpx;
 }
 
 .team-result-list {
@@ -180,19 +158,20 @@ function handleJoin() {
   justify-content: space-between;
   gap: 18rpx;
   padding: 22rpx;
-  border-radius: 24rpx;
-  background: #f5f7f1;
-  border: 2rpx solid transparent;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-surface);
+  box-shadow: 4rpx 4rpx 0 var(--neo-color-text);
 }
 
 .team-result-card-active {
-  border-color: #c8ff00;
-  background: #fbfff0;
+  background: var(--neo-color-success);
+  box-shadow: 2rpx 2rpx 0 var(--neo-color-text);
 }
 
 .team-result-title {
   display: block;
-  color: #111310;
+  color: var(--neo-color-text);
   font-size: 30rpx;
   font-weight: 900;
 }
@@ -203,7 +182,12 @@ function handleJoin() {
 }
 
 .team-result-action {
-  color: #111310;
+  flex-shrink: 0;
+  padding: 8rpx 12rpx;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-xs);
+  background: var(--neo-color-accent);
+  color: var(--neo-color-text);
   font-size: 24rpx;
   font-weight: 900;
 }
@@ -213,14 +197,23 @@ function handleJoin() {
 .open-team-note {
   margin-top: 22rpx;
   padding: 22rpx;
-  border-radius: 24rpx;
-  background: #f3f5ef;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-info-soft);
 }
 
 .empty-box,
 .open-team-note {
-  color: #6b7166;
+  color: var(--neo-color-text-muted);
   font-size: 26rpx;
   font-weight: 700;
+}
+
+.empty-box {
+  background: var(--neo-color-warning-soft);
+}
+
+:deep(.join-panel .neo-button--block) {
+  margin-top: 24rpx;
 }
 </style>

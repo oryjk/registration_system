@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
+import { NeoButton } from "@/components/neo";
 import type { BackendTeamMember, BackendTeamMemberAttendanceRecord } from "@/types/backend";
 import type { buildAttendanceGroups, buildAttendanceSummary } from "../teamManageState";
 
@@ -64,7 +65,7 @@ function handleToggleYear(year: string) {
             <text class="member-edit-title">{{ member ? memberName : "队员" }}</text>
           </view>
         </view>
-        <view class="member-edit-close" @tap="handleClose">关闭</view>
+        <NeoButton variant="outline" size="sm" @click="handleClose">关闭</NeoButton>
       </view>
 
       <view class="attendance-summary-grid">
@@ -115,14 +116,15 @@ function handleToggleYear(year: string) {
 
 <style scoped>
 :deep(.member-attendance-popup) {
-  border-radius: 34rpx 34rpx 0 0;
-  background: #ffffff;
+  border-top: var(--neo-border-strong);
+  border-radius: var(--neo-radius-md) var(--neo-radius-md) 0 0;
+  background: var(--neo-color-page);
 }
 
 .member-attendance-sheet {
   padding: 34rpx 30rpx 38rpx;
-  background: #ffffff;
-  border-radius: 34rpx 34rpx 0 0;
+  background: var(--neo-color-page);
+  border-radius: var(--neo-radius-md) var(--neo-radius-md) 0 0;
 }
 
 .member-edit-header {
@@ -135,7 +137,7 @@ function handleToggleYear(year: string) {
 
 .member-edit-kicker {
   display: block;
-  color: #6a7165;
+  color: var(--neo-color-text-muted);
   font-size: 24rpx;
   font-weight: 800;
 }
@@ -143,21 +145,8 @@ function handleToggleYear(year: string) {
 .member-edit-title {
   display: block;
   margin-top: 8rpx;
-  color: #10110f;
+  color: var(--neo-color-text);
   font-size: 38rpx;
-  font-weight: 900;
-}
-
-.member-edit-close {
-  height: 58rpx;
-  padding: 0 22rpx;
-  border-radius: 999rpx;
-  background: #edf0e7;
-  color: #5d6458;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 24rpx;
   font-weight: 900;
 }
 
@@ -171,17 +160,18 @@ function handleToggleYear(year: string) {
 .member-avatar {
   width: 76rpx;
   height: 76rpx;
-  border-radius: 22rpx;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
   flex-shrink: 0;
   overflow: hidden;
-  background: #111310;
+  background: var(--neo-color-text);
 }
 
 .member-avatar-fallback {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #c8ff00;
+  color: var(--neo-color-accent);
   font-size: 30rpx;
   font-weight: 900;
 }
@@ -196,15 +186,17 @@ function handleToggleYear(year: string) {
 .attendance-summary-card {
   min-width: 0;
   padding: 18rpx 10rpx;
-  border-radius: 22rpx;
-  background: #f3f5ef;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-surface);
+  box-shadow: 3rpx 3rpx 0 var(--neo-color-text);
   text-align: center;
   box-sizing: border-box;
 }
 
 .attendance-summary-value {
   display: block;
-  color: #10110f;
+  color: var(--neo-color-text);
   font-size: 34rpx;
   font-weight: 900;
   line-height: 1.1;
@@ -213,7 +205,7 @@ function handleToggleYear(year: string) {
 .attendance-summary-label {
   display: block;
   margin-top: 6rpx;
-  color: #6a7165;
+  color: var(--neo-color-text-muted);
   font-size: 22rpx;
   font-weight: 800;
 }
@@ -221,9 +213,10 @@ function handleToggleYear(year: string) {
 .empty-box {
   margin-top: 22rpx;
   padding: 22rpx;
-  border-radius: 24rpx;
-  background: #f3f5ef;
-  color: #6b7166;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-warning-soft);
+  color: var(--neo-color-text-muted);
   font-size: 26rpx;
   font-weight: 700;
 }
@@ -249,11 +242,15 @@ function handleToggleYear(year: string) {
   align-items: center;
   justify-content: space-between;
   gap: 18rpx;
-  background: #ffffff;
+  padding: 8rpx 10rpx;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-surface);
+  box-sizing: border-box;
 }
 
 .attendance-year-title {
-  color: #10110f;
+  color: var(--neo-color-text);
   font-size: 28rpx;
   font-weight: 900;
 }
@@ -271,9 +268,10 @@ function handleToggleYear(year: string) {
 .attendance-year-chip {
   height: 38rpx;
   padding: 0 12rpx;
-  border-radius: 999rpx;
-  background: #edf0e7;
-  color: #6a7165;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-xs);
+  background: var(--neo-color-muted);
+  color: var(--neo-color-text-muted);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -283,21 +281,22 @@ function handleToggleYear(year: string) {
 }
 
 .attendance-year-chip-joined {
-  background: #dff7e7;
-  color: #146c3e;
+  background: var(--neo-color-success);
+  color: var(--neo-color-text);
 }
 
 .attendance-year-chip-leave {
-  background: #fff2d6;
-  color: #9a5a00;
+  background: var(--neo-color-warning-soft);
+  color: var(--neo-color-text);
 }
 
 .attendance-year-arrow {
   width: 34rpx;
   height: 34rpx;
-  border-radius: 999rpx;
-  background: #10110f;
-  color: #c8ff00;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-xs);
+  background: var(--neo-color-text);
+  color: var(--neo-color-accent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -316,12 +315,11 @@ function handleToggleYear(year: string) {
   align-items: center;
   justify-content: space-between;
   gap: 18rpx;
-  padding: 20rpx 0;
-  border-bottom: 1rpx solid #edf0e7;
-}
-
-.attendance-item:last-child {
-  border-bottom: 0;
+  margin-top: 10rpx;
+  padding: 18rpx;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-surface);
 }
 
 .attendance-item-main {
@@ -331,7 +329,7 @@ function handleToggleYear(year: string) {
 
 .attendance-item-title {
   display: block;
-  color: #10110f;
+  color: var(--neo-color-text);
   font-size: 28rpx;
   font-weight: 900;
   overflow: hidden;
@@ -342,7 +340,7 @@ function handleToggleYear(year: string) {
 .attendance-item-meta {
   display: block;
   margin-top: 8rpx;
-  color: #6a7165;
+  color: var(--neo-color-text-muted);
   font-size: 22rpx;
   font-weight: 700;
   overflow: hidden;
@@ -362,7 +360,8 @@ function handleToggleYear(year: string) {
 .attendance-status {
   height: 42rpx;
   padding: 0 14rpx;
-  border-radius: 999rpx;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-xs);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -372,24 +371,24 @@ function handleToggleYear(year: string) {
 }
 
 .attendance-status-joined {
-  background: #dff7e7;
-  color: #146c3e;
+  background: var(--neo-color-success);
+  color: var(--neo-color-text);
 }
 
 .attendance-status-leave {
-  background: #fff2d6;
-  color: #9a5a00;
+  background: var(--neo-color-warning-soft);
+  color: var(--neo-color-text);
 }
 
 .attendance-status-late {
-  background: #e2ecff;
-  color: #264d9b;
+  background: var(--neo-color-info-soft);
+  color: var(--neo-color-text);
 }
 
 .attendance-status-pending,
 .attendance-status-unregistered {
-  background: #edf0e7;
-  color: #5f665a;
+  background: var(--neo-color-muted);
+  color: var(--neo-color-text-muted);
 }
 
 .attendance-item-count {

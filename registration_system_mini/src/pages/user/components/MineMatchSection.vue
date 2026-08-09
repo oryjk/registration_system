@@ -1,180 +1,162 @@
 <script setup lang="ts">
-export interface MineMatchSummary {
-  id: string;
-  title: string;
-  dateLabel: string;
-  venue: string;
-  myStatus: string;
-}
+import { NeoButton, NeoSectionHeader, NeoSurface, NeoTag } from "@/components/neo";
+import type { NeoTagTone } from "@/components/neo";
+import type { MineMatchSummary } from "../mineTypes";
 
 defineProps<{
   matches: MineMatchSummary[];
-  statusClass: (status: string) => string;
+  statusTone: (status: string) => NeoTagTone;
 }>();
 
 const emit = defineEmits<{
   (event: "openAll"): void;
   (event: "openMatch", matchId: string): void;
 }>();
-
-function handleOpenAll() {
-  emit("openAll");
-}
-
-function handleOpenMatch(matchId: string) {
-  emit("openMatch", matchId);
-}
 </script>
 
 <template>
-  <view class="section-card">
-    <view class="section-row">
-      <view class="section-row-title">我的比赛</view>
-      <view class="section-row-link" @tap="handleOpenAll">全部比赛</view>
-    </view>
-    <view v-if="matches.length">
-      <view
+  <view class="mine-match-section">
+    <NeoSectionHeader
+      title="我的比赛"
+      marker="赛"
+      caption="最近与你和当前球队相关的比赛"
+      action-label="全部比赛"
+      @action="emit('openAll')"
+    />
+
+    <view v-if="matches.length" class="mine-match-list">
+      <NeoSurface
         v-for="match in matches"
         :key="match.id"
-        class="compact-record-card"
-        @tap="handleOpenMatch(match.id)"
+        interactive
+        custom-class="mine-match-card"
+        @tap="emit('openMatch', match.id)"
       >
-        <view class="compact-record-cover" />
-        <view class="compact-record-copy">
-          <text :class="statusClass(match.myStatus)">{{ match.myStatus }}</text>
-          <text class="compact-record-title">{{ match.title }}</text>
-          <text class="compact-record-meta">{{ match.dateLabel }} · {{ match.venue }}</text>
+        <view class="mine-match-card__main">
+          <view class="mine-match-card__topline">
+            <NeoTag :tone="statusTone(match.myStatus)" size="sm">{{ match.myStatus }}</NeoTag>
+            <text class="mine-match-card__date">{{ match.dateLabel }}</text>
+          </view>
+          <text class="mine-match-card__title">{{ match.title }}</text>
+          <text class="mine-match-card__venue">{{ match.venue }}</text>
         </view>
-        <view class="compact-record-action">去报名</view>
-      </view>
+        <NeoButton variant="lime" size="sm" @click="emit('openMatch', match.id)">去报名</NeoButton>
+      </NeoSurface>
     </view>
-    <view v-else class="compact-empty">当前球队下还没有可展示的比赛记录。</view>
+
+    <NeoSurface v-else variant="outlined" custom-class="mine-match-empty">
+      <text class="mine-match-empty__marker">00</text>
+      <view class="mine-match-empty__copy">
+        <text class="mine-match-empty__title">暂无近期比赛</text>
+        <text class="mine-match-empty__description">当前球队下还没有可展示的比赛记录。</text>
+      </view>
+    </NeoSurface>
   </view>
 </template>
 
 <style scoped>
-.section-card {
-  margin-top: 18rpx;
-  padding: 24rpx;
-  border-radius: 28rpx;
-  background: rgba(255, 255, 255, 0.92);
-  border: 2rpx solid rgba(255, 255, 255, 0.7);
-  box-shadow: 0 18rpx 40rpx rgba(17, 17, 17, 0.06);
+.mine-match-section {
+  margin-top: 34rpx;
 }
 
-.section-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16rpx;
-}
-
-.section-row-title {
-  font-size: 30rpx;
-  color: #141512;
-  font-weight: 900;
-}
-
-.section-row-link {
-  color: #6a7067;
-  font-size: 22rpx;
-  font-weight: 800;
-}
-
-.compact-record-card {
-  display: flex;
-  align-items: center;
+.mine-match-list {
+  display: grid;
   gap: 16rpx;
   margin-top: 18rpx;
-  padding: 18rpx;
-  border-radius: 24rpx;
-  background: rgba(253, 254, 252, 0.94);
-  box-shadow: inset 0 0 0 2rpx rgba(17, 17, 17, 0.04);
 }
 
-.compact-record-cover {
-  width: 108rpx;
-  height: 84rpx;
-  border-radius: 20rpx;
-  background:
-    radial-gradient(circle at 24% 24%, rgba(200, 255, 0, 0.3), transparent 24%),
-    linear-gradient(135deg, rgba(37, 41, 31, 0.98) 0%, rgba(59, 66, 48, 0.98) 100%);
-  flex-shrink: 0;
+.mine-match-card {
+  display: flex;
+  min-height: 152rpx;
+  align-items: center;
+  gap: 18rpx;
+  padding: 20rpx;
 }
 
-.compact-record-copy {
+.mine-match-card__main {
   min-width: 0;
   flex: 1;
 }
 
-.compact-record-title {
-  display: block;
-  margin-top: 8rpx;
-  font-size: 30rpx;
-  color: #141512;
-  font-weight: 900;
+.mine-match-card__topline {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  flex-wrap: wrap;
+}
+
+.mine-match-card__date {
+  color: var(--neo-color-text-muted);
+  font-size: 22rpx;
+  font-weight: 800;
   line-height: 1.3;
 }
 
-.compact-record-meta {
+.mine-match-card__title {
+  display: block;
+  margin-top: 12rpx;
+  color: var(--neo-color-text);
+  font-size: 30rpx;
+  font-weight: 900;
+  line-height: 1.28;
+  word-break: break-word;
+}
+
+.mine-match-card__venue {
   display: block;
   margin-top: 8rpx;
+  overflow: hidden;
+  color: var(--neo-color-text-muted);
   font-size: 22rpx;
-  color: #6a7067;
-  line-height: 1.5;
+  font-weight: 700;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.compact-record-action {
-  display: inline-flex;
+.mine-match-empty {
+  display: flex;
+  min-height: 160rpx;
+  align-items: center;
+  gap: 18rpx;
+  margin-top: 18rpx;
+  background: var(--neo-color-muted);
+}
+
+.mine-match-empty__marker {
+  display: flex;
+  width: 72rpx;
+  height: 72rpx;
   align-items: center;
   justify-content: center;
-  min-width: 138rpx;
-  height: 68rpx;
-  padding: 0 20rpx;
-  border-radius: 999rpx;
-  background: #d6ff1f;
-  color: #151611;
-  font-size: 28rpx;
-  font-weight: 900;
   flex-shrink: 0;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-surface);
+  color: var(--neo-color-text);
+  font-size: 26rpx;
+  font-weight: 900;
 }
 
-.user-status {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 96rpx;
-  height: 44rpx;
-  padding: 0 16rpx;
-  border-radius: 999rpx;
-  font-size: 20rpx;
-  font-weight: 800;
+.mine-match-empty__copy {
+  min-width: 0;
 }
 
-.user-status-join {
-  background: #eef8d6;
-  color: #456100;
+.mine-match-empty__title,
+.mine-match-empty__description {
+  display: block;
 }
 
-.user-status-leave {
-  background: #f1f3ef;
-  color: #5d625a;
+.mine-match-empty__title {
+  color: var(--neo-color-text);
+  font-size: 27rpx;
+  font-weight: 900;
 }
 
-.user-status-late {
-  background: #fff1df;
-  color: #ad6900;
-}
-
-.user-status-pending {
-  background: #eceef3;
-  color: #5d6475;
-}
-
-.compact-empty {
-  margin-top: 16rpx;
-  font-size: 24rpx;
-  color: #72776e;
-  line-height: 1.6;
+.mine-match-empty__description {
+  margin-top: 6rpx;
+  color: var(--neo-color-text-muted);
+  font-size: 22rpx;
+  line-height: 1.45;
 }
 </style>

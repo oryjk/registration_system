@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref } from "vue";
+import { NeoButton, NeoSectionHeader, NeoSurface } from "@/components/neo";
 import type { BackendTeamMember, BackendUser } from "@/types/backend";
 import type { TeamProfileViewModel } from "@/types/viewModels";
-import { memberRoleOptions } from "../teamManageState";
+import { memberRoleOptions, roleLabel } from "../teamManageState";
 import MemberCandidateSearch from "./MemberCandidateSearch.vue";
 import TeamMemberSection from "./TeamMemberSection.vue";
 
@@ -65,6 +66,7 @@ const roleModel = computed({
     props.memberForm.role = String(value[0] || "member");
   },
 });
+const rolePickerVisible = ref(false);
 
 function handleOpenMemberAttendance(member: BackendTeamMember) {
   emit("openMemberAttendance", member);
@@ -84,50 +86,61 @@ function handleRemoveMember(member: BackendTeamMember) {
 </script>
 
 <template>
-  <view class="form-card">
-    <text class="form-title">队员管理</text>
+  <NeoSurface custom-class="form-card">
+    <NeoSectionHeader title="队员管理" marker="01" caption="添加队员、调整角色并查看个人出勤" />
     <view v-if="!currentTeam" class="empty-box">请先创建或加入球队。</view>
     <view v-else-if="!canManageMembers" class="empty-box">只有队长或领队可以管理队员。</view>
     <view v-else>
-      <text class="form-label">添加队员</text>
-      <MemberCandidateSearch
-        :user-search-keyword="userSearchKeyword"
-        :user-searching="userSearching"
-        :user-search-results="userSearchResults"
-        :selected-candidate="selectedCandidate"
-        :is-current-member="isCurrentMember"
-        :is-captain-member="isCaptainMember"
-        :candidate-action-label="candidateActionLabel"
-        @update:user-search-keyword="emit('update:userSearchKeyword', $event)"
-        @search-users="handleSearchUsers"
-        @candidate-tap="handleCandidateTap"
-      />
-      <wd-picker
-        v-model="roleModel"
-        title="选择角色"
-        placeholder="请选择角色"
-        :columns="memberRoleOptions"
-        value-key="value"
-        label-key="label"
-        confirm-button-text="确定"
-        cancel-button-text="取消"
-        custom-class="member-role-picker"
-        custom-cell-class="member-role-picker-cell"
-        custom-value-class="member-role-picker-value"
-      />
+      <view class="member-create-panel">
+        <text class="form-label">添加队员</text>
+        <MemberCandidateSearch
+          :user-search-keyword="userSearchKeyword"
+          :user-searching="userSearching"
+          :user-search-results="userSearchResults"
+          :selected-candidate="selectedCandidate"
+          :is-current-member="isCurrentMember"
+          :is-captain-member="isCaptainMember"
+          :candidate-action-label="candidateActionLabel"
+          @update:user-search-keyword="emit('update:userSearchKeyword', $event)"
+          @search-users="handleSearchUsers"
+          @candidate-tap="handleCandidateTap"
+        />
+        <wd-cell
+          title="队员角色"
+          :value="roleLabel(memberForm.role)"
+          is-link
+          clickable
+          custom-class="member-role-cell"
+          custom-title-class="member-role-cell-title"
+          custom-value-class="member-role-cell-value"
+          @click="rolePickerVisible = true"
+        />
+        <wd-picker
+          v-model="roleModel"
+          v-model:visible="rolePickerVisible"
+          title="选择角色"
+          placeholder="请选择角色"
+          :columns="memberRoleOptions"
+          value-key="value"
+          label-key="label"
+          confirm-button-text="确定"
+          cancel-button-text="取消"
+          custom-class="member-role-picker"
+          custom-cell-class="member-role-picker-cell"
+          custom-value-class="member-role-picker-value"
+        />
 
-      <input v-model="memberForm.jerseyNumber" class="form-input" placeholder="球衣号，可选" />
-      <view class="member-setting-row">
-        <view>
-          <text class="member-setting-title">队员会员</text>
-          <text class="member-setting-copy">用于在队员信息中区分会员身份</text>
+        <input v-model="memberForm.jerseyNumber" class="form-input" placeholder="球衣号，可选" />
+        <view class="member-setting-row">
+          <view>
+            <text class="member-setting-title">队员会员</text>
+            <text class="member-setting-copy">用于在队员信息中区分会员身份</text>
+          </view>
+          <switch :checked="memberForm.isMember" color="#b9f24b" @change="handleMemberSwitchChange" />
         </view>
-        <switch :checked="memberForm.isMember" color="#c8ff00" @change="handleMemberSwitchChange" />
-      </view>
-      <view class="member-action-row">
-        <view class="primary-button member-submit" @tap="handleAddMember">
+        <NeoButton block :loading="submitting" @click="handleAddMember">
           {{ submitting ? "提交中..." : "添加队员" }}
-        </view>
+        </NeoButton>
       </view>
 
       <TeamMemberSection
@@ -171,71 +184,53 @@ function handleRemoveMember(member: BackendTeamMember) {
         @remove-member="handleRemoveMember"
       />
     </view>
-  </view>
+  </NeoSurface>
 </template>
 
 <style scoped>
 .form-card {
-  padding: 30rpx;
-  border-radius: 32rpx;
-  background: #ffffff;
-  box-shadow: 0 18rpx 36rpx rgba(16, 17, 15, 0.06);
-}
-
-.form-title {
-  display: block;
-  margin-bottom: 24rpx;
-  color: #10110f;
-  font-size: 34rpx;
-  font-weight: 900;
-}
-
-.form-label,
-.team-result-meta {
-  color: #6a7165;
-  font-size: 24rpx;
-  font-weight: 700;
+  padding: 6rpx 24rpx 24rpx;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-md);
+  box-shadow: 8rpx 8rpx 0 var(--neo-color-text);
 }
 
 .form-label {
+  color: var(--neo-color-text);
+  font-size: 24rpx;
   display: block;
-  margin-bottom: 10rpx;
+  font-weight: 900;
+}
+
+.member-create-panel {
+  margin-top: 26rpx;
+  padding: 20rpx;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-info-soft);
 }
 
 .form-input {
   width: 100%;
-  height: 86rpx;
-  padding: 0 22rpx;
-  border-radius: 22rpx;
-  background: #f3f5ef;
-  color: #111310;
+  height: 84rpx;
+  margin-top: 12rpx;
+  padding: 0 20rpx;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-surface);
+  color: var(--neo-color-text);
   font-size: 28rpx;
-  font-weight: 700;
+  font-weight: 800;
   box-sizing: border-box;
 }
 
-.primary-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 24rpx;
-  background: #c8ff00;
-  color: #10110f;
-  font-size: 28rpx;
-  font-weight: 900;
-}
-
-.primary-button {
-  height: 88rpx;
-  margin-top: 28rpx;
-}
-
 .empty-box {
-  margin-top: 22rpx;
+  margin-top: 26rpx;
   padding: 22rpx;
-  border-radius: 24rpx;
-  background: #f3f5ef;
-  color: #6b7166;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-warning-soft);
+  color: var(--neo-color-text-muted);
   font-size: 26rpx;
   font-weight: 700;
 }
@@ -246,34 +241,61 @@ function handleRemoveMember(member: BackendTeamMember) {
   margin-top: 14rpx;
 }
 
-:deep(.member-role-picker-cell) {
-  width: 100%;
-  height: 86rpx;
-  padding: 0 22rpx;
-  border-radius: 22rpx;
-  background: #f3f5ef;
-  color: #111310;
+:deep(.member-role-picker) {
+  --wot-picker-bg: var(--neo-color-surface);
+  --wot-picker-action-color-confirm: var(--neo-color-text);
+  --wot-picker-action-color-cancel: var(--neo-color-text-muted);
+  --wot-picker-action-disabled-color: var(--neo-color-text-disabled);
+  --wot-picker-title-color: var(--neo-color-text);
+  --wot-picker-title-font-weight: 900;
+  --wot-picker-radius: var(--neo-radius-md);
+}
+
+:deep(.member-role-cell) {
+  margin-top: 14rpx;
+  padding: 0 20rpx;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-surface);
   box-sizing: border-box;
 }
 
-:deep(.member-role-picker-value) {
-  color: #111310;
+:deep(.member-role-cell-title) {
+  color: var(--neo-color-text-muted);
+  font-size: 24rpx;
+  font-weight: 900;
+}
+
+:deep(.member-role-cell-value) {
+  color: var(--neo-color-text);
   font-size: 28rpx;
   font-weight: 900;
 }
 
-.member-action-row {
-  display: flex;
-  align-items: center;
-  gap: 14rpx;
+:deep(.member-role-picker-cell) {
+  width: 100%;
+  height: 84rpx;
+  padding: 0 20rpx;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-surface);
+  color: var(--neo-color-text);
+  box-sizing: border-box;
+}
+
+:deep(.member-role-picker-value) {
+  color: var(--neo-color-text);
+  font-size: 28rpx;
+  font-weight: 900;
 }
 
 .member-setting-row {
   min-height: 88rpx;
-  margin-top: 14rpx;
+  margin: 12rpx 0 16rpx;
   padding: 16rpx 18rpx;
-  border-radius: 22rpx;
-  background: #f3f5ef;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-warning-soft);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -287,19 +309,19 @@ function handleRemoveMember(member: BackendTeamMember) {
 }
 
 .member-setting-title {
-  color: #111310;
+  color: var(--neo-color-text);
   font-size: 28rpx;
   font-weight: 900;
 }
 
 .member-setting-copy {
   margin-top: 4rpx;
-  color: #6a7165;
+  color: var(--neo-color-text-muted);
   font-size: 22rpx;
   font-weight: 700;
 }
 
-.member-submit {
-  flex: 1;
+:deep(.member-create-panel .neo-button--block) {
+  margin-top: 4rpx;
 }
 </style>

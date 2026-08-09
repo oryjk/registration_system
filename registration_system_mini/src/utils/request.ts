@@ -1,5 +1,6 @@
 import { getApiBaseUrl } from "@/config/apiBase";
 import { getAccessToken } from "@/utils/authStorage";
+import { isMockEnabled, tryMockRequest } from "@/mock";
 import type { BackendApiResponse } from "@/types/backend";
 
 type RequestMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
@@ -30,12 +31,21 @@ export async function requestRaw<TResponse, TBody extends RequestPayload = Recor
   options: RequestOptions<TBody>,
 ): Promise<TResponse> {
   const token = options.auth ? getAccessToken() : "";
+  const method = options.method ?? "GET";
   const requestUrl = /^https?:\/\//i.test(options.url) ? options.url : `${getApiBaseUrl()}${options.url}`;
+
+  // Mock 拦截：开发环境下通过 VITE_USE_MOCK 开启，直接返回 mock 数据，不发网络请求
+  if (isMockEnabled()) {
+    const mockResult = tryMockRequest(method, requestUrl, options.data);
+    if (mockResult !== null) {
+      return mockResult as Promise<TResponse>;
+    }
+  }
 
   return new Promise<TResponse>((resolve, reject) => {
     uni.request({
       url: requestUrl,
-      method: (options.method ?? "GET") as never,
+      method: method as never,
       data: options.data,
       header: {
         "Content-Type": "application/json",

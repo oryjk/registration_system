@@ -36,7 +36,6 @@ import {
   avatarColor,
   byRegistrationTimeAsc,
   byUserIdAsc,
-  buildRegistrationProgress,
   buildRemainingPlayersLabel,
   clampTeamRegistrationCount,
   describeDaysUntil,
@@ -107,10 +106,13 @@ export function useMatchDetailPage() {
   const joinedRegistrations = computed(() => registrations.value.filter((item) => item.stand === 1 || item.stand === 3));
   const joinedCount = computed(() => joinedRegistrations.value.length + sourceTeamRegistrationCount.value);
   const requiredPlayers = computed(() => match.value?.players_per_team ?? 0);
-  const registrationProgress = computed(() => buildRegistrationProgress(joinedCount.value, requiredPlayers.value));
-  const progressBaseWidth = computed(() => registrationProgress.value.baseWidth);
-  const progressExtraWidth = computed(() => registrationProgress.value.extraWidth);
-  const progressSplitLeft = computed(() => registrationProgress.value.splitLeft);
+  const maxPlayers = computed(() => {
+    const configuredCapacity = match.value?.team_capacity_limit;
+    if (!Number.isFinite(configuredCapacity) || (configuredCapacity ?? 0) <= 0) {
+      return requiredPlayers.value;
+    }
+    return Math.max(configuredCapacity ?? requiredPlayers.value, requiredPlayers.value);
+  });
 
   const remainingPlayersLabel = computed(() => buildRemainingPlayersLabel(joinedCount.value, requiredPlayers.value));
   const registrationCapacityState = computed(() =>
@@ -892,10 +894,8 @@ export function useMatchDetailPage() {
     matchLocation,
     joinedCount,
     requiredPlayers,
+    maxPlayers,
     countdownText,
-    progressBaseWidth,
-    progressExtraWidth,
-    progressSplitLeft,
     participantPreview,
     teamMemberRegistrationGroups,
     remainingPlayersLabel,

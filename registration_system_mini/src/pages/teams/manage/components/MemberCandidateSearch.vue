@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { NeoButton } from "@/components/neo";
 import type { BackendUser } from "@/types/backend";
 import { resolveUserDisplayName } from "@/utils/viewModels";
 
@@ -43,7 +44,9 @@ function handleCandidateTap(candidate: BackendUser) {
         @input="updateUserSearchKeyword"
         @confirm="handleSearchUsers"
       />
-      <view class="search-button" @tap="handleSearchUsers">{{ userSearching ? "搜索中" : "搜索" }}</view>
+      <NeoButton class="search-button" variant="lime" :loading="userSearching" @click="handleSearchUsers">
+        {{ userSearching ? "搜索中" : "搜索" }}
+      </NeoButton>
     </view>
     <view v-if="userSearchResults.length" class="candidate-list">
       <view
@@ -78,13 +81,14 @@ function handleCandidateTap(candidate: BackendUser) {
 
 .form-input {
   width: 100%;
-  height: 86rpx;
-  padding: 0 22rpx;
-  border-radius: 22rpx;
-  background: #f3f5ef;
-  color: #111310;
+  height: 84rpx;
+  padding: 0 20rpx;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-surface);
+  color: var(--neo-color-text);
   font-size: 28rpx;
-  font-weight: 700;
+  font-weight: 800;
   box-sizing: border-box;
 }
 
@@ -93,16 +97,8 @@ function handleCandidateTap(candidate: BackendUser) {
 }
 
 .search-button {
-  width: 136rpx;
-  height: 86rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 24rpx;
-  background: #c8ff00;
-  color: #10110f;
-  font-size: 28rpx;
-  font-weight: 900;
+  width: 142rpx;
+  min-height: 84rpx;
 }
 
 .candidate-list {
@@ -117,20 +113,22 @@ function handleCandidateTap(candidate: BackendUser) {
   align-items: center;
   gap: 16rpx;
   padding: 16rpx;
-  border-radius: 22rpx;
-  background: #ffffff;
-  border: 2rpx solid transparent;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-surface);
+  box-shadow: 4rpx 4rpx 0 var(--neo-color-text);
 }
 
 .candidate-card-active {
-  border-color: #c8ff00;
-  background: #fbfff0;
+  background: var(--neo-color-success);
+  box-shadow: 2rpx 2rpx 0 var(--neo-color-text);
 }
 
 .candidate-avatar {
   width: 68rpx;
   height: 68rpx;
-  border-radius: 20rpx;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
   flex-shrink: 0;
   overflow: hidden;
 }
@@ -139,8 +137,8 @@ function handleCandidateTap(candidate: BackendUser) {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #111310;
-  color: #c8ff00;
+  background: var(--neo-color-text);
+  color: var(--neo-color-accent);
   font-size: 28rpx;
   font-weight: 900;
 }
@@ -152,7 +150,7 @@ function handleCandidateTap(candidate: BackendUser) {
 
 .team-result-title {
   display: block;
-  color: #111310;
+  color: var(--neo-color-text);
   font-size: 30rpx;
   font-weight: 900;
 }
@@ -160,18 +158,24 @@ function handleCandidateTap(candidate: BackendUser) {
 .team-result-meta {
   display: block;
   margin-top: 6rpx;
-  color: #6a7165;
+  color: var(--neo-color-text-muted);
   font-size: 24rpx;
   font-weight: 700;
 }
 
 .team-result-action {
-  color: #111310;
+  flex-shrink: 0;
+  padding: 8rpx 10rpx;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-xs);
+  background: var(--neo-color-accent);
+  color: var(--neo-color-text);
   font-size: 24rpx;
   font-weight: 900;
 }
 
 .team-result-action-danger {
-  color: #b42318;
+  background: var(--neo-color-danger-soft);
+  color: var(--neo-color-text);
 }
 </style>

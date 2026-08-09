@@ -6,52 +6,61 @@ declare const Bun: {
   };
 };
 
+const sourceRoot = new URL("../../", import.meta.url).pathname.replace(/\/$/, "");
+
+function sourceFile(path: string) {
+  return Bun.file(path.replace("/Users/carlwang/registration_system/registration_system_mini/src", sourceRoot));
+}
+
 describe("match detail registration design", () => {
   test("uses an in-page segmented layout for individual and team registration", async () => {
-    const source = await Bun.file(
+    const source = await sourceFile(
       "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/detail.vue",
     ).text();
-    const pageLogic = await Bun.file(
+    const pageLogic = await sourceFile(
       "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/useMatchDetailPage.ts",
     ).text();
 
     expect(pageLogic.includes("const registrationMode = ref<\"individual\" | \"team\">(\"individual\");")).toEqual(true);
     expect(source.includes("个人报名")).toEqual(true);
     expect(source.includes("球队报名")).toEqual(true);
-    expect(source.includes("registration-segment")).toEqual(true);
+    expect(source.includes("NeoSegmentedControl")).toEqual(true);
+    expect(source.includes('v-model="registrationMode"')).toEqual(true);
     expect(source.includes("registrationMode === 'individual'")).toEqual(true);
     expect(source.includes("registrationMode === 'team'")).toEqual(true);
   });
 
   test("renders the individual registration view with countdown, guide card, and a primary CTA", async () => {
-    const source = await Bun.file(
+    const source = await sourceFile(
       "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/detail.vue",
     ).text();
-    const individual = await Bun.file(
+    const individual = await sourceFile(
       "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/components/MatchIndividualRegistration.vue",
     ).text();
-    const countdown = await Bun.file(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/components/IndividualCountdownCard.vue",
+    const statusCard = await sourceFile(
+      "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/components/MatchRegistrationStatusCard.vue",
     ).text();
-    const info = await Bun.file(
+    const info = await sourceFile(
       "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/components/IndividualInfoCard.vue",
     ).text();
 
     expect(source.includes("MatchIndividualRegistration")).toEqual(true);
-    expect(individual.includes("IndividualCountdownCard")).toEqual(true);
-    expect(countdown.includes("报名截止")).toEqual(true);
+    expect(individual.includes("MatchRegistrationStatusCard")).toEqual(true);
+    expect(statusCard.includes("报名进度")).toEqual(true);
     expect(info.includes("比赛说明")).toEqual(true);
-    expect(countdown.includes("individual-cta-button")).toEqual(true);
+    expect(statusCard.includes("NeoProgress")).toEqual(true);
+    expect(statusCard.includes("NeoAvatarStack")).toEqual(true);
+    expect(statusCard.includes("NeoStickyActionBar")).toEqual(true);
     expect(source.includes("interestCards")).toEqual(false);
     expect(individual.includes("IndividualPromoBanner")).toEqual(false);
     expect(individual.includes("InterestMatchGrid")).toEqual(false);
   });
 
   test("uses activity registration deadline for the countdown and holding date for match clock", async () => {
-    const pageLogic = await Bun.file(
+    const pageLogic = await sourceFile(
       "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/useMatchDetailPage.ts",
     ).text();
-    const datetime = await Bun.file(
+    const datetime = await sourceFile(
       "/Users/carlwang/registration_system/registration_system_mini/src/utils/datetime.ts",
     ).text();
 
@@ -64,16 +73,16 @@ describe("match detail registration design", () => {
   });
 
   test("renders the team registration view with versus header, registration form, and a team submit bar", async () => {
-    const source = await Bun.file(
+    const source = await sourceFile(
       "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/detail.vue",
     ).text();
-    const team = await Bun.file(
+    const team = await sourceFile(
       "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/components/MatchTeamRegistration.vue",
     ).text();
-    const teamHero = await Bun.file(
+    const teamHero = await sourceFile(
       "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/components/TeamRegistrationHero.vue",
     ).text();
-    const teamForm = await Bun.file(
+    const teamForm = await sourceFile(
       "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/components/TeamRegistrationFormCard.vue",
     ).text();
 
@@ -87,13 +96,13 @@ describe("match detail registration design", () => {
   });
 
   test("submits team registration and check-in through real activity api wrappers", async () => {
-    const source = await Bun.file(
+    const source = await sourceFile(
       "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/detail.vue",
     ).text();
-    const pageLogic = await Bun.file(
+    const pageLogic = await sourceFile(
       "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/useMatchDetailPage.ts",
     ).text();
-    const actions = await Bun.file(
+    const actions = await sourceFile(
       "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/detailActions.ts",
     ).text();
 
@@ -106,10 +115,10 @@ describe("match detail registration design", () => {
   });
 
   test("lets team managers choose the team registration size before submitting", async () => {
-    const pageLogic = await Bun.file(
+    const pageLogic = await sourceFile(
       "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/useMatchDetailPage.ts",
     ).text();
-    const actions = await Bun.file(
+    const actions = await sourceFile(
       "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/detailActions.ts",
     ).text();
 
@@ -121,7 +130,7 @@ describe("match detail registration design", () => {
   });
 
   test("lets individual users cancel an existing registration from the primary CTA", async () => {
-    const pageLogic = await Bun.file(
+    const pageLogic = await sourceFile(
       "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/useMatchDetailPage.ts",
     ).text();
 
@@ -133,7 +142,7 @@ describe("match detail registration design", () => {
   });
 
   test("confirms individual signup and cancellation before submitting", async () => {
-    const pageLogic = await Bun.file(
+    const pageLogic = await sourceFile(
       "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/useMatchDetailPage.ts",
     ).text();
 
@@ -145,7 +154,7 @@ describe("match detail registration design", () => {
   });
 
   test("updates individual registration locally instead of reloading the whole page", async () => {
-    const pageLogic = await Bun.file(
+    const pageLogic = await sourceFile(
       "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/useMatchDetailPage.ts",
     ).text();
 
@@ -156,13 +165,13 @@ describe("match detail registration design", () => {
   });
 
   test("uses a custom confirm dialog for team member registration choices", async () => {
-    const detail = await Bun.file(
+    const detail = await sourceFile(
       "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/detail.vue",
     ).text();
-    const individual = await Bun.file(
+    const individual = await sourceFile(
       "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/components/MatchIndividualRegistration.vue",
     ).text();
-    const board = await Bun.file(
+    const board = await sourceFile(
       "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/components/TeamMemberRegistrationBoard.vue",
     ).text();
 
@@ -170,7 +179,8 @@ describe("match detail registration design", () => {
     expect(detail.includes("teamMemberDialogVisible ? 'overflow: hidden;' : ''")).toEqual(true);
     expect(individual.includes('@dialog-visibility-change="handleTeamMemberDialogVisibilityChange"')).toEqual(true);
     expect(individual.includes('emit("dialogVisibilityChange", visible);')).toEqual(true);
-    expect(board.includes("member-floating-action")).toEqual(true);
+    expect(board.includes("NeoStickyActionBar")).toEqual(true);
+    expect(board.includes("NeoButton")).toEqual(true);
     expect(board.includes("statusDialogMode")).toEqual(true);
     expect(board.includes("statusDialogConfig")).toEqual(true);
     expect(board.includes("team-member-dialog-mask")).toEqual(true);
@@ -191,7 +201,7 @@ describe("match detail registration design", () => {
   });
 
   test("turns the lower team member area into a switchable status operation panel", async () => {
-    const board = await Bun.file(
+    const board = await sourceFile(
       "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/components/TeamMemberRegistrationBoard.vue",
     ).text();
 
@@ -206,7 +216,7 @@ describe("match detail registration design", () => {
     expect(board.includes("handleSelectGroup(section.key)")).toEqual(true);
     expect(board.includes("const activeSection = computed")).toEqual(true);
     expect(board.includes("activeSection.members.length")).toEqual(true);
-    expect(board.includes("v-for=\"member in activeSection.members\"")).toEqual(true);
+    expect(board.includes("activeMemberAvatarItems")).toEqual(true);
     expect(board.includes("selectedMember?.group === activeSection.key")).toEqual(true);
     expect(board.includes("member-panel")).toEqual(true);
     expect(board.includes("member-panel-title")).toEqual(true);
@@ -215,11 +225,11 @@ describe("match detail registration design", () => {
   });
 
   test("shows required players as the minimum threshold without capping signups", async () => {
-    const pageLogic = await Bun.file(
+    const pageLogic = await sourceFile(
       "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/useMatchDetailPage.ts",
     ).text();
-    const countdown = await Bun.file(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/components/IndividualCountdownCard.vue",
+    const statusCard = await sourceFile(
+      "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/components/MatchRegistrationStatusCard.vue",
     ).text();
 
     expect(pageLogic.includes("requiredPlayers.value + 2")).toEqual(false);
@@ -228,28 +238,28 @@ describe("match detail registration design", () => {
     expect(pageLogic.includes("maxPlayersForActivity")).toEqual(false);
     expect(pageLogic.includes("joinedRegistrations.value.map((item) =>")).toEqual(false);
     expect(pageLogic.includes("joinedRegistrations.value.slice(0, 5)")).toEqual(false);
-    expect(countdown.includes("countdown-progress-meta")).toEqual(true);
-    expect(countdown.includes("avatar-wall")).toEqual(true);
-    expect(countdown.includes("handleSelectParticipant")).toEqual(true);
-    expect(countdown.includes("selectedParticipant")).toEqual(true);
-    expect(countdown.includes("mini-avatar-selected")).toEqual(true);
-    expect(countdown.includes("countdown-selected-participant")).toEqual(true);
-    expect(countdown.includes("countdown-selected-name")).toEqual(true);
-    expect(countdown.includes("countdown-selected-avatar")).toEqual(false);
-    const state = await Bun.file(
+    expect(pageLogic.includes("const maxPlayers = computed")).toEqual(true);
+    expect(pageLogic.includes("buildRegistrationProgress")).toEqual(false);
+    expect(statusCard.includes(':max="maxPlayers"')).toEqual(true);
+    expect(statusCard.includes("handleSelectParticipant")).toEqual(true);
+    expect(statusCard.includes("selectedParticipant")).toEqual(true);
+    expect(statusCard.includes("NeoProgress")).toEqual(true);
+    expect(statusCard.includes("NeoAvatarStack")).toEqual(true);
+    const state = await sourceFile(
       "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/detailState.ts",
     ).text();
     expect(state.includes('"已达成行人数"')).toEqual(true);
-    expect(state.includes("overflowVisualWidth")).toEqual(true);
-    expect(state.includes("const splitPercent = 82")).toEqual(true);
-    expect(state.includes('splitLeft: `${splitPercent}%`')).toEqual(true);
+    expect(state.includes("maxPlayers?: number")).toEqual(true);
+    expect(state.includes("const target =")).toEqual(true);
+    expect(state.includes("overflowVisualWidth")).toEqual(false);
+    expect(state.includes("const splitPercent = 82")).toEqual(false);
   });
 
   test("orders match registration avatars by registration time consistently", async () => {
-    const pageLogic = await Bun.file(
+    const pageLogic = await sourceFile(
       "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/useMatchDetailPage.ts",
     ).text();
-    const state = await Bun.file(
+    const state = await sourceFile(
       "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/detailState.ts",
     ).text();
 
@@ -262,28 +272,28 @@ describe("match detail registration design", () => {
   });
 
   test("renders team member status avatars without selection borders", async () => {
-    const board = await Bun.file(
+    const board = await sourceFile(
       "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/components/TeamMemberRegistrationBoard.vue",
     ).text();
 
-    expect(board.includes("member-avatar-selected")).toEqual(true);
+    expect(board.includes("NeoAvatarStack")).toEqual(true);
     expect(board.includes("border: 4rpx solid #ffffff")).toEqual(false);
     expect(board.includes("border-color: #171717")).toEqual(false);
     expect(board.includes("member-avatar-current .member-avatar")).toEqual(false);
   });
 
   test("keeps match information visible after manual logout and gates only signup", async () => {
-    const pageLogic = await Bun.file(
+    const pageLogic = await sourceFile(
       "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/useMatchDetailPage.ts",
     ).text();
-    const individual = await Bun.file(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/components/IndividualCountdownCard.vue",
+    const statusCard = await sourceFile(
+      "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/components/MatchRegistrationStatusCard.vue",
     ).text();
 
     expect(pageLogic.includes('import { hasManualLogout } from "@/utils/authStorage";')).toEqual(true);
     expect(pageLogic.includes('const isGuestMode = ref(false);')).toEqual(true);
     expect(pageLogic.includes('if (isGuestMode.value) return "登录后报名";')).toEqual(true);
-    expect(individual.includes('<text v-if="!isGuestMode" class="individual-cta-side">免费</text>')).toEqual(true);
+    expect(statusCard.includes("!isGuestMode")).toEqual(true);
     expect(pageLogic.indexOf("const publicData = await loadPublicMatchDetailData(matchId.value);") < pageLogic.indexOf("await ensureSessionReady();")).toEqual(
       true,
     );
@@ -295,16 +305,16 @@ describe("match detail registration design", () => {
   });
 
   test("enables WeChat sharing for match and challenge registration detail pages", async () => {
-    const matchDetail = await Bun.file(
+    const matchDetail = await sourceFile(
       "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/detail.vue",
     ).text();
-    const matchPageLogic = await Bun.file(
+    const matchPageLogic = await sourceFile(
       "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/useMatchDetailPage.ts",
     ).text();
-    const challengeDetail = await Bun.file(
+    const challengeDetail = await sourceFile(
       "/Users/carlwang/registration_system/registration_system_mini/src/pages/challenges/detail.vue",
     ).text();
-    const shareUtils = await Bun.file(
+    const shareUtils = await sourceFile(
       "/Users/carlwang/registration_system/registration_system_mini/src/utils/share.ts",
     ).text();
 
@@ -323,7 +333,7 @@ describe("match detail registration design", () => {
   });
 
   test("labels individual challenge countdown by match start because challenge has no registration deadline field", async () => {
-    const individualRegistration = await Bun.file(
+    const individualRegistration = await sourceFile(
       "/Users/carlwang/registration_system/registration_system_mini/src/pages/challenges/components/ChallengeIndividualRegistration.vue",
     ).text();
 
@@ -332,14 +342,14 @@ describe("match detail registration design", () => {
   });
 
   test("blocks new individual signup when the activity team capacity limit is full", async () => {
-    const pageLogic = await Bun.file(
+    const pageLogic = await sourceFile(
       "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/useMatchDetailPage.ts",
     ).text();
-    const state = await Bun.file(
+    const state = await sourceFile(
       "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/detailState.ts",
     ).text();
-    const countdown = await Bun.file(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/components/IndividualCountdownCard.vue",
+    const statusCard = await sourceFile(
+      "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/components/MatchRegistrationStatusCard.vue",
     ).text();
 
     expect(state.includes("resolveRegistrationCapacityState")).toEqual(true);
@@ -349,6 +359,6 @@ describe("match detail registration design", () => {
     expect(pageLogic.includes("registrationCapacityState.value.isFull")).toEqual(true);
     expect(pageLogic.includes('title: "报名人数已满"')).toEqual(true);
     expect(pageLogic.includes("canSubmitIndividualRegistration")).toEqual(true);
-    expect(countdown.includes("ctaDisabled")).toEqual(true);
+    expect(statusCard.includes(":disabled=\"ctaDisabled\"")).toEqual(true);
   });
 });
