@@ -5,6 +5,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -67,6 +68,35 @@ func TestHealthRoute(t *testing.T) {
 	const expected = `{"code":0,"message":"ok","data":{"status":"ok"}}`
 	if response.Body.String() != expected {
 		t.Fatalf("expected body %s, got %s", expected, response.Body.String())
+	}
+}
+
+func TestSwaggerRoutesServeEmbeddedOpenAPI(t *testing.T) {
+	router := NewRouter(Dependencies{})
+
+	redirect := httptest.NewRecorder()
+	router.ServeHTTP(redirect, httptest.NewRequest(http.MethodGet, "/api/docs", nil))
+	if redirect.Code < 300 || redirect.Code >= 400 || redirect.Header().Get("Location") != "/api/docs/" {
+		t.Fatalf("docs redirect status=%d location=%q", redirect.Code, redirect.Header().Get("Location"))
+	}
+
+	for _, test := range []struct {
+		path        string
+		contentType string
+		contains    string
+	}{
+		{path: "/api/docs/", contentType: "text/html", contains: "Swagger UI"},
+		{path: "/api/docs/openapi.yaml", contentType: "application/yaml", contains: "openapi: 3.0.3"},
+		{path: "/api/docs/swagger-ui.css", contentType: "text/css"},
+	} {
+		response := httptest.NewRecorder()
+		router.ServeHTTP(response, httptest.NewRequest(http.MethodGet, test.path, nil))
+		if response.Code != http.StatusOK || !strings.Contains(response.Header().Get("Content-Type"), test.contentType) {
+			t.Fatalf("GET %s status=%d content-type=%q", test.path, response.Code, response.Header().Get("Content-Type"))
+		}
+		if test.contains != "" && !strings.Contains(response.Body.String(), test.contains) {
+			t.Fatalf("GET %s body does not contain %q", test.path, test.contains)
+		}
 	}
 }
 

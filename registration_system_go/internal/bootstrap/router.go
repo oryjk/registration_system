@@ -34,6 +34,7 @@ func NewRouter(dependencies Dependencies) *gin.Engine {
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, sharedhttp.Success(gin.H{"status": "ok"}))
 	})
+	registerOpenAPI(router)
 
 	v1 := router.Group("/api/v1")
 	app := v1.Group("/app")
