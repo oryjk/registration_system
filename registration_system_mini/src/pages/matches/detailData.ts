@@ -1,6 +1,8 @@
 import { getActivity, getActivityUsers, listActivities } from "@/api/activity";
+import { listMyMatches } from "@/api/match";
 import { getTeamDetail } from "@/api/team";
 import { listUsers } from "@/api/user";
+import type { AppMatchSummary } from "@/types/match";
 import type { BackendActivity, BackendRegistration, BackendTeam, BackendTeamMember, BackendUser } from "@/types/backend";
 import { isActiveTeamRegistrationActivity } from "./detailState";
 
@@ -21,23 +23,91 @@ export interface AuthenticatedMatchDetailContext {
   checkInConfig: BackendActivity["team_checkin_configs"][number] | null;
 }
 
+const GO_MATCH_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function toLegacyActivityStatus(status: AppMatchSummary["status"]): number {
+  switch (status) {
+    case "ongoing":
+      return 1;
+    case "ended":
+      return 2;
+    case "cancelled":
+      return 3;
+    default:
+      return 0;
+  }
+}
+
+export function toBackendActivity(match: AppMatchSummary): BackendActivity {
+  return {
+    id: match.id,
+    name: match.name,
+    location: match.location,
+    location_latitude: match.location_latitude,
+    location_longitude: match.location_longitude,
+    status: toLegacyActivityStatus(match.status),
+    holding_date: match.start_time,
+    start_time: match.start_time,
+    end_time: match.end_time,
+    opposing: match.opponent_name ?? match.away_team_name,
+    cover: null,
+    description: match.description,
+    home_team_id: match.host_team_id,
+    away_team_id: match.away_team_id,
+    color: "#9be22b",
+    opposing_color: "#0f766e",
+    players_per_team: match.players_per_team,
+    team_capacity_limit: match.players_per_team,
+    match_kind: "external",
+    source_activity_id: null,
+    team_registration_count: null,
+    team_checkin_configs: [],
+  };
+}
+
+async function findGoMatch(matchId: string): Promise<AppMatchSummary | null> {
+  const pageSize = 100;
+  let page = 1;
+
+  while (true) {
+    const result = await listMyMatches({ page, pageSize });
+    const match = result.items.find((item) => item.id === matchId);
+    if (match) return match;
+    if (!result.items.length || page * result.page_size >= result.total) return null;
+    page += 1;
+  }
+}
+
+async function loadActivityDetail(matchId: string): Promise<{ activity: BackendActivity; fromGo: boolean }> {
+  if (!GO_MATCH_ID_PATTERN.test(matchId)) {
+    return { activity: await getActivity(matchId), fromGo: false };
+  }
+
+  const goMatch = await findGoMatch(matchId);
+  if (goMatch) return { activity: toBackendActivity(goMatch), fromGo: true };
+
+  return { activity: await getActivity(matchId), fromGo: false };
+}
+
 export async function loadPublicMatchDetailData(matchId: string): Promise<PublicMatchDetailData> {
-  const [activity, activityUsers, users, activityPage] = await Promise.all([
-    getActivity(matchId),
-    getActivityUsers(matchId),
+  const detail = await loadActivityDetail(matchId);
+  const [activityUsers, users, activityPageItems] = await Promise.all([
+    detail.fromGo ? Promise.resolve<BackendRegistration[]>([]) : getActivityUsers(matchId),
     listUsers(),
-    listActivities({ page: 1, pageSize: 100 }),
+    detail.fromGo
+      ? Promise.resolve<BackendActivity[]>([detail.activity])
+      : listActivities({ page: 1, pageSize: 100 }).then((page) => page.items),
   ]);
 
   return {
-    activity,
+    activity: detail.activity,
     activityUsers,
     usersById: Object.fromEntries(users.map((item) => [item.id, item])),
-    activityPageItems: activityPage.items,
-    sourceTeamRegistrationCount: activity.source_activity_id
+    activityPageItems,
+    sourceTeamRegistrationCount: detail.activity.source_activity_id
       ? 0
-      : activityPage.items
-          .filter((item) => isActiveTeamRegistrationActivity(item) && item.source_activity_id === activity.id)
+      : activityPageItems
+          .filter((item) => isActiveTeamRegistrationActivity(item) && item.source_activity_id === detail.activity.id)
           .reduce((total, item) => total + Number(item.team_registration_count ?? 0), 0),
   };
 }
