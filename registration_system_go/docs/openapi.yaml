@@ -14,11 +14,16 @@ tags:
   - name: App Matches
   - name: App Registrations
   - name: App Team Applications
+  - name: App Payments
+  - name: App Wallet
   - name: Admin Auth
   - name: Admin Users
   - name: Admin Teams
   - name: Admin Matches
   - name: Admin Team Applications
+  - name: Admin Payments
+  - name: Admin Wallets
+  - name: Webhooks
 
 x-bearer-security: &bearerSecurity
   - bearerAuth: []
@@ -351,6 +356,160 @@ paths:
               schema:
                 $ref: "#/components/schemas/TeamApplicationEnvelope"
         <<: *standardErrors
+
+  /api/v1/app/payments/recharge-orders:
+    post:
+      operationId: createAppRechargeOrder
+      tags: [App Payments]
+      summary: 创建微信小程序充值订单
+      description: 金额单位为分，最小 1 分；openid 从当前 JWT 用户读取。
+      security: *bearerSecurity
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRechargeRequest"
+      responses:
+        "200":
+          description: 本地订单与小程序 requestPayment 参数
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateRechargeEnvelope"
+        "502":
+          $ref: "#/components/responses/PaymentProviderError"
+        <<: *standardErrors
+
+  /api/v1/app/payments/orders:
+    get:
+      operationId: listAppPaymentOrders
+      tags: [App Payments]
+      summary: 查询当前用户的充值订单
+      security: *bearerSecurity
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+        - $ref: "#/components/parameters/PaymentStatus"
+      responses:
+        "200":
+          description: 当前用户的充值订单
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentOrderListEnvelope"
+        <<: *standardErrors
+
+  /api/v1/app/payments/orders/{order_no}:
+    get:
+      operationId: getAppPaymentOrder
+      tags: [App Payments]
+      summary: 查询当前用户的充值订单详情
+      security: *bearerSecurity
+      parameters:
+        - $ref: "#/components/parameters/PaymentOrderNo"
+      responses:
+        "200":
+          description: 充值订单详情
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentOrderEnvelope"
+        <<: *standardErrors
+
+  /api/v1/app/payments/orders/{order_no}/sync:
+    post:
+      operationId: syncAppPaymentOrder
+      tags: [App Payments]
+      summary: 向微信同步订单并幂等充值
+      security: *bearerSecurity
+      parameters:
+        - $ref: "#/components/parameters/PaymentOrderNo"
+      responses:
+        "200":
+          description: 同步后的订单与余额
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentSettlementEnvelope"
+        "502":
+          $ref: "#/components/responses/PaymentProviderError"
+        <<: *standardErrors
+
+  /api/v1/app/payments/orders/{order_no}/cancel:
+    post:
+      operationId: cancelAppPaymentOrder
+      tags: [App Payments]
+      summary: 关闭微信订单后取消本地未支付订单
+      security: *bearerSecurity
+      parameters:
+        - $ref: "#/components/parameters/PaymentOrderNo"
+      responses:
+        "200":
+          description: 取消后的订单；若微信已支付则返回结算后的 paid 订单
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentOrderEnvelope"
+        "502":
+          $ref: "#/components/responses/PaymentProviderError"
+        <<: *standardErrors
+
+  /api/v1/app/wallet:
+    get:
+      operationId: getAppWallet
+      tags: [App Wallet]
+      summary: 查询当前用户钱包
+      security: *bearerSecurity
+      responses:
+        "200":
+          description: 钱包账户；尚无资金记录时余额为 0
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WalletAccountEnvelope"
+        <<: *standardErrors
+
+  /api/v1/app/wallet/transactions:
+    get:
+      operationId: listAppWalletTransactions
+      tags: [App Wallet]
+      summary: 查询当前用户资金流水
+      security: *bearerSecurity
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: 不可变资金流水
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WalletTransactionListEnvelope"
+        <<: *standardErrors
+
+  /api/v1/webhooks/wechat-pay:
+    post:
+      operationId: handleWechatPayV2Notification
+      tags: [Webhooks]
+      summary: 处理微信支付 V2 结果通知
+      description: 公共入口，但请求必须通过微信 V2 MD5 验签和商户、金额校验。
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/xml:
+            schema:
+              type: string
+              description: 微信支付 V2 XML 通知
+      responses:
+        "200":
+          description: 微信支付 V2 SUCCESS 或 FAIL XML
+          content:
+            application/xml:
+              schema:
+                type: string
+                example: <xml><return_code>SUCCESS</return_code><return_msg>OK</return_msg></xml>
 
   /api/v1/admin/auth/login:
     post:
@@ -821,6 +980,64 @@ paths:
                 $ref: "#/components/schemas/TeamApplicationEnvelope"
         <<: *standardErrors
 
+  /api/v1/admin/payments/orders:
+    get:
+      operationId: listAdminPaymentOrders
+      tags: [Admin Payments]
+      summary: 只读查询全部充值订单
+      security: *bearerSecurity
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+        - $ref: "#/components/parameters/PaymentStatus"
+        - name: search
+          in: query
+          description: 订单号关键词
+          schema:
+            type: string
+      responses:
+        "200":
+          description: 充值订单分页
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentOrderListEnvelope"
+        <<: *standardErrors
+
+  /api/v1/admin/payments/orders/{order_no}:
+    get:
+      operationId: getAdminPaymentOrder
+      tags: [Admin Payments]
+      summary: 只读查询充值订单详情
+      security: *bearerSecurity
+      parameters:
+        - $ref: "#/components/parameters/PaymentOrderNo"
+      responses:
+        "200":
+          description: 充值订单详情
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentOrderEnvelope"
+        <<: *standardErrors
+
+  /api/v1/admin/wallets/{user_id}:
+    get:
+      operationId: getAdminUserWallet
+      tags: [Admin Wallets]
+      summary: 只读查询指定用户钱包
+      security: *bearerSecurity
+      parameters:
+        - $ref: "#/components/parameters/UserID"
+      responses:
+        "200":
+          description: 指定用户的钱包账户
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WalletAccountEnvelope"
+        <<: *standardErrors
+
 components:
   securitySchemes:
     bearerAuth:
@@ -921,6 +1138,21 @@ components:
       schema:
         type: string
         enum: [all, mine]
+    PaymentOrderNo:
+      name: order_no
+      in: path
+      required: true
+      description: 充值订单号
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 32
+    PaymentStatus:
+      name: status
+      in: query
+      description: 支付订单状态
+      schema:
+        $ref: "#/components/schemas/PaymentStatus"
 
   responses:
     WechatLoginSuccess:
@@ -961,6 +1193,12 @@ components:
             $ref: "#/components/schemas/ErrorResponse"
     InternalError:
       description: 服务内部错误
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    PaymentProviderError:
+      description: 微信支付上游网络、协议、签名或业务错误
       content:
         application/json:
           schema:
@@ -1040,6 +1278,191 @@ components:
     AdminRole:
       type: string
       enum: [admin, super_admin]
+    PaymentStatus:
+      type: string
+      enum: [pending, paid, cancelled, failed]
+    WalletDirection:
+      type: string
+      enum: [credit, debit]
+    WalletTransactionType:
+      type: string
+      enum: [recharge, spend]
+
+    CreateRechargeRequest:
+      type: object
+      required: [amount_cents]
+      properties:
+        amount_cents:
+          type: integer
+          format: int64
+          minimum: 1
+          description: 充值金额，单位为分
+    MiniProgramPaymentParameters:
+      type: object
+      required: [app_id, time_stamp, nonce_str, package, sign_type, pay_sign]
+      properties:
+        app_id:
+          type: string
+        time_stamp:
+          type: string
+        nonce_str:
+          type: string
+        package:
+          type: string
+          example: prepay_id=wx201410272009395522657a690389285100
+        sign_type:
+          type: string
+          enum: [MD5]
+        pay_sign:
+          type: string
+    PaymentOrder:
+      type: object
+      required: [order_no, user_id, amount_cents, provider, channel, status, created_at, updated_at]
+      properties:
+        order_no:
+          type: string
+        user_id:
+          type: integer
+          format: int64
+        amount_cents:
+          type: integer
+          format: int64
+          minimum: 1
+        provider:
+          type: string
+          enum: [wechat]
+        channel:
+          type: string
+          enum: [mini_program_jsapi]
+        status:
+          $ref: "#/components/schemas/PaymentStatus"
+        prepay_id:
+          type: string
+        transaction_id:
+          type: string
+        paid_at:
+          type: string
+          format: date-time
+        cancelled_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    PaymentOrderList:
+      type: object
+      required: [items, total, page, page_size]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/PaymentOrder"
+        total:
+          type: integer
+          format: int64
+        page:
+          type: integer
+          format: int32
+        page_size:
+          type: integer
+          format: int32
+    CreateRechargeResult:
+      type: object
+      required: [order, payment]
+      properties:
+        order:
+          $ref: "#/components/schemas/PaymentOrder"
+        payment:
+          $ref: "#/components/schemas/MiniProgramPaymentParameters"
+    PaymentSettlement:
+      type: object
+      required: [order, balance_cents, credited]
+      properties:
+        order:
+          $ref: "#/components/schemas/PaymentOrder"
+        balance_cents:
+          type: integer
+          format: int64
+          minimum: 0
+        credited:
+          type: boolean
+    WalletAccount:
+      type: object
+      required: [user_id, balance_cents, total_recharged_cents, total_spent_cents, version]
+      properties:
+        user_id:
+          type: integer
+          format: int64
+        balance_cents:
+          type: integer
+          format: int64
+          minimum: 0
+        total_recharged_cents:
+          type: integer
+          format: int64
+          minimum: 0
+        total_spent_cents:
+          type: integer
+          format: int64
+          minimum: 0
+        version:
+          type: integer
+          format: int64
+          minimum: 0
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    WalletTransaction:
+      type: object
+      required: [id, direction, type, amount_cents, balance_after_cents, source_type, source_id, description, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        direction:
+          $ref: "#/components/schemas/WalletDirection"
+        type:
+          $ref: "#/components/schemas/WalletTransactionType"
+        amount_cents:
+          type: integer
+          format: int64
+          minimum: 1
+        balance_after_cents:
+          type: integer
+          format: int64
+          minimum: 0
+        source_type:
+          type: string
+        source_id:
+          type: string
+        description:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+    WalletTransactionList:
+      type: object
+      required: [items, total, page, page_size]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/WalletTransaction"
+        total:
+          type: integer
+          format: int64
+        page:
+          type: integer
+          format: int32
+        page_size:
+          type: integer
+          format: int32
 
     WechatLoginRequest:
       type: object
@@ -1893,6 +2316,54 @@ components:
           properties:
             data:
               $ref: "#/components/schemas/WechatLogin"
+    CreateRechargeEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: "#/components/schemas/CreateRechargeResult"
+    PaymentOrderEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: "#/components/schemas/PaymentOrder"
+    PaymentOrderListEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: "#/components/schemas/PaymentOrderList"
+    PaymentSettlementEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: "#/components/schemas/PaymentSettlement"
+    WalletAccountEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: "#/components/schemas/WalletAccount"
+    WalletTransactionListEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: "#/components/schemas/WalletTransactionList"
     TestLoginUsersEnvelope:
       allOf:
         - $ref: "#/components/schemas/SuccessBase"

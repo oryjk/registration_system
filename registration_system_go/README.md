@@ -13,8 +13,10 @@
 - `online_team` 球队候选申请、选择与退出事务
 - 队内报名与散人对手报名，包括用户侧幂等更新、取消、容量和并发控制
 - 散人人数默认规则（配置管理 API 待实现）
+- 微信支付 V2 小程序 JSAPI 充值订单、回调、查单与关单
+- 个人钱包余额、不可变资金流水、幂等充值与内部原子扣费
 
-订单、支付、账单、结算、签到和通知不在第一阶段范围内。Rust 后端保留为只读参考。
+退款、提现、人工调账、微信内 H5 支付、签到和通知暂不实现。Rust 后端保留为只读参考，旧余额、订单和流水不迁移到 Go。
 
 ## 本地运行
 
@@ -50,6 +52,19 @@ API 契约与在线调试入口：
 
 Swagger UI 5 的静态资源和 OpenAPI 3.0.3 文档均嵌入 Go 二进制，访问时不依赖 CDN，也不需要 Docker。`/api/v1/app` 下的受保护接口需要用户 JWT，`/api/v1/admin` 下的受保护接口需要管理员 JWT；在 Swagger UI 的 Authorize 输入框中填写令牌值，bearer scheme 会生成对应的 `Authorization` 请求头。
 
+### 微信支付配置
+
+生产环境使用微信支付 V2 小程序 JSAPI，必须配置 `WECHAT_PAY_MCH_ID`、`WECHAT_PAY_API_KEY` 和公网 HTTPS `PUBLIC_BASE_URL`。回调地址由 `PUBLIC_BASE_URL + WECHAT_PAY_NOTIFY_PATH` 组成，默认路径是 `/api/v1/webhooks/wechat-pay`。缺少真实配置或在 production 启用 Mock 时，API 会拒绝启动，不会静默降级。
+
+本地无需 Docker。development/test 可显式配置：
+
+```bash
+APP_ENV=development
+WECHAT_PAY_USE_MOCK=true
+```
+
+Mock 创建订单后保持 `pending`，调用订单同步接口才模拟支付成功并充值。真实微信联调需要有效用户 OpenID、商户配置和可被微信访问的 HTTPS 回调。
+
 管理员接口统一位于 `/api/v1/admin`：
 
 - `GET/POST /api/v1/admin/admins`
@@ -78,6 +93,21 @@ Swagger UI 5 的静态资源和 OpenAPI 3.0.3 文档均嵌入 Go 二进制，访
 - `GET/POST /api/v1/app/matches/:id/team-applications`：按球队角色查看或提交整队申请
 - `POST /api/v1/app/matches/:id/team-applications/:application_id/select`：主队管理者选择客队
 - `POST /api/v1/app/matches/:id/team-applications/:application_id/withdraw`：撤回申请或退出已选客队
+- `POST /api/v1/app/payments/recharge-orders`：创建微信小程序充值订单，金额单位为分且最小 1 分
+- `GET /api/v1/app/payments/orders`：查询自己的充值订单
+- `GET /api/v1/app/payments/orders/:order_no`：查询自己的充值订单详情
+- `POST /api/v1/app/payments/orders/:order_no/sync`：向微信查单并幂等充值
+- `POST /api/v1/app/payments/orders/:order_no/cancel`：微信关单成功后取消未支付订单
+- `GET /api/v1/app/wallet`：查询个人余额
+- `GET /api/v1/app/wallet/transactions`：查询个人资金流水
+
+支付与钱包管理接口均为只读：
+
+- `GET /api/v1/admin/payments/orders`
+- `GET /api/v1/admin/payments/orders/:order_no`
+- `GET /api/v1/admin/wallets/:user_id`
+
+微信 V2 回调为公共机器接口 `POST /api/v1/webhooks/wechat-pay`，不使用 JWT，但必须通过签名、AppID、商户号、订单号和金额校验。
 
 ## 初始化管理员
 
@@ -147,4 +177,4 @@ go vet ./...
 go build -o /tmp/registration-system-go-api ./cmd/api
 ```
 
-以上命令不启动 Docker。完整 PostgreSQL 并发集成测试位于 `internal/match/adapters/postgres`，需要隔离测试数据库环境；没有独立测试库时不要把 `DATABASE_URL` 指向现有开发或生产数据来运行测试。
+以上命令不启动 Docker。完整 PostgreSQL 集成测试需要显式提供专用 `TEST_DATABASE_URL`；支付与钱包测试不会回退使用 `DATABASE_URL`，也不会启动 Docker。没有独立测试库时不要把开发或生产数据库用于测试。

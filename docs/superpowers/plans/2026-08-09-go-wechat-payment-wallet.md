@@ -21,6 +21,8 @@
 
 ### Task 1: Payment and wallet domain contracts
 
+**Status:** Completed in `02cdff0`.
+
 **Files:**
 - Create: `registration_system_go/internal/payment/domain/order.go`
 - Create: `registration_system_go/internal/payment/domain/order_test.go`
@@ -38,6 +40,8 @@
 - [ ] Commit as `feat(go): define payment and wallet domains`.
 
 ### Task 2: Ports and application use cases
+
+**Status:** Completed in `59e3547`.
 
 **Files:**
 - Create: `registration_system_go/internal/payment/ports/ports.go`
@@ -64,6 +68,8 @@
 
 ### Task 3: WeChat V2 and Mock gateways
 
+**Status:** Completed in `6c8959b`.
+
 **Files:**
 - Create: `registration_system_go/internal/payment/adapters/wechatv2/signature.go`
 - Create: `registration_system_go/internal/payment/adapters/wechatv2/xml.go`
@@ -84,6 +90,8 @@
 - [ ] Commit as `feat(go): add WeChat Pay V2 gateway`.
 
 ### Task 4: Database schema, sqlc, and PostgreSQL adapters
+
+**Status:** Completed in `32bc885`; integration tests skip unless `TEST_DATABASE_URL` is explicit.
 
 **Files:**
 - Create: `registration_system_go/db/migrations/00005_payment_wallet.sql`
@@ -112,6 +120,8 @@
 
 ### Task 5: HTTP adapters and dependency wiring
 
+**Status:** Completed in `d9f8190`.
+
 **Files:**
 - Create: `registration_system_go/internal/payment/adapters/http/handler.go`
 - Create: `registration_system_go/internal/payment/adapters/http/handler_test.go`
@@ -136,6 +146,8 @@
 
 ### Task 6: OpenAPI and operational documentation
 
+**Status:** Completed; pending the documentation commit.
+
 **Files:**
 - Modify: `registration_system_go/docs/openapi.yaml`
 - Modify: `registration_system_go/docs/openapi_test.go`
@@ -155,6 +167,8 @@
 
 ### Task 7: Full verification
 
+**Status:** In progress.
+
 **Files:**
 - Verify only; fix defects in the owning files with a new failing regression test first.
 
@@ -166,4 +180,3 @@
 - [ ] Run `TEST_DATABASE_URL=<isolated-url> go test -race ./internal/payment/adapters/postgres ./internal/wallet/adapters/postgres` only when a dedicated test database is available.
 - [ ] Run `go test -run '^$' ./...`, `go vet ./...`, `go build -o /tmp/registration-system-go-api ./cmd/api`, and `git diff --check`.
 - [ ] Inspect `git status`, verify no mini/Rust files changed, and commit any final regression/documentation fixes.
-

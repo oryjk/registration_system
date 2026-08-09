@@ -14,8 +14,10 @@ import (
 	authhttp "github.com/oryjk/registration_system/registration_system_go/internal/auth/adapters/http"
 	"github.com/oryjk/registration_system/registration_system_go/internal/bootstrap"
 	matchhttp "github.com/oryjk/registration_system/registration_system_go/internal/match/adapters/http"
+	paymenthttp "github.com/oryjk/registration_system/registration_system_go/internal/payment/adapters/http"
 	teamhttp "github.com/oryjk/registration_system/registration_system_go/internal/team/adapters/http"
 	userhttp "github.com/oryjk/registration_system/registration_system_go/internal/user/adapters/http"
+	wallethttp "github.com/oryjk/registration_system/registration_system_go/internal/wallet/adapters/http"
 )
 
 func TestOpenAPIIsValidAndMatchesGinRoutes(t *testing.T) {
@@ -31,8 +33,8 @@ func TestOpenAPIIsValidAndMatchesGinRoutes(t *testing.T) {
 	if len(missing) != 0 || len(extra) != 0 {
 		t.Fatalf("OpenAPI route mismatch\nmissing: %v\nextra: %v", missing, extra)
 	}
-	if len(documented) != 43 {
-		t.Fatalf("documented operations=%d, want 43", len(documented))
+	if len(documented) != 54 {
+		t.Fatalf("documented operations=%d, want 54", len(documented))
 	}
 }
 
@@ -47,6 +49,7 @@ func TestOpenAPISecurityMatchesPublicAndProtectedRoutes(t *testing.T) {
 		{method: http.MethodGet, path: "/api/v1/app/test-auth/users"},
 		{method: http.MethodPost, path: "/api/v1/app/test-auth/login"},
 		{method: http.MethodPost, path: "/api/v1/admin/auth/login"},
+		{method: http.MethodPost, path: "/api/v1/webhooks/wechat-pay"},
 	} {
 		if operationRequiresBearer(operation(t, document, route.method, route.path)) {
 			t.Fatalf("%s %s must be public", route.method, route.path)
@@ -59,6 +62,10 @@ func TestOpenAPISecurityMatchesPublicAndProtectedRoutes(t *testing.T) {
 	}{
 		{method: http.MethodGet, path: "/api/v1/app/users/me"},
 		{method: http.MethodGet, path: "/api/v1/admin/auth/me"},
+		{method: http.MethodPost, path: "/api/v1/app/payments/recharge-orders"},
+		{method: http.MethodGet, path: "/api/v1/app/wallet"},
+		{method: http.MethodGet, path: "/api/v1/admin/payments/orders"},
+		{method: http.MethodGet, path: "/api/v1/admin/wallets/{user_id}"},
 	} {
 		if !operationRequiresBearer(operation(t, document, route.method, route.path)) {
 			t.Fatalf("%s %s must require bearerAuth", route.method, route.path)
@@ -107,6 +114,8 @@ func completeRouter() *gin.Engine {
 		UserRegistrations:  matchhttp.NewUserRegistrationHandler(nil),
 		AdminMatches:       matchhttp.NewAdminHandler(nil, nil),
 		TeamApplications:   matchhttp.NewTeamApplicationHandler(nil),
+		Payments:           paymenthttp.NewHandler(nil),
+		Wallets:            wallethttp.NewHandler(nil),
 	})
 }
 

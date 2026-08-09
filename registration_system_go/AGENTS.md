@@ -39,7 +39,9 @@
 - 不使用重型 ORM；查询通过 sqlc 生成类型。
 - Go 模块下载使用 `GOPROXY=https://goproxy.cn,direct`，校验使用 `GOSUMDB=sum.golang.google.cn`；不要关闭公开依赖的 checksum 校验。
 - 不记录 JWT、微信 code、AppSecret、数据库连接串等敏感信息。
-- 第一阶段不实现订单、支付、账单、结算、签到和通知。
+- 已实现首版微信支付 V2 充值与个人钱包；新增资金行为必须保持订单、流水和余额原子一致，并通过唯一来源键保证幂等。
+- 当前不实现退款、提现、人工调账、微信内 H5 支付、签到和通知。
+- PostgreSQL 集成测试只使用显式 `TEST_DATABASE_URL`，不得回退连接 `DATABASE_URL` 或为测试启动 Docker。
 
 ## 验证
 
