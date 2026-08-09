@@ -52,7 +52,7 @@ export function tryMockRequest(
 
 /**
  * 从完整 URL 中提取 API 路径（去除 baseURL 前缀和协议/host）。
- * 支持 "http://127.0.0.1:8080/api/activity/infos" → "/activity/infos"
+ * 支持 "http://127.0.0.1:8080/api/v1/app/matches/home" → "/matches/home"
  */
 function extractApiPath(url: string): string | null {
   // 去除协议和 host
@@ -65,7 +65,13 @@ function extractApiPath(url: string): string | null {
     path = afterProtocol.slice(slashIndex);
   }
 
-  // 去除 baseURL 中的 "/api" 前缀（如果有）
+  // 去除 Go App baseURL 中的 "/api/v1/app" 或旧的 "/api" 前缀（如果有）
+  if (path.startsWith("/api/v1/app/")) {
+    path = path.slice("/api/v1/app".length);
+  } else if (path === "/api/v1/app") {
+    return "/";
+  }
+
   if (path.startsWith("/api/")) {
     path = path.slice(4);
   } else if (path === "/api") {

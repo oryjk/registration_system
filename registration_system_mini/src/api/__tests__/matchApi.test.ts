@@ -10,6 +10,7 @@ const requestApi = async (options: unknown) => {
 mock.module("@/utils/request", () => ({ requestApi }));
 
 const { getMatchHome, listMyMatches } = await import("../match");
+const { tryMockRequest } = await import("@/mock");
 
 describe("Go match API", () => {
   test("loads the authenticated home summary", async () => {
@@ -70,6 +71,21 @@ describe("Go match API", () => {
 
     expect(homeIds.every((id) => uuidLike.test(id))).toEqual(true);
     expect(listIds.every((id) => uuidLike.test(id))).toEqual(true);
+  });
+
+  test("normalizes the full Go app base path before routing mock requests", async () => {
+    const loginResponse = await tryMockRequest(
+      "POST",
+      "http://127.0.0.1:18080/api/v1/app/test-auth/login",
+      { user_id: 1 },
+    );
+    const homeResponse = await tryMockRequest(
+      "GET",
+      "http://127.0.0.1:18080/api/v1/app/matches/home",
+    );
+
+    expect(loginResponse).not.toBeNull();
+    expect(homeResponse).not.toBeNull();
   });
 });
 
