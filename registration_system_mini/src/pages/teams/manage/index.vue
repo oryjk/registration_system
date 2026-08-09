@@ -2,6 +2,8 @@
 import { computed, reactive, ref, watch } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
+import { NeoSegmentedControl, NeoSurface } from "@/components/neo";
+import type { NeoSegmentOption } from "@/components/neo/NeoSegmentedControl.vue";
 import MemberAttendancePopup from "./components/MemberAttendancePopup.vue";
 import MemberEditPopup from "./components/MemberEditPopup.vue";
 import TeamActivityAttendancePanel from "./components/TeamActivityAttendancePanel.vue";
@@ -138,6 +140,20 @@ const pageStyle = computed(() => ({
   paddingTop: `${navMetrics.pageTopPadding + 8}px`,
 }));
 const canShowCreateTeamEntry = computed(() => !shouldHideCreationEntrances.value);
+const modeOptions = computed<NeoSegmentOption[]>(() => {
+  if (hasCurrentTeam.value) {
+    return [
+      { label: "球队资料", value: "profile" },
+      { label: "队员管理", value: "members" },
+      { label: "比赛出勤", value: "attendance" },
+    ];
+  }
+
+  return [
+    ...(canShowCreateTeamEntry.value ? [{ label: "创建球队", value: "create" }] : []),
+    { label: "加入球队", value: "join" },
+  ];
+});
 
 function syncVisibleMode() {
   activeMode.value = resolveVisibleMode(hasCurrentTeam.value, activeMode.value, canShowCreateTeamEntry.value);
@@ -346,6 +362,10 @@ function handleSelectMode(mode: TeamManageMode) {
   if (mode === "attendance") {
     void loadTeamActivityAttendanceSummaries();
   }
+}
+
+function handleModeChange(mode: string) {
+  handleSelectMode(mode as TeamManageMode);
 }
 
 async function handleUpdateTeamProfile() {
@@ -605,25 +625,24 @@ onShow(async () => {
   <view class="team-manage-page" :style="pageStyle">
     <AppTabHeader title="球队管理" showBack />
 
-    <view class="team-manage-hero">
-      <text class="team-manage-kicker">球队管理</text>
-      <text class="team-manage-title">{{ heroTitle }}</text>
-      <text class="team-manage-copy">{{ heroCopy }}</text>
-    </view>
+    <view class="team-manage-content">
+      <NeoSurface variant="dark" custom-class="team-manage-hero">
+        <view class="team-manage-hero__copy">
+          <text class="team-manage-title">{{ heroTitle }}</text>
+          <text class="team-manage-copy">{{ heroCopy }}</text>
+        </view>
+        <view class="team-manage-hero__mark">
+          <text>{{ currentTeam?.name?.slice(0, 1) || "队" }}</text>
+        </view>
+      </NeoSurface>
 
-    <view class="mode-switch">
-      <template v-if="hasCurrentTeam">
-        <view :class="['mode-chip', activeMode === 'profile' ? 'mode-chip-active' : '']" @tap="handleSelectMode('profile')">球队资料</view>
-        <view :class="['mode-chip', activeMode === 'members' ? 'mode-chip-active' : '']" @tap="handleSelectMode('members')">队员管理</view>
-        <view :class="['mode-chip', activeMode === 'attendance' ? 'mode-chip-active' : '']" @tap="handleSelectMode('attendance')">比赛出勤</view>
-      </template>
-      <template v-else>
-        <view v-if="canShowCreateTeamEntry" :class="['mode-chip', activeMode === 'create' ? 'mode-chip-active' : '']" @tap="handleSelectMode('create')">创建球队</view>
-        <view :class="['mode-chip', activeMode === 'join' ? 'mode-chip-active' : '']" @tap="handleSelectMode('join')">加入球队</view>
-      </template>
-    </view>
+      <NeoSegmentedControl
+        :model-value="activeMode"
+        :options="modeOptions"
+        @change="handleModeChange"
+      />
 
-    <TeamProfilePanel
+      <TeamProfilePanel
       v-if="activeMode === 'profile'"
       :current-team="currentTeam"
       :can-manage-members="canManageMembers"
@@ -633,9 +652,9 @@ onShow(async () => {
       :submitting="submitting"
       @choose-logo="handleChooseTeamLogo"
       @submit="handleUpdateTeamProfile"
-    />
+      />
 
-    <TeamCreatePanel
+      <TeamCreatePanel
       v-else-if="activeMode === 'create'"
       :form="createForm"
       :review-mode="createTeamReviewMode"
@@ -643,9 +662,9 @@ onShow(async () => {
       :can-create="canCreate"
       :submitting="submitting"
       @submit="handleCreateTeam"
-    />
+      />
 
-    <TeamJoinPanel
+      <TeamJoinPanel
       v-else-if="activeMode === 'join'"
       v-model:search-keyword="searchKeyword"
       v-model:join-password="joinPassword"
@@ -658,9 +677,9 @@ onShow(async () => {
       @search="handleSearchTeams"
       @select-team="handleSelectTeam"
       @join="handleJoinTeam"
-    />
+      />
 
-    <TeamMemberManager
+      <TeamMemberManager
       v-else-if="activeMode === 'members'"
       :current-team="currentTeam"
       :can-manage-members="canManageMembers"
@@ -686,15 +705,16 @@ onShow(async () => {
       @edit-member="handleEditMember"
       @toggle-member-status="handleToggleMemberStatus"
       @remove-member="handleRemoveMember"
-    />
+      />
 
-    <TeamActivityAttendancePanel
+      <TeamActivityAttendancePanel
       v-else-if="activeMode === 'attendance'"
       :current-team="currentTeam"
       :loading="activityAttendanceLoading"
       :summaries="activityAttendanceSummaries"
       :format-attendance-date="formatAttendanceDate"
-    />
+      />
+    </view>
 
     <MemberEditPopup
       v-model="editMemberPopupVisible"
@@ -728,72 +748,78 @@ onShow(async () => {
 <style scoped>
 .team-manage-page {
   min-height: 100vh;
-  padding: 34rpx 28rpx 96rpx;
-  background: linear-gradient(180deg, #fbfcf7 0%, #eef2e6 100%);
+  padding: 0 28rpx 112rpx;
+  background: var(--neo-color-page);
+  box-sizing: border-box;
+}
+
+.team-manage-content {
+  width: 100%;
+  max-width: 900rpx;
+  margin: 0 auto;
   box-sizing: border-box;
 }
 
 .team-manage-hero {
-  border-radius: 32rpx;
-  background: #ffffff;
-  box-shadow: 0 18rpx 36rpx rgba(16, 17, 15, 0.06);
-}
-
-.team-manage-hero {
-  padding: 34rpx 30rpx;
-}
-
-.team-manage-kicker,
-.team-manage-copy {
-  color: #6a7165;
-  font-size: 24rpx;
-  font-weight: 700;
-}
-
-.team-manage-title {
-  display: block;
-  color: #10110f;
-  font-weight: 900;
-}
-
-.team-manage-title {
-  margin-top: 10rpx;
-  font-size: 52rpx;
-  line-height: 1.08;
-}
-
-.team-manage-copy {
-  display: block;
-  margin-top: 14rpx;
-}
-
-.mode-switch {
-  display: flex;
-  gap: 12rpx;
-  margin: 24rpx 0;
-  padding: 8rpx;
-  border-radius: 999rpx;
-  background: #e8ecdf;
-}
-
-.mode-chip {
-  flex: 1;
-  height: 70rpx;
-  border-radius: 999rpx;
   display: flex;
   align-items: center;
-  justify-content: center;
-  color: #5d6458;
-  font-size: 26rpx;
-  font-weight: 900;
+  gap: 22rpx;
+  margin: 22rpx 0 24rpx;
+  padding: 28rpx 26rpx;
+  border: var(--neo-border-strong);
+  border-radius: var(--neo-radius-md);
+  background: var(--neo-color-hero);
+  box-shadow: 8rpx 8rpx 0 var(--neo-color-accent);
 }
 
-.mode-chip {
+.team-manage-hero__copy {
+  flex: 1;
   min-width: 0;
 }
 
-.mode-chip-active {
-  background: #10110f;
-  color: #c8ff00;
+.team-manage-title {
+  display: block;
+  color: var(--neo-color-text-inverse);
+  font-size: 42rpx;
+  font-weight: 900;
+  line-height: 1.18;
+  word-break: break-word;
+}
+
+.team-manage-copy {
+  display: block;
+  margin-top: 12rpx;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 23rpx;
+  font-weight: 700;
+  line-height: 1.55;
+}
+
+.team-manage-hero__mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 104rpx;
+  height: 104rpx;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-accent);
+  color: var(--neo-color-text);
+  font-size: 40rpx;
+  font-weight: 900;
+  box-sizing: border-box;
+}
+
+:deep(.neo-segmented-control) {
+  margin-bottom: 24rpx;
+}
+
+@media (max-width: 560rpx) {
+  .team-manage-hero__mark {
+    width: 88rpx;
+    height: 88rpx;
+    font-size: 34rpx;
+  }
 }
 </style>

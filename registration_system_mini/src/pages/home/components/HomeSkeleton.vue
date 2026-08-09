@@ -71,8 +71,9 @@
 }
 
 .home-skeleton-card {
-  border-radius: 28rpx;
-  background: #eef2e8;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-md);
+  background: var(--neo-color-skeleton-surface);
 }
 
 .home-skeleton-card-hero {
@@ -95,7 +96,8 @@
   width: 72rpx;
   height: 72rpx;
   border-radius: 999rpx;
-  background: #dde4d5;
+  border: var(--neo-border-default);
+  background: var(--neo-color-skeleton-block);
   flex-shrink: 0;
 }
 
@@ -105,8 +107,8 @@
 
 .home-skeleton-line {
   height: 24rpx;
-  border-radius: 999rpx;
-  background: #dde4d5;
+  border-radius: 3rpx;
+  background: var(--neo-color-skeleton-block);
 }
 
 .home-skeleton-line + .home-skeleton-line {
@@ -139,8 +141,9 @@
 .home-skeleton-pill {
   width: 136rpx;
   height: 56rpx;
-  border-radius: 999rpx;
-  background: #dde4d5;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-success);
   flex-shrink: 0;
 }
 
@@ -165,8 +168,9 @@
   width: 100%;
   height: 16rpx;
   margin-top: 24rpx;
-  border-radius: 999rpx;
-  background: #dde4d5;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-xs);
+  background: var(--neo-color-skeleton-block);
 }
 
 .home-skeleton-card-opportunity {

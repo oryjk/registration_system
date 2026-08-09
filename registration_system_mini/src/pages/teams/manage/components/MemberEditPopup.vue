@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref } from "vue";
+import { NeoButton } from "@/components/neo";
 import type { BackendTeamMember } from "@/types/backend";
-import { memberRoleOptions } from "../teamManageState";
+import { memberRoleOptions, roleLabel } from "../teamManageState";
 
 const props = defineProps<{
   modelValue: boolean;
@@ -45,6 +46,7 @@ const roleModel = computed({
     props.form.role = String(value[0] || "member");
   },
 });
+const rolePickerVisible = ref(false);
 </script>
 
 <template>
@@ -63,11 +65,22 @@ const roleModel = computed({
           <text class="member-edit-kicker">编辑队员</text>
           <text class="member-edit-title">{{ member ? memberName : "队员" }}</text>
         </view>
-        <view class="member-edit-close" @tap="handleClose">取消</view>
+        <NeoButton variant="outline" size="sm" @click="handleClose">取消</NeoButton>
       </view>
 
+      <wd-cell
+        title="队员角色"
+        :value="roleLabel(form.role)"
+        is-link
+        clickable
+        custom-class="member-role-cell"
+        custom-title-class="member-role-cell-title"
+        custom-value-class="member-role-cell-value"
+        @click="rolePickerVisible = true"
+      />
       <wd-picker
         v-model="roleModel"
+        v-model:visible="rolePickerVisible"
         title="选择角色"
         placeholder="请选择角色"
         :columns="memberRoleOptions"
@@ -86,25 +99,26 @@ const roleModel = computed({
           <text class="member-setting-title">队员会员</text>
           <text class="member-setting-copy">保存后会显示在队员信息里</text>
         </view>
-        <switch :checked="form.isMember" color="#c8ff00" @change="handleMemberSwitchChange" />
+        <switch :checked="form.isMember" color="#b9f24b" @change="handleMemberSwitchChange" />
       </view>
-      <view class="primary-button" @tap="handleSubmit">
+      <NeoButton block :loading="submitting" @click="handleSubmit">
         {{ submitting ? "保存中..." : "保存队员" }}
-      </view>
+      </NeoButton>
     </view>
   </wd-popup>
 </template>
 
 <style scoped>
 :deep(.member-edit-popup) {
-  border-radius: 34rpx 34rpx 0 0;
-  background: #ffffff;
+  border-top: var(--neo-border-strong);
+  border-radius: var(--neo-radius-md) var(--neo-radius-md) 0 0;
+  background: var(--neo-color-page);
 }
 
 .member-edit-sheet {
   padding: 34rpx 30rpx 38rpx;
-  background: #ffffff;
-  border-radius: 34rpx 34rpx 0 0;
+  background: var(--neo-color-page);
+  border-radius: var(--neo-radius-md) var(--neo-radius-md) 0 0;
 }
 
 .member-edit-header {
@@ -117,7 +131,7 @@ const roleModel = computed({
 
 .member-edit-kicker {
   display: block;
-  color: #6a7165;
+  color: var(--neo-color-text-muted);
   font-size: 24rpx;
   font-weight: 800;
 }
@@ -125,21 +139,8 @@ const roleModel = computed({
 .member-edit-title {
   display: block;
   margin-top: 8rpx;
-  color: #10110f;
+  color: var(--neo-color-text);
   font-size: 38rpx;
-  font-weight: 900;
-}
-
-.member-edit-close {
-  height: 58rpx;
-  padding: 0 22rpx;
-  border-radius: 999rpx;
-  background: #edf0e7;
-  color: #5d6458;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 24rpx;
   font-weight: 900;
 }
 
@@ -149,29 +150,62 @@ const roleModel = computed({
   margin-top: 14rpx;
 }
 
+:deep(.member-role-picker) {
+  --wot-picker-bg: var(--neo-color-surface);
+  --wot-picker-action-color-confirm: var(--neo-color-text);
+  --wot-picker-action-color-cancel: var(--neo-color-text-muted);
+  --wot-picker-action-disabled-color: var(--neo-color-text-disabled);
+  --wot-picker-title-color: var(--neo-color-text);
+  --wot-picker-title-font-weight: 900;
+  --wot-picker-radius: var(--neo-radius-md);
+}
+
+:deep(.member-role-cell) {
+  margin-top: 14rpx;
+  padding: 0 20rpx;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-surface);
+  box-sizing: border-box;
+}
+
+:deep(.member-role-cell-title) {
+  color: var(--neo-color-text-muted);
+  font-size: 24rpx;
+  font-weight: 900;
+}
+
+:deep(.member-role-cell-value) {
+  color: var(--neo-color-text);
+  font-size: 28rpx;
+  font-weight: 900;
+}
+
 :deep(.member-role-picker-cell) {
   width: 100%;
-  height: 86rpx;
-  padding: 0 22rpx;
-  border-radius: 22rpx;
-  background: #f3f5ef;
-  color: #111310;
+  height: 84rpx;
+  padding: 0 20rpx;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-surface);
+  color: var(--neo-color-text);
   box-sizing: border-box;
 }
 
 :deep(.member-role-picker-value) {
-  color: #111310;
+  color: var(--neo-color-text);
   font-size: 28rpx;
   font-weight: 900;
 }
 
 .form-input {
   width: 100%;
-  height: 86rpx;
-  padding: 0 22rpx;
-  border-radius: 22rpx;
-  background: #f3f5ef;
-  color: #111310;
+  height: 84rpx;
+  padding: 0 20rpx;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-surface);
+  color: var(--neo-color-text);
   font-size: 28rpx;
   font-weight: 700;
   box-sizing: border-box;
@@ -185,8 +219,9 @@ const roleModel = computed({
   min-height: 88rpx;
   margin-top: 14rpx;
   padding: 16rpx 18rpx;
-  border-radius: 22rpx;
-  background: #f3f5ef;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-info-soft);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -200,28 +235,19 @@ const roleModel = computed({
 }
 
 .member-setting-title {
-  color: #111310;
+  color: var(--neo-color-text);
   font-size: 28rpx;
   font-weight: 900;
 }
 
 .member-setting-copy {
   margin-top: 4rpx;
-  color: #6a7165;
+  color: var(--neo-color-text-muted);
   font-size: 22rpx;
   font-weight: 700;
 }
 
-.primary-button {
-  height: 88rpx;
+:deep(.member-edit-sheet .neo-button--block) {
   margin-top: 28rpx;
-  border-radius: 24rpx;
-  background: #c8ff00;
-  color: #10110f;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 28rpx;
-  font-weight: 900;
 }
 </style>

@@ -230,7 +230,7 @@ export function buildHomeMatchCards({
         opponent: activity.opposing?.trim() || "待定",
         formatLabel: requiredPlayers > 0 ? `${requiredPlayers} 人制` : "人数待定",
         requiredPlayers,
-        maxPlayers: requiredPlayers,
+        maxPlayers: Math.max(activity.team_capacity_limit ?? requiredPlayers, requiredPlayers),
         joinedPlayers,
         absentPlayers,
         latePlayers,

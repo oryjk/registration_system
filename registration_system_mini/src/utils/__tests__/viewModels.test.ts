@@ -306,6 +306,52 @@ describe("buildHomeMatchCards", () => {
       },
     ]);
   });
+
+  test("preserves activity capacity when signups exceed the players-per-team target", () => {
+    const cards = buildHomeMatchCards({
+      teamId: 1,
+      activities: [
+        {
+          id: "activity-over-target",
+          name: "队内分组对抗",
+          location: "测试球场",
+          location_latitude: null,
+          location_longitude: null,
+          status: 0,
+          holding_date: "2026-04-16T20:00:00",
+          start_time: "2026-04-16T20:00:00",
+          end_time: "2026-04-16T22:00:00",
+          opposing: "B 队",
+          cover: null,
+          description: null,
+          home_team_id: 1,
+          away_team_id: 1,
+          color: null,
+          opposing_color: null,
+          players_per_team: 6,
+          team_capacity_limit: 8,
+          match_kind: "internal",
+          source_activity_id: "activity-over-target",
+          team_registration_count: null,
+          team_checkin_configs: [],
+        },
+      ],
+      myActivityRecords: [],
+      registrationsByActivityId: {
+        "activity-over-target": Array.from({ length: 8 }, (_, index) => ({
+          user_id: index + 1,
+          stand: 1,
+          registration_count: 1,
+          paid: 0,
+          operation_time: "2026-04-15T12:00:00",
+        })),
+      },
+    });
+
+    expect(cards[0].requiredPlayers).toEqual(6);
+    expect(cards[0].maxPlayers).toEqual(8);
+    expect(cards[0].joinedPlayers).toEqual(8);
+  });
 });
 
 describe("buildJoinedIndividualHomeMatchCards", () => {

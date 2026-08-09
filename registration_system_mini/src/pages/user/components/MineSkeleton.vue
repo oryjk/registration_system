@@ -1,109 +1,207 @@
 <template>
   <view class="mine-skeleton-stack">
-    <view class="mine-skeleton-profile">
+    <view class="mine-skeleton-hero">
       <view class="mine-skeleton-avatar" />
-      <view class="mine-skeleton-copy">
-        <view class="mine-skeleton-line mine-skeleton-line-title" />
-        <view class="mine-skeleton-line mine-skeleton-line-body" />
-        <view class="mine-skeleton-line mine-skeleton-line-short" />
+      <view class="mine-skeleton-hero__copy">
+        <view class="mine-skeleton-block mine-skeleton-block--title" />
+        <view class="mine-skeleton-block mine-skeleton-block--body" />
+        <view class="mine-skeleton-block mine-skeleton-block--short" />
+      </view>
+      <view class="mine-skeleton-action" />
+    </view>
+
+    <view class="mine-skeleton-context">
+      <view class="mine-skeleton-heading">
+        <view class="mine-skeleton-heading__marker" />
+        <view class="mine-skeleton-block mine-skeleton-block--heading" />
+      </view>
+      <view class="mine-skeleton-team">
+        <view class="mine-skeleton-team__logo" />
+        <view class="mine-skeleton-team__copy">
+          <view class="mine-skeleton-block mine-skeleton-block--body" />
+          <view class="mine-skeleton-block mine-skeleton-block--short" />
+        </view>
+      </view>
+      <view class="mine-skeleton-segments">
+        <view class="mine-skeleton-segment" />
+        <view class="mine-skeleton-segment" />
+        <view class="mine-skeleton-segment" />
       </view>
     </view>
+
     <view class="mine-skeleton-stats">
-      <view class="mine-skeleton-stat" />
-      <view class="mine-skeleton-stat" />
-      <view class="mine-skeleton-stat" />
-      <view class="mine-skeleton-stat" />
+      <view v-for="index in 4" :key="index" class="mine-skeleton-stat">
+        <view class="mine-skeleton-block mine-skeleton-block--value" />
+        <view class="mine-skeleton-block mine-skeleton-block--short" />
+      </view>
     </view>
   </view>
 </template>
 
 <style scoped>
-.mine-skeleton-stack,
-.mine-skeleton-profile,
-.mine-skeleton-line,
-.mine-skeleton-avatar,
-.mine-skeleton-stat {
-  position: relative;
-  overflow: hidden;
-}
-
 .mine-skeleton-stack {
-  padding: 28rpx;
-  border-radius: 32rpx;
-  background: rgba(255, 255, 255, 0.9);
-  box-shadow: 0 24rpx 48rpx rgba(15, 23, 42, 0.08);
+  display: grid;
+  gap: 22rpx;
 }
 
-.mine-skeleton-profile {
+.mine-skeleton-hero,
+.mine-skeleton-context,
+.mine-skeleton-stat {
+  border: var(--neo-border-strong);
+  border-radius: var(--neo-radius-md);
+  box-shadow: var(--neo-shadow-raised);
+  box-sizing: border-box;
+}
+
+.mine-skeleton-hero {
   display: flex;
+  min-height: 264rpx;
   align-items: center;
-  gap: 20rpx;
+  gap: 18rpx;
+  padding: 24rpx;
+  background: var(--neo-color-hero);
+  box-shadow: 8rpx 8rpx 0 var(--neo-color-accent);
+}
+
+.mine-skeleton-avatar,
+.mine-skeleton-action,
+.mine-skeleton-block,
+.mine-skeleton-heading__marker,
+.mine-skeleton-team__logo,
+.mine-skeleton-segment {
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-skeleton-block);
+  animation: mine-skeleton-pulse 1.1s ease-in-out infinite alternate;
 }
 
 .mine-skeleton-avatar {
   width: 112rpx;
   height: 112rpx;
-  border-radius: 36rpx;
-  background: #e5eadf;
   flex-shrink: 0;
+  border: 2rpx solid var(--neo-color-surface);
 }
 
-.mine-skeleton-copy {
-  flex: 1;
+.mine-skeleton-hero__copy,
+.mine-skeleton-team__copy {
   min-width: 0;
+  flex: 1;
 }
 
-.mine-skeleton-line {
-  height: 24rpx;
-  border-radius: 999rpx;
-  background: #e5eadf;
+.mine-skeleton-block {
+  height: 22rpx;
 }
 
-.mine-skeleton-line + .mine-skeleton-line {
-  margin-top: 16rpx;
+.mine-skeleton-block + .mine-skeleton-block {
+  margin-top: 14rpx;
 }
 
-.mine-skeleton-line-title {
-  width: 58%;
+.mine-skeleton-block--title {
+  width: 68%;
   height: 34rpx;
+  background: var(--neo-color-surface);
 }
 
-.mine-skeleton-line-body {
+.mine-skeleton-block--heading {
+  width: 210rpx;
+  height: 30rpx;
+}
+
+.mine-skeleton-block--body {
   width: 76%;
 }
 
-.mine-skeleton-line-short {
-  width: 46%;
+.mine-skeleton-block--short {
+  width: 48%;
+}
+
+.mine-skeleton-block--value {
+  width: 58%;
+  height: 38rpx;
+}
+
+.mine-skeleton-action {
+  width: 120rpx;
+  height: 52rpx;
+  flex-shrink: 0;
+  background: var(--neo-color-accent);
+}
+
+.mine-skeleton-context {
+  padding: 20rpx;
+  background: var(--neo-color-surface);
+}
+
+.mine-skeleton-heading {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.mine-skeleton-heading__marker {
+  width: 40rpx;
+  height: 40rpx;
+  background: var(--neo-color-accent);
+}
+
+.mine-skeleton-team {
+  display: flex;
+  min-height: 110rpx;
+  align-items: center;
+  gap: 16rpx;
+  margin-top: 18rpx;
+  padding: 16rpx;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-info-soft);
+  box-sizing: border-box;
+}
+
+.mine-skeleton-team__logo {
+  width: 68rpx;
+  height: 68rpx;
+  flex-shrink: 0;
+  background: var(--neo-color-surface);
+}
+
+.mine-skeleton-segments {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8rpx;
+  margin-top: 18rpx;
+  padding: 8rpx;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-muted);
+}
+
+.mine-skeleton-segment {
+  height: 68rpx;
+  border: var(--neo-border-default);
+  background: var(--neo-color-surface);
 }
 
 .mine-skeleton-stats {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16rpx;
-  margin-top: 28rpx;
 }
 
 .mine-skeleton-stat {
-  height: 112rpx;
-  border-radius: 24rpx;
-  background: #eef2e8;
+  display: flex;
+  min-height: 142rpx;
+  padding: 20rpx;
+  background: var(--neo-color-muted);
+  flex-direction: column;
+  justify-content: space-between;
 }
 
-.mine-skeleton-profile::after,
-.mine-skeleton-line::after,
-.mine-skeleton-avatar::after,
-.mine-skeleton-stat::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  transform: translateX(-100%);
-  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.78) 50%, transparent 100%);
-  animation: mine-skeleton-shimmer 1.2s ease-in-out infinite;
-}
+@keyframes mine-skeleton-pulse {
+  from {
+    opacity: 0.55;
+  }
 
-@keyframes mine-skeleton-shimmer {
-  100% {
-    transform: translateX(100%);
+  to {
+    opacity: 1;
   }
 }
 </style>

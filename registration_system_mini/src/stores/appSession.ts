@@ -2,6 +2,7 @@ import { computed, ref } from "vue";
 import { getMyTeams, getTeamDetail } from "@/api/team";
 import { getCurrentUser, loginWithOpenId } from "@/api/user";
 import { wxLogin } from "@/api/wx";
+import { isMockEnabled } from "@/mock";
 import type { BackendTeam, BackendTeamDetail, BackendUser } from "@/types/backend";
 import type { TeamProfileViewModel } from "@/types/viewModels";
 import { resolveSessionBootstrapMode, resolveStoredSessionStrategy } from "@/stores/bootstrapStrategy";
@@ -142,6 +143,17 @@ function assertSessionVersion(version: number) {
   }
 }
 
+/**
+ * Mock 模式专用 bootstrap：跳过微信登录，直接写入 mock token，
+ * 然后通过（已被 mock 拦截的）API 调用建立用户和球队上下文。
+ */
+async function bootstrapMockSession() {
+  clearManualLogout();
+  setAccessToken("mock-token");
+  currentUser.value = await getCurrentUser();
+  await loadTeamContext();
+}
+
 async function loginAndBootstrap(sessionBootstrapVersion: number) {
   const code = await requestWechatCode();
   assertSessionVersion(sessionBootstrapVersion);
@@ -181,6 +193,12 @@ export async function ensureSessionReady(force = false) {
     bootstrapError.value = "";
 
     try {
+      // Mock 模式：跳过微信登录，直接用 mock 数据建立会话
+      if (isMockEnabled()) {
+        await bootstrapMockSession();
+        return;
+      }
+
       const bootstrapMode = resolveSessionBootstrapMode({
         hasAccessToken: !!getAccessToken(),
         isManuallyLoggedOut: hasManualLogout(),
@@ -224,6 +242,14 @@ export async function refreshSessionContext() {
 
 export async function restoreSessionFromStorage() {
   if (bootstrapPromise) {
+    return bootstrapPromise;
+  }
+
+  // Mock 模式：跳过微信登录，直接建立 mock 会话
+  if (isMockEnabled()) {
+    bootstrapPromise = bootstrapMockSession().finally(() => {
+      bootstrapPromise = null;
+    });
     return bootstrapPromise;
   }
 

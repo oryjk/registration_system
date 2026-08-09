@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { NeoButton, NeoSectionHeader, NeoSurface } from "@/components/neo";
 import type { TeamProfileViewModel } from "@/types/viewModels";
 
 defineProps<{
@@ -29,8 +30,8 @@ function handleSubmit() {
 </script>
 
 <template>
-  <view class="form-card">
-    <text class="form-title">当前球队资料</text>
+  <NeoSurface custom-class="form-card">
+    <NeoSectionHeader title="当前球队资料" marker="01" caption="更新球队在报名和成员列表中的公开信息" />
     <view v-if="!currentTeam" class="empty-box">请先创建或加入球队。</view>
     <view v-else-if="!canManageMembers" class="empty-box">只有队长或领队可以修改球队资料。</view>
     <view v-else>
@@ -46,9 +47,9 @@ function handleSubmit() {
             <text v-else class="team-logo-fallback">{{ currentTeam?.name?.slice(0, 1) || "队" }}</text>
           </view>
           <view class="team-logo-main">
-            <view class="team-logo-button" @tap="handleChooseLogo">
+            <NeoButton variant="outline" size="sm" :loading="logoUploading" @click="handleChooseLogo">
               {{ logoUploading ? "上传中..." : "选择图片上传" }}
-            </view>
+            </NeoButton>
             <text class="team-logo-note">支持 jpg/png/webp，超过 1MB 会先尝试压缩。</text>
           </view>
         </view>
@@ -57,87 +58,68 @@ function handleSubmit() {
         <text class="form-label">球队介绍</text>
         <textarea v-model="form.description" class="form-textarea" placeholder="球队风格、城市或比赛时间" />
       </view>
-      <view :class="['primary-button', canUpdate ? '' : 'primary-button-disabled']" @tap="handleSubmit">
+      <NeoButton block :disabled="!canUpdate" :loading="submitting" @click="handleSubmit">
         {{ submitting ? "保存中..." : "保存球队资料" }}
-      </view>
+      </NeoButton>
     </view>
-  </view>
+  </NeoSurface>
 </template>
 
 <style scoped>
 .form-card {
-  padding: 30rpx;
-  border-radius: 32rpx;
-  background: #ffffff;
-  box-shadow: 0 18rpx 36rpx rgba(16, 17, 15, 0.06);
-}
-
-.form-title {
-  display: block;
-  margin-bottom: 24rpx;
-  color: #10110f;
-  font-size: 34rpx;
-  font-weight: 900;
+  padding: 6rpx 24rpx 24rpx;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-md);
+  box-shadow: 8rpx 8rpx 0 var(--neo-color-text);
 }
 
 .form-field {
-  margin-top: 20rpx;
+  margin-top: 26rpx;
 }
 
 .form-label {
   display: block;
   margin-bottom: 10rpx;
-  color: #6a7165;
+  color: var(--neo-color-text);
   font-size: 24rpx;
-  font-weight: 700;
+  font-weight: 900;
 }
 
 .form-input,
 .form-textarea {
   width: 100%;
-  border-radius: 22rpx;
-  background: #f3f5ef;
-  color: #111310;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-muted);
+  color: var(--neo-color-text);
   font-size: 28rpx;
-  font-weight: 700;
+  font-weight: 800;
   box-sizing: border-box;
 }
 
 .form-input {
-  height: 86rpx;
-  padding: 0 22rpx;
+  height: 84rpx;
+  padding: 0 20rpx;
 }
 
 .form-textarea {
   min-height: 150rpx;
-  padding: 22rpx;
-}
-
-.primary-button {
-  height: 88rpx;
-  margin-top: 28rpx;
-  border-radius: 24rpx;
-  background: #c8ff00;
-  color: #10110f;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 28rpx;
-  font-weight: 900;
-}
-
-.primary-button-disabled {
-  opacity: 0.45;
+  padding: 20rpx;
 }
 
 .empty-box {
-  margin-top: 22rpx;
-  padding: 22rpx;
-  border-radius: 24rpx;
-  background: #f3f5ef;
-  color: #6b7166;
+  margin-top: 26rpx;
+  padding: 22rpx 20rpx;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-warning-soft);
+  color: var(--neo-color-text-muted);
   font-size: 26rpx;
   font-weight: 700;
+}
+
+:deep(.neo-button--block) {
+  margin-top: 28rpx;
 }
 
 .team-logo-field {
@@ -145,17 +127,19 @@ function handleSubmit() {
   align-items: center;
   gap: 20rpx;
   padding: 20rpx;
-  border-radius: 24rpx;
-  background: #f3f5ef;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-info-soft);
 }
 
 .team-logo-preview {
   width: 104rpx;
   height: 104rpx;
-  border-radius: 28rpx;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
   flex-shrink: 0;
   overflow: hidden;
-  background: #10110f;
+  background: var(--neo-color-text);
 }
 
 .team-logo-image,
@@ -168,7 +152,7 @@ function handleSubmit() {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #c8ff00;
+  color: var(--neo-color-accent);
   font-size: 38rpx;
   font-weight: 900;
 }
@@ -178,25 +162,10 @@ function handleSubmit() {
   min-width: 0;
 }
 
-.team-logo-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 190rpx;
-  height: 66rpx;
-  padding: 0 22rpx;
-  border-radius: 999rpx;
-  background: #10110f;
-  color: #c8ff00;
-  font-size: 24rpx;
-  font-weight: 900;
-  box-sizing: border-box;
-}
-
 .team-logo-note {
   display: block;
   margin-top: 10rpx;
-  color: #6a7165;
+  color: var(--neo-color-text-muted);
   font-size: 22rpx;
   font-weight: 700;
   line-height: 1.35;

@@ -2,12 +2,15 @@
 import { computed, ref } from "vue";
 import { onShareAppMessage, onShareTimeline } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
+import { NeoButton, NeoSegmentedControl, NeoStickyActionBar } from "@/components/neo";
 import MatchDetailSkeleton from "./components/MatchDetailSkeleton.vue";
 import MatchIndividualRegistration from "./components/MatchIndividualRegistration.vue";
 import MatchTeamRegistration from "./components/MatchTeamRegistration.vue";
 import TeamSettlementCard from "./components/TeamSettlementCard.vue";
 import { DEFAULT_SHARE_IMAGE_URL } from "@/utils/share";
 import { useMatchDetailPage } from "./useMatchDetailPage";
+
+defineOptions({ inheritAttrs: false });
 
 const {
   matchId,
@@ -28,10 +31,8 @@ const {
   matchLocation,
   joinedCount,
   requiredPlayers,
+  maxPlayers,
   countdownText,
-  progressBaseWidth,
-  progressExtraWidth,
-  progressSplitLeft,
   participantPreview,
   teamMemberRegistrationGroups,
   remainingPlayersLabel,
@@ -83,6 +84,11 @@ const {
   handleTeamSubmit,
 } = useMatchDetailPage();
 
+const registrationModeOptions = computed(() => [
+  { label: "个人报名", value: "individual" },
+  ...(canUseTeamRegistration.value ? [{ label: "球队报名", value: "team" }] : []),
+]);
+
 const shareTitle = computed(() => {
   if (!match.value) return "邀请你参加比赛报名";
   return `邀请你报名：${match.value.name}`;
@@ -118,21 +124,11 @@ onShareTimeline(() => ({
       <MatchDetailSkeleton v-else-if="isLoading" />
 
       <view v-else-if="match" class="registration-shell">
-      <view class="registration-segment">
-        <view
-          :class="['registration-segment-item', registrationMode === 'individual' ? 'registration-segment-item-active' : '']"
-          @tap="registrationMode = 'individual'"
-        >
-          个人报名
-        </view>
-        <view
-          v-if="canUseTeamRegistration"
-          :class="['registration-segment-item', registrationMode === 'team' ? 'registration-segment-item-active' : '']"
-          @tap="registrationMode = 'team'"
-        >
-          球队报名
-        </view>
-      </view>
+      <NeoSegmentedControl
+        v-model="registrationMode"
+        class="registration-segment"
+        :options="registrationModeOptions"
+      />
 
       <MatchIndividualRegistration
         v-if="registrationMode === 'individual'"
@@ -147,10 +143,8 @@ onShareTimeline(() => ({
         :match-location="matchLocation"
         :joined-count="joinedCount"
         :required-players="requiredPlayers"
+        :max-players="maxPlayers"
         :countdown-text="countdownText"
-        :progress-base-width="progressBaseWidth"
-        :progress-extra-width="progressExtraWidth"
-        :progress-split-left="progressSplitLeft"
         :participant-preview="participantPreview"
         :remaining-players-label="remainingPlayersLabel"
         :submitting-status="submittingStatus"
@@ -213,9 +207,16 @@ onShareTimeline(() => ({
       </view>
     </view>
 
-    <view v-if="match && registrationMode === 'team' && canUseTeamRegistration" class="team-submit-bar">
-      <view class="team-submit-button" @tap="handleTeamSubmit">{{ submittingStatus ? "提交中..." : teamSubmitLabel }}</view>
-    </view>
+    <NeoStickyActionBar v-if="match && registrationMode === 'team' && canUseTeamRegistration">
+      <NeoButton
+        block
+        :loading="submittingStatus"
+        :disabled="submittingStatus"
+        @click="handleTeamSubmit"
+      >
+        {{ submittingStatus ? "提交中..." : teamSubmitLabel }}
+      </NeoButton>
+    </NeoStickyActionBar>
   </view>
 </template>
 
@@ -224,7 +225,7 @@ onShareTimeline(() => ({
   min-height: 100vh;
   padding-left: 24rpx;
   padding-right: 24rpx;
-  background: linear-gradient(180deg, #f7f7f7 0%, #f2f2f2 100%);
+  background: var(--neo-color-page);
   box-sizing: border-box;
 }
 
@@ -235,51 +236,7 @@ onShareTimeline(() => ({
 }
 
 .registration-segment {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
-  gap: 12rpx;
-  padding: 0;
-  border-radius: 999rpx;
-  background: transparent;
-}
-
-.registration-segment-item {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 74rpx;
-  border-radius: 999rpx;
-  font-size: 30rpx;
-  color: #4d5549;
-  font-weight: 800;
-  background: #eef1ea;
-}
-
-.registration-segment-item-active {
-  background: #9be22b;
-  color: #171814;
-  box-shadow: 0 14rpx 28rpx rgba(155, 226, 43, 0.18);
-}
-
-.team-submit-bar {
-  position: fixed;
-  left: 24rpx;
-  right: 24rpx;
-  bottom: calc(env(safe-area-inset-bottom) + 8rpx);
-  z-index: 40;
-}
-
-.team-submit-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 94rpx;
-  border-radius: 999rpx;
-  background: #171814;
-  color: #ffffff;
-  font-size: 34rpx;
-  font-weight: 900;
-  box-shadow: 0 18rpx 36rpx rgba(17, 17, 17, 0.22);
+  width: 100%;
 }
 
 .registration-empty {
@@ -287,8 +244,24 @@ onShareTimeline(() => ({
   align-items: center;
   justify-content: center;
   min-height: 520rpx;
-  color: #666666;
+  color: var(--neo-color-text-muted);
   font-size: 30rpx;
   font-weight: 700;
 }
+
+/* #ifdef H5 */
+.registration-page {
+  width: 100%;
+  max-width: 750rpx;
+  margin: 0 auto;
+}
+
+.registration-page :deep(.app-tab-header-shell) {
+  left: 50%;
+  right: auto;
+  width: 100%;
+  max-width: 750rpx;
+  transform: translateX(-50%);
+}
+/* #endif */
 </style>

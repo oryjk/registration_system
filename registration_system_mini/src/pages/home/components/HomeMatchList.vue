@@ -1,7 +1,10 @@
 <script setup lang="ts">
+import { NeoButton, NeoProgress, NeoTag } from "@/components/neo";
+import type { NeoTagTone } from "@/components/neo";
 import type { HomeMatchCardViewModel } from "@/types/viewModels";
 
-defineProps<{
+const props = withDefaults(defineProps<{
+  variant?: "default" | "brutalist";
   matches: HomeMatchCardViewModel[];
   isGuestMode: boolean;
   navigatingMatchId: string;
@@ -15,7 +18,9 @@ defineProps<{
   progressSplitLeft: (requiredPlayers: number, maxPlayers: number) => string;
   stageClass: (stage: string) => string;
   statusClass: (status: string) => string;
-}>();
+}>(), {
+  variant: "default",
+});
 
 const emit = defineEmits<{
   (event: "matchTap", match: HomeMatchCardViewModel): void;
@@ -24,14 +29,31 @@ const emit = defineEmits<{
 function handleMatchTap(match: HomeMatchCardViewModel) {
   emit("matchTap", match);
 }
+
+function stageTone(stage: string): NeoTagTone {
+  const className = props.stageClass(stage);
+  if (className.includes("red")) return "red";
+  if (className.includes("blue")) return "blue";
+  if (className.includes("dark") || className.includes("muted")) return "muted";
+  return "lime";
+}
+
+function statusTone(status: string): NeoTagTone {
+  const className = props.statusClass(status);
+  if (className.includes("join")) return "green";
+  if (className.includes("late")) return "amber";
+  if (className.includes("pending")) return "blue";
+  return "muted";
+}
 </script>
 
 <template>
-  <view class="match-list">
+  <view :class="['match-list', variant === 'brutalist' ? 'match-list-brutalist' : '']">
     <view
       v-for="match in matches"
       :key="match.id"
       :class="['home-match-card', navigatingMatchId === match.id ? 'home-match-card-tapping' : '']"
+      hover-class="home-match-card-pressed"
       @tap="handleMatchTap(match)"
     >
       <view class="home-match-date">
@@ -47,27 +69,41 @@ function handleMatchTap(match: HomeMatchCardViewModel) {
         <view class="home-match-title-row">
           <text class="home-match-title">{{ match.title }}</text>
           <view class="home-match-tags">
-            <text :class="stageClass(match.stage)">{{ match.stage }}</text>
+            <NeoTag v-if="variant === 'brutalist'" :tone="stageTone(match.stage)">
+              {{ match.stage }}
+            </NeoTag>
+            <text v-else :class="stageClass(match.stage)">{{ match.stage }}</text>
           </view>
         </view>
         <text class="home-match-meta">{{ match.venue }}</text>
         <text class="home-match-meta">{{ match.formatLabel }} · 对手 {{ match.opponent }}</text>
 
-        <view class="home-progress-row">
-          <text class="home-progress-label">报名进度</text>
-          <text class="home-progress-value">{{ match.joinedPlayers }}/{{ match.requiredPlayers }}</text>
-        </view>
-        <view class="home-progress-track">
-          <view class="home-progress-fill" :style="{ width: progressBaseWidth(match.joinedPlayers, match.requiredPlayers, match.maxPlayers) }" />
-          <view
-            class="home-progress-fill-extra"
-            :style="{
-              left: progressSplitLeft(match.requiredPlayers, match.maxPlayers),
-              width: progressExtraWidth(match.joinedPlayers, match.requiredPlayers, match.maxPlayers),
-            }"
-          />
-          <view class="home-progress-split" :style="{ left: progressSplitLeft(match.requiredPlayers, match.maxPlayers) }" />
-        </view>
+        <NeoProgress
+          v-if="variant === 'brutalist'"
+          class="home-neo-progress"
+          label="报名进度"
+          :value="match.joinedPlayers"
+          :target="match.requiredPlayers"
+          :max="match.maxPlayers || match.requiredPlayers"
+          :value-text="`${match.joinedPlayers}/${match.requiredPlayers}`"
+        />
+        <template v-else>
+          <view class="home-progress-row">
+            <text class="home-progress-label">报名进度</text>
+            <text class="home-progress-value">{{ match.joinedPlayers }}/{{ match.requiredPlayers }}</text>
+          </view>
+          <view class="home-progress-track">
+            <view class="home-progress-fill" :style="{ width: progressBaseWidth(match.joinedPlayers, match.requiredPlayers, match.maxPlayers) }" />
+            <view
+              class="home-progress-fill-extra"
+              :style="{
+                left: progressSplitLeft(match.requiredPlayers, match.maxPlayers),
+                width: progressExtraWidth(match.joinedPlayers, match.requiredPlayers, match.maxPlayers),
+              }"
+            />
+            <view class="home-progress-split" :style="{ left: progressSplitLeft(match.requiredPlayers, match.maxPlayers) }" />
+          </view>
+        </template>
 
         <view class="home-avatars-row">
           <view class="home-avatars">
@@ -90,9 +126,25 @@ function handleMatchTap(match: HomeMatchCardViewModel) {
         </view>
 
         <view class="home-match-bottom">
-          <text v-if="!isGuestMode" :class="statusClass(match.myStatus)">我的状态：{{ match.myStatus }}</text>
-          <text v-else class="home-status home-status-pending">登录后报名</text>
-          <view :class="['home-match-button', !match.canRegister ? 'home-match-button-disabled' : '']">
+          <template v-if="variant === 'brutalist'">
+            <NeoTag v-if="!isGuestMode" :tone="statusTone(match.myStatus)" size="lg">
+              我的状态：{{ match.myStatus }}
+            </NeoTag>
+            <NeoTag v-else tone="blue" size="lg">登录后报名</NeoTag>
+          </template>
+          <template v-else>
+            <text v-if="!isGuestMode" :class="statusClass(match.myStatus)">我的状态：{{ match.myStatus }}</text>
+            <text v-else class="home-status home-status-pending">登录后报名</text>
+          </template>
+          <NeoButton
+            v-if="variant === 'brutalist'"
+            class="home-neo-match-button"
+            :variant="match.canRegister ? 'dark' : 'muted'"
+            :stop-propagation="false"
+          >
+            {{ match.actionLabel || (match.canRegister ? "去报名" : "暂不可报名") }}
+          </NeoButton>
+          <view v-else :class="['home-match-button', !match.canRegister ? 'home-match-button-disabled' : '']">
             {{ match.actionLabel || (match.canRegister ? "去报名" : "暂不可报名") }}
           </view>
         </view>
@@ -386,5 +438,79 @@ function handleMatchTap(match: HomeMatchCardViewModel) {
 .home-match-button-disabled {
   background: #dfe7d8;
   color: #767f71;
+}
+
+.match-list-brutalist {
+  gap: 28rpx;
+  margin-top: 24rpx;
+}
+
+.match-list-brutalist .home-match-card {
+  gap: 18rpx;
+  padding: 18rpx;
+  border: var(--neo-border-strong);
+  border-radius: var(--neo-radius-md);
+  background: var(--neo-color-surface);
+  box-shadow: var(--neo-shadow-raised);
+  transition: transform var(--neo-motion-fast), box-shadow var(--neo-motion-fast);
+}
+
+.match-list-brutalist .home-match-card-pressed,
+.match-list-brutalist .home-match-card-tapping {
+  opacity: 1;
+  transform: translate(var(--neo-motion-press-offset), var(--neo-motion-press-offset));
+  box-shadow: var(--neo-shadow-pressed);
+}
+
+.match-list-brutalist .home-match-date {
+  width: 150rpx;
+  min-height: 246rpx;
+  padding: 16rpx 14rpx;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-xs);
+  background: var(--neo-color-text);
+  color: var(--neo-color-text-inverse);
+}
+
+.match-list-brutalist .home-match-month {
+  opacity: 1;
+  font-weight: 800;
+}
+
+.match-list-brutalist .home-match-weekday {
+  font-weight: 900;
+}
+
+.match-list-brutalist .home-match-time-chip {
+  padding: 16rpx 6rpx;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-accent);
+  color: var(--neo-color-text);
+}
+
+.match-list-brutalist .home-match-title {
+  color: var(--neo-color-text);
+  font-weight: 900;
+}
+
+.match-list-brutalist .home-match-meta,
+.match-list-brutalist .home-avatar-summary {
+  color: var(--neo-color-text-muted);
+  font-weight: 600;
+}
+
+.home-neo-progress {
+  margin-top: 20rpx;
+  --neo-progress-meta-font-size: 26rpx;
+  --neo-progress-track-margin-top: 10rpx;
+}
+
+.match-list-brutalist .home-avatar {
+  border: var(--neo-border-default);
+}
+
+.home-neo-match-button {
+  min-width: 142rpx;
 }
 </style>

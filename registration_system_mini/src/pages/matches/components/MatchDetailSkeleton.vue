@@ -75,14 +75,17 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12rpx;
-  padding: 10rpx;
-  border-radius: 999rpx;
-  background: #ececec;
+  padding: var(--neo-segment-padding);
+  border: var(--neo-border-default);
+  border-radius: var(--neo-segment-radius);
+  background: var(--neo-segment-bg);
 }
 
 .registration-skeleton-card {
-  border-radius: 28rpx;
-  background: #eef2e8;
+  border: var(--neo-border-strong);
+  border-radius: var(--neo-radius-md);
+  background: var(--neo-color-skeleton-surface);
+  box-shadow: var(--neo-shadow-raised);
 }
 
 .registration-skeleton-hero {
@@ -130,7 +133,7 @@
 .registration-skeleton-line {
   height: 24rpx;
   border-radius: 999rpx;
-  background: #dde4d5;
+  background: var(--neo-color-skeleton-block);
 }
 
 .registration-skeleton-line + .registration-skeleton-line {
@@ -140,7 +143,7 @@
 .registration-skeleton-line-chip {
   width: 132rpx;
   height: 42rpx;
-  background: #9be22b;
+  background: var(--neo-color-accent);
 }
 
 .registration-skeleton-line-title {
@@ -180,8 +183,8 @@
 
 .registration-skeleton-pill {
   height: 74rpx;
-  border-radius: 999rpx;
-  background: #dde4d5;
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-skeleton-block);
 }
 
 .registration-skeleton-pill.small {
@@ -193,8 +196,8 @@
 .registration-skeleton-ball {
   width: 156rpx;
   height: 156rpx;
-  border-radius: 999rpx;
-  background: #3a3a3a;
+  border-radius: 50%;
+  background: var(--neo-color-hero);
   flex-shrink: 0;
 }
 
@@ -202,15 +205,17 @@
   width: 100%;
   height: 18rpx;
   margin-top: 28rpx;
-  border-radius: 999rpx;
-  background: #dde4d5;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-progress-radius);
+  background: var(--neo-color-track);
 }
 
 .registration-skeleton-avatar {
   width: 58rpx;
   height: 58rpx;
-  border-radius: 999rpx;
-  background: #dde4d5;
+  border: var(--neo-border-default);
+  border-radius: 50%;
+  background: var(--neo-color-skeleton-block);
 }
 
 @keyframes registration-skeleton-shimmer {

@@ -67,3 +67,10 @@ worktrees/
 
 # WeChat Mini Program private key
 private.*.key
+
+# Agent / local tooling workspaces
+.agents/
+.superpowers/
+
+# Turbopack build cache
+.turbopack/
