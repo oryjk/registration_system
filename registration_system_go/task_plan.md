@@ -10,9 +10,9 @@
 4. [completed] 微信登录和用户/球队最小能力
 5. [completed] Match 领域模型和发布用例
 6. [completed] 球队候选申请、选择和退出
-7. [pending] 主队、客队与散人报名
+7. [completed] 主队、客队与散人报名
 8. [pending] 后台默认人数和逐场调整
-9. [pending] OpenAPI、HTTP 装配和全量验证
+9. [in_progress] OpenAPI、HTTP 装配和全量验证
 
 ## 2026-07-21 比赛参与模型与用户读取接口
 
@@ -20,7 +20,7 @@
 2. [completed] 固化散人最小/最大人数与球队申请领域状态转换
 3. [completed] 用户比赛列表、详情和隐私受限的个人报名状态 API
 4. [completed] `online_team` 球队申请、选择和退出事务
-5. [pending] 主队/客队表态与 `online_individual` 散人报名事务
+5. [completed] 主队/客队表态与 `online_individual` 散人报名事务
 6. [pending] 管理端报名维护和默认人数配置
 7. [pending] 管理端新增页面的桌面/手机响应式布局与双视口 E2E
 8. [pending] 小程序比赛列表、详情、申请和报名页面

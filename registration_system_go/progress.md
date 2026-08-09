@@ -1,5 +1,13 @@
 # Progress
 
+## 2026-08-09
+
+- `/api/v1/app` 已完成微信/H5 测试登录、用户资料、球队上下文、比赛列表/首页/详情、球队申请和个人报名闭环。
+- 个人报名支持主队、客队和散人规则，包含幂等 PUT/DELETE、容量控制、派生状态更新和单事务成员校验。
+- legacy 用户、球队、成员、比赛和报名已具备 full/incremental、dry-run、稳定映射与只读源约束。
+- 小程序前端切换、管理端报名维护、默认人数配置和最终真实联调仍未完成。
+- OpenAPI 3.0.3 与离线 Swagger UI 正在接入。
+
 ## 2026-07-21
 
 - 已将三种“约队模式”重新定义为 Match 的三种对手形成方式，明确 Match、RegistrationGroup、TeamApplication、Registration 的单一职责。
