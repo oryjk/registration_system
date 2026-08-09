@@ -6,6 +6,7 @@ import {
   updateMyStand,
 } from "@/api/activity";
 import { settleActivityExpense, type SettleActivityExpensePayload } from "@/api/billing";
+import { cancelMyMatchRegistration, putMyMatchRegistration } from "@/api/match";
 import { submitTeamActivityReview } from "@/api/team";
 
 export function submitIndividualRegistration(activityId: string) {
@@ -27,6 +28,14 @@ export function submitIndividualLeave(activityId: string) {
     stand: 2,
     registration_count: 0,
   });
+}
+
+export function submitGoIndividualRegistration(matchId: string, groupId: string, status: "attending" | "leave") {
+  return putMyMatchRegistration(matchId, groupId, status);
+}
+
+export function cancelGoIndividualRegistration(matchId: string, groupId: string) {
+  return cancelMyMatchRegistration(matchId, groupId);
 }
 
 export function submitTeamRegistrationForMatch(activityId: string, teamId: number, registrationCount: number) {

@@ -7,7 +7,7 @@ const props = withDefaults(defineProps<{
   matches: HomeMatchCardViewModel[];
   isGuestMode: boolean;
   navigatingMatchId: string;
-  formatMatchDateBlock: (dateLabel: string) => {
+  formatMatchDateBlock: (match: HomeMatchCardViewModel) => {
     monthDay: string;
     weekday: string;
     timeLabel: string;

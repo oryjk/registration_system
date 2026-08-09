@@ -10,7 +10,7 @@ class MockApiRequestError extends Error {}
 
 mock.module("@/utils/request", () => ({ ApiRequestError: MockApiRequestError, requestApi }));
 
-const { getMatchDetail, getMatchHome, listMyMatches } = await import("../match");
+const { cancelMyMatchRegistration, getMatchDetail, getMatchHome, listMyMatches, putMyMatchRegistration } = await import("../match");
 const { tryMockRequest } = await import("@/mock");
 
 describe("Go match API", () => {
@@ -39,6 +39,40 @@ describe("Go match API", () => {
     await getMatchDetail("f7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c003");
     expect(capturedCalls[0]).toEqual({
       url: "/matches/f7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c003",
+      auth: true,
+    });
+  });
+
+  test("writes attending and leave status to the selected Go match group", async () => {
+    capturedCalls.length = 0;
+
+    await putMyMatchRegistration("f7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c003", "a7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c003", "attending");
+    await putMyMatchRegistration("f7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c003", "a7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c003", "leave");
+
+    expect(capturedCalls).toEqual([
+      {
+        url: "/matches/f7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c003/groups/a7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c003/my-registration",
+        method: "PUT",
+        data: { status: "attending", registration_count: 1 },
+        auth: true,
+      },
+      {
+        url: "/matches/f7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c003/groups/a7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c003/my-registration",
+        method: "PUT",
+        data: { status: "leave", registration_count: 1 },
+        auth: true,
+      },
+    ]);
+  });
+
+  test("cancels the selected Go match group registration", async () => {
+    capturedCalls.length = 0;
+
+    await cancelMyMatchRegistration("f7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c003", "a7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c003");
+
+    expect(capturedCalls[0]).toEqual({
+      url: "/matches/f7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c003/groups/a7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c003/my-registration",
+      method: "DELETE",
       auth: true,
     });
   });
@@ -82,6 +116,21 @@ describe("Go match API", () => {
 
     expect(homeIds.every((id) => uuidLike.test(id))).toEqual(true);
     expect(listIds.every((id) => uuidLike.test(id))).toEqual(true);
+  });
+
+  test("mock handlers cover Go registration writes", async () => {
+    const { resolveMockResponse } = await import("@/mock/handlers");
+    const response = resolveMockResponse(
+      "PUT",
+      "/matches/f7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c003/groups/a7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c003/my-registration",
+      { status: "attending", registration_count: 1 },
+    );
+
+    expect(response?.data).toMatchObject({
+      group_id: "a7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c003",
+      status: "attending",
+      registration_count: 1,
+    });
   });
 
   test("normalizes the full Go app base path before routing mock requests", async () => {

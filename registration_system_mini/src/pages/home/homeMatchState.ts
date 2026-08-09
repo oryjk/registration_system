@@ -248,6 +248,7 @@ export function toGoHomeMatchCard(
     detailUrl: `/pages/matches/detail?id=${item.id}`,
     title: item.name,
     dateLabel: formatDateLabel(item.start_time),
+    dateSource: item.start_time,
     phase,
     dateNote,
     showRegistrationProgress,

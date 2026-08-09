@@ -14,7 +14,7 @@ import {
 } from "../viewModels";
 
 declare const Bun: {
-  file(path: string): {
+  file(path: string | URL): {
     text(): Promise<string>;
   };
 };
@@ -139,9 +139,7 @@ describe("resolveUserDisplayHandle", () => {
 
 describe("buildHomeMatchCards", () => {
   test("home match list shows only stage status instead of duplicated signup scope label", async () => {
-    const component = await Bun.file(
-      "/Users/carlwang/projects/registration_system/.worktrees/mini-home-match-phase-sections/registration_system_mini/src/pages/home/components/HomeMatchList.vue",
-    ).text();
+    const component = await Bun.file(new URL("../../pages/home/components/HomeMatchCard.vue", import.meta.url)).text();
 
     expect(component.includes("{{ match.signupScopeLabel }}")).toEqual(false);
     expect(component.includes("{{ match.stage }}")).toEqual(true);
@@ -273,6 +271,7 @@ describe("buildHomeMatchCards", () => {
         detailUrl: "/pages/matches/detail?id=activity-1",
         title: "周四友谊赛",
         dateLabel: "04/16 20:00",
+        dateSource: "2026-04-16T20:00:00",
         phase: "upcoming",
         dateNote: "截止报名",
         showRegistrationProgress: true,

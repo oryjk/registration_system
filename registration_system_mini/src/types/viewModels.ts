@@ -33,6 +33,7 @@ export interface HomeMatchCardViewModel {
   detailUrl: string;
   title: string;
   dateLabel: string;
+  dateSource?: string;
   phase: Exclude<AppMatchUiPhase, "excluded">;
   dateNote: string;
   showRegistrationProgress: boolean;

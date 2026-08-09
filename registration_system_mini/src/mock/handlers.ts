@@ -361,7 +361,7 @@ const routes: MockRoute[] = [
     pattern: "/challenges/:id",
     handler: (req) => getMockChallengeDetail(req.params.id) ?? undefined,
   },
-  
+
   // ===== 比赛 =====
   {
     method: "GET",
@@ -377,6 +377,31 @@ const routes: MockRoute[] = [
     method: "GET",
     pattern: "/matches/:id",
     handler: (req) => getMockMatchDetail(req.params.id) ?? undefined,
+  },
+  {
+    method: "PUT",
+    pattern: "/matches/:id/groups/:groupId/my-registration",
+    handler: (req) => {
+      const payload = req.body as { status?: string; registration_count?: number } | undefined;
+      return {
+        group_id: req.params.groupId,
+        user_id: currentMockUser().id,
+        status: payload?.status ?? "unknown",
+        registration_count: payload?.registration_count ?? 0,
+        updated_at: new Date().toISOString(),
+      };
+    },
+  },
+  {
+    method: "DELETE",
+    pattern: "/matches/:id/groups/:groupId/my-registration",
+    handler: (req) => ({
+      group_id: req.params.groupId,
+      user_id: currentMockUser().id,
+      status: "cancelled",
+      registration_count: 0,
+      updated_at: new Date().toISOString(),
+    }),
   },
   {
     method: "POST",

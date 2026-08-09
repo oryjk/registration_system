@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import type { AppMatchSummary } from "@/types/match";
-import { toBackendActivity, toBackendRegistration } from "../detailData";
+import type { AppMatchDetailResponse, AppMatchSummary } from "@/types/match";
+import { buildGoPublicMatchDetailData, loadPublicMatchDetailData, toBackendActivity, toBackendRegistration } from "../detailData";
 
 const goMatch: AppMatchSummary = {
   id: "f7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c003",
@@ -85,6 +85,112 @@ describe("Go match detail adapter", () => {
       registration_count: 1,
       paid: 0,
       operation_time: goMatch.updated_at,
+    });
+  });
+
+  test("maps attending, leave, absent, and unknown without counting non-attending statuses", () => {
+    const cases = [
+      ["attending", 1, true],
+      ["leave", 2, false],
+      ["absent", 3, false],
+      ["unknown", 0, false],
+    ] as const;
+
+    for (const [status, stand, occupiesCapacity] of cases) {
+      const data = buildGoPublicMatchDetailData({
+        match: goMatch,
+        groups: [{
+          id: "a7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c003",
+          kind: "host_team",
+          team_id: 101,
+          status: "open",
+          min_players: 0,
+          max_players: 8,
+          attending_count: 0,
+          my_registration: { status, registration_count: 1 },
+        }],
+      }, 37);
+
+      expect({
+        registration: data.activityUsers[0],
+        sourceTeamRegistrationCount: data.sourceTeamRegistrationCount,
+        occupiesCapacity: data.activityUsers.some((item) => item.stand === 1),
+      }).toEqual({
+        registration: {
+          user_id: 37,
+          stand,
+          registration_count: 1,
+          paid: 0,
+          operation_time: goMatch.updated_at,
+        },
+        sourceTeamRegistrationCount: 0,
+        occupiesCapacity,
+      });
+    }
+  });
+
+  test("keeps the selected Go group id and a zero attending count at the lower boundary", () => {
+    const data = buildGoPublicMatchDetailData({
+      match: goMatch,
+      groups: [{
+        id: "a7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c003",
+        kind: "host_team",
+        team_id: 101,
+        status: "open",
+        min_players: 6,
+        max_players: 8,
+        attending_count: 0,
+        my_registration: { status: "absent", registration_count: 1 },
+      }],
+    }, 37);
+
+    expect(data.goRegistrationGroupId).toEqual("a7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c003");
+    expect(data.sourceTeamRegistrationCount).toEqual(0);
+  });
+
+  test("loads a UUID detail without requesting legacy users or activities", async () => {
+    const calls: string[] = [];
+    const goDetail: AppMatchDetailResponse = {
+      match: goMatch,
+      groups: [{
+        id: "a7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c003",
+        kind: "host_team",
+        team_id: 101,
+        status: "open",
+        min_players: 6,
+        max_players: 8,
+        attending_count: 1,
+        my_registration: { status: "attending", registration_count: 1 },
+      }],
+    };
+
+    const data = await loadPublicMatchDetailData(goMatch.id, 37, {
+      getMatchDetail: async () => {
+        calls.push("match-detail");
+        return goDetail;
+      },
+      getActivity: async () => {
+        calls.push("legacy-activity");
+        throw new Error("Go detail must not request an activity");
+      },
+      getActivityUsers: async () => {
+        calls.push("legacy-activity-users");
+        throw new Error("Go detail must not request activity users");
+      },
+      listActivities: async () => {
+        calls.push("legacy-activity-list");
+        throw new Error("Go detail must not list activities");
+      },
+      listUsers: async () => {
+        calls.push("legacy-users");
+        throw new Error("Go detail must not list users");
+      },
+    });
+
+    expect(calls).toEqual(["match-detail"]);
+    expect({ fromGo: data.fromGo, goRegistrationGroupId: data.goRegistrationGroupId }).toEqual({
+      fromGo: true,
+      goRegistrationGroupId: goDetail.groups[0].id,
     });
   });
 });

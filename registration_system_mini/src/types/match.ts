@@ -54,7 +54,7 @@ export interface AppMatchSummary extends AppMatchPhaseSource {
 }
 
 export interface AppMatchRegistration {
-  status: Exclude<AppMatchRegistrationStatus, "unknown" | "cancelled"> | "cancelled";
+  status: AppMatchRegistrationStatus;
   registration_count: number;
 }
 

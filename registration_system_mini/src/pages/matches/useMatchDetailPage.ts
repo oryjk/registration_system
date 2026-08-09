@@ -2,10 +2,12 @@ import { computed, ref } from "vue";
 import { onLoad, onUnload } from "@dcloudio/uni-app";
 import {
   cancelIndividualRegistration,
+  cancelGoIndividualRegistration,
   cancelTeamRegistrationForMatch,
   saveMatchCheckInConfig,
   submitIndividualLeave,
   submitIndividualRegistration,
+  submitGoIndividualRegistration,
   submitMatchActivityReview,
   submitMatchCheckIn,
   submitMatchSettlement,
@@ -92,6 +94,8 @@ export function useMatchDetailPage() {
   const reviewSubmitted = ref(false);
   const isGuestMode = ref(false);
   const isGuestLoginSubmitting = ref(false);
+  const isGoMatchDetail = ref(false);
+  const goRegistrationGroupId = ref("");
 
   let countdownTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -103,7 +107,7 @@ export function useMatchDetailPage() {
     paddingTop: `${navMetrics.pageTopPadding + 8}px`,
   }));
 
-  const joinedRegistrations = computed(() => registrations.value.filter((item) => item.stand === 1 || item.stand === 3));
+  const joinedRegistrations = computed(() => registrations.value.filter((item) => item.stand === 1));
   const joinedCount = computed(() => joinedRegistrations.value.length + sourceTeamRegistrationCount.value);
   const requiredPlayers = computed(() => match.value?.players_per_team ?? 0);
   const maxPlayers = computed(() => {
@@ -221,7 +225,7 @@ export function useMatchDetailPage() {
     return currentStatus.value === "参加" ? "取消报名" : "立即报名";
   });
   const canUseTeamRegistration = computed(() =>
-    canShowTeamRegistrationTab({
+    !isGoMatchDetail.value && canShowTeamRegistrationTab({
       currentTeamId: currentTeam.value?.id,
       canManageTeam: currentTeam.value?.canManageTeam,
       sourceActivityId: match.value?.source_activity_id,
@@ -251,8 +255,8 @@ export function useMatchDetailPage() {
     const userId = currentUser.value?.id;
     return !!registrations.value.find((item) => item.user_id === userId && item.checked_in_at);
   });
-  const canShowCheckIn = computed(() => !isDerivedTeamSignupActivity.value && !!currentTeamCheckInConfig.value?.enabled && !!currentTeam.value);
-  const canManageCurrentMatch = computed(() => !isDerivedTeamSignupActivity.value && !!currentTeam.value?.canManageTeam);
+  const canShowCheckIn = computed(() => !isGoMatchDetail.value && !isDerivedTeamSignupActivity.value && !!currentTeamCheckInConfig.value?.enabled && !!currentTeam.value);
+  const canManageCurrentMatch = computed(() => !isGoMatchDetail.value && !isDerivedTeamSignupActivity.value && !!currentTeam.value?.canManageTeam);
   const isEndedMatch = computed(() => match.value?.status === 2 || (matchStartTimestamp.value > 0 && nowTick.value > matchStartTimestamp.value));
   const canSubmitActivityReview = computed(
     () => !!currentTeam.value && !!opponentTeam.value && isEndedMatch.value && canManageCurrentMatch.value && !reviewSubmitted.value,
@@ -304,6 +308,8 @@ export function useMatchDetailPage() {
       registrations.value = activityUsers;
       usersById.value = publicData.usersById;
       sourceTeamRegistrationCount.value = publicData.sourceTeamRegistrationCount;
+      isGoMatchDetail.value = publicData.fromGo;
+      goRegistrationGroupId.value = publicData.goRegistrationGroupId;
       existingTeamDerivedActivity.value = null;
       currentStatus.value = toStandLabel(toLegacyRegistrationStand(publicData.myRegistration?.status));
       teamsById.value = {};
@@ -315,6 +321,11 @@ export function useMatchDetailPage() {
       isGuestMode.value = hasManualLogout();
 
       if (isGuestMode.value) {
+        registrationMode.value = "individual";
+        return;
+      }
+
+      if (isGoMatchDetail.value) {
         registrationMode.value = "individual";
         return;
       }
@@ -461,6 +472,29 @@ export function useMatchDetailPage() {
     registrations.value = applyIndividualRegistrationPatch(registrations.value, userId, stand, registrationCount);
   }
 
+  async function submitIndividualRegistrationStatus(status: "attending" | "leave") {
+    if (isGoMatchDetail.value) {
+      if (!goRegistrationGroupId.value) throw new Error("未找到可报名分组");
+      await submitGoIndividualRegistration(match.value!.id, goRegistrationGroupId.value, status);
+      return;
+    }
+
+    if (status === "attending") {
+      await submitIndividualRegistration(match.value!.id);
+      return;
+    }
+    await submitIndividualLeave(match.value!.id);
+  }
+
+  async function cancelIndividualRegistrationStatus() {
+    if (isGoMatchDetail.value) {
+      if (!goRegistrationGroupId.value) throw new Error("未找到可报名分组");
+      await cancelGoIndividualRegistration(match.value!.id, goRegistrationGroupId.value);
+      return;
+    }
+    await cancelIndividualRegistration(match.value!.id);
+  }
+
   function applyCheckInState(record: BackendActivityCheckInRecord) {
     registrations.value = applyCheckInPatch(registrations.value, record);
   }
@@ -550,7 +584,7 @@ export function useMatchDetailPage() {
     uni.showLoading({ title: "提交中...", mask: true });
     try {
       await ensureSessionReady();
-      await submitIndividualRegistration(match.value.id);
+      await submitIndividualRegistrationStatus("attending");
       applyIndividualRegistrationState(1, 1);
       uni.$emit("home:data-may-changed");
       uni.showToast({
@@ -582,7 +616,7 @@ export function useMatchDetailPage() {
     uni.showLoading({ title: "提交中...", mask: true });
     try {
       await ensureSessionReady();
-      await cancelIndividualRegistration(match.value.id);
+      await cancelIndividualRegistrationStatus();
       applyIndividualRegistrationState(0, 0);
       uni.$emit("home:data-may-changed");
       uni.showToast({
@@ -630,13 +664,13 @@ export function useMatchDetailPage() {
     try {
       await ensureSessionReady();
       if (stand === 1) {
-        await submitIndividualRegistration(match.value.id);
+        await submitIndividualRegistrationStatus("attending");
         applyIndividualRegistrationState(1, 1);
       } else if (stand === 2) {
-        await submitIndividualLeave(match.value.id);
+        await submitIndividualRegistrationStatus("leave");
         applyIndividualRegistrationState(2, 0);
       } else {
-        await cancelIndividualRegistration(match.value.id);
+        await cancelIndividualRegistrationStatus();
         applyIndividualRegistrationState(0, 0);
       }
       uni.$emit("home:data-may-changed");

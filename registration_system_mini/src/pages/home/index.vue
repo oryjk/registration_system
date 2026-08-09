@@ -15,10 +15,10 @@ import type { AppMatchUiPhase } from "@/types/match";
 import type { HomeMatchCardViewModel } from "@/types/viewModels";
 import { getAccessToken, hasManualLogout } from "@/utils/authStorage";
 import { getCustomNavMetrics } from "@/utils/customNav";
-import { formatWeekdayLabel } from "@/utils/datetime";
 import { DEFAULT_SHARE_IMAGE_URL } from "@/utils/share";
 import { attendanceStatusTone } from "@/utils/statusTone";
 import { buildHomeMatchSections } from "./homeMatchState";
+import { formatHomeMatchDateBlock } from "./homeMatchDate";
 
 const { ensureSessionReady } = useTeamContext();
 const { syncUnreadCount } = useNotificationCenter();
@@ -86,18 +86,6 @@ function stageClass(stage: string) {
     default:
       return "home-stage";
   }
-}
-
-function formatMatchDateBlock(dateLabel: string) {
-  const [monthDay = "", timeLabel = ""] = dateLabel.split(" ");
-  const [month = "01", day = "01"] = monthDay.split("/");
-  const weekday = formatWeekdayLabel(`2026-${month}-${day}T00:00:00`);
-
-  return {
-    monthDay,
-    weekday,
-    timeLabel,
-  };
 }
 
 function clearMatchSections() {
@@ -301,7 +289,7 @@ onShareTimeline(() => ({
             :matches="upcomingMatches"
             :is-guest-mode="isGuestMode"
             :navigating-match-id="navigatingMatchId"
-            :format-match-date-block="formatMatchDateBlock"
+            :format-match-date-block="formatHomeMatchDateBlock"
             :progress-base-width="progressBaseWidth"
             :progress-extra-width="progressExtraWidth"
             :progress-split-left="progressSplitLeft"
@@ -318,7 +306,7 @@ onShareTimeline(() => ({
             :matches="ongoingMatches"
             :is-guest-mode="isGuestMode"
             :navigating-match-id="navigatingMatchId"
-            :format-match-date-block="formatMatchDateBlock"
+            :format-match-date-block="formatHomeMatchDateBlock"
             :progress-base-width="progressBaseWidth"
             :progress-extra-width="progressExtraWidth"
             :progress-split-left="progressSplitLeft"
@@ -335,7 +323,7 @@ onShareTimeline(() => ({
             :matches="endedMatches"
             :is-guest-mode="isGuestMode"
             :navigating-match-id="navigatingMatchId"
-            :format-match-date-block="formatMatchDateBlock"
+            :format-match-date-block="formatHomeMatchDateBlock"
             :progress-base-width="progressBaseWidth"
             :progress-extra-width="progressExtraWidth"
             :progress-split-left="progressSplitLeft"

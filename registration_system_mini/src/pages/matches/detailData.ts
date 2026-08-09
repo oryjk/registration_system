@@ -2,7 +2,7 @@ import { getActivity, getActivityUsers, listActivities } from "@/api/activity";
 import { getMatchDetail } from "@/api/match";
 import { getTeamDetail } from "@/api/team";
 import { listUsers } from "@/api/user";
-import type { AppMatchGroupDetail, AppMatchRegistration, AppMatchSummary } from "@/types/match";
+import type { AppMatchDetailResponse, AppMatchGroupDetail, AppMatchRegistration, AppMatchSummary } from "@/types/match";
 import type { BackendActivity, BackendRegistration, BackendTeam, BackendTeamMember, BackendUser } from "@/types/backend";
 import { isActiveTeamRegistrationActivity } from "./detailState";
 
@@ -13,6 +13,8 @@ export interface PublicMatchDetailData {
   activityPageItems: BackendActivity[];
   sourceTeamRegistrationCount: number;
   myRegistration: AppMatchRegistration | null;
+  fromGo: boolean;
+  goRegistrationGroupId: string;
 }
 
 export interface AuthenticatedMatchDetailContext {
@@ -25,6 +27,22 @@ export interface AuthenticatedMatchDetailContext {
 }
 
 export const GO_MATCH_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export interface MatchDetailDataLoaders {
+  getActivity: typeof getActivity;
+  getActivityUsers: typeof getActivityUsers;
+  getMatchDetail: typeof getMatchDetail;
+  listActivities: typeof listActivities;
+  listUsers: typeof listUsers;
+}
+
+const defaultMatchDetailDataLoaders: MatchDetailDataLoaders = {
+  getActivity,
+  getActivityUsers,
+  getMatchDetail,
+  listActivities,
+  listUsers,
+};
 
 function toLegacyActivityStatus(status: AppMatchSummary["status"]): number {
   switch (status) {
@@ -93,55 +111,58 @@ export function toBackendRegistration(
   };
 }
 
-async function loadActivityDetail(matchId: string): Promise<{
-  activity: BackendActivity;
-  fromGo: boolean;
-  myRegistration: AppMatchRegistration | null;
-  registrationOperationTime: string;
-}> {
-  if (!GO_MATCH_ID_PATTERN.test(matchId)) {
-    return { activity: await getActivity(matchId), fromGo: false, myRegistration: null, registrationOperationTime: "" };
-  }
-
-  const goDetail = await getMatchDetail(matchId);
+export function buildGoPublicMatchDetailData(goDetail: AppMatchDetailResponse, currentUserId?: number): PublicMatchDetailData {
   const group = goDetail.groups.find((item) => item.my_registration) ?? goDetail.groups[0];
+  const activity = toBackendActivity(goDetail.match, group);
+  const myRegistration = group?.my_registration ?? null;
+  const activityUsers = myRegistration && currentUserId
+    ? [toBackendRegistration(myRegistration, currentUserId, goDetail.match.updated_at)]
+    : [];
+
   return {
-    activity: toBackendActivity(goDetail.match, group),
+    activity,
+    activityUsers,
+    usersById: {},
+    activityPageItems: [activity],
+    myRegistration,
     fromGo: true,
-    myRegistration: group?.my_registration ?? null,
-    registrationOperationTime: goDetail.match.updated_at,
+    goRegistrationGroupId: group?.id ?? "",
+    sourceTeamRegistrationCount: Math.max(
+      Number(activity.team_registration_count ?? 0) - activityUsers.filter((item) => item.stand === 1).length,
+      0,
+    ),
   };
 }
 
-export async function loadPublicMatchDetailData(matchId: string, currentUserId?: number): Promise<PublicMatchDetailData> {
-  const detail = await loadActivityDetail(matchId);
-  const goActivityUsers = detail.fromGo && detail.myRegistration && currentUserId
-    ? [toBackendRegistration(detail.myRegistration, currentUserId, detail.registrationOperationTime)]
-    : [];
+export async function loadPublicMatchDetailData(
+  matchId: string,
+  currentUserId?: number,
+  loaders: MatchDetailDataLoaders = defaultMatchDetailDataLoaders,
+): Promise<PublicMatchDetailData> {
+  if (GO_MATCH_ID_PATTERN.test(matchId)) {
+    return buildGoPublicMatchDetailData(await loaders.getMatchDetail(matchId), currentUserId);
+  }
+
+  const activity = await loaders.getActivity(matchId);
   const [activityUsers, users, activityPageItems] = await Promise.all([
-    detail.fromGo ? Promise.resolve(goActivityUsers) : getActivityUsers(matchId),
-    listUsers(),
-    detail.fromGo
-      ? Promise.resolve<BackendActivity[]>([detail.activity])
-      : listActivities({ page: 1, pageSize: 100 }).then((page) => page.items),
+    loaders.getActivityUsers(matchId),
+    loaders.listUsers(),
+    loaders.listActivities({ page: 1, pageSize: 100 }).then((page) => page.items),
   ]);
 
   return {
-    activity: detail.activity,
+    activity,
     activityUsers,
     usersById: Object.fromEntries(users.map((item) => [item.id, item])),
     activityPageItems,
-    myRegistration: detail.myRegistration,
-    sourceTeamRegistrationCount: detail.fromGo
-      ? Math.max(
-          Number(detail.activity.team_registration_count ?? 0) - activityUsers.filter((item) => item.stand === 1 || item.stand === 3).length,
-          0,
-        )
-      : detail.activity.source_activity_id
-        ? 0
-        : activityPageItems
-            .filter((item) => isActiveTeamRegistrationActivity(item) && item.source_activity_id === detail.activity.id)
-            .reduce((total, item) => total + Number(item.team_registration_count ?? 0), 0),
+    myRegistration: null,
+    fromGo: false,
+    goRegistrationGroupId: "",
+    sourceTeamRegistrationCount: activity.source_activity_id
+      ? 0
+      : activityPageItems
+          .filter((item) => isActiveTeamRegistrationActivity(item) && item.source_activity_id === activity.id)
+          .reduce((total, item) => total + Number(item.team_registration_count ?? 0), 0),
   };
 }
 

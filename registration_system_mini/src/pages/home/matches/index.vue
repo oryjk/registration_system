@@ -6,9 +6,9 @@ import { listMyMatches } from "@/api/match";
 import type { AppMatchSummary, AppMatchUiPhase } from "@/types/match";
 import type { HomeMatchCardViewModel } from "@/types/viewModels";
 import { getCustomNavMetrics } from "@/utils/customNav";
-import { formatWeekdayLabel } from "@/utils/datetime";
 import { attendanceStatusTone } from "@/utils/statusTone";
 import { groupMatchesByPhase, toGoHomeMatchCard } from "../homeMatchState";
+import { formatHomeMatchDateBlock } from "../homeMatchDate";
 import HomeMatchList from "../components/HomeMatchList.vue";
 import {
   isHomeMatchPaginationComplete,
@@ -114,18 +114,6 @@ function stageClass(stage: string) {
   }
 }
 
-function formatMatchDateBlock(dateLabel: string) {
-  const [monthDay = "", timeLabel = ""] = dateLabel.split(" ");
-  const [month = "01", day = "01"] = monthDay.split("/");
-  const weekday = formatWeekdayLabel(`2026-${month}-${day}T00:00:00`);
-
-  return {
-    monthDay,
-    weekday,
-    timeLabel,
-  };
-}
-
 async function loadVisiblePhaseBatch() {
   if (isLoading.value || sourceLoaded.value) return;
 
@@ -203,7 +191,7 @@ onReachBottom(() => {
         :matches="visibleMatches"
         :is-guest-mode="false"
         :navigating-match-id="navigatingMatchId"
-        :format-match-date-block="formatMatchDateBlock"
+        :format-match-date-block="formatHomeMatchDateBlock"
         :progress-base-width="progressBaseWidth"
         :progress-extra-width="progressExtraWidth"
         :progress-split-left="progressSplitLeft"

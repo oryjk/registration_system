@@ -5,6 +5,7 @@ import {
   resolveMatchPhase,
   toGoHomeMatchCard,
 } from "../homeMatchState";
+import { formatHomeMatchDateBlock } from "../homeMatchDate";
 import type { AppHomeActionMatch, AppHomeEndedMatch, AppMatchHomeResponse, AppMatchSummary } from "@/types/match";
 
 const now = new Date("2026-08-09T12:00:00.000Z");
@@ -15,6 +16,19 @@ const laterIso = "2026-08-09T14:00:00.000Z";
 const muchLaterIso = "2026-08-09T18:00:00.000Z";
 const earlierIso = "2026-08-09T10:00:00.000Z";
 const muchEarlierIso = "2026-08-09T08:00:00.000Z";
+
+describe("formatHomeMatchDateBlock", () => {
+  test("keeps the displayed month-day and time while deriving the weekday from the raw cross-year start time", () => {
+    expect(formatHomeMatchDateBlock({
+      dateLabel: "01/01 20:00",
+      dateSource: "2027-01-01T20:00:00.000Z",
+    })).toEqual({
+      monthDay: "01/01",
+      weekday: "周五",
+      timeLabel: "20:00",
+    });
+  });
+});
 
 const baseActionMatch = {
   status: "registering" as const,

@@ -9,7 +9,7 @@ const props = defineProps<{
   variant: "default" | "brutalist";
   isGuestMode: boolean;
   isNavigating: boolean;
-  formatMatchDateBlock: (dateLabel: string) => {
+  formatMatchDateBlock: (match: HomeMatchCardViewModel) => {
     monthDay: string;
     weekday: string;
     timeLabel: string;
@@ -25,7 +25,7 @@ const emit = defineEmits<{
   (event: "matchTap", match: HomeMatchCardViewModel): void;
 }>();
 
-const dateBlock = computed(() => props.formatMatchDateBlock(props.match.dateLabel));
+const dateBlock = computed(() => props.formatMatchDateBlock(props.match));
 const actionLabel = computed(() => props.match.actionLabel || (props.match.canRegister ? "去报名" : "查看比赛"));
 
 function handleTap() {

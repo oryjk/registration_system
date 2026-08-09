@@ -98,6 +98,10 @@ function buildEndedMatch(seed: MatchSeed, baseNow: number): AppHomeEndedMatch {
   };
 }
 
+function mockGroupId(matchId: string): string {
+  return `${matchId.slice(0, -4)}d${matchId.slice(-3)}`;
+}
+
 function compareSummary(left: AppMatchSummary, right: AppMatchSummary): number {
   if (left.start_time !== right.start_time) {
     return left.start_time > right.start_time ? -1 : 1;
@@ -298,7 +302,7 @@ function buildMatchHome(baseNow = Date.now()): AppMatchHomeResponse {
       buildActionMatch({
         ...seed,
         group: {
-          id: `${seed.id}-group`,
+          id: mockGroupId(seed.id),
           kind: "host_team",
           status: seed.status === "registering" ? "open" : "closed",
           min_players: seed.status === "registering" ? 6 : 5,
@@ -344,7 +348,7 @@ export function getMockMatchDetail(matchId: string, baseNow = Date.now()): AppMa
   return {
     match,
     groups: [{
-      id: actionMatch?.group.id ?? `${match.id}-group`,
+      id: actionMatch?.group.id ?? mockGroupId(match.id),
       kind: actionMatch?.group.kind ?? fallbackKind,
       team_id: match.host_team_id,
       status: actionMatch?.group.status ?? (match.status === "registering" ? "open" : "closed"),
