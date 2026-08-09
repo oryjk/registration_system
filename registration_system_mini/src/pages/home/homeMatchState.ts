@@ -66,7 +66,7 @@ function shouldKeepCandidate(current: AppMatchPhaseSource, candidate: AppMatchPh
     return candidatePreference.timeValue > currentPreference.timeValue;
   }
 
-  return true;
+  return false;
 }
 
 function toSignupScope(kind: AppHomeActionMatch["group"]["kind"] | undefined): "external" | "internal" {

@@ -213,6 +213,49 @@ describe("groupMatchesByPhase", () => {
     expect(sections[1].items.map((item) => item.id)).toEqual(["shared-id", "ongoing-c"]);
     expect(sections[2].items.map((item) => item.id)).toEqual(["ended-a", "ended-b"]);
   });
+
+  test("keeps the first action item when duplicate ids have the same visible phase and timestamp", () => {
+    const sharedEndTime = "2026-08-09T11:00:00.000Z";
+    const richerAction = buildActionMatch({
+      id: "same-ended-id",
+      status: "ongoing",
+      start_time: "2026-08-09T09:00:00.000Z",
+      end_time: sharedEndTime,
+      players_per_team: 8,
+      group: {
+        ...baseActionMatch.group,
+        min_players: 6,
+        max_players: 10,
+        attending_count: 7,
+      },
+    });
+    const leanEnded = buildEndedMatch({
+      id: "same-ended-id",
+      start_time: "2026-08-09T09:00:00.000Z",
+      end_time: sharedEndTime,
+      name: "同场次精简副本",
+    });
+
+    const grouped = groupMatchesByPhase([richerAction, leanEnded], now);
+
+    expect(grouped.ended.length).toEqual(1);
+    expect("group" in grouped.ended[0]).toEqual(true);
+
+    const sections = buildHomeMatchSections(
+      {
+        action_items: [richerAction],
+        ended_items: [leanEnded],
+        ended_has_more: false,
+      },
+      now,
+      1,
+    );
+
+    expect(sections[2].items[0].id).toEqual("same-ended-id");
+    expect(sections[2].items[0].requiredPlayers).toEqual(6);
+    expect(sections[2].items[0].maxPlayers).toEqual(10);
+    expect(sections[2].items[0].joinedPlayers).toEqual(7);
+  });
 });
 
 describe("toGoHomeMatchCard", () => {
