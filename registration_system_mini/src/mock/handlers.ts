@@ -366,12 +366,12 @@ const routes: MockRoute[] = [
   {
     method: "GET",
     pattern: "/matches/home",
-    handler: () => mockMatchHome,
+    handler: () => mockMatchHome(),
   },
   {
     method: "GET",
     pattern: "/matches",
-    handler: (req) => paginateMockMatches(mockMyMatches, req.query),
+    handler: (req) => paginateMockMatches(mockMyMatches(), req.query),
   },
   {
     method: "POST",

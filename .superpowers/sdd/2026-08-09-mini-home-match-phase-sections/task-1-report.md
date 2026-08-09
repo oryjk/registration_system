@@ -100,3 +100,51 @@ bun run type-check
 - 本次 mock 数据是按当前时间动态生成的，避免写死过期时间。
 - mock envelope 继续沿用现有 `{ code, message, data }` 结构。
 - 后续首页阶段分组任务可以直接复用这套 Match DTO 和 mock 入口，不需要再为首页单独造一套契约。
+
+## Fix round 1
+
+### 修复内容
+
+- 将 `registration_system_mini/src/mock/data/matches.ts` 从模块加载时一次性物化的数据，改为按请求动态生成：
+  - `mockMatchHome()` 每次调用都会基于当前 `Date.now()` 重新生成 home 数据
+  - `mockMyMatches()` 每次调用都会基于当前 `Date.now()` 重新生成列表数据
+  - `paginateMockMatches(...)` 继续只负责分页，不再持有冻结数据
+- 将 match ID 从短 ID `match-001` 这类字符串，改为稳定的 UUID 风格 ID，并保持同一比赛在 home / list 里的 ID 一致。
+- 在 `src/mock/handlers.ts` 中把 `/matches/home` 和 `/matches` 的 handler 改成每次请求调用生成函数，而不是直接返回模块级静态常量。
+
+### RED / GREEN 证据
+
+原始 Task 1 报告里没有保留本轮修复所需的 RED 证据；这次修复按要求重新补了聚焦测试并先确认失败，再实现修复。
+
+RED：
+
+```bash
+cd registration_system_mini
+bun test src/api/__tests__/matchApi.test.ts
+```
+
+结果：失败，分别暴露出：
+
+- mock home 数据在两次不同 `Date.now()` 下仍然返回相同的时间戳
+- mock match ID 不符合 UUID-like 约束
+
+GREEN：
+
+```bash
+cd registration_system_mini
+bun test src/api/__tests__/matchApi.test.ts
+bun run type-check
+```
+
+结果：通过。
+
+### 提交
+
+本轮修复提交：
+
+- `c3b83a7`（base）
+- `7c3cc01`（fix round 1，新增动态 mock 与 UUID-like ID）
+
+### Concerns
+
+- 无。

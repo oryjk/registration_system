@@ -8,10 +8,8 @@ import type {
 } from "@/types/match";
 import { TEAM_ID_HEXI, TEAM_ID_MINGYUE, mockTeams } from "./teams";
 
-const now = Date.now();
-
-function isoOffsetMinutes(minutes: number): string {
-  return new Date(now + minutes * 60_000).toISOString();
+function isoOffsetMinutes(baseNow: number, minutes: number): string {
+  return new Date(baseNow + minutes * 60_000).toISOString();
 }
 
 function teamName(teamId: number): string {
@@ -42,9 +40,9 @@ interface ActionMatchSeed extends MatchSeed {
   group: AppHomeMatchGroup;
 }
 
-function buildSummary(seed: MatchSeed): AppMatchSummary {
-  const startTime = isoOffsetMinutes(seed.start_offset_minutes);
-  const endTime = isoOffsetMinutes(seed.start_offset_minutes + seed.duration_minutes);
+function buildSummary(seed: MatchSeed, baseNow: number): AppMatchSummary {
+  const startTime = isoOffsetMinutes(baseNow, seed.start_offset_minutes);
+  const endTime = isoOffsetMinutes(baseNow, seed.start_offset_minutes + seed.duration_minutes);
 
   return {
     id: seed.id,
@@ -64,13 +62,13 @@ function buildSummary(seed: MatchSeed): AppMatchSummary {
     location_latitude: seed.location_latitude,
     location_longitude: seed.location_longitude,
     description: seed.description,
-    created_at: isoOffsetMinutes(seed.created_offset_minutes),
-    updated_at: isoOffsetMinutes(seed.updated_offset_minutes ?? seed.created_offset_minutes + 5),
+    created_at: isoOffsetMinutes(baseNow, seed.created_offset_minutes),
+    updated_at: isoOffsetMinutes(baseNow, seed.updated_offset_minutes ?? seed.created_offset_minutes + 5),
   };
 }
 
-function buildActionMatch(seed: ActionMatchSeed): AppHomeActionMatch {
-  const summary = buildSummary(seed);
+function buildActionMatch(seed: ActionMatchSeed, baseNow: number): AppHomeActionMatch {
+  const summary = buildSummary(seed, baseNow);
   return {
     id: summary.id,
     status: summary.status,
@@ -85,8 +83,8 @@ function buildActionMatch(seed: ActionMatchSeed): AppHomeActionMatch {
   };
 }
 
-function buildEndedMatch(seed: MatchSeed): AppHomeEndedMatch {
-  const summary = buildSummary(seed);
+function buildEndedMatch(seed: MatchSeed, baseNow: number): AppHomeEndedMatch {
+  const summary = buildSummary(seed, baseNow);
   return {
     id: summary.id,
     status: summary.status,
@@ -125,7 +123,7 @@ function compareEnded(left: AppHomeEndedMatch, right: AppHomeEndedMatch): number
 
 const seedMatches: MatchSeed[] = [
   {
-    id: "match-001",
+    id: "f7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c001",
     name: "洺悦御府周末约战",
     status: "registering",
     publication_mode: "online_team",
@@ -143,7 +141,7 @@ const seedMatches: MatchSeed[] = [
     created_offset_minutes: -2 * 24 * 60,
   },
   {
-    id: "match-002",
+    id: "f7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c002",
     name: "河西周四 FC 友谊赛",
     status: "registering",
     publication_mode: "online_team",
@@ -161,7 +159,7 @@ const seedMatches: MatchSeed[] = [
     created_offset_minutes: -3 * 24 * 60,
   },
   {
-    id: "match-003",
+    id: "f7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c003",
     name: "洺悦御府对河西周四 FC",
     status: "ongoing",
     publication_mode: "offline_confirmed",
@@ -179,7 +177,7 @@ const seedMatches: MatchSeed[] = [
     created_offset_minutes: -5 * 24 * 60,
   },
   {
-    id: "match-004",
+    id: "f7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c004",
     name: "河西周四 FC 夜训赛",
     status: "ongoing",
     publication_mode: "online_team",
@@ -197,7 +195,7 @@ const seedMatches: MatchSeed[] = [
     created_offset_minutes: -6 * 24 * 60,
   },
   {
-    id: "match-005",
+    id: "f7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c005",
     name: "洺悦御府历史补赛",
     status: "ongoing",
     publication_mode: "online_individual",
@@ -215,7 +213,7 @@ const seedMatches: MatchSeed[] = [
     created_offset_minutes: -10 * 24 * 60,
   },
   {
-    id: "match-006",
+    id: "f7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c006",
     name: "河西周四 FC 老赛程",
     status: "registering",
     publication_mode: "online_team",
@@ -233,7 +231,7 @@ const seedMatches: MatchSeed[] = [
     created_offset_minutes: -12 * 24 * 60,
   },
   {
-    id: "match-007",
+    id: "f7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c007",
     name: "洺悦御府正式收官赛",
     status: "ended",
     publication_mode: "offline_confirmed",
@@ -251,7 +249,7 @@ const seedMatches: MatchSeed[] = [
     created_offset_minutes: -15 * 24 * 60,
   },
   {
-    id: "match-008",
+    id: "f7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c008",
     name: "河西周四 FC 赛季收官",
     status: "ended",
     publication_mode: "online_team",
@@ -269,7 +267,7 @@ const seedMatches: MatchSeed[] = [
     created_offset_minutes: -20 * 24 * 60,
   },
   {
-    id: "match-009",
+    id: "f7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c009",
     name: "洺悦御府临时取消赛",
     status: "cancelled",
     publication_mode: "online_individual",
@@ -288,41 +286,51 @@ const seedMatches: MatchSeed[] = [
   },
 ];
 
-const allMatches = seedMatches.map(buildSummary).sort(compareSummary);
+function buildMyMatches(baseNow = Date.now()): AppMatchSummary[] {
+  return seedMatches.map((seed) => buildSummary(seed, baseNow)).sort(compareSummary);
+}
 
-const actionMatches = seedMatches
-  .filter((seed) => seed.status === "registering" || seed.status === "ongoing")
-  .map((seed) =>
-    buildActionMatch({
-      ...seed,
-      group: {
-        id: `${seed.id}-group`,
-        kind: "host_team",
-        status: seed.status === "registering" ? "open" : "closed",
-        min_players: seed.status === "registering" ? 6 : 5,
-        max_players: seed.players_per_team,
-        attending_count: seed.status === "registering" ? 0 : Math.max(1, seed.players_per_team - 2),
-        my_registration_status:
-          seed.status === "registering" ? "unknown" : seed.id === "match-005" ? "leave" : "attending",
-      },
-    }),
-  )
-  .sort(compareAction)
-  .slice(0, 3);
+function buildMatchHome(baseNow = Date.now()): AppMatchHomeResponse {
+  const actionMatches = seedMatches
+    .filter((seed) => seed.status === "registering" || seed.status === "ongoing")
+    .map((seed) =>
+      buildActionMatch({
+        ...seed,
+        group: {
+          id: `${seed.id}-group`,
+          kind: "host_team",
+          status: seed.status === "registering" ? "open" : "closed",
+          min_players: seed.status === "registering" ? 6 : 5,
+          max_players: seed.players_per_team,
+          attending_count: seed.status === "registering" ? 0 : Math.max(1, seed.players_per_team - 2),
+          my_registration_status:
+            seed.status === "registering" ? "unknown" : seed.id === "f7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c005" ? "leave" : "attending",
+        },
+      }, baseNow),
+    )
+    .sort(compareAction)
+    .slice(0, 3);
 
-const endedMatches = seedMatches
-  .filter((seed) => seed.status === "ended")
-  .map(buildEndedMatch)
-  .sort(compareEnded)
-  .slice(0, 6);
+  const endedMatches = seedMatches
+    .filter((seed) => seed.status === "ended")
+    .map((seed) => buildEndedMatch(seed, baseNow))
+    .sort(compareEnded)
+    .slice(0, 6);
 
-export const mockMyMatches: AppMatchSummary[] = allMatches;
+  return {
+    action_items: actionMatches,
+    ended_items: endedMatches,
+    ended_has_more: seedMatches.filter((seed) => seed.status === "ended").length > endedMatches.length,
+  };
+}
 
-export const mockMatchHome: AppMatchHomeResponse = {
-  action_items: actionMatches,
-  ended_items: endedMatches,
-  ended_has_more: seedMatches.filter((seed) => seed.status === "ended").length > endedMatches.length,
-};
+export function mockMyMatches(baseNow = Date.now()): AppMatchSummary[] {
+  return buildMyMatches(baseNow);
+}
+
+export function mockMatchHome(baseNow = Date.now()): AppMatchHomeResponse {
+  return buildMatchHome(baseNow);
+}
 
 export function paginateMockMatches(matches: AppMatchSummary[], query: Record<string, string>) {
   const page = Number(query.page ?? 1);
