@@ -17,6 +17,13 @@ import (
 	matchhttp "github.com/oryjk/registration_system/registration_system_go/internal/match/adapters/http"
 	matchpostgres "github.com/oryjk/registration_system/registration_system_go/internal/match/adapters/postgres"
 	matchapplication "github.com/oryjk/registration_system/registration_system_go/internal/match/application"
+	paymenthttp "github.com/oryjk/registration_system/registration_system_go/internal/payment/adapters/http"
+	paymentmock "github.com/oryjk/registration_system/registration_system_go/internal/payment/adapters/mock"
+	paymentorder "github.com/oryjk/registration_system/registration_system_go/internal/payment/adapters/order"
+	paymentpostgres "github.com/oryjk/registration_system/registration_system_go/internal/payment/adapters/postgres"
+	"github.com/oryjk/registration_system/registration_system_go/internal/payment/adapters/wechatv2"
+	paymentapplication "github.com/oryjk/registration_system/registration_system_go/internal/payment/application"
+	paymentports "github.com/oryjk/registration_system/registration_system_go/internal/payment/ports"
 	"github.com/oryjk/registration_system/registration_system_go/internal/shared/adapters/clock"
 	teamhttp "github.com/oryjk/registration_system/registration_system_go/internal/team/adapters/http"
 	teampostgres "github.com/oryjk/registration_system/registration_system_go/internal/team/adapters/postgres"
@@ -24,6 +31,9 @@ import (
 	userhttp "github.com/oryjk/registration_system/registration_system_go/internal/user/adapters/http"
 	userpostgres "github.com/oryjk/registration_system/registration_system_go/internal/user/adapters/postgres"
 	userapplication "github.com/oryjk/registration_system/registration_system_go/internal/user/application"
+	wallethttp "github.com/oryjk/registration_system/registration_system_go/internal/wallet/adapters/http"
+	walletpostgres "github.com/oryjk/registration_system/registration_system_go/internal/wallet/adapters/postgres"
+	walletapplication "github.com/oryjk/registration_system/registration_system_go/internal/wallet/application"
 )
 
 const (
@@ -82,6 +92,27 @@ func BuildDependencies(ctx context.Context, config Config) (Dependencies, func()
 	userRegistrations := matchapplication.NewUserRegistrationService(matchRepository, matchClock)
 	userRegistrationHandler := matchhttp.NewUserRegistrationHandler(userRegistrations)
 
+	paymentRepository := paymentpostgres.NewRepository(pool)
+	var paymentGateway paymentports.Gateway
+	if config.WechatPayUseMock {
+		paymentGateway = paymentmock.NewGateway(config.WechatAppID, matchClock.Now)
+	} else {
+		paymentGateway, err = wechatv2.NewClient(&http.Client{Timeout: 10 * time.Second}, wechatv2.Config{
+			AppID: config.WechatAppID, MerchantID: config.WechatPayMerchantID,
+			APIKey: config.WechatPayAPIKey, BaseURL: config.WechatPayAPIBaseURL,
+			NotifyURL: config.PublicBaseURL + config.WechatPayNotifyPath,
+		})
+		if err != nil {
+			closePool()
+			return Dependencies{}, nil, fmt.Errorf("create WeChat Pay gateway: %w", err)
+		}
+	}
+	paymentService := paymentapplication.NewService(paymentRepository, paymentRepository, paymentGateway, paymentRepository, paymentorder.Generator{}, matchClock)
+	paymentHandler := paymenthttp.NewHandler(paymentService)
+	walletRepository := walletpostgres.NewRepository(pool)
+	walletService := walletapplication.NewService(walletRepository)
+	walletHandler := wallethttp.NewHandler(walletService)
+
 	return Dependencies{
 		AuthMiddleware: &authMiddleware,
 		UserAuth:       userAuthHandler, AdminAuth: adminAuthHandler,
@@ -89,5 +120,6 @@ func BuildDependencies(ctx context.Context, config Config) (Dependencies, func()
 		UserProfiles: userProfileHandler, AppUsers: appUserHandler, ActiveUsers: appUserService, Teams: teamHandler, AppTeams: appTeamHandler,
 		UserMatches: userMatchHandler, UserRegistrations: userRegistrationHandler,
 		AdminMatches: adminMatchHandler, TeamApplications: teamApplicationHandler,
+		Payments: paymentHandler, Wallets: walletHandler,
 	}, closePool, nil
 }

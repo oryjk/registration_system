@@ -16,8 +16,15 @@ import (
 	matchhttp "github.com/oryjk/registration_system/registration_system_go/internal/match/adapters/http"
 	matchapplication "github.com/oryjk/registration_system/registration_system_go/internal/match/application"
 	matchdomain "github.com/oryjk/registration_system/registration_system_go/internal/match/domain"
+	paymenthttp "github.com/oryjk/registration_system/registration_system_go/internal/payment/adapters/http"
+	paymentapplication "github.com/oryjk/registration_system/registration_system_go/internal/payment/application"
+	paymentdomain "github.com/oryjk/registration_system/registration_system_go/internal/payment/domain"
+	paymentports "github.com/oryjk/registration_system/registration_system_go/internal/payment/ports"
 	sharedauth "github.com/oryjk/registration_system/registration_system_go/internal/shared/auth"
 	userdomain "github.com/oryjk/registration_system/registration_system_go/internal/user/domain"
+	wallethttp "github.com/oryjk/registration_system/registration_system_go/internal/wallet/adapters/http"
+	walletapplication "github.com/oryjk/registration_system/registration_system_go/internal/wallet/application"
+	walletdomain "github.com/oryjk/registration_system/registration_system_go/internal/wallet/domain"
 )
 
 func TestAppUserRegistrationRoutesAreProtectedAndVersioned(t *testing.T) {
@@ -26,7 +33,7 @@ func TestAppUserRegistrationRoutesAreProtectedAndVersioned(t *testing.T) {
 		GroupID: groupID, UserID: 42, Status: matchdomain.RegistrationAttending,
 		RegistrationCount: 1, UpdatedAt: time.Date(2026, 8, 8, 12, 0, 0, 0, time.UTC),
 	}}
-	middleware := authhttp.NewMiddleware(routerUserTokens{})
+	middleware := authhttp.NewMiddleware(routerAudienceTokens{})
 	router := NewRouter(Dependencies{
 		AuthMiddleware:    &middleware,
 		UserRegistrations: matchhttp.NewUserRegistrationHandler(registrationService),
@@ -147,6 +154,57 @@ func TestH5TestAuthRoutesAreRegisteredOnlyWhenEnabled(t *testing.T) {
 	}
 }
 
+func TestPaymentWalletRoutesUseVersionedAudiencePrefixes(t *testing.T) {
+	middleware := authhttp.NewMiddleware(routerAudienceTokens{})
+	payment := paymenthttp.NewHandler(routerPaymentService{})
+	wallet := wallethttp.NewHandler(routerWalletService{})
+	router := NewRouter(Dependencies{AuthMiddleware: &middleware, Payments: payment, Wallets: wallet})
+	tests := []struct {
+		method string
+		path   string
+		token  string
+	}{
+		{http.MethodPost, "/api/v1/app/payments/recharge-orders", "user-token"},
+		{http.MethodGet, "/api/v1/app/payments/orders", "user-token"},
+		{http.MethodGet, "/api/v1/app/payments/orders/P1", "user-token"},
+		{http.MethodPost, "/api/v1/app/payments/orders/P1/sync", "user-token"},
+		{http.MethodPost, "/api/v1/app/payments/orders/P1/cancel", "user-token"},
+		{http.MethodGet, "/api/v1/app/wallet", "user-token"},
+		{http.MethodGet, "/api/v1/app/wallet/transactions", "user-token"},
+		{http.MethodGet, "/api/v1/admin/payments/orders", "admin-token"},
+		{http.MethodGet, "/api/v1/admin/payments/orders/P1", "admin-token"},
+		{http.MethodGet, "/api/v1/admin/wallets/37", "admin-token"},
+	}
+	for _, test := range tests {
+		t.Run(test.method+" "+test.path, func(t *testing.T) {
+			var body *bytes.Reader
+			if test.path == "/api/v1/app/payments/recharge-orders" {
+				body = bytes.NewReader([]byte(`{"amount_cents":1}`))
+			} else {
+				body = bytes.NewReader(nil)
+			}
+			request := httptest.NewRequest(test.method, test.path, body)
+			request.Header.Set("Authorization", "Bearer "+test.token)
+			request.Header.Set("Content-Type", "application/json")
+			response := httptest.NewRecorder()
+			router.ServeHTTP(response, request)
+			if response.Code != http.StatusOK {
+				t.Fatalf("status=%d body=%s", response.Code, response.Body.String())
+			}
+		})
+	}
+	webhook := httptest.NewRecorder()
+	router.ServeHTTP(webhook, httptest.NewRequest(http.MethodPost, "/api/v1/webhooks/wechat-pay", strings.NewReader("<xml/>")))
+	if webhook.Code != http.StatusOK || !strings.Contains(webhook.Body.String(), "SUCCESS") {
+		t.Fatalf("webhook status=%d body=%s", webhook.Code, webhook.Body.String())
+	}
+	unversioned := httptest.NewRecorder()
+	router.ServeHTTP(unversioned, httptest.NewRequest(http.MethodGet, "/api/app/wallet", nil))
+	if unversioned.Code != http.StatusNotFound {
+		t.Fatalf("unversioned status=%d", unversioned.Code)
+	}
+}
+
 type routerWechatLogin struct{}
 
 func (routerWechatLogin) Execute(context.Context, string) (authapplication.WechatLoginResult, error) {
@@ -186,6 +244,50 @@ type routerUserTokens struct{}
 func (routerUserTokens) IssueUser(context.Context, int64) (string, error)        { return "", nil }
 func (routerUserTokens) IssueAdmin(context.Context, int64, bool) (string, error) { return "", nil }
 func (routerUserTokens) Parse(context.Context, string) (sharedauth.Actor, error) {
+	return sharedauth.Actor{Kind: sharedauth.ActorUser, ID: 42}, nil
+}
+
+type routerPaymentService struct{}
+
+func (routerPaymentService) CreateRecharge(context.Context, sharedauth.Actor, paymentapplication.CreateRechargeCommand) (paymentapplication.CreateRechargeResult, error) {
+	return paymentapplication.CreateRechargeResult{}, nil
+}
+func (routerPaymentService) List(context.Context, sharedauth.Actor, paymentapplication.ListQuery) (paymentapplication.ListResult, error) {
+	return paymentapplication.ListResult{}, nil
+}
+func (routerPaymentService) Get(context.Context, sharedauth.Actor, string) (paymentdomain.Order, error) {
+	return paymentdomain.Order{}, nil
+}
+func (routerPaymentService) Sync(context.Context, sharedauth.Actor, string) (paymentports.SettlementResult, error) {
+	return paymentports.SettlementResult{}, nil
+}
+func (routerPaymentService) Cancel(context.Context, sharedauth.Actor, string) (paymentdomain.Order, error) {
+	return paymentdomain.Order{}, nil
+}
+func (routerPaymentService) HandleNotification(context.Context, []byte) (paymentports.SettlementResult, error) {
+	return paymentports.SettlementResult{}, nil
+}
+
+type routerWalletService struct{}
+
+func (routerWalletService) Get(context.Context, sharedauth.Actor) (walletdomain.Account, error) {
+	return walletdomain.Account{}, nil
+}
+func (routerWalletService) GetForAdmin(context.Context, sharedauth.Actor, int64) (walletdomain.Account, error) {
+	return walletdomain.Account{}, nil
+}
+func (routerWalletService) ListTransactions(context.Context, sharedauth.Actor, walletapplication.TransactionListQuery) (walletapplication.TransactionListResult, error) {
+	return walletapplication.TransactionListResult{}, nil
+}
+
+type routerAudienceTokens struct{}
+
+func (routerAudienceTokens) IssueUser(context.Context, int64) (string, error)        { return "", nil }
+func (routerAudienceTokens) IssueAdmin(context.Context, int64, bool) (string, error) { return "", nil }
+func (routerAudienceTokens) Parse(_ context.Context, token string) (sharedauth.Actor, error) {
+	if token == "admin-token" {
+		return sharedauth.Actor{Kind: sharedauth.ActorAdmin, ID: 1}, nil
+	}
 	return sharedauth.Actor{Kind: sharedauth.ActorUser, ID: 42}, nil
 }
 

@@ -6,9 +6,11 @@ import (
 	"github.com/gin-gonic/gin"
 	authhttp "github.com/oryjk/registration_system/registration_system_go/internal/auth/adapters/http"
 	matchhttp "github.com/oryjk/registration_system/registration_system_go/internal/match/adapters/http"
+	paymenthttp "github.com/oryjk/registration_system/registration_system_go/internal/payment/adapters/http"
 	sharedhttp "github.com/oryjk/registration_system/registration_system_go/internal/shared/http"
 	teamhttp "github.com/oryjk/registration_system/registration_system_go/internal/team/adapters/http"
 	userhttp "github.com/oryjk/registration_system/registration_system_go/internal/user/adapters/http"
+	wallethttp "github.com/oryjk/registration_system/registration_system_go/internal/wallet/adapters/http"
 )
 
 type Dependencies struct {
@@ -26,6 +28,8 @@ type Dependencies struct {
 	UserRegistrations  *matchhttp.UserRegistrationHandler
 	AdminMatches       *matchhttp.AdminHandler
 	TeamApplications   *matchhttp.TeamApplicationHandler
+	Payments           *paymenthttp.Handler
+	Wallets            *wallethttp.Handler
 }
 
 func NewRouter(dependencies Dependencies) *gin.Engine {
@@ -47,6 +51,9 @@ func NewRouter(dependencies Dependencies) *gin.Engine {
 	admin := v1.Group("/admin")
 	if dependencies.AdminAuth != nil {
 		dependencies.AdminAuth.RegisterPublicRoutes(admin)
+	}
+	if dependencies.Payments != nil {
+		dependencies.Payments.RegisterWebhookRoutes(v1.Group("/webhooks"))
 	}
 	if dependencies.AuthMiddleware != nil {
 		userRoutes := app.Group("")
@@ -72,6 +79,12 @@ func NewRouter(dependencies Dependencies) *gin.Engine {
 		if dependencies.TeamApplications != nil {
 			dependencies.TeamApplications.RegisterUserRoutes(userRoutes)
 		}
+		if dependencies.Payments != nil {
+			dependencies.Payments.RegisterAppRoutes(userRoutes)
+		}
+		if dependencies.Wallets != nil {
+			dependencies.Wallets.RegisterAppRoutes(userRoutes)
+		}
 
 		adminRoutes := admin.Group("")
 		adminRoutes.Use(dependencies.AuthMiddleware.RequireAdmin())
@@ -89,6 +102,12 @@ func NewRouter(dependencies Dependencies) *gin.Engine {
 		}
 		if dependencies.TeamApplications != nil {
 			dependencies.TeamApplications.RegisterAdminRoutes(adminRoutes)
+		}
+		if dependencies.Payments != nil {
+			dependencies.Payments.RegisterAdminRoutes(adminRoutes)
+		}
+		if dependencies.Wallets != nil {
+			dependencies.Wallets.RegisterAdminRoutes(adminRoutes)
 		}
 	}
 	return router

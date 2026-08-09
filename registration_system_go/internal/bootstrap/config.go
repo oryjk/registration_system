@@ -2,6 +2,7 @@ package bootstrap
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -26,6 +27,12 @@ type Config struct {
 	AppEnvironment      AppEnvironment
 	EnableH5TestLogin   bool
 	H5TestDefaultUserID int64
+	WechatPayUseMock    bool
+	WechatPayMerchantID string
+	WechatPayAPIKey     string
+	WechatPayAPIBaseURL string
+	PublicBaseURL       string
+	WechatPayNotifyPath string
 }
 
 func LoadConfig() (Config, error) {
@@ -43,6 +50,12 @@ func LoadConfig() (Config, error) {
 		AppEnvironment:      parseAppEnvironment(os.Getenv("APP_ENV")),
 		EnableH5TestLogin:   os.Getenv("ENABLE_H5_TEST_LOGIN") == "true",
 		H5TestDefaultUserID: defaultUserID,
+		WechatPayUseMock:    os.Getenv("WECHAT_PAY_USE_MOCK") == "true",
+		WechatPayMerchantID: strings.TrimSpace(os.Getenv("WECHAT_PAY_MCH_ID")),
+		WechatPayAPIKey:     strings.TrimSpace(os.Getenv("WECHAT_PAY_API_KEY")),
+		WechatPayAPIBaseURL: envOrDefault("WECHAT_PAY_API_BASE_URL", "https://api.mch.weixin.qq.com"),
+		PublicBaseURL:       strings.TrimRight(strings.TrimSpace(os.Getenv("PUBLIC_BASE_URL")), "/"),
+		WechatPayNotifyPath: envOrDefault("WECHAT_PAY_NOTIFY_PATH", "/api/v1/webhooks/wechat-pay"),
 	}
 
 	for name, value := range map[string]string{
@@ -55,7 +68,40 @@ func LoadConfig() (Config, error) {
 			return Config{}, fmt.Errorf("%s is required", name)
 		}
 	}
+	if err := config.validateWechatPay(); err != nil {
+		return Config{}, err
+	}
 	return config, nil
+}
+
+func (c Config) validateWechatPay() error {
+	if c.WechatPayUseMock {
+		if c.AppEnvironment == EnvironmentProduction {
+			return fmt.Errorf("WECHAT_PAY_USE_MOCK cannot be enabled in production")
+		}
+		return nil
+	}
+	for name, value := range map[string]string{
+		"WECHAT_PAY_MCH_ID":  c.WechatPayMerchantID,
+		"WECHAT_PAY_API_KEY": c.WechatPayAPIKey,
+		"PUBLIC_BASE_URL":    c.PublicBaseURL,
+	} {
+		if value == "" {
+			return fmt.Errorf("%s is required when WECHAT_PAY_USE_MOCK is false", name)
+		}
+	}
+	base, err := url.Parse(c.WechatPayAPIBaseURL)
+	if err != nil || (base.Scheme != "http" && base.Scheme != "https") || base.Host == "" {
+		return fmt.Errorf("WECHAT_PAY_API_BASE_URL must be an absolute HTTP URL")
+	}
+	public, err := url.Parse(c.PublicBaseURL)
+	if err != nil || public.Scheme != "https" || public.Host == "" {
+		return fmt.Errorf("PUBLIC_BASE_URL must be an absolute HTTPS URL")
+	}
+	if !strings.HasPrefix(c.WechatPayNotifyPath, "/") {
+		return fmt.Errorf("WECHAT_PAY_NOTIFY_PATH must start with /")
+	}
+	return nil
 }
 
 func (c Config) H5TestLoginEnabled() bool {
