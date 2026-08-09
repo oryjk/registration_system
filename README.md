@@ -104,6 +104,9 @@ go run ./cmd/api
 - 必填配置：`DATABASE_URL`、`JWT_SECRET`、`WECHAT_APP_ID`、`WECHAT_APP_SECRET`。
 - Go API 在宿主机直接运行，本地开发不需要 Docker；`DATABASE_URL` 指向已准备好的 PostgreSQL。
 - 健康检查 `GET /health`；管理端接口挂在 `/api/v1/admin`；小程序/H5 接口挂在 `/api/v1/app`。
+- Swagger UI：`http://127.0.0.1:18080/api/docs/`。
+- OpenAPI YAML：`http://127.0.0.1:18080/api/docs/openapi.yaml`。
+- Swagger UI 静态资源和 OpenAPI 文档均嵌入 Go 二进制，无需 CDN 或 Docker。用户端和管理端受保护接口分别使用用户 JWT 和管理员 JWT；Swagger UI 的 Authorize 输入框填写令牌值即可。
 - 第一阶段不实现订单、支付、账单、结算、签到、通知。
 
 #### B2. 启动新版 React 管理后台

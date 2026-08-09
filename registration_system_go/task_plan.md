@@ -13,6 +13,9 @@
 7. [completed] 主队、客队与散人报名
 8. [pending] 后台默认人数和逐场调整
 9. [in_progress] OpenAPI、HTTP 装配和全量验证
+   - [completed] 全部现有接口的 OpenAPI 3.0.3 契约与 Gin 路由漂移校验
+   - [completed] 内嵌 Swagger UI 5 与 OpenAPI YAML 的 HTTP 装配
+   - [pending] 小程序切换后的真实 HTTP/PostgreSQL 联调与最终全量验证
 
 ## 2026-07-21 比赛参与模型与用户读取接口
 

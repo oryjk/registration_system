@@ -43,6 +43,13 @@ go build -o ./api ./cmd/api
 
 健康检查：`GET http://127.0.0.1:18080/health`。
 
+API 契约与在线调试入口：
+
+- Swagger UI：`http://127.0.0.1:18080/api/docs/`
+- OpenAPI YAML：`http://127.0.0.1:18080/api/docs/openapi.yaml`
+
+Swagger UI 5 的静态资源和 OpenAPI 3.0.3 文档均嵌入 Go 二进制，访问时不依赖 CDN，也不需要 Docker。`/api/v1/app` 下的受保护接口需要用户 JWT，`/api/v1/admin` 下的受保护接口需要管理员 JWT；在 Swagger UI 的 Authorize 输入框中填写令牌值，bearer scheme 会生成对应的 `Authorization` 请求头。
+
 管理员接口统一位于 `/api/v1/admin`：
 
 - `GET/POST /api/v1/admin/admins`

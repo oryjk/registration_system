@@ -6,7 +6,7 @@
 - 个人报名支持主队、客队和散人规则，包含幂等 PUT/DELETE、容量控制、派生状态更新和单事务成员校验。
 - legacy 用户、球队、成员、比赛和报名已具备 full/incremental、dry-run、稳定映射与只读源约束。
 - 小程序前端切换、管理端报名维护、默认人数配置和最终真实联调仍未完成。
-- OpenAPI 3.0.3 与离线 Swagger UI 正在接入。
+- 全部现有 Go API 已发布 OpenAPI 3.0.3 契约，并通过自动测试与 Gin 路由逐项核对；离线 Swagger UI 位于 `http://127.0.0.1:18080/api/docs/`，原始 YAML 位于 `http://127.0.0.1:18080/api/docs/openapi.yaml`。
 
 ## 2026-07-21
 
