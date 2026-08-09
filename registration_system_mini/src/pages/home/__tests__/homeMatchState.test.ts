@@ -5,7 +5,7 @@ import {
   resolveMatchPhase,
   toGoHomeMatchCard,
 } from "../homeMatchState";
-import type { AppHomeActionMatch, AppHomeEndedMatch, AppMatchHomeResponse } from "@/types/match";
+import type { AppHomeActionMatch, AppHomeEndedMatch, AppMatchHomeResponse, AppMatchSummary } from "@/types/match";
 
 const now = new Date("2026-08-09T12:00:00.000Z");
 const nowIso = "2026-08-09T12:00:00.000Z";
@@ -81,16 +81,22 @@ describe("resolveMatchPhase", () => {
 });
 
 describe("groupMatchesByPhase", () => {
-  test("sorts each visible phase and keeps one copy per id before grouping", () => {
+  test("dedupes shared ids before grouping and keeps the richer visible match", () => {
     const sharedUpcoming = buildActionMatch({
       id: "shared-id",
-      name: "共享赛事",
-      start_time: muchLaterIso,
-      end_time: "2026-08-09T20:00:00.000Z",
+      status: "ongoing",
+      name: "共享赛事（进行中）",
+      start_time: "2026-08-09T11:55:00.000Z",
+      end_time: laterIso,
       group: {
         ...baseActionMatch.group,
         attending_count: 12,
       },
+    });
+    const sharedEnded = buildEndedMatch({
+      id: "shared-id",
+      name: "共享赛事（已结束）",
+      end_time: muchEarlierIso,
     });
     const upcomingEarly = buildActionMatch({
       id: "upcoming-early",
@@ -148,11 +154,6 @@ describe("groupMatchesByPhase", () => {
         attending_count: 15,
       },
     });
-    const endedShared = buildEndedMatch({
-      id: "shared-id",
-      name: "共享赛事（已结束）",
-      end_time: muchEarlierIso,
-    });
     const endedOne = buildEndedMatch({
       id: "ended-a",
       name: "已结束 A",
@@ -171,6 +172,7 @@ describe("groupMatchesByPhase", () => {
 
     const grouped = groupMatchesByPhase(
       [
+        sharedEnded,
         upcomingLate,
         ongoingA,
         sharedUpcoming,
@@ -184,8 +186,8 @@ describe("groupMatchesByPhase", () => {
       now,
     );
 
-    expect(grouped.upcoming.map((item) => item.id)).toEqual(["upcoming-early", "upcoming-late", "shared-id"]);
-    expect(grouped.ongoing.map((item) => item.id)).toEqual(["ongoing-c", "ongoing-b", "ongoing-a"]);
+    expect(grouped.upcoming.map((item) => item.id)).toEqual(["upcoming-early", "upcoming-late"]);
+    expect(grouped.ongoing.map((item) => item.id)).toEqual(["shared-id", "ongoing-c", "ongoing-b", "ongoing-a"]);
     expect(grouped.ended.map((item) => item.id)).toEqual(["ended-a", "ended-b", "ended-c"]);
 
     const sections = buildHomeMatchSections(
@@ -198,7 +200,7 @@ describe("groupMatchesByPhase", () => {
           upcomingEarly,
           ongoingB,
         ],
-        ended_items: [endedShared, endedOne, endedTwo, endedThree],
+        ended_items: [sharedEnded, endedOne, endedTwo, endedThree],
         ended_has_more: false,
       },
       now,
@@ -208,7 +210,7 @@ describe("groupMatchesByPhase", () => {
     expect(sections.map((section) => section.phase)).toEqual(["upcoming", "ongoing", "ended"]);
     expect(sections.map((section) => section.items.length)).toEqual([2, 2, 2]);
     expect(sections[0].items.map((item) => item.id)).toEqual(["upcoming-early", "upcoming-late"]);
-    expect(sections[1].items.map((item) => item.id)).toEqual(["ongoing-c", "ongoing-b"]);
+    expect(sections[1].items.map((item) => item.id)).toEqual(["shared-id", "ongoing-c"]);
     expect(sections[2].items.map((item) => item.id)).toEqual(["ended-a", "ended-b"]);
   });
 });
@@ -247,6 +249,46 @@ describe("toGoHomeMatchCard", () => {
     expect(card.canRegister).toEqual(true);
     expect(card.showRegistrationProgress).toEqual(true);
     expect(card.showParticipantAvatars).toEqual(true);
+    expect(card.canOpenDetail).toEqual(true);
+  });
+
+  test("maps list summaries into the shared card model", () => {
+    const summary = {
+      id: "summary-1",
+      status: "registering",
+      start_time: laterIso,
+      end_time: muchLaterIso,
+      publication_mode: "online_individual",
+      opponent_state: "recruiting",
+      name: "列表比赛",
+      host_team_id: 1,
+      host_team_name: "银河联队",
+      away_team_id: null,
+      away_team_name: null,
+      opponent_name: "红星队",
+      players_per_team: 8,
+      location: "A 场",
+      location_latitude: null,
+      location_longitude: null,
+      description: null,
+      created_at: "2026-08-08T12:00:00.000Z",
+      updated_at: "2026-08-08T12:05:00.000Z",
+    } satisfies AppMatchSummary;
+
+    const card = toGoHomeMatchCard(summary, "upcoming");
+
+    expect(card.id).toEqual("summary-1");
+    expect(card.title).toEqual("列表比赛");
+    expect(card.phase).toEqual("upcoming");
+    expect(card.stage).toEqual("报名中");
+    expect(card.dateNote).toEqual("截止报名");
+    expect(card.signupScope).toEqual("external");
+    expect(card.signupScopeLabel).toEqual("散人报名");
+    expect(card.formatLabel).toEqual("8 人制");
+    expect(card.opponent).toEqual("红星队");
+    expect(card.showRegistrationProgress).toEqual(false);
+    expect(card.showParticipantAvatars).toEqual(false);
+    expect(card.canRegister).toEqual(true);
     expect(card.canOpenDetail).toEqual(true);
   });
 });

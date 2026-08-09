@@ -3,6 +3,7 @@ import type {
   AppHomeEndedMatch,
   AppMatchHomeResponse,
   AppMatchPhaseSource,
+  AppMatchSummary,
   AppMatchUiPhase,
 } from "@/types/match";
 import type { HomeMatchCardViewModel } from "@/types/viewModels";
@@ -30,6 +31,44 @@ function compareDateDesc(left: string, right: string): number {
   return parseDateValue(right).getTime() - parseDateValue(left).getTime();
 }
 
+function phaseRank(phase: VisibleHomeMatchPhase): number {
+  switch (phase) {
+    case "ongoing":
+      return 2;
+    case "upcoming":
+      return 1;
+    case "ended":
+      return 0;
+  }
+}
+
+function matchPreference(match: AppMatchPhaseSource, now: Date) {
+  const phase = resolveMatchPhase(match, now);
+  const timeValue =
+    phase === "ended" ? parseDateValue(match.end_time).getTime() : parseDateValue(match.start_time).getTime();
+
+  return {
+    phase,
+    rank: phase === "excluded" ? -1 : phaseRank(phase),
+    timeValue,
+  };
+}
+
+function shouldKeepCandidate(current: AppMatchPhaseSource, candidate: AppMatchPhaseSource, now: Date): boolean {
+  const currentPreference = matchPreference(current, now);
+  const candidatePreference = matchPreference(candidate, now);
+
+  if (candidatePreference.rank !== currentPreference.rank) {
+    return candidatePreference.rank > currentPreference.rank;
+  }
+
+  if (candidatePreference.timeValue !== currentPreference.timeValue) {
+    return candidatePreference.timeValue > currentPreference.timeValue;
+  }
+
+  return true;
+}
+
 function toSignupScope(kind: AppHomeActionMatch["group"]["kind"] | undefined): "external" | "internal" {
   return kind === "individual_opponent" ? "external" : "internal";
 }
@@ -44,6 +83,18 @@ function toSignupScopeLabel(kind: AppHomeActionMatch["group"]["kind"] | undefine
     default:
       return "队内报名";
   }
+}
+
+function toSignupScopeLabelFromPublicationMode(mode: AppMatchSummary["publication_mode"]): string {
+  return mode === "online_individual" ? "散人报名" : "队内报名";
+}
+
+function isHomeActionMatch(item: AppHomeActionMatch | AppHomeEndedMatch | AppMatchSummary): item is AppHomeActionMatch {
+  return "group" in item;
+}
+
+function isMatchSummary(item: AppHomeActionMatch | AppHomeEndedMatch | AppMatchSummary): item is AppMatchSummary {
+  return "publication_mode" in item;
 }
 
 function toMyStatusLabel(status: AppHomeActionMatch["group"]["my_registration_status"]): string {
@@ -113,7 +164,15 @@ export function groupMatchesByPhase(items: AppMatchPhaseSource[], now: Date): Re
     ended: [],
   };
 
+  const dedupedById = new Map<string, AppMatchPhaseSource>();
   for (const item of items) {
+    const current = dedupedById.get(item.id);
+    if (!current || shouldKeepCandidate(current, item, now)) {
+      dedupedById.set(item.id, item);
+    }
+  }
+
+  for (const item of dedupedById.values()) {
     const phase = resolveMatchPhase(item, now);
     if (phase === "excluded") continue;
     grouped[phase].push(item);
@@ -127,22 +186,62 @@ export function groupMatchesByPhase(items: AppMatchPhaseSource[], now: Date): Re
 }
 
 export function toGoHomeMatchCard(
-  item: AppHomeActionMatch | AppHomeEndedMatch,
+  item: AppHomeActionMatch | AppHomeEndedMatch | AppMatchSummary,
   phase: VisibleHomeMatchPhase,
 ): HomeMatchCardViewModel {
-  const isActionMatch = "group" in item;
-  const attendingCount = isActionMatch ? item.group.attending_count : 0;
-  const playersPerTeam = isActionMatch ? item.players_per_team : 0;
-  const requiredPlayers = isActionMatch ? (item.group.min_players ?? playersPerTeam) : playersPerTeam;
-  const maxPlayers = isActionMatch ? (item.group.max_players ?? requiredPlayers) : playersPerTeam;
+  const actionMatch = isHomeActionMatch(item) ? item : null;
+  const summaryMatch = isMatchSummary(item) ? item : null;
+  const attendingCount = actionMatch ? actionMatch.group.attending_count : 0;
+  const playersPerTeam = actionMatch ? actionMatch.players_per_team : summaryMatch ? summaryMatch.players_per_team : 0;
+  const requiredPlayers = actionMatch ? (actionMatch.group.min_players ?? playersPerTeam) : playersPerTeam;
+  const maxPlayers = actionMatch ? (actionMatch.group.max_players ?? requiredPlayers) : playersPerTeam;
   const remainingPlayers = Math.max(requiredPlayers - attendingCount, 0);
-  const signupScope = isActionMatch ? toSignupScope(item.group.kind) : "internal";
-  const signupScopeLabel = isActionMatch ? toSignupScopeLabel(item.group.kind) : "比赛记录";
+  const signupScope = actionMatch
+    ? toSignupScope(actionMatch.group.kind)
+    : summaryMatch && summaryMatch.publication_mode === "online_individual"
+      ? "external"
+      : "internal";
+  const signupScopeLabel = actionMatch
+    ? toSignupScopeLabel(actionMatch.group.kind)
+    : summaryMatch
+      ? toSignupScopeLabelFromPublicationMode(summaryMatch.publication_mode)
+      : "比赛记录";
   const stage = toPhaseStage(phase);
   const dateNote = toDateNote(phase);
-  const showRegistrationProgress = toShowRegistrationProgress(phase);
-  const showParticipantAvatars = toShowParticipantAvatars(phase);
-  const canRegister = phase === "upcoming" && isActionMatch ? item.group.status === "open" : false;
+  const showRegistrationProgress = actionMatch ? toShowRegistrationProgress(phase) : false;
+  const showParticipantAvatars = actionMatch ? toShowParticipantAvatars(phase) : false;
+  const canRegister = actionMatch
+    ? phase === "upcoming" && actionMatch.group.status === "open"
+    : summaryMatch
+      ? phase === "upcoming" && summaryMatch.opponent_state === "recruiting" && summaryMatch.publication_mode !== "offline_confirmed"
+      : false;
+  const myStatus = actionMatch ? toMyStatusLabel(actionMatch.group.my_registration_status) : "待定";
+  let highlight: string;
+  let remainingPlayersLabel: string;
+  if (actionMatch) {
+    highlight =
+      phase === "upcoming"
+        ? remainingPlayers > 0
+          ? `当前 ${attendingCount} 人参加，还差 ${remainingPlayers} 人成行`
+          : "已达成行人数，仍可继续报名"
+        : phase === "ongoing"
+          ? "比赛进行中"
+          : "比赛已结束";
+    remainingPlayersLabel =
+      phase === "upcoming"
+        ? remainingPlayers > 0
+          ? `还差 ${remainingPlayers} 人成行`
+          : "已达成行"
+        : phase === "ongoing"
+          ? "报名已结束"
+          : "比赛已结束";
+  } else if (summaryMatch) {
+    highlight = summaryMatch.description?.trim() || dateNote;
+    remainingPlayersLabel = dateNote;
+  } else {
+    highlight = dateNote;
+    remainingPlayersLabel = dateNote;
+  }
 
   return {
     id: item.id,
@@ -158,7 +257,7 @@ export function toGoHomeMatchCard(
     signupScope,
     signupScopeLabel,
     venue: item.location,
-    opponent: item.opponent_name,
+    opponent: item.opponent_name ?? "待定",
     formatLabel: playersPerTeam > 0 ? `${playersPerTeam} 人制` : "人数待定",
     requiredPlayers,
     maxPlayers,
@@ -166,41 +265,13 @@ export function toGoHomeMatchCard(
     absentPlayers: 0,
     latePlayers: 0,
     pendingPlayers: 0,
-    myStatus: isActionMatch ? toMyStatusLabel(item.group.my_registration_status) : "已结束",
-    highlight:
-      phase === "upcoming"
-        ? remainingPlayers > 0
-          ? `当前 ${attendingCount} 人参加，还差 ${remainingPlayers} 人成行`
-          : "已达成行人数，仍可继续报名"
-        : phase === "ongoing"
-          ? "比赛进行中"
-          : "比赛已结束",
+    myStatus,
+    highlight,
     participantAvatars: [],
-    remainingPlayersLabel:
-      phase === "upcoming"
-        ? remainingPlayers > 0
-          ? `还差 ${remainingPlayers} 人成行`
-          : "已达成行"
-        : phase === "ongoing"
-          ? "报名已结束"
-          : "比赛已结束",
+    remainingPlayersLabel,
     canRegister,
-    actionLabel:
-      phase === "upcoming" ? (canRegister ? "去报名" : "查看比赛") : "查看比赛",
+    actionLabel: phase === "upcoming" && canRegister ? "去报名" : "查看比赛",
   };
-}
-
-function dedupeHomeMatches(actionItems: AppHomeActionMatch[], endedItems: AppHomeEndedMatch[]): Array<AppHomeActionMatch | AppHomeEndedMatch> {
-  const merged: Array<AppHomeActionMatch | AppHomeEndedMatch> = [];
-  const seenIds = new Set<string>();
-
-  for (const item of [...actionItems, ...endedItems]) {
-    if (seenIds.has(item.id)) continue;
-    seenIds.add(item.id);
-    merged.push(item);
-  }
-
-  return merged;
 }
 
 export function buildHomeMatchSections(
@@ -208,7 +279,7 @@ export function buildHomeMatchSections(
   now: Date,
   limit = Number.POSITIVE_INFINITY,
 ): HomeMatchSectionViewModel[] {
-  const grouped = groupMatchesByPhase(dedupeHomeMatches(response.action_items, response.ended_items), now);
+  const grouped = groupMatchesByPhase([...response.action_items, ...response.ended_items], now);
 
   return (["upcoming", "ongoing", "ended"] as const).map((phase) => ({
     phase,

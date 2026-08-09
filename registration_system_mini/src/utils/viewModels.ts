@@ -48,29 +48,6 @@ function pickFirstNonEmpty(values: Array<string | null | undefined>): string {
 
 type VisibleHomeMatchPhase = Exclude<AppMatchUiPhase, "excluded">;
 
-function attachLegacyHomeMatchMeta<T extends HomeMatchCardViewModel>(
-  card: T,
-): T {
-  Object.defineProperties(card, {
-    phase: { value: card.phase, enumerable: false, writable: true, configurable: true },
-    dateNote: { value: card.dateNote, enumerable: false, writable: true, configurable: true },
-    showRegistrationProgress: {
-      value: card.showRegistrationProgress,
-      enumerable: false,
-      writable: true,
-      configurable: true,
-    },
-    showParticipantAvatars: {
-      value: card.showParticipantAvatars,
-      enumerable: false,
-      writable: true,
-      configurable: true,
-    },
-    canOpenDetail: { value: card.canOpenDetail, enumerable: false, writable: true, configurable: true },
-  });
-  return card;
-}
-
 function toLegacyHomeMatchPhase(status: number): VisibleHomeMatchPhase {
   if (status === 1) return "ongoing";
   if (status === 2 || status === 3) return "ended";
@@ -251,7 +228,7 @@ export function buildHomeMatchCards({
           };
         });
 
-      return attachLegacyHomeMatchMeta({
+      return {
         id: activity.id,
         detailUrl: `/pages/matches/detail?id=${activity.id}`,
         title: activity.name,
@@ -283,7 +260,7 @@ export function buildHomeMatchCards({
         participantAvatars,
         remainingPlayersLabel: remainingPlayers > 0 ? `还差 ${remainingPlayers} 人成行` : "已达成行",
         canRegister: true,
-      });
+      };
     });
 }
 
@@ -341,7 +318,7 @@ export function buildPublicHomeMatchCards({
           };
         });
 
-      return attachLegacyHomeMatchMeta({
+      return {
         id: activity.id,
         detailUrl: `/pages/matches/detail?id=${activity.id}`,
         title: activity.name,
@@ -373,7 +350,7 @@ export function buildPublicHomeMatchCards({
         participantAvatars,
         remainingPlayersLabel: remainingPlayers > 0 ? `还差 ${remainingPlayers} 人成行` : "已达成行",
         canRegister: true,
-      });
+      };
     });
 }
 
@@ -406,7 +383,7 @@ export function buildJoinedIndividualHomeMatchCards({
       const remainingPlayers = Math.max(minPlayers - joinedPlayers, 0);
       const phase: VisibleHomeMatchPhase = summary.challenge.status === "matched" ? "ongoing" : "upcoming";
 
-      return attachLegacyHomeMatchMeta({
+      return {
         id: summary.challenge.id,
         detailUrl: `/pages/challenges/detail?id=${summary.challenge.id}`,
         title: summary.challenge.title,
@@ -434,7 +411,7 @@ export function buildJoinedIndividualHomeMatchCards({
         remainingPlayersLabel: remainingPlayers > 0 ? `还差 ${remainingPlayers} 人` : "已成行",
         canRegister: true,
         actionLabel: "去查看",
-      });
+      };
     });
 }
 

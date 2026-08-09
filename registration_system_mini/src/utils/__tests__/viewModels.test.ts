@@ -140,7 +140,7 @@ describe("resolveUserDisplayHandle", () => {
 describe("buildHomeMatchCards", () => {
   test("home match list shows only stage status instead of duplicated signup scope label", async () => {
     const component = await Bun.file(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/home/components/HomeMatchList.vue",
+      "/Users/carlwang/projects/registration_system/.worktrees/mini-home-match-phase-sections/registration_system_mini/src/pages/home/components/HomeMatchList.vue",
     ).text();
 
     expect(component.includes("{{ match.signupScopeLabel }}")).toEqual(false);
@@ -273,6 +273,11 @@ describe("buildHomeMatchCards", () => {
         detailUrl: "/pages/matches/detail?id=activity-1",
         title: "周四友谊赛",
         dateLabel: "04/16 20:00",
+        phase: "upcoming",
+        dateNote: "截止报名",
+        showRegistrationProgress: true,
+        showParticipantAvatars: true,
+        canOpenDetail: true,
         stage: "报名中",
         venue: "A 场",
         opponent: "红队",
