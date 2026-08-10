@@ -11,20 +11,17 @@ import MineMatchSection from "./components/MineMatchSection.vue";
 import MineServiceGrid from "./components/MineServiceGrid.vue";
 import MineSkeleton from "./components/MineSkeleton.vue";
 import MineWalletSection from "./components/MineWalletSection.vue";
+import { buildMineOverviewState } from "./mineOverviewState";
+import { loadAllMyMatches } from "./myMatchesData";
 import type { MineMatchSummary, MineStatItem } from "./mineTypes";
-import { listActivities } from "@/api/activity";
-import { getMyBalance } from "@/api/billing";
 import { createTeamMembershipOrder, syncPaymentOrderStatus } from "@/api/payment";
+import { getWallet } from "@/api/wallet";
 import { useNotificationCenter } from "@/stores/notificationCenter";
-import { getTeamCreditTransactions } from "@/api/team";
-import { getMyActivities } from "@/api/user";
 import { useTeamContext } from "@/stores/teamContext";
 import { useMiniReviewStatus } from "@/stores/miniReview";
 import { clearSession } from "@/stores/appSession";
 import { getAccessToken } from "@/utils/authStorage";
 import { getCustomNavMetrics } from "@/utils/customNav";
-import { getCurrentYearDateRange, isDateInRange } from "@/utils/dateRange";
-import { formatDateLabel } from "@/utils/datetime";
 import { attendanceStatusTone } from "@/utils/statusTone";
 import { isMockWxPaymentParams, isPaymentCancelled, normalizeWxPaymentParams, requestWxPayment } from "@/utils/payment";
 import type { BackendTeamCreditTransaction } from "@/types/backend";
@@ -32,7 +29,6 @@ import {
   formatCreditTransactionLabel,
   formatDateTimeLabel,
   resolveUserDisplayName,
-  toStandLabel,
 } from "@/utils/viewModels";
 
 const {
@@ -48,7 +44,7 @@ const {
   refreshSessionContext,
 } = useTeamContext();
 const { shouldHideCreationEntrances } = useMiniReviewStatus();
-const { unreadCount, syncUnreadCount, setUnreadCount } = useNotificationCenter();
+const { unreadCount, setUnreadCount } = useNotificationCenter();
 const navMetrics = getCustomNavMetrics();
 
 const isLoading = ref(false);
@@ -173,61 +169,21 @@ async function loadPageData(options?: { preserveContent?: boolean }) {
     if (activeTeamId) {
       await ensureTeamDetailLoaded(activeTeamId);
     }
-    const [activityPage, myActivityRecords, balance, teamCreditItems] = await Promise.all([
-      listActivities({ page: 1, pageSize: 100 }),
-      getMyActivities(),
-      getMyBalance(),
-      activeTeamId ? getTeamCreditTransactions(activeTeamId, 5) : Promise.resolve([]),
+    const [matches, wallet] = await Promise.all([
+      loadAllMyMatches(),
+      getWallet(),
     ]);
-    await syncUnreadCount({ skipEnsure: true });
+    const overview = buildMineOverviewState(matches, wallet);
 
-    const recordByActivityId = Object.fromEntries(
-      myActivityRecords.map((item) => [item.activity_id, item]),
-    );
-    const currentYearDateRange = getCurrentYearDateRange();
-    const relatedActivityIds = new Set(myActivityRecords.map((item) => item.activity_id));
-    const todayStart = todayStartTimestamp();
-    const isActivityRelated = (activity: (typeof activityPage.items)[number]) =>
-      relatedActivityIds.has(activity.id) ||
-      (!!activeTeamId &&
-        (activity.home_team_id === activeTeamId || activity.away_team_id === activeTeamId));
-    const allRelatedActivities = activityPage.items.filter(isActivityRelated);
-    const currentYearRelatedActivities = allRelatedActivities.filter((activity) =>
-      isDateInRange(activity.holding_date, currentYearDateRange),
-    );
-    const futureTeamRelatedActivities = allRelatedActivities
-      .filter(
-        (activity) =>
-          parseDateTime(activity.holding_date) >= todayStart &&
-          activity.status !== 2 &&
-          activity.status !== 3,
-      )
-      .sort((left, right) => left.holding_date.localeCompare(right.holding_date));
-
-    myMatches.value = futureTeamRelatedActivities
-      .slice(0, 2)
-      .map((activity) => ({
-        id: activity.id,
-        title: activity.name,
-        dateLabel: formatDateLabel(activity.holding_date),
-        venue: activity.location,
-        myStatus: toStandLabel(recordByActivityId[activity.id]?.stand ?? 0),
-      }));
-
-    const totalHours = currentYearRelatedActivities.length * 2;
-
+    myMatches.value = overview.matches;
     overviewDigest.value = {
-      activityCount: currentYearRelatedActivities.length,
+      activityCount: overview.activityCount,
       teamCount: teamProfiles.value.length,
-      totalHoursLabel: `${Math.round(totalHours)} h`,
+      totalHoursLabel: overview.totalHoursLabel,
     };
-
-    creditTransactions.value = teamCreditItems;
-    walletSummary.value = {
-      balanceLabel: balance ? `¥${Number(balance.balance).toFixed(2)}` : "¥0.00",
-      totalExpenseLabel: balance ? `¥${Number(balance.total_expense).toFixed(2)}` : "¥0.00",
-      latestExpenseLabel: "进入账单查看",
-    };
+    creditTransactions.value = [];
+    walletSummary.value = overview.walletSummary;
+    setUnreadCount(0);
     hasLoadedOnce.value = true;
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : "个人中心数据加载失败";

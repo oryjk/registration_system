@@ -13,5 +13,6 @@ export interface MineMatchSummary {
   title: string;
   dateLabel: string;
   venue: string;
-  myStatus: string;
+  statusLabel: string;
+  actionLabel: string;
 }

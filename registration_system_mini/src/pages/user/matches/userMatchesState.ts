@@ -1,7 +1,7 @@
-import type { BackendActivity, BackendUserActivityRecord } from "@/types/backend";
+import type { AppMatchSummary, AppMatchUiPhase } from "@/types/match";
 import { formatDateTimeWithWeekdayLabel, formatTimeLabel, parseDateValue } from "@/utils/datetime";
-import { matchStatusBadgeTone, type MatchStatusBadgeTone } from "@/utils/statusTone";
-import { toStandLabel } from "@/utils/viewModels";
+import type { MatchStatusBadgeTone } from "@/utils/statusTone";
+import { resolveMatchPhase } from "@/pages/home/homeMatchState";
 
 export type UserMatchScope = "future" | "past";
 
@@ -13,9 +13,8 @@ export interface UserMatchCard {
   venue: string;
   opponent: string;
   formatLabel: string;
-  myStatus: string;
+  statusLabel: string;
   kindLabel: string;
-  isEditable: boolean;
   color: string;
   opposingColor: string;
   locationLatitude: number | null;
@@ -23,72 +22,72 @@ export interface UserMatchCard {
   statusTone: MatchStatusBadgeTone;
 }
 
-export function buildUserMatchCards(params: {
-  activities: BackendActivity[];
-  myActivityRecords: BackendUserActivityRecord[];
-  activeTeamId?: number;
-  scope: UserMatchScope;
-  todayStart?: number;
-}): UserMatchCard[] {
-  const todayStart = params.todayStart ?? todayStartTimestamp();
-  const relatedActivityIds = new Set(params.myActivityRecords.map((item) => item.activity_id));
-  const recordByActivityId = Object.fromEntries(params.myActivityRecords.map((item) => [item.activity_id, item]));
+function statusLabel(phase: Exclude<AppMatchUiPhase, "excluded">): string {
+  switch (phase) {
+    case "ongoing":
+      return "进行中";
+    case "ended":
+      return "已结束";
+    default:
+      return "报名中";
+  }
+}
 
-  return params.activities
-    .filter((activity) =>
-      params.scope === "future"
-        ? parseDateTime(activity.holding_date) >= todayStart
-        : parseDateTime(activity.holding_date) < todayStart,
-    )
-    .filter((activity) => (params.scope === "future" ? activity.status !== 2 && activity.status !== 3 : true))
-    .filter((activity) => isRelatedActivity(activity, params.activeTeamId, relatedActivityIds))
-    .sort((left, right) =>
-      params.scope === "future"
-        ? left.holding_date.localeCompare(right.holding_date)
-        : right.holding_date.localeCompare(left.holding_date),
-    )
-    .map((activity) => {
-      const myStatus = toStandLabel(recordByActivityId[activity.id]?.stand ?? 0);
+function statusTone(phase: Exclude<AppMatchUiPhase, "excluded">): MatchStatusBadgeTone {
+  switch (phase) {
+    case "upcoming":
+      return "success";
+    case "ongoing":
+      return "warning";
+    default:
+      return "muted";
+  }
+}
+
+function kindLabel(match: AppMatchSummary): string {
+  switch (match.publication_mode) {
+    case "online_team":
+      return "约队比赛";
+    case "online_individual":
+      return "散人报名";
+    default:
+      return "线下比赛";
+  }
+}
+
+export function buildUserMatchCards(params: {
+  matches: AppMatchSummary[];
+  scope: UserMatchScope;
+  now?: Date;
+}): UserMatchCard[] {
+  const now = params.now ?? new Date();
+
+  return params.matches
+    .map((match) => ({ match, phase: resolveMatchPhase(match, now) }))
+    .filter(({ phase }) => phase !== "excluded")
+    .filter(({ phase }) => (params.scope === "future" ? phase !== "ended" : phase === "ended"))
+    .sort((left, right) => {
+      const leftTime = parseDateValue(params.scope === "future" ? left.match.start_time : left.match.end_time).getTime();
+      const rightTime = parseDateValue(params.scope === "future" ? right.match.start_time : right.match.end_time).getTime();
+      return params.scope === "future" ? leftTime - rightTime : rightTime - leftTime;
+    })
+    .map(({ match, phase }) => {
+      const visiblePhase = phase as Exclude<AppMatchUiPhase, "excluded">;
       return {
-        id: activity.id,
-        title: activity.name,
-        dateLabel: formatDateTimeWithWeekdayLabel(activity.holding_date),
-        timeLabel: formatTimeLabel(activity.start_time || activity.holding_date),
-        venue: activity.location,
-        opponent: activity.opposing?.trim() || "对手待定",
-        formatLabel: activity.players_per_team ? `${activity.players_per_team} 人制` : "人数待定",
-        myStatus,
-        kindLabel: activity.match_kind === "internal" ? "队内内战" : "对外友谊赛",
-        isEditable: isPublisherEditable(activity, params.activeTeamId),
-        color: activity.color?.trim() || "#2F6BFF",
-        opposingColor: activity.opposing_color?.trim() || "#C8FF00",
-        locationLatitude: activity.location_latitude ?? null,
-        locationLongitude: activity.location_longitude ?? null,
-        statusTone: matchStatusBadgeTone(myStatus),
+        id: match.id,
+        title: match.name,
+        dateLabel: formatDateTimeWithWeekdayLabel(match.start_time),
+        timeLabel: formatTimeLabel(match.start_time),
+        venue: match.location,
+        opponent: match.away_team_name?.trim() || match.opponent_name?.trim() || "对手待定",
+        formatLabel: match.players_per_team ? `${match.players_per_team} 人制` : "人数待定",
+        statusLabel: statusLabel(visiblePhase),
+        kindLabel: kindLabel(match),
+        color: "#2F6BFF",
+        opposingColor: "#C8FF00",
+        locationLatitude: match.location_latitude,
+        locationLongitude: match.location_longitude,
+        statusTone: statusTone(visiblePhase),
       };
     });
-}
-
-function parseDateTime(value: string) {
-  return parseDateValue(value).getTime();
-}
-
-function todayStartTimestamp() {
-  const date = new Date();
-  date.setHours(0, 0, 0, 0);
-  return date.getTime();
-}
-
-function isRelatedActivity(activity: BackendActivity, activeTeamId: number | undefined, relatedActivityIds: Set<string>) {
-  return (
-    relatedActivityIds.has(activity.id) ||
-    (!!activeTeamId && (activity.home_team_id === activeTeamId || activity.away_team_id === activeTeamId))
-  );
-}
-
-function isPublisherEditable(activity: BackendActivity, activeTeamId?: number) {
-  if (!activeTeamId) return false;
-  if (activity.source_activity_id) return false;
-  if (activity.status === 2 || activity.status === 3) return false;
-  return activity.home_team_id === activeTeamId;
 }

@@ -1,0 +1,64 @@
+import type { AppMatchSummary } from "@/types/match";
+import type { AppWalletAccount } from "@/types/wallet";
+import { formatDateLabel, parseDateValue } from "@/utils/datetime";
+import { resolveMatchPhase } from "@/pages/home/homeMatchState";
+import type { MineMatchSummary } from "./mineTypes";
+
+export interface MineOverviewState {
+  activityCount: number;
+  totalHoursLabel: string;
+  matches: MineMatchSummary[];
+  walletSummary: {
+    balanceLabel: string;
+    totalExpenseLabel: string;
+    latestExpenseLabel: string;
+  };
+}
+
+function formatCents(value: number): string {
+  return `¥${(value / 100).toFixed(2)}`;
+}
+
+function formatHours(matches: AppMatchSummary[]): string {
+  const totalHours = matches.reduce((sum, match) => {
+    const duration = parseDateValue(match.end_time).getTime() - parseDateValue(match.start_time).getTime();
+    return duration > 0 && Number.isFinite(duration) ? sum + duration / 3_600_000 : sum;
+  }, 0);
+  const roundedHours = Math.round(totalHours * 10) / 10;
+  return `${roundedHours} h`;
+}
+
+export function buildMineOverviewState(
+  matches: AppMatchSummary[],
+  wallet: AppWalletAccount,
+  now = new Date(),
+): MineOverviewState {
+  const currentYearMatches = matches.filter(
+    (match) =>
+      resolveMatchPhase(match, now) !== "excluded" &&
+      parseDateValue(match.start_time).getFullYear() === now.getFullYear(),
+  );
+  const upcomingMatches = matches
+    .filter((match) => resolveMatchPhase(match, now) === "upcoming")
+    .sort((left, right) => parseDateValue(left.start_time).getTime() - parseDateValue(right.start_time).getTime())
+    .slice(0, 2)
+    .map((match) => ({
+      id: match.id,
+      title: match.name,
+      dateLabel: formatDateLabel(match.start_time),
+      venue: match.location,
+      statusLabel: "报名中",
+      actionLabel: "查看比赛",
+    }));
+
+  return {
+    activityCount: currentYearMatches.length,
+    totalHoursLabel: formatHours(currentYearMatches),
+    matches: upcomingMatches,
+    walletSummary: {
+      balanceLabel: formatCents(wallet.balance_cents),
+      totalExpenseLabel: formatCents(wallet.total_spent_cents),
+      latestExpenseLabel: "进入账单查看",
+    },
+  };
+}

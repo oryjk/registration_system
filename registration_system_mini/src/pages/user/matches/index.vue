@@ -2,15 +2,14 @@
 import { computed, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
-import { listActivities } from "@/api/activity";
-import { getMyActivities } from "@/api/user";
 import { useTeamContext } from "@/stores/teamContext";
 import { getCustomNavMetrics } from "@/utils/customNav";
+import { loadAllMyMatches } from "../myMatchesData";
 import UserMatchList from "./components/UserMatchList.vue";
 import UserMatchesSkeleton from "./components/UserMatchesSkeleton.vue";
 import { buildUserMatchCards, type UserMatchCard, type UserMatchScope } from "./userMatchesState";
 
-const { currentTeam, ensureSessionReady } = useTeamContext();
+const { ensureSessionReady } = useTeamContext();
 const navMetrics = getCustomNavMetrics();
 
 const isLoading = ref(false);
@@ -23,18 +22,18 @@ const contentStyle = computed(() => ({
 }));
 
 const scopeOptions = [
-  { value: "future", label: "未开始" },
+  { value: "future", label: "未结束" },
   { value: "past", label: "已结束" },
 ];
 
 const emptyText = computed(() =>
-  matchScope.value === "future" ? "暂时没有未开始的相关比赛。" : "暂时没有已结束的相关比赛。",
+  matchScope.value === "future" ? "暂时没有未结束的相关比赛。" : "暂时没有已结束的相关比赛。",
 );
 
 const heroCopy = computed(() =>
   matchScope.value === "future"
-    ? "展示今天及未来的比赛，按时间顺序排列。"
-    : "展示今天之前的比赛，方便回看历史记录。",
+    ? "展示进行中及待开始的比赛，按时间顺序排列。"
+    : "展示已经结束的比赛，方便回看历史记录。",
 );
 
 function handleScopeChange(event: Event) {
@@ -47,12 +46,6 @@ function handleScopeChange(event: Event) {
 function openMatchDetail(matchId: string) {
   uni.navigateTo({
     url: `/pages/matches/detail?id=${matchId}`,
-  });
-}
-
-function openMatchEdit(matchId: string) {
-  uni.navigateTo({
-    url: `/pages/matches/create/index?id=${matchId}&mode=edit`,
   });
 }
 
@@ -79,15 +72,9 @@ async function loadPageData() {
 
   try {
     await ensureSessionReady();
-    const activeTeamId = currentTeam.value?.id;
-    const [activityPage, myActivityRecords] = await Promise.all([
-      listActivities({ page: 1, pageSize: 100 }),
-      getMyActivities(),
-    ]);
+    const allMatches = await loadAllMyMatches();
     matches.value = buildUserMatchCards({
-      activities: activityPage.items,
-      myActivityRecords,
-      activeTeamId,
+      matches: allMatches,
       scope: matchScope.value,
     });
   } catch (error) {
@@ -118,7 +105,7 @@ onShow(() => {
         @change="handleScopeChange"
       >
         <template #label="{ option }">
-          <text>{{ option.value === "future" ? "未开始" : "已结束" }}</text>
+          <text>{{ option.value === "future" ? "未结束" : "已结束" }}</text>
         </template>
       </wd-segmented>
 
@@ -133,7 +120,6 @@ onShow(() => {
         v-else
         :matches="matches"
         @open-detail="openMatchDetail"
-        @open-edit="openMatchEdit"
         @open-map="openMap"
       />
     </view>

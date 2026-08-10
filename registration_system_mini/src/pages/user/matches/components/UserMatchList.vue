@@ -7,7 +7,6 @@ defineProps<{
 
 defineEmits<{
   openDetail: [matchId: string];
-  openEdit: [matchId: string];
   openMap: [locationLatitude: number | null, locationLongitude: number | null, name: string, address: string];
 }>();
 </script>
@@ -22,14 +21,11 @@ defineEmits<{
     >
       <view class="match-title-row">
         <text class="match-title">{{ match.title }}</text>
-        <view v-if="match.isEditable" class="match-edit-link" @tap.stop="$emit('openEdit', match.id)">
-          编辑比赛
-        </view>
       </view>
 
       <view class="match-subline">
         <text class="match-kind-badge">{{ match.kindLabel }}</text>
-        <text :class="['match-status-badge', `match-status-badge-${match.statusTone}`]">{{ match.myStatus }}</text>
+        <text :class="['match-status-badge', `match-status-badge-${match.statusTone}`]">{{ match.statusLabel }}</text>
         <text class="match-footer-text">{{ match.formatLabel }}</text>
         <text class="match-footer-text">{{ match.timeLabel }}</text>
       </view>
@@ -144,20 +140,6 @@ defineEmits<{
   line-height: 1.15;
   font-weight: 900;
   color: #ffffff;
-}
-
-.match-edit-link {
-  flex-shrink: 0;
-  padding: 0 12rpx;
-  min-height: 40rpx;
-  border-radius: 999rpx;
-  background: rgba(200, 255, 0, 0.14);
-  color: #c8ff00;
-  font-size: 20rpx;
-  font-weight: 900;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
 .match-subline {

@@ -153,6 +153,7 @@ export function resolveMatchPhase(match: AppMatchPhaseSource, now: Date): AppMat
 
   const nowMs = now.getTime();
   if (parseDateValue(match.end_time).getTime() <= nowMs) return "ended";
+  if (match.status === "ongoing") return "ongoing";
   if (parseDateValue(match.start_time).getTime() <= nowMs) return "ongoing";
   return "upcoming";
 }

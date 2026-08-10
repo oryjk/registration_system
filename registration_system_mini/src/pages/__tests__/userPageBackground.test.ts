@@ -79,7 +79,8 @@ describe("mine page visual composition", () => {
     const billingPageSource = await Bun.file(sourcePath("pages/billing/index.vue")).text();
 
     expect(userPageSource.includes("getMyBillingFlow")).toEqual(false);
-    expect(userPageSource.includes("getMyBalance")).toEqual(true);
+    expect(userPageSource.includes("getMyBalance")).toEqual(false);
+    expect(userPageSource.includes("getWallet")).toEqual(true);
     expect(userPageSource.includes('url: "/pages/billing/index"')).toEqual(true);
     expect(walletSource.includes("查看账单")).toEqual(true);
     expect(walletSource.includes("账单明细已移到二级页面")).toEqual(false);

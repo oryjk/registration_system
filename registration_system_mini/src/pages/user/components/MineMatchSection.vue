@@ -19,7 +19,7 @@ const emit = defineEmits<{
     <NeoSectionHeader
       title="我的比赛"
       marker="赛"
-      caption="最近与你和当前球队相关的比赛"
+      caption="最近与你或所在球队相关的比赛"
       action-label="全部比赛"
       @action="emit('openAll')"
     />
@@ -34,13 +34,13 @@ const emit = defineEmits<{
       >
         <view class="mine-match-card__main">
           <view class="mine-match-card__topline">
-            <NeoTag :tone="statusTone(match.myStatus)" size="sm">{{ match.myStatus }}</NeoTag>
+            <NeoTag :tone="statusTone(match.statusLabel)" size="sm">{{ match.statusLabel }}</NeoTag>
             <text class="mine-match-card__date">{{ match.dateLabel }}</text>
           </view>
           <text class="mine-match-card__title">{{ match.title }}</text>
           <text class="mine-match-card__venue">{{ match.venue }}</text>
         </view>
-        <NeoButton variant="lime" size="sm" @click="emit('openMatch', match.id)">去报名</NeoButton>
+        <NeoButton variant="lime" size="sm" @click="emit('openMatch', match.id)">{{ match.actionLabel }}</NeoButton>
       </NeoSurface>
     </view>
 
@@ -48,7 +48,7 @@ const emit = defineEmits<{
       <text class="mine-match-empty__marker">00</text>
       <view class="mine-match-empty__copy">
         <text class="mine-match-empty__title">暂无近期比赛</text>
-        <text class="mine-match-empty__description">当前球队下还没有可展示的比赛记录。</text>
+        <text class="mine-match-empty__description">你和所在球队还没有可展示的比赛记录。</text>
       </view>
     </NeoSurface>
   </view>
