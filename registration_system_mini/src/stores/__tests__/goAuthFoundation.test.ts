@@ -15,7 +15,7 @@ describe("Go app session foundation", () => {
       scripts: Record<string, string>;
     };
 
-    expect(packageJson.scripts["build:h5:acceptance"]).toBe("uni build --mode test");
+    expect(packageJson.scripts["build:h5:acceptance"]).toEqual("uni build --mode test");
   });
 
   test("uses the single Go WeChat login endpoint", async () => {
