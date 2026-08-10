@@ -38,6 +38,6 @@ describe("app route fallback", () => {
     expect(reviewStore.includes("!reviewStatusReady.value || !reviewStatusAvailable.value || reviewMode.value")).toEqual(true);
     expect(reviewStore.includes("reviewMode.value = false;")).toEqual(true);
     expect(source.includes("ensureSessionReady")).toEqual(false);
-    expect(source.includes("if (currentUser.value)")).toEqual(true);
+    expect(source.includes("syncUnreadCount")).toEqual(false);
   });
 });
