@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { buildAttendanceCalendarMonths } from "../teams/teamStatsState";
+import { sourcePath } from "@/test/sourcePaths";
 import type { BackendTeamMemberAttendanceRecord } from "@/types/backend";
 
 declare const Bun: {
@@ -8,8 +9,7 @@ declare const Bun: {
   };
 };
 
-const calendarCardPath =
-  "/Users/carlwang/registration_system/registration_system_mini/src/pages/teams/components/AttendanceCalendarCard.vue";
+const calendarCardPath = sourcePath("pages/teams/components/AttendanceCalendarCard.vue");
 
 function record(
   activityId: string,

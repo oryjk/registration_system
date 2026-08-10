@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { sourcePath } from "@/test/sourcePaths";
 
 declare const Bun: {
   file(path: string): {
@@ -8,9 +9,7 @@ declare const Bun: {
 
 describe("app route fallback", () => {
   test("redirects missing pages to the home tab", async () => {
-    const source = await Bun.file(
-      "/Users/carlwang/registration_system/registration_system_mini/src/App.vue",
-    ).text();
+    const source = await Bun.file(sourcePath("App.vue")).text();
 
     expect(source.includes("onPageNotFound")).toEqual(true);
     expect(source.includes('const HOME_PAGE_PATH = "/pages/home/index";')).toEqual(true);
@@ -19,12 +18,8 @@ describe("app route fallback", () => {
   });
 
   test("restores only existing sessions during app launch", async () => {
-    const source = await Bun.file(
-      "/Users/carlwang/registration_system/registration_system_mini/src/App.vue",
-    ).text();
-    const reviewStore = await Bun.file(
-      "/Users/carlwang/registration_system/registration_system_mini/src/stores/miniReview.ts",
-    ).text();
+    const source = await Bun.file(sourcePath("App.vue")).text();
+    const reviewStore = await Bun.file(sourcePath("stores/miniReview.ts")).text();
 
     expect(source.includes("restoreSessionFromStorage")).toEqual(true);
     expect(source.includes('import { restoreSessionFromStorage, useAppSession } from "@/stores/appSession";')).toEqual(true);

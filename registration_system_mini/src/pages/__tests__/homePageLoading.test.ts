@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { sourcePath } from "@/test/sourcePaths";
 
 declare const Bun: {
   file(path: string): {
@@ -6,19 +7,17 @@ declare const Bun: {
   };
 };
 
-const sourceRoot = new URL("../../", import.meta.url).pathname.replace(/\/$/, "");
-
 function sourceFile(path: string) {
-  return Bun.file(path.replace("/Users/carlwang/registration_system/registration_system_mini/src", sourceRoot));
+  return Bun.file(sourcePath(path));
 }
 
 describe("home page loading states", () => {
   test("uses a first-load skeleton instead of inserting a temporary empty loading block above content", async () => {
     const homePageSource = await sourceFile(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/home/index.vue",
+      "pages/home/index.vue",
     ).text();
     const skeleton = await sourceFile(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/home/components/HomeSkeleton.vue",
+      "pages/home/components/HomeSkeleton.vue",
     ).text();
 
     expect(homePageSource.includes('<HomeSkeleton v-if="showInitialLoadingState"')).toEqual(true);
@@ -28,7 +27,7 @@ describe("home page loading states", () => {
 
   test("keeps the home layout mounted on refresh and uses a non-layout-shifting refresh mask", async () => {
     const homePageSource = await sourceFile(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/home/index.vue",
+      "pages/home/index.vue",
     ).text();
 
     expect(homePageSource.includes("const isRefreshing = ref(false);")).toEqual(true);
@@ -39,10 +38,10 @@ describe("home page loading states", () => {
 
   test("does not refresh the home page on every onShow; uses hidden duration threshold and pending-reload flag instead", async () => {
     const homePageSource = await sourceFile(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/home/index.vue",
+      "pages/home/index.vue",
     ).text();
     const pagesJson = await sourceFile(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages.json",
+      "pages.json",
     ).text();
 
     expect(homePageSource.includes("const HIDDEN_RELOAD_THRESHOLD_MS = 2 * 60 * 1000;")).toEqual(true);
@@ -61,7 +60,7 @@ describe("home page loading states", () => {
 
   test("switches the home page to Go /matches/home sections and removes legacy opportunity sources", async () => {
     const source = await sourceFile(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/home/index.vue",
+      "pages/home/index.vue",
     ).text();
 
     expect(source.includes('import { getMatchHome } from "@/api/match";')).toEqual(true);
@@ -75,7 +74,7 @@ describe("home page loading states", () => {
 
   test("uses default hero banners, keeps guests public, and only calls protected match home after session readiness", async () => {
     const source = await sourceFile(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/home/index.vue",
+      "pages/home/index.vue",
     ).text();
 
     expect(source.includes('import { defaultMiniAppRuntimeConfig } from "@/config/runtimeConfig";')).toEqual(true);
@@ -99,7 +98,7 @@ describe("home page loading states", () => {
 
   test("guards initial failure with explicit error state and keeps empty states gated behind a successful load", async () => {
     const source = await sourceFile(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/home/index.vue",
+      "pages/home/index.vue",
     ).text();
 
     expect(source.includes('const errorMessage = ref("");')).toEqual(true);
@@ -113,7 +112,7 @@ describe("home page loading states", () => {
 
   test("reloads the home page after login completes on the same page", async () => {
     const source = await sourceFile(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/home/index.vue",
+      "pages/home/index.vue",
     ).text();
 
     expect(source.includes('uni.$on("session:login-completed", handleSessionLoginCompleted);')).toEqual(true);
@@ -124,7 +123,7 @@ describe("home page loading states", () => {
 
   test("renders three phased match sections and only shows ongoing/ended sections for authenticated users", async () => {
     const source = await sourceFile(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/home/index.vue",
+      "pages/home/index.vue",
     ).text();
 
     expect(source.includes('title="最近要处理的比赛"')).toEqual(true);
@@ -138,7 +137,7 @@ describe("home page loading states", () => {
 
   test("allows ongoing and ended cards to navigate to detail and only blocks missing detail or duplicate navigation", async () => {
     const source = await sourceFile(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/home/index.vue",
+      "pages/home/index.vue",
     ).text();
 
     expect(source.includes("if (!match.canOpenDetail || navigatingMatchId.value) return;")).toEqual(true);
@@ -149,7 +148,7 @@ describe("home page loading states", () => {
 
   test("enables sharing for the public home page with the default share cover", async () => {
     const source = await sourceFile(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/home/index.vue",
+      "pages/home/index.vue",
     ).text();
 
     expect(source.includes("onShareAppMessage")).toEqual(true);

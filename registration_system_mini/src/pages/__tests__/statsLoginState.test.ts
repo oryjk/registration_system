@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { sourcePath } from "@/test/sourcePaths";
 
 declare const Bun: {
   file(path: string): {
@@ -6,7 +7,7 @@ declare const Bun: {
   };
 };
 
-const pagePath = "/Users/carlwang/registration_system/registration_system_mini/src/pages/teams/index.vue";
+const pagePath = sourcePath("pages/teams/index.vue");
 
 describe("stats page login state", () => {
   test("shows a login guide instead of statistics when the user is logged out", async () => {

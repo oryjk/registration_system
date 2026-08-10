@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { sourcePath } from "@/test/sourcePaths";
 
 declare const Bun: {
   file(path: string): {
@@ -6,19 +7,17 @@ declare const Bun: {
   };
 };
 
-const sourceRoot = new URL("../../", import.meta.url).pathname.replace(/\/$/, "");
-
 function sourceFile(path: string) {
-  return Bun.file(path.replace("/Users/carlwang/registration_system/registration_system_mini/src", sourceRoot));
+  return Bun.file(sourcePath(path));
 }
 
 describe("match detail registration design", () => {
   test("uses an in-page segmented layout for individual and team registration", async () => {
     const source = await sourceFile(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/detail.vue",
+      "pages/matches/detail.vue",
     ).text();
     const pageLogic = await sourceFile(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/useMatchDetailPage.ts",
+      "pages/matches/useMatchDetailPage.ts",
     ).text();
 
     expect(pageLogic.includes("const registrationMode = ref<\"individual\" | \"team\">(\"individual\");")).toEqual(true);
@@ -32,16 +31,16 @@ describe("match detail registration design", () => {
 
   test("renders the individual registration view with countdown, guide card, and a primary CTA", async () => {
     const source = await sourceFile(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/detail.vue",
+      "pages/matches/detail.vue",
     ).text();
     const individual = await sourceFile(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/components/MatchIndividualRegistration.vue",
+      "pages/matches/components/MatchIndividualRegistration.vue",
     ).text();
     const statusCard = await sourceFile(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/components/MatchRegistrationStatusCard.vue",
+      "pages/matches/components/MatchRegistrationStatusCard.vue",
     ).text();
     const info = await sourceFile(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/components/IndividualInfoCard.vue",
+      "pages/matches/components/IndividualInfoCard.vue",
     ).text();
 
     expect(source.includes("MatchIndividualRegistration")).toEqual(true);
@@ -58,10 +57,10 @@ describe("match detail registration design", () => {
 
   test("uses activity registration deadline for the countdown and holding date for match clock", async () => {
     const pageLogic = await sourceFile(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/useMatchDetailPage.ts",
+      "pages/matches/useMatchDetailPage.ts",
     ).text();
     const datetime = await sourceFile(
-      "/Users/carlwang/registration_system/registration_system_mini/src/utils/datetime.ts",
+      "utils/datetime.ts",
     ).text();
 
     expect(pageLogic.includes("const registrationDeadlineTimestamp = computed")).toEqual(true);
@@ -74,16 +73,16 @@ describe("match detail registration design", () => {
 
   test("renders the team registration view with versus header, registration form, and a team submit bar", async () => {
     const source = await sourceFile(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/detail.vue",
+      "pages/matches/detail.vue",
     ).text();
     const team = await sourceFile(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/components/MatchTeamRegistration.vue",
+      "pages/matches/components/MatchTeamRegistration.vue",
     ).text();
     const teamHero = await sourceFile(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/components/TeamRegistrationHero.vue",
+      "pages/matches/components/TeamRegistrationHero.vue",
     ).text();
     const teamForm = await sourceFile(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/components/TeamRegistrationFormCard.vue",
+      "pages/matches/components/TeamRegistrationFormCard.vue",
     ).text();
 
     expect(source.includes("MatchTeamRegistration")).toEqual(true);
@@ -97,13 +96,13 @@ describe("match detail registration design", () => {
 
   test("submits team registration and check-in through real activity api wrappers", async () => {
     const source = await sourceFile(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/detail.vue",
+      "pages/matches/detail.vue",
     ).text();
     const pageLogic = await sourceFile(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/useMatchDetailPage.ts",
+      "pages/matches/useMatchDetailPage.ts",
     ).text();
     const actions = await sourceFile(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/detailActions.ts",
+      "pages/matches/detailActions.ts",
     ).text();
 
     expect(pageLogic.includes("submitTeamRegistrationForMatch")).toEqual(true);
@@ -116,10 +115,10 @@ describe("match detail registration design", () => {
 
   test("lets team managers choose the team registration size before submitting", async () => {
     const pageLogic = await sourceFile(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/useMatchDetailPage.ts",
+      "pages/matches/useMatchDetailPage.ts",
     ).text();
     const actions = await sourceFile(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/detailActions.ts",
+      "pages/matches/detailActions.ts",
     ).text();
 
     expect(pageLogic.includes("const teamRegistrationCount = ref(5);")).toEqual(true);
@@ -131,7 +130,7 @@ describe("match detail registration design", () => {
 
   test("lets individual users cancel an existing registration from the primary CTA", async () => {
     const pageLogic = await sourceFile(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/useMatchDetailPage.ts",
+      "pages/matches/useMatchDetailPage.ts",
     ).text();
 
     expect(pageLogic.includes('currentStatus.value === "参加" ? "取消报名" : "立即报名"')).toEqual(true);
@@ -143,7 +142,7 @@ describe("match detail registration design", () => {
 
   test("confirms individual signup and cancellation before submitting", async () => {
     const pageLogic = await sourceFile(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/useMatchDetailPage.ts",
+      "pages/matches/useMatchDetailPage.ts",
     ).text();
 
     expect(pageLogic.includes("function confirmRegistrationAction")).toEqual(true);
@@ -155,7 +154,7 @@ describe("match detail registration design", () => {
 
   test("updates individual registration locally instead of reloading the whole page", async () => {
     const pageLogic = await sourceFile(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/useMatchDetailPage.ts",
+      "pages/matches/useMatchDetailPage.ts",
     ).text();
 
     expect(pageLogic.includes("function applyIndividualRegistrationState")).toEqual(true);
@@ -166,13 +165,13 @@ describe("match detail registration design", () => {
 
   test("uses a custom confirm dialog for team member registration choices", async () => {
     const detail = await sourceFile(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/detail.vue",
+      "pages/matches/detail.vue",
     ).text();
     const individual = await sourceFile(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/components/MatchIndividualRegistration.vue",
+      "pages/matches/components/MatchIndividualRegistration.vue",
     ).text();
     const board = await sourceFile(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/components/TeamMemberRegistrationBoard.vue",
+      "pages/matches/components/TeamMemberRegistrationBoard.vue",
     ).text();
 
     expect(detail.includes("<page-meta")).toEqual(true);
@@ -202,7 +201,7 @@ describe("match detail registration design", () => {
 
   test("turns the lower team member area into a switchable status operation panel", async () => {
     const board = await sourceFile(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/components/TeamMemberRegistrationBoard.vue",
+      "pages/matches/components/TeamMemberRegistrationBoard.vue",
     ).text();
 
     expect(board.includes('const selectedGroup = ref<MemberGroupKey>("joined");')).toEqual(true);
@@ -226,10 +225,10 @@ describe("match detail registration design", () => {
 
   test("shows required players as the minimum threshold without capping signups", async () => {
     const pageLogic = await sourceFile(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/useMatchDetailPage.ts",
+      "pages/matches/useMatchDetailPage.ts",
     ).text();
     const statusCard = await sourceFile(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/components/MatchRegistrationStatusCard.vue",
+      "pages/matches/components/MatchRegistrationStatusCard.vue",
     ).text();
 
     expect(pageLogic.includes("requiredPlayers.value + 2")).toEqual(false);
@@ -246,7 +245,7 @@ describe("match detail registration design", () => {
     expect(statusCard.includes("NeoProgress")).toEqual(true);
     expect(statusCard.includes("NeoAvatarStack")).toEqual(true);
     const state = await sourceFile(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/detailState.ts",
+      "pages/matches/detailState.ts",
     ).text();
     expect(state.includes('"已达成行人数"')).toEqual(true);
     expect(state.includes("maxPlayers?: number")).toEqual(true);
@@ -257,10 +256,10 @@ describe("match detail registration design", () => {
 
   test("orders match registration avatars by registration time consistently", async () => {
     const pageLogic = await sourceFile(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/useMatchDetailPage.ts",
+      "pages/matches/useMatchDetailPage.ts",
     ).text();
     const state = await sourceFile(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/detailState.ts",
+      "pages/matches/detailState.ts",
     ).text();
 
     expect(state.includes("export function byRegistrationTimeAsc")).toEqual(true);
@@ -273,7 +272,7 @@ describe("match detail registration design", () => {
 
   test("renders team member status avatars without selection borders", async () => {
     const board = await sourceFile(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/components/TeamMemberRegistrationBoard.vue",
+      "pages/matches/components/TeamMemberRegistrationBoard.vue",
     ).text();
 
     expect(board.includes("NeoAvatarStack")).toEqual(true);
@@ -284,10 +283,10 @@ describe("match detail registration design", () => {
 
   test("keeps match information visible after manual logout and gates only signup", async () => {
     const pageLogic = await sourceFile(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/useMatchDetailPage.ts",
+      "pages/matches/useMatchDetailPage.ts",
     ).text();
     const statusCard = await sourceFile(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/components/MatchRegistrationStatusCard.vue",
+      "pages/matches/components/MatchRegistrationStatusCard.vue",
     ).text();
 
     expect(pageLogic.includes('import { hasManualLogout } from "@/utils/authStorage";')).toEqual(true);
@@ -306,16 +305,16 @@ describe("match detail registration design", () => {
 
   test("enables WeChat sharing for match and challenge registration detail pages", async () => {
     const matchDetail = await sourceFile(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/detail.vue",
+      "pages/matches/detail.vue",
     ).text();
     const matchPageLogic = await sourceFile(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/useMatchDetailPage.ts",
+      "pages/matches/useMatchDetailPage.ts",
     ).text();
     const challengeDetail = await sourceFile(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/challenges/detail.vue",
+      "pages/challenges/detail.vue",
     ).text();
     const shareUtils = await sourceFile(
-      "/Users/carlwang/registration_system/registration_system_mini/src/utils/share.ts",
+      "utils/share.ts",
     ).text();
 
     expect(matchDetail.includes("onShareAppMessage")).toEqual(true);
@@ -334,7 +333,7 @@ describe("match detail registration design", () => {
 
   test("labels individual challenge countdown by match start because challenge has no registration deadline field", async () => {
     const individualRegistration = await sourceFile(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/challenges/components/ChallengeIndividualRegistration.vue",
+      "pages/challenges/components/ChallengeIndividualRegistration.vue",
     ).text();
 
     expect(individualRegistration.includes("开场倒计时")).toEqual(true);
@@ -343,13 +342,13 @@ describe("match detail registration design", () => {
 
   test("blocks new individual signup when the activity team capacity limit is full", async () => {
     const pageLogic = await sourceFile(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/useMatchDetailPage.ts",
+      "pages/matches/useMatchDetailPage.ts",
     ).text();
     const state = await sourceFile(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/detailState.ts",
+      "pages/matches/detailState.ts",
     ).text();
     const statusCard = await sourceFile(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/matches/components/MatchRegistrationStatusCard.vue",
+      "pages/matches/components/MatchRegistrationStatusCard.vue",
     ).text();
 
     expect(state.includes("resolveRegistrationCapacityState")).toEqual(true);

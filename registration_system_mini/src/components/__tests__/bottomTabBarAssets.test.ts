@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { sourcePath } from "@/test/sourcePaths";
 
 declare const Bun: {
   file(path: string): {
@@ -8,9 +9,7 @@ declare const Bun: {
 
 describe("bottom tab bar assets", () => {
   test("uses imported local icon assets so component image paths do not resolve under /components", async () => {
-    const tabBarSource = await Bun.file(
-      "/Users/carlwang/registration_system/registration_system_mini/src/components/BottomTabBar.vue",
-    ).text();
+    const tabBarSource = await Bun.file(sourcePath("components/BottomTabBar.vue")).text();
 
     expect(tabBarSource.includes('import homeIconUrl from "@/static/tab-png/home.png";')).toEqual(true);
     expect(tabBarSource.includes("icon: homeIconUrl")).toEqual(true);
@@ -18,9 +17,7 @@ describe("bottom tab bar assets", () => {
   });
 
   test("keeps the tab bar component under a single root wrapper for mp-weixin renderer stability", async () => {
-    const tabBarSource = await Bun.file(
-      "/Users/carlwang/registration_system/registration_system_mini/src/components/BottomTabBar.vue",
-    ).text();
+    const tabBarSource = await Bun.file(sourcePath("components/BottomTabBar.vue")).text();
 
     expect(tabBarSource.includes('<view class="custom-tabbar-shell">')).toEqual(true);
     expect(tabBarSource.includes(":class=\"['custom-tabbar', shouldShowCreateEntry ? '' : 'custom-tabbar-no-create']\"")).toEqual(true);
@@ -28,9 +25,7 @@ describe("bottom tab bar assets", () => {
   });
 
   test("opens a radial create menu from the center tab button", async () => {
-    const tabBarSource = await Bun.file(
-      "/Users/carlwang/registration_system/registration_system_mini/src/components/BottomTabBar.vue",
-    ).text();
+    const tabBarSource = await Bun.file(sourcePath("components/BottomTabBar.vue")).text();
 
     expect(tabBarSource.includes("custom-tab-plus-open")).toEqual(true);
     expect(tabBarSource.includes('{{ isOpen ? "×" : "+" }}')).toEqual(true);
@@ -62,9 +57,7 @@ describe("bottom tab bar assets", () => {
   });
 
   test("keeps bottom tab icons large enough to balance the center create button", async () => {
-    const globalStyles = await Bun.file(
-      "/Users/carlwang/registration_system/registration_system_mini/src/uni.css",
-    ).text();
+    const globalStyles = await Bun.file(sourcePath("uni.css")).text();
 
     expect(globalStyles.includes("width: 58rpx;")).toEqual(true);
     expect(globalStyles.includes("height: 52rpx;")).toEqual(true);
@@ -75,18 +68,14 @@ describe("bottom tab bar assets", () => {
   });
 
   test("uses an opaque bottom tab bar background", async () => {
-    const globalStyles = await Bun.file(
-      "/Users/carlwang/registration_system/registration_system_mini/src/uni.css",
-    ).text();
+    const globalStyles = await Bun.file(sourcePath("uni.css")).text();
 
     expect(globalStyles.includes("background: #ffffff;")).toEqual(true);
     expect(globalStyles.includes("background: rgba(255, 255, 255, 0.96);")).toEqual(false);
   });
 
   test("keeps icon labels visually close to their tab icons", async () => {
-    const globalStyles = await Bun.file(
-      "/Users/carlwang/registration_system/registration_system_mini/src/uni.css",
-    ).text();
+    const globalStyles = await Bun.file(sourcePath("uni.css")).text();
     const customTabItemBlock = globalStyles.slice(
       globalStyles.indexOf(".custom-tab-item {"),
       globalStyles.indexOf(".custom-tab-icon-shell {"),
@@ -98,9 +87,7 @@ describe("bottom tab bar assets", () => {
   });
 
   test("does not add an oversized center cutout behind the create button", async () => {
-    const globalStyles = await Bun.file(
-      "/Users/carlwang/registration_system/registration_system_mini/src/uni.css",
-    ).text();
+    const globalStyles = await Bun.file(sourcePath("uni.css")).text();
 
     expect(globalStyles.includes(".custom-tabbar::before")).toEqual(false);
     expect(globalStyles.includes("top: -58rpx;")).toEqual(false);

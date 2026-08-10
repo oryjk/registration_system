@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { sourcePath } from "@/test/sourcePaths";
 
 declare const Bun: {
   file(path: string): {
@@ -70,9 +71,7 @@ describe("system info helpers", () => {
   });
 
   test("app tab header should rely on platform helpers instead of component-level onShow", async () => {
-    const headerSource = await Bun.file(
-      "/Users/carlwang/registration_system/registration_system_mini/src/components/AppTabHeader.vue",
-    ).text();
+    const headerSource = await Bun.file(sourcePath("components/AppTabHeader.vue")).text();
 
     expect(headerSource.includes('import { getAppPlatform } from "@/utils/systemInfo";')).toEqual(true);
     expect(headerSource.includes("isOpenLocationSupported(getAppPlatform())")).toEqual(true);

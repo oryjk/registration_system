@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { sourcePath } from "@/test/sourcePaths";
 
 declare const Bun: {
   file(path: string): {
@@ -6,36 +7,29 @@ declare const Bun: {
   };
 };
 
-describe("mine page background rendering", () => {
-  test("renders the local background through an image layer instead of wxss url()", async () => {
-    const userPageSource = await Bun.file(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/user/index.vue",
-    ).text();
+describe("mine page visual composition", () => {
+  test("uses the shared semantic page background instead of a page-specific image layer", async () => {
+    const userPageSource = await Bun.file(sourcePath("pages/user/index.vue")).text();
 
-    expect(userPageSource.includes('class="mine-page-bg"')).toEqual(true);
-    expect(userPageSource.includes('import minePageBackgroundUrl from "@/static/backgrounds/mine-page-bg.jpg";')).toEqual(true);
-    expect(userPageSource.includes(':src="minePageBackgroundUrl"')).toEqual(true);
+    expect(userPageSource.includes('class="mine-page"')).toEqual(true);
+    expect(userPageSource.includes("background: var(--neo-color-page);")).toEqual(true);
+    expect(userPageSource.includes("minePageBackgroundUrl")).toEqual(false);
     expect(userPageSource.includes('url("@/static/backgrounds/mine-page-bg.jpg")')).toEqual(false);
   });
 
-  test("uses a hero layout with the profile stats embedded in the main card", async () => {
-    const userPageSource = await Bun.file(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/user/index.vue",
-    ).text();
-    const heroProfileSource = await Bun.file(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/user/components/MineHeroProfile.vue",
-    ).text();
+  test("keeps the profile hero and statistics in focused reusable components", async () => {
+    const userPageSource = await Bun.file(sourcePath("pages/user/index.vue")).text();
+    const heroProfileSource = await Bun.file(sourcePath("pages/user/components/MineProfileHero.vue")).text();
 
-    expect(userPageSource.includes('class="mine-hero"')).toEqual(true);
-    expect(userPageSource.includes("<MineHeroProfile")).toEqual(true);
-    expect(heroProfileSource.includes('class="profile-stats-row"')).toEqual(true);
+    expect(userPageSource.includes("<MineProfileHero")).toEqual(true);
+    expect(userPageSource.includes("<MineStatsGrid")).toEqual(true);
+    expect(heroProfileSource.includes('custom-class="mine-profile-hero"')).toEqual(true);
+    expect(heroProfileSource.includes("profile-stats-row")).toEqual(false);
     expect(userPageSource.includes('class="overview-card"')).toEqual(false);
   });
 
   test("uses the shared fixed header while the content starts below it", async () => {
-    const userPageSource = await Bun.file(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/user/index.vue",
-    ).text();
+    const userPageSource = await Bun.file(sourcePath("pages/user/index.vue")).text();
 
     expect(userPageSource.includes('<AppTabHeader title="我的" />')).toEqual(true);
     expect(userPageSource.includes('class="mine-page-content" :style="contentStyle"')).toEqual(true);
@@ -44,34 +38,26 @@ describe("mine page background rendering", () => {
   });
 
   test("uses a skeleton on first load instead of inserting a temporary loading card", async () => {
-    const userPageSource = await Bun.file(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/user/index.vue",
-    ).text();
-    const skeletonSource = await Bun.file(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/user/components/MineSkeleton.vue",
-    ).text();
+    const userPageSource = await Bun.file(sourcePath("pages/user/index.vue")).text();
+    const skeletonSource = await Bun.file(sourcePath("pages/user/components/MineSkeleton.vue")).text();
 
     expect(userPageSource.includes('<MineSkeleton v-if="showInitialLoadingState"')).toEqual(true);
     expect(skeletonSource.includes('class="mine-skeleton-stack"')).toEqual(true);
-    expect(skeletonSource.includes('class="mine-skeleton-profile"')).toEqual(true);
+    expect(skeletonSource.includes('class="mine-skeleton-hero"')).toEqual(true);
     expect(userPageSource.includes("正在加载个人中心")).toEqual(false);
     expect(userPageSource.includes('v-else-if="isLoading" class="mine-empty"')).toEqual(false);
     expect(userPageSource.includes('class="team-switch-status"')).toEqual(false);
   });
 
   test("does not render a standalone error banner above the profile card", async () => {
-    const userPageSource = await Bun.file(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/user/index.vue",
-    ).text();
+    const userPageSource = await Bun.file(sourcePath("pages/user/index.vue")).text();
 
     expect(userPageSource.includes('v-if="errorMessage" class="mine-empty"')).toEqual(false);
     expect(userPageSource.includes("{{ errorMessage }}")).toEqual(false);
   });
 
   test('routes "all matches" from mine page to the dedicated match list without navigator', async () => {
-    const userPageSource = await Bun.file(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/user/index.vue",
-    ).text();
+    const userPageSource = await Bun.file(sourcePath("pages/user/index.vue")).text();
 
     expect(userPageSource.includes('function openUserMatches()')).toEqual(true);
     expect(userPageSource.includes('url: "/pages/user/matches/index"')).toEqual(true);
@@ -79,9 +65,7 @@ describe("mine page background rendering", () => {
   });
 
   test("wires membership renewal to the real payment flow", async () => {
-    const userPageSource = await Bun.file(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/user/index.vue",
-    ).text();
+    const userPageSource = await Bun.file(sourcePath("pages/user/index.vue")).text();
 
     expect(userPageSource.includes("createTeamMembershipOrder")).toEqual(true);
     expect(userPageSource.includes("requestWxPayment")).toEqual(true);
@@ -90,15 +74,9 @@ describe("mine page background rendering", () => {
   });
 
   test("keeps slow billing flow out of the mine page wallet card", async () => {
-    const userPageSource = await Bun.file(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/user/index.vue",
-    ).text();
-    const walletSource = await Bun.file(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/user/components/MineWalletSection.vue",
-    ).text();
-    const billingPageSource = await Bun.file(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/billing/index.vue",
-    ).text();
+    const userPageSource = await Bun.file(sourcePath("pages/user/index.vue")).text();
+    const walletSource = await Bun.file(sourcePath("pages/user/components/MineWalletSection.vue")).text();
+    const billingPageSource = await Bun.file(sourcePath("pages/billing/index.vue")).text();
 
     expect(userPageSource.includes("getMyBillingFlow")).toEqual(false);
     expect(userPageSource.includes("getMyBalance")).toEqual(true);
@@ -110,9 +88,7 @@ describe("mine page background rendering", () => {
   });
 
   test("hides the wallet card on mine page during mini review mode", async () => {
-    const userPageSource = await Bun.file(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/user/index.vue",
-    ).text();
+    const userPageSource = await Bun.file(sourcePath("pages/user/index.vue")).text();
 
     expect(userPageSource.includes('import { useMiniReviewStatus } from "@/stores/miniReview";')).toEqual(true);
     expect(userPageSource.includes("const { shouldHideCreationEntrances } = useMiniReviewStatus();")).toEqual(true);
@@ -121,9 +97,7 @@ describe("mine page background rendering", () => {
   });
 
   test("reloads mine page data after the floating login prompt finishes login", async () => {
-    const userPageSource = await Bun.file(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/user/index.vue",
-    ).text();
+    const userPageSource = await Bun.file(sourcePath("pages/user/index.vue")).text();
 
     expect(userPageSource.includes('uni.$on("session:login-completed", handleSessionLoginCompleted);')).toEqual(true);
     expect(userPageSource.includes('uni.$off("session:login-completed", handleSessionLoginCompleted);')).toEqual(true);
@@ -132,21 +106,15 @@ describe("mine page background rendering", () => {
   });
 
   test("does not label a logged-in user without a team as unauthenticated", async () => {
-    const userPageSource = await Bun.file(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/user/index.vue",
-    ).text();
+    const userPageSource = await Bun.file(sourcePath("pages/user/index.vue")).text();
 
-    expect(userPageSource.includes('if (!currentUser.value) return "未登录";')).toEqual(true);
-    expect(userPageSource.includes('return currentTeam.value?.myRoleLabel || "未加入球队";')).toEqual(true);
+    expect(userPageSource.includes("const displayName = computed(() => resolveUserDisplayName(currentUser.value));")).toEqual(true);
+    expect(userPageSource.includes("resolveUserDisplayName(currentTeam.value)")).toEqual(false);
   });
 
   test("keeps mine page in guest mode when local token is missing", async () => {
-    const userPageSource = await Bun.file(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/user/index.vue",
-    ).text();
-    const heroProfileSource = await Bun.file(
-      "/Users/carlwang/registration_system/registration_system_mini/src/pages/user/components/MineHeroProfile.vue",
-    ).text();
+    const userPageSource = await Bun.file(sourcePath("pages/user/index.vue")).text();
+    const heroProfileSource = await Bun.file(sourcePath("pages/user/components/MineProfileHero.vue")).text();
 
     expect(userPageSource.includes('import { getAccessToken } from "@/utils/authStorage";')).toEqual(true);
     expect(userPageSource.includes("if (!getAccessToken())")).toEqual(true);
@@ -155,10 +123,10 @@ describe("mine page background rendering", () => {
     expect(userPageSource.includes("async function handleLogin()")).toEqual(true);
     expect(userPageSource.includes("await refreshSessionContext();")).toEqual(true);
     expect(userPageSource.includes('@login="handleLogin"')).toEqual(true);
-    expect(heroProfileSource.includes('v-if="!currentUser" class="guest-hero"')).toEqual(true);
-    expect(heroProfileSource.includes("立即登录，开始你的比赛旅程")).toEqual(true);
-    expect(heroProfileSource.includes("微信一键登录")).toEqual(true);
-    expect(heroProfileSource.includes('currentUser ? "编辑资料" : "微信一键登录"')).toEqual(true);
-    expect(heroProfileSource.includes('v-if="currentUser" class="profile-edit-chip profile-logout-chip"')).toEqual(true);
+    expect(heroProfileSource.includes('v-else class="mine-profile-hero__content mine-profile-hero__content--guest"')).toEqual(true);
+    expect(heroProfileSource.includes("登录后开启你的比赛旅程")).toEqual(true);
+    expect(heroProfileSource.includes("立即登录")).toEqual(true);
+    expect(heroProfileSource.includes("编辑资料")).toEqual(true);
+    expect(heroProfileSource.includes("退出登录")).toEqual(true);
   });
 });

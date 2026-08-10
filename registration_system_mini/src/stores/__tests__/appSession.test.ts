@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { sourcePath } from "@/test/sourcePaths";
 import { resolveBootstrapStrategy, resolveSessionBootstrapMode, resolveStoredSessionStrategy } from "../bootstrapStrategy";
 
 declare const Bun: {
@@ -54,9 +55,7 @@ describe("resolveSessionBootstrapMode", () => {
 
 describe("app session bootstrap request coalescing", () => {
   test("shares the bootstrap promise between app launch restore and page session readiness", async () => {
-    const source = await Bun.file(
-      "/Users/carlwang/registration_system/registration_system_mini/src/stores/appSession.ts",
-    ).text();
+    const source = await Bun.file(sourcePath("stores/appSession.ts")).text();
     const restoreStart = source.indexOf("export async function restoreSessionFromStorage()");
     const clearSessionStart = source.indexOf("export function clearSession()");
     const restoreSource = source.slice(restoreStart, clearSessionStart);
@@ -67,9 +66,7 @@ describe("app session bootstrap request coalescing", () => {
   });
 
   test("does not load full team details during session bootstrap", async () => {
-    const source = await Bun.file(
-      "/Users/carlwang/registration_system/registration_system_mini/src/stores/appSession.ts",
-    ).text();
+    const source = await Bun.file(sourcePath("stores/appSession.ts")).text();
     const loadTeamContextStart = source.indexOf("async function loadTeamContext()");
     const ensureTeamDetailLoadedStart = source.indexOf("async function ensureTeamDetailLoaded");
     const loadTeamContextSource = source.slice(loadTeamContextStart, ensureTeamDetailLoadedStart);

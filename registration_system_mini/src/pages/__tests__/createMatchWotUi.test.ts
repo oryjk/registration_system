@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { miniPath } from "@/test/sourcePaths";
 
 declare const Bun: {
   file(path: string): {
@@ -6,10 +7,8 @@ declare const Bun: {
   };
 };
 
-const miniRoot = "/Users/carlwang/registration_system/registration_system_mini";
-
 async function read(path: string) {
-  return Bun.file(`${miniRoot}/${path}`).text();
+  return Bun.file(miniPath(path)).text();
 }
 
 describe("create match Wot UI integration", () => {

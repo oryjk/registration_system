@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { sourcePath } from "@/test/sourcePaths";
 
 declare const Bun: {
   file(path: string): {
@@ -6,7 +7,7 @@ declare const Bun: {
   };
 };
 
-const apiPath = "/Users/carlwang/registration_system/registration_system_mini/src/api/challenge.ts";
+const apiPath = sourcePath("api/challenge.ts");
 
 describe("challenge api", () => {
   test("allows public challenge list reads while keeping team-scoped reads authenticated", async () => {

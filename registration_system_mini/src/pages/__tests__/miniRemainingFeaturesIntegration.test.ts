@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { miniPath, workspacePath } from "@/test/sourcePaths";
 
 declare const Bun: {
   file(path: string): {
@@ -6,8 +7,8 @@ declare const Bun: {
   };
 };
 
-const miniRoot = "/Users/carlwang/registration_system/registration_system_mini";
-const backendRoot = "/Users/carlwang/registration_system/registration_system_rs";
+const miniRoot = miniPath("").replace(/\/$/, "");
+const backendRoot = workspacePath("registration_system_rs").replace(/\/$/, "");
 
 async function read(path: string) {
   return Bun.file(path).text();
@@ -15,7 +16,7 @@ async function read(path: string) {
 
 describe("remaining mini real backend integrations", () => {
   test("documents the remaining mini feature plan in the root task plan", async () => {
-    const source = await read("/Users/carlwang/registration_system/task_plan.md");
+    const source = await read(workspacePath("task_plan.md"));
 
     expect(source.includes("手机号绑定")).toEqual(true);
     expect(source.includes("球队成员管理")).toEqual(true);
@@ -29,9 +30,11 @@ describe("remaining mini real backend integrations", () => {
     const wxApi = await read(`${miniRoot}/src/api/wx.ts`);
     const userApi = await read(`${miniRoot}/src/api/user.ts`);
     const runtimeConfig = await read(`${miniRoot}/src/config/runtimeConfig.ts`);
+    const runtimeConfigDefaults = await read(`${miniRoot}/src/config/runtimeConfigDefaults.ts`);
     const page = await read(`${miniRoot}/src/pages/profile/setup/index.vue`);
 
-    expect(runtimeConfig.includes("require_phone_binding: false")).toEqual(true);
+    expect(runtimeConfigDefaults.includes("require_phone_binding: false")).toEqual(true);
+    expect(runtimeConfig.includes("defaults.profile.require_phone_binding")).toEqual(true);
     expect(wxApi.includes("export function getPhoneNumber")).toEqual(true);
     expect(wxApi.includes('url: "/wx/getPhoneNumber"')).toEqual(true);
     expect(userApi.includes("export function bindMyPhoneNumber")).toEqual(true);
@@ -59,7 +62,7 @@ describe("remaining mini real backend integrations", () => {
     expect(teamApi.includes("export function batchUpdateTeamMemberStatus")).toEqual(true);
     expect(teamApi.includes('url: `/teams/${teamId}/members/batch`')).toEqual(true);
 
-    expect(state.includes('export type TeamManageMode = "profile" | "create" | "join" | "members";')).toEqual(true);
+    expect(state.includes('export type TeamManageMode = "profile" | "create" | "join" | "members" | "attendance";')).toEqual(true);
     expect(page.includes("activeMode = ref<TeamManageMode>")).toEqual(true);
     expect(page.includes("activeMode === 'members'")).toEqual(true);
     expect(page.includes("handleAddMember")).toEqual(true);
