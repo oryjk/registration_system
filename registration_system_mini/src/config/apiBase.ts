@@ -2,7 +2,7 @@ export const FALLBACK_APP_API_BASE = "http://127.0.0.1:18080/api/v1/app";
 
 export function normalizeAppApiBase(value: string): string {
   const normalized = value.trim().replace(/\/+$/, "");
-  if (!/^https?:\/\/[^/]+\/api\/v1\/app$/i.test(normalized)) {
+  if (!/^https?:\/\/[^/?#]+(?:\/[^/?#]+)*\/api\/v1\/app$/i.test(normalized)) {
     throw new Error("VITE_API_BASE_URL 必须指向 Go App API 根路径 /api/v1/app");
   }
   return normalized;

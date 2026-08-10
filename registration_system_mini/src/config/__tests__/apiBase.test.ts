@@ -6,6 +6,12 @@ describe("app API base URL", () => {
     expect(normalizeAppApiBase("http://127.0.0.1:18080/api/v1/app/")).toEqual("http://127.0.0.1:18080/api/v1/app");
   });
 
+  test("accepts a reverse-proxy prefix before the Go app API root", () => {
+    expect(normalizeAppApiBase("https://oryjk.cn:82/regist-v3/api/v1/app/")).toEqual(
+      "https://oryjk.cn:82/regist-v3/api/v1/app",
+    );
+  });
+
   test("rejects a base URL without the app API root", () => {
     let didThrow = false;
     try {
