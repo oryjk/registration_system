@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { miniPath } from "@/test/sourcePaths";
 
 declare const Bun: {
   file(path: string): {
@@ -9,6 +10,14 @@ declare const Bun: {
 const root = "/Users/carlwang/projects/registration_system/registration_system_mini/src";
 
 describe("Go app session foundation", () => {
+  test("provides an explicit acceptance H5 build command", async () => {
+    const packageJson = JSON.parse(await Bun.file(miniPath("package.json")).text()) as {
+      scripts: Record<string, string>;
+    };
+
+    expect(packageJson.scripts["build:h5:acceptance"]).toBe("uni build --mode test");
+  });
+
   test("uses the single Go WeChat login endpoint", async () => {
     const authSource = await Bun.file(`${root}/api/auth.ts`).text();
     const sessionSource = await Bun.file(`${root}/stores/appSession.ts`).text();
