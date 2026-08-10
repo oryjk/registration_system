@@ -133,4 +133,26 @@ describe("buildMineOverviewState", () => {
       },
     ]);
   });
+
+  test("falls back to two hours when migrated match duration is implausibly long", () => {
+    const state = buildOverview(
+      [
+        {
+          ...baseMatch,
+          id: "normal-match",
+          start_time: "2026-08-10T10:00:00Z",
+          end_time: "2026-08-10T13:30:00Z",
+        },
+        {
+          ...baseMatch,
+          id: "migrated-long-match",
+          start_time: "2026-08-09T10:00:00Z",
+          end_time: "2026-08-15T10:00:00Z",
+        },
+      ],
+      new Date("2026-08-10T12:00:00Z"),
+    );
+
+    expect(state.totalHoursLabel).toEqual("5.5 h");
+  });
 });

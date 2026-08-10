@@ -4,6 +4,9 @@ import { formatDateLabel, parseDateValue } from "@/utils/datetime";
 import { resolveMatchPhase } from "@/pages/home/homeMatchState";
 import type { MineMatchSummary } from "./mineTypes";
 
+const DEFAULT_MATCH_DURATION_HOURS = 2;
+const MAX_REASONABLE_MATCH_DURATION_HOURS = 6;
+
 export interface MineOverviewState {
   activityCount: number;
   totalHoursLabel: string;
@@ -21,8 +24,13 @@ function formatCents(value: number): string {
 
 function formatHours(matches: AppMatchSummary[]): string {
   const totalHours = matches.reduce((sum, match) => {
-    const duration = parseDateValue(match.end_time).getTime() - parseDateValue(match.start_time).getTime();
-    return duration > 0 && Number.isFinite(duration) ? sum + duration / 3_600_000 : sum;
+    const durationHours =
+      (parseDateValue(match.end_time).getTime() - parseDateValue(match.start_time).getTime()) / 3_600_000;
+    const matchHours =
+      durationHours > 0 && durationHours <= MAX_REASONABLE_MATCH_DURATION_HOURS
+        ? durationHours
+        : DEFAULT_MATCH_DURATION_HOURS;
+    return sum + matchHours;
   }, 0);
   const roundedHours = Math.round(totalHours * 10) / 10;
   return `${roundedHours} h`;
