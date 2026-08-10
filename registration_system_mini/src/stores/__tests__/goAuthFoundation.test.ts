@@ -31,9 +31,14 @@ describe("Go app session foundation", () => {
   test("exposes an explicit H5 test-user login entry point", async () => {
     const authSource = await Bun.file(`${root}/api/auth.ts`).text();
     const sessionSource = await Bun.file(`${root}/stores/appSession.ts`).text();
+    const panelSource = await Bun.file(miniPath("src/components/H5TestLoginPanel.vue")).text();
 
     expect(authSource.includes('url: "/test-auth/users"')).toEqual(true);
     expect(authSource.includes('url: "/test-auth/login"')).toEqual(true);
+    expect(sessionSource.includes('import.meta.env.MODE !== "production"')).toEqual(true);
+    expect(sessionSource.includes('import.meta.env.VITE_ENABLE_H5_TEST_LOGIN === "true"')).toEqual(true);
+    expect(panelSource.includes('import.meta.env.MODE !== "production"')).toEqual(true);
+    expect(panelSource.includes('import.meta.env.VITE_ENABLE_H5_TEST_LOGIN === "true"')).toEqual(true);
     expect(sessionSource.includes("export async function loginWithTestUser")).toEqual(true);
     expect(sessionSource.includes("testLogin(userId)")).toEqual(true);
   });
