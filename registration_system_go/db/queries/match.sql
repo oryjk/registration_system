@@ -89,21 +89,48 @@ WHERE (sqlc.narg('status')::text IS NULL OR m.status = sqlc.narg('status'))
   )
   AND (
       sqlc.arg('scope')::text = 'all'
-      OR EXISTS (
-          SELECT 1
-          FROM match_registration_groups registration_group
-          JOIN match_registrations registration ON registration.group_id = registration_group.id
-          WHERE registration_group.match_id = m.id
-            AND registration.user_id = sqlc.arg('user_id')
-            AND registration.status <> 'cancelled'
+      OR (
+          sqlc.arg('scope')::text = 'mine'
+          AND (
+              EXISTS (
+                  SELECT 1
+                  FROM match_registration_groups registration_group
+                  JOIN match_registrations registration ON registration.group_id = registration_group.id
+                  WHERE registration_group.match_id = m.id
+                    AND registration.user_id = sqlc.arg('user_id')
+                    AND registration.status <> 'cancelled'
+              )
+              OR EXISTS (
+                  SELECT 1
+                  FROM team_members membership
+                  WHERE membership.user_id = sqlc.arg('user_id')
+                    AND membership.status = 'active'
+                    AND (membership.team_id = m.host_team_id OR membership.team_id = m.away_team_id)
+              )
+          )
       )
-      OR EXISTS (
-          SELECT 1
-          FROM team_members membership
-          WHERE membership.user_id = sqlc.arg('user_id')
-            AND membership.status = 'active'
-            AND (membership.team_id = m.host_team_id OR membership.team_id = m.away_team_id)
+      OR (
+          sqlc.arg('scope')::text = 'others'
+          AND NOT EXISTS (
+              SELECT 1
+              FROM match_registration_groups registration_group
+              JOIN match_registrations registration ON registration.group_id = registration_group.id
+              WHERE registration_group.match_id = m.id
+                AND registration.user_id = sqlc.arg('user_id')
+                AND registration.status <> 'cancelled'
+          )
+          AND NOT EXISTS (
+              SELECT 1
+              FROM team_members membership
+              WHERE membership.user_id = sqlc.arg('user_id')
+                AND membership.status = 'active'
+                AND (membership.team_id = m.host_team_id OR membership.team_id = m.away_team_id)
+          )
       )
+  )
+  AND (
+      sqlc.narg('starts_after')::timestamp IS NULL
+      OR m.start_time > sqlc.narg('starts_after')::timestamp
   )
 ORDER BY m.start_time DESC, m.id
 LIMIT sqlc.arg('limit_count') OFFSET sqlc.arg('offset_count');
@@ -121,21 +148,48 @@ WHERE (sqlc.narg('status')::text IS NULL OR m.status = sqlc.narg('status'))
   )
   AND (
       sqlc.arg('scope')::text = 'all'
-      OR EXISTS (
-          SELECT 1
-          FROM match_registration_groups registration_group
-          JOIN match_registrations registration ON registration.group_id = registration_group.id
-          WHERE registration_group.match_id = m.id
-            AND registration.user_id = sqlc.arg('user_id')
-            AND registration.status <> 'cancelled'
+      OR (
+          sqlc.arg('scope')::text = 'mine'
+          AND (
+              EXISTS (
+                  SELECT 1
+                  FROM match_registration_groups registration_group
+                  JOIN match_registrations registration ON registration.group_id = registration_group.id
+                  WHERE registration_group.match_id = m.id
+                    AND registration.user_id = sqlc.arg('user_id')
+                    AND registration.status <> 'cancelled'
+              )
+              OR EXISTS (
+                  SELECT 1
+                  FROM team_members membership
+                  WHERE membership.user_id = sqlc.arg('user_id')
+                    AND membership.status = 'active'
+                    AND (membership.team_id = m.host_team_id OR membership.team_id = m.away_team_id)
+              )
+          )
       )
-      OR EXISTS (
-          SELECT 1
-          FROM team_members membership
-          WHERE membership.user_id = sqlc.arg('user_id')
-            AND membership.status = 'active'
-            AND (membership.team_id = m.host_team_id OR membership.team_id = m.away_team_id)
+      OR (
+          sqlc.arg('scope')::text = 'others'
+          AND NOT EXISTS (
+              SELECT 1
+              FROM match_registration_groups registration_group
+              JOIN match_registrations registration ON registration.group_id = registration_group.id
+              WHERE registration_group.match_id = m.id
+                AND registration.user_id = sqlc.arg('user_id')
+                AND registration.status <> 'cancelled'
+          )
+          AND NOT EXISTS (
+              SELECT 1
+              FROM team_members membership
+              WHERE membership.user_id = sqlc.arg('user_id')
+                AND membership.status = 'active'
+                AND (membership.team_id = m.host_team_id OR membership.team_id = m.away_team_id)
+          )
       )
+  )
+  AND (
+      sqlc.narg('starts_after')::timestamp IS NULL
+      OR m.start_time > sqlc.narg('starts_after')::timestamp
   );
 
 -- name: ListHomeActionMatchesForUser :many
@@ -198,6 +252,7 @@ LEFT JOIN match_registrations mine
   ON mine.group_id = related_group.id
  AND mine.user_id = sqlc.arg('user_id')
 WHERE m.status IN ('registering', 'ongoing')
+  AND m.end_time > NOW()
 ORDER BY
     CASE m.status WHEN 'ongoing' THEN 0 ELSE 1 END,
     m.start_time,
@@ -211,7 +266,8 @@ SELECT m.*,
 FROM matches m
 JOIN teams host ON host.id = m.host_team_id
 LEFT JOIN teams away ON away.id = m.away_team_id
-WHERE m.status = 'ended'
+WHERE m.status <> 'cancelled'
+  AND (m.status = 'ended' OR m.end_time <= NOW())
   AND (
       EXISTS (
           SELECT 1
@@ -228,7 +284,7 @@ WHERE m.status = 'ended'
             AND registration.user_id = sqlc.arg('user_id')
       )
   )
-ORDER BY m.start_time DESC, m.id
+ORDER BY m.end_time DESC, m.id
 LIMIT sqlc.arg('limit_count');
 
 -- name: UpdateMatchDetails :one

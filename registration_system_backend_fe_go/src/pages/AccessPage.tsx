@@ -42,13 +42,13 @@ export default function AccessPage() {
             <Text code>GET /health</Text>
           </Descriptions.Item>
           <Descriptions.Item label="管理端前缀">
-            <Text code>/api/admin</Text>
+            <Text code>/api/v1/admin</Text>
           </Descriptions.Item>
           <Descriptions.Item label="登录接口">
-            <Text code>POST /api/admin/auth/login</Text>
+            <Text code>POST /api/v1/admin/auth/login</Text>
           </Descriptions.Item>
           <Descriptions.Item label="身份接口">
-            <Text code>GET /api/admin/auth/me</Text>
+            <Text code>GET /api/v1/admin/auth/me</Text>
           </Descriptions.Item>
           <Descriptions.Item label="响应契约">
             <Text code>code / message / data</Text>

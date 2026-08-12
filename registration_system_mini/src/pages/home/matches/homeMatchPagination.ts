@@ -35,6 +35,14 @@ function mergeLatestSourceItems(sourceItems: AppMatchSummary[], pageItems: AppMa
   return [...merged.values()];
 }
 
+export function isHomeMatchVisibleInPhase(item: AppMatchSummary, phase: VisibleHomeMatchPhase, now: Date): boolean {
+  return groupMatchesByPhase([item], now)[phase].length > 0;
+}
+
+export function filterVisiblePhaseMatches(items: AppMatchSummary[], phase: VisibleHomeMatchPhase, now: Date): AppMatchSummary[] {
+  return groupMatchesByPhase(items, now)[phase] as AppMatchSummary[];
+}
+
 function countVisibleItems(items: AppMatchSummary[], phase: VisibleHomeMatchPhase, now: Date): number {
   return groupMatchesByPhase(items, now)[phase].length;
 }

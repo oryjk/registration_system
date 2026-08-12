@@ -10,6 +10,7 @@ import TeamMemberRegistrationBoard from "./TeamMemberRegistrationBoard.vue";
 const props = defineProps<{
   match: BackendActivity;
   matchKindLabel: string;
+  publicationModeLabel: string;
   homeTeamLabel: string;
   displayOpponentLabel: string;
   homeTeamColor: string;
@@ -104,7 +105,10 @@ function handleTeamMemberDialogVisibilityChange(visible: boolean) {
       @select-stand="handleSelectTeamMemberStand"
       @dialog-visibility-change="handleTeamMemberDialogVisibilityChange"
     />
-    <IndividualInfoCard :credit-score="currentTeam?.creditScore ?? 0" />
+    <IndividualInfoCard
+      :credit-score="currentTeam?.creditScore ?? 0"
+      :publication-mode-label="publicationModeLabel"
+    />
   </view>
 </template>
 

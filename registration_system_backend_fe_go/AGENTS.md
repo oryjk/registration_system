@@ -16,7 +16,7 @@
 ## 边界
 
 - Go 统一响应为 `{ code, message, data }`，成功时 `code = 0`。
-- 管理端业务接口统一从 `/api/admin` 开始；健康检查位于 `/health`。
+- 管理端业务接口统一从 `/api/v1/admin` 开始；健康检查位于 `/health`。
 - Go 尚未实现的管理端 handler 不在前端臆造请求和 DTO；**管理员认证 HTTP 路由落地前，不创建猜测性的登录请求**。
 - 不沿用旧 Vue 管理端的 `{ success, message, data }` 假设。
 - 页面放在 `src/pages/`，请求放在 `src/api/`，布局放在 `src/components/`。

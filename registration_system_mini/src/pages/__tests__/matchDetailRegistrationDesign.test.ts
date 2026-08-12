@@ -11,14 +11,31 @@ function sourceFile(path: string) {
   return Bun.file(sourcePath(path));
 }
 
+async function matchDetailLogicSource() {
+  const paths = [
+    "pages/matches/useMatchDetailPage.ts",
+    "pages/matches/useMatchRegistration.ts",
+    "pages/matches/useMatchCheckInReview.ts",
+    "pages/matches/useMatchSettlement.ts",
+  ];
+  return (await Promise.all(paths.map((path) => sourceFile(path).text()))).join("\n");
+}
+
 describe("match detail registration design", () => {
+  test("keeps the page facade small by composing focused domain workflows", async () => {
+    const facade = await sourceFile("pages/matches/useMatchDetailPage.ts").text();
+
+    expect(facade.includes('from "./useMatchRegistration"')).toEqual(true);
+    expect(facade.includes('from "./useMatchCheckInReview"')).toEqual(true);
+    expect(facade.includes('from "./useMatchSettlement"')).toEqual(true);
+    expect(facade.split("\n").length < 650).toEqual(true);
+  });
+
   test("uses an in-page segmented layout for individual and team registration", async () => {
     const source = await sourceFile(
       "pages/matches/detail.vue",
     ).text();
-    const pageLogic = await sourceFile(
-      "pages/matches/useMatchDetailPage.ts",
-    ).text();
+    const pageLogic = await matchDetailLogicSource();
 
     expect(pageLogic.includes("const registrationMode = ref<\"individual\" | \"team\">(\"individual\");")).toEqual(true);
     expect(source.includes("个人报名")).toEqual(true);
@@ -56,9 +73,7 @@ describe("match detail registration design", () => {
   });
 
   test("uses activity registration deadline for the countdown and holding date for match clock", async () => {
-    const pageLogic = await sourceFile(
-      "pages/matches/useMatchDetailPage.ts",
-    ).text();
+    const pageLogic = await matchDetailLogicSource();
     const datetime = await sourceFile(
       "utils/datetime.ts",
     ).text();
@@ -98,9 +113,7 @@ describe("match detail registration design", () => {
     const source = await sourceFile(
       "pages/matches/detail.vue",
     ).text();
-    const pageLogic = await sourceFile(
-      "pages/matches/useMatchDetailPage.ts",
-    ).text();
+    const pageLogic = await matchDetailLogicSource();
     const actions = await sourceFile(
       "pages/matches/detailActions.ts",
     ).text();
@@ -114,9 +127,7 @@ describe("match detail registration design", () => {
   });
 
   test("lets team managers choose the team registration size before submitting", async () => {
-    const pageLogic = await sourceFile(
-      "pages/matches/useMatchDetailPage.ts",
-    ).text();
+    const pageLogic = await matchDetailLogicSource();
     const actions = await sourceFile(
       "pages/matches/detailActions.ts",
     ).text();
@@ -129,9 +140,7 @@ describe("match detail registration design", () => {
   });
 
   test("lets individual users cancel an existing registration from the primary CTA", async () => {
-    const pageLogic = await sourceFile(
-      "pages/matches/useMatchDetailPage.ts",
-    ).text();
+    const pageLogic = await matchDetailLogicSource();
 
     expect(pageLogic.includes('currentStatus.value === "参加" ? "取消报名" : "立即报名"')).toEqual(true);
     expect(pageLogic.includes("handleCancelIndividualSignup")).toEqual(true);
@@ -141,9 +150,7 @@ describe("match detail registration design", () => {
   });
 
   test("confirms individual signup and cancellation before submitting", async () => {
-    const pageLogic = await sourceFile(
-      "pages/matches/useMatchDetailPage.ts",
-    ).text();
+    const pageLogic = await matchDetailLogicSource();
 
     expect(pageLogic.includes("function confirmRegistrationAction")).toEqual(true);
     expect(pageLogic.includes('title: "确认报名"')).toEqual(true);
@@ -153,9 +160,7 @@ describe("match detail registration design", () => {
   });
 
   test("updates individual registration locally instead of reloading the whole page", async () => {
-    const pageLogic = await sourceFile(
-      "pages/matches/useMatchDetailPage.ts",
-    ).text();
+    const pageLogic = await matchDetailLogicSource();
 
     expect(pageLogic.includes("function applyIndividualRegistrationState")).toEqual(true);
     expect(pageLogic.includes("applyIndividualRegistrationState(1, 1)")).toEqual(true);
@@ -224,9 +229,7 @@ describe("match detail registration design", () => {
   });
 
   test("shows required players as the minimum threshold without capping signups", async () => {
-    const pageLogic = await sourceFile(
-      "pages/matches/useMatchDetailPage.ts",
-    ).text();
+    const pageLogic = await matchDetailLogicSource();
     const statusCard = await sourceFile(
       "pages/matches/components/MatchRegistrationStatusCard.vue",
     ).text();
@@ -255,9 +258,7 @@ describe("match detail registration design", () => {
   });
 
   test("orders match registration avatars by registration time consistently", async () => {
-    const pageLogic = await sourceFile(
-      "pages/matches/useMatchDetailPage.ts",
-    ).text();
+    const pageLogic = await matchDetailLogicSource();
     const state = await sourceFile(
       "pages/matches/detailState.ts",
     ).text();
@@ -282,9 +283,7 @@ describe("match detail registration design", () => {
   });
 
   test("keeps match information visible after manual logout and gates only signup", async () => {
-    const pageLogic = await sourceFile(
-      "pages/matches/useMatchDetailPage.ts",
-    ).text();
+    const pageLogic = await matchDetailLogicSource();
     const statusCard = await sourceFile(
       "pages/matches/components/MatchRegistrationStatusCard.vue",
     ).text();
@@ -307,9 +306,7 @@ describe("match detail registration design", () => {
     const matchDetail = await sourceFile(
       "pages/matches/detail.vue",
     ).text();
-    const matchPageLogic = await sourceFile(
-      "pages/matches/useMatchDetailPage.ts",
-    ).text();
+    const matchPageLogic = await matchDetailLogicSource();
     const challengeDetail = await sourceFile(
       "pages/challenges/detail.vue",
     ).text();
@@ -341,9 +338,7 @@ describe("match detail registration design", () => {
   });
 
   test("blocks new individual signup when the activity team capacity limit is full", async () => {
-    const pageLogic = await sourceFile(
-      "pages/matches/useMatchDetailPage.ts",
-    ).text();
+    const pageLogic = await matchDetailLogicSource();
     const state = await sourceFile(
       "pages/matches/detailState.ts",
     ).text();

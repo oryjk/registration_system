@@ -11,9 +11,10 @@ import {
   filterMockChallengeSummaries,
   getMockChallengeDetail,
 } from "./data/challenges";
-import { getMockMatchDetail, mockMatchHome, mockMyMatches, paginateMockMatches } from "./data/matches";
+import { createMockMatch, filterMockMatchesByQuery, getMockMatchDetail, mockMatchHome, paginateMockMatches } from "./data/matches";
 import { mockNotifications } from "./data/notifications";
 import { mockBillingFlow, mockPaymentOrders, mockUserAccount } from "./data/billing";
+import { mockWalletAccount } from "./data/wallet";
 import { defaultMiniAppRuntimeConfig } from "@/config/runtimeConfigDefaults";
 
 /**
@@ -369,9 +370,14 @@ const routes: MockRoute[] = [
     handler: () => mockMatchHome(),
   },
   {
+    method: "POST",
+    pattern: "/matches",
+    handler: (req) => createMockMatch(req.body as Parameters<typeof createMockMatch>[0]),
+  },
+  {
     method: "GET",
     pattern: "/matches",
-    handler: (req) => paginateMockMatches(mockMyMatches(), req.query),
+    handler: (req) => paginateMockMatches(filterMockMatchesByQuery(req.query), req.query),
   },
   {
     method: "GET",
@@ -420,6 +426,11 @@ const routes: MockRoute[] = [
   },
 
   // ===== 账户 / 账单 =====
+  {
+    method: "GET",
+    pattern: "/wallet",
+    handler: () => mockWalletAccount,
+  },
   {
     method: "GET",
     pattern: "/account/balance",

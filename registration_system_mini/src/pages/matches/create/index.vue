@@ -4,10 +4,12 @@ import { onLoad, onShow } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
 import MatchPublishForm from "@/components/MatchPublishForm.vue";
 import type { MatchPublishFormModel } from "@/components/matchPublishForm";
-import { createActivity, getActivity, updateActivity } from "@/api/activity";
+import { getActivity, updateActivity } from "@/api/activity";
+import { createMatch } from "@/api/match";
 import { preloadMiniReviewStatus, useMiniReviewStatus } from "@/stores/miniReview";
 import { useTeamContext } from "@/stores/teamContext";
 import { getCustomNavMetrics } from "@/utils/customNav";
+import { buildGoCreateMatchPayload } from "./createMatchPayload";
 
 const { currentTeam, ensureSessionReady } = useTeamContext();
 const { shouldHideCreationEntrances } = useMiniReviewStatus();
@@ -32,7 +34,8 @@ const form = reactive<MatchPublishFormModel>({
   playersPerTeam: "" as string | number,
   color: "#2F6BFF",
   opposingColor: "#C8FF00",
-  matchKind: "external",
+  publicationMode: "online_team",
+  legacyMatchKind: "external",
   enableCheckIn: false,
   checkInRadiusMeters: 200,
   openMinutesBefore: 60,
@@ -71,7 +74,8 @@ const canSubmit = computed(
     currentTeam.value.canManageTeam &&
     !!form.name.trim() &&
     !!form.location.trim() &&
-    (!form.enableCheckIn || (form.locationLatitude != null && form.locationLongitude != null)) &&
+    (form.publicationMode !== "offline_confirmed" || !!form.opposing.trim()) &&
+    Number(form.playersPerTeam) > 0 &&
     form.holdingDate > 0 &&
     form.matchEndTime > 0 &&
     timeValid.value,
@@ -118,10 +122,11 @@ function initDefaultForm() {
   form.endTime = defaultRegistrationEndTime(defaultHoldingDate);
   form.opposing = "";
   form.description = "";
-  form.playersPerTeam = "";
+  form.playersPerTeam = 8;
   form.color = "#2F6BFF";
   form.opposingColor = "#C8FF00";
-  form.matchKind = "external";
+  form.publicationMode = "online_team";
+  form.legacyMatchKind = "external";
   form.enableCheckIn = false;
   form.checkInRadiusMeters = 200;
   form.openMinutesBefore = 60;
@@ -163,7 +168,8 @@ function applyActivityToForm(activity: Awaited<ReturnType<typeof getActivity>>) 
   form.playersPerTeam = activity.players_per_team ?? "";
   form.color = activity.color?.trim() || "#2F6BFF";
   form.opposingColor = activity.opposing_color?.trim() || "#C8FF00";
-  form.matchKind = activity.match_kind === "internal" ? "internal" : "external";
+  form.legacyMatchKind = activity.match_kind === "internal" ? "internal" : "external";
+  form.publicationMode = "offline_confirmed";
   const checkInConfig = activity.team_checkin_configs.find((item) => item.team_id === currentTeam.value?.id);
   form.enableCheckIn = !!checkInConfig?.enabled;
   form.checkInRadiusMeters = checkInConfig?.radius_meters ?? 200;
@@ -219,9 +225,7 @@ async function handleSubmit() {
   if (!canSubmit.value || submitting.value) {
     uni.showToast({
       title:
-        form.enableCheckIn && (form.locationLatitude == null || form.locationLongitude == null)
-          ? "启用签到需选择地图位置"
-          : !timeValid.value
+        !timeValid.value
             ? timeValidMessage.value
             : "请先补全比赛信息",
       icon: "none",
@@ -231,27 +235,25 @@ async function handleSubmit() {
 
   submitting.value = true;
   try {
-    const submittedAtTimestamp = Date.now();
-    const registrationDeadlineTimestamp = normalizeToMinute(form.holdingDate - 24 * 60 * 60 * 1000);
-    const basePayload = {
-      name: form.name.trim(),
-      location: form.location.trim(),
-      location_latitude: form.locationLatitude ?? undefined,
-      location_longitude: form.locationLongitude ?? undefined,
-      holding_date: toBackendDateTime(form.holdingDate),
-      start_time: toBackendDateTime(submittedAtTimestamp),
-      end_time: toBackendDateTime(registrationDeadlineTimestamp),
-      opposing: form.opposing.trim() || undefined,
-      description: form.description.trim() || undefined,
-      home_team_id: currentTeam.value.id,
-      players_per_team: Number(form.playersPerTeam) || undefined,
-      color: form.color || undefined,
-      opposing_color: form.opposingColor || undefined,
-      match_kind: form.matchKind ?? "external",
-    };
-
     if (pageMode.value === "edit" && activityId.value) {
-      await updateActivity(activityId.value, basePayload);
+      const submittedAtTimestamp = Date.now();
+      const registrationDeadlineTimestamp = normalizeToMinute(form.holdingDate - 24 * 60 * 60 * 1000);
+      await updateActivity(activityId.value, {
+        name: form.name.trim(),
+        location: form.location.trim(),
+        location_latitude: form.locationLatitude,
+        location_longitude: form.locationLongitude,
+        holding_date: toBackendDateTime(form.holdingDate),
+        start_time: toBackendDateTime(submittedAtTimestamp),
+        end_time: toBackendDateTime(registrationDeadlineTimestamp),
+        opposing: form.opposing.trim() || null,
+        description: form.description.trim() || null,
+        home_team_id: currentTeam.value.id,
+        players_per_team: Number(form.playersPerTeam),
+        color: form.color || null,
+        opposing_color: form.opposingColor || null,
+        match_kind: form.legacyMatchKind ?? "external",
+      });
       uni.showToast({
         title: "比赛已保存",
         icon: "none",
@@ -262,26 +264,14 @@ async function handleSubmit() {
       return;
     }
 
-    const activity = await createActivity({
-      ...basePayload,
-      team_checkin_configs: form.enableCheckIn
-        ? [
-            {
-              team_id: currentTeam.value.id,
-              enabled: true,
-              radius_meters: Number(form.checkInRadiusMeters),
-              open_minutes_before: Number(form.openMinutesBefore),
-              close_minutes_after: Number(form.closeMinutesAfter),
-            },
-          ]
-        : [],
-    });
+    const detail = await createMatch(buildGoCreateMatchPayload(form, currentTeam.value));
+    const hostGroupId = detail.groups.find((group) => group.team_id === currentTeam.value?.id)?.id ?? detail.groups[0]?.id;
     uni.showToast({
       title: "比赛已创建",
       icon: "none",
     });
     uni.redirectTo({
-      url: `/pages/matches/detail?id=${activity.id}`,
+      url: `/pages/matches/detail?id=${detail.match.id}${hostGroupId ? `&groupId=${hostGroupId}` : ""}`,
     });
   } catch (error) {
     uni.showToast({
@@ -335,7 +325,7 @@ onShow(async () => {
       v-else
       :model-value="form"
       mode="match"
-      :show-check-in="pageMode === 'create'"
+      :show-check-in="false"
       :time-valid-message="timeValidMessage"
       @location-input="handleLocationInput"
       @choose-location="handleChooseLocation"

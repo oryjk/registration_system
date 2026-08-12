@@ -56,6 +56,22 @@ describe("bottom tab bar assets", () => {
     expect(tabBarSource.includes("fab-sheet")).toEqual(false);
   });
 
+  test("keeps hidden create actions out of the hit-test tree until the menu opens", async () => {
+    const tabBarSource = await Bun.file(sourcePath("components/BottomTabBar.vue")).text();
+    const actionBlock = tabBarSource.slice(
+      tabBarSource.indexOf(".create-menu-action {"),
+      tabBarSource.indexOf(".create-menu-overlay-open .create-menu-action {"),
+    );
+    const openActionBlock = tabBarSource.slice(
+      tabBarSource.indexOf(".create-menu-overlay-open .create-menu-action {"),
+      tabBarSource.indexOf(".create-menu-action-left {"),
+    );
+
+    expect(actionBlock.includes("pointer-events: none;")).toEqual(true);
+    expect(actionBlock.includes("pointer-events: auto;")).toEqual(false);
+    expect(openActionBlock.includes("pointer-events: auto;")).toEqual(true);
+  });
+
   test("keeps bottom tab icons large enough to balance the center create button", async () => {
     const globalStyles = await Bun.file(sourcePath("uni.css")).text();
 

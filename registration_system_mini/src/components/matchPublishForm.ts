@@ -1,3 +1,5 @@
+import type { AppMatchPublicationMode } from "@/types/match";
+
 export interface MatchPublishFormModel {
   name: string;
   location: string;
@@ -12,7 +14,8 @@ export interface MatchPublishFormModel {
   playersPerTeam: string | number;
   color: string;
   opposingColor: string;
-  matchKind?: "external" | "internal";
+  publicationMode: AppMatchPublicationMode;
+  legacyMatchKind?: "external" | "internal";
   feePerPerson?: string | number;
   enableCheckIn?: boolean;
   checkInRadiusMeters?: string | number;

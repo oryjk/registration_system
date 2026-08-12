@@ -24,10 +24,11 @@ type UserMatchUseCase interface {
 
 type UserHandler struct {
 	service UserMatchUseCase
+	create  CreateMatchUseCase
 }
 
-func NewUserHandler(service UserMatchUseCase) *UserHandler {
-	return &UserHandler{service: service}
+func NewUserHandler(service UserMatchUseCase, create CreateMatchUseCase) *UserHandler {
+	return &UserHandler{service: service, create: create}
 }
 
 type UserMatchResponse struct {
@@ -66,6 +67,14 @@ type UserGroupResponse struct {
 	Status         domain.GroupStatus        `json:"status"`
 	AttendingCount int                       `json:"attending_count"`
 	MyRegistration *UserRegistrationResponse `json:"my_registration"`
+	Participants   []UserParticipantResponse `json:"participants"`
+}
+
+type UserParticipantResponse struct {
+	UserID    int64                     `json:"user_id"`
+	Nickname  string                    `json:"nickname"`
+	AvatarURL *string                   `json:"avatar_url"`
+	Status    domain.RegistrationStatus `json:"status"`
 }
 
 type UserMatchDetailResponse struct {
@@ -91,33 +100,36 @@ type UserHomeGroupResponse struct {
 }
 
 type UserHomeActionMatchResponse struct {
-	ID             string                `json:"id"`
-	Name           string                `json:"name"`
-	Status         domain.MatchStatus    `json:"status"`
-	HostTeamName   string                `json:"host_team_name"`
-	OpponentName   string                `json:"opponent_name"`
-	PlayersPerTeam int                   `json:"players_per_team"`
-	StartTime      time.Time             `json:"start_time"`
-	EndTime        time.Time             `json:"end_time"`
-	Location       string                `json:"location"`
-	Group          UserHomeGroupResponse `json:"group"`
+	ID              string                 `json:"id"`
+	Name            string                 `json:"name"`
+	PublicationMode domain.PublicationMode `json:"publication_mode"`
+	Status          domain.MatchStatus     `json:"status"`
+	HostTeamName    string                 `json:"host_team_name"`
+	OpponentName    string                 `json:"opponent_name"`
+	PlayersPerTeam  int                    `json:"players_per_team"`
+	StartTime       time.Time              `json:"start_time"`
+	EndTime         time.Time              `json:"end_time"`
+	Location        string                 `json:"location"`
+	Group           UserHomeGroupResponse  `json:"group"`
 }
 
 type UserHomeEndedMatchResponse struct {
-	ID           string             `json:"id"`
-	Name         string             `json:"name"`
-	Status       domain.MatchStatus `json:"status"`
-	HostTeamName string             `json:"host_team_name"`
-	OpponentName string             `json:"opponent_name"`
-	StartTime    time.Time          `json:"start_time"`
-	EndTime      time.Time          `json:"end_time"`
-	Location     string             `json:"location"`
+	ID              string                 `json:"id"`
+	Name            string                 `json:"name"`
+	PublicationMode domain.PublicationMode `json:"publication_mode"`
+	Status          domain.MatchStatus     `json:"status"`
+	HostTeamName    string                 `json:"host_team_name"`
+	OpponentName    string                 `json:"opponent_name"`
+	StartTime       time.Time              `json:"start_time"`
+	EndTime         time.Time              `json:"end_time"`
+	Location        string                 `json:"location"`
 }
 
 type UserMatchHomeResponse struct {
-	ActionItems  []UserHomeActionMatchResponse `json:"action_items"`
-	EndedItems   []UserHomeEndedMatchResponse  `json:"ended_items"`
-	EndedHasMore bool                          `json:"ended_has_more"`
+	ActionItems   []UserHomeActionMatchResponse `json:"action_items"`
+	ActionHasMore bool                          `json:"action_has_more"`
+	EndedItems    []UserHomeEndedMatchResponse  `json:"ended_items"`
+	EndedHasMore  bool                          `json:"ended_has_more"`
 }
 
 func (h *UserHandler) List(c *gin.Context) {
@@ -175,20 +187,57 @@ func (h *UserHandler) Home(c *gin.Context) {
 	sharedhttpapi.WriteSuccess(c, mapUserHome(result))
 }
 
+func (h *UserHandler) Create(c *gin.Context) {
+	actor, ok := userActor(c)
+	if !ok {
+		return
+	}
+	var request CreateMatchRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		sharedhttpapi.WriteError(c, sharederror.New(sharederror.KindValidation, "比赛信息不完整"))
+		return
+	}
+	result, err := h.create.Execute(c.Request.Context(), actor, application.CreateMatchCommand{
+		Name: request.Name, PublicationMode: request.PublicationMode, HostTeamID: request.HostTeamID,
+		OpponentName: request.OpponentName, PlayersPerTeam: request.PlayersPerTeam,
+		HostCapacityLimit: request.HostCapacityLimit, StartTime: request.StartTime, EndTime: request.EndTime,
+		Location: request.Location, LocationLatitude: request.LocationLatitude, LocationLongitude: request.LocationLongitude,
+		Description: request.Description,
+	})
+	if err != nil {
+		sharedhttpapi.WriteError(c, err)
+		return
+	}
+	detail, err := h.service.Get(c.Request.Context(), actor, result.Match.ID)
+	if err != nil {
+		sharedhttpapi.WriteError(c, err)
+		return
+	}
+	sharedhttpapi.WriteSuccess(c, mapUserDetail(detail))
+}
+
 func (h *UserHandler) RegisterRoutes(group *gin.RouterGroup) {
 	group.GET("/matches", h.List)
 	group.GET("/matches/home", h.Home)
+	group.POST("/matches", h.Create)
 	group.GET("/matches/:id", h.Get)
 }
 
 func parseUserListQuery(c *gin.Context) (application.UserMatchListQuery, error) {
 	query := application.UserMatchListQuery{Scope: application.MatchScope(c.Query("scope")), Search: c.Query("search")}
-	if query.Scope != "" && query.Scope != application.MatchScopeAll && query.Scope != application.MatchScopeMine {
+	if query.Scope != "" && query.Scope != application.MatchScopeAll && query.Scope != application.MatchScopeMine && query.Scope != application.MatchScopeOthers {
 		return query, sharederror.New(sharederror.KindValidation, "比赛范围筛选无效")
 	}
 	if raw := c.Query("status"); raw != "" {
 		status := domain.MatchStatus(raw)
 		query.Status = &status
+	}
+	if raw := c.Query("starts_after"); raw != "" {
+		startsAfter, err := time.Parse(time.RFC3339, raw)
+		if err != nil {
+			return query, sharederror.New(sharederror.KindValidation, "开始时间筛选无效")
+		}
+		query.StartsAfter = &startsAfter
 	}
 	var err error
 	if raw := c.Query("page"); raw != "" {
@@ -237,10 +286,17 @@ func mapUserDetail(detail application.UserMatchDetail) UserMatchDetailResponse {
 				Status: state.MyRegistration.Status, RegistrationCount: state.MyRegistration.RegistrationCount,
 			}
 		}
+		participants := make([]UserParticipantResponse, 0, len(state.Participants))
+		for _, participant := range state.Participants {
+			participants = append(participants, UserParticipantResponse{
+				UserID: participant.UserID, Nickname: participant.Nickname,
+				AvatarURL: participant.AvatarURL, Status: participant.Status,
+			})
+		}
 		groups = append(groups, UserGroupResponse{
 			ID: state.Group.ID.String(), Kind: state.Group.Kind, TeamID: state.Group.TeamID,
 			MinPlayers: state.Group.MinPlayers, MaxPlayers: state.Group.MaxPlayers, Status: state.Group.Status,
-			AttendingCount: state.AttendingCount, MyRegistration: registration,
+			AttendingCount: state.AttendingCount, MyRegistration: registration, Participants: participants,
 		})
 	}
 	return UserMatchDetailResponse{Match: mapUserMatch(detail.Item), Groups: groups}
@@ -256,7 +312,7 @@ func mapUserHome(result application.UserMatchHomeResult) UserMatchHomeResponse {
 		}
 		match := item.Item.Match
 		actions = append(actions, UserHomeActionMatchResponse{
-			ID: match.ID.String(), Name: match.Name, Status: match.Status,
+			ID: match.ID.String(), Name: match.Name, PublicationMode: match.PublicationMode, Status: match.Status,
 			HostTeamName: item.Item.HostTeamName, OpponentName: userOpponentName(item.Item),
 			PlayersPerTeam: match.PlayersPerTeam, StartTime: match.StartTime, EndTime: match.EndTime,
 			Location: match.Location,
@@ -271,12 +327,15 @@ func mapUserHome(result application.UserMatchHomeResult) UserMatchHomeResponse {
 	for _, item := range result.EndedItems {
 		match := item.Match
 		ended = append(ended, UserHomeEndedMatchResponse{
-			ID: match.ID.String(), Name: match.Name, Status: match.Status,
+			ID: match.ID.String(), Name: match.Name, PublicationMode: match.PublicationMode, Status: match.Status,
 			HostTeamName: item.HostTeamName, OpponentName: userOpponentName(item),
 			StartTime: match.StartTime, EndTime: match.EndTime, Location: match.Location,
 		})
 	}
-	return UserMatchHomeResponse{ActionItems: actions, EndedItems: ended, EndedHasMore: result.EndedHasMore}
+	return UserMatchHomeResponse{
+		ActionItems: actions, ActionHasMore: result.ActionHasMore,
+		EndedItems: ended, EndedHasMore: result.EndedHasMore,
+	}
 }
 
 func userOpponentName(item ports.MatchItem) string {

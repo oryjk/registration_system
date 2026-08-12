@@ -91,7 +91,7 @@ test.describe("Nginx 子路径路由", () => {
     await page.addInitScript(() => {
       localStorage.setItem("registration-admin-go.token.v1", "e2e-admin-token");
     });
-    await page.route("**/api/admin/auth/me", async (route) => {
+    await page.route("**/api/v1/admin/auth/me", async (route) => {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -109,7 +109,7 @@ test.describe("Nginx 子路径路由", () => {
         }),
       });
     });
-    await page.route(`**/api/admin/matches/${matchID}`, async (route) => {
+    await page.route(`**/api/v1/admin/matches/${matchID}`, async (route) => {
       await route.fulfill({
         status: 200,
         contentType: "application/json",

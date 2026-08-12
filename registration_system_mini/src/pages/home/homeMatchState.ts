@@ -8,6 +8,7 @@ import type {
 } from "@/types/match";
 import type { HomeMatchCardViewModel } from "@/types/viewModels";
 import { formatDateLabel, parseDateValue } from "@/utils/datetime";
+import { getMatchPublicationModeLabel } from "@/utils/matchPublicationMode";
 
 type VisibleHomeMatchPhase = Exclude<AppMatchUiPhase, "excluded">;
 
@@ -18,7 +19,7 @@ export interface HomeMatchSectionViewModel {
 }
 
 const HOME_MATCH_PHASE_TITLES: Record<VisibleHomeMatchPhase, string> = {
-  upcoming: "报名中",
+  upcoming: "最近要处理",
   ongoing: "进行中",
   ended: "已结束",
 };
@@ -44,8 +45,9 @@ function phaseRank(phase: VisibleHomeMatchPhase): number {
 
 function matchPreference(match: AppMatchPhaseSource, now: Date) {
   const phase = resolveMatchPhase(match, now);
-  const timeValue =
-    phase === "ended" ? parseDateValue(match.end_time).getTime() : parseDateValue(match.start_time).getTime();
+  const timeValue = phase === "ended"
+    ? parseDateValue(match.end_time).getTime()
+    : parseDateValue(match.start_time).getTime();
 
   return {
     phase,
@@ -61,11 +63,9 @@ function shouldKeepCandidate(current: AppMatchPhaseSource, candidate: AppMatchPh
   if (candidatePreference.rank !== currentPreference.rank) {
     return candidatePreference.rank > currentPreference.rank;
   }
-
   if (candidatePreference.timeValue !== currentPreference.timeValue) {
     return candidatePreference.timeValue > currentPreference.timeValue;
   }
-
   return false;
 }
 
@@ -89,12 +89,12 @@ function toSignupScopeLabelFromPublicationMode(mode: AppMatchSummary["publicatio
   return mode === "online_individual" ? "散人报名" : "队内报名";
 }
 
-function isHomeActionMatch(item: AppHomeActionMatch | AppHomeEndedMatch | AppMatchSummary): item is AppHomeActionMatch {
+function isHomeActionMatch(item: HomeMatchCardSource): item is AppHomeActionMatch {
   return "group" in item;
 }
 
-function isMatchSummary(item: AppHomeActionMatch | AppHomeEndedMatch | AppMatchSummary): item is AppMatchSummary {
-  return "publication_mode" in item;
+function isMatchSummary(item: HomeMatchCardSource): item is AppMatchSummary {
+  return "opponent_state" in item;
 }
 
 function toMyStatusLabel(status: AppHomeActionMatch["group"]["my_registration_status"]): string {
@@ -134,11 +134,6 @@ function toDateNote(phase: VisibleHomeMatchPhase): string {
   }
 }
 
-function toActionLabel(item: AppHomeActionMatch, phase: VisibleHomeMatchPhase): string {
-  if (phase !== "upcoming") return "查看比赛";
-  return item.group.status === "open" ? "去报名" : "查看比赛";
-}
-
 function toShowRegistrationProgress(phase: VisibleHomeMatchPhase): boolean {
   return phase !== "ended";
 }
@@ -158,42 +153,16 @@ export function resolveMatchPhase(match: AppMatchPhaseSource, now: Date): AppMat
   return "upcoming";
 }
 
-export function groupMatchesByPhase(items: AppMatchPhaseSource[], now: Date): Record<VisibleHomeMatchPhase, AppMatchPhaseSource[]> {
-  const grouped: Record<VisibleHomeMatchPhase, AppMatchPhaseSource[]> = {
-    upcoming: [],
-    ongoing: [],
-    ended: [],
-  };
-
-  const dedupedById = new Map<string, AppMatchPhaseSource>();
-  for (const item of items) {
-    const current = dedupedById.get(item.id);
-    if (!current || shouldKeepCandidate(current, item, now)) {
-      dedupedById.set(item.id, item);
-    }
-  }
-
-  for (const item of dedupedById.values()) {
-    const phase = resolveMatchPhase(item, now);
-    if (phase === "excluded") continue;
-    grouped[phase].push(item);
-  }
-
-  grouped.upcoming.sort((left, right) => compareDateAsc(left.start_time, right.start_time) || left.id.localeCompare(right.id));
-  grouped.ongoing.sort((left, right) => compareDateDesc(left.start_time, right.start_time) || left.id.localeCompare(right.id));
-  grouped.ended.sort((left, right) => compareDateDesc(left.end_time, right.end_time) || left.id.localeCompare(right.id));
-
-  return grouped;
-}
+type HomeMatchCardSource = AppHomeActionMatch | AppHomeEndedMatch | AppMatchSummary;
 
 export function toGoHomeMatchCard(
-  item: AppHomeActionMatch | AppHomeEndedMatch | AppMatchSummary,
+  item: HomeMatchCardSource,
   phase: VisibleHomeMatchPhase,
 ): HomeMatchCardViewModel {
   const actionMatch = isHomeActionMatch(item) ? item : null;
   const summaryMatch = isMatchSummary(item) ? item : null;
   const attendingCount = actionMatch ? actionMatch.group.attending_count : 0;
-  const playersPerTeam = actionMatch ? actionMatch.players_per_team : summaryMatch ? summaryMatch.players_per_team : 0;
+  const playersPerTeam = "players_per_team" in item ? item.players_per_team : 0;
   const requiredPlayers = actionMatch ? (actionMatch.group.min_players ?? playersPerTeam) : playersPerTeam;
   const maxPlayers = actionMatch ? (actionMatch.group.max_players ?? requiredPlayers) : playersPerTeam;
   const remainingPlayers = Math.max(requiredPlayers - attendingCount, 0);
@@ -258,6 +227,7 @@ export function toGoHomeMatchCard(
     showParticipantAvatars,
     canOpenDetail: true,
     stage,
+    publicationModeLabel: getMatchPublicationModeLabel(item.publication_mode),
     signupScope,
     signupScopeLabel,
     venue: item.location,
@@ -278,6 +248,33 @@ export function toGoHomeMatchCard(
   };
 }
 
+export function groupMatchesByPhase(items: AppMatchPhaseSource[], now: Date): Record<VisibleHomeMatchPhase, AppMatchPhaseSource[]> {
+  const grouped: Record<VisibleHomeMatchPhase, AppMatchPhaseSource[]> = {
+    upcoming: [],
+    ongoing: [],
+    ended: [],
+  };
+  const dedupedById = new Map<string, AppMatchPhaseSource>();
+
+  for (const item of items) {
+    const current = dedupedById.get(item.id);
+    if (!current || shouldKeepCandidate(current, item, now)) {
+      dedupedById.set(item.id, item);
+    }
+  }
+
+  for (const item of dedupedById.values()) {
+    const phase = resolveMatchPhase(item, now);
+    if (phase !== "excluded") grouped[phase].push(item);
+  }
+
+  grouped.upcoming.sort((left, right) => compareDateAsc(left.start_time, right.start_time) || left.id.localeCompare(right.id));
+  grouped.ongoing.sort((left, right) => compareDateDesc(left.start_time, right.start_time) || left.id.localeCompare(right.id));
+  grouped.ended.sort((left, right) => compareDateDesc(left.end_time, right.end_time) || left.id.localeCompare(right.id));
+
+  return grouped;
+}
+
 export function buildHomeMatchSections(
   response: AppMatchHomeResponse,
   now: Date,
@@ -285,9 +282,11 @@ export function buildHomeMatchSections(
 ): HomeMatchSectionViewModel[] {
   const grouped = groupMatchesByPhase([...response.action_items, ...response.ended_items], now);
 
-  return (["upcoming", "ongoing", "ended"] as const).map((phase) => ({
+  return (['upcoming', 'ongoing', 'ended'] as const).map((phase) => ({
     phase,
     title: HOME_MATCH_PHASE_TITLES[phase],
-    items: grouped[phase].slice(0, limit).map((item) => toGoHomeMatchCard(item as AppHomeActionMatch | AppHomeEndedMatch, phase)),
+    items: grouped[phase]
+      .slice(0, limit)
+      .map((item) => toGoHomeMatchCard(item as AppHomeActionMatch | AppHomeEndedMatch, phase)),
   }));
 }

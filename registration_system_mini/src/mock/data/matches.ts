@@ -4,6 +4,7 @@ import type {
   AppHomeMatchGroup,
   AppMatchHomeResponse,
   AppMatchDetailResponse,
+  AppMatchGroupDetail,
   AppMatchStatus,
   AppMatchSummary,
 } from "@/types/match";
@@ -13,8 +14,15 @@ function isoOffsetMinutes(baseNow: number, minutes: number): string {
   return new Date(baseNow + minutes * 60_000).toISOString();
 }
 
+/** 与当前 mock 用户（37 号）无关的外部球队，用于构造列表查询夹具。 */
+const EXTERNAL_TEAM_NAMES: Record<number, string> = {
+  201: "麓山联队",
+  202: "锦江之星 FC",
+  203: "城南联盟",
+};
+
 function teamName(teamId: number): string {
-  return mockTeams.find((team) => team.id === teamId)?.name ?? `球队 #${teamId}`;
+  return mockTeams.find((team) => team.id === teamId)?.name ?? EXTERNAL_TEAM_NAMES[teamId] ?? `球队 #${teamId}`;
 }
 
 interface MatchSeed {
@@ -76,6 +84,7 @@ function buildActionMatch(seed: ActionMatchSeed, baseNow: number): AppHomeAction
     start_time: summary.start_time,
     end_time: summary.end_time,
     name: summary.name,
+    publication_mode: summary.publication_mode,
     host_team_name: summary.host_team_name,
     opponent_name: summary.opponent_name ?? "",
     players_per_team: summary.players_per_team,
@@ -92,6 +101,7 @@ function buildEndedMatch(seed: MatchSeed, baseNow: number): AppHomeEndedMatch {
     start_time: summary.start_time,
     end_time: summary.end_time,
     name: summary.name,
+    publication_mode: summary.publication_mode,
     host_team_name: summary.host_team_name,
     opponent_name: summary.opponent_name ?? "",
     location: summary.location,
@@ -120,10 +130,20 @@ function compareAction(left: AppHomeActionMatch, right: AppHomeActionMatch): num
 }
 
 function compareEnded(left: AppHomeEndedMatch, right: AppHomeEndedMatch): number {
-  if (left.start_time !== right.start_time) {
-    return left.start_time > right.start_time ? -1 : 1;
+  if (left.end_time !== right.end_time) {
+    return left.end_time > right.end_time ? -1 : 1;
   }
   return left.id.localeCompare(right.id);
+}
+
+/** 当前 mock 用户是洺悦御府队长、河西周四 FC 队员；主/客队命中任一即视为「与我相关」。 */
+function isRelatedToCurrentUser(seed: MatchSeed): boolean {
+  return (
+    seed.host_team_id === TEAM_ID_MINGYUE ||
+    seed.host_team_id === TEAM_ID_HEXI ||
+    seed.away_team_id === TEAM_ID_MINGYUE ||
+    seed.away_team_id === TEAM_ID_HEXI
+  );
 }
 
 const seedMatches: MatchSeed[] = [
@@ -289,15 +309,202 @@ const seedMatches: MatchSeed[] = [
     duration_minutes: 90,
     created_offset_minutes: -1 * 24 * 60,
   },
+  // ===== 与当前用户无关的比赛（外部球队主办，用于「进行中」区域 / scope=others） =====
+  {
+    id: "f7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c011",
+    name: "麓山联队周末公开赛",
+    status: "registering",
+    publication_mode: "online_team",
+    opponent_state: "recruiting",
+    host_team_id: 201,
+    away_team_id: null,
+    opponent_name: "来者不拒",
+    players_per_team: 8,
+    location: "麓山足球场 2 号场",
+    location_latitude: 30.5988,
+    location_longitude: 104.0712,
+    description: "外部球队主办的公开赛，欢迎围观。",
+    start_offset_minutes: 3 * 24 * 60,
+    duration_minutes: 120,
+    created_offset_minutes: -2 * 24 * 60,
+  },
+  {
+    id: "f7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c012",
+    name: "锦江之星 FC 挑战赛",
+    status: "registering",
+    publication_mode: "online_individual",
+    opponent_state: "recruiting",
+    host_team_id: 202,
+    away_team_id: null,
+    opponent_name: "散人联队",
+    players_per_team: 7,
+    location: "锦江体育公园",
+    location_latitude: 30.6571,
+    location_longitude: 104.0812,
+    description: "散人招募中的挑战赛。",
+    start_offset_minutes: 4 * 24 * 60 + 60,
+    duration_minutes: 120,
+    created_offset_minutes: -3 * 24 * 60,
+  },
+  {
+    id: "f7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c013",
+    name: "麓山联队友谊邀请赛",
+    status: "registering",
+    publication_mode: "online_team",
+    opponent_state: "confirmed",
+    host_team_id: 201,
+    away_team_id: 203,
+    opponent_name: "城南联盟",
+    players_per_team: 6,
+    location: "麓山足球场 1 号场",
+    location_latitude: 30.5986,
+    location_longitude: 104.071,
+    description: "已确认对手的外部友谊赛。",
+    start_offset_minutes: 6 * 24 * 60,
+    duration_minutes: 90,
+    created_offset_minutes: -4 * 24 * 60,
+  },
+  {
+    id: "f7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c014",
+    name: "城南联盟杯小组赛",
+    status: "registering",
+    publication_mode: "online_team",
+    opponent_state: "recruiting",
+    host_team_id: 203,
+    away_team_id: null,
+    opponent_name: "待定",
+    players_per_team: 8,
+    location: "城南体育中心",
+    location_latitude: 30.5721,
+    location_longitude: 104.0512,
+    description: "小组循环赛制，仍在招募参赛队。",
+    start_offset_minutes: 8 * 24 * 60,
+    duration_minutes: 120,
+    created_offset_minutes: -5 * 24 * 60,
+  },
+  {
+    id: "f7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c015",
+    name: "麓山联队主场进行时",
+    status: "ongoing",
+    publication_mode: "offline_confirmed",
+    opponent_state: "confirmed",
+    host_team_id: 201,
+    away_team_id: 202,
+    opponent_name: "锦江之星 FC",
+    players_per_team: 8,
+    location: "麓山足球场 3 号场",
+    location_latitude: 30.599,
+    location_longitude: 104.0715,
+    description: "已经开始的外部比赛，不应出现在「进行中」区域（仅未开始的无关比赛可见）。",
+    start_offset_minutes: -30,
+    duration_minutes: 120,
+    created_offset_minutes: -6 * 24 * 60,
+  },
 ];
 
+interface CreatedMockMatch {
+  summary: AppMatchSummary;
+  group: AppHomeMatchGroup;
+}
+
+let createdMatchSequence = 0;
+const createdMatches: CreatedMockMatch[] = [];
+
+function buildCreatedMatch(payload: {
+  name: string;
+  publication_mode: AppMatchSummary["publication_mode"];
+  host_team_id: number;
+  opponent_name?: string;
+  players_per_team: number;
+  host_capacity_limit?: number;
+  start_time: string;
+  end_time: string;
+  location: string;
+  location_latitude?: number;
+  location_longitude?: number;
+  description?: string;
+}): CreatedMockMatch {
+  createdMatchSequence += 1;
+  const id = `c7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7${String(createdMatchSequence).padStart(4, "0")}`;
+  const now = new Date().toISOString();
+  const summary: AppMatchSummary = {
+    id,
+    name: payload.name,
+    status: "registering",
+    start_time: payload.start_time,
+    end_time: payload.end_time,
+    publication_mode: payload.publication_mode,
+    opponent_state: payload.publication_mode === "online_team" ? "recruiting" : "confirmed",
+    host_team_id: payload.host_team_id,
+    host_team_name: teamName(payload.host_team_id),
+    away_team_id: null,
+    away_team_name: null,
+    opponent_name: payload.opponent_name ?? null,
+    players_per_team: payload.players_per_team,
+    location: payload.location,
+    location_latitude: payload.location_latitude ?? null,
+    location_longitude: payload.location_longitude ?? null,
+    description: payload.description ?? null,
+    created_at: now,
+    updated_at: now,
+  };
+  const group: AppHomeMatchGroup = {
+    id: mockGroupId(id),
+    kind: "host_team",
+    status: payload.publication_mode === "offline_confirmed" ? "closed" : "open",
+    min_players: payload.publication_mode === "online_individual" ? 6 : null,
+    max_players: payload.host_capacity_limit ?? payload.players_per_team,
+    attending_count: 0,
+    my_registration_status: "unknown",
+  };
+  const created = { summary, group };
+  createdMatches.push(created);
+  return created;
+}
+
+function buildCreatedActionMatch(created: CreatedMockMatch): AppHomeActionMatch {
+  return {
+    id: created.summary.id,
+    status: created.summary.status,
+    start_time: created.summary.start_time,
+    end_time: created.summary.end_time,
+    name: created.summary.name,
+    publication_mode: created.summary.publication_mode,
+    host_team_name: created.summary.host_team_name,
+    opponent_name: created.summary.opponent_name ?? "",
+    players_per_team: created.summary.players_per_team,
+    location: created.summary.location,
+    group: created.group,
+  };
+}
+
+function buildCreatedEndedMatch(created: CreatedMockMatch): AppHomeEndedMatch {
+  return {
+    id: created.summary.id,
+    status: created.summary.status,
+    start_time: created.summary.start_time,
+    end_time: created.summary.end_time,
+    name: created.summary.name,
+    publication_mode: created.summary.publication_mode,
+    host_team_name: created.summary.host_team_name,
+    opponent_name: created.summary.opponent_name ?? "",
+    location: created.summary.location,
+  };
+}
+
 function buildMyMatches(baseNow = Date.now()): AppMatchSummary[] {
-  return seedMatches.map((seed) => buildSummary(seed, baseNow)).sort(compareSummary);
+  return [...seedMatches.map((seed) => buildSummary(seed, baseNow)), ...createdMatches.map((item) => item.summary)].sort(compareSummary);
 }
 
 function buildMatchHome(baseNow = Date.now()): AppMatchHomeResponse {
-  const actionMatches = seedMatches
-    .filter((seed) => seed.status === "registering" || seed.status === "ongoing")
+  const actionSeeds = seedMatches.filter(
+    (seed) =>
+      isRelatedToCurrentUser(seed) &&
+      (seed.status === "registering" || seed.status === "ongoing") &&
+      seed.start_offset_minutes + seed.duration_minutes > 0,
+  );
+  const actionMatches = [
+    ...actionSeeds
     .map((seed) =>
       buildActionMatch({
         ...seed,
@@ -312,29 +519,92 @@ function buildMatchHome(baseNow = Date.now()): AppMatchHomeResponse {
             seed.status === "registering" ? "unknown" : seed.id === "f7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c005" ? "leave" : "attending",
         },
       }, baseNow),
-    )
+    ),
+    ...createdMatches
+      .filter((item) => Date.parse(item.summary.end_time) > baseNow)
+      .map(buildCreatedActionMatch),
+  ]
     .sort(compareAction)
     .slice(0, 3);
 
-  const endedMatches = seedMatches
-    .filter((seed) => seed.status === "ended")
-    .map((seed) => buildEndedMatch(seed, baseNow))
+  const endedSeeds = seedMatches.filter(
+    (seed) => isRelatedToCurrentUser(seed) && (seed.status === "ended" || seed.start_offset_minutes + seed.duration_minutes <= 0),
+  );
+  const endedMatches = [
+    ...endedSeeds.map((seed) => buildEndedMatch(seed, baseNow)),
+    ...createdMatches
+      .filter((item) => Date.parse(item.summary.end_time) <= baseNow)
+      .map(buildCreatedEndedMatch),
+  ]
     .sort(compareEnded)
     .slice(0, 6);
 
   return {
     action_items: actionMatches,
+    action_has_more: actionSeeds.length + createdMatches.filter((item) => Date.parse(item.summary.end_time) > baseNow).length > actionMatches.length,
     ended_items: endedMatches,
-    ended_has_more: seedMatches.filter((seed) => seed.status === "ended").length > endedMatches.length,
+    ended_has_more: endedSeeds.length + createdMatches.filter((item) => Date.parse(item.summary.end_time) <= baseNow).length > endedMatches.length,
   };
 }
 
 export function mockMyMatches(baseNow = Date.now()): AppMatchSummary[] {
-  return buildMyMatches(baseNow);
+  return [
+    ...seedMatches
+      .filter((seed) => isRelatedToCurrentUser(seed))
+      .map((seed) => buildSummary(seed, baseNow)),
+    ...createdMatches.map((item) => item.summary),
+  ].sort(compareSummary);
+}
+
+export function mockOtherMatches(baseNow = Date.now()): AppMatchSummary[] {
+  return seedMatches
+    .filter((seed) => !isRelatedToCurrentUser(seed))
+    .map((seed) => buildSummary(seed, baseNow))
+    .sort(compareSummary);
+}
+
+/** 按列表查询参数过滤：scope=mine/others/all + starts_after（只保留 start_time 晚于该时间的比赛）。 */
+export function filterMockMatchesByQuery(query: Record<string, string>, baseNow = Date.now()): AppMatchSummary[] {
+  let items: AppMatchSummary[];
+  switch (query.scope) {
+    case "mine":
+      items = mockMyMatches(baseNow);
+      break;
+    case "others":
+      items = mockOtherMatches(baseNow);
+      break;
+    default:
+      items = buildMyMatches(baseNow);
+      break;
+  }
+
+  if (query.starts_after) {
+    const threshold = Date.parse(query.starts_after);
+    if (Number.isFinite(threshold)) {
+      items = items.filter((item) => Date.parse(item.start_time) > threshold);
+    }
+  }
+
+  return items;
 }
 
 export function mockMatchHome(baseNow = Date.now()): AppMatchHomeResponse {
   return buildMatchHome(baseNow);
+}
+
+export function createMockMatch(payload: Parameters<typeof buildCreatedMatch>[0]): AppMatchDetailResponse {
+  const created = buildCreatedMatch(payload);
+  const group: AppMatchGroupDetail = {
+    id: created.group.id,
+    kind: created.group.kind,
+    team_id: created.summary.host_team_id,
+    status: created.group.status,
+    min_players: created.group.min_players,
+    max_players: created.group.max_players,
+    attending_count: created.group.attending_count,
+    my_registration: null,
+  };
+  return { match: created.summary, groups: [group] };
 }
 
 export function getMockMatchDetail(matchId: string, baseNow = Date.now()): AppMatchDetailResponse | undefined {

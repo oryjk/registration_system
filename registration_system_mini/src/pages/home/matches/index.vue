@@ -3,14 +3,15 @@ import { computed, ref } from "vue";
 import { onLoad, onReachBottom, onShow } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
 import { listMyMatches } from "@/api/match";
-import type { AppMatchSummary, AppMatchUiPhase } from "@/types/match";
+import type { AppMatchUiPhase } from "@/types/match";
 import type { HomeMatchCardViewModel } from "@/types/viewModels";
 import { getCustomNavMetrics } from "@/utils/customNav";
 import { attendanceStatusTone } from "@/utils/statusTone";
-import { groupMatchesByPhase, toGoHomeMatchCard } from "../homeMatchState";
+import { toGoHomeMatchCard } from "../homeMatchState";
 import { formatHomeMatchDateBlock } from "../homeMatchDate";
 import HomeMatchList from "../components/HomeMatchList.vue";
 import {
+  filterVisiblePhaseMatches,
   isHomeMatchPaginationComplete,
   loadNextVisiblePhaseBatch,
   type HomeMatchPaginationState,
@@ -21,13 +22,13 @@ type VisibleHomeMatchPhase = Exclude<AppMatchUiPhase, "excluded">;
 const MATCH_PAGE_SIZE = 20;
 const PHASE_META: Record<VisibleHomeMatchPhase, { title: string; copy: string; emptyText: string }> = {
   upcoming: {
-    title: "报名中的比赛",
-    copy: "从我的比赛里持续往后扫描，直到这一阶段出现新的可见比赛。",
-    emptyText: "暂时没有报名中的比赛。",
+    title: "最近要处理的比赛",
+    copy: "我的报名中、进行中的比赛都保留在这里，过期也不会被时间过滤掉。",
+    emptyText: "暂时没有要处理的比赛。",
   },
   ongoing: {
     title: "进行中的比赛",
-    copy: "只按 Go 的我的比赛分页继续加载，保持阶段内排序和卡片样式一致。",
+    copy: "报名结束但比赛尚未结束，按实际比赛时间倒序分页加载。",
     emptyText: "暂时没有进行中的比赛。",
   },
   ended: {
@@ -46,7 +47,7 @@ const paginationState = ref<HomeMatchPaginationState>({
   total: 0,
   pageSize: MATCH_PAGE_SIZE,
 });
-const phaseClock = ref(new Date("2026-08-09T12:00:00.000Z"));
+const phaseClock = ref(new Date());
 const hasInitialized = ref(false);
 const isLoading = ref(false);
 const errorMessage = ref("");
@@ -57,10 +58,9 @@ const contentStyle = computed(() => ({
   paddingTop: `${navMetrics.pageTopPadding + 8}px`,
 }));
 const sourceLoaded = computed(() => isHomeMatchPaginationComplete(paginationState.value));
-const visibleMatches = computed<HomeMatchCardViewModel[]>(() => {
-  const grouped = groupMatchesByPhase(paginationState.value.sourceItems, phaseClock.value);
-  return grouped[phase.value].map((item) => toGoHomeMatchCard(item as AppMatchSummary, phase.value));
-});
+const visibleMatches = computed<HomeMatchCardViewModel[]>(() =>
+  filterVisiblePhaseMatches(paginationState.value.sourceItems, phase.value, phaseClock.value).map((item) => toGoHomeMatchCard(item, phase.value)),
+);
 const showEmptyState = computed(() => !visibleMatches.value.length && !isLoading.value && !errorMessage.value && sourceLoaded.value);
 const footerText = computed(() => {
   if (errorMessage.value) return "加载失败，点击重试";

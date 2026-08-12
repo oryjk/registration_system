@@ -394,6 +394,12 @@ select {
   overflow-wrap: anywhere;
 }
 
+.match-name-cell .match-type-tag {
+  width: fit-content;
+  margin: 2px 0 0;
+  font-size: 12px;
+}
+
 .match-name-cell .ant-typography,
 .team-name-cell .ant-typography {
   font-size: 12px;
@@ -553,6 +559,20 @@ select {
 
 .full-width-control {
   width: 100%;
+}
+
+.match-type-option {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+  padding-block: 2px;
+}
+
+.match-type-option .ant-typography {
+  margin: 0;
+  line-height: 1.35;
+  white-space: normal;
 }
 
 .team-select-empty {

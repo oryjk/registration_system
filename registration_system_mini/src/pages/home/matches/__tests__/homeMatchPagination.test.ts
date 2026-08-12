@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { AppMatchListResponse, AppMatchSummary } from "@/types/match";
-import { loadNextVisiblePhaseBatch, type HomeMatchPaginationState } from "../homeMatchPagination";
+import { filterVisiblePhaseMatches, isHomeMatchVisibleInPhase, loadNextVisiblePhaseBatch, type HomeMatchPaginationState } from "../homeMatchPagination";
 
 const now = new Date("2026-08-09T12:00:00.000Z");
 
@@ -279,5 +279,49 @@ describe("loadNextVisiblePhaseBatch", () => {
 
     expect(terminalCalls).toEqual([]);
     expect(terminalState).toEqual(loadedState);
+  });
+});
+
+describe("isHomeMatchVisibleInPhase", () => {
+  test("classifies stale statuses by actual start and end timestamps", () => {
+    const expiredRegistering = buildMatch({
+      id: "expired-registering",
+      status: "registering",
+      start_time: "2026-08-09T08:00:00.000Z",
+      end_time: "2026-08-09T10:00:00.000Z",
+    });
+    const ongoingMatch = buildMatch({
+      id: "ongoing",
+      status: "registering",
+      start_time: "2026-08-09T11:00:00.000Z",
+      end_time: "2026-08-09T13:00:00.000Z",
+    });
+    const futureMatch = buildMatch({
+      id: "future",
+      status: "registering",
+      start_time: "2026-08-09T13:00:00.000Z",
+      end_time: "2026-08-09T15:00:00.000Z",
+    });
+    const endedMatch = buildMatch({ id: "ended", status: "ended" });
+    const cancelledMatch = buildMatch({ id: "cancelled", status: "cancelled" });
+
+    expect(isHomeMatchVisibleInPhase(expiredRegistering, "ended", now)).toEqual(true);
+    expect(isHomeMatchVisibleInPhase(ongoingMatch, "ongoing", now)).toEqual(true);
+    expect(isHomeMatchVisibleInPhase(futureMatch, "upcoming", now)).toEqual(true);
+    expect(isHomeMatchVisibleInPhase(endedMatch, "ended", now)).toEqual(true);
+    expect(isHomeMatchVisibleInPhase(cancelledMatch, "ended", now)).toEqual(false);
+  });
+});
+
+describe("filterVisiblePhaseMatches", () => {
+  test("filters by time phase and sorts ongoing and ended matches in reverse chronological order", () => {
+    const items = [
+      buildMatch({ id: "ongoing-early", start_time: "2026-08-09T10:00:00.000Z", end_time: "2026-08-09T13:00:00.000Z" }),
+      buildMatch({ id: "ended", status: "registering", start_time: "2026-08-09T08:00:00.000Z", end_time: "2026-08-09T11:00:00.000Z" }),
+      buildMatch({ id: "ongoing-late", start_time: "2026-08-09T11:00:00.000Z", end_time: "2026-08-09T14:00:00.000Z" }),
+    ];
+
+    expect(filterVisiblePhaseMatches(items, "ongoing", now).map((item) => item.id)).toEqual(["ongoing-late", "ongoing-early"]);
+    expect(filterVisiblePhaseMatches(items, "ended", now).map((item) => item.id)).toEqual(["ended"]);
   });
 });

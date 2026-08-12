@@ -6,6 +6,7 @@ defineProps<{
   match: BackendActivity;
   dateLine: string;
   heroMetaChips: string[];
+  publicationModeLabel: string;
   currentTeam: TeamProfileViewModel | null;
   opponentTeam: BackendTeam | null;
 }>();
@@ -25,6 +26,7 @@ defineProps<{
         <text class="hero-meta-text">{{ match.location }}</text>
       </view>
       <view class="hero-chip-row">
+        <text class="hero-meta-chip hero-meta-chip-type">{{ publicationModeLabel }}</text>
         <text v-for="chip in heroMetaChips" :key="chip" class="hero-meta-chip">{{ chip }}</text>
       </view>
     </view>
@@ -117,6 +119,11 @@ defineProps<{
   color: rgba(255, 255, 255, 0.88);
   font-size: 24rpx;
   font-weight: 800;
+}
+
+.hero-meta-chip-type {
+  background: #9be22b;
+  color: #181818;
 }
 
 .vs-stage {

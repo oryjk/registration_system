@@ -49,7 +49,7 @@ describe("request auth modes", () => {
     );
 
     expect(fetch).toHaveBeenCalledWith(
-      "/go-api/api/admin/auth/me",
+      "/go-api/api/v1/admin/auth/me",
       expect.objectContaining({
         headers: expect.objectContaining({
           Authorization: "Bearer existing-token",
@@ -79,7 +79,7 @@ describe("request auth modes", () => {
 
     const [, options] = jest.mocked(fetch).mock.calls[0];
     expect(fetch).toHaveBeenCalledWith(
-      "/go-api/api/admin/auth/login",
+      "/go-api/api/v1/admin/auth/login",
       expect.any(Object),
     );
     expect(options?.headers).not.toEqual(

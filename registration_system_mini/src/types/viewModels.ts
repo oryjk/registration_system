@@ -40,6 +40,7 @@ export interface HomeMatchCardViewModel {
   showParticipantAvatars: boolean;
   canOpenDetail: boolean;
   stage: string;
+  publicationModeLabel: string;
   signupScopeLabel: string;
   signupScope: "external" | "internal";
   venue: string;
