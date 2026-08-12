@@ -7,7 +7,27 @@ declare const Bun: {
   };
 };
 
+async function teamManageSource() {
+  const paths = [
+    "pages/teams/manage/index.vue",
+    "pages/teams/manage/useTeamManagePage.ts",
+    "pages/teams/manage/useTeamProfile.ts",
+    "pages/teams/manage/useTeamMembership.ts",
+    "pages/teams/manage/useTeamAttendance.ts",
+  ];
+  return (await Promise.all(paths.map((path) => Bun.file(sourcePath(path)).text()))).join("\n");
+}
+
 describe("team manage real backend integration", () => {
+  test("keeps the SFC as a composition layer over focused team workflows", async () => {
+    const page = await Bun.file(sourcePath("pages/teams/manage/index.vue")).text();
+    const pageScript = page.slice(0, page.indexOf("</script>"));
+
+    expect(page.includes('from "./useTeamManagePage"')).toEqual(true);
+    expect(pageScript.split("\n").length < 200).toEqual(true);
+    expect(page.includes("useTeamManagePage()")).toEqual(true);
+  });
+
   test("bottom tab routes create team action to the real team manage page", async () => {
     const source = await Bun.file(sourcePath("components/BottomTabBar.vue")).text();
 
@@ -40,7 +60,7 @@ describe("team manage real backend integration", () => {
   });
 
   test("team manage page creates and joins teams through api wrappers", async () => {
-    const source = await Bun.file(sourcePath("pages/teams/manage/index.vue")).text();
+    const source = await teamManageSource();
     const state = await Bun.file(sourcePath("pages/teams/manage/teamManageState.ts")).text();
 
     expect(source.includes("createTeam")).toEqual(true);
@@ -64,7 +84,7 @@ describe("team manage real backend integration", () => {
   });
 
   test("team manage page edits team profile and searches users before adding members", async () => {
-    const source = await Bun.file(sourcePath("pages/teams/manage/index.vue")).text();
+    const source = await teamManageSource();
     const memberManager = await Bun.file(sourcePath("pages/teams/manage/components/TeamMemberManager.vue")).text();
     const candidateSearch = await Bun.file(sourcePath("pages/teams/manage/components/MemberCandidateSearch.vue")).text();
     const userApi = await Bun.file(sourcePath("api/user.ts")).text();
@@ -118,7 +138,7 @@ describe("team manage real backend integration", () => {
   });
 
   test("team manage page includes match attendance tab and panel", async () => {
-    const source = await Bun.file(sourcePath("pages/teams/manage/index.vue")).text();
+    const source = await teamManageSource();
     const panel = await Bun.file(sourcePath("pages/teams/manage/components/TeamActivityAttendancePanel.vue")).text();
 
     expect(source.includes("TeamActivityAttendancePanel")).toEqual(true);

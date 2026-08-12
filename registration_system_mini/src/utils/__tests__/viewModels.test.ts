@@ -278,6 +278,7 @@ describe("buildHomeMatchCards", () => {
         showParticipantAvatars: true,
         canOpenDetail: true,
         stage: "报名中",
+        publicationModeLabel: "线下已约",
         venue: "A 场",
         opponent: "红队",
         formatLabel: "8 人制",

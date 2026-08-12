@@ -1,6 +1,6 @@
 export type AuthMode = "required" | "login" | "none";
 
-const ADMIN_API_PREFIX = "/api/admin";
+const ADMIN_API_PREFIX = "/api/v1/admin";
 
 export function getApiBaseUrl(): string {
   return (process.env.ADMIN_API_BASE_URL?.trim() || "").replace(/\/+$/, "");
@@ -21,7 +21,7 @@ export function buildApiUrl(
     normalizedPath === ADMIN_API_PREFIX ||
     normalizedPath.startsWith(`${ADMIN_API_PREFIX}/`)
   ) {
-    throw new Error("管理端请求路径不应重复包含 /api/admin 前缀");
+    throw new Error("管理端请求路径不应重复包含 /api/v1/admin 前缀");
   }
 
   const prefix = auth === "none" ? "" : ADMIN_API_PREFIX;

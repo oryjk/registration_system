@@ -59,14 +59,18 @@ src/pages/<domain>/
   - 局部组件：`HomeSkeleton`、`HomeHeroSection`、`HomeMatchList`、`HomeOpportunityList`、`HomeDigestGrid`
   - 父页面保留首页数据加载、团队切换、跳转和刷新逻辑。
 - `src/pages/matches/detail.vue`
-  - 局部模块：`useMatchDetailPage.ts`、`detailData.ts`、`detailState.ts`、`detailActions.ts`、`registrationVisibility.ts`
+  - 页面门面：`useMatchDetailPage.ts`
+  - 业务组合模块：`useMatchRegistration.ts`、`useMatchCheckInReview.ts`、`useMatchSettlement.ts`
+  - 局部模块：`detailData.ts`、`detailState.ts`、`detailActions.ts`、`registrationVisibility.ts`
   - 局部组件：`MatchDetailSkeleton`、`MatchIndividualRegistration`、`MatchTeamRegistration`
   - 报名子组件继续拆分为 `IndividualMatchupHero`、`IndividualCountdownCard`、`IndividualInfoCard`、`IndividualPromoBanner`、`InterestMatchGrid`、`TeamRegistrationHero`、`TeamRegistrationFormCard`、`TeamMatchInfoCard`、`TeamCheckInPanel`、`TeamCheckInSettingsCard`、`TeamActivityReviewCard`
-  - 父页面保留详情页布局编排，页面级状态、加载、报名动作和跳转集中在 `useMatchDetailPage.ts`。
+  - 父页面保留详情页布局编排；门面负责加载与生命周期，报名、签到/互评和结算按业务域拆分。
 - `src/pages/teams/manage/index.vue`
+  - 页面门面：`useTeamManagePage.ts`
+  - 业务组合模块：`useTeamProfile.ts`、`useTeamMembership.ts`、`useTeamAttendance.ts`
   - 局部模块：`teamManageActions.ts`、`teamManageState.ts`
   - 局部组件：`TeamProfilePanel`、`TeamCreatePanel`、`TeamJoinPanel`、`TeamMemberManager`、`MemberEditPopup`、`MemberAttendancePopup`
-  - 父页面保留模式切换、表单状态、成员操作流程。
+  - 父页面只保留组件编排；门面负责模式切换与加载，资料、成员和出勤流程按业务域拆分。
 - `src/pages/activities/index.vue`
   - 局部组件：`ActivitiesToolbar`、`ActivitiesSkeleton`、`PublishTypeSheet`、`ChallengeHallSections`、`ChallengeHallCard`
   - 父页面保留约队加载、筛选计算、接约、发布跳转和通知同步。
@@ -100,12 +104,11 @@ src/pages/<domain>/
 
 ## 当前重构观察
 
-截至当前结构扫描，已完成一轮拆分的页面不再列为优先重构目标。后续优先关注：
+截至当前结构扫描，比赛详情和球队管理已经完成业务组合逻辑拆分。后续优先关注：
 
-- `src/pages/teams/manage/index.vue`：仍超过 600 行，已经拆出局部组件和 actions/state，但页面编排、表单状态、成员流程仍较重；继续新增球队管理能力前应先评估是否还能抽页面级 composable。
 - `src/pages/billing/index.vue`：接近 600 行，若继续加支付、流水筛选或订单管理能力，应优先拆 wallet summary、record list、payment order list 和 payment actions。
 - `src/pages/teams/manage/components/TeamMemberManager.vue`：成员管理组件接近 600 行，后续可按成员列表、角色操作、空态/权限提示继续拆分。
-- `src/pages/matches/useMatchDetailPage.ts`：页面级组合逻辑较长，但集中承载详情页状态和动作编排；后续新增报名分支前应优先按动作域拆出更小的 composable 或 action helper。
+- `src/pages/activities/index.vue`：页面脚本仍承担筛选、加载、权限与接约状态同步；继续增加大厅功能前可抽页面级 composable。
 - `src/pages/matches/create/index.vue`、`src/pages/notifications/index.vue`、`src/pages/profile/setup/index.vue`：体量中等，若继续加复杂表单、消息筛选或资料校验，应按局部组件和 `*State.ts` 小步拆分。
 
 这些不是必须一次完成的任务。后续改到相关页面时，按最小范围顺手拆清楚边界。

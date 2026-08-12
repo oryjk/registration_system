@@ -2,12 +2,14 @@ import { buildApiUrl } from "./api";
 
 describe("buildApiUrl", () => {
   it("builds a same-origin admin URL", () => {
-    expect(buildApiUrl("", "required", "/matches")).toBe("/api/admin/matches");
+    expect(buildApiUrl("", "required", "/matches")).toBe(
+      "/api/v1/admin/matches",
+    );
   });
 
   it("builds a proxied login URL without duplicate slashes", () => {
     expect(buildApiUrl("/go-api/", "login", "/auth/login")).toBe(
-      "/go-api/api/admin/auth/login",
+      "/go-api/api/v1/admin/auth/login",
     );
   });
 
@@ -18,7 +20,9 @@ describe("buildApiUrl", () => {
   });
 
   it("rejects callers that repeat the admin prefix", () => {
-    expect(() => buildApiUrl("", "required", "/api/admin/matches")).toThrow();
+    expect(() =>
+      buildApiUrl("", "required", "/api/v1/admin/matches"),
+    ).toThrow();
   });
 
   it("rejects paths that do not start with a slash", () => {
@@ -26,6 +30,6 @@ describe("buildApiUrl", () => {
   });
 
   it("rejects admin paths even when authorization is disabled", () => {
-    expect(() => buildApiUrl("", "none", "/api/admin/matches")).toThrow();
+    expect(() => buildApiUrl("", "none", "/api/v1/admin/matches")).toThrow();
   });
 });

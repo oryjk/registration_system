@@ -280,11 +280,34 @@ func (r *Repository) FindForUser(ctx context.Context, matchID uuid.UUID, userID 
 				CancelledAt: timestampPointer(groupRow.MyRegistrationCancelledAt),
 			}
 		}
+		roster, err := r.ListRosterForGroup(ctx, state.Group)
+		if err != nil {
+			return ports.MatchItem{}, nil, false, err
+		}
+		state.Participants = mapUserParticipants(roster)
 		groups = append(groups, state)
 	}
 	return ports.MatchItem{
 		Match: mapAdminDetailMatch(row), HostTeamName: row.HostTeamName, AwayTeamName: row.AwayTeamName,
 	}, groups, true, nil
+}
+
+func mapUserParticipants(entries []ports.AdminRosterEntry) []ports.UserParticipant {
+	participants := make([]ports.UserParticipant, 0, len(entries))
+	seen := make(map[int64]struct{}, len(entries))
+	for _, entry := range entries {
+		if entry.Status == nil || *entry.Status != domain.RegistrationAttending {
+			continue
+		}
+		if _, exists := seen[entry.UserID]; exists {
+			continue
+		}
+		seen[entry.UserID] = struct{}{}
+		participants = append(participants, ports.UserParticipant{
+			UserID: entry.UserID, Nickname: entry.Nickname, AvatarURL: entry.AvatarURL, Status: *entry.Status,
+		})
+	}
+	return participants
 }
 
 func (r *Repository) ListForAdmin(ctx context.Context, filter ports.AdminMatchFilter) ([]ports.AdminMatchItem, error) {
@@ -325,7 +348,8 @@ func (r *Repository) ListForUser(ctx context.Context, filter ports.MatchListFilt
 	}
 	rows, err := r.queries.ListMatchesForUser(ctx, matchsqlc.ListMatchesForUserParams{
 		Status: status, Search: filter.Search, Scope: string(filter.Scope), UserID: filter.UserID,
-		LimitCount: int32(filter.Limit), OffsetCount: int32(filter.Offset),
+		StartsAfter: pgOptionalTimestamp(filter.StartsAfter),
+		LimitCount:  int32(filter.Limit), OffsetCount: int32(filter.Offset),
 	})
 	if err != nil {
 		return nil, err
@@ -347,6 +371,7 @@ func (r *Repository) CountForUser(ctx context.Context, filter ports.MatchListFil
 	}
 	return r.queries.CountMatchesForUser(ctx, matchsqlc.CountMatchesForUserParams{
 		Status: status, Search: filter.Search, Scope: string(filter.Scope), UserID: filter.UserID,
+		StartsAfter: pgOptionalTimestamp(filter.StartsAfter),
 	})
 }
 

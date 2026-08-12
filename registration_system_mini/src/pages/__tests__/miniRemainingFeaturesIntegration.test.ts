@@ -51,7 +51,11 @@ describe("remaining mini real backend integrations", () => {
 
   test("team manage page exposes real team member management operations", async () => {
     const teamApi = await read(`${miniRoot}/src/api/team.ts`);
-    const page = await read(`${miniRoot}/src/pages/teams/manage/index.vue`);
+    const page = (await Promise.all([
+      `${miniRoot}/src/pages/teams/manage/index.vue`,
+      `${miniRoot}/src/pages/teams/manage/useTeamManagePage.ts`,
+      `${miniRoot}/src/pages/teams/manage/useTeamMembership.ts`,
+    ].map(read))).join("\n");
     const state = await read(`${miniRoot}/src/pages/teams/manage/teamManageState.ts`);
 
     expect(teamApi.includes("export function addTeamMember")).toEqual(true);
@@ -76,7 +80,10 @@ describe("remaining mini real backend integrations", () => {
     const activityApi = await read(`${miniRoot}/src/api/activity.ts`);
     const teamApi = await read(`${miniRoot}/src/api/team.ts`);
     const page = await read(`${miniRoot}/src/pages/matches/detail.vue`);
-    const pageLogic = await read(`${miniRoot}/src/pages/matches/useMatchDetailPage.ts`);
+    const pageLogic = (await Promise.all([
+      `${miniRoot}/src/pages/matches/useMatchDetailPage.ts`,
+      `${miniRoot}/src/pages/matches/useMatchCheckInReview.ts`,
+    ].map(read))).join("\n");
     const actions = await read(`${miniRoot}/src/pages/matches/detailActions.ts`);
     const teamRegistration = await read(`${miniRoot}/src/pages/matches/components/MatchTeamRegistration.vue`);
     const checkInSettings = await read(`${miniRoot}/src/pages/matches/components/TeamCheckInSettingsCard.vue`);

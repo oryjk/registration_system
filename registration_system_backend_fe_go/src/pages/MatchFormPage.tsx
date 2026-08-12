@@ -31,7 +31,10 @@ import {
   buildCreateMatchPayload,
   buildUpdateMatchPayload,
 } from "../utils/match-form-payload";
-import { publicationModeLabels } from "./matchLabels";
+import {
+  publicationModeDescriptions,
+  publicationModeLabels,
+} from "./matchLabels";
 
 const { RangePicker } = DatePicker;
 const { Text, Title } = Typography;
@@ -239,13 +242,28 @@ export default function MatchFormPage() {
                   </Form.Item>
                   <Form.Item
                     name="publication_mode"
-                    label="发布模式"
+                    label="比赛类型"
                     rules={[{ required: true }]}
                   >
-                    <Select
+                    <Select<PublicationMode>
                       disabled={editing}
                       options={Object.entries(publicationModeLabels).map(
-                        ([value, label]) => ({ value, label }),
+                        ([value, label]) => ({
+                          value: value as PublicationMode,
+                          label,
+                          description:
+                            publicationModeDescriptions[
+                              value as PublicationMode
+                            ],
+                        }),
+                      )}
+                      optionRender={(option) => (
+                        <div className="match-type-option">
+                          <Text strong>{option.data.label}</Text>
+                          <Text type="secondary">
+                            {option.data.description}
+                          </Text>
+                        </div>
                       )}
                     />
                   </Form.Item>

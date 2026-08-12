@@ -63,29 +63,57 @@ WHERE ($1::text IS NULL OR m.status = $1)
   )
   AND (
       $3::text = 'all'
-      OR EXISTS (
-          SELECT 1
-          FROM match_registration_groups registration_group
-          JOIN match_registrations registration ON registration.group_id = registration_group.id
-          WHERE registration_group.match_id = m.id
-            AND registration.user_id = $4
-            AND registration.status <> 'cancelled'
+      OR (
+          $3::text = 'mine'
+          AND (
+              EXISTS (
+                  SELECT 1
+                  FROM match_registration_groups registration_group
+                  JOIN match_registrations registration ON registration.group_id = registration_group.id
+                  WHERE registration_group.match_id = m.id
+                    AND registration.user_id = $4
+                    AND registration.status <> 'cancelled'
+              )
+              OR EXISTS (
+                  SELECT 1
+                  FROM team_members membership
+                  WHERE membership.user_id = $4
+                    AND membership.status = 'active'
+                    AND (membership.team_id = m.host_team_id OR membership.team_id = m.away_team_id)
+              )
+          )
       )
-      OR EXISTS (
-          SELECT 1
-          FROM team_members membership
-          WHERE membership.user_id = $4
-            AND membership.status = 'active'
-            AND (membership.team_id = m.host_team_id OR membership.team_id = m.away_team_id)
+      OR (
+          $3::text = 'others'
+          AND NOT EXISTS (
+              SELECT 1
+              FROM match_registration_groups registration_group
+              JOIN match_registrations registration ON registration.group_id = registration_group.id
+              WHERE registration_group.match_id = m.id
+                AND registration.user_id = $4
+                AND registration.status <> 'cancelled'
+          )
+          AND NOT EXISTS (
+              SELECT 1
+              FROM team_members membership
+              WHERE membership.user_id = $4
+                AND membership.status = 'active'
+                AND (membership.team_id = m.host_team_id OR membership.team_id = m.away_team_id)
+          )
       )
+  )
+  AND (
+      $5::timestamp IS NULL
+      OR m.start_time > $5::timestamp
   )
 `
 
 type CountMatchesForUserParams struct {
-	Status *string `json:"status"`
-	Search string  `json:"search"`
-	Scope  string  `json:"scope"`
-	UserID int64   `json:"user_id"`
+	Status      *string          `json:"status"`
+	Search      string           `json:"search"`
+	Scope       string           `json:"scope"`
+	UserID      int64            `json:"user_id"`
+	StartsAfter pgtype.Timestamp `json:"starts_after"`
 }
 
 func (q *Queries) CountMatchesForUser(ctx context.Context, arg CountMatchesForUserParams) (int64, error) {
@@ -94,6 +122,7 @@ func (q *Queries) CountMatchesForUser(ctx context.Context, arg CountMatchesForUs
 		arg.Search,
 		arg.Scope,
 		arg.UserID,
+		arg.StartsAfter,
 	)
 	var count int64
 	err := row.Scan(&count)
@@ -703,6 +732,7 @@ LEFT JOIN match_registrations mine
   ON mine.group_id = related_group.id
  AND mine.user_id = $1
 WHERE m.status IN ('registering', 'ongoing')
+  AND m.end_time > NOW()
 ORDER BY
     CASE m.status WHEN 'ongoing' THEN 0 ELSE 1 END,
     m.start_time,
@@ -820,7 +850,8 @@ SELECT m.id, m.name, m.publication_mode, m.opponent_state, m.status, m.host_team
 FROM matches m
 JOIN teams host ON host.id = m.host_team_id
 LEFT JOIN teams away ON away.id = m.away_team_id
-WHERE m.status = 'ended'
+WHERE m.status <> 'cancelled'
+  AND (m.status = 'ended' OR m.end_time <= NOW())
   AND (
       EXISTS (
           SELECT 1
@@ -837,7 +868,7 @@ WHERE m.status = 'ended'
             AND registration.user_id = $1
       )
   )
-ORDER BY m.start_time DESC, m.id
+ORDER BY m.end_time DESC, m.id
 LIMIT $2
 `
 
@@ -1079,33 +1110,61 @@ WHERE ($1::text IS NULL OR m.status = $1)
   )
   AND (
       $3::text = 'all'
-      OR EXISTS (
-          SELECT 1
-          FROM match_registration_groups registration_group
-          JOIN match_registrations registration ON registration.group_id = registration_group.id
-          WHERE registration_group.match_id = m.id
-            AND registration.user_id = $4
-            AND registration.status <> 'cancelled'
+      OR (
+          $3::text = 'mine'
+          AND (
+              EXISTS (
+                  SELECT 1
+                  FROM match_registration_groups registration_group
+                  JOIN match_registrations registration ON registration.group_id = registration_group.id
+                  WHERE registration_group.match_id = m.id
+                    AND registration.user_id = $4
+                    AND registration.status <> 'cancelled'
+              )
+              OR EXISTS (
+                  SELECT 1
+                  FROM team_members membership
+                  WHERE membership.user_id = $4
+                    AND membership.status = 'active'
+                    AND (membership.team_id = m.host_team_id OR membership.team_id = m.away_team_id)
+              )
+          )
       )
-      OR EXISTS (
-          SELECT 1
-          FROM team_members membership
-          WHERE membership.user_id = $4
-            AND membership.status = 'active'
-            AND (membership.team_id = m.host_team_id OR membership.team_id = m.away_team_id)
+      OR (
+          $3::text = 'others'
+          AND NOT EXISTS (
+              SELECT 1
+              FROM match_registration_groups registration_group
+              JOIN match_registrations registration ON registration.group_id = registration_group.id
+              WHERE registration_group.match_id = m.id
+                AND registration.user_id = $4
+                AND registration.status <> 'cancelled'
+          )
+          AND NOT EXISTS (
+              SELECT 1
+              FROM team_members membership
+              WHERE membership.user_id = $4
+                AND membership.status = 'active'
+                AND (membership.team_id = m.host_team_id OR membership.team_id = m.away_team_id)
+          )
       )
   )
+  AND (
+      $5::timestamp IS NULL
+      OR m.start_time > $5::timestamp
+  )
 ORDER BY m.start_time DESC, m.id
-LIMIT $6 OFFSET $5
+LIMIT $7 OFFSET $6
 `
 
 type ListMatchesForUserParams struct {
-	Status      *string `json:"status"`
-	Search      string  `json:"search"`
-	Scope       string  `json:"scope"`
-	UserID      int64   `json:"user_id"`
-	OffsetCount int32   `json:"offset_count"`
-	LimitCount  int32   `json:"limit_count"`
+	Status      *string          `json:"status"`
+	Search      string           `json:"search"`
+	Scope       string           `json:"scope"`
+	UserID      int64            `json:"user_id"`
+	StartsAfter pgtype.Timestamp `json:"starts_after"`
+	OffsetCount int32            `json:"offset_count"`
+	LimitCount  int32            `json:"limit_count"`
 }
 
 type ListMatchesForUserRow struct {
@@ -1138,6 +1197,7 @@ func (q *Queries) ListMatchesForUser(ctx context.Context, arg ListMatchesForUser
 		arg.Search,
 		arg.Scope,
 		arg.UserID,
+		arg.StartsAfter,
 		arg.OffsetCount,
 		arg.LimitCount,
 	)

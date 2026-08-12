@@ -16,7 +16,6 @@ import {
   Space,
   Tag,
   Tooltip,
-  Typography,
 } from "antd";
 import { useEffect, useState } from "react";
 import { history, useLocation, useModel } from "umi";
@@ -31,14 +30,12 @@ import {
   serializeMatchListQuery,
 } from "../utils/match-list-query";
 import {
+  getPublicationModeLabel,
   matchStatusColors,
   matchStatusLabels,
-  publicationModeLabels,
 } from "./matchLabels";
 
 const { Search } = Input;
-const { Text } = Typography;
-
 function formatDateTime(value: string) {
   return new Intl.DateTimeFormat("zh-CN", {
     month: "2-digit",
@@ -104,9 +101,9 @@ export default function MatchListPage() {
       render: (_, item) => (
         <div className="match-name-cell">
           <strong>{item.name}</strong>
-          <Text type="secondary">
-            {publicationModeLabels[item.publication_mode]}
-          </Text>
+          <Tag className="match-type-tag">
+            {getPublicationModeLabel(item.publication_mode)}
+          </Tag>
         </div>
       ),
     },

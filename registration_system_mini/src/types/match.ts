@@ -1,6 +1,7 @@
 export type AppMatchStatus = "registering" | "ongoing" | "ended" | "cancelled";
 export type AppMatchUiPhase = "upcoming" | "ongoing" | "ended" | "excluded";
 export type AppMatchRegistrationStatus = "unknown" | "attending" | "leave" | "absent" | "cancelled";
+export type AppMatchPublicationMode = "offline_confirmed" | "online_team" | "online_individual";
 
 export interface AppMatchPhaseSource {
   id: string;
@@ -21,6 +22,7 @@ export interface AppHomeMatchGroup {
 
 export interface AppHomeActionMatch extends AppMatchPhaseSource {
   name: string;
+  publication_mode: AppMatchPublicationMode;
   host_team_name: string;
   opponent_name: string;
   players_per_team: number;
@@ -30,6 +32,7 @@ export interface AppHomeActionMatch extends AppMatchPhaseSource {
 
 export interface AppHomeEndedMatch extends AppMatchPhaseSource {
   name: string;
+  publication_mode: AppMatchPublicationMode;
   host_team_name: string;
   opponent_name: string;
   location: string;
@@ -37,7 +40,7 @@ export interface AppHomeEndedMatch extends AppMatchPhaseSource {
 
 export interface AppMatchSummary extends AppMatchPhaseSource {
   name: string;
-  publication_mode: "offline_confirmed" | "online_team" | "online_individual";
+  publication_mode: AppMatchPublicationMode;
   opponent_state: "no_recruitment" | "recruiting" | "confirmed";
   host_team_id: number;
   host_team_name: string;
@@ -58,6 +61,13 @@ export interface AppMatchRegistration {
   registration_count: number;
 }
 
+export interface AppMatchParticipant {
+  user_id: number;
+  nickname: string;
+  avatar_url: string | null;
+  status: AppMatchRegistrationStatus;
+}
+
 export interface AppMatchGroupDetail {
   id: string;
   kind: AppHomeMatchGroup["kind"];
@@ -67,6 +77,7 @@ export interface AppMatchGroupDetail {
   max_players: number | null;
   attending_count: number;
   my_registration: AppMatchRegistration | null;
+  participants?: AppMatchParticipant[];
 }
 
 export interface AppMatchDetailResponse {
@@ -74,8 +85,11 @@ export interface AppMatchDetailResponse {
   groups: AppMatchGroupDetail[];
 }
 
+export type AppMatchListScope = "all" | "mine" | "others";
+
 export interface AppMatchHomeResponse {
   action_items: AppHomeActionMatch[];
+  action_has_more: boolean;
   ended_items: AppHomeEndedMatch[];
   ended_has_more: boolean;
 }

@@ -27,7 +27,7 @@ function mockAdmin(isSuperAdmin: boolean) {
 
 async function loginWithMockAdmin(page: Page, isSuperAdmin = true) {
   const admin = mockAdmin(isSuperAdmin);
-  await page.route("**/api/admin/auth/login", async (route) => {
+  await page.route("**/api/v1/admin/auth/login", async (route) => {
     await route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -42,7 +42,7 @@ async function loginWithMockAdmin(page: Page, isSuperAdmin = true) {
       }),
     });
   });
-  await page.route("**/api/admin/auth/me", async (route) => {
+  await page.route("**/api/v1/admin/auth/me", async (route) => {
     await route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -148,21 +148,21 @@ test("核心管理页面在桌面和移动视口保持一致", async ({ page }, 
       body: JSON.stringify({ code: 0, message: "ok", data: { status: "ok" } }),
     });
   });
-  await page.route("**/api/admin/teams**", async (route) => {
+  await page.route("**/api/v1/admin/teams**", async (route) => {
     await route.fulfill({
       status: 200,
       contentType: "application/json",
       body: JSON.stringify({ code: 0, message: "ok", data: [visualTeam] }),
     });
   });
-  await page.route("**/api/admin/admins", async (route) => {
+  await page.route("**/api/v1/admin/admins", async (route) => {
     await route.fulfill({
       status: 200,
       contentType: "application/json",
       body: JSON.stringify({ code: 0, message: "ok", data: [mockAdmin(true)] }),
     });
   });
-  await page.route("**/api/admin/matches**", async (route) => {
+  await page.route("**/api/v1/admin/matches**", async (route) => {
     const pathname = new URL(route.request().url()).pathname;
     const data = pathname.endsWith(`/${matchID}`)
       ? { match: visualMatch, groups: [] }
@@ -187,14 +187,26 @@ test("核心管理页面在桌面和移动视口保持一致", async ({ page }, 
 
   await page.goto("/matches");
   await expect(page.getByText("视觉巡检赛")).toBeVisible();
+  await expect(page.getByText("线上约队", { exact: true })).toBeVisible();
   await capture("matches");
 
   await page.goto("/matches/new");
   await expect(page.getByLabel("比赛名称")).toBeVisible();
+  const publicationMode = page.getByLabel("比赛类型");
+  await publicationMode.click();
+  for (const label of ["线下已约", "线上约队", "散人对手"]) {
+    await expect(
+      page.locator(".ant-select-item-option").filter({ hasText: label }),
+    ).toBeVisible();
+  }
+  await publicationMode.press("Escape");
   await capture("match-form");
 
   await page.goto(`/matches/${matchID}`);
   await expect(page.getByText("视觉巡检赛", { exact: true })).toBeVisible();
+  await expect(
+    page.getByText("线上约队", { exact: true }).first(),
+  ).toBeVisible();
   await capture("match-detail");
 
   await page.goto("/teams");
@@ -275,7 +287,7 @@ test("超级管理员创建管理员保持权限与 API payload 契约", async (
       created_at: createdAt,
     },
   ];
-  await page.route("**/api/admin/admins", async (route) => {
+  await page.route("**/api/v1/admin/admins", async (route) => {
     const request = route.request();
     let data: unknown;
     if (request.method() === "POST") {
@@ -313,7 +325,7 @@ test("超级管理员创建管理员保持权限与 API payload 契约", async (
   const createRequest = page.waitForRequest(
     (request) =>
       request.method() === "POST" &&
-      new URL(request.url()).pathname.endsWith("/api/admin/admins"),
+      new URL(request.url()).pathname.endsWith("/api/v1/admin/admins"),
   );
   await page
     .getByRole("dialog", { name: "创建场馆管理员" })
@@ -355,7 +367,7 @@ test("比赛列表可以取消并永久删除比赛", async ({ page }, testInfo)
   );
   let cancelled = false;
   let deleted = false;
-  await page.route("**/api/admin/matches**", async (route) => {
+  await page.route("**/api/v1/admin/matches**", async (route) => {
     const request = route.request();
     const pathname = new URL(request.url()).pathname;
     let data: unknown;
@@ -410,7 +422,7 @@ test("比赛列表可以取消并永久删除比赛", async ({ page }, testInfo)
 test("比赛筛选写入 URL 并在刷新后恢复", async ({ page }) => {
   await loginWithMockAdmin(page);
   const requestedQueries: string[] = [];
-  await page.route("**/api/admin/matches**", async (route) => {
+  await page.route("**/api/v1/admin/matches**", async (route) => {
     const requestUrl = new URL(route.request().url());
     if (
       route.request().method() !== "GET" ||
@@ -476,7 +488,7 @@ test("比赛创建保持 API payload 契约", async ({ page }) => {
   const matchID = "44444444-4444-4444-8444-444444444444";
   const timestamp = "2026-07-15T08:30:00Z";
 
-  await page.route("**/api/admin/teams**", async (route) => {
+  await page.route("**/api/v1/admin/teams**", async (route) => {
     await route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -498,7 +510,7 @@ test("比赛创建保持 API payload 契约", async ({ page }) => {
       }),
     });
   });
-  await page.route("**/api/admin/matches", async (route) => {
+  await page.route("**/api/v1/admin/matches", async (route) => {
     if (route.request().method() !== "POST") {
       await route.fallback();
       return;
@@ -542,7 +554,7 @@ test("比赛创建保持 API payload 契约", async ({ page }) => {
   const createRequest = page.waitForRequest(
     (request) =>
       request.method() === "POST" &&
-      new URL(request.url()).pathname.endsWith("/api/admin/matches"),
+      new URL(request.url()).pathname.endsWith("/api/v1/admin/matches"),
   );
   await page.getByRole("button", { name: "保存比赛" }).click();
   const createPayload = (await createRequest).postDataJSON() as Record<
@@ -588,7 +600,7 @@ test("比赛编辑保持 API payload 契约", async ({ page }) => {
   const timestamp = "2026-07-15T08:30:00Z";
   let storedMatch = matchItem(matchID, "待编辑比赛", "registering");
 
-  await page.route("**/api/admin/teams**", async (route) => {
+  await page.route("**/api/v1/admin/teams**", async (route) => {
     await route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -610,7 +622,7 @@ test("比赛编辑保持 API payload 契约", async ({ page }) => {
       }),
     });
   });
-  await page.route("**/api/admin/matches**", async (route) => {
+  await page.route("**/api/v1/admin/matches**", async (route) => {
     const request = route.request();
     const pathname = new URL(request.url()).pathname;
     let data: unknown;
@@ -638,7 +650,9 @@ test("比赛编辑保持 API payload 契约", async ({ page }) => {
   const updateRequest = page.waitForRequest(
     (request) =>
       request.method() === "PATCH" &&
-      new URL(request.url()).pathname.endsWith(`/api/admin/matches/${matchID}`),
+      new URL(request.url()).pathname.endsWith(
+        `/api/v1/admin/matches/${matchID}`,
+      ),
   );
   await page.getByRole("button", { name: "保存比赛" }).click();
   const updatePayload = (await updateRequest).postDataJSON() as Record<
@@ -689,7 +703,7 @@ test("管理员可以增删查改球队", async ({ page }, testInfo) => {
       updated_at: timestamp,
     },
   ];
-  await page.route("**/api/admin/teams**", async (route) => {
+  await page.route("**/api/v1/admin/teams**", async (route) => {
     const request = route.request();
     const pathname = new URL(request.url()).pathname;
     const id = Number(pathname.split("/").at(-1));
@@ -829,7 +843,7 @@ test("管理员可以管理球队成员和队长", async ({ page }, testInfo) =>
   let profilePayload:
     | { real_name: string | null; phone_number: string | null }
     | undefined;
-  await page.route("**/api/admin/users/*/profile", async (route) => {
+  await page.route("**/api/v1/admin/users/*/profile", async (route) => {
     const payload = route.request().postDataJSON() as {
       real_name: string | null;
       phone_number: string | null;
@@ -856,7 +870,7 @@ test("管理员可以管理球队成员和队长", async ({ page }, testInfo) =>
     });
   });
 
-  await page.route("**/api/admin/teams**", async (route) => {
+  await page.route("**/api/v1/admin/teams**", async (route) => {
     const request = route.request();
     const pathname = new URL(request.url()).pathname;
     let data: unknown;
@@ -1012,7 +1026,7 @@ test("发布比赛时可以确认创建不存在的主队", async ({ page }, tes
   await login(page);
   const timestamp = "2026-07-15T08:30:00Z";
   let createdPayload: { name: string; description: string | null } | undefined;
-  await page.route("**/api/admin/teams**", async (route) => {
+  await page.route("**/api/v1/admin/teams**", async (route) => {
     const request = route.request();
     let data: unknown;
     if (request.method() === "GET") {

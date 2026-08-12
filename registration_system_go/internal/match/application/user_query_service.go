@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/oryjk/registration_system/registration_system_go/internal/match/domain"
@@ -16,18 +17,20 @@ type UserMatchQueryService struct {
 }
 
 type UserMatchListQuery struct {
-	Scope    MatchScope
-	Status   *domain.MatchStatus
-	Search   string
-	Page     int
-	PageSize int
+	Scope       MatchScope
+	Status      *domain.MatchStatus
+	Search      string
+	StartsAfter *time.Time
+	Page        int
+	PageSize    int
 }
 
 type MatchScope = ports.MatchScope
 
 const (
-	MatchScopeAll  = ports.MatchScopeAll
-	MatchScopeMine = ports.MatchScopeMine
+	MatchScopeAll    = ports.MatchScopeAll
+	MatchScopeMine   = ports.MatchScopeMine
+	MatchScopeOthers = ports.MatchScopeOthers
 )
 
 type UserMatchListResult struct {
@@ -43,15 +46,13 @@ type UserMatchDetail struct {
 }
 
 type UserMatchHomeResult struct {
-	ActionItems  []ports.HomeMatchItem
-	EndedItems   []ports.MatchItem
-	EndedHasMore bool
+	ActionItems   []ports.HomeMatchItem
+	ActionHasMore bool
+	EndedItems    []ports.MatchItem
+	EndedHasMore  bool
 }
 
-const (
-	homeActionLimit = 3
-	homeEndedLimit  = 6
-)
+const homeSectionLimit = 3
 
 func NewUserMatchQueryService(repository ports.UserMatchRepository) UserMatchQueryService {
 	return UserMatchQueryService{repository: repository}
@@ -67,7 +68,7 @@ func (s UserMatchQueryService) List(ctx context.Context, actor sharedauth.Actor,
 	if query.Scope == "" {
 		query.Scope = MatchScopeAll
 	}
-	if query.Scope != MatchScopeAll && query.Scope != MatchScopeMine {
+	if query.Scope != MatchScopeAll && query.Scope != MatchScopeMine && query.Scope != MatchScopeOthers {
 		return UserMatchListResult{}, sharederror.New(sharederror.KindValidation, "比赛范围筛选无效")
 	}
 	if query.Page <= 0 {
@@ -81,7 +82,8 @@ func (s UserMatchQueryService) List(ctx context.Context, actor sharedauth.Actor,
 	}
 	filter := ports.MatchListFilter{
 		Scope: query.Scope, UserID: actor.ID, Status: query.Status, Search: strings.TrimSpace(query.Search),
-		Limit: query.PageSize, Offset: (query.Page - 1) * query.PageSize,
+		StartsAfter: query.StartsAfter,
+		Limit:       query.PageSize, Offset: (query.Page - 1) * query.PageSize,
 	}
 	items, err := s.repository.ListForUser(ctx, filter)
 	if err != nil {
@@ -112,17 +114,26 @@ func (s UserMatchQueryService) Home(ctx context.Context, actor sharedauth.Actor)
 	if !actor.IsUser() {
 		return UserMatchHomeResult{}, sharederror.ErrForbidden
 	}
-	actionItems, err := s.repository.ListHomeActionItems(ctx, actor.ID, homeActionLimit)
+	actionItems, err := s.repository.ListHomeActionItems(ctx, actor.ID, homeSectionLimit+1)
 	if err != nil {
 		return UserMatchHomeResult{}, sharederror.Wrap(sharederror.KindInternal, "查询待处理比赛失败", err)
 	}
-	endedItems, err := s.repository.ListHomeEndedItems(ctx, actor.ID, homeEndedLimit+1)
+	endedItems, err := s.repository.ListHomeEndedItems(ctx, actor.ID, homeSectionLimit+1)
 	if err != nil {
 		return UserMatchHomeResult{}, sharederror.Wrap(sharederror.KindInternal, "查询已结束比赛失败", err)
 	}
-	hasMore := len(endedItems) > homeEndedLimit
-	if hasMore {
-		endedItems = endedItems[:homeEndedLimit]
+	actionHasMore := len(actionItems) > homeSectionLimit
+	if actionHasMore {
+		actionItems = actionItems[:homeSectionLimit]
 	}
-	return UserMatchHomeResult{ActionItems: actionItems, EndedItems: endedItems, EndedHasMore: hasMore}, nil
+	endedHasMore := len(endedItems) > homeSectionLimit
+	if endedHasMore {
+		endedItems = endedItems[:homeSectionLimit]
+	}
+	return UserMatchHomeResult{
+		ActionItems:   actionItems,
+		ActionHasMore: actionHasMore,
+		EndedItems:    endedItems,
+		EndedHasMore:  endedHasMore,
+	}, nil
 }

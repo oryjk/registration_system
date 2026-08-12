@@ -2,6 +2,7 @@ import type { AppMatchSummary, AppMatchUiPhase } from "@/types/match";
 import { formatDateTimeWithWeekdayLabel, formatTimeLabel, parseDateValue } from "@/utils/datetime";
 import type { MatchStatusBadgeTone } from "@/utils/statusTone";
 import { resolveMatchPhase } from "@/pages/home/homeMatchState";
+import { getMatchPublicationModeLabel } from "@/utils/matchPublicationMode";
 
 export type UserMatchScope = "future" | "past";
 
@@ -15,6 +16,7 @@ export interface UserMatchCard {
   formatLabel: string;
   statusLabel: string;
   kindLabel: string;
+  publicationModeLabel: string;
   color: string;
   opposingColor: string;
   locationLatitude: number | null;
@@ -41,17 +43,6 @@ function statusTone(phase: Exclude<AppMatchUiPhase, "excluded">): MatchStatusBad
       return "warning";
     default:
       return "muted";
-  }
-}
-
-function kindLabel(match: AppMatchSummary): string {
-  switch (match.publication_mode) {
-    case "online_team":
-      return "约队比赛";
-    case "online_individual":
-      return "散人报名";
-    default:
-      return "线下比赛";
   }
 }
 
@@ -82,7 +73,8 @@ export function buildUserMatchCards(params: {
         opponent: match.away_team_name?.trim() || match.opponent_name?.trim() || "对手待定",
         formatLabel: match.players_per_team ? `${match.players_per_team} 人制` : "人数待定",
         statusLabel: statusLabel(visiblePhase),
-        kindLabel: kindLabel(match),
+        kindLabel: getMatchPublicationModeLabel(match.publication_mode),
+        publicationModeLabel: getMatchPublicationModeLabel(match.publication_mode),
         color: "#2F6BFF",
         opposingColor: "#C8FF00",
         locationLatitude: match.location_latitude,

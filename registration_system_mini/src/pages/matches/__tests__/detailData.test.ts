@@ -56,6 +56,15 @@ describe("Go match detail adapter", () => {
     });
   });
 
+  test("keeps the Go publication mode label in the detail presentation data", () => {
+    const data = buildGoPublicMatchDetailData({
+      match: { ...goMatch, publication_mode: "online_individual" },
+      groups: [],
+    });
+
+    expect(data.publicationModeLabel).toEqual("散人对手");
+  });
+
   test("uses the selected Go group for attendance and capacity", () => {
     const activity = toBackendActivity(goMatch, {
       id: "group-1",
@@ -127,6 +136,38 @@ describe("Go match detail adapter", () => {
         occupiesCapacity,
       });
     }
+  });
+
+  test("maps Go participants into the existing avatar model", () => {
+    const goDetail = {
+      match: goMatch,
+      groups: [{
+        id: "a7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c500",
+        kind: "individual_opponent",
+        team_id: null,
+        status: "open",
+        min_players: 6,
+        max_players: 8,
+        attending_count: 2,
+        my_registration: null,
+        participants: [
+          { user_id: 37, nickname: "阿睿", avatar_url: "https://cdn.example.com/player-37.png", status: "attending" },
+          { user_id: 38, nickname: "阿东", avatar_url: "https://cdn.example.com/player-38.png", status: "attending" },
+          { user_id: 39, nickname: "请假队员", avatar_url: "https://cdn.example.com/player-39.png", status: "leave" },
+        ],
+      }],
+    } as unknown as AppMatchDetailResponse;
+
+    const data = buildGoPublicMatchDetailData(goDetail, 37);
+
+    expect(data.activityUsers.map((item) => item.user_id)).toEqual([37, 38]);
+    expect({
+      first: { id: data.usersById[37]?.id, nickname: data.usersById[37]?.nickname, avatarUrl: data.usersById[37]?.avatar_url },
+      second: { id: data.usersById[38]?.id, nickname: data.usersById[38]?.nickname, avatarUrl: data.usersById[38]?.avatar_url },
+    }).toEqual({
+      first: { id: 37, nickname: "阿睿", avatarUrl: "https://cdn.example.com/player-37.png" },
+      second: { id: 38, nickname: "阿东", avatarUrl: "https://cdn.example.com/player-38.png" },
+    });
   });
 
   test("keeps the selected Go group id and a zero attending count at the lower boundary", () => {

@@ -22,6 +22,7 @@ const {
   registrationMode,
   canUseTeamRegistration,
   matchKindLabel,
+  publicationModeLabel,
   homeTeamLabel,
   displayOpponentLabel,
   homeTeamColor,
@@ -134,6 +135,7 @@ onShareTimeline(() => ({
         v-if="registrationMode === 'individual'"
         :match="match"
         :match-kind-label="matchKindLabel"
+        :publication-mode-label="publicationModeLabel"
         :home-team-label="homeTeamLabel"
         :display-opponent-label="displayOpponentLabel"
         :home-team-color="homeTeamColor"
@@ -165,6 +167,7 @@ onShareTimeline(() => ({
         :match="match"
         :date-line="dateLine"
         :hero-meta-chips="heroMetaChips"
+        :publication-mode-label="publicationModeLabel"
         :current-team="currentTeam"
         :opponent-team="opponentTeam"
         :existing-team-derived-activity="existingTeamDerivedActivity"

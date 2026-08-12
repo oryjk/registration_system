@@ -297,12 +297,13 @@ function handleCreateIndividualChallenge() {
   opacity: 0;
   transform: translateY(70rpx) scale(0.82);
   transition: opacity 260ms ease, transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
-  pointer-events: auto;
+  pointer-events: none;
 }
 
 .create-menu-overlay-open .create-menu-action {
   opacity: 1;
   transform: translateY(0) scale(1);
+  pointer-events: auto;
 }
 
 .create-menu-action-left {

@@ -17,7 +17,7 @@ import { getAccessToken, hasManualLogout } from "@/utils/authStorage";
 import { getCustomNavMetrics } from "@/utils/customNav";
 import { DEFAULT_SHARE_IMAGE_URL } from "@/utils/share";
 import { attendanceStatusTone } from "@/utils/statusTone";
-import { buildHomeMatchSections } from "./homeMatchState";
+import { buildHomeMatchSections, type HomeMatchSectionViewModel } from "./homeMatchState";
 import { formatHomeMatchDateBlock } from "./homeMatchDate";
 
 const { ensureSessionReady } = useTeamContext();
@@ -94,16 +94,16 @@ function clearMatchSections() {
   endedMatches.value = [];
 }
 
-function applyMatchSection(phase: MatchSectionPhase, matches: HomeMatchCardViewModel[]) {
-  switch (phase) {
+function applyMatchSection(section: HomeMatchSectionViewModel) {
+  switch (section.phase) {
     case "upcoming":
-      upcomingMatches.value = matches;
+      upcomingMatches.value = section.items;
       return;
     case "ongoing":
-      ongoingMatches.value = matches;
+      ongoingMatches.value = section.items;
       return;
     case "ended":
-      endedMatches.value = matches;
+      endedMatches.value = section.items;
       return;
   }
 }
@@ -163,7 +163,7 @@ async function loadPageData(options?: { preserveContent?: boolean }) {
 
     clearMatchSections();
     for (const section of sections) {
-      applyMatchSection(section.phase, section.items);
+      applyMatchSection(section);
     }
 
     errorMessage.value = "";

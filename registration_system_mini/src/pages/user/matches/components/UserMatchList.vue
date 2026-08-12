@@ -24,7 +24,7 @@ defineEmits<{
       </view>
 
       <view class="match-subline">
-        <text class="match-kind-badge">{{ match.kindLabel }}</text>
+        <text class="match-kind-badge">{{ match.publicationModeLabel }}</text>
         <text :class="['match-status-badge', `match-status-badge-${match.statusTone}`]">{{ match.statusLabel }}</text>
         <text class="match-footer-text">{{ match.formatLabel }}</text>
         <text class="match-footer-text">{{ match.timeLabel }}</text>

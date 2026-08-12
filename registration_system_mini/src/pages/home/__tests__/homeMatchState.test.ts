@@ -1,12 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import {
   buildHomeMatchSections,
-  groupMatchesByPhase,
   resolveMatchPhase,
   toGoHomeMatchCard,
 } from "../homeMatchState";
 import { formatHomeMatchDateBlock } from "../homeMatchDate";
-import type { AppHomeActionMatch, AppHomeEndedMatch, AppMatchHomeResponse, AppMatchSummary } from "@/types/match";
+import type { AppHomeActionMatch, AppHomeEndedMatch, AppMatchSummary } from "@/types/match";
 
 const now = new Date("2026-08-09T12:00:00.000Z");
 const nowIso = "2026-08-09T12:00:00.000Z";
@@ -32,6 +31,7 @@ describe("formatHomeMatchDateBlock", () => {
 
 const baseActionMatch = {
   status: "registering" as const,
+  publication_mode: "online_team" as const,
   host_team_name: "银河联队",
   opponent_name: "红星队",
   players_per_team: 8,
@@ -69,6 +69,7 @@ function buildEndedMatch(overrides: Partial<AppHomeEndedMatch>): AppHomeEndedMat
     start_time: earlierIso,
     end_time: muchEarlierIso,
     name: "默认已结束比赛",
+    publication_mode: "offline_confirmed",
     host_team_name: "银河联队",
     opponent_name: "红星队",
     location: "A 场",
@@ -94,181 +95,64 @@ describe("resolveMatchPhase", () => {
   });
 });
 
-describe("groupMatchesByPhase", () => {
-  test("dedupes shared ids before grouping and keeps the richer visible match", () => {
-    const sharedUpcoming = buildActionMatch({
-      id: "shared-id",
-      status: "ongoing",
-      name: "共享赛事（进行中）",
-      start_time: "2026-08-09T11:55:00.000Z",
+describe("buildHomeMatchSections", () => {
+  test("reclassifies related matches by actual timestamps and ignores unrelated future matches", () => {
+    const expiredAction = buildActionMatch({
+      id: "action-expired",
+      name: "实际已结束但状态未更新",
+      start_time: muchEarlierIso,
+      end_time: earlierIso,
+    });
+    const ongoingAction = buildActionMatch({
+      id: "action-ongoing",
+      name: "报名结束但比赛未结束",
+      start_time: earlierIso,
       end_time: laterIso,
-      group: {
-        ...baseActionMatch.group,
-        attending_count: 12,
-      },
     });
-    const sharedEnded = buildEndedMatch({
-      id: "shared-id",
-      name: "共享赛事（已结束）",
-      end_time: muchEarlierIso,
-    });
-    const upcomingEarly = buildActionMatch({
-      id: "upcoming-early",
-      name: "更早的报名中比赛",
+    const futureAction = buildActionMatch({
+      id: "action-future",
+      name: "即将开始",
       start_time: futureSoonIso,
-      end_time: laterIso,
-      group: {
-        ...baseActionMatch.group,
-        attending_count: 4,
-      },
     });
-    const upcomingLate = buildActionMatch({
-      id: "upcoming-late",
-      name: "更晚的报名中比赛",
-      start_time: futureLaterIso,
-      end_time: muchLaterIso,
-      group: {
-        ...baseActionMatch.group,
-        attending_count: 9,
-      },
-    });
-    const ongoingA = buildActionMatch({
-      id: "ongoing-a",
-      status: "ongoing",
-      name: "进行中 A",
-      start_time: "2026-08-09T09:30:00.000Z",
-      end_time: laterIso,
-      group: {
-        ...baseActionMatch.group,
-        status: "closed",
-        attending_count: 11,
-      },
-    });
-    const ongoingB = buildActionMatch({
-      id: "ongoing-b",
-      status: "ongoing",
-      name: "进行中 B",
-      start_time: "2026-08-09T10:30:00.000Z",
-      end_time: laterIso,
-      group: {
-        ...baseActionMatch.group,
-        status: "closed",
-        attending_count: 13,
-      },
-    });
-    const ongoingC = buildActionMatch({
-      id: "ongoing-c",
-      status: "ongoing",
-      name: "进行中 C",
-      start_time: "2026-08-09T11:45:00.000Z",
-      end_time: laterIso,
-      group: {
-        ...baseActionMatch.group,
-        status: "closed",
-        attending_count: 15,
-      },
-    });
-    const endedOne = buildEndedMatch({
-      id: "ended-a",
-      name: "已结束 A",
-      end_time: "2026-08-09T09:50:00.000Z",
-    });
-    const endedTwo = buildEndedMatch({
-      id: "ended-b",
-      name: "已结束 B",
-      end_time: "2026-08-09T09:20:00.000Z",
-    });
-    const endedThree = buildEndedMatch({
-      id: "ended-c",
-      name: "已结束 C",
-      end_time: "2026-08-09T08:20:00.000Z",
-    });
+    const ended = buildEndedMatch({ id: "ended-a", name: "已结束 A" });
 
-    const grouped = groupMatchesByPhase(
-      [
-        sharedEnded,
-        upcomingLate,
-        ongoingA,
-        sharedUpcoming,
-        ongoingC,
-        upcomingEarly,
-        ongoingB,
-        endedOne,
-        endedTwo,
-        endedThree,
-      ],
-      now,
-    );
+    const sections = buildHomeMatchSections({
+      action_items: [expiredAction, ongoingAction, futureAction],
+      action_has_more: false,
+      ended_items: [ended],
+      ended_has_more: true,
+    }, now, 2);
 
-    expect(grouped.upcoming.map((item) => item.id)).toEqual(["upcoming-early", "upcoming-late"]);
-    expect(grouped.ongoing.map((item) => item.id)).toEqual(["shared-id", "ongoing-c", "ongoing-b", "ongoing-a"]);
-    expect(grouped.ended.map((item) => item.id)).toEqual(["ended-a", "ended-b", "ended-c"]);
+    expect(sections.map((section) => section.phase)).toEqual(["upcoming", "ongoing", "ended"]);
+    expect(sections.map((section) => section.title)).toEqual(["最近要处理", "进行中", "已结束"]);
+    expect(sections[0].items.map((item) => item.id)).toEqual(["action-future"]);
+    expect(sections[1].items.map((item) => item.id)).toEqual(["action-ongoing"]);
+    expect(sections[2].items.map((item) => item.id)).toEqual(["action-expired", "ended-a"]);
+  });
 
+  test("sorts by phase semantics and limits every home section to two matches", () => {
     const sections = buildHomeMatchSections(
       {
         action_items: [
-          upcomingLate,
-          ongoingA,
-          sharedUpcoming,
-          ongoingC,
-          upcomingEarly,
-          ongoingB,
+          buildActionMatch({ id: "action-late", start_time: laterIso }),
+          buildActionMatch({ id: "action-ongoing", start_time: earlierIso, end_time: laterIso }),
+          buildActionMatch({ id: "action-soon", start_time: futureSoonIso }),
+          buildActionMatch({ id: "action-middle", start_time: futureLaterIso }),
         ],
-        ended_items: [sharedEnded, endedOne, endedTwo, endedThree],
+        action_has_more: true,
+        ended_items: [
+          buildEndedMatch({ id: "ended-older", start_time: muchEarlierIso }),
+          buildEndedMatch({ id: "ended-newer", start_time: earlierIso }),
+        ],
         ended_has_more: false,
       },
       now,
       2,
     );
 
-    expect(sections.map((section) => section.phase)).toEqual(["upcoming", "ongoing", "ended"]);
-    expect(sections.map((section) => section.items.length)).toEqual([2, 2, 2]);
-    expect(sections[0].items.map((item) => item.id)).toEqual(["upcoming-early", "upcoming-late"]);
-    expect(sections[1].items.map((item) => item.id)).toEqual(["shared-id", "ongoing-c"]);
-    expect(sections[2].items.map((item) => item.id)).toEqual(["ended-a", "ended-b"]);
-  });
-
-  test("keeps the first action item when duplicate ids have the same visible phase and timestamp", () => {
-    const sharedEndTime = "2026-08-09T11:00:00.000Z";
-    const richerAction = buildActionMatch({
-      id: "same-ended-id",
-      status: "ongoing",
-      start_time: "2026-08-09T09:00:00.000Z",
-      end_time: sharedEndTime,
-      players_per_team: 8,
-      group: {
-        ...baseActionMatch.group,
-        min_players: 6,
-        max_players: 10,
-        attending_count: 7,
-      },
-    });
-    const leanEnded = buildEndedMatch({
-      id: "same-ended-id",
-      start_time: "2026-08-09T09:00:00.000Z",
-      end_time: sharedEndTime,
-      name: "同场次精简副本",
-    });
-
-    const grouped = groupMatchesByPhase([richerAction, leanEnded], now);
-
-    expect(grouped.ended.length).toEqual(1);
-    expect("group" in grouped.ended[0]).toEqual(true);
-
-    const sections = buildHomeMatchSections(
-      {
-        action_items: [richerAction],
-        ended_items: [leanEnded],
-        ended_has_more: false,
-      },
-      now,
-      1,
-    );
-
-    expect(sections[2].items[0].id).toEqual("same-ended-id");
-    expect(sections[2].items[0].requiredPlayers).toEqual(6);
-    expect(sections[2].items[0].maxPlayers).toEqual(10);
-    expect(sections[2].items[0].joinedPlayers).toEqual(7);
+    expect(sections[0].items.map((item) => item.id)).toEqual(["action-soon", "action-middle"]);
+    expect(sections[1].items.map((item) => item.id)).toEqual(["action-ongoing"]);
+    expect(sections[2].items.map((item) => item.id)).toEqual(["ended-newer", "ended-older"]);
   });
 });
 
@@ -281,6 +165,7 @@ describe("toGoHomeMatchCard", () => {
         start_time: laterIso,
         end_time: muchLaterIso,
         name: "报名中比赛",
+        publication_mode: "online_team",
         host_team_name: "银河联队",
         opponent_name: "红星队",
         players_per_team: 8,
@@ -301,6 +186,7 @@ describe("toGoHomeMatchCard", () => {
     expect(card.id).toEqual("upcoming-card");
     expect(card.phase).toEqual("upcoming");
     expect(card.stage).toEqual("报名中");
+    expect(card.publicationModeLabel).toEqual("线上约队");
     expect(card.dateNote).toEqual("截止报名");
     expect(card.actionLabel).toEqual("去报名");
     expect(card.canRegister).toEqual(true);
@@ -342,6 +228,7 @@ describe("toGoHomeMatchCard", () => {
     expect(card.dateNote).toEqual("截止报名");
     expect(card.signupScope).toEqual("external");
     expect(card.signupScopeLabel).toEqual("散人报名");
+    expect(card.publicationModeLabel).toEqual("散人对手");
     expect(card.formatLabel).toEqual("8 人制");
     expect(card.opponent).toEqual("红星队");
     expect(card.showRegistrationProgress).toEqual(false);

@@ -444,6 +444,81 @@ func TestRepositoryListsIndividualGroupRegistrations(t *testing.T) {
 	}
 }
 
+func TestMapUserParticipantsFiltersNonAttendingAndDeduplicates(t *testing.T) {
+	attending := domain.RegistrationAttending
+	leave := domain.RegistrationLeave
+	firstAvatar := "https://cdn.example.com/first.png"
+	secondAvatar := "https://cdn.example.com/second.png"
+	participants := mapUserParticipants([]ports.AdminRosterEntry{
+		{UserID: 11, Nickname: "阿一", AvatarURL: &firstAvatar, Status: &attending},
+		{UserID: 11, Nickname: "阿一重复", AvatarURL: &firstAvatar, Status: &attending},
+		{UserID: 12, Nickname: "阿二", AvatarURL: &secondAvatar, Status: &leave},
+		{UserID: 13, Nickname: "未报名", Status: nil},
+	})
+
+	if len(participants) != 1 || participants[0].UserID != 11 || participants[0].Nickname != "阿一" || participants[0].AvatarURL == nil || *participants[0].AvatarURL != firstAvatar || participants[0].Status != domain.RegistrationAttending {
+		t.Fatalf("unexpected user participants: %+v", participants)
+	}
+}
+
+func TestRepositoryFindForUserIncludesAttendingParticipants(t *testing.T) {
+	pool := testsupport.StartPostgres(t)
+	ctx := context.Background()
+	userID, teamID := seedMatchOwner(t, pool)
+	secondUserID := seedMatchUser(t, pool)
+	leaveUserID := seedMatchUser(t, pool)
+	for id, profile := range map[int64][2]string{
+		userID:       [2]string{"队长", "https://cdn.example.com/captain.png"},
+		secondUserID: [2]string{"阿东", "https://cdn.example.com/dong.png"},
+		leaveUserID:  [2]string{"请假队员", "https://cdn.example.com/leave.png"},
+	} {
+		if _, err := pool.Exec(ctx, `UPDATE users SET nickname = $2, avatar_url = $3 WHERE id = $1`, id, profile[0], profile[1]); err != nil {
+			t.Fatalf("seed participant profile: %v", err)
+		}
+	}
+
+	match, groups := newPersistableIndividualMatch(t, userID, teamID, 1, 8)
+	repository := NewRepository(pool)
+	if err := repository.CreateWithGroups(ctx, match, groups); err != nil {
+		t.Fatalf("create match: %v", err)
+	}
+	now := time.Date(2026, 7, 20, 12, 0, 0, 0, time.UTC)
+	for user, status := range map[int64]domain.RegistrationStatus{
+		userID:       domain.RegistrationAttending,
+		secondUserID: domain.RegistrationAttending,
+		leaveUserID:  domain.RegistrationLeave,
+	} {
+		registration, err := domain.NewRegistration(groups[0].ID, user, status, 1, now)
+		if err != nil {
+			t.Fatalf("new registration: %v", err)
+		}
+		if err := repository.CreateRegistration(ctx, registration); err != nil {
+			t.Fatalf("create registration: %v", err)
+		}
+	}
+
+	_, states, found, err := repository.FindForUser(ctx, match.ID, userID)
+	if err != nil || !found {
+		t.Fatalf("find user match detail: found=%t err=%v", found, err)
+	}
+	if len(states) != 1 || len(states[0].Participants) != 2 {
+		t.Fatalf("expected two attending participants, got %+v", states)
+	}
+	participantsByID := make(map[int64]ports.UserParticipant, len(states[0].Participants))
+	for _, participant := range states[0].Participants {
+		participantsByID[participant.UserID] = participant
+	}
+	for id, expectedAvatar := range map[int64]string{
+		userID:       "https://cdn.example.com/captain.png",
+		secondUserID: "https://cdn.example.com/dong.png",
+	} {
+		participant, ok := participantsByID[id]
+		if !ok || participant.Status != domain.RegistrationAttending || participant.AvatarURL == nil || *participant.AvatarURL != expectedAvatar {
+			t.Fatalf("unexpected participant %d: %+v", id, participant)
+		}
+	}
+}
+
 func TestRepositoryCreatesRegistration(t *testing.T) {
 	pool := testsupport.StartPostgres(t)
 	ctx := context.Background()
@@ -491,7 +566,8 @@ func TestRepositoryListsUserHomeMatches(t *testing.T) {
 		t.Fatalf("seed memberships: %v", err)
 	}
 
-	now := time.Date(2026, 8, 6, 12, 0, 0, 0, time.UTC)
+	now := time.Now().UTC()
+	staleRegisteringID, _ := seedHomeMatch(t, pool, actorID, actorTeamID, "已过期报名中", domain.MatchRegistering, now.Add(-3*time.Hour))
 	ongoingID, _ := seedHomeMatch(t, pool, actorID, actorTeamID, "正在进行", domain.MatchOngoing, now.Add(-time.Hour))
 	registeringID, registeringGroupID := seedHomeMatch(t, pool, actorID, actorTeamID, "等待报名", domain.MatchRegistering, now.Add(2*time.Hour))
 	registrationOnlyID, registrationOnlyGroupID := seedHomeMatch(t, pool, unrelatedUserID, unrelatedTeamID, "仅报名相关", domain.MatchRegistering, now.Add(time.Hour))
@@ -531,14 +607,14 @@ func TestRepositoryListsUserHomeMatches(t *testing.T) {
 	seedHomeMatch(t, pool, inactiveOwnerID, inactiveTeamID, "失效成员历史", domain.MatchEnded, now.Add(-15*time.Minute))
 	seedHomeMatch(t, pool, unrelatedUserID, unrelatedTeamID, "无关历史比赛", domain.MatchEnded, now)
 
-	endedIDs := []uuid.UUID{registrationOnlyEndedID}
+	endedIDs := []uuid.UUID{registrationOnlyEndedID, staleRegisteringID}
 	for day := 1; day <= 6; day++ {
 		matchID, _ := seedHomeMatch(t, pool, actorID, actorTeamID, "已结束比赛", domain.MatchEnded, now.AddDate(0, 0, -day))
 		endedIDs = append(endedIDs, matchID)
 	}
 
 	repository := NewRepository(pool)
-	actions, err := repository.ListHomeActionItems(ctx, actorID, 3)
+	actions, err := repository.ListHomeActionItems(ctx, actorID, 4)
 	if err != nil {
 		t.Fatalf("list home action matches: %v", err)
 	}
@@ -562,12 +638,12 @@ func TestRepositoryListsUserHomeMatches(t *testing.T) {
 		t.Fatalf("unexpected current registration: %+v", registrationState.MyRegistration)
 	}
 
-	ended, err := repository.ListHomeEndedItems(ctx, actorID, 7)
+	ended, err := repository.ListHomeEndedItems(ctx, actorID, 8)
 	if err != nil {
 		t.Fatalf("list home ended matches: %v", err)
 	}
-	if len(ended) != 7 {
-		t.Fatalf("expected seven ended matches, got %d: %+v", len(ended), ended)
+	if len(ended) != 8 {
+		t.Fatalf("expected eight ended matches, got %d: %+v", len(ended), ended)
 	}
 	for index := range endedIDs {
 		if ended[index].Match.ID != endedIDs[index] {

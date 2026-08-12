@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import type { MatchPublishFormModel } from "./matchPublishForm";
+import type { AppMatchPublicationMode } from "@/types/match";
+import { MATCH_PUBLICATION_MODE_OPTIONS } from "@/utils/matchPublicationMode";
 
 const props = withDefaults(
   defineProps<{
@@ -63,6 +65,13 @@ function updateField<K extends keyof MatchPublishFormModel>(key: K, value: Match
 
 function setColorField(key: "color" | "opposingColor", value: string) {
   updateField(key, value);
+}
+
+function selectPublicationMode(value: AppMatchPublicationMode) {
+  updateField("publicationMode", value);
+  if (value !== "offline_confirmed") {
+    updateField("opposing", "");
+  }
 }
 
 function handleCheckInSwitchChange(event: Event) {
@@ -199,16 +208,13 @@ function handleMatchEndTimeChange(event: Event) {
           <wd-text custom-class="create-form-label" color="#111310" text="比赛类型" />
           <view class="match-kind-segment">
             <view
-              :class="['match-kind-option', form.matchKind !== 'internal' ? 'match-kind-option-active' : '']"
-              @tap="updateField('matchKind', 'external')"
+              v-for="option in MATCH_PUBLICATION_MODE_OPTIONS"
+              :key="option.value"
+              :class="['match-kind-option', form.publicationMode === option.value ? 'match-kind-option-active' : '']"
+              @tap="selectPublicationMode(option.value)"
             >
-              对外友谊赛
-            </view>
-            <view
-              :class="['match-kind-option', form.matchKind === 'internal' ? 'match-kind-option-active' : '']"
-              @tap="updateField('matchKind', 'internal')"
-            >
-              队内内战
+              <text class="match-kind-option-label">{{ option.label }}</text>
+              <text class="match-kind-option-description">{{ option.description }}</text>
             </view>
           </view>
         </view>
@@ -231,7 +237,7 @@ function handleMatchEndTimeChange(event: Event) {
             placeholder-class="create-native-placeholder"
           />
         </view>
-        <view v-if="!isChallenge" class="create-form-item">
+        <view v-if="!isChallenge && form.publicationMode === 'offline_confirmed'" class="create-form-item">
           <wd-text custom-class="create-form-label" color="#111310" text="对手" />
           <input
             v-model="form.opposing"
@@ -466,7 +472,7 @@ function handleMatchEndTimeChange(event: Event) {
 
 .match-kind-segment {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10rpx;
   padding: 8rpx;
   border-radius: 24rpx;
@@ -475,13 +481,29 @@ function handleMatchEndTimeChange(event: Event) {
 
 .match-kind-option {
   display: flex;
+  min-width: 0;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 74rpx;
+  gap: 6rpx;
+  min-height: 112rpx;
+  padding: 12rpx 8rpx;
   border-radius: 18rpx;
   color: #5f645c;
-  font-size: 26rpx;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.match-kind-option-label {
+  font-size: 24rpx;
+  line-height: 1.2;
   font-weight: 900;
+}
+
+.match-kind-option-description {
+  font-size: 18rpx;
+  line-height: 1.35;
+  font-weight: 700;
 }
 
 .match-kind-option-active {

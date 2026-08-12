@@ -200,6 +200,7 @@ paths:
         - $ref: "#/components/parameters/MatchScope"
         - $ref: "#/components/parameters/Search"
         - $ref: "#/components/parameters/MatchStatus"
+        - $ref: "#/components/parameters/StartsAfter"
         - $ref: "#/components/parameters/Page"
         - $ref: "#/components/parameters/PageSize"
       responses:
@@ -209,6 +210,25 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/UserMatchListEnvelope"
+        <<: *standardErrors
+    post:
+      operationId: createAppMatch
+      tags: [App Matches]
+      summary: 创建用户端比赛
+      security: *bearerSecurity
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateMatchRequest"
+      responses:
+        "200":
+          description: 创建后的用户端比赛详情
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserMatchDetailEnvelope"
         <<: *standardErrors
 
   /api/v1/app/matches/home:
@@ -1138,7 +1158,14 @@ components:
       description: 比赛范围
       schema:
         type: string
-        enum: [all, mine]
+        enum: [all, mine, others]
+    StartsAfter:
+      name: starts_after
+      in: query
+      description: 仅返回开始时间晚于该时间的比赛
+      schema:
+        type: string
+        format: date-time
     PaymentOrderNo:
       name: order_no
       in: path
@@ -2245,13 +2272,15 @@ components:
           nullable: true
     UserHomeActionMatch:
       type: object
-      required: [id, name, status, host_team_name, opponent_name, players_per_team, start_time, end_time, location, group]
+      required: [id, name, publication_mode, status, host_team_name, opponent_name, players_per_team, start_time, end_time, location, group]
       properties:
         id:
           type: string
           format: uuid
         name:
           type: string
+        publication_mode:
+          $ref: "#/components/schemas/PublicationMode"
         status:
           $ref: "#/components/schemas/MatchStatus"
         host_team_name:
@@ -2273,13 +2302,15 @@ components:
           $ref: "#/components/schemas/UserHomeGroup"
     UserHomeEndedMatch:
       type: object
-      required: [id, name, status, host_team_name, opponent_name, start_time, end_time, location]
+      required: [id, name, publication_mode, status, host_team_name, opponent_name, start_time, end_time, location]
       properties:
         id:
           type: string
           format: uuid
         name:
           type: string
+        publication_mode:
+          $ref: "#/components/schemas/PublicationMode"
         status:
           $ref: "#/components/schemas/MatchStatus"
         host_team_name:

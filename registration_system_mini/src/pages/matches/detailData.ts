@@ -2,8 +2,9 @@ import { getActivity, getActivityUsers, listActivities } from "@/api/activity";
 import { getMatchDetail } from "@/api/match";
 import { getTeamDetail } from "@/api/team";
 import { listUsers } from "@/api/user";
-import type { AppMatchDetailResponse, AppMatchGroupDetail, AppMatchRegistration, AppMatchSummary } from "@/types/match";
+import type { AppMatchDetailResponse, AppMatchGroupDetail, AppMatchParticipant, AppMatchRegistration, AppMatchSummary } from "@/types/match";
 import type { BackendActivity, BackendRegistration, BackendTeam, BackendTeamMember, BackendUser } from "@/types/backend";
+import { getMatchPublicationModeLabel } from "@/utils/matchPublicationMode";
 import { isActiveTeamRegistrationActivity } from "./detailState";
 
 export interface PublicMatchDetailData {
@@ -15,6 +16,7 @@ export interface PublicMatchDetailData {
   myRegistration: AppMatchRegistration | null;
   fromGo: boolean;
   goRegistrationGroupId: string;
+  publicationModeLabel: string;
 }
 
 export interface AuthenticatedMatchDetailContext {
@@ -116,6 +118,20 @@ export function toBackendRegistration(
   };
 }
 
+function toBackendParticipantUser(participant: AppMatchParticipant): BackendUser {
+  return {
+    id: participant.user_id,
+    open_id: "",
+    username: "",
+    nickname: participant.nickname,
+    real_name: "",
+    avatar_url: participant.avatar_url ?? "",
+    phone_number: "",
+    is_manager: false,
+    is_venue: false,
+  };
+}
+
 export function buildGoPublicMatchDetailData(
   goDetail: AppMatchDetailResponse,
   currentUserId?: number,
@@ -132,18 +148,29 @@ export function buildGoPublicMatchDetailData(
     goDetail.groups[0];
   const activity = toBackendActivity(goDetail.match, group);
   const myRegistration = group?.my_registration ?? null;
-  const activityUsers = myRegistration && currentUserId
-    ? [toBackendRegistration(myRegistration, currentUserId, goDetail.match.updated_at)]
-    : [];
+  const participants = group?.participants ?? [];
+  const attendingParticipants = participants.filter((participant) => participant.status === "attending");
+  const activityUsers = attendingParticipants.map((participant) => toBackendRegistration(
+    { status: "attending", registration_count: 1 },
+    participant.user_id,
+    goDetail.match.updated_at,
+  ));
+  if (myRegistration && currentUserId && !activityUsers.some((item) => item.user_id === currentUserId)) {
+    activityUsers.push(toBackendRegistration(myRegistration, currentUserId, goDetail.match.updated_at));
+  }
 
   return {
     activity,
     activityUsers,
-    usersById: {},
+    usersById: Object.fromEntries(attendingParticipants.map((participant) => [
+      participant.user_id,
+      toBackendParticipantUser(participant),
+    ])),
     activityPageItems: [activity],
     myRegistration,
     fromGo: true,
     goRegistrationGroupId: group?.id ?? "",
+    publicationModeLabel: getMatchPublicationModeLabel(goDetail.match.publication_mode),
     sourceTeamRegistrationCount: Math.max(
       Number(activity.team_registration_count ?? 0) - activityUsers.filter((item) => item.stand === 1).length,
       0,
@@ -176,6 +203,7 @@ export async function loadPublicMatchDetailData(
     myRegistration: null,
     fromGo: false,
     goRegistrationGroupId: "",
+    publicationModeLabel: activity.match_kind === "internal" ? "队内内战" : "线下已约",
     sourceTeamRegistrationCount: activity.source_activity_id
       ? 0
       : activityPageItems

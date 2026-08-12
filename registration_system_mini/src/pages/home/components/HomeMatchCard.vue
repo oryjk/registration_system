@@ -74,6 +74,9 @@ function statusTone(status: string): NeoTagTone {
       <view class="home-match-title-row">
         <text class="home-match-title">{{ match.title }}</text>
         <view class="home-match-tags">
+          <NeoTag tone="muted">
+            {{ match.publicationModeLabel }}
+          </NeoTag>
           <NeoTag v-if="variant === 'brutalist'" :tone="stageTone(match.stage)">
             {{ match.stage }}
           </NeoTag>

@@ -12,6 +12,7 @@ const props = defineProps<{
   match: BackendActivity;
   dateLine: string;
   heroMetaChips: string[];
+  publicationModeLabel: string;
   currentTeam: TeamProfileViewModel | null;
   opponentTeam: BackendTeam | null;
   existingTeamDerivedActivity: BackendActivity | null;
@@ -74,6 +75,7 @@ function handleSubmitActivityReview() {
       :match="match"
       :date-line="dateLine"
       :hero-meta-chips="heroMetaChips"
+      :publication-mode-label="publicationModeLabel"
       :current-team="currentTeam"
       :opponent-team="opponentTeam"
     />
@@ -88,7 +90,10 @@ function handleSubmitActivityReview() {
       :date-line="dateLine"
       @update:team-registration-count="$emit('update:teamRegistrationCount', $event)"
     />
-    <TeamMatchInfoCard :credit-score="currentTeam?.creditScore ?? 0" />
+    <TeamMatchInfoCard
+      :credit-score="currentTeam?.creditScore ?? 0"
+      :publication-mode-label="publicationModeLabel"
+    />
     <TeamCheckInPanel
       v-if="canShowCheckIn"
       :has-checked-in="hasCheckedIn"

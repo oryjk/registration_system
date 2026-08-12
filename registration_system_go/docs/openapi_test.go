@@ -33,8 +33,8 @@ func TestOpenAPIIsValidAndMatchesGinRoutes(t *testing.T) {
 	if len(missing) != 0 || len(extra) != 0 {
 		t.Fatalf("OpenAPI route mismatch\nmissing: %v\nextra: %v", missing, extra)
 	}
-	if len(documented) != 54 {
-		t.Fatalf("documented operations=%d, want 54", len(documented))
+	if len(documented) != 55 {
+		t.Fatalf("documented operations=%d, want 55", len(documented))
 	}
 }
 
@@ -61,6 +61,7 @@ func TestOpenAPISecurityMatchesPublicAndProtectedRoutes(t *testing.T) {
 		path   string
 	}{
 		{method: http.MethodGet, path: "/api/v1/app/users/me"},
+		{method: http.MethodPost, path: "/api/v1/app/matches"},
 		{method: http.MethodGet, path: "/api/v1/admin/auth/me"},
 		{method: http.MethodPost, path: "/api/v1/app/payments/recharge-orders"},
 		{method: http.MethodGet, path: "/api/v1/app/wallet"},
@@ -82,6 +83,29 @@ func TestOpenAPISecurityMatchesPublicAndProtectedRoutes(t *testing.T) {
 		description := operation(t, document, route.method, route.path).Description
 		if !strings.Contains(description, "development/test") || !strings.Contains(description, "ENABLE_H5_TEST_LOGIN=true") {
 			t.Fatalf("%s %s must document its environment gate", route.method, route.path)
+		}
+	}
+}
+
+func TestOpenAPIHomeMatchSchemasRequirePublicationMode(t *testing.T) {
+	document := loadDocument(t)
+	for _, schemaName := range []string{"UserHomeActionMatch", "UserHomeEndedMatch"} {
+		schemaRef := document.Components.Schemas[schemaName]
+		if schemaRef == nil || schemaRef.Value == nil {
+			t.Fatalf("OpenAPI schema %s is missing", schemaName)
+		}
+		if _, found := schemaRef.Value.Properties["publication_mode"]; !found {
+			t.Fatalf("OpenAPI schema %s is missing publication_mode", schemaName)
+		}
+		required := false
+		for _, name := range schemaRef.Value.Required {
+			if name == "publication_mode" {
+				required = true
+				break
+			}
+		}
+		if !required {
+			t.Fatalf("OpenAPI schema %s must require publication_mode", schemaName)
 		}
 	}
 }
@@ -110,7 +134,7 @@ func completeRouter() *gin.Engine {
 		H5TestLoginEnabled: true,
 		Teams:              teamhttp.NewHandler(nil, nil),
 		AppTeams:           teamhttp.NewAppHandler(nil),
-		UserMatches:        matchhttp.NewUserHandler(nil),
+		UserMatches:        matchhttp.NewUserHandler(nil, nil),
 		UserRegistrations:  matchhttp.NewUserRegistrationHandler(nil),
 		AdminMatches:       matchhttp.NewAdminHandler(nil, nil),
 		TeamApplications:   matchhttp.NewTeamApplicationHandler(nil),

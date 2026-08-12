@@ -130,9 +130,9 @@ describe("home page loading states", () => {
     expect(source.includes('openMatchList("upcoming")')).toEqual(true);
     expect(source.includes('v-if="!isGuestMode" title="进行中的比赛"')).toEqual(true);
     expect(source.includes('v-if="!isGuestMode" title="已结束的比赛"')).toEqual(true);
-    expect(source.includes(':action-label="upcomingMatches.length ? \'更多\' : undefined"')).toEqual(true);
-    expect(source.includes(':action-label="ongoingMatches.length ? \'更多\' : undefined"')).toEqual(true);
-    expect(source.includes(':action-label="endedMatches.length ? \'更多\' : undefined"')).toEqual(true);
+    expect(source.includes(":action-label=\"upcomingMatches.length ? '更多' : undefined\"")).toEqual(true);
+    expect(source.includes(":action-label=\"ongoingMatches.length ? '更多' : undefined\"")).toEqual(true);
+    expect(source.includes(":action-label=\"endedMatches.length ? '更多' : undefined\"")).toEqual(true);
   });
 
   test("allows ongoing and ended cards to navigate to detail and only blocks missing detail or duplicate navigation", async () => {
@@ -144,6 +144,18 @@ describe("home page loading states", () => {
     expect(source.includes("if (!match.canRegister)")).toEqual(false);
     expect(source.includes('title: "本场暂不可报名"')).toEqual(false);
     expect(source.includes("url: match.detailUrl")).toEqual(true);
+  });
+
+  test("keeps one time snapshot while paging every phase from my matches", async () => {
+    const source = await sourceFile(
+      "pages/home/matches/index.vue",
+    ).text();
+
+    expect(source.includes('import { listMyMatches } from "@/api/match";')).toEqual(true);
+    expect(source.includes("const phaseClock = ref(new Date())")).toEqual(true);
+    expect(source.includes("phaseClock.value = new Date();")).toEqual(true);
+    expect(source.includes("phaseClock.value,")).toEqual(true);
+    expect(source.includes("listMatches({ scope: \"others\"")).toEqual(false);
   });
 
   test("enables sharing for the public home page with the default share cover", async () => {

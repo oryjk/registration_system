@@ -25,10 +25,10 @@ import type {
   RegistrationGroup,
 } from "../types/match";
 import {
+  getPublicationModeLabel,
   matchStatusColors,
   matchStatusLabels,
   opponentStateLabels,
-  publicationModeLabels,
   registrationStatusColors,
   registrationStatusLabels,
 } from "./matchLabels";
@@ -264,7 +264,7 @@ export default function MatchDetailPage() {
               <Tag color={matchStatusColors[match.status]}>
                 {matchStatusLabels[match.status]}
               </Tag>
-              <Text>{publicationModeLabels[match.publication_mode]}</Text>
+              <Tag>{getPublicationModeLabel(match.publication_mode)}</Tag>
               <Text type="secondary">
                 {opponentStateLabels[match.opponent_state]}
               </Text>
@@ -272,6 +272,9 @@ export default function MatchDetailPage() {
             <Descriptions column={{ xs: 1, sm: 2, lg: 3 }} colon={false}>
               <Descriptions.Item label="主队">
                 {match.host_team_name}
+              </Descriptions.Item>
+              <Descriptions.Item label="比赛类型">
+                {getPublicationModeLabel(match.publication_mode)}
               </Descriptions.Item>
               <Descriptions.Item label="对手">
                 {match.away_team_name || match.opponent_name || "待确认"}

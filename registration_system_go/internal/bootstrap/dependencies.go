@@ -84,7 +84,7 @@ func BuildDependencies(ctx context.Context, config Config) (Dependencies, func()
 	matchClock := clock.System{}
 	createMatch := matchapplication.NewCreateMatch(matchRepository, teamService, defaults.Service{}, matchClock)
 	userMatches := matchapplication.NewUserMatchQueryService(matchRepository)
-	userMatchHandler := matchhttp.NewUserHandler(userMatches)
+	userMatchHandler := matchhttp.NewUserHandler(userMatches, createMatch)
 	adminMatches := matchapplication.NewAdminMatchService(matchRepository, matchClock, adminService)
 	adminMatchHandler := matchhttp.NewAdminHandler(adminMatches, createMatch)
 	teamApplications := matchapplication.NewTeamApplicationService(matchRepository, teamService, matchClock)

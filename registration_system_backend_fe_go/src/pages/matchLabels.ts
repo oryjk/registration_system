@@ -11,6 +11,16 @@ export const publicationModeLabels: Record<PublicationMode, string> = {
   online_individual: "散人对手",
 };
 
+export const publicationModeDescriptions: Record<PublicationMode, string> = {
+  offline_confirmed: "已线下确定对手，无需线上招募",
+  online_team: "在线招募一支球队作为对手",
+  online_individual: "在线招募个人组成对手阵容",
+};
+
+export function getPublicationModeLabel(value: string): string {
+  return publicationModeLabels[value as PublicationMode] || "其他类型";
+}
+
 export const matchStatusLabels: Record<MatchStatus, string> = {
   registering: "报名中",
   ongoing: "进行中",

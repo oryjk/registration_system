@@ -2,6 +2,7 @@ package ports
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/oryjk/registration_system/registration_system_go/internal/match/domain"
@@ -21,19 +22,21 @@ type Repository interface {
 }
 
 type MatchListFilter struct {
-	Scope  MatchScope
-	UserID int64
-	Status *domain.MatchStatus
-	Search string
-	Limit  int
-	Offset int
+	Scope       MatchScope
+	UserID      int64
+	Status      *domain.MatchStatus
+	Search      string
+	StartsAfter *time.Time
+	Limit       int
+	Offset      int
 }
 
 type MatchScope string
 
 const (
-	MatchScopeAll  MatchScope = "all"
-	MatchScopeMine MatchScope = "mine"
+	MatchScopeAll    MatchScope = "all"
+	MatchScopeMine   MatchScope = "mine"
+	MatchScopeOthers MatchScope = "others"
 )
 
 type AdminMatchFilter = MatchListFilter
@@ -50,6 +53,14 @@ type UserGroupState struct {
 	Group          domain.RegistrationGroup
 	AttendingCount int
 	MyRegistration *domain.Registration
+	Participants   []UserParticipant
+}
+
+type UserParticipant struct {
+	UserID    int64
+	Nickname  string
+	AvatarURL *string
+	Status    domain.RegistrationStatus
 }
 
 type HomeMatchItem struct {

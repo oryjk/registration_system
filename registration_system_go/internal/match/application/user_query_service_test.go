@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/oryjk/registration_system/registration_system_go/internal/match/domain"
@@ -47,6 +48,13 @@ func TestUserMatchQueryPassesAllAndMineScopes(t *testing.T) {
 	}
 	if repository.filter.Scope != MatchScopeMine || repository.filter.UserID != 42 {
 		t.Fatalf("unexpected mine filter: %+v", repository.filter)
+	}
+	startsAfter := time.Date(2026, 8, 20, 8, 0, 0, 0, time.UTC)
+	if _, err := service.List(context.Background(), userActor(42), UserMatchListQuery{Scope: MatchScopeOthers, StartsAfter: &startsAfter}); err != nil {
+		t.Fatal(err)
+	}
+	if repository.filter.Scope != MatchScopeOthers || repository.filter.StartsAfter != &startsAfter {
+		t.Fatalf("unexpected others filter: %+v", repository.filter)
 	}
 	if _, err := service.List(context.Background(), userActor(42), UserMatchListQuery{Scope: "team"}); !errors.Is(err, sharederror.ErrValidation) {
 		t.Fatalf("expected invalid scope validation, got %v", err)
@@ -92,25 +100,28 @@ func TestUserMatchQueryRejectsAdminActorAndMissingMatch(t *testing.T) {
 	}
 }
 
-func TestUserMatchHomeLimitsAndTrimsEndedMatches(t *testing.T) {
-	ended := make([]ports.MatchItem, 7)
+func TestUserMatchHomeLimitsAndTrimsSections(t *testing.T) {
+	ended := make([]ports.MatchItem, 4)
 	for index := range ended {
 		ended[index] = ports.MatchItem{Match: domain.Match{ID: uuid.New(), Name: "已结束比赛"}}
 	}
-	repository := &fakeUserMatchRepository{
-		homeActions: []ports.HomeMatchItem{{Item: ports.MatchItem{Match: domain.Match{ID: uuid.New(), Name: "待处理比赛"}}}},
-		homeEnded:   ended,
+	actions := make([]ports.HomeMatchItem, 4)
+	for index := range actions {
+		actions[index] = ports.HomeMatchItem{Item: ports.MatchItem{Match: domain.Match{ID: uuid.New(), Name: "待处理比赛"}}}
 	}
+	repository := &fakeUserMatchRepository{homeActions: actions, homeEnded: ended}
 	service := NewUserMatchQueryService(repository)
 
 	result, err := service.Home(context.Background(), userActor(42))
 	if err != nil {
 		t.Fatalf("get user match home: %v", err)
 	}
-	if repository.homeUserID != 42 || repository.homeActionLimit != 3 || repository.homeEndedLimit != 7 {
-		t.Fatalf("unexpected home query: user=%d action_limit=%d ended_limit=%d", repository.homeUserID, repository.homeActionLimit, repository.homeEndedLimit)
+	if repository.homeUserID != 42 || repository.homeActionLimit != 4 || repository.homeEndedLimit != 4 {
+		t.Fatalf("unexpected home query: user=%d action_limit=%d ended_limit=%d",
+			repository.homeUserID, repository.homeActionLimit, repository.homeEndedLimit)
 	}
-	if len(result.ActionItems) != 1 || len(result.EndedItems) != 6 || !result.EndedHasMore {
+	if len(result.ActionItems) != 3 || !result.ActionHasMore ||
+		len(result.EndedItems) != 3 || !result.EndedHasMore {
 		t.Fatalf("unexpected home result: %+v", result)
 	}
 	for index := range result.EndedItems {
@@ -120,8 +131,8 @@ func TestUserMatchHomeLimitsAndTrimsEndedMatches(t *testing.T) {
 	}
 }
 
-func TestUserMatchHomeDoesNotReportMoreForSixEndedMatches(t *testing.T) {
-	ended := make([]ports.MatchItem, 6)
+func TestUserMatchHomeDoesNotReportMoreForThreeItemsPerSection(t *testing.T) {
+	ended := make([]ports.MatchItem, 3)
 	repository := &fakeUserMatchRepository{homeEnded: ended}
 	service := NewUserMatchQueryService(repository)
 
@@ -129,8 +140,9 @@ func TestUserMatchHomeDoesNotReportMoreForSixEndedMatches(t *testing.T) {
 	if err != nil {
 		t.Fatalf("get user match home: %v", err)
 	}
-	if len(result.EndedItems) != 6 || result.EndedHasMore {
-		t.Fatalf("expected six ended matches without more, got %+v", result)
+	if len(result.EndedItems) != 3 || result.EndedHasMore ||
+		len(result.ActionItems) != 0 || result.ActionHasMore {
+		t.Fatalf("expected three items per section without more, got %+v", result)
 	}
 }
 

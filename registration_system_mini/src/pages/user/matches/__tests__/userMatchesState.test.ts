@@ -64,6 +64,7 @@ describe("buildUserMatchCards", () => {
       { id: "ongoing", statusLabel: "进行中" },
       { id: "upcoming", statusLabel: "报名中" },
     ]);
+    expect(active.map((item) => item.publicationModeLabel)).toEqual(["线上约队", "线上约队"]);
     expect(active.some((item) => "isEditable" in item)).toEqual(false);
     expect(ended.map((item) => ({ id: item.id, statusLabel: item.statusLabel }))).toEqual([
       { id: "ended-by-clock", statusLabel: "已结束" },
