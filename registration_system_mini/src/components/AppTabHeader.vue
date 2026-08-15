@@ -46,17 +46,17 @@ const contentStyle = computed(() => ({
 }));
 
 const DOUBLE_TAP_SCROLL_INTERVAL_MS = 300;
-let lastTitleTapAt = 0;
+let lastHeaderTapAt = 0;
 
-/** 双击标题平滑回到页面顶部（H5 / 小程序通用的 uni.pageScrollTo）。 */
-function handleTitleTap() {
+/** 双击头部任意空白区域平滑回到页面顶部（返回/定位入口已 stop，不参与判定）。 */
+function handleHeaderTap() {
   const now = Date.now();
-  if (now - lastTitleTapAt <= DOUBLE_TAP_SCROLL_INTERVAL_MS) {
-    lastTitleTapAt = 0;
+  if (now - lastHeaderTapAt <= DOUBLE_TAP_SCROLL_INTERVAL_MS) {
+    lastHeaderTapAt = 0;
     uni.pageScrollTo({ scrollTop: 0, duration: 300 });
     return;
   }
-  lastTitleTapAt = now;
+  lastHeaderTapAt = now;
 }
 
 async function handleLocationTap() {
@@ -127,13 +127,13 @@ async function handleRefreshLocation() {
 
 <template>
   <view :class="['app-tab-header-shell', props.plain ? 'app-tab-header-shell-plain' : '']" :style="shellStyle">
-    <view class="app-tab-header" :style="contentStyle">
+    <view class="app-tab-header" :style="contentStyle" @tap="handleHeaderTap">
       <view class="app-tab-header-left">
-        <view v-if="props.showBack" class="app-tab-header-back" @tap="handleBack">
+        <view v-if="props.showBack" class="app-tab-header-back" @tap.stop="handleBack">
           <text class="app-tab-header-back-icon">‹</text>
         </view>
-        <text class="app-tab-header-title" @tap="handleTitleTap">{{ props.title }}</text>
-        <view v-if="props.showLocation" class="app-tab-header-location" @tap="handleLocationTap">
+        <text class="app-tab-header-title">{{ props.title }}</text>
+        <view v-if="props.showLocation" class="app-tab-header-location" @tap.stop="handleLocationTap">
           <text class="app-tab-header-location-dot">●</text>
           <text class="app-tab-header-location-text">{{ locationLabel }}</text>
           <text class="app-tab-header-location-arrow">▾</text>
@@ -241,8 +241,6 @@ async function handleRefreshLocation() {
   font-weight: 900;
   color: var(--neo-color-text);
   flex-shrink: 0;
-  /* 双击回顶的触发热区，纵向留出可点击余量。 */
-  padding: 10rpx 0;
 }
 
 .app-tab-header-location {

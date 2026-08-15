@@ -49,10 +49,13 @@ describe("AppTabHeader location visibility", () => {
   test("double tapping the header title scrolls the page back to top", async () => {
     const source = await read("src/components/AppTabHeader.vue");
 
-    expect(source.includes('class="app-tab-header-title" @tap="handleTitleTap"')).toEqual(true);
+    // 热区覆盖整条头部行（含右侧空白）；返回/定位入口 stop 隔离，不参与双击判定。
+    expect(source.includes('class="app-tab-header" :style="contentStyle" @tap="handleHeaderTap"')).toEqual(true);
+    expect(source.includes('class="app-tab-header-back" @tap.stop="handleBack"')).toEqual(true);
+    expect(source.includes('class="app-tab-header-location" @tap.stop="handleLocationTap"')).toEqual(true);
+    expect(source.includes('class="app-tab-header-title" @tap=')).toEqual(false);
     expect(source.includes("DOUBLE_TAP_SCROLL_INTERVAL_MS")).toEqual(true);
     expect(source.includes("uni.pageScrollTo({ scrollTop: 0, duration: 300 })")).toEqual(true);
-    expect(source.includes("padding: 10rpx 0;")).toEqual(true);
   });
 
   test("renders the header in solid neo style instead of glass blur", async () => {
