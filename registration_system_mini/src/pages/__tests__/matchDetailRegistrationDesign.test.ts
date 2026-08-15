@@ -383,4 +383,21 @@ describe("match detail registration design", () => {
     expect(detailPage.includes("useMatchTeamApplications(sourceMatch, loadPageData)")).toEqual(true);
     expect(applications.includes("isRecruitingTeamMatchSource(sourceMatch.value)")).toEqual(true);
   });
+
+  test("hides registration status actions after the registration deadline", async () => {
+    const pageLogic = await sourceFile("pages/matches/useMatchDetailPage.ts").text();
+    const detailPage = await sourceFile("pages/matches/detail.vue").text();
+    const individual = await sourceFile("pages/matches/components/MatchIndividualRegistration.vue").text();
+    const board = await sourceFile("pages/matches/components/TeamMemberRegistrationBoard.vue").text();
+
+    // 截止后不支持修改报名状态：报名/取消报名/状态调整入口全部隐藏。
+    expect(pageLogic.includes("const isRegistrationClosed = computed")).toEqual(true);
+    expect(pageLogic.includes('sourceMatch.value.status !== "registering"')).toEqual(true);
+    expect(pageLogic.includes("nowTick.value >= registrationDeadlineTimestamp.value")).toEqual(true);
+    expect(detailPage.includes(":registration-closed=\"isRegistrationClosed\"")).toEqual(true);
+    expect(detailPage.includes("canUseTeamRegistration && !isRegistrationClosed")).toEqual(true);
+    expect(individual.includes(":show-cta=\"!showTeamMemberRegistrationBoard && !registrationClosed\"")).toEqual(true);
+    expect(individual.includes(':registration-closed="registrationClosed"')).toEqual(true);
+    expect(board.includes('<NeoStickyActionBar v-if="!registrationClosed">')).toEqual(true);
+  });
 });
