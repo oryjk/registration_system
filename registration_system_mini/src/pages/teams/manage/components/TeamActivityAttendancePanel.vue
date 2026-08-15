@@ -271,14 +271,14 @@ function memberStatusClass(member: TeamActivityAttendanceMember) {
   border-radius: var(--neo-radius-xs);
   flex-shrink: 0;
   overflow: hidden;
-  background: #f2f5ec;
+  background: var(--neo-color-muted);
 }
 
 .activity-member-avatar-fallback {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #111310;
+  color: var(--neo-color-text);
   font-size: 22rpx;
   font-weight: 950;
 }
@@ -290,7 +290,7 @@ function memberStatusClass(member: TeamActivityAttendanceMember) {
 
 .activity-member-name {
   display: block;
-  color: #ffffff;
+  color: var(--neo-color-text-inverse);
   font-size: 24rpx;
   font-weight: 900;
   overflow: hidden;

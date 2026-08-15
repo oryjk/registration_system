@@ -83,6 +83,8 @@ function handleSelect(option: NeoSegmentOption) {
   font-size: var(--neo-segment-font-size);
   font-weight: 900;
   line-height: 1.2;
+  /* 默认态保留 Neo 硬投影；按压压平、选中切换为 pressed 影。 */
+  box-shadow: 3rpx 3rpx 0 var(--neo-color-text);
   box-sizing: border-box;
   transition: transform var(--neo-motion-fast), box-shadow var(--neo-motion-fast), background var(--neo-motion-fast);
 }
