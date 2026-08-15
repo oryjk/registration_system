@@ -1,6 +1,7 @@
 import type { AppMatchRegistrationGroupSummary, AppMatchSummary } from "@/types/match";
 import type { NeoTagTone } from "@/types/designSystem";
 import { formatDateLabel, pad, parseDateValue } from "@/utils/datetime";
+import { resolveInheritedGuestLimit } from "@/utils/matchCapacity";
 import { getMatchPublicationModeLabel } from "@/utils/matchPublicationMode";
 import { formatHomeMatchDateBlock } from "@/pages/home/homeMatchDate";
 
@@ -129,7 +130,7 @@ export function toHallMatchCard(match: AppMatchSummary, viewer: HallViewerContex
 
   // 客队进度与主队并列展示；上限未配置时继承主队（主客同制）。
   const guestGroup = findGroupSummary(match, "guest_team");
-  const guestMax = guestGroup?.max_players ?? hostMax;
+  const guestMax = resolveInheritedGuestLimit(hostMax, guestGroup?.max_players);
   const guestJoinedLabel =
     !isIndividual && guestGroup && guestMax
       ? `客队 ${guestGroup.attending_count}/${guestMax}`

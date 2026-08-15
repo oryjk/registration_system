@@ -15,6 +15,7 @@ import type {
 } from "@/types/backend";
 import type { AppMatchSummary } from "@/types/match";
 import { getCustomNavMetrics } from "@/utils/customNav";
+import { resolveInheritedGuestLimit } from "@/utils/matchCapacity";
 import type { MatchTeamProgressItem } from "@/types/viewModels";
 import { resolveUserDisplayName, toStandLabel } from "@/utils/viewModels";
 import {
@@ -174,9 +175,13 @@ export function useMatchDetailPage() {
         ? (group.teamId === match.host_team_id ? match.host_team_name : "主队")
         : (group.teamId === match.away_team_id && match.away_team_name ? match.away_team_name : "客队"),
       attending: group.attendingCount,
-      // 客队上限未配置时继承主队（主客同制），避免显示问号。
-      required: group.minPlayers ?? hostGroup?.minPlayers ?? null,
-      max: group.maxPlayers ?? hostGroup?.maxPlayers ?? null,
+      // 客队上限未配置时继承主队（主客同制），规则与约队大厅列表共用。
+      required: group.kind === "guest_team"
+        ? resolveInheritedGuestLimit(hostGroup?.minPlayers ?? null, group.minPlayers)
+        : group.minPlayers,
+      max: group.kind === "guest_team"
+        ? resolveInheritedGuestLimit(hostGroup?.maxPlayers ?? null, group.maxPlayers)
+        : group.maxPlayers,
     }));
   });
   const activeTeamMembers = computed(() => currentTeamMembers.value.filter((member) => member.status === 1));
