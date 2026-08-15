@@ -34,12 +34,15 @@ export async function requestRaw<TResponse, TBody extends RequestPayload = Recor
   const method = options.method ?? "GET";
   const requestUrl = /^https?:\/\//i.test(options.url) ? options.url : buildAppApiUrl(getApiBaseUrl(), options.url);
 
-  // Mock 拦截：开发环境下通过 VITE_USE_MOCK 开启，直接返回 mock 数据，不发网络请求
+  // Mock 拦截：开发环境下通过 VITE_USE_MOCK 开启。
+  // 开启后必须“全有或全无”：未覆盖的接口直接报错，不允许回落到真实后端，
+  // 否则页面会混显 mock 数据和真实数据，误导联调判断。
   if (isMockEnabled()) {
     const mockResult = tryMockRequest(method, requestUrl, options.data);
-    if (mockResult !== null) {
-      return mockResult as Promise<TResponse>;
+    if (mockResult === null) {
+      return Promise.reject(new ApiRequestError(`mock 模式未覆盖该接口: ${method} ${options.url}`, 0));
     }
+    return mockResult as Promise<TResponse>;
   }
 
   return new Promise<TResponse>((resolve, reject) => {
