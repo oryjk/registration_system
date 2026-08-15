@@ -277,6 +277,8 @@ function handleRemoveMember(member: BackendTeamMember) {
 }
 
 .member-type-badge {
+  /* 右对齐成固定槽位：名字长短不影响会员徽章的纵向扫读列；角色徽章仍跟随名字。 */
+  margin-left: auto;
   flex-shrink: 0;
   height: 42rpx;
   padding: 0 14rpx;
@@ -290,14 +292,16 @@ function handleRemoveMember(member: BackendTeamMember) {
   box-sizing: border-box;
 }
 
+/* 会员实色强调，普通降调描边，对齐成列后强弱对比一眼可扫。 */
 .member-type-badge-vip {
   background: var(--neo-color-accent);
   color: var(--neo-color-text);
 }
 
 .member-type-badge-regular {
-  background: var(--neo-color-surface);
+  background: transparent;
   color: var(--neo-color-text-muted);
+  border-color: var(--neo-color-disabled);
 }
 
 .member-actions {
