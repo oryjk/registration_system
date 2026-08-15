@@ -393,6 +393,8 @@ describe("match detail registration design", () => {
     // 截止后不支持修改报名状态：报名/取消报名/状态调整入口全部隐藏。
     expect(pageLogic.includes("const isRegistrationClosed = computed")).toEqual(true);
     expect(pageLogic.includes('sourceMatch.value.status !== "registering"')).toEqual(true);
+    // 兜底：导入数据的 status 可能停留在 registering，比赛已开始也要视为截止。
+    expect(pageLogic.includes("nowTick.value >= matchStartTimestamp.value")).toEqual(true);
     expect(pageLogic.includes("nowTick.value >= registrationDeadlineTimestamp.value")).toEqual(true);
     expect(detailPage.includes(":registration-closed=\"isRegistrationClosed\"")).toEqual(true);
     expect(detailPage.includes("canUseTeamRegistration && !isRegistrationClosed")).toEqual(true);

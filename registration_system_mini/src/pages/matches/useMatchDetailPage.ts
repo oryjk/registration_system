@@ -121,10 +121,14 @@ export function useMatchDetailPage() {
   });
 
   // 报名截止后不支持修改报名状态（报名/取消报名/调整状态按钮全部隐藏）：
-  // 新接口用比赛状态判定；legacy 活动的 end_time 是报名截止时刻。
+  // 新接口除状态字段外，还要兜底“比赛已开始但 status 未流转”的导入数据；
+  // legacy 活动的 end_time 是报名截止时刻。
   const isRegistrationClosed = computed(() => {
     if (sourceMatch.value) {
-      return sourceMatch.value.status !== "registering";
+      return (
+        sourceMatch.value.status !== "registering"
+        || (matchStartTimestamp.value > 0 && nowTick.value >= matchStartTimestamp.value)
+      );
     }
     return registrationDeadlineTimestamp.value > 0 && nowTick.value >= registrationDeadlineTimestamp.value;
   });
