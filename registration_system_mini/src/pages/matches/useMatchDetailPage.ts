@@ -167,14 +167,16 @@ export function useMatchDetailPage() {
   const teamProgressItems = computed<MatchTeamProgressItem[]>(() => {
     const match = sourceMatch.value;
     if (!match || match.publication_mode !== "online_team") return [];
+    const hostGroup = matchTeamGroups.value.find((group) => group.kind === "host_team");
     return matchTeamGroups.value.map((group) => ({
       id: group.id,
       label: group.kind === "host_team"
         ? (group.teamId === match.host_team_id ? match.host_team_name : "主队")
         : (group.teamId === match.away_team_id && match.away_team_name ? match.away_team_name : "客队"),
       attending: group.attendingCount,
-      required: group.minPlayers,
-      max: group.maxPlayers,
+      // 客队上限未配置时继承主队（主客同制），避免显示问号。
+      required: group.minPlayers ?? hostGroup?.minPlayers ?? null,
+      max: group.maxPlayers ?? hostGroup?.maxPlayers ?? null,
     }));
   });
   const activeTeamMembers = computed(() => currentTeamMembers.value.filter((member) => member.status === 1));

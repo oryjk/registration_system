@@ -36,6 +36,7 @@ export interface HallMatchCardViewModel {
   requiredPlayers: number;
   maxPlayers: number;
   hostJoinedLabel: string;
+  guestJoinedLabel: string;
   actionKind: HallCardActionKind;
   actionLabel: string;
 }
@@ -124,6 +125,14 @@ export function toHallMatchCard(match: AppMatchSummary, viewer: HallViewerContex
       ? `主队 ${hostGroup.attending_count}/${hostMax}`
       : "";
 
+  // 客队进度与主队并列展示；上限未配置时继承主队（主客同制）。
+  const guestGroup = findGroupSummary(match, "guest_team");
+  const guestMax = guestGroup?.max_players ?? hostMax;
+  const guestJoinedLabel =
+    !isIndividual && guestGroup && guestMax
+      ? `客队 ${guestGroup.attending_count}/${guestMax}`
+      : "";
+
   const actionKind = resolveActionKind(match, viewer);
 
   return {
@@ -147,6 +156,7 @@ export function toHallMatchCard(match: AppMatchSummary, viewer: HallViewerContex
     requiredPlayers,
     maxPlayers,
     hostJoinedLabel,
+    guestJoinedLabel,
     actionKind,
     actionLabel: ACTION_LABELS[actionKind],
   };

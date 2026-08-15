@@ -57,6 +57,34 @@ describe("toHallMatchCard", () => {
     expect(card.detailUrl).toEqual("/pages/matches/detail?id=match-1");
   });
 
+  test("maps guest team progress inheriting the host capacity when unset", () => {
+    const card = toHallMatchCard(buildMatch({
+      publication_mode: "online_team",
+      opponent_state: "confirmed",
+      away_team_id: 11,
+      away_team_name: "洺悦御府",
+      registration_groups: [
+        { kind: "guest_team", team_id: 11, min_players: null, max_players: null, attending_count: 3 },
+        { kind: "host_team", team_id: 7, min_players: null, max_players: 12, attending_count: 5 },
+      ],
+    }));
+
+    expect(card.hostJoinedLabel).toEqual("主队 5/12");
+    // 客队上限未配置时继承主队容量，主客同制。
+    expect(card.guestJoinedLabel).toEqual("客队 3/12");
+  });
+
+  test("keeps guest label empty for matches without a guest group", () => {
+    const card = toHallMatchCard(buildMatch({
+      publication_mode: "online_team",
+      registration_groups: [
+        { kind: "host_team", team_id: 7, min_players: null, max_players: 10, attending_count: 6 },
+      ],
+    }));
+
+    expect(card.guestJoinedLabel).toEqual("");
+  });
+
   test("maps team match with host registration progress and recruiting state", () => {
     const card = toHallMatchCard(buildMatch({
       publication_mode: "online_team",

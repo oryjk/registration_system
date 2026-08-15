@@ -51,7 +51,10 @@ export default { options: { virtualHost: true } };
       />
 
       <view class="hall-match-bottom">
-        <NeoTag v-if="card.hostJoinedLabel" tone="dark" size="lg">{{ card.hostJoinedLabel }}</NeoTag>
+        <view v-if="card.hostJoinedLabel || card.guestJoinedLabel" class="hall-match-team-tags">
+          <NeoTag v-if="card.hostJoinedLabel" tone="dark" size="lg">{{ card.hostJoinedLabel }}</NeoTag>
+          <NeoTag v-if="card.guestJoinedLabel" tone="dark" size="lg">{{ card.guestJoinedLabel }}</NeoTag>
+        </view>
         <view v-else class="hall-match-bottom-spacer" />
         <NeoButton class="hall-neo-match-button" :variant="card.actionKind === 'view' ? 'outline' : 'dark'" :stop-propagation="false">
           {{ card.actionLabel }}
@@ -175,6 +178,15 @@ export default { options: { virtualHost: true } };
 
 .hall-match-bottom-spacer {
   flex: 1;
+}
+
+.hall-match-team-tags {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+  min-width: 0;
+  flex: 1;
+  flex-wrap: wrap;
 }
 
 .hall-neo-match-button {
