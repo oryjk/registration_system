@@ -52,7 +52,9 @@ export function useTeamAttendance({ currentTeam, currentMembers, usersById, ensu
     if (user) {
       return resolveUserDisplayName(user);
     }
-    return memberProfile(userId)?.nickname?.trim() || `队员 ${userId}`;
+    // 与 resolveUserDisplayName 语义一致：真名优先，昵称兜底。
+    const member = memberProfile(userId);
+    return member?.real_name?.trim() || member?.nickname?.trim() || `队员 ${userId}`;
   }
 
   function memberAvatarUrl(userId: number) {

@@ -27,9 +27,9 @@ describe("team member profile mapping", () => {
   test("falls back to the member-carried profile when usersById misses the user", async () => {
     const attendance = await read("src/pages/teams/manage/useTeamAttendance.ts");
 
-    // usersById 只含搜索/添加流程碰过的用户；队员列表自带资料必须兜底展示。
+    // usersById 只含搜索/添加流程碰过的用户；队员列表自带资料必须兜底展示，真名优先于昵称。
     expect(attendance.includes("function memberProfile(userId: number): BackendTeamMember | undefined")).toEqual(true);
-    expect(attendance.includes("memberProfile(userId)?.nickname?.trim()")).toEqual(true);
+    expect(attendance.includes("member?.real_name?.trim() || member?.nickname?.trim()")).toEqual(true);
     expect(attendance.includes("memberProfile(userId)?.avatar_url?.trim()")).toEqual(true);
   });
 
