@@ -72,9 +72,14 @@ describe("toHallMatchCard", () => {
     expect(card.hostJoinedLabel).toEqual("主队 5/12");
     // 客队上限未配置时继承主队容量，主客同制。
     expect(card.guestJoinedLabel).toEqual("客队 3/12");
+    // 列表渲染主/客两条进度条，各自带队名和继承后的上限。
+    expect(card.progressBars).toEqual([
+      { key: "host", label: "蓝翼俱乐部", joined: 5, required: 12, max: 12 },
+      { key: "guest", label: "洺悦御府", joined: 3, required: 12, max: 12 },
+    ]);
   });
 
-  test("keeps guest label empty for matches without a guest group", () => {
+  test("keeps a single progress bar for matches without a guest group", () => {
     const card = toHallMatchCard(buildMatch({
       publication_mode: "online_team",
       registration_groups: [
@@ -83,6 +88,9 @@ describe("toHallMatchCard", () => {
     }));
 
     expect(card.guestJoinedLabel).toEqual("");
+    expect(card.progressBars).toEqual([
+      { key: "main", label: "报名进度", joined: 6, required: 10, max: 10 },
+    ]);
   });
 
   test("maps team match with host registration progress and recruiting state", () => {

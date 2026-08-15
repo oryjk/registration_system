@@ -40,20 +40,22 @@ export default { options: { virtualHost: true } };
       <text class="hall-match-meta">{{ card.hostTeamName }} · {{ card.formatLabel }}</text>
       <text class="hall-match-meta">{{ card.venue }} · 对手 {{ card.opponentName }}</text>
 
-      <NeoProgress
-        v-if="card.showProgress"
-        class="hall-neo-progress"
-        :label="card.progressLabel"
-        :value="card.joinedPlayers"
-        :target="card.requiredPlayers"
-        :max="card.maxPlayers"
-        :value-text="`${card.joinedPlayers}/${card.requiredPlayers}`"
-      />
+      <template v-if="card.showProgress">
+        <NeoProgress
+          v-for="bar in card.progressBars"
+          :key="bar.key"
+          class="hall-neo-progress"
+          :label="bar.label"
+          :value="bar.joined"
+          :target="bar.required"
+          :max="bar.max"
+          :value-text="`${bar.joined}/${bar.required}`"
+        />
+      </template>
 
       <view class="hall-match-bottom">
-        <view v-if="card.hostJoinedLabel || card.guestJoinedLabel" class="hall-match-team-tags">
-          <NeoTag v-if="card.hostJoinedLabel" tone="dark" size="lg">{{ card.hostJoinedLabel }}</NeoTag>
-          <NeoTag v-if="card.guestJoinedLabel" tone="dark" size="lg">{{ card.guestJoinedLabel }}</NeoTag>
+        <view v-if="card.hostJoinedLabel && card.progressBars.length === 1" class="hall-match-team-tags">
+          <NeoTag tone="dark" size="lg">{{ card.hostJoinedLabel }}</NeoTag>
         </view>
         <view v-else class="hall-match-bottom-spacer" />
         <NeoButton class="hall-neo-match-button" :variant="card.actionKind === 'view' ? 'outline' : 'dark'" :stop-propagation="false">

@@ -37,6 +37,8 @@ export interface HallMatchCardViewModel {
   maxPlayers: number;
   hostJoinedLabel: string;
   guestJoinedLabel: string;
+  /** 列表进度条：球队约队有客队时为主/客两条，其余单条。 */
+  progressBars: Array<{ key: string; label: string; joined: number; required: number; max: number }>;
   actionKind: HallCardActionKind;
   actionLabel: string;
 }
@@ -133,6 +135,34 @@ export function toHallMatchCard(match: AppMatchSummary, viewer: HallViewerContex
       ? `客队 ${guestGroup.attending_count}/${guestMax}`
       : "";
 
+  // 有客队分组时渲染主/客两条进度条（与详情页一致）；否则保持单条进度。
+  const progressBars = !isIndividual && guestGroup && guestMax
+    ? [
+        {
+          key: "host",
+          label: match.host_team_name || "主队",
+          joined: hostGroup?.attending_count ?? 0,
+          required: hostMax ?? match.players_per_team,
+          max: hostMax ?? match.players_per_team,
+        },
+        {
+          key: "guest",
+          label: match.away_team_name || "客队",
+          joined: guestGroup.attending_count,
+          required: guestMax,
+          max: guestMax,
+        },
+      ]
+    : [
+        {
+          key: "main",
+          label: isIndividual ? "凑人进度" : "报名进度",
+          joined: joinedPlayers,
+          required: requiredPlayers,
+          max: maxPlayers,
+        },
+      ];
+
   const actionKind = resolveActionKind(match, viewer);
 
   return {
@@ -157,6 +187,7 @@ export function toHallMatchCard(match: AppMatchSummary, viewer: HallViewerContex
     maxPlayers,
     hostJoinedLabel,
     guestJoinedLabel,
+    progressBars,
     actionKind,
     actionLabel: ACTION_LABELS[actionKind],
   };
