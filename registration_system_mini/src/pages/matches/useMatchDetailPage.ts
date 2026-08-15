@@ -1,6 +1,6 @@
 import { computed, ref } from "vue";
 import { onLoad, onUnload } from "@dcloudio/uni-app";
-import { MATCH_API_ID_PATTERN, loadAuthenticatedMatchDetailContext, loadPublicMatchDetailData, toRegistrationStandCode } from "./detailData";
+import { MATCH_API_ID_PATTERN, loadAuthenticatedMatchDetailContext, loadPublicMatchDetailData, toRegistrationStandCode, type MatchTeamGroupSummary } from "./detailData";
 import { useCurrentLocation } from "@/stores/currentLocation";
 import { useTeamContext } from "@/stores/teamContext";
 import { resumeSessionBootstrap } from "@/stores/appSession";
@@ -15,6 +15,7 @@ import type {
 } from "@/types/backend";
 import type { AppMatchSummary } from "@/types/match";
 import { getCustomNavMetrics } from "@/utils/customNav";
+import type { MatchTeamProgressItem } from "@/types/viewModels";
 import { resolveUserDisplayName, toStandLabel } from "@/utils/viewModels";
 import {
   avatarColor,
@@ -56,6 +57,8 @@ export function useMatchDetailPage() {
   const match = ref<BackendActivity | null>(null);
   // 新比赛接口的原始对象：接约申请管理依赖 publication_mode / opponent_state，转换后的 activity 不带这些字段。
   const sourceMatch = ref<AppMatchSummary | null>(null);
+  // 球队约队的主/客队报名分组（双方各自的进度）。
+  const matchTeamGroups = ref<MatchTeamGroupSummary[]>([]);
   const registrations = ref<BackendRegistration[]>([]);
   const usersById = ref<Record<number, BackendUser>>({});
   const teamsById = ref<Record<number, BackendTeam>>({});
@@ -159,6 +162,21 @@ export function useMatchDetailPage() {
     }),
   );
   const registrationByUserId = computed(() => Object.fromEntries(registrations.value.map((item) => [item.user_id, item])));
+
+  // 球队约队展示双边进度：主队/客队各一条，label 优先用真实队名。
+  const teamProgressItems = computed<MatchTeamProgressItem[]>(() => {
+    const match = sourceMatch.value;
+    if (!match || match.publication_mode !== "online_team") return [];
+    return matchTeamGroups.value.map((group) => ({
+      id: group.id,
+      label: group.kind === "host_team"
+        ? (group.teamId === match.host_team_id ? match.host_team_name : "主队")
+        : (group.teamId === match.away_team_id && match.away_team_name ? match.away_team_name : "客队"),
+      attending: group.attendingCount,
+      required: group.minPlayers,
+      max: group.maxPlayers,
+    }));
+  });
   const activeTeamMembers = computed(() => currentTeamMembers.value.filter((member) => member.status === 1));
   const teamMemberRegistrationGroups = computed(() => {
     const byMemberRegistrationTimeAsc = (left: BackendTeamMember, right: BackendTeamMember) =>
@@ -392,6 +410,7 @@ export function useMatchDetailPage() {
       registrationGroupId.value = publicData.registrationGroupId;
       publicationModeLabel.value = publicData.publicationModeLabel;
       sourceMatch.value = publicData.sourceMatch;
+      matchTeamGroups.value = publicData.teamGroups;
       existingTeamDerivedActivity.value = null;
       currentStatus.value = toStandLabel(toRegistrationStandCode(publicData.myRegistration?.status));
       teamsById.value = {};
@@ -478,6 +497,7 @@ export function useMatchDetailPage() {
     isLoading,
     match,
     sourceMatch,
+    teamProgressItems,
     registrationMode,
     canUseTeamRegistration,
     isRegistrationClosed,

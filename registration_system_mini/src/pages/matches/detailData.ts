@@ -19,6 +19,34 @@ export interface PublicMatchDetailData {
   publicationModeLabel: string;
   /** 新比赛接口的原始比赛对象（legacy 活动为 null）；接约申请管理等需要 publication_mode / opponent_state 的功能用它判定。 */
   sourceMatch: AppMatchSummary | null;
+  /** 球队约队的主/客队报名分组（各自进度），供详情页展示双方进度条；legacy 为空。 */
+  teamGroups: MatchTeamGroupSummary[];
+}
+
+export interface MatchTeamGroupSummary {
+  id: string;
+  kind: "host_team" | "guest_team";
+  teamId: number | null;
+  attendingCount: number;
+  minPlayers: number | null;
+  maxPlayers: number | null;
+}
+
+function isTeamGroup(group: AppMatchGroupDetail): group is AppMatchGroupDetail & { kind: "host_team" | "guest_team" } {
+  return group.kind === "host_team" || group.kind === "guest_team";
+}
+
+function toTeamGroupSummaries(groups: AppMatchGroupDetail[]): MatchTeamGroupSummary[] {
+  return groups
+    .filter(isTeamGroup)
+    .map((group) => ({
+      id: group.id,
+      kind: group.kind,
+      teamId: group.team_id ?? null,
+      attendingCount: group.attending_count ?? 0,
+      minPlayers: group.min_players ?? null,
+      maxPlayers: group.max_players ?? null,
+    }));
 }
 
 export interface AuthenticatedMatchDetailContext {
@@ -174,6 +202,7 @@ export function buildPublicMatchApiDetailData(
     registrationGroupId: group?.id ?? "",
     publicationModeLabel: getMatchPublicationModeLabel(matchDetail.match.publication_mode),
     sourceMatch: matchDetail.match,
+    teamGroups: toTeamGroupSummaries(matchDetail.groups),
     sourceTeamRegistrationCount: Math.max(
       Number(activity.team_registration_count ?? 0) - activityUsers.filter((item) => item.stand === 1).length,
       0,
@@ -208,6 +237,7 @@ export async function loadPublicMatchDetailData(
     registrationGroupId: "",
     publicationModeLabel: activity.match_kind === "internal" ? "队内内战" : "线下已约",
     sourceMatch: null,
+    teamGroups: [],
     sourceTeamRegistrationCount: activity.source_activity_id
       ? 0
       : activityPageItems

@@ -22,6 +22,7 @@ const {
   isLoading,
   match,
   sourceMatch,
+  teamProgressItems,
   registrationMode,
   canUseTeamRegistration,
   isRegistrationClosed,
@@ -172,6 +173,7 @@ onShareTimeline(() => ({
         :is-guest-mode="isGuestMode"
         :can-submit-individual-registration="canSubmitIndividualRegistration"
         :registration-closed="isRegistrationClosed"
+        :team-progress="teamProgressItems"
         :current-team="currentTeam"
         :team-member-registration-groups="teamMemberRegistrationGroups"
         @open-location="openMatchLocation"

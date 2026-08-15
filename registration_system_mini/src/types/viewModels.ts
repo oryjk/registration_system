@@ -131,3 +131,12 @@ export interface NotificationItemViewModel {
   read: boolean;
   relatedPath: string;
 }
+
+/** 球队约队详情页的双边报名进度项（主队/客队各一条）。 */
+export interface MatchTeamProgressItem {
+  id: string;
+  label: string;
+  attending: number;
+  required: number | null;
+  max: number | null;
+}

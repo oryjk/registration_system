@@ -411,4 +411,26 @@ describe("match detail registration design", () => {
     // 刚报名时接口数据里还没有自己，头像/昵称回退到会话资料，报名成功立即可见。
     expect(pageLogic.includes("item.user_id === currentUser.value?.id ? currentUser.value : undefined")).toEqual(true);
   });
+
+  test("shows both team progress bars for online team matches", async () => {
+    const pageLogic = await sourceFile("pages/matches/useMatchDetailPage.ts").text();
+    const detailData = await sourceFile("pages/matches/detailData.ts").text();
+    const detailPage = await sourceFile("pages/matches/detail.vue").text();
+    const individual = await sourceFile("pages/matches/components/MatchIndividualRegistration.vue").text();
+    const statusCard = await sourceFile("pages/matches/components/MatchRegistrationStatusCard.vue").text();
+
+    // 数据链路：主/客队分组从接口带到页面（host_team + guest_team）。
+    expect(detailData.includes("toTeamGroupSummaries")).toEqual(true);
+    expect(detailData.includes('group.kind === "host_team" || group.kind === "guest_team"')).toEqual(true);
+    expect(detailData.includes("teamGroups: []")).toEqual(true);
+    expect(pageLogic.includes("matchTeamGroups.value = publicData.teamGroups")).toEqual(true);
+    expect(pageLogic.includes('match.publication_mode !== "online_team"')).toEqual(true);
+    expect(pageLogic.includes("group.kind === \"host_team\"")).toEqual(true);
+    expect(detailPage.includes(':team-progress="teamProgressItems"')).toEqual(true);
+    expect(individual.includes(':team-progress="teamProgress"')).toEqual(true);
+    // 状态卡：双边进度替代单条进度与“已报”计数。
+    expect(statusCard.includes('v-for="team in teamProgress"')).toEqual(true);
+    expect(statusCard.includes('v-if="!hasTeamProgress" class="status-total"')).toEqual(true);
+    expect(statusCard.includes('v-else\n        :value="joinedCount"')).toEqual(true);
+  });
 });

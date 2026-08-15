@@ -2,6 +2,7 @@
 import { computed } from "vue";
 import type { BackendActivity } from "@/types/backend";
 import type { TeamProfileViewModel } from "@/types/viewModels";
+import type { MatchTeamProgressItem } from "@/types/viewModels";
 import IndividualInfoCard from "./IndividualInfoCard.vue";
 import IndividualMatchupHero from "./IndividualMatchupHero.vue";
 import MatchRegistrationStatusCard from "./MatchRegistrationStatusCard.vue";
@@ -34,6 +35,8 @@ const props = defineProps<{
   canSubmitIndividualRegistration: boolean;
   /** 报名已截止：隐藏所有修改报名状态的入口。 */
   registrationClosed?: boolean;
+  /** 球队约队的主/客队双边报名进度；散人约局为空。 */
+  teamProgress?: MatchTeamProgressItem[];
   currentTeam: TeamProfileViewModel | null;
   teamMemberRegistrationGroups: {
     joined: Array<{ userId: number; name: string; avatarUrl: string; tone: string; jerseyNumber: string; isCurrentUser: boolean }>;
@@ -96,6 +99,7 @@ function handleTeamMemberDialogVisibilityChange(visible: boolean) {
       :is-guest-mode="isGuestMode"
       :cta-disabled="!canSubmitIndividualRegistration"
       :show-cta="!showTeamMemberRegistrationBoard && !registrationClosed"
+      :team-progress="teamProgress"
       @select-individual-signup="handleSelectIndividualSignup"
     />
     <TeamMemberRegistrationBoard

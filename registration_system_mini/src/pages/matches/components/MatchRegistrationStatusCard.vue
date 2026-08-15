@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { NeoAvatarStack, NeoButton, NeoProgress, NeoStickyActionBar, NeoSurface, NeoTag } from "@/components/neo";
+import type { MatchTeamProgressItem } from "@/types/viewModels";
 
 type Participant = {
   id: number;
@@ -21,7 +22,11 @@ const props = defineProps<{
   isGuestMode: boolean;
   ctaDisabled: boolean;
   showCta?: boolean;
+  /** 球队约队双边进度（主/客队）；非空时替代单条进度与“已报”计数。 */
+  teamProgress?: MatchTeamProgressItem[];
 }>();
+
+const hasTeamProgress = computed(() => !!props.teamProgress && props.teamProgress.length > 0);
 
 const emit = defineEmits<{
   selectIndividualSignup: [];
@@ -52,14 +57,31 @@ function handleSignup() {
           <NeoTag tone="dark">报名进度</NeoTag>
           <text class="status-countdown">{{ countdownText }}</text>
         </view>
-        <view class="status-total">
+        <view v-if="!hasTeamProgress" class="status-total">
           <text class="status-total-label">已报</text>
           <text class="status-total-value">{{ joinedCount }}</text>
           <text class="status-total-target">/{{ requiredPlayers || "?" }}</text>
         </view>
       </view>
 
+      <template v-if="hasTeamProgress">
+        <!-- 球队约队：主/客队各自的报名进度条。 -->
+        <view
+          v-for="team in teamProgress"
+          :key="team.id"
+          :class="['status-team-progress', team.label.length > 6 ? 'status-team-progress-tight' : '']"
+        >
+          <NeoProgress
+            :value="team.attending"
+            :target="team.required ?? team.max ?? team.attending"
+            :max="team.max ?? team.required ?? team.attending"
+            :label="team.label"
+            :value-text="`${team.attending}/${team.required ?? team.max ?? '?'}`"
+          />
+        </view>
+      </template>
       <NeoProgress
+        v-else
         :value="joinedCount"
         :target="requiredPlayers"
         :max="maxPlayers"
@@ -67,7 +89,7 @@ function handleSignup() {
         :value-text="`${joinedCount}/${requiredPlayers || '?'}`"
       />
 
-      <view class="status-meta">
+      <view v-if="!hasTeamProgress" class="status-meta">
         <text class="status-meta-label">{{ remainingPlayersLabel }}</text>
         <NeoTag v-if="maxPlayers > requiredPlayers" tone="red">满员 {{ maxPlayers }} 人</NeoTag>
       </view>
@@ -162,6 +184,17 @@ function handleSignup() {
   align-items: center;
   justify-content: space-between;
   gap: 16rpx;
+}
+
+.status-team-progress + .status-team-progress {
+  margin-top: 16rpx;
+}
+
+.status-team-progress-tight :deep(.neo-progress__label) {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 320rpx;
 }
 
 .status-meta {
