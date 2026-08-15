@@ -32,6 +32,8 @@ const props = defineProps<{
   individualCtaLabel: string;
   isGuestMode: boolean;
   canSubmitIndividualRegistration: boolean;
+  /** 报名已截止：隐藏所有修改报名状态的入口。 */
+  registrationClosed?: boolean;
   currentTeam: TeamProfileViewModel | null;
   teamMemberRegistrationGroups: {
     joined: Array<{ userId: number; name: string; avatarUrl: string; tone: string; jerseyNumber: string; isCurrentUser: boolean }>;
@@ -93,13 +95,14 @@ function handleTeamMemberDialogVisibilityChange(visible: boolean) {
       :individual-cta-label="individualCtaLabel"
       :is-guest-mode="isGuestMode"
       :cta-disabled="!canSubmitIndividualRegistration"
-      :show-cta="!showTeamMemberRegistrationBoard"
+      :show-cta="!showTeamMemberRegistrationBoard && !registrationClosed"
       @select-individual-signup="handleSelectIndividualSignup"
     />
     <TeamMemberRegistrationBoard
       v-if="showTeamMemberRegistrationBoard"
       :groups="teamMemberRegistrationGroups"
       :submitting-status="submittingStatus"
+      :registration-closed="registrationClosed"
       @select-stand="handleSelectTeamMemberStand"
       @dialog-visibility-change="handleTeamMemberDialogVisibilityChange"
     />

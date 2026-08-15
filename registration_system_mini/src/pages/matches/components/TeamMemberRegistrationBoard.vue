@@ -20,6 +20,8 @@ const props = defineProps<{
     pending: TeamMemberCard[];
   };
   submittingStatus: boolean;
+  /** 报名已截止：隐藏修改状态的悬浮按钮。 */
+  registrationClosed?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -252,7 +254,7 @@ function memberStatusTone(group: MemberGroupKey) {
       </view>
     </view>
 
-    <NeoStickyActionBar>
+    <NeoStickyActionBar v-if="!registrationClosed">
       <NeoButton
         :variant="currentMemberStatus === 'leave' ? 'lime' : currentMemberStatus === 'joined' ? 'danger' : 'dark'"
         block

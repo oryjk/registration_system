@@ -120,6 +120,15 @@ export function useMatchDetailPage() {
     return parseDateValue(match.value.end_time || match.value.holding_date).getTime();
   });
 
+  // 报名截止后不支持修改报名状态（报名/取消报名/调整状态按钮全部隐藏）：
+  // 新接口用比赛状态判定；legacy 活动的 end_time 是报名截止时刻。
+  const isRegistrationClosed = computed(() => {
+    if (sourceMatch.value) {
+      return sourceMatch.value.status !== "registering";
+    }
+    return registrationDeadlineTimestamp.value > 0 && nowTick.value >= registrationDeadlineTimestamp.value;
+  });
+
   const countdownText = computed(() => formatCountdown(registrationDeadlineTimestamp.value - nowTick.value));
 
   const heroMetaChips = computed(() => {
@@ -463,6 +472,7 @@ export function useMatchDetailPage() {
     sourceMatch,
     registrationMode,
     canUseTeamRegistration,
+    isRegistrationClosed,
     matchKindLabel,
     publicationModeLabel,
     homeTeamLabel,

@@ -24,6 +24,7 @@ const {
   sourceMatch,
   registrationMode,
   canUseTeamRegistration,
+  isRegistrationClosed,
   matchKindLabel,
   publicationModeLabel,
   homeTeamLabel,
@@ -170,6 +171,7 @@ onShareTimeline(() => ({
         :individual-cta-label="individualCtaLabel"
         :is-guest-mode="isGuestMode"
         :can-submit-individual-registration="canSubmitIndividualRegistration"
+        :registration-closed="isRegistrationClosed"
         :current-team="currentTeam"
         :team-member-registration-groups="teamMemberRegistrationGroups"
         @open-location="openMatchLocation"
@@ -236,7 +238,7 @@ onShareTimeline(() => ({
       </view>
     </view>
 
-    <NeoStickyActionBar v-if="match && registrationMode === 'team' && canUseTeamRegistration">
+    <NeoStickyActionBar v-if="match && registrationMode === 'team' && canUseTeamRegistration && !isRegistrationClosed">
       <NeoButton
         block
         :loading="submittingStatus"
