@@ -42,12 +42,25 @@ export function useTeamAttendance({ currentTeam, currentMembers, usersById, ensu
     ),
   );
 
+  // 队员资料优先用 usersById（完整用户对象），缺失时回退到队员列表自带的昵称/头像。
+  function memberProfile(userId: number): BackendTeamMember | undefined {
+    return currentMembers.value.find((member) => member.user_id === userId);
+  }
+
   function memberName(userId: number) {
-    return resolveUserDisplayName(usersById.value[userId]);
+    const user = usersById.value[userId];
+    if (user) {
+      return resolveUserDisplayName(user);
+    }
+    return memberProfile(userId)?.nickname?.trim() || `队员 ${userId}`;
   }
 
   function memberAvatarUrl(userId: number) {
-    return usersById.value[userId]?.avatar_url?.trim() || "";
+    return (
+      usersById.value[userId]?.avatar_url?.trim()
+      || memberProfile(userId)?.avatar_url?.trim()
+      || ""
+    );
   }
 
   function memberInitial(userId: number) {

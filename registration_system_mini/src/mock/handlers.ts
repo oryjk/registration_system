@@ -301,7 +301,23 @@ const routes: MockRoute[] = [
   {
     method: "GET",
     pattern: "/teams/:id/members",
-    handler: (req) => findMockTeam(Number(req.params.id))?.members ?? undefined,
+    // 与真实接口对齐：返回 AppTeamMember 形状（带昵称/头像），供队员管理页展示。
+    handler: (req) => {
+      const detail = findMockTeam(Number(req.params.id));
+      if (!detail) return undefined;
+      return detail.members.map((member) => {
+        const user = mockUsers.find((item) => item.id === member.user_id);
+        return {
+          user_id: member.user_id,
+          nickname: user?.nickname || `用户 ${member.user_id}`,
+          avatar_url: user?.avatar_url ?? null,
+          real_name: user?.real_name ?? null,
+          role: member.role,
+          status: member.status === 1 ? "active" : "inactive",
+          joined_at: member.joined_at,
+        };
+      });
+    },
   },
   {
     method: "GET",

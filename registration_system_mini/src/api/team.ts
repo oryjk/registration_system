@@ -86,6 +86,10 @@ function toBackendMember(member: AppTeamMember): BackendTeamMember {
     is_member: member.status === "active",
     joined_at: member.joined_at,
     status: memberStatusNumber(member.status),
+    // 队员管理页的头像/昵称依赖这两个字段，映射时不能丢弃。
+    nickname: member.nickname,
+    avatar_url: member.avatar_url,
+    real_name: member.real_name,
   };
 }
 

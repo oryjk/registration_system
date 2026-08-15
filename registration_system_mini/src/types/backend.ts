@@ -214,6 +214,10 @@ export interface BackendTeamMember {
   is_member: boolean;
   joined_at: string;
   status: number;
+  /** 用户资料：新接口的队员列表自带；legacy 结构可能缺失，展示层需兜底。 */
+  nickname?: string;
+  avatar_url?: string | null;
+  real_name?: string | null;
 }
 
 export interface BackendTeamDetail {
