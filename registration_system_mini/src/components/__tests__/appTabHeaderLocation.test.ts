@@ -45,4 +45,13 @@ describe("AppTabHeader location visibility", () => {
     expect(mine.includes('<AppTabHeader title="我的" />')).toEqual(true);
     expect(mine.includes("mine-hero-heading")).toEqual(false);
   });
+
+  test("double tapping the header title scrolls the page back to top", async () => {
+    const source = await read("src/components/AppTabHeader.vue");
+
+    expect(source.includes('class="app-tab-header-title" @tap="handleTitleTap"')).toEqual(true);
+    expect(source.includes("DOUBLE_TAP_SCROLL_INTERVAL_MS")).toEqual(true);
+    expect(source.includes("uni.pageScrollTo({ scrollTop: 0, duration: 300 })")).toEqual(true);
+    expect(source.includes("padding: 10rpx 0;")).toEqual(true);
+  });
 });
