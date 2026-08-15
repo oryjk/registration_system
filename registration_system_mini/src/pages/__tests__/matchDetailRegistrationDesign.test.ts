@@ -402,4 +402,11 @@ describe("match detail registration design", () => {
     expect(individual.includes(':registration-closed="registrationClosed"')).toEqual(true);
     expect(board.includes('<NeoStickyActionBar v-if="!registrationClosed">')).toEqual(true);
   });
+
+  test("labels the hosting team from the match itself, not the current team", async () => {
+    const pageLogic = await sourceFile("pages/matches/useMatchDetailPage.ts").text();
+
+    // 接约进入别人的线上约队时，主队必须是发起方（host_team_name），不能显示当前球队。
+    expect(pageLogic.includes("sourceMatch.value?.host_team_name || currentTeam.value?.name || \"主队\"")).toEqual(true);
+  });
 });
