@@ -146,7 +146,10 @@ export function useMatchDetailPage() {
 
   const participantPreview = computed(() =>
     [...joinedRegistrations.value].sort(byRegistrationTimeAsc).map((item) => {
-      const user = usersById.value[item.user_id];
+      // 刚报名时 usersById 还没有当前用户（接口只带已有参赛者），回退到会话资料，
+      // 保证报名成功后头像和昵称立即可见，不用等刷新。
+      const user = usersById.value[item.user_id]
+        ?? (item.user_id === currentUser.value?.id ? currentUser.value : undefined);
       return {
         id: item.user_id,
         name: resolveUserDisplayName(user),

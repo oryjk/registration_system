@@ -408,5 +408,7 @@ describe("match detail registration design", () => {
 
     // 接约进入别人的线上约队时，主队必须是发起方（host_team_name），不能显示当前球队。
     expect(pageLogic.includes("sourceMatch.value?.host_team_name || currentTeam.value?.name || \"主队\"")).toEqual(true);
+    // 刚报名时接口数据里还没有自己，头像/昵称回退到会话资料，报名成功立即可见。
+    expect(pageLogic.includes("item.user_id === currentUser.value?.id ? currentUser.value : undefined")).toEqual(true);
   });
 });
