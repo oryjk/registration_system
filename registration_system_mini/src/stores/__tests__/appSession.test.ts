@@ -58,8 +58,14 @@ describe("app session bootstrap request coalescing", () => {
     const bootstrapSource = source.slice(bootstrapStart, refreshStart);
 
     expect(bootstrapSource.includes("// #ifdef H5")).toEqual(true);
-    expect(bootstrapSource.includes('throw new Error("H5 环境不支持微信静默登录，请使用测试登录")')).toEqual(true);
-    expect(bootstrapSource.indexOf("// #ifdef H5") < bootstrapSource.indexOf("await loginAndBootstrap(sessionBootstrapVersion);")).toEqual(true);
+    // H5 无 token 时静默保持游客态，不能抛错把页面数据加载打成错误卡片。
+    expect(bootstrapSource.includes("throw new Error(\"H5 环境不支持微信静默登录")).toEqual(false);
+    const guardStart = bootstrapSource.indexOf("// #ifdef H5");
+    const guardEnd = bootstrapSource.indexOf("// #endif", guardStart);
+    const guardSource = bootstrapSource.slice(guardStart, guardEnd);
+    expect(guardSource.includes("resetSessionState();")).toEqual(true);
+    expect(guardSource.includes("return;")).toEqual(true);
+    expect(guardEnd < bootstrapSource.indexOf("await loginAndBootstrap(sessionBootstrapVersion);")).toEqual(true);
   });
 
   test("does not load full team details during session bootstrap", async () => {

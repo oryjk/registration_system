@@ -218,11 +218,13 @@ export async function ensureSessionReady(force = false) {
       }
 
       // #ifdef H5
-      // H5 没有微信 OAuth 通道，uni.login 会失败甚至在部分环境不回调，
+      // H5 没有微信 OAuth 通道：uni.login 会失败甚至在部分环境不回调，
       // 导致 bootstrapPromise 挂起、所有 await ensureSessionReady() 的页面卡死。
-      // 无 token 时直接失败并保持游客态，由 H5 测试登录面板显式登录。
+      // 无 token 时保持游客态正常返回，由页面内的 H5 测试登录面板（或后续 H5 登录页）显式登录，
+      // 不能抛错把首页数据加载打成错误卡片。
       if (!getAccessToken()) {
-        throw new Error("H5 环境不支持微信静默登录，请使用测试登录");
+        resetSessionState();
+        return;
       }
       // #endif
 
