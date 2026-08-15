@@ -54,4 +54,14 @@ describe("AppTabHeader location visibility", () => {
     expect(source.includes("uni.pageScrollTo({ scrollTop: 0, duration: 300 })")).toEqual(true);
     expect(source.includes("padding: 10rpx 0;")).toEqual(true);
   });
+
+  test("renders the header in solid neo style instead of glass blur", async () => {
+    const source = await read("src/components/AppTabHeader.vue");
+
+    expect(source.includes("backdrop-filter")).toEqual(false);
+    expect(source.includes("linear-gradient(180deg, var(--neo-color-surface-translucent)")).toEqual(false);
+    expect(source.includes("background: var(--neo-color-page);")).toEqual(true);
+    expect(source.includes("border-bottom: var(--neo-border-default);")).toEqual(true);
+    expect(source.includes("box-shadow: 3rpx 3rpx 0 var(--neo-color-text);")).toEqual(true);
+  });
 });

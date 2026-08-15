@@ -189,17 +189,16 @@ async function handleRefreshLocation() {
   z-index: 30;
   padding-left: 28rpx;
   padding-right: 28rpx;
-  background:
-    linear-gradient(180deg, var(--neo-color-surface-translucent) 0%, var(--neo-color-surface-translucent) 78%, var(--neo-color-surface-fade) 100%);
-  backdrop-filter: blur(20rpx);
-  -webkit-backdrop-filter: blur(20rpx);
+  padding-bottom: 14rpx;
+  /* Neo 风格：实色画布底 + 墨线描边，不用毛玻璃。 */
+  background: var(--neo-color-page);
+  border-bottom: var(--neo-border-default);
   box-sizing: border-box;
 }
 
 .app-tab-header-shell-plain {
   background: transparent;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
+  border-bottom: none;
 }
 
 .app-tab-header {
@@ -220,8 +219,9 @@ async function handleRefreshLocation() {
   width: 58rpx;
   height: 58rpx;
   border-radius: var(--neo-radius-round);
-  background: var(--neo-color-surface-translucent);
-  box-shadow: var(--neo-shadow-soft);
+  border: var(--neo-border-default);
+  background: var(--neo-color-surface);
+  box-shadow: 3rpx 3rpx 0 var(--neo-color-text);
   display: flex;
   align-items: center;
   justify-content: center;
