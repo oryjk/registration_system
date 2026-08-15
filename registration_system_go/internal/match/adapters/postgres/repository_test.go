@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -478,6 +479,15 @@ func TestRepositoryFindForUserIncludesAttendingParticipants(t *testing.T) {
 	}
 
 	match, groups := newPersistableIndividualMatch(t, userID, teamID, 1, 8)
+	// 花名册查询基于 team_members；owner 与队员都需要 active 成员关系才会出现在 participants 里。
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO team_members (team_id, user_id, role, status)
+		VALUES ($1, $2, 'captain', 'active'),
+		       ($1, $3, 'member', 'active'),
+		       ($1, $4, 'member', 'active')`,
+		teamID, userID, secondUserID, leaveUserID); err != nil {
+		t.Fatalf("seed team memberships: %v", err)
+	}
 	repository := NewRepository(pool)
 	if err := repository.CreateWithGroups(ctx, match, groups); err != nil {
 		t.Fatalf("create match: %v", err)
@@ -501,11 +511,21 @@ func TestRepositoryFindForUserIncludesAttendingParticipants(t *testing.T) {
 	if err != nil || !found {
 		t.Fatalf("find user match detail: found=%t err=%v", found, err)
 	}
-	if len(states) != 1 || len(states[0].Participants) != 2 {
-		t.Fatalf("expected two attending participants, got %+v", states)
+	// 详情会返回比赛全部报名组：主队组带花名册 participants，散人组无人报名。
+	statesByKind := make(map[domain.GroupKind]ports.UserGroupState, len(states))
+	for _, state := range states {
+		statesByKind[state.Group.Kind] = state
 	}
-	participantsByID := make(map[int64]ports.UserParticipant, len(states[0].Participants))
-	for _, participant := range states[0].Participants {
+	hostState, ok := statesByKind[domain.GroupHostTeam]
+	if !ok || len(hostState.Participants) != 2 {
+		t.Fatalf("expected two attending participants on host group, got %+v", states)
+	}
+	if individualState, ok := statesByKind[domain.GroupIndividualOpponent]; !ok ||
+		len(individualState.Participants) != 0 || individualState.MyRegistration != nil {
+		t.Fatalf("expected untouched individual group, got %+v", individualState)
+	}
+	participantsByID := make(map[int64]ports.UserParticipant, len(hostState.Participants))
+	for _, participant := range hostState.Participants {
 		participantsByID[participant.UserID] = participant
 	}
 	for id, expectedAvatar := range map[int64]string{
@@ -549,6 +569,128 @@ func TestRepositoryCreatesRegistration(t *testing.T) {
 	if status != string(domain.RegistrationAttending) || count != 1 {
 		t.Fatalf("unexpected registration: status=%s count=%d", status, count)
 	}
+}
+
+func TestRepositoryListsUserMatchesWithPublicationAndDateFilters(t *testing.T) {
+	pool := testsupport.StartPostgres(t)
+	ctx := context.Background()
+	ownerID, teamID := seedMatchOwner(t, pool)
+	viewerID := seedHomeUser(t, pool)
+
+	// start_time 落库为 UTC 时刻；date_start 语义是"该时刻起的 24 小时窗口"，
+	// 覆盖跨 UTC 日期的本地日期场景（如东八区 8/16 全天 = UTC 8/15 16:00 起 24h）。
+	dayStart := time.Now().UTC().Truncate(24 * time.Hour).Add(16 * time.Hour)
+	seedHallMatch(t, pool, ownerID, teamID, "昨天线下已约", domain.OfflineConfirmed, dayStart.Add(-2*time.Hour))
+	seedHallMatch(t, pool, ownerID, teamID, "今天线上约队", domain.OnlineTeam, dayStart.Add(10*time.Hour))
+	individualID, _ := seedHallMatch(t, pool, ownerID, teamID, "今天散人约局", domain.OnlineIndividual, dayStart.Add(15*time.Hour))
+	seedHallMatch(t, pool, ownerID, teamID, "明天散人约局", domain.OnlineIndividual, dayStart.Add(26*time.Hour))
+
+	individualGroupID := uuid.New()
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO match_registration_groups (id, match_id, kind, team_id, min_players, max_players, status)
+		VALUES ($1, $2, 'individual_opponent', NULL, 4, 8, 'open')`,
+		individualGroupID, individualID); err != nil {
+		t.Fatalf("seed individual group: %v", err)
+	}
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO match_registrations (id, group_id, user_id, status, registration_count, cancelled_at)
+		VALUES ($1, $2, $3, 'attending', 1, NULL),
+		       ($4, $2, $5, 'attending', 2, NULL),
+		       ($6, $2, $7, 'cancelled', 5, NOW())`,
+		uuid.New(), individualGroupID, seedHomeUser(t, pool),
+		uuid.New(), seedHomeUser(t, pool),
+		uuid.New(), viewerID); err != nil {
+		t.Fatalf("seed individual registrations: %v", err)
+	}
+
+	repository := NewRepository(pool)
+	items, err := repository.ListForUser(ctx, ports.MatchListFilter{
+		Scope: ports.MatchScopeAll, UserID: viewerID,
+		PublicationModes: []domain.PublicationMode{domain.OnlineTeam, domain.OnlineIndividual},
+		DateStart:        &dayStart,
+		Limit:            20,
+	})
+	if err != nil {
+		t.Fatalf("list hall matches: %v", err)
+	}
+	if len(items) != 2 {
+		t.Fatalf("expected two filtered matches, got %d: %+v", len(items), items)
+	}
+	if items[0].Match.ID != individualID || items[1].Match.Name != "今天线上约队" {
+		t.Fatalf("expected start_time descending order: %+v", items)
+	}
+	individual := items[0]
+	if len(individual.RegistrationGroups) != 2 {
+		t.Fatalf("expected host and individual summaries, got %+v", individual.RegistrationGroups)
+	}
+	for _, group := range individual.RegistrationGroups {
+		switch group.Kind {
+		case domain.GroupIndividualOpponent:
+			if group.AttendingCount != 3 || group.MinPlayers == nil || *group.MinPlayers != 4 || group.MaxPlayers == nil || *group.MaxPlayers != 8 {
+				t.Fatalf("unexpected individual summary: %+v", group)
+			}
+		case domain.GroupHostTeam:
+			if group.AttendingCount != 0 || group.TeamID == nil || *group.TeamID != teamID {
+				t.Fatalf("unexpected host summary: %+v", group)
+			}
+		default:
+			t.Fatalf("unexpected group kind: %+v", group)
+		}
+	}
+
+	total, err := repository.CountForUser(ctx, ports.MatchListFilter{
+		Scope: ports.MatchScopeAll, UserID: viewerID,
+		PublicationModes: []domain.PublicationMode{domain.OnlineTeam, domain.OnlineIndividual},
+		DateStart:        &dayStart,
+	})
+	if err != nil {
+		t.Fatalf("count hall matches: %v", err)
+	}
+	if total != 2 {
+		t.Fatalf("expected total 2, got %d", total)
+	}
+
+	unfiltered, err := repository.ListForUser(ctx, ports.MatchListFilter{Scope: ports.MatchScopeAll, UserID: viewerID, Limit: 20})
+	if err != nil {
+		t.Fatalf("list unfiltered matches: %v", err)
+	}
+	if len(unfiltered) != 4 {
+		t.Fatalf("expected all four matches without filters, got %d", len(unfiltered))
+	}
+}
+
+func seedHallMatch(
+	t *testing.T,
+	pool *pgxpool.Pool,
+	createdByUserID, teamID int64,
+	name string,
+	publicationMode domain.PublicationMode,
+	startTime time.Time,
+) (uuid.UUID, uuid.UUID) {
+	t.Helper()
+	ctx := context.Background()
+	matchID := uuid.New()
+	groupID := uuid.New()
+	opponentState := "recruiting"
+	opponentName := any(nil)
+	if publicationMode == domain.OfflineConfirmed {
+		opponentState = "no_recruitment"
+		opponentName = "测试对手"
+	}
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO matches (
+			id, name, publication_mode, opponent_state, status, host_team_id, opponent_name,
+			players_per_team, start_time, end_time, location, created_by_user_id
+		) VALUES ($1, $2, $3, $4, 'registering', $5, $6, 8, $7, $8, '测试球场', $9)`,
+		matchID, name, string(publicationMode), opponentState, teamID, opponentName, startTime, startTime.Add(2*time.Hour), createdByUserID); err != nil {
+		t.Fatalf("seed hall match: %v", err)
+	}
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO match_registration_groups (id, match_id, kind, team_id, max_players, status)
+		VALUES ($1, $2, 'host_team', $3, 10, 'open')`, groupID, matchID, teamID); err != nil {
+		t.Fatalf("seed hall host group: %v", err)
+	}
+	return matchID, groupID
 }
 
 func TestRepositoryListsUserHomeMatches(t *testing.T) {
@@ -648,6 +790,138 @@ func TestRepositoryListsUserHomeMatches(t *testing.T) {
 	for index := range endedIDs {
 		if ended[index].Match.ID != endedIDs[index] {
 			t.Fatalf("ended order mismatch at %d: got %s want %s", index, ended[index].Match.ID, endedIDs[index])
+		}
+	}
+}
+
+func TestRepositoryListsHomeActionParticipantsIncludesAllAttending(t *testing.T) {
+	pool := testsupport.StartPostgres(t)
+	ctx := context.Background()
+	actorID, teamID := seedMatchOwner(t, pool)
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO team_members (team_id, user_id, role, status)
+		VALUES ($1, $2, 'member', 'active')`, teamID, actorID); err != nil {
+		t.Fatalf("seed membership: %v", err)
+	}
+
+	now := time.Now().UTC()
+	_, groupID := seedHomeMatch(t, pool, actorID, teamID, "头像列表", domain.MatchRegistering, now.Add(2*time.Hour))
+
+	// 7 个 attending + 1 个更早报名的 leave：首页返回该组全部 attending 报名者（不做数量截断），按报名先后排序。
+	attendingIDs := make([]int64, 0, 7)
+	for index := 0; index < 7; index++ {
+		userID := seedHomeUser(t, pool)
+		attendingIDs = append(attendingIDs, userID)
+		nickname := fmt.Sprintf("报名%d", index)
+		avatarURL := fmt.Sprintf("https://cdn.example.com/p%d.png", index)
+		if _, err := pool.Exec(ctx, `UPDATE users SET nickname = $2, avatar_url = $3 WHERE id = $1`, userID, nickname, avatarURL); err != nil {
+			t.Fatalf("seed participant profile: %v", err)
+		}
+		if _, err := pool.Exec(ctx, `
+			INSERT INTO match_registrations (id, group_id, user_id, status, registration_count, created_at)
+			VALUES ($1, $2, $3, 'attending', 1, $4)`,
+			uuid.New(), groupID, userID, now.Add(time.Duration(index)*time.Minute)); err != nil {
+			t.Fatalf("seed attending registration: %v", err)
+		}
+	}
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO match_registrations (id, group_id, user_id, status, registration_count, created_at)
+		VALUES ($1, $2, $3, 'leave', 1, $4)`,
+		uuid.New(), groupID, seedHomeUser(t, pool), now.Add(-time.Hour)); err != nil {
+		t.Fatalf("seed leave registration: %v", err)
+	}
+
+	repository := NewRepository(pool)
+	items, err := repository.ListHomeActionItems(ctx, actorID, 4)
+	if err != nil {
+		t.Fatalf("list home action matches: %v", err)
+	}
+	if len(items) != 1 {
+		t.Fatalf("expected one home action match, got %+v", items)
+	}
+	participants := items[0].Group.Participants
+	if len(participants) != 7 {
+		t.Fatalf("expected all seven attending participants, got %+v", participants)
+	}
+	for index, participant := range participants {
+		if participant.UserID != attendingIDs[index] ||
+			participant.Nickname != fmt.Sprintf("报名%d", index) ||
+			participant.AvatarURL == nil ||
+			*participant.AvatarURL != fmt.Sprintf("https://cdn.example.com/p%d.png", index) ||
+			participant.Status != domain.RegistrationAttending {
+			t.Fatalf("unexpected participant at %d: %+v", index, participant)
+		}
+	}
+}
+
+func TestRepositoryListsHomeEndedParticipantsIncludesAllAttending(t *testing.T) {
+	pool := testsupport.StartPostgres(t)
+	ctx := context.Background()
+	actorID, teamID := seedMatchOwner(t, pool)
+	_, guestTeamID := seedMatchOwner(t, pool)
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO team_members (team_id, user_id, role, status)
+		VALUES ($1, $2, 'member', 'active')`, teamID, actorID); err != nil {
+		t.Fatalf("seed membership: %v", err)
+	}
+
+	now := time.Now().UTC()
+	matchID, hostGroupID := seedHomeMatch(t, pool, actorID, teamID, "已结束头像", domain.MatchEnded, now.Add(-3*time.Hour))
+	guestGroupID := uuid.New()
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO match_registration_groups (id, match_id, kind, team_id, max_players, status)
+		VALUES ($1, $2, 'guest_team', $3, 8, 'open')`, guestGroupID, matchID, guestTeamID); err != nil {
+		t.Fatalf("seed guest group: %v", err)
+	}
+
+	// 主队/客队两个报名组交替分布 7 个 attending + 1 个最早报名的 leave：
+	// 已结束比赛合并全部报名组后返回全部 attending 报名者（不做数量截断），按报名先后排序。
+	attendingIDs := make([]int64, 0, 7)
+	for index := 0; index < 7; index++ {
+		userID := seedHomeUser(t, pool)
+		attendingIDs = append(attendingIDs, userID)
+		nickname := fmt.Sprintf("结束%d", index)
+		avatarURL := fmt.Sprintf("https://cdn.example.com/e%d.png", index)
+		if _, err := pool.Exec(ctx, `UPDATE users SET nickname = $2, avatar_url = $3 WHERE id = $1`, userID, nickname, avatarURL); err != nil {
+			t.Fatalf("seed participant profile: %v", err)
+		}
+		groupID := hostGroupID
+		if index%2 == 1 {
+			groupID = guestGroupID
+		}
+		if _, err := pool.Exec(ctx, `
+			INSERT INTO match_registrations (id, group_id, user_id, status, registration_count, created_at)
+			VALUES ($1, $2, $3, 'attending', 1, $4)`,
+			uuid.New(), groupID, userID, now.Add(time.Duration(index)*time.Minute)); err != nil {
+			t.Fatalf("seed attending registration: %v", err)
+		}
+	}
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO match_registrations (id, group_id, user_id, status, registration_count, created_at)
+		VALUES ($1, $2, $3, 'leave', 1, $4)`,
+		uuid.New(), hostGroupID, seedHomeUser(t, pool), now.Add(-time.Hour)); err != nil {
+		t.Fatalf("seed leave registration: %v", err)
+	}
+
+	repository := NewRepository(pool)
+	items, err := repository.ListHomeEndedItems(ctx, actorID, 8)
+	if err != nil {
+		t.Fatalf("list home ended matches: %v", err)
+	}
+	if len(items) != 1 || items[0].Match.ID != matchID {
+		t.Fatalf("expected the seeded ended match, got %+v", items)
+	}
+	participants := items[0].Participants
+	if len(participants) != 7 {
+		t.Fatalf("expected all seven attending participants, got %+v", participants)
+	}
+	for index, participant := range participants {
+		if participant.UserID != attendingIDs[index] ||
+			participant.Nickname != fmt.Sprintf("结束%d", index) ||
+			participant.AvatarURL == nil ||
+			*participant.AvatarURL != fmt.Sprintf("https://cdn.example.com/e%d.png", index) ||
+			participant.Status != domain.RegistrationAttending {
+			t.Fatalf("unexpected participant at %d: %+v", index, participant)
 		}
 	}
 }

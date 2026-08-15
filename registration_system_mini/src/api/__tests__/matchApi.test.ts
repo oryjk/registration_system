@@ -13,7 +13,7 @@ mock.module("@/utils/request", () => ({ ApiRequestError: MockApiRequestError, re
 const { cancelMyMatchRegistration, createMatch, getMatchDetail, getMatchHome, listMatches, listMyMatches, putMyMatchRegistration } = await import("../match");
 const { tryMockRequest } = await import("@/mock");
 
-describe("Go match API", () => {
+describe("Match API", () => {
   test("loads the authenticated home summary", async () => {
     capturedCalls.length = 0;
 
@@ -33,9 +33,21 @@ describe("Go match API", () => {
     });
   });
 
+  test("searches the current user's matches with a five-item page", async () => {
+    capturedCalls.length = 0;
+
+    await listMyMatches({ page: 1, pageSize: 5, search: " 驿马河 " });
+
+    expect(capturedCalls[0]).toEqual({
+      url: "/matches?scope=mine&search=%E9%A9%BF%E9%A9%AC%E6%B2%B3&page=1&page_size=5",
+      auth: true,
+    });
+  });
+
   test("loads unrelated not-yet-started matches with scope=others and starts_after", async () => {
     capturedCalls.length = 0;
 
+    // 后端 start_time 存 UTC 时刻，Date 入参序列化为 UTC ISO（toISOString）。
     await listMatches({ scope: "others", startsAfter: new Date("2026-08-09T12:00:00.000Z"), page: 1, pageSize: 20 });
 
     expect(capturedCalls[0]).toEqual({
@@ -66,7 +78,7 @@ describe("Go match API", () => {
     });
   });
 
-  test("loads the authenticated Go match detail", async () => {
+  test("loads the authenticated match detail", async () => {
     capturedCalls.length = 0;
 
     await getMatchDetail("f7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c003");
@@ -76,7 +88,7 @@ describe("Go match API", () => {
     });
   });
 
-  test("creates a Go match with match time fields and the selected host team", async () => {
+  test("creates a match with match time fields and the selected host team", async () => {
     capturedCalls.length = 0;
 
     await createMatch({
@@ -107,7 +119,7 @@ describe("Go match API", () => {
     });
   });
 
-  test("writes attending and leave status to the selected Go match group", async () => {
+  test("writes attending and leave status to the selected match group", async () => {
     capturedCalls.length = 0;
 
     await putMyMatchRegistration("f7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c003", "a7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c003", "attending");
@@ -129,7 +141,7 @@ describe("Go match API", () => {
     ]);
   });
 
-  test("cancels the selected Go match group registration", async () => {
+  test("cancels the selected match group registration", async () => {
     capturedCalls.length = 0;
 
     await cancelMyMatchRegistration("f7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c003", "a7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c003");
@@ -229,7 +241,30 @@ describe("Go match API", () => {
     expect(mineItems.some((item) => item.id === "f7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c011")).toEqual(false);
   });
 
-  test("mock handlers cover Go registration writes", async () => {
+  test("mock /matches searches name or location before paginating", async () => {
+    const { resolveMockResponse } = await import("@/mock/handlers");
+    const response = resolveMockResponse(
+      "GET",
+      `/matches?scope=mine&search=${encodeURIComponent("驿马河")}&page=1&page_size=5`,
+      null,
+    );
+    if (!response) throw new Error("expected mock response");
+
+    const data = response.data as {
+      items: Array<{ name: string; location: string; start_time: string }>;
+      total: number;
+      page_size: number;
+    };
+    expect(data.page_size).toEqual(5);
+    expect(data.items.length <= 5).toEqual(true);
+    expect(data.items.length).toEqual(data.total);
+    expect(data.items.every((item) => `${item.name} ${item.location}`.includes("驿马河"))).toEqual(true);
+    expect(data.items.map((item) => item.start_time)).toEqual(
+      [...data.items].map((item) => item.start_time).sort().reverse(),
+    );
+  });
+
+  test("mock handlers cover registration writes", async () => {
     const { resolveMockResponse } = await import("@/mock/handlers");
     const response = resolveMockResponse(
       "PUT",
@@ -244,7 +279,7 @@ describe("Go match API", () => {
     });
   });
 
-  test("mock Go match creation persists the new match into home and mine", async () => {
+  test("mock match creation persists the new match into home and mine", async () => {
     const { resolveMockResponse } = await import("@/mock/handlers");
     const response = resolveMockResponse("POST", "/matches", {
       name: "Mock 新建比赛",
@@ -269,7 +304,7 @@ describe("Go match API", () => {
     expect((mine.data as { items: Array<{ id: string }> }).items.some((item) => item.id === created.match.id)).toEqual(true);
   });
 
-  test("normalizes the full Go app base path before routing mock requests", async () => {
+  test("normalizes the full app base path before routing mock requests", async () => {
     const loginResponse = await tryMockRequest(
       "POST",
       "http://127.0.0.1:18080/api/v1/app/test-auth/login",

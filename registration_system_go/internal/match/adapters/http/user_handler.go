@@ -3,6 +3,7 @@ package matchhttp
 import (
 	"context"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -32,25 +33,34 @@ func NewUserHandler(service UserMatchUseCase, create CreateMatchUseCase) *UserHa
 }
 
 type UserMatchResponse struct {
-	ID                string                 `json:"id"`
-	Name              string                 `json:"name"`
-	PublicationMode   domain.PublicationMode `json:"publication_mode"`
-	OpponentState     domain.OpponentState   `json:"opponent_state"`
-	Status            domain.MatchStatus     `json:"status"`
-	HostTeamID        int64                  `json:"host_team_id"`
-	HostTeamName      string                 `json:"host_team_name"`
-	AwayTeamID        *int64                 `json:"away_team_id"`
-	AwayTeamName      *string                `json:"away_team_name"`
-	OpponentName      *string                `json:"opponent_name"`
-	PlayersPerTeam    int                    `json:"players_per_team"`
-	StartTime         time.Time              `json:"start_time"`
-	EndTime           time.Time              `json:"end_time"`
-	Location          string                 `json:"location"`
-	LocationLatitude  *float64               `json:"location_latitude"`
-	LocationLongitude *float64               `json:"location_longitude"`
-	Description       *string                `json:"description"`
-	CreatedAt         time.Time              `json:"created_at"`
-	UpdatedAt         time.Time              `json:"updated_at"`
+	ID                 string                         `json:"id"`
+	Name               string                         `json:"name"`
+	PublicationMode    domain.PublicationMode         `json:"publication_mode"`
+	OpponentState      domain.OpponentState           `json:"opponent_state"`
+	Status             domain.MatchStatus             `json:"status"`
+	HostTeamID         int64                          `json:"host_team_id"`
+	HostTeamName       string                         `json:"host_team_name"`
+	AwayTeamID         *int64                         `json:"away_team_id"`
+	AwayTeamName       *string                        `json:"away_team_name"`
+	OpponentName       *string                        `json:"opponent_name"`
+	PlayersPerTeam     int                            `json:"players_per_team"`
+	StartTime          time.Time                      `json:"start_time"`
+	EndTime            time.Time                      `json:"end_time"`
+	Location           string                         `json:"location"`
+	LocationLatitude   *float64                       `json:"location_latitude"`
+	LocationLongitude  *float64                       `json:"location_longitude"`
+	Description        *string                        `json:"description"`
+	RegistrationGroups []UserRegistrationGroupSummary `json:"registration_groups"`
+	CreatedAt          time.Time                      `json:"created_at"`
+	UpdatedAt          time.Time                      `json:"updated_at"`
+}
+
+type UserRegistrationGroupSummary struct {
+	Kind           domain.GroupKind `json:"kind"`
+	TeamID         *int64           `json:"team_id"`
+	MinPlayers     *int             `json:"min_players"`
+	MaxPlayers     *int             `json:"max_players"`
+	AttendingCount int              `json:"attending_count"`
 }
 
 type UserRegistrationResponse struct {
@@ -97,6 +107,7 @@ type UserHomeGroupResponse struct {
 	MaxPlayers           *int                       `json:"max_players"`
 	AttendingCount       int                        `json:"attending_count"`
 	MyRegistrationStatus *domain.RegistrationStatus `json:"my_registration_status"`
+	Participants         []UserParticipantResponse  `json:"participants"`
 }
 
 type UserHomeActionMatchResponse struct {
@@ -114,15 +125,16 @@ type UserHomeActionMatchResponse struct {
 }
 
 type UserHomeEndedMatchResponse struct {
-	ID              string                 `json:"id"`
-	Name            string                 `json:"name"`
-	PublicationMode domain.PublicationMode `json:"publication_mode"`
-	Status          domain.MatchStatus     `json:"status"`
-	HostTeamName    string                 `json:"host_team_name"`
-	OpponentName    string                 `json:"opponent_name"`
-	StartTime       time.Time              `json:"start_time"`
-	EndTime         time.Time              `json:"end_time"`
-	Location        string                 `json:"location"`
+	ID              string                    `json:"id"`
+	Name            string                    `json:"name"`
+	PublicationMode domain.PublicationMode    `json:"publication_mode"`
+	Status          domain.MatchStatus        `json:"status"`
+	HostTeamName    string                    `json:"host_team_name"`
+	OpponentName    string                    `json:"opponent_name"`
+	StartTime       time.Time                 `json:"start_time"`
+	EndTime         time.Time                 `json:"end_time"`
+	Location        string                    `json:"location"`
+	Participants    []UserParticipantResponse `json:"participants"`
 }
 
 type UserMatchHomeResponse struct {
@@ -228,6 +240,18 @@ func parseUserListQuery(c *gin.Context) (application.UserMatchListQuery, error) 
 	if query.Scope != "" && query.Scope != application.MatchScopeAll && query.Scope != application.MatchScopeMine && query.Scope != application.MatchScopeOthers {
 		return query, sharederror.New(sharederror.KindValidation, "比赛范围筛选无效")
 	}
+	if raw := c.Query("publication_modes"); raw != "" {
+		for _, part := range strings.Split(raw, ",") {
+			query.PublicationModes = append(query.PublicationModes, domain.PublicationMode(strings.TrimSpace(part)))
+		}
+	}
+	if raw := c.Query("date_start"); raw != "" {
+		dateStart, err := time.Parse(time.RFC3339, raw)
+		if err != nil {
+			return query, sharederror.New(sharederror.KindValidation, "比赛日期筛选无效")
+		}
+		query.DateStart = &dateStart
+	}
 	if raw := c.Query("status"); raw != "" {
 		status := domain.MatchStatus(raw)
 		query.Status = &status
@@ -266,6 +290,14 @@ func userActor(c *gin.Context) (sharedauth.Actor, bool) {
 
 func mapUserMatch(item ports.MatchItem) UserMatchResponse {
 	match := item.Match
+	groups := make([]UserRegistrationGroupSummary, 0, len(item.RegistrationGroups))
+	for _, group := range item.RegistrationGroups {
+		groups = append(groups, UserRegistrationGroupSummary{
+			Kind: group.Kind, TeamID: group.TeamID,
+			MinPlayers: group.MinPlayers, MaxPlayers: group.MaxPlayers,
+			AttendingCount: group.AttendingCount,
+		})
+	}
 	return UserMatchResponse{
 		ID: match.ID.String(), Name: match.Name, PublicationMode: match.PublicationMode,
 		OpponentState: match.OpponentState, Status: match.Status,
@@ -273,7 +305,7 @@ func mapUserMatch(item ports.MatchItem) UserMatchResponse {
 		AwayTeamID: match.AwayTeamID, AwayTeamName: item.AwayTeamName, OpponentName: match.OpponentName,
 		PlayersPerTeam: match.PlayersPerTeam, StartTime: match.StartTime, EndTime: match.EndTime,
 		Location: match.Location, LocationLatitude: match.LocationLatitude, LocationLongitude: match.LocationLongitude,
-		Description: match.Description, CreatedAt: match.CreatedAt, UpdatedAt: match.UpdatedAt,
+		Description: match.Description, RegistrationGroups: groups, CreatedAt: match.CreatedAt, UpdatedAt: match.UpdatedAt,
 	}
 }
 
@@ -286,20 +318,25 @@ func mapUserDetail(detail application.UserMatchDetail) UserMatchDetailResponse {
 				Status: state.MyRegistration.Status, RegistrationCount: state.MyRegistration.RegistrationCount,
 			}
 		}
-		participants := make([]UserParticipantResponse, 0, len(state.Participants))
-		for _, participant := range state.Participants {
-			participants = append(participants, UserParticipantResponse{
-				UserID: participant.UserID, Nickname: participant.Nickname,
-				AvatarURL: participant.AvatarURL, Status: participant.Status,
-			})
-		}
 		groups = append(groups, UserGroupResponse{
 			ID: state.Group.ID.String(), Kind: state.Group.Kind, TeamID: state.Group.TeamID,
 			MinPlayers: state.Group.MinPlayers, MaxPlayers: state.Group.MaxPlayers, Status: state.Group.Status,
-			AttendingCount: state.AttendingCount, MyRegistration: registration, Participants: participants,
+			AttendingCount: state.AttendingCount, MyRegistration: registration,
+			Participants: mapUserParticipantResponses(state.Participants),
 		})
 	}
 	return UserMatchDetailResponse{Match: mapUserMatch(detail.Item), Groups: groups}
+}
+
+func mapUserParticipantResponses(participants []ports.UserParticipant) []UserParticipantResponse {
+	responses := make([]UserParticipantResponse, 0, len(participants))
+	for _, participant := range participants {
+		responses = append(responses, UserParticipantResponse{
+			UserID: participant.UserID, Nickname: participant.Nickname,
+			AvatarURL: participant.AvatarURL, Status: participant.Status,
+		})
+	}
+	return responses
 }
 
 func mapUserHome(result application.UserMatchHomeResult) UserMatchHomeResponse {
@@ -320,6 +357,7 @@ func mapUserHome(result application.UserMatchHomeResult) UserMatchHomeResponse {
 				ID: item.Group.Group.ID.String(), Kind: item.Group.Group.Kind, Status: item.Group.Group.Status,
 				MinPlayers: item.Group.Group.MinPlayers, MaxPlayers: item.Group.Group.MaxPlayers,
 				AttendingCount: item.Group.AttendingCount, MyRegistrationStatus: registrationStatus,
+				Participants: mapUserParticipantResponses(item.Group.Participants),
 			},
 		})
 	}
@@ -330,6 +368,7 @@ func mapUserHome(result application.UserMatchHomeResult) UserMatchHomeResponse {
 			ID: match.ID.String(), Name: match.Name, PublicationMode: match.PublicationMode, Status: match.Status,
 			HostTeamName: item.HostTeamName, OpponentName: userOpponentName(item),
 			StartTime: match.StartTime, EndTime: match.EndTime, Location: match.Location,
+			Participants: mapUserParticipantResponses(item.Participants),
 		})
 	}
 	return UserMatchHomeResponse{

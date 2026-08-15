@@ -2,13 +2,29 @@ import type {
   AppHomeActionMatch,
   AppHomeEndedMatch,
   AppHomeMatchGroup,
-  AppMatchHomeResponse,
   AppMatchDetailResponse,
   AppMatchGroupDetail,
+  AppMatchHomeResponse,
+  AppMatchParticipant,
+  AppMatchRegistrationGroupSummary,
   AppMatchStatus,
   AppMatchSummary,
 } from "@/types/match";
 import { TEAM_ID_HEXI, TEAM_ID_MINGYUE, mockTeams } from "./teams";
+import { mockUsers } from "./users";
+
+/** 首页卡片报名头像：循环取 mock 用户模拟已报名队员。 */
+function mockHomeParticipants(count: number): AppMatchParticipant[] {
+  return Array.from({ length: count }, (_, index) => {
+    const user = mockUsers[index % mockUsers.length];
+    return {
+      user_id: user.id,
+      nickname: user.nickname,
+      avatar_url: user.avatar_url,
+      status: "attending" as const,
+    };
+  });
+}
 
 function isoOffsetMinutes(baseNow: number, minutes: number): string {
   return new Date(baseNow + minutes * 60_000).toISOString();
@@ -71,9 +87,34 @@ function buildSummary(seed: MatchSeed, baseNow: number): AppMatchSummary {
     location_latitude: seed.location_latitude,
     location_longitude: seed.location_longitude,
     description: seed.description,
+    registration_groups: buildRegistrationGroupSummaries(seed),
     created_at: isoOffsetMinutes(baseNow, seed.created_offset_minutes),
     updated_at: isoOffsetMinutes(baseNow, seed.updated_offset_minutes ?? seed.created_offset_minutes + 5),
   };
+}
+
+/** 约队大厅卡片进度依赖报名组摘要：主队组始终存在，散人模式追加散人组。 */
+function buildRegistrationGroupSummaries(seed: MatchSeed): AppMatchRegistrationGroupSummary[] {
+  const groups: AppMatchRegistrationGroupSummary[] = [
+    {
+      kind: "host_team",
+      team_id: seed.host_team_id,
+      min_players: null,
+      max_players: seed.players_per_team,
+      attending_count: Math.max(seed.players_per_team - 2, 1),
+    },
+  ];
+  if (seed.publication_mode === "online_individual") {
+    const minPlayers = Math.max(seed.players_per_team - 2, 3);
+    groups.push({
+      kind: "individual_opponent",
+      team_id: null,
+      min_players: minPlayers,
+      max_players: seed.players_per_team,
+      attending_count: Math.max(minPlayers - 1, 0),
+    });
+  }
+  return groups;
 }
 
 function buildActionMatch(seed: ActionMatchSeed, baseNow: number): AppHomeActionMatch {
@@ -105,6 +146,7 @@ function buildEndedMatch(seed: MatchSeed, baseNow: number): AppHomeEndedMatch {
     host_team_name: summary.host_team_name,
     opponent_name: summary.opponent_name ?? "",
     location: summary.location,
+    participants: mockHomeParticipants(Math.max(1, seed.players_per_team - 2)),
   };
 }
 
@@ -515,6 +557,7 @@ function buildMatchHome(baseNow = Date.now()): AppMatchHomeResponse {
           min_players: seed.status === "registering" ? 6 : 5,
           max_players: seed.players_per_team,
           attending_count: seed.status === "registering" ? 0 : Math.max(1, seed.players_per_team - 2),
+          participants: seed.status === "registering" ? [] : mockHomeParticipants(Math.max(1, seed.players_per_team - 2)),
           my_registration_status:
             seed.status === "registering" ? "unknown" : seed.id === "f7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c005" ? "leave" : "attending",
         },
@@ -563,7 +606,7 @@ export function mockOtherMatches(baseNow = Date.now()): AppMatchSummary[] {
     .sort(compareSummary);
 }
 
-/** 按列表查询参数过滤：scope=mine/others/all + starts_after（只保留 start_time 晚于该时间的比赛）。 */
+/** 按列表查询参数过滤：scope、名称/地点模糊搜索、starts_after、状态、发布模式和日期。 */
 export function filterMockMatchesByQuery(query: Record<string, string>, baseNow = Date.now()): AppMatchSummary[] {
   let items: AppMatchSummary[];
   switch (query.scope) {
@@ -578,10 +621,39 @@ export function filterMockMatchesByQuery(query: Record<string, string>, baseNow 
       break;
   }
 
+  const search = query.search?.trim().toLocaleLowerCase();
+  if (search) {
+    items = items.filter((item) => (
+      `${item.name} ${item.location}`.toLocaleLowerCase().includes(search)
+    ));
+  }
+
   if (query.starts_after) {
     const threshold = Date.parse(query.starts_after);
     if (Number.isFinite(threshold)) {
       items = items.filter((item) => Date.parse(item.start_time) > threshold);
+    }
+  }
+
+  if (query.status) {
+    items = items.filter((item) => item.status === query.status);
+  }
+
+  if (query.publication_modes) {
+    const modes = query.publication_modes.split(",").map((mode) => mode.trim()).filter(Boolean);
+    if (modes.length) {
+      items = items.filter((item) => modes.includes(item.publication_mode));
+    }
+  }
+
+  if (query.date_start) {
+    // 与后端一致：date_start 是"该时刻起的 24 小时窗口"。
+    const dayStart = Date.parse(query.date_start);
+    if (Number.isFinite(dayStart)) {
+      items = items.filter((item) => {
+        const start = Date.parse(item.start_time);
+        return start >= dayStart && start < dayStart + 24 * 60 * 60 * 1000;
+      });
     }
   }
 

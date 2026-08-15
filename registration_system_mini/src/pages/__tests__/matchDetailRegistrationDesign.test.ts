@@ -151,12 +151,20 @@ describe("match detail registration design", () => {
 
   test("confirms individual signup and cancellation before submitting", async () => {
     const pageLogic = await matchDetailLogicSource();
+    const detail = await sourceFile(
+      "pages/matches/detail.vue",
+    ).text();
 
     expect(pageLogic.includes("function confirmRegistrationAction")).toEqual(true);
+    expect(pageLogic.includes("useNeoConfirmDialog")).toEqual(true);
+    expect(pageLogic.includes("uni.showModal")).toEqual(false);
+    expect(detail.includes("<NeoConfirmDialog")).toEqual(true);
     expect(pageLogic.includes('title: "确认报名"')).toEqual(true);
     expect(pageLogic.includes('title: "确认取消报名"')).toEqual(true);
     expect(pageLogic.includes("const confirmed = await confirmRegistrationAction")).toEqual(true);
     expect(pageLogic.includes("if (!confirmed) return;")).toEqual(true);
+    expect(pageLogic.includes("highlight: match.value.name")).toEqual(true);
+    expect(detail.includes(':highlight="confirmDialogState.highlight"')).toEqual(true);
   });
 
   test("updates individual registration locally instead of reloading the whole page", async () => {
@@ -180,7 +188,7 @@ describe("match detail registration design", () => {
     ).text();
 
     expect(detail.includes("<page-meta")).toEqual(true);
-    expect(detail.includes("teamMemberDialogVisible ? 'overflow: hidden;' : ''")).toEqual(true);
+    expect(detail.includes("teamMemberDialogVisible || confirmDialogVisible ? 'overflow: hidden;' : ''")).toEqual(true);
     expect(individual.includes('@dialog-visibility-change="handleTeamMemberDialogVisibilityChange"')).toEqual(true);
     expect(individual.includes('emit("dialogVisibilityChange", visible);')).toEqual(true);
     expect(board.includes("NeoStickyActionBar")).toEqual(true);
@@ -354,5 +362,25 @@ describe("match detail registration design", () => {
     expect(pageLogic.includes('title: "报名人数已满"')).toEqual(true);
     expect(pageLogic.includes("canSubmitIndividualRegistration")).toEqual(true);
     expect(statusCard.includes(":disabled=\"ctaDisabled\"")).toEqual(true);
+  });
+
+  test("decouples team application management from the team registration tab", async () => {
+    const pageLogic = await sourceFile("pages/matches/useMatchDetailPage.ts").text();
+    const detailData = await sourceFile("pages/matches/detailData.ts").text();
+    const detailPage = await sourceFile("pages/matches/detail.vue").text();
+    const applications = await sourceFile(
+      "pages/matches/useMatchTeamApplications.ts",
+    ).text();
+
+    // 申请管理是主队管理功能：只看 canManageApplications，不再依赖“球队报名”标签（Go 比赛没有该标签）。
+    expect(detailPage.includes('v-if="registrationMode === \'team\' && canManageApplications"')).toEqual(false);
+    expect(detailPage.includes('v-if="canManageApplications"')).toEqual(true);
+    // 数据层把新比赛接口的原始对象带出来，供 publication_mode / opponent_state 判定。
+    expect(detailData.includes("sourceMatch: AppMatchSummary | null")).toEqual(true);
+    expect(detailData.includes("sourceMatch: matchDetail.match")).toEqual(true);
+    expect(detailData.includes("sourceMatch: null")).toEqual(true);
+    expect(pageLogic.includes("sourceMatch.value = publicData.sourceMatch")).toEqual(true);
+    expect(detailPage.includes("useMatchTeamApplications(sourceMatch, loadPageData)")).toEqual(true);
+    expect(applications.includes("isRecruitingTeamMatchSource(sourceMatch.value)")).toEqual(true);
   });
 });

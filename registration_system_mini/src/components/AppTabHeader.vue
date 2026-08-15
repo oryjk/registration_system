@@ -176,7 +176,7 @@ async function handleRefreshLocation() {
   padding-left: 28rpx;
   padding-right: 28rpx;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(255, 255, 255, 0.9) 78%, rgba(255, 255, 255, 0) 100%);
+    linear-gradient(180deg, var(--neo-color-surface-translucent) 0%, var(--neo-color-surface-translucent) 78%, var(--neo-color-surface-fade) 100%);
   backdrop-filter: blur(20rpx);
   -webkit-backdrop-filter: blur(20rpx);
   box-sizing: border-box;
@@ -205,9 +205,9 @@ async function handleRefreshLocation() {
 .app-tab-header-back {
   width: 58rpx;
   height: 58rpx;
-  border-radius: 999rpx;
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 10rpx 24rpx rgba(17, 17, 17, 0.08);
+  border-radius: var(--neo-radius-round);
+  background: var(--neo-color-surface-translucent);
+  box-shadow: var(--neo-shadow-soft);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -215,7 +215,7 @@ async function handleRefreshLocation() {
 }
 
 .app-tab-header-back-icon {
-  color: #111310;
+  color: var(--neo-color-text);
   font-size: 46rpx;
   line-height: 1;
   font-weight: 900;
@@ -225,7 +225,7 @@ async function handleRefreshLocation() {
 .app-tab-header-title {
   font-size: 36rpx;
   font-weight: 900;
-  color: #131410;
+  color: var(--neo-color-text);
   flex-shrink: 0;
 }
 
@@ -238,18 +238,18 @@ async function handleRefreshLocation() {
 }
 
 .app-tab-header-location-dot {
-  color: #111111;
+  color: var(--neo-color-text);
   font-size: 18rpx;
 }
 
 .app-tab-header-location-text {
   font-size: 24rpx;
-  color: #52584f;
+  color: var(--neo-color-text-muted);
   font-weight: 700;
 }
 
 .app-tab-header-location-arrow {
-  color: #666d63;
+  color: var(--neo-color-text-disabled);
   font-size: 18rpx;
   font-weight: 800;
 }
@@ -261,18 +261,18 @@ async function handleRefreshLocation() {
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  background: rgba(7, 9, 6, 0.42);
+  background: var(--neo-color-overlay);
   padding: 28rpx;
   box-sizing: border-box;
 }
 
 .location-sheet {
   width: 100%;
-  border-radius: 32rpx;
-  background: #ffffff;
+  border-radius: var(--neo-radius-md);
+  background: var(--neo-color-surface);
   padding: 28rpx;
   box-sizing: border-box;
-  box-shadow: 0 28rpx 64rpx rgba(0, 0, 0, 0.18);
+  box-shadow: var(--neo-shadow-modal);
 }
 
 .location-sheet-head {
@@ -285,7 +285,7 @@ async function handleRefreshLocation() {
 .location-sheet-title {
   display: block;
   font-size: 34rpx;
-  color: #131410;
+  color: var(--neo-color-text);
   font-weight: 900;
 }
 
@@ -294,15 +294,15 @@ async function handleRefreshLocation() {
   margin-top: 10rpx;
   font-size: 24rpx;
   line-height: 1.5;
-  color: #666d63;
+  color: var(--neo-color-text-muted);
 }
 
 .location-sheet-close {
   width: 56rpx;
   height: 56rpx;
-  border-radius: 999rpx;
-  background: #f1f3ec;
-  color: #171814;
+  border-radius: var(--neo-radius-round);
+  background: var(--neo-color-muted);
+  color: var(--neo-color-text);
   font-size: 38rpx;
   line-height: 56rpx;
   text-align: center;
@@ -313,7 +313,7 @@ async function handleRefreshLocation() {
   width: 100%;
   height: 420rpx;
   margin-top: 24rpx;
-  border-radius: 24rpx;
+  border-radius: var(--neo-radius-md);
   overflow: hidden;
 }
 
@@ -327,7 +327,7 @@ async function handleRefreshLocation() {
 .location-sheet-primary {
   flex: 1;
   height: 84rpx;
-  border-radius: 999rpx;
+  border-radius: var(--neo-radius-round);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -336,12 +336,12 @@ async function handleRefreshLocation() {
 }
 
 .location-sheet-secondary {
-  background: #f1f3ec;
-  color: #191a17;
+  background: var(--neo-color-muted);
+  color: var(--neo-color-text);
 }
 
 .location-sheet-primary {
-  background: #c8ff00;
-  color: #111111;
+  background: var(--neo-color-accent);
+  color: var(--neo-color-text);
 }
 </style>

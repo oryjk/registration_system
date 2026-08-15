@@ -3,7 +3,7 @@ import type { BackendUser, BackendUserActivityRecord } from "@/types/backend";
 /**
  * Mock 用户数据。
  *
- * 当前登录用户为 id=37 王睿（洺悦御府队长），与 Go 后端测试登录默认用户一致。
+ * 当前登录用户为 id=37 王睿（洺悦御府队长），与测试登录接口默认用户一致。
  * 其他用户取自现有原型数据（曾俊、王洪等），用于首页报名头像展示。
  */
 export const mockCurrentUser: BackendUser = {

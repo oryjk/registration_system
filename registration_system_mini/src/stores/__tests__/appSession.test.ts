@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { sourcePath } from "@/test/sourcePaths";
-import { resolveBootstrapStrategy, resolveSessionBootstrapMode, resolveStoredSessionStrategy } from "../bootstrapStrategy";
+import { resolveBootstrapStrategy, resolveSessionBootstrapMode } from "../bootstrapStrategy";
 
 declare const Bun: {
   file(path: string): {
@@ -15,20 +15,6 @@ describe("resolveBootstrapStrategy", () => {
 
   test("requests wechat login only when no token is present", () => {
     expect(resolveBootstrapStrategy(false)).toEqual("wechat_login");
-  });
-});
-
-describe("resolveStoredSessionStrategy", () => {
-  test("restores an existing token during app launch", () => {
-    expect(resolveStoredSessionStrategy({ hasAccessToken: true, isManuallyLoggedOut: false })).toEqual("existing_token");
-  });
-
-  test("keeps app launch in guest mode when no token exists", () => {
-    expect(resolveStoredSessionStrategy({ hasAccessToken: false, isManuallyLoggedOut: false })).toEqual("guest");
-  });
-
-  test("does not restore a stored token after manual logout", () => {
-    expect(resolveStoredSessionStrategy({ hasAccessToken: true, isManuallyLoggedOut: true })).toEqual("guest");
   });
 });
 
@@ -54,15 +40,26 @@ describe("resolveSessionBootstrapMode", () => {
 });
 
 describe("app session bootstrap request coalescing", () => {
-  test("shares the bootstrap promise between app launch restore and page session readiness", async () => {
+  test("shares the bootstrap promise between app launch bootstrap and page session readiness", async () => {
     const source = await Bun.file(sourcePath("stores/appSession.ts")).text();
-    const restoreStart = source.indexOf("export async function restoreSessionFromStorage()");
-    const clearSessionStart = source.indexOf("export function clearSession()");
-    const restoreSource = source.slice(restoreStart, clearSessionStart);
+    const bootstrapStart = source.indexOf("export async function ensureSessionReady");
+    const refreshStart = source.indexOf("export async function refreshSessionContext");
+    const bootstrapSource = source.slice(bootstrapStart, refreshStart);
 
-    expect(restoreSource.includes("if (bootstrapPromise)")).toEqual(true);
-    expect(restoreSource.includes("bootstrapPromise =")).toEqual(true);
-    expect(restoreSource.includes("bootstrapPromise = null")).toEqual(true);
+    expect(bootstrapSource.includes("if (bootstrapPromise && !force)")).toEqual(true);
+    expect(bootstrapSource.includes("bootstrapPromise =")).toEqual(true);
+    expect(bootstrapSource.includes("bootstrapPromise = null")).toEqual(true);
+  });
+
+  test("never attempts wechat login on H5 where uni.login may never settle", async () => {
+    const source = await Bun.file(sourcePath("stores/appSession.ts")).text();
+    const bootstrapStart = source.indexOf("export async function ensureSessionReady");
+    const refreshStart = source.indexOf("export async function refreshSessionContext");
+    const bootstrapSource = source.slice(bootstrapStart, refreshStart);
+
+    expect(bootstrapSource.includes("// #ifdef H5")).toEqual(true);
+    expect(bootstrapSource.includes('throw new Error("H5 环境不支持微信静默登录，请使用测试登录")')).toEqual(true);
+    expect(bootstrapSource.indexOf("// #ifdef H5") < bootstrapSource.indexOf("await loginAndBootstrap(sessionBootstrapVersion);")).toEqual(true);
   });
 
   test("does not load full team details during session bootstrap", async () => {

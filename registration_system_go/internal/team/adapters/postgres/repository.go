@@ -91,7 +91,25 @@ func (r *Repository) List(ctx context.Context, status *domain.TeamStatus) ([]dom
 	}
 	items := make([]domain.Team, 0, len(rows))
 	for _, row := range rows {
-		items = append(items, mapTeam(row))
+		team := domain.Team{
+			ID:          row.ID,
+			Name:        row.Name,
+			Description: row.Description,
+			LogoURL:     row.LogoUrl,
+			CaptainID:   row.CaptainID,
+			Status:      domain.TeamStatus(row.Status),
+			CreatedAt:   row.CreatedAt.Time,
+			UpdatedAt:   row.UpdatedAt.Time,
+		}
+		if row.CaptainID != nil && row.CaptainNickname != nil {
+			team.Captain = &domain.CaptainSummary{
+				UserID:    *row.CaptainID,
+				Nickname:  *row.CaptainNickname,
+				AvatarURL: row.CaptainAvatarUrl,
+				RealName:  row.CaptainRealName,
+			}
+		}
+		items = append(items, team)
 	}
 	return items, nil
 }

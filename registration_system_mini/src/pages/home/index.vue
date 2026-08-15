@@ -1,24 +1,32 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { onHide, onLoad, onPullDownRefresh, onShareAppMessage, onShareTimeline, onShow, onUnload } from "@dcloudio/uni-app";
+import { onHide, onLoad, onPullDownRefresh, onReachBottom, onShareAppMessage, onShareTimeline, onShow, onUnload } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
 import BottomTabBar from "@/components/BottomTabBar.vue";
 import { NeoSectionHeader } from "@/components/neo";
 import HomeHeroSection from "./components/HomeHeroSection.vue";
 import HomeMatchList from "./components/HomeMatchList.vue";
+import HomeMatchSearch from "./components/HomeMatchSearch.vue";
 import HomeSkeleton from "./components/HomeSkeleton.vue";
-import { getMatchHome } from "@/api/match";
+import { getMatchHome, listMyMatches } from "@/api/match";
 import { defaultMiniAppRuntimeConfig } from "@/config/runtimeConfig";
 import { useNotificationCenter } from "@/stores/notificationCenter";
 import { useTeamContext } from "@/stores/teamContext";
-import type { AppMatchUiPhase } from "@/types/match";
+import type { AppMatchSummary, AppMatchUiPhase } from "@/types/match";
 import type { HomeMatchCardViewModel } from "@/types/viewModels";
-import { getAccessToken, hasManualLogout } from "@/utils/authStorage";
+import { hasManualLogout } from "@/utils/authStorage";
 import { getCustomNavMetrics } from "@/utils/customNav";
 import { DEFAULT_SHARE_IMAGE_URL } from "@/utils/share";
-import { attendanceStatusTone } from "@/utils/statusTone";
-import { buildHomeMatchSections, type HomeMatchSectionViewModel } from "./homeMatchState";
-import { formatHomeMatchDateBlock } from "./homeMatchDate";
+import {
+  buildHomeMatchSections,
+  type HomeMatchSectionViewModel,
+} from "./homeMatchState";
+import {
+  HOME_MATCH_SEARCH_PAGE_SIZE,
+  mergeHomeMatchSearchPage,
+  resolveHomeMatchSearchLoadMoreIntent,
+  toHomeMatchSearchCard,
+} from "./homeMatchSearchState";
 
 const { ensureSessionReady } = useTeamContext();
 const { syncUnreadCount } = useNotificationCenter();
@@ -37,7 +45,20 @@ const upcomingMatches = ref<HomeMatchCardViewModel[]>([]);
 const ongoingMatches = ref<HomeMatchCardViewModel[]>([]);
 const endedMatches = ref<HomeMatchCardViewModel[]>([]);
 const homeHeroBanners = ref(defaultMiniAppRuntimeConfig.home.hero_banners);
+const searchQuery = ref("");
+const activeSearchQuery = ref("");
+const searchSourceMatches = ref<AppMatchSummary[]>([]);
+const searchMatches = computed(() => searchSourceMatches.value.map((match) => toHomeMatchSearchCard(match)));
+const searchPage = ref(0);
+const searchTotal = ref(0);
+const searchHasMore = ref(false);
+const isSearching = ref(false);
+const hasSearched = ref(false);
+const searchErrorMessage = ref("");
 let homeLoadVersion = 0;
+let searchLoadVersion = 0;
+// 正在加载中的搜索结果目标页码；相同目标页的重复意图直接忽略，不做排队重放。
+let searchLoadingTargetPage = 0;
 
 type MatchSectionPhase = Exclude<AppMatchUiPhase, "excluded">;
 
@@ -57,36 +78,6 @@ const upcomingEmptyText = computed(() => (
 ));
 const shareTitle = "约球开踢：组队、报名、上场";
 const sharePath = "/pages/home/index";
-
-function progressBaseWidth(joinedPlayers: number, requiredPlayers: number, maxPlayers: number) {
-  const denominator = Math.max(maxPlayers || requiredPlayers, 1);
-  return `${Math.min(Math.min(joinedPlayers, requiredPlayers) / denominator * 100, 100)}%`;
-}
-
-function progressExtraWidth(joinedPlayers: number, requiredPlayers: number, maxPlayers: number) {
-  const denominator = Math.max(maxPlayers || requiredPlayers, 1);
-  return `${Math.min(Math.max(joinedPlayers - requiredPlayers, 0) / denominator * 100, 100)}%`;
-}
-
-function progressSplitLeft(requiredPlayers: number, maxPlayers: number) {
-  const denominator = Math.max(maxPlayers || requiredPlayers, 1);
-  return `${Math.min(requiredPlayers / denominator * 100, 100)}%`;
-}
-
-function statusClass(status: string) {
-  return `home-status home-status-${attendanceStatusTone(status)}`;
-}
-
-function stageClass(stage: string) {
-  switch (stage) {
-    case "进行中":
-      return "home-stage home-stage-blue";
-    case "已结束":
-      return "home-stage home-stage-muted";
-    default:
-      return "home-stage";
-  }
-}
 
 function clearMatchSections() {
   upcomingMatches.value = [];
@@ -132,6 +123,85 @@ function handleRetryLoad() {
   void loadPageData();
 }
 
+function clearSearchResults() {
+  searchLoadVersion += 1;
+  searchQuery.value = "";
+  activeSearchQuery.value = "";
+  hasSearched.value = false;
+  searchErrorMessage.value = "";
+  searchSourceMatches.value = [];
+  searchPage.value = 0;
+  searchTotal.value = 0;
+  searchHasMore.value = false;
+  isSearching.value = false;
+  searchLoadingTargetPage = 0;
+}
+
+async function loadSearchPage(page: number, query: string, loadVersion: number) {
+  if (page === searchLoadingTargetPage) return;
+  searchLoadingTargetPage = page;
+  searchErrorMessage.value = "";
+  isSearching.value = true;
+  try {
+    const response = await listMyMatches({
+      page,
+      pageSize: HOME_MATCH_SEARCH_PAGE_SIZE,
+      search: query,
+    });
+    if (loadVersion !== searchLoadVersion) return;
+
+    const merged = mergeHomeMatchSearchPage(searchSourceMatches.value, response);
+    searchSourceMatches.value = merged.matches;
+    searchPage.value = merged.page;
+    searchTotal.value = merged.total;
+    searchHasMore.value = merged.hasMore;
+  } catch (error) {
+    if (loadVersion !== searchLoadVersion) return;
+    searchErrorMessage.value = error instanceof Error ? error.message : "比赛搜索失败";
+  } finally {
+    if (loadVersion === searchLoadVersion) {
+      isSearching.value = false;
+      searchLoadingTargetPage = 0;
+    }
+  }
+}
+
+async function handleSearch() {
+  const query = searchQuery.value.trim();
+  const loadVersion = ++searchLoadVersion;
+
+  activeSearchQuery.value = query;
+  searchSourceMatches.value = [];
+  searchPage.value = 0;
+  searchTotal.value = 0;
+  searchHasMore.value = false;
+  searchErrorMessage.value = "";
+  isSearching.value = false;
+  searchLoadingTargetPage = 0;
+  hasSearched.value = !!query;
+
+  if (!query || isGuestMode.value) return;
+  await loadSearchPage(1, query, loadVersion);
+}
+
+function loadMoreSearchResults() {
+  const intent = resolveHomeMatchSearchLoadMoreIntent({
+    hasActiveSearch: hasSearched.value && !!activeSearchQuery.value,
+    isGuestMode: isGuestMode.value,
+    isLoading: isSearching.value,
+    hasMore: searchHasMore.value,
+  });
+
+  if (intent !== "load") return;
+
+  void loadSearchPage(searchPage.value + 1, activeSearchQuery.value, searchLoadVersion);
+}
+
+function retrySearchPage() {
+  if (isSearching.value || !activeSearchQuery.value || isGuestMode.value) return;
+  void loadSearchPage(searchPage.value + 1, activeSearchQuery.value, searchLoadVersion);
+}
+
 async function loadPageData(options?: { preserveContent?: boolean }) {
   const loadVersion = ++homeLoadVersion;
   const preserveContent = !!options?.preserveContent && hasLoadedOnce.value;
@@ -144,7 +214,7 @@ async function loadPageData(options?: { preserveContent?: boolean }) {
   errorMessage.value = "";
 
   try {
-    if (hasManualLogout() || !getAccessToken()) {
+    if (hasManualLogout()) {
       if (loadVersion !== homeLoadVersion) return;
       isGuestMode.value = true;
       clearMatchSections();
@@ -236,6 +306,10 @@ onPullDownRefresh(async () => {
   }
 });
 
+onReachBottom(() => {
+  loadMoreSearchResults();
+});
+
 onLoad(() => {
   uni.$on("session:login-completed", handleSessionLoginCompleted);
   uni.$on("home:data-may-changed", handleHomeDataMayChanged);
@@ -276,25 +350,36 @@ onShareTimeline(() => ({
           @banner-tap="openTab('/pages/activities/index')"
         />
 
-        <view v-if="showHomeLoadError" class="home-empty home-empty-compact">
+        <HomeMatchSearch
+          :query="searchQuery"
+          :is-loading="isSearching"
+          :has-searched="hasSearched"
+          :is-guest-mode="isGuestMode"
+          :navigating-match-id="navigatingMatchId"
+          :matches="searchMatches"
+          :error-message="searchErrorMessage"
+          :has-more="searchHasMore"
+          :total="searchTotal"
+          @update:query="searchQuery = $event"
+          @search="handleSearch"
+          @clear="clearSearchResults"
+          @retry="retrySearchPage"
+          @load-more="loadMoreSearchResults"
+          @match-tap="handleMatchTap"
+        />
+
+        <view v-if="!hasSearched && showHomeLoadError" class="home-empty home-empty-compact">
           <view>{{ errorMessage }}</view>
           <view class="home-empty-action" @tap="handleRetryLoad">点击重试</view>
         </view>
 
-        <template v-else>
+        <template v-else-if="!hasSearched">
           <NeoSectionHeader title="最近要处理的比赛" marker="热" :action-label="upcomingMatches.length ? '更多' : undefined" @action='openMatchList("upcoming")' />
           <HomeMatchList
             v-if="upcomingMatches.length"
-            variant="brutalist"
             :matches="upcomingMatches"
             :is-guest-mode="isGuestMode"
             :navigating-match-id="navigatingMatchId"
-            :format-match-date-block="formatHomeMatchDateBlock"
-            :progress-base-width="progressBaseWidth"
-            :progress-extra-width="progressExtraWidth"
-            :progress-split-left="progressSplitLeft"
-            :stage-class="stageClass"
-            :status-class="statusClass"
             @match-tap="handleMatchTap"
           />
           <view v-else class="home-empty home-empty-compact">{{ upcomingEmptyText }}</view>
@@ -302,16 +387,9 @@ onShareTimeline(() => ({
           <NeoSectionHeader v-if="!isGuestMode" title="进行中的比赛" marker="赛" :action-label="ongoingMatches.length ? '更多' : undefined" @action='openMatchList("ongoing")' />
           <HomeMatchList
             v-if="!isGuestMode && ongoingMatches.length"
-            variant="brutalist"
             :matches="ongoingMatches"
             :is-guest-mode="isGuestMode"
             :navigating-match-id="navigatingMatchId"
-            :format-match-date-block="formatHomeMatchDateBlock"
-            :progress-base-width="progressBaseWidth"
-            :progress-extra-width="progressExtraWidth"
-            :progress-split-left="progressSplitLeft"
-            :stage-class="stageClass"
-            :status-class="statusClass"
             @match-tap="handleMatchTap"
           />
           <view v-else-if="!isGuestMode" class="home-empty home-empty-compact">当前没有进行中的比赛。</view>
@@ -319,16 +397,9 @@ onShareTimeline(() => ({
           <NeoSectionHeader v-if="!isGuestMode" title="已结束的比赛" marker="终" :action-label="endedMatches.length ? '更多' : undefined" @action='openMatchList("ended")' />
           <HomeMatchList
             v-if="!isGuestMode && endedMatches.length"
-            variant="brutalist"
             :matches="endedMatches"
             :is-guest-mode="isGuestMode"
             :navigating-match-id="navigatingMatchId"
-            :format-match-date-block="formatHomeMatchDateBlock"
-            :progress-base-width="progressBaseWidth"
-            :progress-extra-width="progressExtraWidth"
-            :progress-split-left="progressSplitLeft"
-            :stage-class="stageClass"
-            :status-class="statusClass"
             @match-tap="handleMatchTap"
           />
           <view v-else-if="!isGuestMode" class="home-empty home-empty-compact">当前没有已结束的比赛。</view>

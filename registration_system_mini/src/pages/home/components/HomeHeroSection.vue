@@ -114,6 +114,7 @@ const visibleHeroBanners = computed(() => {
 }
 
 .home-banner::before {
+  /* Decorative asset colors intentionally stay local to the illustration. */
   content: "";
   position: absolute;
   inset: 0;
@@ -208,6 +209,7 @@ const visibleHeroBanners = computed(() => {
 }
 
 .home-banner-ball {
+  /* Decorative asset colors intentionally stay local to the illustration. */
   position: absolute;
   right: 30rpx;
   bottom: -10rpx;

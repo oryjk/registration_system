@@ -9,9 +9,17 @@ export interface TeamOption {
   logo_url: string | null;
 }
 
+export interface TeamCaptain {
+  user_id: number;
+  nickname: string;
+  avatar_url: string | null;
+  real_name: string | null;
+}
+
 export interface Team extends TeamOption {
   description: string | null;
   captain_id: number | null;
+  captain: TeamCaptain | null;
   status: TeamStatus;
   created_at: string;
   updated_at: string;

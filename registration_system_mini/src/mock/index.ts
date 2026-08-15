@@ -65,7 +65,7 @@ function extractApiPath(url: string): string | null {
     path = afterProtocol.slice(slashIndex);
   }
 
-  // 去除 Go App baseURL 中的 "/api/v1/app" 或旧的 "/api" 前缀（如果有）
+  // 去除 App baseURL 中的 "/api/v1/app" 或旧的 "/api" 前缀（如果有）
   if (path.startsWith("/api/v1/app/")) {
     path = path.slice("/api/v1/app".length);
   } else if (path === "/api/v1/app") {

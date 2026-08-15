@@ -9,7 +9,7 @@ import { TEAM_ID_MINGYUE, TEAM_ID_HEXI } from "./teams";
 import { dateOffset } from "./dates";
 
 /**
- * Mock 比赛数据（Rust 后端 activity 概念，包含外战和队内赛）。
+ * Mock 比赛数据（旧版 activity 概念，包含外战和队内赛）。
  *
  * 首页 buildHomeMatchCards 依赖：
  *   - home_team_id / away_team_id 与 currentTeam.id 匹配

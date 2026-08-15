@@ -14,15 +14,15 @@ function installMockRequest(response: MockRequestResponse) {
   };
 }
 
-describe("Go app request envelope", () => {
-  test("returns data when the Go response code is zero", async () => {
+describe("App request envelope", () => {
+  test("returns data when the response code is zero", async () => {
     installMockRequest({ statusCode: 200, data: { code: 0, message: "ok", data: { id: 37 } } });
 
     const result = await requestApi<{ id: number }>({ url: "/users/me" });
     expect(result).toEqual({ id: 37 });
   });
 
-  test("preserves the Go error code and message", async () => {
+  test("preserves the error code and message", async () => {
     installMockRequest({ statusCode: 200, data: { code: 422, message: "用户资料无效", data: null } });
 
     let error: unknown;

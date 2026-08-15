@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import type { AppMatchDetailResponse, AppMatchSummary } from "@/types/match";
-import { buildGoPublicMatchDetailData, loadPublicMatchDetailData, toBackendActivity, toBackendRegistration } from "../detailData";
+import { buildPublicMatchApiDetailData, loadPublicMatchDetailData, toBackendActivity, toBackendRegistration } from "../detailData";
 
-const goMatch: AppMatchSummary = {
+const matchSummary: AppMatchSummary = {
   id: "f7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c003",
   name: "洺悦御府对河西周四 FC",
   status: "ongoing",
@@ -24,9 +24,9 @@ const goMatch: AppMatchSummary = {
   updated_at: "2026-08-05T02:05:00.000Z",
 };
 
-describe("Go match detail adapter", () => {
-  test("maps a Go match summary to the existing registration detail model", () => {
-    const activity = toBackendActivity(goMatch);
+describe("Match detail adapter", () => {
+  test("maps a match summary to the existing registration detail model", () => {
+    const activity = toBackendActivity(matchSummary);
     expect({
       id: activity.id,
       name: activity.name,
@@ -41,32 +41,32 @@ describe("Go match detail adapter", () => {
       team_capacity_limit: activity.team_capacity_limit,
       match_kind: activity.match_kind,
     }).toEqual({
-      id: goMatch.id,
-      name: goMatch.name,
+      id: matchSummary.id,
+      name: matchSummary.name,
       status: 1,
-      holding_date: goMatch.start_time,
-      start_time: goMatch.start_time,
-      end_time: goMatch.end_time,
-      opposing: goMatch.opponent_name,
-      home_team_id: goMatch.host_team_id,
-      away_team_id: goMatch.away_team_id,
-      players_per_team: goMatch.players_per_team,
-      team_capacity_limit: goMatch.players_per_team,
+      holding_date: matchSummary.start_time,
+      start_time: matchSummary.start_time,
+      end_time: matchSummary.end_time,
+      opposing: matchSummary.opponent_name,
+      home_team_id: matchSummary.host_team_id,
+      away_team_id: matchSummary.away_team_id,
+      players_per_team: matchSummary.players_per_team,
+      team_capacity_limit: matchSummary.players_per_team,
       match_kind: "external",
     });
   });
 
-  test("keeps the Go publication mode label in the detail presentation data", () => {
-    const data = buildGoPublicMatchDetailData({
-      match: { ...goMatch, publication_mode: "online_individual" },
+  test("keeps the publication mode label in the detail presentation data", () => {
+    const data = buildPublicMatchApiDetailData({
+      match: { ...matchSummary, publication_mode: "online_individual" },
       groups: [],
     });
 
     expect(data.publicationModeLabel).toEqual("散人对手");
   });
 
-  test("uses the selected Go group for attendance and capacity", () => {
-    const activity = toBackendActivity(goMatch, {
+  test("uses the selected group for attendance and capacity", () => {
+    const activity = toBackendActivity(matchSummary, {
       id: "group-1",
       kind: "host_team",
       team_id: 101,
@@ -83,17 +83,17 @@ describe("Go match detail adapter", () => {
     }).toEqual({ team_registration_count: 7, team_capacity_limit: 8 });
   });
 
-  test("maps the current Go registration into the legacy participant record", () => {
+  test("maps the current registration into the backend participant record", () => {
     expect(toBackendRegistration(
       { status: "attending", registration_count: 1 },
       37,
-      goMatch.updated_at,
+      matchSummary.updated_at,
     )).toEqual({
       user_id: 37,
       stand: 1,
       registration_count: 1,
       paid: 0,
-      operation_time: goMatch.updated_at,
+      operation_time: matchSummary.updated_at,
     });
   });
 
@@ -106,8 +106,8 @@ describe("Go match detail adapter", () => {
     ] as const;
 
     for (const [status, stand, occupiesCapacity] of cases) {
-      const data = buildGoPublicMatchDetailData({
-        match: goMatch,
+      const data = buildPublicMatchApiDetailData({
+        match: matchSummary,
         groups: [{
           id: "a7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c003",
           kind: "host_team",
@@ -130,7 +130,7 @@ describe("Go match detail adapter", () => {
           stand,
           registration_count: 1,
           paid: 0,
-          operation_time: goMatch.updated_at,
+          operation_time: matchSummary.updated_at,
         },
         sourceTeamRegistrationCount: 0,
         occupiesCapacity,
@@ -138,9 +138,9 @@ describe("Go match detail adapter", () => {
     }
   });
 
-  test("maps Go participants into the existing avatar model", () => {
-    const goDetail = {
-      match: goMatch,
+  test("maps participants into the existing avatar model", () => {
+    const matchDetail = {
+      match: matchSummary,
       groups: [{
         id: "a7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c500",
         kind: "individual_opponent",
@@ -158,7 +158,7 @@ describe("Go match detail adapter", () => {
       }],
     } as unknown as AppMatchDetailResponse;
 
-    const data = buildGoPublicMatchDetailData(goDetail, 37);
+    const data = buildPublicMatchApiDetailData(matchDetail, 37);
 
     expect(data.activityUsers.map((item) => item.user_id)).toEqual([37, 38]);
     expect({
@@ -170,9 +170,9 @@ describe("Go match detail adapter", () => {
     });
   });
 
-  test("keeps the selected Go group id and a zero attending count at the lower boundary", () => {
-    const data = buildGoPublicMatchDetailData({
-      match: goMatch,
+  test("keeps the selected group id and a zero attending count at the lower boundary", () => {
+    const data = buildPublicMatchApiDetailData({
+      match: matchSummary,
       groups: [{
         id: "a7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c003",
         kind: "host_team",
@@ -185,13 +185,13 @@ describe("Go match detail adapter", () => {
       }],
     }, 37);
 
-    expect(data.goRegistrationGroupId).toEqual("a7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c003");
+    expect(data.registrationGroupId).toEqual("a7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c003");
     expect(data.sourceTeamRegistrationCount).toEqual(0);
   });
 
   test("selects the unregistered current team's group when a match has two team groups", () => {
-    const data = buildGoPublicMatchDetailData({
-      match: goMatch,
+    const data = buildPublicMatchApiDetailData({
+      match: matchSummary,
       groups: [
         {
           id: "a7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c101",
@@ -216,13 +216,13 @@ describe("Go match detail adapter", () => {
       ],
     }, 37, { currentTeamId: 102 });
 
-    expect(data.goRegistrationGroupId).toEqual("a7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c102");
+    expect(data.registrationGroupId).toEqual("a7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c102");
     expect(data.activity.team_registration_count).toEqual(5);
   });
 
   test("prefers the action group's id over the current team fallback", () => {
-    const data = buildGoPublicMatchDetailData({
-      match: goMatch,
+    const data = buildPublicMatchApiDetailData({
+      match: matchSummary,
       groups: [
         {
           id: "a7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c201",
@@ -250,12 +250,12 @@ describe("Go match detail adapter", () => {
       currentTeamId: 101,
     });
 
-    expect(data.goRegistrationGroupId).toEqual("a7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c202");
+    expect(data.registrationGroupId).toEqual("a7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c202");
   });
 
   test("selects an open individual opponent group when no team group applies", () => {
-    const data = buildGoPublicMatchDetailData({
-      match: goMatch,
+    const data = buildPublicMatchApiDetailData({
+      match: matchSummary,
       groups: [
         {
           id: "a7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c301",
@@ -280,12 +280,12 @@ describe("Go match detail adapter", () => {
       ],
     }, 37);
 
-    expect(data.goRegistrationGroupId).toEqual("a7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c302");
+    expect(data.registrationGroupId).toEqual("a7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c302");
   });
 
   test("selects another open group before falling back to the first group", () => {
-    const data = buildGoPublicMatchDetailData({
-      match: goMatch,
+    const data = buildPublicMatchApiDetailData({
+      match: matchSummary,
       groups: [
         {
           id: "a7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c401",
@@ -310,13 +310,13 @@ describe("Go match detail adapter", () => {
       ],
     }, 37);
 
-    expect(data.goRegistrationGroupId).toEqual("a7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c402");
+    expect(data.registrationGroupId).toEqual("a7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c402");
   });
 
-  test("loads the preferred UUID group without requesting legacy users or activities", async () => {
+  test("loads the preferred UUID group without requesting activity or user endpoints", async () => {
     const calls: string[] = [];
-    const goDetail: AppMatchDetailResponse = {
-      match: goMatch,
+    const matchDetail: AppMatchDetailResponse = {
+      match: matchSummary,
       groups: [{
         id: "a7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c003",
         kind: "host_team",
@@ -338,36 +338,36 @@ describe("Go match detail adapter", () => {
       }],
     };
 
-    const data = await loadPublicMatchDetailData(goMatch.id, 37, {
-      preferredGroupId: goDetail.groups[1].id,
+    const data = await loadPublicMatchDetailData(matchSummary.id, 37, {
+      preferredGroupId: matchDetail.groups[1].id,
       currentTeamId: 101,
     }, {
       getMatchDetail: async () => {
         calls.push("match-detail");
-        return goDetail;
+        return matchDetail;
       },
       getActivity: async () => {
-        calls.push("legacy-activity");
-        throw new Error("Go detail must not request an activity");
+        calls.push("activity-detail");
+        throw new Error("Match detail must not request an activity");
       },
       getActivityUsers: async () => {
-        calls.push("legacy-activity-users");
-        throw new Error("Go detail must not request activity users");
+        calls.push("activity-users");
+        throw new Error("Match detail must not request activity users");
       },
       listActivities: async () => {
-        calls.push("legacy-activity-list");
-        throw new Error("Go detail must not list activities");
+        calls.push("activity-list");
+        throw new Error("Match detail must not list activities");
       },
       listUsers: async () => {
-        calls.push("legacy-users");
-        throw new Error("Go detail must not list users");
+        calls.push("users");
+        throw new Error("Match detail must not list users");
       },
     });
 
     expect(calls).toEqual(["match-detail"]);
-    expect({ fromGo: data.fromGo, goRegistrationGroupId: data.goRegistrationGroupId }).toEqual({
-      fromGo: true,
-      goRegistrationGroupId: goDetail.groups[1].id,
+    expect({ fromMatchApi: data.fromMatchApi, registrationGroupId: data.registrationGroupId }).toEqual({
+      fromMatchApi: true,
+      registrationGroupId: matchDetail.groups[1].id,
     });
   });
 });

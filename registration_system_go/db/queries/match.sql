@@ -132,6 +132,17 @@ WHERE (sqlc.narg('status')::text IS NULL OR m.status = sqlc.narg('status'))
       sqlc.narg('starts_after')::timestamp IS NULL
       OR m.start_time > sqlc.narg('starts_after')::timestamp
   )
+  AND (
+      cardinality(sqlc.arg('publication_modes')::text[]) = 0
+      OR m.publication_mode = ANY(sqlc.arg('publication_modes')::text[])
+  )
+  AND (
+      sqlc.narg('date_start')::timestamp IS NULL
+      OR (
+          m.start_time >= sqlc.narg('date_start')::timestamp
+          AND m.start_time < sqlc.narg('date_start')::timestamp + INTERVAL '1 day'
+      )
+  )
 ORDER BY m.start_time DESC, m.id
 LIMIT sqlc.arg('limit_count') OFFSET sqlc.arg('offset_count');
 
@@ -190,6 +201,17 @@ WHERE (sqlc.narg('status')::text IS NULL OR m.status = sqlc.narg('status'))
   AND (
       sqlc.narg('starts_after')::timestamp IS NULL
       OR m.start_time > sqlc.narg('starts_after')::timestamp
+  )
+  AND (
+      cardinality(sqlc.arg('publication_modes')::text[]) = 0
+      OR m.publication_mode = ANY(sqlc.arg('publication_modes')::text[])
+  )
+  AND (
+      sqlc.narg('date_start')::timestamp IS NULL
+      OR (
+          m.start_time >= sqlc.narg('date_start')::timestamp
+          AND m.start_time < sqlc.narg('date_start')::timestamp + INTERVAL '1 day'
+      )
   );
 
 -- name: ListHomeActionMatchesForUser :many
@@ -287,6 +309,36 @@ WHERE m.status <> 'cancelled'
 ORDER BY m.end_time DESC, m.id
 LIMIT sqlc.arg('limit_count');
 
+-- name: ListHomeActionGroupParticipants :many
+-- 首页比赛卡片的报名人头像列表：一次性按 group 批量取全部 attending 报名者，
+-- 按报名先后（created_at, user_id）排序，避免 N+1 查询。
+SELECT r.group_id,
+       r.user_id,
+       u.nickname,
+       u.avatar_url,
+       r.status
+FROM match_registrations r
+JOIN users u ON u.id = r.user_id
+WHERE r.group_id = ANY(sqlc.arg('group_ids')::uuid[])
+  AND r.status = 'attending'
+ORDER BY r.group_id, r.created_at, r.user_id;
+
+-- name: ListHomeEndedMatchParticipants :many
+-- 首页已结束比赛卡片的报名人头像列表：一次性按 match 批量取全部 attending 报名者，
+-- 合并该比赛全部报名组后按报名先后（created_at, user_id）排序，避免 N+1 查询。
+SELECT g.match_id,
+       r.user_id,
+       u.nickname,
+       u.avatar_url,
+       r.status
+FROM match_registration_groups g
+JOIN match_registrations r ON r.group_id = g.id
+JOIN users u ON u.id = r.user_id
+WHERE g.match_id = ANY(sqlc.arg('match_ids')::uuid[])
+  AND g.status <> 'cancelled'
+  AND r.status = 'attending'
+ORDER BY g.match_id, r.created_at, r.user_id;
+
 -- name: UpdateMatchDetails :one
 UPDATE matches
 SET name = $2,
@@ -377,6 +429,21 @@ SELECT COALESCE(SUM(registration_count), 0)::bigint
 FROM match_registrations
 WHERE group_id = $1
   AND status = 'attending';
+
+-- name: ListRegistrationSummariesForMatches :many
+SELECT g.match_id,
+       g.id AS group_id,
+       g.kind,
+       g.team_id,
+       g.min_players,
+       g.max_players,
+       COALESCE(SUM(r.registration_count) FILTER (WHERE r.status = 'attending'), 0)::bigint AS attending_count
+FROM match_registration_groups g
+LEFT JOIN match_registrations r ON r.group_id = g.id
+WHERE g.match_id = ANY(sqlc.arg('match_ids')::uuid[])
+  AND g.status <> 'cancelled'
+GROUP BY g.match_id, g.id, g.kind, g.team_id, g.min_players, g.max_players
+ORDER BY g.match_id, g.id;
 
 -- name: IsActiveTeamMember :one
 SELECT EXISTS (

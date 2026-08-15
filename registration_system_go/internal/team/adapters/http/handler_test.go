@@ -52,7 +52,12 @@ func TestMyTeamsHandlerUsesAuthenticatedUser(t *testing.T) {
 func TestAdminTeamCRUDRoutes(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	now := time.Date(2026, time.July, 15, 8, 30, 0, 0, time.UTC)
-	team := domain.Team{ID: 7, Name: "东安联队", Status: domain.TeamActive, CreatedAt: now, UpdatedAt: now}
+	captainID := int64(42)
+	team := domain.Team{
+		ID: 7, Name: "东安联队", Status: domain.TeamActive, CreatedAt: now, UpdatedAt: now,
+		CaptainID: &captainID,
+		Captain:   &domain.CaptainSummary{UserID: captainID, Nickname: "队长昵称"},
+	}
 	query := &fakeTeamQuery{teams: []domain.Team{team}, team: team}
 	handler := NewHandler(query, &fakeTeamMembers{})
 	router := gin.New()
@@ -68,7 +73,7 @@ func TestAdminTeamCRUDRoutes(t *testing.T) {
 		wantBody   string
 		wantTeamID int64
 	}{
-		{name: "list", method: http.MethodGet, path: "/teams", wantBody: `"description":null`},
+		{name: "list", method: http.MethodGet, path: "/teams", wantBody: `"captain":{"user_id":42,"nickname":"队长昵称"`},
 		{name: "get", method: http.MethodGet, path: "/teams/7", wantBody: `"name":"东安联队"`, wantTeamID: 7},
 		{name: "create", method: http.MethodPost, path: "/teams", body: `{"name":"东安联队"}`, wantBody: `"status":"active"`},
 		{name: "update", method: http.MethodPatch, path: "/teams/7", body: `{"name":"东安新队","description":null,"status":"frozen"}`, wantBody: `"name":"东安新队"`, wantTeamID: 7},

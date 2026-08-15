@@ -270,7 +270,7 @@ function handleCreateIndividualChallenge() {
 .create-menu-backdrop {
   position: absolute;
   inset: 0;
-  background: rgba(17, 24, 39, 0.42);
+  background: var(--neo-color-overlay);
   backdrop-filter: blur(12rpx);
 }
 
@@ -290,7 +290,7 @@ function handleCreateIndividualChallenge() {
   align-items: center;
   gap: 18rpx;
   width: 180rpx;
-  color: #ffffff;
+  color: var(--neo-color-text-inverse);
   font-size: 25rpx;
   font-weight: 900;
   text-align: center;
@@ -335,9 +335,9 @@ function handleCreateIndividualChallenge() {
   justify-content: center;
   width: 116rpx;
   height: 116rpx;
-  border-radius: 999rpx;
-  background: rgba(82, 83, 82, 0.96);
-  box-shadow: 0 16rpx 38rpx rgba(0, 0, 0, 0.26);
+  border-radius: var(--neo-radius-round);
+  background: var(--neo-color-overlay-panel);
+  box-shadow: var(--neo-shadow-modal);
 }
 
 .create-menu-action-icon {
@@ -347,7 +347,7 @@ function handleCreateIndividualChallenge() {
 }
 
 .create-menu-icon-match {
-  border: 6rpx solid #c8ff00;
+  border: 6rpx solid var(--neo-color-accent);
   border-radius: 14rpx;
   box-sizing: border-box;
 }
@@ -359,7 +359,7 @@ function handleCreateIndividualChallenge() {
   bottom: 0;
   width: 6rpx;
   margin-left: -3rpx;
-  background: #c8ff00;
+  background: var(--neo-color-accent);
 }
 
 .create-menu-field-circle {
@@ -370,22 +370,22 @@ function handleCreateIndividualChallenge() {
   height: 18rpx;
   margin-left: -9rpx;
   margin-top: -9rpx;
-  border: 5rpx solid #c8ff00;
-  border-radius: 999rpx;
+  border: 5rpx solid var(--neo-color-accent);
+  border-radius: var(--neo-radius-round);
   box-sizing: border-box;
-  background: rgba(82, 83, 82, 0.96);
+  background: var(--neo-color-overlay-panel);
 }
 
 .create-menu-icon-ball {
-  border: 6rpx solid #c8ff00;
-  border-radius: 999rpx;
+  border: 6rpx solid var(--neo-color-accent);
+  border-radius: var(--neo-radius-round);
   box-sizing: border-box;
 }
 
 .create-menu-ball-panel {
   position: absolute;
-  background: #c8ff00;
-  border-radius: 999rpx;
+  background: var(--neo-color-accent);
+  border-radius: var(--neo-radius-round);
 }
 
 .create-menu-ball-panel-top {
@@ -432,8 +432,8 @@ function handleCreateIndividualChallenge() {
 .create-menu-person-head {
   width: 16rpx;
   height: 16rpx;
-  border-radius: 999rpx;
-  background: #c8ff00;
+  border-radius: var(--neo-radius-round);
+  background: var(--neo-color-accent);
 }
 
 .create-menu-person-body {
@@ -441,7 +441,7 @@ function handleCreateIndividualChallenge() {
   height: 22rpx;
   margin-top: 3rpx;
   border-radius: 12rpx 12rpx 5rpx 5rpx;
-  background: #c8ff00;
+  background: var(--neo-color-accent);
 }
 
 .create-menu-person-side .create-menu-person-head {
@@ -458,4 +458,15 @@ function handleCreateIndividualChallenge() {
   line-height: 1.25;
   text-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.45);
 }
+
+/* #ifdef H5 */
+/* 宽屏 H5 下页面内容收敛为居中 750rpx 列，弹出菜单跟随该列而不是贴住窗口边缘。 */
+.create-menu-actions {
+  left: 50%;
+  right: auto;
+  width: 100%;
+  max-width: 750rpx;
+  transform: translateX(-50%);
+}
+/* #endif */
 </style>

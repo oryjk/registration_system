@@ -30,10 +30,11 @@ describe("mine page visual composition", () => {
 
   test("uses the shared fixed header while the content starts below it", async () => {
     const userPageSource = await Bun.file(sourcePath("pages/user/index.vue")).text();
+    const composableSource = await Bun.file(sourcePath("pages/user/useMinePage.ts")).text();
 
     expect(userPageSource.includes('<AppTabHeader title="我的" />')).toEqual(true);
     expect(userPageSource.includes('class="mine-page-content" :style="contentStyle"')).toEqual(true);
-    expect(userPageSource.includes("const contentStyle = computed(() => ({")).toEqual(true);
+    expect(composableSource.includes("const contentStyle = computed(() => ({")).toEqual(true);
     expect(userPageSource.includes("mine-hero-heading")).toEqual(false);
   });
 
@@ -58,30 +59,33 @@ describe("mine page visual composition", () => {
 
   test('routes "all matches" from mine page to the dedicated match list without navigator', async () => {
     const userPageSource = await Bun.file(sourcePath("pages/user/index.vue")).text();
+    const composableSource = await Bun.file(sourcePath("pages/user/useMinePage.ts")).text();
 
-    expect(userPageSource.includes('function openUserMatches()')).toEqual(true);
-    expect(userPageSource.includes('url: "/pages/user/matches/index"')).toEqual(true);
+    expect(composableSource.includes('function openUserMatches()')).toEqual(true);
+    expect(composableSource.includes('url: "/pages/user/matches/index"')).toEqual(true);
     expect(userPageSource.includes("<navigator")).toEqual(false);
   });
 
   test("wires membership renewal to the real payment flow", async () => {
     const userPageSource = await Bun.file(sourcePath("pages/user/index.vue")).text();
+    const composableSource = await Bun.file(sourcePath("pages/user/useMinePage.ts")).text();
 
-    expect(userPageSource.includes("createTeamMembershipOrder")).toEqual(true);
-    expect(userPageSource.includes("requestWxPayment")).toEqual(true);
-    expect(userPageSource.includes("syncPaymentOrderStatus")).toEqual(true);
+    expect(composableSource.includes("createTeamMembershipOrder")).toEqual(true);
+    expect(composableSource.includes("requestWxPayment")).toEqual(true);
+    expect(composableSource.includes("syncPaymentOrderStatus")).toEqual(true);
     expect(userPageSource.includes("handleMembershipRenewal")).toEqual(true);
   });
 
   test("keeps slow billing flow out of the mine page wallet card", async () => {
     const userPageSource = await Bun.file(sourcePath("pages/user/index.vue")).text();
+    const composableSource = await Bun.file(sourcePath("pages/user/useMinePage.ts")).text();
     const walletSource = await Bun.file(sourcePath("pages/user/components/MineWalletSection.vue")).text();
     const billingPageSource = await Bun.file(sourcePath("pages/billing/index.vue")).text();
 
-    expect(userPageSource.includes("getMyBillingFlow")).toEqual(false);
-    expect(userPageSource.includes("getMyBalance")).toEqual(false);
-    expect(userPageSource.includes("getWallet")).toEqual(true);
-    expect(userPageSource.includes('url: "/pages/billing/index"')).toEqual(true);
+    expect(composableSource.includes("getMyBillingFlow")).toEqual(false);
+    expect(composableSource.includes("getMyBalance")).toEqual(false);
+    expect(composableSource.includes("getWallet")).toEqual(true);
+    expect(composableSource.includes('url: "/pages/billing/index"')).toEqual(true);
     expect(walletSource.includes("查看账单")).toEqual(true);
     expect(walletSource.includes("账单明细已移到二级页面")).toEqual(false);
     expect(walletSource.includes("compact-record-card")).toEqual(false);
@@ -90,9 +94,10 @@ describe("mine page visual composition", () => {
 
   test("hides the wallet card on mine page during mini review mode", async () => {
     const userPageSource = await Bun.file(sourcePath("pages/user/index.vue")).text();
+    const composableSource = await Bun.file(sourcePath("pages/user/useMinePage.ts")).text();
 
-    expect(userPageSource.includes('import { useMiniReviewStatus } from "@/stores/miniReview";')).toEqual(true);
-    expect(userPageSource.includes("const { shouldHideCreationEntrances } = useMiniReviewStatus();")).toEqual(true);
+    expect(composableSource.includes('import { useMiniReviewStatus } from "@/stores/miniReview";')).toEqual(true);
+    expect(composableSource.includes("const { shouldHideCreationEntrances } = useMiniReviewStatus();")).toEqual(true);
     expect(userPageSource.includes("<MineWalletSection")).toEqual(true);
     expect(userPageSource.includes('v-if="!shouldHideCreationEntrances"')).toEqual(true);
   });
@@ -107,27 +112,50 @@ describe("mine page visual composition", () => {
   });
 
   test("does not label a logged-in user without a team as unauthenticated", async () => {
-    const userPageSource = await Bun.file(sourcePath("pages/user/index.vue")).text();
+    const composableSource = await Bun.file(sourcePath("pages/user/useMinePage.ts")).text();
 
-    expect(userPageSource.includes("const displayName = computed(() => resolveUserDisplayName(currentUser.value));")).toEqual(true);
-    expect(userPageSource.includes("resolveUserDisplayName(currentTeam.value)")).toEqual(false);
+    expect(composableSource.includes("const displayName = computed(() => resolveUserDisplayName(currentUser.value));")).toEqual(true);
+    expect(composableSource.includes("resolveUserDisplayName(currentTeam.value)")).toEqual(false);
   });
 
-  test("keeps mine page in guest mode when local token is missing", async () => {
+  test("keeps mine page in guest mode only after a manual logout", async () => {
     const userPageSource = await Bun.file(sourcePath("pages/user/index.vue")).text();
+    const composableSource = await Bun.file(sourcePath("pages/user/useMinePage.ts")).text();
     const heroProfileSource = await Bun.file(sourcePath("pages/user/components/MineProfileHero.vue")).text();
 
-    expect(userPageSource.includes('import { getAccessToken } from "@/utils/authStorage";')).toEqual(true);
-    expect(userPageSource.includes("if (!getAccessToken())")).toEqual(true);
-    expect(userPageSource.indexOf("if (!getAccessToken())") < userPageSource.indexOf("await ensureSessionReady();")).toEqual(true);
-    expect(userPageSource.includes('resetPageState("登录后可以查看你的比赛、出勤、钱包和球队数据");')).toEqual(true);
-    expect(userPageSource.includes("async function handleLogin()")).toEqual(true);
-    expect(userPageSource.includes("await refreshSessionContext();")).toEqual(true);
+    expect(composableSource.includes('import { hasManualLogout } from "@/utils/authStorage";')).toEqual(true);
+    expect(composableSource.includes("if (hasManualLogout())")).toEqual(true);
+    expect(composableSource.indexOf("if (hasManualLogout())") < composableSource.indexOf("await ensureSessionReady();")).toEqual(true);
+    expect(composableSource.includes('resetPageState("登录后可以查看你的比赛、出勤、钱包和球队数据");')).toEqual(true);
+    expect(composableSource.includes("async function handleLogin()")).toEqual(true);
+    expect(composableSource.includes("await refreshSessionContext();")).toEqual(true);
     expect(userPageSource.includes('@login="handleLogin"')).toEqual(true);
     expect(heroProfileSource.includes('v-else class="mine-profile-hero__content mine-profile-hero__content--guest"')).toEqual(true);
     expect(heroProfileSource.includes("登录后开启你的比赛旅程")).toEqual(true);
     expect(heroProfileSource.includes("立即登录")).toEqual(true);
     expect(heroProfileSource.includes("编辑资料")).toEqual(true);
     expect(heroProfileSource.includes("退出登录")).toEqual(true);
+  });
+
+  test("keeps the page as a lifecycle and component orchestration layer", async () => {
+    const userPageSource = await Bun.file(sourcePath("pages/user/index.vue")).text();
+
+    expect(userPageSource.includes('import { useMinePage } from "./useMinePage";')).toEqual(true);
+    expect(userPageSource.includes("} = useMinePage();")).toEqual(true);
+    expect(userPageSource.includes('from "@/api/payment"')).toEqual(false);
+    expect(userPageSource.includes('from "@/api/wallet"')).toEqual(false);
+    expect(userPageSource.includes("onShow(() => {")).toEqual(true);
+    expect(userPageSource.includes("onLoad(() => {")).toEqual(true);
+    expect(userPageSource.includes("onUnload(() => {")).toEqual(true);
+  });
+
+  test("constrains the mine page to the centered column on wide H5 screens", async () => {
+    const userPageSource = await Bun.file(sourcePath("pages/user/index.vue")).text();
+
+    expect(userPageSource.includes("/* #ifdef H5 */")).toEqual(true);
+    expect(userPageSource.includes("max-width: 750rpx;")).toEqual(true);
+    expect(userPageSource.includes(".mine-page :deep(.app-tab-header-shell),")).toEqual(true);
+    expect(userPageSource.includes(".mine-page :deep(.custom-tabbar)")).toEqual(true);
+    expect(userPageSource.includes("transform: translateX(-50%);")).toEqual(true);
   });
 });

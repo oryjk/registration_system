@@ -2,11 +2,11 @@ import { describe, expect, test } from "bun:test";
 import { buildAppApiUrl, normalizeAppApiBase } from "../apiBase";
 
 describe("app API base URL", () => {
-  test("normalizes the complete Go app API root", () => {
+  test("normalizes the complete app API root", () => {
     expect(normalizeAppApiBase("http://127.0.0.1:18080/api/v1/app/")).toEqual("http://127.0.0.1:18080/api/v1/app");
   });
 
-  test("accepts a reverse-proxy prefix before the Go app API root", () => {
+  test("accepts a reverse-proxy prefix before the app API root", () => {
     expect(normalizeAppApiBase("https://oryjk.cn:82/regist-v3/api/v1/app/")).toEqual(
       "https://oryjk.cn:82/regist-v3/api/v1/app",
     );

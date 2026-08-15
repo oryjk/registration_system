@@ -66,23 +66,22 @@ function handleClick(event: { stopPropagation?: () => void }) {
 </script>
 
 <template>
-  <view :class="buttonClass" :hover-class="hoverClass">
-    <wd-button
-      type="primary"
-      variant="base"
-      :size="props.size === 'sm' ? 'small' : 'medium'"
-      :loading="props.loading"
-      :disabled="props.disabled"
-      :block="props.block"
-      :loading-color="props.variant === 'dark' ? 'var(--neo-color-text-inverse)' : 'var(--neo-color-text)'"
-      hover-stop-propagation
-      custom-class="neo-button-control"
-      :custom-style="controlStyle"
-      @click="handleClick"
-    >
-      <slot />
-    </wd-button>
-  </view>
+    <view :class="buttonClass" :hover-class="hoverClass">
+      <wd-button
+        type="primary"
+        variant="base"
+        :size="props.size === 'sm' ? 'small' : 'medium'"
+        :loading="props.loading"
+        :disabled="props.disabled"
+        :block="props.block"
+        :loading-color="props.variant === 'dark' ? 'var(--neo-color-text-inverse)' : 'var(--neo-color-text)'"
+        custom-class="neo-button-control"
+        :custom-style="controlStyle"
+        @click="handleClick"
+      >
+        <slot />
+      </wd-button>
+    </view>
 </template>
 
 <style scoped>
@@ -111,6 +110,7 @@ function handleClick(event: { stopPropagation?: () => void }) {
 .neo-button--lime {
   --neo-button-current-bg: var(--neo-color-accent);
   --neo-button-current-fg: var(--neo-color-text);
+  box-shadow: 3rpx 3rpx 0 var(--neo-color-text);
 }
 
 .neo-button--outline {
@@ -122,6 +122,7 @@ function handleClick(event: { stopPropagation?: () => void }) {
 .neo-button--danger {
   --neo-button-current-bg: var(--neo-color-danger);
   --neo-button-current-fg: var(--neo-color-text);
+  box-shadow: 3rpx 3rpx 0 var(--neo-color-text);
 }
 
 .neo-button--muted {
@@ -136,7 +137,8 @@ function handleClick(event: { stopPropagation?: () => void }) {
 }
 
 .neo-button--md {
-  min-height: var(--neo-button-height-md);
+  /* 显式高度让内层 wd-button 的 height:100% 可解析，否则点击热区会塌缩成文字行高（H5 实测 13px）。 */
+  height: var(--neo-button-height-md);
   padding: 0 26rpx;
   font-size: var(--neo-button-font-size-md);
 }

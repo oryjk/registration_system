@@ -1,11 +1,9 @@
 <script setup lang="ts">
 import { NeoButton, NeoSectionHeader, NeoSurface, NeoTag } from "@/components/neo";
-import type { NeoTagTone } from "@/components/neo";
 import type { MineMatchSummary } from "../mineTypes";
 
 defineProps<{
   matches: MineMatchSummary[];
-  statusTone: (status: string) => NeoTagTone;
 }>();
 
 const emit = defineEmits<{
@@ -34,7 +32,7 @@ const emit = defineEmits<{
       >
         <view class="mine-match-card__main">
           <view class="mine-match-card__topline">
-            <NeoTag :tone="statusTone(match.statusLabel)" size="sm">{{ match.statusLabel }}</NeoTag>
+            <NeoTag :tone="match.statusTone" size="sm">{{ match.statusLabel }}</NeoTag>
             <text class="mine-match-card__date">{{ match.dateLabel }}</text>
           </view>
           <text class="mine-match-card__title">{{ match.title }}</text>

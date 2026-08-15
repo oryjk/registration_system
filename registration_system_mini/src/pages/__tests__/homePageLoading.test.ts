@@ -58,12 +58,12 @@ describe("home page loading states", () => {
     expect(pagesJson.includes('"enablePullDownRefresh": true')).toEqual(true);
   });
 
-  test("switches the home page to Go /matches/home sections and removes legacy opportunity sources", async () => {
+  test("switches the home page to /matches/home sections and removes legacy opportunity sources", async () => {
     const source = await sourceFile(
       "pages/home/index.vue",
     ).text();
 
-    expect(source.includes('import { getMatchHome } from "@/api/match";')).toEqual(true);
+    expect(source.includes('import { getMatchHome, listMyMatches } from "@/api/match";')).toEqual(true);
     expect(source.includes("buildHomeMatchSections")).toEqual(true);
     expect(source.includes('openMatchList("ongoing")')).toEqual(true);
     expect(source.includes('openMatchList("ended")')).toEqual(true);
@@ -82,7 +82,7 @@ describe("home page loading states", () => {
     expect(source.includes("const upcomingMatches = ref<HomeMatchCardViewModel[]>([]);")).toEqual(true);
     expect(source.includes("const ongoingMatches = ref<HomeMatchCardViewModel[]>([]);")).toEqual(true);
     expect(source.includes("const endedMatches = ref<HomeMatchCardViewModel[]>([]);")).toEqual(true);
-    expect(source.includes("if (hasManualLogout() || !getAccessToken())")).toEqual(true);
+    expect(source.includes("if (hasManualLogout())")).toEqual(true);
     expect(source.includes("upcomingMatches.value = [];")).toEqual(true);
     expect(source.includes("ongoingMatches.value = [];")).toEqual(true);
     expect(source.includes("endedMatches.value = [];")).toEqual(true);
@@ -105,7 +105,7 @@ describe("home page loading states", () => {
     expect(source.includes("const hasLoadedMatchData = ref(false);")).toEqual(true);
     expect(source.includes("const showHomeLoadError = computed(() => !hasLoadedMatchData.value && !!errorMessage.value);")).toEqual(true);
     expect(source.includes("errorMessage.value = error instanceof Error ? error.message : \"首页数据加载失败\";")).toEqual(true);
-    expect(source.includes('v-if="showHomeLoadError" class="home-empty home-empty-compact"')).toEqual(true);
+    expect(source.includes('v-if="!hasSearched && showHomeLoadError" class="home-empty home-empty-compact"')).toEqual(true);
     expect(source.includes("@tap=\"handleRetryLoad\"")).toEqual(true);
     expect(source.includes("点击重试")).toEqual(true);
   });
@@ -133,6 +133,42 @@ describe("home page loading states", () => {
     expect(source.includes(":action-label=\"upcomingMatches.length ? '更多' : undefined\"")).toEqual(true);
     expect(source.includes(":action-label=\"ongoingMatches.length ? '更多' : undefined\"")).toEqual(true);
     expect(source.includes(":action-label=\"endedMatches.length ? '更多' : undefined\"")).toEqual(true);
+  });
+
+  test("keeps match list consumers declarative without presentation callback props", async () => {
+    const homeSource = await sourceFile("pages/home/index.vue").text();
+    const listSource = await sourceFile("pages/home/components/HomeMatchList.vue").text();
+    const phaseListSource = await sourceFile("pages/home/matches/index.vue").text();
+
+    for (const source of [homeSource, listSource, phaseListSource]) {
+      expect(source.includes("format-match-date-block")).toEqual(false);
+      expect(source.includes("progress-base-width")).toEqual(false);
+      expect(source.includes("progress-extra-width")).toEqual(false);
+      expect(source.includes("progress-split-left")).toEqual(false);
+      expect(source.includes("stage-class")).toEqual(false);
+      expect(source.includes("status-class")).toEqual(false);
+    }
+  });
+
+  test("keeps homepage search as a parent orchestration and child presentation boundary", async () => {
+    const source = await Bun.file(sourcePath("pages/home/index.vue")).text();
+    const searchSource = await Bun.file(sourcePath("pages/home/components/HomeMatchSearch.vue")).text().catch(() => "");
+
+    expect(source.includes("<HomeMatchSearch")).toEqual(true);
+    expect(source.includes("onReachBottom")).toEqual(true);
+    expect(source.includes("HOME_MATCH_SEARCH_PAGE_SIZE")).toEqual(true);
+    expect(source.includes("loadAllHomeMatchSearchResults")).toEqual(false);
+    expect(searchSource.includes("@/api/match")).toEqual(false);
+    expect(searchSource.includes("useTeamContext")).toEqual(false);
+  });
+
+  test("dedupes in-flight search page requests by target page instead of queueing replays", async () => {
+    const source = await Bun.file(sourcePath("pages/home/index.vue")).text();
+
+    expect(source.includes("let searchLoadingTargetPage = 0;")).toEqual(true);
+    expect(source.includes("if (page === searchLoadingTargetPage) return;")).toEqual(true);
+    expect(source.includes("pendingSearchLoadMore")).toEqual(false);
+    expect(source.includes('"queue"')).toEqual(false);
   });
 
   test("allows ongoing and ended cards to navigate to detail and only blocks missing detail or duplicate navigation", async () => {

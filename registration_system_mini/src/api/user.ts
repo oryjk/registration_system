@@ -20,7 +20,7 @@ export function getMe() {
   });
 }
 
-export function toLegacyUser(user: AppUser): BackendUser {
+export function toBackendUser(user: AppUser): BackendUser {
   return {
     id: user.id,
     open_id: "",
@@ -36,7 +36,7 @@ export function toLegacyUser(user: AppUser): BackendUser {
 
 /** 页面展示层暂时沿用旧模型，协议切换集中在 API 适配层。 */
 export async function getCurrentUser() {
-  return toLegacyUser(await getMe());
+  return toBackendUser(await getMe());
 }
 
 export function updateMyProfile(payload: {
@@ -52,7 +52,7 @@ export function updateMyProfile(payload: {
       real_name: payload.real_name,
     },
     auth: true,
-  }).then(toLegacyUser);
+  }).then(toBackendUser);
 }
 
 export function bindMyPhoneNumber(payload: { phone_number: string }) {

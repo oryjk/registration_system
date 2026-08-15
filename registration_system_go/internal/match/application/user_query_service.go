@@ -17,12 +17,14 @@ type UserMatchQueryService struct {
 }
 
 type UserMatchListQuery struct {
-	Scope       MatchScope
-	Status      *domain.MatchStatus
-	Search      string
-	StartsAfter *time.Time
-	Page        int
-	PageSize    int
+	Scope            MatchScope
+	Status           *domain.MatchStatus
+	Search           string
+	StartsAfter      *time.Time
+	DateStart        *time.Time
+	PublicationModes []domain.PublicationMode
+	Page             int
+	PageSize         int
 }
 
 type MatchScope = ports.MatchScope
@@ -65,6 +67,9 @@ func (s UserMatchQueryService) List(ctx context.Context, actor sharedauth.Actor,
 	if query.Status != nil && !validMatchStatus(*query.Status) {
 		return UserMatchListResult{}, sharederror.New(sharederror.KindValidation, "比赛状态筛选无效")
 	}
+	if err := validatePublicationModes(query.PublicationModes); err != nil {
+		return UserMatchListResult{}, err
+	}
 	if query.Scope == "" {
 		query.Scope = MatchScopeAll
 	}
@@ -82,8 +87,8 @@ func (s UserMatchQueryService) List(ctx context.Context, actor sharedauth.Actor,
 	}
 	filter := ports.MatchListFilter{
 		Scope: query.Scope, UserID: actor.ID, Status: query.Status, Search: strings.TrimSpace(query.Search),
-		StartsAfter: query.StartsAfter,
-		Limit:       query.PageSize, Offset: (query.Page - 1) * query.PageSize,
+		StartsAfter: query.StartsAfter, DateStart: query.DateStart, PublicationModes: query.PublicationModes,
+		Limit: query.PageSize, Offset: (query.Page - 1) * query.PageSize,
 	}
 	items, err := s.repository.ListForUser(ctx, filter)
 	if err != nil {
@@ -136,4 +141,15 @@ func (s UserMatchQueryService) Home(ctx context.Context, actor sharedauth.Actor)
 		EndedItems:    endedItems,
 		EndedHasMore:  endedHasMore,
 	}, nil
+}
+
+func validatePublicationModes(modes []domain.PublicationMode) error {
+	for _, mode := range modes {
+		switch mode {
+		case domain.OfflineConfirmed, domain.OnlineTeam, domain.OnlineIndividual:
+		default:
+			return sharederror.New(sharederror.KindValidation, "比赛类型筛选无效")
+		}
+	}
+	return nil
 }

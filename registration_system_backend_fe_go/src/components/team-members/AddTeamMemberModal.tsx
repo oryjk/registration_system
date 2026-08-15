@@ -1,13 +1,10 @@
 import { Alert, Form, type FormInstance, Input, Modal, Select } from "antd";
-import type {
-  AssignableTeamMemberRole,
-  TeamMemberCandidate,
-} from "../../types/team";
-import { assignableRoleOptions } from "./team-member-display";
+import type { TeamMemberCandidate, TeamMemberRole } from "../../types/team";
+import { addMemberRoleOptions } from "./team-member-display";
 
 export interface AddMemberFormValues {
   userID: number;
-  role: AssignableTeamMemberRole;
+  role: TeamMemberRole;
 }
 
 interface AddTeamMemberModalProps {
@@ -17,6 +14,7 @@ interface AddTeamMemberModalProps {
   loadingCandidates: boolean;
   submitting: boolean;
   error: string;
+  hasCaptain: boolean;
   onSearch: (value: string) => void;
   onSubmit: () => void;
   onClose: () => void;
@@ -29,6 +27,7 @@ export function AddTeamMemberModal({
   loadingCandidates,
   submitting,
   error,
+  hasCaptain,
   onSearch,
   onSubmit,
   onClose,
@@ -80,7 +79,13 @@ export function AddTeamMemberModal({
           />
         </Form.Item>
         <Form.Item name="role" label="成员角色" rules={[{ required: true }]}>
-          <Select options={assignableRoleOptions} />
+          <Select
+            options={addMemberRoleOptions.map((option) =>
+              option.value === "captain" && hasCaptain
+                ? { ...option, disabled: true, label: "队长（已有队长）" }
+                : option,
+            )}
+          />
         </Form.Item>
       </Form>
     </Modal>

@@ -417,21 +417,46 @@ func (q *Queries) ListTeamMembers(ctx context.Context, teamID int64) ([]ListTeam
 }
 
 const listTeams = `-- name: ListTeams :many
-SELECT id, name, description, logo_url, captain_id, status, created_at, updated_at
-FROM teams
-WHERE $1::text IS NULL OR status = $1::text
-ORDER BY name, id
+SELECT t.id,
+       t.name,
+       t.description,
+       t.logo_url,
+       t.captain_id,
+       t.status,
+       t.created_at,
+       t.updated_at,
+       u.nickname AS captain_nickname,
+       u.avatar_url AS captain_avatar_url,
+       u.real_name AS captain_real_name
+FROM teams t
+LEFT JOIN users u ON u.id = t.captain_id
+WHERE $1::text IS NULL OR t.status = $1::text
+ORDER BY t.name, t.id
 `
 
-func (q *Queries) ListTeams(ctx context.Context, status *string) ([]Team, error) {
+type ListTeamsRow struct {
+	ID               int64            `json:"id"`
+	Name             string           `json:"name"`
+	Description      *string          `json:"description"`
+	LogoUrl          *string          `json:"logo_url"`
+	CaptainID        *int64           `json:"captain_id"`
+	Status           string           `json:"status"`
+	CreatedAt        pgtype.Timestamp `json:"created_at"`
+	UpdatedAt        pgtype.Timestamp `json:"updated_at"`
+	CaptainNickname  *string          `json:"captain_nickname"`
+	CaptainAvatarUrl *string          `json:"captain_avatar_url"`
+	CaptainRealName  *string          `json:"captain_real_name"`
+}
+
+func (q *Queries) ListTeams(ctx context.Context, status *string) ([]ListTeamsRow, error) {
 	rows, err := q.db.Query(ctx, listTeams, status)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Team
+	var items []ListTeamsRow
 	for rows.Next() {
-		var i Team
+		var i ListTeamsRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
@@ -441,6 +466,9 @@ func (q *Queries) ListTeams(ctx context.Context, status *string) ([]Team, error)
 			&i.Status,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.CaptainNickname,
+			&i.CaptainAvatarUrl,
+			&i.CaptainRealName,
 		); err != nil {
 			return nil, err
 		}

@@ -74,3 +74,4 @@ private.*.key
 
 # Turbopack build cache
 .turbopack/
+.zcode/

@@ -3,7 +3,9 @@ import type {
   AppMatchHomeResponse,
   AppMatchListResponse,
   AppMatchListScope,
+  AppMatchPublicationMode,
   AppMatchRegistration,
+  AppMatchStatus,
   AppMatchSummary,
 } from "@/types/match";
 import { buildQueryString } from "@/utils/queryString";
@@ -15,7 +17,11 @@ export function getMatchHome() {
 
 export interface ListMatchesParams {
   scope: AppMatchListScope;
+  status?: AppMatchStatus;
+  search?: string;
   startsAfter?: Date | string;
+  dateStart?: Date | string;
+  publicationModes?: AppMatchPublicationMode[];
   page: number;
   pageSize: number;
 }
@@ -23,7 +29,12 @@ export interface ListMatchesParams {
 export function listMatches(params: ListMatchesParams) {
   const query = buildQueryString({
     scope: params.scope,
-    starts_after: params.startsAfter instanceof Date ? params.startsAfter.toISOString() : params.startsAfter,
+    status: params.status,
+    search: params.search?.trim() || undefined,
+    // 后端 timestamp 列存 UTC 时刻，时间过滤参数统一传 UTC（toISOString）挂钟。
+    starts_after: toIsoOrPass(params.startsAfter),
+    date_start: toIsoOrPass(params.dateStart),
+    publication_modes: params.publicationModes?.length ? params.publicationModes.join(",") : undefined,
     page: params.page,
     page_size: params.pageSize,
   });
@@ -31,8 +42,15 @@ export function listMatches(params: ListMatchesParams) {
   return requestApi<AppMatchListResponse>({ url: `/matches?${query}`, auth: true });
 }
 
-export function listMyMatches(params: { page: number; pageSize: number }) {
-  return listMatches({ scope: "mine", page: params.page, pageSize: params.pageSize });
+function toIsoOrPass(value: Date | string | undefined): string | undefined {
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+  return value || undefined;
+}
+
+export function listMyMatches(params: { page: number; pageSize: number; search?: string }) {
+  return listMatches({ scope: "mine", page: params.page, pageSize: params.pageSize, search: params.search });
 }
 
 export function getMatchDetail(matchId: string) {

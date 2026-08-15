@@ -1,3 +1,5 @@
+import type { NeoTagTone } from "@/types/designSystem";
+
 export type MineStatTone = "lime" | "blue" | "amber" | "coral";
 
 export interface MineStatItem {
@@ -14,5 +16,6 @@ export interface MineMatchSummary {
   dateLabel: string;
   venue: string;
   statusLabel: string;
+  statusTone: NeoTagTone;
   actionLabel: string;
 }

@@ -96,16 +96,32 @@ export function TeamMemberManager({
     }
     setActionKey("add");
     setCandidateError("");
+    let memberAdded = false;
     try {
       const result = await addMember.mutateAsync({
         teamID,
-        payload: { user_id: values.userID, role: values.role },
+        payload: {
+          user_id: values.userID,
+          role: values.role === "captain" ? "member" : values.role,
+        },
       });
-      onTeamChange(result.team);
+      memberAdded = true;
+      if (values.role === "captain") {
+        const captainResult = await setCaptain.mutateAsync({
+          teamID,
+          userID: values.userID,
+        });
+        onTeamChange(captainResult.team);
+      } else {
+        onTeamChange(result.team);
+      }
       setAddOpen(false);
       addForm.resetFields();
     } catch (reason) {
-      setCandidateError(errorMessage(reason, "添加球队成员失败"));
+      const fallback = memberAdded
+        ? "成员已添加，但设置队长失败，请在成员列表中重新设置队长"
+        : "添加球队成员失败";
+      setCandidateError(errorMessage(reason, fallback));
     } finally {
       setActionKey("");
     }
@@ -306,6 +322,7 @@ export function TeamMemberManager({
         loadingCandidates={candidatesQuery.isFetching}
         submitting={actionKey === "add"}
         error={visibleCandidateError}
+        hasCaptain={Boolean(captain)}
         onSearch={setCandidateSearch}
         onSubmit={() => void submitAdd()}
         onClose={() => setAddOpen(false)}

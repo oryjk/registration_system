@@ -59,7 +59,7 @@ function memberStatusNumber(status: string | number): number {
   return status === "active" ? 1 : 0;
 }
 
-function toLegacyTeam(team: MyTeam | AppTeamDetail | BackendTeam): BackendTeam {
+function toBackendTeam(team: MyTeam | AppTeamDetail | BackendTeam): BackendTeam {
   const item = team as MyTeam & Partial<BackendTeam>;
   return {
     id: item.id,
@@ -78,7 +78,7 @@ function toLegacyTeam(team: MyTeam | AppTeamDetail | BackendTeam): BackendTeam {
   };
 }
 
-function toLegacyMember(member: AppTeamMember): BackendTeamMember {
+function toBackendMember(member: AppTeamMember): BackendTeamMember {
   return {
     user_id: member.user_id,
     role: member.role,
@@ -94,7 +94,7 @@ export async function getMyTeams() {
     url: "/teams/my",
     auth: true,
   });
-  return teams.map(toLegacyTeam);
+  return teams.map(toBackendTeam);
 }
 
 export async function getTeamDetail(teamId: number) {
@@ -112,8 +112,8 @@ export async function getTeamDetail(teamId: number) {
     auth: true,
   });
   return {
-    team: toLegacyTeam(detail),
-    members: members.map(toLegacyMember),
+    team: toBackendTeam(detail),
+    members: members.map(toBackendMember),
   } satisfies BackendTeamDetail;
 }
 

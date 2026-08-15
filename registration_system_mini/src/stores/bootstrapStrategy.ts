@@ -2,17 +2,6 @@ export function resolveBootstrapStrategy(hasAccessToken: boolean): "existing_tok
   return hasAccessToken ? "existing_token" : "wechat_login";
 }
 
-export function resolveStoredSessionStrategy(options: {
-  hasAccessToken: boolean;
-  isManuallyLoggedOut: boolean;
-}): "existing_token" | "guest" {
-  if (options.isManuallyLoggedOut) {
-    return "guest";
-  }
-
-  return options.hasAccessToken ? "existing_token" : "guest";
-}
-
 export function resolveSessionBootstrapMode(options: {
   hasAccessToken: boolean;
   isManuallyLoggedOut: boolean;

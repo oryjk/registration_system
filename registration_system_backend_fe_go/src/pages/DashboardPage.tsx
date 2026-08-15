@@ -48,7 +48,7 @@ export default function DashboardPage() {
   return (
     <PageContainer
       title="服务概览"
-      content="Go API 当前运行状态"
+      content="后端 API 当前运行状态"
       extra={
         <Button
           type="primary"
@@ -83,11 +83,11 @@ export default function DashboardPage() {
           className="service-alert"
           type="error"
           showIcon
-          message="Go 服务不可达"
+          message="后端服务不可达"
           description={
             health.error instanceof Error
               ? health.error.message
-              : "无法连接 Go 服务"
+              : "无法连接后端服务"
           }
         />
       ) : null}

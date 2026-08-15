@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { MatchPublishFormModel } from "@/components/matchPublishForm";
-import { buildGoCreateMatchPayload } from "../createMatchPayload";
+import { buildCreateMatchPayload } from "../createMatchPayload";
 
 function buildForm(overrides: Partial<MatchPublishFormModel> = {}): MatchPublishFormModel {
   return {
@@ -22,9 +22,9 @@ function buildForm(overrides: Partial<MatchPublishFormModel> = {}): MatchPublish
   };
 }
 
-describe("buildGoCreateMatchPayload", () => {
-  test("maps a confirmed offline match to Go match time and capacity fields", () => {
-    expect(buildGoCreateMatchPayload(buildForm(), { id: 7, name: "东安联队" })).toEqual({
+describe("buildCreateMatchPayload", () => {
+  test("maps a confirmed offline match to match time and capacity fields", () => {
+    expect(buildCreateMatchPayload(buildForm(), { id: 7, name: "东安联队" })).toEqual({
       name: "周末友谊赛",
       publication_mode: "offline_confirmed",
       host_team_id: 7,
@@ -41,7 +41,7 @@ describe("buildGoCreateMatchPayload", () => {
   });
 
   test("maps online team recruitment without a handwritten opponent", () => {
-    const payload = buildGoCreateMatchPayload(
+    const payload = buildCreateMatchPayload(
       buildForm({ publicationMode: "online_team", opposing: "不会提交的旧值" }),
       { id: 7, name: "东安联队" },
     );
@@ -51,7 +51,7 @@ describe("buildGoCreateMatchPayload", () => {
   });
 
   test("maps individual recruitment without a handwritten opponent", () => {
-    const payload = buildGoCreateMatchPayload(
+    const payload = buildCreateMatchPayload(
       buildForm({ publicationMode: "online_individual", opposing: "不会提交的旧值" }),
       { id: 7, name: "东安联队" },
     );
@@ -63,7 +63,7 @@ describe("buildGoCreateMatchPayload", () => {
   test("rejects a confirmed offline match without an opponent", () => {
     let message = "";
     try {
-      buildGoCreateMatchPayload(buildForm({ publicationMode: "offline_confirmed", opposing: "  " }), {
+      buildCreateMatchPayload(buildForm({ publicationMode: "offline_confirmed", opposing: "  " }), {
         id: 7,
         name: "东安联队",
       });

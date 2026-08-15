@@ -1,15 +1,16 @@
 import type { ComputedRef, Ref } from "vue";
 import {
   cancelIndividualRegistration,
-  cancelGoIndividualRegistration,
+  cancelMatchIndividualRegistration,
   cancelTeamRegistrationForMatch,
   submitIndividualLeave,
   submitIndividualRegistration,
-  submitGoIndividualRegistration,
+  submitMatchIndividualRegistration,
   submitTeamRegistrationForMatch,
 } from "./detailActions";
 import type { BackendActivity, BackendRegistration, BackendUser } from "@/types/backend";
 import type { TeamProfileViewModel } from "@/types/viewModels";
+import type { NeoConfirmDialogOptions } from "@/components/neo";
 import { toStandLabel } from "@/utils/viewModels";
 import { applyIndividualRegistrationPatch, clampTeamRegistrationCount } from "./detailState";
 
@@ -21,8 +22,8 @@ interface MatchRegistrationDependencies {
   currentTeam: ComputedRef<TeamProfileViewModel | null>;
   submittingStatus: Ref<boolean>;
   isGuestMode: Ref<boolean>;
-  isGoMatchDetail: Ref<boolean>;
-  goRegistrationGroupId: Ref<string>;
+  isMatchApiDetail: Ref<boolean>;
+  registrationGroupId: Ref<string>;
   canSubmitIndividualRegistration: ComputedRef<boolean>;
   canUseTeamRegistration: ComputedRef<boolean>;
   existingTeamDerivedActivity: Ref<BackendActivity | null>;
@@ -30,7 +31,7 @@ interface MatchRegistrationDependencies {
   teamRegistrationCount: Ref<number>;
   ensureSessionReady: () => Promise<void>;
   handleGuestLogin: () => Promise<void>;
-  confirmRegistrationAction: (options: { title: string; content: string; confirmText?: string }) => Promise<boolean>;
+  confirmRegistrationAction: (options: NeoConfirmDialogOptions) => Promise<boolean>;
 }
 
 export function useMatchRegistration(dependencies: MatchRegistrationDependencies) {
@@ -42,8 +43,8 @@ export function useMatchRegistration(dependencies: MatchRegistrationDependencies
     currentTeam,
     submittingStatus,
     isGuestMode,
-    isGoMatchDetail,
-    goRegistrationGroupId,
+    isMatchApiDetail,
+    registrationGroupId,
     canSubmitIndividualRegistration,
     canUseTeamRegistration,
     existingTeamDerivedActivity,
@@ -63,9 +64,9 @@ export function useMatchRegistration(dependencies: MatchRegistrationDependencies
   }
 
   async function submitIndividualRegistrationStatus(status: "attending" | "leave") {
-    if (isGoMatchDetail.value) {
-      if (!goRegistrationGroupId.value) throw new Error("未找到可报名分组");
-      await submitGoIndividualRegistration(match.value!.id, goRegistrationGroupId.value, status);
+    if (isMatchApiDetail.value) {
+      if (!registrationGroupId.value) throw new Error("未找到可报名分组");
+      await submitMatchIndividualRegistration(match.value!.id, registrationGroupId.value, status);
       return;
     }
 
@@ -77,9 +78,9 @@ export function useMatchRegistration(dependencies: MatchRegistrationDependencies
   }
 
   async function cancelIndividualRegistrationStatus() {
-    if (isGoMatchDetail.value) {
-      if (!goRegistrationGroupId.value) throw new Error("未找到可报名分组");
-      await cancelGoIndividualRegistration(match.value!.id, goRegistrationGroupId.value);
+    if (isMatchApiDetail.value) {
+      if (!registrationGroupId.value) throw new Error("未找到可报名分组");
+      await cancelMatchIndividualRegistration(match.value!.id, registrationGroupId.value);
       return;
     }
     await cancelIndividualRegistration(match.value!.id);
@@ -102,7 +103,8 @@ export function useMatchRegistration(dependencies: MatchRegistrationDependencies
 
     const confirmed = await confirmRegistrationAction({
       title: "确认报名",
-      content: `确认报名参加「${match.value.name}」？`,
+      content: `确认报名参加${match.value.name}？`,
+      highlight: match.value.name,
       confirmText: "确认报名",
     });
     if (!confirmed) return;
@@ -128,8 +130,10 @@ export function useMatchRegistration(dependencies: MatchRegistrationDependencies
 
     const confirmed = await confirmRegistrationAction({
       title: "确认取消报名",
-      content: `确认取消「${match.value.name}」的报名？取消后可重新报名。`,
+      content: `确认取消${match.value.name}的报名？取消后可重新报名。`,
+      highlight: match.value.name,
       confirmText: "取消报名",
+      danger: true,
     });
     if (!confirmed) return;
 
@@ -205,6 +209,7 @@ export function useMatchRegistration(dependencies: MatchRegistrationDependencies
           title: "取消球队报名",
           content: "确认取消当前球队报名？对应的队内报名也会关闭。",
           confirmText: "取消报名",
+          danger: true,
         });
         if (!confirmed) return;
 

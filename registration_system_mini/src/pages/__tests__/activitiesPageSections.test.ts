@@ -8,50 +8,62 @@ declare const Bun: {
 };
 
 describe("activities page sections", () => {
-  test("splits challenge hall into team and individual sections", async () => {
+  test("renders the match hall with calendar strip and quick filters", async () => {
     const source = await Bun.file(sourcePath("pages/activities/index.vue")).text();
-    const sections = await Bun.file(sourcePath("pages/activities/components/ChallengeHallSections.vue")).text();
+    const state = await Bun.file(sourcePath("pages/activities/hallMatchState.ts")).text();
 
-    expect(sections.includes("球队约队")).toEqual(true);
-    expect(sections.includes("散人约队")).toEqual(true);
-    expect(source.includes("const teamHallCards = computed")).toEqual(true);
-    expect(source.includes("const individualHallCards = computed")).toEqual(true);
+    expect(source.includes("<HallCalendarStrip")).toEqual(true);
+    expect(source.includes("<HallQuickFilters")).toEqual(true);
+    expect(source.includes("<HallMatchList")).toEqual(true);
+    expect(state.includes('"球队约队"')).toEqual(true);
+    expect(state.includes('"散人约局"')).toEqual(true);
+    expect(state.includes("registration_groups")).toEqual(true);
   });
 
-  test("uses team manager permission for accepting team challenges", async () => {
+  test("navigates hall cards to the match detail page", async () => {
     const source = await Bun.file(sourcePath("pages/activities/index.vue")).text();
-    const sections = await Bun.file(sourcePath("pages/activities/components/ChallengeHallSections.vue")).text();
-    const card = await Bun.file(sourcePath("pages/activities/components/ChallengeHallCard.vue")).text();
+    const state = await Bun.file(sourcePath("pages/activities/hallMatchState.ts")).text();
+    const card = await Bun.file(sourcePath("pages/activities/components/HallMatchCard.vue")).text();
 
-    expect(source.includes("currentTeam.value.canManageTeam")).toEqual(true);
-    expect(source.includes('card.kind === "team"')).toEqual(true);
-    expect(sections.includes("散人约队同一时间只能接一场")).toEqual(true);
-    expect(card.includes('props.variant === "team"')).toEqual(true);
+    expect(source.includes('card.actionKind === "accept" ? card.applyUrl : card.detailUrl')).toEqual(true);
+    expect(state.includes("/pages/matches/detail?id=")).toEqual(true);
+    expect(state.includes("/pages/matches/apply-team/index?id=")).toEqual(true);
+    expect(card.includes("neo-border-strong")).toEqual(true);
+    expect(card.includes("NeoProgress")).toEqual(true);
+    expect(card.includes(':stop-propagation="false"')).toEqual(true);
+    expect(source.includes("acceptChallenge")).toEqual(false);
+    expect(source.includes("cancelIndividualChallengeAcceptance")).toEqual(false);
   });
 
-  test("opens a publish type sheet and navigates to challenge create pages with current identity", async () => {
+  test("opens a publish type sheet with dual creation entries", async () => {
     const source = await Bun.file(sourcePath("pages/activities/index.vue")).text();
-    const toolbar = await Bun.file(sourcePath("pages/activities/components/ActivitiesToolbar.vue")).text();
     const publishTypeSheet = await Bun.file(sourcePath("pages/activities/components/PublishTypeSheet.vue")).text();
 
     expect(source.includes("function openPublishTypeSheet")).toEqual(true);
-    expect(source.includes("shouldHideCreationEntrances")).toEqual(true);
-    expect(source.includes("const canPublish = computed(() => !!currentIdentity.value && !shouldHideCreationEntrances.value);")).toEqual(true);
+    expect(source.includes("canPublish")).toEqual(true);
     expect(publishTypeSheet.includes("publish-menu-overlay")).toEqual(true);
     expect(publishTypeSheet.includes("publish-menu-overlay-open")).toEqual(true);
     expect(publishTypeSheet.includes("publish-menu-action")).toEqual(true);
     expect(publishTypeSheet.includes("cubic-bezier(0.22, 1, 0.36, 1)")).toEqual(true);
     expect(source.includes("handlePublishTeamChallenge")).toEqual(true);
     expect(source.includes("handlePublishIndividualChallenge")).toEqual(true);
-    expect(source.includes("<wd-action-sheet")).toEqual(false);
-    expect(source.includes('itemList: ["球队约队", "散人约队"]')).toEqual(false);
-    expect(source.includes('url: "/pages/matches/create/index"')).toEqual(false);
-    expect(source.includes('url: "/pages/challenges/create-individual/index?kind=team"')).toEqual(true);
-    expect(source.includes('url: "/pages/challenges/create-individual/index"')).toEqual(true);
-    expect(source.includes("createChallenge")).toEqual(false);
+    expect(source.includes('url: "/pages/matches/create"')).toEqual(true);
+    expect(source.includes('url: "/pages/challenges/create-individual"')).toEqual(true);
     expect(source.includes("<MatchPublishForm")).toEqual(false);
     expect(source.includes("showCreateForm")).toEqual(false);
-    expect(toolbar.includes("v-if=\"canPublish\"")).toEqual(true);
+  });
+
+  test("keeps the load-more entry when client filters empty the current page", async () => {
+    const source = await Bun.file(sourcePath("pages/activities/index.vue")).text();
+    const logic = await Bun.file(sourcePath("pages/activities/useHallPage.ts")).text();
+
+    // 类型/人数是前端过滤，只作用于已加载页；过滤后为空但仍有下一页时，“加载更多”不能消失。
+    expect(source.includes('v-if="hasMore && hallCards.length"')).toEqual(false);
+    expect(source.includes('v-if="hasMore"')).toEqual(true);
+    expect(source.includes("本页没有符合筛选条件的约队")).toEqual(true);
+    // 服务端 total=0 表示确实没有数据，避免空大厅出现无效的“加载更多”。
+    expect(logic.includes("return pagination.page > 1;")).toEqual(false);
+    expect(logic.includes("if (pagination.total === 0) {")).toEqual(true);
   });
 
   test("registers individual challenge creation page", async () => {
@@ -100,10 +112,11 @@ describe("activities page sections", () => {
 
   test("mine profile exposes current identity switch next to team switch", async () => {
     const minePageSource = await Bun.file(sourcePath("pages/user/index.vue")).text();
+    const minePageComposableSource = await Bun.file(sourcePath("pages/user/useMinePage.ts")).text();
     const identityPanelSource = await Bun.file(sourcePath("pages/user/components/MineTeamIdentityPanel.vue")).text();
 
     expect(minePageSource.includes("availableIdentities")).toEqual(true);
-    expect(minePageSource.includes("switchIdentity")).toEqual(true);
+    expect(minePageComposableSource.includes("switchIdentity")).toEqual(true);
     expect(minePageSource.includes("<MineTeamIdentityPanel")).toEqual(true);
     expect(identityPanelSource.includes('title="球队与身份"')).toEqual(true);
     expect(identityPanelSource.includes("发布身份")).toEqual(true);
@@ -139,16 +152,26 @@ describe("activities page sections", () => {
     expect(source.includes("imageUrl: DEFAULT_SHARE_IMAGE_URL")).toEqual(true);
   });
 
-  test("loads public challenge hall data as guest and logs in only for actions", async () => {
-    const source = await Bun.file(sourcePath("pages/activities/index.vue")).text();
+  test("match card lists share the card list spacing token", async () => {
+    const tokens = await Bun.file(sourcePath("styles/neo-tokens.css")).text();
+    const homeList = await Bun.file(sourcePath("pages/home/components/HomeMatchList.vue")).text();
+    const hallList = await Bun.file(sourcePath("pages/activities/components/HallMatchList.vue")).text();
 
-    expect(source.includes('import { getAccessToken } from "@/utils/authStorage";')).toEqual(true);
-    expect(source.includes("const isGuestMode = computed(() => !getAccessToken());")).toEqual(true);
-    expect(source.includes("if (!isGuestMode.value)")).toEqual(true);
-    expect(source.includes("teamId: isGuestMode.value ? undefined : currentTeam.value?.id")).toEqual(true);
-    expect(source.includes("auth: !isGuestMode.value")).toEqual(true);
-    expect(source.includes("async function requireLoginForHallAction")).toEqual(true);
-    expect(source.includes("await ensureSessionReady(true);")).toEqual(true);
-    expect(source.includes("const loggedIn = await requireLoginForHallAction();")).toEqual(true);
+    expect(tokens.includes("--neo-card-list-gap: 20rpx;")).toEqual(true);
+    expect(tokens.includes("--neo-card-list-offset: 24rpx;")).toEqual(true);
+    expect(homeList.includes("gap: var(--neo-card-list-gap);")).toEqual(true);
+    expect(hallList.includes("gap: var(--neo-card-list-gap);")).toEqual(true);
+  });
+
+  test("requires login before showing the hall list", async () => {    const source = await Bun.file(sourcePath("pages/activities/index.vue")).text();
+    const composable = await Bun.file(sourcePath("pages/activities/useHallPage.ts")).text();
+
+    expect(source.includes("登录后查看约队大厅")).toEqual(true);
+    expect(source.includes("handleLogin")).toEqual(true);
+    expect(composable.includes("hasManualLogout")).toEqual(true);
+    expect(composable.includes("isGuestMode")).toEqual(true);
+    expect(composable.includes("publicationModes: [")).toEqual(true);
+    expect(composable.includes("status: \"registering\"")).toEqual(true);
+    expect(composable.includes("startsAfter: new Date()")).toEqual(true);
   });
 });

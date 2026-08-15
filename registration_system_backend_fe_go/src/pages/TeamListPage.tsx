@@ -10,6 +10,7 @@ import { PageContainer } from "@ant-design/pro-components/es/layout/components/P
 import ProTable, { type ProColumns } from "@ant-design/pro-components/es/table";
 import {
   Alert,
+  Avatar,
   Button,
   Descriptions,
   Drawer,
@@ -183,9 +184,26 @@ export default function TeamListPage() {
           {
             title: "队长",
             dataIndex: "captain_id",
-            width: 110,
-            renderText: (value: number | null) =>
-              value ? `用户 ${value}` : "未指定",
+            width: 160,
+            render: (_: unknown, team: Team) =>
+              team.captain ? (
+                <Space size={8}>
+                  <Avatar src={team.captain.avatar_url} size={28}>
+                    {(
+                      team.captain.real_name?.trim() ||
+                      team.captain.nickname.trim() ||
+                      String(team.captain.user_id)
+                    ).slice(0, 1)}
+                  </Avatar>
+                  <span>
+                    {team.captain.real_name?.trim() ||
+                      team.captain.nickname.trim() ||
+                      `用户 ${team.captain.user_id}`}
+                  </span>
+                </Space>
+              ) : (
+                "未指定"
+              ),
           },
           {
             title: "状态",

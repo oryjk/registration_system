@@ -9,6 +9,9 @@ import type {
 import type { HomeMatchCardViewModel } from "@/types/viewModels";
 import { formatDateLabel, parseDateValue } from "@/utils/datetime";
 import { getMatchPublicationModeLabel } from "@/utils/matchPublicationMode";
+import { attendanceStatusTone } from "@/utils/statusTone";
+import { avatarTone } from "@/utils/viewModels/common";
+import { formatHomeMatchDateBlock } from "./homeMatchDate";
 
 type VisibleHomeMatchPhase = Exclude<AppMatchUiPhase, "excluded">;
 
@@ -123,6 +126,30 @@ function toPhaseStage(phase: VisibleHomeMatchPhase): string {
   }
 }
 
+function toStageTone(phase: VisibleHomeMatchPhase): HomeMatchCardViewModel["stageTone"] {
+  switch (phase) {
+    case "ongoing":
+      return "blue";
+    case "ended":
+      return "muted";
+    default:
+      return "lime";
+  }
+}
+
+function toStatusTone(status: string): HomeMatchCardViewModel["statusTone"] {
+  switch (attendanceStatusTone(status)) {
+    case "join":
+      return "green";
+    case "late":
+      return "amber";
+    case "pending":
+      return "blue";
+    default:
+      return "muted";
+  }
+}
+
 function toDateNote(phase: VisibleHomeMatchPhase): string {
   switch (phase) {
     case "ongoing":
@@ -155,7 +182,7 @@ export function resolveMatchPhase(match: AppMatchPhaseSource, now: Date): AppMat
 
 type HomeMatchCardSource = AppHomeActionMatch | AppHomeEndedMatch | AppMatchSummary;
 
-export function toGoHomeMatchCard(
+export function toHomeMatchCard(
   item: HomeMatchCardSource,
   phase: VisibleHomeMatchPhase,
 ): HomeMatchCardViewModel {
@@ -179,7 +206,20 @@ export function toGoHomeMatchCard(
   const stage = toPhaseStage(phase);
   const dateNote = toDateNote(phase);
   const showRegistrationProgress = actionMatch ? toShowRegistrationProgress(phase) : false;
-  const showParticipantAvatars = actionMatch ? toShowParticipantAvatars(phase) : false;
+  const sourceParticipants =
+    actionMatch?.group.participants ?? ("participants" in item ? item.participants : undefined);
+  const participantAvatars = (sourceParticipants ?? []).map((participant) => ({
+    userId: participant.user_id,
+    avatarUrl: participant.avatar_url ?? "",
+    displayText: (participant.nickname || `U${participant.user_id}`).slice(0, 1),
+    tone: avatarTone(participant.user_id),
+  }));
+  // 已结束的首页比赛也保留头像行：无人报名时由卡片渲染占位符，保持卡片视觉一致。
+  const showParticipantAvatars = actionMatch
+    ? toShowParticipantAvatars(phase)
+    : summaryMatch
+      ? false
+      : true;
   const canRegister = actionMatch
     ? phase === "upcoming" && actionMatch.group.status === "open"
     : summaryMatch
@@ -213,20 +253,25 @@ export function toGoHomeMatchCard(
     remainingPlayersLabel = dateNote;
   }
 
+  const dateLabel = formatDateLabel(item.start_time);
+
   return {
     id: item.id,
     detailUrl: actionMatch
       ? `/pages/matches/detail?id=${item.id}&groupId=${actionMatch.group.id}`
       : `/pages/matches/detail?id=${item.id}`,
     title: item.name,
-    dateLabel: formatDateLabel(item.start_time),
+    dateLabel,
     dateSource: item.start_time,
+    dateBlock: formatHomeMatchDateBlock({ dateLabel, dateSource: item.start_time }),
     phase,
     dateNote,
     showRegistrationProgress,
     showParticipantAvatars,
     canOpenDetail: true,
     stage,
+    stageTone: toStageTone(phase),
+    statusTone: toStatusTone(myStatus),
     publicationModeLabel: getMatchPublicationModeLabel(item.publication_mode),
     signupScope,
     signupScopeLabel,
@@ -241,7 +286,7 @@ export function toGoHomeMatchCard(
     pendingPlayers: 0,
     myStatus,
     highlight,
-    participantAvatars: [],
+    participantAvatars,
     remainingPlayersLabel,
     canRegister,
     actionLabel: phase === "upcoming" && canRegister ? "去报名" : "查看比赛",
@@ -287,6 +332,6 @@ export function buildHomeMatchSections(
     title: HOME_MATCH_PHASE_TITLES[phase],
     items: grouped[phase]
       .slice(0, limit)
-      .map((item) => toGoHomeMatchCard(item as AppHomeActionMatch | AppHomeEndedMatch, phase)),
+      .map((item) => toHomeMatchCard(item as AppHomeActionMatch | AppHomeEndedMatch, phase)),
   }));
 }

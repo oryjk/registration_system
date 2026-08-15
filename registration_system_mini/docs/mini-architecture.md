@@ -56,8 +56,9 @@ src/pages/<domain>/
 当前已按上述模式拆分的页面：
 
 - `src/pages/home/index.vue`
-  - 局部组件：`HomeSkeleton`、`HomeHeroSection`、`HomeMatchList`、`HomeOpportunityList`、`HomeDigestGrid`
-  - 父页面保留首页数据加载、团队切换、跳转和刷新逻辑。
+  - 局部组件：`HomeSkeleton`、`HomeHeroSection`、`HomeMatchSearch`、`HomeMatchList`、`HomeMatchCard`
+  - 页面级状态：`homeMatchState.ts` 负责首页阶段分组，`homeMatchSearchState.ts` 负责每页 5 场的搜索分页合并和全状态卡片映射。
+  - 父页面保留首页精选数据加载、服务端搜索、触底分页、登录态、跳转和刷新逻辑；`HomeMatchSearch` 通过底部可见性观察补发快速滑动时的加载意图，展示组件不调用 API。
 - `src/pages/matches/detail.vue`
   - 页面门面：`useMatchDetailPage.ts`
   - 业务组合模块：`useMatchRegistration.ts`、`useMatchCheckInReview.ts`、`useMatchSettlement.ts`
@@ -72,11 +73,14 @@ src/pages/<domain>/
   - 局部组件：`TeamProfilePanel`、`TeamCreatePanel`、`TeamJoinPanel`、`TeamMemberManager`、`MemberEditPopup`、`MemberAttendancePopup`
   - 父页面只保留组件编排；门面负责模式切换与加载，资料、成员和出勤流程按业务域拆分。
 - `src/pages/activities/index.vue`
-  - 局部组件：`ActivitiesToolbar`、`ActivitiesSkeleton`、`PublishTypeSheet`、`ChallengeHallSections`、`ChallengeHallCard`
-  - 父页面保留约队加载、筛选计算、接约、发布跳转和通知同步。
+  - 页面门面：`useHallPage.ts` 负责登录态、Go 比赛列表加载（按发布模式/日期/范围筛选）、分页与筛选状态。
+  - 局部模块：`hallMatchState.ts`（卡片视图模型、日历条日期、筛选纯函数）
+  - 局部组件：`HallCalendarStrip`、`HallQuickFilters`、`HallMatchCard`、`ActivitiesSkeleton`、`PublishTypeSheet`
+  - 父页面只保留生命周期、分享、发布跳转和组件 wiring；卡片跳转 Go 比赛详情页。
 - `src/pages/user/index.vue`
-  - 局部组件：`MineSkeleton`、`MineHeroProfile`、`MineMiniCards`、`MineMatchSection`、`MineWalletSection`
-  - 父页面保留登录态、球队上下文、钱包/比赛摘要加载和页面跳转。
+  - 页面门面：`useMinePage.ts` 负责登录态、球队上下文、钱包/比赛摘要加载、支付和页面跳转。
+  - 局部组件：`MineSkeleton`、`MineProfileHero`、`MineTeamIdentityPanel`、`MineStatsGrid`、`MineMatchSection`、`MineWalletSection`、`MineServiceGrid`
+  - 父页面只保留生命周期、事件注册和组件 wiring。
 - `src/pages/teams/index.vue`
   - 局部模块：`teamStatsState.ts`
   - 局部组件：`StatsSkeleton`、`StatsOverview`、`AttendanceRecordCard`、`AttendanceRankingCard`
@@ -108,7 +112,6 @@ src/pages/<domain>/
 
 - `src/pages/billing/index.vue`：接近 600 行，若继续加支付、流水筛选或订单管理能力，应优先拆 wallet summary、record list、payment order list 和 payment actions。
 - `src/pages/teams/manage/components/TeamMemberManager.vue`：成员管理组件接近 600 行，后续可按成员列表、角色操作、空态/权限提示继续拆分。
-- `src/pages/activities/index.vue`：页面脚本仍承担筛选、加载、权限与接约状态同步；继续增加大厅功能前可抽页面级 composable。
 - `src/pages/matches/create/index.vue`、`src/pages/notifications/index.vue`、`src/pages/profile/setup/index.vue`：体量中等，若继续加复杂表单、消息筛选或资料校验，应按局部组件和 `*State.ts` 小步拆分。
 
 这些不是必须一次完成的任务。后续改到相关页面时，按最小范围顺手拆清楚边界。

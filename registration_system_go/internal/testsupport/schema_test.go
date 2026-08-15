@@ -80,13 +80,14 @@ type queryer interface {
 
 func requireTable(t *testing.T, database queryer, table string) {
 	t.Helper()
+	// 连接的 search_path 指向每个测试独立的随机 schema，表都在当前 schema 里。
 	var exists bool
 	err := database.QueryRow(
 		context.Background(),
 		`SELECT EXISTS (
            SELECT 1
            FROM information_schema.tables
-           WHERE table_schema = 'public' AND table_name = $1
+           WHERE table_schema = current_schema() AND table_name = $1
          )`,
 		table,
 	).Scan(&exists)
@@ -127,7 +128,7 @@ func requireNullableColumn(t *testing.T, database queryer, table, column, dataTy
 		context.Background(),
 		`SELECT data_type, is_nullable
          FROM information_schema.columns
-         WHERE table_schema = 'public' AND table_name = $1 AND column_name = $2`,
+         WHERE table_schema = current_schema() AND table_name = $1 AND column_name = $2`,
 		table,
 		column,
 	).Scan(&actualType, &nullable)

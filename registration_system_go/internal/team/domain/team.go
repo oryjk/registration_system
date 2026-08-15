@@ -47,12 +47,20 @@ func (s MemberStatus) IsValid() bool {
 	return s == MemberActive || s == MemberInactive
 }
 
+type CaptainSummary struct {
+	UserID    int64
+	Nickname  string
+	AvatarURL *string
+	RealName  *string
+}
+
 type Team struct {
 	ID          int64
 	Name        string
 	Description *string
 	LogoURL     *string
 	CaptainID   *int64
+	Captain     *CaptainSummary
 	Status      TeamStatus
 	CreatedAt   time.Time
 	UpdatedAt   time.Time

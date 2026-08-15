@@ -26,7 +26,11 @@ const emit = defineEmits<{
   (event: "select", id: string | number): void;
 }>();
 
-const visibleItems = computed(() => props.items.slice(0, Math.max(props.maxVisible, 0)));
+/** maxVisible 为 0 表示不限制，展示全部并允许换行。 */
+const isUnlimited = computed(() => props.maxVisible <= 0);
+const visibleItems = computed(() => (
+  isUnlimited.value ? props.items : props.items.slice(0, props.maxVisible)
+));
 const hiddenCount = computed(() => Math.max(props.items.length - visibleItems.value.length, 0));
 
 function fallbackName(name: string) {
@@ -39,7 +43,7 @@ function handleSelect(item: NeoAvatarItem) {
 </script>
 
 <template>
-  <view class="neo-avatar-stack" :class="`neo-avatar-stack--${size}`">
+  <view class="neo-avatar-stack" :class="[`neo-avatar-stack--${size}`, isUnlimited ? 'neo-avatar-stack--wrap' : '']">
     <view
       v-for="item in visibleItems"
       :key="item.id"
@@ -64,6 +68,17 @@ function handleSelect(item: NeoAvatarItem) {
   display: flex;
   align-items: center;
   padding-left: var(--neo-avatar-overlap);
+}
+
+.neo-avatar-stack--wrap {
+  flex-wrap: wrap;
+  row-gap: 16rpx;
+}
+
+/* 换行模式下让每行行首都保持相同的重叠偏移，避免第二行相对第一行左移。 */
+.neo-avatar-stack--wrap .neo-avatar-stack__item:first-child,
+.neo-avatar-stack--wrap .neo-avatar-stack__more:first-child {
+  margin-left: var(--neo-avatar-overlap-negative);
 }
 
 .neo-avatar-stack__item,

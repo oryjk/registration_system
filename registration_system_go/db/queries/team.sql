@@ -34,10 +34,21 @@ WHERE tm.user_id = $1
 ORDER BY tm.joined_at DESC, t.id;
 
 -- name: ListTeams :many
-SELECT id, name, description, logo_url, captain_id, status, created_at, updated_at
-FROM teams
-WHERE sqlc.narg('status')::text IS NULL OR status = sqlc.narg('status')::text
-ORDER BY name, id;
+SELECT t.id,
+       t.name,
+       t.description,
+       t.logo_url,
+       t.captain_id,
+       t.status,
+       t.created_at,
+       t.updated_at,
+       u.nickname AS captain_nickname,
+       u.avatar_url AS captain_avatar_url,
+       u.real_name AS captain_real_name
+FROM teams t
+LEFT JOIN users u ON u.id = t.captain_id
+WHERE sqlc.narg('status')::text IS NULL OR t.status = sqlc.narg('status')::text
+ORDER BY t.name, t.id;
 
 -- name: UpdateTeam :one
 UPDATE teams

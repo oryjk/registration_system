@@ -8,7 +8,7 @@ export function pickFirstNonEmpty(values: Array<string | null | undefined>): str
   return values.find((value) => value?.trim())?.trim() ?? "";
 }
 
-export function toLegacyHomeMatchPhase(status: number): VisibleHomeMatchPhase {
+export function toHomeMatchPhaseFromStatus(status: number): VisibleHomeMatchPhase {
   if (status === 1) return "ongoing";
   if (status === 2 || status === 3) return "ended";
   return "upcoming";

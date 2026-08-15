@@ -2,24 +2,11 @@
 import type { HomeMatchCardViewModel } from "@/types/viewModels";
 import HomeMatchCard from "./HomeMatchCard.vue";
 
-const props = withDefaults(defineProps<{
-  variant?: "default" | "brutalist";
+defineProps<{
   matches: HomeMatchCardViewModel[];
   isGuestMode: boolean;
   navigatingMatchId: string;
-  formatMatchDateBlock: (match: HomeMatchCardViewModel) => {
-    monthDay: string;
-    weekday: string;
-    timeLabel: string;
-  };
-  progressBaseWidth: (joinedPlayers: number, requiredPlayers: number, maxPlayers: number) => string;
-  progressExtraWidth: (joinedPlayers: number, requiredPlayers: number, maxPlayers: number) => string;
-  progressSplitLeft: (requiredPlayers: number, maxPlayers: number) => string;
-  stageClass: (stage: string) => string;
-  statusClass: (status: string) => string;
-}>(), {
-  variant: "default",
-});
+}>();
 
 const emit = defineEmits<{
   (event: "matchTap", match: HomeMatchCardViewModel): void;
@@ -31,20 +18,13 @@ function handleMatchTap(match: HomeMatchCardViewModel) {
 </script>
 
 <template>
-  <view :class="['match-list', variant === 'brutalist' ? 'match-list-brutalist' : '']">
+  <view class="match-list">
     <HomeMatchCard
       v-for="match in matches"
       :key="match.id"
       :match="match"
-      :variant="variant"
       :is-guest-mode="isGuestMode"
       :is-navigating="navigatingMatchId === match.id"
-      :format-match-date-block="formatMatchDateBlock"
-      :progress-base-width="progressBaseWidth"
-      :progress-extra-width="progressExtraWidth"
-      :progress-split-left="progressSplitLeft"
-      :stage-class="stageClass"
-      :status-class="statusClass"
       @match-tap="handleMatchTap"
     />
   </view>
@@ -54,12 +34,7 @@ function handleMatchTap(match: HomeMatchCardViewModel) {
 .match-list {
   display: flex;
   flex-direction: column;
-  gap: 22rpx;
-  margin-top: 22rpx;
-}
-
-.match-list-brutalist {
-  gap: 28rpx;
-  margin-top: 24rpx;
+  gap: var(--neo-card-list-gap);
+  margin-top: var(--neo-card-list-offset);
 }
 </style>

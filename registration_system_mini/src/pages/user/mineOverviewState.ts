@@ -2,10 +2,24 @@ import type { AppMatchSummary } from "@/types/match";
 import type { AppWalletAccount } from "@/types/wallet";
 import { formatDateLabel, parseDateValue } from "@/utils/datetime";
 import { resolveMatchPhase } from "@/pages/home/homeMatchState";
+import { attendanceStatusTone } from "@/utils/statusTone";
 import type { MineMatchSummary } from "./mineTypes";
 
 const DEFAULT_MATCH_DURATION_HOURS = 2;
 const MAX_REASONABLE_MATCH_DURATION_HOURS = 6;
+
+function toStatusTone(status: string): MineMatchSummary["statusTone"] {
+  switch (attendanceStatusTone(status)) {
+    case "join":
+      return "green";
+    case "leave":
+      return "muted";
+    case "late":
+      return "amber";
+    default:
+      return "blue";
+  }
+}
 
 export interface MineOverviewState {
   activityCount: number;
@@ -56,6 +70,7 @@ export function buildMineOverviewState(
       dateLabel: formatDateLabel(match.start_time),
       venue: match.location,
       statusLabel: "报名中",
+      statusTone: toStatusTone("报名中"),
       actionLabel: "查看比赛",
     }));
 

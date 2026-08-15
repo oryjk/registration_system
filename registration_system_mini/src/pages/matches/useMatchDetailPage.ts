@@ -1,6 +1,6 @@
 import { computed, ref } from "vue";
 import { onLoad, onUnload } from "@dcloudio/uni-app";
-import { GO_MATCH_ID_PATTERN, loadAuthenticatedMatchDetailContext, loadPublicMatchDetailData, toLegacyRegistrationStand } from "./detailData";
+import { MATCH_API_ID_PATTERN, loadAuthenticatedMatchDetailContext, loadPublicMatchDetailData, toRegistrationStandCode } from "./detailData";
 import { useCurrentLocation } from "@/stores/currentLocation";
 import { useTeamContext } from "@/stores/teamContext";
 import { resumeSessionBootstrap } from "@/stores/appSession";
@@ -13,6 +13,7 @@ import type {
   BackendTeamMember,
   BackendUser,
 } from "@/types/backend";
+import type { AppMatchSummary } from "@/types/match";
 import { getCustomNavMetrics } from "@/utils/customNav";
 import { resolveUserDisplayName, toStandLabel } from "@/utils/viewModels";
 import {
@@ -32,10 +33,19 @@ import {
 import { useMatchRegistration } from "./useMatchRegistration";
 import { useMatchCheckInReview } from "./useMatchCheckInReview";
 import { useMatchSettlement } from "./useMatchSettlement";
+import { useNeoConfirmDialog } from "@/components/neo";
+import type { NeoConfirmDialogOptions } from "@/components/neo";
 
 export function useMatchDetailPage() {
   const { currentTeam, currentUser, ensureSessionReady, refreshSessionContext } = useTeamContext();
   const { ensureCurrentLocation } = useCurrentLocation();
+  const {
+    confirmDialogVisible,
+    confirmDialogState,
+    confirm: openConfirmDialog,
+    handleConfirmPrimary,
+    handleConfirmSecondary,
+  } = useNeoConfirmDialog();
 
   const navMetrics = getCustomNavMetrics();
   const matchId = ref("");
@@ -44,6 +54,8 @@ export function useMatchDetailPage() {
   const submittingStatus = ref(false);
   const registrationMode = ref<"individual" | "team">("individual");
   const match = ref<BackendActivity | null>(null);
+  // 新比赛接口的原始对象：接约申请管理依赖 publication_mode / opponent_state，转换后的 activity 不带这些字段。
+  const sourceMatch = ref<AppMatchSummary | null>(null);
   const registrations = ref<BackendRegistration[]>([]);
   const usersById = ref<Record<number, BackendUser>>({});
   const teamsById = ref<Record<number, BackendTeam>>({});
@@ -55,15 +67,16 @@ export function useMatchDetailPage() {
   const teamRegistrationCount = ref(5);
   const isGuestMode = ref(false);
   const isGuestLoginSubmitting = ref(false);
-  const isGoMatchDetail = ref(false);
-  const goRegistrationGroupId = ref("");
-  const preferredGoRegistrationGroupId = ref("");
+  const isMatchApiDetail = ref(false);
+  const registrationGroupId = ref("");
+  const preferredRegistrationGroupId = ref("");
   const publicationModeLabel = ref("其他类型");
 
   let countdownTimer: ReturnType<typeof setInterval> | null = null;
 
+  // 底部留白复用全局 token：悬浮操作栏占位 + 与内容间距，兼容全面屏安全区。
   const pageStyle = computed(() => ({
-    paddingBottom: registrationMode.value === "team" && canUseTeamRegistration.value ? "188rpx" : "156rpx",
+    paddingBottom: "var(--neo-action-bar-clearance)",
   }));
 
   const contentStyle = computed(() => ({
@@ -95,7 +108,6 @@ export function useMatchDetailPage() {
     if (!match.value) return "";
     return `${formatMonthDay(match.value.holding_date)} ${formatWeekday(match.value.holding_date)} ${formatClock(match.value.holding_date)}`;
   });
-  const matchDateLabel = computed(() => (match.value ? `${formatMonthDay(match.value.holding_date)} ${formatWeekday(match.value.holding_date)}` : ""));
   const matchClockLabel = computed(() => (match.value ? formatClock(match.value.holding_date) : ""));
 
   const matchStartTimestamp = computed(() => {
@@ -188,7 +200,7 @@ export function useMatchDetailPage() {
     return currentStatus.value === "参加" ? "取消报名" : "立即报名";
   });
   const canUseTeamRegistration = computed(() =>
-    !isGoMatchDetail.value && canShowTeamRegistrationTab({
+    !isMatchApiDetail.value && canShowTeamRegistrationTab({
       currentTeamId: currentTeam.value?.id,
       canManageTeam: currentTeam.value?.canManageTeam,
       sourceActivityId: match.value?.source_activity_id,
@@ -227,17 +239,8 @@ export function useMatchDetailPage() {
     });
   }
 
-  function confirmRegistrationAction(options: { title: string; content: string; confirmText?: string }) {
-    return new Promise<boolean>((resolve) => {
-      uni.showModal({
-        title: options.title,
-        content: options.content,
-        confirmText: options.confirmText ?? "确认",
-        cancelText: "再想想",
-        success: (result) => resolve(!!result.confirm),
-        fail: () => resolve(false),
-      });
-    });
+  function confirmRegistrationAction(options: NeoConfirmDialogOptions) {
+    return openConfirmDialog(options);
   }
 
   function getCurrentPageRoute() {
@@ -290,7 +293,7 @@ export function useMatchDetailPage() {
     currentUser,
     currentTeam,
     opponentTeam,
-    isGoMatchDetail,
+    isMatchApiDetail,
     isEndedMatch,
     submittingStatus,
     ensureCurrentLocation,
@@ -336,8 +339,8 @@ export function useMatchDetailPage() {
     currentTeam,
     submittingStatus,
     isGuestMode,
-    isGoMatchDetail,
-    goRegistrationGroupId,
+    isMatchApiDetail,
+    registrationGroupId,
     canSubmitIndividualRegistration,
     canUseTeamRegistration,
     existingTeamDerivedActivity,
@@ -355,11 +358,11 @@ export function useMatchDetailPage() {
     errorMessage.value = "";
 
     try {
-      if (GO_MATCH_ID_PATTERN.test(matchId.value)) {
+      if (MATCH_API_ID_PATTERN.test(matchId.value)) {
         await ensureSessionReady();
       }
       const publicData = await loadPublicMatchDetailData(matchId.value, currentUser.value?.id, {
-        preferredGroupId: preferredGoRegistrationGroupId.value,
+        preferredGroupId: preferredRegistrationGroupId.value,
         currentTeamId: currentTeam.value?.id,
       });
       const { activity, activityUsers } = publicData;
@@ -368,11 +371,12 @@ export function useMatchDetailPage() {
       registrations.value = activityUsers;
       usersById.value = publicData.usersById;
       sourceTeamRegistrationCount.value = publicData.sourceTeamRegistrationCount;
-      isGoMatchDetail.value = publicData.fromGo;
-      goRegistrationGroupId.value = publicData.goRegistrationGroupId;
+      isMatchApiDetail.value = publicData.fromMatchApi;
+      registrationGroupId.value = publicData.registrationGroupId;
       publicationModeLabel.value = publicData.publicationModeLabel;
+      sourceMatch.value = publicData.sourceMatch;
       existingTeamDerivedActivity.value = null;
-      currentStatus.value = toStandLabel(toLegacyRegistrationStand(publicData.myRegistration?.status));
+      currentStatus.value = toStandLabel(toRegistrationStandCode(publicData.myRegistration?.status));
       teamsById.value = {};
       currentTeamMembers.value = [];
       resetSettlementState();
@@ -383,7 +387,7 @@ export function useMatchDetailPage() {
         return;
       }
 
-      if (isGoMatchDetail.value) {
+      if (isMatchApiDetail.value) {
         registrationMode.value = "individual";
         return;
       }
@@ -436,7 +440,7 @@ export function useMatchDetailPage() {
 
   onLoad((options) => {
     matchId.value = options?.id ?? "";
-    preferredGoRegistrationGroupId.value = options?.groupId ?? "";
+    preferredRegistrationGroupId.value = options?.groupId ?? "";
     startCountdownTimer();
     void loadPageData();
   });
@@ -450,11 +454,13 @@ export function useMatchDetailPage() {
 
   return {
     matchId,
+    loadPageData,
     pageStyle,
     contentStyle,
     errorMessage,
     isLoading,
     match,
+    sourceMatch,
     registrationMode,
     canUseTeamRegistration,
     matchKindLabel,
@@ -463,7 +469,6 @@ export function useMatchDetailPage() {
     displayOpponentLabel,
     homeTeamColor,
     awayTeamColor,
-    matchDateLabel,
     matchClockLabel,
     matchLocation,
     joinedCount,
@@ -476,6 +481,10 @@ export function useMatchDetailPage() {
     registrationCapacityState,
     canSubmitIndividualRegistration,
     submittingStatus,
+    confirmDialogVisible,
+    confirmDialogState,
+    handleConfirmPrimary,
+    handleConfirmSecondary,
     individualCtaLabel,
     isGuestMode,
     currentTeam,

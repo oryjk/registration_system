@@ -14,6 +14,12 @@ export const assignableRoleOptions: {
   { label: "队员", value: "member" },
 ];
 
+// 添加成员时允许选择队长：前端先按队员添加，再调用设置队长接口。
+export const addMemberRoleOptions: {
+  label: string;
+  value: TeamMemberRole;
+}[] = [{ label: "队长", value: "captain" }, ...assignableRoleOptions];
+
 export const roleLabels: Record<TeamMemberRole, string> = {
   captain: "队长",
   leader: "领队",

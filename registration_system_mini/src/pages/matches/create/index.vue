@@ -9,7 +9,7 @@ import { createMatch } from "@/api/match";
 import { preloadMiniReviewStatus, useMiniReviewStatus } from "@/stores/miniReview";
 import { useTeamContext } from "@/stores/teamContext";
 import { getCustomNavMetrics } from "@/utils/customNav";
-import { buildGoCreateMatchPayload } from "./createMatchPayload";
+import { buildCreateMatchPayload } from "./createMatchPayload";
 
 const { currentTeam, ensureSessionReady } = useTeamContext();
 const { shouldHideCreationEntrances } = useMiniReviewStatus();
@@ -35,7 +35,7 @@ const form = reactive<MatchPublishFormModel>({
   color: "#2F6BFF",
   opposingColor: "#C8FF00",
   publicationMode: "online_team",
-  legacyMatchKind: "external",
+  activityMatchKind: "external",
   enableCheckIn: false,
   checkInRadiusMeters: 200,
   openMinutesBefore: 60,
@@ -126,7 +126,7 @@ function initDefaultForm() {
   form.color = "#2F6BFF";
   form.opposingColor = "#C8FF00";
   form.publicationMode = "online_team";
-  form.legacyMatchKind = "external";
+  form.activityMatchKind = "external";
   form.enableCheckIn = false;
   form.checkInRadiusMeters = 200;
   form.openMinutesBefore = 60;
@@ -168,7 +168,7 @@ function applyActivityToForm(activity: Awaited<ReturnType<typeof getActivity>>) 
   form.playersPerTeam = activity.players_per_team ?? "";
   form.color = activity.color?.trim() || "#2F6BFF";
   form.opposingColor = activity.opposing_color?.trim() || "#C8FF00";
-  form.legacyMatchKind = activity.match_kind === "internal" ? "internal" : "external";
+  form.activityMatchKind = activity.match_kind === "internal" ? "internal" : "external";
   form.publicationMode = "offline_confirmed";
   const checkInConfig = activity.team_checkin_configs.find((item) => item.team_id === currentTeam.value?.id);
   form.enableCheckIn = !!checkInConfig?.enabled;
@@ -252,7 +252,7 @@ async function handleSubmit() {
         players_per_team: Number(form.playersPerTeam),
         color: form.color || null,
         opposing_color: form.opposingColor || null,
-        match_kind: form.legacyMatchKind ?? "external",
+        match_kind: form.activityMatchKind ?? "external",
       });
       uni.showToast({
         title: "比赛已保存",
@@ -264,7 +264,7 @@ async function handleSubmit() {
       return;
     }
 
-    const detail = await createMatch(buildGoCreateMatchPayload(form, currentTeam.value));
+    const detail = await createMatch(buildCreateMatchPayload(form, currentTeam.value));
     const hostGroupId = detail.groups.find((group) => group.team_id === currentTeam.value?.id)?.id ?? detail.groups[0]?.id;
     uni.showToast({
       title: "比赛已创建",

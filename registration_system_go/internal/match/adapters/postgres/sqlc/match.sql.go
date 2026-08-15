@@ -106,14 +106,27 @@ WHERE ($1::text IS NULL OR m.status = $1)
       $5::timestamp IS NULL
       OR m.start_time > $5::timestamp
   )
+  AND (
+      cardinality($6::text[]) = 0
+      OR m.publication_mode = ANY($6::text[])
+  )
+  AND (
+      $7::timestamp IS NULL
+      OR (
+          m.start_time >= $7::timestamp
+          AND m.start_time < $7::timestamp + INTERVAL '1 day'
+      )
+  )
 `
 
 type CountMatchesForUserParams struct {
-	Status      *string          `json:"status"`
-	Search      string           `json:"search"`
-	Scope       string           `json:"scope"`
-	UserID      int64            `json:"user_id"`
-	StartsAfter pgtype.Timestamp `json:"starts_after"`
+	Status           *string          `json:"status"`
+	Search           string           `json:"search"`
+	Scope            string           `json:"scope"`
+	UserID           int64            `json:"user_id"`
+	StartsAfter      pgtype.Timestamp `json:"starts_after"`
+	PublicationModes []string         `json:"publication_modes"`
+	DateStart        pgtype.Timestamp `json:"date_start"`
 }
 
 func (q *Queries) CountMatchesForUser(ctx context.Context, arg CountMatchesForUserParams) (int64, error) {
@@ -123,6 +136,8 @@ func (q *Queries) CountMatchesForUser(ctx context.Context, arg CountMatchesForUs
 		arg.Scope,
 		arg.UserID,
 		arg.StartsAfter,
+		arg.PublicationModes,
+		arg.DateStart,
 	)
 	var count int64
 	err := row.Scan(&count)
@@ -672,6 +687,55 @@ func (q *Queries) IsActiveTeamMember(ctx context.Context, arg IsActiveTeamMember
 	return exists, err
 }
 
+const listHomeActionGroupParticipants = `-- name: ListHomeActionGroupParticipants :many
+SELECT r.group_id,
+       r.user_id,
+       u.nickname,
+       u.avatar_url,
+       r.status
+FROM match_registrations r
+JOIN users u ON u.id = r.user_id
+WHERE r.group_id = ANY($1::uuid[])
+  AND r.status = 'attending'
+ORDER BY r.group_id, r.created_at, r.user_id
+`
+
+type ListHomeActionGroupParticipantsRow struct {
+	GroupID   pgtype.UUID `json:"group_id"`
+	UserID    int64       `json:"user_id"`
+	Nickname  string      `json:"nickname"`
+	AvatarUrl *string     `json:"avatar_url"`
+	Status    string      `json:"status"`
+}
+
+// 首页比赛卡片的报名人头像列表：一次性按 group 批量取全部 attending 报名者，
+// 按报名先后（created_at, user_id）排序，避免 N+1 查询。
+func (q *Queries) ListHomeActionGroupParticipants(ctx context.Context, groupIds []pgtype.UUID) ([]ListHomeActionGroupParticipantsRow, error) {
+	rows, err := q.db.Query(ctx, listHomeActionGroupParticipants, groupIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListHomeActionGroupParticipantsRow
+	for rows.Next() {
+		var i ListHomeActionGroupParticipantsRow
+		if err := rows.Scan(
+			&i.GroupID,
+			&i.UserID,
+			&i.Nickname,
+			&i.AvatarUrl,
+			&i.Status,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listHomeActionMatchesForUser = `-- name: ListHomeActionMatchesForUser :many
 SELECT m.id, m.name, m.publication_mode, m.opponent_state, m.status, m.host_team_id, m.away_team_id, m.opponent_name, m.players_per_team, m.start_time, m.end_time, m.location, m.location_latitude, m.location_longitude, m.description, m.created_by_user_id, m.created_at, m.updated_at, m.created_by_admin_id,
        host.name AS host_team_name,
@@ -832,6 +896,57 @@ func (q *Queries) ListHomeActionMatchesForUser(ctx context.Context, arg ListHome
 			&i.MyRegistrationCreatedAt,
 			&i.MyRegistrationUpdatedAt,
 			&i.MyRegistrationCancelledAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listHomeEndedMatchParticipants = `-- name: ListHomeEndedMatchParticipants :many
+SELECT g.match_id,
+       r.user_id,
+       u.nickname,
+       u.avatar_url,
+       r.status
+FROM match_registration_groups g
+JOIN match_registrations r ON r.group_id = g.id
+JOIN users u ON u.id = r.user_id
+WHERE g.match_id = ANY($1::uuid[])
+  AND g.status <> 'cancelled'
+  AND r.status = 'attending'
+ORDER BY g.match_id, r.created_at, r.user_id
+`
+
+type ListHomeEndedMatchParticipantsRow struct {
+	MatchID   pgtype.UUID `json:"match_id"`
+	UserID    int64       `json:"user_id"`
+	Nickname  string      `json:"nickname"`
+	AvatarUrl *string     `json:"avatar_url"`
+	Status    string      `json:"status"`
+}
+
+// 首页已结束比赛卡片的报名人头像列表：一次性按 match 批量取全部 attending 报名者，
+// 合并该比赛全部报名组后按报名先后（created_at, user_id）排序，避免 N+1 查询。
+func (q *Queries) ListHomeEndedMatchParticipants(ctx context.Context, matchIds []pgtype.UUID) ([]ListHomeEndedMatchParticipantsRow, error) {
+	rows, err := q.db.Query(ctx, listHomeEndedMatchParticipants, matchIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListHomeEndedMatchParticipantsRow
+	for rows.Next() {
+		var i ListHomeEndedMatchParticipantsRow
+		if err := rows.Scan(
+			&i.MatchID,
+			&i.UserID,
+			&i.Nickname,
+			&i.AvatarUrl,
+			&i.Status,
 		); err != nil {
 			return nil, err
 		}
@@ -1153,18 +1268,31 @@ WHERE ($1::text IS NULL OR m.status = $1)
       $5::timestamp IS NULL
       OR m.start_time > $5::timestamp
   )
+  AND (
+      cardinality($6::text[]) = 0
+      OR m.publication_mode = ANY($6::text[])
+  )
+  AND (
+      $7::timestamp IS NULL
+      OR (
+          m.start_time >= $7::timestamp
+          AND m.start_time < $7::timestamp + INTERVAL '1 day'
+      )
+  )
 ORDER BY m.start_time DESC, m.id
-LIMIT $7 OFFSET $6
+LIMIT $9 OFFSET $8
 `
 
 type ListMatchesForUserParams struct {
-	Status      *string          `json:"status"`
-	Search      string           `json:"search"`
-	Scope       string           `json:"scope"`
-	UserID      int64            `json:"user_id"`
-	StartsAfter pgtype.Timestamp `json:"starts_after"`
-	OffsetCount int32            `json:"offset_count"`
-	LimitCount  int32            `json:"limit_count"`
+	Status           *string          `json:"status"`
+	Search           string           `json:"search"`
+	Scope            string           `json:"scope"`
+	UserID           int64            `json:"user_id"`
+	StartsAfter      pgtype.Timestamp `json:"starts_after"`
+	PublicationModes []string         `json:"publication_modes"`
+	DateStart        pgtype.Timestamp `json:"date_start"`
+	OffsetCount      int32            `json:"offset_count"`
+	LimitCount       int32            `json:"limit_count"`
 }
 
 type ListMatchesForUserRow struct {
@@ -1198,6 +1326,8 @@ func (q *Queries) ListMatchesForUser(ctx context.Context, arg ListMatchesForUser
 		arg.Scope,
 		arg.UserID,
 		arg.StartsAfter,
+		arg.PublicationModes,
+		arg.DateStart,
 		arg.OffsetCount,
 		arg.LimitCount,
 	)
@@ -1393,6 +1523,60 @@ func (q *Queries) ListRegistrationGroupsByMatchID(ctx context.Context, matchID p
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.CancelledAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listRegistrationSummariesForMatches = `-- name: ListRegistrationSummariesForMatches :many
+SELECT g.match_id,
+       g.id AS group_id,
+       g.kind,
+       g.team_id,
+       g.min_players,
+       g.max_players,
+       COALESCE(SUM(r.registration_count) FILTER (WHERE r.status = 'attending'), 0)::bigint AS attending_count
+FROM match_registration_groups g
+LEFT JOIN match_registrations r ON r.group_id = g.id
+WHERE g.match_id = ANY($1::uuid[])
+  AND g.status <> 'cancelled'
+GROUP BY g.match_id, g.id, g.kind, g.team_id, g.min_players, g.max_players
+ORDER BY g.match_id, g.id
+`
+
+type ListRegistrationSummariesForMatchesRow struct {
+	MatchID        pgtype.UUID `json:"match_id"`
+	GroupID        pgtype.UUID `json:"group_id"`
+	Kind           string      `json:"kind"`
+	TeamID         *int64      `json:"team_id"`
+	MinPlayers     *int32      `json:"min_players"`
+	MaxPlayers     *int32      `json:"max_players"`
+	AttendingCount int64       `json:"attending_count"`
+}
+
+func (q *Queries) ListRegistrationSummariesForMatches(ctx context.Context, matchIds []pgtype.UUID) ([]ListRegistrationSummariesForMatchesRow, error) {
+	rows, err := q.db.Query(ctx, listRegistrationSummariesForMatches, matchIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListRegistrationSummariesForMatchesRow
+	for rows.Next() {
+		var i ListRegistrationSummariesForMatchesRow
+		if err := rows.Scan(
+			&i.MatchID,
+			&i.GroupID,
+			&i.Kind,
+			&i.TeamID,
+			&i.MinPlayers,
+			&i.MaxPlayers,
+			&i.AttendingCount,
 		); err != nil {
 			return nil, err
 		}

@@ -6,7 +6,7 @@ interface HostTeamInput {
   name: string;
 }
 
-export function buildGoCreateMatchPayload(form: MatchPublishFormModel, hostTeam: HostTeamInput): CreateMatchPayload {
+export function buildCreateMatchPayload(form: MatchPublishFormModel, hostTeam: HostTeamInput): CreateMatchPayload {
   const playersPerTeam = Number(form.playersPerTeam);
   if (!Number.isFinite(playersPerTeam) || playersPerTeam <= 0) {
     throw new Error("比赛人制必须大于 0");

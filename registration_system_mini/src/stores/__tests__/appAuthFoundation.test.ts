@@ -9,7 +9,7 @@ declare const Bun: {
 
 const root = "/Users/carlwang/projects/registration_system/registration_system_mini/src";
 
-describe("Go app session foundation", () => {
+describe("App session foundation", () => {
   test("provides an explicit acceptance H5 build command", async () => {
     const packageJson = JSON.parse(await Bun.file(miniPath("package.json")).text()) as {
       scripts: Record<string, string>;
@@ -18,7 +18,7 @@ describe("Go app session foundation", () => {
     expect(packageJson.scripts["build:h5:acceptance"]).toEqual("uni build --mode test");
   });
 
-  test("uses the single Go WeChat login endpoint", async () => {
+  test("uses the single WeChat login endpoint", async () => {
     const authSource = await Bun.file(`${root}/api/auth.ts`).text();
     const sessionSource = await Bun.file(`${root}/stores/appSession.ts`).text();
 

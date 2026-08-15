@@ -51,6 +51,84 @@ interface MockRoute {
 const mockTeamAttendanceActivityIds = ["act-001", "act-003", "act-005"];
 let mockAuthenticatedUserId = mockCurrentUser.id;
 
+
+// 约队申请 mock：仅内存态，刷新后重置，供 H5 mock 演示接约流程。
+const mockTeamApplications = new Map<string, Array<{
+  id: string;
+  match_id: string;
+  applicant_team_id: number;
+  applicant_team_name: string;
+  introduction: string;
+  status: string;
+  created_by_user_id: number;
+  selected_at: string | null;
+  withdrawn_at: string | null;
+  created_at: string;
+  updated_at: string;
+}>>();
+
+function mockTeamApplicationsFor(matchId: string) {
+  return mockTeamApplications.get(matchId) ?? [];
+}
+
+function createMockTeamApplication(matchId: string, body: { team_id?: number; introduction?: string }) {
+  const applications = mockTeamApplications.get(matchId) ?? [];
+  if (!body?.team_id || !body.introduction?.trim()) {
+    throw new Error("球队申请信息不完整");
+  }
+  if (applications.some((item) => item.status === "pending" || item.status === "selected")) {
+    throw new Error("该球队已经提交过有效申请");
+  }
+  const now = new Date().toISOString();
+  const created = {
+    id: `mock-application-${matchId}-${applications.length + 1}`,
+    match_id: matchId,
+    applicant_team_id: body.team_id,
+    applicant_team_name: "",
+    introduction: body.introduction.trim(),
+    status: "pending",
+    created_by_user_id: currentMockUser().id,
+    selected_at: null,
+    withdrawn_at: null,
+    created_at: now,
+    updated_at: now,
+  };
+  mockTeamApplications.set(matchId, [...applications, created]);
+  return created;
+}
+
+function selectMockTeamApplication(matchId: string, applicationId: string) {
+  const applications = mockTeamApplications.get(matchId) ?? [];
+  const target = applications.find((item) => item.id === applicationId);
+  if (!target) {
+    throw new Error("球队申请不存在");
+  }
+  const now = new Date().toISOString();
+  for (const item of applications) {
+    if (item.status === "pending") {
+      item.status = item.id === applicationId ? "selected" : "rejected";
+      item.updated_at = now;
+      if (item.id === applicationId) {
+        item.selected_at = now;
+      }
+    }
+  }
+  mockTeamApplications.set(matchId, applications);
+  return target;
+}
+
+function withdrawMockTeamApplication(matchId: string, applicationId: string) {
+  const applications = mockTeamApplications.get(matchId) ?? [];
+  const target = applications.find((item) => item.id === applicationId);
+  if (!target) {
+    throw new Error("球队申请不存在");
+  }
+  target.status = "withdrawn";
+  target.withdrawn_at = new Date().toISOString();
+  mockTeamApplications.set(matchId, applications);
+  return target;
+}
+
 function currentMockUser() {
   return findMockUser(mockAuthenticatedUserId) ?? mockCurrentUser;
 }
@@ -408,6 +486,26 @@ const routes: MockRoute[] = [
       registration_count: 0,
       updated_at: new Date().toISOString(),
     }),
+  },
+  {
+    method: "GET",
+    pattern: "/matches/:id/team-applications",
+    handler: (req) => mockTeamApplicationsFor(req.params.id),
+  },
+  {
+    method: "POST",
+    pattern: "/matches/:id/team-applications",
+    handler: (req) => createMockTeamApplication(req.params.id, req.body as { team_id?: number; introduction?: string }),
+  },
+  {
+    method: "POST",
+    pattern: "/matches/:id/team-applications/:applicationId/withdraw",
+    handler: (req) => withdrawMockTeamApplication(req.params.id, req.params.applicationId),
+  },
+  {
+    method: "POST",
+    pattern: "/matches/:id/team-applications/:applicationId/select",
+    handler: (req) => selectMockTeamApplication(req.params.id, req.params.applicationId),
   },
   {
     method: "POST",

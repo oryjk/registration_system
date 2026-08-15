@@ -6,12 +6,13 @@ import type {
   BackendUserActivityRecord,
 } from "@/types/backend";
 import type { HomeMatchCardViewModel } from "@/types/viewModels";
-import { formatDateLabel } from "@/utils/datetime";
+import { formatDateLabel, formatWeekdayLabel } from "@/utils/datetime";
+import { attendanceStatusTone } from "@/utils/statusTone";
 import {
   avatarTone,
   pickFirstNonEmpty,
   toActivityStatusLabel,
-  toLegacyHomeMatchPhase,
+  toHomeMatchPhaseFromStatus,
   toStandLabel,
   type VisibleHomeMatchPhase,
 } from "./common";
@@ -25,6 +26,34 @@ interface HomeMatchCardParams {
   defaultStatusLabel?: string;
   limit?: number;
   teamId?: number;
+}
+
+function toDateBlock(dateLabel: string, dateSource: string): HomeMatchCardViewModel["dateBlock"] {
+  const [monthDay = "", timeLabel = ""] = dateLabel.split(" ");
+  return {
+    monthDay,
+    weekday: formatWeekdayLabel(dateSource),
+    timeLabel,
+  };
+}
+
+function toStageTone(phase: VisibleHomeMatchPhase): HomeMatchCardViewModel["stageTone"] {
+  if (phase === "ongoing") return "blue";
+  if (phase === "ended") return "muted";
+  return "lime";
+}
+
+function toStatusTone(status: string): HomeMatchCardViewModel["statusTone"] {
+  switch (attendanceStatusTone(status)) {
+    case "join":
+      return "green";
+    case "leave":
+      return "muted";
+    case "late":
+      return "amber";
+    default:
+      return "blue";
+  }
 }
 
 function buildActivityHomeMatchCards(params: HomeMatchCardParams): HomeMatchCardViewModel[] {
@@ -57,7 +86,9 @@ function buildActivityHomeMatchCards(params: HomeMatchCardParams): HomeMatchCard
       const myRecord = myRecordByActivityId[activity.id];
       const myStatus = myRecord ? toStandLabel(myRecord.stand) : (params.defaultStatusLabel ?? "待定");
       const remainingPlayers = Math.max(requiredPlayers - joinedPlayers, 0);
-      const phase = toLegacyHomeMatchPhase(activity.status);
+      const phase = toHomeMatchPhaseFromStatus(activity.status);
+      const dateLabel = formatDateLabel(activity.holding_date);
+      const dateSource = activity.start_time || activity.holding_date;
       const participantAvatars = registrations
         .filter((item) => item.stand === 1)
         .slice(0, 5)
@@ -76,14 +107,17 @@ function buildActivityHomeMatchCards(params: HomeMatchCardParams): HomeMatchCard
         id: activity.id,
         detailUrl: `/pages/matches/detail?id=${activity.id}`,
         title: activity.name,
-        dateLabel: formatDateLabel(activity.holding_date),
-        dateSource: activity.start_time || activity.holding_date,
+        dateLabel,
+        dateSource,
+        dateBlock: toDateBlock(dateLabel, dateSource),
         phase,
         dateNote: phase === "ended" ? "比赛已结束" : phase === "ongoing" ? "报名已结束" : "截止报名",
         showRegistrationProgress: phase !== "ended",
         showParticipantAvatars: phase !== "ended",
         canOpenDetail: true,
         stage: toActivityStatusLabel(activity.status),
+        stageTone: toStageTone(phase),
+        statusTone: toStatusTone(myStatus),
         publicationModeLabel: activity.match_kind === "internal" ? "队内内战" : "线下已约",
         signupScope,
         signupScopeLabel: signupScope === "internal" ? "队内报名" : "比赛报名",
@@ -156,18 +190,23 @@ export function buildJoinedIndividualHomeMatchCards({
       const joinedPlayers = summary.accepted_count;
       const remainingPlayers = Math.max(minPlayers - joinedPlayers, 0);
       const phase: VisibleHomeMatchPhase = summary.challenge.status === "matched" ? "ongoing" : "upcoming";
+      const dateLabel = formatDateLabel(summary.challenge.holding_date);
+      const dateSource = summary.challenge.start_time || summary.challenge.holding_date;
       return {
         id: summary.challenge.id,
         detailUrl: `/pages/challenges/detail?id=${summary.challenge.id}`,
         title: summary.challenge.title,
-        dateLabel: formatDateLabel(summary.challenge.holding_date),
-        dateSource: summary.challenge.start_time || summary.challenge.holding_date,
+        dateLabel,
+        dateSource,
+        dateBlock: toDateBlock(dateLabel, dateSource),
         phase,
         dateNote: phase === "ongoing" ? "比赛进行中" : "截止报名",
         showRegistrationProgress: true,
         showParticipantAvatars: false,
         canOpenDetail: true,
         stage: toIndividualChallengeStageLabel(summary.challenge.status),
+        stageTone: toStageTone(phase),
+        statusTone: "green",
         publicationModeLabel: "散人对手",
         signupScope: "external",
         signupScopeLabel: "散人报名",

@@ -22,13 +22,15 @@ type Repository interface {
 }
 
 type MatchListFilter struct {
-	Scope       MatchScope
-	UserID      int64
-	Status      *domain.MatchStatus
-	Search      string
-	StartsAfter *time.Time
-	Limit       int
-	Offset      int
+	Scope            MatchScope
+	UserID           int64
+	Status           *domain.MatchStatus
+	Search           string
+	StartsAfter      *time.Time
+	DateStart        *time.Time
+	PublicationModes []domain.PublicationMode
+	Limit            int
+	Offset           int
 }
 
 type MatchScope string
@@ -42,12 +44,27 @@ const (
 type AdminMatchFilter = MatchListFilter
 
 type MatchItem struct {
-	Match        domain.Match
-	HostTeamName string
-	AwayTeamName *string
+	Match              domain.Match
+	HostTeamName       string
+	AwayTeamName       *string
+	RegistrationGroups []RegistrationGroupSummary
+	// Participants 目前只在首页已结束比赛场景填充：
+	// 合并该比赛全部报名组后，按报名先后返回全部 attending 报名者。
+	Participants []UserParticipant
 }
 
 type AdminMatchItem = MatchItem
+
+// RegistrationGroupSummary 是列表场景下报名组的进度摘要：
+// 只带 kind、所属球队与人数规则，用于约队大厅等列表进度展示。
+type RegistrationGroupSummary struct {
+	MatchID        uuid.UUID
+	Kind           domain.GroupKind
+	TeamID         *int64
+	MinPlayers     *int
+	MaxPlayers     *int
+	AttendingCount int
+}
 
 type UserGroupState struct {
 	Group          domain.RegistrationGroup

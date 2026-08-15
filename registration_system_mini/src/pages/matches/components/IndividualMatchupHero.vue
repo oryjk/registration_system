@@ -1,15 +1,16 @@
 <script setup lang="ts">
+import { computed } from "vue";
 import type { BackendActivity } from "@/types/backend";
 import { NeoSurface, NeoTag } from "@/components/neo";
+import { formatMonthDayLabel, formatWeekdayLabel } from "@/utils/datetime";
 
-defineProps<{
+const props = defineProps<{
   match: BackendActivity;
   matchKindLabel: string;
   homeTeamLabel: string;
   displayOpponentLabel: string;
   homeTeamColor: string;
   awayTeamColor: string;
-  matchDateLabel: string;
   matchClockLabel: string;
   matchLocation: string;
 }>();
@@ -17,289 +18,277 @@ defineProps<{
 defineEmits<{
   openLocation: [];
 }>();
+
+const dateBlockDay = computed(() => formatMonthDayLabel(props.match.holding_date));
+const dateBlockWeekday = computed(() => formatWeekdayLabel(props.match.holding_date));
 </script>
 
 <template>
-  <NeoSurface variant="dark" custom-class="hero-black-card">
-    <view class="hero-black-copy">
-      <NeoTag tone="lime" size="md">{{ matchKindLabel }}</NeoTag>
-      <text class="hero-black-title">{{ match.name }}</text>
-
-      <view class="matchup-stage">
-        <view class="matchup-side matchup-side-home">
-          <text class="matchup-role">主队</text>
-          <text class="matchup-name">{{ homeTeamLabel }}</text>
-          <view class="matchup-kit">
-            <view class="matchup-jersey" :style="{ '--jersey-color': homeTeamColor }">
-              <view class="matchup-jersey-body">
-                <view class="matchup-jersey-collar" />
-                <view class="matchup-jersey-stripe" />
-              </view>
-            </view>
-            <text class="matchup-kit-label">球服</text>
-          </view>
+  <NeoSurface custom-class="hero-scoreboard">
+    <view class="hero-head">
+      <view class="hero-dateblock">
+        <view class="hero-dateblock-top">
+          <text class="hero-dateblock-day">{{ dateBlockDay }}</text>
+          <text class="hero-dateblock-weekday">{{ dateBlockWeekday }}</text>
         </view>
+        <view class="hero-dateblock-time">{{ matchClockLabel }}</view>
+      </view>
+      <view class="hero-heading">
+        <NeoTag tone="lime" size="sm">{{ matchKindLabel }}</NeoTag>
+        <text class="hero-title">{{ match.name }}</text>
+      </view>
+    </view>
 
-        <view class="matchup-center">
-          <view class="matchup-vs">VS</view>
-          <text class="matchup-date">{{ matchDateLabel }}</text>
-          <text class="matchup-time">{{ matchClockLabel }}</text>
-          <view class="matchup-location" @tap="$emit('openLocation')">
-            <text class="matchup-location-text">{{ matchLocation }}</text>
-            <text v-if="matchLocation && match.location_latitude != null && match.location_longitude != null" class="matchup-location-arrow">›</text>
-          </view>
+    <view class="hero-board">
+      <view class="hero-team">
+        <view class="hero-flag" :style="{ backgroundColor: homeTeamColor }" />
+        <view class="hero-team-info">
+          <text class="hero-role">主队</text>
+          <text class="hero-name">{{ homeTeamLabel }}</text>
         </view>
+      </view>
+      <text class="hero-vs">VS</text>
+      <view class="hero-team hero-team-away">
+        <view class="hero-flag" :style="{ backgroundColor: awayTeamColor }" />
+        <view class="hero-team-info">
+          <text class="hero-role">客队</text>
+          <text class="hero-name">{{ displayOpponentLabel }}</text>
+        </view>
+      </view>
+    </view>
 
-        <view class="matchup-side matchup-side-away">
-          <text class="matchup-role">客队</text>
-          <text class="matchup-name">{{ displayOpponentLabel }}</text>
-          <view class="matchup-kit">
-            <text class="matchup-kit-label">球服</text>
-            <view class="matchup-jersey matchup-jersey-mirror" :style="{ '--jersey-color': awayTeamColor }">
-              <view class="matchup-jersey-body">
-                <view class="matchup-jersey-collar" />
-                <view class="matchup-jersey-stripe" />
-              </view>
-            </view>
-          </view>
+    <view class="hero-foot">
+      <view class="hero-kits">
+        <view class="hero-kit">
+          <view class="hero-kit-dot" :style="{ backgroundColor: homeTeamColor }" />
+          <text class="hero-kit-label">主队球服</text>
         </view>
+        <view class="hero-kit">
+          <view class="hero-kit-dot" :style="{ backgroundColor: awayTeamColor }" />
+          <text class="hero-kit-label">客队球服</text>
+        </view>
+      </view>
+      <view class="hero-venue" @tap="$emit('openLocation')">
+        <text class="hero-venue-text">{{ matchLocation }}</text>
+        <text
+          v-if="matchLocation && match.location_latitude != null && match.location_longitude != null"
+          class="hero-venue-arrow"
+        >›</text>
       </view>
     </view>
   </NeoSurface>
 </template>
 
 <style scoped>
-.hero-black-card {
-  position: relative;
-  min-height: 390rpx;
-  padding: 30rpx;
-  overflow: hidden;
+.hero-scoreboard {
+  padding: 28rpx 32rpx;
   border: var(--neo-border-strong);
   border-radius: var(--neo-radius-md);
-  background: var(--neo-color-hero);
+  background: var(--neo-color-surface);
   box-shadow: var(--neo-shadow-raised);
   box-sizing: border-box;
 }
 
-.hero-black-copy {
-  position: relative;
-  z-index: 2;
+.hero-head {
+  display: flex;
+  align-items: stretch;
+  gap: 24rpx;
+}
+
+.hero-dateblock {
   display: flex;
   flex-direction: column;
-  gap: 12rpx;
-  width: 100%;
-}
-
-.hero-black-title {
-  font-size: 50rpx;
-  line-height: 1.15;
-  color: #ffffff;
-  font-weight: 900;
-}
-
-.matchup-stage {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 170rpx minmax(0, 1fr);
-  align-items: center;
-  gap: 16rpx;
-  margin-top: 18rpx;
-}
-
-.matchup-side {
-  display: flex;
-  flex-direction: column;
-  gap: 12rpx;
-  min-width: 0;
-}
-
-.matchup-side-away {
-  align-items: flex-end;
-  text-align: right;
-}
-
-.matchup-role {
-  color: rgba(255, 255, 255, 0.62);
-  font-size: 22rpx;
-  line-height: 1;
-  font-weight: 900;
-}
-
-.matchup-name {
-  width: 100%;
-  color: #ffffff;
-  font-size: 34rpx;
-  line-height: 1.15;
-  font-weight: 900;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.matchup-kit {
-  display: inline-flex;
-  align-items: center;
-  gap: 8rpx;
-  width: fit-content;
-  padding: 10rpx 12rpx;
-  border-radius: 16rpx;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1rpx solid rgba(255, 255, 255, 0.1);
-}
-
-.matchup-kit-label {
-  color: rgba(255, 255, 255, 0.72);
-  font-size: 22rpx;
-  line-height: 1;
-  font-weight: 800;
-}
-
-.matchup-jersey {
-  position: relative;
-  width: 58rpx;
-  height: 52rpx;
   flex-shrink: 0;
-  overflow: visible;
-}
-
-.matchup-jersey::before,
-.matchup-jersey::after {
-  content: "";
-  position: absolute;
-  top: 7rpx;
-  z-index: 0;
-  width: 23rpx;
-  height: 29rpx;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.14) 0%, rgba(0, 0, 0, 0.08) 100%),
-    var(--jersey-color);
-  border-radius: 10rpx 10rpx 8rpx 8rpx;
-  box-shadow:
-    inset 0 -5rpx 0 rgba(0, 0, 0, 0.16),
-    inset 0 1rpx 0 rgba(255, 255, 255, 0.24);
-}
-
-.matchup-jersey::before {
-  left: 0;
-  transform: rotate(-18deg);
-}
-
-.matchup-jersey::after {
-  right: 0;
-  transform: rotate(18deg);
-}
-
-.matchup-jersey-body {
-  position: absolute;
-  left: 50%;
-  top: 2rpx;
-  z-index: 1;
-  width: 39rpx;
-  height: 48rpx;
-  transform: translateX(-50%);
-  border-radius: 12rpx 12rpx 10rpx 10rpx;
-  background:
-    linear-gradient(90deg, rgba(255, 255, 255, 0.2) 0 18%, transparent 19% 55%, rgba(0, 0, 0, 0.1) 56% 100%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.22) 0%, rgba(0, 0, 0, 0.1) 100%),
-    var(--jersey-color);
-  box-shadow:
-    inset 0 -7rpx 0 rgba(0, 0, 0, 0.16),
-    inset 0 1rpx 0 rgba(255, 255, 255, 0.28),
-    0 6rpx 14rpx rgba(0, 0, 0, 0.22);
+  border: var(--neo-border-strong);
+  border-radius: var(--neo-radius-md);
+  box-shadow: 6rpx 6rpx 0 var(--neo-color-text);
   overflow: hidden;
 }
 
-.matchup-jersey-collar {
-  position: absolute;
-  left: 50%;
-  top: -1rpx;
-  width: 19rpx;
-  height: 14rpx;
-  transform: translateX(-50%);
-  border-radius: 0 0 999rpx 999rpx;
-  background: rgba(24, 24, 24, 0.34);
-  border: 3rpx solid rgba(255, 255, 255, 0.26);
-  border-top: 0;
-}
-
-.matchup-jersey-stripe {
-  position: absolute;
-  left: 50%;
-  top: 18rpx;
-  width: 4rpx;
-  height: 23rpx;
-  transform: translateX(-50%);
-  border-radius: 999rpx;
-  background: rgba(255, 255, 255, 0.38);
-  box-shadow:
-    -9rpx 0 0 rgba(255, 255, 255, 0.16),
-    9rpx 0 0 rgba(0, 0, 0, 0.1);
-}
-
-.matchup-jersey-mirror {
-  transform: scaleX(-1);
-}
-
-.matchup-center {
+.hero-dateblock-top {
   display: flex;
+  flex: 1;
   flex-direction: column;
-  align-items: center;
-  gap: 8rpx;
-  min-width: 0;
-  text-align: center;
-}
-
-.matchup-vs {
-  display: flex;
   align-items: center;
   justify-content: center;
-  width: 74rpx;
-  height: 74rpx;
-  border-radius: 999rpx;
-  background: rgba(217, 255, 22, 0.14);
-  border: 1rpx solid rgba(217, 255, 22, 0.42);
-  color: #9be22b;
+  padding: 14rpx 20rpx 10rpx;
+  background: var(--neo-color-text);
+  color: var(--neo-color-text-inverse);
+}
+
+.hero-dateblock-day {
   font-size: 28rpx;
-  line-height: 1;
+  line-height: 1.15;
   font-weight: 900;
 }
 
-.matchup-date {
-  color: rgba(255, 255, 255, 0.84);
+.hero-dateblock-weekday {
   font-size: 22rpx;
   line-height: 1.2;
   font-weight: 800;
-  white-space: nowrap;
 }
 
-.matchup-time {
-  color: #ffffff;
+.hero-dateblock-time {
+  padding: 10rpx 20rpx 12rpx;
+  background: var(--neo-color-accent);
+  color: var(--neo-color-text);
+  border-top: var(--neo-border-strong);
   font-size: 30rpx;
   line-height: 1;
   font-weight: 900;
+  text-align: center;
+  letter-spacing: 2rpx;
 }
 
-.matchup-location {
+.hero-heading {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 10rpx;
+  min-width: 0;
+}
+
+.hero-title {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  font-size: 48rpx;
+  line-height: 1.15;
+  color: var(--neo-color-text);
+  font-weight: 900;
+}
+
+.hero-board {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 20rpx;
+  margin-top: 28rpx;
+  padding: 24rpx 0;
+  border-top: var(--neo-border-strong);
+  border-bottom: var(--neo-border-strong);
+}
+
+.hero-team {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 4rpx;
-  max-width: 172rpx;
-  color: rgba(255, 255, 255, 0.82);
+  gap: 16rpx;
+  min-width: 0;
 }
 
-.matchup-location-text {
+.hero-team-away {
+  flex-direction: row-reverse;
+  text-align: right;
+}
+
+.hero-team-away .hero-team-info {
+  align-items: flex-end;
+}
+
+.hero-flag {
+  width: 14rpx;
+  align-self: stretch;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
+  flex-shrink: 0;
+}
+
+.hero-team-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+  min-width: 0;
+}
+
+.hero-role {
+  font-size: 22rpx;
+  line-height: 1;
+  color: var(--neo-color-text-muted);
+  font-weight: 900;
+}
+
+.hero-name {
+  font-size: 36rpx;
+  line-height: 1.15;
+  color: var(--neo-color-text);
+  font-weight: 900;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.hero-vs {
+  font-size: 44rpx;
+  line-height: 1;
+  color: var(--neo-color-text);
+  font-weight: 900;
+  letter-spacing: 2rpx;
+}
+
+.hero-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+  margin-top: 24rpx;
+}
+
+.hero-kits {
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+  min-width: 0;
+}
+
+.hero-kit {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.hero-kit-dot {
+  width: 20rpx;
+  height: 20rpx;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+
+.hero-kit-label {
+  font-size: 22rpx;
+  line-height: 1;
+  color: var(--neo-color-text-muted);
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.hero-venue {
+  display: flex;
+  align-items: center;
+  gap: 4rpx;
+  min-width: 0;
+}
+
+.hero-venue-text {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 22rpx;
+  font-size: 26rpx;
   line-height: 1.25;
+  color: var(--neo-color-text);
+  font-weight: 800;
   text-decoration: underline;
-  text-underline-offset: 5rpx;
+  text-underline-offset: 6rpx;
 }
 
-.matchup-location-arrow {
+.hero-venue-arrow {
   flex-shrink: 0;
-  font-size: 26rpx;
+  font-size: 30rpx;
   line-height: 1;
   font-weight: 900;
 }

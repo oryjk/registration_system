@@ -6,9 +6,7 @@ import { listMyMatches } from "@/api/match";
 import type { AppMatchUiPhase } from "@/types/match";
 import type { HomeMatchCardViewModel } from "@/types/viewModels";
 import { getCustomNavMetrics } from "@/utils/customNav";
-import { attendanceStatusTone } from "@/utils/statusTone";
-import { toGoHomeMatchCard } from "../homeMatchState";
-import { formatHomeMatchDateBlock } from "../homeMatchDate";
+import { toHomeMatchCard } from "../homeMatchState";
 import HomeMatchList from "../components/HomeMatchList.vue";
 import {
   filterVisiblePhaseMatches,
@@ -59,7 +57,7 @@ const contentStyle = computed(() => ({
 }));
 const sourceLoaded = computed(() => isHomeMatchPaginationComplete(paginationState.value));
 const visibleMatches = computed<HomeMatchCardViewModel[]>(() =>
-  filterVisiblePhaseMatches(paginationState.value.sourceItems, phase.value, phaseClock.value).map((item) => toGoHomeMatchCard(item, phase.value)),
+  filterVisiblePhaseMatches(paginationState.value.sourceItems, phase.value, phaseClock.value).map((item) => toHomeMatchCard(item, phase.value)),
 );
 const showEmptyState = computed(() => !visibleMatches.value.length && !isLoading.value && !errorMessage.value && sourceLoaded.value);
 const footerText = computed(() => {
@@ -82,36 +80,6 @@ function resetPaginationState() {
   };
   phaseClock.value = new Date();
   errorMessage.value = "";
-}
-
-function progressBaseWidth(joinedPlayers: number, requiredPlayers: number, maxPlayers: number) {
-  const denominator = Math.max(maxPlayers || requiredPlayers, 1);
-  return `${Math.min((Math.min(joinedPlayers, requiredPlayers) / denominator) * 100, 100)}%`;
-}
-
-function progressExtraWidth(joinedPlayers: number, requiredPlayers: number, maxPlayers: number) {
-  const denominator = Math.max(maxPlayers || requiredPlayers, 1);
-  return `${Math.min((Math.max(joinedPlayers - requiredPlayers, 0) / denominator) * 100, 100)}%`;
-}
-
-function progressSplitLeft(requiredPlayers: number, maxPlayers: number) {
-  const denominator = Math.max(maxPlayers || requiredPlayers, 1);
-  return `${Math.min((requiredPlayers / denominator) * 100, 100)}%`;
-}
-
-function statusClass(status: string) {
-  return `home-status home-status-${attendanceStatusTone(status)}`;
-}
-
-function stageClass(stage: string) {
-  switch (stage) {
-    case "进行中":
-      return "home-stage home-stage-blue";
-    case "已结束":
-      return "home-stage home-stage-muted";
-    default:
-      return "home-stage";
-  }
 }
 
 async function loadVisiblePhaseBatch() {
@@ -191,12 +159,6 @@ onReachBottom(() => {
         :matches="visibleMatches"
         :is-guest-mode="false"
         :navigating-match-id="navigatingMatchId"
-        :format-match-date-block="formatHomeMatchDateBlock"
-        :progress-base-width="progressBaseWidth"
-        :progress-extra-width="progressExtraWidth"
-        :progress-split-left="progressSplitLeft"
-        :stage-class="stageClass"
-        :status-class="statusClass"
         @match-tap="handleMatchTap"
       />
 
@@ -219,18 +181,17 @@ onReachBottom(() => {
 .phase-matches-page {
   min-height: 100vh;
   padding: 0 28rpx 96rpx;
-  background:
-    radial-gradient(circle at top left, rgba(200, 255, 0, 0.12), transparent 24%),
-    linear-gradient(180deg, #ffffff 0%, #f4f5f0 100%);
+  background: var(--neo-color-page);
   box-sizing: border-box;
 }
 
 .page-hero,
 .empty-card,
 .phase-footer {
-  border-radius: 30rpx;
-  background: #ffffff;
-  box-shadow: 0 20rpx 38rpx rgba(17, 17, 17, 0.05);
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-md);
+  background: var(--neo-color-surface);
+  box-shadow: var(--neo-shadow-raised);
 }
 
 .page-hero {
@@ -239,7 +200,7 @@ onReachBottom(() => {
 
 .page-title {
   display: block;
-  color: #111310;
+  color: var(--neo-color-text);
   font-size: 48rpx;
   line-height: 1.15;
   font-weight: 900;
@@ -248,7 +209,7 @@ onReachBottom(() => {
 .page-copy {
   display: block;
   margin-top: 12rpx;
-  color: #66705f;
+  color: var(--neo-color-text-muted);
   font-size: 26rpx;
   line-height: 1.5;
   font-weight: 700;
@@ -267,7 +228,7 @@ onReachBottom(() => {
 
 .empty-text,
 .phase-footer-text {
-  color: #66705f;
+  color: var(--neo-color-text-muted);
   font-size: 28rpx;
   line-height: 1.5;
   font-weight: 800;
@@ -282,6 +243,22 @@ onReachBottom(() => {
 }
 
 .phase-footer-error {
-  background: #fff8f2;
+  background: var(--neo-color-danger-soft);
 }
+
+/* #ifdef H5 */
+.phase-matches-page {
+  width: 100%;
+  max-width: 750rpx;
+  margin: 0 auto;
+}
+
+.phase-matches-page :deep(.app-tab-header-shell) {
+  left: 50%;
+  right: auto;
+  width: 100%;
+  max-width: 750rpx;
+  transform: translateX(-50%);
+}
+/* #endif */
 </style>

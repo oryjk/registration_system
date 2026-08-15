@@ -348,8 +348,9 @@ func (r *Repository) ListForUser(ctx context.Context, filter ports.MatchListFilt
 	}
 	rows, err := r.queries.ListMatchesForUser(ctx, matchsqlc.ListMatchesForUserParams{
 		Status: status, Search: filter.Search, Scope: string(filter.Scope), UserID: filter.UserID,
-		StartsAfter: pgOptionalTimestamp(filter.StartsAfter),
-		LimitCount:  int32(filter.Limit), OffsetCount: int32(filter.Offset),
+		StartsAfter:      pgOptionalTimestamp(filter.StartsAfter),
+		PublicationModes: publicationModeStrings(filter.PublicationModes), DateStart: pgOptionalTimestamp(filter.DateStart),
+		LimitCount: int32(filter.Limit), OffsetCount: int32(filter.Offset),
 	})
 	if err != nil {
 		return nil, err
@@ -359,6 +360,9 @@ func (r *Repository) ListForUser(ctx context.Context, filter ports.MatchListFilt
 		items = append(items, ports.MatchItem{
 			Match: mapUserListMatch(row), HostTeamName: row.HostTeamName, AwayTeamName: row.AwayTeamName,
 		})
+	}
+	if err := r.attachRegistrationGroupSummaries(ctx, items); err != nil {
+		return nil, err
 	}
 	return items, nil
 }
@@ -371,8 +375,56 @@ func (r *Repository) CountForUser(ctx context.Context, filter ports.MatchListFil
 	}
 	return r.queries.CountMatchesForUser(ctx, matchsqlc.CountMatchesForUserParams{
 		Status: status, Search: filter.Search, Scope: string(filter.Scope), UserID: filter.UserID,
-		StartsAfter: pgOptionalTimestamp(filter.StartsAfter),
+		StartsAfter:      pgOptionalTimestamp(filter.StartsAfter),
+		PublicationModes: publicationModeStrings(filter.PublicationModes), DateStart: pgOptionalTimestamp(filter.DateStart),
 	})
+}
+
+// attachRegistrationGroupSummaries 为用户列表项填充报名组进度摘要；
+// 输入必须按指针引用列表元素，摘要按 match_id 归组后回填。
+func (r *Repository) attachRegistrationGroupSummaries(ctx context.Context, items []ports.MatchItem) error {
+	if len(items) == 0 {
+		return nil
+	}
+	matchIDs := make([]pgtype.UUID, 0, len(items))
+	byMatchID := make(map[uuid.UUID][]ports.RegistrationGroupSummary, len(items))
+	for _, item := range items {
+		matchIDs = append(matchIDs, pgUUID(item.Match.ID))
+	}
+	rows, err := r.queries.ListRegistrationSummariesForMatches(ctx, matchIDs)
+	if err != nil {
+		return err
+	}
+	for _, row := range rows {
+		matchID := uuid.UUID(row.MatchID.Bytes)
+		byMatchID[matchID] = append(byMatchID[matchID], ports.RegistrationGroupSummary{
+			MatchID:        matchID,
+			Kind:           domain.GroupKind(row.Kind),
+			TeamID:         row.TeamID,
+			MinPlayers:     intPointer(row.MinPlayers),
+			MaxPlayers:     intPointer(row.MaxPlayers),
+			AttendingCount: int(row.AttendingCount),
+		})
+	}
+	for index := range items {
+		items[index].RegistrationGroups = byMatchID[items[index].Match.ID]
+		if items[index].RegistrationGroups == nil {
+			items[index].RegistrationGroups = []ports.RegistrationGroupSummary{}
+		}
+	}
+	return nil
+}
+
+func publicationModeStrings(modes []domain.PublicationMode) []string {
+	if len(modes) == 0 {
+		// sqlc 参数为 text[]；空切片（而非 nil）保证 SQL 中 cardinality 判断生效。
+		return []string{}
+	}
+	values := make([]string, 0, len(modes))
+	for _, mode := range modes {
+		values = append(values, string(mode))
+	}
+	return values
 }
 
 func (r *Repository) ListHomeActionItems(ctx context.Context, userID int64, limit int) ([]ports.HomeMatchItem, error) {
@@ -409,7 +461,42 @@ func (r *Repository) ListHomeActionItems(ctx context.Context, userID int64, limi
 			Group: group,
 		})
 	}
+	if err := r.attachHomeActionParticipants(ctx, items); err != nil {
+		return nil, err
+	}
 	return items, nil
+}
+
+// attachHomeActionParticipants 为首页进行中的比赛组批量填充报名者列表：
+// 一次 IN 查询按报名先后取每组全部 attending 报名者，避免 N+1。
+func (r *Repository) attachHomeActionParticipants(ctx context.Context, items []ports.HomeMatchItem) error {
+	if len(items) == 0 {
+		return nil
+	}
+	groupIDs := make([]pgtype.UUID, 0, len(items))
+	for _, item := range items {
+		groupIDs = append(groupIDs, pgUUID(item.Group.Group.ID))
+	}
+	rows, err := r.queries.ListHomeActionGroupParticipants(ctx, groupIDs)
+	if err != nil {
+		return err
+	}
+	byGroupID := make(map[uuid.UUID][]ports.UserParticipant, len(items))
+	for _, row := range rows {
+		groupID := uuid.UUID(row.GroupID.Bytes)
+		byGroupID[groupID] = append(byGroupID[groupID], ports.UserParticipant{
+			UserID: row.UserID, Nickname: row.Nickname, AvatarURL: row.AvatarUrl,
+			Status: domain.RegistrationStatus(row.Status),
+		})
+	}
+	for index := range items {
+		participants := byGroupID[items[index].Group.Group.ID]
+		if participants == nil {
+			participants = []ports.UserParticipant{}
+		}
+		items[index].Group.Participants = participants
+	}
+	return nil
 }
 
 func (r *Repository) ListHomeEndedItems(ctx context.Context, userID int64, limit int) ([]ports.MatchItem, error) {
@@ -425,7 +512,53 @@ func (r *Repository) ListHomeEndedItems(ctx context.Context, userID int64, limit
 			Match: mapHomeEndedMatch(row), HostTeamName: row.HostTeamName, AwayTeamName: row.AwayTeamName,
 		})
 	}
+	if err := r.attachHomeEndedParticipants(ctx, items); err != nil {
+		return nil, err
+	}
 	return items, nil
+}
+
+// attachHomeEndedParticipants 为首页已结束比赛批量填充报名者列表：
+// 一次 IN 查询合并每场全部报名组，按报名先后取每场全部 attending 报名者，避免 N+1。
+func (r *Repository) attachHomeEndedParticipants(ctx context.Context, items []ports.MatchItem) error {
+	if len(items) == 0 {
+		return nil
+	}
+	matchIDs := make([]pgtype.UUID, 0, len(items))
+	for _, item := range items {
+		matchIDs = append(matchIDs, pgUUID(item.Match.ID))
+	}
+	rows, err := r.queries.ListHomeEndedMatchParticipants(ctx, matchIDs)
+	if err != nil {
+		return err
+	}
+	byMatchID := make(map[uuid.UUID][]ports.UserParticipant, len(items))
+	seenByMatchID := make(map[uuid.UUID]map[int64]struct{}, len(items))
+	for _, row := range rows {
+		matchID := uuid.UUID(row.MatchID.Bytes)
+		// 同一用户可能出现在比赛的多个报名组中，按 user_id 去重（保留最早报名的一条）。
+		seen, ok := seenByMatchID[matchID]
+		if !ok {
+			seen = make(map[int64]struct{})
+			seenByMatchID[matchID] = seen
+		}
+		if _, exists := seen[row.UserID]; exists {
+			continue
+		}
+		seen[row.UserID] = struct{}{}
+		byMatchID[matchID] = append(byMatchID[matchID], ports.UserParticipant{
+			UserID: row.UserID, Nickname: row.Nickname, AvatarURL: row.AvatarUrl,
+			Status: domain.RegistrationStatus(row.Status),
+		})
+	}
+	for index := range items {
+		participants := byMatchID[items[index].Match.ID]
+		if participants == nil {
+			participants = []ports.UserParticipant{}
+		}
+		items[index].Participants = participants
+	}
+	return nil
 }
 
 func (r *Repository) UpdateDetails(ctx context.Context, match domain.Match) error {

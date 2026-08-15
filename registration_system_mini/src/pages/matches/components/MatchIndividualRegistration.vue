@@ -15,7 +15,6 @@ const props = defineProps<{
   displayOpponentLabel: string;
   homeTeamColor: string;
   awayTeamColor: string;
-  matchDateLabel: string;
   matchClockLabel: string;
   matchLocation: string;
   joinedCount: number;
@@ -79,7 +78,6 @@ function handleTeamMemberDialogVisibilityChange(visible: boolean) {
       :display-opponent-label="displayOpponentLabel"
       :home-team-color="homeTeamColor"
       :away-team-color="awayTeamColor"
-      :match-date-label="matchDateLabel"
       :match-clock-label="matchClockLabel"
       :match-location="matchLocation"
       @open-location="handleOpenLocation"

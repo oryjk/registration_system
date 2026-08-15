@@ -2,13 +2,15 @@
 import { computed, ref } from "vue";
 import { onShareAppMessage, onShareTimeline } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
-import { NeoButton, NeoSegmentedControl, NeoStickyActionBar } from "@/components/neo";
+import { NeoButton, NeoConfirmDialog, NeoSegmentedControl, NeoStickyActionBar } from "@/components/neo";
 import MatchDetailSkeleton from "./components/MatchDetailSkeleton.vue";
 import MatchIndividualRegistration from "./components/MatchIndividualRegistration.vue";
 import MatchTeamRegistration from "./components/MatchTeamRegistration.vue";
 import TeamSettlementCard from "./components/TeamSettlementCard.vue";
 import { DEFAULT_SHARE_IMAGE_URL } from "@/utils/share";
 import { useMatchDetailPage } from "./useMatchDetailPage";
+import { useMatchTeamApplications } from "./useMatchTeamApplications";
+import MatchTeamApplications from "./components/MatchTeamApplications.vue";
 
 defineOptions({ inheritAttrs: false });
 
@@ -19,6 +21,7 @@ const {
   errorMessage,
   isLoading,
   match,
+  sourceMatch,
   registrationMode,
   canUseTeamRegistration,
   matchKindLabel,
@@ -27,7 +30,6 @@ const {
   displayOpponentLabel,
   homeTeamColor,
   awayTeamColor,
-  matchDateLabel,
   matchClockLabel,
   matchLocation,
   joinedCount,
@@ -38,6 +40,10 @@ const {
   teamMemberRegistrationGroups,
   remainingPlayersLabel,
   submittingStatus,
+  confirmDialogVisible,
+  confirmDialogState,
+  handleConfirmPrimary,
+  handleConfirmSecondary,
   individualCtaLabel,
   canSubmitIndividualRegistration,
   isGuestMode,
@@ -83,7 +89,17 @@ const {
   handleAddSettlementCustomUser,
   handleSubmitSettlement,
   handleTeamSubmit,
+  loadPageData,
 } = useMatchDetailPage();
+
+const {
+  applications: matchApplications,
+  isLoading: applicationsLoading,
+  isSelecting: applicationSelecting,
+  loadErrorMessage: applicationsError,
+  canManageApplications,
+  selectOpponent: selectMatchOpponent,
+} = useMatchTeamApplications(sourceMatch, loadPageData);
 
 const registrationModeOptions = computed(() => [
   { label: "个人报名", value: "individual" },
@@ -116,7 +132,7 @@ onShareTimeline(() => ({
 </script>
 
 <template>
-  <page-meta :page-style="teamMemberDialogVisible ? 'overflow: hidden;' : ''" />
+  <page-meta :page-style="teamMemberDialogVisible || confirmDialogVisible ? 'overflow: hidden;' : ''" />
   <view class="registration-page" :style="pageStyle">
     <AppTabHeader title="比赛报名" showBack showLocation />
 
@@ -125,7 +141,9 @@ onShareTimeline(() => ({
       <MatchDetailSkeleton v-else-if="isLoading" />
 
       <view v-else-if="match" class="registration-shell">
+      <!-- 只有同时具备球队报名入口时才需要模式切换；单一「个人报名」时隐藏，避免无意义的占高。 -->
       <NeoSegmentedControl
+        v-if="registrationModeOptions.length > 1"
         v-model="registrationMode"
         class="registration-segment"
         :options="registrationModeOptions"
@@ -140,7 +158,6 @@ onShareTimeline(() => ({
         :display-opponent-label="displayOpponentLabel"
         :home-team-color="homeTeamColor"
         :away-team-color="awayTeamColor"
-        :match-date-label="matchDateLabel"
         :match-clock-label="matchClockLabel"
         :match-location="matchLocation"
         :joined-count="joinedCount"
@@ -189,6 +206,15 @@ onShareTimeline(() => ({
         @review-rating-change="handleReviewRatingChange"
         @submit-activity-review="handleSubmitActivityReview"
       />
+      <!-- 接约申请是主队管理功能，不依赖“球队报名”标签（Go 比赛没有该标签）。 -->
+      <MatchTeamApplications
+        v-if="canManageApplications"
+        :applications="matchApplications"
+        :is-loading="applicationsLoading"
+        :is-selecting="applicationSelecting"
+        :load-error-message="applicationsError"
+        @select-opponent="selectMatchOpponent"
+      />
       <TeamSettlementCard
         v-if="registrationMode === 'team' && canShowSettlement"
         v-model:search-keyword="settlementSearchKeyword"
@@ -220,6 +246,19 @@ onShareTimeline(() => ({
         {{ submittingStatus ? "提交中..." : teamSubmitLabel }}
       </NeoButton>
     </NeoStickyActionBar>
+
+    <NeoConfirmDialog
+      :visible="confirmDialogVisible"
+      :title="confirmDialogState.title"
+      :message="confirmDialogState.message"
+      :highlight="confirmDialogState.highlight"
+      :primary-text="confirmDialogState.primaryText"
+      :secondary-text="confirmDialogState.secondaryText"
+      :primary-tone="confirmDialogState.primaryTone"
+      :loading="submittingStatus"
+      @primary="handleConfirmPrimary"
+      @secondary="handleConfirmSecondary"
+    />
   </view>
 </template>
 

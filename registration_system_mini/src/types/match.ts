@@ -18,6 +18,7 @@ export interface AppHomeMatchGroup {
   max_players: number | null;
   attending_count: number;
   my_registration_status: "unknown" | "attending" | "leave" | "absent" | "cancelled" | null;
+  participants?: AppMatchParticipant[];
 }
 
 export interface AppHomeActionMatch extends AppMatchPhaseSource {
@@ -36,6 +37,15 @@ export interface AppHomeEndedMatch extends AppMatchPhaseSource {
   host_team_name: string;
   opponent_name: string;
   location: string;
+  participants?: AppMatchParticipant[];
+}
+
+export interface AppMatchRegistrationGroupSummary {
+  kind: AppHomeMatchGroup["kind"];
+  team_id: number | null;
+  min_players: number | null;
+  max_players: number | null;
+  attending_count: number;
 }
 
 export interface AppMatchSummary extends AppMatchPhaseSource {
@@ -52,6 +62,7 @@ export interface AppMatchSummary extends AppMatchPhaseSource {
   location_latitude: number | null;
   location_longitude: number | null;
   description: string | null;
+  registration_groups?: AppMatchRegistrationGroupSummary[];
   created_at: string;
   updated_at: string;
 }
@@ -83,6 +94,22 @@ export interface AppMatchGroupDetail {
 export interface AppMatchDetailResponse {
   match: AppMatchSummary;
   groups: AppMatchGroupDetail[];
+}
+
+export type AppTeamApplicationStatus = "pending" | "selected" | "rejected" | "withdrawn";
+
+export interface AppTeamApplication {
+  id: string;
+  match_id: string;
+  applicant_team_id: number;
+  applicant_team_name?: string;
+  introduction: string;
+  status: AppTeamApplicationStatus;
+  created_by_user_id: number;
+  selected_at: string | null;
+  withdrawn_at: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export type AppMatchListScope = "all" | "mine" | "others";

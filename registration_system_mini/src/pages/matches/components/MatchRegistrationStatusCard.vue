@@ -80,7 +80,7 @@ function handleSignup() {
         <NeoAvatarStack
           :items="participantPreview"
           :selected-id="selectedParticipantId"
-          :max-visible="7"
+          :max-visible="0"
           interactive
           size="md"
           @select="handleSelectParticipant"

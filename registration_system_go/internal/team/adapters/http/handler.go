@@ -97,6 +97,7 @@ type TeamResponse struct {
 	Description *string           `json:"description"`
 	LogoURL     *string           `json:"logo_url"`
 	CaptainID   *int64            `json:"captain_id"`
+	Captain     *CaptainResponse  `json:"captain"`
 	Status      domain.TeamStatus `json:"status"`
 	CreatedAt   time.Time         `json:"created_at"`
 	UpdatedAt   time.Time         `json:"updated_at"`
@@ -218,9 +219,25 @@ func adminActorTeamAndUserID(c *gin.Context) (sharedauth.Actor, int64, int64, bo
 	return actor, teamID, userID, true
 }
 
+type CaptainResponse struct {
+	UserID    int64   `json:"user_id"`
+	Nickname  string  `json:"nickname"`
+	AvatarURL *string `json:"avatar_url"`
+	RealName  *string `json:"real_name"`
+}
+
 func mapTeam(team domain.Team) TeamResponse {
-	return TeamResponse{
+	response := TeamResponse{
 		ID: team.ID, Name: team.Name, Description: team.Description, LogoURL: team.LogoURL,
 		CaptainID: team.CaptainID, Status: team.Status, CreatedAt: team.CreatedAt, UpdatedAt: team.UpdatedAt,
 	}
+	if team.Captain != nil {
+		response.Captain = &CaptainResponse{
+			UserID:    team.Captain.UserID,
+			Nickname:  team.Captain.Nickname,
+			AvatarURL: team.Captain.AvatarURL,
+			RealName:  team.Captain.RealName,
+		}
+	}
+	return response
 }

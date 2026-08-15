@@ -34,7 +34,7 @@ function handlePublishIndividual() {
       </view>
 
       <view class="publish-menu-action publish-menu-action-right" @tap="handlePublishIndividual">
-        <view class="publish-menu-action-button publish-menu-action-button-light">
+        <view class="publish-menu-action-button">
           <text class="publish-menu-action-icon">人</text>
         </view>
         <text class="publish-menu-action-label">散人约队</text>
@@ -65,8 +65,7 @@ function handlePublishIndividual() {
 .publish-menu-backdrop {
   position: absolute;
   inset: 0;
-  background: rgba(17, 24, 39, 0.42);
-  backdrop-filter: blur(12rpx);
+  background: var(--neo-color-overlay);
 }
 
 .publish-menu-actions {
@@ -85,7 +84,7 @@ function handlePublishIndividual() {
   align-items: center;
   gap: 18rpx;
   width: 190rpx;
-  color: #ffffff;
+  color: var(--neo-color-text-inverse);
   font-size: 25rpx;
   font-weight: 900;
   text-align: center;
@@ -112,34 +111,35 @@ function handlePublishIndividual() {
   transition-delay: 90ms;
 }
 
-.publish-menu-action-button,
 .publish-menu-close {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 999rpx;
-  box-shadow: 0 16rpx 38rpx rgba(0, 0, 0, 0.26);
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-round);
 }
 
+/* 与 BottomTabBar 创建菜单按钮保持一致：深色面板 + 柔和 modal 阴影，不用硬偏移重叠阴影。 */
 .publish-menu-action-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 116rpx;
   height: 116rpx;
-  background: rgba(82, 83, 82, 0.96);
-}
-
-.publish-menu-action-button-light {
-  background: rgba(64, 66, 62, 0.96);
+  border-radius: var(--neo-radius-round);
+  background: var(--neo-color-overlay-panel);
+  box-shadow: var(--neo-shadow-modal);
 }
 
 .publish-menu-action-icon {
-  color: #c8ff00;
+  color: var(--neo-color-accent);
   font-size: 38rpx;
   font-weight: 900;
 }
 
 .publish-menu-action-label {
   line-height: 1.25;
-  text-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.45);
+  text-shadow: 0 4rpx 12rpx rgba(17, 19, 16, 0.45);
 }
 
 .publish-menu-close {
@@ -149,8 +149,8 @@ function handlePublishIndividual() {
   width: 96rpx;
   height: 96rpx;
   margin-left: -48rpx;
-  background: #c8ff00;
-  color: #111111;
+  background: var(--neo-color-accent);
+  color: var(--neo-color-text);
   opacity: 0;
   transform: translateY(72rpx) rotate(-90deg) scale(0.84);
   transition: opacity 260ms ease, transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
@@ -168,4 +168,15 @@ function handlePublishIndividual() {
   font-weight: 900;
   line-height: 1;
 }
+
+/* #ifdef H5 */
+/* 宽屏 H5 下页面内容收敛为居中 750rpx 列，发布菜单跟随该列而不是贴住窗口边缘。 */
+.publish-menu-actions {
+  left: 50%;
+  right: auto;
+  width: 100%;
+  max-width: 750rpx;
+  transform: translateX(-50%);
+}
+/* #endif */
 </style>

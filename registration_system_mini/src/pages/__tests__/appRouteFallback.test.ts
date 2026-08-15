@@ -17,12 +17,12 @@ describe("app route fallback", () => {
     expect(source.includes("url: HOME_PAGE_PATH")).toEqual(true);
   });
 
-  test("restores only existing sessions during app launch", async () => {
+  test("silently bootstraps the session during app launch", async () => {
     const source = await Bun.file(sourcePath("App.vue")).text();
     const reviewStore = await Bun.file(sourcePath("stores/miniReview.ts")).text();
 
-    expect(source.includes("restoreSessionFromStorage")).toEqual(true);
-    expect(source.includes('import { restoreSessionFromStorage, useAppSession } from "@/stores/appSession";')).toEqual(true);
+    expect(source.includes("restoreSessionFromStorage")).toEqual(false);
+    expect(source.includes('import { ensureSessionReady, useAppSession } from "@/stores/appSession";')).toEqual(true);
     expect(source.includes('import { preloadMiniReviewStatus } from "@/stores/miniReview";')).toEqual(true);
     expect(source.includes("void preloadMiniReviewStatus();")).toEqual(true);
     expect(reviewStore.includes("const forceMiniReviewMode = String(import.meta.env.VITE_FORCE_MINI_REVIEW_MODE || \"\").trim().toLowerCase() === \"true\";")).toEqual(true);
@@ -37,7 +37,7 @@ describe("app route fallback", () => {
     expect(reviewStore.includes("const shouldHideCreationEntrances = computed(")).toEqual(true);
     expect(reviewStore.includes("!reviewStatusReady.value || !reviewStatusAvailable.value || reviewMode.value")).toEqual(true);
     expect(reviewStore.includes("reviewMode.value = false;")).toEqual(true);
-    expect(source.includes("ensureSessionReady")).toEqual(false);
+    expect(source.includes("ensureSessionReady")).toEqual(true);
     expect(source.includes("syncUnreadCount")).toEqual(false);
   });
 });

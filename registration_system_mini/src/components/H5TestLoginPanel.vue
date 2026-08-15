@@ -56,7 +56,7 @@ onMounted(() => {
 <template>
   <NeoSurface v-if="shouldShow" variant="dark" custom-class="h5-test-login-panel">
     <view class="h5-test-login-panel__eyebrow">H5 DEV LOGIN</view>
-    <text class="h5-test-login-panel__title">选择 Go 测试用户</text>
+    <text class="h5-test-login-panel__title">选择测试用户</text>
     <text class="h5-test-login-panel__copy">使用后端测试登录接口签发真实 JWT。</text>
 
     <view v-if="isLoading" class="h5-test-login-panel__state">加载用户列表...</view>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onHide, onLaunch, onPageNotFound, onShow } from "@dcloudio/uni-app";
-import { restoreSessionFromStorage, useAppSession } from "@/stores/appSession";
+import { ensureSessionReady, useAppSession } from "@/stores/appSession";
 import { preloadMiniReviewStatus } from "@/stores/miniReview";
 import { isProfileSetupPage, needsProfileCompletion, PROFILE_SETUP_PAGE_PATH } from "@/utils/profileCompletion";
 
@@ -33,12 +33,12 @@ function maybeNavigateToProfileSetup() {
 onLaunch(() => {
   console.log("registration_system_mini launch");
   void preloadMiniReviewStatus();
-  restoreSessionFromStorage()
+  ensureSessionReady()
     .then(() => {
       maybeNavigateToProfileSetup();
     })
     .catch((error) => {
-      console.warn("session restore failed", error);
+      console.warn("session bootstrap failed", error);
     });
 });
 
@@ -65,8 +65,8 @@ onPageNotFound((options) => {
 
 page {
   min-height: 100%;
-  background: #f3f4f6;
-  color: #111827;
+  background: var(--neo-color-page);
+  color: var(--neo-color-text);
   font-family: "PingFang SC", "Helvetica Neue", sans-serif;
 }
 

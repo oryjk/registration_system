@@ -48,7 +48,7 @@ function buildOverview(matches: AppMatchSummary[], now: Date) {
 }
 
 describe("buildMineOverviewState", () => {
-  test("maps RFC3339 Go matches and wallet cents into the mine overview", () => {
+  test("maps RFC3339 matches and wallet cents into the mine overview", () => {
     const state = buildOverview(
       [
         baseMatch,
@@ -74,6 +74,7 @@ describe("buildMineOverviewState", () => {
           dateLabel: "08/12 20:00",
           venue: "驿马河二期",
           statusLabel: "报名中",
+          statusTone: "blue",
           actionLabel: "查看比赛",
         },
       ],
@@ -129,6 +130,7 @@ describe("buildMineOverviewState", () => {
         dateLabel: "08/11 20:00",
         venue: "驿马河二期",
         statusLabel: "报名中",
+        statusTone: "blue",
         actionLabel: "查看比赛",
       },
     ]);

@@ -18,6 +18,8 @@ page {
   --neo-primitive-skeleton-block: #dedad2;
   --neo-primitive-text-muted: #4d514b;
   --neo-primitive-text-disabled: #666a63;
+  --neo-primitive-surface-rgb: 255, 253, 248;
+  --neo-primitive-ink-rgb: 17, 19, 16;
 
   /* Semantic */
   --neo-color-page: var(--neo-primitive-canvas);
@@ -38,6 +40,10 @@ page {
   --neo-color-track: var(--neo-primitive-track);
   --neo-color-skeleton-surface: var(--neo-primitive-skeleton-surface);
   --neo-color-skeleton-block: var(--neo-primitive-skeleton-block);
+  --neo-color-surface-translucent: rgba(var(--neo-primitive-surface-rgb), 0.92);
+  --neo-color-surface-fade: rgba(var(--neo-primitive-surface-rgb), 0);
+  --neo-color-overlay: rgba(var(--neo-primitive-ink-rgb), 0.46);
+  --neo-color-overlay-panel: rgba(var(--neo-primitive-ink-rgb), 0.92);
   --neo-border-default: 2rpx solid var(--neo-color-text);
   --neo-border-strong: 3rpx solid var(--neo-color-text);
   --neo-radius-xs: 3rpx;
@@ -46,6 +52,8 @@ page {
   --neo-radius-round: 999rpx;
   --neo-shadow-raised: 8rpx 8rpx 0 var(--neo-color-text);
   --neo-shadow-pressed: 4rpx 4rpx 0 var(--neo-color-text);
+  --neo-shadow-soft: 0 10rpx 24rpx rgba(var(--neo-primitive-ink-rgb), 0.1);
+  --neo-shadow-modal: 0 28rpx 64rpx rgba(var(--neo-primitive-ink-rgb), 0.2);
   --neo-motion-press-offset: 4rpx;
   --neo-motion-fast: 120ms ease;
 
@@ -103,6 +111,11 @@ page {
   --neo-action-bar-radius: var(--neo-radius-md);
   --neo-action-bar-bg: var(--neo-color-surface);
   --neo-action-bar-shadow: 8rpx 8rpx 0 var(--neo-color-text);
+  /* 页面为悬浮操作栏预留的底部留白：栏体（bottom + padding×2 + 按钮高）+ 与内容间距 28rpx，兼容全面屏安全区。 */
+  --neo-action-bar-clearance: calc(
+    env(safe-area-inset-bottom) + var(--neo-action-bar-bottom) + var(--neo-action-bar-padding) * 2 +
+    var(--neo-button-height-md) + 28rpx
+  );
 
   --neo-date-bg: var(--neo-color-text);
   --neo-date-fg: var(--neo-color-text-inverse);
@@ -110,6 +123,10 @@ page {
   --neo-date-time-fg: var(--neo-color-text);
   --neo-date-width: 156rpx;
   --neo-date-radius: var(--neo-radius-xs);
+
+  /* 卡片列表：NeoSurface 风格卡片在列表容器内的统一间距。 */
+  --neo-card-list-gap: 20rpx;
+  --neo-card-list-offset: 24rpx;
 
   --app-primary: var(--neo-color-accent);
   --app-primary-text: var(--neo-color-text);

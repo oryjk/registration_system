@@ -15,7 +15,7 @@ export interface MatchPublishFormModel {
   color: string;
   opposingColor: string;
   publicationMode: AppMatchPublicationMode;
-  legacyMatchKind?: "external" | "internal";
+  activityMatchKind?: "external" | "internal";
   feePerPerson?: string | number;
   enableCheckIn?: boolean;
   checkInRadiusMeters?: string | number;

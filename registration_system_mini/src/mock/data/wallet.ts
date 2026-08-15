@@ -1,6 +1,6 @@
 import type { AppWalletAccount } from "@/types/wallet";
 
-/** 我的页面钱包卡片使用的 Go 钱包账户 mock */
+/** 我的页面钱包卡片使用的 钱包账户 mock */
 export const mockWalletAccount: AppWalletAccount = {
   user_id: 37,
   balance_cents: 12800,

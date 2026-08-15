@@ -1,4 +1,5 @@
 import type { AppMatchUiPhase } from "@/types/match";
+import type { NeoTagTone } from "@/types/designSystem";
 
 export interface TeamProfileViewModel {
   id: number;
@@ -34,12 +35,19 @@ export interface HomeMatchCardViewModel {
   title: string;
   dateLabel: string;
   dateSource?: string;
+  dateBlock: {
+    monthDay: string;
+    weekday: string;
+    timeLabel: string;
+  };
   phase: Exclude<AppMatchUiPhase, "excluded">;
   dateNote: string;
   showRegistrationProgress: boolean;
   showParticipantAvatars: boolean;
   canOpenDetail: boolean;
   stage: string;
+  stageTone: NeoTagTone;
+  statusTone: NeoTagTone;
   publicationModeLabel: string;
   signupScopeLabel: string;
   signupScope: "external" | "internal";

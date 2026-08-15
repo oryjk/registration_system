@@ -8,6 +8,7 @@ import type {
   BackendUser,
 } from "@/types/backend";
 import { submitMatchSettlement } from "./detailActions";
+import type { NeoConfirmDialogOptions } from "@/components/neo";
 import {
   buildRegisteredAttendeeCharges,
   buildSettlementParticipants,
@@ -23,7 +24,7 @@ interface MatchSettlementDependencies {
   canManageCurrentMatch: ComputedRef<boolean>;
   isEndedMatch: ComputedRef<boolean>;
   submittingStatus: Ref<boolean>;
-  confirmRegistrationAction: (options: { title: string; content: string; confirmText?: string }) => Promise<boolean>;
+  confirmRegistrationAction: (options: NeoConfirmDialogOptions) => Promise<boolean>;
 }
 
 export function useMatchSettlement(dependencies: MatchSettlementDependencies) {

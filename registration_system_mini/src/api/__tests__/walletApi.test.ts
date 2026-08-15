@@ -11,7 +11,7 @@ mock.module("@/utils/request", () => ({ requestApi }));
 
 const walletModule = await import("../wallet").catch(() => ({}));
 
-test("loads the authenticated Go wallet account", async () => {
+test("loads the authenticated wallet account", async () => {
   const getWallet = (walletModule as { getWallet?: () => Promise<unknown> }).getWallet;
   expect(typeof getWallet).toEqual("function");
 

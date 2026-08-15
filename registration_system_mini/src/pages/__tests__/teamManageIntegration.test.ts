@@ -76,7 +76,7 @@ describe("team manage real backend integration", () => {
 
   test("team management entry points open the real team manage page", async () => {
     const bottomTabBar = await Bun.file(sourcePath("components/BottomTabBar.vue")).text();
-    const minePage = await Bun.file(sourcePath("pages/user/index.vue")).text();
+    const minePage = await Bun.file(sourcePath("pages/user/useMinePage.ts")).text();
 
     expect(bottomTabBar.includes('url: "/pages/teams/manage/index"')).toEqual(true);
     expect(minePage.includes('url: "/pages/teams/manage/index"')).toEqual(true);
@@ -125,7 +125,7 @@ describe("team manage real backend integration", () => {
   });
 
   test("mine page exposes managed teams as cards that open team manage page", async () => {
-    const minePage = await Bun.file(sourcePath("pages/user/index.vue")).text();
+    const minePage = await Bun.file(sourcePath("pages/user/useMinePage.ts")).text();
     const identityPanel = await Bun.file(sourcePath("pages/user/components/MineTeamIdentityPanel.vue")).text();
 
     expect(identityPanel.includes("mine-manage-list")).toEqual(true);

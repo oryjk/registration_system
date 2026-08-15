@@ -5,7 +5,7 @@ import {
 } from "../matchPublicationMode";
 
 describe("match publication mode presentation", () => {
-  test("maps all Go modes and falls back for future read-only values", () => {
+  test("maps all publication modes and falls back for future read-only values", () => {
     expect(getMatchPublicationModeLabel("offline_confirmed")).toEqual("线下已约");
     expect(getMatchPublicationModeLabel("online_team")).toEqual("线上约队");
     expect(getMatchPublicationModeLabel("online_individual")).toEqual("散人对手");

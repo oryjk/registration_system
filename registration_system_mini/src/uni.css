@@ -15,12 +15,6 @@ button::after {
   border: none;
 }
 
-:root,
-page {
-  --app-primary: #c8ff00;
-  --app-primary-text: #111310;
-}
-
 .wd-segmented.app-segment,
 .wd-segmented.scope-segment {
   padding: 8rpx;

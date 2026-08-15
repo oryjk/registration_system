@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
   buildHomeMatchSections,
   resolveMatchPhase,
-  toGoHomeMatchCard,
+  toHomeMatchCard,
 } from "../homeMatchState";
 import { formatHomeMatchDateBlock } from "../homeMatchDate";
 import type { AppHomeActionMatch, AppHomeEndedMatch, AppMatchSummary } from "@/types/match";
@@ -156,9 +156,9 @@ describe("buildHomeMatchSections", () => {
   });
 });
 
-describe("toGoHomeMatchCard", () => {
+describe("toHomeMatchCard", () => {
   test("maps visible phases to phase-aware labels and flags", () => {
-    const card = toGoHomeMatchCard(
+    const card = toHomeMatchCard(
       {
         id: "upcoming-card",
         status: "registering",
@@ -186,6 +186,9 @@ describe("toGoHomeMatchCard", () => {
     expect(card.id).toEqual("upcoming-card");
     expect(card.phase).toEqual("upcoming");
     expect(card.stage).toEqual("报名中");
+    expect(card.stageTone).toEqual("lime");
+    expect(card.statusTone).toEqual("blue");
+    expect(card.dateBlock).toEqual(formatHomeMatchDateBlock(card));
     expect(card.publicationModeLabel).toEqual("线上约队");
     expect(card.dateNote).toEqual("截止报名");
     expect(card.actionLabel).toEqual("去报名");
@@ -219,12 +222,14 @@ describe("toGoHomeMatchCard", () => {
       updated_at: "2026-08-08T12:05:00.000Z",
     } satisfies AppMatchSummary;
 
-    const card = toGoHomeMatchCard(summary, "upcoming");
+    const card = toHomeMatchCard(summary, "upcoming");
 
     expect(card.id).toEqual("summary-1");
     expect(card.title).toEqual("列表比赛");
     expect(card.phase).toEqual("upcoming");
     expect(card.stage).toEqual("报名中");
+    expect(card.stageTone).toEqual("lime");
+    expect(card.statusTone).toEqual("blue");
     expect(card.dateNote).toEqual("截止报名");
     expect(card.signupScope).toEqual("external");
     expect(card.signupScopeLabel).toEqual("散人报名");
@@ -235,5 +240,25 @@ describe("toGoHomeMatchCard", () => {
     expect(card.showParticipantAvatars).toEqual(false);
     expect(card.canRegister).toEqual(true);
     expect(card.canOpenDetail).toEqual(true);
+  });
+
+  test("keeps the avatar row on ended home matches so empty ones render the placeholder", () => {
+    const emptyEnded = toHomeMatchCard(buildEndedMatch({ id: "ended-empty" }), "ended");
+    expect(emptyEnded.showParticipantAvatars).toEqual(true);
+    expect(emptyEnded.participantAvatars).toEqual([]);
+
+    const withParticipants = toHomeMatchCard(
+      buildEndedMatch({
+        id: "ended-filled",
+        participants: [
+          { user_id: 7, nickname: "阿洪", avatar_url: null, status: "attending" },
+        ],
+      }),
+      "ended",
+    );
+    expect(withParticipants.participantAvatars.length).toEqual(1);
+    expect(withParticipants.participantAvatars[0].userId).toEqual(7);
+    expect(withParticipants.participantAvatars[0].avatarUrl).toEqual("");
+    expect(withParticipants.participantAvatars[0].displayText).toEqual("阿");
   });
 });

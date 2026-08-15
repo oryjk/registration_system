@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed } from "vue";
+import type { NeoTagTone } from "@/types/designSystem";
 
-export type NeoTagTone = "lime" | "green" | "amber" | "red" | "blue" | "dark" | "muted";
+export type { NeoTagTone } from "@/types/designSystem";
 export type NeoTagSize = "sm" | "md" | "lg";
 
 const props = withDefaults(defineProps<{

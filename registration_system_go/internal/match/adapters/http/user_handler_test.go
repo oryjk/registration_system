@@ -128,12 +128,51 @@ func TestUserMatchListParsesScopeAndRejectsInvalidValue(t *testing.T) {
 	}
 }
 
+func TestUserMatchListParsesPublicationModesAndDate(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	service := &fakeUserMatches{list: application.UserMatchListResult{Page: 1, PageSize: 20}}
+	handler := NewUserHandler(service, nil)
+	router := gin.New()
+	group := router.Group("")
+	group.Use(authhttp.NewMiddleware(fakeUserTokens{}).RequireUser())
+	handler.RegisterRoutes(group)
+
+	request := httptest.NewRequest(http.MethodGet, "/matches?publication_modes=online_team,online_individual&date_start=2026-08-15T16:00:00Z", nil)
+	request.Header.Set("Authorization", "Bearer user-token")
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+	if response.Code != http.StatusOK ||
+		len(service.query.PublicationModes) != 2 ||
+		service.query.PublicationModes[0] != domain.OnlineTeam ||
+		service.query.PublicationModes[1] != domain.OnlineIndividual ||
+		service.query.DateStart == nil ||
+		!service.query.DateStart.Equal(time.Date(2026, 8, 15, 16, 0, 0, 0, time.UTC)) {
+		t.Fatalf("publication filters not parsed: status=%d query=%+v body=%s", response.Code, service.query, response.Body.String())
+	}
+
+	// publication_modes 的枚举合法性由 service 层校验（见 user_query_service_test）。
+	for _, invalid := range []string{
+		"/matches?date_start=2026-08-15",
+		"/matches?date_start=not-a-time",
+	} {
+		request = httptest.NewRequest(http.MethodGet, invalid, nil)
+		request.Header.Set("Authorization", "Bearer user-token")
+		response = httptest.NewRecorder()
+		router.ServeHTTP(response, request)
+		if response.Code != http.StatusUnprocessableEntity {
+			t.Fatalf("invalid query %s status=%d body=%s", invalid, response.Code, response.Body.String())
+		}
+	}
+}
+
 func TestUserMatchHomeReturnsUserScopedSummary(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	matchID := uuid.New()
 	groupID := uuid.New()
 	maxPlayers := 8
 	opponentName := "客家人"
+	avatarURL := "https://cdn.example.com/home-player-37.png"
+	endedAvatarURL := "https://cdn.example.com/ended-player-58.png"
 	service := &fakeUserMatches{home: application.UserMatchHomeResult{
 		ActionItems: []ports.HomeMatchItem{{
 			Item: ports.MatchItem{
@@ -152,11 +191,17 @@ func TestUserMatchHomeReturnsUserScopedSummary(t *testing.T) {
 				MyRegistration: &domain.Registration{
 					ID: uuid.New(), GroupID: groupID, UserID: 42, Status: domain.RegistrationAttending, RegistrationCount: 1,
 				},
+				Participants: []ports.UserParticipant{{
+					UserID: 37, Nickname: "阿睿", AvatarURL: &avatarURL, Status: domain.RegistrationAttending,
+				}},
 			},
 		}},
 		EndedItems: []ports.MatchItem{{
 			Match:        domain.Match{ID: uuid.New(), Name: "周一训练赛", PublicationMode: domain.OfflineConfirmed, Status: domain.MatchEnded, Location: "凤凰山体育公园"},
 			HostTeamName: "城北联队",
+			Participants: []ports.UserParticipant{{
+				UserID: 58, Nickname: "老周", AvatarURL: &endedAvatarURL, Status: domain.RegistrationAttending,
+			}},
 		}},
 		EndedHasMore: true,
 	}}
@@ -180,6 +225,10 @@ func TestUserMatchHomeReturnsUserScopedSummary(t *testing.T) {
 		`"name":"周六晚场友谊赛"`, `"opponent_name":"客家人"`,
 		`"publication_mode":"online_team"`, `"publication_mode":"offline_confirmed"`,
 		`"attending_count":6`, `"my_registration_status":"attending"`,
+		`"participants":[`, `"user_id":37`, `"nickname":"阿睿"`,
+		`"avatar_url":"https://cdn.example.com/home-player-37.png"`, `"status":"attending"`,
+		`"user_id":58`, `"nickname":"老周"`,
+		`"avatar_url":"https://cdn.example.com/ended-player-58.png"`,
 	} {
 		if !bytes.Contains(body, []byte(expected)) {
 			t.Fatalf("home response missing %s: %s", expected, response.Body.String())

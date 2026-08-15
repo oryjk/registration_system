@@ -25,7 +25,7 @@ const baseMatch: AppMatchSummary = {
   updated_at: "2026-01-01T10:00:00+08:00",
 };
 
-test("loads every Go my-match page when total exceeds the 100-row API limit", async () => {
+test("loads every my-match page when total exceeds the 100-row API limit", async () => {
   const loadAllMyMatches = (
     dataModule as {
       loadAllMyMatches?: (

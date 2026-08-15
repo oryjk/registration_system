@@ -14,9 +14,11 @@ export interface PublicMatchDetailData {
   activityPageItems: BackendActivity[];
   sourceTeamRegistrationCount: number;
   myRegistration: AppMatchRegistration | null;
-  fromGo: boolean;
-  goRegistrationGroupId: string;
+  fromMatchApi: boolean;
+  registrationGroupId: string;
   publicationModeLabel: string;
+  /** 新比赛接口的原始比赛对象（legacy 活动为 null）；接约申请管理等需要 publication_mode / opponent_state 的功能用它判定。 */
+  sourceMatch: AppMatchSummary | null;
 }
 
 export interface AuthenticatedMatchDetailContext {
@@ -28,7 +30,7 @@ export interface AuthenticatedMatchDetailContext {
   checkInConfig: BackendActivity["team_checkin_configs"][number] | null;
 }
 
-export const GO_MATCH_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+export const MATCH_API_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export interface MatchDetailDataLoaders {
   getActivity: typeof getActivity;
@@ -51,7 +53,7 @@ const defaultMatchDetailDataLoaders: MatchDetailDataLoaders = {
   listUsers,
 };
 
-function toLegacyActivityStatus(status: AppMatchSummary["status"]): number {
+function toActivityStatusCode(status: AppMatchSummary["status"]): number {
   switch (status) {
     case "ongoing":
       return 1;
@@ -71,7 +73,7 @@ export function toBackendActivity(match: AppMatchSummary, group?: AppMatchGroupD
     location: match.location,
     location_latitude: match.location_latitude,
     location_longitude: match.location_longitude,
-    status: toLegacyActivityStatus(match.status),
+    status: toActivityStatusCode(match.status),
     holding_date: match.start_time,
     start_time: match.start_time,
     end_time: match.end_time,
@@ -91,7 +93,7 @@ export function toBackendActivity(match: AppMatchSummary, group?: AppMatchGroupD
   };
 }
 
-export function toLegacyRegistrationStand(status: AppMatchRegistration["status"] | null | undefined): number {
+export function toRegistrationStandCode(status: AppMatchRegistration["status"] | null | undefined): number {
   switch (status) {
     case "attending":
       return 1;
@@ -111,7 +113,7 @@ export function toBackendRegistration(
 ): BackendRegistration {
   return {
     user_id: currentUserId,
-    stand: toLegacyRegistrationStand(registration.status),
+    stand: toRegistrationStandCode(registration.status),
     registration_count: registration.registration_count,
     paid: 0,
     operation_time: operationTime,
@@ -132,31 +134,31 @@ function toBackendParticipantUser(participant: AppMatchParticipant): BackendUser
   };
 }
 
-export function buildGoPublicMatchDetailData(
-  goDetail: AppMatchDetailResponse,
+export function buildPublicMatchApiDetailData(
+  matchDetail: AppMatchDetailResponse,
   currentUserId?: number,
   selection: MatchDetailGroupSelection = {},
 ): PublicMatchDetailData {
   const group =
-    goDetail.groups.find((item) => item.my_registration) ??
-    goDetail.groups.find((item) => item.id === selection.preferredGroupId) ??
+    matchDetail.groups.find((item) => item.my_registration) ??
+    matchDetail.groups.find((item) => item.id === selection.preferredGroupId) ??
     (selection.currentTeamId != null
-      ? goDetail.groups.find((item) => item.team_id === selection.currentTeamId)
+      ? matchDetail.groups.find((item) => item.team_id === selection.currentTeamId)
       : undefined) ??
-    goDetail.groups.find((item) => item.kind === "individual_opponent" && item.status === "open") ??
-    goDetail.groups.find((item) => item.status === "open") ??
-    goDetail.groups[0];
-  const activity = toBackendActivity(goDetail.match, group);
+    matchDetail.groups.find((item) => item.kind === "individual_opponent" && item.status === "open") ??
+    matchDetail.groups.find((item) => item.status === "open") ??
+    matchDetail.groups[0];
+  const activity = toBackendActivity(matchDetail.match, group);
   const myRegistration = group?.my_registration ?? null;
   const participants = group?.participants ?? [];
   const attendingParticipants = participants.filter((participant) => participant.status === "attending");
   const activityUsers = attendingParticipants.map((participant) => toBackendRegistration(
     { status: "attending", registration_count: 1 },
     participant.user_id,
-    goDetail.match.updated_at,
+    matchDetail.match.updated_at,
   ));
   if (myRegistration && currentUserId && !activityUsers.some((item) => item.user_id === currentUserId)) {
-    activityUsers.push(toBackendRegistration(myRegistration, currentUserId, goDetail.match.updated_at));
+    activityUsers.push(toBackendRegistration(myRegistration, currentUserId, matchDetail.match.updated_at));
   }
 
   return {
@@ -168,9 +170,10 @@ export function buildGoPublicMatchDetailData(
     ])),
     activityPageItems: [activity],
     myRegistration,
-    fromGo: true,
-    goRegistrationGroupId: group?.id ?? "",
-    publicationModeLabel: getMatchPublicationModeLabel(goDetail.match.publication_mode),
+    fromMatchApi: true,
+    registrationGroupId: group?.id ?? "",
+    publicationModeLabel: getMatchPublicationModeLabel(matchDetail.match.publication_mode),
+    sourceMatch: matchDetail.match,
     sourceTeamRegistrationCount: Math.max(
       Number(activity.team_registration_count ?? 0) - activityUsers.filter((item) => item.stand === 1).length,
       0,
@@ -184,8 +187,8 @@ export async function loadPublicMatchDetailData(
   selection: MatchDetailGroupSelection = {},
   loaders: MatchDetailDataLoaders = defaultMatchDetailDataLoaders,
 ): Promise<PublicMatchDetailData> {
-  if (GO_MATCH_ID_PATTERN.test(matchId)) {
-    return buildGoPublicMatchDetailData(await loaders.getMatchDetail(matchId), currentUserId, selection);
+  if (MATCH_API_ID_PATTERN.test(matchId)) {
+    return buildPublicMatchApiDetailData(await loaders.getMatchDetail(matchId), currentUserId, selection);
   }
 
   const activity = await loaders.getActivity(matchId);
@@ -201,9 +204,10 @@ export async function loadPublicMatchDetailData(
     usersById: Object.fromEntries(users.map((item) => [item.id, item])),
     activityPageItems,
     myRegistration: null,
-    fromGo: false,
-    goRegistrationGroupId: "",
+    fromMatchApi: false,
+    registrationGroupId: "",
     publicationModeLabel: activity.match_kind === "internal" ? "队内内战" : "线下已约",
+    sourceMatch: null,
     sourceTeamRegistrationCount: activity.source_activity_id
       ? 0
       : activityPageItems
@@ -236,7 +240,7 @@ export async function loadAuthenticatedMatchDetailContext(params: {
     derivedActivity,
     initialRegistrationCount: derivedActivity?.team_registration_count ?? activity.team_registration_count ?? activity.players_per_team ?? 5,
     currentUserStand: myRegistration
-      ? toLegacyRegistrationStand(myRegistration.status)
+      ? toRegistrationStandCode(myRegistration.status)
       : activityUsers.find((item) => item.user_id === currentUserId)?.stand ?? 0,
     currentTeamMembers,
     checkInConfig: activity.source_activity_id

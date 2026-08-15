@@ -25,7 +25,7 @@ const baseMatch: AppMatchSummary = {
 };
 
 describe("buildUserMatchCards", () => {
-  test("maps Go match summaries and separates active from ended matches by resolved phase", () => {
+  test("maps match summaries and separates active from ended matches by resolved phase", () => {
     const matches: AppMatchSummary[] = [
       baseMatch,
       {

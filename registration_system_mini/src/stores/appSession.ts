@@ -1,11 +1,11 @@
 import { computed, ref } from "vue";
 import { listTestLoginUsers, testLogin, wechatLogin } from "@/api/auth";
 import { getMyTeams, getTeamDetail } from "@/api/team";
-import { getCurrentUser, toLegacyUser } from "@/api/user";
+import { getCurrentUser, toBackendUser } from "@/api/user";
 import { isMockEnabled } from "@/mock";
 import type { BackendTeam, BackendTeamDetail, BackendUser } from "@/types/backend";
 import type { TeamProfileViewModel } from "@/types/viewModels";
-import { resolveSessionBootstrapMode, resolveStoredSessionStrategy } from "@/stores/bootstrapStrategy";
+import { resolveSessionBootstrapMode } from "@/stores/bootstrapStrategy";
 import { buildAvailableIdentities, findCurrentIdentity, resolveCurrentIdentitySelection } from "@/stores/currentIdentity";
 import {
   clearCurrentIdentitySelection,
@@ -162,7 +162,7 @@ async function loginAndBootstrap(sessionBootstrapVersion: number) {
 
   setAccessToken(loginResult.token);
   assertSessionVersion(sessionBootstrapVersion);
-  currentUser.value = toLegacyUser(loginResult.user);
+  currentUser.value = toBackendUser(loginResult.user);
   await loadTeamContext();
   assertSessionVersion(sessionBootstrapVersion);
 }
@@ -217,6 +217,15 @@ export async function ensureSessionReady(force = false) {
         }
       }
 
+      // #ifdef H5
+      // H5 没有微信 OAuth 通道，uni.login 会失败甚至在部分环境不回调，
+      // 导致 bootstrapPromise 挂起、所有 await ensureSessionReady() 的页面卡死。
+      // 无 token 时直接失败并保持游客态，由 H5 测试登录面板显式登录。
+      if (!getAccessToken()) {
+        throw new Error("H5 环境不支持微信静默登录，请使用测试登录");
+      }
+      // #endif
+
       await loginAndBootstrap(sessionBootstrapVersion);
     } catch (error) {
       resetSessionState();
@@ -239,7 +248,7 @@ export async function refreshSessionContext() {
       ? result.default_user_id
       : result.items[0]?.id;
     if (!defaultUserId) {
-      throw new Error("Go 后端没有可用的 H5 测试用户");
+      throw new Error("服务端没有可用的 H5 测试用户");
     }
     await loginWithTestUser(defaultUserId);
     return;
@@ -259,7 +268,7 @@ export async function loginWithTestUser(userId: number) {
     const loginResult = await testLogin(userId);
     assertSessionVersion(loginVersion);
     setAccessToken(loginResult.token);
-    currentUser.value = toLegacyUser(loginResult.user);
+    currentUser.value = toBackendUser(loginResult.user);
     await loadTeamContext();
     assertSessionVersion(loginVersion);
   } catch (error) {
@@ -269,49 +278,6 @@ export async function loginWithTestUser(userId: number) {
   } finally {
     isBootstrapping.value = false;
   }
-}
-
-export async function restoreSessionFromStorage() {
-  if (bootstrapPromise) {
-    return bootstrapPromise;
-  }
-
-  // Mock 模式：跳过微信登录，直接建立 mock 会话
-  if (isMockEnabled()) {
-    bootstrapPromise = bootstrapMockSession().finally(() => {
-      bootstrapPromise = null;
-    });
-    return bootstrapPromise;
-  }
-
-  const strategy = resolveStoredSessionStrategy({
-    hasAccessToken: !!getAccessToken(),
-    isManuallyLoggedOut: hasManualLogout(),
-  });
-
-  if (strategy === "guest") {
-    if (hasManualLogout()) {
-      clearLocalSessionStorage();
-    }
-    resetSessionState();
-    return;
-  }
-
-  bootstrapPromise = (async () => {
-    try {
-      await bootstrapFromExistingToken();
-    } catch (error) {
-      if (!isUnauthorizedError(error)) {
-        throw error;
-      }
-      clearAccessToken();
-      resetSessionState();
-    } finally {
-      bootstrapPromise = null;
-    }
-  })();
-
-  return bootstrapPromise;
 }
 
 export function clearSession() {
@@ -368,6 +334,5 @@ export function useAppSession() {
     ensureSessionReady,
     refreshSessionContext,
     loginWithTestUser,
-    restoreSessionFromStorage,
   };
 }

@@ -73,6 +73,13 @@
       }
     },
     {
+      "path": "pages/matches/apply-team/index",
+      "style": {
+        "navigationBarTitleText": "接约确认",
+        "navigationStyle": "custom"
+      }
+    },
+    {
       "path": "pages/challenges/detail",
       "style": {
         "navigationBarTitleText": "约队详情",

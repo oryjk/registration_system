@@ -15,14 +15,15 @@ const props = withDefaults(defineProps<{
   showMeta: true,
 });
 
-const safeMax = computed(() => Math.max(Number.isFinite(props.max) ? props.max : 0, 1));
+// value 超过 max（报名超额且未配置容量上限）时，刻度扩展到 value，
+// 保证阈值分割线可见、超出部分以 extra 段呈现，与各卡片用法风格一致。
+const rawValue = computed(() => Math.max(Number.isFinite(props.value) ? props.value : 0, 0));
+const safeMax = computed(() => Math.max(Number.isFinite(props.max) ? props.max : 0, rawValue.value, 1));
 const safeTarget = computed(() => {
   const target = props.target ?? safeMax.value;
   return Math.min(Math.max(Number.isFinite(target) ? target : safeMax.value, 0), safeMax.value);
 });
-const safeValue = computed(() => (
-  Math.min(Math.max(Number.isFinite(props.value) ? props.value : 0, 0), safeMax.value)
-));
+const safeValue = computed(() => Math.min(rawValue.value, safeMax.value));
 const baseWidth = computed(() => `${(Math.min(safeValue.value, safeTarget.value) / safeMax.value) * 100}%`);
 const extraWidth = computed(() => `${(Math.max(safeValue.value - safeTarget.value, 0) / safeMax.value) * 100}%`);
 const splitLeft = computed(() => `${(safeTarget.value / safeMax.value) * 100}%`);

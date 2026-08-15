@@ -17,7 +17,7 @@ interface MatchCheckInReviewDependencies {
   currentUser: Ref<BackendUser | null>;
   currentTeam: ComputedRef<TeamProfileViewModel | null>;
   opponentTeam: ComputedRef<BackendTeam | null>;
-  isGoMatchDetail: Ref<boolean>;
+  isMatchApiDetail: Ref<boolean>;
   isEndedMatch: ComputedRef<boolean>;
   submittingStatus: Ref<boolean>;
   ensureCurrentLocation: () => Promise<{ latitude: number; longitude: number } | null>;
@@ -30,7 +30,7 @@ export function useMatchCheckInReview(dependencies: MatchCheckInReviewDependenci
     currentUser,
     currentTeam,
     opponentTeam,
-    isGoMatchDetail,
+    isMatchApiDetail,
     isEndedMatch,
     submittingStatus,
     ensureCurrentLocation,
@@ -56,10 +56,10 @@ export function useMatchCheckInReview(dependencies: MatchCheckInReviewDependenci
     return !!registrations.value.find((item) => item.user_id === userId && item.checked_in_at);
   });
   const canShowCheckIn = computed(
-    () => !isGoMatchDetail.value && !isDerivedTeamSignupActivity.value && !!currentTeamCheckInConfig.value?.enabled && !!currentTeam.value,
+    () => !isMatchApiDetail.value && !isDerivedTeamSignupActivity.value && !!currentTeamCheckInConfig.value?.enabled && !!currentTeam.value,
   );
   const canManageCurrentMatch = computed(
-    () => !isGoMatchDetail.value && !isDerivedTeamSignupActivity.value && !!currentTeam.value?.canManageTeam,
+    () => !isMatchApiDetail.value && !isDerivedTeamSignupActivity.value && !!currentTeam.value?.canManageTeam,
   );
   const canSubmitActivityReview = computed(
     () => !!currentTeam.value && !!opponentTeam.value && isEndedMatch.value && canManageCurrentMatch.value && !reviewSubmitted.value,
