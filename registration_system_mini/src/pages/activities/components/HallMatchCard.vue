@@ -54,8 +54,9 @@ export default { options: { virtualHost: true } };
       </template>
 
       <view class="hall-match-bottom">
-        <view v-if="card.hostJoinedLabel && card.progressBars.length === 1" class="hall-match-team-tags">
-          <NeoTag tone="dark" size="lg">{{ card.hostJoinedLabel }}</NeoTag>
+        <view v-if="card.hostJoinedLabel || card.guestJoinedLabel" class="hall-match-team-tags">
+          <NeoTag v-if="card.hostJoinedLabel" tone="dark" size="lg">{{ card.hostJoinedLabel }}</NeoTag>
+          <NeoTag v-if="card.guestJoinedLabel" tone="dark" size="lg">{{ card.guestJoinedLabel }}</NeoTag>
         </view>
         <view v-else class="hall-match-bottom-spacer" />
         <NeoButton class="hall-neo-match-button" :variant="card.actionKind === 'view' ? 'outline' : 'dark'" :stop-propagation="false">
