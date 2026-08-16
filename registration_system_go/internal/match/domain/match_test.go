@@ -178,3 +178,46 @@ func withOpponent(input NewMatchInput, opponent string) NewMatchInput {
 func intPointer(value int) *int {
 	return &value
 }
+
+func TestFinishByHost(t *testing.T) {
+	ended := time.Date(2026, 7, 20, 20, 0, 0, 0, time.UTC)
+	afterEnd := ended.Add(time.Minute)
+	tests := []struct {
+		name    string
+		status  MatchStatus
+		next    MatchStatus
+		now     time.Time
+		want    MatchStatus
+		wantErr bool
+	}{
+		{name: "registering match ends after end time", status: MatchRegistering, next: MatchEnded, now: afterEnd, want: MatchEnded},
+		{name: "ongoing match ends after end time", status: MatchOngoing, next: MatchEnded, now: afterEnd, want: MatchEnded},
+		{name: "registering match cancelled after end time", status: MatchRegistering, next: MatchCancelled, now: afterEnd, want: MatchCancelled},
+		{name: "idempotent when already ended", status: MatchEnded, next: MatchEnded, now: afterEnd, want: MatchEnded},
+		{name: "idempotent when already cancelled", status: MatchCancelled, next: MatchCancelled, now: afterEnd, want: MatchCancelled},
+		{name: "rejects ended before end time", status: MatchOngoing, next: MatchEnded, now: ended.Add(-time.Minute), wantErr: true},
+		{name: "rejects at exact end time", status: MatchOngoing, next: MatchEnded, now: ended, wantErr: true},
+		{name: "rejects switching ended to cancelled", status: MatchEnded, next: MatchCancelled, now: afterEnd, wantErr: true},
+		{name: "rejects cancelled switching to ended", status: MatchCancelled, next: MatchEnded, now: afterEnd, wantErr: true},
+		{name: "rejects invalid target status", status: MatchOngoing, next: MatchRegistering, now: afterEnd, wantErr: true},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			match := Match{Status: test.status, EndTime: ended}
+			err := match.FinishByHost(test.next, test.now)
+			if test.wantErr {
+				if err == nil {
+					t.Fatalf("FinishByHost(%s) expected error", test.next)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("FinishByHost(%s): %v", test.next, err)
+			}
+			if match.Status != test.want {
+				t.Fatalf("status = %s, want %s", match.Status, test.want)
+			}
+		})
+	}
+}

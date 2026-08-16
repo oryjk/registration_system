@@ -263,6 +263,30 @@ paths:
                 $ref: "#/components/schemas/UserMatchDetailEnvelope"
         <<: *standardErrors
 
+  /api/v1/app/matches/{id}/status:
+    patch:
+      operationId: finishAppMatch
+      tags: [App Matches]
+      summary: 主队管理方收尾比赛（已结束/已取消）
+      description: 仅主队队长或领队可用，且比赛需已过结束时间；状态只允许 ended / cancelled。
+      security: *bearerSecurity
+      parameters:
+        - $ref: "#/components/parameters/MatchID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateMatchStatusRequest"
+      responses:
+        "200":
+          description: 收尾后的比赛详情
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserMatchDetailEnvelope"
+        <<: *standardErrors
+
   /api/v1/app/matches/{id}/groups/{group_id}/my-registration:
     put:
       operationId: putMyMatchRegistration

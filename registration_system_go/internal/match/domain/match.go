@@ -236,6 +236,27 @@ func (m *Match) UpdateDetails(input UpdateMatchDetails, now time.Time) error {
 	return nil
 }
 
+// FinishByHost 主队管理方在比赛过结束时间后收尾：标记正常结束或取消。
+// 与管理端通用的 ChangeStatus 不同，这里不依赖 ongoing 中间态——
+// 过期仍停留在 registering 的比赛允许直接收尾。
+func (m *Match) FinishByHost(next MatchStatus, now time.Time) error {
+	if next != MatchEnded && next != MatchCancelled {
+		return sharederror.New(sharederror.KindValidation, "收尾状态只能是已结束或已取消")
+	}
+	if m.Status == next {
+		return nil
+	}
+	if m.Status == MatchEnded || m.Status == MatchCancelled {
+		return sharederror.New(sharederror.KindConflict, "比赛已结束或已取消，不能再次变更")
+	}
+	if !now.After(m.EndTime) {
+		return sharederror.New(sharederror.KindConflict, "比赛尚未到结束时间，暂不能收尾")
+	}
+	m.Status = next
+	m.UpdatedAt = now
+	return nil
+}
+
 func (m *Match) ChangeStatus(next MatchStatus, now time.Time) error {
 	if m.Status == next {
 		return nil
