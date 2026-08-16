@@ -156,6 +156,10 @@ func (i Importer) RunWithOptions(ctx context.Context, options RunOptions) (Repor
 	if err := tx.Commit(ctx); err != nil {
 		return report, fmt.Errorf("commit import: %w", err)
 	}
+	// 用户按旧库 ID 显式插入，序列不会自动前进；导入后重置，避免应用侧新用户撞 ID。
+	if _, err := i.target.Exec(ctx, `SELECT setval(pg_get_serial_sequence('users','id'), COALESCE((SELECT max(id) FROM users), 1))`); err != nil {
+		return report, fmt.Errorf("reset users id sequence: %w", err)
+	}
 	return report, nil
 }
 
@@ -197,9 +201,11 @@ func reconcileUser(ctx context.Context, tx pgx.Tx, store mapping.Store, config m
 	}
 	createdAt, updatedAt := normalizedTimes(user.UpdatedAt, user.UpdatedAt)
 	if decision.Action == mapping.ActionCreate {
-		err = tx.QueryRow(ctx, `INSERT INTO users (openid,nickname,avatar_url,real_name,phone_number,status,created_at,updated_at)
-			VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
-			strings.TrimSpace(user.OpenID), strings.TrimSpace(user.Nickname), nullableText(user.AvatarURL),
+		// 保留旧库用户 ID：历史数据对外按 user id 关联（钱包、管理端习惯、口头引用），
+		// 自动分配新 ID 会破坏这些延续性；显式插入后由调用方重置序列。
+		err = tx.QueryRow(ctx, `INSERT INTO users (id,openid,nickname,avatar_url,real_name,phone_number,status,created_at,updated_at)
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id`,
+			user.SourceID, strings.TrimSpace(user.OpenID), strings.TrimSpace(user.Nickname), nullableText(user.AvatarURL),
 			nullableText(user.RealName), nullableText(user.PhoneNumber), mapUserStatus(user.Status), createdAt, updatedAt,
 		).Scan(&current.ID)
 	} else {
