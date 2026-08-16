@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { AppMatchSummary } from "@/types/match";
 import type { TeamProfileViewModel } from "@/types/viewModels";
-import { resolveHostFinishState } from "../useMatchFinish";
+import { resolveMatchFinishState } from "../useMatchFinish";
 
 function buildSourceMatch(overrides: Partial<AppMatchSummary> = {}): AppMatchSummary {
   return {
@@ -54,9 +54,9 @@ function buildTeam(overrides: Partial<TeamProfileViewModel> = {}): TeamProfileVi
 const AFTER_END = Date.parse("2026-08-01T20:00:01.000Z");
 const BEFORE_END = Date.parse("2026-08-01T19:00:00.000Z");
 
-describe("resolveHostFinishState", () => {
+describe("resolveMatchFinishState", () => {
   test("allows the host team manager after the end time", () => {
-    expect(resolveHostFinishState({
+    expect(resolveMatchFinishState({
       sourceMatch: buildSourceMatch(),
       currentTeam: buildTeam(),
       now: AFTER_END,
@@ -64,15 +64,47 @@ describe("resolveHostFinishState", () => {
   });
 
   test("allows a registering match that never moved to ongoing", () => {
-    expect(resolveHostFinishState({
+    expect(resolveMatchFinishState({
       sourceMatch: buildSourceMatch({ status: "registering" }),
       currentTeam: buildTeam(),
       now: AFTER_END,
     })).toEqual({ canFinish: true });
   });
 
+  test("allows the away team manager for a confirmed online team match", () => {
+    expect(resolveMatchFinishState({
+      sourceMatch: buildSourceMatch({
+        publication_mode: "online_team",
+        opponent_state: "confirmed",
+        away_team_id: 9,
+        away_team_name: "河西周四 FC",
+      }),
+      currentTeam: buildTeam({ id: 9 }),
+      now: AFTER_END,
+    })).toEqual({ canFinish: true });
+  });
+
+  test("rejects the away team manager before the opponent is confirmed", () => {
+    expect(resolveMatchFinishState({
+      sourceMatch: buildSourceMatch({ publication_mode: "online_team", away_team_id: null }),
+      currentTeam: buildTeam({ id: 9 }),
+      now: AFTER_END,
+    })).toEqual({ canFinish: false });
+  });
+
+  test("rejects the away team manager for non online team matches", () => {
+    expect(resolveMatchFinishState({
+      sourceMatch: buildSourceMatch({
+        publication_mode: "offline_confirmed",
+        away_team_id: 9,
+      }),
+      currentTeam: buildTeam({ id: 9 }),
+      now: AFTER_END,
+    })).toEqual({ canFinish: false });
+  });
+
   test("rejects when the match has not reached its end time", () => {
-    expect(resolveHostFinishState({
+    expect(resolveMatchFinishState({
       sourceMatch: buildSourceMatch(),
       currentTeam: buildTeam(),
       now: BEFORE_END,
@@ -81,7 +113,7 @@ describe("resolveHostFinishState", () => {
 
   test("rejects terminal match statuses", () => {
     for (const status of ["ended", "cancelled"] as const) {
-      expect(resolveHostFinishState({
+      expect(resolveMatchFinishState({
         sourceMatch: buildSourceMatch({ status }),
         currentTeam: buildTeam(),
         now: AFTER_END,
@@ -90,23 +122,23 @@ describe("resolveHostFinishState", () => {
   });
 
   test("rejects members without team management rights", () => {
-    expect(resolveHostFinishState({
+    expect(resolveMatchFinishState({
       sourceMatch: buildSourceMatch(),
       currentTeam: buildTeam({ canManageTeam: false, isCaptain: false, myRole: "member" }),
       now: AFTER_END,
     })).toEqual({ canFinish: false });
   });
 
-  test("rejects a manager from a different team", () => {
-    expect(resolveHostFinishState({
+  test("rejects a manager from an unrelated team", () => {
+    expect(resolveMatchFinishState({
       sourceMatch: buildSourceMatch(),
-      currentTeam: buildTeam({ id: 9 }),
+      currentTeam: buildTeam({ id: 99 }),
       now: AFTER_END,
     })).toEqual({ canFinish: false });
   });
 
   test("rejects missing match or team context", () => {
-    expect(resolveHostFinishState({ sourceMatch: null, currentTeam: buildTeam(), now: AFTER_END })).toEqual({ canFinish: false });
-    expect(resolveHostFinishState({ sourceMatch: buildSourceMatch(), currentTeam: null, now: AFTER_END })).toEqual({ canFinish: false });
+    expect(resolveMatchFinishState({ sourceMatch: null, currentTeam: buildTeam(), now: AFTER_END })).toEqual({ canFinish: false });
+    expect(resolveMatchFinishState({ sourceMatch: buildSourceMatch(), currentTeam: null, now: AFTER_END })).toEqual({ canFinish: false });
   });
 });

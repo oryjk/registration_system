@@ -267,8 +267,8 @@ paths:
     patch:
       operationId: finishAppMatch
       tags: [App Matches]
-      summary: 主队管理方收尾比赛（已结束/已取消）
-      description: 仅主队队长或领队可用，且比赛需已过结束时间；状态只允许 ended / cancelled。
+      summary: 主队/客队管理方收尾比赛（已结束/已取消）
+      description: 比赛需已过结束时间；主队队长或领队可用，线上约队已确认对手时客队队长或领队同样可用；状态只允许 ended / cancelled。
       security: *bearerSecurity
       parameters:
         - $ref: "#/components/parameters/MatchID"

@@ -117,3 +117,65 @@ func TestFinishMatchRejectsAdminActor(t *testing.T) {
 		t.Fatalf("expected forbidden, got %v", err)
 	}
 }
+
+// fakeTeamAccessByTeam 按 userID 在指定球队集合内放行 manager 校验，用于区分主/客队身份。
+type fakeTeamAccessByTeam struct {
+	managerTeamIDs map[int64]bool
+}
+
+func (f fakeTeamAccessByTeam) EnsureManager(_ context.Context, teamID, _ int64) error {
+	if f.managerTeamIDs[teamID] {
+		return nil
+	}
+	return sharederror.ErrForbidden
+}
+
+func (f fakeTeamAccessByTeam) EnsureExists(context.Context, int64) error              { return nil }
+func (f fakeTeamAccessByTeam) EnsureActive(context.Context, int64) error              { return nil }
+func (f fakeTeamAccessByTeam) EnsureActiveMember(context.Context, int64, int64) error { return nil }
+func (f fakeTeamAccessByTeam) IsActiveMember(context.Context, int64, int64) (bool, error) {
+	return false, nil
+}
+
+func TestFinishMatchAllowsAwayManagerForConfirmedOnlineTeamMatch(t *testing.T) {
+	match := endedMatch(domain.MatchOngoing)
+	match.PublicationMode = domain.OnlineTeam
+	awayTeamID := int64(9)
+	match.AwayTeamID = &awayTeamID
+	repository := &fakeFinishMatchRepository{match: match, found: true}
+	// 用户只在客队 9 拥有管理身份。
+	useCase := NewFinishMatch(repository, fakeTeamAccessByTeam{managerTeamIDs: map[int64]bool{9: true}}, fixedClock())
+
+	updated, err := useCase.Execute(context.Background(), userActor(77), repository.match.ID, FinishMatchCommand{Status: domain.MatchEnded})
+	if err != nil {
+		t.Fatalf("finish match as away manager: %v", err)
+	}
+	if updated.Status != domain.MatchEnded || repository.updated.Status != domain.MatchEnded {
+		t.Fatalf("expected ended status, got %s / %s", updated.Status, repository.updated.Status)
+	}
+}
+
+func TestFinishMatchRejectsAwayManagerWhenOpponentNotConfirmed(t *testing.T) {
+	match := endedMatch(domain.MatchOngoing)
+	match.PublicationMode = domain.OnlineTeam
+	match.AwayTeamID = nil
+	repository := &fakeFinishMatchRepository{match: match, found: true}
+	useCase := NewFinishMatch(repository, fakeTeamAccessByTeam{managerTeamIDs: map[int64]bool{9: true}}, fixedClock())
+
+	if _, err := useCase.Execute(context.Background(), userActor(77), repository.match.ID, FinishMatchCommand{Status: domain.MatchEnded}); !errors.Is(err, sharederror.ErrForbidden) {
+		t.Fatalf("expected forbidden before opponent is confirmed, got %v", err)
+	}
+}
+
+func TestFinishMatchRejectsNonHostManagerForOfflineMatch(t *testing.T) {
+	match := endedMatch(domain.MatchOngoing)
+	match.PublicationMode = domain.OfflineConfirmed
+	opponent := "河西周四 FC"
+	match.OpponentName = &opponent
+	repository := &fakeFinishMatchRepository{match: match, found: true}
+	useCase := NewFinishMatch(repository, fakeTeamAccessByTeam{managerTeamIDs: map[int64]bool{9: true}}, fixedClock())
+
+	if _, err := useCase.Execute(context.Background(), userActor(77), repository.match.ID, FinishMatchCommand{Status: domain.MatchEnded}); !errors.Is(err, sharederror.ErrForbidden) {
+		t.Fatalf("expected forbidden for unrelated team manager, got %v", err)
+	}
+}

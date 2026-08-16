@@ -4,8 +4,19 @@ import type { AppMatchSummary } from "@/types/match";
 import type { TeamProfileViewModel } from "@/types/viewModels";
 import { parseDateValue } from "./detailState";
 
-/** 主队管理方收尾比赛的可见条件：新接口详情 + 非终态 + 已过结束时间 + 主队管理身份。 */
-export function resolveHostFinishState({
+/** 可收尾比赛的管理身份：主队管理方始终可以；线上约队已确认对手时客队管理方也可以。 */
+function isMatchFinishManager(sourceMatch: AppMatchSummary, currentTeam: TeamProfileViewModel | null): boolean {
+  if (!currentTeam || !currentTeam.canManageTeam) return false;
+  if (currentTeam.id === sourceMatch.host_team_id) return true;
+  return (
+    sourceMatch.publication_mode === "online_team" &&
+    sourceMatch.away_team_id !== null &&
+    currentTeam.id === sourceMatch.away_team_id
+  );
+}
+
+/** 管理方收尾比赛的可见条件：新接口详情 + 非终态 + 已过结束时间 + 主/客队管理身份。 */
+export function resolveMatchFinishState({
   sourceMatch,
   currentTeam,
   now,
@@ -22,7 +33,7 @@ export function resolveHostFinishState({
   if (!Number.isFinite(endTimestamp) || now <= endTimestamp) {
     return { canFinish: false };
   }
-  if (!currentTeam || currentTeam.id !== sourceMatch.host_team_id || !currentTeam.canManageTeam) {
+  if (!isMatchFinishManager(sourceMatch, currentTeam)) {
     return { canFinish: false };
   }
   return { canFinish: true };
@@ -44,7 +55,7 @@ export function useMatchFinish(dependencies: MatchFinishDependencies) {
 
   const canFinishMatch = computed(() => {
     if (isGuestMode.value) return false;
-    return resolveHostFinishState({
+    return resolveMatchFinishState({
       sourceMatch: sourceMatch.value,
       currentTeam: currentTeam.value,
       now: nowTick.value,

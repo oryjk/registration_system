@@ -11,7 +11,8 @@ import (
 )
 
 // FinishMatch 让主队管理方（队长/领队）在比赛过结束时间后收尾比赛：
-// 标记为已结束或已取消。管理端沿用 AdminMatchService.ChangeStatus。
+// 标记为已结束或已取消。线上约队且已确认客队时，客队管理方同样可以收尾。
+// 管理端沿用 AdminMatchService.ChangeStatus。
 type FinishMatch struct {
 	repository ports.Repository
 	teamAccess ports.TeamAccess
@@ -40,7 +41,7 @@ func (u FinishMatch) Execute(ctx context.Context, actor sharedauth.Actor, matchI
 	if !found {
 		return domain.Match{}, sharederror.New(sharederror.KindNotFound, "比赛不存在")
 	}
-	if err := u.teamAccess.EnsureManager(ctx, match.HostTeamID, actor.ID); err != nil {
+	if err := u.ensureTeamCanFinish(ctx, match, actor.ID); err != nil {
 		return domain.Match{}, err
 	}
 	if err := match.FinishByHost(command.Status, u.clock.Now()); err != nil {
@@ -50,4 +51,19 @@ func (u FinishMatch) Execute(ctx context.Context, actor sharedauth.Actor, matchI
 		return domain.Match{}, sharederror.Wrap(sharederror.KindInternal, "更新比赛状态失败", err)
 	}
 	return match, nil
+}
+
+// ensureTeamCanFinish 主队管理方始终可以收尾；线上约队已确认客队时，
+// 客队管理方也可以收尾——双方都会进入各自的报名详情页。
+func (u FinishMatch) ensureTeamCanFinish(ctx context.Context, match domain.Match, userID int64) error {
+	hostErr := u.teamAccess.EnsureManager(ctx, match.HostTeamID, userID)
+	if hostErr == nil {
+		return nil
+	}
+	if match.PublicationMode == domain.OnlineTeam && match.AwayTeamID != nil {
+		if awayErr := u.teamAccess.EnsureManager(ctx, *match.AwayTeamID, userID); awayErr == nil {
+			return nil
+		}
+	}
+	return hostErr
 }
