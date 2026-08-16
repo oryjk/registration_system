@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -33,6 +34,10 @@ func WriteError(c *gin.Context, err error) {
 		case sharederror.KindInternal:
 			message = "internal error"
 		}
+	}
+	// 内部错误对客户端只回通用文案，但必须落日志，否则线上 500 无法定位。
+	if status == http.StatusInternalServerError {
+		slog.Error("internal error while handling request", "error", err, "path", c.Request.URL.Path, "method", c.Request.Method)
 	}
 	c.JSON(status, sharedhttp.Response[any]{Code: status, Message: message, Data: nil})
 }
