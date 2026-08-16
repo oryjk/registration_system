@@ -1,19 +1,24 @@
 #!/usr/bin/env zsh
 
-# 部署 Go 后端（Docker）+ 小程序 H5（静态文件）到 out109 验收环境。
+# 部署 Go 后端（Docker）+ 小程序 H5 + 管理后台前端到 out109 验收环境。
 #
 # - Go: 在 out109 的 git checkout 上构建镜像 registration-system-backend-go-v3，
 #   先跑 goose 前向迁移，再替换 127.0.0.1:18081 上的容器。
 # - H5: 本地用 --mode test 构建（读取 registration_system_mini/.env.test），
 #   打包上传到 nginx volume 目录，备份旧 mini-v3 后原子替换。
-# - nginx 的 /regist-v3/ 与 /mini-v3/ 配置已存在，本脚本不修改 nginx 配置。
+# - 管理后台: 本地用 bun run build:out109 构建（/regist-admin-v3/ 前缀，
+#   API 指向 https://oryjk.cn:82/regist-v3），上传替换同名目录，
+#   并幂等补充 nginx location 配置（备份 + nginx -t + reload）。
+# - nginx 的 /regist-v3/ 与 /mini-v3/ 配置已存在，仅 /regist-admin-v3/ 由本脚本维护。
 #
 # 前置条件：
 # - 本地 main 已推送到 origin（脚本会校验，不一致则退出）
 # - registration_system_mini/.env.test 存在（VITE_PUBLIC_BASE / VITE_API_BASE_URL / VITE_ENABLE_H5_TEST_LOGIN）
 # - out109 的 ${REPO_DIR}/registration_system_go/.env 存在且包含必需键（不打印值）
 #
-# 可选环境变量：PROXY_PORT 指定宿主机代理端口（默认自动探测 7890/7897）
+# 可选环境变量：
+# - PROXY_PORT 指定宿主机代理端口（默认自动探测 7890/7897）
+# - SKIP_GO=1 / SKIP_H5=1 / SKIP_ADMIN=1 跳过对应部分
 
 set -euo pipefail
 
@@ -36,13 +41,48 @@ GO_MOD_CACHE_VOLUME="${GO_MOD_CACHE_VOLUME:-registration-go-mod-cache}"
 
 H5_HTML_ROOT="${H5_HTML_ROOT:-/mnt/e/docker_data/nginx/html}"
 H5_DIR="${H5_DIR:-mini-v3}"
+ADMIN_DIR="${ADMIN_DIR:-regist-admin-v3}"
 PUBLIC_ORIGIN="${PUBLIC_ORIGIN:-https://oryjk.cn:82}"
+NGINX_CONTAINER="${NGINX_CONTAINER:-nginx}"
+NGINX_CONFIG_PATH="${NGINX_CONFIG_PATH:-/mnt/e/docker_data/nginx/config/default.conf}"
 
 MINI_DIR="${SCRIPT_DIR}/registration_system_mini"
 H5_DIST="${MINI_DIR}/dist/build/h5"
+ADMIN_FE_DIR="${SCRIPT_DIR}/registration_system_backend_fe_go"
+ADMIN_DIST="${ADMIN_FE_DIR}/dist"
 TIMESTAMP="$(date +%Y%m%d-%H%M%S)"
 
-echo "🚀 部署 Go + H5 到 ${BUILD_HOST}（分支 ${BRANCH}）"
+SKIP_GO="${SKIP_GO:-}"
+SKIP_H5="${SKIP_H5:-}"
+SKIP_ADMIN="${SKIP_ADMIN:-}"
+
+# 上传本地静态目录到 nginx volume，备份旧目录后原子替换。
+# 用法: upload_static <本地目录> <远端目录名>
+upload_static() {
+    local local_dir="$1"
+    local remote_name="$2"
+    local tarball
+    tarball="$(mktemp -t out109-static).tar.gz"
+    tar czf "${tarball}" -C "${local_dir}" .
+    scp "${tarball}" "${BUILD_HOST}:/tmp/${remote_name}-${TIMESTAMP}.tar.gz" >/dev/null
+    rm -f "${tarball}"
+    ssh "${BUILD_HOST}" \
+        "H5_HTML_ROOT='${H5_HTML_ROOT}' STATIC_DIR='${remote_name}' TIMESTAMP='${TIMESTAMP}' bash -s" << 'EOF'
+set -euo pipefail
+NEW_DIR="${H5_HTML_ROOT}/${STATIC_DIR}.new-${TIMESTAMP}"
+mkdir -p "${NEW_DIR}"
+tar xzf "/tmp/${STATIC_DIR}-${TIMESTAMP}.tar.gz" -C "${NEW_DIR}"
+rm -f "/tmp/${STATIC_DIR}-${TIMESTAMP}.tar.gz"
+cd "${H5_HTML_ROOT}"
+if [ -d "${STATIC_DIR}" ]; then
+    mv "${STATIC_DIR}" "${STATIC_DIR}.bak-${TIMESTAMP}"
+fi
+mv "${NEW_DIR}" "${STATIC_DIR}"
+echo "✅ ${STATIC_DIR} 已替换，备份为 ${STATIC_DIR}.bak-${TIMESTAMP}"
+EOF
+}
+
+echo "🚀 部署 Go + H5 + 管理后台到 ${BUILD_HOST}（分支 ${BRANCH}）"
 cd "${SCRIPT_DIR}"
 
 echo "🔍 校验本地 ${BRANCH} 已推送到 origin"
@@ -63,26 +103,43 @@ if [ "${LOCAL_HEAD}" != "${REMOTE_HEAD}" ]; then
 fi
 IMAGE_TAG="$(git rev-parse --short HEAD)"
 
-if [ ! -f "${MINI_DIR}/.env.test" ]; then
-    echo "❌ 未找到 ${MINI_DIR}/.env.test（验收构建环境文件）"
-    exit 1
+if [ -z "${SKIP_H5}" ]; then
+    if [ ! -f "${MINI_DIR}/.env.test" ]; then
+        echo "❌ 未找到 ${MINI_DIR}/.env.test（验收构建环境文件）"
+        exit 1
+    fi
+
+    echo "🏗️  本地构建 H5（--mode test）"
+    (cd "${MINI_DIR}" && bun run build:h5:acceptance)
+    if [ ! -f "${H5_DIST}/index.html" ]; then
+        echo "❌ H5 构建产物缺失: ${H5_DIST}/index.html"
+        exit 1
+    fi
+    if ! grep -q '"/'"${H5_DIR}"'/' "${H5_DIST}/index.html"; then
+        echo "❌ H5 产物资源未携带 /${H5_DIR}/ 前缀，请检查 .env.test 的 VITE_PUBLIC_BASE"
+        exit 1
+    fi
+    echo "✅ H5 构建完成，资源前缀 /${H5_DIR}/ 校验通过"
 fi
 
-echo "🏗️  本地构建 H5（--mode test）"
-(cd "${MINI_DIR}" && bun run build:h5:acceptance)
-if [ ! -f "${H5_DIST}/index.html" ]; then
-    echo "❌ H5 构建产物缺失: ${H5_DIST}/index.html"
-    exit 1
+if [ -z "${SKIP_ADMIN}" ]; then
+    echo "🏗️  本地构建管理后台（build:out109）"
+    (cd "${ADMIN_FE_DIR}" && bun run build:out109)
+    if [ ! -f "${ADMIN_DIST}/index.html" ]; then
+        echo "❌ 管理后台构建产物缺失: ${ADMIN_DIST}/index.html"
+        exit 1
+    fi
+    if ! grep -q '"/'"${ADMIN_DIR}"'/' "${ADMIN_DIST}/index.html"; then
+        echo "❌ 管理后台产物资源未携带 /${ADMIN_DIR}/ 前缀，请检查 build:out109 配置"
+        exit 1
+    fi
+    echo "✅ 管理后台构建完成，资源前缀 /${ADMIN_DIR}/ 校验通过"
 fi
-if ! grep -q '"/'"${H5_DIR}"'/' "${H5_DIST}/index.html"; then
-    echo "❌ H5 产物资源未携带 /${H5_DIR}/ 前缀，请检查 .env.test 的 VITE_PUBLIC_BASE"
-    exit 1
-fi
-echo "✅ H5 构建完成，资源前缀 /${H5_DIR}/ 校验通过"
 
-echo "📥 更新 ${BUILD_HOST} 上的代码仓库"
-ssh "${BUILD_HOST}" \
-    "REPO_DIR='${REPO_DIR}' BRANCH='${BRANCH}' EXPECTED='${LOCAL_HEAD}' PROXY_PORT='${PROXY_PORT:-}' bash -s" << 'EOF'
+if [ -z "${SKIP_GO}" ]; then
+    echo "📥 更新 ${BUILD_HOST} 上的代码仓库"
+    ssh "${BUILD_HOST}" \
+        "REPO_DIR='${REPO_DIR}' BRANCH='${BRANCH}' EXPECTED='${LOCAL_HEAD}' PROXY_PORT='${PROXY_PORT:-}' bash -s" << 'EOF'
 set -euo pipefail
 
 # out109 直连 GitHub 不通，需走宿主机代理；端口会变（Clash 7890/7897），自动探测。
@@ -124,8 +181,8 @@ fi
 echo "✅ 远端代码已到 ${ACTUAL}"
 EOF
 
-echo "🔑 校验远端 Go 环境文件（只检查键，不打印值）"
-ssh "${BUILD_HOST}" "REPO_DIR='${REPO_DIR}' bash -s" << 'EOF'
+    echo "🔑 校验远端 Go 环境文件（只检查键，不打印值）"
+    ssh "${BUILD_HOST}" "REPO_DIR='${REPO_DIR}' bash -s" << 'EOF'
 set -euo pipefail
 ENV_FILE="${REPO_DIR}/registration_system_go/.env"
 if [ ! -f "${ENV_FILE}" ]; then
@@ -145,9 +202,9 @@ fi
 echo "✅ 远端环境文件键齐全"
 EOF
 
-echo "🗄️  执行数据库前向迁移（goose，仅 up）"
-ssh "${BUILD_HOST}" \
-    "REPO_DIR='${REPO_DIR}' GOOSE_VERSION='${GOOSE_VERSION}' GOLANG_IMAGE='${GOLANG_IMAGE}' GO_MOD_CACHE_VOLUME='${GO_MOD_CACHE_VOLUME}' bash -s" << 'EOF'
+    echo "🗄️  执行数据库前向迁移（goose，仅 up）"
+    ssh "${BUILD_HOST}" \
+        "REPO_DIR='${REPO_DIR}' GOOSE_VERSION='${GOOSE_VERSION}' GOLANG_IMAGE='${GOLANG_IMAGE}' GO_MOD_CACHE_VOLUME='${GO_MOD_CACHE_VOLUME}' bash -s" << 'EOF'
 set -euo pipefail
 docker run --rm --network host \
     --env-file "${REPO_DIR}/registration_system_go/.env" \
@@ -160,9 +217,9 @@ docker run --rm --network host \
     sh -c 'go run github.com/pressly/goose/v3/cmd/goose@'"${GOOSE_VERSION}"' -dir db/migrations postgres "$DATABASE_URL" up'
 EOF
 
-echo "📦 在 ${BUILD_HOST} 构建 Go 镜像"
-ssh "${BUILD_HOST}" \
-    "REPO_DIR='${REPO_DIR}' GO_IMAGE='${GO_IMAGE}' IMAGE_TAG='${IMAGE_TAG}' PROXY_PORT='${PROXY_PORT:-}' bash -s" << 'EOF'
+    echo "📦 在 ${BUILD_HOST} 构建 Go 镜像"
+    ssh "${BUILD_HOST}" \
+        "REPO_DIR='${REPO_DIR}' GO_IMAGE='${GO_IMAGE}' IMAGE_TAG='${IMAGE_TAG}' PROXY_PORT='${PROXY_PORT:-}' bash -s" << 'EOF'
 set -euo pipefail
 cd "${REPO_DIR}/registration_system_go"
 
@@ -190,9 +247,9 @@ docker build --pull \
     .
 EOF
 
-echo "🔄 替换 Go 容器（127.0.0.1:${GO_PORT}）"
-ssh "${BUILD_HOST}" \
-    "REPO_DIR='${REPO_DIR}' GO_IMAGE='${GO_IMAGE}' IMAGE_TAG='${IMAGE_TAG}' GO_CONTAINER='${GO_CONTAINER}' GO_PORT='${GO_PORT}' bash -s" << 'EOF'
+    echo "🔄 替换 Go 容器（127.0.0.1:${GO_PORT}）"
+    ssh "${BUILD_HOST}" \
+        "REPO_DIR='${REPO_DIR}' GO_IMAGE='${GO_IMAGE}' IMAGE_TAG='${IMAGE_TAG}' GO_CONTAINER='${GO_CONTAINER}' GO_PORT='${GO_PORT}' bash -s" << 'EOF'
 set -euo pipefail
 docker rm -f "${GO_CONTAINER}" >/dev/null 2>&1 || true
 docker run -d \
@@ -215,31 +272,76 @@ docker ps -a --filter "name=${GO_CONTAINER}"
 docker logs --tail 200 "${GO_CONTAINER}" 2>&1 || true
 exit 1
 EOF
-
-echo "📤 上传 H5 静态文件并原子替换 ${H5_DIR}"
-H5_TARBALL="$(mktemp -t go-h5-dist).tar.gz"
-trap 'rm -f "${H5_TARBALL}"' EXIT
-tar czf "${H5_TARBALL}" -C "${H5_DIST}" .
-scp "${H5_TARBALL}" "${BUILD_HOST}:/tmp/${H5_DIR}-${TIMESTAMP}.tar.gz" >/dev/null
-ssh "${BUILD_HOST}" \
-    "H5_HTML_ROOT='${H5_HTML_ROOT}' H5_DIR='${H5_DIR}' TIMESTAMP='${TIMESTAMP}' bash -s" << 'EOF'
-set -euo pipefail
-NEW_DIR="${H5_HTML_ROOT}/${H5_DIR}.new-${TIMESTAMP}"
-mkdir -p "${NEW_DIR}"
-tar xzf "/tmp/${H5_DIR}-${TIMESTAMP}.tar.gz" -C "${NEW_DIR}"
-rm -f "/tmp/${H5_DIR}-${TIMESTAMP}.tar.gz"
-cd "${H5_HTML_ROOT}"
-if [ -d "${H5_DIR}" ]; then
-    mv "${H5_DIR}" "${H5_DIR}.bak-${TIMESTAMP}"
 fi
-mv "${NEW_DIR}" "${H5_DIR}"
-echo "✅ ${H5_DIR} 已替换，备份为 ${H5_DIR}.bak-${TIMESTAMP}"
-EOF
+
+if [ -z "${SKIP_H5}" ]; then
+    echo "📤 上传 H5 静态文件并原子替换 ${H5_DIR}"
+    upload_static "${H5_DIST}" "${H5_DIR}"
+fi
+
+if [ -z "${SKIP_ADMIN}" ]; then
+    echo "📤 上传管理后台静态文件并原子替换 ${ADMIN_DIR}"
+    upload_static "${ADMIN_DIST}" "${ADMIN_DIR}"
+
+    echo "🌐 确保 nginx /${ADMIN_DIR}/ 配置存在"
+    ssh "${BUILD_HOST}" \
+        "NGINX_CONTAINER='${NGINX_CONTAINER}' NGINX_CONFIG_PATH='${NGINX_CONFIG_PATH}' ADMIN_DIR='${ADMIN_DIR}' TIMESTAMP='${TIMESTAMP}' python3 -" << 'PYEOF'
+import os
+import subprocess
+from pathlib import Path
+
+config_path = Path(os.environ["NGINX_CONFIG_PATH"])
+admin_dir = os.environ["ADMIN_DIR"]
+timestamp = os.environ["TIMESTAMP"]
+
+text = config_path.read_text()
+
+anchor = """    location /regist-admin/ {
+        alias /usr/share/nginx/html/regist-admin/;
+        try_files $uri $uri/ /regist-admin/index.html;
+        index index.html;
+    }
+"""
+block = f"""
+    location = /{admin_dir} {{
+        return 301 https://$host:82/{admin_dir}/;
+    }}
+
+    # /{admin_dir} Go 版管理后台前端 (registration_system_backend_fe_go)
+    location /{admin_dir}/ {{
+        alias /usr/share/nginx/html/{admin_dir}/;
+        try_files $uri $uri/ /{admin_dir}/index.html;
+        index index.html;
+    }}
+"""
+
+if f"location /{admin_dir}/" not in text:
+    if anchor not in text:
+        raise SystemExit("nginx config anchor /regist-admin/ not found")
+    backup_path = config_path.with_name(config_path.name + f".bak-{timestamp}")
+    backup_path.write_text(text)
+    config_path.write_text(text.replace(anchor, anchor + block, 1))
+    print(f"✅ nginx 已追加 /{admin_dir}/ 配置，备份 {backup_path.name}")
+else:
+    print(f"ℹ️  nginx 已存在 /{admin_dir}/ 配置，跳过")
+
+subprocess.run(["docker", "exec", os.environ["NGINX_CONTAINER"], "nginx", "-t"], check=True)
+subprocess.run(["docker", "exec", os.environ["NGINX_CONTAINER"], "nginx", "-s", "reload"], check=True)
+PYEOF
+fi
 
 echo "🔎 验证线上入口"
-ssh "${BUILD_HOST}" "curl -fsS http://127.0.0.1:${GO_PORT}/health && echo"
-curl -kfsS "${PUBLIC_ORIGIN}/regist-v3/health" && echo
-curl -kfsS "${PUBLIC_ORIGIN}/${H5_DIR}/" | grep -q '"/'"${H5_DIR}"'/' \
-    && echo "✅ ${PUBLIC_ORIGIN}/${H5_DIR}/ 资源前缀正确"
+if [ -z "${SKIP_GO}" ]; then
+    ssh "${BUILD_HOST}" "curl -fsS http://127.0.0.1:${GO_PORT}/health && echo"
+    curl -kfsS "${PUBLIC_ORIGIN}/regist-v3/health" && echo
+fi
+if [ -z "${SKIP_H5}" ]; then
+    curl -kfsS "${PUBLIC_ORIGIN}/${H5_DIR}/" | grep -q '"/'"${H5_DIR}"'/' \
+        && echo "✅ ${PUBLIC_ORIGIN}/${H5_DIR}/ 资源前缀正确"
+fi
+if [ -z "${SKIP_ADMIN}" ]; then
+    curl -kfsS "${PUBLIC_ORIGIN}/${ADMIN_DIR}/" | grep -q '"/'"${ADMIN_DIR}"'/' \
+        && echo "✅ ${PUBLIC_ORIGIN}/${ADMIN_DIR}/ 资源前缀正确"
+fi
 
-echo "🎉 部署完成: ${GO_IMAGE}:${IMAGE_TAG} + ${H5_DIR}@${TIMESTAMP}"
+echo "🎉 部署完成: ${GO_IMAGE}:${IMAGE_TAG} + ${H5_DIR} + ${ADMIN_DIR} @${TIMESTAMP}"

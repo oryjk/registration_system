@@ -10,6 +10,7 @@
     "dev": "cross-env BABEL_POLYFILL=none UMI_ENV=dev ADMIN_API_BASE_URL=/go-api max dev --host 0.0.0.0",
     "build": "cross-env BABEL_POLYFILL=none NODE_ENV=production ADMIN_PUBLIC_PATH=/ ADMIN_ROUTE_BASE=/ max build",
     "build:nginx": "cross-env BABEL_POLYFILL=none NODE_ENV=production ADMIN_PUBLIC_PATH=/registration-admin/ ADMIN_ROUTE_BASE=/registration-admin/ max build",
+    "build:out109": "cross-env BABEL_POLYFILL=none NODE_ENV=production ADMIN_PUBLIC_PATH=/regist-admin-v3/ ADMIN_ROUTE_BASE=/regist-admin-v3/ ADMIN_API_BASE_URL=https://oryjk.cn:82/regist-v3 max build",
     "type-check": "tsc --noEmit",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
