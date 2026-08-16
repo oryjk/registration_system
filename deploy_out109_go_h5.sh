@@ -3,9 +3,10 @@
 # 部署 Go 后端（Docker）+ 小程序 H5 + 管理后台前端到 out109 验收环境。
 #
 # - Go: 在 out109 的 git checkout 上构建镜像 registration-system-backend-go-v3，
-#   先跑 goose 前向迁移，再替换 127.0.0.1:18081 上的容器。
+#   先跑 goose 前向迁移（cmd/dbmigrate，只链接仓库内依赖），再替换 127.0.0.1:18081
+#   上的容器（显式 -e HTTP_ADDR=:18081，Docker Desktop 桥接网络下必须绑 0.0.0.0）。
 # - H5: 本地用 --mode test 构建（读取 registration_system_mini/.env.test），
-#   打包上传到 nginx volume 目录，备份旧 mini-v3 后原子替换。
+#   打包上传到 nginx volume 目录，备份旧 mini-v3 后原子替换（备份保留最近 5 份）。
 # - 管理后台: 本地用 bun run build:out109 构建（/regist-admin-v3/ 前缀，
 #   API 指向 https://oryjk.cn:82/regist-v3），上传替换同名目录，
 #   并幂等补充 nginx location 配置（备份 + nginx -t + reload）。
@@ -13,11 +14,14 @@
 #
 # 前置条件：
 # - 本地 main 已推送到 origin（脚本会校验，不一致则退出）
-# - registration_system_mini/.env.test 存在（VITE_PUBLIC_BASE / VITE_API_BASE_URL / VITE_ENABLE_H5_TEST_LOGIN）
-# - out109 的 ${REPO_DIR}/registration_system_go/.env 存在且包含必需键（不打印值）
+# - registration_system_mini/.env.test 存在，内容形如：
+#     VITE_PUBLIC_BASE=/mini-v3/
+#     VITE_API_BASE_URL=https://oryjk.cn:82/regist-v3/api/v1/app
+#     VITE_ENABLE_H5_TEST_LOGIN=true
+# - out109 的 ${REPO_DIR}/registration_system_go/.env.credentials-v3（数据库凭据）
+#   与 .env.acceptance-v3（验收开关）存在且包含必需键（只校验键，不打印值）
 #
 # 可选环境变量：
-# - PROXY_PORT 指定宿主机代理端口（默认自动探测 7890/7897）
 # - SKIP_GO=1 / SKIP_H5=1 / SKIP_ADMIN=1 跳过对应部分
 
 set -euo pipefail
@@ -35,7 +39,8 @@ REPO_DIR="${REPO_DIR:-/home/wangrui/projects/registration_system_repo}"
 GO_IMAGE="${GO_IMAGE:-registration-system-backend-go-v3}"
 GO_CONTAINER="${GO_CONTAINER:-registration-system-backend-go-v3}"
 GO_PORT="${GO_PORT:-18081}"
-GOOSE_VERSION="${GOOSE_VERSION:-v3.27.2}"
+GO_CREDENTIALS_FILE="${GO_CREDENTIALS_FILE:-.env.credentials-v3}"
+GO_ACCEPTANCE_FILE="${GO_ACCEPTANCE_FILE:-.env.acceptance-v3}"
 GOLANG_IMAGE="${GOLANG_IMAGE:-golang:1.26.5-bookworm}"
 GO_MOD_CACHE_VOLUME="${GO_MOD_CACHE_VOLUME:-registration-go-mod-cache}"
 
@@ -45,6 +50,7 @@ ADMIN_DIR="${ADMIN_DIR:-regist-admin-v3}"
 PUBLIC_ORIGIN="${PUBLIC_ORIGIN:-https://oryjk.cn:82}"
 NGINX_CONTAINER="${NGINX_CONTAINER:-nginx}"
 NGINX_CONFIG_PATH="${NGINX_CONFIG_PATH:-/mnt/e/docker_data/nginx/config/default.conf}"
+BACKUP_KEEP="${BACKUP_KEEP:-5}"
 
 MINI_DIR="${SCRIPT_DIR}/registration_system_mini"
 H5_DIST="${MINI_DIR}/dist/build/h5"
@@ -56,7 +62,7 @@ SKIP_GO="${SKIP_GO:-}"
 SKIP_H5="${SKIP_H5:-}"
 SKIP_ADMIN="${SKIP_ADMIN:-}"
 
-# 上传本地静态目录到 nginx volume，备份旧目录后原子替换。
+# 上传本地静态目录到 nginx volume，备份旧目录后原子替换，并只保留最近 ${BACKUP_KEEP} 份备份。
 # 用法: upload_static <本地目录> <远端目录名>
 upload_static() {
     local local_dir="$1"
@@ -67,7 +73,7 @@ upload_static() {
     scp "${tarball}" "${BUILD_HOST}:/tmp/${remote_name}-${TIMESTAMP}.tar.gz" >/dev/null
     rm -f "${tarball}"
     ssh "${BUILD_HOST}" \
-        "H5_HTML_ROOT='${H5_HTML_ROOT}' STATIC_DIR='${remote_name}' TIMESTAMP='${TIMESTAMP}' bash -s" << 'EOF'
+        "H5_HTML_ROOT='${H5_HTML_ROOT}' STATIC_DIR='${remote_name}' TIMESTAMP='${TIMESTAMP}' BACKUP_KEEP='${BACKUP_KEEP}' bash -s" << 'EOF'
 set -euo pipefail
 NEW_DIR="${H5_HTML_ROOT}/${STATIC_DIR}.new-${TIMESTAMP}"
 mkdir -p "${NEW_DIR}"
@@ -78,7 +84,9 @@ if [ -d "${STATIC_DIR}" ]; then
     mv "${STATIC_DIR}" "${STATIC_DIR}.bak-${TIMESTAMP}"
 fi
 mv "${NEW_DIR}" "${STATIC_DIR}"
-echo "✅ ${STATIC_DIR} 已替换，备份为 ${STATIC_DIR}.bak-${TIMESTAMP}"
+# 只保留最近 N 份备份，避免无限累积
+ls -1dt "${STATIC_DIR}.bak-"* 2>/dev/null | tail -n +"$((BACKUP_KEEP + 1))" | xargs -r rm -rf
+echo "✅ ${STATIC_DIR} 已替换，备份保留最近 ${BACKUP_KEEP} 份"
 EOF
 }
 
@@ -105,7 +113,10 @@ IMAGE_TAG="$(git rev-parse --short HEAD)"
 
 if [ -z "${SKIP_H5}" ]; then
     if [ ! -f "${MINI_DIR}/.env.test" ]; then
-        echo "❌ 未找到 ${MINI_DIR}/.env.test（验收构建环境文件）"
+        echo "❌ 未找到 ${MINI_DIR}/.env.test，需要包含："
+        echo "   VITE_PUBLIC_BASE=/${H5_DIR}/"
+        echo "   VITE_API_BASE_URL=${PUBLIC_ORIGIN}/regist-v3/api/v1/app"
+        echo "   VITE_ENABLE_H5_TEST_LOGIN=true"
         exit 1
     fi
 
@@ -139,36 +150,35 @@ fi
 if [ -z "${SKIP_GO}" ]; then
     echo "📥 更新 ${BUILD_HOST} 上的代码仓库"
     ssh "${BUILD_HOST}" \
-        "REPO_DIR='${REPO_DIR}' BRANCH='${BRANCH}' EXPECTED='${LOCAL_HEAD}' PROXY_PORT='${PROXY_PORT:-}' bash -s" << 'EOF'
+        "REPO_DIR='${REPO_DIR}' BRANCH='${BRANCH}' EXPECTED='${LOCAL_HEAD}' bash -s" << 'EOF'
 set -euo pipefail
 
 # out109 直连 GitHub 不通，需走宿主机代理；端口会变（Clash 7890/7897），自动探测。
 GATEWAY="$(ip route show default | awk '{print $3}')"
+PROXY_PORT=""
+for port in 7890 7897; do
+    if timeout 3 bash -c "echo > /dev/tcp/${GATEWAY}/${port}" 2>/dev/null; then
+        PROXY_PORT="${port}"
+        break
+    fi
+done
 if [ -z "${PROXY_PORT}" ]; then
-    for port in 7890 7897; do
-        if timeout 3 bash -c "echo > /dev/tcp/${GATEWAY}/${port}" 2>/dev/null; then
-            PROXY_PORT="${port}"
-            break
-        fi
-    done
-fi
-if [ -n "${PROXY_PORT}" ]; then
-    export http_proxy="http://${GATEWAY}:${PROXY_PORT}"
-    export https_proxy="http://${GATEWAY}:${PROXY_PORT}"
-    export all_proxy="socks5://${GATEWAY}:${PROXY_PORT}"
-    export no_proxy="localhost,127.0.0.1,192.168.0.0/16,10.0.0.0/8,172.16.0.0/12"
-    echo "🌐 远端代理: ${GATEWAY}:${PROXY_PORT}"
-else
     echo "❌ 未找到可用的宿主机代理端口（7890/7897），无法访问 GitHub"
     exit 1
 fi
+export http_proxy="http://${GATEWAY}:${PROXY_PORT}"
+export https_proxy="http://${GATEWAY}:${PROXY_PORT}"
+export no_proxy="localhost,127.0.0.1,192.168.0.0/16,10.0.0.0/8,172.16.0.0/12"
+echo "🌐 远端代理: ${GATEWAY}:${PROXY_PORT}"
 
 if [ ! -d "${REPO_DIR}/.git" ]; then
     git clone https://github.com/oryjk/registration_system.git "${REPO_DIR}"
 fi
 cd "${REPO_DIR}"
 if ! git diff --quiet || ! git diff --cached --quiet; then
-    git stash push -m "deploy-go-h5-$(date +%Y%m%d%H%M%S)"
+    echo "❌ 远端工作区有未提交改动，请先手动处理（部署要求干净 checkout）"
+    git status --short | head -10
+    exit 1
 fi
 git fetch origin "${BRANCH}"
 git checkout "${BRANCH}"
@@ -182,82 +192,90 @@ echo "✅ 远端代码已到 ${ACTUAL}"
 EOF
 
     echo "🔑 校验远端 Go 环境文件（只检查键，不打印值）"
-    ssh "${BUILD_HOST}" "REPO_DIR='${REPO_DIR}' bash -s" << 'EOF'
+    ssh "${BUILD_HOST}" \
+        "REPO_DIR='${REPO_DIR}' CRED='${GO_CREDENTIALS_FILE}' ACC='${GO_ACCEPTANCE_FILE}' bash -s" << 'EOF'
 set -euo pipefail
-ENV_FILE="${REPO_DIR}/registration_system_go/.env"
-if [ ! -f "${ENV_FILE}" ]; then
-    echo "❌ 远端缺少 ${ENV_FILE}，请先手动创建（模式 0600）"
-    exit 1
-fi
-missing=""
-for key in HTTP_ADDR DATABASE_URL JWT_SECRET WECHAT_APP_ID WECHAT_APP_SECRET APP_ENV; do
-    if ! grep -q "^${key}=" "${ENV_FILE}"; then
-        missing="${missing} ${key}"
+check_keys() {
+    local file="$1"; shift
+    if [ ! -f "${file}" ]; then
+        echo "❌ 远端缺少 ${file}（模式 0600）"
+        exit 1
     fi
-done
-if [ -n "${missing}" ]; then
-    echo "❌ 远端环境文件缺少必需键:${missing}"
-    exit 1
-fi
-echo "✅ 远端环境文件键齐全"
+    local missing=""
+    for key in "$@"; do
+        if ! grep -q "^${key}=" "${file}"; then
+            missing="${missing} ${key}"
+        fi
+    done
+    if [ -n "${missing}" ]; then
+        echo "❌ ${file} 缺少必需键:${missing}"
+        exit 1
+    fi
+}
+cd "${REPO_DIR}/registration_system_go"
+check_keys "${CRED}" HTTP_ADDR DATABASE_URL JWT_SECRET WECHAT_APP_ID WECHAT_APP_SECRET
+check_keys "${ACC}" HTTP_ADDR APP_ENV ENABLE_H5_TEST_LOGIN H5_TEST_DEFAULT_USER_ID WECHAT_PAY_USE_MOCK
+echo "✅ 远端环境文件键齐全（${CRED} + ${ACC}）"
 EOF
 
-    echo "🗄️  执行数据库前向迁移（goose，仅 up）"
+    echo "🗄️  执行数据库前向迁移（cmd/dbmigrate，仅 up）"
     ssh "${BUILD_HOST}" \
-        "REPO_DIR='${REPO_DIR}' GOOSE_VERSION='${GOOSE_VERSION}' GOLANG_IMAGE='${GOLANG_IMAGE}' GO_MOD_CACHE_VOLUME='${GO_MOD_CACHE_VOLUME}' bash -s" << 'EOF'
+        "REPO_DIR='${REPO_DIR}' CRED='${GO_CREDENTIALS_FILE}' GOLANG_IMAGE='${GOLANG_IMAGE}' GO_MOD_CACHE_VOLUME='${GO_MOD_CACHE_VOLUME}' bash -s" << 'EOF'
 set -euo pipefail
+# 注意不能用 `go run goose@version`：CLI 入口的驱动依赖不在 go.sum，会直接报错。
 docker run --rm --network host \
-    --env-file "${REPO_DIR}/registration_system_go/.env" \
+    --env-file "${REPO_DIR}/registration_system_go/${CRED}" \
     -e GOPROXY=https://goproxy.cn,direct \
     -e GOSUMDB=sum.golang.google.cn \
     -v "${REPO_DIR}/registration_system_go:/src:ro" \
     -v "${GO_MOD_CACHE_VOLUME}:/go/pkg/mod" \
     -w /src \
     "${GOLANG_IMAGE}" \
-    sh -c 'go run github.com/pressly/goose/v3/cmd/goose@'"${GOOSE_VERSION}"' -dir db/migrations postgres "$DATABASE_URL" up'
+    go run ./cmd/dbmigrate
 EOF
 
     echo "📦 在 ${BUILD_HOST} 构建 Go 镜像"
     ssh "${BUILD_HOST}" \
-        "REPO_DIR='${REPO_DIR}' GO_IMAGE='${GO_IMAGE}' IMAGE_TAG='${IMAGE_TAG}' PROXY_PORT='${PROXY_PORT:-}' bash -s" << 'EOF'
+        "REPO_DIR='${REPO_DIR}' GO_IMAGE='${GO_IMAGE}' IMAGE_TAG='${IMAGE_TAG}' bash -s" << 'EOF'
 set -euo pipefail
 cd "${REPO_DIR}/registration_system_go"
-
-GATEWAY="$(ip route show default | awk '{print $3}')"
-if [ -z "${PROXY_PORT}" ]; then
-    for port in 7890 7897; do
-        if timeout 3 bash -c "echo > /dev/tcp/${GATEWAY}/${port}" 2>/dev/null; then
-            PROXY_PORT="${port}"
-            break
-        fi
-    done
-fi
-build_args=()
-if [ -n "${PROXY_PORT}" ]; then
-    # 容器内访问宿主机代理需换成 host.docker.internal
-    build_args+=(--build-arg "http_proxy=http://host.docker.internal:${PROXY_PORT}")
-    build_args+=(--build-arg "https_proxy=http://host.docker.internal:${PROXY_PORT}")
-    build_args+=(--build-arg "all_proxy=socks5://host.docker.internal:${PROXY_PORT}")
-    echo "🌐 构建代理: host.docker.internal:${PROXY_PORT}"
-fi
-docker build --pull \
-    "${build_args[@]}" \
+# 不用 --pull：out109 直连 docker registry 不通，本地已有基础镜像缓存；
+# Go 模块下载走 Dockerfile 内置的 GOPROXY=goproxy.cn，无需代理。
+docker build \
     -t "${GO_IMAGE}:${IMAGE_TAG}" \
     -t "${GO_IMAGE}:current" \
     .
 EOF
 
-    echo "🔄 替换 Go 容器（127.0.0.1:${GO_PORT}）"
+    echo "🔄 替换 Go 容器（127.0.0.1:${GO_PORT}，失败自动回滚旧镜像）"
     ssh "${BUILD_HOST}" \
-        "REPO_DIR='${REPO_DIR}' GO_IMAGE='${GO_IMAGE}' IMAGE_TAG='${IMAGE_TAG}' GO_CONTAINER='${GO_CONTAINER}' GO_PORT='${GO_PORT}' bash -s" << 'EOF'
+        "REPO_DIR='${REPO_DIR}' GO_IMAGE='${GO_IMAGE}' IMAGE_TAG='${IMAGE_TAG}' GO_CONTAINER='${GO_CONTAINER}' GO_PORT='${GO_PORT}' CRED='${GO_CREDENTIALS_FILE}' ACC='${GO_ACCEPTANCE_FILE}' bash -s" << 'EOF'
 set -euo pipefail
+
+run_container() {
+    docker run -d \
+        --name "${GO_CONTAINER}" \
+        --restart unless-stopped \
+        -p "127.0.0.1:${GO_PORT}:${GO_PORT}" \
+        --env-file "${REPO_DIR}/registration_system_go/${CRED}" \
+        --env-file "${REPO_DIR}/registration_system_go/${ACC}" \
+        -e "HTTP_ADDR=:${GO_PORT}" \
+        "$1"
+}
+
+OLD_IMAGE="$(docker inspect "${GO_CONTAINER}" --format '{{.Config.Image}}' 2>/dev/null || true)"
 docker rm -f "${GO_CONTAINER}" >/dev/null 2>&1 || true
-docker run -d \
-    --name "${GO_CONTAINER}" \
-    --restart unless-stopped \
-    -p "127.0.0.1:${GO_PORT}:${GO_PORT}" \
-    --env-file "${REPO_DIR}/registration_system_go/.env" \
-    "${GO_IMAGE}:${IMAGE_TAG}"
+sleep 1
+
+# Docker Desktop 下端口由 docker-proxy 发布；此时若仍被监听，说明有宿主机残留进程
+# （例如遗留的 go run ./cmd/api）占着端口，直接报错而非让健康检查超时。
+if ss -tln 2>/dev/null | grep -q ":${GO_PORT} "; then
+    echo "❌ 端口 ${GO_PORT} 仍被宿主机进程占用（可能是遗留的 go run 进程），请先清理："
+    ss -tlnp 2>/dev/null | grep ":${GO_PORT} " || true
+    exit 1
+fi
+
+run_container "${GO_IMAGE}:${IMAGE_TAG}"
 
 for _ in $(seq 1 20); do
     if curl -fsS "http://127.0.0.1:${GO_PORT}/health" >/dev/null 2>&1; then
@@ -268,8 +286,19 @@ for _ in $(seq 1 20); do
 done
 
 echo "❌ 新容器健康检查失败，输出最近日志："
-docker ps -a --filter "name=${GO_CONTAINER}"
-docker logs --tail 200 "${GO_CONTAINER}" 2>&1 || true
+docker logs --tail 100 "${GO_CONTAINER}" 2>&1 || true
+docker rm -f "${GO_CONTAINER}" >/dev/null 2>&1 || true
+
+if [ -n "${OLD_IMAGE}" ]; then
+    echo "↩️  回滚到旧镜像 ${OLD_IMAGE}"
+    run_container "${OLD_IMAGE}"
+    sleep 3
+    if curl -fsS "http://127.0.0.1:${GO_PORT}/health" >/dev/null 2>&1; then
+        echo "✅ 已回滚到旧版本"
+    else
+        echo "⚠️  回滚后健康检查仍未通过，请人工检查"
+    fi
+fi
 exit 1
 EOF
 fi
