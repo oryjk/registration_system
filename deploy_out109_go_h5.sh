@@ -69,11 +69,14 @@ upload_static() {
     local remote_name="$2"
     local tarball
     tarball="$(mktemp -t out109-static).tar.gz"
-    tar czf "${tarball}" -C "${local_dir}" .
+    # COPYFILE_DISABLE 去掉 macOS 的 ._ AppleDouble 文件；远端 GNU tar 对
+    # LIBARCHIVE.xattr 扩展头的告警无害，过滤掉保持输出干净。
+    (cd "${local_dir}" && COPYFILE_DISABLE=1 tar czf "${tarball}" --no-xattrs . 2>/dev/null) || \
+        (cd "${local_dir}" && COPYFILE_DISABLE=1 tar czf "${tarball}" .)
     scp "${tarball}" "${BUILD_HOST}:/tmp/${remote_name}-${TIMESTAMP}.tar.gz" >/dev/null
     rm -f "${tarball}"
     ssh "${BUILD_HOST}" \
-        "H5_HTML_ROOT='${H5_HTML_ROOT}' STATIC_DIR='${remote_name}' TIMESTAMP='${TIMESTAMP}' BACKUP_KEEP='${BACKUP_KEEP}' bash -s" << 'EOF'
+        "H5_HTML_ROOT='${H5_HTML_ROOT}' STATIC_DIR='${remote_name}' TIMESTAMP='${TIMESTAMP}' BACKUP_KEEP='${BACKUP_KEEP}' bash -s" << 'EOF' 2> >(grep -v "LIBARCHIVE.xattr" >&2)
 set -euo pipefail
 NEW_DIR="${H5_HTML_ROOT}/${STATIC_DIR}.new-${TIMESTAMP}"
 mkdir -p "${NEW_DIR}"
