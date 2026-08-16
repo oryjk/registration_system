@@ -10,6 +10,8 @@ const matchSummary: AppMatchSummary = {
   end_time: "2026-08-10T04:00:00.000Z",
   publication_mode: "offline_confirmed",
   opponent_state: "confirmed",
+  registration_start_at: null,
+  registration_end_at: null,
   host_team_id: 101,
   host_team_name: "洺悦御府",
   away_team_id: 102,

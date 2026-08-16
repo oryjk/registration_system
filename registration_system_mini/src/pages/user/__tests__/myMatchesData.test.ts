@@ -15,6 +15,8 @@ const baseMatch: AppMatchSummary = {
   away_team_name: "客队",
   opponent_name: "客队",
   players_per_team: 8,
+  registration_start_at: null,
+  registration_end_at: null,
   start_time: "2026-01-10T20:00:00+08:00",
   end_time: "2026-01-10T22:00:00+08:00",
   location: "测试球场",

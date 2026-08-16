@@ -17,6 +17,8 @@ function buildMatch(overrides: Partial<AppMatchSummary>): AppMatchSummary {
     name: "周六散人约局",
     publication_mode: "online_individual",
     opponent_state: "recruiting",
+    registration_start_at: null,
+    registration_end_at: null,
     host_team_id: 7,
     host_team_name: "蓝翼俱乐部",
     away_team_id: null,
@@ -61,6 +63,8 @@ describe("toHallMatchCard", () => {
     const card = toHallMatchCard(buildMatch({
       publication_mode: "online_team",
       opponent_state: "confirmed",
+      registration_start_at: null,
+      registration_end_at: null,
       away_team_id: 11,
       away_team_name: "洺悦御府",
       registration_groups: [
@@ -115,6 +119,8 @@ describe("toHallMatchCard", () => {
     const card = toHallMatchCard(buildMatch({
       publication_mode: "online_individual",
       opponent_state: "confirmed",
+      registration_start_at: null,
+      registration_end_at: null,
       registration_groups: [
         { kind: "individual_opponent", team_id: null, min_players: 4, max_players: 8, attending_count: 5 },
       ],
@@ -219,6 +225,8 @@ describe("hall card action kinds by viewer context", () => {
     const confirmed = buildMatch({
       publication_mode: "online_team",
       opponent_state: "confirmed",
+      registration_start_at: null,
+      registration_end_at: null,
       host_team_id: 7,
       away_team_id: 42,
     });
@@ -231,6 +239,8 @@ describe("hall card action kinds by viewer context", () => {
     const confirmed = buildMatch({
       publication_mode: "online_team",
       opponent_state: "confirmed",
+      registration_start_at: null,
+      registration_end_at: null,
       host_team_id: 7,
       away_team_id: 42,
     });

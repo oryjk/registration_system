@@ -38,28 +38,32 @@ func NewAdminHandler(service AdminMatchUseCase, create CreateMatchUseCase) *Admi
 }
 
 type CreateMatchRequest struct {
-	Name              string                 `json:"name" binding:"required"`
-	PublicationMode   domain.PublicationMode `json:"publication_mode" binding:"required"`
-	HostTeamID        int64                  `json:"host_team_id" binding:"required"`
-	OpponentName      *string                `json:"opponent_name"`
-	PlayersPerTeam    int                    `json:"players_per_team" binding:"required"`
-	HostCapacityLimit *int                   `json:"host_capacity_limit"`
-	StartTime         time.Time              `json:"start_time" binding:"required"`
-	EndTime           time.Time              `json:"end_time" binding:"required"`
-	Location          string                 `json:"location" binding:"required"`
-	LocationLatitude  *float64               `json:"location_latitude"`
-	LocationLongitude *float64               `json:"location_longitude"`
-	Description       *string                `json:"description"`
+	Name                string                 `json:"name" binding:"required"`
+	PublicationMode     domain.PublicationMode `json:"publication_mode" binding:"required"`
+	HostTeamID          int64                  `json:"host_team_id" binding:"required"`
+	OpponentName        *string                `json:"opponent_name"`
+	PlayersPerTeam      int                    `json:"players_per_team" binding:"required"`
+	HostCapacityLimit   *int                   `json:"host_capacity_limit"`
+	StartTime           time.Time              `json:"start_time" binding:"required"`
+	EndTime             time.Time              `json:"end_time" binding:"required"`
+	RegistrationStartAt *time.Time             `json:"registration_start_at"`
+	RegistrationEndAt   *time.Time             `json:"registration_end_at"`
+	Location            string                 `json:"location" binding:"required"`
+	LocationLatitude    *float64               `json:"location_latitude"`
+	LocationLongitude   *float64               `json:"location_longitude"`
+	Description         *string                `json:"description"`
 }
 
 type UpdateMatchRequest struct {
-	Name              string    `json:"name" binding:"required"`
-	StartTime         time.Time `json:"start_time" binding:"required"`
-	EndTime           time.Time `json:"end_time" binding:"required"`
-	Location          string    `json:"location" binding:"required"`
-	LocationLatitude  *float64  `json:"location_latitude"`
-	LocationLongitude *float64  `json:"location_longitude"`
-	Description       *string   `json:"description"`
+	Name                string     `json:"name" binding:"required"`
+	StartTime           time.Time  `json:"start_time" binding:"required"`
+	EndTime             time.Time  `json:"end_time" binding:"required"`
+	RegistrationStartAt *time.Time `json:"registration_start_at"`
+	RegistrationEndAt   *time.Time `json:"registration_end_at"`
+	Location            string     `json:"location" binding:"required"`
+	LocationLatitude    *float64   `json:"location_latitude"`
+	LocationLongitude   *float64   `json:"location_longitude"`
+	Description         *string    `json:"description"`
 }
 
 type UpdateMatchStatusRequest struct {
@@ -67,27 +71,29 @@ type UpdateMatchStatusRequest struct {
 }
 
 type MatchResponse struct {
-	ID                string                 `json:"id"`
-	Name              string                 `json:"name"`
-	PublicationMode   domain.PublicationMode `json:"publication_mode"`
-	OpponentState     domain.OpponentState   `json:"opponent_state"`
-	Status            domain.MatchStatus     `json:"status"`
-	HostTeamID        int64                  `json:"host_team_id"`
-	HostTeamName      string                 `json:"host_team_name"`
-	AwayTeamID        *int64                 `json:"away_team_id"`
-	AwayTeamName      *string                `json:"away_team_name"`
-	OpponentName      *string                `json:"opponent_name"`
-	PlayersPerTeam    int                    `json:"players_per_team"`
-	StartTime         time.Time              `json:"start_time"`
-	EndTime           time.Time              `json:"end_time"`
-	Location          string                 `json:"location"`
-	LocationLatitude  *float64               `json:"location_latitude"`
-	LocationLongitude *float64               `json:"location_longitude"`
-	Description       *string                `json:"description"`
-	CreatedByUserID   *int64                 `json:"created_by_user_id"`
-	CreatedByAdminID  *int64                 `json:"created_by_admin_id"`
-	CreatedAt         time.Time              `json:"created_at"`
-	UpdatedAt         time.Time              `json:"updated_at"`
+	ID                  string                 `json:"id"`
+	Name                string                 `json:"name"`
+	PublicationMode     domain.PublicationMode `json:"publication_mode"`
+	OpponentState       domain.OpponentState   `json:"opponent_state"`
+	Status              domain.MatchStatus     `json:"status"`
+	HostTeamID          int64                  `json:"host_team_id"`
+	HostTeamName        string                 `json:"host_team_name"`
+	AwayTeamID          *int64                 `json:"away_team_id"`
+	AwayTeamName        *string                `json:"away_team_name"`
+	OpponentName        *string                `json:"opponent_name"`
+	PlayersPerTeam      int                    `json:"players_per_team"`
+	StartTime           time.Time              `json:"start_time"`
+	EndTime             time.Time              `json:"end_time"`
+	RegistrationStartAt *time.Time             `json:"registration_start_at"`
+	RegistrationEndAt   *time.Time             `json:"registration_end_at"`
+	Location            string                 `json:"location"`
+	LocationLatitude    *float64               `json:"location_latitude"`
+	LocationLongitude   *float64               `json:"location_longitude"`
+	Description         *string                `json:"description"`
+	CreatedByUserID     *int64                 `json:"created_by_user_id"`
+	CreatedByAdminID    *int64                 `json:"created_by_admin_id"`
+	CreatedAt           time.Time              `json:"created_at"`
+	UpdatedAt           time.Time              `json:"updated_at"`
 }
 
 type GroupResponse struct {
@@ -172,6 +178,7 @@ func (h *AdminHandler) Create(c *gin.Context) {
 		Name: request.Name, PublicationMode: request.PublicationMode, HostTeamID: request.HostTeamID,
 		OpponentName: request.OpponentName, PlayersPerTeam: request.PlayersPerTeam,
 		HostCapacityLimit: request.HostCapacityLimit, StartTime: request.StartTime, EndTime: request.EndTime,
+		RegistrationStartAt: request.RegistrationStartAt, RegistrationEndAt: request.RegistrationEndAt,
 		Location: request.Location, LocationLatitude: request.LocationLatitude, LocationLongitude: request.LocationLongitude,
 		Description: request.Description,
 	})
@@ -198,7 +205,8 @@ func (h *AdminHandler) Update(c *gin.Context) {
 		return
 	}
 	_, err := h.service.UpdateDetails(c.Request.Context(), actor, id, domain.UpdateMatchDetails{
-		Name: request.Name, StartTime: request.StartTime, EndTime: request.EndTime, Location: request.Location,
+		Name: request.Name, StartTime: request.StartTime, EndTime: request.EndTime,
+		RegistrationStartAt: request.RegistrationStartAt, RegistrationEndAt: request.RegistrationEndAt, Location: request.Location,
 		LocationLatitude: request.LocationLatitude, LocationLongitude: request.LocationLongitude, Description: request.Description,
 	})
 	if err != nil {
@@ -307,6 +315,7 @@ func mapMatch(item ports.AdminMatchItem) MatchResponse {
 		Status: match.Status, HostTeamID: match.HostTeamID, HostTeamName: item.HostTeamName,
 		AwayTeamID: match.AwayTeamID, AwayTeamName: item.AwayTeamName, OpponentName: match.OpponentName,
 		PlayersPerTeam: match.PlayersPerTeam, StartTime: match.StartTime, EndTime: match.EndTime,
+		RegistrationStartAt: match.RegistrationStartAt, RegistrationEndAt: match.RegistrationEndAt,
 		Location: match.Location, LocationLatitude: match.LocationLatitude, LocationLongitude: match.LocationLongitude,
 		Description: match.Description, CreatedByUserID: match.CreatedByUserID, CreatedByAdminID: match.CreatedByAdminID,
 		CreatedAt: match.CreatedAt, UpdatedAt: match.UpdatedAt,

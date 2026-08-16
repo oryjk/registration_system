@@ -245,6 +245,20 @@ export async function ensureSessionReady(force = false) {
 export async function refreshSessionContext() {
   // #ifdef H5
   if (import.meta.env.MODE !== "production" && import.meta.env.VITE_ENABLE_H5_TEST_LOGIN === "true") {
+    // 已有登录态时保留当前用户，仅刷新用户与球队上下文；
+    // 不能用默认测试用户重登，否则会静默切换掉手动选择的测试用户。
+    if (getAccessToken()) {
+      try {
+        await bootstrapFromExistingToken();
+        return;
+      } catch (error) {
+        if (!isUnauthorizedError(error)) {
+          throw error;
+        }
+        clearAccessToken();
+        resetSessionState();
+      }
+    }
     const result = await listTestLoginUsers();
     const defaultUserId = result.items.some((user) => user.id === result.default_user_id)
       ? result.default_user_id

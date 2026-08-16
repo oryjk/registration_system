@@ -485,10 +485,11 @@ func (i Importer) writeTargetMatch(ctx context.Context, tx pgx.Tx, decision mapp
 	endTime := startTime.Add(2 * time.Hour)
 	if decision.Action == mapping.ActionCreate {
 		currentID = uuid.New()
-		_, err := tx.Exec(ctx, `INSERT INTO matches (id,name,publication_mode,opponent_state,status,host_team_id,away_team_id,opponent_name,players_per_team,start_time,end_time,location,location_latitude,location_longitude,description,created_by_user_id,created_at,updated_at)
-			VALUES ($1,$2,'offline_confirmed','no_recruitment',$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
+		_, err := tx.Exec(ctx, `INSERT INTO matches (id,name,publication_mode,opponent_state,status,host_team_id,away_team_id,opponent_name,players_per_team,start_time,end_time,registration_start_at,registration_end_at,location,location_latitude,location_longitude,description,created_by_user_id,created_at,updated_at)
+			VALUES ($1,$2,'offline_confirmed','no_recruitment',$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)`,
 			currentID, strings.TrimSpace(legacyMatch.Name), mapMatchStatus(legacyMatch.Status), i.hostTeamID, awayTeamID,
 			opponentName, normalizePlayersPerTeam(legacyMatch.PlayersPerTeam), startTime, endTime,
+			legacyMatch.RegistrationStartAt, legacyMatch.RegistrationEndAt,
 			strings.TrimSpace(legacyMatch.Location), legacyMatch.Latitude, legacyMatch.Longitude, nullableTextPointer(legacyMatch.Description),
 			i.createdByUser, createdAt, updatedAt)
 		if err != nil {
@@ -500,9 +501,10 @@ func (i Importer) writeTargetMatch(ctx context.Context, tx pgx.Tx, decision mapp
 	if err != nil {
 		return uuid.Nil, err
 	}
-	_, err = tx.Exec(ctx, `UPDATE matches SET name=$2,publication_mode='offline_confirmed',opponent_state='no_recruitment',status=$3,host_team_id=$4,away_team_id=$5,opponent_name=$6,players_per_team=$7,start_time=$8,end_time=$9,location=$10,location_latitude=$11,location_longitude=$12,description=$13,updated_at=$14,created_by_user_id=$15,created_by_admin_id=NULL WHERE id=$1`,
+	_, err = tx.Exec(ctx, `UPDATE matches SET name=$2,publication_mode='offline_confirmed',opponent_state='no_recruitment',status=$3,host_team_id=$4,away_team_id=$5,opponent_name=$6,players_per_team=$7,start_time=$8,end_time=$9,registration_start_at=$10,registration_end_at=$11,location=$12,location_latitude=$13,location_longitude=$14,description=$15,updated_at=$16,created_by_user_id=$17,created_by_admin_id=NULL WHERE id=$1`,
 		parsed, strings.TrimSpace(legacyMatch.Name), mapMatchStatus(legacyMatch.Status), i.hostTeamID, awayTeamID,
 		opponentName, normalizePlayersPerTeam(legacyMatch.PlayersPerTeam), startTime, endTime,
+		legacyMatch.RegistrationStartAt, legacyMatch.RegistrationEndAt,
 		strings.TrimSpace(legacyMatch.Location), legacyMatch.Latitude, legacyMatch.Longitude, nullableTextPointer(legacyMatch.Description), updatedAt, i.createdByUser)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("update target match: %w", err)
@@ -582,7 +584,8 @@ func sourceMatchFingerprint(match LegacyMatch) (string, error) {
 	return mapping.Fingerprint(map[string]any{
 		"name": strings.TrimSpace(match.Name), "opposing": strings.TrimSpace(match.Opposing),
 		"status": match.Status, "players_per_team": normalizePlayersPerTeam(match.PlayersPerTeam),
-		"holding_date": match.HoldingDate, "location": strings.TrimSpace(match.Location),
+		"holding_date": match.HoldingDate, "registration_start_at": match.RegistrationStartAt, "registration_end_at": match.RegistrationEndAt,
+		"location":            strings.TrimSpace(match.Location),
 		"host_capacity_limit": match.HostCapacityLimit,
 		"latitude":            match.Latitude, "longitude": match.Longitude, "description": nullableTextPointer(match.Description),
 		"home_team_source_id": match.HomeTeamSourceID,

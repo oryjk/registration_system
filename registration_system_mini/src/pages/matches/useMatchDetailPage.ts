@@ -121,7 +121,10 @@ export function useMatchDetailPage() {
 
   const registrationDeadlineTimestamp = computed(() => {
     if (!match.value) return 0;
-    return parseDateValue(match.value.end_time || match.value.holding_date).getTime();
+    // 报名截止优先用显式报名窗口；缺失时回退比赛结束/开始时间（旧数据兼容）。
+    return parseDateValue(
+      match.value.registration_end_at || match.value.end_time || match.value.holding_date,
+    ).getTime();
   });
 
   // 报名截止后不支持修改报名状态（报名/取消报名/调整状态按钮全部隐藏）：

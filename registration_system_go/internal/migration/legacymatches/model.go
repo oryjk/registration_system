@@ -36,12 +36,15 @@ type LegacyMatch struct {
 	// PlayersPerTeam 是旧库 players_per_team。
 	PlayersPerTeam int
 	// HoldingDate 是旧库 holding_date：比赛开始时间（写入目标 matches.start_time）。
-	// 旧库 start_time/end_time 是报名窗口，Go 新系统没有对应字段，导入时丢弃。
-	HoldingDate time.Time
-	Location    string
-	Latitude    *float64
-	Longitude   *float64
-	Description *string
+	// RegistrationStartAt/EndAt 是旧库报名窗口（rs_activity.start_time/end_time），
+	// 写入目标 matches.registration_start_at/registration_end_at。
+	HoldingDate         time.Time
+	RegistrationStartAt *time.Time
+	RegistrationEndAt   *time.Time
+	Location            string
+	Latitude            *float64
+	Longitude           *float64
+	Description         *string
 	// HostCapacityLimit 是旧库 team_capacity_limit：主队报名组满员上限（host 组 max_players）。
 	HostCapacityLimit *int
 	CreatedAt         time.Time

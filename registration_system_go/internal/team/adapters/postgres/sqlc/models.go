@@ -31,25 +31,27 @@ type LegacyImportMapping struct {
 }
 
 type Match struct {
-	ID                pgtype.UUID      `json:"id"`
-	Name              string           `json:"name"`
-	PublicationMode   string           `json:"publication_mode"`
-	OpponentState     string           `json:"opponent_state"`
-	Status            string           `json:"status"`
-	HostTeamID        int64            `json:"host_team_id"`
-	AwayTeamID        *int64           `json:"away_team_id"`
-	OpponentName      *string          `json:"opponent_name"`
-	PlayersPerTeam    int32            `json:"players_per_team"`
-	StartTime         pgtype.Timestamp `json:"start_time"`
-	EndTime           pgtype.Timestamp `json:"end_time"`
-	Location          string           `json:"location"`
-	LocationLatitude  *float64         `json:"location_latitude"`
-	LocationLongitude *float64         `json:"location_longitude"`
-	Description       *string          `json:"description"`
-	CreatedByUserID   *int64           `json:"created_by_user_id"`
-	CreatedAt         pgtype.Timestamp `json:"created_at"`
-	UpdatedAt         pgtype.Timestamp `json:"updated_at"`
-	CreatedByAdminID  *int64           `json:"created_by_admin_id"`
+	ID                  pgtype.UUID      `json:"id"`
+	Name                string           `json:"name"`
+	PublicationMode     string           `json:"publication_mode"`
+	OpponentState       string           `json:"opponent_state"`
+	Status              string           `json:"status"`
+	HostTeamID          int64            `json:"host_team_id"`
+	AwayTeamID          *int64           `json:"away_team_id"`
+	OpponentName        *string          `json:"opponent_name"`
+	PlayersPerTeam      int32            `json:"players_per_team"`
+	StartTime           pgtype.Timestamp `json:"start_time"`
+	EndTime             pgtype.Timestamp `json:"end_time"`
+	Location            string           `json:"location"`
+	LocationLatitude    *float64         `json:"location_latitude"`
+	LocationLongitude   *float64         `json:"location_longitude"`
+	Description         *string          `json:"description"`
+	CreatedByUserID     *int64           `json:"created_by_user_id"`
+	CreatedAt           pgtype.Timestamp `json:"created_at"`
+	UpdatedAt           pgtype.Timestamp `json:"updated_at"`
+	CreatedByAdminID    *int64           `json:"created_by_admin_id"`
+	RegistrationStartAt pgtype.Timestamp `json:"registration_start_at"`
+	RegistrationEndAt   pgtype.Timestamp `json:"registration_end_at"`
 }
 
 type MatchRegistration struct {

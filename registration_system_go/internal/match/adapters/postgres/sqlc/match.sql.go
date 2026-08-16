@@ -157,6 +157,8 @@ INSERT INTO matches (
     players_per_team,
     start_time,
     end_time,
+    registration_start_at,
+    registration_end_at,
     location,
     location_latitude,
     location_longitude,
@@ -166,29 +168,31 @@ INSERT INTO matches (
 )
 VALUES (
     $1, $2, $3, $4, $5, $6, $7, $8,
-    $9, $10, $11, $12, $13, $14, $15, $16, $17
+    $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19
 )
-RETURNING id, name, publication_mode, opponent_state, status, host_team_id, away_team_id, opponent_name, players_per_team, start_time, end_time, location, location_latitude, location_longitude, description, created_by_user_id, created_at, updated_at, created_by_admin_id
+RETURNING id, name, publication_mode, opponent_state, status, host_team_id, away_team_id, opponent_name, players_per_team, start_time, end_time, location, location_latitude, location_longitude, description, created_by_user_id, created_at, updated_at, created_by_admin_id, registration_start_at, registration_end_at
 `
 
 type CreateMatchParams struct {
-	ID                pgtype.UUID      `json:"id"`
-	Name              string           `json:"name"`
-	PublicationMode   string           `json:"publication_mode"`
-	OpponentState     string           `json:"opponent_state"`
-	Status            string           `json:"status"`
-	HostTeamID        int64            `json:"host_team_id"`
-	AwayTeamID        *int64           `json:"away_team_id"`
-	OpponentName      *string          `json:"opponent_name"`
-	PlayersPerTeam    int32            `json:"players_per_team"`
-	StartTime         pgtype.Timestamp `json:"start_time"`
-	EndTime           pgtype.Timestamp `json:"end_time"`
-	Location          string           `json:"location"`
-	LocationLatitude  *float64         `json:"location_latitude"`
-	LocationLongitude *float64         `json:"location_longitude"`
-	Description       *string          `json:"description"`
-	CreatedByUserID   *int64           `json:"created_by_user_id"`
-	CreatedByAdminID  *int64           `json:"created_by_admin_id"`
+	ID                  pgtype.UUID      `json:"id"`
+	Name                string           `json:"name"`
+	PublicationMode     string           `json:"publication_mode"`
+	OpponentState       string           `json:"opponent_state"`
+	Status              string           `json:"status"`
+	HostTeamID          int64            `json:"host_team_id"`
+	AwayTeamID          *int64           `json:"away_team_id"`
+	OpponentName        *string          `json:"opponent_name"`
+	PlayersPerTeam      int32            `json:"players_per_team"`
+	StartTime           pgtype.Timestamp `json:"start_time"`
+	EndTime             pgtype.Timestamp `json:"end_time"`
+	RegistrationStartAt pgtype.Timestamp `json:"registration_start_at"`
+	RegistrationEndAt   pgtype.Timestamp `json:"registration_end_at"`
+	Location            string           `json:"location"`
+	LocationLatitude    *float64         `json:"location_latitude"`
+	LocationLongitude   *float64         `json:"location_longitude"`
+	Description         *string          `json:"description"`
+	CreatedByUserID     *int64           `json:"created_by_user_id"`
+	CreatedByAdminID    *int64           `json:"created_by_admin_id"`
 }
 
 func (q *Queries) CreateMatch(ctx context.Context, arg CreateMatchParams) (Match, error) {
@@ -204,6 +208,8 @@ func (q *Queries) CreateMatch(ctx context.Context, arg CreateMatchParams) (Match
 		arg.PlayersPerTeam,
 		arg.StartTime,
 		arg.EndTime,
+		arg.RegistrationStartAt,
+		arg.RegistrationEndAt,
 		arg.Location,
 		arg.LocationLatitude,
 		arg.LocationLongitude,
@@ -232,6 +238,8 @@ func (q *Queries) CreateMatch(ctx context.Context, arg CreateMatchParams) (Match
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.CreatedByAdminID,
+		&i.RegistrationStartAt,
+		&i.RegistrationEndAt,
 	)
 	return i, err
 }
@@ -445,7 +453,7 @@ func (q *Queries) GetActiveUserRegistrationInMatchForUpdate(ctx context.Context,
 }
 
 const getMatchByID = `-- name: GetMatchByID :one
-SELECT id, name, publication_mode, opponent_state, status, host_team_id, away_team_id, opponent_name, players_per_team, start_time, end_time, location, location_latitude, location_longitude, description, created_by_user_id, created_at, updated_at, created_by_admin_id
+SELECT id, name, publication_mode, opponent_state, status, host_team_id, away_team_id, opponent_name, players_per_team, start_time, end_time, location, location_latitude, location_longitude, description, created_by_user_id, created_at, updated_at, created_by_admin_id, registration_start_at, registration_end_at
 FROM matches
 WHERE id = $1
 `
@@ -473,12 +481,14 @@ func (q *Queries) GetMatchByID(ctx context.Context, id pgtype.UUID) (Match, erro
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.CreatedByAdminID,
+		&i.RegistrationStartAt,
+		&i.RegistrationEndAt,
 	)
 	return i, err
 }
 
 const getMatchByIDForUpdate = `-- name: GetMatchByIDForUpdate :one
-SELECT id, name, publication_mode, opponent_state, status, host_team_id, away_team_id, opponent_name, players_per_team, start_time, end_time, location, location_latitude, location_longitude, description, created_by_user_id, created_at, updated_at, created_by_admin_id
+SELECT id, name, publication_mode, opponent_state, status, host_team_id, away_team_id, opponent_name, players_per_team, start_time, end_time, location, location_latitude, location_longitude, description, created_by_user_id, created_at, updated_at, created_by_admin_id, registration_start_at, registration_end_at
 FROM matches
 WHERE id = $1
 FOR UPDATE
@@ -507,12 +517,14 @@ func (q *Queries) GetMatchByIDForUpdate(ctx context.Context, id pgtype.UUID) (Ma
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.CreatedByAdminID,
+		&i.RegistrationStartAt,
+		&i.RegistrationEndAt,
 	)
 	return i, err
 }
 
 const getMatchForAdmin = `-- name: GetMatchForAdmin :one
-SELECT m.id, m.name, m.publication_mode, m.opponent_state, m.status, m.host_team_id, m.away_team_id, m.opponent_name, m.players_per_team, m.start_time, m.end_time, m.location, m.location_latitude, m.location_longitude, m.description, m.created_by_user_id, m.created_at, m.updated_at, m.created_by_admin_id,
+SELECT m.id, m.name, m.publication_mode, m.opponent_state, m.status, m.host_team_id, m.away_team_id, m.opponent_name, m.players_per_team, m.start_time, m.end_time, m.location, m.location_latitude, m.location_longitude, m.description, m.created_by_user_id, m.created_at, m.updated_at, m.created_by_admin_id, m.registration_start_at, m.registration_end_at,
        host.name AS host_team_name,
        away.name AS away_team_name
 FROM matches m
@@ -522,27 +534,29 @@ WHERE m.id = $1
 `
 
 type GetMatchForAdminRow struct {
-	ID                pgtype.UUID      `json:"id"`
-	Name              string           `json:"name"`
-	PublicationMode   string           `json:"publication_mode"`
-	OpponentState     string           `json:"opponent_state"`
-	Status            string           `json:"status"`
-	HostTeamID        int64            `json:"host_team_id"`
-	AwayTeamID        *int64           `json:"away_team_id"`
-	OpponentName      *string          `json:"opponent_name"`
-	PlayersPerTeam    int32            `json:"players_per_team"`
-	StartTime         pgtype.Timestamp `json:"start_time"`
-	EndTime           pgtype.Timestamp `json:"end_time"`
-	Location          string           `json:"location"`
-	LocationLatitude  *float64         `json:"location_latitude"`
-	LocationLongitude *float64         `json:"location_longitude"`
-	Description       *string          `json:"description"`
-	CreatedByUserID   *int64           `json:"created_by_user_id"`
-	CreatedAt         pgtype.Timestamp `json:"created_at"`
-	UpdatedAt         pgtype.Timestamp `json:"updated_at"`
-	CreatedByAdminID  *int64           `json:"created_by_admin_id"`
-	HostTeamName      string           `json:"host_team_name"`
-	AwayTeamName      *string          `json:"away_team_name"`
+	ID                  pgtype.UUID      `json:"id"`
+	Name                string           `json:"name"`
+	PublicationMode     string           `json:"publication_mode"`
+	OpponentState       string           `json:"opponent_state"`
+	Status              string           `json:"status"`
+	HostTeamID          int64            `json:"host_team_id"`
+	AwayTeamID          *int64           `json:"away_team_id"`
+	OpponentName        *string          `json:"opponent_name"`
+	PlayersPerTeam      int32            `json:"players_per_team"`
+	StartTime           pgtype.Timestamp `json:"start_time"`
+	EndTime             pgtype.Timestamp `json:"end_time"`
+	Location            string           `json:"location"`
+	LocationLatitude    *float64         `json:"location_latitude"`
+	LocationLongitude   *float64         `json:"location_longitude"`
+	Description         *string          `json:"description"`
+	CreatedByUserID     *int64           `json:"created_by_user_id"`
+	CreatedAt           pgtype.Timestamp `json:"created_at"`
+	UpdatedAt           pgtype.Timestamp `json:"updated_at"`
+	CreatedByAdminID    *int64           `json:"created_by_admin_id"`
+	RegistrationStartAt pgtype.Timestamp `json:"registration_start_at"`
+	RegistrationEndAt   pgtype.Timestamp `json:"registration_end_at"`
+	HostTeamName        string           `json:"host_team_name"`
+	AwayTeamName        *string          `json:"away_team_name"`
 }
 
 func (q *Queries) GetMatchForAdmin(ctx context.Context, id pgtype.UUID) (GetMatchForAdminRow, error) {
@@ -568,6 +582,8 @@ func (q *Queries) GetMatchForAdmin(ctx context.Context, id pgtype.UUID) (GetMatc
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.CreatedByAdminID,
+		&i.RegistrationStartAt,
+		&i.RegistrationEndAt,
 		&i.HostTeamName,
 		&i.AwayTeamName,
 	)
@@ -687,6 +703,62 @@ func (q *Queries) IsActiveTeamMember(ctx context.Context, arg IsActiveTeamMember
 	return exists, err
 }
 
+const listGroupRegistrations = `-- name: ListGroupRegistrations :many
+SELECT r.user_id,
+       u.nickname,
+       u.avatar_url,
+       u.real_name,
+       r.status AS registration_status
+FROM match_registrations r
+JOIN users u ON u.id = r.user_id
+WHERE r.group_id = $1
+ORDER BY
+    CASE r.status
+        WHEN 'attending' THEN 0
+        WHEN 'unknown' THEN 1
+        WHEN 'leave' THEN 3
+        WHEN 'absent' THEN 4
+        ELSE 5
+    END,
+    r.created_at,
+    r.user_id
+`
+
+type ListGroupRegistrationsRow struct {
+	UserID             int64   `json:"user_id"`
+	Nickname           string  `json:"nickname"`
+	AvatarUrl          *string `json:"avatar_url"`
+	RealName           *string `json:"real_name"`
+	RegistrationStatus string  `json:"registration_status"`
+}
+
+// 报名组的全部报名记录（含用户资料）；个人组花名册与用户端详情 participants 共用。
+func (q *Queries) ListGroupRegistrations(ctx context.Context, groupID pgtype.UUID) ([]ListGroupRegistrationsRow, error) {
+	rows, err := q.db.Query(ctx, listGroupRegistrations, groupID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListGroupRegistrationsRow
+	for rows.Next() {
+		var i ListGroupRegistrationsRow
+		if err := rows.Scan(
+			&i.UserID,
+			&i.Nickname,
+			&i.AvatarUrl,
+			&i.RealName,
+			&i.RegistrationStatus,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listHomeActionGroupParticipants = `-- name: ListHomeActionGroupParticipants :many
 SELECT r.group_id,
        r.user_id,
@@ -737,7 +809,7 @@ func (q *Queries) ListHomeActionGroupParticipants(ctx context.Context, groupIds 
 }
 
 const listHomeActionMatchesForUser = `-- name: ListHomeActionMatchesForUser :many
-SELECT m.id, m.name, m.publication_mode, m.opponent_state, m.status, m.host_team_id, m.away_team_id, m.opponent_name, m.players_per_team, m.start_time, m.end_time, m.location, m.location_latitude, m.location_longitude, m.description, m.created_by_user_id, m.created_at, m.updated_at, m.created_by_admin_id,
+SELECT m.id, m.name, m.publication_mode, m.opponent_state, m.status, m.host_team_id, m.away_team_id, m.opponent_name, m.players_per_team, m.start_time, m.end_time, m.location, m.location_latitude, m.location_longitude, m.description, m.created_by_user_id, m.created_at, m.updated_at, m.created_by_admin_id, m.registration_start_at, m.registration_end_at,
        host.name AS host_team_name,
        away.name AS away_team_name,
        related_group.id AS group_id,
@@ -829,6 +901,8 @@ type ListHomeActionMatchesForUserRow struct {
 	CreatedAt                 pgtype.Timestamp `json:"created_at"`
 	UpdatedAt                 pgtype.Timestamp `json:"updated_at"`
 	CreatedByAdminID          *int64           `json:"created_by_admin_id"`
+	RegistrationStartAt       pgtype.Timestamp `json:"registration_start_at"`
+	RegistrationEndAt         pgtype.Timestamp `json:"registration_end_at"`
 	HostTeamName              string           `json:"host_team_name"`
 	AwayTeamName              *string          `json:"away_team_name"`
 	GroupID                   pgtype.UUID      `json:"group_id"`
@@ -878,6 +952,8 @@ func (q *Queries) ListHomeActionMatchesForUser(ctx context.Context, arg ListHome
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.CreatedByAdminID,
+			&i.RegistrationStartAt,
+			&i.RegistrationEndAt,
 			&i.HostTeamName,
 			&i.AwayTeamName,
 			&i.GroupID,
@@ -959,7 +1035,7 @@ func (q *Queries) ListHomeEndedMatchParticipants(ctx context.Context, matchIds [
 }
 
 const listHomeEndedMatchesForUser = `-- name: ListHomeEndedMatchesForUser :many
-SELECT m.id, m.name, m.publication_mode, m.opponent_state, m.status, m.host_team_id, m.away_team_id, m.opponent_name, m.players_per_team, m.start_time, m.end_time, m.location, m.location_latitude, m.location_longitude, m.description, m.created_by_user_id, m.created_at, m.updated_at, m.created_by_admin_id,
+SELECT m.id, m.name, m.publication_mode, m.opponent_state, m.status, m.host_team_id, m.away_team_id, m.opponent_name, m.players_per_team, m.start_time, m.end_time, m.location, m.location_latitude, m.location_longitude, m.description, m.created_by_user_id, m.created_at, m.updated_at, m.created_by_admin_id, m.registration_start_at, m.registration_end_at,
        host.name AS host_team_name,
        away.name AS away_team_name
 FROM matches m
@@ -993,27 +1069,29 @@ type ListHomeEndedMatchesForUserParams struct {
 }
 
 type ListHomeEndedMatchesForUserRow struct {
-	ID                pgtype.UUID      `json:"id"`
-	Name              string           `json:"name"`
-	PublicationMode   string           `json:"publication_mode"`
-	OpponentState     string           `json:"opponent_state"`
-	Status            string           `json:"status"`
-	HostTeamID        int64            `json:"host_team_id"`
-	AwayTeamID        *int64           `json:"away_team_id"`
-	OpponentName      *string          `json:"opponent_name"`
-	PlayersPerTeam    int32            `json:"players_per_team"`
-	StartTime         pgtype.Timestamp `json:"start_time"`
-	EndTime           pgtype.Timestamp `json:"end_time"`
-	Location          string           `json:"location"`
-	LocationLatitude  *float64         `json:"location_latitude"`
-	LocationLongitude *float64         `json:"location_longitude"`
-	Description       *string          `json:"description"`
-	CreatedByUserID   *int64           `json:"created_by_user_id"`
-	CreatedAt         pgtype.Timestamp `json:"created_at"`
-	UpdatedAt         pgtype.Timestamp `json:"updated_at"`
-	CreatedByAdminID  *int64           `json:"created_by_admin_id"`
-	HostTeamName      string           `json:"host_team_name"`
-	AwayTeamName      *string          `json:"away_team_name"`
+	ID                  pgtype.UUID      `json:"id"`
+	Name                string           `json:"name"`
+	PublicationMode     string           `json:"publication_mode"`
+	OpponentState       string           `json:"opponent_state"`
+	Status              string           `json:"status"`
+	HostTeamID          int64            `json:"host_team_id"`
+	AwayTeamID          *int64           `json:"away_team_id"`
+	OpponentName        *string          `json:"opponent_name"`
+	PlayersPerTeam      int32            `json:"players_per_team"`
+	StartTime           pgtype.Timestamp `json:"start_time"`
+	EndTime             pgtype.Timestamp `json:"end_time"`
+	Location            string           `json:"location"`
+	LocationLatitude    *float64         `json:"location_latitude"`
+	LocationLongitude   *float64         `json:"location_longitude"`
+	Description         *string          `json:"description"`
+	CreatedByUserID     *int64           `json:"created_by_user_id"`
+	CreatedAt           pgtype.Timestamp `json:"created_at"`
+	UpdatedAt           pgtype.Timestamp `json:"updated_at"`
+	CreatedByAdminID    *int64           `json:"created_by_admin_id"`
+	RegistrationStartAt pgtype.Timestamp `json:"registration_start_at"`
+	RegistrationEndAt   pgtype.Timestamp `json:"registration_end_at"`
+	HostTeamName        string           `json:"host_team_name"`
+	AwayTeamName        *string          `json:"away_team_name"`
 }
 
 func (q *Queries) ListHomeEndedMatchesForUser(ctx context.Context, arg ListHomeEndedMatchesForUserParams) ([]ListHomeEndedMatchesForUserRow, error) {
@@ -1045,6 +1123,8 @@ func (q *Queries) ListHomeEndedMatchesForUser(ctx context.Context, arg ListHomeE
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.CreatedByAdminID,
+			&i.RegistrationStartAt,
+			&i.RegistrationEndAt,
 			&i.HostTeamName,
 			&i.AwayTeamName,
 		); err != nil {
@@ -1058,63 +1138,8 @@ func (q *Queries) ListHomeEndedMatchesForUser(ctx context.Context, arg ListHomeE
 	return items, nil
 }
 
-const listIndividualGroupRegistrations = `-- name: ListIndividualGroupRegistrations :many
-SELECT r.user_id,
-       u.nickname,
-       u.avatar_url,
-       u.real_name,
-       r.status AS registration_status
-FROM match_registrations r
-JOIN users u ON u.id = r.user_id
-WHERE r.group_id = $1
-ORDER BY
-    CASE r.status
-        WHEN 'attending' THEN 0
-        WHEN 'unknown' THEN 1
-        WHEN 'leave' THEN 3
-        WHEN 'absent' THEN 4
-        ELSE 5
-    END,
-    r.created_at,
-    r.user_id
-`
-
-type ListIndividualGroupRegistrationsRow struct {
-	UserID             int64   `json:"user_id"`
-	Nickname           string  `json:"nickname"`
-	AvatarUrl          *string `json:"avatar_url"`
-	RealName           *string `json:"real_name"`
-	RegistrationStatus string  `json:"registration_status"`
-}
-
-func (q *Queries) ListIndividualGroupRegistrations(ctx context.Context, groupID pgtype.UUID) ([]ListIndividualGroupRegistrationsRow, error) {
-	rows, err := q.db.Query(ctx, listIndividualGroupRegistrations, groupID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []ListIndividualGroupRegistrationsRow
-	for rows.Next() {
-		var i ListIndividualGroupRegistrationsRow
-		if err := rows.Scan(
-			&i.UserID,
-			&i.Nickname,
-			&i.AvatarUrl,
-			&i.RealName,
-			&i.RegistrationStatus,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const listMatchesForAdmin = `-- name: ListMatchesForAdmin :many
-SELECT m.id, m.name, m.publication_mode, m.opponent_state, m.status, m.host_team_id, m.away_team_id, m.opponent_name, m.players_per_team, m.start_time, m.end_time, m.location, m.location_latitude, m.location_longitude, m.description, m.created_by_user_id, m.created_at, m.updated_at, m.created_by_admin_id,
+SELECT m.id, m.name, m.publication_mode, m.opponent_state, m.status, m.host_team_id, m.away_team_id, m.opponent_name, m.players_per_team, m.start_time, m.end_time, m.location, m.location_latitude, m.location_longitude, m.description, m.created_by_user_id, m.created_at, m.updated_at, m.created_by_admin_id, m.registration_start_at, m.registration_end_at,
        host.name AS host_team_name,
        away.name AS away_team_name
 FROM matches m
@@ -1139,27 +1164,29 @@ type ListMatchesForAdminParams struct {
 }
 
 type ListMatchesForAdminRow struct {
-	ID                pgtype.UUID      `json:"id"`
-	Name              string           `json:"name"`
-	PublicationMode   string           `json:"publication_mode"`
-	OpponentState     string           `json:"opponent_state"`
-	Status            string           `json:"status"`
-	HostTeamID        int64            `json:"host_team_id"`
-	AwayTeamID        *int64           `json:"away_team_id"`
-	OpponentName      *string          `json:"opponent_name"`
-	PlayersPerTeam    int32            `json:"players_per_team"`
-	StartTime         pgtype.Timestamp `json:"start_time"`
-	EndTime           pgtype.Timestamp `json:"end_time"`
-	Location          string           `json:"location"`
-	LocationLatitude  *float64         `json:"location_latitude"`
-	LocationLongitude *float64         `json:"location_longitude"`
-	Description       *string          `json:"description"`
-	CreatedByUserID   *int64           `json:"created_by_user_id"`
-	CreatedAt         pgtype.Timestamp `json:"created_at"`
-	UpdatedAt         pgtype.Timestamp `json:"updated_at"`
-	CreatedByAdminID  *int64           `json:"created_by_admin_id"`
-	HostTeamName      string           `json:"host_team_name"`
-	AwayTeamName      *string          `json:"away_team_name"`
+	ID                  pgtype.UUID      `json:"id"`
+	Name                string           `json:"name"`
+	PublicationMode     string           `json:"publication_mode"`
+	OpponentState       string           `json:"opponent_state"`
+	Status              string           `json:"status"`
+	HostTeamID          int64            `json:"host_team_id"`
+	AwayTeamID          *int64           `json:"away_team_id"`
+	OpponentName        *string          `json:"opponent_name"`
+	PlayersPerTeam      int32            `json:"players_per_team"`
+	StartTime           pgtype.Timestamp `json:"start_time"`
+	EndTime             pgtype.Timestamp `json:"end_time"`
+	Location            string           `json:"location"`
+	LocationLatitude    *float64         `json:"location_latitude"`
+	LocationLongitude   *float64         `json:"location_longitude"`
+	Description         *string          `json:"description"`
+	CreatedByUserID     *int64           `json:"created_by_user_id"`
+	CreatedAt           pgtype.Timestamp `json:"created_at"`
+	UpdatedAt           pgtype.Timestamp `json:"updated_at"`
+	CreatedByAdminID    *int64           `json:"created_by_admin_id"`
+	RegistrationStartAt pgtype.Timestamp `json:"registration_start_at"`
+	RegistrationEndAt   pgtype.Timestamp `json:"registration_end_at"`
+	HostTeamName        string           `json:"host_team_name"`
+	AwayTeamName        *string          `json:"away_team_name"`
 }
 
 func (q *Queries) ListMatchesForAdmin(ctx context.Context, arg ListMatchesForAdminParams) ([]ListMatchesForAdminRow, error) {
@@ -1196,6 +1223,8 @@ func (q *Queries) ListMatchesForAdmin(ctx context.Context, arg ListMatchesForAdm
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.CreatedByAdminID,
+			&i.RegistrationStartAt,
+			&i.RegistrationEndAt,
 			&i.HostTeamName,
 			&i.AwayTeamName,
 		); err != nil {
@@ -1210,7 +1239,7 @@ func (q *Queries) ListMatchesForAdmin(ctx context.Context, arg ListMatchesForAdm
 }
 
 const listMatchesForUser = `-- name: ListMatchesForUser :many
-SELECT m.id, m.name, m.publication_mode, m.opponent_state, m.status, m.host_team_id, m.away_team_id, m.opponent_name, m.players_per_team, m.start_time, m.end_time, m.location, m.location_latitude, m.location_longitude, m.description, m.created_by_user_id, m.created_at, m.updated_at, m.created_by_admin_id,
+SELECT m.id, m.name, m.publication_mode, m.opponent_state, m.status, m.host_team_id, m.away_team_id, m.opponent_name, m.players_per_team, m.start_time, m.end_time, m.location, m.location_latitude, m.location_longitude, m.description, m.created_by_user_id, m.created_at, m.updated_at, m.created_by_admin_id, m.registration_start_at, m.registration_end_at,
        host.name AS host_team_name,
        away.name AS away_team_name
 FROM matches m
@@ -1296,27 +1325,29 @@ type ListMatchesForUserParams struct {
 }
 
 type ListMatchesForUserRow struct {
-	ID                pgtype.UUID      `json:"id"`
-	Name              string           `json:"name"`
-	PublicationMode   string           `json:"publication_mode"`
-	OpponentState     string           `json:"opponent_state"`
-	Status            string           `json:"status"`
-	HostTeamID        int64            `json:"host_team_id"`
-	AwayTeamID        *int64           `json:"away_team_id"`
-	OpponentName      *string          `json:"opponent_name"`
-	PlayersPerTeam    int32            `json:"players_per_team"`
-	StartTime         pgtype.Timestamp `json:"start_time"`
-	EndTime           pgtype.Timestamp `json:"end_time"`
-	Location          string           `json:"location"`
-	LocationLatitude  *float64         `json:"location_latitude"`
-	LocationLongitude *float64         `json:"location_longitude"`
-	Description       *string          `json:"description"`
-	CreatedByUserID   *int64           `json:"created_by_user_id"`
-	CreatedAt         pgtype.Timestamp `json:"created_at"`
-	UpdatedAt         pgtype.Timestamp `json:"updated_at"`
-	CreatedByAdminID  *int64           `json:"created_by_admin_id"`
-	HostTeamName      string           `json:"host_team_name"`
-	AwayTeamName      *string          `json:"away_team_name"`
+	ID                  pgtype.UUID      `json:"id"`
+	Name                string           `json:"name"`
+	PublicationMode     string           `json:"publication_mode"`
+	OpponentState       string           `json:"opponent_state"`
+	Status              string           `json:"status"`
+	HostTeamID          int64            `json:"host_team_id"`
+	AwayTeamID          *int64           `json:"away_team_id"`
+	OpponentName        *string          `json:"opponent_name"`
+	PlayersPerTeam      int32            `json:"players_per_team"`
+	StartTime           pgtype.Timestamp `json:"start_time"`
+	EndTime             pgtype.Timestamp `json:"end_time"`
+	Location            string           `json:"location"`
+	LocationLatitude    *float64         `json:"location_latitude"`
+	LocationLongitude   *float64         `json:"location_longitude"`
+	Description         *string          `json:"description"`
+	CreatedByUserID     *int64           `json:"created_by_user_id"`
+	CreatedAt           pgtype.Timestamp `json:"created_at"`
+	UpdatedAt           pgtype.Timestamp `json:"updated_at"`
+	CreatedByAdminID    *int64           `json:"created_by_admin_id"`
+	RegistrationStartAt pgtype.Timestamp `json:"registration_start_at"`
+	RegistrationEndAt   pgtype.Timestamp `json:"registration_end_at"`
+	HostTeamName        string           `json:"host_team_name"`
+	AwayTeamName        *string          `json:"away_team_name"`
 }
 
 func (q *Queries) ListMatchesForUser(ctx context.Context, arg ListMatchesForUserParams) ([]ListMatchesForUserRow, error) {
@@ -1358,6 +1389,8 @@ func (q *Queries) ListMatchesForUser(ctx context.Context, arg ListMatchesForUser
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.CreatedByAdminID,
+			&i.RegistrationStartAt,
+			&i.RegistrationEndAt,
 			&i.HostTeamName,
 			&i.AwayTeamName,
 		); err != nil {
@@ -1836,24 +1869,28 @@ UPDATE matches
 SET name = $2,
     start_time = $3,
     end_time = $4,
-    location = $5,
-    location_latitude = $6,
-    location_longitude = $7,
-    description = $8,
+    registration_start_at = $5,
+    registration_end_at = $6,
+    location = $7,
+    location_latitude = $8,
+    location_longitude = $9,
+    description = $10,
     updated_at = NOW()
 WHERE id = $1
-RETURNING id, name, publication_mode, opponent_state, status, host_team_id, away_team_id, opponent_name, players_per_team, start_time, end_time, location, location_latitude, location_longitude, description, created_by_user_id, created_at, updated_at, created_by_admin_id
+RETURNING id, name, publication_mode, opponent_state, status, host_team_id, away_team_id, opponent_name, players_per_team, start_time, end_time, location, location_latitude, location_longitude, description, created_by_user_id, created_at, updated_at, created_by_admin_id, registration_start_at, registration_end_at
 `
 
 type UpdateMatchDetailsParams struct {
-	ID                pgtype.UUID      `json:"id"`
-	Name              string           `json:"name"`
-	StartTime         pgtype.Timestamp `json:"start_time"`
-	EndTime           pgtype.Timestamp `json:"end_time"`
-	Location          string           `json:"location"`
-	LocationLatitude  *float64         `json:"location_latitude"`
-	LocationLongitude *float64         `json:"location_longitude"`
-	Description       *string          `json:"description"`
+	ID                  pgtype.UUID      `json:"id"`
+	Name                string           `json:"name"`
+	StartTime           pgtype.Timestamp `json:"start_time"`
+	EndTime             pgtype.Timestamp `json:"end_time"`
+	RegistrationStartAt pgtype.Timestamp `json:"registration_start_at"`
+	RegistrationEndAt   pgtype.Timestamp `json:"registration_end_at"`
+	Location            string           `json:"location"`
+	LocationLatitude    *float64         `json:"location_latitude"`
+	LocationLongitude   *float64         `json:"location_longitude"`
+	Description         *string          `json:"description"`
 }
 
 func (q *Queries) UpdateMatchDetails(ctx context.Context, arg UpdateMatchDetailsParams) (Match, error) {
@@ -1862,6 +1899,8 @@ func (q *Queries) UpdateMatchDetails(ctx context.Context, arg UpdateMatchDetails
 		arg.Name,
 		arg.StartTime,
 		arg.EndTime,
+		arg.RegistrationStartAt,
+		arg.RegistrationEndAt,
 		arg.Location,
 		arg.LocationLatitude,
 		arg.LocationLongitude,
@@ -1888,6 +1927,8 @@ func (q *Queries) UpdateMatchDetails(ctx context.Context, arg UpdateMatchDetails
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.CreatedByAdminID,
+		&i.RegistrationStartAt,
+		&i.RegistrationEndAt,
 	)
 	return i, err
 }
@@ -1922,7 +1963,7 @@ UPDATE matches
 SET status = $2,
     updated_at = NOW()
 WHERE id = $1
-RETURNING id, name, publication_mode, opponent_state, status, host_team_id, away_team_id, opponent_name, players_per_team, start_time, end_time, location, location_latitude, location_longitude, description, created_by_user_id, created_at, updated_at, created_by_admin_id
+RETURNING id, name, publication_mode, opponent_state, status, host_team_id, away_team_id, opponent_name, players_per_team, start_time, end_time, location, location_latitude, location_longitude, description, created_by_user_id, created_at, updated_at, created_by_admin_id, registration_start_at, registration_end_at
 `
 
 type UpdateMatchStatusParams struct {
@@ -1953,6 +1994,8 @@ func (q *Queries) UpdateMatchStatus(ctx context.Context, arg UpdateMatchStatusPa
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.CreatedByAdminID,
+		&i.RegistrationStartAt,
+		&i.RegistrationEndAt,
 	)
 	return i, err
 }

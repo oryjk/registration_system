@@ -18,18 +18,20 @@ type CreateMatch struct {
 }
 
 type CreateMatchCommand struct {
-	Name              string
-	PublicationMode   domain.PublicationMode
-	HostTeamID        int64
-	OpponentName      *string
-	PlayersPerTeam    int
-	HostCapacityLimit *int
-	StartTime         time.Time
-	EndTime           time.Time
-	Location          string
-	LocationLatitude  *float64
-	LocationLongitude *float64
-	Description       *string
+	Name                string
+	PublicationMode     domain.PublicationMode
+	HostTeamID          int64
+	OpponentName        *string
+	PlayersPerTeam      int
+	HostCapacityLimit   *int
+	StartTime           time.Time
+	EndTime             time.Time
+	RegistrationStartAt *time.Time
+	RegistrationEndAt   *time.Time
+	Location            string
+	LocationLatitude    *float64
+	LocationLongitude   *float64
+	Description         *string
 }
 
 type CreateMatchResult struct {
@@ -67,21 +69,23 @@ func (u CreateMatch) Execute(ctx context.Context, actor sharedauth.Actor, comman
 		createdByAdminID = &actor.ID
 	}
 	match, groups, err := domain.NewMatch(domain.NewMatchInput{
-		Name:              command.Name,
-		PublicationMode:   command.PublicationMode,
-		HostTeamID:        command.HostTeamID,
-		CreatedByUserID:   createdByUserID,
-		CreatedByAdminID:  createdByAdminID,
-		OpponentName:      command.OpponentName,
-		PlayersPerTeam:    command.PlayersPerTeam,
-		HostCapacityLimit: command.HostCapacityLimit,
-		StartTime:         command.StartTime,
-		EndTime:           command.EndTime,
-		Location:          command.Location,
-		LocationLatitude:  command.LocationLatitude,
-		LocationLongitude: command.LocationLongitude,
-		Description:       command.Description,
-		CreatedAt:         u.clock.Now(),
+		Name:                command.Name,
+		PublicationMode:     command.PublicationMode,
+		HostTeamID:          command.HostTeamID,
+		CreatedByUserID:     createdByUserID,
+		CreatedByAdminID:    createdByAdminID,
+		OpponentName:        command.OpponentName,
+		PlayersPerTeam:      command.PlayersPerTeam,
+		HostCapacityLimit:   command.HostCapacityLimit,
+		StartTime:           command.StartTime,
+		EndTime:             command.EndTime,
+		RegistrationStartAt: command.RegistrationStartAt,
+		RegistrationEndAt:   command.RegistrationEndAt,
+		Location:            command.Location,
+		LocationLatitude:    command.LocationLatitude,
+		LocationLongitude:   command.LocationLongitude,
+		Description:         command.Description,
+		CreatedAt:           u.clock.Now(),
 	}, limits)
 	if err != nil {
 		return CreateMatchResult{}, err

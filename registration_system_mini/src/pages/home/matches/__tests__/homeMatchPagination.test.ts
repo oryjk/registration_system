@@ -12,6 +12,8 @@ const baseMatch: AppMatchSummary = {
   name: "基础比赛",
   publication_mode: "online_team",
   opponent_state: "no_recruitment",
+  registration_start_at: null,
+  registration_end_at: null,
   host_team_id: 1,
   host_team_name: "银河联队",
   away_team_id: null,

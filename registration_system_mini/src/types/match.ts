@@ -58,6 +58,8 @@ export interface AppMatchSummary extends AppMatchPhaseSource {
   away_team_name: string | null;
   opponent_name: string | null;
   players_per_team: number;
+  registration_start_at: string | null;
+  registration_end_at: string | null;
   location: string;
   location_latitude: number | null;
   location_longitude: number | null;

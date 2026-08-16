@@ -466,20 +466,19 @@ func compareCounts(expected sourceCounts, actual targetCounts) string {
 }
 
 // warnDroppedLegacyFields 统计旧库有值但 Go 新表无对应列的字段：
-// cover / color / opposing_color（无列）、报名窗口 start_time~end_time（Go 无报名窗口概念）。
+// cover / color / opposing_color（无列）。报名窗口已迁入 registration_start_at/end_at。
 func warnDroppedLegacyFields(ctx context.Context, legacy *pgxpool.Pool, legacyTeamID int64) error {
-	var coverSet, colorSet, opposingColorSet, regWindow int
+	var coverSet, colorSet, opposingColorSet int
 	if err := legacy.QueryRow(ctx, `
 		SELECT
 			count(*) FILTER (WHERE COALESCE(cover,'') <> ''),
 			count(*) FILTER (WHERE COALESCE(color,'') <> ''),
-			count(*) FILTER (WHERE COALESCE(opposing_color,'') <> ''),
-			count(*) FILTER (WHERE start_time IS NOT NULL OR end_time IS NOT NULL)
+			count(*) FILTER (WHERE COALESCE(opposing_color,'') <> '')
 		FROM rs_activity WHERE home_team_id=$1 OR away_team_id=$1`, legacyTeamID,
-	).Scan(&coverSet, &colorSet, &opposingColorSet, &regWindow); err != nil {
+	).Scan(&coverSet, &colorSet, &opposingColorSet); err != nil {
 		return err
 	}
-	fmt.Printf("ℹ️  Go 新表无对应列、未迁移的旧库字段: cover=%d 场, color/opposing_color=%d/%d 场, 报名窗口(start/end_time)=%d 场（比赛时间以 holding_date 为准）\n",
-		coverSet, colorSet, opposingColorSet, regWindow)
+	fmt.Printf("ℹ️  Go 新表无对应列、未迁移的旧库字段: cover=%d 场, color/opposing_color=%d/%d 场（报名窗口已迁入 registration_start_at/end_at）\n",
+		coverSet, colorSet, opposingColorSet)
 	return nil
 }

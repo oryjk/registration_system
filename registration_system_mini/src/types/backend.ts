@@ -297,6 +297,9 @@ export interface BackendActivity {
   holding_date: string;
   start_time: string;
   end_time: string;
+  /** 报名窗口；Go 接口返回，legacy 活动无此字段。 */
+  registration_start_at?: string | null;
+  registration_end_at?: string | null;
   opposing?: string | null;
   cover?: string | null;
   description?: string | null;

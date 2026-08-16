@@ -479,7 +479,7 @@ func TestRepositoryFindForUserIncludesAttendingParticipants(t *testing.T) {
 	}
 
 	match, groups := newPersistableIndividualMatch(t, userID, teamID, 1, 8)
-	// 花名册查询基于 team_members；owner 与队员都需要 active 成员关系才会出现在 participants 里。
+	// participants 基于报名记录；队员身份不影响是否展示，这里补齐成员关系模拟真实球队场景。
 	if _, err := pool.Exec(ctx, `
 		INSERT INTO team_members (team_id, user_id, role, status)
 		VALUES ($1, $2, 'captain', 'active'),
@@ -536,6 +536,46 @@ func TestRepositoryFindForUserIncludesAttendingParticipants(t *testing.T) {
 		if !ok || participant.Status != domain.RegistrationAttending || participant.AvatarURL == nil || *participant.AvatarURL != expectedAvatar {
 			t.Fatalf("unexpected participant %d: %+v", id, participant)
 		}
+	}
+}
+
+func TestRepositoryFindForUserIncludesNonMemberAttendingParticipants(t *testing.T) {
+	pool := testsupport.StartPostgres(t)
+	ctx := context.Background()
+	userID, teamID := seedMatchOwner(t, pool)
+	// 非本队成员（如 legacy 迁移的个人报名者）只报名、不入队：详情 participants 仍必须包含他们。
+	outsiderID := seedMatchUser(t, pool)
+	if _, err := pool.Exec(ctx, `UPDATE users SET nickname = $2, avatar_url = $3 WHERE id = $1`,
+		outsiderID, "散客", "https://cdn.example.com/guest.png"); err != nil {
+		t.Fatalf("seed outsider profile: %v", err)
+	}
+
+	match, groups := newPersistableMatch(t, userID, teamID)
+	repository := NewRepository(pool)
+	if err := repository.CreateWithGroups(ctx, match, groups); err != nil {
+		t.Fatalf("create match: %v", err)
+	}
+	now := time.Date(2026, 7, 20, 12, 0, 0, 0, time.UTC)
+	registration, err := domain.NewRegistration(groups[0].ID, outsiderID, domain.RegistrationAttending, 1, now)
+	if err != nil {
+		t.Fatalf("new registration: %v", err)
+	}
+	if err := repository.CreateRegistration(ctx, registration); err != nil {
+		t.Fatalf("create registration: %v", err)
+	}
+
+	_, states, found, err := repository.FindForUser(ctx, match.ID, userID)
+	if err != nil || !found {
+		t.Fatalf("find user match detail: found=%t err=%v", found, err)
+	}
+	if len(states) != 1 || states[0].Group.Kind != domain.GroupHostTeam {
+		t.Fatalf("expected single host group, got %+v", states)
+	}
+	participants := states[0].Participants
+	if len(participants) != 1 || participants[0].UserID != outsiderID ||
+		participants[0].Nickname != "散客" || participants[0].Status != domain.RegistrationAttending ||
+		participants[0].AvatarURL == nil || *participants[0].AvatarURL != "https://cdn.example.com/guest.png" {
+		t.Fatalf("expected non-member attending participant, got %+v", participants)
 	}
 }
 

@@ -28,6 +28,8 @@ export function buildCreateMatchPayload(form: MatchPublishFormModel, hostTeam: H
     host_capacity_limit: playersPerTeam + 2,
     start_time: new Date(form.holdingDate).toISOString(),
     end_time: new Date(form.matchEndTime).toISOString(),
+    registration_start_at: form.startTime ? new Date(form.startTime).toISOString() : undefined,
+    registration_end_at: form.endTime ? new Date(form.endTime).toISOString() : undefined,
     location: form.location.trim(),
     ...(hasCoordinates
       ? { location_latitude: form.locationLatitude!, location_longitude: form.locationLongitude! }

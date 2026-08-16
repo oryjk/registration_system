@@ -79,7 +79,8 @@ describe("match detail registration design", () => {
     ).text();
 
     expect(pageLogic.includes("const registrationDeadlineTimestamp = computed")).toEqual(true);
-    expect(pageLogic.includes("parseDateValue(match.value.end_time || match.value.holding_date).getTime()")).toEqual(true);
+    // 报名截止优先显式报名窗口，缺失时回退比赛结束/开始时间（旧数据兼容）。
+    expect(pageLogic.includes("match.value.registration_end_at || match.value.end_time || match.value.holding_date")).toEqual(true);
     expect(pageLogic.includes("formatCountdown(registrationDeadlineTimestamp.value - nowTick.value)")).toEqual(true);
     expect(pageLogic.includes("formatClock(match.value.holding_date)")).toEqual(true);
     expect(pageLogic.includes("formatClock(match.value.start_time)")).toEqual(false);

@@ -105,6 +105,8 @@ export function toBackendActivity(match: AppMatchSummary, group?: AppMatchGroupD
     holding_date: match.start_time,
     start_time: match.start_time,
     end_time: match.end_time,
+    registration_start_at: match.registration_start_at,
+    registration_end_at: match.registration_end_at,
     opposing: match.opponent_name ?? match.away_team_name,
     cover: null,
     description: match.description,

@@ -1,13 +1,40 @@
-<script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+<script lang="ts">
+import { ref } from "vue";
 import { listTestLoginUsers } from "@/api/auth";
-import { NeoButton, NeoSurface } from "@/components/neo";
-import { loginWithTestUser, useAppSession } from "@/stores/appSession";
 import type { TestLoginUser } from "@/types/app";
 
+// 面板嵌在 AppTabHeader 中，每个页面都会新建实例；
+// 用户列表与选中项提升到模块级共享，避免每次切页都重复请求 /test-auth/users。
+const sharedUsers = ref<TestLoginUser[]>([]);
+const sharedSelectedUserId = ref<number | null>(null);
+let sharedLoadPromise: Promise<void> | null = null;
+
+async function loadSharedUsers() {
+  if (sharedUsers.value.length > 0) return;
+  if (!sharedLoadPromise) {
+    sharedLoadPromise = listTestLoginUsers()
+      .then((result) => {
+        sharedUsers.value = result.items;
+        sharedSelectedUserId.value = result.items.some((user) => user.id === result.default_user_id)
+          ? result.default_user_id
+          : (result.items[0]?.id ?? null);
+      })
+      .finally(() => {
+        sharedLoadPromise = null;
+      });
+  }
+  await sharedLoadPromise;
+}
+</script>
+
+<script setup lang="ts">
+import { computed, onMounted } from "vue";
+import { NeoButton, NeoSurface } from "@/components/neo";
+import { loginWithTestUser, useAppSession } from "@/stores/appSession";
+
 const { currentUser, isBootstrapping } = useAppSession();
-const users = ref<TestLoginUser[]>([]);
-const selectedUserId = ref<number | null>(null);
+const users = sharedUsers;
+const selectedUserId = sharedSelectedUserId;
 const errorMessage = ref("");
 const isLoading = ref(false);
 
@@ -16,15 +43,12 @@ const shouldShow = computed(() => enabled.value && !currentUser.value);
 const selectedUser = computed(() => users.value.find((user) => user.id === selectedUserId.value) ?? null);
 
 async function loadUsers() {
-  if (!enabled.value || users.value.length > 0 || isLoading.value) return;
+  // 已登录时面板不可见，无需再拉取测试用户列表
+  if (!enabled.value || currentUser.value || users.value.length > 0 || isLoading.value) return;
   isLoading.value = true;
   errorMessage.value = "";
   try {
-    const result = await listTestLoginUsers();
-    users.value = result.items;
-    selectedUserId.value = result.items.some((user) => user.id === result.default_user_id)
-      ? result.default_user_id
-      : result.items[0]?.id ?? null;
+    await loadSharedUsers();
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : "测试用户列表加载失败";
   } finally {

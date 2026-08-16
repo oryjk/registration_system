@@ -33,26 +33,28 @@ func NewUserHandler(service UserMatchUseCase, create CreateMatchUseCase) *UserHa
 }
 
 type UserMatchResponse struct {
-	ID                 string                         `json:"id"`
-	Name               string                         `json:"name"`
-	PublicationMode    domain.PublicationMode         `json:"publication_mode"`
-	OpponentState      domain.OpponentState           `json:"opponent_state"`
-	Status             domain.MatchStatus             `json:"status"`
-	HostTeamID         int64                          `json:"host_team_id"`
-	HostTeamName       string                         `json:"host_team_name"`
-	AwayTeamID         *int64                         `json:"away_team_id"`
-	AwayTeamName       *string                        `json:"away_team_name"`
-	OpponentName       *string                        `json:"opponent_name"`
-	PlayersPerTeam     int                            `json:"players_per_team"`
-	StartTime          time.Time                      `json:"start_time"`
-	EndTime            time.Time                      `json:"end_time"`
-	Location           string                         `json:"location"`
-	LocationLatitude   *float64                       `json:"location_latitude"`
-	LocationLongitude  *float64                       `json:"location_longitude"`
-	Description        *string                        `json:"description"`
-	RegistrationGroups []UserRegistrationGroupSummary `json:"registration_groups"`
-	CreatedAt          time.Time                      `json:"created_at"`
-	UpdatedAt          time.Time                      `json:"updated_at"`
+	ID                  string                         `json:"id"`
+	Name                string                         `json:"name"`
+	PublicationMode     domain.PublicationMode         `json:"publication_mode"`
+	OpponentState       domain.OpponentState           `json:"opponent_state"`
+	Status              domain.MatchStatus             `json:"status"`
+	HostTeamID          int64                          `json:"host_team_id"`
+	HostTeamName        string                         `json:"host_team_name"`
+	AwayTeamID          *int64                         `json:"away_team_id"`
+	AwayTeamName        *string                        `json:"away_team_name"`
+	OpponentName        *string                        `json:"opponent_name"`
+	PlayersPerTeam      int                            `json:"players_per_team"`
+	StartTime           time.Time                      `json:"start_time"`
+	EndTime             time.Time                      `json:"end_time"`
+	RegistrationStartAt *time.Time                     `json:"registration_start_at"`
+	RegistrationEndAt   *time.Time                     `json:"registration_end_at"`
+	Location            string                         `json:"location"`
+	LocationLatitude    *float64                       `json:"location_latitude"`
+	LocationLongitude   *float64                       `json:"location_longitude"`
+	Description         *string                        `json:"description"`
+	RegistrationGroups  []UserRegistrationGroupSummary `json:"registration_groups"`
+	CreatedAt           time.Time                      `json:"created_at"`
+	UpdatedAt           time.Time                      `json:"updated_at"`
 }
 
 type UserRegistrationGroupSummary struct {
@@ -213,6 +215,7 @@ func (h *UserHandler) Create(c *gin.Context) {
 		Name: request.Name, PublicationMode: request.PublicationMode, HostTeamID: request.HostTeamID,
 		OpponentName: request.OpponentName, PlayersPerTeam: request.PlayersPerTeam,
 		HostCapacityLimit: request.HostCapacityLimit, StartTime: request.StartTime, EndTime: request.EndTime,
+		RegistrationStartAt: request.RegistrationStartAt, RegistrationEndAt: request.RegistrationEndAt,
 		Location: request.Location, LocationLatitude: request.LocationLatitude, LocationLongitude: request.LocationLongitude,
 		Description: request.Description,
 	})
@@ -304,6 +307,7 @@ func mapUserMatch(item ports.MatchItem) UserMatchResponse {
 		HostTeamID: match.HostTeamID, HostTeamName: item.HostTeamName,
 		AwayTeamID: match.AwayTeamID, AwayTeamName: item.AwayTeamName, OpponentName: match.OpponentName,
 		PlayersPerTeam: match.PlayersPerTeam, StartTime: match.StartTime, EndTime: match.EndTime,
+		RegistrationStartAt: match.RegistrationStartAt, RegistrationEndAt: match.RegistrationEndAt,
 		Location: match.Location, LocationLatitude: match.LocationLatitude, LocationLongitude: match.LocationLongitude,
 		Description: match.Description, RegistrationGroups: groups, CreatedAt: match.CreatedAt, UpdatedAt: match.UpdatedAt,
 	}

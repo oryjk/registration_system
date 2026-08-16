@@ -34,43 +34,47 @@ const (
 )
 
 type Match struct {
-	ID                uuid.UUID
-	Name              string
-	PublicationMode   PublicationMode
-	OpponentState     OpponentState
-	Status            MatchStatus
-	HostTeamID        int64
-	AwayTeamID        *int64
-	OpponentName      *string
-	PlayersPerTeam    int
-	StartTime         time.Time
-	EndTime           time.Time
-	Location          string
-	LocationLatitude  *float64
-	LocationLongitude *float64
-	Description       *string
-	CreatedByUserID   *int64
-	CreatedByAdminID  *int64
-	CreatedAt         time.Time
-	UpdatedAt         time.Time
+	ID                  uuid.UUID
+	Name                string
+	PublicationMode     PublicationMode
+	OpponentState       OpponentState
+	Status              MatchStatus
+	HostTeamID          int64
+	AwayTeamID          *int64
+	OpponentName        *string
+	PlayersPerTeam      int
+	StartTime           time.Time
+	EndTime             time.Time
+	RegistrationStartAt *time.Time
+	RegistrationEndAt   *time.Time
+	Location            string
+	LocationLatitude    *float64
+	LocationLongitude   *float64
+	Description         *string
+	CreatedByUserID     *int64
+	CreatedByAdminID    *int64
+	CreatedAt           time.Time
+	UpdatedAt           time.Time
 }
 
 type NewMatchInput struct {
-	Name              string
-	PublicationMode   PublicationMode
-	HostTeamID        int64
-	CreatedByUserID   *int64
-	CreatedByAdminID  *int64
-	OpponentName      *string
-	PlayersPerTeam    int
-	HostCapacityLimit *int
-	StartTime         time.Time
-	EndTime           time.Time
-	Location          string
-	LocationLatitude  *float64
-	LocationLongitude *float64
-	Description       *string
-	CreatedAt         time.Time
+	Name                string
+	PublicationMode     PublicationMode
+	HostTeamID          int64
+	CreatedByUserID     *int64
+	CreatedByAdminID    *int64
+	OpponentName        *string
+	PlayersPerTeam      int
+	HostCapacityLimit   *int
+	StartTime           time.Time
+	EndTime             time.Time
+	RegistrationStartAt *time.Time
+	RegistrationEndAt   *time.Time
+	Location            string
+	LocationLatitude    *float64
+	LocationLongitude   *float64
+	Description         *string
+	CreatedAt           time.Time
 }
 
 type IndividualLimits struct {
@@ -183,13 +187,15 @@ func (m *Match) RecalculateIndividualOpponent(activePlayers, minPlayers int, now
 }
 
 type UpdateMatchDetails struct {
-	Name              string
-	StartTime         time.Time
-	EndTime           time.Time
-	Location          string
-	LocationLatitude  *float64
-	LocationLongitude *float64
-	Description       *string
+	Name                string
+	StartTime           time.Time
+	EndTime             time.Time
+	RegistrationStartAt *time.Time
+	RegistrationEndAt   *time.Time
+	Location            string
+	LocationLatitude    *float64
+	LocationLongitude   *float64
+	Description         *string
 }
 
 func (m *Match) UpdateDetails(input UpdateMatchDetails, now time.Time) error {
@@ -209,6 +215,8 @@ func (m *Match) UpdateDetails(input UpdateMatchDetails, now time.Time) error {
 	m.Name = strings.TrimSpace(input.Name)
 	m.StartTime = input.StartTime
 	m.EndTime = input.EndTime
+	m.RegistrationStartAt = input.RegistrationStartAt
+	m.RegistrationEndAt = input.RegistrationEndAt
 	m.Location = strings.TrimSpace(input.Location)
 	m.LocationLatitude = input.LocationLatitude
 	m.LocationLongitude = input.LocationLongitude

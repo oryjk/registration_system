@@ -59,7 +59,7 @@ func (s PostgresSource) Load(ctx context.Context, options LoadOptions) (Snapshot
 func loadMatches(ctx context.Context, tx pgx.Tx, teamID int64, options LoadOptions) ([]LegacyMatch, error) {
 	rows, err := tx.Query(ctx, `
         SELECT id, name, COALESCE(opposing,''), status, COALESCE(players_per_team,0),
-               holding_date, location, location_latitude, location_longitude,
+               holding_date, start_time, end_time, location, location_latitude, location_longitude,
                description, created_at, updated_at, COALESCE(home_team_id,0), team_capacity_limit
 	        FROM rs_activity
 	        WHERE (home_team_id=$1 OR away_team_id=$1)
@@ -80,7 +80,8 @@ func loadMatches(ctx context.Context, tx pgx.Tx, teamID int64, options LoadOptio
 		var description *string
 		if err := rows.Scan(
 			&match.SourceID, &match.Name, &match.Opposing, &match.Status, &match.PlayersPerTeam,
-			&match.HoldingDate, &match.Location, &match.Latitude, &match.Longitude,
+			&match.HoldingDate, &match.RegistrationStartAt, &match.RegistrationEndAt,
+			&match.Location, &match.Latitude, &match.Longitude,
 			&description, &match.CreatedAt, &match.UpdatedAt, &match.HomeTeamSourceID, &match.HostCapacityLimit,
 		); err != nil {
 			return nil, fmt.Errorf("scan legacy activity: %w", err)

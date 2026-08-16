@@ -68,7 +68,7 @@ func (r *Repository) FindForUser(ctx context.Context, matchID uuid.UUID, userID 
 				CancelledAt: timestampPointer(groupRow.MyRegistrationCancelledAt),
 			}
 		}
-		roster, err := r.ListRosterForGroup(ctx, state.Group)
+		roster, err := r.listGroupRegistrationEntries(ctx, state.Group.ID)
 		if err != nil {
 			return ports.MatchItem{}, nil, false, err
 		}
@@ -104,6 +104,7 @@ func mapAdminDetailMatch(row matchsqlc.GetMatchForAdminRow) domain.Match {
 		OpponentState: domain.OpponentState(row.OpponentState), Status: domain.MatchStatus(row.Status),
 		HostTeamID: row.HostTeamID, AwayTeamID: row.AwayTeamID, OpponentName: row.OpponentName,
 		PlayersPerTeam: int(row.PlayersPerTeam), StartTime: row.StartTime.Time, EndTime: row.EndTime.Time,
+		RegistrationStartAt: timestampPointer(row.RegistrationStartAt), RegistrationEndAt: timestampPointer(row.RegistrationEndAt),
 		Location: row.Location, LocationLatitude: row.LocationLatitude, LocationLongitude: row.LocationLongitude,
 		Description: row.Description, CreatedByUserID: row.CreatedByUserID, CreatedByAdminID: row.CreatedByAdminID,
 		CreatedAt: row.CreatedAt.Time, UpdatedAt: row.UpdatedAt.Time,

@@ -207,6 +207,8 @@ describe("toHomeMatchCard", () => {
       end_time: muchLaterIso,
       publication_mode: "online_individual",
       opponent_state: "recruiting",
+      registration_start_at: null,
+      registration_end_at: null,
       name: "列表比赛",
       host_team_id: 1,
       host_team_name: "银河联队",

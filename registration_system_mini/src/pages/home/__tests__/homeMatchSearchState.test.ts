@@ -14,6 +14,8 @@ function buildMatch(overrides: Partial<AppMatchSummary>): AppMatchSummary {
     name: "周末友谊赛",
     publication_mode: "offline_confirmed",
     opponent_state: "confirmed",
+    registration_start_at: null,
+    registration_end_at: null,
     status: "registering",
     host_team_id: 1,
     host_team_name: "银河联队",

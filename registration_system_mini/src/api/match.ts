@@ -66,6 +66,8 @@ export interface CreateMatchPayload {
   host_capacity_limit?: number;
   start_time: string;
   end_time: string;
+  registration_start_at?: string;
+  registration_end_at?: string;
   location: string;
   location_latitude?: number;
   location_longitude?: number;

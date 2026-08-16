@@ -11,6 +11,8 @@ INSERT INTO matches (
     players_per_team,
     start_time,
     end_time,
+    registration_start_at,
+    registration_end_at,
     location,
     location_latitude,
     location_longitude,
@@ -20,7 +22,7 @@ INSERT INTO matches (
 )
 VALUES (
     $1, $2, $3, $4, $5, $6, $7, $8,
-    $9, $10, $11, $12, $13, $14, $15, $16, $17
+    $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19
 )
 RETURNING *;
 
@@ -344,10 +346,12 @@ UPDATE matches
 SET name = $2,
     start_time = $3,
     end_time = $4,
-    location = $5,
-    location_latitude = $6,
-    location_longitude = $7,
-    description = $8,
+    registration_start_at = $5,
+    registration_end_at = $6,
+    location = $7,
+    location_latitude = $8,
+    location_longitude = $9,
+    description = $10,
     updated_at = NOW()
 WHERE id = $1
 RETURNING *;
@@ -610,7 +614,8 @@ ORDER BY
     tm.joined_at,
     tm.user_id;
 
--- name: ListIndividualGroupRegistrations :many
+-- name: ListGroupRegistrations :many
+-- 报名组的全部报名记录（含用户资料）；个人组花名册与用户端详情 participants 共用。
 SELECT r.user_id,
        u.nickname,
        u.avatar_url,

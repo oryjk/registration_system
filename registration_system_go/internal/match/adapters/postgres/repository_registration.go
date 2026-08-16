@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 
+	"github.com/google/uuid"
 	matchsqlc "github.com/oryjk/registration_system/registration_system_go/internal/match/adapters/postgres/sqlc"
 	"github.com/oryjk/registration_system/registration_system_go/internal/match/domain"
 	"github.com/oryjk/registration_system/registration_system_go/internal/match/ports"
@@ -36,22 +37,28 @@ func (r *Repository) ListRosterForGroup(ctx context.Context, group domain.Regist
 		}
 		return entries, nil
 	case domain.GroupIndividualOpponent:
-		rows, err := r.queries.ListIndividualGroupRegistrations(ctx, pgUUID(group.ID))
-		if err != nil {
-			return nil, err
-		}
-		entries := make([]ports.AdminRosterEntry, 0, len(rows))
-		for _, row := range rows {
-			status := domain.RegistrationStatus(row.RegistrationStatus)
-			entries = append(entries, ports.AdminRosterEntry{
-				UserID: row.UserID, Nickname: row.Nickname, RealName: row.RealName, AvatarURL: row.AvatarUrl,
-				Status: &status,
-			})
-		}
-		return entries, nil
+		return r.listGroupRegistrationEntries(ctx, group.ID)
 	default:
 		return nil, nil
 	}
+}
+
+// listGroupRegistrationEntries 按报名记录（而非队员身份）列出报名组名册：
+// legacy 迁移或个人报名者可能不在 team_members 里，用户端 participants 不能依赖队员关系。
+func (r *Repository) listGroupRegistrationEntries(ctx context.Context, groupID uuid.UUID) ([]ports.AdminRosterEntry, error) {
+	rows, err := r.queries.ListGroupRegistrations(ctx, pgUUID(groupID))
+	if err != nil {
+		return nil, err
+	}
+	entries := make([]ports.AdminRosterEntry, 0, len(rows))
+	for _, row := range rows {
+		status := domain.RegistrationStatus(row.RegistrationStatus)
+		entries = append(entries, ports.AdminRosterEntry{
+			UserID: row.UserID, Nickname: row.Nickname, RealName: row.RealName, AvatarURL: row.AvatarUrl,
+			Status: &status,
+		})
+	}
+	return entries, nil
 }
 
 func registrationStatusPointer(value *string) *domain.RegistrationStatus {
