@@ -363,6 +363,15 @@ SET status = $2,
 WHERE id = $1
 RETURNING *;
 
+-- name: FinishMatchStatus :execrows
+-- 用户端收尾专用条件更新：旧状态仍是非终态才写入，
+-- 防止主/客队并发收尾时后写者覆盖先到的终态。
+UPDATE matches
+SET status = $2,
+    updated_at = NOW()
+WHERE id = $1
+  AND status IN ('registering', 'ongoing');
+
 -- name: DeleteMatch :execrows
 DELETE FROM matches
 WHERE id = $1;

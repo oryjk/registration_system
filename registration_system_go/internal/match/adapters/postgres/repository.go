@@ -92,6 +92,15 @@ func (r *Repository) UpdateStatus(ctx context.Context, match domain.Match) error
 	return err
 }
 
+// FinishUpdateStatus 条件更新：库内状态仍是非终态才写入，防止并发收尾互相覆盖。
+func (r *Repository) FinishUpdateStatus(ctx context.Context, match domain.Match) (bool, error) {
+	rows, err := r.queries.FinishMatchStatus(ctx, matchsqlc.FinishMatchStatusParams{ID: pgUUID(match.ID), Status: string(match.Status)})
+	if err != nil {
+		return false, err
+	}
+	return rows > 0, nil
+}
+
 func (r *Repository) Delete(ctx context.Context, id uuid.UUID) (bool, error) {
 	rowsAffected, err := r.queries.DeleteMatch(ctx, pgUUID(id))
 	return rowsAffected > 0, err

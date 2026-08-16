@@ -18,6 +18,9 @@ type Repository interface {
 	ListRosterForGroup(context.Context, domain.RegistrationGroup) ([]AdminRosterEntry, error)
 	UpdateDetails(context.Context, domain.Match) error
 	UpdateStatus(context.Context, domain.Match) error
+	// FinishUpdateStatus 用户端收尾专用条件更新：仅当库内状态仍是非终态时写入，
+	// 返回是否更新到行；false 表示并发收尾已被他人先行落终态。
+	FinishUpdateStatus(context.Context, domain.Match) (bool, error)
 	Delete(context.Context, uuid.UUID) (bool, error)
 }
 

@@ -100,7 +100,10 @@ func (f *fakeMatchRepository) CountForAdmin(context.Context, ports.AdminMatchFil
 
 func (f *fakeMatchRepository) UpdateDetails(context.Context, domain.Match) error { return nil }
 func (f *fakeMatchRepository) UpdateStatus(context.Context, domain.Match) error  { return nil }
-func (f *fakeMatchRepository) Delete(context.Context, uuid.UUID) (bool, error)   { return false, nil }
+func (f *fakeMatchRepository) FinishUpdateStatus(_ context.Context, _ domain.Match) (bool, error) {
+	return true, nil
+}
+func (f *fakeMatchRepository) Delete(context.Context, uuid.UUID) (bool, error) { return false, nil }
 
 func (f *fakeMatchRepository) CreateRegistration(context.Context, domain.Registration) error {
 	return nil
@@ -115,6 +118,10 @@ type fakeTeamAccess struct {
 }
 
 func (f *fakeTeamAccess) EnsureManager(context.Context, int64, int64) error {
+	return f.err
+}
+
+func (f *fakeTeamAccess) EnsureCaptain(context.Context, int64, int64) error {
 	return f.err
 }
 

@@ -14,9 +14,10 @@ import (
 
 type fakeFinishMatchRepository struct {
 	fakeMatchRepository
-	match   domain.Match
-	found   bool
-	updated domain.Match
+	match          domain.Match
+	found          bool
+	updated        domain.Match
+	finishConflict bool
 }
 
 func (f *fakeFinishMatchRepository) FindByID(_ context.Context, _ uuid.UUID) (domain.Match, []domain.RegistrationGroup, bool, error) {
@@ -26,6 +27,15 @@ func (f *fakeFinishMatchRepository) FindByID(_ context.Context, _ uuid.UUID) (do
 func (f *fakeFinishMatchRepository) UpdateStatus(_ context.Context, match domain.Match) error {
 	f.updated = match
 	return nil
+}
+
+// finishConflict 模拟条件更新 0 行：读取后比赛已被并发请求收尾。
+func (f *fakeFinishMatchRepository) FinishUpdateStatus(_ context.Context, match domain.Match) (bool, error) {
+	if f.finishConflict {
+		return false, nil
+	}
+	f.updated = match
+	return true, nil
 }
 
 func endedMatch(status domain.MatchStatus) domain.Match {
@@ -118,13 +128,22 @@ func TestFinishMatchRejectsAdminActor(t *testing.T) {
 	}
 }
 
-// fakeTeamAccessByTeam 按 userID 在指定球队集合内放行 manager 校验，用于区分主/客队身份。
+// fakeTeamAccessByTeam 按球队集合区分身份：captainTeamIDs 是队长，
+// leaderTeamIDs 是领队（只放行 manager 校验，用于验证领队不能收尾）。
 type fakeTeamAccessByTeam struct {
-	managerTeamIDs map[int64]bool
+	captainTeamIDs map[int64]bool
+	leaderTeamIDs  map[int64]bool
 }
 
 func (f fakeTeamAccessByTeam) EnsureManager(_ context.Context, teamID, _ int64) error {
-	if f.managerTeamIDs[teamID] {
+	if f.captainTeamIDs[teamID] || f.leaderTeamIDs[teamID] {
+		return nil
+	}
+	return sharederror.ErrForbidden
+}
+
+func (f fakeTeamAccessByTeam) EnsureCaptain(_ context.Context, teamID, _ int64) error {
+	if f.captainTeamIDs[teamID] {
 		return nil
 	}
 	return sharederror.ErrForbidden
@@ -137,45 +156,75 @@ func (f fakeTeamAccessByTeam) IsActiveMember(context.Context, int64, int64) (boo
 	return false, nil
 }
 
-func TestFinishMatchAllowsAwayManagerForConfirmedOnlineTeamMatch(t *testing.T) {
+func TestFinishMatchAllowsAwayCaptainForConfirmedOnlineTeamMatch(t *testing.T) {
 	match := endedMatch(domain.MatchOngoing)
 	match.PublicationMode = domain.OnlineTeam
 	awayTeamID := int64(9)
 	match.AwayTeamID = &awayTeamID
 	repository := &fakeFinishMatchRepository{match: match, found: true}
-	// 用户只在客队 9 拥有管理身份。
-	useCase := NewFinishMatch(repository, fakeTeamAccessByTeam{managerTeamIDs: map[int64]bool{9: true}}, fixedClock())
+	// 用户只在客队 9 拥有队长身份。
+	useCase := NewFinishMatch(repository, fakeTeamAccessByTeam{captainTeamIDs: map[int64]bool{9: true}}, fixedClock())
 
 	updated, err := useCase.Execute(context.Background(), userActor(77), repository.match.ID, FinishMatchCommand{Status: domain.MatchEnded})
 	if err != nil {
-		t.Fatalf("finish match as away manager: %v", err)
+		t.Fatalf("finish match as away captain: %v", err)
 	}
 	if updated.Status != domain.MatchEnded || repository.updated.Status != domain.MatchEnded {
 		t.Fatalf("expected ended status, got %s / %s", updated.Status, repository.updated.Status)
 	}
 }
 
-func TestFinishMatchRejectsAwayManagerWhenOpponentNotConfirmed(t *testing.T) {
+func TestFinishMatchRejectsAwayCaptainWhenOpponentNotConfirmed(t *testing.T) {
 	match := endedMatch(domain.MatchOngoing)
 	match.PublicationMode = domain.OnlineTeam
 	match.AwayTeamID = nil
 	repository := &fakeFinishMatchRepository{match: match, found: true}
-	useCase := NewFinishMatch(repository, fakeTeamAccessByTeam{managerTeamIDs: map[int64]bool{9: true}}, fixedClock())
+	useCase := NewFinishMatch(repository, fakeTeamAccessByTeam{captainTeamIDs: map[int64]bool{9: true}}, fixedClock())
 
 	if _, err := useCase.Execute(context.Background(), userActor(77), repository.match.ID, FinishMatchCommand{Status: domain.MatchEnded}); !errors.Is(err, sharederror.ErrForbidden) {
 		t.Fatalf("expected forbidden before opponent is confirmed, got %v", err)
 	}
 }
 
-func TestFinishMatchRejectsNonHostManagerForOfflineMatch(t *testing.T) {
+func TestFinishMatchRejectsNonHostCaptainForOfflineMatch(t *testing.T) {
 	match := endedMatch(domain.MatchOngoing)
 	match.PublicationMode = domain.OfflineConfirmed
 	opponent := "河西周四 FC"
 	match.OpponentName = &opponent
 	repository := &fakeFinishMatchRepository{match: match, found: true}
-	useCase := NewFinishMatch(repository, fakeTeamAccessByTeam{managerTeamIDs: map[int64]bool{9: true}}, fixedClock())
+	useCase := NewFinishMatch(repository, fakeTeamAccessByTeam{captainTeamIDs: map[int64]bool{9: true}}, fixedClock())
 
 	if _, err := useCase.Execute(context.Background(), userActor(77), repository.match.ID, FinishMatchCommand{Status: domain.MatchEnded}); !errors.Is(err, sharederror.ErrForbidden) {
-		t.Fatalf("expected forbidden for unrelated team manager, got %v", err)
+		t.Fatalf("expected forbidden for unrelated team captain, got %v", err)
+	}
+}
+
+func TestFinishMatchRejectsLeader(t *testing.T) {
+	repository := &fakeFinishMatchRepository{match: endedMatch(domain.MatchOngoing), found: true}
+	// 用户是主队领队（manager 校验放行、captain 校验拒绝）。
+	useCase := NewFinishMatch(repository, fakeTeamAccessByTeam{leaderTeamIDs: map[int64]bool{7: true}}, fixedClock())
+
+	if _, err := useCase.Execute(context.Background(), userActor(55), repository.match.ID, FinishMatchCommand{Status: domain.MatchEnded}); !errors.Is(err, sharederror.ErrForbidden) {
+		t.Fatalf("expected forbidden for leader, got %v", err)
+	}
+	if repository.updated.Status == domain.MatchEnded {
+		t.Fatal("expected no repository write for leader")
+	}
+}
+
+func TestFinishMatchRejectsConcurrentOverwrite(t *testing.T) {
+	repository := &fakeFinishMatchRepository{match: endedMatch(domain.MatchOngoing), found: true, finishConflict: true}
+	useCase := NewFinishMatch(repository, &fakeTeamAccess{}, fixedClock())
+
+	_, err := useCase.Execute(context.Background(), userActor(42), repository.match.ID, FinishMatchCommand{Status: domain.MatchEnded})
+	if err == nil {
+		t.Fatal("expected conflict when concurrent finish already landed")
+	}
+	var businessError *sharederror.Error
+	if !errors.As(err, &businessError) || businessError.Kind != sharederror.KindConflict {
+		t.Fatalf("expected conflict kind, got %v", err)
+	}
+	if repository.updated.Status == domain.MatchEnded {
+		t.Fatal("expected no repository write on conflict")
 	}
 }

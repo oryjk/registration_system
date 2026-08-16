@@ -234,6 +234,10 @@ func (f *fakeAdminMatchRepository) UpdateStatus(_ context.Context, match domain.
 	return nil
 }
 
+func (f *fakeAdminMatchRepository) FinishUpdateStatus(context.Context, domain.Match) (bool, error) {
+	return true, nil
+}
+
 func (f *fakeAdminMatchRepository) Delete(_ context.Context, id uuid.UUID) (bool, error) {
 	f.deletedID = id
 	return f.deleteFound, nil

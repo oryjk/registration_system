@@ -2000,6 +2000,29 @@ func (q *Queries) UpdateMatchStatus(ctx context.Context, arg UpdateMatchStatusPa
 	return i, err
 }
 
+const finishMatchStatus = `-- name: FinishMatchStatus :execrows
+-- 用户端收尾专用条件更新：旧状态仍是非终态才写入，
+-- 防止主/客队并发收尾时后写者覆盖先到的终态。
+UPDATE matches
+SET status = $2,
+    updated_at = NOW()
+WHERE id = $1
+  AND status IN ('registering', 'ongoing')
+`
+
+type FinishMatchStatusParams struct {
+	ID     pgtype.UUID `json:"id"`
+	Status string      `json:"status"`
+}
+
+func (q *Queries) FinishMatchStatus(ctx context.Context, arg FinishMatchStatusParams) (int64, error) {
+	result, err := q.db.Exec(ctx, finishMatchStatus, arg.ID, arg.Status)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const updateRegistrationGroupState = `-- name: UpdateRegistrationGroupState :exec
 UPDATE match_registration_groups
 SET status = $2,

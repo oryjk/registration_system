@@ -129,6 +129,23 @@ describe("resolveMatchFinishState", () => {
     })).toEqual({ canFinish: false });
   });
 
+  test("rejects the team leader even though they can manage the team", () => {
+    expect(resolveMatchFinishState({
+      sourceMatch: buildSourceMatch(),
+      currentTeam: buildTeam({ canManageTeam: true, isCaptain: false, myRole: "leader" }),
+      now: AFTER_END,
+    })).toEqual({ canFinish: false });
+    expect(resolveMatchFinishState({
+      sourceMatch: buildSourceMatch({
+        publication_mode: "online_team",
+        opponent_state: "confirmed",
+        away_team_id: 9,
+      }),
+      currentTeam: buildTeam({ id: 9, canManageTeam: true, isCaptain: false, myRole: "leader" }),
+      now: AFTER_END,
+    })).toEqual({ canFinish: false });
+  });
+
   test("rejects a manager from an unrelated team", () => {
     expect(resolveMatchFinishState({
       sourceMatch: buildSourceMatch(),

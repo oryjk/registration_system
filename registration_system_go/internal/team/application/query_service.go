@@ -29,6 +29,17 @@ func (s QueryService) EnsureManager(ctx context.Context, teamID, userID int64) e
 	return nil
 }
 
+func (s QueryService) EnsureCaptain(ctx context.Context, teamID, userID int64) error {
+	member, found, err := s.repository.FindActiveMember(ctx, teamID, userID)
+	if err != nil {
+		return sharederror.Wrap(sharederror.KindInternal, "查询球队权限失败", err)
+	}
+	if !found || !member.IsCaptain() {
+		return sharederror.ErrForbidden
+	}
+	return nil
+}
+
 func (s QueryService) EnsureActiveMember(ctx context.Context, teamID, userID int64) error {
 	found, err := s.IsActiveMember(ctx, teamID, userID)
 	if err != nil {

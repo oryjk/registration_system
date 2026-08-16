@@ -1106,6 +1106,10 @@ func (a repositoryTestTeamAccess) EnsureManager(_ context.Context, teamID, userI
 	return nil
 }
 
+func (a repositoryTestTeamAccess) EnsureCaptain(ctx context.Context, teamID, userID int64) error {
+	return a.EnsureManager(ctx, teamID, userID)
+}
+
 func (repositoryTestTeamAccess) EnsureExists(context.Context, int64) error { return nil }
 func (repositoryTestTeamAccess) EnsureActive(context.Context, int64) error { return nil }
 
@@ -1124,3 +1128,36 @@ type repositoryTestClock struct {
 func (c repositoryTestClock) Now() time.Time { return c.now }
 
 var _ ports.TeamAccess = repositoryTestTeamAccess{}
+
+func TestRepositoryFinishUpdateStatusOnlyWritesNonTerminalMatches(t *testing.T) {
+	pool := testsupport.StartPostgres(t)
+	ctx := context.Background()
+	ownerID, hostTeamID := seedMatchOwner(t, pool)
+	match, groups := newPersistableMatch(t, ownerID, hostTeamID)
+	repository := NewRepository(pool)
+	if err := repository.CreateWithGroups(ctx, match, groups); err != nil {
+		t.Fatalf("create match: %v", err)
+	}
+
+	// 非终态（registering）首次收尾：条件更新命中。
+	match.Status = domain.MatchEnded
+	updated, err := repository.FinishUpdateStatus(ctx, match)
+	if err != nil || !updated {
+		t.Fatalf("expected conditional update to land, updated=%v err=%v", updated, err)
+	}
+	loaded, _, found, err := repository.FindByID(ctx, match.ID)
+	if err != nil || !found || loaded.Status != domain.MatchEnded {
+		t.Fatalf("expected ended status persisted, got %s (found=%v err=%v)", loaded.Status, found, err)
+	}
+
+	// 库内已是终态后并发收尾：条件更新 0 行，不覆盖先到的终态。
+	match.Status = domain.MatchCancelled
+	updated, err = repository.FinishUpdateStatus(ctx, match)
+	if err != nil || updated {
+		t.Fatalf("expected conditional update to miss on terminal status, updated=%v err=%v", updated, err)
+	}
+	loaded, _, found, err = repository.FindByID(ctx, match.ID)
+	if err != nil || !found || loaded.Status != domain.MatchEnded {
+		t.Fatalf("expected ended status preserved after conflicting finish, got %s", loaded.Status)
+	}
+}

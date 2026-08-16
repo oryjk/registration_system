@@ -140,3 +140,8 @@ func normalizeDetails(name string, description *string) (string, *string, error)
 func (m Member) CanManageMatches() bool {
 	return m.Status == MemberActive && (m.Role == RoleCaptain || m.Role == RoleLeader)
 }
+
+// IsCaptain 严格限定队长本人（不含领队），用于收尾比赛等只属于队长的动作。
+func (m Member) IsCaptain() bool {
+	return m.Status == MemberActive && m.Role == RoleCaptain
+}

@@ -4,9 +4,9 @@ import type { AppMatchSummary } from "@/types/match";
 import type { TeamProfileViewModel } from "@/types/viewModels";
 import { parseDateValue } from "./detailState";
 
-/** 可收尾比赛的管理身份：主队管理方始终可以；线上约队已确认对手时客队管理方也可以。 */
-function isMatchFinishManager(sourceMatch: AppMatchSummary, currentTeam: TeamProfileViewModel | null): boolean {
-  if (!currentTeam || !currentTeam.canManageTeam) return false;
+/** 可收尾比赛的队长身份：主队队长始终可以；线上约队已确认对手时客队队长也可以。 */
+function isMatchFinishCaptain(sourceMatch: AppMatchSummary, currentTeam: TeamProfileViewModel | null): boolean {
+  if (!currentTeam || !currentTeam.isCaptain) return false;
   if (currentTeam.id === sourceMatch.host_team_id) return true;
   return (
     sourceMatch.publication_mode === "online_team" &&
@@ -15,7 +15,7 @@ function isMatchFinishManager(sourceMatch: AppMatchSummary, currentTeam: TeamPro
   );
 }
 
-/** 管理方收尾比赛的可见条件：新接口详情 + 非终态 + 已过结束时间 + 主/客队管理身份。 */
+/** 队长收尾比赛的可见条件：新接口详情 + 非终态 + 已过结束时间 + 主/客队队长身份。 */
 export function resolveMatchFinishState({
   sourceMatch,
   currentTeam,
@@ -33,7 +33,7 @@ export function resolveMatchFinishState({
   if (!Number.isFinite(endTimestamp) || now <= endTimestamp) {
     return { canFinish: false };
   }
-  if (!isMatchFinishManager(sourceMatch, currentTeam)) {
+  if (!isMatchFinishCaptain(sourceMatch, currentTeam)) {
     return { canFinish: false };
   }
   return { canFinish: true };
@@ -78,10 +78,17 @@ export function useMatchFinish(dependencies: MatchFinishDependencies) {
 
     submittingStatus.value = true;
     try {
-      await updateMatchStatus(match.id, status);
+      const detail = await updateMatchStatus(match.id, status);
+      // 状态已提交成功：先让本地收敛到接口返回的比赛，按钮立即消失。
+      sourceMatch.value = detail.match;
       finishDialogVisible.value = false;
       uni.showToast({ title: status === "ended" ? "比赛已结束" : "比赛已取消", icon: "none" });
-      await reload();
+      try {
+        // 刷新失败不再当作提交失败提示——重进/下拉刷新即可补齐其余数据。
+        await reload();
+      } catch {
+        // 状态提交本身已成功，静默忽略刷新失败。
+      }
     } catch (error) {
       uni.showToast({ title: error instanceof Error ? error.message : "操作失败，请稍后重试", icon: "none" });
     } finally {

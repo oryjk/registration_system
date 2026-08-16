@@ -187,3 +187,37 @@ func (f *fakeTeamRepository) Delete(context.Context, int64) (bool, error) {
 	}
 	return f.found, nil
 }
+
+func TestEnsureCaptainAllowsCaptainOnly(t *testing.T) {
+	tests := []struct {
+		name    string
+		role    domain.Role
+		wantErr bool
+	}{
+		{name: "captain", role: domain.RoleCaptain},
+		{name: "leader", role: domain.RoleLeader, wantErr: true},
+		{name: "vice captain", role: domain.RoleViceCaptain, wantErr: true},
+		{name: "member", role: domain.RoleMember, wantErr: true},
+	}
+
+	for index, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			repository := &fakeTeamRepository{membership: domain.Member{TeamID: 10, UserID: int64(index + 1), Role: test.role, Status: domain.MemberActive}}
+			service := NewQueryService(repository)
+			err := service.EnsureCaptain(context.Background(), 10, int64(index+1))
+			if test.wantErr && err == nil {
+				t.Fatal("expected forbidden error")
+			}
+			if !test.wantErr && err != nil {
+				t.Fatalf("expected captain role to pass, got %v", err)
+			}
+		})
+	}
+}
+
+func TestEnsureCaptainRejectsMissingMembership(t *testing.T) {
+	service := NewQueryService(&fakeTeamRepository{found: false})
+	if err := service.EnsureCaptain(context.Background(), 10, 99); err == nil {
+		t.Fatal("expected missing membership to fail")
+	}
+}

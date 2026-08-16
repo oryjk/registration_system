@@ -241,6 +241,13 @@ func (f *fakeApplicationTeamAccess) EnsureManager(_ context.Context, teamID, use
 	return nil
 }
 
+func (f *fakeApplicationTeamAccess) EnsureCaptain(_ context.Context, teamID, userID int64) error {
+	if !f.managers[teamID][userID] {
+		return sharederror.ErrForbidden
+	}
+	return nil
+}
+
 func (f *fakeApplicationTeamAccess) EnsureExists(context.Context, int64) error { return nil }
 
 func (f *fakeApplicationTeamAccess) EnsureActive(_ context.Context, teamID int64) error {
