@@ -1,7 +1,8 @@
 // migratelegacydb 一键把 Rust 旧库数据迁移到 Go 新库，可反复执行：
 //
 //	重置目标库（终止连接 → DROP → CREATE）→ goose 建 schema →
-//	种子（主队 + 队长，按旧库用户 ID 原样保留）→ 全量导入 → 数量校验。
+//	种子（主队 + 队长，按旧库用户 ID 原样保留）→ 初始化后台超级管理员 →
+//	全量导入 → 数量校验。
 //
 // 任一步失败立即报错退出；校验不一致（用户/比赛/报名数量与源库不符）也报错退出，
 // 保证迁移后数据准确，不允许静默缺数。
@@ -34,6 +35,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/stdlib"
+	"github.com/oryjk/registration_system/registration_system_go/internal/auth/adapters/password"
 	"github.com/oryjk/registration_system/registration_system_go/internal/migration/legacymatches"
 	"github.com/oryjk/registration_system/registration_system_go/internal/migration/mapping"
 	"github.com/pressly/goose/v3"
@@ -44,6 +46,8 @@ type cliOptions struct {
 	hostTeamID          int64
 	hostTeamName        string
 	captainLegacyUserID int64
+	adminUsername       string
+	adminPassword       string
 }
 
 func main() {
@@ -65,6 +69,8 @@ func parseOptions(args []string) (cliOptions, error) {
 	hostTeamID := flags.Int64("host-team-id", 11, "目标库主队 ID")
 	hostTeamName := flags.String("host-team-name", "洺悦御府", "目标库主队名称")
 	captainLegacyUserID := flags.Int64("captain-legacy-user-id", 4, "源库队长用户 ID（目标库按此 ID 原样保留）")
+	adminUsername := flags.String("admin-username", "admin", "初始化的后台超级管理员账号")
+	adminPassword := flags.String("admin-password", "admin123", "初始化的后台超级管理员密码（验收默认值，正式环境务必覆盖）")
 	if err := flags.Parse(args); err != nil {
 		return cliOptions{}, err
 	}
@@ -73,12 +79,17 @@ func parseOptions(args []string) (cliOptions, error) {
 		hostTeamID:          *hostTeamID,
 		hostTeamName:        *hostTeamName,
 		captainLegacyUserID: *captainLegacyUserID,
+		adminUsername:       *adminUsername,
+		adminPassword:       *adminPassword,
 	}
 	if options.legacyTeamID <= 0 || options.hostTeamID <= 0 || options.captainLegacyUserID <= 0 {
 		return cliOptions{}, fmt.Errorf("legacy-team-id / host-team-id / captain-legacy-user-id 必须为正整数")
 	}
 	if strings.TrimSpace(options.hostTeamName) == "" {
 		return cliOptions{}, fmt.Errorf("host-team-name 不能为空")
+	}
+	if strings.TrimSpace(options.adminUsername) == "" || len(options.adminPassword) < 6 {
+		return cliOptions{}, fmt.Errorf("admin-username 不能为空且 admin-password 至少 6 位")
 	}
 	return options, nil
 }
@@ -123,6 +134,11 @@ func run(ctx context.Context, options cliOptions) error {
 		return err
 	}
 	if err := seedHostAndCaptain(ctx, targetPool, options, captain); err != nil {
+		return err
+	}
+
+	// 3b. 初始化后台管理系统的超级管理员（管理端登录入口）。
+	if err := seedSuperAdmin(ctx, targetPool, options); err != nil {
 		return err
 	}
 
@@ -379,6 +395,24 @@ func seedHostAndCaptain(ctx context.Context, target *pgxpool.Pool, options cliOp
 	); err != nil {
 		return fmt.Errorf("种子队长成员关系: %w", err)
 	}
+	return nil
+}
+
+// seedSuperAdmin 初始化后台管理系统的超级管理员。目标库刚重建，正常必然插入；
+// ON CONFLICT DO NOTHING 只是防御同名行已存在的极端场景。
+func seedSuperAdmin(ctx context.Context, target *pgxpool.Pool, options cliOptions) error {
+	hash, err := password.Bcrypt{}.Hash(options.adminPassword)
+	if err != nil {
+		return fmt.Errorf("计算管理员密码哈希: %w", err)
+	}
+	if _, err := target.Exec(ctx, `
+		INSERT INTO admin_users (username, password_hash, role, status)
+		VALUES ($1, $2, 'super_admin', 'active')
+		ON CONFLICT (username) DO NOTHING`, options.adminUsername, hash,
+	); err != nil {
+		return fmt.Errorf("种子超级管理员: %w", err)
+	}
+	slog.Info("已初始化后台超级管理员", "username", options.adminUsername)
 	return nil
 }
 

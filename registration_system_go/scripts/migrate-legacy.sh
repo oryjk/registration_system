@@ -17,8 +17,11 @@
 #   HOST_TEAM_ID=11             新库主队 ID
 #   HOST_TEAM_NAME=洺悦御府     新库主队名称
 #   CAPTAIN_LEGACY_USER_ID=4    旧库队长用户 ID（新库原样保留该 ID）
+#   ADMIN_USERNAME=admin        初始化的后台超级管理员账号
+#   ADMIN_PASSWORD=admin123     初始化密码（验收默认值，正式环境务必覆盖）
 #
-# 行为：清空并重建目标库 → 建表 → 种子主队/队长 → 全量导入 → 数量校验。
+# 行为：清空并重建目标库 → 建表 → 种子主队/队长 → 初始化后台超级管理员 →
+#   全量导入 → 数量校验。
 # 任何一步失败或校验不一致都会非零退出。迁移期间目标服务会短暂连不上库，属预期。
 #
 # 用法：
@@ -34,12 +37,16 @@ LEGACY_TEAM_ID="${LEGACY_TEAM_ID:-1}"
 HOST_TEAM_ID="${HOST_TEAM_ID:-11}"
 HOST_TEAM_NAME="${HOST_TEAM_NAME:-洺悦御府}"
 CAPTAIN_LEGACY_USER_ID="${CAPTAIN_LEGACY_USER_ID:-4}"
+ADMIN_USERNAME="${ADMIN_USERNAME:-admin}"
+ADMIN_PASSWORD="${ADMIN_PASSWORD:-admin123}"
 
 ARGS=(
   -legacy-team-id "$LEGACY_TEAM_ID"
   -host-team-id "$HOST_TEAM_ID"
   -host-team-name "$HOST_TEAM_NAME"
   -captain-legacy-user-id "$CAPTAIN_LEGACY_USER_ID"
+  -admin-username "$ADMIN_USERNAME"
+  -admin-password "$ADMIN_PASSWORD"
 )
 
 if command -v go >/dev/null 2>&1; then

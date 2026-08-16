@@ -60,3 +60,19 @@ func TestReplaceDatabaseHandlesQueryAndBareURLs(t *testing.T) {
 		}
 	}
 }
+
+func TestParseOptionsSeedsDefaultSuperAdmin(t *testing.T) {
+	options, err := parseOptions([]string{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if options.adminUsername != "admin" || options.adminPassword != "admin123" {
+		t.Fatalf("unexpected default admin credentials: %q / %q", options.adminUsername, options.adminPassword)
+	}
+}
+
+func TestParseOptionsRejectsShortAdminPassword(t *testing.T) {
+	if _, err := parseOptions([]string{"-admin-password", "123"}); err == nil {
+		t.Fatal("expected short admin password to be rejected")
+	}
+}
