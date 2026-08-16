@@ -1,0 +1,59 @@
+package main
+
+import (
+	"strings"
+	"testing"
+)
+
+func TestParseOptionsRequiresPositiveIDs(t *testing.T) {
+	if _, err := parseOptions([]string{"-legacy-team-id", "0"}); err == nil {
+		t.Fatal("legacy-team-id=0 should be rejected")
+	}
+	if _, err := parseOptions([]string{"-captain-legacy-user-id", "-1"}); err == nil {
+		t.Fatal("negative captain id should be rejected")
+	}
+	if _, err := parseOptions([]string{"-host-team-name", "  "}); err == nil {
+		t.Fatal("blank host team name should be rejected")
+	}
+	options, err := parseOptions([]string{
+		"-legacy-team-id", "1",
+		"-host-team-id", "11",
+		"-host-team-name", "洺悦御府",
+		"-captain-legacy-user-id", "4",
+	})
+	if err != nil {
+		t.Fatalf("valid options rejected: %v", err)
+	}
+	if options.legacyTeamID != 1 || options.hostTeamID != 11 || options.captainLegacyUserID != 4 || options.hostTeamName != "洺悦御府" {
+		t.Fatalf("unexpected options: %+v", options)
+	}
+}
+
+func TestCompareCountsDetectsEveryMismatch(t *testing.T) {
+	expected := sourceCounts{Users: 31, Matches: 102, Registrations: 1865}
+
+	if mismatch := compareCounts(expected, targetCounts{Users: 31, Matches: 102, Registrations: 1865}); mismatch != "" {
+		t.Fatalf("matching counts should pass, got %q", mismatch)
+	}
+	if mismatch := compareCounts(expected, targetCounts{Users: 30, Matches: 102, Registrations: 1865}); !strings.Contains(mismatch, "用户数不一致") {
+		t.Fatalf("user mismatch not reported: %q", mismatch)
+	}
+	if mismatch := compareCounts(expected, targetCounts{Users: 31, Matches: 101, Registrations: 1865}); !strings.Contains(mismatch, "比赛数不一致") {
+		t.Fatalf("match mismatch not reported: %q", mismatch)
+	}
+	if mismatch := compareCounts(expected, targetCounts{Users: 31, Matches: 102, Registrations: 1860}); !strings.Contains(mismatch, "报名数不一致") {
+		t.Fatalf("registration mismatch not reported: %q", mismatch)
+	}
+}
+
+func TestReplaceDatabaseHandlesQueryAndBareURLs(t *testing.T) {
+	cases := map[string]string{
+		"postgres://u:p@host:15432/registration_system_go?sslmode=disable": "postgres://u:p@host:15432/postgres?sslmode=disable",
+		"postgres://u:p@host:15432/registration_system_go":                 "postgres://u:p@host:15432/postgres",
+	}
+	for input, want := range cases {
+		if got := replaceDatabase(input, "postgres"); got != want {
+			t.Fatalf("replaceDatabase(%q) = %q, want %q", input, got, want)
+		}
+	}
+}

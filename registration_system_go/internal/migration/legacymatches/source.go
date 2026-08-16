@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -41,7 +42,9 @@ func (s PostgresSource) Load(ctx context.Context, options LoadOptions) (Snapshot
 	}
 	matchSourceIDs := make([]string, 0, len(matches))
 	for _, match := range matches {
-		matchSourceIDs = append(matchSourceIDs, match.SourceID)
+		// rs_activity.id 是 CHAR(36)，读出来带填充空格；统一 trim，
+		// 否则报名表里变长存储的 activity_id（'7'、短 UUID 等）会匹配不上。
+		matchSourceIDs = append(matchSourceIDs, strings.TrimSpace(match.SourceID))
 	}
 	users, registrations, err := loadRegistrations(ctx, tx, matchSourceIDs)
 	if err != nil {
@@ -63,7 +66,7 @@ func loadMatches(ctx context.Context, tx pgx.Tx, teamID int64, options LoadOptio
 	          AND (
 	              $4::boolean
 	              OR
-	              id = ANY($2::text[])
+	              btrim(id) = ANY($2::text[])
 	              OR (status IN (0,1) AND ($3::timestamptz IS NULL OR updated_at >= $3))
 	          )
 	        ORDER BY created_at, id`, teamID, options.TrackedMatchSourceIDs, options.Since, options.Mode == mapping.ModeFull)
@@ -96,14 +99,14 @@ func loadRegistrations(ctx context.Context, tx pgx.Tx, matchSourceIDs []string) 
 		return nil, nil, nil
 	}
 	rows, err := tx.Query(ctx, `
-	        SELECT ua.activity_id, u.id, u.open_id, u.nickname, u.real_name,
-	               u.avatar_url, u.phone_number, u.status,
-	               ua.stand, ua.registration_count,
-	               ua.operation_time, ua.created_at, ua.updated_at
-	        FROM rs_user_activity ua
-	        JOIN rs_user_info u ON u.id = ua.user_id
-	        WHERE ua.activity_id = ANY($1::text[])
-	        ORDER BY ua.created_at, ua.id`, matchSourceIDs)
+        SELECT ua.activity_id, u.id, u.open_id, u.nickname, u.real_name,
+               u.avatar_url, u.phone_number, u.status,
+               ua.stand, ua.registration_count,
+               ua.operation_time, ua.created_at, ua.updated_at
+        FROM rs_user_activity ua
+        JOIN rs_user_info u ON u.id = ua.user_id
+        WHERE btrim(ua.activity_id) = ANY($1::text[])
+        ORDER BY ua.created_at, ua.id`, matchSourceIDs)
 	if err != nil {
 		return nil, nil, fmt.Errorf("query legacy registrations: %w", err)
 	}
