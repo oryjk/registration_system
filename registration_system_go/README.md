@@ -132,6 +132,30 @@ make generate
 
 API 和管理员初始化命令会在进程内自动加载 `.env`；migration 命令会通过 Makefile 将 `.env` 注入 goose。所有 migration 位于 `db/migrations/`，查询位于 `db/queries/`。`DATABASE_URL` 只从本地环境读取，不提交真实密码。
 
+## 一键迁移旧库数据（可重复执行）
+
+`scripts/migrate-legacy.sh` 把 Rust 旧库（`rs_*` 结构）的数据完整迁移到 Go 新库，可反复执行，适合初始化或重灌目标库：
+
+```bash
+LEGACY_PG_URL='postgres://football_app:<密码>@211.154.18.252:15432/registration_system?sslmode=disable' \
+TARGET_PG_URL='postgres://football_app:<密码>@211.154.18.252:15432/registration_system_go?sslmode=disable' \
+./scripts/migrate-legacy.sh
+```
+
+前置条件：本机能同时连通旧库和新库，并安装了 Go 1.26+ 或 Docker 之一（脚本自动选择运行方式）。
+
+脚本固定按顺序执行，任何一步失败或校验不一致都会非零退出，不会静默丢数：
+
+1. 重置目标库（终止残留连接 → `DROP` → `CREATE`）；
+2. goose 建 schema；
+3. 种子主队和队长（队长按旧库用户 ID 原样保留，导入时按 openid 自动归并）；
+4. 全量导入旧比赛和报名；
+5. 数量校验：用户、比赛、报名三类计数与源库逐一对比，不一致直接报错。
+
+默认参数对应洺悦御府场景，可用环境变量覆盖：`LEGACY_TEAM_ID`（默认 1）、`HOST_TEAM_ID`（默认 11）、`HOST_TEAM_NAME`（默认 洺悦御府）、`CAPTAIN_LEGACY_USER_ID`（默认 4）。
+
+注意：脚本会清空并重建目标库，迁移期间连接该库的服务会短暂报错，结束后自动恢复；生产切换前请停掉写入方或安排维护窗口。底层实现见 `cmd/migratelegacydb`。
+
 ## 旧球队数据导入
 
 导入命令从 `LEGACY_MYSQL_*` 环境变量读取旧 MySQL，只读获取球队、关联用户和成员关系；目标 PostgreSQL 使用现有 `DATABASE_URL`。源 MySQL 不会被写入。首次历史对账先执行全量预演：
