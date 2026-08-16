@@ -3,10 +3,8 @@ package postgres
 import (
 	"context"
 	"errors"
-	"os"
 	"testing"
 
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/oryjk/registration_system/registration_system_go/internal/team/domain"
 	"github.com/oryjk/registration_system/registration_system_go/internal/team/ports"
 	"github.com/oryjk/registration_system/registration_system_go/internal/testsupport"
@@ -58,35 +56,23 @@ func TestRepositorySearchesMemberCandidatesByProfile(t *testing.T) {
 }
 
 func TestRepositoryManagesMembersAndCaptain(t *testing.T) {
-	databaseURL := os.Getenv("TEST_DATABASE_URL")
-	if databaseURL == "" {
-		t.Skip("TEST_DATABASE_URL is required for local PostgreSQL repository test")
-	}
+	// testsupport 提供独立 schema（自动迁移、测试后清理）；不要直连共享库靠事务回滚。
+	pool := testsupport.StartPostgres(t)
 	ctx := context.Background()
-	pool, err := pgxpool.New(ctx, databaseURL)
-	if err != nil {
-		t.Fatalf("open PostgreSQL: %v", err)
-	}
-	t.Cleanup(pool.Close)
-	tx, err := pool.Begin(ctx)
-	if err != nil {
-		t.Fatalf("begin transaction: %v", err)
-	}
-	t.Cleanup(func() { _ = tx.Rollback(context.Background()) })
 
 	var teamID, firstUserID, secondUserID, candidateUserID int64
-	if err := tx.QueryRow(ctx, `INSERT INTO teams (name) VALUES ('成员仓储测试球队') RETURNING id`).Scan(&teamID); err != nil {
+	if err := pool.QueryRow(ctx, `INSERT INTO teams (name) VALUES ('成员仓储测试球队') RETURNING id`).Scan(&teamID); err != nil {
 		t.Fatalf("seed team: %v", err)
 	}
 	for nickname, target := range map[string]*int64{
 		"王一": &firstUserID, "李二": &secondUserID, "张三": &candidateUserID,
 	} {
-		if err := tx.QueryRow(ctx, `INSERT INTO users (openid, nickname) VALUES ($1, $2) RETURNING id`, "member-test-"+nickname, nickname).Scan(target); err != nil {
+		if err := pool.QueryRow(ctx, `INSERT INTO users (openid, nickname) VALUES ($1, $2) RETURNING id`, "member-test-"+nickname, nickname).Scan(target); err != nil {
 			t.Fatalf("seed user %s: %v", nickname, err)
 		}
 	}
 
-	repository := NewRepository(tx)
+	repository := NewRepository(pool)
 	if err := repository.AddMember(ctx, teamID, firstUserID, domain.RoleLeader); err != nil {
 		t.Fatalf("add first member: %v", err)
 	}
