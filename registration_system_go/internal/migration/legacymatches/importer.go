@@ -85,7 +85,7 @@ func ensurePendingTeam(ctx context.Context, tx pgx.Tx) (int64, bool, error) {
 	return id, true, nil
 }
 
-func ensureHostGroup(ctx context.Context, tx pgx.Tx, matchID uuid.UUID, teamID int64, now time.Time) (uuid.UUID, error) {
+func ensureHostGroup(ctx context.Context, tx pgx.Tx, matchID uuid.UUID, teamID int64, capacityLimit *int, now time.Time) (uuid.UUID, error) {
 	var id uuid.UUID
 	err := tx.QueryRow(ctx, `SELECT id FROM match_registration_groups WHERE match_id=$1 AND kind='host_team' AND status<>'cancelled'`, matchID).Scan(&id)
 	if err == nil {
@@ -95,7 +95,7 @@ func ensureHostGroup(ctx context.Context, tx pgx.Tx, matchID uuid.UUID, teamID i
 		return uuid.Nil, fmt.Errorf("find host group: %w", err)
 	}
 	id = uuid.New()
-	if _, err := tx.Exec(ctx, `INSERT INTO match_registration_groups (id,match_id,kind,team_id,status,created_at,updated_at) VALUES ($1,$2,'host_team',$3,'open',$4,$4)`, id, matchID, teamID, now); err != nil {
+	if _, err := tx.Exec(ctx, `INSERT INTO match_registration_groups (id,match_id,kind,team_id,max_players,status,created_at,updated_at) VALUES ($1,$2,'host_team',$3,$4,'open',$5,$5)`, id, matchID, teamID, capacityLimit, now); err != nil {
 		return uuid.Nil, fmt.Errorf("insert host group: %w", err)
 	}
 	return id, nil

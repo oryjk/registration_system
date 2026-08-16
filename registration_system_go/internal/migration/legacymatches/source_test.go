@@ -14,7 +14,7 @@ import (
 func TestPostgresSourceUsesReadOnlyTrackedSnapshot(t *testing.T) {
 	now := time.Date(2026, 8, 8, 8, 0, 0, 0, time.UTC)
 	tx := &recordingSourceTx{results: [][]sourceRow{
-		{{"tracked-match", "友谊赛", "待定", 3, 8, now, now.Add(time.Hour), "球场", (*float64)(nil), (*float64)(nil), (*string)(nil), now, now, int64(1)}},
+		{{"tracked-match", "友谊赛", "待定", 3, 8, now, "球场", (*float64)(nil), (*float64)(nil), (*string)(nil), now, now, int64(1), (*int)(nil)}},
 		{{"tracked-match", int64(901), "openid-901", "昵称", "姓名", "", "", 1, 1, 1, now, now, now}},
 	}}
 	pool := &recordingSourcePool{tx: tx}

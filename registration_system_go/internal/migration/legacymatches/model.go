@@ -25,24 +25,28 @@ type LegacyUser struct {
 }
 
 // LegacyMatch 是旧库里一场历史比赛（rs_activity）在导入边界的投影。
-// 仅保留目标 Go Match 能承接的字段，丢弃 cover/color/holding_date 等装饰字段。
+// 仅保留目标 Go Match 能承接的字段；cover/color 等装饰字段由脚本层统计警告。
 type LegacyMatch struct {
 	// SourceID 是旧库 rs_activity.id（CHAR(36)），仅用于源内排序与日志，不写入目标。
 	SourceID string
 	Name     string
 	// Opposing 是旧库 opposing 文本：真实对手名、空串或“待定”等占位。
-	Opposing         string
-	Status           int
-	PlayersPerTeam   int
-	StartTime        time.Time
-	EndTime          time.Time
-	Location         string
-	Latitude         *float64
-	Longitude        *float64
-	Description      *string
-	CreatedAt        time.Time
-	UpdatedAt        time.Time
-	HomeTeamSourceID int64
+	Opposing string
+	Status   int
+	// PlayersPerTeam 是旧库 players_per_team。
+	PlayersPerTeam int
+	// HoldingDate 是旧库 holding_date：比赛开始时间（写入目标 matches.start_time）。
+	// 旧库 start_time/end_time 是报名窗口，Go 新系统没有对应字段，导入时丢弃。
+	HoldingDate time.Time
+	Location    string
+	Latitude    *float64
+	Longitude   *float64
+	Description *string
+	// HostCapacityLimit 是旧库 team_capacity_limit：主队报名组满员上限（host 组 max_players）。
+	HostCapacityLimit *int
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+	HomeTeamSourceID  int64
 }
 
 // LegacyRegistration 是旧库一条报名记录（rs_user_activity）的投影。

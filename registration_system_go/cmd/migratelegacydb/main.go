@@ -135,12 +135,24 @@ func run(ctx context.Context, options cliOptions) error {
 		return fmt.Errorf("导入旧数据: %w", err)
 	}
 
+	// 4b. 迁移球队成员关系（rs_team_members）：只报名没入队的用户不在比赛导入范围内，
+	// 这里按旧库 user_id 原样补齐用户和 team_members 行。
+	membersImported, err := importTeamMembers(ctx, legacyPool, targetPool, options)
+	if err != nil {
+		return fmt.Errorf("导入球队成员: %w", err)
+	}
+
+	// 4c. 统计 Go 新表无对应列、导入时丢弃的旧库字段，输出警告避免静默丢失。
+	if err := warnDroppedLegacyFields(ctx, legacyPool, options.legacyTeamID); err != nil {
+		return fmt.Errorf("统计旧库丢弃字段: %w", err)
+	}
+
 	// 5. 数量校验：源/目标不一致直接失败，保证迁移结果可信。
 	expected, err := countSourceRows(ctx, legacyPool, options.legacyTeamID)
 	if err != nil {
 		return fmt.Errorf("统计旧库数量: %w", err)
 	}
-	actual, err := countTargetRows(ctx, targetPool)
+	actual, err := countTargetRows(ctx, targetPool, options.hostTeamID)
 	if err != nil {
 		return fmt.Errorf("统计新库数量: %w", err)
 	}
@@ -149,9 +161,9 @@ func run(ctx context.Context, options cliOptions) error {
 	}
 
 	fmt.Printf(
-		"migration ok: users=%d matches=%d registrations=%d | import report: users_inserted=%d users_updated=%d matches_inserted=%d registrations_inserted=%d conflicts=%d orphan_references=%d\n",
-		actual.Users, actual.Matches, actual.Registrations,
-		report.UsersInserted, report.UsersUpdated, report.MatchesInserted, report.RegistrationsInserted, report.Conflicts, report.OrphanReferences,
+		"migration ok: users=%d matches=%d registrations=%d members=%d | import report: users_inserted=%d users_updated=%d matches_inserted=%d registrations_inserted=%d members_imported=%d conflicts=%d orphan_references=%d\n",
+		actual.Users, actual.Matches, actual.Registrations, actual.Members,
+		report.UsersInserted, report.UsersUpdated, report.MatchesInserted, report.RegistrationsInserted, membersImported, report.Conflicts, report.OrphanReferences,
 	)
 	return nil
 }
@@ -260,6 +272,90 @@ func loadLegacyCaptain(ctx context.Context, legacy *pgxpool.Pool, userID int64) 
 	return captain, nil
 }
 
+var allowedMemberRoles = map[string]bool{"captain": true, "leader": true, "vice_captain": true, "member": true}
+
+// importTeamMembers 把旧库 rs_team_members 的成员关系迁到目标主队：
+// 只入队没报名的用户不在比赛导入范围，这里按旧库 user_id 原样补齐用户行和成员行。
+// 队长行已由种子步骤写入，ON CONFLICT 跳过即可。
+func importTeamMembers(ctx context.Context, legacy, target *pgxpool.Pool, options cliOptions) (int, error) {
+	rows, err := legacy.Query(ctx, `
+		SELECT user_id, role, jersey_number, joined_at, status
+		FROM rs_team_members WHERE team_id = $1 ORDER BY user_id`, options.legacyTeamID)
+	if err != nil {
+		return 0, fmt.Errorf("查询旧库成员: %w", err)
+	}
+	defer rows.Close()
+
+	imported := 0
+	// Go 新表没有 jersey_number 列；旧库个别成员有号码，这里记录警告避免静默丢失。
+	var jerseyDropped []string
+	for rows.Next() {
+		var userID int64
+		var role string
+		var jerseyNumber *string
+		var joinedAt time.Time
+		var statusValue int
+		if err := rows.Scan(&userID, &role, &jerseyNumber, &joinedAt, &statusValue); err != nil {
+			return imported, fmt.Errorf("扫描旧库成员: %w", err)
+		}
+		if !allowedMemberRoles[role] {
+			return imported, fmt.Errorf("旧库成员 %d 角色无法映射: %q", userID, role)
+		}
+
+		var exists bool
+		if err := target.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM users WHERE id=$1)`, userID).Scan(&exists); err != nil {
+			return imported, fmt.Errorf("检查成员用户 %d: %w", userID, err)
+		}
+		if !exists {
+			user, err := loadLegacyCaptain(ctx, legacy, userID)
+			if err != nil {
+				return imported, fmt.Errorf("补齐成员用户 %d: %w", userID, err)
+			}
+			status := "frozen"
+			if user.Active {
+				status = "active"
+			}
+			if _, err := target.Exec(ctx, `
+				INSERT INTO users (id, openid, nickname, avatar_url, real_name, phone_number, status)
+				VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+				user.ID, user.OpenID, strings.TrimSpace(user.Nickname), user.AvatarURL, user.RealName, user.Phone, status,
+			); err != nil {
+				return imported, fmt.Errorf("写入成员用户 %d: %w", userID, err)
+			}
+		}
+
+		status := "inactive"
+		if statusValue == 1 {
+			status = "active"
+		}
+		if jerseyNumber != nil && strings.TrimSpace(*jerseyNumber) != "" {
+			jerseyDropped = append(jerseyDropped, fmt.Sprintf("%d(%s)", userID, strings.TrimSpace(*jerseyNumber)))
+		}
+		joined := joinedAt
+		if joined.IsZero() {
+			joined = time.Now().UTC()
+		}
+		tag, err := target.Exec(ctx, `
+			INSERT INTO team_members (team_id, user_id, role, joined_at, status)
+			VALUES ($1, $2, $3, $4, $5)
+			ON CONFLICT (team_id, user_id) DO NOTHING`,
+			options.hostTeamID, userID, role, joined, status)
+		if err != nil {
+			return imported, fmt.Errorf("写入成员关系 user=%d: %w", userID, err)
+		}
+		if tag.RowsAffected() > 0 {
+			imported++
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return imported, fmt.Errorf("遍历旧库成员: %w", err)
+	}
+	if len(jerseyDropped) > 0 {
+		fmt.Printf("⚠️  Go 新表无 jersey_number 列，以下成员的球衣号未迁移: %s\n", strings.Join(jerseyDropped, ", "))
+	}
+	return imported, nil
+}
+
 func seedHostAndCaptain(ctx context.Context, target *pgxpool.Pool, options cliOptions, captain legacyCaptain) error {
 	if _, err := target.Exec(ctx,
 		`INSERT INTO teams (id, name) VALUES ($1, $2)`, options.hostTeamID, options.hostTeamName,
@@ -290,12 +386,14 @@ type sourceCounts struct {
 	Users         int
 	Matches       int
 	Registrations int
+	Members       int
 }
 
 type targetCounts struct {
 	Users         int
 	Matches       int
 	Registrations int
+	Members       int
 }
 
 func countSourceRows(ctx context.Context, legacy *pgxpool.Pool, legacyTeamID int64) (sourceCounts, error) {
@@ -306,12 +404,21 @@ func countSourceRows(ctx context.Context, legacy *pgxpool.Pool, legacyTeamID int
 	).Scan(&counts.Matches); err != nil {
 		return sourceCounts{}, err
 	}
+	// 用户数 = 有报名记录的用户 ∪ 球队成员用户（只入队没报名的用户由成员步骤补齐）。
 	if err := legacy.QueryRow(ctx, `
-		SELECT count(DISTINCT ua.user_id)
-		FROM rs_user_activity ua
-		JOIN rs_activity a ON a.id = ua.activity_id
-		WHERE a.home_team_id=$1 OR a.away_team_id=$1`, legacyTeamID,
+		SELECT count(*) FROM (
+			SELECT ua.user_id FROM rs_user_activity ua
+			JOIN rs_activity a ON a.id = ua.activity_id
+			WHERE a.home_team_id=$1 OR a.away_team_id=$1
+			UNION
+			SELECT user_id FROM rs_team_members WHERE team_id=$1
+		) t`, legacyTeamID,
 	).Scan(&counts.Users); err != nil {
+		return sourceCounts{}, err
+	}
+	if err := legacy.QueryRow(ctx, `
+		SELECT count(*) FROM rs_team_members WHERE team_id=$1`, legacyTeamID,
+	).Scan(&counts.Members); err != nil {
 		return sourceCounts{}, err
 	}
 	// 目标库报名表按（分组, 用户）唯一；同场次同用户的重复报名在导入时按更新处理，
@@ -326,7 +433,7 @@ func countSourceRows(ctx context.Context, legacy *pgxpool.Pool, legacyTeamID int
 	return counts, nil
 }
 
-func countTargetRows(ctx context.Context, target *pgxpool.Pool) (targetCounts, error) {
+func countTargetRows(ctx context.Context, target *pgxpool.Pool, hostTeamID int64) (targetCounts, error) {
 	var counts targetCounts
 	if err := target.QueryRow(ctx, `SELECT count(*) FROM users`).Scan(&counts.Users); err != nil {
 		return targetCounts{}, err
@@ -335,6 +442,9 @@ func countTargetRows(ctx context.Context, target *pgxpool.Pool) (targetCounts, e
 		return targetCounts{}, err
 	}
 	if err := target.QueryRow(ctx, `SELECT count(*) FROM match_registrations`).Scan(&counts.Registrations); err != nil {
+		return targetCounts{}, err
+	}
+	if err := target.QueryRow(ctx, `SELECT count(*) FROM team_members WHERE team_id=$1`, hostTeamID).Scan(&counts.Members); err != nil {
 		return targetCounts{}, err
 	}
 	return counts, nil
@@ -349,6 +459,27 @@ func compareCounts(expected sourceCounts, actual targetCounts) string {
 		return fmt.Sprintf("比赛数不一致 expected=%d actual=%d", expected.Matches, actual.Matches)
 	case expected.Registrations != actual.Registrations:
 		return fmt.Sprintf("报名数不一致 expected=%d actual=%d", expected.Registrations, actual.Registrations)
+	case expected.Members != actual.Members:
+		return fmt.Sprintf("成员数不一致 expected=%d actual=%d", expected.Members, actual.Members)
 	}
 	return ""
+}
+
+// warnDroppedLegacyFields 统计旧库有值但 Go 新表无对应列的字段：
+// cover / color / opposing_color（无列）、报名窗口 start_time~end_time（Go 无报名窗口概念）。
+func warnDroppedLegacyFields(ctx context.Context, legacy *pgxpool.Pool, legacyTeamID int64) error {
+	var coverSet, colorSet, opposingColorSet, regWindow int
+	if err := legacy.QueryRow(ctx, `
+		SELECT
+			count(*) FILTER (WHERE COALESCE(cover,'') <> ''),
+			count(*) FILTER (WHERE COALESCE(color,'') <> ''),
+			count(*) FILTER (WHERE COALESCE(opposing_color,'') <> ''),
+			count(*) FILTER (WHERE start_time IS NOT NULL OR end_time IS NOT NULL)
+		FROM rs_activity WHERE home_team_id=$1 OR away_team_id=$1`, legacyTeamID,
+	).Scan(&coverSet, &colorSet, &opposingColorSet, &regWindow); err != nil {
+		return err
+	}
+	fmt.Printf("ℹ️  Go 新表无对应列、未迁移的旧库字段: cover=%d 场, color/opposing_color=%d/%d 场, 报名窗口(start/end_time)=%d 场（比赛时间以 holding_date 为准）\n",
+		coverSet, colorSet, opposingColorSet, regWindow)
+	return nil
 }

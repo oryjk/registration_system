@@ -34,12 +34,12 @@ func TestImporterIsIdempotentAndMapsLegacyState(t *testing.T) {
 		Matches: []LegacyMatch{
 			{
 				SourceID: "match-real-opponent", Name: "周日友谊赛", Opposing: "叮叮猫",
-				Status: 2, PlayersPerTeam: 8, StartTime: start, EndTime: start.Add(2 * time.Hour),
+				Status: 2, PlayersPerTeam: 8, HoldingDate: start,
 				Location: "驿马河", CreatedAt: now, UpdatedAt: now, HomeTeamSourceID: 1,
 			},
 			{
 				SourceID: "match-pending", Name: "周四友谊赛", Opposing: "",
-				Status: 0, PlayersPerTeam: 0, StartTime: start.Add(48 * time.Hour), EndTime: start.Add(50 * time.Hour),
+				Status: 0, PlayersPerTeam: 0, HoldingDate: start.Add(48 * time.Hour),
 				Location: "环球中心", CreatedAt: now, UpdatedAt: now, HomeTeamSourceID: 1,
 			},
 		},
@@ -128,7 +128,7 @@ func TestImporterDryRunRollsBack(t *testing.T) {
 	snapshot := Snapshot{
 		Matches: []LegacyMatch{{
 			SourceID: "dry-match", Name: "预演赛", Opposing: "老朋友", Status: 2, PlayersPerTeam: 8,
-			StartTime: start, EndTime: start.Add(2 * time.Hour), Location: "场地", CreatedAt: now, UpdatedAt: now, HomeTeamSourceID: 1,
+			HoldingDate: start, Location: "场地", CreatedAt: now, UpdatedAt: now, HomeTeamSourceID: 1,
 		}},
 	}
 	importer := NewImporter(pool, fakeSource{snapshot: snapshot}, hostTeamID, captainID)
@@ -169,7 +169,7 @@ func TestImporterAbortsOnOrphanPostgresUserReference(t *testing.T) {
 	snapshot := Snapshot{
 		Matches: []LegacyMatch{{
 			SourceID: "orphan-match", Name: "孤儿赛", Opposing: "盼盼", Status: 2, PlayersPerTeam: 8,
-			StartTime: start, EndTime: start.Add(2 * time.Hour), Location: "场地", CreatedAt: now, UpdatedAt: now, HomeTeamSourceID: 1,
+			HoldingDate: start, Location: "场地", CreatedAt: now, UpdatedAt: now, HomeTeamSourceID: 1,
 		}},
 		// 报名引用的 PostgreSQL user_id 不在快照用户列表里，必须中止。
 		Registrations: []LegacyRegistration{{

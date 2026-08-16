@@ -30,19 +30,22 @@ func TestParseOptionsRequiresPositiveIDs(t *testing.T) {
 }
 
 func TestCompareCountsDetectsEveryMismatch(t *testing.T) {
-	expected := sourceCounts{Users: 31, Matches: 102, Registrations: 1865}
+	expected := sourceCounts{Users: 36, Matches: 102, Registrations: 2059, Members: 35}
 
-	if mismatch := compareCounts(expected, targetCounts{Users: 31, Matches: 102, Registrations: 1865}); mismatch != "" {
+	if mismatch := compareCounts(expected, targetCounts{Users: 36, Matches: 102, Registrations: 2059, Members: 35}); mismatch != "" {
 		t.Fatalf("matching counts should pass, got %q", mismatch)
 	}
-	if mismatch := compareCounts(expected, targetCounts{Users: 30, Matches: 102, Registrations: 1865}); !strings.Contains(mismatch, "用户数不一致") {
+	if mismatch := compareCounts(expected, targetCounts{Users: 30, Matches: 102, Registrations: 2059, Members: 35}); !strings.Contains(mismatch, "用户数不一致") {
 		t.Fatalf("user mismatch not reported: %q", mismatch)
 	}
-	if mismatch := compareCounts(expected, targetCounts{Users: 31, Matches: 101, Registrations: 1865}); !strings.Contains(mismatch, "比赛数不一致") {
+	if mismatch := compareCounts(expected, targetCounts{Users: 36, Matches: 101, Registrations: 2059, Members: 35}); !strings.Contains(mismatch, "比赛数不一致") {
 		t.Fatalf("match mismatch not reported: %q", mismatch)
 	}
-	if mismatch := compareCounts(expected, targetCounts{Users: 31, Matches: 102, Registrations: 1860}); !strings.Contains(mismatch, "报名数不一致") {
+	if mismatch := compareCounts(expected, targetCounts{Users: 36, Matches: 102, Registrations: 1860, Members: 35}); !strings.Contains(mismatch, "报名数不一致") {
 		t.Fatalf("registration mismatch not reported: %q", mismatch)
+	}
+	if mismatch := compareCounts(expected, targetCounts{Users: 36, Matches: 102, Registrations: 2059, Members: 1}); !strings.Contains(mismatch, "成员数不一致") {
+		t.Fatalf("member mismatch not reported: %q", mismatch)
 	}
 }
 

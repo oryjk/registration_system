@@ -283,7 +283,7 @@ func (i Importer) reconcileMatch(ctx context.Context, tx pgx.Tx, store mapping.S
 			return reconcileResult[uuid.UUID]{}, uuid.Nil, err
 		}
 	}
-	groupID, err := ensureHostGroup(ctx, tx, current.ID, i.hostTeamID, normalizedTime(legacyMatch.CreatedAt))
+	groupID, err := ensureHostGroup(ctx, tx, current.ID, i.hostTeamID, legacyMatch.HostCapacityLimit, normalizedTime(legacyMatch.CreatedAt))
 	if err != nil {
 		return reconcileResult[uuid.UUID]{}, uuid.Nil, err
 	}
@@ -422,7 +422,7 @@ func (i Importer) resolveMatchTargets(ctx context.Context, tx pgx.Tx, config map
 	}
 	var candidates []string
 	if !found && !hasExplicit {
-		matches, err := loadTargetMatchesByNaturalKey(ctx, tx, i.hostTeamID, legacyMatch.StartTime, strings.TrimSpace(legacyMatch.Name))
+		matches, err := loadTargetMatchesByNaturalKey(ctx, tx, i.hostTeamID, legacyMatch.HoldingDate, strings.TrimSpace(legacyMatch.Name))
 		if err != nil {
 			return current, false, "", false, nil, err
 		}
@@ -476,7 +476,13 @@ func resolveRegistrationTargets(ctx context.Context, tx pgx.Tx, config mapping.C
 func (i Importer) writeTargetMatch(ctx context.Context, tx pgx.Tx, decision mapping.Decision, currentID uuid.UUID, legacyMatch LegacyMatch, pendingTeamID int64) (uuid.UUID, error) {
 	opponentName, awayTeamID := resolveOpponent(legacyMatch.Opposing, pendingTeamID)
 	createdAt, updatedAt := normalizedTimes(legacyMatch.CreatedAt, legacyMatch.UpdatedAt)
-	startTime, endTime := normalizeMatchWindow(legacyMatch.StartTime, legacyMatch.EndTime)
+	// 目标语义：start_time = 比赛开始（旧库 holding_date），end_time = 比赛结束。
+	// 旧库没有比赛结束时间，按标准 2 小时场次推算；holding_date 缺失时兜底旧库 updated_at。
+	startTime := legacyMatch.HoldingDate
+	if startTime.IsZero() {
+		startTime = legacyMatch.UpdatedAt
+	}
+	endTime := startTime.Add(2 * time.Hour)
 	if decision.Action == mapping.ActionCreate {
 		currentID = uuid.New()
 		_, err := tx.Exec(ctx, `INSERT INTO matches (id,name,publication_mode,opponent_state,status,host_team_id,away_team_id,opponent_name,players_per_team,start_time,end_time,location,location_latitude,location_longitude,description,created_by_user_id,created_at,updated_at)
@@ -576,8 +582,9 @@ func sourceMatchFingerprint(match LegacyMatch) (string, error) {
 	return mapping.Fingerprint(map[string]any{
 		"name": strings.TrimSpace(match.Name), "opposing": strings.TrimSpace(match.Opposing),
 		"status": match.Status, "players_per_team": normalizePlayersPerTeam(match.PlayersPerTeam),
-		"start_time": match.StartTime, "end_time": match.EndTime, "location": strings.TrimSpace(match.Location),
-		"latitude": match.Latitude, "longitude": match.Longitude, "description": nullableTextPointer(match.Description),
+		"holding_date": match.HoldingDate, "location": strings.TrimSpace(match.Location),
+		"host_capacity_limit": match.HostCapacityLimit,
+		"latitude":            match.Latitude, "longitude": match.Longitude, "description": nullableTextPointer(match.Description),
 		"home_team_source_id": match.HomeTeamSourceID,
 	})
 }
@@ -718,15 +725,6 @@ func normalizedTime(value time.Time) time.Time {
 		return time.Now().UTC()
 	}
 	return value
-}
-
-// 旧库存在 end_time <= start_time 的脏数据（如起止时刻相同的队内赛），
-// 新库约束 end_time > start_time；相等或倒置时按 2 小时标准时长修正。
-func normalizeMatchWindow(start, end time.Time) (time.Time, time.Time) {
-	if !end.After(start) {
-		return start, start.Add(2 * time.Hour)
-	}
-	return start, end
 }
 
 func nullableText(value string) *string {
