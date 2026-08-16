@@ -72,7 +72,9 @@ src/
 - **禁止使用浏览器 DOM API**：不写 `document.*`、`window.*`、`localStorage`、`sessionStorage`、`querySelector` 等；存储统一用 `uni.getStorageSync` / `uni.setStorageSync`。
 - **微信专属能力必须平台隔离**：`open-type="chooseAvatar"`、`open-type="getPhoneNumber"`、`wx.requestPayment` 等仅小程序可用，必须用条件编译 `<!-- #ifdef MP-WEIXIN -->` / `<!-- #ifndef MP-WEIXIN -->` 隔离，并提供 H5 降级路径或合理跳过。
 - **CSS 避免小程序不友好的特性**：不用 `:hover` 伪类（用 `hover-class` 替代）；`position: fixed` 注意小程序导航栏差异；百分比高度需确保父容器有明确高度；统一使用 `rpx` 单位，不要混用 `px`、`vw`、`rem`。
+- **运行时 Vue 组件必须直接从 `.vue` 文件导入**：例如 `import NeoButton from "@/components/neo/NeoButton.vue"`。不要通过 `@/components/neo` 这类 barrel 文件导入运行时组件；当前 uni-app 小程序编译器不会继续追踪二次导出，可能导致 WXML 已生成组件标签，但 JSON 遗漏 `usingComponents`，构建成功后组件仍无法渲染。类型和普通 TypeScript 函数可以继续通过 barrel 文件导入。
 - **新增页面或功能后**，定期执行 `bun run build:mp-weixin` 确认小程序可编译，避免 H5 运行正常但小程序编译失败的问题积累。
+- `build:mp-weixin` 会在编译后执行组件注册检查；若提示 `Unregistered mini-program components`，先核对对应 SFC 是否把运行时组件直接从 `.vue` 文件导入。
 
 ## 验证建议
 

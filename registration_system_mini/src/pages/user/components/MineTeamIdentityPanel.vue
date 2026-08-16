@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { NeoSectionHeader, NeoSegmentedControl, NeoSurface, NeoTag } from "@/components/neo";
+import NeoSectionHeader from "@/components/neo/NeoSectionHeader.vue";
+import NeoSegmentedControl from "@/components/neo/NeoSegmentedControl.vue";
+import NeoSurface from "@/components/neo/NeoSurface.vue";
+import NeoTag from "@/components/neo/NeoTag.vue";
 import type { CurrentIdentityViewModel, TeamProfileViewModel } from "@/types/viewModels";
 
 const props = defineProps<{

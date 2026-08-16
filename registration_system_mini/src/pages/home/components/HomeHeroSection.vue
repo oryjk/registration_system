@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { NeoSurface } from "@/components/neo";
+import NeoSurface from "@/components/neo/NeoSurface.vue";
 import { defaultMiniAppRuntimeConfig } from "@/config/runtimeConfig";
 import type { BackendMiniAppHomeHeroBanner } from "@/types/backend";
 

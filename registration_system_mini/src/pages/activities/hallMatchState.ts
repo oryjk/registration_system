@@ -4,6 +4,7 @@ import { formatDateLabel, pad, parseDateValue } from "@/utils/datetime";
 import { resolveInheritedGuestLimit } from "@/utils/matchCapacity";
 import { getMatchPublicationModeLabel } from "@/utils/matchPublicationMode";
 import { formatHomeMatchDateBlock } from "@/pages/home/homeMatchDate";
+import { resolveRegistrationWindow } from "@/utils/registrationWindow";
 
 export type HallMatchKindFilter = "all" | "team" | "individual" | "mine";
 export type HallMatchSizeFilter = 0 | 5 | 8;
@@ -82,7 +83,14 @@ function toOpponentStateLabel(match: AppMatchSummary): { label: string; tone: Ne
 
 const DEFAULT_VIEWER: HallViewerContext = { teamId: null, canManageTeam: false };
 
-function resolveActionKind(match: AppMatchSummary, viewer: HallViewerContext): HallCardActionKind {
+function resolveActionKind(match: AppMatchSummary, viewer: HallViewerContext, now: number): HallCardActionKind {
+  const registrationWindow = resolveRegistrationWindow({
+    now,
+    isRegistering: match.status === "registering",
+    registrationStartAt: match.registration_start_at,
+    registrationEndAt: match.registration_end_at,
+  });
+  if (registrationWindow.state !== "open") return "view";
   if (match.publication_mode === "online_individual") {
     return match.opponent_state === "confirmed" ? "view" : "join";
   }
@@ -108,7 +116,11 @@ const ACTION_LABELS: Record<HallCardActionKind, string> = {
   view: "查看比赛",
 };
 
-export function toHallMatchCard(match: AppMatchSummary, viewer: HallViewerContext = DEFAULT_VIEWER): HallMatchCardViewModel {
+export function toHallMatchCard(
+  match: AppMatchSummary,
+  viewer: HallViewerContext = DEFAULT_VIEWER,
+  now = Date.now(),
+): HallMatchCardViewModel {
   const dateLabel = formatDateLabel(match.start_time);
   const opponentState = toOpponentStateLabel(match);
   const individualGroup = findGroupSummary(match, "individual_opponent");
@@ -164,7 +176,7 @@ export function toHallMatchCard(match: AppMatchSummary, viewer: HallViewerContex
         },
       ];
 
-  const actionKind = resolveActionKind(match, viewer);
+  const actionKind = resolveActionKind(match, viewer, now);
 
   return {
     id: match.id,

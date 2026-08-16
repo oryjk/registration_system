@@ -97,6 +97,63 @@ func TestNewMatchRejectsPartialCoordinates(t *testing.T) {
 	}
 }
 
+func TestNewMatchPreservesRegistrationWindow(t *testing.T) {
+	input := validInput(OnlineTeam)
+	registrationStart := input.CreatedAt.Add(time.Hour)
+	registrationEnd := input.StartTime.Add(-time.Hour)
+	input.RegistrationStartAt = &registrationStart
+	input.RegistrationEndAt = &registrationEnd
+
+	match, _, err := NewMatch(input, IndividualLimits{})
+	if err != nil {
+		t.Fatalf("new match: %v", err)
+	}
+	if match.RegistrationStartAt == nil || !match.RegistrationStartAt.Equal(registrationStart) {
+		t.Fatalf("registration start was not preserved: %+v", match.RegistrationStartAt)
+	}
+	if match.RegistrationEndAt == nil || !match.RegistrationEndAt.Equal(registrationEnd) {
+		t.Fatalf("registration end was not preserved: %+v", match.RegistrationEndAt)
+	}
+}
+
+func TestNewMatchRejectsInvertedRegistrationWindow(t *testing.T) {
+	input := validInput(OnlineTeam)
+	registrationStart := input.CreatedAt.Add(2 * time.Hour)
+	registrationEnd := input.CreatedAt.Add(time.Hour)
+	input.RegistrationStartAt = &registrationStart
+	input.RegistrationEndAt = &registrationEnd
+
+	if _, _, err := NewMatch(input, IndividualLimits{}); err == nil {
+		t.Fatal("expected inverted registration window to fail")
+	}
+}
+
+func TestMatchRegistrationOpenAtHonorsConfiguredBounds(t *testing.T) {
+	start := time.Date(2026, 8, 16, 9, 0, 0, 0, time.UTC)
+	end := start.Add(2 * time.Hour)
+	tests := []struct {
+		name  string
+		match Match
+		now   time.Time
+		want  bool
+	}{
+		{name: "no bounds", match: Match{}, now: start.Add(-time.Hour), want: true},
+		{name: "before start", match: Match{RegistrationStartAt: &start}, now: start.Add(-time.Nanosecond), want: false},
+		{name: "at start", match: Match{RegistrationStartAt: &start}, now: start, want: true},
+		{name: "before end", match: Match{RegistrationEndAt: &end}, now: end.Add(-time.Nanosecond), want: true},
+		{name: "at end", match: Match{RegistrationEndAt: &end}, now: end, want: false},
+		{name: "inside complete window", match: Match{RegistrationStartAt: &start, RegistrationEndAt: &end}, now: start.Add(time.Hour), want: true},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if got := test.match.RegistrationOpenAt(test.now); got != test.want {
+				t.Fatalf("RegistrationOpenAt(%s) = %t, want %t", test.now, got, test.want)
+			}
+		})
+	}
+}
+
 func validInput(mode PublicationMode) NewMatchInput {
 	start := time.Date(2026, 7, 20, 18, 0, 0, 0, time.UTC)
 	return NewMatchInput{

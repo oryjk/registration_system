@@ -3,7 +3,7 @@ import { computed, ref } from "vue";
 import { onHide, onLoad, onPullDownRefresh, onReachBottom, onShareAppMessage, onShareTimeline, onShow, onUnload } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
 import BottomTabBar from "@/components/BottomTabBar.vue";
-import { NeoSectionHeader } from "@/components/neo";
+import NeoSectionHeader from "@/components/neo/NeoSectionHeader.vue";
 import HomeHeroSection from "./components/HomeHeroSection.vue";
 import HomeMatchList from "./components/HomeMatchList.vue";
 import HomeMatchSearch from "./components/HomeMatchSearch.vue";

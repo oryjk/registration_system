@@ -1,10 +1,13 @@
 <script setup lang="ts">
-import { NeoButton, NeoSurface, NeoTag } from "@/components/neo";
+import NeoButton from "@/components/neo/NeoButton.vue";
+import NeoSurface from "@/components/neo/NeoSurface.vue";
+import NeoTag from "@/components/neo/NeoTag.vue";
 import type { AppTeamApplication } from "@/types/match";
 
 defineProps<{
   application: AppTeamApplication;
   isWithdrawing: boolean;
+  canWithdraw: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -29,7 +32,10 @@ const emit = defineEmits<{
       <text class="status-body-content">{{ application.introduction }}</text>
     </view>
 
-    <view v-if="application.status === 'pending'" class="status-actions">
+    <view v-if="application.status === 'pending' && !canWithdraw" class="status-window-note">
+      当前不在报名时间内，申请不可撤回。
+    </view>
+    <view v-if="application.status === 'pending' && canWithdraw" class="status-actions">
       <NeoButton
         variant="outline"
         :loading="isWithdrawing"
@@ -86,6 +92,14 @@ const emit = defineEmits<{
   display: flex;
   justify-content: center;
   margin-top: 26rpx;
+}
+
+.status-window-note {
+  margin-top: 22rpx;
+  color: var(--neo-color-text-muted);
+  font-size: 24rpx;
+  line-height: 1.5;
+  text-align: center;
 }
 
 .status-actions :deep(.neo-button) {

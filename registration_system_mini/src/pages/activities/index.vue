@@ -2,7 +2,8 @@
 import { onHide, onLoad, onShow, onUnload, onShareAppMessage, onShareTimeline } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
 import BottomTabBar from "@/components/BottomTabBar.vue";
-import { NeoButton, NeoSectionHeader } from "@/components/neo";
+import NeoButton from "@/components/neo/NeoButton.vue";
+import NeoSectionHeader from "@/components/neo/NeoSectionHeader.vue";
 import ActivitiesSkeleton from "./components/ActivitiesSkeleton.vue";
 import HallCalendarStrip from "./components/HallCalendarStrip.vue";
 import HallQuickFilters from "./components/HallQuickFilters.vue";
@@ -31,6 +32,8 @@ const {
   selectSize,
   selectDate,
   handleLogin,
+  startWindowTimer,
+  stopWindowTimer,
 } = useHallPage();
 
 const navMetrics = getCustomNavMetrics();
@@ -91,11 +94,13 @@ function handleSessionLoginCompleted() {
 
 onShow(() => {
   uni.hideTabBar({ animation: false });
+  startWindowTimer();
   void loadPageData({ preserveContent: true });
 });
 
 onHide(() => {
   navigatingMatchId.value = "";
+  stopWindowTimer();
 });
 
 onLoad(() => {
@@ -103,6 +108,7 @@ onLoad(() => {
 });
 
 onUnload(() => {
+  stopWindowTimer();
   uni.$off("session:login-completed", handleSessionLoginCompleted);
 });
 

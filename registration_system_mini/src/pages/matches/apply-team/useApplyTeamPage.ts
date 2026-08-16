@@ -1,8 +1,10 @@
 import { computed, ref, type Ref } from "vue";
+import { onLoad, onUnload } from "@dcloudio/uni-app";
 import { getMatchDetail } from "@/api/match";
 import { applyTeamMatch, listTeamApplications, withdrawTeamApplication } from "@/api/teamApplication";
 import { useTeamContext } from "@/stores/teamContext";
 import type { AppMatchDetailResponse, AppTeamApplication } from "@/types/match";
+import { resolveRegistrationWindow } from "@/utils/registrationWindow";
 
 export type ApplyTeamPhase = "loading" | "error" | "ready" | "submitted";
 
@@ -16,6 +18,8 @@ export function useApplyTeamPage(matchId: Ref<string>) {
   const introduction = ref("");
   const isSubmitting = ref(false);
   const isWithdrawing = ref(false);
+  const nowTick = ref(Date.now());
+  let windowTimer: ReturnType<typeof setInterval> | null = null;
 
   const canManageTeam = computed(() => !!currentTeam.value?.canManageTeam);
   const hostTeamId = computed(() => detail.value?.match.host_team_id ?? null);
@@ -24,11 +28,44 @@ export function useApplyTeamPage(matchId: Ref<string>) {
     return !!match && match.publication_mode === "online_team" && match.opponent_state === "recruiting" && match.status === "registering";
   });
   const isHostTeamMember = computed(() => hostTeamId.value !== null && currentTeam.value?.id === hostTeamId.value);
-  const canApply = computed(() => canManageTeam.value && isRecruitingTeamMatch.value && !isHostTeamMember.value);
+  const registrationWindowState = computed(() => {
+    const match = detail.value?.match;
+    if (!match) return "closed" as const;
+    return resolveRegistrationWindow({
+      now: nowTick.value,
+      isRegistering: match.status === "registering",
+      registrationStartAt: match.registration_start_at,
+      registrationEndAt: match.registration_end_at,
+    }).state;
+  });
+  const isRegistrationOpen = computed(() => registrationWindowState.value === "open");
+  const canApply = computed(() =>
+    canManageTeam.value && isRecruitingTeamMatch.value && !isHostTeamMember.value && isRegistrationOpen.value,
+  );
   const hasActiveApplication = computed(() =>
     myApplication.value?.status === "pending" || myApplication.value?.status === "selected",
   );
   const teamName = computed(() => currentTeam.value?.name ?? "");
+  const canWithdraw = computed(() => myApplication.value?.status === "pending" && isRegistrationOpen.value);
+  const blockedMessage = computed(() => {
+    if (!canManageTeam.value) return "需要球队队长身份才能接约，可在球队管理中查看角色。";
+    if (registrationWindowState.value === "not_started") return "接约报名尚未开始。";
+    if (registrationWindowState.value === "closed") return "接约报名已结束。";
+    return "当前比赛不在球队招募中。";
+  });
+
+  onLoad(() => {
+    nowTick.value = Date.now();
+    if (windowTimer) clearInterval(windowTimer);
+    windowTimer = setInterval(() => {
+      nowTick.value = Date.now();
+    }, 1000);
+  });
+
+  onUnload(() => {
+    if (windowTimer) clearInterval(windowTimer);
+    windowTimer = null;
+  });
 
   async function loadPageData() {
     if (!matchId.value) return;
@@ -82,6 +119,10 @@ export function useApplyTeamPage(matchId: Ref<string>) {
   async function withdrawApplication() {
     const application = myApplication.value;
     if (isWithdrawing.value || !application || application.status !== "pending") return;
+    if (!canWithdraw.value) {
+      uni.showToast({ title: "当前不在报名时间内", icon: "none" });
+      return;
+    }
 
     const confirmed = await new Promise<boolean>((resolve) => {
       uni.showModal({
@@ -127,6 +168,9 @@ export function useApplyTeamPage(matchId: Ref<string>) {
     isRecruitingTeamMatch,
     isHostTeamMember,
     canApply,
+    canWithdraw,
+    blockedMessage,
+    registrationWindowState,
     hasActiveApplication,
     loadPageData,
     submitApplication,

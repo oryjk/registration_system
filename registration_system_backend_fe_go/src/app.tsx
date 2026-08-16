@@ -100,14 +100,16 @@ export function layout({
       </div>
     ),
     menuItemRender: (
-      item: { path?: string; onClick: () => void },
+      item: { path?: string; isMobile?: boolean; onClick: () => void },
       defaultDom: ReactNode,
     ) => (
       <a
         href={item.path}
         onClick={(event) => {
           event.preventDefault();
-          item.onClick();
+          // ProLayout 的 item.onClick 语义是 onCollapse(true)，仅用于移动端抽屉关闭；
+          // 桌面端调用会把侧边栏折叠，因此只在 isMobile 时调用。
+          if (item.isMobile) item.onClick();
           if (item.path) history.push(item.path);
         }}
       >

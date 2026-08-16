@@ -31,6 +31,7 @@ func (s UserRegistrationService) Put(ctx context.Context, actor sharedauth.Actor
 		return domain.Registration{}, err
 	}
 
+	now := s.clock.Now()
 	var result domain.Registration
 	err := s.repository.WithinUserRegistrationTransaction(ctx, func(tx ports.UserRegistrationTransaction) error {
 		match, group, err := loadUserRegistrationContext(ctx, tx, matchID, groupID)
@@ -39,6 +40,9 @@ func (s UserRegistrationService) Put(ctx context.Context, actor sharedauth.Actor
 		}
 		if match.Status != domain.MatchRegistering {
 			return sharederror.New(sharederror.KindConflict, "当前比赛不在报名中")
+		}
+		if !match.RegistrationOpenAt(now) {
+			return sharederror.New(sharederror.KindConflict, "当前不在报名时间内")
 		}
 
 		current, found, err := tx.FindUserRegistrationForUpdate(ctx, groupID, actor.ID)
@@ -81,7 +85,6 @@ func (s UserRegistrationService) Put(ctx context.Context, actor sharedauth.Actor
 			return sharederror.New(sharederror.KindConflict, "报名组人数已满")
 		}
 
-		now := s.clock.Now()
 		if found {
 			if err := current.ApplyUserStatus(command.Status, now); err != nil {
 				return err
@@ -109,6 +112,7 @@ func (s UserRegistrationService) Delete(ctx context.Context, actor sharedauth.Ac
 		return domain.Registration{}, sharederror.New(sharederror.KindValidation, "比赛或报名组无效")
 	}
 
+	now := s.clock.Now()
 	var result domain.Registration
 	err := s.repository.WithinUserRegistrationTransaction(ctx, func(tx ports.UserRegistrationTransaction) error {
 		match, group, err := loadUserRegistrationContext(ctx, tx, matchID, groupID)
@@ -117,6 +121,9 @@ func (s UserRegistrationService) Delete(ctx context.Context, actor sharedauth.Ac
 		}
 		if match.Status != domain.MatchRegistering {
 			return sharederror.New(sharederror.KindConflict, "当前比赛不在报名中")
+		}
+		if !match.RegistrationOpenAt(now) {
+			return sharederror.New(sharederror.KindConflict, "当前不在报名时间内")
 		}
 		current, found, err := tx.FindUserRegistrationForUpdate(ctx, groupID, actor.ID)
 		if err != nil {
@@ -138,7 +145,6 @@ func (s UserRegistrationService) Delete(ctx context.Context, actor sharedauth.Ac
 		if current.OccupiesCapacity() {
 			projected -= current.RegistrationCount
 		}
-		now := s.clock.Now()
 		current.Cancel(now)
 		result = current
 		if err := tx.SaveRegistration(ctx, result); err != nil {

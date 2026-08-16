@@ -2,6 +2,7 @@ package matchhttp
 
 import (
 	"context"
+	"encoding/json"
 	"strconv"
 	"time"
 
@@ -19,7 +20,7 @@ import (
 type AdminMatchUseCase interface {
 	List(context.Context, sharedauth.Actor, application.AdminMatchListQuery) (application.AdminMatchListResult, error)
 	Get(context.Context, sharedauth.Actor, uuid.UUID) (application.AdminMatchDetail, error)
-	UpdateDetails(context.Context, sharedauth.Actor, uuid.UUID, domain.UpdateMatchDetails) (domain.Match, error)
+	UpdateDetails(context.Context, sharedauth.Actor, uuid.UUID, application.UpdateMatchCommand) (domain.Match, error)
 	ChangeStatus(context.Context, sharedauth.Actor, uuid.UUID, domain.MatchStatus) (domain.Match, error)
 	Delete(context.Context, sharedauth.Actor, uuid.UUID) error
 }
@@ -55,15 +56,29 @@ type CreateMatchRequest struct {
 }
 
 type UpdateMatchRequest struct {
-	Name                string     `json:"name" binding:"required"`
-	StartTime           time.Time  `json:"start_time" binding:"required"`
-	EndTime             time.Time  `json:"end_time" binding:"required"`
-	RegistrationStartAt *time.Time `json:"registration_start_at"`
-	RegistrationEndAt   *time.Time `json:"registration_end_at"`
-	Location            string     `json:"location" binding:"required"`
-	LocationLatitude    *float64   `json:"location_latitude"`
-	LocationLongitude   *float64   `json:"location_longitude"`
-	Description         *string    `json:"description"`
+	Name                string                   `json:"name" binding:"required"`
+	StartTime           time.Time                `json:"start_time" binding:"required"`
+	EndTime             time.Time                `json:"end_time" binding:"required"`
+	RegistrationStartAt optionalTimestampRequest `json:"registration_start_at"`
+	RegistrationEndAt   optionalTimestampRequest `json:"registration_end_at"`
+	Location            string                   `json:"location" binding:"required"`
+	LocationLatitude    *float64                 `json:"location_latitude"`
+	LocationLongitude   *float64                 `json:"location_longitude"`
+	Description         *string                  `json:"description"`
+}
+
+type optionalTimestampRequest struct {
+	set   bool
+	value *time.Time
+}
+
+func (r *optionalTimestampRequest) UnmarshalJSON(data []byte) error {
+	r.set = true
+	return json.Unmarshal(data, &r.value)
+}
+
+func (r optionalTimestampRequest) commandValue() application.OptionalTimestamp {
+	return application.OptionalTimestamp{Set: r.set, Value: r.value}
 }
 
 type UpdateMatchStatusRequest struct {
@@ -204,9 +219,9 @@ func (h *AdminHandler) Update(c *gin.Context) {
 		sharedhttpapi.WriteError(c, sharederror.New(sharederror.KindValidation, "比赛信息不完整"))
 		return
 	}
-	_, err := h.service.UpdateDetails(c.Request.Context(), actor, id, domain.UpdateMatchDetails{
+	_, err := h.service.UpdateDetails(c.Request.Context(), actor, id, application.UpdateMatchCommand{
 		Name: request.Name, StartTime: request.StartTime, EndTime: request.EndTime,
-		RegistrationStartAt: request.RegistrationStartAt, RegistrationEndAt: request.RegistrationEndAt, Location: request.Location,
+		RegistrationStartAt: request.RegistrationStartAt.commandValue(), RegistrationEndAt: request.RegistrationEndAt.commandValue(), Location: request.Location,
 		LocationLatitude: request.LocationLatitude, LocationLongitude: request.LocationLongitude, Description: request.Description,
 	})
 	if err != nil {

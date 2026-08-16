@@ -51,8 +51,10 @@ export function useHallPage() {
   const activeSize = ref<HallMatchSizeFilter>(0);
   const selectedDateKey = ref("");
   const calendarDays = ref<HallCalendarDay[]>(buildHallCalendarDays(new Date()));
+  const nowTick = ref(Date.now());
 
   let loadVersion = 0;
+  let windowTimer: ReturnType<typeof setInterval> | null = null;
 
   const showInitialLoadingState = computed(() => isLoading.value && !hasLoadedOnce.value);
   const canPublish = computed(() => !!currentIdentity.value && !shouldHideCreationEntrances.value);
@@ -62,7 +64,9 @@ export function useHallPage() {
     canManageTeam: !!currentTeam.value?.canManageTeam,
   }));
   const hallCards = computed<HallMatchCardViewModel[]>(() => {
-    const cards = sourceMatches.value.map((match) => toHallMatchCard(match, hallViewer.value));
+    const cards = sourceMatches.value.map((match) =>
+      toHallMatchCard(match, hallViewer.value, nowTick.value),
+    );
     return filterHallMatches(cards, sourceMatches.value, activeKind.value === "mine" ? "all" : activeKind.value, activeSize.value);
   });
   const hasMore = computed(() => !isPaginationComplete(sourceMatches.value, pagination.value));
@@ -179,6 +183,20 @@ export function useHallPage() {
     }
   }
 
+  function stopWindowTimer() {
+    if (!windowTimer) return;
+    clearInterval(windowTimer);
+    windowTimer = null;
+  }
+
+  function startWindowTimer() {
+    nowTick.value = Date.now();
+    stopWindowTimer();
+    windowTimer = setInterval(() => {
+      nowTick.value = Date.now();
+    }, 1_000);
+  }
+
   return {
     isLoading,
     isRefreshing,
@@ -200,5 +218,7 @@ export function useHallPage() {
     selectSize,
     selectDate,
     handleLogin,
+    startWindowTimer,
+    stopWindowTimer,
   };
 }

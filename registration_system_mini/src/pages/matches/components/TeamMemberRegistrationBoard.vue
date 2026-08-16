@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
-import { NeoAvatarStack, NeoButton, NeoStickyActionBar, NeoSurface, NeoTag } from "@/components/neo";
+import NeoAvatarStack from "@/components/neo/NeoAvatarStack.vue";
+import NeoButton from "@/components/neo/NeoButton.vue";
+import NeoStickyActionBar from "@/components/neo/NeoStickyActionBar.vue";
+import NeoSurface from "@/components/neo/NeoSurface.vue";
+import NeoTag from "@/components/neo/NeoTag.vue";
 
 type TeamMemberCard = {
   userId: number;

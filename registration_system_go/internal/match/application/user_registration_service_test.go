@@ -212,6 +212,53 @@ func TestUserRegistrationDeleteMissingReturnsNotFound(t *testing.T) {
 	}
 }
 
+func TestUserRegistrationPutRejectsTimesOutsideRegistrationWindow(t *testing.T) {
+	windowStart := time.Date(2026, 8, 16, 9, 0, 0, 0, time.UTC)
+	windowEnd := windowStart.Add(2 * time.Hour)
+	tests := []struct {
+		name string
+		now  time.Time
+	}{
+		{name: "before start", now: windowStart.Add(-time.Nanosecond)},
+		{name: "at end", now: windowEnd},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			repository := newFakeUserRegistrationRepository(individualRegistrationFixture(windowStart, 1, 2))
+			repository.match.RegistrationStartAt = &windowStart
+			repository.match.RegistrationEndAt = &windowEnd
+			service := NewUserRegistrationService(repository, fakeClock{now: test.now})
+
+			_, err := service.Put(context.Background(), userActor(42), repository.match.ID, repository.group.ID, validRegistrationCommand())
+			if !errors.Is(err, sharederror.ErrConflict) {
+				t.Fatalf("expected conflict outside registration window, got %v", err)
+			}
+			if len(repository.registrations[repository.group.ID]) != 0 {
+				t.Fatal("registration outside the window must not be persisted")
+			}
+		})
+	}
+}
+
+func TestUserRegistrationDeleteRejectsAfterRegistrationWindow(t *testing.T) {
+	now := time.Date(2026, 8, 16, 12, 0, 0, 0, time.UTC)
+	repository := newFakeUserRegistrationRepository(teamRegistrationFixture(now.Add(-2*time.Hour), domain.GroupHostTeam, 7))
+	windowEnd := now.Add(-time.Minute)
+	repository.match.RegistrationEndAt = &windowEnd
+	existing, _ := domain.NewRegistration(repository.group.ID, 42, domain.RegistrationAttending, 1, now.Add(-time.Hour))
+	repository.registrations[repository.group.ID] = []domain.Registration{existing}
+	service := NewUserRegistrationService(repository, fakeClock{now: now})
+
+	_, err := service.Delete(context.Background(), userActor(42), repository.match.ID, repository.group.ID)
+	if !errors.Is(err, sharederror.ErrConflict) {
+		t.Fatalf("expected conflict after registration window, got %v", err)
+	}
+	if repository.registrations[repository.group.ID][0].Status != domain.RegistrationAttending {
+		t.Fatal("registration outside the window must not be cancelled")
+	}
+}
+
 func TestUserRegistrationRollsBackWhenDerivedStateWriteFails(t *testing.T) {
 	now := time.Now()
 	repository := newFakeUserRegistrationRepository(individualRegistrationFixture(now, 1, 1))

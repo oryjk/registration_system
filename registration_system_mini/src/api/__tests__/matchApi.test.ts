@@ -266,14 +266,17 @@ describe("Match API", () => {
 
   test("mock handlers cover registration writes", async () => {
     const { resolveMockResponse } = await import("@/mock/handlers");
+    const matchId = "f7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c001";
+    const detailResponse = resolveMockResponse("GET", `/matches/${matchId}`, null);
+    const detail = detailResponse?.data as { groups: Array<{ id: string }> };
     const response = resolveMockResponse(
       "PUT",
-      "/matches/f7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c003/groups/a7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c003/my-registration",
+      `/matches/${matchId}/groups/${detail.groups[0].id}/my-registration`,
       { status: "attending", registration_count: 1 },
     );
 
     expect(response?.data).toMatchObject({
-      group_id: "a7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c003",
+      group_id: detail.groups[0].id,
       status: "attending",
       registration_count: 1,
     });
@@ -302,6 +305,129 @@ describe("Match API", () => {
     if (!home || !mine) throw new Error("expected mock collections");
     expect((home.data as { action_items: Array<{ id: string }> }).action_items.some((item) => item.id === created.match.id)).toEqual(true);
     expect((mine.data as { items: Array<{ id: string }> }).items.some((item) => item.id === created.match.id)).toEqual(true);
+  });
+
+  test("mock match creation preserves registration bounds", async () => {
+    const { resolveMockResponse } = await import("@/mock/handlers");
+    const response = resolveMockResponse("POST", "/matches", {
+      name: "带报名窗口的比赛",
+      publication_mode: "online_team",
+      host_team_id: 101,
+      players_per_team: 8,
+      start_time: "2026-08-20T12:00:00.000Z",
+      end_time: "2026-08-20T14:00:00.000Z",
+      registration_start_at: "2026-08-18T08:00:00.000Z",
+      registration_end_at: "2026-08-20T10:00:00.000Z",
+      location: "Mock 球场",
+    });
+
+    expect((response?.data as { match: { registration_start_at: string; registration_end_at: string } }).match).toMatchObject({
+      registration_start_at: "2026-08-18T08:00:00.000Z",
+      registration_end_at: "2026-08-20T10:00:00.000Z",
+    });
+  });
+
+  test("mock rejects registration and team application before the window opens", async () => {
+    const { resolveMockResponse } = await import("@/mock/handlers");
+    const response = resolveMockResponse("POST", "/matches", {
+      name: "尚未开放的比赛",
+      publication_mode: "online_team",
+      host_team_id: 101,
+      players_per_team: 8,
+      start_time: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(),
+      end_time: new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString(),
+      registration_start_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+      registration_end_at: new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString(),
+      location: "Mock 球场",
+    });
+    const created = response?.data as { match: { id: string }; groups: Array<{ id: string }> };
+
+    expect(() => resolveMockResponse(
+      "PUT",
+      `/matches/${created.match.id}/groups/${created.groups[0].id}/my-registration`,
+      { status: "attending", registration_count: 1 },
+    )).toThrow("当前不在报名时间内");
+    expect(() => resolveMockResponse(
+      "POST",
+      `/matches/${created.match.id}/team-applications`,
+      { team_id: 202, introduction: "测试球队" },
+    )).toThrow("当前不在报名时间内");
+  });
+
+  test("mock evaluates one registration request with a single clock reading", async () => {
+    const originalNow = Date.now;
+    const baseNow = 1_850_000_000_000;
+    try {
+      Date.now = () => baseNow;
+      const { resolveMockResponse } = await import("@/mock/handlers");
+      const response = resolveMockResponse("POST", "/matches", {
+        name: "截止边界单时钟比赛",
+        publication_mode: "online_team",
+        host_team_id: 101,
+        players_per_team: 8,
+        start_time: new Date(baseNow + 2 * 60 * 60 * 1000).toISOString(),
+        end_time: new Date(baseNow + 4 * 60 * 60 * 1000).toISOString(),
+        registration_start_at: new Date(baseNow - 60 * 60 * 1000).toISOString(),
+        registration_end_at: new Date(baseNow + 1_000).toISOString(),
+        location: "Mock 球场",
+      });
+      const created = response?.data as { match: { id: string }; groups: Array<{ id: string }> };
+      let clockReads = 0;
+      Date.now = () => {
+        clockReads += 1;
+        return baseNow + (clockReads === 1 ? 999 : 1_000);
+      };
+
+      const registration = resolveMockResponse(
+        "PUT",
+        `/matches/${created.match.id}/groups/${created.groups[0].id}/my-registration`,
+        { status: "attending", registration_count: 1 },
+      );
+
+      expect(registration?.data).toMatchObject({ status: "attending" });
+      expect(clockReads).toEqual(1);
+    } finally {
+      Date.now = originalNow;
+    }
+  });
+
+  test("mock allows selected opponent rollback after the registration deadline", async () => {
+    const originalNow = Date.now;
+    const baseNow = 1_800_000_000_000;
+    try {
+      Date.now = () => baseNow;
+      const { resolveMockResponse } = await import("@/mock/handlers");
+      const response = resolveMockResponse("POST", "/matches", {
+        name: "已选对手回滚比赛",
+        publication_mode: "online_team",
+        host_team_id: 101,
+        players_per_team: 8,
+        start_time: new Date(baseNow + 2 * 60 * 60 * 1000).toISOString(),
+        end_time: new Date(baseNow + 4 * 60 * 60 * 1000).toISOString(),
+        registration_start_at: new Date(baseNow - 60 * 60 * 1000).toISOString(),
+        registration_end_at: new Date(baseNow + 60 * 60 * 1000).toISOString(),
+        location: "Mock 球场",
+      });
+      const matchId = (response?.data as { match: { id: string } }).match.id;
+      const applicationResponse = resolveMockResponse(
+        "POST",
+        `/matches/${matchId}/team-applications`,
+        { team_id: 202, introduction: "测试球队" },
+      );
+      const applicationId = (applicationResponse?.data as { id: string }).id;
+      resolveMockResponse("POST", `/matches/${matchId}/team-applications/${applicationId}/select`, null);
+
+      Date.now = () => baseNow + 60 * 60 * 1000;
+      const withdrawn = resolveMockResponse(
+        "POST",
+        `/matches/${matchId}/team-applications/${applicationId}/withdraw`,
+        null,
+      );
+
+      expect(withdrawn?.data).toMatchObject({ id: applicationId, status: "withdrawn" });
+    } finally {
+      Date.now = originalNow;
+    }
   });
 
   test("normalizes the full app base path before routing mock requests", async () => {

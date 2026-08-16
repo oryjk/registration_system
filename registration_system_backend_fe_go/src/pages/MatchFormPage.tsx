@@ -36,7 +36,6 @@ import {
   publicationModeLabels,
 } from "./matchLabels";
 
-const { RangePicker } = DatePicker;
 const { Text, Title } = Typography;
 
 interface MatchFormValues {
@@ -46,7 +45,10 @@ interface MatchFormValues {
   opponent_name?: string;
   players_per_team: number;
   host_capacity_limit?: number;
-  time_range: [Dayjs, Dayjs];
+  start_time: Dayjs;
+  duration_minutes: number;
+  registration_start_at?: Dayjs;
+  registration_end_at?: Dayjs;
   location: string;
   location_latitude?: number;
   location_longitude?: number;
@@ -57,6 +59,7 @@ const initialValues: Partial<MatchFormValues> = {
   publication_mode: "online_team",
   players_per_team: 8,
   host_capacity_limit: 12,
+  duration_minutes: 120,
 };
 
 export default function MatchFormPage() {
@@ -98,7 +101,17 @@ export default function MatchFormPage() {
         host_team_id: match.host_team_id,
         opponent_name: match.opponent_name || undefined,
         players_per_team: match.players_per_team,
-        time_range: [dayjs(match.start_time), dayjs(match.end_time)],
+        start_time: dayjs(match.start_time),
+        duration_minutes: Math.max(
+          1,
+          dayjs(match.end_time).diff(dayjs(match.start_time), "minute"),
+        ),
+        registration_start_at: match.registration_start_at
+          ? dayjs(match.registration_start_at)
+          : undefined,
+        registration_end_at: match.registration_end_at
+          ? dayjs(match.registration_end_at)
+          : undefined,
         location: match.location,
         location_latitude: match.location_latitude ?? undefined,
         location_longitude: match.location_longitude ?? undefined,
@@ -106,6 +119,17 @@ export default function MatchFormPage() {
       }
     : initialValues;
   const formReady = !loading && (!editing || Boolean(match));
+
+  // 选择比赛时间后自动带出报名窗口：报名开始默认为当前时间（仅在未填写时），
+  // 报名截止固定为比赛开始前 2 小时，减少创建比赛的手工操作。
+  const handleStartTimeChange = (value: Dayjs | null) => {
+    if (!value) return;
+    form.setFieldsValue({
+      registration_start_at:
+        form.getFieldValue("registration_start_at") ?? dayjs(),
+      registration_end_at: value.subtract(2, "hour"),
+    });
+  };
 
   const submit = async (values: MatchFormValues) => {
     setError("");
@@ -368,14 +392,62 @@ export default function MatchFormPage() {
                 </div>
                 <div className="form-grid">
                   <Form.Item
-                    name="time_range"
+                    name="start_time"
                     label="比赛时间"
-                    className="form-span-2"
                     rules={[{ required: true, message: "请选择比赛时间" }]}
                   >
-                    <RangePicker
+                    <DatePicker
                       showTime
                       format="YYYY-MM-DD HH:mm"
+                      placeholder="选择比赛开始时间"
+                      className="full-width-control"
+                      onChange={handleStartTimeChange}
+                    />
+                  </Form.Item>
+                  <Form.Item
+                    name="duration_minutes"
+                    label="比赛时长（分钟）"
+                    rules={[{ required: true, message: "请输入比赛时长" }]}
+                  >
+                    <InputNumber
+                      min={30}
+                      max={600}
+                      step={10}
+                      className="full-width-control"
+                    />
+                  </Form.Item>
+                  <Form.Item name="registration_start_at" label="报名开始时间">
+                    <DatePicker
+                      showTime
+                      format="YYYY-MM-DD HH:mm"
+                      placeholder="不限制开始时间"
+                      className="full-width-control"
+                    />
+                  </Form.Item>
+                  <Form.Item
+                    name="registration_end_at"
+                    label="报名截止时间"
+                    dependencies={["registration_start_at"]}
+                    rules={[
+                      ({ getFieldValue }) => ({
+                        validator(_, value: Dayjs | undefined) {
+                          const start = getFieldValue(
+                            "registration_start_at",
+                          ) as Dayjs | undefined;
+                          if (!start || !value || value.isAfter(start)) {
+                            return Promise.resolve();
+                          }
+                          return Promise.reject(
+                            new Error("报名截止时间必须晚于开始时间"),
+                          );
+                        },
+                      }),
+                    ]}
+                  >
+                    <DatePicker
+                      showTime
+                      format="YYYY-MM-DD HH:mm"
+                      placeholder="不限制截止时间"
                       className="full-width-control"
                     />
                   </Form.Item>

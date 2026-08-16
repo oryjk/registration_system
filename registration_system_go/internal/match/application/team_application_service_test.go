@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/oryjk/registration_system/registration_system_go/internal/match/domain"
@@ -92,6 +93,43 @@ func TestTeamApplicationRejectsClosedMatch(t *testing.T) {
 	_, err := service.Apply(context.Background(), userActor(81), match.ID, 8, "申请参赛")
 	if !errors.Is(err, sharederror.ErrConflict) {
 		t.Fatalf("expected conflict for ongoing match, got %v", err)
+	}
+}
+
+func TestTeamApplicationRejectsApplyBeforeRegistrationWindow(t *testing.T) {
+	now := fixedClock().Now()
+	match := teamRecruitingMatch(uuid.New())
+	windowStart := now.Add(time.Hour)
+	match.RegistrationStartAt = &windowStart
+	repository := newFakeTeamApplicationRepository(match)
+	access := &fakeApplicationTeamAccess{managers: map[int64]map[int64]bool{8: {81: true}}}
+	service := NewTeamApplicationService(repository, access, fakeClock{now: now})
+
+	_, err := service.Apply(context.Background(), userActor(81), match.ID, 8, "申请参赛")
+	if !errors.Is(err, sharederror.ErrConflict) {
+		t.Fatalf("expected conflict before registration window, got %v", err)
+	}
+	if len(repository.applications) != 0 {
+		t.Fatal("application outside the window must not be persisted")
+	}
+}
+
+func TestTeamApplicationRejectsWithdrawAfterRegistrationWindow(t *testing.T) {
+	now := fixedClock().Now()
+	match := teamRecruitingMatch(uuid.New())
+	windowEnd := now.Add(-time.Minute)
+	match.RegistrationEndAt = &windowEnd
+	application, _ := domain.NewTeamApplication(match.ID, 8, 81, "申请参赛", now.Add(-time.Hour))
+	repository := newFakeTeamApplicationRepository(match, application)
+	access := &fakeApplicationTeamAccess{managers: map[int64]map[int64]bool{8: {81: true}}}
+	service := NewTeamApplicationService(repository, access, fakeClock{now: now})
+
+	_, err := service.Withdraw(context.Background(), userActor(81), match.ID, application.ID)
+	if !errors.Is(err, sharederror.ErrConflict) {
+		t.Fatalf("expected conflict after registration window, got %v", err)
+	}
+	if repository.applications[application.ID].Status != domain.ApplicationPending {
+		t.Fatal("application outside the window must not be withdrawn")
 	}
 }
 

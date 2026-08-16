@@ -28,6 +28,8 @@ export interface MatchItem {
   players_per_team: number;
   start_time: string;
   end_time: string;
+  registration_start_at: string | null;
+  registration_end_at: string | null;
   location: string;
   location_latitude: number | null;
   location_longitude: number | null;
@@ -85,6 +87,8 @@ export interface CreateMatchPayload {
   host_capacity_limit?: number | null;
   start_time: string;
   end_time: string;
+  registration_start_at: string | null;
+  registration_end_at: string | null;
   location: string;
   location_latitude?: number | null;
   location_longitude?: number | null;
@@ -95,6 +99,8 @@ export interface UpdateMatchPayload {
   name: string;
   start_time: string;
   end_time: string;
+  registration_start_at: string | null;
+  registration_end_at: string | null;
   location: string;
   location_latitude?: number | null;
   location_longitude?: number | null;

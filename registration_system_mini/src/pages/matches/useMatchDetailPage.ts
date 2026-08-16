@@ -31,6 +31,7 @@ import {
   formatWeekday,
   parseDateValue,
   resolveRegistrationCapacityState,
+  resolveRegistrationWindow,
 } from "./detailState";
 import { useMatchRegistration } from "./useMatchRegistration";
 import { useMatchCheckInReview } from "./useMatchCheckInReview";
@@ -119,28 +120,36 @@ export function useMatchDetailPage() {
     return parseDateValue(match.value.holding_date).getTime();
   });
 
-  const registrationDeadlineTimestamp = computed(() => {
-    if (!match.value) return 0;
-    // 报名截止优先用显式报名窗口；缺失时回退比赛结束/开始时间（旧数据兼容）。
-    return parseDateValue(
-      match.value.registration_end_at || match.value.end_time || match.value.holding_date,
-    ).getTime();
-  });
-
-  // 报名截止后不支持修改报名状态（报名/取消报名/调整状态按钮全部隐藏）：
-  // 新接口除状态字段外，还要兜底“比赛已开始但 status 未流转”的导入数据；
-  // legacy 活动的 end_time 是报名截止时刻。
-  const isRegistrationClosed = computed(() => {
-    if (sourceMatch.value) {
-      return (
-        sourceMatch.value.status !== "registering"
-        || (matchStartTimestamp.value > 0 && nowTick.value >= matchStartTimestamp.value)
-      );
+  const registrationWindow = computed(() => {
+    if (!match.value) {
+      return { state: "closed" as const, countdownTarget: null };
     }
-    return registrationDeadlineTimestamp.value > 0 && nowTick.value >= registrationDeadlineTimestamp.value;
+    if (sourceMatch.value) {
+      return resolveRegistrationWindow({
+        now: nowTick.value,
+        isRegistering: sourceMatch.value.status === "registering",
+        registrationStartAt: sourceMatch.value.registration_start_at,
+        registrationEndAt: sourceMatch.value.registration_end_at,
+      });
+    }
+    return resolveRegistrationWindow({
+      now: nowTick.value,
+      isRegistering: match.value.status === 0,
+      registrationStartAt: match.value.registration_start_at,
+      // legacy 活动没有独立窗口时，end_time 仍代表原有报名截止时间。
+      registrationEndAt: match.value.registration_end_at || match.value.end_time || match.value.holding_date,
+    });
   });
 
-  const countdownText = computed(() => formatCountdown(registrationDeadlineTimestamp.value - nowTick.value));
+  const registrationWindowState = computed(() => registrationWindow.value.state);
+  const isRegistrationClosed = computed(() => registrationWindowState.value !== "open");
+  const countdownText = computed(() => {
+    const window = registrationWindow.value;
+    if (window.state === "closed") return "报名已结束";
+    if (window.countdownTarget === null) return "报名进行中";
+    const countdown = formatCountdown(window.countdownTarget - nowTick.value);
+    return window.state === "not_started" ? `距开放 ${countdown}` : `距截止 ${countdown}`;
+  });
 
   const heroMetaChips = computed(() => {
     if (!match.value) return [];
@@ -387,6 +396,7 @@ export function useMatchDetailPage() {
     isMatchApiDetail,
     registrationGroupId,
     canSubmitIndividualRegistration,
+    registrationWindowState,
     canUseTeamRegistration,
     existingTeamDerivedActivity,
     sourceTeamRegistrationCount,
@@ -511,6 +521,7 @@ export function useMatchDetailPage() {
     registrationMode,
     canUseTeamRegistration,
     isRegistrationClosed,
+    registrationWindowState,
     matchKindLabel,
     publicationModeLabel,
     homeTeamLabel,

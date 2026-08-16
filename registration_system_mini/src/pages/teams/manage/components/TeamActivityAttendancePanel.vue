@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { NeoSectionHeader, NeoSurface } from "@/components/neo";
+import NeoSectionHeader from "@/components/neo/NeoSectionHeader.vue";
+import NeoSurface from "@/components/neo/NeoSurface.vue";
 import type { TeamActivityAttendanceMember, TeamActivityAttendanceSummary } from "../teamManageState";
 import type { TeamProfileViewModel } from "@/types/viewModels";
 

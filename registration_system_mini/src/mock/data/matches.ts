@@ -463,6 +463,8 @@ function buildCreatedMatch(payload: {
   host_capacity_limit?: number;
   start_time: string;
   end_time: string;
+  registration_start_at?: string;
+  registration_end_at?: string;
   location: string;
   location_latitude?: number;
   location_longitude?: number;
@@ -476,8 +478,8 @@ function buildCreatedMatch(payload: {
     name: payload.name,
     status: "registering",
     start_time: payload.start_time,
-    registration_start_at: null,
-    registration_end_at: null,
+    registration_start_at: payload.registration_start_at ?? null,
+    registration_end_at: payload.registration_end_at ?? null,
     end_time: payload.end_time,
     publication_mode: payload.publication_mode,
     opponent_state: payload.publication_mode === "online_team" ? "recruiting" : "confirmed",

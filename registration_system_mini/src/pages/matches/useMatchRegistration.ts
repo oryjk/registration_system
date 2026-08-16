@@ -13,6 +13,7 @@ import type { TeamProfileViewModel } from "@/types/viewModels";
 import type { NeoConfirmDialogOptions } from "@/components/neo";
 import { toStandLabel } from "@/utils/viewModels";
 import { applyIndividualRegistrationPatch, clampTeamRegistrationCount } from "./detailState";
+import type { RegistrationWindowState } from "@/utils/registrationWindow";
 
 interface MatchRegistrationDependencies {
   match: Ref<BackendActivity | null>;
@@ -25,6 +26,7 @@ interface MatchRegistrationDependencies {
   isMatchApiDetail: Ref<boolean>;
   registrationGroupId: Ref<string>;
   canSubmitIndividualRegistration: ComputedRef<boolean>;
+  registrationWindowState: ComputedRef<RegistrationWindowState>;
   canUseTeamRegistration: ComputedRef<boolean>;
   existingTeamDerivedActivity: Ref<BackendActivity | null>;
   sourceTeamRegistrationCount: Ref<number>;
@@ -46,6 +48,7 @@ export function useMatchRegistration(dependencies: MatchRegistrationDependencies
     isMatchApiDetail,
     registrationGroupId,
     canSubmitIndividualRegistration,
+    registrationWindowState,
     canUseTeamRegistration,
     existingTeamDerivedActivity,
     sourceTeamRegistrationCount,
@@ -54,6 +57,15 @@ export function useMatchRegistration(dependencies: MatchRegistrationDependencies
     handleGuestLogin,
     confirmRegistrationAction,
   } = dependencies;
+
+  function ensureRegistrationOpen() {
+    if (registrationWindowState.value === "open") return true;
+    uni.showToast({
+      title: registrationWindowState.value === "not_started" ? "报名尚未开始" : "报名已结束",
+      icon: "none",
+    });
+    return false;
+  }
 
   function applyIndividualRegistrationState(stand: number, registrationCount: number) {
     const userId = currentUser.value?.id;
@@ -88,6 +100,7 @@ export function useMatchRegistration(dependencies: MatchRegistrationDependencies
 
   async function handleSelectIndividualSignup() {
     if (!match.value || submittingStatus.value) return;
+  if (!ensureRegistrationOpen()) return;
     if (isGuestMode.value) {
       await handleGuestLogin();
       return;
@@ -127,6 +140,7 @@ export function useMatchRegistration(dependencies: MatchRegistrationDependencies
 
   async function handleCancelIndividualSignup() {
     if (!match.value || submittingStatus.value) return;
+  if (!ensureRegistrationOpen()) return;
 
     const confirmed = await confirmRegistrationAction({
       title: "确认取消报名",
@@ -155,6 +169,7 @@ export function useMatchRegistration(dependencies: MatchRegistrationDependencies
 
   async function handleSelectTeamMemberStand(stand: 0 | 1 | 2) {
     if (!match.value || submittingStatus.value) return;
+  if (!ensureRegistrationOpen()) return;
     if (isGuestMode.value) {
       await handleGuestLogin();
       return;
@@ -195,6 +210,7 @@ export function useMatchRegistration(dependencies: MatchRegistrationDependencies
 
   async function handleTeamSubmit() {
     if (!match.value || submittingStatus.value) return;
+  if (!ensureRegistrationOpen()) return;
     if (!canUseTeamRegistration.value || !currentTeam.value) {
       uni.showToast({ title: "仅队长或领队可发起球队报名", icon: "none", duration: 2800 });
       return;

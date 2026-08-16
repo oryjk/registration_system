@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/oryjk/registration_system/registration_system_go/internal/match/domain"
@@ -92,6 +93,62 @@ func TestAdminChangesMatchStatus(t *testing.T) {
 	}
 	if match.Status != domain.MatchOngoing || repository.updatedStatus.Status != domain.MatchOngoing {
 		t.Fatalf("unexpected status update: %+v", match)
+	}
+}
+
+func TestAdminUpdatesRegistrationWindowWithTriStateSemantics(t *testing.T) {
+	originalStart := time.Date(2026, 8, 20, 8, 0, 0, 0, time.UTC)
+	originalEnd := originalStart.Add(48 * time.Hour)
+	replacementEnd := originalEnd.Add(24 * time.Hour)
+
+	tests := []struct {
+		name      string
+		start     OptionalTimestamp
+		end       OptionalTimestamp
+		wantStart *time.Time
+		wantEnd   *time.Time
+	}{
+		{name: "omitted values are preserved", wantStart: &originalStart, wantEnd: &originalEnd},
+		{name: "explicit null clears a value", start: OptionalTimestamp{Set: true}, wantEnd: &originalEnd},
+		{name: "timestamp replaces a value", end: OptionalTimestamp{Set: true, Value: &replacementEnd}, wantStart: &originalStart, wantEnd: &replacementEnd},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			id := uuid.New()
+			createdByAdminID := int64(3)
+			repository := &fakeAdminMatchRepository{match: domain.Match{
+				ID: id, Status: domain.MatchRegistering, PublicationMode: domain.OnlineTeam,
+				Name: "周末比赛", HostTeamID: 11, PlayersPerTeam: 7,
+				StartTime: originalEnd.Add(24 * time.Hour), EndTime: originalEnd.Add(26 * time.Hour),
+				RegistrationStartAt: &originalStart, RegistrationEndAt: &originalEnd,
+				Location: "滨江球场", CreatedByAdminID: &createdByAdminID,
+			}, found: true}
+			service := NewAdminMatchService(repository, fixedClock(), &fakeAdminAccess{})
+
+			updated, err := service.UpdateDetails(context.Background(), adminActor(3), id, UpdateMatchCommand{
+				Name: "周末比赛", StartTime: repository.match.StartTime, EndTime: repository.match.EndTime,
+				RegistrationStartAt: tt.start, RegistrationEndAt: tt.end, Location: "滨江球场",
+			})
+			if err != nil {
+				t.Fatalf("update details: %v", err)
+			}
+			assertOptionalTimeEqual(t, updated.RegistrationStartAt, tt.wantStart)
+			assertOptionalTimeEqual(t, updated.RegistrationEndAt, tt.wantEnd)
+		})
+	}
+}
+
+func assertOptionalTimeEqual(t *testing.T, got, want *time.Time) {
+	t.Helper()
+	if got == nil || want == nil {
+		if got != nil || want != nil {
+			t.Fatalf("unexpected optional time: got=%v want=%v", got, want)
+		}
+		return
+	}
+	if !got.Equal(*want) {
+		t.Fatalf("unexpected time: got=%s want=%s", got, want)
 	}
 }
 

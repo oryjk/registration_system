@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { NeoSurface } from "@/components/neo";
+import NeoSurface from "@/components/neo/NeoSurface.vue";
 
 defineProps<{
   teamName: string;

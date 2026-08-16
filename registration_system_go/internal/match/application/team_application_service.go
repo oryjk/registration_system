@@ -67,6 +67,9 @@ func (s TeamApplicationService) Apply(ctx context.Context, actor sharedauth.Acto
 		if err := ensureRecruitingTeamMatch(match); err != nil {
 			return err
 		}
+		if !match.RegistrationOpenAt(now) {
+			return sharederror.New(sharederror.KindConflict, "当前不在报名时间内")
+		}
 		if applicantTeamID == match.HostTeamID {
 			return sharederror.New(sharederror.KindValidation, "主队不能申请成为自己的对手")
 		}
@@ -160,6 +163,9 @@ func (s TeamApplicationService) Withdraw(ctx context.Context, actor sharedauth.A
 		wasSelected := application.Status == domain.ApplicationSelected
 		switch application.Status {
 		case domain.ApplicationPending:
+			if !match.RegistrationOpenAt(now) {
+				return sharederror.New(sharederror.KindConflict, "当前不在报名时间内")
+			}
 			if actor.IsAdmin() {
 				return sharederror.ErrForbidden
 			}

@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { NeoAvatarStack, NeoButton, NeoProgress, NeoStickyActionBar, NeoSurface, NeoTag } from "@/components/neo";
+import NeoAvatarStack from "@/components/neo/NeoAvatarStack.vue";
+import NeoButton from "@/components/neo/NeoButton.vue";
+import NeoProgress from "@/components/neo/NeoProgress.vue";
+import NeoStickyActionBar from "@/components/neo/NeoStickyActionBar.vue";
+import NeoSurface from "@/components/neo/NeoSurface.vue";
+import NeoTag from "@/components/neo/NeoTag.vue";
 import type { MatchTeamProgressItem } from "@/types/viewModels";
 
 type Participant = {

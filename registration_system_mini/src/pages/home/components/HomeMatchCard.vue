@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { NeoButton, NeoProgress, NeoTag } from "@/components/neo";
+import NeoButton from "@/components/neo/NeoButton.vue";
+import NeoProgress from "@/components/neo/NeoProgress.vue";
+import NeoTag from "@/components/neo/NeoTag.vue";
 import type { HomeMatchCardViewModel } from "@/types/viewModels";
 
 const props = defineProps<{

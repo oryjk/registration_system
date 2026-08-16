@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { NeoButton, NeoSurface, NeoTag } from "@/components/neo";
+import NeoButton from "@/components/neo/NeoButton.vue";
+import NeoSurface from "@/components/neo/NeoSurface.vue";
+import NeoTag from "@/components/neo/NeoTag.vue";
 import type { AppTeamApplication, AppTeamApplicationStatus } from "@/types/match";
 import type { NeoTagTone } from "@/types/designSystem";
 import { formatDateTimeWithWeekdayLabel } from "@/utils/datetime";

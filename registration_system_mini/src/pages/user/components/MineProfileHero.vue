@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref, watch } from "vue";
 import type { BackendUser } from "@/types/backend";
-import { NeoButton, NeoSurface } from "@/components/neo";
+import NeoButton from "@/components/neo/NeoButton.vue";
+import NeoSurface from "@/components/neo/NeoSurface.vue";
 import defaultAvatarUrl from "@/static/tab-png/user-active.png";
 
 const props = defineProps<{

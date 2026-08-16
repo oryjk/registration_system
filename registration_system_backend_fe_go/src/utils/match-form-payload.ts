@@ -6,6 +6,7 @@ import type {
 
 interface IsoDateTime {
   toISOString(): string;
+  valueOf(): number;
 }
 
 export interface MatchFormPayloadValues {
@@ -15,7 +16,10 @@ export interface MatchFormPayloadValues {
   opponent_name?: string;
   players_per_team: number;
   host_capacity_limit?: number;
-  time_range: readonly [IsoDateTime, IsoDateTime];
+  start_time: IsoDateTime;
+  duration_minutes: number;
+  registration_start_at?: IsoDateTime;
+  registration_end_at?: IsoDateTime;
   location: string;
   location_latitude?: number;
   location_longitude?: number;
@@ -27,8 +31,12 @@ export function buildUpdateMatchPayload(
 ): UpdateMatchPayload {
   return {
     name: values.name.trim(),
-    start_time: values.time_range[0].toISOString(),
-    end_time: values.time_range[1].toISOString(),
+    start_time: values.start_time.toISOString(),
+    end_time: new Date(
+      values.start_time.valueOf() + values.duration_minutes * 60_000,
+    ).toISOString(),
+    registration_start_at: values.registration_start_at?.toISOString() ?? null,
+    registration_end_at: values.registration_end_at?.toISOString() ?? null,
     location: values.location.trim(),
     location_latitude: values.location_latitude ?? null,
     location_longitude: values.location_longitude ?? null,

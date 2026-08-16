@@ -96,24 +96,26 @@ func NewMatch(input NewMatchInput, individualLimits IndividualLimits) (Match, []
 		opponentState = OpponentNoRecruitment
 	}
 	match := Match{
-		ID:                matchID,
-		Name:              strings.TrimSpace(input.Name),
-		PublicationMode:   input.PublicationMode,
-		OpponentState:     opponentState,
-		Status:            MatchRegistering,
-		HostTeamID:        input.HostTeamID,
-		OpponentName:      trimOptional(input.OpponentName),
-		PlayersPerTeam:    input.PlayersPerTeam,
-		StartTime:         input.StartTime,
-		EndTime:           input.EndTime,
-		Location:          strings.TrimSpace(input.Location),
-		LocationLatitude:  input.LocationLatitude,
-		LocationLongitude: input.LocationLongitude,
-		Description:       trimOptional(input.Description),
-		CreatedByUserID:   input.CreatedByUserID,
-		CreatedByAdminID:  input.CreatedByAdminID,
-		CreatedAt:         now,
-		UpdatedAt:         now,
+		ID:                  matchID,
+		Name:                strings.TrimSpace(input.Name),
+		PublicationMode:     input.PublicationMode,
+		OpponentState:       opponentState,
+		Status:              MatchRegistering,
+		HostTeamID:          input.HostTeamID,
+		OpponentName:        trimOptional(input.OpponentName),
+		PlayersPerTeam:      input.PlayersPerTeam,
+		StartTime:           input.StartTime,
+		EndTime:             input.EndTime,
+		RegistrationStartAt: input.RegistrationStartAt,
+		RegistrationEndAt:   input.RegistrationEndAt,
+		Location:            strings.TrimSpace(input.Location),
+		LocationLatitude:    input.LocationLatitude,
+		LocationLongitude:   input.LocationLongitude,
+		Description:         trimOptional(input.Description),
+		CreatedByUserID:     input.CreatedByUserID,
+		CreatedByAdminID:    input.CreatedByAdminID,
+		CreatedAt:           now,
+		UpdatedAt:           now,
 	}
 	groups := []RegistrationGroup{NewTeamGroup(matchID, GroupHostTeam, input.HostTeamID, input.HostCapacityLimit, now)}
 	if input.PublicationMode == OnlineIndividual {
@@ -186,6 +188,13 @@ func (m *Match) RecalculateIndividualOpponent(activePlayers, minPlayers int, now
 	return nil
 }
 
+func (m Match) RegistrationOpenAt(now time.Time) bool {
+	if m.RegistrationStartAt != nil && now.Before(*m.RegistrationStartAt) {
+		return false
+	}
+	return m.RegistrationEndAt == nil || now.Before(*m.RegistrationEndAt)
+}
+
 type UpdateMatchDetails struct {
 	Name                string
 	StartTime           time.Time
@@ -206,7 +215,9 @@ func (m *Match) UpdateDetails(input UpdateMatchDetails, now time.Time) error {
 		Name: input.Name, PublicationMode: m.PublicationMode, HostTeamID: m.HostTeamID,
 		CreatedByUserID: m.CreatedByUserID, CreatedByAdminID: m.CreatedByAdminID,
 		OpponentName: m.OpponentName, PlayersPerTeam: m.PlayersPerTeam,
-		StartTime: input.StartTime, EndTime: input.EndTime, Location: input.Location,
+		StartTime: input.StartTime, EndTime: input.EndTime,
+		RegistrationStartAt: input.RegistrationStartAt, RegistrationEndAt: input.RegistrationEndAt,
+		Location:         input.Location,
 		LocationLatitude: input.LocationLatitude, LocationLongitude: input.LocationLongitude,
 	}
 	if err := validateNewMatchInput(validation); err != nil {
@@ -264,6 +275,9 @@ func validateNewMatchInput(input NewMatchInput) error {
 	}
 	if input.EndTime.IsZero() || !input.EndTime.After(input.StartTime) {
 		return sharederror.New(sharederror.KindValidation, "结束时间必须晚于开始时间")
+	}
+	if input.RegistrationStartAt != nil && input.RegistrationEndAt != nil && !input.RegistrationEndAt.After(*input.RegistrationStartAt) {
+		return sharederror.New(sharederror.KindValidation, "报名结束时间必须晚于报名开始时间")
 	}
 	if input.HostCapacityLimit != nil && *input.HostCapacityLimit <= 0 {
 		return sharederror.New(sharederror.KindValidation, "本队报名上限必须大于 0")

@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { NeoSurface, NeoTag } from "@/components/neo";
+import NeoSurface from "@/components/neo/NeoSurface.vue";
+import NeoTag from "@/components/neo/NeoTag.vue";
 
 defineProps<{
   title: string;

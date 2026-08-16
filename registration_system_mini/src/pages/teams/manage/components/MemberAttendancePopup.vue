@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { NeoButton } from "@/components/neo";
+import NeoButton from "@/components/neo/NeoButton.vue";
 import type { BackendTeamMember, BackendTeamMemberAttendanceRecord } from "@/types/backend";
 import type { buildAttendanceGroups, buildAttendanceSummary } from "../teamManageState";
 

@@ -72,16 +72,18 @@ describe("match detail registration design", () => {
     expect(individual.includes("InterestMatchGrid")).toEqual(false);
   });
 
-  test("uses activity registration deadline for the countdown and holding date for match clock", async () => {
+  test("uses the active registration boundary for the countdown and holding date for match clock", async () => {
     const pageLogic = await matchDetailLogicSource();
     const datetime = await sourceFile(
       "utils/datetime.ts",
     ).text();
 
-    expect(pageLogic.includes("const registrationDeadlineTimestamp = computed")).toEqual(true);
-    // 报名截止优先显式报名窗口，缺失时回退比赛结束/开始时间（旧数据兼容）。
+    expect(pageLogic.includes("const registrationWindow = computed")).toEqual(true);
+    expect(pageLogic.includes("registrationStartAt: sourceMatch.value.registration_start_at")).toEqual(true);
+    expect(pageLogic.includes("registrationEndAt: sourceMatch.value.registration_end_at")).toEqual(true);
+    // legacy 活动仍使用原有 end_time 语义；Go 比赛缺失截止时间时不再回退比赛开始时间。
     expect(pageLogic.includes("match.value.registration_end_at || match.value.end_time || match.value.holding_date")).toEqual(true);
-    expect(pageLogic.includes("formatCountdown(registrationDeadlineTimestamp.value - nowTick.value)")).toEqual(true);
+    expect(pageLogic.includes('window.state === "not_started" ? `距开放 ${countdown}` : `距截止 ${countdown}`')).toEqual(true);
     expect(pageLogic.includes("formatClock(match.value.holding_date)")).toEqual(true);
     expect(pageLogic.includes("formatClock(match.value.start_time)")).toEqual(false);
     expect(datetime.includes('if (distance <= 0) return "已截止";')).toEqual(true);
@@ -391,12 +393,11 @@ describe("match detail registration design", () => {
     const individual = await sourceFile("pages/matches/components/MatchIndividualRegistration.vue").text();
     const board = await sourceFile("pages/matches/components/TeamMemberRegistrationBoard.vue").text();
 
-    // 截止后不支持修改报名状态：报名/取消报名/状态调整入口全部隐藏。
+    // 未开始或截止后都不支持修改报名状态：报名/取消报名/状态调整入口全部隐藏。
     expect(pageLogic.includes("const isRegistrationClosed = computed")).toEqual(true);
-    expect(pageLogic.includes('sourceMatch.value.status !== "registering"')).toEqual(true);
-    // 兜底：导入数据的 status 可能停留在 registering，比赛已开始也要视为截止。
-    expect(pageLogic.includes("nowTick.value >= matchStartTimestamp.value")).toEqual(true);
-    expect(pageLogic.includes("nowTick.value >= registrationDeadlineTimestamp.value")).toEqual(true);
+    expect(pageLogic.includes("const registrationWindowState = computed")).toEqual(true);
+    expect(pageLogic.includes('isRegistering: sourceMatch.value.status === "registering"')).toEqual(true);
+    expect(pageLogic.includes('registrationWindowState.value !== "open"')).toEqual(true);
     expect(detailPage.includes(":registration-closed=\"isRegistrationClosed\"")).toEqual(true);
     expect(detailPage.includes("canUseTeamRegistration && !isRegistrationClosed")).toEqual(true);
     expect(individual.includes(":show-cta=\"!showTeamMemberRegistrationBoard && !registrationClosed\"")).toEqual(true);

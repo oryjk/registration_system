@@ -29,7 +29,8 @@ async function loadSharedUsers() {
 
 <script setup lang="ts">
 import { computed, onMounted } from "vue";
-import { NeoButton, NeoSurface } from "@/components/neo";
+import NeoButton from "@/components/neo/NeoButton.vue";
+import NeoSurface from "@/components/neo/NeoSurface.vue";
 import { loginWithTestUser, useAppSession } from "@/stores/appSession";
 
 const { currentUser, isBootstrapping } = useAppSession();

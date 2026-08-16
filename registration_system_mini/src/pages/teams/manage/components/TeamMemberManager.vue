@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { NeoButton, NeoSectionHeader, NeoSurface } from "@/components/neo";
+import NeoButton from "@/components/neo/NeoButton.vue";
+import NeoSectionHeader from "@/components/neo/NeoSectionHeader.vue";
+import NeoSurface from "@/components/neo/NeoSurface.vue";
 import type { BackendTeamMember, BackendUser } from "@/types/backend";
 import type { TeamProfileViewModel } from "@/types/viewModels";
 import { memberRoleOptions, roleLabel } from "../teamManageState";

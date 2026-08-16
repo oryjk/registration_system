@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import type { BackendActivity } from "@/types/backend";
-import { NeoSurface, NeoTag } from "@/components/neo";
+import NeoSurface from "@/components/neo/NeoSurface.vue";
+import NeoTag from "@/components/neo/NeoTag.vue";
 import { formatMonthDayLabel, formatWeekdayLabel } from "@/utils/datetime";
 
 const props = defineProps<{

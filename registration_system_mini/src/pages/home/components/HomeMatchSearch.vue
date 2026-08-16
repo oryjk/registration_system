@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { getCurrentInstance, nextTick, onBeforeUnmount, onMounted, watch } from "vue";
-import { NeoButton } from "@/components/neo";
+import NeoButton from "@/components/neo/NeoButton.vue";
 import type { HomeMatchCardViewModel } from "@/types/viewModels";
 import { shouldAutoLoadHomeMatchSearchPage } from "../homeMatchSearchState";
 import HomeMatchList from "./HomeMatchList.vue";

@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { NeoButton, NeoSectionHeader, NeoSurface } from "@/components/neo";
+import NeoButton from "@/components/neo/NeoButton.vue";
+import NeoSectionHeader from "@/components/neo/NeoSectionHeader.vue";
+import NeoSurface from "@/components/neo/NeoSurface.vue";
 import type { BackendTeamSummary } from "@/types/backend";
 
 defineProps<{

@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { NeoButton, NeoProgress, NeoTag } from "@/components/neo";
+import NeoButton from "@/components/neo/NeoButton.vue";
+import NeoProgress from "@/components/neo/NeoProgress.vue";
+import NeoTag from "@/components/neo/NeoTag.vue";
 import type { HallMatchCardViewModel } from "../hallMatchState";
 
 const props = defineProps<{

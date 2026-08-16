@@ -215,6 +215,21 @@ describe("hall card action kinds by viewer context", () => {
     expect(card.applyUrl).toEqual(`/pages/matches/apply-team/index?id=${teamMatch.id}`);
   });
 
+  test("window outside the open interval only offers the detail view", () => {
+    const beforeStart = buildMatch({
+      registration_start_at: "2026-08-20T12:00:00.000Z",
+      registration_end_at: "2026-08-20T14:00:00.000Z",
+    });
+    const afterEnd = buildMatch({
+      registration_start_at: "2026-08-20T08:00:00.000Z",
+      registration_end_at: "2026-08-20T10:00:00.000Z",
+    });
+    const viewer = { teamId: 999, canManageTeam: true };
+
+    expect(toHallMatchCard(beforeStart, viewer, Date.parse("2026-08-20T10:00:00.000Z")).actionKind).toEqual("view");
+    expect(toHallMatchCard(afterEnd, viewer, Date.parse("2026-08-20T10:00:00.000Z")).actionKind).toEqual("view");
+  });
+
   test("regular member without manager role only gets view action", () => {
     const card = toHallMatchCard(teamMatch, { teamId: 999, canManageTeam: false });
     expect(card.actionKind).toEqual("view");
@@ -252,4 +267,3 @@ describe("hall card action kinds by viewer context", () => {
     expect(toHallMatchCard(buildMatch({}), { teamId: 7, canManageTeam: true }).actionKind).toEqual("join");
   });
 });
-

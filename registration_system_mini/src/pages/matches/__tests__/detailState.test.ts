@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { buildRegistrationProgress } from "../detailState";
+import { buildRegistrationProgress, resolveRegistrationWindow } from "../detailState";
 
 describe("buildRegistrationProgress", () => {
   test("uses the maximum capacity as the progress denominator", () => {
@@ -24,5 +24,48 @@ describe("buildRegistrationProgress", () => {
       extraWidth: "0%",
       splitLeft: "0%",
     });
+  });
+});
+
+describe("resolveRegistrationWindow", () => {
+  const start = Date.parse("2026-08-20T08:00:00.000Z");
+  const end = Date.parse("2026-08-20T10:00:00.000Z");
+
+  test("uses a half-open interval and selects the active countdown target", () => {
+    expect(resolveRegistrationWindow({
+      now: start - 1,
+      isRegistering: true,
+      registrationStartAt: new Date(start).toISOString(),
+      registrationEndAt: new Date(end).toISOString(),
+    })).toEqual({ state: "not_started", countdownTarget: start });
+
+    expect(resolveRegistrationWindow({
+      now: start,
+      isRegistering: true,
+      registrationStartAt: new Date(start).toISOString(),
+      registrationEndAt: new Date(end).toISOString(),
+    })).toEqual({ state: "open", countdownTarget: end });
+
+    expect(resolveRegistrationWindow({
+      now: end,
+      isRegistering: true,
+      registrationStartAt: new Date(start).toISOString(),
+      registrationEndAt: new Date(end).toISOString(),
+    })).toEqual({ state: "closed", countdownTarget: null });
+  });
+
+  test("honors partial bounds and status independently", () => {
+    expect(resolveRegistrationWindow({
+      now: start,
+      isRegistering: true,
+      registrationStartAt: null,
+      registrationEndAt: null,
+    })).toEqual({ state: "open", countdownTarget: null });
+    expect(resolveRegistrationWindow({
+      now: start,
+      isRegistering: false,
+      registrationStartAt: null,
+      registrationEndAt: null,
+    })).toEqual({ state: "closed", countdownTarget: null });
   });
 });

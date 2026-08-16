@@ -288,6 +288,16 @@ export default function MatchDetailPage() {
               <Descriptions.Item label="结束时间">
                 {formatDateTime(match.end_time)}
               </Descriptions.Item>
+              <Descriptions.Item label="报名开始时间">
+                {match.registration_start_at
+                  ? formatDateTime(match.registration_start_at)
+                  : "未设置"}
+              </Descriptions.Item>
+              <Descriptions.Item label="报名截止时间">
+                {match.registration_end_at
+                  ? formatDateTime(match.registration_end_at)
+                  : "未设置"}
+              </Descriptions.Item>
               <Descriptions.Item label="比赛场地">
                 {match.location}
               </Descriptions.Item>

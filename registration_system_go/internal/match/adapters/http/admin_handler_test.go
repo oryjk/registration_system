@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -88,6 +89,60 @@ func TestAdminMatchDetailIncludesRosterRegistrations(t *testing.T) {
 	}
 }
 
+func TestAdminUpdateDecodesRegistrationWindowTriState(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	matchID := uuid.New()
+	replacement := time.Date(2026, 8, 20, 8, 0, 0, 0, time.UTC)
+	tests := []struct {
+		name      string
+		fields    string
+		wantStart application.OptionalTimestamp
+		wantEnd   application.OptionalTimestamp
+	}{
+		{name: "omitted"},
+		{name: "null", fields: `,"registration_start_at":null`, wantStart: application.OptionalTimestamp{Set: true}},
+		{name: "timestamp", fields: `,"registration_end_at":"2026-08-20T08:00:00Z"`, wantEnd: application.OptionalTimestamp{Set: true, Value: &replacement}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			service := &fakeAdminMatches{detail: application.AdminMatchDetail{Item: ports.AdminMatchItem{Match: domain.Match{ID: matchID}}}}
+			handler := NewAdminHandler(service, &fakeCreateMatch{})
+			router := gin.New()
+			router.PUT("/matches/:id", authhttp.NewMiddleware(fakeAdminTokens{}).RequireAdmin(), handler.Update)
+			body := `{"name":"周末比赛","start_time":"2026-08-22T10:00:00Z","end_time":"2026-08-22T12:00:00Z","location":"滨江球场"` + tt.fields + `}`
+			request := httptest.NewRequest(http.MethodPut, "/matches/"+matchID.String(), bytes.NewBufferString(body))
+			request.Header.Set("Authorization", "Bearer admin-token")
+			request.Header.Set("Content-Type", "application/json")
+			response := httptest.NewRecorder()
+
+			router.ServeHTTP(response, request)
+
+			if response.Code != http.StatusOK {
+				t.Fatalf("unexpected response %d: %s", response.Code, response.Body.String())
+			}
+			assertOptionalTimestamp(t, service.update.RegistrationStartAt, tt.wantStart)
+			assertOptionalTimestamp(t, service.update.RegistrationEndAt, tt.wantEnd)
+		})
+	}
+}
+
+func assertOptionalTimestamp(t *testing.T, got, want application.OptionalTimestamp) {
+	t.Helper()
+	if got.Set != want.Set {
+		t.Fatalf("unexpected set flag: got=%v want=%v", got.Set, want.Set)
+	}
+	if got.Value == nil || want.Value == nil {
+		if got.Value != nil || want.Value != nil {
+			t.Fatalf("unexpected value: got=%v want=%v", got.Value, want.Value)
+		}
+		return
+	}
+	if !got.Value.Equal(*want.Value) {
+		t.Fatalf("unexpected value: got=%s want=%s", got.Value, want.Value)
+	}
+}
+
 type fakeAdminTokens struct{}
 
 func (fakeAdminTokens) IssueUser(context.Context, int64) (string, error)        { return "", nil }
@@ -99,6 +154,7 @@ func (fakeAdminTokens) Parse(context.Context, string) (sharedauth.Actor, error) 
 type fakeAdminMatches struct {
 	list      application.AdminMatchListResult
 	detail    application.AdminMatchDetail
+	update    application.UpdateMatchCommand
 	deletedID uuid.UUID
 }
 
@@ -108,7 +164,8 @@ func (f *fakeAdminMatches) List(context.Context, sharedauth.Actor, application.A
 func (f *fakeAdminMatches) Get(context.Context, sharedauth.Actor, uuid.UUID) (application.AdminMatchDetail, error) {
 	return f.detail, nil
 }
-func (f *fakeAdminMatches) UpdateDetails(context.Context, sharedauth.Actor, uuid.UUID, domain.UpdateMatchDetails) (domain.Match, error) {
+func (f *fakeAdminMatches) UpdateDetails(_ context.Context, _ sharedauth.Actor, _ uuid.UUID, command application.UpdateMatchCommand) (domain.Match, error) {
+	f.update = command
 	return domain.Match{}, nil
 }
 func (f *fakeAdminMatches) ChangeStatus(context.Context, sharedauth.Actor, uuid.UUID, domain.MatchStatus) (domain.Match, error) {

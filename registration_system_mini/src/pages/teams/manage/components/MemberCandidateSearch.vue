@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { NeoButton } from "@/components/neo";
+import NeoButton from "@/components/neo/NeoButton.vue";
 import type { BackendUser } from "@/types/backend";
 import { resolveUserDisplayName } from "@/utils/viewModels";
 

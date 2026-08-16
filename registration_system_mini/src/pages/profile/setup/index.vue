@@ -2,7 +2,9 @@
 import { computed, ref, watch } from "vue";
 import { onLoad, onShow } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
-import { NeoButton, NeoSectionHeader, NeoSurface } from "@/components/neo";
+import NeoButton from "@/components/neo/NeoButton.vue";
+import NeoSectionHeader from "@/components/neo/NeoSectionHeader.vue";
+import NeoSurface from "@/components/neo/NeoSurface.vue";
 import { bindMyPhoneNumber, updateMyProfile, uploadMyAvatar } from "@/api/user";
 import { getPhoneNumber } from "@/api/wx";
 import { loadMiniAppRuntimeConfig } from "@/config/runtimeConfig";

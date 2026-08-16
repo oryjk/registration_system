@@ -10,6 +10,7 @@ import {
 } from "@/utils/datetime";
 
 export { describeDaysUntil, formatCountdown, pad, parseDateValue };
+export { resolveRegistrationWindow } from "@/utils/registrationWindow";
 
 export const formatMonthDay = formatMonthDayLabel;
 export const formatClock = formatTimeLabel;

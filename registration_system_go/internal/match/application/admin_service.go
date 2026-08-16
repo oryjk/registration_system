@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/oryjk/registration_system/registration_system_go/internal/match/domain"
@@ -40,6 +41,23 @@ type AdminMatchDetail struct {
 	Item    ports.AdminMatchItem
 	Groups  []domain.RegistrationGroup
 	Rosters []AdminGroupRoster
+}
+
+type OptionalTimestamp struct {
+	Set   bool
+	Value *time.Time
+}
+
+type UpdateMatchCommand struct {
+	Name                string
+	StartTime           time.Time
+	EndTime             time.Time
+	RegistrationStartAt OptionalTimestamp
+	RegistrationEndAt   OptionalTimestamp
+	Location            string
+	LocationLatitude    *float64
+	LocationLongitude   *float64
+	Description         *string
 }
 
 // AdminGroupRoster 是某个报名组的队员报名花名册，与 Groups 按同一顺序对齐。
@@ -105,7 +123,7 @@ func (s AdminMatchService) Get(ctx context.Context, actor sharedauth.Actor, id u
 	return AdminMatchDetail{Item: item, Groups: groups, Rosters: rosters}, nil
 }
 
-func (s AdminMatchService) UpdateDetails(ctx context.Context, actor sharedauth.Actor, id uuid.UUID, input domain.UpdateMatchDetails) (domain.Match, error) {
+func (s AdminMatchService) UpdateDetails(ctx context.Context, actor sharedauth.Actor, id uuid.UUID, command UpdateMatchCommand) (domain.Match, error) {
 	if !actor.IsAdmin() {
 		return domain.Match{}, sharederror.ErrForbidden
 	}
@@ -116,13 +134,26 @@ func (s AdminMatchService) UpdateDetails(ctx context.Context, actor sharedauth.A
 	if !found {
 		return domain.Match{}, sharederror.New(sharederror.KindNotFound, "比赛不存在")
 	}
-	if err := match.UpdateDetails(input, s.clock.Now()); err != nil {
+	if err := match.UpdateDetails(domain.UpdateMatchDetails{
+		Name: command.Name, StartTime: command.StartTime, EndTime: command.EndTime,
+		RegistrationStartAt: resolveOptionalTimestamp(command.RegistrationStartAt, match.RegistrationStartAt),
+		RegistrationEndAt:   resolveOptionalTimestamp(command.RegistrationEndAt, match.RegistrationEndAt),
+		Location:            command.Location, LocationLatitude: command.LocationLatitude,
+		LocationLongitude: command.LocationLongitude, Description: command.Description,
+	}, s.clock.Now()); err != nil {
 		return domain.Match{}, err
 	}
 	if err := s.repository.UpdateDetails(ctx, match); err != nil {
 		return domain.Match{}, sharederror.Wrap(sharederror.KindInternal, "更新比赛失败", err)
 	}
 	return match, nil
+}
+
+func resolveOptionalTimestamp(update OptionalTimestamp, current *time.Time) *time.Time {
+	if update.Set {
+		return update.Value
+	}
+	return current
 }
 
 func (s AdminMatchService) ChangeStatus(ctx context.Context, actor sharedauth.Actor, id uuid.UUID, status domain.MatchStatus) (domain.Match, error) {

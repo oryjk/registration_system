@@ -18,8 +18,9 @@ const {
   isSubmitting,
   isWithdrawing,
   teamName,
-  canManageTeam,
   canApply,
+  canWithdraw,
+  blockedMessage,
   hasActiveApplication,
   loadPageData,
   submitApplication,
@@ -65,20 +66,21 @@ onShow(() => {
       <template v-else-if="detail">
         <ApplyTeamInheritCard :detail="detail" />
 
-        <view v-if="!canApply" class="apply-team-blocked">
-          <text class="apply-team-blocked-title">暂时无法接约</text>
-          <text class="apply-team-blocked-copy">
-            {{ !canManageTeam ? "需要球队队长身份才能接约，可在球队管理中查看角色。" : "当前比赛不在球队招募中。" }}
-          </text>
-        </view>
-
         <ApplyTeamStatusCard
-          v-else-if="hasActiveApplication && myApplication"
+          v-if="hasActiveApplication && myApplication"
           :application="myApplication"
           :is-withdrawing="isWithdrawing"
+          :can-withdraw="canWithdraw"
           @withdraw="withdrawApplication()"
           @go-match="openMatchDetail()"
         />
+
+        <view v-else-if="!canApply" class="apply-team-blocked">
+          <text class="apply-team-blocked-title">暂时无法接约</text>
+          <text class="apply-team-blocked-copy">
+            {{ blockedMessage }}
+          </text>
+        </view>
 
         <ApplyTeamFormCard
           v-else

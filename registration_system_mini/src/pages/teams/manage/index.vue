@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import AppTabHeader from "@/components/AppTabHeader.vue";
-import { NeoSegmentedControl, NeoSurface } from "@/components/neo";
+import NeoSegmentedControl from "@/components/neo/NeoSegmentedControl.vue";
+import NeoSurface from "@/components/neo/NeoSurface.vue";
 import MemberAttendancePopup from "./components/MemberAttendancePopup.vue";
 import MemberEditPopup from "./components/MemberEditPopup.vue";
 import TeamActivityAttendancePanel from "./components/TeamActivityAttendancePanel.vue";

@@ -2,7 +2,10 @@
 import { computed, ref } from "vue";
 import { onShareAppMessage, onShareTimeline } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
-import { NeoButton, NeoConfirmDialog, NeoSegmentedControl, NeoStickyActionBar } from "@/components/neo";
+import NeoButton from "@/components/neo/NeoButton.vue";
+import NeoConfirmDialog from "@/components/neo/NeoConfirmDialog.vue";
+import NeoSegmentedControl from "@/components/neo/NeoSegmentedControl.vue";
+import NeoStickyActionBar from "@/components/neo/NeoStickyActionBar.vue";
 import MatchDetailSkeleton from "./components/MatchDetailSkeleton.vue";
 import MatchIndividualRegistration from "./components/MatchIndividualRegistration.vue";
 import MatchTeamRegistration from "./components/MatchTeamRegistration.vue";

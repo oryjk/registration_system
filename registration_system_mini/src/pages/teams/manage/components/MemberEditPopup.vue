@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { NeoButton } from "@/components/neo";
+import NeoButton from "@/components/neo/NeoButton.vue";
 import type { BackendTeamMember } from "@/types/backend";
 import { memberRoleOptions, roleLabel } from "../teamManageState";
 

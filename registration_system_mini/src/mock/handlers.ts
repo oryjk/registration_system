@@ -16,6 +16,7 @@ import { mockNotifications } from "./data/notifications";
 import { mockBillingFlow, mockPaymentOrders, mockUserAccount } from "./data/billing";
 import { mockWalletAccount } from "./data/wallet";
 import { defaultMiniAppRuntimeConfig } from "@/config/runtimeConfigDefaults";
+import { resolveRegistrationWindow } from "@/utils/registrationWindow";
 
 /**
  * Mock 请求处理器。
@@ -71,6 +72,21 @@ function mockTeamApplicationsFor(matchId: string) {
   return mockTeamApplications.get(matchId) ?? [];
 }
 
+function ensureMockRegistrationOpen(matchId: string) {
+  const now = Date.now();
+  const match = getMockMatchDetail(matchId, now)?.match;
+  if (!match) return;
+  const window = resolveRegistrationWindow({
+    now,
+    isRegistering: match.status === "registering",
+    registrationStartAt: match.registration_start_at,
+    registrationEndAt: match.registration_end_at,
+  });
+  if (window.state !== "open") {
+    throw new Error("当前不在报名时间内");
+  }
+}
+
 function createMockTeamApplication(matchId: string, body: { team_id?: number; introduction?: string }) {
   const applications = mockTeamApplications.get(matchId) ?? [];
   if (!body?.team_id || !body.introduction?.trim()) {
@@ -122,6 +138,9 @@ function withdrawMockTeamApplication(matchId: string, applicationId: string) {
   const target = applications.find((item) => item.id === applicationId);
   if (!target) {
     throw new Error("球队申请不存在");
+  }
+  if (target.status === "pending") {
+    ensureMockRegistrationOpen(matchId);
   }
   target.status = "withdrawn";
   target.withdrawn_at = new Date().toISOString();
@@ -482,6 +501,7 @@ const routes: MockRoute[] = [
     method: "PUT",
     pattern: "/matches/:id/groups/:groupId/my-registration",
     handler: (req) => {
+      ensureMockRegistrationOpen(req.params.id);
       const payload = req.body as { status?: string; registration_count?: number } | undefined;
       return {
         group_id: req.params.groupId,
@@ -495,13 +515,16 @@ const routes: MockRoute[] = [
   {
     method: "DELETE",
     pattern: "/matches/:id/groups/:groupId/my-registration",
-    handler: (req) => ({
-      group_id: req.params.groupId,
-      user_id: currentMockUser().id,
-      status: "cancelled",
-      registration_count: 0,
-      updated_at: new Date().toISOString(),
-    }),
+    handler: (req) => {
+      ensureMockRegistrationOpen(req.params.id);
+      return {
+        group_id: req.params.groupId,
+        user_id: currentMockUser().id,
+        status: "cancelled",
+        registration_count: 0,
+        updated_at: new Date().toISOString(),
+      };
+    },
   },
   {
     method: "GET",
@@ -511,7 +534,10 @@ const routes: MockRoute[] = [
   {
     method: "POST",
     pattern: "/matches/:id/team-applications",
-    handler: (req) => createMockTeamApplication(req.params.id, req.body as { team_id?: number; introduction?: string }),
+    handler: (req) => {
+      ensureMockRegistrationOpen(req.params.id);
+      return createMockTeamApplication(req.params.id, req.body as { team_id?: number; introduction?: string });
+    },
   },
   {
     method: "POST",
