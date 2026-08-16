@@ -477,10 +477,11 @@ func (i Importer) writeTargetMatch(ctx context.Context, tx pgx.Tx, decision mapp
 	opponentName, awayTeamID := resolveOpponent(legacyMatch.Opposing, pendingTeamID)
 	createdAt, updatedAt := normalizedTimes(legacyMatch.CreatedAt, legacyMatch.UpdatedAt)
 	// 目标语义：start_time = 比赛开始（旧库 holding_date），end_time = 比赛结束。
-	// 旧库没有比赛结束时间，按标准 2 小时场次推算；holding_date 缺失时兜底旧库 updated_at。
+	// 旧库没有比赛结束时间，按标准 2 小时场次推算；holding_date 缺失时兜底旧库 updated_at
+	// （同样是墙钟，按上海时区解释）。源加载层已把墙钟换算成 UTC 时刻。
 	startTime := legacyMatch.HoldingDate
 	if startTime.IsZero() {
-		startTime = legacyMatch.UpdatedAt
+		startTime = toUTCMoment(legacyMatch.UpdatedAt)
 	}
 	endTime := startTime.Add(2 * time.Hour)
 	if decision.Action == mapping.ActionCreate {

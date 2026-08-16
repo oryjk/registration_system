@@ -94,3 +94,44 @@ func (r *recordingSourceRows) Scan(dest ...any) error {
 
 func (r *recordingSourceRows) Close()     {}
 func (r *recordingSourceRows) Err() error { return nil }
+
+func TestToUTCMomentInterpretsLegacyWallClockAsShanghai(t *testing.T) {
+	wallClock := time.Date(2026, 8, 20, 20, 0, 0, 0, time.UTC) // 旧库墙钟：周四 20:00
+	converted := toUTCMoment(wallClock)
+	if got := converted.Format(time.RFC3339); got != "2026-08-20T12:00:00Z" {
+		t.Fatalf("expected 2026-08-20T12:00:00Z, got %s", got)
+	}
+	if toUTCMoment(time.Time{}).IsZero() != true {
+		t.Fatal("zero wall clock should stay zero")
+	}
+	if toUTCMomentPtr(nil) != nil {
+		t.Fatal("nil pointer should stay nil")
+	}
+}
+
+func TestPostgresSourceConvertsLegacyMatchWallClockTimesToUTC(t *testing.T) {
+	// 旧库墙钟：holding 20:00、报名窗口 10:00~18:00（均为上海墙钟，pgx 扫描后 location 为 UTC）。
+	holding := time.Date(2026, 8, 20, 20, 0, 0, 0, time.UTC)
+	registrationStart := time.Date(2026, 8, 19, 10, 0, 0, 0, time.UTC)
+	registrationEnd := time.Date(2026, 8, 20, 18, 0, 0, 0, time.UTC)
+	tx := &recordingSourceTx{results: [][]sourceRow{
+		{{"tz-match", "时区赛", "待定", 0, 8, holding, &registrationStart, &registrationEnd, "球场", (*float64)(nil), (*float64)(nil), (*string)(nil), holding, holding, int64(1), (*int)(nil)}},
+		{},
+	}}
+	source := NewPostgresSource(&recordingSourcePool{tx: tx}, 1)
+
+	snapshot, err := source.Load(context.Background(), LoadOptions{Mode: mapping.ModeFull})
+	if err != nil {
+		t.Fatal(err)
+	}
+	match := snapshot.Matches[0]
+	if got := match.HoldingDate.Format(time.RFC3339); got != "2026-08-20T12:00:00Z" {
+		t.Fatalf("holding date = %s, want 2026-08-20T12:00:00Z", got)
+	}
+	if got := match.RegistrationStartAt.Format(time.RFC3339); got != "2026-08-19T02:00:00Z" {
+		t.Fatalf("registration start = %s, want 2026-08-19T02:00:00Z", got)
+	}
+	if got := match.RegistrationEndAt.Format(time.RFC3339); got != "2026-08-20T10:00:00Z" {
+		t.Fatalf("registration end = %s, want 2026-08-20T10:00:00Z", got)
+	}
+}

@@ -14,6 +14,32 @@ import (
 // pendingTeamName 是对手为“待定”的历史比赛在目标库使用的占位客队名。
 const pendingTeamName = "待定"
 
+// legacyWallClockLocation 是旧库无时区时间列的实际语义：国内服务器写入的
+// Asia/Shanghai 墙钟。中国无夏令时，用固定 +8 偏移即可，且不依赖二进制内的 tzdata。
+var legacyWallClockLocation = time.FixedZone("Asia/Shanghai", 8*60*60)
+
+// toUTCMoment 把 pgx 从 TIMESTAMP（without time zone）列扫出的墙钟 time.Time
+// 按 Asia/Shanghai 解释并换算成 UTC 时刻——目标库 matches 时间列统一存 UTC 墙钟，
+// 若不转换，上海墙钟会被当成 UTC 落库，整体偏大 8 小时。
+func toUTCMoment(wallClock time.Time) time.Time {
+	if wallClock.IsZero() {
+		return wallClock
+	}
+	return time.Date(
+		wallClock.Year(), wallClock.Month(), wallClock.Day(),
+		wallClock.Hour(), wallClock.Minute(), wallClock.Second(), wallClock.Nanosecond(),
+		legacyWallClockLocation,
+	).UTC()
+}
+
+func toUTCMomentPtr(wallClock *time.Time) *time.Time {
+	if wallClock == nil || wallClock.IsZero() {
+		return wallClock
+	}
+	converted := toUTCMoment(*wallClock)
+	return &converted
+}
+
 // PostgresSource 从旧库（Rust 自身 PostgreSQL）只读加载球队 1 的历史比赛与报名。
 // 使用 RepeatableRead 事务保证快照一致；仅查询，不写入。
 type PostgresSource struct {
@@ -87,6 +113,11 @@ func loadMatches(ctx context.Context, tx pgx.Tx, teamID int64, options LoadOptio
 			return nil, fmt.Errorf("scan legacy activity: %w", err)
 		}
 		match.Description = description
+		// 比赛时间与报名窗口按上海墙钟解释统一换算成 UTC 时刻；
+		// created_at/updated_at 是审计字段，维持旧值不做换算。
+		match.HoldingDate = toUTCMoment(match.HoldingDate)
+		match.RegistrationStartAt = toUTCMomentPtr(match.RegistrationStartAt)
+		match.RegistrationEndAt = toUTCMomentPtr(match.RegistrationEndAt)
 		matches = append(matches, match)
 	}
 	if err := rows.Err(); err != nil {
