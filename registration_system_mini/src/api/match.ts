@@ -57,6 +57,16 @@ export function getMatchDetail(matchId: string) {
   return requestApi<AppMatchDetailResponse>({ url: `/matches/${matchId}`, auth: true });
 }
 
+/** 主队管理方在比赛过结束时间后收尾：标记已结束或已取消。 */
+export function updateMatchStatus(matchId: string, status: Extract<AppMatchStatus, "ended" | "cancelled">) {
+  return requestApi<AppMatchDetailResponse>({
+    url: `/matches/${matchId}/status`,
+    method: "PATCH",
+    data: { status },
+    auth: true,
+  });
+}
+
 export interface CreateMatchPayload {
   name: string;
   publication_mode: AppMatchSummary["publication_mode"];

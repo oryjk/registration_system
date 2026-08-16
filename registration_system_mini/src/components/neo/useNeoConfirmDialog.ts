@@ -73,11 +73,16 @@ export function useNeoConfirmDialog() {
     settle(false);
   }
 
+  function handleConfirmClose() {
+    settle(false);
+  }
+
   return {
     confirmDialogVisible,
     confirmDialogState,
     confirm,
     handleConfirmPrimary,
     handleConfirmSecondary,
+    handleConfirmClose,
   };
 }

@@ -65,6 +65,9 @@ interface ActionMatchSeed extends MatchSeed {
   group: AppHomeMatchGroup;
 }
 
+/** seed 是静态常量，收尾操作的状态变更以 override 记录，避免修改模块常量。 */
+const matchStatusOverrides = new Map<string, AppMatchStatus>();
+
 function buildSummary(seed: MatchSeed, baseNow: number): AppMatchSummary {
   const startTime = isoOffsetMinutes(baseNow, seed.start_offset_minutes);
   const endTime = isoOffsetMinutes(baseNow, seed.start_offset_minutes + seed.duration_minutes);
@@ -72,7 +75,7 @@ function buildSummary(seed: MatchSeed, baseNow: number): AppMatchSummary {
   return {
     id: seed.id,
     name: seed.name,
-    status: seed.status,
+    status: matchStatusOverrides.get(seed.id) ?? seed.status,
     start_time: startTime,
     end_time: endTime,
     publication_mode: seed.publication_mode,
@@ -541,7 +544,27 @@ function buildCreatedEndedMatch(created: CreatedMockMatch): AppHomeEndedMatch {
 }
 
 function buildMyMatches(baseNow = Date.now()): AppMatchSummary[] {
-  return [...seedMatches.map((seed) => buildSummary(seed, baseNow)), ...createdMatches.map((item) => item.summary)].sort(compareSummary);
+  return [...seedMatches.map((seed) => buildSummary(seed, baseNow)), ...createdMatches.map((item) => applyStatusOverride(item.summary))].sort(compareSummary);
+}
+
+function applyStatusOverride(summary: AppMatchSummary): AppMatchSummary {
+  const status = matchStatusOverrides.get(summary.id);
+  return status ? { ...summary, status } : summary;
+}
+
+/** 主队管理方收尾比赛：与后端一致，仅允许已过结束时间的非终态比赛标记 ended / cancelled。 */
+export function updateMockMatchStatus(matchId: string, status: "ended" | "cancelled", baseNow = Date.now()): AppMatchDetailResponse | undefined {
+  const match = buildMyMatches(baseNow).find((item) => item.id === matchId);
+  if (!match) return undefined;
+  if (match.status === "ended" || match.status === "cancelled") {
+    throw new Error("比赛已结束或已取消，不能再次变更");
+  }
+  const endTimestamp = Date.parse(match.end_time);
+  if (Number.isFinite(endTimestamp) && baseNow <= endTimestamp) {
+    throw new Error("比赛尚未到结束时间，暂不能收尾");
+  }
+  matchStatusOverrides.set(matchId, status);
+  return getMockMatchDetail(matchId, baseNow);
 }
 
 function buildMatchHome(baseNow = Date.now()): AppMatchHomeResponse {

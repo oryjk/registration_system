@@ -10,7 +10,7 @@ class MockApiRequestError extends Error {}
 
 mock.module("@/utils/request", () => ({ ApiRequestError: MockApiRequestError, requestApi }));
 
-const { cancelMyMatchRegistration, createMatch, getMatchDetail, getMatchHome, listMatches, listMyMatches, putMyMatchRegistration } = await import("../match");
+const { cancelMyMatchRegistration, createMatch, getMatchDetail, getMatchHome, listMatches, listMyMatches, putMyMatchRegistration, updateMatchStatus } = await import("../match");
 const { tryMockRequest } = await import("@/mock");
 
 describe("Match API", () => {
@@ -151,6 +151,28 @@ describe("Match API", () => {
       method: "DELETE",
       auth: true,
     });
+  });
+
+  test("finishes a match by patching its status", async () => {
+    capturedCalls.length = 0;
+
+    await updateMatchStatus("f7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c005", "ended");
+    await updateMatchStatus("f7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c005", "cancelled");
+
+    expect(capturedCalls).toEqual([
+      {
+        url: "/matches/f7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c005/status",
+        method: "PATCH",
+        data: { status: "ended" },
+        auth: true,
+      },
+      {
+        url: "/matches/f7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c005/status",
+        method: "PATCH",
+        data: { status: "cancelled" },
+        auth: true,
+      },
+    ]);
   });
 
   test("mock match data is generated from the current request time", async () => {
@@ -428,6 +450,43 @@ describe("Match API", () => {
     } finally {
       Date.now = originalNow;
     }
+  });
+
+  test("mock allows the host manager to finish an expired match once", async () => {
+    const { resolveMockResponse } = await import("@/mock/handlers");
+    const matchId = "f7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c005";
+
+    expect(() => resolveMockResponse("PATCH", `/matches/${matchId}/status`, { status: "registering" })).toThrow(
+      "收尾状态只能是已结束或已取消",
+    );
+
+    const response = resolveMockResponse("PATCH", `/matches/${matchId}/status`, { status: "ended" });
+    expect((response?.data as { match: { status: string } }).match.status).toEqual("ended");
+
+    const detail = resolveMockResponse("GET", `/matches/${matchId}`, null);
+    expect((detail?.data as { match: { status: string } }).match.status).toEqual("ended");
+
+    expect(() => resolveMockResponse("PATCH", `/matches/${matchId}/status`, { status: "cancelled" })).toThrow(
+      "比赛已结束或已取消，不能再次变更",
+    );
+  });
+
+  test("mock rejects finishing a match before its end time", async () => {
+    const { resolveMockResponse } = await import("@/mock/handlers");
+    const response = resolveMockResponse("POST", "/matches", {
+      name: "尚未结束的收尾比赛",
+      publication_mode: "online_team",
+      host_team_id: 101,
+      players_per_team: 8,
+      start_time: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
+      end_time: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(),
+      location: "Mock 球场",
+    });
+    const matchId = (response?.data as { match: { id: string } }).match.id;
+
+    expect(() => resolveMockResponse("PATCH", `/matches/${matchId}/status`, { status: "ended" })).toThrow(
+      "比赛尚未到结束时间，暂不能收尾",
+    );
   });
 
   test("normalizes the full app base path before routing mock requests", async () => {

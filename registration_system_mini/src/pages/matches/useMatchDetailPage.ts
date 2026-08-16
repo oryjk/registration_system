@@ -36,6 +36,7 @@ import {
 import { useMatchRegistration } from "./useMatchRegistration";
 import { useMatchCheckInReview } from "./useMatchCheckInReview";
 import { useMatchSettlement } from "./useMatchSettlement";
+import { useMatchFinish } from "./useMatchFinish";
 import { useNeoConfirmDialog } from "@/components/neo";
 import type { NeoConfirmDialogOptions } from "@/components/neo";
 
@@ -48,6 +49,7 @@ export function useMatchDetailPage() {
     confirm: openConfirmDialog,
     handleConfirmPrimary,
     handleConfirmSecondary,
+    handleConfirmClose,
   } = useNeoConfirmDialog();
 
   const navMetrics = getCustomNavMetrics();
@@ -406,6 +408,21 @@ export function useMatchDetailPage() {
     confirmRegistrationAction,
   });
 
+  const {
+    canFinishMatch,
+    finishDialogVisible,
+    handleOpenFinishDialog,
+    handleCloseFinishDialog,
+    handleFinishMatch,
+  } = useMatchFinish({
+    sourceMatch,
+    currentTeam,
+    isGuestMode,
+    submittingStatus,
+    nowTick,
+    reload: loadPageData,
+  });
+
   async function loadPageData() {
     if (!matchId.value) return;
 
@@ -544,6 +561,7 @@ export function useMatchDetailPage() {
     confirmDialogState,
     handleConfirmPrimary,
     handleConfirmSecondary,
+    handleConfirmClose,
     individualCtaLabel,
     isGuestMode,
     currentTeam,
@@ -588,5 +606,10 @@ export function useMatchDetailPage() {
     handleAddSettlementCustomUser,
     handleSubmitSettlement,
     handleTeamSubmit,
+    canFinishMatch,
+    finishDialogVisible,
+    handleOpenFinishDialog,
+    handleCloseFinishDialog,
+    handleFinishMatch,
   };
 }

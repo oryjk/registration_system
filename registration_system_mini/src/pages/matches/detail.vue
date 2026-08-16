@@ -7,6 +7,7 @@ import NeoConfirmDialog from "@/components/neo/NeoConfirmDialog.vue";
 import NeoSegmentedControl from "@/components/neo/NeoSegmentedControl.vue";
 import NeoStickyActionBar from "@/components/neo/NeoStickyActionBar.vue";
 import MatchDetailSkeleton from "./components/MatchDetailSkeleton.vue";
+import MatchFinishCard from "./components/MatchFinishCard.vue";
 import MatchIndividualRegistration from "./components/MatchIndividualRegistration.vue";
 import MatchTeamRegistration from "./components/MatchTeamRegistration.vue";
 import TeamSettlementCard from "./components/TeamSettlementCard.vue";
@@ -49,6 +50,7 @@ const {
   confirmDialogState,
   handleConfirmPrimary,
   handleConfirmSecondary,
+  handleConfirmClose,
   individualCtaLabel,
   canSubmitIndividualRegistration,
   isGuestMode,
@@ -94,6 +96,11 @@ const {
   handleAddSettlementCustomUser,
   handleSubmitSettlement,
   handleTeamSubmit,
+  canFinishMatch,
+  finishDialogVisible,
+  handleOpenFinishDialog,
+  handleCloseFinishDialog,
+  handleFinishMatch,
   loadPageData,
 } = useMatchDetailPage();
 
@@ -137,7 +144,7 @@ onShareTimeline(() => ({
 </script>
 
 <template>
-  <page-meta :page-style="teamMemberDialogVisible || confirmDialogVisible ? 'overflow: hidden;' : ''" />
+  <page-meta :page-style="teamMemberDialogVisible || confirmDialogVisible || finishDialogVisible ? 'overflow: hidden;' : ''" />
   <view class="registration-page" :style="pageStyle">
     <AppTabHeader title="比赛报名" showBack showLocation />
 
@@ -222,6 +229,13 @@ onShareTimeline(() => ({
         :load-error-message="applicationsError"
         @select-opponent="selectMatchOpponent"
       />
+      <!-- 主队管理方在比赛过结束时间后收尾比赛。 -->
+      <MatchFinishCard
+        v-if="canFinishMatch && sourceMatch"
+        :match="sourceMatch"
+        :submitting-status="submittingStatus"
+        @open-finish-dialog="handleOpenFinishDialog"
+      />
       <TeamSettlementCard
         v-if="registrationMode === 'team' && canShowSettlement"
         v-model:search-keyword="settlementSearchKeyword"
@@ -265,6 +279,20 @@ onShareTimeline(() => ({
       :loading="submittingStatus"
       @primary="handleConfirmPrimary"
       @secondary="handleConfirmSecondary"
+      @close="handleConfirmClose"
+    />
+
+    <!-- 结束比赛：主按钮=正常结束，次按钮=取消比赛，遮罩/× 只是关闭不改动状态。 -->
+    <NeoConfirmDialog
+      :visible="finishDialogVisible"
+      title="结束比赛"
+      message="比赛时间已过，请选择本场比赛的最终结果。"
+      primary-text="比赛结束"
+      secondary-text="比赛取消"
+      :loading="submittingStatus"
+      @primary="handleFinishMatch('ended')"
+      @secondary="handleFinishMatch('cancelled')"
+      @close="handleCloseFinishDialog"
     />
   </view>
 </template>

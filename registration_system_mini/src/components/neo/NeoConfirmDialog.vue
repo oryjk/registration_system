@@ -41,22 +41,28 @@ const messageParts = computed(() => {
 const emit = defineEmits<{
   (event: "primary"): void;
   (event: "secondary"): void;
+  /** 遮罩 / 右上角关闭：只收起弹框，不触发次要按钮的业务含义。 */
+  (event: "close"): void;
 }>();
 
 function handleSecondary() {
   if (!props.loading) emit("secondary");
 }
+
+function handleClose() {
+  if (!props.loading) emit("close");
+}
 </script>
 
 <template>
-  <view v-if="visible" class="neo-confirm-dialog-mask" @tap="handleSecondary">
+  <view v-if="visible" class="neo-confirm-dialog-mask" @tap="handleClose">
     <view class="neo-confirm-dialog" @tap.stop>
       <view class="neo-confirm-dialog-head">
         <view class="neo-confirm-dialog-texts">
           <text class="neo-confirm-dialog-title">{{ title }}</text>
           <text v-if="message" class="neo-confirm-dialog-message"><template v-if="messageParts">{{ messageParts.before }}<text class="neo-confirm-dialog-highlight">{{ messageParts.highlight }}</text>{{ messageParts.after }}</template><template v-else>{{ message }}</template></text>
         </view>
-        <view class="neo-confirm-dialog-close" @tap="handleSecondary">×</view>
+        <view class="neo-confirm-dialog-close" @tap="handleClose">×</view>
       </view>
       <view class="neo-confirm-dialog-actions">
         <NeoButton variant="outline" block :disabled="loading" @click="handleSecondary">

@@ -11,7 +11,7 @@ import {
   filterMockChallengeSummaries,
   getMockChallengeDetail,
 } from "./data/challenges";
-import { createMockMatch, filterMockMatchesByQuery, getMockMatchDetail, mockMatchHome, paginateMockMatches } from "./data/matches";
+import { createMockMatch, filterMockMatchesByQuery, getMockMatchDetail, mockMatchHome, paginateMockMatches, updateMockMatchStatus } from "./data/matches";
 import { mockNotifications } from "./data/notifications";
 import { mockBillingFlow, mockPaymentOrders, mockUserAccount } from "./data/billing";
 import { mockWalletAccount } from "./data/wallet";
@@ -496,6 +496,17 @@ const routes: MockRoute[] = [
     method: "GET",
     pattern: "/matches/:id",
     handler: (req) => getMockMatchDetail(req.params.id) ?? undefined,
+  },
+  {
+    method: "PATCH",
+    pattern: "/matches/:id/status",
+    handler: (req) => {
+      const payload = req.body as { status?: string } | undefined;
+      if (payload?.status !== "ended" && payload?.status !== "cancelled") {
+        throw new Error("收尾状态只能是已结束或已取消");
+      }
+      return updateMockMatchStatus(req.params.id, payload.status) ?? undefined;
+    },
   },
   {
     method: "PUT",
