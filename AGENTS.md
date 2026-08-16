@@ -4,12 +4,19 @@
 
 | 目录 | 说明 | 技术栈 |
 | --- | --- | --- |
-| `registration_system_mini/` | 微信小程序/H5 端，面向球员/队员/普通用户；当前对接 Rust 旧后端，后续在本目录切换到 Go 后端 | `uni-app + Vue 3 + TypeScript + Vite` |
-| `registration_system_backend_fe/` | 管理后台，面向运营/管理员 | `Vue 3 + TypeScript + Vite + Tailwind 4 + DaisyUI 5` |
+| `registration_system_mini/` | 微信小程序/H5 端，面向球员/队员/普通用户；**已对接 Go 新后端**（验收环境 oryjk.cn:82，`mini-rust-backend-final` 标记最后一个对接 Rust 后端的基线） | `uni-app + Vue 3 + TypeScript + Vite` |
+| `registration_system_backend_fe/` | 管理后台，面向运营/管理员（对接 Rust 旧后端，随 Rust 一并冻结） | `Vue 3 + TypeScript + Vite + Tailwind 4 + DaisyUI 5` |
 | `registration_system_backend_fe_go/` | 对接 Go 新后端的管理后台新版本 | `React + TypeScript + Vite + Ant Design + Bun` |
 | `registration_system_admin_app/` | 移动管理 App，面向赛事运营/管理员 | `Flutter + Dart` |
-| `registration_system_go/` | 新后台服务端，优先承载认证、球队与比赛 API | `Go + Gin + PostgreSQL + pgx + sqlc` |
-| `registration_system_rs/` | 旧后台服务端，只作为业务与迁移参考 | `Rust + Axum + PostgreSQL + sqlx` |
+| `registration_system_go/` | **当前唯一在开发的后端服务端**，承载认证、球队与比赛 API | `Go + Gin + PostgreSQL + pgx + sqlc` |
+| `registration_system_rs/` | 旧后台服务端，**已冻结、不再更新**；仅作为业务与迁移的只读参考 | `Rust + Axum + PostgreSQL + sqlx` |
+
+## 后端演进状态（重要）
+
+- **Rust 项目（`registration_system_rs/`）已停止开发**：它是老项目，未来不再接收任何功能、修复或重构；除阅读参考业务逻辑和迁移核对外，不要改动它。其生产数据库中仍保留旧结构数据（`rs_*` 表）作为迁移源。
+- **所有后端开发都在 `registration_system_go/` 上进行**：历史数据已通过 `registration_system_go/scripts/migrate-legacy.sh` 迁入 Go 结构（独立库 `registration_system_go`）；后续增量迁移、新功能全部落在 Go 项目。
+- 小程序（`registration_system_mini/`）当前对接 Go 后端；旧管理端（`registration_system_backend_fe/`）与 Rust 一同冻结，Go 配套管理端是 `registration_system_backend_fe_go/`。
+- out109 验收环境（Go 后端 + mini H5 + Go 管理端）统一使用根目录 `deploy_out109_go_h5.sh` 部署。
 
 ## 文档规范
 
@@ -52,12 +59,13 @@
 
 ## 联动规则
 
-- 新后端功能只写入 `registration_system_go/`；未经用户明确同意，不修改 `registration_system_rs/`（只读参考）。
-- 改 Rust 后端时，联动检查对接 Rust 的老前端：`registration_system_backend_fe/src/services/`、`registration_system_mini/src/api/`。
-- 改 Go 后端时，联动检查对接 Go 的管理端：`registration_system_backend_fe_go/src/api/`；涉及小程序后端切换或用户端接口时，同时检查 `registration_system_mini/src/api/`。
+- 新后端功能只写入 `registration_system_go/`；`registration_system_rs/` 已冻结不再更新，任何任务都不要修改它（只读参考）。
+- 核对旧实现时只读参考 `registration_system_rs/`，对接它的老管理端 `registration_system_backend_fe/` 同样只读；两者都不再联动修改。
+- 改 Go 后端时，联动检查对接 Go 的管理端：`registration_system_backend_fe_go/src/api/`；小程序已对接 Go，用户端接口变更需同时检查 `registration_system_mini/src/api/`。
 - `registration_system_mini/` 是唯一的小程序/H5 代码库；后端切换在该项目内完成，不再创建平行的 `registration_system_mini_go/` 项目。
 - 改管理端或小程序页面时，确认接口字段与后端 DTO / JSON 实际返回一致。
 - 涉及认证、活动、球队、球员、账单等核心领域时，优先沿用既有命名与模块边界，不要把业务规则塞进页面层或 handler。
+- 后端数据结构变更时注意 legacy 迁移工具（`registration_system_go/scripts/migrate-legacy.sh`、`cmd/migratelegacydb`）与集成测试基建（`internal/testsupport`，每用例独立 schema）是否需要同步调整。
 
 ## 常见工作顺序
 

@@ -4,7 +4,9 @@
 
 微信小程序/H5 端，承载普通用户的报名、球队、活动、账单与个人中心相关流程。当前技术栈为 `uni-app + Vue 3 + TypeScript + Vite`。
 
-本目录是唯一的用户端小程序代码库。`mini-rust-backend-final` 标记最后一个对接 Rust 后端的基线；后续 Go 后端切换直接在本项目内完成，不再创建或恢复 `registration_system_mini_go/`。
+本目录是唯一的用户端小程序代码库。**当前对接 Go 新后端**（验收环境 `https://oryjk.cn:82/mini-v3/`）；`mini-rust-backend-final` 标记最后一个对接 Rust 后端的基线，Rust 后端已冻结不再更新，仅作只读参考。
+
+注意：Go 后端尚未提供 notifications 模块，`src/stores/notificationCenter.ts` 里的 `NOTIFICATION_SYNC_ENABLED` 暂为 `false`（暂停未读数拉取）；Go 端实现接口后改回 `true` 恢复。
 
 ## 常用命令
 
@@ -17,6 +19,8 @@ bun run dev:h5
 bun run build:h5
 bun run type-check
 ```
+
+验收环境（oryjk.cn:82）的 H5 构建由仓库根目录的 `deploy_out109_go_h5.sh` 一键完成（读取本目录 `.env.test`），不需要手动执行 `build:h5:acceptance`。
 
 ## 关键目录
 
