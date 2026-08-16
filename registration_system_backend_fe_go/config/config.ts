@@ -58,11 +58,7 @@ export default defineConfig({
   },
   routes,
   title: "开踢管理台",
-  // @utoo/pack 1.4.3 的持久化缓存（turbo-tasks SST）在热更新时会损坏并直接导致
-  // dev server panic 退出，开发环境关闭持久化缓存规避该问题。
-  utoopack: {
-    persistentCaching: false,
-  },
+  utoopack: {},
   define: {
     "process.env.ADMIN_API_BASE_URL":
       process.env.ADMIN_API_BASE_URL?.trim() || "",
