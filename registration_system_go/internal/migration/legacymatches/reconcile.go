@@ -470,12 +470,13 @@ func resolveRegistrationTargets(ctx context.Context, tx pgx.Tx, config mapping.C
 func (i Importer) writeTargetMatch(ctx context.Context, tx pgx.Tx, decision mapping.Decision, currentID uuid.UUID, legacyMatch LegacyMatch, pendingTeamID int64) (uuid.UUID, error) {
 	opponentName, awayTeamID := resolveOpponent(legacyMatch.Opposing, pendingTeamID)
 	createdAt, updatedAt := normalizedTimes(legacyMatch.CreatedAt, legacyMatch.UpdatedAt)
+	startTime, endTime := normalizeMatchWindow(legacyMatch.StartTime, legacyMatch.EndTime)
 	if decision.Action == mapping.ActionCreate {
 		currentID = uuid.New()
 		_, err := tx.Exec(ctx, `INSERT INTO matches (id,name,publication_mode,opponent_state,status,host_team_id,away_team_id,opponent_name,players_per_team,start_time,end_time,location,location_latitude,location_longitude,description,created_by_user_id,created_at,updated_at)
 			VALUES ($1,$2,'offline_confirmed','no_recruitment',$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
 			currentID, strings.TrimSpace(legacyMatch.Name), mapMatchStatus(legacyMatch.Status), i.hostTeamID, awayTeamID,
-			opponentName, normalizePlayersPerTeam(legacyMatch.PlayersPerTeam), legacyMatch.StartTime, legacyMatch.EndTime,
+			opponentName, normalizePlayersPerTeam(legacyMatch.PlayersPerTeam), startTime, endTime,
 			strings.TrimSpace(legacyMatch.Location), legacyMatch.Latitude, legacyMatch.Longitude, nullableTextPointer(legacyMatch.Description),
 			i.createdByUser, createdAt, updatedAt)
 		if err != nil {
@@ -489,7 +490,7 @@ func (i Importer) writeTargetMatch(ctx context.Context, tx pgx.Tx, decision mapp
 	}
 	_, err = tx.Exec(ctx, `UPDATE matches SET name=$2,publication_mode='offline_confirmed',opponent_state='no_recruitment',status=$3,host_team_id=$4,away_team_id=$5,opponent_name=$6,players_per_team=$7,start_time=$8,end_time=$9,location=$10,location_latitude=$11,location_longitude=$12,description=$13,updated_at=$14,created_by_user_id=$15,created_by_admin_id=NULL WHERE id=$1`,
 		parsed, strings.TrimSpace(legacyMatch.Name), mapMatchStatus(legacyMatch.Status), i.hostTeamID, awayTeamID,
-		opponentName, normalizePlayersPerTeam(legacyMatch.PlayersPerTeam), legacyMatch.StartTime, legacyMatch.EndTime,
+		opponentName, normalizePlayersPerTeam(legacyMatch.PlayersPerTeam), startTime, endTime,
 		strings.TrimSpace(legacyMatch.Location), legacyMatch.Latitude, legacyMatch.Longitude, nullableTextPointer(legacyMatch.Description), updatedAt, i.createdByUser)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("update target match: %w", err)
@@ -711,6 +712,15 @@ func normalizedTime(value time.Time) time.Time {
 		return time.Now().UTC()
 	}
 	return value
+}
+
+// 旧库存在 end_time <= start_time 的脏数据（如起止时刻相同的队内赛），
+// 新库约束 end_time > start_time；相等或倒置时按 2 小时标准时长修正。
+func normalizeMatchWindow(start, end time.Time) (time.Time, time.Time) {
+	if !end.After(start) {
+		return start, start.Add(2 * time.Hour)
+	}
+	return start, end
 }
 
 func nullableText(value string) *string {

@@ -66,3 +66,23 @@ func TestLegacyMatchFingerprintChangesOnlyWithMigratedFields(t *testing.T) {
 		t.Fatal("status change must affect match fingerprint")
 	}
 }
+
+func TestNormalizeMatchWindowFixesLegacyDirtyTimePairs(t *testing.T) {
+	start := time.Date(2024, 7, 4, 20, 0, 0, 0, time.UTC)
+
+	gotStart, gotEnd := normalizeMatchWindow(start, start)
+	if !gotStart.Equal(start) || !gotEnd.Equal(start.Add(2*time.Hour)) {
+		t.Fatalf("equal window should expand to 2h: %v -> %v", gotStart, gotEnd)
+	}
+
+	gotStart, gotEnd = normalizeMatchWindow(start, start.Add(-time.Hour))
+	if !gotEnd.Equal(start.Add(2 * time.Hour)) {
+		t.Fatalf("reversed window should clamp to start+2h: %v", gotEnd)
+	}
+
+	originalEnd := start.Add(90 * time.Minute)
+	gotStart, gotEnd = normalizeMatchWindow(start, originalEnd)
+	if !gotStart.Equal(start) || !gotEnd.Equal(originalEnd) {
+		t.Fatalf("valid window must stay untouched: %v -> %v", gotStart, gotEnd)
+	}
+}
