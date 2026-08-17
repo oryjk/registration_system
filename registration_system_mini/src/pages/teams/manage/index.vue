@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import AppTabHeader from "@/components/AppTabHeader.vue";
+import NeoButton from "@/components/neo/NeoButton.vue";
 import NeoSegmentedControl from "@/components/neo/NeoSegmentedControl.vue";
 import NeoSurface from "@/components/neo/NeoSurface.vue";
 import MemberAttendancePopup from "./components/MemberAttendancePopup.vue";
@@ -15,6 +16,7 @@ import { useTeamManagePage } from "./useTeamManagePage";
 const {
   currentTeam,
   activeMode,
+  isManagementBlocked,
   submitting,
   searching,
   searchKeyword,
@@ -84,6 +86,10 @@ const {
   handleToggleMemberStatus,
   handleOpenMemberAttendance,
 } = useTeamManagePage();
+
+function handleGoBack() {
+  uni.navigateBack({ delta: 1 });
+}
 </script>
 
 <template>
@@ -102,6 +108,17 @@ const {
         </view>
       </NeoSurface>
 
+      <template v-if="isManagementBlocked">
+        <NeoSurface variant="outlined">
+          <view class="manage-blocked">
+            <text class="manage-blocked__title">暂无管理权限</text>
+            <text class="manage-blocked__copy">只有队长或领队可以进入球队管理，普通队员可在球队主页查看球队信息。</text>
+            <NeoButton variant="outline" block @click="handleGoBack">返回上一页</NeoButton>
+          </view>
+        </NeoSurface>
+      </template>
+
+      <template v-else>
       <NeoSegmentedControl
         :model-value="activeMode"
         :options="modeOptions"
@@ -183,6 +200,7 @@ const {
       :format-attendance-date="formatAttendanceDate"
       @toggle-activity="toggleActivityMatch"
       />
+      </template>
     </view>
 
     <MemberEditPopup
@@ -282,6 +300,25 @@ const {
 
 :deep(.neo-segmented-control) {
   margin-bottom: 24rpx;
+}
+
+.manage-blocked {
+  display: flex;
+  flex-direction: column;
+  gap: 14rpx;
+}
+
+.manage-blocked__title {
+  color: var(--neo-color-text);
+  font-size: 30rpx;
+  font-weight: 900;
+}
+
+.manage-blocked__copy {
+  color: var(--neo-color-text-muted);
+  font-size: 24rpx;
+  font-weight: 700;
+  line-height: 1.55;
 }
 
 @media (max-width: 560rpx) {

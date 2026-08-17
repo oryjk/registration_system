@@ -49,6 +49,9 @@ export function useTeamManagePage() {
   const canCreate = computed(() => !!createForm.name.trim() && !submitting.value);
   const canJoin = computed(() => !!selectedTeam.value && !submitting.value);
   const hasCurrentTeam = computed(() => !!currentTeam.value);
+  // 只有队长/领队可以进入球队管理；普通队员打开本页时展示无权限态（创建/加入球队不受限——那是无球队用户的入口）。
+  const canManageCurrentTeam = computed(() => !!currentTeam.value?.canManageTeam);
+  const isManagementBlocked = computed(() => hasCurrentTeam.value && !canManageCurrentTeam.value);
   const heroTitle = computed(() => (currentTeam.value ? currentTeam.value.name : "创建或加入一支球队"));
   const heroCopy = computed(() =>
     currentTeam.value ? "管理当前球队资料、队员和球队上下文。" : "球队会影响首页、约队、统计和报名上下文。",
@@ -185,6 +188,8 @@ export function useTeamManagePage() {
 
   onShow(async () => {
     await ensureSessionReady();
+    // 普通队员无管理权限：不加载管理数据，模板层展示无权限态。
+    if (isManagementBlocked.value) return;
     if (currentTeam.value) await ensureTeamDetailLoaded(currentTeam.value.id);
     syncVisibleMode();
     profile.syncTeamProfileForm();
@@ -200,6 +205,7 @@ export function useTeamManagePage() {
   return {
     currentTeam,
     activeMode,
+    isManagementBlocked,
     submitting,
     searching,
     searchKeyword,
