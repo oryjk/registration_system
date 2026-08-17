@@ -44,8 +44,12 @@ withDefaults(defineProps<{
 
 .neo-sticky-action-bar__actions {
   display: flex;
-  align-items: center;
-  justify-content: flex-end;
+  /* mp-weixin 下自定义组件有宿主节点，flex 行布局里宿主宽度收缩为内容宽，
+     子组件内部 width:100% 无法撑满（H5 无此问题）；改用列方向 + stretch
+     让宿主节点横向拉满，保证 block 按钮占满整个操作区。 */
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
   gap: 12rpx;
   min-width: 0;
   flex: 1;

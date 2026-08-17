@@ -39,6 +39,7 @@ target/
 
 # Go local build outputs
 /registration_system_go/api
+/registration_system_go/importlegacymatches
 
 # Python cache
 __pycache__/
