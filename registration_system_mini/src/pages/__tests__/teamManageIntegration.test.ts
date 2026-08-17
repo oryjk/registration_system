@@ -132,8 +132,8 @@ describe("team manage real backend integration", () => {
     const identityPanel = await Bun.file(sourcePath("pages/user/components/MineTeamIdentityPanel.vue")).text();
 
     expect(identityPanel.includes("mine-manage-list")).toEqual(true);
-    expect(identityPanel.includes("manageableTeams")).toEqual(true);
-    expect(identityPanel.includes("team.canManageTeam")).toEqual(true);
+    expect(identityPanel.includes('v-for="team in teamProfiles"')).toEqual(true);
+    expect(identityPanel.includes("team.myRoleLabel")).toEqual(true);
     expect(identityPanel.includes("@tap=\"emit('manageTeam', team.id)\"")).toEqual(true);
     expect(minePage.includes("function openTeamDetail(teamId?: number)")).toEqual(true);
     expect(minePage.includes("function openTeamManage(teamId?: number)")).toEqual(true);

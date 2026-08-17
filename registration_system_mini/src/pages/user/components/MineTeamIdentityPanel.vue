@@ -33,7 +33,6 @@ const identityOptions = computed(() =>
     value: identity.id,
   })),
 );
-const manageableTeams = computed(() => props.teamProfiles.filter((team) => team.canManageTeam));
 const useCompactTeamControl = computed(() => props.teamProfiles.length > 0 && props.teamProfiles.length <= 3);
 const useCompactIdentityControl = computed(() => props.availableIdentities.length > 0 && props.availableIdentities.length <= 3);
 
@@ -54,7 +53,7 @@ function handleSwitchIdentity(identityId: string) {
   <view class="mine-context-section">
     <NeoSectionHeader title="球队与身份" marker="队" caption="切换后，比赛和信用数据会同步更新" />
 
-    <NeoSurface v-if="currentTeam" custom-class="mine-current-team">
+    <NeoSurface v-if="currentTeam" interactive custom-class="mine-current-team" @tap="emit('manageTeam', currentTeam.id)">
       <view class="mine-current-team__logo">
         <image
           v-if="currentTeam.logoUrl"
@@ -69,7 +68,7 @@ function handleSwitchIdentity(identityId: string) {
         <text class="mine-current-team__name">{{ currentTeam.name }}</text>
         <text class="mine-current-team__meta">{{ currentTeam.myRoleLabel }} · {{ currentTeam.memberCount }} 人</text>
       </view>
-      <NeoTag tone="lime" size="sm">当前</NeoTag>
+      <text class="mine-current-team__arrow">›</text>
     </NeoSurface>
 
     <NeoSurface v-else variant="outlined" custom-class="mine-context-empty">
@@ -140,14 +139,14 @@ function handleSwitchIdentity(identityId: string) {
       <view v-else class="mine-inline-empty">当前球队暂无可切换身份</view>
     </view>
 
-    <view v-if="manageableTeams.length" class="mine-manage-section">
+    <view v-if="teamProfiles.length" class="mine-manage-section">
       <view class="mine-manage-section__head">
-        <text class="mine-manage-section__title">球队管理</text>
-        <text class="mine-manage-section__caption">队长与领队可进入</text>
+        <text class="mine-manage-section__title">我的球队</text>
+        <text class="mine-manage-section__caption">点击进入球队主页，可缴纳队费与管理</text>
       </view>
       <view class="mine-manage-list">
         <NeoSurface
-          v-for="team in manageableTeams"
+          v-for="team in teamProfiles"
           :key="team.id"
           interactive
           custom-class="mine-manage-team"
@@ -168,6 +167,14 @@ function handleSwitchIdentity(identityId: string) {
 <style scoped>
 .mine-context-section {
   margin-top: 34rpx;
+}
+
+.mine-current-team__arrow {
+  flex-shrink: 0;
+  font-size: 40rpx;
+  line-height: 1;
+  font-weight: 900;
+  color: var(--neo-color-text-muted);
 }
 
 .mine-current-team {
