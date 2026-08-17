@@ -26,10 +26,6 @@ export interface BackendAvatarUploadResult {
   avatar_url: string;
 }
 
-export interface BackendTeamLogoUploadResult {
-  logo_url: string;
-}
-
 export interface BackendWxLoginResponse {
   openid: string;
   session_key?: string | null;

@@ -41,11 +41,11 @@ function roleBadgeClass() {
 }
 
 function statusMeta(member: BackendTeamMember) {
-  const memberLabel = member.is_member ? "队员会员" : "普通队员";
+  // Go 队员模型只有 role/status，不再展示球衣号与会员身份。
   if (props.variant === "regular") {
-    return `${roleLabel(member.role)} · ${memberLabel} · ${member.jersey_number || "无号码"} · ${memberStatusLabel(member.status)}`;
+    return `${roleLabel(member.role)} · ${memberStatusLabel(member.status)}`;
   }
-  return `${memberLabel} · ${member.jersey_number || "无号码"} · ${memberStatusLabel(member.status)}`;
+  return memberStatusLabel(member.status);
 }
 
 function toggleLabel(member: BackendTeamMember) {
@@ -91,9 +91,6 @@ function handleRemoveMember(member: BackendTeamMember) {
             <view class="member-title-row">
               <text class="team-result-title member-name">{{ memberName(member.user_id) }}</text>
               <text v-if="showRoleBadge(member)" :class="roleBadgeClass()">{{ roleLabel(member.role) }}</text>
-              <text :class="['member-type-badge', member.is_member ? 'member-type-badge-vip' : 'member-type-badge-regular']">
-                {{ member.is_member ? "会员" : "普通" }}
-              </text>
             </view>
             <text class="team-result-meta">{{ statusMeta(member) }}</text>
           </view>
@@ -276,33 +273,6 @@ function handleRemoveMember(member: BackendTeamMember) {
   color: var(--neo-color-text-muted);
 }
 
-.member-type-badge {
-  /* 右对齐成固定槽位：名字长短不影响会员徽章的纵向扫读列；角色徽章仍跟随名字。 */
-  margin-left: auto;
-  flex-shrink: 0;
-  height: 42rpx;
-  padding: 0 14rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-xs);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 22rpx;
-  font-weight: 900;
-  box-sizing: border-box;
-}
-
-/* 会员实色强调，普通降调描边，对齐成列后强弱对比一眼可扫。 */
-.member-type-badge-vip {
-  background: var(--neo-color-accent);
-  color: var(--neo-color-text);
-}
-
-.member-type-badge-regular {
-  background: transparent;
-  color: var(--neo-color-text-muted);
-  border-color: var(--neo-color-disabled);
-}
 
 .member-actions {
   display: flex;

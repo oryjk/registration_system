@@ -172,6 +172,28 @@ paths:
               schema:
                 $ref: "#/components/schemas/AppTeamDetailEnvelope"
         <<: *standardErrors
+    patch:
+      operationId: updateAppTeamProfile
+      tags: [App Teams]
+      summary: 更新球队资料（队长/领队）
+      description: 仅该队 active 的队长或领队可操作。name 不传则保持不变，传入时必须非空且不超过 120 字符；description/logo_url 传空串或 null 视为清除。球队 status（冻结/激活）不可通过此接口修改。
+      security: *bearerSecurity
+      parameters:
+        - $ref: "#/components/parameters/TeamID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string, maxLength: 120 }
+                description: { type: string, nullable: true }
+                logo_url: { type: string, nullable: true }
+      responses:
+        "200":
+          description: 更新成功（空 data）
+        <<: *standardErrors
 
   /api/v1/app/teams/{id}/members:
     get:
@@ -188,6 +210,71 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AppTeamMemberListEnvelope"
+        <<: *standardErrors
+    post:
+      operationId: addAppTeamMember
+      tags: [App Teams]
+      summary: 添加球队成员（队长/领队）
+      description: 仅该队 active 的队长或领队可操作。role 仅支持 leader/vice_captain/member（缺省为 member），不能直接指定队长；目标用户必须存在且为 active。
+      security: *bearerSecurity
+      parameters:
+        - $ref: "#/components/parameters/TeamID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [user_id]
+              properties:
+                user_id: { type: integer, format: int64 }
+                role: { type: string, enum: [leader, vice_captain, member] }
+      responses:
+        "200":
+          description: 添加成功（空 data）
+        <<: *standardErrors
+
+  /api/v1/app/teams/{id}/members/{user_id}:
+    patch:
+      operationId: updateAppTeamMember
+      tags: [App Teams]
+      summary: 修改球队成员角色/状态（队长/领队）
+      description: 仅该队 active 的队长或领队可操作。role/status 至少传一个；role 仅支持 leader/vice_captain/member；目标成员为队长本人时返回 409，请使用移交队长。
+      security: *bearerSecurity
+      parameters:
+        - $ref: "#/components/parameters/TeamID"
+        - name: user_id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                role: { type: string, enum: [leader, vice_captain, member] }
+                status: { type: string, enum: [active, inactive] }
+      responses:
+        "200":
+          description: 修改成功（空 data）
+        <<: *standardErrors
+    delete:
+      operationId: removeAppTeamMember
+      tags: [App Teams]
+      summary: 移除球队成员（队长/领队）
+      description: 仅该队 active 的队长或领队可操作。队长本人不可移除，返回 409。
+      security: *bearerSecurity
+      parameters:
+        - $ref: "#/components/parameters/TeamID"
+        - name: user_id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        "200":
+          description: 移除成功（空 data）
         <<: *standardErrors
 
   /api/v1/app/teams/{id}/members/{user_id}/attendance:

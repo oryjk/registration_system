@@ -1,0 +1,133 @@
+package teamhttp
+
+import (
+	"bytes"
+	"context"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+
+	"github.com/gin-gonic/gin"
+	authhttp "github.com/oryjk/registration_system/registration_system_go/internal/auth/adapters/http"
+	sharedauth "github.com/oryjk/registration_system/registration_system_go/internal/shared/auth"
+	sharederror "github.com/oryjk/registration_system/registration_system_go/internal/shared/domain"
+	"github.com/oryjk/registration_system/registration_system_go/internal/team/domain"
+)
+
+func TestAppManageRoutesForwardParamsAndReturnEmptyEnvelope(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	manage := &fakeAppManageCommands{}
+	handler := NewAppManageHandler(manage)
+	router := gin.New()
+	group := router.Group("")
+	group.Use(authhttp.NewMiddleware(fakeUserTokens{}).RequireUser())
+	handler.RegisterRoutes(group)
+
+	do := func(method, path, body string) *httptest.ResponseRecorder {
+		request := httptest.NewRequest(method, path, strings.NewReader(body))
+		request.Header.Set("Authorization", "Bearer user-token")
+		request.Header.Set("Content-Type", "application/json")
+		response := httptest.NewRecorder()
+		router.ServeHTTP(response, request)
+		return response
+	}
+
+	// 小程序会多传 jersey_number/is_member，Go 端忽略即可。
+	response := do(http.MethodPatch, "/teams/7", `{"name":"东安联队","logo_url":"","jersey_number":9,"is_member":true}`)
+	if response.Code != http.StatusOK || !bytes.Contains(response.Body.Bytes(), []byte(`"code":0`)) {
+		t.Fatalf("update team: status=%d body=%s", response.Code, response.Body.String())
+	}
+	if manage.teamID != 7 || manage.actor.ID != 42 || manage.name == nil || *manage.name != "东安联队" {
+		t.Fatalf("profile not forwarded: %+v", manage)
+	}
+	if manage.logoURL == nil || *manage.logoURL != "" {
+		t.Fatalf("logo_url empty string must reach service: %+v", manage)
+	}
+
+	response = do(http.MethodPost, "/teams/7/members", `{"user_id":50,"role":"vice_captain"}`)
+	if response.Code != http.StatusOK {
+		t.Fatalf("add member: status=%d body=%s", response.Code, response.Body.String())
+	}
+	if manage.addedUserID != 50 || manage.addedRole != domain.RoleViceCaptain {
+		t.Fatalf("add member not forwarded: %+v", manage)
+	}
+
+	response = do(http.MethodPatch, "/teams/7/members/50", `{"status":"inactive"}`)
+	if response.Code != http.StatusOK {
+		t.Fatalf("update member: status=%d body=%s", response.Code, response.Body.String())
+	}
+	if manage.updatedUserID != 50 || manage.updatedRole != nil || manage.updatedStatus == nil || *manage.updatedStatus != domain.MemberInactive {
+		t.Fatalf("update member not forwarded: %+v", manage)
+	}
+
+	response = do(http.MethodDelete, "/teams/7/members/50", "")
+	if response.Code != http.StatusOK {
+		t.Fatalf("remove member: status=%d body=%s", response.Code, response.Body.String())
+	}
+	if manage.removedUserID != 50 {
+		t.Fatalf("remove member not forwarded: %+v", manage)
+	}
+}
+
+func TestAppManageRoutesMapBusinessErrors(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	manage := &fakeAppManageCommands{err: sharederror.ErrForbidden}
+	handler := NewAppManageHandler(manage)
+	router := gin.New()
+	group := router.Group("")
+	group.Use(authhttp.NewMiddleware(fakeUserTokens{}).RequireUser())
+	handler.RegisterRoutes(group)
+
+	request := httptest.NewRequest(http.MethodDelete, "/teams/7/members/50", nil)
+	request.Header.Set("Authorization", "Bearer user-token")
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+	if response.Code != http.StatusForbidden {
+		t.Fatalf("expected 403, got %d: %s", response.Code, response.Body.String())
+	}
+
+	request = httptest.NewRequest(http.MethodPatch, "/teams/not-a-number", strings.NewReader(`{}`))
+	request.Header.Set("Authorization", "Bearer user-token")
+	request.Header.Set("Content-Type", "application/json")
+	response = httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+	if response.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("expected 422 for invalid team id, got %d: %s", response.Code, response.Body.String())
+	}
+}
+
+type fakeAppManageCommands struct {
+	err           error
+	actor         sharedauth.Actor
+	teamID        int64
+	name          *string
+	description   *string
+	logoURL       *string
+	addedUserID   int64
+	addedRole     domain.Role
+	updatedUserID int64
+	updatedRole   *domain.Role
+	updatedStatus *domain.MemberStatus
+	removedUserID int64
+}
+
+func (f *fakeAppManageCommands) UpdateProfile(_ context.Context, actor sharedauth.Actor, teamID int64, name, description, logoURL *string) error {
+	f.actor, f.teamID, f.name, f.description, f.logoURL = actor, teamID, name, description, logoURL
+	return f.err
+}
+
+func (f *fakeAppManageCommands) AddMember(_ context.Context, actor sharedauth.Actor, teamID, userID int64, role domain.Role) error {
+	f.actor, f.teamID, f.addedUserID, f.addedRole = actor, teamID, userID, role
+	return f.err
+}
+
+func (f *fakeAppManageCommands) UpdateMember(_ context.Context, actor sharedauth.Actor, teamID, userID int64, role *domain.Role, status *domain.MemberStatus) error {
+	f.actor, f.teamID, f.updatedUserID, f.updatedRole, f.updatedStatus = actor, teamID, userID, role, status
+	return f.err
+}
+
+func (f *fakeAppManageCommands) RemoveMember(_ context.Context, actor sharedauth.Actor, teamID, userID int64) error {
+	f.actor, f.teamID, f.removedUserID = actor, teamID, userID
+	return f.err
+}

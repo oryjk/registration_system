@@ -11,6 +11,22 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const activeUserExists = `-- name: ActiveUserExists :one
+SELECT EXISTS (
+    SELECT 1
+    FROM users u
+    WHERE u.id = $1
+      AND u.status = 'active'
+) AS exists
+`
+
+func (q *Queries) ActiveUserExists(ctx context.Context, id int64) (bool, error) {
+	row := q.db.QueryRow(ctx, activeUserExists, id)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const addTeamMember = `-- name: AddTeamMember :one
 INSERT INTO team_members (team_id, user_id, role, status)
 VALUES ($1, $2, $3, 'active')
@@ -971,4 +987,53 @@ func (q *Queries) UpdateTeamMember(ctx context.Context, arg UpdateTeamMemberPara
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const updateTeamProfile = `-- name: UpdateTeamProfile :one
+UPDATE teams
+SET name = $2,
+    description = $3,
+    logo_url = $4,
+    updated_at = NOW()
+WHERE id = $1
+RETURNING teams.id, teams.name, teams.description, teams.logo_url, teams.captain_id, teams.status, teams.created_at, teams.updated_at
+`
+
+type UpdateTeamProfileParams struct {
+	ID          int64   `json:"id"`
+	Name        string  `json:"name"`
+	Description *string `json:"description"`
+	LogoUrl     *string `json:"logo_url"`
+}
+
+type UpdateTeamProfileRow struct {
+	ID          int64            `json:"id"`
+	Name        string           `json:"name"`
+	Description *string          `json:"description"`
+	LogoUrl     *string          `json:"logo_url"`
+	CaptainID   *int64           `json:"captain_id"`
+	Status      string           `json:"status"`
+	CreatedAt   pgtype.Timestamp `json:"created_at"`
+	UpdatedAt   pgtype.Timestamp `json:"updated_at"`
+}
+
+func (q *Queries) UpdateTeamProfile(ctx context.Context, arg UpdateTeamProfileParams) (UpdateTeamProfileRow, error) {
+	row := q.db.QueryRow(ctx, updateTeamProfile,
+		arg.ID,
+		arg.Name,
+		arg.Description,
+		arg.LogoUrl,
+	)
+	var i UpdateTeamProfileRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Description,
+		&i.LogoUrl,
+		&i.CaptainID,
+		&i.Status,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }

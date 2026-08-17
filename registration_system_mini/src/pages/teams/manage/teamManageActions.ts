@@ -1,6 +1,5 @@
 import {
   addTeamMember,
-  batchUpdateTeamMemberStatus,
   createTeam,
   getTeamMatchAttendance,
   getTeamMemberAttendance,
@@ -8,15 +7,11 @@ import {
   joinTeam,
   removeTeamMember,
   searchTeams,
+  setTeamMemberActive,
   updateTeam,
   updateTeamMember,
-  uploadTeamLogo,
 } from "@/api/team";
 import { listUsers, searchUsers } from "@/api/user";
-
-export function uploadCurrentTeamLogo(teamId: number, filePath: string) {
-  return uploadTeamLogo(teamId, filePath);
-}
 
 export function loadTeamMemberAttendance(teamId: number, userId: number) {
   return getTeamMemberAttendance(teamId, userId);
@@ -80,15 +75,11 @@ export function addMemberToTeam(
   payload: {
     userId: number;
     role?: string;
-    jerseyNumber?: string;
-    isMember?: boolean;
   },
 ) {
   return addTeamMember(teamId, {
     user_id: payload.userId,
     role: payload.role,
-    jersey_number: payload.jerseyNumber,
-    is_member: payload.isMember,
   });
 }
 
@@ -97,14 +88,10 @@ export function updateTeamMemberFromForm(
   userId: number,
   payload: {
     role?: string;
-    jerseyNumber?: string | null;
-    isMember?: boolean;
   },
 ) {
   return updateTeamMember(teamId, userId, {
     role: payload.role,
-    jersey_number: payload.jerseyNumber,
-    is_member: payload.isMember,
   });
 }
 
@@ -113,10 +100,7 @@ export function removeMemberFromTeam(teamId: number, userId: number) {
 }
 
 export function setTeamMemberStatus(teamId: number, userId: number, status: number) {
-  return batchUpdateTeamMemberStatus(teamId, {
-    user_ids: [userId],
-    status,
-  });
+  return setTeamMemberActive(teamId, userId, status === 1);
 }
 
 export function loadUsersById() {

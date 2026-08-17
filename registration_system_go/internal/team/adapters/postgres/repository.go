@@ -149,6 +149,21 @@ func (r *Repository) Update(ctx context.Context, team domain.Team) (domain.Team,
 	return teamFields(row.ID, row.Name, row.Description, row.LogoUrl, row.CaptainID, row.Status, row.CreatedAt, row.UpdatedAt), nil
 }
 
+// UpdateTeamProfile 只更新球队资料（name/description/logo_url），不触碰 status。
+func (r *Repository) UpdateTeamProfile(ctx context.Context, team domain.Team) (domain.Team, error) {
+	row, err := r.queries.UpdateTeamProfile(ctx, teamsqlc.UpdateTeamProfileParams{
+		ID: team.ID, Name: team.Name, Description: team.Description, LogoUrl: team.LogoURL,
+	})
+	if err != nil {
+		return domain.Team{}, err
+	}
+	return teamFields(row.ID, row.Name, row.Description, row.LogoUrl, row.CaptainID, row.Status, row.CreatedAt, row.UpdatedAt), nil
+}
+
+func (r *Repository) ActiveUserExists(ctx context.Context, userID int64) (bool, error) {
+	return r.queries.ActiveUserExists(ctx, userID)
+}
+
 func (r *Repository) Delete(ctx context.Context, teamID int64) (bool, error) {
 	rowsAffected, err := r.queries.DeleteTeam(ctx, teamID)
 	if err != nil {

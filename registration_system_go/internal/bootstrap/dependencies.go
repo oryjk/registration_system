@@ -80,6 +80,8 @@ func BuildDependencies(ctx context.Context, config Config) (Dependencies, func()
 	appTeamService := teamapplication.NewAppQueryService(teamRepository)
 	appTeamAttendance := teamapplication.NewAppAttendanceService(teamRepository, teamService)
 	appTeamHandler := teamhttp.NewAppHandler(appTeamService, appTeamAttendance)
+	appTeamManageService := teamapplication.NewAppManageService(teamRepository)
+	appTeamManageHandler := teamhttp.NewAppManageHandler(appTeamManageService)
 
 	matchRepository := matchpostgres.NewRepository(pool)
 	matchClock := clock.System{}
@@ -120,7 +122,8 @@ func BuildDependencies(ctx context.Context, config Config) (Dependencies, func()
 		UserAuth:       userAuthHandler, AdminAuth: adminAuthHandler,
 		TestAuth: testAuthHandler, H5TestLoginEnabled: config.H5TestLoginEnabled(),
 		UserProfiles: userProfileHandler, AppUsers: appUserHandler, ActiveUsers: appUserService, Teams: teamHandler, AppTeams: appTeamHandler,
-		UserMatches: userMatchHandler, UserRegistrations: userRegistrationHandler,
+		AppTeamManage: appTeamManageHandler,
+		UserMatches:   userMatchHandler, UserRegistrations: userRegistrationHandler,
 		AdminMatches: adminMatchHandler, TeamApplications: teamApplicationHandler,
 		Payments: paymentHandler, Wallets: walletHandler,
 	}, closePool, nil

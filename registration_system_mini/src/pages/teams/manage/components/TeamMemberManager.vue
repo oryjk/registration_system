@@ -19,8 +19,6 @@ const props = defineProps<{
   memberForm: {
     userId: string;
     role: string;
-    jerseyNumber: string;
-    isMember: boolean;
   };
   leadershipMembers: BackendTeamMember[];
   regularMembers: BackendTeamMember[];
@@ -55,11 +53,6 @@ function handleCandidateTap(candidate: BackendUser) {
 
 function handleAddMember() {
   emit("addMember");
-}
-
-function handleMemberSwitchChange(event: Event) {
-  const detail = (event as unknown as { detail?: { value?: boolean } }).detail;
-  props.memberForm.isMember = !!detail?.value;
 }
 
 const roleModel = computed({
@@ -132,14 +125,7 @@ function handleRemoveMember(member: BackendTeamMember) {
           custom-value-class="member-role-picker-value"
         />
 
-        <input v-model="memberForm.jerseyNumber" class="form-input" placeholder="球衣号，可选" />
-        <view class="member-setting-row">
-          <view>
-            <text class="member-setting-title">队员会员</text>
-            <text class="member-setting-copy">用于在队员信息中区分会员身份</text>
-          </view>
-          <switch :checked="memberForm.isMember" color="#b9f24b" @change="handleMemberSwitchChange" />
-        </view>
+        <!-- Go 队员模型只有 role/status：球衣号与队员会员开关已随 legacy Rust 字段一起移除。 -->
         <NeoButton block :loading="submitting" @click="handleAddMember">
           {{ submitting ? "提交中..." : "添加队员" }}
         </NeoButton>
@@ -289,38 +275,6 @@ function handleRemoveMember(member: BackendTeamMember) {
   color: var(--neo-color-text);
   font-size: 28rpx;
   font-weight: 900;
-}
-
-.member-setting-row {
-  min-height: 88rpx;
-  margin: 12rpx 0 16rpx;
-  padding: 16rpx 18rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-warning-soft);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 18rpx;
-  box-sizing: border-box;
-}
-
-.member-setting-title,
-.member-setting-copy {
-  display: block;
-}
-
-.member-setting-title {
-  color: var(--neo-color-text);
-  font-size: 28rpx;
-  font-weight: 900;
-}
-
-.member-setting-copy {
-  margin-top: 4rpx;
-  color: var(--neo-color-text-muted);
-  font-size: 22rpx;
-  font-weight: 700;
 }
 
 :deep(.member-create-panel .neo-button--block) {

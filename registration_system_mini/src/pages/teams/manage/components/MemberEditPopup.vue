@@ -10,8 +10,6 @@ const props = defineProps<{
   memberName: string;
   form: {
     role: string;
-    jerseyNumber: string;
-    isMember: boolean;
   };
   submitting: boolean;
 }>();
@@ -33,11 +31,6 @@ function handleClose() {
 
 function handleSubmit() {
   emit("submit");
-}
-
-function handleMemberSwitchChange(event: Event) {
-  const detail = (event as unknown as { detail?: { value?: boolean } }).detail;
-  props.form.isMember = !!detail?.value;
 }
 
 const roleModel = computed({
@@ -93,14 +86,7 @@ const rolePickerVisible = ref(false);
         custom-value-class="member-role-picker-value"
       />
 
-      <input v-model="form.jerseyNumber" class="form-input member-edit-input" placeholder="球衣号，可选" />
-      <view class="member-setting-row">
-        <view>
-          <text class="member-setting-title">队员会员</text>
-          <text class="member-setting-copy">保存后会显示在队员信息里</text>
-        </view>
-        <switch :checked="form.isMember" color="#b9f24b" @change="handleMemberSwitchChange" />
-      </view>
+      <!-- Go 队员模型只有 role/status：球衣号与队员会员开关已随 legacy Rust 字段一起移除。 -->
       <NeoButton block :loading="submitting" @click="handleSubmit">
         {{ submitting ? "保存中..." : "保存队员" }}
       </NeoButton>
@@ -196,55 +182,6 @@ const rolePickerVisible = ref(false);
   color: var(--neo-color-text);
   font-size: 28rpx;
   font-weight: 900;
-}
-
-.form-input {
-  width: 100%;
-  height: 84rpx;
-  padding: 0 20rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-surface);
-  color: var(--neo-color-text);
-  font-size: 28rpx;
-  font-weight: 700;
-  box-sizing: border-box;
-}
-
-.member-edit-input {
-  margin-top: 14rpx;
-}
-
-.member-setting-row {
-  min-height: 88rpx;
-  margin-top: 14rpx;
-  padding: 16rpx 18rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-info-soft);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 18rpx;
-  box-sizing: border-box;
-}
-
-.member-setting-title,
-.member-setting-copy {
-  display: block;
-}
-
-.member-setting-title {
-  color: var(--neo-color-text);
-  font-size: 28rpx;
-  font-weight: 900;
-}
-
-.member-setting-copy {
-  margin-top: 4rpx;
-  color: var(--neo-color-text-muted);
-  font-size: 22rpx;
-  font-weight: 700;
 }
 
 :deep(.member-edit-sheet .neo-button--block) {

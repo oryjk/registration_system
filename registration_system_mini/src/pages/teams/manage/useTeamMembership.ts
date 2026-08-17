@@ -37,8 +37,8 @@ export function useTeamMembership(dependencies: TeamMembershipDependencies) {
   const selectedCandidate = ref<BackendUser | null>(null);
   const editMemberPopupVisible = ref(false);
   const editingMemberId = ref<number | null>(null);
-  const memberForm = reactive({ userId: "", role: "member", jerseyNumber: "", isMember: false });
-  const editMemberForm = reactive({ role: "member", jerseyNumber: "", isMember: false });
+  const memberForm = reactive({ userId: "", role: "member" });
+  const editMemberForm = reactive({ role: "member" });
 
   const canManageMembers = computed(() => !!currentTeam.value?.canManageTeam);
   const groupedMembers = computed(() => splitTeamMembers(currentMembers.value));
@@ -74,23 +74,17 @@ export function useTeamMembership(dependencies: TeamMembershipDependencies) {
     userSearchResults.value = [];
     memberForm.userId = "";
     memberForm.role = "member";
-    memberForm.jerseyNumber = "";
-    memberForm.isMember = false;
   }
 
   function closeEditMemberPopup() {
     editMemberPopupVisible.value = false;
     editingMemberId.value = null;
     editMemberForm.role = "member";
-    editMemberForm.jerseyNumber = "";
-    editMemberForm.isMember = false;
   }
 
   function handleEditMember(member: BackendTeamMember) {
     editingMemberId.value = member.user_id;
     editMemberForm.role = member.role;
-    editMemberForm.jerseyNumber = member.jersey_number ?? "";
-    editMemberForm.isMember = member.is_member;
     editMemberPopupVisible.value = true;
   }
 
@@ -144,8 +138,6 @@ export function useTeamMembership(dependencies: TeamMembershipDependencies) {
       await addMemberToTeam(currentTeam.value.id, {
         userId,
         role: memberForm.role,
-        jerseyNumber: memberForm.jerseyNumber.trim() || undefined,
-        isMember: memberForm.isMember,
       });
       await refreshSessionContext();
       invalidateActivityAttendance();
@@ -164,8 +156,6 @@ export function useTeamMembership(dependencies: TeamMembershipDependencies) {
     try {
       await updateTeamMemberFromForm(currentTeam.value.id, editingMemberId.value, {
         role: editMemberForm.role,
-        jerseyNumber: editMemberForm.jerseyNumber.trim() || null,
-        isMember: editMemberForm.isMember,
       });
       await refreshSessionContext();
       invalidateActivityAttendance();

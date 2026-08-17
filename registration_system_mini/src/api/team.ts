@@ -4,7 +4,6 @@ import type {
   BackendTeamCreditOverview,
   BackendTeamCreditTransaction,
   BackendTeamDetail,
-  BackendTeamLogoUploadResult,
   BackendTeamMember,
   BackendTeamMemberAttendance,
   BackendTeamPasswordInfo,
@@ -14,9 +13,8 @@ import type {
 } from "@/types/backend";
 import type { AppTeamDetail, AppTeamMember, MyTeam } from "@/types/app";
 import { getApiBaseUrl } from "@/config/apiBase";
-import { getAccessToken } from "@/utils/authStorage";
 import { buildQueryString } from "@/utils/queryString";
-import { ApiRequestError, requestApi } from "@/utils/request";
+import { requestApi } from "@/utils/request";
 import type { DateRangeParams } from "@/utils/dateRange";
 
 export function createTeam(payload: {
@@ -146,50 +144,12 @@ export function updateTeam(
   });
 }
 
-export async function uploadTeamLogo(teamId: number, filePath: string) {
-  const token = getAccessToken();
-
-  return new Promise<BackendTeamLogoUploadResult>((resolve, reject) => {
-    uni.uploadFile({
-      url: `${getApiBaseUrl()}/teams/${teamId}/logo`,
-      filePath,
-      name: "file",
-      header: token ? { Authorization: `Bearer ${token}` } : {},
-      success: (response) => {
-        let parsed: BackendApiResponse<BackendTeamLogoUploadResult> | null = null;
-        try {
-          parsed = JSON.parse(response.data) as BackendApiResponse<BackendTeamLogoUploadResult>;
-        } catch (_error) {
-          reject(new ApiRequestError("球队 Logo 上传响应解析失败"));
-          return;
-        }
-
-        if (response.statusCode < 200 || response.statusCode >= 300) {
-          reject(new ApiRequestError(parsed?.message || "球队 Logo 上传失败", response.statusCode));
-          return;
-        }
-
-        if (parsed?.code !== 0 || !parsed.data) {
-          reject(new ApiRequestError(parsed?.message || "球队 Logo 上传失败", response.statusCode));
-          return;
-        }
-
-        resolve(parsed.data);
-      },
-      fail: (error) => {
-        reject(new ApiRequestError(error.errMsg || "球队 Logo 上传失败"));
-      },
-    });
-  });
-}
-
+/** 添加队员（Go app 侧接口，仅该队队长/领队可操作）。Go 模型只有 role/status，不支持球衣号等 legacy 字段。 */
 export function addTeamMember(
   teamId: number,
   payload: {
     user_id: number;
     role?: string;
-    jersey_number?: string;
-    is_member?: boolean;
   },
 ) {
   return requestApi<void>({
@@ -200,13 +160,13 @@ export function addTeamMember(
   });
 }
 
+/** 修改队员角色或在队状态（Go app 侧接口，仅该队队长/领队可操作）。 */
 export function updateTeamMember(
   teamId: number,
   userId: number,
   payload: {
     role?: string;
-    jersey_number?: string | null;
-    is_member?: boolean;
+    status?: "active" | "inactive";
   },
 ) {
   return requestApi<void>({
@@ -251,19 +211,9 @@ export function removeTeamMember(teamId: number, userId: number) {
   });
 }
 
-export function batchUpdateTeamMemberStatus(
-  teamId: number,
-  payload: {
-    user_ids: number[];
-    status: number;
-  },
-) {
-  return requestApi<number>({
-    url: `/teams/${teamId}/members/batch`,
-    method: "PATCH",
-    data: payload,
-    auth: true,
-  });
+/** 批量冻结/恢复已合并进单人 updateTeamMember（Go app 侧无批量接口，legacy Rust 批量接口已废弃）。 */
+export function setTeamMemberActive(teamId: number, userId: number, active: boolean) {
+  return updateTeamMember(teamId, userId, { status: active ? "active" : "inactive" });
 }
 
 export function getTeamCreditOverview(teamId: number) {

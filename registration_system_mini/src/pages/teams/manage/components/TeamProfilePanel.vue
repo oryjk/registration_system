@@ -12,19 +12,13 @@ defineProps<{
     description: string;
     logoUrl: string;
   };
-  logoUploading: boolean;
   canUpdate: boolean;
   submitting: boolean;
 }>();
 
 const emit = defineEmits<{
-  (event: "chooseLogo"): void;
   (event: "submit"): void;
 }>();
-
-function handleChooseLogo() {
-  emit("chooseLogo");
-}
 
 function handleSubmit() {
   emit("submit");
@@ -49,10 +43,8 @@ function handleSubmit() {
             <text v-else class="team-logo-fallback">{{ currentTeam?.name?.slice(0, 1) || "队" }}</text>
           </view>
           <view class="team-logo-main">
-            <NeoButton variant="outline" size="sm" :loading="logoUploading" @click="handleChooseLogo">
-              {{ logoUploading ? "上传中..." : "选择图片上传" }}
-            </NeoButton>
-            <text class="team-logo-note">支持 jpg/png/webp，超过 1MB 会先尝试压缩。</text>
+            <!-- Go 后端暂无文件存储/上传能力，logo 上传入口隐藏；已有 logo 仍正常展示。 -->
+            <text class="team-logo-note">Logo 上传暂未开放，如需更换请联系管理员。</text>
           </view>
         </view>
       </view>

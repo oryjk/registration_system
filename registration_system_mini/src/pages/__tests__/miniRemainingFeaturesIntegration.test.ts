@@ -63,8 +63,9 @@ describe("remaining mini real backend integrations", () => {
     expect(teamApi.includes("export function updateTeamMember")).toEqual(true);
     expect(teamApi.includes('url: `/teams/${teamId}/members/${userId}`')).toEqual(true);
     expect(teamApi.includes("export function removeTeamMember")).toEqual(true);
-    expect(teamApi.includes("export function batchUpdateTeamMemberStatus")).toEqual(true);
-    expect(teamApi.includes('url: `/teams/${teamId}/members/batch`')).toEqual(true);
+    // Go app 侧无批量接口；冻结/恢复走单人 updateTeamMember 的 status 字段。
+    expect(teamApi.includes("export function setTeamMemberActive")).toEqual(true);
+    expect(teamApi.includes("batchUpdateTeamMemberStatus")).toEqual(false);
 
     expect(state.includes('export type TeamManageMode = "profile" | "create" | "join" | "members" | "attendance";')).toEqual(true);
     expect(page.includes("activeMode = ref<TeamManageMode>")).toEqual(true);

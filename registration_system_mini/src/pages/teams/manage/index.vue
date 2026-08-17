@@ -34,7 +34,6 @@ const {
   createTeamReviewMode,
   reviewTeamNameOptions,
   teamProfileForm,
-  logoUploading,
   canUpdateTeamProfile,
   canManageMembers,
   userSearching,
@@ -75,7 +74,6 @@ const {
   handleSearchTeams,
   handleSelectTeam,
   handleJoinTeam,
-  handleChooseTeamLogo,
   handleUpdateTeamProfile,
   handleEditMember,
   handleSearchUsers,
@@ -130,10 +128,8 @@ function handleGoBack() {
       :current-team="currentTeam"
       :can-manage-members="canManageMembers"
       :form="teamProfileForm"
-      :logo-uploading="logoUploading"
       :can-update="canUpdateTeamProfile"
       :submitting="submitting"
-      @choose-logo="handleChooseTeamLogo"
       @submit="handleUpdateTeamProfile"
       />
 

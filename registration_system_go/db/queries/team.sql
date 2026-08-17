@@ -59,6 +59,23 @@ SET name = $2,
 WHERE id = $1
 RETURNING teams.id, teams.name, teams.description, teams.logo_url, teams.captain_id, teams.status, teams.created_at, teams.updated_at;
 
+-- name: UpdateTeamProfile :one
+UPDATE teams
+SET name = $2,
+    description = $3,
+    logo_url = $4,
+    updated_at = NOW()
+WHERE id = $1
+RETURNING teams.id, teams.name, teams.description, teams.logo_url, teams.captain_id, teams.status, teams.created_at, teams.updated_at;
+
+-- name: ActiveUserExists :one
+SELECT EXISTS (
+    SELECT 1
+    FROM users u
+    WHERE u.id = $1
+      AND u.status = 'active'
+) AS exists;
+
 -- name: DeleteTeam :execrows
 DELETE FROM teams
 WHERE id = $1;

@@ -141,6 +141,37 @@ func (m Member) CanManageMatches() bool {
 	return m.Status == MemberActive && (m.Role == RoleCaptain || m.Role == RoleLeader)
 }
 
+// CanManageTeam 与 CanManageMatches 规则一致：active 的队长或领队可管理球队资料与成员（小程序侧）。
+func (m Member) CanManageTeam() bool {
+	return m.Status == MemberActive && (m.Role == RoleCaptain || m.Role == RoleLeader)
+}
+
+// UpdateProfile 更新球队资料（小程序队长/领队使用）：name 传 nil 保持不变；
+// description/logoURL 传 nil 或空白视为清除。球队 status 不可在此修改，冻结/激活仍是管理员专属。
+func (t Team) UpdateProfile(name *string, description, logoURL *string) (Team, error) {
+	if name != nil {
+		normalized, _, err := normalizeDetails(*name, nil)
+		if err != nil {
+			return Team{}, err
+		}
+		t.Name = normalized
+	}
+	t.Description = normalizeOptionalText(description)
+	t.LogoURL = normalizeOptionalText(logoURL)
+	return t, nil
+}
+
+func normalizeOptionalText(value *string) *string {
+	if value == nil {
+		return nil
+	}
+	trimmed := strings.TrimSpace(*value)
+	if trimmed == "" {
+		return nil
+	}
+	return &trimmed
+}
+
 // IsCaptain 严格限定队长本人（不含领队），用于收尾比赛等只属于队长的动作。
 func (m Member) IsCaptain() bool {
 	return m.Status == MemberActive && m.Role == RoleCaptain
