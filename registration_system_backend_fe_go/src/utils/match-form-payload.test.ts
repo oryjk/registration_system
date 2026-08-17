@@ -24,6 +24,7 @@ describe("match form payload", () => {
     expect(buildCreateMatchPayload(baseValues)).toEqual({
       name: "夏夜联赛",
       publication_mode: "online_team",
+      is_free: false,
       host_team_id: 9,
       opponent_name: null,
       players_per_team: 8,
@@ -71,5 +72,14 @@ describe("match form payload", () => {
       location_longitude: 120.654321,
       description: "保留 API 字段测试",
     });
+  });
+});
+
+describe("match form free flag", () => {
+  it("keeps the admin default paid and forwards an explicit free choice", () => {
+    expect(buildCreateMatchPayload(baseValues).is_free).toEqual(false);
+    expect(
+      buildCreateMatchPayload({ ...baseValues, is_free: true }).is_free,
+    ).toEqual(true);
   });
 });

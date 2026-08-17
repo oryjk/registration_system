@@ -13,6 +13,7 @@ import {
   Select,
   Space,
   Spin,
+  Switch,
   Typography,
 } from "antd";
 import dayjs, { type Dayjs } from "dayjs";
@@ -371,6 +372,16 @@ export default function MatchFormPage() {
                       ]}
                     >
                       <Input maxLength={255} />
+                    </Form.Item>
+                  ) : null}
+                  {!editing ? (
+                    <Form.Item
+                      name="is_free"
+                      label="免费报名"
+                      valuePropName="checked"
+                      tooltip="默认收费；开启后小程序详情的报名按钮会展示「免费」角标"
+                    >
+                      <Switch />
                     </Form.Item>
                   ) : null}
                   {!editing ? (

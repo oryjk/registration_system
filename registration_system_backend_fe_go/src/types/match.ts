@@ -38,6 +38,7 @@ export interface MatchItem {
   created_by_admin_id: number | null;
   created_at: string;
   updated_at: string;
+  is_free: boolean;
 }
 
 export interface MatchRegistrationEntry {
@@ -93,6 +94,7 @@ export interface CreateMatchPayload {
   location_latitude?: number | null;
   location_longitude?: number | null;
   description?: string | null;
+  is_free?: boolean;
 }
 
 export interface UpdateMatchPayload {

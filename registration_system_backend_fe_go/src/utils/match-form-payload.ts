@@ -24,6 +24,7 @@ export interface MatchFormPayloadValues {
   location_latitude?: number;
   location_longitude?: number;
   description?: string;
+  is_free?: boolean;
 }
 
 export function buildUpdateMatchPayload(
@@ -57,5 +58,6 @@ export function buildCreateMatchPayload(
         : null,
     players_per_team: values.players_per_team,
     host_capacity_limit: values.host_capacity_limit ?? null,
+    is_free: values.is_free ?? false,
   };
 }
