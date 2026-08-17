@@ -51,9 +51,10 @@ defineProps<{
 <style scoped>
 .stats-overview,
 .stats-summary-row {
-  background: #ffffff;
-  border: 1rpx solid rgba(31, 35, 26, 0.07);
-  box-shadow: 0 14rpx 32rpx rgba(20, 24, 16, 0.05);
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-md);
+  background: var(--neo-color-surface);
+  box-shadow: var(--neo-shadow-raised);
 }
 
 .stats-overview {
@@ -63,7 +64,6 @@ defineProps<{
   gap: 18rpx;
   margin-top: 18rpx;
   padding: 22rpx;
-  border-radius: 24rpx;
 }
 
 .stats-profile {
@@ -77,16 +77,17 @@ defineProps<{
 .stats-profile-avatar {
   width: 76rpx;
   height: 76rpx;
-  border-radius: 24rpx;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
   flex-shrink: 0;
-  background: #20231c;
+  background: var(--neo-color-hero);
 }
 
 .stats-profile-avatar-fallback {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #ffffff;
+  color: var(--neo-color-text-inverse);
   font-size: 28rpx;
   font-weight: 900;
 }
@@ -99,7 +100,7 @@ defineProps<{
 .stats-kicker {
   display: block;
   font-size: 21rpx;
-  color: #66705d;
+  color: var(--neo-color-text-muted);
   font-weight: 800;
 }
 
@@ -108,7 +109,7 @@ defineProps<{
   margin-top: 5rpx;
   font-size: 34rpx;
   line-height: 1.15;
-  color: #141711;
+  color: var(--neo-color-text);
   font-weight: 900;
 }
 
@@ -116,15 +117,16 @@ defineProps<{
   display: block;
   margin-top: 6rpx;
   font-size: 22rpx;
-  color: #73796f;
+  color: var(--neo-color-text-muted);
   font-weight: 700;
 }
 
 .stats-rate-box {
   min-width: 128rpx;
   padding: 16rpx 14rpx;
-  border-radius: 20rpx;
-  background: #f0f6df;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-success);
   text-align: center;
 }
 
@@ -132,7 +134,7 @@ defineProps<{
   display: block;
   font-size: 40rpx;
   line-height: 1;
-  color: #202612;
+  color: var(--neo-color-text);
   font-weight: 900;
 }
 
@@ -140,7 +142,7 @@ defineProps<{
   display: block;
   margin-top: 7rpx;
   font-size: 20rpx;
-  color: #62703c;
+  color: var(--neo-color-text-muted);
   font-weight: 800;
 }
 
@@ -150,12 +152,11 @@ defineProps<{
   gap: 0;
   margin-top: 14rpx;
   padding: 18rpx 4rpx;
-  border-radius: 22rpx;
 }
 
 .stats-summary-item {
   text-align: center;
-  border-right: 1rpx solid #edf0e7;
+  border-right: 2rpx solid var(--neo-color-track);
 }
 
 .stats-summary-item:last-child {
@@ -166,7 +167,7 @@ defineProps<{
   display: block;
   font-size: 34rpx;
   line-height: 1;
-  color: #171a13;
+  color: var(--neo-color-text);
   font-weight: 900;
 }
 
@@ -174,7 +175,7 @@ defineProps<{
   display: block;
   margin-top: 8rpx;
   font-size: 21rpx;
-  color: #70786c;
+  color: var(--neo-color-text-muted);
   font-weight: 700;
 }
 </style>

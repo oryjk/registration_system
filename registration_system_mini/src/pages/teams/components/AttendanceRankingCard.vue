@@ -43,10 +43,10 @@ defineProps<{
 .stats-card {
   margin-top: 16rpx;
   padding: 22rpx;
-  border-radius: 24rpx;
-  background: #ffffff;
-  border: 1rpx solid rgba(31, 35, 26, 0.07);
-  box-shadow: 0 14rpx 32rpx rgba(20, 24, 16, 0.05);
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-md);
+  background: var(--neo-color-surface);
+  box-shadow: var(--neo-shadow-raised);
 }
 
 .stats-card-embedded {
@@ -66,7 +66,7 @@ defineProps<{
   display: block;
   font-size: 29rpx;
   line-height: 1.2;
-  color: #151812;
+  color: var(--neo-color-text);
   font-weight: 900;
 }
 
@@ -74,7 +74,7 @@ defineProps<{
   display: block;
   margin-top: 6rpx;
   font-size: 21rpx;
-  color: #747b70;
+  color: var(--neo-color-text-muted);
   font-weight: 700;
 }
 
@@ -87,7 +87,7 @@ defineProps<{
   align-items: center;
   gap: 14rpx;
   padding: 15rpx 0;
-  border-top: 1rpx solid #eef1ea;
+  border-top: 2rpx solid var(--neo-color-track);
 }
 
 .ranking-item:first-child {
@@ -100,27 +100,30 @@ defineProps<{
   justify-content: center;
   width: 42rpx;
   height: 42rpx;
-  border-radius: 14rpx;
-  background: #f0f4e6;
-  color: #627033;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-xs);
+  background: var(--neo-color-muted);
+  color: var(--neo-color-text);
   font-size: 21rpx;
   font-weight: 900;
   flex-shrink: 0;
+  box-sizing: border-box;
 }
 
 .ranking-avatar {
   width: 70rpx;
   height: 70rpx;
-  border-radius: 22rpx;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
   flex-shrink: 0;
-  background: #20231c;
+  background: var(--neo-color-hero);
 }
 
 .ranking-avatar-fallback {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #ffffff;
+  color: var(--neo-color-text-inverse);
   font-size: 28rpx;
   font-weight: 900;
 }
@@ -140,7 +143,7 @@ defineProps<{
   flex: 1;
   min-width: 0;
   overflow: hidden;
-  color: #171a13;
+  color: var(--neo-color-text);
   font-size: 27rpx;
   font-weight: 900;
   text-overflow: ellipsis;
@@ -148,7 +151,7 @@ defineProps<{
 }
 
 .ranking-rate {
-  color: #11140f;
+  color: var(--neo-color-text);
   font-size: 28rpx;
   font-weight: 900;
 }
@@ -158,7 +161,7 @@ defineProps<{
   flex-wrap: wrap;
   gap: 12rpx;
   margin-top: 8rpx;
-  color: #737b70;
+  color: var(--neo-color-text-muted);
   font-size: 21rpx;
   font-weight: 700;
 }
@@ -166,15 +169,16 @@ defineProps<{
 .stats-empty {
   margin-top: 18rpx;
   padding: 24rpx;
-  border-radius: 22rpx;
-  background: #ffffff;
-  color: #6c7168;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-muted);
+  color: var(--neo-color-text-muted);
   font-size: 27rpx;
+  font-weight: 700;
   line-height: 1.6;
 }
 
 .stats-empty-inner {
   margin-top: 16rpx;
-  background: #f7f8f3;
 }
 </style>

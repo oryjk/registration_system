@@ -105,10 +105,10 @@ function closeDayMatches() {
 .stats-card {
   margin-top: 16rpx;
   padding: 22rpx;
-  border-radius: 24rpx;
-  background: #ffffff;
-  border: 1rpx solid rgba(31, 35, 26, 0.07);
-  box-shadow: 0 14rpx 32rpx rgba(20, 24, 16, 0.05);
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-md);
+  background: var(--neo-color-surface);
+  box-shadow: var(--neo-shadow-raised);
 }
 
 .stats-card-embedded {
@@ -129,7 +129,7 @@ function closeDayMatches() {
   display: block;
   font-size: 31rpx;
   line-height: 1.2;
-  color: #151812;
+  color: var(--neo-color-text);
   font-weight: 900;
 }
 
@@ -137,7 +137,7 @@ function closeDayMatches() {
   display: block;
   margin-top: 8rpx;
   font-size: 21rpx;
-  color: #747b70;
+  color: var(--neo-color-text-muted);
   font-weight: 700;
 }
 
@@ -148,7 +148,7 @@ function closeDayMatches() {
   flex-wrap: wrap;
   gap: 9rpx;
   max-width: 300rpx;
-  color: #4f5848;
+  color: var(--neo-color-text-muted);
   font-size: 24rpx;
   font-weight: 950;
 }
@@ -161,15 +161,21 @@ function closeDayMatches() {
 }
 
 .legend-dot-joined {
-  background: #9be22b;
+  border: 2rpx solid var(--neo-color-text);
+  background: var(--neo-color-accent);
+  box-sizing: border-box;
 }
 
 .legend-dot-leave {
-  background: #ffbf3f;
+  border: 2rpx solid var(--neo-color-text);
+  background: var(--neo-color-warning-soft);
+  box-sizing: border-box;
 }
 
 .legend-dot-unchecked {
-  background: #ff4d3d;
+  border: 2rpx solid var(--neo-color-text);
+  background: var(--neo-color-danger);
+  box-sizing: border-box;
 }
 
 .calendar-months {
@@ -181,9 +187,10 @@ function closeDayMatches() {
 
 .calendar-month-card {
   padding: 18rpx;
-  border-radius: 25rpx;
-  background: linear-gradient(180deg, #fbfcf8 0%, #f2f5ec 100%);
-  border: 1rpx solid rgba(35, 43, 25, 0.08);
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-muted);
+  box-shadow: 4rpx 4rpx 0 var(--neo-color-text);
 }
 
 .calendar-month-head {
@@ -195,7 +202,7 @@ function closeDayMatches() {
 
 .calendar-month-title {
   display: block;
-  color: #171a13;
+  color: var(--neo-color-text);
   font-size: 29rpx;
   font-weight: 950;
 }
@@ -203,7 +210,7 @@ function closeDayMatches() {
 .calendar-month-caption {
   display: block;
   margin-top: 5rpx;
-  color: #778071;
+  color: var(--neo-color-text-muted);
   font-size: 20rpx;
   font-weight: 750;
 }
@@ -216,7 +223,7 @@ function closeDayMatches() {
 }
 
 .calendar-weekday {
-  color: #8a9185;
+  color: var(--neo-color-text-muted);
   font-size: 19rpx;
   font-weight: 850;
   text-align: center;
@@ -242,9 +249,9 @@ function closeDayMatches() {
   justify-content: center;
   min-height: 96rpx;
   padding: 9rpx 6rpx;
-  border-radius: 20rpx;
-  background: rgba(255, 255, 255, 0.72);
-  border: 1rpx solid rgba(37, 45, 28, 0.05);
+  border-radius: var(--neo-radius-xs);
+  background: var(--neo-color-surface-translucent);
+  border: 2rpx solid var(--neo-color-track);
   box-sizing: border-box;
 }
 
@@ -253,37 +260,33 @@ function closeDayMatches() {
 }
 
 .calendar-day-match {
-  background: #ffffff;
-  border-color: rgba(105, 135, 38, 0.18);
-  box-shadow: 0 8rpx 18rpx rgba(45, 58, 24, 0.06);
-  transform: translateY(-1rpx);
+  background: var(--neo-color-surface);
+  border-color: var(--neo-color-text);
 }
 
 .calendar-day-joined {
-  background: #9be22b;
-  border-color: rgba(80, 112, 0, 0.22);
-  box-shadow: 0 12rpx 22rpx rgba(117, 179, 0, 0.24);
+  background: var(--neo-color-accent);
+  border-color: var(--neo-color-text);
 }
 
 .calendar-day-leave {
-  background: #ffbf3f;
-  border-color: rgba(158, 98, 0, 0.24);
-  box-shadow: 0 12rpx 22rpx rgba(230, 142, 0, 0.2);
+  background: var(--neo-color-warning-soft);
+  border-color: var(--neo-color-text);
 }
 
 .calendar-day-unchecked {
-  background: #ff4d3d;
-  border-color: rgba(139, 24, 16, 0.24);
-  box-shadow: 0 12rpx 22rpx rgba(230, 52, 40, 0.2);
+  background: var(--neo-color-danger);
+  border-color: var(--neo-color-text);
 }
 
 .calendar-day-today {
-  border-color: rgba(16, 17, 15, 0.38);
+  border-color: var(--neo-color-text);
+  box-shadow: 3rpx 3rpx 0 var(--neo-color-text);
 }
 
 .calendar-day-number {
   display: block;
-  color: #252a20;
+  color: var(--neo-color-text);
   font-size: 38rpx;
   font-weight: 900;
   line-height: 1;
@@ -293,11 +296,11 @@ function closeDayMatches() {
 .calendar-day-joined .calendar-day-number,
 .calendar-day-leave .calendar-day-number,
 .calendar-day-unchecked .calendar-day-number {
-  color: #141711;
+  color: var(--neo-color-text);
 }
 
 .calendar-day-unchecked .calendar-day-number {
-  color: #ffffff;
+  color: var(--neo-color-text-inverse);
 }
 
 .calendar-day-marks {
@@ -312,9 +315,9 @@ function closeDayMatches() {
   justify-content: center;
   min-width: 28rpx;
   height: 24rpx;
-  border-radius: 999rpx;
-  background: rgba(255, 255, 255, 0.45);
-  color: #303724;
+  border-radius: var(--neo-radius-round);
+  background: var(--neo-color-surface-translucent);
+  color: var(--neo-color-text);
   font-size: 17rpx;
   font-weight: 1000;
   line-height: 1;
@@ -322,23 +325,24 @@ function closeDayMatches() {
 }
 
 .calendar-day-unchecked .calendar-more {
-  color: #ffffff;
-  background: rgba(255, 255, 255, 0.2);
+  color: var(--neo-color-text-inverse);
+  background: var(--neo-color-overlay);
 }
 
 .stats-empty {
   margin-top: 18rpx;
   padding: 24rpx;
-  border-radius: 22rpx;
-  background: #ffffff;
-  color: #6c7168;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-muted);
+  color: var(--neo-color-text-muted);
   font-size: 27rpx;
+  font-weight: 700;
   line-height: 1.6;
 }
 
 .stats-empty-inner {
   margin-top: 16rpx;
-  background: #f7f8f3;
 }
 
 .calendar-popup-mask {
@@ -352,7 +356,7 @@ function closeDayMatches() {
   align-items: flex-end;
   justify-content: center;
   padding: 28rpx;
-  background: rgba(14, 17, 12, 0.34);
+  background: var(--neo-color-overlay);
   box-sizing: border-box;
 }
 
@@ -360,9 +364,10 @@ function closeDayMatches() {
   width: 100%;
   max-height: 58vh;
   padding: 26rpx;
-  border-radius: 30rpx;
-  background: #fbfcf8;
-  box-shadow: 0 -18rpx 48rpx rgba(15, 18, 12, 0.18);
+  border: var(--neo-border-strong);
+  border-radius: var(--neo-radius-md);
+  background: var(--neo-color-surface);
+  box-shadow: var(--neo-shadow-modal);
   box-sizing: border-box;
 }
 
@@ -374,16 +379,17 @@ function closeDayMatches() {
 }
 
 .calendar-popup-title {
-  color: #151812;
+  color: var(--neo-color-text);
   font-size: 31rpx;
   font-weight: 950;
 }
 
 .calendar-popup-close {
   padding: 8rpx 18rpx;
-  border-radius: 999rpx;
-  background: #edf1e8;
-  color: #5e6759;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-round);
+  background: var(--neo-color-muted);
+  color: var(--neo-color-text);
   font-size: 22rpx;
   font-weight: 850;
 }
@@ -397,14 +403,14 @@ function closeDayMatches() {
 
 .calendar-popup-item {
   padding: 18rpx;
-  border-radius: 22rpx;
-  background: #ffffff;
-  border: 1rpx solid rgba(31, 35, 26, 0.07);
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-surface);
+  border: var(--neo-border-default);
 }
 
 .calendar-popup-match {
   display: block;
-  color: #171a13;
+  color: var(--neo-color-text);
   font-size: 28rpx;
   font-weight: 950;
 }
@@ -412,7 +418,7 @@ function closeDayMatches() {
 .calendar-popup-location {
   display: block;
   margin-top: 8rpx;
-  color: #727a6d;
+  color: var(--neo-color-text-muted);
   font-size: 23rpx;
   font-weight: 750;
   line-height: 1.35;

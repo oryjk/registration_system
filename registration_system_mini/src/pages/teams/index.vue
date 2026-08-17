@@ -3,6 +3,7 @@ import { computed, ref } from "vue";
 import { onLoad, onShow, onUnload } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
 import BottomTabBar from "@/components/BottomTabBar.vue";
+import NeoSegmentedControl from "@/components/neo/NeoSegmentedControl.vue";
 import { getTeamAttendanceSummary } from "@/api/team";
 import { useNotificationCenter } from "@/stores/notificationCenter";
 import { useTeamContext } from "@/stores/teamContext";
@@ -127,16 +128,12 @@ onUnload(() => {
           :my-summary="mySummary"
         />
         <view class="stats-tab-card">
-          <view class="stats-segment">
-            <view
-              v-for="option in statsTabOptions"
-              :key="option.value"
-              :class="['stats-segment-item', statsTab === option.value ? 'stats-segment-item-active' : '']"
-              @tap="handleStatsTabChange(option.value)"
-            >
-              <text>{{ option.label }}</text>
-            </view>
-          </view>
+          <NeoSegmentedControl
+            :model-value="statsTab"
+            :options="statsTabOptions"
+            class="stats-segment"
+            @update:model-value="handleStatsTabChange"
+          />
 
           <AttendanceCalendarCard
             v-if="statsTab === 'records'"
@@ -157,54 +154,33 @@ onUnload(() => {
 .stats-page {
   min-height: 100vh;
   padding: calc(env(safe-area-inset-top) + 30rpx) 24rpx 164rpx;
-  background: linear-gradient(180deg, #f8faf4 0%, #eef1e8 100%);
+  background: var(--neo-color-page);
   box-sizing: border-box;
 }
 
 .stats-empty {
   margin-top: 18rpx;
   padding: 24rpx;
-  border-radius: 22rpx;
-  background: #ffffff;
-  color: #6c7168;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-md);
+  background: var(--neo-color-surface);
+  box-shadow: var(--neo-shadow-raised);
+  color: var(--neo-color-text-muted);
   font-size: 27rpx;
+  font-weight: 700;
   line-height: 1.6;
 }
 
 .stats-tab-card {
   margin-top: 16rpx;
   padding: 16rpx 22rpx 22rpx;
-  border-radius: 24rpx;
-  background: #ffffff;
-  border: 1rpx solid rgba(31, 35, 26, 0.07);
-  box-shadow: 0 14rpx 32rpx rgba(20, 24, 16, 0.05);
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-md);
+  background: var(--neo-color-surface);
+  box-shadow: var(--neo-shadow-raised);
 }
 
 .stats-segment {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12rpx;
   margin-bottom: 18rpx;
-  padding: 8rpx;
-  border-radius: 999rpx;
-  background: #e8ecdf;
-}
-
-.stats-segment-item {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 0;
-  height: 72rpx;
-  border-radius: 999rpx;
-  color: #5d6458;
-  font-size: 28rpx;
-  font-weight: 900;
-}
-
-.stats-segment-item-active {
-  background: #10110f;
-  color: #9be22b;
-  box-shadow: 0 12rpx 22rpx rgba(16, 17, 15, 0.16);
 }
 </style>
