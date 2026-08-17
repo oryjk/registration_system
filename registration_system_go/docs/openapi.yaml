@@ -190,6 +190,52 @@ paths:
                 $ref: "#/components/schemas/AppTeamMemberListEnvelope"
         <<: *standardErrors
 
+  /api/v1/app/teams/{id}/members/{user_id}/attendance:
+    get:
+      operationId: getAppTeamMemberAttendance
+      tags: [App Teams]
+      summary: 获取队员比赛出勤明细（队长/领队）
+      security: *bearerSecurity
+      parameters:
+        - $ref: "#/components/parameters/TeamID"
+        - name: user_id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+        - name: startDate
+          in: query
+          required: false
+          schema: { type: string, format: date }
+        - name: endDate
+          in: query
+          required: false
+          schema: { type: string, format: date }
+      responses:
+        "200":
+          description: 队员在全部已结束比赛中的出勤明细
+        <<: *standardErrors
+
+  /api/v1/app/teams/{id}/attendance-summary:
+    get:
+      operationId: getAppTeamAttendanceSummary
+      tags: [App Teams]
+      summary: 获取球队出勤摘要（我的记录 + 全队排名，队员可看）
+      security: *bearerSecurity
+      parameters:
+        - $ref: "#/components/parameters/TeamID"
+        - name: startDate
+          in: query
+          required: false
+          schema: { type: string, format: date }
+        - name: endDate
+          in: query
+          required: false
+          schema: { type: string, format: date }
+      responses:
+        "200":
+          description: 当前队员的出勤记录与全队出勤排名
+        <<: *standardErrors
+
   /api/v1/app/matches:
     get:
       operationId: listAppMatches

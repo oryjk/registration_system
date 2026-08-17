@@ -193,3 +193,63 @@ SET captain_id = NULL,
     updated_at = NOW()
 WHERE teams.id = $1
 RETURNING teams.id, teams.name, teams.description, teams.logo_url, teams.captain_id, teams.status, teams.created_at, teams.updated_at;
+
+-- 比赛出勤：口径与首页"已结束"一致——非取消，且（状态已结束或已过结束时间）。
+-- 队员报名挂在该队对应的报名组（host_team/guest_team）上；撤销（cancelled）的报名按未报名处理。
+-- matches 时间列存 UTC 墙钟，用 (NOW() AT TIME ZONE 'utc') 保持同类型比较，避免会话时区歧义。
+
+-- name: ListTeamMemberAttendanceRecords :many
+SELECT m.id::text AS activity_id,
+       m.name AS activity_name,
+       m.start_time AS holding_date,
+       m.location,
+       COALESCE(r.status, 'unknown') AS stand_status,
+       COALESCE(r.registration_count, 0) AS registration_count,
+       r.updated_at AS operation_time,
+       (r.id IS NOT NULL) AS registered
+FROM matches m
+JOIN match_registration_groups g
+  ON g.match_id = m.id
+ AND g.kind IN ('host_team', 'guest_team')
+ AND g.team_id = $1
+LEFT JOIN match_registrations r
+  ON r.group_id = g.id
+ AND r.user_id = $2
+ AND r.status <> 'cancelled'
+WHERE m.status <> 'cancelled'
+  AND (m.status = 'ended' OR m.end_time <= (NOW() AT TIME ZONE 'utc'))
+  AND (sqlc.narg('start_date')::date IS NULL OR m.start_time::date >= sqlc.narg('start_date')::date)
+  AND (sqlc.narg('end_date')::date IS NULL OR m.start_time::date <= sqlc.narg('end_date')::date)
+ORDER BY m.start_time DESC, m.id;
+
+-- name: ListTeamAttendanceRanking :many
+WITH team_matches AS (
+    SELECT g.id AS group_id, g.match_id
+    FROM match_registration_groups g
+    JOIN matches m ON m.id = g.match_id
+    WHERE g.kind IN ('host_team', 'guest_team')
+      AND g.team_id = $1
+      AND m.status <> 'cancelled'
+      AND (m.status = 'ended' OR m.end_time <= (NOW() AT TIME ZONE 'utc'))
+      AND (sqlc.narg('start_date')::date IS NULL OR m.start_time::date >= sqlc.narg('start_date')::date)
+      AND (sqlc.narg('end_date')::date IS NULL OR m.start_time::date <= sqlc.narg('end_date')::date)
+)
+SELECT tm.user_id,
+       u.nickname AS user_name,
+       u.avatar_url,
+       COUNT(*) AS total_count,
+       COUNT(r.id) FILTER (WHERE r.status = 'attending') AS attended_count,
+       COUNT(r.id) FILTER (WHERE r.status = 'leave') AS leave_count,
+       COUNT(r.id) FILTER (WHERE r.status = 'absent') AS late_count,
+       COUNT(*) FILTER (WHERE r.id IS NULL) AS unregistered_count
+FROM team_members tm
+JOIN users u ON u.id = tm.user_id
+CROSS JOIN team_matches t
+LEFT JOIN match_registrations r
+  ON r.group_id = t.group_id
+ AND r.user_id = tm.user_id
+ AND r.status <> 'cancelled'
+WHERE tm.team_id = $1
+  AND tm.status = 'active'
+GROUP BY tm.user_id, u.nickname, u.avatar_url, tm.joined_at
+ORDER BY attended_count DESC, leave_count ASC, unregistered_count ASC, tm.joined_at ASC;

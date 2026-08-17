@@ -3,9 +3,11 @@ package postgres
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgtype"
 	sharederror "github.com/oryjk/registration_system/registration_system_go/internal/shared/domain"
 	teamsqlc "github.com/oryjk/registration_system/registration_system_go/internal/team/adapters/postgres/sqlc"
 	"github.com/oryjk/registration_system/registration_system_go/internal/team/domain"
@@ -249,4 +251,53 @@ func mapTeam(row teamsqlc.Team) domain.Team {
 		CreatedAt:   row.CreatedAt.Time,
 		UpdatedAt:   row.UpdatedAt.Time,
 	}
+}
+
+func pgDate(value *time.Time) pgtype.Date {
+	if value == nil {
+		return pgtype.Date{}
+	}
+	return pgtype.Date{Time: *value, Valid: true}
+}
+
+func (r *Repository) ListMemberAttendanceRecords(ctx context.Context, teamID, userID int64, startDate, endDate *time.Time) ([]ports.AttendanceRecord, error) {
+	rows, err := r.queries.ListTeamMemberAttendanceRecords(ctx, teamsqlc.ListTeamMemberAttendanceRecordsParams{
+		TeamID: teamID, UserID: userID, StartDate: pgDate(startDate), EndDate: pgDate(endDate),
+	})
+	if err != nil {
+		return nil, err
+	}
+	records := make([]ports.AttendanceRecord, 0, len(rows))
+	for _, row := range rows {
+		var operationTime *time.Time
+		if row.OperationTime.Valid {
+			operationTime = &row.OperationTime.Time
+		}
+		records = append(records, ports.AttendanceRecord{
+			ActivityID: row.ActivityID, ActivityName: row.ActivityName,
+			HoldingDate: row.HoldingDate.Time, Location: row.Location,
+			Stand: row.StandStatus, RegistrationCount: int(row.RegistrationCount),
+			OperationTime: operationTime, Registered: row.Registered,
+		})
+	}
+	return records, nil
+}
+
+func (r *Repository) ListAttendanceRanking(ctx context.Context, teamID int64, startDate, endDate *time.Time) ([]ports.AttendanceRankingItem, error) {
+	rows, err := r.queries.ListTeamAttendanceRanking(ctx, teamsqlc.ListTeamAttendanceRankingParams{
+		TeamID: teamID, StartDate: pgDate(startDate), EndDate: pgDate(endDate),
+	})
+	if err != nil {
+		return nil, err
+	}
+	items := make([]ports.AttendanceRankingItem, 0, len(rows))
+	for _, row := range rows {
+		items = append(items, ports.AttendanceRankingItem{
+			UserID: row.UserID, UserName: row.UserName, AvatarURL: row.AvatarUrl,
+			TotalCount: row.TotalCount, AttendedCount: row.AttendedCount,
+			LeaveCount: row.LeaveCount, LateCount: row.LateCount,
+			UnregisteredCount: row.UnregisteredCount,
+		})
+	}
+	return items, nil
 }

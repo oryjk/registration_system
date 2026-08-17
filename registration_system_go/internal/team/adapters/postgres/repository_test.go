@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/oryjk/registration_system/registration_system_go/internal/team/domain"
 	"github.com/oryjk/registration_system/registration_system_go/internal/team/ports"
@@ -136,4 +137,123 @@ func memberRole(members []domain.MemberDetails, userID int64) domain.Role {
 		}
 	}
 	return ""
+}
+
+func TestRepositoryAttendanceQueriesCountFinishedMatchesOnly(t *testing.T) {
+	pool := testsupport.StartPostgres(t)
+	ctx := context.Background()
+	repository := NewRepository(pool)
+
+	var captainID, memberID int64
+	if err := pool.QueryRow(ctx, `INSERT INTO users (openid) VALUES ('att-captain') RETURNING id`).Scan(&captainID); err != nil {
+		t.Fatalf("seed captain: %v", err)
+	}
+	if err := pool.QueryRow(ctx, `INSERT INTO users (openid) VALUES ('att-member') RETURNING id`).Scan(&memberID); err != nil {
+		t.Fatalf("seed member: %v", err)
+	}
+	var teamID int64
+	if err := pool.QueryRow(ctx, `INSERT INTO teams (name) VALUES ('出勤统计球队') RETURNING id`).Scan(&teamID); err != nil {
+		t.Fatalf("seed team: %v", err)
+	}
+	if _, err := pool.Exec(ctx, `INSERT INTO team_members (team_id, user_id, role) VALUES ($1, $2, 'captain'), ($1, $3, 'member')`, teamID, captainID, memberID); err != nil {
+		t.Fatalf("seed members: %v", err)
+	}
+
+	seedMatch := func(name, status string, startOffsetDays int) (string, error) {
+		var matchID string
+		err := pool.QueryRow(ctx, `
+			INSERT INTO matches (name, publication_mode, opponent_state, status, host_team_id, opponent_name,
+				players_per_team, start_time, end_time, location, created_by_user_id)
+			VALUES ($1, 'offline_confirmed', 'no_recruitment', $2, $3, '对手', 8,
+				NOW() - ($4 || ' days')::interval, NOW() - ($4 || ' days')::interval + interval '2 hours',
+				'出勤球场', $5)
+			RETURNING id`, name, status, teamID, startOffsetDays, captainID).Scan(&matchID)
+		if err != nil {
+			return "", err
+		}
+		_, err = pool.Exec(ctx, `
+			INSERT INTO match_registration_groups (id, match_id, kind, team_id)
+			VALUES (gen_random_uuid(), $1, 'host_team', $2)`, matchID, teamID)
+		return matchID, err
+	}
+
+	endedID, err := seedMatch("已结束赛", "ended", 7)
+	if err != nil {
+		t.Fatalf("seed ended match: %v", err)
+	}
+	if _, err := seedMatch("过期未收尾赛", "ongoing", 3); err != nil {
+		t.Fatalf("seed expired match: %v", err)
+	}
+	if _, err := seedMatch("未开赛", "ongoing", -3); err != nil {
+		t.Fatalf("seed upcoming match: %v", err)
+	}
+	if _, err := seedMatch("已取消赛", "cancelled", 5); err != nil {
+		t.Fatalf("seed cancelled match: %v", err)
+	}
+
+	var endedGroupID string
+	if err := pool.QueryRow(ctx, `
+		SELECT g.id FROM match_registration_groups g JOIN matches m ON m.id = g.match_id
+		WHERE m.id::text = $1 AND g.kind = 'host_team'`, endedID).Scan(&endedGroupID); err != nil {
+		t.Fatalf("load ended group: %v", err)
+	}
+	// 队长出席已结束赛；队员撤销后又没再报（另一场 cancelled 报名不应计入）。
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO match_registrations (id, group_id, user_id, status, registration_count)
+		VALUES (gen_random_uuid(), $1, $2, 'attending', 1)`, endedGroupID, captainID); err != nil {
+		t.Fatalf("seed captain registration: %v", err)
+	}
+
+	// 明细：只包含已结束/已过期的 2 场；队长在已结束赛有出席记录。
+	captainRecords, err := repository.ListMemberAttendanceRecords(ctx, teamID, captainID, nil, nil)
+	if err != nil {
+		t.Fatalf("captain records: %v", err)
+	}
+	if len(captainRecords) != 2 {
+		t.Fatalf("expected 2 finished matches, got %d: %+v", len(captainRecords), captainRecords)
+	}
+	attended := 0
+	for _, record := range captainRecords {
+		if record.ActivityID == endedID {
+			attended++
+			if record.Stand != "attending" || !record.Registered || record.RegistrationCount != 1 {
+				t.Fatalf("unexpected ended record: %+v", record)
+			}
+		} else if record.Stand != "unknown" || record.Registered {
+			t.Fatalf("expected unregistered row for expired match, got %+v", record)
+		}
+	}
+	if attended != 1 {
+		t.Fatalf("ended match record missing: %+v", captainRecords)
+	}
+
+	// 排名：2 名队员 × 2 场有效比赛；队长 1 出席 1 未报名，队员 2 场全未报名。
+	ranking, err := repository.ListAttendanceRanking(ctx, teamID, nil, nil)
+	if err != nil {
+		t.Fatalf("ranking: %v", err)
+	}
+	byUser := map[int64]ports.AttendanceRankingItem{}
+	for _, item := range ranking {
+		byUser[item.UserID] = item
+	}
+	if len(byUser) != 2 {
+		t.Fatalf("expected 2 ranked members, got %+v", ranking)
+	}
+	if item := byUser[captainID]; item.TotalCount != 2 || item.AttendedCount != 1 || item.UnregisteredCount != 1 {
+		t.Fatalf("unexpected captain ranking: %+v", item)
+	}
+	if item := byUser[memberID]; item.TotalCount != 2 || item.AttendedCount != 0 || item.UnregisteredCount != 2 {
+		t.Fatalf("unexpected member ranking: %+v", item)
+	}
+
+	// 日期过滤：只看已结束赛当天以后的窗口可把过期未收尾赛排除。
+	start := time.Now().AddDate(0, 0, -4)
+	end := time.Now()
+	filtered, err := repository.ListMemberAttendanceRecords(ctx, teamID, captainID, &start, &end)
+	if err != nil {
+		t.Fatalf("filtered records: %v", err)
+	}
+	if len(filtered) != 1 || filtered[0].ActivityID != endedID {
+		t.Fatalf("expected only the ended match in range, got %+v", filtered)
+	}
 }
