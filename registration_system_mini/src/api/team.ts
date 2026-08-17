@@ -311,3 +311,23 @@ export function rechargeTeamMembership(
     auth: true,
   });
 }
+
+export interface AppTeamDetailData {
+  id: number;
+  name: string;
+  description?: string | null;
+  logo_url?: string | null;
+  captain_id?: number | null;
+  status: string;
+  my_role: string;
+  credit_score: number;
+  vip_until?: string | null;
+  is_vip: boolean;
+}
+
+export function getAppTeamDetail(teamId: number) {
+  return requestApi<AppTeamDetailData>({
+    url: `/teams/${teamId}`,
+    auth: true,
+  });
+}

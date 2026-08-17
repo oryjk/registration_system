@@ -308,13 +308,52 @@ const routes: MockRoute[] = [
     handler: () => buildMockMyTeams(mockAuthenticatedUserId),
   },
   {
+    method: "POST",
+    pattern: "/payments/team-membership-orders",
+    handler: (req) => {
+      const payload = req.body as { team_id?: number; months?: number } | undefined;
+      const months = Math.max(1, Math.min(12, Number(payload?.months ?? 1)));
+      return {
+        order: {
+          order_no: `PM${Date.now()}`,
+          kind: "team_membership",
+          amount_cents: months * 3000,
+          status: "pending",
+        },
+        payment: {
+          timeStamp: String(Math.floor(Date.now() / 1000)),
+          nonceStr: "mocknonce",
+          package: "prepay_id=mock_team_fee",
+          signType: "MD5",
+          paySign: "mock_sign_for_testing",
+        },
+      };
+    },
+  },
+  {
+    method: "POST",
+    pattern: "/payments/orders/:orderNo/sync",
+    handler: (req) => ({
+      order: { order_no: req.params.orderNo, status: "paid" },
+    }),
+  },
+  {
     method: "GET",
     pattern: "/teams/:id",
     handler: (req) => {
       const teamId = Number(req.params.id);
       const detail = findMockTeam(teamId);
       if (!detail) return undefined;
-      return detail;
+      // 补齐 Go AppTeamDetail 字段,球队二级页(队费充值)可直接使用。
+      const me = detail.members.find((item) => item.user_id === mockAuthenticatedUserId);
+      return {
+        ...detail,
+        status: "active",
+        my_role: me?.role ?? "member",
+        credit_score: 90,
+        vip_until: null,
+        is_vip: false,
+      };
     },
   },
   {

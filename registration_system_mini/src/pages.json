@@ -38,6 +38,12 @@
       }
     },
     {
+      "path": "pages/teams/detail/index",
+      "style": {
+        "navigationStyle": "custom"
+      }
+    },
+    {
       "path": "pages/user/index",
       "style": {
         "navigationBarTitleText": "我的",

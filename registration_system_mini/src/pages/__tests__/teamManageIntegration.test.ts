@@ -74,13 +74,16 @@ describe("team manage real backend integration", () => {
     expect(state.includes('return allowCreateTeamMode ? "create" : "join";')).toEqual(true);
   });
 
-  test("team management entry points open the real team manage page", async () => {
+  test("team management entry points open the team detail page first", async () => {
     const bottomTabBar = await Bun.file(sourcePath("components/BottomTabBar.vue")).text();
     const minePage = await Bun.file(sourcePath("pages/user/useMinePage.ts")).text();
+    const detailPage = await Bun.file(sourcePath("pages/teams/detail/useTeamDetailPage.ts")).text();
 
     expect(bottomTabBar.includes('url: "/pages/teams/manage/index"')).toEqual(true);
-    expect(minePage.includes('url: "/pages/teams/manage/index"')).toEqual(true);
-    expect(minePage.includes("function openTeamManage(teamId?: number)")).toEqual(true);
+    // 「我的」页球队入口先进入球队二级页（队费充值所在），管理入口再从二级页进入。
+    expect(minePage.includes("function openTeamDetail(teamId?: number)")).toEqual(true);
+    expect(minePage.includes('`/pages/teams/detail/index?teamId=${targetId}`')).toEqual(true);
+    expect(detailPage.includes('url: "/pages/teams/manage/index"')).toEqual(true);
   });
 
   test("team manage page edits team profile and searches users before adding members", async () => {
@@ -124,7 +127,7 @@ describe("team manage real backend integration", () => {
     expect(memberSection.includes('emit("removeMember", member)')).toEqual(true);
   });
 
-  test("mine page exposes managed teams as cards that open team manage page", async () => {
+  test("mine page exposes managed teams as cards that open the team detail page", async () => {
     const minePage = await Bun.file(sourcePath("pages/user/useMinePage.ts")).text();
     const identityPanel = await Bun.file(sourcePath("pages/user/components/MineTeamIdentityPanel.vue")).text();
 
@@ -132,9 +135,8 @@ describe("team manage real backend integration", () => {
     expect(identityPanel.includes("manageableTeams")).toEqual(true);
     expect(identityPanel.includes("team.canManageTeam")).toEqual(true);
     expect(identityPanel.includes("@tap=\"emit('manageTeam', team.id)\"")).toEqual(true);
+    expect(minePage.includes("function openTeamDetail(teamId?: number)")).toEqual(true);
     expect(minePage.includes("function openTeamManage(teamId?: number)")).toEqual(true);
-    expect(minePage.includes("switchTeam(teamId);")).toEqual(true);
-    expect(minePage.includes('url: "/pages/teams/manage/index"')).toEqual(true);
   });
 
   test("team manage page includes match attendance tab and panel", async () => {

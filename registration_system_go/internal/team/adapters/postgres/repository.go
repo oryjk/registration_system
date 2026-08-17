@@ -31,7 +31,7 @@ func (r *Repository) FindByID(ctx context.Context, teamID int64) (domain.Team, b
 	if err != nil {
 		return domain.Team{}, false, err
 	}
-	return mapTeam(row), true, nil
+	return teamFields(row.ID, row.Name, row.Description, row.LogoUrl, row.CaptainID, row.Status, row.CreatedAt, row.UpdatedAt), true, nil
 }
 
 func (r *Repository) FindMembership(ctx context.Context, teamID, userID int64) (domain.Member, bool, error) {
@@ -136,7 +136,7 @@ func (r *Repository) Create(ctx context.Context, team domain.Team) (domain.Team,
 	if err != nil {
 		return domain.Team{}, err
 	}
-	return mapTeam(row), nil
+	return teamFields(row.ID, row.Name, row.Description, row.LogoUrl, row.CaptainID, row.Status, row.CreatedAt, row.UpdatedAt), nil
 }
 
 func (r *Repository) Update(ctx context.Context, team domain.Team) (domain.Team, error) {
@@ -146,7 +146,7 @@ func (r *Repository) Update(ctx context.Context, team domain.Team) (domain.Team,
 	if err != nil {
 		return domain.Team{}, err
 	}
-	return mapTeam(row), nil
+	return teamFields(row.ID, row.Name, row.Description, row.LogoUrl, row.CaptainID, row.Status, row.CreatedAt, row.UpdatedAt), nil
 }
 
 func (r *Repository) Delete(ctx context.Context, teamID int64) (bool, error) {
@@ -255,16 +255,16 @@ func (r *Repository) SetCaptain(ctx context.Context, teamID int64, userID *int64
 	return err
 }
 
-func mapTeam(row teamsqlc.Team) domain.Team {
+func teamFields(id int64, name string, description, logoURL *string, captainID *int64, status string, createdAt, updatedAt pgtype.Timestamp) domain.Team {
 	return domain.Team{
-		ID:          row.ID,
-		Name:        row.Name,
-		Description: row.Description,
-		LogoURL:     row.LogoUrl,
-		CaptainID:   row.CaptainID,
-		Status:      domain.TeamStatus(row.Status),
-		CreatedAt:   row.CreatedAt.Time,
-		UpdatedAt:   row.UpdatedAt.Time,
+		ID:          id,
+		Name:        name,
+		Description: description,
+		LogoURL:     logoURL,
+		CaptainID:   captainID,
+		Status:      domain.TeamStatus(status),
+		CreatedAt:   createdAt.Time,
+		UpdatedAt:   updatedAt.Time,
 	}
 }
 
@@ -280,8 +280,9 @@ func pgDate(value *time.Time) pgtype.Date {
 }
 
 func (r *Repository) ListMemberAttendanceRecords(ctx context.Context, teamID, userID int64, startDate, endDate *time.Time) ([]ports.AttendanceRecord, error) {
+	teamIDParam := teamID
 	rows, err := r.queries.ListTeamMemberAttendanceRecords(ctx, teamsqlc.ListTeamMemberAttendanceRecordsParams{
-		TeamID: teamID, UserID: userID, StartDate: pgDate(startDate), EndDate: pgDate(endDate),
+		TeamID: &teamIDParam, UserID: userID, StartDate: pgDate(startDate), EndDate: pgDate(endDate),
 	})
 	if err != nil {
 		return nil, err
@@ -296,15 +297,16 @@ func (r *Repository) ListMemberAttendanceRecords(ctx context.Context, teamID, us
 			ActivityID: row.ActivityID, ActivityName: row.ActivityName,
 			HoldingDate: row.HoldingDate.Time, Location: row.Location,
 			Stand: row.StandStatus, RegistrationCount: int(row.RegistrationCount),
-			OperationTime: operationTime, Registered: row.Registered,
+			OperationTime: operationTime, Registered: boolRegistered(row.Registered),
 		})
 	}
 	return records, nil
 }
 
 func (r *Repository) ListAttendanceRanking(ctx context.Context, teamID int64, startDate, endDate *time.Time) ([]ports.AttendanceRankingItem, error) {
+	teamIDParam := teamID
 	rows, err := r.queries.ListTeamAttendanceRanking(ctx, teamsqlc.ListTeamAttendanceRankingParams{
-		TeamID: teamID, StartDate: pgDate(startDate), EndDate: pgDate(endDate),
+		TeamID: teamIDParam, StartDate: pgDate(startDate), EndDate: pgDate(endDate),
 	})
 	if err != nil {
 		return nil, err
@@ -322,8 +324,9 @@ func (r *Repository) ListAttendanceRanking(ctx context.Context, teamID int64, st
 }
 
 func (r *Repository) ListMatchAttendance(ctx context.Context, teamID int64, matchID uuid.UUID) (ports.MatchAttendanceHeader, []ports.MatchAttendanceMember, bool, error) {
+	teamIDParam := teamID
 	rows, err := r.queries.ListTeamMatchAttendance(ctx, teamsqlc.ListTeamMatchAttendanceParams{
-		TeamID: teamID, MatchID: pgTeamUUID(matchID),
+		TeamID: &teamIDParam, MatchID: pgTeamUUID(matchID),
 	})
 	if err != nil {
 		return ports.MatchAttendanceHeader{}, nil, false, err
@@ -344,8 +347,34 @@ func (r *Repository) ListMatchAttendance(ctx context.Context, teamID int64, matc
 		members = append(members, ports.MatchAttendanceMember{
 			UserID: row.UserID, Nickname: row.Nickname, AvatarURL: row.AvatarUrl,
 			Stand: row.StandStatus, RegistrationCount: int(row.RegistrationCount),
-			OperationTime: operationTime, Registered: row.Registered,
+			OperationTime: operationTime, Registered: boolRegistered(row.Registered),
 		})
 	}
 	return header, members, true, nil
+}
+
+func boolRegistered(value any) bool {
+	if value == nil {
+		return false
+	}
+	if typed, ok := value.(bool); ok {
+		return typed
+	}
+	return false
+}
+
+func (r *Repository) GetTeamMembershipState(ctx context.Context, teamID int64) (ports.AppMembershipState, error) {
+	row, err := r.queries.GetTeamMembershipState(ctx, teamID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ports.AppMembershipState{}, sharederror.New(sharederror.KindNotFound, "球队不存在")
+	}
+	if err != nil {
+		return ports.AppMembershipState{}, err
+	}
+	state := ports.AppMembershipState{CreditScore: int(row.CreditScore)}
+	if row.VipUntil.Valid {
+		vipUntil := row.VipUntil.Time
+		state.VipUntil = &vipUntil
+	}
+	return state, nil
 }

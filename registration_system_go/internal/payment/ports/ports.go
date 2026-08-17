@@ -95,6 +95,23 @@ type Settlement interface {
 	CreditRecharge(context.Context, VerifiedPayment) (SettlementResult, error)
 }
 
+// MembershipPurchase 是一笔队费订单的购买信息：归属球队与月数。
+type MembershipPurchase struct {
+	TeamID      int64
+	Months      int
+	CreditDelta int
+}
+
+type MembershipSettlement interface {
+	ApplyMembershipPayment(context.Context, VerifiedPayment, MembershipPurchase) (SettlementResult, error)
+}
+
+// TeamEligibility 供下单用例校验球队与操作者身份（由 team 模块实现）。
+type TeamEligibility interface {
+	EnsureManager(context.Context, int64, int64) error
+	EnsureExists(context.Context, int64) error
+}
+
 type OrderNumberGenerator interface {
 	NewOrderNo() string
 }

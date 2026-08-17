@@ -1,0 +1,255 @@
+<script setup lang="ts">
+import AppTabHeader from "@/components/AppTabHeader.vue";
+import NeoButton from "@/components/neo/NeoButton.vue";
+import NeoSegmentedControl from "@/components/neo/NeoSegmentedControl.vue";
+import NeoSurface from "@/components/neo/NeoSurface.vue";
+import NeoTag from "@/components/neo/NeoTag.vue";
+import { MEMBERSHIP_MONTH_OPTIONS, useTeamDetailPage } from "./useTeamDetailPage";
+
+const {
+  pageStyle,
+  team,
+  isLoading,
+  errorMessage,
+  paying,
+  selectedMonths,
+  roleLabel,
+  canManage,
+  totalPriceLabel,
+  membershipLabel,
+  loadTeam,
+  openTeamManage,
+  handleMembershipPayment,
+} = useTeamDetailPage();
+</script>
+
+<template>
+  <view class="team-detail-page" :style="pageStyle">
+    <AppTabHeader :title="team?.name || '球队'" showBack />
+
+    <view class="team-detail-content">
+      <view v-if="errorMessage" class="state-card" @tap="loadTeam">
+        <text class="state-text">{{ errorMessage }}，点击重试</text>
+      </view>
+      <view v-else-if="isLoading && !team" class="state-card">
+        <text class="state-text">正在加载球队信息...</text>
+      </view>
+
+      <template v-else-if="team">
+        <view class="page-hero">
+          <view class="hero-row">
+            <view class="hero-badge">{{ team.name.slice(0, 1) || "队" }}</view>
+            <view class="hero-copy">
+              <text class="hero-title">{{ team.name }}</text>
+              <text class="hero-meta">{{ roleLabel }} · 信用分 {{ team.credit_score }}</text>
+            </view>
+            <NeoTag :tone="team.is_vip ? 'lime' : 'amber'" size="lg">{{ membershipLabel }}</NeoTag>
+          </view>
+        </view>
+
+        <view class="recharge-card">
+          <view class="recharge-head">
+            <text class="recharge-title">队费充值</text>
+            <text class="recharge-copy">30 元 / 月，续费延长球队会员并修复信用分</text>
+          </view>
+          <NeoSegmentedControl
+            :model-value="selectedMonths"
+            :options="MEMBERSHIP_MONTH_OPTIONS"
+            class="recharge-segment"
+            @update:model-value="selectedMonths = $event"
+          />
+          <view class="recharge-total">
+            <text class="recharge-total-label">应付</text>
+            <text class="recharge-total-value">{{ totalPriceLabel }}</text>
+          </view>
+          <NeoButton
+            block
+            :loading="paying"
+            :disabled="paying"
+            @click="handleMembershipPayment"
+          >
+            {{ paying ? "支付中..." : canManage ? "微信支付缴纳队费" : "仅队长或领队可缴纳" }}
+          </NeoButton>
+        </view>
+
+        <NeoSurface variant="raised" custom-class="manage-card">
+          <view class="manage-head">
+            <text class="manage-title">球队管理</text>
+            <text class="manage-copy">资料、队员与比赛出勤管理</text>
+          </view>
+          <NeoButton variant="outline" block :disabled="!canManage" @click="openTeamManage">
+            进入球队管理
+          </NeoButton>
+        </NeoSurface>
+      </template>
+    </view>
+  </view>
+</template>
+
+<style scoped>
+.team-detail-page {
+  min-height: 100vh;
+  padding: 0 28rpx 96rpx;
+  background: var(--neo-color-page);
+  box-sizing: border-box;
+}
+
+.team-detail-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+
+.state-card,
+.page-hero,
+.recharge-card {
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-md);
+  background: var(--neo-color-surface);
+  box-shadow: var(--neo-shadow-raised);
+}
+
+.state-card {
+  padding: 40rpx 28rpx;
+  text-align: center;
+}
+
+.state-text {
+  color: var(--neo-color-text-muted);
+  font-size: 28rpx;
+  font-weight: 800;
+}
+
+.page-hero {
+  padding: 28rpx;
+}
+
+.hero-row {
+  display: flex;
+  align-items: center;
+  gap: 18rpx;
+}
+
+.hero-badge {
+  width: 88rpx;
+  height: 88rpx;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-hero);
+  color: var(--neo-color-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 40rpx;
+  font-weight: 950;
+  flex-shrink: 0;
+}
+
+.hero-copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.hero-title {
+  display: block;
+  color: var(--neo-color-text);
+  font-size: 38rpx;
+  line-height: 1.2;
+  font-weight: 950;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hero-meta {
+  display: block;
+  margin-top: 8rpx;
+  color: var(--neo-color-text-muted);
+  font-size: 24rpx;
+  font-weight: 700;
+}
+
+.recharge-card {
+  padding: 28rpx;
+}
+
+.recharge-head {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.recharge-title {
+  color: var(--neo-color-text);
+  font-size: 32rpx;
+  font-weight: 950;
+}
+
+.recharge-copy {
+  color: var(--neo-color-text-muted);
+  font-size: 24rpx;
+  font-weight: 700;
+}
+
+.recharge-segment {
+  margin-top: 22rpx;
+}
+
+.recharge-total {
+  display: flex;
+  align-items: baseline;
+  gap: 12rpx;
+  margin: 22rpx 4rpx;
+}
+
+.recharge-total-label {
+  color: var(--neo-color-text-muted);
+  font-size: 24rpx;
+  font-weight: 800;
+}
+
+.recharge-total-value {
+  color: var(--neo-color-text);
+  font-size: 44rpx;
+  font-weight: 950;
+}
+
+:deep(.manage-card) {
+  padding: 28rpx;
+}
+
+.manage-head {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+  margin-bottom: 20rpx;
+}
+
+.manage-title {
+  color: var(--neo-color-text);
+  font-size: 32rpx;
+  font-weight: 950;
+}
+
+.manage-copy {
+  color: var(--neo-color-text-muted);
+  font-size: 24rpx;
+  font-weight: 700;
+}
+
+/* #ifdef H5 */
+.team-detail-page {
+  width: 100%;
+  max-width: 750rpx;
+  margin: 0 auto;
+}
+
+.team-detail-page :deep(.app-tab-header-shell) {
+  left: 50%;
+  right: auto;
+  width: 100%;
+  max-width: 750rpx;
+  transform: translateX(-50%);
+}
+/* #endif */
+</style>

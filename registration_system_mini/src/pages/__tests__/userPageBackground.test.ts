@@ -66,14 +66,17 @@ describe("mine page visual composition", () => {
     expect(userPageSource.includes("<navigator")).toEqual(false);
   });
 
-  test("wires membership renewal to the real payment flow", async () => {
+  test("wires membership renewal to the team detail payment flow", async () => {
     const userPageSource = await Bun.file(sourcePath("pages/user/index.vue")).text();
     const composableSource = await Bun.file(sourcePath("pages/user/useMinePage.ts")).text();
+    const detailFlow = await Bun.file(sourcePath("pages/teams/detail/useTeamDetailPage.ts")).text();
 
-    expect(composableSource.includes("createTeamMembershipOrder")).toEqual(true);
-    expect(composableSource.includes("requestWxPayment")).toEqual(true);
-    expect(composableSource.includes("syncPaymentOrderStatus")).toEqual(true);
+    // 「我的」页续费按钮进入球队二级页；微信支付流程收敛在二级页。
     expect(userPageSource.includes("handleMembershipRenewal")).toEqual(true);
+    expect(composableSource.includes("openTeamDetail")).toEqual(true);
+    expect(detailFlow.includes("createTeamMembershipOrder")).toEqual(true);
+    expect(detailFlow.includes("requestWxPayment")).toEqual(true);
+    expect(detailFlow.includes("syncGoPaymentOrder")).toEqual(true);
   });
 
   test("keeps slow billing flow out of the mine page wallet card", async () => {

@@ -109,7 +109,7 @@ func BuildDependencies(ctx context.Context, config Config) (Dependencies, func()
 			return Dependencies{}, nil, fmt.Errorf("create WeChat Pay gateway: %w", err)
 		}
 	}
-	paymentService := paymentapplication.NewService(paymentRepository, paymentRepository, paymentGateway, paymentRepository, paymentorder.Generator{}, matchClock)
+	paymentService := paymentapplication.NewService(paymentRepository, paymentRepository, paymentGateway, paymentRepository, paymentRepository, teamService, paymentorder.Generator{}, matchClock)
 	paymentHandler := paymenthttp.NewHandler(paymentService)
 	walletRepository := walletpostgres.NewRepository(pool)
 	walletService := walletapplication.NewService(walletRepository)

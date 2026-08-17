@@ -11,11 +11,38 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const applyTeamMembershipToTeam = `-- name: ApplyTeamMembershipToTeam :one
+UPDATE teams
+SET credit_score = LEAST(100, credit_score + $1::int),
+    vip_until = GREATEST(NOW(), COALESCE(vip_until, NOW())) + ($2::int * INTERVAL '30 days'),
+    updated_at = NOW()
+WHERE id = $3::bigint
+RETURNING credit_score, vip_until
+`
+
+type ApplyTeamMembershipToTeamParams struct {
+	CreditDelta int32 `json:"credit_delta"`
+	Months      int32 `json:"months"`
+	TeamID      int64 `json:"team_id"`
+}
+
+type ApplyTeamMembershipToTeamRow struct {
+	CreditScore int32              `json:"credit_score"`
+	VipUntil    pgtype.Timestamptz `json:"vip_until"`
+}
+
+func (q *Queries) ApplyTeamMembershipToTeam(ctx context.Context, arg ApplyTeamMembershipToTeamParams) (ApplyTeamMembershipToTeamRow, error) {
+	row := q.db.QueryRow(ctx, applyTeamMembershipToTeam, arg.CreditDelta, arg.Months, arg.TeamID)
+	var i ApplyTeamMembershipToTeamRow
+	err := row.Scan(&i.CreditScore, &i.VipUntil)
+	return i, err
+}
+
 const cancelPaymentOrder = `-- name: CancelPaymentOrder :one
 UPDATE payment_orders
 SET status = 'cancelled', cancelled_at = $2, updated_at = $2
 WHERE order_no = $1 AND status = 'pending'
-RETURNING order_no, user_id, amount_cents, provider, channel, status, prepay_id, transaction_id, paid_at, cancelled_at, created_at, updated_at
+RETURNING order_no, user_id, amount_cents, provider, channel, status, prepay_id, transaction_id, paid_at, cancelled_at, created_at, updated_at, kind, team_id, months
 `
 
 type CancelPaymentOrderParams struct {
@@ -39,6 +66,9 @@ func (q *Queries) CancelPaymentOrder(ctx context.Context, arg CancelPaymentOrder
 		&i.CancelledAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Kind,
+		&i.TeamID,
+		&i.Months,
 	)
 	return i, err
 }
@@ -65,9 +95,9 @@ func (q *Queries) CountPaymentOrders(ctx context.Context, arg CountPaymentOrders
 
 const createPaymentOrder = `-- name: CreatePaymentOrder :one
 INSERT INTO payment_orders (
-    order_no, user_id, amount_cents, provider, channel, status, created_at, updated_at
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $7)
-RETURNING order_no, user_id, amount_cents, provider, channel, status, prepay_id, transaction_id, paid_at, cancelled_at, created_at, updated_at
+    order_no, user_id, amount_cents, provider, channel, status, kind, team_id, months, created_at, updated_at
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $10)
+RETURNING order_no, user_id, amount_cents, provider, channel, status, prepay_id, transaction_id, paid_at, cancelled_at, created_at, updated_at, kind, team_id, months
 `
 
 type CreatePaymentOrderParams struct {
@@ -77,6 +107,9 @@ type CreatePaymentOrderParams struct {
 	Provider    string             `json:"provider"`
 	Channel     string             `json:"channel"`
 	Status      string             `json:"status"`
+	Kind        string             `json:"kind"`
+	TeamID      *int64             `json:"team_id"`
+	Months      *int32             `json:"months"`
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 }
 
@@ -88,6 +121,9 @@ func (q *Queries) CreatePaymentOrder(ctx context.Context, arg CreatePaymentOrder
 		arg.Provider,
 		arg.Channel,
 		arg.Status,
+		arg.Kind,
+		arg.TeamID,
+		arg.Months,
 		arg.CreatedAt,
 	)
 	var i PaymentOrder
@@ -104,6 +140,9 @@ func (q *Queries) CreatePaymentOrder(ctx context.Context, arg CreatePaymentOrder
 		&i.CancelledAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Kind,
+		&i.TeamID,
+		&i.Months,
 	)
 	return i, err
 }
@@ -161,7 +200,7 @@ func (q *Queries) EnsureRechargeWalletAccount(ctx context.Context, userID int64)
 }
 
 const getPaymentOrder = `-- name: GetPaymentOrder :one
-SELECT order_no, user_id, amount_cents, provider, channel, status, prepay_id, transaction_id, paid_at, cancelled_at, created_at, updated_at FROM payment_orders WHERE order_no = $1
+SELECT order_no, user_id, amount_cents, provider, channel, status, prepay_id, transaction_id, paid_at, cancelled_at, created_at, updated_at, kind, team_id, months FROM payment_orders WHERE order_no = $1
 `
 
 func (q *Queries) GetPaymentOrder(ctx context.Context, orderNo string) (PaymentOrder, error) {
@@ -180,12 +219,15 @@ func (q *Queries) GetPaymentOrder(ctx context.Context, orderNo string) (PaymentO
 		&i.CancelledAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Kind,
+		&i.TeamID,
+		&i.Months,
 	)
 	return i, err
 }
 
 const getPaymentOrderForUpdate = `-- name: GetPaymentOrderForUpdate :one
-SELECT order_no, user_id, amount_cents, provider, channel, status, prepay_id, transaction_id, paid_at, cancelled_at, created_at, updated_at FROM payment_orders WHERE order_no = $1 FOR UPDATE
+SELECT order_no, user_id, amount_cents, provider, channel, status, prepay_id, transaction_id, paid_at, cancelled_at, created_at, updated_at, kind, team_id, months FROM payment_orders WHERE order_no = $1 FOR UPDATE
 `
 
 func (q *Queries) GetPaymentOrderForUpdate(ctx context.Context, orderNo string) (PaymentOrder, error) {
@@ -204,6 +246,9 @@ func (q *Queries) GetPaymentOrderForUpdate(ctx context.Context, orderNo string) 
 		&i.CancelledAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Kind,
+		&i.TeamID,
+		&i.Months,
 	)
 	return i, err
 }
@@ -305,7 +350,7 @@ func (q *Queries) InsertRechargeWalletTransaction(ctx context.Context, arg Inser
 }
 
 const listPaymentOrders = `-- name: ListPaymentOrders :many
-SELECT order_no, user_id, amount_cents, provider, channel, status, prepay_id, transaction_id, paid_at, cancelled_at, created_at, updated_at FROM payment_orders
+SELECT order_no, user_id, amount_cents, provider, channel, status, prepay_id, transaction_id, paid_at, cancelled_at, created_at, updated_at, kind, team_id, months FROM payment_orders
 WHERE ($1::bigint = 0 OR user_id = $1)
   AND ($2::text = '' OR status = $2)
   AND ($3::text = '' OR order_no ILIKE '%' || $3 || '%')
@@ -349,6 +394,9 @@ func (q *Queries) ListPaymentOrders(ctx context.Context, arg ListPaymentOrdersPa
 			&i.CancelledAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Kind,
+			&i.TeamID,
+			&i.Months,
 		); err != nil {
 			return nil, err
 		}
@@ -383,7 +431,7 @@ const markPaymentOrderPaid = `-- name: MarkPaymentOrderPaid :one
 UPDATE payment_orders
 SET status = 'paid', transaction_id = $2, paid_at = $3, updated_at = $3
 WHERE order_no = $1 AND status = 'pending'
-RETURNING order_no, user_id, amount_cents, provider, channel, status, prepay_id, transaction_id, paid_at, cancelled_at, created_at, updated_at
+RETURNING order_no, user_id, amount_cents, provider, channel, status, prepay_id, transaction_id, paid_at, cancelled_at, created_at, updated_at, kind, team_id, months
 `
 
 type MarkPaymentOrderPaidParams struct {
@@ -408,6 +456,9 @@ func (q *Queries) MarkPaymentOrderPaid(ctx context.Context, arg MarkPaymentOrder
 		&i.CancelledAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Kind,
+		&i.TeamID,
+		&i.Months,
 	)
 	return i, err
 }
@@ -416,7 +467,7 @@ const savePaymentOrderPrepared = `-- name: SavePaymentOrderPrepared :one
 UPDATE payment_orders
 SET prepay_id = $2, updated_at = $3
 WHERE order_no = $1 AND status = 'pending' AND (prepay_id IS NULL OR prepay_id = $2)
-RETURNING order_no, user_id, amount_cents, provider, channel, status, prepay_id, transaction_id, paid_at, cancelled_at, created_at, updated_at
+RETURNING order_no, user_id, amount_cents, provider, channel, status, prepay_id, transaction_id, paid_at, cancelled_at, created_at, updated_at, kind, team_id, months
 `
 
 type SavePaymentOrderPreparedParams struct {
@@ -441,6 +492,9 @@ func (q *Queries) SavePaymentOrderPrepared(ctx context.Context, arg SavePaymentO
 		&i.CancelledAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Kind,
+		&i.TeamID,
+		&i.Months,
 	)
 	return i, err
 }

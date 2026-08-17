@@ -42,6 +42,7 @@ func (r *Repository) Create(ctx context.Context, order paymentdomain.Order) erro
 	_, err := r.queries.CreatePaymentOrder(ctx, paymentsqlc.CreatePaymentOrderParams{
 		OrderNo: order.OrderNo, UserID: order.UserID, AmountCents: order.AmountCents,
 		Provider: order.Provider, Channel: order.Channel, Status: string(order.Status),
+		Kind: string(order.Kind), TeamID: order.TeamID, Months: monthsToSQL(order.Months),
 		CreatedAt: timestamptz(order.CreatedAt),
 	})
 	return mapConstraintError(err)
@@ -224,6 +225,8 @@ func mapOrder(row paymentsqlc.PaymentOrder) paymentdomain.Order {
 	order := paymentdomain.Order{
 		OrderNo: row.OrderNo, UserID: row.UserID, AmountCents: row.AmountCents,
 		Provider: row.Provider, Channel: row.Channel, Status: paymentdomain.Status(row.Status),
+		Kind:   paymentdomain.Kind(row.Kind),
+		TeamID: row.TeamID, Months: monthsFromSQL(row.Months),
 		CreatedAt: row.CreatedAt.Time, UpdatedAt: row.UpdatedAt.Time,
 	}
 	if row.PrepayID != nil {
@@ -257,4 +260,75 @@ func mapConstraintError(err error) error {
 		return sharederror.ErrConflict
 	}
 	return err
+}
+
+func monthsToSQL(months *int) *int32 {
+	if months == nil {
+		return nil
+	}
+	value := int32(*months)
+	return &value
+}
+
+func monthsFromSQL(months *int32) *int {
+	if months == nil {
+		return nil
+	}
+	value := int(*months)
+	return &value
+}
+
+// ApplyMembershipPayment 结算一笔队费订单：订单置为已付并把会员权益落到归属球队。
+// 幂等与充值结算同构——重复回调返回已付订单，不重复加时长。
+func (r *Repository) ApplyMembershipPayment(ctx context.Context, payment paymentports.VerifiedPayment, purchase paymentports.MembershipPurchase) (result paymentports.SettlementResult, err error) {
+	tx, err := r.database.Begin(ctx)
+	if err != nil {
+		return result, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	queries := r.queries.WithTx(tx)
+	row, err := queries.GetPaymentOrderForUpdate(ctx, payment.OrderNo)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return result, sharederror.ErrNotFound
+	}
+	if err != nil {
+		return result, err
+	}
+	order := mapOrder(row)
+	if order.Kind != paymentdomain.KindTeamMembership {
+		return result, sharederror.New(sharederror.KindConflict, "该订单不是队费订单")
+	}
+	if order.AmountCents != payment.AmountCents {
+		return result, sharederror.New(sharederror.KindConflict, "支付金额不一致")
+	}
+	if order.Status == paymentdomain.StatusPaid {
+		if order.TransactionID != payment.TransactionID {
+			return result, sharederror.ErrConflict
+		}
+		if err := tx.Commit(ctx); err != nil {
+			return result, err
+		}
+		return paymentports.SettlementResult{Order: order}, nil
+	}
+	if order.Status != paymentdomain.StatusPending {
+		return result, sharederror.ErrConflict
+	}
+	paidRow, err := queries.MarkPaymentOrderPaid(ctx, paymentsqlc.MarkPaymentOrderPaidParams{
+		OrderNo: order.OrderNo, TransactionID: &payment.TransactionID, PaidAt: timestamptz(payment.PaidAt),
+	})
+	if err != nil {
+		return result, mapConstraintError(err)
+	}
+	if _, err := queries.ApplyTeamMembershipToTeam(ctx, paymentsqlc.ApplyTeamMembershipToTeamParams{
+		CreditDelta: int32(purchase.CreditDelta), Months: int32(purchase.Months), TeamID: purchase.TeamID,
+	}); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return result, sharederror.New(sharederror.KindNotFound, "队费订单归属的球队不存在")
+		}
+		return result, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return result, err
+	}
+	return paymentports.SettlementResult{Order: mapOrder(paidRow), Credited: true}, nil
 }

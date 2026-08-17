@@ -292,3 +292,8 @@ ORDER BY
     r.updated_at NULLS LAST,
     tm.joined_at,
     tm.user_id;
+
+-- name: GetTeamMembershipState :one
+SELECT credit_score, vip_until
+FROM teams
+WHERE id = $1;

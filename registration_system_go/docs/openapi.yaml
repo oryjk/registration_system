@@ -253,6 +253,28 @@ paths:
           description: 该场比赛全体在职成员的报名与出勤状态
         <<: *standardErrors
 
+  /api/v1/app/payments/team-membership-orders:
+    post:
+      operationId: createAppTeamMembershipOrder
+      tags: [App Payments]
+      summary: 为球队创建队费（会员续费）订单并发起微信支付
+      description: 仅该队队长/领队可操作；月费 30 元，支付成功后球队会员延长 30 天/月并修复信用分。
+      security: *bearerSecurity
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [team_id, months]
+              properties:
+                team_id: { type: integer, format: int64 }
+                months: { type: integer, minimum: 1, maximum: 36 }
+      responses:
+        "200":
+          description: 订单与微信支付参数
+        <<: *standardErrors
+
   /api/v1/app/matches:
     get:
       operationId: listAppMatches

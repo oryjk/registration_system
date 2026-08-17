@@ -114,17 +114,22 @@ type PaymentOrder struct {
 	CancelledAt   pgtype.Timestamptz `json:"cancelled_at"`
 	CreatedAt     pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
+	Kind          string             `json:"kind"`
+	TeamID        *int64             `json:"team_id"`
+	Months        *int32             `json:"months"`
 }
 
 type Team struct {
-	ID          int64            `json:"id"`
-	Name        string           `json:"name"`
-	Description *string          `json:"description"`
-	LogoUrl     *string          `json:"logo_url"`
-	CaptainID   *int64           `json:"captain_id"`
-	Status      string           `json:"status"`
-	CreatedAt   pgtype.Timestamp `json:"created_at"`
-	UpdatedAt   pgtype.Timestamp `json:"updated_at"`
+	ID          int64              `json:"id"`
+	Name        string             `json:"name"`
+	Description *string            `json:"description"`
+	LogoUrl     *string            `json:"logo_url"`
+	CaptainID   *int64             `json:"captain_id"`
+	Status      string             `json:"status"`
+	CreatedAt   pgtype.Timestamp   `json:"created_at"`
+	UpdatedAt   pgtype.Timestamp   `json:"updated_at"`
+	CreditScore int32              `json:"credit_score"`
+	VipUntil    pgtype.Timestamptz `json:"vip_until"`
 }
 
 type TeamMember struct {

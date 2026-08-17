@@ -33,6 +33,9 @@ type AppTeamDetailResponse struct {
 	CaptainID   *int64            `json:"captain_id"`
 	Status      domain.TeamStatus `json:"status"`
 	MyRole      domain.Role       `json:"my_role"`
+	CreditScore int               `json:"credit_score"`
+	VipUntil    *time.Time        `json:"vip_until"`
+	IsVip       bool              `json:"is_vip"`
 }
 
 type AppTeamMemberResponse struct {
@@ -71,6 +74,8 @@ func (h *AppHandler) GetTeam(c *gin.Context) {
 	sharedhttpapi.WriteSuccess(c, AppTeamDetailResponse{
 		ID: team.ID, Name: team.Name, Description: team.Description, LogoURL: team.LogoURL,
 		CaptainID: team.CaptainID, Status: team.Status, MyRole: detail.MyRole,
+		CreditScore: detail.Membership.CreditScore, VipUntil: detail.Membership.VipUntil,
+		IsVip: detail.Membership.VipUntil != nil && detail.Membership.VipUntil.After(time.Now()),
 	})
 }
 

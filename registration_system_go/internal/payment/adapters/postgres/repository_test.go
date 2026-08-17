@@ -240,3 +240,79 @@ func mustPaymentOrder(t *testing.T, orderNo string, userID, amount int64) paymen
 	}
 	return order
 }
+
+func TestApplyMembershipPaymentExtendsTeamAndIsIdempotent(t *testing.T) {
+	pool := testsupport.OpenTestPostgres(t)
+	ctx := context.Background()
+	userID := seedPaymentUser(t, pool, "member")
+	var teamID int64
+	if err := pool.QueryRow(ctx, `INSERT INTO teams (name) VALUES ('队费球队') RETURNING id`).Scan(&teamID); err != nil {
+		t.Fatal(err)
+	}
+	order, err := paymentdomain.NewTeamMembershipOrder(uniquePaymentOrderNo("teamfee"), userID, teamID, 3, time.Now().UTC())
+	if err != nil {
+		t.Fatal(err)
+	}
+	repository := NewRepository(pool)
+	if err := repository.Create(ctx, order); err != nil {
+		t.Fatal(err)
+	}
+	payment := paymentports.VerifiedPayment{OrderNo: order.OrderNo, AmountCents: order.AmountCents, TransactionID: "wx-" + order.OrderNo, PaidAt: time.Now().UTC()}
+	purchase := paymentports.MembershipPurchase{TeamID: teamID, Months: 3, CreditDelta: 3 * paymentdomain.MembershipCreditPerMonth}
+
+	first, err := repository.ApplyMembershipPayment(ctx, payment, purchase)
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := repository.ApplyMembershipPayment(ctx, payment, purchase)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var vipUntil time.Time
+	var credit int
+	if err := pool.QueryRow(ctx, `SELECT vip_until, credit_score FROM teams WHERE id=$1`, teamID).Scan(&vipUntil, &credit); err != nil {
+		t.Fatal(err)
+	}
+	// 3 个月 = 90 天；幂等重放不叠加。
+	minVip := time.Now().UTC().Add(89 * 24 * time.Hour)
+	maxVip := time.Now().UTC().Add(91 * 24 * time.Hour)
+	if vipUntil.Before(minVip) || vipUntil.After(maxVip) || credit != 90+3*paymentdomain.MembershipCreditPerMonth {
+		t.Fatalf("vip_until=%v credit=%d", vipUntil, credit)
+	}
+	if !first.Credited || second.Credited {
+		t.Fatalf("first=%+v second=%+v", first, second)
+	}
+	if second.Order.Status != paymentdomain.StatusPaid {
+		t.Fatalf("replayed order status=%s", second.Order.Status)
+	}
+}
+
+func TestApplyMembershipPaymentRejectsAmountMismatch(t *testing.T) {
+	pool := testsupport.OpenTestPostgres(t)
+	ctx := context.Background()
+	userID := seedPaymentUser(t, pool, "mismatch")
+	var teamID int64
+	if err := pool.QueryRow(ctx, `INSERT INTO teams (name) VALUES ('金额不符球队') RETURNING id`).Scan(&teamID); err != nil {
+		t.Fatal(err)
+	}
+	order, err := paymentdomain.NewTeamMembershipOrder(uniquePaymentOrderNo("mism"), userID, teamID, 1, time.Now().UTC())
+	if err != nil {
+		t.Fatal(err)
+	}
+	repository := NewRepository(pool)
+	if err := repository.Create(ctx, order); err != nil {
+		t.Fatal(err)
+	}
+	payment := paymentports.VerifiedPayment{OrderNo: order.OrderNo, AmountCents: 1, TransactionID: "wx-bad", PaidAt: time.Now().UTC()}
+	if _, err := repository.ApplyMembershipPayment(ctx, payment, paymentports.MembershipPurchase{TeamID: teamID, Months: 1}); err == nil {
+		t.Fatal("expected amount mismatch conflict")
+	}
+	loaded, err := repository.Get(ctx, order.OrderNo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if loaded.Status != paymentdomain.StatusPending {
+		t.Fatalf("order should stay pending, got %s", loaded.Status)
+	}
+}

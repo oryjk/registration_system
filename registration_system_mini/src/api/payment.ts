@@ -20,16 +20,31 @@ export function createRechargeOrder(payload: {
   });
 }
 
-export function createTeamMembershipOrder(payload: {
-  team_id: number;
-  months: number;
-  openid?: string;
-  note?: string;
-}) {
-  return requestApi<BackendPaymentOrderResult>({
-    url: "/payment/team-membership",
+export interface GoPaymentOrderResult {
+  order: {
+    order_no: string;
+    kind: string;
+    amount_cents: number;
+    status: string;
+  };
+  payment: Record<string, unknown> | null;
+}
+
+/** 为球队创建队费（会员续费）订单并发起微信支付；仅该队队长/领队可操作。 */
+export function createTeamMembershipOrder(payload: { team_id: number; months: number }) {
+  return requestApi<GoPaymentOrderResult>({
+    url: "/payments/team-membership-orders",
     method: "POST",
     data: payload,
+    auth: true,
+  });
+}
+
+/** 轮询 Go 支付订单状态（微信回调后置为已付）。 */
+export function syncGoPaymentOrder(orderNo: string) {
+  return requestApi<{ order: { order_no: string; status: string } }>({
+    url: `/payments/orders/${orderNo}/sync`,
+    method: "POST",
     auth: true,
   });
 }

@@ -1,8 +1,16 @@
 -- name: CreatePaymentOrder :one
 INSERT INTO payment_orders (
-    order_no, user_id, amount_cents, provider, channel, status, created_at, updated_at
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $7)
+    order_no, user_id, amount_cents, provider, channel, status, kind, team_id, months, created_at, updated_at
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $10)
 RETURNING *;
+
+-- name: ApplyTeamMembershipToTeam :one
+UPDATE teams
+SET credit_score = LEAST(100, credit_score + sqlc.arg('credit_delta')::int),
+    vip_until = GREATEST(NOW(), COALESCE(vip_until, NOW())) + (sqlc.arg('months')::int * INTERVAL '30 days'),
+    updated_at = NOW()
+WHERE id = sqlc.arg('team_id')::bigint
+RETURNING credit_score, vip_until;
 
 -- name: GetPaymentOrder :one
 SELECT * FROM payment_orders WHERE order_no = $1;

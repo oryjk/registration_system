@@ -59,3 +59,22 @@ func TestMarkPaidRejectsDifferentProviderTransaction(t *testing.T) {
 		t.Fatalf("MarkPaid() error = %v, want conflict", err)
 	}
 }
+
+func TestNewTeamMembershipOrderPricesAndValidates(t *testing.T) {
+	now := time.Date(2026, 8, 17, 12, 0, 0, 0, time.UTC)
+	order, err := NewTeamMembershipOrder("P-team-1", 42, 7, 3, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if order.Kind != KindTeamMembership || order.AmountCents != 3*MembershipPriceCentsPerMonth {
+		t.Fatalf("unexpected order: %+v", order)
+	}
+	if order.TeamID == nil || *order.TeamID != 7 || order.Months == nil || *order.Months != 3 {
+		t.Fatalf("membership fields missing: %+v", order)
+	}
+	for _, months := range []int{0, -1, MembershipMaxMonths + 1} {
+		if _, err := NewTeamMembershipOrder("P-team-2", 42, 7, months, now); err == nil {
+			t.Fatalf("expected months=%d to be rejected", months)
+		}
+	}
+}

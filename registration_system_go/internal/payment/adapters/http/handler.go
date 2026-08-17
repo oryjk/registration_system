@@ -23,6 +23,7 @@ const maxWebhookBodyBytes = 1 << 20
 
 type PaymentService interface {
 	CreateRecharge(context.Context, sharedauth.Actor, paymentapplication.CreateRechargeCommand) (paymentapplication.CreateRechargeResult, error)
+	CreateTeamMembership(context.Context, sharedauth.Actor, paymentapplication.CreateTeamMembershipCommand) (paymentapplication.CreateRechargeResult, error)
 	List(context.Context, sharedauth.Actor, paymentapplication.ListQuery) (paymentapplication.ListResult, error)
 	Get(context.Context, sharedauth.Actor, string) (paymentdomain.Order, error)
 	Sync(context.Context, sharedauth.Actor, string) (paymentports.SettlementResult, error)
@@ -38,12 +39,20 @@ type CreateRechargeRequest struct {
 	AmountCents int64 `json:"amount_cents" binding:"required,min=1"`
 }
 
+type CreateTeamMembershipRequest struct {
+	TeamID int64 `json:"team_id" binding:"required,min=1"`
+	Months int   `json:"months" binding:"required,min=1"`
+}
+
 type OrderResponse struct {
 	OrderNo       string               `json:"order_no"`
 	UserID        int64                `json:"user_id"`
 	AmountCents   int64                `json:"amount_cents"`
 	Provider      string               `json:"provider"`
 	Channel       string               `json:"channel"`
+	Kind          paymentdomain.Kind   `json:"kind"`
+	TeamID        *int64               `json:"team_id"`
+	Months        *int                 `json:"months"`
 	Status        paymentdomain.Status `json:"status"`
 	PrepayID      string               `json:"prepay_id,omitempty"`
 	TransactionID string               `json:"transaction_id,omitempty"`
@@ -79,6 +88,7 @@ type wechatCallbackResponse struct {
 
 func (h *Handler) RegisterAppRoutes(group *gin.RouterGroup) {
 	group.POST("/payments/recharge-orders", h.CreateRecharge)
+	group.POST("/payments/team-membership-orders", h.CreateTeamMembership)
 	group.GET("/payments/orders", h.List)
 	group.GET("/payments/orders/:order_no", h.Get)
 	group.POST("/payments/orders/:order_no/sync", h.Sync)
@@ -105,6 +115,26 @@ func (h *Handler) CreateRecharge(c *gin.Context) {
 		return
 	}
 	result, err := h.service.CreateRecharge(c.Request.Context(), actor, paymentapplication.CreateRechargeCommand{AmountCents: request.AmountCents, ClientIP: c.ClientIP()})
+	if err != nil {
+		writePaymentError(c, err)
+		return
+	}
+	sharedhttpapi.WriteSuccess(c, CreateRechargeResponse{Order: mapOrder(result.Order), Payment: result.Payment})
+}
+
+func (h *Handler) CreateTeamMembership(c *gin.Context) {
+	actor, ok := paymentActor(c)
+	if !ok {
+		return
+	}
+	var request CreateTeamMembershipRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		sharedhttpapi.WriteError(c, sharederror.New(sharederror.KindValidation, "续费月数必须在 1 到 36 之间"))
+		return
+	}
+	result, err := h.service.CreateTeamMembership(c.Request.Context(), actor, paymentapplication.CreateTeamMembershipCommand{
+		TeamID: request.TeamID, Months: request.Months, ClientIP: c.ClientIP(),
+	})
 	if err != nil {
 		writePaymentError(c, err)
 		return
@@ -205,7 +235,8 @@ func writePaymentError(c *gin.Context, err error) {
 func mapOrder(order paymentdomain.Order) OrderResponse {
 	return OrderResponse{
 		OrderNo: order.OrderNo, UserID: order.UserID, AmountCents: order.AmountCents,
-		Provider: order.Provider, Channel: order.Channel, Status: order.Status,
+		Provider: order.Provider, Channel: order.Channel,
+		Kind: order.Kind, TeamID: order.TeamID, Months: order.Months, Status: order.Status,
 		PrepayID: order.PrepayID, TransactionID: order.TransactionID,
 		PaidAt: order.PaidAt, CancelledAt: order.CancelledAt,
 		CreatedAt: order.CreatedAt, UpdatedAt: order.UpdatedAt,

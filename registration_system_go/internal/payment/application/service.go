@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 
 	paymentdomain "github.com/oryjk/registration_system/registration_system_go/internal/payment/domain"
@@ -17,16 +18,18 @@ const (
 )
 
 type Service struct {
-	orders     paymentports.OrderRepository
-	users      paymentports.UserOpenIDReader
-	gateway    paymentports.Gateway
-	settlement paymentports.Settlement
-	orderNos   paymentports.OrderNumberGenerator
-	clock      paymentports.Clock
+	orders      paymentports.OrderRepository
+	users       paymentports.UserOpenIDReader
+	gateway     paymentports.Gateway
+	settlement  paymentports.Settlement
+	memberships paymentports.MembershipSettlement
+	teams       paymentports.TeamEligibility
+	orderNos    paymentports.OrderNumberGenerator
+	clock       paymentports.Clock
 }
 
-func NewService(orders paymentports.OrderRepository, users paymentports.UserOpenIDReader, gateway paymentports.Gateway, settlement paymentports.Settlement, orderNos paymentports.OrderNumberGenerator, clock paymentports.Clock) *Service {
-	return &Service{orders: orders, users: users, gateway: gateway, settlement: settlement, orderNos: orderNos, clock: clock}
+func NewService(orders paymentports.OrderRepository, users paymentports.UserOpenIDReader, gateway paymentports.Gateway, settlement paymentports.Settlement, memberships paymentports.MembershipSettlement, teams paymentports.TeamEligibility, orderNos paymentports.OrderNumberGenerator, clock paymentports.Clock) *Service {
+	return &Service{orders: orders, users: users, gateway: gateway, settlement: settlement, memberships: memberships, teams: teams, orderNos: orderNos, clock: clock}
 }
 
 type CreateRechargeCommand struct {
@@ -73,6 +76,54 @@ func (s *Service) CreateRecharge(ctx context.Context, actor sharedauth.Actor, co
 		return CreateRechargeResult{}, err
 	}
 	return CreateRechargeResult{Order: order, Payment: providerResult.Parameters}, nil
+}
+
+// CreateTeamMembership 为球队创建队费（会员续费）订单并发起微信支付；
+// 仅该队队长/领队可操作，订单归属被点击的球队。
+func (s *Service) CreateTeamMembership(ctx context.Context, actor sharedauth.Actor, command CreateTeamMembershipCommand) (CreateRechargeResult, error) {
+	if !actor.IsUser() {
+		return CreateRechargeResult{}, sharederror.ErrForbidden
+	}
+	if err := s.teams.EnsureManager(ctx, command.TeamID, actor.ID); err != nil {
+		return CreateRechargeResult{}, err
+	}
+	now := s.clock.Now()
+	order, err := paymentdomain.NewTeamMembershipOrder(s.orderNos.NewOrderNo(), actor.ID, command.TeamID, command.Months, now)
+	if err != nil {
+		return CreateRechargeResult{}, err
+	}
+	openid, err := s.users.OpenIDForUser(ctx, actor.ID)
+	if err != nil {
+		return CreateRechargeResult{}, err
+	}
+	if strings.TrimSpace(openid) == "" {
+		return CreateRechargeResult{}, sharederror.New(sharederror.KindConflict, "当前用户缺少微信身份信息")
+	}
+	if err := s.orders.Create(ctx, order); err != nil {
+		return CreateRechargeResult{}, err
+	}
+	providerResult, err := s.gateway.UnifiedOrder(ctx, paymentports.UnifiedOrderRequest{
+		OrderNo: order.OrderNo, AmountCents: order.AmountCents,
+		Description: fmt.Sprintf("球队队费续费 %d 个月", command.Months),
+		ClientIP:    strings.TrimSpace(command.ClientIP), OpenID: openid,
+	})
+	if err != nil {
+		if errors.Is(err, paymentports.ErrProviderRejected) {
+			_ = s.orders.MarkFailed(ctx, order.OrderNo, s.clock.Now())
+		}
+		return CreateRechargeResult{}, err
+	}
+	order, err = s.orders.SavePrepared(ctx, order.OrderNo, providerResult.PrepayID, s.clock.Now())
+	if err != nil {
+		return CreateRechargeResult{}, err
+	}
+	return CreateRechargeResult{Order: order, Payment: providerResult.Parameters}, nil
+}
+
+type CreateTeamMembershipCommand struct {
+	TeamID   int64
+	Months   int
+	ClientIP string
 }
 
 type ListQuery struct {
@@ -190,10 +241,26 @@ func (s *Service) settle(ctx context.Context, payment paymentports.ProviderPayme
 	if !payment.Paid || payment.OrderNo == "" || payment.TransactionID == "" || payment.AmountCents < 1 || payment.PaidAt.IsZero() {
 		return paymentports.SettlementResult{}, sharederror.New(sharederror.KindValidation, "支付结果无效")
 	}
-	return s.settlement.CreditRecharge(ctx, paymentports.VerifiedPayment{
+	verified := paymentports.VerifiedPayment{
 		OrderNo: payment.OrderNo, AmountCents: payment.AmountCents,
 		TransactionID: payment.TransactionID, PaidAt: payment.PaidAt,
-	})
+	}
+	order, err := s.orders.Get(ctx, payment.OrderNo)
+	if err != nil {
+		return paymentports.SettlementResult{}, err
+	}
+	switch order.Kind {
+	case paymentdomain.KindTeamMembership:
+		if order.TeamID == nil || order.Months == nil {
+			return paymentports.SettlementResult{}, sharederror.New(sharederror.KindConflict, "队费订单缺少球队信息")
+		}
+		return s.memberships.ApplyMembershipPayment(ctx, verified, paymentports.MembershipPurchase{
+			TeamID: *order.TeamID, Months: *order.Months,
+			CreditDelta: *order.Months * paymentdomain.MembershipCreditPerMonth,
+		})
+	default:
+		return s.settlement.CreditRecharge(ctx, verified)
+	}
 }
 
 func normalizePage(page, pageSize int) (int, int) {

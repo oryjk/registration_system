@@ -1,5 +1,4 @@
 import { computed, ref } from "vue";
-import { createTeamMembershipOrder, syncPaymentOrderStatus } from "@/api/payment";
 import { getWallet } from "@/api/wallet";
 import type { BackendTeamCreditTransaction } from "@/types/backend";
 import type { MineMatchSummary, MineStatItem } from "./mineTypes";
@@ -11,7 +10,6 @@ import { useMiniReviewStatus } from "@/stores/miniReview";
 import { clearSession } from "@/stores/appSession";
 import { hasManualLogout } from "@/utils/authStorage";
 import { getCustomNavMetrics } from "@/utils/customNav";
-import { isMockWxPaymentParams, isPaymentCancelled, normalizeWxPaymentParams, requestWxPayment } from "@/utils/payment";
 import {
   formatCreditTransactionLabel,
   formatDateTimeLabel,
@@ -200,14 +198,14 @@ export function useMinePage() {
     uni.navigateTo({ url: "/pages/profile/setup/index?mode=edit" });
   }
 
+  function openTeamDetail(teamId?: number) {
+    const targetId = teamId ?? currentTeam.value?.id;
+    if (!targetId) return;
+    uni.navigateTo({ url: `/pages/teams/detail/index?teamId=${targetId}` });
+  }
+
   function openTeamManage(teamId?: number) {
-    const targetTeam = teamId ? teamProfiles.value.find((team) => team.id === teamId) : currentTeam.value;
-    if (!targetTeam?.canManageTeam) {
-      uni.showToast({ title: "只有队长或领队可以管理球队", icon: "none" });
-      return;
-    }
-    if (teamId && currentTeam.value?.id !== teamId) switchTeam(teamId);
-    uni.navigateTo({ url: "/pages/teams/manage/index" });
+    return openTeamDetail(teamId);
   }
 
   function openNotifications() {
@@ -267,29 +265,8 @@ export function useMinePage() {
     uni.showToast({ title: "已退出登录", icon: "none" });
   }
 
-  async function handleMembershipRenewal() {
-    if (!currentTeam.value || isPayingMembership.value) return;
-    if (!currentTeam.value.canManageTeam) {
-      uni.showToast({ title: "只有队长或领队可以续费球队会员", icon: "none" });
-      return;
-    }
-    isPayingMembership.value = true;
-    try {
-      const order = await createTeamMembershipOrder({ team_id: currentTeam.value.id, months: 1, note: "小程序球队会员续费" });
-      const paymentParams = normalizeWxPaymentParams(order.params);
-      if (paymentParams && !isMockWxPaymentParams(paymentParams)) await requestWxPayment(paymentParams);
-      const result = await syncPaymentOrderStatus(order.order_no);
-      await loadPageData({ preserveContent: true });
-      uni.showToast({ title: result.paid || paymentParams ? "会员续费已提交" : "续费订单已创建", icon: "none" });
-    } catch (error) {
-      if (isPaymentCancelled(error)) {
-        uni.showToast({ title: "已取消支付", icon: "none" });
-      } else {
-        uni.showToast({ title: error instanceof Error ? error.message : "会员续费失败", icon: "none" });
-      }
-    } finally {
-      isPayingMembership.value = false;
-    }
+  function handleMembershipRenewal() {
+    openTeamDetail();
   }
 
   return {

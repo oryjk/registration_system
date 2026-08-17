@@ -131,3 +131,7 @@ func mustHTTPOrder(t *testing.T, orderNo string, userID, amount int64) paymentdo
 	}
 	return order
 }
+
+func (f *fakePaymentService) CreateTeamMembership(_ context.Context, _ sharedauth.Actor, _ paymentapplication.CreateTeamMembershipCommand) (paymentapplication.CreateRechargeResult, error) {
+	return paymentapplication.CreateRechargeResult{}, nil
+}

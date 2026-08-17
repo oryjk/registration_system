@@ -11,8 +11,9 @@ import (
 )
 
 type AppTeamDetail struct {
-	Team   domain.Team
-	MyRole domain.Role
+	Team       domain.Team
+	MyRole     domain.Role
+	Membership ports.AppMembershipState
 }
 
 type AppTeamMember struct {
@@ -38,7 +39,11 @@ func (s AppQueryService) GetTeam(ctx context.Context, actor sharedauth.Actor, te
 	if err != nil {
 		return AppTeamDetail{}, err
 	}
-	return AppTeamDetail{Team: team, MyRole: member.Role}, nil
+	membership, err := s.repository.GetTeamMembershipState(ctx, teamID)
+	if err != nil {
+		return AppTeamDetail{}, sharederror.Wrap(sharederror.KindInternal, "查询球队会员状态失败", err)
+	}
+	return AppTeamDetail{Team: team, MyRole: member.Role, Membership: membership}, nil
 }
 
 func (s AppQueryService) ListMembers(ctx context.Context, actor sharedauth.Actor, teamID int64) ([]AppTeamMember, error) {

@@ -323,3 +323,7 @@ func (r *routerUserRegistration) Delete(_ context.Context, actor sharedauth.Acto
 	r.actor = actor
 	return r.registration, nil
 }
+
+func (routerPaymentService) CreateTeamMembership(context.Context, sharedauth.Actor, paymentapplication.CreateTeamMembershipCommand) (paymentapplication.CreateRechargeResult, error) {
+	return paymentapplication.CreateRechargeResult{}, nil
+}

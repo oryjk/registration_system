@@ -54,9 +54,20 @@ WHERE teams.id = $1
 RETURNING teams.id, teams.name, teams.description, teams.logo_url, teams.captain_id, teams.status, teams.created_at, teams.updated_at
 `
 
-func (q *Queries) ClearTeamCaptain(ctx context.Context, id int64) (Team, error) {
+type ClearTeamCaptainRow struct {
+	ID          int64            `json:"id"`
+	Name        string           `json:"name"`
+	Description *string          `json:"description"`
+	LogoUrl     *string          `json:"logo_url"`
+	CaptainID   *int64           `json:"captain_id"`
+	Status      string           `json:"status"`
+	CreatedAt   pgtype.Timestamp `json:"created_at"`
+	UpdatedAt   pgtype.Timestamp `json:"updated_at"`
+}
+
+func (q *Queries) ClearTeamCaptain(ctx context.Context, id int64) (ClearTeamCaptainRow, error) {
 	row := q.db.QueryRow(ctx, clearTeamCaptain, id)
-	var i Team
+	var i ClearTeamCaptainRow
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
@@ -81,9 +92,20 @@ type CreateTeamParams struct {
 	Description *string `json:"description"`
 }
 
-func (q *Queries) CreateTeam(ctx context.Context, arg CreateTeamParams) (Team, error) {
+type CreateTeamRow struct {
+	ID          int64            `json:"id"`
+	Name        string           `json:"name"`
+	Description *string          `json:"description"`
+	LogoUrl     *string          `json:"logo_url"`
+	CaptainID   *int64           `json:"captain_id"`
+	Status      string           `json:"status"`
+	CreatedAt   pgtype.Timestamp `json:"created_at"`
+	UpdatedAt   pgtype.Timestamp `json:"updated_at"`
+}
+
+func (q *Queries) CreateTeam(ctx context.Context, arg CreateTeamParams) (CreateTeamRow, error) {
 	row := q.db.QueryRow(ctx, createTeam, arg.Name, arg.Description)
-	var i Team
+	var i CreateTeamRow
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
@@ -108,6 +130,41 @@ func (q *Queries) DeleteTeam(ctx context.Context, id int64) (int64, error) {
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const findTeamMembership = `-- name: FindTeamMembership :one
+SELECT tm.id, tm.team_id, tm.user_id, tm.role, tm.status, tm.joined_at
+FROM team_members tm
+WHERE tm.team_id = $1
+  AND tm.user_id = $2
+`
+
+type FindTeamMembershipParams struct {
+	TeamID int64 `json:"team_id"`
+	UserID int64 `json:"user_id"`
+}
+
+type FindTeamMembershipRow struct {
+	ID       int64            `json:"id"`
+	TeamID   int64            `json:"team_id"`
+	UserID   int64            `json:"user_id"`
+	Role     string           `json:"role"`
+	Status   string           `json:"status"`
+	JoinedAt pgtype.Timestamp `json:"joined_at"`
+}
+
+func (q *Queries) FindTeamMembership(ctx context.Context, arg FindTeamMembershipParams) (FindTeamMembershipRow, error) {
+	row := q.db.QueryRow(ctx, findTeamMembership, arg.TeamID, arg.UserID)
+	var i FindTeamMembershipRow
+	err := row.Scan(
+		&i.ID,
+		&i.TeamID,
+		&i.UserID,
+		&i.Role,
+		&i.Status,
+		&i.JoinedAt,
+	)
+	return i, err
 }
 
 const getActiveTeamMember = `-- name: GetActiveTeamMember :one
@@ -145,9 +202,20 @@ FROM teams
 WHERE id = $1
 `
 
-func (q *Queries) GetTeamByID(ctx context.Context, id int64) (Team, error) {
+type GetTeamByIDRow struct {
+	ID          int64            `json:"id"`
+	Name        string           `json:"name"`
+	Description *string          `json:"description"`
+	LogoUrl     *string          `json:"logo_url"`
+	CaptainID   *int64           `json:"captain_id"`
+	Status      string           `json:"status"`
+	CreatedAt   pgtype.Timestamp `json:"created_at"`
+	UpdatedAt   pgtype.Timestamp `json:"updated_at"`
+}
+
+func (q *Queries) GetTeamByID(ctx context.Context, id int64) (GetTeamByIDRow, error) {
 	row := q.db.QueryRow(ctx, getTeamByID, id)
-	var i Team
+	var i GetTeamByIDRow
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
@@ -161,38 +229,21 @@ func (q *Queries) GetTeamByID(ctx context.Context, id int64) (Team, error) {
 	return i, err
 }
 
-const findTeamMembership = `-- name: FindTeamMembership :one
-SELECT tm.id, tm.team_id, tm.user_id, tm.role, tm.status, tm.joined_at
-FROM team_members tm
-WHERE tm.team_id = $1
-  AND tm.user_id = $2
+const getTeamMembershipState = `-- name: GetTeamMembershipState :one
+SELECT credit_score, vip_until
+FROM teams
+WHERE id = $1
 `
 
-type FindTeamMembershipParams struct {
-	TeamID int64 `json:"team_id"`
-	UserID int64 `json:"user_id"`
+type GetTeamMembershipStateRow struct {
+	CreditScore int32              `json:"credit_score"`
+	VipUntil    pgtype.Timestamptz `json:"vip_until"`
 }
 
-type FindTeamMembershipRow struct {
-	ID       int64            `json:"id"`
-	TeamID   int64            `json:"team_id"`
-	UserID   int64            `json:"user_id"`
-	Role     string           `json:"role"`
-	Status   string           `json:"status"`
-	JoinedAt pgtype.Timestamp `json:"joined_at"`
-}
-
-func (q *Queries) FindTeamMembership(ctx context.Context, arg FindTeamMembershipParams) (FindTeamMembershipRow, error) {
-	row := q.db.QueryRow(ctx, findTeamMembership, arg.TeamID, arg.UserID)
-	var i FindTeamMembershipRow
-	err := row.Scan(
-		&i.ID,
-		&i.TeamID,
-		&i.UserID,
-		&i.Role,
-		&i.Status,
-		&i.JoinedAt,
-	)
+func (q *Queries) GetTeamMembershipState(ctx context.Context, id int64) (GetTeamMembershipStateRow, error) {
+	row := q.db.QueryRow(ctx, getTeamMembershipState, id)
+	var i GetTeamMembershipStateRow
+	err := row.Scan(&i.CreditScore, &i.VipUntil)
 	return i, err
 }
 
@@ -309,6 +360,251 @@ func (q *Queries) ListAppTeamMembers(ctx context.Context, teamID int64) ([]ListA
 			&i.Role,
 			&i.Status,
 			&i.JoinedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listTeamAttendanceRanking = `-- name: ListTeamAttendanceRanking :many
+WITH team_matches AS (
+    SELECT g.id AS group_id, g.match_id
+    FROM match_registration_groups g
+    JOIN matches m ON m.id = g.match_id
+    WHERE g.kind IN ('host_team', 'guest_team')
+      AND g.team_id = $1
+      AND m.status <> 'cancelled'
+      AND (m.status = 'ended' OR m.end_time <= (NOW() AT TIME ZONE 'utc'))
+      AND ($2::date IS NULL OR m.start_time::date >= $2::date)
+      AND ($3::date IS NULL OR m.start_time::date <= $3::date)
+)
+SELECT tm.user_id,
+       u.nickname AS user_name,
+       u.avatar_url,
+       COUNT(*) AS total_count,
+       COUNT(r.id) FILTER (WHERE r.status = 'attending') AS attended_count,
+       COUNT(r.id) FILTER (WHERE r.status = 'leave') AS leave_count,
+       COUNT(r.id) FILTER (WHERE r.status = 'absent') AS late_count,
+       COUNT(*) FILTER (WHERE r.id IS NULL) AS unregistered_count
+FROM team_members tm
+JOIN users u ON u.id = tm.user_id
+CROSS JOIN team_matches t
+LEFT JOIN match_registrations r
+  ON r.group_id = t.group_id
+ AND r.user_id = tm.user_id
+ AND r.status <> 'cancelled'
+WHERE tm.team_id = $1
+  AND tm.status = 'active'
+GROUP BY tm.user_id, u.nickname, u.avatar_url, tm.joined_at
+ORDER BY attended_count DESC, leave_count ASC, unregistered_count ASC, tm.joined_at ASC
+`
+
+type ListTeamAttendanceRankingParams struct {
+	TeamID    int64       `json:"team_id"`
+	StartDate pgtype.Date `json:"start_date"`
+	EndDate   pgtype.Date `json:"end_date"`
+}
+
+type ListTeamAttendanceRankingRow struct {
+	UserID            int64   `json:"user_id"`
+	UserName          string  `json:"user_name"`
+	AvatarUrl         *string `json:"avatar_url"`
+	TotalCount        int64   `json:"total_count"`
+	AttendedCount     int64   `json:"attended_count"`
+	LeaveCount        int64   `json:"leave_count"`
+	LateCount         int64   `json:"late_count"`
+	UnregisteredCount int64   `json:"unregistered_count"`
+}
+
+func (q *Queries) ListTeamAttendanceRanking(ctx context.Context, arg ListTeamAttendanceRankingParams) ([]ListTeamAttendanceRankingRow, error) {
+	rows, err := q.db.Query(ctx, listTeamAttendanceRanking, arg.TeamID, arg.StartDate, arg.EndDate)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListTeamAttendanceRankingRow
+	for rows.Next() {
+		var i ListTeamAttendanceRankingRow
+		if err := rows.Scan(
+			&i.UserID,
+			&i.UserName,
+			&i.AvatarUrl,
+			&i.TotalCount,
+			&i.AttendedCount,
+			&i.LeaveCount,
+			&i.LateCount,
+			&i.UnregisteredCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listTeamMatchAttendance = `-- name: ListTeamMatchAttendance :many
+SELECT m.id::text AS activity_id,
+       m.name AS activity_name,
+       m.start_time AS holding_date,
+       m.location,
+       tm.user_id,
+       u.nickname,
+       u.avatar_url,
+       COALESCE(r.status, 'unknown') AS stand_status,
+       COALESCE(r.registration_count, 0) AS registration_count,
+       r.updated_at AS operation_time,
+       (r.id IS NOT NULL) AS registered
+FROM matches m
+JOIN match_registration_groups g
+  ON g.match_id = m.id
+ AND g.kind IN ('host_team', 'guest_team')
+ AND g.team_id = $1
+JOIN team_members tm ON tm.team_id = $1 AND tm.status = 'active'
+JOIN users u ON u.id = tm.user_id
+LEFT JOIN match_registrations r
+  ON r.group_id = g.id
+ AND r.user_id = tm.user_id
+ AND r.status <> 'cancelled'
+WHERE m.id = $2
+  AND m.status <> 'cancelled'
+  AND (m.status = 'ended' OR m.end_time <= (NOW() AT TIME ZONE 'utc'))
+ORDER BY
+    CASE COALESCE(r.status, 'unknown') WHEN 'attending' THEN 0 WHEN 'leave' THEN 1 WHEN 'absent' THEN 2 ELSE 3 END,
+    r.updated_at NULLS LAST,
+    tm.joined_at,
+    tm.user_id
+`
+
+type ListTeamMatchAttendanceParams struct {
+	TeamID  *int64      `json:"team_id"`
+	MatchID pgtype.UUID `json:"match_id"`
+}
+
+type ListTeamMatchAttendanceRow struct {
+	ActivityID        string           `json:"activity_id"`
+	ActivityName      string           `json:"activity_name"`
+	HoldingDate       pgtype.Timestamp `json:"holding_date"`
+	Location          string           `json:"location"`
+	UserID            int64            `json:"user_id"`
+	Nickname          string           `json:"nickname"`
+	AvatarUrl         *string          `json:"avatar_url"`
+	StandStatus       string           `json:"stand_status"`
+	RegistrationCount int32            `json:"registration_count"`
+	OperationTime     pgtype.Timestamp `json:"operation_time"`
+	Registered        interface{}      `json:"registered"`
+}
+
+// 单场比赛的全队出勤：只含在职（active）成员，已退队成员不展示，按状态分组排序。
+func (q *Queries) ListTeamMatchAttendance(ctx context.Context, arg ListTeamMatchAttendanceParams) ([]ListTeamMatchAttendanceRow, error) {
+	rows, err := q.db.Query(ctx, listTeamMatchAttendance, arg.TeamID, arg.MatchID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListTeamMatchAttendanceRow
+	for rows.Next() {
+		var i ListTeamMatchAttendanceRow
+		if err := rows.Scan(
+			&i.ActivityID,
+			&i.ActivityName,
+			&i.HoldingDate,
+			&i.Location,
+			&i.UserID,
+			&i.Nickname,
+			&i.AvatarUrl,
+			&i.StandStatus,
+			&i.RegistrationCount,
+			&i.OperationTime,
+			&i.Registered,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listTeamMemberAttendanceRecords = `-- name: ListTeamMemberAttendanceRecords :many
+
+SELECT m.id::text AS activity_id,
+       m.name AS activity_name,
+       m.start_time AS holding_date,
+       m.location,
+       COALESCE(r.status, 'unknown') AS stand_status,
+       COALESCE(r.registration_count, 0) AS registration_count,
+       r.updated_at AS operation_time,
+       (r.id IS NOT NULL) AS registered
+FROM matches m
+JOIN match_registration_groups g
+  ON g.match_id = m.id
+ AND g.kind IN ('host_team', 'guest_team')
+ AND g.team_id = $1
+LEFT JOIN match_registrations r
+  ON r.group_id = g.id
+ AND r.user_id = $2
+ AND r.status <> 'cancelled'
+WHERE m.status <> 'cancelled'
+  AND (m.status = 'ended' OR m.end_time <= (NOW() AT TIME ZONE 'utc'))
+  AND ($3::date IS NULL OR m.start_time::date >= $3::date)
+  AND ($4::date IS NULL OR m.start_time::date <= $4::date)
+ORDER BY m.start_time DESC, m.id
+`
+
+type ListTeamMemberAttendanceRecordsParams struct {
+	TeamID    *int64      `json:"team_id"`
+	UserID    int64       `json:"user_id"`
+	StartDate pgtype.Date `json:"start_date"`
+	EndDate   pgtype.Date `json:"end_date"`
+}
+
+type ListTeamMemberAttendanceRecordsRow struct {
+	ActivityID        string           `json:"activity_id"`
+	ActivityName      string           `json:"activity_name"`
+	HoldingDate       pgtype.Timestamp `json:"holding_date"`
+	Location          string           `json:"location"`
+	StandStatus       string           `json:"stand_status"`
+	RegistrationCount int32            `json:"registration_count"`
+	OperationTime     pgtype.Timestamp `json:"operation_time"`
+	Registered        interface{}      `json:"registered"`
+}
+
+// 比赛出勤：口径与首页"已结束"一致——非取消，且（状态已结束或已过结束时间）。
+// 队员报名挂在该队对应的报名组（host_team/guest_team）上；撤销（cancelled）的报名按未报名处理。
+// matches 时间列存 UTC 墙钟，用 (NOW() AT TIME ZONE 'utc') 保持同类型比较，避免会话时区歧义。
+func (q *Queries) ListTeamMemberAttendanceRecords(ctx context.Context, arg ListTeamMemberAttendanceRecordsParams) ([]ListTeamMemberAttendanceRecordsRow, error) {
+	rows, err := q.db.Query(ctx, listTeamMemberAttendanceRecords,
+		arg.TeamID,
+		arg.UserID,
+		arg.StartDate,
+		arg.EndDate,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListTeamMemberAttendanceRecordsRow
+	for rows.Next() {
+		var i ListTeamMemberAttendanceRecordsRow
+		if err := rows.Scan(
+			&i.ActivityID,
+			&i.ActivityName,
+			&i.HoldingDate,
+			&i.Location,
+			&i.StandStatus,
+			&i.RegistrationCount,
+			&i.OperationTime,
+			&i.Registered,
 		); err != nil {
 			return nil, err
 		}
@@ -572,9 +868,20 @@ type SetTeamCaptainParams struct {
 	UserID int64 `json:"user_id"`
 }
 
-func (q *Queries) SetTeamCaptain(ctx context.Context, arg SetTeamCaptainParams) (Team, error) {
+type SetTeamCaptainRow struct {
+	ID          int64            `json:"id"`
+	Name        string           `json:"name"`
+	Description *string          `json:"description"`
+	LogoUrl     *string          `json:"logo_url"`
+	CaptainID   *int64           `json:"captain_id"`
+	Status      string           `json:"status"`
+	CreatedAt   pgtype.Timestamp `json:"created_at"`
+	UpdatedAt   pgtype.Timestamp `json:"updated_at"`
+}
+
+func (q *Queries) SetTeamCaptain(ctx context.Context, arg SetTeamCaptainParams) (SetTeamCaptainRow, error) {
 	row := q.db.QueryRow(ctx, setTeamCaptain, arg.ID, arg.UserID)
-	var i Team
+	var i SetTeamCaptainRow
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
@@ -605,14 +912,25 @@ type UpdateTeamParams struct {
 	Status      string  `json:"status"`
 }
 
-func (q *Queries) UpdateTeam(ctx context.Context, arg UpdateTeamParams) (Team, error) {
+type UpdateTeamRow struct {
+	ID          int64            `json:"id"`
+	Name        string           `json:"name"`
+	Description *string          `json:"description"`
+	LogoUrl     *string          `json:"logo_url"`
+	CaptainID   *int64           `json:"captain_id"`
+	Status      string           `json:"status"`
+	CreatedAt   pgtype.Timestamp `json:"created_at"`
+	UpdatedAt   pgtype.Timestamp `json:"updated_at"`
+}
+
+func (q *Queries) UpdateTeam(ctx context.Context, arg UpdateTeamParams) (UpdateTeamRow, error) {
 	row := q.db.QueryRow(ctx, updateTeam,
 		arg.ID,
 		arg.Name,
 		arg.Description,
 		arg.Status,
 	)
-	var i Team
+	var i UpdateTeamRow
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
@@ -653,248 +971,4 @@ func (q *Queries) UpdateTeamMember(ctx context.Context, arg UpdateTeamMemberPara
 		return 0, err
 	}
 	return result.RowsAffected(), nil
-}
-
-const listTeamMemberAttendanceRecords = `-- name: ListTeamMemberAttendanceRecords :many
-SELECT m.id::text AS activity_id,
-       m.name AS activity_name,
-       m.start_time AS holding_date,
-       m.location,
-       COALESCE(r.status, 'unknown') AS stand_status,
-       COALESCE(r.registration_count, 0) AS registration_count,
-       r.updated_at AS operation_time,
-       (r.id IS NOT NULL) AS registered
-FROM matches m
-JOIN match_registration_groups g
-  ON g.match_id = m.id
- AND g.kind IN ('host_team', 'guest_team')
- AND g.team_id = $1
-LEFT JOIN match_registrations r
-  ON r.group_id = g.id
- AND r.user_id = $2
- AND r.status <> 'cancelled'
-WHERE m.status <> 'cancelled'
-  AND (m.status = 'ended' OR m.end_time <= (NOW() AT TIME ZONE 'utc'))
-  AND ($3::date IS NULL OR m.start_time::date >= $3::date)
-  AND ($4::date IS NULL OR m.start_time::date <= $4::date)
-ORDER BY m.start_time DESC, m.id
-`
-
-type ListTeamMemberAttendanceRecordsParams struct {
-	TeamID    int64       `json:"team_id"`
-	UserID    int64       `json:"user_id"`
-	StartDate pgtype.Date `json:"start_date"`
-	EndDate   pgtype.Date `json:"end_date"`
-}
-
-type ListTeamMemberAttendanceRecordsRow struct {
-	ActivityID        string           `json:"activity_id"`
-	ActivityName      string           `json:"activity_name"`
-	HoldingDate       pgtype.Timestamp `json:"holding_date"`
-	Location          string           `json:"location"`
-	StandStatus       string           `json:"stand_status"`
-	RegistrationCount int32            `json:"registration_count"`
-	OperationTime     pgtype.Timestamp `json:"operation_time"`
-	Registered        bool             `json:"registered"`
-}
-
-func (q *Queries) ListTeamMemberAttendanceRecords(ctx context.Context, arg ListTeamMemberAttendanceRecordsParams) ([]ListTeamMemberAttendanceRecordsRow, error) {
-	rows, err := q.db.Query(ctx, listTeamMemberAttendanceRecords,
-		arg.TeamID,
-		arg.UserID,
-		arg.StartDate,
-		arg.EndDate,
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []ListTeamMemberAttendanceRecordsRow
-	for rows.Next() {
-		var i ListTeamMemberAttendanceRecordsRow
-		if err := rows.Scan(
-			&i.ActivityID,
-			&i.ActivityName,
-			&i.HoldingDate,
-			&i.Location,
-			&i.StandStatus,
-			&i.RegistrationCount,
-			&i.OperationTime,
-			&i.Registered,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listTeamAttendanceRanking = `-- name: ListTeamAttendanceRanking :many
-WITH team_matches AS (
-    SELECT g.id AS group_id, g.match_id
-    FROM match_registration_groups g
-    JOIN matches m ON m.id = g.match_id
-    WHERE g.kind IN ('host_team', 'guest_team')
-      AND g.team_id = $1
-      AND m.status <> 'cancelled'
-      AND (m.status = 'ended' OR m.end_time <= (NOW() AT TIME ZONE 'utc'))
-      AND ($2::date IS NULL OR m.start_time::date >= $2::date)
-      AND ($3::date IS NULL OR m.start_time::date <= $3::date)
-)
-SELECT tm.user_id,
-       u.nickname AS user_name,
-       u.avatar_url,
-       COUNT(*) AS total_count,
-       COUNT(r.id) FILTER (WHERE r.status = 'attending') AS attended_count,
-       COUNT(r.id) FILTER (WHERE r.status = 'leave') AS leave_count,
-       COUNT(r.id) FILTER (WHERE r.status = 'absent') AS late_count,
-       COUNT(*) FILTER (WHERE r.id IS NULL) AS unregistered_count
-FROM team_members tm
-JOIN users u ON u.id = tm.user_id
-CROSS JOIN team_matches t
-LEFT JOIN match_registrations r
-  ON r.group_id = t.group_id
- AND r.user_id = tm.user_id
- AND r.status <> 'cancelled'
-WHERE tm.team_id = $1
-  AND tm.status = 'active'
-GROUP BY tm.user_id, u.nickname, u.avatar_url, tm.joined_at
-ORDER BY attended_count DESC, leave_count ASC, unregistered_count ASC, tm.joined_at ASC
-`
-
-type ListTeamAttendanceRankingParams struct {
-	TeamID    int64       `json:"team_id"`
-	StartDate pgtype.Date `json:"start_date"`
-	EndDate   pgtype.Date `json:"end_date"`
-}
-
-type ListTeamAttendanceRankingRow struct {
-	UserID            int64   `json:"user_id"`
-	UserName          string  `json:"user_name"`
-	AvatarUrl         *string `json:"avatar_url"`
-	TotalCount        int64   `json:"total_count"`
-	AttendedCount     int64   `json:"attended_count"`
-	LeaveCount        int64   `json:"leave_count"`
-	LateCount         int64   `json:"late_count"`
-	UnregisteredCount int64   `json:"unregistered_count"`
-}
-
-func (q *Queries) ListTeamAttendanceRanking(ctx context.Context, arg ListTeamAttendanceRankingParams) ([]ListTeamAttendanceRankingRow, error) {
-	rows, err := q.db.Query(ctx, listTeamAttendanceRanking,
-		arg.TeamID,
-		arg.StartDate,
-		arg.EndDate,
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []ListTeamAttendanceRankingRow
-	for rows.Next() {
-		var i ListTeamAttendanceRankingRow
-		if err := rows.Scan(
-			&i.UserID,
-			&i.UserName,
-			&i.AvatarUrl,
-			&i.TotalCount,
-			&i.AttendedCount,
-			&i.LeaveCount,
-			&i.LateCount,
-			&i.UnregisteredCount,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listTeamMatchAttendance = `-- name: ListTeamMatchAttendance :many
-SELECT m.id::text AS activity_id,
-       m.name AS activity_name,
-       m.start_time AS holding_date,
-       m.location,
-       tm.user_id,
-       u.nickname,
-       u.avatar_url,
-       COALESCE(r.status, 'unknown') AS stand_status,
-       COALESCE(r.registration_count, 0) AS registration_count,
-       r.updated_at AS operation_time,
-       (r.id IS NOT NULL) AS registered
-FROM matches m
-JOIN match_registration_groups g
-  ON g.match_id = m.id
- AND g.kind IN ('host_team', 'guest_team')
- AND g.team_id = $1
-JOIN team_members tm ON tm.team_id = $1 AND tm.status = 'active'
-JOIN users u ON u.id = tm.user_id
-LEFT JOIN match_registrations r
-  ON r.group_id = g.id
- AND r.user_id = tm.user_id
- AND r.status <> 'cancelled'
-WHERE m.id = $2
-  AND m.status <> 'cancelled'
-  AND (m.status = 'ended' OR m.end_time <= (NOW() AT TIME ZONE 'utc'))
-ORDER BY
-    CASE COALESCE(r.status, 'unknown') WHEN 'attending' THEN 0 WHEN 'leave' THEN 1 WHEN 'absent' THEN 2 ELSE 3 END,
-    r.updated_at NULLS LAST,
-    tm.joined_at,
-    tm.user_id
-`
-
-type ListTeamMatchAttendanceParams struct {
-	TeamID  int64       `json:"team_id"`
-	MatchID pgtype.UUID `json:"match_id"`
-}
-
-type ListTeamMatchAttendanceRow struct {
-	ActivityID        string           `json:"activity_id"`
-	ActivityName      string           `json:"activity_name"`
-	HoldingDate       pgtype.Timestamp `json:"holding_date"`
-	Location          string           `json:"location"`
-	UserID            int64            `json:"user_id"`
-	Nickname          string           `json:"nickname"`
-	AvatarUrl         *string          `json:"avatar_url"`
-	StandStatus       string           `json:"stand_status"`
-	RegistrationCount int32            `json:"registration_count"`
-	OperationTime     pgtype.Timestamp `json:"operation_time"`
-	Registered        bool             `json:"registered"`
-}
-
-func (q *Queries) ListTeamMatchAttendance(ctx context.Context, arg ListTeamMatchAttendanceParams) ([]ListTeamMatchAttendanceRow, error) {
-	rows, err := q.db.Query(ctx, listTeamMatchAttendance, arg.TeamID, arg.MatchID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []ListTeamMatchAttendanceRow
-	for rows.Next() {
-		var i ListTeamMatchAttendanceRow
-		if err := rows.Scan(
-			&i.ActivityID,
-			&i.ActivityName,
-			&i.HoldingDate,
-			&i.Location,
-			&i.UserID,
-			&i.Nickname,
-			&i.AvatarUrl,
-			&i.StandStatus,
-			&i.RegistrationCount,
-			&i.OperationTime,
-			&i.Registered,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
 }
