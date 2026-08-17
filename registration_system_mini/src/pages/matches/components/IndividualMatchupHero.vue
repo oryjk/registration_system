@@ -22,6 +22,14 @@ defineEmits<{
 
 const dateBlockDay = computed(() => formatMonthDayLabel(props.match.holding_date));
 const dateBlockWeekday = computed(() => formatWeekdayLabel(props.match.holding_date));
+
+// 终态标识只看真实比赛状态：ended/cancelled 才显示；
+// 仅时间已过但状态未收敛（等待队长收尾）不显示，与首页“已结束”分区的时间推断区分开。
+const matchStatusTag = computed(() => {
+  if (props.match.status === 2) return "已完成";
+  if (props.match.status === 3) return "已取消";
+  return "";
+});
 </script>
 
 <template>
@@ -35,7 +43,10 @@ const dateBlockWeekday = computed(() => formatWeekdayLabel(props.match.holding_d
         <view class="hero-dateblock-time">{{ matchClockLabel }}</view>
       </view>
       <view class="hero-heading">
-        <NeoTag tone="lime" size="sm">{{ matchKindLabel }}</NeoTag>
+        <view class="hero-tags">
+          <NeoTag tone="lime" size="sm">{{ matchKindLabel }}</NeoTag>
+          <NeoTag v-if="matchStatusTag" tone="muted" size="sm">{{ matchStatusTag }}</NeoTag>
+        </view>
         <text class="hero-title">{{ match.name }}</text>
       </view>
     </view>
@@ -148,6 +159,12 @@ const dateBlockWeekday = computed(() => formatWeekdayLabel(props.match.holding_d
   align-items: flex-start;
   gap: 10rpx;
   min-width: 0;
+}
+
+.hero-tags {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
 }
 
 .hero-title {
