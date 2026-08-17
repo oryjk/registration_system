@@ -22,7 +22,9 @@
       }
     },
     "setting": {
-      "urlCheck": false
+      "urlCheck": false,
+      "ignoreDevUnusedFiles": false,
+      "ignoreUploadUnusedFiles": false
     },
     "optimization": {
       "subPackages": false
