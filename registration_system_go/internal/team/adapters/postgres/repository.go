@@ -33,6 +33,20 @@ func (r *Repository) FindByID(ctx context.Context, teamID int64) (domain.Team, b
 	return mapTeam(row), true, nil
 }
 
+func (r *Repository) FindMembership(ctx context.Context, teamID, userID int64) (domain.Member, bool, error) {
+	row, err := r.queries.FindTeamMembership(ctx, teamsqlc.FindTeamMembershipParams{TeamID: teamID, UserID: userID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return domain.Member{}, false, nil
+	}
+	if err != nil {
+		return domain.Member{}, false, err
+	}
+	return domain.Member{
+		ID: row.ID, TeamID: row.TeamID, UserID: row.UserID,
+		Role: domain.Role(row.Role), Status: domain.MemberStatus(row.Status), JoinedAt: row.JoinedAt.Time,
+	}, true, nil
+}
+
 func (r *Repository) FindActiveMember(ctx context.Context, teamID, userID int64) (domain.Member, bool, error) {
 	row, err := r.queries.GetActiveTeamMember(ctx, teamsqlc.GetActiveTeamMemberParams{TeamID: teamID, UserID: userID})
 	if errors.Is(err, pgx.ErrNoRows) {

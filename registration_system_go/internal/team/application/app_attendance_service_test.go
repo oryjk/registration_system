@@ -25,8 +25,9 @@ func (f *fakeAttendanceRepository) ListAttendanceRanking(_ context.Context, _ in
 }
 
 type fakeAttendanceAccess struct {
-	managers  map[int64]bool
-	memberIDs map[int64]bool
+	managers   map[int64]bool
+	memberIDs  map[int64]bool
+	membersAny map[int64]bool
 }
 
 func (f fakeAttendanceAccess) EnsureManager(_ context.Context, teamID, userID int64) error {
@@ -38,6 +39,13 @@ func (f fakeAttendanceAccess) EnsureManager(_ context.Context, teamID, userID in
 
 func (f fakeAttendanceAccess) EnsureActiveMember(_ context.Context, teamID, userID int64) error {
 	if f.memberIDs[userID] {
+		return nil
+	}
+	return sharederror.ErrForbidden
+}
+
+func (f fakeAttendanceAccess) EnsureMember(_ context.Context, teamID, userID int64) error {
+	if f.membersAny[userID] {
 		return nil
 	}
 	return sharederror.ErrForbidden
@@ -55,8 +63,8 @@ func TestAppAttendanceMemberRecordsRequiresManager(t *testing.T) {
 
 	// 队长查看非本队成员要报成员不存在。
 	leaders := NewAppAttendanceService(&fakeAttendanceRepository{}, fakeAttendanceAccess{
-		managers:  map[int64]bool{10: true},
-		memberIDs: map[int64]bool{10: true},
+		managers:   map[int64]bool{10: true},
+		membersAny: map[int64]bool{10: true},
 	})
 	if _, err := leaders.MemberRecords(context.Background(), userActor(10), 1, 99, nil, nil); err == nil {
 		t.Fatal("expected missing membership error for outsider")
@@ -68,8 +76,8 @@ func TestAppAttendanceMemberRecordsReturnsRecordsForManager(t *testing.T) {
 		ActivityID: "m-1", ActivityName: "周四友谊赛", Stand: "attending", Registered: true,
 	}}}
 	service := NewAppAttendanceService(repository, fakeAttendanceAccess{
-		managers:  map[int64]bool{10: true},
-		memberIDs: map[int64]bool{10: true, 99: true},
+		managers:   map[int64]bool{10: true},
+		membersAny: map[int64]bool{10: true, 99: true},
 	})
 
 	records, err := service.MemberRecords(context.Background(), userActor(10), 1, 99, nil, nil)
@@ -112,4 +120,17 @@ func TestAppAttendanceSummaryRejectsOutsider(t *testing.T) {
 
 func userActor(id int64) sharedauth.Actor {
 	return sharedauth.Actor{Kind: sharedauth.ActorUser, ID: id}
+}
+
+func TestAppAttendanceMemberRecordsAllowsInactiveMember(t *testing.T) {
+	// 离队成员（不再是 active）仍可被队长查看历史出勤。
+	service := NewAppAttendanceService(&fakeAttendanceRepository{}, fakeAttendanceAccess{
+		managers:   map[int64]bool{10: true},
+		memberIDs:  map[int64]bool{10: true},
+		membersAny: map[int64]bool{10: true, 99: true},
+	})
+
+	if _, err := service.MemberRecords(context.Background(), userActor(10), 1, 99, nil, nil); err != nil {
+		t.Fatalf("expected inactive member records to be visible, got %v", err)
+	}
 }

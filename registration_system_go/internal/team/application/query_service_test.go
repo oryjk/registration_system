@@ -149,6 +149,10 @@ type fakeTeamRepository struct {
 	listStatus *domain.TeamStatus
 }
 
+func (f *fakeTeamRepository) FindMembership(ctx context.Context, teamID, userID int64) (domain.Member, bool, error) {
+	return f.FindActiveMember(ctx, teamID, userID)
+}
+
 func (f *fakeTeamRepository) FindActiveMember(context.Context, int64, int64) (domain.Member, bool, error) {
 	if f.err != nil {
 		return domain.Member{}, false, f.err
@@ -219,5 +223,32 @@ func TestEnsureCaptainRejectsMissingMembership(t *testing.T) {
 	service := NewQueryService(&fakeTeamRepository{found: false})
 	if err := service.EnsureCaptain(context.Background(), 10, 99); err == nil {
 		t.Fatal("expected missing membership to fail")
+	}
+}
+
+func TestEnsureMemberAcceptsAnyMembershipStatus(t *testing.T) {
+	tests := []struct {
+		name    string
+		status  domain.MemberStatus
+		wantErr bool
+	}{
+		{name: "active", status: domain.MemberActive},
+		{name: "inactive", status: domain.MemberInactive},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			repository := &fakeTeamRepository{
+				membership: domain.Member{TeamID: 10, UserID: 21, Role: domain.RoleMember, Status: test.status},
+				found:      true,
+			}
+			service := NewQueryService(repository)
+			err := service.EnsureMember(context.Background(), 10, 21)
+			if test.wantErr && err == nil {
+				t.Fatal("expected error")
+			}
+			if !test.wantErr && err != nil {
+				t.Fatalf("expected membership to pass, got %v", err)
+			}
+		})
 	}
 }

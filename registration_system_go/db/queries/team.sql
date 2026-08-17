@@ -88,6 +88,12 @@ ORDER BY
 	    tm.joined_at,
 	    tm.user_id;
 
+-- name: FindTeamMembership :one
+SELECT tm.id, tm.team_id, tm.user_id, tm.role, tm.status, tm.joined_at
+FROM team_members tm
+WHERE tm.team_id = $1
+  AND tm.user_id = $2;
+
 -- name: ListAppTeamMembers :many
 SELECT tm.user_id,
        u.nickname,

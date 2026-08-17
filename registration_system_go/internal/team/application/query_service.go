@@ -40,6 +40,18 @@ func (s QueryService) EnsureCaptain(ctx context.Context, teamID, userID int64) e
 	return nil
 }
 
+// EnsureMember 校验用户是该队成员（不限状态），离队成员的历史数据仍可被管理端查询。
+func (s QueryService) EnsureMember(ctx context.Context, teamID, userID int64) error {
+	_, found, err := s.repository.FindMembership(ctx, teamID, userID)
+	if err != nil {
+		return sharederror.Wrap(sharederror.KindInternal, "查询球队成员失败", err)
+	}
+	if !found {
+		return sharederror.ErrForbidden
+	}
+	return nil
+}
+
 func (s QueryService) EnsureActiveMember(ctx context.Context, teamID, userID int64) error {
 	found, err := s.IsActiveMember(ctx, teamID, userID)
 	if err != nil {

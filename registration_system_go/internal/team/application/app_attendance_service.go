@@ -20,6 +20,7 @@ type AppAttendanceService struct {
 type TeamAccessQueries interface {
 	EnsureManager(context.Context, int64, int64) error
 	EnsureActiveMember(context.Context, int64, int64) error
+	EnsureMember(context.Context, int64, int64) error
 }
 
 type AttendanceSummary struct {
@@ -42,7 +43,9 @@ func (s AppAttendanceService) MemberRecords(ctx context.Context, actor sharedaut
 	if err := s.access.EnsureManager(ctx, teamID, actor.ID); err != nil {
 		return nil, err
 	}
-	if err := s.access.EnsureActiveMember(ctx, teamID, userID); err != nil {
+	// 目标只要是本队成员即可（含离队成员）：管理页成员列表包含 inactive，
+	// 离队成员的历史出勤也应该能查。
+	if err := s.access.EnsureMember(ctx, teamID, userID); err != nil {
 		return nil, sharederror.New(sharederror.KindNotFound, "该用户不是球队成员")
 	}
 	records, err := s.repository.ListMemberAttendanceRecords(ctx, teamID, userID, startDate, endDate)

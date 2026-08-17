@@ -161,6 +161,41 @@ func (q *Queries) GetTeamByID(ctx context.Context, id int64) (Team, error) {
 	return i, err
 }
 
+const findTeamMembership = `-- name: FindTeamMembership :one
+SELECT tm.id, tm.team_id, tm.user_id, tm.role, tm.status, tm.joined_at
+FROM team_members tm
+WHERE tm.team_id = $1
+  AND tm.user_id = $2
+`
+
+type FindTeamMembershipParams struct {
+	TeamID int64 `json:"team_id"`
+	UserID int64 `json:"user_id"`
+}
+
+type FindTeamMembershipRow struct {
+	ID       int64            `json:"id"`
+	TeamID   int64            `json:"team_id"`
+	UserID   int64            `json:"user_id"`
+	Role     string           `json:"role"`
+	Status   string           `json:"status"`
+	JoinedAt pgtype.Timestamp `json:"joined_at"`
+}
+
+func (q *Queries) FindTeamMembership(ctx context.Context, arg FindTeamMembershipParams) (FindTeamMembershipRow, error) {
+	row := q.db.QueryRow(ctx, findTeamMembership, arg.TeamID, arg.UserID)
+	var i FindTeamMembershipRow
+	err := row.Scan(
+		&i.ID,
+		&i.TeamID,
+		&i.UserID,
+		&i.Role,
+		&i.Status,
+		&i.JoinedAt,
+	)
+	return i, err
+}
+
 const listActiveUserTeams = `-- name: ListActiveUserTeams :many
 SELECT t.id,
        t.name,
