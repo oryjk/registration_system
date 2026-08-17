@@ -2,12 +2,13 @@
 import { computed, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
+import NeoSegmentedControl from "@/components/neo/NeoSegmentedControl.vue";
+import HomeMatchList from "@/pages/home/components/HomeMatchList.vue";
 import { useTeamContext } from "@/stores/teamContext";
+import type { HomeMatchCardViewModel } from "@/types/viewModels";
 import { getCustomNavMetrics } from "@/utils/customNav";
 import { loadAllMyMatches } from "../myMatchesData";
-import UserMatchList from "./components/UserMatchList.vue";
-import UserMatchesSkeleton from "./components/UserMatchesSkeleton.vue";
-import { buildUserMatchCards, type UserMatchCard, type UserMatchScope } from "./userMatchesState";
+import { buildUserMatchCards, type UserMatchScope } from "./userMatchesState";
 
 const { ensureSessionReady } = useTeamContext();
 const navMetrics = getCustomNavMetrics();
@@ -15,54 +16,43 @@ const navMetrics = getCustomNavMetrics();
 const isLoading = ref(false);
 const errorMessage = ref("");
 const matchScope = ref<UserMatchScope>("future");
-const matches = ref<UserMatchCard[]>([]);
+const matches = ref<HomeMatchCardViewModel[]>([]);
+const navigatingMatchId = ref("");
 
 const contentStyle = computed(() => ({
   paddingTop: `${navMetrics.pageTopPadding + 8}px`,
 }));
 
 const scopeOptions = [
-  { value: "future", label: "未结束" },
-  { value: "past", label: "已结束" },
+  { label: "未结束", value: "future" },
+  { label: "已结束", value: "past" },
 ];
-
-const emptyText = computed(() =>
-  matchScope.value === "future" ? "暂时没有未结束的相关比赛。" : "暂时没有已结束的相关比赛。",
-);
 
 const heroCopy = computed(() =>
   matchScope.value === "future"
     ? "展示进行中及待开始的比赛，按时间顺序排列。"
     : "展示已经结束的比赛，方便回看历史记录。",
 );
+const emptyText = computed(() =>
+  matchScope.value === "future" ? "暂时没有未结束的相关比赛。" : "暂时没有已结束的相关比赛。",
+);
 
-function handleScopeChange(event: Event) {
-  const payload = event as Event & { value?: string | number; detail?: { value?: string | number } };
-  const value = payload.value ?? payload.detail?.value;
+function handleScopeChange(value: string) {
   matchScope.value = value === "past" ? "past" : "future";
   void loadPageData();
 }
 
-function openMatchDetail(matchId: string) {
+function handleMatchTap(match: HomeMatchCardViewModel) {
+  if (navigatingMatchId.value) return;
+
+  navigatingMatchId.value = match.id;
   uni.navigateTo({
-    url: `/pages/matches/detail?id=${matchId}`,
-  });
-}
-
-function openMap(locationLatitude: number | null, locationLongitude: number | null, name: string, address: string) {
-  if (locationLatitude == null || locationLongitude == null) {
-    uni.showToast({
-      title: "暂无可打开的地图定位",
-      icon: "none",
-    });
-    return;
-  }
-
-  uni.openLocation({
-    latitude: Number(locationLatitude),
-    longitude: Number(locationLongitude),
-    name,
-    address,
+    url: match.detailUrl,
+    complete: () => {
+      setTimeout(() => {
+        navigatingMatchId.value = "";
+      }, 300);
+    },
   });
 }
 
@@ -94,33 +84,32 @@ onShow(() => {
     <AppTabHeader title="我的比赛" showBack />
     <view class="my-matches-content" :style="contentStyle">
       <view class="page-hero">
-        <wd-text custom-class="page-title" color="#111310" text="我的比赛" />
-        <wd-text custom-class="page-copy" color="#66705f" :text="heroCopy" />
+        <text class="page-title">我的比赛</text>
+        <text class="page-copy">{{ heroCopy }}</text>
       </view>
 
-      <wd-segmented
-        :value="matchScope"
+      <NeoSegmentedControl
+        :model-value="matchScope"
         :options="scopeOptions"
-        custom-class="scope-segment app-segment"
-        @change="handleScopeChange"
-      >
-        <template #label="{ option }">
-          <text>{{ option.value === "future" ? "未结束" : "已结束" }}</text>
-        </template>
-      </wd-segmented>
+        class="scope-segment"
+        @update:model-value="handleScopeChange"
+      />
 
-      <UserMatchesSkeleton v-if="isLoading" />
-      <view v-else-if="errorMessage" class="empty-card">
-        <wd-text custom-class="empty-text" color="#66705f" :text="errorMessage" />
+      <view v-if="isLoading" class="empty-card">
+        <text class="empty-text">正在加载我的比赛...</text>
+      </view>
+      <view v-else-if="errorMessage" class="empty-card" @tap="loadPageData">
+        <text class="empty-text">{{ errorMessage }}，点击重试</text>
       </view>
       <view v-else-if="!matches.length" class="empty-card">
-        <wd-text custom-class="empty-text" color="#66705f" :text="emptyText" />
+        <text class="empty-text">{{ emptyText }}</text>
       </view>
-      <UserMatchList
+      <HomeMatchList
         v-else
         :matches="matches"
-        @open-detail="openMatchDetail"
-        @open-map="openMap"
+        :is-guest-mode="false"
+        :navigating-match-id="navigatingMatchId"
+        @match-tap="handleMatchTap"
       />
     </view>
   </view>
@@ -130,26 +119,25 @@ onShow(() => {
 .my-matches-page {
   min-height: 100vh;
   padding: 0 28rpx 96rpx;
-  background:
-    radial-gradient(circle at top right, rgba(200, 255, 0, 0.12), transparent 20%),
-    linear-gradient(180deg, #fbfcf7 0%, #eef2e6 100%);
+  background: var(--neo-color-page);
   box-sizing: border-box;
 }
 
 .page-hero,
 .empty-card {
-  border-radius: 30rpx;
-  box-shadow: 0 20rpx 38rpx rgba(17, 17, 17, 0.05);
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-md);
+  background: var(--neo-color-surface);
+  box-shadow: var(--neo-shadow-raised);
 }
 
 .page-hero {
   padding: 28rpx;
-  background: #ffffff;
 }
 
 .page-title {
   display: block;
-  color: #111310;
+  color: var(--neo-color-text);
   font-size: 48rpx;
   line-height: 1.15;
   font-weight: 900;
@@ -158,13 +146,13 @@ onShow(() => {
 .page-copy {
   display: block;
   margin-top: 12rpx;
-  color: #66705f;
+  color: var(--neo-color-text-muted);
   font-size: 26rpx;
   line-height: 1.5;
   font-weight: 700;
 }
 
-:deep(.scope-segment) {
+.scope-segment {
   margin-top: 18rpx;
 }
 
@@ -172,11 +160,28 @@ onShow(() => {
   margin-top: 18rpx;
   padding: 44rpx 28rpx;
   text-align: center;
-  background: #ffffff;
 }
 
 .empty-text {
+  color: var(--neo-color-text-muted);
   font-size: 28rpx;
+  line-height: 1.5;
   font-weight: 800;
 }
+
+/* #ifdef H5 */
+.my-matches-page {
+  width: 100%;
+  max-width: 750rpx;
+  margin: 0 auto;
+}
+
+.my-matches-page :deep(.app-tab-header-shell) {
+  left: 50%;
+  right: auto;
+  width: 100%;
+  max-width: 750rpx;
+  transform: translateX(-50%);
+}
+/* #endif */
 </style>

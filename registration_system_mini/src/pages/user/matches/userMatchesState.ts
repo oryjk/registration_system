@@ -1,56 +1,16 @@
 import type { AppMatchSummary, AppMatchUiPhase } from "@/types/match";
-import { formatDateTimeWithWeekdayLabel, formatTimeLabel, parseDateValue } from "@/utils/datetime";
-import type { MatchStatusBadgeTone } from "@/utils/statusTone";
-import { resolveMatchPhase } from "@/pages/home/homeMatchState";
-import { getMatchPublicationModeLabel } from "@/utils/matchPublicationMode";
+import type { HomeMatchCardViewModel } from "@/types/viewModels";
+import { parseDateValue } from "@/utils/datetime";
+import { resolveMatchPhase, toHomeMatchCard } from "@/pages/home/homeMatchState";
 
 export type UserMatchScope = "future" | "past";
 
-export interface UserMatchCard {
-  id: string;
-  title: string;
-  dateLabel: string;
-  timeLabel: string;
-  venue: string;
-  opponent: string;
-  formatLabel: string;
-  statusLabel: string;
-  kindLabel: string;
-  publicationModeLabel: string;
-  color: string;
-  opposingColor: string;
-  locationLatitude: number | null;
-  locationLongitude: number | null;
-  statusTone: MatchStatusBadgeTone;
-}
-
-function statusLabel(phase: Exclude<AppMatchUiPhase, "excluded">): string {
-  switch (phase) {
-    case "ongoing":
-      return "进行中";
-    case "ended":
-      return "已结束";
-    default:
-      return "报名中";
-  }
-}
-
-function statusTone(phase: Exclude<AppMatchUiPhase, "excluded">): MatchStatusBadgeTone {
-  switch (phase) {
-    case "upcoming":
-      return "success";
-    case "ongoing":
-      return "warning";
-    default:
-      return "muted";
-  }
-}
-
+/** 按阶段过滤并复用首页比赛卡视图模型，保证「我的比赛」与首页展示一致。 */
 export function buildUserMatchCards(params: {
   matches: AppMatchSummary[];
   scope: UserMatchScope;
   now?: Date;
-}): UserMatchCard[] {
+}): HomeMatchCardViewModel[] {
   const now = params.now ?? new Date();
 
   return params.matches
@@ -62,24 +22,5 @@ export function buildUserMatchCards(params: {
       const rightTime = parseDateValue(params.scope === "future" ? right.match.start_time : right.match.end_time).getTime();
       return params.scope === "future" ? leftTime - rightTime : rightTime - leftTime;
     })
-    .map(({ match, phase }) => {
-      const visiblePhase = phase as Exclude<AppMatchUiPhase, "excluded">;
-      return {
-        id: match.id,
-        title: match.name,
-        dateLabel: formatDateTimeWithWeekdayLabel(match.start_time),
-        timeLabel: formatTimeLabel(match.start_time),
-        venue: match.location,
-        opponent: match.away_team_name?.trim() || match.opponent_name?.trim() || "对手待定",
-        formatLabel: match.players_per_team ? `${match.players_per_team} 人制` : "人数待定",
-        statusLabel: statusLabel(visiblePhase),
-        kindLabel: getMatchPublicationModeLabel(match.publication_mode),
-        publicationModeLabel: getMatchPublicationModeLabel(match.publication_mode),
-        color: "#2F6BFF",
-        opposingColor: "#C8FF00",
-        locationLatitude: match.location_latitude,
-        locationLongitude: match.location_longitude,
-        statusTone: statusTone(visiblePhase),
-      };
-    });
+    .map(({ match, phase }) => toHomeMatchCard(match, phase as Exclude<AppMatchUiPhase, "excluded">));
 }

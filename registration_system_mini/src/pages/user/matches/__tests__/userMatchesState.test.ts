@@ -62,14 +62,14 @@ describe("buildUserMatchCards", () => {
       now: new Date("2026-08-10T12:00:00Z"),
     });
 
-    expect(active.map((item) => ({ id: item.id, statusLabel: item.statusLabel }))).toEqual([
-      { id: "ongoing", statusLabel: "进行中" },
-      { id: "upcoming", statusLabel: "报名中" },
+    expect(active.map((item) => ({ id: item.id, stage: item.stage }))).toEqual([
+      { id: "ongoing", stage: "进行中" },
+      { id: "upcoming", stage: "报名中" },
     ]);
     expect(active.map((item) => item.publicationModeLabel)).toEqual(["线上约队", "线上约队"]);
     expect(active.some((item) => "isEditable" in item)).toEqual(false);
-    expect(ended.map((item) => ({ id: item.id, statusLabel: item.statusLabel }))).toEqual([
-      { id: "ended-by-clock", statusLabel: "已结束" },
+    expect(ended.map((item) => ({ id: item.id, stage: item.stage }))).toEqual([
+      { id: "ended-by-clock", stage: "已结束" },
     ]);
   });
 });
