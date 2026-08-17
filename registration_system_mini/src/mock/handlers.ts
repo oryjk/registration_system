@@ -353,6 +353,7 @@ const routes: MockRoute[] = [
         credit_score: 90,
         vip_until: null,
         is_vip: false,
+        balance_cents: 0,
       };
     },
   },

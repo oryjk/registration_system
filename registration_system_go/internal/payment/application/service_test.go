@@ -129,7 +129,7 @@ type fakePaymentStore struct {
 	order             paymentdomain.Order
 	balance           int64
 	creditCalls       int
-	membershipApplies []paymentports.MembershipPurchase
+	membershipApplies []paymentports.TeamFundCredit
 }
 
 func newFakePaymentStore() *fakePaymentStore { return &fakePaymentStore{} }
@@ -254,8 +254,8 @@ func mustOrder(t *testing.T, orderNo string, userID, amount int64) paymentdomain
 	return order
 }
 
-func (f *fakePaymentStore) ApplyMembershipPayment(_ context.Context, _ paymentports.VerifiedPayment, purchase paymentports.MembershipPurchase) (paymentports.SettlementResult, error) {
-	f.membershipApplies = append(f.membershipApplies, purchase)
+func (f *fakePaymentStore) ApplyMembershipPayment(_ context.Context, _ paymentports.VerifiedPayment, credit paymentports.TeamFundCredit) (paymentports.SettlementResult, error) {
+	f.membershipApplies = append(f.membershipApplies, credit)
 	return paymentports.SettlementResult{Credited: true}, nil
 }
 
@@ -304,7 +304,7 @@ func TestCreateTeamMembershipOrdersForClickedTeam(t *testing.T) {
 	}
 }
 
-func TestSyncTeamMembershipSettlesCreditByAmount(t *testing.T) {
+func TestSyncTeamMembershipCreditsTeamFund(t *testing.T) {
 	store := newFakePaymentStore()
 	order, err := paymentdomain.NewTeamMembershipOrder("P-team-settle", 37, 7, 7500, time.Unix(100, 0))
 	if err != nil {
@@ -320,8 +320,38 @@ func TestSyncTeamMembershipSettlesCreditByAmount(t *testing.T) {
 	if len(store.membershipApplies) != 1 {
 		t.Fatalf("membership applies: %+v", store.membershipApplies)
 	}
-	// 每 500 分（5 元）修复 1 点信用分：7500 分 → 15 点。
-	if apply := store.membershipApplies[0]; apply.TeamID != 7 || apply.CreditDelta != 15 {
+	// 队费只入球队余额，与信用分无关。
+	if apply := store.membershipApplies[0]; apply.TeamID != 7 || apply.AmountCents != 7500 {
 		t.Fatalf("apply=%+v", apply)
+	}
+}
+
+// 已付的队费订单再次 Sync（如微信回调先到、用户端随后轮询）必须仍走队费结算，
+// 不能误入个人钱包 CreditRecharge。
+func TestSyncAlreadyPaidTeamMembershipOrderRoutesToMembershipSettlement(t *testing.T) {
+	store := newFakePaymentStore()
+	order, err := paymentdomain.NewTeamMembershipOrder("P-team-paid", 37, 7, 6000, time.Unix(100, 0))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := order.MarkPaid("wx-team-paid", time.Unix(150, 0)); err != nil {
+		t.Fatal(err)
+	}
+	store.order = order
+	gateway := &fakeGateway{}
+	service := NewService(store, store, gateway, store, store, allowTeams{}, fixedOrderNumbers{}, fixedClock{})
+
+	result, err := service.Sync(context.Background(), userActor(37), order.OrderNo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if store.creditCalls != 0 {
+		t.Fatalf("team order must not touch user wallet, creditCalls=%d", store.creditCalls)
+	}
+	if len(store.membershipApplies) != 1 {
+		t.Fatalf("membership applies: %+v", store.membershipApplies)
+	}
+	if !result.Credited {
+		t.Fatalf("result=%+v", result)
 	}
 }

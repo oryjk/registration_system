@@ -46,6 +46,10 @@ export function useTeamDetailPage() {
     const yuan = amountCents.value / 100;
     return `¥${Number.isInteger(yuan) ? yuan : yuan.toFixed(2)}`;
   });
+  const balanceLabel = computed(() => {
+    const yuan = (team.value?.balance_cents ?? 0) / 100;
+    return `¥${Number.isInteger(yuan) ? yuan : yuan.toFixed(2)}`;
+  });
   const membershipLabel = computed(() => {
     if (!team.value?.is_vip || !team.value.vip_until) return "未开通会员";
     return `会员有效 · 至 ${team.value.vip_until.slice(0, 10)}`;
@@ -131,6 +135,7 @@ export function useTeamDetailPage() {
     paying,
     amountInput,
     amountError,
+    balanceLabel,
     roleLabel,
     canManage,
     totalPriceLabel,

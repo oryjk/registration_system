@@ -31,8 +31,6 @@ const (
 const (
 	// MembershipMaxAmountCents 限制单笔队费金额（1 万元），防止误操作天价订单。
 	MembershipMaxAmountCents int64 = 1_000_000
-	// MembershipCreditPerAmountCents 是每修复 1 点球队信用分（上限 100）对应的队费金额：每 5 元 1 分。
-	MembershipCreditPerAmountCents int64 = 500
 )
 
 type Order struct {

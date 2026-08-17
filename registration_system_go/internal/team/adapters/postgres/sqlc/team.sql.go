@@ -246,20 +246,21 @@ func (q *Queries) GetTeamByID(ctx context.Context, id int64) (GetTeamByIDRow, er
 }
 
 const getTeamMembershipState = `-- name: GetTeamMembershipState :one
-SELECT credit_score, vip_until
+SELECT credit_score, vip_until, balance_cents
 FROM teams
 WHERE id = $1
 `
 
 type GetTeamMembershipStateRow struct {
-	CreditScore int32              `json:"credit_score"`
-	VipUntil    pgtype.Timestamptz `json:"vip_until"`
+	CreditScore  int32              `json:"credit_score"`
+	VipUntil     pgtype.Timestamptz `json:"vip_until"`
+	BalanceCents int64              `json:"balance_cents"`
 }
 
 func (q *Queries) GetTeamMembershipState(ctx context.Context, id int64) (GetTeamMembershipStateRow, error) {
 	row := q.db.QueryRow(ctx, getTeamMembershipState, id)
 	var i GetTeamMembershipStateRow
-	err := row.Scan(&i.CreditScore, &i.VipUntil)
+	err := row.Scan(&i.CreditScore, &i.VipUntil, &i.BalanceCents)
 	return i, err
 }
 

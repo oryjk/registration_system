@@ -311,6 +311,6 @@ ORDER BY
     tm.user_id;
 
 -- name: GetTeamMembershipState :one
-SELECT credit_score, vip_until
+SELECT credit_score, vip_until, balance_cents
 FROM teams
 WHERE id = $1;

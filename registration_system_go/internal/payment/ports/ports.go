@@ -95,14 +95,14 @@ type Settlement interface {
 	CreditRecharge(context.Context, VerifiedPayment) (SettlementResult, error)
 }
 
-// MembershipPurchase 是一笔队费订单的购买信息：归属球队与按金额换算的信用分增量。
-type MembershipPurchase struct {
+// TeamFundCredit 是一笔队费订单的入账信息：归属球队与入账金额。
+type TeamFundCredit struct {
 	TeamID      int64
-	CreditDelta int
+	AmountCents int64
 }
 
 type MembershipSettlement interface {
-	ApplyMembershipPayment(context.Context, VerifiedPayment, MembershipPurchase) (SettlementResult, error)
+	ApplyMembershipPayment(context.Context, VerifiedPayment, TeamFundCredit) (SettlementResult, error)
 }
 
 // TeamEligibility 供下单用例校验球队与操作者身份（由 team 模块实现）。

@@ -241,7 +241,7 @@ func mustPaymentOrder(t *testing.T, orderNo string, userID, amount int64) paymen
 	return order
 }
 
-func TestApplyMembershipPaymentRepairsCreditWithoutTouchingVipUntilAndIsIdempotent(t *testing.T) {
+func TestApplyMembershipPaymentCreditsTeamBalanceWithoutTouchingCreditOrVipAndIsIdempotent(t *testing.T) {
 	pool := testsupport.OpenTestPostgres(t)
 	ctx := context.Background()
 	userID := seedPaymentUser(t, pool, "member")
@@ -259,25 +259,28 @@ func TestApplyMembershipPaymentRepairsCreditWithoutTouchingVipUntilAndIsIdempote
 		t.Fatal(err)
 	}
 	payment := paymentports.VerifiedPayment{OrderNo: order.OrderNo, AmountCents: order.AmountCents, TransactionID: "wx-" + order.OrderNo, PaidAt: time.Now().UTC()}
-	purchase := paymentports.MembershipPurchase{TeamID: teamID, CreditDelta: 15}
+	credit := paymentports.TeamFundCredit{TeamID: teamID, AmountCents: order.AmountCents}
 
-	first, err := repository.ApplyMembershipPayment(ctx, payment, purchase)
+	first, err := repository.ApplyMembershipPayment(ctx, payment, credit)
 	if err != nil {
 		t.Fatal(err)
 	}
-	second, err := repository.ApplyMembershipPayment(ctx, payment, purchase)
+	second, err := repository.ApplyMembershipPayment(ctx, payment, credit)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	var actualVipUntil time.Time
-	var credit int
-	if err := pool.QueryRow(ctx, `SELECT vip_until, credit_score FROM teams WHERE id=$1`, teamID).Scan(&actualVipUntil, &credit); err != nil {
+	var creditScore, balance int64
+	if err := pool.QueryRow(ctx, `SELECT vip_until, credit_score, balance_cents FROM teams WHERE id=$1`, teamID).Scan(&actualVipUntil, &creditScore, &balance); err != nil {
 		t.Fatal(err)
 	}
-	// 信用分修复：50 + 15；幂等重放不叠加；vip_until 不再被队费改动。
-	if credit != 50+15 {
-		t.Fatalf("credit=%d", credit)
+	// 队费只入球队余额；不动信用分、不动 vip_until；幂等重放不叠加。
+	if creditScore != 50 {
+		t.Fatalf("credit_score changed: %d", creditScore)
+	}
+	if balance != 7500 || first.BalanceCents != 7500 {
+		t.Fatalf("balance=%d result.BalanceCents=%d", balance, first.BalanceCents)
 	}
 	if !actualVipUntil.Equal(vipUntil) {
 		t.Fatalf("vip_until changed: before=%v after=%v", vipUntil, actualVipUntil)
@@ -307,7 +310,7 @@ func TestApplyMembershipPaymentRejectsAmountMismatch(t *testing.T) {
 		t.Fatal(err)
 	}
 	payment := paymentports.VerifiedPayment{OrderNo: order.OrderNo, AmountCents: 1, TransactionID: "wx-bad", PaidAt: time.Now().UTC()}
-	if _, err := repository.ApplyMembershipPayment(ctx, payment, paymentports.MembershipPurchase{TeamID: teamID}); err == nil {
+	if _, err := repository.ApplyMembershipPayment(ctx, payment, paymentports.TeamFundCredit{TeamID: teamID}); err == nil {
 		t.Fatal("expected amount mismatch conflict")
 	}
 	loaded, err := repository.Get(ctx, order.OrderNo)

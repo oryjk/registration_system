@@ -13,6 +13,7 @@ const {
   paying,
   amountInput,
   amountError,
+  balanceLabel,
   roleLabel,
   canManage,
   totalPriceLabel,
@@ -49,8 +50,11 @@ const {
 
         <view class="recharge-card">
           <view class="recharge-head">
-            <text class="recharge-title">队费充值</text>
-            <text class="recharge-copy">金额不限，每缴纳 5 元修复 1 点球队信用分</text>
+            <view class="recharge-head-row">
+              <text class="recharge-title">队费充值</text>
+              <text class="recharge-balance">球队余额 {{ balanceLabel }}</text>
+            </view>
+            <text class="recharge-copy">充多少是多少，直接计入本队余额</text>
           </view>
           <view class="recharge-amount">
             <input
@@ -90,6 +94,18 @@ const {
 </template>
 
 <style scoped>
+.recharge-head-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12rpx;
+}
+
+.recharge-balance {
+  color: var(--neo-color-accent);
+  font-size: 24rpx;
+  font-weight: 800;
+}
 .team-detail-page {
   min-height: 100vh;
   padding: 0 28rpx 96rpx;

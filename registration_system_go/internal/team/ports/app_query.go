@@ -17,10 +17,11 @@ type AppMember struct {
 	JoinedAt  time.Time
 }
 
-// AppMembershipState 是应用端展示的球队会员状态。
+// AppMembershipState 是应用端展示的球队会员状态与队费余额。
 type AppMembershipState struct {
-	CreditScore int
-	VipUntil    *time.Time
+	CreditScore  int
+	VipUntil     *time.Time
+	BalanceCents int64
 }
 
 type AppQueryRepository interface {

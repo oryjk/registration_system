@@ -181,7 +181,7 @@ func (s *Service) Sync(ctx context.Context, actor sharedauth.Actor, orderNo stri
 		return paymentports.SettlementResult{}, sharederror.ErrForbidden
 	}
 	if order.Status == paymentdomain.StatusPaid {
-		return s.settlement.CreditRecharge(ctx, verifiedFromOrder(order))
+		return s.settleVerified(ctx, verifiedFromOrder(order))
 	}
 	if order.Status != paymentdomain.StatusPending {
 		return paymentports.SettlementResult{Order: order}, nil
@@ -244,7 +244,12 @@ func (s *Service) settle(ctx context.Context, payment paymentports.ProviderPayme
 		OrderNo: payment.OrderNo, AmountCents: payment.AmountCents,
 		TransactionID: payment.TransactionID, PaidAt: payment.PaidAt,
 	}
-	order, err := s.orders.Get(ctx, payment.OrderNo)
+	return s.settleVerified(ctx, verified)
+}
+
+// settleVerified 按订单类型路由结算：队费订单入球队余额，充值订单入个人钱包。
+func (s *Service) settleVerified(ctx context.Context, verified paymentports.VerifiedPayment) (paymentports.SettlementResult, error) {
+	order, err := s.orders.Get(ctx, verified.OrderNo)
 	if err != nil {
 		return paymentports.SettlementResult{}, err
 	}
@@ -253,9 +258,9 @@ func (s *Service) settle(ctx context.Context, payment paymentports.ProviderPayme
 		if order.TeamID == nil {
 			return paymentports.SettlementResult{}, sharederror.New(sharederror.KindConflict, "队费订单缺少球队信息")
 		}
-		return s.memberships.ApplyMembershipPayment(ctx, verified, paymentports.MembershipPurchase{
+		return s.memberships.ApplyMembershipPayment(ctx, verified, paymentports.TeamFundCredit{
 			TeamID:      *order.TeamID,
-			CreditDelta: int(order.AmountCents / paymentdomain.MembershipCreditPerAmountCents),
+			AmountCents: order.AmountCents,
 		})
 	default:
 		return s.settlement.CreditRecharge(ctx, verified)

@@ -13,22 +13,22 @@ import (
 
 const applyTeamMembershipToTeam = `-- name: ApplyTeamMembershipToTeam :one
 UPDATE teams
-SET credit_score = LEAST(100, credit_score + $1::int),
+SET balance_cents = balance_cents + $1::bigint,
     updated_at = NOW()
 WHERE id = $2::bigint
-RETURNING credit_score
+RETURNING balance_cents
 `
 
 type ApplyTeamMembershipToTeamParams struct {
-	CreditDelta int32 `json:"credit_delta"`
+	AmountCents int64 `json:"amount_cents"`
 	TeamID      int64 `json:"team_id"`
 }
 
-func (q *Queries) ApplyTeamMembershipToTeam(ctx context.Context, arg ApplyTeamMembershipToTeamParams) (int32, error) {
-	row := q.db.QueryRow(ctx, applyTeamMembershipToTeam, arg.CreditDelta, arg.TeamID)
-	var credit_score int32
-	err := row.Scan(&credit_score)
-	return credit_score, err
+func (q *Queries) ApplyTeamMembershipToTeam(ctx context.Context, arg ApplyTeamMembershipToTeamParams) (int64, error) {
+	row := q.db.QueryRow(ctx, applyTeamMembershipToTeam, arg.AmountCents, arg.TeamID)
+	var balance_cents int64
+	err := row.Scan(&balance_cents)
+	return balance_cents, err
 }
 
 const cancelPaymentOrder = `-- name: CancelPaymentOrder :one

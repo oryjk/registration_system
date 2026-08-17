@@ -386,7 +386,7 @@ func (r *Repository) GetTeamMembershipState(ctx context.Context, teamID int64) (
 	if err != nil {
 		return ports.AppMembershipState{}, err
 	}
-	state := ports.AppMembershipState{CreditScore: int(row.CreditScore)}
+	state := ports.AppMembershipState{CreditScore: int(row.CreditScore), BalanceCents: row.BalanceCents}
 	if row.VipUntil.Valid {
 		vipUntil := row.VipUntil.Time
 		state.VipUntil = &vipUntil

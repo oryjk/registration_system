@@ -6,10 +6,10 @@ RETURNING *;
 
 -- name: ApplyTeamMembershipToTeam :one
 UPDATE teams
-SET credit_score = LEAST(100, credit_score + sqlc.arg('credit_delta')::int),
+SET balance_cents = balance_cents + sqlc.arg('amount_cents')::bigint,
     updated_at = NOW()
 WHERE id = sqlc.arg('team_id')::bigint
-RETURNING credit_score;
+RETURNING balance_cents;
 
 -- name: GetPaymentOrder :one
 SELECT * FROM payment_orders WHERE order_no = $1;

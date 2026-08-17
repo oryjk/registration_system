@@ -278,9 +278,9 @@ func monthsFromSQL(months *int32) *int {
 	return &value
 }
 
-// ApplyMembershipPayment 结算一笔队费订单：订单置为已付并按金额修复归属球队的信用分。
-// 幂等与充值结算同构——重复回调返回已付订单，不重复加信用分。
-func (r *Repository) ApplyMembershipPayment(ctx context.Context, payment paymentports.VerifiedPayment, purchase paymentports.MembershipPurchase) (result paymentports.SettlementResult, err error) {
+// ApplyMembershipPayment 结算一笔队费订单：订单置为已付，金额计入归属球队余额。
+// 幂等与充值结算同构——重复回调返回已付订单，不重复入账。
+func (r *Repository) ApplyMembershipPayment(ctx context.Context, payment paymentports.VerifiedPayment, credit paymentports.TeamFundCredit) (result paymentports.SettlementResult, err error) {
 	tx, err := r.database.Begin(ctx)
 	if err != nil {
 		return result, err
@@ -319,9 +319,10 @@ func (r *Repository) ApplyMembershipPayment(ctx context.Context, payment payment
 	if err != nil {
 		return result, mapConstraintError(err)
 	}
-	if _, err := queries.ApplyTeamMembershipToTeam(ctx, paymentsqlc.ApplyTeamMembershipToTeamParams{
-		CreditDelta: int32(purchase.CreditDelta), TeamID: purchase.TeamID,
-	}); err != nil {
+	balanceCents, err := queries.ApplyTeamMembershipToTeam(ctx, paymentsqlc.ApplyTeamMembershipToTeamParams{
+		AmountCents: credit.AmountCents, TeamID: credit.TeamID,
+	})
+	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return result, sharederror.New(sharederror.KindNotFound, "队费订单归属的球队不存在")
 		}
@@ -330,5 +331,5 @@ func (r *Repository) ApplyMembershipPayment(ctx context.Context, payment payment
 	if err := tx.Commit(ctx); err != nil {
 		return result, err
 	}
-	return paymentports.SettlementResult{Order: mapOrder(paidRow), Credited: true}, nil
+	return paymentports.SettlementResult{Order: mapOrder(paidRow), BalanceCents: balanceCents, Credited: true}, nil
 }
