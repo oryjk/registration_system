@@ -1,6 +1,7 @@
 import {
   buildCreateMatchPayload,
   buildUpdateMatchPayload,
+  defaultHostCapacityLimit,
 } from "./match-form-payload";
 
 const baseValues = {
@@ -71,7 +72,22 @@ describe("match form payload", () => {
       location_latitude: 30.123456,
       location_longitude: 120.654321,
       description: "保留 API 字段测试",
+      host_capacity_limit: 12,
     });
+  });
+
+  it("sends null capacity in the update contract when the field is empty", () => {
+    expect(
+      buildUpdateMatchPayload({
+        ...baseValues,
+        host_capacity_limit: undefined,
+      }).host_capacity_limit,
+    ).toEqual(null);
+  });
+
+  it("defaults the host capacity to four players above the team size", () => {
+    expect(defaultHostCapacityLimit(8)).toEqual(12);
+    expect(defaultHostCapacityLimit(11)).toEqual(15);
   });
 });
 

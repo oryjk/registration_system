@@ -31,6 +31,7 @@ import type { Team, TeamOption } from "../types/team";
 import {
   buildCreateMatchPayload,
   buildUpdateMatchPayload,
+  defaultHostCapacityLimit,
 } from "../utils/match-form-payload";
 import {
   publicationModeDescriptions,
@@ -59,7 +60,7 @@ interface MatchFormValues {
 const initialValues: Partial<MatchFormValues> = {
   publication_mode: "online_team",
   players_per_team: 8,
-  host_capacity_limit: 12,
+  host_capacity_limit: defaultHostCapacityLimit(8),
   duration_minutes: 120,
 };
 
@@ -95,6 +96,10 @@ export default function MatchFormPage() {
   const submitting = createMutation.isPending || updateMutation.isPending;
   const loading = detailQuery.isLoading || teamsQuery.isLoading;
   const match = detailQuery.data?.match;
+  // 编辑回填主队报名上限：优先用主队分组已配置的满员人数，缺失时按默认规则（每队人数 + 4）补齐。
+  const hostGroup = detailQuery.data?.groups.find(
+    (group) => group.kind === "host_team",
+  );
   const formInitialValues: Partial<MatchFormValues> = match
     ? {
         name: match.name,
@@ -102,6 +107,9 @@ export default function MatchFormPage() {
         host_team_id: match.host_team_id,
         opponent_name: match.opponent_name || undefined,
         players_per_team: match.players_per_team,
+        host_capacity_limit:
+          hostGroup?.max_players ??
+          defaultHostCapacityLimit(match.players_per_team),
         start_time: dayjs(match.start_time),
         duration_minutes: Math.max(
           1,
@@ -129,6 +137,14 @@ export default function MatchFormPage() {
       registration_start_at:
         form.getFieldValue("registration_start_at") ?? dayjs(),
       registration_end_at: value.subtract(2, "hour"),
+    });
+  };
+
+  // 调整每队人数时同步主队报名上限默认值；管理员手动改过上限后不再跟随。
+  const handlePlayersPerTeamChange = (value: number | null) => {
+    if (form.isFieldTouched("host_capacity_limit")) return;
+    form.setFieldsValue({
+      host_capacity_limit: defaultHostCapacityLimit(value ?? 0),
     });
   };
 
@@ -361,6 +377,7 @@ export default function MatchFormPage() {
                       max={30}
                       disabled={editing}
                       className="full-width-control"
+                      onChange={handlePlayersPerTeamChange}
                     />
                   </Form.Item>
                   {mode === "offline_confirmed" ? (
@@ -384,15 +401,17 @@ export default function MatchFormPage() {
                       <Switch />
                     </Form.Item>
                   ) : null}
-                  {!editing ? (
-                    <Form.Item name="host_capacity_limit" label="主队报名上限">
-                      <InputNumber
-                        min={1}
-                        max={100}
-                        className="full-width-control"
-                      />
-                    </Form.Item>
-                  ) : null}
+                  <Form.Item
+                    name="host_capacity_limit"
+                    label="每队报名人数上限"
+                    tooltip="每队报名满员人数，超出后停止收人；默认为每队人数 + 4，清空则本次不修改"
+                  >
+                    <InputNumber
+                      min={1}
+                      max={100}
+                      className="full-width-control"
+                    />
+                  </Form.Item>
                 </div>
               </div>
 

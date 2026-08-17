@@ -205,6 +205,33 @@ func TestRepositoryCreatesAndFindsMatchWithGroups(t *testing.T) {
 	}
 }
 
+func TestRepositoryUpdateDetailsPersistsHostCapacity(t *testing.T) {
+	pool := testsupport.StartPostgres(t)
+	ctx := context.Background()
+	userID, teamID := seedMatchOwner(t, pool)
+	match, groups := newPersistableMatch(t, userID, teamID)
+	repository := NewRepository(pool)
+	if err := repository.CreateWithGroups(ctx, match, groups); err != nil {
+		t.Fatalf("create match: %v", err)
+	}
+
+	hostGroup := groups[0]
+	if err := hostGroup.UpdateHostCapacity(12, time.Date(2026, 8, 17, 10, 0, 0, 0, time.UTC)); err != nil {
+		t.Fatalf("update capacity: %v", err)
+	}
+	if err := repository.UpdateDetails(ctx, match, &hostGroup); err != nil {
+		t.Fatalf("update details: %v", err)
+	}
+
+	_, persistedGroups, _, err := repository.FindByID(ctx, match.ID)
+	if err != nil {
+		t.Fatalf("find match: %v", err)
+	}
+	if len(persistedGroups) != 1 || persistedGroups[0].MaxPlayers == nil || *persistedGroups[0].MaxPlayers != 12 {
+		t.Fatalf("expected host group capacity 12, got %+v", persistedGroups)
+	}
+}
+
 func TestRepositoryRollsBackMatchWhenGroupInsertFails(t *testing.T) {
 	pool := testsupport.StartPostgres(t)
 	ctx := context.Background()

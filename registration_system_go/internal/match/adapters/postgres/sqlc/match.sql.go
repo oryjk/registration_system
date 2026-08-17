@@ -2041,6 +2041,24 @@ func (q *Queries) UpdateMatchStatus(ctx context.Context, arg UpdateMatchStatusPa
 	return i, err
 }
 
+const updateRegistrationGroupCapacity = `-- name: UpdateRegistrationGroupCapacity :exec
+UPDATE match_registration_groups
+SET max_players = $2,
+    updated_at = $3
+WHERE id = $1
+`
+
+type UpdateRegistrationGroupCapacityParams struct {
+	ID         pgtype.UUID      `json:"id"`
+	MaxPlayers *int32           `json:"max_players"`
+	UpdatedAt  pgtype.Timestamp `json:"updated_at"`
+}
+
+func (q *Queries) UpdateRegistrationGroupCapacity(ctx context.Context, arg UpdateRegistrationGroupCapacityParams) error {
+	_, err := q.db.Exec(ctx, updateRegistrationGroupCapacity, arg.ID, arg.MaxPlayers, arg.UpdatedAt)
+	return err
+}
+
 const updateRegistrationGroupState = `-- name: UpdateRegistrationGroupState :exec
 UPDATE match_registration_groups
 SET status = $2,

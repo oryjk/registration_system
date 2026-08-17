@@ -139,6 +139,73 @@ func TestAdminUpdatesRegistrationWindowWithTriStateSemantics(t *testing.T) {
 	}
 }
 
+func updatableAdminMatchFixture(id uuid.UUID) (domain.Match, []domain.RegistrationGroup) {
+	createdByAdminID := int64(3)
+	start := time.Date(2026, 8, 22, 12, 0, 0, 0, time.UTC)
+	return domain.Match{
+			ID: id, Status: domain.MatchRegistering, PublicationMode: domain.OnlineTeam,
+			Name: "周四友谊赛", HostTeamID: 11, PlayersPerTeam: 8,
+			StartTime: start, EndTime: start.Add(2 * time.Hour),
+			Location: "驿马河", CreatedByAdminID: &createdByAdminID,
+		}, []domain.RegistrationGroup{
+			{ID: uuid.New(), MatchID: id, Kind: domain.GroupIndividualOpponent, Status: domain.GroupOpen},
+			{ID: uuid.New(), MatchID: id, Kind: domain.GroupHostTeam, Status: domain.GroupOpen},
+		}
+}
+
+func TestAdminUpdatesHostCapacityWithDetails(t *testing.T) {
+	id := uuid.New()
+	match, groups := updatableAdminMatchFixture(id)
+	repository := &fakeAdminMatchRepository{match: match, groups: groups, found: true}
+	service := NewAdminMatchService(repository, fixedClock(), &fakeAdminAccess{})
+
+	limit := 12
+	if _, err := service.UpdateDetails(context.Background(), adminActor(3), id, UpdateMatchCommand{
+		Name: match.Name, StartTime: match.StartTime, EndTime: match.EndTime, Location: match.Location,
+		HostCapacityLimit: &limit,
+	}); err != nil {
+		t.Fatalf("update details: %v", err)
+	}
+	saved := repository.updatedHostGroup
+	if saved == nil || saved.ID != groups[1].ID || saved.MaxPlayers == nil || *saved.MaxPlayers != 12 {
+		t.Fatalf("expected host group capacity 12, got %+v", saved)
+	}
+}
+
+func TestAdminUpdateWithoutCapacityLeavesHostGroupUntouched(t *testing.T) {
+	id := uuid.New()
+	match, groups := updatableAdminMatchFixture(id)
+	repository := &fakeAdminMatchRepository{match: match, groups: groups, found: true}
+	service := NewAdminMatchService(repository, fixedClock(), &fakeAdminAccess{})
+
+	if _, err := service.UpdateDetails(context.Background(), adminActor(3), id, UpdateMatchCommand{
+		Name: match.Name, StartTime: match.StartTime, EndTime: match.EndTime, Location: match.Location,
+	}); err != nil {
+		t.Fatalf("update details: %v", err)
+	}
+	if repository.updatedHostGroup != nil {
+		t.Fatalf("host group must not be persisted when capacity omitted: %+v", repository.updatedHostGroup)
+	}
+}
+
+func TestAdminUpdateCapacityRequiresHostGroup(t *testing.T) {
+	id := uuid.New()
+	match, _ := updatableAdminMatchFixture(id)
+	repository := &fakeAdminMatchRepository{match: match, found: true}
+	service := NewAdminMatchService(repository, fixedClock(), &fakeAdminAccess{})
+
+	limit := 12
+	if _, err := service.UpdateDetails(context.Background(), adminActor(3), id, UpdateMatchCommand{
+		Name: match.Name, StartTime: match.StartTime, EndTime: match.EndTime, Location: match.Location,
+		HostCapacityLimit: &limit,
+	}); err == nil {
+		t.Fatal("expected missing host group to fail the update")
+	}
+	if repository.updatedDetails.ID != uuid.Nil {
+		t.Fatal("match details must not persist when capacity update is invalid")
+	}
+}
+
 func assertOptionalTimeEqual(t *testing.T, got, want *time.Time) {
 	t.Helper()
 	if got == nil || want == nil {
@@ -186,17 +253,18 @@ func TestVenueAdminCannotDeleteMatch(t *testing.T) {
 }
 
 type fakeAdminMatchRepository struct {
-	match          domain.Match
-	groups         []domain.RegistrationGroup
-	item           ports.AdminMatchItem
-	items          []ports.AdminMatchItem
-	total          int64
-	found          bool
-	rosters        map[uuid.UUID][]ports.AdminRosterEntry
-	updatedDetails domain.Match
-	updatedStatus  domain.Match
-	deleteFound    bool
-	deletedID      uuid.UUID
+	match            domain.Match
+	groups           []domain.RegistrationGroup
+	item             ports.AdminMatchItem
+	items            []ports.AdminMatchItem
+	total            int64
+	found            bool
+	rosters          map[uuid.UUID][]ports.AdminRosterEntry
+	updatedDetails   domain.Match
+	updatedHostGroup *domain.RegistrationGroup
+	updatedStatus    domain.Match
+	deleteFound      bool
+	deletedID        uuid.UUID
 }
 
 func (f *fakeAdminMatchRepository) CreateWithGroups(_ context.Context, match domain.Match, groups []domain.RegistrationGroup) error {
@@ -224,8 +292,9 @@ func (f *fakeAdminMatchRepository) CountForAdmin(context.Context, ports.AdminMat
 	return f.total, nil
 }
 
-func (f *fakeAdminMatchRepository) UpdateDetails(_ context.Context, match domain.Match) error {
+func (f *fakeAdminMatchRepository) UpdateDetails(_ context.Context, match domain.Match, hostGroup *domain.RegistrationGroup) error {
 	f.updatedDetails = match
+	f.updatedHostGroup = hostGroup
 	return nil
 }
 

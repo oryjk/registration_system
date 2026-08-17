@@ -58,6 +58,9 @@ type UpdateMatchCommand struct {
 	LocationLatitude    *float64
 	LocationLongitude   *float64
 	Description         *string
+	// HostCapacityLimit 非 nil 时同步把主队报名组的满员上限改为该值；
+	// nil 表示本次编辑不改容量（区别于创建时的缺省兜底）。
+	HostCapacityLimit *int
 }
 
 // AdminGroupRoster 是某个报名组的队员报名花名册，与 Groups 按同一顺序对齐。
@@ -127,7 +130,7 @@ func (s AdminMatchService) UpdateDetails(ctx context.Context, actor sharedauth.A
 	if !actor.IsAdmin() {
 		return domain.Match{}, sharederror.ErrForbidden
 	}
-	match, _, found, err := s.repository.FindByID(ctx, id)
+	match, groups, found, err := s.repository.FindByID(ctx, id)
 	if err != nil {
 		return domain.Match{}, sharederror.Wrap(sharederror.KindInternal, "查询比赛失败", err)
 	}
@@ -143,10 +146,29 @@ func (s AdminMatchService) UpdateDetails(ctx context.Context, actor sharedauth.A
 	}, s.clock.Now()); err != nil {
 		return domain.Match{}, err
 	}
-	if err := s.repository.UpdateDetails(ctx, match); err != nil {
+	var hostGroup *domain.RegistrationGroup
+	if command.HostCapacityLimit != nil {
+		hostGroup = findHostGroup(groups)
+		if hostGroup == nil {
+			return domain.Match{}, sharederror.New(sharederror.KindInternal, "主队报名组不存在")
+		}
+		if err := hostGroup.UpdateHostCapacity(*command.HostCapacityLimit, s.clock.Now()); err != nil {
+			return domain.Match{}, err
+		}
+	}
+	if err := s.repository.UpdateDetails(ctx, match, hostGroup); err != nil {
 		return domain.Match{}, sharederror.Wrap(sharederror.KindInternal, "更新比赛失败", err)
 	}
 	return match, nil
+}
+
+func findHostGroup(groups []domain.RegistrationGroup) *domain.RegistrationGroup {
+	for index := range groups {
+		if groups[index].Kind == domain.GroupHostTeam {
+			return &groups[index]
+		}
+	}
+	return nil
 }
 
 func resolveOptionalTimestamp(update OptionalTimestamp, current *time.Time) *time.Time {

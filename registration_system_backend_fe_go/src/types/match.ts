@@ -107,4 +107,6 @@ export interface UpdateMatchPayload {
   location_latitude?: number | null;
   location_longitude?: number | null;
   description?: string | null;
+  // 主队报名组满员上限；null 表示本次编辑不修改容量。
+  host_capacity_limit?: number | null;
 }

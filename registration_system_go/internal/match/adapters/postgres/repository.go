@@ -77,14 +77,32 @@ func (r *Repository) FindByID(ctx context.Context, matchID uuid.UUID) (domain.Ma
 	return mapMatch(row), groups, true, nil
 }
 
-func (r *Repository) UpdateDetails(ctx context.Context, match domain.Match) error {
-	_, err := r.queries.UpdateMatchDetails(ctx, matchsqlc.UpdateMatchDetailsParams{
+func (r *Repository) UpdateDetails(ctx context.Context, match domain.Match, hostGroup *domain.RegistrationGroup) error {
+	tx, err := r.database.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = tx.Rollback(ctx)
+	}()
+
+	queries := r.queries.WithTx(tx)
+	if _, err := queries.UpdateMatchDetails(ctx, matchsqlc.UpdateMatchDetailsParams{
 		ID: pgUUID(match.ID), Name: match.Name, StartTime: pgTimestamp(match.StartTime), EndTime: pgTimestamp(match.EndTime),
 		RegistrationStartAt: pgOptionalTimestamp(match.RegistrationStartAt), RegistrationEndAt: pgOptionalTimestamp(match.RegistrationEndAt),
 		Location: match.Location, LocationLatitude: match.LocationLatitude, LocationLongitude: match.LocationLongitude,
 		Description: match.Description,
-	})
-	return err
+	}); err != nil {
+		return err
+	}
+	if hostGroup != nil {
+		if err := queries.UpdateRegistrationGroupCapacity(ctx, matchsqlc.UpdateRegistrationGroupCapacityParams{
+			ID: pgUUID(hostGroup.ID), MaxPlayers: int32Pointer(hostGroup.MaxPlayers), UpdatedAt: pgTimestamp(hostGroup.UpdatedAt),
+		}); err != nil {
+			return err
+		}
+	}
+	return tx.Commit(ctx)
 }
 
 func (r *Repository) UpdateStatus(ctx context.Context, match domain.Match) error {

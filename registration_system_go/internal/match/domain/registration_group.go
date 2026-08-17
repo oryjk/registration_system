@@ -46,6 +46,17 @@ func NewIndividualGroup(matchID uuid.UUID, limits IndividualLimits, now time.Tim
 	return RegistrationGroup{ID: uuid.New(), MatchID: matchID, Kind: GroupIndividualOpponent, MinPlayers: &minPlayers, MaxPlayers: &maxPlayers, Status: GroupOpen, CreatedAt: now, UpdatedAt: now}
 }
 
+// UpdateHostCapacity 更新球队报名组的满员上限；只改规则不重算状态，
+// 满员拦截在报名动作内按新上限执行，已报名人数超出新上限时不回滚报名。
+func (g *RegistrationGroup) UpdateHostCapacity(limit int, now time.Time) error {
+	if limit <= 0 {
+		return sharederror.New(sharederror.KindValidation, "本队报名上限必须大于 0")
+	}
+	g.MaxPlayers = &limit
+	g.UpdatedAt = now
+	return nil
+}
+
 func (g *RegistrationGroup) RecalculateIndividualStatus(activePlayers int, now time.Time) error {
 	if g.Kind != GroupIndividualOpponent || g.MinPlayers == nil || g.MaxPlayers == nil {
 		return sharederror.New(sharederror.KindConflict, "当前报名组不是散人对手组")

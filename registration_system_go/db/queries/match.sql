@@ -411,6 +411,12 @@ SET status = $2,
     updated_at = $4
 WHERE id = $1;
 
+-- name: UpdateRegistrationGroupCapacity :exec
+UPDATE match_registration_groups
+SET max_players = $2,
+    updated_at = $3
+WHERE id = $1;
+
 -- name: GetRegistrationGroupForUpdate :one
 SELECT *
 FROM match_registration_groups

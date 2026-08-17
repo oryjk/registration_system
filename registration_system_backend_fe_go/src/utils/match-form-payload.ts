@@ -27,6 +27,11 @@ export interface MatchFormPayloadValues {
   is_free?: boolean;
 }
 
+// 主队报名上限默认值：每队人数 + 4，创建表单与未配置容量的编辑回填共用。
+export function defaultHostCapacityLimit(playersPerTeam: number): number {
+  return playersPerTeam + 4;
+}
+
 export function buildUpdateMatchPayload(
   values: MatchFormPayloadValues,
 ): UpdateMatchPayload {
@@ -42,6 +47,7 @@ export function buildUpdateMatchPayload(
     location_latitude: values.location_latitude ?? null,
     location_longitude: values.location_longitude ?? null,
     description: values.description?.trim() || null,
+    host_capacity_limit: values.host_capacity_limit ?? null,
   };
 }
 
@@ -57,7 +63,6 @@ export function buildCreateMatchPayload(
         ? values.opponent_name?.trim() || null
         : null,
     players_per_team: values.players_per_team,
-    host_capacity_limit: values.host_capacity_limit ?? null,
     is_free: values.is_free ?? false,
   };
 }

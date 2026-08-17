@@ -127,6 +127,45 @@ func TestAdminUpdateDecodesRegistrationWindowTriState(t *testing.T) {
 	}
 }
 
+func TestAdminUpdateDecodesHostCapacityLimit(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	limit := 12
+	tests := []struct {
+		name   string
+		fields string
+		want   *int
+	}{
+		{name: "omitted keeps nil", want: nil},
+		{name: "null keeps nil", fields: `,"host_capacity_limit":null`, want: nil},
+		{name: "number is passed through", fields: `,"host_capacity_limit":12`, want: &limit},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			matchID := uuid.New()
+			service := &fakeAdminMatches{detail: application.AdminMatchDetail{Item: ports.AdminMatchItem{Match: domain.Match{ID: matchID}}}}
+			handler := NewAdminHandler(service, &fakeCreateMatch{})
+			router := gin.New()
+			router.PUT("/matches/:id", authhttp.NewMiddleware(fakeAdminTokens{}).RequireAdmin(), handler.Update)
+			body := `{"name":"周四友谊赛","start_time":"2026-08-22T12:00:00Z","end_time":"2026-08-22T14:00:00Z","location":"驿马河"` + tt.fields + `}`
+			request := httptest.NewRequest(http.MethodPut, "/matches/"+matchID.String(), bytes.NewBufferString(body))
+			request.Header.Set("Authorization", "Bearer admin-token")
+			request.Header.Set("Content-Type", "application/json")
+			response := httptest.NewRecorder()
+
+			router.ServeHTTP(response, request)
+
+			if response.Code != http.StatusOK {
+				t.Fatalf("unexpected response %d: %s", response.Code, response.Body.String())
+			}
+			got := service.update.HostCapacityLimit
+			if (got == nil) != (tt.want == nil) || (got != nil && *got != *tt.want) {
+				t.Fatalf("unexpected capacity: got=%v want=%v", got, tt.want)
+			}
+		})
+	}
+}
+
 func assertOptionalTimestamp(t *testing.T, got, want application.OptionalTimestamp) {
 	t.Helper()
 	if got.Set != want.Set {

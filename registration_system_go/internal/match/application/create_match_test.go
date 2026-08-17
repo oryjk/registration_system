@@ -98,8 +98,10 @@ func (f *fakeMatchRepository) CountForAdmin(context.Context, ports.AdminMatchFil
 	return 0, nil
 }
 
-func (f *fakeMatchRepository) UpdateDetails(context.Context, domain.Match) error { return nil }
-func (f *fakeMatchRepository) UpdateStatus(context.Context, domain.Match) error  { return nil }
+func (f *fakeMatchRepository) UpdateDetails(context.Context, domain.Match, *domain.RegistrationGroup) error {
+	return nil
+}
+func (f *fakeMatchRepository) UpdateStatus(context.Context, domain.Match) error { return nil }
 func (f *fakeMatchRepository) FinishUpdateStatus(_ context.Context, _ domain.Match) (bool, error) {
 	return true, nil
 }

@@ -66,6 +66,8 @@ type UpdateMatchRequest struct {
 	LocationLatitude    *float64                 `json:"location_latitude"`
 	LocationLongitude   *float64                 `json:"location_longitude"`
 	Description         *string                  `json:"description"`
+	// HostCapacityLimit 为 nil（未传或 null）表示本次不修改主队报名上限。
+	HostCapacityLimit *int `json:"host_capacity_limit"`
 }
 
 type optionalTimestampRequest struct {
@@ -225,6 +227,7 @@ func (h *AdminHandler) Update(c *gin.Context) {
 		Name: request.Name, StartTime: request.StartTime, EndTime: request.EndTime,
 		RegistrationStartAt: request.RegistrationStartAt.commandValue(), RegistrationEndAt: request.RegistrationEndAt.commandValue(), Location: request.Location,
 		LocationLatitude: request.LocationLatitude, LocationLongitude: request.LocationLongitude, Description: request.Description,
+		HostCapacityLimit: request.HostCapacityLimit,
 	})
 	if err != nil {
 		sharedhttpapi.WriteError(c, err)

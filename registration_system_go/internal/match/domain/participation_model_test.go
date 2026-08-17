@@ -50,6 +50,24 @@ func TestIndividualGroupClosesAtMaximumAndReopensBelowIt(t *testing.T) {
 	}
 }
 
+func TestHostGroupUpdatesCapacity(t *testing.T) {
+	now := time.Date(2026, 8, 17, 10, 0, 0, 0, time.UTC)
+	teamID := int64(11)
+	group := NewTeamGroup(uuid.New(), GroupHostTeam, teamID, nil, now)
+
+	changedAt := now.Add(time.Hour)
+	if err := group.UpdateHostCapacity(12, changedAt); err != nil {
+		t.Fatalf("update capacity: %v", err)
+	}
+	if group.MaxPlayers == nil || *group.MaxPlayers != 12 || !group.UpdatedAt.Equal(changedAt) {
+		t.Fatalf("unexpected capacity update: %+v", group)
+	}
+
+	if err := group.UpdateHostCapacity(0, changedAt); err == nil {
+		t.Fatal("non-positive capacity must be rejected")
+	}
+}
+
 func TestTeamApplicationStateTransitions(t *testing.T) {
 	now := time.Date(2026, 7, 21, 10, 0, 0, 0, time.UTC)
 	application, err := NewTeamApplication(uuid.New(), 7, 42, "周末可以参赛", now)
