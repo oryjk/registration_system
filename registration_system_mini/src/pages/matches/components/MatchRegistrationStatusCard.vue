@@ -128,7 +128,6 @@ function handleSignup() {
         @click="handleSignup"
       >
         {{ submittingStatus ? "提交中..." : individualCtaLabel }}
-        <text v-if="!isGuestMode && !submittingStatus" class="action-free-label">免费</text>
       </NeoButton>
     </NeoStickyActionBar>
   </view>
@@ -241,11 +240,5 @@ function handleSignup() {
   color: var(--neo-color-text);
   font-size: 24rpx;
   font-weight: 900;
-}
-
-.action-free-label {
-  margin-left: 12rpx;
-  font-size: 22rpx;
-  opacity: 0.7;
 }
 </style>
