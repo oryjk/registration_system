@@ -272,7 +272,7 @@ func mapAdminListMatch(row matchsqlc.ListMatchesForAdminRow) domain.Match {
 		PlayersPerTeam: int(row.PlayersPerTeam), StartTime: row.StartTime.Time, EndTime: row.EndTime.Time,
 		RegistrationStartAt: timestampPointer(row.RegistrationStartAt), RegistrationEndAt: timestampPointer(row.RegistrationEndAt),
 		Location: row.Location, LocationLatitude: row.LocationLatitude, LocationLongitude: row.LocationLongitude,
-		Description: row.Description, CreatedByUserID: row.CreatedByUserID, CreatedByAdminID: row.CreatedByAdminID,
+		Description: row.Description, IsFree: row.IsFree, CreatedByUserID: row.CreatedByUserID, CreatedByAdminID: row.CreatedByAdminID,
 		CreatedAt: row.CreatedAt.Time, UpdatedAt: row.UpdatedAt.Time,
 	}
 }
@@ -285,7 +285,7 @@ func mapUserListMatch(row matchsqlc.ListMatchesForUserRow) domain.Match {
 		PlayersPerTeam: int(row.PlayersPerTeam), StartTime: row.StartTime.Time, EndTime: row.EndTime.Time,
 		RegistrationStartAt: timestampPointer(row.RegistrationStartAt), RegistrationEndAt: timestampPointer(row.RegistrationEndAt),
 		Location: row.Location, LocationLatitude: row.LocationLatitude, LocationLongitude: row.LocationLongitude,
-		Description: row.Description, CreatedByUserID: row.CreatedByUserID, CreatedByAdminID: row.CreatedByAdminID,
+		Description: row.Description, IsFree: row.IsFree, CreatedByUserID: row.CreatedByUserID, CreatedByAdminID: row.CreatedByAdminID,
 		CreatedAt: row.CreatedAt.Time, UpdatedAt: row.UpdatedAt.Time,
 	}
 }
@@ -298,7 +298,7 @@ func mapHomeActionMatch(row matchsqlc.ListHomeActionMatchesForUserRow) domain.Ma
 		PlayersPerTeam: int(row.PlayersPerTeam), StartTime: row.StartTime.Time, EndTime: row.EndTime.Time,
 		RegistrationStartAt: timestampPointer(row.RegistrationStartAt), RegistrationEndAt: timestampPointer(row.RegistrationEndAt),
 		Location: row.Location, LocationLatitude: row.LocationLatitude, LocationLongitude: row.LocationLongitude,
-		Description: row.Description, CreatedByUserID: row.CreatedByUserID, CreatedByAdminID: row.CreatedByAdminID,
+		Description: row.Description, IsFree: row.IsFree, CreatedByUserID: row.CreatedByUserID, CreatedByAdminID: row.CreatedByAdminID,
 		CreatedAt: row.CreatedAt.Time, UpdatedAt: row.UpdatedAt.Time,
 	}
 }
@@ -311,7 +311,7 @@ func mapHomeEndedMatch(row matchsqlc.ListHomeEndedMatchesForUserRow) domain.Matc
 		PlayersPerTeam: int(row.PlayersPerTeam), StartTime: row.StartTime.Time, EndTime: row.EndTime.Time,
 		RegistrationStartAt: timestampPointer(row.RegistrationStartAt), RegistrationEndAt: timestampPointer(row.RegistrationEndAt),
 		Location: row.Location, LocationLatitude: row.LocationLatitude, LocationLongitude: row.LocationLongitude,
-		Description: row.Description, CreatedByUserID: row.CreatedByUserID, CreatedByAdminID: row.CreatedByAdminID,
+		Description: row.Description, IsFree: row.IsFree, CreatedByUserID: row.CreatedByUserID, CreatedByAdminID: row.CreatedByAdminID,
 		CreatedAt: row.CreatedAt.Time, UpdatedAt: row.UpdatedAt.Time,
 	}
 }

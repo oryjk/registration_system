@@ -57,6 +57,7 @@ type UserMatchResponse struct {
 	LocationLatitude    *float64                       `json:"location_latitude"`
 	LocationLongitude   *float64                       `json:"location_longitude"`
 	Description         *string                        `json:"description"`
+	IsFree              bool                           `json:"is_free"`
 	RegistrationGroups  []UserRegistrationGroupSummary `json:"registration_groups"`
 	CreatedAt           time.Time                      `json:"created_at"`
 	UpdatedAt           time.Time                      `json:"updated_at"`
@@ -222,7 +223,7 @@ func (h *UserHandler) Create(c *gin.Context) {
 		HostCapacityLimit: request.HostCapacityLimit, StartTime: request.StartTime, EndTime: request.EndTime,
 		RegistrationStartAt: request.RegistrationStartAt, RegistrationEndAt: request.RegistrationEndAt,
 		Location: request.Location, LocationLatitude: request.LocationLatitude, LocationLongitude: request.LocationLongitude,
-		Description: request.Description,
+		Description: request.Description, IsFree: request.IsFree,
 	})
 	if err != nil {
 		sharedhttpapi.WriteError(c, err)
@@ -343,6 +344,7 @@ func mapUserMatch(item ports.MatchItem) UserMatchResponse {
 		RegistrationStartAt: match.RegistrationStartAt, RegistrationEndAt: match.RegistrationEndAt,
 		Location: match.Location, LocationLatitude: match.LocationLatitude, LocationLongitude: match.LocationLongitude,
 		Description: match.Description, RegistrationGroups: groups, CreatedAt: match.CreatedAt, UpdatedAt: match.UpdatedAt,
+		IsFree: match.IsFree,
 	}
 }
 

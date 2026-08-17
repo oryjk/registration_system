@@ -52,6 +52,7 @@ type Match struct {
 	CreatedByAdminID    *int64           `json:"created_by_admin_id"`
 	RegistrationStartAt pgtype.Timestamp `json:"registration_start_at"`
 	RegistrationEndAt   pgtype.Timestamp `json:"registration_end_at"`
+	IsFree              bool             `json:"is_free"`
 }
 
 type MatchRegistration struct {

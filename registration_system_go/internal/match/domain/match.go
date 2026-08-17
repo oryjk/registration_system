@@ -51,6 +51,7 @@ type Match struct {
 	LocationLatitude    *float64
 	LocationLongitude   *float64
 	Description         *string
+	IsFree              bool
 	CreatedByUserID     *int64
 	CreatedByAdminID    *int64
 	CreatedAt           time.Time
@@ -74,6 +75,7 @@ type NewMatchInput struct {
 	LocationLatitude    *float64
 	LocationLongitude   *float64
 	Description         *string
+	IsFree              *bool
 	CreatedAt           time.Time
 }
 
@@ -112,6 +114,7 @@ func NewMatch(input NewMatchInput, individualLimits IndividualLimits) (Match, []
 		LocationLatitude:    input.LocationLatitude,
 		LocationLongitude:   input.LocationLongitude,
 		Description:         trimOptional(input.Description),
+		IsFree:              input.IsFree == nil || *input.IsFree,
 		CreatedByUserID:     input.CreatedByUserID,
 		CreatedByAdminID:    input.CreatedByAdminID,
 		CreatedAt:           now,

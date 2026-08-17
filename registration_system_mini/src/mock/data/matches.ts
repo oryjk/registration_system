@@ -92,6 +92,7 @@ function buildSummary(seed: MatchSeed, baseNow: number): AppMatchSummary {
     location_latitude: seed.location_latitude,
     location_longitude: seed.location_longitude,
     description: seed.description,
+    is_free: true,
     registration_groups: buildRegistrationGroupSummaries(seed),
     created_at: isoOffsetMinutes(baseNow, seed.created_offset_minutes),
     updated_at: isoOffsetMinutes(baseNow, seed.updated_offset_minutes ?? seed.created_offset_minutes + 5),
@@ -473,6 +474,7 @@ function buildCreatedMatch(payload: {
   location_latitude?: number;
   location_longitude?: number;
   description?: string;
+  is_free?: boolean;
 }): CreatedMockMatch {
   createdMatchSequence += 1;
   const id = `c7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7${String(createdMatchSequence).padStart(4, "0")}`;
@@ -497,6 +499,7 @@ function buildCreatedMatch(payload: {
     location_latitude: payload.location_latitude ?? null,
     location_longitude: payload.location_longitude ?? null,
     description: payload.description ?? null,
+    is_free: payload.is_free ?? true,
     created_at: now,
     updated_at: now,
   };

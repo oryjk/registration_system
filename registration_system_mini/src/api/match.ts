@@ -82,6 +82,8 @@ export interface CreateMatchPayload {
   location_latitude?: number;
   location_longitude?: number;
   description?: string;
+  /** 不传默认免费；创建页按人均费用推导。 */
+  is_free?: boolean;
 }
 
 export function createMatch(payload: CreateMatchPayload) {

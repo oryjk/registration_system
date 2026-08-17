@@ -181,3 +181,26 @@ func validCreateCommand(mode domain.PublicationMode) CreateMatchCommand {
 }
 
 func intPointer(value int) *int { return &value }
+
+func TestCreateMatchDefaultsToFree(t *testing.T) {
+	useCase := NewCreateMatch(&fakeMatchRepository{}, &fakeTeamAccess{}, &fakeDefaultLimits{}, fixedClock())
+
+	result, err := useCase.Execute(context.Background(), userActor(101), validCreateCommand(domain.OnlineTeam))
+	if err != nil {
+		t.Fatalf("create match: %v", err)
+	}
+	if !result.Match.IsFree {
+		t.Fatal("expected default match to be free")
+	}
+
+	paid := false
+	command := validCreateCommand(domain.OnlineTeam)
+	command.IsFree = &paid
+	result, err = useCase.Execute(context.Background(), userActor(101), command)
+	if err != nil {
+		t.Fatalf("create paid match: %v", err)
+	}
+	if result.Match.IsFree {
+		t.Fatal("expected explicit is_free=false to be honored")
+	}
+}

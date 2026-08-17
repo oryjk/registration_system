@@ -486,8 +486,8 @@ func (i Importer) writeTargetMatch(ctx context.Context, tx pgx.Tx, decision mapp
 	endTime := startTime.Add(2 * time.Hour)
 	if decision.Action == mapping.ActionCreate {
 		currentID = uuid.New()
-		_, err := tx.Exec(ctx, `INSERT INTO matches (id,name,publication_mode,opponent_state,status,host_team_id,away_team_id,opponent_name,players_per_team,start_time,end_time,registration_start_at,registration_end_at,location,location_latitude,location_longitude,description,created_by_user_id,created_at,updated_at)
-			VALUES ($1,$2,'offline_confirmed','no_recruitment',$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)`,
+		_, err := tx.Exec(ctx, `INSERT INTO matches (id,name,publication_mode,opponent_state,status,host_team_id,away_team_id,opponent_name,players_per_team,start_time,end_time,registration_start_at,registration_end_at,location,location_latitude,location_longitude,description,is_free,created_by_user_id,created_at,updated_at)
+			VALUES ($1,$2,'offline_confirmed','no_recruitment',$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,false,$16,$17,$18)`,
 			currentID, strings.TrimSpace(legacyMatch.Name), mapMatchStatus(legacyMatch.Status), i.hostTeamID, awayTeamID,
 			opponentName, normalizePlayersPerTeam(legacyMatch.PlayersPerTeam), startTime, endTime,
 			legacyMatch.RegistrationStartAt, legacyMatch.RegistrationEndAt,

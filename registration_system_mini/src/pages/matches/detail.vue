@@ -183,6 +183,7 @@ onShareTimeline(() => ({
         :is-guest-mode="isGuestMode"
         :can-submit-individual-registration="canSubmitIndividualRegistration"
         :registration-closed="isRegistrationClosed"
+        :show-free-tag="!!sourceMatch?.is_free"
         :team-progress="teamProgressItems"
         :current-team="currentTeam"
         :team-member-registration-groups="teamMemberRegistrationGroups"

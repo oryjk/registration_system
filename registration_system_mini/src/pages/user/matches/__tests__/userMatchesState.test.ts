@@ -22,6 +22,7 @@ const baseMatch: AppMatchSummary = {
   location_latitude: 30.1,
   location_longitude: 104.2,
   description: null,
+  is_free: true,
   created_at: "2026-08-01T10:00:00Z",
   updated_at: "2026-08-01T10:00:00Z",
 };

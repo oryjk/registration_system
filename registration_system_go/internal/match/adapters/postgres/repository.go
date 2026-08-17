@@ -161,6 +161,7 @@ func mapMatch(row matchsqlc.Match) domain.Match {
 		LocationLatitude:    row.LocationLatitude,
 		LocationLongitude:   row.LocationLongitude,
 		Description:         row.Description,
+		IsFree:              row.IsFree,
 		CreatedByUserID:     row.CreatedByUserID,
 		CreatedByAdminID:    row.CreatedByAdminID,
 		CreatedAt:           row.CreatedAt.Time,

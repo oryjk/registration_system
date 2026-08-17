@@ -27,6 +27,7 @@ describe("buildCreateMatchPayload", () => {
     expect(buildCreateMatchPayload(buildForm(), { id: 7, name: "东安联队" })).toEqual({
       name: "周末友谊赛",
       publication_mode: "offline_confirmed",
+      is_free: true,
       host_team_id: 7,
       opponent_name: "周末联队",
       players_per_team: 6,

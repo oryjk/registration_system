@@ -32,6 +32,8 @@ type CreateMatchCommand struct {
 	LocationLatitude    *float64
 	LocationLongitude   *float64
 	Description         *string
+	// IsFree 为 nil 时默认免费；历史迁移数据显式传 false。
+	IsFree *bool
 }
 
 type CreateMatchResult struct {
@@ -85,6 +87,7 @@ func (u CreateMatch) Execute(ctx context.Context, actor sharedauth.Actor, comman
 		LocationLatitude:    command.LocationLatitude,
 		LocationLongitude:   command.LocationLongitude,
 		Description:         command.Description,
+		IsFree:              command.IsFree,
 		CreatedAt:           u.clock.Now(),
 	}, limits)
 	if err != nil {

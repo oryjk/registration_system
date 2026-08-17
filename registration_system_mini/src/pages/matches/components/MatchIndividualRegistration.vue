@@ -35,6 +35,8 @@ const props = defineProps<{
   canSubmitIndividualRegistration: boolean;
   /** 报名已截止：隐藏所有修改报名状态的入口。 */
   registrationClosed?: boolean;
+  /** 比赛免费时才在报名 CTA 上展示「免费」角标。 */
+  showFreeTag?: boolean;
   /** 球队约队的主/客队双边报名进度；散人约局为空。 */
   teamProgress?: MatchTeamProgressItem[];
   currentTeam: TeamProfileViewModel | null;
@@ -99,6 +101,7 @@ function handleTeamMemberDialogVisibilityChange(visible: boolean) {
       :is-guest-mode="isGuestMode"
       :cta-disabled="!canSubmitIndividualRegistration"
       :show-cta="!showTeamMemberRegistrationBoard && !registrationClosed"
+      :show-free-tag="showFreeTag"
       :team-progress="teamProgress"
       @select-individual-signup="handleSelectIndividualSignup"
     />

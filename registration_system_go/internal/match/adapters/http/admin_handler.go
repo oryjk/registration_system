@@ -53,6 +53,7 @@ type CreateMatchRequest struct {
 	LocationLatitude    *float64               `json:"location_latitude"`
 	LocationLongitude   *float64               `json:"location_longitude"`
 	Description         *string                `json:"description"`
+	IsFree              *bool                  `json:"is_free"`
 }
 
 type UpdateMatchRequest struct {
@@ -105,6 +106,7 @@ type MatchResponse struct {
 	LocationLatitude    *float64               `json:"location_latitude"`
 	LocationLongitude   *float64               `json:"location_longitude"`
 	Description         *string                `json:"description"`
+	IsFree              bool                   `json:"is_free"`
 	CreatedByUserID     *int64                 `json:"created_by_user_id"`
 	CreatedByAdminID    *int64                 `json:"created_by_admin_id"`
 	CreatedAt           time.Time              `json:"created_at"`
@@ -195,7 +197,7 @@ func (h *AdminHandler) Create(c *gin.Context) {
 		HostCapacityLimit: request.HostCapacityLimit, StartTime: request.StartTime, EndTime: request.EndTime,
 		RegistrationStartAt: request.RegistrationStartAt, RegistrationEndAt: request.RegistrationEndAt,
 		Location: request.Location, LocationLatitude: request.LocationLatitude, LocationLongitude: request.LocationLongitude,
-		Description: request.Description,
+		Description: request.Description, IsFree: request.IsFree,
 	})
 	if err != nil {
 		sharedhttpapi.WriteError(c, err)
@@ -332,7 +334,7 @@ func mapMatch(item ports.AdminMatchItem) MatchResponse {
 		PlayersPerTeam: match.PlayersPerTeam, StartTime: match.StartTime, EndTime: match.EndTime,
 		RegistrationStartAt: match.RegistrationStartAt, RegistrationEndAt: match.RegistrationEndAt,
 		Location: match.Location, LocationLatitude: match.LocationLatitude, LocationLongitude: match.LocationLongitude,
-		Description: match.Description, CreatedByUserID: match.CreatedByUserID, CreatedByAdminID: match.CreatedByAdminID,
+		Description: match.Description, IsFree: match.IsFree, CreatedByUserID: match.CreatedByUserID, CreatedByAdminID: match.CreatedByAdminID,
 		CreatedAt: match.CreatedAt, UpdatedAt: match.UpdatedAt,
 	}
 }
