@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	authhttp "github.com/oryjk/registration_system/registration_system_go/internal/auth/adapters/http"
 	sharedhttpapi "github.com/oryjk/registration_system/registration_system_go/internal/shared/adapters/httpapi"
 	sharedauth "github.com/oryjk/registration_system/registration_system_go/internal/shared/auth"
@@ -53,6 +54,7 @@ func (h *AppHandler) RegisterRoutes(group *gin.RouterGroup) {
 	group.GET("/teams/:id/members", h.ListMembers)
 	group.GET("/teams/:id/members/:user_id/attendance", h.MemberAttendance)
 	group.GET("/teams/:id/attendance-summary", h.AttendanceSummary)
+	group.GET("/teams/:id/matches/:match_id/attendance", h.MatchAttendance)
 }
 
 func (h *AppHandler) GetTeam(c *gin.Context) {
@@ -109,6 +111,7 @@ func appActorAndTeamID(c *gin.Context) (sharedauth.Actor, int64, bool) {
 type AppAttendanceQueries interface {
 	MemberRecords(context.Context, sharedauth.Actor, int64, int64, *time.Time, *time.Time) ([]application.AttendanceQueryRecord, error)
 	Summary(context.Context, sharedauth.Actor, int64, *time.Time, *time.Time) (application.AttendanceSummary, error)
+	MatchAttendance(context.Context, sharedauth.Actor, int64, uuid.UUID) (application.AttendanceQueryHeader, []application.AttendanceQueryMember, error)
 }
 
 type AppAttendanceRecordResponse struct {
@@ -241,4 +244,58 @@ func parseAttendanceDateRange(c *gin.Context) (*time.Time, *time.Time, bool) {
 		return nil, nil, false
 	}
 	return startDate, endDate, true
+}
+
+type AppMatchAttendanceHeaderResponse struct {
+	ActivityID   string    `json:"activity_id"`
+	ActivityName string    `json:"activity_name"`
+	HoldingDate  time.Time `json:"holding_date"`
+	Location     string    `json:"location"`
+}
+
+type AppMatchAttendanceMemberResponse struct {
+	UserID            int64      `json:"user_id"`
+	Nickname          string     `json:"nickname"`
+	AvatarURL         *string    `json:"avatar_url"`
+	Stand             int        `json:"stand"`
+	RegistrationCount int        `json:"registration_count"`
+	OperationTime     *time.Time `json:"operation_time"`
+	Registered        bool       `json:"registered"`
+}
+
+type AppMatchAttendanceResponse struct {
+	Match   AppMatchAttendanceHeaderResponse   `json:"match"`
+	Records []AppMatchAttendanceMemberResponse `json:"records"`
+}
+
+func (h *AppHandler) MatchAttendance(c *gin.Context) {
+	actor, teamID, ok := appActorAndTeamID(c)
+	if !ok {
+		return
+	}
+	matchID, err := uuid.Parse(c.Param("match_id"))
+	if err != nil {
+		sharedhttpapi.WriteError(c, sharederror.New(sharederror.KindValidation, "比赛 ID 无效"))
+		return
+	}
+	header, members, err := h.attendance.MatchAttendance(c.Request.Context(), actor, teamID, matchID)
+	if err != nil {
+		sharedhttpapi.WriteError(c, err)
+		return
+	}
+	records := make([]AppMatchAttendanceMemberResponse, 0, len(members))
+	for _, member := range members {
+		records = append(records, AppMatchAttendanceMemberResponse{
+			UserID: member.UserID, Nickname: member.Nickname, AvatarURL: member.AvatarURL,
+			Stand: attendanceStand(member.Stand), RegistrationCount: member.RegistrationCount,
+			OperationTime: member.OperationTime, Registered: member.Registered,
+		})
+	}
+	sharedhttpapi.WriteSuccess(c, AppMatchAttendanceResponse{
+		Match: AppMatchAttendanceHeaderResponse{
+			ActivityID: header.ActivityID, ActivityName: header.ActivityName,
+			HoldingDate: header.HoldingDate, Location: header.Location,
+		},
+		Records: records,
+	})
 }

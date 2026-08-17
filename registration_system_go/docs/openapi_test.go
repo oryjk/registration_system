@@ -33,8 +33,8 @@ func TestOpenAPIIsValidAndMatchesGinRoutes(t *testing.T) {
 	if len(missing) != 0 || len(extra) != 0 {
 		t.Fatalf("OpenAPI route mismatch\nmissing: %v\nextra: %v", missing, extra)
 	}
-	if len(documented) != 58 {
-		t.Fatalf("documented operations=%d, want 58", len(documented))
+	if len(documented) != 59 {
+		t.Fatalf("documented operations=%d, want 59", len(documented))
 	}
 }
 

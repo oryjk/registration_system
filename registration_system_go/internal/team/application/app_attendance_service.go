@@ -4,6 +4,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/google/uuid"
+
 	sharedauth "github.com/oryjk/registration_system/registration_system_go/internal/shared/auth"
 	sharederror "github.com/oryjk/registration_system/registration_system_go/internal/shared/domain"
 	"github.com/oryjk/registration_system/registration_system_go/internal/team/ports"
@@ -31,6 +33,8 @@ type AttendanceSummary struct {
 // AttendanceQueryRecord / AttendanceQueryRankingItem 暴露给 http 层的出勤行类型。
 type AttendanceQueryRecord = ports.AttendanceRecord
 type AttendanceQueryRankingItem = ports.AttendanceRankingItem
+type AttendanceQueryHeader = ports.MatchAttendanceHeader
+type AttendanceQueryMember = ports.MatchAttendanceMember
 
 func NewAppAttendanceService(repository ports.AttendanceQueryRepository, access TeamAccessQueries) AppAttendanceService {
 	return AppAttendanceService{repository: repository, access: access}
@@ -71,4 +75,22 @@ func (s AppAttendanceService) Summary(ctx context.Context, actor sharedauth.Acto
 		return AttendanceSummary{}, sharederror.Wrap(sharederror.KindInternal, "查询出勤排名失败", err)
 	}
 	return AttendanceSummary{MyRecords: myRecords, Ranking: ranking}, nil
+}
+
+// MatchAttendance 返回单场比赛的全队出勤明细，供管理端展开某场比赛时按需加载。
+func (s AppAttendanceService) MatchAttendance(ctx context.Context, actor sharedauth.Actor, teamID int64, matchID uuid.UUID) (ports.MatchAttendanceHeader, []ports.MatchAttendanceMember, error) {
+	if !actor.IsUser() {
+		return ports.MatchAttendanceHeader{}, nil, sharederror.ErrForbidden
+	}
+	if err := s.access.EnsureManager(ctx, teamID, actor.ID); err != nil {
+		return ports.MatchAttendanceHeader{}, nil, err
+	}
+	header, members, found, err := s.repository.ListMatchAttendance(ctx, teamID, matchID)
+	if err != nil {
+		return ports.MatchAttendanceHeader{}, nil, sharederror.Wrap(sharederror.KindInternal, "查询比赛出勤失败", err)
+	}
+	if !found {
+		return ports.MatchAttendanceHeader{}, nil, sharederror.New(sharederror.KindNotFound, "比赛不存在或不在出勤统计范围")
+	}
+	return header, members, nil
 }

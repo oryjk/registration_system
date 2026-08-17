@@ -259,3 +259,36 @@ WHERE tm.team_id = $1
   AND tm.status = 'active'
 GROUP BY tm.user_id, u.nickname, u.avatar_url, tm.joined_at
 ORDER BY attended_count DESC, leave_count ASC, unregistered_count ASC, tm.joined_at ASC;
+
+-- name: ListTeamMatchAttendance :many
+-- 单场比赛的全队出勤：只含在职（active）成员，已退队成员不展示，按状态分组排序。
+SELECT m.id::text AS activity_id,
+       m.name AS activity_name,
+       m.start_time AS holding_date,
+       m.location,
+       tm.user_id,
+       u.nickname,
+       u.avatar_url,
+       COALESCE(r.status, 'unknown') AS stand_status,
+       COALESCE(r.registration_count, 0) AS registration_count,
+       r.updated_at AS operation_time,
+       (r.id IS NOT NULL) AS registered
+FROM matches m
+JOIN match_registration_groups g
+  ON g.match_id = m.id
+ AND g.kind IN ('host_team', 'guest_team')
+ AND g.team_id = $1
+JOIN team_members tm ON tm.team_id = $1 AND tm.status = 'active'
+JOIN users u ON u.id = tm.user_id
+LEFT JOIN match_registrations r
+  ON r.group_id = g.id
+ AND r.user_id = tm.user_id
+ AND r.status <> 'cancelled'
+WHERE m.id = sqlc.arg('match_id')
+  AND m.status <> 'cancelled'
+  AND (m.status = 'ended' OR m.end_time <= (NOW() AT TIME ZONE 'utc'))
+ORDER BY
+    CASE COALESCE(r.status, 'unknown') WHEN 'attending' THEN 0 WHEN 'leave' THEN 1 WHEN 'absent' THEN 2 ELSE 3 END,
+    r.updated_at NULLS LAST,
+    tm.joined_at,
+    tm.user_id;

@@ -814,3 +814,87 @@ func (q *Queries) ListTeamAttendanceRanking(ctx context.Context, arg ListTeamAtt
 	}
 	return items, nil
 }
+
+const listTeamMatchAttendance = `-- name: ListTeamMatchAttendance :many
+SELECT m.id::text AS activity_id,
+       m.name AS activity_name,
+       m.start_time AS holding_date,
+       m.location,
+       tm.user_id,
+       u.nickname,
+       u.avatar_url,
+       COALESCE(r.status, 'unknown') AS stand_status,
+       COALESCE(r.registration_count, 0) AS registration_count,
+       r.updated_at AS operation_time,
+       (r.id IS NOT NULL) AS registered
+FROM matches m
+JOIN match_registration_groups g
+  ON g.match_id = m.id
+ AND g.kind IN ('host_team', 'guest_team')
+ AND g.team_id = $1
+JOIN team_members tm ON tm.team_id = $1 AND tm.status = 'active'
+JOIN users u ON u.id = tm.user_id
+LEFT JOIN match_registrations r
+  ON r.group_id = g.id
+ AND r.user_id = tm.user_id
+ AND r.status <> 'cancelled'
+WHERE m.id = $2
+  AND m.status <> 'cancelled'
+  AND (m.status = 'ended' OR m.end_time <= (NOW() AT TIME ZONE 'utc'))
+ORDER BY
+    CASE COALESCE(r.status, 'unknown') WHEN 'attending' THEN 0 WHEN 'leave' THEN 1 WHEN 'absent' THEN 2 ELSE 3 END,
+    r.updated_at NULLS LAST,
+    tm.joined_at,
+    tm.user_id
+`
+
+type ListTeamMatchAttendanceParams struct {
+	TeamID  int64       `json:"team_id"`
+	MatchID pgtype.UUID `json:"match_id"`
+}
+
+type ListTeamMatchAttendanceRow struct {
+	ActivityID        string           `json:"activity_id"`
+	ActivityName      string           `json:"activity_name"`
+	HoldingDate       pgtype.Timestamp `json:"holding_date"`
+	Location          string           `json:"location"`
+	UserID            int64            `json:"user_id"`
+	Nickname          string           `json:"nickname"`
+	AvatarUrl         *string          `json:"avatar_url"`
+	StandStatus       string           `json:"stand_status"`
+	RegistrationCount int32            `json:"registration_count"`
+	OperationTime     pgtype.Timestamp `json:"operation_time"`
+	Registered        bool             `json:"registered"`
+}
+
+func (q *Queries) ListTeamMatchAttendance(ctx context.Context, arg ListTeamMatchAttendanceParams) ([]ListTeamMatchAttendanceRow, error) {
+	rows, err := q.db.Query(ctx, listTeamMatchAttendance, arg.TeamID, arg.MatchID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListTeamMatchAttendanceRow
+	for rows.Next() {
+		var i ListTeamMatchAttendanceRow
+		if err := rows.Scan(
+			&i.ActivityID,
+			&i.ActivityName,
+			&i.HoldingDate,
+			&i.Location,
+			&i.UserID,
+			&i.Nickname,
+			&i.AvatarUrl,
+			&i.StandStatus,
+			&i.RegistrationCount,
+			&i.OperationTime,
+			&i.Registered,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

@@ -1,30 +1,45 @@
 import { computed, ref, type ComputedRef, type Ref } from "vue";
-import type { BackendTeamMember, BackendTeamMemberAttendanceRecord, BackendUser } from "@/types/backend";
+import type {
+  BackendTeamMember,
+  BackendTeamMemberAttendanceRecord,
+  BackendTeamMatchAttendance,
+  BackendUser,
+} from "@/types/backend";
 import type { TeamProfileViewModel } from "@/types/viewModels";
 import { resolveUserDisplayName, toStandLabel } from "@/utils/viewModels";
-import { loadTeamMemberAttendance } from "./teamManageActions";
+import { loadTeamMatchAttendance, loadTeamMemberAttendance } from "./teamManageActions";
 import {
   attendanceStatusLabel as resolveAttendanceStatusLabel,
   buildAttendanceGroups,
   buildAttendanceSummary,
-  buildTeamActivityAttendanceSummaries,
 } from "./teamManageState";
+
+interface MatchAttendanceState {
+  loading: boolean;
+  detail: BackendTeamMatchAttendance | null;
+}
 
 interface TeamAttendanceDependencies {
   currentTeam: ComputedRef<TeamProfileViewModel | null>;
+  currentUser: Ref<BackendUser | null>;
   currentMembers: ComputedRef<BackendTeamMember[]>;
   usersById: Ref<Record<number, BackendUser>>;
   ensureTeamDetailLoaded: (teamId: number) => Promise<unknown>;
 }
 
-export function useTeamAttendance({ currentTeam, currentMembers, usersById, ensureTeamDetailLoaded }: TeamAttendanceDependencies) {
+export function useTeamAttendance({ currentTeam, currentUser, currentMembers, usersById, ensureTeamDetailLoaded }: TeamAttendanceDependencies) {
   const attendancePopupVisible = ref(false);
   const attendanceLoading = ref(false);
   const attendanceMemberId = ref<number | null>(null);
   const attendanceRecords = ref<BackendTeamMemberAttendanceRecord[]>([]);
-  const activityAttendanceLoading = ref(false);
-  const activityAttendanceRecordsByUserId = ref<Record<number, BackendTeamMemberAttendanceRecord[]>>({});
   const collapsedAttendanceYears = ref<string[]>([]);
+
+  // 比赛出勤改为懒加载：列表只拉当前管理者的比赛行（一次请求），
+  // 展开某场时才调单场出勤接口。
+  const activityAttendanceLoading = ref(false);
+  const activityMatches = ref<BackendTeamMemberAttendanceRecord[]>([]);
+  const expandedActivityId = ref<string | null>(null);
+  const matchAttendanceById = ref<Record<string, MatchAttendanceState>>({});
 
   const attendanceMember = computed(() =>
     attendanceMemberId.value
@@ -33,14 +48,6 @@ export function useTeamAttendance({ currentTeam, currentMembers, usersById, ensu
   );
   const attendanceSummary = computed(() => buildAttendanceSummary(attendanceRecords.value));
   const attendanceGroups = computed(() => buildAttendanceGroups(attendanceRecords.value, collapsedAttendanceYears.value));
-  const activityAttendanceSummaries = computed(() =>
-    buildTeamActivityAttendanceSummaries(
-      activityAttendanceRecordsByUserId.value,
-      memberName,
-      memberAvatarUrl,
-      memberInitial,
-    ),
-  );
 
   // 队员资料优先用 usersById（完整用户对象），缺失时回退到队员列表自带的昵称/头像。
   function memberProfile(userId: number): BackendTeamMember | undefined {
@@ -80,7 +87,9 @@ export function useTeamAttendance({ currentTeam, currentMembers, usersById, ensu
   }
 
   function invalidateActivityAttendance() {
-    activityAttendanceRecordsByUserId.value = {};
+    activityMatches.value = [];
+    expandedActivityId.value = null;
+    matchAttendanceById.value = {};
   }
 
   function closeAttendancePopup() {
@@ -109,22 +118,37 @@ export function useTeamAttendance({ currentTeam, currentMembers, usersById, ensu
 
   async function loadTeamActivityAttendanceSummaries() {
     const teamId = currentTeam.value?.id;
-    if (!teamId || activityAttendanceLoading.value) return;
+    const userId = currentUser.value?.id;
+    if (!teamId || !userId || activityAttendanceLoading.value) return;
     activityAttendanceLoading.value = true;
-    invalidateActivityAttendance();
     try {
       await ensureTeamDetailLoaded(teamId);
-      const results = await Promise.all(
-        currentMembers.value.map(async (member) => {
-          const result = await loadTeamMemberAttendance(teamId, member.user_id);
-          return [member.user_id, result.records] as const;
-        }),
-      );
-      activityAttendanceRecordsByUserId.value = Object.fromEntries(results);
+      // 管理者本人的出勤记录天然包含球队全部有效比赛（未报名也有行），作为比赛列表。
+      const result = await loadTeamMemberAttendance(teamId, userId);
+      activityMatches.value = result.records;
     } catch (error) {
       uni.showToast({ title: error instanceof Error ? error.message : "比赛出勤加载失败", icon: "none" });
     } finally {
       activityAttendanceLoading.value = false;
+    }
+  }
+
+  async function toggleActivityMatch(activityId: string) {
+    if (expandedActivityId.value === activityId) {
+      expandedActivityId.value = null;
+      return;
+    }
+    expandedActivityId.value = activityId;
+    const teamId = currentTeam.value?.id;
+    if (!teamId || matchAttendanceById.value[activityId]) return;
+
+    matchAttendanceById.value = { ...matchAttendanceById.value, [activityId]: { loading: true, detail: null } };
+    try {
+      const detail = await loadTeamMatchAttendance(teamId, activityId);
+      matchAttendanceById.value = { ...matchAttendanceById.value, [activityId]: { loading: false, detail } };
+    } catch (error) {
+      matchAttendanceById.value = { ...matchAttendanceById.value, [activityId]: { loading: false, detail: null } };
+      uni.showToast({ title: error instanceof Error ? error.message : "出勤明细加载失败", icon: "none" });
     }
   }
 
@@ -136,7 +160,9 @@ export function useTeamAttendance({ currentTeam, currentMembers, usersById, ensu
     attendanceSummary,
     attendanceGroups,
     activityAttendanceLoading,
-    activityAttendanceSummaries,
+    activityMatches,
+    expandedActivityId,
+    matchAttendanceById,
     memberName,
     memberAvatarUrl,
     memberInitial,
@@ -146,5 +172,6 @@ export function useTeamAttendance({ currentTeam, currentMembers, usersById, ensu
     closeAttendancePopup,
     handleOpenMemberAttendance,
     loadTeamActivityAttendanceSummaries,
+    toggleActivityMatch,
   };
 }

@@ -236,6 +236,23 @@ paths:
           description: 当前队员的出勤记录与全队出勤排名
         <<: *standardErrors
 
+  /api/v1/app/teams/{id}/matches/{match_id}/attendance:
+    get:
+      operationId: getAppTeamMatchAttendance
+      tags: [App Teams]
+      summary: 获取单场比赛的全队出勤（队长/领队，仅在职成员）
+      security: *bearerSecurity
+      parameters:
+        - $ref: "#/components/parameters/TeamID"
+        - name: match_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: 该场比赛全体在职成员的报名与出勤状态
+        <<: *standardErrors
+
   /api/v1/app/matches:
     get:
       operationId: listAppMatches

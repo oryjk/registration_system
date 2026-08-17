@@ -251,6 +251,26 @@ export interface BackendTeamAttendanceRankingItem {
   unregistered_count: number;
 }
 
+export interface BackendTeamMatchAttendanceMember {
+  user_id: number;
+  nickname: string;
+  avatar_url?: string | null;
+  stand: number;
+  registration_count: number;
+  operation_time?: string | null;
+  registered: boolean;
+}
+
+export interface BackendTeamMatchAttendance {
+  match: {
+    activity_id: string;
+    activity_name: string;
+    holding_date: string;
+    location: string;
+  };
+  records: BackendTeamMatchAttendanceMember[];
+}
+
 export interface BackendTeamAttendanceSummary {
   my_records: BackendTeamMemberAttendanceRecord[];
   ranking: BackendTeamAttendanceRankingItem[];

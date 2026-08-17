@@ -369,6 +369,42 @@ const routes: MockRoute[] = [
   },
   {
     method: "GET",
+    pattern: "/teams/:id/matches/:matchId/attendance",
+    handler: (req) => {
+      const teamId = Number(req.params.id);
+      const matchId = req.params.matchId;
+      const team = findMockTeam(teamId);
+      const activity = getMockActivity(matchId);
+      if (!team || !activity || !mockTeamAttendanceActivityIds.includes(matchId)) return undefined;
+      const activityIndex = mockTeamAttendanceActivityIds.indexOf(matchId);
+      const records = team.members
+        .filter((member) => member.status === 1)
+        .map((member) => {
+          const statusSeed = (member.user_id + activityIndex) % 5;
+          const stand = statusSeed === 0 ? 2 : statusSeed === 1 ? 3 : statusSeed === 2 ? 0 : 1;
+          return {
+            user_id: member.user_id,
+            nickname: member.nickname,
+            avatar_url: member.avatar_url ?? null,
+            stand,
+            registration_count: stand === 1 ? 1 : 0,
+            operation_time: activity.holding_date,
+            registered: stand !== 0,
+          };
+        });
+      return {
+        match: {
+          activity_id: activity.id,
+          activity_name: activity.name,
+          holding_date: activity.holding_date,
+          location: activity.location,
+        },
+        records,
+      };
+    },
+  },
+  {
+    method: "GET",
     pattern: "/teams/:id/credit",
     handler: (req) => {
       const teamId = Number(req.params.id);

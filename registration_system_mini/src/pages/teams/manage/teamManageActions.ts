@@ -2,6 +2,7 @@ import {
   addTeamMember,
   batchUpdateTeamMemberStatus,
   createTeam,
+  getTeamMatchAttendance,
   getTeamMemberAttendance,
   getTeamPasswordInfo,
   joinTeam,
@@ -19,6 +20,10 @@ export function uploadCurrentTeamLogo(teamId: number, filePath: string) {
 
 export function loadTeamMemberAttendance(teamId: number, userId: number) {
   return getTeamMemberAttendance(teamId, userId);
+}
+
+export function loadTeamMatchAttendance(teamId: number, matchId: string) {
+  return getTeamMatchAttendance(teamId, matchId);
 }
 
 export function saveTeamProfile(

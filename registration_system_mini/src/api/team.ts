@@ -10,6 +10,7 @@ import type {
   BackendTeamPasswordInfo,
   BackendTeamSummary,
   BackendApiResponse,
+  BackendTeamMatchAttendance,
 } from "@/types/backend";
 import type { AppTeamDetail, AppTeamMember, MyTeam } from "@/types/app";
 import { getApiBaseUrl } from "@/config/apiBase";
@@ -219,6 +220,13 @@ export function updateTeamMember(
 export function getTeamMemberAttendance(teamId: number, userId: number) {
   return requestApi<BackendTeamMemberAttendance>({
     url: `/teams/${teamId}/members/${userId}/attendance`,
+    auth: true,
+  });
+}
+
+export function getTeamMatchAttendance(teamId: number, matchId: string) {
+  return requestApi<BackendTeamMatchAttendance>({
+    url: `/teams/${teamId}/matches/${matchId}/attendance`,
     auth: true,
   });
 }

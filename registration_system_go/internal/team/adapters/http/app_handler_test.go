@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	authhttp "github.com/oryjk/registration_system/registration_system_go/internal/auth/adapters/http"
 	sharedauth "github.com/oryjk/registration_system/registration_system_go/internal/shared/auth"
 	"github.com/oryjk/registration_system/registration_system_go/internal/team/application"
@@ -77,13 +78,16 @@ func (f *fakeAppTeamQueries) ListMembers(_ context.Context, actor sharedauth.Act
 }
 
 type fakeAppAttendanceQueries struct {
-	summary  application.AttendanceSummary
-	records  []application.AttendanceQueryRecord
-	actor    sharedauth.Actor
-	teamID   int64
-	targetID int64
-	start    *time.Time
-	end      *time.Time
+	summary      application.AttendanceSummary
+	records      []application.AttendanceQueryRecord
+	matchHeader  application.AttendanceQueryHeader
+	matchMembers []application.AttendanceQueryMember
+	matchID      uuid.UUID
+	actor        sharedauth.Actor
+	teamID       int64
+	targetID     int64
+	start        *time.Time
+	end          *time.Time
 }
 
 func (f *fakeAppAttendanceQueries) MemberRecords(_ context.Context, actor sharedauth.Actor, teamID, userID int64, startDate, endDate *time.Time) ([]application.AttendanceQueryRecord, error) {
@@ -94,6 +98,11 @@ func (f *fakeAppAttendanceQueries) MemberRecords(_ context.Context, actor shared
 func (f *fakeAppAttendanceQueries) Summary(_ context.Context, actor sharedauth.Actor, teamID int64, startDate, endDate *time.Time) (application.AttendanceSummary, error) {
 	f.actor, f.teamID, f.start, f.end = actor, teamID, startDate, endDate
 	return f.summary, nil
+}
+
+func (f *fakeAppAttendanceQueries) MatchAttendance(_ context.Context, actor sharedauth.Actor, teamID int64, matchID uuid.UUID) (application.AttendanceQueryHeader, []application.AttendanceQueryMember, error) {
+	f.actor, f.teamID, f.matchID = actor, teamID, matchID
+	return f.matchHeader, f.matchMembers, nil
 }
 
 func TestAppTeamAttendanceRoutesMapStandAndForwardDateRange(t *testing.T) {
@@ -158,4 +167,38 @@ func TestAppTeamAttendanceRoutesMapStandAndForwardDateRange(t *testing.T) {
 
 func pgtypeTimestampForTest(value time.Time) *time.Time {
 	return &value
+}
+
+func TestAppTeamMatchAttendanceRouteMapsMembers(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	matchID := uuid.MustParse("11111111-2222-3333-4444-555555555555")
+	attendance := &fakeAppAttendanceQueries{
+		matchHeader: application.AttendanceQueryHeader{ActivityID: matchID.String(), ActivityName: "周四友谊赛", HoldingDate: time.Date(2026, 8, 13, 12, 0, 0, 0, time.UTC), Location: "球场"},
+		matchMembers: []application.AttendanceQueryMember{
+			{UserID: 4, Nickname: "队长", Stand: "attending", RegistrationCount: 1, Registered: true},
+			{UserID: 9, Nickname: "队员", Stand: "unknown", RegistrationCount: 0, Registered: false},
+		},
+	}
+	handler := NewAppHandler(nil, attendance)
+	router := gin.New()
+	group := router.Group("")
+	group.Use(authhttp.NewMiddleware(fakeUserTokens{}).RequireUser())
+	handler.RegisterRoutes(group)
+
+	request := httptest.NewRequest(http.MethodGet, "/teams/7/matches/"+matchID.String()+"/attendance", nil)
+	request.Header.Set("Authorization", "Bearer user-token")
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+
+	if response.Code != http.StatusOK {
+		t.Fatalf("unexpected match attendance response %d: %s", response.Code, response.Body.String())
+	}
+	for _, expected := range []string{`"activity_name":"周四友谊赛"`, `"stand":1`, `"stand":0`, `"nickname":"队长"`} {
+		if !bytes.Contains(response.Body.Bytes(), []byte(expected)) {
+			t.Fatalf("match attendance body missing %s: %s", expected, response.Body.String())
+		}
+	}
+	if attendance.matchID != matchID || attendance.teamID != 7 {
+		t.Fatalf("params not forwarded: %+v", attendance)
+	}
 }

@@ -53,7 +53,10 @@ const {
   attendanceSummary,
   attendanceGroups,
   activityAttendanceLoading,
-  activityAttendanceSummaries,
+  activityMatches,
+  expandedActivityId,
+  matchAttendanceById,
+  toggleActivityMatch,
   memberName,
   memberAvatarUrl,
   memberInitial,
@@ -174,8 +177,11 @@ const {
       v-else-if="activeMode === 'attendance'"
       :current-team="currentTeam"
       :loading="activityAttendanceLoading"
-      :summaries="activityAttendanceSummaries"
+      :matches="activityMatches"
+      :expanded-activity-id="expandedActivityId"
+      :match-attendance-by-id="matchAttendanceById"
       :format-attendance-date="formatAttendanceDate"
+      @toggle-activity="toggleActivityMatch"
       />
     </view>
 

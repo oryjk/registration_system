@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/oryjk/registration_system/registration_system_go/internal/team/domain"
 	"github.com/oryjk/registration_system/registration_system_go/internal/team/ports"
 	"github.com/oryjk/registration_system/registration_system_go/internal/testsupport"
@@ -158,6 +160,13 @@ func TestRepositoryAttendanceQueriesCountFinishedMatchesOnly(t *testing.T) {
 	if _, err := pool.Exec(ctx, `INSERT INTO team_members (team_id, user_id, role) VALUES ($1, $2, 'captain'), ($1, $3, 'member')`, teamID, captainID, memberID); err != nil {
 		t.Fatalf("seed members: %v", err)
 	}
+	var departedID int64
+	if err := pool.QueryRow(ctx, `INSERT INTO users (openid) VALUES ('att-departed') RETURNING id`).Scan(&departedID); err != nil {
+		t.Fatalf("seed departed: %v", err)
+	}
+	if _, err := pool.Exec(ctx, `INSERT INTO team_members (team_id, user_id, role, status) VALUES ($1, $2, 'member', 'inactive')`, teamID, departedID); err != nil {
+		t.Fatalf("seed departed member: %v", err)
+	}
 
 	seedMatch := func(name, status string, startOffsetDays int) (string, error) {
 		var matchID string
@@ -255,5 +264,63 @@ func TestRepositoryAttendanceQueriesCountFinishedMatchesOnly(t *testing.T) {
 	}
 	if len(filtered) != 1 || filtered[0].ActivityID != endedID {
 		t.Fatalf("expected only the ended match in range, got %+v", filtered)
+	}
+}
+
+func TestRepositoryMatchAttendanceIncludesActiveMembersOnly(t *testing.T) {
+	pool := testsupport.StartPostgres(t)
+	ctx := context.Background()
+	repository := NewRepository(pool)
+
+	var captainID, departedID int64
+	if err := pool.QueryRow(ctx, `INSERT INTO users (openid) VALUES ('mt-captain') RETURNING id`).Scan(&captainID); err != nil {
+		t.Fatalf("seed captain: %v", err)
+	}
+	if err := pool.QueryRow(ctx, `INSERT INTO users (openid) VALUES ('mt-departed') RETURNING id`).Scan(&departedID); err != nil {
+		t.Fatalf("seed departed: %v", err)
+	}
+	var teamID int64
+	if err := pool.QueryRow(ctx, `INSERT INTO teams (name) VALUES ('单场出勤球队') RETURNING id`).Scan(&teamID); err != nil {
+		t.Fatalf("seed team: %v", err)
+	}
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO team_members (team_id, user_id, role) VALUES ($1, $2, 'captain')
+		`, teamID, captainID); err != nil {
+		t.Fatalf("seed captain membership: %v", err)
+	}
+	if _, err := pool.Exec(ctx, `INSERT INTO team_members (team_id, user_id, role, status) VALUES ($1, $2, 'member', 'inactive')`, teamID, departedID); err != nil {
+		t.Fatalf("seed departed membership: %v", err)
+	}
+
+	var matchID uuid.UUID
+	if err := pool.QueryRow(ctx, `
+		INSERT INTO matches (name, publication_mode, opponent_state, status, host_team_id, opponent_name,
+			players_per_team, start_time, end_time, location, created_by_user_id)
+		VALUES ('单场出勤赛', 'offline_confirmed', 'no_recruitment', 'ended', $1, '对手', 8,
+			NOW() - interval '7 days', NOW() - interval '7 days' + interval '2 hours', '出勤球场', $2)
+		RETURNING id`, teamID, captainID).Scan(&matchID); err != nil {
+		t.Fatalf("seed match: %v", err)
+	}
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO match_registration_groups (id, match_id, kind, team_id)
+		VALUES (gen_random_uuid(), $1, 'host_team', $2)`, matchID, teamID); err != nil {
+		t.Fatalf("seed group: %v", err)
+	}
+
+	header, members, found, err := repository.ListMatchAttendance(ctx, teamID, matchID)
+	if err != nil || !found {
+		t.Fatalf("match attendance: found=%v err=%v", found, err)
+	}
+	if header.ActivityName != "单场出勤赛" {
+		t.Fatalf("unexpected header: %+v", header)
+	}
+	if len(members) != 1 || members[0].UserID != captainID {
+		t.Fatalf("expected only the active captain, got %+v", members)
+	}
+
+	// 不属于该队 / 不在统计范围的比赛返回 found=false。
+	_, _, found, err = repository.ListMatchAttendance(ctx, teamID+999, matchID)
+	if err != nil || found {
+		t.Fatalf("expected not found for other team, found=%v err=%v", found, err)
 	}
 }

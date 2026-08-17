@@ -1,75 +1,120 @@
 <script setup lang="ts">
 import NeoSectionHeader from "@/components/neo/NeoSectionHeader.vue";
 import NeoSurface from "@/components/neo/NeoSurface.vue";
-import type { TeamActivityAttendanceMember, TeamActivityAttendanceSummary } from "../teamManageState";
+import type {
+  BackendTeamMemberAttendanceRecord,
+  BackendTeamMatchAttendance,
+} from "@/types/backend";
 import type { TeamProfileViewModel } from "@/types/viewModels";
 
-defineProps<{
+interface MatchAttendanceState {
+  loading: boolean;
+  detail: BackendTeamMatchAttendance | null;
+}
+
+const props = defineProps<{
   currentTeam: TeamProfileViewModel | null;
   loading: boolean;
-  summaries: TeamActivityAttendanceSummary[];
+  matches: BackendTeamMemberAttendanceRecord[];
+  expandedActivityId: string | null;
+  matchAttendanceById: Record<string, MatchAttendanceState>;
   formatAttendanceDate: (isoText: string) => string;
 }>();
 
-function memberStatusClass(member: TeamActivityAttendanceMember) {
-  return `activity-member-status activity-member-status-${member.statusTone}`;
+const emit = defineEmits<{
+  (event: "toggleActivity", activityId: string): void;
+}>();
+
+const STAND_LABELS: Record<number, { label: string; tone: "joined" | "leave" | "unchecked" }> = {
+  1: { label: "参加", tone: "joined" },
+  2: { label: "请假", tone: "leave" },
+  3: { label: "缺席", tone: "unchecked" },
+};
+
+function memberStatus(stand: number) {
+  return STAND_LABELS[stand] ?? { label: "未打卡", tone: "unchecked" as const };
+}
+
+function memberStatusClass(stand: number) {
+  return `activity-member-status activity-member-status-${memberStatus(stand).tone}`;
+}
+
+function attendanceStats(detail: BackendTeamMatchAttendance) {
+  let attended = 0;
+  let leave = 0;
+  for (const member of detail.records) {
+    if (member.stand === 1) attended += 1;
+    else if (member.stand === 2) leave += 1;
+  }
+  return { attended, leave, unchecked: detail.records.length - attended - leave };
+}
+
+function memberInitial(nickname: string) {
+  return nickname.slice(0, 1) || "队";
 }
 </script>
 
 <template>
   <NeoSurface custom-class="form-card attendance-panel">
     <view class="attendance-panel-head">
-      <NeoSectionHeader title="比赛出勤" marker="01" caption="按比赛查看当前球队每位队员的报名与打卡情况" />
-      <view v-if="summaries.length" class="attendance-total-badge">
-        <text>{{ summaries.length }}</text>
+      <NeoSectionHeader title="比赛出勤" marker="01" caption="点击比赛查看该场每位队员的报名与打卡情况" />
+      <view v-if="matches.length" class="attendance-total-badge">
+        <text>{{ matches.length }}</text>
         <text>场</text>
       </view>
     </view>
 
     <view v-if="!currentTeam" class="empty-box">请先创建或加入球队。</view>
-    <view v-else-if="loading" class="empty-box">正在汇总球队出勤...</view>
-    <view v-else-if="!summaries.length" class="empty-box">暂无可展示的球队比赛出勤。</view>
+    <view v-else-if="loading" class="empty-box">正在加载球队比赛...</view>
+    <view v-else-if="!matches.length" class="empty-box">暂无可展示的球队比赛出勤。</view>
     <view v-else class="activity-attendance-list">
-      <view v-for="summary in summaries" :key="summary.activityId" class="activity-attendance-card">
-        <view class="activity-card-topline">
+      <view v-for="match in matches" :key="match.activity_id" class="activity-attendance-card">
+        <view class="activity-card-topline" @tap="emit('toggleActivity', match.activity_id)">
           <view class="activity-card-main">
-            <text class="activity-name">{{ summary.activityName }}</text>
-            <text class="activity-meta">{{ formatAttendanceDate(summary.holdingDate) }} · {{ summary.location || "地点待定" }}</text>
+            <text class="activity-name">{{ match.activity_name }}</text>
+            <text class="activity-meta">{{ formatAttendanceDate(match.holding_date) }} · {{ match.location || "地点待定" }}</text>
           </view>
-          <view class="activity-total-badge">
-            <text>{{ summary.members.length }}</text>
-            <text>人</text>
-          </view>
+          <text class="activity-expand-arrow" :class="{ 'activity-expand-arrow-open': expandedActivityId === match.activity_id }">›</text>
         </view>
 
-        <view class="activity-stat-grid">
-          <view class="activity-stat activity-stat-joined">
-            <text class="activity-stat-value">{{ summary.attended }}</text>
-            <text class="activity-stat-label">参加</text>
-          </view>
-          <view class="activity-stat activity-stat-leave">
-            <text class="activity-stat-value">{{ summary.leave }}</text>
-            <text class="activity-stat-label">请假</text>
-          </view>
-          <view class="activity-stat activity-stat-unchecked">
-            <text class="activity-stat-value">{{ summary.unchecked }}</text>
-            <text class="activity-stat-label">未打卡</text>
-          </view>
-        </view>
+        <template v-if="expandedActivityId === match.activity_id">
+          <view v-if="matchAttendanceById[match.activity_id]?.loading" class="activity-loading">正在加载出勤明细...</view>
+          <template v-else-if="matchAttendanceById[match.activity_id]?.detail">
+            <view class="activity-stat-grid">
+              <view class="activity-stat activity-stat-joined">
+                <text class="activity-stat-value">{{ attendanceStats(matchAttendanceById[match.activity_id]!.detail!).attended }}</text>
+                <text class="activity-stat-label">参加</text>
+              </view>
+              <view class="activity-stat activity-stat-leave">
+                <text class="activity-stat-value">{{ attendanceStats(matchAttendanceById[match.activity_id]!.detail!).leave }}</text>
+                <text class="activity-stat-label">请假</text>
+              </view>
+              <view class="activity-stat activity-stat-unchecked">
+                <text class="activity-stat-value">{{ attendanceStats(matchAttendanceById[match.activity_id]!.detail!).unchecked }}</text>
+                <text class="activity-stat-label">未打卡</text>
+              </view>
+            </view>
 
-        <view class="activity-member-list">
-          <view v-for="member in summary.members" :key="`${summary.activityId}-${member.userId}`" class="activity-member-row">
-            <image v-if="member.avatarUrl" class="activity-member-avatar" :src="member.avatarUrl" mode="aspectFill" />
-            <view v-else class="activity-member-avatar activity-member-avatar-fallback">
-              <text>{{ member.initial }}</text>
+            <view class="activity-member-list">
+              <view
+                v-for="member in matchAttendanceById[match.activity_id]!.detail!.records"
+                :key="`${match.activity_id}-${member.user_id}`"
+                class="activity-member-row"
+              >
+                <image v-if="member.avatar_url" class="activity-member-avatar" :src="member.avatar_url" mode="aspectFill" />
+                <view v-else class="activity-member-avatar activity-member-avatar-fallback">
+                  <text>{{ memberInitial(member.nickname) }}</text>
+                </view>
+                <view class="activity-member-copy">
+                  <text class="activity-member-name">{{ member.nickname }}</text>
+                  <text class="activity-member-meta">报名人数 {{ member.registration_count }}</text>
+                </view>
+                <text :class="memberStatusClass(member.stand)">{{ memberStatus(member.stand).label }}</text>
+              </view>
             </view>
-            <view class="activity-member-copy">
-              <text class="activity-member-name">{{ member.name }}</text>
-              <text class="activity-member-meta">报名人数 {{ member.registrationCount }}</text>
-            </view>
-            <text :class="memberStatusClass(member)">{{ member.statusLabel }}</text>
-          </view>
-        </view>
+          </template>
+          <view v-else class="activity-loading">出勤明细加载失败，点击标题重试。</view>
+        </template>
       </view>
     </view>
   </NeoSurface>
@@ -147,7 +192,7 @@ function memberStatusClass(member: TeamActivityAttendanceMember) {
 
 .activity-card-topline {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 18rpx;
 }
@@ -180,22 +225,38 @@ function memberStatusClass(member: TeamActivityAttendanceMember) {
   white-space: nowrap;
 }
 
-.activity-total-badge {
-  min-width: 72rpx;
-  height: 54rpx;
-  padding: 0 14rpx;
+.activity-expand-arrow {
+  flex-shrink: 0;
+  width: 52rpx;
+  height: 52rpx;
   border: 2rpx solid var(--neo-color-accent);
-  border-radius: var(--neo-radius-xs);
+  border-radius: var(--neo-radius-round);
   background: var(--neo-color-text);
   color: var(--neo-color-accent);
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 3rpx;
-  font-size: 22rpx;
+  font-size: 32rpx;
+  line-height: 1;
   font-weight: 900;
   box-sizing: border-box;
-  flex-shrink: 0;
+  transform: rotate(0deg);
+  transition: transform 180ms ease;
+}
+
+.activity-expand-arrow-open {
+  transform: rotate(90deg);
+}
+
+.activity-loading {
+  margin-top: 16rpx;
+  padding: 18rpx;
+  border: 2rpx solid rgba(255, 255, 255, 0.34);
+  border-radius: var(--neo-radius-sm);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 23rpx;
+  font-weight: 750;
 }
 
 .activity-stat-grid {

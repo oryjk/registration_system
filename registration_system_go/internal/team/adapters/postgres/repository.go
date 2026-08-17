@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -267,6 +268,10 @@ func mapTeam(row teamsqlc.Team) domain.Team {
 	}
 }
 
+func pgTeamUUID(id uuid.UUID) pgtype.UUID {
+	return pgtype.UUID{Bytes: id, Valid: true}
+}
+
 func pgDate(value *time.Time) pgtype.Date {
 	if value == nil {
 		return pgtype.Date{}
@@ -314,4 +319,33 @@ func (r *Repository) ListAttendanceRanking(ctx context.Context, teamID int64, st
 		})
 	}
 	return items, nil
+}
+
+func (r *Repository) ListMatchAttendance(ctx context.Context, teamID int64, matchID uuid.UUID) (ports.MatchAttendanceHeader, []ports.MatchAttendanceMember, bool, error) {
+	rows, err := r.queries.ListTeamMatchAttendance(ctx, teamsqlc.ListTeamMatchAttendanceParams{
+		TeamID: teamID, MatchID: pgTeamUUID(matchID),
+	})
+	if err != nil {
+		return ports.MatchAttendanceHeader{}, nil, false, err
+	}
+	if len(rows) == 0 {
+		return ports.MatchAttendanceHeader{}, nil, false, nil
+	}
+	header := ports.MatchAttendanceHeader{
+		ActivityID: rows[0].ActivityID, ActivityName: rows[0].ActivityName,
+		HoldingDate: rows[0].HoldingDate.Time, Location: rows[0].Location,
+	}
+	members := make([]ports.MatchAttendanceMember, 0, len(rows))
+	for _, row := range rows {
+		var operationTime *time.Time
+		if row.OperationTime.Valid {
+			operationTime = &row.OperationTime.Time
+		}
+		members = append(members, ports.MatchAttendanceMember{
+			UserID: row.UserID, Nickname: row.Nickname, AvatarURL: row.AvatarUrl,
+			Stand: row.StandStatus, RegistrationCount: int(row.RegistrationCount),
+			OperationTime: operationTime, Registered: row.Registered,
+		})
+	}
+	return header, members, true, nil
 }

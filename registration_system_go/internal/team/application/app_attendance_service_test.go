@@ -6,14 +6,19 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
+
 	sharedauth "github.com/oryjk/registration_system/registration_system_go/internal/shared/auth"
 	sharederror "github.com/oryjk/registration_system/registration_system_go/internal/shared/domain"
 	"github.com/oryjk/registration_system/registration_system_go/internal/team/ports"
 )
 
 type fakeAttendanceRepository struct {
-	records []ports.AttendanceRecord
-	ranking []ports.AttendanceRankingItem
+	records      []ports.AttendanceRecord
+	ranking      []ports.AttendanceRankingItem
+	matchHeader  ports.MatchAttendanceHeader
+	matchMembers []ports.MatchAttendanceMember
+	matchFound   bool
 }
 
 func (f *fakeAttendanceRepository) ListMemberAttendanceRecords(_ context.Context, _, _ int64, _, _ *time.Time) ([]ports.AttendanceRecord, error) {
@@ -22,6 +27,10 @@ func (f *fakeAttendanceRepository) ListMemberAttendanceRecords(_ context.Context
 
 func (f *fakeAttendanceRepository) ListAttendanceRanking(_ context.Context, _ int64, _, _ *time.Time) ([]ports.AttendanceRankingItem, error) {
 	return f.ranking, nil
+}
+
+func (f *fakeAttendanceRepository) ListMatchAttendance(_ context.Context, _ int64, _ uuid.UUID) (ports.MatchAttendanceHeader, []ports.MatchAttendanceMember, bool, error) {
+	return f.matchHeader, f.matchMembers, f.matchFound, nil
 }
 
 type fakeAttendanceAccess struct {
@@ -132,5 +141,29 @@ func TestAppAttendanceMemberRecordsAllowsInactiveMember(t *testing.T) {
 
 	if _, err := service.MemberRecords(context.Background(), userActor(10), 1, 99, nil, nil); err != nil {
 		t.Fatalf("expected inactive member records to be visible, got %v", err)
+	}
+}
+
+func TestAppAttendanceMatchAttendanceRequiresManagerAndValidMatch(t *testing.T) {
+	repository := &fakeAttendanceRepository{
+		matchFound:   true,
+		matchHeader:  ports.MatchAttendanceHeader{ActivityID: "m-1", ActivityName: "周四友谊赛"},
+		matchMembers: []ports.MatchAttendanceMember{{UserID: 4, Nickname: "队长", Stand: "attending", Registered: true}},
+	}
+
+	memberService := NewAppAttendanceService(repository, fakeAttendanceAccess{memberIDs: map[int64]bool{10: true}})
+	if _, _, err := memberService.MatchAttendance(context.Background(), userActor(10), 1, uuid.New()); !errors.Is(err, sharederror.ErrForbidden) {
+		t.Fatalf("expected forbidden for ordinary member, got %v", err)
+	}
+
+	managerService := NewAppAttendanceService(repository, fakeAttendanceAccess{managers: map[int64]bool{10: true}})
+	header, members, err := managerService.MatchAttendance(context.Background(), userActor(10), 1, uuid.MustParse("00000000-0000-0000-0000-000000000001"))
+	if err != nil || header.ActivityID != "m-1" || len(members) != 1 {
+		t.Fatalf("unexpected match attendance: header=%+v members=%+v err=%v", header, members, err)
+	}
+
+	missing := NewAppAttendanceService(&fakeAttendanceRepository{}, fakeAttendanceAccess{managers: map[int64]bool{10: true}})
+	if _, _, err := missing.MatchAttendance(context.Background(), userActor(10), 1, uuid.New()); err == nil {
+		t.Fatal("expected not found for unknown match")
 	}
 }

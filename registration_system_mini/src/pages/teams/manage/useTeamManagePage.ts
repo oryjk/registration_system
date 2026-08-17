@@ -70,7 +70,7 @@ export function useTeamManagePage() {
   });
 
   const profile = useTeamProfile({ currentTeam, submitting, refreshSessionContext });
-  const attendance = useTeamAttendance({ currentTeam, currentMembers, usersById, ensureTeamDetailLoaded });
+  const attendance = useTeamAttendance({ currentTeam, currentUser, currentMembers, usersById, ensureTeamDetailLoaded });
   const membership = useTeamMembership({
     currentTeam,
     currentUser,
