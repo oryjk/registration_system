@@ -47,7 +47,8 @@ func (g *Gateway) UnifiedOrder(_ context.Context, request paymentports.UnifiedOr
 		PrepayID: prepayID,
 		Parameters: paymentports.JSAPIParameters{
 			AppID: g.appID, TimeStamp: timestamp, NonceStr: "mock-nonce-" + request.OrderNo,
-			Package: "prepay_id=" + prepayID, SignType: "MD5", PaySign: "MOCK",
+			// PaySign 哨兵值与小程序端 isMockWxPaymentParams 的识别约定保持一致。
+			Package: "prepay_id=" + prepayID, SignType: "MD5", PaySign: "mock_sign_for_testing",
 		},
 	}, nil
 }
