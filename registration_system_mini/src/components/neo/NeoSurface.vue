@@ -17,8 +17,10 @@ const props = withDefaults(defineProps<{
   customClass: "",
 });
 
+// 事件名用 press 而不是 tap：mp-weixin 下 tap 是原生事件名，组件标签上的
+// @tap 监听会同时收到原生透传与这里的 emit，导致双触发。
 const emit = defineEmits<{
-  (event: "tap"): void;
+  (event: "press"): void;
 }>();
 
 const surfaceClass = computed(() => [
@@ -36,7 +38,7 @@ const hoverClass = computed(() => (
 
 function handleTap() {
   if (!props.disabled) {
-    emit("tap");
+    emit("press");
   }
 }
 </script>

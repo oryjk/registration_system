@@ -23,7 +23,7 @@ const emit = defineEmits<{
     <NeoSectionHeader title="账户与服务" marker="服" caption="消息、信用和球队会员" />
 
     <view class="mine-service-grid">
-      <NeoSurface interactive custom-class="mine-service-card" @tap="emit('openNotifications')">
+      <NeoSurface interactive custom-class="mine-service-card" @press="emit('openNotifications')">
         <view class="mine-service-card__head">
           <text class="mine-service-card__index">01</text>
           <NeoTag tone="blue" size="sm">消息</NeoTag>

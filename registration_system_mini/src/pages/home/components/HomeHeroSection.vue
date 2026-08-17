@@ -30,7 +30,7 @@ const visibleHeroBanners = computed(() => {
     variant="raised"
     interactive
     flush
-    @tap="handleBannerTap"
+    @press="handleBannerTap"
   >
     <swiper
       v-if="visibleHeroBanners.length > 1"

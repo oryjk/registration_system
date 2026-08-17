@@ -56,7 +56,7 @@ function handleSwitchIdentity(identityId: string) {
     <!-- mp-weixin 里 scoped 样式无法穿透 NeoSurface 组件隔离，custom-class 上的布局会失效；
          因此 flex 布局放在面板自己模板内的包裹 view 上，NeoSurface 用 flush 去掉默认内边距。 -->
     <view v-if="currentTeam" class="mine-current-team">
-      <NeoSurface interactive flush @tap="emit('manageTeam', currentTeam.id)">
+      <NeoSurface interactive flush @press="emit('manageTeam', currentTeam.id)">
         <view class="mine-current-team__inner">
           <view class="mine-current-team__logo">
             <image
