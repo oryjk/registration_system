@@ -11,8 +11,8 @@
     "build:mp-weixin": "uni build -p mp-weixin && node scripts/verify-mp-component-registrations.mjs",
     "verify:mp-components": "node scripts/verify-mp-component-registrations.mjs",
     "type-check": "vue-tsc --noEmit",
-    "mp:preview": "node scripts/mini-ci.mjs preview",
-    "mp:upload": "node scripts/mini-ci.mjs upload"
+    "mp:release": "bun run build:mp-weixin && node scripts/mini-ci.mjs upload",
+    "mp:preview": "node scripts/mini-ci.mjs preview"
   },
   "dependencies": {
     "@dcloudio/uni-app": "3.0.0-4080420251103001",
@@ -42,6 +42,7 @@
     "@dcloudio/vite-plugin-uni": "3.0.0-4080420251103001",
     "@vue/runtime-core": "^3.4.21",
     "@vue/tsconfig": "^0.1.3",
+    "miniprogram-ci": "^2.1.31",
     "sass": "1.78.0",
     "typescript": "^4.9.4",
     "vite": "5.2.8",
