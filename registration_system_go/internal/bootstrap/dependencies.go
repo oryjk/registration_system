@@ -17,6 +17,9 @@ import (
 	matchhttp "github.com/oryjk/registration_system/registration_system_go/internal/match/adapters/http"
 	matchpostgres "github.com/oryjk/registration_system/registration_system_go/internal/match/adapters/postgres"
 	matchapplication "github.com/oryjk/registration_system/registration_system_go/internal/match/application"
+	minireviewhttp "github.com/oryjk/registration_system/registration_system_go/internal/minireview/adapters/http"
+	minireviewpostgres "github.com/oryjk/registration_system/registration_system_go/internal/minireview/adapters/postgres"
+	minireviewapplication "github.com/oryjk/registration_system/registration_system_go/internal/minireview/application"
 	paymenthttp "github.com/oryjk/registration_system/registration_system_go/internal/payment/adapters/http"
 	paymentmock "github.com/oryjk/registration_system/registration_system_go/internal/payment/adapters/mock"
 	paymentorder "github.com/oryjk/registration_system/registration_system_go/internal/payment/adapters/order"
@@ -116,6 +119,9 @@ func BuildDependencies(ctx context.Context, config Config) (Dependencies, func()
 	walletRepository := walletpostgres.NewRepository(pool)
 	walletService := walletapplication.NewService(walletRepository)
 	walletHandler := wallethttp.NewHandler(walletService)
+	miniReviewRepository := minireviewpostgres.NewRepository(pool)
+	miniReviewService := minireviewapplication.NewService(miniReviewRepository, miniReviewRepository, miniReviewRepository, clock.System{})
+	miniReviewHandler := minireviewhttp.NewHandler(miniReviewService, config.MiniReviewAPIKey)
 
 	return Dependencies{
 		AuthMiddleware: &authMiddleware,
@@ -125,6 +131,6 @@ func BuildDependencies(ctx context.Context, config Config) (Dependencies, func()
 		AppTeamManage: appTeamManageHandler,
 		UserMatches:   userMatchHandler, UserRegistrations: userRegistrationHandler,
 		AdminMatches: adminMatchHandler, TeamApplications: teamApplicationHandler,
-		Payments: paymentHandler, Wallets: walletHandler,
+		Payments: paymentHandler, Wallets: walletHandler, MiniReviews: miniReviewHandler,
 	}, closePool, nil
 }

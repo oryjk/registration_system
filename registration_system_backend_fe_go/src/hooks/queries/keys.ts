@@ -1,4 +1,5 @@
 import type { MatchListQuery } from "../../types/match";
+import type { MiniReviewStatusQuery } from "../../types/miniReview";
 
 export const queryKeys = {
   health: ["health"] as const,
@@ -12,4 +13,5 @@ export const queryKeys = {
     ["teams", id, "member-candidates", search.trim()] as const,
   matches: (query: MatchListQuery) => ["matches", query] as const,
   match: (id: string) => ["matches", id] as const,
+  miniReviewStatuses: (query: MiniReviewStatusQuery) => ["mini-review", "statuses", query] as const,
 };

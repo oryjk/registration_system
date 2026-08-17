@@ -101,6 +101,17 @@ type MatchTeamApplication struct {
 	UpdatedAt       pgtype.Timestamp `json:"updated_at"`
 }
 
+type MiniReviewStatus struct {
+	ID          int64              `json:"id"`
+	ProjectCode string             `json:"project_code"`
+	Version     string             `json:"version"`
+	VersionCode int64              `json:"version_code"`
+	IsReviewing bool               `json:"is_reviewing"`
+	StatusText  string             `json:"status_text"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+}
+
 type PaymentOrder struct {
 	OrderNo       string             `json:"order_no"`
 	UserID        int64              `json:"user_id"`

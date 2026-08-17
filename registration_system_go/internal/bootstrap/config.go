@@ -33,6 +33,8 @@ type Config struct {
 	WechatPayAPIBaseURL string
 	PublicBaseURL       string
 	WechatPayNotifyPath string
+	// MiniReviewAPIKey 供小程序生产构建脚本登记审核版本；为空时登记接口关闭。
+	MiniReviewAPIKey string
 }
 
 func LoadConfig() (Config, error) {
@@ -56,6 +58,7 @@ func LoadConfig() (Config, error) {
 		WechatPayAPIBaseURL: envOrDefault("WECHAT_PAY_API_BASE_URL", "https://api.mch.weixin.qq.com"),
 		PublicBaseURL:       strings.TrimRight(strings.TrimSpace(os.Getenv("PUBLIC_BASE_URL")), "/"),
 		WechatPayNotifyPath: envOrDefault("WECHAT_PAY_NOTIFY_PATH", "/api/v1/webhooks/wechat-pay"),
+		MiniReviewAPIKey:    strings.TrimSpace(os.Getenv("MINI_REVIEW_API_KEY")),
 	}
 
 	for name, value := range map[string]string{

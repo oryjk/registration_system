@@ -68,5 +68,12 @@ export default [
     icon: "SafetyCertificateOutlined",
     component: "./AccessPage",
   },
+  {
+    path: "/mini-review",
+    access: "isAuthenticated",
+    name: "审核版本",
+    icon: "AuditOutlined",
+    component: "./MiniReviewPage",
+  },
   { path: "/*", component: "./NotFoundPage" },
 ];

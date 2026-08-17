@@ -1,10 +1,10 @@
 import type { BackendMiniReviewStatus } from "@/types/backend";
-import { request } from "@/utils/request";
+import { requestApi } from "@/utils/request";
 
-const MINI_REVIEW_BASE_URL = "https://match.oryjk.cn/mini-review";
-
+// 审核状态走 Go 后端公开接口（无需登录），与业务 API 同域（VITE_API_BASE_URL）。
 export function getMiniReviewStatus(projectCode: string, version: string) {
-  return request<BackendMiniReviewStatus>({
-    url: `${MINI_REVIEW_BASE_URL}/api/public/review-status?project_code=${encodeURIComponent(projectCode)}&version=${encodeURIComponent(version)}`,
+  const query = `project_code=${encodeURIComponent(projectCode)}&version=${encodeURIComponent(version)}`;
+  return requestApi<BackendMiniReviewStatus>({
+    url: `/mini-review/review-status?${query}`,
   });
 }

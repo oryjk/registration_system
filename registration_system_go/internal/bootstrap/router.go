@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	authhttp "github.com/oryjk/registration_system/registration_system_go/internal/auth/adapters/http"
 	matchhttp "github.com/oryjk/registration_system/registration_system_go/internal/match/adapters/http"
+	minireviewhttp "github.com/oryjk/registration_system/registration_system_go/internal/minireview/adapters/http"
 	paymenthttp "github.com/oryjk/registration_system/registration_system_go/internal/payment/adapters/http"
 	sharedhttp "github.com/oryjk/registration_system/registration_system_go/internal/shared/http"
 	teamhttp "github.com/oryjk/registration_system/registration_system_go/internal/team/adapters/http"
@@ -31,6 +32,7 @@ type Dependencies struct {
 	TeamApplications   *matchhttp.TeamApplicationHandler
 	Payments           *paymenthttp.Handler
 	Wallets            *wallethttp.Handler
+	MiniReviews        *minireviewhttp.Handler
 }
 
 func NewRouter(dependencies Dependencies) *gin.Engine {
@@ -49,6 +51,11 @@ func NewRouter(dependencies Dependencies) *gin.Engine {
 	}
 	if dependencies.H5TestLoginEnabled && dependencies.TestAuth != nil {
 		dependencies.TestAuth.RegisterRoutes(app)
+	}
+	if dependencies.MiniReviews != nil {
+		// 小程序审核状态：运行时查询与生产构建登记都无需用户会话（登记走静态 API key）。
+		dependencies.MiniReviews.RegisterPublicRoutes(app)
+		dependencies.MiniReviews.RegisterAllocateRoutes(app)
 	}
 	admin := v1.Group("/admin")
 	if dependencies.AdminAuth != nil {
@@ -113,6 +120,9 @@ func NewRouter(dependencies Dependencies) *gin.Engine {
 		}
 		if dependencies.Wallets != nil {
 			dependencies.Wallets.RegisterAdminRoutes(adminRoutes)
+		}
+		if dependencies.MiniReviews != nil {
+			dependencies.MiniReviews.RegisterAdminRoutes(adminRoutes)
 		}
 	}
 	return router
