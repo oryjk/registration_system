@@ -52,7 +52,7 @@ const {
           <view class="recharge-head">
             <view class="recharge-head-row">
               <text class="recharge-title">队费充值</text>
-              <text class="recharge-balance">球队余额 {{ balanceLabel }}</text>
+              <text class="recharge-balance">当前剩余余额 {{ balanceLabel }}</text>
             </view>
             <text class="recharge-copy">充多少是多少，直接计入本队余额</text>
           </view>
