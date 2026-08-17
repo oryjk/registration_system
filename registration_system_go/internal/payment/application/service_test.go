@@ -269,7 +269,7 @@ func TestCreateTeamMembershipRequiresTeamManager(t *testing.T) {
 	gateway := &fakeGateway{}
 	service := NewService(store, store, gateway, store, store, denyTeams{}, fixedOrderNumbers{"P-team-1"}, fixedClock{})
 
-	if _, err := service.CreateTeamMembership(context.Background(), sharedauth.Actor{Kind: sharedauth.ActorUser, ID: 42}, CreateTeamMembershipCommand{TeamID: 7, Months: 1}); err == nil {
+	if _, err := service.CreateTeamMembership(context.Background(), sharedauth.Actor{Kind: sharedauth.ActorUser, ID: 42}, CreateTeamMembershipCommand{TeamID: 7, AmountCents: 3000}); err == nil {
 		t.Fatal("expected forbidden for non-manager")
 	}
 }
@@ -289,17 +289,39 @@ func TestCreateTeamMembershipOrdersForClickedTeam(t *testing.T) {
 	}}
 	service := NewService(store, store, gateway, store, store, allowTeams{}, fixedOrderNumbers{"P-team-9"}, fixedClock{})
 
-	result, err := service.CreateTeamMembership(context.Background(), sharedauth.Actor{Kind: sharedauth.ActorUser, ID: 42}, CreateTeamMembershipCommand{TeamID: 7, Months: 2})
+	result, err := service.CreateTeamMembership(context.Background(), sharedauth.Actor{Kind: sharedauth.ActorUser, ID: 42}, CreateTeamMembershipCommand{TeamID: 7, AmountCents: 7500})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.Order.AmountCents != 2*paymentdomain.MembershipPriceCentsPerMonth {
+	if result.Order.AmountCents != 7500 {
 		t.Fatalf("amount=%d", result.Order.AmountCents)
 	}
-	if result.Order.Kind != paymentdomain.KindTeamMembership {
-		t.Fatalf("kind=%s", result.Order.Kind)
+	if result.Order.Kind != paymentdomain.KindTeamMembership || result.Order.Months != nil {
+		t.Fatalf("kind=%s months=%v", result.Order.Kind, result.Order.Months)
 	}
-	if gateway.request.OpenID != "openid-37" || gateway.request.AmountCents != 2*paymentdomain.MembershipPriceCentsPerMonth {
+	if gateway.request.OpenID != "openid-37" || gateway.request.AmountCents != 7500 {
 		t.Fatalf("gateway request: %+v", gateway.request)
+	}
+}
+
+func TestSyncTeamMembershipSettlesCreditByAmount(t *testing.T) {
+	store := newFakePaymentStore()
+	order, err := paymentdomain.NewTeamMembershipOrder("P-team-settle", 37, 7, 7500, time.Unix(100, 0))
+	if err != nil {
+		t.Fatal(err)
+	}
+	store.order = order
+	gateway := &fakeGateway{query: paymentports.ProviderPayment{OrderNo: order.OrderNo, AmountCents: 7500, TransactionID: "wx-team-1", PaidAt: time.Unix(200, 0), Paid: true}}
+	service := NewService(store, store, gateway, store, store, allowTeams{}, fixedOrderNumbers{}, fixedClock{})
+
+	if _, err := service.Sync(context.Background(), userActor(37), order.OrderNo); err != nil {
+		t.Fatal(err)
+	}
+	if len(store.membershipApplies) != 1 {
+		t.Fatalf("membership applies: %+v", store.membershipApplies)
+	}
+	// 每 500 分（5 元）修复 1 点信用分：7500 分 → 15 点。
+	if apply := store.membershipApplies[0]; apply.TeamID != 7 || apply.CreditDelta != 15 {
+		t.Fatalf("apply=%+v", apply)
 	}
 }

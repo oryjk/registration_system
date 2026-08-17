@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import AppTabHeader from "@/components/AppTabHeader.vue";
 import NeoButton from "@/components/neo/NeoButton.vue";
-import NeoSegmentedControl from "@/components/neo/NeoSegmentedControl.vue";
 import NeoSurface from "@/components/neo/NeoSurface.vue";
 import NeoTag from "@/components/neo/NeoTag.vue";
-import { MEMBERSHIP_MONTH_OPTIONS, useTeamDetailPage } from "./useTeamDetailPage";
+import { useTeamDetailPage } from "./useTeamDetailPage";
 
 const {
   pageStyle,
@@ -12,7 +11,8 @@ const {
   isLoading,
   errorMessage,
   paying,
-  selectedMonths,
+  amountInput,
+  amountError,
   roleLabel,
   canManage,
   totalPriceLabel,
@@ -50,14 +50,17 @@ const {
         <view class="recharge-card">
           <view class="recharge-head">
             <text class="recharge-title">队费充值</text>
-            <text class="recharge-copy">30 元 / 月，续费延长球队会员并修复信用分</text>
+            <text class="recharge-copy">金额不限，每缴纳 5 元修复 1 点球队信用分</text>
           </view>
-          <NeoSegmentedControl
-            :model-value="selectedMonths"
-            :options="MEMBERSHIP_MONTH_OPTIONS"
-            class="recharge-segment"
-            @update:model-value="selectedMonths = $event"
-          />
+          <view class="recharge-amount">
+            <input
+              v-model="amountInput"
+              class="recharge-input"
+              type="digit"
+              placeholder="输入缴纳金额（元）"
+            />
+            <text v-if="amountError" class="recharge-error">{{ amountError }}</text>
+          </view>
           <view class="recharge-total">
             <text class="recharge-total-label">应付</text>
             <text class="recharge-total-value">{{ totalPriceLabel }}</text>
@@ -191,8 +194,28 @@ const {
   font-weight: 700;
 }
 
-.recharge-segment {
+.recharge-amount {
   margin-top: 22rpx;
+}
+
+.recharge-input {
+  height: 88rpx;
+  padding: 0 24rpx;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-surface);
+  color: var(--neo-color-text);
+  font-size: 30rpx;
+  font-weight: 800;
+  box-sizing: border-box;
+}
+
+.recharge-error {
+  display: block;
+  margin-top: 10rpx;
+  color: var(--neo-color-danger);
+  font-size: 22rpx;
+  font-weight: 700;
 }
 
 .recharge-total {

@@ -14,28 +14,21 @@ import (
 const applyTeamMembershipToTeam = `-- name: ApplyTeamMembershipToTeam :one
 UPDATE teams
 SET credit_score = LEAST(100, credit_score + $1::int),
-    vip_until = GREATEST(NOW(), COALESCE(vip_until, NOW())) + ($2::int * INTERVAL '30 days'),
     updated_at = NOW()
-WHERE id = $3::bigint
-RETURNING credit_score, vip_until
+WHERE id = $2::bigint
+RETURNING credit_score
 `
 
 type ApplyTeamMembershipToTeamParams struct {
 	CreditDelta int32 `json:"credit_delta"`
-	Months      int32 `json:"months"`
 	TeamID      int64 `json:"team_id"`
 }
 
-type ApplyTeamMembershipToTeamRow struct {
-	CreditScore int32              `json:"credit_score"`
-	VipUntil    pgtype.Timestamptz `json:"vip_until"`
-}
-
-func (q *Queries) ApplyTeamMembershipToTeam(ctx context.Context, arg ApplyTeamMembershipToTeamParams) (ApplyTeamMembershipToTeamRow, error) {
-	row := q.db.QueryRow(ctx, applyTeamMembershipToTeam, arg.CreditDelta, arg.Months, arg.TeamID)
-	var i ApplyTeamMembershipToTeamRow
-	err := row.Scan(&i.CreditScore, &i.VipUntil)
-	return i, err
+func (q *Queries) ApplyTeamMembershipToTeam(ctx context.Context, arg ApplyTeamMembershipToTeamParams) (int32, error) {
+	row := q.db.QueryRow(ctx, applyTeamMembershipToTeam, arg.CreditDelta, arg.TeamID)
+	var credit_score int32
+	err := row.Scan(&credit_score)
+	return credit_score, err
 }
 
 const cancelPaymentOrder = `-- name: CancelPaymentOrder :one

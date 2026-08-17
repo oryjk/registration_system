@@ -40,8 +40,8 @@ type CreateRechargeRequest struct {
 }
 
 type CreateTeamMembershipRequest struct {
-	TeamID int64 `json:"team_id" binding:"required,min=1"`
-	Months int   `json:"months" binding:"required,min=1"`
+	TeamID      int64 `json:"team_id" binding:"required,min=1"`
+	AmountCents int64 `json:"amount_cents" binding:"required,min=1"`
 }
 
 type OrderResponse struct {
@@ -129,11 +129,11 @@ func (h *Handler) CreateTeamMembership(c *gin.Context) {
 	}
 	var request CreateTeamMembershipRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
-		sharedhttpapi.WriteError(c, sharederror.New(sharederror.KindValidation, "续费月数必须在 1 到 36 之间"))
+		sharedhttpapi.WriteError(c, sharederror.New(sharederror.KindValidation, "队费金额无效"))
 		return
 	}
 	result, err := h.service.CreateTeamMembership(c.Request.Context(), actor, paymentapplication.CreateTeamMembershipCommand{
-		TeamID: request.TeamID, Months: request.Months, ClientIP: c.ClientIP(),
+		TeamID: request.TeamID, AmountCents: request.AmountCents, ClientIP: c.ClientIP(),
 	})
 	if err != nil {
 		writePaymentError(c, err)

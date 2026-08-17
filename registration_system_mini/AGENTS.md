@@ -76,6 +76,15 @@ src/
 - **新增页面或功能后**，定期执行 `bun run build:mp-weixin` 确认小程序可编译，避免 H5 运行正常但小程序编译失败的问题积累。
 - `build:mp-weixin` 会在编译后执行组件注册检查；若提示 `Unregistered mini-program components`，先核对对应 SFC 是否把运行时组件直接从 `.vue` 文件导入。
 
+### mp-weixin 已踩坑的样式/布局陷阱（勿再犯）
+
+小程序端 uni-app 组件编译为微信自定义组件，存在**宿主节点**与**样式隔离**（默认 `styleIsolation: isolated`），与 H5 行为不同。以下两类写法在 H5 正常、小程序里静默失效，已分别修过一次：
+
+1. **不要用 `custom-class` + 父级 scoped 样式给子组件根节点做布局**。父级 scoped 选择器带父组件作用域 id（如 `.mine-current-team.data-v-xxx`），编译后该类落在子组件内部根 view 上，既没有父级作用域 id、又被组件样式隔离挡住，整条规则失效，布局退化为纵向堆叠。正确做法：布局类加在**自己模板内的包裹 view** 上；若子组件是 `NeoSurface`，用 `flush` 去掉默认内边距后由内层 view 承载 padding/背景/flex。参考修复：`src/pages/user/components/MineTeamIdentityPanel.vue`（当前球队/我的球队卡片）。
+2. **flex 行容器里，子组件宿主节点宽度会收缩为内容宽**，子组件内部的 `width: 100%`（如 `NeoButton block`）相对收缩后的宿主计算，无法撑满容器，表现为按钮靠右、只有文字宽。正确做法：由 flex 容器侧解决——容器改 `flex-direction: column` + `align-items: stretch`，让 flex 布局算法直接拉伸宿主节点。参考修复：`src/components/neo/NeoStickyActionBar.vue` 的 `__actions`。
+
+通用原则：**H5 显示正常不代表小程序正常**，凡涉及跨组件的宽度/布局样式（`width:100%`、flex 对齐、custom-class），必须在 mp-weixin 端实际验证。若需批量排查存量问题，可全局搜索 `custom-class=` 落在 `Neo*` 组件上的用法。
+
 ## 验证建议
 
 - 提交前至少执行 `bun run type-check`

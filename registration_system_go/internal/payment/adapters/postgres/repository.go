@@ -278,8 +278,8 @@ func monthsFromSQL(months *int32) *int {
 	return &value
 }
 
-// ApplyMembershipPayment 结算一笔队费订单：订单置为已付并把会员权益落到归属球队。
-// 幂等与充值结算同构——重复回调返回已付订单，不重复加时长。
+// ApplyMembershipPayment 结算一笔队费订单：订单置为已付并按金额修复归属球队的信用分。
+// 幂等与充值结算同构——重复回调返回已付订单，不重复加信用分。
 func (r *Repository) ApplyMembershipPayment(ctx context.Context, payment paymentports.VerifiedPayment, purchase paymentports.MembershipPurchase) (result paymentports.SettlementResult, err error) {
 	tx, err := r.database.Begin(ctx)
 	if err != nil {
@@ -320,7 +320,7 @@ func (r *Repository) ApplyMembershipPayment(ctx context.Context, payment payment
 		return result, mapConstraintError(err)
 	}
 	if _, err := queries.ApplyTeamMembershipToTeam(ctx, paymentsqlc.ApplyTeamMembershipToTeamParams{
-		CreditDelta: int32(purchase.CreditDelta), Months: int32(purchase.Months), TeamID: purchase.TeamID,
+		CreditDelta: int32(purchase.CreditDelta), TeamID: purchase.TeamID,
 	}); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return result, sharederror.New(sharederror.KindNotFound, "队费订单归属的球队不存在")

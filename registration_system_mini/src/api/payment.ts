@@ -30,8 +30,8 @@ export interface GoPaymentOrderResult {
   payment: Record<string, unknown> | null;
 }
 
-/** 为球队创建队费（会员续费）订单并发起微信支付；仅该队队长/领队可操作。 */
-export function createTeamMembershipOrder(payload: { team_id: number; months: number }) {
+/** 为球队创建队费订单并发起微信支付（任意金额，与时间无关）；仅该队队长/领队可操作。 */
+export function createTeamMembershipOrder(payload: { team_id: number; amount_cents: number }) {
   return requestApi<GoPaymentOrderResult>({
     url: "/payments/team-membership-orders",
     method: "POST",

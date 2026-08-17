@@ -7,10 +7,9 @@ RETURNING *;
 -- name: ApplyTeamMembershipToTeam :one
 UPDATE teams
 SET credit_score = LEAST(100, credit_score + sqlc.arg('credit_delta')::int),
-    vip_until = GREATEST(NOW(), COALESCE(vip_until, NOW())) + (sqlc.arg('months')::int * INTERVAL '30 days'),
     updated_at = NOW()
 WHERE id = sqlc.arg('team_id')::bigint
-RETURNING credit_score, vip_until;
+RETURNING credit_score;
 
 -- name: GetPaymentOrder :one
 SELECT * FROM payment_orders WHERE order_no = $1;

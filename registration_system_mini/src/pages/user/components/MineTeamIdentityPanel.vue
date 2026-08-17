@@ -53,28 +53,38 @@ function handleSwitchIdentity(identityId: string) {
   <view class="mine-context-section">
     <NeoSectionHeader title="球队与身份" marker="队" caption="切换后，比赛和信用数据会同步更新" />
 
-    <NeoSurface v-if="currentTeam" interactive custom-class="mine-current-team" @tap="emit('manageTeam', currentTeam.id)">
-      <view class="mine-current-team__logo">
-        <image
-          v-if="currentTeam.logoUrl"
-          class="mine-current-team__logo-image"
-          :src="currentTeam.logoUrl"
-          mode="aspectFill"
-        />
-        <text v-else>{{ currentTeam.name.slice(0, 1) || "队" }}</text>
-      </view>
-      <view class="mine-current-team__copy">
-        <text class="mine-current-team__eyebrow">当前球队</text>
-        <text class="mine-current-team__name">{{ currentTeam.name }}</text>
-        <text class="mine-current-team__meta">{{ currentTeam.myRoleLabel }} · {{ currentTeam.memberCount }} 人</text>
-      </view>
-      <text class="mine-current-team__arrow">›</text>
-    </NeoSurface>
+    <!-- mp-weixin 里 scoped 样式无法穿透 NeoSurface 组件隔离，custom-class 上的布局会失效；
+         因此 flex 布局放在面板自己模板内的包裹 view 上，NeoSurface 用 flush 去掉默认内边距。 -->
+    <view v-if="currentTeam" class="mine-current-team">
+      <NeoSurface interactive flush @tap="emit('manageTeam', currentTeam.id)">
+        <view class="mine-current-team__inner">
+          <view class="mine-current-team__logo">
+            <image
+              v-if="currentTeam.logoUrl"
+              class="mine-current-team__logo-image"
+              :src="currentTeam.logoUrl"
+              mode="aspectFill"
+            />
+            <text v-else>{{ currentTeam.name.slice(0, 1) || "队" }}</text>
+          </view>
+          <view class="mine-current-team__copy">
+            <text class="mine-current-team__eyebrow">当前球队</text>
+            <text class="mine-current-team__name">{{ currentTeam.name }}</text>
+            <text class="mine-current-team__meta">{{ currentTeam.myRoleLabel }} · {{ currentTeam.memberCount }} 人</text>
+          </view>
+          <text class="mine-current-team__arrow">›</text>
+        </view>
+      </NeoSurface>
+    </view>
 
-    <NeoSurface v-else variant="outlined" custom-class="mine-context-empty">
-      <text class="mine-context-empty__title">暂未加入球队</text>
-      <text class="mine-context-empty__copy">加入球队后可查看身份、比赛和球队信用。</text>
-    </NeoSurface>
+    <view v-else class="mine-context-empty">
+      <NeoSurface variant="outlined" flush>
+        <view class="mine-context-empty__inner">
+          <text class="mine-context-empty__title">暂未加入球队</text>
+          <text class="mine-context-empty__copy">加入球队后可查看身份、比赛和球队信用。</text>
+        </view>
+      </NeoSurface>
+    </view>
 
     <view v-if="teamProfiles.length > 1" class="mine-switch-group">
       <text class="mine-switch-group__label">切换球队</text>
@@ -149,15 +159,17 @@ function handleSwitchIdentity(identityId: string) {
           v-for="team in teamProfiles"
           :key="team.id"
           interactive
-          custom-class="mine-manage-team"
+          flush
           @tap="emit('manageTeam', team.id)"
         >
-          <view class="mine-manage-team__badge">{{ team.name.slice(0, 1) || "队" }}</view>
-          <view class="mine-manage-team__copy">
-            <text class="mine-manage-team__name">{{ team.name }}</text>
-            <text class="mine-manage-team__meta">{{ team.myRoleLabel }} · {{ team.memberCount }} 人</text>
+          <view class="mine-manage-team">
+            <view class="mine-manage-team__badge">{{ team.name.slice(0, 1) || "队" }}</view>
+            <view class="mine-manage-team__copy">
+              <text class="mine-manage-team__name">{{ team.name }}</text>
+              <text class="mine-manage-team__meta">{{ team.myRoleLabel }} · {{ team.memberCount }} 人</text>
+            </view>
+            <text class="mine-manage-team__arrow">→</text>
           </view>
-          <text class="mine-manage-team__arrow">→</text>
         </NeoSurface>
       </view>
     </view>
@@ -178,10 +190,14 @@ function handleSwitchIdentity(identityId: string) {
 }
 
 .mine-current-team {
+  margin-top: 18rpx;
+}
+
+.mine-current-team__inner {
   display: flex;
   align-items: center;
   gap: 18rpx;
-  margin-top: 18rpx;
+  padding: var(--neo-surface-padding);
   background: var(--neo-color-info-soft);
 }
 
@@ -241,6 +257,10 @@ function handleSwitchIdentity(identityId: string) {
 
 .mine-context-empty {
   margin-top: 18rpx;
+}
+
+.mine-context-empty__inner {
+  padding: var(--neo-surface-padding);
   background: var(--neo-color-muted);
 }
 
@@ -383,6 +403,7 @@ function handleSwitchIdentity(identityId: string) {
   gap: 16rpx;
   min-height: 102rpx;
   padding: 16rpx;
+  box-sizing: border-box;
 }
 
 .mine-manage-team__badge {

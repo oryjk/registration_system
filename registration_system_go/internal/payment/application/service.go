@@ -3,7 +3,6 @@ package application
 import (
 	"context"
 	"errors"
-	"fmt"
 	"strings"
 
 	paymentdomain "github.com/oryjk/registration_system/registration_system_go/internal/payment/domain"
@@ -78,7 +77,7 @@ func (s *Service) CreateRecharge(ctx context.Context, actor sharedauth.Actor, co
 	return CreateRechargeResult{Order: order, Payment: providerResult.Parameters}, nil
 }
 
-// CreateTeamMembership 为球队创建队费（会员续费）订单并发起微信支付；
+// CreateTeamMembership 为球队创建队费订单并发起微信支付；金额由用户填写，与时间无关；
 // 仅该队队长/领队可操作，订单归属被点击的球队。
 func (s *Service) CreateTeamMembership(ctx context.Context, actor sharedauth.Actor, command CreateTeamMembershipCommand) (CreateRechargeResult, error) {
 	if !actor.IsUser() {
@@ -88,7 +87,7 @@ func (s *Service) CreateTeamMembership(ctx context.Context, actor sharedauth.Act
 		return CreateRechargeResult{}, err
 	}
 	now := s.clock.Now()
-	order, err := paymentdomain.NewTeamMembershipOrder(s.orderNos.NewOrderNo(), actor.ID, command.TeamID, command.Months, now)
+	order, err := paymentdomain.NewTeamMembershipOrder(s.orderNos.NewOrderNo(), actor.ID, command.TeamID, command.AmountCents, now)
 	if err != nil {
 		return CreateRechargeResult{}, err
 	}
@@ -104,7 +103,7 @@ func (s *Service) CreateTeamMembership(ctx context.Context, actor sharedauth.Act
 	}
 	providerResult, err := s.gateway.UnifiedOrder(ctx, paymentports.UnifiedOrderRequest{
 		OrderNo: order.OrderNo, AmountCents: order.AmountCents,
-		Description: fmt.Sprintf("球队队费续费 %d 个月", command.Months),
+		Description: "球队队费缴纳",
 		ClientIP:    strings.TrimSpace(command.ClientIP), OpenID: openid,
 	})
 	if err != nil {
@@ -121,9 +120,9 @@ func (s *Service) CreateTeamMembership(ctx context.Context, actor sharedauth.Act
 }
 
 type CreateTeamMembershipCommand struct {
-	TeamID   int64
-	Months   int
-	ClientIP string
+	TeamID      int64
+	AmountCents int64
+	ClientIP    string
 }
 
 type ListQuery struct {
@@ -251,12 +250,12 @@ func (s *Service) settle(ctx context.Context, payment paymentports.ProviderPayme
 	}
 	switch order.Kind {
 	case paymentdomain.KindTeamMembership:
-		if order.TeamID == nil || order.Months == nil {
+		if order.TeamID == nil {
 			return paymentports.SettlementResult{}, sharederror.New(sharederror.KindConflict, "队费订单缺少球队信息")
 		}
 		return s.memberships.ApplyMembershipPayment(ctx, verified, paymentports.MembershipPurchase{
-			TeamID: *order.TeamID, Months: *order.Months,
-			CreditDelta: *order.Months * paymentdomain.MembershipCreditPerMonth,
+			TeamID:      *order.TeamID,
+			CreditDelta: int(order.AmountCents / paymentdomain.MembershipCreditPerAmountCents),
 		})
 	default:
 		return s.settlement.CreditRecharge(ctx, verified)

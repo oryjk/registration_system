@@ -60,21 +60,24 @@ func TestMarkPaidRejectsDifferentProviderTransaction(t *testing.T) {
 	}
 }
 
-func TestNewTeamMembershipOrderPricesAndValidates(t *testing.T) {
+func TestNewTeamMembershipOrderValidatesArbitraryAmount(t *testing.T) {
 	now := time.Date(2026, 8, 17, 12, 0, 0, 0, time.UTC)
-	order, err := NewTeamMembershipOrder("P-team-1", 42, 7, 3, now)
+	order, err := NewTeamMembershipOrder("P-team-1", 42, 7, 7500, now)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if order.Kind != KindTeamMembership || order.AmountCents != 3*MembershipPriceCentsPerMonth {
+	if order.Kind != KindTeamMembership || order.AmountCents != 7500 {
 		t.Fatalf("unexpected order: %+v", order)
 	}
-	if order.TeamID == nil || *order.TeamID != 7 || order.Months == nil || *order.Months != 3 {
+	if order.TeamID == nil || *order.TeamID != 7 {
 		t.Fatalf("membership fields missing: %+v", order)
 	}
-	for _, months := range []int{0, -1, MembershipMaxMonths + 1} {
-		if _, err := NewTeamMembershipOrder("P-team-2", 42, 7, months, now); err == nil {
-			t.Fatalf("expected months=%d to be rejected", months)
+	if order.Months != nil {
+		t.Fatalf("new team membership order should not carry months: %+v", order)
+	}
+	for _, amount := range []int64{0, -1, MembershipMaxAmountCents + 1} {
+		if _, err := NewTeamMembershipOrder("P-team-2", 42, 7, amount, now); err == nil {
+			t.Fatalf("expected amount=%d to be rejected", amount)
 		}
 	}
 }

@@ -241,15 +241,16 @@ func mustPaymentOrder(t *testing.T, orderNo string, userID, amount int64) paymen
 	return order
 }
 
-func TestApplyMembershipPaymentExtendsTeamAndIsIdempotent(t *testing.T) {
+func TestApplyMembershipPaymentRepairsCreditWithoutTouchingVipUntilAndIsIdempotent(t *testing.T) {
 	pool := testsupport.OpenTestPostgres(t)
 	ctx := context.Background()
 	userID := seedPaymentUser(t, pool, "member")
+	vipUntil := time.Now().UTC().Add(72 * time.Hour).Truncate(time.Microsecond)
 	var teamID int64
-	if err := pool.QueryRow(ctx, `INSERT INTO teams (name) VALUES ('队费球队') RETURNING id`).Scan(&teamID); err != nil {
+	if err := pool.QueryRow(ctx, `INSERT INTO teams (name, credit_score, vip_until) VALUES ('队费球队', 50, $1) RETURNING id`, vipUntil).Scan(&teamID); err != nil {
 		t.Fatal(err)
 	}
-	order, err := paymentdomain.NewTeamMembershipOrder(uniquePaymentOrderNo("teamfee"), userID, teamID, 3, time.Now().UTC())
+	order, err := paymentdomain.NewTeamMembershipOrder(uniquePaymentOrderNo("teamfee"), userID, teamID, 7500, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -258,7 +259,7 @@ func TestApplyMembershipPaymentExtendsTeamAndIsIdempotent(t *testing.T) {
 		t.Fatal(err)
 	}
 	payment := paymentports.VerifiedPayment{OrderNo: order.OrderNo, AmountCents: order.AmountCents, TransactionID: "wx-" + order.OrderNo, PaidAt: time.Now().UTC()}
-	purchase := paymentports.MembershipPurchase{TeamID: teamID, Months: 3, CreditDelta: 3 * paymentdomain.MembershipCreditPerMonth}
+	purchase := paymentports.MembershipPurchase{TeamID: teamID, CreditDelta: 15}
 
 	first, err := repository.ApplyMembershipPayment(ctx, payment, purchase)
 	if err != nil {
@@ -269,16 +270,17 @@ func TestApplyMembershipPaymentExtendsTeamAndIsIdempotent(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	var vipUntil time.Time
+	var actualVipUntil time.Time
 	var credit int
-	if err := pool.QueryRow(ctx, `SELECT vip_until, credit_score FROM teams WHERE id=$1`, teamID).Scan(&vipUntil, &credit); err != nil {
+	if err := pool.QueryRow(ctx, `SELECT vip_until, credit_score FROM teams WHERE id=$1`, teamID).Scan(&actualVipUntil, &credit); err != nil {
 		t.Fatal(err)
 	}
-	// 3 个月 = 90 天；幂等重放不叠加。
-	minVip := time.Now().UTC().Add(89 * 24 * time.Hour)
-	maxVip := time.Now().UTC().Add(91 * 24 * time.Hour)
-	if vipUntil.Before(minVip) || vipUntil.After(maxVip) || credit != 90+3*paymentdomain.MembershipCreditPerMonth {
-		t.Fatalf("vip_until=%v credit=%d", vipUntil, credit)
+	// 信用分修复：50 + 15；幂等重放不叠加；vip_until 不再被队费改动。
+	if credit != 50+15 {
+		t.Fatalf("credit=%d", credit)
+	}
+	if !actualVipUntil.Equal(vipUntil) {
+		t.Fatalf("vip_until changed: before=%v after=%v", vipUntil, actualVipUntil)
 	}
 	if !first.Credited || second.Credited {
 		t.Fatalf("first=%+v second=%+v", first, second)
@@ -296,7 +298,7 @@ func TestApplyMembershipPaymentRejectsAmountMismatch(t *testing.T) {
 	if err := pool.QueryRow(ctx, `INSERT INTO teams (name) VALUES ('金额不符球队') RETURNING id`).Scan(&teamID); err != nil {
 		t.Fatal(err)
 	}
-	order, err := paymentdomain.NewTeamMembershipOrder(uniquePaymentOrderNo("mism"), userID, teamID, 1, time.Now().UTC())
+	order, err := paymentdomain.NewTeamMembershipOrder(uniquePaymentOrderNo("mism"), userID, teamID, 3000, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -305,7 +307,7 @@ func TestApplyMembershipPaymentRejectsAmountMismatch(t *testing.T) {
 		t.Fatal(err)
 	}
 	payment := paymentports.VerifiedPayment{OrderNo: order.OrderNo, AmountCents: 1, TransactionID: "wx-bad", PaidAt: time.Now().UTC()}
-	if _, err := repository.ApplyMembershipPayment(ctx, payment, paymentports.MembershipPurchase{TeamID: teamID, Months: 1}); err == nil {
+	if _, err := repository.ApplyMembershipPayment(ctx, payment, paymentports.MembershipPurchase{TeamID: teamID}); err == nil {
 		t.Fatal("expected amount mismatch conflict")
 	}
 	loaded, err := repository.Get(ctx, order.OrderNo)

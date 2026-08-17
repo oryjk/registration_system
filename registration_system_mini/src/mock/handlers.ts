@@ -311,13 +311,13 @@ const routes: MockRoute[] = [
     method: "POST",
     pattern: "/payments/team-membership-orders",
     handler: (req) => {
-      const payload = req.body as { team_id?: number; months?: number } | undefined;
-      const months = Math.max(1, Math.min(12, Number(payload?.months ?? 1)));
+      const payload = req.body as { team_id?: number; amount_cents?: number } | undefined;
+      const amountCents = Math.max(1, Math.min(1_000_000, Math.round(Number(payload?.amount_cents ?? 0))));
       return {
         order: {
           order_no: `PM${Date.now()}`,
           kind: "team_membership",
-          amount_cents: months * 3000,
+          amount_cents: amountCents,
           status: "pending",
         },
         payment: {

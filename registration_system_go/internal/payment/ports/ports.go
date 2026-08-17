@@ -95,10 +95,9 @@ type Settlement interface {
 	CreditRecharge(context.Context, VerifiedPayment) (SettlementResult, error)
 }
 
-// MembershipPurchase 是一笔队费订单的购买信息：归属球队与月数。
+// MembershipPurchase 是一笔队费订单的购买信息：归属球队与按金额换算的信用分增量。
 type MembershipPurchase struct {
 	TeamID      int64
-	Months      int
 	CreditDelta int
 }
 

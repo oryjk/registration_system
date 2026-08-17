@@ -6,15 +6,8 @@ import { isMockWxPaymentParams, isPaymentCancelled, normalizeWxPaymentParams, re
 import { useTeamContext } from "@/stores/teamContext";
 import { getCustomNavMetrics } from "@/utils/customNav";
 
-/** 队费（球队会员）月费，单位分；与后端 MembershipPriceCentsPerMonth 一致。 */
-export const MEMBERSHIP_PRICE_CENTS_PER_MONTH = 3000;
-
-export const MEMBERSHIP_MONTH_OPTIONS = [
-  { label: "1 个月", value: "1" },
-  { label: "3 个月", value: "3" },
-  { label: "6 个月", value: "6" },
-  { label: "12 个月", value: "12" },
-];
+/** 单笔队费金额上限（分）：1 万元，与后端 MembershipMaxAmountCents 一致，防止误操作天价订单。 */
+export const MEMBERSHIP_MAX_AMOUNT_CENTS = 1_000_000;
 
 const ROLE_LABELS: Record<string, string> = {
   captain: "队长",
@@ -31,16 +24,26 @@ export function useTeamDetailPage() {
   const isLoading = ref(false);
   const errorMessage = ref("");
   const paying = ref(false);
-  const selectedMonths = ref("1");
+  const amountInput = ref("");
 
   const pageStyle = computed(() => ({
     paddingTop: `${navMetrics.pageTopPadding + 8}px`,
   }));
   const roleLabel = computed(() => ROLE_LABELS[team.value?.my_role ?? ""] ?? "成员");
   const canManage = computed(() => team.value?.my_role === "captain" || team.value?.my_role === "leader");
-  const selectedMonthsValue = computed(() => Number(selectedMonths.value) || 1);
+  const amountCents = computed(() => {
+    const yuan = Number(amountInput.value);
+    if (!amountInput.value.trim() || !Number.isFinite(yuan)) return 0;
+    return Math.round(yuan * 100);
+  });
+  const amountError = computed(() => {
+    if (!amountInput.value.trim()) return "";
+    if (amountCents.value < 1) return "金额需大于 0";
+    if (amountCents.value > MEMBERSHIP_MAX_AMOUNT_CENTS) return "单笔队费不能超过 1 万元";
+    return "";
+  });
   const totalPriceLabel = computed(() => {
-    const yuan = (selectedMonthsValue.value * MEMBERSHIP_PRICE_CENTS_PER_MONTH) / 100;
+    const yuan = amountCents.value / 100;
     return `¥${Number.isInteger(yuan) ? yuan : yuan.toFixed(2)}`;
   });
   const membershipLabel = computed(() => {
@@ -77,11 +80,19 @@ export function useTeamDetailPage() {
       uni.showToast({ title: "只有队长或领队可以缴纳队费", icon: "none" });
       return;
     }
+    if (amountError.value) {
+      uni.showToast({ title: amountError.value, icon: "none" });
+      return;
+    }
+    if (amountCents.value < 1) {
+      uni.showToast({ title: "请输入缴纳金额", icon: "none" });
+      return;
+    }
     paying.value = true;
     try {
       const order = await createTeamMembershipOrder({
         team_id: team.value.id,
-        months: selectedMonthsValue.value,
+        amount_cents: amountCents.value,
       });
       const paymentParams = normalizeWxPaymentParams(order.payment);
       if (paymentParams && !isMockWxPaymentParams(paymentParams)) {
@@ -118,7 +129,8 @@ export function useTeamDetailPage() {
     isLoading,
     errorMessage,
     paying,
-    selectedMonths,
+    amountInput,
+    amountError,
     roleLabel,
     canManage,
     totalPriceLabel,

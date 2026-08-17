@@ -29,12 +29,10 @@ const (
 )
 
 const (
-	// MembershipPriceCentsPerMonth 是球队会员（队费）月费：30 元/月。
-	MembershipPriceCentsPerMonth int64 = 3000
-	// MembershipCreditPerMonth 是续费每月修复的球队信用分（上限 100）。
-	MembershipCreditPerMonth = 6
-	// MembershipMaxMonths 限制单笔续费月数，防止误操作天价订单。
-	MembershipMaxMonths = 36
+	// MembershipMaxAmountCents 限制单笔队费金额（1 万元），防止误操作天价订单。
+	MembershipMaxAmountCents int64 = 1_000_000
+	// MembershipCreditPerAmountCents 是每修复 1 点球队信用分（上限 100）对应的队费金额：每 5 元 1 分。
+	MembershipCreditPerAmountCents int64 = 500
 )
 
 type Order struct {
@@ -46,7 +44,7 @@ type Order struct {
 	Status        Status
 	Kind          Kind
 	TeamID        *int64
-	Months        *int
+	Months        *int // 历史按月计价订单的月数；新队费订单恒为 nil
 	PrepayID      string
 	TransactionID string
 	PaidAt        *time.Time
@@ -68,19 +66,19 @@ func NewRechargeOrder(orderNo string, userID, amountCents int64, now time.Time) 
 	}, nil
 }
 
-// NewTeamMembershipOrder 为球队创建队费（会员续费）订单：按月计价，归属发起人点击的球队。
-func NewTeamMembershipOrder(orderNo string, userID, teamID int64, months int, now time.Time) (Order, error) {
+// NewTeamMembershipOrder 为球队创建队费订单：金额由用户填写（分），与时间无关，归属发起人点击的球队。
+func NewTeamMembershipOrder(orderNo string, userID, teamID, amountCents int64, now time.Time) (Order, error) {
 	orderNo = strings.TrimSpace(orderNo)
 	if orderNo == "" || len(orderNo) > 32 || userID <= 0 || teamID <= 0 {
 		return Order{}, sharederror.New(sharederror.KindValidation, "队费订单参数无效")
 	}
-	if months < 1 || months > MembershipMaxMonths {
-		return Order{}, sharederror.New(sharederror.KindValidation, "续费月数必须在 1 到 36 之间")
+	if amountCents < 1 || amountCents > MembershipMaxAmountCents {
+		return Order{}, sharederror.New(sharederror.KindValidation, "队费金额无效")
 	}
 	return Order{
-		OrderNo: orderNo, UserID: userID, AmountCents: int64(months) * MembershipPriceCentsPerMonth,
+		OrderNo: orderNo, UserID: userID, AmountCents: amountCents,
 		Provider: ProviderWechat, Channel: ChannelMiniProgramJSAPI, Status: StatusPending,
-		Kind: KindTeamMembership, TeamID: &teamID, Months: &months,
+		Kind: KindTeamMembership, TeamID: &teamID,
 		CreatedAt: now, UpdatedAt: now,
 	}, nil
 }
