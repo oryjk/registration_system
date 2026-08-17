@@ -23,6 +23,8 @@ const { syncUnreadCount } = useNotificationCenter();
 const navMetrics = getCustomNavMetrics();
 
 const isLoading = ref(false);
+const isSilentRefreshing = ref(false);
+const hasLoadedOnce = ref(false);
 const errorMessage = ref("");
 const requiresLogin = ref(false);
 const myRecords = ref<BackendTeamMemberAttendanceRecord[]>([]);
@@ -65,8 +67,17 @@ async function loadPageData() {
   }
 
   requiresLogin.value = false;
-  isLoading.value = true;
   errorMessage.value = "";
+
+  // 首次进入用骨架屏占位；再次进页（onShow）保留已渲染内容静默刷新，
+  // 避免内容 → 骨架屏 → 内容的闪烁。
+  const preserveContent = hasLoadedOnce.value;
+  if (preserveContent) {
+    if (isSilentRefreshing.value) return;
+    isSilentRefreshing.value = true;
+  } else {
+    isLoading.value = true;
+  }
 
   try {
     await ensureSessionReady();
@@ -84,11 +95,21 @@ async function loadPageData() {
     myRecords.value = allTimeSummary.my_records;
     myYearRecords.value = yearSummary.my_records;
     rankingItems.value = yearSummary.ranking;
+    hasLoadedOnce.value = true;
   } catch (error) {
-    resetStatsData();
-    errorMessage.value = error instanceof Error ? error.message : "统计数据加载失败";
+    if (preserveContent) {
+      // 刷新失败时保留旧数据，仅轻提示，不把已展示的内容闪成错误卡片。
+      uni.showToast({
+        title: error instanceof Error ? error.message : "统计数据刷新失败",
+        icon: "none",
+      });
+    } else {
+      resetStatsData();
+      errorMessage.value = error instanceof Error ? error.message : "统计数据加载失败";
+    }
   } finally {
     isLoading.value = false;
+    isSilentRefreshing.value = false;
   }
 }
 
@@ -116,7 +137,7 @@ onUnload(() => {
 
     <template v-if="!requiresLogin">
       <view v-if="errorMessage" class="stats-empty">{{ errorMessage }}</view>
-      <StatsSkeleton v-else-if="isLoading" />
+      <StatsSkeleton v-else-if="isLoading && !hasLoadedOnce" />
 
       <template v-else>
         <StatsOverview
