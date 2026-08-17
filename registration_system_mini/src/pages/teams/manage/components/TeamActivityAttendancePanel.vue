@@ -184,9 +184,9 @@ function memberInitial(nickname: string) {
 .activity-attendance-card {
   padding: 22rpx;
   border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-hero);
-  box-shadow: 5rpx 5rpx 0 var(--neo-color-accent);
+  border-radius: var(--neo-radius-md);
+  background: var(--neo-color-surface);
+  box-shadow: var(--neo-shadow-raised);
   overflow: hidden;
 }
 
@@ -204,7 +204,7 @@ function memberInitial(nickname: string) {
 
 .activity-name {
   display: block;
-  color: var(--neo-color-text-inverse);
+  color: var(--neo-color-text);
   font-size: 31rpx;
   line-height: 1.25;
   font-weight: 950;
@@ -216,7 +216,7 @@ function memberInitial(nickname: string) {
 .activity-meta {
   display: block;
   margin-top: 8rpx;
-  color: rgba(255, 255, 255, 0.68);
+  color: var(--neo-color-text-muted);
   font-size: 22rpx;
   line-height: 1.35;
   font-weight: 750;
@@ -229,7 +229,7 @@ function memberInitial(nickname: string) {
   flex-shrink: 0;
   width: 52rpx;
   height: 52rpx;
-  border: 2rpx solid var(--neo-color-accent);
+  border: var(--neo-border-default);
   border-radius: var(--neo-radius-round);
   background: var(--neo-color-text);
   color: var(--neo-color-accent);
@@ -251,10 +251,10 @@ function memberInitial(nickname: string) {
 .activity-loading {
   margin-top: 16rpx;
   padding: 18rpx;
-  border: 2rpx solid rgba(255, 255, 255, 0.34);
+  border: 2rpx solid var(--neo-color-track);
   border-radius: var(--neo-radius-sm);
-  background: rgba(255, 255, 255, 0.06);
-  color: rgba(255, 255, 255, 0.72);
+  background: var(--neo-color-muted);
+  color: var(--neo-color-text-muted);
   font-size: 23rpx;
   font-weight: 750;
 }
@@ -306,9 +306,9 @@ function memberInitial(nickname: string) {
 
 .activity-member-list {
   margin-top: 14rpx;
-  border: 2rpx solid rgba(255, 255, 255, 0.34);
+  border: 2rpx solid var(--neo-color-text);
   border-radius: var(--neo-radius-sm);
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--neo-color-muted);
   overflow: hidden;
 }
 
@@ -318,7 +318,7 @@ function memberInitial(nickname: string) {
   display: flex;
   align-items: center;
   gap: 12rpx;
-  border-bottom: 1rpx solid rgba(255, 255, 255, 0.09);
+  border-bottom: 2rpx solid var(--neo-color-track);
   box-sizing: border-box;
 }
 
@@ -329,7 +329,7 @@ function memberInitial(nickname: string) {
 .activity-member-avatar {
   width: 54rpx;
   height: 54rpx;
-  border: 2rpx solid var(--neo-color-text-inverse);
+  border: 2rpx solid var(--neo-color-text);
   border-radius: var(--neo-radius-xs);
   flex-shrink: 0;
   overflow: hidden;
@@ -352,7 +352,7 @@ function memberInitial(nickname: string) {
 
 .activity-member-name {
   display: block;
-  color: var(--neo-color-text-inverse);
+  color: var(--neo-color-text);
   font-size: 24rpx;
   font-weight: 900;
   overflow: hidden;
@@ -363,7 +363,7 @@ function memberInitial(nickname: string) {
 .activity-member-meta {
   display: block;
   margin-top: 4rpx;
-  color: rgba(255, 255, 255, 0.48);
+  color: var(--neo-color-text-muted);
   font-size: 19rpx;
   font-weight: 750;
 }
