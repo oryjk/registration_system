@@ -101,12 +101,13 @@ func ensureHostGroup(ctx context.Context, tx pgx.Tx, matchID uuid.UUID, teamID i
 	return id, nil
 }
 
+// resolveOpponent 只返回手工对手名称，不再把“待定”占位球队写进 away_team_id：
+// Go 模型中线下已约（offline_confirmed）比赛没有球队对手，详情/展示层
+// 优先显示 away_team_name，链接占位球队会导致手工对手名被“待定”球队名覆盖。
 func resolveOpponent(opposing string, pendingTeamID int64) (*string, *int64) {
 	trimmed := strings.TrimSpace(opposing)
-	if trimmed == "" || trimmed == "待定" || trimmed == "对手待定" {
-		name := pendingTeamName
-		teamID := pendingTeamID
-		return &name, &teamID
+	if trimmed == "" || trimmed == "对手待定" {
+		trimmed = pendingTeamName
 	}
 	return &trimmed, nil
 }

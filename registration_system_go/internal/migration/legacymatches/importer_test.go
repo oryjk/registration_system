@@ -85,15 +85,22 @@ func TestImporterIsIdempotentAndMapsLegacyState(t *testing.T) {
 	if pendingTeamCount != 1 {
 		t.Fatalf("expected 1 pending team, got %d", pendingTeamCount)
 	}
-	// 真实对手名比赛 away_team_id 为空；待定比赛 away_team_id 指向“待定”球队。
+	// 所有比赛（含对手待定的）都不得链接 away_team_id：
+	// 线下已约比赛在 Go 模型里没有球队对手，手工对手名只落在 opponent_name。
 	if err := pool.QueryRow(ctx, `
         SELECT COUNT(*) FROM matches m
-        JOIN teams t ON t.id=m.away_team_id
-        WHERE m.host_team_id=$1 AND t.name='待定'`, hostTeamID).Scan(&pendingAwayRefCount); err != nil {
-		t.Fatalf("count pending away refs: %v", err)
+        WHERE m.host_team_id=$1 AND m.away_team_id IS NOT NULL`, hostTeamID).Scan(&pendingAwayRefCount); err != nil {
+		t.Fatalf("count away refs: %v", err)
 	}
-	if pendingAwayRefCount != 1 {
-		t.Fatalf("expected 1 match referencing pending team, got %d", pendingAwayRefCount)
+	if pendingAwayRefCount != 0 {
+		t.Fatalf("expected no match referencing an away team, got %d", pendingAwayRefCount)
+	}
+	var pendingOpponentName string
+	if err := pool.QueryRow(ctx, `SELECT opponent_name FROM matches WHERE host_team_id=$1 AND name='周四友谊赛'`, hostTeamID).Scan(&pendingOpponentName); err != nil {
+		t.Fatalf("load pending opponent name: %v", err)
+	}
+	if pendingOpponentName != "待定" {
+		t.Fatalf("expected pending opponent name 待定, got %q", pendingOpponentName)
 	}
 	if err := pool.QueryRow(ctx, `
         SELECT COUNT(*) FILTER (WHERE status='unknown'),
