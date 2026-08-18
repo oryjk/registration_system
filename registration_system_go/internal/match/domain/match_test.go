@@ -179,6 +179,81 @@ func intPointer(value int) *int {
 	return &value
 }
 
+func UpdateDetailsInput(m Match, fn func(*UpdateMatchDetails)) UpdateMatchDetails {
+	input := UpdateMatchDetails{
+		Name: m.Name, StartTime: m.StartTime, EndTime: m.EndTime,
+		RegistrationStartAt: m.RegistrationStartAt, RegistrationEndAt: m.RegistrationEndAt,
+		Location: m.Location, LocationLatitude: m.LocationLatitude, LocationLongitude: m.LocationLongitude,
+		Description: m.Description,
+	}
+	fn(&input)
+	return input
+}
+
+func TestNormalizeJerseyColor(t *testing.T) {
+	got, err := NormalizeJerseyColor("  #2F6BFF ")
+	if err != nil || got != "#2f6bff" {
+		t.Fatalf("want #2f6bff, got %q err=%v", got, err)
+	}
+	if got, err := NormalizeJerseyColor(""); err != nil || got != "" {
+		t.Fatalf("empty should pass through, got %q err=%v", got, err)
+	}
+	if _, err := NormalizeJerseyColor("#fff"); err == nil {
+		t.Fatal("3-digit hex should be rejected")
+	}
+	if _, err := NormalizeJerseyColor("2f6bff"); err == nil {
+		t.Fatal("missing # should be rejected")
+	}
+}
+
+func TestNewMatchStoresNormalizedJerseyColors(t *testing.T) {
+	host, away := "#2F6BFF", "#C8FF00"
+	input := validInput(OnlineTeam)
+	input.HostColor, input.AwayColor = &host, &away
+	match, _, err := NewMatch(input, IndividualLimits{})
+	if err != nil {
+		t.Fatalf("new match: %v", err)
+	}
+	if match.HostColor != "#2f6bff" || match.AwayColor != "#c8ff00" {
+		t.Fatalf("colors not normalized: %q %q", match.HostColor, match.AwayColor)
+	}
+
+	bad := "magenta"
+	input2 := validInput(OnlineTeam)
+	input2.HostColor = &bad
+	if _, _, err := NewMatch(input2, IndividualLimits{}); err == nil {
+		t.Fatal("invalid color should fail creation")
+	}
+}
+
+func TestUpdateDetailsJerseyColorThreeStates(t *testing.T) {
+	match, _, err := NewMatch(validInput(OnlineTeam), IndividualLimits{})
+	if err != nil {
+		t.Fatalf("new match: %v", err)
+	}
+	now := time.Now().UTC()
+
+	set := "#ff0000"
+	if err := match.UpdateDetails(UpdateDetailsInput(match, func(u *UpdateMatchDetails) { u.HostColor = &set }), now); err != nil {
+		t.Fatalf("set color: %v", err)
+	}
+	if match.HostColor != "#ff0000" {
+		t.Fatalf("want #ff0000, got %q", match.HostColor)
+	}
+
+	clear := ""
+	if err := match.UpdateDetails(UpdateDetailsInput(match, func(u *UpdateMatchDetails) { u.HostColor = &clear }), now); err != nil {
+		t.Fatalf("clear color: %v", err)
+	}
+	if match.HostColor != "" {
+		t.Fatalf("cleared color should be empty, got %q", match.HostColor)
+	}
+
+	if err := match.UpdateDetails(UpdateDetailsInput(match, func(u *UpdateMatchDetails) {}), now); err != nil {
+		t.Fatalf("nil color keeps value: %v", err)
+	}
+}
+
 func TestFinishByHost(t *testing.T) {
 	ended := time.Date(2026, 7, 20, 20, 0, 0, 0, time.UTC)
 	afterEnd := ended.Add(time.Minute)

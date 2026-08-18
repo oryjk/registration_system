@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"regexp"
 	"strings"
 	"time"
 
@@ -51,6 +52,8 @@ type Match struct {
 	LocationLatitude    *float64
 	LocationLongitude   *float64
 	Description         *string
+	HostColor           string
+	AwayColor           string
 	IsFree              bool
 	CreatedByUserID     *int64
 	CreatedByAdminID    *int64
@@ -75,6 +78,8 @@ type NewMatchInput struct {
 	LocationLatitude    *float64
 	LocationLongitude   *float64
 	Description         *string
+	HostColor           *string
+	AwayColor           *string
 	IsFree              *bool
 	CreatedAt           time.Time
 }
@@ -97,6 +102,14 @@ func NewMatch(input NewMatchInput, individualLimits IndividualLimits) (Match, []
 	if input.PublicationMode == OfflineConfirmed {
 		opponentState = OpponentNoRecruitment
 	}
+	hostColor, err := normalizeOptionalColor(input.HostColor)
+	if err != nil {
+		return Match{}, nil, err
+	}
+	awayColor, err := normalizeOptionalColor(input.AwayColor)
+	if err != nil {
+		return Match{}, nil, err
+	}
 	match := Match{
 		ID:                  matchID,
 		Name:                strings.TrimSpace(input.Name),
@@ -114,6 +127,8 @@ func NewMatch(input NewMatchInput, individualLimits IndividualLimits) (Match, []
 		LocationLatitude:    input.LocationLatitude,
 		LocationLongitude:   input.LocationLongitude,
 		Description:         trimOptional(input.Description),
+		HostColor:           hostColor,
+		AwayColor:           awayColor,
 		IsFree:              input.IsFree == nil || *input.IsFree,
 		CreatedByUserID:     input.CreatedByUserID,
 		CreatedByAdminID:    input.CreatedByAdminID,
@@ -210,7 +225,10 @@ type UpdateMatchDetails struct {
 	// OpponentName 非 nil 时更新手工对手名称（传空串表示清除为 NULL）；
 	// nil 表示本次编辑不改对手。仅对线下已约（offline_confirmed）比赛有意义。
 	OpponentName *string
-	Description  *string
+	// HostColor/AwayColor 非 nil 时更新球服颜色（空串清除为 NULL）；nil 表示不改。
+	HostColor   *string
+	AwayColor   *string
+	Description *string
 }
 
 func (m *Match) UpdateDetails(input UpdateMatchDetails, now time.Time) error {
@@ -220,6 +238,22 @@ func (m *Match) UpdateDetails(input UpdateMatchDetails, now time.Time) error {
 	opponentName := m.OpponentName
 	if input.OpponentName != nil {
 		opponentName = trimOptional(input.OpponentName)
+	}
+	hostColor := m.HostColor
+	if input.HostColor != nil {
+		if v, cerr := NormalizeJerseyColor(*input.HostColor); cerr != nil {
+			return cerr
+		} else {
+			hostColor = v
+		}
+	}
+	awayColor := m.AwayColor
+	if input.AwayColor != nil {
+		if v, cerr := NormalizeJerseyColor(*input.AwayColor); cerr != nil {
+			return cerr
+		} else {
+			awayColor = v
+		}
 	}
 	validation := NewMatchInput{
 		Name: input.Name, PublicationMode: m.PublicationMode, HostTeamID: m.HostTeamID,
@@ -243,6 +277,8 @@ func (m *Match) UpdateDetails(input UpdateMatchDetails, now time.Time) error {
 	m.LocationLongitude = input.LocationLongitude
 	m.Description = trimOptional(input.Description)
 	m.OpponentName = opponentName
+	m.HostColor = hostColor
+	m.AwayColor = awayColor
 	m.UpdatedAt = now
 	return nil
 }
@@ -320,6 +356,14 @@ func validateNewMatchInput(input NewMatchInput) error {
 	if input.LocationLatitude != nil && (*input.LocationLatitude < -90 || *input.LocationLatitude > 90 || *input.LocationLongitude < -180 || *input.LocationLongitude > 180) {
 		return sharederror.New(sharederror.KindValidation, "场地经纬度超出范围")
 	}
+	for _, color := range []*string{input.HostColor, input.AwayColor} {
+		if color == nil {
+			continue
+		}
+		if _, err := NormalizeJerseyColor(*color); err != nil {
+			return err
+		}
+	}
 	opponentName := trimOptional(input.OpponentName)
 	switch input.PublicationMode {
 	case OfflineConfirmed:
@@ -345,4 +389,26 @@ func trimOptional(value *string) *string {
 		return nil
 	}
 	return &trimmed
+}
+
+var jerseyColorPattern = regexp.MustCompile(`^#[0-9a-f]{6}$`)
+
+// NormalizeJerseyColor 校验并归一化球服颜色；空串原样返回（表示清除/未设置）。
+func NormalizeJerseyColor(raw string) (string, error) {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return "", nil
+	}
+	lower := strings.ToLower(trimmed)
+	if !jerseyColorPattern.MatchString(lower) {
+		return "", sharederror.New(sharederror.KindValidation, "球服颜色必须是 #RRGGBB 格式")
+	}
+	return lower, nil
+}
+
+func normalizeOptionalColor(value *string) (string, error) {
+	if value == nil {
+		return "", nil
+	}
+	return NormalizeJerseyColor(*value)
 }
