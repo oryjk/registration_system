@@ -31,6 +31,9 @@ const isBindingPhone = ref(false);
 const shouldShowPhoneBinding = ref(false);
 const pageMode = ref<"setup" | "edit">("setup");
 const avatarLoadFailed = ref(false);
+// 用户已本地修改表单（如选了头像）后，onShow 回来不再用服务端数据覆盖，
+// 否则从微信相册返回时 hydrate 会晚于 chooseavatar 回调执行、把临时头像清掉。
+const hasUnsavedEdits = ref(false);
 
 const isEditMode = computed(() => pageMode.value === "edit");
 const canSubmit = computed(() => (
@@ -85,6 +88,7 @@ function handleChooseAvatar(event: ChooseAvatarEvent) {
   avatarLocalPath.value = avatarUrl;
   avatarPreview.value = avatarUrl;
   avatarLoadFailed.value = false;
+  hasUnsavedEdits.value = true;
 }
 
 async function handlePickAvatarFallback() {
@@ -99,6 +103,7 @@ async function handlePickAvatarFallback() {
   avatarLocalPath.value = avatarUrl;
   avatarPreview.value = avatarUrl;
   avatarLoadFailed.value = false;
+  hasUnsavedEdits.value = true;
 }
 
 watch(avatarPreview, () => {
@@ -145,6 +150,7 @@ async function handleSubmit() {
       });
     }
     await refreshSessionContext();
+    hasUnsavedEdits.value = false;
     uni.hideLoading();
     uni.showToast({
       title: isEditMode.value ? "资料已保存" : "资料已完善",
@@ -206,7 +212,9 @@ onLoad((options) => {
 onShow(async () => {
   try {
     await Promise.all([ensureSessionReady(), hydrateRuntimeConfig()]);
-    hydrateFormFromCurrentUser();
+    if (!hasUnsavedEdits.value) {
+      hydrateFormFromCurrentUser();
+    }
 
     if (!isEditMode.value && !needsProfileCompletion(currentUser.value)) {
       goBackToApp();
@@ -272,6 +280,7 @@ onShow(async () => {
             maxlength="24"
             placeholder="请输入你的昵称"
             placeholder-class="profile-setup-input-placeholder"
+            @input="hasUnsavedEdits = true"
           />
         </view>
 
@@ -285,6 +294,7 @@ onShow(async () => {
               maxlength="20"
               placeholder="可选，绑定后方便队长联系"
               placeholder-class="profile-setup-input-placeholder"
+              @input="hasUnsavedEdits = true"
             />
             <!-- #ifdef MP-WEIXIN -->
             <button
