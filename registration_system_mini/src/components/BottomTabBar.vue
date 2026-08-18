@@ -99,6 +99,15 @@ function handleCreateMatch() {
 
 function handleCreateTeam() {
   closeSheet();
+  // 球队管理页对已有球队的用户只展示管理面板；创建入口仅对无球队用户开放。
+  if (currentTeam.value) {
+    uni.showToast({
+      title: "你已加入球队，无需重复创建",
+      icon: "none",
+    });
+    return;
+  }
+
   uni.navigateTo({
     url: "/pages/teams/manage/index",
   });
