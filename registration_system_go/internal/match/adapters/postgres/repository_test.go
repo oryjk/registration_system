@@ -281,6 +281,72 @@ func TestRepositoryUpdateDetailsPersistsOpponentName(t *testing.T) {
 	}
 }
 
+func TestRepositoryPersistsJerseyColors(t *testing.T) {
+	pool := testsupport.StartPostgres(t)
+	ctx := context.Background()
+	ownerID, teamID := seedMatchOwner(t, pool)
+
+	input := validOnlineTeamInput(t, ownerID, teamID)
+	host, away := "#2F6BFF", "#C8FF00"
+	input.HostColor, input.AwayColor = &host, &away
+	match, groups, err := domain.NewMatch(input, domain.IndividualLimits{})
+	if err != nil {
+		t.Fatalf("new match: %v", err)
+	}
+	repository := NewRepository(pool)
+	if err := repository.CreateWithGroups(ctx, match, groups); err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	loaded, _, found, err := repository.FindByID(ctx, match.ID)
+	if err != nil || !found {
+		t.Fatalf("find: %v found=%v", err, found)
+	}
+	if loaded.HostColor != "#2f6bff" || loaded.AwayColor != "#c8ff00" {
+		t.Fatalf("colors not round-tripped: %q %q", loaded.HostColor, loaded.AwayColor)
+	}
+
+	clear := ""
+	loaded.HostColor = ""
+	loaded.AwayColor = ""
+	if err := loaded.UpdateDetails(domain.UpdateMatchDetails{
+		Name: loaded.Name, StartTime: loaded.StartTime, EndTime: loaded.EndTime,
+		Location: loaded.Location, HostColor: &clear, AwayColor: &clear,
+	}, time.Now().UTC()); err != nil {
+		t.Fatalf("clear colors: %v", err)
+	}
+	if err := repository.UpdateDetails(ctx, loaded, nil); err != nil {
+		t.Fatalf("update: %v", err)
+	}
+	reloaded, _, _, err := repository.FindByID(ctx, match.ID)
+	if err != nil {
+		t.Fatalf("refind: %v", err)
+	}
+	if reloaded.HostColor != "" || reloaded.AwayColor != "" {
+		t.Fatalf("cleared colors should be empty, got %q %q", reloaded.HostColor, reloaded.AwayColor)
+	}
+}
+
+// validOnlineTeamInput 返回可持久化的线上约队比赛输入（字段对齐 domain 包测试的 validInput，
+// 起止时间晚于 now），供需要直接操作 NewMatchInput 的用例在设置额外字段后构造比赛。
+func validOnlineTeamInput(t *testing.T, ownerID, teamID int64) domain.NewMatchInput {
+	t.Helper()
+	start := time.Now().UTC().Add(48 * time.Hour)
+	hostCapacity := 12
+	return domain.NewMatchInput{
+		Name:              "周末友谊赛",
+		PublicationMode:   domain.OnlineTeam,
+		HostTeamID:        teamID,
+		CreatedByUserID:   &ownerID,
+		PlayersPerTeam:    8,
+		HostCapacityLimit: &hostCapacity,
+		StartTime:         start,
+		EndTime:           start.Add(2 * time.Hour),
+		Location:          "东安球场",
+		CreatedAt:         time.Now().UTC(),
+	}
+}
+
 func TestRepositoryRollsBackMatchWhenGroupInsertFails(t *testing.T) {
 	pool := testsupport.StartPostgres(t)
 	ctx := context.Background()

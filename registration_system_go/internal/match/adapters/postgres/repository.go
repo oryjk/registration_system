@@ -92,6 +92,8 @@ func (r *Repository) UpdateDetails(ctx context.Context, match domain.Match, host
 		RegistrationStartAt: pgOptionalTimestamp(match.RegistrationStartAt), RegistrationEndAt: pgOptionalTimestamp(match.RegistrationEndAt),
 		Location: match.Location, LocationLatitude: match.LocationLatitude, LocationLongitude: match.LocationLongitude,
 		Description: match.Description, OpponentName: match.OpponentName,
+		HostColor: stringPointerOrNil(match.HostColor),
+		AwayColor: stringPointerOrNil(match.AwayColor),
 	}); err != nil {
 		return err
 	}
@@ -143,6 +145,8 @@ func createMatchParams(match domain.Match) matchsqlc.CreateMatchParams {
 		LocationLatitude:    match.LocationLatitude,
 		LocationLongitude:   match.LocationLongitude,
 		Description:         match.Description,
+		HostColor:           stringPointerOrNil(match.HostColor),
+		AwayColor:           stringPointerOrNil(match.AwayColor),
 		CreatedByUserID:     match.CreatedByUserID,
 		CreatedByAdminID:    match.CreatedByAdminID,
 	}
@@ -179,6 +183,8 @@ func mapMatch(row matchsqlc.Match) domain.Match {
 		LocationLatitude:    row.LocationLatitude,
 		LocationLongitude:   row.LocationLongitude,
 		Description:         row.Description,
+		HostColor:           textValue(row.HostColor),
+		AwayColor:           textValue(row.AwayColor),
 		IsFree:              row.IsFree,
 		CreatedByUserID:     row.CreatedByUserID,
 		CreatedByAdminID:    row.CreatedByAdminID,
@@ -223,6 +229,20 @@ func int32Pointer(value *int) *int32 {
 	}
 	converted := int32(*value)
 	return &converted
+}
+
+func stringPointerOrNil(value string) *string {
+	if value == "" {
+		return nil
+	}
+	return &value
+}
+
+func textValue(value *string) string {
+	if value == nil {
+		return ""
+	}
+	return *value
 }
 
 func intPointer(value *int32) *int {

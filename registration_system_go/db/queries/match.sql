@@ -18,12 +18,14 @@ INSERT INTO matches (
     location_longitude,
     description,
     is_free,
+    host_color,
+    away_color,
     created_by_user_id,
     created_by_admin_id
 )
 VALUES (
     $1, $2, $3, $4, $5, $6, $7, $8,
-    $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20
+    $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22
 )
 RETURNING *;
 
@@ -354,6 +356,8 @@ SET name = $2,
     location_longitude = $9,
     description = $10,
     opponent_name = $11,
+    host_color = $12,
+    away_color = $13,
     updated_at = NOW()
 WHERE id = $1
 RETURNING *;

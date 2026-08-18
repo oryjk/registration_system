@@ -53,6 +53,8 @@ type Match struct {
 	RegistrationStartAt pgtype.Timestamp `json:"registration_start_at"`
 	RegistrationEndAt   pgtype.Timestamp `json:"registration_end_at"`
 	IsFree              bool             `json:"is_free"`
+	HostColor           *string          `json:"host_color"`
+	AwayColor           *string          `json:"away_color"`
 }
 
 type MatchRegistration struct {
