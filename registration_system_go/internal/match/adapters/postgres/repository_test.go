@@ -232,6 +232,55 @@ func TestRepositoryUpdateDetailsPersistsHostCapacity(t *testing.T) {
 	}
 }
 
+func TestRepositoryUpdateDetailsPersistsOpponentName(t *testing.T) {
+	pool := testsupport.StartPostgres(t)
+	ctx := context.Background()
+	userID, teamID := seedMatchOwner(t, pool)
+	start := time.Date(2026, 8, 20, 18, 0, 0, 0, time.UTC)
+	opponent := "老对手联"
+	match, groups, err := domain.NewMatch(domain.NewMatchInput{
+		Name: "线下约球", PublicationMode: domain.OfflineConfirmed, HostTeamID: teamID,
+		CreatedByUserID: int64Pointer(userID), OpponentName: &opponent, PlayersPerTeam: 8,
+		StartTime: start, EndTime: start.Add(2 * time.Hour), Location: "东安球场",
+		CreatedAt: start.Add(-24 * time.Hour),
+	}, domain.IndividualLimits{})
+	if err != nil {
+		t.Fatalf("new match: %v", err)
+	}
+	repository := NewRepository(pool)
+	if err := repository.CreateWithGroups(ctx, match, groups); err != nil {
+		t.Fatalf("create match: %v", err)
+	}
+
+	renamed := "新对手队"
+	if err := match.UpdateDetails(domain.UpdateMatchDetails{
+		Name: match.Name, StartTime: match.StartTime, EndTime: match.EndTime,
+		Location: match.Location, OpponentName: &renamed,
+	}, time.Date(2026, 8, 19, 9, 0, 0, 0, time.UTC)); err != nil {
+		t.Fatalf("update details: %v", err)
+	}
+	if err := repository.UpdateDetails(ctx, match, nil); err != nil {
+		t.Fatalf("persist details: %v", err)
+	}
+
+	persisted, _, _, err := repository.FindByID(ctx, match.ID)
+	if err != nil {
+		t.Fatalf("find match: %v", err)
+	}
+	if persisted.OpponentName == nil || *persisted.OpponentName != "新对手队" {
+		t.Fatalf("opponent name not persisted: %+v", persisted.OpponentName)
+	}
+
+	// 传空串表示清除；线下已约比赛禁止清空，由 domain 校验拦截。
+	empty := ""
+	if err := persisted.UpdateDetails(domain.UpdateMatchDetails{
+		Name: persisted.Name, StartTime: persisted.StartTime, EndTime: persisted.EndTime,
+		Location: persisted.Location, OpponentName: &empty,
+	}, time.Date(2026, 8, 19, 9, 30, 0, 0, time.UTC)); err == nil {
+		t.Fatal("expected clearing opponent on offline match to be rejected")
+	}
+}
+
 func TestRepositoryRollsBackMatchWhenGroupInsertFails(t *testing.T) {
 	pool := testsupport.StartPostgres(t)
 	ctx := context.Background()

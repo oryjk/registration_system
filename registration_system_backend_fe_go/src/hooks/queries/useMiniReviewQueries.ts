@@ -1,5 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { listMiniReviewStatuses, setMiniReviewStatus } from "../../api/miniReview";
+import {
+  listMiniReviewStatuses,
+  setMiniReviewStatus,
+} from "../../api/miniReview";
 import type {
   MiniReviewSetStatusPayload,
   MiniReviewStatusQuery,
@@ -18,8 +21,13 @@ export function useSetMiniReviewStatusMutation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, payload }: { id: number; payload: MiniReviewSetStatusPayload }) =>
-      setMiniReviewStatus(id, payload),
+    mutationFn: ({
+      id,
+      payload,
+    }: {
+      id: number;
+      payload: MiniReviewSetStatusPayload;
+    }) => setMiniReviewStatus(id, payload),
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: ["mini-review"] }),
   });

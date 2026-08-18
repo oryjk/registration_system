@@ -58,6 +58,8 @@ type UpdateMatchCommand struct {
 	LocationLatitude    *float64
 	LocationLongitude   *float64
 	Description         *string
+	// OpponentName 非 nil 时更新手工对手名称（空串清除）；nil 表示不改。
+	OpponentName *string
 	// HostCapacityLimit 非 nil 时同步把主队报名组的满员上限改为该值；
 	// nil 表示本次编辑不改容量（区别于创建时的缺省兜底）。
 	HostCapacityLimit *int
@@ -143,6 +145,7 @@ func (s AdminMatchService) UpdateDetails(ctx context.Context, actor sharedauth.A
 		RegistrationEndAt:   resolveOptionalTimestamp(command.RegistrationEndAt, match.RegistrationEndAt),
 		Location:            command.Location, LocationLatitude: command.LocationLatitude,
 		LocationLongitude: command.LocationLongitude, Description: command.Description,
+		OpponentName: command.OpponentName,
 	}, s.clock.Now()); err != nil {
 		return domain.Match{}, err
 	}

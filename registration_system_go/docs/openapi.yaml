@@ -1972,6 +1972,10 @@ components:
         description:
           type: string
           nullable: true
+        opponent_name:
+          type: string
+          nullable: true
+          description: 手工对手名称。null/缺省表示本次不修改；空串表示清除（线下已约比赛不允许清除）。
     UpdateMatchStatusRequest:
       type: object
       required: [status]

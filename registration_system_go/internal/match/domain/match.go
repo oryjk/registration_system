@@ -207,17 +207,24 @@ type UpdateMatchDetails struct {
 	Location            string
 	LocationLatitude    *float64
 	LocationLongitude   *float64
-	Description         *string
+	// OpponentName 非 nil 时更新手工对手名称（传空串表示清除为 NULL）；
+	// nil 表示本次编辑不改对手。仅对线下已约（offline_confirmed）比赛有意义。
+	OpponentName *string
+	Description  *string
 }
 
 func (m *Match) UpdateDetails(input UpdateMatchDetails, now time.Time) error {
 	if m.Status == MatchEnded || m.Status == MatchCancelled {
 		return sharederror.New(sharederror.KindConflict, "已结束或已取消的比赛不能编辑")
 	}
+	opponentName := m.OpponentName
+	if input.OpponentName != nil {
+		opponentName = trimOptional(input.OpponentName)
+	}
 	validation := NewMatchInput{
 		Name: input.Name, PublicationMode: m.PublicationMode, HostTeamID: m.HostTeamID,
 		CreatedByUserID: m.CreatedByUserID, CreatedByAdminID: m.CreatedByAdminID,
-		OpponentName: m.OpponentName, PlayersPerTeam: m.PlayersPerTeam,
+		OpponentName: opponentName, PlayersPerTeam: m.PlayersPerTeam,
 		StartTime: input.StartTime, EndTime: input.EndTime,
 		RegistrationStartAt: input.RegistrationStartAt, RegistrationEndAt: input.RegistrationEndAt,
 		Location:         input.Location,
@@ -235,6 +242,7 @@ func (m *Match) UpdateDetails(input UpdateMatchDetails, now time.Time) error {
 	m.LocationLatitude = input.LocationLatitude
 	m.LocationLongitude = input.LocationLongitude
 	m.Description = trimOptional(input.Description)
+	m.OpponentName = opponentName
 	m.UpdatedAt = now
 	return nil
 }

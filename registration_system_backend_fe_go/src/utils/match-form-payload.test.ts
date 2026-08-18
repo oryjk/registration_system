@@ -72,8 +72,26 @@ describe("match form payload", () => {
       location_latitude: 30.123456,
       location_longitude: 120.654321,
       description: "保留 API 字段测试",
+      opponent_name: null,
       host_capacity_limit: 12,
     });
+  });
+
+  it("sends the opponent name in the update contract for offline matches", () => {
+    expect(
+      buildUpdateMatchPayload({
+        ...baseValues,
+        publication_mode: "offline_confirmed",
+        opponent_name: "  河西联  ",
+      }).opponent_name,
+    ).toEqual("河西联");
+    expect(
+      buildUpdateMatchPayload({
+        ...baseValues,
+        publication_mode: "offline_confirmed",
+        opponent_name: undefined,
+      }).opponent_name,
+    ).toEqual(null);
   });
 
   it("sends null capacity in the update contract when the field is empty", () => {
