@@ -166,6 +166,74 @@ func TestAdminUpdateDecodesHostCapacityLimit(t *testing.T) {
 	}
 }
 
+func TestAdminUpdateMatchJerseyColorThreeStates(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	matchID := uuid.New()
+	service := &fakeAdminMatches{detail: application.AdminMatchDetail{
+		Item: ports.AdminMatchItem{Match: domain.Match{ID: matchID, Name: "周四友谊赛", HostTeamID: 7}, HostTeamName: "洺悦御府"},
+	}}
+	handler := NewAdminHandler(service, &fakeCreateMatch{})
+	router := gin.New()
+	router.PATCH("/matches/:id", authhttp.NewMiddleware(fakeAdminTokens{}).RequireAdmin(), handler.Update)
+
+	patch := func(fields string) *httptest.ResponseRecorder {
+		body := `{"name":"周四友谊赛","start_time":"2026-08-22T12:00:00Z","end_time":"2026-08-22T14:00:00Z","location":"驿马河"` + fields + `}`
+		request := httptest.NewRequest(http.MethodPatch, "/matches/"+matchID.String(), bytes.NewBufferString(body))
+		request.Header.Set("Authorization", "Bearer admin-token")
+		request.Header.Set("Content-Type", "application/json")
+		response := httptest.NewRecorder()
+		router.ServeHTTP(response, request)
+		return response
+	}
+
+	// 状态一：传值 → 命令携带原始值，回显领域归一化后的小写结果。
+	service.detail.Item.Match.HostColor = "#ff0000"
+	service.detail.Item.Match.AwayColor = "#00ff00"
+	response := patch(`,"host_color":"#FF0000","away_color":"#00FF00"`)
+	if response.Code != http.StatusOK {
+		t.Fatalf("unexpected set response %d: %s", response.Code, response.Body.String())
+	}
+	assertStringPointer(t, service.update.HostColor, "#FF0000")
+	assertStringPointer(t, service.update.AwayColor, "#00FF00")
+	if !bytes.Contains(response.Body.Bytes(), []byte(`"host_color":"#ff0000"`)) ||
+		!bytes.Contains(response.Body.Bytes(), []byte(`"away_color":"#00ff00"`)) {
+		t.Fatalf("set response missing normalized colors: %s", response.Body.String())
+	}
+
+	// 状态二：传空串 → 清除，回显 null；未携带的 away_color 保持不变。
+	service.detail.Item.Match.HostColor = ""
+	response = patch(`,"host_color":""`)
+	if response.Code != http.StatusOK {
+		t.Fatalf("unexpected clear response %d: %s", response.Code, response.Body.String())
+	}
+	assertStringPointer(t, service.update.HostColor, "")
+	if service.update.AwayColor != nil {
+		t.Fatalf("omitted away_color must stay nil, got %q", *service.update.AwayColor)
+	}
+	if !bytes.Contains(response.Body.Bytes(), []byte(`"host_color":null`)) {
+		t.Fatalf("clear response must echo null host_color: %s", response.Body.String())
+	}
+
+	// 状态三：不带字段 → 本次不修改，值保持 null（未设置）。
+	response = patch(``)
+	if response.Code != http.StatusOK {
+		t.Fatalf("unexpected keep response %d: %s", response.Code, response.Body.String())
+	}
+	if service.update.HostColor != nil || service.update.AwayColor != nil {
+		t.Fatalf("omitted jersey colors must stay nil: %+v", service.update)
+	}
+	if !bytes.Contains(response.Body.Bytes(), []byte(`"host_color":null`)) {
+		t.Fatalf("keep response must keep host_color null: %s", response.Body.String())
+	}
+}
+
+func assertStringPointer(t *testing.T, got *string, want string) {
+	t.Helper()
+	if got == nil || *got != want {
+		t.Fatalf("unexpected string pointer: got=%v want=%q", got, want)
+	}
+}
+
 func assertOptionalTimestamp(t *testing.T, got, want application.OptionalTimestamp) {
 	t.Helper()
 	if got.Set != want.Set {

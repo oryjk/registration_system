@@ -53,6 +53,8 @@ type CreateMatchRequest struct {
 	LocationLatitude    *float64               `json:"location_latitude"`
 	LocationLongitude   *float64               `json:"location_longitude"`
 	Description         *string                `json:"description"`
+	HostColor           *string                `json:"host_color"`
+	AwayColor           *string                `json:"away_color"`
 	IsFree              *bool                  `json:"is_free"`
 }
 
@@ -71,6 +73,9 @@ type UpdateMatchRequest struct {
 	OpponentName *string `json:"opponent_name"`
 	// HostCapacityLimit 为 nil（未传或 null）表示本次不修改主队报名上限。
 	HostCapacityLimit *int `json:"host_capacity_limit"`
+	// HostColor/AwayColor 为 nil（未传或 null）表示本次不修改；传空串表示清除。
+	HostColor *string `json:"host_color"`
+	AwayColor *string `json:"away_color"`
 }
 
 type optionalTimestampRequest struct {
@@ -111,6 +116,8 @@ type MatchResponse struct {
 	LocationLatitude    *float64               `json:"location_latitude"`
 	LocationLongitude   *float64               `json:"location_longitude"`
 	Description         *string                `json:"description"`
+	HostColor           *string                `json:"host_color"`
+	AwayColor           *string                `json:"away_color"`
 	IsFree              bool                   `json:"is_free"`
 	CreatedByUserID     *int64                 `json:"created_by_user_id"`
 	CreatedByAdminID    *int64                 `json:"created_by_admin_id"`
@@ -203,6 +210,7 @@ func (h *AdminHandler) Create(c *gin.Context) {
 		RegistrationStartAt: request.RegistrationStartAt, RegistrationEndAt: request.RegistrationEndAt,
 		Location: request.Location, LocationLatitude: request.LocationLatitude, LocationLongitude: request.LocationLongitude,
 		Description: request.Description, IsFree: request.IsFree,
+		HostColor: request.HostColor, AwayColor: request.AwayColor,
 	})
 	if err != nil {
 		sharedhttpapi.WriteError(c, err)
@@ -232,6 +240,7 @@ func (h *AdminHandler) Update(c *gin.Context) {
 		LocationLatitude: request.LocationLatitude, LocationLongitude: request.LocationLongitude, Description: request.Description,
 		OpponentName:      request.OpponentName,
 		HostCapacityLimit: request.HostCapacityLimit,
+		HostColor:         request.HostColor, AwayColor: request.AwayColor,
 	})
 	if err != nil {
 		sharedhttpapi.WriteError(c, err)
@@ -342,6 +351,7 @@ func mapMatch(item ports.AdminMatchItem) MatchResponse {
 		RegistrationStartAt: match.RegistrationStartAt, RegistrationEndAt: match.RegistrationEndAt,
 		Location: match.Location, LocationLatitude: match.LocationLatitude, LocationLongitude: match.LocationLongitude,
 		Description: match.Description, IsFree: match.IsFree, CreatedByUserID: match.CreatedByUserID, CreatedByAdminID: match.CreatedByAdminID,
+		HostColor: jerseyColorResponse(match.HostColor), AwayColor: jerseyColorResponse(match.AwayColor),
 		CreatedAt: match.CreatedAt, UpdatedAt: match.UpdatedAt,
 	}
 }

@@ -57,6 +57,8 @@ type UserMatchResponse struct {
 	LocationLatitude    *float64                       `json:"location_latitude"`
 	LocationLongitude   *float64                       `json:"location_longitude"`
 	Description         *string                        `json:"description"`
+	HostColor           *string                        `json:"host_color"`
+	AwayColor           *string                        `json:"away_color"`
 	IsFree              bool                           `json:"is_free"`
 	RegistrationGroups  []UserRegistrationGroupSummary `json:"registration_groups"`
 	CreatedAt           time.Time                      `json:"created_at"`
@@ -224,6 +226,7 @@ func (h *UserHandler) Create(c *gin.Context) {
 		RegistrationStartAt: request.RegistrationStartAt, RegistrationEndAt: request.RegistrationEndAt,
 		Location: request.Location, LocationLatitude: request.LocationLatitude, LocationLongitude: request.LocationLongitude,
 		Description: request.Description, IsFree: request.IsFree,
+		HostColor: request.HostColor, AwayColor: request.AwayColor,
 	})
 	if err != nil {
 		sharedhttpapi.WriteError(c, err)
@@ -344,7 +347,8 @@ func mapUserMatch(item ports.MatchItem) UserMatchResponse {
 		RegistrationStartAt: match.RegistrationStartAt, RegistrationEndAt: match.RegistrationEndAt,
 		Location: match.Location, LocationLatitude: match.LocationLatitude, LocationLongitude: match.LocationLongitude,
 		Description: match.Description, RegistrationGroups: groups, CreatedAt: match.CreatedAt, UpdatedAt: match.UpdatedAt,
-		IsFree: match.IsFree,
+		IsFree:    match.IsFree,
+		HostColor: jerseyColorResponse(match.HostColor), AwayColor: jerseyColorResponse(match.AwayColor),
 	}
 }
 
@@ -424,4 +428,12 @@ func userOpponentName(item ports.MatchItem) string {
 		return *item.Match.OpponentName
 	}
 	return ""
+}
+
+// jerseyColorResponse 把领域层颜色（空串=未设置）映射为可空 JSON 字段。
+func jerseyColorResponse(value string) *string {
+	if value == "" {
+		return nil
+	}
+	return &value
 }

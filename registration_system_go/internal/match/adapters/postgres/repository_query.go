@@ -273,6 +273,7 @@ func mapAdminListMatch(row matchsqlc.ListMatchesForAdminRow) domain.Match {
 		RegistrationStartAt: timestampPointer(row.RegistrationStartAt), RegistrationEndAt: timestampPointer(row.RegistrationEndAt),
 		Location: row.Location, LocationLatitude: row.LocationLatitude, LocationLongitude: row.LocationLongitude,
 		Description: row.Description, IsFree: row.IsFree, CreatedByUserID: row.CreatedByUserID, CreatedByAdminID: row.CreatedByAdminID,
+		HostColor: textValue(row.HostColor), AwayColor: textValue(row.AwayColor),
 		CreatedAt: row.CreatedAt.Time, UpdatedAt: row.UpdatedAt.Time,
 	}
 }
@@ -286,6 +287,7 @@ func mapUserListMatch(row matchsqlc.ListMatchesForUserRow) domain.Match {
 		RegistrationStartAt: timestampPointer(row.RegistrationStartAt), RegistrationEndAt: timestampPointer(row.RegistrationEndAt),
 		Location: row.Location, LocationLatitude: row.LocationLatitude, LocationLongitude: row.LocationLongitude,
 		Description: row.Description, IsFree: row.IsFree, CreatedByUserID: row.CreatedByUserID, CreatedByAdminID: row.CreatedByAdminID,
+		HostColor: textValue(row.HostColor), AwayColor: textValue(row.AwayColor),
 		CreatedAt: row.CreatedAt.Time, UpdatedAt: row.UpdatedAt.Time,
 	}
 }

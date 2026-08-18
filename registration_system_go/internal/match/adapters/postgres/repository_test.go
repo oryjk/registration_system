@@ -306,6 +306,29 @@ func TestRepositoryPersistsJerseyColors(t *testing.T) {
 		t.Fatalf("colors not round-tripped: %q %q", loaded.HostColor, loaded.AwayColor)
 	}
 
+	// HTTP 详情/列表响应共用这些读侧映射，颜色必须原样带出。
+	detail, _, detailFound, err := repository.FindForAdmin(ctx, match.ID)
+	if err != nil || !detailFound {
+		t.Fatalf("find for admin: %v found=%v", err, detailFound)
+	}
+	if detail.Match.HostColor != "#2f6bff" || detail.Match.AwayColor != "#c8ff00" {
+		t.Fatalf("detail colors not mapped: %q %q", detail.Match.HostColor, detail.Match.AwayColor)
+	}
+	adminItems, err := repository.ListForAdmin(ctx, ports.AdminMatchFilter{Limit: 20})
+	if err != nil {
+		t.Fatalf("list for admin: %v", err)
+	}
+	if !matchItemInList(adminItems, match.ID, "#2f6bff", "#c8ff00") {
+		t.Fatalf("admin list colors not mapped for %s", match.ID)
+	}
+	userItems, err := repository.ListForUser(ctx, ports.MatchListFilter{Scope: ports.MatchScopeAll, UserID: ownerID, Limit: 20})
+	if err != nil {
+		t.Fatalf("list for user: %v", err)
+	}
+	if !matchItemInList(userItems, match.ID, "#2f6bff", "#c8ff00") {
+		t.Fatalf("user list colors not mapped for %s", match.ID)
+	}
+
 	clear := ""
 	loaded.HostColor = ""
 	loaded.AwayColor = ""
@@ -325,6 +348,17 @@ func TestRepositoryPersistsJerseyColors(t *testing.T) {
 	if reloaded.HostColor != "" || reloaded.AwayColor != "" {
 		t.Fatalf("cleared colors should be empty, got %q %q", reloaded.HostColor, reloaded.AwayColor)
 	}
+}
+
+// matchItemInList 校验列表项中目标比赛的颜色已从数据库行映射到领域对象。
+func matchItemInList(items []ports.MatchItem, matchID uuid.UUID, hostColor, awayColor string) bool {
+	for _, item := range items {
+		if item.Match.ID != matchID {
+			continue
+		}
+		return item.Match.HostColor == hostColor && item.Match.AwayColor == awayColor
+	}
+	return false
 }
 
 // validOnlineTeamInput 返回可持久化的线上约队比赛输入（字段对齐 domain 包测试的 validInput，

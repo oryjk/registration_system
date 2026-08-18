@@ -298,6 +298,95 @@ func TestUserMatchCreateUsesUserActorAndReturnsCreatedDetail(t *testing.T) {
 	}
 }
 
+func TestCreateMatchStoresJerseyColors(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	matchID := uuid.New()
+	opponentName := "球衣色彩排对手"
+	// 领域层会把 #2F6BFF/#C8FF00 归一化为小写后落库，详情回读时回显归一化结果。
+	service := &fakeUserMatches{detail: application.UserMatchDetail{
+		Item: ports.MatchItem{
+			Match: domain.Match{
+				ID: matchID, Name: "球衣色彩排", PublicationMode: domain.OfflineConfirmed,
+				HostTeamID: 7, OpponentName: &opponentName,
+				StartTime: time.Date(2026, 8, 20, 10, 0, 0, 0, time.UTC),
+				EndTime:   time.Date(2026, 8, 20, 12, 0, 0, 0, time.UTC),
+				HostColor: "#2f6bff", AwayColor: "#c8ff00",
+			},
+			HostTeamName: "东安联队",
+		},
+	}}
+	creator := &fakeUserCreateMatch{result: application.CreateMatchResult{Match: domain.Match{ID: matchID}}}
+	handler := NewUserHandler(service, creator, nil)
+	router := gin.New()
+	group := router.Group("")
+	group.Use(authhttp.NewMiddleware(fakeUserTokens{}).RequireUser())
+	handler.RegisterRoutes(group)
+
+	request := httptest.NewRequest(http.MethodPost, "/matches", bytes.NewBufferString(`{
+		"name":"球衣色彩排",
+		"publication_mode":"offline_confirmed",
+		"host_team_id":7,
+		"opponent_name":"球衣色彩排对手",
+		"players_per_team":8,
+		"start_time":"2026-08-20T10:00:00Z",
+		"end_time":"2026-08-20T12:00:00Z",
+		"location":"东安球场",
+		"host_color":"#2F6BFF",
+		"away_color":"#C8FF00"
+	}`))
+	request.Header.Set("Authorization", "Bearer user-token")
+	request.Header.Set("Content-Type", "application/json")
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+
+	body := response.Body.Bytes()
+	if response.Code != http.StatusOK ||
+		!bytes.Contains(body, []byte(`"host_color":"#2f6bff"`)) ||
+		!bytes.Contains(body, []byte(`"away_color":"#c8ff00"`)) {
+		t.Fatalf("unexpected create response %d: %s", response.Code, response.Body.String())
+	}
+	if creator.command.HostColor == nil || *creator.command.HostColor != "#2F6BFF" ||
+		creator.command.AwayColor == nil || *creator.command.AwayColor != "#C8FF00" {
+		t.Fatalf("jersey colors not passed to create command: %+v", creator.command)
+	}
+}
+
+func TestCreateMatchRejectsInvalidJerseyColor(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	// 非法颜色会被领域层 NormalizeJerseyColor 拒绝，返回 KindValidation 错误。
+	_, domainErr := domain.NormalizeJerseyColor("red")
+	if domainErr == nil {
+		t.Fatal("expected domain to reject red as jersey color")
+	}
+	service := &fakeUserMatches{}
+	creator := &fakeUserCreateMatch{err: domainErr}
+	handler := NewUserHandler(service, creator, nil)
+	router := gin.New()
+	group := router.Group("")
+	group.Use(authhttp.NewMiddleware(fakeUserTokens{}).RequireUser())
+	handler.RegisterRoutes(group)
+
+	request := httptest.NewRequest(http.MethodPost, "/matches", bytes.NewBufferString(`{
+		"name":"球衣色彩排",
+		"publication_mode":"offline_confirmed",
+		"host_team_id":7,
+		"opponent_name":"球衣色彩排对手",
+		"players_per_team":8,
+		"start_time":"2026-08-20T10:00:00Z",
+		"end_time":"2026-08-20T12:00:00Z",
+		"location":"东安球场",
+		"host_color":"red"
+	}`))
+	request.Header.Set("Authorization", "Bearer user-token")
+	request.Header.Set("Content-Type", "application/json")
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+
+	if response.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("unexpected invalid jersey color response %d: %s", response.Code, response.Body.String())
+	}
+}
+
 type fakeUserMatches struct {
 	list    application.UserMatchListResult
 	detail  application.UserMatchDetail
@@ -309,6 +398,7 @@ type fakeUserMatches struct {
 
 type fakeUserCreateMatch struct {
 	result  application.CreateMatchResult
+	err     error
 	actor   sharedauth.Actor
 	command application.CreateMatchCommand
 }
@@ -316,6 +406,9 @@ type fakeUserCreateMatch struct {
 func (f *fakeUserCreateMatch) Execute(_ context.Context, actor sharedauth.Actor, command application.CreateMatchCommand) (application.CreateMatchResult, error) {
 	f.actor = actor
 	f.command = command
+	if f.err != nil {
+		return application.CreateMatchResult{}, f.err
+	}
 	return f.result, nil
 }
 

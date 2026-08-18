@@ -32,6 +32,8 @@ type CreateMatchCommand struct {
 	LocationLatitude    *float64
 	LocationLongitude   *float64
 	Description         *string
+	HostColor           *string
+	AwayColor           *string
 	// IsFree 为 nil 时默认免费；历史迁移数据显式传 false。
 	IsFree *bool
 }
@@ -87,6 +89,8 @@ func (u CreateMatch) Execute(ctx context.Context, actor sharedauth.Actor, comman
 		LocationLatitude:    command.LocationLatitude,
 		LocationLongitude:   command.LocationLongitude,
 		Description:         command.Description,
+		HostColor:           command.HostColor,
+		AwayColor:           command.AwayColor,
 		IsFree:              command.IsFree,
 		CreatedAt:           u.clock.Now(),
 	}, limits)

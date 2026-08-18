@@ -107,6 +107,7 @@ func mapAdminDetailMatch(row matchsqlc.GetMatchForAdminRow) domain.Match {
 		RegistrationStartAt: timestampPointer(row.RegistrationStartAt), RegistrationEndAt: timestampPointer(row.RegistrationEndAt),
 		Location: row.Location, LocationLatitude: row.LocationLatitude, LocationLongitude: row.LocationLongitude,
 		Description: row.Description, CreatedByUserID: row.CreatedByUserID, CreatedByAdminID: row.CreatedByAdminID,
+		HostColor: textValue(row.HostColor), AwayColor: textValue(row.AwayColor),
 		CreatedAt: row.CreatedAt.Time, UpdatedAt: row.UpdatedAt.Time,
 	}
 }

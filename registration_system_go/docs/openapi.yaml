@@ -1947,6 +1947,14 @@ components:
         description:
           type: string
           nullable: true
+        host_color:
+          type: string
+          description: 主队球服颜色（#rrggbb）
+          example: "#ffffff"
+        away_color:
+          type: string
+          description: 客队球服颜色（#rrggbb）
+          example: "#ff0000"
     UpdateMatchRequest:
       type: object
       required: [name, start_time, end_time, location]
@@ -1976,6 +1984,14 @@ components:
           type: string
           nullable: true
           description: 手工对手名称。null/缺省表示本次不修改；空串表示清除（线下已约比赛不允许清除）。
+        host_color:
+          type: string
+          description: 主队球服颜色（#rrggbb）。null/缺省表示本次不修改；空串表示清除。
+          example: "#ffffff"
+        away_color:
+          type: string
+          description: 客队球服颜色（#rrggbb）。null/缺省表示本次不修改；空串表示清除。
+          example: "#ff0000"
     UpdateMatchStatusRequest:
       type: object
       required: [status]
@@ -2302,6 +2318,16 @@ components:
         description:
           type: string
           nullable: true
+        host_color:
+          type: string
+          nullable: true
+          description: 主队球服颜色（#rrggbb，未设置为 null）
+          example: "#ffffff"
+        away_color:
+          type: string
+          nullable: true
+          description: 客队球服颜色（#rrggbb，未设置为 null）
+          example: "#ff0000"
         created_by_user_id:
           type: integer
           format: int64
@@ -2368,6 +2394,16 @@ components:
         description:
           type: string
           nullable: true
+        host_color:
+          type: string
+          nullable: true
+          description: 主队球服颜色（#rrggbb，未设置为 null）
+          example: "#ffffff"
+        away_color:
+          type: string
+          nullable: true
+          description: 客队球服颜色（#rrggbb，未设置为 null）
+          example: "#ff0000"
         created_at:
           type: string
           format: date-time
