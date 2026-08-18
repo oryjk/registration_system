@@ -5,6 +5,7 @@ import {
   Alert,
   Avatar,
   Button,
+  ColorPicker,
   Descriptions,
   Modal,
   Popconfirm,
@@ -93,6 +94,23 @@ function formatDateTime(value: string) {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(value));
+}
+
+function JerseyColorValue({
+  color,
+  fallback,
+  fallbackLabel,
+}: {
+  color: string | null;
+  fallback: string;
+  fallbackLabel: string;
+}) {
+  return (
+    <Space size={8}>
+      <ColorPicker value={color || fallback} disabled disabledAlpha />
+      <span>{color || `未设置（默认${fallbackLabel}）`}</span>
+    </Space>
+  );
 }
 
 function statusActions(
@@ -278,6 +296,20 @@ export default function MatchDetailPage() {
               </Descriptions.Item>
               <Descriptions.Item label="对手">
                 {match.away_team_name || match.opponent_name || "待确认"}
+              </Descriptions.Item>
+              <Descriptions.Item label="主队球服">
+                <JerseyColorValue
+                  color={match.host_color}
+                  fallback="#FFFFFF"
+                  fallbackLabel="白"
+                />
+              </Descriptions.Item>
+              <Descriptions.Item label="客队球服">
+                <JerseyColorValue
+                  color={match.away_color}
+                  fallback="#FF0000"
+                  fallbackLabel="红"
+                />
               </Descriptions.Item>
               <Descriptions.Item label="每队人数">
                 {match.players_per_team} 人
