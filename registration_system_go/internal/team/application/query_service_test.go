@@ -25,7 +25,7 @@ func TestEnsureManagerAllowsCaptainAndLeaderOnly(t *testing.T) {
 	for index, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			repository := &fakeTeamRepository{membership: domain.Member{TeamID: 10, UserID: int64(index + 1), Role: test.role, Status: domain.MemberActive}}
-			service := NewQueryService(repository)
+			service := NewQueryService(repository, plainHasher{})
 			err := service.EnsureManager(context.Background(), 10, int64(index+1))
 			if test.wantErr && err == nil {
 				t.Fatal("expected forbidden error")
@@ -38,7 +38,7 @@ func TestEnsureManagerAllowsCaptainAndLeaderOnly(t *testing.T) {
 }
 
 func TestEnsureManagerRejectsMissingMembership(t *testing.T) {
-	service := NewQueryService(&fakeTeamRepository{found: false})
+	service := NewQueryService(&fakeTeamRepository{found: false}, plainHasher{})
 	if err := service.EnsureManager(context.Background(), 10, 99); err == nil {
 		t.Fatal("expected missing membership to fail")
 	}
@@ -46,7 +46,7 @@ func TestEnsureManagerRejectsMissingMembership(t *testing.T) {
 
 func TestActiveMembershipQueries(t *testing.T) {
 	active := &fakeTeamRepository{membership: domain.Member{TeamID: 10, UserID: 42, Status: domain.MemberActive}}
-	service := NewQueryService(active)
+	service := NewQueryService(active, plainHasher{})
 	if err := service.EnsureActiveMember(context.Background(), 10, 42); err != nil {
 		t.Fatalf("ensure active member: %v", err)
 	}
@@ -55,7 +55,7 @@ func TestActiveMembershipQueries(t *testing.T) {
 		t.Fatalf("is active member: found=%v err=%v", found, err)
 	}
 
-	missingService := NewQueryService(&fakeTeamRepository{})
+	missingService := NewQueryService(&fakeTeamRepository{}, plainHasher{})
 	if err := missingService.EnsureActiveMember(context.Background(), 10, 42); !errors.Is(err, sharederror.ErrForbidden) {
 		t.Fatalf("missing member should be forbidden, got %v", err)
 	}
@@ -66,7 +66,7 @@ func TestActiveMembershipQueries(t *testing.T) {
 }
 
 func TestActiveMembershipQueryWrapsRepositoryFailure(t *testing.T) {
-	service := NewQueryService(&fakeTeamRepository{err: errors.New("database unavailable")})
+	service := NewQueryService(&fakeTeamRepository{err: errors.New("database unavailable")}, plainHasher{})
 	if _, err := service.IsActiveMember(context.Background(), 10, 42); !errors.Is(err, sharederror.ErrInternal) {
 		t.Fatalf("expected internal error, got %v", err)
 	}
@@ -77,7 +77,7 @@ func TestAdminListsAllTeams(t *testing.T) {
 		{ID: 1, Name: "东安联队", Status: domain.TeamActive},
 		{ID: 2, Name: "西城联队", Status: domain.TeamFrozen},
 	}}
-	service := NewQueryService(repository)
+	service := NewQueryService(repository, plainHasher{})
 
 	items, err := service.ListTeams(context.Background(), adminActor(), nil)
 	if err != nil {
@@ -90,7 +90,7 @@ func TestAdminListsAllTeams(t *testing.T) {
 
 func TestAdminUpdatesTeam(t *testing.T) {
 	repository := &fakeTeamRepository{team: domain.Team{ID: 7, Name: "旧队名", Status: domain.TeamActive}, found: true}
-	service := NewQueryService(repository)
+	service := NewQueryService(repository, plainHasher{})
 	description := "新的球队简介"
 
 	updated, err := service.UpdateTeam(context.Background(), adminActor(), 7, " 新队名 ", &description, domain.TeamFrozen)
@@ -104,7 +104,7 @@ func TestAdminUpdatesTeam(t *testing.T) {
 
 func TestUserCannotUpdateTeam(t *testing.T) {
 	repository := &fakeTeamRepository{team: domain.Team{ID: 7, Name: "旧队名", Status: domain.TeamActive}, found: true}
-	service := NewQueryService(repository)
+	service := NewQueryService(repository, plainHasher{})
 
 	_, err := service.UpdateTeam(context.Background(), sharedauth.Actor{Kind: sharedauth.ActorUser, ID: 42}, 7, "新队名", nil, domain.TeamActive)
 	if !errors.Is(err, sharederror.ErrForbidden) {
@@ -117,7 +117,7 @@ func TestUserCannotUpdateTeam(t *testing.T) {
 
 func TestAdminCannotDeleteTeamUsedByBusinessData(t *testing.T) {
 	repository := &fakeTeamRepository{deleteErr: sharederror.ErrConflict}
-	service := NewQueryService(repository)
+	service := NewQueryService(repository, plainHasher{})
 
 	err := service.DeleteTeam(context.Background(), adminActor(), 7)
 	if !errors.Is(err, sharederror.ErrConflict) {
@@ -126,11 +126,45 @@ func TestAdminCannotDeleteTeamUsedByBusinessData(t *testing.T) {
 }
 
 func TestAdminDeleteRejectsMissingTeam(t *testing.T) {
-	service := NewQueryService(&fakeTeamRepository{})
+	service := NewQueryService(&fakeTeamRepository{}, plainHasher{})
 
 	err := service.DeleteTeam(context.Background(), adminActor(), 99)
 	if !errors.Is(err, sharederror.ErrNotFound) {
 		t.Fatalf("expected not found, got %v", err)
+	}
+}
+
+func TestAdminUpdateJoinPassword(t *testing.T) {
+	repository := &fakeTeamRepository{joinHashFound: true}
+	service := NewQueryService(repository, plainHasher{})
+
+	if err := service.UpdateJoinPassword(context.Background(), adminActor(), 7, "  pass123 "); err != nil {
+		t.Fatalf("set password: %v", err)
+	}
+	if repository.joinHashTeamID != 7 || repository.joinHashValue == nil || *repository.joinHashValue != "hashed:  pass123 " {
+		t.Fatalf("hash should keep raw value: team=%d hash=%v", repository.joinHashTeamID, repository.joinHashValue)
+	}
+
+	repository = &fakeTeamRepository{joinHashFound: true}
+	if err := NewQueryService(repository, plainHasher{}).UpdateJoinPassword(context.Background(), adminActor(), 7, "  "); err != nil {
+		t.Fatalf("clear password: %v", err)
+	}
+	if repository.joinHashValue != nil {
+		t.Fatalf("blank password must clear hash, got %v", *repository.joinHashValue)
+	}
+
+	missing := &fakeTeamRepository{}
+	if err := NewQueryService(missing, plainHasher{}).UpdateJoinPassword(context.Background(), adminActor(), 99, "pass123"); !errors.Is(err, sharederror.ErrNotFound) {
+		t.Fatalf("missing team must be not found, got %v", err)
+	}
+
+	forbidden := &fakeTeamRepository{joinHashFound: true}
+	err := NewQueryService(forbidden, plainHasher{}).UpdateJoinPassword(context.Background(), sharedauth.Actor{Kind: sharedauth.ActorUser, ID: 42}, 7, "pass123")
+	if !errors.Is(err, sharederror.ErrForbidden) {
+		t.Fatalf("user must be forbidden, got %v", err)
+	}
+	if forbidden.joinHashTeamID != 0 {
+		t.Fatal("repository must not be touched when forbidden")
 	}
 }
 
@@ -139,14 +173,17 @@ func adminActor() sharedauth.Actor {
 }
 
 type fakeTeamRepository struct {
-	membership domain.Member
-	team       domain.Team
-	teams      []domain.Team
-	updated    domain.Team
-	found      bool
-	err        error
-	deleteErr  error
-	listStatus *domain.TeamStatus
+	membership     domain.Member
+	team           domain.Team
+	teams          []domain.Team
+	updated        domain.Team
+	found          bool
+	err            error
+	deleteErr      error
+	listStatus     *domain.TeamStatus
+	joinHashTeamID int64
+	joinHashValue  *string
+	joinHashFound  bool
 }
 
 func (f *fakeTeamRepository) FindMembership(ctx context.Context, teamID, userID int64) (domain.Member, bool, error) {
@@ -192,6 +229,15 @@ func (f *fakeTeamRepository) Delete(context.Context, int64) (bool, error) {
 	return f.found, nil
 }
 
+func (f *fakeTeamRepository) UpdateJoinPasswordHash(_ context.Context, teamID int64, hash *string) (bool, error) {
+	if f.err != nil {
+		return false, f.err
+	}
+	f.joinHashTeamID = teamID
+	f.joinHashValue = hash
+	return f.joinHashFound, nil
+}
+
 func TestEnsureCaptainAllowsCaptainOnly(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -207,7 +253,7 @@ func TestEnsureCaptainAllowsCaptainOnly(t *testing.T) {
 	for index, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			repository := &fakeTeamRepository{membership: domain.Member{TeamID: 10, UserID: int64(index + 1), Role: test.role, Status: domain.MemberActive}}
-			service := NewQueryService(repository)
+			service := NewQueryService(repository, plainHasher{})
 			err := service.EnsureCaptain(context.Background(), 10, int64(index+1))
 			if test.wantErr && err == nil {
 				t.Fatal("expected forbidden error")
@@ -220,7 +266,7 @@ func TestEnsureCaptainAllowsCaptainOnly(t *testing.T) {
 }
 
 func TestEnsureCaptainRejectsMissingMembership(t *testing.T) {
-	service := NewQueryService(&fakeTeamRepository{found: false})
+	service := NewQueryService(&fakeTeamRepository{found: false}, plainHasher{})
 	if err := service.EnsureCaptain(context.Background(), 10, 99); err == nil {
 		t.Fatal("expected missing membership to fail")
 	}
@@ -241,7 +287,7 @@ func TestEnsureMemberAcceptsAnyMembershipStatus(t *testing.T) {
 				membership: domain.Member{TeamID: 10, UserID: 21, Role: domain.RoleMember, Status: test.status},
 				found:      true,
 			}
-			service := NewQueryService(repository)
+			service := NewQueryService(repository, plainHasher{})
 			err := service.EnsureMember(context.Background(), 10, 21)
 			if test.wantErr && err == nil {
 				t.Fatal("expected error")

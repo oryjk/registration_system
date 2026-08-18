@@ -15,5 +15,7 @@ type Repository interface {
 	List(context.Context, *domain.TeamStatus) ([]domain.Team, error)
 	Create(context.Context, domain.Team) (domain.Team, error)
 	Update(context.Context, domain.Team) (domain.Team, error)
+	// UpdateJoinPasswordHash 更新入队口令哈希（nil=清除，开放加入）；返回 found=false 表示球队不存在。
+	UpdateJoinPasswordHash(ctx context.Context, teamID int64, hash *string) (bool, error)
 	Delete(context.Context, int64) (bool, error)
 }

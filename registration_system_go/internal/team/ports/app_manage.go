@@ -16,6 +16,8 @@ type AppManageRepository interface {
 	// ActiveUserExists 校验目标用户存在且为 active，用于添加成员。
 	ActiveUserExists(context.Context, int64) (bool, error)
 	UpdateTeamProfile(context.Context, domain.Team) (domain.Team, error)
+	// UpdateJoinPasswordHash 更新入队口令哈希（nil=清除，开放加入）；返回 found=false 表示球队不存在。
+	UpdateJoinPasswordHash(ctx context.Context, teamID int64, hash *string) (bool, error)
 	AddMember(context.Context, int64, int64, domain.Role) error
 	UpdateMember(context.Context, int64, int64, domain.Role, domain.MemberStatus) (bool, error)
 	RemoveMember(context.Context, int64, int64) (bool, error)

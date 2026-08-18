@@ -68,6 +68,14 @@ func TestAppManageRoutesForwardParamsAndReturnEmptyEnvelope(t *testing.T) {
 	if manage.removedUserID != 50 {
 		t.Fatalf("remove member not forwarded: %+v", manage)
 	}
+
+	response = do(http.MethodPut, "/teams/7/join-password", `{"join_password":"  pass123 "}`)
+	if response.Code != http.StatusOK || !bytes.Contains(response.Body.Bytes(), []byte(`"code":0`)) {
+		t.Fatalf("update join password: status=%d body=%s", response.Code, response.Body.String())
+	}
+	if manage.joinPasswordTeamID != 7 || manage.joinPassword != "  pass123 " {
+		t.Fatalf("join password not forwarded raw: %+v", manage)
+	}
 }
 
 func TestAppManageRoutesMapBusinessErrors(t *testing.T) {
@@ -95,25 +103,41 @@ func TestAppManageRoutesMapBusinessErrors(t *testing.T) {
 	if response.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("expected 422 for invalid team id, got %d: %s", response.Code, response.Body.String())
 	}
+
+	request = httptest.NewRequest(http.MethodPut, "/teams/7/join-password", strings.NewReader(`not-json`))
+	request.Header.Set("Authorization", "Bearer user-token")
+	request.Header.Set("Content-Type", "application/json")
+	response = httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+	if response.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("expected 422 for invalid join password body, got %d: %s", response.Code, response.Body.String())
+	}
 }
 
 type fakeAppManageCommands struct {
-	err           error
-	actor         sharedauth.Actor
-	teamID        int64
-	name          *string
-	description   *string
-	logoURL       *string
-	addedUserID   int64
-	addedRole     domain.Role
-	updatedUserID int64
-	updatedRole   *domain.Role
-	updatedStatus *domain.MemberStatus
-	removedUserID int64
+	err                error
+	actor              sharedauth.Actor
+	teamID             int64
+	name               *string
+	description        *string
+	logoURL            *string
+	addedUserID        int64
+	addedRole          domain.Role
+	updatedUserID      int64
+	updatedRole        *domain.Role
+	updatedStatus      *domain.MemberStatus
+	removedUserID      int64
+	joinPassword       string
+	joinPasswordTeamID int64
 }
 
 func (f *fakeAppManageCommands) UpdateProfile(_ context.Context, actor sharedauth.Actor, teamID int64, name, description, logoURL *string) error {
 	f.actor, f.teamID, f.name, f.description, f.logoURL = actor, teamID, name, description, logoURL
+	return f.err
+}
+
+func (f *fakeAppManageCommands) UpdateJoinPassword(_ context.Context, actor sharedauth.Actor, teamID int64, joinPassword string) error {
+	f.actor, f.joinPasswordTeamID, f.joinPassword = actor, teamID, joinPassword
 	return f.err
 }
 

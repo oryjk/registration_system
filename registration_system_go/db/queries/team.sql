@@ -43,6 +43,14 @@ SELECT join_password_hash
 FROM teams
 WHERE id = $1;
 
+-- 队长/领队或管理员更新入队口令：hash 为 NULL 表示清除（开放加入）。
+-- name: UpdateTeamJoinPasswordHash :one
+UPDATE teams
+SET join_password_hash = $2,
+    updated_at         = NOW()
+WHERE id = $1
+RETURNING teams.id;
+
 -- 重新加入：历史成员（inactive）恢复为 active 普通队员。
 -- name: ReactivateTeamMember :execrows
 UPDATE team_members

@@ -14,6 +14,8 @@ import (
 // AppTeamManageCommands 是小程序侧队长/领队的球队管理写操作，与 /api/admin 严格分开。
 type AppTeamManageCommands interface {
 	UpdateProfile(context.Context, sharedauth.Actor, int64, *string, *string, *string) error
+	// UpdateJoinPassword 更新入队口令：join_password 非空=设置/替换，空串=清除（开放加入）。
+	UpdateJoinPassword(context.Context, sharedauth.Actor, int64, string) error
 	AddMember(context.Context, sharedauth.Actor, int64, int64, domain.Role) error
 	UpdateMember(context.Context, sharedauth.Actor, int64, int64, *domain.Role, *domain.MemberStatus) error
 	RemoveMember(context.Context, sharedauth.Actor, int64, int64) error
@@ -29,6 +31,7 @@ func NewAppManageHandler(manage AppTeamManageCommands) *AppManageHandler {
 
 func (h *AppManageHandler) RegisterRoutes(group *gin.RouterGroup) {
 	group.PATCH("/teams/:id", h.UpdateTeam)
+	group.PUT("/teams/:id/join-password", h.UpdateJoinPassword)
 	group.POST("/teams/:id/members", h.AddMember)
 	group.PATCH("/teams/:id/members/:user_id", h.UpdateMember)
 	group.DELETE("/teams/:id/members/:user_id", h.RemoveMember)
@@ -53,6 +56,28 @@ func (h *AppManageHandler) UpdateTeam(c *gin.Context) {
 		return
 	}
 	if err := h.manage.UpdateProfile(c.Request.Context(), actor, teamID, request.Name, request.Description, request.LogoURL); err != nil {
+		sharedhttpapi.WriteError(c, err)
+		return
+	}
+	sharedhttpapi.WriteSuccess(c, gin.H{})
+}
+
+// AppUpdateJoinPasswordRequest 的 join_password 非空=设置/替换；空串=清除（开放加入）。
+type AppUpdateJoinPasswordRequest struct {
+	JoinPassword string `json:"join_password"`
+}
+
+func (h *AppManageHandler) UpdateJoinPassword(c *gin.Context) {
+	actor, teamID, ok := appActorAndTeamID(c)
+	if !ok {
+		return
+	}
+	var request AppUpdateJoinPasswordRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		sharedhttpapi.WriteError(c, sharederror.New(sharederror.KindValidation, "入队密码请求无效"))
+		return
+	}
+	if err := h.manage.UpdateJoinPassword(c.Request.Context(), actor, teamID, request.JoinPassword); err != nil {
 		sharedhttpapi.WriteError(c, err)
 		return
 	}

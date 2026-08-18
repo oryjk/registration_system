@@ -5,6 +5,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -102,6 +103,28 @@ func TestAdminTeamCRUDRoutes(t *testing.T) {
 	}
 }
 
+func TestAdminUpdateJoinPasswordRoute(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	query := &fakeTeamQuery{}
+	handler := NewHandler(query, &fakeTeamMembers{})
+	router := gin.New()
+	group := router.Group("")
+	group.Use(authhttp.NewMiddleware(fakeAdminTokens{}).RequireAdmin())
+	handler.RegisterAdminRoutes(group)
+
+	request := httptest.NewRequest(http.MethodPut, "/teams/7/join-password", strings.NewReader(`{"join_password":"pass123"}`))
+	request.Header.Set("Authorization", "Bearer admin-token")
+	request.Header.Set("Content-Type", "application/json")
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+	if response.Code != http.StatusOK || !bytes.Contains(response.Body.Bytes(), []byte(`"code":0`)) {
+		t.Fatalf("unexpected response %d: %s", response.Code, response.Body.String())
+	}
+	if query.receivedTeamID != 7 || query.receivedJoinPassword != "pass123" || query.receivedActor.ID != 7 {
+		t.Fatalf("join password not forwarded: team=%d password=%q actor=%+v", query.receivedTeamID, query.receivedJoinPassword, query.receivedActor)
+	}
+}
+
 type fakeAdminTokens struct{}
 
 func (fakeAdminTokens) IssueUser(context.Context, int64) (string, error)        { return "", nil }
@@ -111,13 +134,14 @@ func (fakeAdminTokens) Parse(context.Context, string) (sharedauth.Actor, error) 
 }
 
 type fakeTeamQuery struct {
-	items          []domain.TeamMembership
-	teams          []domain.Team
-	team           domain.Team
-	receivedUserID int64
-	receivedTeamID int64
-	receivedActor  sharedauth.Actor
-	err            error
+	items                []domain.TeamMembership
+	teams                []domain.Team
+	team                 domain.Team
+	receivedUserID       int64
+	receivedTeamID       int64
+	receivedActor        sharedauth.Actor
+	receivedJoinPassword string
+	err                  error
 }
 
 func (f *fakeTeamQuery) ListByUser(_ context.Context, userID int64) ([]domain.TeamMembership, error) {
@@ -155,5 +179,12 @@ func (f *fakeTeamQuery) UpdateTeam(_ context.Context, actor sharedauth.Actor, te
 func (f *fakeTeamQuery) DeleteTeam(_ context.Context, actor sharedauth.Actor, teamID int64) error {
 	f.receivedActor = actor
 	f.receivedTeamID = teamID
+	return f.err
+}
+
+func (f *fakeTeamQuery) UpdateJoinPassword(_ context.Context, actor sharedauth.Actor, teamID int64, joinPassword string) error {
+	f.receivedActor = actor
+	f.receivedTeamID = teamID
+	f.receivedJoinPassword = joinPassword
 	return f.err
 }

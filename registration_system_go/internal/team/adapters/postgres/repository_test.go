@@ -397,3 +397,40 @@ func TestRepositorySelfServiceTeamFlow(t *testing.T) {
 		t.Fatalf("search summary fields: %+v", results[0])
 	}
 }
+
+func TestRepositoryUpdatesJoinPasswordHash(t *testing.T) {
+	pool := testsupport.StartPostgres(t)
+	ctx := context.Background()
+	var creatorID int64
+	if err := pool.QueryRow(ctx, `INSERT INTO users (openid) VALUES ('join-password-updater') RETURNING id`).Scan(&creatorID); err != nil {
+		t.Fatalf("seed creator: %v", err)
+	}
+	repository := NewRepository(pool)
+	team, err := repository.CreateWithCaptain(ctx, "口令更新联队", nil, nil, creatorID)
+	if err != nil {
+		t.Fatalf("create team: %v", err)
+	}
+
+	hash := "$2a$10$invalidhashinvalidhashinvalidhash"
+	found, err := repository.UpdateJoinPasswordHash(ctx, team.ID, &hash)
+	if err != nil || !found {
+		t.Fatalf("set hash: found=%v err=%v", found, err)
+	}
+	stored, hashFound, err := repository.FindJoinPasswordHash(ctx, team.ID)
+	if err != nil || !hashFound || stored == nil || *stored != hash {
+		t.Fatalf("hash not stored: %v found=%v err=%v", stored, hashFound, err)
+	}
+
+	if found, err = repository.UpdateJoinPasswordHash(ctx, team.ID, nil); err != nil || !found {
+		t.Fatalf("clear hash: found=%v err=%v", found, err)
+	}
+	stored, hashFound, err = repository.FindJoinPasswordHash(ctx, team.ID)
+	if err != nil || !hashFound || stored != nil {
+		t.Fatalf("hash not cleared: %v found=%v err=%v", stored, hashFound, err)
+	}
+
+	found, err = repository.UpdateJoinPasswordHash(ctx, team.ID+9999, &hash)
+	if err != nil || found {
+		t.Fatalf("missing team should return found=false, got found=%v err=%v", found, err)
+	}
+}

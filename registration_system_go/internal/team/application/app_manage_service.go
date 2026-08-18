@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"errors"
+	"strings"
 
 	sharedauth "github.com/oryjk/registration_system/registration_system_go/internal/shared/auth"
 	sharederror "github.com/oryjk/registration_system/registration_system_go/internal/shared/domain"
@@ -14,10 +15,35 @@ import (
 // 鉴权规则：操作者必须是该球队 active 的队长或领队（Member.CanManageTeam），管理员身份不适用。
 type AppManageService struct {
 	repository ports.AppManageRepository
+	hasher     ports.TeamPasswordHasher
 }
 
-func NewAppManageService(repository ports.AppManageRepository) AppManageService {
-	return AppManageService{repository: repository}
+func NewAppManageService(repository ports.AppManageRepository, hasher ports.TeamPasswordHasher) AppManageService {
+	return AppManageService{repository: repository, hasher: hasher}
+}
+
+// UpdateJoinPassword 更新入队口令：joinPassword trim 后非空=设置/替换，空串=清除（开放加入）。
+// 口令语义与建队一致：TrimSpace 仅用于判空，哈希保留原始值。
+func (s AppManageService) UpdateJoinPassword(ctx context.Context, actor sharedauth.Actor, teamID int64, joinPassword string) error {
+	if _, err := s.authorizeManager(ctx, actor, teamID); err != nil {
+		return err
+	}
+	var hash *string
+	if strings.TrimSpace(joinPassword) != "" {
+		hashed, err := s.hasher.Hash(joinPassword)
+		if err != nil {
+			return sharederror.Wrap(sharederror.KindInternal, "加密入队口令失败", err)
+		}
+		hash = &hashed
+	}
+	found, err := s.repository.UpdateJoinPasswordHash(ctx, teamID, hash)
+	if err != nil {
+		return sharederror.Wrap(sharederror.KindInternal, "更新入队密码失败", err)
+	}
+	if !found {
+		return sharederror.New(sharederror.KindNotFound, "球队不存在")
+	}
+	return nil
 }
 
 // UpdateProfile 更新球队资料：name 传 nil 保持不变，description/logoURL 传 nil 或空串视为清除。

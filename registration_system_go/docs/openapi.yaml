@@ -266,6 +266,29 @@ paths:
           description: 更新成功（空 data）
         <<: *standardErrors
 
+  /api/v1/app/teams/{id}/join-password:
+    put:
+      operationId: updateAppTeamJoinPassword
+      tags: [App Teams]
+      summary: 更新入队密码（队长/领队）
+      description: 仅该队 active 的队长或领队可操作。join_password 非空=设置/替换；空串=清除（开放加入）。语义与建队一致：仅用 trim 判空，密码保留原始值以 bcrypt 哈希存储，不回显。
+      security: *bearerSecurity
+      parameters:
+        - $ref: "#/components/parameters/TeamID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [join_password]
+              properties:
+                join_password: { type: string }
+      responses:
+        "200":
+          description: 更新成功（空 data）
+        <<: *standardErrors
+
   /api/v1/app/teams/{id}/members:
     get:
       operationId: listAppTeamMembers
@@ -955,6 +978,29 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/IntegerIDEnvelope"
+        <<: *standardErrors
+
+  /api/v1/admin/teams/{id}/join-password:
+    put:
+      operationId: updateAdminTeamJoinPassword
+      tags: [Admin Teams]
+      summary: 重置球队入队密码
+      description: 管理员代为设置或清除入队密码。join_password 非空=设置/替换；空串=清除（开放加入）。密码以 bcrypt 哈希存储，不回显。
+      security: *bearerSecurity
+      parameters:
+        - $ref: "#/components/parameters/TeamID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [join_password]
+              properties:
+                join_password: { type: string }
+      responses:
+        "200":
+          description: 更新成功（空 data）
         <<: *standardErrors
 
   /api/v1/admin/teams/{id}/members:

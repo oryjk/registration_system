@@ -474,6 +474,20 @@ func (r *Repository) FindJoinPasswordHash(ctx context.Context, teamID int64) (*s
 	return hash, true, nil
 }
 
+// UpdateJoinPasswordHash 更新入队口令哈希（nil 表示清除）；球队不存在时第二个返回值为 false。
+func (r *Repository) UpdateJoinPasswordHash(ctx context.Context, teamID int64, hash *string) (bool, error) {
+	_, err := r.queries.UpdateTeamJoinPasswordHash(ctx, teamsqlc.UpdateTeamJoinPasswordHashParams{
+		ID: teamID, JoinPasswordHash: hash,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
 // ReactivateMember 把历史 inactive 成员恢复为 active 普通队员。
 func (r *Repository) ReactivateMember(ctx context.Context, teamID, userID int64) (bool, error) {
 	rows, err := r.queries.ReactivateTeamMember(ctx, teamsqlc.ReactivateTeamMemberParams{TeamID: teamID, UserID: userID})

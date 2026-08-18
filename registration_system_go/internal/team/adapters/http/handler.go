@@ -19,6 +19,8 @@ type TeamQuery interface {
 	GetTeam(context.Context, sharedauth.Actor, int64) (domain.Team, error)
 	CreateTeam(context.Context, sharedauth.Actor, string, *string) (domain.Team, error)
 	UpdateTeam(context.Context, sharedauth.Actor, int64, string, *string, domain.TeamStatus) (domain.Team, error)
+	// UpdateJoinPassword 管理员代为更新入队口令：join_password 非空=设置/替换，空串=清除（开放加入）。
+	UpdateJoinPassword(context.Context, sharedauth.Actor, int64, string) error
 	DeleteTeam(context.Context, sharedauth.Actor, int64) error
 }
 
@@ -175,11 +177,34 @@ func (h *Handler) AdminDeleteTeam(c *gin.Context) {
 	sharedhttpapi.WriteSuccess(c, gin.H{"id": teamID})
 }
 
+// AdminUpdateJoinPasswordRequest 的 join_password 非空=设置/替换；空串=清除（开放加入）。
+type AdminUpdateJoinPasswordRequest struct {
+	JoinPassword string `json:"join_password"`
+}
+
+func (h *Handler) AdminUpdateJoinPassword(c *gin.Context) {
+	actor, teamID, ok := adminActorAndTeamID(c)
+	if !ok {
+		return
+	}
+	var request AdminUpdateJoinPasswordRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		sharedhttpapi.WriteError(c, sharederror.New(sharederror.KindValidation, "入队密码请求无效"))
+		return
+	}
+	if err := h.query.UpdateJoinPassword(c.Request.Context(), actor, teamID, request.JoinPassword); err != nil {
+		sharedhttpapi.WriteError(c, err)
+		return
+	}
+	sharedhttpapi.WriteSuccess(c, gin.H{})
+}
+
 func (h *Handler) RegisterAdminRoutes(group *gin.RouterGroup) {
 	group.GET("/teams", h.AdminTeams)
 	group.POST("/teams", h.AdminCreateTeam)
 	group.GET("/teams/:id", h.AdminGetTeam)
 	group.PATCH("/teams/:id", h.AdminUpdateTeam)
+	group.PUT("/teams/:id/join-password", h.AdminUpdateJoinPassword)
 	group.DELETE("/teams/:id", h.AdminDeleteTeam)
 	h.registerAdminMemberRoutes(group)
 }

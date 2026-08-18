@@ -1175,6 +1175,27 @@ func (q *Queries) UpdateTeam(ctx context.Context, arg UpdateTeamParams) (UpdateT
 	return i, err
 }
 
+const updateTeamJoinPasswordHash = `-- name: UpdateTeamJoinPasswordHash :one
+UPDATE teams
+SET join_password_hash = $2,
+    updated_at         = NOW()
+WHERE id = $1
+RETURNING teams.id
+`
+
+type UpdateTeamJoinPasswordHashParams struct {
+	ID               int64   `json:"id"`
+	JoinPasswordHash *string `json:"join_password_hash"`
+}
+
+// 队长/领队或管理员更新入队口令：hash 为 NULL 表示清除（开放加入）。
+func (q *Queries) UpdateTeamJoinPasswordHash(ctx context.Context, arg UpdateTeamJoinPasswordHashParams) (int64, error) {
+	row := q.db.QueryRow(ctx, updateTeamJoinPasswordHash, arg.ID, arg.JoinPasswordHash)
+	var id int64
+	err := row.Scan(&id)
+	return id, err
+}
+
 const updateTeamMember = `-- name: UpdateTeamMember :execrows
 UPDATE team_members
 SET role = $3,
