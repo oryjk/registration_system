@@ -190,7 +190,7 @@ const {
   margin-bottom: 22rpx;
   border: var(--neo-border-default);
   border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-hero);
+  background: var(--neo-color-success);
 }
 
 .balance-hero-label {
@@ -207,13 +207,13 @@ const {
 }
 
 .balance-hero-symbol {
-  color: var(--neo-color-accent);
+  color: var(--neo-color-text);
   font-size: 34rpx;
   font-weight: 900;
 }
 
 .balance-hero-value {
-  color: var(--neo-color-accent);
+  color: var(--neo-color-text);
   font-size: 64rpx;
   line-height: 1.1;
   font-weight: 950;
