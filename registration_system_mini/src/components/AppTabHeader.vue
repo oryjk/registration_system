@@ -85,6 +85,21 @@ function handleBack() {
   });
 }
 
+function isCurrentPageHome() {
+  const pages = getCurrentPages();
+  const current = pages[pages.length - 1];
+  return current?.route === "pages/home/index";
+}
+
+// 首页自身不显示回首页入口；页面创建时判定一次即可（switchTab 会重建页面）。
+const showHomeEntry = ref(!isCurrentPageHome());
+
+function handleHome() {
+  uni.switchTab({
+    url: "/pages/home/index",
+  });
+}
+
 function closeLocationSheet() {
   showLocationSheet.value = false;
 }
@@ -131,6 +146,18 @@ async function handleRefreshLocation() {
       <view class="app-tab-header-left">
         <view v-if="props.showBack" class="app-tab-header-back" @tap.stop="handleBack">
           <text class="app-tab-header-back-icon">‹</text>
+        </view>
+        <view
+          v-if="showHomeEntry"
+          class="app-tab-header-home"
+          hover-class="app-tab-header-home--pressed"
+          :hover-stay-time="100"
+          @tap.stop="handleHome"
+        >
+          <view class="app-tab-header-home-icon">
+            <view class="app-tab-header-home-roof" />
+            <view class="app-tab-header-home-body" />
+          </view>
         </view>
         <text class="app-tab-header-title">{{ props.title }}</text>
         <view v-if="props.showLocation" class="app-tab-header-location" @tap.stop="handleLocationTap">
@@ -234,6 +261,46 @@ async function handleRefreshLocation() {
   line-height: 1;
   font-weight: 900;
   transform: translateY(-2rpx);
+}
+
+.app-tab-header-home {
+  width: 58rpx;
+  height: 58rpx;
+  border-radius: var(--neo-radius-round);
+  border: var(--neo-border-default);
+  background: var(--neo-color-surface);
+  box-shadow: 3rpx 3rpx 0 var(--neo-color-text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.app-tab-header-home--pressed {
+  box-shadow: none;
+  transform: translate(2rpx, 2rpx);
+}
+
+.app-tab-header-home-icon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 2rpx;
+}
+
+.app-tab-header-home-roof {
+  width: 0;
+  height: 0;
+  border-left: 13rpx solid transparent;
+  border-right: 13rpx solid transparent;
+  border-bottom: 10rpx solid var(--neo-color-text);
+}
+
+.app-tab-header-home-body {
+  width: 18rpx;
+  height: 11rpx;
+  margin-top: 2rpx;
+  background: var(--neo-color-text);
 }
 
 .app-tab-header-title {
