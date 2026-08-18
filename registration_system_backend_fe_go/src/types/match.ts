@@ -34,6 +34,8 @@ export interface MatchItem {
   location_latitude: number | null;
   location_longitude: number | null;
   description: string | null;
+  host_color: string | null;
+  away_color: string | null;
   created_by_user_id: number | null;
   created_by_admin_id: number | null;
   created_at: string;
@@ -95,6 +97,8 @@ export interface CreateMatchPayload {
   location_longitude?: number | null;
   description?: string | null;
   is_free?: boolean;
+  host_color?: string | null;
+  away_color?: string | null;
 }
 
 export interface UpdateMatchPayload {
@@ -111,4 +115,7 @@ export interface UpdateMatchPayload {
   opponent_name?: string | null;
   // 主队报名组满员上限；null 表示本次编辑不修改容量。
   host_capacity_limit?: number | null;
+  // 球服颜色（#RRGGBB 小写）；null 表示本次编辑不修改。
+  host_color?: string | null;
+  away_color?: string | null;
 }

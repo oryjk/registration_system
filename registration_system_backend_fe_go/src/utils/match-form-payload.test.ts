@@ -2,6 +2,7 @@ import {
   buildCreateMatchPayload,
   buildUpdateMatchPayload,
   defaultHostCapacityLimit,
+  type MatchFormPayloadValues,
 } from "./match-form-payload";
 
 const baseValues = {
@@ -19,6 +20,13 @@ const baseValues = {
   location_longitude: 120.654321,
   description: "  保留 API 字段测试  ",
 };
+
+const baseFormValues = (
+  overrides: Partial<MatchFormPayloadValues>,
+): MatchFormPayloadValues => ({
+  ...baseValues,
+  ...overrides,
+});
 
 describe("match form payload", () => {
   it("builds the complete create contract with ISO dates", () => {
@@ -38,6 +46,8 @@ describe("match form payload", () => {
       location_latitude: 30.123456,
       location_longitude: 120.654321,
       description: "保留 API 字段测试",
+      host_color: null,
+      away_color: null,
     });
   });
 
@@ -74,6 +84,8 @@ describe("match form payload", () => {
       description: "保留 API 字段测试",
       opponent_name: null,
       host_capacity_limit: 12,
+      host_color: null,
+      away_color: null,
     });
   });
 
@@ -115,5 +127,30 @@ describe("match form free flag", () => {
     expect(
       buildCreateMatchPayload({ ...baseValues, is_free: true }).is_free,
     ).toEqual(true);
+  });
+});
+
+describe("match form jersey colors", () => {
+  test("carries jersey colors normalized to lowercase hex", () => {
+    const values = baseFormValues({
+      host_color: "#2F6BFF",
+      away_color: "#FF0000",
+    });
+    expect(buildCreateMatchPayload(values)).toMatchObject({
+      host_color: "#2f6bff",
+      away_color: "#ff0000",
+    });
+    expect(buildUpdateMatchPayload(values)).toMatchObject({
+      host_color: "#2f6bff",
+      away_color: "#ff0000",
+    });
+  });
+
+  test("omits jersey colors when unset so update keeps them untouched", () => {
+    const values = baseFormValues({});
+    expect(buildUpdateMatchPayload(values)).toMatchObject({
+      host_color: null,
+      away_color: null,
+    });
   });
 });

@@ -24,12 +24,20 @@ export interface MatchFormPayloadValues {
   location_latitude?: number;
   location_longitude?: number;
   description?: string;
+  host_color?: string;
+  away_color?: string;
   is_free?: boolean;
 }
 
 // 主队报名上限默认值：每队人数 + 4，创建表单与未配置容量的编辑回填共用。
 export function defaultHostCapacityLimit(playersPerTeam: number): number {
   return playersPerTeam + 4;
+}
+
+// 球服颜色统一提交小写 hex6；未设置返回 null（创建走默认，更新表示不改）。
+function normalizeJerseyColor(value?: string): string | null {
+  const trimmed = value?.trim().toLowerCase() ?? "";
+  return /^#[0-9a-f]{6}$/.test(trimmed) ? trimmed : null;
 }
 
 export function buildUpdateMatchPayload(
@@ -52,6 +60,8 @@ export function buildUpdateMatchPayload(
         ? values.opponent_name?.trim() || null
         : null,
     host_capacity_limit: values.host_capacity_limit ?? null,
+    host_color: normalizeJerseyColor(values.host_color),
+    away_color: normalizeJerseyColor(values.away_color),
   };
 }
 

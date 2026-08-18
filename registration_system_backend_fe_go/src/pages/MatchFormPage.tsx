@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Alert,
   Button,
+  ColorPicker,
   DatePicker,
   Form,
   Input,
@@ -55,6 +56,8 @@ interface MatchFormValues {
   location_latitude?: number;
   location_longitude?: number;
   description?: string;
+  host_color?: string;
+  away_color?: string;
 }
 
 const initialValues: Partial<MatchFormValues> = {
@@ -62,7 +65,26 @@ const initialValues: Partial<MatchFormValues> = {
   players_per_team: 8,
   host_capacity_limit: defaultHostCapacityLimit(8),
   duration_minutes: 120,
+  host_color: "#FFFFFF",
+  away_color: "#FF0000",
 };
+
+// 常用球服颜色预设，主/客队 ColorPicker 共用。
+const jerseyColorPresets = [
+  {
+    label: "常用球服色",
+    colors: [
+      "#FFFFFF",
+      "#FF0000",
+      "#2F6BFF",
+      "#111310",
+      "#C8FF00",
+      "#FF6B35",
+      "#B34DFF",
+      "#D8DDE6",
+    ],
+  },
+];
 
 export default function MatchFormPage() {
   const { id } = useParams();
@@ -125,6 +147,8 @@ export default function MatchFormPage() {
         location_latitude: match.location_latitude ?? undefined,
         location_longitude: match.location_longitude ?? undefined,
         description: match.description || undefined,
+        host_color: match.host_color || "#FFFFFF",
+        away_color: match.away_color || "#FF0000",
       }
     : initialValues;
   const formReady = !loading && (!editing || Boolean(match));
@@ -391,6 +415,32 @@ export default function MatchFormPage() {
                       <Input maxLength={255} />
                     </Form.Item>
                   ) : null}
+                  <Form.Item
+                    name="host_color"
+                    label="主队球服颜色"
+                    getValueFromEvent={(color) => color.toHexString()}
+                    rules={[
+                      {
+                        pattern: /^#[0-9a-fA-F]{6}$/,
+                        message: "颜色格式必须为 #RRGGBB",
+                      },
+                    ]}
+                  >
+                    <ColorPicker showText presets={jerseyColorPresets} />
+                  </Form.Item>
+                  <Form.Item
+                    name="away_color"
+                    label="客队球服颜色"
+                    getValueFromEvent={(color) => color.toHexString()}
+                    rules={[
+                      {
+                        pattern: /^#[0-9a-fA-F]{6}$/,
+                        message: "颜色格式必须为 #RRGGBB",
+                      },
+                    ]}
+                  >
+                    <ColorPicker showText presets={jerseyColorPresets} />
+                  </Form.Item>
                   {!editing ? (
                     <Form.Item
                       name="is_free"
