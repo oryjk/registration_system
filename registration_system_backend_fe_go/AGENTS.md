@@ -4,7 +4,7 @@
 
 对接 `../registration_system_go/` 的新管理后台。技术栈为 Umi Max 4.6.51、React、TypeScript、Ant Design 6、ProComponents 3、React Query 5、Tailwind 4、antd-style、Biome、utoopack、Node 20+ 和 Bun。
 
-旧版 `../registration_system_backend_fe/` 只作为业务参考；接口、DTO、权限和响应结构以 Go 后端为准。
+旧版 `../registration_system_backend_fe/`（Vue 管理后台）已从工作区删除，需要参考时从 git 历史查看；接口、DTO、权限和响应结构以 Go 后端为准。
 
 ## 推荐定位顺序
 

@@ -15,4 +15,5 @@ export const queryKeys = {
   match: (id: string) => ["matches", id] as const,
   miniReviewStatuses: (query: MiniReviewStatusQuery) =>
     ["mini-review", "statuses", query] as const,
+  miniAppSettings: ["system", "mini-app-settings"] as const,
 };

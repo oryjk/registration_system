@@ -75,5 +75,12 @@ export default [
     icon: "AuditOutlined",
     component: "./MiniReviewPage",
   },
+  {
+    path: "/system-settings",
+    access: "isAuthenticated",
+    name: "系统设置",
+    icon: "SettingOutlined",
+    component: "./SystemSettingsPage",
+  },
   { path: "/*", component: "./NotFoundPage" },
 ];

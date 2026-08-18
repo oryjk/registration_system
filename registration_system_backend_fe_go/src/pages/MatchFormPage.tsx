@@ -426,7 +426,11 @@ export default function MatchFormPage() {
                       },
                     ]}
                   >
-                    <ColorPicker showText presets={jerseyColorPresets} disabledAlpha />
+                    <ColorPicker
+                      showText
+                      presets={jerseyColorPresets}
+                      disabledAlpha
+                    />
                   </Form.Item>
                   <Form.Item
                     name="away_color"
@@ -439,7 +443,11 @@ export default function MatchFormPage() {
                       },
                     ]}
                   >
-                    <ColorPicker showText presets={jerseyColorPresets} disabledAlpha />
+                    <ColorPicker
+                      showText
+                      presets={jerseyColorPresets}
+                      disabledAlpha
+                    />
                   </Form.Item>
                   {!editing ? (
                     <Form.Item
