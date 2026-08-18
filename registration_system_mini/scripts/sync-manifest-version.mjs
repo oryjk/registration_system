@@ -41,8 +41,9 @@ export function miniReviewConfig(env = parseEnvFile(envPath)) {
   };
 }
 
-// 向 Go 后端登记并取得本次构建应使用的版本号：
-// 最新版本仍在审核中时复用，否则在（库内最大与 manifest 当前值的较大者）基础上 +0.0.1 新建并标记审核中。
+// 向 Go 后端登记并取得本次构建应使用的版本号（登记库是唯一权威，多台构建机结果一致）：
+// 库内最新版本仍在审核中时复用；已出审核则在库内最大版本基础上 +0.0.1 新建并标记审核中；
+// 仅当库内无任何记录时才以本地 manifest 为起点。删库重置后版本号随库回落。
 // MINI_REVIEW_SKIP=1 时返回 null（离线本地构建，不登记）。
 export async function allocateReviewVersion({ explicitVersion = "", currentVersion = "" } = {}) {
   const config = miniReviewConfig();

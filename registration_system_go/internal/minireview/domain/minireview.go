@@ -111,26 +111,26 @@ func (s *MiniReviewStatus) SetStatus(isReviewing bool, statusText string, now ti
 type AllocationInput struct {
 	// Latest 是该项目当前版本号最大的记录；项目首次登记时为 nil。
 	Latest *MiniReviewStatus
-	// Seed 是构建侧传来的 manifest 当前版本，衔接历史数据（如 football 时代的 1.0.38）。
+	// Seed 是构建侧传来的 manifest 当前版本，仅用于库内无任何记录时的首次起点
+	//（衔接历史数据，如 football 时代的 1.0.38）。
 	Seed Version
 }
 
-// DecideNextVersion 决定本次构建应使用的版本：
-// 最新记录仍在审核中且不落后于种子 → 复用它（重复构建不递增）；
-// 否则以「库内最大版本与种子中的较大者」为基准递增 patch。
+// DecideNextVersion 决定本次构建应使用的版本号，登记库是唯一权威：
+// 最新记录仍在审核中 → 复用它（重复构建不递增，任何构建机一致）；
+// 最新记录已出审核 → 在它基础上递增 patch（删库重置后版本号随库回落）；
+// 库内无记录 → 以构建侧 manifest 为起点递增。
+// 本地 manifest 不参与后续分配，避免多台构建机因各自 manifest 状态不同而分叉。
 func DecideNextVersion(input AllocationInput) Version {
-	base := input.Seed
-	if input.Latest != nil {
-		latest, err := ParseVersion(input.Latest.Version)
-		if err == nil && latest.After(base) {
-			base = latest
-		}
+	if input.Latest == nil {
+		return input.Seed.NextPatch()
 	}
-	if input.Latest != nil && input.Latest.IsReviewing {
-		latest, err := ParseVersion(input.Latest.Version)
-		if err == nil && !input.Seed.After(latest) {
-			return latest
-		}
+	latest, err := ParseVersion(input.Latest.Version)
+	if err != nil {
+		return input.Seed.NextPatch()
 	}
-	return base.NextPatch()
+	if input.Latest.IsReviewing {
+		return latest
+	}
+	return latest.NextPatch()
 }

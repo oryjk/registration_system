@@ -67,27 +67,28 @@ func TestDecideNextVersionSeedsFromManifestWhenHistoryMissing(t *testing.T) {
 	}
 }
 
-func TestDecideNextVersionPrefersSeedWhenManifestIsAhead(t *testing.T) {
-	// manifest 已被显式指定为更大版本（CI 场景）：以种子为基准递增，而不是库内旧记录。
+func TestDecideNextVersionPrefersRegistryOverManifest(t *testing.T) {
+	// 登记库是唯一权威：即使某台构建机的 manifest 版本更大（例如删过库或旧分支残留），
+	// 也在库内最大版本基础上递增，保证多台机器分配结果一致、可被删库重置。
 	seedAhead, _ := ParseVersion("2.0.0")
 	decided := DecideNextVersion(AllocationInput{
 		Latest: &MiniReviewStatus{Version: "1.34.23", VersionCode: 13423, IsReviewing: false},
 		Seed:   seedAhead,
 	})
-	if decided.String() != "2.0.1" {
-		t.Fatalf("expected 2.0.1, got %s", decided)
+	if decided.String() != "1.34.24" {
+		t.Fatalf("expected registry-based 1.34.24, got %s", decided)
 	}
 }
 
-func TestDecideNextVersionIgnoresStaleReviewingLatest(t *testing.T) {
-	// 库内最新仍在审核，但构建侧种子已经超过它（例如人工把 manifest 改大）：不再复用旧审核版本。
+func TestDecideNextVersionReusesReviewingLatestRegardlessOfSeed(t *testing.T) {
+	// 库内最新仍在审核：任何构建机重复构建都复用它，本地 manifest 不影响复用判断。
 	seed, _ := ParseVersion("1.35.0")
 	decided := DecideNextVersion(AllocationInput{
 		Latest: &MiniReviewStatus{Version: "1.34.24", VersionCode: 13424, IsReviewing: true},
 		Seed:   seed,
 	})
-	if decided.String() != "1.35.1" {
-		t.Fatalf("expected 1.35.1, got %s", decided)
+	if decided.String() != "1.34.24" {
+		t.Fatalf("expected to reuse reviewing 1.34.24, got %s", decided)
 	}
 }
 

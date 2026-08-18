@@ -33,7 +33,7 @@ bun run mp:preview -- --desc "预览说明"       # 只传预览版，生成 dis
 
 流程细节（`scripts/mini-ci.mjs` + `scripts/sync-manifest-version.mjs`）：
 
-1. `build:mp-weixin` 的 prebuild 钩子先向 Go 后端 mini-review 登记接口 `POST /mini-review/allocate` 申请版本号：最新版本仍在审核中则**复用**，否则在（库内最大与 manifest 当前值取大）基础上 `+0.0.1` 并标记审核中。
+1. `build:mp-weixin` 的 prebuild 钩子先向 Go 后端 mini-review 登记接口 `POST /mini-review/allocate` 申请版本号。**登记库（数据库）是唯一权威**：最新版本仍在审核中则**复用**，已出审核则在库内最大版本基础上 `+0.0.1` 并标记审核中；仅当库内无任何记录时才以本地 manifest 为起点。本地 manifest 不参与后续分配（多台构建机结果一致），删库重置后版本号随库回落。
 2. 构建 `dist/build/mp-weixin` 并执行组件注册检查。
 3. `miniprogram-ci` 以 `manifest.json` 的 `versionName` 上传到微信后台（默认 robot=1，落在「版本管理 → 开发版本」）。
 
