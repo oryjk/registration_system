@@ -16,11 +16,17 @@ import (
 )
 
 type Repository struct {
-	queries *teamsqlc.Queries
+	database database
+	queries  *teamsqlc.Queries
 }
 
-func NewRepository(database teamsqlc.DBTX) *Repository {
-	return &Repository{queries: teamsqlc.New(database)}
+type database interface {
+	teamsqlc.DBTX
+	Begin(context.Context) (pgx.Tx, error)
+}
+
+func NewRepository(database database) *Repository {
+	return &Repository{database: database, queries: teamsqlc.New(database)}
 }
 
 func (r *Repository) FindByID(ctx context.Context, teamID int64) (domain.Team, bool, error) {
@@ -393,4 +399,80 @@ func (r *Repository) GetTeamMembershipState(ctx context.Context, teamID, userID 
 		state.VipUntil = &vipUntil
 	}
 	return state, nil
+}
+
+// TeamNameExists 检查球队名称是否已被占用（精确匹配，忽略前后空白由调用方保证）。
+func (r *Repository) TeamNameExists(ctx context.Context, name string) (bool, error) {
+	_, err := r.queries.FindTeamByName(ctx, name)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+// CreateWithCaptain 原子创建球队并把创建者写入 captain 成员。
+func (r *Repository) CreateWithCaptain(ctx context.Context, name string, description, joinPasswordHash *string, captainID int64) (domain.Team, error) {
+	tx, err := r.database.Begin(ctx)
+	if err != nil {
+		return domain.Team{}, err
+	}
+	defer func() {
+		_ = tx.Rollback(ctx)
+	}()
+	queries := r.queries.WithTx(tx)
+	row, err := queries.CreateTeamWithCaptain(ctx, teamsqlc.CreateTeamWithCaptainParams{
+		Name: name, Description: description, JoinPasswordHash: joinPasswordHash, CaptainID: &captainID,
+	})
+	if err != nil {
+		return domain.Team{}, err
+	}
+	if _, err := queries.AddTeamMember(ctx, teamsqlc.AddTeamMemberParams{
+		TeamID: row.ID, UserID: captainID, Role: string(domain.RoleCaptain),
+	}); err != nil {
+		return domain.Team{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return domain.Team{}, err
+	}
+	return teamFields(row.ID, row.Name, row.Description, row.LogoUrl, row.CaptainID, row.Status, row.CreatedAt, row.UpdatedAt), nil
+}
+
+// SearchByKeyword 用户侧球队搜索：仅 active 球队，空关键字返回全部（上限 50）。
+func (r *Repository) SearchByKeyword(ctx context.Context, keyword string) ([]ports.AppTeamSummary, error) {
+	rows, err := r.queries.SearchActiveTeamsByKeyword(ctx, keyword)
+	if err != nil {
+		return nil, err
+	}
+	items := make([]ports.AppTeamSummary, 0, len(rows))
+	for _, row := range rows {
+		items = append(items, ports.AppTeamSummary{
+			Team:        teamFields(row.ID, row.Name, row.Description, row.LogoUrl, row.CaptainID, row.Status, row.CreatedAt, row.UpdatedAt),
+			MemberCount: row.MemberCount,
+		})
+	}
+	return items, nil
+}
+
+// FindJoinPasswordHash 返回入队口令哈希；球队不存在时第二个返回值为 false。
+func (r *Repository) FindJoinPasswordHash(ctx context.Context, teamID int64) (*string, bool, error) {
+	hash, err := r.queries.GetTeamJoinPasswordHash(ctx, teamID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, false, nil
+	}
+	if err != nil {
+		return nil, false, err
+	}
+	return hash, true, nil
+}
+
+// ReactivateMember 把历史 inactive 成员恢复为 active 普通队员。
+func (r *Repository) ReactivateMember(ctx context.Context, teamID, userID int64) (bool, error) {
+	rows, err := r.queries.ReactivateTeamMember(ctx, teamsqlc.ReactivateTeamMemberParams{TeamID: teamID, UserID: userID})
+	if err != nil {
+		return false, err
+	}
+	return rows > 0, nil
 }

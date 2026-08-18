@@ -30,6 +30,7 @@ import (
 	"github.com/oryjk/registration_system/registration_system_go/internal/shared/adapters/clock"
 	systemhttp "github.com/oryjk/registration_system/registration_system_go/internal/system/adapters/http"
 	teamhttp "github.com/oryjk/registration_system/registration_system_go/internal/team/adapters/http"
+	teampassword "github.com/oryjk/registration_system/registration_system_go/internal/team/adapters/password"
 	teampostgres "github.com/oryjk/registration_system/registration_system_go/internal/team/adapters/postgres"
 	teamapplication "github.com/oryjk/registration_system/registration_system_go/internal/team/application"
 	"github.com/oryjk/registration_system/registration_system_go/internal/user/adapters/avatarstore"
@@ -92,6 +93,8 @@ func BuildDependencies(ctx context.Context, config Config) (Dependencies, func()
 	appTeamHandler := teamhttp.NewAppHandler(appTeamService, appTeamAttendance)
 	appTeamManageService := teamapplication.NewAppManageService(teamRepository)
 	appTeamManageHandler := teamhttp.NewAppManageHandler(appTeamManageService)
+	appTeamSelfService := teamapplication.NewAppTeamSelfService(teamRepository, teampassword.Bcrypt{})
+	appTeamSelfHandler := teamhttp.NewAppSelfHandler(appTeamSelfService)
 
 	matchRepository := matchpostgres.NewRepository(pool)
 	matchClock := clock.System{}
@@ -135,8 +138,8 @@ func BuildDependencies(ctx context.Context, config Config) (Dependencies, func()
 		UserAuth:       userAuthHandler, AdminAuth: adminAuthHandler,
 		TestAuth: testAuthHandler, H5TestLoginEnabled: config.H5TestLoginEnabled(),
 		UserProfiles: userProfileHandler, AppUsers: appUserHandler, ActiveUsers: appUserService, Teams: teamHandler, AppTeams: appTeamHandler,
-		AppTeamManage: appTeamManageHandler,
-		UserMatches:   userMatchHandler, UserRegistrations: userRegistrationHandler,
+		AppTeamManage: appTeamManageHandler, AppTeamSelf: appTeamSelfHandler,
+		UserMatches: userMatchHandler, UserRegistrations: userRegistrationHandler,
 		AdminMatches: adminMatchHandler, TeamApplications: teamApplicationHandler,
 		Payments: paymentHandler, Wallets: walletHandler, MiniReviews: miniReviewHandler,
 		SystemRuntime: systemhttp.NewHandler(),

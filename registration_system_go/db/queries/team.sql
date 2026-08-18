@@ -8,6 +8,49 @@ INSERT INTO teams (name, description, status)
 VALUES ($1, $2, 'active')
 RETURNING teams.id, teams.name, teams.description, teams.logo_url, teams.captain_id, teams.status, teams.created_at, teams.updated_at;
 
+-- 用户侧创建球队：带队长与可选入队口令（bcrypt 哈希）。
+-- name: CreateTeamWithCaptain :one
+INSERT INTO teams (name, description, join_password_hash, captain_id, status)
+VALUES ($1, $2, $3, $4, 'active')
+RETURNING teams.id, teams.name, teams.description, teams.logo_url, teams.captain_id, teams.join_password_hash, teams.status, teams.created_at, teams.updated_at;
+
+-- name: FindTeamByName :one
+SELECT id, name, description, logo_url, captain_id, join_password_hash, status, created_at, updated_at
+FROM teams
+WHERE name = $1;
+
+-- 用户侧加入球队：仅搜索 active 球队，附成员数用于小程序列表展示。
+-- name: SearchActiveTeamsByKeyword :many
+SELECT t.id,
+       t.name,
+       t.description,
+       t.logo_url,
+       t.captain_id,
+       t.status,
+       t.created_at,
+       t.updated_at,
+       (SELECT count(*) FROM team_members tm WHERE tm.team_id = t.id AND tm.status = 'active')::bigint AS member_count
+FROM teams t
+WHERE t.status = 'active'
+  AND ($1::text = '' OR t.name ILIKE '%' || $1::text || '%')
+ORDER BY t.name, t.id
+LIMIT 50;
+
+-- name: GetTeamJoinPasswordHash :one
+SELECT join_password_hash
+FROM teams
+WHERE id = $1;
+
+-- 重新加入：历史成员（inactive）恢复为 active 普通队员。
+-- name: ReactivateTeamMember :execrows
+UPDATE team_members
+SET role    = 'member',
+    status  = 'active',
+    updated_at = NOW()
+WHERE team_id = $1
+  AND user_id = $2
+  AND status <> 'active';
+
 -- name: GetActiveTeamMember :one
 SELECT id, team_id, user_id, role, status, joined_at, created_at, updated_at
 FROM team_members

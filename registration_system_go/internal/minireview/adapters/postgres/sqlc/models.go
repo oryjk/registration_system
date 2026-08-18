@@ -133,16 +133,17 @@ type PaymentOrder struct {
 }
 
 type Team struct {
-	ID          int64              `json:"id"`
-	Name        string             `json:"name"`
-	Description *string            `json:"description"`
-	LogoUrl     *string            `json:"logo_url"`
-	CaptainID   *int64             `json:"captain_id"`
-	Status      string             `json:"status"`
-	CreatedAt   pgtype.Timestamp   `json:"created_at"`
-	UpdatedAt   pgtype.Timestamp   `json:"updated_at"`
-	CreditScore int32              `json:"credit_score"`
-	VipUntil    pgtype.Timestamptz `json:"vip_until"`
+	ID               int64              `json:"id"`
+	Name             string             `json:"name"`
+	Description      *string            `json:"description"`
+	LogoUrl          *string            `json:"logo_url"`
+	CaptainID        *int64             `json:"captain_id"`
+	Status           string             `json:"status"`
+	CreatedAt        pgtype.Timestamp   `json:"created_at"`
+	UpdatedAt        pgtype.Timestamp   `json:"updated_at"`
+	CreditScore      int32              `json:"credit_score"`
+	VipUntil         pgtype.Timestamptz `json:"vip_until"`
+	JoinPasswordHash *string            `json:"join_password_hash"`
 }
 
 type TeamMember struct {

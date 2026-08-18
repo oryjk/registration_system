@@ -146,6 +146,54 @@ func (q *Queries) CreateTeam(ctx context.Context, arg CreateTeamParams) (CreateT
 	return i, err
 }
 
+const createTeamWithCaptain = `-- name: CreateTeamWithCaptain :one
+INSERT INTO teams (name, description, join_password_hash, captain_id, status)
+VALUES ($1, $2, $3, $4, 'active')
+RETURNING teams.id, teams.name, teams.description, teams.logo_url, teams.captain_id, teams.join_password_hash, teams.status, teams.created_at, teams.updated_at
+`
+
+type CreateTeamWithCaptainParams struct {
+	Name             string  `json:"name"`
+	Description      *string `json:"description"`
+	JoinPasswordHash *string `json:"join_password_hash"`
+	CaptainID        *int64  `json:"captain_id"`
+}
+
+type CreateTeamWithCaptainRow struct {
+	ID               int64            `json:"id"`
+	Name             string           `json:"name"`
+	Description      *string          `json:"description"`
+	LogoUrl          *string          `json:"logo_url"`
+	CaptainID        *int64           `json:"captain_id"`
+	JoinPasswordHash *string          `json:"join_password_hash"`
+	Status           string           `json:"status"`
+	CreatedAt        pgtype.Timestamp `json:"created_at"`
+	UpdatedAt        pgtype.Timestamp `json:"updated_at"`
+}
+
+// 用户侧创建球队：带队长与可选入队口令（bcrypt 哈希）。
+func (q *Queries) CreateTeamWithCaptain(ctx context.Context, arg CreateTeamWithCaptainParams) (CreateTeamWithCaptainRow, error) {
+	row := q.db.QueryRow(ctx, createTeamWithCaptain,
+		arg.Name,
+		arg.Description,
+		arg.JoinPasswordHash,
+		arg.CaptainID,
+	)
+	var i CreateTeamWithCaptainRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Description,
+		&i.LogoUrl,
+		&i.CaptainID,
+		&i.JoinPasswordHash,
+		&i.Status,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const deleteTeam = `-- name: DeleteTeam :execrows
 DELETE FROM teams
 WHERE id = $1
@@ -157,6 +205,41 @@ func (q *Queries) DeleteTeam(ctx context.Context, id int64) (int64, error) {
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const findTeamByName = `-- name: FindTeamByName :one
+SELECT id, name, description, logo_url, captain_id, join_password_hash, status, created_at, updated_at
+FROM teams
+WHERE name = $1
+`
+
+type FindTeamByNameRow struct {
+	ID               int64            `json:"id"`
+	Name             string           `json:"name"`
+	Description      *string          `json:"description"`
+	LogoUrl          *string          `json:"logo_url"`
+	CaptainID        *int64           `json:"captain_id"`
+	JoinPasswordHash *string          `json:"join_password_hash"`
+	Status           string           `json:"status"`
+	CreatedAt        pgtype.Timestamp `json:"created_at"`
+	UpdatedAt        pgtype.Timestamp `json:"updated_at"`
+}
+
+func (q *Queries) FindTeamByName(ctx context.Context, name string) (FindTeamByNameRow, error) {
+	row := q.db.QueryRow(ctx, findTeamByName, name)
+	var i FindTeamByNameRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Description,
+		&i.LogoUrl,
+		&i.CaptainID,
+		&i.JoinPasswordHash,
+		&i.Status,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
 const findTeamMembership = `-- name: FindTeamMembership :one
@@ -265,6 +348,19 @@ func (q *Queries) GetTeamByID(ctx context.Context, id int64) (GetTeamByIDRow, er
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const getTeamJoinPasswordHash = `-- name: GetTeamJoinPasswordHash :one
+SELECT join_password_hash
+FROM teams
+WHERE id = $1
+`
+
+func (q *Queries) GetTeamJoinPasswordHash(ctx context.Context, id int64) (*string, error) {
+	row := q.db.QueryRow(ctx, getTeamJoinPasswordHash, id)
+	var join_password_hash *string
+	err := row.Scan(&join_password_hash)
+	return join_password_hash, err
 }
 
 const getTeamMembershipState = `-- name: GetTeamMembershipState :one
@@ -856,6 +952,30 @@ func (q *Queries) ListTeams(ctx context.Context, status *string) ([]ListTeamsRow
 	return items, nil
 }
 
+const reactivateTeamMember = `-- name: ReactivateTeamMember :execrows
+UPDATE team_members
+SET role    = 'member',
+    status  = 'active',
+    updated_at = NOW()
+WHERE team_id = $1
+  AND user_id = $2
+  AND status <> 'active'
+`
+
+type ReactivateTeamMemberParams struct {
+	TeamID int64 `json:"team_id"`
+	UserID int64 `json:"user_id"`
+}
+
+// 重新加入：历史成员（inactive）恢复为 active 普通队员。
+func (q *Queries) ReactivateTeamMember(ctx context.Context, arg ReactivateTeamMemberParams) (int64, error) {
+	result, err := q.db.Exec(ctx, reactivateTeamMember, arg.TeamID, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const removeTeamMember = `-- name: RemoveTeamMember :execrows
 DELETE FROM team_members
 WHERE team_id = $1
@@ -873,6 +993,66 @@ func (q *Queries) RemoveTeamMember(ctx context.Context, arg RemoveTeamMemberPara
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const searchActiveTeamsByKeyword = `-- name: SearchActiveTeamsByKeyword :many
+SELECT t.id,
+       t.name,
+       t.description,
+       t.logo_url,
+       t.captain_id,
+       t.status,
+       t.created_at,
+       t.updated_at,
+       (SELECT count(*) FROM team_members tm WHERE tm.team_id = t.id AND tm.status = 'active')::bigint AS member_count
+FROM teams t
+WHERE t.status = 'active'
+  AND ($1::text = '' OR t.name ILIKE '%' || $1::text || '%')
+ORDER BY t.name, t.id
+LIMIT 50
+`
+
+type SearchActiveTeamsByKeywordRow struct {
+	ID          int64            `json:"id"`
+	Name        string           `json:"name"`
+	Description *string          `json:"description"`
+	LogoUrl     *string          `json:"logo_url"`
+	CaptainID   *int64           `json:"captain_id"`
+	Status      string           `json:"status"`
+	CreatedAt   pgtype.Timestamp `json:"created_at"`
+	UpdatedAt   pgtype.Timestamp `json:"updated_at"`
+	MemberCount int64            `json:"member_count"`
+}
+
+// 用户侧加入球队：仅搜索 active 球队，附成员数用于小程序列表展示。
+func (q *Queries) SearchActiveTeamsByKeyword(ctx context.Context, dollar_1 string) ([]SearchActiveTeamsByKeywordRow, error) {
+	rows, err := q.db.Query(ctx, searchActiveTeamsByKeyword, dollar_1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SearchActiveTeamsByKeywordRow
+	for rows.Next() {
+		var i SearchActiveTeamsByKeywordRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Description,
+			&i.LogoUrl,
+			&i.CaptainID,
+			&i.Status,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.MemberCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const setTeamCaptain = `-- name: SetTeamCaptain :one
