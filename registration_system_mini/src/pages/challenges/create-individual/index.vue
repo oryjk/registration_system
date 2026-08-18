@@ -228,9 +228,12 @@ async function guardReviewMode() {
 }
 
 onShow(async () => {
-  reviewGateReady.value = false;
-  if (await guardReviewMode()) return;
-  reviewGateReady.value = true;
+  // 从地图选点等原生页返回会再次触发 onShow；reviewGateReady 已置位时不再重建页面，
+  // 否则 v-if 整页卸载重挂会把滚动位置重置回顶部。
+  if (!reviewGateReady.value) {
+    if (await guardReviewMode()) return;
+    reviewGateReady.value = true;
+  }
   await ensureSessionReady();
   if (!form.date) {
     form.date = defaultPublishDate();
@@ -349,7 +352,16 @@ onLoad((options) => {
         </view>
         <view class="form-field">
           <text class="form-label">备注</text>
-          <textarea v-model="form.note" class="form-textarea" maxlength="200" placeholder="例如：缺后卫和门将，守时优先" placeholder-class="form-placeholder" />
+          <textarea
+            v-model="form.note"
+            class="form-textarea"
+            maxlength="200"
+            placeholder="例如：缺后卫和门将，守时优先"
+            placeholder-class="form-placeholder"
+            :adjust-position="true"
+            :cursor-spacing="120"
+            :show-confirm-bar="false"
+          />
         </view>
       </NeoSurface>
     </view>

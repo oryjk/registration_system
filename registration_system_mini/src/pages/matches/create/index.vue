@@ -35,9 +35,9 @@ const form = reactive<MatchPublishFormModel>({
   opposing: "",
   description: "",
   playersPerTeam: "" as string | number,
-  color: "#2F6BFF",
-  opposingColor: "#C8FF00",
-  publicationMode: "online_team",
+  color: "#D8DDE6",
+  opposingColor: "#2F6BFF",
+  publicationMode: "offline_confirmed",
   activityMatchKind: "external",
   enableCheckIn: false,
   checkInRadiusMeters: 200,
@@ -126,9 +126,9 @@ function initDefaultForm() {
   form.opposing = "";
   form.description = "";
   form.playersPerTeam = 8;
-  form.color = "#2F6BFF";
-  form.opposingColor = "#C8FF00";
-  form.publicationMode = "online_team";
+  form.color = "#D8DDE6";
+  form.opposingColor = "#2F6BFF";
+  form.publicationMode = "offline_confirmed";
   form.activityMatchKind = "external";
   form.enableCheckIn = false;
   form.checkInRadiusMeters = 200;
@@ -169,8 +169,8 @@ function applyActivityToForm(activity: Awaited<ReturnType<typeof getActivity>>) 
   form.opposing = activity.opposing ?? "";
   form.description = activity.description ?? "";
   form.playersPerTeam = activity.players_per_team ?? "";
-  form.color = activity.color?.trim() || "#2F6BFF";
-  form.opposingColor = activity.opposing_color?.trim() || "#C8FF00";
+  form.color = activity.color?.trim() || "#D8DDE6";
+  form.opposingColor = activity.opposing_color?.trim() || "#2F6BFF";
   form.activityMatchKind = activity.match_kind === "internal" ? "internal" : "external";
   form.publicationMode = "offline_confirmed";
   const checkInConfig = activity.team_checkin_configs.find((item) => item.team_id === currentTeam.value?.id);
@@ -292,9 +292,12 @@ onLoad((options) => {
 });
 
 onShow(async () => {
-  reviewGateReady.value = false;
-  if (await guardReviewMode()) return;
-  reviewGateReady.value = true;
+  // 从地图选点等原生页返回会再次触发 onShow；reviewGateReady 已置位时不再重建页面，
+  // 否则 v-if 整页卸载重挂会把滚动位置重置回顶部。
+  if (!reviewGateReady.value) {
+    if (await guardReviewMode()) return;
+    reviewGateReady.value = true;
+  }
   await ensureSessionReady();
   if (!form.holdingDate) {
     initDefaultForm();

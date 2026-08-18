@@ -373,6 +373,9 @@ function handleMatchEndTimeChange(event: Event) {
           :maxlength="120"
           :placeholder="descriptionPlaceholder"
           placeholder-class="form-placeholder"
+          :adjust-position="true"
+          :cursor-spacing="120"
+          :show-confirm-bar="false"
         />
       </view>
     </NeoSurface>
