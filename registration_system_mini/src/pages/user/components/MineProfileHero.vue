@@ -183,11 +183,32 @@ const emit = defineEmits<{
   color: var(--neo-color-text);
   box-shadow: 4rpx 4rpx 0 var(--neo-color-text);
   box-sizing: border-box;
+  animation: mine-profile-bubble-wiggle 4s ease-in-out infinite;
 }
 
 .mine-profile-hero__bubble--pressed {
-  transform: translate(2rpx, 2rpx);
   box-shadow: none;
+  opacity: 0.85;
+}
+
+@keyframes mine-profile-bubble-wiggle {
+  0%,
+  25%,
+  100% {
+    transform: translateX(0);
+  }
+  5% {
+    transform: translateX(-8rpx);
+  }
+  10% {
+    transform: translateX(8rpx);
+  }
+  15% {
+    transform: translateX(-6rpx);
+  }
+  20% {
+    transform: translateX(6rpx);
+  }
 }
 
 .mine-profile-hero__bubble-tail {
