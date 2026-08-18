@@ -171,10 +171,10 @@ func TestRepositoryAttendanceQueriesCountFinishedMatchesOnly(t *testing.T) {
 	seedMatch := func(name, status string, startOffsetDays int) (string, error) {
 		var matchID string
 		err := pool.QueryRow(ctx, `
-			INSERT INTO matches (name, publication_mode, opponent_state, status, host_team_id, opponent_name,
+			INSERT INTO matches (id, name, publication_mode, opponent_state, status, host_team_id, opponent_name,
 				players_per_team, start_time, end_time, location, created_by_user_id)
-			VALUES ($1, 'offline_confirmed', 'no_recruitment', $2, $3, '对手', 8,
-				NOW() - ($4 || ' days')::interval, NOW() - ($4 || ' days')::interval + interval '2 hours',
+			VALUES (gen_random_uuid(), $1, 'offline_confirmed', 'no_recruitment', $2, $3, '对手', 8,
+				NOW() - make_interval(days => $4::int), NOW() - make_interval(days => $4::int) + interval '2 hours',
 				'出勤球场', $5)
 			RETURNING id`, name, status, teamID, startOffsetDays, captainID).Scan(&matchID)
 		if err != nil {
@@ -255,9 +255,10 @@ func TestRepositoryAttendanceQueriesCountFinishedMatchesOnly(t *testing.T) {
 		t.Fatalf("unexpected member ranking: %+v", item)
 	}
 
-	// 日期过滤：只看已结束赛当天以后的窗口可把过期未收尾赛排除。
-	start := time.Now().AddDate(0, 0, -4)
-	end := time.Now()
+	// 日期过滤：窗口落在 [8 天前, 4 天前] 只覆盖 7 天前的已结束赛，
+	// 排除 3 天前的过期未收尾赛与未来的未开赛。
+	start := time.Now().AddDate(0, 0, -8)
+	end := time.Now().AddDate(0, 0, -4)
 	filtered, err := repository.ListMemberAttendanceRecords(ctx, teamID, captainID, &start, &end)
 	if err != nil {
 		t.Fatalf("filtered records: %v", err)
@@ -294,9 +295,9 @@ func TestRepositoryMatchAttendanceIncludesActiveMembersOnly(t *testing.T) {
 
 	var matchID uuid.UUID
 	if err := pool.QueryRow(ctx, `
-		INSERT INTO matches (name, publication_mode, opponent_state, status, host_team_id, opponent_name,
+		INSERT INTO matches (id, name, publication_mode, opponent_state, status, host_team_id, opponent_name,
 			players_per_team, start_time, end_time, location, created_by_user_id)
-		VALUES ('单场出勤赛', 'offline_confirmed', 'no_recruitment', 'ended', $1, '对手', 8,
+		VALUES (gen_random_uuid(), '单场出勤赛', 'offline_confirmed', 'no_recruitment', 'ended', $1, '对手', 8,
 			NOW() - interval '7 days', NOW() - interval '7 days' + interval '2 hours', '出勤球场', $2)
 		RETURNING id`, teamID, captainID).Scan(&matchID); err != nil {
 		t.Fatalf("seed match: %v", err)
