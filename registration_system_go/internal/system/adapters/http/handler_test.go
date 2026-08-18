@@ -1,18 +1,34 @@
 package systemhttp
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/oryjk/registration_system/registration_system_go/internal/system/domain"
 )
+
+type fakeSettingsService struct {
+	settings domain.MiniAppSettings
+}
+
+func (s *fakeSettingsService) Get(context.Context) (domain.MiniAppSettings, error) {
+	return s.settings, nil
+}
+
+func (s *fakeSettingsService) Update(_ context.Context, settings domain.MiniAppSettings) (domain.MiniAppSettings, error) {
+	s.settings = settings
+	return settings, nil
+}
 
 func TestGetMiniAppRuntimeConfigReturnsDefaults(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
-	NewHandler().RegisterPublicRoutes(router.Group("/api/v1/app"))
+	NewHandler(&fakeSettingsService{}).RegisterPublicRoutes(router.Group("/api/v1/app"))
 
 	recorder := httptest.NewRecorder()
 	router.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/api/v1/app/system/mini-app-runtime-config", nil))
@@ -39,5 +55,25 @@ func TestGetMiniAppRuntimeConfigReturnsDefaults(t *testing.T) {
 	}
 	if config.Billing.RecentOrderLimit != 10 || config.Notifications.ListLimit != 50 || config.Profile.RequirePhoneBinding {
 		t.Fatalf("billing/notifications/profile mismatch: %+v", config)
+	}
+	if config.Debug.ClearProfileEnabled {
+		t.Fatalf("debug section should default to off: %+v", config.Debug)
+	}
+}
+
+func TestGetMiniAppRuntimeConfigOverlaysDebugSettings(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	NewHandler(&fakeSettingsService{settings: domain.MiniAppSettings{
+		Debug: domain.DebugSettings{ClearProfileEnabled: true},
+	}}).RegisterPublicRoutes(router.Group("/api/v1/app"))
+
+	recorder := httptest.NewRecorder()
+	router.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/api/v1/app/system/mini-app-runtime-config", nil))
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", recorder.Code, recorder.Body.String())
+	}
+	if !strings.Contains(recorder.Body.String(), `"clear_profile_enabled":true`) {
+		t.Fatalf("expected debug flag in body: %s", recorder.Body.String())
 	}
 }

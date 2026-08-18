@@ -29,6 +29,8 @@ import (
 	paymentports "github.com/oryjk/registration_system/registration_system_go/internal/payment/ports"
 	"github.com/oryjk/registration_system/registration_system_go/internal/shared/adapters/clock"
 	systemhttp "github.com/oryjk/registration_system/registration_system_go/internal/system/adapters/http"
+	systempostgres "github.com/oryjk/registration_system/registration_system_go/internal/system/adapters/postgres"
+	systemapplication "github.com/oryjk/registration_system/registration_system_go/internal/system/application"
 	teamhttp "github.com/oryjk/registration_system/registration_system_go/internal/team/adapters/http"
 	teampassword "github.com/oryjk/registration_system/registration_system_go/internal/team/adapters/password"
 	teampostgres "github.com/oryjk/registration_system/registration_system_go/internal/team/adapters/postgres"
@@ -132,6 +134,8 @@ func BuildDependencies(ctx context.Context, config Config) (Dependencies, func()
 	miniReviewRepository := minireviewpostgres.NewRepository(pool)
 	miniReviewService := minireviewapplication.NewService(miniReviewRepository, miniReviewRepository, miniReviewRepository, clock.System{})
 	miniReviewHandler := minireviewhttp.NewHandler(miniReviewService, config.MiniReviewAPIKey)
+	systemSettingsRepository := systempostgres.NewSettingsRepository(pool)
+	systemSettingsService := systemapplication.NewSettingsService(systemSettingsRepository)
 
 	return Dependencies{
 		AuthMiddleware: &authMiddleware,
@@ -142,7 +146,7 @@ func BuildDependencies(ctx context.Context, config Config) (Dependencies, func()
 		UserMatches: userMatchHandler, UserRegistrations: userRegistrationHandler,
 		AdminMatches: adminMatchHandler, TeamApplications: teamApplicationHandler,
 		Payments: paymentHandler, Wallets: walletHandler, MiniReviews: miniReviewHandler,
-		SystemRuntime: systemhttp.NewHandler(),
+		SystemRuntime: systemhttp.NewHandler(systemSettingsService),
 		UploadDir:     config.UploadDir,
 	}, closePool, nil
 }

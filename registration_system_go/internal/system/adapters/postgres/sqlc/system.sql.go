@@ -29,6 +29,24 @@ func (q *Queries) GetMatchRegistrationDefault(ctx context.Context, playersPerTea
 	return i, err
 }
 
+const getMiniAppSetting = `-- name: GetMiniAppSetting :one
+SELECT key, value, created_at, updated_at
+FROM mini_app_settings
+WHERE key = $1
+`
+
+func (q *Queries) GetMiniAppSetting(ctx context.Context, key string) (MiniAppSetting, error) {
+	row := q.db.QueryRow(ctx, getMiniAppSetting, key)
+	var i MiniAppSetting
+	err := row.Scan(
+		&i.Key,
+		&i.Value,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const listMatchRegistrationDefaults = `-- name: ListMatchRegistrationDefaults :many
 SELECT players_per_team, min_players, max_players, updated_by_admin_id, created_at, updated_at
 FROM match_registration_defaults
@@ -98,6 +116,32 @@ func (q *Queries) UpsertMatchRegistrationDefault(ctx context.Context, arg Upsert
 		&i.MinPlayers,
 		&i.MaxPlayers,
 		&i.UpdatedByAdminID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const upsertMiniAppSetting = `-- name: UpsertMiniAppSetting :one
+INSERT INTO mini_app_settings (key, value)
+VALUES ($1, $2)
+ON CONFLICT (key) DO UPDATE
+SET value = EXCLUDED.value,
+    updated_at = NOW()
+RETURNING key, value, created_at, updated_at
+`
+
+type UpsertMiniAppSettingParams struct {
+	Key   string `json:"key"`
+	Value []byte `json:"value"`
+}
+
+func (q *Queries) UpsertMiniAppSetting(ctx context.Context, arg UpsertMiniAppSettingParams) (MiniAppSetting, error) {
+	row := q.db.QueryRow(ctx, upsertMiniAppSetting, arg.Key, arg.Value)
+	var i MiniAppSetting
+	err := row.Scan(
+		&i.Key,
+		&i.Value,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)

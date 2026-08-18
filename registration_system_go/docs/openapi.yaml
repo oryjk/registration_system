@@ -1325,6 +1325,40 @@ paths:
                 $ref: "#/components/schemas/WalletAccountEnvelope"
         <<: *standardErrors
 
+  /api/v1/admin/system/mini-app-settings:
+    get:
+      operationId: getAdminMiniAppSettings
+      tags: [Admin System]
+      summary: 查询小程序可运营配置
+      security: *bearerSecurity
+      responses:
+        "200":
+          description: 小程序配置（debug 分区）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MiniAppSettingsEnvelope"
+        <<: *standardErrors
+    put:
+      operationId: updateAdminMiniAppSettings
+      tags: [Admin System]
+      summary: 覆写小程序可运营配置
+      security: *bearerSecurity
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MiniAppSettingsUpdate"
+      responses:
+        "200":
+          description: 保存后的小程序配置
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MiniAppSettingsEnvelope"
+        <<: *standardErrors
+
 components:
   securitySchemes:
     bearerAuth:
@@ -2763,6 +2797,37 @@ components:
           properties:
             data:
               $ref: "#/components/schemas/WalletTransactionList"
+    MiniAppSettingsEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: "#/components/schemas/MiniAppSettings"
+    MiniAppSettings:
+      type: object
+      required: [debug]
+      properties:
+        debug:
+          $ref: "#/components/schemas/MiniAppDebugSettings"
+    MiniAppDebugSettings:
+      type: object
+      required: [clear_profile_enabled]
+      properties:
+        clear_profile_enabled:
+          type: boolean
+          description: 是否在小程序端显示“清除头像和昵称”验证入口，默认关闭
+    MiniAppSettingsUpdate:
+      type: object
+      required: [debug]
+      properties:
+        debug:
+          type: object
+          required: [clear_profile_enabled]
+          properties:
+            clear_profile_enabled:
+              type: boolean
     TestLoginUsersEnvelope:
       allOf:
         - $ref: "#/components/schemas/SuccessBase"

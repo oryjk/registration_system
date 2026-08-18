@@ -139,6 +139,9 @@ func NewRouter(dependencies Dependencies) *gin.Engine {
 		if dependencies.MiniReviews != nil {
 			dependencies.MiniReviews.RegisterAdminRoutes(adminRoutes)
 		}
+		if dependencies.SystemRuntime != nil {
+			dependencies.SystemRuntime.RegisterAdminRoutes(adminRoutes)
+		}
 	}
 	return router
 }

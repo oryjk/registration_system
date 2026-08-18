@@ -1,15 +1,24 @@
 package systemhttp
 
 import (
+	"context"
+
 	"github.com/gin-gonic/gin"
 	sharedhttpapi "github.com/oryjk/registration_system/registration_system_go/internal/shared/adapters/httpapi"
+	sharederror "github.com/oryjk/registration_system/registration_system_go/internal/shared/domain"
+	"github.com/oryjk/registration_system/registration_system_go/internal/system/domain"
 )
 
+// MiniAppSettingsService 是 handler 依赖的配置用例（由 application.SettingsService 实现）。
+type MiniAppSettingsService interface {
+	Get(ctx context.Context) (domain.MiniAppSettings, error)
+	Update(ctx context.Context, settings domain.MiniAppSettings) (domain.MiniAppSettings, error)
+}
+
 // 小程序运行配置（/system/mini-app-runtime-config）。
-// 当前返回与小程序端内置默认值（registration_system_mini
-// src/config/runtimeConfigDefaults.ts）一致的静态配置；小程序端
-// loadMiniAppRuntimeConfig 会按各自的兜底规则清洗字段，这里不做持久化，
-// 未来需要运营可调时再引入存储与 admin 写接口。
+// 静态默认值与小程序端内置默认值（registration_system_mini
+// src/config/runtimeConfigDefaults.ts）一致；可运营调整的部分
+// （当前仅 debug 分区）从 mini_app_settings 表读取叠加。
 type MiniAppRuntimeConfigResponse struct {
 	Home struct {
 		MatchCardLimit              int          `json:"match_card_limit"`
@@ -37,6 +46,9 @@ type MiniAppRuntimeConfigResponse struct {
 	Profile struct {
 		RequirePhoneBinding bool `json:"require_phone_binding"`
 	} `json:"profile"`
+	Debug struct {
+		ClearProfileEnabled bool `json:"clear_profile_enabled"`
+	} `json:"debug"`
 }
 
 type HeroBanner struct {
@@ -48,12 +60,25 @@ type HeroBanner struct {
 	SortOrder  int    `json:"sort_order"`
 }
 
-type Handler struct{}
+type UpdateMiniAppSettingsRequest struct {
+	Debug *struct {
+		ClearProfileEnabled *bool `json:"clear_profile_enabled"`
+	} `json:"debug"`
+}
 
-func NewHandler() *Handler { return &Handler{} }
+type Handler struct {
+	settings MiniAppSettingsService
+}
+
+func NewHandler(settings MiniAppSettingsService) *Handler { return &Handler{settings: settings} }
 
 func (h *Handler) RegisterPublicRoutes(group *gin.RouterGroup) {
 	group.GET("/system/mini-app-runtime-config", h.GetMiniAppRuntimeConfig)
+}
+
+func (h *Handler) RegisterAdminRoutes(group *gin.RouterGroup) {
+	group.GET("/system/mini-app-settings", h.GetMiniAppSettings)
+	group.PUT("/system/mini-app-settings", h.UpdateMiniAppSettings)
 }
 
 func (h *Handler) GetMiniAppRuntimeConfig(c *gin.Context) {
@@ -75,5 +100,37 @@ func (h *Handler) GetMiniAppRuntimeConfig(c *gin.Context) {
 	config.Billing.RecentOrderLimit = 10
 	config.Notifications.ListLimit = 50
 	config.Profile.RequirePhoneBinding = false
+
+	settings, err := h.settings.Get(c.Request.Context())
+	if err != nil {
+		sharedhttpapi.WriteError(c, err)
+		return
+	}
+	config.Debug.ClearProfileEnabled = settings.Debug.ClearProfileEnabled
 	sharedhttpapi.WriteSuccess(c, config)
+}
+
+func (h *Handler) GetMiniAppSettings(c *gin.Context) {
+	settings, err := h.settings.Get(c.Request.Context())
+	if err != nil {
+		sharedhttpapi.WriteError(c, err)
+		return
+	}
+	sharedhttpapi.WriteSuccess(c, settings)
+}
+
+func (h *Handler) UpdateMiniAppSettings(c *gin.Context) {
+	var request UpdateMiniAppSettingsRequest
+	if err := c.ShouldBindJSON(&request); err != nil || request.Debug == nil || request.Debug.ClearProfileEnabled == nil {
+		sharedhttpapi.WriteError(c, sharederror.New(sharederror.KindValidation, "请求体无效，需要 debug.clear_profile_enabled 布尔值"))
+		return
+	}
+	saved, err := h.settings.Update(c.Request.Context(), domain.MiniAppSettings{
+		Debug: domain.DebugSettings{ClearProfileEnabled: *request.Debug.ClearProfileEnabled},
+	})
+	if err != nil {
+		sharedhttpapi.WriteError(c, err)
+		return
+	}
+	sharedhttpapi.WriteSuccess(c, saved)
 }

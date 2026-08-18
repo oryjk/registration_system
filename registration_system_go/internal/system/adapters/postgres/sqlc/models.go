@@ -103,6 +103,13 @@ type MatchTeamApplication struct {
 	UpdatedAt       pgtype.Timestamp `json:"updated_at"`
 }
 
+type MiniAppSetting struct {
+	Key       string             `json:"key"`
+	Value     []byte             `json:"value"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+}
+
 type MiniReviewStatus struct {
 	ID          int64              `json:"id"`
 	ProjectCode string             `json:"project_code"`
