@@ -2,6 +2,7 @@ import {
   DeleteOutlined,
   EditOutlined,
   EyeOutlined,
+  KeyOutlined,
   PlusOutlined,
   TeamOutlined,
 } from "@ant-design/icons";
@@ -30,6 +31,7 @@ import { TeamMemberManager } from "../components/TeamMemberManager";
 import {
   useCreateTeamMutation,
   useDeleteTeamMutation,
+  useResetTeamJoinPasswordMutation,
   useTeamQuery,
   useTeamsQuery,
   useUpdateTeamMutation,
@@ -43,6 +45,10 @@ interface TeamFormValues {
   name: string;
   description?: string;
   status: TeamStatus;
+}
+
+interface JoinPasswordFormValues {
+  joinPassword: string;
 }
 
 const statusLabels: Record<TeamStatus, string> = {
@@ -75,11 +81,15 @@ export default function TeamListPage() {
   const createTeam = useCreateTeamMutation();
   const updateTeam = useUpdateTeamMutation();
   const deleteTeam = useDeleteTeamMutation();
+  const resetJoinPassword = useResetTeamJoinPasswordMutation();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<TeamStatus>();
   const [editing, setEditing] = useState<Team | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [formError, setFormError] = useState("");
+  const [passwordForm] = Form.useForm<JoinPasswordFormValues>();
+  const [passwordTeam, setPasswordTeam] = useState<Team | null>(null);
+  const [passwordError, setPasswordError] = useState("");
   const [detailID, setDetailID] = useState<number | null>(null);
   const [memberTeam, setMemberTeam] = useState<Team | null>(null);
   const [actionError, setActionError] = useState("");
@@ -156,6 +166,27 @@ export default function TeamListPage() {
     }
   };
 
+  const openPasswordReset = (team: Team) => {
+    setPasswordTeam(team);
+    setPasswordError("");
+    passwordForm.setFieldsValue({ joinPassword: "" });
+  };
+
+  const saveJoinPassword = async (values: JoinPasswordFormValues) => {
+    if (!passwordTeam) return true;
+    setPasswordError("");
+    try {
+      await resetJoinPassword.mutateAsync({
+        teamID: passwordTeam.id,
+        password: values.joinPassword?.trim() ?? "",
+      });
+      return true;
+    } catch (reason) {
+      setPasswordError(errorMessage(reason, "入队密码保存失败"));
+      return false;
+    }
+  };
+
   const columns: ProColumns<Team>[] = [
     {
       title: "球队",
@@ -226,7 +257,7 @@ export default function TeamListPage() {
       title: "操作",
       key: "actions",
       valueType: "option",
-      width: compact ? 144 : 176,
+      width: compact ? 176 : 208,
       fixed: "right",
       render: (_, team) => (
         <Space size={2}>
@@ -258,6 +289,15 @@ export default function TeamListPage() {
               icon={<EditOutlined />}
               aria-label={`编辑${team.name}`}
               onClick={() => openEdit(team)}
+            />
+          </Tooltip>
+          <Tooltip title={compact ? undefined : "重置入队密码"}>
+            <Button
+              type="text"
+              shape="circle"
+              icon={<KeyOutlined />}
+              aria-label={`重置${team.name}入队密码`}
+              onClick={() => openPasswordReset(team)}
             />
           </Tooltip>
           <Popconfirm
@@ -410,6 +450,41 @@ export default function TeamListPage() {
             />
           </Form.Item>
         ) : null}
+      </ModalForm>
+
+      <ModalForm<JoinPasswordFormValues>
+        form={passwordForm}
+        open={Boolean(passwordTeam)}
+        title={`重置「${passwordTeam?.name ?? ""}」入队密码`}
+        requiredMark={false}
+        onOpenChange={(open) => {
+          if (!open) setPasswordTeam(null);
+          setPasswordError("");
+        }}
+        submitter={{
+          searchConfig: {
+            submitText: "保存",
+            resetText: "取消",
+          },
+        }}
+        modalProps={{ destroyOnHidden: true }}
+        onFinish={saveJoinPassword}
+      >
+        {passwordError ? (
+          <Alert
+            className="modal-alert"
+            type="error"
+            showIcon
+            message={passwordError}
+          />
+        ) : null}
+        <Form.Item
+          name="joinPassword"
+          label="新密码"
+          extra="留空提交即清除密码，球队将开放加入；密码以加密形式存储，无法查看原值。"
+        >
+          <Input.Password maxLength={64} autoComplete="new-password" />
+        </Form.Item>
       </ModalForm>
 
       <Drawer

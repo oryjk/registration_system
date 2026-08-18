@@ -42,6 +42,14 @@ export function deleteTeam(id: number) {
   return request<{ id: number }>(`/teams/${id}`, { method: "DELETE" });
 }
 
+// password 非空=设置/替换入队密码；空串=清除（开放加入）。
+export function resetTeamJoinPassword(teamID: number, password: string) {
+  return request<void>(`/teams/${teamID}/join-password`, {
+    method: "PUT",
+    body: JSON.stringify({ join_password: password }),
+  });
+}
+
 export function listTeamMembers(teamID: number) {
   return request<TeamMemberManagement>(`/teams/${teamID}/members`);
 }

@@ -13,6 +13,7 @@ import {
   listTeamMembers,
   listTeams,
   removeTeamMember,
+  resetTeamJoinPassword,
   setTeamCaptain,
   updatePlayerProfile,
   updateTeam,
@@ -141,6 +142,14 @@ export function useDeleteTeamMutation() {
       });
       return invalidateTeamLists(queryClient);
     },
+  });
+}
+
+// 入队密码不进列表缓存，成功后无需 invalidate。
+export function useResetTeamJoinPasswordMutation() {
+  return useMutation({
+    mutationFn: ({ teamID, password }: { teamID: number; password: string }) =>
+      resetTeamJoinPassword(teamID, password),
   });
 }
 
