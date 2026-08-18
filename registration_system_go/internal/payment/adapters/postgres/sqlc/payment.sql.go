@@ -11,26 +11,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const applyTeamMembershipToTeam = `-- name: ApplyTeamMembershipToTeam :one
-UPDATE teams
-SET balance_cents = balance_cents + $1::bigint,
-    updated_at = NOW()
-WHERE id = $2::bigint
-RETURNING balance_cents
-`
-
-type ApplyTeamMembershipToTeamParams struct {
-	AmountCents int64 `json:"amount_cents"`
-	TeamID      int64 `json:"team_id"`
-}
-
-func (q *Queries) ApplyTeamMembershipToTeam(ctx context.Context, arg ApplyTeamMembershipToTeamParams) (int64, error) {
-	row := q.db.QueryRow(ctx, applyTeamMembershipToTeam, arg.AmountCents, arg.TeamID)
-	var balance_cents int64
-	err := row.Scan(&balance_cents)
-	return balance_cents, err
-}
-
 const cancelPaymentOrder = `-- name: CancelPaymentOrder :one
 UPDATE payment_orders
 SET status = 'cancelled', cancelled_at = $2, updated_at = $2
@@ -168,6 +148,28 @@ func (q *Queries) CreditRechargeWallet(ctx context.Context, arg CreditRechargeWa
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const creditTeamMemberFundBalance = `-- name: CreditTeamMemberFundBalance :one
+UPDATE team_members
+SET balance_cents = balance_cents + $1::bigint,
+    updated_at = NOW()
+WHERE team_id = $2::bigint
+  AND user_id = $3::bigint
+RETURNING balance_cents
+`
+
+type CreditTeamMemberFundBalanceParams struct {
+	AmountCents int64 `json:"amount_cents"`
+	TeamID      int64 `json:"team_id"`
+	UserID      int64 `json:"user_id"`
+}
+
+func (q *Queries) CreditTeamMemberFundBalance(ctx context.Context, arg CreditTeamMemberFundBalanceParams) (int64, error) {
+	row := q.db.QueryRow(ctx, creditTeamMemberFundBalance, arg.AmountCents, arg.TeamID, arg.UserID)
+	var balance_cents int64
+	err := row.Scan(&balance_cents)
+	return balance_cents, err
 }
 
 const ensureRechargeWalletAccount = `-- name: EnsureRechargeWalletAccount :one

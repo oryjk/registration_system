@@ -39,9 +39,20 @@ type AddTeamMemberParams struct {
 	Role   string `json:"role"`
 }
 
-func (q *Queries) AddTeamMember(ctx context.Context, arg AddTeamMemberParams) (TeamMember, error) {
+type AddTeamMemberRow struct {
+	ID        int64            `json:"id"`
+	TeamID    int64            `json:"team_id"`
+	UserID    int64            `json:"user_id"`
+	Role      string           `json:"role"`
+	Status    string           `json:"status"`
+	JoinedAt  pgtype.Timestamp `json:"joined_at"`
+	CreatedAt pgtype.Timestamp `json:"created_at"`
+	UpdatedAt pgtype.Timestamp `json:"updated_at"`
+}
+
+func (q *Queries) AddTeamMember(ctx context.Context, arg AddTeamMemberParams) (AddTeamMemberRow, error) {
 	row := q.db.QueryRow(ctx, addTeamMember, arg.TeamID, arg.UserID, arg.Role)
-	var i TeamMember
+	var i AddTeamMemberRow
 	err := row.Scan(
 		&i.ID,
 		&i.TeamID,
@@ -196,9 +207,20 @@ type GetActiveTeamMemberParams struct {
 	UserID int64 `json:"user_id"`
 }
 
-func (q *Queries) GetActiveTeamMember(ctx context.Context, arg GetActiveTeamMemberParams) (TeamMember, error) {
+type GetActiveTeamMemberRow struct {
+	ID        int64            `json:"id"`
+	TeamID    int64            `json:"team_id"`
+	UserID    int64            `json:"user_id"`
+	Role      string           `json:"role"`
+	Status    string           `json:"status"`
+	JoinedAt  pgtype.Timestamp `json:"joined_at"`
+	CreatedAt pgtype.Timestamp `json:"created_at"`
+	UpdatedAt pgtype.Timestamp `json:"updated_at"`
+}
+
+func (q *Queries) GetActiveTeamMember(ctx context.Context, arg GetActiveTeamMemberParams) (GetActiveTeamMemberRow, error) {
 	row := q.db.QueryRow(ctx, getActiveTeamMember, arg.TeamID, arg.UserID)
-	var i TeamMember
+	var i GetActiveTeamMemberRow
 	err := row.Scan(
 		&i.ID,
 		&i.TeamID,
@@ -246,21 +268,27 @@ func (q *Queries) GetTeamByID(ctx context.Context, id int64) (GetTeamByIDRow, er
 }
 
 const getTeamMembershipState = `-- name: GetTeamMembershipState :one
-SELECT credit_score, vip_until, balance_cents
-FROM teams
-WHERE id = $1
+SELECT t.credit_score, t.vip_until, COALESCE(tm.balance_cents, 0) AS my_balance_cents
+FROM teams t
+LEFT JOIN team_members tm ON tm.team_id = t.id AND tm.user_id = $2
+WHERE t.id = $1
 `
 
-type GetTeamMembershipStateRow struct {
-	CreditScore  int32              `json:"credit_score"`
-	VipUntil     pgtype.Timestamptz `json:"vip_until"`
-	BalanceCents int64              `json:"balance_cents"`
+type GetTeamMembershipStateParams struct {
+	ID     int64 `json:"id"`
+	UserID int64 `json:"user_id"`
 }
 
-func (q *Queries) GetTeamMembershipState(ctx context.Context, id int64) (GetTeamMembershipStateRow, error) {
-	row := q.db.QueryRow(ctx, getTeamMembershipState, id)
+type GetTeamMembershipStateRow struct {
+	CreditScore    int32              `json:"credit_score"`
+	VipUntil       pgtype.Timestamptz `json:"vip_until"`
+	MyBalanceCents int64              `json:"my_balance_cents"`
+}
+
+func (q *Queries) GetTeamMembershipState(ctx context.Context, arg GetTeamMembershipStateParams) (GetTeamMembershipStateRow, error) {
+	row := q.db.QueryRow(ctx, getTeamMembershipState, arg.ID, arg.UserID)
 	var i GetTeamMembershipStateRow
-	err := row.Scan(&i.CreditScore, &i.VipUntil, &i.BalanceCents)
+	err := row.Scan(&i.CreditScore, &i.VipUntil, &i.MyBalanceCents)
 	return i, err
 }
 

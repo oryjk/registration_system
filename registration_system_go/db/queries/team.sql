@@ -311,6 +311,7 @@ ORDER BY
     tm.user_id;
 
 -- name: GetTeamMembershipState :one
-SELECT credit_score, vip_until, balance_cents
-FROM teams
-WHERE id = $1;
+SELECT t.credit_score, t.vip_until, COALESCE(tm.balance_cents, 0) AS my_balance_cents
+FROM teams t
+LEFT JOIN team_members tm ON tm.team_id = t.id AND tm.user_id = $2
+WHERE t.id = $1;

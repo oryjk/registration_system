@@ -241,13 +241,17 @@ func mustPaymentOrder(t *testing.T, orderNo string, userID, amount int64) paymen
 	return order
 }
 
-func TestApplyMembershipPaymentCreditsTeamBalanceWithoutTouchingCreditOrVipAndIsIdempotent(t *testing.T) {
+func TestApplyMembershipPaymentCreditsPayingMemberBalanceWithoutTouchingCreditOrVipAndIsIdempotent(t *testing.T) {
 	pool := testsupport.OpenTestPostgres(t)
 	ctx := context.Background()
 	userID := seedPaymentUser(t, pool, "member")
+	otherID := seedPaymentUser(t, pool, "other")
 	vipUntil := time.Now().UTC().Add(72 * time.Hour).Truncate(time.Microsecond)
 	var teamID int64
 	if err := pool.QueryRow(ctx, `INSERT INTO teams (name, credit_score, vip_until) VALUES ('队费球队', 50, $1) RETURNING id`, vipUntil).Scan(&teamID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `INSERT INTO team_members (team_id, user_id, role, status) VALUES ($1, $2, 'leader', 'active'), ($1, $3, 'member', 'active')`, teamID, userID, otherID); err != nil {
 		t.Fatal(err)
 	}
 	order, err := paymentdomain.NewTeamMembershipOrder(uniquePaymentOrderNo("teamfee"), userID, teamID, 7500, time.Now().UTC())
@@ -259,7 +263,7 @@ func TestApplyMembershipPaymentCreditsTeamBalanceWithoutTouchingCreditOrVipAndIs
 		t.Fatal(err)
 	}
 	payment := paymentports.VerifiedPayment{OrderNo: order.OrderNo, AmountCents: order.AmountCents, TransactionID: "wx-" + order.OrderNo, PaidAt: time.Now().UTC()}
-	credit := paymentports.TeamFundCredit{TeamID: teamID, AmountCents: order.AmountCents}
+	credit := paymentports.TeamFundCredit{TeamID: teamID, UserID: userID, AmountCents: order.AmountCents}
 
 	first, err := repository.ApplyMembershipPayment(ctx, payment, credit)
 	if err != nil {
@@ -271,16 +275,22 @@ func TestApplyMembershipPaymentCreditsTeamBalanceWithoutTouchingCreditOrVipAndIs
 	}
 
 	var actualVipUntil time.Time
-	var creditScore, balance int64
-	if err := pool.QueryRow(ctx, `SELECT vip_until, credit_score, balance_cents FROM teams WHERE id=$1`, teamID).Scan(&actualVipUntil, &creditScore, &balance); err != nil {
+	var creditScore, myBalance, otherBalance int64
+	if err := pool.QueryRow(ctx, `SELECT vip_until, credit_score FROM teams WHERE id=$1`, teamID).Scan(&actualVipUntil, &creditScore); err != nil {
 		t.Fatal(err)
 	}
-	// 队费只入球队余额；不动信用分、不动 vip_until；幂等重放不叠加。
+	if err := pool.QueryRow(ctx, `SELECT balance_cents FROM team_members WHERE team_id=$1 AND user_id=$2`, teamID, userID).Scan(&myBalance); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(ctx, `SELECT balance_cents FROM team_members WHERE team_id=$1 AND user_id=$2`, teamID, otherID).Scan(&otherBalance); err != nil {
+		t.Fatal(err)
+	}
+	// 队费只入付款人在该球队的个人账户；不动球队信用分、不动 vip_until；幂等重放不叠加。
 	if creditScore != 50 {
 		t.Fatalf("credit_score changed: %d", creditScore)
 	}
-	if balance != 7500 || first.BalanceCents != 7500 {
-		t.Fatalf("balance=%d result.BalanceCents=%d", balance, first.BalanceCents)
+	if myBalance != 7500 || otherBalance != 0 || first.BalanceCents != 7500 {
+		t.Fatalf("myBalance=%d otherBalance=%d result.BalanceCents=%d", myBalance, otherBalance, first.BalanceCents)
 	}
 	if !actualVipUntil.Equal(vipUntil) {
 		t.Fatalf("vip_until changed: before=%v after=%v", vipUntil, actualVipUntil)
@@ -301,6 +311,9 @@ func TestApplyMembershipPaymentRejectsAmountMismatch(t *testing.T) {
 	if err := pool.QueryRow(ctx, `INSERT INTO teams (name) VALUES ('金额不符球队') RETURNING id`).Scan(&teamID); err != nil {
 		t.Fatal(err)
 	}
+	if _, err := pool.Exec(ctx, `INSERT INTO team_members (team_id, user_id, role, status) VALUES ($1, $2, 'leader', 'active')`, teamID, userID); err != nil {
+		t.Fatal(err)
+	}
 	order, err := paymentdomain.NewTeamMembershipOrder(uniquePaymentOrderNo("mism"), userID, teamID, 3000, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
@@ -310,7 +323,7 @@ func TestApplyMembershipPaymentRejectsAmountMismatch(t *testing.T) {
 		t.Fatal(err)
 	}
 	payment := paymentports.VerifiedPayment{OrderNo: order.OrderNo, AmountCents: 1, TransactionID: "wx-bad", PaidAt: time.Now().UTC()}
-	if _, err := repository.ApplyMembershipPayment(ctx, payment, paymentports.TeamFundCredit{TeamID: teamID}); err == nil {
+	if _, err := repository.ApplyMembershipPayment(ctx, payment, paymentports.TeamFundCredit{TeamID: teamID, UserID: userID}); err == nil {
 		t.Fatal("expected amount mismatch conflict")
 	}
 	loaded, err := repository.Get(ctx, order.OrderNo)

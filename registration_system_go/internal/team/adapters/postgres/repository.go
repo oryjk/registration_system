@@ -378,15 +378,16 @@ func boolRegistered(value any) bool {
 	return false
 }
 
-func (r *Repository) GetTeamMembershipState(ctx context.Context, teamID int64) (ports.AppMembershipState, error) {
-	row, err := r.queries.GetTeamMembershipState(ctx, teamID)
+// GetTeamMembershipState 查询球队会员状态与 userID 在该球队的个人账户余额。
+func (r *Repository) GetTeamMembershipState(ctx context.Context, teamID, userID int64) (ports.AppMembershipState, error) {
+	row, err := r.queries.GetTeamMembershipState(ctx, teamsqlc.GetTeamMembershipStateParams{ID: teamID, UserID: userID})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return ports.AppMembershipState{}, sharederror.New(sharederror.KindNotFound, "球队不存在")
 	}
 	if err != nil {
 		return ports.AppMembershipState{}, err
 	}
-	state := ports.AppMembershipState{CreditScore: int(row.CreditScore), BalanceCents: row.BalanceCents}
+	state := ports.AppMembershipState{CreditScore: int(row.CreditScore), BalanceCents: row.MyBalanceCents}
 	if row.VipUntil.Valid {
 		vipUntil := row.VipUntil.Time
 		state.VipUntil = &vipUntil

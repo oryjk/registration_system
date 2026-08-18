@@ -4,11 +4,12 @@ INSERT INTO payment_orders (
 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $10)
 RETURNING *;
 
--- name: ApplyTeamMembershipToTeam :one
-UPDATE teams
+-- name: CreditTeamMemberFundBalance :one
+UPDATE team_members
 SET balance_cents = balance_cents + sqlc.arg('amount_cents')::bigint,
     updated_at = NOW()
-WHERE id = sqlc.arg('team_id')::bigint
+WHERE team_id = sqlc.arg('team_id')::bigint
+  AND user_id = sqlc.arg('user_id')::bigint
 RETURNING balance_cents;
 
 -- name: GetPaymentOrder :one

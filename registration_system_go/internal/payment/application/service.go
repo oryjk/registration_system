@@ -247,7 +247,7 @@ func (s *Service) settle(ctx context.Context, payment paymentports.ProviderPayme
 	return s.settleVerified(ctx, verified)
 }
 
-// settleVerified 按订单类型路由结算：队费订单入球队余额，充值订单入个人钱包。
+// settleVerified 按订单类型路由结算：队费订单入付款人在该球队的个人账户，充值订单入个人钱包。
 func (s *Service) settleVerified(ctx context.Context, verified paymentports.VerifiedPayment) (paymentports.SettlementResult, error) {
 	order, err := s.orders.Get(ctx, verified.OrderNo)
 	if err != nil {
@@ -260,6 +260,7 @@ func (s *Service) settleVerified(ctx context.Context, verified paymentports.Veri
 		}
 		return s.memberships.ApplyMembershipPayment(ctx, verified, paymentports.TeamFundCredit{
 			TeamID:      *order.TeamID,
+			UserID:      order.UserID,
 			AmountCents: order.AmountCents,
 		})
 	default:

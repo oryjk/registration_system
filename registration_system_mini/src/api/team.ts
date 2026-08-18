@@ -273,7 +273,7 @@ export interface AppTeamDetailData {
   credit_score: number;
   vip_until?: string | null;
   is_vip: boolean;
-  balance_cents?: number;
+  my_balance_cents?: number;
 }
 
 export function getAppTeamDetail(teamId: number) {

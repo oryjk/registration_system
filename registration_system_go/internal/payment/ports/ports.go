@@ -95,9 +95,11 @@ type Settlement interface {
 	CreditRecharge(context.Context, VerifiedPayment) (SettlementResult, error)
 }
 
-// TeamFundCredit 是一笔队费订单的入账信息：归属球队与入账金额。
+// TeamFundCredit 是一笔队费订单的入账信息：归属球队、入账人（付款的队长/领队）与金额。
+// 钱计入付款人在该球队的个人账户余额，不是球队公共余额。
 type TeamFundCredit struct {
 	TeamID      int64
+	UserID      int64
 	AmountCents int64
 }
 

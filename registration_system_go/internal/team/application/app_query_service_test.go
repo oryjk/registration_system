@@ -83,6 +83,6 @@ func (f *fakeAppQueryRepository) ListAppMembers(context.Context, int64) ([]ports
 	return f.members, f.err
 }
 
-func (f *fakeAppQueryRepository) GetTeamMembershipState(context.Context, int64) (ports.AppMembershipState, error) {
+func (f *fakeAppQueryRepository) GetTeamMembershipState(context.Context, int64, int64) (ports.AppMembershipState, error) {
 	return ports.AppMembershipState{CreditScore: 90}, nil
 }

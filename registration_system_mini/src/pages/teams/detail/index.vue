@@ -49,12 +49,13 @@ const {
         </view>
 
         <view class="recharge-card">
-          <view class="recharge-head">
-            <view class="recharge-head-row">
-              <text class="recharge-title">队费充值</text>
-              <text class="recharge-balance">当前剩余余额 {{ balanceLabel }}</text>
+          <view class="balance-hero">
+            <text class="balance-hero-label">我的队内余额</text>
+            <view class="balance-hero-amount">
+              <text class="balance-hero-symbol">¥</text>
+              <text class="balance-hero-value">{{ balanceLabel }}</text>
             </view>
-            <text class="recharge-copy">充多少是多少，直接计入本队余额</text>
+            <text class="balance-hero-copy">队费充值计入你在本队的个人账户</text>
           </view>
           <view class="recharge-amount">
             <input
@@ -94,18 +95,6 @@ const {
 </template>
 
 <style scoped>
-.recharge-head-row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12rpx;
-}
-
-.recharge-balance {
-  color: var(--neo-color-accent);
-  font-size: 24rpx;
-  font-weight: 800;
-}
 .team-detail-page {
   min-height: 100vh;
   padding: 0 28rpx 96rpx;
@@ -192,21 +181,47 @@ const {
   padding: 28rpx;
 }
 
-.recharge-head {
+.balance-hero {
   display: flex;
   flex-direction: column;
-  gap: 8rpx;
+  align-items: flex-start;
+  gap: 6rpx;
+  padding: 24rpx;
+  margin-bottom: 22rpx;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-hero);
 }
 
-.recharge-title {
-  color: var(--neo-color-text);
-  font-size: 32rpx;
+.balance-hero-label {
+  color: var(--neo-color-text-muted);
+  font-size: 24rpx;
+  font-weight: 800;
+  letter-spacing: 2rpx;
+}
+
+.balance-hero-amount {
+  display: flex;
+  align-items: baseline;
+  gap: 6rpx;
+}
+
+.balance-hero-symbol {
+  color: var(--neo-color-accent);
+  font-size: 34rpx;
+  font-weight: 900;
+}
+
+.balance-hero-value {
+  color: var(--neo-color-accent);
+  font-size: 64rpx;
+  line-height: 1.1;
   font-weight: 950;
 }
 
-.recharge-copy {
+.balance-hero-copy {
   color: var(--neo-color-text-muted);
-  font-size: 24rpx;
+  font-size: 22rpx;
   font-weight: 700;
 }
 

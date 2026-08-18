@@ -39,7 +39,7 @@ func (s AppQueryService) GetTeam(ctx context.Context, actor sharedauth.Actor, te
 	if err != nil {
 		return AppTeamDetail{}, err
 	}
-	membership, err := s.repository.GetTeamMembershipState(ctx, teamID)
+	membership, err := s.repository.GetTeamMembershipState(ctx, teamID, actor.ID)
 	if err != nil {
 		return AppTeamDetail{}, sharederror.Wrap(sharederror.KindInternal, "查询球队会员状态失败", err)
 	}

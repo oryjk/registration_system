@@ -345,7 +345,7 @@ paths:
       operationId: createAppTeamMembershipOrder
       tags: [App Payments]
       summary: 为球队创建队费订单并发起微信支付
-      description: 仅该队队长/领队可操作；金额由用户填写（单位分，上限 100 万分），支付成功后金额计入归属球队余额（balance_cents），与信用分、会员时长无关。
+      description: 仅该队队长/领队可操作；金额由用户填写（单位分，上限 100 万分），支付成功后金额计入付款人在该球队的个人账户余额，与球队公共数据、信用分、会员时长无关。
       security: *bearerSecurity
       requestBody:
         required: true

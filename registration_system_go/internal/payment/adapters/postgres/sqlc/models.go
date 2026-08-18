@@ -131,28 +131,28 @@ type PaymentOrder struct {
 }
 
 type Team struct {
-	ID           int64              `json:"id"`
-	Name         string             `json:"name"`
-	Description  *string            `json:"description"`
-	LogoUrl      *string            `json:"logo_url"`
-	CaptainID    *int64             `json:"captain_id"`
-	Status       string             `json:"status"`
-	CreatedAt    pgtype.Timestamp   `json:"created_at"`
-	UpdatedAt    pgtype.Timestamp   `json:"updated_at"`
-	CreditScore  int32              `json:"credit_score"`
-	VipUntil     pgtype.Timestamptz `json:"vip_until"`
-	BalanceCents int64              `json:"balance_cents"`
+	ID          int64              `json:"id"`
+	Name        string             `json:"name"`
+	Description *string            `json:"description"`
+	LogoUrl     *string            `json:"logo_url"`
+	CaptainID   *int64             `json:"captain_id"`
+	Status      string             `json:"status"`
+	CreatedAt   pgtype.Timestamp   `json:"created_at"`
+	UpdatedAt   pgtype.Timestamp   `json:"updated_at"`
+	CreditScore int32              `json:"credit_score"`
+	VipUntil    pgtype.Timestamptz `json:"vip_until"`
 }
 
 type TeamMember struct {
-	ID        int64            `json:"id"`
-	TeamID    int64            `json:"team_id"`
-	UserID    int64            `json:"user_id"`
-	Role      string           `json:"role"`
-	Status    string           `json:"status"`
-	JoinedAt  pgtype.Timestamp `json:"joined_at"`
-	CreatedAt pgtype.Timestamp `json:"created_at"`
-	UpdatedAt pgtype.Timestamp `json:"updated_at"`
+	ID           int64            `json:"id"`
+	TeamID       int64            `json:"team_id"`
+	UserID       int64            `json:"user_id"`
+	Role         string           `json:"role"`
+	Status       string           `json:"status"`
+	JoinedAt     pgtype.Timestamp `json:"joined_at"`
+	CreatedAt    pgtype.Timestamp `json:"created_at"`
+	UpdatedAt    pgtype.Timestamp `json:"updated_at"`
+	BalanceCents int64            `json:"balance_cents"`
 }
 
 type User struct {

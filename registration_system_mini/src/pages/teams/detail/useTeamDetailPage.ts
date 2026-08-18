@@ -46,9 +46,10 @@ export function useTeamDetailPage() {
     const yuan = amountCents.value / 100;
     return `¥${Number.isInteger(yuan) ? yuan : yuan.toFixed(2)}`;
   });
+  /** 我在本队的个人账户余额；队费充值计入这里，不是球队公共余额。 */
   const balanceLabel = computed(() => {
-    const yuan = (team.value?.balance_cents ?? 0) / 100;
-    return `¥${Number.isInteger(yuan) ? yuan : yuan.toFixed(2)}`;
+    const yuan = (team.value?.my_balance_cents ?? 0) / 100;
+    return `${Number.isInteger(yuan) ? yuan : yuan.toFixed(2)}`;
   });
   const membershipLabel = computed(() => {
     if (!team.value?.is_vip || !team.value.vip_until) return "未开通会员";
