@@ -15,6 +15,7 @@ import (
 	"github.com/oryjk/registration_system/registration_system_go/internal/bootstrap"
 	matchhttp "github.com/oryjk/registration_system/registration_system_go/internal/match/adapters/http"
 	paymenthttp "github.com/oryjk/registration_system/registration_system_go/internal/payment/adapters/http"
+	systemhttp "github.com/oryjk/registration_system/registration_system_go/internal/system/adapters/http"
 	teamhttp "github.com/oryjk/registration_system/registration_system_go/internal/team/adapters/http"
 	userhttp "github.com/oryjk/registration_system/registration_system_go/internal/user/adapters/http"
 	wallethttp "github.com/oryjk/registration_system/registration_system_go/internal/wallet/adapters/http"
@@ -33,8 +34,8 @@ func TestOpenAPIIsValidAndMatchesGinRoutes(t *testing.T) {
 	if len(missing) != 0 || len(extra) != 0 {
 		t.Fatalf("OpenAPI route mismatch\nmissing: %v\nextra: %v", missing, extra)
 	}
-	if len(documented) != 64 {
-		t.Fatalf("documented operations=%d, want 64", len(documented))
+	if len(documented) != 65 {
+		t.Fatalf("documented operations=%d, want 65", len(documented))
 	}
 }
 
@@ -141,6 +142,7 @@ func completeRouter() *gin.Engine {
 		TeamApplications:   matchhttp.NewTeamApplicationHandler(nil),
 		Payments:           paymenthttp.NewHandler(nil),
 		Wallets:            wallethttp.NewHandler(nil),
+		SystemRuntime:      systemhttp.NewHandler(),
 	})
 }
 

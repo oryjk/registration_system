@@ -28,6 +28,7 @@ import (
 	paymentapplication "github.com/oryjk/registration_system/registration_system_go/internal/payment/application"
 	paymentports "github.com/oryjk/registration_system/registration_system_go/internal/payment/ports"
 	"github.com/oryjk/registration_system/registration_system_go/internal/shared/adapters/clock"
+	systemhttp "github.com/oryjk/registration_system/registration_system_go/internal/system/adapters/http"
 	teamhttp "github.com/oryjk/registration_system/registration_system_go/internal/team/adapters/http"
 	teampostgres "github.com/oryjk/registration_system/registration_system_go/internal/team/adapters/postgres"
 	teamapplication "github.com/oryjk/registration_system/registration_system_go/internal/team/application"
@@ -132,5 +133,6 @@ func BuildDependencies(ctx context.Context, config Config) (Dependencies, func()
 		UserMatches:   userMatchHandler, UserRegistrations: userRegistrationHandler,
 		AdminMatches: adminMatchHandler, TeamApplications: teamApplicationHandler,
 		Payments: paymentHandler, Wallets: walletHandler, MiniReviews: miniReviewHandler,
+		SystemRuntime: systemhttp.NewHandler(),
 	}, closePool, nil
 }

@@ -9,6 +9,7 @@ import (
 	minireviewhttp "github.com/oryjk/registration_system/registration_system_go/internal/minireview/adapters/http"
 	paymenthttp "github.com/oryjk/registration_system/registration_system_go/internal/payment/adapters/http"
 	sharedhttp "github.com/oryjk/registration_system/registration_system_go/internal/shared/http"
+	systemhttp "github.com/oryjk/registration_system/registration_system_go/internal/system/adapters/http"
 	teamhttp "github.com/oryjk/registration_system/registration_system_go/internal/team/adapters/http"
 	userhttp "github.com/oryjk/registration_system/registration_system_go/internal/user/adapters/http"
 	wallethttp "github.com/oryjk/registration_system/registration_system_go/internal/wallet/adapters/http"
@@ -33,6 +34,7 @@ type Dependencies struct {
 	Payments           *paymenthttp.Handler
 	Wallets            *wallethttp.Handler
 	MiniReviews        *minireviewhttp.Handler
+	SystemRuntime      *systemhttp.Handler
 }
 
 func NewRouter(dependencies Dependencies) *gin.Engine {
@@ -51,6 +53,10 @@ func NewRouter(dependencies Dependencies) *gin.Engine {
 	}
 	if dependencies.H5TestLoginEnabled && dependencies.TestAuth != nil {
 		dependencies.TestAuth.RegisterRoutes(app)
+	}
+	if dependencies.SystemRuntime != nil {
+		// 小程序启动即拉取运行配置，无需登录态。
+		dependencies.SystemRuntime.RegisterPublicRoutes(app)
 	}
 	if dependencies.MiniReviews != nil {
 		// 小程序审核状态：运行时查询与生产构建登记都无需用户会话（登记走静态 API key）。

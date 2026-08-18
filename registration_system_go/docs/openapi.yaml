@@ -107,6 +107,22 @@ paths:
           $ref: "#/components/responses/WechatLoginSuccess"
         <<: *standardErrors
 
+  /api/v1/app/system/mini-app-runtime-config:
+    get:
+      operationId: getMiniAppRuntimeConfig
+      tags: [App System]
+      summary: 查询小程序运行配置
+      description: 小程序启动时拉取的运行配置（首页卡片数量、签到默认参数等）。当前返回与小程序内置默认值一致的静态配置，无需登录。
+      security: []
+      responses:
+        "200":
+          description: 查询成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MiniAppRuntimeConfigEnvelope"
+        <<: *standardErrors
+
   /api/v1/app/users/me:
     get:
       operationId: getCurrentAppUser
@@ -1695,6 +1711,59 @@ components:
         js_code:
           type: string
           minLength: 1
+    MiniAppRuntimeConfigEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessBase"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/MiniAppRuntimeConfig"
+    MiniAppRuntimeConfig:
+      type: object
+      description: 小程序运行配置；各分区字段与小程序端清洗规则一一对应。
+      properties:
+        home:
+          type: object
+          properties:
+            match_card_limit: { type: integer, example: 2 }
+            challenge_card_limit: { type: integer, example: 2 }
+            activity_fetch_page_size: { type: integer, example: 100 }
+            hide_matches_after_holding_time: { type: boolean, example: true }
+            hero_banners:
+              type: array
+              items:
+                type: object
+                properties:
+                  title: { type: string, example: 约球开踢 }
+                  subtitle: { type: string, example: 组队 · 报名 · 上场 }
+                  button_text: { type: string, example: 去看看 }
+                  image_url: { type: string, example: "" }
+                  enabled: { type: boolean, example: true }
+                  sort_order: { type: integer, example: 1 }
+        matches:
+          type: object
+          properties:
+            related_activity_limit: { type: integer, example: 2 }
+            participant_avatar_limit: { type: integer, example: 5 }
+            capacity_extra_slots: { type: integer, example: 2 }
+        checkin:
+          type: object
+          properties:
+            default_radius_meters: { type: integer, example: 200 }
+            default_open_minutes_before: { type: integer, example: 60 }
+            default_close_minutes_after: { type: integer, example: 45 }
+        billing:
+          type: object
+          properties:
+            recent_order_limit: { type: integer, example: 10 }
+        notifications:
+          type: object
+          properties:
+            list_limit: { type: integer, example: 50 }
+        profile:
+          type: object
+          properties:
+            require_phone_binding: { type: boolean, example: false }
     TestLoginRequest:
       type: object
       required: [user_id]
