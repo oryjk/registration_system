@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 import type { BackendUser } from "@/types/backend";
 import NeoButton from "@/components/neo/NeoButton.vue";
 import NeoSurface from "@/components/neo/NeoSurface.vue";
+import { needsProfileCompletion } from "@/utils/profileCompletion";
 import defaultAvatarUrl from "@/static/tab-png/user-active.png";
 
 const props = defineProps<{
@@ -17,8 +18,11 @@ watch(() => props.currentUser?.avatar_url, () => {
   avatarLoadFailed.value = false;
 });
 
+const showProfileCompletionHint = computed(() => needsProfileCompletion(props.currentUser));
+
 const emit = defineEmits<{
   (event: "editProfile"): void;
+  (event: "completeProfile"): void;
   (event: "login"): void;
   (event: "logout"): void;
 }>();
@@ -40,7 +44,19 @@ const emit = defineEmits<{
         </view>
 
         <view class="mine-profile-hero__copy">
-          <text class="mine-profile-hero__name">{{ displayName }}</text>
+          <view class="mine-profile-hero__name-row">
+            <text class="mine-profile-hero__name">{{ displayName }}</text>
+            <view
+              v-if="showProfileCompletionHint"
+              class="mine-profile-hero__bubble"
+              hover-class="mine-profile-hero__bubble--pressed"
+              :hover-stay-time="100"
+              @click="emit('completeProfile')"
+            >
+              <view class="mine-profile-hero__bubble-tail" />
+              <text class="mine-profile-hero__bubble-text">完善头像和昵称</text>
+            </view>
+          </view>
           <text v-if="teamJoinedDaysLabel" class="mine-profile-hero__meta">
             加入球队 {{ teamJoinedDaysLabel }}
           </text>
@@ -140,12 +156,59 @@ const emit = defineEmits<{
   flex-direction: column;
 }
 
+.mine-profile-hero__name-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
 .mine-profile-hero__name {
   color: var(--neo-color-text-inverse);
   font-size: 34rpx;
   font-weight: 900;
   line-height: 1.22;
   word-break: break-word;
+}
+
+.mine-profile-hero__bubble {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding: 8rpx 18rpx;
+  border: 2rpx solid var(--neo-color-text);
+  border-radius: 999rpx;
+  background: var(--neo-color-accent);
+  color: var(--neo-color-text);
+  box-shadow: 4rpx 4rpx 0 var(--neo-color-text);
+  box-sizing: border-box;
+}
+
+.mine-profile-hero__bubble--pressed {
+  transform: translate(2rpx, 2rpx);
+  box-shadow: none;
+}
+
+.mine-profile-hero__bubble-tail {
+  position: absolute;
+  top: 50%;
+  left: -8rpx;
+  width: 14rpx;
+  height: 14rpx;
+  margin-top: -7rpx;
+  background: var(--neo-color-accent);
+  border-left: 2rpx solid var(--neo-color-text);
+  border-bottom: 2rpx solid var(--neo-color-text);
+  transform: rotate(45deg);
+}
+
+.mine-profile-hero__bubble-text {
+  color: var(--neo-color-text);
+  font-size: 20rpx;
+  font-weight: 900;
+  line-height: 1.3;
+  white-space: nowrap;
 }
 
 .mine-profile-hero__meta {

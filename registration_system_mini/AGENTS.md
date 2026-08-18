@@ -18,9 +18,13 @@ bun run build:mp-weixin
 bun run dev:h5
 bun run build:h5
 bun run type-check
+bun run mp:preview -- --desc "预览说明"       # 只传预览版，生成 dist/preview-qrcode.jpg
+bun run mp:release -- --desc "本次变更说明"   # 发布：构建 + 登记版本号 + miniprogram-ci 上传开发版本
 ```
 
 验收环境（oryjk.cn:82）的 H5 构建由仓库根目录的 `deploy_out109_go_h5.sh` 一键完成（读取本目录 `.env.test`），不需要手动执行 `build:h5:acceptance`。
+
+`mp:preview` / `mp:release` 的前置条件（上传私钥、`.env.ci.local`）与上传后的版本号收尾见下方「微信小程序发布」一节。
 
 ## 微信小程序发布（mp-weixin 上传）
 
@@ -61,6 +65,8 @@ src/
 ```
 
 更详细的小程序结构、页面拆分模式和重构优先级见 [`docs/mini-architecture.md`](docs/mini-architecture.md)。
+
+视觉规范见 [`docs/mini-design-system.md`](docs/mini-design-system.md)（Neo 设计系统）：token 按 primitive / semantic / component 三层组织在 `src/styles/neo-tokens.css`；结构 UI 必须引用 token，不在页面和共享壳层新增散落 hex；球衣/球队颜色等业务数据值与插画装饰色例外。
 
 ## 入口与配置
 

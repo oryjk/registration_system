@@ -1,5 +1,6 @@
 import { computed, ref } from "vue";
 import { getWallet } from "@/api/wallet";
+import { updateMyProfile } from "@/api/user";
 import type { BackendTeamCreditTransaction } from "@/types/backend";
 import type { MineMatchSummary, MineStatItem } from "./mineTypes";
 import { buildMineOverviewState } from "./mineOverviewState";
@@ -8,6 +9,7 @@ import { useNotificationCenter } from "@/stores/notificationCenter";
 import { useTeamContext } from "@/stores/teamContext";
 import { useMiniReviewStatus } from "@/stores/miniReview";
 import { clearSession } from "@/stores/appSession";
+import { loadMiniAppRuntimeConfig } from "@/config/runtimeConfig";
 import { hasManualLogout } from "@/utils/authStorage";
 import { getCustomNavMetrics } from "@/utils/customNav";
 import {
@@ -40,6 +42,7 @@ export function useMinePage() {
   const errorMessage = ref("");
   const myMatches = ref<MineMatchSummary[]>([]);
   const creditTransactions = ref<BackendTeamCreditTransaction[]>([]);
+  const debugClearProfileEnabled = ref(false);
   const overviewDigest = ref({
     activityCount: 0,
     teamCount: 0,
@@ -124,6 +127,7 @@ export function useMinePage() {
     errorMessage.value = message;
     myMatches.value = [];
     creditTransactions.value = [];
+    debugClearProfileEnabled.value = false;
     overviewDigest.value = {
       activityCount: 0,
       teamCount: 0,
@@ -159,10 +163,15 @@ export function useMinePage() {
       if (activeTeamId) {
         await ensureTeamDetailLoaded(activeTeamId);
       }
-      const [matches, wallet] = await Promise.all([loadAllMyMatches(), getWallet()]);
+      const [matches, wallet, runtimeConfig] = await Promise.all([
+        loadAllMyMatches(),
+        getWallet(),
+        loadMiniAppRuntimeConfig(),
+      ]);
       const overview = buildMineOverviewState(matches, wallet);
 
       myMatches.value = overview.matches;
+      debugClearProfileEnabled.value = runtimeConfig.debug.clear_profile_enabled;
       overviewDigest.value = {
         activityCount: overview.activityCount,
         teamCount: teamProfiles.value.length,
@@ -196,6 +205,29 @@ export function useMinePage() {
 
   function handleEditProfile() {
     uni.navigateTo({ url: "/pages/profile/setup/index?mode=edit" });
+  }
+
+  function handleCompleteProfile() {
+    uni.navigateTo({ url: "/pages/profile/setup/index" });
+  }
+
+  async function handleDebugClearProfile() {
+    if (!currentUser.value) return;
+    const confirmed = await confirmDialog({
+      title: "清除头像和昵称",
+      content: "验证用入口：清除后头像和昵称会被清空，回到未完善资料状态。",
+    });
+    if (!confirmed) return;
+    try {
+      await updateMyProfile({ nickname: "", avatar_url: "" });
+      await refreshSessionContext();
+      uni.showToast({ title: "已清除，完善提示应重新出现", icon: "none" });
+    } catch (error) {
+      uni.showToast({
+        title: error instanceof Error ? error.message : "清除失败",
+        icon: "none",
+      });
+    }
   }
 
   function openTeamDetail(teamId?: number) {
@@ -289,8 +321,11 @@ export function useMinePage() {
     currentTeamJoinedDaysLabel,
     mineStats,
     walletSummary,
+    debugClearProfileEnabled,
     loadPageData,
     handleEditProfile,
+    handleCompleteProfile,
+    handleDebugClearProfile,
     handleLogin,
     handleLogout,
     handleSwitchTeam,

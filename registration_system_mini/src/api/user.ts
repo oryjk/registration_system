@@ -44,14 +44,13 @@ export function updateMyProfile(payload: {
   real_name?: string;
   avatar_url?: string;
 }) {
-  // 注意：当前版本不上传 avatar_url（后端 PATCH /users/me 已支持），
-  // 头像由 uploadMyAvatar 接口直接回写；下个版本再随路径切换一起带上。
   return requestApi<AppUser>({
     url: "/users/me",
     method: "PATCH",
     data: {
       nickname: payload.nickname,
       real_name: payload.real_name,
+      avatar_url: payload.avatar_url,
     },
     auth: true,
   }).then(toBackendUser);

@@ -13,6 +13,7 @@ type RuntimeConfigInput = Partial<{
   billing: Partial<MiniAppRuntimeConfig["billing"]>;
   notifications: Partial<MiniAppRuntimeConfig["notifications"]>;
   profile: Partial<MiniAppRuntimeConfig["profile"]>;
+  debug: Partial<MiniAppRuntimeConfig["debug"]>;
 }>;
 
 function clampNumber(value: unknown, fallback: number, min: number, max: number) {
@@ -85,6 +86,12 @@ export function sanitizeMiniAppRuntimeConfig(input?: RuntimeConfigInput | null):
         typeof input?.profile?.require_phone_binding === "boolean"
           ? input.profile.require_phone_binding
           : defaults.profile.require_phone_binding,
+    },
+    debug: {
+      clear_profile_enabled:
+        typeof input?.debug?.clear_profile_enabled === "boolean"
+          ? input.debug.clear_profile_enabled
+          : defaults.debug.clear_profile_enabled,
     },
   };
 }

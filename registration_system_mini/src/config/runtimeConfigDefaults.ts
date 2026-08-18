@@ -36,4 +36,7 @@ export const defaultMiniAppRuntimeConfig: BackendMiniAppRuntimeConfig = {
   profile: {
     require_phone_binding: false,
   },
+  debug: {
+    clear_profile_enabled: false,
+  },
 };

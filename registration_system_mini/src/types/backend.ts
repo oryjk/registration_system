@@ -465,6 +465,9 @@ export interface BackendMiniAppRuntimeConfig {
   profile: {
     require_phone_binding: boolean;
   };
+  debug: {
+    clear_profile_enabled: boolean;
+  };
 }
 
 export interface BackendUserAccount {

@@ -22,7 +22,7 @@ describe("app route fallback", () => {
     const reviewStore = await Bun.file(sourcePath("stores/miniReview.ts")).text();
 
     expect(source.includes("restoreSessionFromStorage")).toEqual(false);
-    expect(source.includes('import { ensureSessionReady, useAppSession } from "@/stores/appSession";')).toEqual(true);
+    expect(source.includes('import { ensureSessionReady } from "@/stores/appSession";')).toEqual(true);
     expect(source.includes('import { preloadMiniReviewStatus } from "@/stores/miniReview";')).toEqual(true);
     expect(source.includes("void preloadMiniReviewStatus();")).toEqual(true);
     expect(reviewStore.includes("const forceMiniReviewMode = String(import.meta.env.VITE_FORCE_MINI_REVIEW_MODE || \"\").trim().toLowerCase() === \"true\";")).toEqual(true);
@@ -39,5 +39,13 @@ describe("app route fallback", () => {
     expect(reviewStore.includes("reviewMode.value = false;")).toEqual(true);
     expect(source.includes("ensureSessionReady")).toEqual(true);
     expect(source.includes("syncUnreadCount")).toEqual(false);
+  });
+
+  test("never forces the profile setup page during launch or show", async () => {
+    const source = await Bun.file(sourcePath("App.vue")).text();
+
+    expect(source.includes("profile/setup")).toEqual(false);
+    expect(source.includes("needsProfileCompletion")).toEqual(false);
+    expect(source.includes("PROFILE_SETUP_PAGE_PATH")).toEqual(false);
   });
 });

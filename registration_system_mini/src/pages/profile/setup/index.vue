@@ -37,15 +37,15 @@ const canSubmit = computed(() => (
   !!nicknameInput.value.trim() && (isEditMode.value || !!avatarPreview.value)
 ));
 const headerTitle = computed(() => (isEditMode.value ? "编辑资料" : "完善资料"));
-const heroTitle = computed(() => (isEditMode.value ? "编辑头像和昵称" : "先完善资料"));
+const heroTitle = computed(() => (isEditMode.value ? "编辑头像和昵称" : "完善头像和昵称"));
 const heroCopy = computed(() =>
   isEditMode.value
     ? "更新头像和昵称后会同步到个人中心、报名记录和球队成员信息中。"
-    : "选择头像并填写昵称。资料会保存到后端，后续登录不会再重复出现这一步。",
+    : "选择头像并填写昵称，方便队友在报名记录和球队成员中认出你。",
 );
 const submitText = computed(() => {
   if (isSaving.value) return "保存中...";
-  return isEditMode.value ? "保存资料" : "保存并进入";
+  return "保存资料";
 });
 const pageStyle = computed(() => ({
   paddingTop: `${navMetrics.pageTopPadding + 8}px`,

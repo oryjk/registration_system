@@ -31,8 +31,11 @@ const {
   currentTeamJoinedDaysLabel,
   mineStats,
   walletSummary,
+  debugClearProfileEnabled,
   loadPageData,
   handleEditProfile,
+  handleCompleteProfile,
+  handleDebugClearProfile,
   handleLogin,
   handleLogout,
   handleSwitchTeam,
@@ -75,6 +78,7 @@ onUnload(() => {
           :display-name="displayName"
           :team-joined-days-label="currentTeamJoinedDaysLabel"
           @edit-profile="handleEditProfile"
+          @complete-profile="handleCompleteProfile"
           @login="handleLogin"
           @logout="handleLogout"
         />
@@ -118,6 +122,18 @@ onUnload(() => {
             @open-notifications="openNotifications"
             @renew-membership="handleMembershipRenewal"
           />
+
+          <view v-if="debugClearProfileEnabled" class="mine-debug-tools">
+            <view
+              class="mine-debug-tools__button"
+              hover-class="mine-debug-tools__button--pressed"
+              :hover-stay-time="100"
+              @click="handleDebugClearProfile"
+            >
+              <text class="mine-debug-tools__label">清除头像和昵称（验证入口）</text>
+            </view>
+            <text class="mine-debug-tools__hint">由管理端「系统设置」开关控制，仅用于验证资料完善引导</text>
+          </view>
         </template>
       </template>
 
@@ -175,6 +191,43 @@ onUnload(() => {
 
 .mine-bottom-spacer {
   height: calc(168rpx + env(safe-area-inset-bottom));
+}
+
+.mine-debug-tools {
+  margin-top: 26rpx;
+}
+
+.mine-debug-tools__button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 76rpx;
+  padding: 0 24rpx;
+  border: 2rpx dashed var(--neo-color-text-muted);
+  border-radius: var(--neo-radius-md);
+  background: var(--neo-color-muted);
+  box-sizing: border-box;
+}
+
+.mine-debug-tools__button--pressed {
+  opacity: 0.7;
+}
+
+.mine-debug-tools__label {
+  color: var(--neo-color-text-muted);
+  font-size: 22rpx;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.mine-debug-tools__hint {
+  display: block;
+  margin-top: 10rpx;
+  color: var(--neo-color-text-muted);
+  font-size: 20rpx;
+  font-weight: 700;
+  line-height: 1.4;
+  text-align: center;
 }
 
 /* #ifdef H5 */
