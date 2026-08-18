@@ -91,7 +91,7 @@ func (r *Repository) UpdateDetails(ctx context.Context, match domain.Match, host
 		ID: pgUUID(match.ID), Name: match.Name, StartTime: pgTimestamp(match.StartTime), EndTime: pgTimestamp(match.EndTime),
 		RegistrationStartAt: pgOptionalTimestamp(match.RegistrationStartAt), RegistrationEndAt: pgOptionalTimestamp(match.RegistrationEndAt),
 		Location: match.Location, LocationLatitude: match.LocationLatitude, LocationLongitude: match.LocationLongitude,
-		Description: match.Description,
+		Description: match.Description, OpponentName: match.OpponentName,
 	}); err != nil {
 		return err
 	}

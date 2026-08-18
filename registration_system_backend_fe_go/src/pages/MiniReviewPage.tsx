@@ -25,18 +25,30 @@ export default function MiniReviewPage() {
   const [pageSize, setPageSize] = useState(20);
   const [projectCode, setProjectCode] = useState<string | undefined>(undefined);
   const [actionError, setActionError] = useState("");
-  const statuses = useMiniReviewStatusesQuery({ page, page_size: pageSize, project_code: projectCode });
+  const statuses = useMiniReviewStatusesQuery({
+    page,
+    page_size: pageSize,
+    project_code: projectCode,
+  });
   const setStatus = useSetMiniReviewStatusMutation();
 
-  const updateStatus = async (item: MiniReviewStatusItem, isReviewing: boolean) => {
+  const updateStatus = async (
+    item: MiniReviewStatusItem,
+    isReviewing: boolean,
+  ) => {
     setActionError("");
     try {
       await setStatus.mutateAsync({
         id: item.id,
-        payload: { is_reviewing: isReviewing, status_text: isReviewing ? "正在审核" : "审核通过" },
+        payload: {
+          is_reviewing: isReviewing,
+          status_text: isReviewing ? "正在审核" : "审核通过",
+        },
       });
     } catch (reason) {
-      setActionError(reason instanceof Error ? reason.message : "更新审核状态失败");
+      setActionError(
+        reason instanceof Error ? reason.message : "更新审核状态失败",
+      );
     }
   };
 
@@ -57,7 +69,11 @@ export default function MiniReviewPage() {
       dataIndex: "is_reviewing",
       width: 110,
       render: (_, item) =>
-        item.is_reviewing ? <Tag color="orange">审核中</Tag> : <Tag color="green">已通过</Tag>,
+        item.is_reviewing ? (
+          <Tag color="orange">审核中</Tag>
+        ) : (
+          <Tag color="green">已通过</Tag>
+        ),
     },
     { title: "状态文案", dataIndex: "status_text", width: 140 },
     {
@@ -110,7 +126,8 @@ export default function MiniReviewPage() {
     },
   ];
 
-  const queryError = statuses.error instanceof Error ? statuses.error.message : "";
+  const queryError =
+    statuses.error instanceof Error ? statuses.error.message : "";
   const error = actionError || queryError;
 
   return (
@@ -125,7 +142,10 @@ export default function MiniReviewPage() {
           className="status-filter"
           value={projectCode}
           options={[
-            { value: "registration_system_mini", label: "registration_system_mini" },
+            {
+              value: "registration_system_mini",
+              label: "registration_system_mini",
+            },
           ]}
           onChange={(value) => {
             setProjectCode(value);

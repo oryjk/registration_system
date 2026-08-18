@@ -353,6 +353,7 @@ SET name = $2,
     location_latitude = $8,
     location_longitude = $9,
     description = $10,
+    opponent_name = $11,
     updated_at = NOW()
 WHERE id = $1
 RETURNING *;

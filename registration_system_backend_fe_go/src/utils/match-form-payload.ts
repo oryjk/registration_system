@@ -47,6 +47,10 @@ export function buildUpdateMatchPayload(
     location_latitude: values.location_latitude ?? null,
     location_longitude: values.location_longitude ?? null,
     description: values.description?.trim() || null,
+    opponent_name:
+      values.publication_mode === "offline_confirmed"
+        ? values.opponent_name?.trim() || null
+        : null,
     host_capacity_limit: values.host_capacity_limit ?? null,
   };
 }

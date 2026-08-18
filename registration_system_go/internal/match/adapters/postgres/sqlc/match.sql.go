@@ -1914,6 +1914,7 @@ SET name = $2,
     location_latitude = $8,
     location_longitude = $9,
     description = $10,
+    opponent_name = $11,
     updated_at = NOW()
 WHERE id = $1
 RETURNING id, name, publication_mode, opponent_state, status, host_team_id, away_team_id, opponent_name, players_per_team, start_time, end_time, location, location_latitude, location_longitude, description, created_by_user_id, created_at, updated_at, created_by_admin_id, registration_start_at, registration_end_at, is_free
@@ -1930,6 +1931,7 @@ type UpdateMatchDetailsParams struct {
 	LocationLatitude    *float64         `json:"location_latitude"`
 	LocationLongitude   *float64         `json:"location_longitude"`
 	Description         *string          `json:"description"`
+	OpponentName        *string          `json:"opponent_name"`
 }
 
 func (q *Queries) UpdateMatchDetails(ctx context.Context, arg UpdateMatchDetailsParams) (Match, error) {
@@ -1944,6 +1946,7 @@ func (q *Queries) UpdateMatchDetails(ctx context.Context, arg UpdateMatchDetails
 		arg.LocationLatitude,
 		arg.LocationLongitude,
 		arg.Description,
+		arg.OpponentName,
 	)
 	var i Match
 	err := row.Scan(

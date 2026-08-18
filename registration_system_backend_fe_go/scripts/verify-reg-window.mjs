@@ -6,12 +6,17 @@ const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
 
 await page.goto(`${base}/login`, { waitUntil: "networkidle" });
-await page.fill('input[placeholder*="账号"], input#username, input[name="username"]', "admin");
+await page.fill(
+  'input[placeholder*="账号"], input#username, input[name="username"]',
+  "admin",
+);
 await page.fill('input[type="password"]', "admin123");
 await page.click('button[type="submit"], button:has-text("登")');
 await page.waitForURL(`${base}/`, { timeout: 20000 });
 
-await page.goto(`${base}/matches/${matchId}/edit`, { waitUntil: "networkidle" });
+await page.goto(`${base}/matches/${matchId}/edit`, {
+  waitUntil: "networkidle",
+});
 await page.waitForTimeout(1500);
 
 const fillPicker = async (id, value) => {
@@ -26,8 +31,14 @@ const fillPicker = async (id, value) => {
 
 await fillPicker("registration_start_at", "2026-08-16 17:10");
 await fillPicker("registration_end_at", "2026-08-20 18:00");
-console.log("form registration_start_at:", await page.locator("#registration_start_at").inputValue());
-console.log("form registration_end_at:", await page.locator("#registration_end_at").inputValue());
+console.log(
+  "form registration_start_at:",
+  await page.locator("#registration_start_at").inputValue(),
+);
+console.log(
+  "form registration_end_at:",
+  await page.locator("#registration_end_at").inputValue(),
+);
 
 await Promise.all([
   page.waitForURL(`${base}/matches/${matchId}`, { timeout: 15000 }),
@@ -35,7 +46,15 @@ await Promise.all([
 ]);
 await page.waitForTimeout(1200);
 
-const arr = (await page.locator(".ant-pro-layout-content").innerText()).split("\n");
-console.log("detail 报名开始时间:", arr[arr.findIndex((l) => l.includes("报名开始时间")) + 1]);
-console.log("detail 报名截止时间:", arr[arr.findIndex((l) => l.includes("报名截止时间")) + 1]);
+const arr = (await page.locator(".ant-pro-layout-content").innerText()).split(
+  "\n",
+);
+console.log(
+  "detail 报名开始时间:",
+  arr[arr.findIndex((l) => l.includes("报名开始时间")) + 1],
+);
+console.log(
+  "detail 报名截止时间:",
+  arr[arr.findIndex((l) => l.includes("报名截止时间")) + 1],
+);
 await browser.close();

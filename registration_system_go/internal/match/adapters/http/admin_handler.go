@@ -66,6 +66,9 @@ type UpdateMatchRequest struct {
 	LocationLatitude    *float64                 `json:"location_latitude"`
 	LocationLongitude   *float64                 `json:"location_longitude"`
 	Description         *string                  `json:"description"`
+	// OpponentName 为 nil（未传或 null）表示本次不修改手工对手名称；
+	// 传空串表示清除为空。仅线下已约比赛允许有值。
+	OpponentName *string `json:"opponent_name"`
 	// HostCapacityLimit 为 nil（未传或 null）表示本次不修改主队报名上限。
 	HostCapacityLimit *int `json:"host_capacity_limit"`
 }
@@ -227,6 +230,7 @@ func (h *AdminHandler) Update(c *gin.Context) {
 		Name: request.Name, StartTime: request.StartTime, EndTime: request.EndTime,
 		RegistrationStartAt: request.RegistrationStartAt.commandValue(), RegistrationEndAt: request.RegistrationEndAt.commandValue(), Location: request.Location,
 		LocationLatitude: request.LocationLatitude, LocationLongitude: request.LocationLongitude, Description: request.Description,
+		OpponentName:      request.OpponentName,
 		HostCapacityLimit: request.HostCapacityLimit,
 	})
 	if err != nil {

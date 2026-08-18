@@ -16,10 +16,15 @@ function buildQuery(query: MiniReviewStatusQuery) {
 }
 
 export function listMiniReviewStatuses(query: MiniReviewStatusQuery) {
-  return request<MiniReviewStatusPage>(`/mini-review/statuses${buildQuery(query)}`);
+  return request<MiniReviewStatusPage>(
+    `/mini-review/statuses${buildQuery(query)}`,
+  );
 }
 
-export function setMiniReviewStatus(id: number, payload: MiniReviewSetStatusPayload) {
+export function setMiniReviewStatus(
+  id: number,
+  payload: MiniReviewSetStatusPayload,
+) {
   return request<MiniReviewStatusItem>(`/mini-review/statuses/${id}`, {
     method: "PATCH",
     body: JSON.stringify(payload),
