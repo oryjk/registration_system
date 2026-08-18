@@ -1,5 +1,9 @@
 <script setup lang="ts">
 import { computed } from "vue";
+import NeoSectionHeader from "@/components/neo/NeoSectionHeader.vue";
+import NeoSegmentedControl from "@/components/neo/NeoSegmentedControl.vue";
+import NeoSurface from "@/components/neo/NeoSurface.vue";
+import type { NeoSegmentOption } from "@/components/neo/NeoSegmentedControl.vue";
 import type { MatchPublishFormModel } from "./matchPublishForm";
 import type { AppMatchPublicationMode } from "@/types/match";
 import { MATCH_PUBLICATION_MODE_OPTIONS } from "@/utils/matchPublicationMode";
@@ -52,11 +56,12 @@ const colorOptions = [
   { name: "白银", value: "#D8DDE6" },
 ];
 
-const textareaBoxStyle =
-  "width:100%;min-height:260rpx;padding:22rpx;border-radius:24rpx;border:2rpx solid #d7ddd2;background:#f4f6f0;--wot-textarea-bg:#f4f6f0;box-shadow:inset 0 2rpx 0 rgba(255,255,255,0.74);box-sizing:border-box;";
-const cardTitleStyle = "display:block;font-size:30rpx;font-weight:900;line-height:1.35;color:#111310;";
-const cardCaptionStyle = "display:block;margin-top:8rpx;font-size:24rpx;font-weight:700;line-height:1.45;color:#111310;";
-const formLabelStyle = "display:block;font-size:26rpx;font-weight:800;line-height:1.35;color:#111310;";
+const publicationModeOptions = computed<NeoSegmentOption[]>(() =>
+  MATCH_PUBLICATION_MODE_OPTIONS.map((option) => ({ label: option.label, value: option.value })),
+);
+const selectedPublicationModeDescription = computed(
+  () => MATCH_PUBLICATION_MODE_OPTIONS.find((option) => option.value === form.value.publicationMode)?.description ?? "",
+);
 
 function updateField<K extends keyof MatchPublishFormModel>(key: K, value: MatchPublishFormModel[K]) {
   form.value[key] = value;
@@ -65,6 +70,10 @@ function updateField<K extends keyof MatchPublishFormModel>(key: K, value: Match
 
 function setColorField(key: "color" | "opposingColor", value: string) {
   updateField(key, value);
+}
+
+function handlePublicationModeChange(value: string) {
+  selectPublicationMode(value as AppMatchPublicationMode);
 }
 
 function selectPublicationMode(value: AppMatchPublicationMode) {
@@ -133,7 +142,7 @@ function mergeDate(baseValue: number, pickerValue: string) {
 }
 
 function mergeTime(baseValue: number, pickerValue: string) {
-  const date = parsePickerDate(baseValue || form.value.holdingDate);
+  const date = new Date(baseValue || form.value.holdingDate);
   const [hour, minute] = pickerValue.split(":").map((item) => Number(item));
   date.setHours(hour || 0, minute || 0, 0, 0);
   return normalizeToMinute(date.getTime());
@@ -200,54 +209,49 @@ function handleMatchEndTimeChange(event: Event) {
 </script>
 
 <template>
-  <view>
-    <view class="create-card">
-      <view class="create-card-title">基础信息</view>
-      <view class="create-form-grid">
-        <view v-if="!isChallenge" class="create-form-item create-form-item-full">
-          <wd-text custom-class="create-form-label" color="#111310" text="比赛类型" />
-          <view class="match-kind-segment">
-            <view
-              v-for="option in MATCH_PUBLICATION_MODE_OPTIONS"
-              :key="option.value"
-              :class="['match-kind-option', form.publicationMode === option.value ? 'match-kind-option-active' : '']"
-              @tap="selectPublicationMode(option.value)"
-            >
-              <text class="match-kind-option-label">{{ option.label }}</text>
-              <text class="match-kind-option-description">{{ option.description }}</text>
-            </view>
-          </view>
-        </view>
-        <view class="create-form-item create-form-item-full">
-          <wd-text custom-class="create-form-label" color="#111310" :text="titleLabel" />
-          <input
-            v-model="form.name"
-            class="create-native-input"
-            :placeholder="titlePlaceholder"
-            placeholder-class="create-native-placeholder"
-          />
-        </view>
-        <view class="create-form-item">
-          <wd-text custom-class="create-form-label" color="#111310" :text="playersLabel" />
+  <view class="publish-form">
+    <NeoSurface custom-class="form-card">
+      <NeoSectionHeader title="基础信息" marker="01" caption="比赛类型决定对手来源，球服颜色用于区分两队" />
+      <view v-if="!isChallenge" class="form-field">
+        <text class="form-label">比赛类型</text>
+        <NeoSegmentedControl
+          :model-value="form.publicationMode"
+          :options="publicationModeOptions"
+          @change="handlePublicationModeChange"
+        />
+        <text class="form-caption">{{ selectedPublicationModeDescription }}</text>
+      </view>
+      <view class="form-field">
+        <text class="form-label">{{ titleLabel }}</text>
+        <input
+          v-model="form.name"
+          class="form-input"
+          :placeholder="titlePlaceholder"
+          placeholder-class="form-placeholder"
+        />
+      </view>
+      <view class="form-grid">
+        <view class="form-field">
+          <text class="form-label">{{ playersLabel }}</text>
           <input
             v-model="form.playersPerTeam"
-            class="create-native-input"
+            class="form-input"
             type="number"
             :placeholder="playersPlaceholder"
-            placeholder-class="create-native-placeholder"
+            placeholder-class="form-placeholder"
           />
         </view>
-        <view v-if="!isChallenge && form.publicationMode === 'offline_confirmed'" class="create-form-item">
-          <wd-text custom-class="create-form-label" color="#111310" text="对手" />
+        <view v-if="!isChallenge && form.publicationMode === 'offline_confirmed'" class="form-field">
+          <text class="form-label">对手</text>
           <input
             v-model="form.opposing"
-            class="create-native-input"
+            class="form-input"
             placeholder="例如：XX联队"
-            placeholder-class="create-native-placeholder"
+            placeholder-class="form-placeholder"
           />
         </view>
-        <view v-if="!isChallenge" class="create-form-item">
-          <wd-text custom-class="create-form-label" color="#111310" :text="colorLabel" />
+        <view v-if="!isChallenge" class="form-field form-field-full">
+          <text class="form-label">{{ colorLabel }}</text>
           <view class="color-select-grid">
             <view
               v-for="option in colorOptions"
@@ -260,8 +264,8 @@ function handleMatchEndTimeChange(event: Event) {
             </view>
           </view>
         </view>
-        <view v-if="!isChallenge" class="create-form-item">
-          <wd-text custom-class="create-form-label" color="#111310" :text="opposingColorLabel" />
+        <view v-if="!isChallenge" class="form-field form-field-full">
+          <text class="form-label">{{ opposingColorLabel }}</text>
           <view class="color-select-grid">
             <view
               v-for="option in colorOptions"
@@ -274,253 +278,248 @@ function handleMatchEndTimeChange(event: Event) {
             </view>
           </view>
         </view>
-        <view v-else class="create-form-item">
-          <wd-text custom-class="create-form-label" color="#111310" text="预计费用/人" />
+        <view v-else class="form-field">
+          <text class="form-label">预计费用/人</text>
           <input
             v-model="form.feePerPerson"
-            class="create-native-input"
+            class="form-input"
             type="digit"
             placeholder="25"
-            placeholder-class="create-native-placeholder"
+            placeholder-class="form-placeholder"
           />
         </view>
+      </view>
+    </NeoSurface>
 
-        <view class="create-time-section create-form-item-full">
-          <view class="create-time-head">
-            <text class="create-time-title">比赛日期</text>
-            <picker mode="date" :value="selectedDateValue" @change="handleDatePickerChange">
-              <view class="create-date-picker-link">更多日期</view>
-            </picker>
+    <NeoSurface custom-class="form-card">
+      <view class="date-head">
+        <text class="date-head-title">比赛日期</text>
+        <picker mode="date" :value="selectedDateValue" @change="handleDatePickerChange">
+          <view class="date-more-link">更多日期</view>
+        </picker>
+      </view>
+
+      <scroll-view class="date-option-scroll" scroll-x>
+        <view class="date-option-row">
+          <view
+            v-for="option in recentDateOptions"
+            :key="option.pickerValue"
+            :class="['date-option-card', selectedDateValue === option.pickerValue ? 'date-option-active' : '']"
+            @tap="handleSelectDateOption(option.value)"
+          >
+            <text class="date-option-top">{{ option.topLabel }}</text>
+            <text class="date-option-day">{{ option.dayLabel }}</text>
+            <text class="date-option-month">{{ option.monthLabel }}</text>
           </view>
+        </view>
+      </scroll-view>
 
-          <scroll-view class="date-option-scroll" scroll-x>
-            <view class="date-option-row">
-              <view
-                v-for="option in recentDateOptions"
-                :key="option.pickerValue"
-                :class="['date-option-card', selectedDateValue === option.pickerValue ? 'date-option-active' : '']"
-                @tap="handleSelectDateOption(option.value)"
-              >
-                <text class="date-option-top">{{ option.topLabel }}</text>
-                <text class="date-option-day">{{ option.dayLabel }}</text>
-                <text class="date-option-month">{{ option.monthLabel }}</text>
-              </view>
+      <view class="time-tile-grid">
+        <picker mode="time" :value="formatPickerTimeValue(form.holdingDate)" @change="handleMatchStartTimeChange">
+          <view class="time-tile">
+            <text class="time-tile-label">比赛开始时间</text>
+            <view class="time-tile-value-row">
+              <text :class="['time-tile-value', !form.holdingDate ? 'time-tile-value-placeholder' : '']">
+                {{ displayTimeLabel(form.holdingDate) || "请选择比赛开始时间" }}
+              </text>
+              <text class="time-tile-arrow">›</text>
             </view>
-          </scroll-view>
-
-          <view class="create-time-grid">
-            <picker mode="time" :value="formatPickerTimeValue(form.holdingDate)" @change="handleMatchStartTimeChange">
-              <view class="create-time-tile">
-                <text class="create-time-label">比赛开始时间</text>
-                <view class="create-time-value-row">
-                  <text :class="['create-time-value', !form.holdingDate ? 'create-time-value-placeholder' : '']">
-                    {{ displayTimeLabel(form.holdingDate) || "请选择比赛开始时间" }}
-                  </text>
-                  <text class="create-time-arrow">›</text>
-                </view>
-              </view>
-            </picker>
-
-            <picker mode="time" :value="formatPickerTimeValue(form.matchEndTime)" @change="handleMatchEndTimeChange">
-              <view class="create-time-tile">
-                <text class="create-time-label">比赛结束时间</text>
-                <view class="create-time-value-row">
-                  <text :class="['create-time-value', !form.matchEndTime ? 'create-time-value-placeholder' : '']">
-                    {{ displayTimeLabel(form.matchEndTime) || "请选择比赛结束时间" }}
-                  </text>
-                  <text class="create-time-arrow">›</text>
-                </view>
-              </view>
-            </picker>
           </view>
-        </view>
+        </picker>
 
-        <view v-if="timeValidMessage" class="create-time-error create-form-item-full">
-          {{ timeValidMessage }}
-        </view>
+        <picker mode="time" :value="formatPickerTimeValue(form.matchEndTime)" @change="handleMatchEndTimeChange">
+          <view class="time-tile">
+            <text class="time-tile-label">比赛结束时间</text>
+            <view class="time-tile-value-row">
+              <text :class="['time-tile-value', !form.matchEndTime ? 'time-tile-value-placeholder' : '']">
+                {{ displayTimeLabel(form.matchEndTime) || "请选择比赛结束时间" }}
+              </text>
+              <text class="time-tile-arrow">›</text>
+            </view>
+          </view>
+        </picker>
       </view>
-    </view>
 
-    <view class="create-card">
-      <view class="create-card-head">
-        <view>
-          <wd-text :custom-style="cardTitleStyle" color="#111310" text="比赛地点" />
-          <wd-text :custom-style="cardCaptionStyle" color="#111310" :text="locationCaption" />
-        </view>
-        <view class="create-pick-button" @tap="handleChooseLocation">
-          {{ form.location ? "重新选择" : "选择地点" }}
-        </view>
+      <view v-if="timeValidMessage" class="form-error">
+        {{ timeValidMessage }}
       </view>
-      <input
-        v-model="form.location"
-        class="create-native-input create-location-input"
-        placeholder="输入球场/地址，或使用地图选择"
-        placeholder-class="create-native-placeholder"
-        @input="handleLocationInput"
+    </NeoSurface>
+
+    <NeoSurface custom-class="form-card">
+      <NeoSectionHeader
+        title="场地与说明"
+        marker="03"
+        :caption="locationCaption"
+        :action-label="form.location ? '重新选择' : '选择地点'"
+        @action="handleChooseLocation"
       />
-      <view v-if="form.locationLatitude != null && form.locationLongitude != null" class="create-location-box">
-        已选择地图位置，可用于签到定位。
+      <view class="form-field">
+        <input
+          v-model="form.location"
+          class="form-input"
+          placeholder="输入球场/地址，或使用地图选择"
+          placeholder-class="form-placeholder"
+          @input="handleLocationInput"
+        />
+        <text v-if="form.locationLatitude != null && form.locationLongitude != null" class="form-hint">
+          已选择地图位置，可用于签到定位。
+        </text>
       </view>
-      <view class="create-form-item create-form-item-full create-description-field">
-        <wd-text :custom-style="formLabelStyle" color="#111310" :text="descriptionLabel" />
-        <wd-textarea
+      <view class="form-field">
+        <text class="form-label">{{ descriptionLabel }}</text>
+        <textarea
           v-model="form.description"
-          no-border
+          class="form-textarea"
           :maxlength="120"
-          :custom-style="textareaBoxStyle"
           :placeholder="descriptionPlaceholder"
-          custom-class="create-wot-textarea"
-          custom-textarea-container-class="create-wot-textarea-container"
-          custom-textarea-class="create-wot-textarea-inner"
+          placeholder-class="form-placeholder"
         />
       </view>
-    </view>
+    </NeoSurface>
 
-    <view v-if="showCheckIn && !isChallenge" class="create-card">
-      <view class="create-card-head">
-        <view>
-          <wd-text custom-class="create-card-title" color="#111310" text="签到设置" />
-          <wd-text custom-class="create-card-caption" color="#111310" text="比赛详情页只负责展示和签到，不再修改规则。" />
-        </view>
-        <switch :checked="!!form.enableCheckIn" color="#c8ff00" @change="handleCheckInSwitchChange" />
+    <NeoSurface v-if="showCheckIn && !isChallenge" custom-class="form-card">
+      <NeoSectionHeader title="签到设置" marker="04" caption="比赛详情页只负责展示和签到，不再修改规则。" />
+      <view class="checkin-switch-row">
+        <text class="form-label">到场签到</text>
+        <switch :checked="!!form.enableCheckIn" color="#b9f24b" @change="handleCheckInSwitchChange" />
       </view>
 
-      <view v-if="form.enableCheckIn" class="create-form-grid" style="margin-top: 20rpx;">
-        <view class="create-form-item">
-          <wd-text custom-class="create-form-label" color="#111310" text="签到半径" />
+      <view v-if="form.enableCheckIn" class="form-grid">
+        <view class="form-field">
+          <text class="form-label">签到半径</text>
           <input
             v-model="form.checkInRadiusMeters"
-            class="create-native-input"
+            class="form-input"
             type="number"
             placeholder="200"
-            placeholder-class="create-native-placeholder"
+            placeholder-class="form-placeholder"
           />
         </view>
-        <view class="create-form-item">
-          <wd-text custom-class="create-form-label" color="#111310" text="提前开放" />
+        <view class="form-field">
+          <text class="form-label">提前开放</text>
           <input
             v-model="form.openMinutesBefore"
-            class="create-native-input"
+            class="form-input"
             type="number"
             placeholder="60"
-            placeholder-class="create-native-placeholder"
+            placeholder-class="form-placeholder"
           />
         </view>
-        <view class="create-form-item">
-          <wd-text custom-class="create-form-label" color="#111310" text="赛后关闭" />
+        <view class="form-field">
+          <text class="form-label">赛后关闭</text>
           <input
             v-model="form.closeMinutesAfter"
-            class="create-native-input"
+            class="form-input"
             type="number"
             placeholder="45"
-            placeholder-class="create-native-placeholder"
+            placeholder-class="form-placeholder"
           />
         </view>
-        <view class="create-form-item">
-          <wd-text custom-class="create-form-label" color="#111310" text="说明" />
-          <view class="create-input create-input-static">单位都是分钟 / 米</view>
+        <view class="form-field">
+          <text class="form-label">说明</text>
+          <view class="form-static">单位都是分钟 / 米</view>
         </view>
       </view>
-      <view v-else class="create-location-box" style="margin-top: 20rpx;">本场不启用到场定位签到。</view>
-    </view>
+      <text v-else class="form-hint">本场不启用到场定位签到。</text>
+    </NeoSurface>
   </view>
 </template>
 
 <style scoped>
-.create-card {
-  margin-top: 20rpx;
-  padding: 24rpx;
-  border-radius: 30rpx;
-  background: #ffffff;
-  box-shadow: 0 20rpx 38rpx rgba(17, 17, 17, 0.05);
+.form-card {
+  margin-top: 24rpx;
+  padding: 6rpx 24rpx 24rpx;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-md);
+  box-shadow: 8rpx 8rpx 0 var(--neo-color-text);
 }
 
-.create-card-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16rpx;
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 18rpx;
 }
 
-.create-card-title {
+.form-field {
+  margin-top: 26rpx;
+}
+
+.form-field-full {
+  grid-column: 1 / -1;
+}
+
+.form-label {
   display: block;
-  font-size: 30rpx;
-  color: #171814;
+  margin-bottom: 10rpx;
+  color: var(--neo-color-text);
+  font-size: 24rpx;
   font-weight: 900;
 }
 
-.create-card-caption {
+.form-caption {
   display: block;
-  margin-top: 8rpx;
+  margin-top: 12rpx;
+  color: var(--neo-color-text-muted);
   font-size: 22rpx;
-  color: #111310;
-}
-
-.create-form-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18rpx;
-  margin-top: 22rpx;
-}
-
-.create-time-error {
-  font-size: 22rpx;
-  color: #d9534f;
+  font-weight: 700;
   line-height: 1.45;
-  padding-top: 4rpx;
 }
 
-.match-kind-segment {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10rpx;
-  padding: 8rpx;
-  border-radius: 24rpx;
-  background: #edf1e8;
-}
-
-.match-kind-option {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 6rpx;
-  min-height: 112rpx;
-  padding: 12rpx 8rpx;
-  border-radius: 18rpx;
-  color: #5f645c;
-  text-align: center;
+.form-input,
+.form-textarea,
+.form-static {
+  width: 100%;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-muted);
+  color: var(--neo-color-text);
+  font-size: 28rpx;
+  font-weight: 800;
   box-sizing: border-box;
 }
 
-.match-kind-option-label {
-  font-size: 24rpx;
-  line-height: 1.2;
-  font-weight: 900;
-}
-
-.match-kind-option-description {
-  font-size: 18rpx;
-  line-height: 1.35;
-  font-weight: 700;
-}
-
-.match-kind-option-active {
-  background: #c8ff00;
-  color: #111310;
-  box-shadow: 0 8rpx 18rpx rgba(90, 115, 0, 0.14);
-}
-
-.create-form-item {
+.form-input,
+.form-static {
   display: flex;
-  flex-direction: column;
-  gap: 12rpx;
-  min-width: 0;
+  align-items: center;
+  height: 84rpx;
+  padding: 0 20rpx;
 }
 
-.create-form-item-full {
-  grid-column: 1 / -1;
+.form-static {
+  color: var(--neo-color-text-muted);
+}
+
+.form-placeholder {
+  color: var(--neo-color-text-disabled);
+  font-size: 28rpx;
+}
+
+.form-textarea {
+  min-height: 150rpx;
+  padding: 20rpx;
+  line-height: 1.5;
+}
+
+.form-hint {
+  display: block;
+  margin-top: 14rpx;
+  padding: 16rpx 18rpx;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-success);
+  color: var(--neo-color-text);
+  font-size: 22rpx;
+  font-weight: 800;
+  line-height: 1.5;
+}
+
+.form-error {
+  margin-top: 16rpx;
+  color: var(--neo-color-danger);
+  font-size: 22rpx;
+  font-weight: 800;
+  line-height: 1.45;
 }
 
 .color-select-grid {
@@ -536,22 +535,23 @@ function handleMatchEndTimeChange(event: Event) {
   min-width: 0;
   min-height: 76rpx;
   padding: 0 14rpx;
-  border-radius: 20rpx;
-  border: 2rpx solid #d7ddd2;
-  background: #f4f6f0;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-muted);
   box-sizing: border-box;
 }
 
 .color-option-active {
-  border-color: #111310;
-  background: #eef8d6;
+  border: var(--neo-border-strong);
+  background: var(--neo-color-accent);
+  box-shadow: 3rpx 3rpx 0 var(--neo-color-text);
 }
 
 .color-swatch {
   width: 28rpx;
   height: 28rpx;
   border-radius: 50%;
-  border: 2rpx solid rgba(17, 19, 16, 0.12);
+  border: 2rpx solid rgba(17, 19, 16, 0.18);
   flex-shrink: 0;
 }
 
@@ -559,117 +559,36 @@ function handleMatchEndTimeChange(event: Event) {
   min-width: 0;
   font-size: 22rpx;
   font-weight: 800;
-  color: #111310;
+  color: var(--neo-color-text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.create-form-label {
-  font-size: 22rpx;
-  color: #111310;
-  font-weight: 700;
-}
-
-.create-input,
-.create-native-input,
-:deep(.create-wot-textarea-container) {
-  width: 100%;
-  min-height: 88rpx;
-  padding: 0 22rpx;
-  border-radius: 24rpx;
-  border: 2rpx solid #d7ddd2;
-  background: #f4f6f0;
-  box-shadow: inset 0 2rpx 0 rgba(255, 255, 255, 0.74);
-  color: #171814;
-  font-size: 28rpx;
-  box-sizing: border-box;
-}
-
-.create-input,
-.create-native-input {
-  display: flex;
-  align-items: center;
-}
-
-.create-native-input {
-  height: 88rpx;
-  line-height: 88rpx;
-}
-
-.create-native-placeholder {
-  color: #c7c9c5;
-  font-size: 28rpx;
-  line-height: 88rpx;
-}
-
-.create-input-static {
-  display: flex;
-  align-items: center;
-  color: #60655d;
-}
-
-:deep(.create-wot-textarea-container) {
-  width: 100%;
-  min-height: 150rpx;
-  padding: 0;
-  border: none;
-  box-sizing: border-box;
-  background: #f4f6f0;
-}
-
-:deep(.create-wot-textarea) {
-  width: 100%;
-  padding: 0;
-  background: #f4f6f0;
-}
-
-:deep(.create-wot-textarea-inner) {
-  width: 100%;
-  min-height: 150rpx;
-  color: #171814;
-  font-size: 28rpx;
-  line-height: 1.5;
-  background: transparent;
-}
-
-.create-description-field {
-  width: 100%;
-  margin-top: 18rpx;
-}
-
-.create-location-input {
-  margin-top: 18rpx;
-  width: 100%;
-}
-
-.create-time-section {
-  margin-top: 2rpx;
-}
-
-.create-time-head {
+.date-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16rpx;
+  margin-top: 26rpx;
 }
 
-.create-time-title {
-  display: block;
-  color: #111310;
-  font-size: 28rpx;
+.date-head-title {
+  color: var(--neo-color-text);
+  font-size: 24rpx;
   font-weight: 900;
 }
 
-.create-date-picker-link {
+.date-more-link {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 58rpx;
-  padding: 0 22rpx;
-  border-radius: 999rpx;
-  background: #eef2e8;
-  color: #4e544b;
+  height: 56rpx;
+  padding: 0 20rpx;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-surface);
+  color: var(--neo-color-text);
   font-size: 22rpx;
   font-weight: 800;
 }
@@ -692,21 +611,20 @@ function handleMatchEndTimeChange(event: Event) {
   justify-content: center;
   width: 132rpx;
   min-height: 164rpx;
-  border-radius: 30rpx;
-  border: 2rpx solid #e7ebdf;
-  background: #ffffff;
-  box-shadow: 0 10rpx 24rpx rgba(17, 17, 17, 0.04);
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-md);
+  background: var(--neo-color-surface);
   box-sizing: border-box;
 }
 
 .date-option-active {
-  border-color: #c8ff00;
-  background: #c8ff00;
-  box-shadow: 0 18rpx 34rpx rgba(181, 214, 0, 0.24);
+  border: var(--neo-border-strong);
+  background: var(--neo-color-accent);
+  box-shadow: 4rpx 4rpx 0 var(--neo-color-text);
 }
 
 .date-option-top {
-  color: #61665f;
+  color: var(--neo-color-text-muted);
   font-size: 24rpx;
   font-weight: 800;
   line-height: 1.2;
@@ -714,39 +632,38 @@ function handleMatchEndTimeChange(event: Event) {
 
 .date-option-day {
   margin-top: 10rpx;
-  color: #111310;
-  font-size: 60rpx;
+  color: var(--neo-color-text);
+  font-size: 56rpx;
   font-weight: 900;
   line-height: 1;
 }
 
 .date-option-month {
   margin-top: 8rpx;
-  color: #72776f;
+  color: var(--neo-color-text-muted);
   font-size: 20rpx;
   font-weight: 700;
 }
 
 .date-option-active .date-option-top,
 .date-option-active .date-option-month {
-  color: rgba(17, 19, 16, 0.72);
+  color: var(--neo-color-text);
 }
 
-.create-time-grid {
+.time-tile-grid {
   display: flex;
   flex-direction: column;
-  gap: 18rpx;
+  gap: 16rpx;
   margin-top: 22rpx;
 }
 
-.create-time-tile {
+.time-tile {
   width: 100%;
-  min-height: 116rpx;
+  min-height: 108rpx;
   padding: 18rpx 22rpx;
-  border-radius: 24rpx;
-  border: 2rpx solid #d7ddd2;
-  background: #f4f6f0;
-  box-shadow: inset 0 2rpx 0 rgba(255, 255, 255, 0.74);
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-muted);
   box-sizing: border-box;
   display: grid;
   grid-template-columns: 180rpx minmax(0, 1fr) auto;
@@ -754,25 +671,25 @@ function handleMatchEndTimeChange(event: Event) {
   gap: 18rpx;
 }
 
-.create-time-label {
+.time-tile-label {
   display: block;
-  color: #111310;
-  font-size: 28rpx;
+  color: var(--neo-color-text);
+  font-size: 26rpx;
   font-weight: 900;
   line-height: 1.25;
 }
 
-.create-time-value-row {
+.time-tile-value-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12rpx;
 }
 
-.create-time-value {
+.time-tile-value {
   min-width: 0;
   flex: 1;
-  color: #171814;
+  color: var(--neo-color-text);
   font-size: 28rpx;
   font-weight: 800;
   line-height: 1.35;
@@ -781,39 +698,27 @@ function handleMatchEndTimeChange(event: Event) {
   text-overflow: ellipsis;
 }
 
-.create-time-value-placeholder {
-  color: #9aa096;
+.time-tile-value-placeholder {
+  color: var(--neo-color-text-disabled);
 }
 
-.create-time-arrow {
+.time-tile-arrow {
   flex: 0 0 auto;
-  color: #a3aaa0;
-  font-size: 46rpx;
-  font-weight: 500;
+  color: var(--neo-color-text-muted);
+  font-size: 44rpx;
+  font-weight: 700;
   line-height: 1;
 }
 
-.create-pick-button {
+.checkin-switch-row {
   display: flex;
   align-items: center;
-  justify-content: center;
-  min-width: 148rpx;
-  height: 72rpx;
-  padding: 0 20rpx;
-  border-radius: 999rpx;
-  background: #c8ff00;
-  color: #131410;
-  font-size: 24rpx;
-  font-weight: 900;
+  justify-content: space-between;
+  gap: 18rpx;
+  margin-top: 26rpx;
 }
 
-.create-location-box {
-  margin-top: 18rpx;
-  padding: 20rpx 22rpx;
-  border-radius: 24rpx;
-  background: #f4f6f0;
-  font-size: 26rpx;
-  color: #5f645c;
-  line-height: 1.6;
+.checkin-switch-row .form-label {
+  margin-bottom: 0;
 }
 </style>

@@ -64,15 +64,33 @@ describe("create match Wot UI integration", () => {
     expect(source.includes('return `${pad(date.getMonth() + 1)}月')).toEqual(true);
   });
 
-  test("uses native input and Wot textarea components for editable fields", async () => {
+  test("uses native input and textarea components for editable fields", async () => {
     const source = await read("src/components/MatchPublishForm.vue");
 
     expect(source.includes("<wd-input")).toEqual(false);
     expect((source.match(/<input/g)?.length ?? 0) >= 7).toEqual(true);
-    expect(source.match(/<wd-textarea/g)?.length).toEqual(1);
-    expect(source.includes("<textarea")).toEqual(false);
-    expect(source.includes("create-native-input")).toEqual(true);
-    expect(source.includes("custom-textarea-class=\"create-wot-textarea-inner\"")).toEqual(true);
+    expect((source.match(/<wd-textarea/g)?.length ?? 0)).toEqual(0);
+    expect((source.match(/<textarea/g)?.length ?? 0) >= 1).toEqual(true);
+    expect(source.includes("form-input")).toEqual(true);
+  });
+
+  test("styles the publish form with the neo design system", async () => {
+    const source = await read("src/components/MatchPublishForm.vue");
+    const pageSource = await read("src/pages/matches/create/index.vue");
+
+    expect(source.includes('import NeoSegmentedControl from "@/components/neo/NeoSegmentedControl.vue"')).toEqual(true);
+    expect(source.includes('import NeoSurface from "@/components/neo/NeoSurface.vue"')).toEqual(true);
+    expect(source.includes('import NeoSectionHeader from "@/components/neo/NeoSectionHeader.vue"')).toEqual(true);
+    expect(source.includes("<NeoSegmentedControl")).toEqual(true);
+    expect(source.includes('custom-class="form-card"')).toEqual(true);
+    // 表单皮肤用 neo token；球衣色板（colorOptions）允许保留 hex 色值。
+    expect(source.includes("border-radius: 24rpx")).toEqual(false);
+    expect(source.includes("var(--neo-color")).toEqual(true);
+    expect(pageSource.includes('import NeoStickyActionBar from "@/components/neo/NeoStickyActionBar.vue"')).toEqual(true);
+    expect(pageSource.includes('variant="dark" custom-class="create-hero"')).toEqual(true);
+    expect(pageSource.includes("<NeoButton block variant=\"lime\"")).toEqual(true);
+    expect(pageSource.includes("#c8ff00")).toEqual(false);
+    expect(pageSource.includes("#111310")).toEqual(false);
   });
 
   test("declares chooseLocation private api for map location picking", async () => {
@@ -116,12 +134,13 @@ describe("create match Wot UI integration", () => {
     expect(source.includes("async function handleSubmit() {\n  if (await guardReviewMode()) return;")).toEqual(true);
   });
 
-  test("syncs runtime version to the upload version before building", async () => {
-    const source = await read("scripts/mini-ci.mjs");
+  test("syncs runtime version via prebuild hook before building and uploading", async () => {
+    const packageSource = await read("package.json");
+    const scriptSource = await read("scripts/mini-ci.mjs");
 
-    expect(source.includes("syncManifestVersion({ versionName: uploadVersion })")).toEqual(true);
-    expect(source.indexOf("syncManifestVersion({ versionName: uploadVersion })") < source.indexOf("spawn(\"node\", [cliPath")).toEqual(true);
-    expect(source.includes("MINI_PROGRAM_VERSION: uploadVersion")).toEqual(true);
+    expect(packageSource.includes('"prebuild:mp-weixin": "node scripts/sync-manifest-version.mjs"')).toEqual(true);
+    expect(packageSource.includes('"mp:release": "bun run build:mp-weixin && node scripts/mini-ci.mjs upload"')).toEqual(true);
+    expect(scriptSource.includes("version: manifest.versionName")).toEqual(true);
   });
 
   test("derives registration times from submit time and match start time", async () => {

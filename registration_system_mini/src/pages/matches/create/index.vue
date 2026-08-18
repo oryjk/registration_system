@@ -3,6 +3,9 @@ import { computed, reactive, ref } from "vue";
 import { onLoad, onShow } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
 import MatchPublishForm from "@/components/MatchPublishForm.vue";
+import NeoButton from "@/components/neo/NeoButton.vue";
+import NeoStickyActionBar from "@/components/neo/NeoStickyActionBar.vue";
+import NeoSurface from "@/components/neo/NeoSurface.vue";
 import type { MatchPublishFormModel } from "@/components/matchPublishForm";
 import { getActivity, updateActivity } from "@/api/activity";
 import { createMatch } from "@/api/match";
@@ -304,64 +307,83 @@ onShow(async () => {
   <view v-if="reviewGateReady" class="create-match-page" :style="pageStyle">
     <AppTabHeader :title="pageMode === 'edit' ? '编辑比赛' : '创建比赛'" showBack />
 
-    <view class="create-hero">
-      <view>
-        <wd-text custom-class="create-hero-tag" color="#111310" :text="pageMode === 'edit' ? '编辑比赛' : '创建比赛'" />
-        <wd-text custom-class="create-hero-title" color="#111310" :text="currentTeam?.name || '当前球队'" />
+    <view class="create-page-content">
+      <NeoSurface variant="dark" custom-class="create-hero">
+        <view class="create-hero__copy">
+          <text class="create-hero-tag">{{ pageMode === "edit" ? "编辑比赛" : "创建比赛" }}</text>
+          <text class="create-hero-title">{{ currentTeam?.name || "当前球队" }}</text>
+        </view>
+        <view class="create-hero__mark">
+          <text>赛</text>
+        </view>
+      </NeoSurface>
+
+      <view v-if="loadingActivity" class="create-skeleton-form">
+        <view class="create-skeleton-line create-skeleton-line-title" />
+        <view class="create-skeleton-line" />
+        <view class="create-skeleton-line" />
+        <view class="create-skeleton-grid">
+          <view class="create-skeleton-pill" />
+          <view class="create-skeleton-pill" />
+        </view>
       </view>
+
+      <MatchPublishForm
+        v-else
+        :model-value="form"
+        mode="match"
+        :show-check-in="false"
+        :time-valid-message="timeValidMessage"
+        @location-input="handleLocationInput"
+        @choose-location="handleChooseLocation"
+      />
     </view>
 
-    <view v-if="loadingActivity" class="create-skeleton-form">
-      <view class="create-skeleton-line create-skeleton-line-title" />
-      <view class="create-skeleton-line" />
-      <view class="create-skeleton-line" />
-      <view class="create-skeleton-grid">
-        <view class="create-skeleton-pill" />
-        <view class="create-skeleton-pill" />
-      </view>
-    </view>
-
-    <MatchPublishForm
-      v-else
-      :model-value="form"
-      mode="match"
-      :show-check-in="false"
-      :time-valid-message="timeValidMessage"
-      @location-input="handleLocationInput"
-      @choose-location="handleChooseLocation"
-    />
-
-    <view class="create-submit-row">
-      <view :class="['create-submit-button', !canSubmit ? 'create-submit-button-disabled' : '']" @tap="canSubmit ? handleSubmit() : null">
-        {{ submitting ? (pageMode === 'edit' ? '保存中...' : '创建中...') : pageMode === 'edit' ? '保存修改' : '创建比赛' }}
-      </view>
-    </view>
+    <NeoStickyActionBar>
+      <NeoButton block variant="lime" :disabled="!canSubmit" :loading="submitting" @click="handleSubmit">
+        {{ submitting ? (pageMode === "edit" ? "保存中..." : "创建中...") : pageMode === "edit" ? "保存修改" : "创建比赛" }}
+      </NeoButton>
+    </NeoStickyActionBar>
   </view>
 </template>
 
 <style scoped>
 .create-match-page {
   min-height: 100vh;
-  padding: 30rpx 28rpx 100rpx;
-  background:
-    radial-gradient(circle at top right, rgba(200, 255, 0, 0.15), transparent 24%),
-    linear-gradient(180deg, #fbfcf7 0%, #f3f5ee 100%);
+  padding: 0 28rpx 132rpx;
+  background: var(--neo-color-page);
   box-sizing: border-box;
 }
 
+.create-page-content {
+  max-width: 900rpx;
+  margin: 0 auto;
+}
+
 .create-hero {
-  padding: 28rpx;
-  border-radius: 34rpx;
-  background: #ffffff;
-  box-shadow: 0 20rpx 38rpx rgba(17, 17, 17, 0.05);
+  display: flex;
+  align-items: center;
+  gap: 22rpx;
+  margin: 22rpx 0 6rpx;
+  padding: 28rpx 26rpx;
+  border: var(--neo-border-strong);
+  border-radius: var(--neo-radius-md);
+  background: var(--neo-color-hero);
+  box-shadow: 8rpx 8rpx 0 var(--neo-color-accent);
+}
+
+.create-hero__copy {
+  flex: 1;
+  min-width: 0;
 }
 
 .create-hero-tag {
   display: inline-flex;
-  padding: 8rpx 14rpx;
-  border-radius: 999rpx;
-  background: #eef8d6;
-  color: #526a00;
+  padding: 6rpx 14rpx;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-accent);
+  color: var(--neo-color-text);
   font-size: 22rpx;
   font-weight: 900;
 }
@@ -369,17 +391,26 @@ onShow(async () => {
 .create-hero-title {
   display: block;
   margin-top: 14rpx;
+  color: var(--neo-color-text-inverse);
   font-size: 40rpx;
-  color: #131410;
   font-weight: 900;
+  line-height: 1.18;
+  word-break: break-word;
 }
 
-.create-hero-copy {
-  display: block;
-  margin-top: 10rpx;
-  font-size: 24rpx;
-  color: #111310;
-  line-height: 1.6;
+.create-hero__mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 104rpx;
+  height: 104rpx;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-accent);
+  color: var(--neo-color-text);
+  font-size: 44rpx;
+  font-weight: 900;
 }
 
 .create-skeleton-form,
@@ -390,17 +421,18 @@ onShow(async () => {
 }
 
 .create-skeleton-form {
-  margin-top: 18rpx;
+  margin-top: 24rpx;
   padding: 28rpx;
-  border-radius: 30rpx;
-  background: #ffffff;
-  box-shadow: 0 20rpx 38rpx rgba(17, 17, 17, 0.05);
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-md);
+  background: var(--neo-color-surface);
+  box-shadow: var(--neo-shadow-raised);
 }
 
 .create-skeleton-line {
   height: 28rpx;
-  border-radius: 999rpx;
-  background: #e5eadf;
+  border-radius: var(--neo-radius-round);
+  background: var(--neo-color-skeleton-block);
 }
 
 .create-skeleton-line + .create-skeleton-line {
@@ -421,8 +453,8 @@ onShow(async () => {
 
 .create-skeleton-pill {
   height: 96rpx;
-  border-radius: 22rpx;
-  background: #eef2e8;
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-skeleton-block);
 }
 
 .create-skeleton-line::after,
@@ -431,7 +463,7 @@ onShow(async () => {
   position: absolute;
   inset: 0;
   transform: translateX(-100%);
-  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.78) 50%, transparent 100%);
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.72) 50%, transparent 100%);
   animation: create-skeleton-shimmer 1.2s ease-in-out infinite;
 }
 
@@ -439,27 +471,5 @@ onShow(async () => {
   100% {
     transform: translateX(100%);
   }
-}
-
-.create-submit-row {
-  margin-top: 24rpx;
-}
-
-.create-submit-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 92rpx;
-  border-radius: 999rpx;
-  background: #c8ff00;
-  color: #131410;
-  font-size: 30rpx;
-  font-weight: 900;
-}
-
-.create-submit-button-disabled {
-  background: #d7dcd0;
-  color: #686d64;
 }
 </style>
