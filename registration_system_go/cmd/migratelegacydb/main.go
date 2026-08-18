@@ -133,6 +133,10 @@ func run(ctx context.Context, options cliOptions) error {
 	if err != nil {
 		return err
 	}
+	captain.TeamJoinedAt, err = loadLegacyCaptainJoinedAt(ctx, legacyPool, options.legacyTeamID, options.captainLegacyUserID)
+	if err != nil {
+		return err
+	}
 	if err := seedHostAndCaptain(ctx, targetPool, options, captain); err != nil {
 		return err
 	}
@@ -269,6 +273,9 @@ type legacyCaptain struct {
 	AvatarURL *string
 	Phone     *string
 	Active    bool
+	// TeamJoinedAt 是旧库 rs_team_members 里队长的入队时间；
+	// 缺失时种子步骤回退到迁移时刻，避免"加入球队 N 天"被重置为新日期。
+	TeamJoinedAt *time.Time
 }
 
 func loadLegacyCaptain(ctx context.Context, legacy *pgxpool.Pool, userID int64) (legacyCaptain, error) {
@@ -286,6 +293,25 @@ func loadLegacyCaptain(ctx context.Context, legacy *pgxpool.Pool, userID int64) 
 	}
 	captain.Active = status == 1
 	return captain, nil
+}
+
+// loadLegacyCaptainJoinedAt 读取队长在旧库主队的入队时间。
+// 队长是组建球队的人，旧库队长记录可能晚于球队初始成员（重建过记录），
+// 因此取"队长记录时间"与"全队最早入队时间"的更早者；两者都查不到返回 nil（回退迁移时刻）。
+func loadLegacyCaptainJoinedAt(ctx context.Context, legacy *pgxpool.Pool, teamID, userID int64) (*time.Time, error) {
+	var captainJoined, teamEarliest *time.Time
+	err := legacy.QueryRow(ctx, `
+		SELECT (SELECT joined_at FROM rs_team_members WHERE team_id = $1 AND user_id = $2),
+		       (SELECT MIN(joined_at) FROM rs_team_members WHERE team_id = $1)`, teamID, userID,
+	).Scan(&captainJoined, &teamEarliest)
+	if err != nil {
+		return nil, fmt.Errorf("查询旧库队长入队时间: %w", err)
+	}
+	joined := captainJoined
+	if teamEarliest != nil && (joined == nil || teamEarliest.Before(*joined)) {
+		joined = teamEarliest
+	}
+	return joined, nil
 }
 
 var allowedMemberRoles = map[string]bool{"captain": true, "leader": true, "vice_captain": true, "member": true}
@@ -390,8 +416,9 @@ func seedHostAndCaptain(ctx context.Context, target *pgxpool.Pool, options cliOp
 		return fmt.Errorf("种子队长: %w", err)
 	}
 	if _, err := target.Exec(ctx, `
-		INSERT INTO team_members (team_id, user_id, role, status)
-		VALUES ($1, $2, 'captain', 'active')`, options.hostTeamID, captain.ID,
+		INSERT INTO team_members (team_id, user_id, role, status, joined_at)
+		VALUES ($1, $2, 'captain', 'active', COALESCE($3, NOW()))`,
+		options.hostTeamID, captain.ID, captain.TeamJoinedAt,
 	); err != nil {
 		return fmt.Errorf("种子队长成员关系: %w", err)
 	}
