@@ -14,8 +14,9 @@ type AppService struct {
 }
 
 type UpdateMeCommand struct {
-	Nickname *string
-	RealName *string
+	Nickname  *string
+	RealName  *string
+	AvatarURL *string
 }
 
 func NewAppService(repository ports.AppRepository) AppService {
@@ -33,14 +34,14 @@ func (s AppService) UpdateMe(ctx context.Context, actor sharedauth.Actor, comman
 	if !actor.IsUser() {
 		return domain.User{}, sharederror.ErrForbidden
 	}
-	if command.Nickname == nil && command.RealName == nil {
+	if command.Nickname == nil && command.RealName == nil && command.AvatarURL == nil {
 		return domain.User{}, sharederror.New(sharederror.KindValidation, "至少提供一个需要更新的字段")
 	}
 	user, err := s.activeUser(ctx, actor.ID)
 	if err != nil {
 		return domain.User{}, err
 	}
-	user, err = user.UpdateAppProfile(command.Nickname, command.RealName)
+	user, err = user.UpdateAppProfile(command.Nickname, command.RealName, command.AvatarURL)
 	if err != nil {
 		return domain.User{}, err
 	}

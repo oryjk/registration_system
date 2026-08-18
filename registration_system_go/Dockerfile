@@ -27,6 +27,10 @@ RUN useradd --system --uid 10001 --create-home app
 WORKDIR /app
 COPY --from=builder /out/registration-system-go-api /app/registration-system-go-api
 
+# 头像等上传文件默认落盘在 /app/uploads（UPLOAD_DIR 可覆盖）；
+# 预建目录并授权给运行用户，保证命名卷初始化时继承属主。
+RUN mkdir -p /app/uploads && chown app:app /app/uploads
+
 USER app
 EXPOSE 18081
 

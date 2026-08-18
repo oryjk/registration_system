@@ -157,6 +157,61 @@ paths:
                 $ref: "#/components/schemas/ProfileEnvelope"
         <<: *standardErrors
 
+  /api/v1/app/users/me/avatar:
+    post:
+      operationId: uploadCurrentAppUserAvatar
+      tags: [App Users]
+      summary: 上传当前用户头像
+      description: multipart 表单字段 file，仅支持 JPG/PNG/WebP，大小不超过 5MB；保存成功后会把返回的头像地址写入用户资料。
+      security: *bearerSecurity
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "200":
+          description: 已保存的头像地址
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AvatarUploadEnvelope"
+        <<: *standardErrors
+
+  /api/v1/app/user/avatar:
+    post:
+      operationId: uploadCurrentAppUserAvatarLegacy
+      tags: [App Users]
+      summary: 上传当前用户头像（兼容旧路径）
+      description: 已发布小程序使用的旧路径，行为与 /api/v1/app/users/me/avatar 完全一致；下个小程序版本切换后下线。
+      deprecated: true
+      security: *bearerSecurity
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "200":
+          description: 已保存的头像地址
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AvatarUploadEnvelope"
+        <<: *standardErrors
+
   /api/v1/app/teams/my:
     get:
       operationId: listCurrentUserTeams
@@ -1793,6 +1848,9 @@ components:
         real_name:
           type: string
           nullable: true
+        avatar_url:
+          type: string
+          nullable: true
     UpdateProfileRequest:
       type: object
       properties:
@@ -2677,6 +2735,18 @@ components:
           properties:
             data:
               $ref: "#/components/schemas/Profile"
+    AvatarUploadEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              required: [avatar_url]
+              properties:
+                avatar_url:
+                  type: string
     AdminLoginEnvelope:
       allOf:
         - $ref: "#/components/schemas/SuccessBase"

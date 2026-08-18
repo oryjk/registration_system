@@ -34,8 +34,8 @@ func TestOpenAPIIsValidAndMatchesGinRoutes(t *testing.T) {
 	if len(missing) != 0 || len(extra) != 0 {
 		t.Fatalf("OpenAPI route mismatch\nmissing: %v\nextra: %v", missing, extra)
 	}
-	if len(documented) != 65 {
-		t.Fatalf("documented operations=%d, want 65", len(documented))
+	if len(documented) != 67 {
+		t.Fatalf("documented operations=%d, want 67", len(documented))
 	}
 }
 
@@ -131,7 +131,7 @@ func completeRouter() *gin.Engine {
 		TestAuth:           authhttp.NewTestHandler(nil, 37),
 		AdminAuth:          authhttp.NewAdminHandler(nil),
 		UserProfiles:       userhttp.NewHandler(nil),
-		AppUsers:           userhttp.NewAppHandler(nil),
+		AppUsers:           userhttp.NewAppHandler(nil, nil, ""),
 		H5TestLoginEnabled: true,
 		Teams:              teamhttp.NewHandler(nil, nil),
 		AppTeams:           teamhttp.NewAppHandler(nil, nil),
@@ -160,7 +160,7 @@ func ginOperations(router *gin.Engine) map[string]struct{} {
 	parameter := regexp.MustCompile(`:([A-Za-z0-9_]+)`)
 	operations := map[string]struct{}{}
 	for _, route := range router.Routes() {
-		if strings.HasPrefix(route.Path, "/api/docs") {
+		if strings.HasPrefix(route.Path, "/api/docs") || strings.HasPrefix(route.Path, "/uploads") {
 			continue
 		}
 		path := parameter.ReplaceAllString(route.Path, `{$1}`)

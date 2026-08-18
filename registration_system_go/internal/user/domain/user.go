@@ -41,7 +41,7 @@ func (u User) UpdateProfile(realName, phoneNumber string) (User, error) {
 	return u, nil
 }
 
-func (u User) UpdateAppProfile(nickname, realName *string) (User, error) {
+func (u User) UpdateAppProfile(nickname, realName, avatarURL *string) (User, error) {
 	if nickname != nil {
 		value := strings.TrimSpace(*nickname)
 		if utf8.RuneCountInString(value) > 120 {
@@ -55,6 +55,13 @@ func (u User) UpdateAppProfile(nickname, realName *string) (User, error) {
 			return User{}, sharederror.New(sharederror.KindValidation, "真实姓名不能超过 120 个字符")
 		}
 		u.RealName = optionalString(value)
+	}
+	if avatarURL != nil {
+		value := strings.TrimSpace(*avatarURL)
+		if utf8.RuneCountInString(value) > 2048 {
+			return User{}, sharederror.New(sharederror.KindValidation, "头像地址不能超过 2048 个字符")
+		}
+		u.AvatarURL = optionalString(value)
 	}
 	return u, nil
 }

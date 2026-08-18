@@ -44,6 +44,8 @@ export function updateMyProfile(payload: {
   real_name?: string;
   avatar_url?: string;
 }) {
+  // 注意：当前版本不上传 avatar_url（后端 PATCH /users/me 已支持），
+  // 头像由 uploadMyAvatar 接口直接回写；下个版本再随路径切换一起带上。
   return requestApi<AppUser>({
     url: "/users/me",
     method: "PATCH",
@@ -69,6 +71,8 @@ export async function uploadMyAvatar(filePath: string) {
 
   return new Promise<BackendAvatarUploadResult>((resolve, reject) => {
     uni.uploadFile({
+      // 已发布版本沿用旧路径 /user/avatar（Go 后端提供兼容路由）；
+      // 下个版本切换到 /users/me/avatar。
       url: `${getApiBaseUrl()}/user/avatar`,
       filePath,
       name: "file",

@@ -43,6 +43,7 @@ GO_CREDENTIALS_FILE="${GO_CREDENTIALS_FILE:-.env.credentials-v3}"
 GO_ACCEPTANCE_FILE="${GO_ACCEPTANCE_FILE:-.env.acceptance-v3}"
 GOLANG_IMAGE="${GOLANG_IMAGE:-golang:1.26.5-bookworm}"
 GO_MOD_CACHE_VOLUME="${GO_MOD_CACHE_VOLUME:-registration-go-mod-cache}"
+GO_UPLOADS_VOLUME="${GO_UPLOADS_VOLUME:-registration-go-uploads-v3}"
 
 H5_HTML_ROOT="${H5_HTML_ROOT:-/mnt/e/docker_data/nginx/html}"
 H5_DIR="${H5_DIR:-mini-v3}"
@@ -252,7 +253,7 @@ EOF
 
     echo "🔄 替换 Go 容器（127.0.0.1:${GO_PORT}，失败自动回滚旧镜像）"
     ssh "${BUILD_HOST}" \
-        "REPO_DIR='${REPO_DIR}' GO_IMAGE='${GO_IMAGE}' IMAGE_TAG='${IMAGE_TAG}' GO_CONTAINER='${GO_CONTAINER}' GO_PORT='${GO_PORT}' CRED='${GO_CREDENTIALS_FILE}' ACC='${GO_ACCEPTANCE_FILE}' bash -s" << 'EOF'
+        "REPO_DIR='${REPO_DIR}' GO_IMAGE='${GO_IMAGE}' IMAGE_TAG='${IMAGE_TAG}' GO_CONTAINER='${GO_CONTAINER}' GO_PORT='${GO_PORT}' CRED='${GO_CREDENTIALS_FILE}' ACC='${GO_ACCEPTANCE_FILE}' GO_UPLOADS_VOLUME='${GO_UPLOADS_VOLUME}' bash -s" << 'EOF'
 set -euo pipefail
 
 run_container() {
@@ -260,6 +261,7 @@ run_container() {
         --name "${GO_CONTAINER}" \
         --restart unless-stopped \
         -p "127.0.0.1:${GO_PORT}:${GO_PORT}" \
+        -v "${GO_UPLOADS_VOLUME}:/app/uploads" \
         --env-file "${REPO_DIR}/registration_system_go/${CRED}" \
         --env-file "${REPO_DIR}/registration_system_go/${ACC}" \
         -e "HTTP_ADDR=:${GO_PORT}" \

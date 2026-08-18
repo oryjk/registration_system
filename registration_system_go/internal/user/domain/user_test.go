@@ -49,7 +49,7 @@ func TestAppProfilePatchPreservesOmittedFieldsAndClearsRealName(t *testing.T) {
 	user := User{Nickname: "旧昵称", RealName: &realName}
 	nickname := "  新昵称  "
 
-	updated, err := user.UpdateAppProfile(&nickname, nil)
+	updated, err := user.UpdateAppProfile(&nickname, nil, nil)
 	if err != nil {
 		t.Fatalf("update nickname: %v", err)
 	}
@@ -57,8 +57,17 @@ func TestAppProfilePatchPreservesOmittedFieldsAndClearsRealName(t *testing.T) {
 		t.Fatalf("unexpected partial update: %+v", updated)
 	}
 
+	avatarURL := " https://example.test/avatar.png "
+	updated, err = updated.UpdateAppProfile(nil, nil, &avatarURL)
+	if err != nil {
+		t.Fatalf("update avatar: %v", err)
+	}
+	if updated.AvatarURL == nil || *updated.AvatarURL != "https://example.test/avatar.png" || updated.RealName == nil || *updated.RealName != "旧姓名" {
+		t.Fatalf("unexpected avatar update: %+v", updated)
+	}
+
 	empty := "   "
-	updated, err = updated.UpdateAppProfile(nil, &empty)
+	updated, err = updated.UpdateAppProfile(nil, &empty, nil)
 	if err != nil {
 		t.Fatalf("clear real name: %v", err)
 	}
@@ -69,17 +78,21 @@ func TestAppProfilePatchPreservesOmittedFieldsAndClearsRealName(t *testing.T) {
 
 func TestAppProfilePatchRejectsOverlongProvidedFields(t *testing.T) {
 	for name, value := range map[string]string{
-		"nickname":  strings.Repeat("昵", 121),
-		"real name": strings.Repeat("名", 121),
+		"nickname":   strings.Repeat("昵", 121),
+		"real name":  strings.Repeat("名", 121),
+		"avatar url": strings.Repeat("a", 2049),
 	} {
 		t.Run(name, func(t *testing.T) {
-			var nickname, realName *string
-			if name == "nickname" {
+			var nickname, realName, avatarURL *string
+			switch name {
+			case "nickname":
 				nickname = &value
-			} else {
+			case "real name":
 				realName = &value
+			default:
+				avatarURL = &value
 			}
-			if _, err := (User{}).UpdateAppProfile(nickname, realName); err == nil {
+			if _, err := (User{}).UpdateAppProfile(nickname, realName, avatarURL); err == nil {
 				t.Fatal("expected validation error")
 			}
 		})

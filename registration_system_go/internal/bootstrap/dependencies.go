@@ -32,6 +32,7 @@ import (
 	teamhttp "github.com/oryjk/registration_system/registration_system_go/internal/team/adapters/http"
 	teampostgres "github.com/oryjk/registration_system/registration_system_go/internal/team/adapters/postgres"
 	teamapplication "github.com/oryjk/registration_system/registration_system_go/internal/team/application"
+	"github.com/oryjk/registration_system/registration_system_go/internal/user/adapters/avatarstore"
 	userhttp "github.com/oryjk/registration_system/registration_system_go/internal/user/adapters/http"
 	userpostgres "github.com/oryjk/registration_system/registration_system_go/internal/user/adapters/postgres"
 	userapplication "github.com/oryjk/registration_system/registration_system_go/internal/user/application"
@@ -70,7 +71,12 @@ func BuildDependencies(ctx context.Context, config Config) (Dependencies, func()
 	profileService := userapplication.NewProfileService(userRepository)
 	userProfileHandler := userhttp.NewHandler(profileService)
 	appUserService := userapplication.NewAppService(userRepository)
-	appUserHandler := userhttp.NewAppHandler(appUserService)
+	avatarStore, err := avatarstore.NewLocal(config.UploadDir)
+	if err != nil {
+		closePool()
+		return Dependencies{}, nil, fmt.Errorf("create avatar store: %w", err)
+	}
+	appUserHandler := userhttp.NewAppHandler(appUserService, avatarStore, config.PublicBaseURL)
 	wechatClient := wechat.NewClient(&http.Client{Timeout: 10 * time.Second}, wechatEndpoint, config.WechatAppID, config.WechatAppSecret)
 	wechatLogin := authapplication.NewWechatLogin(wechatClient, userRepository, tokens)
 	userAuthHandler := authhttp.NewHandler(wechatLogin)
@@ -134,5 +140,6 @@ func BuildDependencies(ctx context.Context, config Config) (Dependencies, func()
 		AdminMatches: adminMatchHandler, TeamApplications: teamApplicationHandler,
 		Payments: paymentHandler, Wallets: walletHandler, MiniReviews: miniReviewHandler,
 		SystemRuntime: systemhttp.NewHandler(),
+		UploadDir:     config.UploadDir,
 	}, closePool, nil
 }

@@ -76,3 +76,6 @@ private.*.key
 # Turbopack build cache
 .turbopack/
 .zcode/
+
+# Go backend local uploads (avatars etc.)
+registration_system_go/uploads/

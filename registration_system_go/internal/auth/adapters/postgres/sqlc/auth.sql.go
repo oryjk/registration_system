@@ -314,15 +314,17 @@ const updateUserAppProfile = `-- name: UpdateUserAppProfile :one
 UPDATE users
 SET nickname = $2,
     real_name = $3,
+    avatar_url = $4,
     updated_at = NOW()
 WHERE id = $1
 RETURNING id, openid, nickname, avatar_url, real_name, phone_number, status, created_at, updated_at
 `
 
 type UpdateUserAppProfileParams struct {
-	ID       int64   `json:"id"`
-	Nickname string  `json:"nickname"`
-	RealName *string `json:"real_name"`
+	ID        int64   `json:"id"`
+	Nickname  string  `json:"nickname"`
+	RealName  *string `json:"real_name"`
+	AvatarUrl *string `json:"avatar_url"`
 }
 
 type UpdateUserAppProfileRow struct {
@@ -338,7 +340,12 @@ type UpdateUserAppProfileRow struct {
 }
 
 func (q *Queries) UpdateUserAppProfile(ctx context.Context, arg UpdateUserAppProfileParams) (UpdateUserAppProfileRow, error) {
-	row := q.db.QueryRow(ctx, updateUserAppProfile, arg.ID, arg.Nickname, arg.RealName)
+	row := q.db.QueryRow(ctx, updateUserAppProfile,
+		arg.ID,
+		arg.Nickname,
+		arg.RealName,
+		arg.AvatarUrl,
+	)
 	var i UpdateUserAppProfileRow
 	err := row.Scan(
 		&i.ID,

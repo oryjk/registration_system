@@ -33,6 +33,7 @@ RETURNING id, openid, nickname, avatar_url, real_name, phone_number, status, cre
 UPDATE users
 SET nickname = $2,
     real_name = $3,
+    avatar_url = $4,
     updated_at = NOW()
 WHERE id = $1
 RETURNING id, openid, nickname, avatar_url, real_name, phone_number, status, created_at, updated_at;

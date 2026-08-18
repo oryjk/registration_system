@@ -65,7 +65,7 @@ func (r *Repository) UpdateProfile(ctx context.Context, user domain.User) (domai
 
 func (r *Repository) UpdateAppProfile(ctx context.Context, user domain.User) (domain.User, error) {
 	row, err := r.queries.UpdateUserAppProfile(ctx, authsqlc.UpdateUserAppProfileParams{
-		ID: user.ID, Nickname: user.Nickname, RealName: user.RealName,
+		ID: user.ID, Nickname: user.Nickname, RealName: user.RealName, AvatarUrl: user.AvatarURL,
 	})
 	if err != nil {
 		return domain.User{}, err

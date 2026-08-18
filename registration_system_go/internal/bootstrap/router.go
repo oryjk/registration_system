@@ -35,6 +35,8 @@ type Dependencies struct {
 	Wallets            *wallethttp.Handler
 	MiniReviews        *minireviewhttp.Handler
 	SystemRuntime      *systemhttp.Handler
+	// UploadDir 非空时以 /uploads 静态路径对外提供上传文件（如头像）。
+	UploadDir string
 }
 
 func NewRouter(dependencies Dependencies) *gin.Engine {
@@ -45,6 +47,9 @@ func NewRouter(dependencies Dependencies) *gin.Engine {
 		c.JSON(http.StatusOK, sharedhttp.Success(gin.H{"status": "ok"}))
 	})
 	registerOpenAPI(router)
+	if dependencies.UploadDir != "" {
+		router.Static("/uploads", dependencies.UploadDir)
+	}
 
 	v1 := router.Group("/api/v1")
 	app := v1.Group("/app")

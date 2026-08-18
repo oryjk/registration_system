@@ -20,11 +20,13 @@ func TestAppServiceGetsAndUpdatesCurrentUser(t *testing.T) {
 		t.Fatalf("GetMe() user=%+v error=%v", got, err)
 	}
 	nickname, realName := " 新昵称 ", " 王睿 "
-	updated, err := service.UpdateMe(context.Background(), actor, UpdateMeCommand{Nickname: &nickname, RealName: &realName})
+	avatarURL := "https://example.test/avatar.png"
+	updated, err := service.UpdateMe(context.Background(), actor, UpdateMeCommand{Nickname: &nickname, RealName: &realName, AvatarURL: &avatarURL})
 	if err != nil {
 		t.Fatalf("UpdateMe() error=%v", err)
 	}
-	if updated.Nickname != "新昵称" || updated.RealName == nil || *updated.RealName != "王睿" || repository.saved.ID != 37 {
+	if updated.Nickname != "新昵称" || updated.RealName == nil || *updated.RealName != "王睿" ||
+		updated.AvatarURL == nil || *updated.AvatarURL != avatarURL || repository.saved.ID != 37 {
 		t.Fatalf("unexpected update user=%+v saved=%+v", updated, repository.saved)
 	}
 }
