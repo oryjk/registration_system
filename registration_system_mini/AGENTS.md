@@ -22,6 +22,31 @@ bun run type-check
 
 验收环境（oryjk.cn:82）的 H5 构建由仓库根目录的 `deploy_out109_go_h5.sh` 一键完成（读取本目录 `.env.test`），不需要手动执行 `build:h5:acceptance`。
 
+## 微信小程序发布（mp-weixin 上传）
+
+发布小程序用一条命令（构建 + 登记版本号 + miniprogram-ci 上传）：
+
+```bash
+bun run mp:release -- --desc "本次变更说明"   # 可选 --robot 2 换上传机器人
+bun run mp:preview -- --desc "预览说明"       # 只传预览版，生成 dist/preview-qrcode.jpg
+```
+
+流程细节（`scripts/mini-ci.mjs` + `scripts/sync-manifest-version.mjs`）：
+
+1. `build:mp-weixin` 的 prebuild 钩子先向 Go 后端 mini-review 登记接口 `POST /mini-review/allocate` 申请版本号：最新版本仍在审核中则**复用**，否则在（库内最大与 manifest 当前值取大）基础上 `+0.0.1` 并标记审核中。
+2. 构建 `dist/build/mp-weixin` 并执行组件注册检查。
+3. `miniprogram-ci` 以 `manifest.json` 的 `versionName` 上传到微信后台（默认 robot=1，落在「版本管理 → 开发版本」）。
+
+前置条件（缺失时脚本会明确报错）：
+
+- 项目根 `private.<appid>.key`：微信公众平台「开发管理 → 开发设置 → 小程序代码上传」下载的私钥（已 git-ignore）；可用 `MINI_CI_PRIVATE_KEY_PATH` 覆盖路径。
+- `.env.ci.local` 配置 `MINI_REVIEW_API_KEY`（git-ignore；从 out109 的 `registration_system_go/.env.acceptance-v3` 同名键获取）。纯本地离线构建可设 `MINI_REVIEW_SKIP=1` 跳过登记。
+
+上传后的收尾：
+
+- 上传产物是**开发版本**：验证用 `mp:preview` 的二维码或在公众平台设为体验版；对外正式发布需在微信公众平台提审通过后点发布，CLI 不做这一步。
+- 若本次分配了新版本号，`src/manifest.json` 与 `src/config/generatedMiniProgramVersion.ts` 会被更新，需要单独提交（参考历史 chore：`allocate build version x.y.z via mini-review registry`）；版本被复用（仍审核中）时无文件变更。
+
 ## 关键目录
 
 ```text

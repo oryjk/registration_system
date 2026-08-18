@@ -17,6 +17,7 @@
 - **所有后端开发都在 `registration_system_go/` 上进行**：历史数据已通过 `registration_system_go/scripts/migrate-legacy.sh` 迁入 Go 结构（独立库 `registration_system_go`）；后续增量迁移、新功能全部落在 Go 项目。
 - 小程序（`registration_system_mini/`）当前对接 Go 后端；旧管理端（`registration_system_backend_fe/`）与 Rust 一同冻结，Go 配套管理端是 `registration_system_backend_fe_go/`。
 - out109 验收环境（Go 后端 + mini H5 + Go 管理端）统一使用根目录 `deploy_out109_go_h5.sh` 部署。
+- 微信小程序（mp-weixin）发布用 `registration_system_mini` 的 `bun run mp:release` 上传开发版本，详细流程与前置条件见 `registration_system_mini/AGENTS.md` 的「微信小程序发布」一节。
 
 ## 文档规范
 
