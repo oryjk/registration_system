@@ -1,6 +1,6 @@
 import { SettingOutlined } from "@ant-design/icons";
 import { PageContainer } from "@ant-design/pro-components/es/layout/components/PageContainer";
-import { Alert, Descriptions, Switch, Typography } from "antd";
+import { Alert, Space, Switch, Typography } from "antd";
 import {
   useMiniAppSettingsQuery,
   useUpdateMiniAppSettingsMutation,
@@ -26,22 +26,24 @@ export default function SystemSettingsPage() {
       extra={<SettingOutlined className="page-container-icon" />}
     >
       <section className="data-panel">
-        <Descriptions column={1} colon={false}>
-          <Descriptions.Item label="小程序验证入口">
-            <Switch
-              checked={clearProfileEnabled}
-              loading={settings.isLoading || updateSettings.isPending}
-              onChange={toggleClearProfile}
-            />
-            <Paragraph
-              type="secondary"
-              style={{ marginTop: 12, marginBottom: 0 }}
-            >
-              开启后，小程序「我的」页会出现「清除头像和昵称」的验证入口，
-              用于模拟新用户未完善资料的状态；默认关闭，验证完成后请关闭。
-            </Paragraph>
-          </Descriptions.Item>
-        </Descriptions>
+        <Space align="center" size={12}>
+          <Switch
+            checked={clearProfileEnabled}
+            loading={settings.isLoading || updateSettings.isPending}
+            onChange={toggleClearProfile}
+          />
+          <Text strong>小程序验证入口</Text>
+          <Text type="secondary">
+            {clearProfileEnabled ? "已开启" : "已关闭"}
+          </Text>
+        </Space>
+        <Paragraph
+          type="secondary"
+          style={{ marginTop: 12, marginBottom: 0, maxWidth: 640 }}
+        >
+          开启后，小程序「我的」页会出现「清除头像和昵称」的验证入口，
+          用于模拟新用户未完善资料的状态；默认关闭，验证完成后请关闭。
+        </Paragraph>
       </section>
 
       {settings.isError && (
