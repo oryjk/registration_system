@@ -35,10 +35,10 @@
   `UpdateJoinPasswordHash(ctx context.Context, teamID int64, hash *string) (bool, error)` — 返回 found；false=球队不存在。
 - sqlc：`-- name: UpdateTeamJoinPasswordHash :one` → `UPDATE teams SET join_password_hash = $2, updated_at = NOW() WHERE id = $1 RETURNING teams.id;`
 
-- [ ] Step 1: `team.sql` 追加查询（放在既有 join_password 相关查询附近），`make generate` 重新生成 sqlc。
-- [ ] Step 2: 两个端口接口追加方法；`adapters/postgres/repository.go` 实现（`sqlc.ErrNoRows` → `(false, nil)`，其余错误包 `KindInternal` 风格返回）。注意：两个端口方法同名同签名，同一 `Repository` 满足。
-- [ ] Step 3: 集成测试（`testsupport` 独立 schema、`TEST_DATABASE_URL` 未设自动 skip，复用文件内既有 `CreateWithCaptain`/`FindJoinPasswordHash` 测试先例）：设置→`FindJoinPasswordHash` 返回哈希；清除（nil）→返回 nil、found=true；不存在球队→`(false, nil)`。
-- [ ] Step 4: `go test ./internal/team/...`（集成用例无 DB 时 skip，不挂）。
+- [x] Step 1: `team.sql` 追加查询（放在既有 join_password 相关查询附近），`make generate` 重新生成 sqlc。
+- [x] Step 2: 两个端口接口追加方法；`adapters/postgres/repository.go` 实现（`sqlc.ErrNoRows` → `(false, nil)`，其余错误包 `KindInternal` 风格返回）。注意：两个端口方法同名同签名，同一 `Repository` 满足。
+- [x] Step 3: 集成测试（`testsupport` 独立 schema、`TEST_DATABASE_URL` 未设自动 skip，复用文件内既有 `CreateWithCaptain`/`FindJoinPasswordHash` 测试先例）：设置→`FindJoinPasswordHash` 返回哈希；清除（nil）→返回 nil、found=true；不存在球队→`(false, nil)`。
+- [x] Step 4: `go test ./internal/team/...`（集成用例无 DB 时 skip，不挂）。
 
 ### Task 2: Go App 侧 — AppManageService.UpdateJoinPassword + 路由
 
@@ -63,9 +63,9 @@
 - service：非队长/领队 403；球队不存在 404；设置（断言 hasher 收到原始值、仓储收到非 nil hash）；空串/纯空格（断言仓储收到 nil）；仓储 not found → 404。
 - handler：合法 body 200 `ApiResponse{}`；坏 body 400；service 错误透传。
 
-- [ ] Step 1: 写 service 失败测试 → 实现通过。
-- [ ] Step 2: 写 handler 失败测试 → 实现通过。
-- [ ] Step 3: bootstrap 接线，`go test ./internal/team/... ./internal/bootstrap/...`。
+- [x] Step 1: 写 service 失败测试 → 实现通过。
+- [x] Step 2: 写 handler 失败测试 → 实现通过。
+- [x] Step 3: bootstrap 接线，`go test ./internal/team/... ./internal/bootstrap/...`。
 
 ### Task 3: Go Admin 侧 — QueryService.UpdateJoinPassword + 路由
 
@@ -87,9 +87,9 @@
 - service：非管理员 403；不存在 404；设置/清除/哈希错误，同 Task 2。
 - handler：路由命中、鉴权透传、响应格式。
 
-- [ ] Step 1: 写 service 失败测试 → 实现通过。
-- [ ] Step 2: 写 handler 失败测试 → 实现通过。
-- [ ] Step 3: bootstrap 接线与既有测试调用点修补，`go test ./internal/team/... ./internal/bootstrap/...`。
+- [x] Step 1: 写 service 失败测试 → 实现通过。
+- [x] Step 2: 写 handler 失败测试 → 实现通过。
+- [x] Step 3: bootstrap 接线与既有测试调用点修补，`go test ./internal/team/... ./internal/bootstrap/...`。
 
 ### Task 4: openapi 文档 + 计数
 
@@ -97,8 +97,8 @@
 - Modify: `registration_system_go/docs/openapi.yaml`
 - Modify: `registration_system_go/docs/openapi_test.go`（`documented operations` 断言 69 → 71）
 
-- [ ] Step 1: 按文件内既有 app/admin 球队端点模式补两个 `PUT /teams/{id}/join-password` 定义（requestBody: `join_password: string`，responses 200/400/401/403/404）。
-- [ ] Step 2: 计数 69 → 71，`go test ./docs/`。
+- [x] Step 1: 按文件内既有 app/admin 球队端点模式补两个 `PUT /teams/{id}/join-password` 定义（requestBody: `join_password: string`，responses 200/400/401/403/404）。
+- [x] Step 2: 计数 69 → 71，`go test ./docs/`。
 
 ### Task 5: 小程序 — API + composable + 面板
 
@@ -111,8 +111,8 @@
 **行为:**
 - composable（对齐 `useTeamProfile.ts` 模式）：暴露 `requiresPassword: Ref<boolean>`、`passwordForm reactive({ password: "" })`、`canSubmit`、`syncJoinPasswordStatus()`（调既有 `getTeamPasswordInfo`）、`handleUpdateJoinPassword()`、`handleClearJoinPassword()`（`uni.showModal` 二次确认后提交空串）。
 - 面板：状态徽标（「已设置入队密码」/「开放加入，无需密码」）+ password 输入框 + 保存按钮 + （已设密码时）清除按钮；成功后刷新状态、清空输入；错误 toast `error.message`。
-- [ ] Step 1: api + composable + 组件 + 页面装配。
-- [ ] Step 2: `bun run type-check`。
+- [x] Step 1: api + composable + 组件 + 页面装配。
+- [x] Step 2: `bun run type-check`。
 
 ### Task 6: Go 管理端 — 重置入口
 
@@ -121,14 +121,14 @@
 - Modify: `registration_system_backend_fe_go/src/hooks/queries/useTeamQueries.ts`（新增 `useResetTeamJoinPasswordMutation`，成功后 `message.success`，不 invalidate 列表——密码不进列表数据）
 - Modify: `registration_system_backend_fe_go/src/pages/TeamListPage.tsx`（操作列加「重置入队密码」圆形图标按钮（KeyOutlined），弹 `ModalForm`：password 输入框 + 说明文案「留空提交即清除密码，开放加入」）
 
-- [ ] Step 1: api + mutation + 页面入口。
-- [ ] Step 2: `bun run type-check`、`bun run lint`、`bun run build`。
+- [x] Step 1: api + mutation + 页面入口。
+- [x] Step 2: `bun run type-check`、`bun run lint`、`bun run build`。
 
 ### Task 7: 全量验证与提交
 
-- [ ] `cd registration_system_go && gofmt -w . && go test -race ./... && go vet ./... && go build -o /tmp/registration-system-go-api ./cmd/api`
-- [ ] 小程序 `bun run type-check`；管理端 `bun run type-check`、`lint`、`build` 复跑确认。
-- [ ] 分批提交（只 add 各任务文件）：`feat(go): app and admin endpoints to update team join password`（T1–T4）、`feat(mini): captain join password panel on team manage page`（T5）、`feat(admin): reset team join password action`（T6）。
+- [x] `cd registration_system_go && gofmt -w . && go test -race ./... && go vet ./... && go build -o /tmp/registration-system-go-api ./cmd/api`
+- [x] 小程序 `bun run type-check`；管理端 `bun run type-check`、`lint`、`build` 复跑确认。
+- [x] 分批提交（只 add 各任务文件）：`feat(go): app and admin endpoints to update team join password`（T1–T4，已提交 96c59c8）、`feat(admin): reset team join password action`（T6，已提交 6dc43d6）。T5 小程序改动因工作区存在另一会话的未提交改动（teams/manage 共享文件），暂不提交，待用户确认后处理。
 
 ## 风险与备注
 
