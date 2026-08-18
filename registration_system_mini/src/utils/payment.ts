@@ -35,8 +35,12 @@ export function normalizeWxPaymentParams(
   };
 }
 
+/** 模拟支付哨兵签名；与 Go mock 网关（payment/adapters/mock/gateway.go）的跨端约定，
+ *  识别到该值时跳过 wx.requestPayment。前端统一引用此常量，不要再写字面量。 */
+export const MOCK_PAY_SIGN = "mock_sign_for_testing";
+
 export function isMockWxPaymentParams(params: WxPaymentParams): boolean {
-  return params.paySign === "mock_sign_for_testing";
+  return params.paySign === MOCK_PAY_SIGN;
 }
 
 export function requestWxPayment(params: WxPaymentParams): Promise<void> {

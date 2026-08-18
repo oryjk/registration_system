@@ -1,4 +1,5 @@
 import type { BackendApiResponse } from "@/types/backend";
+import { MOCK_PAY_SIGN } from "@/utils/payment";
 import { findMockUser, mockCurrentUser, mockUsers, mockMyActivities } from "./data/users";
 import { mockTeams, findMockTeam, TEAM_ID_HEXI, TEAM_ID_MINGYUE } from "./data/teams";
 import {
@@ -325,7 +326,7 @@ const routes: MockRoute[] = [
           nonceStr: "mocknonce",
           package: "prepay_id=mock_team_fee",
           signType: "MD5",
-          paySign: "mock_sign_for_testing",
+          paySign: MOCK_PAY_SIGN,
         },
       };
     },
