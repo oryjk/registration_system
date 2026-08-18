@@ -100,7 +100,7 @@ describe("activities page sections", () => {
     expect(source.includes("function handleLocationInput")).toEqual(true);
     expect(source.includes("@input=\"handleLocationInput\"")).toEqual(true);
     expect(source.includes("@tap=\"handleChooseLocation\"")).toEqual(true);
-    expect(source.includes("create-location-row")).toEqual(true);
+    expect(source.includes("form-location-row")).toEqual(true);
     expect(source.includes("grid-template-columns: minmax(0, 1fr) 150rpx")).toEqual(true);
     expect(source.includes("create-location-head")).toEqual(false);
     expect(source.includes("locationLatitude: null as number | null")).toEqual(true);

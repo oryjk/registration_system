@@ -2,6 +2,12 @@
 import { computed, reactive, ref } from "vue";
 import { onLoad, onShow } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
+import NeoButton from "@/components/neo/NeoButton.vue";
+import NeoSectionHeader from "@/components/neo/NeoSectionHeader.vue";
+import NeoSegmentedControl from "@/components/neo/NeoSegmentedControl.vue";
+import NeoStickyActionBar from "@/components/neo/NeoStickyActionBar.vue";
+import NeoSurface from "@/components/neo/NeoSurface.vue";
+import type { NeoSegmentOption } from "@/components/neo/NeoSegmentedControl.vue";
 import { createChallenge } from "@/api/challenge";
 import { preloadMiniReviewStatus, useMiniReviewStatus } from "@/stores/miniReview";
 import { useTeamContext } from "@/stores/teamContext";
@@ -56,6 +62,19 @@ const canSubmit = computed(
 );
 const defaultMinPlayers = computed(() => Number(form.playersPerTeam || 0) * 2);
 const defaultMaxPlayers = computed(() => Number(form.playersPerTeam || 0) * 2 + 4);
+const paymentModeOptions: NeoSegmentOption[] = [
+  { label: "赛后支付", value: "postpaid" },
+  { label: "赛前支付", value: "prepaid" },
+];
+const paymentModeCaption = computed(() =>
+  form.paymentMode === "prepaid" ? "报名后 20 分钟内支付" : "报名后可随时支付",
+);
+// 高级设置仅散人约队展示；场地与费用卡片的序号跟随其是否渲染。
+const venueMarker = computed(() => (challengeKind.value === "individual" ? "03" : "02"));
+
+function handlePaymentModeChange(value: string) {
+  form.paymentMode = value === "prepaid" ? "prepaid" : "postpaid";
+}
 
 function defaultPublishDate() {
   const now = new Date();
@@ -230,161 +249,152 @@ onLoad((options) => {
   <view v-if="reviewGateReady" class="individual-create-page" :style="pageStyle">
     <AppTabHeader :title="challengeKind === 'team' ? '球队约队' : '散人约队'" showBack />
 
-    <view class="create-hero">
-      <view>
-        <wd-text custom-class="create-hero-tag" color="#111310" :text="challengeKind === 'team' ? '球队约队' : '散人约队'" />
-        <wd-text
-          custom-class="create-hero-title"
-          color="#111310"
-          :text="currentIdentity ? `${currentIdentity.label} · ${currentIdentity.roleLabel}` : '请选择发布身份'"
-        />
-        <wd-text
-          custom-class="create-hero-copy"
-          color="#111310"
-          :text="heroCopy"
-        />
-      </view>
-    </view>
+    <view class="create-page-content">
+      <NeoSurface variant="dark" custom-class="create-hero">
+        <view class="create-hero__copy">
+          <text class="create-hero-tag">{{ challengeKind === "team" ? "球队约队" : "散人约队" }}</text>
+          <text class="create-hero-title">{{
+            currentIdentity ? `${currentIdentity.label} · ${currentIdentity.roleLabel}` : "请选择发布身份"
+          }}</text>
+          <text class="create-hero-copy">{{ heroCopy }}</text>
+        </view>
+      </NeoSurface>
 
-    <view class="create-card">
-      <view class="create-card-title">基础信息</view>
-      <view class="create-form-grid">
-        <view class="create-form-item create-form-item-full">
-          <text class="create-form-label">标题</text>
-          <input v-model="form.title" class="create-input" placeholder="例如：周三晚散人局，还缺 4 人" />
+      <NeoSurface custom-class="form-card">
+        <NeoSectionHeader title="基础信息" marker="01" caption="标题、日期、赛制与支付方式" />
+        <view class="form-field">
+          <text class="form-label">标题</text>
+          <input v-model="form.title" class="form-input" placeholder="例如：周三晚散人局，还缺 4 人" placeholder-class="form-placeholder" />
         </view>
-        <view class="create-form-item">
-          <text class="create-form-label">日期</text>
-          <picker mode="date" :value="form.date" @change="handleDateChange">
-            <view class="create-input create-picker">{{ form.date || "选择日期" }}</view>
-          </picker>
-        </view>
-        <view class="create-form-item">
-          <text class="create-form-label">赛制</text>
-          <picker :value="form.playersPerTeam === '5' ? 0 : 1" :range="['5 人制（共 10 人）', '8 人制（共 16 人）']" @change="handleFormatChange">
-            <view class="create-input create-picker">{{ form.playersPerTeam }} 人制 · 默认 {{ defaultMinPlayers }} 人开踢</view>
-          </picker>
-        </view>
-        <view class="create-form-item">
-          <text class="create-form-label">开始时间</text>
-          <picker mode="time" :value="form.startTime" @change="handleStartTimeChange">
-            <view class="create-input create-picker">{{ form.startTime }}</view>
-          </picker>
-        </view>
-        <view class="create-form-item">
-          <text class="create-form-label">结束时间</text>
-          <picker mode="time" :value="form.endTime" @change="handleEndTimeChange">
-            <view class="create-input create-picker">{{ form.endTime }}</view>
-          </picker>
-        </view>
-        <view v-if="challengeKind === 'individual'" class="create-form-item create-form-item-full">
-          <text class="create-form-label">支付方式</text>
-          <view class="payment-mode-switch">
-            <view
-              :class="['payment-mode-option', form.paymentMode === 'postpaid' ? 'payment-mode-option-active' : '']"
-              @tap="form.paymentMode = 'postpaid'"
-            >
-              <text class="payment-mode-title">赛后支付</text>
-              <text class="payment-mode-desc">报名后可随时支付</text>
-            </view>
-            <view
-              :class="['payment-mode-option', form.paymentMode === 'prepaid' ? 'payment-mode-option-active' : '']"
-              @tap="form.paymentMode = 'prepaid'"
-            >
-              <text class="payment-mode-title">赛前支付</text>
-              <text class="payment-mode-desc">报名后 20 分钟内支付</text>
-            </view>
+        <view class="form-grid">
+          <view class="form-field">
+            <text class="form-label">日期</text>
+            <picker mode="date" :value="form.date" @change="handleDateChange">
+              <view class="form-input form-picker">{{ form.date || "选择日期" }}</view>
+            </picker>
+          </view>
+          <view class="form-field">
+            <text class="form-label">赛制</text>
+            <picker :value="form.playersPerTeam === '5' ? 0 : 1" :range="['5 人制（共 10 人）', '8 人制（共 16 人）']" @change="handleFormatChange">
+              <view class="form-input form-picker">{{ form.playersPerTeam }} 人制 · 默认 {{ defaultMinPlayers }} 人开踢</view>
+            </picker>
+          </view>
+          <view class="form-field">
+            <text class="form-label">开始时间</text>
+            <picker mode="time" :value="form.startTime" @change="handleStartTimeChange">
+              <view class="form-input form-picker">{{ form.startTime }}</view>
+            </picker>
+          </view>
+          <view class="form-field">
+            <text class="form-label">结束时间</text>
+            <picker mode="time" :value="form.endTime" @change="handleEndTimeChange">
+              <view class="form-input form-picker">{{ form.endTime }}</view>
+            </picker>
           </view>
         </view>
-      </view>
-    </view>
+        <view v-if="challengeKind === 'individual'" class="form-field">
+          <text class="form-label">支付方式</text>
+          <NeoSegmentedControl
+            :model-value="form.paymentMode"
+            :options="paymentModeOptions"
+            @change="handlePaymentModeChange"
+          />
+          <text class="form-caption">{{ paymentModeCaption }}</text>
+        </view>
+      </NeoSurface>
 
-    <view v-if="challengeKind === 'individual'" class="create-card">
-      <view class="advanced-head" @tap="advancedOpen = !advancedOpen">
-        <view>
-          <view class="create-card-title">高级设置</view>
-          <text class="advanced-summary">默认 {{ defaultMinPlayers }} 人开踢，最多 {{ defaultMaxPlayers }} 人</text>
+      <NeoSurface v-if="challengeKind === 'individual'" custom-class="form-card">
+        <NeoSectionHeader
+          title="高级设置"
+          marker="02"
+          :caption="`默认 ${defaultMinPlayers} 人开踢，最多 ${defaultMaxPlayers} 人`"
+          :action-label="advancedOpen ? '收起' : '展开'"
+          @action="advancedOpen = !advancedOpen"
+        />
+        <view v-if="advancedOpen" class="form-grid">
+          <view class="form-field">
+            <text class="form-label">最少成行人数</text>
+            <input v-model="form.minPlayers" class="form-input" type="number" :placeholder="`${defaultMinPlayers}`" placeholder-class="form-placeholder" />
+          </view>
+          <view class="form-field">
+            <text class="form-label">最多报名人数</text>
+            <input v-model="form.maxPlayers" class="form-input" type="number" :placeholder="`${defaultMaxPlayers}`" placeholder-class="form-placeholder" />
+          </view>
         </view>
-        <text class="advanced-arrow">{{ advancedOpen ? "收起" : "展开" }}</text>
-      </view>
-      <view v-if="advancedOpen" class="create-form-grid advanced-form">
-        <view class="create-form-item">
-          <text class="create-form-label">最少成行人数</text>
-          <input v-model="form.minPlayers" class="create-input" type="number" :placeholder="`${defaultMinPlayers}`" />
-        </view>
-        <view class="create-form-item">
-          <text class="create-form-label">最多报名人数</text>
-          <input v-model="form.maxPlayers" class="create-input" type="number" :placeholder="`${defaultMaxPlayers}`" />
-        </view>
-      </view>
-    </view>
+      </NeoSurface>
 
-    <view class="create-card">
-      <view class="create-card-title">场地与费用</view>
-      <view class="create-form-grid">
-        <view class="create-form-item create-form-item-full">
-          <text class="create-form-label">场地</text>
-          <view class="create-location-row">
+      <NeoSurface custom-class="form-card">
+        <NeoSectionHeader title="场地与费用" :marker="venueMarker" caption="场地支持文字地址或地图选择" />
+        <view class="form-field">
+          <text class="form-label">场地</text>
+          <view class="form-location-row">
             <input
               v-model="form.location"
-              class="create-input create-location-input"
+              class="form-input form-location-input"
               placeholder="填写球场名称"
+              placeholder-class="form-placeholder"
               @input="handleLocationInput"
             />
-            <view class="create-location-button" @tap="handleChooseLocation">
+            <view class="form-location-button" @tap="handleChooseLocation">
               {{ form.location ? "重新选择" : "选择地点" }}
             </view>
           </view>
-          <view v-if="form.locationLatitude != null && form.locationLongitude != null" class="create-location-hint">
+          <text v-if="form.locationLatitude != null && form.locationLongitude != null" class="form-hint">
             已选择地图位置，详情页可直接打开地图。
-          </view>
+          </text>
         </view>
-        <view class="create-form-item">
-          <text class="create-form-label">预计费用/人</text>
-          <input v-model="form.feePerPerson" class="create-input" type="digit" placeholder="25" />
+        <view class="form-field">
+          <text class="form-label">预计费用/人</text>
+          <input v-model="form.feePerPerson" class="form-input" type="digit" placeholder="25" placeholder-class="form-placeholder" />
         </view>
-        <view class="create-form-item create-form-item-full">
-          <text class="create-form-label">备注</text>
-          <textarea v-model="form.note" class="create-textarea" maxlength="200" placeholder="例如：缺后卫和门将，守时优先" />
+        <view class="form-field">
+          <text class="form-label">备注</text>
+          <textarea v-model="form.note" class="form-textarea" maxlength="200" placeholder="例如：缺后卫和门将，守时优先" placeholder-class="form-placeholder" />
         </view>
-      </view>
+      </NeoSurface>
     </view>
 
-    <view class="create-submit-row">
-      <view :class="['create-submit-button', !canSubmit ? 'create-submit-button-disabled' : '']" @tap="handleSubmit">
+    <NeoStickyActionBar>
+      <NeoButton block variant="lime" :disabled="!canSubmit" :loading="submitting" @click="handleSubmit">
         {{ submitting ? "发布中..." : challengeKind === "team" ? "发布球队约队" : "发布散人约队" }}
-      </view>
-    </view>
+      </NeoButton>
+    </NeoStickyActionBar>
   </view>
 </template>
 
 <style scoped>
 .individual-create-page {
   min-height: 100vh;
-  padding: 30rpx 28rpx 110rpx;
-  background:
-    radial-gradient(circle at top right, rgba(200, 255, 0, 0.14), transparent 26%),
-    linear-gradient(180deg, #ffffff 0%, #f5f6f2 100%);
+  padding: 0 28rpx 132rpx;
+  background: var(--neo-color-page);
   box-sizing: border-box;
 }
 
-.create-hero,
-.create-card {
-  background: #ffffff;
-  box-shadow: 0 20rpx 38rpx rgba(17, 17, 17, 0.05);
+.create-page-content {
+  max-width: 900rpx;
+  margin: 0 auto;
 }
 
 .create-hero {
-  padding: 28rpx;
-  border-radius: 34rpx;
+  margin: 22rpx 0 6rpx;
+  padding: 28rpx 26rpx;
+  border: var(--neo-border-strong);
+  border-radius: var(--neo-radius-md);
+  background: var(--neo-color-hero);
+  box-shadow: 8rpx 8rpx 0 var(--neo-color-accent);
+}
+
+.create-hero__copy {
+  min-width: 0;
 }
 
 .create-hero-tag {
   display: inline-flex;
-  padding: 8rpx 14rpx;
-  border-radius: 999rpx;
-  background: #eef8d6;
-  color: #526a00;
+  padding: 6rpx 14rpx;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-accent);
+  color: var(--neo-color-text);
   font-size: 22rpx;
   font-weight: 900;
 }
@@ -392,203 +402,131 @@ onLoad((options) => {
 .create-hero-title {
   display: block;
   margin-top: 14rpx;
+  color: var(--neo-color-text-inverse);
   font-size: 40rpx;
-  color: #131410;
   font-weight: 900;
+  line-height: 1.18;
+  word-break: break-word;
 }
 
 .create-hero-copy {
   display: block;
-  margin-top: 10rpx;
-  font-size: 24rpx;
-  color: #111310;
-  line-height: 1.6;
+  margin-top: 12rpx;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 23rpx;
+  font-weight: 700;
+  line-height: 1.55;
 }
 
-.create-card {
-  margin-top: 20rpx;
-  padding: 24rpx;
-  border-radius: 30rpx;
+.form-card {
+  margin-top: 24rpx;
+  padding: 6rpx 24rpx 24rpx;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-md);
+  box-shadow: 8rpx 8rpx 0 var(--neo-color-text);
 }
 
-.create-card-title {
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 18rpx;
+}
+
+.form-field {
+  margin-top: 26rpx;
+}
+
+.form-label {
   display: block;
-  font-size: 30rpx;
-  color: #171814;
+  margin-bottom: 10rpx;
+  color: var(--neo-color-text);
+  font-size: 24rpx;
   font-weight: 900;
 }
 
-.create-form-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18rpx;
-  margin-top: 22rpx;
-}
-
-.create-form-item {
-  display: flex;
-  flex-direction: column;
-  gap: 12rpx;
-  min-width: 0;
-}
-
-.create-form-item-full {
-  grid-column: 1 / -1;
-}
-
-.create-form-label {
+.form-caption {
+  display: block;
+  margin-top: 12rpx;
+  color: var(--neo-color-text-muted);
   font-size: 22rpx;
-  color: #111310;
   font-weight: 700;
+  line-height: 1.45;
 }
 
-.create-input,
-.create-textarea {
+.form-input,
+.form-textarea {
   width: 100%;
-  min-height: 88rpx;
-  padding: 0 22rpx;
-  border-radius: 24rpx;
-  border: 2rpx solid #d7ddd2;
-  background: #f4f6f0;
-  box-shadow: inset 0 2rpx 0 rgba(255, 255, 255, 0.74);
-  color: #171814;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-muted);
+  color: var(--neo-color-text);
   font-size: 28rpx;
+  font-weight: 800;
   box-sizing: border-box;
 }
 
-.create-picker {
+.form-input {
+  display: flex;
+  align-items: center;
+  height: 84rpx;
+  padding: 0 20rpx;
+}
+
+.form-picker {
   display: flex;
   align-items: center;
 }
 
-.create-textarea {
+.form-placeholder {
+  color: var(--neo-color-text-disabled);
+  font-size: 28rpx;
+}
+
+.form-textarea {
   min-height: 176rpx;
-  padding: 22rpx;
+  padding: 20rpx;
   line-height: 1.5;
 }
 
-.create-location-row {
+.form-location-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 150rpx;
   align-items: center;
   gap: 14rpx;
 }
 
-.create-location-input {
+.form-location-input {
   width: auto;
   min-width: 0;
 }
 
-.create-location-button {
+.form-location-button {
   display: flex;
   align-items: center;
   justify-content: center;
   width: 150rpx;
-  height: 88rpx;
+  height: 84rpx;
   padding: 0 14rpx;
-  border-radius: 24rpx;
-  background: #111310;
-  color: #ffffff;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-text);
+  color: var(--neo-color-text-inverse);
   font-size: 23rpx;
   font-weight: 900;
   white-space: nowrap;
   box-sizing: border-box;
 }
 
-.create-location-hint {
+.form-hint {
+  display: block;
+  margin-top: 14rpx;
   padding: 16rpx 18rpx;
-  border-radius: 20rpx;
-  background: #eef8d6;
-  color: #526a00;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-success);
+  color: var(--neo-color-text);
   font-size: 22rpx;
   font-weight: 800;
   line-height: 1.5;
-}
-
-.payment-mode-switch {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14rpx;
-}
-
-.payment-mode-option {
-  display: flex;
-  flex-direction: column;
-  gap: 8rpx;
-  min-height: 112rpx;
-  padding: 18rpx;
-  border-radius: 24rpx;
-  border: 2rpx solid #d7ddd2;
-  background: #f4f6f0;
-  box-sizing: border-box;
-}
-
-.payment-mode-option-active {
-  border-color: #111310;
-  background: #eef8d6;
-}
-
-.payment-mode-title {
-  color: #111310;
-  font-size: 26rpx;
-  font-weight: 900;
-}
-
-.payment-mode-desc {
-  color: #687064;
-  font-size: 21rpx;
-  line-height: 1.35;
-  font-weight: 700;
-}
-
-.advanced-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 18rpx;
-}
-
-.advanced-summary {
-  display: block;
-  margin-top: 8rpx;
-  color: #687064;
-  font-size: 22rpx;
-  font-weight: 700;
-}
-
-.advanced-arrow {
-  flex-shrink: 0;
-  padding: 12rpx 18rpx;
-  border-radius: 999rpx;
-  background: #eef8d6;
-  color: #526a00;
-  font-size: 22rpx;
-  font-weight: 900;
-}
-
-.advanced-form {
-  margin-top: 20rpx;
-}
-
-.create-submit-row {
-  margin-top: 24rpx;
-}
-
-.create-submit-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 92rpx;
-  border-radius: 999rpx;
-  background: #c8ff00;
-  color: #131410;
-  font-size: 30rpx;
-  font-weight: 900;
-}
-
-.create-submit-button-disabled {
-  background: #d7dcd0;
-  color: #686d64;
 }
 </style>
