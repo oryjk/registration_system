@@ -21,8 +21,8 @@ import { resolveUserDisplayName, toStandLabel } from "@/utils/viewModels";
 import {
   avatarColor,
   byRegistrationTimeAsc,
-  byUserIdAsc,
   buildRemainingPlayersLabel,
+  buildTeamMemberRegistrationGroups,
   clampTeamRegistrationCount,
   describeDaysUntil,
   formatClock,
@@ -199,39 +199,12 @@ export function useMatchDetailPage() {
     }));
   });
   const activeTeamMembers = computed(() => currentTeamMembers.value.filter((member) => member.status === 1));
-  const teamMemberRegistrationGroups = computed(() => {
-    const byMemberRegistrationTimeAsc = (left: BackendTeamMember, right: BackendTeamMember) =>
-      byRegistrationTimeAsc(
-        {
-          user_id: left.user_id,
-          operation_time: registrationByUserId.value[left.user_id]?.operation_time,
-        },
-        {
-          user_id: right.user_id,
-          operation_time: registrationByUserId.value[right.user_id]?.operation_time,
-        },
-      );
-    const toCard = (member: BackendTeamMember) => {
-      const user = usersById.value[member.user_id];
-      return {
-        userId: member.user_id,
-        name: resolveUserDisplayName(user),
-        avatarUrl: user?.avatar_url ?? "",
-        tone: avatarColor(member.user_id),
-        jerseyNumber: member.jersey_number ?? "",
-        isCurrentUser: member.user_id === currentUser.value?.id,
-      };
-    };
-
-    return {
-      joined: activeTeamMembers.value.filter((member) => registrationByUserId.value[member.user_id]?.stand === 1).sort(byMemberRegistrationTimeAsc).map(toCard),
-      leave: activeTeamMembers.value.filter((member) => registrationByUserId.value[member.user_id]?.stand === 2).sort(byMemberRegistrationTimeAsc).map(toCard),
-      pending: activeTeamMembers.value.filter((member) => {
-        const stand = registrationByUserId.value[member.user_id]?.stand ?? 0;
-        return stand !== 1 && stand !== 2;
-      }).sort(byUserIdAsc).map(toCard),
-    };
-  });
+  const teamMemberRegistrationGroups = computed(() => buildTeamMemberRegistrationGroups({
+    members: activeTeamMembers.value,
+    registrations: registrations.value,
+    usersById: usersById.value,
+    currentUserId: currentUser.value?.id,
+  }));
 
   const matchKindLabel = computed(() => publicationModeLabel.value);
   // 主队是发起约队的球队：新接口取 host_team_name；legacy 队内活动没有该字段，用当前球队兜底。
@@ -456,11 +429,6 @@ export function useMatchDetailPage() {
       isGuestMode.value = hasManualLogout();
 
       if (isGuestMode.value) {
-        registrationMode.value = "individual";
-        return;
-      }
-
-      if (isMatchApiDetail.value) {
         registrationMode.value = "individual";
         return;
       }

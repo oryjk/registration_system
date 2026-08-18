@@ -162,7 +162,7 @@ describe("Match detail adapter", () => {
 
     const data = buildPublicMatchApiDetailData(matchDetail, 37);
 
-    expect(data.activityUsers.map((item) => item.user_id)).toEqual([37, 38]);
+    expect(data.activityUsers.map((item) => item.user_id)).toEqual([37, 38, 39]);
     expect({
       first: { id: data.usersById[37]?.id, nickname: data.usersById[37]?.nickname, avatarUrl: data.usersById[37]?.avatar_url },
       second: { id: data.usersById[38]?.id, nickname: data.usersById[38]?.nickname, avatarUrl: data.usersById[38]?.avatar_url },
@@ -170,6 +170,37 @@ describe("Match detail adapter", () => {
       first: { id: 37, nickname: "阿睿", avatarUrl: "https://cdn.example.com/player-37.png" },
       second: { id: 38, nickname: "阿东", avatarUrl: "https://cdn.example.com/player-38.png" },
     });
+  });
+
+  test("keeps leave participants with their stand so the member status board renders all states", () => {
+    const matchDetail = {
+      match: matchSummary,
+      groups: [{
+        id: "a7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c501",
+        kind: "host_team",
+        team_id: 101,
+        status: "open",
+        min_players: 6,
+        max_players: 8,
+        attending_count: 2,
+        my_registration: null,
+        participants: [
+          { user_id: 37, nickname: "阿睿", avatar_url: "https://cdn.example.com/player-37.png", status: "attending" },
+          { user_id: 39, nickname: "请假队员", avatar_url: "https://cdn.example.com/player-39.png", status: "leave" },
+          { user_id: 40, nickname: "失约队员", avatar_url: "https://cdn.example.com/player-40.png", status: "absent" },
+        ],
+      }],
+    } as unknown as AppMatchDetailResponse;
+
+    const data = buildPublicMatchApiDetailData(matchDetail, 37);
+
+    expect(data.activityUsers.map((item) => [item.user_id, item.stand])).toEqual([
+      [37, 1],
+      [39, 2],
+      [40, 3],
+    ]);
+    expect(data.usersById[39]?.nickname).toEqual("请假队员");
+    expect(data.usersById[40]?.nickname).toEqual("失约队员");
   });
 
   test("keeps the selected group id and a zero attending count at the lower boundary", () => {

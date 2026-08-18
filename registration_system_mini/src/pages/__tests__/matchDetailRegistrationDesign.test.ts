@@ -179,6 +179,13 @@ describe("match detail registration design", () => {
     expect(pageLogic.includes("currentStatus.value = toStandLabel(stand);")).toEqual(true);
   });
 
+  test("loads the team roster for match API details so the member status board renders", async () => {
+    const facade = await sourceFile("pages/matches/useMatchDetailPage.ts").text();
+
+    expect(facade.includes("if (isMatchApiDetail.value) {")).toEqual(false);
+    expect(facade.includes("currentTeamMembers.value = context.currentTeamMembers;")).toEqual(true);
+  });
+
   test("uses a custom confirm dialog for team member registration choices", async () => {
     const detail = await sourceFile(
       "pages/matches/detail.vue",
@@ -279,7 +286,8 @@ describe("match detail registration design", () => {
     expect(pageLogic.includes("joinedRegistrations.value.map((item) =>")).toEqual(false);
     expect(pageLogic.includes("sort(byRegistrationTimeAsc).map((item) =>")).toEqual(true);
     expect(pageLogic.includes("activeTeamMembers.value.filter((member) => registrationByUserId.value[member.user_id]?.stand === 1).map(toCard)")).toEqual(false);
-    expect(pageLogic.includes("sort(byMemberRegistrationTimeAsc).map(toCard)")).toEqual(true);
+    expect(state.includes(".sort(byMemberRegistrationTimeAsc)")).toEqual(true);
+    expect(pageLogic.includes("buildTeamMemberRegistrationGroups({")).toEqual(true);
   });
 
   test("renders team member status avatars without selection borders", async () => {

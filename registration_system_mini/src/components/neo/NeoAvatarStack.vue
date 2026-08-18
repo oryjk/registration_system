@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref } from "vue";
 
 export type NeoAvatarItem = {
   id: string | number;
@@ -28,13 +28,22 @@ const emit = defineEmits<{
 
 /** maxVisible 为 0 表示不限制，展示全部并允许换行。 */
 const isUnlimited = computed(() => props.maxVisible <= 0);
+// 点击 +N 角标展开全部（换行铺开），再点 -N 收起；不限制模式下无角标、无此状态。
+const expanded = ref(false);
+const overflowCount = computed(() =>
+  isUnlimited.value ? 0 : Math.max(props.items.length - props.maxVisible, 0),
+);
+const showAll = computed(() => isUnlimited.value || expanded.value);
 const visibleItems = computed(() => (
-  isUnlimited.value ? props.items : props.items.slice(0, props.maxVisible)
+  showAll.value ? props.items : props.items.slice(0, props.maxVisible)
 ));
-const hiddenCount = computed(() => Math.max(props.items.length - visibleItems.value.length, 0));
 
 function fallbackName(name: string) {
   return name.trim().slice(0, 1) || "?";
+}
+
+function toggleExpanded() {
+  expanded.value = !expanded.value;
 }
 
 function handleSelect(item: NeoAvatarItem) {
@@ -43,7 +52,7 @@ function handleSelect(item: NeoAvatarItem) {
 </script>
 
 <template>
-  <view class="neo-avatar-stack" :class="[`neo-avatar-stack--${size}`, isUnlimited ? 'neo-avatar-stack--wrap' : '']">
+  <view class="neo-avatar-stack" :class="[`neo-avatar-stack--${size}`, showAll ? 'neo-avatar-stack--wrap' : '']">
     <view
       v-for="item in visibleItems"
       :key="item.id"
@@ -59,7 +68,14 @@ function handleSelect(item: NeoAvatarItem) {
       <image v-if="item.avatarUrl" class="neo-avatar-stack__image" :src="item.avatarUrl" mode="aspectFill" />
       <text v-else class="neo-avatar-stack__fallback">{{ fallbackName(item.name) }}</text>
     </view>
-    <view v-if="hiddenCount" class="neo-avatar-stack__more">+{{ hiddenCount }}</view>
+    <view
+      v-if="overflowCount"
+      class="neo-avatar-stack__more neo-avatar-stack__more--toggle"
+      hover-class="neo-avatar-stack__more--pressed"
+      @tap="toggleExpanded"
+    >
+      {{ expanded ? "-" : "+" }}{{ overflowCount }}
+    </view>
   </view>
 </template>
 
@@ -149,5 +165,10 @@ function handleSelect(item: NeoAvatarItem) {
   color: var(--neo-avatar-plus-fg);
   font-size: 22rpx;
   font-weight: 900;
+}
+
+.neo-avatar-stack__more--pressed {
+  transform: translate(2rpx, 2rpx);
+  box-shadow: none;
 }
 </style>

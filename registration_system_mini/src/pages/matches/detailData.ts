@@ -181,9 +181,9 @@ export function buildPublicMatchApiDetailData(
   const activity = toBackendActivity(matchDetail.match, group);
   const myRegistration = group?.my_registration ?? null;
   const participants = group?.participants ?? [];
-  const attendingParticipants = participants.filter((participant) => participant.status === "attending");
-  const activityUsers = attendingParticipants.map((participant) => toBackendRegistration(
-    { status: "attending", registration_count: 1 },
+  // 三态报名板需要全部队友的出勤状态：attending→已报名、leave→请假，其余（unknown/absent/cancelled）由页面归入未报名组。
+  const activityUsers = participants.map((participant) => toBackendRegistration(
+    { status: participant.status, registration_count: 1 },
     participant.user_id,
     matchDetail.match.updated_at,
   ));
@@ -194,7 +194,7 @@ export function buildPublicMatchApiDetailData(
   return {
     activity,
     activityUsers,
-    usersById: Object.fromEntries(attendingParticipants.map((participant) => [
+    usersById: Object.fromEntries(participants.map((participant) => [
       participant.user_id,
       toBackendParticipantUser(participant),
     ])),

@@ -1,4 +1,4 @@
-import type { BackendActivity, BackendActivityCheckInRecord, BackendRegistration } from "@/types/backend";
+import type { BackendActivity, BackendActivityCheckInRecord, BackendRegistration, BackendTeamMember, BackendUser } from "@/types/backend";
 import {
   describeDaysUntil,
   formatCountdown,
@@ -8,6 +8,7 @@ import {
   pad,
   parseDateValue,
 } from "@/utils/datetime";
+import { resolveUserDisplayName } from "@/utils/viewModels";
 
 export { describeDaysUntil, formatCountdown, pad, parseDateValue };
 export { resolveRegistrationWindow } from "@/utils/registrationWindow";
@@ -41,6 +42,71 @@ export function byRegistrationTimeAsc(
 ) {
   const timeDiff = registrationTimestamp(left.operation_time) - registrationTimestamp(right.operation_time);
   return timeDiff || byUserIdAsc(left, right);
+}
+
+export interface TeamMemberRegistrationCard {
+  userId: number;
+  name: string;
+  avatarUrl: string;
+  tone: string;
+  jerseyNumber: string;
+  isCurrentUser: boolean;
+}
+
+export function buildTeamMemberRegistrationGroups({
+  members,
+  registrations,
+  usersById,
+  currentUserId,
+}: {
+  members: BackendTeamMember[];
+  registrations: BackendRegistration[];
+  usersById: Record<number, BackendUser>;
+  currentUserId?: number;
+}): {
+  joined: TeamMemberRegistrationCard[];
+  leave: TeamMemberRegistrationCard[];
+  pending: TeamMemberRegistrationCard[];
+} {
+  const registrationByUserId = new Map(registrations.map((item) => [item.user_id, item]));
+  const byMemberRegistrationTimeAsc = (left: BackendTeamMember, right: BackendTeamMember) =>
+    byRegistrationTimeAsc(
+      { user_id: left.user_id, operation_time: registrationByUserId.get(left.user_id)?.operation_time },
+      { user_id: right.user_id, operation_time: registrationByUserId.get(right.user_id)?.operation_time },
+    );
+
+  const toCard = (member: BackendTeamMember): TeamMemberRegistrationCard => {
+    const user = usersById[member.user_id];
+    // 新比赛接口的 usersById 只含报名参与者，未报名队员的昵称/头像回退到球队成员自带资料。
+    const name = user
+      ? resolveUserDisplayName(user)
+      : member.real_name || member.nickname || `用户 ${member.user_id}`;
+    return {
+      userId: member.user_id,
+      name,
+      avatarUrl: user?.avatar_url || member.avatar_url || "",
+      tone: avatarColor(member.user_id),
+      jerseyNumber: member.jersey_number ?? "",
+      isCurrentUser: member.user_id === currentUserId,
+    };
+  };
+
+  const withStand = (stand: number) => members
+    .filter((member) => registrationByUserId.get(member.user_id)?.stand === stand)
+    .sort(byMemberRegistrationTimeAsc)
+    .map(toCard);
+
+  return {
+    joined: withStand(1),
+    leave: withStand(2),
+    pending: members
+      .filter((member) => {
+        const stand = registrationByUserId.get(member.user_id)?.stand ?? 0;
+        return stand !== 1 && stand !== 2;
+      })
+      .sort(byUserIdAsc)
+      .map(toCard),
+  };
 }
 
 export function clampTeamRegistrationCount(value: number) {
