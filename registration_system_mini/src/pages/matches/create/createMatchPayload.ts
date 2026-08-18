@@ -33,6 +33,8 @@ export function buildCreateMatchPayload(form: MatchPublishFormModel, hostTeam: H
     location: form.location.trim(),
     // 填了人均费用视为收费比赛；不填或 0 视为免费。
     is_free: !form.feePerPerson || Number(form.feePerPerson) <= 0,
+    ...(form.color ? { host_color: form.color } : {}),
+    ...(form.opposingColor ? { away_color: form.opposingColor } : {}),
     ...(hasCoordinates
       ? { location_latitude: form.locationLatitude!, location_longitude: form.locationLongitude! }
       : {}),

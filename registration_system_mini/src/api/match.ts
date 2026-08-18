@@ -84,6 +84,8 @@ export interface CreateMatchPayload {
   description?: string;
   /** 不传默认免费；创建页按人均费用推导。 */
   is_free?: boolean;
+  host_color?: string;
+  away_color?: string;
 }
 
 export function createMatch(payload: CreateMatchPayload) {

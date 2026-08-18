@@ -22,12 +22,18 @@ function buildForm(overrides: Partial<MatchPublishFormModel> = {}): MatchPublish
   };
 }
 
+const hostTeam = { id: 7, name: "东安联队" };
+// 简报用例按 withForm/hostTeam 书写；包装复用既有 buildForm 构造。
+const withForm = buildForm;
+
 describe("buildCreateMatchPayload", () => {
   test("maps a confirmed offline match to match time and capacity fields", () => {
     expect(buildCreateMatchPayload(buildForm(), { id: 7, name: "东安联队" })).toEqual({
       name: "周末友谊赛",
       publication_mode: "offline_confirmed",
       is_free: true,
+      host_color: "#2F6BFF",
+      away_color: "#C8FF00",
       host_team_id: 7,
       opponent_name: "周末联队",
       players_per_team: 6,
@@ -72,5 +78,11 @@ describe("buildCreateMatchPayload", () => {
       message = error instanceof Error ? error.message : String(error);
     }
     expect(message).toEqual("线下已约比赛必须填写对手名称");
+  });
+
+  test("把表单球服颜色映射为 host_color/away_color", () => {
+    const payload = buildCreateMatchPayload(withForm({ color: "#2F6BFF", opposingColor: "#C8FF00" }), hostTeam);
+    expect(payload.host_color).toEqual("#2F6BFF");
+    expect(payload.away_color).toEqual("#C8FF00");
   });
 });

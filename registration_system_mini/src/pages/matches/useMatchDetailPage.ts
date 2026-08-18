@@ -210,8 +210,8 @@ export function useMatchDetailPage() {
   // 主队是发起约队的球队：新接口取 host_team_name；legacy 队内活动没有该字段，用当前球队兜底。
   const homeTeamLabel = computed(() => sourceMatch.value?.host_team_name || currentTeam.value?.name || "主队");
   const displayOpponentLabel = computed(() => match.value?.opposing || opponentTeam.value?.name || "对手待定");
-  const homeTeamColor = computed(() => match.value?.color?.trim() || "#2f6bff");
-  const awayTeamColor = computed(() => match.value?.opposing_color?.trim() || "#d9ff16");
+  const homeTeamColor = computed(() => match.value?.color?.trim() || "#FFFFFF");
+  const awayTeamColor = computed(() => match.value?.opposing_color?.trim() || "#FF0000");
   const matchLocation = computed(() => match.value?.location || "");
 
   const opponentTeam = computed(() => {

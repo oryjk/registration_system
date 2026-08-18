@@ -403,6 +403,24 @@ describe("Match detail adapter", () => {
       registrationGroupId: matchDetail.groups[1].id,
     });
   });
+
+  test("maps jersey colors from the match api onto the activity model", () => {
+    const activity = toBackendActivity({
+      ...matchSummary,
+      host_color: "#2f6bff",
+      away_color: "#ff0000",
+    });
+    expect({ color: activity.color, opposing_color: activity.opposing_color }).toEqual({
+      color: "#2f6bff",
+      opposing_color: "#ff0000",
+    });
+
+    const unset = toBackendActivity(matchSummary);
+    expect({ color: unset.color, opposing_color: unset.opposing_color }).toEqual({
+      color: "",
+      opposing_color: "",
+    });
+  });
 });
 
 export {};

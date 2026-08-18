@@ -65,6 +65,8 @@ export interface AppMatchSummary extends AppMatchPhaseSource {
   location_longitude: number | null;
   description: string | null;
   is_free?: boolean;
+  host_color?: string | null;
+  away_color?: string | null;
   registration_groups?: AppMatchRegistrationGroupSummary[];
   created_at: string;
   updated_at: string;
