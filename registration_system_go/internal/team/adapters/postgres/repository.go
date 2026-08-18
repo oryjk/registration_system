@@ -448,10 +448,16 @@ func (r *Repository) SearchByKeyword(ctx context.Context, keyword string) ([]por
 	}
 	items := make([]ports.AppTeamSummary, 0, len(rows))
 	for _, row := range rows {
-		items = append(items, ports.AppTeamSummary{
+		summary := ports.AppTeamSummary{
 			Team:        teamFields(row.ID, row.Name, row.Description, row.LogoUrl, row.CaptainID, row.Status, row.CreatedAt, row.UpdatedAt),
 			MemberCount: row.MemberCount,
-		})
+			CreditScore: int(row.CreditScore),
+		}
+		if row.VipUntil.Valid {
+			vipUntil := row.VipUntil.Time
+			summary.VipUntil = &vipUntil
+		}
+		items = append(items, summary)
 	}
 	return items, nil
 }

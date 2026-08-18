@@ -325,3 +325,75 @@ func TestRepositoryMatchAttendanceIncludesActiveMembersOnly(t *testing.T) {
 		t.Fatalf("expected not found for other team, found=%v err=%v", found, err)
 	}
 }
+
+func TestRepositorySelfServiceTeamFlow(t *testing.T) {
+	// testsupport 提供独立 schema；本用例覆盖用户自服务球队的数据库流程：
+	// 建队成队长、重名冲突、口令哈希、加入/重复加入/inactive 重新加入、搜索附信用分。
+	pool := testsupport.StartPostgres(t)
+	ctx := context.Background()
+	repository := NewRepository(pool)
+
+	var creatorID, joinerID int64
+	if err := pool.QueryRow(ctx, `INSERT INTO users (openid) VALUES ('self-flow-creator') RETURNING id`).Scan(&creatorID); err != nil {
+		t.Fatalf("seed creator: %v", err)
+	}
+	if err := pool.QueryRow(ctx, `INSERT INTO users (openid) VALUES ('self-flow-joiner') RETURNING id`).Scan(&joinerID); err != nil {
+		t.Fatalf("seed joiner: %v", err)
+	}
+
+	exists, err := repository.TeamNameExists(ctx, "自服务联队")
+	if err != nil || exists {
+		t.Fatalf("team name should not exist: exists=%v err=%v", exists, err)
+	}
+
+	team, err := repository.CreateWithCaptain(ctx, "自服务联队", nil, nil, creatorID)
+	if err != nil {
+		t.Fatalf("create with captain: %v", err)
+	}
+	if team.CaptainID == nil || *team.CaptainID != creatorID {
+		t.Fatalf("captain not set: %+v", team)
+	}
+	captain, found, err := repository.FindActiveMember(ctx, team.ID, creatorID)
+	if err != nil || !found || captain.Role != domain.RoleCaptain {
+		t.Fatalf("creator should be captain: %+v found=%v err=%v", captain, found, err)
+	}
+
+	if exists, _ := repository.TeamNameExists(ctx, "自服务联队"); !exists {
+		t.Fatal("duplicate name should be detected")
+	}
+
+	hash := "$2a$10$invalidhashinvalidhashinvalidhash"
+	if _, err := repository.CreateWithCaptain(ctx, "带口令球队", nil, &hash, creatorID); err != nil {
+		t.Fatalf("create with password hash: %v", err)
+	}
+	stored, found, err := repository.FindJoinPasswordHash(ctx, team.ID)
+	if err != nil || !found || stored != nil {
+		t.Fatalf("no-password team should have nil hash: %v found=%v err=%v", stored, found, err)
+	}
+
+	if err := repository.AddMember(ctx, team.ID, joinerID, domain.RoleMember); err != nil {
+		t.Fatalf("add member: %v", err)
+	}
+	if err := repository.AddMember(ctx, team.ID, joinerID, domain.RoleMember); !errors.Is(err, ports.ErrMemberAlreadyExists) {
+		t.Fatalf("duplicate member should conflict, got: %v", err)
+	}
+	if _, err := pool.Exec(ctx, `UPDATE team_members SET status='inactive' WHERE team_id=$1 AND user_id=$2`, team.ID, joinerID); err != nil {
+		t.Fatalf("deactivate joiner: %v", err)
+	}
+	reactivated, err := repository.ReactivateMember(ctx, team.ID, joinerID)
+	if err != nil || !reactivated {
+		t.Fatalf("reactivate: %v reactivated=%v", err, reactivated)
+	}
+	restored, found, err := repository.FindActiveMember(ctx, team.ID, joinerID)
+	if err != nil || !found || restored.Role != domain.RoleMember {
+		t.Fatalf("restored member: %+v found=%v err=%v", restored, found, err)
+	}
+
+	results, err := repository.SearchByKeyword(ctx, "自服务")
+	if err != nil || len(results) != 1 {
+		t.Fatalf("search: %+v err=%v", results, err)
+	}
+	if results[0].MemberCount != 2 || results[0].CreditScore != 90 {
+		t.Fatalf("search summary fields: %+v", results[0])
+	}
+}

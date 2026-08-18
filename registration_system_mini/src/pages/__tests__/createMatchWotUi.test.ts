@@ -20,7 +20,7 @@ describe("create match Wot UI integration", () => {
   });
 
   test("uses native date and time pickers for create match time fields", async () => {
-    const source = await read("src/components/MatchPublishForm.vue");
+    const source = await read("src/pages/matches/create/components/MatchScheduleFields.vue");
     const pageSource = await read("src/pages/matches/create/index.vue");
 
     expect((source.match(/<picker/g)?.length ?? 0) >= 3).toEqual(true);
@@ -35,7 +35,7 @@ describe("create match Wot UI integration", () => {
     expect(source.includes('placeholder="YYYY-MM-DD hh:mm:ss"')).toEqual(false);
     expect(source.includes("date-option-active")).toEqual(true);
     expect(source.includes("displayTimeLabel")).toEqual(true);
-    expect(pageSource.includes('import type { MatchPublishFormModel } from "@/components/matchPublishForm"')).toEqual(true);
+    expect(pageSource.includes('import type { MatchPublishFormModel } from "./components/matchPublishForm"')).toEqual(true);
     expect(pageSource.includes('import { toBackendDateTime')).toEqual(false);
     expect(pageSource.includes("function toBackendDateTime")).toEqual(true);
     expect(pageSource.includes("submittedAtTimestamp")).toEqual(true);
@@ -43,7 +43,7 @@ describe("create match Wot UI integration", () => {
   });
 
   test("shows date first, then start and end time for create match", async () => {
-    const source = await read("src/components/MatchPublishForm.vue");
+    const source = await read("src/pages/matches/create/components/MatchScheduleFields.vue");
 
     expect(source.includes("date-option-scroll")).toEqual(true);
     expect(source.includes("比赛日期")).toEqual(true);
@@ -55,17 +55,16 @@ describe("create match Wot UI integration", () => {
   });
 
   test("displays selected date and time values with weekday context", async () => {
-    const source = await read("src/components/MatchPublishForm.vue");
+    const source = await read("src/pages/matches/create/components/MatchScheduleFields.vue");
 
-    expect(source.includes("function displayDateLabel")).toEqual(true);
     expect(source.includes("function displayTimeLabel")).toEqual(true);
     expect(source.includes("buildRecentDateOptions")).toEqual(true);
     expect(source.includes('"周日", "周一", "周二", "周三", "周四", "周五", "周六"')).toEqual(true);
-    expect(source.includes('return `${pad(date.getMonth() + 1)}月')).toEqual(true);
+    expect(source.includes('monthLabel: `${pad(date.getMonth() + 1)}月`')).toEqual(true);
   });
 
   test("uses native input and textarea components for editable fields", async () => {
-    const source = await read("src/components/MatchPublishForm.vue");
+    const source = await read("src/pages/matches/create/components/MatchPublishForm.vue");
 
     expect(source.includes("<wd-input")).toEqual(false);
     expect((source.match(/<input/g)?.length ?? 0) >= 7).toEqual(true);
@@ -75,7 +74,7 @@ describe("create match Wot UI integration", () => {
   });
 
   test("styles the publish form with the neo design system", async () => {
-    const source = await read("src/components/MatchPublishForm.vue");
+    const source = await read("src/pages/matches/create/components/MatchPublishForm.vue");
     const pageSource = await read("src/pages/matches/create/index.vue");
 
     expect(source.includes('import NeoSegmentedControl from "@/components/neo/NeoSegmentedControl.vue"')).toEqual(true);
@@ -101,7 +100,7 @@ describe("create match Wot UI integration", () => {
   });
 
   test("supports manual location input and optional map coordinates", async () => {
-    const source = await read("src/components/MatchPublishForm.vue");
+    const source = await read("src/pages/matches/create/components/MatchPublishForm.vue");
 
     expect(source.includes("function handleLocationInput")).toEqual(true);
     expect(source.includes('@input="handleLocationInput"')).toEqual(true);

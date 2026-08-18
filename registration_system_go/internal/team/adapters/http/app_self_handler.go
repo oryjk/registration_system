@@ -3,6 +3,7 @@ package teamhttp
 import (
 	"context"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	authhttp "github.com/oryjk/registration_system/registration_system_go/internal/auth/adapters/http"
@@ -93,10 +94,15 @@ func (h *AppSelfHandler) SearchTeams(c *gin.Context) {
 		return
 	}
 	response := make([]AppTeamSummaryResponse, 0, len(items))
+	now := time.Now()
 	for _, item := range items {
 		response = append(response, AppTeamSummaryResponse{
 			TeamResponse: mapTeam(item.Team),
 			MemberCount:  item.MemberCount,
+			CreditScore:  item.CreditScore,
+			VipUntil:     item.VipUntil,
+			IsVip:        domain.IsVipActive(item.VipUntil, now),
+			TrustLabel:   domain.TrustLabel(item.CreditScore, domain.IsVipActive(item.VipUntil, now)),
 		})
 	}
 	sharedhttpapi.WriteSuccess(c, response)
@@ -121,7 +127,11 @@ func (h *AppSelfHandler) PasswordInfo(c *gin.Context) {
 
 type AppTeamSummaryResponse struct {
 	TeamResponse
-	MemberCount int64 `json:"member_count"`
+	MemberCount int64      `json:"member_count"`
+	CreditScore int        `json:"credit_score"`
+	VipUntil    *time.Time `json:"vip_until"`
+	IsVip       bool       `json:"is_vip"`
+	TrustLabel  string     `json:"trust_label"`
 }
 
 type AppTeamPasswordInfoResponse struct {

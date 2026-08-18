@@ -2,11 +2,11 @@
 import { computed, reactive, ref } from "vue";
 import { onLoad, onShow } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
-import MatchPublishForm from "@/components/MatchPublishForm.vue";
+import MatchPublishForm from "./components/MatchPublishForm.vue";
 import NeoButton from "@/components/neo/NeoButton.vue";
 import NeoStickyActionBar from "@/components/neo/NeoStickyActionBar.vue";
 import NeoSurface from "@/components/neo/NeoSurface.vue";
-import type { MatchPublishFormModel } from "@/components/matchPublishForm";
+import type { MatchPublishFormModel } from "./components/matchPublishForm";
 import { getActivity, updateActivity } from "@/api/activity";
 import { createMatch } from "@/api/match";
 import { preloadMiniReviewStatus, useMiniReviewStatus } from "@/stores/miniReview";

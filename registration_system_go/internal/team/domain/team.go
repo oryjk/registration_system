@@ -176,3 +176,30 @@ func normalizeOptionalText(value *string) *string {
 func (m Member) IsCaptain() bool {
 	return m.Status == MemberActive && m.Role == RoleCaptain
 }
+
+// TrustLabel 由信用分与会员状态推导展示标签，规则与旧 Rust 版 credit_label 一致：
+// 90+ 金牌信用 / 80-89 稳定赴约 / 70-79 评价稳定 / 60-69 待观察 / 其余风险较高；VIP 前缀「会员·」。
+func TrustLabel(score int, isVip bool) string {
+	var base string
+	switch {
+	case score >= 90:
+		base = "金牌信用"
+	case score >= 80:
+		base = "稳定赴约"
+	case score >= 70:
+		base = "评价稳定"
+	case score >= 60:
+		base = "待观察"
+	default:
+		base = "风险较高"
+	}
+	if isVip {
+		return "会员·" + base
+	}
+	return base
+}
+
+// IsVipActive 判断会员是否仍在有效期内；vipUntil 为 nil 表示从未开通。
+func IsVipActive(vipUntil *time.Time, now time.Time) bool {
+	return vipUntil != nil && vipUntil.After(now)
+}

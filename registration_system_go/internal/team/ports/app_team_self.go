@@ -2,14 +2,17 @@ package ports
 
 import (
 	"context"
+	"time"
 
 	"github.com/oryjk/registration_system/registration_system_go/internal/team/domain"
 )
 
-// AppTeamSummary 用户侧球队搜索结果：球队基础信息 + 当前成员数。
+// AppTeamSummary 用户侧球队搜索结果：球队基础信息 + 当前成员数 + 信用/会员展示数据。
 type AppTeamSummary struct {
 	Team        domain.Team
 	MemberCount int64
+	CreditScore int
+	VipUntil    *time.Time
 }
 
 // TeamPasswordHasher 入队口令的哈希与校验，由 bcrypt 适配器实现。

@@ -19,7 +19,7 @@ SELECT id, name, description, logo_url, captain_id, join_password_hash, status, 
 FROM teams
 WHERE name = $1;
 
--- 用户侧加入球队：仅搜索 active 球队，附成员数用于小程序列表展示。
+-- 用户侧加入球队：仅搜索 active 球队，附成员数与信用分供小程序列表展示。
 -- name: SearchActiveTeamsByKeyword :many
 SELECT t.id,
        t.name,
@@ -27,6 +27,8 @@ SELECT t.id,
        t.logo_url,
        t.captain_id,
        t.status,
+       t.credit_score,
+       t.vip_until,
        t.created_at,
        t.updated_at,
        (SELECT count(*) FROM team_members tm WHERE tm.team_id = t.id AND tm.status = 'active')::bigint AS member_count

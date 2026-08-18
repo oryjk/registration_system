@@ -1,5 +1,5 @@
 import type { CreateMatchPayload } from "@/api/match";
-import type { MatchPublishFormModel } from "@/components/matchPublishForm";
+import type { MatchPublishFormModel } from "./components/matchPublishForm";
 
 interface HostTeamInput {
   id: number;

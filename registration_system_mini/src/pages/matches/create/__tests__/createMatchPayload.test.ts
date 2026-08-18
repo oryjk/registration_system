@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { MatchPublishFormModel } from "@/components/matchPublishForm";
+import type { MatchPublishFormModel } from "../components/matchPublishForm";
 import { buildCreateMatchPayload } from "../createMatchPayload";
 
 function buildForm(overrides: Partial<MatchPublishFormModel> = {}): MatchPublishFormModel {

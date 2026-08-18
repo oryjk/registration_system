@@ -1002,6 +1002,8 @@ SELECT t.id,
        t.logo_url,
        t.captain_id,
        t.status,
+       t.credit_score,
+       t.vip_until,
        t.created_at,
        t.updated_at,
        (SELECT count(*) FROM team_members tm WHERE tm.team_id = t.id AND tm.status = 'active')::bigint AS member_count
@@ -1013,18 +1015,20 @@ LIMIT 50
 `
 
 type SearchActiveTeamsByKeywordRow struct {
-	ID          int64            `json:"id"`
-	Name        string           `json:"name"`
-	Description *string          `json:"description"`
-	LogoUrl     *string          `json:"logo_url"`
-	CaptainID   *int64           `json:"captain_id"`
-	Status      string           `json:"status"`
-	CreatedAt   pgtype.Timestamp `json:"created_at"`
-	UpdatedAt   pgtype.Timestamp `json:"updated_at"`
-	MemberCount int64            `json:"member_count"`
+	ID          int64              `json:"id"`
+	Name        string             `json:"name"`
+	Description *string            `json:"description"`
+	LogoUrl     *string            `json:"logo_url"`
+	CaptainID   *int64             `json:"captain_id"`
+	Status      string             `json:"status"`
+	CreditScore int32              `json:"credit_score"`
+	VipUntil    pgtype.Timestamptz `json:"vip_until"`
+	CreatedAt   pgtype.Timestamp   `json:"created_at"`
+	UpdatedAt   pgtype.Timestamp   `json:"updated_at"`
+	MemberCount int64              `json:"member_count"`
 }
 
-// 用户侧加入球队：仅搜索 active 球队，附成员数用于小程序列表展示。
+// 用户侧加入球队：仅搜索 active 球队，附成员数与信用分供小程序列表展示。
 func (q *Queries) SearchActiveTeamsByKeyword(ctx context.Context, dollar_1 string) ([]SearchActiveTeamsByKeywordRow, error) {
 	rows, err := q.db.Query(ctx, searchActiveTeamsByKeyword, dollar_1)
 	if err != nil {
@@ -1041,6 +1045,8 @@ func (q *Queries) SearchActiveTeamsByKeyword(ctx context.Context, dollar_1 strin
 			&i.LogoUrl,
 			&i.CaptainID,
 			&i.Status,
+			&i.CreditScore,
+			&i.VipUntil,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.MemberCount,
