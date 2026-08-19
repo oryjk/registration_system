@@ -9,12 +9,14 @@ interface MatchRegistrationPaymentDependencies {
   match: Ref<BackendActivity | null>;
   sourceMatch: Ref<AppMatchSummary | null>;
   currentStatus: Ref<string>;
+  /** 本人当前报名占用的人数（散人约球可大于 1）；待支付金额按它计算。 */
+  myRegistrationCount: ComputedRef<number>;
 }
 
 // 赛前支付的报名费：报名（attending）成功后立即拉起支付；支付前详情页展示「去支付」入口。
 // 取消/失败时报名保留（占位防超卖），用户可稍后继续支付或取消报名。
 export function useMatchRegistrationPayment(dependencies: MatchRegistrationPaymentDependencies) {
-  const { match, sourceMatch, currentStatus } = dependencies;
+  const { match, sourceMatch, currentStatus, myRegistrationCount } = dependencies;
 
   const myRegistrationPaid = ref(false);
   const submittingPayment = ref(false);
@@ -23,7 +25,8 @@ export function useMatchRegistrationPayment(dependencies: MatchRegistrationPayme
   );
   const pendingPaymentFeeLabel = computed(() => {
     if (!requiresPrepaidPayment.value || currentStatus.value !== "参加" || myRegistrationPaid.value) return "";
-    return `¥${((sourceMatch.value?.fee_per_person_cents ?? 0) / 100).toFixed(2)}`;
+    const totalCents = (sourceMatch.value?.fee_per_person_cents ?? 0) * Math.max(myRegistrationCount.value, 1);
+    return `¥${(totalCents / 100).toFixed(2)}`;
   });
 
   function applyMyRegistrationPaid(paid: boolean) {

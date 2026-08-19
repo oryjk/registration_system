@@ -18,8 +18,7 @@ import type { RegistrationWindowState } from "@/utils/registrationWindow";
 interface MatchRegistrationDependencies {
   match: Ref<BackendActivity | null>;
   registrations: Ref<BackendRegistration[]>;
-  currentStatus: Ref<string>;
-  currentUser: Ref<BackendUser | null>;
+  currentStatus: Ref<string>;  currentUser: Ref<BackendUser | null>;
   currentTeam: ComputedRef<TeamProfileViewModel | null>;
   submittingStatus: Ref<boolean>;
   isGuestMode: Ref<boolean>;
@@ -37,6 +36,14 @@ interface MatchRegistrationDependencies {
   /** 赛前支付且有人均费用时，报名成功后立即发起支付。 */
   requiresPrepaidPayment: ComputedRef<boolean>;
   payRegistrationFee: () => Promise<boolean>;
+  /** 散人约球（online_pickup）：报名入口改为人数选择面板。 */
+  isPickupMatch: ComputedRef<boolean>;
+  /** 报名费已支付：报名人数与取消入口锁定。 */
+  myRegistrationPaid: Ref<boolean>;
+  /** 打开报名人数面板（由页面持有面板可见状态）。 */
+  openSignupSheet: () => void;
+  /** 关闭报名人数面板（提交/取消成功后由页面收起）。 */
+  closeSignupSheet: () => void;
 }
 
 export function useMatchRegistration(dependencies: MatchRegistrationDependencies) {
@@ -61,6 +68,10 @@ export function useMatchRegistration(dependencies: MatchRegistrationDependencies
     confirmRegistrationAction,
     requiresPrepaidPayment,
     payRegistrationFee,
+    isPickupMatch,
+    myRegistrationPaid,
+    openSignupSheet,
+    closeSignupSheet,
   } = dependencies;
 
   function ensureRegistrationOpen() {
@@ -80,10 +91,10 @@ export function useMatchRegistration(dependencies: MatchRegistrationDependencies
     registrations.value = applyIndividualRegistrationPatch(registrations.value, userId, stand, registrationCount);
   }
 
-  async function submitIndividualRegistrationStatus(status: "attending" | "leave") {
+  async function submitIndividualRegistrationStatus(status: "attending" | "leave", registrationCount = 1) {
     if (isMatchApiDetail.value) {
       if (!registrationGroupId.value) throw new Error("未找到可报名分组");
-      await submitMatchIndividualRegistration(match.value!.id, registrationGroupId.value, status);
+      await submitMatchIndividualRegistration(match.value!.id, registrationGroupId.value, status, registrationCount);
       return;
     }
 
@@ -105,9 +116,23 @@ export function useMatchRegistration(dependencies: MatchRegistrationDependencies
 
   async function handleSelectIndividualSignup() {
     if (!match.value || submittingStatus.value) return;
-  if (!ensureRegistrationOpen()) return;
+    if (!ensureRegistrationOpen()) return;
     if (isGuestMode.value) {
       await handleGuestLogin();
+      return;
+    }
+    // 散人约球已支付：人数与取消入口锁定，费用问题线下协商。
+    if (isPickupMatch.value && isMatchApiDetail.value && currentStatus.value === "参加" && myRegistrationPaid.value) {
+      uni.showToast({ title: "已支付的报名不可修改或取消", icon: "none", duration: 2600 });
+      return;
+    }
+    // 散人约球：报名/调整人数都走人数选择面板（含代朋友报名与费用合计展示）。
+    if (isPickupMatch.value && isMatchApiDetail.value) {
+      if (currentStatus.value !== "参加" && !canSubmitIndividualRegistration.value) {
+        uni.showToast({ title: "报名人数已满", icon: "none" });
+        return;
+      }
+      openSignupSheet();
       return;
     }
     if (currentStatus.value === "参加") {
@@ -127,12 +152,29 @@ export function useMatchRegistration(dependencies: MatchRegistrationDependencies
     });
     if (!confirmed) return;
 
+    await submitIndividualSignup(1);
+  }
+
+  /** 人数选择面板确认：按所选人数报名（散人约球一人可代多人）。 */
+  async function handleSignupSheetConfirm(registrationCount: number) {
+    await submitIndividualSignup(registrationCount);
+    // 报名成功（含支付被取消保留报名的场景）后收起面板；失败时保留面板便于调整人数。
+    if (currentStatus.value === "参加") closeSignupSheet();
+  }
+
+  /** 人数选择面板里的「取消报名」：面板自身即确认意图，不再弹二次确认。 */
+  async function handleSignupSheetCancelRegistration() {
+    await handleCancelIndividualSignup(true);
+    if (currentStatus.value !== "参加") closeSignupSheet();
+  }
+
+  async function submitIndividualSignup(registrationCount: number) {
     submittingStatus.value = true;
     uni.showLoading({ title: "提交中...", mask: true });
     try {
       await ensureSessionReady();
-      await submitIndividualRegistrationStatus("attending");
-      applyIndividualRegistrationState(1, 1);
+      await submitIndividualRegistrationStatus("attending", registrationCount);
+      applyIndividualRegistrationState(1, registrationCount);
       uni.$emit("home:data-may-changed");
       if (requiresPrepaidPayment.value) {
         // 赛前支付：确认报名后立即拉起支付；取消/失败时报名保留，详情页可继续支付。
@@ -148,18 +190,20 @@ export function useMatchRegistration(dependencies: MatchRegistrationDependencies
     }
   }
 
-  async function handleCancelIndividualSignup() {
+  async function handleCancelIndividualSignup(skipConfirm = false) {
     if (!match.value || submittingStatus.value) return;
   if (!ensureRegistrationOpen()) return;
 
-    const confirmed = await confirmRegistrationAction({
-      title: "确认取消报名",
-      content: `确认取消${match.value.name}的报名？取消后可重新报名。`,
-      highlight: match.value.name,
-      confirmText: "取消报名",
-      danger: true,
-    });
-    if (!confirmed) return;
+    if (!skipConfirm) {
+      const confirmed = await confirmRegistrationAction({
+        title: "确认取消报名",
+        content: `确认取消${match.value.name}的报名？取消后可重新报名。`,
+        highlight: match.value.name,
+        confirmText: "取消报名",
+        danger: true,
+      });
+      if (!confirmed) return;
+    }
 
     submittingStatus.value = true;
     uni.showLoading({ title: "提交中...", mask: true });
@@ -268,6 +312,8 @@ export function useMatchRegistration(dependencies: MatchRegistrationDependencies
 
   return {
     handleSelectIndividualSignup,
+    handleSignupSheetConfirm,
+    handleSignupSheetCancelRegistration,
     handleSelectTeamMemberStand,
     handleTeamSubmit,
   };

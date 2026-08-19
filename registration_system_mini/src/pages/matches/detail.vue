@@ -4,6 +4,7 @@ import { onShareAppMessage, onShareTimeline } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
 import NeoButton from "@/components/neo/NeoButton.vue";
 import NeoConfirmDialog from "@/components/neo/NeoConfirmDialog.vue";
+import MatchSignupCountSheet from "./components/MatchSignupCountSheet.vue";
 import NeoSegmentedControl from "@/components/neo/NeoSegmentedControl.vue";
 import NeoStickyActionBar from "@/components/neo/NeoStickyActionBar.vue";
 import MatchDetailSkeleton from "./components/MatchDetailSkeleton.vue";
@@ -42,6 +43,7 @@ const {
   requiredPlayers,
   maxPlayers,
   countdownText,
+  currentStatus,
   participantPreview,
   teamMemberRegistrationGroups,
   remainingPlayersLabel,
@@ -57,6 +59,15 @@ const {
   individualCtaLabel,
   canSubmitIndividualRegistration,
   isGuestMode,
+  isPickupMatch,
+  myRegistrationPaid,
+  myRegistrationCount,
+  signupSheetVisible,
+  signupMaxCount,
+  feePerPersonLabel,
+  closeSignupSheet,
+  handleSignupSheetConfirm,
+  handleSignupSheetCancelRegistration,
   currentTeam,
   dateLine,
   heroMetaChips,
@@ -147,7 +158,7 @@ onShareTimeline(() => ({
 </script>
 
 <template>
-  <page-meta :page-style="teamMemberDialogVisible || confirmDialogVisible || finishDialogVisible ? 'overflow: hidden;' : ''" />
+  <page-meta :page-style="teamMemberDialogVisible || confirmDialogVisible || finishDialogVisible || signupSheetVisible ? 'overflow: hidden;' : ''" />
   <view class="registration-page" :style="pageStyle">
     <AppTabHeader title="比赛报名" showBack showLocation />
 
@@ -189,6 +200,7 @@ onShareTimeline(() => ({
         :show-free-tag="!!sourceMatch?.is_free"
         :team-progress="teamProgressItems"
         :pending-payment-fee-label="pendingPaymentFeeLabel"
+        :pending-payment-title="currentStatus === '参加' ? `已报 ${myRegistrationCount} 人 · 报名费待支付` : ''"
         :submitting-payment="submittingPayment"
         :current-team="currentTeam"
         :team-member-registration-groups="teamMemberRegistrationGroups"
@@ -300,6 +312,19 @@ onShareTimeline(() => ({
       @primary="handleFinishMatch('ended')"
       @secondary="handleFinishMatch('cancelled')"
       @close="handleCloseFinishDialog"
+    />
+
+    <!-- 散人约球：报名人数选择（一人可代朋友报名，费用按人数合计）。 -->
+    <MatchSignupCountSheet
+      :visible="signupSheetVisible"
+      :max-count="signupMaxCount"
+      :current-count="currentStatus === '参加' ? myRegistrationCount : 1"
+      :fee-per-person-label="feePerPersonLabel"
+      :submitting="submittingStatus"
+      :can-cancel="currentStatus === '参加' && !myRegistrationPaid"
+      @close="closeSignupSheet"
+      @confirm="handleSignupSheetConfirm"
+      @cancel-registration="handleSignupSheetCancelRegistration"
     />
   </view>
 </template>

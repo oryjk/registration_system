@@ -41,6 +41,8 @@ const props = defineProps<{
   teamProgress?: MatchTeamProgressItem[];
   /** 待支付报名费标签（如 ¥25.00）；非空时展示「去支付」面板。 */
   pendingPaymentFeeLabel?: string;
+  /** 待支付面板标题（如「已报 3 人 · 报名费待支付」）；缺省为「报名费待支付」。 */
+  pendingPaymentTitle?: string;
   /** 支付流程进行中（下单/拉起/核销）。 */
   submittingPayment?: boolean;
   currentTeam: TeamProfileViewModel | null;
@@ -113,6 +115,7 @@ function handlePayRegistration() {
       :show-free-tag="showFreeTag"
       :team-progress="teamProgress"
       :pending-payment-fee-label="pendingPaymentFeeLabel"
+      :pending-payment-title="pendingPaymentTitle"
       :submitting-payment="submittingPayment"
       @select-individual-signup="handleSelectIndividualSignup"
       @pay-registration="handlePayRegistration"

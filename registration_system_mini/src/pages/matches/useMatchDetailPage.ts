@@ -96,6 +96,11 @@ export function useMatchDetailPage() {
   const joinedCount = computed(() =>
     joinedRegistrations.value.reduce((total, item) => total + item.registration_count, 0) + sourceTeamRegistrationCount.value,
   );
+  // 本人当前报名占用的人数；散人约球调整人数面板用它预填与计算费用。
+  const myRegistrationCount = computed(() =>
+    registrations.value.find((item) => item.user_id === currentUser.value?.id && item.stand === 1)?.registration_count ?? 1,
+  );
+  const isPickupMatch = computed(() => sourceMatch.value?.publication_mode === "online_pickup");
   const requiredPlayers = computed(() => match.value?.players_per_team ?? 0);
   const maxPlayers = computed(() => {
     const configuredCapacity = match.value?.team_capacity_limit;
@@ -151,12 +156,30 @@ export function useMatchDetailPage() {
   const isRegistrationClosed = computed(() => registrationWindowState.value !== "open");
 
   const {
+    myRegistrationPaid,
     submittingPayment,
     requiresPrepaidPayment,
     pendingPaymentFeeLabel,
     applyMyRegistrationPaid,
     payRegistrationFee,
-  } = useMatchRegistrationPayment({ match, sourceMatch, currentStatus });
+  } = useMatchRegistrationPayment({ match, sourceMatch, currentStatus, myRegistrationCount });
+
+  // 散人约球报名人数面板：选择人数（含代报）后提交，费用按人数合计。
+  const signupSheetVisible = ref(false);
+  const signupMaxCount = computed(() => Math.max(
+    maxPlayers.value - joinedCount.value + (currentStatus.value === "参加" ? myRegistrationCount.value : 0),
+    1,
+  ));
+  const feePerPersonLabel = computed(() => {
+    const cents = sourceMatch.value?.fee_per_person_cents ?? 0;
+    return cents > 0 ? `¥${(cents / 100).toFixed(2)}` : "";
+  });
+  function openSignupSheet() {
+    signupSheetVisible.value = true;
+  }
+  function closeSignupSheet() {
+    signupSheetVisible.value = false;
+  }
   const countdownText = computed(() => {
     const window = registrationWindow.value;
     if (window.state === "closed") return "报名已结束";
@@ -238,8 +261,11 @@ export function useMatchDetailPage() {
 
   const individualCtaLabel = computed(() => {
     if (isGuestMode.value) return "登录后报名";
-    if (registrationCapacityState.value.isFull) return "报名已满";
-    return currentStatus.value === "参加" ? "取消报名" : "立即报名";
+    if (registrationCapacityState.value.isFull && currentStatus.value !== "参加") return "报名已满";
+    if (currentStatus.value !== "参加") return "立即报名";
+    // 散人约球已报名：已支付锁定为只读，未支付可调整人数。
+    if (isPickupMatch.value && isMatchApiDetail.value) return myRegistrationPaid.value ? "已报名" : "调整人数";
+    return "取消报名";
   });
   const canUseTeamRegistration = computed(() =>
     !isMatchApiDetail.value && canShowTeamRegistrationTab({
@@ -371,6 +397,8 @@ export function useMatchDetailPage() {
 
   const {
     handleSelectIndividualSignup,
+    handleSignupSheetConfirm,
+    handleSignupSheetCancelRegistration,
     handleSelectTeamMemberStand,
     handleTeamSubmit,
   } = useMatchRegistration({
@@ -394,6 +422,10 @@ export function useMatchDetailPage() {
     confirmRegistrationAction,
     requiresPrepaidPayment,
     payRegistrationFee,
+    isPickupMatch,
+    myRegistrationPaid,
+    openSignupSheet,
+    closeSignupSheet,
   });
 
   const {
@@ -518,6 +550,7 @@ export function useMatchDetailPage() {
     isLoading,
     match,
     sourceMatch,
+    currentStatus,
     teamProgressItems,
     registrationMode,
     canUseTeamRegistration,
@@ -551,6 +584,15 @@ export function useMatchDetailPage() {
     handleConfirmClose,
     individualCtaLabel,
     isGuestMode,
+    isPickupMatch,
+    myRegistrationPaid,
+    signupSheetVisible,
+    signupMaxCount,
+    myRegistrationCount,
+    feePerPersonLabel,
+    closeSignupSheet,
+    handleSignupSheetConfirm,
+    handleSignupSheetCancelRegistration,
     currentTeam,
     dateLine,
     heroMetaChips,
