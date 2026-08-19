@@ -18,13 +18,13 @@ func TestUserRegistrationTransitionsAndCancellation(t *testing.T) {
 	if !registration.OccupiesCapacity() {
 		t.Fatal("attending registration must occupy capacity")
 	}
-	if err := registration.ApplyUserStatus(RegistrationAttending, createdAt.Add(time.Minute)); err != nil {
+	if err := registration.ApplyUserStatus(RegistrationAttending, 1, createdAt.Add(time.Minute)); err != nil {
 		t.Fatal(err)
 	}
 	if !registration.UpdatedAt.Equal(createdAt) {
 		t.Fatal("idempotent status must not change updated_at")
 	}
-	if err := registration.ApplyUserStatus(RegistrationLeave, createdAt.Add(2*time.Minute)); err != nil {
+	if err := registration.ApplyUserStatus(RegistrationLeave, 1, createdAt.Add(2*time.Minute)); err != nil {
 		t.Fatal(err)
 	}
 	if registration.Status != RegistrationLeave || registration.OccupiesCapacity() {
@@ -34,7 +34,7 @@ func TestUserRegistrationTransitionsAndCancellation(t *testing.T) {
 	if registration.Status != RegistrationCancelled || registration.CancelledAt == nil {
 		t.Fatalf("cancel failed: %+v", registration)
 	}
-	if err := registration.ApplyUserStatus(RegistrationAbsent, createdAt.Add(4*time.Minute)); err != nil {
+	if err := registration.ApplyUserStatus(RegistrationAbsent, 1, createdAt.Add(4*time.Minute)); err != nil {
 		t.Fatal(err)
 	}
 	if registration.Status != RegistrationAbsent || registration.CancelledAt != nil {
@@ -45,7 +45,7 @@ func TestUserRegistrationTransitionsAndCancellation(t *testing.T) {
 func TestUserRegistrationRejectsServerOnlyStatuses(t *testing.T) {
 	registration, _ := NewRegistration(uuid.New(), 42, RegistrationAttending, 1, time.Now())
 	for _, status := range []RegistrationStatus{RegistrationUnknown, RegistrationCancelled, "other"} {
-		if err := registration.ApplyUserStatus(status, time.Now()); !errors.Is(err, sharederror.ErrValidation) {
+		if err := registration.ApplyUserStatus(status, 1, time.Now()); !errors.Is(err, sharederror.ErrValidation) {
 			t.Fatalf("status %q: expected validation, got %v", status, err)
 		}
 	}
@@ -58,11 +58,34 @@ func TestUserRegistrationNormalizesLegacyCountOnUserWrite(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := registration.ApplyUserStatus(RegistrationAttending, updatedAt); err != nil {
+	if err := registration.ApplyUserStatus(RegistrationAttending, 1, updatedAt); err != nil {
 		t.Fatal(err)
 	}
 	if registration.RegistrationCount != 1 || !registration.UpdatedAt.Equal(updatedAt) {
 		t.Fatalf("user write did not normalize legacy count: %+v", registration)
+	}
+}
+
+func TestUserRegistrationUpdatesPickupCount(t *testing.T) {
+	createdAt := time.Date(2026, 8, 19, 8, 0, 0, 0, time.UTC)
+	registration, err := NewRegistration(uuid.New(), 42, RegistrationAttending, 1, createdAt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := registration.ApplyUserStatus(RegistrationAttending, 3, createdAt.Add(time.Minute)); err != nil {
+		t.Fatalf("apply status with pickup count: %v", err)
+	}
+	if registration.RegistrationCount != 3 || !registration.UpdatedAt.Equal(createdAt.Add(time.Minute)) {
+		t.Fatalf("count should follow the command: %+v", registration)
+	}
+	if err := registration.ApplyUserStatus(RegistrationAttending, 3, createdAt.Add(2*time.Minute)); err != nil {
+		t.Fatal(err)
+	}
+	if !registration.UpdatedAt.Equal(createdAt.Add(time.Minute)) {
+		t.Fatal("idempotent count must not change updated_at")
+	}
+	if err := registration.ApplyUserStatus(RegistrationAttending, 0, createdAt.Add(3*time.Minute)); !errors.Is(err, sharederror.ErrValidation) {
+		t.Fatalf("count below 1 must be rejected, got %v", err)
 	}
 }
 

@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -59,12 +60,18 @@ func (s UserRegistrationService) Put(ctx context.Context, actor sharedauth.Actor
 		if err := authorizeUserRegistration(ctx, tx, actor.ID, match, group, command.Status); err != nil {
 			return err
 		}
+		if err := authorizeRegistrationCount(match, group, command.RegistrationCount); err != nil {
+			return err
+		}
 		if group.Status == domain.GroupCancelled {
 			return sharederror.New(sharederror.KindConflict, "报名组已取消")
 		}
-		if found && current.Status == command.Status && current.CancelledAt == nil && current.RegistrationCount == 1 {
+		if found && current.Status == command.Status && current.CancelledAt == nil && current.RegistrationCount == command.RegistrationCount {
 			result = current
 			return nil
+		}
+		if found && current.Paid {
+			return sharederror.New(sharederror.KindConflict, "已支付的报名不可修改")
 		}
 		if group.Status != domain.GroupOpen {
 			return sharederror.New(sharederror.KindConflict, "报名组未开放")
@@ -78,20 +85,25 @@ func (s UserRegistrationService) Put(ctx context.Context, actor sharedauth.Actor
 		if found && current.OccupiesCapacity() {
 			projected -= current.RegistrationCount
 		}
+		base := projected
 		if command.Status == domain.RegistrationAttending {
-			projected++
+			projected += command.RegistrationCount
 		}
 		if group.MaxPlayers != nil && projected > *group.MaxPlayers {
-			return sharederror.New(sharederror.KindConflict, "报名组人数已满")
+			remaining := *group.MaxPlayers - base
+			if remaining < 0 {
+				remaining = 0
+			}
+			return sharederror.New(sharederror.KindConflict, fmt.Sprintf("报名人数超过剩余名额（剩 %d 个）", remaining))
 		}
 
 		if found {
-			if err := current.ApplyUserStatus(command.Status, now); err != nil {
+			if err := current.ApplyUserStatus(command.Status, command.RegistrationCount, now); err != nil {
 				return err
 			}
 			result = current
 		} else {
-			result, err = domain.NewRegistration(groupID, actor.ID, command.Status, 1, now)
+			result, err = domain.NewRegistration(groupID, actor.ID, command.Status, command.RegistrationCount, now)
 			if err != nil {
 				return err
 			}
@@ -136,6 +148,9 @@ func (s UserRegistrationService) Delete(ctx context.Context, actor sharedauth.Ac
 			result = current
 			return nil
 		}
+		if current.Paid {
+			return sharederror.New(sharederror.KindConflict, "已支付的报名不可取消")
+		}
 
 		attending, err := tx.CountAttendingForGroup(ctx, groupID)
 		if err != nil {
@@ -162,7 +177,7 @@ func validateUserRegistrationCommand(actor sharedauth.Actor, matchID, groupID uu
 	if matchID == uuid.Nil || groupID == uuid.Nil {
 		return sharederror.New(sharederror.KindValidation, "比赛或报名组无效")
 	}
-	if command.RegistrationCount != 1 {
+	if command.RegistrationCount < 1 {
 		return sharederror.New(sharederror.KindValidation, "报名人数必须为 1")
 	}
 	switch command.Status {
@@ -221,6 +236,17 @@ func authorizeUserRegistration(ctx context.Context, tx ports.UserRegistrationTra
 	default:
 		return sharederror.New(sharederror.KindConflict, "报名组类型无效")
 	}
+}
+
+// authorizeRegistrationCount 仅散人约球的散人组允许一次报多人；其余场景人数恒为 1。
+func authorizeRegistrationCount(match domain.Match, group domain.RegistrationGroup, count int) error {
+	if count == 1 {
+		return nil
+	}
+	if match.PublicationMode == domain.OnlinePickup && group.Kind == domain.GroupIndividualOpponent {
+		return nil
+	}
+	return sharederror.New(sharederror.KindValidation, "报名人数必须为 1")
 }
 
 func ensureActiveRegistrationMember(ctx context.Context, tx ports.UserRegistrationTransaction, teamID, userID int64) error {

@@ -71,17 +71,21 @@ func NewRegistration(groupID uuid.UUID, userID int64, status RegistrationStatus,
 }
 
 // ApplyUserStatus applies a status that an app user is allowed to choose.
-func (r *Registration) ApplyUserStatus(status RegistrationStatus, now time.Time) error {
+// count 由应用层显式传入：散人约球一人代多人时可大于 1，其余场景恒为 1。
+func (r *Registration) ApplyUserStatus(status RegistrationStatus, count int, now time.Time) error {
 	switch status {
 	case RegistrationAttending, RegistrationLeave, RegistrationAbsent:
 	default:
 		return sharederror.New(sharederror.KindValidation, "报名状态无效")
 	}
-	if r.Status == status && r.CancelledAt == nil && r.RegistrationCount == 1 {
+	if count < 1 {
+		return sharederror.New(sharederror.KindValidation, "报名人数必须大于 0")
+	}
+	if r.Status == status && r.CancelledAt == nil && r.RegistrationCount == count {
 		return nil
 	}
 	r.Status = status
-	r.RegistrationCount = 1
+	r.RegistrationCount = count
 	r.CancelledAt = nil
 	r.UpdatedAt = now
 	return nil

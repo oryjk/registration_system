@@ -45,7 +45,7 @@ func TestUserRegistrationPutValidatesActorStatusAndCount(t *testing.T) {
 		want    error
 	}{
 		{name: "admin", actor: sharedauth.Actor{Kind: sharedauth.ActorAdmin, ID: 1}, command: PutMyRegistrationCommand{Status: domain.RegistrationAttending, RegistrationCount: 1}, want: sharederror.ErrForbidden},
-		{name: "count", actor: userActor(42), command: PutMyRegistrationCommand{Status: domain.RegistrationAttending, RegistrationCount: 2}, want: sharederror.ErrValidation},
+		{name: "count", actor: userActor(42), command: PutMyRegistrationCommand{Status: domain.RegistrationAttending, RegistrationCount: 0}, want: sharederror.ErrValidation},
 		{name: "server status", actor: userActor(42), command: PutMyRegistrationCommand{Status: domain.RegistrationCancelled, RegistrationCount: 1}, want: sharederror.ErrValidation},
 	}
 	for _, test := range tests {
@@ -292,6 +292,115 @@ func TestUserRegistrationMapsPersistenceConstraintErrors(t *testing.T) {
 			_, err := service.Put(context.Background(), userActor(42), repository.match.ID, repository.group.ID, validRegistrationCommand())
 			if !errors.Is(err, test.wantErr) {
 				t.Fatalf("expected %v, got %v", test.wantErr, err)
+			}
+		})
+	}
+}
+
+func pickupRegistrationFixture(now time.Time, minPlayers, maxPlayers int) registrationFixture {
+	matchID := uuid.New()
+	return registrationFixture{
+		match: domain.Match{ID: matchID, PublicationMode: domain.OnlinePickup, OpponentState: domain.OpponentRecruiting, Status: domain.MatchRegistering, UpdatedAt: now},
+		group: domain.NewIndividualGroup(matchID, domain.IndividualLimits{MinPlayers: minPlayers, MaxPlayers: maxPlayers}, now),
+	}
+}
+
+func TestUserRegistrationPutPickupAllowsMultiPersonCount(t *testing.T) {
+	now := time.Now()
+	repository := newFakeUserRegistrationRepository(pickupRegistrationFixture(now, 2, 10))
+	service := NewUserRegistrationService(repository, fakeClock{now: now})
+
+	registration, err := service.Put(context.Background(), userActor(42), repository.match.ID, repository.group.ID, PutMyRegistrationCommand{
+		Status: domain.RegistrationAttending, RegistrationCount: 3,
+	})
+	if err != nil {
+		t.Fatalf("pickup multi-person registration: %v", err)
+	}
+	if registration.RegistrationCount != 3 {
+		t.Fatalf("expected count 3, got %d", registration.RegistrationCount)
+	}
+}
+
+func TestUserRegistrationPutPickupEnforcesHeadcountCapacity(t *testing.T) {
+	now := time.Now()
+	repository := newFakeUserRegistrationRepository(pickupRegistrationFixture(now, 2, 5))
+	other, _ := domain.NewRegistration(repository.group.ID, 99, domain.RegistrationAttending, 4, now)
+	repository.registrations[repository.group.ID] = []domain.Registration{other}
+	service := NewUserRegistrationService(repository, fakeClock{now: now})
+
+	_, err := service.Put(context.Background(), userActor(42), repository.match.ID, repository.group.ID, PutMyRegistrationCommand{
+		Status: domain.RegistrationAttending, RegistrationCount: 3,
+	})
+	if !errors.Is(err, sharederror.ErrConflict) {
+		t.Fatalf("expected capacity conflict, got %v", err)
+	}
+	if _, err := service.Put(context.Background(), userActor(42), repository.match.ID, repository.group.ID, PutMyRegistrationCommand{
+		Status: domain.RegistrationAttending, RegistrationCount: 1,
+	}); err != nil {
+		t.Fatalf("register within remaining slots: %v", err)
+	}
+}
+
+func TestUserRegistrationPutPickupAdjustCountBeforePayment(t *testing.T) {
+	now := time.Now()
+	repository := newFakeUserRegistrationRepository(pickupRegistrationFixture(now, 2, 10))
+	existing, _ := domain.NewRegistration(repository.group.ID, 42, domain.RegistrationAttending, 3, now)
+	repository.registrations[repository.group.ID] = []domain.Registration{existing}
+	service := NewUserRegistrationService(repository, fakeClock{now: now.Add(time.Minute)})
+
+	adjusted, err := service.Put(context.Background(), userActor(42), repository.match.ID, repository.group.ID, PutMyRegistrationCommand{
+		Status: domain.RegistrationAttending, RegistrationCount: 2,
+	})
+	if err != nil || adjusted.RegistrationCount != 2 {
+		t.Fatalf("adjust unpaid count: %+v err=%v", adjusted, err)
+	}
+}
+
+func TestUserRegistrationPutAndDeleteRejectPaidChanges(t *testing.T) {
+	now := time.Now()
+	repository := newFakeUserRegistrationRepository(pickupRegistrationFixture(now, 2, 10))
+	existing, _ := domain.NewRegistration(repository.group.ID, 42, domain.RegistrationAttending, 3, now)
+	existing.Paid = true
+	repository.registrations[repository.group.ID] = []domain.Registration{existing}
+	service := NewUserRegistrationService(repository, fakeClock{now: now.Add(time.Minute)})
+
+	same, err := service.Put(context.Background(), userActor(42), repository.match.ID, repository.group.ID, PutMyRegistrationCommand{
+		Status: domain.RegistrationAttending, RegistrationCount: 3,
+	})
+	if err != nil || same.RegistrationCount != 3 {
+		t.Fatalf("idempotent paid put: %+v err=%v", same, err)
+	}
+	if _, err := service.Put(context.Background(), userActor(42), repository.match.ID, repository.group.ID, PutMyRegistrationCommand{
+		Status: domain.RegistrationAttending, RegistrationCount: 2,
+	}); !errors.Is(err, sharederror.ErrConflict) {
+		t.Fatalf("expected paid lock on count change, got %v", err)
+	}
+	if _, err := service.Delete(context.Background(), userActor(42), repository.match.ID, repository.group.ID); !errors.Is(err, sharederror.ErrConflict) {
+		t.Fatalf("expected paid lock on delete, got %v", err)
+	}
+}
+
+func TestUserRegistrationPutRejectsMultiCountOutsidePickup(t *testing.T) {
+	now := time.Now()
+	tests := []struct {
+		name    string
+		fixture registrationFixture
+	}{
+		{name: "individual opponent match", fixture: individualRegistrationFixture(now, 1, 2)},
+		{name: "team match", fixture: teamRegistrationFixture(now, domain.GroupHostTeam, 7)},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			repository := newFakeUserRegistrationRepository(test.fixture)
+			if test.fixture.group.Kind == domain.GroupHostTeam {
+				repository.members = map[int64]map[int64]bool{7: {42: true}}
+			}
+			service := NewUserRegistrationService(repository, fakeClock{now: now})
+			_, err := service.Put(context.Background(), userActor(42), repository.match.ID, repository.group.ID, PutMyRegistrationCommand{
+				Status: domain.RegistrationAttending, RegistrationCount: 2,
+			})
+			if !errors.Is(err, sharederror.ErrValidation) {
+				t.Fatalf("expected count validation, got %v", err)
 			}
 		})
 	}
