@@ -19,7 +19,6 @@ export function useSettingsPage() {
   const reviewToggleEnabled = ref(false);
 
   const isOwner = computed(() => currentUser.value?.id === PRODUCT_OWNER_USER_ID);
-  const currentReviewLabel = computed(() => (reviewMode.value ? "审核中" : "已过审"));
 
   async function loadPageData() {
     isLoading.value = true;
@@ -95,7 +94,7 @@ export function useSettingsPage() {
     isOwner,
     clearProfileEnabled,
     reviewToggleEnabled,
-    currentReviewLabel,
+    reviewMode,
     loadPageData,
     handleClearProfile,
     handleToggleReviewStatus,

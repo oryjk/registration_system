@@ -13,7 +13,7 @@ const {
   isOwner,
   clearProfileEnabled,
   reviewToggleEnabled,
-  currentReviewLabel,
+  reviewMode,
   loadPageData,
   handleClearProfile,
   handleToggleReviewStatus,
@@ -55,14 +55,31 @@ onShow(async () => {
           </view>
           <NeoButton variant="outline" size="sm" @click="handleClearProfile">清除</NeoButton>
         </view>
-        <view v-if="reviewToggleEnabled" class="settings-item">
+        <view v-if="reviewToggleEnabled" class="settings-item settings-item--stacked">
           <view class="settings-item__texts">
-            <text class="settings-item__title">审核状态：{{ currentReviewLabel }}</text>
+            <text class="settings-item__title">审核状态</text>
             <text class="settings-item__desc">针对当前小程序版本切换审核状态，全量用户创建入口显隐立即变化</text>
           </view>
-          <NeoButton variant="lime" size="sm" @click="handleToggleReviewStatus">
-            {{ currentReviewLabel === "审核中" ? "切为已过审" : "切为审核中" }}
-          </NeoButton>
+          <view class="settings-radio-group">
+            <view
+              :class="['settings-radio', reviewMode ? 'settings-radio--active' : '']"
+              hover-class="settings-radio--pressed"
+              :hover-stay-time="100"
+              @click="!reviewMode && handleToggleReviewStatus()"
+            >
+              <view class="settings-radio__dot" />
+              <text class="settings-radio__label">审核中</text>
+            </view>
+            <view
+              :class="['settings-radio', !reviewMode ? 'settings-radio--active' : '']"
+              hover-class="settings-radio--pressed"
+              :hover-stay-time="100"
+              @click="reviewMode && handleToggleReviewStatus()"
+            >
+              <view class="settings-radio__dot" />
+              <text class="settings-radio__label">已过审</text>
+            </view>
+          </view>
         </view>
         <view v-if="!isLoading && !hasVisibleItems" class="settings-empty">
           <text class="settings-empty__text">暂无可用设置项，可在管理端「系统设置」打开对应开关</text>
@@ -102,6 +119,12 @@ onShow(async () => {
   margin-top: 26rpx;
 }
 
+/* 审核状态带单选组，文字与选项改为上下排布。 */
+.settings-item--stacked {
+  flex-direction: column;
+  align-items: stretch;
+}
+
 .settings-item__texts {
   flex: 1;
   min-width: 0;
@@ -121,6 +144,61 @@ onShow(async () => {
   font-size: 22rpx;
   font-weight: 700;
   line-height: 1.45;
+}
+
+.settings-radio-group {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 22rpx;
+}
+
+.settings-radio {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 14rpx;
+  min-height: 84rpx;
+  padding: 0 22rpx;
+  border: 2rpx dashed var(--neo-color-text-muted);
+  border-radius: var(--neo-radius-md);
+  background: var(--neo-color-muted);
+  box-sizing: border-box;
+}
+
+.settings-radio--pressed {
+  opacity: 0.72;
+}
+
+.settings-radio--active {
+  border: var(--neo-border-strong);
+  background: var(--neo-color-surface);
+  box-shadow: var(--neo-shadow-raised);
+}
+
+.settings-radio__dot {
+  width: 30rpx;
+  height: 30rpx;
+  flex-shrink: 0;
+  border: 4rpx solid var(--neo-color-text-muted);
+  border-radius: var(--neo-radius-round);
+  background: var(--neo-color-muted);
+  box-sizing: border-box;
+}
+
+.settings-radio--active .settings-radio__dot {
+  border-color: var(--neo-color-text);
+  background: var(--neo-color-accent);
+}
+
+.settings-radio__label {
+  color: var(--neo-color-text-muted);
+  font-size: 26rpx;
+  font-weight: 800;
+}
+
+.settings-radio--active .settings-radio__label {
+  color: var(--neo-color-text);
+  font-weight: 900;
 }
 
 .settings-empty {
