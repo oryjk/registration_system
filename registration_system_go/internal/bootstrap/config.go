@@ -37,6 +37,9 @@ type Config struct {
 	UploadDir string
 	// MiniReviewAPIKey 供小程序生产构建脚本登记审核版本；为空时登记接口关闭。
 	MiniReviewAPIKey string
+	// MiniReviewControlUserIDs 允许在小程序端切换审核状态的用户白名单
+	//（env MINI_REVIEW_CONTROL_USER_IDS，逗号分隔）；为空时切换接口对所有人关闭。
+	MiniReviewControlUserIDs map[int64]struct{}
 }
 
 func LoadConfig() (Config, error) {
@@ -46,22 +49,23 @@ func LoadConfig() (Config, error) {
 		return Config{}, err
 	}
 	config := Config{
-		HTTPAddr:            envOrDefault("HTTP_ADDR", ":18080"),
-		DatabaseURL:         os.Getenv("DATABASE_URL"),
-		JWTSecret:           os.Getenv("JWT_SECRET"),
-		WechatAppID:         os.Getenv("WECHAT_APP_ID"),
-		WechatAppSecret:     os.Getenv("WECHAT_APP_SECRET"),
-		AppEnvironment:      parseAppEnvironment(os.Getenv("APP_ENV")),
-		EnableH5TestLogin:   os.Getenv("ENABLE_H5_TEST_LOGIN") == "true",
-		H5TestDefaultUserID: defaultUserID,
-		WechatPayUseMock:    os.Getenv("WECHAT_PAY_USE_MOCK") == "true",
-		WechatPayMerchantID: strings.TrimSpace(os.Getenv("WECHAT_PAY_MCH_ID")),
-		WechatPayAPIKey:     strings.TrimSpace(os.Getenv("WECHAT_PAY_API_KEY")),
-		WechatPayAPIBaseURL: envOrDefault("WECHAT_PAY_API_BASE_URL", "https://api.mch.weixin.qq.com"),
-		PublicBaseURL:       strings.TrimRight(strings.TrimSpace(os.Getenv("PUBLIC_BASE_URL")), "/"),
-		WechatPayNotifyPath: envOrDefault("WECHAT_PAY_NOTIFY_PATH", "/api/v1/webhooks/wechat-pay"),
-		UploadDir:           envOrDefault("UPLOAD_DIR", "uploads"),
-		MiniReviewAPIKey:    strings.TrimSpace(os.Getenv("MINI_REVIEW_API_KEY")),
+		HTTPAddr:                 envOrDefault("HTTP_ADDR", ":18080"),
+		DatabaseURL:              os.Getenv("DATABASE_URL"),
+		JWTSecret:                os.Getenv("JWT_SECRET"),
+		WechatAppID:              os.Getenv("WECHAT_APP_ID"),
+		WechatAppSecret:          os.Getenv("WECHAT_APP_SECRET"),
+		AppEnvironment:           parseAppEnvironment(os.Getenv("APP_ENV")),
+		EnableH5TestLogin:        os.Getenv("ENABLE_H5_TEST_LOGIN") == "true",
+		H5TestDefaultUserID:      defaultUserID,
+		WechatPayUseMock:         os.Getenv("WECHAT_PAY_USE_MOCK") == "true",
+		WechatPayMerchantID:      strings.TrimSpace(os.Getenv("WECHAT_PAY_MCH_ID")),
+		WechatPayAPIKey:          strings.TrimSpace(os.Getenv("WECHAT_PAY_API_KEY")),
+		WechatPayAPIBaseURL:      envOrDefault("WECHAT_PAY_API_BASE_URL", "https://api.mch.weixin.qq.com"),
+		PublicBaseURL:            strings.TrimRight(strings.TrimSpace(os.Getenv("PUBLIC_BASE_URL")), "/"),
+		WechatPayNotifyPath:      envOrDefault("WECHAT_PAY_NOTIFY_PATH", "/api/v1/webhooks/wechat-pay"),
+		UploadDir:                envOrDefault("UPLOAD_DIR", "uploads"),
+		MiniReviewAPIKey:         strings.TrimSpace(os.Getenv("MINI_REVIEW_API_KEY")),
+		MiniReviewControlUserIDs: parseUserIDListEnv(os.Getenv("MINI_REVIEW_CONTROL_USER_IDS")),
 	}
 
 	for name, value := range map[string]string{
@@ -144,4 +148,21 @@ func envOrDefault(name, fallback string) string {
 		return value
 	}
 	return fallback
+}
+
+// parseUserIDListEnv 解析逗号分隔的用户 ID 列表（"4,12"）；
+// 空串或全部无效时返回 nil，表示白名单未配置。
+func parseUserIDListEnv(raw string) map[int64]struct{} {
+	ids := make(map[int64]struct{})
+	for _, part := range strings.Split(raw, ",") {
+		parsed, err := strconv.ParseInt(strings.TrimSpace(part), 10, 64)
+		if err != nil || parsed <= 0 {
+			continue
+		}
+		ids[parsed] = struct{}{}
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	return ids
 }

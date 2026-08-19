@@ -92,3 +92,42 @@ func TestMiniAppSettingsToggleBackToOff(t *testing.T) {
 		t.Fatalf("runtime config should reflect disabled flag: %s", response.Body.String())
 	}
 }
+
+func TestReviewStatusToggleFlowsToRuntimeConfig(t *testing.T) {
+	router := newSettingsRouter(t)
+
+	put := httptest.NewRequest(http.MethodPut, "/admin/system/mini-app-settings", strings.NewReader(`{"debug":{"review_status_toggle_enabled":true}}`))
+	put.Header.Set("Content-Type", "application/json")
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, put)
+	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), `"review_status_toggle_enabled":true`) {
+		t.Fatalf("update failed: status=%d body=%s", response.Code, response.Body.String())
+	}
+
+	runtime := httptest.NewRequest(http.MethodGet, "/app/system/mini-app-runtime-config", nil)
+	response = httptest.NewRecorder()
+	router.ServeHTTP(response, runtime)
+	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), `"review_status_toggle_enabled":true`) {
+		t.Fatalf("runtime config should expose review toggle flag: status=%d body=%s", response.Code, response.Body.String())
+	}
+}
+
+func TestMiniAppSettingsPartialUpdateKeepsOtherFlag(t *testing.T) {
+	router := newSettingsRouter(t)
+
+	putToggle := httptest.NewRequest(http.MethodPut, "/admin/system/mini-app-settings", strings.NewReader(`{"debug":{"review_status_toggle_enabled":true}}`))
+	putToggle.Header.Set("Content-Type", "application/json")
+	router.ServeHTTP(httptest.NewRecorder(), putToggle)
+
+	putProfile := httptest.NewRequest(http.MethodPut, "/admin/system/mini-app-settings", strings.NewReader(`{"debug":{"clear_profile_enabled":true}}`))
+	putProfile.Header.Set("Content-Type", "application/json")
+	router.ServeHTTP(httptest.NewRecorder(), putProfile)
+
+	runtime := httptest.NewRequest(http.MethodGet, "/app/system/mini-app-runtime-config", nil)
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, runtime)
+	body := response.Body.String()
+	if !strings.Contains(body, `"review_status_toggle_enabled":true`) || !strings.Contains(body, `"clear_profile_enabled":true`) {
+		t.Fatalf("updating one debug flag must not reset the other: %s", body)
+	}
+}

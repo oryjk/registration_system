@@ -6,13 +6,14 @@ import (
 	"github.com/gin-gonic/gin"
 	sharedhttpapi "github.com/oryjk/registration_system/registration_system_go/internal/shared/adapters/httpapi"
 	sharederror "github.com/oryjk/registration_system/registration_system_go/internal/shared/domain"
+	"github.com/oryjk/registration_system/registration_system_go/internal/system/application"
 	"github.com/oryjk/registration_system/registration_system_go/internal/system/domain"
 )
 
 // MiniAppSettingsService 是 handler 依赖的配置用例（由 application.SettingsService 实现）。
 type MiniAppSettingsService interface {
 	Get(ctx context.Context) (domain.MiniAppSettings, error)
-	Update(ctx context.Context, settings domain.MiniAppSettings) (domain.MiniAppSettings, error)
+	UpdateDebug(ctx context.Context, patch application.DebugSettingsPatch) (domain.MiniAppSettings, error)
 }
 
 // 小程序运行配置（/system/mini-app-runtime-config）。
@@ -47,7 +48,8 @@ type MiniAppRuntimeConfigResponse struct {
 		RequirePhoneBinding bool `json:"require_phone_binding"`
 	} `json:"profile"`
 	Debug struct {
-		ClearProfileEnabled bool `json:"clear_profile_enabled"`
+		ClearProfileEnabled       bool `json:"clear_profile_enabled"`
+		ReviewStatusToggleEnabled bool `json:"review_status_toggle_enabled"`
 	} `json:"debug"`
 }
 
@@ -62,7 +64,8 @@ type HeroBanner struct {
 
 type UpdateMiniAppSettingsRequest struct {
 	Debug *struct {
-		ClearProfileEnabled *bool `json:"clear_profile_enabled"`
+		ClearProfileEnabled       *bool `json:"clear_profile_enabled"`
+		ReviewStatusToggleEnabled *bool `json:"review_status_toggle_enabled"`
 	} `json:"debug"`
 }
 
@@ -107,6 +110,7 @@ func (h *Handler) GetMiniAppRuntimeConfig(c *gin.Context) {
 		return
 	}
 	config.Debug.ClearProfileEnabled = settings.Debug.ClearProfileEnabled
+	config.Debug.ReviewStatusToggleEnabled = settings.Debug.ReviewStatusToggleEnabled
 	sharedhttpapi.WriteSuccess(c, config)
 }
 
@@ -121,12 +125,14 @@ func (h *Handler) GetMiniAppSettings(c *gin.Context) {
 
 func (h *Handler) UpdateMiniAppSettings(c *gin.Context) {
 	var request UpdateMiniAppSettingsRequest
-	if err := c.ShouldBindJSON(&request); err != nil || request.Debug == nil || request.Debug.ClearProfileEnabled == nil {
-		sharedhttpapi.WriteError(c, sharederror.New(sharederror.KindValidation, "请求体无效，需要 debug.clear_profile_enabled 布尔值"))
+	if err := c.ShouldBindJSON(&request); err != nil || request.Debug == nil ||
+		(request.Debug.ClearProfileEnabled == nil && request.Debug.ReviewStatusToggleEnabled == nil) {
+		sharedhttpapi.WriteError(c, sharederror.New(sharederror.KindValidation, "请求体无效，需要 debug 分区至少一个布尔开关"))
 		return
 	}
-	saved, err := h.settings.Update(c.Request.Context(), domain.MiniAppSettings{
-		Debug: domain.DebugSettings{ClearProfileEnabled: *request.Debug.ClearProfileEnabled},
+	saved, err := h.settings.UpdateDebug(c.Request.Context(), application.DebugSettingsPatch{
+		ClearProfileEnabled:       request.Debug.ClearProfileEnabled,
+		ReviewStatusToggleEnabled: request.Debug.ReviewStatusToggleEnabled,
 	})
 	if err != nil {
 		sharedhttpapi.WriteError(c, err)

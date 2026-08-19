@@ -21,6 +21,7 @@ type Service interface {
 	GetReviewStatus(context.Context, string, string) (domain.MiniReviewStatus, error)
 	List(context.Context, sharedauth.Actor, application.StatusListQuery) (application.StatusListResult, error)
 	SetStatus(context.Context, sharedauth.Actor, application.SetStatusCommand) (domain.MiniReviewStatus, error)
+	SetStatusByProjectVersion(context.Context, sharedauth.Actor, application.SetByProjectVersionCommand) (domain.MiniReviewStatus, error)
 }
 
 // Handler 小程序审核状态接口。allocateApiKey 为空时登记接口不可用（未配置 MINI_REVIEW_API_KEY）。
@@ -70,6 +71,12 @@ type SetStatusRequest struct {
 	StatusText  string `json:"status_text"`
 }
 
+type SetReviewStatusRequest struct {
+	ProjectCode string `json:"project_code"`
+	Version     string `json:"version"`
+	IsReviewing bool   `json:"is_reviewing"`
+}
+
 // RegisterPublicRoutes 小程序运行时查询：启动即可调用，不要求登录。
 func (h *Handler) RegisterPublicRoutes(group *gin.RouterGroup) {
 	group.GET("/mini-review/review-status", h.GetReviewStatus)
@@ -78,6 +85,12 @@ func (h *Handler) RegisterPublicRoutes(group *gin.RouterGroup) {
 // RegisterAllocateRoutes 生产构建登记：静态 API key 鉴权（脚本场景无管理员会话）。
 func (h *Handler) RegisterAllocateRoutes(group *gin.RouterGroup) {
 	group.POST("/mini-review/allocate", h.Allocate)
+}
+
+// RegisterUserRoutes 用户端审核状态切换：登录用户即可路由进入，
+// 白名单校验在 application 层（env MINI_REVIEW_CONTROL_USER_IDS）。
+func (h *Handler) RegisterUserRoutes(group *gin.RouterGroup) {
+	group.PUT("/mini-review/review-status", h.SetReviewStatusByProjectVersion)
 }
 
 func (h *Handler) RegisterAdminRoutes(group *gin.RouterGroup) {
@@ -108,6 +121,27 @@ func (h *Handler) Allocate(c *gin.Context) {
 	}
 	status, err := h.service.Allocate(c.Request.Context(), application.AllocateCommand{
 		ProjectCode: request.ProjectCode, CurrentVersion: request.CurrentVersion, ExplicitVersion: request.ExplicitVersion,
+	})
+	if err != nil {
+		sharedhttpapi.WriteError(c, err)
+		return
+	}
+	sharedhttpapi.WriteSuccess(c, mapStatus(status))
+}
+
+func (h *Handler) SetReviewStatusByProjectVersion(c *gin.Context) {
+	actor, ok := authhttp.ActorFromContext(c)
+	if !ok {
+		sharedhttpapi.WriteError(c, sharederror.ErrUnauthorized)
+		return
+	}
+	var request SetReviewStatusRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		sharedhttpapi.WriteError(c, sharederror.New(sharederror.KindValidation, "切换审核状态请求格式无效"))
+		return
+	}
+	status, err := h.service.SetStatusByProjectVersion(c.Request.Context(), actor, application.SetByProjectVersionCommand{
+		ProjectCode: request.ProjectCode, Version: request.Version, IsReviewing: request.IsReviewing,
 	})
 	if err != nil {
 		sharedhttpapi.WriteError(c, err)

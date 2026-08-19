@@ -146,10 +146,64 @@ func (fakeTokens) Parse(context.Context, string) (sharedauth.Actor, error) {
 	return sharedauth.Actor{Kind: sharedauth.ActorAdmin, ID: 7, IsSuperAdmin: true}, nil
 }
 
+type userTokens struct{}
+
+func (userTokens) IssueUser(context.Context, int64) (string, error)        { return "", nil }
+func (userTokens) IssueAdmin(context.Context, int64, bool) (string, error) { return "", nil }
+func (userTokens) Parse(context.Context, string) (sharedauth.Actor, error) {
+	return sharedauth.Actor{Kind: sharedauth.ActorUser, ID: 4}, nil
+}
+
+func newUserRouter(service Service) *gin.Engine {
+	router := gin.New()
+	user := router.Group("/api/v1/app", authhttp.NewMiddleware(userTokens{}).RequireUser())
+	serviceHandler := NewHandler(service, "")
+	serviceHandler.RegisterUserRoutes(user)
+	return router
+}
+
+func TestUserSetReviewStatusRequiresUserActor(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	router := newUserRouter(&fakeService{})
+	request := httptest.NewRequest(http.MethodPut, "/api/v1/app/mini-review/review-status", bytes.NewBufferString(`{"project_code":"registration_system_mini","version":"1.0.43","is_reviewing":false}`))
+	request.Header.Set("Content-Type", "application/json")
+	response := httptest.NewRecorder()
+
+	router.ServeHTTP(response, request)
+
+	if response.Code != http.StatusUnauthorized {
+		t.Fatalf("expected unauthorized without token, got %d: %s", response.Code, response.Body.String())
+	}
+}
+
+func TestUserSetReviewStatusPassesCommandThrough(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	service := &fakeService{
+		status: domain.MiniReviewStatus{ProjectCode: "registration_system_mini", Version: "1.0.43", IsReviewing: false, StatusText: "已过审（小程序端切换）"},
+	}
+	router := newUserRouter(service)
+	request := httptest.NewRequest(http.MethodPut, "/api/v1/app/mini-review/review-status", bytes.NewBufferString(`{"project_code":"registration_system_mini","version":"1.0.43","is_reviewing":false}`))
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Authorization", "Bearer user-token")
+	response := httptest.NewRecorder()
+
+	router.ServeHTTP(response, request)
+
+	if response.Code != http.StatusOK {
+		t.Fatalf("unexpected response %d: %s", response.Code, response.Body.String())
+	}
+	if service.setByProjectVersionCommand != (application.SetByProjectVersionCommand{
+		ProjectCode: "registration_system_mini", Version: "1.0.43", IsReviewing: false,
+	}) {
+		t.Fatalf("unexpected command: %+v", service.setByProjectVersionCommand)
+	}
+}
+
 type fakeService struct {
-	status           domain.MiniReviewStatus
-	allocateCommand  application.AllocateCommand
-	setStatusCommand application.SetStatusCommand
+	status                     domain.MiniReviewStatus
+	allocateCommand            application.AllocateCommand
+	setStatusCommand           application.SetStatusCommand
+	setByProjectVersionCommand application.SetByProjectVersionCommand
 }
 
 func (f *fakeService) Allocate(_ context.Context, command application.AllocateCommand) (domain.MiniReviewStatus, error) {
@@ -167,5 +221,10 @@ func (f *fakeService) List(context.Context, sharedauth.Actor, application.Status
 
 func (f *fakeService) SetStatus(_ context.Context, _ sharedauth.Actor, command application.SetStatusCommand) (domain.MiniReviewStatus, error) {
 	f.setStatusCommand = command
+	return f.status, nil
+}
+
+func (f *fakeService) SetStatusByProjectVersion(_ context.Context, _ sharedauth.Actor, command application.SetByProjectVersionCommand) (domain.MiniReviewStatus, error) {
+	f.setByProjectVersionCommand = command
 	return f.status, nil
 }

@@ -21,10 +21,13 @@ type Service struct {
 	lister     ports.ListerRepository
 	finder     ports.FinderRepository
 	clock      ports.Clock
+	// reviewControlUserIDs 是允许通过用户端接口切换审核状态的白名单
+	//（env MINI_REVIEW_CONTROL_USER_IDS）；为空时用户端切换接口对所有人关闭。
+	reviewControlUserIDs map[int64]struct{}
 }
 
-func NewService(repository ports.Repository, lister ports.ListerRepository, finder ports.FinderRepository, clock ports.Clock) *Service {
-	return &Service{repository: repository, lister: lister, finder: finder, clock: clock}
+func NewService(repository ports.Repository, lister ports.ListerRepository, finder ports.FinderRepository, clock ports.Clock, reviewControlUserIDs map[int64]struct{}) *Service {
+	return &Service{repository: repository, lister: lister, finder: finder, clock: clock, reviewControlUserIDs: reviewControlUserIDs}
 }
 
 // AllocateCommand 生产构建登记版本号：CurrentVersion 是 manifest 当前值（自动分配的种子），
@@ -171,6 +174,53 @@ type SetStatusCommand struct {
 	ID          int64
 	IsReviewing bool
 	StatusText  string
+}
+
+// SetByProjectVersionCommand 小程序端按项目编码 + 版本号直接切换当前版本的审核状态。
+type SetByProjectVersionCommand struct {
+	ProjectCode string
+	Version     string
+	IsReviewing bool
+}
+
+const (
+	reviewControlTextReviewing = "审核中（小程序端切换）"
+	reviewControlTextApproved  = "已过审（小程序端切换）"
+)
+
+// SetStatusByProjectVersion 供白名单用户（env 配置）切换指定版本的审核状态；
+// 状态文案自动生成，前端切换后即时影响全量用户的创建入口显隐。
+func (s *Service) SetStatusByProjectVersion(ctx context.Context, actor sharedauth.Actor, command SetByProjectVersionCommand) (domain.MiniReviewStatus, error) {
+	if !actor.IsUser() {
+		return domain.MiniReviewStatus{}, sharederror.ErrForbidden
+	}
+	if _, allowed := s.reviewControlUserIDs[actor.ID]; !allowed {
+		return domain.MiniReviewStatus{}, sharederror.ErrForbidden
+	}
+	projectCode := strings.TrimSpace(command.ProjectCode)
+	version, err := domain.ParseVersion(command.Version)
+	if err != nil || projectCode == "" {
+		return domain.MiniReviewStatus{}, sharederror.New(sharederror.KindValidation, "项目编码或版本号无效")
+	}
+	existing, err := s.repository.FindByProjectAndVersion(ctx, projectCode, version.String())
+	if err != nil {
+		return domain.MiniReviewStatus{}, sharederror.Wrap(sharederror.KindInternal, "查询审核状态失败", err)
+	}
+	if existing == nil {
+		return domain.MiniReviewStatus{}, sharederror.New(sharederror.KindNotFound, "该版本尚未登记审核状态")
+	}
+	statusText := reviewControlTextApproved
+	if command.IsReviewing {
+		statusText = reviewControlTextReviewing
+	}
+	if err := existing.SetStatus(command.IsReviewing, statusText, s.clock.Now()); err != nil {
+		return domain.MiniReviewStatus{}, err
+	}
+	updated, err := s.repository.UpdateStatus(ctx, *existing)
+	if err != nil {
+		return domain.MiniReviewStatus{}, sharederror.Wrap(sharederror.KindInternal, "更新审核状态失败", err)
+	}
+	return updated, nil
 }
 
 func (s *Service) SetStatus(ctx context.Context, actor sharedauth.Actor, command SetStatusCommand) (domain.MiniReviewStatus, error) {

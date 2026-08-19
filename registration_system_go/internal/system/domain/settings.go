@@ -9,6 +9,8 @@ type MiniAppSettings struct {
 // DebugSettings 只承载验证用途的隐藏开关，默认全部关闭。
 type DebugSettings struct {
 	ClearProfileEnabled bool `json:"clear_profile_enabled"`
+	// ReviewStatusToggleEnabled 开启后白名单用户可在小程序「我的」页切换当前版本审核状态。
+	ReviewStatusToggleEnabled bool `json:"review_status_toggle_enabled"`
 }
 
 // SettingsSectionDebug 是 mini_app_settings 表中 debug 分区的存储键。

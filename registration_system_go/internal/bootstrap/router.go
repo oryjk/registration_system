@@ -100,6 +100,10 @@ func NewRouter(dependencies Dependencies) *gin.Engine {
 		if dependencies.UserMatches != nil {
 			dependencies.UserMatches.RegisterRoutes(userRoutes)
 		}
+		if dependencies.MiniReviews != nil {
+			// 用户端审核状态切换：白名单校验在 application 层（env MINI_REVIEW_CONTROL_USER_IDS）。
+			dependencies.MiniReviews.RegisterUserRoutes(userRoutes)
+		}
 		if dependencies.UserRegistrations != nil {
 			dependencies.UserRegistrations.RegisterRoutes(userRoutes)
 		}

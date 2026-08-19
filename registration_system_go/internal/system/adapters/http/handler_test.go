@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/oryjk/registration_system/registration_system_go/internal/system/application"
 	"github.com/oryjk/registration_system/registration_system_go/internal/system/domain"
 )
 
@@ -20,9 +21,14 @@ func (s *fakeSettingsService) Get(context.Context) (domain.MiniAppSettings, erro
 	return s.settings, nil
 }
 
-func (s *fakeSettingsService) Update(_ context.Context, settings domain.MiniAppSettings) (domain.MiniAppSettings, error) {
-	s.settings = settings
-	return settings, nil
+func (s *fakeSettingsService) UpdateDebug(_ context.Context, patch application.DebugSettingsPatch) (domain.MiniAppSettings, error) {
+	if patch.ClearProfileEnabled != nil {
+		s.settings.Debug.ClearProfileEnabled = *patch.ClearProfileEnabled
+	}
+	if patch.ReviewStatusToggleEnabled != nil {
+		s.settings.Debug.ReviewStatusToggleEnabled = *patch.ReviewStatusToggleEnabled
+	}
+	return s.settings, nil
 }
 
 func TestGetMiniAppRuntimeConfigReturnsDefaults(t *testing.T) {

@@ -21,7 +21,15 @@ type fixedTime struct{ now time.Time }
 func (f fixedTime) Now() time.Time { return f.now }
 
 func newService(repository *fakeRepository) *Service {
-	return NewService(repository, repository, repository, fixedClock())
+	return NewService(repository, repository, repository, fixedClock(), nil)
+}
+
+func newServiceWithControl(repository *fakeRepository, allowedUserIDs ...int64) *Service {
+	allowed := make(map[int64]struct{}, len(allowedUserIDs))
+	for _, id := range allowedUserIDs {
+		allowed[id] = struct{}{}
+	}
+	return NewService(repository, repository, repository, fixedClock(), allowed)
 }
 
 func TestAllocateIncrementsApprovedLatest(t *testing.T) {
@@ -144,6 +152,76 @@ func TestListRejectsUser(t *testing.T) {
 	service := newService(&fakeRepository{})
 	if _, err := service.List(context.Background(), sharedauth.Actor{Kind: sharedauth.ActorUser}, StatusListQuery{}); !errors.Is(err, sharederror.ErrForbidden) {
 		t.Fatalf("expected forbidden, got %v", err)
+	}
+}
+
+func TestSetStatusByProjectVersionRejectsUserOutsideAllowlist(t *testing.T) {
+	repository := &fakeRepository{byVersion: map[string]*domain.MiniReviewStatus{"1.0.43": reviewing("1.0.43", true)}}
+	service := newServiceWithControl(repository, 4)
+	command := SetByProjectVersionCommand{ProjectCode: "registration_system_mini", Version: "1.0.43", IsReviewing: false}
+
+	if _, err := service.SetStatusByProjectVersion(context.Background(), sharedauth.Actor{Kind: sharedauth.ActorUser, ID: 5}, command); !errors.Is(err, sharederror.ErrForbidden) {
+		t.Fatalf("expected forbidden for non-allowlisted user, got %v", err)
+	}
+	if _, err := service.SetStatusByProjectVersion(context.Background(), adminActor(), command); !errors.Is(err, sharederror.ErrForbidden) {
+		t.Fatalf("expected forbidden for admin actor, got %v", err)
+	}
+	if repository.updated != nil {
+		t.Fatalf("rejected call must not persist: %+v", repository.updated)
+	}
+}
+
+func TestSetStatusByProjectVersionDisabledWithoutAllowlist(t *testing.T) {
+	repository := &fakeRepository{byVersion: map[string]*domain.MiniReviewStatus{"1.0.43": reviewing("1.0.43", true)}}
+	service := newService(repository)
+
+	if _, err := service.SetStatusByProjectVersion(context.Background(), sharedauth.Actor{Kind: sharedauth.ActorUser, ID: 4}, SetByProjectVersionCommand{ProjectCode: "registration_system_mini", Version: "1.0.43", IsReviewing: false}); !errors.Is(err, sharederror.ErrForbidden) {
+		t.Fatalf("expected forbidden when allowlist unconfigured, got %v", err)
+	}
+}
+
+func TestSetStatusByProjectVersionTogglesRegisteredVersion(t *testing.T) {
+	repository := &fakeRepository{byVersion: map[string]*domain.MiniReviewStatus{"1.0.43": reviewing("1.0.43", true)}}
+	service := newServiceWithControl(repository, 4)
+
+	updated, err := service.SetStatusByProjectVersion(
+		context.Background(),
+		sharedauth.Actor{Kind: sharedauth.ActorUser, ID: 4},
+		SetByProjectVersionCommand{ProjectCode: "registration_system_mini", Version: "1.0.43", IsReviewing: false},
+	)
+	if err != nil {
+		t.Fatalf("set by project version: %v", err)
+	}
+	if updated.IsReviewing || updated.Version != "1.0.43" || repository.updated == nil || repository.updated.IsReviewing {
+		t.Fatalf("unexpected update: %+v persisted=%+v", updated, repository.updated)
+	}
+	if updated.StatusText != "已过审（小程序端切换）" {
+		t.Fatalf("expected generated status text, got %q", updated.StatusText)
+	}
+
+	reopened, err := service.SetStatusByProjectVersion(
+		context.Background(),
+		sharedauth.Actor{Kind: sharedauth.ActorUser, ID: 4},
+		SetByProjectVersionCommand{ProjectCode: "registration_system_mini", Version: "1.0.43", IsReviewing: true},
+	)
+	if err != nil {
+		t.Fatalf("reopen by project version: %v", err)
+	}
+	if !reopened.IsReviewing || reopened.StatusText != "审核中（小程序端切换）" {
+		t.Fatalf("unexpected reopen: %+v", reopened)
+	}
+}
+
+func TestSetStatusByProjectVersionRejectsUnregisteredVersion(t *testing.T) {
+	service := newServiceWithControl(&fakeRepository{}, 4)
+
+	_, err := service.SetStatusByProjectVersion(
+		context.Background(),
+		sharedauth.Actor{Kind: sharedauth.ActorUser, ID: 4},
+		SetByProjectVersionCommand{ProjectCode: "registration_system_mini", Version: "9.9.9", IsReviewing: false},
+	)
+	if !errors.Is(err, sharederror.ErrNotFound) {
+		t.Fatalf("expected not found for unregistered version, got %v", err)
 	}
 }
 
