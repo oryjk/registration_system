@@ -3,8 +3,10 @@ import { computed, ref } from "vue";
 import { onLoad, onShow, onUnload } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
 import BottomTabBar from "@/components/BottomTabBar.vue";
+import NeoButton from "@/components/neo/NeoButton.vue";
 import NeoSegmentedControl from "@/components/neo/NeoSegmentedControl.vue";
 import { getTeamAttendanceSummary } from "@/api/team";
+import { useMiniReviewStatus } from "@/stores/miniReview";
 import { useNotificationCenter } from "@/stores/notificationCenter";
 import { useTeamContext } from "@/stores/teamContext";
 import { hasManualLogout } from "@/utils/authStorage";
@@ -20,12 +22,14 @@ import { buildAttendanceCalendarMonths, buildRecordSummary } from "./teamStatsSt
 
 const { currentTeam, currentUser, ensureSessionReady } = useTeamContext();
 const { syncUnreadCount } = useNotificationCenter();
+const { shouldHideCreationEntrances } = useMiniReviewStatus();
 const navMetrics = getCustomNavMetrics();
 
 const isLoading = ref(false);
 const isSilentRefreshing = ref(false);
 const hasLoadedOnce = ref(false);
 const errorMessage = ref("");
+const hasNoTeam = ref(false);
 const requiresLogin = ref(false);
 const myRecords = ref<BackendTeamMemberAttendanceRecord[]>([]);
 const myYearRecords = ref<BackendTeamMemberAttendanceRecord[]>([]);
@@ -42,6 +46,8 @@ const myAvatarUrl = computed(() => currentUser.value?.avatar_url?.trim() || "");
 const myInitial = computed(() => myDisplayName.value.slice(0, 1) || "我");
 const mySummary = computed(() => buildRecordSummary(myYearRecords.value));
 const attendanceCalendarMonths = computed(() => buildAttendanceCalendarMonths(myRecords.value));
+// 审核模式下沿用全局约定：隐藏“创建球队”入口，空态仅保留“加入球队”。
+const canShowCreateTeamEntry = computed(() => !shouldHideCreationEntrances.value);
 const statsTabOptions = [
   { value: "records", label: "出勤记录" },
   { value: "ranking", label: "出勤排名" },
@@ -49,6 +55,14 @@ const statsTabOptions = [
 
 function handleStatsTabChange(value: string) {
   statsTab.value = value === "ranking" ? "ranking" : "records";
+}
+
+function goJoinTeam() {
+  uni.navigateTo({ url: "/pages/teams/join/index" });
+}
+
+function goCreateTeam() {
+  uni.navigateTo({ url: "/pages/teams/create/index" });
 }
 
 function resetStatsData() {
@@ -61,6 +75,7 @@ async function loadPageData() {
   if (hasManualLogout()) {
     requiresLogin.value = true;
     errorMessage.value = "";
+    hasNoTeam.value = false;
     isLoading.value = false;
     resetStatsData();
     return;
@@ -68,6 +83,7 @@ async function loadPageData() {
 
   requiresLogin.value = false;
   errorMessage.value = "";
+  hasNoTeam.value = false;
 
   // 首次进入用骨架屏占位；再次进页（onShow）保留已渲染内容静默刷新，
   // 避免内容 → 骨架屏 → 内容的闪烁。
@@ -83,6 +99,7 @@ async function loadPageData() {
     await ensureSessionReady();
     if (!currentTeam.value) {
       resetStatsData();
+      hasNoTeam.value = true;
       errorMessage.value = "当前还没有加入球队。";
       return;
     }
@@ -136,7 +153,20 @@ onUnload(() => {
     <AppTabHeader title="统计" />
 
     <template v-if="!requiresLogin">
-      <view v-if="errorMessage" class="stats-empty">{{ errorMessage }}</view>
+      <view v-if="errorMessage" class="stats-empty">
+        {{ errorMessage }}
+        <view v-if="hasNoTeam" class="stats-empty-actions">
+          <NeoButton class="stats-empty-action" variant="lime" @click="goJoinTeam">加入球队</NeoButton>
+          <NeoButton
+            v-if="canShowCreateTeamEntry"
+            class="stats-empty-action"
+            variant="dark"
+            @click="goCreateTeam"
+          >
+            创建球队
+          </NeoButton>
+        </view>
+      </view>
       <StatsSkeleton v-else-if="isLoading && !hasLoadedOnce" />
 
       <template v-else>
@@ -190,6 +220,16 @@ onUnload(() => {
   font-size: 27rpx;
   font-weight: 700;
   line-height: 1.6;
+}
+
+.stats-empty-actions {
+  display: flex;
+  gap: 20rpx;
+  margin-top: 24rpx;
+}
+
+.stats-empty-action {
+  flex: 1;
 }
 
 .stats-tab-card {

@@ -30,4 +30,16 @@ describe("stats page login state", () => {
     expect(source.includes("function handleSessionLoginCompleted")).toEqual(true);
     expect(source.includes("void loadPageData();")).toEqual(true);
   });
+
+  test("shows join and create team entries under the no-team empty message", async () => {
+    const source = await Bun.file(pagePath).text();
+
+    expect(source.includes("const hasNoTeam = ref(false);")).toEqual(true);
+    expect(source.includes('v-if="hasNoTeam" class="stats-empty-actions"')).toEqual(true);
+    expect(source.includes('uni.navigateTo({ url: "/pages/teams/join/index" });')).toEqual(true);
+    expect(source.includes('uni.navigateTo({ url: "/pages/teams/create/index" });')).toEqual(true);
+    // 审核模式下沿用全局约定，仅保留“加入球队”入口。
+    expect(source.includes("const canShowCreateTeamEntry = computed(() => !shouldHideCreationEntrances.value);")).toEqual(true);
+    expect(source.includes('v-if="canShowCreateTeamEntry"')).toEqual(true);
+  });
 });

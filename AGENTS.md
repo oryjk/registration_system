@@ -1,13 +1,12 @@
 # 工作区说明（给 AI / Agent）
 
-本仓库是一个**赛事报名与球队管理**工作区，当前包含六个彼此协作的子项目：
+本仓库是一个**赛事报名与球队管理**工作区，当前包含五个彼此协作的子项目：
 
 | 目录 | 说明 | 技术栈 |
 | --- | --- | --- |
 | `registration_system_mini/` | 微信小程序/H5 端，面向球员/队员/普通用户；**已对接 Go 新后端**（验收环境 oryjk.cn:82，`mini-rust-backend-final` 标记最后一个对接 Rust 后端的基线） | `uni-app + Vue 3 + TypeScript + Vite` |
-| `registration_system_backend_fe/` | 管理后台，面向运营/管理员（对接 Rust 旧后端，随 Rust 一并冻结） | `Vue 3 + TypeScript + Vite + Tailwind 4 + DaisyUI 5` |
 | `registration_system_backend_fe_go/` | 对接 Go 新后端的管理后台新版本 | `React + TypeScript + Vite + Ant Design + Bun` |
-| `registration_system_admin_app/` | 移动管理 App，面向赛事运营/管理员 | `Flutter + Dart` |
+| `registration_system_admin_app/` | 移动管理 App，面向赛事运营/管理员；**已暂停开发** | `Flutter + Dart` |
 | `registration_system_go/` | **当前唯一在开发的后端服务端**，承载认证、球队与比赛 API | `Go + Gin + PostgreSQL + pgx + sqlc` |
 | `registration_system_rs/` | 旧后台服务端，**已冻结、不再更新**；仅作为业务与迁移的只读参考 | `Rust + Axum + PostgreSQL + sqlx` |
 
@@ -15,7 +14,7 @@
 
 - **Rust 项目（`registration_system_rs/`）已停止开发**：它是老项目，未来不再接收任何功能、修复或重构；除阅读参考业务逻辑和迁移核对外，不要改动它。其生产数据库中仍保留旧结构数据（`rs_*` 表）作为迁移源。
 - **所有后端开发都在 `registration_system_go/` 上进行**：历史数据已通过 `registration_system_go/scripts/migrate-legacy.sh` 迁入 Go 结构（独立库 `registration_system_go`）；后续增量迁移、新功能全部落在 Go 项目。
-- 小程序（`registration_system_mini/`）当前对接 Go 后端；旧管理端（`registration_system_backend_fe/`）与 Rust 一同冻结，Go 配套管理端是 `registration_system_backend_fe_go/`。
+- 小程序（`registration_system_mini/`）当前对接 Go 后端；旧版 Vue 管理端 `registration_system_backend_fe/` 已从工作区删除（需要时从 git 历史找回），Go 配套管理端是 `registration_system_backend_fe_go/`。
 - out109 验收环境（Go 后端 + mini H5 + Go 管理端）统一使用根目录 `deploy_out109_go_h5.sh` 部署。
 - 微信小程序（mp-weixin）发布用 `registration_system_mini` 的 `bun run mp:release` 上传开发版本，详细流程与前置条件见 `registration_system_mini/AGENTS.md` 的「微信小程序发布」一节。
 
@@ -52,16 +51,15 @@
 ## 子项目入口
 
 - 小程序入口：`registration_system_mini/src/main.ts`、`src/pages.json`
-- 管理端入口：`registration_system_backend_fe/src/main.ts`、`src/router/index.ts`
 - Go 配套管理端入口：`registration_system_backend_fe_go/src/main.tsx`、`src/App.tsx`
-- 移动管理 App 入口：`registration_system_admin_app/lib/main.dart`
+- 移动管理 App 入口（已暂停）：`registration_system_admin_app/lib/main.dart`
 - Go 后端入口：`registration_system_go/cmd/api/main.go`、`internal/bootstrap/`
 - Rust 参考后端入口：`registration_system_rs/src/main.rs`、`src/lib.rs`、`src/bootstrap/`
 
 ## 联动规则
 
 - 新后端功能只写入 `registration_system_go/`；`registration_system_rs/` 已冻结不再更新，任何任务都不要修改它（只读参考）。
-- 核对旧实现时只读参考 `registration_system_rs/`，对接它的老管理端 `registration_system_backend_fe/` 同样只读；两者都不再联动修改。
+- 核对旧实现时只读参考 `registration_system_rs/`；其配套老管理端 `registration_system_backend_fe/` 已删除，两者都不再联动修改。
 - 改 Go 后端时，联动检查对接 Go 的管理端：`registration_system_backend_fe_go/src/api/`；小程序已对接 Go，用户端接口变更需同时检查 `registration_system_mini/src/api/`。
 - `registration_system_mini/` 是唯一的小程序/H5 代码库；后端切换在该项目内完成，不再创建平行的 `registration_system_mini_go/` 项目。
 - 改管理端或小程序页面时，确认接口字段与后端 DTO / JSON 实际返回一致。
@@ -78,10 +76,9 @@
 
 - Go 后端提交前执行：`gofmt -w .`、`go test -race ./...`、`go vet ./...`、`go build -o /tmp/registration-system-go-api ./cmd/api`
 - Rust 参考后端不再增加代码；仅在迁移核对需要时执行 `cargo test`
-- 管理端提交前建议执行：`bun run type-check`、`bun run lint`、必要时 `bun run build`
 - Go 配套管理端提交前建议执行：`bun run type-check`、`bun run lint`、`bun run build`
 - 小程序提交前建议执行：`bun run type-check`、必要时 `bun run build:mp-weixin`
-- 移动管理 App 提交前建议执行：`dart format lib test`、`flutter analyze`、`flutter test`、必要时 `flutter build apk --debug`
+- 移动管理 App 已暂停开发；若恢复改动，提交前建议执行：`dart format lib test`、`flutter analyze`、`flutter test`、必要时 `flutter build apk --debug`
 - 如因环境、依赖、耗时或任务范围原因未运行相关验证命令，必须在最终回复中说明未验证项和原因。
 - TDD 规则：后端业务逻辑、仓储、路由等行为变更需要优先考虑 TDD 或补充后端测试；前端不要求每次按 TDD 开发，页面、样式、交互和小程序 UI 变更通常以类型检查、构建和人工/模拟器验证为主。
 - 前端测试策略：不要为了普通前端改动机械新增单元测试或静态断言；只有涉及路由、接口调用、权限、数据提交、共享工具函数或关键业务状态变化时，才按风险补充必要测试。

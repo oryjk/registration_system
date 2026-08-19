@@ -76,6 +76,6 @@ describe("PageBackButton", () => {
     expect(source.includes("showBack?: boolean")).toEqual(true);
     expect(source.includes("function handleBack")).toEqual(true);
     expect(source.includes("uni.navigateBack")).toEqual(true);
-    expect(source.includes("app-tab-header-back")).toEqual(true);
+    expect(source.includes("app-tab-header-capsule")).toEqual(true);
   });
 });

@@ -1,4 +1,5 @@
 import { computed, ref } from "vue";
+import { useNeoConfirmDialog } from "@/components/neo/useNeoConfirmDialog";
 import { putMiniReviewReviewStatus } from "@/api/miniReview";
 import { updateMyProfile } from "@/api/user";
 import { useTeamContext } from "@/stores/teamContext";
@@ -17,6 +18,15 @@ export function useSettingsPage() {
   const isLoading = ref(false);
   const clearProfileEnabled = ref(false);
   const reviewToggleEnabled = ref(false);
+  const {
+    confirmDialogVisible,
+    confirmDialogState,
+    confirm: confirmDialog,
+    handleConfirmPrimary,
+    handleConfirmSecondary,
+    handleConfirmClose,
+    handleConfirmLink,
+  } = useNeoConfirmDialog();
 
   const isOwner = computed(() => currentUser.value?.id === PRODUCT_OWNER_USER_ID);
 
@@ -34,24 +44,12 @@ export function useSettingsPage() {
     }
   }
 
-  function confirmDialog(options: { title: string; content: string }): Promise<boolean> {
-    return new Promise((resolve) => {
-      uni.showModal({
-        title: options.title,
-        content: options.content,
-        confirmText: "确认",
-        cancelText: "取消",
-        success: (result) => resolve(!!result.confirm),
-        fail: () => resolve(false),
-      });
-    });
-  }
-
   async function handleClearProfile() {
     if (!currentUser.value) return;
     const confirmed = await confirmDialog({
       title: "清除头像和昵称",
       content: "验证用入口：清除后头像和昵称会被清空，回到未完善资料状态。",
+      danger: true,
     });
     if (!confirmed) return;
     try {
@@ -68,9 +66,11 @@ export function useSettingsPage() {
 
   async function handleToggleReviewStatus() {
     const nextReviewing = !reviewMode.value;
+    const nextLabel = nextReviewing ? "审核中" : "已过审";
     const confirmed = await confirmDialog({
       title: "切换审核状态",
-      content: `当前版本 ${MINI_PROGRAM_VERSION} 将切换为「${nextReviewing ? "审核中" : "已过审"}」，全量用户的创建入口显隐会立即变化。`,
+      content: `当前版本 ${MINI_PROGRAM_VERSION} 将切换为「${nextLabel}」，全量用户的创建入口显隐会立即变化。`,
+      highlight: `「${nextLabel}」`,
     });
     if (!confirmed) return;
     try {
@@ -95,6 +95,12 @@ export function useSettingsPage() {
     clearProfileEnabled,
     reviewToggleEnabled,
     reviewMode,
+    confirmDialogVisible,
+    confirmDialogState,
+    handleConfirmPrimary,
+    handleConfirmSecondary,
+    handleConfirmClose,
+    handleConfirmLink,
     loadPageData,
     handleClearProfile,
     handleToggleReviewStatus,

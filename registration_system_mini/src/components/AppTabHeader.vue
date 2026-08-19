@@ -45,6 +45,11 @@ const contentStyle = computed(() => ({
   paddingRight: `${navMetrics.capsuleReserveRight}px`,
 }));
 
+// 左侧胶囊与右上角微信原生胶囊同高，形成左右对称的形态。
+const capsuleStyle = computed(() => ({
+  height: `${navMetrics.headerMinHeight}px`,
+}));
+
 const DOUBLE_TAP_SCROLL_INTERVAL_MS = 300;
 let lastHeaderTapAt = 0;
 
@@ -144,19 +149,32 @@ async function handleRefreshLocation() {
   <view :class="['app-tab-header-shell', props.plain ? 'app-tab-header-shell-plain' : '']" :style="shellStyle">
     <view class="app-tab-header" :style="contentStyle" @tap="handleHeaderTap">
       <view class="app-tab-header-left">
-        <view v-if="props.showBack" class="app-tab-header-back" @tap.stop="handleBack">
-          <text class="app-tab-header-back-icon">‹</text>
-        </view>
         <view
-          v-if="showHomeEntry"
-          class="app-tab-header-home"
-          hover-class="app-tab-header-home--pressed"
-          :hover-stay-time="100"
-          @tap.stop="handleHome"
+          v-if="props.showBack || showHomeEntry"
+          class="app-tab-header-capsule"
+          :style="capsuleStyle"
         >
-          <view class="app-tab-header-home-icon">
-            <view class="app-tab-header-home-roof" />
-            <view class="app-tab-header-home-body" />
+          <view
+            v-if="props.showBack"
+            class="app-tab-header-capsule-side"
+            hover-class="app-tab-header-capsule-side--pressed"
+            :hover-stay-time="100"
+            @tap.stop="handleBack"
+          >
+            <text class="app-tab-header-back-icon">‹</text>
+          </view>
+          <view v-if="props.showBack && showHomeEntry" class="app-tab-header-capsule-divider" />
+          <view
+            v-if="showHomeEntry"
+            class="app-tab-header-capsule-side"
+            hover-class="app-tab-header-capsule-side--pressed"
+            :hover-stay-time="100"
+            @tap.stop="handleHome"
+          >
+            <view class="app-tab-header-home-icon">
+              <view class="app-tab-header-home-roof" />
+              <view class="app-tab-header-home-body" />
+            </view>
           </view>
         </view>
         <text class="app-tab-header-title">{{ props.title }}</text>
@@ -242,16 +260,33 @@ async function handleRefreshLocation() {
   min-width: 0;
 }
 
-.app-tab-header-back {
-  width: 58rpx;
-  height: 58rpx;
+/* 对齐右上角微信原生胶囊：半透明白底、细描边、圆角胶囊、中间细分隔线。 */
+.app-tab-header-capsule {
+  display: inline-flex;
+  align-items: stretch;
   border-radius: var(--neo-radius-round);
-  border: var(--neo-border-default);
-  background: var(--neo-color-surface);
-  box-shadow: 3rpx 3rpx 0 var(--neo-color-text);
+  border: 2rpx solid rgba(var(--neo-primitive-ink-rgb), 0.08);
+  background: rgba(var(--neo-primitive-surface-rgb), 0.72);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.app-tab-header-capsule-side {
+  width: 72rpx;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
+}
+
+.app-tab-header-capsule-side--pressed {
+  background: rgba(var(--neo-primitive-ink-rgb), 0.06);
+}
+
+.app-tab-header-capsule-divider {
+  width: 2rpx;
+  margin: 10rpx 0;
+  background: rgba(var(--neo-primitive-ink-rgb), 0.12);
   flex-shrink: 0;
 }
 
@@ -261,24 +296,6 @@ async function handleRefreshLocation() {
   line-height: 1;
   font-weight: 900;
   transform: translateY(-2rpx);
-}
-
-.app-tab-header-home {
-  width: 58rpx;
-  height: 58rpx;
-  border-radius: var(--neo-radius-round);
-  border: var(--neo-border-default);
-  background: var(--neo-color-surface);
-  box-shadow: 3rpx 3rpx 0 var(--neo-color-text);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.app-tab-header-home--pressed {
-  box-shadow: none;
-  transform: translate(2rpx, 2rpx);
 }
 
 .app-tab-header-home-icon {

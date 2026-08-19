@@ -57,7 +57,7 @@ cargo run
 - 仅当任务是「迁移核对」「修复存量 Rust 行为以维持参考准确性」或「读懂老后端契约」时，才在本目录内做最小必要改动。
 - 阅读 / 参考实现时，仍按 `domain -> ports -> application -> adapters` 推进理解：业务规则在领域或应用层，DTO 与领域对象分离，HTTP 错误统一映射。
 - 管理后台专用接口历史上只挂载在 `/api/admin/*`，不复用到 `/api/*`。
-- 历史「改 Rust 接口 → 同步老前端」的联动只在**确实修改了 Rust 行为**时才适用，检查范围仍是 `../registration_system_backend_fe/src/services/`（老 Vue 管理后台）与 `../registration_system_mini/src/api/`（老小程序）——这两个老前端对接的就是 Rust 后端。**不要**把 Rust 改动同步到 `*_go` 新前端，那些对接的是 Go 后端。
+- 历史上对接本后端的老 Vue 管理后台 `../registration_system_backend_fe/` 已从工作区删除；小程序 `../registration_system_mini/` 也已切换到 Go 后端。Rust 项目只读，不存在「改 Rust 接口 → 同步老前端」的联动。**不要**把任何 Rust 内容同步到 `*_go` 新项目，那些对接的是 Go 后端。
 
 ## 环境与数据
 

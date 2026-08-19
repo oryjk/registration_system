@@ -3,6 +3,7 @@ import { computed } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
 import NeoButton from "@/components/neo/NeoButton.vue";
+import NeoConfirmDialog from "@/components/neo/NeoConfirmDialog.vue";
 import NeoSectionHeader from "@/components/neo/NeoSectionHeader.vue";
 import NeoSurface from "@/components/neo/NeoSurface.vue";
 import { getCustomNavMetrics } from "@/utils/customNav";
@@ -14,6 +15,12 @@ const {
   clearProfileEnabled,
   reviewToggleEnabled,
   reviewMode,
+  confirmDialogVisible,
+  confirmDialogState,
+  handleConfirmPrimary,
+  handleConfirmSecondary,
+  handleConfirmClose,
+  handleConfirmLink,
   loadPageData,
   handleClearProfile,
   handleToggleReviewStatus,
@@ -90,6 +97,21 @@ onShow(async () => {
         <text class="settings-empty__text">该页面仅对指定账号开放</text>
       </NeoSurface>
     </view>
+
+    <NeoConfirmDialog
+      :visible="confirmDialogVisible"
+      :title="confirmDialogState.title"
+      :message="confirmDialogState.message"
+      :highlight="confirmDialogState.highlight"
+      :link-text="confirmDialogState.linkText"
+      :primary-text="confirmDialogState.primaryText"
+      :secondary-text="confirmDialogState.secondaryText"
+      :primary-tone="confirmDialogState.primaryTone"
+      @primary="handleConfirmPrimary"
+      @secondary="handleConfirmSecondary"
+      @close="handleConfirmClose"
+      @link="handleConfirmLink"
+    />
   </view>
 </template>
 

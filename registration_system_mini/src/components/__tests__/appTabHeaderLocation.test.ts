@@ -49,9 +49,10 @@ describe("AppTabHeader location visibility", () => {
   test("double tapping the header title scrolls the page back to top", async () => {
     const source = await read("src/components/AppTabHeader.vue");
 
-    // 热区覆盖整条头部行（含右侧空白）；返回/定位入口 stop 隔离，不参与双击判定。
+    // 热区覆盖整条头部行（含右侧空白）；胶囊内返回/回首页与定位入口 stop 隔离，不参与双击判定。
     expect(source.includes('class="app-tab-header" :style="contentStyle" @tap="handleHeaderTap"')).toEqual(true);
-    expect(source.includes('class="app-tab-header-back" @tap.stop="handleBack"')).toEqual(true);
+    expect(source.includes('@tap.stop="handleBack"')).toEqual(true);
+    expect(source.includes('@tap.stop="handleHome"')).toEqual(true);
     expect(source.includes('class="app-tab-header-location" @tap.stop="handleLocationTap"')).toEqual(true);
     expect(source.includes('class="app-tab-header-title" @tap=')).toEqual(false);
     expect(source.includes("DOUBLE_TAP_SCROLL_INTERVAL_MS")).toEqual(true);
@@ -65,6 +66,16 @@ describe("AppTabHeader location visibility", () => {
     expect(source.includes("linear-gradient(180deg, var(--neo-color-surface-translucent)")).toEqual(false);
     expect(source.includes("background: var(--neo-color-page);")).toEqual(true);
     expect(source.includes("border-bottom: var(--neo-border-default);")).toEqual(true);
-    expect(source.includes("box-shadow: 3rpx 3rpx 0 var(--neo-color-text);")).toEqual(true);
+  });
+
+  test("back and home entries share one capsule styled like the native menu capsule", async () => {
+    const source = await read("src/components/AppTabHeader.vue");
+
+    // 返回与回首页合并进同一个胶囊容器，中间用细分隔线隔开，高度对齐原生胶囊。
+    expect(source.includes('class="app-tab-header-capsule"')).toEqual(true);
+    expect(source.includes('class="app-tab-header-capsule-divider"')).toEqual(true);
+    expect(source.includes("height: `${navMetrics.headerMinHeight}px`")).toEqual(true);
+    expect(source.includes("background: rgba(var(--neo-primitive-surface-rgb), 0.72);")).toEqual(true);
+    expect(source.includes("box-shadow: 3rpx 3rpx 0 var(--neo-color-text);")).toEqual(false);
   });
 });
