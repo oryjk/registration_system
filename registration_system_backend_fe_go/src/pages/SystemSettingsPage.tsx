@@ -14,9 +14,15 @@ export default function SystemSettingsPage() {
 
   const clearProfileEnabled =
     settings.data?.debug.clear_profile_enabled ?? false;
+  const reviewToggleEnabled =
+    settings.data?.debug.review_status_toggle_enabled ?? false;
 
   const toggleClearProfile = (enabled: boolean) => {
     updateSettings.mutate({ debug: { clear_profile_enabled: enabled } });
+  };
+
+  const toggleReviewStatus = (enabled: boolean) => {
+    updateSettings.mutate({ debug: { review_status_toggle_enabled: enabled } });
   };
 
   return (
@@ -43,6 +49,27 @@ export default function SystemSettingsPage() {
         >
           开启后，小程序「我的」页会出现「清除头像和昵称」的验证入口，
           用于模拟新用户未完善资料的状态；默认关闭，验证完成后请关闭。
+        </Paragraph>
+      </section>
+
+      <section className="data-panel" style={{ marginTop: 16 }}>
+        <Space align="center" size={12}>
+          <Switch
+            checked={reviewToggleEnabled}
+            loading={settings.isLoading || updateSettings.isPending}
+            onChange={toggleReviewStatus}
+          />
+          <Text strong>审核状态切换入口</Text>
+          <Text type="secondary">
+            {reviewToggleEnabled ? "已开启" : "已关闭"}
+          </Text>
+        </Space>
+        <Paragraph
+          type="secondary"
+          style={{ marginTop: 12, marginBottom: 0, maxWidth: 640 }}
+        >
+          开启后，白名单用户（后端 MINI_REVIEW_CONTROL_USER_IDS 配置）在小程序「我的」页
+          可切换当前版本的审核状态，用于提审/过审时的入口显隐验证；默认关闭。
         </Paragraph>
       </section>
 
