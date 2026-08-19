@@ -76,6 +76,13 @@ export default [
     component: "./MiniReviewPage",
   },
   {
+    path: "/tips",
+    access: "isAuthenticated",
+    name: "打赏与建议",
+    icon: "CoffeeOutlined",
+    component: "./TipListPage",
+  },
+  {
     path: "/system-settings",
     access: "isAuthenticated",
     name: "系统设置",
