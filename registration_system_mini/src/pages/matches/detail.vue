@@ -112,10 +112,17 @@ const {
   handleSubmitSettlement,
   handleTeamSubmit,
   canFinishMatch,
+  canCancelMatch,
   finishDialogVisible,
   handleOpenFinishDialog,
   handleCloseFinishDialog,
   handleFinishMatch,
+  cancelDialogVisible,
+  cancelDialogState,
+  handleCancelMatch,
+  handleCancelPrimary,
+  handleCancelSecondary,
+  handleCancelClose,
   loadPageData,
 } = useMatchDetailPage();
 
@@ -159,7 +166,7 @@ onShareTimeline(() => ({
 </script>
 
 <template>
-  <page-meta :page-style="teamMemberDialogVisible || confirmDialogVisible || finishDialogVisible || signupSheetVisible ? 'overflow: hidden;' : ''" />
+  <page-meta :page-style="teamMemberDialogVisible || confirmDialogVisible || finishDialogVisible || cancelDialogVisible || signupSheetVisible ? 'overflow: hidden;' : ''" />
   <view class="registration-page" :style="pageStyle">
     <AppTabHeader title="比赛报名" showBack showLocation />
 
@@ -251,10 +258,12 @@ onShareTimeline(() => ({
       />
       <!-- 主队管理方在比赛过结束时间后收尾比赛。 -->
       <MatchFinishCard
-        v-if="canFinishMatch && sourceMatch"
+        v-if="(canFinishMatch || canCancelMatch) && sourceMatch"
         :match="sourceMatch"
         :submitting-status="submittingStatus"
+        :can-cancel="canCancelMatch"
         @open-finish-dialog="handleOpenFinishDialog"
+        @cancel-match="handleCancelMatch"
       />
       <TeamSettlementCard
         v-if="registrationMode === 'team' && canShowSettlement"
@@ -302,17 +311,33 @@ onShareTimeline(() => ({
       @close="handleConfirmClose"
     />
 
-    <!-- 结束比赛：主按钮=正常结束，次按钮=取消比赛，遮罩/× 只是关闭不改动状态。 -->
+    <!-- 结束比赛：主按钮=正常结束，次按钮=取消比赛，遮罩/× 只是关闭不改动状态。
+         赛前支付的比赛不支持取消（后端同样拦截），只保留正常结束。 -->
     <NeoConfirmDialog
       :visible="finishDialogVisible"
       title="结束比赛"
       message="比赛时间已过，请选择本场比赛的最终结果。"
       primary-text="比赛结束"
-      secondary-text="比赛取消"
+      :secondary-text="sourceMatch?.payment_mode === 'prepaid' ? '' : '比赛取消'"
       :loading="submittingStatus"
       @primary="handleFinishMatch('ended')"
       @secondary="handleFinishMatch('cancelled')"
       @close="handleCloseFinishDialog"
+    />
+
+    <!-- 赛前取消比赛：创建者二次确认（danger），确认后提交 cancelled。 -->
+    <NeoConfirmDialog
+      :visible="cancelDialogVisible"
+      :title="cancelDialogState.title"
+      :message="cancelDialogState.message"
+      :highlight="cancelDialogState.highlight"
+      :primary-text="cancelDialogState.primaryText"
+      :secondary-text="cancelDialogState.secondaryText"
+      :primary-tone="cancelDialogState.primaryTone"
+      :loading="submittingStatus"
+      @primary="handleCancelPrimary"
+      @secondary="handleCancelSecondary"
+      @close="handleCancelClose"
     />
 
     <!-- 散人约球：报名人数选择（一人可代朋友报名，费用按人数合计）。 -->

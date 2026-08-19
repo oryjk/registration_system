@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { AppMatchSummary } from "@/types/match";
 import type { TeamProfileViewModel } from "@/types/viewModels";
-import { resolveMatchFinishState } from "../useMatchFinish";
+import { resolveMatchCancelState, resolveMatchFinishState } from "../useMatchFinish";
 
 function buildSourceMatch(overrides: Partial<AppMatchSummary> = {}): AppMatchSummary {
   return {
@@ -157,5 +157,70 @@ describe("resolveMatchFinishState", () => {
   test("rejects missing match or team context", () => {
     expect(resolveMatchFinishState({ sourceMatch: null, currentTeam: buildTeam(), now: AFTER_END })).toEqual({ canFinish: false });
     expect(resolveMatchFinishState({ sourceMatch: buildSourceMatch(), currentTeam: null, now: AFTER_END })).toEqual({ canFinish: false });
+  });
+});
+
+describe("resolveMatchCancelState", () => {
+  test("allows the host captain to cancel before the end time", () => {
+    expect(resolveMatchCancelState({
+      sourceMatch: buildSourceMatch(),
+      currentTeam: buildTeam(),
+      now: BEFORE_END,
+    })).toEqual({ canCancel: true });
+  });
+
+  test("allows the pickup match creator without a team", () => {
+    expect(resolveMatchCancelState({
+      sourceMatch: buildSourceMatch({
+        publication_mode: "online_pickup",
+        host_team_id: null,
+        created_by_user_id: 42,
+      }),
+      currentTeam: null,
+      now: BEFORE_END,
+      currentUserId: 42,
+    })).toEqual({ canCancel: true });
+  });
+
+  test("rejects other pickup participants who did not create the match", () => {
+    expect(resolveMatchCancelState({
+      sourceMatch: buildSourceMatch({
+        publication_mode: "online_pickup",
+        host_team_id: null,
+        created_by_user_id: 42,
+      }),
+      currentTeam: null,
+      now: BEFORE_END,
+      currentUserId: 99,
+    })).toEqual({ canCancel: false });
+  });
+
+  test("rejects prepaid matches entirely", () => {
+    expect(resolveMatchCancelState({
+      sourceMatch: buildSourceMatch({ payment_mode: "prepaid" }),
+      currentTeam: buildTeam(),
+      now: BEFORE_END,
+    })).toEqual({ canCancel: false });
+  });
+
+  test("rejects after the end time where the finish dialog takes over", () => {
+    expect(resolveMatchCancelState({
+      sourceMatch: buildSourceMatch(),
+      currentTeam: buildTeam(),
+      now: AFTER_END,
+    })).toEqual({ canCancel: false });
+  });
+
+  test("rejects terminal statuses and non-owners", () => {
+    expect(resolveMatchCancelState({
+      sourceMatch: buildSourceMatch({ status: "cancelled" }),
+      currentTeam: buildTeam(),
+      now: BEFORE_END,
+    })).toEqual({ canCancel: false });
+    expect(resolveMatchCancelState({
+      sourceMatch: buildSourceMatch(),
+      currentTeam: buildTeam({ id: 99 }),
+      now: BEFORE_END,
+    })).toEqual({ canCancel: false });
   });
 });

@@ -220,7 +220,7 @@ describe("match detail registration design", () => {
     ).text();
 
     expect(detail.includes("<page-meta")).toEqual(true);
-    expect(detail.includes("teamMemberDialogVisible || confirmDialogVisible || finishDialogVisible || signupSheetVisible ? 'overflow: hidden;' : ''")).toEqual(true);
+    expect(detail.includes("teamMemberDialogVisible || confirmDialogVisible || finishDialogVisible || cancelDialogVisible || signupSheetVisible ? 'overflow: hidden;' : ''")).toEqual(true);
     expect(individual.includes('@dialog-visibility-change="handleTeamMemberDialogVisibilityChange"')).toEqual(true);
     expect(individual.includes('emit("dialogVisibilityChange", visible);')).toEqual(true);
     expect(board.includes("NeoStickyActionBar")).toEqual(true);

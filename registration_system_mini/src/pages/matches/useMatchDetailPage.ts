@@ -430,15 +430,10 @@ export function useMatchDetailPage() {
     closeSignupSheet,
   });
 
-  const {
-    canFinishMatch,
-    finishDialogVisible,
-    handleOpenFinishDialog,
-    handleCloseFinishDialog,
-    handleFinishMatch,
-  } = useMatchFinish({
+  const matchFinish = useMatchFinish({
     sourceMatch,
     currentTeam,
+    currentUserId: computed(() => currentUser.value?.id),
     isGuestMode,
     submittingStatus,
     nowTick,
@@ -639,10 +634,6 @@ export function useMatchDetailPage() {
     handleAddSettlementCustomUser,
     handleSubmitSettlement,
     handleTeamSubmit,
-    canFinishMatch,
-    finishDialogVisible,
-    handleOpenFinishDialog,
-    handleCloseFinishDialog,
-    handleFinishMatch,
+    ...matchFinish,
   };
 }
