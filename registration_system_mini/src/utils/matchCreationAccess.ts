@@ -1,9 +1,5 @@
 import type { NeoConfirmDialogOptions } from "@/components/neo/useNeoConfirmDialog";
-
-/** 场馆合作联系二维码（产品负责人微信）：存于 out109 MinIO bucket registration 的 venue/ 前缀。 */
-const VENUE_CONTACT_QRCODE_URL = "https://oryjk.cn:82/registration/venue/contact-qrcode.jpg";
-/** 公众号关注二维码：与场馆联系二维码同一 bucket 前缀。 */
-const OFFICIAL_ACCOUNT_QRCODE_URL = "https://oryjk.cn:82/registration/venue/official-account-qrcode.jpg";
+import { DEVELOPER_WECHAT_QRCODE_URL, OFFICIAL_ACCOUNT_QRCODE_URL } from "@/utils/developerContact";
 
 /**
  * 球队约队/创建比赛需要可管理的球队或场馆身份；散人点击禁用入口时的统一引导文案。
@@ -12,7 +8,7 @@ const OFFICIAL_ACCOUNT_QRCODE_URL = "https://oryjk.cn:82/registration/venue/offi
 export const MATCH_CREATION_IDENTITY_HINT: NeoConfirmDialogOptions = {
   title: "需要球队或场馆身份",
   content: "创建比赛需要先创建球队，或扫下方二维码加微信/关注公众号联系开发者成为场馆。散人也可以直接发布散人约球。",
-  imageSrc: VENUE_CONTACT_QRCODE_URL,
+  imageSrc: DEVELOPER_WECHAT_QRCODE_URL,
   imageCaption: "加开发者微信",
   secondImageSrc: OFFICIAL_ACCOUNT_QRCODE_URL,
   secondImageCaption: "关注公众号",

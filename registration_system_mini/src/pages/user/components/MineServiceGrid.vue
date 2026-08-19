@@ -18,7 +18,7 @@ const emit = defineEmits<{
 
 <template>
   <view class="mine-service-section">
-    <NeoSectionHeader title="账户与服务" marker="服" caption="信用和球队会员" />
+    <NeoSectionHeader title="球队服务" marker="服" caption="信用和球队会员" />
 
     <view class="mine-service-grid">
       <NeoSurface custom-class="mine-service-card">

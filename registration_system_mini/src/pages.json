@@ -79,6 +79,13 @@
       }
     },
     {
+      "path": "pages/user/contact-developer/index",
+      "style": {
+        "navigationBarTitleText": "联系开发者",
+        "navigationStyle": "custom"
+      }
+    },
+    {
       "path": "pages/home/matches/index",
       "style": {
         "navigationBarTitleText": "全部比赛",

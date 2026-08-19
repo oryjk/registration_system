@@ -50,6 +50,16 @@ export function createMatchRegistrationOrder(payload: { match_id: string }) {
   });
 }
 
+/** 为"请开发者喝咖啡"创建打赏订单并发起微信支付；可选功能建议随订单提交，支付成功后才生效。 */
+export function createTipOrder(payload: { amount_cents: number; suggestion?: string }) {
+  return requestApi<GoPaymentOrderResult>({
+    url: "/payments/tip-orders",
+    method: "POST",
+    data: payload,
+    auth: true,
+  });
+}
+
 /** 轮询 Go 支付订单状态（微信回调后置为已付）。 */
 export function syncGoPaymentOrder(orderNo: string) {
   return requestApi<{ order: { order_no: string; status: string } }>({

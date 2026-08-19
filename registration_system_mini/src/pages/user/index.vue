@@ -47,6 +47,10 @@ function handleSessionLoginCompleted() {
   void loadPageData();
 }
 
+function openContactDeveloper() {
+  uni.navigateTo({ url: "/pages/user/contact-developer/index" });
+}
+
 onShow(() => {
   uni.hideTabBar({ animation: false });
   void loadPageData();
@@ -105,6 +109,17 @@ onUnload(() => {
             :wallet-summary="walletSummary"
             @open-billing="openBilling"
           />
+
+          <!-- 联系开发者入口：占据原“账户与服务”位置，全员可见。 -->
+          <view
+            class="mine-settings-entry"
+            hover-class="mine-settings-entry--pressed"
+            :hover-stay-time="100"
+            @click="openContactDeveloper"
+          >
+            <text class="mine-settings-entry__label">联系开发者</text>
+            <text class="mine-settings-entry__arrow">›</text>
+          </view>
 
           <MineServiceGrid
             :current-team="currentTeam"
