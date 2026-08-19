@@ -3,6 +3,9 @@ import { computed, ref } from "vue";
 import { useNotificationCenter } from "@/stores/notificationCenter";
 import { useTeamContext } from "@/stores/teamContext";
 import { useMiniReviewStatus } from "@/stores/miniReview";
+import NeoConfirmDialog from "@/components/neo/NeoConfirmDialog.vue";
+import { useNeoConfirmDialog } from "@/components/neo/useNeoConfirmDialog";
+import { MATCH_CREATION_IDENTITY_HINT } from "@/utils/matchCreationAccess";
 import homeIconUrl from "@/static/tab-png/home.png";
 import homeActiveIconUrl from "@/static/tab-png/home-active.png";
 import challengeIconUrl from "@/static/tab-png/challenge.png";
@@ -18,11 +21,22 @@ const props = defineProps<{
   current: TabKey;
 }>();
 
-const { currentTeam } = useTeamContext();
+const { currentTeam, currentIdentity } = useTeamContext();
 const { unreadCount } = useNotificationCenter();
 const { shouldHideCreationEntrances } = useMiniReviewStatus();
+const {
+  confirmDialogVisible,
+  confirmDialogState,
+  confirm: confirmDialog,
+  handleConfirmPrimary,
+  handleConfirmSecondary,
+  handleConfirmClose,
+  handleConfirmLink,
+} = useNeoConfirmDialog();
 const isOpen = ref(false);
 const shouldShowCreateEntry = computed(() => !shouldHideCreationEntrances.value);
+// 散人（无可管理球队/场馆身份）不能以球队名义创建比赛；按钮置灰但可点击触发引导。
+const matchCreationDisabled = computed(() => !currentIdentity.value);
 
 const items: Array<{
   key: TabKey;
@@ -76,6 +90,11 @@ function closeSheet() {
 
 function handleCreateMatch() {
   closeSheet();
+  if (matchCreationDisabled.value) {
+    void confirmDialog(MATCH_CREATION_IDENTITY_HINT);
+    return;
+  }
+
   if (!currentTeam.value) {
     uni.showToast({
       title: "请先完成登录并加入球队",
@@ -189,7 +208,10 @@ function handleCreateIndividualChallenge() {
     <view v-if="shouldShowCreateEntry" :class="['create-menu-overlay', isOpen ? 'create-menu-overlay-open' : '']" @tap="closeSheet">
       <view class="create-menu-backdrop" />
       <view class="create-menu-actions" @tap.stop>
-        <view class="create-menu-action create-menu-action-left" @tap="handleCreateMatch">
+        <view
+          :class="['create-menu-action', 'create-menu-action-left', matchCreationDisabled ? 'create-menu-action-disabled' : '']"
+          @tap="handleCreateMatch"
+        >
           <view class="create-menu-action-button">
             <view class="create-menu-action-icon create-menu-icon-match">
               <view class="create-menu-field-line" />
@@ -231,12 +253,34 @@ function handleCreateIndividualChallenge() {
         </view>
       </view>
     </view>
+    <!-- 散人点击“创建比赛”时的身份引导弹窗（neo 风格，单按钮提示）。 -->
+    <!-- 根节点 shell 为让点击穿透设了 pointer-events:none，弹窗需显式恢复可点击。 -->
+    <NeoConfirmDialog
+      class="tabbar-confirm-dialog"
+      :visible="confirmDialogVisible"
+      :title="confirmDialogState.title"
+      :message="confirmDialogState.message"
+      :highlight="confirmDialogState.highlight"
+      :link-text="confirmDialogState.linkText"
+      :primary-text="confirmDialogState.primaryText"
+      :secondary-text="confirmDialogState.secondaryText"
+      :primary-tone="confirmDialogState.primaryTone"
+      @primary="handleConfirmPrimary"
+      @secondary="handleConfirmSecondary"
+      @close="handleConfirmClose"
+      @link="handleConfirmLink"
+    />
   </view>
 </template>
 
 <style scoped>
 .custom-tabbar-shell {
   pointer-events: none;
+}
+
+/* shell 关闭指针事件让页面可点，嵌在内的确认弹窗要恢复，否则按钮/遮罩都无法点击。 */
+.tabbar-confirm-dialog {
+  pointer-events: auto;
 }
 
 .custom-tabbar {
@@ -329,6 +373,12 @@ function handleCreateIndividualChallenge() {
   right: 76rpx;
   bottom: 20rpx;
   transition-delay: 120ms;
+}
+
+/* 禁用态保持可点击（点击弹窗引导开通身份），只做视觉降级。 */
+.create-menu-action-disabled {
+  opacity: 0.45;
+  filter: grayscale(1);
 }
 
 .create-menu-action-button {

@@ -8,6 +8,10 @@ export interface NeoConfirmDialogOptions {
   cancelText?: string;
   /** 需要在内容中醒目展示的文本（如比赛名称），命中后用高亮样式渲染。 */
   highlight?: string;
+  /** 内容中可点击的文本片段，命中后用链接样式渲染；点击时关闭弹窗并执行 onLink。 */
+  linkText?: string;
+  /** 链接片段被点击后的动作（如跳转页面）。 */
+  onLink?: () => void;
   /** 危险操作（取消报名等）主按钮使用 danger 色调。 */
   danger?: boolean;
 }
@@ -16,6 +20,7 @@ export interface NeoConfirmDialogState {
   title: string;
   message: string;
   highlight: string;
+  linkText: string;
   primaryText: string;
   secondaryText: string;
   primaryTone: NeoConfirmDialogTone;
@@ -33,11 +38,13 @@ export function useNeoConfirmDialog() {
     title: "",
     message: "",
     highlight: "",
+    linkText: "",
     primaryText: "确认",
     secondaryText: "再想想",
     primaryTone: "accent",
   });
   let resolver: ((confirmed: boolean) => void) | null = null;
+  let linkHandler: (() => void) | null = null;
 
   /** 打开弹窗；主按钮 resolve(true)，次要按钮/遮罩/关闭 resolve(false)。 */
   function confirm(options: NeoConfirmDialogOptions): Promise<boolean> {
@@ -48,9 +55,11 @@ export function useNeoConfirmDialog() {
     confirmDialogState.title = options.title;
     confirmDialogState.message = options.content;
     confirmDialogState.highlight = options.highlight ?? "";
+    confirmDialogState.linkText = options.linkText ?? "";
     confirmDialogState.primaryText = options.confirmText ?? "确认";
     confirmDialogState.secondaryText = options.cancelText ?? "再想想";
     confirmDialogState.primaryTone = options.danger ? "danger" : "accent";
+    linkHandler = options.onLink ?? null;
     confirmDialogVisible.value = true;
     return new Promise<boolean>((resolve) => {
       resolver = resolve;
@@ -77,6 +86,14 @@ export function useNeoConfirmDialog() {
     settle(false);
   }
 
+  /** 链接片段点击：关闭弹窗（视同未确认）后执行跳转等动作。 */
+  function handleConfirmLink() {
+    if (!confirmDialogVisible.value) return;
+    const handler = linkHandler;
+    settle(false);
+    handler?.();
+  }
+
   return {
     confirmDialogVisible,
     confirmDialogState,
@@ -84,5 +101,6 @@ export function useNeoConfirmDialog() {
     handleConfirmPrimary,
     handleConfirmSecondary,
     handleConfirmClose,
+    handleConfirmLink,
   };
 }

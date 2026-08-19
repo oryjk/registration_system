@@ -40,7 +40,11 @@ describe("activities page sections", () => {
     const publishTypeSheet = await Bun.file(sourcePath("pages/activities/components/PublishTypeSheet.vue")).text();
 
     expect(source.includes("function openPublishTypeSheet")).toEqual(true);
-    expect(source.includes("canPublish")).toEqual(true);
+    // 面板对登录用户开放（含散人）；球队约队按钮按身份禁用并弹 neo 引导弹窗。
+    expect(source.includes("canOpenPublishSheet")).toEqual(true);
+    expect(source.includes("hasPublishIdentity")).toEqual(true);
+    expect(source.includes("MATCH_CREATION_IDENTITY_HINT")).toEqual(true);
+    expect(source.includes("<NeoConfirmDialog")).toEqual(true);
     expect(publishTypeSheet.includes("publish-menu-overlay")).toEqual(true);
     expect(publishTypeSheet.includes("publish-menu-overlay-open")).toEqual(true);
     expect(publishTypeSheet.includes("publish-menu-action")).toEqual(true);

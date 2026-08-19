@@ -9,8 +9,11 @@ import HallCalendarStrip from "./components/HallCalendarStrip.vue";
 import HallQuickFilters from "./components/HallQuickFilters.vue";
 import HallMatchList from "./components/HallMatchList.vue";
 import PublishTypeSheet from "./components/PublishTypeSheet.vue";
+import NeoConfirmDialog from "@/components/neo/NeoConfirmDialog.vue";
+import { useNeoConfirmDialog } from "@/components/neo/useNeoConfirmDialog";
 import { useHallPage } from "./useHallPage";
 import { getCustomNavMetrics } from "@/utils/customNav";
+import { MATCH_CREATION_IDENTITY_HINT } from "@/utils/matchCreationAccess";
 import { DEFAULT_SHARE_IMAGE_URL } from "@/utils/share";
 import { computed, ref } from "vue";
 
@@ -19,7 +22,8 @@ const {
   isLoadingMore,
   errorMessage,
   isGuestMode,
-  canPublish,
+  canOpenPublishSheet,
+  hasPublishIdentity,
   hallCards,
   hasMore,
   calendarDays,
@@ -37,6 +41,15 @@ const {
 } = useHallPage();
 
 const navMetrics = getCustomNavMetrics();
+const {
+  confirmDialogVisible,
+  confirmDialogState,
+  confirm: confirmDialog,
+  handleConfirmPrimary,
+  handleConfirmSecondary,
+  handleConfirmClose,
+  handleConfirmLink,
+} = useNeoConfirmDialog();
 const publishTypeSheetVisible = ref(false);
 const navigatingMatchId = ref("");
 const shareTitle = "约队大厅：看看可报名的散人局";
@@ -64,9 +77,9 @@ function openPublishTypeSheet() {
     void handleLogin();
     return;
   }
-  if (!canPublish.value) {
+  if (!canOpenPublishSheet.value) {
     uni.showToast({
-      title: "请先在我的页面选择球队或场馆身份",
+      title: "审核状态下暂不开放发布",
       icon: "none",
     });
     return;
@@ -80,6 +93,10 @@ function closePublishTypeSheet() {
 
 function handlePublishTeamChallenge() {
   closePublishTypeSheet();
+  if (!hasPublishIdentity.value) {
+    void confirmDialog(MATCH_CREATION_IDENTITY_HINT);
+    return;
+  }
   uni.navigateTo({ url: "/pages/matches/create/index" });
 }
 
@@ -185,9 +202,26 @@ onShareTimeline(() => ({
 
     <PublishTypeSheet
       :visible="publishTypeSheetVisible"
+      :team-publish-disabled="!hasPublishIdentity"
       @close="closePublishTypeSheet"
       @publish-team="handlePublishTeamChallenge"
       @publish-individual="handlePublishIndividualChallenge"
+    />
+
+    <!-- 散人点击“球队约队”时的身份引导弹窗（neo 风格，单按钮提示）。 -->
+    <NeoConfirmDialog
+      :visible="confirmDialogVisible"
+      :title="confirmDialogState.title"
+      :message="confirmDialogState.message"
+      :highlight="confirmDialogState.highlight"
+      :link-text="confirmDialogState.linkText"
+      :primary-text="confirmDialogState.primaryText"
+      :secondary-text="confirmDialogState.secondaryText"
+      :primary-tone="confirmDialogState.primaryTone"
+      @primary="handleConfirmPrimary"
+      @secondary="handleConfirmSecondary"
+      @close="handleConfirmClose"
+      @link="handleConfirmLink"
     />
 
     <BottomTabBar current="challenge" />

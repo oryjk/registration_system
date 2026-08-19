@@ -57,7 +57,10 @@ export function useHallPage() {
   let windowTimer: ReturnType<typeof setInterval> | null = null;
 
   const showInitialLoadingState = computed(() => isLoading.value && !hasLoadedOnce.value);
-  const canPublish = computed(() => !!currentIdentity.value && !shouldHideCreationEntrances.value);
+  // 发布面板对所有登录用户开放（散人也能发布散人约球）；仅审核隐藏期统一关闭。
+  const canOpenPublishSheet = computed(() => !shouldHideCreationEntrances.value);
+  // 球队约队/创建比赛需要可管理的球队或场馆身份；散人点击时由页面弹窗引导开通。
+  const hasPublishIdentity = computed(() => !!currentIdentity.value);
   // 按钮判定依赖当前球队身份：主队成员见"去报名"，对方队长见"去接约"，其余见"查看比赛"。
   const hallViewer = computed(() => ({
     teamId: currentTeam.value?.id ?? null,
@@ -205,7 +208,8 @@ export function useHallPage() {
     showInitialLoadingState,
     errorMessage,
     isGuestMode,
-    canPublish,
+    canOpenPublishSheet,
+    hasPublishIdentity,
     hallCards,
     hasMore,
     calendarDays,

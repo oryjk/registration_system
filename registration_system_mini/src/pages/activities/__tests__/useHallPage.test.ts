@@ -29,16 +29,19 @@ const match: AppMatchSummary = {
   updated_at: "2026-08-01T00:00:00.000Z",
 };
 
+const hideCreationEntrancesRef = ref(false);
+const identityRef = ref<{ kind: string; teamId: number } | null>({ kind: "team", teamId: 99 });
+
 mock.module("@/api/match", () => ({
   listMatches: async () => ({ items: [match], total: 1, page: 1, page_size: 20 }),
 }));
 mock.module("@/stores/miniReview", () => ({
-  useMiniReviewStatus: () => ({ shouldHideCreationEntrances: ref(false) }),
+  useMiniReviewStatus: () => ({ shouldHideCreationEntrances: hideCreationEntrancesRef }),
 }));
 mock.module("@/stores/teamContext", () => ({
   useTeamContext: () => ({
     ensureSessionReady: async () => undefined,
-    currentIdentity: ref({ kind: "team", teamId: 99 }),
+    currentIdentity: identityRef,
     currentTeam: ref({ id: 99, canManageTeam: true }),
   }),
 }));
@@ -54,6 +57,8 @@ afterEach(() => {
   Date.now = originalNow;
   globalThis.setInterval = originalSetInterval;
   globalThis.clearInterval = originalClearInterval;
+  hideCreationEntrancesRef.value = false;
+  identityRef.value = { kind: "team", teamId: 99 };
 });
 
 describe("useHallPage registration window clock", () => {
@@ -84,5 +89,32 @@ describe("useHallPage registration window clock", () => {
 
     page.stopWindowTimer();
     expect(clearedTimer).toBe(timerHandle);
+  });
+});
+
+describe("useHallPage publish sheet gating", () => {
+  test("散人（无球队/场馆身份）也能打开发布面板，但没有球队发布身份", async () => {
+    identityRef.value = null;
+    const page = useHallPage();
+    await nextTick();
+
+    expect(page.canOpenPublishSheet.value).toEqual(true);
+    expect(page.hasPublishIdentity.value).toEqual(false);
+  });
+
+  test("有球队身份时两种判定都通过", async () => {
+    const page = useHallPage();
+    await nextTick();
+
+    expect(page.canOpenPublishSheet.value).toEqual(true);
+    expect(page.hasPublishIdentity.value).toEqual(true);
+  });
+
+  test("审核隐藏期发布面板不可打开", async () => {
+    hideCreationEntrancesRef.value = true;
+    const page = useHallPage();
+    await nextTick();
+
+    expect(page.canOpenPublishSheet.value).toEqual(false);
   });
 });

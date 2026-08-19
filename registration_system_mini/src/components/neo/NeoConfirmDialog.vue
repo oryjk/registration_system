@@ -11,6 +11,8 @@ const props = withDefaults(
     message?: string;
     /** message 中需要醒目展示的片段，命中后以高亮样式渲染。 */
     highlight?: string;
+    /** message 中需要可点击跳转的片段（与 highlight 互斥，优先命中），命中后以链接样式渲染。 */
+    linkText?: string;
     primaryText?: string;
     secondaryText?: string;
     primaryTone?: NeoConfirmDialogTone;
@@ -19,6 +21,7 @@ const props = withDefaults(
   {
     message: "",
     highlight: "",
+    linkText: "",
     primaryText: "确认",
     secondaryText: "再想想",
     primaryTone: "accent",
@@ -27,6 +30,18 @@ const props = withDefaults(
 );
 
 const messageParts = computed(() => {
+  const link = props.linkText.trim();
+  if (link) {
+    const index = props.message.indexOf(link);
+    if (index >= 0) {
+      return {
+        before: props.message.slice(0, index),
+        after: props.message.slice(index + link.length),
+        segment: link,
+        kind: "link" as const,
+      };
+    }
+  }
   const highlight = props.highlight.trim();
   if (!highlight) return null;
   const index = props.message.indexOf(highlight);
@@ -34,7 +49,8 @@ const messageParts = computed(() => {
   return {
     before: props.message.slice(0, index),
     after: props.message.slice(index + highlight.length),
-    highlight,
+    segment: highlight,
+    kind: "highlight" as const,
   };
 });
 
@@ -43,10 +59,12 @@ const emit = defineEmits<{
   (event: "secondary"): void;
   /** 遮罩 / 右上角关闭：只收起弹框，不触发次要按钮的业务含义。 */
   (event: "close"): void;
+  /** message 中链接片段（linkText）被点击。 */
+  (event: "link"): void;
 }>();
 
 function handleSecondary() {
-  if (!props.loading) emit("secondary");
+  if (!props.loading && props.secondaryText) emit("secondary");
 }
 
 function handleClose() {
@@ -60,12 +78,12 @@ function handleClose() {
       <view class="neo-confirm-dialog-head">
         <view class="neo-confirm-dialog-texts">
           <text class="neo-confirm-dialog-title">{{ title }}</text>
-          <text v-if="message" class="neo-confirm-dialog-message"><template v-if="messageParts">{{ messageParts.before }}<text class="neo-confirm-dialog-highlight">{{ messageParts.highlight }}</text>{{ messageParts.after }}</template><template v-else>{{ message }}</template></text>
+          <text v-if="message" class="neo-confirm-dialog-message"><template v-if="messageParts">{{ messageParts.before }}<text v-if="messageParts.kind === 'link'" class="neo-confirm-dialog-link" @tap.stop="emit('link')">{{ messageParts.segment }}</text><text v-else class="neo-confirm-dialog-highlight">{{ messageParts.segment }}</text>{{ messageParts.after }}</template><template v-else>{{ message }}</template></text>
         </view>
         <view class="neo-confirm-dialog-close" @tap="handleClose">×</view>
       </view>
-      <view class="neo-confirm-dialog-actions">
-        <NeoButton variant="outline" block :disabled="loading" @click="handleSecondary">
+      <view :class="['neo-confirm-dialog-actions', secondaryText ? '' : 'neo-confirm-dialog-actions-single']">
+        <NeoButton v-if="secondaryText" variant="outline" block :disabled="loading" @click="handleSecondary">
           {{ secondaryText }}
         </NeoButton>
         <NeoButton
@@ -141,6 +159,14 @@ function handleClose() {
   font-weight: 900;
 }
 
+/* 链接片段沿用场馆链接先例：主文字色 + 下划线，靠下划线传达可点击。 */
+.neo-confirm-dialog-link {
+  color: var(--neo-color-text);
+  font-weight: 900;
+  text-decoration: underline;
+  text-underline-offset: 6rpx;
+}
+
 .neo-confirm-dialog-close {
   width: 56rpx;
   height: 56rpx;
@@ -162,6 +188,11 @@ function handleClose() {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 18rpx;
   margin-top: 30rpx;
+}
+
+/* 纯提示类弹窗（secondaryText 传空）只保留主按钮，改为单列。 */
+.neo-confirm-dialog-actions-single {
+  grid-template-columns: 1fr;
 }
 
 @keyframes neo-confirm-dialog-mask-fade-in {

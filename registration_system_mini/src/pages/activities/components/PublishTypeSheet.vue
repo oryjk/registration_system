@@ -1,6 +1,8 @@
 <script setup lang="ts">
 defineProps<{
   visible: boolean;
+  /** 散人（无可管理球队/场馆身份）不能以球队名义发布，按钮置灰但可点击触发引导。 */
+  teamPublishDisabled?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -26,7 +28,10 @@ function handlePublishIndividual() {
   <view :class="['publish-menu-overlay', visible ? 'publish-menu-overlay-open' : '']" @tap="handleClose">
     <view class="publish-menu-backdrop" />
     <view class="publish-menu-actions" @tap.stop>
-      <view class="publish-menu-action publish-menu-action-left" @tap="handlePublishTeam">
+      <view
+        :class="['publish-menu-action', 'publish-menu-action-left', teamPublishDisabled ? 'publish-menu-action-disabled' : '']"
+        @tap="handlePublishTeam"
+      >
         <view class="publish-menu-action-button">
           <text class="publish-menu-action-icon">队</text>
         </view>
@@ -109,6 +114,12 @@ function handlePublishIndividual() {
   right: 128rpx;
   bottom: 76rpx;
   transition-delay: 90ms;
+}
+
+/* 禁用态保持可点击（点击由页面弹窗引导），只做视觉降级。 */
+.publish-menu-action-disabled {
+  opacity: 0.45;
+  filter: grayscale(1);
 }
 
 .publish-menu-close {
