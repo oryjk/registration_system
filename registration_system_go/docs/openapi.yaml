@@ -600,7 +600,7 @@ paths:
     delete:
       operationId: deleteMyMatchRegistration
       tags: [App Registrations]
-      summary: 取消我的报名
+      summary: 取消我的报名（已支付的报名不可取消）
       security: *bearerSecurity
       parameters:
         - $ref: "#/components/parameters/MatchID"
@@ -2128,6 +2128,7 @@ components:
           type: integer
           format: int32
           minimum: 1
+          description: 报名人数；散人约球（online_pickup）的散人组可大于 1（一人代朋友报名），其余场景必须为 1。
     CreateTeamApplicationRequest:
       type: object
       required: [team_id, introduction]
@@ -2559,7 +2560,7 @@ components:
             $ref: "#/components/schemas/RegistrationEntry"
     RegistrationEntry:
       type: object
-      required: [user_id, nickname, real_name, avatar_url, member_role, status]
+      required: [user_id, nickname, real_name, avatar_url, member_role, status, registration_count, paid]
       properties:
         user_id:
           type: integer
@@ -2579,6 +2580,13 @@ components:
         status:
           type: string
           enum: [unregistered, unknown, attending, leave, absent, cancelled]
+        registration_count:
+          type: integer
+          format: int32
+          description: 该行报名占用的人数；散人约球一人代多人时大于 1，其余恒为 1。
+        paid:
+          type: boolean
+          description: 报名费是否已支付（散人约球赛前支付场景）。
     UserRegistration:
       type: object
       required: [status, registration_count]
@@ -2624,7 +2632,7 @@ components:
             $ref: "#/components/schemas/UserParticipant"
     UserParticipant:
       type: object
-      required: [user_id, nickname, avatar_url, status, registered_at]
+      required: [user_id, nickname, avatar_url, status, registered_at, registration_count]
       properties:
         user_id:
           type: integer
@@ -2636,6 +2644,10 @@ components:
           nullable: true
         status:
           $ref: "#/components/schemas/RegistrationStatus"
+        registration_count:
+          type: integer
+          format: int32
+          description: 该成员报名占用的人数；散人约球一人代多人时大于 1，其余恒为 1。
         registered_at:
           type: string
           format: date-time
@@ -2643,7 +2655,7 @@ components:
           description: 该成员本次报名的落库时间；小程序端按它对已报名队员按报名先后排序。
     MyRegistration:
       type: object
-      required: [group_id, user_id, status, registration_count, updated_at]
+      required: [group_id, user_id, status, registration_count, paid, updated_at]
       properties:
         group_id:
           type: string
@@ -2656,6 +2668,9 @@ components:
         registration_count:
           type: integer
           format: int32
+        paid:
+          type: boolean
+          description: 报名费是否已支付；已支付后报名人数与状态不可再修改，也不可取消。
         updated_at:
           type: string
           format: date-time
