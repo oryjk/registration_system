@@ -47,7 +47,8 @@ func (s RegistrationFeeService) RegistrationFee(ctx context.Context, matchID uui
 		if registration.Paid {
 			return paymentports.MatchRegistrationFee{}, sharederror.New(sharederror.KindConflict, "报名费已支付，请勿重复支付")
 		}
-		return paymentports.MatchRegistrationFee{MatchID: matchID, AmountCents: match.FeePerPersonCents}, nil
+		// 一人代多人报名时按人数计费：人均费用 × 报名人数。
+		return paymentports.MatchRegistrationFee{MatchID: matchID, AmountCents: match.FeePerPersonCents * int64(registration.RegistrationCount)}, nil
 	}
 	return paymentports.MatchRegistrationFee{}, sharederror.New(sharederror.KindValidation, "请先报名后再支付报名费")
 }
