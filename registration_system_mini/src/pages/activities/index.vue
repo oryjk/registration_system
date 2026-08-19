@@ -178,7 +178,11 @@ onShareTimeline(() => ({
                 @select-size="selectSize"
               />
             </view>
-            <view class="hall-publish-button" @tap="openPublishTypeSheet">发布</view>
+          </view>
+
+          <!-- 审核隐藏期不显示发布入口（与底栏创建按钮一致）；独立成行的主按钮，游客仍显示并引导登录。 -->
+          <view v-if="canOpenPublishSheet" class="hall-publish-row">
+            <NeoButton block variant="lime" @click="openPublishTypeSheet">发布约队 / 散人约球</NeoButton>
           </view>
 
           <NeoSectionHeader title="可加入的比赛" marker="约" />
@@ -252,26 +256,9 @@ onShareTimeline(() => ({
   min-width: 0;
 }
 
-.hall-publish-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 104rpx;
-  height: 56rpx;
-  flex-shrink: 0;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-text);
-  color: var(--neo-color-text-inverse);
-  font-size: 24rpx;
-  font-weight: 900;
-  box-shadow: 4rpx 4rpx 0 var(--neo-color-accent);
-  transition: transform var(--neo-motion-fast), box-shadow var(--neo-motion-fast);
-}
-
-.hall-publish-button:active {
-  transform: translate(var(--neo-motion-press-offset), var(--neo-motion-press-offset));
-  box-shadow: var(--neo-shadow-pressed);
+/* 发布入口独立成行：小尺寸角落按钮用户难以感知可点击。 */
+.hall-publish-row {
+  margin-top: 20rpx;
 }
 
 .hall-guest-card {
