@@ -184,7 +184,7 @@ export function buildPublicMatchApiDetailData(
   // 三态报名板需要全部队友的出勤状态：attending→已报名、leave→请假，其余（unknown/absent/cancelled）由页面归入未报名组。
   // operation_time 用报名落库时间，保证「已报名队员」按报名先后升序；旧数据缺失时回退比赛更新时间。
   const activityUsers = participants.map((participant) => toBackendRegistration(
-    { status: participant.status, registration_count: 1 },
+    { status: participant.status, registration_count: participant.registration_count ?? 1 },
     participant.user_id,
     participant.registered_at ?? matchDetail.match.updated_at,
   ));
@@ -207,7 +207,8 @@ export function buildPublicMatchApiDetailData(
     sourceMatch: matchDetail.match,
     teamGroups: toTeamGroupSummaries(matchDetail.groups),
     sourceTeamRegistrationCount: Math.max(
-      Number(activity.team_registration_count ?? 0) - activityUsers.filter((item) => item.stand === 1).length,
+      Number(activity.team_registration_count ?? 0)
+        - activityUsers.filter((item) => item.stand === 1).reduce((total, item) => total + item.registration_count, 0),
       0,
     ),
   };

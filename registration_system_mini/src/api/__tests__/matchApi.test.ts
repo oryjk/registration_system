@@ -124,6 +124,7 @@ describe("Match API", () => {
 
     await putMyMatchRegistration("f7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c003", "a7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c003", "attending");
     await putMyMatchRegistration("f7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c003", "a7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c003", "leave");
+    await putMyMatchRegistration("f7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c003", "a7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c003", "attending", 3);
 
     expect(capturedCalls).toEqual([
       {
@@ -136,6 +137,12 @@ describe("Match API", () => {
         url: "/matches/f7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c003/groups/a7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c003/my-registration",
         method: "PUT",
         data: { status: "leave", registration_count: 1 },
+        auth: true,
+      },
+      {
+        url: "/matches/f7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c003/groups/a7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c003/my-registration",
+        method: "PUT",
+        data: { status: "attending", registration_count: 3 },
         auth: true,
       },
     ]);

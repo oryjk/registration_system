@@ -12,7 +12,7 @@ import {
   filterMockChallengeSummaries,
   getMockChallengeDetail,
 } from "./data/challenges";
-import { createMockMatch, filterMockMatchesByQuery, getMockMatchDetail, mockMatchHome, paginateMockMatches, updateMockMatchStatus } from "./data/matches";
+import { createMockMatch, filterMockMatchesByQuery, getMockMatchDetail, markMockMyRegistrationPaid, mockMatchHome, mockMyRegistrationCount, paginateMockMatches, updateMockMatchStatus, upsertMockMyRegistration } from "./data/matches";
 import { mockNotifications } from "./data/notifications";
 import { mockBillingFlow, mockPaymentOrders, mockUserAccount } from "./data/billing";
 import { mockWalletAccount } from "./data/wallet";
@@ -52,6 +52,8 @@ interface MockRoute {
 
 const mockTeamAttendanceActivityIds = ["act-001", "act-003", "act-005"];
 let mockAuthenticatedUserId = mockCurrentUser.id;
+// 报名费订单号 → 比赛 ID：sync 核销时把对应 mock 报名标记为已支付。
+const mockPaymentOrderMatchIds = new Map<string, string>();
 
 
 // 约队申请 mock：仅内存态，刷新后重置，供 H5 mock 演示接约流程。
@@ -336,13 +338,18 @@ const routes: MockRoute[] = [
     pattern: "/payments/match-registration-orders",
     handler: (req) => {
       const payload = req.body as { match_id?: string } | undefined;
-      // mock 不校验报名状态；金额取比赛定价（详情内联兜底 2500 分）。
-      const amountCents = 2500;
+      // mock 不校验报名状态；金额 = 比赛人均定价 × 当前报名人数（详情缺失时兜底单人价）。
+      const matchId = payload?.match_id ?? "";
+      const detail = getMockMatchDetail(matchId);
+      const perPersonCents = detail?.match.fee_per_person_cents ?? 2500;
+      const amountCents = perPersonCents * mockMyRegistrationCount(matchId);
+      const orderNo = `PR${Date.now()}`;
+      mockPaymentOrderMatchIds.set(orderNo, matchId);
       return {
         order: {
-          order_no: `PR${Date.now()}`,
+          order_no: orderNo,
           kind: "match_registration",
-          match_id: payload?.match_id ?? null,
+          match_id: matchId || null,
           amount_cents: amountCents,
           status: "pending",
         },
@@ -359,9 +366,15 @@ const routes: MockRoute[] = [
   {
     method: "POST",
     pattern: "/payments/orders/:orderNo/sync",
-    handler: (req) => ({
-      order: { order_no: req.params.orderNo, status: "paid" },
-    }),
+    handler: (req) => {
+      if (req.params.orderNo.startsWith("PR")) {
+        const matchId = mockPaymentOrderMatchIds.get(req.params.orderNo);
+        if (matchId) markMockMyRegistrationPaid(matchId);
+      }
+      return {
+        order: { order_no: req.params.orderNo, status: "paid" },
+      };
+    },
   },
   {
     method: "GET",
@@ -616,11 +629,14 @@ const routes: MockRoute[] = [
     handler: (req) => {
       ensureMockRegistrationOpen(req.params.id);
       const payload = req.body as { status?: string; registration_count?: number } | undefined;
+      const status = payload?.status ?? "unknown";
+      const count = Number.isFinite(payload?.registration_count) ? Number(payload?.registration_count) : 1;
+      upsertMockMyRegistration(req.params.id, status, count);
       return {
         group_id: req.params.groupId,
         user_id: currentMockUser().id,
-        status: payload?.status ?? "unknown",
-        registration_count: payload?.registration_count ?? 0,
+        status,
+        registration_count: status === "cancelled" ? 0 : count,
         updated_at: new Date().toISOString(),
       };
     },
@@ -630,6 +646,7 @@ const routes: MockRoute[] = [
     pattern: "/matches/:id/groups/:groupId/my-registration",
     handler: (req) => {
       ensureMockRegistrationOpen(req.params.id);
+      upsertMockMyRegistration(req.params.id, "cancelled", 0);
       return {
         group_id: req.params.groupId,
         user_id: currentMockUser().id,

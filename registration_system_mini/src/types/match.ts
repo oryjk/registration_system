@@ -88,6 +88,8 @@ export interface AppMatchParticipant {
   nickname: string;
   avatar_url: string | null;
   status: AppMatchRegistrationStatus;
+  /** 该成员报名占用的人数；散人约球一人代多人时大于 1，其余恒为 1。 */
+  registration_count?: number;
   /** 本次报名的落库时间；后端旧数据缺失时为 null，排序需回退。 */
   registered_at?: string | null;
 }

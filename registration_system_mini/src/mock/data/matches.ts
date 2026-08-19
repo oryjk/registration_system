@@ -6,6 +6,8 @@ import type {
   AppMatchGroupDetail,
   AppMatchHomeResponse,
   AppMatchParticipant,
+  AppMatchRegistration,
+  AppMatchRegistrationStatus,
   AppMatchRegistrationGroupSummary,
   AppMatchStatus,
   AppMatchSummary,
@@ -732,7 +734,8 @@ export function getMockMatchDetail(matchId: string, baseNow = Date.now()): AppMa
   const fallbackKind = match.publication_mode === "online_individual" || match.publication_mode === "online_pickup"
     ? "individual_opponent"
     : "host_team";
-  const registrationStatus = actionMatch?.group.my_registration_status;
+  const override = mockMyRegistrationOverrides.get(matchId);
+  const registrationStatus = override?.status ?? actionMatch?.group.my_registration_status;
   // 详情页「已报名队员」头像来自 group.participants；mock 与真实接口对齐，都带报名先后时间。
   const attendingCount = actionMatch?.group.attending_count
     ?? (match.status === "registering" ? 0 : Math.max(1, match.players_per_team - 2));
@@ -751,10 +754,35 @@ export function getMockMatchDetail(matchId: string, baseNow = Date.now()): AppMa
       participants,
       my_registration:
         registrationStatus && registrationStatus !== "unknown" && registrationStatus !== "cancelled"
-          ? { status: registrationStatus, registration_count: registrationStatus === "attending" ? 1 : 0 }
+          ? {
+              status: registrationStatus,
+              registration_count: registrationStatus === "attending" ? override?.count ?? 1 : 0,
+              paid: override?.paid ?? false,
+            }
           : null,
     }],
   };
+}
+
+// mock 报名覆盖：PUT/DELETE my-registration 与支付核销后落地，详情读取时回放（散人约球多人报名可体验）。
+const mockMyRegistrationOverrides = new Map<string, { status: AppMatchRegistrationStatus; count: number; paid: boolean }>();
+
+export function upsertMockMyRegistration(matchId: string, status: string, count: number) {
+  if (status === "cancelled" || count < 1) {
+    mockMyRegistrationOverrides.delete(matchId);
+    return;
+  }
+  mockMyRegistrationOverrides.set(matchId, { status: status as AppMatchRegistrationStatus, count, paid: mockMyRegistrationOverrides.get(matchId)?.paid ?? false });
+}
+
+export function markMockMyRegistrationPaid(matchId: string) {
+  const current = mockMyRegistrationOverrides.get(matchId);
+  if (current) mockMyRegistrationOverrides.set(matchId, { ...current, paid: true });
+}
+
+export function mockMyRegistrationCount(matchId: string): number {
+  const current = mockMyRegistrationOverrides.get(matchId);
+  return current && current.status === "attending" ? current.count : 1;
 }
 
 export function paginateMockMatches(matches: AppMatchSummary[], query: Record<string, string>) {

@@ -107,11 +107,12 @@ export function putMyMatchRegistration(
   matchId: string,
   groupId: string,
   status: Extract<AppMatchRegistration["status"], "attending" | "leave" | "absent">,
+  registrationCount = 1,
 ) {
   return requestApi<AppMatchRegistration>({
     url: `/matches/${matchId}/groups/${groupId}/my-registration`,
     method: "PUT",
-    data: { status, registration_count: 1 },
+    data: { status, registration_count: registrationCount },
     auth: true,
   });
 }

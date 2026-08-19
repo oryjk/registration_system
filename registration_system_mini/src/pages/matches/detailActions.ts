@@ -30,8 +30,13 @@ export function submitIndividualLeave(activityId: string) {
   });
 }
 
-export function submitMatchIndividualRegistration(matchId: string, groupId: string, status: "attending" | "leave") {
-  return putMyMatchRegistration(matchId, groupId, status);
+export function submitMatchIndividualRegistration(
+  matchId: string,
+  groupId: string,
+  status: "attending" | "leave",
+  registrationCount = 1,
+) {
+  return putMyMatchRegistration(matchId, groupId, status, registrationCount);
 }
 
 export function cancelMatchIndividualRegistration(matchId: string, groupId: string) {

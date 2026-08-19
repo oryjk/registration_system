@@ -92,7 +92,10 @@ export function useMatchDetailPage() {
   }));
 
   const joinedRegistrations = computed(() => registrations.value.filter((item) => item.stand === 1));
-  const joinedCount = computed(() => joinedRegistrations.value.length + sourceTeamRegistrationCount.value);
+  // 报名人数按人头计：散人约球一人可代多人（registration_count > 1）。
+  const joinedCount = computed(() =>
+    joinedRegistrations.value.reduce((total, item) => total + item.registration_count, 0) + sourceTeamRegistrationCount.value,
+  );
   const requiredPlayers = computed(() => match.value?.players_per_team ?? 0);
   const maxPlayers = computed(() => {
     const configuredCapacity = match.value?.team_capacity_limit;
@@ -177,9 +180,10 @@ export function useMatchDetailPage() {
       // 保证报名成功后头像和昵称立即可见，不用等刷新。
       const user = usersById.value[item.user_id]
         ?? (item.user_id === currentUser.value?.id ? currentUser.value : undefined);
+      const displayName = resolveUserDisplayName(user);
       return {
         id: item.user_id,
-        name: resolveUserDisplayName(user),
+        name: item.registration_count > 1 ? `${displayName}（${item.registration_count}人）` : displayName,
         avatarUrl: user?.avatar_url ?? "",
         tone: avatarColor(item.user_id),
       };
