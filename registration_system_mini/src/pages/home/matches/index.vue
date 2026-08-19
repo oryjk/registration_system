@@ -18,20 +18,17 @@ import {
 type VisibleHomeMatchPhase = Exclude<AppMatchUiPhase, "excluded">;
 
 const MATCH_PAGE_SIZE = 20;
-const PHASE_META: Record<VisibleHomeMatchPhase, { title: string; copy: string; emptyText: string }> = {
+const PHASE_META: Record<VisibleHomeMatchPhase, { title: string; emptyText: string }> = {
   upcoming: {
     title: "最近要处理的比赛",
-    copy: "我的报名中、进行中的比赛都保留在这里，过期也不会被时间过滤掉。",
     emptyText: "暂时没有要处理的比赛。",
   },
   ongoing: {
     title: "进行中的比赛",
-    copy: "报名结束但比赛尚未结束，按实际比赛时间倒序分页加载。",
     emptyText: "暂时没有进行中的比赛。",
   },
   ended: {
     title: "已结束的比赛",
-    copy: "会继续跨页扫描历史比赛，直到出现这一阶段的新记录或源数据耗尽。",
     emptyText: "暂时没有已结束的比赛。",
   },
 };
@@ -149,11 +146,6 @@ onReachBottom(() => {
     <AppTabHeader :title="pageMeta.title" showBack />
 
     <view class="phase-matches-content" :style="contentStyle">
-      <view class="page-hero">
-        <text class="page-title">{{ pageMeta.title }}</text>
-        <text class="page-copy">{{ pageMeta.copy }}</text>
-      </view>
-
       <HomeMatchList
         v-if="visibleMatches.length"
         :matches="visibleMatches"
@@ -185,34 +177,12 @@ onReachBottom(() => {
   box-sizing: border-box;
 }
 
-.page-hero,
 .empty-card,
 .phase-footer {
   border: var(--neo-border-default);
   border-radius: var(--neo-radius-md);
   background: var(--neo-color-surface);
   box-shadow: var(--neo-shadow-raised);
-}
-
-.page-hero {
-  padding: 28rpx;
-}
-
-.page-title {
-  display: block;
-  color: var(--neo-color-text);
-  font-size: 48rpx;
-  line-height: 1.15;
-  font-weight: 900;
-}
-
-.page-copy {
-  display: block;
-  margin-top: 12rpx;
-  color: var(--neo-color-text-muted);
-  font-size: 26rpx;
-  line-height: 1.5;
-  font-weight: 700;
 }
 
 .empty-card,

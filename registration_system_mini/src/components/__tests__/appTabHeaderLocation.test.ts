@@ -20,11 +20,11 @@ describe("AppTabHeader location visibility", () => {
     expect(source.includes('v-if="props.showLocation"')).toEqual(true);
   });
 
-  test("home and match registration pages opt into location display", async () => {
+  test("match registration page opts into location display while home stays plain", async () => {
     const home = await read("src/pages/home/index.vue");
     const matchDetail = await read("src/pages/matches/detail.vue");
 
-    expect(home.includes('<AppTabHeader title="首页" showLocation')).toEqual(true);
+    expect(home.includes('<AppTabHeader title="首页" showLocation')).toEqual(false);
     expect(matchDetail.includes('<AppTabHeader title="比赛报名" showBack showLocation')).toEqual(true);
   });
 

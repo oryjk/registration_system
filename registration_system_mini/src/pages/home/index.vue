@@ -335,7 +335,7 @@ onShareTimeline(() => ({
 
 <template>
   <view class="home-page" :style="pageStyle">
-    <AppTabHeader title="首页" showLocation />
+    <AppTabHeader title="首页" />
 
     <view class="home-content" :style="contentStyle">
       <HomeSkeleton v-if="showInitialLoadingState" />
