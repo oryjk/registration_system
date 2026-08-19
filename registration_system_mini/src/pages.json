@@ -72,6 +72,13 @@
       }
     },
     {
+      "path": "pages/user/settings/index",
+      "style": {
+        "navigationBarTitleText": "设置",
+        "navigationStyle": "custom"
+      }
+    },
+    {
       "path": "pages/home/matches/index",
       "style": {
         "navigationBarTitleText": "全部比赛",

@@ -1,7 +1,5 @@
 import { computed, ref } from "vue";
 import { getWallet } from "@/api/wallet";
-import { updateMyProfile } from "@/api/user";
-import { putMiniReviewReviewStatus } from "@/api/miniReview";
 import type { BackendTeamCreditTransaction } from "@/types/backend";
 import type { MineMatchSummary, MineStatItem } from "./mineTypes";
 import { buildMineOverviewState } from "./mineOverviewState";
@@ -9,9 +7,8 @@ import { loadAllMyMatches } from "./myMatchesData";
 import { useNotificationCenter } from "@/stores/notificationCenter";
 import { useTeamContext } from "@/stores/teamContext";
 import { useMiniReviewStatus } from "@/stores/miniReview";
-import { MINI_PROGRAM_VERSION } from "@/config/generatedMiniProgramVersion";
 import { clearSession } from "@/stores/appSession";
-import { loadMiniAppRuntimeConfig } from "@/config/runtimeConfig";
+import { PRODUCT_OWNER_USER_ID } from "@/config/productOwner";
 import { hasManualLogout } from "@/utils/authStorage";
 import { getCustomNavMetrics } from "@/utils/customNav";
 import {
@@ -19,10 +16,6 @@ import {
   formatDateTimeLabel,
   resolveUserDisplayName,
 } from "@/utils/viewModels";
-
-const MINI_PROJECT_CODE = "registration_system_mini";
-// 审核状态切换入口只对产品负责人账号开放（后端白名单同步校验）。
-const REVIEW_TOGGLE_USER_ID = 4;
 
 export function useMinePage() {
   const {
@@ -34,7 +27,7 @@ export function useMinePage() {
     ensureTeamDetailLoaded,
     refreshSessionContext,
   } = useTeamContext();
-  const { shouldHideCreationEntrances, reviewMode, preloadMiniReviewStatus } = useMiniReviewStatus();
+  const { shouldHideCreationEntrances } = useMiniReviewStatus();
   const { unreadCount, setUnreadCount } = useNotificationCenter();
   const navMetrics = getCustomNavMetrics();
 
@@ -45,8 +38,6 @@ export function useMinePage() {
   const errorMessage = ref("");
   const myMatches = ref<MineMatchSummary[]>([]);
   const creditTransactions = ref<BackendTeamCreditTransaction[]>([]);
-  const debugClearProfileEnabled = ref(false);
-  const debugReviewToggleEnabled = ref(false);
   const overviewDigest = ref({
     activityCount: 0,
     teamCount: 0,
@@ -59,6 +50,8 @@ export function useMinePage() {
   });
 
   const displayName = computed(() => resolveUserDisplayName(currentUser.value));
+  // 「设置」入口只对产品负责人账号显示，页内为运营/验证工具集合。
+  const settingsEntryVisible = computed(() => currentUser.value?.id === PRODUCT_OWNER_USER_ID);
   const showInitialLoadingState = computed(() => isLoading.value && !hasLoadedOnce.value);
   const visibleErrorMessage = computed(() => currentUser.value ? errorMessage.value : "");
   const messageSummary = computed(() =>
@@ -131,8 +124,6 @@ export function useMinePage() {
     errorMessage.value = message;
     myMatches.value = [];
     creditTransactions.value = [];
-    debugClearProfileEnabled.value = false;
-    debugReviewToggleEnabled.value = false;
     overviewDigest.value = {
       activityCount: 0,
       teamCount: 0,
@@ -168,19 +159,13 @@ export function useMinePage() {
       if (activeTeamId) {
         await ensureTeamDetailLoaded(activeTeamId);
       }
-      const [matches, wallet, runtimeConfig] = await Promise.all([
+      const [matches, wallet] = await Promise.all([
         loadAllMyMatches(),
         getWallet(),
-        loadMiniAppRuntimeConfig(),
       ]);
       const overview = buildMineOverviewState(matches, wallet);
 
       myMatches.value = overview.matches;
-      debugClearProfileEnabled.value = runtimeConfig.debug.clear_profile_enabled;
-      // 管理端「系统设置」开关 + 产品负责人账号双重条件，后端白名单仍会校验。
-      debugReviewToggleEnabled.value =
-        runtimeConfig.debug.review_status_toggle_enabled &&
-        currentUser.value?.id === REVIEW_TOGGLE_USER_ID;
       overviewDigest.value = {
         activityCount: overview.activityCount,
         teamCount: teamProfiles.value.length,
@@ -215,45 +200,8 @@ export function useMinePage() {
     uni.navigateTo({ url: "/pages/profile/setup/index" });
   }
 
-  async function handleDebugClearProfile() {
-    if (!currentUser.value) return;
-    const confirmed = await confirmDialog({
-      title: "清除头像和昵称",
-      content: "验证用入口：清除后头像和昵称会被清空，回到未完善资料状态。",
-    });
-    if (!confirmed) return;
-    try {
-      await updateMyProfile({ nickname: "", avatar_url: "" });
-      await refreshSessionContext();
-      uni.showToast({ title: "已清除，完善提示应重新出现", icon: "none" });
-    } catch (error) {
-      uni.showToast({
-        title: error instanceof Error ? error.message : "清除失败",
-        icon: "none",
-      });
-    }
-  }
-
-  async function handleDebugToggleReviewStatus() {
-    const nextReviewing = !reviewMode.value;
-    const confirmed = await confirmDialog({
-      title: "切换审核状态",
-      content: `当前版本 ${MINI_PROGRAM_VERSION} 将切换为「${nextReviewing ? "审核中" : "已过审"}」，全量用户的创建入口显隐会立即变化。`,
-    });
-    if (!confirmed) return;
-    try {
-      await putMiniReviewReviewStatus(MINI_PROJECT_CODE, MINI_PROGRAM_VERSION, nextReviewing);
-      await preloadMiniReviewStatus(true);
-      uni.showToast({
-        title: nextReviewing ? "已切为审核中" : "已切为已过审",
-        icon: "none",
-      });
-    } catch (error) {
-      uni.showToast({
-        title: error instanceof Error ? error.message : "切换失败",
-        icon: "none",
-      });
-    }
+  function openSettings() {
+    uni.navigateTo({ url: "/pages/user/settings/index" });
   }
 
   function openTeamDetail(teamId?: number) {
@@ -345,14 +293,11 @@ export function useMinePage() {
     currentTeamJoinedDaysLabel,
     mineStats,
     walletSummary,
-    debugClearProfileEnabled,
-    debugReviewToggleEnabled,
-    reviewMode,
+    settingsEntryVisible,
     loadPageData,
     handleEditProfile,
     handleCompleteProfile,
-    handleDebugClearProfile,
-    handleDebugToggleReviewStatus,
+    openSettings,
     handleLogin,
     handleLogout,
     handleSwitchTeam,

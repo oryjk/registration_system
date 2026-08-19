@@ -100,8 +100,7 @@ describe("mine page visual composition", () => {
     const composableSource = await Bun.file(sourcePath("pages/user/useMinePage.ts")).text();
 
     expect(composableSource.includes('import { useMiniReviewStatus } from "@/stores/miniReview";')).toEqual(true);
-    // 审核态驱动钱包卡显隐，并给审核状态切换验证入口提供当前状态与强制刷新。
-    expect(composableSource.includes("const { shouldHideCreationEntrances, reviewMode, preloadMiniReviewStatus } = useMiniReviewStatus();")).toEqual(true);
+    expect(composableSource.includes("const { shouldHideCreationEntrances } = useMiniReviewStatus();")).toEqual(true);
     expect(userPageSource.includes("<MineWalletSection")).toEqual(true);
     expect(userPageSource.includes('v-if="!shouldHideCreationEntrances"')).toEqual(true);
   });

@@ -29,14 +29,11 @@ const {
   currentTeamJoinedDaysLabel,
   mineStats,
   walletSummary,
-  debugClearProfileEnabled,
-  debugReviewToggleEnabled,
-  reviewMode,
+  settingsEntryVisible,
   loadPageData,
   handleEditProfile,
   handleCompleteProfile,
-  handleDebugClearProfile,
-  handleDebugToggleReviewStatus,
+  openSettings,
   handleLogin,
   handleLogout,
   handleSwitchTeam,
@@ -120,32 +117,16 @@ onUnload(() => {
             @renew-membership="handleMembershipRenewal"
           />
 
-          <view v-if="debugClearProfileEnabled" class="mine-debug-tools">
-            <view
-              class="mine-debug-tools__button"
-              hover-class="mine-debug-tools__button--pressed"
-              :hover-stay-time="100"
-              @click="handleDebugClearProfile"
-            >
-              <text class="mine-debug-tools__label">清除头像和昵称（验证入口）</text>
-            </view>
-            <text class="mine-debug-tools__hint">由管理端「系统设置」开关控制，仅用于验证资料完善引导</text>
-          </view>
-
-          <view v-if="debugReviewToggleEnabled" class="mine-debug-tools">
-            <view
-              class="mine-debug-tools__button"
-              hover-class="mine-debug-tools__button--pressed"
-              :hover-stay-time="100"
-              @click="handleDebugToggleReviewStatus"
-            >
-              <text class="mine-debug-tools__label">
-                切换审核状态（当前：{{ reviewMode ? "审核中" : "已过审" }}）
-              </text>
-            </view>
-            <text class="mine-debug-tools__hint">
-              针对当前小程序版本的验证入口，切换后全量用户创建入口显隐立即变化
-            </text>
+          <!-- 设置入口只对产品负责人账号显示；验证/运营工具统一收拢在设置页。 -->
+          <view
+            v-if="settingsEntryVisible"
+            class="mine-settings-entry"
+            hover-class="mine-settings-entry--pressed"
+            :hover-stay-time="100"
+            @click="openSettings"
+          >
+            <text class="mine-settings-entry__label">设置</text>
+            <text class="mine-settings-entry__arrow">›</text>
           </view>
         </template>
       </template>
@@ -206,41 +187,36 @@ onUnload(() => {
   height: calc(168rpx + env(safe-area-inset-bottom));
 }
 
-.mine-debug-tools {
-  margin-top: 26rpx;
-}
-
-.mine-debug-tools__button {
+/* 设置入口：负责人账号专属，样式与页面卡片层级一致。 */
+.mine-settings-entry {
   display: flex;
   align-items: center;
-  justify-content: center;
-  min-height: 76rpx;
-  padding: 0 24rpx;
-  border: 2rpx dashed var(--neo-color-text-muted);
+  justify-content: space-between;
+  min-height: 92rpx;
+  margin-top: 26rpx;
+  padding: 0 26rpx;
+  border: var(--neo-border-default);
   border-radius: var(--neo-radius-md);
-  background: var(--neo-color-muted);
+  background: var(--neo-color-surface);
+  box-shadow: var(--neo-shadow-raised);
   box-sizing: border-box;
 }
 
-.mine-debug-tools__button--pressed {
-  opacity: 0.7;
+.mine-settings-entry--pressed {
+  opacity: 0.72;
 }
 
-.mine-debug-tools__label {
-  color: var(--neo-color-text-muted);
-  font-size: 22rpx;
-  font-weight: 800;
-  line-height: 1.35;
+.mine-settings-entry__label {
+  color: var(--neo-color-text);
+  font-size: 28rpx;
+  font-weight: 900;
 }
 
-.mine-debug-tools__hint {
-  display: block;
-  margin-top: 10rpx;
+.mine-settings-entry__arrow {
   color: var(--neo-color-text-muted);
-  font-size: 20rpx;
-  font-weight: 700;
-  line-height: 1.4;
-  text-align: center;
+  font-size: 40rpx;
+  font-weight: 900;
+  line-height: 1;
 }
 
 /* #ifdef H5 */
