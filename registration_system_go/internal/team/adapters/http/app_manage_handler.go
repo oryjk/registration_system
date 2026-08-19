@@ -19,6 +19,8 @@ type AppTeamManageCommands interface {
 	AddMember(context.Context, sharedauth.Actor, int64, int64, domain.Role) error
 	UpdateMember(context.Context, sharedauth.Actor, int64, int64, *domain.Role, *domain.MemberStatus) error
 	RemoveMember(context.Context, sharedauth.Actor, int64, int64) error
+	// DeleteTeam 解散球队：仅队长本人可操作。
+	DeleteTeam(context.Context, sharedauth.Actor, int64) error
 }
 
 type AppManageHandler struct {
@@ -35,6 +37,7 @@ func (h *AppManageHandler) RegisterRoutes(group *gin.RouterGroup) {
 	group.POST("/teams/:id/members", h.AddMember)
 	group.PATCH("/teams/:id/members/:user_id", h.UpdateMember)
 	group.DELETE("/teams/:id/members/:user_id", h.RemoveMember)
+	group.DELETE("/teams/:id", h.DeleteTeam)
 }
 
 // AppUpdateTeamProfileRequest 的 description/logo_url 传空串或 null 视为清除；
@@ -138,6 +141,19 @@ func (h *AppManageHandler) RemoveMember(c *gin.Context) {
 		return
 	}
 	if err := h.manage.RemoveMember(c.Request.Context(), actor, teamID, userID); err != nil {
+		sharedhttpapi.WriteError(c, err)
+		return
+	}
+	sharedhttpapi.WriteSuccess(c, gin.H{})
+}
+
+// DeleteTeam 解散球队（仅队长）；球队仍被比赛等数据引用时返回 409。
+func (h *AppManageHandler) DeleteTeam(c *gin.Context) {
+	actor, teamID, ok := appActorAndTeamID(c)
+	if !ok {
+		return
+	}
+	if err := h.manage.DeleteTeam(c.Request.Context(), actor, teamID); err != nil {
 		sharedhttpapi.WriteError(c, err)
 		return
 	}

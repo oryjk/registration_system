@@ -265,6 +265,18 @@ paths:
         "200":
           description: 更新成功（空 data）
         <<: *standardErrors
+    delete:
+      operationId: deleteAppTeam
+      tags: [App Teams]
+      summary: 解散球队（仅队长）
+      description: 仅该队 active 的队长本人可操作；成员随级联删除。球队仍被比赛、报名组、约队申请或支付订单引用时返回 409。
+      security: *bearerSecurity
+      parameters:
+        - $ref: "#/components/parameters/TeamID"
+      responses:
+        "200":
+          description: 解散成功（空 data）
+        <<: *standardErrors
 
   /api/v1/app/teams/{id}/join-password:
     put:
@@ -555,7 +567,7 @@ paths:
       operationId: finishAppMatch
       tags: [App Matches]
       summary: 主队/客队管理方收尾比赛（已结束/已取消）
-      description: 比赛需已过结束时间；主队队长或领队可用，线上约队已确认对手时客队队长或领队同样可用；状态只允许 ended / cancelled。
+      description: 标记 ended 需已过结束时间；标记 cancelled 不受时间限制（创建者赛前可取消）。主队队长可用，线上约队已确认对手时客队队长同样可用，散人约球由发布者操作；领队不参与。赛前支付（payment_mode=prepaid）的比赛暂不支持取消。状态只允许 ended / cancelled。
       security: *bearerSecurity
       parameters:
         - $ref: "#/components/parameters/MatchID"
@@ -2493,6 +2505,11 @@ components:
         opponent_name:
           type: string
           nullable: true
+        created_by_user_id:
+          type: integer
+          format: int64
+          nullable: true
+          description: 发布者用户 ID；散人约球无主队，小程序靠它判定「我创建的比赛」。
         players_per_team:
           type: integer
           format: int32

@@ -69,6 +69,14 @@ func TestAppManageRoutesForwardParamsAndReturnEmptyEnvelope(t *testing.T) {
 		t.Fatalf("remove member not forwarded: %+v", manage)
 	}
 
+	response = do(http.MethodDelete, "/teams/7", "")
+	if response.Code != http.StatusOK || !bytes.Contains(response.Body.Bytes(), []byte(`"code":0`)) {
+		t.Fatalf("delete team: status=%d body=%s", response.Code, response.Body.String())
+	}
+	if manage.deleteTeamID != 7 {
+		t.Fatalf("delete team not forwarded: %+v", manage)
+	}
+
 	response = do(http.MethodPut, "/teams/7/join-password", `{"join_password":"  pass123 "}`)
 	if response.Code != http.StatusOK || !bytes.Contains(response.Body.Bytes(), []byte(`"code":0`)) {
 		t.Fatalf("update join password: status=%d body=%s", response.Code, response.Body.String())
@@ -129,6 +137,7 @@ type fakeAppManageCommands struct {
 	removedUserID      int64
 	joinPassword       string
 	joinPasswordTeamID int64
+	deleteTeamID       int64
 }
 
 func (f *fakeAppManageCommands) UpdateProfile(_ context.Context, actor sharedauth.Actor, teamID int64, name, description, logoURL *string) error {
@@ -153,5 +162,10 @@ func (f *fakeAppManageCommands) UpdateMember(_ context.Context, actor sharedauth
 
 func (f *fakeAppManageCommands) RemoveMember(_ context.Context, actor sharedauth.Actor, teamID, userID int64) error {
 	f.actor, f.teamID, f.removedUserID = actor, teamID, userID
+	return f.err
+}
+
+func (f *fakeAppManageCommands) DeleteTeam(_ context.Context, actor sharedauth.Actor, teamID int64) error {
+	f.actor, f.deleteTeamID = actor, teamID
 	return f.err
 }

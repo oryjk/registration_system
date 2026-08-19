@@ -38,16 +38,18 @@ func NewUserHandler(service UserMatchUseCase, create CreateMatchUseCase, finish 
 }
 
 type UserMatchResponse struct {
-	ID                  string                         `json:"id"`
-	Name                string                         `json:"name"`
-	PublicationMode     domain.PublicationMode         `json:"publication_mode"`
-	OpponentState       domain.OpponentState           `json:"opponent_state"`
-	Status              domain.MatchStatus             `json:"status"`
-	HostTeamID          *int64                         `json:"host_team_id"`
-	HostTeamName        string                         `json:"host_team_name"`
-	AwayTeamID          *int64                         `json:"away_team_id"`
-	AwayTeamName        *string                        `json:"away_team_name"`
-	OpponentName        *string                        `json:"opponent_name"`
+	ID              string                 `json:"id"`
+	Name            string                 `json:"name"`
+	PublicationMode domain.PublicationMode `json:"publication_mode"`
+	OpponentState   domain.OpponentState   `json:"opponent_state"`
+	Status          domain.MatchStatus     `json:"status"`
+	HostTeamID      *int64                 `json:"host_team_id"`
+	HostTeamName    string                 `json:"host_team_name"`
+	AwayTeamID      *int64                 `json:"away_team_id"`
+	AwayTeamName    *string                `json:"away_team_name"`
+	OpponentName    *string                `json:"opponent_name"`
+	// 发布者用户 ID：散人约球无主队，小程序靠它判定「我创建的比赛」以显示取消入口。
+	CreatedByUserID     *int64                         `json:"created_by_user_id"`
 	PlayersPerTeam      int                            `json:"players_per_team"`
 	StartTime           time.Time                      `json:"start_time"`
 	EndTime             time.Time                      `json:"end_time"`
@@ -349,7 +351,7 @@ func mapUserMatch(item ports.MatchItem) UserMatchResponse {
 	return UserMatchResponse{
 		ID: match.ID.String(), Name: match.Name, PublicationMode: match.PublicationMode,
 		OpponentState: match.OpponentState, Status: match.Status,
-		HostTeamID: match.HostTeamID, HostTeamName: item.HostTeamName,
+		HostTeamID: match.HostTeamID, HostTeamName: item.HostTeamName, CreatedByUserID: match.CreatedByUserID,
 		AwayTeamID: match.AwayTeamID, AwayTeamName: item.AwayTeamName, OpponentName: match.OpponentName,
 		PlayersPerTeam: match.PlayersPerTeam, StartTime: match.StartTime, EndTime: match.EndTime,
 		RegistrationStartAt: match.RegistrationStartAt, RegistrationEndAt: match.RegistrationEndAt,

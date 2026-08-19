@@ -21,4 +21,7 @@ type AppManageRepository interface {
 	AddMember(context.Context, int64, int64, domain.Role) error
 	UpdateMember(context.Context, int64, int64, domain.Role, domain.MemberStatus) (bool, error)
 	RemoveMember(context.Context, int64, int64) (bool, error)
+	// Delete 删除球队（成员级联删除）；仍被比赛/报名组/约队申请/支付订单引用时
+	// 返回 ErrConflict。返回 found=false 表示球队不存在。
+	Delete(context.Context, int64) (bool, error)
 }

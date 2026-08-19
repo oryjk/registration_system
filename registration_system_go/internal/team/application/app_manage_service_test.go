@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	sharedauth "github.com/oryjk/registration_system/registration_system_go/internal/shared/auth"
@@ -268,6 +269,75 @@ func TestAppUpdateJoinPasswordRules(t *testing.T) {
 	}
 }
 
+func TestAppDeleteTeamRequiresCaptain(t *testing.T) {
+	cases := []struct {
+		name         string
+		actor        sharedauth.Actor
+		manager      domain.Member
+		managerFound bool
+	}{
+		{name: "领队", actor: managerActor(9), manager: domain.Member{UserID: 9, Role: domain.RoleLeader, Status: domain.MemberActive}, managerFound: true},
+		{name: "副队长", actor: managerActor(9), manager: domain.Member{UserID: 9, Role: domain.RoleViceCaptain, Status: domain.MemberActive}, managerFound: true},
+		{name: "普通队员", actor: managerActor(9), manager: domain.Member{UserID: 9, Role: domain.RoleMember, Status: domain.MemberActive}, managerFound: true},
+		{name: "非成员", actor: managerActor(9)},
+		{name: "admin actor", actor: sharedauth.Actor{Kind: sharedauth.ActorAdmin, ID: 1}},
+	}
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			repository := &fakeAppManageRepository{
+				team: domain.Team{ID: 7, Name: "东安联队", Status: domain.TeamActive}, teamFound: true,
+				manager: test.manager, managerFound: test.managerFound,
+				deleteFound: true,
+			}
+			if err := NewAppManageService(repository, plainHasher{}).DeleteTeam(context.Background(), test.actor, 7); !errors.Is(err, sharederror.ErrForbidden) {
+				t.Fatalf("expected forbidden, got %v", err)
+			}
+			if repository.deletedTeamID != 0 {
+				t.Fatalf("repository must not be touched: %+v", repository)
+			}
+		})
+	}
+}
+
+func TestAppDeleteTeamMapsRepositoryResults(t *testing.T) {
+	captainID := int64(42)
+	newRepository := func() *fakeAppManageRepository {
+		return &fakeAppManageRepository{
+			team: domain.Team{ID: 7, Name: "东安联队", Status: domain.TeamActive, CaptainID: &captainID}, teamFound: true,
+			manager:      domain.Member{TeamID: 7, UserID: captainID, Role: domain.RoleCaptain, Status: domain.MemberActive},
+			managerFound: true,
+			deleteFound:  true,
+		}
+	}
+
+	repository := newRepository()
+	if err := NewAppManageService(repository, plainHasher{}).DeleteTeam(context.Background(), managerActor(captainID), 7); err != nil {
+		t.Fatalf("captain should delete team: %v", err)
+	}
+	if repository.deletedTeamID != 7 {
+		t.Fatalf("delete not forwarded: %d", repository.deletedTeamID)
+	}
+
+	missingTeam := newRepository()
+	missingTeam.teamFound = false
+	if err := NewAppManageService(missingTeam, plainHasher{}).DeleteTeam(context.Background(), managerActor(captainID), 7); !errors.Is(err, sharederror.ErrNotFound) {
+		t.Fatalf("missing team must be not found, got %v", err)
+	}
+
+	missingOnDelete := newRepository()
+	missingOnDelete.deleteFound = false
+	if err := NewAppManageService(missingOnDelete, plainHasher{}).DeleteTeam(context.Background(), managerActor(captainID), 7); !errors.Is(err, sharederror.ErrNotFound) {
+		t.Fatalf("concurrently deleted team must be not found, got %v", err)
+	}
+
+	conflict := newRepository()
+	conflict.deleteErr = sharederror.ErrConflict
+	err := NewAppManageService(conflict, plainHasher{}).DeleteTeam(context.Background(), managerActor(captainID), 7)
+	if !errors.Is(err, sharederror.ErrConflict) || !strings.Contains(err.Error(), "球队已被比赛或申请使用") {
+		t.Fatalf("FK conflict must map to friendly message, got %v", err)
+	}
+}
+
 type fakeAppManageRepository struct {
 	team           domain.Team
 	teamFound      bool
@@ -288,6 +358,9 @@ type fakeAppManageRepository struct {
 	joinHashValue  *string
 	joinHashFound  bool
 	joinHashErr    error
+	deletedTeamID  int64
+	deleteFound    bool
+	deleteErr      error
 }
 
 func (f *fakeAppManageRepository) FindByID(context.Context, int64) (domain.Team, bool, error) {
@@ -351,4 +424,12 @@ func (f *fakeAppManageRepository) UpdateJoinPasswordHash(_ context.Context, team
 	f.joinHashTeamID = teamID
 	f.joinHashValue = hash
 	return f.joinHashFound, nil
+}
+
+func (f *fakeAppManageRepository) Delete(_ context.Context, teamID int64) (bool, error) {
+	if f.deleteErr != nil {
+		return false, f.deleteErr
+	}
+	f.deletedTeamID = teamID
+	return f.deleteFound, nil
 }

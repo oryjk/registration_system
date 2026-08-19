@@ -41,6 +41,10 @@ func (u FinishMatch) Execute(ctx context.Context, actor sharedauth.Actor, matchI
 	if !found {
 		return domain.Match{}, sharederror.New(sharederror.KindNotFound, "比赛不存在")
 	}
+	// 赛前支付已收款，退款能力就绪前禁止用户侧取消（赛后收尾为已结束不受影响）。
+	if command.Status == domain.MatchCancelled && match.PaymentMode == domain.PaymentPrepaid {
+		return domain.Match{}, sharederror.New(sharederror.KindConflict, "赛前支付的比赛暂不支持取消，请联系管理员处理")
+	}
 	if err := u.ensureTeamCaptainCanFinish(ctx, match, actor.ID); err != nil {
 		return domain.Match{}, err
 	}

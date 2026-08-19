@@ -150,6 +150,25 @@ func (s AppManageService) RemoveMember(ctx context.Context, actor sharedauth.Act
 	return nil
 }
 
+// DeleteTeam 解散球队：仅队长本人可操作（领队/副队长不可）。成员随级联删除；
+// 球队仍被比赛/报名组/约队申请/支付订单引用时数据库外键拒绝，映射为 409 提示。
+func (s AppManageService) DeleteTeam(ctx context.Context, actor sharedauth.Actor, teamID int64) error {
+	if _, err := s.authorizeCaptain(ctx, actor, teamID); err != nil {
+		return err
+	}
+	deleted, err := s.repository.Delete(ctx, teamID)
+	if errors.Is(err, sharederror.ErrConflict) {
+		return sharederror.New(sharederror.KindConflict, "球队已被比赛或申请使用，不能删除")
+	}
+	if err != nil {
+		return sharederror.Wrap(sharederror.KindInternal, "解散球队失败", err)
+	}
+	if !deleted {
+		return sharederror.New(sharederror.KindNotFound, "球队不存在")
+	}
+	return nil
+}
+
 func (s AppManageService) authorizeManager(ctx context.Context, actor sharedauth.Actor, teamID int64) (domain.Team, error) {
 	team, found, err := s.repository.FindByID(ctx, teamID)
 	if err != nil {
@@ -167,6 +186,23 @@ func (s AppManageService) authorizeManager(ctx context.Context, actor sharedauth
 	}
 	if !found || !member.CanManageTeam() {
 		return domain.Team{}, sharederror.ErrForbidden
+	}
+	return team, nil
+}
+
+// authorizeCaptain 在队长/领队管理权限之上再收紧为仅队长本人，用于解散球队等
+// 不可逆的收尾动作（与收尾比赛使用 IsCaptain 的规则一致）。
+func (s AppManageService) authorizeCaptain(ctx context.Context, actor sharedauth.Actor, teamID int64) (domain.Team, error) {
+	team, err := s.authorizeManager(ctx, actor, teamID)
+	if err != nil {
+		return domain.Team{}, err
+	}
+	member, found, err := s.repository.FindActiveMember(ctx, teamID, actor.ID)
+	if err != nil {
+		return domain.Team{}, sharederror.Wrap(sharederror.KindInternal, "查询球队权限失败", err)
+	}
+	if !found || !member.IsCaptain() {
+		return domain.Team{}, sharederror.New(sharederror.KindForbidden, "解散球队仅限队长本人操作")
 	}
 	return team, nil
 }

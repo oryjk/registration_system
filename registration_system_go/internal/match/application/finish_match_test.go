@@ -100,6 +100,46 @@ func TestFinishMatchRejectsMatchNotYetEnded(t *testing.T) {
 	}
 }
 
+func TestFinishMatchCancelsUpcomingMatchForHostManager(t *testing.T) {
+	match := endedMatch(domain.MatchRegistering)
+	match.EndTime = fixedClock().now.Add(2 * time.Hour)
+	repository := &fakeFinishMatchRepository{match: match, found: true}
+	useCase := NewFinishMatch(repository, &fakeTeamAccess{}, fixedClock())
+
+	updated, err := useCase.Execute(context.Background(), userActor(42), repository.match.ID, FinishMatchCommand{Status: domain.MatchCancelled})
+	if err != nil {
+		t.Fatalf("cancel upcoming match: %v", err)
+	}
+	if updated.Status != domain.MatchCancelled {
+		t.Fatalf("status = %s, want cancelled", updated.Status)
+	}
+}
+
+func TestFinishMatchRejectsCancellingPrepaidMatch(t *testing.T) {
+	match := endedMatch(domain.MatchRegistering)
+	match.PaymentMode = domain.PaymentPrepaid
+	match.EndTime = fixedClock().now.Add(2 * time.Hour)
+	repository := &fakeFinishMatchRepository{match: match, found: true}
+	useCase := NewFinishMatch(repository, &fakeTeamAccess{}, fixedClock())
+
+	_, err := useCase.Execute(context.Background(), userActor(42), repository.match.ID, FinishMatchCommand{Status: domain.MatchCancelled})
+	if !errors.Is(err, sharederror.ErrConflict) {
+		t.Fatalf("expected conflict for prepaid cancel, got %v", err)
+	}
+	if repository.updated.Status == domain.MatchCancelled {
+		t.Fatal("prepaid match must not be cancelled")
+	}
+
+	// 赛前支付只拦取消：过结束时间后正常收尾为已结束不受影响。
+	endedPrepaid := endedMatch(domain.MatchOngoing)
+	endedPrepaid.PaymentMode = domain.PaymentPrepaid
+	endedRepository := &fakeFinishMatchRepository{match: endedPrepaid, found: true}
+	endedUseCase := NewFinishMatch(endedRepository, &fakeTeamAccess{}, fixedClock())
+	if _, err := endedUseCase.Execute(context.Background(), userActor(42), endedRepository.match.ID, FinishMatchCommand{Status: domain.MatchEnded}); err != nil {
+		t.Fatalf("ending prepaid match after end time should still work: %v", err)
+	}
+}
+
 func TestFinishMatchRejectsInvalidStatus(t *testing.T) {
 	repository := &fakeFinishMatchRepository{match: endedMatch(domain.MatchOngoing), found: true}
 	useCase := NewFinishMatch(repository, &fakeTeamAccess{}, fixedClock())

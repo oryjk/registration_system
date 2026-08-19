@@ -286,6 +286,8 @@ func TestFinishByHost(t *testing.T) {
 		{name: "registering match ends after end time", status: MatchRegistering, next: MatchEnded, now: afterEnd, want: MatchEnded},
 		{name: "ongoing match ends after end time", status: MatchOngoing, next: MatchEnded, now: afterEnd, want: MatchEnded},
 		{name: "registering match cancelled after end time", status: MatchRegistering, next: MatchCancelled, now: afterEnd, want: MatchCancelled},
+		{name: "registering match cancelled before end time", status: MatchRegistering, next: MatchCancelled, now: ended.Add(-time.Hour), want: MatchCancelled},
+		{name: "ongoing match cancelled before end time", status: MatchOngoing, next: MatchCancelled, now: ended.Add(-time.Hour), want: MatchCancelled},
 		{name: "idempotent when already ended", status: MatchEnded, next: MatchEnded, now: afterEnd, want: MatchEnded},
 		{name: "idempotent when already cancelled", status: MatchCancelled, next: MatchCancelled, now: afterEnd, want: MatchCancelled},
 		{name: "rejects ended before end time", status: MatchOngoing, next: MatchEnded, now: ended.Add(-time.Minute), wantErr: true},
