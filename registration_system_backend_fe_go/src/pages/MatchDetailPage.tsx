@@ -86,6 +86,26 @@ function rosterColumns(
       </Tag>
     ),
   });
+  if (kind === "individual_opponent") {
+    columns.push(
+      {
+        title: "人数",
+        dataIndex: "registration_count",
+        render: (_, record) =>
+          record.registration_count > 1 ? (
+            <Tag color="blue">×{record.registration_count}</Tag>
+          ) : (
+            <Text type="secondary">1</Text>
+          ),
+      },
+      {
+        title: "支付",
+        dataIndex: "paid",
+        render: (_, record) =>
+          record.paid ? <Tag color="success">已付</Tag> : <Tag>未付</Tag>,
+      },
+    );
+  }
   return columns;
 }
 

@@ -55,6 +55,10 @@ export interface MatchRegistrationEntry {
   avatar_url: string | null;
   member_role: string | null;
   status: MatchRegistrationStatus;
+  /** 该行报名占用的人数；散人约球一人代多人时大于 1，其余恒为 1。 */
+  registration_count: number;
+  /** 报名费是否已支付（散人约球赛前支付场景）。 */
+  paid: boolean;
 }
 
 export interface RegistrationGroup {
