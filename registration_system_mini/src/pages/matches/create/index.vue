@@ -30,8 +30,6 @@ const form = reactive<MatchPublishFormModel>({
   locationLongitude: null as number | null,
   holdingDate: 0,
   matchEndTime: 0,
-  startTime: 0,
-  endTime: 0,
   opposing: "",
   description: "",
   playersPerTeam: "" as string | number,
@@ -49,14 +47,6 @@ function normalizeToMinute(timestamp: number) {
   const date = new Date(timestamp);
   date.setSeconds(0, 0);
   return date.getTime();
-}
-
-function defaultRegistrationStartTime(holdingDate: number) {
-  return normalizeToMinute(holdingDate - 24 * 60 * 60 * 1000);
-}
-
-function defaultRegistrationEndTime(holdingDate: number) {
-  return normalizeToMinute(holdingDate - 24 * 60 * 60 * 1000);
 }
 
 const timeValid = computed(() => {
@@ -121,8 +111,6 @@ function initDefaultForm() {
   form.locationLongitude = null;
   form.holdingDate = defaultHoldingDate;
   form.matchEndTime = defaultMatchEndDateTime(defaultHoldingDate);
-  form.startTime = defaultRegistrationStartTime(defaultHoldingDate);
-  form.endTime = defaultRegistrationEndTime(defaultHoldingDate);
   form.opposing = "";
   form.description = "";
   form.playersPerTeam = 8;
@@ -164,8 +152,6 @@ function applyActivityToForm(activity: Awaited<ReturnType<typeof getActivity>>) 
   form.locationLongitude = activity.location_longitude ?? null;
   form.holdingDate = parseBackendDateTime(activity.holding_date);
   form.matchEndTime = defaultMatchEndDateTime(form.holdingDate);
-  form.startTime = parseBackendDateTime(activity.start_time);
-  form.endTime = parseBackendDateTime(activity.end_time);
   form.opposing = activity.opposing ?? "";
   form.description = activity.description ?? "";
   form.playersPerTeam = activity.players_per_team ?? "";

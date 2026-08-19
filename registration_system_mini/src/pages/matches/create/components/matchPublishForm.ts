@@ -7,8 +7,6 @@ export interface MatchPublishFormModel {
   locationLongitude: number | null;
   holdingDate: number;
   matchEndTime: number;
-  startTime: number;
-  endTime: number;
   opposing: string;
   description: string;
   playersPerTeam: string | number;

@@ -10,8 +10,6 @@ function buildForm(overrides: Partial<MatchPublishFormModel> = {}): MatchPublish
     locationLongitude: 104.1,
     holdingDate: Date.parse("2026-08-20T10:00:00.000Z"),
     matchEndTime: Date.parse("2026-08-20T12:00:00.000Z"),
-    startTime: 0,
-    endTime: 0,
     opposing: "周末联队",
     description: "准时到场",
     playersPerTeam: 6,
@@ -45,6 +43,15 @@ describe("buildCreateMatchPayload", () => {
       location_longitude: 104.1,
       description: "准时到场",
     });
+  });
+
+  test("payload 不应携带 registration 窗口字段", () => {
+    // 表单不再暴露报名窗口；历史版本会把默认的相等时间对发给后端，
+    // 触发“报名结束时间必须晚于报名开始时间”导致创建失败。
+    const payload = buildCreateMatchPayload(buildForm(), hostTeam);
+
+    expect("registration_start_at" in payload).toEqual(false);
+    expect("registration_end_at" in payload).toEqual(false);
   });
 
   test("maps online team recruitment without a handwritten opponent", () => {
