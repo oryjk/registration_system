@@ -29,6 +29,9 @@ type OrderRepository interface {
 	Get(context.Context, string) (paymentdomain.Order, error)
 	List(context.Context, OrderFilter) ([]paymentdomain.Order, int64, error)
 	Cancel(context.Context, string, time.Time) (paymentdomain.Order, error)
+	// CancelPendingForMatch 关闭同一比赛同一用户全部未支付的报名费订单；
+	// 调整报名人数后重新下单前调用，避免旧金额订单被误付。
+	CancelPendingForMatch(context.Context, uuid.UUID, int64, time.Time) error
 }
 
 type UserOpenIDReader interface {

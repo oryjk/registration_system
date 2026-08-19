@@ -97,3 +97,9 @@ SET balance_cents = balance_cents + $2,
     updated_at = NOW()
 WHERE user_id = $1
 RETURNING *;
+
+-- name: CancelPendingMatchRegistrationOrders :execrows
+-- 改人数后重新下单前关闭同比赛同人的遗留未付订单，避免旧金额订单被误付。
+UPDATE payment_orders
+SET status = 'cancelled', cancelled_at = $3, updated_at = $3
+WHERE match_id = $1 AND user_id = $2 AND kind = 'match_registration' AND status = 'pending';

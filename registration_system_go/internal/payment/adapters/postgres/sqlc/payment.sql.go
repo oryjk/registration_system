@@ -47,6 +47,27 @@ func (q *Queries) CancelPaymentOrder(ctx context.Context, arg CancelPaymentOrder
 	return i, err
 }
 
+const cancelPendingMatchRegistrationOrders = `-- name: CancelPendingMatchRegistrationOrders :execrows
+UPDATE payment_orders
+SET status = 'cancelled', cancelled_at = $3, updated_at = $3
+WHERE match_id = $1 AND user_id = $2 AND kind = 'match_registration' AND status = 'pending'
+`
+
+type CancelPendingMatchRegistrationOrdersParams struct {
+	MatchID     pgtype.UUID        `json:"match_id"`
+	UserID      int64              `json:"user_id"`
+	CancelledAt pgtype.Timestamptz `json:"cancelled_at"`
+}
+
+// 改人数后重新下单前关闭同比赛同人的遗留未付订单，避免旧金额订单被误付。
+func (q *Queries) CancelPendingMatchRegistrationOrders(ctx context.Context, arg CancelPendingMatchRegistrationOrdersParams) (int64, error) {
+	result, err := q.db.Exec(ctx, cancelPendingMatchRegistrationOrders, arg.MatchID, arg.UserID, arg.CancelledAt)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const countPaymentOrders = `-- name: CountPaymentOrders :one
 SELECT COUNT(*) FROM payment_orders
 WHERE ($1::bigint = 0 OR user_id = $1)

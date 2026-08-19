@@ -76,6 +76,13 @@ func (r *Repository) MarkFailed(ctx context.Context, orderNo string, now time.Ti
 	return nil
 }
 
+func (r *Repository) CancelPendingForMatch(ctx context.Context, matchID uuid.UUID, userID int64, now time.Time) error {
+	_, err := r.queries.CancelPendingMatchRegistrationOrders(ctx, paymentsqlc.CancelPendingMatchRegistrationOrdersParams{
+		MatchID: matchIDToSQL(&matchID), UserID: userID, CancelledAt: timestamptz(now),
+	})
+	return err
+}
+
 func (r *Repository) Get(ctx context.Context, orderNo string) (paymentdomain.Order, error) {
 	row, err := r.queries.GetPaymentOrder(ctx, orderNo)
 	if errors.Is(err, pgx.ErrNoRows) {

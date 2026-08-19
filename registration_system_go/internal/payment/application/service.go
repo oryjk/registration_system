@@ -147,6 +147,10 @@ func (s *Service) CreateMatchRegistration(ctx context.Context, actor sharedauth.
 		return CreateRechargeResult{}, err
 	}
 	now := s.clock.Now()
+	// 调整人数后重新下单：先关闭同比赛同人的遗留未付订单，避免旧金额订单被误付。
+	if err := s.orders.CancelPendingForMatch(ctx, command.MatchID, actor.ID, now); err != nil {
+		return CreateRechargeResult{}, err
+	}
 	order, err := paymentdomain.NewMatchRegistrationOrder(s.orderNos.NewOrderNo(), actor.ID, command.MatchID, fee.AmountCents, now)
 	if err != nil {
 		return CreateRechargeResult{}, err

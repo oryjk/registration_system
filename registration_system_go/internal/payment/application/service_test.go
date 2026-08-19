@@ -132,6 +132,11 @@ type fakePaymentStore struct {
 	balance           int64
 	creditCalls       int
 	membershipApplies []paymentports.TeamFundCredit
+	pendingCancels    struct {
+		MatchID uuid.UUID
+		UserID  int64
+		At      time.Time
+	}
 }
 
 func newFakePaymentStore() *fakePaymentStore { return &fakePaymentStore{} }
@@ -163,6 +168,13 @@ func (f *fakePaymentStore) MarkFailed(_ context.Context, orderNo string, now tim
 		return sharederror.ErrNotFound
 	}
 	return f.order.MarkFailed(now)
+}
+
+func (f *fakePaymentStore) CancelPendingForMatch(_ context.Context, matchID uuid.UUID, userID int64, now time.Time) error {
+	f.pendingCancels.MatchID = matchID
+	f.pendingCancels.UserID = userID
+	f.pendingCancels.At = now
+	return nil
 }
 
 func (f *fakePaymentStore) Get(_ context.Context, orderNo string) (paymentdomain.Order, error) {
@@ -408,4 +420,21 @@ func (f pricedRegistrationFees) RegistrationFee(_ context.Context, matchID uuid.
 		return paymentports.MatchRegistrationFee{}, sharederror.New(sharederror.KindNotFound, "比赛不存在")
 	}
 	return f.fee, nil
+}
+
+func TestCreateMatchRegistrationCancelsStalePendingOrders(t *testing.T) {
+	store := newFakePaymentStore()
+	gateway := &fakeGateway{unified: paymentports.UnifiedOrderResult{PrepayID: "prepay-m1", Parameters: paymentports.JSAPIParameters{Package: "prepay_id=prepay-m1"}}}
+	fees := pricedRegistrationFees{fee: paymentports.MatchRegistrationFee{MatchID: uuid.MustParse("11111111-1111-1111-1111-111111111111"), AmountCents: 7500}}
+	service := NewService(store, store, gateway, store, store, allowTeams{}, fees, store, fixedOrderNumbers{"P-match-1"}, fixedClock{time.Unix(100, 0)})
+
+	if _, err := service.CreateMatchRegistration(context.Background(), userActor(37), CreateMatchRegistrationCommand{MatchID: fees.fee.MatchID}); err != nil {
+		t.Fatal(err)
+	}
+	if store.pendingCancels.MatchID != fees.fee.MatchID || store.pendingCancels.UserID != 37 {
+		t.Fatalf("stale pending orders must be closed for the same match and user: %+v", store.pendingCancels)
+	}
+	if store.pendingCancels.At.IsZero() {
+		t.Fatal("stale pending orders must be closed with a timestamp")
+	}
 }
