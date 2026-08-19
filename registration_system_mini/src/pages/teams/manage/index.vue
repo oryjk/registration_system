@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import AppTabHeader from "@/components/AppTabHeader.vue";
 import NeoButton from "@/components/neo/NeoButton.vue";
+import NeoConfirmDialog from "@/components/neo/NeoConfirmDialog.vue";
 import NeoSegmentedControl from "@/components/neo/NeoSegmentedControl.vue";
 import NeoSurface from "@/components/neo/NeoSurface.vue";
 import MemberAttendancePopup from "./components/MemberAttendancePopup.vue";
 import MemberEditPopup from "./components/MemberEditPopup.vue";
 import TeamActivityAttendancePanel from "./components/TeamActivityAttendancePanel.vue";
+import TeamDissolvePanel from "./components/TeamDissolvePanel.vue";
 import TeamJoinPasswordPanel from "./components/TeamJoinPasswordPanel.vue";
 import TeamMemberManager from "./components/TeamMemberManager.vue";
 import TeamProfilePanel from "./components/TeamProfilePanel.vue";
@@ -68,6 +70,13 @@ const {
   handleUpdateTeamProfile,
   handleUpdateJoinPassword,
   handleClearJoinPassword,
+  canDissolveTeam,
+  dissolveDialogVisible,
+  dissolveDialogState,
+  handleDissolveTeam,
+  handleDissolvePrimary,
+  handleDissolveSecondary,
+  handleDissolveClose,
   handleEditMember,
   handleSearchUsers,
   handleCandidateTap,
@@ -124,6 +133,12 @@ function handleGoBack() {
             :submitting="submitting"
             @submit="handleUpdateJoinPassword"
             @clear="handleClearJoinPassword"
+          />
+
+          <TeamDissolvePanel
+            v-if="canDissolveTeam"
+            :submitting="submitting"
+            @dissolve="handleDissolveTeam"
           />
         </template>
 
@@ -210,6 +225,20 @@ function handleGoBack() {
       :attendance-status-label="attendanceStatusLabel"
       @close="closeAttendancePopup"
       @toggle-year="toggleAttendanceYear"
+    />
+
+    <NeoConfirmDialog
+      :visible="dissolveDialogVisible"
+      :title="dissolveDialogState.title"
+      :message="dissolveDialogState.message"
+      :highlight="dissolveDialogState.highlight"
+      :image-src="dissolveDialogState.imageSrc"
+      :primary-text="dissolveDialogState.primaryText"
+      :secondary-text="dissolveDialogState.secondaryText"
+      :primary-tone="dissolveDialogState.primaryTone"
+      @primary="handleDissolvePrimary"
+      @secondary="handleDissolveSecondary"
+      @close="handleDissolveClose"
     />
   </view>
 </template>

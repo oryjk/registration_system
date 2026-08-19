@@ -1,5 +1,6 @@
 import {
   addTeamMember,
+  deleteTeam,
   getTeamMatchAttendance,
   getTeamMemberAttendance,
   removeTeamMember,
@@ -40,6 +41,11 @@ export function searchTeamCandidates(keyword: string, limit = 8) {
 // joinPassword 非空=设置/替换入队密码；空串=清除（开放加入）。
 export function updateJoinPasswordFromForm(teamId: number, joinPassword: string) {
   return updateTeamJoinPassword(teamId, joinPassword);
+}
+
+/** 解散球队（仅队长）；被比赛/报名等数据引用时后端以 409 文案拒绝。 */
+export function dissolveTeam(teamId: number) {
+  return deleteTeam(teamId);
 }
 
 export function addMemberToTeam(

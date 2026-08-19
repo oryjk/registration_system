@@ -154,6 +154,15 @@ export function updateTeam(
   });
 }
 
+/** 解散球队（Go app 侧接口，仅队长本人可操作）；球队仍被比赛等数据引用时后端返回 409。 */
+export function deleteTeam(teamId: number) {
+  return requestApi<void>({
+    url: `/teams/${teamId}`,
+    method: "DELETE",
+    auth: true,
+  });
+}
+
 /** 添加队员（Go app 侧接口，仅该队队长/领队可操作）。Go 模型只有 role/status，不支持球衣号等 legacy 字段。 */
 export function addTeamMember(
   teamId: number,

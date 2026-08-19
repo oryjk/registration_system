@@ -8,6 +8,7 @@ import type { BackendTeamMember, BackendUser } from "@/types/backend";
 import { loadUsersById } from "./teamManageActions";
 import { formatAttendanceDate, type TeamManageMode } from "./teamManageState";
 import { useTeamAttendance } from "./useTeamAttendance";
+import { useTeamDissolve } from "./useTeamDissolve";
 import { useTeamJoinPassword } from "./useTeamJoinPassword";
 import { useTeamMembership } from "./useTeamMembership";
 import { useTeamProfile } from "./useTeamProfile";
@@ -51,6 +52,7 @@ export function useTeamManagePage() {
 
   const profile = useTeamProfile({ currentTeam, submitting, refreshSessionContext });
   const passwordPanel = useTeamJoinPassword({ currentTeam, submitting });
+  const dissolve = useTeamDissolve({ currentTeam, submitting, refreshSessionContext });
   const attendance = useTeamAttendance({ currentTeam, currentUser, currentMembers, usersById, ensureTeamDetailLoaded });
   const membership = useTeamMembership({
     currentTeam,
@@ -114,6 +116,7 @@ export function useTeamManagePage() {
     goJoinTeam,
     ...profile,
     ...passwordPanel,
+    ...dissolve,
     ...attendance,
     ...membership,
   };
