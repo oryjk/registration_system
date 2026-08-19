@@ -57,7 +57,7 @@
 
 ### 5.1 数据库迁移（`db/migrations/00019_tip.sql`，暂名）
 
-1. `payment_orders.kind` 的 CHECK 约束扩展加入 `'tip'`（照 00017 先例：drop + add constraint；kind 列已是 VARCHAR(32)）。
+1. `payment_orders.kind` 的 CHECK 约束重建：drop + add，**保留全部既有值**（`recharge` / `team_membership` / `match_registration`）再加入 `tip`（照 00017 先例；kind 列已是 VARCHAR(32)）；不触碰 `payment_orders_match_shape_check`（tip 无 match_id/team_id，天然满足）。
 2. 新表 `tips`：
 
 | 列 | 类型 | 说明 |
@@ -82,7 +82,7 @@
 
 - `CreateTip(ctx, userID, amountCents, suggestion)`：
   1. 生成订单号、构造 `NewTipOrder`、落库 pending；
-  2. 读取用户昵称快照，写入 `tips`（status=pending）；
+  2. 读取用户昵称快照（**扩展现有 users 只读端口**：`internal/payment/ports/ports.go` 的 `UserOpenIDReader` 旁新增 `NicknameForUser(ctx, userID)`，由 users 仓储适配实现），写入 `tips`（status=pending）；
   3. 取 openid → `gateway.UnifiedOrder` → `SavePrepared` → 返回 JSAPI 支付参数（复用 recharge 的编排形态）。
 - `settleVerified` 新增 `KindTip` case：事务内 MarkPaid + `tips.status → submitted`（幂等：订单已 paid 时跳过）。结算实现放 postgres 仓储（照 `ApplyRegistrationPayment` 模式：FOR UPDATE + 金额校验 + kind 校验）。
 - 建议文本不参与签名/支付描述（微信 body 用固定"请开发者喝咖啡"）。
@@ -91,8 +91,8 @@
 
 | 路由 | 鉴权 | 请求 | 响应 |
 | --- | --- | --- | --- |
-| `POST /api/v1/app/payments/tip-orders` | 用户 JWT | `{ amount_cents: int, suggestion?: string(≤500) }` | `{ order_no, pay_params }`（同 recharge 响应结构） |
-| `GET /api/v1/admin/payments/tips` | 管理员 JWT | 分页 + 可选时间倒序 | 已支付打赏列表：order_no、user_id、nickname、amount_cents、suggestion、submitted_at |
+| `POST /api/v1/app/payments/tip-orders` | 用户 JWT | `{ amount_cents: int, suggestion?: string(≤500) }` | `{ order: { order_no, ... }, payment: { timeStamp, ... } }` —— **完全复用 recharge 的 `CreateRechargeResponse` 结构**（`{order, payment}` 两段），小程序端沿用既有 `GoPaymentOrderResult` 类型解析 |
+| `GET /api/v1/admin/payments/tips` | 管理员 JWT | 分页（按 `submitted_at` 倒序） | 已支付打赏列表：order_no、user_id、nickname、amount_cents、suggestion、submitted_at |
 
 支付回调复用现有 `POST /api/v1/webhooks/wechat-pay`，无需新回调路由；sync 兜底接口对 tip 订单同样适用。
 
@@ -124,6 +124,6 @@
 ## 9. 实施顺序（单计划内）
 
 1. 后端迁移 + 领域 + 应用 + 仓储（TDD）→ HTTP 路由与测试。
-2. 小程序：API 封装 → 联系开发者页面 → "我的"页面入口调整。
+2. 小程序：API 封装 → 联系开发者页面（含 `src/pages.json` 注册 `/pages/user/contact-developer/index`）→ "我的"页面入口调整。
 3. 管理端：API + 打赏与建议页面。
 4. 全量验证 + 验收环境部署 + 真机支付测试。
