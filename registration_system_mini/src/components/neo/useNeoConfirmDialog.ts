@@ -4,6 +4,8 @@ import type { NeoConfirmDialogTone } from "./NeoConfirmDialog.vue";
 export interface NeoConfirmDialogOptions {
   title: string;
   content: string;
+  /** message 下方展示的图片（如微信二维码），随提示一起渲染。 */
+  imageSrc?: string;
   confirmText?: string;
   cancelText?: string;
   /** 需要在内容中醒目展示的文本（如比赛名称），命中后用高亮样式渲染。 */
@@ -19,6 +21,7 @@ export interface NeoConfirmDialogOptions {
 export interface NeoConfirmDialogState {
   title: string;
   message: string;
+  imageSrc: string;
   highlight: string;
   linkText: string;
   primaryText: string;
@@ -37,6 +40,7 @@ export function useNeoConfirmDialog() {
   const confirmDialogState = reactive<NeoConfirmDialogState>({
     title: "",
     message: "",
+    imageSrc: "",
     highlight: "",
     linkText: "",
     primaryText: "确认",
@@ -54,6 +58,7 @@ export function useNeoConfirmDialog() {
     }
     confirmDialogState.title = options.title;
     confirmDialogState.message = options.content;
+    confirmDialogState.imageSrc = options.imageSrc ?? "";
     confirmDialogState.highlight = options.highlight ?? "";
     confirmDialogState.linkText = options.linkText ?? "";
     confirmDialogState.primaryText = options.confirmText ?? "确认";

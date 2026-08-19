@@ -261,6 +261,7 @@ function handleCreateIndividualChallenge() {
       :message="confirmDialogState.message"
       :highlight="confirmDialogState.highlight"
       :link-text="confirmDialogState.linkText"
+      :image-src="confirmDialogState.imageSrc"
       :primary-text="confirmDialogState.primaryText"
       :secondary-text="confirmDialogState.secondaryText"
       :primary-tone="confirmDialogState.primaryTone"

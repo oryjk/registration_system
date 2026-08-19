@@ -13,6 +13,8 @@ const props = withDefaults(
     highlight?: string;
     /** message 中需要可点击跳转的片段（与 highlight 互斥，优先命中），命中后以链接样式渲染。 */
     linkText?: string;
+    /** message 下方展示的图片（如微信联系二维码），宽度固定、等比缩放。 */
+    imageSrc?: string;
     primaryText?: string;
     secondaryText?: string;
     primaryTone?: NeoConfirmDialogTone;
@@ -22,6 +24,7 @@ const props = withDefaults(
     message: "",
     highlight: "",
     linkText: "",
+    imageSrc: "",
     primaryText: "确认",
     secondaryText: "再想想",
     primaryTone: "accent",
@@ -82,6 +85,7 @@ function handleClose() {
         </view>
         <view class="neo-confirm-dialog-close" @tap="handleClose">×</view>
       </view>
+      <image v-if="imageSrc" class="neo-confirm-dialog-image" :src="imageSrc" mode="widthFix" />
       <view :class="['neo-confirm-dialog-actions', secondaryText ? '' : 'neo-confirm-dialog-actions-single']">
         <NeoButton v-if="secondaryText" variant="outline" block :disabled="loading" @click="handleSecondary">
           {{ secondaryText }}
@@ -165,6 +169,17 @@ function handleClose() {
   font-weight: 900;
   text-decoration: underline;
   text-underline-offset: 6rpx;
+}
+
+.neo-confirm-dialog-image {
+  display: block;
+  width: 320rpx;
+  margin-top: 26rpx;
+  margin-left: auto;
+  margin-right: auto;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-md);
+  background: var(--neo-color-surface);
 }
 
 .neo-confirm-dialog-close {
