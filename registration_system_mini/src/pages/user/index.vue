@@ -23,7 +23,6 @@ const {
   displayName,
   showInitialLoadingState,
   visibleErrorMessage,
-  messageSummary,
   contentStyle,
   creditCardSummary,
   currentTeamJoinedDaysLabel,
@@ -38,7 +37,6 @@ const {
   handleLogout,
   handleSwitchTeam,
   openTeamManage,
-  openNotifications,
   openUserMatches,
   openMatchDetail,
   openBilling,
@@ -110,10 +108,8 @@ onUnload(() => {
 
           <MineServiceGrid
             :current-team="currentTeam"
-            :message-summary="messageSummary"
             :credit-card-summary="creditCardSummary"
             :is-paying-membership="isPayingMembership"
-            @open-notifications="openNotifications"
             @renew-membership="handleMembershipRenewal"
           />
 

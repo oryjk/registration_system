@@ -28,7 +28,7 @@ export function useMinePage() {
     refreshSessionContext,
   } = useTeamContext();
   const { shouldHideCreationEntrances } = useMiniReviewStatus();
-  const { unreadCount, setUnreadCount } = useNotificationCenter();
+  const { setUnreadCount } = useNotificationCenter();
   const navMetrics = getCustomNavMetrics();
 
   const isLoading = ref(false);
@@ -54,9 +54,6 @@ export function useMinePage() {
   const settingsEntryVisible = computed(() => currentUser.value?.id === PRODUCT_OWNER_USER_ID);
   const showInitialLoadingState = computed(() => isLoading.value && !hasLoadedOnce.value);
   const visibleErrorMessage = computed(() => currentUser.value ? errorMessage.value : "");
-  const messageSummary = computed(() =>
-    unreadCount.value > 0 ? `约队发布、约成、取消等消息共 ${unreadCount.value} 条未读` : "约队发布、约成、取消等消息会先站内通知",
-  );
   const latestCreditRecord = computed(() => creditTransactions.value[0] ?? null);
   const contentStyle = computed(() => ({
     paddingTop: `${navMetrics.pageTopPadding + 8}px`,
@@ -214,10 +211,6 @@ export function useMinePage() {
     return openTeamDetail(teamId);
   }
 
-  function openNotifications() {
-    uni.navigateTo({ url: "/pages/notifications/index" });
-  }
-
   function openUserMatches() {
     uni.navigateTo({ url: "/pages/user/matches/index" });
   }
@@ -287,7 +280,6 @@ export function useMinePage() {
     displayName,
     showInitialLoadingState,
     visibleErrorMessage,
-    messageSummary,
     contentStyle,
     creditCardSummary,
     currentTeamJoinedDaysLabel,
@@ -302,7 +294,6 @@ export function useMinePage() {
     handleLogout,
     handleSwitchTeam,
     openTeamManage,
-    openNotifications,
     openUserMatches,
     openMatchDetail,
     openBilling,

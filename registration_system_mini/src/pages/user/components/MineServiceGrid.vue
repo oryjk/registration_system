@@ -7,35 +7,23 @@ import type { TeamProfileViewModel } from "@/types/viewModels";
 
 defineProps<{
   currentTeam: TeamProfileViewModel | null;
-  messageSummary: string;
   creditCardSummary: string;
   isPayingMembership: boolean;
 }>();
 
 const emit = defineEmits<{
-  (event: "openNotifications"): void;
   (event: "renewMembership"): void;
 }>();
 </script>
 
 <template>
   <view class="mine-service-section">
-    <NeoSectionHeader title="账户与服务" marker="服" caption="消息、信用和球队会员" />
+    <NeoSectionHeader title="账户与服务" marker="服" caption="信用和球队会员" />
 
     <view class="mine-service-grid">
-      <NeoSurface interactive custom-class="mine-service-card" @press="emit('openNotifications')">
-        <view class="mine-service-card__head">
-          <text class="mine-service-card__index">01</text>
-          <NeoTag tone="blue" size="sm">消息</NeoTag>
-        </view>
-        <text class="mine-service-card__title">消息中心</text>
-        <text class="mine-service-card__copy">{{ messageSummary }}</text>
-        <text class="mine-service-card__link">进入 →</text>
-      </NeoSurface>
-
       <NeoSurface custom-class="mine-service-card">
         <view class="mine-service-card__head">
-          <text class="mine-service-card__index">02</text>
+          <text class="mine-service-card__index">01</text>
           <NeoTag tone="green" size="sm">{{ currentTeam?.trustLabel || "待积累" }}</NeoTag>
         </view>
         <text class="mine-service-card__title">球队信用</text>
@@ -49,7 +37,7 @@ const emit = defineEmits<{
       >
         <view class="mine-service-card__membership-copy">
           <view class="mine-service-card__head">
-            <text class="mine-service-card__index">03</text>
+            <text class="mine-service-card__index">02</text>
             <NeoTag :tone="currentTeam.isVip ? 'lime' : 'amber'" size="sm">
               {{ currentTeam.isVip ? "会员有效" : "待续费" }}
             </NeoTag>
@@ -117,8 +105,7 @@ const emit = defineEmits<{
 
 .mine-service-card__title,
 .mine-service-card__copy,
-.mine-service-card__score,
-.mine-service-card__link {
+.mine-service-card__score {
   display: block;
 }
 
@@ -145,14 +132,6 @@ const emit = defineEmits<{
   font-weight: 700;
   line-height: 1.45;
   word-break: break-word;
-}
-
-.mine-service-card__link {
-  margin-top: auto;
-  padding-top: 16rpx;
-  color: var(--neo-color-text);
-  font-size: 22rpx;
-  font-weight: 900;
 }
 
 .mine-service-card__membership-copy {
