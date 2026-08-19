@@ -160,7 +160,6 @@ function handleCreateIndividualChallenge() {
           <view :class="['custom-tab-plus', isOpen ? 'custom-tab-plus-open' : '']" @tap="openSheet">
             <text class="custom-tab-plus-symbol">{{ isOpen ? "×" : "+" }}</text>
           </view>
-          <text class="custom-tab-label custom-tab-label-active">创建</text>
         </view>
 
         <view
@@ -381,15 +380,17 @@ function handleCreateIndividualChallenge() {
   filter: grayscale(1);
 }
 
+/* 与中间「+」按钮同一 neo 语言：青柠色块 + 墨色描边 + 硬偏移阴影。 */
 .create-menu-action-button {
   display: flex;
   align-items: center;
   justify-content: center;
   width: 116rpx;
   height: 116rpx;
-  border-radius: var(--neo-radius-round);
-  background: var(--neo-color-overlay-panel);
-  box-shadow: var(--neo-shadow-modal);
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-md);
+  background: var(--neo-color-accent);
+  box-shadow: 4rpx 4rpx 0 var(--neo-color-text);
 }
 
 .create-menu-action-icon {
@@ -399,7 +400,7 @@ function handleCreateIndividualChallenge() {
 }
 
 .create-menu-icon-match {
-  border: 6rpx solid var(--neo-color-accent);
+  border: 6rpx solid var(--neo-color-text);
   border-radius: 14rpx;
   box-sizing: border-box;
 }
@@ -411,7 +412,7 @@ function handleCreateIndividualChallenge() {
   bottom: 0;
   width: 6rpx;
   margin-left: -3rpx;
-  background: var(--neo-color-accent);
+  background: var(--neo-color-text);
 }
 
 .create-menu-field-circle {
@@ -422,21 +423,21 @@ function handleCreateIndividualChallenge() {
   height: 18rpx;
   margin-left: -9rpx;
   margin-top: -9rpx;
-  border: 5rpx solid var(--neo-color-accent);
+  border: 5rpx solid var(--neo-color-text);
   border-radius: var(--neo-radius-round);
   box-sizing: border-box;
-  background: var(--neo-color-overlay-panel);
+  background: var(--neo-color-surface);
 }
 
 .create-menu-icon-ball {
-  border: 6rpx solid var(--neo-color-accent);
+  border: 6rpx solid var(--neo-color-text);
   border-radius: var(--neo-radius-round);
   box-sizing: border-box;
 }
 
 .create-menu-ball-panel {
   position: absolute;
-  background: var(--neo-color-accent);
+  background: var(--neo-color-text);
   border-radius: var(--neo-radius-round);
 }
 
@@ -485,7 +486,7 @@ function handleCreateIndividualChallenge() {
   width: 16rpx;
   height: 16rpx;
   border-radius: var(--neo-radius-round);
-  background: var(--neo-color-accent);
+  background: var(--neo-color-text);
 }
 
 .create-menu-person-body {
@@ -493,7 +494,7 @@ function handleCreateIndividualChallenge() {
   height: 22rpx;
   margin-top: 3rpx;
   border-radius: 12rpx 12rpx 5rpx 5rpx;
-  background: var(--neo-color-accent);
+  background: var(--neo-color-text);
 }
 
 .create-menu-person-side .create-menu-person-head {

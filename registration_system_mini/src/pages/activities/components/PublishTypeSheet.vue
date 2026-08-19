@@ -127,23 +127,24 @@ function handlePublishIndividual() {
   align-items: center;
   justify-content: center;
   border: var(--neo-border-default);
-  border-radius: var(--neo-radius-round);
+  border-radius: var(--neo-radius-md);
 }
 
-/* 与 BottomTabBar 创建菜单按钮保持一致：深色面板 + 柔和 modal 阴影，不用硬偏移重叠阴影。 */
+/* 与 BottomTabBar 创建菜单按钮保持一致：青柠色块 + 墨色描边 + 硬偏移阴影。 */
 .publish-menu-action-button {
   display: flex;
   align-items: center;
   justify-content: center;
   width: 116rpx;
   height: 116rpx;
-  border-radius: var(--neo-radius-round);
-  background: var(--neo-color-overlay-panel);
-  box-shadow: var(--neo-shadow-modal);
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-md);
+  background: var(--neo-color-accent);
+  box-shadow: 4rpx 4rpx 0 var(--neo-color-text);
 }
 
 .publish-menu-action-icon {
-  color: var(--neo-color-accent);
+  color: var(--neo-color-text);
   font-size: 38rpx;
   font-weight: 900;
 }
@@ -162,6 +163,7 @@ function handlePublishIndividual() {
   margin-left: -48rpx;
   background: var(--neo-color-accent);
   color: var(--neo-color-text);
+  box-shadow: 4rpx 4rpx 0 var(--neo-color-text);
   opacity: 0;
   transform: translateY(72rpx) rotate(-90deg) scale(0.84);
   transition: opacity 260ms ease, transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
