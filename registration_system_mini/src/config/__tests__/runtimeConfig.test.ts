@@ -46,6 +46,22 @@ describe("mini app runtime config", () => {
     ).toEqual(true);
   });
 
+  test("debug switches stay off by default and accept backend opt-in", () => {
+    expect(defaultMiniAppRuntimeConfig.debug).toEqual({
+      clear_profile_enabled: false,
+      review_status_toggle_enabled: false,
+    });
+    expect(sanitizeMiniAppRuntimeConfig({}).debug.review_status_toggle_enabled).toEqual(false);
+    expect(
+      sanitizeMiniAppRuntimeConfig({
+        debug: { review_status_toggle_enabled: true },
+      }).debug,
+    ).toEqual({
+      clear_profile_enabled: false,
+      review_status_toggle_enabled: true,
+    });
+  });
+
   test("sanitizes home hero banners and keeps a default fallback", () => {
     const config = sanitizeMiniAppRuntimeConfig({
       home: {

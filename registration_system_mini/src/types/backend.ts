@@ -467,6 +467,7 @@ export interface BackendMiniAppRuntimeConfig {
   };
   debug: {
     clear_profile_enabled: boolean;
+    review_status_toggle_enabled: boolean;
   };
 }
 

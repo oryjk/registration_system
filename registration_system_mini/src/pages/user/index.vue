@@ -30,10 +30,13 @@ const {
   mineStats,
   walletSummary,
   debugClearProfileEnabled,
+  debugReviewToggleEnabled,
+  reviewMode,
   loadPageData,
   handleEditProfile,
   handleCompleteProfile,
   handleDebugClearProfile,
+  handleDebugToggleReviewStatus,
   handleLogin,
   handleLogout,
   handleSwitchTeam,
@@ -127,6 +130,22 @@ onUnload(() => {
               <text class="mine-debug-tools__label">清除头像和昵称（验证入口）</text>
             </view>
             <text class="mine-debug-tools__hint">由管理端「系统设置」开关控制，仅用于验证资料完善引导</text>
+          </view>
+
+          <view v-if="debugReviewToggleEnabled" class="mine-debug-tools">
+            <view
+              class="mine-debug-tools__button"
+              hover-class="mine-debug-tools__button--pressed"
+              :hover-stay-time="100"
+              @click="handleDebugToggleReviewStatus"
+            >
+              <text class="mine-debug-tools__label">
+                切换审核状态（当前：{{ reviewMode ? "审核中" : "已过审" }}）
+              </text>
+            </view>
+            <text class="mine-debug-tools__hint">
+              针对当前小程序版本的验证入口，切换后全量用户创建入口显隐立即变化
+            </text>
           </view>
         </template>
       </template>

@@ -92,6 +92,10 @@ export function sanitizeMiniAppRuntimeConfig(input?: RuntimeConfigInput | null):
         typeof input?.debug?.clear_profile_enabled === "boolean"
           ? input.debug.clear_profile_enabled
           : defaults.debug.clear_profile_enabled,
+      review_status_toggle_enabled:
+        typeof input?.debug?.review_status_toggle_enabled === "boolean"
+          ? input.debug.review_status_toggle_enabled
+          : defaults.debug.review_status_toggle_enabled,
     },
   };
 }

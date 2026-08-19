@@ -38,5 +38,6 @@ export const defaultMiniAppRuntimeConfig: BackendMiniAppRuntimeConfig = {
   },
   debug: {
     clear_profile_enabled: false,
+    review_status_toggle_enabled: false,
   },
 };
