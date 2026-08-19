@@ -159,9 +159,9 @@ onShow(async () => {
   gap: 14rpx;
   min-height: 84rpx;
   padding: 0 22rpx;
-  border: 2rpx dashed var(--neo-color-text-muted);
+  border: var(--neo-border-default);
   border-radius: var(--neo-radius-md);
-  background: var(--neo-color-muted);
+  background: var(--neo-color-surface);
   box-sizing: border-box;
 }
 
@@ -169,9 +169,9 @@ onShow(async () => {
   opacity: 0.72;
 }
 
+/* 未选中项保持实线边框与正常文字色（虚线灰显会被当成禁用）；选中态靠实心彩点与加重边框表达。 */
 .settings-radio--active {
   border: var(--neo-border-strong);
-  background: var(--neo-color-surface);
   box-shadow: var(--neo-shadow-raised);
 }
 
@@ -179,9 +179,9 @@ onShow(async () => {
   width: 30rpx;
   height: 30rpx;
   flex-shrink: 0;
-  border: 4rpx solid var(--neo-color-text-muted);
+  border: 4rpx solid var(--neo-color-text);
   border-radius: var(--neo-radius-round);
-  background: var(--neo-color-muted);
+  background: var(--neo-color-surface);
   box-sizing: border-box;
 }
 
@@ -191,13 +191,8 @@ onShow(async () => {
 }
 
 .settings-radio__label {
-  color: var(--neo-color-text-muted);
-  font-size: 26rpx;
-  font-weight: 800;
-}
-
-.settings-radio--active .settings-radio__label {
   color: var(--neo-color-text);
+  font-size: 26rpx;
   font-weight: 900;
 }
 
