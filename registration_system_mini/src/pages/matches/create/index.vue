@@ -353,7 +353,8 @@ onShow(async () => {
 <style scoped>
 .create-match-page {
   min-height: 100vh;
-  padding: 0 28rpx 132rpx;
+  /* 底部留白用操作栏 clearance token：含悬浮操作栏高度与全面屏安全区，硬编码 132rpx 会被按钮遮挡。 */
+  padding: 0 28rpx var(--neo-action-bar-clearance);
   background: var(--neo-color-page);
   box-sizing: border-box;
 }

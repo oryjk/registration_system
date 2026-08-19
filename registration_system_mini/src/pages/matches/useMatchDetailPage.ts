@@ -1,6 +1,7 @@
 import { computed, ref } from "vue";
 import { onLoad, onUnload } from "@dcloudio/uni-app";
 import { MATCH_API_ID_PATTERN, loadAuthenticatedMatchDetailContext, loadPublicMatchDetailData, toRegistrationStandCode, type MatchTeamGroupSummary } from "./detailData";
+import { useMatchRegistrationPayment } from "./useMatchRegistrationPayment";
 import { useCurrentLocation } from "@/stores/currentLocation";
 import { useTeamContext } from "@/stores/teamContext";
 import { resumeSessionBootstrap } from "@/stores/appSession";
@@ -145,6 +146,14 @@ export function useMatchDetailPage() {
 
   const registrationWindowState = computed(() => registrationWindow.value.state);
   const isRegistrationClosed = computed(() => registrationWindowState.value !== "open");
+
+  const {
+    submittingPayment,
+    requiresPrepaidPayment,
+    pendingPaymentFeeLabel,
+    applyMyRegistrationPaid,
+    payRegistrationFee,
+  } = useMatchRegistrationPayment({ match, sourceMatch, currentStatus });
   const countdownText = computed(() => {
     const window = registrationWindow.value;
     if (window.state === "closed") return "报名已结束";
@@ -379,6 +388,8 @@ export function useMatchDetailPage() {
     ensureSessionReady,
     handleGuestLogin,
     confirmRegistrationAction,
+    requiresPrepaidPayment,
+    payRegistrationFee,
   });
 
   const {
@@ -423,6 +434,7 @@ export function useMatchDetailPage() {
       matchTeamGroups.value = publicData.teamGroups;
       existingTeamDerivedActivity.value = null;
       currentStatus.value = toStandLabel(toRegistrationStandCode(publicData.myRegistration?.status));
+      applyMyRegistrationPaid(!!publicData.myRegistration?.paid);
       teamsById.value = {};
       currentTeamMembers.value = [];
       resetSettlementState();
@@ -525,6 +537,9 @@ export function useMatchDetailPage() {
     registrationCapacityState,
     canSubmitIndividualRegistration,
     submittingStatus,
+    pendingPaymentFeeLabel,
+    submittingPayment,
+    handlePayRegistration: payRegistrationFee,
     confirmDialogVisible,
     confirmDialogState,
     handleConfirmPrimary,

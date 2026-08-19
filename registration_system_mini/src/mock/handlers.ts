@@ -333,6 +333,31 @@ const routes: MockRoute[] = [
   },
   {
     method: "POST",
+    pattern: "/payments/match-registration-orders",
+    handler: (req) => {
+      const payload = req.body as { match_id?: string } | undefined;
+      // mock 不校验报名状态；金额取比赛定价（详情内联兜底 2500 分）。
+      const amountCents = 2500;
+      return {
+        order: {
+          order_no: `PR${Date.now()}`,
+          kind: "match_registration",
+          match_id: payload?.match_id ?? null,
+          amount_cents: amountCents,
+          status: "pending",
+        },
+        payment: {
+          timeStamp: String(Math.floor(Date.now() / 1000)),
+          nonceStr: "mocknonce",
+          package: "prepay_id=mock_match_fee",
+          signType: "MD5",
+          paySign: MOCK_PAY_SIGN,
+        },
+      };
+    },
+  },
+  {
+    method: "POST",
     pattern: "/payments/orders/:orderNo/sync",
     handler: (req) => ({
       order: { order_no: req.params.orderNo, status: "paid" },

@@ -20,7 +20,7 @@ describe("create match Wot UI integration", () => {
   });
 
   test("uses native date and time pickers for create match time fields", async () => {
-    const source = await read("src/pages/matches/create/components/MatchScheduleFields.vue");
+    const source = await read("src/components/MatchScheduleFields.vue");
     const pageSource = await read("src/pages/matches/create/index.vue");
 
     expect((source.match(/<picker/g)?.length ?? 0) >= 3).toEqual(true);
@@ -43,7 +43,7 @@ describe("create match Wot UI integration", () => {
   });
 
   test("shows date first, then start and end time for create match", async () => {
-    const source = await read("src/pages/matches/create/components/MatchScheduleFields.vue");
+    const source = await read("src/components/MatchScheduleFields.vue");
 
     expect(source.includes("date-option-scroll")).toEqual(true);
     expect(source.includes("比赛日期")).toEqual(true);
@@ -55,7 +55,7 @@ describe("create match Wot UI integration", () => {
   });
 
   test("displays selected date and time values with weekday context", async () => {
-    const source = await read("src/pages/matches/create/components/MatchScheduleFields.vue");
+    const source = await read("src/components/MatchScheduleFields.vue");
 
     expect(source.includes("function displayTimeLabel")).toEqual(true);
     expect(source.includes("buildRecentDateOptions")).toEqual(true);

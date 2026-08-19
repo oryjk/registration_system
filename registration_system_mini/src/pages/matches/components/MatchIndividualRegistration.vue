@@ -39,6 +39,10 @@ const props = defineProps<{
   showFreeTag?: boolean;
   /** 球队约队的主/客队双边报名进度；散人约局为空。 */
   teamProgress?: MatchTeamProgressItem[];
+  /** 待支付报名费标签（如 ¥25.00）；非空时展示「去支付」面板。 */
+  pendingPaymentFeeLabel?: string;
+  /** 支付流程进行中（下单/拉起/核销）。 */
+  submittingPayment?: boolean;
   currentTeam: TeamProfileViewModel | null;
   teamMemberRegistrationGroups: {
     joined: Array<{ userId: number; name: string; avatarUrl: string; tone: string; jerseyNumber: string; isCurrentUser: boolean }>;
@@ -52,6 +56,7 @@ const emit = defineEmits<{
   (event: "selectIndividualSignup"): void;
   (event: "selectTeamMemberStand", value: 0 | 1 | 2): void;
   (event: "dialogVisibilityChange", visible: boolean): void;
+  (event: "payRegistration"): void;
 }>();
 
 const showTeamMemberRegistrationBoard = computed(() => {
@@ -73,6 +78,10 @@ function handleSelectTeamMemberStand(stand: 0 | 1 | 2) {
 
 function handleTeamMemberDialogVisibilityChange(visible: boolean) {
   emit("dialogVisibilityChange", visible);
+}
+
+function handlePayRegistration() {
+  emit("payRegistration");
 }
 </script>
 
@@ -103,7 +112,10 @@ function handleTeamMemberDialogVisibilityChange(visible: boolean) {
       :show-cta="!showTeamMemberRegistrationBoard && !registrationClosed"
       :show-free-tag="showFreeTag"
       :team-progress="teamProgress"
+      :pending-payment-fee-label="pendingPaymentFeeLabel"
+      :submitting-payment="submittingPayment"
       @select-individual-signup="handleSelectIndividualSignup"
+      @pay-registration="handlePayRegistration"
     />
     <TeamMemberRegistrationBoard
       v-if="showTeamMemberRegistrationBoard"

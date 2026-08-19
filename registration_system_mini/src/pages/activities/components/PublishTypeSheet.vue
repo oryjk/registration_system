@@ -37,7 +37,7 @@ function handlePublishIndividual() {
         <view class="publish-menu-action-button">
           <text class="publish-menu-action-icon">人</text>
         </view>
-        <text class="publish-menu-action-label">散人约队</text>
+        <text class="publish-menu-action-label">散人约球</text>
       </view>
 
       <view class="publish-menu-close" @tap="handleClose">

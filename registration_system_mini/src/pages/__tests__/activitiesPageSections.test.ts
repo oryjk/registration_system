@@ -47,8 +47,9 @@ describe("activities page sections", () => {
     expect(publishTypeSheet.includes("cubic-bezier(0.22, 1, 0.36, 1)")).toEqual(true);
     expect(source.includes("handlePublishTeamChallenge")).toEqual(true);
     expect(source.includes("handlePublishIndividualChallenge")).toEqual(true);
-    expect(source.includes('url: "/pages/matches/create"')).toEqual(true);
-    expect(source.includes('url: "/pages/challenges/create-individual"')).toEqual(true);
+    // 球队约队走创建比赛页；散人约球走独立的散人发布页（online_pickup）。
+    expect(source.includes('url: "/pages/matches/create/index"')).toEqual(true);
+    expect(source.includes('url: "/pages/challenges/create-individual/index"')).toEqual(true);
     expect(source.includes("<MatchPublishForm")).toEqual(false);
     expect(source.includes("showCreateForm")).toEqual(false);
   });
@@ -71,20 +72,24 @@ describe("activities page sections", () => {
     const source = await Bun.file(sourcePath("pages/challenges/create-individual/index.vue")).text();
 
     expect(pages.includes('"path": "pages/challenges/create-individual/index"')).toEqual(true);
-    expect(source.includes('createChallenge')).toEqual(true);
-    expect(source.includes("challengeKind.value")).toEqual(true);
-    expect(source.includes('options?.kind === "team"')).toEqual(true);
+    // 散人约球对接 Go 后端：POST /matches，publication_mode=online_pickup（无球队概念）。
+    expect(source.includes('import { createMatch } from "@/api/match";')).toEqual(true);
+    expect(source.includes('publication_mode: "online_pickup"')).toEqual(true);
+    expect(source.includes("createChallenge")).toEqual(false);
+    expect(source.includes("challengeKind")).toEqual(false);
     expect(source.includes("now.setDate(now.getDate() + 1)")).toEqual(false);
-    expect(source.includes("form.date = defaultPublishDate();")).toEqual(true);
-    expect(source.includes('host_team_id: currentIdentity.value?.kind === "team" ? currentIdentity.value.teamId : undefined')).toEqual(true);
-    expect(source.includes("请先在我的页面选择球队或场馆身份")).toEqual(true);
-    expect(source.includes("散人约队同一时间只能接一场")).toEqual(true);
+    // 时间选择与创建比赛（散人对手）共用 MatchScheduleFields：7 日横滑卡 + 更多日期日历。
+    expect(source.includes('import MatchScheduleFields from "@/components/MatchScheduleFields.vue";')).toEqual(true);
+    expect(source.includes("<MatchScheduleFields")).toEqual(true);
+    expect(source.includes("form.date = defaultPublishDate();")).toEqual(false);
+    expect(source.includes("请先在我的页面选择球队或场馆身份")).toEqual(false);
+    expect(source.includes("所有参与者都是散人")).toEqual(true);
     expect(source.includes('import { preloadMiniReviewStatus, useMiniReviewStatus } from "@/stores/miniReview"')).toEqual(true);
     expect(source.includes("async function guardReviewMode")).toEqual(true);
     expect(source.includes("await preloadMiniReviewStatus();")).toEqual(true);
     expect(source.includes("if (!shouldHideCreationEntrances.value) return false;")).toEqual(true);
     expect(source.includes("审核状态下暂不开放散人约球")).toEqual(true);
-    expect(source.includes("审核状态下暂不开放球队约队")).toEqual(true);
+    expect(source.includes("审核状态下暂不开放球队约队")).toEqual(false);
     expect(source.includes("uni.navigateBack")).toEqual(true);
     expect(source.includes('uni.switchTab({ url: "/pages/home/index" });')).toEqual(true);
     expect(source.includes('const reviewGateReady = ref(false);')).toEqual(true);
@@ -110,18 +115,30 @@ describe("activities page sections", () => {
     expect(source.includes("已选择地图位置，详情页可直接打开地图。")).toEqual(true);
   });
 
-  test("mine profile exposes current identity switch next to team switch", async () => {
+  test("mine profile keeps team switch without the identity switcher card", async () => {
     const minePageSource = await Bun.file(sourcePath("pages/user/index.vue")).text();
     const minePageComposableSource = await Bun.file(sourcePath("pages/user/useMinePage.ts")).text();
     const identityPanelSource = await Bun.file(sourcePath("pages/user/components/MineTeamIdentityPanel.vue")).text();
 
-    expect(minePageSource.includes("availableIdentities")).toEqual(true);
-    expect(minePageComposableSource.includes("switchIdentity")).toEqual(true);
+    // 发布身份卡片已下线：身份自动跟随当前球队解析，发布页仅展示，不再提供手动切换。
     expect(minePageSource.includes("<MineTeamIdentityPanel")).toEqual(true);
-    expect(identityPanelSource.includes('title="球队与身份"')).toEqual(true);
-    expect(identityPanelSource.includes("发布身份")).toEqual(true);
+    expect(minePageSource.includes("switchIdentity")).toEqual(false);
+    expect(minePageComposableSource.includes("switchIdentity")).toEqual(false);
+    expect(identityPanelSource.includes("发布身份")).toEqual(false);
+    expect(identityPanelSource.includes("switchIdentity")).toEqual(false);
+    // 切换球队入口保留。
+    expect(identityPanelSource.includes('emit("switchTeam", teamId)')).toEqual(true);
     expect(identityPanelSource.includes("mine-switch-chip--active")).toEqual(true);
-    expect(identityPanelSource.includes('emit("switchIdentity", identityId)')).toEqual(true);
+  });
+
+  test("pickup publish page works without any team identity", async () => {
+    const source = await Bun.file(sourcePath("pages/challenges/create-individual/index.vue")).text();
+
+    // 散人约球无球队概念：发布不依赖球队/场馆身份，任何登录用户可发。
+    expect(source.includes("canSwitchIdentity")).toEqual(false);
+    expect(source.includes("switchIdentity")).toEqual(false);
+    expect(source.includes("host_team_id")).toEqual(false);
+    expect(source.includes("payment_mode: form.paymentMode")).toEqual(true);
   });
 
   test("venue-created team challenge detail waits for both teams before showing home side", async () => {

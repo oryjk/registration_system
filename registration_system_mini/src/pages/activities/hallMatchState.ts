@@ -28,7 +28,7 @@ export interface HallMatchCardViewModel {
   opponentStateLabel: string;
   opponentStateTone: NeoTagTone;
   hostTeamName: string;
-  hostTeamId: number;
+  hostTeamId: number | null;
   formatLabel: string;
   venue: string;
   opponentName: string;
@@ -54,12 +54,14 @@ export interface HallCalendarDay {
 const KIND_LABELS: Record<AppMatchSummary["publication_mode"], string> = {
   online_team: "球队约队",
   online_individual: "散人约局",
+  online_pickup: "散人约球",
   offline_confirmed: "线下已约",
 };
 
 const KIND_TONES: Record<AppMatchSummary["publication_mode"], NeoTagTone> = {
   online_team: "blue",
   online_individual: "lime",
+  online_pickup: "lime",
   offline_confirmed: "muted",
 };
 
@@ -70,8 +72,12 @@ function findGroupSummary(
   return match.registration_groups?.find((group) => group.kind === kind);
 }
 
+function isIndividualStyle(match: AppMatchSummary): boolean {
+  return match.publication_mode === "online_individual" || match.publication_mode === "online_pickup";
+}
+
 function toOpponentStateLabel(match: AppMatchSummary): { label: string; tone: NeoTagTone } {
-  if (match.publication_mode === "online_individual") {
+  if (isIndividualStyle(match)) {
     return match.opponent_state === "confirmed"
       ? { label: "已成局", tone: "green" }
       : { label: "凑人中", tone: "amber" };
@@ -91,7 +97,7 @@ function resolveActionKind(match: AppMatchSummary, viewer: HallViewerContext, no
     registrationEndAt: match.registration_end_at,
   });
   if (registrationWindow.state !== "open") return "view";
-  if (match.publication_mode === "online_individual") {
+  if (isIndividualStyle(match)) {
     return match.opponent_state === "confirmed" ? "view" : "join";
   }
   if (match.publication_mode === "online_team") {
@@ -126,7 +132,7 @@ export function toHallMatchCard(
   const individualGroup = findGroupSummary(match, "individual_opponent");
   const hostGroup = findGroupSummary(match, "host_team");
 
-  const isIndividual = match.publication_mode === "online_individual";
+  const isIndividual = isIndividualStyle(match);
   const progressGroup = isIndividual ? individualGroup : hostGroup;
   const requiredPlayers = isIndividual
     ? (individualGroup?.min_players ?? match.players_per_team)
@@ -217,7 +223,7 @@ export function filterHallMatches(
     const match = sourceById.get(card.id);
     if (!match) return false;
     if (kind === "team" && match.publication_mode !== "online_team") return false;
-    if (kind === "individual" && match.publication_mode !== "online_individual") return false;
+    if (kind === "individual" && !isIndividualStyle(match)) return false;
     if (size && match.players_per_team !== size) return false;
     return true;
   });

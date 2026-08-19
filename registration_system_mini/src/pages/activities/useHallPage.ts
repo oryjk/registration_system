@@ -16,7 +16,7 @@ import {
 } from "./hallMatchState";
 
 const HALL_PAGE_SIZE = 20;
-const HALL_PUBLICATION_MODES = ["online_team", "online_individual"] as const;
+const HALL_PUBLICATION_MODES = ["online_team", "online_individual", "online_pickup"] as const;
 
 interface HallPaginationState {
   page: number;

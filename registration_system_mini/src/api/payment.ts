@@ -40,6 +40,16 @@ export function createTeamMembershipOrder(payload: { team_id: number; amount_cen
   });
 }
 
+/** 为比赛报名创建报名费订单并发起微信支付；金额由比赛定价，仅赛前支付且未支付时可下单。 */
+export function createMatchRegistrationOrder(payload: { match_id: string }) {
+  return requestApi<GoPaymentOrderResult>({
+    url: "/payments/match-registration-orders",
+    method: "POST",
+    data: payload,
+    auth: true,
+  });
+}
+
 /** 轮询 Go 支付订单状态（微信回调后置为已付）。 */
 export function syncGoPaymentOrder(orderNo: string) {
   return requestApi<{ order: { order_no: string; status: string } }>({

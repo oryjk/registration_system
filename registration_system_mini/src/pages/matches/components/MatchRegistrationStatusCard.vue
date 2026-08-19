@@ -31,6 +31,10 @@ const props = defineProps<{
   showFreeTag?: boolean;
   /** 球队约队双边进度（主/客队）；非空时替代单条进度与“已报”计数。 */
   teamProgress?: MatchTeamProgressItem[];
+  /** 待支付报名费标签（如 ¥25.00）；非空时展示「去支付」面板。 */
+  pendingPaymentFeeLabel?: string;
+  /** 支付流程进行中（下单/拉起/核销）。 */
+  submittingPayment?: boolean;
 }>();
 
 const hasTeamProgress = computed(() => !!props.teamProgress && props.teamProgress.length > 0);
@@ -38,6 +42,7 @@ const hasTeamProgress = computed(() => !!props.teamProgress && props.teamProgres
 const emit = defineEmits<{
   selectIndividualSignup: [];
   selectParticipant: [id: number];
+  payRegistration: [];
 }>();
 
 const selectedParticipantId = ref<number | null>(null);
@@ -118,6 +123,16 @@ function handleSignup() {
           <text>{{ selectedParticipant.name }}</text>
           <text class="selected-participant-hint">已选中</text>
         </view>
+      </view>
+
+      <view v-if="pendingPaymentFeeLabel" class="payment-panel">
+        <view class="payment-panel-copy">
+          <text class="payment-panel-title">报名费待支付</text>
+          <text class="payment-panel-fee">{{ pendingPaymentFeeLabel }}</text>
+        </view>
+        <NeoButton variant="dark" :loading="submittingPayment" :disabled="submittingPayment" @click="emit('payRegistration')">
+          去支付
+        </NeoButton>
       </view>
     </NeoSurface>
 
@@ -248,5 +263,32 @@ function handleSignup() {
   margin-left: 12rpx;
   font-size: 22rpx;
   opacity: 0.7;
+}
+.payment-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+  margin-top: 18rpx;
+  padding: 16rpx 18rpx;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-warning-soft);
+}
+.payment-panel-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+  min-width: 0;
+}
+.payment-panel-title {
+  color: var(--neo-color-text);
+  font-size: 24rpx;
+  font-weight: 900;
+}
+.payment-panel-fee {
+  color: var(--neo-color-text-muted);
+  font-size: 22rpx;
+  font-weight: 800;
 }
 </style>

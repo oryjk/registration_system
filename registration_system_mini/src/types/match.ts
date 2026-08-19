@@ -1,7 +1,8 @@
 export type AppMatchStatus = "registering" | "ongoing" | "ended" | "cancelled";
 export type AppMatchUiPhase = "upcoming" | "ongoing" | "ended" | "excluded";
 export type AppMatchRegistrationStatus = "unknown" | "attending" | "leave" | "absent" | "cancelled";
-export type AppMatchPublicationMode = "offline_confirmed" | "online_team" | "online_individual";
+export type AppMatchPublicationMode = "offline_confirmed" | "online_team" | "online_individual" | "online_pickup";
+export type AppMatchPaymentMode = "postpaid" | "prepaid";
 
 export interface AppMatchPhaseSource {
   id: string;
@@ -52,7 +53,8 @@ export interface AppMatchSummary extends AppMatchPhaseSource {
   name: string;
   publication_mode: AppMatchPublicationMode;
   opponent_state: "no_recruitment" | "recruiting" | "confirmed";
-  host_team_id: number;
+  /** 散人约球（online_pickup）没有主队。 */
+  host_team_id: number | null;
   host_team_name: string;
   away_team_id: number | null;
   away_team_name: string | null;
@@ -65,6 +67,8 @@ export interface AppMatchSummary extends AppMatchPhaseSource {
   location_longitude: number | null;
   description: string | null;
   is_free?: boolean;
+  payment_mode?: AppMatchPaymentMode;
+  fee_per_person_cents?: number;
   host_color?: string | null;
   away_color?: string | null;
   registration_groups?: AppMatchRegistrationGroupSummary[];
@@ -75,6 +79,8 @@ export interface AppMatchSummary extends AppMatchPhaseSource {
 export interface AppMatchRegistration {
   status: AppMatchRegistrationStatus;
   registration_count: number;
+  /** 报名费是否已支付（赛前支付订单核销后为 true）。 */
+  paid?: boolean;
 }
 
 export interface AppMatchParticipant {
@@ -82,6 +88,8 @@ export interface AppMatchParticipant {
   nickname: string;
   avatar_url: string | null;
   status: AppMatchRegistrationStatus;
+  /** 本次报名的落库时间；后端旧数据缺失时为 null，排序需回退。 */
+  registered_at?: string | null;
 }
 
 export interface AppMatchGroupDetail {

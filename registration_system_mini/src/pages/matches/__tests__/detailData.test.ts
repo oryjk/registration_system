@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { AppMatchDetailResponse, AppMatchSummary } from "@/types/match";
+import { byRegistrationTimeAsc } from "../detailState";
 import { buildPublicMatchApiDetailData, loadPublicMatchDetailData, toBackendActivity, toBackendRegistration } from "../detailData";
 
 const matchSummary: AppMatchSummary = {
@@ -170,6 +171,40 @@ describe("Match detail adapter", () => {
       first: { id: 37, nickname: "阿睿", avatarUrl: "https://cdn.example.com/player-37.png" },
       second: { id: 38, nickname: "阿东", avatarUrl: "https://cdn.example.com/player-38.png" },
     });
+  });
+
+  test("uses participant registered_at as operation time so the roster sorts by signup order", () => {
+    // updated_at 晚于全部报名时间，符合真实场景；旧数据缺失 registered_at 时回退到它、排最后。
+    const fallbackUpdated = { ...matchSummary, updated_at: "2026-08-10T00:00:00.000Z" };
+    const matchDetail = {
+      match: fallbackUpdated,
+      groups: [{
+        id: "a7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c502",
+        kind: "individual_opponent",
+        team_id: null,
+        status: "open",
+        min_players: 6,
+        max_players: 8,
+        attending_count: 2,
+        my_registration: null,
+        participants: [
+          // 后端按报名先后返回；user_id 顺序刻意打乱，验证排序只看时间。
+          { user_id: 91, nickname: "晚报名", avatar_url: null, status: "attending", registered_at: "2026-08-09T06:30:00.000Z" },
+          { user_id: 38, nickname: "早报名", avatar_url: null, status: "attending", registered_at: "2026-08-09T05:00:00.000Z" },
+          { user_id: 92, nickname: "旧数据无时间", avatar_url: null, status: "attending", registered_at: null },
+        ],
+      }],
+    } as unknown as AppMatchDetailResponse;
+
+    const data = buildPublicMatchApiDetailData(matchDetail, 37);
+    const operationTimeByUser = Object.fromEntries(data.activityUsers.map((item) => [item.user_id, item.operation_time]));
+
+    expect(operationTimeByUser).toEqual({
+      38: "2026-08-09T05:00:00.000Z",
+      91: "2026-08-09T06:30:00.000Z",
+      92: fallbackUpdated.updated_at,
+    });
+    expect([...data.activityUsers].sort(byRegistrationTimeAsc).map((item) => item.user_id)).toEqual([38, 91, 92]);
   });
 
   test("keeps leave participants with their stand so the member status board renders all states", () => {

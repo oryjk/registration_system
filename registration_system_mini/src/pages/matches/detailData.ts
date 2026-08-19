@@ -182,10 +182,11 @@ export function buildPublicMatchApiDetailData(
   const myRegistration = group?.my_registration ?? null;
   const participants = group?.participants ?? [];
   // 三态报名板需要全部队友的出勤状态：attending→已报名、leave→请假，其余（unknown/absent/cancelled）由页面归入未报名组。
+  // operation_time 用报名落库时间，保证「已报名队员」按报名先后升序；旧数据缺失时回退比赛更新时间。
   const activityUsers = participants.map((participant) => toBackendRegistration(
     { status: participant.status, registration_count: 1 },
     participant.user_id,
-    matchDetail.match.updated_at,
+    participant.registered_at ?? matchDetail.match.updated_at,
   ));
   if (myRegistration && currentUserId && !activityUsers.some((item) => item.user_id === currentUserId)) {
     activityUsers.push(toBackendRegistration(myRegistration, currentUserId, matchDetail.match.updated_at));

@@ -49,7 +49,7 @@ describe("bottom tab bar assets", () => {
     expect(tabBarSource.includes("创建比赛")).toEqual(true);
     expect(tabBarSource.includes("创建散人约球")).toEqual(true);
     expect(tabBarSource.includes("创建球队")).toEqual(true);
-    expect(tabBarSource.includes('url: "/pages/challenges/create-individual/index?kind=individual"')).toEqual(true);
+    expect(tabBarSource.includes('url: "/pages/challenges/create-individual/index"')).toEqual(true);
     expect(tabBarSource.includes("transition: opacity 260ms ease, transform 280ms cubic-bezier")).toEqual(true);
     expect(tabBarSource.includes("backdrop-filter: blur")).toEqual(true);
     expect(tabBarSource.includes("custom-tabbar-open")).toEqual(false);

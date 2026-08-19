@@ -4,7 +4,7 @@ import NeoSectionHeader from "@/components/neo/NeoSectionHeader.vue";
 import NeoSegmentedControl from "@/components/neo/NeoSegmentedControl.vue";
 import NeoSurface from "@/components/neo/NeoSurface.vue";
 import type { NeoSegmentOption } from "@/components/neo/NeoSegmentedControl.vue";
-import MatchScheduleFields from "./MatchScheduleFields.vue";
+import MatchScheduleFields from "@/components/MatchScheduleFields.vue";
 import TeamColorPicker from "./TeamColorPicker.vue";
 import type { MatchPublishFormModel } from "./matchPublishForm";
 import type { AppMatchPublicationMode } from "@/types/match";

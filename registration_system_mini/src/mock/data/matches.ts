@@ -13,8 +13,8 @@ import type {
 import { TEAM_ID_HEXI, TEAM_ID_MINGYUE, mockTeams } from "./teams";
 import { mockUsers } from "./users";
 
-/** 首页卡片报名头像：循环取 mock 用户模拟已报名队员。 */
-function mockHomeParticipants(count: number): AppMatchParticipant[] {
+/** 首页卡片报名头像：循环取 mock 用户模拟已报名队员；registered_at 按序递增模拟报名先后。 */
+function mockHomeParticipants(count: number, baseNow = Date.now()): AppMatchParticipant[] {
   return Array.from({ length: count }, (_, index) => {
     const user = mockUsers[index % mockUsers.length];
     return {
@@ -22,6 +22,7 @@ function mockHomeParticipants(count: number): AppMatchParticipant[] {
       nickname: user.nickname,
       avatar_url: user.avatar_url,
       status: "attending" as const,
+      registered_at: isoOffsetMinutes(baseNow, -60 + index * 5),
     };
   });
 }
@@ -152,7 +153,7 @@ function buildEndedMatch(seed: MatchSeed, baseNow: number): AppHomeEndedMatch {
     host_team_name: summary.host_team_name,
     opponent_name: summary.opponent_name ?? "",
     location: summary.location,
-    participants: mockHomeParticipants(Math.max(1, seed.players_per_team - 2)),
+    participants: mockHomeParticipants(Math.max(1, seed.players_per_team - 2), baseNow),
   };
 }
 
@@ -462,7 +463,8 @@ const createdMatches: CreatedMockMatch[] = [];
 function buildCreatedMatch(payload: {
   name: string;
   publication_mode: AppMatchSummary["publication_mode"];
-  host_team_id: number;
+  /** 散人约球（online_pickup）没有主队。 */
+  host_team_id?: number;
   opponent_name?: string;
   players_per_team: number;
   host_capacity_limit?: number;
@@ -475,10 +477,13 @@ function buildCreatedMatch(payload: {
   location_longitude?: number;
   description?: string;
   is_free?: boolean;
+  payment_mode?: AppMatchSummary["payment_mode"];
+  fee_per_person_cents?: number;
 }): CreatedMockMatch {
   createdMatchSequence += 1;
   const id = `c7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7${String(createdMatchSequence).padStart(4, "0")}`;
   const now = new Date().toISOString();
+  const isPickup = payload.publication_mode === "online_pickup";
   const summary: AppMatchSummary = {
     id,
     name: payload.name,
@@ -488,9 +493,9 @@ function buildCreatedMatch(payload: {
     registration_end_at: payload.registration_end_at ?? null,
     end_time: payload.end_time,
     publication_mode: payload.publication_mode,
-    opponent_state: payload.publication_mode === "online_team" ? "recruiting" : "confirmed",
-    host_team_id: payload.host_team_id,
-    host_team_name: teamName(payload.host_team_id),
+    opponent_state: payload.publication_mode === "offline_confirmed" ? "confirmed" : "recruiting",
+    host_team_id: payload.host_team_id ?? null,
+    host_team_name: payload.host_team_id ? teamName(payload.host_team_id) : "",
     away_team_id: null,
     away_team_name: null,
     opponent_name: payload.opponent_name ?? null,
@@ -500,14 +505,21 @@ function buildCreatedMatch(payload: {
     location_longitude: payload.location_longitude ?? null,
     description: payload.description ?? null,
     is_free: payload.is_free ?? true,
+    payment_mode: payload.payment_mode ?? "postpaid",
+    fee_per_person_cents: payload.fee_per_person_cents ?? 0,
     created_at: now,
     updated_at: now,
   };
   const group: AppHomeMatchGroup = {
     id: mockGroupId(id),
-    kind: "host_team",
+    // 散人约球（pickup）没有主队组，全部报名进散人组；与后端 NewMatch 的分组规则一致。
+    kind: isPickup ? "individual_opponent" : "host_team",
     status: payload.publication_mode === "offline_confirmed" ? "closed" : "open",
-    min_players: payload.publication_mode === "online_individual" ? 6 : null,
+    min_players: payload.publication_mode === "online_individual"
+      ? 6
+      : isPickup
+        ? payload.players_per_team * 2
+        : null,
     max_players: payload.host_capacity_limit ?? payload.players_per_team,
     attending_count: 0,
     my_registration_status: "unknown",
@@ -590,7 +602,7 @@ function buildMatchHome(baseNow = Date.now()): AppMatchHomeResponse {
           min_players: seed.status === "registering" ? 6 : 5,
           max_players: seed.players_per_team,
           attending_count: seed.status === "registering" ? 0 : Math.max(1, seed.players_per_team - 2),
-          participants: seed.status === "registering" ? [] : mockHomeParticipants(Math.max(1, seed.players_per_team - 2)),
+          participants: seed.status === "registering" ? [] : mockHomeParticipants(Math.max(1, seed.players_per_team - 2), baseNow),
           my_registration_status:
             seed.status === "registering" ? "unknown" : seed.id === "f7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c005" ? "leave" : "attending",
         },
@@ -702,7 +714,7 @@ export function createMockMatch(payload: Parameters<typeof buildCreatedMatch>[0]
   const group: AppMatchGroupDetail = {
     id: created.group.id,
     kind: created.group.kind,
-    team_id: created.summary.host_team_id,
+    team_id: created.group.kind === "host_team" ? created.summary.host_team_id : null,
     status: created.group.status,
     min_players: created.group.min_players,
     max_players: created.group.max_players,
@@ -717,8 +729,14 @@ export function getMockMatchDetail(matchId: string, baseNow = Date.now()): AppMa
   if (!match) return undefined;
 
   const actionMatch = buildMatchHome(baseNow).action_items.find((item) => item.id === matchId);
-  const fallbackKind = match.publication_mode === "online_individual" ? "individual_opponent" : "host_team";
+  const fallbackKind = match.publication_mode === "online_individual" || match.publication_mode === "online_pickup"
+    ? "individual_opponent"
+    : "host_team";
   const registrationStatus = actionMatch?.group.my_registration_status;
+  // 详情页「已报名队员」头像来自 group.participants；mock 与真实接口对齐，都带报名先后时间。
+  const attendingCount = actionMatch?.group.attending_count
+    ?? (match.status === "registering" ? 0 : Math.max(1, match.players_per_team - 2));
+  const participants = actionMatch?.group.participants ?? mockHomeParticipants(attendingCount, baseNow);
 
   return {
     match,
@@ -729,7 +747,8 @@ export function getMockMatchDetail(matchId: string, baseNow = Date.now()): AppMa
       status: actionMatch?.group.status ?? (match.status === "registering" ? "open" : "closed"),
       min_players: actionMatch?.group.min_players ?? match.players_per_team,
       max_players: actionMatch?.group.max_players ?? match.players_per_team,
-      attending_count: actionMatch?.group.attending_count ?? 0,
+      attending_count: attendingCount,
+      participants,
       my_registration:
         registrationStatus && registrationStatus !== "unknown" && registrationStatus !== "cancelled"
           ? { status: registrationStatus, registration_count: registrationStatus === "attending" ? 1 : 0 }

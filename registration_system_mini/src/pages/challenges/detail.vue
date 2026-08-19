@@ -284,7 +284,7 @@ async function handleAccept() {
       content:
         card.value?.kind === "team"
           ? `确认以当前球队接约「${card.value?.title ?? "约队"}」？`
-          : `确认报名参加「${card.value?.title ?? "散人约队"}」？`,
+          : `确认报名参加「${card.value?.title ?? "散人约球"}」？`,
       confirmText: card.value?.kind === "team" ? "确认接约" : "确认报名",
       cancelText: "再想想",
       success: (result) => resolve(!!result.confirm),
@@ -371,7 +371,7 @@ async function handleCancelIndividualAcceptance() {
 
   uni.showModal({
     title: "确认取消报名",
-    content: `确认取消「${card.value?.title ?? "散人约队"}」的报名？取消后可重新报名。`,
+    content: `确认取消「${card.value?.title ?? "散人约球"}」的报名？取消后可重新报名。`,
     confirmText: "取消报名",
     cancelText: "再想想",
     success: async (result) => {

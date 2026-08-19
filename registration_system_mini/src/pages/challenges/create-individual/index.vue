@@ -1,63 +1,52 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from "vue";
-import { onLoad, onShow } from "@dcloudio/uni-app";
+import { onShow } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
+import MatchScheduleFields from "@/components/MatchScheduleFields.vue";
 import NeoButton from "@/components/neo/NeoButton.vue";
 import NeoSectionHeader from "@/components/neo/NeoSectionHeader.vue";
 import NeoSegmentedControl from "@/components/neo/NeoSegmentedControl.vue";
 import NeoStickyActionBar from "@/components/neo/NeoStickyActionBar.vue";
 import NeoSurface from "@/components/neo/NeoSurface.vue";
 import type { NeoSegmentOption } from "@/components/neo/NeoSegmentedControl.vue";
-import { createChallenge } from "@/api/challenge";
+import { createMatch } from "@/api/match";
 import { preloadMiniReviewStatus, useMiniReviewStatus } from "@/stores/miniReview";
 import { useTeamContext } from "@/stores/teamContext";
 import { getCustomNavMetrics } from "@/utils/customNav";
 
-const { currentIdentity, ensureSessionReady } = useTeamContext();
+// 散人约球（online_pickup）：所有参与者都是散人、无球队概念，任何登录用户可发布。
+const { ensureSessionReady } = useTeamContext();
 const { shouldHideCreationEntrances } = useMiniReviewStatus();
 const navMetrics = getCustomNavMetrics();
 const submitting = ref(false);
 const reviewGateReady = ref(false);
-const challengeKind = ref<"team" | "individual">("individual");
-const advancedOpen = ref(false);
 
 const form = reactive({
   title: "",
   paymentMode: "postpaid" as "prepaid" | "postpaid",
-  date: "",
-  startTime: "20:00",
-  endTime: "22:00",
   location: "",
   locationLatitude: null as number | null,
   locationLongitude: null as number | null,
   playersPerTeam: "8",
-  minPlayers: "",
   maxPlayers: "",
   feePerPerson: "",
   note: "",
 });
 
+// 比赛时间与散人对手（创建比赛）共用 MatchScheduleFields：近 7 日横滑卡 + 更多日期日历 + 时间磁贴。
+const holdingDate = ref(defaultTodayAt(20));
+const matchEndTime = ref(defaultTodayAt(22));
+
 const pageStyle = computed(() => ({
   paddingTop: `${navMetrics.pageTopPadding + 8}px`,
 }));
-const heroCopy = computed(() => {
-  if (challengeKind.value === "individual") {
-    return "散人约队同一时间只能接一场，发布后球员可直接报名。";
-  }
-
-  return currentIdentity.value?.kind === "venue"
-    ? "场馆发布后，两支球队可以依次应战，第一支球队占位后会先生成等待对手的比赛。"
-    : "球队发布后，其他球队队长或领队可以接约。";
-});
+const heroCopy = "所有参与者都是散人，发布后球员可直接报名。";
 
 const canSubmit = computed(
   () =>
-    !!currentIdentity.value &&
     !!form.title.trim() &&
-    !!form.date &&
-    !!form.startTime &&
-    !!form.endTime &&
     !!form.location.trim() &&
+    Number(form.playersPerTeam) > 0 &&
     !submitting.value,
 );
 const defaultMinPlayers = computed(() => Number(form.playersPerTeam || 0) * 2);
@@ -67,42 +56,23 @@ const paymentModeOptions: NeoSegmentOption[] = [
   { label: "赛前支付", value: "prepaid" },
 ];
 const paymentModeCaption = computed(() =>
-  form.paymentMode === "prepaid" ? "报名后 20 分钟内支付" : "报名后可随时支付",
+  form.paymentMode === "prepaid" ? "报名时需立即支付报名费" : "报名后可随时支付",
 );
-// 高级设置仅散人约队展示；场地与费用卡片的序号跟随其是否渲染。
-const venueMarker = computed(() => (challengeKind.value === "individual" ? "03" : "02"));
+
+function defaultTodayAt(hour: number) {
+  const date = new Date();
+  date.setHours(hour, 0, 0, 0);
+  return date.getTime();
+}
+
+function toBackendDateTime(timestamp: number) {
+  const date = new Date(timestamp);
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:00`;
+}
 
 function handlePaymentModeChange(value: string) {
   form.paymentMode = value === "prepaid" ? "prepaid" : "postpaid";
-}
-
-function defaultPublishDate() {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-}
-
-function combineDateTime(date: string, time: string) {
-  return `${date}T${time}:00`;
-}
-
-function handleDateChange(event: Event) {
-  const detail = event as Event & { detail?: { value?: string } };
-  form.date = detail.detail?.value ?? form.date;
-}
-
-function handleStartTimeChange(event: Event) {
-  const detail = event as Event & { detail?: { value?: string } };
-  form.startTime = detail.detail?.value ?? form.startTime;
-}
-
-function handleEndTimeChange(event: Event) {
-  const detail = event as Event & { detail?: { value?: string } };
-  form.endTime = detail.detail?.value ?? form.endTime;
-}
-
-function handleFormatChange(event: Event) {
-  const detail = event as Event & { detail?: { value?: number | string } };
-  form.playersPerTeam = Number(detail.detail?.value ?? 1) === 0 ? "5" : "8";
 }
 
 function handleLocationInput() {
@@ -126,31 +96,21 @@ function handleChooseLocation() {
   });
 }
 
-function canPublishChallenge() {
-  return !!currentIdentity.value;
-}
-
 function validateForm() {
-  if (!canPublishChallenge()) return "请先在我的页面选择球队或场馆身份";
-  if (!form.title.trim() || !form.date || !form.location.trim()) return "请补全标题、日期和场地";
+  if (!form.title.trim() || !form.location.trim()) return "请补全标题和场地";
 
   const playersPerTeam = Number(form.playersPerTeam || 0);
-  if (!Number.isFinite(playersPerTeam) || ![5, 8].includes(playersPerTeam)) return "请选择 5 人制或 8 人制";
+  if (!Number.isFinite(playersPerTeam) || playersPerTeam <= 0) return "请填写正确的比赛人制";
+
+  const maxPlayers = form.maxPlayers ? Number(form.maxPlayers) : null;
+  if (maxPlayers !== null && (!Number.isFinite(maxPlayers) || maxPlayers <= 0)) return "请填写正确的最大人数";
+  if (maxPlayers !== null && maxPlayers < defaultMinPlayers.value) return `最大人数不能少于成行的 ${defaultMinPlayers} 人`;
 
   const feePerPerson = form.feePerPerson ? Number(form.feePerPerson) : null;
   if (feePerPerson !== null && (!Number.isFinite(feePerPerson) || feePerPerson < 0)) return "请填写正确的费用";
+  if (form.paymentMode === "prepaid" && !feePerPerson) return "赛前支付需填写人均报名费";
 
-  if (challengeKind.value === "individual") {
-    const minPlayers = form.minPlayers ? Number(form.minPlayers) : null;
-    const maxPlayers = form.maxPlayers ? Number(form.maxPlayers) : null;
-    if (minPlayers !== null && (!Number.isFinite(minPlayers) || minPlayers <= 0)) return "请填写正确的最少成行人数";
-    if (maxPlayers !== null && (!Number.isFinite(maxPlayers) || maxPlayers <= 0)) return "请填写正确的最多报名人数";
-    const resolvedMinPlayers = minPlayers ?? defaultMinPlayers.value;
-    const resolvedMaxPlayers = maxPlayers ?? defaultMaxPlayers.value;
-    if (resolvedMinPlayers > resolvedMaxPlayers) return "最少成行人数不能大于最多报名人数";
-  }
-
-  if (combineDateTime(form.date, form.endTime) <= combineDateTime(form.date, form.startTime)) return "结束时间必须晚于开始时间";
+  if (matchEndTime.value <= holdingDate.value) return "结束时间必须晚于开始时间";
 
   return "";
 }
@@ -170,34 +130,32 @@ async function handleSubmit() {
   }
 
   const feePerPerson = form.feePerPerson ? Number(form.feePerPerson) : null;
-  const minPlayers = challengeKind.value === "individual" && form.minPlayers ? Number(form.minPlayers) : null;
-  const maxPlayers = challengeKind.value === "individual" && form.maxPlayers ? Number(form.maxPlayers) : null;
+  const feePerPersonCents = feePerPerson !== null ? Math.round(feePerPerson * 100) : 0;
   submitting.value = true;
   try {
-    const challenge = await createChallenge({
-      kind: challengeKind.value,
-      payment_mode: challengeKind.value === "individual" ? form.paymentMode : "postpaid",
-      host_team_id: currentIdentity.value?.kind === "team" ? currentIdentity.value.teamId : undefined,
-      title: form.title.trim(),
-      holding_date: combineDateTime(form.date, form.startTime),
-      start_time: combineDateTime(form.date, form.startTime),
-      end_time: combineDateTime(form.date, form.endTime),
+    const detail = await createMatch({
+      name: form.title.trim(),
+      publication_mode: "online_pickup",
+      players_per_team: Number(form.playersPerTeam),
+      host_capacity_limit: form.maxPlayers ? Number(form.maxPlayers) : undefined,
+      start_time: toBackendDateTime(holdingDate.value),
+      end_time: toBackendDateTime(matchEndTime.value),
       location: form.location.trim(),
       location_latitude: form.locationLatitude ?? undefined,
       location_longitude: form.locationLongitude ?? undefined,
-      players_per_team: Number(form.playersPerTeam),
-      min_players: minPlayers ?? undefined,
-      max_players: maxPlayers ?? undefined,
-      fee_per_person: feePerPerson !== null ? feePerPerson.toFixed(2) : undefined,
-      note: form.note.trim() || undefined,
+      description: form.note.trim() || undefined,
+      is_free: feePerPersonCents <= 0,
+      payment_mode: form.paymentMode,
+      fee_per_person_cents: feePerPersonCents,
     });
 
     uni.showToast({
-      title: challengeKind.value === "team" ? "球队约队已发布" : "散人约队已发布",
+      title: "散人约球已发布",
       icon: "none",
     });
+    const group = detail.groups.find((item) => item.kind === "individual_opponent") ?? detail.groups[0];
     uni.redirectTo({
-      url: `/pages/challenges/detail?id=${challenge.id}`,
+      url: `/pages/matches/detail?id=${detail.match.id}${group ? `&groupId=${group.id}` : ""}`,
     });
   } catch (error) {
     uni.showToast({
@@ -214,7 +172,7 @@ async function guardReviewMode() {
   if (!shouldHideCreationEntrances.value) return false;
 
   uni.showToast({
-    title: challengeKind.value === "team" ? "审核状态下暂不开放球队约队" : "审核状态下暂不开放散人约球",
+    title: "审核状态下暂不开放散人约球",
     icon: "none",
   });
   setTimeout(() => {
@@ -235,99 +193,66 @@ onShow(async () => {
     reviewGateReady.value = true;
   }
   await ensureSessionReady();
-  if (!form.date) {
-    form.date = defaultPublishDate();
-  }
-});
-
-onLoad((options) => {
-  challengeKind.value = options?.kind === "team" ? "team" : "individual";
-  if (challengeKind.value === "team" && !form.title.trim()) {
-    form.title = "周三晚球队约队";
-  }
 });
 </script>
 
 <template>
   <view v-if="reviewGateReady" class="individual-create-page" :style="pageStyle">
-    <AppTabHeader :title="challengeKind === 'team' ? '球队约队' : '散人约队'" showBack />
+    <AppTabHeader title="散人约球" showBack />
 
     <view class="create-page-content">
       <NeoSurface variant="dark" custom-class="create-hero">
         <view class="create-hero__copy">
-          <text class="create-hero-tag">{{ challengeKind === "team" ? "球队约队" : "散人约队" }}</text>
-          <text class="create-hero-title">{{
-            currentIdentity ? `${currentIdentity.label} · ${currentIdentity.roleLabel}` : "请选择发布身份"
-          }}</text>
+          <text class="create-hero-tag">散人约球</text>
+          <text class="create-hero-title">无球队 · 散人直接报名</text>
           <text class="create-hero-copy">{{ heroCopy }}</text>
         </view>
       </NeoSurface>
 
       <NeoSurface custom-class="form-card">
-        <NeoSectionHeader title="基础信息" marker="01" caption="标题、日期、赛制与支付方式" />
+        <NeoSectionHeader title="基础信息" marker="01" caption="标题与比赛人制" />
         <view class="form-field">
           <text class="form-label">标题</text>
           <input v-model="form.title" class="form-input" placeholder="例如：周三晚散人局，还缺 4 人" placeholder-class="form-placeholder" />
         </view>
         <view class="form-grid">
           <view class="form-field">
-            <text class="form-label">日期</text>
-            <picker mode="date" :value="form.date" @change="handleDateChange">
-              <view class="form-input form-picker">{{ form.date || "选择日期" }}</view>
-            </picker>
+            <text class="form-label">比赛人制</text>
+            <input
+              v-model="form.playersPerTeam"
+              class="form-input"
+              type="number"
+              placeholder="8"
+              placeholder-class="form-placeholder"
+            />
           </view>
           <view class="form-field">
-            <text class="form-label">赛制</text>
-            <picker :value="form.playersPerTeam === '5' ? 0 : 1" :range="['5 人制（共 10 人）', '8 人制（共 16 人）']" @change="handleFormatChange">
-              <view class="form-input form-picker">{{ form.playersPerTeam }} 人制 · 默认 {{ defaultMinPlayers }} 人开踢</view>
-            </picker>
-          </view>
-          <view class="form-field">
-            <text class="form-label">开始时间</text>
-            <picker mode="time" :value="form.startTime" @change="handleStartTimeChange">
-              <view class="form-input form-picker">{{ form.startTime }}</view>
-            </picker>
-          </view>
-          <view class="form-field">
-            <text class="form-label">结束时间</text>
-            <picker mode="time" :value="form.endTime" @change="handleEndTimeChange">
-              <view class="form-input form-picker">{{ form.endTime }}</view>
-            </picker>
+            <text class="form-label">最大人数</text>
+            <input
+              v-model="form.maxPlayers"
+              class="form-input"
+              type="number"
+              :placeholder="`${defaultMaxPlayers}`"
+              placeholder-class="form-placeholder"
+            />
           </view>
         </view>
-        <view v-if="challengeKind === 'individual'" class="form-field">
-          <text class="form-label">支付方式</text>
-          <NeoSegmentedControl
-            :model-value="form.paymentMode"
-            :options="paymentModeOptions"
-            @change="handlePaymentModeChange"
-          />
-          <text class="form-caption">{{ paymentModeCaption }}</text>
-        </view>
-      </NeoSurface>
-
-      <NeoSurface v-if="challengeKind === 'individual'" custom-class="form-card">
-        <NeoSectionHeader
-          title="高级设置"
-          marker="02"
-          :caption="`默认 ${defaultMinPlayers} 人开踢，最多 ${defaultMaxPlayers} 人`"
-          :action-label="advancedOpen ? '收起' : '展开'"
-          @action="advancedOpen = !advancedOpen"
-        />
-        <view v-if="advancedOpen" class="form-grid">
-          <view class="form-field">
-            <text class="form-label">最少成行人数</text>
-            <input v-model="form.minPlayers" class="form-input" type="number" :placeholder="`${defaultMinPlayers}`" placeholder-class="form-placeholder" />
-          </view>
-          <view class="form-field">
-            <text class="form-label">最多报名人数</text>
-            <input v-model="form.maxPlayers" class="form-input" type="number" :placeholder="`${defaultMaxPlayers}`" placeholder-class="form-placeholder" />
-          </view>
-        </view>
+        <text class="form-caption form-caption-field">
+          比赛人制为每队人数；默认 {{ defaultMinPlayers }} 人开踢，最多 {{ form.maxPlayers || defaultMaxPlayers }} 人。
+        </text>
       </NeoSurface>
 
       <NeoSurface custom-class="form-card">
-        <NeoSectionHeader title="场地与费用" :marker="venueMarker" caption="场地支持文字地址或地图选择" />
+        <MatchScheduleFields
+          :holding-date="holdingDate"
+          :match-end-time="matchEndTime"
+          @update:holding-date="holdingDate = $event"
+          @update:match-end-time="matchEndTime = $event"
+        />
+      </NeoSurface>
+
+      <NeoSurface custom-class="form-card">
+        <NeoSectionHeader title="场地与费用" marker="02" caption="场地支持文字地址或地图选择" />
         <view class="form-field">
           <text class="form-label">场地</text>
           <view class="form-location-row">
@@ -364,11 +289,23 @@ onLoad((options) => {
           />
         </view>
       </NeoSurface>
+
+      <NeoSurface custom-class="form-card">
+        <NeoSectionHeader title="支付方式" marker="03" caption="报名费的付款节奏" />
+        <view class="form-field">
+          <NeoSegmentedControl
+            :model-value="form.paymentMode"
+            :options="paymentModeOptions"
+            @change="handlePaymentModeChange"
+          />
+          <text class="form-caption">{{ paymentModeCaption }}</text>
+        </view>
+      </NeoSurface>
     </view>
 
     <NeoStickyActionBar>
       <NeoButton block variant="lime" :disabled="!canSubmit" :loading="submitting" @click="handleSubmit">
-        {{ submitting ? "发布中..." : challengeKind === "team" ? "发布球队约队" : "发布散人约队" }}
+        {{ submitting ? "发布中..." : "发布散人约球" }}
       </NeoButton>
     </NeoStickyActionBar>
   </view>
@@ -377,7 +314,8 @@ onLoad((options) => {
 <style scoped>
 .individual-create-page {
   min-height: 100vh;
-  padding: 0 28rpx 132rpx;
+  /* 底部留白用操作栏 clearance token：含悬浮操作栏高度与全面屏安全区，硬编码 132rpx 会被按钮遮挡。 */
+  padding: 0 28rpx var(--neo-action-bar-clearance);
   background: var(--neo-color-page);
   box-sizing: border-box;
 }
@@ -465,6 +403,10 @@ onLoad((options) => {
   line-height: 1.45;
 }
 
+.form-caption-field {
+  margin-top: 16rpx;
+}
+
 .form-input,
 .form-textarea {
   width: 100%;
@@ -482,11 +424,6 @@ onLoad((options) => {
   align-items: center;
   height: 84rpx;
   padding: 0 20rpx;
-}
-
-.form-picker {
-  display: flex;
-  align-items: center;
 }
 
 .form-placeholder {

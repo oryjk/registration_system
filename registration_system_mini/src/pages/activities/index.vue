@@ -80,12 +80,13 @@ function closePublishTypeSheet() {
 
 function handlePublishTeamChallenge() {
   closePublishTypeSheet();
-  uni.navigateTo({ url: "/pages/matches/create" });
+  uni.navigateTo({ url: "/pages/matches/create/index" });
 }
 
 function handlePublishIndividualChallenge() {
   closePublishTypeSheet();
-  uni.navigateTo({ url: "/pages/challenges/create-individual" });
+  // 散人约球：无球队概念的独立发布页（online_pickup，POST /matches）。
+  uni.navigateTo({ url: "/pages/challenges/create-individual/index" });
 }
 
 function handleSessionLoginCompleted() {

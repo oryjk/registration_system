@@ -46,6 +46,9 @@ const {
   teamMemberRegistrationGroups,
   remainingPlayersLabel,
   submittingStatus,
+  pendingPaymentFeeLabel,
+  submittingPayment,
+  handlePayRegistration,
   confirmDialogVisible,
   confirmDialogState,
   handleConfirmPrimary,
@@ -185,10 +188,13 @@ onShareTimeline(() => ({
         :registration-closed="isRegistrationClosed"
         :show-free-tag="!!sourceMatch?.is_free"
         :team-progress="teamProgressItems"
+        :pending-payment-fee-label="pendingPaymentFeeLabel"
+        :submitting-payment="submittingPayment"
         :current-team="currentTeam"
         :team-member-registration-groups="teamMemberRegistrationGroups"
         @open-location="openMatchLocation"
         @select-individual-signup="handleSelectIndividualSignup"
+        @pay-registration="handlePayRegistration"
         @select-team-member-stand="handleSelectTeamMemberStand"
         @dialog-visibility-change="handleTeamMemberDialogVisibilityChange"
       />

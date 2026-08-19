@@ -34,6 +34,9 @@ interface MatchRegistrationDependencies {
   ensureSessionReady: () => Promise<void>;
   handleGuestLogin: () => Promise<void>;
   confirmRegistrationAction: (options: NeoConfirmDialogOptions) => Promise<boolean>;
+  /** 赛前支付且有人均费用时，报名成功后立即发起支付。 */
+  requiresPrepaidPayment: ComputedRef<boolean>;
+  payRegistrationFee: () => Promise<boolean>;
 }
 
 export function useMatchRegistration(dependencies: MatchRegistrationDependencies) {
@@ -56,6 +59,8 @@ export function useMatchRegistration(dependencies: MatchRegistrationDependencies
     ensureSessionReady,
     handleGuestLogin,
     confirmRegistrationAction,
+    requiresPrepaidPayment,
+    payRegistrationFee,
   } = dependencies;
 
   function ensureRegistrationOpen() {
@@ -129,6 +134,11 @@ export function useMatchRegistration(dependencies: MatchRegistrationDependencies
       await submitIndividualRegistrationStatus("attending");
       applyIndividualRegistrationState(1, 1);
       uni.$emit("home:data-may-changed");
+      if (requiresPrepaidPayment.value) {
+        // 赛前支付：确认报名后立即拉起支付；取消/失败时报名保留，详情页可继续支付。
+        await payRegistrationFee();
+        return;
+      }
       uni.showToast({ title: "报名成功", icon: "none" });
     } catch (error) {
       uni.showToast({ title: error instanceof Error ? error.message : "报名失败", icon: "none" });

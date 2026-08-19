@@ -3,6 +3,7 @@ import type {
   AppMatchHomeResponse,
   AppMatchListResponse,
   AppMatchListScope,
+  AppMatchPaymentMode,
   AppMatchPublicationMode,
   AppMatchRegistration,
   AppMatchStatus,
@@ -70,7 +71,8 @@ export function updateMatchStatus(matchId: string, status: Extract<AppMatchStatu
 export interface CreateMatchPayload {
   name: string;
   publication_mode: AppMatchSummary["publication_mode"];
-  host_team_id: number;
+  /** 散人约球（online_pickup）不传；其余模式必填。 */
+  host_team_id?: number;
   opponent_name?: string;
   players_per_team: number;
   host_capacity_limit?: number;
@@ -84,6 +86,10 @@ export interface CreateMatchPayload {
   description?: string;
   /** 不传默认免费；创建页按人均费用推导。 */
   is_free?: boolean;
+  /** 报名费支付节奏；prepaid 必须同时给出费用。 */
+  payment_mode?: AppMatchPaymentMode;
+  /** 人均报名费（分）。 */
+  fee_per_person_cents?: number;
   host_color?: string;
   away_color?: string;
 }

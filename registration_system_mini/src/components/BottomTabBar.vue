@@ -99,24 +99,17 @@ function handleCreateMatch() {
 
 function handleCreateTeam() {
   closeSheet();
-  // 球队管理页对已有球队的用户只展示管理面板；创建入口仅对无球队用户开放。
-  if (currentTeam.value) {
-    uni.showToast({
-      title: "你已加入球队，无需重复创建",
-      icon: "none",
-    });
-    return;
-  }
-
+  // 创建球队对所有用户开放（一人可创建多支球队），直达独立的创建页。
   uni.navigateTo({
-    url: "/pages/teams/manage/index",
+    url: "/pages/teams/create/index",
   });
 }
 
 function handleCreateIndividualChallenge() {
   closeSheet();
+  // 散人约球：无球队概念的独立发布页（online_pickup，POST /matches）。
   uni.navigateTo({
-    url: "/pages/challenges/create-individual/index?kind=individual",
+    url: "/pages/challenges/create-individual/index",
   });
 }
 </script>
