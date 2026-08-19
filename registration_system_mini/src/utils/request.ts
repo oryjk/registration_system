@@ -15,16 +15,48 @@ interface RequestOptions<TBody extends RequestPayload> {
 
 export class ApiRequestError extends Error {
   statusCode: number;
+  /** 网络层失败（断网/超时），区别于后端返回的业务错误。 */
+  networkFailed: boolean;
 
-  constructor(message: string, statusCode = 0) {
+  constructor(message: string, statusCode = 0, networkFailed = false) {
     super(message);
     this.name = "ApiRequestError";
     this.statusCode = statusCode;
+    this.networkFailed = networkFailed;
   }
 }
 
 export function isUnauthorizedError(error: unknown): boolean {
   return error instanceof ApiRequestError && error.statusCode === 401;
+}
+
+export function isNetworkUnavailableError(error: unknown): boolean {
+  return error instanceof ApiRequestError && error.networkFailed;
+}
+
+const NETWORK_UNAVAILABLE_MESSAGE = "网络连接不可用，请检查网络后重试";
+const NETWORK_TIMEOUT_MESSAGE = "网络连接超时，请检查网络后重试";
+
+/** 断网/超时的 errMsg 形如 "request:fail " / "request:fail timeout"，统一转成用户能看懂的提示。 */
+function normalizeNetworkFailureMessage(errMsg: string): string {
+  return errMsg.includes("timeout") ? NETWORK_TIMEOUT_MESSAGE : NETWORK_UNAVAILABLE_MESSAGE;
+}
+
+/** 断网时并发请求会一起失败，全局只弹一个提示框，关闭后再次失败才重新弹。 */
+let networkErrorDialogVisible = false;
+
+function showNetworkUnavailableDialog(content: string) {
+  if (networkErrorDialogVisible) return;
+  networkErrorDialogVisible = true;
+  uni.showModal({
+    title: "网络不可用",
+    content,
+    showCancel: false,
+    confirmText: "知道了",
+    complete: () => {
+      networkErrorDialogVisible = false;
+    },
+  });
 }
 
 export async function requestRaw<TResponse, TBody extends RequestPayload = Record<string, unknown>>(
@@ -50,6 +82,8 @@ export async function requestRaw<TResponse, TBody extends RequestPayload = Recor
       url: requestUrl,
       method: method as never,
       data: options.data,
+      // 显式 15s 超时：默认 60s 会让断网场景干等太久才看到失败提示。
+      timeout: 15000,
       header: {
         "Content-Type": "application/json",
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -69,7 +103,10 @@ export async function requestRaw<TResponse, TBody extends RequestPayload = Recor
         reject(new ApiRequestError(message, statusCode));
       },
       fail: (error) => {
-        reject(new ApiRequestError(error.errMsg || "网络请求失败"));
+        // 断网/超时不再透传晦涩的 errMsg：归一成明确文案并弹窗告知，页面 toast 同样显示这句话。
+        const message = normalizeNetworkFailureMessage(error.errMsg || "");
+        showNetworkUnavailableDialog(message);
+        reject(new ApiRequestError(message, 0, true));
       },
     });
   });
