@@ -149,6 +149,10 @@ type RegistrationEntryResponse struct {
 	AvatarURL  *string `json:"avatar_url"`
 	MemberRole *string `json:"member_role"`
 	Status     string  `json:"status"`
+	// RegistrationCount 该行报名占用的人数；散人约球一人代多人时大于 1，其余恒为 1。
+	RegistrationCount int `json:"registration_count"`
+	// Paid 报名费是否已支付（散人约球赛前支付场景）。
+	Paid bool `json:"paid"`
 }
 
 type MatchDetailResponse struct {
@@ -389,6 +393,7 @@ func mapRegistrations(entries []ports.AdminRosterEntry) []RegistrationEntryRespo
 		registrations = append(registrations, RegistrationEntryResponse{
 			UserID: entry.UserID, Nickname: entry.Nickname, RealName: entry.RealName,
 			AvatarURL: entry.AvatarURL, MemberRole: entry.MemberRole, Status: status,
+			RegistrationCount: entry.RegistrationCount, Paid: entry.Paid,
 		})
 	}
 	return registrations

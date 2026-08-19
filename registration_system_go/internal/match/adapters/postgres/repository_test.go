@@ -671,6 +671,17 @@ func TestMapAdminDetailMatchIncludesPaymentFields(t *testing.T) {
 	}
 }
 
+func TestMapUserParticipantsCarriesRegistrationCount(t *testing.T) {
+	attending := domain.RegistrationAttending
+	participants := mapUserParticipants([]ports.AdminRosterEntry{
+		{UserID: 11, Nickname: "张三", Status: &attending, RegistrationCount: 3},
+		{UserID: 12, Nickname: "李四", Status: &attending, RegistrationCount: 1},
+	})
+	if len(participants) != 2 || participants[0].RegistrationCount != 3 || participants[1].RegistrationCount != 1 {
+		t.Fatalf("participants should carry registration count: %+v", participants)
+	}
+}
+
 func TestMapUserParticipantsFiltersNonAttendingAndDeduplicates(t *testing.T) {
 	attending := domain.RegistrationAttending
 	leave := domain.RegistrationLeave

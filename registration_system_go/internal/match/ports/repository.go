@@ -83,6 +83,8 @@ type UserParticipant struct {
 	Nickname  string
 	AvatarURL *string
 	Status    domain.RegistrationStatus
+	// RegistrationCount 是该成员本次报名占用的人数；散人约球一人代多人时大于 1，其余恒为 1。
+	RegistrationCount int
 	// RegisteredAt 是该成员本次报名的落库时间；小程序端用它把已报名队员按报名先后排序。
 	RegisteredAt *time.Time
 }
@@ -109,6 +111,10 @@ type AdminRosterEntry struct {
 	AvatarURL  *string
 	MemberRole *string
 	Status     *domain.RegistrationStatus
+	// RegistrationCount 是该行报名占用的人数；散人约球一人代多人时大于 1，其余恒为 1。
+	RegistrationCount int
+	// Paid 报名费是否已支付（散人约球赛前支付场景）。
+	Paid bool
 	// RegisteredAt 为 nil 表示该成员尚未报名（球队组未报名成员）。
 	RegisteredAt *time.Time
 }

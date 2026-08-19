@@ -518,3 +518,13 @@ func (f *fakeUserFinishMatch) Execute(_ context.Context, actor sharedauth.Actor,
 	}
 	return f.result, nil
 }
+
+func TestMapUserParticipantResponsesIncludeRegistrationCount(t *testing.T) {
+	responses := mapUserParticipantResponses([]ports.UserParticipant{
+		{UserID: 11, Nickname: "张三", Status: domain.RegistrationAttending, RegistrationCount: 3},
+		{UserID: 12, Nickname: "李四", Status: domain.RegistrationAttending, RegistrationCount: 1},
+	})
+	if len(responses) != 2 || responses[0].RegistrationCount != 3 || responses[1].RegistrationCount != 1 {
+		t.Fatalf("participant responses should carry registration count: %+v", responses)
+	}
+}

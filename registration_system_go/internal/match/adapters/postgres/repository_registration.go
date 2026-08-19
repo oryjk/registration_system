@@ -55,7 +55,8 @@ func (r *Repository) listGroupRegistrationEntries(ctx context.Context, groupID u
 		status := domain.RegistrationStatus(row.RegistrationStatus)
 		entries = append(entries, ports.AdminRosterEntry{
 			UserID: row.UserID, Nickname: row.Nickname, RealName: row.RealName, AvatarURL: row.AvatarUrl,
-			Status: &status, RegisteredAt: timestampPointer(row.RegisteredAt),
+			Status: &status, RegistrationCount: int(row.RegistrationCount), Paid: row.Paid,
+			RegisteredAt: timestampPointer(row.RegisteredAt),
 		})
 	}
 	return entries, nil

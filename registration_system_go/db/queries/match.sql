@@ -655,6 +655,8 @@ SELECT r.user_id,
        u.avatar_url,
        u.real_name,
        r.status AS registration_status,
+       r.registration_count,
+       r.paid,
        r.created_at AS registered_at
 FROM match_registrations r
 JOIN users u ON u.id = r.user_id

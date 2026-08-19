@@ -774,6 +774,8 @@ SELECT r.user_id,
        u.avatar_url,
        u.real_name,
        r.status AS registration_status,
+       r.registration_count,
+       r.paid,
        r.created_at AS registered_at
 FROM match_registrations r
 JOIN users u ON u.id = r.user_id
@@ -796,6 +798,8 @@ type ListGroupRegistrationsRow struct {
 	AvatarUrl          *string          `json:"avatar_url"`
 	RealName           *string          `json:"real_name"`
 	RegistrationStatus string           `json:"registration_status"`
+	RegistrationCount  int32            `json:"registration_count"`
+	Paid               bool             `json:"paid"`
 	RegisteredAt       pgtype.Timestamp `json:"registered_at"`
 }
 
@@ -815,6 +819,8 @@ func (q *Queries) ListGroupRegistrations(ctx context.Context, groupID pgtype.UUI
 			&i.AvatarUrl,
 			&i.RealName,
 			&i.RegistrationStatus,
+			&i.RegistrationCount,
+			&i.Paid,
 			&i.RegisteredAt,
 		); err != nil {
 			return nil, err

@@ -94,7 +94,7 @@ func mapUserParticipants(entries []ports.AdminRosterEntry) []ports.UserParticipa
 		seen[entry.UserID] = struct{}{}
 		participants = append(participants, ports.UserParticipant{
 			UserID: entry.UserID, Nickname: entry.Nickname, AvatarURL: entry.AvatarURL, Status: *entry.Status,
-			RegisteredAt: entry.RegisteredAt,
+			RegistrationCount: entry.RegistrationCount, RegisteredAt: entry.RegisteredAt,
 		})
 	}
 	return participants
