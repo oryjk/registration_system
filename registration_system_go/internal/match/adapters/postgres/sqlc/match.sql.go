@@ -28,7 +28,7 @@ func (q *Queries) CountAttendingRegistrationsForGroup(ctx context.Context, group
 const countMatchesForAdmin = `-- name: CountMatchesForAdmin :one
 SELECT COUNT(*)
 FROM matches m
-JOIN teams host ON host.id = m.host_team_id
+LEFT JOIN teams host ON host.id = m.host_team_id
 WHERE ($1::text IS NULL OR m.status = $1)
   AND (
       $2::text = ''
@@ -53,7 +53,7 @@ func (q *Queries) CountMatchesForAdmin(ctx context.Context, arg CountMatchesForA
 const countMatchesForUser = `-- name: CountMatchesForUser :one
 SELECT COUNT(*)
 FROM matches m
-JOIN teams host ON host.id = m.host_team_id
+LEFT JOIN teams host ON host.id = m.host_team_id
 WHERE ($1::text IS NULL OR m.status = $1)
   AND (
       $2::text = ''
@@ -579,10 +579,10 @@ func (q *Queries) GetMatchByIDForUpdate(ctx context.Context, id pgtype.UUID) (Ma
 
 const getMatchForAdmin = `-- name: GetMatchForAdmin :one
 SELECT m.id, m.name, m.publication_mode, m.opponent_state, m.status, m.host_team_id, m.away_team_id, m.opponent_name, m.players_per_team, m.start_time, m.end_time, m.location, m.location_latitude, m.location_longitude, m.description, m.created_by_user_id, m.created_at, m.updated_at, m.created_by_admin_id, m.registration_start_at, m.registration_end_at, m.is_free, m.host_color, m.away_color, m.payment_mode, m.fee_per_person_cents,
-       host.name AS host_team_name,
+	   COALESCE(host.name, '') AS host_team_name,
        away.name AS away_team_name
 FROM matches m
-JOIN teams host ON host.id = m.host_team_id
+LEFT JOIN teams host ON host.id = m.host_team_id
 LEFT JOIN teams away ON away.id = m.away_team_id
 WHERE m.id = $1
 `
@@ -878,7 +878,7 @@ func (q *Queries) ListHomeActionGroupParticipants(ctx context.Context, groupIds 
 
 const listHomeActionMatchesForUser = `-- name: ListHomeActionMatchesForUser :many
 SELECT m.id, m.name, m.publication_mode, m.opponent_state, m.status, m.host_team_id, m.away_team_id, m.opponent_name, m.players_per_team, m.start_time, m.end_time, m.location, m.location_latitude, m.location_longitude, m.description, m.created_by_user_id, m.created_at, m.updated_at, m.created_by_admin_id, m.registration_start_at, m.registration_end_at, m.is_free, m.host_color, m.away_color, m.payment_mode, m.fee_per_person_cents,
-       host.name AS host_team_name,
+	   COALESCE(host.name, '') AS host_team_name,
        away.name AS away_team_name,
        related_group.id AS group_id,
        related_group.kind AS group_kind,
@@ -902,7 +902,7 @@ SELECT m.id, m.name, m.publication_mode, m.opponent_state, m.status, m.host_team
        mine.updated_at AS my_registration_updated_at,
        mine.cancelled_at AS my_registration_cancelled_at
 FROM matches m
-JOIN teams host ON host.id = m.host_team_id
+LEFT JOIN teams host ON host.id = m.host_team_id
 LEFT JOIN teams away ON away.id = m.away_team_id
 JOIN LATERAL (
     SELECT g.id, g.match_id, g.kind, g.team_id, g.min_players, g.max_players, g.status, g.created_at, g.updated_at, g.cancelled_at
@@ -1114,10 +1114,10 @@ func (q *Queries) ListHomeEndedMatchParticipants(ctx context.Context, matchIds [
 
 const listHomeEndedMatchesForUser = `-- name: ListHomeEndedMatchesForUser :many
 SELECT m.id, m.name, m.publication_mode, m.opponent_state, m.status, m.host_team_id, m.away_team_id, m.opponent_name, m.players_per_team, m.start_time, m.end_time, m.location, m.location_latitude, m.location_longitude, m.description, m.created_by_user_id, m.created_at, m.updated_at, m.created_by_admin_id, m.registration_start_at, m.registration_end_at, m.is_free, m.host_color, m.away_color, m.payment_mode, m.fee_per_person_cents,
-       host.name AS host_team_name,
+	   COALESCE(host.name, '') AS host_team_name,
        away.name AS away_team_name
 FROM matches m
-JOIN teams host ON host.id = m.host_team_id
+LEFT JOIN teams host ON host.id = m.host_team_id
 LEFT JOIN teams away ON away.id = m.away_team_id
 WHERE m.status <> 'cancelled'
   AND (m.status = 'ended' OR m.end_time <= NOW())
@@ -1228,10 +1228,10 @@ func (q *Queries) ListHomeEndedMatchesForUser(ctx context.Context, arg ListHomeE
 
 const listMatchesForAdmin = `-- name: ListMatchesForAdmin :many
 SELECT m.id, m.name, m.publication_mode, m.opponent_state, m.status, m.host_team_id, m.away_team_id, m.opponent_name, m.players_per_team, m.start_time, m.end_time, m.location, m.location_latitude, m.location_longitude, m.description, m.created_by_user_id, m.created_at, m.updated_at, m.created_by_admin_id, m.registration_start_at, m.registration_end_at, m.is_free, m.host_color, m.away_color, m.payment_mode, m.fee_per_person_cents,
-       host.name AS host_team_name,
+	   COALESCE(host.name, '') AS host_team_name,
        away.name AS away_team_name
 FROM matches m
-JOIN teams host ON host.id = m.host_team_id
+LEFT JOIN teams host ON host.id = m.host_team_id
 LEFT JOIN teams away ON away.id = m.away_team_id
 WHERE ($1::text IS NULL OR m.status = $1)
   AND (
@@ -1338,10 +1338,10 @@ func (q *Queries) ListMatchesForAdmin(ctx context.Context, arg ListMatchesForAdm
 
 const listMatchesForUser = `-- name: ListMatchesForUser :many
 SELECT m.id, m.name, m.publication_mode, m.opponent_state, m.status, m.host_team_id, m.away_team_id, m.opponent_name, m.players_per_team, m.start_time, m.end_time, m.location, m.location_latitude, m.location_longitude, m.description, m.created_by_user_id, m.created_at, m.updated_at, m.created_by_admin_id, m.registration_start_at, m.registration_end_at, m.is_free, m.host_color, m.away_color, m.payment_mode, m.fee_per_person_cents,
-       host.name AS host_team_name,
+	   COALESCE(host.name, '') AS host_team_name,
        away.name AS away_team_name
 FROM matches m
-JOIN teams host ON host.id = m.host_team_id
+LEFT JOIN teams host ON host.id = m.host_team_id
 LEFT JOIN teams away ON away.id = m.away_team_id
 WHERE ($1::text IS NULL OR m.status = $1)
   AND (

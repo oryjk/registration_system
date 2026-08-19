@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	matchsqlc "github.com/oryjk/registration_system/registration_system_go/internal/match/adapters/postgres/sqlc"
 	matchapplication "github.com/oryjk/registration_system/registration_system_go/internal/match/application"
 	"github.com/oryjk/registration_system/registration_system_go/internal/match/domain"
 	"github.com/oryjk/registration_system/registration_system_go/internal/match/ports"
@@ -618,6 +619,55 @@ func TestRepositoryListsIndividualGroupRegistrations(t *testing.T) {
 	}
 	if individualState.MyRegistration.Status != domain.RegistrationLeave || individualState.AttendingCount != 0 {
 		t.Fatalf("leave must not count as attending: %+v", individualState)
+	}
+}
+
+func newPersistablePickupMatch(t *testing.T, userID int64, minPlayers, maxPlayers int, paymentMode domain.PaymentMode, feeCents int64) (domain.Match, []domain.RegistrationGroup) {
+	t.Helper()
+	start := time.Date(2026, 8, 25, 18, 0, 0, 0, time.UTC)
+	match, groups, err := domain.NewMatch(domain.NewMatchInput{
+		Name: "散人约球多人局", PublicationMode: domain.OnlinePickup,
+		CreatedByUserID: int64Pointer(userID), PlayersPerTeam: minPlayers,
+		StartTime: start, EndTime: start.Add(2 * time.Hour), Location: "东安球场", CreatedAt: start.Add(-24 * time.Hour),
+		PaymentMode: paymentMode, FeePerPersonCents: feeCents,
+	}, domain.IndividualLimits{MinPlayers: minPlayers, MaxPlayers: maxPlayers})
+	if err != nil {
+		t.Fatalf("new pickup match: %v", err)
+	}
+	return match, groups
+}
+
+func TestRepositoryFindForUserReturnsPickupMatchWithPaymentFields(t *testing.T) {
+	pool := testsupport.StartPostgres(t)
+	ctx := context.Background()
+	ownerID, _ := seedMatchOwner(t, pool)
+	viewerID := seedMatchUser(t, pool)
+	match, groups := newPersistablePickupMatch(t, ownerID, 4, 12, domain.PaymentPrepaid, 2500)
+	repository := NewRepository(pool)
+	if err := repository.CreateWithGroups(ctx, match, groups); err != nil {
+		t.Fatalf("create pickup match: %v", err)
+	}
+
+	item, _, found, err := repository.FindForUser(ctx, match.ID, viewerID)
+	if err != nil || !found || item.Match.ID != match.ID {
+		t.Fatalf("pickup match must be visible: found=%t item=%+v err=%v", found, item, err)
+	}
+	if item.Match.PaymentMode != domain.PaymentPrepaid || item.Match.FeePerPersonCents != 2500 {
+		t.Fatalf("payment fields must be mapped: %+v", item.Match)
+	}
+	if item.HostTeamName != "" {
+		t.Fatalf("pickup match has no host team name, got %q", item.HostTeamName)
+	}
+}
+
+func TestMapAdminDetailMatchIncludesPaymentFields(t *testing.T) {
+	row := matchsqlc.GetMatchForAdminRow{
+		PublicationMode: string(domain.OnlinePickup), PaymentMode: string(domain.PaymentPrepaid),
+		FeePerPersonCents: 2500, IsFree: false,
+	}
+	match := mapAdminDetailMatch(row)
+	if match.PaymentMode != domain.PaymentPrepaid || match.FeePerPersonCents != 2500 || match.IsFree {
+		t.Fatalf("payment fields must be mapped: %+v", match)
 	}
 }
 

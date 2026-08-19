@@ -44,19 +44,19 @@ FOR UPDATE;
 
 -- name: GetMatchForAdmin :one
 SELECT m.*,
-       host.name AS host_team_name,
+	   COALESCE(host.name, '') AS host_team_name,
        away.name AS away_team_name
 FROM matches m
-JOIN teams host ON host.id = m.host_team_id
+LEFT JOIN teams host ON host.id = m.host_team_id
 LEFT JOIN teams away ON away.id = m.away_team_id
 WHERE m.id = $1;
 
 -- name: ListMatchesForAdmin :many
 SELECT m.*,
-       host.name AS host_team_name,
+	   COALESCE(host.name, '') AS host_team_name,
        away.name AS away_team_name
 FROM matches m
-JOIN teams host ON host.id = m.host_team_id
+LEFT JOIN teams host ON host.id = m.host_team_id
 LEFT JOIN teams away ON away.id = m.away_team_id
 WHERE (sqlc.narg('status')::text IS NULL OR m.status = sqlc.narg('status'))
   AND (
@@ -71,7 +71,7 @@ LIMIT sqlc.arg('limit_count') OFFSET sqlc.arg('offset_count');
 -- name: CountMatchesForAdmin :one
 SELECT COUNT(*)
 FROM matches m
-JOIN teams host ON host.id = m.host_team_id
+LEFT JOIN teams host ON host.id = m.host_team_id
 WHERE (sqlc.narg('status')::text IS NULL OR m.status = sqlc.narg('status'))
   AND (
       sqlc.arg('search')::text = ''
@@ -82,10 +82,10 @@ WHERE (sqlc.narg('status')::text IS NULL OR m.status = sqlc.narg('status'))
 
 -- name: ListMatchesForUser :many
 SELECT m.*,
-       host.name AS host_team_name,
+	   COALESCE(host.name, '') AS host_team_name,
        away.name AS away_team_name
 FROM matches m
-JOIN teams host ON host.id = m.host_team_id
+LEFT JOIN teams host ON host.id = m.host_team_id
 LEFT JOIN teams away ON away.id = m.away_team_id
 WHERE (sqlc.narg('status')::text IS NULL OR m.status = sqlc.narg('status'))
   AND (
@@ -156,7 +156,7 @@ LIMIT sqlc.arg('limit_count') OFFSET sqlc.arg('offset_count');
 -- name: CountMatchesForUser :one
 SELECT COUNT(*)
 FROM matches m
-JOIN teams host ON host.id = m.host_team_id
+LEFT JOIN teams host ON host.id = m.host_team_id
 WHERE (sqlc.narg('status')::text IS NULL OR m.status = sqlc.narg('status'))
   AND (
       sqlc.arg('search')::text = ''
@@ -223,7 +223,7 @@ WHERE (sqlc.narg('status')::text IS NULL OR m.status = sqlc.narg('status'))
 
 -- name: ListHomeActionMatchesForUser :many
 SELECT m.*,
-       host.name AS host_team_name,
+	   COALESCE(host.name, '') AS host_team_name,
        away.name AS away_team_name,
        related_group.id AS group_id,
        related_group.kind AS group_kind,
@@ -247,7 +247,7 @@ SELECT m.*,
        mine.updated_at AS my_registration_updated_at,
        mine.cancelled_at AS my_registration_cancelled_at
 FROM matches m
-JOIN teams host ON host.id = m.host_team_id
+LEFT JOIN teams host ON host.id = m.host_team_id
 LEFT JOIN teams away ON away.id = m.away_team_id
 JOIN LATERAL (
     SELECT g.*
@@ -290,10 +290,10 @@ LIMIT sqlc.arg('limit_count');
 
 -- name: ListHomeEndedMatchesForUser :many
 SELECT m.*,
-       host.name AS host_team_name,
+	   COALESCE(host.name, '') AS host_team_name,
        away.name AS away_team_name
 FROM matches m
-JOIN teams host ON host.id = m.host_team_id
+LEFT JOIN teams host ON host.id = m.host_team_id
 LEFT JOIN teams away ON away.id = m.away_team_id
 WHERE m.status <> 'cancelled'
   AND (m.status = 'ended' OR m.end_time <= NOW())
