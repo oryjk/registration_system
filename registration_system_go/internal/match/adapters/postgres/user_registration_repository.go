@@ -128,6 +128,7 @@ func mapRegistration(row matchsqlc.MatchRegistration) domain.Registration {
 	return domain.Registration{
 		ID: uuid.UUID(row.ID.Bytes), GroupID: uuid.UUID(row.GroupID.Bytes), UserID: row.UserID,
 		Status: domain.RegistrationStatus(row.Status), RegistrationCount: int(row.RegistrationCount),
+		Paid:      row.Paid,
 		CreatedAt: row.CreatedAt.Time, UpdatedAt: row.UpdatedAt.Time, CancelledAt: timestampPointer(row.CancelledAt),
 	}
 }

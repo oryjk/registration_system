@@ -1405,3 +1405,11 @@ func TestRepositoryFinishUpdateStatusOnlyWritesNonTerminalMatches(t *testing.T) 
 		t.Fatalf("expected ended status preserved after conflicting finish, got %s", loaded.Status)
 	}
 }
+
+func TestMapRegistrationCarriesPaidFlag(t *testing.T) {
+	row := matchsqlc.MatchRegistration{RegistrationCount: 3, Paid: true}
+	registration := mapRegistration(row)
+	if !registration.Paid || registration.RegistrationCount != 3 {
+		t.Fatalf("registration mapping must carry paid flag and count: %+v", registration)
+	}
+}
