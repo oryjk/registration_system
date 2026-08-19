@@ -88,6 +88,17 @@ func (q *Queries) CountPaymentOrders(ctx context.Context, arg CountPaymentOrders
 	return count, err
 }
 
+const countSubmittedTips = `-- name: CountSubmittedTips :one
+SELECT COUNT(*) FROM tips WHERE status = 'submitted'
+`
+
+func (q *Queries) CountSubmittedTips(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countSubmittedTips)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createPaymentOrder = `-- name: CreatePaymentOrder :one
 INSERT INTO payment_orders (
     order_no, user_id, amount_cents, provider, channel, status, kind, team_id, match_id, months, created_at, updated_at
@@ -141,6 +152,45 @@ func (q *Queries) CreatePaymentOrder(ctx context.Context, arg CreatePaymentOrder
 		&i.TeamID,
 		&i.Months,
 		&i.MatchID,
+	)
+	return i, err
+}
+
+const createTip = `-- name: CreateTip :one
+INSERT INTO tips (order_no, user_id, nickname, amount_cents, suggestion, status, created_at)
+VALUES ($1, $2, $3, $4, $5, 'pending', $6)
+RETURNING id, order_no, user_id, nickname, amount_cents, suggestion, status, created_at, submitted_at
+`
+
+type CreateTipParams struct {
+	OrderNo     string             `json:"order_no"`
+	UserID      int64              `json:"user_id"`
+	Nickname    string             `json:"nickname"`
+	AmountCents int64              `json:"amount_cents"`
+	Suggestion  string             `json:"suggestion"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+}
+
+func (q *Queries) CreateTip(ctx context.Context, arg CreateTipParams) (Tip, error) {
+	row := q.db.QueryRow(ctx, createTip,
+		arg.OrderNo,
+		arg.UserID,
+		arg.Nickname,
+		arg.AmountCents,
+		arg.Suggestion,
+		arg.CreatedAt,
+	)
+	var i Tip
+	err := row.Scan(
+		&i.ID,
+		&i.OrderNo,
+		&i.UserID,
+		&i.Nickname,
+		&i.AmountCents,
+		&i.Suggestion,
+		&i.Status,
+		&i.CreatedAt,
+		&i.SubmittedAt,
 	)
 	return i, err
 }
@@ -273,6 +323,18 @@ func (q *Queries) GetPaymentOrderForUpdate(ctx context.Context, orderNo string) 
 		&i.MatchID,
 	)
 	return i, err
+}
+
+const getPaymentUserNickname = `-- name: GetPaymentUserNickname :one
+SELECT nickname FROM users WHERE id = $1 AND status = 'active'
+`
+
+// 打赏下单时的昵称快照来源；只认 active 用户，与 openid 读取同一约束。
+func (q *Queries) GetPaymentUserNickname(ctx context.Context, id int64) (string, error) {
+	row := q.db.QueryRow(ctx, getPaymentUserNickname, id)
+	var nickname string
+	err := row.Scan(&nickname)
+	return nickname, err
 }
 
 const getPaymentUserOpenID = `-- name: GetPaymentUserOpenID :one
@@ -431,6 +493,48 @@ func (q *Queries) ListPaymentOrders(ctx context.Context, arg ListPaymentOrdersPa
 	return items, nil
 }
 
+const listSubmittedTips = `-- name: ListSubmittedTips :many
+SELECT id, order_no, user_id, nickname, amount_cents, suggestion, status, created_at, submitted_at FROM tips
+WHERE status = 'submitted'
+ORDER BY submitted_at DESC, id DESC
+LIMIT $2 OFFSET $1
+`
+
+type ListSubmittedTipsParams struct {
+	ResultOffset int32 `json:"result_offset"`
+	ResultLimit  int32 `json:"result_limit"`
+}
+
+func (q *Queries) ListSubmittedTips(ctx context.Context, arg ListSubmittedTipsParams) ([]Tip, error) {
+	rows, err := q.db.Query(ctx, listSubmittedTips, arg.ResultOffset, arg.ResultLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Tip
+	for rows.Next() {
+		var i Tip
+		if err := rows.Scan(
+			&i.ID,
+			&i.OrderNo,
+			&i.UserID,
+			&i.Nickname,
+			&i.AmountCents,
+			&i.Suggestion,
+			&i.Status,
+			&i.CreatedAt,
+			&i.SubmittedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const markMatchRegistrationPaid = `-- name: MarkMatchRegistrationPaid :execrows
 UPDATE match_registrations r
 SET paid = TRUE, updated_at = NOW()
@@ -509,6 +613,26 @@ func (q *Queries) MarkPaymentOrderPaid(ctx context.Context, arg MarkPaymentOrder
 		&i.MatchID,
 	)
 	return i, err
+}
+
+const markTipSubmitted = `-- name: MarkTipSubmitted :execrows
+UPDATE tips
+SET status = 'submitted', submitted_at = $2
+WHERE order_no = $1 AND status = 'pending'
+`
+
+type MarkTipSubmittedParams struct {
+	OrderNo     string             `json:"order_no"`
+	SubmittedAt pgtype.Timestamptz `json:"submitted_at"`
+}
+
+// 打赏订单核销后置建议为已生效；幂等，重复核销无副作用。
+func (q *Queries) MarkTipSubmitted(ctx context.Context, arg MarkTipSubmittedParams) (int64, error) {
+	result, err := q.db.Exec(ctx, markTipSubmitted, arg.OrderNo, arg.SubmittedAt)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const savePaymentOrderPrepared = `-- name: SavePaymentOrderPrepared :one

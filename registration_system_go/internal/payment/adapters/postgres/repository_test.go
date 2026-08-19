@@ -334,3 +334,125 @@ func TestApplyMembershipPaymentRejectsAmountMismatch(t *testing.T) {
 		t.Fatalf("order should stay pending, got %s", loaded.Status)
 	}
 }
+
+func TestTipFlowCreateSettleAndListSubmitted(t *testing.T) {
+	pool := testsupport.OpenTestPostgres(t)
+	ctx := context.Background()
+	userID := seedPaymentUser(t, pool, "tipflow")
+	order, err := paymentdomain.NewTipOrder(uniquePaymentOrderNo("tipflow"), userID, 500, time.Now().UTC())
+	if err != nil {
+		t.Fatal(err)
+	}
+	repository := NewRepository(pool)
+	if err := repository.Create(ctx, order); err != nil {
+		t.Fatal(err)
+	}
+	tip, err := paymentdomain.NewTip(order, "打赏人", "希望支持赛事回放")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := repository.CreateTip(ctx, tip); err != nil {
+		t.Fatal(err)
+	}
+
+	// 未支付前管理端列表不可见（付款成功才提交）。
+	items, total, err := repository.ListTips(ctx, paymentports.TipFilter{Limit: 20})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if total != 0 || len(items) != 0 {
+		t.Fatalf("pending tip must be invisible, total=%d items=%+v", total, items)
+	}
+
+	payment := paymentports.VerifiedPayment{OrderNo: order.OrderNo, AmountCents: order.AmountCents, TransactionID: "wx-" + order.OrderNo, PaidAt: time.Now().UTC()}
+	first, err := repository.ApplyTipPayment(ctx, payment)
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := repository.ApplyTipPayment(ctx, payment)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !first.Credited || second.Credited || first.Order.Status != paymentdomain.StatusPaid {
+		t.Fatalf("first=%+v second=%+v", first, second)
+	}
+
+	items, total, err = repository.ListTips(ctx, paymentports.TipFilter{Limit: 20})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if total != 1 || len(items) != 1 {
+		t.Fatalf("total=%d items=%+v", total, items)
+	}
+	listed := items[0]
+	if listed.OrderNo != order.OrderNo || listed.UserID != userID || listed.AmountCents != 500 ||
+		listed.Suggestion != "希望支持赛事回放" || listed.Status != paymentdomain.TipStatusSubmitted || listed.SubmittedAt == nil {
+		t.Fatalf("listed tip = %+v", listed)
+	}
+	// 打赏入账不能碰钱包。
+	var balance interface{}
+	if err := pool.QueryRow(ctx, `SELECT balance_cents FROM wallet_accounts WHERE user_id=$1`, userID).Scan(&balance); !errors.Is(err, pgx.ErrNoRows) {
+		t.Fatalf("tip must not create wallet account, err=%v balance=%v", err, balance)
+	}
+}
+
+func TestApplyTipPaymentRejectsWrongKindAndAmountMismatch(t *testing.T) {
+	pool := testsupport.OpenTestPostgres(t)
+	ctx := context.Background()
+	userID := seedPaymentUser(t, pool, "tipkind")
+	repository := NewRepository(pool)
+
+	// 非 tip 订单（充值单）不能走打赏核销。
+	recharge := mustPaymentOrder(t, uniquePaymentOrderNo("tipkind"), userID, 100)
+	if err := repository.Create(ctx, recharge); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := repository.ApplyTipPayment(ctx, paymentports.VerifiedPayment{OrderNo: recharge.OrderNo, AmountCents: 100, TransactionID: "wx-k1", PaidAt: time.Now().UTC()}); !errors.Is(err, sharederror.ErrConflict) {
+		t.Fatalf("kind mismatch error=%v, want conflict", err)
+	}
+
+	tipOrder, err := paymentdomain.NewTipOrder(uniquePaymentOrderNo("tipamt"), userID, 300, time.Now().UTC())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := repository.Create(ctx, tipOrder); err != nil {
+		t.Fatal(err)
+	}
+	tip, err := paymentdomain.NewTip(tipOrder, "打赏人", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := repository.CreateTip(ctx, tip); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := repository.ApplyTipPayment(ctx, paymentports.VerifiedPayment{OrderNo: tipOrder.OrderNo, AmountCents: 299, TransactionID: "wx-k2", PaidAt: time.Now().UTC()}); !errors.Is(err, sharederror.ErrConflict) {
+		t.Fatalf("amount mismatch error=%v, want conflict", err)
+	}
+	got, err := repository.Get(ctx, tipOrder.OrderNo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Status != paymentdomain.StatusPending {
+		t.Fatalf("rejected settlement must leave order pending, status=%s", got.Status)
+	}
+}
+
+func TestNicknameForUserSnapshotsActiveUser(t *testing.T) {
+	pool := testsupport.OpenTestPostgres(t)
+	ctx := context.Background()
+	userID := seedPaymentUser(t, pool, "tipnick")
+	if _, err := pool.Exec(ctx, `UPDATE users SET nickname='小程序用户' WHERE id=$1`, userID); err != nil {
+		t.Fatal(err)
+	}
+	repository := NewRepository(pool)
+	nickname, err := repository.NicknameForUser(ctx, userID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if nickname != "小程序用户" {
+		t.Fatalf("nickname=%q", nickname)
+	}
+	if _, err := repository.NicknameForUser(ctx, -1); !errors.Is(err, sharederror.ErrNotFound) {
+		t.Fatalf("missing user error=%v, want not found", err)
+	}
+}

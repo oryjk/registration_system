@@ -169,6 +169,18 @@ type TeamMember struct {
 	BalanceCents int64            `json:"balance_cents"`
 }
 
+type Tip struct {
+	ID          int64              `json:"id"`
+	OrderNo     string             `json:"order_no"`
+	UserID      int64              `json:"user_id"`
+	Nickname    string             `json:"nickname"`
+	AmountCents int64              `json:"amount_cents"`
+	Suggestion  string             `json:"suggestion"`
+	Status      string             `json:"status"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	SubmittedAt pgtype.Timestamptz `json:"submitted_at"`
+}
+
 type User struct {
 	ID          int64            `json:"id"`
 	Openid      string           `json:"openid"`

@@ -183,6 +183,7 @@ func TestPaymentWalletRoutesUseVersionedAudiencePrefixes(t *testing.T) {
 		token  string
 	}{
 		{http.MethodPost, "/api/v1/app/payments/recharge-orders", "user-token"},
+		{http.MethodPost, "/api/v1/app/payments/tip-orders", "user-token"},
 		{http.MethodGet, "/api/v1/app/payments/orders", "user-token"},
 		{http.MethodGet, "/api/v1/app/payments/orders/P1", "user-token"},
 		{http.MethodPost, "/api/v1/app/payments/orders/P1/sync", "user-token"},
@@ -190,13 +191,14 @@ func TestPaymentWalletRoutesUseVersionedAudiencePrefixes(t *testing.T) {
 		{http.MethodGet, "/api/v1/app/wallet", "user-token"},
 		{http.MethodGet, "/api/v1/app/wallet/transactions", "user-token"},
 		{http.MethodGet, "/api/v1/admin/payments/orders", "admin-token"},
+		{http.MethodGet, "/api/v1/admin/payments/tips", "admin-token"},
 		{http.MethodGet, "/api/v1/admin/payments/orders/P1", "admin-token"},
 		{http.MethodGet, "/api/v1/admin/wallets/37", "admin-token"},
 	}
 	for _, test := range tests {
 		t.Run(test.method+" "+test.path, func(t *testing.T) {
 			var body *bytes.Reader
-			if test.path == "/api/v1/app/payments/recharge-orders" {
+			if test.path == "/api/v1/app/payments/recharge-orders" || test.path == "/api/v1/app/payments/tip-orders" {
 				body = bytes.NewReader([]byte(`{"amount_cents":1}`))
 			} else {
 				body = bytes.NewReader(nil)
@@ -284,6 +286,12 @@ func (routerPaymentService) Cancel(context.Context, sharedauth.Actor, string) (p
 }
 func (routerPaymentService) HandleNotification(context.Context, []byte) (paymentports.SettlementResult, error) {
 	return paymentports.SettlementResult{}, nil
+}
+func (routerPaymentService) CreateTip(context.Context, sharedauth.Actor, paymentapplication.CreateTipCommand) (paymentapplication.CreateRechargeResult, error) {
+	return paymentapplication.CreateRechargeResult{}, nil
+}
+func (routerPaymentService) ListTips(context.Context, sharedauth.Actor, paymentapplication.TipListQuery) (paymentapplication.TipListResult, error) {
+	return paymentapplication.TipListResult{}, nil
 }
 
 type routerWalletService struct{}

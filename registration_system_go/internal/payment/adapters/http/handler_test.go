@@ -98,6 +98,8 @@ var _ ports.TokenService = paymentTokens{}
 type fakePaymentService struct {
 	actor           sharedauth.Actor
 	createCommand   paymentapplication.CreateRechargeCommand
+	tipCommand      paymentapplication.CreateTipCommand
+	tipListResult   paymentapplication.TipListResult
 	createResult    paymentapplication.CreateRechargeResult
 	createErr       error
 	notificationErr error
@@ -138,4 +140,70 @@ func (f *fakePaymentService) CreateTeamMembership(_ context.Context, _ sharedaut
 
 func (s *fakePaymentService) CreateMatchRegistration(context.Context, sharedauth.Actor, paymentapplication.CreateMatchRegistrationCommand) (paymentapplication.CreateRechargeResult, error) {
 	return paymentapplication.CreateRechargeResult{}, nil
+}
+
+func TestCreateTipMapsCommandAndReturnsOrderPaymentShape(t *testing.T) {
+	service := &fakePaymentService{createResult: paymentapplication.CreateRechargeResult{
+		Order: mustHTTPOrder(t, "P-tip-1", 37, 500), Payment: paymentports.JSAPIParameters{Package: "prepay_id=prepay-tip-1"},
+	}}
+	router := paymentTestRouter(service)
+	request := httptest.NewRequest(http.MethodPost, "/app/payments/tip-orders", bytes.NewBufferString(`{"amount_cents":500,"suggestion":"希望支持赛事回放"}`))
+	request.Header.Set("Authorization", "Bearer user-token")
+	request.Header.Set("Content-Type", "application/json")
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+	body := response.Body.String()
+	if response.Code != http.StatusOK || service.tipCommand.AmountCents != 500 || service.tipCommand.Suggestion != "希望支持赛事回放" {
+		t.Fatalf("status=%d command=%+v body=%s", response.Code, service.tipCommand, body)
+	}
+	// 响应结构与 recharge 一致：{order:{order_no,...}, payment:{...}} 两段。
+	if !strings.Contains(body, `"order_no":"P-tip-1"`) || !strings.Contains(body, `"package":"prepay_id=prepay-tip-1"`) {
+		t.Fatalf("body=%s", body)
+	}
+}
+
+func TestCreateTipRejectsMissingAmount(t *testing.T) {
+	service := &fakePaymentService{}
+	router := paymentTestRouter(service)
+	request := httptest.NewRequest(http.MethodPost, "/app/payments/tip-orders", bytes.NewBufferString(`{"suggestion":"建议"}`))
+	request.Header.Set("Authorization", "Bearer user-token")
+	request.Header.Set("Content-Type", "application/json")
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+	if response.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("status=%d body=%s", response.Code, response.Body.String())
+	}
+}
+
+func TestListTipsRequiresAdminAndMapsItems(t *testing.T) {
+	service := &fakePaymentService{tipListResult: paymentapplication.TipListResult{
+		Items: []paymentdomain.Tip{{OrderNo: "P-tip-2", UserID: 37, Nickname: "小程序用户", AmountCents: 100, Suggestion: "建议", Status: paymentdomain.TipStatusSubmitted}}, Total: 1,
+	}}
+	router := paymentTestRouter(service)
+
+	userRequest := httptest.NewRequest(http.MethodGet, "/admin/payments/tips", nil)
+	userRequest.Header.Set("Authorization", "Bearer user-token")
+	userResponse := httptest.NewRecorder()
+	router.ServeHTTP(userResponse, userRequest)
+	if userResponse.Code != http.StatusForbidden {
+		t.Fatalf("user status=%d body=%s", userResponse.Code, userResponse.Body.String())
+	}
+
+	request := httptest.NewRequest(http.MethodGet, "/admin/payments/tips?page=1&page_size=20", nil)
+	request.Header.Set("Authorization", "Bearer admin-token")
+	adminResponse := httptest.NewRecorder()
+	router.ServeHTTP(adminResponse, request)
+	body := adminResponse.Body.String()
+	if adminResponse.Code != http.StatusOK || !strings.Contains(body, `"nickname":"小程序用户"`) || !strings.Contains(body, `"suggestion":"建议"`) {
+		t.Fatalf("status=%d body=%s", adminResponse.Code, body)
+	}
+}
+
+func (f *fakePaymentService) CreateTip(_ context.Context, actor sharedauth.Actor, command paymentapplication.CreateTipCommand) (paymentapplication.CreateRechargeResult, error) {
+	f.actor, f.tipCommand = actor, command
+	return f.createResult, f.createErr
+}
+
+func (f *fakePaymentService) ListTips(_ context.Context, _ sharedauth.Actor, query paymentapplication.TipListQuery) (paymentapplication.TipListResult, error) {
+	return f.tipListResult, nil
 }

@@ -38,6 +38,11 @@ type UserOpenIDReader interface {
 	OpenIDForUser(context.Context, int64) (string, error)
 }
 
+// UserNicknameReader 供打赏下单时快照用户昵称（回调路径无登录态，不能实时查）。
+type UserNicknameReader interface {
+	NicknameForUser(context.Context, int64) (string, error)
+}
+
 type UnifiedOrderRequest struct {
 	OrderNo     string
 	AmountCents int64
@@ -139,6 +144,20 @@ type MatchRegistrationCredit struct {
 
 type RegistrationSettlement interface {
 	ApplyRegistrationPayment(context.Context, VerifiedPayment, MatchRegistrationCredit) (SettlementResult, error)
+}
+
+// TipRepository 打赏记录端口：快照随下单落库、支付核销置建议生效、管理端分页列表；
+// 由 payment 的 postgres 仓储实现（订单核销与 tips 状态同事务）。
+type TipRepository interface {
+	CreateTip(context.Context, paymentdomain.Tip) error
+	ApplyTipPayment(context.Context, VerifiedPayment) (SettlementResult, error)
+	ListTips(context.Context, TipFilter) ([]paymentdomain.Tip, int64, error)
+}
+
+// TipFilter 管理端打赏列表筛选：只返回已生效（submitted）记录，按提交时间倒序。
+type TipFilter struct {
+	Limit  int
+	Offset int
 }
 
 type OrderNumberGenerator interface {

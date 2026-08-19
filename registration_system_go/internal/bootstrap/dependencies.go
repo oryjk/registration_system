@@ -127,7 +127,7 @@ func BuildDependencies(ctx context.Context, config Config) (Dependencies, func()
 		}
 	}
 	registrationFees := matchapplication.NewRegistrationFeeService(matchRepository)
-	paymentService := paymentapplication.NewService(paymentRepository, paymentRepository, paymentGateway, paymentRepository, paymentRepository, teamService, registrationFees, paymentRepository, paymentorder.Generator{}, matchClock)
+	paymentService := paymentapplication.NewService(paymentRepository, paymentRepository, paymentRepository, paymentGateway, paymentRepository, paymentRepository, teamService, registrationFees, paymentRepository, paymentRepository, paymentorder.Generator{}, matchClock)
 	paymentHandler := paymenthttp.NewHandler(paymentService)
 	walletRepository := walletpostgres.NewRepository(pool)
 	walletService := walletapplication.NewService(walletRepository)

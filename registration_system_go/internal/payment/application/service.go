@@ -20,18 +20,20 @@ const (
 type Service struct {
 	orders        paymentports.OrderRepository
 	users         paymentports.UserOpenIDReader
+	nicknames     paymentports.UserNicknameReader
 	gateway       paymentports.Gateway
 	settlement    paymentports.Settlement
 	memberships   paymentports.MembershipSettlement
 	teams         paymentports.TeamEligibility
 	matchFees     paymentports.MatchRegistrationFeeSource
 	registrations paymentports.RegistrationSettlement
+	tips          paymentports.TipRepository
 	orderNos      paymentports.OrderNumberGenerator
 	clock         paymentports.Clock
 }
 
-func NewService(orders paymentports.OrderRepository, users paymentports.UserOpenIDReader, gateway paymentports.Gateway, settlement paymentports.Settlement, memberships paymentports.MembershipSettlement, teams paymentports.TeamEligibility, matchFees paymentports.MatchRegistrationFeeSource, registrations paymentports.RegistrationSettlement, orderNos paymentports.OrderNumberGenerator, clock paymentports.Clock) *Service {
-	return &Service{orders: orders, users: users, gateway: gateway, settlement: settlement, memberships: memberships, teams: teams, matchFees: matchFees, registrations: registrations, orderNos: orderNos, clock: clock}
+func NewService(orders paymentports.OrderRepository, users paymentports.UserOpenIDReader, nicknames paymentports.UserNicknameReader, gateway paymentports.Gateway, settlement paymentports.Settlement, memberships paymentports.MembershipSettlement, teams paymentports.TeamEligibility, matchFees paymentports.MatchRegistrationFeeSource, registrations paymentports.RegistrationSettlement, tips paymentports.TipRepository, orderNos paymentports.OrderNumberGenerator, clock paymentports.Clock) *Service {
+	return &Service{orders: orders, users: users, nicknames: nicknames, gateway: gateway, settlement: settlement, memberships: memberships, teams: teams, matchFees: matchFees, registrations: registrations, tips: tips, orderNos: orderNos, clock: clock}
 }
 
 type CreateRechargeCommand struct {
@@ -126,6 +128,62 @@ type CreateTeamMembershipCommand struct {
 	TeamID      int64
 	AmountCents int64
 	ClientIP    string
+}
+
+type CreateTipCommand struct {
+	AmountCents int64
+	Suggestion  string
+	ClientIP    string
+}
+
+// CreateTip 为"请开发者喝咖啡"创建打赏订单并发起微信支付：金额由用户自由填写，
+// 可选功能建议随订单落库（昵称下单时快照），支付成功核销后建议才生效。
+func (s *Service) CreateTip(ctx context.Context, actor sharedauth.Actor, command CreateTipCommand) (CreateRechargeResult, error) {
+	if !actor.IsUser() {
+		return CreateRechargeResult{}, sharederror.ErrForbidden
+	}
+	now := s.clock.Now()
+	order, err := paymentdomain.NewTipOrder(s.orderNos.NewOrderNo(), actor.ID, command.AmountCents, now)
+	if err != nil {
+		return CreateRechargeResult{}, err
+	}
+	openid, err := s.users.OpenIDForUser(ctx, actor.ID)
+	if err != nil {
+		return CreateRechargeResult{}, err
+	}
+	if strings.TrimSpace(openid) == "" {
+		return CreateRechargeResult{}, sharederror.New(sharederror.KindConflict, "当前用户缺少微信身份信息")
+	}
+	nickname, err := s.nicknames.NicknameForUser(ctx, actor.ID)
+	if err != nil {
+		return CreateRechargeResult{}, err
+	}
+	tip, err := paymentdomain.NewTip(order, nickname, command.Suggestion)
+	if err != nil {
+		return CreateRechargeResult{}, err
+	}
+	if err := s.orders.Create(ctx, order); err != nil {
+		return CreateRechargeResult{}, err
+	}
+	if err := s.tips.CreateTip(ctx, tip); err != nil {
+		return CreateRechargeResult{}, err
+	}
+	providerResult, err := s.gateway.UnifiedOrder(ctx, paymentports.UnifiedOrderRequest{
+		OrderNo: order.OrderNo, AmountCents: order.AmountCents,
+		Description: "请开发者喝咖啡",
+		ClientIP:    strings.TrimSpace(command.ClientIP), OpenID: openid,
+	})
+	if err != nil {
+		if errors.Is(err, paymentports.ErrProviderRejected) {
+			_ = s.orders.MarkFailed(ctx, order.OrderNo, s.clock.Now())
+		}
+		return CreateRechargeResult{}, err
+	}
+	order, err = s.orders.SavePrepared(ctx, order.OrderNo, providerResult.PrepayID, s.clock.Now())
+	if err != nil {
+		return CreateRechargeResult{}, err
+	}
+	return CreateRechargeResult{Order: order, Payment: providerResult.Parameters}, nil
 }
 
 type CreateMatchRegistrationCommand struct {
@@ -331,9 +389,36 @@ func (s *Service) settleVerified(ctx context.Context, verified paymentports.Veri
 			UserID:      order.UserID,
 			AmountCents: order.AmountCents,
 		})
+	case paymentdomain.KindTip:
+		return s.tips.ApplyTipPayment(ctx, verified)
 	default:
 		return s.settlement.CreditRecharge(ctx, verified)
 	}
+}
+
+type TipListQuery struct {
+	Page     int
+	PageSize int
+}
+
+type TipListResult struct {
+	Items    []paymentdomain.Tip
+	Total    int64
+	Page     int
+	PageSize int
+}
+
+// ListTips 管理端"打赏与建议"列表：只返回已支付（建议已生效）的记录，按提交时间倒序。
+func (s *Service) ListTips(ctx context.Context, actor sharedauth.Actor, query TipListQuery) (TipListResult, error) {
+	if !actor.IsAdmin() {
+		return TipListResult{}, sharederror.ErrForbidden
+	}
+	query.Page, query.PageSize = normalizePage(query.Page, query.PageSize)
+	items, total, err := s.tips.ListTips(ctx, paymentports.TipFilter{Limit: query.PageSize, Offset: (query.Page - 1) * query.PageSize})
+	if err != nil {
+		return TipListResult{}, err
+	}
+	return TipListResult{Items: items, Total: total, Page: query.Page, PageSize: query.PageSize}, nil
 }
 
 func normalizePage(page, pageSize int) (int, int) {

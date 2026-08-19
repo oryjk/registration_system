@@ -103,3 +103,27 @@ RETURNING *;
 UPDATE payment_orders
 SET status = 'cancelled', cancelled_at = $3, updated_at = $3
 WHERE match_id = $1 AND user_id = $2 AND kind = 'match_registration' AND status = 'pending';
+
+-- name: GetPaymentUserNickname :one
+-- 打赏下单时的昵称快照来源；只认 active 用户，与 openid 读取同一约束。
+SELECT nickname FROM users WHERE id = $1 AND status = 'active';
+
+-- name: CreateTip :one
+INSERT INTO tips (order_no, user_id, nickname, amount_cents, suggestion, status, created_at)
+VALUES ($1, $2, $3, $4, $5, 'pending', $6)
+RETURNING *;
+
+-- name: MarkTipSubmitted :execrows
+-- 打赏订单核销后置建议为已生效；幂等，重复核销无副作用。
+UPDATE tips
+SET status = 'submitted', submitted_at = $2
+WHERE order_no = $1 AND status = 'pending';
+
+-- name: ListSubmittedTips :many
+SELECT * FROM tips
+WHERE status = 'submitted'
+ORDER BY submitted_at DESC, id DESC
+LIMIT sqlc.arg(result_limit) OFFSET sqlc.arg(result_offset);
+
+-- name: CountSubmittedTips :one
+SELECT COUNT(*) FROM tips WHERE status = 'submitted';

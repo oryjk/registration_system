@@ -38,6 +38,45 @@ func (r *Repository) OpenIDForUser(ctx context.Context, userID int64) (string, e
 	return openid, err
 }
 
+func (r *Repository) NicknameForUser(ctx context.Context, userID int64) (string, error) {
+	nickname, err := r.queries.GetPaymentUserNickname(ctx, userID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", sharederror.ErrNotFound
+	}
+	return nickname, err
+}
+
+func (r *Repository) CreateTip(ctx context.Context, tip paymentdomain.Tip) error {
+	_, err := r.queries.CreateTip(ctx, paymentsqlc.CreateTipParams{
+		OrderNo: tip.OrderNo, UserID: tip.UserID, Nickname: tip.Nickname,
+		AmountCents: tip.AmountCents, Suggestion: tip.Suggestion,
+		CreatedAt: timestamptz(tip.CreatedAt),
+	})
+	return mapConstraintError(err)
+}
+
+func (r *Repository) ListTips(ctx context.Context, filter paymentports.TipFilter) ([]paymentdomain.Tip, int64, error) {
+	limit := filter.Limit
+	if limit <= 0 {
+		limit = 20
+	}
+	rows, err := r.queries.ListSubmittedTips(ctx, paymentsqlc.ListSubmittedTipsParams{
+		ResultLimit: int32(limit), ResultOffset: int32(max(filter.Offset, 0)),
+	})
+	if err != nil {
+		return nil, 0, err
+	}
+	total, err := r.queries.CountSubmittedTips(ctx)
+	if err != nil {
+		return nil, 0, err
+	}
+	items := make([]paymentdomain.Tip, 0, len(rows))
+	for _, row := range rows {
+		items = append(items, mapTip(row))
+	}
+	return items, total, nil
+}
+
 func (r *Repository) Create(ctx context.Context, order paymentdomain.Order) error {
 	_, err := r.queries.CreatePaymentOrder(ctx, paymentsqlc.CreatePaymentOrderParams{
 		OrderNo: order.OrderNo, UserID: order.UserID, AmountCents: order.AmountCents,
@@ -229,6 +268,19 @@ func validateRechargeTransaction(transaction paymentsqlc.WalletTransaction, orde
 	return nil
 }
 
+func mapTip(row paymentsqlc.Tip) paymentdomain.Tip {
+	tip := paymentdomain.Tip{
+		OrderNo: row.OrderNo, UserID: row.UserID, Nickname: row.Nickname,
+		AmountCents: row.AmountCents, Suggestion: row.Suggestion,
+		Status: paymentdomain.TipStatus(row.Status), CreatedAt: row.CreatedAt.Time,
+	}
+	if row.SubmittedAt.Valid {
+		submittedAt := row.SubmittedAt.Time
+		tip.SubmittedAt = &submittedAt
+	}
+	return tip
+}
+
 func mapOrder(row paymentsqlc.PaymentOrder) paymentdomain.Order {
 	order := paymentdomain.Order{
 		OrderNo: row.OrderNo, UserID: row.UserID, AmountCents: row.AmountCents,
@@ -345,6 +397,59 @@ func (r *Repository) ApplyRegistrationPayment(ctx context.Context, payment payme
 	}
 	if _, err := queries.MarkMatchRegistrationPaid(ctx, paymentsqlc.MarkMatchRegistrationPaidParams{
 		MatchID: pgUUID(credit.MatchID), UserID: credit.UserID,
+	}); err != nil {
+		return result, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return result, err
+	}
+	return paymentports.SettlementResult{Order: mapOrder(paidRow), Credited: true}, nil
+}
+
+// ApplyTipPayment 核销打赏订单：事务内校验 kind 与金额、标记订单已支付，
+// 并把功能建议置为已生效（submitted）；幂等，重复回调按已核销短路。
+func (r *Repository) ApplyTipPayment(ctx context.Context, payment paymentports.VerifiedPayment) (result paymentports.SettlementResult, err error) {
+	tx, err := r.database.Begin(ctx)
+	if err != nil {
+		return result, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	queries := r.queries.WithTx(tx)
+	row, err := queries.GetPaymentOrderForUpdate(ctx, payment.OrderNo)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return result, sharederror.ErrNotFound
+	}
+	if err != nil {
+		return result, err
+	}
+	order := mapOrder(row)
+	if order.Kind != paymentdomain.KindTip {
+		return result, sharederror.New(sharederror.KindConflict, "该订单不是打赏订单")
+	}
+	if order.AmountCents != payment.AmountCents {
+		return result, sharederror.New(sharederror.KindConflict, "支付金额不一致")
+	}
+	if order.Status == paymentdomain.StatusPaid {
+		if order.TransactionID != payment.TransactionID {
+			return result, sharederror.ErrConflict
+		}
+		if err := tx.Commit(ctx); err != nil {
+			return result, err
+		}
+		return paymentports.SettlementResult{Order: order}, nil
+	}
+	if order.Status != paymentdomain.StatusPending {
+		return result, sharederror.ErrConflict
+	}
+	paidRow, err := queries.MarkPaymentOrderPaid(ctx, paymentsqlc.MarkPaymentOrderPaidParams{
+		OrderNo: order.OrderNo, TransactionID: &payment.TransactionID, PaidAt: timestamptz(payment.PaidAt),
+	})
+	if err != nil {
+		return result, mapConstraintError(err)
+	}
+	// tips 行正常随下单落库；若因历史故障缺失，钱已实收，仍要完成订单核销（不阻塞结算）。
+	if _, err := queries.MarkTipSubmitted(ctx, paymentsqlc.MarkTipSubmittedParams{
+		OrderNo: order.OrderNo, SubmittedAt: timestamptz(payment.PaidAt),
 	}); err != nil {
 		return result, err
 	}
