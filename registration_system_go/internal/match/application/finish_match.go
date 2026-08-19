@@ -61,8 +61,15 @@ func (u FinishMatch) Execute(ctx context.Context, actor sharedauth.Actor, matchI
 
 // ensureTeamCaptainCanFinish 主队队长始终可以收尾；线上约队已确认客队时，
 // 客队队长也可以收尾——双方都会进入各自的报名详情页。领队不参与收尾。
+// 散人约球没有球队，由发布者收尾。
 func (u FinishMatch) ensureTeamCaptainCanFinish(ctx context.Context, match domain.Match, userID int64) error {
-	hostErr := u.teamAccess.EnsureCaptain(ctx, match.HostTeamID, userID)
+	if match.HostTeamID == nil {
+		if match.CreatedByUserID != nil && *match.CreatedByUserID == userID {
+			return nil
+		}
+		return sharederror.ErrForbidden
+	}
+	hostErr := u.teamAccess.EnsureCaptain(ctx, *match.HostTeamID, userID)
 	if hostErr == nil {
 		return nil
 	}

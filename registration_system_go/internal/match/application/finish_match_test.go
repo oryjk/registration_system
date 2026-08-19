@@ -43,7 +43,7 @@ func endedMatch(status domain.MatchStatus) domain.Match {
 	return domain.Match{
 		ID:         uuid.New(),
 		Status:     status,
-		HostTeamID: 7,
+		HostTeamID: int64Pointer(7),
 		StartTime:  now.Add(-3 * time.Hour),
 		EndTime:    now.Add(-time.Hour),
 	}

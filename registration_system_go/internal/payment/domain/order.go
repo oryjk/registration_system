@@ -4,6 +4,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	sharederror "github.com/oryjk/registration_system/registration_system_go/internal/shared/domain"
 )
 
@@ -24,8 +25,9 @@ const (
 type Kind string
 
 const (
-	KindRecharge       Kind = "recharge"
-	KindTeamMembership Kind = "team_membership"
+	KindRecharge          Kind = "recharge"
+	KindTeamMembership    Kind = "team_membership"
+	KindMatchRegistration Kind = "match_registration"
 )
 
 const (
@@ -42,6 +44,7 @@ type Order struct {
 	Status        Status
 	Kind          Kind
 	TeamID        *int64
+	MatchID       *uuid.UUID
 	Months        *int // 历史按月计价订单的月数；新队费订单恒为 nil
 	PrepayID      string
 	TransactionID string
@@ -77,6 +80,23 @@ func NewTeamMembershipOrder(orderNo string, userID, teamID, amountCents int64, n
 		OrderNo: orderNo, UserID: userID, AmountCents: amountCents,
 		Provider: ProviderWechat, Channel: ChannelMiniProgramJSAPI, Status: StatusPending,
 		Kind: KindTeamMembership, TeamID: &teamID,
+		CreatedAt: now, UpdatedAt: now,
+	}, nil
+}
+
+// NewMatchRegistrationOrder 为散人报名创建报名费订单：金额由比赛定价（分）决定，不由下单用户填写。
+func NewMatchRegistrationOrder(orderNo string, userID int64, matchID uuid.UUID, amountCents int64, now time.Time) (Order, error) {
+	orderNo = strings.TrimSpace(orderNo)
+	if orderNo == "" || len(orderNo) > 32 || userID <= 0 || matchID == uuid.Nil {
+		return Order{}, sharederror.New(sharederror.KindValidation, "报名费订单参数无效")
+	}
+	if amountCents < 1 || amountCents > MembershipMaxAmountCents {
+		return Order{}, sharederror.New(sharederror.KindValidation, "报名费金额无效")
+	}
+	return Order{
+		OrderNo: orderNo, UserID: userID, AmountCents: amountCents,
+		Provider: ProviderWechat, Channel: ChannelMiniProgramJSAPI, Status: StatusPending,
+		Kind: KindMatchRegistration, MatchID: &matchID,
 		CreatedAt: now, UpdatedAt: now,
 	}, nil
 }

@@ -173,7 +173,7 @@ func validCreateCommand(mode domain.PublicationMode) CreateMatchCommand {
 	return CreateMatchCommand{
 		Name:              "周末约球",
 		PublicationMode:   mode,
-		HostTeamID:        7,
+		HostTeamID:        int64Pointer(7),
 		PlayersPerTeam:    8,
 		HostCapacityLimit: intPointer(12),
 		StartTime:         start,
@@ -204,5 +204,63 @@ func TestCreateMatchDefaultsToFree(t *testing.T) {
 	}
 	if result.Match.IsFree {
 		t.Fatal("expected explicit is_free=false to be honored")
+	}
+}
+
+func int64Pointer(value int64) *int64 { return &value }
+
+func TestCreatePickupMatchWithoutTeamAndDoubledLimits(t *testing.T) {
+	// 散人约球无主队：任何登录用户可发布（不做球队管理者校验），成行人数 = 每队人数 × 2。
+	teamAccess := &fakeTeamAccess{err: sharederror.ErrForbidden}
+	useCase := NewCreateMatch(&fakeMatchRepository{}, teamAccess, &fakeDefaultLimits{}, fixedClock())
+
+	command := validCreateCommand(domain.OnlinePickup)
+	command.HostTeamID = nil
+	command.HostCapacityLimit = intPointer(18)
+	result, err := useCase.Execute(context.Background(), userActor(101), command)
+	if err != nil {
+		t.Fatalf("create pickup match: %v", err)
+	}
+	if result.Match.HostTeamID != nil {
+		t.Fatalf("pickup match should not carry host team: %+v", result.Match)
+	}
+	if len(result.Groups) != 1 || result.Groups[0].Kind != domain.GroupIndividualOpponent {
+		t.Fatalf("expected single individual group, got %+v", result.Groups)
+	}
+	if result.Groups[0].MinPlayers == nil || *result.Groups[0].MinPlayers != 16 {
+		t.Fatalf("expected min players 8*2=16, got %+v", result.Groups[0])
+	}
+	if result.Groups[0].MaxPlayers == nil || *result.Groups[0].MaxPlayers != 18 {
+		t.Fatalf("expected max players 18 from capacity limit, got %+v", result.Groups[0])
+	}
+}
+
+func TestCreatePickupMatchRejectsHostTeam(t *testing.T) {
+	useCase := NewCreateMatch(&fakeMatchRepository{}, &fakeTeamAccess{}, &fakeDefaultLimits{}, fixedClock())
+
+	command := validCreateCommand(domain.OnlinePickup)
+	if _, err := useCase.Execute(context.Background(), userActor(101), command); err == nil {
+		t.Fatal("pickup match with host team should be rejected")
+	}
+}
+
+func TestCreatePickupPrepaidRequiresFee(t *testing.T) {
+	useCase := NewCreateMatch(&fakeMatchRepository{}, &fakeTeamAccess{}, &fakeDefaultLimits{}, fixedClock())
+
+	command := validCreateCommand(domain.OnlinePickup)
+	command.HostTeamID = nil
+	command.HostCapacityLimit = nil
+	command.PaymentMode = domain.PaymentPrepaid
+	if _, err := useCase.Execute(context.Background(), userActor(101), command); err == nil {
+		t.Fatal("prepaid pickup without fee should be rejected")
+	}
+
+	command.FeePerPersonCents = 3000
+	result, err := useCase.Execute(context.Background(), userActor(101), command)
+	if err != nil {
+		t.Fatalf("prepaid pickup with fee: %v", err)
+	}
+	if result.Match.PaymentMode != domain.PaymentPrepaid || result.Match.FeePerPersonCents != 3000 || result.Match.IsFree {
+		t.Fatalf("unexpected payment fields: %+v", result.Match)
 	}
 }

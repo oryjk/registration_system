@@ -39,23 +39,26 @@ func NewAdminHandler(service AdminMatchUseCase, create CreateMatchUseCase) *Admi
 }
 
 type CreateMatchRequest struct {
-	Name                string                 `json:"name" binding:"required"`
-	PublicationMode     domain.PublicationMode `json:"publication_mode" binding:"required"`
-	HostTeamID          int64                  `json:"host_team_id" binding:"required"`
-	OpponentName        *string                `json:"opponent_name"`
-	PlayersPerTeam      int                    `json:"players_per_team" binding:"required"`
-	HostCapacityLimit   *int                   `json:"host_capacity_limit"`
-	StartTime           time.Time              `json:"start_time" binding:"required"`
-	EndTime             time.Time              `json:"end_time" binding:"required"`
-	RegistrationStartAt *time.Time             `json:"registration_start_at"`
-	RegistrationEndAt   *time.Time             `json:"registration_end_at"`
-	Location            string                 `json:"location" binding:"required"`
-	LocationLatitude    *float64               `json:"location_latitude"`
-	LocationLongitude   *float64               `json:"location_longitude"`
-	Description         *string                `json:"description"`
-	HostColor           *string                `json:"host_color"`
-	AwayColor           *string                `json:"away_color"`
-	IsFree              *bool                  `json:"is_free"`
+	Name            string                 `json:"name" binding:"required"`
+	PublicationMode domain.PublicationMode `json:"publication_mode" binding:"required"`
+	// HostTeamID 为 nil 表示散人约球（online_pickup）这类无主队模式。
+	HostTeamID          *int64             `json:"host_team_id"`
+	OpponentName        *string            `json:"opponent_name"`
+	PlayersPerTeam      int                `json:"players_per_team" binding:"required"`
+	HostCapacityLimit   *int               `json:"host_capacity_limit"`
+	StartTime           time.Time          `json:"start_time" binding:"required"`
+	EndTime             time.Time          `json:"end_time" binding:"required"`
+	RegistrationStartAt *time.Time         `json:"registration_start_at"`
+	RegistrationEndAt   *time.Time         `json:"registration_end_at"`
+	Location            string             `json:"location" binding:"required"`
+	LocationLatitude    *float64           `json:"location_latitude"`
+	LocationLongitude   *float64           `json:"location_longitude"`
+	Description         *string            `json:"description"`
+	HostColor           *string            `json:"host_color"`
+	AwayColor           *string            `json:"away_color"`
+	IsFree              *bool              `json:"is_free"`
+	PaymentMode         domain.PaymentMode `json:"payment_mode"`
+	FeePerPersonCents   int64              `json:"fee_per_person_cents"`
 }
 
 type UpdateMatchRequest struct {
@@ -102,7 +105,7 @@ type MatchResponse struct {
 	PublicationMode     domain.PublicationMode `json:"publication_mode"`
 	OpponentState       domain.OpponentState   `json:"opponent_state"`
 	Status              domain.MatchStatus     `json:"status"`
-	HostTeamID          int64                  `json:"host_team_id"`
+	HostTeamID          *int64                 `json:"host_team_id"`
 	HostTeamName        string                 `json:"host_team_name"`
 	AwayTeamID          *int64                 `json:"away_team_id"`
 	AwayTeamName        *string                `json:"away_team_name"`
@@ -119,6 +122,8 @@ type MatchResponse struct {
 	HostColor           *string                `json:"host_color"`
 	AwayColor           *string                `json:"away_color"`
 	IsFree              bool                   `json:"is_free"`
+	PaymentMode         domain.PaymentMode     `json:"payment_mode"`
+	FeePerPersonCents   int64                  `json:"fee_per_person_cents"`
 	CreatedByUserID     *int64                 `json:"created_by_user_id"`
 	CreatedByAdminID    *int64                 `json:"created_by_admin_id"`
 	CreatedAt           time.Time              `json:"created_at"`
@@ -211,6 +216,7 @@ func (h *AdminHandler) Create(c *gin.Context) {
 		Location: request.Location, LocationLatitude: request.LocationLatitude, LocationLongitude: request.LocationLongitude,
 		Description: request.Description, IsFree: request.IsFree,
 		HostColor: request.HostColor, AwayColor: request.AwayColor,
+		PaymentMode: request.PaymentMode, FeePerPersonCents: request.FeePerPersonCents,
 	})
 	if err != nil {
 		sharedhttpapi.WriteError(c, err)
@@ -352,6 +358,7 @@ func mapMatch(item ports.AdminMatchItem) MatchResponse {
 		Location: match.Location, LocationLatitude: match.LocationLatitude, LocationLongitude: match.LocationLongitude,
 		Description: match.Description, IsFree: match.IsFree, CreatedByUserID: match.CreatedByUserID, CreatedByAdminID: match.CreatedByAdminID,
 		HostColor: jerseyColorResponse(match.HostColor), AwayColor: jerseyColorResponse(match.AwayColor),
+		PaymentMode: match.PaymentMode, FeePerPersonCents: match.FeePerPersonCents,
 		CreatedAt: match.CreatedAt, UpdatedAt: match.UpdatedAt,
 	}
 }

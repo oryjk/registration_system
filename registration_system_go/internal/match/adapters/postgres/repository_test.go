@@ -239,7 +239,7 @@ func TestRepositoryUpdateDetailsPersistsOpponentName(t *testing.T) {
 	start := time.Date(2026, 8, 20, 18, 0, 0, 0, time.UTC)
 	opponent := "老对手联"
 	match, groups, err := domain.NewMatch(domain.NewMatchInput{
-		Name: "线下约球", PublicationMode: domain.OfflineConfirmed, HostTeamID: teamID,
+		Name: "线下约球", PublicationMode: domain.OfflineConfirmed, HostTeamID: &teamID,
 		CreatedByUserID: int64Pointer(userID), OpponentName: &opponent, PlayersPerTeam: 8,
 		StartTime: start, EndTime: start.Add(2 * time.Hour), Location: "东安球场",
 		CreatedAt: start.Add(-24 * time.Hour),
@@ -370,7 +370,7 @@ func validOnlineTeamInput(t *testing.T, ownerID, teamID int64) domain.NewMatchIn
 	return domain.NewMatchInput{
 		Name:              "周末友谊赛",
 		PublicationMode:   domain.OnlineTeam,
-		HostTeamID:        teamID,
+		HostTeamID:        &teamID,
 		CreatedByUserID:   &ownerID,
 		PlayersPerTeam:    8,
 		HostCapacityLimit: &hostCapacity,
@@ -484,7 +484,7 @@ func newPersistableMatch(t *testing.T, userID, teamID int64) (domain.Match, []do
 	match, groups, err := domain.NewMatch(domain.NewMatchInput{
 		Name:            "周末约球",
 		PublicationMode: domain.OnlineTeam,
-		HostTeamID:      teamID,
+		HostTeamID:      &teamID,
 		CreatedByUserID: int64Pointer(userID),
 		PlayersPerTeam:  8,
 		StartTime:       start,
@@ -502,7 +502,7 @@ func newPersistableIndividualMatch(t *testing.T, userID, teamID int64, minPlayer
 	t.Helper()
 	start := time.Date(2026, 8, 20, 18, 0, 0, 0, time.UTC)
 	match, groups, err := domain.NewMatch(domain.NewMatchInput{
-		Name: "散人约球", PublicationMode: domain.OnlineIndividual, HostTeamID: teamID,
+		Name: "散人约球", PublicationMode: domain.OnlineIndividual, HostTeamID: &teamID,
 		CreatedByUserID: int64Pointer(userID), PlayersPerTeam: minPlayers,
 		StartTime: start, EndTime: start.Add(2 * time.Hour), Location: "东安球场", CreatedAt: start.Add(-24 * time.Hour),
 	}, domain.IndividualLimits{MinPlayers: minPlayers, MaxPlayers: maxPlayers})
@@ -712,6 +712,10 @@ func TestRepositoryFindForUserIncludesAttendingParticipants(t *testing.T) {
 		if !ok || participant.Status != domain.RegistrationAttending || participant.AvatarURL == nil || *participant.AvatarURL != expectedAvatar {
 			t.Fatalf("unexpected participant %d: %+v", id, participant)
 		}
+		// registered_at 来自报名记录的 created_at，小程序端靠它按报名先后排序。
+		if participant.RegisteredAt == nil || !participant.RegisteredAt.Equal(now) {
+			t.Fatalf("participant %d missing registration time: %+v", id, participant)
+		}
 	}
 }
 
@@ -752,6 +756,9 @@ func TestRepositoryFindForUserIncludesNonMemberAttendingParticipants(t *testing.
 		participants[0].Nickname != "散客" || participants[0].Status != domain.RegistrationAttending ||
 		participants[0].AvatarURL == nil || *participants[0].AvatarURL != "https://cdn.example.com/guest.png" {
 		t.Fatalf("expected non-member attending participant, got %+v", participants)
+	}
+	if participants[0].RegisteredAt == nil || !participants[0].RegisteredAt.Equal(now) {
+		t.Fatalf("participant missing registration time: %+v", participants[0])
 	}
 }
 

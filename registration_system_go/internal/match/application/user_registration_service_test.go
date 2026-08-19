@@ -305,7 +305,7 @@ type registrationFixture struct {
 func individualRegistrationFixture(now time.Time, minPlayers, maxPlayers int) registrationFixture {
 	matchID := uuid.New()
 	return registrationFixture{
-		match: domain.Match{ID: matchID, HostTeamID: 7, PublicationMode: domain.OnlineIndividual, OpponentState: domain.OpponentRecruiting, Status: domain.MatchRegistering, UpdatedAt: now},
+		match: domain.Match{ID: matchID, HostTeamID: int64Pointer(7), PublicationMode: domain.OnlineIndividual, OpponentState: domain.OpponentRecruiting, Status: domain.MatchRegistering, UpdatedAt: now},
 		group: domain.NewIndividualGroup(matchID, domain.IndividualLimits{MinPlayers: minPlayers, MaxPlayers: maxPlayers}, now),
 	}
 }
@@ -313,7 +313,7 @@ func individualRegistrationFixture(now time.Time, minPlayers, maxPlayers int) re
 func teamRegistrationFixture(now time.Time, kind domain.GroupKind, teamID int64) registrationFixture {
 	matchID := uuid.New()
 	return registrationFixture{
-		match: domain.Match{ID: matchID, HostTeamID: 7, PublicationMode: domain.OnlineTeam, OpponentState: domain.OpponentRecruiting, Status: domain.MatchRegistering, UpdatedAt: now},
+		match: domain.Match{ID: matchID, HostTeamID: int64Pointer(7), PublicationMode: domain.OnlineTeam, OpponentState: domain.OpponentRecruiting, Status: domain.MatchRegistering, UpdatedAt: now},
 		group: domain.NewTeamGroup(matchID, kind, teamID, nil, now),
 	}
 }

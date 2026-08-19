@@ -18,6 +18,8 @@ INSERT INTO matches (
     location_longitude,
     description,
     is_free,
+    payment_mode,
+    fee_per_person_cents,
     host_color,
     away_color,
     created_by_user_id,
@@ -25,7 +27,7 @@ INSERT INTO matches (
 )
 VALUES (
     $1, $2, $3, $4, $5, $6, $7, $8,
-    $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22
+    $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24
 )
 RETURNING *;
 
@@ -508,6 +510,7 @@ SELECT g.*,
        mine.id AS my_registration_id,
        mine.status AS my_registration_status,
        mine.registration_count AS my_registration_count,
+       mine.paid AS my_registration_paid,
        mine.created_at AS my_registration_created_at,
        mine.updated_at AS my_registration_updated_at,
        mine.cancelled_at AS my_registration_cancelled_at
@@ -517,6 +520,16 @@ LEFT JOIN match_registrations mine
    AND mine.user_id = sqlc.arg('user_id')
 WHERE g.match_id = sqlc.arg('match_id')
 ORDER BY g.created_at, g.id;
+
+-- name: MarkRegistrationPaidByMatchUser :execrows
+-- 报名费订单核销后标记报名已支付；幂等，重复调用无副作用。
+UPDATE match_registrations r
+SET paid = TRUE
+FROM match_registration_groups g
+WHERE r.group_id = g.id
+  AND g.match_id = $1
+  AND r.user_id = $2
+  AND r.status <> 'cancelled';
 
 -- name: CreateRegistration :exec
 INSERT INTO match_registrations (
@@ -641,7 +654,8 @@ SELECT r.user_id,
        u.nickname,
        u.avatar_url,
        u.real_name,
-       r.status AS registration_status
+       r.status AS registration_status,
+       r.created_at AS registered_at
 FROM match_registrations r
 JOIN users u ON u.id = r.user_id
 WHERE r.group_id = $1

@@ -38,9 +38,11 @@ type Registration struct {
 	UserID            int64
 	Status            RegistrationStatus
 	RegistrationCount int
-	CreatedAt         time.Time
-	UpdatedAt         time.Time
-	CancelledAt       *time.Time
+	// Paid 报名费是否已支付；赛前支付订单核销后置 true，赛后支付默认 false。
+	Paid        bool
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	CancelledAt *time.Time
 }
 
 // NewRegistration 构造一条报名记录，校验组、用户、状态与计数。

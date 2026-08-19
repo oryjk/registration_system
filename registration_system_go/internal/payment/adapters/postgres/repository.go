@@ -43,6 +43,7 @@ func (r *Repository) Create(ctx context.Context, order paymentdomain.Order) erro
 		OrderNo: order.OrderNo, UserID: order.UserID, AmountCents: order.AmountCents,
 		Provider: order.Provider, Channel: order.Channel, Status: string(order.Status),
 		Kind: string(order.Kind), TeamID: order.TeamID, Months: monthsToSQL(order.Months),
+		MatchID:   matchIDToSQL(order.MatchID),
 		CreatedAt: timestamptz(order.CreatedAt),
 	})
 	return mapConstraintError(err)
@@ -227,6 +228,7 @@ func mapOrder(row paymentsqlc.PaymentOrder) paymentdomain.Order {
 		Provider: row.Provider, Channel: row.Channel, Status: paymentdomain.Status(row.Status),
 		Kind:   paymentdomain.Kind(row.Kind),
 		TeamID: row.TeamID, Months: monthsFromSQL(row.Months),
+		MatchID:   matchIDFromSQL(row.MatchID),
 		CreatedAt: row.CreatedAt.Time, UpdatedAt: row.UpdatedAt.Time,
 	}
 	if row.PrepayID != nil {
@@ -254,6 +256,21 @@ func pgUUID(value uuid.UUID) pgtype.UUID {
 	return pgtype.UUID{Bytes: value, Valid: true}
 }
 
+func matchIDToSQL(value *uuid.UUID) pgtype.UUID {
+	if value == nil {
+		return pgtype.UUID{}
+	}
+	return pgUUID(*value)
+}
+
+func matchIDFromSQL(value pgtype.UUID) *uuid.UUID {
+	if !value.Valid {
+		return nil
+	}
+	id := uuid.UUID(value.Bytes)
+	return &id
+}
+
 func mapConstraintError(err error) error {
 	var postgresError *pgconn.PgError
 	if errors.As(err, &postgresError) && (postgresError.Code == "23505" || postgresError.Code == "23514") {
@@ -276,6 +293,58 @@ func monthsFromSQL(months *int32) *int {
 	}
 	value := int(*months)
 	return &value
+}
+
+// ApplyRegistrationPayment 核销报名费订单：事务内校验金额、标记订单已支付，
+// 并把对应比赛的报名记录置为已支付（幂等；重复回调按已核销短路）。
+func (r *Repository) ApplyRegistrationPayment(ctx context.Context, payment paymentports.VerifiedPayment, credit paymentports.MatchRegistrationCredit) (result paymentports.SettlementResult, err error) {
+	tx, err := r.database.Begin(ctx)
+	if err != nil {
+		return result, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	queries := r.queries.WithTx(tx)
+	row, err := queries.GetPaymentOrderForUpdate(ctx, payment.OrderNo)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return result, sharederror.ErrNotFound
+	}
+	if err != nil {
+		return result, err
+	}
+	order := mapOrder(row)
+	if order.Kind != paymentdomain.KindMatchRegistration {
+		return result, sharederror.New(sharederror.KindConflict, "该订单不是报名费订单")
+	}
+	if order.AmountCents != payment.AmountCents {
+		return result, sharederror.New(sharederror.KindConflict, "支付金额不一致")
+	}
+	if order.Status == paymentdomain.StatusPaid {
+		if order.TransactionID != payment.TransactionID {
+			return result, sharederror.ErrConflict
+		}
+		if err := tx.Commit(ctx); err != nil {
+			return result, err
+		}
+		return paymentports.SettlementResult{Order: order}, nil
+	}
+	if order.Status != paymentdomain.StatusPending {
+		return result, sharederror.ErrConflict
+	}
+	paidRow, err := queries.MarkPaymentOrderPaid(ctx, paymentsqlc.MarkPaymentOrderPaidParams{
+		OrderNo: order.OrderNo, TransactionID: &payment.TransactionID, PaidAt: timestamptz(payment.PaidAt),
+	})
+	if err != nil {
+		return result, mapConstraintError(err)
+	}
+	if _, err := queries.MarkMatchRegistrationPaid(ctx, paymentsqlc.MarkMatchRegistrationPaidParams{
+		MatchID: pgUUID(credit.MatchID), UserID: credit.UserID,
+	}); err != nil {
+		return result, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return result, err
+	}
+	return paymentports.SettlementResult{Order: mapOrder(paidRow), Credited: true}, nil
 }
 
 // ApplyMembershipPayment 结算一笔队费订单：订单置为已付，金额计入付款人在该球队的个人账户余额。

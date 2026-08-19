@@ -83,6 +83,8 @@ type UserParticipant struct {
 	Nickname  string
 	AvatarURL *string
 	Status    domain.RegistrationStatus
+	// RegisteredAt 是该成员本次报名的落库时间；小程序端用它把已报名队员按报名先后排序。
+	RegisteredAt *time.Time
 }
 
 type HomeMatchItem struct {
@@ -107,4 +109,6 @@ type AdminRosterEntry struct {
 	AvatarURL  *string
 	MemberRole *string
 	Status     *domain.RegistrationStatus
+	// RegisteredAt 为 nil 表示该成员尚未报名（球队组未报名成员）。
+	RegisteredAt *time.Time
 }

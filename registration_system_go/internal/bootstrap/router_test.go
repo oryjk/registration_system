@@ -327,3 +327,7 @@ func (r *routerUserRegistration) Delete(_ context.Context, actor sharedauth.Acto
 func (routerPaymentService) CreateTeamMembership(context.Context, sharedauth.Actor, paymentapplication.CreateTeamMembershipCommand) (paymentapplication.CreateRechargeResult, error) {
 	return paymentapplication.CreateRechargeResult{}, nil
 }
+
+func (routerPaymentService) CreateMatchRegistration(context.Context, sharedauth.Actor, paymentapplication.CreateMatchRegistrationCommand) (paymentapplication.CreateRechargeResult, error) {
+	return paymentapplication.CreateRechargeResult{}, nil
+}

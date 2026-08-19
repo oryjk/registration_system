@@ -194,7 +194,7 @@ func loadUserRegistrationContext(ctx context.Context, tx ports.UserRegistrationT
 func authorizeUserRegistration(ctx context.Context, tx ports.UserRegistrationTransaction, userID int64, match domain.Match, group domain.RegistrationGroup, status domain.RegistrationStatus) error {
 	switch group.Kind {
 	case domain.GroupHostTeam:
-		if group.TeamID == nil || *group.TeamID != match.HostTeamID {
+		if group.TeamID == nil || match.HostTeamID == nil || *group.TeamID != *match.HostTeamID {
 			return sharederror.New(sharederror.KindConflict, "主队报名组状态不一致")
 		}
 		return ensureActiveRegistrationMember(ctx, tx, *group.TeamID, userID)
@@ -207,12 +207,15 @@ func authorizeUserRegistration(ctx context.Context, tx ports.UserRegistrationTra
 		if status != domain.RegistrationAttending {
 			return sharederror.New(sharederror.KindValidation, "散人报名组只支持参赛状态")
 		}
-		member, err := tx.IsActiveTeamMember(ctx, match.HostTeamID, userID)
-		if err != nil {
-			return wrapUserRegistrationStoreError("查询球队成员身份失败", err)
-		}
-		if member {
-			return sharederror.ErrForbidden
+		// 散人约球（无主队）没有主队成员概念；散人对手模式仍禁止主队队员混入。
+		if match.HostTeamID != nil {
+			member, err := tx.IsActiveTeamMember(ctx, *match.HostTeamID, userID)
+			if err != nil {
+				return wrapUserRegistrationStoreError("查询球队成员身份失败", err)
+			}
+			if member {
+				return sharederror.ErrForbidden
+			}
 		}
 		return nil
 	default:

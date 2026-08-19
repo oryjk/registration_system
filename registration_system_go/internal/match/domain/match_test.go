@@ -42,6 +42,24 @@ func TestNewMatchPublicationModes(t *testing.T) {
 			wantOpponentState: OpponentRecruiting,
 			wantGroups:        []GroupKind{GroupHostTeam, GroupIndividualOpponent},
 		},
+		{
+			name:      "pickup rejects host team",
+			input:     validInput(OnlinePickup),
+			limits:    IndividualLimits{MinPlayers: 16, MaxPlayers: 20},
+			wantError: true,
+		},
+		{
+			name: "pickup opens single individual group without host",
+			input: func() NewMatchInput {
+				input := validInput(OnlinePickup)
+				input.HostTeamID = nil
+				return input
+			}(),
+			limits:            IndividualLimits{MinPlayers: 16, MaxPlayers: 20},
+			wantMode:          OnlinePickup,
+			wantOpponentState: OpponentRecruiting,
+			wantGroups:        []GroupKind{GroupIndividualOpponent},
+		},
 	}
 
 	for _, test := range tests {
@@ -159,7 +177,7 @@ func validInput(mode PublicationMode) NewMatchInput {
 	return NewMatchInput{
 		Name:              "周末友谊赛",
 		PublicationMode:   mode,
-		HostTeamID:        7,
+		HostTeamID:        int64Pointer(7),
 		CreatedByUserID:   int64Pointer(42),
 		PlayersPerTeam:    8,
 		HostCapacityLimit: intPointer(12),
@@ -294,5 +312,46 @@ func TestFinishByHost(t *testing.T) {
 				t.Fatalf("status = %s, want %s", match.Status, test.want)
 			}
 		})
+	}
+}
+
+func TestNewMatchPaymentConfig(t *testing.T) {
+	start := time.Date(2026, 7, 20, 18, 0, 0, 0, time.UTC)
+	base := func() NewMatchInput {
+		input := validInput(OnlinePickup)
+		input.HostTeamID = nil
+		input.CreatedAt = start.Add(-48 * time.Hour)
+		return input
+	}
+
+	if _, _, err := NewMatch(base(), IndividualLimits{MinPlayers: 16, MaxPlayers: 20}); err != nil {
+		t.Fatalf("postpaid default should pass: %v", err)
+	}
+
+	prepaidWithoutFee := base()
+	prepaidWithoutFee.PaymentMode = PaymentPrepaid
+	if _, _, err := NewMatch(prepaidWithoutFee, IndividualLimits{MinPlayers: 16, MaxPlayers: 20}); err == nil {
+		t.Fatal("prepaid without fee should be rejected")
+	}
+
+	prepaidWithFee := base()
+	prepaidWithFee.PaymentMode = PaymentPrepaid
+	prepaidWithFee.FeePerPersonCents = 2500
+	match, _, err := NewMatch(prepaidWithFee, IndividualLimits{MinPlayers: 16, MaxPlayers: 20})
+	if err != nil {
+		t.Fatalf("prepaid with fee: %v", err)
+	}
+	if match.PaymentMode != PaymentPrepaid || match.FeePerPersonCents != 2500 || match.IsFree {
+		t.Fatalf("unexpected payment fields: %+v", match)
+	}
+
+	feeForcesPaid := base()
+	feeForcesPaid.FeePerPersonCents = 2500
+	match, _, err = NewMatch(feeForcesPaid, IndividualLimits{MinPlayers: 16, MaxPlayers: 20})
+	if err != nil {
+		t.Fatalf("fee without payment mode: %v", err)
+	}
+	if match.PaymentMode != PaymentPostpaid || match.IsFree {
+		t.Fatalf("fee should force paid match: %+v", match)
 	}
 }

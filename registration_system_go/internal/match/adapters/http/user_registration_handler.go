@@ -32,6 +32,7 @@ type MyRegistrationResponse struct {
 	UserID            int64                     `json:"user_id"`
 	Status            domain.RegistrationStatus `json:"status"`
 	RegistrationCount int                       `json:"registration_count"`
+	Paid              bool                      `json:"paid"`
 	UpdatedAt         time.Time                 `json:"updated_at"`
 }
 
@@ -99,6 +100,6 @@ func userRegistrationRouteContext(c *gin.Context) (sharedauth.Actor, uuid.UUID, 
 func mapMyRegistration(registration domain.Registration) MyRegistrationResponse {
 	return MyRegistrationResponse{
 		GroupID: registration.GroupID.String(), UserID: registration.UserID, Status: registration.Status,
-		RegistrationCount: registration.RegistrationCount, UpdatedAt: registration.UpdatedAt,
+		RegistrationCount: registration.RegistrationCount, Paid: registration.Paid, UpdatedAt: registration.UpdatedAt,
 	}
 }

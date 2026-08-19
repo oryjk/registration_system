@@ -119,7 +119,7 @@ func TestAdminUpdatesRegistrationWindowWithTriStateSemantics(t *testing.T) {
 			createdByAdminID := int64(3)
 			repository := &fakeAdminMatchRepository{match: domain.Match{
 				ID: id, Status: domain.MatchRegistering, PublicationMode: domain.OnlineTeam,
-				Name: "周末比赛", HostTeamID: 11, PlayersPerTeam: 7,
+				Name: "周末比赛", HostTeamID: int64Pointer(11), PlayersPerTeam: 7,
 				StartTime: originalEnd.Add(24 * time.Hour), EndTime: originalEnd.Add(26 * time.Hour),
 				RegistrationStartAt: &originalStart, RegistrationEndAt: &originalEnd,
 				Location: "滨江球场", CreatedByAdminID: &createdByAdminID,
@@ -144,7 +144,7 @@ func updatableAdminMatchFixture(id uuid.UUID) (domain.Match, []domain.Registrati
 	start := time.Date(2026, 8, 22, 12, 0, 0, 0, time.UTC)
 	return domain.Match{
 			ID: id, Status: domain.MatchRegistering, PublicationMode: domain.OnlineTeam,
-			Name: "周四友谊赛", HostTeamID: 11, PlayersPerTeam: 8,
+			Name: "周四友谊赛", HostTeamID: int64Pointer(11), PlayersPerTeam: 8,
 			StartTime: start, EndTime: start.Add(2 * time.Hour),
 			Location: "驿马河", CreatedByAdminID: &createdByAdminID,
 		}, []domain.RegistrationGroup{

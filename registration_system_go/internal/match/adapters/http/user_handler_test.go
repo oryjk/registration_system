@@ -31,7 +31,7 @@ func TestUserMatchRoutesReturnPrivacyScopedData(t *testing.T) {
 		Match: domain.Match{
 			ID: matchID, Name: "散人约球", PublicationMode: domain.OnlineIndividual,
 			OpponentState: domain.OpponentRecruiting, Status: domain.MatchRegistering,
-			HostTeamID: 7, CreatedByAdminID: int64Pointer(9),
+			HostTeamID: int64Pointer(7), CreatedByAdminID: int64Pointer(9),
 		},
 		HostTeamName: "东安联队",
 	}
@@ -45,6 +45,7 @@ func TestUserMatchRoutesReturnPrivacyScopedData(t *testing.T) {
 			AttendingCount: 7, MyRegistration: registration,
 			Participants: []ports.UserParticipant{{
 				UserID: 37, Nickname: "阿睿", AvatarURL: &avatarURL, Status: domain.RegistrationAttending,
+				RegisteredAt: timePointer(time.Date(2026, 8, 10, 2, 0, 0, 0, time.UTC)),
 			}},
 		}}},
 	}
@@ -67,10 +68,10 @@ func TestUserMatchRoutesReturnPrivacyScopedData(t *testing.T) {
 	detailResponse := httptest.NewRecorder()
 	router.ServeHTTP(detailResponse, detailRequest)
 	body := detailResponse.Body.Bytes()
-	if detailResponse.Code != http.StatusOK || !bytes.Contains(body, []byte(`"attending_count":7`)) || !bytes.Contains(body, []byte(`"my_registration":{"status":"attending","registration_count":1}`)) {
+	if detailResponse.Code != http.StatusOK || !bytes.Contains(body, []byte(`"attending_count":7`)) || !bytes.Contains(body, []byte(`"my_registration":{"status":"attending","registration_count":1,"paid":false}`)) {
 		t.Fatalf("unexpected detail response %d: %s", detailResponse.Code, detailResponse.Body.String())
 	}
-	for _, expected := range []string{`"participants":[`, `"user_id":37`, `"nickname":"阿睿"`, `"avatar_url":"https://cdn.example.com/player-37.png"`, `"status":"attending"`} {
+	for _, expected := range []string{`"participants":[`, `"user_id":37`, `"nickname":"阿睿"`, `"avatar_url":"https://cdn.example.com/player-37.png"`, `"status":"attending"`, `"registered_at":"2026-08-10T02:00:00Z"`} {
 		if !bytes.Contains(body, []byte(expected)) {
 			t.Fatalf("user detail response missing %s: %s", expected, detailResponse.Body.String())
 		}
@@ -254,7 +255,7 @@ func TestUserMatchCreateUsesUserActorAndReturnsCreatedDetail(t *testing.T) {
 		Item: ports.MatchItem{
 			Match: domain.Match{
 				ID: matchID, Name: "周末友谊赛", PublicationMode: domain.OfflineConfirmed,
-				HostTeamID: 7, StartTime: time.Date(2026, 8, 20, 10, 0, 0, 0, time.UTC),
+				HostTeamID: int64Pointer(7), StartTime: time.Date(2026, 8, 20, 10, 0, 0, 0, time.UTC),
 				EndTime:      time.Date(2026, 8, 20, 12, 0, 0, 0, time.UTC),
 				OpponentName: &opponentName,
 			},
@@ -290,7 +291,7 @@ func TestUserMatchCreateUsesUserActorAndReturnsCreatedDetail(t *testing.T) {
 	if creator.actor.Kind != sharedauth.ActorUser || creator.actor.ID != 42 {
 		t.Fatalf("unexpected create actor: %+v", creator.actor)
 	}
-	if creator.command.Name != "周末友谊赛" || creator.command.HostTeamID != 7 || creator.command.PublicationMode != domain.OfflineConfirmed || creator.command.PlayersPerTeam != 8 {
+	if creator.command.Name != "周末友谊赛" || creator.command.HostTeamID == nil || *creator.command.HostTeamID != 7 || creator.command.PublicationMode != domain.OfflineConfirmed || creator.command.PlayersPerTeam != 8 {
 		t.Fatalf("unexpected create command: %+v", creator.command)
 	}
 	if service.matchID != matchID {
@@ -307,7 +308,7 @@ func TestCreateMatchStoresJerseyColors(t *testing.T) {
 		Item: ports.MatchItem{
 			Match: domain.Match{
 				ID: matchID, Name: "球衣色彩排", PublicationMode: domain.OfflineConfirmed,
-				HostTeamID: 7, OpponentName: &opponentName,
+				HostTeamID: int64Pointer(7), OpponentName: &opponentName,
 				StartTime: time.Date(2026, 8, 20, 10, 0, 0, 0, time.UTC),
 				EndTime:   time.Date(2026, 8, 20, 12, 0, 0, 0, time.UTC),
 				HostColor: "#2f6bff", AwayColor: "#c8ff00",
@@ -437,14 +438,15 @@ func (fakeUserTokens) Parse(context.Context, string) (sharedauth.Actor, error) {
 	return sharedauth.Actor{Kind: sharedauth.ActorUser, ID: 42}, nil
 }
 
-func int64Pointer(value int64) *int64 { return &value }
+func int64Pointer(value int64) *int64        { return &value }
+func timePointer(value time.Time) *time.Time { return &value }
 
 func TestUserMatchChangeStatusFinishesMatchAndReturnsDetail(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	matchID := uuid.New()
 	service := &fakeUserMatches{detail: application.UserMatchDetail{
 		Item: ports.MatchItem{
-			Match:        domain.Match{ID: matchID, Name: "过期友谊赛", Status: domain.MatchEnded, HostTeamID: 7},
+			Match:        domain.Match{ID: matchID, Name: "过期友谊赛", Status: domain.MatchEnded, HostTeamID: int64Pointer(7)},
 			HostTeamName: "东安联队",
 		},
 	}}

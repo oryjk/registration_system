@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	authhttp "github.com/oryjk/registration_system/registration_system_go/internal/auth/adapters/http"
 	paymentapplication "github.com/oryjk/registration_system/registration_system_go/internal/payment/application"
 	paymentdomain "github.com/oryjk/registration_system/registration_system_go/internal/payment/domain"
@@ -24,6 +25,7 @@ const maxWebhookBodyBytes = 1 << 20
 type PaymentService interface {
 	CreateRecharge(context.Context, sharedauth.Actor, paymentapplication.CreateRechargeCommand) (paymentapplication.CreateRechargeResult, error)
 	CreateTeamMembership(context.Context, sharedauth.Actor, paymentapplication.CreateTeamMembershipCommand) (paymentapplication.CreateRechargeResult, error)
+	CreateMatchRegistration(context.Context, sharedauth.Actor, paymentapplication.CreateMatchRegistrationCommand) (paymentapplication.CreateRechargeResult, error)
 	List(context.Context, sharedauth.Actor, paymentapplication.ListQuery) (paymentapplication.ListResult, error)
 	Get(context.Context, sharedauth.Actor, string) (paymentdomain.Order, error)
 	Sync(context.Context, sharedauth.Actor, string) (paymentports.SettlementResult, error)
@@ -44,6 +46,10 @@ type CreateTeamMembershipRequest struct {
 	AmountCents int64 `json:"amount_cents" binding:"required,min=1"`
 }
 
+type CreateMatchRegistrationRequest struct {
+	MatchID string `json:"match_id" binding:"required,uuid"`
+}
+
 type OrderResponse struct {
 	OrderNo       string               `json:"order_no"`
 	UserID        int64                `json:"user_id"`
@@ -52,6 +58,7 @@ type OrderResponse struct {
 	Channel       string               `json:"channel"`
 	Kind          paymentdomain.Kind   `json:"kind"`
 	TeamID        *int64               `json:"team_id"`
+	MatchID       *string              `json:"match_id"`
 	Months        *int                 `json:"months"`
 	Status        paymentdomain.Status `json:"status"`
 	PrepayID      string               `json:"prepay_id,omitempty"`
@@ -89,6 +96,7 @@ type wechatCallbackResponse struct {
 func (h *Handler) RegisterAppRoutes(group *gin.RouterGroup) {
 	group.POST("/payments/recharge-orders", h.CreateRecharge)
 	group.POST("/payments/team-membership-orders", h.CreateTeamMembership)
+	group.POST("/payments/match-registration-orders", h.CreateMatchRegistration)
 	group.GET("/payments/orders", h.List)
 	group.GET("/payments/orders/:order_no", h.Get)
 	group.POST("/payments/orders/:order_no/sync", h.Sync)
@@ -134,6 +142,31 @@ func (h *Handler) CreateTeamMembership(c *gin.Context) {
 	}
 	result, err := h.service.CreateTeamMembership(c.Request.Context(), actor, paymentapplication.CreateTeamMembershipCommand{
 		TeamID: request.TeamID, AmountCents: request.AmountCents, ClientIP: c.ClientIP(),
+	})
+	if err != nil {
+		writePaymentError(c, err)
+		return
+	}
+	sharedhttpapi.WriteSuccess(c, CreateRechargeResponse{Order: mapOrder(result.Order), Payment: result.Payment})
+}
+
+func (h *Handler) CreateMatchRegistration(c *gin.Context) {
+	actor, ok := paymentActor(c)
+	if !ok {
+		return
+	}
+	var request CreateMatchRegistrationRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		sharedhttpapi.WriteError(c, sharederror.New(sharederror.KindValidation, "比赛无效"))
+		return
+	}
+	matchID, err := uuid.Parse(request.MatchID)
+	if err != nil {
+		sharedhttpapi.WriteError(c, sharederror.New(sharederror.KindValidation, "比赛无效"))
+		return
+	}
+	result, err := h.service.CreateMatchRegistration(c.Request.Context(), actor, paymentapplication.CreateMatchRegistrationCommand{
+		MatchID: matchID, ClientIP: c.ClientIP(),
 	})
 	if err != nil {
 		writePaymentError(c, err)
@@ -233,10 +266,15 @@ func writePaymentError(c *gin.Context, err error) {
 }
 
 func mapOrder(order paymentdomain.Order) OrderResponse {
+	var matchID *string
+	if order.MatchID != nil {
+		id := order.MatchID.String()
+		matchID = &id
+	}
 	return OrderResponse{
 		OrderNo: order.OrderNo, UserID: order.UserID, AmountCents: order.AmountCents,
 		Provider: order.Provider, Channel: order.Channel,
-		Kind: order.Kind, TeamID: order.TeamID, Months: order.Months, Status: order.Status,
+		Kind: order.Kind, TeamID: order.TeamID, MatchID: matchID, Months: order.Months, Status: order.Status,
 		PrepayID: order.PrepayID, TransactionID: order.TransactionID,
 		PaidAt: order.PaidAt, CancelledAt: order.CancelledAt,
 		CreatedAt: order.CreatedAt, UpdatedAt: order.UpdatedAt,

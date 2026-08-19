@@ -36,7 +36,7 @@ type Match struct {
 	PublicationMode     string           `json:"publication_mode"`
 	OpponentState       string           `json:"opponent_state"`
 	Status              string           `json:"status"`
-	HostTeamID          int64            `json:"host_team_id"`
+	HostTeamID          *int64           `json:"host_team_id"`
 	AwayTeamID          *int64           `json:"away_team_id"`
 	OpponentName        *string          `json:"opponent_name"`
 	PlayersPerTeam      int32            `json:"players_per_team"`
@@ -55,6 +55,8 @@ type Match struct {
 	IsFree              bool             `json:"is_free"`
 	HostColor           *string          `json:"host_color"`
 	AwayColor           *string          `json:"away_color"`
+	PaymentMode         string           `json:"payment_mode"`
+	FeePerPersonCents   int64            `json:"fee_per_person_cents"`
 }
 
 type MatchRegistration struct {
@@ -66,6 +68,7 @@ type MatchRegistration struct {
 	CreatedAt         pgtype.Timestamp `json:"created_at"`
 	UpdatedAt         pgtype.Timestamp `json:"updated_at"`
 	CancelledAt       pgtype.Timestamp `json:"cancelled_at"`
+	Paid              bool             `json:"paid"`
 }
 
 type MatchRegistrationDefault struct {
@@ -137,6 +140,7 @@ type PaymentOrder struct {
 	Kind          string             `json:"kind"`
 	TeamID        *int64             `json:"team_id"`
 	Months        *int32             `json:"months"`
+	MatchID       pgtype.UUID        `json:"match_id"`
 }
 
 type Team struct {

@@ -29,10 +29,10 @@ func (s TeamApplicationService) List(ctx context.Context, actor sharedauth.Actor
 	if actor.IsAdmin() {
 		return s.list(ctx, matchID)
 	}
-	if !actor.IsUser() {
+	if !actor.IsUser() || match.HostTeamID == nil {
 		return nil, sharederror.ErrForbidden
 	}
-	if err := s.teams.EnsureManager(ctx, match.HostTeamID, actor.ID); err == nil {
+	if err := s.teams.EnsureManager(ctx, *match.HostTeamID, actor.ID); err == nil {
 		return s.list(ctx, matchID)
 	} else if !errors.Is(err, sharederror.ErrForbidden) {
 		return nil, err
@@ -70,7 +70,7 @@ func (s TeamApplicationService) Apply(ctx context.Context, actor sharedauth.Acto
 		if !match.RegistrationOpenAt(now) {
 			return sharederror.New(sharederror.KindConflict, "当前不在报名时间内")
 		}
-		if applicantTeamID == match.HostTeamID {
+		if match.HostTeamID != nil && applicantTeamID == *match.HostTeamID {
 			return sharederror.New(sharederror.KindValidation, "主队不能申请成为自己的对手")
 		}
 		created, err = domain.NewTeamApplication(matchID, applicantTeamID, actor.ID, introduction, now)
@@ -93,7 +93,7 @@ func (s TeamApplicationService) Select(ctx context.Context, actor sharedauth.Act
 	if err != nil {
 		return domain.TeamApplication{}, err
 	}
-	if err := s.ensureHostManager(ctx, actor, match.HostTeamID); err != nil {
+	if err := s.ensureHostManager(ctx, actor, match); err != nil {
 		return domain.TeamApplication{}, err
 	}
 	now := s.clock.Now()
@@ -232,14 +232,14 @@ func (s TeamApplicationService) list(ctx context.Context, matchID uuid.UUID) ([]
 	return items, nil
 }
 
-func (s TeamApplicationService) ensureHostManager(ctx context.Context, actor sharedauth.Actor, hostTeamID int64) error {
+func (s TeamApplicationService) ensureHostManager(ctx context.Context, actor sharedauth.Actor, match domain.Match) error {
 	if actor.IsAdmin() {
 		return nil
 	}
-	if !actor.IsUser() {
+	if !actor.IsUser() || match.HostTeamID == nil {
 		return sharederror.ErrForbidden
 	}
-	return s.teams.EnsureManager(ctx, hostTeamID, actor.ID)
+	return s.teams.EnsureManager(ctx, *match.HostTeamID, actor.ID)
 }
 
 func (s TeamApplicationService) ensureSelectedWithdrawalPermission(ctx context.Context, actor sharedauth.Actor, match domain.Match, application domain.TeamApplication) error {
@@ -251,7 +251,7 @@ func (s TeamApplicationService) ensureSelectedWithdrawalPermission(ctx context.C
 	} else if !errors.Is(err, sharederror.ErrForbidden) {
 		return err
 	}
-	return s.teams.EnsureManager(ctx, match.HostTeamID, actor.ID)
+	return s.ensureHostManager(ctx, actor, match)
 }
 
 func ensureRecruitingTeamMatch(match domain.Match) error {

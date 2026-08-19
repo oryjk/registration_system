@@ -15,7 +15,24 @@ const (
 	OfflineConfirmed PublicationMode = "offline_confirmed"
 	OnlineTeam       PublicationMode = "online_team"
 	OnlineIndividual PublicationMode = "online_individual"
+	// OnlinePickup 散人约球：所有参与者都是散人、没有球队概念；任何登录用户可发布。
+	OnlinePickup PublicationMode = "online_pickup"
 )
+
+// PaymentMode 报名费用的支付节奏：赛后支付（默认）或赛前报名时支付。
+type PaymentMode string
+
+const (
+	PaymentPostpaid PaymentMode = "postpaid"
+	PaymentPrepaid  PaymentMode = "prepaid"
+)
+
+func (m PaymentMode) normalized() PaymentMode {
+	if m == PaymentPrepaid {
+		return PaymentPrepaid
+	}
+	return PaymentPostpaid
+}
 
 type OpponentState string
 
@@ -40,7 +57,7 @@ type Match struct {
 	PublicationMode     PublicationMode
 	OpponentState       OpponentState
 	Status              MatchStatus
-	HostTeamID          int64
+	HostTeamID          *int64
 	AwayTeamID          *int64
 	OpponentName        *string
 	PlayersPerTeam      int
@@ -55,16 +72,20 @@ type Match struct {
 	HostColor           string
 	AwayColor           string
 	IsFree              bool
-	CreatedByUserID     *int64
-	CreatedByAdminID    *int64
-	CreatedAt           time.Time
-	UpdatedAt           time.Time
+	// PaymentMode 报名费支付节奏；FeePerPersonCents 人均报名费（分），0 表示免费。
+	PaymentMode       PaymentMode
+	FeePerPersonCents int64
+	CreatedByUserID   *int64
+	CreatedByAdminID  *int64
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
 }
 
 type NewMatchInput struct {
-	Name                string
-	PublicationMode     PublicationMode
-	HostTeamID          int64
+	Name            string
+	PublicationMode PublicationMode
+	// HostTeamID 为 nil 表示散人约球（online_pickup）这类无主队模式。
+	HostTeamID          *int64
 	CreatedByUserID     *int64
 	CreatedByAdminID    *int64
 	OpponentName        *string
@@ -81,7 +102,10 @@ type NewMatchInput struct {
 	HostColor           *string
 	AwayColor           *string
 	IsFree              *bool
-	CreatedAt           time.Time
+	// PaymentMode/FeePerPersonCents 报名支付配置；PaymentMode 空串按赛后支付处理。
+	PaymentMode       PaymentMode
+	FeePerPersonCents int64
+	CreatedAt         time.Time
 }
 
 type IndividualLimits struct {
@@ -110,6 +134,15 @@ func NewMatch(input NewMatchInput, individualLimits IndividualLimits) (Match, []
 	if err != nil {
 		return Match{}, nil, err
 	}
+	paymentMode := input.PaymentMode.normalized()
+	if err := validatePaymentConfig(paymentMode, input.FeePerPersonCents); err != nil {
+		return Match{}, nil, err
+	}
+	// 有人均报名费时强制视为收费比赛，避免 is_free 与费用互相矛盾。
+	isFree := input.IsFree == nil || *input.IsFree
+	if input.FeePerPersonCents > 0 {
+		isFree = false
+	}
 	match := Match{
 		ID:                  matchID,
 		Name:                strings.TrimSpace(input.Name),
@@ -129,20 +162,46 @@ func NewMatch(input NewMatchInput, individualLimits IndividualLimits) (Match, []
 		Description:         trimOptional(input.Description),
 		HostColor:           hostColor,
 		AwayColor:           awayColor,
-		IsFree:              input.IsFree == nil || *input.IsFree,
+		IsFree:              isFree,
+		PaymentMode:         paymentMode,
+		FeePerPersonCents:   input.FeePerPersonCents,
 		CreatedByUserID:     input.CreatedByUserID,
 		CreatedByAdminID:    input.CreatedByAdminID,
 		CreatedAt:           now,
 		UpdatedAt:           now,
 	}
-	groups := []RegistrationGroup{NewTeamGroup(matchID, GroupHostTeam, input.HostTeamID, input.HostCapacityLimit, now)}
-	if input.PublicationMode == OnlineIndividual {
+	// 散人约球没有主队，全部报名进同一个散人组；其余模式先建主队组。
+	var groups []RegistrationGroup
+	if input.PublicationMode != OnlinePickup {
+		groups = append(groups, NewTeamGroup(matchID, GroupHostTeam, derefTeamID(input.HostTeamID), input.HostCapacityLimit, now))
+	}
+	if input.PublicationMode == OnlineIndividual || input.PublicationMode == OnlinePickup {
 		if err := individualLimits.Validate(); err != nil {
 			return Match{}, nil, err
 		}
 		groups = append(groups, NewIndividualGroup(matchID, individualLimits, now))
 	}
 	return match, groups, nil
+}
+
+func derefTeamID(value *int64) int64 {
+	if value == nil {
+		return 0
+	}
+	return *value
+}
+
+func validatePaymentConfig(mode PaymentMode, feePerPersonCents int64) error {
+	if mode != PaymentPostpaid && mode != PaymentPrepaid {
+		return sharederror.New(sharederror.KindValidation, "报名支付方式无效")
+	}
+	if feePerPersonCents < 0 {
+		return sharederror.New(sharederror.KindValidation, "人均报名费不能为负数")
+	}
+	if mode == PaymentPrepaid && feePerPersonCents <= 0 {
+		return sharederror.New(sharederror.KindValidation, "赛前支付必须填写人均报名费")
+	}
+	return nil
 }
 
 func ResolveIndividualLimits(playersPerTeam int, configured *IndividualLimits) (IndividualLimits, error) {
@@ -169,7 +228,7 @@ func (m *Match) ConfirmTeamOpponent(awayTeamID int64, now time.Time) error {
 	if m.Status != MatchRegistering || m.PublicationMode != OnlineTeam || m.OpponentState != OpponentRecruiting {
 		return sharederror.New(sharederror.KindConflict, "当前比赛不能选择球队对手")
 	}
-	if awayTeamID <= 0 || awayTeamID == m.HostTeamID {
+	if awayTeamID <= 0 || (m.HostTeamID != nil && awayTeamID == *m.HostTeamID) {
 		return sharederror.New(sharederror.KindValidation, "对手球队无效")
 	}
 	m.AwayTeamID = &awayTeamID
@@ -189,8 +248,8 @@ func (m *Match) ReopenTeamRecruitment(now time.Time) error {
 }
 
 func (m *Match) RecalculateIndividualOpponent(activePlayers, minPlayers int, now time.Time) error {
-	if m.PublicationMode != OnlineIndividual {
-		return sharederror.New(sharederror.KindConflict, "当前比赛不是散人对手模式")
+	if m.PublicationMode != OnlineIndividual && m.PublicationMode != OnlinePickup {
+		return sharederror.New(sharederror.KindConflict, "当前比赛不是散人报名模式")
 	}
 	if activePlayers < 0 || minPlayers <= 0 {
 		return sharederror.New(sharederror.KindValidation, "散人报名人数规则无效")
@@ -263,6 +322,7 @@ func (m *Match) UpdateDetails(input UpdateMatchDetails, now time.Time) error {
 		RegistrationStartAt: input.RegistrationStartAt, RegistrationEndAt: input.RegistrationEndAt,
 		Location:         input.Location,
 		LocationLatitude: input.LocationLatitude, LocationLongitude: input.LocationLongitude,
+		PaymentMode: m.PaymentMode, FeePerPersonCents: m.FeePerPersonCents,
 	}
 	if err := validateNewMatchInput(validation); err != nil {
 		return err
@@ -330,7 +390,12 @@ func validateNewMatchInput(input NewMatchInput) error {
 	if strings.TrimSpace(input.Location) == "" {
 		return sharederror.New(sharederror.KindValidation, "比赛场地不能为空")
 	}
-	if input.HostTeamID <= 0 {
+	// 散人约球没有主队；其余模式必须有发布球队。
+	if input.PublicationMode == OnlinePickup {
+		if input.HostTeamID != nil {
+			return sharederror.New(sharederror.KindValidation, "散人约球不能以球队名义发布")
+		}
+	} else if input.HostTeamID == nil || *input.HostTeamID <= 0 {
 		return sharederror.New(sharederror.KindValidation, "发布球队无效")
 	}
 	userCreator := input.CreatedByUserID != nil && *input.CreatedByUserID > 0
@@ -370,12 +435,15 @@ func validateNewMatchInput(input NewMatchInput) error {
 		if opponentName == nil {
 			return sharederror.New(sharederror.KindValidation, "线下已约比赛必须填写对手名称")
 		}
-	case OnlineTeam, OnlineIndividual:
+	case OnlineTeam, OnlineIndividual, OnlinePickup:
 		if opponentName != nil {
-			return sharederror.New(sharederror.KindValidation, "线上约队不能填写手工对手名称")
+			return sharederror.New(sharederror.KindValidation, "线上发布不能填写手工对手名称")
 		}
 	default:
 		return sharederror.New(sharederror.KindValidation, "比赛发布模式无效")
+	}
+	if err := validatePaymentConfig(input.PaymentMode.normalized(), input.FeePerPersonCents); err != nil {
+		return err
 	}
 	return nil
 }

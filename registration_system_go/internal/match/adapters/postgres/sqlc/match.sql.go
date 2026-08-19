@@ -164,6 +164,8 @@ INSERT INTO matches (
     location_longitude,
     description,
     is_free,
+    payment_mode,
+    fee_per_person_cents,
     host_color,
     away_color,
     created_by_user_id,
@@ -171,9 +173,9 @@ INSERT INTO matches (
 )
 VALUES (
     $1, $2, $3, $4, $5, $6, $7, $8,
-    $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22
+    $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24
 )
-RETURNING id, name, publication_mode, opponent_state, status, host_team_id, away_team_id, opponent_name, players_per_team, start_time, end_time, location, location_latitude, location_longitude, description, created_by_user_id, created_at, updated_at, created_by_admin_id, registration_start_at, registration_end_at, is_free, host_color, away_color
+RETURNING id, name, publication_mode, opponent_state, status, host_team_id, away_team_id, opponent_name, players_per_team, start_time, end_time, location, location_latitude, location_longitude, description, created_by_user_id, created_at, updated_at, created_by_admin_id, registration_start_at, registration_end_at, is_free, host_color, away_color, payment_mode, fee_per_person_cents
 `
 
 type CreateMatchParams struct {
@@ -182,7 +184,7 @@ type CreateMatchParams struct {
 	PublicationMode     string           `json:"publication_mode"`
 	OpponentState       string           `json:"opponent_state"`
 	Status              string           `json:"status"`
-	HostTeamID          int64            `json:"host_team_id"`
+	HostTeamID          *int64           `json:"host_team_id"`
 	AwayTeamID          *int64           `json:"away_team_id"`
 	OpponentName        *string          `json:"opponent_name"`
 	PlayersPerTeam      int32            `json:"players_per_team"`
@@ -195,6 +197,8 @@ type CreateMatchParams struct {
 	LocationLongitude   *float64         `json:"location_longitude"`
 	Description         *string          `json:"description"`
 	IsFree              bool             `json:"is_free"`
+	PaymentMode         string           `json:"payment_mode"`
+	FeePerPersonCents   int64            `json:"fee_per_person_cents"`
 	HostColor           *string          `json:"host_color"`
 	AwayColor           *string          `json:"away_color"`
 	CreatedByUserID     *int64           `json:"created_by_user_id"`
@@ -221,6 +225,8 @@ func (q *Queries) CreateMatch(ctx context.Context, arg CreateMatchParams) (Match
 		arg.LocationLongitude,
 		arg.Description,
 		arg.IsFree,
+		arg.PaymentMode,
+		arg.FeePerPersonCents,
 		arg.HostColor,
 		arg.AwayColor,
 		arg.CreatedByUserID,
@@ -252,6 +258,8 @@ func (q *Queries) CreateMatch(ctx context.Context, arg CreateMatchParams) (Match
 		&i.IsFree,
 		&i.HostColor,
 		&i.AwayColor,
+		&i.PaymentMode,
+		&i.FeePerPersonCents,
 	)
 	return i, err
 }
@@ -453,7 +461,7 @@ func (q *Queries) GetActiveGuestGroupForUpdate(ctx context.Context, matchID pgty
 }
 
 const getActiveUserRegistrationInMatchForUpdate = `-- name: GetActiveUserRegistrationInMatchForUpdate :one
-SELECT registration.id, registration.group_id, registration.user_id, registration.status, registration.registration_count, registration.created_at, registration.updated_at, registration.cancelled_at
+SELECT registration.id, registration.group_id, registration.user_id, registration.status, registration.registration_count, registration.created_at, registration.updated_at, registration.cancelled_at, registration.paid
 FROM match_registrations registration
 JOIN match_registration_groups registration_group
   ON registration_group.id = registration.group_id
@@ -483,12 +491,13 @@ func (q *Queries) GetActiveUserRegistrationInMatchForUpdate(ctx context.Context,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.CancelledAt,
+		&i.Paid,
 	)
 	return i, err
 }
 
 const getMatchByID = `-- name: GetMatchByID :one
-SELECT id, name, publication_mode, opponent_state, status, host_team_id, away_team_id, opponent_name, players_per_team, start_time, end_time, location, location_latitude, location_longitude, description, created_by_user_id, created_at, updated_at, created_by_admin_id, registration_start_at, registration_end_at, is_free, host_color, away_color
+SELECT id, name, publication_mode, opponent_state, status, host_team_id, away_team_id, opponent_name, players_per_team, start_time, end_time, location, location_latitude, location_longitude, description, created_by_user_id, created_at, updated_at, created_by_admin_id, registration_start_at, registration_end_at, is_free, host_color, away_color, payment_mode, fee_per_person_cents
 FROM matches
 WHERE id = $1
 `
@@ -521,12 +530,14 @@ func (q *Queries) GetMatchByID(ctx context.Context, id pgtype.UUID) (Match, erro
 		&i.IsFree,
 		&i.HostColor,
 		&i.AwayColor,
+		&i.PaymentMode,
+		&i.FeePerPersonCents,
 	)
 	return i, err
 }
 
 const getMatchByIDForUpdate = `-- name: GetMatchByIDForUpdate :one
-SELECT id, name, publication_mode, opponent_state, status, host_team_id, away_team_id, opponent_name, players_per_team, start_time, end_time, location, location_latitude, location_longitude, description, created_by_user_id, created_at, updated_at, created_by_admin_id, registration_start_at, registration_end_at, is_free, host_color, away_color
+SELECT id, name, publication_mode, opponent_state, status, host_team_id, away_team_id, opponent_name, players_per_team, start_time, end_time, location, location_latitude, location_longitude, description, created_by_user_id, created_at, updated_at, created_by_admin_id, registration_start_at, registration_end_at, is_free, host_color, away_color, payment_mode, fee_per_person_cents
 FROM matches
 WHERE id = $1
 FOR UPDATE
@@ -560,12 +571,14 @@ func (q *Queries) GetMatchByIDForUpdate(ctx context.Context, id pgtype.UUID) (Ma
 		&i.IsFree,
 		&i.HostColor,
 		&i.AwayColor,
+		&i.PaymentMode,
+		&i.FeePerPersonCents,
 	)
 	return i, err
 }
 
 const getMatchForAdmin = `-- name: GetMatchForAdmin :one
-SELECT m.id, m.name, m.publication_mode, m.opponent_state, m.status, m.host_team_id, m.away_team_id, m.opponent_name, m.players_per_team, m.start_time, m.end_time, m.location, m.location_latitude, m.location_longitude, m.description, m.created_by_user_id, m.created_at, m.updated_at, m.created_by_admin_id, m.registration_start_at, m.registration_end_at, m.is_free, m.host_color, m.away_color,
+SELECT m.id, m.name, m.publication_mode, m.opponent_state, m.status, m.host_team_id, m.away_team_id, m.opponent_name, m.players_per_team, m.start_time, m.end_time, m.location, m.location_latitude, m.location_longitude, m.description, m.created_by_user_id, m.created_at, m.updated_at, m.created_by_admin_id, m.registration_start_at, m.registration_end_at, m.is_free, m.host_color, m.away_color, m.payment_mode, m.fee_per_person_cents,
        host.name AS host_team_name,
        away.name AS away_team_name
 FROM matches m
@@ -580,7 +593,7 @@ type GetMatchForAdminRow struct {
 	PublicationMode     string           `json:"publication_mode"`
 	OpponentState       string           `json:"opponent_state"`
 	Status              string           `json:"status"`
-	HostTeamID          int64            `json:"host_team_id"`
+	HostTeamID          *int64           `json:"host_team_id"`
 	AwayTeamID          *int64           `json:"away_team_id"`
 	OpponentName        *string          `json:"opponent_name"`
 	PlayersPerTeam      int32            `json:"players_per_team"`
@@ -599,6 +612,8 @@ type GetMatchForAdminRow struct {
 	IsFree              bool             `json:"is_free"`
 	HostColor           *string          `json:"host_color"`
 	AwayColor           *string          `json:"away_color"`
+	PaymentMode         string           `json:"payment_mode"`
+	FeePerPersonCents   int64            `json:"fee_per_person_cents"`
 	HostTeamName        string           `json:"host_team_name"`
 	AwayTeamName        *string          `json:"away_team_name"`
 }
@@ -631,6 +646,8 @@ func (q *Queries) GetMatchForAdmin(ctx context.Context, id pgtype.UUID) (GetMatc
 		&i.IsFree,
 		&i.HostColor,
 		&i.AwayColor,
+		&i.PaymentMode,
+		&i.FeePerPersonCents,
 		&i.HostTeamName,
 		&i.AwayTeamName,
 	)
@@ -700,7 +717,7 @@ func (q *Queries) GetTeamApplicationByIDForUpdate(ctx context.Context, arg GetTe
 }
 
 const getUserRegistrationForUpdate = `-- name: GetUserRegistrationForUpdate :one
-SELECT id, group_id, user_id, status, registration_count, created_at, updated_at, cancelled_at
+SELECT id, group_id, user_id, status, registration_count, created_at, updated_at, cancelled_at, paid
 FROM match_registrations
 WHERE group_id = $1
   AND user_id = $2
@@ -724,6 +741,7 @@ func (q *Queries) GetUserRegistrationForUpdate(ctx context.Context, arg GetUserR
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.CancelledAt,
+		&i.Paid,
 	)
 	return i, err
 }
@@ -755,7 +773,8 @@ SELECT r.user_id,
        u.nickname,
        u.avatar_url,
        u.real_name,
-       r.status AS registration_status
+       r.status AS registration_status,
+       r.created_at AS registered_at
 FROM match_registrations r
 JOIN users u ON u.id = r.user_id
 WHERE r.group_id = $1
@@ -772,11 +791,12 @@ ORDER BY
 `
 
 type ListGroupRegistrationsRow struct {
-	UserID             int64   `json:"user_id"`
-	Nickname           string  `json:"nickname"`
-	AvatarUrl          *string `json:"avatar_url"`
-	RealName           *string `json:"real_name"`
-	RegistrationStatus string  `json:"registration_status"`
+	UserID             int64            `json:"user_id"`
+	Nickname           string           `json:"nickname"`
+	AvatarUrl          *string          `json:"avatar_url"`
+	RealName           *string          `json:"real_name"`
+	RegistrationStatus string           `json:"registration_status"`
+	RegisteredAt       pgtype.Timestamp `json:"registered_at"`
 }
 
 // 报名组的全部报名记录（含用户资料）；个人组花名册与用户端详情 participants 共用。
@@ -795,6 +815,7 @@ func (q *Queries) ListGroupRegistrations(ctx context.Context, groupID pgtype.UUI
 			&i.AvatarUrl,
 			&i.RealName,
 			&i.RegistrationStatus,
+			&i.RegisteredAt,
 		); err != nil {
 			return nil, err
 		}
@@ -856,7 +877,7 @@ func (q *Queries) ListHomeActionGroupParticipants(ctx context.Context, groupIds 
 }
 
 const listHomeActionMatchesForUser = `-- name: ListHomeActionMatchesForUser :many
-SELECT m.id, m.name, m.publication_mode, m.opponent_state, m.status, m.host_team_id, m.away_team_id, m.opponent_name, m.players_per_team, m.start_time, m.end_time, m.location, m.location_latitude, m.location_longitude, m.description, m.created_by_user_id, m.created_at, m.updated_at, m.created_by_admin_id, m.registration_start_at, m.registration_end_at, m.is_free, m.host_color, m.away_color,
+SELECT m.id, m.name, m.publication_mode, m.opponent_state, m.status, m.host_team_id, m.away_team_id, m.opponent_name, m.players_per_team, m.start_time, m.end_time, m.location, m.location_latitude, m.location_longitude, m.description, m.created_by_user_id, m.created_at, m.updated_at, m.created_by_admin_id, m.registration_start_at, m.registration_end_at, m.is_free, m.host_color, m.away_color, m.payment_mode, m.fee_per_person_cents,
        host.name AS host_team_name,
        away.name AS away_team_name,
        related_group.id AS group_id,
@@ -934,7 +955,7 @@ type ListHomeActionMatchesForUserRow struct {
 	PublicationMode           string           `json:"publication_mode"`
 	OpponentState             string           `json:"opponent_state"`
 	Status                    string           `json:"status"`
-	HostTeamID                int64            `json:"host_team_id"`
+	HostTeamID                *int64           `json:"host_team_id"`
 	AwayTeamID                *int64           `json:"away_team_id"`
 	OpponentName              *string          `json:"opponent_name"`
 	PlayersPerTeam            int32            `json:"players_per_team"`
@@ -953,6 +974,8 @@ type ListHomeActionMatchesForUserRow struct {
 	IsFree                    bool             `json:"is_free"`
 	HostColor                 *string          `json:"host_color"`
 	AwayColor                 *string          `json:"away_color"`
+	PaymentMode               string           `json:"payment_mode"`
+	FeePerPersonCents         int64            `json:"fee_per_person_cents"`
 	HostTeamName              string           `json:"host_team_name"`
 	AwayTeamName              *string          `json:"away_team_name"`
 	GroupID                   pgtype.UUID      `json:"group_id"`
@@ -1007,6 +1030,8 @@ func (q *Queries) ListHomeActionMatchesForUser(ctx context.Context, arg ListHome
 			&i.IsFree,
 			&i.HostColor,
 			&i.AwayColor,
+			&i.PaymentMode,
+			&i.FeePerPersonCents,
 			&i.HostTeamName,
 			&i.AwayTeamName,
 			&i.GroupID,
@@ -1088,7 +1113,7 @@ func (q *Queries) ListHomeEndedMatchParticipants(ctx context.Context, matchIds [
 }
 
 const listHomeEndedMatchesForUser = `-- name: ListHomeEndedMatchesForUser :many
-SELECT m.id, m.name, m.publication_mode, m.opponent_state, m.status, m.host_team_id, m.away_team_id, m.opponent_name, m.players_per_team, m.start_time, m.end_time, m.location, m.location_latitude, m.location_longitude, m.description, m.created_by_user_id, m.created_at, m.updated_at, m.created_by_admin_id, m.registration_start_at, m.registration_end_at, m.is_free, m.host_color, m.away_color,
+SELECT m.id, m.name, m.publication_mode, m.opponent_state, m.status, m.host_team_id, m.away_team_id, m.opponent_name, m.players_per_team, m.start_time, m.end_time, m.location, m.location_latitude, m.location_longitude, m.description, m.created_by_user_id, m.created_at, m.updated_at, m.created_by_admin_id, m.registration_start_at, m.registration_end_at, m.is_free, m.host_color, m.away_color, m.payment_mode, m.fee_per_person_cents,
        host.name AS host_team_name,
        away.name AS away_team_name
 FROM matches m
@@ -1127,7 +1152,7 @@ type ListHomeEndedMatchesForUserRow struct {
 	PublicationMode     string           `json:"publication_mode"`
 	OpponentState       string           `json:"opponent_state"`
 	Status              string           `json:"status"`
-	HostTeamID          int64            `json:"host_team_id"`
+	HostTeamID          *int64           `json:"host_team_id"`
 	AwayTeamID          *int64           `json:"away_team_id"`
 	OpponentName        *string          `json:"opponent_name"`
 	PlayersPerTeam      int32            `json:"players_per_team"`
@@ -1146,6 +1171,8 @@ type ListHomeEndedMatchesForUserRow struct {
 	IsFree              bool             `json:"is_free"`
 	HostColor           *string          `json:"host_color"`
 	AwayColor           *string          `json:"away_color"`
+	PaymentMode         string           `json:"payment_mode"`
+	FeePerPersonCents   int64            `json:"fee_per_person_cents"`
 	HostTeamName        string           `json:"host_team_name"`
 	AwayTeamName        *string          `json:"away_team_name"`
 }
@@ -1184,6 +1211,8 @@ func (q *Queries) ListHomeEndedMatchesForUser(ctx context.Context, arg ListHomeE
 			&i.IsFree,
 			&i.HostColor,
 			&i.AwayColor,
+			&i.PaymentMode,
+			&i.FeePerPersonCents,
 			&i.HostTeamName,
 			&i.AwayTeamName,
 		); err != nil {
@@ -1198,7 +1227,7 @@ func (q *Queries) ListHomeEndedMatchesForUser(ctx context.Context, arg ListHomeE
 }
 
 const listMatchesForAdmin = `-- name: ListMatchesForAdmin :many
-SELECT m.id, m.name, m.publication_mode, m.opponent_state, m.status, m.host_team_id, m.away_team_id, m.opponent_name, m.players_per_team, m.start_time, m.end_time, m.location, m.location_latitude, m.location_longitude, m.description, m.created_by_user_id, m.created_at, m.updated_at, m.created_by_admin_id, m.registration_start_at, m.registration_end_at, m.is_free, m.host_color, m.away_color,
+SELECT m.id, m.name, m.publication_mode, m.opponent_state, m.status, m.host_team_id, m.away_team_id, m.opponent_name, m.players_per_team, m.start_time, m.end_time, m.location, m.location_latitude, m.location_longitude, m.description, m.created_by_user_id, m.created_at, m.updated_at, m.created_by_admin_id, m.registration_start_at, m.registration_end_at, m.is_free, m.host_color, m.away_color, m.payment_mode, m.fee_per_person_cents,
        host.name AS host_team_name,
        away.name AS away_team_name
 FROM matches m
@@ -1228,7 +1257,7 @@ type ListMatchesForAdminRow struct {
 	PublicationMode     string           `json:"publication_mode"`
 	OpponentState       string           `json:"opponent_state"`
 	Status              string           `json:"status"`
-	HostTeamID          int64            `json:"host_team_id"`
+	HostTeamID          *int64           `json:"host_team_id"`
 	AwayTeamID          *int64           `json:"away_team_id"`
 	OpponentName        *string          `json:"opponent_name"`
 	PlayersPerTeam      int32            `json:"players_per_team"`
@@ -1247,6 +1276,8 @@ type ListMatchesForAdminRow struct {
 	IsFree              bool             `json:"is_free"`
 	HostColor           *string          `json:"host_color"`
 	AwayColor           *string          `json:"away_color"`
+	PaymentMode         string           `json:"payment_mode"`
+	FeePerPersonCents   int64            `json:"fee_per_person_cents"`
 	HostTeamName        string           `json:"host_team_name"`
 	AwayTeamName        *string          `json:"away_team_name"`
 }
@@ -1290,6 +1321,8 @@ func (q *Queries) ListMatchesForAdmin(ctx context.Context, arg ListMatchesForAdm
 			&i.IsFree,
 			&i.HostColor,
 			&i.AwayColor,
+			&i.PaymentMode,
+			&i.FeePerPersonCents,
 			&i.HostTeamName,
 			&i.AwayTeamName,
 		); err != nil {
@@ -1304,7 +1337,7 @@ func (q *Queries) ListMatchesForAdmin(ctx context.Context, arg ListMatchesForAdm
 }
 
 const listMatchesForUser = `-- name: ListMatchesForUser :many
-SELECT m.id, m.name, m.publication_mode, m.opponent_state, m.status, m.host_team_id, m.away_team_id, m.opponent_name, m.players_per_team, m.start_time, m.end_time, m.location, m.location_latitude, m.location_longitude, m.description, m.created_by_user_id, m.created_at, m.updated_at, m.created_by_admin_id, m.registration_start_at, m.registration_end_at, m.is_free, m.host_color, m.away_color,
+SELECT m.id, m.name, m.publication_mode, m.opponent_state, m.status, m.host_team_id, m.away_team_id, m.opponent_name, m.players_per_team, m.start_time, m.end_time, m.location, m.location_latitude, m.location_longitude, m.description, m.created_by_user_id, m.created_at, m.updated_at, m.created_by_admin_id, m.registration_start_at, m.registration_end_at, m.is_free, m.host_color, m.away_color, m.payment_mode, m.fee_per_person_cents,
        host.name AS host_team_name,
        away.name AS away_team_name
 FROM matches m
@@ -1395,7 +1428,7 @@ type ListMatchesForUserRow struct {
 	PublicationMode     string           `json:"publication_mode"`
 	OpponentState       string           `json:"opponent_state"`
 	Status              string           `json:"status"`
-	HostTeamID          int64            `json:"host_team_id"`
+	HostTeamID          *int64           `json:"host_team_id"`
 	AwayTeamID          *int64           `json:"away_team_id"`
 	OpponentName        *string          `json:"opponent_name"`
 	PlayersPerTeam      int32            `json:"players_per_team"`
@@ -1414,6 +1447,8 @@ type ListMatchesForUserRow struct {
 	IsFree              bool             `json:"is_free"`
 	HostColor           *string          `json:"host_color"`
 	AwayColor           *string          `json:"away_color"`
+	PaymentMode         string           `json:"payment_mode"`
+	FeePerPersonCents   int64            `json:"fee_per_person_cents"`
 	HostTeamName        string           `json:"host_team_name"`
 	AwayTeamName        *string          `json:"away_team_name"`
 }
@@ -1462,6 +1497,8 @@ func (q *Queries) ListMatchesForUser(ctx context.Context, arg ListMatchesForUser
 			&i.IsFree,
 			&i.HostColor,
 			&i.AwayColor,
+			&i.PaymentMode,
+			&i.FeePerPersonCents,
 			&i.HostTeamName,
 			&i.AwayTeamName,
 		); err != nil {
@@ -1526,6 +1563,7 @@ SELECT g.id, g.match_id, g.kind, g.team_id, g.min_players, g.max_players, g.stat
        mine.id AS my_registration_id,
        mine.status AS my_registration_status,
        mine.registration_count AS my_registration_count,
+       mine.paid AS my_registration_paid,
        mine.created_at AS my_registration_created_at,
        mine.updated_at AS my_registration_updated_at,
        mine.cancelled_at AS my_registration_cancelled_at
@@ -1557,6 +1595,7 @@ type ListRegistrationGroupStatesForUserRow struct {
 	MyRegistrationID          pgtype.UUID      `json:"my_registration_id"`
 	MyRegistrationStatus      *string          `json:"my_registration_status"`
 	MyRegistrationCount       *int32           `json:"my_registration_count"`
+	MyRegistrationPaid        *bool            `json:"my_registration_paid"`
 	MyRegistrationCreatedAt   pgtype.Timestamp `json:"my_registration_created_at"`
 	MyRegistrationUpdatedAt   pgtype.Timestamp `json:"my_registration_updated_at"`
 	MyRegistrationCancelledAt pgtype.Timestamp `json:"my_registration_cancelled_at"`
@@ -1586,6 +1625,7 @@ func (q *Queries) ListRegistrationGroupStatesForUser(ctx context.Context, arg Li
 			&i.MyRegistrationID,
 			&i.MyRegistrationStatus,
 			&i.MyRegistrationCount,
+			&i.MyRegistrationPaid,
 			&i.MyRegistrationCreatedAt,
 			&i.MyRegistrationUpdatedAt,
 			&i.MyRegistrationCancelledAt,
@@ -1891,6 +1931,30 @@ func (q *Queries) ListTeamGroupRoster(ctx context.Context, arg ListTeamGroupRost
 	return items, nil
 }
 
+const markRegistrationPaidByMatchUser = `-- name: MarkRegistrationPaidByMatchUser :execrows
+UPDATE match_registrations r
+SET paid = TRUE
+FROM match_registration_groups g
+WHERE r.group_id = g.id
+  AND g.match_id = $1
+  AND r.user_id = $2
+  AND r.status <> 'cancelled'
+`
+
+type MarkRegistrationPaidByMatchUserParams struct {
+	MatchID pgtype.UUID `json:"match_id"`
+	UserID  int64       `json:"user_id"`
+}
+
+// 报名费订单核销后标记报名已支付；幂等，重复调用无副作用。
+func (q *Queries) MarkRegistrationPaidByMatchUser(ctx context.Context, arg MarkRegistrationPaidByMatchUserParams) (int64, error) {
+	result, err := q.db.Exec(ctx, markRegistrationPaidByMatchUser, arg.MatchID, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const saveUserRegistration = `-- name: SaveUserRegistration :exec
 INSERT INTO match_registrations (
     id,
@@ -1951,7 +2015,7 @@ SET name = $2,
     away_color = $13,
     updated_at = NOW()
 WHERE id = $1
-RETURNING id, name, publication_mode, opponent_state, status, host_team_id, away_team_id, opponent_name, players_per_team, start_time, end_time, location, location_latitude, location_longitude, description, created_by_user_id, created_at, updated_at, created_by_admin_id, registration_start_at, registration_end_at, is_free, host_color, away_color
+RETURNING id, name, publication_mode, opponent_state, status, host_team_id, away_team_id, opponent_name, players_per_team, start_time, end_time, location, location_latitude, location_longitude, description, created_by_user_id, created_at, updated_at, created_by_admin_id, registration_start_at, registration_end_at, is_free, host_color, away_color, payment_mode, fee_per_person_cents
 `
 
 type UpdateMatchDetailsParams struct {
@@ -2012,6 +2076,8 @@ func (q *Queries) UpdateMatchDetails(ctx context.Context, arg UpdateMatchDetails
 		&i.IsFree,
 		&i.HostColor,
 		&i.AwayColor,
+		&i.PaymentMode,
+		&i.FeePerPersonCents,
 	)
 	return i, err
 }
@@ -2046,7 +2112,7 @@ UPDATE matches
 SET status = $2,
     updated_at = NOW()
 WHERE id = $1
-RETURNING id, name, publication_mode, opponent_state, status, host_team_id, away_team_id, opponent_name, players_per_team, start_time, end_time, location, location_latitude, location_longitude, description, created_by_user_id, created_at, updated_at, created_by_admin_id, registration_start_at, registration_end_at, is_free, host_color, away_color
+RETURNING id, name, publication_mode, opponent_state, status, host_team_id, away_team_id, opponent_name, players_per_team, start_time, end_time, location, location_latitude, location_longitude, description, created_by_user_id, created_at, updated_at, created_by_admin_id, registration_start_at, registration_end_at, is_free, host_color, away_color, payment_mode, fee_per_person_cents
 `
 
 type UpdateMatchStatusParams struct {
@@ -2082,6 +2148,8 @@ func (q *Queries) UpdateMatchStatus(ctx context.Context, arg UpdateMatchStatusPa
 		&i.IsFree,
 		&i.HostColor,
 		&i.AwayColor,
+		&i.PaymentMode,
+		&i.FeePerPersonCents,
 	)
 	return i, err
 }

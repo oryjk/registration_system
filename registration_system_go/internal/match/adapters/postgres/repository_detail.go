@@ -64,6 +64,7 @@ func (r *Repository) FindForUser(ctx context.Context, matchID uuid.UUID, userID 
 			state.MyRegistration = &domain.Registration{
 				ID: uuid.UUID(groupRow.MyRegistrationID.Bytes), GroupID: uuid.UUID(groupRow.ID.Bytes), UserID: userID,
 				Status: domain.RegistrationStatus(*groupRow.MyRegistrationStatus), RegistrationCount: int(*groupRow.MyRegistrationCount),
+				Paid:      groupRow.MyRegistrationPaid != nil && *groupRow.MyRegistrationPaid,
 				CreatedAt: groupRow.MyRegistrationCreatedAt.Time, UpdatedAt: groupRow.MyRegistrationUpdatedAt.Time,
 				CancelledAt: timestampPointer(groupRow.MyRegistrationCancelledAt),
 			}
@@ -93,6 +94,7 @@ func mapUserParticipants(entries []ports.AdminRosterEntry) []ports.UserParticipa
 		seen[entry.UserID] = struct{}{}
 		participants = append(participants, ports.UserParticipant{
 			UserID: entry.UserID, Nickname: entry.Nickname, AvatarURL: entry.AvatarURL, Status: *entry.Status,
+			RegisteredAt: entry.RegisteredAt,
 		})
 	}
 	return participants

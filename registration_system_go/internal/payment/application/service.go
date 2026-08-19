@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/google/uuid"
 	paymentdomain "github.com/oryjk/registration_system/registration_system_go/internal/payment/domain"
 	paymentports "github.com/oryjk/registration_system/registration_system_go/internal/payment/ports"
 	sharedauth "github.com/oryjk/registration_system/registration_system_go/internal/shared/auth"
@@ -17,18 +18,20 @@ const (
 )
 
 type Service struct {
-	orders      paymentports.OrderRepository
-	users       paymentports.UserOpenIDReader
-	gateway     paymentports.Gateway
-	settlement  paymentports.Settlement
-	memberships paymentports.MembershipSettlement
-	teams       paymentports.TeamEligibility
-	orderNos    paymentports.OrderNumberGenerator
-	clock       paymentports.Clock
+	orders        paymentports.OrderRepository
+	users         paymentports.UserOpenIDReader
+	gateway       paymentports.Gateway
+	settlement    paymentports.Settlement
+	memberships   paymentports.MembershipSettlement
+	teams         paymentports.TeamEligibility
+	matchFees     paymentports.MatchRegistrationFeeSource
+	registrations paymentports.RegistrationSettlement
+	orderNos      paymentports.OrderNumberGenerator
+	clock         paymentports.Clock
 }
 
-func NewService(orders paymentports.OrderRepository, users paymentports.UserOpenIDReader, gateway paymentports.Gateway, settlement paymentports.Settlement, memberships paymentports.MembershipSettlement, teams paymentports.TeamEligibility, orderNos paymentports.OrderNumberGenerator, clock paymentports.Clock) *Service {
-	return &Service{orders: orders, users: users, gateway: gateway, settlement: settlement, memberships: memberships, teams: teams, orderNos: orderNos, clock: clock}
+func NewService(orders paymentports.OrderRepository, users paymentports.UserOpenIDReader, gateway paymentports.Gateway, settlement paymentports.Settlement, memberships paymentports.MembershipSettlement, teams paymentports.TeamEligibility, matchFees paymentports.MatchRegistrationFeeSource, registrations paymentports.RegistrationSettlement, orderNos paymentports.OrderNumberGenerator, clock paymentports.Clock) *Service {
+	return &Service{orders: orders, users: users, gateway: gateway, settlement: settlement, memberships: memberships, teams: teams, matchFees: matchFees, registrations: registrations, orderNos: orderNos, clock: clock}
 }
 
 type CreateRechargeCommand struct {
@@ -123,6 +126,57 @@ type CreateTeamMembershipCommand struct {
 	TeamID      int64
 	AmountCents int64
 	ClientIP    string
+}
+
+type CreateMatchRegistrationCommand struct {
+	MatchID  uuid.UUID
+	ClientIP string
+}
+
+// CreateMatchRegistration 为散人报名创建报名费订单并发起微信支付；
+// 金额由比赛定价（服务端），下单前校验操作者已报名且尚未支付。
+func (s *Service) CreateMatchRegistration(ctx context.Context, actor sharedauth.Actor, command CreateMatchRegistrationCommand) (CreateRechargeResult, error) {
+	if !actor.IsUser() {
+		return CreateRechargeResult{}, sharederror.ErrForbidden
+	}
+	if command.MatchID == uuid.Nil {
+		return CreateRechargeResult{}, sharederror.New(sharederror.KindValidation, "比赛无效")
+	}
+	fee, err := s.matchFees.RegistrationFee(ctx, command.MatchID, actor.ID)
+	if err != nil {
+		return CreateRechargeResult{}, err
+	}
+	now := s.clock.Now()
+	order, err := paymentdomain.NewMatchRegistrationOrder(s.orderNos.NewOrderNo(), actor.ID, command.MatchID, fee.AmountCents, now)
+	if err != nil {
+		return CreateRechargeResult{}, err
+	}
+	openid, err := s.users.OpenIDForUser(ctx, actor.ID)
+	if err != nil {
+		return CreateRechargeResult{}, err
+	}
+	if strings.TrimSpace(openid) == "" {
+		return CreateRechargeResult{}, sharederror.New(sharederror.KindConflict, "当前用户缺少微信身份信息")
+	}
+	if err := s.orders.Create(ctx, order); err != nil {
+		return CreateRechargeResult{}, err
+	}
+	providerResult, err := s.gateway.UnifiedOrder(ctx, paymentports.UnifiedOrderRequest{
+		OrderNo: order.OrderNo, AmountCents: order.AmountCents,
+		Description: "比赛报名费",
+		ClientIP:    strings.TrimSpace(command.ClientIP), OpenID: openid,
+	})
+	if err != nil {
+		if errors.Is(err, paymentports.ErrProviderRejected) {
+			_ = s.orders.MarkFailed(ctx, order.OrderNo, s.clock.Now())
+		}
+		return CreateRechargeResult{}, err
+	}
+	order, err = s.orders.SavePrepared(ctx, order.OrderNo, providerResult.PrepayID, s.clock.Now())
+	if err != nil {
+		return CreateRechargeResult{}, err
+	}
+	return CreateRechargeResult{Order: order, Payment: providerResult.Parameters}, nil
 }
 
 type ListQuery struct {
@@ -247,7 +301,8 @@ func (s *Service) settle(ctx context.Context, payment paymentports.ProviderPayme
 	return s.settleVerified(ctx, verified)
 }
 
-// settleVerified 按订单类型路由结算：队费订单入付款人在该球队的个人账户，充值订单入个人钱包。
+// settleVerified 按订单类型路由结算：队费订单入付款人在该球队的个人账户，充值订单入个人钱包，
+// 报名费订单把对应报名标记为已支付。
 func (s *Service) settleVerified(ctx context.Context, verified paymentports.VerifiedPayment) (paymentports.SettlementResult, error) {
 	order, err := s.orders.Get(ctx, verified.OrderNo)
 	if err != nil {
@@ -260,6 +315,15 @@ func (s *Service) settleVerified(ctx context.Context, verified paymentports.Veri
 		}
 		return s.memberships.ApplyMembershipPayment(ctx, verified, paymentports.TeamFundCredit{
 			TeamID:      *order.TeamID,
+			UserID:      order.UserID,
+			AmountCents: order.AmountCents,
+		})
+	case paymentdomain.KindMatchRegistration:
+		if order.MatchID == nil {
+			return paymentports.SettlementResult{}, sharederror.New(sharederror.KindConflict, "报名费订单缺少比赛信息")
+		}
+		return s.registrations.ApplyRegistrationPayment(ctx, verified, paymentports.MatchRegistrationCredit{
+			MatchID:     *order.MatchID,
 			UserID:      order.UserID,
 			AmountCents: order.AmountCents,
 		})

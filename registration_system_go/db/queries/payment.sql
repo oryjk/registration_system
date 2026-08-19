@@ -1,7 +1,7 @@
 -- name: CreatePaymentOrder :one
 INSERT INTO payment_orders (
-    order_no, user_id, amount_cents, provider, channel, status, kind, team_id, months, created_at, updated_at
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $10)
+    order_no, user_id, amount_cents, provider, channel, status, kind, team_id, match_id, months, created_at, updated_at
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $11)
 RETURNING *;
 
 -- name: CreditTeamMemberFundBalance :one
@@ -11,6 +11,16 @@ SET balance_cents = balance_cents + sqlc.arg('amount_cents')::bigint,
 WHERE team_id = sqlc.arg('team_id')::bigint
   AND user_id = sqlc.arg('user_id')::bigint
 RETURNING balance_cents;
+
+-- name: MarkMatchRegistrationPaid :execrows
+-- 报名费订单核销后标记报名已支付；幂等，重复核销无副作用。
+UPDATE match_registrations r
+SET paid = TRUE, updated_at = NOW()
+FROM match_registration_groups g
+WHERE r.group_id = g.id
+  AND g.match_id = sqlc.arg('match_id')::uuid
+  AND r.user_id = sqlc.arg('user_id')::bigint
+  AND r.status <> 'cancelled';
 
 -- name: GetPaymentOrder :one
 SELECT * FROM payment_orders WHERE order_no = $1;

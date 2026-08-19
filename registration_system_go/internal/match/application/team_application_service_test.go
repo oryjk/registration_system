@@ -136,7 +136,7 @@ func TestTeamApplicationRejectsWithdrawAfterRegistrationWindow(t *testing.T) {
 func teamRecruitingMatch(id uuid.UUID) domain.Match {
 	return domain.Match{
 		ID: id, PublicationMode: domain.OnlineTeam, OpponentState: domain.OpponentRecruiting,
-		Status: domain.MatchRegistering, HostTeamID: 7, PlayersPerTeam: 8,
+		Status: domain.MatchRegistering, HostTeamID: int64Pointer(7), PlayersPerTeam: 8,
 	}
 }
 

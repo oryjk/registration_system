@@ -43,7 +43,7 @@ type UserMatchResponse struct {
 	PublicationMode     domain.PublicationMode         `json:"publication_mode"`
 	OpponentState       domain.OpponentState           `json:"opponent_state"`
 	Status              domain.MatchStatus             `json:"status"`
-	HostTeamID          int64                          `json:"host_team_id"`
+	HostTeamID          *int64                         `json:"host_team_id"`
 	HostTeamName        string                         `json:"host_team_name"`
 	AwayTeamID          *int64                         `json:"away_team_id"`
 	AwayTeamName        *string                        `json:"away_team_name"`
@@ -60,6 +60,8 @@ type UserMatchResponse struct {
 	HostColor           *string                        `json:"host_color"`
 	AwayColor           *string                        `json:"away_color"`
 	IsFree              bool                           `json:"is_free"`
+	PaymentMode         domain.PaymentMode             `json:"payment_mode"`
+	FeePerPersonCents   int64                          `json:"fee_per_person_cents"`
 	RegistrationGroups  []UserRegistrationGroupSummary `json:"registration_groups"`
 	CreatedAt           time.Time                      `json:"created_at"`
 	UpdatedAt           time.Time                      `json:"updated_at"`
@@ -76,6 +78,7 @@ type UserRegistrationGroupSummary struct {
 type UserRegistrationResponse struct {
 	Status            domain.RegistrationStatus `json:"status"`
 	RegistrationCount int                       `json:"registration_count"`
+	Paid              bool                      `json:"paid"`
 }
 
 type UserGroupResponse struct {
@@ -95,6 +98,8 @@ type UserParticipantResponse struct {
 	Nickname  string                    `json:"nickname"`
 	AvatarURL *string                   `json:"avatar_url"`
 	Status    domain.RegistrationStatus `json:"status"`
+	// RegisteredAt 是该成员本次报名的落库时间；为 nil 时（旧数据/未报名）调用方需自行兜底排序。
+	RegisteredAt *time.Time `json:"registered_at"`
 }
 
 type UserMatchDetailResponse struct {
@@ -227,6 +232,7 @@ func (h *UserHandler) Create(c *gin.Context) {
 		Location: request.Location, LocationLatitude: request.LocationLatitude, LocationLongitude: request.LocationLongitude,
 		Description: request.Description, IsFree: request.IsFree,
 		HostColor: request.HostColor, AwayColor: request.AwayColor,
+		PaymentMode: request.PaymentMode, FeePerPersonCents: request.FeePerPersonCents,
 	})
 	if err != nil {
 		sharedhttpapi.WriteError(c, err)
@@ -347,7 +353,7 @@ func mapUserMatch(item ports.MatchItem) UserMatchResponse {
 		RegistrationStartAt: match.RegistrationStartAt, RegistrationEndAt: match.RegistrationEndAt,
 		Location: match.Location, LocationLatitude: match.LocationLatitude, LocationLongitude: match.LocationLongitude,
 		Description: match.Description, RegistrationGroups: groups, CreatedAt: match.CreatedAt, UpdatedAt: match.UpdatedAt,
-		IsFree:    match.IsFree,
+		IsFree: match.IsFree, PaymentMode: match.PaymentMode, FeePerPersonCents: match.FeePerPersonCents,
 		HostColor: jerseyColorResponse(match.HostColor), AwayColor: jerseyColorResponse(match.AwayColor),
 	}
 }
@@ -359,6 +365,7 @@ func mapUserDetail(detail application.UserMatchDetail) UserMatchDetailResponse {
 		if state.MyRegistration != nil {
 			registration = &UserRegistrationResponse{
 				Status: state.MyRegistration.Status, RegistrationCount: state.MyRegistration.RegistrationCount,
+				Paid: state.MyRegistration.Paid,
 			}
 		}
 		groups = append(groups, UserGroupResponse{
@@ -377,6 +384,7 @@ func mapUserParticipantResponses(participants []ports.UserParticipant) []UserPar
 		responses = append(responses, UserParticipantResponse{
 			UserID: participant.UserID, Nickname: participant.Nickname,
 			AvatarURL: participant.AvatarURL, Status: participant.Status,
+			RegisteredAt: participant.RegisteredAt,
 		})
 	}
 	return responses

@@ -2,7 +2,9 @@ package application
 
 import (
 	"context"
+
 	"errors"
+	"github.com/google/uuid"
 	"testing"
 	"time"
 
@@ -15,7 +17,7 @@ import (
 func TestCreateRechargeUsesAuthenticatedUsersOpenID(t *testing.T) {
 	store := newFakePaymentStore()
 	gateway := &fakeGateway{unified: paymentports.UnifiedOrderResult{PrepayID: "prepay-1", Parameters: paymentports.JSAPIParameters{Package: "prepay_id=prepay-1"}}}
-	service := NewService(store, store, gateway, store, store, allowTeams{}, fixedOrderNumbers{"P202608090001"}, fixedClock{time.Unix(100, 0)})
+	service := NewService(store, store, gateway, store, store, allowTeams{}, fakeRegistrationFees{}, store, fixedOrderNumbers{"P202608090001"}, fixedClock{time.Unix(100, 0)})
 
 	result, err := service.CreateRecharge(context.Background(), userActor(37), CreateRechargeCommand{AmountCents: 1, ClientIP: "127.0.0.1"})
 	if err != nil {
@@ -30,7 +32,7 @@ func TestCreateRechargeUsesAuthenticatedUsersOpenID(t *testing.T) {
 }
 
 func TestCreateRechargeRejectsNonUserAndZeroAmount(t *testing.T) {
-	service := NewService(newFakePaymentStore(), newFakePaymentStore(), &fakeGateway{}, newFakePaymentStore(), newFakePaymentStore(), allowTeams{}, fixedOrderNumbers{"P1"}, fixedClock{})
+	service := NewService(newFakePaymentStore(), newFakePaymentStore(), &fakeGateway{}, newFakePaymentStore(), newFakePaymentStore(), allowTeams{}, fakeRegistrationFees{}, newFakePaymentStore(), fixedOrderNumbers{"P1"}, fixedClock{})
 	if _, err := service.CreateRecharge(context.Background(), sharedauth.Actor{Kind: sharedauth.ActorAdmin, ID: 1}, CreateRechargeCommand{AmountCents: 1}); !errors.Is(err, sharederror.ErrForbidden) {
 		t.Fatalf("admin error=%v", err)
 	}
@@ -41,7 +43,7 @@ func TestCreateRechargeRejectsNonUserAndZeroAmount(t *testing.T) {
 
 func TestListRejectsInvalidPaymentStatus(t *testing.T) {
 	store := newFakePaymentStore()
-	service := NewService(store, store, &fakeGateway{}, store, store, allowTeams{}, fixedOrderNumbers{}, fixedClock{})
+	service := NewService(store, store, &fakeGateway{}, store, store, allowTeams{}, fakeRegistrationFees{}, store, fixedOrderNumbers{}, fixedClock{})
 
 	_, err := service.List(context.Background(), userActor(37), ListQuery{Status: paymentdomain.Status("unknown")})
 	if !errors.Is(err, sharederror.ErrValidation) {
@@ -53,7 +55,7 @@ func TestSyncPaidOrderCreditsWalletOnce(t *testing.T) {
 	store := newFakePaymentStore()
 	store.order = mustOrder(t, "P202608090002", 37, 500)
 	gateway := &fakeGateway{query: paymentports.ProviderPayment{OrderNo: store.order.OrderNo, AmountCents: 500, TransactionID: "wx-1", PaidAt: time.Unix(200, 0), Paid: true}}
-	service := NewService(store, store, gateway, store, store, allowTeams{}, fixedOrderNumbers{}, fixedClock{})
+	service := NewService(store, store, gateway, store, store, allowTeams{}, fakeRegistrationFees{}, store, fixedOrderNumbers{}, fixedClock{})
 
 	first, err := service.Sync(context.Background(), userActor(37), store.order.OrderNo)
 	if err != nil {
@@ -71,7 +73,7 @@ func TestSyncPaidOrderCreditsWalletOnce(t *testing.T) {
 func TestGetRejectsAnotherUsersOrder(t *testing.T) {
 	store := newFakePaymentStore()
 	store.order = mustOrder(t, "P202608090003", 37, 100)
-	service := NewService(store, store, &fakeGateway{}, store, store, allowTeams{}, fixedOrderNumbers{}, fixedClock{})
+	service := NewService(store, store, &fakeGateway{}, store, store, allowTeams{}, fakeRegistrationFees{}, store, fixedOrderNumbers{}, fixedClock{})
 	if _, err := service.Get(context.Background(), userActor(38), store.order.OrderNo); !errors.Is(err, sharederror.ErrNotFound) {
 		t.Fatalf("Get() error=%v, want not found", err)
 	}
@@ -81,7 +83,7 @@ func TestCancelClosesProviderOrderBeforeLocalCancellation(t *testing.T) {
 	store := newFakePaymentStore()
 	store.order = mustOrder(t, "P202608090004", 37, 100)
 	gateway := &fakeGateway{close: paymentports.CloseOutcomeClosed}
-	service := NewService(store, store, gateway, store, store, allowTeams{}, fixedOrderNumbers{}, fixedClock{time.Unix(300, 0)})
+	service := NewService(store, store, gateway, store, store, allowTeams{}, fakeRegistrationFees{}, store, fixedOrderNumbers{}, fixedClock{time.Unix(300, 0)})
 
 	order, err := service.Cancel(context.Background(), userActor(37), store.order.OrderNo)
 	if err != nil {
@@ -99,7 +101,7 @@ func TestCancelOrderPaidSettlesInsteadOfCancelling(t *testing.T) {
 		close: paymentports.CloseOutcomePaid,
 		query: paymentports.ProviderPayment{OrderNo: store.order.OrderNo, AmountCents: 100, TransactionID: "wx-2", PaidAt: time.Unix(400, 0), Paid: true},
 	}
-	service := NewService(store, store, gateway, store, store, allowTeams{}, fixedOrderNumbers{}, fixedClock{})
+	service := NewService(store, store, gateway, store, store, allowTeams{}, fakeRegistrationFees{}, store, fixedOrderNumbers{}, fixedClock{})
 
 	order, err := service.Cancel(context.Background(), userActor(37), store.order.OrderNo)
 	if err != nil {
@@ -114,7 +116,7 @@ func TestHandleNotificationUsesSameSettlement(t *testing.T) {
 	store := newFakePaymentStore()
 	store.order = mustOrder(t, "P202608090006", 37, 88)
 	gateway := &fakeGateway{notification: paymentports.ProviderPayment{OrderNo: store.order.OrderNo, AmountCents: 88, TransactionID: "wx-3", PaidAt: time.Unix(500, 0), Paid: true}}
-	service := NewService(store, store, gateway, store, store, allowTeams{}, fixedOrderNumbers{}, fixedClock{})
+	service := NewService(store, store, gateway, store, store, allowTeams{}, fakeRegistrationFees{}, store, fixedOrderNumbers{}, fixedClock{})
 
 	result, err := service.HandleNotification(context.Background(), []byte("signed xml"))
 	if err != nil {
@@ -267,7 +269,7 @@ func (allowTeams) EnsureExists(context.Context, int64) error         { return ni
 func TestCreateTeamMembershipRequiresTeamManager(t *testing.T) {
 	store := newFakePaymentStore()
 	gateway := &fakeGateway{}
-	service := NewService(store, store, gateway, store, store, denyTeams{}, fixedOrderNumbers{"P-team-1"}, fixedClock{})
+	service := NewService(store, store, gateway, store, store, denyTeams{}, fakeRegistrationFees{}, store, fixedOrderNumbers{"P-team-1"}, fixedClock{})
 
 	if _, err := service.CreateTeamMembership(context.Background(), sharedauth.Actor{Kind: sharedauth.ActorUser, ID: 42}, CreateTeamMembershipCommand{TeamID: 7, AmountCents: 3000}); err == nil {
 		t.Fatal("expected forbidden for non-manager")
@@ -287,7 +289,7 @@ func TestCreateTeamMembershipOrdersForClickedTeam(t *testing.T) {
 		PrepayID:   "prepay-team-9",
 		Parameters: paymentports.JSAPIParameters{Package: "prepay_id=prepay-team-9"},
 	}}
-	service := NewService(store, store, gateway, store, store, allowTeams{}, fixedOrderNumbers{"P-team-9"}, fixedClock{})
+	service := NewService(store, store, gateway, store, store, allowTeams{}, fakeRegistrationFees{}, store, fixedOrderNumbers{"P-team-9"}, fixedClock{})
 
 	result, err := service.CreateTeamMembership(context.Background(), sharedauth.Actor{Kind: sharedauth.ActorUser, ID: 42}, CreateTeamMembershipCommand{TeamID: 7, AmountCents: 7500})
 	if err != nil {
@@ -312,7 +314,7 @@ func TestSyncTeamMembershipCreditsTeamFund(t *testing.T) {
 	}
 	store.order = order
 	gateway := &fakeGateway{query: paymentports.ProviderPayment{OrderNo: order.OrderNo, AmountCents: 7500, TransactionID: "wx-team-1", PaidAt: time.Unix(200, 0), Paid: true}}
-	service := NewService(store, store, gateway, store, store, allowTeams{}, fixedOrderNumbers{}, fixedClock{})
+	service := NewService(store, store, gateway, store, store, allowTeams{}, fakeRegistrationFees{}, store, fixedOrderNumbers{}, fixedClock{})
 
 	if _, err := service.Sync(context.Background(), userActor(37), order.OrderNo); err != nil {
 		t.Fatal(err)
@@ -339,7 +341,7 @@ func TestSyncAlreadyPaidTeamMembershipOrderRoutesToMembershipSettlement(t *testi
 	}
 	store.order = order
 	gateway := &fakeGateway{}
-	service := NewService(store, store, gateway, store, store, allowTeams{}, fixedOrderNumbers{}, fixedClock{})
+	service := NewService(store, store, gateway, store, store, allowTeams{}, fakeRegistrationFees{}, store, fixedOrderNumbers{}, fixedClock{})
 
 	result, err := service.Sync(context.Background(), userActor(37), order.OrderNo)
 	if err != nil {
@@ -354,4 +356,56 @@ func TestSyncAlreadyPaidTeamMembershipOrderRoutesToMembershipSettlement(t *testi
 	if !result.Credited {
 		t.Fatalf("result=%+v", result)
 	}
+}
+
+type fakeRegistrationFees struct{}
+
+func (fakeRegistrationFees) RegistrationFee(context.Context, uuid.UUID, int64) (paymentports.MatchRegistrationFee, error) {
+	return paymentports.MatchRegistrationFee{}, sharederror.New(sharederror.KindValidation, "比赛无效")
+}
+
+func (s *fakePaymentStore) ApplyRegistrationPayment(context.Context, paymentports.VerifiedPayment, paymentports.MatchRegistrationCredit) (paymentports.SettlementResult, error) {
+	return paymentports.SettlementResult{}, nil
+}
+
+func TestCreateMatchRegistrationRejectsInvalidFeeContext(t *testing.T) {
+	store := newFakePaymentStore()
+	gateway := &fakeGateway{}
+	service := NewService(store, store, gateway, store, store, allowTeams{}, fakeRegistrationFees{}, store, fixedOrderNumbers{}, fixedClock{})
+
+	if _, err := service.CreateMatchRegistration(context.Background(), userActor(37), CreateMatchRegistrationCommand{MatchID: uuid.New()}); err == nil {
+		t.Fatal("expected fee validation to reject the order")
+	}
+}
+
+func TestCreateMatchRegistrationUsesServerPricedFee(t *testing.T) {
+	store := newFakePaymentStore()
+	gateway := &fakeGateway{unified: paymentports.UnifiedOrderResult{PrepayID: "prepay-m1", Parameters: paymentports.JSAPIParameters{Package: "prepay_id=prepay-m1"}}}
+	fees := pricedRegistrationFees{fee: paymentports.MatchRegistrationFee{MatchID: uuid.MustParse("11111111-1111-1111-1111-111111111111"), AmountCents: 2500}}
+	service := NewService(store, store, gateway, store, store, allowTeams{}, fees, store, fixedOrderNumbers{"P-match-1"}, fixedClock{time.Unix(100, 0)})
+
+	result, err := service.CreateMatchRegistration(context.Background(), userActor(37), CreateMatchRegistrationCommand{MatchID: fees.fee.MatchID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Order.Kind != paymentdomain.KindMatchRegistration || result.Order.AmountCents != 2500 {
+		t.Fatalf("unexpected order: %+v", result.Order)
+	}
+	if result.Order.MatchID == nil || *result.Order.MatchID != fees.fee.MatchID {
+		t.Fatalf("order should reference match: %+v", result.Order)
+	}
+	if gateway.request.AmountCents != 2500 || gateway.request.OpenID != "openid-37" {
+		t.Fatalf("unexpected gateway request: %+v", gateway.request)
+	}
+}
+
+type pricedRegistrationFees struct {
+	fee paymentports.MatchRegistrationFee
+}
+
+func (f pricedRegistrationFees) RegistrationFee(_ context.Context, matchID uuid.UUID, _ int64) (paymentports.MatchRegistrationFee, error) {
+	if matchID != f.fee.MatchID {
+		return paymentports.MatchRegistrationFee{}, sharederror.New(sharederror.KindNotFound, "比赛不存在")
+	}
+	return f.fee, nil
 }

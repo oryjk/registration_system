@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/google/uuid"
 	paymentdomain "github.com/oryjk/registration_system/registration_system_go/internal/payment/domain"
 )
 
@@ -111,6 +112,30 @@ type MembershipSettlement interface {
 type TeamEligibility interface {
 	EnsureManager(context.Context, int64, int64) error
 	EnsureExists(context.Context, int64) error
+}
+
+// MatchRegistrationFee 是一笔报名费下单前的校验上下文：金额取自比赛定价。
+type MatchRegistrationFee struct {
+	MatchID     uuid.UUID
+	AmountCents int64
+}
+
+// MatchRegistrationFeeSource 供报名费下单校验（由 match 模块实现）：
+// 比赛必须是赛前支付且有人均费用，操作者已报名（attending）且尚未支付。
+type MatchRegistrationFeeSource interface {
+	RegistrationFee(ctx context.Context, matchID uuid.UUID, userID int64) (MatchRegistrationFee, error)
+}
+
+// RegistrationSettlement 报名费订单核销：事务内核销订单并把对应报名标记为已支付
+// （由 payment 的 postgres 仓储实现，直写 match_registrations 与队费直写 team_members 同风格）。
+type MatchRegistrationCredit struct {
+	MatchID     uuid.UUID
+	UserID      int64
+	AmountCents int64
+}
+
+type RegistrationSettlement interface {
+	ApplyRegistrationPayment(context.Context, VerifiedPayment, MatchRegistrationCredit) (SettlementResult, error)
 }
 
 type OrderNumberGenerator interface {

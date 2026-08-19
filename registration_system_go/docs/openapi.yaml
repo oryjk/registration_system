@@ -456,6 +456,27 @@ paths:
           description: 订单与微信支付参数
         <<: *standardErrors
 
+  /api/v1/app/payments/match-registration-orders:
+    post:
+      operationId: createAppMatchRegistrationOrder
+      tags: [App Payments]
+      summary: 为比赛报名创建报名费订单并发起微信支付
+      description: 金额由比赛定价（服务端）；仅当比赛为赛前支付（payment_mode=prepaid）且有人均费用、操作者已报名（attending）且尚未支付时允许下单，支付核销后对应报名标记为已支付。
+      security: *bearerSecurity
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [match_id]
+              properties:
+                match_id: { type: string, format: uuid }
+      responses:
+        "200":
+          description: 订单与微信支付参数
+        <<: *standardErrors
+
   /api/v1/app/matches:
     get:
       operationId: listAppMatches
@@ -1619,7 +1640,12 @@ components:
 
     PublicationMode:
       type: string
-      enum: [offline_confirmed, online_team, online_individual]
+      enum: [offline_confirmed, online_team, online_individual, online_pickup]
+      description: online_pickup 为散人约球——所有参与者都是散人、无主队，任何登录用户可发布。
+    PaymentMode:
+      type: string
+      enum: [postpaid, prepaid]
+      description: 报名费支付节奏；prepaid 表示报名时需立即支付。
     OpponentState:
       type: string
       enum: [no_recruitment, recruiting, confirmed]
@@ -1989,7 +2015,7 @@ components:
           nullable: true
     CreateMatchRequest:
       type: object
-      required: [name, publication_mode, host_team_id, players_per_team, start_time, end_time, location]
+      required: [name, publication_mode, players_per_team, start_time, end_time, location]
       properties:
         name:
           type: string
@@ -1998,6 +2024,8 @@ components:
         host_team_id:
           type: integer
           format: int64
+          nullable: true
+          description: 散人约球（online_pickup）不传；其余模式必填。
         opponent_name:
           type: string
           nullable: true
@@ -2008,6 +2036,7 @@ components:
           type: integer
           format: int32
           nullable: true
+          description: 报名上限；散人约球对应「最大人数」。
         start_time:
           type: string
           format: date-time
@@ -2037,6 +2066,13 @@ components:
           nullable: true
           description: 客队球服颜色（#rrggbb）
           example: "#ff0000"
+        payment_mode:
+          $ref: "#/components/schemas/PaymentMode"
+        fee_per_person_cents:
+          type: integer
+          format: int64
+          minimum: 0
+          description: 人均报名费（分）；0 表示免费。赛前支付必须大于 0。
     UpdateMatchRequest:
       type: object
       required: [name, start_time, end_time, location]
@@ -2582,6 +2618,29 @@ components:
           allOf:
             - $ref: "#/components/schemas/UserRegistration"
           nullable: true
+        participants:
+          type: array
+          items:
+            $ref: "#/components/schemas/UserParticipant"
+    UserParticipant:
+      type: object
+      required: [user_id, nickname, avatar_url, status, registered_at]
+      properties:
+        user_id:
+          type: integer
+          format: int64
+        nickname:
+          type: string
+        avatar_url:
+          type: string
+          nullable: true
+        status:
+          $ref: "#/components/schemas/RegistrationStatus"
+        registered_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: 该成员本次报名的落库时间；小程序端按它对已报名队员按报名先后排序。
     MyRegistration:
       type: object
       required: [group_id, user_id, status, registration_count, updated_at]

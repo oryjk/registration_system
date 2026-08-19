@@ -170,7 +170,7 @@ func TestAdminUpdateMatchJerseyColorThreeStates(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	matchID := uuid.New()
 	service := &fakeAdminMatches{detail: application.AdminMatchDetail{
-		Item: ports.AdminMatchItem{Match: domain.Match{ID: matchID, Name: "周四友谊赛", HostTeamID: 7}, HostTeamName: "洺悦御府"},
+		Item: ports.AdminMatchItem{Match: domain.Match{ID: matchID, Name: "周四友谊赛", HostTeamID: int64Pointer(7)}, HostTeamName: "洺悦御府"},
 	}}
 	handler := NewAdminHandler(service, &fakeCreateMatch{})
 	router := gin.New()
