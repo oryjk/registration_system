@@ -142,14 +142,36 @@ describe("match detail registration design", () => {
     expect(actions.includes("submitTeamRegistration")).toEqual(true);
   });
 
-  test("lets individual users cancel an existing registration from the primary CTA", async () => {
-    const pageLogic = await matchDetailLogicSource();
+  test("lets individual users cancel an existing registration from the primary CTA", async () => {    const pageLogic = await matchDetailLogicSource();
 
-    expect(pageLogic.includes('currentStatus.value === "参加" ? "取消报名" : "立即报名"')).toEqual(true);
+    // 散人约球（pickup）已报名走「调整人数」面板；其余模式保持 CTA 取消报名。
+    expect(pageLogic.includes('if (isPickupMatch.value && isMatchApiDetail.value) return myRegistrationPaid.value ? "已报名" : "调整人数";')).toEqual(true);
+    expect(pageLogic.includes('return "取消报名";')).toEqual(true);
     expect(pageLogic.includes("handleCancelIndividualSignup")).toEqual(true);
     expect(pageLogic.includes("cancelIndividualRegistration")).toEqual(true);
     expect(pageLogic.includes('title: "已取消报名"')).toEqual(true);
     expect(pageLogic.includes("你已经报过名了")).toEqual(false);
+  });
+
+  test("pickup matches sign up with a headcount sheet and per-head fee", async () => {
+    const pageLogic = await matchDetailLogicSource();
+    const detail = await sourceFile("pages/matches/detail.vue").text();
+    const sheet = await sourceFile("pages/matches/components/MatchSignupCountSheet.vue").text();
+    const payment = await sourceFile("pages/matches/useMatchRegistrationPayment.ts").text();
+    const actions = await sourceFile("pages/matches/detailActions.ts").text();
+
+    // 散人约球报名走人数选择面板，提交携带所选人数。
+    expect(pageLogic.includes('sourceMatch.value?.publication_mode === "online_pickup"')).toEqual(true);
+    expect(pageLogic.includes("openSignupSheet")).toEqual(true);
+    expect(pageLogic.includes("handleSignupSheetConfirm")).toEqual(true);
+    expect(detail.includes("<MatchSignupCountSheet")).toEqual(true);
+    expect(sheet.includes("wd-input-number")).toEqual(true);
+    expect(actions.includes("registrationCount = 1")).toEqual(true);
+    // 待支付金额按人数合计；已支付后锁定修改与取消。
+    expect(payment.includes("myRegistrationCount")).toEqual(true);
+    expect(payment.includes("* Math.max(myRegistrationCount.value, 1)")).toEqual(true);
+    expect(pageLogic.includes('"已支付的报名不可修改或取消"')).toEqual(true);
+    expect(pageLogic.includes('"已支付的报名不可修改"')).toEqual(false);
   });
 
   test("confirms individual signup and cancellation before submitting", async () => {
@@ -198,7 +220,7 @@ describe("match detail registration design", () => {
     ).text();
 
     expect(detail.includes("<page-meta")).toEqual(true);
-    expect(detail.includes("teamMemberDialogVisible || confirmDialogVisible || finishDialogVisible ? 'overflow: hidden;' : ''")).toEqual(true);
+    expect(detail.includes("teamMemberDialogVisible || confirmDialogVisible || finishDialogVisible || signupSheetVisible ? 'overflow: hidden;' : ''")).toEqual(true);
     expect(individual.includes('@dialog-visibility-change="handleTeamMemberDialogVisibilityChange"')).toEqual(true);
     expect(individual.includes('emit("dialogVisibilityChange", visible);')).toEqual(true);
     expect(board.includes("NeoStickyActionBar")).toEqual(true);
