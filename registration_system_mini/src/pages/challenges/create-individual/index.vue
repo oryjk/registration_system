@@ -65,10 +65,9 @@ function defaultTodayAt(hour: number) {
   return date.getTime();
 }
 
+// Go 后端 time.Time 只接受带时区的 RFC3339（如 ...T18:00:00.000Z），不能发本地无时区格式。
 function toBackendDateTime(timestamp: number) {
-  const date = new Date(timestamp);
-  const pad = (value: number) => String(value).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:00`;
+  return new Date(timestamp).toISOString();
 }
 
 function handlePaymentModeChange(value: string) {
