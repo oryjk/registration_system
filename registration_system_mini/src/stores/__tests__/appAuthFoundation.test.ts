@@ -7,7 +7,7 @@ declare const Bun: {
   };
 };
 
-const root = "/Users/carlwang/projects/registration_system/registration_system_mini/src";
+const root = miniPath("src");
 
 describe("App session foundation", () => {
   test("provides an explicit acceptance H5 build command", async () => {
