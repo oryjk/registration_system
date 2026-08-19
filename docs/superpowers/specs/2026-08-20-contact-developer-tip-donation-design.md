@@ -50,7 +50,7 @@
 
 ### 4.3 新增 API 封装（`src/api/payment.ts` 或就近域文件）
 
-- `createTipOrder(params: { amountCents: number; suggestion?: string })` → 返回 `{ orderNo: string; payParams: BackendWxMiniPaymentParams }`。
+- `createTipOrder(params: { amountCents: number; suggestion?: string })` → 返回既有 `GoPaymentOrderResult`（`{ order: { order_no, ... }, payment: {...} }`，与后端 `{order, payment}` 契约一致）；支付参数经 `normalizeWxPaymentParams` 归一后交给 `requestWxPayment`。
 - 金额"元 ↔ 分"换算工具收敛到单一函数，避免散落 `* 100`。
 
 ## 5. 后端设计（`registration_system_go`）
@@ -68,7 +68,9 @@
 | `nickname` | VARCHAR(120) NOT NULL DEFAULT '' | 下单时快照，回调路径无登录态 |
 | `amount_cents` | BIGINT NOT NULL | 与订单一致 |
 | `suggestion` | TEXT NOT NULL DEFAULT '' | 可选功能建议，≤500 字 |
-| `status` | VARCHAR(16) NOT NULL | `pending` → `submitted`（随订单支付成功流转） |
+| `status` | VARCHAR(16) NOT NULL | `pending` → `submitted`（submitted = 支付成功、建议已生效，非"待审核"） |
+
+订单 cancel/failed 时 `tips` 行停留在 `pending` 属预期，无需清理任务；管理端列表只取 `status = 'submitted'`。
 | `created_at` / `submitted_at` | TIMESTAMPTZ | |
 
 同步 `db/queries/payment.sql` 与 sqlc 生成、legacy 迁移工具核对（无 legacy 对应，无需改 `migrate-legacy.sh`）。
