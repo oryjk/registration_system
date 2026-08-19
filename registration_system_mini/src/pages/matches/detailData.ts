@@ -21,6 +21,8 @@ export interface PublicMatchDetailData {
   sourceMatch: AppMatchSummary | null;
   /** 球队约队的主/客队报名分组（各自进度），供详情页展示双方进度条；legacy 为空。 */
   teamGroups: MatchTeamGroupSummary[];
+  /** 当前选中报名组的最小人数（管理端「最小人数」）；散人约球的报名进度以它为目标，legacy 为 null。 */
+  selectedGroupMinPlayers: number | null;
 }
 
 export interface MatchTeamGroupSummary {
@@ -64,6 +66,7 @@ export interface MatchDetailDataLoaders {
   getActivity: typeof getActivity;
   getActivityUsers: typeof getActivityUsers;
   getMatchDetail: typeof getMatchDetail;
+  getTeamDetail: typeof getTeamDetail;
   listActivities: typeof listActivities;
   listUsers: typeof listUsers;
 }
@@ -77,6 +80,7 @@ const defaultMatchDetailDataLoaders: MatchDetailDataLoaders = {
   getActivity,
   getActivityUsers,
   getMatchDetail,
+  getTeamDetail,
   listActivities,
   listUsers,
 };
@@ -206,6 +210,7 @@ export function buildPublicMatchApiDetailData(
     publicationModeLabel: getMatchPublicationModeLabel(matchDetail.match.publication_mode),
     sourceMatch: matchDetail.match,
     teamGroups: toTeamGroupSummaries(matchDetail.groups),
+    selectedGroupMinPlayers: group?.min_players ?? null,
     sourceTeamRegistrationCount: Math.max(
       Number(activity.team_registration_count ?? 0)
         - activityUsers.filter((item) => item.stand === 1).reduce((total, item) => total + item.registration_count, 0),
@@ -242,6 +247,7 @@ export async function loadPublicMatchDetailData(
     publicationModeLabel: activity.match_kind === "internal" ? "队内内战" : "线下已约",
     sourceMatch: null,
     teamGroups: [],
+    selectedGroupMinPlayers: null,
     sourceTeamRegistrationCount: activity.source_activity_id
       ? 0
       : activityPageItems
@@ -250,19 +256,27 @@ export async function loadPublicMatchDetailData(
   };
 }
 
-export async function loadAuthenticatedMatchDetailContext(params: {
-  activity: BackendActivity;
-  activityUsers: BackendRegistration[];
-  activityPageItems: BackendActivity[];
-  myRegistration?: AppMatchRegistration | null;
-  currentTeamId?: number | null;
-  currentUserId?: number;
-}): Promise<AuthenticatedMatchDetailContext> {
+export async function loadAuthenticatedMatchDetailContext(
+  params: {
+    activity: BackendActivity;
+    activityUsers: BackendRegistration[];
+    activityPageItems: BackendActivity[];
+    myRegistration?: AppMatchRegistration | null;
+    currentTeamId?: number | null;
+    currentUserId?: number;
+  },
+  loaders: Pick<MatchDetailDataLoaders, "getTeamDetail"> = defaultMatchDetailDataLoaders,
+): Promise<AuthenticatedMatchDetailContext> {
   const { activity, activityUsers, activityPageItems, myRegistration, currentTeamId, currentUserId } = params;
   const teamIds = [activity.home_team_id, activity.away_team_id].filter((teamId): teamId is number => typeof teamId === "number");
-  const fetchedTeamDetails = await Promise.all(teamIds.map(async (teamId) => getTeamDetail(teamId)));
+  const fetchedTeamDetails = await Promise.all(teamIds.map(async (teamId) => loaders.getTeamDetail(teamId)));
   const fetchedTeams = fetchedTeamDetails.map((detail) => detail.team);
-  const currentTeamMembers = fetchedTeamDetails.find((detail) => detail.team.id === currentTeamId)?.members ?? [];
+  // 报名板跟随比赛所属球队：优先当前选中球队；用户切换到其他球队后，回退到
+  // 「当前用户是活跃成员」的那支比赛队伍（主队在前），两边都不属于时才留空隐藏。
+  const rosterDetail =
+    fetchedTeamDetails.find((detail) => detail.team.id === currentTeamId)
+    ?? fetchedTeamDetails.find((detail) => detail.members.some((member) => member.user_id === currentUserId && member.status === 1));
+  const currentTeamMembers = rosterDetail?.members ?? [];
   const derivedActivity = currentTeamId
     ? activityPageItems.find(
         (item) => isActiveTeamRegistrationActivity(item) && item.source_activity_id === activity.id && item.home_team_id === currentTeamId,

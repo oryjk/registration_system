@@ -79,6 +79,7 @@ export function useMatchDetailPage() {
   const registrationGroupId = ref("");
   const preferredRegistrationGroupId = ref("");
   const publicationModeLabel = ref("其他类型");
+  const selectedGroupMinPlayers = ref<number | null>(null);
 
   let countdownTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -102,6 +103,7 @@ export function useMatchDetailPage() {
   );
   const isPickupMatch = computed(() => sourceMatch.value?.publication_mode === "online_pickup");
   const requiredPlayers = computed(() => match.value?.players_per_team ?? 0);
+  const progressTargetPlayers = computed(() => (isPickupMatch.value ? selectedGroupMinPlayers.value ?? 0 : requiredPlayers.value));
   const maxPlayers = computed(() => {
     const configuredCapacity = match.value?.team_capacity_limit;
     if (!Number.isFinite(configuredCapacity) || (configuredCapacity ?? 0) <= 0) {
@@ -110,7 +112,7 @@ export function useMatchDetailPage() {
     return Math.max(configuredCapacity ?? requiredPlayers.value, requiredPlayers.value);
   });
 
-  const remainingPlayersLabel = computed(() => buildRemainingPlayersLabel(joinedCount.value, requiredPlayers.value));
+  const remainingPlayersLabel = computed(() => buildRemainingPlayersLabel(joinedCount.value, progressTargetPlayers.value));
   const registrationCapacityState = computed(() =>
     resolveRegistrationCapacityState({
       joinedCount: joinedCount.value,
@@ -243,9 +245,9 @@ export function useMatchDetailPage() {
   }));
 
   const matchKindLabel = computed(() => publicationModeLabel.value);
-  // 主队是发起约队的球队：新接口取 host_team_name；legacy 队内活动没有该字段，用当前球队兜底。
-  const homeTeamLabel = computed(() => sourceMatch.value?.host_team_name || currentTeam.value?.name || "主队");
-  const displayOpponentLabel = computed(() => match.value?.opposing || opponentTeam.value?.name || "对手待定");
+  // 主队取约队队名（legacy 队内活动用当前球队兜底）；散人约球无球队概念，主客队统一「待定」。
+  const homeTeamLabel = computed(() => (isPickupMatch.value ? "待定" : sourceMatch.value?.host_team_name || currentTeam.value?.name || "主队"));
+  const displayOpponentLabel = computed(() => (isPickupMatch.value ? "待定" : match.value?.opposing || opponentTeam.value?.name || "对手待定"));
   const homeTeamColor = computed(() => match.value?.color?.trim() || "#FFFFFF");
   const awayTeamColor = computed(() => match.value?.opposing_color?.trim() || "#FF0000");
   const matchLocation = computed(() => match.value?.location || "");
@@ -468,6 +470,7 @@ export function useMatchDetailPage() {
       publicationModeLabel.value = publicData.publicationModeLabel;
       sourceMatch.value = publicData.sourceMatch;
       matchTeamGroups.value = publicData.teamGroups;
+      selectedGroupMinPlayers.value = publicData.selectedGroupMinPlayers;
       existingTeamDerivedActivity.value = null;
       currentStatus.value = toStandLabel(toRegistrationStandCode(publicData.myRegistration?.status));
       applyMyRegistrationPaid(!!publicData.myRegistration?.paid);
@@ -566,6 +569,7 @@ export function useMatchDetailPage() {
     matchLocation,
     joinedCount,
     requiredPlayers,
+    progressTargetPlayers,
     maxPlayers,
     countdownText,
     participantPreview,

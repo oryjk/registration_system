@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { AppMatchDetailResponse, AppMatchSummary } from "@/types/match";
 import { byRegistrationTimeAsc } from "../detailState";
-import { buildPublicMatchApiDetailData, loadPublicMatchDetailData, toBackendActivity, toBackendRegistration } from "../detailData";
+import { buildPublicMatchApiDetailData, loadAuthenticatedMatchDetailContext, loadPublicMatchDetailData, toBackendActivity, toBackendRegistration } from "../detailData";
 
 const matchSummary: AppMatchSummary = {
   id: "f7d4b0e1-9b8f-4d07-a5d3-9f0cb3f7c003",
@@ -414,6 +414,10 @@ describe("Match detail adapter", () => {
         calls.push("match-detail");
         return matchDetail;
       },
+      getTeamDetail: async () => {
+        calls.push("team-detail");
+        throw new Error("Match detail must not request a team");
+      },
       getActivity: async () => {
         calls.push("activity-detail");
         throw new Error("Match detail must not request an activity");
@@ -437,6 +441,8 @@ describe("Match detail adapter", () => {
       fromMatchApi: true,
       registrationGroupId: matchDetail.groups[1].id,
     });
+    // 散人约球的报名进度目标 = 选中报名组的最小人数（管理端「最小人数」），而不是每队人数。
+    expect(data.selectedGroupMinPlayers).toEqual(matchDetail.groups[1].min_players);
   });
 
   test("maps jersey colors from the match api onto the activity model", () => {
@@ -455,6 +461,75 @@ describe("Match detail adapter", () => {
       color: "",
       opposing_color: "",
     });
+  });
+});
+
+describe("Authenticated match detail context", () => {
+  const rosterTeamDetail = (teamId: number, members: Array<{ user_id: number; status: number }>) => ({
+    team: { id: teamId } as import("@/types/backend").BackendTeam,
+    members: members.map((member) => ({
+      user_id: member.user_id,
+      role: "member",
+      is_member: member.status === 1,
+      joined_at: "2026-01-01T00:00:00.000Z",
+      status: member.status,
+    })) as import("@/types/backend").BackendTeamMember[],
+  });
+
+  function buildContextParams(currentTeamId: number | null, currentUserId?: number) {
+    return {
+      activity: { ...toBackendActivity(matchSummary) },
+      activityUsers: [],
+      activityPageItems: [],
+      myRegistration: null,
+      currentTeamId,
+      currentUserId,
+    };
+  }
+
+  test("falls back to the match team roster after the user switches away from it", async () => {
+    // 用户 37 是主队 101 的活跃成员，但当前选中球队是另一支队 999。
+    const context = await loadAuthenticatedMatchDetailContext(
+      buildContextParams(999, 37),
+      {
+        getTeamDetail: async (teamId) => rosterTeamDetail(
+          teamId,
+          teamId === 101
+            ? [{ user_id: 37, status: 1 }, { user_id: 38, status: 1 }, { user_id: 39, status: 0 }]
+            : [{ user_id: 50, status: 1 }],
+        ),
+      },
+    );
+
+    expect(context.currentTeamMembers.map((member) => member.user_id)).toEqual([37, 38, 39]);
+  });
+
+  test("keeps the selected team's roster even when the user belongs to both teams", async () => {
+    const context = await loadAuthenticatedMatchDetailContext(
+      buildContextParams(102, 37),
+      {
+        getTeamDetail: async (teamId) => rosterTeamDetail(
+          teamId,
+          teamId === 101 ? [{ user_id: 37, status: 1 }] : [{ user_id: 37, status: 1 }, { user_id: 51, status: 1 }],
+        ),
+      },
+    );
+
+    expect(context.currentTeamMembers.map((member) => member.user_id)).toEqual([37, 51]);
+  });
+
+  test("leaves the roster empty when the user is not an active member of either match team", async () => {
+    const context = await loadAuthenticatedMatchDetailContext(
+      buildContextParams(999, 37),
+      {
+        getTeamDetail: async (teamId) => rosterTeamDetail(
+          teamId,
+          teamId === 101 ? [{ user_id: 60, status: 1 }] : [{ user_id: 37, status: 0 }],
+        ),
+      },
+    );
+
+    expect(context.currentTeamMembers).toEqual([]);
   });
 });
 

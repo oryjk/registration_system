@@ -41,6 +41,7 @@ const {
   matchLocation,
   joinedCount,
   requiredPlayers,
+  progressTargetPlayers,
   maxPlayers,
   countdownText,
   currentStatus,
@@ -187,7 +188,7 @@ onShareTimeline(() => ({
         :match-clock-label="matchClockLabel"
         :match-location="matchLocation"
         :joined-count="joinedCount"
-        :required-players="requiredPlayers"
+        :required-players="progressTargetPlayers"
         :max-players="maxPlayers"
         :countdown-text="countdownText"
         :participant-preview="participantPreview"
