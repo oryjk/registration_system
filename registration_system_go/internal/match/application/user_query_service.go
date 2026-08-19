@@ -146,7 +146,7 @@ func (s UserMatchQueryService) Home(ctx context.Context, actor sharedauth.Actor)
 func validatePublicationModes(modes []domain.PublicationMode) error {
 	for _, mode := range modes {
 		switch mode {
-		case domain.OfflineConfirmed, domain.OnlineTeam, domain.OnlineIndividual:
+		case domain.OfflineConfirmed, domain.OnlineTeam, domain.OnlineIndividual, domain.OnlinePickup:
 		default:
 			return sharederror.New(sharederror.KindValidation, "比赛类型筛选无效")
 		}

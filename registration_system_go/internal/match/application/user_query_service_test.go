@@ -64,15 +64,16 @@ func TestUserMatchQueryPassesAllAndMineScopes(t *testing.T) {
 func TestUserMatchQueryPassesPublicationModesAndDateFilter(t *testing.T) {
 	repository := &fakeUserMatchRepository{}
 	service := NewUserMatchQueryService(repository)
-	modes := []domain.PublicationMode{domain.OnlineTeam, domain.OnlineIndividual}
+	modes := []domain.PublicationMode{domain.OnlineTeam, domain.OnlineIndividual, domain.OnlinePickup}
 	dateStart := time.Date(2026, 8, 21, 16, 0, 0, 0, time.UTC)
 
 	if _, err := service.List(context.Background(), userActor(42), UserMatchListQuery{PublicationModes: modes, DateStart: &dateStart}); err != nil {
 		t.Fatal(err)
 	}
-	if len(repository.filter.PublicationModes) != 2 ||
+	if len(repository.filter.PublicationModes) != 3 ||
 		repository.filter.PublicationModes[0] != domain.OnlineTeam ||
 		repository.filter.PublicationModes[1] != domain.OnlineIndividual ||
+		repository.filter.PublicationModes[2] != domain.OnlinePickup ||
 		repository.filter.DateStart == nil || !repository.filter.DateStart.Equal(dateStart) {
 		t.Fatalf("unexpected publication filter: %+v", repository.filter)
 	}
