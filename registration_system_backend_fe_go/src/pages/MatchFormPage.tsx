@@ -126,7 +126,7 @@ export default function MatchFormPage() {
     ? {
         name: match.name,
         publication_mode: match.publication_mode,
-        host_team_id: match.host_team_id,
+        host_team_id: match.host_team_id ?? undefined,
         opponent_name: match.opponent_name || undefined,
         players_per_team: match.players_per_team,
         host_capacity_limit:
@@ -312,16 +312,18 @@ export default function MatchFormPage() {
                   >
                     <Select<PublicationMode>
                       disabled={editing}
-                      options={Object.entries(publicationModeLabels).map(
-                        ([value, label]) => ({
+                      options={Object.entries(publicationModeLabels)
+                        .filter(
+                          ([value]) => editing || value !== "online_pickup",
+                        )
+                        .map(([value, label]) => ({
                           value: value as PublicationMode,
                           label,
                           description:
                             publicationModeDescriptions[
                               value as PublicationMode
                             ],
-                        }),
-                      )}
+                        }))}
                       optionRender={(option) => (
                         <div className="match-type-option">
                           <Text strong>{option.data.label}</Text>
@@ -335,7 +337,14 @@ export default function MatchFormPage() {
                   <Form.Item
                     name="host_team_id"
                     label="主队"
-                    rules={[{ required: true, message: "请选择主队" }]}
+                    dependencies={["publication_mode"]}
+                    rules={[
+                      ({ getFieldValue }) => ({
+                        required:
+                          getFieldValue("publication_mode") !== "online_pickup",
+                        message: "请选择主队",
+                      }),
+                    ]}
                   >
                     <Select
                       showSearch

@@ -1,7 +1,9 @@
 export type PublicationMode =
   | "offline_confirmed"
   | "online_team"
-  | "online_individual";
+  | "online_individual"
+  | "online_pickup";
+export type PaymentMode = "postpaid" | "prepaid";
 export type OpponentState = "no_recruitment" | "recruiting" | "confirmed";
 export type MatchStatus = "registering" | "ongoing" | "ended" | "cancelled";
 export type GroupKind = "host_team" | "guest_team" | "individual_opponent";
@@ -20,7 +22,8 @@ export interface MatchItem {
   publication_mode: PublicationMode;
   opponent_state: OpponentState;
   status: MatchStatus;
-  host_team_id: number;
+  /** 散人约球（online_pickup）没有主队。 */
+  host_team_id: number | null;
   host_team_name: string;
   away_team_id: number | null;
   away_team_name: string | null;
@@ -41,6 +44,8 @@ export interface MatchItem {
   created_at: string;
   updated_at: string;
   is_free: boolean;
+  payment_mode: PaymentMode;
+  fee_per_person_cents: number;
 }
 
 export interface MatchRegistrationEntry {
@@ -84,7 +89,8 @@ export interface MatchListQuery {
 export interface CreateMatchPayload {
   name: string;
   publication_mode: PublicationMode;
-  host_team_id: number;
+  /** 散人约球（online_pickup）不传；其余模式必填。 */
+  host_team_id?: number;
   opponent_name?: string | null;
   players_per_team: number;
   host_capacity_limit?: number | null;

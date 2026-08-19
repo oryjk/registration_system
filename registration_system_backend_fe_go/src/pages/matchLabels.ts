@@ -9,12 +9,14 @@ export const publicationModeLabels: Record<PublicationMode, string> = {
   offline_confirmed: "线下已约",
   online_team: "线上约队",
   online_individual: "散人对手",
+  online_pickup: "散人约球",
 };
 
 export const publicationModeDescriptions: Record<PublicationMode, string> = {
   offline_confirmed: "已线下确定对手，无需线上招募",
   online_team: "在线招募一支球队作为对手",
   online_individual: "在线招募个人组成对手阵容",
+  online_pickup: "所有参与者都是散人，无球队概念",
 };
 
 export function getPublicationModeLabel(value: string): string {

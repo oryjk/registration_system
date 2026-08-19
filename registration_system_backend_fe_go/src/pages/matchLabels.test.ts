@@ -8,6 +8,7 @@ describe("match publication mode labels", () => {
     expect(getPublicationModeLabel("offline_confirmed")).toBe("线下已约");
     expect(getPublicationModeLabel("online_team")).toBe("线上约队");
     expect(getPublicationModeLabel("online_individual")).toBe("散人对手");
+    expect(getPublicationModeLabel("online_pickup")).toBe("散人约球");
     expect(getPublicationModeLabel("future_mode")).toBe("其他类型");
   });
 
@@ -16,6 +17,7 @@ describe("match publication mode labels", () => {
       offline_confirmed: "已线下确定对手，无需线上招募",
       online_team: "在线招募一支球队作为对手",
       online_individual: "在线招募个人组成对手阵容",
+      online_pickup: "所有参与者都是散人，无球队概念",
     });
   });
 });
