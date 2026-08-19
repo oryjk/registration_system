@@ -38,6 +38,20 @@
       }
     },
     {
+      "path": "pages/teams/create/index",
+      "style": {
+        "navigationBarTitleText": "创建球队",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/teams/join/index",
+      "style": {
+        "navigationBarTitleText": "加入球队",
+        "navigationStyle": "custom"
+      }
+    },
+    {
       "path": "pages/teams/detail/index",
       "style": {
         "navigationStyle": "custom"

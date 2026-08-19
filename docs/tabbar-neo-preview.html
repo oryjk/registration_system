@@ -1,0 +1,447 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Tabbar Neo 化方案预览</title>
+    <style>
+      :root {
+        /* 与 src/styles/neo-tokens.css 保持一致 */
+        --ink: #111310;
+        --surface: #fffdf8;
+        --canvas: #f4f0e8;
+        --lime: #b9f24b;
+        --lime-soft: #dff8a8;
+        --text-muted: #4d514b;
+        --text-disabled: #666a63;
+        --muted: #ece9e1;
+        /* 现状 tabbar 用色（pages.json） */
+        --legacy-gray: #8c8f99;
+        --legacy-selected: #111827;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        padding: 48px 32px;
+        min-height: 100vh;
+        background: #e7e9e2;
+        font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+        color: var(--ink);
+      }
+
+      h1 {
+        font-size: 24px;
+        margin: 0 0 4px;
+        text-align: center;
+      }
+
+      .subtitle {
+        text-align: center;
+        color: var(--text-muted);
+        font-size: 13px;
+        margin-bottom: 36px;
+      }
+
+      .row {
+        display: flex;
+        gap: 40px;
+        justify-content: center;
+        align-items: flex-start;
+        flex-wrap: wrap;
+      }
+
+      .variant {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 14px;
+      }
+
+      .variant-name {
+        font-size: 16px;
+        font-weight: 900;
+      }
+
+      .variant-desc {
+        font-size: 12px;
+        color: var(--text-muted);
+        max-width: 300px;
+        text-align: center;
+        line-height: 1.6;
+        min-height: 58px;
+      }
+
+      .phone {
+        width: 320px;
+        height: 560px;
+        overflow: hidden;
+        border-radius: 32px;
+        background: var(--canvas);
+        box-shadow: 0 24px 60px rgba(26, 31, 24, 0.2);
+        position: relative;
+        display: flex;
+        flex-direction: column;
+      }
+
+      /* ===== 页面内容示意（neo 卡片，烘托 tabbar 所处语境） ===== */
+      .page-content {
+        flex: 1;
+        padding: 18px 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+
+      .neo-card {
+        background: var(--surface);
+        border: 2px solid var(--ink);
+        border-radius: 6px;
+        box-shadow: 6px 6px 0 var(--ink);
+        padding: 14px;
+      }
+
+      .neo-card .title {
+        font-size: 14px;
+        font-weight: 900;
+      }
+
+      .neo-card .body {
+        margin-top: 6px;
+        font-size: 11px;
+        color: var(--text-muted);
+      }
+
+      .neo-chip {
+        display: inline-block;
+        margin-top: 8px;
+        padding: 2px 8px;
+        font-size: 10px;
+        font-weight: 900;
+        background: var(--lime);
+        border: 2px solid var(--ink);
+        border-radius: 4px;
+      }
+
+      /* ===== tabbar 通用 ===== */
+      .tabbar {
+        display: flex;
+        align-items: stretch;
+        padding-bottom: 14px; /* 示意安全区 */
+      }
+
+      .tab {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 2px;
+        padding-top: 8px;
+      }
+
+      .tab .label {
+        font-size: 10px;
+        line-height: 1.4;
+      }
+
+      .tab svg {
+        display: block;
+      }
+
+      /* ===== 变体 0：现状 ===== */
+      .tabbar-legacy {
+        background: #ffffff;
+        border-top: 1px solid rgba(0, 0, 0, 0.08);
+      }
+
+      .tabbar-legacy .tab {
+        color: var(--legacy-gray);
+      }
+
+      .tabbar-legacy .tab.active {
+        color: var(--legacy-selected);
+      }
+
+      /* ===== 变体 A：原生 tabbar 轻量改造 ===== */
+      .tabbar-native-neo {
+        background: var(--surface);
+        border-top: 2px solid var(--ink); /* borderStyle: black 只能给 1px 黑线，示意 */
+      }
+
+      .tabbar-native-neo .tab {
+        color: var(--text-muted);
+      }
+
+      .tabbar-native-neo .tab.active {
+        color: var(--ink);
+        font-weight: 900;
+      }
+
+      /* 选中态图标：青柠色块 + 墨线 glyph（实现时烘焙进 PNG） */
+      .tabbar-native-neo .tab .icon-wrap {
+        width: 30px;
+        height: 30px;
+        display: grid;
+        place-items: center;
+      }
+
+      .tabbar-native-neo .tab.active .icon-wrap {
+        background: var(--lime);
+        border: 2px solid var(--ink);
+        border-radius: 5px;
+      }
+
+      /* ===== 变体 B：自定义 tabbar（完整 neo 容器） ===== */
+      .tabbar-custom-neo {
+        background: var(--surface);
+        border-top: 2px solid var(--ink);
+        box-shadow: 0 -6px 0 rgba(17, 19, 16, 0.06);
+        padding: 8px 10px 16px;
+        gap: 6px;
+      }
+
+      .tabbar-custom-neo .tab {
+        color: var(--text-muted);
+        padding-top: 6px;
+        padding-bottom: 4px;
+        border-radius: 6px;
+      }
+
+      .tabbar-custom-neo .tab.active {
+        color: var(--ink);
+        font-weight: 900;
+        background: var(--lime);
+        border: 2px solid var(--ink);
+        box-shadow: 3px 3px 0 var(--ink);
+      }
+
+      /* ===== 底部规格说明 ===== */
+      .spec {
+        margin: 40px auto 0;
+        max-width: 1080px;
+        display: flex;
+        gap: 24px;
+        justify-content: center;
+        flex-wrap: wrap;
+      }
+
+      .spec-card {
+        background: var(--surface);
+        border: 2px solid var(--ink);
+        border-radius: 6px;
+        box-shadow: 5px 5px 0 var(--ink);
+        padding: 14px 18px;
+        width: 330px;
+        font-size: 12px;
+        line-height: 1.9;
+      }
+
+      .spec-card h2 {
+        font-size: 14px;
+        margin: 0 0 6px;
+      }
+
+      .swatch {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border: 1.5px solid var(--ink);
+        border-radius: 3px;
+        vertical-align: -2px;
+        margin-right: 6px;
+      }
+
+      code {
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 11px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Tabbar Neo 化方案预览</h1>
+    <p class="subtitle">图标为示意 redraw（粗墨线风）；下方页面内容仅用于烘托语境。配色取自 <code>neo-tokens.css</code></p>
+
+    <div class="row">
+      <!-- ========== 现状 ========== -->
+      <div class="variant">
+        <div class="variant-name">现状</div>
+        <div class="phone">
+          <div class="page-content">
+            <div class="neo-card">
+              <div class="title">周末 8 人制友谊赛</div>
+              <div class="body">周六 14:00 · 锦江体育场</div>
+              <span class="neo-chip">报名中</span>
+            </div>
+            <div class="neo-card">
+              <div class="title">洺悦御府</div>
+              <div class="body">队长 · 信用分 90</div>
+            </div>
+          </div>
+          <div class="tabbar tabbar-legacy">
+            <div class="tab active">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round">
+                <path d="M3 10.5 12 3l9 7.5" />
+                <path d="M5 9.5V21h14V9.5" />
+                <path d="M10 21v-6h4v6" />
+              </svg>
+              <span class="label">首页</span>
+            </div>
+            <div class="tab">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+                <circle cx="12" cy="12" r="9" />
+                <path d="M3 12h18M12 3c2.5 2.6 3.8 5.7 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.7-3.8-9S9.5 5.6 12 3Z" />
+              </svg>
+              <span class="label">约队</span>
+            </div>
+            <div class="tab">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+                <path d="M4 20V10M10 20V4M16 20v-8M22 20H2" />
+              </svg>
+              <span class="label">统计</span>
+            </div>
+            <div class="tab">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+                <circle cx="12" cy="8" r="4" />
+                <path d="M4 21c1.5-3.5 4.5-5 8-5s6.5 1.5 8 5" />
+              </svg>
+              <span class="label">我的</span>
+            </div>
+          </div>
+        </div>
+        <div class="variant-desc">白底 #ffffff、冷灰图标 #8C8F99、选中 #111827，细线图标 —— 与页面暖米色画布、墨黑描边不统一</div>
+      </div>
+
+      <!-- ========== 方案 A ========== -->
+      <div class="variant">
+        <div class="variant-name">方案 A · 原生轻量改造</div>
+        <div class="phone">
+          <div class="page-content">
+            <div class="neo-card">
+              <div class="title">周末 8 人制友谊赛</div>
+              <div class="body">周六 14:00 · 锦江体育场</div>
+              <span class="neo-chip">报名中</span>
+            </div>
+            <div class="neo-card">
+              <div class="title">洺悦御府</div>
+              <div class="body">队长 · 信用分 90</div>
+            </div>
+          </div>
+          <div class="tabbar tabbar-native-neo">
+            <div class="tab active">
+              <span class="icon-wrap">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round">
+                  <path d="M3 10.5 12 3l9 7.5" />
+                  <path d="M5 9.5V21h14V9.5" />
+                  <path d="M10 21v-6h4v6" />
+                </svg>
+              </span>
+              <span class="label">首页</span>
+            </div>
+            <div class="tab">
+              <span class="icon-wrap">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="M3 12h18M12 3c2.5 2.6 3.8 5.7 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.7-3.8-9S9.5 5.6 12 3Z" />
+                </svg>
+              </span>
+              <span class="label">约队</span>
+            </div>
+            <div class="tab">
+              <span class="icon-wrap">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
+                  <path d="M4 20V10M10 20V4M16 20v-8M22 20H2" />
+                </svg>
+              </span>
+              <span class="label">统计</span>
+            </div>
+            <div class="tab">
+              <span class="icon-wrap">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
+                  <circle cx="12" cy="8" r="4" />
+                  <path d="M4 21c1.5-3.5 4.5-5 8-5s6.5 1.5 8 5" />
+                </svg>
+              </span>
+              <span class="label">我的</span>
+            </div>
+          </div>
+        </div>
+        <div class="variant-desc">只改 pages.json 配色 + 重绘 8 个图标 PNG（粗墨线，选中态烘焙青柠色块）。小程序 / H5 零风险</div>
+      </div>
+
+      <!-- ========== 方案 B ========== -->
+      <div class="variant">
+        <div class="variant-name">方案 B · 自定义 tabbar</div>
+        <div class="phone">
+          <div class="page-content">
+            <div class="neo-card">
+              <div class="title">周末 8 人制友谊赛</div>
+              <div class="body">周六 14:00 · 锦江体育场</div>
+              <span class="neo-chip">报名中</span>
+            </div>
+            <div class="neo-card">
+              <div class="title">洺悦御府</div>
+              <div class="body">队长 · 信用分 90</div>
+            </div>
+          </div>
+          <div class="tabbar tabbar-custom-neo">
+            <div class="tab active">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round">
+                <path d="M3 10.5 12 3l9 7.5" />
+                <path d="M5 9.5V21h14V9.5" />
+                <path d="M10 21v-6h4v6" />
+              </svg>
+              <span class="label">首页</span>
+            </div>
+            <div class="tab">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
+                <circle cx="12" cy="12" r="9" />
+                <path d="M3 12h18M12 3c2.5 2.6 3.8 5.7 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.7-3.8-9S9.5 5.6 12 3Z" />
+              </svg>
+              <span class="label">约队</span>
+            </div>
+            <div class="tab">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
+                <path d="M4 20V10M10 20V4M16 20v-8M22 20H2" />
+              </svg>
+              <span class="label">统计</span>
+            </div>
+            <div class="tab">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
+                <circle cx="12" cy="8" r="4" />
+                <path d="M4 21c1.5-3.5 4.5-5 8-5s6.5 1.5 8 5" />
+              </svg>
+              <span class="label">我的</span>
+            </div>
+          </div>
+        </div>
+        <div class="variant-desc">完整 neo 容器：选中项是带描边 + 硬阴影的青柠 pill。需 custom tabbar 组件，mp-weixin 端要处理切换闪烁与选中态同步</div>
+      </div>
+    </div>
+
+    <div class="spec">
+      <div class="spec-card">
+        <h2>方案 A 改动点（pages.json）</h2>
+        <span class="swatch" style="background:#fffdf8"></span><code>backgroundColor: #fffdf8</code>（surface）<br />
+        <span class="swatch" style="background:#4d514b"></span><code>color: #4d514b</code>（text-muted）<br />
+        <span class="swatch" style="background:#111310"></span><code>selectedColor: #111310</code>（ink）<br />
+        <span class="swatch" style="background:#b9f24b"></span>选中图标：青柠块 + 墨线 glyph 烘焙进 PNG
+      </div>
+      <div class="spec-card">
+        <h2>方案 B 额外能力</h2>
+        选中 pill：<code>background: #b9f24b</code> + 2px 墨描边 + <code>3px 3px 0</code> 硬阴影<br />
+        容器：顶部 2px 墨线，与页面卡片同一套描边语言<br />
+        代价：<code>custom: true</code> + 自绘组件 + 各 tab 页同步选中态
+      </div>
+      <div class="spec-card">
+        <h2>不变的约定</h2>
+        四个 tab 与顺序不变：首页 / 约队 / 统计 / 我的<br />
+        图标隐喻不变（房子 / 地球 / 柱状图 / 人像），只做 neo 化 redraw<br />
+        配色全部引用 <code>neo-tokens.css</code> 既有 token，不新增色值
+      </div>
+    </div>
+  </body>
+</html>

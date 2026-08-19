@@ -6,8 +6,7 @@ import NeoSurface from "@/components/neo/NeoSurface.vue";
 import MemberAttendancePopup from "./components/MemberAttendancePopup.vue";
 import MemberEditPopup from "./components/MemberEditPopup.vue";
 import TeamActivityAttendancePanel from "./components/TeamActivityAttendancePanel.vue";
-import TeamCreatePanel from "./components/TeamCreatePanel.vue";
-import TeamJoinPanel from "./components/TeamJoinPanel.vue";
+import TeamJoinPasswordPanel from "./components/TeamJoinPasswordPanel.vue";
 import TeamMemberManager from "./components/TeamMemberManager.vue";
 import TeamProfilePanel from "./components/TeamProfilePanel.vue";
 import { attendanceStatusClass } from "./teamManageState";
@@ -17,24 +16,18 @@ const {
   currentTeam,
   activeMode,
   isManagementBlocked,
+  canManageCurrentTeam,
+  canShowCreateTeamEntry,
   submitting,
-  searching,
-  searchKeyword,
-  searchResults,
-  selectedTeam,
-  selectedTeamRequiresPassword,
-  joinPassword,
-  createForm,
-  canCreate,
-  canJoin,
   heroTitle,
   heroCopy,
   pageStyle,
   modeOptions,
-  createTeamReviewMode,
-  reviewTeamNameOptions,
   teamProfileForm,
   canUpdateTeamProfile,
+  joinPasswordForm,
+  requiresPassword,
+  canSubmitJoinPassword,
   canManageMembers,
   userSearching,
   userSearchKeyword,
@@ -70,11 +63,11 @@ const {
   closeAttendancePopup,
   closeEditMemberPopup,
   handleModeChange,
-  handleCreateTeam,
-  handleSearchTeams,
-  handleSelectTeam,
-  handleJoinTeam,
+  goCreateTeam,
+  goJoinTeam,
   handleUpdateTeamProfile,
+  handleUpdateJoinPassword,
+  handleClearJoinPassword,
   handleEditMember,
   handleSearchUsers,
   handleCandidateTap,
@@ -106,97 +99,90 @@ function handleGoBack() {
         </view>
       </NeoSurface>
 
-      <template v-if="isManagementBlocked">
-        <NeoSurface variant="outlined">
-          <view class="manage-blocked">
-            <text class="manage-blocked__title">暂无管理权限</text>
-            <text class="manage-blocked__copy">只有队长或领队可以进入球队管理，普通队员可在球队主页查看球队信息。</text>
-            <NeoButton variant="outline" block @click="handleGoBack">返回上一页</NeoButton>
-          </view>
-        </NeoSurface>
+      <template v-if="canManageCurrentTeam">
+        <NeoSegmentedControl
+          :model-value="activeMode"
+          :options="modeOptions"
+          @change="handleModeChange"
+        />
+
+        <template v-if="activeMode === 'profile'">
+          <TeamProfilePanel
+            :current-team="currentTeam"
+            :can-manage-members="canManageMembers"
+            :form="teamProfileForm"
+            :can-update="canUpdateTeamProfile"
+            :submitting="submitting"
+            @submit="handleUpdateTeamProfile"
+          />
+
+          <TeamJoinPasswordPanel
+            v-if="canManageMembers"
+            :requires-password="requiresPassword"
+            :form="joinPasswordForm"
+            :can-submit="canSubmitJoinPassword"
+            :submitting="submitting"
+            @submit="handleUpdateJoinPassword"
+            @clear="handleClearJoinPassword"
+          />
+        </template>
+
+        <TeamMemberManager
+          v-else-if="activeMode === 'members'"
+          :current-team="currentTeam"
+          :can-manage-members="canManageMembers"
+          v-model:user-search-keyword="userSearchKeyword"
+          :user-searching="userSearching"
+          :user-search-results="userSearchResults"
+          :selected-candidate="selectedCandidate"
+          :member-form="memberForm"
+          :leadership-members="leadershipMembers"
+          :regular-members="regularMembers"
+          :frozen-members="frozenMembers"
+          :submitting="submitting"
+          :member-name="memberName"
+          :member-avatar-url="memberAvatarUrl"
+          :member-initial="memberInitial"
+          :is-current-member="isCurrentMember"
+          :is-captain-member="isCaptainMember"
+          :candidate-action-label="candidateActionLabel"
+          @search-users="handleSearchUsers"
+          @candidate-tap="handleCandidateTap"
+          @add-member="handleAddMember"
+          @open-member-attendance="handleOpenMemberAttendance"
+          @edit-member="handleEditMember"
+          @toggle-member-status="handleToggleMemberStatus"
+          @remove-member="handleRemoveMember"
+        />
+
+        <TeamActivityAttendancePanel
+          v-else-if="activeMode === 'attendance'"
+          :current-team="currentTeam"
+          :loading="activityAttendanceLoading"
+          :matches="activityMatches"
+          :expanded-activity-id="expandedActivityId"
+          :match-attendance-by-id="matchAttendanceById"
+          :format-attendance-date="formatAttendanceDate"
+          @toggle-activity="toggleActivityMatch"
+        />
       </template>
 
-      <template v-else>
-      <NeoSegmentedControl
-        :model-value="activeMode"
-        :options="modeOptions"
-        @change="handleModeChange"
-      />
+      <NeoSurface v-else-if="isManagementBlocked" variant="outlined">
+        <view class="manage-blocked">
+          <text class="manage-blocked__title">暂无管理权限</text>
+          <text class="manage-blocked__copy">只有队长或领队可以管理球队，普通队员可在球队主页查看球队信息。</text>
+          <NeoButton variant="outline" block @click="handleGoBack">返回上一页</NeoButton>
+        </view>
+      </NeoSurface>
 
-      <TeamProfilePanel
-      v-if="activeMode === 'profile'"
-      :current-team="currentTeam"
-      :can-manage-members="canManageMembers"
-      :form="teamProfileForm"
-      :can-update="canUpdateTeamProfile"
-      :submitting="submitting"
-      @submit="handleUpdateTeamProfile"
-      />
-
-      <TeamCreatePanel
-      v-else-if="activeMode === 'create'"
-      :form="createForm"
-      :review-mode="createTeamReviewMode"
-      :review-team-name-options="reviewTeamNameOptions"
-      :can-create="canCreate"
-      :submitting="submitting"
-      @submit="handleCreateTeam"
-      />
-
-      <TeamJoinPanel
-      v-else-if="activeMode === 'join'"
-      v-model:search-keyword="searchKeyword"
-      v-model:join-password="joinPassword"
-      :searching="searching"
-      :search-results="searchResults"
-      :selected-team="selectedTeam"
-      :selected-team-requires-password="selectedTeamRequiresPassword"
-      :can-join="canJoin"
-      :submitting="submitting"
-      @search="handleSearchTeams"
-      @select-team="handleSelectTeam"
-      @join="handleJoinTeam"
-      />
-
-      <TeamMemberManager
-      v-else-if="activeMode === 'members'"
-      :current-team="currentTeam"
-      :can-manage-members="canManageMembers"
-      v-model:user-search-keyword="userSearchKeyword"
-      :user-searching="userSearching"
-      :user-search-results="userSearchResults"
-      :selected-candidate="selectedCandidate"
-      :member-form="memberForm"
-      :leadership-members="leadershipMembers"
-      :regular-members="regularMembers"
-      :frozen-members="frozenMembers"
-      :submitting="submitting"
-      :member-name="memberName"
-      :member-avatar-url="memberAvatarUrl"
-      :member-initial="memberInitial"
-      :is-current-member="isCurrentMember"
-      :is-captain-member="isCaptainMember"
-      :candidate-action-label="candidateActionLabel"
-      @search-users="handleSearchUsers"
-      @candidate-tap="handleCandidateTap"
-      @add-member="handleAddMember"
-      @open-member-attendance="handleOpenMemberAttendance"
-      @edit-member="handleEditMember"
-      @toggle-member-status="handleToggleMemberStatus"
-      @remove-member="handleRemoveMember"
-      />
-
-      <TeamActivityAttendancePanel
-      v-else-if="activeMode === 'attendance'"
-      :current-team="currentTeam"
-      :loading="activityAttendanceLoading"
-      :matches="activityMatches"
-      :expanded-activity-id="expandedActivityId"
-      :match-attendance-by-id="matchAttendanceById"
-      :format-attendance-date="formatAttendanceDate"
-      @toggle-activity="toggleActivityMatch"
-      />
-      </template>
+      <NeoSurface v-else variant="outlined">
+        <view class="manage-blocked">
+          <text class="manage-blocked__title">还没有球队</text>
+          <text class="manage-blocked__copy">创建一支球队成为队长，或搜索加入现有球队后再回来管理。</text>
+          <NeoButton v-if="canShowCreateTeamEntry" variant="lime" block @click="goCreateTeam">创建球队</NeoButton>
+          <NeoButton variant="outline" block @click="goJoinTeam">加入球队</NeoButton>
+        </view>
+      </NeoSurface>
     </view>
 
     <MemberEditPopup

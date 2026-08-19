@@ -67,7 +67,7 @@ describe("remaining mini real backend integrations", () => {
     expect(teamApi.includes("export function setTeamMemberActive")).toEqual(true);
     expect(teamApi.includes("batchUpdateTeamMemberStatus")).toEqual(false);
 
-    expect(state.includes('export type TeamManageMode = "profile" | "create" | "join" | "members" | "attendance";')).toEqual(true);
+    expect(state.includes('export type TeamManageMode = "profile" | "members" | "attendance";')).toEqual(true);
     expect(page.includes("activeMode = ref<TeamManageMode>")).toEqual(true);
     expect(page.includes("activeMode === 'members'")).toEqual(true);
     expect(page.includes("handleAddMember")).toEqual(true);

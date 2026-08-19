@@ -12,8 +12,6 @@ import MineWalletSection from "./components/MineWalletSection.vue";
 import { useMinePage } from "./useMinePage";
 
 const {
-  availableIdentities,
-  currentIdentity,
   currentTeam,
   currentUser,
   teamProfiles,
@@ -39,7 +37,6 @@ const {
   handleLogin,
   handleLogout,
   handleSwitchTeam,
-  handleSwitchIdentity,
   openTeamManage,
   openNotifications,
   openUserMatches,
@@ -90,13 +87,10 @@ onUnload(() => {
 
         <template v-if="currentUser">
           <MineTeamIdentityPanel
-            :available-identities="availableIdentities"
-            :current-identity="currentIdentity"
             :current-team="currentTeam"
             :team-profiles="teamProfiles"
             :is-switching-team="isSwitchingTeam"
             @manage-team="openTeamManage"
-            @switch-identity="handleSwitchIdentity"
             @switch-team="handleSwitchTeam"
           />
 

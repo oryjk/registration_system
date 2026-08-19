@@ -9,6 +9,8 @@ declare const Bun: {
 
 const secondaryPages = [
   { path: "src/pages/teams/manage/index.vue", title: "球队管理", titleBinding: 'title="球队管理"' },
+  { path: "src/pages/teams/create/index.vue", title: "创建球队", titleBinding: 'title="创建球队"' },
+  { path: "src/pages/teams/join/index.vue", title: "加入球队", titleBinding: 'title="加入球队"' },
   { path: "src/pages/matches/create/index.vue", title: "创建比赛", titleBinding: ':title="pageMode === \'edit\' ? \'编辑比赛\' : \'创建比赛\'"' },
   { path: "src/pages/challenges/detail.vue", title: "约队详情", titleBinding: ':title="pageTitle"' },
   { path: "src/pages/notifications/index.vue", title: "消息中心", titleBinding: 'title="消息中心"' },
@@ -43,6 +45,8 @@ describe("PageBackButton", () => {
 
     for (const page of [
       "pages/teams/manage/index",
+      "pages/teams/create/index",
+      "pages/teams/join/index",
       "pages/matches/create/index",
       "pages/challenges/detail",
       "pages/notifications/index",

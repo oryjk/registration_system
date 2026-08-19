@@ -127,6 +127,16 @@ export function getTeamPasswordInfo(teamId: number) {
   });
 }
 
+// password 非空=设置/替换入队密码；空串=清除（开放加入）。
+export function updateTeamJoinPassword(teamId: number, password: string) {
+  return requestApi<void>({
+    url: `/teams/${teamId}/join-password`,
+    method: "PUT",
+    data: { join_password: password },
+    auth: true,
+  });
+}
+
 export function updateTeam(
   teamId: number,
   payload: {

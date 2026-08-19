@@ -20,12 +20,9 @@ import {
 
 export function useMinePage() {
   const {
-    availableIdentities,
-    currentIdentity,
     currentTeam,
     currentUser,
     teamProfiles,
-    switchIdentity,
     switchTeam,
     ensureSessionReady,
     ensureTeamDetailLoaded,
@@ -198,11 +195,6 @@ export function useMinePage() {
     void loadPageData({ preserveContent: true });
   }
 
-  function handleSwitchIdentity(identityId: string) {
-    if (!identityId || currentIdentity.value?.id === identityId) return;
-    switchIdentity(identityId);
-  }
-
   function handleEditProfile() {
     uni.navigateTo({ url: "/pages/profile/setup/index?mode=edit" });
   }
@@ -302,8 +294,6 @@ export function useMinePage() {
   }
 
   return {
-    availableIdentities,
-    currentIdentity,
     currentTeam,
     currentUser,
     teamProfiles,
@@ -329,7 +319,6 @@ export function useMinePage() {
     handleLogin,
     handleLogout,
     handleSwitchTeam,
-    handleSwitchIdentity,
     openTeamManage,
     openNotifications,
     openUserMatches,

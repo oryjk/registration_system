@@ -1,6 +1,7 @@
 import type { BackendTeamMember, BackendTeamMemberAttendanceRecord } from "@/types/backend";
 
-export type TeamManageMode = "profile" | "create" | "join" | "members" | "attendance";
+// 管理页只保留当前球队的管理模式；创建/加入球队在独立二级页面（pages/teams/create、pages/teams/join）。
+export type TeamManageMode = "profile" | "members" | "attendance";
 
 export const memberRoleOptions = [
   { value: "member", label: "队员" },
@@ -14,22 +15,6 @@ const leadershipRoleOrder: Record<string, number> = {
   leader: 1,
   vice_captain: 2,
 };
-
-export function resolveVisibleMode(hasCurrentTeam: boolean, activeMode: TeamManageMode, allowCreateTeamMode = true): TeamManageMode {
-  if (hasCurrentTeam && (activeMode === "create" || activeMode === "join")) {
-    return "profile";
-  }
-
-  if (!hasCurrentTeam && (activeMode === "profile" || activeMode === "members" || activeMode === "attendance")) {
-    return allowCreateTeamMode ? "create" : "join";
-  }
-
-  if (!allowCreateTeamMode && activeMode === "create") {
-    return "join";
-  }
-
-  return activeMode;
-}
 
 export function roleLabel(role: string) {
   return memberRoleOptions.find((item) => item.value === role)?.label ?? "队员";

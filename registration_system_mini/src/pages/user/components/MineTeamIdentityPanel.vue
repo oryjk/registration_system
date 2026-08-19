@@ -3,19 +3,15 @@ import { computed } from "vue";
 import NeoSectionHeader from "@/components/neo/NeoSectionHeader.vue";
 import NeoSegmentedControl from "@/components/neo/NeoSegmentedControl.vue";
 import NeoSurface from "@/components/neo/NeoSurface.vue";
-import NeoTag from "@/components/neo/NeoTag.vue";
-import type { CurrentIdentityViewModel, TeamProfileViewModel } from "@/types/viewModels";
+import type { TeamProfileViewModel } from "@/types/viewModels";
 
 const props = defineProps<{
-  availableIdentities: CurrentIdentityViewModel[];
-  currentIdentity: CurrentIdentityViewModel | null;
   currentTeam: TeamProfileViewModel | null;
   teamProfiles: TeamProfileViewModel[];
   isSwitchingTeam: boolean;
 }>();
 
 const emit = defineEmits<{
-  (event: "switchIdentity", identityId: string): void;
   (event: "switchTeam", teamId: number): void;
   (event: "manageTeam", teamId?: number): void;
 }>();
@@ -27,14 +23,7 @@ const teamOptions = computed(() =>
     disabled: props.isSwitchingTeam,
   })),
 );
-const identityOptions = computed(() =>
-  props.availableIdentities.map((identity) => ({
-    label: `${identity.roleLabel} · ${identity.label}`,
-    value: identity.id,
-  })),
-);
 const useCompactTeamControl = computed(() => props.teamProfiles.length > 0 && props.teamProfiles.length <= 3);
-const useCompactIdentityControl = computed(() => props.availableIdentities.length > 0 && props.availableIdentities.length <= 3);
 
 function handleSwitchTeam(value: string) {
   if (props.isSwitchingTeam) return;
@@ -42,16 +31,11 @@ function handleSwitchTeam(value: string) {
   if (!Number.isFinite(teamId) || teamId === props.currentTeam?.id) return;
   emit("switchTeam", teamId);
 }
-
-function handleSwitchIdentity(identityId: string) {
-  if (!identityId || identityId === props.currentIdentity?.id) return;
-  emit("switchIdentity", identityId);
-}
 </script>
 
 <template>
   <view class="mine-context-section">
-    <NeoSectionHeader title="球队与身份" marker="队" caption="切换后，比赛和信用数据会同步更新" />
+    <NeoSectionHeader title="球队" marker="队" caption="切换后，比赛和信用数据会同步更新" />
 
     <!-- mp-weixin 里 scoped 样式无法穿透 NeoSurface 组件隔离，custom-class 上的布局会失效；
          因此 flex 布局放在面板自己模板内的包裹 view 上，NeoSurface 用 flush 去掉默认内边距。 -->
@@ -113,40 +97,6 @@ function handleSwitchIdentity(identityId: string) {
         </view>
       </scroll-view>
       <text v-if="isSwitchingTeam" class="mine-switch-group__pending">球队数据切换中...</text>
-    </view>
-
-    <view class="mine-switch-group">
-      <text class="mine-switch-group__label">发布身份</text>
-      <NeoSegmentedControl
-        v-if="useCompactIdentityControl"
-        :model-value="currentIdentity?.id || ''"
-        :options="identityOptions"
-        @change="handleSwitchIdentity"
-      />
-      <scroll-view
-        v-else-if="availableIdentities.length"
-        class="mine-switch-scroll"
-        scroll-x
-        enhanced
-        :show-scrollbar="false"
-      >
-        <view class="mine-switch-row">
-          <view
-            v-for="identity in availableIdentities"
-            :key="identity.id"
-            :class="[
-              'mine-switch-chip',
-              identity.id === currentIdentity?.id ? 'mine-switch-chip--active' : '',
-            ]"
-            hover-class="mine-switch-chip--pressed"
-            @tap="handleSwitchIdentity(identity.id)"
-          >
-            <text class="mine-switch-chip__role">{{ identity.roleLabel }}</text>
-            <text class="mine-switch-chip__name">{{ identity.label }}</text>
-          </view>
-        </view>
-      </scroll-view>
-      <view v-else class="mine-inline-empty">当前球队暂无可切换身份</view>
     </view>
 
     <view v-if="teamProfiles.length" class="mine-manage-section">
@@ -354,18 +304,6 @@ function handleSwitchIdentity(identityId: string) {
   font-weight: 900;
   line-height: 1.25;
   word-break: break-word;
-}
-
-.mine-inline-empty {
-  min-height: 76rpx;
-  padding: 18rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-muted);
-  color: var(--neo-color-text-muted);
-  font-size: 23rpx;
-  line-height: 1.5;
-  box-sizing: border-box;
 }
 
 .mine-manage-section {

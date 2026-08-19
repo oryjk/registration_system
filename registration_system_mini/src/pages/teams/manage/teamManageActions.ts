@@ -1,14 +1,11 @@
 import {
   addTeamMember,
-  createTeam,
   getTeamMatchAttendance,
   getTeamMemberAttendance,
-  getTeamPasswordInfo,
-  joinTeam,
   removeTeamMember,
-  searchTeams,
   setTeamMemberActive,
   updateTeam,
+  updateTeamJoinPassword,
   updateTeamMember,
 } from "@/api/team";
 import { listUsers, searchUsers } from "@/api/user";
@@ -40,34 +37,9 @@ export function searchTeamCandidates(keyword: string, limit = 8) {
   return searchUsers(keyword, limit);
 }
 
-export function createTeamFromForm(payload: {
-  name: string;
-  description?: string;
-  joinPassword?: string;
-}) {
-  return createTeam({
-    name: payload.name,
-    description: payload.description,
-    join_password: payload.joinPassword,
-  });
-}
-
-export function searchTeamsByKeyword(keyword: string) {
-  return searchTeams(keyword);
-}
-
-export async function checkTeamRequiresPassword(teamId: number) {
-  return (await getTeamPasswordInfo(teamId)).requires_password;
-}
-
-export function joinTeamFromForm(payload: {
-  teamId: number;
-  password?: string;
-}) {
-  return joinTeam({
-    team_id: payload.teamId,
-    password: payload.password,
-  });
+// joinPassword 非空=设置/替换入队密码；空串=清除（开放加入）。
+export function updateJoinPasswordFromForm(teamId: number, joinPassword: string) {
+  return updateTeamJoinPassword(teamId, joinPassword);
 }
 
 export function addMemberToTeam(

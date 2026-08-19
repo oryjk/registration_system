@@ -28,19 +28,41 @@ describe("team manage real backend integration", () => {
     expect(page.includes("useTeamManagePage()")).toEqual(true);
   });
 
-  test("bottom tab routes create team action to the real team manage page", async () => {
+  test("bottom tab routes create team action to the standalone create page", async () => {
     const source = await Bun.file(sourcePath("components/BottomTabBar.vue")).text();
 
-    expect(source.includes('url: "/pages/teams/manage/index"')).toEqual(true);
+    expect(source.includes('url: "/pages/teams/create/index"')).toEqual(true);
+    expect(source.includes("你已加入球队，无需重复创建")).toEqual(false);
     expect(source.includes("创建球队表单尚未接入")).toEqual(false);
     expect(source.includes("待接入")).toEqual(false);
   });
 
-  test("pages config registers the team manage page", async () => {
+  test("create and join are standalone secondary pages open to users with a team", async () => {
+    const createPage = await Bun.file(sourcePath("pages/teams/create/useTeamCreatePage.ts")).text();
+    const joinPage = await Bun.file(sourcePath("pages/teams/join/useTeamJoinPage.ts")).text();
+    const manageSource = await teamManageSource();
+
+    // 创建/加入对已有球队的用户开放，创建成功后自动切到新球队。
+    expect(createPage.includes("createTeamFromForm")).toEqual(true);
+    expect(createPage.includes("switchTeam(created.id)")).toEqual(true);
+    expect(joinPage.includes("joinTeamFromForm")).toEqual(true);
+    expect(joinPage.includes("searchTeamsByKeyword")).toEqual(true);
+    // 管理页不再出现创建/加入 tab，避免与“当前球队”的管理语境冲突；空态引导去独立页面。
+    expect(manageSource.includes('{ label: "创建球队"')).toEqual(false);
+    expect(manageSource.includes('{ label: "加入球队"')).toEqual(false);
+    expect(manageSource.includes('url: "/pages/teams/create/index"')).toEqual(true);
+    expect(manageSource.includes('url: "/pages/teams/join/index"')).toEqual(true);
+  });
+
+  test("pages config registers the team manage create and join pages", async () => {
     const source = await Bun.file(sourcePath("pages.json")).text();
 
     expect(source.includes('"path": "pages/teams/manage/index"')).toEqual(true);
     expect(source.includes('"navigationBarTitleText": "球队管理"')).toEqual(true);
+    expect(source.includes('"path": "pages/teams/create/index"')).toEqual(true);
+    expect(source.includes('"navigationBarTitleText": "创建球队"')).toEqual(true);
+    expect(source.includes('"path": "pages/teams/join/index"')).toEqual(true);
+    expect(source.includes('"navigationBarTitleText": "加入球队"')).toEqual(true);
   });
 
   test("team api wraps create search join and password-info backend endpoints", async () => {
@@ -59,19 +81,20 @@ describe("team manage real backend integration", () => {
     expect(source.includes('method: "PATCH"')).toEqual(true);
   });
 
-  test("team manage page creates and joins teams through api wrappers", async () => {
-    const source = await teamManageSource();
-    const state = await Bun.file(sourcePath("pages/teams/manage/teamManageState.ts")).text();
+  test("team self actions wrap create search join and password-info for standalone pages", async () => {
+    const selfActions = await Bun.file(sourcePath("pages/teams/teamSelfActions.ts")).text();
+    const createPage = await Bun.file(sourcePath("pages/teams/create/useTeamCreatePage.ts")).text();
+    const joinPage = await Bun.file(sourcePath("pages/teams/join/useTeamJoinPage.ts")).text();
 
-    expect(source.includes("createTeam")).toEqual(true);
-    expect(source.includes("searchTeams")).toEqual(true);
-    expect(source.includes("joinTeam")).toEqual(true);
-    expect(source.includes("refreshSessionContext")).toEqual(true);
-    expect(source.includes("shouldHideCreationEntrances")).toEqual(true);
-    expect(source.includes("const canShowCreateTeamEntry = computed(() => !shouldHideCreationEntrances.value);")).toEqual(true);
-    expect(source.includes('...(canShowCreateTeamEntry.value ? [{ label: "创建球队", value: "create" }] : [])')).toEqual(true);
-    expect(state.includes("allowCreateTeamMode = true")).toEqual(true);
-    expect(state.includes('return allowCreateTeamMode ? "create" : "join";')).toEqual(true);
+    expect(selfActions.includes("export function createTeamFromForm")).toEqual(true);
+    expect(selfActions.includes("export function searchTeamsByKeyword")).toEqual(true);
+    expect(selfActions.includes("export async function checkTeamRequiresPassword")).toEqual(true);
+    expect(selfActions.includes("export function joinTeamFromForm")).toEqual(true);
+    expect(createPage.includes('from "../teamSelfActions"')).toEqual(true);
+    expect(joinPage.includes('from "../teamSelfActions"')).toEqual(true);
+    // 审核模式的预填与创建入口隐藏兜底都在创建页内闭环。
+    expect(createPage.includes("preloadMiniReviewStatus")).toEqual(true);
+    expect(createPage.includes("shouldHideCreationEntrances")).toEqual(true);
   });
 
   test("team management entry points open the team detail page first", async () => {
@@ -79,7 +102,7 @@ describe("team manage real backend integration", () => {
     const minePage = await Bun.file(sourcePath("pages/user/useMinePage.ts")).text();
     const detailPage = await Bun.file(sourcePath("pages/teams/detail/useTeamDetailPage.ts")).text();
 
-    expect(bottomTabBar.includes('url: "/pages/teams/manage/index"')).toEqual(true);
+    expect(bottomTabBar.includes('url: "/pages/teams/create/index"')).toEqual(true);
     // 「我的」页球队入口先进入球队二级页（队费充值所在），管理入口再从二级页进入。
     expect(minePage.includes("function openTeamDetail(teamId?: number)")).toEqual(true);
     expect(minePage.includes('`/pages/teams/detail/index?teamId=${targetId}`')).toEqual(true);
