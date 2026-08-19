@@ -6,6 +6,12 @@ export interface NeoConfirmDialogOptions {
   content: string;
   /** message 下方展示的图片（如微信二维码），随提示一起渲染。 */
   imageSrc?: string;
+  /** 第一张图片下方的说明文字（如"加开发者微信"）。 */
+  imageCaption?: string;
+  /** 第二张图片（如公众号二维码）；与 imageSrc 同时提供时双图并排。 */
+  secondImageSrc?: string;
+  /** 第二张图片下方的说明文字。 */
+  secondImageCaption?: string;
   confirmText?: string;
   cancelText?: string;
   /** 需要在内容中醒目展示的文本（如比赛名称），命中后用高亮样式渲染。 */
@@ -22,6 +28,9 @@ export interface NeoConfirmDialogState {
   title: string;
   message: string;
   imageSrc: string;
+  imageCaption: string;
+  secondImageSrc: string;
+  secondImageCaption: string;
   highlight: string;
   linkText: string;
   primaryText: string;
@@ -41,6 +50,9 @@ export function useNeoConfirmDialog() {
     title: "",
     message: "",
     imageSrc: "",
+    imageCaption: "",
+    secondImageSrc: "",
+    secondImageCaption: "",
     highlight: "",
     linkText: "",
     primaryText: "确认",
@@ -59,6 +71,9 @@ export function useNeoConfirmDialog() {
     confirmDialogState.title = options.title;
     confirmDialogState.message = options.content;
     confirmDialogState.imageSrc = options.imageSrc ?? "";
+    confirmDialogState.imageCaption = options.imageCaption ?? "";
+    confirmDialogState.secondImageSrc = options.secondImageSrc ?? "";
+    confirmDialogState.secondImageCaption = options.secondImageCaption ?? "";
     confirmDialogState.highlight = options.highlight ?? "";
     confirmDialogState.linkText = options.linkText ?? "";
     confirmDialogState.primaryText = options.confirmText ?? "确认";

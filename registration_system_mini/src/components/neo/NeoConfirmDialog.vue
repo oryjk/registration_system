@@ -15,6 +15,12 @@ const props = withDefaults(
     linkText?: string;
     /** message 下方展示的图片（如微信联系二维码），宽度固定、等比缩放。 */
     imageSrc?: string;
+    /** 第一张图片下方的说明文字（如"加开发者微信"）。 */
+    imageCaption?: string;
+    /** 第二张图片；与 imageSrc 同时提供时双图并排展示（如公众号二维码）。 */
+    secondImageSrc?: string;
+    /** 第二张图片下方的说明文字。 */
+    secondImageCaption?: string;
     primaryText?: string;
     secondaryText?: string;
     primaryTone?: NeoConfirmDialogTone;
@@ -25,6 +31,9 @@ const props = withDefaults(
     highlight: "",
     linkText: "",
     imageSrc: "",
+    imageCaption: "",
+    secondImageSrc: "",
+    secondImageCaption: "",
     primaryText: "确认",
     secondaryText: "再想想",
     primaryTone: "accent",
@@ -85,7 +94,40 @@ function handleClose() {
         </view>
         <view class="neo-confirm-dialog-close" @tap="handleClose">×</view>
       </view>
-      <image v-if="imageSrc" class="neo-confirm-dialog-image" :src="imageSrc" mode="widthFix" />
+      <!-- 双图并排（如微信 + 公众号二维码）；两张码必须各自独立 image，合成长图微信长按识别不了。 -->
+      <view v-if="imageSrc && secondImageSrc" class="neo-confirm-dialog-images">
+        <view class="neo-confirm-dialog-image-item">
+          <image
+            class="neo-confirm-dialog-image neo-confirm-dialog-image-pair"
+            :src="imageSrc"
+            mode="widthFix"
+            :show-menu-by-longpress="true"
+          />
+          <text v-if="imageCaption" class="neo-confirm-dialog-image-caption">{{ imageCaption }}</text>
+        </view>
+        <view class="neo-confirm-dialog-image-item">
+          <image
+            class="neo-confirm-dialog-image neo-confirm-dialog-image-pair"
+            :src="secondImageSrc"
+            mode="widthFix"
+            :show-menu-by-longpress="true"
+          />
+          <text v-if="secondImageCaption" class="neo-confirm-dialog-image-caption">{{ secondImageCaption }}</text>
+        </view>
+      </view>
+      <template v-else>
+        <!-- show-menu-by-longpress：微信端长按弹出"识别二维码/保存图片"，否则二维码图无法长按识别。 -->
+        <image
+          v-if="imageSrc"
+          class="neo-confirm-dialog-image"
+          :src="imageSrc"
+          mode="widthFix"
+          :show-menu-by-longpress="true"
+        />
+        <text v-if="imageSrc && imageCaption" class="neo-confirm-dialog-image-caption">
+          {{ imageCaption }}
+        </text>
+      </template>
       <view :class="['neo-confirm-dialog-actions', secondaryText ? '' : 'neo-confirm-dialog-actions-single']">
         <NeoButton v-if="secondaryText" variant="outline" block :disabled="loading" @click="handleSecondary">
           {{ secondaryText }}
@@ -180,6 +222,35 @@ function handleClose() {
   border: var(--neo-border-default);
   border-radius: var(--neo-radius-md);
   background: var(--neo-color-surface);
+}
+
+.neo-confirm-dialog-images {
+  display: flex;
+  justify-content: center;
+  gap: 24rpx;
+  margin-top: 26rpx;
+}
+
+.neo-confirm-dialog-image-item {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  max-width: 266rpx;
+}
+
+.neo-confirm-dialog-image-pair {
+  width: 100%;
+  margin-top: 0;
+}
+
+.neo-confirm-dialog-image-caption {
+  margin-top: 10rpx;
+  color: var(--neo-color-text-muted);
+  font-size: 24rpx;
+  line-height: 34rpx;
+  font-weight: 700;
+  text-align: center;
 }
 
 .neo-confirm-dialog-close {
