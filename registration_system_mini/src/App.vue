@@ -2,11 +2,13 @@
 import { onHide, onLaunch, onPageNotFound, onShow } from "@dcloudio/uni-app";
 import { ensureSessionReady } from "@/stores/appSession";
 import { preloadMiniReviewStatus } from "@/stores/miniReview";
+import { setupMiniProgramUpdatePrompt } from "@/utils/updateManager";
 
 const HOME_PAGE_PATH = "/pages/home/index";
 
 onLaunch(() => {
   console.log("registration_system_mini launch");
+  setupMiniProgramUpdatePrompt();
   void preloadMiniReviewStatus();
   ensureSessionReady().catch((error) => {
     console.warn("session bootstrap failed", error);
