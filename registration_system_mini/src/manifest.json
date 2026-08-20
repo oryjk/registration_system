@@ -2,8 +2,8 @@
   "name": "比赛报名",
   "appid": "wx0b5cef0e7f1af280",
   "description": "比赛报名与球队管理微信小程序",
-  "versionName": "1.0.48",
-  "versionCode": "10048",
+  "versionName": "1.0.49",
+  "versionCode": "10049",
   "transformPx": false,
   "app-plus": {
     "usingComponents": true,
