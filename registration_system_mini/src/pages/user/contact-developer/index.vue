@@ -8,7 +8,7 @@ import NeoSurface from "@/components/neo/NeoSurface.vue";
 import { useMiniReviewStatus } from "@/stores/miniReview";
 import { DEVELOPER_WECHAT_QRCODE_URL, OFFICIAL_ACCOUNT_QRCODE_URL } from "@/utils/developerContact";
 import { getCustomNavMetrics } from "@/utils/customNav";
-import { TIP_MAX_YUAN, TIP_MIN_YUAN, useTipDonation } from "./useTipDonation";
+import { useTipDonation } from "./useTipDonation";
 
 const navMetrics = getCustomNavMetrics();
 const pageStyle = computed(() => ({
@@ -62,7 +62,7 @@ const { amountInput, suggestionInput, isSubmitting, isLoggedIn, suggestionMaxLen
             v-model="amountInput"
             class="contact-developer-field__input"
             type="digit"
-            :placeholder="`任意金额 ${TIP_MIN_YUAN} ~ ${TIP_MAX_YUAN} 元`"
+            :placeholder="'我干了，你随意'"
             placeholder-class="contact-developer-field__placeholder"
           />
         </view>
@@ -187,6 +187,12 @@ const { amountInput, suggestionInput, isSubmitting, isLoggedIn, suggestionMaxLen
   font-size: 28rpx;
   font-weight: 700;
   box-sizing: border-box;
+}
+
+/* input 原生控件不会随 padding 自动撑高，固定高度避免 placeholder 被裁切。 */
+.contact-developer-field__input {
+  height: 84rpx;
+  padding: 0 20rpx;
 }
 
 .contact-developer-field__textarea {
