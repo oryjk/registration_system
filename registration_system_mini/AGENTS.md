@@ -31,9 +31,12 @@ bun run mp:release -- --desc "本次变更说明"   # 发布：构建 + 登记�
 发布小程序用一条命令（构建 + 登记版本号 + miniprogram-ci 上传）：
 
 ```bash
-bun run mp:release -- --desc "本次变更说明"   # 可选 --robot 2 换上传机器人
-bun run mp:preview -- --desc "预览说明"       # 只传预览版，生成 dist/preview-qrcode.jpg
+bun run mp:release -- --desc "本次变更说明"           # robot=1：日常开发版
+bun run mp:release -- --robot 2 --desc "体验版说明"    # robot=2：体验版专用线
+bun run mp:preview -- --desc "预览说明"               # 只传预览版，生成 dist/preview-qrcode.jpg
 ```
+
+**robot 双轨约定**：`robot=1` 日常开发版本，随便传互不影响；`robot=2` 是体验版专用线——首次用 robot=2 上传后，需在公众平台「版本管理 → 开发版本」对该版本点一次「选为体验版」，之后每次 robot=2 上传的新代码会自动成为体验版内容，无需再手动操作。robot=1 的上传不会影响体验版。
 
 流程细节（`scripts/mini-ci.mjs` + `scripts/sync-manifest-version.mjs`）：
 
