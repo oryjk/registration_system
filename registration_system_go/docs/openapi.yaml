@@ -489,6 +489,34 @@ paths:
           description: 订单与微信支付参数
         <<: *standardErrors
 
+  /api/v1/app/payments/tip-orders:
+    post:
+      operationId: createAppTipOrder
+      tags: [App Payments]
+      summary: 创建打赏订单（请开发者喝咖啡）并发起微信支付
+      description: 金额单位为分（正整数即可，不设上限）；可附带功能建议（≤500 字，支付成功后生效）；响应结构与充值下单一致（order + payment 两段）。
+      security: *bearerSecurity
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [amount_cents]
+              properties:
+                amount_cents: { type: integer, format: int64, minimum: 1 }
+                suggestion: { type: string, maxLength: 500 }
+      responses:
+        "200":
+          description: 订单与微信支付参数
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateRechargeEnvelope"
+        "502":
+          $ref: "#/components/responses/PaymentProviderError"
+        <<: *standardErrors
+
   /api/v1/app/matches:
     get:
       operationId: listAppMatches
@@ -1344,6 +1372,21 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/TeamApplicationEnvelope"
+        <<: *standardErrors
+
+  /api/v1/admin/payments/tips:
+    get:
+      operationId: listAdminTips
+      tags: [Admin Payments]
+      summary: 打赏与建议列表
+      description: 分页返回打赏记录（含功能建议），按创建时间倒序；status=paid 的记录含支付完成时间。
+      security: *bearerSecurity
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: 打赏分页（order_no、user_id、nickname、amount_cents、suggestion、status、submitted_at、created_at）
         <<: *standardErrors
 
   /api/v1/admin/payments/orders:
