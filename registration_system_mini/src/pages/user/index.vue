@@ -6,7 +6,6 @@ import MineProfileHero from "./components/MineProfileHero.vue";
 import MineTeamIdentityPanel from "./components/MineTeamIdentityPanel.vue";
 import MineStatsGrid from "./components/MineStatsGrid.vue";
 import MineMatchSection from "./components/MineMatchSection.vue";
-import MineServiceGrid from "./components/MineServiceGrid.vue";
 import MineSkeleton from "./components/MineSkeleton.vue";
 import MineWalletSection from "./components/MineWalletSection.vue";
 import { useMinePage } from "./useMinePage";
@@ -18,13 +17,11 @@ const {
   shouldHideCreationEntrances,
   isLoading,
   isSwitchingTeam,
-  isPayingMembership,
   myMatches,
   displayName,
   showInitialLoadingState,
   visibleErrorMessage,
   contentStyle,
-  creditCardSummary,
   currentTeamJoinedDaysLabel,
   mineStats,
   walletSummary,
@@ -40,7 +37,6 @@ const {
   openUserMatches,
   openMatchDetail,
   openBilling,
-  handleMembershipRenewal,
 } = useMinePage();
 
 function handleSessionLoginCompleted() {
@@ -120,13 +116,6 @@ onUnload(() => {
             <text class="mine-settings-entry__label">联系开发者</text>
             <text class="mine-settings-entry__arrow">›</text>
           </view>
-
-          <MineServiceGrid
-            :current-team="currentTeam"
-            :credit-card-summary="creditCardSummary"
-            :is-paying-membership="isPayingMembership"
-            @renew-membership="handleMembershipRenewal"
-          />
 
           <!-- 设置入口只对产品负责人账号显示；验证/运营工具统一收拢在设置页。 -->
           <view

@@ -66,14 +66,10 @@ describe("mine page visual composition", () => {
     expect(userPageSource.includes("<navigator")).toEqual(false);
   });
 
-  test("wires membership renewal to the team detail payment flow", async () => {
-    const userPageSource = await Bun.file(sourcePath("pages/user/index.vue")).text();
-    const composableSource = await Bun.file(sourcePath("pages/user/useMinePage.ts")).text();
+  test("keeps membership payment flow on the team detail page", async () => {
     const detailFlow = await Bun.file(sourcePath("pages/teams/detail/useTeamDetailPage.ts")).text();
 
-    // 「我的」页续费按钮进入球队二级页；微信支付流程收敛在二级页。
-    expect(userPageSource.includes("handleMembershipRenewal")).toEqual(true);
-    expect(composableSource.includes("openTeamDetail")).toEqual(true);
+    // 「我的」页的球队服务板块已移除；微信支付流程收敛在球队二级页。
     expect(detailFlow.includes("createTeamMembershipOrder")).toEqual(true);
     expect(detailFlow.includes("requestWxPayment")).toEqual(true);
     expect(detailFlow.includes("syncGoPaymentOrder")).toEqual(true);

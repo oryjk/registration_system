@@ -1,6 +1,5 @@
 import { computed, ref } from "vue";
 import { getWallet } from "@/api/wallet";
-import type { BackendTeamCreditTransaction } from "@/types/backend";
 import type { MineMatchSummary, MineStatItem } from "./mineTypes";
 import { buildMineOverviewState } from "./mineOverviewState";
 import { loadAllMyMatches } from "./myMatchesData";
@@ -12,7 +11,6 @@ import { PRODUCT_OWNER_USER_ID } from "@/config/productOwner";
 import { hasManualLogout } from "@/utils/authStorage";
 import { getCustomNavMetrics } from "@/utils/customNav";
 import {
-  formatCreditTransactionLabel,
   formatDateTimeLabel,
   resolveUserDisplayName,
 } from "@/utils/viewModels";
@@ -33,11 +31,9 @@ export function useMinePage() {
 
   const isLoading = ref(false);
   const isSwitchingTeam = ref(false);
-  const isPayingMembership = ref(false);
   const hasLoadedOnce = ref(false);
   const errorMessage = ref("");
   const myMatches = ref<MineMatchSummary[]>([]);
-  const creditTransactions = ref<BackendTeamCreditTransaction[]>([]);
   const overviewDigest = ref({
     activityCount: 0,
     teamCount: 0,
@@ -54,15 +50,9 @@ export function useMinePage() {
   const settingsEntryVisible = computed(() => currentUser.value?.id === PRODUCT_OWNER_USER_ID);
   const showInitialLoadingState = computed(() => isLoading.value && !hasLoadedOnce.value);
   const visibleErrorMessage = computed(() => currentUser.value ? errorMessage.value : "");
-  const latestCreditRecord = computed(() => creditTransactions.value[0] ?? null);
   const contentStyle = computed(() => ({
     paddingTop: `${navMetrics.pageTopPadding + 8}px`,
   }));
-  const creditCardSummary = computed(() =>
-    latestCreditRecord.value
-      ? `${formatCreditTransactionLabel(latestCreditRecord.value)} · ${formatDateTimeLabel(latestCreditRecord.value.created_at)}`
-      : "全员队员信用会在这里展示",
-  );
   const currentTeamJoinedDaysLabel = computed(() => {
     const joinedAt = currentTeam.value?.joinedAt;
     if (!joinedAt) return "";
@@ -120,7 +110,6 @@ export function useMinePage() {
     isSwitchingTeam.value = false;
     errorMessage.value = message;
     myMatches.value = [];
-    creditTransactions.value = [];
     overviewDigest.value = {
       activityCount: 0,
       teamCount: 0,
@@ -168,7 +157,6 @@ export function useMinePage() {
         teamCount: teamProfiles.value.length,
         totalHoursLabel: overview.totalHoursLabel,
       };
-      creditTransactions.value = [];
       walletSummary.value = overview.walletSummary;
       setUnreadCount(0);
       hasLoadedOnce.value = true;
@@ -264,9 +252,6 @@ export function useMinePage() {
     uni.showToast({ title: "已退出登录", icon: "none" });
   }
 
-  function handleMembershipRenewal() {
-    openTeamDetail();
-  }
 
   return {
     currentTeam,
@@ -275,13 +260,11 @@ export function useMinePage() {
     shouldHideCreationEntrances,
     isLoading,
     isSwitchingTeam,
-    isPayingMembership,
     myMatches,
     displayName,
     showInitialLoadingState,
     visibleErrorMessage,
     contentStyle,
-    creditCardSummary,
     currentTeamJoinedDaysLabel,
     mineStats,
     walletSummary,
@@ -297,6 +280,5 @@ export function useMinePage() {
     openUserMatches,
     openMatchDetail,
     openBilling,
-    handleMembershipRenewal,
   };
 }
