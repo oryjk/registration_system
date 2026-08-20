@@ -5,9 +5,7 @@ import { useNeoConfirmDialog } from "@/components/neo/useNeoConfirmDialog";
 import { useTeamContext } from "@/stores/teamContext";
 import { isMockWxPaymentParams, isPaymentCancelled, normalizeWxPaymentParams, requestWxPayment } from "@/utils/payment";
 
-/** 打赏金额限制：与后端领域层一致（1 分 ~ 1000 元）。 */
-export const TIP_MIN_YUAN = 0.01;
-export const TIP_MAX_YUAN = 1000;
+/** 打赏金额不设范围限制，仅要求是正数（1 分起，微信支付下限）。 */
 const TIP_SUGGESTION_MAX_LENGTH = 500;
 
 /** 元字符串 → 分；输入非数字或超过两位小数时返回 null。 */
@@ -38,8 +36,8 @@ export function useTipDonation() {
       uni.showToast({ title: "请输入正确金额，最多两位小数", icon: "none" });
       return null;
     }
-    if (cents < TIP_MIN_YUAN * 100 || cents > TIP_MAX_YUAN * 100) {
-      uni.showToast({ title: `金额需在 ${TIP_MIN_YUAN} ~ ${TIP_MAX_YUAN} 元之间`, icon: "none" });
+    if (cents < 1) {
+      uni.showToast({ title: "金额需大于 0 元", icon: "none" });
       return null;
     }
     return cents;
