@@ -85,7 +85,9 @@ func mapUserParticipants(entries []ports.AdminRosterEntry) []ports.UserParticipa
 	participants := make([]ports.UserParticipant, 0, len(entries))
 	seen := make(map[int64]struct{}, len(entries))
 	for _, entry := range entries {
-		if entry.Status == nil || *entry.Status != domain.RegistrationAttending {
+		// 小程序三态报名板靠 participants 区分已报名/请假；未表态（nil/unknown）、缺席与已取消仍不外露，由前端归入未报名组。
+		if entry.Status == nil ||
+			(*entry.Status != domain.RegistrationAttending && *entry.Status != domain.RegistrationLeave) {
 			continue
 		}
 		if _, exists := seen[entry.UserID]; exists {

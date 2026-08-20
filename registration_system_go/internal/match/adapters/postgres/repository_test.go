@@ -682,9 +682,11 @@ func TestMapUserParticipantsCarriesRegistrationCount(t *testing.T) {
 	}
 }
 
-func TestMapUserParticipantsFiltersNonAttendingAndDeduplicates(t *testing.T) {
+func TestMapUserParticipantsKeepsAttendingAndLeaveAndDeduplicates(t *testing.T) {
 	attending := domain.RegistrationAttending
 	leave := domain.RegistrationLeave
+	absent := domain.RegistrationAbsent
+	cancelled := domain.RegistrationCancelled
 	firstAvatar := "https://cdn.example.com/first.png"
 	secondAvatar := "https://cdn.example.com/second.png"
 	participants := mapUserParticipants([]ports.AdminRosterEntry{
@@ -692,14 +694,23 @@ func TestMapUserParticipantsFiltersNonAttendingAndDeduplicates(t *testing.T) {
 		{UserID: 11, Nickname: "阿一重复", AvatarURL: &firstAvatar, Status: &attending},
 		{UserID: 12, Nickname: "阿二", AvatarURL: &secondAvatar, Status: &leave},
 		{UserID: 13, Nickname: "未报名", Status: nil},
+		{UserID: 14, Nickname: "缺席", Status: &absent},
+		{UserID: 15, Nickname: "已取消", Status: &cancelled},
 	})
 
-	if len(participants) != 1 || participants[0].UserID != 11 || participants[0].Nickname != "阿一" || participants[0].AvatarURL == nil || *participants[0].AvatarURL != firstAvatar || participants[0].Status != domain.RegistrationAttending {
-		t.Fatalf("unexpected user participants: %+v", participants)
+	if len(participants) != 2 {
+		t.Fatalf("expected attending and leave participants only: %+v", participants)
+	}
+	first, second := participants[0], participants[1]
+	if first.UserID != 11 || first.Nickname != "阿一" || first.AvatarURL == nil || *first.AvatarURL != firstAvatar || first.Status != domain.RegistrationAttending {
+		t.Fatalf("unexpected attending participant: %+v", first)
+	}
+	if second.UserID != 12 || second.Nickname != "阿二" || second.AvatarURL == nil || *second.AvatarURL != secondAvatar || second.Status != domain.RegistrationLeave {
+		t.Fatalf("unexpected leave participant: %+v", second)
 	}
 }
 
-func TestRepositoryFindForUserIncludesAttendingParticipants(t *testing.T) {
+func TestRepositoryFindForUserIncludesAttendingAndLeaveParticipants(t *testing.T) {
 	pool := testsupport.StartPostgres(t)
 	ctx := context.Background()
 	userID, teamID := seedMatchOwner(t, pool)
@@ -754,8 +765,8 @@ func TestRepositoryFindForUserIncludesAttendingParticipants(t *testing.T) {
 		statesByKind[state.Group.Kind] = state
 	}
 	hostState, ok := statesByKind[domain.GroupHostTeam]
-	if !ok || len(hostState.Participants) != 2 {
-		t.Fatalf("expected two attending participants on host group, got %+v", states)
+	if !ok || len(hostState.Participants) != 3 {
+		t.Fatalf("expected attending and leave participants on host group, got %+v", states)
 	}
 	if individualState, ok := statesByKind[domain.GroupIndividualOpponent]; !ok ||
 		len(individualState.Participants) != 0 || individualState.MyRegistration != nil {
@@ -777,6 +788,12 @@ func TestRepositoryFindForUserIncludesAttendingParticipants(t *testing.T) {
 		if participant.RegisteredAt == nil || !participant.RegisteredAt.Equal(now) {
 			t.Fatalf("participant %d missing registration time: %+v", id, participant)
 		}
+	}
+	// 请假队员必须出现在 participants 里，小程序三态报名板才能把 TA 归入请假组而非未报名组。
+	leaveParticipant, ok := participantsByID[leaveUserID]
+	if !ok || leaveParticipant.Status != domain.RegistrationLeave ||
+		leaveParticipant.AvatarURL == nil || *leaveParticipant.AvatarURL != "https://cdn.example.com/leave.png" {
+		t.Fatalf("unexpected leave participant: %+v", leaveParticipant)
 	}
 }
 
