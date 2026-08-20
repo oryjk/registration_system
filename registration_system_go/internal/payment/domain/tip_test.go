@@ -9,7 +9,7 @@ import (
 	sharederror "github.com/oryjk/registration_system/registration_system_go/internal/shared/domain"
 )
 
-func TestNewTipOrderAcceptsAmountBoundaries(t *testing.T) {
+func TestNewTipOrderAcceptsAnyPositiveAmount(t *testing.T) {
 	now := time.Now()
 	minimum, err := NewTipOrder("P202608200001", 37, 1, now)
 	if err != nil {
@@ -18,22 +18,20 @@ func TestNewTipOrderAcceptsAmountBoundaries(t *testing.T) {
 	if minimum.Kind != KindTip || minimum.Status != StatusPending || minimum.TeamID != nil || minimum.MatchID != nil {
 		t.Fatalf("minimum order = %+v", minimum)
 	}
-	maximum, err := NewTipOrder("P202608200002", 37, TipMaxAmountCents, now)
+	// 打赏金额不设上限：曾限制 1000 元，产品决策改为用户自由填写。
+	generous, err := NewTipOrder("P202608200002", 37, 100_001, now)
 	if err != nil {
-		t.Fatalf("NewTipOrder() maximum error = %v", err)
+		t.Fatalf("NewTipOrder() over old limit error = %v", err)
 	}
-	if maximum.AmountCents != TipMaxAmountCents {
-		t.Fatalf("maximum amount = %d", maximum.AmountCents)
+	if generous.AmountCents != 100_001 {
+		t.Fatalf("generous amount = %d", generous.AmountCents)
 	}
 }
 
-func TestNewTipOrderRejectsAmountOutOfRange(t *testing.T) {
+func TestNewTipOrderRejectsNonPositiveAmount(t *testing.T) {
 	now := time.Now()
 	if _, err := NewTipOrder("P202608200003", 37, 0, now); !errors.Is(err, sharederror.ErrValidation) {
 		t.Fatalf("zero amount error = %v, want validation", err)
-	}
-	if _, err := NewTipOrder("P202608200004", 37, TipMaxAmountCents+1, now); !errors.Is(err, sharederror.ErrValidation) {
-		t.Fatalf("over-limit amount error = %v, want validation", err)
 	}
 	if _, err := NewTipOrder("  ", 37, 100, now); !errors.Is(err, sharederror.ErrValidation) {
 		t.Fatalf("blank order no error = %v, want validation", err)

@@ -472,9 +472,6 @@ func TestCreateTipRejectsInvalidAmountAndOverlongSuggestion(t *testing.T) {
 	if _, err := service.CreateTip(context.Background(), userActor(37), CreateTipCommand{AmountCents: 0}); !errors.Is(err, sharederror.ErrValidation) {
 		t.Fatalf("zero amount error = %v, want validation", err)
 	}
-	if _, err := service.CreateTip(context.Background(), userActor(37), CreateTipCommand{AmountCents: paymentdomain.TipMaxAmountCents + 1}); !errors.Is(err, sharederror.ErrValidation) {
-		t.Fatalf("over-limit amount error = %v, want validation", err)
-	}
 	overlong := strings.Repeat("建", paymentdomain.MaxTipSuggestionRunes+1)
 	if _, err := service.CreateTip(context.Background(), userActor(37), CreateTipCommand{AmountCents: 100, Suggestion: overlong}); !errors.Is(err, sharederror.ErrValidation) {
 		t.Fatalf("overlong suggestion error = %v, want validation", err)
@@ -484,6 +481,20 @@ func TestCreateTipRejectsInvalidAmountAndOverlongSuggestion(t *testing.T) {
 	}
 	if store.order.OrderNo != "" || store.tip.OrderNo != "" {
 		t.Fatalf("no order or tip should be stored, order=%+v tip=%+v", store.order, store.tip)
+	}
+}
+
+// 打赏金额不设上限（曾限制 1000 元，产品决策移除）：超过旧上限也能正常下单。
+func TestCreateTipAcceptsAmountOverOldLimit(t *testing.T) {
+	store := newFakePaymentStore()
+	gateway := &fakeGateway{unified: paymentports.UnifiedOrderResult{PrepayID: "prepay-tip-max", Parameters: paymentports.JSAPIParameters{Package: "prepay_id=prepay-tip-max"}}}
+	service := NewService(store, store, store, gateway, store, store, allowTeams{}, fakeRegistrationFees{}, store, store, fixedOrderNumbers{"P-tip-max"}, fixedClock{})
+
+	if _, err := service.CreateTip(context.Background(), userActor(37), CreateTipCommand{AmountCents: 100_001}); err != nil {
+		t.Fatalf("amount over old limit should be accepted, got %v", err)
+	}
+	if store.order.AmountCents != 100_001 || store.tip.AmountCents != 100_001 {
+		t.Fatalf("stored amounts = order %d / tip %d", store.order.AmountCents, store.tip.AmountCents)
 	}
 }
 

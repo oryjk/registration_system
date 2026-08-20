@@ -34,8 +34,6 @@ const (
 const (
 	// MembershipMaxAmountCents 限制单笔队费金额（1 万元），防止误操作天价订单。
 	MembershipMaxAmountCents int64 = 1_000_000
-	// TipMaxAmountCents 限制单笔打赏金额（1000 元），防止误操作天价订单。
-	TipMaxAmountCents int64 = 100_000
 )
 
 type Order struct {
@@ -105,13 +103,13 @@ func NewMatchRegistrationOrder(orderNo string, userID int64, matchID uuid.UUID, 
 }
 
 // NewTipOrder 创建打赏订单（"请开发者喝咖啡"）：金额由用户自由填写（分），
-// 无球队/比赛归属；任意金额但有上限防误操作。
+// 无球队/比赛归属；不设上限，仅要求为正数（1 分起，微信支付下限）。
 func NewTipOrder(orderNo string, userID, amountCents int64, now time.Time) (Order, error) {
 	orderNo = strings.TrimSpace(orderNo)
 	if orderNo == "" || len(orderNo) > 32 || userID <= 0 {
 		return Order{}, sharederror.New(sharederror.KindValidation, "打赏订单参数无效")
 	}
-	if amountCents < 1 || amountCents > TipMaxAmountCents {
+	if amountCents < 1 {
 		return Order{}, sharederror.New(sharederror.KindValidation, "打赏金额无效")
 	}
 	return Order{
