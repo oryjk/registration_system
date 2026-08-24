@@ -36,6 +36,19 @@ bun run mp:release -- --robot 2 --desc "体验版说明"    # robot=2：体验�
 bun run mp:preview -- --desc "预览说明"               # 只传预览版，生成 dist/preview-qrcode.jpg
 ```
 
+**在 out109 上构建发布（推荐）**：编译链是 Vite + uni-app + miniprogram-ci 的多进程 Node 工具链，本地峰值内存可达数 GB；out109 内存充裕，push 代码后远程构建发布即可。环境已一次性配好（bun、node 22、`.env.ci.local`、上传私钥），一条命令从本地触发：
+
+```bash
+ssh out109 "cd /home/wangrui/projects/registration_system_repo \
+  && git pull --ff-only \
+  && cd registration_system_mini \
+  && export PATH=\$HOME/.local/bin:\$HOME/.bun/bin:\$PATH \
+  && bun install \
+  && bun run mp:release -- --desc '本次变更说明'"
+```
+
+（交互式登录 out109 时 PATH 已在 `.zshrc` 配好，无需 export。版本号登记以数据库为权威，本地/服务器交替构建结果一致。）
+
 **robot 双轨约定**：`robot=1` 日常开发版本，随便传互不影响；`robot=2` 是体验版专用线——首次用 robot=2 上传后，需在公众平台「版本管理 → 开发版本」对该版本点一次「选为体验版」，之后每次 robot=2 上传的新代码会自动成为体验版内容，无需再手动操作。robot=1 的上传不会影响体验版。
 
 流程细节（`scripts/mini-ci.mjs` + `scripts/sync-manifest-version.mjs`）：
