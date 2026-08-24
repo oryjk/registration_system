@@ -443,9 +443,15 @@ function startCountdownTimer() {
   }, 1000);
 }
 
+// 浮动登录条在本页登录成功后只广播事件；详情页自己监听并重载，游客视图才会切换回登录态。
+function handleSessionLoginCompleted() {
+  void loadPageData();
+}
+
 onLoad((options) => {
   challengeId.value = options?.id ?? "";
   startCountdownTimer();
+  uni.$on("session:login-completed", handleSessionLoginCompleted);
   void loadPageData();
 });
 
@@ -454,6 +460,7 @@ onUnload(() => {
     clearInterval(countdownTimer);
     countdownTimer = null;
   }
+  uni.$off("session:login-completed", handleSessionLoginCompleted);
 });
 
 onShareAppMessage(() => ({

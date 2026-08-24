@@ -4,7 +4,6 @@ import { MATCH_API_ID_PATTERN, loadAuthenticatedMatchDetailContext, loadPublicMa
 import { useMatchRegistrationPayment } from "./useMatchRegistrationPayment";
 import { useCurrentLocation } from "@/stores/currentLocation";
 import { useTeamContext } from "@/stores/teamContext";
-import { resumeSessionBootstrap } from "@/stores/appSession";
 import { canShowTeamRegistrationTab } from "./registrationVisibility";
 import { hasManualLogout } from "@/utils/authStorage";
 import type {
@@ -35,6 +34,7 @@ import {
   resolveRegistrationWindow,
 } from "./detailState";
 import { useMatchRegistration } from "./useMatchRegistration";
+import { useMatchGuestLogin } from "./useMatchGuestLogin";
 import { useMatchCheckInReview } from "./useMatchCheckInReview";
 import { useMatchSettlement } from "./useMatchSettlement";
 import { useMatchFinish } from "./useMatchFinish";
@@ -42,7 +42,7 @@ import { useNeoConfirmDialog } from "@/components/neo";
 import type { NeoConfirmDialogOptions } from "@/components/neo";
 
 export function useMatchDetailPage() {
-  const { currentTeam, currentUser, ensureSessionReady, refreshSessionContext } = useTeamContext();
+  const { currentTeam, currentUser, ensureSessionReady } = useTeamContext();
   const { ensureCurrentLocation } = useCurrentLocation();
   const {
     confirmDialogVisible,
@@ -74,7 +74,6 @@ export function useMatchDetailPage() {
   const nowTick = ref(Date.now());
   const teamRegistrationCount = ref(5);
   const isGuestMode = ref(false);
-  const isGuestLoginSubmitting = ref(false);
   const isMatchApiDetail = ref(false);
   const registrationGroupId = ref("");
   const preferredRegistrationGroupId = ref("");
@@ -313,34 +312,11 @@ export function useMatchDetailPage() {
     return openConfirmDialog(options);
   }
 
-  function getCurrentPageRoute() {
-    const pages = getCurrentPages();
-    const currentPage = pages[pages.length - 1];
-    return currentPage?.route ? `/${currentPage.route}` : "";
-  }
-
-  async function handleGuestLogin() {
-    if (isGuestLoginSubmitting.value) return;
-
-    isGuestLoginSubmitting.value = true;
-    const fromRoute = getCurrentPageRoute();
-    resumeSessionBootstrap();
-    uni.showLoading({ title: "登录中...", mask: true });
-    try {
-      await refreshSessionContext();
-      uni.$emit("session:login-completed", { fromRoute });
-      if (!currentUser.value || !currentTeam.value) {
-        uni.switchTab({ url: "/pages/user/index" });
-        return;
-      }
-      await loadPageData();
-    } catch (_error) {
-      uni.switchTab({ url: "/pages/user/index" });
-    } finally {
-      uni.hideLoading();
-      isGuestLoginSubmitting.value = false;
-    }
-  }
+  const {
+    isGuestLoginSubmitting,
+    handleGuestLogin,
+    handleSessionLoginCompleted,
+  } = useMatchGuestLogin({ reload: loadPageData });
 
   const {
     checkInForm,
@@ -529,6 +505,7 @@ export function useMatchDetailPage() {
     matchId.value = options?.id ?? "";
     preferredRegistrationGroupId.value = options?.groupId ?? "";
     startCountdownTimer();
+    uni.$on("session:login-completed", handleSessionLoginCompleted);
     void loadPageData();
   });
 
@@ -537,6 +514,7 @@ export function useMatchDetailPage() {
       clearInterval(countdownTimer);
       countdownTimer = null;
     }
+    uni.$off("session:login-completed", handleSessionLoginCompleted);
   });
 
   return {

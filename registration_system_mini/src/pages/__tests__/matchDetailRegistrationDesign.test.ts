@@ -14,6 +14,7 @@ function sourceFile(path: string) {
 async function matchDetailLogicSource() {
   const paths = [
     "pages/matches/useMatchDetailPage.ts",
+    "pages/matches/useMatchGuestLogin.ts",
     "pages/matches/useMatchRegistration.ts",
     "pages/matches/useMatchCheckInReview.ts",
     "pages/matches/useMatchSettlement.ts",
