@@ -6,7 +6,8 @@ import { loadAllMyMatches } from "./myMatchesData";
 import { useNotificationCenter } from "@/stores/notificationCenter";
 import { useTeamContext } from "@/stores/teamContext";
 import { useMiniReviewStatus } from "@/stores/miniReview";
-import { clearSession } from "@/stores/appSession";
+import { clearSession, resetLocalSession } from "@/stores/appSession";
+import { useNeoConfirmDialog } from "@/components/neo";
 import { PRODUCT_OWNER_USER_ID } from "@/config/productOwner";
 import { hasManualLogout } from "@/utils/authStorage";
 import { getCustomNavMetrics } from "@/utils/customNav";
@@ -27,6 +28,14 @@ export function useMinePage() {
   } = useTeamContext();
   const { shouldHideCreationEntrances } = useMiniReviewStatus();
   const { setUnreadCount } = useNotificationCenter();
+  const {
+    confirmDialogVisible,
+    confirmDialogState,
+    confirm,
+    handleConfirmPrimary,
+    handleConfirmSecondary,
+    handleConfirmClose,
+  } = useNeoConfirmDialog();
   const navMetrics = getCustomNavMetrics();
 
   const isLoading = ref(false);
@@ -211,17 +220,8 @@ export function useMinePage() {
     uni.navigateTo({ url: "/pages/billing/index" });
   }
 
-  function confirmDialog(options: { title: string; content: string }): Promise<boolean> {
-    return new Promise((resolve) => {
-      uni.showModal({
-        title: options.title,
-        content: options.content,
-        confirmText: "确认",
-        cancelText: "取消",
-        success: (result) => resolve(!!result.confirm),
-        fail: () => resolve(false),
-      });
-    });
+  function confirmDialog(options: { title: string; content: string; confirmText?: string; danger?: boolean }): Promise<boolean> {
+    return confirm(options);
   }
 
   async function handleLogin() {
@@ -245,11 +245,38 @@ export function useMinePage() {
     const confirmed = await confirmDialog({
       title: "退出登录",
       content: "退出后会清空本地会话，需要你手动再次点击顶部卡片重新登录。",
-    });
-    if (!confirmed) return;
+    });    if (!confirmed) return;
     clearSession();
     resetPageState();
     uni.showToast({ title: "已退出登录", icon: "none" });
+  }
+
+  // 清空本机数据兜底：清掉登录态与本地偏好后原地静默重建会话（微信登录无感）。
+  async function handleClearLocalData() {
+    const confirmed = await confirmDialog({
+      title: "清空本机数据",
+      content: "将清除登录态与本地偏好（当前球队、身份选择），随后自动重新登录。遇到页面异常、数据错乱等疑难问题时使用。",
+      confirmText: "清空并重登",
+      danger: true,
+    });
+    if (!confirmed) return;
+
+    uni.showLoading({ title: "重置中...", mask: true });
+    try {
+      resetLocalSession();
+      await refreshSessionContext();
+      await loadPageData();
+      uni.showToast({ title: "已重置本机数据", icon: "none" });
+    } catch (error) {
+      // 重置本身已完成；重建失败时回到未登录视图，可点顶部卡片重试。
+      uni.showToast({
+        title: error instanceof Error ? error.message : "已重置，恢复登录失败，请点击顶部卡片登录",
+        icon: "none",
+        duration: 3000,
+      });
+    } finally {
+      uni.hideLoading();
+    }
   }
 
 
@@ -269,12 +296,18 @@ export function useMinePage() {
     mineStats,
     walletSummary,
     settingsEntryVisible,
+    confirmDialogVisible,
+    confirmDialogState,
+    handleConfirmPrimary,
+    handleConfirmSecondary,
+    handleConfirmClose,
     loadPageData,
     handleEditProfile,
     handleCompleteProfile,
     openSettings,
     handleLogin,
     handleLogout,
+    handleClearLocalData,
     handleSwitchTeam,
     openTeamManage,
     openUserMatches,

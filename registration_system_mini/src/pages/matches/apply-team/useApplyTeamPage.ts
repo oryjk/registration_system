@@ -3,6 +3,7 @@ import { onLoad, onUnload } from "@dcloudio/uni-app";
 import { getMatchDetail } from "@/api/match";
 import { applyTeamMatch, listTeamApplications, withdrawTeamApplication } from "@/api/teamApplication";
 import { useTeamContext } from "@/stores/teamContext";
+import { useNeoConfirmDialog } from "@/components/neo";
 import type { AppMatchDetailResponse, AppTeamApplication } from "@/types/match";
 import { resolveRegistrationWindow } from "@/utils/registrationWindow";
 
@@ -10,6 +11,14 @@ export type ApplyTeamPhase = "loading" | "error" | "ready" | "submitted";
 
 export function useApplyTeamPage(matchId: Ref<string>) {
   const { currentTeam } = useTeamContext();
+  const {
+    confirmDialogVisible,
+    confirmDialogState,
+    confirm,
+    handleConfirmPrimary,
+    handleConfirmSecondary,
+    handleConfirmClose,
+  } = useNeoConfirmDialog();
 
   const isLoading = ref(false);
   const errorMessage = ref("");
@@ -124,15 +133,12 @@ export function useApplyTeamPage(matchId: Ref<string>) {
       return;
     }
 
-    const confirmed = await new Promise<boolean>((resolve) => {
-      uni.showModal({
-        title: "确认撤回申请",
-        content: "撤回后可以重新提交接约申请。",
-        confirmText: "撤回申请",
-        cancelText: "再想想",
-        success: (result) => resolve(!!result.confirm),
-        fail: () => resolve(false),
-      });
+    const confirmed = await confirm({
+      title: "确认撤回申请",
+      content: "撤回后可以重新提交接约申请。",
+      confirmText: "撤回申请",
+      cancelText: "再想想",
+      danger: true,
     });
     if (!confirmed) return;
 
@@ -163,6 +169,11 @@ export function useApplyTeamPage(matchId: Ref<string>) {
     introduction,
     isSubmitting,
     isWithdrawing,
+    confirmDialogVisible,
+    confirmDialogState,
+    handleConfirmPrimary,
+    handleConfirmSecondary,
+    handleConfirmClose,
     teamName,
     canManageTeam,
     isRecruitingTeamMatch,

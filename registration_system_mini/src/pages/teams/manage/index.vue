@@ -70,6 +70,11 @@ const {
   handleUpdateTeamProfile,
   handleUpdateJoinPassword,
   handleClearJoinPassword,
+  joinPasswordDialogVisible,
+  joinPasswordDialogState,
+  handleJoinPasswordPrimary,
+  handleJoinPasswordSecondary,
+  handleJoinPasswordClose,
   canDissolveTeam,
   dissolveDialogVisible,
   dissolveDialogState,
@@ -225,6 +230,19 @@ function handleGoBack() {
       :attendance-status-label="attendanceStatusLabel"
       @close="closeAttendancePopup"
       @toggle-year="toggleAttendanceYear"
+    />
+
+    <NeoConfirmDialog
+      :visible="joinPasswordDialogVisible"
+      :title="joinPasswordDialogState.title"
+      :message="joinPasswordDialogState.message"
+      :highlight="joinPasswordDialogState.highlight"
+      :primary-text="joinPasswordDialogState.primaryText"
+      :secondary-text="joinPasswordDialogState.secondaryText"
+      :primary-tone="joinPasswordDialogState.primaryTone"
+      @primary="handleJoinPasswordPrimary"
+      @secondary="handleJoinPasswordSecondary"
+      @close="handleJoinPasswordClose"
     />
 
     <NeoConfirmDialog

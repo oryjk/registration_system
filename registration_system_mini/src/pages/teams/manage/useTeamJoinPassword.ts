@@ -1,5 +1,6 @@
 import { computed, reactive, ref, type ComputedRef, type Ref } from "vue";
 import type { TeamProfileViewModel } from "@/types/viewModels";
+import { useNeoConfirmDialog } from "@/components/neo";
 import { checkTeamRequiresPassword } from "../teamSelfActions";
 import { updateJoinPasswordFromForm } from "./teamManageActions";
 
@@ -10,6 +11,14 @@ interface TeamJoinPasswordDependencies {
 
 // 队长/领队设置、更换、清除入队密码；保存成功后刷新当前状态并清空输入。
 export function useTeamJoinPassword({ currentTeam, submitting }: TeamJoinPasswordDependencies) {
+  const {
+    confirmDialogVisible: joinPasswordDialogVisible,
+    confirmDialogState: joinPasswordDialogState,
+    confirm,
+    handleConfirmPrimary: handleJoinPasswordPrimary,
+    handleConfirmSecondary: handleJoinPasswordSecondary,
+    handleConfirmClose: handleJoinPasswordClose,
+  } = useNeoConfirmDialog();
   const joinPasswordForm = reactive({ password: "" });
   const requiresPassword = ref(false);
   const canSubmitJoinPassword = computed(() => !submitting.value);
@@ -42,16 +51,16 @@ export function useTeamJoinPassword({ currentTeam, submitting }: TeamJoinPasswor
     }
   }
 
-  function handleClearJoinPassword() {
+  async function handleClearJoinPassword() {
     if (!currentTeam.value || submitting.value) return;
-    uni.showModal({
+    const confirmed = await confirm({
       title: "清除入队密码",
       content: "清除后任何人搜索到球队即可直接加入，确定继续吗？",
       confirmText: "清除",
-      success: (result) => {
-        if (result.confirm) void doClearJoinPassword();
-      },
+      cancelText: "再想想",
+      danger: true,
     });
+    if (confirmed) await doClearJoinPassword();
   }
 
   async function doClearJoinPassword() {
@@ -72,8 +81,13 @@ export function useTeamJoinPassword({ currentTeam, submitting }: TeamJoinPasswor
     joinPasswordForm,
     requiresPassword,
     canSubmitJoinPassword,
+    joinPasswordDialogVisible,
+    joinPasswordDialogState,
     syncJoinPasswordStatus,
     handleUpdateJoinPassword,
     handleClearJoinPassword,
+    handleJoinPasswordPrimary,
+    handleJoinPasswordSecondary,
+    handleJoinPasswordClose,
   };
 }

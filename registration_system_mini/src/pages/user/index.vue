@@ -2,6 +2,7 @@
 import { onLoad, onShow, onUnload } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
 import BottomTabBar from "@/components/BottomTabBar.vue";
+import NeoConfirmDialog from "@/components/neo/NeoConfirmDialog.vue";
 import MineProfileHero from "./components/MineProfileHero.vue";
 import MineTeamIdentityPanel from "./components/MineTeamIdentityPanel.vue";
 import MineStatsGrid from "./components/MineStatsGrid.vue";
@@ -26,12 +27,18 @@ const {
   mineStats,
   walletSummary,
   settingsEntryVisible,
+  confirmDialogVisible,
+  confirmDialogState,
+  handleConfirmPrimary,
+  handleConfirmSecondary,
+  handleConfirmClose,
   loadPageData,
   handleEditProfile,
   handleCompleteProfile,
   openSettings,
   handleLogin,
   handleLogout,
+  handleClearLocalData,
   handleSwitchTeam,
   openTeamManage,
   openUserMatches,
@@ -129,9 +136,33 @@ onUnload(() => {
             <text class="mine-settings-entry__arrow">›</text>
           </view>
         </template>
+
+        <!-- 清空本机数据：用户自助的疑难杂症兜底，登录/未登录都可见。 -->
+        <view
+          class="mine-settings-entry"
+          hover-class="mine-settings-entry--pressed"
+          :hover-stay-time="100"
+          @click="handleClearLocalData"
+        >
+          <text class="mine-settings-entry__label mine-settings-entry__label--danger">清空本机数据</text>
+          <text class="mine-settings-entry__arrow">›</text>
+        </view>
       </template>
 
       <view class="mine-bottom-spacer" />
+
+      <NeoConfirmDialog
+        :visible="confirmDialogVisible"
+        :title="confirmDialogState.title"
+        :message="confirmDialogState.message"
+        :highlight="confirmDialogState.highlight"
+        :primary-text="confirmDialogState.primaryText"
+        :secondary-text="confirmDialogState.secondaryText"
+        :primary-tone="confirmDialogState.primaryTone"
+        @primary="handleConfirmPrimary"
+        @secondary="handleConfirmSecondary"
+        @close="handleConfirmClose"
+      />
       <BottomTabBar current="mine" />
     </view>
   </view>
@@ -210,6 +241,11 @@ onUnload(() => {
   color: var(--neo-color-text);
   font-size: 28rpx;
   font-weight: 900;
+}
+
+/* 清空本机数据属破坏性操作，标签用 danger 色与普通入口区分。 */
+.mine-settings-entry__label--danger {
+  color: var(--neo-color-danger);
 }
 
 .mine-settings-entry__arrow {

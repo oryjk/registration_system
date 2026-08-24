@@ -52,6 +52,7 @@ const {
   pendingPaymentFeeLabel,
   submittingPayment,
   handlePayRegistration,
+  confirmRegistrationAction,
   confirmDialogVisible,
   confirmDialogState,
   handleConfirmPrimary,
@@ -133,7 +134,7 @@ const {
   loadErrorMessage: applicationsError,
   canManageApplications,
   selectOpponent: selectMatchOpponent,
-} = useMatchTeamApplications(sourceMatch, loadPageData);
+} = useMatchTeamApplications(sourceMatch, loadPageData, confirmRegistrationAction);
 
 const registrationModeOptions = computed(() => [
   { label: "个人报名", value: "individual" },

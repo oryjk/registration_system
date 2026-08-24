@@ -308,6 +308,14 @@ export function resumeSessionBootstrap() {
   clearManualLogout();
 }
 
+/** 清空本机登录态与偏好并复位内存会话：「我的」页「清空本机数据」的疑难杂症兜底入口。 */
+export function resetLocalSession() {
+  sessionVersion += 1;
+  clearLocalSessionStorage();
+  clearManualLogout();
+  resetSessionState();
+}
+
 export function useAppSession() {
   function switchTeam(teamId: number) {
     if (!teamProfiles.value.some((item) => item.id === teamId)) {

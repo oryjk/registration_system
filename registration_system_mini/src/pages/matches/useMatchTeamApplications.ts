@@ -1,6 +1,7 @@
 import { computed, ref, watch, type Ref } from "vue";
 import { listTeamApplications, selectTeamApplication } from "@/api/teamApplication";
 import { useTeamContext } from "@/stores/teamContext";
+import type { NeoConfirmDialogOptions } from "@/components/neo";
 import type { AppMatchSummary, AppTeamApplication } from "@/types/match";
 
 /**
@@ -13,6 +14,7 @@ import type { AppMatchSummary, AppTeamApplication } from "@/types/match";
 export function useMatchTeamApplications(
   sourceMatch: Ref<unknown>,
   reloadMatch: () => Promise<void> | void,
+  confirm: (options: NeoConfirmDialogOptions) => Promise<boolean>,
 ) {
   const { currentTeam } = useTeamContext();
 
@@ -61,15 +63,12 @@ export function useMatchTeamApplications(
   async function selectOpponent(application: AppTeamApplication) {
     if (isSelecting.value || application.status !== "pending") return;
 
-    const confirmed = await new Promise<boolean>((resolve) => {
-      uni.showModal({
-        title: "确认选择对手",
-        content: `确定选择「${application.applicant_team_name || "该球队"}」作为对手？其余申请将自动婉拒。`,
-        confirmText: "选为对手",
-        cancelText: "再想想",
-        success: (result) => resolve(!!result.confirm),
-        fail: () => resolve(false),
-      });
+    const confirmed = await confirm({
+      title: "确认选择对手",
+      content: `确定选择「${application.applicant_team_name || "该球队"}」作为对手？其余申请将自动婉拒。`,
+      highlight: application.applicant_team_name || undefined,
+      confirmText: "选为对手",
+      cancelText: "再想想",
     });
     if (!confirmed || !recruitingMatchId.value) return;
 

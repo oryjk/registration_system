@@ -414,7 +414,7 @@ describe("match detail registration design", () => {
     expect(detailData.includes("sourceMatch: matchDetail.match")).toEqual(true);
     expect(detailData.includes("sourceMatch: null")).toEqual(true);
     expect(pageLogic.includes("sourceMatch.value = publicData.sourceMatch")).toEqual(true);
-    expect(detailPage.includes("useMatchTeamApplications(sourceMatch, loadPageData)")).toEqual(true);
+    expect(detailPage.includes("useMatchTeamApplications(sourceMatch, loadPageData, confirmRegistrationAction)")).toEqual(true);
     expect(applications.includes("isRecruitingTeamMatchSource(sourceMatch.value)")).toEqual(true);
   });
 

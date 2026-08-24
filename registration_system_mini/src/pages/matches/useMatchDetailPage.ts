@@ -554,6 +554,7 @@ export function useMatchDetailPage() {
     pendingPaymentFeeLabel,
     submittingPayment,
     handlePayRegistration: payRegistrationFee,
+    confirmRegistrationAction,
     confirmDialogVisible,
     confirmDialogState,
     handleConfirmPrimary,

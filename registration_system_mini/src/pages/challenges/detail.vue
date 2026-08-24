@@ -2,6 +2,8 @@
 import { computed, ref } from "vue";
 import { onLoad, onShareAppMessage, onShareTimeline, onUnload } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
+import NeoConfirmDialog from "@/components/neo/NeoConfirmDialog.vue";
+import { useNeoConfirmDialog } from "@/components/neo";
 import { acceptChallenge, cancelChallenge, cancelIndividualChallengeAcceptance, getChallengeDetail } from "@/api/challenge";
 import { createChallengeIndividualPaymentOrder, syncPaymentOrderStatus } from "@/api/payment";
 import { useTeamContext } from "@/stores/teamContext";
@@ -22,6 +24,14 @@ import { buildIndividualParticipantPreview } from "./detailState";
 import { formatCountdown } from "../matches/detailState";
 
 const { currentTeam, currentUser, ensureSessionReady } = useTeamContext();
+const {
+  confirmDialogVisible,
+  confirmDialogState,
+  confirm,
+  handleConfirmPrimary,
+  handleConfirmSecondary,
+  handleConfirmClose,
+} = useNeoConfirmDialog();
 const navMetrics = getCustomNavMetrics();
 const canUseOpenLocation = isOpenLocationSupported(getAppPlatform());
 
@@ -278,18 +288,15 @@ function applyCancelledIndividualAcceptanceDetail(challenge: BackendChallenge) {
 async function handleAccept() {
   if (!card.value || !canAccept.value || actionLoading.value) return;
 
-  const confirmed = await new Promise<boolean>((resolve) => {
-    uni.showModal({
-      title: card.value?.kind === "team" ? "确认接约" : "确认报名",
-      content:
-        card.value?.kind === "team"
-          ? `确认以当前球队接约「${card.value?.title ?? "约队"}」？`
-          : `确认报名参加「${card.value?.title ?? "散人约球"}」？`,
-      confirmText: card.value?.kind === "team" ? "确认接约" : "确认报名",
-      cancelText: "再想想",
-      success: (result) => resolve(!!result.confirm),
-      fail: () => resolve(false),
-    });
+  const confirmed = await confirm({
+    title: card.value?.kind === "team" ? "确认接约" : "确认报名",
+    content:
+      card.value?.kind === "team"
+        ? `确认以当前球队接约「${card.value?.title ?? "约队"}」？`
+        : `确认报名参加「${card.value?.title ?? "散人约球"}」？`,
+    highlight: card.value?.title,
+    confirmText: card.value?.kind === "team" ? "确认接约" : "确认报名",
+    cancelText: "再想想",
   });
   if (!confirmed) return;
 
@@ -369,32 +376,33 @@ async function handlePayChallenge() {
 async function handleCancelIndividualAcceptance() {
   if (!canCancelIndividualAcceptance.value || actionLoading.value) return;
 
-  uni.showModal({
+  const confirmed = await confirm({
     title: "确认取消报名",
     content: `确认取消「${card.value?.title ?? "散人约球"}」的报名？取消后可重新报名。`,
+    highlight: card.value?.title,
     confirmText: "取消报名",
     cancelText: "再想想",
-    success: async (result) => {
-      if (!result.confirm) return;
-      actionLoading.value = true;
-      try {
-        const challenge = await cancelIndividualChallengeAcceptance(challengeId.value);
-        applyCancelledIndividualAcceptanceDetail(challenge);
-        uni.$emit("home:data-may-changed");
-        uni.showToast({
-          title: "已取消报名",
-          icon: "none",
-        });
-      } catch (error) {
-        uni.showToast({
-          title: error instanceof Error ? error.message : "取消报名失败",
-          icon: "none",
-        });
-      } finally {
-        actionLoading.value = false;
-      }
-    },
+    danger: true,
   });
+  if (!confirmed) return;
+
+  actionLoading.value = true;
+  try {
+    const challenge = await cancelIndividualChallengeAcceptance(challengeId.value);
+    applyCancelledIndividualAcceptanceDetail(challenge);
+    uni.$emit("home:data-may-changed");
+    uni.showToast({
+      title: "已取消报名",
+      icon: "none",
+    });
+  } catch (error) {
+    uni.showToast({
+      title: error instanceof Error ? error.message : "取消报名失败",
+      icon: "none",
+    });
+  } finally {
+    actionLoading.value = false;
+  }
 }
 
 function openActivities() {
@@ -525,6 +533,20 @@ onShareTimeline(() => ({
         />
       </template>
     </view>
+
+    <NeoConfirmDialog
+      :visible="confirmDialogVisible"
+      :title="confirmDialogState.title"
+      :message="confirmDialogState.message"
+      :highlight="confirmDialogState.highlight"
+      :primary-text="confirmDialogState.primaryText"
+      :secondary-text="confirmDialogState.secondaryText"
+      :primary-tone="confirmDialogState.primaryTone"
+      :loading="actionLoading"
+      @primary="handleConfirmPrimary"
+      @secondary="handleConfirmSecondary"
+      @close="handleConfirmClose"
+    />
   </view>
 </template>
 

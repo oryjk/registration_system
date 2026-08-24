@@ -2,6 +2,7 @@
 import { onLoad, onShow } from "@dcloudio/uni-app";
 import { computed, ref } from "vue";
 import AppTabHeader from "@/components/AppTabHeader.vue";
+import NeoConfirmDialog from "@/components/neo/NeoConfirmDialog.vue";
 import ApplyTeamInheritCard from "./components/ApplyTeamInheritCard.vue";
 import ApplyTeamFormCard from "./components/ApplyTeamFormCard.vue";
 import ApplyTeamStatusCard from "./components/ApplyTeamStatusCard.vue";
@@ -17,6 +18,11 @@ const {
   introduction,
   isSubmitting,
   isWithdrawing,
+  confirmDialogVisible,
+  confirmDialogState,
+  handleConfirmPrimary,
+  handleConfirmSecondary,
+  handleConfirmClose,
   teamName,
   canApply,
   canWithdraw,
@@ -91,6 +97,20 @@ onShow(() => {
         />
       </template>
     </view>
+
+    <NeoConfirmDialog
+      :visible="confirmDialogVisible"
+      :title="confirmDialogState.title"
+      :message="confirmDialogState.message"
+      :highlight="confirmDialogState.highlight"
+      :primary-text="confirmDialogState.primaryText"
+      :secondary-text="confirmDialogState.secondaryText"
+      :primary-tone="confirmDialogState.primaryTone"
+      :loading="isWithdrawing"
+      @primary="handleConfirmPrimary"
+      @secondary="handleConfirmSecondary"
+      @close="handleConfirmClose"
+    />
   </view>
 </template>
 
