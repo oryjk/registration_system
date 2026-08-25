@@ -25,7 +25,7 @@ const emit = defineEmits<{
       <view>{{ errorMessage }}</view>
       <view class="other-matches-action">点击重试</view>
     </view>
-    <view v-else-if="isLoading && !hasLoadedOnce" class="other-matches-empty">正在加载其他球队的比赛...</view>
+    <view v-else-if="isLoading && !hasLoadedOnce" class="other-matches-empty">正在加载广场的比赛...</view>
     <template v-else>
       <HomeMatchList
         :matches="matches"
@@ -33,7 +33,7 @@ const emit = defineEmits<{
         :navigating-match-id="navigatingMatchId"
         @match-tap="(match) => emit('matchTap', match)"
       />
-      <view v-if="!matches.length" class="other-matches-empty">暂时没有其他球队的比赛，稍后再来看看。</view>
+      <view v-if="!matches.length" class="other-matches-empty">广场暂时还没有比赛，稍后再来看看。</view>
       <view v-else-if="hasMore" class="other-matches-more" @tap="emit('loadMore')">
         {{ isLoadingMore ? "加载中..." : "加载更多" }}
       </view>

@@ -36,7 +36,7 @@ type HomeContentTab = "mine" | "others";
 
 const homeTabOptions = [
   { label: "我的比赛", value: "mine" },
-  { label: "其他球队", value: "others" },
+  { label: "广场", value: "others" },
 ];
 
 const { themePageStyle } = useAccentTheme();
@@ -98,7 +98,7 @@ function handleHomeTabChange(value: string) {
   const next: HomeContentTab = value === "others" ? "others" : "mine";
   if (next === activeHomeTab.value) return;
   activeHomeTab.value = next;
-  // 切到「其他球队」时首次拉取；guest 模式下不请求。
+  // 切到「广场」时首次拉取；guest 模式下不请求。
   if (next === "others" && !isGuestMode.value && !otherMatches.hasLoadedOnce.value) {
     void otherMatches.loadPage();
   }
@@ -345,7 +345,7 @@ onPullDownRefresh(async () => {
 });
 
 onReachBottom(() => {
-  // 搜索态优先走搜索分页；否则「其他球队」tab 触底加载更多。
+  // 搜索态优先走搜索分页；否则「广场」tab 触底加载更多。
   if (hasSearched.value && activeSearchQuery.value) {
     loadMoreSearchResults();
     return;
@@ -459,7 +459,7 @@ onShareTimeline(() => ({
         </template>
 
         <template v-else-if="!hasSearched && activeHomeTab === 'others'">
-          <view v-if="isGuestMode" class="home-empty home-empty-compact">登录后可以浏览其他球队的比赛，并给队长留言约球。</view>
+          <view v-if="isGuestMode" class="home-empty home-empty-compact">登录后可以浏览广场的比赛，并给队长留言约球。</view>
           <HomeOtherMatchesSection
             v-else
             :matches="otherMatches.matches.value"

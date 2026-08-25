@@ -2,7 +2,7 @@ import { computed, ref } from "vue";
 import type { HomeMatchCardViewModel } from "@/types/viewModels";
 import { buildOtherMatchCards, fetchOtherMatchesPage, OTHER_MATCHES_PAGE_SIZE } from "./otherMatchesState";
 
-/** 首页「其他球队」tab 的加载状态：首次加载、翻页与错误重试。 */
+/** 首页「广场」tab 的加载状态：首次加载、翻页与错误重试。 */
 export function useHomeOtherMatches() {
   const isLoading = ref(false);
   const isLoadingMore = ref(false);
@@ -24,7 +24,7 @@ export function useHomeOtherMatches() {
       total.value = response.total;
       hasLoadedOnce.value = true;
     } catch (error) {
-      errorMessage.value = error instanceof Error ? error.message : "其他球队比赛加载失败";
+      errorMessage.value = error instanceof Error ? error.message : "广场比赛加载失败";
     } finally {
       isLoading.value = false;
     }

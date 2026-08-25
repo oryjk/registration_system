@@ -3,10 +3,10 @@ import type { AppMatchSummary, AppMatchUiPhase } from "@/types/match";
 import type { HomeMatchCardViewModel } from "@/types/viewModels";
 import { resolveMatchPhase, toHomeMatchCard } from "./homeMatchState";
 
-/** 「其他球队」tab：每页拉取的比赛数。 */
+/** 「广场」tab：每页拉取的比赛数。 */
 export const OTHER_MATCHES_PAGE_SIZE = 10;
 
-/** 把「其他球队」列表数据转换成首页比赛卡视图模型（过滤已结束与已取消）。 */
+/** 把「广场」列表数据转换成首页比赛卡视图模型（过滤已结束与已取消）。 */
 export function buildOtherMatchCards(matches: AppMatchSummary[], now = new Date()): HomeMatchCardViewModel[] {
   return matches
     .map((match) => ({ match, phase: resolveMatchPhase(match, now) }))
