@@ -231,7 +231,9 @@ describe("toHomeMatchCard", () => {
     expect(card.phase).toEqual("upcoming");
     expect(card.stage).toEqual("报名中");
     expect(card.stageTone).toEqual("lime");
-    expect(card.statusTone).toEqual("blue");
+    // summary 来源没有我的报名数据：不显示「我的状态」标签，tone 落到 muted。
+    expect(card.myStatus).toEqual(null);
+    expect(card.statusTone).toEqual("muted");
     expect(card.dateNote).toEqual("截止报名");
     expect(card.signupScope).toEqual("external");
     expect(card.signupScopeLabel).toEqual("散人报名");

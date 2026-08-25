@@ -60,7 +60,8 @@ export interface HomeMatchCardViewModel {
   absentPlayers: number;
   latePlayers: number;
   pendingPlayers: number;
-  myStatus: string;
+  /** 我的报名状态；无我方数据的场景（广场/搜索/历史）为 null，卡片不渲染该标签。 */
+  myStatus: string | null;
   highlight: string;
   participantAvatars: Array<{
     userId: number;

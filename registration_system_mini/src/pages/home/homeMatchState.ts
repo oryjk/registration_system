@@ -225,7 +225,8 @@ export function toHomeMatchCard(
     : summaryMatch
       ? phase === "upcoming" && summaryMatch.opponent_state === "recruiting" && summaryMatch.publication_mode !== "offline_confirmed"
       : false;
-  const myStatus = actionMatch ? toMyStatusLabel(actionMatch.group.my_registration_status) : "待定";
+  // 广场/搜索等 summary 来源不含我的报名状态，显示「待定」会误导，置 null 由卡片隐藏。
+  const myStatus: string | null = actionMatch ? toMyStatusLabel(actionMatch.group.my_registration_status) : null;
   let highlight: string;
   let remainingPlayersLabel: string;
   if (actionMatch) {
@@ -271,7 +272,7 @@ export function toHomeMatchCard(
     canOpenDetail: true,
     stage,
     stageTone: toStageTone(phase),
-    statusTone: toStatusTone(myStatus),
+    statusTone: myStatus ? toStatusTone(myStatus) : "muted",
     publicationModeLabel: getMatchPublicationModeLabel(item.publication_mode),
     signupScope,
     signupScopeLabel,
