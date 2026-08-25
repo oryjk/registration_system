@@ -27,7 +27,7 @@ export function useMinePage() {
     refreshSessionContext,
   } = useTeamContext();
   const { shouldHideCreationEntrances } = useMiniReviewStatus();
-  const { setUnreadCount } = useNotificationCenter();
+  const { unreadCount, setUnreadCount, syncUnreadCount } = useNotificationCenter();
   const {
     confirmDialogVisible,
     confirmDialogState,
@@ -167,7 +167,8 @@ export function useMinePage() {
         totalHoursLabel: overview.totalHoursLabel,
       };
       walletSummary.value = overview.walletSummary;
-      setUnreadCount(0);
+      // 未读角标以服务端为准：进入「我的」只同步真实未读数，不再本地清零（清零只发生在消息中心已读/退出登录）。
+      void syncUnreadCount({ skipEnsure: true }).catch(() => {});
       hasLoadedOnce.value = true;
     } catch (error) {
       errorMessage.value = error instanceof Error ? error.message : "个人中心数据加载失败";
@@ -218,6 +219,10 @@ export function useMinePage() {
 
   function openBilling() {
     uni.navigateTo({ url: "/pages/billing/index" });
+  }
+
+  function openNotifications() {
+    uni.navigateTo({ url: "/pages/notifications/index" });
   }
 
   function confirmDialog(options: { title: string; content: string; confirmText?: string; danger?: boolean }): Promise<boolean> {
@@ -313,5 +318,7 @@ export function useMinePage() {
     openUserMatches,
     openMatchDetail,
     openBilling,
+    openNotifications,
+    unreadCount,
   };
 }

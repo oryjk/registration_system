@@ -27,6 +27,8 @@ const props = withDefaults(
     secondaryText?: string;
     primaryTone?: NeoConfirmDialogTone;
     loading?: boolean;
+    /** 额外禁用主按钮（如表单未填完），loading 时始终禁用。 */
+    primaryDisabled?: boolean;
   }>(),
   {
     message: "",
@@ -41,6 +43,7 @@ const props = withDefaults(
     secondaryText: "再想想",
     primaryTone: "accent",
     loading: false,
+    primaryDisabled: false,
   },
 );
 
@@ -142,6 +145,8 @@ function handleClose() {
           {{ imageCaption }}
         </text>
       </template>
+      <!-- 自定义内容插槽（如密码输入等轻量表单），位于正文与按钮之间。 -->
+      <slot />
       <view :class="['neo-confirm-dialog-actions', secondaryText ? '' : 'neo-confirm-dialog-actions-single']">
         <NeoButton v-if="secondaryText" variant="outline" block :disabled="loading" @click="handleSecondary">
           {{ secondaryText }}
@@ -150,7 +155,7 @@ function handleClose() {
           :variant="primaryTone === 'danger' ? 'danger' : 'lime'"
           block
           :loading="loading"
-          :disabled="loading"
+          :disabled="loading || primaryDisabled"
           @click="emit('primary')"
         >
           {{ loading ? "提交中..." : primaryText }}

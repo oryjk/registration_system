@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import NeoButton from "@/components/neo/NeoButton.vue";
+import NeoConfirmDialog from "@/components/neo/NeoConfirmDialog.vue";
 import NeoSurface from "@/components/neo/NeoSurface.vue";
 import type { AppMatchCaptain } from "@/types/match";
 
@@ -19,12 +20,7 @@ const emit = defineEmits<{
   (event: "submit"): void;
 }>();
 
-const visible = computed({
-  get: () => props.popupVisible,
-  set: (value: boolean) => {
-    if (!value) emit("close");
-  },
-});
+const captainName = computed(() => props.captain.nickname || "队长");
 
 </script>
 
@@ -43,39 +39,28 @@ const visible = computed({
     </view>
     <NeoButton size="sm" @click="emit('open')">联系队长</NeoButton>
 
-    <wd-popup
-      v-model="visible"
-      position="bottom"
-      custom-class="captain-message-popup"
-      :close-on-click-modal="!isSubmitting"
-      :z-index="50"
-      safe-area-inset-bottom
-      root-portal
+    <NeoConfirmDialog
+      :visible="popupVisible"
+      :title="`给 ${captainName} 留言`"
+      message="对方会在消息中心收到提醒并可回复你。"
+      primary-text="发送留言"
+      secondary-text=""
+      :loading="isSubmitting"
+      @primary="emit('submit')"
       @close="emit('close')"
     >
-      <view class="captain-sheet">
-        <view class="captain-sheet-header">
-          <view>
-            <text class="captain-sheet-kicker">给 {{ captain.nickname || "队长" }} 留言</text>
-            <text class="captain-sheet-copy">对方会在消息中心收到提醒并可回复你。</text>
-          </view>
-        </view>
-        <view class="captain-sheet-field">
-          <textarea
-            class="captain-textarea"
-            :value="content"
-            placeholder="介绍一下自己：位置、水平、想约的时间等"
-            :maxlength="200"
-            :disabled="isSubmitting"
-            @input="emit('update:content', ($event as any).detail.value)"
-          />
-          <text class="captain-counter">{{ content.length }}/200</text>
-        </view>
-        <NeoButton block :loading="isSubmitting" @click="emit('submit')">
-          {{ isSubmitting ? "发送中..." : "发送留言" }}
-        </NeoButton>
+      <view class="captain-sheet-field">
+        <textarea
+          class="captain-textarea"
+          :value="content"
+          placeholder="介绍一下自己：位置、水平、想约的时间等"
+          :maxlength="200"
+          :disabled="isSubmitting"
+          @input="emit('update:content', ($event as any).detail.value)"
+        />
+        <text class="captain-counter">{{ content.length }}/200</text>
       </view>
-    </wd-popup>
+    </NeoConfirmDialog>
   </NeoSurface>
 </template>
 
@@ -124,32 +109,9 @@ const visible = computed({
   line-height: 1.5;
 }
 
-.captain-sheet {
-  display: flex;
-  flex-direction: column;
-  gap: 24rpx;
-  padding: 32rpx 28rpx calc(28rpx + env(safe-area-inset-bottom));
-  background: var(--neo-color-surface);
-  border-radius: 32rpx 32rpx 0 0;
-}
-
-.captain-sheet-kicker {
-  display: block;
-  font-size: 32rpx;
-  font-weight: 900;
-  color: var(--neo-color-text);
-}
-
-.captain-sheet-copy {
-  display: block;
-  margin-top: 6rpx;
-  font-size: 24rpx;
-  font-weight: 700;
-  color: var(--neo-color-text-muted);
-}
-
 .captain-sheet-field {
   position: relative;
+  margin-top: 26rpx;
 }
 
 .captain-textarea {

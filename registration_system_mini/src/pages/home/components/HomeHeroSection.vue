@@ -3,16 +3,30 @@ import { computed } from "vue";
 import NeoSurface from "@/components/neo/NeoSurface.vue";
 import { defaultMiniAppRuntimeConfig } from "@/config/runtimeConfig";
 import type { BackendMiniAppHomeHeroBanner } from "@/types/backend";
+import type { HomeMatchCardViewModel } from "@/types/viewModels";
+import { parseDateValue } from "@/utils/datetime";
 
-const props = defineProps<{
-  heroBanners: BackendMiniAppHomeHeroBanner[];
-}>();
+const props = withDefaults(
+  defineProps<{
+    heroBanners: BackendMiniAppHomeHeroBanner[];
+    /** 有最近要处理的比赛时，banner 位替换为「下一场比赛」动态卡；为空回退品牌 banner。 */
+    nextMatch?: HomeMatchCardViewModel | null;
+  }>(),
+  {
+    nextMatch: null,
+  },
+);
 
 const emit = defineEmits<{
   (event: "bannerTap"): void;
+  (event: "matchTap", match: HomeMatchCardViewModel): void;
 }>();
 
-function handleBannerTap() {
+function handlePress() {
+  if (props.nextMatch) {
+    emit("matchTap", props.nextMatch);
+    return;
+  }
   emit("bannerTap");
 }
 
@@ -22,6 +36,24 @@ const visibleHeroBanners = computed(() => {
     .sort((left, right) => left.sort_order - right.sort_order);
   return banners.length > 0 ? banners : defaultMiniAppRuntimeConfig.home.hero_banners;
 });
+
+const nextMatchCountdown = computed(() => {
+  const match = props.nextMatch;
+  if (!match?.dateSource) return "";
+  const diffMs = parseDateValue(match.dateSource).getTime() - Date.now();
+  if (diffMs <= 0) return "即将开始";
+  const days = Math.floor(diffMs / 86_400_000);
+  if (days < 1) return "今天";
+  if (days < 2) return "明天";
+  return `${days} 天后`;
+});
+
+const nextMatchMeta = computed(() => {
+  const match = props.nextMatch;
+  if (!match) return "";
+  const venue = match.venue?.trim() || "地点待定";
+  return `${match.dateLabel} · ${venue} · 对手 ${match.opponent}`;
+});
 </script>
 
 <template>
@@ -30,10 +62,24 @@ const visibleHeroBanners = computed(() => {
     variant="raised"
     interactive
     flush
-    @press="handleBannerTap"
+    @press="handlePress"
   >
+    <!-- 有最近要处理的比赛时，品牌 banner 让位给「下一场比赛」动态卡。 -->
+    <view v-if="nextMatch" class="home-banner home-nextmatch">
+      <view class="home-nextmatch-copy">
+        <text class="home-nextmatch-kicker">下一场比赛{{ nextMatchCountdown ? ` · ${nextMatchCountdown}` : "" }}</text>
+        <text class="home-nextmatch-title">{{ nextMatch.title }}</text>
+        <text class="home-nextmatch-meta">{{ nextMatchMeta }}</text>
+        <view class="home-nextmatch-row">
+          <text v-if="nextMatch.myStatus" class="home-nextmatch-status">我的状态：{{ nextMatch.myStatus }}</text>
+          <view class="home-banner-button home-nextmatch-button">{{ nextMatch.actionLabel }}</view>
+        </view>
+      </view>
+      <view class="home-banner-ball home-nextmatch-ball" />
+    </view>
+
     <swiper
-      v-if="visibleHeroBanners.length > 1"
+      v-else-if="visibleHeroBanners.length > 1"
       class="home-banner-swiper"
       circular
       autoplay
@@ -222,5 +268,73 @@ const visibleHeroBanners = computed(() => {
     radial-gradient(circle at 35% 35%, #ffffff 0%, #f4f2ea 38%, #1c231d 39%, #1c231d 48%, #e6e4dc 49%, #ffffff 62%, #d6d6d0 100%);
   box-shadow: inset -16rpx -18rpx 30rpx rgba(0, 0, 0, 0.18);
   transform: rotate(-18deg);
+}
+
+/* 「下一场比赛」动态卡：沿用 banner 深色底与网格，右侧足球缩小让位给文案。 */
+.home-nextmatch {
+  min-height: 208rpx;
+}
+
+.home-nextmatch-copy {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  padding-right: 150rpx;
+  box-sizing: border-box;
+}
+
+.home-nextmatch-kicker {
+  color: var(--neo-color-hero-fg);
+  font-size: 24rpx;
+  font-weight: 800;
+  opacity: 0.8;
+}
+
+.home-nextmatch-title {
+  margin-top: 10rpx;
+  color: var(--neo-color-hero-fg);
+  font-size: 44rpx;
+  line-height: 1.15;
+  font-weight: 900;
+}
+
+.home-nextmatch-meta {
+  margin-top: 10rpx;
+  color: var(--neo-color-hero-fg);
+  font-size: 24rpx;
+  font-weight: 700;
+  opacity: 0.85;
+}
+
+.home-nextmatch-row {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-top: 20rpx;
+}
+
+.home-nextmatch-status {
+  padding: 8rpx 14rpx;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-surface);
+  color: var(--neo-color-text);
+  font-size: 22rpx;
+  font-weight: 800;
+}
+
+.home-nextmatch-button {
+  margin-top: 0;
+}
+
+.home-nextmatch-ball {
+  top: 18rpx;
+  right: 20rpx;
+  bottom: auto;
+  width: 110rpx;
+  height: 110rpx;
 }
 </style>
