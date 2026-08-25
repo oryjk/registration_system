@@ -21,6 +21,8 @@ type AppTeamManageCommands interface {
 	RemoveMember(context.Context, sharedauth.Actor, int64, int64) error
 	// DeleteTeam 解散球队：仅队长本人可操作。
 	DeleteTeam(context.Context, sharedauth.Actor, int64) error
+	// DissolveBlockers 查询阻止球队解散的进行中引用，供小程序展示处理入口。
+	DissolveBlockers(context.Context, sharedauth.Actor, int64) (domain.DissolveBlockers, error)
 }
 
 type AppManageHandler struct {
@@ -37,6 +39,7 @@ func (h *AppManageHandler) RegisterRoutes(group *gin.RouterGroup) {
 	group.POST("/teams/:id/members", h.AddMember)
 	group.PATCH("/teams/:id/members/:user_id", h.UpdateMember)
 	group.DELETE("/teams/:id/members/:user_id", h.RemoveMember)
+	group.GET("/teams/:id/dissolve-blockers", h.DissolveBlockers)
 	group.DELETE("/teams/:id", h.DeleteTeam)
 }
 
@@ -147,7 +150,7 @@ func (h *AppManageHandler) RemoveMember(c *gin.Context) {
 	sharedhttpapi.WriteSuccess(c, gin.H{})
 }
 
-// DeleteTeam 解散球队（仅队长）；球队仍被比赛等数据引用时返回 409。
+// DeleteTeam 解散球队（仅队长）；球队仍有进行中的比赛或约队申请时返回 409。
 func (h *AppManageHandler) DeleteTeam(c *gin.Context) {
 	actor, teamID, ok := appActorAndTeamID(c)
 	if !ok {
@@ -158,6 +161,61 @@ func (h *AppManageHandler) DeleteTeam(c *gin.Context) {
 		return
 	}
 	sharedhttpapi.WriteSuccess(c, gin.H{})
+}
+
+// DissolveBlockersResponse 解散球队前的引用校验结果：空列表表示可以解散。
+type DissolveBlockersResponse struct {
+	Matches      []DissolveBlockerMatchResponse   `json:"matches"`
+	Applications []DissolveBlockerApplicationItem `json:"applications"`
+}
+
+type DissolveBlockerMatchResponse struct {
+	ID     string `json:"id"`
+	Name   string `json:"name"`
+	Status string `json:"status"`
+	// IsHost 本队是否为发起方（主队）；只有主队能在比赛详情页收尾/取消比赛。
+	IsHost bool `json:"is_host"`
+}
+
+type DissolveBlockerApplicationItem struct {
+	ID        string `json:"id"`
+	MatchID   string `json:"match_id"`
+	MatchName string `json:"match_name"`
+	Status    string `json:"status"`
+}
+
+// DissolveBlockers 查询阻止解散的进行中引用（仅队长可查）。
+func (h *AppManageHandler) DissolveBlockers(c *gin.Context) {
+	actor, teamID, ok := appActorAndTeamID(c)
+	if !ok {
+		return
+	}
+	blockers, err := h.manage.DissolveBlockers(c.Request.Context(), actor, teamID)
+	if err != nil {
+		sharedhttpapi.WriteError(c, err)
+		return
+	}
+	response := DissolveBlockersResponse{
+		Matches:      make([]DissolveBlockerMatchResponse, 0, len(blockers.Matches)),
+		Applications: make([]DissolveBlockerApplicationItem, 0, len(blockers.Applications)),
+	}
+	for _, match := range blockers.Matches {
+		response.Matches = append(response.Matches, DissolveBlockerMatchResponse{
+			ID:     match.ID.String(),
+			Name:   match.Name,
+			Status: match.Status,
+			IsHost: match.IsHost,
+		})
+	}
+	for _, application := range blockers.Applications {
+		response.Applications = append(response.Applications, DissolveBlockerApplicationItem{
+			ID:        application.ID.String(),
+			MatchID:   application.MatchID.String(),
+			MatchName: application.MatchName,
+			Status:    application.Status,
+		})
+	}
+	sharedhttpapi.WriteSuccess(c, response)
 }
 
 func appActorTeamAndUserID(c *gin.Context) (sharedauth.Actor, int64, int64, bool) {

@@ -54,6 +54,7 @@ interface JoinPasswordFormValues {
 const statusLabels: Record<TeamStatus, string> = {
   active: "已启用",
   frozen: "已冻结",
+  dissolved: "已解散",
 };
 
 function formatDateTime(value: string) {

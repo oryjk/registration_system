@@ -12,7 +12,7 @@ export { default as NeoAvatarStack } from "./NeoAvatarStack.vue";
 export type { NeoButtonSize, NeoButtonVariant } from "./NeoButton.vue";
 export type { NeoConfirmDialogTone } from "./NeoConfirmDialog.vue";
 export { useNeoConfirmDialog } from "./useNeoConfirmDialog";
-export type { NeoConfirmDialogOptions, NeoConfirmDialogState } from "./useNeoConfirmDialog";
+export type { NeoConfirmDialogOptions, NeoConfirmDialogState, NeoConfirmDialogLinkOptions } from "./useNeoConfirmDialog";
 export type { NeoAvatarItem, NeoAvatarSize } from "./NeoAvatarStack.vue";
 export type { NeoSegmentOption } from "./NeoSegmentedControl.vue";
 export type { NeoSurfaceVariant } from "./NeoSurface.vue";

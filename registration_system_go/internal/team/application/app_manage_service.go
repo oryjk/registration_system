@@ -150,23 +150,40 @@ func (s AppManageService) RemoveMember(ctx context.Context, actor sharedauth.Act
 	return nil
 }
 
-// DeleteTeam 解散球队：仅队长本人可操作（领队/副队长不可）。成员随级联删除；
-// 球队仍被比赛/报名组/约队申请/支付订单引用时数据库外键拒绝，映射为 409 提示。
+// DeleteTeam 解散球队：仅队长本人可操作（领队/副队长不可）。
+// 软删除——teams.status 置为 dissolved，保留历史比赛/申请/支付数据的引用；
+// 解散前校验进行中的引用：未结束比赛（主/客队）与进行中约队申请，命中则返回 409。
 func (s AppManageService) DeleteTeam(ctx context.Context, actor sharedauth.Actor, teamID int64) error {
 	if _, err := s.authorizeCaptain(ctx, actor, teamID); err != nil {
 		return err
 	}
-	deleted, err := s.repository.Delete(ctx, teamID)
-	if errors.Is(err, sharederror.ErrConflict) {
-		return sharederror.New(sharederror.KindConflict, "球队已被比赛或申请使用，不能删除")
+	blockers, err := s.repository.FindDissolveBlockers(ctx, teamID)
+	if err != nil {
+		return sharederror.Wrap(sharederror.KindInternal, "查询球队引用失败", err)
 	}
+	if !blockers.IsEmpty() {
+		return sharederror.New(sharederror.KindConflict, "球队仍有进行中的比赛或约队申请，需先处理后再解散")
+	}
+	dissolved, err := s.repository.Dissolve(ctx, teamID)
 	if err != nil {
 		return sharederror.Wrap(sharederror.KindInternal, "解散球队失败", err)
 	}
-	if !deleted {
-		return sharederror.New(sharederror.KindNotFound, "球队不存在")
+	if !dissolved {
+		return sharederror.New(sharederror.KindConflict, "球队不存在或已解散")
 	}
 	return nil
+}
+
+// DissolveBlockers 查询阻止球队解散的进行中引用，供小程序在确认解散前展示处理入口。
+func (s AppManageService) DissolveBlockers(ctx context.Context, actor sharedauth.Actor, teamID int64) (domain.DissolveBlockers, error) {
+	if _, err := s.authorizeCaptain(ctx, actor, teamID); err != nil {
+		return domain.DissolveBlockers{}, err
+	}
+	blockers, err := s.repository.FindDissolveBlockers(ctx, teamID)
+	if err != nil {
+		return domain.DissolveBlockers{}, sharederror.Wrap(sharederror.KindInternal, "查询球队引用失败", err)
+	}
+	return blockers, nil
 }
 
 func (s AppManageService) authorizeManager(ctx context.Context, actor sharedauth.Actor, teamID int64) (domain.Team, error) {
@@ -175,6 +192,10 @@ func (s AppManageService) authorizeManager(ctx context.Context, actor sharedauth
 		return domain.Team{}, sharederror.Wrap(sharederror.KindInternal, "查询球队失败", err)
 	}
 	if !found {
+		return domain.Team{}, sharederror.New(sharederror.KindNotFound, "球队不存在")
+	}
+	// 已解散球队对用户侧管理操作视同不存在。
+	if team.Status == domain.TeamDissolved {
 		return domain.Team{}, sharederror.New(sharederror.KindNotFound, "球队不存在")
 	}
 	if !actor.IsUser() {

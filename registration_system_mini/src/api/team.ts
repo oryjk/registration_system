@@ -154,11 +154,41 @@ export function updateTeam(
   });
 }
 
-/** 解散球队（Go app 侧接口，仅队长本人可操作）；球队仍被比赛等数据引用时后端返回 409。 */
+/** 解散球队（Go app 侧接口，仅队长本人可操作）；仍有进行中的比赛或约队申请时后端返回 409。 */
 export function deleteTeam(teamId: number) {
   return requestApi<void>({
     url: `/teams/${teamId}`,
     method: "DELETE",
+    auth: true,
+  });
+}
+
+/** 阻止球队解散的未结束比赛（本队作为主/客队）。 */
+export interface TeamDissolveBlockerMatch {
+  id: string;
+  name: string;
+  status: string;
+  /** 本队是否为发起方（主队）；只有主队能在比赛详情页收尾/取消比赛。 */
+  is_host: boolean;
+}
+
+/** 阻止球队解散的进行中约队申请（pending/selected），可在接约页撤回。 */
+export interface TeamDissolveBlockerApplication {
+  id: string;
+  match_id: string;
+  match_name: string;
+  status: string;
+}
+
+export interface TeamDissolveBlockers {
+  matches: TeamDissolveBlockerMatch[];
+  applications: TeamDissolveBlockerApplication[];
+}
+
+/** 解散前的引用校验（Go app 侧接口，仅队长本人可查）；两个列表都为空时可以解散。 */
+export function getTeamDissolveBlockers(teamId: number) {
+  return requestApi<TeamDissolveBlockers>({
+    url: `/teams/${teamId}/dissolve-blockers`,
     auth: true,
   });
 }

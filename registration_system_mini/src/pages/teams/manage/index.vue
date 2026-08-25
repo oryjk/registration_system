@@ -84,6 +84,7 @@ const {
   handleDissolvePrimary,
   handleDissolveSecondary,
   handleDissolveClose,
+  handleDissolveLinkItem,
   handleEditMember,
   handleSearchUsers,
   handleCandidateTap,
@@ -258,6 +259,7 @@ const metaPageStyle = computed(() =>
       :title="dissolveDialogState.title"
       :message="dissolveDialogState.message"
       :highlight="dissolveDialogState.highlight"
+      :link-items="dissolveDialogState.links"
       :image-src="dissolveDialogState.imageSrc"
       :primary-text="dissolveDialogState.primaryText"
       :secondary-text="dissolveDialogState.secondaryText"
@@ -265,6 +267,7 @@ const metaPageStyle = computed(() =>
       @primary="handleDissolvePrimary"
       @secondary="handleDissolveSecondary"
       @close="handleDissolveClose"
+      @link-item="handleDissolveLinkItem"
     />
   </view>
 </template>

@@ -1,6 +1,7 @@
 import {
   addTeamMember,
   deleteTeam,
+  getTeamDissolveBlockers,
   getTeamMatchAttendance,
   getTeamMemberAttendance,
   removeTeamMember,
@@ -43,9 +44,14 @@ export function updateJoinPasswordFromForm(teamId: number, joinPassword: string)
   return updateTeamJoinPassword(teamId, joinPassword);
 }
 
-/** 解散球队（仅队长）；被比赛/报名等数据引用时后端以 409 文案拒绝。 */
+/** 解散球队（仅队长）；仍有进行中的比赛或约队申请时后端以 409 文案拒绝。 */
 export function dissolveTeam(teamId: number) {
   return deleteTeam(teamId);
+}
+
+/** 解散前的引用校验（仅队长）：返回未结束比赛与进行中约队申请，为空才可解散。 */
+export function loadTeamDissolveBlockers(teamId: number) {
+  return getTeamDissolveBlockers(teamId);
 }
 
 export function addMemberToTeam(

@@ -20,8 +20,15 @@ export interface NeoConfirmDialogOptions {
   linkText?: string;
   /** 链接片段被点击后的动作（如跳转页面）。 */
   onLink?: () => void;
+  /** message 下方的可点击链接列表（如"去取消约队"）；点击时关闭弹窗并执行对应 onTap。 */
+  links?: NeoConfirmDialogLinkOptions[];
   /** 危险操作（取消报名等）主按钮使用 danger 色调。 */
   danger?: boolean;
+}
+
+export interface NeoConfirmDialogLinkOptions {
+  text: string;
+  onTap: () => void;
 }
 
 export interface NeoConfirmDialogState {
@@ -33,6 +40,7 @@ export interface NeoConfirmDialogState {
   secondImageCaption: string;
   highlight: string;
   linkText: string;
+  links: string[];
   primaryText: string;
   secondaryText: string;
   primaryTone: NeoConfirmDialogTone;
@@ -55,12 +63,14 @@ export function useNeoConfirmDialog() {
     secondImageCaption: "",
     highlight: "",
     linkText: "",
+    links: [],
     primaryText: "确认",
     secondaryText: "再想想",
     primaryTone: "accent",
   });
   let resolver: ((confirmed: boolean) => void) | null = null;
   let linkHandler: (() => void) | null = null;
+  let linkItemHandlers: Array<() => void> = [];
 
   /** 打开弹窗；主按钮 resolve(true)，次要按钮/遮罩/关闭 resolve(false)。 */
   function confirm(options: NeoConfirmDialogOptions): Promise<boolean> {
@@ -76,14 +86,26 @@ export function useNeoConfirmDialog() {
     confirmDialogState.secondImageCaption = options.secondImageCaption ?? "";
     confirmDialogState.highlight = options.highlight ?? "";
     confirmDialogState.linkText = options.linkText ?? "";
+    confirmDialogState.links = (options.links ?? []).map((link) => link.text);
     confirmDialogState.primaryText = options.confirmText ?? "确认";
     confirmDialogState.secondaryText = options.cancelText ?? "再想想";
     confirmDialogState.primaryTone = options.danger ? "danger" : "accent";
     linkHandler = options.onLink ?? null;
+    linkItemHandlers = (options.links ?? []).map((link) => link.onTap);
     confirmDialogVisible.value = true;
     return new Promise<boolean>((resolve) => {
       resolver = resolve;
     });
+  }
+
+  /** 单按钮提示弹窗：用于后端错误提示等只需用户知晓的消息；可附链接列表引导处理。 */
+  function alert(options: {
+    title: string;
+    content: string;
+    confirmText?: string;
+    links?: NeoConfirmDialogLinkOptions[];
+  }) {
+    return confirm({ ...options, confirmText: options.confirmText ?? "知道了", cancelText: "" });
   }
 
   function settle(confirmed: boolean) {
@@ -114,13 +136,23 @@ export function useNeoConfirmDialog() {
     handler?.();
   }
 
+  /** links 列表项点击：关闭弹窗（视同未确认）后执行对应动作。 */
+  function handleConfirmLinkItem(index: number) {
+    if (!confirmDialogVisible.value) return;
+    const handler = linkItemHandlers[index];
+    settle(false);
+    handler?.();
+  }
+
   return {
     confirmDialogVisible,
     confirmDialogState,
     confirm,
+    alert,
     handleConfirmPrimary,
     handleConfirmSecondary,
     handleConfirmClose,
     handleConfirmLink,
+    handleConfirmLinkItem,
   };
 }

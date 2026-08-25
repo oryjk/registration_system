@@ -21,7 +21,12 @@ type AppManageRepository interface {
 	AddMember(context.Context, int64, int64, domain.Role) error
 	UpdateMember(context.Context, int64, int64, domain.Role, domain.MemberStatus) (bool, error)
 	RemoveMember(context.Context, int64, int64) (bool, error)
-	// Delete 删除球队（成员级联删除）；仍被比赛/报名组/约队申请/支付订单引用时
+	// Delete 物理删除球队；仍被比赛/报名组/约队申请/支付订单引用时
 	// 返回 ErrConflict。返回 found=false 表示球队不存在。
 	Delete(context.Context, int64) (bool, error)
+	// Dissolve 用户侧解散球队（软删除）：status 置为 dissolved；
+	// found=false 表示球队不存在或当前状态不可解散。
+	Dissolve(ctx context.Context, teamID int64) (bool, error)
+	// FindDissolveBlockers 查询阻止球队解散的进行中引用（未结束比赛、进行中约队申请）。
+	FindDissolveBlockers(ctx context.Context, teamID int64) (domain.DissolveBlockers, error)
 }

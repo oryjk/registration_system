@@ -269,13 +269,31 @@ paths:
       operationId: deleteAppTeam
       tags: [App Teams]
       summary: 解散球队（仅队长）
-      description: 仅该队 active 的队长本人可操作；成员随级联删除。球队仍被比赛、报名组、约队申请或支付订单引用时返回 409。
+      description: 仅该队 active 的队长本人可操作。软删除——teams.status 置为 dissolved，保留历史比赛/申请/支付数据。球队仍有未结束比赛（主/客队）或进行中约队申请时返回 409，可先调 GET /api/v1/app/teams/{id}/dissolve-blockers 查看阻塞项。
       security: *bearerSecurity
       parameters:
         - $ref: "#/components/parameters/TeamID"
       responses:
         "200":
           description: 解散成功（空 data）
+        <<: *standardErrors
+
+  /api/v1/app/teams/{id}/dissolve-blockers:
+    get:
+      operationId: getAppTeamDissolveBlockers
+      tags: [App Teams]
+      summary: 查询阻止球队解散的进行中引用（仅队长）
+      description: 仅该队 active 的队长本人可查。返回未结束比赛（本队作为主/客队，is_host 标记能否在比赛详情页收尾）与进行中的约队申请（pending/selected，可在接约页撤回）；两个列表都为空时可以解散。
+      security: *bearerSecurity
+      parameters:
+        - $ref: "#/components/parameters/TeamID"
+      responses:
+        "200":
+          description: 阻塞引用列表（空列表表示可以解散）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AppTeamDissolveBlockersEnvelope"
         <<: *standardErrors
 
   /api/v1/app/teams/{id}/join-password:
@@ -1724,7 +1742,7 @@ components:
       enum: [pending, selected, rejected, withdrawn]
     TeamStatus:
       type: string
-      enum: [active, frozen]
+      enum: [active, frozen, dissolved]
     MemberStatus:
       type: string
       enum: [active, inactive]
@@ -3080,6 +3098,54 @@ components:
           properties:
             data:
               $ref: "#/components/schemas/AppTeamDetail"
+    AppTeamDissolveBlockers:
+      type: object
+      required: [matches, applications]
+      properties:
+        matches:
+          type: array
+          items:
+            $ref: "#/components/schemas/AppTeamDissolveBlockerMatch"
+        applications:
+          type: array
+          items:
+            $ref: "#/components/schemas/AppTeamDissolveBlockerApplication"
+    AppTeamDissolveBlockerMatch:
+      type: object
+      required: [id, name, status, is_host]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        status:
+          $ref: "#/components/schemas/MatchStatus"
+        is_host:
+          type: boolean
+          description: 本队是否为发起方（主队）；只有主队能在比赛详情页收尾/取消比赛。
+    AppTeamDissolveBlockerApplication:
+      type: object
+      required: [id, match_id, match_name, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+        match_id:
+          type: string
+          format: uuid
+        match_name:
+          type: string
+        status:
+          $ref: "#/components/schemas/ApplicationStatus"
+    AppTeamDissolveBlockersEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: "#/components/schemas/AppTeamDissolveBlockers"
     AppTeamMemberListEnvelope:
       allOf:
         - $ref: "#/components/schemas/SuccessBase"

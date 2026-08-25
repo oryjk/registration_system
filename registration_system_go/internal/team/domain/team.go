@@ -28,12 +28,13 @@ func (r Role) CanAssignDirectly() bool {
 type TeamStatus string
 
 const (
-	TeamActive TeamStatus = "active"
-	TeamFrozen TeamStatus = "frozen"
+	TeamActive    TeamStatus = "active"
+	TeamFrozen    TeamStatus = "frozen"
+	TeamDissolved TeamStatus = "dissolved"
 )
 
 func (s TeamStatus) IsValid() bool {
-	return s == TeamActive || s == TeamFrozen
+	return s == TeamActive || s == TeamFrozen || s == TeamDissolved
 }
 
 type MemberStatus string

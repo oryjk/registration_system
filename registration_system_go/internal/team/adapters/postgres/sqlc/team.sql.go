@@ -207,6 +207,115 @@ func (q *Queries) DeleteTeam(ctx context.Context, id int64) (int64, error) {
 	return result.RowsAffected(), nil
 }
 
+const dissolveTeam = `-- name: DissolveTeam :execrows
+UPDATE teams
+SET status = 'dissolved',
+    updated_at = NOW()
+WHERE id = $1
+  AND status = 'active'
+`
+
+// 用户侧解散球队：软删除，保留球队行以维持历史比赛/申请/支付数据的引用。
+// 仅 active 状态可解散，避免对已解散/冻结球队重复操作。
+func (q *Queries) DissolveTeam(ctx context.Context, id int64) (int64, error) {
+	result, err := q.db.Exec(ctx, dissolveTeam, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const findDissolveBlockingApplications = `-- name: FindDissolveBlockingApplications :many
+SELECT a.id,
+       a.match_id,
+       a.status,
+       m.name AS match_name
+FROM match_team_applications a
+JOIN matches m ON m.id = a.match_id
+WHERE a.applicant_team_id = $1
+  AND a.status IN ('pending', 'selected')
+  AND m.status IN ('registering', 'ongoing')
+ORDER BY m.start_time, a.created_at, a.id
+`
+
+type FindDissolveBlockingApplicationsRow struct {
+	ID        pgtype.UUID `json:"id"`
+	MatchID   pgtype.UUID `json:"match_id"`
+	Status    string      `json:"status"`
+	MatchName string      `json:"match_name"`
+}
+
+// 解散前的引用校验：本队提交且仍未了结的约队申请（pending/selected）。
+// 只看未结束比赛上的申请：已结束/已取消比赛上的申请属于历史数据，撤回接口也不再受理。
+func (q *Queries) FindDissolveBlockingApplications(ctx context.Context, applicantTeamID int64) ([]FindDissolveBlockingApplicationsRow, error) {
+	rows, err := q.db.Query(ctx, findDissolveBlockingApplications, applicantTeamID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []FindDissolveBlockingApplicationsRow
+	for rows.Next() {
+		var i FindDissolveBlockingApplicationsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.MatchID,
+			&i.Status,
+			&i.MatchName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const findDissolveBlockingMatches = `-- name: FindDissolveBlockingMatches :many
+SELECT m.id,
+       m.name,
+       m.status,
+       (m.host_team_id = $1) AS is_host
+FROM matches m
+WHERE (m.host_team_id = $1 OR m.away_team_id = $1)
+  AND m.status IN ('registering', 'ongoing')
+ORDER BY m.start_time, m.id
+`
+
+type FindDissolveBlockingMatchesRow struct {
+	ID     pgtype.UUID `json:"id"`
+	Name   string      `json:"name"`
+	Status string      `json:"status"`
+	IsHost bool        `json:"is_host"`
+}
+
+// 解散前的引用校验：球队作为主/客队的未结束比赛（ended/cancelled 不阻塞）。
+func (q *Queries) FindDissolveBlockingMatches(ctx context.Context, hostTeamID *int64) ([]FindDissolveBlockingMatchesRow, error) {
+	rows, err := q.db.Query(ctx, findDissolveBlockingMatches, hostTeamID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []FindDissolveBlockingMatchesRow
+	for rows.Next() {
+		var i FindDissolveBlockingMatchesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Status,
+			&i.IsHost,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const findTeamByName = `-- name: FindTeamByName :one
 SELECT id, name, description, logo_url, captain_id, join_password_hash, status, created_at, updated_at
 FROM teams
