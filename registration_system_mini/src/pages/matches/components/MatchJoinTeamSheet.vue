@@ -67,8 +67,9 @@ const teamName = computed(() => props.match?.host_team_name || "该球队");
       </view>
 
       <view class="join-team-actions">
-        <NeoButton variant="outline" :disabled="isSubmitting" @click="emit('close')">我再想想</NeoButton>
+        <NeoButton class="join-team-action" variant="outline" :disabled="isSubmitting" @click="emit('close')">我再想想</NeoButton>
         <NeoButton
+          class="join-team-action"
           variant="dark"
           :loading="isSubmitting"
           :disabled="isSubmitting || (needsPassword && !password.trim())"
@@ -157,7 +158,7 @@ const teamName = computed(() => props.match?.host_team_name || "该球队");
   gap: 18rpx;
 }
 
-.join-team-actions > :deep(*) {
+.join-team-action {
   flex: 1;
 }
 </style>
