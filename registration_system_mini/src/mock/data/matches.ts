@@ -686,6 +686,20 @@ export function filterMockMatchesByQuery(query: Record<string, string>, baseNow 
     items = items.filter((item) => item.status === query.status);
   }
 
+  // 与后端 ends_after 一致：未结束（end_time 晚于该时刻）且未取消。
+  if (query.ends_after) {
+    const threshold = Date.parse(query.ends_after);
+    if (Number.isFinite(threshold)) {
+      items = items.filter((item) => (
+        item.status !== "cancelled" && Date.parse(item.end_time) > threshold
+      ));
+    }
+  }
+
+  if (query.host_team_only === "true") {
+    items = items.filter((item) => item.host_team_id !== null);
+  }
+
   if (query.publication_modes) {
     const modes = query.publication_modes.split(",").map((mode) => mode.trim()).filter(Boolean);
     if (modes.length) {

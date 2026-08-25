@@ -14,6 +14,12 @@ import {
 } from "./data/challenges";
 import { createMockMatch, filterMockMatchesByQuery, getMockMatchDetail, markMockMyRegistrationPaid, mockMatchHome, mockMyRegistrationCount, paginateMockMatches, updateMockMatchStatus, upsertMockMyRegistration } from "./data/matches";
 import { mockNotifications } from "./data/notifications";
+import {
+  mockCaptainThreadDetail,
+  mockCaptainThreadList,
+  mockReplyCaptainMessage,
+  mockSendCaptainMessage,
+} from "./data/captainMessages";
 import { mockPaymentOrders, mockTeamFundBalances, mockTeamFundTransactions } from "./data/billing";
 import { mockWalletAccount } from "./data/wallet";
 import { defaultMiniAppRuntimeConfig } from "@/config/runtimeConfigDefaults";
@@ -737,6 +743,28 @@ const routes: MockRoute[] = [
   },
 
   // ===== 通知 =====
+  // ===== 队长留言 =====
+  {
+    method: "GET",
+    pattern: "/captain-messages",
+    handler: () => mockCaptainThreadList(),
+  },
+  {
+    method: "GET",
+    pattern: "/captain-messages/:threadId",
+    handler: (req) => mockCaptainThreadDetail(req.params.threadId) ?? undefined,
+  },
+  {
+    method: "POST",
+    pattern: "/captain-messages/:threadId/reply",
+    handler: (req) => mockReplyCaptainMessage(req.params.threadId, (req.body as { content?: string }).content || "") ?? undefined,
+  },
+  {
+    method: "POST",
+    pattern: "/matches/:id/captain-messages",
+    handler: (req) => mockSendCaptainMessage(req.params.id, (req.body as { content?: string }).content || ""),
+  },
+
   {
     method: "GET",
     pattern: "/notifications/unread-count",

@@ -3,12 +3,15 @@ import { useAccentTheme } from "@/stores/theme";
 import { computed, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
+import NeoSegmentedControl from "@/components/neo/NeoSegmentedControl.vue";
+import CaptainThreadsSection from "./components/CaptainThreadsSection.vue";
 import { listNotifications, markAllNotificationsRead } from "@/api/notification";
 import { setUnreadCount, syncUnreadCount } from "@/stores/notificationCenter";
-import { ensureSessionReady } from "@/stores/appSession";
+import { ensureSessionReady, useAppSession } from "@/stores/appSession";
 import type { BackendNotification } from "@/types/backend";
 import { getCustomNavMetrics } from "@/utils/customNav";
 import { buildNotificationItems } from "@/utils/viewModels";
+import { useCaptainThreads } from "./useCaptainThreads";
 
 const { themePageStyle } = useAccentTheme();
 
@@ -18,6 +21,18 @@ const hasLoadedOnce = ref(false);
 const errorMessage = ref("");
 const unreadOnly = ref(false);
 const notifications = ref<BackendNotification[]>([]);
+
+type NoticeBoardTab = "notifications" | "captainMessages";
+
+const boardOptions = [
+  { label: "通知", value: "notifications" },
+  { label: "留言", value: "captainMessages" },
+];
+const activeBoardTab = ref<NoticeBoardTab>("notifications");
+
+const { currentUser } = useAppSession();
+const myUserId = computed(() => currentUser.value?.id ?? null);
+const captainThreads = useCaptainThreads(myUserId);
 
 const notificationItems = computed(() => buildNotificationItems(notifications.value));
 const unreadCount = computed(() => notifications.value.filter((item) => !item.read_at).length);
@@ -59,8 +74,23 @@ function openNotification(path: string) {
   uni.navigateTo({ url: path });
 }
 
+function openCaptainThread(threadId: string) {
+  uni.navigateTo({ url: `/pages/messages/thread/index?id=${threadId}` });
+}
+
+function handleBoardTabChange(value: string) {
+  const next: NoticeBoardTab = value === "captainMessages" ? "captainMessages" : "notifications";
+  activeBoardTab.value = next;
+  if (next === "captainMessages" && !captainThreads.hasLoadedOnce.value) {
+    void captainThreads.loadPage();
+  }
+}
+
 onShow(() => {
   void loadNotifications();
+  if (activeBoardTab.value === "captainMessages") {
+    void captainThreads.loadPage();
+  }
 });
 </script>
 
@@ -77,6 +107,28 @@ onShow(() => {
       <view class="notice-header-badge">{{ unreadOnly ? "仅未读" : `${notificationItems.length} 条` }}</view>
     </view>
 
+    <NeoSegmentedControl
+      :model-value="activeBoardTab"
+      :options="boardOptions"
+      class="notice-board-segment"
+      @update:model-value="handleBoardTabChange"
+    />
+
+    <template v-if="activeBoardTab === 'captainMessages'">
+      <CaptainThreadsSection
+        :items="captainThreads.items.value"
+        :is-loading="captainThreads.isLoading.value"
+        :is-loading-more="captainThreads.isLoadingMore.value"
+        :has-loaded-once="captainThreads.hasLoadedOnce.value"
+        :error-message="captainThreads.errorMessage.value"
+        :has-more="captainThreads.hasMore.value"
+        @open="openCaptainThread"
+        @retry="void captainThreads.loadPage()"
+        @load-more="void captainThreads.loadMore()"
+      />
+    </template>
+
+    <template v-else>
     <view class="notice-filter-row">
       <view :class="['notice-filter-chip', !unreadOnly ? 'notice-filter-chip-active' : '']" @tap="unreadOnly = false; void loadNotifications()">全部</view>
       <view :class="['notice-filter-chip', unreadOnly ? 'notice-filter-chip-active' : '']" @tap="unreadOnly = true; void loadNotifications()">仅看未读</view>
@@ -137,6 +189,7 @@ onShow(() => {
       </view>
       <view v-else class="notice-empty">当前没有可展示的通知。</view>
     </view>
+    </template>
   </view>
 </template>
 
@@ -179,6 +232,10 @@ onShow(() => {
   color: #ffffff;
   font-size: 24rpx;
   font-weight: 800;
+}
+
+.notice-board-segment {
+  margin-top: 22rpx;
 }
 
 .notice-filter-row {

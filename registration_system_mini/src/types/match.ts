@@ -4,6 +4,13 @@ export type AppMatchRegistrationStatus = "unknown" | "attending" | "leave" | "ab
 export type AppMatchPublicationMode = "offline_confirmed" | "online_team" | "online_individual" | "online_pickup";
 export type AppMatchPaymentMode = "postpaid" | "prepaid";
 
+/** 主队队长资料：详情接口返回，供「联系队长」留言入口使用。 */
+export interface AppMatchCaptain {
+  user_id: number;
+  nickname: string;
+  avatar_url: string | null;
+}
+
 export interface AppMatchPhaseSource {
   id: string;
   status: AppMatchStatus;
@@ -74,6 +81,8 @@ export interface AppMatchSummary extends AppMatchPhaseSource {
   host_color?: string | null;
   away_color?: string | null;
   registration_groups?: AppMatchRegistrationGroupSummary[];
+  /** 主队队长资料（详情接口填充；无主队或未设队长为 null）。 */
+  host_captain?: AppMatchCaptain | null;
   created_at: string;
   updated_at: string;
 }

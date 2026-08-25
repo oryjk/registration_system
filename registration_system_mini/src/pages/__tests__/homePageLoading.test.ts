@@ -63,7 +63,7 @@ describe("home page loading states", () => {
       "pages/home/index.vue",
     ).text();
 
-    expect(source.includes('import { getMatchHome, listMyMatches } from "@/api/match";')).toEqual(true);
+    expect(source.includes('import { getMatchHome, listMyMatches, listMatches } from "@/api/match";')).toEqual(true);
     expect(source.includes("buildHomeMatchSections")).toEqual(true);
     expect(source.includes('openMatchList("ongoing")')).toEqual(true);
     expect(source.includes('openMatchList("ended")')).toEqual(true);
@@ -105,7 +105,7 @@ describe("home page loading states", () => {
     expect(source.includes("const hasLoadedMatchData = ref(false);")).toEqual(true);
     expect(source.includes("const showHomeLoadError = computed(() => !hasLoadedMatchData.value && !!errorMessage.value);")).toEqual(true);
     expect(source.includes("errorMessage.value = error instanceof Error ? error.message : \"首页数据加载失败\";")).toEqual(true);
-    expect(source.includes('v-if="!hasSearched && showHomeLoadError" class="home-empty home-empty-compact"')).toEqual(true);
+    expect(source.includes('v-if="!hasSearched && activeHomeTab === \'mine\' && showHomeLoadError" class="home-empty home-empty-compact"')).toEqual(true);
     expect(source.includes("@tap=\"handleRetryLoad\"")).toEqual(true);
     expect(source.includes("点击重试")).toEqual(true);
   });

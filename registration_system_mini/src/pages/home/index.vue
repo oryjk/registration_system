@@ -5,11 +5,13 @@ import { onHide, onLoad, onPullDownRefresh, onReachBottom, onShareAppMessage, on
 import AppTabHeader from "@/components/AppTabHeader.vue";
 import BottomTabBar from "@/components/BottomTabBar.vue";
 import NeoSectionHeader from "@/components/neo/NeoSectionHeader.vue";
+import NeoSegmentedControl from "@/components/neo/NeoSegmentedControl.vue";
 import HomeHeroSection from "./components/HomeHeroSection.vue";
 import HomeMatchList from "./components/HomeMatchList.vue";
 import HomeMatchSearch from "./components/HomeMatchSearch.vue";
+import HomeOtherMatchesSection from "./components/HomeOtherMatchesSection.vue";
 import HomeSkeleton from "./components/HomeSkeleton.vue";
-import { getMatchHome, listMyMatches } from "@/api/match";
+import { getMatchHome, listMyMatches, listMatches } from "@/api/match";
 import { defaultMiniAppRuntimeConfig } from "@/config/runtimeConfig";
 import { useNotificationCenter } from "@/stores/notificationCenter";
 import { useTeamContext } from "@/stores/teamContext";
@@ -28,6 +30,14 @@ import {
   resolveHomeMatchSearchLoadMoreIntent,
   toHomeMatchSearchCard,
 } from "./homeMatchSearchState";
+import { useHomeOtherMatches } from "./useHomeOtherMatches";
+
+type HomeContentTab = "mine" | "others";
+
+const homeTabOptions = [
+  { label: "我的比赛", value: "mine" },
+  { label: "其他球队", value: "others" },
+];
 
 const { themePageStyle } = useAccentTheme();
 
@@ -79,8 +89,20 @@ const upcomingEmptyText = computed(() => (
     ? "登录后可以查看最近要处理的比赛"
     : "当前没有最近要处理的比赛，稍后再回来看看。"
 ));
+const activeHomeTab = ref<HomeContentTab>("mine");
+const otherMatches = useHomeOtherMatches();
 const shareTitle = "约球开踢：组队、报名、上场";
 const sharePath = "/pages/home/index";
+
+function handleHomeTabChange(value: string) {
+  const next: HomeContentTab = value === "others" ? "others" : "mine";
+  if (next === activeHomeTab.value) return;
+  activeHomeTab.value = next;
+  // 切到「其他球队」时首次拉取；guest 模式下不请求。
+  if (next === "others" && !isGuestMode.value && !otherMatches.hasLoadedOnce.value) {
+    void otherMatches.loadPage();
+  }
+}
 
 function clearMatchSections() {
   upcomingMatches.value = [];
@@ -146,11 +168,21 @@ async function loadSearchPage(page: number, query: string, loadVersion: number) 
   searchErrorMessage.value = "";
   isSearching.value = true;
   try {
-    const response = await listMyMatches({
-      page,
-      pageSize: HOME_MATCH_SEARCH_PAGE_SIZE,
-      search: query,
-    });
+    // 搜索范围跟随当前 tab：mine 保持既有行为，others 附加与列表一致的主队/未结束过滤。
+    const response = activeHomeTab.value === "others"
+      ? await listMatches({
+          page,
+          pageSize: HOME_MATCH_SEARCH_PAGE_SIZE,
+          search: query,
+          scope: "others",
+          endsAfter: new Date(),
+          hostTeamOnly: true,
+        })
+      : await listMyMatches({
+          page,
+          pageSize: HOME_MATCH_SEARCH_PAGE_SIZE,
+          search: query,
+        });
     if (loadVersion !== searchLoadVersion) return;
 
     const merged = mergeHomeMatchSearchPage(searchSourceMatches.value, response);
@@ -267,6 +299,9 @@ async function loadPageData(options?: { preserveContent?: boolean }) {
 
 function handleSessionLoginCompleted() {
   void loadPageData({ preserveContent: true });
+  if (activeHomeTab.value === "others" && !otherMatches.hasLoadedOnce.value) {
+    void otherMatches.loadPage();
+  }
 }
 
 function handleHomeDataMayChanged() {
@@ -310,7 +345,14 @@ onPullDownRefresh(async () => {
 });
 
 onReachBottom(() => {
-  loadMoreSearchResults();
+  // 搜索态优先走搜索分页；否则「其他球队」tab 触底加载更多。
+  if (hasSearched.value && activeSearchQuery.value) {
+    loadMoreSearchResults();
+    return;
+  }
+  if (activeHomeTab.value === "others") {
+    void otherMatches.loadMore();
+  }
 });
 
 onLoad(() => {
@@ -354,6 +396,13 @@ onShareTimeline(() => ({
           @banner-tap="openTab('/pages/activities/index')"
         />
 
+        <NeoSegmentedControl
+          :model-value="activeHomeTab"
+          :options="homeTabOptions"
+          class="home-tab-segment"
+          @update:model-value="handleHomeTabChange"
+        />
+
         <HomeMatchSearch
           :query="searchQuery"
           :is-loading="isSearching"
@@ -372,12 +421,12 @@ onShareTimeline(() => ({
           @match-tap="handleMatchTap"
         />
 
-        <view v-if="!hasSearched && showHomeLoadError" class="home-empty home-empty-compact">
+        <view v-if="!hasSearched && activeHomeTab === 'mine' && showHomeLoadError" class="home-empty home-empty-compact">
           <view>{{ errorMessage }}</view>
           <view class="home-empty-action" @tap="handleRetryLoad">点击重试</view>
         </view>
 
-        <template v-else-if="!hasSearched">
+        <template v-else-if="!hasSearched && activeHomeTab === 'mine'">
           <NeoSectionHeader title="最近要处理的比赛" marker="热" :action-label="upcomingMatches.length ? '更多' : undefined" @action='openMatchList("upcoming")' />
           <HomeMatchList
             v-if="upcomingMatches.length"
@@ -408,6 +457,23 @@ onShareTimeline(() => ({
           />
           <view v-else-if="!isGuestMode" class="home-empty home-empty-compact">当前没有已结束的比赛。</view>
         </template>
+
+        <template v-else-if="!hasSearched && activeHomeTab === 'others'">
+          <view v-if="isGuestMode" class="home-empty home-empty-compact">登录后可以浏览其他球队的比赛，并给队长留言约球。</view>
+          <HomeOtherMatchesSection
+            v-else
+            :matches="otherMatches.matches.value"
+            :is-loading="otherMatches.isLoading.value"
+            :is-loading-more="otherMatches.isLoadingMore.value"
+            :has-loaded-once="otherMatches.hasLoadedOnce.value"
+            :error-message="otherMatches.errorMessage.value"
+            :has-more="otherMatches.hasMore.value"
+            :navigating-match-id="navigatingMatchId"
+            @match-tap="handleMatchTap"
+            @retry="void otherMatches.loadPage()"
+            @load-more="void otherMatches.loadMore()"
+          />
+        </template>
       </view>
     </view>
 
@@ -425,6 +491,10 @@ onShareTimeline(() => ({
 
 .home-content {
   position: relative;
+}
+
+.home-tab-segment {
+  margin-top: 20rpx;
 }
 
 .home-refresh-mask {

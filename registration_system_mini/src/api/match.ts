@@ -25,6 +25,10 @@ export interface ListMatchesParams {
   status?: AppMatchStatus;
   search?: string;
   startsAfter?: Date | string;
+  /** 只保留 end_time 晚于该时刻且未取消的比赛（「未结束」过滤）。 */
+  endsAfter?: Date | string;
+  /** 只保留有主队的比赛（散人约球无主队，无法联系队长）。 */
+  hostTeamOnly?: boolean;
   dateStart?: Date | string;
   publicationModes?: AppMatchPublicationMode[];
   page: number;
@@ -38,6 +42,8 @@ export function listMatches(params: ListMatchesParams) {
     search: params.search?.trim() || undefined,
     // 后端 timestamp 列存 UTC 时刻，时间过滤参数统一传 UTC（toISOString）挂钟。
     starts_after: toIsoOrPass(params.startsAfter),
+    ends_after: toIsoOrPass(params.endsAfter),
+    host_team_only: params.hostTeamOnly ? true : undefined,
     date_start: toIsoOrPass(params.dateStart),
     publication_modes: params.publicationModes?.length ? params.publicationModes.join(",") : undefined,
     page: params.page,

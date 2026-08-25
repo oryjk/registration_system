@@ -135,6 +135,13 @@
       }
     },
     {
+      "path": "pages/messages/thread/index",
+      "style": {
+        "navigationBarTitleText": "球队留言",
+        "navigationStyle": "custom"
+      }
+    },
+    {
       "path": "pages/billing/index",
       "style": {
         "navigationBarTitleText": "账单明细",

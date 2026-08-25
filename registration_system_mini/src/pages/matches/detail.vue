@@ -10,10 +10,12 @@ import NeoSegmentedControl from "@/components/neo/NeoSegmentedControl.vue";
 import NeoStickyActionBar from "@/components/neo/NeoStickyActionBar.vue";
 import MatchDetailSkeleton from "./components/MatchDetailSkeleton.vue";
 import MatchFinishCard from "./components/MatchFinishCard.vue";
+import MatchCaptainContact from "./components/MatchCaptainContact.vue";
 import MatchIndividualRegistration from "./components/MatchIndividualRegistration.vue";
 import MatchTeamRegistration from "./components/MatchTeamRegistration.vue";
 import TeamSettlementCard from "./components/TeamSettlementCard.vue";
 import { DEFAULT_SHARE_IMAGE_URL } from "@/utils/share";
+import { useMatchCaptainContact } from "./useMatchCaptainContact";
 import { useMatchDetailPage } from "./useMatchDetailPage";
 import { useMatchTeamApplications } from "./useMatchTeamApplications";
 import MatchTeamApplications from "./components/MatchTeamApplications.vue";
@@ -129,6 +131,12 @@ const {
   selectOpponent: selectMatchOpponent,
 } = useMatchTeamApplications(sourceMatch, loadPageData, confirmRegistrationAction);
 
+const captainContact = useMatchCaptainContact();
+// 仅当详情带主队队长、且当前用户不是该队管理者（后端同样拦截）时展示留言入口。
+const captainContactCaptain = computed(() => (
+  !isGuestMode.value && !canManageCurrentMatch.value ? sourceMatch.value?.host_captain ?? null : null
+));
+
 const registrationModeOptions = computed(() => [
   { label: "个人报名", value: "individual" },
   ...(canUseTeamRegistration.value ? [{ label: "球队报名", value: "team" }] : []),
@@ -163,7 +171,7 @@ const { themePageStyle } = useAccentTheme();
 const metaPageStyle = computed(() =>
   [
     themePageStyle.value,
-    teamMemberDialogVisible.value || confirmDialogVisible.value || finishDialogVisible.value || cancelDialogVisible.value || signupSheetVisible.value
+    teamMemberDialogVisible.value || confirmDialogVisible.value || finishDialogVisible.value || cancelDialogVisible.value || signupSheetVisible.value || captainContact.popupVisible.value
       ? "overflow: hidden;"
       : "",
   ].filter(Boolean).join(";"),
@@ -252,6 +260,20 @@ const metaPageStyle = computed(() =>
         @review-rating-change="handleReviewRatingChange"
         @submit-activity-review="handleSubmitActivityReview"
       />
+      <!-- 联系主队队长：入口在此，往来留言在消息中心查看。 -->
+      <MatchCaptainContact
+        v-if="captainContactCaptain && matchId"
+        :captain="captainContactCaptain"
+        :match-id="matchId"
+        :popup-visible="captainContact.popupVisible.value"
+        :content="captainContact.content.value"
+        :is-submitting="captainContact.isSubmitting.value"
+        @open="captainContact.open"
+        @close="captainContact.close"
+        @update:content="captainContact.content.value = $event"
+        @submit="void captainContact.submit(matchId)"
+      />
+
       <!-- 接约申请是主队管理功能，不依赖“球队报名”标签（Go 比赛没有该标签）。 -->
       <MatchTeamApplications
         v-if="canManageApplications"
