@@ -130,7 +130,7 @@ describe("home page loading states", () => {
     expect(source.includes('openMatchList("upcoming")')).toEqual(true);
     expect(source.includes('v-if="!isGuestMode" title="进行中的比赛"')).toEqual(true);
     expect(source.includes('v-if="!isGuestMode" title="已结束的比赛"')).toEqual(true);
-    expect(source.includes('title="最近要处理的比赛" marker="热" action-label="更多"')).toEqual(true);
+    expect(source.includes(":action-label=\"upcomingMatches.length ? '更多' : undefined\"")).toEqual(true);
     expect(source.includes(":action-label=\"ongoingMatches.length ? '更多' : undefined\"")).toEqual(true);
     expect(source.includes(":action-label=\"endedMatches.length ? '更多' : undefined\"")).toEqual(true);
   });

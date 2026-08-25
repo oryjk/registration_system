@@ -93,7 +93,6 @@ const activeHomeTab = ref<HomeContentTab>("mine");
 const otherMatches = useHomeOtherMatches();
 // banner 位优先展示「下一场比赛」（最近要处理的首场），下方列表从第二场开始，避免重复。
 const heroNextMatch = computed(() => upcomingMatches.value[0] ?? null);
-const upcomingRestMatches = computed(() => (heroNextMatch.value ? upcomingMatches.value.slice(1) : []));
 const shareTitle = "约球开踢：组队、报名、上场";
 const sharePath = "/pages/home/index";
 
@@ -434,20 +433,16 @@ onShareTimeline(() => ({
         </view>
 
         <template v-else-if="!hasSearched && activeHomeTab === 'mine'">
-          <!-- 首场已在 banner 位展示：有剩余场次时列出；完全无待处理比赛时保留原空态。 -->
-          <template v-if="upcomingRestMatches.length">
-            <NeoSectionHeader title="最近要处理的比赛" marker="热" action-label="更多" @action='openMatchList("upcoming")' />
-            <HomeMatchList
-              :matches="upcomingRestMatches"
-              :is-guest-mode="isGuestMode"
-              :navigating-match-id="navigatingMatchId"
-              @match-tap="handleMatchTap"
-            />
-          </template>
-          <template v-else-if="!upcomingMatches.length">
-            <NeoSectionHeader title="最近要处理的比赛" marker="热" />
-            <view class="home-empty home-empty-compact">{{ upcomingEmptyText }}</view>
-          </template>
+          <!-- hero 只作首场预览位；「最近要处理的比赛」区域常驻，列表始终展示全部待处理场次。 -->
+          <NeoSectionHeader title="最近要处理的比赛" marker="热" :action-label="upcomingMatches.length ? '更多' : undefined" @action='openMatchList("upcoming")' />
+          <HomeMatchList
+            v-if="upcomingMatches.length"
+            :matches="upcomingMatches"
+            :is-guest-mode="isGuestMode"
+            :navigating-match-id="navigatingMatchId"
+            @match-tap="handleMatchTap"
+          />
+          <view v-else class="home-empty home-empty-compact">{{ upcomingEmptyText }}</view>
 
           <NeoSectionHeader v-if="!isGuestMode" title="进行中的比赛" marker="赛" :action-label="ongoingMatches.length ? '更多' : undefined" @action='openMatchList("ongoing")' />
           <HomeMatchList
