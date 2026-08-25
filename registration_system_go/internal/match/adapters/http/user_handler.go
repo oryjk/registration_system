@@ -49,24 +49,33 @@ type UserMatchResponse struct {
 	AwayTeamName    *string                `json:"away_team_name"`
 	OpponentName    *string                `json:"opponent_name"`
 	// 发布者用户 ID：散人约球无主队，小程序靠它判定「我创建的比赛」以显示取消入口。
-	CreatedByUserID     *int64                         `json:"created_by_user_id"`
-	PlayersPerTeam      int                            `json:"players_per_team"`
-	StartTime           time.Time                      `json:"start_time"`
-	EndTime             time.Time                      `json:"end_time"`
-	RegistrationStartAt *time.Time                     `json:"registration_start_at"`
-	RegistrationEndAt   *time.Time                     `json:"registration_end_at"`
-	Location            string                         `json:"location"`
-	LocationLatitude    *float64                       `json:"location_latitude"`
-	LocationLongitude   *float64                       `json:"location_longitude"`
-	Description         *string                        `json:"description"`
-	HostColor           *string                        `json:"host_color"`
-	AwayColor           *string                        `json:"away_color"`
-	IsFree              bool                           `json:"is_free"`
-	PaymentMode         domain.PaymentMode             `json:"payment_mode"`
-	FeePerPersonCents   int64                          `json:"fee_per_person_cents"`
-	RegistrationGroups  []UserRegistrationGroupSummary `json:"registration_groups"`
-	CreatedAt           time.Time                      `json:"created_at"`
-	UpdatedAt           time.Time                      `json:"updated_at"`
+	CreatedByUserID     *int64             `json:"created_by_user_id"`
+	PlayersPerTeam      int                `json:"players_per_team"`
+	StartTime           time.Time          `json:"start_time"`
+	EndTime             time.Time          `json:"end_time"`
+	RegistrationStartAt *time.Time         `json:"registration_start_at"`
+	RegistrationEndAt   *time.Time         `json:"registration_end_at"`
+	Location            string             `json:"location"`
+	LocationLatitude    *float64           `json:"location_latitude"`
+	LocationLongitude   *float64           `json:"location_longitude"`
+	Description         *string            `json:"description"`
+	HostColor           *string            `json:"host_color"`
+	AwayColor           *string            `json:"away_color"`
+	IsFree              bool               `json:"is_free"`
+	PaymentMode         domain.PaymentMode `json:"payment_mode"`
+	FeePerPersonCents   int64              `json:"fee_per_person_cents"`
+	// HostCaptain 主队队长资料（详情场景填充；无主队或未设置队长时为 null），
+	// 供小程序「联系队长」留言入口使用。
+	HostCaptain        *UserCaptainResponse           `json:"host_captain"`
+	RegistrationGroups []UserRegistrationGroupSummary `json:"registration_groups"`
+	CreatedAt          time.Time                      `json:"created_at"`
+	UpdatedAt          time.Time                      `json:"updated_at"`
+}
+
+type UserCaptainResponse struct {
+	UserID    int64   `json:"user_id"`
+	Nickname  string  `json:"nickname"`
+	AvatarURL *string `json:"avatar_url"`
 }
 
 type UserRegistrationGroupSummary struct {
@@ -313,6 +322,20 @@ func parseUserListQuery(c *gin.Context) (application.UserMatchListQuery, error) 
 		}
 		query.StartsAfter = &startsAfter
 	}
+	if raw := c.Query("ends_after"); raw != "" {
+		endsAfter, err := time.Parse(time.RFC3339, raw)
+		if err != nil {
+			return query, sharederror.New(sharederror.KindValidation, "结束时间筛选无效")
+		}
+		query.EndsAfter = &endsAfter
+	}
+	if raw := c.Query("host_team_only"); raw != "" {
+		hostTeamOnly, err := strconv.ParseBool(raw)
+		if err != nil {
+			return query, sharederror.New(sharederror.KindValidation, "主队筛选无效")
+		}
+		query.HostTeamOnly = &hostTeamOnly
+	}
 	var err error
 	if raw := c.Query("page"); raw != "" {
 		query.Page, err = strconv.Atoi(raw)
@@ -359,7 +382,15 @@ func mapUserMatch(item ports.MatchItem) UserMatchResponse {
 		Description: match.Description, RegistrationGroups: groups, CreatedAt: match.CreatedAt, UpdatedAt: match.UpdatedAt,
 		IsFree: match.IsFree, PaymentMode: match.PaymentMode, FeePerPersonCents: match.FeePerPersonCents,
 		HostColor: jerseyColorResponse(match.HostColor), AwayColor: jerseyColorResponse(match.AwayColor),
+		HostCaptain: mapUserCaptainResponse(item.HostCaptain),
 	}
+}
+
+func mapUserCaptainResponse(captain *ports.CaptainProfile) *UserCaptainResponse {
+	if captain == nil {
+		return nil
+	}
+	return &UserCaptainResponse{UserID: captain.UserID, Nickname: captain.Nickname, AvatarURL: captain.AvatarURL}
 }
 
 func mapUserDetail(detail application.UserMatchDetail) UserMatchDetailResponse {

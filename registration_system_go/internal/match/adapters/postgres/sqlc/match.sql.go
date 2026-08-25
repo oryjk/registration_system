@@ -11,6 +11,39 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const appendCaptainMessage = `-- name: AppendCaptainMessage :exec
+
+INSERT INTO match_captain_messages (
+    id, match_id, team_id, thread_owner_user_id, sender_user_id, content
+) VALUES (
+    $1, $2, $3,
+    $4, $5,
+    $6
+)
+`
+
+type AppendCaptainMessageParams struct {
+	ID                pgtype.UUID `json:"id"`
+	MatchID           pgtype.UUID `json:"match_id"`
+	TeamID            int64       `json:"team_id"`
+	ThreadOwnerUserID int64       `json:"thread_owner_user_id"`
+	SenderUserID      int64       `json:"sender_user_id"`
+	Content           string      `json:"content"`
+}
+
+// ============ 队长留言（match_captain_messages） ============
+func (q *Queries) AppendCaptainMessage(ctx context.Context, arg AppendCaptainMessageParams) error {
+	_, err := q.db.Exec(ctx, appendCaptainMessage,
+		arg.ID,
+		arg.MatchID,
+		arg.TeamID,
+		arg.ThreadOwnerUserID,
+		arg.SenderUserID,
+		arg.Content,
+	)
+	return err
+}
+
 const countAttendingRegistrationsForGroup = `-- name: CountAttendingRegistrationsForGroup :one
 SELECT COALESCE(SUM(registration_count), 0)::bigint
 FROM match_registrations
@@ -107,14 +140,22 @@ WHERE ($1::text IS NULL OR m.status = $1)
       OR m.start_time > $5::timestamp
   )
   AND (
-      cardinality($6::text[]) = 0
-      OR m.publication_mode = ANY($6::text[])
+      $6::timestamp IS NULL
+      OR (m.end_time > $6::timestamp AND m.status <> 'cancelled')
   )
   AND (
-      $7::timestamp IS NULL
+      $7::bool IS NULL
+      OR ($7::bool AND m.host_team_id IS NOT NULL)
+  )
+  AND (
+      cardinality($8::text[]) = 0
+      OR m.publication_mode = ANY($8::text[])
+  )
+  AND (
+      $9::timestamp IS NULL
       OR (
-          m.start_time >= $7::timestamp
-          AND m.start_time < $7::timestamp + INTERVAL '1 day'
+          m.start_time >= $9::timestamp
+          AND m.start_time < $9::timestamp + INTERVAL '1 day'
       )
   )
 `
@@ -125,6 +166,8 @@ type CountMatchesForUserParams struct {
 	Scope            string           `json:"scope"`
 	UserID           int64            `json:"user_id"`
 	StartsAfter      pgtype.Timestamp `json:"starts_after"`
+	EndsAfter        pgtype.Timestamp `json:"ends_after"`
+	HostTeamOnly     *bool            `json:"host_team_only"`
 	PublicationModes []string         `json:"publication_modes"`
 	DateStart        pgtype.Timestamp `json:"date_start"`
 }
@@ -136,9 +179,33 @@ func (q *Queries) CountMatchesForUser(ctx context.Context, arg CountMatchesForUs
 		arg.Scope,
 		arg.UserID,
 		arg.StartsAfter,
+		arg.EndsAfter,
+		arg.HostTeamOnly,
 		arg.PublicationModes,
 		arg.DateStart,
 	)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countMyCaptainMessageThreads = `-- name: CountMyCaptainMessageThreads :one
+SELECT COUNT(*) FROM (
+    SELECT DISTINCT m.match_id, m.thread_owner_user_id
+    FROM match_captain_messages m
+    WHERE m.thread_owner_user_id = $1
+       OR m.team_id IN (
+           SELECT tm.team_id
+           FROM team_members tm
+           WHERE tm.user_id = $1
+             AND tm.role IN ('captain', 'leader')
+             AND tm.status = 'active'
+       )
+) threads
+`
+
+func (q *Queries) CountMyCaptainMessageThreads(ctx context.Context, userID int64) (int64, error) {
+	row := q.db.QueryRow(ctx, countMyCaptainMessageThreads, userID)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -408,6 +475,94 @@ func (q *Queries) DeleteMatch(ctx context.Context, id pgtype.UUID) (int64, error
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const findCaptainThreadByOwner = `-- name: FindCaptainThreadByOwner :one
+SELECT m.id, m.match_id, m.team_id, m.thread_owner_user_id, m.sender_user_id, m.content, m.created_at,
+       match.name AS match_name,
+       host.name AS host_team_name
+FROM match_captain_messages m
+JOIN matches match ON match.id = m.match_id
+JOIN teams host ON host.id = m.team_id
+WHERE m.match_id = $1
+  AND m.thread_owner_user_id = $2
+ORDER BY m.created_at ASC, m.id ASC
+LIMIT 1
+`
+
+type FindCaptainThreadByOwnerParams struct {
+	MatchID           pgtype.UUID `json:"match_id"`
+	ThreadOwnerUserID int64       `json:"thread_owner_user_id"`
+}
+
+type FindCaptainThreadByOwnerRow struct {
+	ID                pgtype.UUID        `json:"id"`
+	MatchID           pgtype.UUID        `json:"match_id"`
+	TeamID            int64              `json:"team_id"`
+	ThreadOwnerUserID int64              `json:"thread_owner_user_id"`
+	SenderUserID      int64              `json:"sender_user_id"`
+	Content           string             `json:"content"`
+	CreatedAt         pgtype.Timestamptz `json:"created_at"`
+	MatchName         string             `json:"match_name"`
+	HostTeamName      string             `json:"host_team_name"`
+}
+
+// 发起人是否已在该比赛下开过串（同一场比赛同一发起人只保留一串）。
+func (q *Queries) FindCaptainThreadByOwner(ctx context.Context, arg FindCaptainThreadByOwnerParams) (FindCaptainThreadByOwnerRow, error) {
+	row := q.db.QueryRow(ctx, findCaptainThreadByOwner, arg.MatchID, arg.ThreadOwnerUserID)
+	var i FindCaptainThreadByOwnerRow
+	err := row.Scan(
+		&i.ID,
+		&i.MatchID,
+		&i.TeamID,
+		&i.ThreadOwnerUserID,
+		&i.SenderUserID,
+		&i.Content,
+		&i.CreatedAt,
+		&i.MatchName,
+		&i.HostTeamName,
+	)
+	return i, err
+}
+
+const findCaptainThreadHead = `-- name: FindCaptainThreadHead :one
+SELECT m.id, m.match_id, m.team_id, m.thread_owner_user_id, m.sender_user_id, m.content, m.created_at,
+       match.name AS match_name,
+       host.name AS host_team_name
+FROM match_captain_messages m
+JOIN matches match ON match.id = m.match_id
+JOIN teams host ON host.id = m.team_id
+WHERE m.id = $1
+`
+
+type FindCaptainThreadHeadRow struct {
+	ID                pgtype.UUID        `json:"id"`
+	MatchID           pgtype.UUID        `json:"match_id"`
+	TeamID            int64              `json:"team_id"`
+	ThreadOwnerUserID int64              `json:"thread_owner_user_id"`
+	SenderUserID      int64              `json:"sender_user_id"`
+	Content           string             `json:"content"`
+	CreatedAt         pgtype.Timestamptz `json:"created_at"`
+	MatchName         string             `json:"match_name"`
+	HostTeamName      string             `json:"host_team_name"`
+}
+
+// 串首条消息：thread_id 即首条消息 id，携带串的归属信息用于权限判定。
+func (q *Queries) FindCaptainThreadHead(ctx context.Context, id pgtype.UUID) (FindCaptainThreadHeadRow, error) {
+	row := q.db.QueryRow(ctx, findCaptainThreadHead, id)
+	var i FindCaptainThreadHeadRow
+	err := row.Scan(
+		&i.ID,
+		&i.MatchID,
+		&i.TeamID,
+		&i.ThreadOwnerUserID,
+		&i.SenderUserID,
+		&i.Content,
+		&i.CreatedAt,
+		&i.MatchName,
+		&i.HostTeamName,
+	)
+	return i, err
 }
 
 const finishMatchStatus = `-- name: FinishMatchStatus :execrows
@@ -716,6 +871,47 @@ func (q *Queries) GetTeamApplicationByIDForUpdate(ctx context.Context, arg GetTe
 	return i, err
 }
 
+const getTeamCaptainProfile = `-- name: GetTeamCaptainProfile :one
+SELECT u.id AS user_id, u.nickname, u.avatar_url
+FROM teams t
+JOIN users u ON u.id = t.captain_id
+WHERE t.id = $1
+`
+
+type GetTeamCaptainProfileRow struct {
+	UserID    int64   `json:"user_id"`
+	Nickname  string  `json:"nickname"`
+	AvatarUrl *string `json:"avatar_url"`
+}
+
+// 用户端比赛详情的主队队长资料（无队长时无行）。
+func (q *Queries) GetTeamCaptainProfile(ctx context.Context, teamID int64) (GetTeamCaptainProfileRow, error) {
+	row := q.db.QueryRow(ctx, getTeamCaptainProfile, teamID)
+	var i GetTeamCaptainProfileRow
+	err := row.Scan(&i.UserID, &i.Nickname, &i.AvatarUrl)
+	return i, err
+}
+
+const getUserBrief = `-- name: GetUserBrief :one
+SELECT u.id AS user_id, u.nickname, u.avatar_url
+FROM users u
+WHERE u.id = $1
+`
+
+type GetUserBriefRow struct {
+	UserID    int64   `json:"user_id"`
+	Nickname  string  `json:"nickname"`
+	AvatarUrl *string `json:"avatar_url"`
+}
+
+// 留言通知与串装配所需的用户摘要。
+func (q *Queries) GetUserBrief(ctx context.Context, userID int64) (GetUserBriefRow, error) {
+	row := q.db.QueryRow(ctx, getUserBrief, userID)
+	var i GetUserBriefRow
+	err := row.Scan(&i.UserID, &i.Nickname, &i.AvatarUrl)
+	return i, err
+}
+
 const getUserRegistrationForUpdate = `-- name: GetUserRegistrationForUpdate :one
 SELECT id, group_id, user_id, status, registration_count, created_at, updated_at, cancelled_at, paid
 FROM match_registrations
@@ -766,6 +962,61 @@ func (q *Queries) IsActiveTeamMember(ctx context.Context, arg IsActiveTeamMember
 	var exists bool
 	err := row.Scan(&exists)
 	return exists, err
+}
+
+const listCaptainMessagesByThread = `-- name: ListCaptainMessagesByThread :many
+SELECT m.id, m.sender_user_id, m.content, m.created_at,
+       u.nickname AS sender_nickname,
+       u.avatar_url AS sender_avatar_url,
+       (m.sender_user_id <> m.thread_owner_user_id) AS sender_is_captain_side
+FROM match_captain_messages m
+JOIN users u ON u.id = m.sender_user_id
+WHERE m.match_id = $1
+  AND m.thread_owner_user_id = $2
+ORDER BY m.created_at ASC, m.id ASC
+`
+
+type ListCaptainMessagesByThreadParams struct {
+	MatchID           pgtype.UUID `json:"match_id"`
+	ThreadOwnerUserID int64       `json:"thread_owner_user_id"`
+}
+
+type ListCaptainMessagesByThreadRow struct {
+	ID                  pgtype.UUID        `json:"id"`
+	SenderUserID        int64              `json:"sender_user_id"`
+	Content             string             `json:"content"`
+	CreatedAt           pgtype.Timestamptz `json:"created_at"`
+	SenderNickname      string             `json:"sender_nickname"`
+	SenderAvatarUrl     *string            `json:"sender_avatar_url"`
+	SenderIsCaptainSide bool               `json:"sender_is_captain_side"`
+}
+
+func (q *Queries) ListCaptainMessagesByThread(ctx context.Context, arg ListCaptainMessagesByThreadParams) ([]ListCaptainMessagesByThreadRow, error) {
+	rows, err := q.db.Query(ctx, listCaptainMessagesByThread, arg.MatchID, arg.ThreadOwnerUserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListCaptainMessagesByThreadRow
+	for rows.Next() {
+		var i ListCaptainMessagesByThreadRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.SenderUserID,
+			&i.Content,
+			&i.CreatedAt,
+			&i.SenderNickname,
+			&i.SenderAvatarUrl,
+			&i.SenderIsCaptainSide,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listGroupRegistrations = `-- name: ListGroupRegistrations :many
@@ -1402,18 +1653,26 @@ WHERE ($1::text IS NULL OR m.status = $1)
       OR m.start_time > $5::timestamp
   )
   AND (
-      cardinality($6::text[]) = 0
-      OR m.publication_mode = ANY($6::text[])
+      $6::timestamp IS NULL
+      OR (m.end_time > $6::timestamp AND m.status <> 'cancelled')
   )
   AND (
-      $7::timestamp IS NULL
+      $7::bool IS NULL
+      OR ($7::bool AND m.host_team_id IS NOT NULL)
+  )
+  AND (
+      cardinality($8::text[]) = 0
+      OR m.publication_mode = ANY($8::text[])
+  )
+  AND (
+      $9::timestamp IS NULL
       OR (
-          m.start_time >= $7::timestamp
-          AND m.start_time < $7::timestamp + INTERVAL '1 day'
+          m.start_time >= $9::timestamp
+          AND m.start_time < $9::timestamp + INTERVAL '1 day'
       )
   )
 ORDER BY m.start_time DESC, m.id
-LIMIT $9 OFFSET $8
+LIMIT $11 OFFSET $10
 `
 
 type ListMatchesForUserParams struct {
@@ -1422,6 +1681,8 @@ type ListMatchesForUserParams struct {
 	Scope            string           `json:"scope"`
 	UserID           int64            `json:"user_id"`
 	StartsAfter      pgtype.Timestamp `json:"starts_after"`
+	EndsAfter        pgtype.Timestamp `json:"ends_after"`
+	HostTeamOnly     *bool            `json:"host_team_only"`
 	PublicationModes []string         `json:"publication_modes"`
 	DateStart        pgtype.Timestamp `json:"date_start"`
 	OffsetCount      int32            `json:"offset_count"`
@@ -1466,6 +1727,8 @@ func (q *Queries) ListMatchesForUser(ctx context.Context, arg ListMatchesForUser
 		arg.Scope,
 		arg.UserID,
 		arg.StartsAfter,
+		arg.EndsAfter,
+		arg.HostTeamOnly,
 		arg.PublicationModes,
 		arg.DateStart,
 		arg.OffsetCount,
@@ -1507,6 +1770,96 @@ func (q *Queries) ListMatchesForUser(ctx context.Context, arg ListMatchesForUser
 			&i.FeePerPersonCents,
 			&i.HostTeamName,
 			&i.AwayTeamName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listMyCaptainMessageThreads = `-- name: ListMyCaptainMessageThreads :many
+SELECT thread_id, match_id, team_id, thread_owner_user_id, match_name, host_team_name, owner_nickname, owner_avatar_url, latest_sender_user_id, latest_sender_is_captain_side, latest_content, latest_created_at
+FROM (
+    SELECT DISTINCT ON (m.match_id, m.thread_owner_user_id)
+           m.id AS thread_id,
+           m.match_id,
+           m.team_id,
+           m.thread_owner_user_id,
+           match.name AS match_name,
+           host.name AS host_team_name,
+           owner.nickname AS owner_nickname,
+           owner.avatar_url AS owner_avatar_url,
+           m.sender_user_id AS latest_sender_user_id,
+           (m.sender_user_id <> m.thread_owner_user_id) AS latest_sender_is_captain_side,
+           m.content AS latest_content,
+           m.created_at AS latest_created_at
+    FROM match_captain_messages m
+    JOIN matches match ON match.id = m.match_id
+    JOIN teams host ON host.id = m.team_id
+    JOIN users owner ON owner.id = m.thread_owner_user_id
+    WHERE m.thread_owner_user_id = $1
+       OR m.team_id IN (
+           SELECT tm.team_id
+           FROM team_members tm
+           WHERE tm.user_id = $1
+             AND tm.role IN ('captain', 'leader')
+             AND tm.status = 'active'
+       )
+    ORDER BY m.match_id, m.thread_owner_user_id, m.created_at DESC, m.id DESC
+) threads
+ORDER BY threads.latest_created_at DESC, threads.thread_id
+LIMIT $3 OFFSET $2
+`
+
+type ListMyCaptainMessageThreadsParams struct {
+	UserID      int64 `json:"user_id"`
+	OffsetCount int32 `json:"offset_count"`
+	LimitCount  int32 `json:"limit_count"`
+}
+
+type ListMyCaptainMessageThreadsRow struct {
+	ThreadID                  pgtype.UUID        `json:"thread_id"`
+	MatchID                   pgtype.UUID        `json:"match_id"`
+	TeamID                    int64              `json:"team_id"`
+	ThreadOwnerUserID         int64              `json:"thread_owner_user_id"`
+	MatchName                 string             `json:"match_name"`
+	HostTeamName              string             `json:"host_team_name"`
+	OwnerNickname             string             `json:"owner_nickname"`
+	OwnerAvatarUrl            *string            `json:"owner_avatar_url"`
+	LatestSenderUserID        int64              `json:"latest_sender_user_id"`
+	LatestSenderIsCaptainSide bool               `json:"latest_sender_is_captain_side"`
+	LatestContent             string             `json:"latest_content"`
+	LatestCreatedAt           pgtype.Timestamptz `json:"latest_created_at"`
+}
+
+// 我的对话列表：我发起的串 ∪ 我任 captain/leader 球队收到的串；
+// DISTINCT ON 按串取最新一条，外层按最新消息时间倒序分页。
+func (q *Queries) ListMyCaptainMessageThreads(ctx context.Context, arg ListMyCaptainMessageThreadsParams) ([]ListMyCaptainMessageThreadsRow, error) {
+	rows, err := q.db.Query(ctx, listMyCaptainMessageThreads, arg.UserID, arg.OffsetCount, arg.LimitCount)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListMyCaptainMessageThreadsRow
+	for rows.Next() {
+		var i ListMyCaptainMessageThreadsRow
+		if err := rows.Scan(
+			&i.ThreadID,
+			&i.MatchID,
+			&i.TeamID,
+			&i.ThreadOwnerUserID,
+			&i.MatchName,
+			&i.HostTeamName,
+			&i.OwnerNickname,
+			&i.OwnerAvatarUrl,
+			&i.LatestSenderUserID,
+			&i.LatestSenderIsCaptainSide,
+			&i.LatestContent,
+			&i.LatestCreatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -1980,6 +2333,36 @@ func (q *Queries) ListTeamGroupRoster(ctx context.Context, arg ListTeamGroupRost
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listTeamManagerUserIDs = `-- name: ListTeamManagerUserIDs :many
+SELECT tm.user_id
+FROM team_members tm
+WHERE tm.team_id = $1
+  AND tm.role IN ('captain', 'leader')
+  AND tm.status = 'active'
+ORDER BY tm.user_id
+`
+
+// 队长留言通知目标：该队全部在任 captain/leader。
+func (q *Queries) ListTeamManagerUserIDs(ctx context.Context, teamID int64) ([]int64, error) {
+	rows, err := q.db.Query(ctx, listTeamManagerUserIDs, teamID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []int64
+	for rows.Next() {
+		var user_id int64
+		if err := rows.Scan(&user_id); err != nil {
+			return nil, err
+		}
+		items = append(items, user_id)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err

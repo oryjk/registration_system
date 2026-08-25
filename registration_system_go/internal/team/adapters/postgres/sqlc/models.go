@@ -59,6 +59,16 @@ type Match struct {
 	FeePerPersonCents   int64            `json:"fee_per_person_cents"`
 }
 
+type MatchCaptainMessage struct {
+	ID                pgtype.UUID        `json:"id"`
+	MatchID           pgtype.UUID        `json:"match_id"`
+	TeamID            int64              `json:"team_id"`
+	ThreadOwnerUserID int64              `json:"thread_owner_user_id"`
+	SenderUserID      int64              `json:"sender_user_id"`
+	Content           string             `json:"content"`
+	CreatedAt         pgtype.Timestamptz `json:"created_at"`
+}
+
 type MatchRegistration struct {
 	ID                pgtype.UUID      `json:"id"`
 	GroupID           pgtype.UUID      `json:"group_id"`

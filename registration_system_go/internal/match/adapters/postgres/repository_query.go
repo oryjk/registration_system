@@ -52,6 +52,8 @@ func (r *Repository) ListForUser(ctx context.Context, filter ports.MatchListFilt
 	rows, err := r.queries.ListMatchesForUser(ctx, matchsqlc.ListMatchesForUserParams{
 		Status: status, Search: filter.Search, Scope: string(filter.Scope), UserID: filter.UserID,
 		StartsAfter:      pgOptionalTimestamp(filter.StartsAfter),
+		EndsAfter:        pgOptionalTimestamp(filter.EndsAfter),
+		HostTeamOnly:     filter.HostTeamOnly,
 		PublicationModes: publicationModeStrings(filter.PublicationModes), DateStart: pgOptionalTimestamp(filter.DateStart),
 		LimitCount: int32(filter.Limit), OffsetCount: int32(filter.Offset),
 	})
@@ -79,6 +81,8 @@ func (r *Repository) CountForUser(ctx context.Context, filter ports.MatchListFil
 	return r.queries.CountMatchesForUser(ctx, matchsqlc.CountMatchesForUserParams{
 		Status: status, Search: filter.Search, Scope: string(filter.Scope), UserID: filter.UserID,
 		StartsAfter:      pgOptionalTimestamp(filter.StartsAfter),
+		EndsAfter:        pgOptionalTimestamp(filter.EndsAfter),
+		HostTeamOnly:     filter.HostTeamOnly,
 		PublicationModes: publicationModeStrings(filter.PublicationModes), DateStart: pgOptionalTimestamp(filter.DateStart),
 	})
 }

@@ -140,6 +140,14 @@ WHERE (sqlc.narg('status')::text IS NULL OR m.status = sqlc.narg('status'))
       OR m.start_time > sqlc.narg('starts_after')::timestamp
   )
   AND (
+      sqlc.narg('ends_after')::timestamp IS NULL
+      OR (m.end_time > sqlc.narg('ends_after')::timestamp AND m.status <> 'cancelled')
+  )
+  AND (
+      sqlc.narg('host_team_only')::bool IS NULL
+      OR (sqlc.narg('host_team_only')::bool AND m.host_team_id IS NOT NULL)
+  )
+  AND (
       cardinality(sqlc.arg('publication_modes')::text[]) = 0
       OR m.publication_mode = ANY(sqlc.arg('publication_modes')::text[])
   )
@@ -208,6 +216,14 @@ WHERE (sqlc.narg('status')::text IS NULL OR m.status = sqlc.narg('status'))
   AND (
       sqlc.narg('starts_after')::timestamp IS NULL
       OR m.start_time > sqlc.narg('starts_after')::timestamp
+  )
+  AND (
+      sqlc.narg('ends_after')::timestamp IS NULL
+      OR (m.end_time > sqlc.narg('ends_after')::timestamp AND m.status <> 'cancelled')
+  )
+  AND (
+      sqlc.narg('host_team_only')::bool IS NULL
+      OR (sqlc.narg('host_team_only')::bool AND m.host_team_id IS NOT NULL)
   )
   AND (
       cardinality(sqlc.arg('publication_modes')::text[]) = 0
@@ -686,3 +702,119 @@ WHERE g.match_id = sqlc.arg('match_id')
   AND r.status = 'attending'
   AND g.status <> 'cancelled'
 ORDER BY g.kind, r.created_at, r.user_id;
+
+-- ============ 队长留言（match_captain_messages） ============
+
+-- name: AppendCaptainMessage :exec
+INSERT INTO match_captain_messages (
+    id, match_id, team_id, thread_owner_user_id, sender_user_id, content
+) VALUES (
+    sqlc.arg('id'), sqlc.arg('match_id'), sqlc.arg('team_id'),
+    sqlc.arg('thread_owner_user_id'), sqlc.arg('sender_user_id'),
+    sqlc.arg('content')
+);
+
+-- name: FindCaptainThreadHead :one
+-- 串首条消息：thread_id 即首条消息 id，携带串的归属信息用于权限判定。
+SELECT m.id, m.match_id, m.team_id, m.thread_owner_user_id, m.sender_user_id, m.content, m.created_at,
+       match.name AS match_name,
+       host.name AS host_team_name
+FROM match_captain_messages m
+JOIN matches match ON match.id = m.match_id
+JOIN teams host ON host.id = m.team_id
+WHERE m.id = sqlc.arg('id');
+
+-- name: FindCaptainThreadByOwner :one
+-- 发起人是否已在该比赛下开过串（同一场比赛同一发起人只保留一串）。
+SELECT m.id, m.match_id, m.team_id, m.thread_owner_user_id, m.sender_user_id, m.content, m.created_at,
+       match.name AS match_name,
+       host.name AS host_team_name
+FROM match_captain_messages m
+JOIN matches match ON match.id = m.match_id
+JOIN teams host ON host.id = m.team_id
+WHERE m.match_id = sqlc.arg('match_id')
+  AND m.thread_owner_user_id = sqlc.arg('thread_owner_user_id')
+ORDER BY m.created_at ASC, m.id ASC
+LIMIT 1;
+
+-- name: ListCaptainMessagesByThread :many
+SELECT m.id, m.sender_user_id, m.content, m.created_at,
+       u.nickname AS sender_nickname,
+       u.avatar_url AS sender_avatar_url,
+       (m.sender_user_id <> m.thread_owner_user_id) AS sender_is_captain_side
+FROM match_captain_messages m
+JOIN users u ON u.id = m.sender_user_id
+WHERE m.match_id = sqlc.arg('match_id')
+  AND m.thread_owner_user_id = sqlc.arg('thread_owner_user_id')
+ORDER BY m.created_at ASC, m.id ASC;
+
+-- name: ListMyCaptainMessageThreads :many
+-- 我的对话列表：我发起的串 ∪ 我任 captain/leader 球队收到的串；
+-- DISTINCT ON 按串取最新一条，外层按最新消息时间倒序分页。
+SELECT *
+FROM (
+    SELECT DISTINCT ON (m.match_id, m.thread_owner_user_id)
+           m.id AS thread_id,
+           m.match_id,
+           m.team_id,
+           m.thread_owner_user_id,
+           match.name AS match_name,
+           host.name AS host_team_name,
+           owner.nickname AS owner_nickname,
+           owner.avatar_url AS owner_avatar_url,
+           m.sender_user_id AS latest_sender_user_id,
+           (m.sender_user_id <> m.thread_owner_user_id) AS latest_sender_is_captain_side,
+           m.content AS latest_content,
+           m.created_at AS latest_created_at
+    FROM match_captain_messages m
+    JOIN matches match ON match.id = m.match_id
+    JOIN teams host ON host.id = m.team_id
+    JOIN users owner ON owner.id = m.thread_owner_user_id
+    WHERE m.thread_owner_user_id = sqlc.arg('user_id')
+       OR m.team_id IN (
+           SELECT tm.team_id
+           FROM team_members tm
+           WHERE tm.user_id = sqlc.arg('user_id')
+             AND tm.role IN ('captain', 'leader')
+             AND tm.status = 'active'
+       )
+    ORDER BY m.match_id, m.thread_owner_user_id, m.created_at DESC, m.id DESC
+) threads
+ORDER BY threads.latest_created_at DESC, threads.thread_id
+LIMIT sqlc.arg('limit_count') OFFSET sqlc.arg('offset_count');
+
+-- name: CountMyCaptainMessageThreads :one
+SELECT COUNT(*) FROM (
+    SELECT DISTINCT m.match_id, m.thread_owner_user_id
+    FROM match_captain_messages m
+    WHERE m.thread_owner_user_id = sqlc.arg('user_id')
+       OR m.team_id IN (
+           SELECT tm.team_id
+           FROM team_members tm
+           WHERE tm.user_id = sqlc.arg('user_id')
+             AND tm.role IN ('captain', 'leader')
+             AND tm.status = 'active'
+       )
+) threads;
+
+-- name: ListTeamManagerUserIDs :many
+-- 队长留言通知目标：该队全部在任 captain/leader。
+SELECT tm.user_id
+FROM team_members tm
+WHERE tm.team_id = sqlc.arg('team_id')
+  AND tm.role IN ('captain', 'leader')
+  AND tm.status = 'active'
+ORDER BY tm.user_id;
+
+-- name: GetTeamCaptainProfile :one
+-- 用户端比赛详情的主队队长资料（无队长时无行）。
+SELECT u.id AS user_id, u.nickname, u.avatar_url
+FROM teams t
+JOIN users u ON u.id = t.captain_id
+WHERE t.id = sqlc.arg('team_id');
+
+-- name: GetUserBrief :one
+-- 留言通知与串装配所需的用户摘要。
+SELECT u.id AS user_id, u.nickname, u.avatar_url
+FROM users u
+WHERE u.id = sqlc.arg('user_id');

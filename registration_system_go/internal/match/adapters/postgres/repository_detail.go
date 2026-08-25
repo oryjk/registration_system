@@ -76,9 +76,20 @@ func (r *Repository) FindForUser(ctx context.Context, matchID uuid.UUID, userID 
 		state.Participants = mapUserParticipants(roster)
 		groups = append(groups, state)
 	}
-	return ports.MatchItem{
+	item := ports.MatchItem{
 		Match: mapAdminDetailMatch(row), HostTeamName: row.HostTeamName, AwayTeamName: row.AwayTeamName,
-	}, groups, true, nil
+	}
+	// 详情场景顺带装配主队队长资料，供「联系队长」入口使用；查不到（无主队/无队长）保持 nil。
+	if item.Match.HostTeamID != nil {
+		captain, found, err := r.FindTeamCaptainProfile(ctx, *item.Match.HostTeamID)
+		if err != nil {
+			return ports.MatchItem{}, nil, false, err
+		}
+		if found {
+			item.HostCaptain = &captain
+		}
+	}
+	return item, groups, true, nil
 }
 
 func mapUserParticipants(entries []ports.AdminRosterEntry) []ports.UserParticipant {

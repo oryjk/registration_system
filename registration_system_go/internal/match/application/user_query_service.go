@@ -21,6 +21,8 @@ type UserMatchListQuery struct {
 	Status           *domain.MatchStatus
 	Search           string
 	StartsAfter      *time.Time
+	EndsAfter        *time.Time
+	HostTeamOnly     *bool
 	DateStart        *time.Time
 	PublicationModes []domain.PublicationMode
 	Page             int
@@ -87,8 +89,10 @@ func (s UserMatchQueryService) List(ctx context.Context, actor sharedauth.Actor,
 	}
 	filter := ports.MatchListFilter{
 		Scope: query.Scope, UserID: actor.ID, Status: query.Status, Search: strings.TrimSpace(query.Search),
-		StartsAfter: query.StartsAfter, DateStart: query.DateStart, PublicationModes: query.PublicationModes,
-		Limit: query.PageSize, Offset: (query.Page - 1) * query.PageSize,
+		StartsAfter: query.StartsAfter, EndsAfter: query.EndsAfter, HostTeamOnly: query.HostTeamOnly,
+		DateStart:        query.DateStart,
+		PublicationModes: query.PublicationModes,
+		Limit:            query.PageSize, Offset: (query.Page - 1) * query.PageSize,
 	}
 	items, err := s.repository.ListForUser(ctx, filter)
 	if err != nil {

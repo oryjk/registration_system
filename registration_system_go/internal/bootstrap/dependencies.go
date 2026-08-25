@@ -147,6 +147,8 @@ func BuildDependencies(ctx context.Context, config Config) (Dependencies, func()
 	notificationRepository := notificationpostgres.NewRepository(pool)
 	notificationService := notificationapplication.NewService(notificationRepository)
 	notificationHandler := notificationhttp.NewHandler(notificationService)
+	captainMessages := matchapplication.NewCaptainMessageService(matchRepository, matchRepository, teamService, notificationService)
+	captainMessageHandler := matchhttp.NewCaptainMessageHandler(captainMessages)
 	teamFundRepository := teamfundpostgres.NewRepository(pool)
 	teamFundSettlement := teamfundapplication.NewSettlementService(teamFundRepository,
 		matchapplication.NewSettlementRosterService(matchRepository), teamService, notificationService)
@@ -162,7 +164,8 @@ func BuildDependencies(ctx context.Context, config Config) (Dependencies, func()
 		AppTeamManage: appTeamManageHandler, AppTeamSelf: appTeamSelfHandler,
 		UserMatches: userMatchHandler, UserRegistrations: userRegistrationHandler,
 		AdminMatches: adminMatchHandler, TeamApplications: teamApplicationHandler,
-		Payments: paymentHandler, Wallets: walletHandler, MiniReviews: miniReviewHandler,
+		CaptainMessages: captainMessageHandler,
+		Payments:        paymentHandler, Wallets: walletHandler, MiniReviews: miniReviewHandler,
 		SystemRuntime: systemhttp.NewHandler(systemSettingsService),
 		TeamFunds:     teamFundHandler, Notifications: notificationHandler,
 		UploadDir: config.UploadDir,
