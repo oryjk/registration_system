@@ -24,15 +24,16 @@ const notifications = ref<BackendNotification[]>([]);
 
 type NoticeBoardTab = "notifications" | "captainMessages";
 
-// 分段标签带各自未读数：通知用本地列表统计，留言用对话列表汇总（服务端口径）。
+// 分段标签带各自未读数：统一用 store 的服务端口径（进页 sync 即拉取），
+// 不依赖当前板块是否已加载列表，避免「切过去才出现角标」。
 const boardOptions = computed(() => [
-  { label: unreadCount.value > 0 ? `通知 ${unreadCount.value}` : "通知", value: "notifications" },
-  { label: captainThreads.unreadTotal.value > 0 ? `留言 ${captainThreads.unreadTotal.value}` : "留言", value: "captainMessages" },
+  { label: notificationUnreadCount.value > 0 ? `通知 ${notificationUnreadCount.value}` : "通知", value: "notifications" },
+  { label: captainUnreadCount.value > 0 ? `留言 ${captainUnreadCount.value}` : "留言", value: "captainMessages" },
 ]);
 const activeBoardTab = ref<NoticeBoardTab>("notifications");
 
 const { currentUser } = useAppSession();
-const { notificationUnreadCount } = useNotificationCenter();
+const { notificationUnreadCount, captainUnreadCount } = useNotificationCenter();
 const myUserId = computed(() => currentUser.value?.id ?? null);
 const captainThreads = useCaptainThreads(myUserId);
 
