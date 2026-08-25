@@ -11,24 +11,26 @@ async function read(path: string) {
   return Bun.file(miniPath(path)).text();
 }
 
-describe("AppTabHeader location visibility", () => {
-  test("location display is opt-in on the shared header", async () => {
+describe("AppTabHeader", () => {
+  test("shared header no longer ships a current-location entry", async () => {
     const source = await read("src/components/AppTabHeader.vue");
 
-    expect(source.includes("showLocation?: boolean")).toEqual(true);
-    expect(source.includes("showLocation: false")).toEqual(true);
-    expect(source.includes('v-if="props.showLocation"')).toEqual(true);
+    expect(source.includes("showLocation")).toEqual(false);
+    expect(source.includes("app-tab-header-location")).toEqual(false);
+    expect(source.includes("location-sheet")).toEqual(false);
+    expect(source.includes("useCurrentLocation")).toEqual(false);
   });
 
-  test("match registration page opts into location display while home stays plain", async () => {
+  test("match registration page keeps the header without the location entry", async () => {
     const home = await read("src/pages/home/index.vue");
     const matchDetail = await read("src/pages/matches/detail.vue");
 
     expect(home.includes('<AppTabHeader title="首页" showLocation')).toEqual(false);
-    expect(matchDetail.includes('<AppTabHeader title="比赛报名" showBack showLocation')).toEqual(true);
+    expect(matchDetail.includes('<AppTabHeader title="比赛报名" showBack showLocation')).toEqual(false);
+    expect(matchDetail.includes('<AppTabHeader title="比赛报名" showBack />')).toEqual(true);
   });
 
-  test("non-location tab pages keep the header without current location", async () => {
+  test("tab pages keep the header without current location", async () => {
     const activities = await read("src/pages/activities/index.vue");
     const stats = await read("src/pages/teams/index.vue");
     const mine = await read("src/pages/user/index.vue");
@@ -49,11 +51,10 @@ describe("AppTabHeader location visibility", () => {
   test("double tapping the header title scrolls the page back to top", async () => {
     const source = await read("src/components/AppTabHeader.vue");
 
-    // 热区覆盖整条头部行（含右侧空白）；胶囊内返回/回首页与定位入口 stop 隔离，不参与双击判定。
+    // 热区覆盖整条头部行（含右侧空白）；胶囊内返回/回首页 stop 隔离，不参与双击判定。
     expect(source.includes('class="app-tab-header" :style="contentStyle" @tap="handleHeaderTap"')).toEqual(true);
     expect(source.includes('@tap.stop="handleBack"')).toEqual(true);
     expect(source.includes('@tap.stop="handleHome"')).toEqual(true);
-    expect(source.includes('class="app-tab-header-location" @tap.stop="handleLocationTap"')).toEqual(true);
     expect(source.includes('class="app-tab-header-title" @tap=')).toEqual(false);
     expect(source.includes("DOUBLE_TAP_SCROLL_INTERVAL_MS")).toEqual(true);
     expect(source.includes("uni.pageScrollTo({ scrollTop: 0, duration: 300 })")).toEqual(true);

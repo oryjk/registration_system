@@ -70,11 +70,10 @@ describe("system info helpers", () => {
     delete runtime.uni;
   });
 
-  test("app tab header should rely on platform helpers instead of component-level onShow", async () => {
+  test("app tab header should avoid component-level onShow", async () => {
     const headerSource = await Bun.file(sourcePath("components/AppTabHeader.vue")).text();
 
-    expect(headerSource.includes('import { getAppPlatform } from "@/utils/systemInfo";')).toEqual(true);
-    expect(headerSource.includes("isOpenLocationSupported(getAppPlatform())")).toEqual(true);
     expect(headerSource.includes("onShow(() => {")).toEqual(false);
+    expect(headerSource.includes("getAppPlatform")).toEqual(false);
   });
 });
