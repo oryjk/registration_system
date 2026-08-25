@@ -62,6 +62,26 @@ sql:
         emit_pointers_for_null_types: true
   - engine: postgresql
     schema: db/migrations
+    queries: db/queries/notification.sql
+    gen:
+      go:
+        package: notificationsqlc
+        out: internal/notification/adapters/postgres/sqlc
+        sql_package: pgx/v5
+        emit_json_tags: true
+        emit_pointers_for_null_types: true
+  - engine: postgresql
+    schema: db/migrations
+    queries: db/queries/teamfund.sql
+    gen:
+      go:
+        package: teamfundsqlc
+        out: internal/teamfund/adapters/postgres/sqlc
+        sql_package: pgx/v5
+        emit_json_tags: true
+        emit_pointers_for_null_types: true
+  - engine: postgresql
+    schema: db/migrations
     queries: db/queries/minireview.sql
     gen:
       go:

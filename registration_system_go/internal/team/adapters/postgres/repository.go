@@ -196,6 +196,7 @@ func (r *Repository) ListMembers(ctx context.Context, teamID int64) ([]domain.Me
 			},
 			Nickname: row.Nickname, AvatarURL: row.AvatarUrl,
 			RealName: row.RealName, PhoneNumber: row.PhoneNumber,
+			BalanceCents: row.BalanceCents,
 		})
 	}
 	return items, nil

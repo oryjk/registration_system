@@ -79,8 +79,8 @@ func TestLoadConfigGatesH5TestLoginByExplicitEnvironment(t *testing.T) {
 			if config.AppEnvironment != test.wantEnv || config.H5TestLoginEnabled() != test.wantEnabled {
 				t.Fatalf("environment=%q enabled=%v", config.AppEnvironment, config.H5TestLoginEnabled())
 			}
-			if config.H5TestDefaultUserID != 37 {
-				t.Fatalf("default user ID = %d, want 37", config.H5TestDefaultUserID)
+			if config.H5TestDefaultUserID != 4 {
+				t.Fatalf("default user ID = %d, want 4", config.H5TestDefaultUserID)
 			}
 		})
 	}

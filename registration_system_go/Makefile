@@ -31,7 +31,7 @@ fmt:
 	gofmt -w .
 
 test:
-	go test ./...
+	$(call with_env,go test ./...)
 
 vet:
 	go vet ./...

@@ -1738,6 +1738,56 @@ func (q *Queries) ListRegistrationSummariesForMatches(ctx context.Context, match
 	return items, nil
 }
 
+const listSettlementAttendees = `-- name: ListSettlementAttendees :many
+SELECT r.user_id,
+       u.nickname,
+       g.id   AS group_id,
+       g.team_id,
+       r.paid
+FROM match_registrations r
+JOIN match_registration_groups g ON g.id = r.group_id
+JOIN users u ON u.id = r.user_id
+WHERE g.match_id = $1
+  AND r.status = 'attending'
+  AND g.status <> 'cancelled'
+ORDER BY g.kind, r.created_at, r.user_id
+`
+
+type ListSettlementAttendeesRow struct {
+	UserID   int64       `json:"user_id"`
+	Nickname string      `json:"nickname"`
+	GroupID  pgtype.UUID `json:"group_id"`
+	TeamID   *int64      `json:"team_id"`
+	Paid     bool        `json:"paid"`
+}
+
+// 结算名单候选：出场报名者及其所属组球队（散人组 team_id 为 NULL）、预付标记。
+func (q *Queries) ListSettlementAttendees(ctx context.Context, matchID pgtype.UUID) ([]ListSettlementAttendeesRow, error) {
+	rows, err := q.db.Query(ctx, listSettlementAttendees, matchID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListSettlementAttendeesRow
+	for rows.Next() {
+		var i ListSettlementAttendeesRow
+		if err := rows.Scan(
+			&i.UserID,
+			&i.Nickname,
+			&i.GroupID,
+			&i.TeamID,
+			&i.Paid,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listTeamApplications = `-- name: ListTeamApplications :many
 SELECT a.id, a.match_id, a.applicant_team_id, a.introduction, a.status, a.created_by_user_id, a.selected_at, a.withdrawn_at, a.created_at, a.updated_at, t.name AS applicant_team_name
 FROM match_team_applications a

@@ -390,6 +390,37 @@ func (q *Queries) GetRechargeWalletTransactionBySource(ctx context.Context, sour
 	return i, err
 }
 
+const insertMembershipFundTransaction = `-- name: InsertMembershipFundTransaction :execrows
+INSERT INTO team_fund_transactions
+    (team_id, user_id, amount_cents, balance_after_cents, source, source_id, description)
+VALUES ($1, $2, $3,
+        $4, 'membership_payment', $5, '队费充值')
+ON CONFLICT (source, source_id, user_id) DO NOTHING
+`
+
+type InsertMembershipFundTransactionParams struct {
+	TeamID            int64  `json:"team_id"`
+	UserID            int64  `json:"user_id"`
+	AmountCents       int64  `json:"amount_cents"`
+	BalanceAfterCents int64  `json:"balance_after_cents"`
+	OrderNo           string `json:"order_no"`
+}
+
+// 队费入账同步记队费流水；ON CONFLICT 保证重复核销幂等。
+func (q *Queries) InsertMembershipFundTransaction(ctx context.Context, arg InsertMembershipFundTransactionParams) (int64, error) {
+	result, err := q.db.Exec(ctx, insertMembershipFundTransaction,
+		arg.TeamID,
+		arg.UserID,
+		arg.AmountCents,
+		arg.BalanceAfterCents,
+		arg.OrderNo,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const insertRechargeWalletTransaction = `-- name: InsertRechargeWalletTransaction :one
 INSERT INTO wallet_transactions (
     id, user_id, direction, type, amount_cents, balance_after_cents,

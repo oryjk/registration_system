@@ -509,6 +509,12 @@ func (r *Repository) ApplyMembershipPayment(ctx context.Context, payment payment
 		}
 		return result, err
 	}
+	if _, err := queries.InsertMembershipFundTransaction(ctx, paymentsqlc.InsertMembershipFundTransactionParams{
+		TeamID: credit.TeamID, UserID: credit.UserID, AmountCents: credit.AmountCents,
+		BalanceAfterCents: balanceCents, OrderNo: order.OrderNo,
+	}); err != nil {
+		return result, mapConstraintError(err)
+	}
 	if err := tx.Commit(ctx); err != nil {
 		return result, err
 	}

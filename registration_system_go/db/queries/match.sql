@@ -671,3 +671,18 @@ ORDER BY
     END,
     r.created_at,
     r.user_id;
+
+-- name: ListSettlementAttendees :many
+-- 结算名单候选：出场报名者及其所属组球队（散人组 team_id 为 NULL）、预付标记。
+SELECT r.user_id,
+       u.nickname,
+       g.id   AS group_id,
+       g.team_id,
+       r.paid
+FROM match_registrations r
+JOIN match_registration_groups g ON g.id = r.group_id
+JOIN users u ON u.id = r.user_id
+WHERE g.match_id = sqlc.arg('match_id')
+  AND r.status = 'attending'
+  AND g.status <> 'cancelled'
+ORDER BY g.kind, r.created_at, r.user_id;

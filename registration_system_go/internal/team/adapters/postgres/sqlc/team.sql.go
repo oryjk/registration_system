@@ -825,6 +825,7 @@ SELECT tm.id,
        tm.role,
        tm.status,
        tm.joined_at,
+       tm.balance_cents,
        u.nickname,
        u.avatar_url,
        u.real_name,
@@ -845,16 +846,17 @@ ORDER BY
 `
 
 type ListTeamMembersRow struct {
-	ID          int64            `json:"id"`
-	TeamID      int64            `json:"team_id"`
-	UserID      int64            `json:"user_id"`
-	Role        string           `json:"role"`
-	Status      string           `json:"status"`
-	JoinedAt    pgtype.Timestamp `json:"joined_at"`
-	Nickname    string           `json:"nickname"`
-	AvatarUrl   *string          `json:"avatar_url"`
-	RealName    *string          `json:"real_name"`
-	PhoneNumber *string          `json:"phone_number"`
+	ID           int64            `json:"id"`
+	TeamID       int64            `json:"team_id"`
+	UserID       int64            `json:"user_id"`
+	Role         string           `json:"role"`
+	Status       string           `json:"status"`
+	JoinedAt     pgtype.Timestamp `json:"joined_at"`
+	BalanceCents int64            `json:"balance_cents"`
+	Nickname     string           `json:"nickname"`
+	AvatarUrl    *string          `json:"avatar_url"`
+	RealName     *string          `json:"real_name"`
+	PhoneNumber  *string          `json:"phone_number"`
 }
 
 func (q *Queries) ListTeamMembers(ctx context.Context, teamID int64) ([]ListTeamMembersRow, error) {
@@ -873,6 +875,7 @@ func (q *Queries) ListTeamMembers(ctx context.Context, teamID int64) ([]ListTeam
 			&i.Role,
 			&i.Status,
 			&i.JoinedAt,
+			&i.BalanceCents,
 			&i.Nickname,
 			&i.AvatarUrl,
 			&i.RealName,

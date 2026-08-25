@@ -3,6 +3,7 @@ package bootstrap
 import (
 	"bytes"
 	"context"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -16,11 +17,17 @@ import (
 	matchhttp "github.com/oryjk/registration_system/registration_system_go/internal/match/adapters/http"
 	matchapplication "github.com/oryjk/registration_system/registration_system_go/internal/match/application"
 	matchdomain "github.com/oryjk/registration_system/registration_system_go/internal/match/domain"
+	notificationhttp "github.com/oryjk/registration_system/registration_system_go/internal/notification/adapters/http"
+	notificationapplication "github.com/oryjk/registration_system/registration_system_go/internal/notification/application"
+	notificationdomain "github.com/oryjk/registration_system/registration_system_go/internal/notification/domain"
 	paymenthttp "github.com/oryjk/registration_system/registration_system_go/internal/payment/adapters/http"
 	paymentapplication "github.com/oryjk/registration_system/registration_system_go/internal/payment/application"
 	paymentdomain "github.com/oryjk/registration_system/registration_system_go/internal/payment/domain"
 	paymentports "github.com/oryjk/registration_system/registration_system_go/internal/payment/ports"
 	sharedauth "github.com/oryjk/registration_system/registration_system_go/internal/shared/auth"
+	teamfundhttp "github.com/oryjk/registration_system/registration_system_go/internal/teamfund/adapters/http"
+	teamfundapplication "github.com/oryjk/registration_system/registration_system_go/internal/teamfund/application"
+	teamfundports "github.com/oryjk/registration_system/registration_system_go/internal/teamfund/ports"
 	userdomain "github.com/oryjk/registration_system/registration_system_go/internal/user/domain"
 	wallethttp "github.com/oryjk/registration_system/registration_system_go/internal/wallet/adapters/http"
 	walletapplication "github.com/oryjk/registration_system/registration_system_go/internal/wallet/application"
@@ -236,7 +243,7 @@ type routerAdminAuth struct{}
 type routerTestAuth struct{}
 
 func (routerTestAuth) ListUsers(context.Context, int64) (authapplication.TestLoginUsersResult, error) {
-	return authapplication.TestLoginUsersResult{DefaultUserID: 37}, nil
+	return authapplication.TestLoginUsersResult{DefaultUserID: 4}, nil
 }
 
 func (routerTestAuth) Login(context.Context, int64) (authapplication.TestLoginResult, error) {
@@ -338,4 +345,125 @@ func (routerPaymentService) CreateTeamMembership(context.Context, sharedauth.Act
 
 func (routerPaymentService) CreateMatchRegistration(context.Context, sharedauth.Actor, paymentapplication.CreateMatchRegistrationCommand) (paymentapplication.CreateRechargeResult, error) {
 	return paymentapplication.CreateRechargeResult{}, nil
+}
+
+func TestTeamFundAndNotificationRoutesAreProtectedAndVersioned(t *testing.T) {
+	middleware := authhttp.NewMiddleware(routerAudienceTokens{})
+	router := NewRouter(Dependencies{
+		AuthMiddleware: &middleware,
+		TeamFunds:      teamfundhttp.NewHandler(routerTeamFundSettlement{}, routerTeamFundQueries{}, routerTeamFundAdminCredit{}),
+		Notifications:  notificationhttp.NewHandler(routerNotificationService{}),
+	})
+	matchID := uuid.New()
+	paths := []struct {
+		method string
+		path   string
+		body   string
+	}{
+		{http.MethodGet, "/api/v1/app/matches/" + matchID.String() + "/settlement", ""},
+		{http.MethodPost, "/api/v1/app/matches/" + matchID.String() + "/settlement", `{"items":[{"user_id":1,"amount_cents":100}]}`},
+		{http.MethodGet, "/api/v1/app/team-fund/balances", ""},
+		{http.MethodGet, "/api/v1/app/team-fund/transactions?limit=10", ""},
+		{http.MethodGet, "/api/v1/app/notifications?limit=50", ""},
+		{http.MethodGet, "/api/v1/app/notifications/unread-count", ""},
+		{http.MethodPost, "/api/v1/app/notifications/read-all", ""},
+	}
+	for _, path := range paths {
+		t.Run(path.method+" "+path.path, func(t *testing.T) {
+			var body io.Reader
+			if path.body != "" {
+				body = strings.NewReader(path.body)
+			}
+			request := httptest.NewRequest(path.method, path.path, body)
+			request.Header.Set("Authorization", "Bearer user-token")
+			request.Header.Set("Content-Type", "application/json")
+			response := httptest.NewRecorder()
+			router.ServeHTTP(response, request)
+			if response.Code != http.StatusOK {
+				t.Fatalf("status=%d body=%s", response.Code, response.Body.String())
+			}
+		})
+	}
+	unauthorized := httptest.NewRecorder()
+	router.ServeHTTP(unauthorized, httptest.NewRequest(http.MethodGet, "/api/v1/app/team-fund/balances", nil))
+	if unauthorized.Code != http.StatusUnauthorized {
+		t.Fatalf("未登录应返回 401，得到 %d", unauthorized.Code)
+	}
+	unversioned := httptest.NewRecorder()
+	router.ServeHTTP(unversioned, httptest.NewRequest(http.MethodGet, "/api/app/team-fund/balances", nil))
+	if unversioned.Code != http.StatusNotFound {
+		t.Fatalf("无版本前缀应返回 404，得到 %d", unversioned.Code)
+	}
+}
+
+type routerTeamFundSettlement struct{}
+
+func (routerTeamFundSettlement) Settle(context.Context, sharedauth.Actor, teamfundapplication.SettlementRequest) (teamfundports.SettleOutcome, error) {
+	return teamfundports.SettleOutcome{Items: []teamfundports.SettlementItem{}}, nil
+}
+
+func (routerTeamFundSettlement) GetSummary(context.Context, sharedauth.Actor, uuid.UUID) (teamfundports.SettlementSummary, error) {
+	return teamfundports.SettlementSummary{Items: []teamfundports.SettlementItem{}, History: []teamfundports.SettlementBatch{}}, nil
+}
+
+type routerTeamFundQueries struct{}
+
+func (routerTeamFundQueries) ListBalances(context.Context, sharedauth.Actor) ([]teamfundports.TeamFundBalance, error) {
+	return nil, nil
+}
+
+func (routerTeamFundQueries) ListTransactions(context.Context, sharedauth.Actor, int64, int) ([]teamfundports.TeamFundTransaction, error) {
+	return nil, nil
+}
+
+type routerTeamFundAdminCredit struct{}
+
+func (routerTeamFundAdminCredit) Credit(context.Context, sharedauth.Actor, teamfundapplication.AdminCreditRequest) (teamfundports.AdminCreditResult, error) {
+	return teamfundports.AdminCreditResult{}, nil
+}
+
+func TestAdminTeamFundCreditRouteRequiresAdminToken(t *testing.T) {
+	middleware := authhttp.NewMiddleware(routerAudienceTokens{})
+	router := NewRouter(Dependencies{
+		AuthMiddleware: &middleware,
+		TeamFunds:      teamfundhttp.NewHandler(routerTeamFundSettlement{}, routerTeamFundQueries{}, routerTeamFundAdminCredit{}),
+	})
+	path := "/api/v1/admin/team-fund/credits"
+
+	unauthorized := httptest.NewRecorder()
+	router.ServeHTTP(unauthorized, httptest.NewRequest(http.MethodPost, path, strings.NewReader(`{"team_id":1,"user_id":2,"amount_cents":100}`)))
+	if unauthorized.Code != http.StatusUnauthorized {
+		t.Fatalf("未登录应返回 401，得到 %d", unauthorized.Code)
+	}
+
+	forbidden := httptest.NewRecorder()
+	userRequest := httptest.NewRequest(http.MethodPost, path, strings.NewReader(`{"team_id":1,"user_id":2,"amount_cents":100}`))
+	userRequest.Header.Set("Authorization", "Bearer user-token")
+	router.ServeHTTP(forbidden, userRequest)
+	if forbidden.Code != http.StatusForbidden {
+		t.Fatalf("普通用户 token 应返回 403，得到 %d body=%s", forbidden.Code, forbidden.Body.String())
+	}
+
+	allowed := httptest.NewRecorder()
+	adminRequest := httptest.NewRequest(http.MethodPost, path, strings.NewReader(`{"team_id":1,"user_id":2,"amount_cents":100}`))
+	adminRequest.Header.Set("Authorization", "Bearer admin-token")
+	adminRequest.Header.Set("Content-Type", "application/json")
+	router.ServeHTTP(allowed, adminRequest)
+	if allowed.Code != http.StatusOK {
+		t.Fatalf("管理员应返回 200，得到 %d body=%s", allowed.Code, allowed.Body.String())
+	}
+}
+
+type routerNotificationService struct{}
+
+func (routerNotificationService) List(context.Context, sharedauth.Actor, notificationapplication.ListQuery) ([]notificationdomain.Notification, error) {
+	return nil, nil
+}
+
+func (routerNotificationService) UnreadCount(context.Context, sharedauth.Actor) (int64, error) {
+	return 0, nil
+}
+
+func (routerNotificationService) MarkAllRead(context.Context, sharedauth.Actor) (int64, error) {
+	return 0, nil
 }

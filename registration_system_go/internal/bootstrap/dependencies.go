@@ -20,6 +20,9 @@ import (
 	minireviewhttp "github.com/oryjk/registration_system/registration_system_go/internal/minireview/adapters/http"
 	minireviewpostgres "github.com/oryjk/registration_system/registration_system_go/internal/minireview/adapters/postgres"
 	minireviewapplication "github.com/oryjk/registration_system/registration_system_go/internal/minireview/application"
+	notificationhttp "github.com/oryjk/registration_system/registration_system_go/internal/notification/adapters/http"
+	notificationpostgres "github.com/oryjk/registration_system/registration_system_go/internal/notification/adapters/postgres"
+	notificationapplication "github.com/oryjk/registration_system/registration_system_go/internal/notification/application"
 	paymenthttp "github.com/oryjk/registration_system/registration_system_go/internal/payment/adapters/http"
 	paymentmock "github.com/oryjk/registration_system/registration_system_go/internal/payment/adapters/mock"
 	paymentorder "github.com/oryjk/registration_system/registration_system_go/internal/payment/adapters/order"
@@ -35,6 +38,9 @@ import (
 	teampassword "github.com/oryjk/registration_system/registration_system_go/internal/team/adapters/password"
 	teampostgres "github.com/oryjk/registration_system/registration_system_go/internal/team/adapters/postgres"
 	teamapplication "github.com/oryjk/registration_system/registration_system_go/internal/team/application"
+	teamfundhttp "github.com/oryjk/registration_system/registration_system_go/internal/teamfund/adapters/http"
+	teamfundpostgres "github.com/oryjk/registration_system/registration_system_go/internal/teamfund/adapters/postgres"
+	teamfundapplication "github.com/oryjk/registration_system/registration_system_go/internal/teamfund/application"
 	"github.com/oryjk/registration_system/registration_system_go/internal/user/adapters/avatarstore"
 	userhttp "github.com/oryjk/registration_system/registration_system_go/internal/user/adapters/http"
 	userpostgres "github.com/oryjk/registration_system/registration_system_go/internal/user/adapters/postgres"
@@ -138,6 +144,16 @@ func BuildDependencies(ctx context.Context, config Config) (Dependencies, func()
 	systemSettingsRepository := systempostgres.NewSettingsRepository(pool)
 	systemSettingsService := systemapplication.NewSettingsService(systemSettingsRepository)
 
+	notificationRepository := notificationpostgres.NewRepository(pool)
+	notificationService := notificationapplication.NewService(notificationRepository)
+	notificationHandler := notificationhttp.NewHandler(notificationService)
+	teamFundRepository := teamfundpostgres.NewRepository(pool)
+	teamFundSettlement := teamfundapplication.NewSettlementService(teamFundRepository,
+		matchapplication.NewSettlementRosterService(matchRepository), teamService, notificationService)
+	teamFundQueries := teamfundapplication.NewQueryService(teamFundRepository)
+	teamFundAdminCredit := teamfundapplication.NewAdminCreditService(teamFundRepository, notificationService)
+	teamFundHandler := teamfundhttp.NewHandler(teamFundSettlement, teamFundQueries, teamFundAdminCredit)
+
 	return Dependencies{
 		AuthMiddleware: &authMiddleware,
 		UserAuth:       userAuthHandler, AdminAuth: adminAuthHandler,
@@ -148,6 +164,7 @@ func BuildDependencies(ctx context.Context, config Config) (Dependencies, func()
 		AdminMatches: adminMatchHandler, TeamApplications: teamApplicationHandler,
 		Payments: paymentHandler, Wallets: walletHandler, MiniReviews: miniReviewHandler,
 		SystemRuntime: systemhttp.NewHandler(systemSettingsService),
-		UploadDir:     config.UploadDir,
+		TeamFunds:     teamFundHandler, Notifications: notificationHandler,
+		UploadDir: config.UploadDir,
 	}, closePool, nil
 }

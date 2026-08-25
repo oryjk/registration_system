@@ -7,10 +7,12 @@ import (
 	authhttp "github.com/oryjk/registration_system/registration_system_go/internal/auth/adapters/http"
 	matchhttp "github.com/oryjk/registration_system/registration_system_go/internal/match/adapters/http"
 	minireviewhttp "github.com/oryjk/registration_system/registration_system_go/internal/minireview/adapters/http"
+	notificationhttp "github.com/oryjk/registration_system/registration_system_go/internal/notification/adapters/http"
 	paymenthttp "github.com/oryjk/registration_system/registration_system_go/internal/payment/adapters/http"
 	sharedhttp "github.com/oryjk/registration_system/registration_system_go/internal/shared/http"
 	systemhttp "github.com/oryjk/registration_system/registration_system_go/internal/system/adapters/http"
 	teamhttp "github.com/oryjk/registration_system/registration_system_go/internal/team/adapters/http"
+	teamfundhttp "github.com/oryjk/registration_system/registration_system_go/internal/teamfund/adapters/http"
 	userhttp "github.com/oryjk/registration_system/registration_system_go/internal/user/adapters/http"
 	wallethttp "github.com/oryjk/registration_system/registration_system_go/internal/wallet/adapters/http"
 )
@@ -36,6 +38,8 @@ type Dependencies struct {
 	Wallets            *wallethttp.Handler
 	MiniReviews        *minireviewhttp.Handler
 	SystemRuntime      *systemhttp.Handler
+	TeamFunds          *teamfundhttp.Handler
+	Notifications      *notificationhttp.Handler
 	// UploadDir 非空时以 /uploads 静态路径对外提供上传文件（如头像）。
 	UploadDir string
 }
@@ -116,6 +120,12 @@ func NewRouter(dependencies Dependencies) *gin.Engine {
 		if dependencies.Wallets != nil {
 			dependencies.Wallets.RegisterAppRoutes(userRoutes)
 		}
+		if dependencies.TeamFunds != nil {
+			dependencies.TeamFunds.RegisterAppRoutes(userRoutes)
+		}
+		if dependencies.Notifications != nil {
+			dependencies.Notifications.RegisterAppRoutes(userRoutes)
+		}
 
 		adminRoutes := admin.Group("")
 		adminRoutes.Use(dependencies.AuthMiddleware.RequireAdmin())
@@ -145,6 +155,9 @@ func NewRouter(dependencies Dependencies) *gin.Engine {
 		}
 		if dependencies.SystemRuntime != nil {
 			dependencies.SystemRuntime.RegisterAdminRoutes(adminRoutes)
+		}
+		if dependencies.TeamFunds != nil {
+			dependencies.TeamFunds.RegisterAdminRoutes(adminRoutes)
 		}
 	}
 	return router

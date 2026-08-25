@@ -301,6 +301,25 @@ func TestApplyMembershipPaymentCreditsPayingMemberBalanceWithoutTouchingCreditOr
 	if second.Order.Status != paymentdomain.StatusPaid {
 		t.Fatalf("replayed order status=%s", second.Order.Status)
 	}
+	// 队费入账同步记队费流水；幂等重放不叠加流水。
+	var ledgerAmount, ledgerBalance int64
+	var ledgerSource string
+	ledgerCount := 0
+	rows, err := pool.Query(ctx, `SELECT amount_cents, balance_after_cents, source FROM team_fund_transactions WHERE user_id=$1 AND team_id=$2`, userID, teamID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		ledgerCount++
+		if err := rows.Scan(&ledgerAmount, &ledgerBalance, &ledgerSource); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if ledgerCount != 1 || ledgerAmount != 7500 || ledgerBalance != 7500 || ledgerSource != "membership_payment" {
+		t.Fatalf("队费流水应恰好一条且金额/快照正确: count=%d amount=%d balance=%d source=%s",
+			ledgerCount, ledgerAmount, ledgerBalance, ledgerSource)
+	}
 }
 
 func TestApplyMembershipPaymentRejectsAmountMismatch(t *testing.T) {

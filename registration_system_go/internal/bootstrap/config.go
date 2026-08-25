@@ -44,7 +44,7 @@ type Config struct {
 
 func LoadConfig() (Config, error) {
 	configenv.Load()
-	defaultUserID, err := positiveInt64Env("H5_TEST_DEFAULT_USER_ID", 37)
+	defaultUserID, err := positiveInt64Env("H5_TEST_DEFAULT_USER_ID", 4)
 	if err != nil {
 		return Config{}, err
 	}

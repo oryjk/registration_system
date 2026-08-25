@@ -1430,3 +1430,83 @@ func TestMapRegistrationCarriesPaidFlag(t *testing.T) {
 		t.Fatalf("registration mapping must carry paid flag and count: %+v", registration)
 	}
 }
+
+func TestListSettlementAttendeesFiltersAndMapsTeams(t *testing.T) {
+	pool := testsupport.StartPostgres(t)
+	ctx := context.Background()
+	ownerID, hostTeamID := seedMatchOwner(t, pool)
+	match, groups := newPersistableIndividualMatch(t, ownerID, hostTeamID, 4, 12)
+	repository := NewRepository(pool)
+	if err := repository.CreateWithGroups(ctx, match, groups); err != nil {
+		t.Fatalf("create match: %v", err)
+	}
+	hostGroup, individualGroup := groups[0], groups[1]
+	if hostGroup.Kind != domain.GroupHostTeam || individualGroup.Kind != domain.GroupIndividualOpponent {
+		t.Fatalf("分组假设应为 主队组+散人组: %+v", groups)
+	}
+
+	seedNicknameUser := func(nickname string) int64 {
+		t.Helper()
+		var userID int64
+		if err := pool.QueryRow(ctx, `INSERT INTO users (openid, nickname) VALUES ($1, $2) RETURNING id`,
+			"settle-"+uuid.NewString(), nickname).Scan(&userID); err != nil {
+			t.Fatalf("seed user: %v", err)
+		}
+		return userID
+	}
+	seedRegistration := func(groupID uuid.UUID, userID int64, status string, paid bool) {
+		t.Helper()
+		if _, err := pool.Exec(ctx, `
+			INSERT INTO match_registrations (id, group_id, user_id, status, registration_count, paid)
+			VALUES ($1, $2, $3, $4, 1, $5)`, uuid.New(), groupID, userID, status, paid); err != nil {
+			t.Fatalf("seed registration (%s): %v", status, err)
+		}
+	}
+
+	attendingID := seedNicknameUser("甲")
+	leaveID := seedNicknameUser("乙")
+	absentID := seedNicknameUser("丙")
+	cancelledGroupID := seedNicknameUser("丁")
+	individualID := seedNicknameUser("散人戊")
+
+	seedRegistration(hostGroup.ID, attendingID, "attending", false)
+	seedRegistration(hostGroup.ID, leaveID, "leave", false)
+	seedRegistration(hostGroup.ID, absentID, "absent", false)
+	seedRegistration(individualGroup.ID, individualID, "attending", true)
+
+	// 已取消的客队组里的 attending 报名应被排除。
+	_, guestTeamID := seedApplicationTeam(t, pool, "已取消客队")
+	cancelledGroupUUID := uuid.New()
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO match_registration_groups (id, match_id, kind, team_id, max_players, status, cancelled_at)
+		VALUES ($1, $2, 'guest_team', $3, 8, 'cancelled', NOW())`,
+		cancelledGroupUUID, match.ID, guestTeamID); err != nil {
+		t.Fatalf("seed cancelled group: %v", err)
+	}
+	seedRegistration(cancelledGroupUUID, cancelledGroupID, "attending", false)
+
+	attendees, err := repository.ListSettlementAttendees(ctx, match.ID)
+	if err != nil {
+		t.Fatalf("list attendees: %v", err)
+	}
+	if len(attendees) != 2 {
+		t.Fatalf("只应计入 2 名有效出场者（leave/absent/已取消组应排除）: %+v", attendees)
+	}
+	byUser := make(map[int64]domain.SettlementAttendee, len(attendees))
+	for _, attendee := range attendees {
+		byUser[attendee.UserID] = attendee
+	}
+	hostAttendee, ok := byUser[attendingID]
+	if !ok || hostAttendee.Nickname != "甲" || hostAttendee.TeamID != hostTeamID || hostAttendee.Paid {
+		t.Fatalf("主队出场者应计入并映射 team_id: %+v", attendees)
+	}
+	individualAttendee, ok := byUser[individualID]
+	if !ok || individualAttendee.TeamID != 0 || !individualAttendee.Paid {
+		t.Fatalf("散人组出场者应计入且 TeamID 为 0、预付标记透传: %+v", attendees)
+	}
+	for _, excludedID := range []int64{leaveID, absentID, cancelledGroupID} {
+		if _, found := byUser[excludedID]; found {
+			t.Fatalf("user %d 不应出现在结算名单: %+v", excludedID, attendees)
+		}
+	}
+}

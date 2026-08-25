@@ -127,3 +127,11 @@ LIMIT sqlc.arg(result_limit) OFFSET sqlc.arg(result_offset);
 
 -- name: CountSubmittedTips :one
 SELECT COUNT(*) FROM tips WHERE status = 'submitted';
+
+-- name: InsertMembershipFundTransaction :execrows
+-- 队费入账同步记队费流水；ON CONFLICT 保证重复核销幂等。
+INSERT INTO team_fund_transactions
+    (team_id, user_id, amount_cents, balance_after_cents, source, source_id, description)
+VALUES (sqlc.arg('team_id'), sqlc.arg('user_id'), sqlc.arg('amount_cents'),
+        sqlc.arg('balance_after_cents'), 'membership_payment', sqlc.arg('order_no'), '队费充值')
+ON CONFLICT (source, source_id, user_id) DO NOTHING;

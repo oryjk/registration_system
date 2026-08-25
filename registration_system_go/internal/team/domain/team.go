@@ -81,6 +81,8 @@ type MemberDetails struct {
 	AvatarURL   *string
 	RealName    *string
 	PhoneNumber *string
+	// BalanceCents 该成员在此球队的队费余额（分），负数表示欠款。
+	BalanceCents int64
 }
 
 type MemberCandidate struct {

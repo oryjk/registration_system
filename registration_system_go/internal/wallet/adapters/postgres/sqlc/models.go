@@ -93,6 +93,20 @@ type MatchRegistrationGroup struct {
 	CancelledAt pgtype.Timestamp `json:"cancelled_at"`
 }
 
+type MatchSettlementBatch struct {
+	ID                int64              `json:"id"`
+	MatchID           pgtype.UUID        `json:"match_id"`
+	BatchNo           int32              `json:"batch_no"`
+	OperationType     string             `json:"operation_type"`
+	ReversalOfBatchID *int64             `json:"reversal_of_batch_id"`
+	ReversedByBatchID *int64             `json:"reversed_by_batch_id"`
+	Description       string             `json:"description"`
+	TotalAmountCents  int64              `json:"total_amount_cents"`
+	UserCount         int32              `json:"user_count"`
+	CreatedByUserID   int64              `json:"created_by_user_id"`
+	CreatedAt         pgtype.Timestamptz `json:"created_at"`
+}
+
 type MatchTeamApplication struct {
 	ID              pgtype.UUID      `json:"id"`
 	MatchID         pgtype.UUID      `json:"match_id"`
@@ -122,6 +136,18 @@ type MiniReviewStatus struct {
 	StatusText  string             `json:"status_text"`
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+}
+
+type Notification struct {
+	ID          int64              `json:"id"`
+	UserID      int64              `json:"user_id"`
+	Kind        string             `json:"kind"`
+	Title       string             `json:"title"`
+	Content     string             `json:"content"`
+	RelatedType *string            `json:"related_type"`
+	RelatedID   *string            `json:"related_id"`
+	ReadAt      pgtype.Timestamptz `json:"read_at"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 }
 
 type PaymentOrder struct {
@@ -155,6 +181,19 @@ type Team struct {
 	CreditScore      int32              `json:"credit_score"`
 	VipUntil         pgtype.Timestamptz `json:"vip_until"`
 	JoinPasswordHash *string            `json:"join_password_hash"`
+}
+
+type TeamFundTransaction struct {
+	ID                int64              `json:"id"`
+	TeamID            int64              `json:"team_id"`
+	UserID            int64              `json:"user_id"`
+	AmountCents       int64              `json:"amount_cents"`
+	BalanceAfterCents int64              `json:"balance_after_cents"`
+	Source            string             `json:"source"`
+	SourceID          string             `json:"source_id"`
+	MatchID           pgtype.UUID        `json:"match_id"`
+	Description       string             `json:"description"`
+	CreatedAt         pgtype.Timestamptz `json:"created_at"`
 }
 
 type TeamMember struct {

@@ -31,6 +31,8 @@ type MemberResponse struct {
 	Role        domain.Role         `json:"role"`
 	Status      domain.MemberStatus `json:"status"`
 	JoinedAt    time.Time           `json:"joined_at"`
+	// BalanceCents 该成员在此球队的队费余额（分），负数表示欠款。
+	BalanceCents int64 `json:"balance_cents"`
 }
 
 type MemberManagementResponse struct {
@@ -179,6 +181,7 @@ func mapMemberManagement(result application.MemberManagementResult) MemberManage
 			ID: item.ID, UserID: item.UserID, Nickname: item.Nickname, AvatarURL: item.AvatarURL,
 			RealName: item.RealName, PhoneNumber: item.PhoneNumber,
 			Role: item.Role, Status: item.Status, JoinedAt: item.JoinedAt,
+			BalanceCents: item.BalanceCents,
 		})
 	}
 	return MemberManagementResponse{Team: mapTeam(result.Team), Members: members}
