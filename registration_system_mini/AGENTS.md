@@ -6,7 +6,7 @@
 
 本目录是唯一的用户端小程序代码库。**当前对接 Go 新后端**（验收环境 `https://oryjk.cn:82/mini-v3/`）；`mini-rust-backend-final` 标记最后一个对接 Rust 后端的基线，Rust 后端已冻结不再更新，仅作只读参考。
 
-注意：Go 后端尚未提供 notifications 模块，`src/stores/notificationCenter.ts` 里的 `NOTIFICATION_SYNC_ENABLED` 暂为 `false`（暂停未读数拉取）；Go 端实现接口后改回 `true` 恢复。
+注意：Go 后端 notifications 模块已上线（站内通知 + 未读数 + 全部已读，余额不足/充值到账等事件会入库）；`src/stores/notificationCenter.ts` 的 `NOTIFICATION_SYNC_ENABLED` 已恢复为 `true`，底部 Tab 未读角标正常拉取。
 
 ## 常用命令
 

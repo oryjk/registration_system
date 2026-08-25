@@ -1,44 +1,27 @@
 <script setup lang="ts">
-import type { BackendActivitySettlementSummary, BackendUser } from "@/types/backend";
-import { resolveUserDisplayName } from "@/utils/viewModels";
-import {
-  currencyLabel,
-  settlementModeLabel,
-  settlementScopeLabel,
-  type SettlementFormState,
-  type SettlementParticipantViewModel,
-} from "../settlementState";
+import type { BackendMatchSettlementSummary } from "@/types/backend";
+import { centsToYuanText, type SettlementFormState, type SettlementParticipantViewModel } from "../settlementState";
 
-const props = defineProps<{
-  summary: BackendActivitySettlementSummary | null;
+defineProps<{
+  summary: BackendMatchSettlementSummary | null;
   form: SettlementFormState;
   participants: SettlementParticipantViewModel[];
-  attendeeCount: number;
-  searchKeyword: string;
-  searchResults: BackendUser[];
-  searching: boolean;
+  totalLabel: string;
   submittingStatus: boolean;
 }>();
 
 const emit = defineEmits<{
-  (event: "update:searchKeyword", value: string): void;
-  (event: "modeChange", value: Event): void;
-  (event: "scopeChange", value: Event): void;
   (event: "chargeAmountInput", userId: number, value: string): void;
-  (event: "removeCustomUser", userId: number): void;
-  (event: "searchUsers"): void;
-  (event: "addCustomUser", user: BackendUser): void;
   (event: "submitSettlement"): void;
 }>();
-
-function updateSearchKeyword(event: Event) {
-  const detail = event as Event & { detail?: { value?: string } };
-  emit("update:searchKeyword", detail.detail?.value ?? "");
-}
 
 function updateChargeAmount(userId: number, event: Event) {
   const detail = event as Event & { detail?: { value?: string } };
   emit("chargeAmountInput", userId, detail.detail?.value ?? "");
+}
+
+function batchTypeLabel(operationType: string) {
+  return operationType === "reverse" ? "冲正" : "结算";
 }
 </script>
 
@@ -47,7 +30,7 @@ function updateChargeAmount(userId: number, event: Event) {
     <view class="settlement-head">
       <view>
         <text class="section-title">赛后结算</text>
-        <text class="settlement-copy">队长或领队可按参加名单 AA，也可以指定人员和金额扣费。</text>
+        <text class="settlement-copy">按出场名单扣队费，每人金额可调整（0 表示免付），余额不足将记为欠款。</text>
       </view>
       <view :class="['settlement-status', summary?.settled ? 'settlement-status-done' : '']">
         {{ summary?.settled ? "已结算" : "未结算" }}
@@ -56,74 +39,22 @@ function updateChargeAmount(userId: number, event: Event) {
 
     <view class="settlement-metrics">
       <view class="metric-item">
-        <text class="metric-label">参加</text>
-        <text class="metric-value">{{ attendeeCount }}</text>
-      </view>
-      <view class="metric-item">
-        <text class="metric-label">扣费</text>
-        <text class="metric-value">{{ summary?.settled_user_count ?? 0 }}</text>
+        <text class="metric-label">扣费人数</text>
+        <text class="metric-value">{{ summary?.settled ? summary.history[0]?.user_count ?? 0 : participants.length }}</text>
       </view>
       <view class="metric-item">
         <text class="metric-label">总额</text>
-        <text class="metric-value">{{ currencyLabel(summary?.total_amount) }}</text>
-      </view>
-      <view class="metric-item">
-        <text class="metric-label">人均</text>
-        <text class="metric-value">{{ summary?.aa_fee ? currencyLabel(summary.aa_fee) : "—" }}</text>
+        <text class="metric-value">{{ summary?.settled ? centsToYuanText(summary.total_amount_cents) : totalLabel || "—" }}</text>
       </view>
     </view>
 
     <view v-if="summary?.settled" class="settlement-note">
-      {{ settlementModeLabel(summary.mode) }} · {{ settlementScopeLabel(summary.participant_scope) }}
-      <text v-if="summary.current_batch_no"> · 第 {{ summary.current_batch_no }} 批</text>
+      已结算 · 第 {{ summary.batch_no }} 批<text v-if="summary.description"> · {{ summary.description }}</text>
     </view>
 
-    <view class="form-grid">
-      <view class="field-block field-wide">
-        <text class="field-label">总金额</text>
-        <input v-model="form.totalAmount" class="form-input" type="digit" placeholder="例如 240" />
-      </view>
-      <view class="field-block">
-        <text class="field-label">扣费方式</text>
-        <picker :range="['AA 平摊', '手动金额']" :value="form.mode === 'manual' ? 1 : 0" @change="$emit('modeChange', $event)">
-          <view class="picker-input">{{ form.mode === "manual" ? "手动金额" : "AA 平摊" }}</view>
-        </picker>
-      </view>
-      <view class="field-block">
-        <text class="field-label">扣费人员</text>
-        <picker :range="['参加名单', '自定义人员']" :value="form.participantScope === 'custom_users' ? 1 : 0" @change="$emit('scopeChange', $event)">
-          <view class="picker-input">{{ form.participantScope === "custom_users" ? "自定义人员" : "参加名单" }}</view>
-        </picker>
-      </view>
-      <view class="field-block field-wide">
-        <text class="field-label">说明</text>
-        <input v-model="form.description" class="form-input" placeholder="例如：场地费 + 水费" />
-      </view>
-    </view>
-
-    <view v-if="form.participantScope === 'custom_users'" class="custom-search">
-      <view class="search-row">
-        <input
-          :value="searchKeyword"
-          class="form-input search-input"
-          placeholder="搜索姓名、昵称或用户名"
-          confirm-type="search"
-          @input="updateSearchKeyword"
-          @confirm="$emit('searchUsers')"
-        />
-        <view class="search-button" @tap="$emit('searchUsers')">{{ searching ? "搜索中" : "搜索" }}</view>
-      </view>
-      <view v-if="searchResults.length" class="candidate-list">
-        <view v-for="user in searchResults" :key="user.id" class="candidate-card" @tap="$emit('addCustomUser', user)">
-          <image v-if="user.avatar_url" class="candidate-avatar" :src="user.avatar_url" mode="aspectFill" />
-          <view v-else class="candidate-avatar candidate-avatar-fallback">{{ resolveUserDisplayName(user).slice(0, 1) }}</view>
-          <view class="candidate-main">
-            <text class="candidate-title">{{ resolveUserDisplayName(user) }}</text>
-            <text class="candidate-meta">{{ user.username || "未命名用户" }}</text>
-          </view>
-          <text class="candidate-action">加入</text>
-        </view>
-      </view>
+    <view class="field-block field-wide">
+      <text class="field-label">说明</text>
+      <input v-model="form.description" class="form-input" placeholder="例如：场地费 + 水费" />
     </view>
 
     <view class="participant-box">
@@ -133,31 +64,37 @@ function updateChargeAmount(userId: number, event: Event) {
       </view>
       <view v-if="participants.length" class="participant-list">
         <view v-for="person in participants" :key="person.userId" class="participant-row">
-          <image v-if="person.avatarUrl" class="participant-avatar" :src="person.avatarUrl" mode="aspectFill" />
-          <view v-else class="participant-avatar participant-avatar-fallback">{{ person.name.slice(0, 1) }}</view>
+          <view class="participant-avatar participant-avatar-fallback">{{ person.name.slice(0, 1) }}</view>
           <text class="participant-name">{{ person.name }}</text>
           <input
-            v-if="form.mode === 'manual'"
             :value="person.amount"
             class="amount-input"
             type="digit"
             placeholder="金额"
             @input="updateChargeAmount(person.userId, $event)"
           />
-          <text v-else class="amount-label">{{ person.amount ? currencyLabel(person.amount) : "提交后计算" }}</text>
-          <text v-if="form.participantScope === 'custom_users'" class="remove-link" @tap="$emit('removeCustomUser', person.userId)">移除</text>
         </view>
       </view>
       <view v-else class="empty-box">
-        {{ form.participantScope === "custom_users" ? "请先搜索并选择扣费人员。" : "当前还没有参加人员。" }}
+        当前没有可扣费的出场队员（散人与已付报名费者不参与队费扣款）。
       </view>
     </view>
 
     <view v-if="summary?.settled && summary.items.length" class="settled-list">
-      <text class="participant-title">已结算记录</text>
+      <text class="participant-title">当前批次记录</text>
       <view v-for="item in summary.items" :key="item.user_id" class="settled-row">
         <text class="settled-name">{{ item.user_name || `用户 ${item.user_id}` }}</text>
-        <text class="settled-amount">{{ currencyLabel(item.fee) }}</text>
+        <text :class="['settled-amount', item.balance_after_cents < 0 ? 'settled-amount-debt' : '']">
+          ¥{{ centsToYuanText(item.amount_cents) }}<text v-if="item.balance_after_cents < 0"> · 欠款</text>
+        </text>
+      </view>
+    </view>
+
+    <view v-if="summary?.history?.length" class="history-box">
+      <text class="participant-title">批次历史</text>
+      <view v-for="batch in summary.history" :key="batch.batch_no" class="history-row">
+        <text class="history-label">第 {{ batch.batch_no }} 批 · {{ batchTypeLabel(batch.operation_type) }}</text>
+        <text class="history-amount">¥{{ centsToYuanText(Math.abs(batch.total_amount_cents)) }} · {{ batch.user_count }} 人</text>
       </view>
     </view>
 
@@ -212,13 +149,13 @@ function updateChargeAmount(userId: number, event: Event) {
 }
 
 .settlement-status-done {
-  background: #9be22b;
+  background: var(--neo-color-accent);
   color: #111310;
 }
 
 .settlement-metrics {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10rpx;
   margin-top: 22rpx;
 }
@@ -260,22 +197,16 @@ function updateChargeAmount(userId: number, event: Event) {
   font-weight: 800;
 }
 
-.form-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16rpx;
-  margin-top: 22rpx;
-}
-
 .field-block {
   display: flex;
   flex-direction: column;
   gap: 10rpx;
   min-width: 0;
+  margin-top: 22rpx;
 }
 
 .field-wide {
-  grid-column: 1 / -1;
+  width: 100%;
 }
 
 .field-label {
@@ -284,8 +215,7 @@ function updateChargeAmount(userId: number, event: Event) {
   font-weight: 800;
 }
 
-.form-input,
-.picker-input {
+.form-input {
   width: 100%;
   height: 84rpx;
   padding: 0 20rpx;
@@ -299,38 +229,15 @@ function updateChargeAmount(userId: number, event: Event) {
   box-sizing: border-box;
 }
 
-.custom-search,
 .participant-box,
-.settled-list {
+.settled-list,
+.history-box {
   margin-top: 20rpx;
   padding: 18rpx;
   border-radius: 24rpx;
   background: #f7f8f4;
 }
 
-.search-row {
-  display: flex;
-  gap: 12rpx;
-}
-
-.search-input {
-  flex: 1;
-}
-
-.search-button {
-  width: 128rpx;
-  height: 84rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 22rpx;
-  background: #111310;
-  color: #9be22b;
-  font-size: 26rpx;
-  font-weight: 900;
-}
-
-.candidate-list,
 .participant-list {
   display: flex;
   flex-direction: column;
@@ -338,9 +245,9 @@ function updateChargeAmount(userId: number, event: Event) {
   margin-top: 14rpx;
 }
 
-.candidate-card,
 .participant-row,
-.settled-row {
+.settled-row,
+.history-row {
   display: flex;
   align-items: center;
   gap: 14rpx;
@@ -349,7 +256,6 @@ function updateChargeAmount(userId: number, event: Event) {
   background: #ffffff;
 }
 
-.candidate-avatar,
 .participant-avatar {
   flex-shrink: 0;
   width: 62rpx;
@@ -358,42 +264,13 @@ function updateChargeAmount(userId: number, event: Event) {
   overflow: hidden;
 }
 
-.candidate-avatar-fallback,
 .participant-avatar-fallback {
   display: flex;
   align-items: center;
   justify-content: center;
   background: #111310;
-  color: #9be22b;
+  color: var(--neo-color-accent);
   font-size: 26rpx;
-  font-weight: 900;
-}
-
-.candidate-main {
-  flex: 1;
-  min-width: 0;
-}
-
-.candidate-title,
-.participant-name,
-.settled-name {
-  color: #111310;
-  font-size: 27rpx;
-  font-weight: 900;
-}
-
-.candidate-meta {
-  display: block;
-  margin-top: 4rpx;
-  color: #6a7165;
-  font-size: 22rpx;
-  font-weight: 700;
-}
-
-.candidate-action,
-.remove-link {
-  color: #2b68f7;
-  font-size: 24rpx;
   font-weight: 900;
 }
 
@@ -418,6 +295,9 @@ function updateChargeAmount(userId: number, event: Event) {
 .participant-name {
   flex: 1;
   min-width: 0;
+  color: #111310;
+  font-size: 27rpx;
+  font-weight: 900;
 }
 
 .amount-input {
@@ -430,13 +310,6 @@ function updateChargeAmount(userId: number, event: Event) {
   font-size: 24rpx;
   font-weight: 900;
   box-sizing: border-box;
-}
-
-.amount-label,
-.settled-amount {
-  color: #111310;
-  font-size: 24rpx;
-  font-weight: 900;
 }
 
 .empty-box {
@@ -460,6 +333,44 @@ function updateChargeAmount(userId: number, event: Event) {
   justify-content: space-between;
 }
 
+.settled-name {
+  color: #111310;
+  font-size: 27rpx;
+  font-weight: 900;
+}
+
+.settled-amount {
+  color: #111310;
+  font-size: 24rpx;
+  font-weight: 900;
+}
+
+.settled-amount-debt {
+  color: #d04860;
+}
+
+.history-box {
+  display: flex;
+  flex-direction: column;
+  gap: 10rpx;
+}
+
+.history-row {
+  justify-content: space-between;
+}
+
+.history-label {
+  color: #535850;
+  font-size: 24rpx;
+  font-weight: 800;
+}
+
+.history-amount {
+  color: #6a7165;
+  font-size: 22rpx;
+  font-weight: 800;
+}
+
 .settlement-button {
   height: 82rpx;
   margin-top: 20rpx;
@@ -467,7 +378,7 @@ function updateChargeAmount(userId: number, event: Event) {
   align-items: center;
   justify-content: center;
   border-radius: 999rpx;
-  background: #9be22b;
+  background: var(--neo-color-accent);
   color: #10110f;
   font-size: 28rpx;
   font-weight: 900;

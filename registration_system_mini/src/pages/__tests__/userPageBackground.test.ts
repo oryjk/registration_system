@@ -88,7 +88,7 @@ describe("mine page visual composition", () => {
     expect(walletSource.includes("查看账单")).toEqual(true);
     expect(walletSource.includes("账单明细已移到二级页面")).toEqual(false);
     expect(walletSource.includes("compact-record-card")).toEqual(false);
-    expect(billingPageSource.includes("getMyBillingFlow")).toEqual(true);
+    expect(billingPageSource.includes("getTeamFundTransactions")).toEqual(true);
   });
 
   test("hides the wallet card on mine page during mini review mode", async () => {

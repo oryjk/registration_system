@@ -1,4 +1,8 @@
 import type {
+  BackendMatchSettleResult,
+  BackendMatchSettlementSummary,
+} from "@/types/backend";
+import type {
   AppMatchDetailResponse,
   AppMatchHomeResponse,
   AppMatchListResponse,
@@ -121,6 +125,27 @@ export function cancelMyMatchRegistration(matchId: string, groupId: string) {
   return requestApi<AppMatchRegistration>({
     url: `/matches/${matchId}/groups/${groupId}/my-registration`,
     method: "DELETE",
+    auth: true,
+  });
+}
+
+/** 比赛结算摘要；未结算时 items 为可扣名单并预填人均费，需结算管理权限。 */
+export function getMatchSettlement(matchId: string) {
+  return requestApi<BackendMatchSettlementSummary>({
+    url: `/matches/${matchId}/settlement`,
+    auth: true,
+  });
+}
+
+/** 提交比赛结算（已有生效批次时冲正重算）；items 须与可扣名单完全一致。 */
+export function settleMatch(
+  matchId: string,
+  payload: { items: Array<{ user_id: number; amount_cents: number }>; description?: string },
+) {
+  return requestApi<BackendMatchSettleResult>({
+    url: `/matches/${matchId}/settlement`,
+    method: "POST",
+    data: payload,
     auth: true,
   });
 }

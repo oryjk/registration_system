@@ -5,7 +5,6 @@ import {
   updateTeamCheckInConfig,
   updateMyStand,
 } from "@/api/activity";
-import { settleActivityExpense, type SettleActivityExpensePayload } from "@/api/billing";
 import { cancelMyMatchRegistration, putMyMatchRegistration } from "@/api/match";
 import { submitTeamActivityReview } from "@/api/team";
 
@@ -98,8 +97,4 @@ export function submitMatchActivityReview(params: {
     rating: params.rating,
     comment: params.comment,
   });
-}
-
-export function submitMatchSettlement(activityId: string, payload: SettleActivityExpensePayload) {
-  return settleActivityExpense(activityId, payload);
 }

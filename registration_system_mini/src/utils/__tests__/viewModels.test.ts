@@ -2,7 +2,6 @@ import { describe, expect, test } from "bun:test";
 import type { BackendChallengeSummary } from "@/types/backend";
 import {
   buildAttendanceSummary,
-  buildBillingSummary,
   buildChallengeCards,
   buildNotificationItems,
   buildHomeMatchCards,
@@ -457,53 +456,6 @@ describe("buildAttendanceSummary", () => {
       late: 1,
       pending: 0,
       attendanceRate: "33%",
-    });
-  });
-});
-
-describe("buildBillingSummary", () => {
-  test("builds wallet and flow summary from real billing payload", () => {
-    const summary = buildBillingSummary(
-      {
-        user_id: 7,
-        balance: "186.00",
-        total_recharge: "300.00",
-        total_expense: "96.00",
-        total_penalty: "18.00",
-      },
-      {
-        final_balance: "186.00",
-        records: [
-          {
-            id: "tx-1",
-            record_type: "recharge",
-            type_name: "充值",
-            amount: "100.00",
-            description: "微信充值",
-            activity_id: null,
-            created_at: "2026-04-10T12:00:00",
-            balance: "200.00",
-          },
-          {
-            id: "tx-2",
-            record_type: "expense",
-            type_name: "比赛扣费",
-            amount: "-28.00",
-            description: "周四友谊赛",
-            activity_id: "activity-1",
-            created_at: "2026-04-11T12:00:00",
-            balance: "172.00",
-          },
-        ],
-      },
-    );
-
-    expect(summary).toEqual({
-      balanceLabel: "¥186.00",
-      totalRechargeLabel: "¥300.00",
-      totalExpenseLabel: "¥96.00",
-      totalPenaltyLabel: "¥18.00",
-      latestRecordCount: 2,
     });
   });
 });
@@ -990,7 +942,7 @@ describe("buildNotificationItems", () => {
   test("maps notification records to readable entries and deep links", () => {
     const items = buildNotificationItems([
       {
-        id: "notice-1",
+        id: 1,
         user_id: 7,
         kind: "challenge_matched",
         title: "约队已约成",
@@ -1004,7 +956,7 @@ describe("buildNotificationItems", () => {
 
     expect(items).toEqual([
       {
-        id: "notice-1",
+        id: 1,
         title: "约队已约成",
         content: "银河联队与柏林二队已约成，待报名。",
         kindLabel: "约队已约成",

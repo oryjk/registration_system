@@ -82,14 +82,6 @@ export interface AttendanceSummaryViewModel {
   attendanceRate: string;
 }
 
-export interface BillingSummaryViewModel {
-  balanceLabel: string;
-  totalRechargeLabel: string;
-  totalExpenseLabel: string;
-  totalPenaltyLabel: string;
-  latestRecordCount: number;
-}
-
 export interface ChallengeCardViewModel {
   id: string;
   title: string;
@@ -123,7 +115,7 @@ export interface ChallengeCardViewModel {
 }
 
 export interface NotificationItemViewModel {
-  id: string;
+  id: number;
   title: string;
   content: string;
   kindLabel: string;

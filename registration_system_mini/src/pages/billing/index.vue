@@ -1,19 +1,21 @@
 <script setup lang="ts">
+import { useAccentTheme } from "@/stores/theme";
 import { computed, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
-import { getMyBalance, getMyBillingFlow } from "@/api/billing";
-import {
-  cancelPaymentOrder,
-  createRechargeOrder,
-  listPaymentOrders,
-  syncPaymentOrderStatus,
-} from "@/api/payment";
+import { getTeamFundBalances, getTeamFundTransactions } from "@/api/teamFund";
+import { cancelPaymentOrder, createRechargeOrder, listPaymentOrders, syncGoPaymentOrder } from "@/api/payment";
 import { useTeamContext } from "@/stores/teamContext";
-import type { BackendBillingFlowRecord, BackendPaymentOrder } from "@/types/backend";
+import type {
+  BackendPaymentOrder,
+  BackendTeamFundBalance,
+  BackendTeamFundTransaction,
+} from "@/types/backend";
 import { getCustomNavMetrics } from "@/utils/customNav";
 import { isMockWxPaymentParams, isPaymentCancelled, normalizeWxPaymentParams, requestWxPayment } from "@/utils/payment";
-import { buildBillingSummary } from "@/utils/viewModels";
+import { buildTeamFundBalanceSummary, teamFundCentsLabel, teamFundSourceLabel } from "@/utils/viewModels";
+
+const { themePageStyle } = useAccentTheme();
 
 const { ensureSessionReady } = useTeamContext();
 const navMetrics = getCustomNavMetrics();
@@ -22,18 +24,15 @@ const isLoading = ref(false);
 const isPaying = ref(false);
 const errorMessage = ref("");
 const rechargeAmount = ref("30");
-const records = ref<BackendBillingFlowRecord[]>([]);
+const balances = ref<BackendTeamFundBalance[]>([]);
+const transactions = ref<BackendTeamFundTransaction[]>([]);
 const orders = ref<BackendPaymentOrder[]>([]);
-const totals = ref({
-  balanceLabel: "¥0.00",
-  totalRechargeLabel: "¥0.00",
-  totalExpenseLabel: "¥0.00",
-  totalPenaltyLabel: "¥0.00",
-});
 
 const pageStyle = computed(() => ({
   paddingTop: `${navMetrics.pageTopPadding + 8}px`,
 }));
+
+const balanceSummary = computed(() => buildTeamFundBalanceSummary(balances.value));
 
 async function loadPageData() {
   isLoading.value = true;
@@ -41,21 +40,14 @@ async function loadPageData() {
 
   try {
     await ensureSessionReady();
-    const [balance, billingFlow, paymentOrders] = await Promise.all([
-      getMyBalance(),
-      getMyBillingFlow(),
-      listPaymentOrders({ limit: 10 }),
+    const [teamFundBalances, teamFundTransactions, paymentOrders] = await Promise.all([
+      getTeamFundBalances(),
+      getTeamFundTransactions({ limit: 30 }),
+      listPaymentOrders({ page: 1, pageSize: 10 }),
     ]);
-    records.value = billingFlow.records;
-    orders.value = paymentOrders;
-
-    const summary = buildBillingSummary(balance, billingFlow);
-    totals.value = {
-      balanceLabel: summary.balanceLabel,
-      totalRechargeLabel: summary.totalRechargeLabel,
-      totalExpenseLabel: summary.totalExpenseLabel,
-      totalPenaltyLabel: summary.totalPenaltyLabel,
-    };
+    balances.value = teamFundBalances;
+    transactions.value = teamFundTransactions;
+    orders.value = paymentOrders.items;
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : "账单加载失败";
   } finally {
@@ -63,13 +55,17 @@ async function loadPageData() {
   }
 }
 
-function amountClass(amount: string) {
-  return Number(amount) >= 0 ? "billing-amount billing-amount-plus" : "billing-amount billing-amount-minus";
+function amountClass(cents: number) {
+  return cents >= 0 ? "billing-amount billing-amount-plus" : "billing-amount billing-amount-minus";
 }
 
-function amountLabel(amount: string) {
-  const value = Number(amount);
-  return `${value >= 0 ? "+" : "-"}¥${Math.abs(value).toFixed(2)}`;
+function amountLabel(cents: number) {
+  return `${cents >= 0 ? "+" : "-"}¥${(Math.abs(cents) / 100).toFixed(2)}`;
+}
+
+function transactionMetaLabel(transaction: BackendTeamFundTransaction) {
+  const scope = transaction.match_name || transaction.team_name;
+  return `${teamFundSourceLabel(transaction.source)} · ${scope}`;
 }
 
 function orderStatusLabel(status: BackendPaymentOrder["status"]) {
@@ -78,19 +74,21 @@ function orderStatusLabel(status: BackendPaymentOrder["status"]) {
       return "已支付";
     case "cancelled":
       return "已取消";
-    case "refunded":
-      return "已退款";
+    case "failed":
+      return "支付失败";
     default:
       return "待支付";
   }
 }
 
-function orderTypeLabel(type: BackendPaymentOrder["order_type"]) {
-  switch (type) {
+function orderTypeLabel(kind: BackendPaymentOrder["kind"]) {
+  switch (kind) {
     case "team_membership":
-      return "球队会员";
-    case "activity":
-      return "比赛订单";
+      return "球队队费";
+    case "match_registration":
+      return "比赛报名费";
+    case "tip":
+      return "打赏";
     default:
       return "钱包充值";
   }
@@ -106,14 +104,13 @@ async function handleRecharge() {
 
   isPaying.value = true;
   try {
-    const order = await createRechargeOrder({
-      amount: amount.toFixed(2),
-    });
-    const paymentParams = normalizeWxPaymentParams(order.params);
+    const amountCents = Math.round(Number(rechargeAmount.value) * 100);
+    const result = await createRechargeOrder({ amount_cents: amountCents });
+    const paymentParams = normalizeWxPaymentParams(result.payment);
     if (paymentParams && !isMockWxPaymentParams(paymentParams)) {
       await requestWxPayment(paymentParams);
     }
-    await syncPaymentOrderStatus(order.order_no);
+    await syncGoPaymentOrder(result.order.order_no);
     await loadPageData();
     uni.showToast({ title: "充值订单已提交", icon: "none" });
   } catch (error) {
@@ -128,7 +125,7 @@ async function handleRecharge() {
 
 async function handleSyncOrder(orderNo: string) {
   try {
-    await syncPaymentOrderStatus(orderNo);
+    await syncGoPaymentOrder(orderNo);
     await loadPageData();
     uni.showToast({ title: "订单状态已同步", icon: "none" });
   } catch (error) {
@@ -152,15 +149,16 @@ onShow(() => {
 </script>
 
 <template>
+  <page-meta :page-style="themePageStyle" />
   <view class="billing-page" :style="pageStyle">
     <AppTabHeader title="账单明细" showBack />
 
     <view class="billing-header">
       <view>
         <text class="billing-title">账单明细</text>
-        <text class="billing-subtitle">余额、充值、扣费与罚款都以真实账单接口为准。</text>
+        <text class="billing-subtitle">队费余额、充值、扣费流水以真实账单接口为准。</text>
       </view>
-      <view class="billing-header-badge">{{ records.length }} 条</view>
+      <view class="billing-header-badge">{{ transactions.length }} 条</view>
     </view>
 
     <view v-if="errorMessage" class="billing-empty">{{ errorMessage }}</view>
@@ -181,9 +179,11 @@ onShow(() => {
     <template v-else>
     <view class="billing-hero">
       <view>
-        <text class="billing-hero-label">当前余额</text>
-        <text class="billing-hero-value">{{ totals.balanceLabel }}</text>
-        <text class="billing-hero-copy">以后端账户余额为准</text>
+        <text class="billing-hero-label">队费余额合计</text>
+        <text class="billing-hero-value">{{ teamFundCentsLabel(balanceSummary.totalCents) }}</text>
+        <text class="billing-hero-copy">
+          {{ balanceSummary.teamCount }} 支球队<text v-if="balanceSummary.debtTeamCount"> · {{ balanceSummary.debtTeamCount }} 支有欠款</text>
+        </text>
       </view>
       <view class="billing-recharge-box">
         <input v-model="rechargeAmount" class="billing-recharge-input" type="digit" placeholder="金额" />
@@ -191,18 +191,14 @@ onShow(() => {
       </view>
     </view>
 
-    <view class="billing-metric-grid">
-      <view class="billing-metric-card">
-        <text class="billing-metric-label">累计充值</text>
-        <text class="billing-metric-value">{{ totals.totalRechargeLabel }}</text>
-      </view>
-      <view class="billing-metric-card">
-        <text class="billing-metric-label">累计扣费</text>
-        <text class="billing-metric-value">{{ totals.totalExpenseLabel }}</text>
-      </view>
-      <view class="billing-metric-card billing-metric-card-wide">
-        <text class="billing-metric-label">累计罚款</text>
-        <text class="billing-metric-value">{{ totals.totalPenaltyLabel }}</text>
+    <view v-if="balances.length" class="billing-metric-grid">
+      <view
+        v-for="balance in balances"
+        :key="balance.team_id"
+        :class="['billing-metric-card', balance.balance_cents < 0 ? 'billing-metric-card-debt' : '']"
+      >
+        <text class="billing-metric-label">{{ balance.team_name }}</text>
+        <text class="billing-metric-value">{{ teamFundCentsLabel(balance.balance_cents) }}</text>
       </view>
     </view>
 
@@ -210,21 +206,21 @@ onShow(() => {
       <view class="billing-card-head">
         <view>
           <text class="billing-card-title">支付订单</text>
-          <text class="billing-card-caption">充值、会员等支付订单可同步或取消。</text>
+          <text class="billing-card-caption">充值、队费等微信支付订单可同步或取消。</text>
         </view>
       </view>
 
       <view v-if="orders.length" class="billing-list">
         <view v-for="order in orders" :key="order.order_no" class="billing-item billing-order-item">
           <view class="billing-item-copy">
-            <text class="billing-item-title">{{ orderTypeLabel(order.order_type) }} · {{ orderStatusLabel(order.status) }}</text>
-            <text class="billing-item-meta">{{ order.description || order.order_no }}</text>
+            <text class="billing-item-title">{{ orderTypeLabel(order.kind) }} · {{ orderStatusLabel(order.status) }}</text>
+            <text class="billing-item-meta">{{ order.order_no }}</text>
           </view>
           <view class="billing-item-side">
-            <text :class="amountClass(order.amount)">¥{{ Number(order.amount).toFixed(2) }}</text>
+            <text class="billing-amount">¥{{ (order.amount_cents / 100).toFixed(2) }}</text>
             <view class="order-action-row">
               <text class="order-action" @tap="handleSyncOrder(order.order_no)">同步</text>
-              <text v-if="order.status === 'unpaid'" class="order-action order-action-danger" @tap="handleCancelOrder(order.order_no)">取消</text>
+              <text v-if="order.status === 'pending'" class="order-action order-action-danger" @tap="handleCancelOrder(order.order_no)">取消</text>
             </view>
           </view>
         </view>
@@ -235,24 +231,24 @@ onShow(() => {
     <view class="billing-card">
       <view class="billing-card-head">
         <view>
-          <text class="billing-card-title">最近流水</text>
-          <text class="billing-card-caption">按时间倒序展示真实账单记录。</text>
+          <text class="billing-card-title">队费流水</text>
+          <text class="billing-card-caption">充值、比赛扣费与结算冲正，按时间倒序。</text>
         </view>
       </view>
 
-      <view v-if="records.length" class="billing-list">
-        <view v-for="item in records" :key="item.id" class="billing-item">
+      <view v-if="transactions.length" class="billing-list">
+        <view v-for="item in transactions" :key="item.id" class="billing-item">
           <view class="billing-item-copy">
-            <text class="billing-item-title">{{ item.type_name }}</text>
-            <text class="billing-item-meta">{{ item.description || "无备注" }}</text>
+            <text class="billing-item-title">{{ transactionMetaLabel(item) }}</text>
+            <text class="billing-item-meta">{{ item.description || (item.created_at || "").slice(0, 16).replace("T", " ") }}</text>
           </view>
           <view class="billing-item-side">
-            <text :class="amountClass(item.amount)">{{ amountLabel(item.amount) }}</text>
-            <text class="billing-item-balance">余额 {{ item.balance }}</text>
+            <text :class="amountClass(item.amount_cents)">{{ amountLabel(item.amount_cents) }}</text>
+            <text class="billing-item-balance">余额 {{ teamFundCentsLabel(item.balance_after_cents) }}</text>
           </view>
         </view>
       </view>
-      <view v-else class="billing-empty">当前还没有账单流水。</view>
+      <view v-else class="billing-empty">当前还没有队费流水。交队费或比赛结算后会在这里展示。</view>
     </view>
     </template>
   </view>
@@ -340,8 +336,8 @@ onShow(() => {
 .billing-hero-pill {
   padding: 10rpx 16rpx;
   border-radius: 999rpx;
-  background: #eef7d7;
-  color: #526a00;
+  background: var(--neo-color-accent-soft);
+  color: var(--neo-color-accent-deep);
   font-size: 22rpx;
   font-weight: 900;
 }
@@ -375,6 +371,10 @@ onShow(() => {
 .billing-metric-card {
   padding: 24rpx;
   border-radius: 28rpx;
+}
+
+.billing-metric-card-debt .billing-metric-value {
+  color: #d04860;
 }
 
 .billing-metric-card-wide {

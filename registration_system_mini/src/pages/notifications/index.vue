@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useAccentTheme } from "@/stores/theme";
 import { computed, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
@@ -8,6 +9,8 @@ import { ensureSessionReady } from "@/stores/appSession";
 import type { BackendNotification } from "@/types/backend";
 import { getCustomNavMetrics } from "@/utils/customNav";
 import { buildNotificationItems } from "@/utils/viewModels";
+
+const { themePageStyle } = useAccentTheme();
 
 const navMetrics = getCustomNavMetrics();
 const isLoading = ref(false);
@@ -62,13 +65,14 @@ onShow(() => {
 </script>
 
 <template>
+  <page-meta :page-style="themePageStyle" />
   <view class="notice-page" :style="pageStyle">
     <AppTabHeader title="消息中心" showBack />
 
     <view class="notice-header">
       <view>
         <text class="notice-title">消息中心</text>
-        <text class="notice-subtitle">约队发布、约成、取消等事件先沉淀在站内通知里。</text>
+        <text class="notice-subtitle">约队事件、队费余额不足等提醒先沉淀在站内通知里。</text>
       </view>
       <view class="notice-header-badge">{{ unreadOnly ? "仅未读" : `${notificationItems.length} 条` }}</view>
     </view>
@@ -195,7 +199,7 @@ onShow(() => {
 }
 
 .notice-filter-chip-active {
-  background: #c8ff00;
+  background: var(--neo-color-accent);
 }
 
 .notice-filter-meta {
@@ -245,8 +249,8 @@ onShow(() => {
 .notice-hero-pill {
   padding: 10rpx 16rpx;
   border-radius: 999rpx;
-  background: #eef7d7;
-  color: #526a00;
+  background: var(--neo-color-accent-soft);
+  color: var(--neo-color-accent-deep);
   font-size: 22rpx;
   font-weight: 900;
 }

@@ -3,7 +3,7 @@ import { dateOffset } from "./dates";
 
 export const mockNotifications: BackendNotification[] = [
   {
-    id: "ntf-001",
+    id: 1,
     user_id: 37,
     kind: "challenge_matched",
     title: "约队已约成",
@@ -14,7 +14,7 @@ export const mockNotifications: BackendNotification[] = [
     created_at: dateOffset(-1, 9, 0),
   },
   {
-    id: "ntf-002",
+    id: 2,
     user_id: 37,
     kind: "challenge_created",
     title: "新的约队机会",
@@ -25,7 +25,7 @@ export const mockNotifications: BackendNotification[] = [
     created_at: dateOffset(-2, 14, 0),
   },
   {
-    id: "ntf-003",
+    id: 3,
     user_id: 37,
     kind: "reminder",
     title: "比赛报名提醒",

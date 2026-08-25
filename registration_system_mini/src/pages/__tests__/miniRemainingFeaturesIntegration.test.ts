@@ -109,11 +109,11 @@ describe("remaining mini real backend integrations", () => {
     const page = await read(`${miniRoot}/src/pages/billing/index.vue`);
 
     expect(paymentApi.includes("export function createRechargeOrder")).toEqual(true);
-    expect(paymentApi.includes('url: "/payment/recharge"')).toEqual(true);
+    expect(paymentApi.includes('url: "/payments/recharge-orders"')).toEqual(true);
     expect(paymentApi.includes("export function listPaymentOrders")).toEqual(true);
-    expect(paymentApi.includes('url: `/payment/orders')).toEqual(true);
+    expect(paymentApi.includes('url: `/payments/orders')).toEqual(true);
     expect(paymentApi.includes("export function cancelPaymentOrder")).toEqual(true);
-    expect(paymentApi.includes('url: "/payment/cancel"')).toEqual(true);
+    expect(paymentApi.includes('url: `/payments/orders/${orderNo}/cancel`')).toEqual(true);
     expect(page.includes("handleRecharge")).toEqual(true);
     expect(page.includes("listPaymentOrders")).toEqual(true);
     expect(page.includes("handleSyncOrder")).toEqual(true);

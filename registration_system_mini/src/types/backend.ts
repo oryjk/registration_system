@@ -44,40 +44,42 @@ export interface BackendWxMiniPaymentParams {
   pay_sign: string;
 }
 
-export type BackendPaymentOrderType = "recharge" | "activity" | "team_membership";
-export type BackendPaymentOrderState = "unpaid" | "paid" | "cancelled" | "refunded";
+export type BackendPaymentOrderKind = "recharge" | "team_membership" | "match_registration" | "tip";
 
 export interface BackendPaymentOrder {
   order_no: string;
   user_id: number;
-  amount: string;
-  order_type: BackendPaymentOrderType;
-  status: BackendPaymentOrderState;
-  prepay_id?: string | null;
-  transaction_id?: string | null;
-  description?: string | null;
+  amount_cents: number;
+  provider: string;
+  channel: string;
+  kind: BackendPaymentOrderKind | string;
+  team_id?: number | null;
+  match_id?: string | null;
+  months?: number | null;
+  status: string;
+  prepay_id?: string;
+  transaction_id?: string;
+  paid_at?: string | null;
+  cancelled_at?: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
+/** Go 后端统一下单响应：订单 + 微信 JSAPI 支付参数（H5 场景使用，可能为 null）。 */
 export interface BackendPaymentOrderResult {
-  order_no: string;
-  params: BackendWxMiniPaymentParams;
+  order: BackendPaymentOrder;
+  payment: Record<string, unknown> | null;
 }
 
-export interface BackendPaymentOrderStatus {
-  status?: BackendPaymentOrderState | null;
-  order?: BackendPaymentOrder | null;
+export interface BackendPaymentOrderListResult {
+  items: BackendPaymentOrder[];
+  total: number;
+  page: number;
+  page_size: number;
 }
 
 export interface BackendSyncOrderStatusResult {
-  paid: boolean;
-  status: string;
-  trade_state?: string | null;
-  transaction_id?: string | null;
-}
-
-export interface BackendCancelOrderResult {
-  success: boolean;
-  message: string;
+  order: BackendPaymentOrder;
 }
 
 export type BackendChallengeStatus = "open" | "matched" | "cancelled";
@@ -159,7 +161,7 @@ export interface BackendChallengeDetail {
 }
 
 export interface BackendNotification {
-  id: string;
+  id: number;
   user_id: number;
   kind: string;
   title: string;
@@ -471,67 +473,60 @@ export interface BackendMiniAppRuntimeConfig {
   };
 }
 
-export interface BackendUserAccount {
-  user_id: number;
-  balance: string;
-  total_recharge: string;
-  total_expense: string;
-  total_penalty: string;
+/** 队费记账：我在各球队的队费余额。 */
+export interface BackendTeamFundBalance {
+  team_id: number;
+  team_name: string;
+  balance_cents: number;
 }
 
-export interface BackendBillingFlowRecord {
-  id: string;
-  record_type: string;
-  type_name: string;
-  amount: string;
+/** 队费记账：带符号流水，正=入账（充值/冲正回加），负=扣费。 */
+export interface BackendTeamFundTransaction {
+  id: number;
+  team_id: number;
+  team_name: string;
+  amount_cents: number;
+  balance_after_cents: number;
+  source: "membership_payment" | "match_settlement" | "settlement_reversal" | "admin_credit" | string;
+  match_id?: string | null;
+  match_name?: string | null;
   description: string;
-  activity_id?: string | null;
   created_at: string;
-  balance: string;
 }
 
-export interface BackendBillingFlowResult {
-  records: BackendBillingFlowRecord[];
-  final_balance: string;
-}
-
-export type BackendSettlementMode = "aa" | "manual";
-export type BackendSettlementParticipantScope = "registered_attendees" | "custom_users";
-
-export interface BackendActivitySettlementItem {
+export interface BackendMatchSettlementItem {
   user_id: number;
-  user_name?: string | null;
-  fee?: string | null;
-  billed: boolean;
-  billing_id?: number | null;
+  user_name: string;
+  team_id: number;
+  amount_cents: number;
+  balance_after_cents: number;
 }
 
-export interface BackendActivitySettlementBatch {
+export interface BackendMatchSettlementBatch {
   batch_no: number;
-  operation_type: string;
-  mode: BackendSettlementMode | string;
-  participant_scope: BackendSettlementParticipantScope | string;
-  reversal_of_batch_no?: number | null;
+  operation_type: "settle" | "reverse" | string;
   description: string;
-  total_amount: string;
-  aa_fee: string;
+  total_amount_cents: number;
   user_count: number;
-  created_by_admin_id?: number | null;
   created_at: string;
 }
 
-export interface BackendActivitySettlementSummary {
-  activity_id: string;
-  mode?: BackendSettlementMode | string | null;
-  participant_scope?: BackendSettlementParticipantScope | string | null;
-  description?: string | null;
-  total_amount?: string | null;
-  aa_fee?: string | null;
-  attending_user_count: number;
-  settled_user_count: number;
+/** 比赛结算摘要；未结算时 items 为可扣名单预填（amount_cents=人均费）。 */
+export interface BackendMatchSettlementSummary {
   settled: boolean;
+  batch_no: number;
   settled_at?: string | null;
-  current_batch_no?: number | null;
-  history: BackendActivitySettlementBatch[];
-  items: BackendActivitySettlementItem[];
+  description: string;
+  total_amount_cents: number;
+  items: BackendMatchSettlementItem[];
+  history: BackendMatchSettlementBatch[];
+}
+
+/** 结算提交响应：含冲正批次号（>0 表示发生了重算）。 */
+export interface BackendMatchSettleResult {
+  batch_no: number;
+  reversed_batch_no: number;
+  description: string;
+  total_amount_cents: number;
+  items: BackendMatchSettlementItem[];
 }

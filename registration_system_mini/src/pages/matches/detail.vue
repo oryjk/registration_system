@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useAccentTheme } from "@/stores/theme";
 import { computed, ref } from "vue";
 import { onShareAppMessage, onShareTimeline } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
@@ -91,10 +92,7 @@ const {
   settlementSummary,
   settlementForm,
   settlementParticipants,
-  settlementAttendeeCount,
-  settlementSearchKeyword,
-  settlementSearchResults,
-  settlementSearching,
+  settlementTotalLabel,
   teamSubmitLabel,
   openMatchLocation,
   handleSelectIndividualSignup,
@@ -104,12 +102,7 @@ const {
   handleSaveCheckInConfig,
   handleReviewRatingChange,
   handleSubmitActivityReview,
-  handleSettlementModeChange,
-  handleSettlementScopeChange,
   handleSettlementChargeAmountInput,
-  handleRemoveSettlementCustomUser,
-  handleSearchSettlementUsers,
-  handleAddSettlementCustomUser,
   handleSubmitSettlement,
   handleTeamSubmit,
   canFinishMatch,
@@ -164,12 +157,23 @@ onShareTimeline(() => ({
   query: `id=${matchId.value || match.value?.id || ""}`,
   imageUrl: DEFAULT_SHARE_IMAGE_URL,
 }));
+
+// page-meta：主题变量覆盖 + 任一弹层打开时锁定滚动。
+const { themePageStyle } = useAccentTheme();
+const metaPageStyle = computed(() =>
+  [
+    themePageStyle.value,
+    teamMemberDialogVisible.value || confirmDialogVisible.value || finishDialogVisible.value || cancelDialogVisible.value || signupSheetVisible.value
+      ? "overflow: hidden;"
+      : "",
+  ].filter(Boolean).join(";"),
+);
 </script>
 
 <template>
-  <page-meta :page-style="teamMemberDialogVisible || confirmDialogVisible || finishDialogVisible || cancelDialogVisible || signupSheetVisible ? 'overflow: hidden;' : ''" />
+  <page-meta :page-style="metaPageStyle" />
   <view class="registration-page" :style="pageStyle">
-    <AppTabHeader title="比赛报名" showBack showLocation />
+    <AppTabHeader title="比赛报名" showBack />
 
     <view class="registration-content" :style="contentStyle">
       <view v-if="errorMessage" class="registration-empty">{{ errorMessage }}</view>
@@ -268,20 +272,12 @@ onShareTimeline(() => ({
       />
       <TeamSettlementCard
         v-if="registrationMode === 'team' && canShowSettlement"
-        v-model:search-keyword="settlementSearchKeyword"
         :summary="settlementSummary"
         :form="settlementForm"
         :participants="settlementParticipants"
-        :attendee-count="settlementAttendeeCount"
-        :search-results="settlementSearchResults"
-        :searching="settlementSearching"
+        :total-label="settlementTotalLabel"
         :submitting-status="submittingStatus"
-        @mode-change="handleSettlementModeChange"
-        @scope-change="handleSettlementScopeChange"
         @charge-amount-input="handleSettlementChargeAmountInput"
-        @remove-custom-user="handleRemoveSettlementCustomUser"
-        @search-users="handleSearchSettlementUsers"
-        @add-custom-user="handleAddSettlementCustomUser"
         @submit-settlement="handleSubmitSettlement"
       />
       </view>

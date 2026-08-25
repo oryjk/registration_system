@@ -221,7 +221,10 @@ describe("match detail registration design", () => {
     ).text();
 
     expect(detail.includes("<page-meta")).toEqual(true);
-    expect(detail.includes("teamMemberDialogVisible || confirmDialogVisible || finishDialogVisible || cancelDialogVisible || signupSheetVisible ? 'overflow: hidden;' : ''")).toEqual(true);
+    // 主题变量覆盖与弹窗滚动锁定合并进同一个 metaPageStyle computed。
+    expect(detail.includes("const metaPageStyle = computed(() =>")).toEqual(true);
+    expect(detail.includes("teamMemberDialogVisible.value || confirmDialogVisible.value || finishDialogVisible.value || cancelDialogVisible.value || signupSheetVisible.value")).toEqual(true);
+    expect(detail.includes('"overflow: hidden;"')).toEqual(true);
     expect(individual.includes('@dialog-visibility-change="handleTeamMemberDialogVisibilityChange"')).toEqual(true);
     expect(individual.includes('emit("dialogVisibilityChange", visible);')).toEqual(true);
     expect(board.includes("NeoStickyActionBar")).toEqual(true);

@@ -14,7 +14,7 @@ import {
 } from "./data/challenges";
 import { createMockMatch, filterMockMatchesByQuery, getMockMatchDetail, markMockMyRegistrationPaid, mockMatchHome, mockMyRegistrationCount, paginateMockMatches, updateMockMatchStatus, upsertMockMyRegistration } from "./data/matches";
 import { mockNotifications } from "./data/notifications";
-import { mockBillingFlow, mockPaymentOrders, mockUserAccount } from "./data/billing";
+import { mockPaymentOrders, mockTeamFundBalances, mockTeamFundTransactions } from "./data/billing";
 import { mockWalletAccount } from "./data/wallet";
 import { defaultMiniAppRuntimeConfig } from "@/config/runtimeConfigDefaults";
 import { resolveRegistrationWindow } from "@/utils/registrationWindow";
@@ -703,20 +703,24 @@ const routes: MockRoute[] = [
   },
   {
     method: "GET",
-    pattern: "/account/balance",
-    handler: () => mockUserAccount,
+    pattern: "/team-fund/balances",
+    handler: () => mockTeamFundBalances,
   },
   {
     method: "GET",
-    pattern: "/order/my-billing-flow",
-    handler: () => mockBillingFlow,
-  },
-  {
-    method: "GET",
-    pattern: "/payment/orders",
+    pattern: "/team-fund/transactions",
     handler: (req) => {
-      const limit = req.query.limit ? Number(req.query.limit) : mockPaymentOrders.length;
-      return mockPaymentOrders.slice(0, Number.isFinite(limit) ? limit : mockPaymentOrders.length);
+      const limit = req.query.limit ? Number(req.query.limit) : mockTeamFundTransactions.length;
+      return mockTeamFundTransactions.slice(0, Number.isFinite(limit) ? limit : mockTeamFundTransactions.length);
+    },
+  },
+  {
+    method: "GET",
+    pattern: "/payments/orders",
+    handler: (req) => {
+      const pageSize = req.query.page_size ? Number(req.query.page_size) : mockPaymentOrders.items.length;
+      const size = Number.isFinite(pageSize) ? pageSize : mockPaymentOrders.items.length;
+      return { ...mockPaymentOrders, page_size: size, items: mockPaymentOrders.items.slice(0, size) };
     },
   },
 
