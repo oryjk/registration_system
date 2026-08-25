@@ -69,3 +69,11 @@ func (s *Service) MarkAllRead(ctx context.Context, actor sharedauth.Actor) (int6
 	}
 	return s.repository.MarkAllRead(ctx, actor.ID)
 }
+
+// MarkRead 标记单条通知已读；小程序端只有用户点开通知详情时才调用。
+func (s *Service) MarkRead(ctx context.Context, actor sharedauth.Actor, id int64) (bool, error) {
+	if !actor.IsUser() {
+		return false, sharederror.ErrForbidden
+	}
+	return s.repository.MarkRead(ctx, actor.ID, id)
+}

@@ -54,6 +54,16 @@ func (r *Repository) MarkAllRead(ctx context.Context, userID int64) (int64, erro
 	return r.queries.MarkAllNotificationsRead(ctx, userID)
 }
 
+func (r *Repository) MarkRead(ctx context.Context, userID int64, id int64) (bool, error) {
+	affected, err := r.queries.MarkNotificationRead(ctx, notificationsqlc.MarkNotificationReadParams{
+		ID: id, UserID: userID,
+	})
+	if err != nil {
+		return false, err
+	}
+	return affected > 0, nil
+}
+
 func mapNotification(row notificationsqlc.Notification) notificationdomain.Notification {
 	notification := notificationdomain.Notification{
 		ID: row.ID, UserID: row.UserID, Kind: row.Kind, Title: row.Title, Content: row.Content,

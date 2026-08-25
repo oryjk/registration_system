@@ -16,3 +16,7 @@ SELECT COUNT(*) FROM notifications WHERE user_id = sqlc.arg('user_id') AND read_
 
 -- name: MarkAllNotificationsRead :execrows
 UPDATE notifications SET read_at = NOW() WHERE user_id = sqlc.arg('user_id') AND read_at IS NULL;
+
+-- name: MarkNotificationRead :execrows
+UPDATE notifications SET read_at = NOW()
+WHERE id = sqlc.arg('id') AND user_id = sqlc.arg('user_id') AND read_at IS NULL;

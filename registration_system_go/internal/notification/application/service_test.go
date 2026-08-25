@@ -29,6 +29,10 @@ func (f *fakeRepository) CountUnread(_ context.Context, _ int64) (int64, error) 
 
 func (f *fakeRepository) MarkAllRead(_ context.Context, _ int64) (int64, error) { return 0, nil }
 
+func (f *fakeRepository) MarkRead(_ context.Context, _ int64, _ int64) (bool, error) {
+	return false, nil
+}
+
 func TestNotifyRejectsInvalidMessage(t *testing.T) {
 	service := NewService(&fakeRepository{})
 	err := service.Notify(context.Background(), SystemNotification{UserID: 1, Kind: "", Title: "t", Content: "c"})

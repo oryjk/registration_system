@@ -93,3 +93,45 @@ func seedNotificationUser(t *testing.T, pool *pgxpool.Pool) int64 {
 	}
 	return userID
 }
+
+func TestNotificationRepositoryMarkReadIsScopedAndIdempotent(t *testing.T) {
+	pool := testsupport.OpenTestPostgres(t)
+	ctx := context.Background()
+	userID := seedNotificationUser(t, pool)
+	otherUser := seedNotificationUser(t, pool)
+	repository := NewRepository(pool)
+
+	created, err := repository.Create(ctx, notificationdomain.Notification{
+		UserID: userID, Kind: "match_captain_message", Title: "球队留言",
+		Content: "「阿东」给你留言", RelatedType: "captain_message", RelatedID: "t-1",
+		CreatedAt: time.Now(),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// 他人不能替我把通知标为已读。
+	read, err := repository.MarkRead(ctx, otherUser, created.ID)
+	if err != nil || read {
+		t.Fatalf("他人标记应无效: read=%t err=%v", read, err)
+	}
+	// 本人标记生效。
+	read, err = repository.MarkRead(ctx, userID, created.ID)
+	if err != nil || !read {
+		t.Fatalf("本人标记应生效: read=%t err=%v", read, err)
+	}
+	// 重复标记幂等返回 false，不再重复计数。
+	read, err = repository.MarkRead(ctx, userID, created.ID)
+	if err != nil || read {
+		t.Fatalf("重复标记应返回 false: read=%t err=%v", read, err)
+	}
+	unread, err := repository.CountUnread(ctx, userID)
+	if err != nil || unread != 0 {
+		t.Fatalf("标记后未读应为 0，得到 %d err=%v", unread, err)
+	}
+	// 不存在的通知 id 静默返回 false。
+	read, err = repository.MarkRead(ctx, userID, 999999)
+	if err != nil || read {
+		t.Fatalf("不存在的通知应返回 false: read=%t err=%v", read, err)
+	}
+}

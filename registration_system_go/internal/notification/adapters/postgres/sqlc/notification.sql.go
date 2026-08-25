@@ -115,3 +115,21 @@ func (q *Queries) MarkAllNotificationsRead(ctx context.Context, userID int64) (i
 	}
 	return result.RowsAffected(), nil
 }
+
+const markNotificationRead = `-- name: MarkNotificationRead :execrows
+UPDATE notifications SET read_at = NOW()
+WHERE id = $1 AND user_id = $2 AND read_at IS NULL
+`
+
+type MarkNotificationReadParams struct {
+	ID     int64 `json:"id"`
+	UserID int64 `json:"user_id"`
+}
+
+func (q *Queries) MarkNotificationRead(ctx context.Context, arg MarkNotificationReadParams) (int64, error) {
+	result, err := q.db.Exec(ctx, markNotificationRead, arg.ID, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}

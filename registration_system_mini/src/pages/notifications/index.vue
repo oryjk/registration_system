@@ -5,7 +5,7 @@ import { onShow } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
 import NeoSegmentedControl from "@/components/neo/NeoSegmentedControl.vue";
 import CaptainThreadsSection from "./components/CaptainThreadsSection.vue";
-import { listNotifications, markAllNotificationsRead } from "@/api/notification";
+import { listNotifications, markAllNotificationsRead, markNotificationRead } from "@/api/notification";
 import { setUnreadCount, syncUnreadCount } from "@/stores/notificationCenter";
 import { ensureSessionReady, useAppSession } from "@/stores/appSession";
 import type { BackendNotification } from "@/types/backend";
@@ -52,14 +52,7 @@ async function loadNotifications() {
       limit: 50,
     });
 
-    if (notifications.value.some((item) => !item.read_at)) {
-      await markAllNotificationsRead();
-      notifications.value = notifications.value.map((item) => ({
-        ...item,
-        read_at: item.read_at ?? new Date().toISOString(),
-      }));
-    }
-    setUnreadCount(0);
+    // 已读完全由用户点开详情驱动：进页不再自动清红点，角标同步真实未读数。
     await syncUnreadCount({ skipEnsure: true });
     hasLoadedOnce.value = true;
   } catch (error) {
@@ -69,9 +62,37 @@ async function loadNotifications() {
   }
 }
 
-function openNotification(path: string) {
-  if (!path) return;
-  uni.navigateTo({ url: path });
+async function openNotification(item: { id: number; relatedPath: string; read: boolean }) {
+  if (!item.relatedPath) return;
+  // 点开详情才算已读；标记失败不阻断跳转。
+  if (!item.read) {
+    try {
+      await markNotificationRead(item.id);
+      notifications.value = notifications.value.map((notification) => (
+        notification.id === item.id
+          ? { ...notification, read_at: notification.read_at ?? new Date().toISOString() }
+          : notification
+      ));
+      setUnreadCount(Math.max(unreadCount.value - 1, 0));
+      void syncUnreadCount({ skipEnsure: true }).catch(() => {});
+    } catch {
+      // 已读标记失败时仍进入详情，下次进列表重新拉取真实状态。
+    }
+  }
+  uni.navigateTo({ url: item.relatedPath });
+}
+
+async function handleMarkAllRead() {
+  try {
+    await markAllNotificationsRead();
+    notifications.value = notifications.value.map((item) => ({
+      ...item,
+      read_at: item.read_at ?? new Date().toISOString(),
+    }));
+    setUnreadCount(0);
+  } catch (error) {
+    uni.showToast({ title: error instanceof Error ? error.message : "操作失败", icon: "none" });
+  }
 }
 
 function openCaptainThread(threadId: string) {
@@ -132,7 +153,8 @@ onShow(() => {
     <view class="notice-filter-row">
       <view :class="['notice-filter-chip', !unreadOnly ? 'notice-filter-chip-active' : '']" @tap="unreadOnly = false; void loadNotifications()">全部</view>
       <view :class="['notice-filter-chip', unreadOnly ? 'notice-filter-chip-active' : '']" @tap="unreadOnly = true; void loadNotifications()">仅看未读</view>
-      <view class="notice-filter-meta">已自动清空红点</view>
+      <view class="notice-filter-chip" @tap="void handleMarkAllRead()">全部已读</view>
+      <view class="notice-filter-meta">点开详情才算已读</view>
     </view>
 
     <view v-if="errorMessage" class="notice-empty">{{ errorMessage }}</view>
@@ -164,7 +186,7 @@ onShow(() => {
         <view>
           <text class="notice-hero-label">通知状态</text>
           <text class="notice-hero-value">{{ unreadCount }}</text>
-          <text class="notice-hero-copy">未读已经在进入页面时自动标记为已读。</text>
+          <text class="notice-hero-copy">点开通知详情后才会标记为已读。</text>
         </view>
         <view class="notice-hero-pill">站内消息</view>
       </view>
@@ -174,7 +196,7 @@ onShow(() => {
           v-for="item in notificationItems"
           :key="item.id"
           class="notice-card"
-          @tap="openNotification(item.relatedPath)"
+          @tap="void openNotification(item)"
         >
           <view class="notice-card-top">
             <text class="notice-card-title">{{ item.title }}</text>

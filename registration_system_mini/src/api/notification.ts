@@ -26,6 +26,15 @@ export async function getUnreadNotificationCount() {
   return result.unread_count;
 }
 
+/** 标记单条通知已读：用户点开通知详情时调用，未点开不算已读。 */
+export function markNotificationRead(id: number) {
+  return requestApi<{ read: boolean }>({
+    url: `/notifications/${id}/read`,
+    method: "POST",
+    auth: true,
+  });
+}
+
 export function markAllNotificationsRead() {
   return requestApi<BackendNotificationMarkAllReadResult>({
     url: "/notifications/read-all",

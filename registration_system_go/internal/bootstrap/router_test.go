@@ -467,3 +467,7 @@ func (routerNotificationService) UnreadCount(context.Context, sharedauth.Actor) 
 func (routerNotificationService) MarkAllRead(context.Context, sharedauth.Actor) (int64, error) {
 	return 0, nil
 }
+
+func (routerNotificationService) MarkRead(_ context.Context, _ sharedauth.Actor, _ int64) (bool, error) {
+	return false, nil
+}

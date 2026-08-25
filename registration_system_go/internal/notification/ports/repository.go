@@ -17,4 +17,6 @@ type Repository interface {
 	List(ctx context.Context, filter ListFilter) ([]notificationdomain.Notification, error)
 	CountUnread(ctx context.Context, userID int64) (int64, error)
 	MarkAllRead(ctx context.Context, userID int64) (int64, error)
+	// MarkRead 标记单条通知已读；通知不属于该用户或已读时返回 false。
+	MarkRead(ctx context.Context, userID int64, id int64) (bool, error)
 }

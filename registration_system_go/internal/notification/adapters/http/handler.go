@@ -18,6 +18,7 @@ type NotificationService interface {
 	List(ctx context.Context, actor sharedauth.Actor, query notificationapplication.ListQuery) ([]notificationdomain.Notification, error)
 	UnreadCount(ctx context.Context, actor sharedauth.Actor) (int64, error)
 	MarkAllRead(ctx context.Context, actor sharedauth.Actor) (int64, error)
+	MarkRead(ctx context.Context, actor sharedauth.Actor, id int64) (bool, error)
 }
 
 type Handler struct {
@@ -43,6 +44,7 @@ func (h *Handler) RegisterAppRoutes(group *gin.RouterGroup) {
 	group.GET("/notifications", h.List)
 	group.GET("/notifications/unread-count", h.UnreadCount)
 	group.POST("/notifications/read-all", h.MarkAllRead)
+	group.POST("/notifications/:id/read", h.MarkRead)
 }
 
 func (h *Handler) List(c *gin.Context) {
@@ -91,6 +93,25 @@ func (h *Handler) MarkAllRead(c *gin.Context) {
 		return
 	}
 	sharedhttpapi.WriteSuccess(c, gin.H{"affected": affected})
+}
+
+// MarkRead 标记单条通知已读：用户点开通知详情时调用，未点开不算已读。
+func (h *Handler) MarkRead(c *gin.Context) {
+	actor, ok := notificationActor(c)
+	if !ok {
+		return
+	}
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil || id <= 0 {
+		sharedhttpapi.WriteError(c, sharederror.New(sharederror.KindValidation, "通知 ID 无效"))
+		return
+	}
+	read, err := h.service.MarkRead(c.Request.Context(), actor, id)
+	if err != nil {
+		sharedhttpapi.WriteError(c, err)
+		return
+	}
+	sharedhttpapi.WriteSuccess(c, gin.H{"read": read})
 }
 
 func notificationActor(c *gin.Context) (sharedauth.Actor, bool) {
