@@ -11,6 +11,7 @@ import NeoStickyActionBar from "@/components/neo/NeoStickyActionBar.vue";
 import MatchDetailSkeleton from "./components/MatchDetailSkeleton.vue";
 import MatchFinishCard from "./components/MatchFinishCard.vue";
 import MatchCaptainContact from "./components/MatchCaptainContact.vue";
+import MatchJoinTeamSheet from "./components/MatchJoinTeamSheet.vue";
 import MatchIndividualRegistration from "./components/MatchIndividualRegistration.vue";
 import MatchTeamRegistration from "./components/MatchTeamRegistration.vue";
 import TeamSettlementCard from "./components/TeamSettlementCard.vue";
@@ -98,6 +99,7 @@ const {
   teamSubmitLabel,
   openMatchLocation,
   handleSelectIndividualSignup,
+  joinTeamSheet,
   handleSelectTeamMemberStand,
   handleCheckIn,
   handleCheckInSwitchChange,
@@ -157,6 +159,12 @@ function handleTeamMemberDialogVisibilityChange(visible: boolean) {
   teamMemberDialogVisible.value = visible;
 }
 
+// 加入球队弹框里点「联系队长」：收起加入弹框，打开给队长留言的弹窗。
+function handleJoinSheetContactCaptain() {
+  joinTeamSheet.requestContactCaptain();
+  captainContact.open();
+}
+
 onShareAppMessage(() => ({
   title: shareTitle.value,
   path: sharePath.value,
@@ -174,7 +182,7 @@ const { themePageStyle } = useAccentTheme();
 const metaPageStyle = computed(() =>
   [
     themePageStyle.value,
-    teamMemberDialogVisible.value || confirmDialogVisible.value || finishDialogVisible.value || cancelDialogVisible.value || signupSheetVisible.value || captainContact.popupVisible.value
+    teamMemberDialogVisible.value || confirmDialogVisible.value || finishDialogVisible.value || cancelDialogVisible.value || signupSheetVisible.value || captainContact.popupVisible.value || joinTeamSheet.sheetVisible.value
       ? "overflow: hidden;"
       : "",
   ].filter(Boolean).join(";"),
@@ -221,7 +229,6 @@ const metaPageStyle = computed(() =>
         :is-guest-mode="isGuestMode"
         :can-submit-individual-registration="canSubmitIndividualRegistration"
         :registration-closed="isRegistrationClosed"
-        :show-free-tag="!!sourceMatch?.is_free"
         :team-progress="teamProgressItems"
         :pending-payment-fee-label="pendingPaymentFeeLabel"
         :pending-payment-title="currentStatus === '参加' ? `已报 ${myRegistrationCount} 人 · 报名费待支付` : ''"
@@ -360,6 +367,19 @@ const metaPageStyle = computed(() =>
       @primary="handleCancelPrimary"
       @secondary="handleCancelSecondary"
       @close="handleCancelClose"
+    />
+
+    <!-- 非比赛球队成员：加入主队球队（无密码直接加入，有密码可输入或转联系队长）。 -->
+    <MatchJoinTeamSheet
+      :visible="joinTeamSheet.sheetVisible.value"
+      :match="sourceMatch"
+      :needs-password="joinTeamSheet.needsPassword.value"
+      :password="joinTeamSheet.password.value"
+      :is-submitting="joinTeamSheet.isSubmitting.value"
+      @close="joinTeamSheet.close"
+      @confirm="void joinTeamSheet.confirmJoin()"
+      @update:password="joinTeamSheet.password.value = $event"
+      @contact-captain="handleJoinSheetContactCaptain"
     />
 
     <!-- 散人约球：报名人数选择（一人可代朋友报名，费用按人数合计）。 -->

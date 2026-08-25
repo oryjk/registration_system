@@ -27,8 +27,6 @@ const props = defineProps<{
   isGuestMode: boolean;
   ctaDisabled: boolean;
   showCta?: boolean;
-  /** 比赛免费时才在 CTA 上展示「免费」角标。 */
-  showFreeTag?: boolean;
   /** 球队约队双边进度（主/客队）；非空时替代单条进度与“已报”计数。 */
   teamProgress?: MatchTeamProgressItem[];
   /** 待支付报名费标签（如 ¥25.00）；非空时展示「去支付」面板。 */
@@ -147,7 +145,6 @@ function handleSignup() {
         @click="handleSignup"
       >
         {{ submittingStatus ? "提交中..." : individualCtaLabel }}
-        <text v-if="showFreeTag && !isGuestMode && !submittingStatus" class="action-free-label">免费</text>
       </NeoButton>
     </NeoStickyActionBar>
   </view>
@@ -260,11 +257,6 @@ function handleSignup() {
   color: var(--neo-color-text);
   font-size: 24rpx;
   font-weight: 900;
-}
-.action-free-label {
-  margin-left: 12rpx;
-  font-size: 22rpx;
-  opacity: 0.7;
 }
 .payment-panel {
   display: flex;

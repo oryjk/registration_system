@@ -24,8 +24,10 @@ interface MatchRegistrationDependencies {
   isGuestMode: Ref<boolean>;
   isMatchApiDetail: Ref<boolean>;
   registrationGroupId: Ref<string>;
-  /** 纯球队组比赛且用户未加入任何球队：报名入口引导跳转加入球队。 */
+  /** 纯球队组比赛且用户不是比赛球队成员：报名入口引导加入球队。 */
   needsTeamToRegister: ComputedRef<boolean>;
+  /** 打开「加入球队」弹框（由页面注入）。 */
+  openJoinTeamSheet: () => void;
   canSubmitIndividualRegistration: ComputedRef<boolean>;
   registrationWindowState: ComputedRef<RegistrationWindowState>;
   canUseTeamRegistration: ComputedRef<boolean>;
@@ -60,6 +62,7 @@ export function useMatchRegistration(dependencies: MatchRegistrationDependencies
     isMatchApiDetail,
     registrationGroupId,
     needsTeamToRegister,
+    openJoinTeamSheet,
     canSubmitIndividualRegistration,
     registrationWindowState,
     canUseTeamRegistration,
@@ -124,9 +127,9 @@ export function useMatchRegistration(dependencies: MatchRegistrationDependencies
       await handleGuestLogin();
       return;
     }
-    // 没有可报名的散人组且未加入任何球队：先去加入球队，再回来报名。
+    // 没有可报名的散人组且不是比赛球队成员：先弹框加入球队，再回来报名。
     if (needsTeamToRegister.value) {
-      uni.navigateTo({ url: "/pages/teams/join/index" });
+      openJoinTeamSheet();
       return;
     }
     // 散人约球已支付：人数与取消入口锁定，费用问题线下协商。

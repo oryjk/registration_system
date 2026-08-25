@@ -33,6 +33,7 @@ import {
   resolveRegistrationCapacityState,
   resolveRegistrationWindow,
 } from "./detailState";
+import { useMatchJoinTeam } from "./useMatchJoinTeam";
 import { useMatchRegistration } from "./useMatchRegistration";
 import { useMatchGuestLogin } from "./useMatchGuestLogin";
 import { useMatchCheckInReview } from "./useMatchCheckInReview";
@@ -262,6 +263,11 @@ export function useMatchDetailPage() {
   });
 
   // 纯球队组比赛 + 用户不是主/客队成员：个人报名没有可提交的组，引导先加入球队。
+  const joinTeamSheet = useMatchJoinTeam(computed(() => {
+    const source = sourceMatch.value;
+    if (!source?.host_team_id) return null;
+    return { id: source.host_team_id, name: source.host_team_name || "该球队" };
+  }));
   const needsTeamToRegister = computed(() => {
     if (!isMatchApiDetail.value || hasOpenIndividualGroup.value) return false;
     const matchTeamIds = [sourceMatch.value?.host_team_id, sourceMatch.value?.away_team_id]
@@ -390,6 +396,7 @@ export function useMatchDetailPage() {
     isMatchApiDetail,
     registrationGroupId,
     needsTeamToRegister,
+    openJoinTeamSheet: joinTeamSheet.open,
     canSubmitIndividualRegistration,
     registrationWindowState,
     canUseTeamRegistration,
@@ -598,6 +605,7 @@ export function useMatchDetailPage() {
   teamSubmitLabel,
   openMatchLocation,
   handleSelectIndividualSignup,
+  joinTeamSheet,
   handleSelectTeamMemberStand,
   handleCheckIn,
   handleCheckInSwitchChange,

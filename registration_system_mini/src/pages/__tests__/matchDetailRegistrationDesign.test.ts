@@ -336,7 +336,7 @@ describe("match detail registration design", () => {
     expect(pageLogic.includes('import { hasManualLogout } from "@/utils/authStorage";')).toEqual(true);
     expect(pageLogic.includes('const isGuestMode = ref(false);')).toEqual(true);
     expect(pageLogic.includes('if (isGuestMode.value) return "登录后报名";')).toEqual(true);
-    expect(statusCard.includes("!isGuestMode")).toEqual(true);
+    expect(statusCard.includes("isGuestMode")).toEqual(true);
     expect(pageLogic.indexOf("const publicData = await loadPublicMatchDetailData(matchId.value);") < pageLogic.indexOf("await ensureSessionReady();")).toEqual(
       true,
     );
