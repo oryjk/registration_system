@@ -261,10 +261,14 @@ export function useMatchDetailPage() {
     return opponentId ? teamsById.value[opponentId] ?? null : null;
   });
 
-  // 纯球队组比赛 + 用户未加入任何球队：个人报名没有可提交的组，引导先加入球队。
-  const needsTeamToRegister = computed(() =>
-    isMatchApiDetail.value && !hasOpenIndividualGroup.value && myTeams.value.length === 0
-  );
+  // 纯球队组比赛 + 用户不是主/客队成员：个人报名没有可提交的组，引导先加入球队。
+  const needsTeamToRegister = computed(() => {
+    if (!isMatchApiDetail.value || hasOpenIndividualGroup.value) return false;
+    const matchTeamIds = [sourceMatch.value?.host_team_id, sourceMatch.value?.away_team_id]
+      .filter((teamId): teamId is number => typeof teamId === "number");
+    if (!matchTeamIds.length) return false;
+    return !myTeams.value.some((team) => matchTeamIds.includes(team.id));
+  });
   const individualCtaLabel = computed(() => {
     if (isGuestMode.value) return "登录后报名";
     if (needsTeamToRegister.value) return "加入球队后可报名";

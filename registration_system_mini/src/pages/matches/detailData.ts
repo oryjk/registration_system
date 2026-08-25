@@ -273,7 +273,15 @@ export async function loadAuthenticatedMatchDetailContext(
 ): Promise<AuthenticatedMatchDetailContext> {
   const { activity, activityUsers, activityPageItems, myRegistration, currentTeamId, currentUserId } = params;
   const teamIds = [activity.home_team_id, activity.away_team_id].filter((teamId): teamId is number => typeof teamId === "number");
-  const fetchedTeamDetails = await Promise.all(teamIds.map(async (teamId) => loaders.getTeamDetail(teamId)));
+  // 球队详情接口仅成员可读：非成员浏览广场比赛详情时会 403，拿不到就跳过，
+  // 不能让它把整个详情页拖进「会话失败」分支（会被误判为游客）。
+  const fetchedTeamDetails = (await Promise.all(teamIds.map(async (teamId) => {
+    try {
+      return await loaders.getTeamDetail(teamId);
+    } catch {
+      return null;
+    }
+  }))).filter((detail): detail is Awaited<ReturnType<typeof loaders.getTeamDetail>> => detail !== null);
   const fetchedTeams = fetchedTeamDetails.map((detail) => detail.team);
   // 报名板跟随比赛所属球队：优先当前选中球队；用户切换到其他球队后，回退到
   // 「当前用户是活跃成员」的那支比赛队伍（主队在前），两边都不属于时才留空隐藏。
