@@ -42,7 +42,7 @@ import { useNeoConfirmDialog } from "@/components/neo";
 import type { NeoConfirmDialogOptions } from "@/components/neo";
 
 export function useMatchDetailPage() {
-  const { currentTeam, currentUser, ensureSessionReady } = useTeamContext();
+  const { currentTeam, currentUser, ensureSessionReady, myTeams } = useTeamContext();
   const { ensureCurrentLocation } = useCurrentLocation();
   const {
     confirmDialogVisible,
@@ -76,6 +76,7 @@ export function useMatchDetailPage() {
   const isGuestMode = ref(false);
   const isMatchApiDetail = ref(false);
   const registrationGroupId = ref("");
+  const hasOpenIndividualGroup = ref(false);
   const preferredRegistrationGroupId = ref("");
   const publicationModeLabel = ref("其他类型");
   const selectedGroupMinPlayers = ref<number | null>(null);
@@ -260,8 +261,13 @@ export function useMatchDetailPage() {
     return opponentId ? teamsById.value[opponentId] ?? null : null;
   });
 
+  // 纯球队组比赛 + 用户未加入任何球队：个人报名没有可提交的组，引导先加入球队。
+  const needsTeamToRegister = computed(() =>
+    isMatchApiDetail.value && !hasOpenIndividualGroup.value && myTeams.value.length === 0
+  );
   const individualCtaLabel = computed(() => {
     if (isGuestMode.value) return "登录后报名";
+    if (needsTeamToRegister.value) return "加入球队后可报名";
     if (registrationCapacityState.value.isFull && currentStatus.value !== "参加") return "报名已满";
     if (currentStatus.value !== "参加") return "立即报名";
     // 散人约球已报名：已支付锁定为只读，未支付可调整人数。
@@ -379,6 +385,7 @@ export function useMatchDetailPage() {
     isGuestMode,
     isMatchApiDetail,
     registrationGroupId,
+    needsTeamToRegister,
     canSubmitIndividualRegistration,
     registrationWindowState,
     canUseTeamRegistration,
@@ -428,6 +435,7 @@ export function useMatchDetailPage() {
       sourceTeamRegistrationCount.value = publicData.sourceTeamRegistrationCount;
       isMatchApiDetail.value = publicData.fromMatchApi;
       registrationGroupId.value = publicData.registrationGroupId;
+      hasOpenIndividualGroup.value = publicData.hasOpenIndividualGroup;
       publicationModeLabel.value = publicData.publicationModeLabel;
       sourceMatch.value = publicData.sourceMatch;
       matchTeamGroups.value = publicData.teamGroups;

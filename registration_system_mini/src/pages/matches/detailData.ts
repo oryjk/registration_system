@@ -23,6 +23,8 @@ export interface PublicMatchDetailData {
   teamGroups: MatchTeamGroupSummary[];
   /** 当前选中报名组的最小人数（管理端「最小人数」）；散人约球的报名进度以它为目标，legacy 为 null。 */
   selectedGroupMinPlayers: number | null;
+  /** 是否存在开放中的散人报名组：没有它且用户未加入任何球队时，个人报名无路径，引导先加入球队。 */
+  hasOpenIndividualGroup: boolean;
 }
 
 export interface MatchTeamGroupSummary {
@@ -210,6 +212,7 @@ export function buildPublicMatchApiDetailData(
     publicationModeLabel: getMatchPublicationModeLabel(matchDetail.match.publication_mode),
     sourceMatch: matchDetail.match,
     teamGroups: toTeamGroupSummaries(matchDetail.groups),
+    hasOpenIndividualGroup: matchDetail.groups.some((item) => item.kind === "individual_opponent" && item.status === "open"),
     selectedGroupMinPlayers: group?.min_players ?? null,
     sourceTeamRegistrationCount: Math.max(
       Number(activity.team_registration_count ?? 0)
@@ -248,6 +251,7 @@ export async function loadPublicMatchDetailData(
     sourceMatch: null,
     teamGroups: [],
     selectedGroupMinPlayers: null,
+    hasOpenIndividualGroup: false,
     sourceTeamRegistrationCount: activity.source_activity_id
       ? 0
       : activityPageItems
