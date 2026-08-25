@@ -132,10 +132,13 @@ const {
 } = useMatchTeamApplications(sourceMatch, loadPageData, confirmRegistrationAction);
 
 const captainContact = useMatchCaptainContact();
-// 仅当详情带主队队长、且当前用户不是该队管理者（后端同样拦截）时展示留言入口。
-const captainContactCaptain = computed(() => (
-  !isGuestMode.value && !canManageCurrentMatch.value ? sourceMatch.value?.host_captain ?? null : null
-));
+// 仅当详情带主队队长、且当前用户不是主队管理者（口径与接约申请一致：当前球队=主队且有管理权）时展示。
+const captainContactCaptain = computed(() => {
+  const source = sourceMatch.value;
+  if (isGuestMode.value || !source?.host_captain) return null;
+  const isHostManager = currentTeam.value?.id === source.host_team_id && !!currentTeam.value?.canManageTeam;
+  return isHostManager ? null : source.host_captain;
+});
 
 const registrationModeOptions = computed(() => [
   { label: "个人报名", value: "individual" },

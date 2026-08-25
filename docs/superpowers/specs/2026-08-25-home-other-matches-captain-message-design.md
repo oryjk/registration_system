@@ -68,9 +68,11 @@ match_captain_messages(
   `CaptainMessage` / `CaptainMessageThread` 值类型。
 - `adapters/postgres/captain_message_repository.go`：实现（挂在现有 `Repository` 上）。
 - `application/captain_message_service.go`：
-  - `Send(actor, {match_id, content})`：比赛必须存在且有主队；写首条留言（thread_id=新 UUID）；
-    通知主队全部 captain/leader（kind=`match_captain_message`，content 含发起人昵称+比赛名+摘要，
-    `related_type='captain_message'`，`related_id=thread_id`）。
+  - `Send(actor, {match_id, content})`：比赛必须存在且有主队；主队管理者给自己球队留言被拒绝
+    （「自己球队的比赛无需给自己留言」）；同一用户对同一比赛已有串时复用该串追加（thread_id 沿用首条
+    消息 id，新串时 thread_id=新 UUID 且等于首条消息 id）；通知主队全部 captain/leader
+    （kind=`match_captain_message`，content 含发起人昵称+比赛名+50 字摘要，
+    `related_type='captain_message'`，`related_id=thread_id`，best-effort）。
   - `Reply(actor, {thread_id, content})`：串必须存在；发送者须为串发起人或主队
     captain/leader（复用 `teamapplication.TeamAuthorizer.EnsureManager`）；追加消息；
     通知对方（发起人回复 → 通知管理者们；管理者回复 → 通知发起人）。
@@ -90,7 +92,8 @@ match_captain_messages(
   - `host_team_only=true`：`m.host_team_id IS NOT NULL`。
   不传时行为与现状完全一致（兼容旧客户端）。
 - `GET /matches/:id` 响应 `match` 对象新增 `host_captain: {user_id, nickname, avatar_url} | null`
-  （`teams.captain_id` JOIN `users`；无主队或无队长时为 null）。
+  （`teams.captain_id` JOIN `users`；无主队或无队长时为 null）。列表响应结构体带同名同型字段，
+  但列表场景恒为 null（仅详情装配），纯增量不影响旧客户端。
 
 ## 4. 小程序（registration_system_mini）
 
@@ -106,8 +109,9 @@ match_captain_messages(
 
 ### 4.2 比赛详情页：只留发送入口
 
-- `host_captain` 存在且我不是该队管理者时显示「联系队长」按钮 → `wd-popup` 留言框
-  （textarea，1~200 字）→ 调发起接口 → 成功 toast「已发送，可在消息中心查看回复」。
+- 「联系队长」按钮显示条件：host_captain 存在、非游客、且当前用户不是主队管理者（判定口径与
+  接约申请一致：当前球队=比赛主队且有管理权）→ `wd-popup` 留言框（textarea，1~200 字）→
+  调发起接口 → 成功 toast「已发送，回复见消息中心」。
 - 详情页不展示留言历史。
 
 ### 4.3 消息中心
