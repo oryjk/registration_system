@@ -117,7 +117,7 @@ const teamRegistrationCountModel = computed({
   height: 64rpx;
   padding: 0 18rpx;
   border-radius: 999rpx;
-  background: #9be22b;
+  background: var(--neo-color-accent);
   color: #171717;
   font-size: 28rpx;
   font-weight: 900;

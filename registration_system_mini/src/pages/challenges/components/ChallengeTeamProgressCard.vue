@@ -93,7 +93,7 @@ const guestTeamMeta = computed(() => (guestTeamConfirmed.value ? "已确定" : "
   height: 112rpx;
   border-radius: 999rpx;
   background: #161714;
-  color: #c8ff00;
+  color: var(--neo-color-accent);
   font-size: 40rpx;
   font-weight: 900;
 }

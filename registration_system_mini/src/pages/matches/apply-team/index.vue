@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useAccentTheme } from "@/stores/theme";
 import { onLoad, onShow } from "@dcloudio/uni-app";
 import { computed, ref } from "vue";
 import AppTabHeader from "@/components/AppTabHeader.vue";
@@ -8,6 +9,8 @@ import ApplyTeamFormCard from "./components/ApplyTeamFormCard.vue";
 import ApplyTeamStatusCard from "./components/ApplyTeamStatusCard.vue";
 import { useApplyTeamPage } from "./useApplyTeamPage";
 import { getCustomNavMetrics } from "@/utils/customNav";
+
+const { themePageStyle } = useAccentTheme();
 
 const matchId = ref("");
 const {
@@ -58,6 +61,7 @@ onShow(() => {
 </script>
 
 <template>
+  <page-meta :page-style="themePageStyle" />
   <view class="apply-team-page" :style="pageStyle">
     <AppTabHeader title="接约确认" showBack />
 

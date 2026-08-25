@@ -1,16 +1,15 @@
 <script setup lang="ts">
+import { useAccentTheme } from "@/stores/theme";
 import { computed, ref } from "vue";
 import { onLoad, onShareAppMessage, onShareTimeline, onUnload } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
 import NeoConfirmDialog from "@/components/neo/NeoConfirmDialog.vue";
 import { useNeoConfirmDialog } from "@/components/neo";
 import { acceptChallenge, cancelChallenge, cancelIndividualChallengeAcceptance, getChallengeDetail } from "@/api/challenge";
-import { createChallengeIndividualPaymentOrder, syncPaymentOrderStatus } from "@/api/payment";
 import { useTeamContext } from "@/stores/teamContext";
 import type { BackendChallenge, BackendChallengeDetail } from "@/types/backend";
 import { getCustomNavMetrics } from "@/utils/customNav";
 import { isOpenLocationSupported } from "@/utils/location";
-import { isMockWxPaymentParams, isPaymentCancelled, normalizeWxPaymentParams, requestWxPayment } from "@/utils/payment";
 import { DEFAULT_SHARE_IMAGE_URL } from "@/utils/share";
 import { getAppPlatform } from "@/utils/systemInfo";
 import { buildChallengeCards } from "@/utils/viewModels";
@@ -22,6 +21,8 @@ import ChallengeInfoCard from "./components/ChallengeInfoCard.vue";
 import ChallengeTeamProgressCard from "./components/ChallengeTeamProgressCard.vue";
 import { buildIndividualParticipantPreview } from "./detailState";
 import { formatCountdown } from "../matches/detailState";
+
+const { themePageStyle } = useAccentTheme();
 
 const { currentTeam, currentUser, ensureSessionReady } = useTeamContext();
 const {
@@ -155,14 +156,6 @@ const paymentStatusLabel = computed(() => {
   if (acceptance.payment_status === "cancelled") return "已取消";
   if (!challenge.fee_per_person || Number(challenge.fee_per_person) <= 0) return "无需支付";
   return challenge.payment_mode === "prepaid" ? "待支付" : "赛后支付待完成";
-});
-const canPayChallenge = computed(() => {
-  const challenge = detail.value?.summary.challenge;
-  const acceptance = currentAcceptance.value;
-  if (!challenge || challenge.kind !== "individual" || !acceptance || actionLoading.value) return false;
-  if (!detail.value?.summary.current_user_joined || acceptance.payment_status !== "unpaid") return false;
-  if (!challenge.fee_per_person || Number(challenge.fee_per_person) <= 0) return false;
-  return !paymentDeadlineTimestamp.value || paymentDeadlineTimestamp.value > nowTick.value;
 });
 const pageTitle = computed(() => (card.value?.kind === "individual" ? "散人报名" : "约队详情"));
 const shareTitle = computed(() => {
@@ -345,34 +338,6 @@ async function handleCancel() {
   }
 }
 
-async function handlePayChallenge() {
-  if (!card.value || !canPayChallenge.value || actionLoading.value) return;
-
-  actionLoading.value = true;
-  try {
-    const order = await createChallengeIndividualPaymentOrder({
-      challenge_id: challengeId.value,
-    });
-    const paymentParams = normalizeWxPaymentParams(order.params);
-    if (paymentParams && !isMockWxPaymentParams(paymentParams)) {
-      await requestWxPayment(paymentParams);
-    }
-    await syncPaymentOrderStatus(order.order_no);
-    await loadPageData();
-    uni.showToast({
-      title: paymentParams ? "支付已提交" : "支付订单已创建",
-      icon: "none",
-    });
-  } catch (error) {
-    uni.showToast({
-      title: isPaymentCancelled(error) ? "已取消支付" : error instanceof Error ? error.message : "支付失败",
-      icon: "none",
-    });
-  } finally {
-    actionLoading.value = false;
-  }
-}
-
 async function handleCancelIndividualAcceptance() {
   if (!canCancelIndividualAcceptance.value || actionLoading.value) return;
 
@@ -485,6 +450,7 @@ onShareTimeline(() => ({
 </script>
 
 <template>
+  <page-meta :page-style="themePageStyle" />
   <view class="challenge-detail-page" :style="pageStyle">
     <AppTabHeader :title="pageTitle" showBack />
 
@@ -507,10 +473,8 @@ onShareTimeline(() => ({
         :can-open-location="canOpenChallengeLocation"
         :payment-status-label="paymentStatusLabel"
         :payment-countdown-text="paymentCountdownText"
-        :can-pay="canPayChallenge"
         @accept="handleAccept"
         @cancel-individual-acceptance="handleCancelIndividualAcceptance"
-        @pay="handlePayChallenge"
         @open-location="openChallengeLocation"
         @open-activities="openActivities"
       />

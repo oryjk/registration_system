@@ -111,7 +111,7 @@ defineEmits<{
   height: 72rpx;
   padding: 0 22rpx;
   border-radius: 999rpx;
-  background: #9be22b;
+  background: var(--neo-color-accent);
   color: #10110f;
   font-size: 26rpx;
   font-weight: 900;

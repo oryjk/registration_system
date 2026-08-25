@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { useAccentTheme } from "@/stores/theme";
+const { accentHex } = useAccentTheme();
+
 defineProps<{
   checkInForm: {
     enabled: boolean;
@@ -22,7 +25,7 @@ defineEmits<{
         <text class="section-title">签到设置</text>
         <text class="checkin-copy">可开启定位签到，保存后队员可在比赛详情页签到。</text>
       </view>
-      <switch :checked="checkInForm.enabled" color="#9be22b" @change="$emit('checkInSwitchChange', $event)" />
+      <switch :checked="checkInForm.enabled" :color="accentHex" @change="$emit('checkInSwitchChange', $event)" />
     </view>
     <view v-if="checkInForm.enabled" class="checkin-config-grid">
       <view class="checkin-config-item">
@@ -153,7 +156,7 @@ defineEmits<{
   height: 72rpx;
   padding: 0 22rpx;
   border-radius: 999rpx;
-  background: #9be22b;
+  background: var(--neo-color-accent);
   color: #10110f;
   font-size: 26rpx;
   font-weight: 900;

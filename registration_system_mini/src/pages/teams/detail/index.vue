@@ -1,9 +1,12 @@
 <script setup lang="ts">
+import { useAccentTheme } from "@/stores/theme";
 import AppTabHeader from "@/components/AppTabHeader.vue";
 import NeoButton from "@/components/neo/NeoButton.vue";
 import NeoSurface from "@/components/neo/NeoSurface.vue";
 import NeoTag from "@/components/neo/NeoTag.vue";
 import { useTeamDetailPage } from "./useTeamDetailPage";
+
+const { themePageStyle } = useAccentTheme();
 
 const {
   pageStyle,
@@ -25,6 +28,7 @@ const {
 </script>
 
 <template>
+  <page-meta :page-style="themePageStyle" />
   <view class="team-detail-page" :style="pageStyle">
     <AppTabHeader :title="team?.name || '球队'" showBack />
 

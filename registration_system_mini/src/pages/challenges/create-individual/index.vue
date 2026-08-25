@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useAccentTheme } from "@/stores/theme";
 import { computed, reactive, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
@@ -15,6 +16,8 @@ import { useTeamContext } from "@/stores/teamContext";
 import { getCustomNavMetrics } from "@/utils/customNav";
 
 // 散人约球（online_pickup）：所有参与者都是散人、无球队概念，任何登录用户可发布。
+const { themePageStyle } = useAccentTheme();
+
 const { ensureSessionReady } = useTeamContext();
 const { shouldHideCreationEntrances } = useMiniReviewStatus();
 const navMetrics = getCustomNavMetrics();
@@ -196,6 +199,7 @@ onShow(async () => {
 </script>
 
 <template>
+  <page-meta :page-style="themePageStyle" />
   <view v-if="reviewGateReady" class="individual-create-page" :style="pageStyle">
     <AppTabHeader title="散人约球" showBack />
 
@@ -351,7 +355,7 @@ onShow(async () => {
 .create-hero-title {
   display: block;
   margin-top: 14rpx;
-  color: var(--neo-color-text-inverse);
+  color: var(--neo-color-hero-fg);
   font-size: 40rpx;
   font-weight: 900;
   line-height: 1.18;

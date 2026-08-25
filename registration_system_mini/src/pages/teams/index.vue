@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useAccentTheme } from "@/stores/theme";
 import { computed, ref } from "vue";
 import { onLoad, onShow, onUnload } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
@@ -19,6 +20,8 @@ import AttendanceRankingCard from "./components/AttendanceRankingCard.vue";
 import StatsOverview from "./components/StatsOverview.vue";
 import StatsSkeleton from "./components/StatsSkeleton.vue";
 import { buildAttendanceCalendarMonths, buildRecordSummary } from "./teamStatsState";
+
+const { themePageStyle } = useAccentTheme();
 
 const { currentTeam, currentUser, ensureSessionReady } = useTeamContext();
 const { syncUnreadCount } = useNotificationCenter();
@@ -104,10 +107,12 @@ async function loadPageData() {
       return;
     }
 
+    void syncUnreadCount({ skipEnsure: true }).catch(() => {
+      // Notification count is nice-to-have; don't let it block the stats load.
+    });
     const [allTimeSummary, yearSummary] = await Promise.all([
       getTeamAttendanceSummary(currentTeam.value.id),
       getTeamAttendanceSummary(currentTeam.value.id, getCurrentYearDateRange()),
-      syncUnreadCount({ skipEnsure: true }),
     ]);
     myRecords.value = allTimeSummary.my_records;
     myYearRecords.value = yearSummary.my_records;
@@ -149,6 +154,7 @@ onUnload(() => {
 </script>
 
 <template>
+  <page-meta :page-style="themePageStyle" />
   <view class="stats-page" :style="pageStyle">
     <AppTabHeader title="统计" />
 

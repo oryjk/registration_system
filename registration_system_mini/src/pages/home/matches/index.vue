@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useAccentTheme } from "@/stores/theme";
 import { computed, ref } from "vue";
 import { onLoad, onReachBottom, onShow } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
@@ -14,6 +15,8 @@ import {
   loadNextVisiblePhaseBatch,
   type HomeMatchPaginationState,
 } from "./homeMatchPagination";
+
+const { themePageStyle } = useAccentTheme();
 
 type VisibleHomeMatchPhase = Exclude<AppMatchUiPhase, "excluded">;
 
@@ -142,6 +145,7 @@ onReachBottom(() => {
 </script>
 
 <template>
+  <page-meta :page-style="themePageStyle" />
   <view class="phase-matches-page">
     <AppTabHeader :title="pageMeta.title" showBack />
 

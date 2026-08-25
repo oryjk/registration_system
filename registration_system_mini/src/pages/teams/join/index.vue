@@ -1,7 +1,10 @@
 <script setup lang="ts">
+import { useAccentTheme } from "@/stores/theme";
 import AppTabHeader from "@/components/AppTabHeader.vue";
 import TeamJoinPanel from "../components/TeamJoinPanel.vue";
 import { useTeamJoinPage } from "./useTeamJoinPage";
+
+const { themePageStyle } = useAccentTheme();
 
 const {
   pageStyle,
@@ -22,6 +25,7 @@ const {
 </script>
 
 <template>
+  <page-meta :page-style="themePageStyle" />
   <view class="team-join-page" :style="pageStyle">
     <AppTabHeader title="加入球队" showBack />
 
@@ -97,7 +101,7 @@ const {
 
 .team-join-title {
   display: block;
-  color: var(--neo-color-text-inverse);
+  color: var(--neo-color-hero-fg);
   font-size: 42rpx;
   font-weight: 900;
   line-height: 1.18;

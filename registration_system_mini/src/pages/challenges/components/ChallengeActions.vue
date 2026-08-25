@@ -63,7 +63,7 @@ defineEmits<{
 }
 
 .challenge-primary-button {
-  background: #c8ff00;
+  background: var(--neo-color-accent);
   color: #131410;
 }
 

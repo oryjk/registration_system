@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useAccentTheme } from "@/stores/theme";
 import { computed, reactive, ref } from "vue";
 import { onLoad, onShow } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
@@ -13,6 +14,8 @@ import { preloadMiniReviewStatus, useMiniReviewStatus } from "@/stores/miniRevie
 import { useTeamContext } from "@/stores/teamContext";
 import { getCustomNavMetrics } from "@/utils/customNav";
 import { buildCreateMatchPayload } from "./createMatchPayload";
+
+const { themePageStyle } = useAccentTheme();
 
 const { currentTeam, ensureSessionReady } = useTeamContext();
 const { shouldHideCreationEntrances } = useMiniReviewStatus();
@@ -293,6 +296,7 @@ onShow(async () => {
 </script>
 
 <template>
+  <page-meta :page-style="themePageStyle" />
   <view v-if="reviewGateReady" class="create-match-page" :style="pageStyle">
     <AppTabHeader :title="pageMode === 'edit' ? '编辑比赛' : '创建比赛'" showBack />
 
@@ -381,7 +385,7 @@ onShow(async () => {
 .create-hero-title {
   display: block;
   margin-top: 14rpx;
-  color: var(--neo-color-text-inverse);
+  color: var(--neo-color-hero-fg);
   font-size: 40rpx;
   font-weight: 900;
   line-height: 1.18;

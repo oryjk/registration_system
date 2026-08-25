@@ -81,26 +81,26 @@ export function useMinePage() {
       label: "今年比赛",
       value: String(overviewDigest.value.activityCount),
       unit: "次",
-      tone: "lime",
+      tone: "accent",
     },
     {
       key: "teams",
       label: "加入球队",
       value: String(overviewDigest.value.teamCount),
       unit: "支",
-      tone: "blue",
+      tone: "plain",
     },
     {
       key: "hours",
       label: "今年时长",
       value: overviewDigest.value.totalHoursLabel,
-      tone: "amber",
+      tone: "plain",
     },
     {
       key: "joinedDays",
       label: "加入当前球队",
       value: currentTeamJoinedDaysLabel.value || "0 天",
-      tone: "coral",
+      tone: "plain",
     },
   ]);
 

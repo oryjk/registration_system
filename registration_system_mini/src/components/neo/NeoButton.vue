@@ -74,7 +74,7 @@ function handleClick(event: { stopPropagation?: () => void }) {
         :loading="props.loading"
         :disabled="props.disabled"
         :block="props.block"
-        :loading-color="props.variant === 'dark' ? 'var(--neo-color-text-inverse)' : 'var(--neo-color-text)'"
+        :loading-color="props.variant === 'dark' ? 'var(--neo-color-cta-fg)' : 'var(--neo-color-text)'"
         custom-class="neo-button-control"
         :custom-style="controlStyle"
         @click="handleClick"
@@ -103,8 +103,8 @@ function handleClick(event: { stopPropagation?: () => void }) {
 }
 
 .neo-button--dark {
-  --neo-button-current-bg: var(--neo-color-text);
-  --neo-button-current-fg: var(--neo-color-text-inverse);
+  --neo-button-current-bg: var(--neo-color-cta);
+  --neo-button-current-fg: var(--neo-color-cta-fg);
 }
 
 .neo-button--lime {

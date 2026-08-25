@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useAccentTheme } from "@/stores/theme";
 import { onLoad, onShow, onUnload } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
 import BottomTabBar from "@/components/BottomTabBar.vue";
@@ -9,7 +10,10 @@ import MineStatsGrid from "./components/MineStatsGrid.vue";
 import MineMatchSection from "./components/MineMatchSection.vue";
 import MineSkeleton from "./components/MineSkeleton.vue";
 import MineWalletSection from "./components/MineWalletSection.vue";
+import ThemeAccentPicker from "./components/ThemeAccentPicker.vue";
 import { useMinePage } from "./useMinePage";
+
+const { themePageStyle } = useAccentTheme();
 
 const {
   currentTeam,
@@ -69,6 +73,7 @@ onUnload(() => {
 </script>
 
 <template>
+  <page-meta :page-style="themePageStyle" />
   <view class="mine-page">
     <AppTabHeader title="我的" />
     <view class="mine-page-content" :style="contentStyle">
@@ -147,6 +152,8 @@ onUnload(() => {
           <text class="mine-settings-entry__label mine-settings-entry__label--danger">清空本机数据</text>
           <text class="mine-settings-entry__arrow">›</text>
         </view>
+        <!-- 主题色切换：本地偏好，未登录也可用。 -->
+        <ThemeAccentPicker />
       </template>
 
       <view class="mine-bottom-spacer" />

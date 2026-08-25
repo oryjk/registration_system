@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useAccentTheme } from "@/stores/theme";
 import { computed, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
@@ -9,6 +10,8 @@ import type { HomeMatchCardViewModel } from "@/types/viewModels";
 import { getCustomNavMetrics } from "@/utils/customNav";
 import { loadAllMyMatches } from "../myMatchesData";
 import { buildUserMatchCards, type UserMatchScope } from "./userMatchesState";
+
+const { themePageStyle } = useAccentTheme();
 
 const { ensureSessionReady } = useTeamContext();
 const navMetrics = getCustomNavMetrics();
@@ -80,6 +83,7 @@ onShow(() => {
 </script>
 
 <template>
+  <page-meta :page-style="themePageStyle" />
   <view class="my-matches-page">
     <AppTabHeader title="我的比赛" showBack />
     <view class="my-matches-content" :style="contentStyle">

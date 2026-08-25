@@ -5,8 +5,18 @@ page {
   --neo-primitive-surface: #fffdf8;
   --neo-primitive-canvas: #f4f0e8;
   --neo-primitive-hero: #172018;
-  --neo-primitive-lime: #b9f24b;
-  --neo-primitive-lime-soft: #dff8a8;
+  --neo-primitive-hero-fg: #fffdf8;
+  /* 强调色族：默认青柠；「活力橙」主题通过 page-meta 覆盖同名变量实现全局切换。 */
+  --neo-primitive-accent: #b9f24b;
+  --neo-primitive-accent-soft: #dff8a8;
+  --neo-primitive-accent-deep: #4f6800;
+  --neo-primitive-accent-rgb: 185, 242, 75;
+  /* 主按钮（CTA）与 hero 深底：默认墨色，活力橙主题覆盖为橙底墨字 / 暖棕深底。 */
+  --neo-primitive-cta: #111310;
+  --neo-primitive-cta-fg: #fffdf8;
+  /* 历史命名别名：保持既有引用不破，值随 accent 主题联动。 */
+  --neo-primitive-lime: var(--neo-primitive-accent);
+  --neo-primitive-lime-soft: var(--neo-primitive-accent-soft);
   --neo-primitive-danger: #ff6b5f;
   --neo-primitive-amber-soft: #ffe2a8;
   --neo-primitive-blue-soft: #dce6ff;
@@ -28,9 +38,14 @@ page {
   --neo-color-text-inverse: var(--neo-primitive-surface);
   --neo-color-text-muted: var(--neo-primitive-text-muted);
   --neo-color-text-disabled: var(--neo-primitive-text-disabled);
-  --neo-color-accent: var(--neo-primitive-lime);
+  --neo-color-accent: var(--neo-primitive-accent);
+  --neo-color-accent-soft: var(--neo-primitive-accent-soft);
+  --neo-color-accent-deep: var(--neo-primitive-accent-deep);
+  --neo-color-cta: var(--neo-primitive-cta);
+  --neo-color-cta-fg: var(--neo-primitive-cta-fg);
   --neo-color-hero: var(--neo-primitive-hero);
-  --neo-color-success: var(--neo-primitive-lime-soft);
+  --neo-color-hero-fg: var(--neo-primitive-hero-fg);
+  --neo-color-success: var(--neo-primitive-accent-soft);
   --neo-color-danger: var(--neo-primitive-danger);
   --neo-color-warning-soft: var(--neo-primitive-amber-soft);
   --neo-color-danger-soft: var(--neo-primitive-red-soft);
@@ -65,8 +80,8 @@ page {
   --neo-surface-padding: 20rpx;
   --neo-surface-shadow: var(--neo-shadow-raised);
 
-  --neo-button-bg: var(--neo-color-text);
-  --neo-button-fg: var(--neo-color-text-inverse);
+  --neo-button-bg: var(--neo-color-cta);
+  --neo-button-fg: var(--neo-color-cta-fg);
   --neo-button-border: var(--neo-border-default);
   --neo-button-radius: var(--neo-radius-sm);
   --neo-button-font-size-sm: 24rpx;

@@ -18,13 +18,11 @@ defineProps<{
   canOpenLocation: boolean;
   paymentStatusLabel: string;
   paymentCountdownText: string;
-  canPay: boolean;
 }>();
 
 defineEmits<{
   accept: [];
   cancelIndividualAcceptance: [];
-  pay: [];
   openLocation: [];
   openActivities: [];
 }>();
@@ -112,12 +110,7 @@ defineEmits<{
           <text class="payment-panel-status">{{ paymentStatusLabel }}</text>
           <text v-if="paymentCountdownText" class="payment-panel-countdown">{{ paymentCountdownText }}</text>
         </view>
-        <view
-          :class="['payment-panel-button', !canPay || actionLoading ? 'payment-panel-button-disabled' : '']"
-          @tap="canPay && !actionLoading ? $emit('pay') : undefined"
-        >
-          去支付
-        </view>
+        <!-- 支付入口待 Go 后端约队模块上线后恢复（原 /payment/challenge-individual 为旧 Rust 路由，已删）。 -->
       </view>
 
       <view class="hall-button" @tap="$emit('openActivities')">回到大厅</view>
@@ -159,7 +152,7 @@ defineEmits<{
   align-self: flex-start;
   padding: 10rpx 18rpx;
   border-radius: 999rpx;
-  background: #d9ff16;
+  background: var(--neo-color-accent);
   color: #181818;
   font-size: 24rpx;
   font-weight: 900;
@@ -358,7 +351,7 @@ defineEmits<{
 .progress-fill {
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, #d9ff16 0%, #b8ff00 100%);
+  background: linear-gradient(90deg, var(--neo-color-accent) 0%, rgba(var(--neo-primitive-accent-rgb), 0.82) 100%);
 }
 
 .countdown-avatars {

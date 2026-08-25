@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useAccentTheme } from "@/stores/theme";
 import { computed } from "vue";
 import AppTabHeader from "@/components/AppTabHeader.vue";
 import NeoButton from "@/components/neo/NeoButton.vue";
@@ -9,6 +10,8 @@ import { useMiniReviewStatus } from "@/stores/miniReview";
 import { DEVELOPER_WECHAT_QRCODE_URL, OFFICIAL_ACCOUNT_QRCODE_URL } from "@/utils/developerContact";
 import { getCustomNavMetrics } from "@/utils/customNav";
 import { useTipDonation } from "./useTipDonation";
+
+const { themePageStyle } = useAccentTheme();
 
 const navMetrics = getCustomNavMetrics();
 const pageStyle = computed(() => ({
@@ -22,6 +25,7 @@ const { amountInput, suggestionInput, isSubmitting, isLoggedIn, suggestionMaxLen
 </script>
 
 <template>
+  <page-meta :page-style="themePageStyle" />
   <view class="contact-developer-page" :style="pageStyle">
     <AppTabHeader title="联系开发者" showBack />
 

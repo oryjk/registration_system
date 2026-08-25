@@ -77,7 +77,7 @@ defineProps<{
   align-self: flex-start;
   padding: 10rpx 18rpx;
   border-radius: 999rpx;
-  background: #9be22b;
+  background: var(--neo-color-accent);
   color: #181818;
   font-size: 24rpx;
   font-weight: 900;
@@ -122,7 +122,7 @@ defineProps<{
 }
 
 .hero-meta-chip-type {
-  background: #9be22b;
+  background: var(--neo-color-accent);
   color: #181818;
 }
 
@@ -151,7 +151,7 @@ defineProps<{
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 6rpx solid #9be22b;
+  border: 6rpx solid var(--neo-color-accent);
   background: #0f0f0f;
   color: #ffffff;
   font-size: 50rpx;
@@ -178,7 +178,7 @@ defineProps<{
   height: 42rpx;
   padding: 0 18rpx;
   border-radius: 999rpx;
-  background: #9be22b;
+  background: var(--neo-color-accent);
   color: #171717;
   font-size: 24rpx;
   font-weight: 900;
@@ -190,7 +190,7 @@ defineProps<{
 }
 
 .vs-mark {
-  color: #9be22b;
+  color: var(--neo-color-accent);
   font-size: 72rpx;
   line-height: 1;
   font-weight: 900;

@@ -19,7 +19,7 @@ button::after {
 .wd-segmented.scope-segment {
   padding: 8rpx;
   border-radius: 999rpx;
-  background: #e9eee1;
+  background: var(--neo-color-muted);
 }
 
 .wd-segmented.app-segment .wd-segmented__item,
@@ -42,7 +42,7 @@ button::after {
 .wd-segmented.scope-segment .wd-segmented__item--active {
   border-radius: 999rpx;
   background: var(--app-primary);
-  box-shadow: 0 8rpx 18rpx rgba(90, 115, 0, 0.14);
+  box-shadow: 0 8rpx 18rpx rgba(var(--neo-primitive-accent-rgb), 0.14);
 }
 
 .page-shell {

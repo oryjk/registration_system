@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useAccentTheme } from "@/stores/theme";
 import { onHide, onLoad, onShow, onUnload, onShareAppMessage, onShareTimeline } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
 import BottomTabBar from "@/components/BottomTabBar.vue";
@@ -16,6 +17,8 @@ import { getCustomNavMetrics } from "@/utils/customNav";
 import { MATCH_CREATION_IDENTITY_HINT } from "@/utils/matchCreationAccess";
 import { DEFAULT_SHARE_IMAGE_URL } from "@/utils/share";
 import { computed, ref } from "vue";
+
+const { themePageStyle } = useAccentTheme();
 
 const {
   showInitialLoadingState,
@@ -144,6 +147,7 @@ onShareTimeline(() => ({
 </script>
 
 <template>
+  <page-meta :page-style="themePageStyle" />
   <view class="hall-page" :style="pageStyle">
     <AppTabHeader title="约队大厅" />
 

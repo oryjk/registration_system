@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useAccentTheme } from "@/stores/theme";
 import { computed, ref, watch } from "vue";
 import { onLoad, onShow } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
@@ -12,6 +13,8 @@ import { useTeamContext } from "@/stores/teamContext";
 import { getCustomNavMetrics } from "@/utils/customNav";
 import { needsProfileCompletion } from "@/utils/profileCompletion";
 import defaultAvatarUrl from "@/static/tab-png/user-active.png";
+
+const { themePageStyle } = useAccentTheme();
 
 interface ChooseAvatarEvent {
   detail?: {
@@ -230,6 +233,7 @@ onShow(async () => {
 </script>
 
 <template>
+  <page-meta :page-style="themePageStyle" />
   <view class="profile-setup-page" :style="pageStyle">
     <AppTabHeader :title="headerTitle" showBack />
 

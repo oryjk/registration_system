@@ -65,7 +65,7 @@
   margin-top: 6rpx;
   padding: 0 20rpx;
   border-radius: 999rpx;
-  background: #d9ff16;
+  background: var(--neo-color-accent);
   color: #171717;
   font-size: 26rpx;
   font-weight: 900;

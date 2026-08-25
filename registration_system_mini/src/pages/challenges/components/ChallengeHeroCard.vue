@@ -40,7 +40,7 @@ defineProps<{
   display: inline-flex;
   padding: 8rpx 14rpx;
   border-radius: 999rpx;
-  background: #eef8d6;
+  background: var(--neo-color-accent-soft);
   color: #506900;
   font-size: 22rpx;
   font-weight: 900;
@@ -78,8 +78,8 @@ defineProps<{
 }
 
 .challenge-hero-status-open {
-  background: #eef8d6;
-  color: #4f6800;
+  background: var(--neo-color-accent-soft);
+  color: var(--neo-color-accent-deep);
 }
 
 .challenge-hero-status-matched {

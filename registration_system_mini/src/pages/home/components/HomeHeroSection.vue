@@ -149,7 +149,7 @@ const visibleHeroBanners = computed(() => {
 .home-banner-title {
   font-size: 58rpx;
   line-height: 1.06;
-  color: var(--neo-color-text-inverse);
+  color: var(--neo-color-hero-fg);
   font-weight: 900;
   letter-spacing: 0;
 }
@@ -158,7 +158,7 @@ const visibleHeroBanners = computed(() => {
   margin-top: 14rpx;
   font-size: 28rpx;
   line-height: 1.2;
-  color: var(--neo-color-text-inverse);
+  color: var(--neo-color-hero-fg);
   font-weight: 800;
 }
 
@@ -176,7 +176,7 @@ const visibleHeroBanners = computed(() => {
   color: var(--neo-color-text);
   font-size: 24rpx;
   font-weight: 900;
-  box-shadow: 3rpx 3rpx 0 var(--neo-color-text-inverse);
+  box-shadow: 3rpx 3rpx 0 var(--neo-color-hero-fg);
 }
 
 .home-banner-goal {

@@ -123,7 +123,7 @@ defineProps<{
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--neo-color-text-inverse);
+  color: var(--neo-color-hero-fg);
   font-size: 28rpx;
   font-weight: 900;
 }

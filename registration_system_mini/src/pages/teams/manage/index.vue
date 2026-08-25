@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { computed } from "vue";
+import { useAccentTheme } from "@/stores/theme";
 import AppTabHeader from "@/components/AppTabHeader.vue";
 import NeoButton from "@/components/neo/NeoButton.vue";
 import NeoConfirmDialog from "@/components/neo/NeoConfirmDialog.vue";
@@ -95,10 +97,16 @@ const {
 function handleGoBack() {
   uni.navigateBack({ delta: 1 });
 }
+
+// page-meta：主题变量覆盖 + 出勤弹窗打开时锁定滚动。
+const { themePageStyle } = useAccentTheme();
+const metaPageStyle = computed(() =>
+  [themePageStyle.value, attendancePopupVisible.value ? "overflow: hidden;" : ""].filter(Boolean).join(";"),
+);
 </script>
 
 <template>
-  <page-meta :page-style="attendancePopupVisible ? 'overflow: hidden;' : ''" />
+  <page-meta :page-style="metaPageStyle" />
   <view class="team-manage-page" :style="pageStyle">
     <AppTabHeader title="球队管理" showBack />
 

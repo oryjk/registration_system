@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useAccentTheme } from "@/stores/theme";
 import { computed } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
@@ -8,6 +9,8 @@ import NeoSectionHeader from "@/components/neo/NeoSectionHeader.vue";
 import NeoSurface from "@/components/neo/NeoSurface.vue";
 import { getCustomNavMetrics } from "@/utils/customNav";
 import { useSettingsPage } from "./useSettingsPage";
+
+const { themePageStyle } = useAccentTheme();
 
 const {
   isLoading,
@@ -49,6 +52,7 @@ onShow(async () => {
 </script>
 
 <template>
+  <page-meta :page-style="themePageStyle" />
   <view class="settings-page" :style="pageStyle">
     <AppTabHeader title="设置" showBack />
 

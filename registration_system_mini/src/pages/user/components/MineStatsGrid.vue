@@ -39,20 +39,13 @@ defineProps<{
   justify-content: space-between;
 }
 
-.mine-stat--lime {
+/* 主指标卡用强调色底突出焦点，其余统计卡保持白底标准形态。 */
+.mine-stat--accent {
   background: var(--neo-color-accent);
 }
 
-.mine-stat--blue {
-  background: var(--neo-color-info-soft);
-}
-
-.mine-stat--amber {
-  background: var(--neo-color-warning-soft);
-}
-
-.mine-stat--coral {
-  background: var(--neo-color-danger-soft);
+.mine-stat--accent .mine-stat__label {
+  color: var(--neo-color-text);
 }
 
 .mine-stat__value-row {

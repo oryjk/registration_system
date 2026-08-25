@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useAccentTheme } from "@/stores/theme";
 import { computed } from "vue";
 import NeoSectionHeader from "@/components/neo/NeoSectionHeader.vue";
 import NeoSegmentedControl from "@/components/neo/NeoSegmentedControl.vue";
@@ -9,6 +10,8 @@ import TeamColorPicker from "./TeamColorPicker.vue";
 import type { MatchPublishFormModel } from "./matchPublishForm";
 import type { AppMatchPublicationMode } from "@/types/match";
 import { MATCH_PUBLICATION_MODE_OPTIONS } from "@/utils/matchPublicationMode";
+
+const { accentHex } = useAccentTheme();
 
 const props = withDefaults(
   defineProps<{
@@ -202,7 +205,7 @@ function handleChooseLocation() {
       <NeoSectionHeader title="签到设置" marker="04" caption="比赛详情页只负责展示和签到，不再修改规则。" />
       <view class="checkin-switch-row">
         <text class="form-label">到场签到</text>
-        <switch :checked="!!form.enableCheckIn" color="#b9f24b" @change="handleCheckInSwitchChange" />
+        <switch :checked="!!form.enableCheckIn" :color="accentHex" @change="handleCheckInSwitchChange" />
       </view>
 
       <view v-if="form.enableCheckIn" class="form-grid">

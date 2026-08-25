@@ -1,7 +1,10 @@
 <script setup lang="ts">
+import { useAccentTheme } from "@/stores/theme";
 import AppTabHeader from "@/components/AppTabHeader.vue";
 import TeamCreatePanel from "../components/TeamCreatePanel.vue";
 import { useTeamCreatePage } from "./useTeamCreatePage";
+
+const { themePageStyle } = useAccentTheme();
 
 const {
   pageStyle,
@@ -16,6 +19,7 @@ const {
 </script>
 
 <template>
+  <page-meta :page-style="themePageStyle" />
   <view class="team-create-page" :style="pageStyle">
     <AppTabHeader title="创建球队" showBack />
 
