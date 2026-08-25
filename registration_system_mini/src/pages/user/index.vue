@@ -48,6 +48,8 @@ const {
   openUserMatches,
   openMatchDetail,
   openBilling,
+  openNotifications,
+  unreadCount,
 } = useMinePage();
 
 function handleSessionLoginCompleted() {
@@ -96,6 +98,22 @@ onUnload(() => {
         </view>
 
         <template v-if="currentUser">
+          <!-- 消息中心入口：站内通知与队长留言都在这里看，带未读角标。 -->
+          <view
+            class="mine-settings-entry"
+            hover-class="mine-settings-entry--pressed"
+            :hover-stay-time="100"
+            @click="openNotifications"
+          >
+            <text class="mine-settings-entry__label">消息中心</text>
+            <view class="mine-settings-entry__right">
+              <text v-if="unreadCount > 0" class="mine-settings-entry__badge">
+                {{ unreadCount > 99 ? "99+" : unreadCount }}
+              </text>
+              <text class="mine-settings-entry__arrow">›</text>
+            </view>
+          </view>
+
           <MineTeamIdentityPanel
             :current-team="currentTeam"
             :team-profiles="teamProfiles"
@@ -260,6 +278,27 @@ onUnload(() => {
   font-size: 40rpx;
   font-weight: 900;
   line-height: 1;
+}
+
+.mine-settings-entry__right {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+/* 未读角标：与底部 Tab 角标同一套 Neo 语义（主色块 + 粗描边）。 */
+.mine-settings-entry__badge {
+  min-width: 40rpx;
+  padding: 2rpx 12rpx;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-round);
+  background: var(--neo-color-accent);
+  color: var(--neo-color-text);
+  font-size: 22rpx;
+  font-weight: 900;
+  line-height: 1.5;
+  text-align: center;
+  box-sizing: border-box;
 }
 
 /* #ifdef H5 */
