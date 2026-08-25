@@ -41,6 +41,8 @@ export interface TeamMember {
   role: TeamMemberRole;
   status: TeamMemberStatus;
   joined_at: string;
+  /** 该成员在此球队的队费余额（分），负数表示欠款。 */
+  balance_cents: number;
 }
 
 export interface TeamMemberCandidate {

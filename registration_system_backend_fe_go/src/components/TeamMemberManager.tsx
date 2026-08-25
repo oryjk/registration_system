@@ -5,11 +5,13 @@ import {
   Drawer,
   Form,
   Grid,
+  message,
   Space,
   Tooltip,
   Typography,
 } from "antd";
 import { useEffect, useMemo, useState } from "react";
+import { useAdminCreditTeamFundMutation } from "../hooks/queries/useTeamFundQueries";
 import {
   useAddTeamMemberMutation,
   useRemoveTeamMemberMutation,
@@ -24,6 +26,10 @@ import {
   type AddMemberFormValues,
   AddTeamMemberModal,
 } from "./team-members/AddTeamMemberModal";
+import {
+  type CreditTeamFundFormValues,
+  CreditTeamFundModal,
+} from "./team-members/CreditTeamFundModal";
 import {
   type EditMemberFormValues,
   EditTeamMemberModal,
@@ -54,12 +60,16 @@ export function TeamMemberManager({
   const compact = !(screens.md ?? false);
   const [addForm] = Form.useForm<AddMemberFormValues>();
   const [editForm] = Form.useForm<EditMemberFormValues>();
+  const [creditForm] = Form.useForm<CreditTeamFundFormValues>();
   const [actionKey, setActionKey] = useState("");
   const [actionError, setActionError] = useState("");
   const [addOpen, setAddOpen] = useState(false);
   const [candidateSearch, setCandidateSearch] = useState("");
   const [candidateError, setCandidateError] = useState("");
   const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
+  const [creditingMember, setCreditingMember] = useState<TeamMember | null>(
+    null,
+  );
   const teamID = team?.id || null;
   const membersQuery = useTeamMembersQuery(teamID, open);
   const candidatesQuery = useTeamMemberCandidatesQuery(
@@ -72,6 +82,7 @@ export function TeamMemberManager({
   const updateProfile = useUpdatePlayerProfileMutation(teamID);
   const removeMember = useRemoveTeamMemberMutation();
   const setCaptain = useSetTeamCaptainMutation();
+  const creditTeamFund = useAdminCreditTeamFundMutation(teamID);
   const management = membersQuery.data;
   const members = management?.members || [];
 
@@ -172,6 +183,43 @@ export function TeamMemberManager({
         ? "球员资料已保存，但成员角色或状态更新失败"
         : "更新球员资料失败";
       setActionError(errorMessage(reason, fallback));
+    } finally {
+      setActionKey("");
+    }
+  };
+
+  const openCredit = (member: TeamMember) => {
+    creditForm.setFieldsValue({ amountYuan: undefined, note: "" });
+    setCreditingMember(member);
+    setActionError("");
+  };
+
+  const submitCredit = async () => {
+    // actionKey 为同步防重入守卫：validateFields 的 await 窗口内快速双击
+    // 会先于 confirmLoading 生效重入，导致重复充值。
+    if (!teamID || !creditingMember || actionKey) return;
+    let values: CreditTeamFundFormValues;
+    try {
+      values = await creditForm.validateFields();
+    } catch {
+      return;
+    }
+    setActionKey(`credit-${creditingMember.user_id}`);
+    setActionError("");
+    try {
+      const result = await creditTeamFund.mutateAsync({
+        team_id: teamID,
+        user_id: creditingMember.user_id,
+        amount_cents: Math.round(values.amountYuan * 100),
+        note: values.note.trim() || undefined,
+      });
+      setCreditingMember(null);
+      creditForm.resetFields();
+      message.success(
+        `已充值，新余额 ¥${(result.balance_cents / 100).toFixed(2)}`,
+      );
+    } catch (reason) {
+      setActionError(errorMessage(reason, "队费充值失败"));
     } finally {
       setActionKey("");
     }
@@ -308,6 +356,7 @@ export function TeamMemberManager({
           compact={compact}
           actionKey={actionKey}
           onEdit={openEdit}
+          onCredit={openCredit}
           onCaptainChange={(member, captain) =>
             void changeCaptain(member, captain)
           }
@@ -338,6 +387,22 @@ export function TeamMemberManager({
         onSubmit={() => void submitEdit()}
         onClose={() => {
           setEditingMember(null);
+          setActionError("");
+        }}
+      />
+
+      <CreditTeamFundModal
+        member={creditingMember}
+        form={creditForm}
+        submitting={
+          creditingMember
+            ? actionKey === `credit-${creditingMember.user_id}`
+            : false
+        }
+        error={creditingMember ? actionError : ""}
+        onSubmit={() => void submitCredit()}
+        onClose={() => {
+          setCreditingMember(null);
           setActionError("");
         }}
       />

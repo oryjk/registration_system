@@ -68,7 +68,8 @@ export default function SystemSettingsPage() {
           type="secondary"
           style={{ marginTop: 12, marginBottom: 0, maxWidth: 640 }}
         >
-          开启后，白名单用户（后端 MINI_REVIEW_CONTROL_USER_IDS 配置）在小程序「我的」页
+          开启后，白名单用户（后端 MINI_REVIEW_CONTROL_USER_IDS
+          配置）在小程序「我的」页
           可切换当前版本的审核状态，用于提审/过审时的入口显隐验证；默认关闭。
         </Paragraph>
       </section>

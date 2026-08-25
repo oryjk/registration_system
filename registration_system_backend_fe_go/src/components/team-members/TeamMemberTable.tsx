@@ -1,4 +1,9 @@
-import { CrownOutlined, DeleteOutlined, EditOutlined } from "@ant-design/icons";
+import {
+  CrownOutlined,
+  DeleteOutlined,
+  DollarOutlined,
+  EditOutlined,
+} from "@ant-design/icons";
 import ProTable, { type ProColumns } from "@ant-design/pro-components/es/table";
 import {
   Avatar,
@@ -27,6 +32,7 @@ interface TeamMemberTableProps {
   compact: boolean;
   actionKey: string;
   onEdit: (member: TeamMember) => void;
+  onCredit: (member: TeamMember) => void;
   onCaptainChange: (member: TeamMember, captain: boolean) => void;
   onRemove: (member: TeamMember) => void;
 }
@@ -37,12 +43,17 @@ function formatDate(value: string) {
   );
 }
 
+function formatYuan(cents: number) {
+  return (cents / 100).toFixed(2);
+}
+
 export function TeamMemberTable({
   members,
   loading,
   compact,
   actionKey,
   onEdit,
+  onCredit,
   onCaptainChange,
   onRemove,
 }: TeamMemberTableProps) {
@@ -110,12 +121,25 @@ export function TeamMemberTable({
             width: 126,
             renderText: formatDate,
           },
+          {
+            title: "队费余额",
+            dataIndex: "balance_cents",
+            width: 120,
+            render: (_: unknown, member: TeamMember) =>
+              member.balance_cents < 0 ? (
+                <Tag color="error">
+                  欠款 ¥{formatYuan(-member.balance_cents)}
+                </Tag>
+              ) : (
+                <span>¥{formatYuan(member.balance_cents)}</span>
+              ),
+          },
         ]),
     {
       title: "操作",
       key: "actions",
       valueType: "option",
-      width: compact ? 124 : 138,
+      width: compact ? 156 : 170,
       fixed: "right",
       render: (_, member) => {
         const isCaptain = member.role === "captain";
@@ -127,6 +151,16 @@ export function TeamMemberTable({
             : "冻结成员不能设为队长";
         return (
           <Space size={0}>
+            <Tooltip title={compact ? undefined : "队费充值"}>
+              <Button
+                type="text"
+                shape="circle"
+                loading={actionKey === `credit-${member.user_id}`}
+                icon={<DollarOutlined />}
+                aria-label={`给${memberName}充值队费`}
+                onClick={() => onCredit(member)}
+              />
+            </Tooltip>
             <Popconfirm
               title={
                 isCaptain

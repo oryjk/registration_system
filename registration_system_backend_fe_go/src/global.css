@@ -787,3 +787,23 @@ select {
     padding: 16px 18px;
   }
 }
+
+/* 队费充值弹窗 */
+.credit-current-balance {
+  margin: 0 0 16px;
+  color: rgba(0, 0, 0, 0.65);
+}
+
+.credit-current-balance .credit-balance-debt {
+  color: #cf1322;
+}
+
+.credit-current-balance .credit-current-hint {
+  margin-left: 4px;
+  color: rgba(0, 0, 0, 0.45);
+  font-size: 12px;
+}
+
+.credit-amount-input {
+  width: 100%;
+}
