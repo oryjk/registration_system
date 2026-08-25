@@ -2,21 +2,16 @@ package application
 
 import (
 	"context"
-	"fmt"
 	"log"
 
 	"github.com/google/uuid"
 	"github.com/oryjk/registration_system/registration_system_go/internal/match/domain"
 	"github.com/oryjk/registration_system/registration_system_go/internal/match/ports"
-	notificationapplication "github.com/oryjk/registration_system/registration_system_go/internal/notification/application"
 	sharedauth "github.com/oryjk/registration_system/registration_system_go/internal/shared/auth"
 	sharederror "github.com/oryjk/registration_system/registration_system_go/internal/shared/domain"
 )
 
 const (
-	kindCaptainMessage    = "match_captain_message"
-	captainMessageSubject = "球队留言"
-
 	defaultCaptainThreadPageSize = 20
 	maxCaptainThreadPageSize     = 50
 )
@@ -24,11 +19,6 @@ const (
 // TeamManagerAuthorizer 校验用户是否为球队管理者（队长/领队），由 team 模块实现。
 type TeamManagerAuthorizer interface {
 	EnsureManager(ctx context.Context, teamID, userID int64) error
-}
-
-// CaptainMessageNotifier 站内通知出口，由 notification 模块实现；发送失败不影响留言主流程。
-type CaptainMessageNotifier interface {
-	Notify(ctx context.Context, message notificationapplication.SystemNotification) error
 }
 
 // CaptainMessageMatchLoader 读取比赛基础信息（含报名组，组数据此处不用）。
@@ -40,13 +30,12 @@ type CaptainMessageService struct {
 	repository ports.CaptainMessageRepository
 	matches    CaptainMessageMatchLoader
 	authorizer TeamManagerAuthorizer
-	notifier   CaptainMessageNotifier
 }
 
 func NewCaptainMessageService(repository ports.CaptainMessageRepository, matches CaptainMessageMatchLoader,
-	authorizer TeamManagerAuthorizer, notifier CaptainMessageNotifier,
+	authorizer TeamManagerAuthorizer,
 ) *CaptainMessageService {
-	return &CaptainMessageService{repository: repository, matches: matches, authorizer: authorizer, notifier: notifier}
+	return &CaptainMessageService{repository: repository, matches: matches, authorizer: authorizer}
 }
 
 type CaptainMessageListQuery struct {
@@ -110,7 +99,6 @@ func (s *CaptainMessageService) Send(ctx context.Context, actor sharedauth.Actor
 		return uuid.Nil, sharederror.Wrap(sharederror.KindInternal, "保存留言失败", err)
 	}
 
-	s.notifyTeamManagers(ctx, *match.HostTeamID, match.Name, actor.ID, trimmed, threadID)
 	return threadID, nil
 }
 
@@ -143,11 +131,6 @@ func (s *CaptainMessageService) Reply(ctx context.Context, actor sharedauth.Acto
 		return uuid.Nil, sharederror.Wrap(sharederror.KindInternal, "保存留言失败", err)
 	}
 
-	if isOwner {
-		s.notifyTeamManagers(ctx, head.TeamID, head.MatchName, actor.ID, trimmed, threadID)
-	} else {
-		s.notifyUser(ctx, head.ThreadOwnerUserID, head.MatchName, actor.ID, trimmed, threadID)
-	}
 	return threadID, nil
 }
 
@@ -213,41 +196,4 @@ func (s *CaptainMessageService) UnreadCount(ctx context.Context, actor sharedaut
 		return 0, sharederror.ErrForbidden
 	}
 	return s.repository.CountMyUnreadCaptainMessages(ctx, actor.ID)
-}
-
-func (s *CaptainMessageService) notifyTeamManagers(ctx context.Context, teamID int64, matchName string, senderID int64, content string, threadID uuid.UUID) {
-	managers, err := s.repository.ListTeamManagerUserIDs(ctx, teamID)
-	if err != nil {
-		log.Printf("captainmessage: 查询球队管理者失败 team=%d: %v", teamID, err)
-		return
-	}
-	for _, managerID := range managers {
-		s.notifyUser(ctx, managerID, matchName, senderID, content, threadID)
-	}
-}
-
-func (s *CaptainMessageService) notifyUser(ctx context.Context, receiverID int64, matchName string, senderID int64, content string, threadID uuid.UUID) {
-	sender, found, err := s.repository.FindUserBrief(ctx, senderID)
-	if err != nil || !found {
-		log.Printf("captainmessage: 查询留言人资料失败 user=%d found=%v: %v", senderID, found, err)
-		sender = ports.CaptainProfile{Nickname: fmt.Sprintf("用户%d", senderID)}
-	}
-	message := notificationapplication.SystemNotification{
-		UserID: receiverID, Kind: kindCaptainMessage, Title: captainMessageSubject,
-		Content:     fmt.Sprintf("「%s」在《%s》给你留言：%s", sender.Nickname, matchName, messageExcerpt(content)),
-		RelatedType: "captain_message", RelatedID: threadID.String(),
-	}
-	if err := s.notifier.Notify(ctx, message); err != nil {
-		log.Printf("captainmessage: 发送留言通知失败 user=%d: %v", receiverID, err)
-	}
-}
-
-// messageExcerpt 通知摘要：按字（rune）截断到 50 字，超长加省略号。
-func messageExcerpt(content string) string {
-	const limit = 50
-	runes := []rune(content)
-	if len(runes) <= limit {
-		return content
-	}
-	return string(runes[:limit]) + "…"
 }

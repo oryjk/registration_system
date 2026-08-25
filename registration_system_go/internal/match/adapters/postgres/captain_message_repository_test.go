@@ -11,7 +11,6 @@ import (
 	matchapplication "github.com/oryjk/registration_system/registration_system_go/internal/match/application"
 	"github.com/oryjk/registration_system/registration_system_go/internal/match/domain"
 	"github.com/oryjk/registration_system/registration_system_go/internal/match/ports"
-	notificationapplication "github.com/oryjk/registration_system/registration_system_go/internal/notification/application"
 	sharedauth "github.com/oryjk/registration_system/registration_system_go/internal/shared/auth"
 	teampassword "github.com/oryjk/registration_system/registration_system_go/internal/team/adapters/password"
 	teampostgres "github.com/oryjk/registration_system/registration_system_go/internal/team/adapters/postgres"
@@ -19,31 +18,12 @@ import (
 	"github.com/oryjk/registration_system/registration_system_go/internal/testsupport"
 )
 
-type recordingNotifier struct {
-	messages []notificationapplication.SystemNotification
-}
-
-func (r *recordingNotifier) Notify(_ context.Context, message notificationapplication.SystemNotification) error {
-	r.messages = append(r.messages, message)
-	return nil
-}
-
-func (r *recordingNotifier) find(userID int64, kind string) *notificationapplication.SystemNotification {
-	for index := range r.messages {
-		if r.messages[index].UserID == userID && r.messages[index].Kind == kind {
-			return &r.messages[index]
-		}
-	}
-	return nil
-}
-
-// newCaptainMessageService 组装集成测试环境：真仓储 + 真 team 授权 + 内存通知收集器。
-func newCaptainMessageService(t *testing.T, pool *pgxpool.Pool) (*matchapplication.CaptainMessageService, *recordingNotifier) {
+// newCaptainMessageService 组装集成测试环境：真仓储 + 真 team 授权。
+func newCaptainMessageService(t *testing.T, pool *pgxpool.Pool) *matchapplication.CaptainMessageService {
 	t.Helper()
 	repository := NewRepository(pool)
 	teamService := teamapplication.NewQueryService(teampostgres.NewRepository(pool), teampassword.Bcrypt{})
-	notifier := &recordingNotifier{}
-	return matchapplication.NewCaptainMessageService(repository, repository, teamService, notifier), notifier
+	return matchapplication.NewCaptainMessageService(repository, repository, teamService)
 }
 
 func seedCaptainWithTeam(t *testing.T, pool *pgxpool.Pool, teamName string) (captainID, teamID int64) {
@@ -68,10 +48,10 @@ func userActor(userID int64) sharedauth.Actor {
 	return sharedauth.Actor{Kind: sharedauth.ActorUser, ID: userID}
 }
 
-func TestCaptainMessageSendCreatesThreadAndNotifiesManagers(t *testing.T) {
+func TestCaptainMessageSendCreatesThread(t *testing.T) {
 	ctx := context.Background()
 	pool := testsupport.StartPostgres(t)
-	service, notifier := newCaptainMessageService(t, pool)
+	service := newCaptainMessageService(t, pool)
 	captainID, teamID := seedCaptainWithTeam(t, pool, "东安联队")
 	leaderID := seedMatchUser(t, pool)
 	if _, err := pool.Exec(ctx, `INSERT INTO team_members (team_id, user_id, role, status) VALUES ($1, $2, 'leader', 'active')`,
@@ -91,16 +71,6 @@ func TestCaptainMessageSendCreatesThreadAndNotifiesManagers(t *testing.T) {
 	if threadID == uuid.Nil {
 		t.Fatal("thread id must not be nil")
 	}
-	for _, managerID := range []int64{captainID, leaderID} {
-		notification := notifier.find(managerID, "match_captain_message")
-		if notification == nil {
-			t.Fatalf("manager %d must be notified", managerID)
-		}
-		if notification.RelatedID != threadID.String() || notification.RelatedType != "captain_message" {
-			t.Fatalf("notification must link thread: %+v", notification)
-		}
-	}
-
 	again, err := service.Send(ctx, userActor(player), match.ID, "补充：我们大概 10 个人")
 	if err != nil || again != threadID {
 		t.Fatalf("second send must reuse thread: again=%v first=%v err=%v", again, threadID, err)
@@ -120,7 +90,7 @@ func TestCaptainMessageSendCreatesThreadAndNotifiesManagers(t *testing.T) {
 func TestCaptainMessageReplyVisibilityAndPermission(t *testing.T) {
 	ctx := context.Background()
 	pool := testsupport.StartPostgres(t)
-	service, notifier := newCaptainMessageService(t, pool)
+	service := newCaptainMessageService(t, pool)
 	captainID, teamID := seedCaptainWithTeam(t, pool, "北岸竞技")
 	match, groups := newPersistableMatch(t, captainID, teamID)
 	if err := NewRepository(pool).CreateWithGroups(ctx, match, groups); err != nil {
@@ -138,9 +108,6 @@ func TestCaptainMessageReplyVisibilityAndPermission(t *testing.T) {
 	}
 	if _, err := service.Reply(ctx, userActor(captainID), threadID, "欢迎，周六下午可以"); err != nil {
 		t.Fatalf("captain reply: %v", err)
-	}
-	if notification := notifier.find(player, "match_captain_message"); notification == nil {
-		t.Fatal("owner must be notified about captain reply")
 	}
 	if _, err := service.Reply(ctx, userActor(player), threadID, "好的，我们报名"); err != nil {
 		t.Fatalf("owner reply: %v", err)
@@ -177,7 +144,7 @@ func TestCaptainMessageReplyVisibilityAndPermission(t *testing.T) {
 func TestCaptainMessageSendValidations(t *testing.T) {
 	ctx := context.Background()
 	pool := testsupport.StartPostgres(t)
-	service, _ := newCaptainMessageService(t, pool)
+	service := newCaptainMessageService(t, pool)
 	captainID, teamID := seedCaptainWithTeam(t, pool, "南山fc")
 	match, groups := newPersistableMatch(t, captainID, teamID)
 	if err := NewRepository(pool).CreateWithGroups(ctx, match, groups); err != nil {
@@ -308,7 +275,7 @@ func TestRepositoryFindForUserIncludesHostCaptain(t *testing.T) {
 func TestCaptainMessageUnreadFlow(t *testing.T) {
 	ctx := context.Background()
 	pool := testsupport.StartPostgres(t)
-	service, _ := newCaptainMessageService(t, pool)
+	service := newCaptainMessageService(t, pool)
 	captainID, teamID := seedCaptainWithTeam(t, pool, "未读测试联")
 	match, groups := newPersistableMatch(t, captainID, teamID)
 	if err := NewRepository(pool).CreateWithGroups(ctx, match, groups); err != nil {

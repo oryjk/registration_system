@@ -147,7 +147,7 @@ func BuildDependencies(ctx context.Context, config Config) (Dependencies, func()
 	notificationRepository := notificationpostgres.NewRepository(pool)
 	notificationService := notificationapplication.NewService(notificationRepository)
 	notificationHandler := notificationhttp.NewHandler(notificationService)
-	captainMessages := matchapplication.NewCaptainMessageService(matchRepository, matchRepository, teamService, notificationService)
+	captainMessages := matchapplication.NewCaptainMessageService(matchRepository, matchRepository, teamService)
 	captainMessageHandler := matchhttp.NewCaptainMessageHandler(captainMessages)
 	teamFundRepository := teamfundpostgres.NewRepository(pool)
 	teamFundSettlement := teamfundapplication.NewSettlementService(teamFundRepository,
