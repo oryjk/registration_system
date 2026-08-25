@@ -48,6 +48,7 @@ const visible = computed({
       position="bottom"
       custom-class="captain-message-popup"
       :close-on-click-modal="!isSubmitting"
+      :z-index="50"
       safe-area-inset-bottom
       root-portal
       @close="emit('close')"

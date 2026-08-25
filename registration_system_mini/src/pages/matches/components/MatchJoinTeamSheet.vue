@@ -36,6 +36,7 @@ const teamName = computed(() => props.match?.host_team_name || "该球队");
     position="bottom"
     custom-class="join-team-popup"
     :close-on-click-modal="!isSubmitting"
+    :z-index="50"
     safe-area-inset-bottom
     root-portal
     @close="emit('close')"
