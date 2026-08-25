@@ -327,3 +327,46 @@ func TestCaptainMessageUnreadFlow(t *testing.T) {
 		t.Fatalf("owner unread after read: count=%d err=%v", count, err)
 	}
 }
+
+func TestCaptainMessageUnreadClearsWhenOpenedViaLatestMessageID(t *testing.T) {
+	ctx := context.Background()
+	pool := testsupport.StartPostgres(t)
+	service := newCaptainMessageService(t, pool)
+	captainID, teamID := seedCaptainWithTeam(t, pool, "列表入口队")
+	match, groups := newPersistableMatch(t, captainID, teamID)
+	if err := NewRepository(pool).CreateWithGroups(ctx, match, groups); err != nil {
+		t.Fatalf("create match: %v", err)
+	}
+	player := seedMatchUser(t, pool)
+	threadID, err := service.Send(ctx, userActor(player), match.ID, "第一条")
+	if err != nil {
+		t.Fatalf("send: %v", err)
+	}
+	if _, err := service.Reply(ctx, userActor(captainID), threadID, "回复一"); err != nil {
+		t.Fatalf("reply: %v", err)
+	}
+	if count, err := service.UnreadCount(ctx, userActor(player)); err != nil || count != 1 {
+		t.Fatalf("owner unread before open: count=%d err=%v", count, err)
+	}
+
+	// 旧版列表接口曾把「最新一条消息 id」当 thread_id 返回；用该 id 打开对话，
+	// 阅读进度必须归位到串首条 id，未读照样清零。
+	detail, err := service.GetThread(ctx, userActor(player), threadID)
+	if err != nil || len(detail.Messages) != 2 {
+		t.Fatalf("get thread: %+v err=%v", detail, err)
+	}
+	latestMessageID := detail.Messages[len(detail.Messages)-1].ID
+	if latestMessageID == threadID {
+		t.Fatal("test expects latest message id to differ from thread head")
+	}
+	if _, err := service.GetThread(ctx, userActor(player), latestMessageID); err != nil {
+		t.Fatalf("open via latest message id: %v", err)
+	}
+	if count, err := service.UnreadCount(ctx, userActor(player)); err != nil || count != 0 {
+		t.Fatalf("unread must clear when opened via latest message id: count=%d err=%v", count, err)
+	}
+	threads, err := service.ListThreads(ctx, userActor(player), matchapplication.CaptainMessageListQuery{})
+	if err != nil || threads.Total != 1 || threads.Items[0].UnreadCount != 0 || threads.Items[0].ID != threadID {
+		t.Fatalf("list must report head thread id and zero unread: %+v err=%v", threads, err)
+	}
+}

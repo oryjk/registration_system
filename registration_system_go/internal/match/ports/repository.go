@@ -160,7 +160,7 @@ type CaptainMessageRepository interface {
 	ListMyCaptainMessageThreads(context.Context, int64, int, int) ([]CaptainMessageThread, error)
 	CountMyCaptainMessageThreads(context.Context, int64) (int64, error)
 	CountMyUnreadCaptainMessages(context.Context, int64) (int64, error)
-	MarkCaptainThreadRead(context.Context, uuid.UUID, int64, time.Time) error
+	MarkCaptainThreadRead(context.Context, uuid.UUID, int64, int64, time.Time) error
 	ListTeamManagerUserIDs(context.Context, int64) ([]int64, error)
 	FindTeamCaptainProfile(context.Context, int64) (CaptainProfile, bool, error)
 	FindUserBrief(context.Context, int64) (CaptainProfile, bool, error)

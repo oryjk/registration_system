@@ -1821,7 +1821,9 @@ const listMyCaptainMessageThreads = `-- name: ListMyCaptainMessageThreads :many
 SELECT thread_id, match_id, team_id, thread_owner_user_id, match_name, host_team_name, owner_nickname, owner_avatar_url, latest_sender_user_id, latest_sender_is_captain_side, latest_content, latest_created_at, unread_count
 FROM (
     SELECT DISTINCT ON (m.match_id, m.thread_owner_user_id)
-           m.id AS thread_id,
+           (SELECT head.id FROM match_captain_messages head
+             WHERE head.match_id = m.match_id AND head.thread_owner_user_id = m.thread_owner_user_id
+             ORDER BY head.created_at ASC, head.id ASC LIMIT 1) AS thread_id,
            m.match_id,
            m.team_id,
            m.thread_owner_user_id,
@@ -2715,19 +2717,29 @@ func (q *Queries) UpdateTeamApplication(ctx context.Context, arg UpdateTeamAppli
 
 const upsertCaptainThreadRead = `-- name: UpsertCaptainThreadRead :exec
 INSERT INTO match_captain_thread_reads (thread_id, user_id, last_read_at)
-VALUES ($1, $2, $3)
+VALUES ((
+    SELECT head.id FROM match_captain_messages head
+    WHERE head.match_id = $1 AND head.thread_owner_user_id = $2
+    ORDER BY head.created_at ASC, head.id ASC LIMIT 1
+  ), $3, $4)
 ON CONFLICT (thread_id, user_id)
 DO UPDATE SET last_read_at = GREATEST(match_captain_thread_reads.last_read_at, EXCLUDED.last_read_at)
 `
 
 type UpsertCaptainThreadReadParams struct {
-	ThreadID   pgtype.UUID        `json:"thread_id"`
-	UserID     int64              `json:"user_id"`
-	LastReadAt pgtype.Timestamptz `json:"last_read_at"`
+	MatchID           pgtype.UUID        `json:"match_id"`
+	ThreadOwnerUserID int64              `json:"thread_owner_user_id"`
+	UserID            int64              `json:"user_id"`
+	LastReadAt        pgtype.Timestamptz `json:"last_read_at"`
 }
 
-// 记录阅读进度：只前进不回退（GREATEST），thread_id 为串首条消息 id。
+// 记录阅读进度：按 (match, owner) 归位到串首条消息 id，只前进不回退（GREATEST）。
 func (q *Queries) UpsertCaptainThreadRead(ctx context.Context, arg UpsertCaptainThreadReadParams) error {
-	_, err := q.db.Exec(ctx, upsertCaptainThreadRead, arg.ThreadID, arg.UserID, arg.LastReadAt)
+	_, err := q.db.Exec(ctx, upsertCaptainThreadRead,
+		arg.MatchID,
+		arg.ThreadOwnerUserID,
+		arg.UserID,
+		arg.LastReadAt,
+	)
 	return err
 }

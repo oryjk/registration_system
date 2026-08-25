@@ -181,10 +181,11 @@ func (s *CaptainMessageService) GetThread(ctx context.Context, actor sharedauth.
 	if err != nil {
 		return CaptainMessageThreadDetail{}, sharederror.Wrap(sharederror.KindInternal, "查询留言消息失败", err)
 	}
-	// 打开对话即视为读到最新：推进阅读进度（只前进不回退），未读数随之清零。
+	// 打开对话即视为读到最新：按串归属 (match, owner) 推进阅读进度（仓储内归位到首条
+	// 消息 id，兼容调用方传入任意消息 id 的入口），未读数随之清零。
 	if len(messages) > 0 {
-		if err := s.repository.MarkCaptainThreadRead(ctx, threadID, actor.ID, messages[len(messages)-1].CreatedAt); err != nil {
-			log.Printf("captainmessage: 记录阅读进度失败 thread=%s user=%d: %v", threadID, actor.ID, err)
+		if err := s.repository.MarkCaptainThreadRead(ctx, head.MatchID, head.ThreadOwnerUserID, actor.ID, messages[len(messages)-1].CreatedAt); err != nil {
+			log.Printf("captainmessage: 记录阅读进度失败 match=%s owner=%d user=%d: %v", head.MatchID, head.ThreadOwnerUserID, actor.ID, err)
 		}
 	}
 	return CaptainMessageThreadDetail{Thread: head, Messages: messages, ViewerIsManager: !isOwner}, nil

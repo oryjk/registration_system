@@ -754,7 +754,9 @@ ORDER BY m.created_at ASC, m.id ASC;
 SELECT *
 FROM (
     SELECT DISTINCT ON (m.match_id, m.thread_owner_user_id)
-           m.id AS thread_id,
+           (SELECT head.id FROM match_captain_messages head
+             WHERE head.match_id = m.match_id AND head.thread_owner_user_id = m.thread_owner_user_id
+             ORDER BY head.created_at ASC, head.id ASC LIMIT 1) AS thread_id,
            m.match_id,
            m.team_id,
            m.thread_owner_user_id,
@@ -823,9 +825,13 @@ SELECT COALESCE(SUM(unread), 0)::bigint FROM (
 ) threads;
 
 -- name: UpsertCaptainThreadRead :exec
--- 记录阅读进度：只前进不回退（GREATEST），thread_id 为串首条消息 id。
+-- 记录阅读进度：按 (match, owner) 归位到串首条消息 id，只前进不回退（GREATEST）。
 INSERT INTO match_captain_thread_reads (thread_id, user_id, last_read_at)
-VALUES (sqlc.arg('thread_id'), sqlc.arg('user_id'), sqlc.arg('last_read_at'))
+VALUES ((
+    SELECT head.id FROM match_captain_messages head
+    WHERE head.match_id = sqlc.arg('match_id') AND head.thread_owner_user_id = sqlc.arg('thread_owner_user_id')
+    ORDER BY head.created_at ASC, head.id ASC LIMIT 1
+  ), sqlc.arg('user_id'), sqlc.arg('last_read_at'))
 ON CONFLICT (thread_id, user_id)
 DO UPDATE SET last_read_at = GREATEST(match_captain_thread_reads.last_read_at, EXCLUDED.last_read_at);
 

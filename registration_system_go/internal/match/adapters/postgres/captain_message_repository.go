@@ -112,9 +112,9 @@ func (r *Repository) CountMyUnreadCaptainMessages(ctx context.Context, userID in
 	return r.queries.CountMyUnreadCaptainMessages(ctx, userID)
 }
 
-func (r *Repository) MarkCaptainThreadRead(ctx context.Context, threadID uuid.UUID, userID int64, readAt time.Time) error {
+func (r *Repository) MarkCaptainThreadRead(ctx context.Context, matchID uuid.UUID, ownerUserID int64, userID int64, readAt time.Time) error {
 	return r.queries.UpsertCaptainThreadRead(ctx, matchsqlc.UpsertCaptainThreadReadParams{
-		ThreadID: pgUUID(threadID), UserID: userID, LastReadAt: pgTimestamptzUTC(readAt),
+		MatchID: pgUUID(matchID), ThreadOwnerUserID: ownerUserID, UserID: userID, LastReadAt: pgTimestamptzUTC(readAt),
 	})
 }
 
