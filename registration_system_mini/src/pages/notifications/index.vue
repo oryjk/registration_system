@@ -4,6 +4,7 @@ import { computed, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
 import NeoSegmentedControl from "@/components/neo/NeoSegmentedControl.vue";
+import NeoSurface from "@/components/neo/NeoSurface.vue";
 import CaptainThreadsSection from "./components/CaptainThreadsSection.vue";
 import { listNotifications, markAllNotificationsRead, markNotificationRead } from "@/api/notification";
 import { setCaptainUnreadCount, setUnreadCount, syncUnreadCount, useNotificationCenter } from "@/stores/notificationCenter";
@@ -130,11 +131,8 @@ onShow(() => {
     <AppTabHeader title="消息中心" showBack />
 
     <view class="notice-header">
-      <view>
-        <text class="notice-title">消息中心</text>
-        <text class="notice-subtitle">约队事件、队费余额不足等提醒先沉淀在站内通知里。</text>
-      </view>
-      <view class="notice-header-badge">{{ unreadOnly ? "仅未读" : `${notificationItems.length} 条` }}</view>
+      <text class="notice-title">消息中心</text>
+      <text class="notice-subtitle">站内通知与球队留言都在这里，点开详情才算已读。</text>
     </view>
 
     <NeoSegmentedControl
@@ -159,67 +157,55 @@ onShow(() => {
     </template>
 
     <template v-else>
-    <view class="notice-filter-row">
-      <view :class="['notice-filter-chip', !unreadOnly ? 'notice-filter-chip-active' : '']" @tap="unreadOnly = false; void loadNotifications()">全部</view>
-      <view :class="['notice-filter-chip', unreadOnly ? 'notice-filter-chip-active' : '']" @tap="unreadOnly = true; void loadNotifications()">仅看未读</view>
-      <view class="notice-filter-chip" @tap="void handleMarkAllRead()">全部已读</view>
-      <view class="notice-filter-meta">点开详情才算已读</view>
-    </view>
-
-    <view v-if="errorMessage" class="notice-empty">{{ errorMessage }}</view>
-    <view v-else-if="showInitialLoadingState" class="notice-skeleton-stack">
-      <view class="notice-skeleton-hero">
-        <view>
-          <view class="notice-skeleton-line notice-skeleton-line-label" />
-          <view class="notice-skeleton-line notice-skeleton-line-value" />
-          <view class="notice-skeleton-line notice-skeleton-line-copy" />
-        </view>
-        <view class="notice-skeleton-pill" />
-      </view>
-      <view
-        v-for="index in 4"
-        :key="index"
-        class="notice-skeleton-card"
-      >
-        <view class="notice-skeleton-row">
-          <view class="notice-skeleton-line notice-skeleton-line-title" />
-          <view class="notice-skeleton-pill small" />
-        </view>
-        <view class="notice-skeleton-line notice-skeleton-line-body" />
-        <view class="notice-skeleton-line notice-skeleton-line-body short" />
-      </view>
-    </view>
-
-    <view v-else class="notice-loaded-content">
-      <view class="notice-hero">
-        <view>
-          <text class="notice-hero-label">通知状态</text>
-          <text class="notice-hero-value">{{ unreadCount }}</text>
-          <text class="notice-hero-copy">点开通知详情后才会标记为已读。</text>
-        </view>
-        <view class="notice-hero-pill">站内消息</view>
+      <view class="notice-filter-row">
+        <view :class="['notice-filter-chip', !unreadOnly ? 'notice-filter-chip-active' : '']" @tap="unreadOnly = false; void loadNotifications()">全部</view>
+        <view :class="['notice-filter-chip', unreadOnly ? 'notice-filter-chip-active' : '']" @tap="unreadOnly = true; void loadNotifications()">仅看未读</view>
+        <view class="notice-filter-chip" @tap="void handleMarkAllRead()">全部已读</view>
       </view>
 
-      <view v-if="notificationItems.length" class="notice-list">
-        <view
-          v-for="item in notificationItems"
-          :key="item.id"
-          class="notice-card"
-          @tap="void openNotification(item)"
-        >
-          <view class="notice-card-top">
-            <text class="notice-card-title">{{ item.title }}</text>
-            <text :class="['notice-kind-chip', item.read ? '' : 'notice-kind-chip-unread']">{{ item.kindLabel }}</text>
+      <view v-if="errorMessage" class="notice-empty">{{ errorMessage }}</view>
+      <view v-else-if="showInitialLoadingState" class="notice-skeleton-stack">
+        <view v-for="index in 4" :key="index" class="notice-skeleton-card">
+          <view class="notice-skeleton-row">
+            <view class="notice-skeleton-line notice-skeleton-line-title" />
+            <view class="notice-skeleton-pill" />
           </view>
-          <text class="notice-card-copy">{{ item.content }}</text>
-          <view class="notice-card-bottom">
-            <text class="notice-card-time">{{ item.createdAtLabel }}</text>
-            <text class="notice-card-action">{{ item.relatedPath ? "查看详情" : "已处理" }}</text>
-          </view>
+          <view class="notice-skeleton-line notice-skeleton-line-body" />
+          <view class="notice-skeleton-line notice-skeleton-line-body short" />
         </view>
       </view>
-      <view v-else class="notice-empty">当前没有可展示的通知。</view>
-    </view>
+
+      <view v-else class="notice-loaded-content">
+        <NeoSurface v-if="notificationItems.length" variant="raised" class="notice-hero">
+          <view>
+            <text class="notice-hero-label">未读提醒</text>
+            <text class="notice-hero-value">{{ unreadCount }}</text>
+            <text class="notice-hero-copy">点开通知详情后才会标记为已读。</text>
+          </view>
+        </NeoSurface>
+
+        <view v-if="notificationItems.length" class="notice-list">
+          <NeoSurface
+            v-for="item in notificationItems"
+            :key="item.id"
+            variant="raised"
+            interactive
+            class="notice-card"
+            @press="void openNotification(item)"
+          >
+            <view class="notice-card-top">
+              <text class="notice-card-title">{{ item.title }}</text>
+              <text :class="['notice-kind-chip', item.read ? '' : 'notice-kind-chip-unread']">{{ item.kindLabel }}</text>
+            </view>
+            <text class="notice-card-copy">{{ item.content }}</text>
+            <view class="notice-card-bottom">
+              <text class="notice-card-time">{{ item.createdAtLabel }}</text>
+              <text class="notice-card-action">{{ item.relatedPath ? "查看详情" : "已处理" }}</text>
+            </view>
+          </NeoSurface>
+        </view>
+        <view v-else class="notice-empty">当前没有可展示的通知。</view>
+      </view>
     </template>
   </view>
 </template>
@@ -227,23 +213,20 @@ onShow(() => {
 <style scoped>
 .notice-page {
   min-height: 100vh;
-  padding: 30rpx 28rpx 100rpx;
-  background:
-    radial-gradient(circle at top right, rgba(200, 255, 0, 0.12), transparent 24%),
-    linear-gradient(180deg, #fbfcf7 0%, #f2f4ed 100%);
+  padding: 0 28rpx 120rpx;
+  background: var(--neo-color-page);
   box-sizing: border-box;
 }
 
 .notice-header {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
+  flex-direction: column;
 }
 
 .notice-title {
   display: block;
-  font-size: 64rpx;
-  color: #131410;
+  font-size: 48rpx;
+  color: var(--neo-color-text);
   font-weight: 900;
 }
 
@@ -251,18 +234,9 @@ onShow(() => {
   display: block;
   margin-top: 8rpx;
   font-size: 24rpx;
-  color: #6d726a;
+  color: var(--neo-color-text-muted);
   line-height: 1.5;
   font-weight: 700;
-}
-
-.notice-header-badge {
-  padding: 14rpx 20rpx;
-  border-radius: 999rpx;
-  background: #171814;
-  color: #ffffff;
-  font-size: 24rpx;
-  font-weight: 800;
 }
 
 .notice-board-segment {
@@ -278,28 +252,17 @@ onShow(() => {
 }
 
 .notice-filter-chip {
-  padding: 16rpx 24rpx;
-  border-radius: 999rpx;
-  background: #eef1ea;
-  color: #232620;
-  font-size: 26rpx;
+  padding: 14rpx 22rpx;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-surface);
+  color: var(--neo-color-text);
+  font-size: 25rpx;
   font-weight: 800;
 }
 
 .notice-filter-chip-active {
   background: var(--neo-color-accent);
-}
-
-.notice-filter-meta {
-  color: #6c7168;
-  font-size: 22rpx;
-  font-weight: 700;
-}
-
-.notice-hero,
-.notice-card {
-  background: #ffffff;
-  box-shadow: 0 20rpx 38rpx rgba(17, 17, 17, 0.05);
 }
 
 .notice-hero {
@@ -309,21 +272,20 @@ onShow(() => {
   gap: 20rpx;
   margin-top: 22rpx;
   padding: 28rpx;
-  border-radius: 34rpx;
 }
 
 .notice-hero-label {
   display: block;
   font-size: 24rpx;
-  color: #72776f;
-  font-weight: 700;
+  color: var(--neo-color-text-muted);
+  font-weight: 800;
 }
 
 .notice-hero-value {
   display: block;
   margin-top: 10rpx;
-  font-size: 60rpx;
-  color: #141512;
+  font-size: 56rpx;
+  color: var(--neo-color-text);
   font-weight: 900;
 }
 
@@ -331,20 +293,8 @@ onShow(() => {
   display: block;
   margin-top: 8rpx;
   font-size: 24rpx;
-  color: #6d726a;
-}
-
-.notice-hero-pill {
-  padding: 10rpx 16rpx;
-  border-radius: 999rpx;
-  background: var(--neo-color-accent-soft);
-  color: var(--neo-color-accent-deep);
-  font-size: 22rpx;
-  font-weight: 900;
-}
-
-.notice-loaded-content {
-  display: block;
+  color: var(--neo-color-text-muted);
+  font-weight: 700;
 }
 
 .notice-skeleton-stack {
@@ -354,46 +304,24 @@ onShow(() => {
   margin-top: 22rpx;
 }
 
-.notice-skeleton-hero,
-.notice-skeleton-card,
-.notice-skeleton-line,
-.notice-skeleton-pill {
+.notice-skeleton-card {
   position: relative;
   overflow: hidden;
+  min-height: 168rpx;
+  padding: 24rpx;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-md);
+  background: var(--neo-color-surface);
+  box-sizing: border-box;
 }
 
-.notice-skeleton-hero::after,
-.notice-skeleton-card::after,
-.notice-skeleton-line::after,
-.notice-skeleton-pill::after {
+.notice-skeleton-card::after {
   content: "";
   position: absolute;
   inset: 0;
   transform: translateX(-100%);
-  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.72) 50%, transparent 100%);
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.55) 50%, transparent 100%);
   animation: notice-skeleton-shimmer 1.2s ease-in-out infinite;
-}
-
-.notice-skeleton-hero,
-.notice-skeleton-card {
-  border-radius: 30rpx;
-  background: #eef2e8;
-}
-
-.notice-skeleton-hero {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 20rpx;
-  min-height: 178rpx;
-  padding: 28rpx;
-  box-sizing: border-box;
-}
-
-.notice-skeleton-card {
-  min-height: 176rpx;
-  padding: 24rpx;
-  box-sizing: border-box;
 }
 
 .notice-skeleton-row {
@@ -405,25 +333,12 @@ onShow(() => {
 
 .notice-skeleton-line {
   height: 24rpx;
-  border-radius: 999rpx;
-  background: #dde4d5;
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-accent-soft);
 }
 
 .notice-skeleton-line + .notice-skeleton-line {
   margin-top: 16rpx;
-}
-
-.notice-skeleton-line-label {
-  width: 160rpx;
-}
-
-.notice-skeleton-line-value {
-  width: 92rpx;
-  height: 52rpx;
-}
-
-.notice-skeleton-line-copy {
-  width: 420rpx;
 }
 
 .notice-skeleton-line-title {
@@ -442,15 +357,10 @@ onShow(() => {
 
 .notice-skeleton-pill {
   width: 128rpx;
-  height: 52rpx;
-  border-radius: 999rpx;
-  background: #dde4d5;
+  height: 44rpx;
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-accent-soft);
   flex-shrink: 0;
-}
-
-.notice-skeleton-pill.small {
-  width: 96rpx;
-  height: 42rpx;
 }
 
 .notice-list {
@@ -462,7 +372,6 @@ onShow(() => {
 
 .notice-card {
   padding: 24rpx;
-  border-radius: 30rpx;
 }
 
 .notice-card-top,
@@ -476,29 +385,31 @@ onShow(() => {
 .notice-card-title {
   flex: 1;
   font-size: 30rpx;
-  color: #171814;
+  color: var(--neo-color-text);
   font-weight: 900;
 }
 
 .notice-kind-chip {
-  padding: 10rpx 16rpx;
-  border-radius: 999rpx;
-  background: #eef1ea;
-  color: #5f645c;
+  padding: 8rpx 14rpx;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-surface);
+  color: var(--neo-color-text-muted);
   font-size: 22rpx;
   font-weight: 800;
 }
 
 .notice-kind-chip-unread {
-  background: #ffe8eb;
-  color: #cf465d;
+  background: var(--neo-color-danger-soft);
+  color: var(--neo-color-danger);
 }
 
 .notice-card-copy {
   display: block;
   margin-top: 16rpx;
   font-size: 26rpx;
-  color: #60655d;
+  color: var(--neo-color-text-muted);
+  font-weight: 700;
   line-height: 1.6;
 }
 
@@ -513,21 +424,23 @@ onShow(() => {
 }
 
 .notice-card-time {
-  color: #787d74;
+  color: var(--neo-color-text-muted);
 }
 
 .notice-card-action {
-  color: #171814;
+  color: var(--neo-color-text);
 }
 
 .notice-empty {
   margin-top: 20rpx;
   padding: 26rpx;
-  border-radius: 28rpx;
-  background: #ffffff;
-  color: #6c7168;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-surface);
+  color: var(--neo-color-text-muted);
   font-size: 28rpx;
   line-height: 1.6;
+  font-weight: 700;
 }
 
 @keyframes notice-skeleton-shimmer {
@@ -535,4 +448,20 @@ onShow(() => {
     transform: translateX(100%);
   }
 }
+
+/* #ifdef H5 */
+.notice-page {
+  width: 100%;
+  max-width: 750rpx;
+  margin: 0 auto;
+}
+
+.notice-page :deep(.app-tab-header-shell) {
+  left: 50%;
+  right: auto;
+  width: 100%;
+  max-width: 750rpx;
+  transform: translateX(-50%);
+}
+/* #endif */
 </style>
