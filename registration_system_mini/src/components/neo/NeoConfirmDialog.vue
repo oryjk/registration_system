@@ -13,6 +13,8 @@ const props = withDefaults(
     highlight?: string;
     /** message 中需要可点击跳转的片段（与 highlight 互斥，优先命中），命中后以链接样式渲染。 */
     linkText?: string;
+    /** message 下方的可点击链接列表（如"去取消约队"）；点击触发 link-item 事件并关闭弹窗。 */
+    linkItems?: string[];
     /** message 下方展示的图片（如微信联系二维码），宽度固定、等比缩放。 */
     imageSrc?: string;
     /** 第一张图片下方的说明文字（如"加开发者微信"）。 */
@@ -30,6 +32,7 @@ const props = withDefaults(
     message: "",
     highlight: "",
     linkText: "",
+    linkItems: () => [],
     imageSrc: "",
     imageCaption: "",
     secondImageSrc: "",
@@ -73,6 +76,8 @@ const emit = defineEmits<{
   (event: "close"): void;
   /** message 中链接片段（linkText）被点击。 */
   (event: "link"): void;
+  /** linkItems 列表项被点击，参数为下标。 */
+  (event: "link-item", index: number): void;
 }>();
 
 function handleSecondary() {
@@ -93,6 +98,15 @@ function handleClose() {
           <text v-if="message" class="neo-confirm-dialog-message"><template v-if="messageParts">{{ messageParts.before }}<text v-if="messageParts.kind === 'link'" class="neo-confirm-dialog-link" @tap.stop="emit('link')">{{ messageParts.segment }}</text><text v-else class="neo-confirm-dialog-highlight">{{ messageParts.segment }}</text>{{ messageParts.after }}</template><template v-else>{{ message }}</template></text>
         </view>
         <view class="neo-confirm-dialog-close" @tap="handleClose">×</view>
+      </view>
+      <!-- 链接列表（如解散球队的阻塞项处理入口）：整行可点，点击后由外层关闭弹窗并跳转。 -->
+      <view v-if="linkItems.length" class="neo-confirm-dialog-links">
+        <text
+          v-for="(item, index) in linkItems"
+          :key="index"
+          class="neo-confirm-dialog-link-item"
+          @tap.stop="emit('link-item', index)"
+        >{{ item }}</text>
       </view>
       <!-- 双图并排（如微信 + 公众号二维码）；两张码必须各自独立 image，合成长图微信长按识别不了。 -->
       <view v-if="imageSrc && secondImageSrc" class="neo-confirm-dialog-images">
@@ -208,6 +222,24 @@ function handleClose() {
 /* 链接片段沿用场馆链接先例：主文字色 + 下划线，靠下划线传达可点击。 */
 .neo-confirm-dialog-link {
   color: var(--neo-color-text);
+  font-weight: 900;
+  text-decoration: underline;
+  text-underline-offset: 6rpx;
+}
+
+/* 链接列表：逐条一行，靠下划线与主文字色传达可点击（沿用场馆链接先例）。 */
+.neo-confirm-dialog-links {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14rpx;
+  margin-top: 22rpx;
+}
+
+.neo-confirm-dialog-link-item {
+  color: var(--neo-color-text);
+  font-size: 28rpx;
+  line-height: 42rpx;
   font-weight: 900;
   text-decoration: underline;
   text-underline-offset: 6rpx;
