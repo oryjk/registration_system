@@ -1,4 +1,4 @@
-export type TeamStatus = "active" | "frozen";
+export type TeamStatus = "active" | "frozen" | "dissolved";
 export type TeamMemberRole = "captain" | "leader" | "vice_captain" | "member";
 export type AssignableTeamMemberRole = Exclude<TeamMemberRole, "captain">;
 export type TeamMemberStatus = "active" | "inactive";
