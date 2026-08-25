@@ -6,7 +6,7 @@ import AppTabHeader from "@/components/AppTabHeader.vue";
 import NeoSegmentedControl from "@/components/neo/NeoSegmentedControl.vue";
 import NeoSurface from "@/components/neo/NeoSurface.vue";
 import CaptainThreadsSection from "./components/CaptainThreadsSection.vue";
-import { listNotifications, markAllNotificationsRead, markNotificationRead } from "@/api/notification";
+import { listNotifications, markNotificationRead } from "@/api/notification";
 import { setCaptainUnreadCount, setUnreadCount, syncUnreadCount, useNotificationCenter } from "@/stores/notificationCenter";
 import { ensureSessionReady, useAppSession } from "@/stores/appSession";
 import type { BackendNotification } from "@/types/backend";
@@ -20,7 +20,6 @@ const navMetrics = getCustomNavMetrics();
 const isLoading = ref(false);
 const hasLoadedOnce = ref(false);
 const errorMessage = ref("");
-const unreadOnly = ref(false);
 const notifications = ref<BackendNotification[]>([]);
 
 type NoticeBoardTab = "notifications" | "captainMessages";
@@ -50,10 +49,7 @@ async function loadNotifications() {
 
   try {
     await ensureSessionReady();
-    notifications.value = await listNotifications({
-      unreadOnly: unreadOnly.value,
-      limit: 50,
-    });
+    notifications.value = await listNotifications({ limit: 50 });
 
     // 已读完全由用户点开详情驱动：进页不再自动清红点，角标同步真实未读数。
     await syncUnreadCount({ skipEnsure: true });
@@ -83,19 +79,6 @@ async function openNotification(item: { id: number; relatedPath: string; read: b
     }
   }
   uni.navigateTo({ url: item.relatedPath });
-}
-
-async function handleMarkAllRead() {
-  try {
-    await markAllNotificationsRead();
-    notifications.value = notifications.value.map((item) => ({
-      ...item,
-      read_at: item.read_at ?? new Date().toISOString(),
-    }));
-    setUnreadCount(0);
-  } catch (error) {
-    uni.showToast({ title: error instanceof Error ? error.message : "操作失败", icon: "none" });
-  }
 }
 
 function openCaptainThread(threadId: string) {
@@ -157,12 +140,6 @@ onShow(() => {
     </template>
 
     <template v-else>
-      <view class="notice-filter-row">
-        <view :class="['notice-filter-chip', !unreadOnly ? 'notice-filter-chip-active' : '']" @tap="unreadOnly = false; void loadNotifications()">全部</view>
-        <view :class="['notice-filter-chip', unreadOnly ? 'notice-filter-chip-active' : '']" @tap="unreadOnly = true; void loadNotifications()">仅看未读</view>
-        <view class="notice-filter-chip" @tap="void handleMarkAllRead()">全部已读</view>
-      </view>
-
       <view v-if="errorMessage" class="notice-empty">{{ errorMessage }}</view>
       <view v-else-if="showInitialLoadingState" class="notice-skeleton-stack">
         <view v-for="index in 4" :key="index" class="notice-skeleton-card">
@@ -241,28 +218,6 @@ onShow(() => {
 
 .notice-board-segment {
   margin-top: 22rpx;
-}
-
-.notice-filter-row {
-  display: flex;
-  align-items: center;
-  gap: 14rpx;
-  margin-top: 22rpx;
-  flex-wrap: wrap;
-}
-
-.notice-filter-chip {
-  padding: 14rpx 22rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-surface);
-  color: var(--neo-color-text);
-  font-size: 25rpx;
-  font-weight: 800;
-}
-
-.notice-filter-chip-active {
-  background: var(--neo-color-accent);
 }
 
 .notice-hero {

@@ -1,6 +1,5 @@
 import type {
   BackendNotification,
-  BackendNotificationMarkAllReadResult,
   BackendNotificationUnreadCountResult,
 } from "@/types/backend";
 import { buildQueryString } from "@/utils/queryString";
@@ -30,14 +29,6 @@ export async function getUnreadNotificationCount() {
 export function markNotificationRead(id: number) {
   return requestApi<{ read: boolean }>({
     url: `/notifications/${id}/read`,
-    method: "POST",
-    auth: true,
-  });
-}
-
-export function markAllNotificationsRead() {
-  return requestApi<BackendNotificationMarkAllReadResult>({
-    url: "/notifications/read-all",
     method: "POST",
     auth: true,
   });
