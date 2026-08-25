@@ -69,6 +69,12 @@ type MatchCaptainMessage struct {
 	CreatedAt         pgtype.Timestamptz `json:"created_at"`
 }
 
+type MatchCaptainThreadRead struct {
+	ThreadID   pgtype.UUID        `json:"thread_id"`
+	UserID     int64              `json:"user_id"`
+	LastReadAt pgtype.Timestamptz `json:"last_read_at"`
+}
+
 type MatchRegistration struct {
 	ID                pgtype.UUID      `json:"id"`
 	GroupID           pgtype.UUID      `json:"group_id"`

@@ -304,3 +304,59 @@ func TestRepositoryFindForUserIncludesHostCaptain(t *testing.T) {
 		t.Fatalf("pickup match must have nil captain: %+v found=%t err=%v", pickupItem.HostCaptain, found, err)
 	}
 }
+
+func TestCaptainMessageUnreadFlow(t *testing.T) {
+	ctx := context.Background()
+	pool := testsupport.StartPostgres(t)
+	service, _ := newCaptainMessageService(t, pool)
+	captainID, teamID := seedCaptainWithTeam(t, pool, "未读测试联")
+	match, groups := newPersistableMatch(t, captainID, teamID)
+	if err := NewRepository(pool).CreateWithGroups(ctx, match, groups); err != nil {
+		t.Fatalf("create match: %v", err)
+	}
+	player := seedMatchUser(t, pool)
+	emptyUser := seedMatchUser(t, pool)
+
+	threadID, err := service.Send(ctx, userActor(player), match.ID, "第一条约球")
+	if err != nil {
+		t.Fatalf("send: %v", err)
+	}
+
+	// 队长侧收到 1 条未读；发起人与无关用户都是 0（自己发的消息不算未读）。
+	if count, err := service.UnreadCount(ctx, userActor(captainID)); err != nil || count != 1 {
+		t.Fatalf("captain unread: count=%d err=%v", count, err)
+	}
+	if count, err := service.UnreadCount(ctx, userActor(player)); err != nil || count != 0 {
+		t.Fatalf("owner unread must be 0: count=%d err=%v", count, err)
+	}
+	if count, err := service.UnreadCount(ctx, userActor(emptyUser)); err != nil || count != 0 {
+		t.Fatalf("stranger unread must be 0: count=%d err=%v", count, err)
+	}
+
+	threads, err := service.ListThreads(ctx, userActor(captainID), matchapplication.CaptainMessageListQuery{})
+	if err != nil || threads.Total != 1 || threads.Items[0].UnreadCount != 1 {
+		t.Fatalf("captain thread list unread: %+v err=%v", threads, err)
+	}
+
+	// 队长打开对话即读到最新，未读清零。
+	if _, err := service.GetThread(ctx, userActor(captainID), threadID); err != nil {
+		t.Fatalf("captain open thread: %v", err)
+	}
+	if count, err := service.UnreadCount(ctx, userActor(captainID)); err != nil || count != 0 {
+		t.Fatalf("captain unread after read: count=%d err=%v", count, err)
+	}
+
+	// 队长回复后发起人产生 1 条未读；再次打开清零。
+	if _, err := service.Reply(ctx, userActor(captainID), threadID, "周六可以"); err != nil {
+		t.Fatalf("captain reply: %v", err)
+	}
+	if count, err := service.UnreadCount(ctx, userActor(player)); err != nil || count != 1 {
+		t.Fatalf("owner unread after reply: count=%d err=%v", count, err)
+	}
+	if _, err := service.GetThread(ctx, userActor(player), threadID); err != nil {
+		t.Fatalf("owner open thread: %v", err)
+	}
+	if count, err := service.UnreadCount(ctx, userActor(player)); err != nil || count != 0 {
+		t.Fatalf("owner unread after read: count=%d err=%v", count, err)
+	}
+}

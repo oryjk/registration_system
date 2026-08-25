@@ -20,6 +20,7 @@ type CaptainMessageUseCase interface {
 	Reply(context.Context, sharedauth.Actor, uuid.UUID, string) (uuid.UUID, error)
 	ListThreads(context.Context, sharedauth.Actor, application.CaptainMessageListQuery) (application.CaptainMessageListResult, error)
 	GetThread(context.Context, sharedauth.Actor, uuid.UUID) (application.CaptainMessageThreadDetail, error)
+	UnreadCount(context.Context, sharedauth.Actor) (int64, error)
 }
 
 type CaptainMessageHandler struct {
@@ -45,6 +46,7 @@ type CaptainThreadSummaryResponse struct {
 	LatestContent             string                     `json:"latest_content"`
 	LatestSenderIsCaptainSide bool                       `json:"latest_sender_is_captain_side"`
 	LatestCreatedAt           time.Time                  `json:"latest_created_at"`
+	UnreadCount               int64                      `json:"unread_count"`
 }
 
 type CaptainParticipantResponse struct {
@@ -200,8 +202,23 @@ func (h *CaptainMessageHandler) Reply(c *gin.Context) {
 	sharedhttpapi.WriteSuccess(c, CaptainThreadCreatedResponse{ThreadID: resultThreadID})
 }
 
+// UnreadCount GET /captain-messages/unread-count：我的留言未读总数。
+func (h *CaptainMessageHandler) UnreadCount(c *gin.Context) {
+	actor, ok := userActor(c)
+	if !ok {
+		return
+	}
+	count, err := h.service.UnreadCount(c.Request.Context(), actor)
+	if err != nil {
+		sharedhttpapi.WriteError(c, err)
+		return
+	}
+	sharedhttpapi.WriteSuccess(c, gin.H{"unread_count": count})
+}
+
 func (h *CaptainMessageHandler) RegisterRoutes(group *gin.RouterGroup) {
 	group.GET("/captain-messages", h.List)
+	group.GET("/captain-messages/unread-count", h.UnreadCount)
 	group.GET("/captain-messages/:threadId", h.GetThread)
 	group.POST("/captain-messages/:threadId/reply", h.Reply)
 	group.POST("/matches/:id/captain-messages", h.Send)
@@ -218,5 +235,6 @@ func mapCaptainThreadSummary(thread ports.CaptainMessageThread) CaptainThreadSum
 		LatestContent:             thread.LatestContent,
 		LatestSenderIsCaptainSide: thread.LatestSenderIsCaptainSide,
 		LatestCreatedAt:           thread.LatestCreatedAt,
+		UnreadCount:               thread.UnreadCount,
 	}
 }

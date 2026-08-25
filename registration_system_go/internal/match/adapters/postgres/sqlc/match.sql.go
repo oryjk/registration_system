@@ -211,6 +211,42 @@ func (q *Queries) CountMyCaptainMessageThreads(ctx context.Context, userID int64
 	return count, err
 }
 
+const countMyUnreadCaptainMessages = `-- name: CountMyUnreadCaptainMessages :one
+SELECT COALESCE(SUM(unread), 0)::bigint FROM (
+    SELECT (
+        SELECT COUNT(*) FROM match_captain_messages unread
+        WHERE unread.match_id = m.match_id
+          AND unread.thread_owner_user_id = m.thread_owner_user_id
+          AND unread.sender_user_id <> $1
+          AND unread.created_at > COALESCE(reads.last_read_at, '-infinity'::timestamptz)
+    ) AS unread
+    FROM match_captain_messages m
+    LEFT JOIN match_captain_thread_reads reads
+      ON reads.thread_id = (
+          SELECT head.id FROM match_captain_messages head
+          WHERE head.match_id = m.match_id AND head.thread_owner_user_id = m.thread_owner_user_id
+          ORDER BY head.created_at ASC, head.id ASC LIMIT 1
+      ) AND reads.user_id = $1
+    WHERE m.thread_owner_user_id = $1
+       OR m.team_id IN (
+           SELECT tm.team_id
+           FROM team_members tm
+           WHERE tm.user_id = $1
+             AND tm.role IN ('captain', 'leader')
+             AND tm.status = 'active'
+       )
+    GROUP BY m.match_id, m.thread_owner_user_id, reads.last_read_at
+) threads
+`
+
+// 我的留言未读总数：全部可见串内对方发送且晚于我阅读进度的消息数。
+func (q *Queries) CountMyUnreadCaptainMessages(ctx context.Context, userID int64) (int64, error) {
+	row := q.db.QueryRow(ctx, countMyUnreadCaptainMessages, userID)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const createMatch = `-- name: CreateMatch :one
 INSERT INTO matches (
     id,
@@ -1782,7 +1818,7 @@ func (q *Queries) ListMatchesForUser(ctx context.Context, arg ListMatchesForUser
 }
 
 const listMyCaptainMessageThreads = `-- name: ListMyCaptainMessageThreads :many
-SELECT thread_id, match_id, team_id, thread_owner_user_id, match_name, host_team_name, owner_nickname, owner_avatar_url, latest_sender_user_id, latest_sender_is_captain_side, latest_content, latest_created_at
+SELECT thread_id, match_id, team_id, thread_owner_user_id, match_name, host_team_name, owner_nickname, owner_avatar_url, latest_sender_user_id, latest_sender_is_captain_side, latest_content, latest_created_at, unread_count
 FROM (
     SELECT DISTINCT ON (m.match_id, m.thread_owner_user_id)
            m.id AS thread_id,
@@ -1796,11 +1832,22 @@ FROM (
            m.sender_user_id AS latest_sender_user_id,
            (m.sender_user_id <> m.thread_owner_user_id) AS latest_sender_is_captain_side,
            m.content AS latest_content,
-           m.created_at AS latest_created_at
+           m.created_at AS latest_created_at,
+           (SELECT COUNT(*) FROM match_captain_messages unread
+             WHERE unread.match_id = m.match_id
+               AND unread.thread_owner_user_id = m.thread_owner_user_id
+               AND unread.sender_user_id <> $1
+               AND unread.created_at > COALESCE(reads.last_read_at, '-infinity'::timestamptz))::bigint AS unread_count
     FROM match_captain_messages m
     JOIN matches match ON match.id = m.match_id
     JOIN teams host ON host.id = m.team_id
     JOIN users owner ON owner.id = m.thread_owner_user_id
+    LEFT JOIN match_captain_thread_reads reads
+      ON reads.thread_id = (
+          SELECT head.id FROM match_captain_messages head
+          WHERE head.match_id = m.match_id AND head.thread_owner_user_id = m.thread_owner_user_id
+          ORDER BY head.created_at ASC, head.id ASC LIMIT 1
+      ) AND reads.user_id = $1
     WHERE m.thread_owner_user_id = $1
        OR m.team_id IN (
            SELECT tm.team_id
@@ -1834,6 +1881,7 @@ type ListMyCaptainMessageThreadsRow struct {
 	LatestSenderIsCaptainSide bool               `json:"latest_sender_is_captain_side"`
 	LatestContent             string             `json:"latest_content"`
 	LatestCreatedAt           pgtype.Timestamptz `json:"latest_created_at"`
+	UnreadCount               int64              `json:"unread_count"`
 }
 
 // 我的对话列表：我发起的串 ∪ 我任 captain/leader 球队收到的串；
@@ -1860,6 +1908,7 @@ func (q *Queries) ListMyCaptainMessageThreads(ctx context.Context, arg ListMyCap
 			&i.LatestSenderIsCaptainSide,
 			&i.LatestContent,
 			&i.LatestCreatedAt,
+			&i.UnreadCount,
 		); err != nil {
 			return nil, err
 		}
@@ -2661,5 +2710,24 @@ func (q *Queries) UpdateTeamApplication(ctx context.Context, arg UpdateTeamAppli
 		arg.WithdrawnAt,
 		arg.UpdatedAt,
 	)
+	return err
+}
+
+const upsertCaptainThreadRead = `-- name: UpsertCaptainThreadRead :exec
+INSERT INTO match_captain_thread_reads (thread_id, user_id, last_read_at)
+VALUES ($1, $2, $3)
+ON CONFLICT (thread_id, user_id)
+DO UPDATE SET last_read_at = GREATEST(match_captain_thread_reads.last_read_at, EXCLUDED.last_read_at)
+`
+
+type UpsertCaptainThreadReadParams struct {
+	ThreadID   pgtype.UUID        `json:"thread_id"`
+	UserID     int64              `json:"user_id"`
+	LastReadAt pgtype.Timestamptz `json:"last_read_at"`
+}
+
+// 记录阅读进度：只前进不回退（GREATEST），thread_id 为串首条消息 id。
+func (q *Queries) UpsertCaptainThreadRead(ctx context.Context, arg UpsertCaptainThreadReadParams) error {
+	_, err := q.db.Exec(ctx, upsertCaptainThreadRead, arg.ThreadID, arg.UserID, arg.LastReadAt)
 	return err
 }

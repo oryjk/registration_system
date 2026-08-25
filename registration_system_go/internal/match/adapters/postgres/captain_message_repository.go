@@ -3,9 +3,11 @@ package postgres
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	matchsqlc "github.com/oryjk/registration_system/registration_system_go/internal/match/adapters/postgres/sqlc"
 	"github.com/oryjk/registration_system/registration_system_go/internal/match/ports"
 )
@@ -96,7 +98,7 @@ func (r *Repository) ListMyCaptainMessageThreads(ctx context.Context, userID int
 			ThreadOwnerUserID: row.ThreadOwnerUserID, MatchName: row.MatchName, HostTeamName: row.HostTeamName,
 			OwnerNickname: row.OwnerNickname, OwnerAvatarURL: row.OwnerAvatarUrl,
 			LatestContent: row.LatestContent, LatestSenderIsCaptainSide: row.LatestSenderIsCaptainSide,
-			LatestCreatedAt: row.LatestCreatedAt.Time,
+			LatestCreatedAt: row.LatestCreatedAt.Time, UnreadCount: row.UnreadCount,
 		})
 	}
 	return threads, nil
@@ -104,6 +106,20 @@ func (r *Repository) ListMyCaptainMessageThreads(ctx context.Context, userID int
 
 func (r *Repository) CountMyCaptainMessageThreads(ctx context.Context, userID int64) (int64, error) {
 	return r.queries.CountMyCaptainMessageThreads(ctx, userID)
+}
+
+func (r *Repository) CountMyUnreadCaptainMessages(ctx context.Context, userID int64) (int64, error) {
+	return r.queries.CountMyUnreadCaptainMessages(ctx, userID)
+}
+
+func (r *Repository) MarkCaptainThreadRead(ctx context.Context, threadID uuid.UUID, userID int64, readAt time.Time) error {
+	return r.queries.UpsertCaptainThreadRead(ctx, matchsqlc.UpsertCaptainThreadReadParams{
+		ThreadID: pgUUID(threadID), UserID: userID, LastReadAt: pgTimestamptzUTC(readAt),
+	})
+}
+
+func pgTimestamptzUTC(value time.Time) pgtype.Timestamptz {
+	return pgtype.Timestamptz{Time: value, Valid: true}
 }
 
 func (r *Repository) ListTeamManagerUserIDs(ctx context.Context, teamID int64) ([]int64, error) {

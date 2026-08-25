@@ -198,7 +198,21 @@ func (s *CaptainMessageService) GetThread(ctx context.Context, actor sharedauth.
 	if err != nil {
 		return CaptainMessageThreadDetail{}, sharederror.Wrap(sharederror.KindInternal, "查询留言消息失败", err)
 	}
+	// 打开对话即视为读到最新：推进阅读进度（只前进不回退），未读数随之清零。
+	if len(messages) > 0 {
+		if err := s.repository.MarkCaptainThreadRead(ctx, threadID, actor.ID, messages[len(messages)-1].CreatedAt); err != nil {
+			log.Printf("captainmessage: 记录阅读进度失败 thread=%s user=%d: %v", threadID, actor.ID, err)
+		}
+	}
 	return CaptainMessageThreadDetail{Thread: head, Messages: messages, ViewerIsManager: !isOwner}, nil
+}
+
+// UnreadCount 返回我的留言未读总数（对方发送且尚未读到的消息）。
+func (s *CaptainMessageService) UnreadCount(ctx context.Context, actor sharedauth.Actor) (int64, error) {
+	if !actor.IsUser() {
+		return 0, sharederror.ErrForbidden
+	}
+	return s.repository.CountMyUnreadCaptainMessages(ctx, actor.ID)
 }
 
 func (s *CaptainMessageService) notifyTeamManagers(ctx context.Context, teamID int64, matchName string, senderID int64, content string, threadID uuid.UUID) {

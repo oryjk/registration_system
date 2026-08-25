@@ -146,6 +146,8 @@ type CaptainMessageThread struct {
 	LatestContent             string
 	LatestSenderIsCaptainSide bool
 	LatestCreatedAt           time.Time
+	// UnreadCount 串内对方发送且晚于我阅读进度的消息数。
+	UnreadCount int64
 }
 
 // CaptainMessageRepository 承载「联系队长」留言的读写；
@@ -157,6 +159,8 @@ type CaptainMessageRepository interface {
 	ListCaptainMessagesByThread(context.Context, uuid.UUID, int64) ([]CaptainMessage, error)
 	ListMyCaptainMessageThreads(context.Context, int64, int, int) ([]CaptainMessageThread, error)
 	CountMyCaptainMessageThreads(context.Context, int64) (int64, error)
+	CountMyUnreadCaptainMessages(context.Context, int64) (int64, error)
+	MarkCaptainThreadRead(context.Context, uuid.UUID, int64, time.Time) error
 	ListTeamManagerUserIDs(context.Context, int64) ([]int64, error)
 	FindTeamCaptainProfile(context.Context, int64) (CaptainProfile, bool, error)
 	FindUserBrief(context.Context, int64) (CaptainProfile, bool, error)

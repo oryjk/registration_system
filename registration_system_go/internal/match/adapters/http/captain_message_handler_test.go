@@ -47,6 +47,11 @@ func (f *fakeCaptainMessages) GetThread(_ context.Context, actor sharedauth.Acto
 	return f.thread, nil
 }
 
+func (f *fakeCaptainMessages) UnreadCount(_ context.Context, actor sharedauth.Actor) (int64, error) {
+	f.actor = actor
+	return 0, nil
+}
+
 func newCaptainMessageTestRouter(service CaptainMessageUseCase) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	handler := NewCaptainMessageHandler(service)

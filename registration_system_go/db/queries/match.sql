@@ -765,11 +765,22 @@ FROM (
            m.sender_user_id AS latest_sender_user_id,
            (m.sender_user_id <> m.thread_owner_user_id) AS latest_sender_is_captain_side,
            m.content AS latest_content,
-           m.created_at AS latest_created_at
+           m.created_at AS latest_created_at,
+           (SELECT COUNT(*) FROM match_captain_messages unread
+             WHERE unread.match_id = m.match_id
+               AND unread.thread_owner_user_id = m.thread_owner_user_id
+               AND unread.sender_user_id <> sqlc.arg('user_id')
+               AND unread.created_at > COALESCE(reads.last_read_at, '-infinity'::timestamptz))::bigint AS unread_count
     FROM match_captain_messages m
     JOIN matches match ON match.id = m.match_id
     JOIN teams host ON host.id = m.team_id
     JOIN users owner ON owner.id = m.thread_owner_user_id
+    LEFT JOIN match_captain_thread_reads reads
+      ON reads.thread_id = (
+          SELECT head.id FROM match_captain_messages head
+          WHERE head.match_id = m.match_id AND head.thread_owner_user_id = m.thread_owner_user_id
+          ORDER BY head.created_at ASC, head.id ASC LIMIT 1
+      ) AND reads.user_id = sqlc.arg('user_id')
     WHERE m.thread_owner_user_id = sqlc.arg('user_id')
        OR m.team_id IN (
            SELECT tm.team_id
@@ -782,6 +793,41 @@ FROM (
 ) threads
 ORDER BY threads.latest_created_at DESC, threads.thread_id
 LIMIT sqlc.arg('limit_count') OFFSET sqlc.arg('offset_count');
+
+-- name: CountMyUnreadCaptainMessages :one
+-- 我的留言未读总数：全部可见串内对方发送且晚于我阅读进度的消息数。
+SELECT COALESCE(SUM(unread), 0)::bigint FROM (
+    SELECT (
+        SELECT COUNT(*) FROM match_captain_messages unread
+        WHERE unread.match_id = m.match_id
+          AND unread.thread_owner_user_id = m.thread_owner_user_id
+          AND unread.sender_user_id <> sqlc.arg('user_id')
+          AND unread.created_at > COALESCE(reads.last_read_at, '-infinity'::timestamptz)
+    ) AS unread
+    FROM match_captain_messages m
+    LEFT JOIN match_captain_thread_reads reads
+      ON reads.thread_id = (
+          SELECT head.id FROM match_captain_messages head
+          WHERE head.match_id = m.match_id AND head.thread_owner_user_id = m.thread_owner_user_id
+          ORDER BY head.created_at ASC, head.id ASC LIMIT 1
+      ) AND reads.user_id = sqlc.arg('user_id')
+    WHERE m.thread_owner_user_id = sqlc.arg('user_id')
+       OR m.team_id IN (
+           SELECT tm.team_id
+           FROM team_members tm
+           WHERE tm.user_id = sqlc.arg('user_id')
+             AND tm.role IN ('captain', 'leader')
+             AND tm.status = 'active'
+       )
+    GROUP BY m.match_id, m.thread_owner_user_id, reads.last_read_at
+) threads;
+
+-- name: UpsertCaptainThreadRead :exec
+-- 记录阅读进度：只前进不回退（GREATEST），thread_id 为串首条消息 id。
+INSERT INTO match_captain_thread_reads (thread_id, user_id, last_read_at)
+VALUES (sqlc.arg('thread_id'), sqlc.arg('user_id'), sqlc.arg('last_read_at'))
+ON CONFLICT (thread_id, user_id)
+DO UPDATE SET last_read_at = GREATEST(match_captain_thread_reads.last_read_at, EXCLUDED.last_read_at);
 
 -- name: CountMyCaptainMessageThreads :one
 SELECT COUNT(*) FROM (
