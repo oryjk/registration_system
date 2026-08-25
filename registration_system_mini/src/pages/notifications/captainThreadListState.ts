@@ -11,6 +11,8 @@ export interface CaptainThreadItemViewModel {
   timeLabel: string;
   /** 最新一条是否由我发出（决定摘要前缀）。 */
   latestFromMe: boolean;
+  /** 串内未读数（对方发送且尚未读到）。 */
+  unread: number;
 }
 
 /** 消息中心「留言」列表项：按视角渲染对方信息与最新消息摘要。 */
@@ -29,6 +31,7 @@ export function buildCaptainThreadItems(
       avatarUrl: iAmOwner ? "" : thread.owner.avatar_url || "",
       timeLabel: formatDateLabel(thread.latest_created_at),
       latestFromMe,
+      unread: thread.unread_count,
     };
   });
 }

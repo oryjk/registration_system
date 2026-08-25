@@ -19,6 +19,8 @@ export interface AppCaptainThreadSummary {
   /** 最新一条是否由队长/领队一侧发送。 */
   latest_sender_is_captain_side: boolean;
   latest_created_at: string;
+  /** 串内对方发送且我尚未读到的消息数。 */
+  unread_count: number;
 }
 
 export interface AppCaptainMessageItem {

@@ -17,6 +17,7 @@ import { mockNotifications } from "./data/notifications";
 import {
   mockCaptainThreadDetail,
   mockCaptainThreadList,
+  mockCaptainUnreadCount,
   mockReplyCaptainMessage,
   mockSendCaptainMessage,
 } from "./data/captainMessages";
@@ -748,6 +749,11 @@ const routes: MockRoute[] = [
     method: "GET",
     pattern: "/captain-messages",
     handler: () => mockCaptainThreadList(),
+  },
+  {
+    method: "GET",
+    pattern: "/captain-messages/unread-count",
+    handler: () => mockCaptainUnreadCount(),
   },
   {
     method: "GET",

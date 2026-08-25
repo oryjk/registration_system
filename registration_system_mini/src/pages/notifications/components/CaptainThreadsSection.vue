@@ -42,7 +42,10 @@ const emit = defineEmits<{
             />
             <view v-else class="threads-avatar threads-avatar-fallback">{{ item.title.slice(0, 1) }}</view>
             <view class="threads-item-text">
-              <text class="threads-item-title">{{ item.title }}</text>
+              <view class="threads-item-title-row">
+                <text class="threads-item-title">{{ item.title }}</text>
+                <text v-if="item.unread > 0" class="threads-item-unread">{{ item.unread > 99 ? "99+" : item.unread }}</text>
+              </view>
               <text class="threads-item-subtitle">{{ item.subtitle }}</text>
             </view>
           </view>
@@ -132,6 +135,22 @@ const emit = defineEmits<{
   flex-direction: column;
   gap: 4rpx;
   min-width: 0;
+}
+
+.threads-item-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.threads-item-unread {
+  padding: 2rpx 12rpx;
+  border-radius: 999rpx;
+  background: #ffe8eb;
+  color: #cf465d;
+  font-size: 21rpx;
+  font-weight: 900;
+  line-height: 1.5;
 }
 
 .threads-item-title {

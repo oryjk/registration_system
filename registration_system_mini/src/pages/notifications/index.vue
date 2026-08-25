@@ -6,7 +6,7 @@ import AppTabHeader from "@/components/AppTabHeader.vue";
 import NeoSegmentedControl from "@/components/neo/NeoSegmentedControl.vue";
 import CaptainThreadsSection from "./components/CaptainThreadsSection.vue";
 import { listNotifications, markAllNotificationsRead, markNotificationRead } from "@/api/notification";
-import { setUnreadCount, syncUnreadCount } from "@/stores/notificationCenter";
+import { setCaptainUnreadCount, setUnreadCount, syncUnreadCount, useNotificationCenter } from "@/stores/notificationCenter";
 import { ensureSessionReady, useAppSession } from "@/stores/appSession";
 import type { BackendNotification } from "@/types/backend";
 import { getCustomNavMetrics } from "@/utils/customNav";
@@ -24,13 +24,15 @@ const notifications = ref<BackendNotification[]>([]);
 
 type NoticeBoardTab = "notifications" | "captainMessages";
 
-const boardOptions = [
-  { label: "通知", value: "notifications" },
-  { label: "留言", value: "captainMessages" },
-];
+// 分段标签带各自未读数：通知用本地列表统计，留言用对话列表汇总（服务端口径）。
+const boardOptions = computed(() => [
+  { label: unreadCount.value > 0 ? `通知 ${unreadCount.value}` : "通知", value: "notifications" },
+  { label: captainThreads.unreadTotal.value > 0 ? `留言 ${captainThreads.unreadTotal.value}` : "留言", value: "captainMessages" },
+]);
 const activeBoardTab = ref<NoticeBoardTab>("notifications");
 
 const { currentUser } = useAppSession();
+const { notificationUnreadCount } = useNotificationCenter();
 const myUserId = computed(() => currentUser.value?.id ?? null);
 const captainThreads = useCaptainThreads(myUserId);
 
@@ -73,7 +75,7 @@ async function openNotification(item: { id: number; relatedPath: string; read: b
           ? { ...notification, read_at: notification.read_at ?? new Date().toISOString() }
           : notification
       ));
-      setUnreadCount(Math.max(unreadCount.value - 1, 0));
+      setUnreadCount(Math.max(notificationUnreadCount.value - 1, 0));
       void syncUnreadCount({ skipEnsure: true }).catch(() => {});
     } catch {
       // 已读标记失败时仍进入详情，下次进列表重新拉取真实状态。
@@ -96,7 +98,14 @@ async function handleMarkAllRead() {
 }
 
 function openCaptainThread(threadId: string) {
-  uni.navigateTo({ url: `/pages/messages/thread/index?id=${threadId}` });
+  const thread = captainThreads.items.value.find((item) => item.id === threadId);
+  uni.navigateTo({
+    url: `/pages/messages/thread/index?id=${threadId}`,
+    complete: () => {
+      // 打开即视为已读：本地清该串未读，返回后 sync 再与服务端对齐。
+      setCaptainUnreadCount(Math.max(captainThreads.unreadTotal.value - (thread?.unread ?? 0), 0));
+    },
+  });
 }
 
 function handleBoardTabChange(value: string) {

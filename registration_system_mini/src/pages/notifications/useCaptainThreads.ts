@@ -17,6 +17,7 @@ export function useCaptainThreads(myUserId: ComputedRef<number | null>) {
 
   const items = computed(() => buildCaptainThreadItems(threads.value, myUserId.value));
   const hasMore = computed(() => threads.value.length < total.value);
+  const unreadTotal = computed(() => threads.value.reduce((sum, thread) => sum + thread.unread_count, 0));
 
   async function loadPage() {
     isLoading.value = true;
@@ -56,6 +57,7 @@ export function useCaptainThreads(myUserId: ComputedRef<number | null>) {
     hasLoadedOnce,
     errorMessage,
     items,
+    unreadTotal,
     hasMore,
     loadPage,
     loadMore,

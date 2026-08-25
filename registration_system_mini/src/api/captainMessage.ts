@@ -14,6 +14,13 @@ export function listCaptainThreads(params: { page: number; pageSize: number }) {
   });
 }
 
+export function getCaptainUnreadCount() {
+  return requestApi<{ unread_count: number }>({
+    url: "/captain-messages/unread-count",
+    auth: true,
+  });
+}
+
 export function getCaptainThread(threadId: string) {
   return requestApi<AppCaptainThreadDetail>({
     url: `/captain-messages/${threadId}`,

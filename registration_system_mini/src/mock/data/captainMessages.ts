@@ -26,6 +26,10 @@ export function mockCaptainThreadList(): { items: AppCaptainThreadSummary[]; tot
   return { items: threads.map((thread) => thread.summary), total: threads.length, page: 1, page_size: 20 };
 }
 
+export function mockCaptainUnreadCount(): { unread_count: number } {
+  return { unread_count: 0 };
+}
+
 export function mockCaptainThreadDetail(threadId: string): AppCaptainThreadDetail | null {
   const thread = threads.find((item) => item.summary.id === threadId);
   if (!thread) return null;
@@ -70,10 +74,12 @@ export function mockSendCaptainMessage(matchId: string, content: string): { thre
         latest_content: content,
         latest_sender_is_captain_side: false,
         latest_created_at: new Date().toISOString(),
+        unread_count: 0,
       },
       messages: [],
     };
     threads.unshift(thread);
+    thread = threads[0];
   }
   appendMessage(thread, content, false);
   return { thread_id: thread.summary.id };
