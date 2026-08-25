@@ -182,6 +182,46 @@ func (r *Repository) Delete(ctx context.Context, teamID int64) (bool, error) {
 	return rowsAffected > 0, nil
 }
 
+func (r *Repository) Dissolve(ctx context.Context, teamID int64) (bool, error) {
+	rowsAffected, err := r.queries.DissolveTeam(ctx, teamID)
+	if err != nil {
+		return false, err
+	}
+	return rowsAffected > 0, nil
+}
+
+func (r *Repository) FindDissolveBlockers(ctx context.Context, teamID int64) (domain.DissolveBlockers, error) {
+	matchRows, err := r.queries.FindDissolveBlockingMatches(ctx, &teamID)
+	if err != nil {
+		return domain.DissolveBlockers{}, err
+	}
+	applicationRows, err := r.queries.FindDissolveBlockingApplications(ctx, teamID)
+	if err != nil {
+		return domain.DissolveBlockers{}, err
+	}
+	blockers := domain.DissolveBlockers{
+		Matches:      make([]domain.DissolveBlockerMatch, 0, len(matchRows)),
+		Applications: make([]domain.DissolveBlockerApplication, 0, len(applicationRows)),
+	}
+	for _, row := range matchRows {
+		blockers.Matches = append(blockers.Matches, domain.DissolveBlockerMatch{
+			ID:     uuid.UUID(row.ID.Bytes),
+			Name:   row.Name,
+			Status: row.Status,
+			IsHost: row.IsHost,
+		})
+	}
+	for _, row := range applicationRows {
+		blockers.Applications = append(blockers.Applications, domain.DissolveBlockerApplication{
+			ID:        uuid.UUID(row.ID.Bytes),
+			MatchID:   uuid.UUID(row.MatchID.Bytes),
+			MatchName: row.MatchName,
+			Status:    row.Status,
+		})
+	}
+	return blockers, nil
+}
+
 func (r *Repository) ListMembers(ctx context.Context, teamID int64) ([]domain.MemberDetails, error) {
 	rows, err := r.queries.ListTeamMembers(ctx, teamID)
 	if err != nil {

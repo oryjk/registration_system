@@ -229,6 +229,14 @@ func (f *fakeTeamRepository) Delete(context.Context, int64) (bool, error) {
 	return f.found, nil
 }
 
+func (f *fakeTeamRepository) Dissolve(context.Context, int64) (bool, error) {
+	return false, errors.New("not implemented")
+}
+
+func (f *fakeTeamRepository) FindDissolveBlockers(context.Context, int64) (domain.DissolveBlockers, error) {
+	return domain.DissolveBlockers{}, errors.New("not implemented")
+}
+
 func (f *fakeTeamRepository) UpdateJoinPasswordHash(_ context.Context, teamID int64, hash *string) (bool, error) {
 	if f.err != nil {
 		return false, f.err

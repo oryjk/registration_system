@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	authhttp "github.com/oryjk/registration_system/registration_system_go/internal/auth/adapters/http"
 	sharedauth "github.com/oryjk/registration_system/registration_system_go/internal/shared/auth"
 	sharederror "github.com/oryjk/registration_system/registration_system_go/internal/shared/domain"
@@ -77,6 +78,24 @@ func TestAppManageRoutesForwardParamsAndReturnEmptyEnvelope(t *testing.T) {
 		t.Fatalf("delete team not forwarded: %+v", manage)
 	}
 
+	manage.blockers = domain.DissolveBlockers{
+		Matches:      []domain.DissolveBlockerMatch{{ID: uuid.MustParse("11111111-1111-1111-1111-111111111111"), Name: "周五友谊赛", Status: "registering", IsHost: true}},
+		Applications: []domain.DissolveBlockerApplication{{ID: uuid.MustParse("22222222-2222-2222-2222-222222222222"), MatchID: uuid.MustParse("33333333-3333-3333-3333-333333333333"), MatchName: "周六约队", Status: "pending"}},
+	}
+	response = do(http.MethodGet, "/teams/7/dissolve-blockers", "")
+	if response.Code != http.StatusOK || !bytes.Contains(response.Body.Bytes(), []byte(`"code":0`)) {
+		t.Fatalf("dissolve blockers: status=%d body=%s", response.Code, response.Body.String())
+	}
+	if manage.blockersTeamID != 7 {
+		t.Fatalf("dissolve blockers not forwarded: %+v", manage)
+	}
+	body := response.Body.String()
+	for _, fragment := range []string{`"is_host":true`, "周五友谊赛", "周六约队", "pending", "22222222-2222-2222-2222-222222222222"} {
+		if !strings.Contains(body, fragment) {
+			t.Fatalf("dissolve blockers response missing %s: %s", fragment, body)
+		}
+	}
+
 	response = do(http.MethodPut, "/teams/7/join-password", `{"join_password":"  pass123 "}`)
 	if response.Code != http.StatusOK || !bytes.Contains(response.Body.Bytes(), []byte(`"code":0`)) {
 		t.Fatalf("update join password: status=%d body=%s", response.Code, response.Body.String())
@@ -138,6 +157,8 @@ type fakeAppManageCommands struct {
 	joinPassword       string
 	joinPasswordTeamID int64
 	deleteTeamID       int64
+	blockers           domain.DissolveBlockers
+	blockersTeamID     int64
 }
 
 func (f *fakeAppManageCommands) UpdateProfile(_ context.Context, actor sharedauth.Actor, teamID int64, name, description, logoURL *string) error {
@@ -168,4 +189,9 @@ func (f *fakeAppManageCommands) RemoveMember(_ context.Context, actor sharedauth
 func (f *fakeAppManageCommands) DeleteTeam(_ context.Context, actor sharedauth.Actor, teamID int64) error {
 	f.actor, f.deleteTeamID = actor, teamID
 	return f.err
+}
+
+func (f *fakeAppManageCommands) DissolveBlockers(_ context.Context, actor sharedauth.Actor, teamID int64) (domain.DissolveBlockers, error) {
+	f.actor, f.blockersTeamID = actor, teamID
+	return f.blockers, f.err
 }

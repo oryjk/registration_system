@@ -434,3 +434,112 @@ func TestRepositoryUpdatesJoinPasswordHash(t *testing.T) {
 		t.Fatalf("missing team should return found=false, got found=%v err=%v", found, err)
 	}
 }
+
+func TestRepositoryDissolveTeamAndBlockers(t *testing.T) {
+	// 覆盖用户侧解散球队的软删除与引用校验：
+	// 未结束比赛（主/客队）与进行中申请阻塞；已结束/已取消比赛上的引用不阻塞。
+	pool := testsupport.StartPostgres(t)
+	ctx := context.Background()
+	repository := NewRepository(pool)
+
+	var captainID int64
+	if err := pool.QueryRow(ctx, `INSERT INTO users (openid) VALUES ('dissolve-captain') RETURNING id`).Scan(&captainID); err != nil {
+		t.Fatalf("seed captain: %v", err)
+	}
+	var teamID, otherTeamID int64
+	if err := pool.QueryRow(ctx, `INSERT INTO teams (name) VALUES ('解散校验本队') RETURNING id`).Scan(&teamID); err != nil {
+		t.Fatalf("seed team: %v", err)
+	}
+	if err := pool.QueryRow(ctx, `INSERT INTO teams (name) VALUES ('解散校验对方') RETURNING id`).Scan(&otherTeamID); err != nil {
+		t.Fatalf("seed other team: %v", err)
+	}
+
+	seedMatch := func(name, status, opponentState string, host, away int64) (string, error) {
+		var matchID string
+		err := pool.QueryRow(ctx, `
+			INSERT INTO matches (id, name, publication_mode, opponent_state, status, host_team_id, away_team_id,
+				players_per_team, start_time, end_time, location, created_by_user_id)
+			VALUES (gen_random_uuid(), $1, 'online_team', $2, $3, $4, NULLIF($5, 0), 8,
+				NOW() + interval '2 hours', NOW() + interval '4 hours', '解散校验球场', $6)
+			RETURNING id`, name, opponentState, status, host, away, captainID).Scan(&matchID)
+		return matchID, err
+	}
+
+	hostUnfinishedID, err := seedMatch("本队发起报名中", "registering", "recruiting", teamID, 0)
+	if err != nil {
+		t.Fatalf("seed host unfinished match: %v", err)
+	}
+	awayOngoingID, err := seedMatch("客队进行中", "ongoing", "confirmed", otherTeamID, teamID)
+	if err != nil {
+		t.Fatalf("seed away ongoing match: %v", err)
+	}
+	if _, err := seedMatch("已结束赛", "ended", "confirmed", teamID, otherTeamID); err != nil {
+		t.Fatalf("seed ended match: %v", err)
+	}
+	if _, err := seedMatch("已取消赛", "cancelled", "confirmed", otherTeamID, teamID); err != nil {
+		t.Fatalf("seed cancelled match: %v", err)
+	}
+	pendingMatchID, err := seedMatch("待处理约队赛", "registering", "recruiting", otherTeamID, 0)
+	if err != nil {
+		t.Fatalf("seed pending application match: %v", err)
+	}
+	endedRecruitID, err := seedMatch("历史约队赛", "ended", "recruiting", otherTeamID, 0)
+	if err != nil {
+		t.Fatalf("seed ended application match: %v", err)
+	}
+
+	seedApplication := func(matchID string) error {
+		_, err := pool.Exec(ctx, `
+			INSERT INTO match_team_applications (id, match_id, applicant_team_id, introduction, status, created_by_user_id)
+			VALUES (gen_random_uuid(), $1, $2, '约战', 'pending', $3)`, matchID, teamID, captainID)
+		return err
+	}
+	if err := seedApplication(pendingMatchID); err != nil {
+		t.Fatalf("seed pending application: %v", err)
+	}
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO match_team_applications (id, match_id, applicant_team_id, introduction, status, created_by_user_id, selected_at)
+		VALUES (gen_random_uuid(), $1, $2, '历史约战', 'selected', $3, NOW())`, endedRecruitID, teamID, captainID); err != nil {
+		t.Fatalf("seed ended application: %v", err)
+	}
+
+	blockers, err := repository.FindDissolveBlockers(ctx, teamID)
+	if err != nil {
+		t.Fatalf("find blockers: %v", err)
+	}
+	if len(blockers.Matches) != 2 {
+		t.Fatalf("expected 2 blocking matches, got %d: %+v", len(blockers.Matches), blockers.Matches)
+	}
+	isHostByID := map[string]bool{}
+	for _, match := range blockers.Matches {
+		isHostByID[match.ID.String()] = match.IsHost
+	}
+	if !isHostByID[hostUnfinishedID] {
+		t.Fatalf("host unfinished match must block with IsHost=true: %+v", blockers.Matches)
+	}
+	if isHostByID[awayOngoingID] {
+		t.Fatalf("away ongoing match must block with IsHost=false: %+v", blockers.Matches)
+	}
+	if len(blockers.Applications) != 1 || blockers.Applications[0].MatchID.String() != pendingMatchID {
+		t.Fatalf("expected only the pending application to block: %+v", blockers.Applications)
+	}
+
+	// 解散后其他球队的引用不受影响；软删除只改本队状态。
+	if dissolved, err := repository.Dissolve(ctx, teamID); err != nil || !dissolved {
+		t.Fatalf("dissolve active team: dissolved=%v err=%v", dissolved, err)
+	}
+	team, found, err := repository.FindByID(ctx, teamID)
+	if err != nil || !found || team.Status != domain.TeamDissolved {
+		t.Fatalf("team should be dissolved: %+v found=%v err=%v", team, found, err)
+	}
+	if dissolved, err := repository.Dissolve(ctx, teamID); err != nil || dissolved {
+		t.Fatalf("re-dissolve must be rejected: dissolved=%v err=%v", dissolved, err)
+	}
+	otherBlockers, err := repository.FindDissolveBlockers(ctx, otherTeamID)
+	if err != nil {
+		t.Fatalf("other team blockers: %v", err)
+	}
+	if len(otherBlockers.Matches) != 2 || len(otherBlockers.Applications) != 0 {
+		t.Fatalf("other team should only see unfinished matches: %+v", otherBlockers)
+	}
+}

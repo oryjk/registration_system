@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/uuid"
 	sharedauth "github.com/oryjk/registration_system/registration_system_go/internal/shared/auth"
 	sharederror "github.com/oryjk/registration_system/registration_system_go/internal/shared/domain"
 	"github.com/oryjk/registration_system/registration_system_go/internal/team/domain"
@@ -304,18 +305,21 @@ func TestAppDeleteTeamMapsRepositoryResults(t *testing.T) {
 	newRepository := func() *fakeAppManageRepository {
 		return &fakeAppManageRepository{
 			team: domain.Team{ID: 7, Name: "东安联队", Status: domain.TeamActive, CaptainID: &captainID}, teamFound: true,
-			manager:      domain.Member{TeamID: 7, UserID: captainID, Role: domain.RoleCaptain, Status: domain.MemberActive},
-			managerFound: true,
-			deleteFound:  true,
+			manager:       domain.Member{TeamID: 7, UserID: captainID, Role: domain.RoleCaptain, Status: domain.MemberActive},
+			managerFound:  true,
+			dissolveFound: true,
 		}
 	}
 
 	repository := newRepository()
 	if err := NewAppManageService(repository, plainHasher{}).DeleteTeam(context.Background(), managerActor(captainID), 7); err != nil {
-		t.Fatalf("captain should delete team: %v", err)
+		t.Fatalf("captain should dissolve team: %v", err)
 	}
-	if repository.deletedTeamID != 7 {
-		t.Fatalf("delete not forwarded: %d", repository.deletedTeamID)
+	if repository.dissolvedTeamID != 7 {
+		t.Fatalf("dissolve not forwarded: %d", repository.dissolvedTeamID)
+	}
+	if repository.deletedTeamID != 0 {
+		t.Fatalf("user-side dissolve must not hard delete: %d", repository.deletedTeamID)
 	}
 
 	missingTeam := newRepository()
@@ -324,43 +328,92 @@ func TestAppDeleteTeamMapsRepositoryResults(t *testing.T) {
 		t.Fatalf("missing team must be not found, got %v", err)
 	}
 
-	missingOnDelete := newRepository()
-	missingOnDelete.deleteFound = false
-	if err := NewAppManageService(missingOnDelete, plainHasher{}).DeleteTeam(context.Background(), managerActor(captainID), 7); !errors.Is(err, sharederror.ErrNotFound) {
-		t.Fatalf("concurrently deleted team must be not found, got %v", err)
+	dissolvedTeam := newRepository()
+	dissolvedTeam.team.Status = domain.TeamDissolved
+	if err := NewAppManageService(dissolvedTeam, plainHasher{}).DeleteTeam(context.Background(), managerActor(captainID), 7); !errors.Is(err, sharederror.ErrNotFound) {
+		t.Fatalf("dissolved team must be not found for manage actions, got %v", err)
 	}
 
-	conflict := newRepository()
-	conflict.deleteErr = sharederror.ErrConflict
-	err := NewAppManageService(conflict, plainHasher{}).DeleteTeam(context.Background(), managerActor(captainID), 7)
-	if !errors.Is(err, sharederror.ErrConflict) || !strings.Contains(err.Error(), "球队已被比赛或申请使用") {
-		t.Fatalf("FK conflict must map to friendly message, got %v", err)
+	missingOnDissolve := newRepository()
+	missingOnDissolve.dissolveFound = false
+	err := NewAppManageService(missingOnDissolve, plainHasher{}).DeleteTeam(context.Background(), managerActor(captainID), 7)
+	if !errors.Is(err, sharederror.ErrConflict) || !strings.Contains(err.Error(), "球队不存在或已解散") {
+		t.Fatalf("concurrently dissolved team must be conflict, got %v", err)
+	}
+
+	blocked := newRepository()
+	blocked.blockers = domain.DissolveBlockers{Matches: []domain.DissolveBlockerMatch{
+		{ID: uuid.New(), Name: "周五友谊赛", Status: "registering", IsHost: true},
+	}}
+	err = NewAppManageService(blocked, plainHasher{}).DeleteTeam(context.Background(), managerActor(captainID), 7)
+	if !errors.Is(err, sharederror.ErrConflict) || !strings.Contains(err.Error(), "进行中的比赛或约队申请") {
+		t.Fatalf("blocking references must map to conflict, got %v", err)
+	}
+	if blocked.dissolvedTeamID != 0 {
+		t.Fatalf("blocked team must not be dissolved: %d", blocked.dissolvedTeamID)
+	}
+}
+
+func TestAppDissolveBlockers(t *testing.T) {
+	captainID := int64(42)
+	newRepository := func() *fakeAppManageRepository {
+		return &fakeAppManageRepository{
+			team: domain.Team{ID: 7, Name: "东安联队", Status: domain.TeamActive, CaptainID: &captainID}, teamFound: true,
+			manager:      domain.Member{TeamID: 7, UserID: captainID, Role: domain.RoleCaptain, Status: domain.MemberActive},
+			managerFound: true,
+		}
+	}
+
+	repository := newRepository()
+	repository.blockers = domain.DissolveBlockers{
+		Matches:      []domain.DissolveBlockerMatch{{ID: uuid.New(), Name: "周五友谊赛", Status: "registering", IsHost: true}},
+		Applications: []domain.DissolveBlockerApplication{{ID: uuid.New(), MatchID: uuid.New(), MatchName: "周六约队", Status: "pending"}},
+	}
+	blockers, err := NewAppManageService(repository, plainHasher{}).DissolveBlockers(context.Background(), managerActor(captainID), 7)
+	if err != nil {
+		t.Fatalf("captain should query blockers: %v", err)
+	}
+	if len(blockers.Matches) != 1 || !blockers.Matches[0].IsHost {
+		t.Fatalf("blockers not forwarded: %+v", blockers)
+	}
+	if len(blockers.Applications) != 1 || blockers.Applications[0].Status != "pending" {
+		t.Fatalf("applications not forwarded: %+v", blockers)
+	}
+
+	leader := newRepository()
+	leader.manager = domain.Member{TeamID: 7, UserID: 9, Role: domain.RoleLeader, Status: domain.MemberActive}
+	if _, err := NewAppManageService(leader, plainHasher{}).DissolveBlockers(context.Background(), managerActor(9), 7); !errors.Is(err, sharederror.ErrForbidden) {
+		t.Fatalf("non-captain must be forbidden, got %v", err)
 	}
 }
 
 type fakeAppManageRepository struct {
-	team           domain.Team
-	teamFound      bool
-	manager        domain.Member
-	managerFound   bool
-	member         domain.Member
-	memberFound    bool
-	activeUser     bool
-	addErr         error
-	profileUpdated bool
-	updatedProfile domain.Team
-	addedUserID    int64
-	addedRole      domain.Role
-	updatedRole    domain.Role
-	updatedStatus  domain.MemberStatus
-	removedUserID  int64
-	joinHashTeamID int64
-	joinHashValue  *string
-	joinHashFound  bool
-	joinHashErr    error
-	deletedTeamID  int64
-	deleteFound    bool
-	deleteErr      error
+	team            domain.Team
+	teamFound       bool
+	manager         domain.Member
+	managerFound    bool
+	member          domain.Member
+	memberFound     bool
+	activeUser      bool
+	addErr          error
+	profileUpdated  bool
+	updatedProfile  domain.Team
+	addedUserID     int64
+	addedRole       domain.Role
+	updatedRole     domain.Role
+	updatedStatus   domain.MemberStatus
+	removedUserID   int64
+	joinHashTeamID  int64
+	joinHashValue   *string
+	joinHashFound   bool
+	joinHashErr     error
+	deletedTeamID   int64
+	deleteFound     bool
+	deleteErr       error
+	blockers        domain.DissolveBlockers
+	dissolvedTeamID int64
+	dissolveFound   bool
+	dissolveErr     error
 }
 
 func (f *fakeAppManageRepository) FindByID(context.Context, int64) (domain.Team, bool, error) {
@@ -432,4 +485,16 @@ func (f *fakeAppManageRepository) Delete(_ context.Context, teamID int64) (bool,
 	}
 	f.deletedTeamID = teamID
 	return f.deleteFound, nil
+}
+
+func (f *fakeAppManageRepository) Dissolve(_ context.Context, teamID int64) (bool, error) {
+	if f.dissolveErr != nil {
+		return false, f.dissolveErr
+	}
+	f.dissolvedTeamID = teamID
+	return f.dissolveFound, nil
+}
+
+func (f *fakeAppManageRepository) FindDissolveBlockers(context.Context, int64) (domain.DissolveBlockers, error) {
+	return f.blockers, nil
 }
