@@ -95,10 +95,11 @@ function handleTap() {
       </view>
 
       <view class="home-match-bottom">
-        <NeoTag v-if="!isGuestMode && match.myStatus" :tone="match.statusTone" size="lg">
+        <NeoTag v-if="isGuestMode" tone="blue" size="lg">登录后报名</NeoTag>
+        <NeoTag v-else-if="match.myStatus" :tone="match.statusTone" size="lg">
           我的状态：{{ match.myStatus }}
         </NeoTag>
-        <NeoTag v-else tone="blue" size="lg">登录后报名</NeoTag>
+        <NeoTag v-else tone="blue" size="lg">加入球队后可报名</NeoTag>
 
         <NeoButton
           class="home-neo-match-button"
