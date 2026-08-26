@@ -530,6 +530,17 @@ func (r *Repository) UpdateJoinPasswordHash(ctx context.Context, teamID int64, h
 }
 
 // ReactivateMember 把历史 inactive 成员恢复为 active 普通队员。
+func (r *Repository) FindUserNickname(ctx context.Context, userID int64) (string, bool, error) {
+	nickname, err := r.queries.GetUserNickname(ctx, userID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, err
+	}
+	return nickname, true, nil
+}
+
 func (r *Repository) LeaveMember(ctx context.Context, teamID, userID int64) (bool, error) {
 	rowsAffected, err := r.queries.LeaveTeamMember(ctx, teamsqlc.LeaveTeamMemberParams{TeamID: teamID, UserID: userID})
 	return rowsAffected > 0, err

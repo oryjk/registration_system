@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	notificationapplication "github.com/oryjk/registration_system/registration_system_go/internal/notification/application"
 	sharedauth "github.com/oryjk/registration_system/registration_system_go/internal/shared/auth"
 	sharederror "github.com/oryjk/registration_system/registration_system_go/internal/shared/domain"
 	"github.com/oryjk/registration_system/registration_system_go/internal/team/domain"
@@ -14,22 +15,24 @@ import (
 
 // fakeAppTeamSelfRepository 覆盖自服务流程的分支：重名、冻结、成员状态与口令。
 type fakeAppTeamSelfRepository struct {
-	nameExists     bool
-	teamByID       domain.Team
-	teamByIDFound  bool
-	joinHash       *string
-	joinFound      bool
-	member         domain.Member
-	memberFound    bool
-	reactivated    bool
-	addMemberErr   error
-	createdTeam    domain.Team
-	createTeamErr  error
-	createdCaptain int64
-	balanceCents   int64
-	leaveResult    bool
-	leftTeamID     int64
-	leftUserID     int64
+	nameExists          bool
+	teamByID            domain.Team
+	teamByIDFound       bool
+	joinHash            *string
+	joinFound           bool
+	member              domain.Member
+	memberFound         bool
+	reactivated         bool
+	addMemberErr        error
+	createdTeam         domain.Team
+	createTeamErr       error
+	createdCaptain      int64
+	balanceCents        int64
+	leaveResult         bool
+	leftTeamID          int64
+	leftUserID          int64
+	leaverNickname      string
+	leaverNicknameFound bool
 }
 
 func (f *fakeAppTeamSelfRepository) FindByID(context.Context, int64) (domain.Team, bool, error) {
@@ -90,7 +93,7 @@ func TestAppTeamSelfServiceCreateTeam(t *testing.T) {
 	password := "secret99"
 
 	repository := &fakeAppTeamSelfRepository{}
-	team, err := NewAppTeamSelfService(repository, plainHasher{}).CreateTeam(ctx, actor, "  自服务联队  ", nil, &password)
+	team, err := NewAppTeamSelfService(repository, plainHasher{}, &recordingTeamNotifier{}).CreateTeam(ctx, actor, "  自服务联队  ", nil, &password)
 	if err != nil {
 		t.Fatalf("create team: %v", err)
 	}
@@ -99,14 +102,14 @@ func TestAppTeamSelfServiceCreateTeam(t *testing.T) {
 	}
 
 	repository = &fakeAppTeamSelfRepository{nameExists: true}
-	if _, err := NewAppTeamSelfService(repository, plainHasher{}).CreateTeam(ctx, actor, "自服务联队", nil, nil); errorKind(err) != sharederror.KindConflict {
+	if _, err := NewAppTeamSelfService(repository, plainHasher{}, &recordingTeamNotifier{}).CreateTeam(ctx, actor, "自服务联队", nil, nil); errorKind(err) != sharederror.KindConflict {
 		t.Fatalf("duplicate name should conflict, got: %v", err)
 	}
 
 	// 空口令（空串或 nil）不生成哈希。
 	repository = &fakeAppTeamSelfRepository{}
 	empty := ""
-	if _, err := NewAppTeamSelfService(repository, plainHasher{}).CreateTeam(ctx, actor, "无口令球队", nil, &empty); err != nil {
+	if _, err := NewAppTeamSelfService(repository, plainHasher{}, &recordingTeamNotifier{}).CreateTeam(ctx, actor, "无口令球队", nil, &empty); err != nil {
 		t.Fatalf("create without password: %v", err)
 	}
 	if repository.createdTeam.Description != nil {
@@ -152,7 +155,7 @@ func TestAppTeamSelfServiceJoinTeamRules(t *testing.T) {
 		},
 	}
 	for _, tc := range cases {
-		if err := NewAppTeamSelfService(tc.repo, plainHasher{}).JoinTeam(ctx, actor, 7, tc.password); errorKind(err) != tc.wantKind {
+		if err := NewAppTeamSelfService(tc.repo, plainHasher{}, &recordingTeamNotifier{}).JoinTeam(ctx, actor, 7, tc.password); errorKind(err) != tc.wantKind {
 			t.Fatalf("%s: got %v", tc.name, err)
 		}
 	}
@@ -165,13 +168,13 @@ func TestAppTeamSelfServiceJoinTeamRules(t *testing.T) {
 		member: domain.Member{Status: domain.MemberInactive}, memberFound: true,
 		reactivated: true,
 	}
-	if err := NewAppTeamSelfService(repository, plainHasher{}).JoinTeam(ctx, actor, 7, &correct); err != nil {
+	if err := NewAppTeamSelfService(repository, plainHasher{}, &recordingTeamNotifier{}).JoinTeam(ctx, actor, 7, &correct); err != nil {
 		t.Fatalf("rejoin inactive member: %v", err)
 	}
 
 	// 无口令球队：直接 AddMember；撞唯一约束映射为冲突。
 	repository = &fakeAppTeamSelfRepository{teamByID: activeTeam, teamByIDFound: true, joinFound: true, addMemberErr: ports.ErrMemberAlreadyExists}
-	if err := NewAppTeamSelfService(repository, plainHasher{}).JoinTeam(ctx, actor, 7, nil); errorKind(err) != sharederror.KindConflict {
+	if err := NewAppTeamSelfService(repository, plainHasher{}, &recordingTeamNotifier{}).JoinTeam(ctx, actor, 7, nil); errorKind(err) != sharederror.KindConflict {
 		t.Fatalf("member race should conflict, got: %v", err)
 	}
 }
@@ -181,19 +184,19 @@ func TestAppTeamSelfServiceRequiresJoinPassword(t *testing.T) {
 	hash := "hashed:secret99"
 
 	withPassword := &fakeAppTeamSelfRepository{joinHash: &hash, joinFound: true}
-	requires, err := NewAppTeamSelfService(withPassword, plainHasher{}).RequiresJoinPassword(ctx, 7)
+	requires, err := NewAppTeamSelfService(withPassword, plainHasher{}, &recordingTeamNotifier{}).RequiresJoinPassword(ctx, 7)
 	if err != nil || !requires {
 		t.Fatalf("requires password: %v err=%v", requires, err)
 	}
 
 	withoutPassword := &fakeAppTeamSelfRepository{joinFound: true}
-	requires, err = NewAppTeamSelfService(withoutPassword, plainHasher{}).RequiresJoinPassword(ctx, 7)
+	requires, err = NewAppTeamSelfService(withoutPassword, plainHasher{}, &recordingTeamNotifier{}).RequiresJoinPassword(ctx, 7)
 	if err != nil || requires {
 		t.Fatalf("no password required: %v err=%v", requires, err)
 	}
 
 	missing := &fakeAppTeamSelfRepository{}
-	if _, err := NewAppTeamSelfService(missing, plainHasher{}).RequiresJoinPassword(ctx, 7); errorKind(err) != sharederror.KindNotFound {
+	if _, err := NewAppTeamSelfService(missing, plainHasher{}, &recordingTeamNotifier{}).RequiresJoinPassword(ctx, 7); errorKind(err) != sharederror.KindNotFound {
 		t.Fatalf("missing team should 404, got: %v", err)
 	}
 }
@@ -238,7 +241,7 @@ func TestLeaveTeamEnforcesMembershipCaptainAndBalance(t *testing.T) {
 			balanceCents: testCase.balance,
 			leaveResult:  true,
 		}
-		service := NewAppTeamSelfService(repository, nil)
+		service := NewAppTeamSelfService(repository, nil, &recordingTeamNotifier{})
 		err := service.LeaveTeam(context.Background(), actor(testCase.actorID), 7)
 		if testCase.wantErr != "" {
 			if err == nil || !strings.Contains(err.Error(), testCase.wantErr) {
@@ -256,8 +259,67 @@ func TestLeaveTeamEnforcesMembershipCaptainAndBalance(t *testing.T) {
 }
 
 func TestLeaveTeamRejectsMissingTeam(t *testing.T) {
-	service := NewAppTeamSelfService(&fakeAppTeamSelfRepository{}, nil)
+	service := NewAppTeamSelfService(&fakeAppTeamSelfRepository{}, nil, &recordingTeamNotifier{})
 	if err := service.LeaveTeam(context.Background(), sharedauth.Actor{Kind: sharedauth.ActorUser, ID: 9}, 404); err == nil {
 		t.Fatal("球队不存在应报错")
+	}
+}
+
+func (f *fakeAppTeamSelfRepository) FindUserNickname(context.Context, int64) (string, bool, error) {
+	return f.leaverNickname, f.leaverNicknameFound, nil
+}
+
+type recordingTeamNotifier struct {
+	messages []notificationapplication.SystemNotification
+}
+
+func (r *recordingTeamNotifier) Notify(_ context.Context, message notificationapplication.SystemNotification) error {
+	r.messages = append(r.messages, message)
+	return nil
+}
+
+func TestLeaveTeamNotifiesCaptain(t *testing.T) {
+	captainID := int64(11)
+	team := domain.Team{ID: 7, Name: "东安联队", CaptainID: &captainID, Status: domain.TeamActive}
+	repository := &fakeAppTeamSelfRepository{
+		teamByID: team, teamByIDFound: true,
+		member:      domain.Member{TeamID: 7, UserID: 9, Role: domain.RoleMember, Status: domain.MemberActive},
+		memberFound: true, leaveResult: true,
+		leaverNickname: "阿东", leaverNicknameFound: true,
+	}
+	notifier := &recordingTeamNotifier{}
+	service := NewAppTeamSelfService(repository, nil, notifier)
+
+	if err := service.LeaveTeam(context.Background(), sharedauth.Actor{Kind: sharedauth.ActorUser, ID: 9}, 7); err != nil {
+		t.Fatalf("退出应成功: %v", err)
+	}
+	if len(notifier.messages) != 1 {
+		t.Fatalf("队长应收到 1 条通知，得到 %d", len(notifier.messages))
+	}
+	message := notifier.messages[0]
+	if message.UserID != captainID || message.Kind != "team_member_left" || message.RelatedType != "team" || message.RelatedID != "7" {
+		t.Fatalf("通知字段不符: %+v", message)
+	}
+	if !strings.Contains(message.Content, "阿东") || !strings.Contains(message.Content, "东安联队") {
+		t.Fatalf("通知内容应含退出者与球队名: %q", message.Content)
+	}
+}
+
+func TestLeaveTeamSkipsNotificationWhenBlocked(t *testing.T) {
+	captainID := int64(11)
+	team := domain.Team{ID: 7, Name: "东安联队", CaptainID: &captainID, Status: domain.TeamActive}
+	repository := &fakeAppTeamSelfRepository{
+		teamByID: team, teamByIDFound: true,
+		member:      domain.Member{TeamID: 7, UserID: 9, Role: domain.RoleMember, Status: domain.MemberActive},
+		memberFound: true, balanceCents: 100,
+	}
+	notifier := &recordingTeamNotifier{}
+	service := NewAppTeamSelfService(repository, nil, notifier)
+
+	if err := service.LeaveTeam(context.Background(), sharedauth.Actor{Kind: sharedauth.ActorUser, ID: 9}, 7); err == nil {
+		t.Fatal("余额不为零应报错")
+	}
+	if len(notifier.messages) != 0 {
+		t.Fatalf("退出被拦截时不应发通知，得到 %d 条", len(notifier.messages))
 	}
 }

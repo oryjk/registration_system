@@ -16,6 +16,8 @@ function toNotificationKindLabel(kind: string): string {
       return "队费充值到账";
     case "match_captain_message":
       return "球队留言";
+    case "team_member_left":
+      return "成员退出";
     default:
       return "系统通知";
   }
@@ -33,6 +35,9 @@ function toNotificationRelatedPath(notification: BackendNotification): string {
   }
   if (notification.related_type === "captain_message" && notification.related_id) {
     return `/pages/messages/thread/index?id=${notification.related_id}`;
+  }
+  if (notification.related_type === "team" && notification.related_id) {
+    return `/pages/teams/detail?id=${notification.related_id}`;
   }
   return "";
 }

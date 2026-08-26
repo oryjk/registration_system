@@ -3,8 +3,12 @@ package application
 import (
 	"context"
 	"errors"
+	"fmt"
+	"log"
+	"strconv"
 	"strings"
 
+	notificationapplication "github.com/oryjk/registration_system/registration_system_go/internal/notification/application"
 	sharedauth "github.com/oryjk/registration_system/registration_system_go/internal/shared/auth"
 	sharederror "github.com/oryjk/registration_system/registration_system_go/internal/shared/domain"
 	"github.com/oryjk/registration_system/registration_system_go/internal/team/domain"
@@ -14,12 +18,18 @@ import (
 // AppTeamSelfService 承载小程序无球队用户的自服务：创建球队、加入球队、搜索球队与入队口令查询。
 // 行为口径对齐旧 Rust 后端（join_team / create_team / search_teams / password-info）。
 type AppTeamSelfService struct {
-	repository ports.AppTeamSelfRepository
-	hasher     ports.TeamPasswordHasher
+	repository    ports.AppTeamSelfRepository
+	hasher        ports.TeamPasswordHasher
+	notifications TeamNotificationSink
 }
 
-func NewAppTeamSelfService(repository ports.AppTeamSelfRepository, hasher ports.TeamPasswordHasher) AppTeamSelfService {
-	return AppTeamSelfService{repository: repository, hasher: hasher}
+func NewAppTeamSelfService(repository ports.AppTeamSelfRepository, hasher ports.TeamPasswordHasher, notifications TeamNotificationSink) AppTeamSelfService {
+	return AppTeamSelfService{repository: repository, hasher: hasher, notifications: notifications}
+}
+
+// TeamNotificationSink 站内通知出口，由 notification 模块实现；发送失败不影响退出主流程。
+type TeamNotificationSink interface {
+	Notify(ctx context.Context, message notificationapplication.SystemNotification) error
 }
 
 // CreateTeam 用户创建球队：创建者自动成为队长（captain 成员 + teams.captain_id）。
@@ -154,7 +164,28 @@ func (s AppTeamSelfService) LeaveTeam(ctx context.Context, actor sharedauth.Acto
 	if !left {
 		return sharederror.New(sharederror.KindConflict, "你已经不是该球队成员")
 	}
+	s.notifyCaptainMemberLeft(ctx, team, actor.ID)
 	return nil
+}
+
+// notifyCaptainMemberLeft 退出成功后通知队长（best-effort，失败仅记日志）。
+func (s AppTeamSelfService) notifyCaptainMemberLeft(ctx context.Context, team domain.Team, leaverID int64) {
+	if team.CaptainID == nil || *team.CaptainID == leaverID {
+		return
+	}
+	nickname, found, err := s.repository.FindUserNickname(ctx, leaverID)
+	if err != nil || !found {
+		log.Printf("team: 查询退出成员昵称失败 user=%d found=%v: %v", leaverID, found, err)
+		nickname = fmt.Sprintf("用户%d", leaverID)
+	}
+	message := notificationapplication.SystemNotification{
+		UserID: *team.CaptainID, Kind: "team_member_left", Title: "成员退出球队",
+		Content:     fmt.Sprintf("「%s」退出了球队「%s」", nickname, team.Name),
+		RelatedType: "team", RelatedID: strconv.FormatInt(team.ID, 10),
+	}
+	if err := s.notifications.Notify(ctx, message); err != nil {
+		log.Printf("team: 发送成员退出通知失败 captain=%d: %v", *team.CaptainID, err)
+	}
 }
 
 // SearchTeams 按关键字搜索可加入的球队（仅 active），附当前成员数。

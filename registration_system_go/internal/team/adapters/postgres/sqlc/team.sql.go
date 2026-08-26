@@ -497,6 +497,17 @@ func (q *Queries) GetTeamMembershipState(ctx context.Context, arg GetTeamMembers
 	return i, err
 }
 
+const getUserNickname = `-- name: GetUserNickname :one
+SELECT nickname FROM users WHERE id = $1
+`
+
+func (q *Queries) GetUserNickname(ctx context.Context, id int64) (string, error) {
+	row := q.db.QueryRow(ctx, getUserNickname, id)
+	var nickname string
+	err := row.Scan(&nickname)
+	return nickname, err
+}
+
 const leaveTeamMember = `-- name: LeaveTeamMember :execrows
 UPDATE team_members
 SET status  = 'left',

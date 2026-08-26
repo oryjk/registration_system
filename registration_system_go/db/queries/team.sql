@@ -412,3 +412,6 @@ SET status  = 'left',
 WHERE team_id = $1
   AND user_id = $2
   AND status = 'active';
+
+-- name: GetUserNickname :one
+SELECT nickname FROM users WHERE id = $1;

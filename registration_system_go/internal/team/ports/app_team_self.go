@@ -38,4 +38,6 @@ type AppTeamSelfRepository interface {
 	GetTeamMembershipState(context.Context, int64, int64) (AppMembershipState, error)
 	// LeaveMember 成员自助退出（软删除 status -> left），返回是否生效。
 	LeaveMember(context.Context, int64, int64) (bool, error)
+	// FindUserNickname 查用户昵称，用于退出球队时给队长的站内通知文案。
+	FindUserNickname(context.Context, int64) (string, bool, error)
 }
