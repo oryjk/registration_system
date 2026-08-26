@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -35,6 +36,7 @@ import (
 	systempostgres "github.com/oryjk/registration_system/registration_system_go/internal/system/adapters/postgres"
 	systemapplication "github.com/oryjk/registration_system/registration_system_go/internal/system/application"
 	teamhttp "github.com/oryjk/registration_system/registration_system_go/internal/team/adapters/http"
+	"github.com/oryjk/registration_system/registration_system_go/internal/team/adapters/logostore"
 	teampassword "github.com/oryjk/registration_system/registration_system_go/internal/team/adapters/password"
 	teampostgres "github.com/oryjk/registration_system/registration_system_go/internal/team/adapters/postgres"
 	teamapplication "github.com/oryjk/registration_system/registration_system_go/internal/team/application"
@@ -99,7 +101,7 @@ func BuildDependencies(ctx context.Context, config Config) (Dependencies, func()
 	appTeamService := teamapplication.NewAppQueryService(teamRepository)
 	appTeamAttendance := teamapplication.NewAppAttendanceService(teamRepository, teamService)
 	appTeamHandler := teamhttp.NewAppHandler(appTeamService, appTeamAttendance)
-	appTeamManageService := teamapplication.NewAppManageService(teamRepository, teampassword.Bcrypt{})
+	appTeamManageService := teamapplication.NewAppManageService(teamRepository, teampassword.Bcrypt{}, buildTeamLogoStore(config))
 	appTeamManageHandler := teamhttp.NewAppManageHandler(appTeamManageService)
 
 	matchRepository := matchpostgres.NewRepository(pool)
@@ -170,4 +172,18 @@ func BuildDependencies(ctx context.Context, config Config) (Dependencies, func()
 		TeamFunds:     teamFundHandler, Notifications: notificationHandler,
 		UploadDir: config.UploadDir,
 	}, closePool, nil
+}
+
+// buildTeamLogoStore 按 UPLOAD_STORAGE_BACKEND 选择球队 Logo 存储：minio 或本地目录。
+func buildTeamLogoStore(config Config) teamapplication.TeamLogoStore {
+	if strings.EqualFold(strings.TrimSpace(config.UploadStorage), "minio") {
+		store, err := logostore.NewMinio(config.UploadMinioEndpoint, config.UploadMinioAccessKey,
+			config.UploadMinioSecretKey, config.UploadMinioBucket, config.UploadMinioRegion,
+			config.UploadMinioPublicURLPrefix)
+		if err != nil {
+			panic(fmt.Errorf("初始化 MinIO Logo 存储: %w", err))
+		}
+		return store
+	}
+	return logostore.NewLocal(config.UploadDir, config.PublicBaseURL)
 }

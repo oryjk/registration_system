@@ -1,4 +1,5 @@
-import { computed, reactive, type ComputedRef, type Ref } from "vue";
+import { computed, reactive, ref, type ComputedRef, type Ref } from "vue";
+import { uploadTeamLogo } from "@/api/team";
 import type { TeamProfileViewModel } from "@/types/viewModels";
 import { saveTeamProfile } from "./teamManageActions";
 
@@ -43,10 +44,41 @@ export function useTeamProfile({ currentTeam, submitting, refreshSessionContext 
     }
   }
 
+  const isUploadingLogo = ref(false);
+
+  // 选择图片并上传；后端保存后即写回球队资料，这里同步刷新会话与表单。
+  function handleUploadTeamLogo() {
+    if (!currentTeam.value || isUploadingLogo.value) return;
+    uni.chooseImage({
+      count: 1,
+      sizeType: ["compressed"],
+      success: (res) => {
+        const filePath = res.tempFilePaths?.[0];
+        if (!filePath) return;
+        void (async () => {
+          isUploadingLogo.value = true;
+          try {
+            const logoUrl = await uploadTeamLogo(currentTeam.value!.id, filePath);
+            teamProfileForm.logoUrl = logoUrl;
+            await refreshSessionContext();
+            syncTeamProfileForm();
+            uni.showToast({ title: "Logo 已更新", icon: "none" });
+          } catch (error) {
+            uni.showToast({ title: error instanceof Error ? error.message : "Logo 上传失败", icon: "none" });
+          } finally {
+            isUploadingLogo.value = false;
+          }
+        })();
+      },
+    });
+  }
+
   return {
     teamProfileForm,
     canUpdateTeamProfile,
+    isUploadingLogo,
     syncTeamProfileForm,
     handleUpdateTeamProfile,
+    handleUploadTeamLogo,
   };
 }

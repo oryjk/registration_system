@@ -28,6 +28,7 @@ const {
   pageStyle,
   modeOptions,
   teamProfileForm,
+  isUploadingLogo,
   canUpdateTeamProfile,
   joinPasswordForm,
   requiresPassword,
@@ -70,6 +71,7 @@ const {
   goCreateTeam,
   goJoinTeam,
   handleUpdateTeamProfile,
+  handleUploadTeamLogo,
   handleUpdateJoinPassword,
   handleClearJoinPassword,
   joinPasswordDialogVisible,
@@ -136,7 +138,9 @@ const metaPageStyle = computed(() =>
             :form="teamProfileForm"
             :can-update="canUpdateTeamProfile"
             :submitting="submitting"
+            :uploading-logo="isUploadingLogo"
             @submit="handleUpdateTeamProfile"
+            @upload-logo="handleUploadTeamLogo"
           />
 
           <TeamJoinPasswordPanel

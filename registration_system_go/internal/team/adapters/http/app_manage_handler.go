@@ -2,7 +2,9 @@ package teamhttp
 
 import (
 	"context"
+	"io"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	sharedhttpapi "github.com/oryjk/registration_system/registration_system_go/internal/shared/adapters/httpapi"
@@ -23,6 +25,8 @@ type AppTeamManageCommands interface {
 	DeleteTeam(context.Context, sharedauth.Actor, int64) error
 	// DissolveBlockers 查询阻止球队解散的进行中引用，供小程序展示处理入口。
 	DissolveBlockers(context.Context, sharedauth.Actor, int64) (domain.DissolveBlockers, error)
+	// UploadTeamLogo 上传球队 Logo 并写回球队资料，返回新 URL。
+	UploadTeamLogo(context.Context, sharedauth.Actor, int64, string, string, []byte) (string, error)
 }
 
 type AppManageHandler struct {
@@ -40,6 +44,7 @@ func (h *AppManageHandler) RegisterRoutes(group *gin.RouterGroup) {
 	group.PATCH("/teams/:id/members/:user_id", h.UpdateMember)
 	group.DELETE("/teams/:id/members/:user_id", h.RemoveMember)
 	group.GET("/teams/:id/dissolve-blockers", h.DissolveBlockers)
+	group.POST("/teams/:id/logo", h.UploadLogo)
 	group.DELETE("/teams/:id", h.DeleteTeam)
 }
 
@@ -229,4 +234,68 @@ func appActorTeamAndUserID(c *gin.Context) (sharedauth.Actor, int64, int64, bool
 		return sharedauth.Actor{}, 0, 0, false
 	}
 	return actor, teamID, userID, true
+}
+
+// UploadLogo POST /teams/:id/logo：队长/领队上传球队 Logo（multipart 字段 file，
+// ≤1MB，jpg/png/webp），保存后写回球队资料并返回新 URL。
+func (h *AppManageHandler) UploadLogo(c *gin.Context) {
+	actor, teamID, ok := appActorAndTeamID(c)
+	if !ok {
+		return
+	}
+	fileHeader, err := c.FormFile("file")
+	if err != nil {
+		sharedhttpapi.WriteError(c, sharederror.New(sharederror.KindValidation, "请选择要上传的 Logo 文件"))
+		return
+	}
+	const maxLogoBytes = 1024 * 1024
+	if fileHeader.Size <= 0 || fileHeader.Size > maxLogoBytes {
+		sharedhttpapi.WriteError(c, sharederror.New(sharederror.KindValidation, "球队 Logo 不能超过 1MB"))
+		return
+	}
+	extension, ok := detectLogoExtension(fileHeader.Header.Get("Content-Type"), fileHeader.Filename)
+	if !ok {
+		sharedhttpapi.WriteError(c, sharederror.New(sharederror.KindValidation, "球队 Logo 仅支持 jpg/png/webp"))
+		return
+	}
+	file, err := fileHeader.Open()
+	if err != nil {
+		sharedhttpapi.WriteError(c, sharederror.Wrap(sharederror.KindInternal, "读取 Logo 文件失败", err))
+		return
+	}
+	defer file.Close()
+	data, err := io.ReadAll(io.LimitReader(file, maxLogoBytes+1))
+	if err != nil || len(data) == 0 || len(data) > maxLogoBytes {
+		sharedhttpapi.WriteError(c, sharederror.New(sharederror.KindValidation, "球队 Logo 不能超过 1MB"))
+		return
+	}
+	contentType := fileHeader.Header.Get("Content-Type")
+	logoURL, err := h.manage.UploadTeamLogo(c.Request.Context(), actor, teamID, extension, contentType, data)
+	if err != nil {
+		sharedhttpapi.WriteError(c, err)
+		return
+	}
+	sharedhttpapi.WriteSuccess(c, gin.H{"logo_url": logoURL})
+}
+
+// detectLogoExtension 按 Content-Type 优先、文件名兜底识别图片扩展名。
+func detectLogoExtension(contentType, filename string) (string, bool) {
+	switch contentType {
+	case "image/jpeg", "image/jpg":
+		return "jpg", true
+	case "image/png":
+		return "png", true
+	case "image/webp":
+		return "webp", true
+	}
+	lower := strings.ToLower(filename)
+	switch {
+	case strings.HasSuffix(lower, ".jpg"), strings.HasSuffix(lower, ".jpeg"):
+		return "jpg", true
+	case strings.HasSuffix(lower, ".png"):
+		return "png", true
+	case strings.HasSuffix(lower, ".webp"):
+		return "webp", true
+	}
+	return "", false
 }

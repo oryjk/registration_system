@@ -16,10 +16,35 @@ import (
 type AppManageService struct {
 	repository ports.AppManageRepository
 	hasher     ports.TeamPasswordHasher
+	// logos 保存球队 Logo（本地目录或 MinIO）；为 nil 表示上传未配置。
+	logos TeamLogoStore
 }
 
-func NewAppManageService(repository ports.AppManageRepository, hasher ports.TeamPasswordHasher) AppManageService {
-	return AppManageService{repository: repository, hasher: hasher}
+func NewAppManageService(repository ports.AppManageRepository, hasher ports.TeamPasswordHasher, logos TeamLogoStore) AppManageService {
+	return AppManageService{repository: repository, hasher: hasher, logos: logos}
+}
+
+// TeamLogoStore 保存球队 Logo 并返回对外 URL，由 adapters/logostore 实现。
+type TeamLogoStore interface {
+	SaveTeamLogo(ctx context.Context, teamID int64, extension, contentType string, data []byte) (string, error)
+}
+
+// UploadTeamLogo 队长/领队上传球队 Logo：保存文件后把 URL 写回球队资料。
+func (s AppManageService) UploadTeamLogo(ctx context.Context, actor sharedauth.Actor, teamID int64, extension, contentType string, data []byte) (string, error) {
+	if _, err := s.authorizeManager(ctx, actor, teamID); err != nil {
+		return "", err
+	}
+	if s.logos == nil {
+		return "", sharederror.New(sharederror.KindInternal, "Logo 上传未配置")
+	}
+	url, err := s.logos.SaveTeamLogo(ctx, teamID, extension, contentType, data)
+	if err != nil {
+		return "", sharederror.Wrap(sharederror.KindInternal, "保存球队 Logo 失败", err)
+	}
+	if err := s.UpdateProfile(ctx, actor, teamID, nil, nil, &url); err != nil {
+		return "", err
+	}
+	return url, nil
 }
 
 // UpdateJoinPassword 更新入队口令：joinPassword trim 后非空=设置/替换，空串=清除（开放加入）。

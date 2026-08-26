@@ -24,7 +24,7 @@ func TestCaptainAndLeaderCanManageTeam(t *testing.T) {
 			manager:      domain.Member{TeamID: 7, UserID: 42, Role: role, Status: domain.MemberActive},
 			managerFound: true,
 		}
-		service := NewAppManageService(repository, plainHasher{})
+		service := NewAppManageService(repository, plainHasher{}, nil)
 		name := "  东安联队二队  "
 		if err := service.UpdateProfile(context.Background(), managerActor(42), 7, &name, nil, nil); err != nil {
 			t.Fatalf("role %s should manage team: %v", role, err)
@@ -54,7 +54,7 @@ func TestNonManagersCannotManageTeam(t *testing.T) {
 				team: domain.Team{ID: 7, Name: "东安联队", Status: domain.TeamActive}, teamFound: true,
 				manager: test.manager, managerFound: test.managerFound,
 			}
-			service := NewAppManageService(repository, plainHasher{})
+			service := NewAppManageService(repository, plainHasher{}, nil)
 			name := "新名字"
 			if err := service.UpdateProfile(context.Background(), test.actor, 7, &name, nil, nil); !errors.Is(err, sharederror.ErrForbidden) {
 				t.Fatalf("update profile: expected forbidden, got %v", err)
@@ -79,7 +79,7 @@ func TestUpdateProfileValidatesNameAndClearsOptionalFields(t *testing.T) {
 			manager: domain.Member{TeamID: 7, UserID: 42, Role: domain.RoleCaptain, Status: domain.MemberActive}, managerFound: true,
 		}
 	}
-	service := NewAppManageService(newRepository(), plainHasher{})
+	service := NewAppManageService(newRepository(), plainHasher{}, nil)
 
 	empty := ""
 	if err := service.UpdateProfile(context.Background(), managerActor(42), 7, &empty, nil, nil); !errors.Is(err, sharederror.ErrValidation) {
@@ -95,7 +95,7 @@ func TestUpdateProfileValidatesNameAndClearsOptionalFields(t *testing.T) {
 	}
 
 	repository := newRepository()
-	service = NewAppManageService(repository, plainHasher{})
+	service = NewAppManageService(repository, plainHasher{}, nil)
 	description := "  "
 	logo := ""
 	if err := service.UpdateProfile(context.Background(), managerActor(42), 7, nil, &description, &logo); err != nil {
@@ -122,7 +122,7 @@ func TestAppAddMemberRules(t *testing.T) {
 	}
 
 	repository := newRepository()
-	service := NewAppManageService(repository, plainHasher{})
+	service := NewAppManageService(repository, plainHasher{}, nil)
 	if err := service.AddMember(context.Background(), managerActor(42), 7, 50, domain.RoleViceCaptain); err != nil {
 		t.Fatalf("add member: %v", err)
 	}
@@ -139,14 +139,14 @@ func TestAppAddMemberRules(t *testing.T) {
 
 	inactiveUserRepository := newRepository()
 	inactiveUserRepository.activeUser = false
-	service = NewAppManageService(inactiveUserRepository, plainHasher{})
+	service = NewAppManageService(inactiveUserRepository, plainHasher{}, nil)
 	if err := service.AddMember(context.Background(), managerActor(42), 7, 50, domain.RoleMember); !errors.Is(err, sharederror.ErrNotFound) {
 		t.Fatalf("inactive user must be rejected, got %v", err)
 	}
 
 	existingRepository := newRepository()
 	existingRepository.addErr = ports.ErrMemberAlreadyExists
-	service = NewAppManageService(existingRepository, plainHasher{})
+	service = NewAppManageService(existingRepository, plainHasher{}, nil)
 	if err := service.AddMember(context.Background(), managerActor(42), 7, 50, domain.RoleMember); !errors.Is(err, sharederror.ErrConflict) {
 		t.Fatalf("existing member must conflict, got %v", err)
 	}
@@ -165,7 +165,7 @@ func TestAppUpdateMemberRules(t *testing.T) {
 	}
 
 	repository := newRepository()
-	service := NewAppManageService(repository, plainHasher{})
+	service := NewAppManageService(repository, plainHasher{}, nil)
 	leader := domain.RoleLeader
 	if err := service.UpdateMember(context.Background(), managerActor(captainID), 7, 50, &leader, nil); err != nil {
 		t.Fatalf("update role only: %v", err)
@@ -194,7 +194,7 @@ func TestAppUpdateMemberRules(t *testing.T) {
 
 	inactive := domain.MemberInactive
 	repository = newRepository()
-	service = NewAppManageService(repository, plainHasher{})
+	service = NewAppManageService(repository, plainHasher{}, nil)
 	if err := service.UpdateMember(context.Background(), managerActor(captainID), 7, 50, nil, &inactive); err != nil {
 		t.Fatalf("update status only: %v", err)
 	}
@@ -210,7 +210,7 @@ func TestAppRemoveMemberRules(t *testing.T) {
 		manager:      domain.Member{TeamID: 7, UserID: captainID, Role: domain.RoleCaptain, Status: domain.MemberActive},
 		managerFound: true,
 	}
-	service := NewAppManageService(repository, plainHasher{})
+	service := NewAppManageService(repository, plainHasher{}, nil)
 
 	if err := service.RemoveMember(context.Background(), managerActor(captainID), 7, captainID); !errors.Is(err, sharederror.ErrConflict) {
 		t.Fatalf("captain himself must conflict, got %v", err)
@@ -237,7 +237,7 @@ func TestAppUpdateJoinPasswordRules(t *testing.T) {
 	}
 
 	repository := newRepository()
-	service := NewAppManageService(repository, plainHasher{})
+	service := NewAppManageService(repository, plainHasher{}, nil)
 	if err := service.UpdateJoinPassword(context.Background(), managerActor(42), 7, "  pass123 "); err != nil {
 		t.Fatalf("set password: %v", err)
 	}
@@ -246,7 +246,7 @@ func TestAppUpdateJoinPasswordRules(t *testing.T) {
 	}
 
 	repository = newRepository()
-	service = NewAppManageService(repository, plainHasher{})
+	service = NewAppManageService(repository, plainHasher{}, nil)
 	if err := service.UpdateJoinPassword(context.Background(), managerActor(42), 7, "   "); err != nil {
 		t.Fatalf("clear password: %v", err)
 	}
@@ -256,13 +256,13 @@ func TestAppUpdateJoinPasswordRules(t *testing.T) {
 
 	missingRepository := newRepository()
 	missingRepository.joinHashFound = false
-	if err := NewAppManageService(missingRepository, plainHasher{}).UpdateJoinPassword(context.Background(), managerActor(42), 7, "pass123"); !errors.Is(err, sharederror.ErrNotFound) {
+	if err := NewAppManageService(missingRepository, plainHasher{}, nil).UpdateJoinPassword(context.Background(), managerActor(42), 7, "pass123"); !errors.Is(err, sharederror.ErrNotFound) {
 		t.Fatalf("missing team must be not found, got %v", err)
 	}
 
 	forbiddenRepository := newRepository()
 	forbiddenRepository.managerFound = false
-	if err := NewAppManageService(forbiddenRepository, plainHasher{}).UpdateJoinPassword(context.Background(), managerActor(42), 7, "pass123"); !errors.Is(err, sharederror.ErrForbidden) {
+	if err := NewAppManageService(forbiddenRepository, plainHasher{}, nil).UpdateJoinPassword(context.Background(), managerActor(42), 7, "pass123"); !errors.Is(err, sharederror.ErrForbidden) {
 		t.Fatalf("non-manager must be forbidden, got %v", err)
 	}
 	if forbiddenRepository.joinHashTeamID != 0 {
@@ -290,7 +290,7 @@ func TestAppDeleteTeamRequiresCaptain(t *testing.T) {
 				manager: test.manager, managerFound: test.managerFound,
 				deleteFound: true,
 			}
-			if err := NewAppManageService(repository, plainHasher{}).DeleteTeam(context.Background(), test.actor, 7); !errors.Is(err, sharederror.ErrForbidden) {
+			if err := NewAppManageService(repository, plainHasher{}, nil).DeleteTeam(context.Background(), test.actor, 7); !errors.Is(err, sharederror.ErrForbidden) {
 				t.Fatalf("expected forbidden, got %v", err)
 			}
 			if repository.deletedTeamID != 0 {
@@ -312,7 +312,7 @@ func TestAppDeleteTeamMapsRepositoryResults(t *testing.T) {
 	}
 
 	repository := newRepository()
-	if err := NewAppManageService(repository, plainHasher{}).DeleteTeam(context.Background(), managerActor(captainID), 7); err != nil {
+	if err := NewAppManageService(repository, plainHasher{}, nil).DeleteTeam(context.Background(), managerActor(captainID), 7); err != nil {
 		t.Fatalf("captain should dissolve team: %v", err)
 	}
 	if repository.dissolvedTeamID != 7 {
@@ -324,19 +324,19 @@ func TestAppDeleteTeamMapsRepositoryResults(t *testing.T) {
 
 	missingTeam := newRepository()
 	missingTeam.teamFound = false
-	if err := NewAppManageService(missingTeam, plainHasher{}).DeleteTeam(context.Background(), managerActor(captainID), 7); !errors.Is(err, sharederror.ErrNotFound) {
+	if err := NewAppManageService(missingTeam, plainHasher{}, nil).DeleteTeam(context.Background(), managerActor(captainID), 7); !errors.Is(err, sharederror.ErrNotFound) {
 		t.Fatalf("missing team must be not found, got %v", err)
 	}
 
 	dissolvedTeam := newRepository()
 	dissolvedTeam.team.Status = domain.TeamDissolved
-	if err := NewAppManageService(dissolvedTeam, plainHasher{}).DeleteTeam(context.Background(), managerActor(captainID), 7); !errors.Is(err, sharederror.ErrNotFound) {
+	if err := NewAppManageService(dissolvedTeam, plainHasher{}, nil).DeleteTeam(context.Background(), managerActor(captainID), 7); !errors.Is(err, sharederror.ErrNotFound) {
 		t.Fatalf("dissolved team must be not found for manage actions, got %v", err)
 	}
 
 	missingOnDissolve := newRepository()
 	missingOnDissolve.dissolveFound = false
-	err := NewAppManageService(missingOnDissolve, plainHasher{}).DeleteTeam(context.Background(), managerActor(captainID), 7)
+	err := NewAppManageService(missingOnDissolve, plainHasher{}, nil).DeleteTeam(context.Background(), managerActor(captainID), 7)
 	if !errors.Is(err, sharederror.ErrConflict) || !strings.Contains(err.Error(), "球队不存在或已解散") {
 		t.Fatalf("concurrently dissolved team must be conflict, got %v", err)
 	}
@@ -345,7 +345,7 @@ func TestAppDeleteTeamMapsRepositoryResults(t *testing.T) {
 	blocked.blockers = domain.DissolveBlockers{Matches: []domain.DissolveBlockerMatch{
 		{ID: uuid.New(), Name: "周五友谊赛", Status: "registering", IsHost: true},
 	}}
-	err = NewAppManageService(blocked, plainHasher{}).DeleteTeam(context.Background(), managerActor(captainID), 7)
+	err = NewAppManageService(blocked, plainHasher{}, nil).DeleteTeam(context.Background(), managerActor(captainID), 7)
 	if !errors.Is(err, sharederror.ErrConflict) || !strings.Contains(err.Error(), "进行中的比赛或约队申请") {
 		t.Fatalf("blocking references must map to conflict, got %v", err)
 	}
@@ -369,7 +369,7 @@ func TestAppDissolveBlockers(t *testing.T) {
 		Matches:      []domain.DissolveBlockerMatch{{ID: uuid.New(), Name: "周五友谊赛", Status: "registering", IsHost: true}},
 		Applications: []domain.DissolveBlockerApplication{{ID: uuid.New(), MatchID: uuid.New(), MatchName: "周六约队", Status: "pending"}},
 	}
-	blockers, err := NewAppManageService(repository, plainHasher{}).DissolveBlockers(context.Background(), managerActor(captainID), 7)
+	blockers, err := NewAppManageService(repository, plainHasher{}, nil).DissolveBlockers(context.Background(), managerActor(captainID), 7)
 	if err != nil {
 		t.Fatalf("captain should query blockers: %v", err)
 	}
@@ -382,7 +382,7 @@ func TestAppDissolveBlockers(t *testing.T) {
 
 	leader := newRepository()
 	leader.manager = domain.Member{TeamID: 7, UserID: 9, Role: domain.RoleLeader, Status: domain.MemberActive}
-	if _, err := NewAppManageService(leader, plainHasher{}).DissolveBlockers(context.Background(), managerActor(9), 7); !errors.Is(err, sharederror.ErrForbidden) {
+	if _, err := NewAppManageService(leader, plainHasher{}, nil).DissolveBlockers(context.Background(), managerActor(9), 7); !errors.Is(err, sharederror.ErrForbidden) {
 		t.Fatalf("non-captain must be forbidden, got %v", err)
 	}
 }
@@ -497,4 +497,60 @@ func (f *fakeAppManageRepository) Dissolve(_ context.Context, teamID int64) (boo
 
 func (f *fakeAppManageRepository) FindDissolveBlockers(context.Context, int64) (domain.DissolveBlockers, error) {
 	return f.blockers, nil
+}
+
+type recordingLogoStore struct {
+	savedTeamID int64
+	savedExt    string
+}
+
+func (r *recordingLogoStore) SaveTeamLogo(_ context.Context, teamID int64, extension, _ string, _ []byte) (string, error) {
+	r.savedTeamID, r.savedExt = teamID, extension
+	return "https://cdn.example.com/team-logos/logo.png", nil
+}
+
+func newLogoTestRepository(role domain.Role, userID int64) *fakeAppManageRepository {
+	return &fakeAppManageRepository{
+		team: domain.Team{ID: 7, Name: "东安联队", Status: domain.TeamActive}, teamFound: true,
+		manager:      domain.Member{TeamID: 7, UserID: userID, Role: role, Status: domain.MemberActive},
+		managerFound: true,
+	}
+}
+
+func TestUploadTeamLogoRequiresManager(t *testing.T) {
+	repository := newLogoTestRepository(domain.RoleMember, 9)
+	service := NewAppManageService(repository, plainHasher{}, &recordingLogoStore{})
+
+	if _, err := service.UploadTeamLogo(context.Background(), managerActor(9), 7, "png", "image/png", []byte("x")); !errors.Is(err, sharederror.ErrForbidden) {
+		t.Fatalf("普通队员上传 Logo 应被拒绝，得到 %v", err)
+	}
+}
+
+func TestUploadTeamLogoSavesAndUpdatesProfile(t *testing.T) {
+	repository := newLogoTestRepository(domain.RoleLeader, 9)
+	store := &recordingLogoStore{}
+	service := NewAppManageService(repository, plainHasher{}, store)
+
+	url, err := service.UploadTeamLogo(context.Background(), managerActor(9), 7, "png", "image/png", []byte("png-bytes"))
+	if err != nil {
+		t.Fatalf("领队上传 Logo 应成功: %v", err)
+	}
+	if url != "https://cdn.example.com/team-logos/logo.png" {
+		t.Fatalf("应返回存储 URL，得到 %q", url)
+	}
+	if store.savedTeamID != 7 || store.savedExt != "png" {
+		t.Fatalf("存储参数不符: team=%d ext=%s", store.savedTeamID, store.savedExt)
+	}
+	if repository.updatedProfile.LogoURL == nil || *repository.updatedProfile.LogoURL != url {
+		t.Fatalf("球队资料应写入新 Logo URL: %+v", repository.updatedProfile.LogoURL)
+	}
+}
+
+func TestUploadTeamLogoRejectsUnconfiguredStore(t *testing.T) {
+	repository := newLogoTestRepository(domain.RoleCaptain, 11)
+	service := NewAppManageService(repository, plainHasher{}, nil)
+
+	if _, err := service.UploadTeamLogo(context.Background(), managerActor(11), 7, "png", "image/png", []byte("x")); err == nil {
+		t.Fatal("未配置存储时应报错")
+	}
 }

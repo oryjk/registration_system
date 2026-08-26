@@ -13,8 +13,9 @@ import type {
 } from "@/types/backend";
 import type { AppTeamDetail, AppTeamMember, MyTeam } from "@/types/app";
 import { getApiBaseUrl } from "@/config/apiBase";
+import { getAccessToken } from "@/utils/authStorage";
 import { buildQueryString } from "@/utils/queryString";
-import { requestApi } from "@/utils/request";
+import { ApiRequestError, requestApi } from "@/utils/request";
 import type { DateRangeParams } from "@/utils/dateRange";
 
 export function createTeam(payload: {
@@ -118,6 +119,35 @@ export async function getTeamDetail(teamId: number) {
     team: toBackendTeam(detail),
     members: members.map(toBackendMember),
   } satisfies BackendTeamDetail;
+}
+
+/** 队长/领队上传球队 Logo（multipart file ≤1MB，jpg/png/webp），返回新 logo_url。 */
+export function uploadTeamLogo(teamId: number, filePath: string) {
+  const token = getAccessToken();
+
+  return new Promise<string>((resolve, reject) => {
+    uni.uploadFile({
+      url: `${getApiBaseUrl()}/teams/${teamId}/logo`,
+      filePath,
+      name: "file",
+      header: token ? { Authorization: `Bearer ${token}` } : {},
+      success: (response) => {
+        let parsed: BackendApiResponse<{ logo_url: string }> | null = null;
+        try {
+          parsed = JSON.parse(response.data) as BackendApiResponse<{ logo_url: string }>;
+        } catch {
+          reject(new ApiRequestError("Logo 上传响应解析失败"));
+          return;
+        }
+        if (response.statusCode < 200 || response.statusCode >= 300 || parsed?.code !== 0 || !parsed.data) {
+          reject(new ApiRequestError(parsed?.message || "Logo 上传失败", response.statusCode));
+          return;
+        }
+        resolve(parsed.data.logo_url);
+      },
+      fail: () => reject(new ApiRequestError("Logo 上传失败")),
+    });
+  });
 }
 
 /** 成员自助退出球队（软删除）；队费余额须为零，队长不可退出。 */

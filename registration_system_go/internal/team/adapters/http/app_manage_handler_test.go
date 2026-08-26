@@ -191,6 +191,10 @@ func (f *fakeAppManageCommands) DeleteTeam(_ context.Context, actor sharedauth.A
 	return f.err
 }
 
+func (f *fakeAppManageCommands) UploadTeamLogo(_ context.Context, _ sharedauth.Actor, _ int64, _, _ string, _ []byte) (string, error) {
+	return "", nil
+}
+
 func (f *fakeAppManageCommands) DissolveBlockers(_ context.Context, actor sharedauth.Actor, teamID int64) (domain.DissolveBlockers, error) {
 	f.actor, f.blockersTeamID = actor, teamID
 	return f.blockers, f.err
