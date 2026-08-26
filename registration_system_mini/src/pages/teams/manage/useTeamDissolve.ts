@@ -94,7 +94,9 @@ export function useTeamDissolve({ currentTeam, submitting, refreshSessionContext
       await dissolveTeam(team.id);
       await refreshSessionContext();
       uni.showToast({ title: "球队已解散", icon: "none" });
-      setTimeout(() => uni.navigateBack({ delta: 1 }), 600);
+      // 上一页多半是这支（已解散）球队的详情/管理页，返回会因球队不再可访问而报无权限；
+      // 直接回到「我的」，球队列表已刷新且不再包含该队。
+      setTimeout(() => uni.switchTab({ url: "/pages/user/index" }), 600);
     } catch (error) {
       // 预检查通过后仍可能被并发操作抢先（如刚提交的新约队申请），展示后端 409 文案。
       await alert({
