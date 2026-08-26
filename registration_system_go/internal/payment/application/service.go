@@ -88,7 +88,7 @@ func (s *Service) CreateTeamMembership(ctx context.Context, actor sharedauth.Act
 	if !actor.IsUser() {
 		return CreateRechargeResult{}, sharederror.ErrForbidden
 	}
-	if err := s.teams.EnsureManager(ctx, command.TeamID, actor.ID); err != nil {
+	if err := s.teams.EnsureActiveMember(ctx, command.TeamID, actor.ID); err != nil {
 		return CreateRechargeResult{}, err
 	}
 	now := s.clock.Now()

@@ -81,10 +81,6 @@ export function useTeamDetailPage() {
 
   async function handleMembershipPayment() {
     if (!team.value || paying.value) return;
-    if (!canManage.value) {
-      uni.showToast({ title: "只有队长或领队可以缴纳队费", icon: "none" });
-      return;
-    }
     if (amountError.value) {
       uni.showToast({ title: amountError.value, icon: "none" });
       return;

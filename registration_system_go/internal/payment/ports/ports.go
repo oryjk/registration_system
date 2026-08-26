@@ -119,6 +119,8 @@ type MembershipSettlement interface {
 // TeamEligibility 供下单用例校验球队与操作者身份（由 team 模块实现）。
 type TeamEligibility interface {
 	EnsureManager(context.Context, int64, int64) error
+	// EnsureActiveMember 队费充值入口：任何在队队员都可为自己缴纳（含队长/领队）。
+	EnsureActiveMember(context.Context, int64, int64) error
 	EnsureExists(context.Context, int64) error
 }
 

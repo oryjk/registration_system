@@ -279,7 +279,9 @@ func (f *fakePaymentStore) ApplyMembershipPayment(_ context.Context, _ paymentpo
 type allowTeams struct{}
 
 func (allowTeams) EnsureManager(context.Context, int64, int64) error { return nil }
-func (allowTeams) EnsureExists(context.Context, int64) error         { return nil }
+
+func (allowTeams) EnsureActiveMember(context.Context, int64, int64) error { return nil }
+func (allowTeams) EnsureExists(context.Context, int64) error              { return nil }
 
 func TestCreateTeamMembershipRequiresTeamManager(t *testing.T) {
 	store := newFakePaymentStore()
@@ -287,11 +289,15 @@ func TestCreateTeamMembershipRequiresTeamManager(t *testing.T) {
 	service := NewService(store, store, store, gateway, store, store, denyTeams{}, fakeRegistrationFees{}, store, store, fixedOrderNumbers{"P-team-1"}, fixedClock{})
 
 	if _, err := service.CreateTeamMembership(context.Background(), sharedauth.Actor{Kind: sharedauth.ActorUser, ID: 42}, CreateTeamMembershipCommand{TeamID: 7, AmountCents: 3000}); err == nil {
-		t.Fatal("expected forbidden for non-manager")
+		t.Fatal("expected forbidden for non-member")
 	}
 }
 
 type denyTeams struct{}
+
+func (denyTeams) EnsureActiveMember(context.Context, int64, int64) error {
+	return sharederror.ErrForbidden
+}
 
 func (denyTeams) EnsureManager(context.Context, int64, int64) error {
 	return sharederror.ErrForbidden

@@ -85,7 +85,7 @@ const {
             :disabled="paying"
             @click="handleMembershipPayment"
           >
-            {{ paying ? "支付中..." : canManage ? "微信支付缴纳队费" : "仅队长或领队可缴纳" }}
+            {{ paying ? "支付中..." : "微信支付缴纳队费" }}
           </NeoButton>
         </view>
 
