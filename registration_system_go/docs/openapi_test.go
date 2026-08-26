@@ -136,7 +136,7 @@ func completeRouter() *gin.Engine {
 		Teams:              teamhttp.NewHandler(nil, nil),
 		AppTeams:           teamhttp.NewAppHandler(nil, nil),
 		AppTeamManage:      teamhttp.NewAppManageHandler(nil),
-		UserMatches:        matchhttp.NewUserHandler(nil, nil, nil),
+		UserMatches:        matchhttp.NewUserHandler(nil, nil, nil, nil),
 		UserRegistrations:  matchhttp.NewUserRegistrationHandler(nil),
 		AdminMatches:       matchhttp.NewAdminHandler(nil, nil),
 		TeamApplications:   matchhttp.NewTeamApplicationHandler(nil),

@@ -537,6 +537,7 @@ export function useMatchDetailPage() {
     sourceMatch,
     currentStatus,
     teamProgressItems,
+    matchTeamGroups,
     registrationMode,
     canUseTeamRegistration,
     isRegistrationClosed,

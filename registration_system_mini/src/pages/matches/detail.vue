@@ -4,6 +4,7 @@ import { computed, ref } from "vue";
 import { onShareAppMessage, onShareTimeline } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
 import NeoButton from "@/components/neo/NeoButton.vue";
+import NeoSurface from "@/components/neo/NeoSurface.vue";
 import NeoConfirmDialog from "@/components/neo/NeoConfirmDialog.vue";
 import MatchSignupCountSheet from "./components/MatchSignupCountSheet.vue";
 import NeoSegmentedControl from "@/components/neo/NeoSegmentedControl.vue";
@@ -11,6 +12,7 @@ import NeoStickyActionBar from "@/components/neo/NeoStickyActionBar.vue";
 import MatchDetailSkeleton from "./components/MatchDetailSkeleton.vue";
 import MatchFinishCard from "./components/MatchFinishCard.vue";
 import MatchCaptainContact from "./components/MatchCaptainContact.vue";
+import MatchEditDialog from "./components/MatchEditDialog.vue";
 import MatchJoinTeamSheet from "./components/MatchJoinTeamSheet.vue";
 import MatchIndividualRegistration from "./components/MatchIndividualRegistration.vue";
 import MatchTeamRegistration from "./components/MatchTeamRegistration.vue";
@@ -18,6 +20,7 @@ import TeamSettlementCard from "./components/TeamSettlementCard.vue";
 import { DEFAULT_SHARE_IMAGE_URL } from "@/utils/share";
 import { useMatchCaptainContact } from "./useMatchCaptainContact";
 import { useMatchDetailPage } from "./useMatchDetailPage";
+import { useMatchEdit } from "./useMatchEdit";
 import { useMatchTeamApplications } from "./useMatchTeamApplications";
 import MatchTeamApplications from "./components/MatchTeamApplications.vue";
 
@@ -31,6 +34,7 @@ const {
   isLoading,
   match,
   sourceMatch,
+  matchTeamGroups,
   teamProgressItems,
   registrationMode,
   canUseTeamRegistration,
@@ -134,6 +138,14 @@ const {
 } = useMatchTeamApplications(sourceMatch, loadPageData, confirmRegistrationAction);
 
 const captainContact = useMatchCaptainContact();
+const matchEdit = useMatchEdit({ sourceMatch, matchTeamGroups, reload: loadPageData });
+// 主队管理者可编辑比赛（对手名称与报名上限）；口径与接约申请的管理者判定一致。
+const canEditMatch = computed(() => {
+  const source = sourceMatch.value;
+  return !!source?.host_team_id
+    && currentTeam.value?.id === source.host_team_id
+    && !!currentTeam.value?.canManageTeam;
+});
 // 仅当详情带主队队长、且当前用户不是主队管理者（口径与接约申请一致：当前球队=主队且有管理权）时展示。
 const captainContactCaptain = computed(() => {
   const source = sourceMatch.value;
@@ -182,7 +194,7 @@ const { themePageStyle } = useAccentTheme();
 const metaPageStyle = computed(() =>
   [
     themePageStyle.value,
-    teamMemberDialogVisible.value || confirmDialogVisible.value || finishDialogVisible.value || cancelDialogVisible.value || signupSheetVisible.value || captainContact.popupVisible.value || joinTeamSheet.sheetVisible.value
+    teamMemberDialogVisible.value || confirmDialogVisible.value || finishDialogVisible.value || cancelDialogVisible.value || signupSheetVisible.value || captainContact.popupVisible.value || joinTeamSheet.sheetVisible.value || matchEdit.dialogVisible.value
       ? "overflow: hidden;"
       : "",
   ].filter(Boolean).join(";"),
@@ -270,6 +282,15 @@ const metaPageStyle = computed(() =>
         @review-rating-change="handleReviewRatingChange"
         @submit-activity-review="handleSubmitActivityReview"
       />
+      <!-- 主队管理者：修改对手名称与报名人数上限。 -->
+      <NeoSurface v-if="canEditMatch" variant="raised" class="match-edit-card">
+        <view class="match-edit-info">
+          <text class="match-edit-title">比赛信息有变化？</text>
+          <text class="match-edit-copy">可修改对手名称与报名人数上限。</text>
+        </view>
+        <NeoButton size="sm" variant="outline" @click="matchEdit.open">修改比赛</NeoButton>
+      </NeoSurface>
+
       <!-- 联系主队队长：入口在此，往来留言在消息中心查看。 -->
       <MatchCaptainContact
         v-if="captainContactCaptain && matchId"
@@ -369,6 +390,18 @@ const metaPageStyle = computed(() =>
       @close="handleCancelClose"
     />
 
+    <!-- 修改比赛：对手名称 + 报名人数上限。 -->
+    <MatchEditDialog
+      :visible="matchEdit.dialogVisible.value"
+      :opponent-name="matchEdit.opponentName.value"
+      :max-players="matchEdit.maxPlayers.value"
+      :submitting="matchEdit.isSubmitting.value"
+      @close="matchEdit.close"
+      @update:opponent-name="matchEdit.opponentName.value = $event"
+      @update:max-players="matchEdit.maxPlayers.value = $event"
+      @submit="void matchEdit.submit()"
+    />
+
     <!-- 非比赛球队成员：加入主队球队（无密码直接加入，有密码可输入或转联系队长）。 -->
     <MatchJoinTeamSheet
       :visible="joinTeamSheet.sheetVisible.value"
@@ -442,3 +475,30 @@ const metaPageStyle = computed(() =>
 }
 /* #endif */
 </style>
+
+.match-edit-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rpx;
+  padding: 24rpx;
+}
+
+.match-edit-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6rpx;
+  min-width: 0;
+}
+
+.match-edit-title {
+  font-size: 28rpx;
+  font-weight: 900;
+  color: var(--neo-color-text);
+}
+
+.match-edit-copy {
+  font-size: 24rpx;
+  font-weight: 700;
+  color: var(--neo-color-text-muted);
+}

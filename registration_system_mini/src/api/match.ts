@@ -64,6 +64,16 @@ export function listMyMatches(params: { page: number; pageSize: number; search?:
   return listMatches({ scope: "mine", page: params.page, pageSize: params.pageSize, search: params.search });
 }
 
+/** 主队管理者编辑比赛：当前仅支持对手名称（空串=清除）与主队报名组人数上限。 */
+export function updateMyMatch(matchId: string, payload: { opponent_name?: string; max_players?: number }) {
+  return requestApi<AppMatchDetailResponse>({
+    url: `/matches/${matchId}`,
+    method: "PATCH",
+    data: payload,
+    auth: true,
+  });
+}
+
 export function getMatchDetail(matchId: string) {
   return requestApi<AppMatchDetailResponse>({ url: `/matches/${matchId}`, auth: true });
 }

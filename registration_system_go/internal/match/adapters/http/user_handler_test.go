@@ -49,7 +49,7 @@ func TestUserMatchRoutesReturnPrivacyScopedData(t *testing.T) {
 			}},
 		}}},
 	}
-	handler := NewUserHandler(service, nil, nil)
+	handler := NewUserHandler(service, nil, nil, nil)
 	router := gin.New()
 	group := router.Group("")
 	group.Use(authhttp.NewMiddleware(fakeUserTokens{}).RequireUser())
@@ -90,7 +90,7 @@ func TestUserMatchRoutesReturnPrivacyScopedData(t *testing.T) {
 func TestUserMatchListParsesScopeAndRejectsInvalidValue(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	service := &fakeUserMatches{list: application.UserMatchListResult{Page: 2, PageSize: 10}}
-	handler := NewUserHandler(service, nil, nil)
+	handler := NewUserHandler(service, nil, nil, nil)
 	router := gin.New()
 	group := router.Group("")
 	group.Use(authhttp.NewMiddleware(fakeUserTokens{}).RequireUser())
@@ -133,7 +133,7 @@ func TestUserMatchListParsesScopeAndRejectsInvalidValue(t *testing.T) {
 func TestUserMatchListParsesPublicationModesAndDate(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	service := &fakeUserMatches{list: application.UserMatchListResult{Page: 1, PageSize: 20}}
-	handler := NewUserHandler(service, nil, nil)
+	handler := NewUserHandler(service, nil, nil, nil)
 	router := gin.New()
 	group := router.Group("")
 	group.Use(authhttp.NewMiddleware(fakeUserTokens{}).RequireUser())
@@ -207,7 +207,7 @@ func TestUserMatchHomeReturnsUserScopedSummary(t *testing.T) {
 		}},
 		EndedHasMore: true,
 	}}
-	handler := NewUserHandler(service, nil, nil)
+	handler := NewUserHandler(service, nil, nil, nil)
 	router := gin.New()
 	group := router.Group("")
 	group.Use(authhttp.NewMiddleware(fakeUserTokens{}).RequireUser())
@@ -264,7 +264,7 @@ func TestUserMatchCreateUsesUserActorAndReturnsCreatedDetail(t *testing.T) {
 		Groups: []ports.UserGroupState{{Group: domain.RegistrationGroup{ID: groupID, MatchID: matchID, Kind: domain.GroupHostTeam}}},
 	}}
 	creator := &fakeUserCreateMatch{result: application.CreateMatchResult{Match: domain.Match{ID: matchID}}}
-	handler := NewUserHandler(service, creator, nil)
+	handler := NewUserHandler(service, creator, nil, nil)
 	router := gin.New()
 	group := router.Group("")
 	group.Use(authhttp.NewMiddleware(fakeUserTokens{}).RequireUser())
@@ -317,7 +317,7 @@ func TestCreateMatchStoresJerseyColors(t *testing.T) {
 		},
 	}}
 	creator := &fakeUserCreateMatch{result: application.CreateMatchResult{Match: domain.Match{ID: matchID}}}
-	handler := NewUserHandler(service, creator, nil)
+	handler := NewUserHandler(service, creator, nil, nil)
 	router := gin.New()
 	group := router.Group("")
 	group.Use(authhttp.NewMiddleware(fakeUserTokens{}).RequireUser())
@@ -361,7 +361,7 @@ func TestCreateMatchRejectsInvalidJerseyColor(t *testing.T) {
 	}
 	service := &fakeUserMatches{}
 	creator := &fakeUserCreateMatch{err: domainErr}
-	handler := NewUserHandler(service, creator, nil)
+	handler := NewUserHandler(service, creator, nil, nil)
 	router := gin.New()
 	group := router.Group("")
 	group.Use(authhttp.NewMiddleware(fakeUserTokens{}).RequireUser())
@@ -451,7 +451,7 @@ func TestUserMatchChangeStatusFinishesMatchAndReturnsDetail(t *testing.T) {
 		},
 	}}
 	finisher := &fakeUserFinishMatch{result: domain.Match{ID: matchID, Status: domain.MatchEnded}}
-	handler := NewUserHandler(service, nil, finisher)
+	handler := NewUserHandler(service, nil, finisher, nil)
 	router := gin.New()
 	group := router.Group("")
 	group.Use(authhttp.NewMiddleware(fakeUserTokens{}).RequireUser())
@@ -484,7 +484,7 @@ func TestUserMatchChangeStatusRejectsInvalidStatus(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	service := &fakeUserMatches{}
 	finisher := &fakeUserFinishMatch{err: sharederror.New(sharederror.KindValidation, "收尾状态只能是已结束或已取消")}
-	handler := NewUserHandler(service, nil, finisher)
+	handler := NewUserHandler(service, nil, finisher, nil)
 	router := gin.New()
 	group := router.Group("")
 	group.Use(authhttp.NewMiddleware(fakeUserTokens{}).RequireUser())

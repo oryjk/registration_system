@@ -23,6 +23,10 @@ type UserMatchUseCase interface {
 	Home(context.Context, sharedauth.Actor) (application.UserMatchHomeResult, error)
 }
 
+type UserMatchUpdateUseCase interface {
+	UpdateDetails(context.Context, sharedauth.Actor, uuid.UUID, application.UserUpdateMatchCommand) (domain.Match, error)
+}
+
 type FinishMatchUseCase interface {
 	Execute(context.Context, sharedauth.Actor, uuid.UUID, application.FinishMatchCommand) (domain.Match, error)
 }
@@ -31,10 +35,11 @@ type UserHandler struct {
 	service UserMatchUseCase
 	create  CreateMatchUseCase
 	finish  FinishMatchUseCase
+	update  UserMatchUpdateUseCase
 }
 
-func NewUserHandler(service UserMatchUseCase, create CreateMatchUseCase, finish FinishMatchUseCase) *UserHandler {
-	return &UserHandler{service: service, create: create, finish: finish}
+func NewUserHandler(service UserMatchUseCase, create CreateMatchUseCase, finish FinishMatchUseCase, update UserMatchUpdateUseCase) *UserHandler {
+	return &UserHandler{service: service, create: create, finish: finish, update: update}
 }
 
 type UserMatchResponse struct {
@@ -259,6 +264,43 @@ func (h *UserHandler) Create(c *gin.Context) {
 	sharedhttpapi.WriteSuccess(c, mapUserDetail(detail))
 }
 
+type UserUpdateMatchRequest struct {
+	// OpponentName 手工对手名称；null=不改，空串=清除。
+	OpponentName *string `json:"opponent_name"`
+	// MaxPlayers 主队报名组人数上限；null=不改。
+	MaxPlayers *int `json:"max_players"`
+}
+
+// UpdateDetails PATCH /matches/:id：主队管理者编辑比赛（当前仅对手名称与报名人数上限）。
+func (h *UserHandler) UpdateDetails(c *gin.Context) {
+	actor, ok := userActor(c)
+	if !ok {
+		return
+	}
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		sharedhttpapi.WriteError(c, sharederror.New(sharederror.KindValidation, "比赛 ID 无效"))
+		return
+	}
+	var request UserUpdateMatchRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		sharedhttpapi.WriteError(c, sharederror.New(sharederror.KindValidation, "比赛修改内容无效"))
+		return
+	}
+	if _, err := h.update.UpdateDetails(c.Request.Context(), actor, id, application.UserUpdateMatchCommand{
+		OpponentName: request.OpponentName, HostCapacityLimit: request.MaxPlayers,
+	}); err != nil {
+		sharedhttpapi.WriteError(c, err)
+		return
+	}
+	detail, err := h.service.Get(c.Request.Context(), actor, id)
+	if err != nil {
+		sharedhttpapi.WriteError(c, err)
+		return
+	}
+	sharedhttpapi.WriteSuccess(c, mapUserDetail(detail))
+}
+
 func (h *UserHandler) ChangeStatus(c *gin.Context) {
 	actor, ok := userActor(c)
 	if !ok {
@@ -291,6 +333,7 @@ func (h *UserHandler) RegisterRoutes(group *gin.RouterGroup) {
 	group.GET("/matches/home", h.Home)
 	group.POST("/matches", h.Create)
 	group.GET("/matches/:id", h.Get)
+	group.PATCH("/matches/:id", h.UpdateDetails)
 	group.PATCH("/matches/:id/status", h.ChangeStatus)
 }
 
