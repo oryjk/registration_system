@@ -89,16 +89,25 @@ const {
           </NeoButton>
         </view>
 
-        <NeoSurface variant="raised" custom-class="manage-card">
+        <!-- 球队管理入口仅对队长/领队有意义，普通队员不展示。 -->
+        <NeoSurface v-if="canManage" variant="raised" custom-class="manage-card">
           <view class="manage-head">
             <text class="manage-title">球队管理</text>
             <text class="manage-copy">资料、队员与比赛出勤管理</text>
           </view>
-          <NeoButton v-if="canLeaveTeam" variant="danger" block @click="handleLeaveTeamClick">
-            退出球队
-          </NeoButton>
-          <NeoButton variant="outline" block :disabled="!canManage" @click="openTeamManage">
+          <NeoButton variant="outline" block @click="openTeamManage">
             进入球队管理
+          </NeoButton>
+        </NeoSurface>
+
+        <!-- 退出球队：独立卡片，仅非队长的在队成员可见；余额不为零在入口即拦截，后端同样校验。 -->
+        <NeoSurface v-if="canLeaveTeam" variant="raised" custom-class="leave-card">
+          <view class="leave-head">
+            <text class="leave-title">退出球队</text>
+            <text class="leave-copy">退出后不再参与本球队的比赛与报名；队费余额需为 0 才能退出。</text>
+          </view>
+          <NeoButton variant="danger" block @click="handleLeaveTeamClick">
+            退出球队
           </NeoButton>
         </NeoSurface>
       </template>
@@ -331,3 +340,27 @@ const {
 }
 /* #endif */
 </style>
+
+.leave-card {
+  margin-top: 0;
+}
+
+.leave-head {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+  padding: 24rpx 24rpx 20rpx;
+}
+
+.leave-title {
+  font-size: 30rpx;
+  font-weight: 900;
+  color: var(--neo-color-text);
+}
+
+.leave-copy {
+  font-size: 24rpx;
+  font-weight: 700;
+  color: var(--neo-color-text-muted);
+  line-height: 1.5;
+}
