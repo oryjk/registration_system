@@ -114,6 +114,49 @@ func (s AppTeamSelfService) JoinTeam(ctx context.Context, actor sharedauth.Actor
 	return nil
 }
 
+// LeaveTeam 成员自助退出球队（软删除 status -> left）：
+// 队长不可退出（需先移交队长或解散球队）；队费余额不为零（含欠费）时不可退出。
+func (s AppTeamSelfService) LeaveTeam(ctx context.Context, actor sharedauth.Actor, teamID int64) error {
+	if actor.ID <= 0 {
+		return sharederror.ErrForbidden
+	}
+	if teamID <= 0 {
+		return sharederror.New(sharederror.KindValidation, "球队 ID 无效")
+	}
+	team, found, err := s.repository.FindByID(ctx, teamID)
+	if err != nil {
+		return sharederror.Wrap(sharederror.KindInternal, "查询球队失败", err)
+	}
+	if !found {
+		return sharederror.New(sharederror.KindNotFound, "球队不存在")
+	}
+	member, memberFound, err := s.repository.FindMembership(ctx, teamID, actor.ID)
+	if err != nil {
+		return sharederror.Wrap(sharederror.KindInternal, "检查球队成员关系失败", err)
+	}
+	if !memberFound || member.Status != domain.MemberActive {
+		return sharederror.New(sharederror.KindConflict, "你已经不是该球队成员")
+	}
+	if team.CaptainID != nil && *team.CaptainID == actor.ID {
+		return sharederror.New(sharederror.KindConflict, "队长不能退出，请先移交队长或解散球队")
+	}
+	membership, err := s.repository.GetTeamMembershipState(ctx, teamID, actor.ID)
+	if err != nil {
+		return sharederror.Wrap(sharederror.KindInternal, "查询队费余额失败", err)
+	}
+	if membership.BalanceCents != 0 {
+		return sharederror.New(sharederror.KindConflict, "队费余额不为零，需结清或用尽后才能退出球队")
+	}
+	left, err := s.repository.LeaveMember(ctx, teamID, actor.ID)
+	if err != nil {
+		return sharederror.Wrap(sharederror.KindInternal, "退出球队失败", err)
+	}
+	if !left {
+		return sharederror.New(sharederror.KindConflict, "你已经不是该球队成员")
+	}
+	return nil
+}
+
 // SearchTeams 按关键字搜索可加入的球队（仅 active），附当前成员数。
 func (s AppTeamSelfService) SearchTeams(ctx context.Context, keyword string) ([]ports.AppTeamSummary, error) {
 	items, err := s.repository.SearchByKeyword(ctx, strings.TrimSpace(keyword))

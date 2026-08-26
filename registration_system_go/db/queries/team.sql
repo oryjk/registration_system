@@ -403,3 +403,12 @@ SELECT t.credit_score, t.vip_until, COALESCE(tm.balance_cents, 0) AS my_balance_
 FROM teams t
 LEFT JOIN team_members tm ON tm.team_id = t.id AND tm.user_id = $2
 WHERE t.id = $1;
+
+-- name: LeaveTeamMember :execrows
+-- 成员自助退出：软删除（status -> left），仅 active 成员可退出；重新加入走 ReactivateTeamMember。
+UPDATE team_members
+SET status  = 'left',
+    updated_at = NOW()
+WHERE team_id = $1
+  AND user_id = $2
+  AND status = 'active';

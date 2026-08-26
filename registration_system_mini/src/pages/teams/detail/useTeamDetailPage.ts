@@ -1,6 +1,6 @@
 import { computed, ref } from "vue";
 import { onLoad, onShow } from "@dcloudio/uni-app";
-import { getAppTeamDetail, type AppTeamDetailData } from "@/api/team";
+import { getAppTeamDetail, leaveTeam, type AppTeamDetailData } from "@/api/team";
 import { createTeamMembershipOrder, syncGoPaymentOrder } from "@/api/payment";
 import { isMockWxPaymentParams, isPaymentCancelled, normalizeWxPaymentParams, requestWxPayment } from "@/utils/payment";
 import { useTeamContext } from "@/stores/teamContext";
@@ -17,7 +17,7 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 export function useTeamDetailPage() {
-  const { switchTeam } = useTeamContext();
+  const { switchTeam, refreshSessionContext } = useTeamContext();
   const navMetrics = getCustomNavMetrics();
   const teamId = ref(0);
   const team = ref<AppTeamDetailData | null>(null);
@@ -128,6 +128,33 @@ export function useTeamDetailPage() {
     if (teamId.value) void loadTeam();
   });
 
+  const leaveDialogVisible = ref(false);
+  // 非成员（my_role 为空）与队长不展示退出入口；队长需先移交或解散。
+  const canLeaveTeam = computed(() => !!team.value?.my_role && team.value?.my_role !== "captain");
+
+  function handleLeaveTeamClick() {
+    if (!canLeaveTeam.value) return;
+    if ((team.value?.my_balance_cents ?? 0) !== 0) {
+      uni.showToast({ title: `队费余额 ${balanceLabel.value} 不为零，需结清后才能退出`, icon: "none" });
+      return;
+    }
+    leaveDialogVisible.value = true;
+  }
+
+  async function handleLeaveTeamConfirm() {
+    if (!team.value) return;
+    try {
+      await leaveTeam(team.value.id);
+      leaveDialogVisible.value = false;
+      uni.showToast({ title: "已退出球队", icon: "none" });
+      await refreshSessionContext();
+      setTimeout(() => uni.navigateBack(), 400);
+    } catch (error) {
+      leaveDialogVisible.value = false;
+      uni.showToast({ title: error instanceof Error ? error.message : "退出球队失败", icon: "none" });
+    }
+  }
+
   return {
     pageStyle,
     team,
@@ -139,6 +166,10 @@ export function useTeamDetailPage() {
     balanceLabel,
     roleLabel,
     canManage,
+    canLeaveTeam,
+    leaveDialogVisible,
+    handleLeaveTeamClick,
+    handleLeaveTeamConfirm,
     totalPriceLabel,
     membershipLabel,
     loadTeam,

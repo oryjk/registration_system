@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	sharedauth "github.com/oryjk/registration_system/registration_system_go/internal/shared/auth"
@@ -25,6 +26,10 @@ type fakeAppTeamSelfRepository struct {
 	createdTeam    domain.Team
 	createTeamErr  error
 	createdCaptain int64
+	balanceCents   int64
+	leaveResult    bool
+	leftTeamID     int64
+	leftUserID     int64
 }
 
 func (f *fakeAppTeamSelfRepository) FindByID(context.Context, int64) (domain.Team, bool, error) {
@@ -190,5 +195,69 @@ func TestAppTeamSelfServiceRequiresJoinPassword(t *testing.T) {
 	missing := &fakeAppTeamSelfRepository{}
 	if _, err := NewAppTeamSelfService(missing, plainHasher{}).RequiresJoinPassword(ctx, 7); errorKind(err) != sharederror.KindNotFound {
 		t.Fatalf("missing team should 404, got: %v", err)
+	}
+}
+
+func (f *fakeAppTeamSelfRepository) GetTeamMembershipState(context.Context, int64, int64) (ports.AppMembershipState, error) {
+	return ports.AppMembershipState{BalanceCents: f.balanceCents}, nil
+}
+
+func (f *fakeAppTeamSelfRepository) LeaveMember(_ context.Context, teamID, userID int64) (bool, error) {
+	f.leftTeamID, f.leftUserID = teamID, userID
+	return f.leaveResult, nil
+}
+
+func TestLeaveTeamEnforcesMembershipCaptainAndBalance(t *testing.T) {
+	captainID := int64(11)
+	team := domain.Team{ID: 7, Name: "东安联队", CaptainID: &captainID, Status: domain.TeamActive}
+	member := func(userID int64, status domain.MemberStatus) domain.Member {
+		return domain.Member{TeamID: 7, UserID: userID, Role: domain.RoleMember, Status: status}
+	}
+	actor := func(userID int64) sharedauth.Actor { return sharedauth.Actor{Kind: sharedauth.ActorUser, ID: userID} }
+
+	cases := []struct {
+		name     string
+		actorID  int64
+		member   domain.Member
+		found    bool
+		balance  int64
+		wantLeft bool
+		wantErr  string
+	}{
+		{"not a member", 9, member(9, domain.MemberActive), false, 0, false, "你已经不是该球队成员"},
+		{"already left", 9, member(9, domain.MemberLeft), true, 0, false, "你已经不是该球队成员"},
+		{"captain cannot leave", captainID, member(captainID, domain.MemberActive), true, 0, false, "队长不能退出"},
+		{"balance must be zero", 9, member(9, domain.MemberActive), true, 2500, false, "队费余额不为零"},
+		{"negative balance also blocked", 9, member(9, domain.MemberActive), true, -100, false, "队费余额不为零"},
+		{"active member with zero balance", 9, member(9, domain.MemberActive), true, 0, true, ""},
+	}
+	for _, testCase := range cases {
+		repository := &fakeAppTeamSelfRepository{
+			teamByID: team, teamByIDFound: true,
+			member: testCase.member, memberFound: testCase.found,
+			balanceCents: testCase.balance,
+			leaveResult:  true,
+		}
+		service := NewAppTeamSelfService(repository, nil)
+		err := service.LeaveTeam(context.Background(), actor(testCase.actorID), 7)
+		if testCase.wantErr != "" {
+			if err == nil || !strings.Contains(err.Error(), testCase.wantErr) {
+				t.Fatalf("%s: 期望错误含 %q，得到 %v", testCase.name, testCase.wantErr, err)
+			}
+			continue
+		}
+		if err != nil {
+			t.Fatalf("%s: 不应报错，得到 %v", testCase.name, err)
+		}
+		if repository.leftTeamID != 7 || repository.leftUserID != 9 {
+			t.Fatalf("%s: 退出应落到 (team=7,user=9)，得到 (%d,%d)", testCase.name, repository.leftTeamID, repository.leftUserID)
+		}
+	}
+}
+
+func TestLeaveTeamRejectsMissingTeam(t *testing.T) {
+	service := NewAppTeamSelfService(&fakeAppTeamSelfRepository{}, nil)
+	if err := service.LeaveTeam(context.Background(), sharedauth.Actor{Kind: sharedauth.ActorUser, ID: 9}, 404); err == nil {
+		t.Fatal("球队不存在应报错")
 	}
 }

@@ -42,10 +42,12 @@ type MemberStatus string
 const (
 	MemberActive   MemberStatus = "active"
 	MemberInactive MemberStatus = "inactive"
+	// MemberLeft 成员自助退出（软删除）：保留关联与历史，区别于被移除的 inactive。
+	MemberLeft MemberStatus = "left"
 )
 
 func (s MemberStatus) IsValid() bool {
-	return s == MemberActive || s == MemberInactive
+	return s == MemberActive || s == MemberInactive || s == MemberLeft
 }
 
 type CaptainSummary struct {

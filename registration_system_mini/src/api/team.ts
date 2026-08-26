@@ -120,6 +120,15 @@ export async function getTeamDetail(teamId: number) {
   } satisfies BackendTeamDetail;
 }
 
+/** 成员自助退出球队（软删除）；队费余额须为零，队长不可退出。 */
+export function leaveTeam(teamId: number) {
+  return requestApi<{ left: boolean }>({
+    url: `/teams/${teamId}/leave`,
+    method: "POST",
+    auth: true,
+  });
+}
+
 export function getTeamPasswordInfo(teamId: number) {
   return requestApi<BackendTeamPasswordInfo>({
     url: `/teams/${teamId}/password-info`,

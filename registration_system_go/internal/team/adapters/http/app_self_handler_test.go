@@ -118,6 +118,10 @@ func (f *fakeAppSelfCommands) SearchTeams(_ context.Context, keyword string) ([]
 	return []ports.AppTeamSummary{{Team: domain.Team{ID: 9, Name: "东安联队", Status: domain.TeamActive}, MemberCount: 12}}, nil
 }
 
+func (f *fakeAppSelfCommands) LeaveTeam(_ context.Context, _ sharedauth.Actor, _ int64) error {
+	return nil
+}
+
 func (f *fakeAppSelfCommands) RequiresJoinPassword(_ context.Context, _ int64) (bool, error) {
 	return true, f.err
 }

@@ -32,6 +32,10 @@ type AppTeamSelfRepository interface {
 	FindJoinPasswordHash(ctx context.Context, teamID int64) (*string, bool, error)
 	FindMembership(context.Context, int64, int64) (domain.Member, bool, error)
 	AddMember(context.Context, int64, int64, domain.Role) error
-	// ReactivateMember 把历史 inactive 成员恢复为 active 普通队员，返回是否生效。
+	// ReactivateMember 把历史 inactive/left 成员恢复为 active 普通队员，返回是否生效。
 	ReactivateMember(context.Context, int64, int64) (bool, error)
+	// GetTeamMembershipState 查询用户在该球队的队费余额（退出前校验余额须为零）。
+	GetTeamMembershipState(context.Context, int64, int64) (AppMembershipState, error)
+	// LeaveMember 成员自助退出（软删除 status -> left），返回是否生效。
+	LeaveMember(context.Context, int64, int64) (bool, error)
 }

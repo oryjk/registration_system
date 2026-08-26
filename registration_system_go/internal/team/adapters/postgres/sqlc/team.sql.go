@@ -497,6 +497,29 @@ func (q *Queries) GetTeamMembershipState(ctx context.Context, arg GetTeamMembers
 	return i, err
 }
 
+const leaveTeamMember = `-- name: LeaveTeamMember :execrows
+UPDATE team_members
+SET status  = 'left',
+    updated_at = NOW()
+WHERE team_id = $1
+  AND user_id = $2
+  AND status = 'active'
+`
+
+type LeaveTeamMemberParams struct {
+	TeamID int64 `json:"team_id"`
+	UserID int64 `json:"user_id"`
+}
+
+// 成员自助退出：软删除（status -> left），仅 active 成员可退出；重新加入走 ReactivateTeamMember。
+func (q *Queries) LeaveTeamMember(ctx context.Context, arg LeaveTeamMemberParams) (int64, error) {
+	result, err := q.db.Exec(ctx, leaveTeamMember, arg.TeamID, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const listActiveUserTeams = `-- name: ListActiveUserTeams :many
 SELECT t.id,
        t.name,

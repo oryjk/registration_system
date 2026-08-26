@@ -3,6 +3,7 @@ import { useAccentTheme } from "@/stores/theme";
 import AppTabHeader from "@/components/AppTabHeader.vue";
 import NeoButton from "@/components/neo/NeoButton.vue";
 import NeoSurface from "@/components/neo/NeoSurface.vue";
+import NeoConfirmDialog from "@/components/neo/NeoConfirmDialog.vue";
 import NeoTag from "@/components/neo/NeoTag.vue";
 import { useTeamDetailPage } from "./useTeamDetailPage";
 
@@ -19,6 +20,10 @@ const {
   balanceLabel,
   roleLabel,
   canManage,
+  canLeaveTeam,
+  leaveDialogVisible,
+  handleLeaveTeamClick,
+  handleLeaveTeamConfirm,
   totalPriceLabel,
   membershipLabel,
   loadTeam,
@@ -89,12 +94,27 @@ const {
             <text class="manage-title">球队管理</text>
             <text class="manage-copy">资料、队员与比赛出勤管理</text>
           </view>
+          <NeoButton v-if="canLeaveTeam" variant="danger" block @click="handleLeaveTeamClick">
+            退出球队
+          </NeoButton>
           <NeoButton variant="outline" block :disabled="!canManage" @click="openTeamManage">
             进入球队管理
           </NeoButton>
         </NeoSurface>
       </template>
     </view>
+
+    <!-- 退出球队：二次确认；余额不为零在入口即拦截，后端同样校验。 -->
+    <NeoConfirmDialog
+      :visible="leaveDialogVisible"
+      title="退出球队"
+      message="退出后将不再参与本球队的比赛与报名；队费余额需为 0 才能退出。"
+      primary-text="确认退出"
+      primary-tone="danger"
+      @primary="void handleLeaveTeamConfirm()"
+      @secondary="leaveDialogVisible = false"
+      @close="leaveDialogVisible = false"
+    />
   </view>
 </template>
 

@@ -18,6 +18,7 @@ import (
 type AppTeamSelfCommands interface {
 	CreateTeam(ctx context.Context, actor sharedauth.Actor, name string, description *string, joinPassword *string) (domain.Team, error)
 	JoinTeam(ctx context.Context, actor sharedauth.Actor, teamID int64, password *string) error
+	LeaveTeam(ctx context.Context, actor sharedauth.Actor, teamID int64) error
 	SearchTeams(ctx context.Context, keyword string) ([]ports.AppTeamSummary, error)
 	RequiresJoinPassword(ctx context.Context, teamID int64) (bool, error)
 }
@@ -35,6 +36,7 @@ func (h *AppSelfHandler) RegisterRoutes(group *gin.RouterGroup) {
 	group.POST("/teams/join", h.JoinTeam)
 	group.GET("/teams/search", h.SearchTeams)
 	group.GET("/teams/:id/password-info", h.PasswordInfo)
+	group.POST("/teams/:id/leave", h.LeaveTeam)
 }
 
 // AppCreateTeamRequest 的 join_password 传空串或 null 表示不设入队口令。
@@ -123,6 +125,19 @@ func (h *AppSelfHandler) PasswordInfo(c *gin.Context) {
 		return
 	}
 	sharedhttpapi.WriteSuccess(c, AppTeamPasswordInfoResponse{TeamID: teamID, RequiresPassword: requires})
+}
+
+// LeaveTeam POST /teams/:id/leave：成员自助退出（软删除，队费余额须为零）。
+func (h *AppSelfHandler) LeaveTeam(c *gin.Context) {
+	actor, teamID, ok := appActorAndTeamID(c)
+	if !ok {
+		return
+	}
+	if err := h.self.LeaveTeam(c.Request.Context(), actor, teamID); err != nil {
+		sharedhttpapi.WriteError(c, err)
+		return
+	}
+	sharedhttpapi.WriteSuccess(c, gin.H{"left": true})
 }
 
 type AppTeamSummaryResponse struct {
