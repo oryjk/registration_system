@@ -44,9 +44,7 @@ export default function TipListPage() {
       title: "功能建议",
       render: (item) =>
         item.suggestion ? (
-          <span className="cell-ellipsis" title={item.suggestion}>
-            {item.suggestion}
-          </span>
+          <span>{item.suggestion}</span>
         ) : (
           <span className="cell-secondary">未留言</span>
         ),

@@ -283,6 +283,7 @@
   min-width: 0;
 }
 
+/* 单行显示由 .ui-table td 的统一 nowrap 承担 */
 .match-name-cell strong {
   font-weight: 700;
 }
@@ -294,15 +295,6 @@
 
 .cell-secondary {
   color: var(--muted);
-}
-
-.cell-ellipsis {
-  display: inline-block;
-  max-width: 420px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  vertical-align: bottom;
 }
 
 .cell-strong {

@@ -142,11 +142,7 @@ export default function TeamListPage() {
     {
       key: "description",
       title: "简介",
-      render: (team) => (
-        <span className="cell-ellipsis" title={team.description || undefined}>
-          {team.description || "--"}
-        </span>
-      ),
+      render: (team) => <span>{team.description || "--"}</span>,
     },
     {
       key: "captain_id",

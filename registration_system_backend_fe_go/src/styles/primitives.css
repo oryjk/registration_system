@@ -253,6 +253,12 @@ code {
   border-collapse: collapse;
 }
 
+/* 单元格一律单行完整显示：列宽按内容撑开，超宽由 .table-wrap 横向滚动看全 */
+.ui-table th,
+.ui-table td {
+  white-space: nowrap;
+}
+
 .ui-table-caption {
   margin-top: var(--space-2-5);
   color: var(--muted);

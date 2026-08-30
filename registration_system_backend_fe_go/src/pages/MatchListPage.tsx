@@ -111,11 +111,7 @@ export default function MatchListPage() {
       key: "location",
       title: "场地",
       width: 180,
-      render: (item) => (
-        <span className="cell-ellipsis" title={item.location}>
-          {item.location}
-        </span>
-      ),
+      render: (item) => <span>{item.location}</span>,
     },
     {
       key: "start_time",
