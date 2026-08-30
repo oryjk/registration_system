@@ -126,6 +126,8 @@ export function toBackendActivity(match: AppMatchSummary, group?: AppMatchGroupD
     source_activity_id: null,
     team_registration_count: group?.attending_count ?? null,
     team_checkin_configs: [],
+    host_score: match.host_score ?? null,
+    away_score: match.away_score ?? null,
   };
 }
 

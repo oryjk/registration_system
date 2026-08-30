@@ -154,6 +154,12 @@
         "navigationBarTitleText": "完善资料",
         "navigationStyle": "custom"
       }
+    },
+    {
+      "path": "pages/webview/index",
+      "style": {
+        "navigationBarTitleText": "详情"
+      }
     }
   ],
   "tabBar": {

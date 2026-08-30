@@ -14,6 +14,8 @@ export interface BackendUser {
   phone_number: string;
   is_manager: boolean;
   is_venue: boolean;
+  /** 比赛管理员（管理端设置）：可在比赛详情页录入比赛比分；缺省视为 false。 */
+  is_match_admin?: boolean;
 }
 
 export interface BackendUserLoginResponse {
@@ -331,6 +333,9 @@ export interface BackendActivity {
   source_activity_id?: string | null;
   team_registration_count?: number | null;
   team_checkin_configs: BackendActivityTeamCheckInConfig[];
+  /** 比赛比分（Go 接口返回）；null/缺省表示尚未录入。 */
+  host_score?: number | null;
+  away_score?: number | null;
 }
 
 export interface BackendCreateActivityCheckInConfig {

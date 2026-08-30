@@ -88,6 +88,16 @@ export function updateMatchStatus(matchId: string, status: Extract<AppMatchStatu
   });
 }
 
+/** 比赛管理员录入/修正比赛比分：进行中与已结束均可，重复提交覆盖旧比分。 */
+export function updateMatchScore(matchId: string, payload: { host_score: number; away_score: number }) {
+  return requestApi<AppMatchDetailResponse>({
+    url: `/matches/${matchId}/score`,
+    method: "PATCH",
+    data: payload,
+    auth: true,
+  });
+}
+
 export interface CreateMatchPayload {
   name: string;
   publication_mode: AppMatchSummary["publication_mode"];

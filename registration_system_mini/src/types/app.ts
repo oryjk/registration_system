@@ -7,11 +7,22 @@ export interface AppUser {
   real_name: string | null;
   phone_number: string | null;
   status: AppUserStatus;
+  /** 比赛管理员（管理端设置）：可在比赛详情页录入比赛比分。 */
+  is_match_admin?: boolean;
 }
 
 export interface LoginResponse {
   token: string;
   user: AppUser;
+}
+
+export interface WebViewCodeResponse {
+  code: string;
+  expires_at: string;
+}
+
+export interface WebViewExchangeResponse {
+  token: string;
 }
 
 export type MyTeamRole = "captain" | "leader" | "vice_captain" | "member";

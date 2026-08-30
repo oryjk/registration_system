@@ -4,7 +4,7 @@
 
 微信小程序/H5 端，承载普通用户的报名、球队、活动、账单与个人中心相关流程。当前技术栈为 `uni-app + Vue 3 + TypeScript + Vite`。
 
-本目录是唯一的用户端小程序代码库。**当前对接 Go 新后端**（验收环境 `https://oryjk.cn:82/mini-v3/`）；`mini-rust-backend-final` 标记最后一个对接 Rust 后端的基线，Rust 后端已冻结不再更新，仅作只读参考。
+本目录是唯一的用户端小程序代码库。**当前对接 Go 新后端**（验收环境 `https://oryjk.cn:82/mini-v3/`）；`mini-rust-backend-final` 标记最后一个对接 Rust 后端的基线，旧 Rust 后端代码目录已从工作区删除（git 历史可查）。
 
 注意：Go 后端 notifications 模块已上线（站内通知 + 未读数 + 全部已读，余额不足/充值到账等事件会入库）；`src/stores/notificationCenter.ts` 的 `NOTIFICATION_SYNC_ENABLED` 已恢复为 `true`，底部 Tab 未读角标正常拉取。
 
@@ -89,6 +89,18 @@ src/
 - 入口文件：`src/main.ts`
 - 页面声明：`src/pages.json`
 - 环境文件：`.env.development`、`.env.production`
+
+## web-view 嵌入 H5
+
+小程序内嵌 H5 页面走通用嵌页 `src/pages/webview/index.vue`（不进 tabBar，系统导航栏显示 `title`）：
+
+- 业务侧统一用 `src/utils/webview.ts` 的 `navigateToWebView(targetUrl, title?)` 打开，不要手拼 `/pages/webview/index` 路由。
+- 目标 URL 受域名白名单限制（`match.oryjk.cn`，本地开发允许 `localhost`/`127.0.0.1`），白名单外在嵌页侧和工具侧都会被拦截。
+- 登录态桥接用**一次性 code 换 token**（token 不进 URL / nginx 日志）：`navigateToWebView` 先调 `POST /auth/webview-codes` 签发 60s 一次性 code 拼进 URL query（`webview_code` 及身份选择参数）；H5 启动时 `src/main.ts` 调 `ingestWebViewAuthFromUrl()` 立即抹掉地址栏参数，再异步调 `POST /auth/webview-codes/exchange` 换正式 token 写入 `authStorage`；`appSession.ensureSessionReady` 开始前会 `await waitWebViewAuthIngest()` 等待兑换落地，避免误判游客态。兑换失败（code 过期/已用/网络异常）保持游客态。
+- H5 端 web-view 由 uni-app 编译为 iframe。
+- **H5-only 页面的归属**：后续专门跑在 H5 环境的页面（web-view 嵌页、微信内浏览器页面）不再加入本 uni-app 项目，统一放到独立项目 `registration_system_h5/`（规划待创建，纯 Web 技术栈，静态产物推送到 jd 服务器 nginx，经 `match.oryjk.cn` 对外服务）。该项目必须实现上述一次性 code 兑换协议（`webview_code`/`webview_identity_*` 参数 + 两个 `/auth/webview-codes*` 接口）作为登录态契约；本项目 `src/utils/webview.ts` 与 `src/main.ts` 里的桥接代码即为该协议的参考实现。
+- 微信侧前置条件（仓库外手动配置）：公众平台为小程序 `wx0b5cef0e7f1af280` 配置业务域名 `match.oryjk.cn`（443 端口 HTTPS，需 ICP 备案），校验文件需放到该域名根路径（out109 nginx 层操作）。
+- **业务域名硬限制**：web-view 的 src 必须是 443 默认端口的 HTTPS（业务域名不能配端口，而服务器域名/request 合法域名可以）。因此验收环境现有的 `https://oryjk.cn:82/mini-v3/` 不能直接用于 web-view，`match.oryjk.cn` 的 443 入口需指向同一份 H5 静态文件，`:82` 入口保留给浏览器直连与 API。开发者工具勾选「不校验业务域名」可绕过该限制做本地调试。
 
 ## 协作约定
 

@@ -37,7 +37,12 @@ defineProps<{
         <text class="vs-team-name">{{ currentTeam?.name || "当前球队" }}</text>
         <text class="vs-team-credit">{{ currentTeam?.creditScore ?? 0 }} 分</text>
       </view>
-      <text class="vs-mark">VS</text>
+      <view v-if="match.host_score != null && match.away_score != null" class="vs-score">
+        <text class="vs-score-number">{{ match.host_score }}</text>
+        <text class="vs-score-colon">:</text>
+        <text class="vs-score-number">{{ match.away_score }}</text>
+      </view>
+      <text v-else class="vs-mark">VS</text>
       <view class="vs-team-card">
         <view class="vs-logo vs-logo-muted">{{ opponentTeam?.name?.slice(0, 1) || "?" }}</view>
         <text class="vs-team-name">{{ opponentTeam?.name || match.opposing || "对手待定" }}</text>
@@ -195,5 +200,26 @@ defineProps<{
   line-height: 1;
   font-weight: 900;
   font-style: italic;
+}
+
+.vs-score {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4rpx;
+}
+
+.vs-score-number {
+  font-size: 48rpx;
+  line-height: 1.1;
+  color: #ffffff;
+  font-weight: 900;
+}
+
+.vs-score-colon {
+  font-size: 34rpx;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 900;
 }
 </style>

@@ -39,6 +39,7 @@ import { useMatchGuestLogin } from "./useMatchGuestLogin";
 import { useMatchCheckInReview } from "./useMatchCheckInReview";
 import { useMatchSettlement } from "./useMatchSettlement";
 import { useMatchFinish } from "./useMatchFinish";
+import { useMatchScore } from "./useMatchScore";
 import { useNeoConfirmDialog } from "@/components/neo";
 import type { NeoConfirmDialogOptions } from "@/components/neo";
 
@@ -424,6 +425,13 @@ export function useMatchDetailPage() {
     reload: loadPageData,
   });
 
+  // 比赛管理员（管理端设置的微信用户）录入比分：游客模式不可见。
+  const matchScore = useMatchScore({
+    sourceMatch,
+    isMatchAdmin: computed(() => !isGuestMode.value && currentUser.value?.is_match_admin === true),
+    reload: loadPageData,
+  });
+
   async function loadPageData() {
     if (!matchId.value) return;
 
@@ -617,5 +625,6 @@ export function useMatchDetailPage() {
   handleSubmitSettlement,
   handleTeamSubmit,
   ...matchFinish,
+  matchScore,
 };
 }

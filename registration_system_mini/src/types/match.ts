@@ -45,6 +45,9 @@ export interface AppHomeEndedMatch extends AppMatchPhaseSource {
   host_team_name: string;
   opponent_name: string;
   location: string;
+  /** 最终比分；null 表示尚未录入。 */
+  host_score?: number | null;
+  away_score?: number | null;
   participants?: AppMatchParticipant[];
 }
 
@@ -69,6 +72,10 @@ export interface AppMatchSummary extends AppMatchPhaseSource {
   /** 发布者用户 ID：散人约球无主队，用它判定「我创建的比赛」以显示取消入口。 */
   created_by_user_id?: number | null;
   players_per_team: number;
+  /** 主队比分；null 表示尚未录入（比赛管理员/管理端录入）。 */
+  host_score?: number | null;
+  /** 客队比分；null 表示尚未录入。 */
+  away_score?: number | null;
   registration_start_at: string | null;
   registration_end_at: string | null;
   location: string;

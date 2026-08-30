@@ -4,7 +4,7 @@
 
 ## 后端迁移基线
 
-`mini-rust-backend-final` 标记本项目最后一个完整对接 Rust 后端的基线。该 tag 之后的改造在本目录内逐步切换到 `registration_system_go/`，必须以 Go 路由和 DTO 的实际代码为准；迁移完成前，未改造的页面仍按 Rust 接口契约运行。
+`mini-rust-backend-final` 标记本项目最后一个完整对接 Rust 后端的基线。该 tag 之后已在本目录内完成向 `registration_system_go/` 的切换，以 Go 路由和 DTO 的实际代码为准；旧 Rust 后端代码目录已从工作区删除（git 历史可查）。
 
 ## 当前状态
 
@@ -132,7 +132,7 @@ ${VITE_API_BASE_URL}${url}
 
 - 提交前至少执行 `bun run type-check`
 - 涉及路由或页面结构变动时，补跑 `bun run build:mp-weixin`
-- 改字段时以当前目标后端的 DTO 和实际 JSON 返回为准；迁移到 Go 的接口检查 `registration_system_go/`，尚未迁移的接口检查 `registration_system_rs/`
+- 改字段时以后端 Go 的 DTO 和实际 JSON 返回为准，检查 `registration_system_go/`；旧 Rust 后端代码目录已删除，需要核对历史契约时从 git 历史找回
 - 前端页面、样式、交互和小程序 UI 调整不要求机械按 TDD 开发；涉及路由、接口、权限、数据提交或共享逻辑时再按风险补充测试
 
 ## 微信 CI 上传

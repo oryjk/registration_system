@@ -13,6 +13,8 @@ import MatchDetailSkeleton from "./components/MatchDetailSkeleton.vue";
 import MatchFinishCard from "./components/MatchFinishCard.vue";
 import MatchCaptainContact from "./components/MatchCaptainContact.vue";
 import MatchEditDialog from "./components/MatchEditDialog.vue";
+import MatchScoreCard from "./components/MatchScoreCard.vue";
+import MatchScoreDialog from "./components/MatchScoreDialog.vue";
 import MatchJoinTeamSheet from "./components/MatchJoinTeamSheet.vue";
 import MatchIndividualRegistration from "./components/MatchIndividualRegistration.vue";
 import MatchTeamRegistration from "./components/MatchTeamRegistration.vue";
@@ -125,6 +127,7 @@ const {
   handleCancelPrimary,
   handleCancelSecondary,
   handleCancelClose,
+  matchScore,
   loadPageData,
 } = useMatchDetailPage();
 
@@ -194,7 +197,7 @@ const { themePageStyle } = useAccentTheme();
 const metaPageStyle = computed(() =>
   [
     themePageStyle.value,
-    teamMemberDialogVisible.value || confirmDialogVisible.value || finishDialogVisible.value || cancelDialogVisible.value || signupSheetVisible.value || captainContact.popupVisible.value || joinTeamSheet.sheetVisible.value || matchEdit.dialogVisible.value
+    teamMemberDialogVisible.value || confirmDialogVisible.value || finishDialogVisible.value || cancelDialogVisible.value || signupSheetVisible.value || captainContact.popupVisible.value || joinTeamSheet.sheetVisible.value || matchEdit.dialogVisible.value || matchScore.dialogVisible.value
       ? "overflow: hidden;"
       : "",
   ].filter(Boolean).join(";"),
@@ -323,6 +326,14 @@ const metaPageStyle = computed(() =>
         @open-finish-dialog="handleOpenFinishDialog"
         @cancel-match="handleCancelMatch"
       />
+      <!-- 比分卡：已录入对比分时所有人可见；比赛管理员可录入/修正。 -->
+      <MatchScoreCard
+        v-if="(matchScore.recordedScore.value || matchScore.canRecordScore.value) && sourceMatch"
+        :match="sourceMatch"
+        :recorded-score="matchScore.recordedScore.value"
+        :can-record="matchScore.canRecordScore.value"
+        @open-score-dialog="matchScore.open"
+      />
       <TeamSettlementCard
         v-if="registrationMode === 'team' && canShowSettlement"
         :summary="settlementSummary"
@@ -400,6 +411,20 @@ const metaPageStyle = computed(() =>
       @update:opponent-name="matchEdit.opponentName.value = $event"
       @update:max-players="matchEdit.maxPlayers.value = $event"
       @submit="void matchEdit.submit()"
+    />
+
+    <!-- 录入比分：比赛管理员专用。 -->
+    <MatchScoreDialog
+      :visible="matchScore.dialogVisible.value"
+      :host-team-label="sourceMatch?.host_team_name || '主队'"
+      :away-team-label="sourceMatch?.away_team_name || sourceMatch?.opponent_name || '客队'"
+      :host-score="matchScore.hostScore.value"
+      :away-score="matchScore.awayScore.value"
+      :submitting="matchScore.isSubmitting.value"
+      @close="matchScore.close"
+      @update:host-score="matchScore.hostScore.value = $event"
+      @update:away-score="matchScore.awayScore.value = $event"
+      @submit="void matchScore.submit()"
     />
 
     <!-- 非比赛球队成员：加入主队球队（无密码直接加入，有密码可输入或转联系队长）。 -->

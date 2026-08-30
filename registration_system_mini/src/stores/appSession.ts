@@ -25,6 +25,7 @@ import {
 } from "@/utils/authStorage";
 import { buildTeamProfiles } from "@/utils/viewModels";
 import { isUnauthorizedError } from "@/utils/request";
+import { waitWebViewAuthIngest } from "@/utils/webview";
 
 const currentUser = ref<BackendUser | null>(null);
 const myTeams = ref<BackendTeam[]>([]);
@@ -188,6 +189,10 @@ export async function ensureSessionReady(force = false) {
     bootstrapError.value = "";
 
     try {
+      // H5 经 web-view 打开时登录态由一次性 code 异步兑换，先等它落地再判断是否有 token；
+      // 小程序端该 promise 立即 resolve，无额外开销。
+      await waitWebViewAuthIngest();
+
       // Mock 模式：跳过微信登录，直接用 mock 数据建立会话
       if (isMockEnabled()) {
         await bootstrapMockSession();
@@ -243,6 +248,7 @@ export async function ensureSessionReady(force = false) {
 }
 
 export async function refreshSessionContext() {
+  await waitWebViewAuthIngest();
   // #ifdef H5
   if (import.meta.env.MODE !== "production" && import.meta.env.VITE_ENABLE_H5_TEST_LOGIN === "true") {
     // 已有登录态时保留当前用户，仅刷新用户与球队上下文；

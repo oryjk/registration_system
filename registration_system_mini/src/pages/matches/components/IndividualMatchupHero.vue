@@ -59,7 +59,12 @@ const matchStatusTag = computed(() => {
           <text class="hero-name">{{ homeTeamLabel }}</text>
         </view>
       </view>
-      <text class="hero-vs">VS</text>
+      <view v-if="match.host_score != null && match.away_score != null" class="hero-score">
+        <text class="hero-score-number">{{ match.host_score }}</text>
+        <text class="hero-score-colon">:</text>
+        <text class="hero-score-number">{{ match.away_score }}</text>
+      </view>
+      <text v-else class="hero-vs">VS</text>
       <view class="hero-team hero-team-away">
         <view class="hero-flag" :style="{ backgroundColor: awayTeamColor }" />
         <view class="hero-team-info">
@@ -244,6 +249,26 @@ const matchStatusTag = computed(() => {
   color: var(--neo-color-text);
   font-weight: 900;
   letter-spacing: 2rpx;
+}
+
+.hero-score {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+}
+
+.hero-score-number {
+  font-size: 52rpx;
+  line-height: 1;
+  color: var(--neo-color-text);
+  font-weight: 900;
+}
+
+.hero-score-colon {
+  font-size: 40rpx;
+  line-height: 1;
+  color: var(--neo-color-text-muted);
+  font-weight: 900;
 }
 
 .hero-foot {

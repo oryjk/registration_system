@@ -31,6 +31,7 @@ export function toBackendUser(user: AppUser): BackendUser {
     phone_number: user.phone_number ?? "",
     is_manager: false,
     is_venue: false,
+    is_match_admin: user.is_match_admin ?? false,
   };
 }
 
