@@ -2,9 +2,9 @@
 
 ## 项目定位
 
-新的赛事报名与球队管理后端，**当前唯一在开发的后端**。第一阶段优先实现微信登录、用户/球队权限和 Match 比赛闭环。`../registration_system_rs/` 是已冻结的老项目，未来不再更新，仅作为只读业务与迁移参考；不要在 Go 后端任务中修改它。
+新的赛事报名与球队管理后端，**当前唯一在开发的后端**。第一阶段优先实现微信登录、用户/球队权限和 Match 比赛闭环。旧 Rust 项目 `../registration_system_rs/` 已停止开发并从工作区删除（2026-08-30，需要核对旧实现时从 git 历史检出只读查看）；不要重建或修改它。
 
-历史数据已由 `scripts/migrate-legacy.sh`（`cmd/migratelegacydb`）从 Rust 旧库全量迁入 Go 结构；后续增量迁移与所有新功能都在本项目实现。
+历史数据已由 `scripts/migrate-legacy.sh`（`cmd/migratelegacydb`）从 Rust 旧库全量迁入 Go 结构（迁移直连线上旧库，不依赖已删除的代码目录）；后续增量迁移与所有新功能都在本项目实现。
 
 本项目最低工具链为 Go 1.26.5；macOS 26 上不要回退到无法生成 `LC_UUID` 的旧 Go 1.22 工具链。
 
@@ -32,7 +32,7 @@
 
 - 新功能优先形成小而高内聚的 use case，不建立全局巨型 service。
 - **Match 是唯一比赛聚合根**；报名阵营使用 RegistrationGroup，不复制比赛。
-- Rust 后端已冻结不再更新，只读参考；数据库迁移用 `cmd/migratelegacydb` / `scripts/migrate-legacy.sh`，日常 schema 变更用 `cmd/dbmigrate`（不要用 `go run goose@version`，CLI 驱动依赖不在 go.sum）。
+- 旧 Rust 后端已从工作区删除；数据库迁移用 `cmd/migratelegacydb` / `scripts/migrate-legacy.sh`，日常 schema 变更用 `cmd/dbmigrate`（不要用 `go run goose@version`，CLI 驱动依赖不在 go.sum）。
 - PostgreSQL 集成测试通过 `internal/testsupport` 为每个用例创建独立随机 schema，任何测试都不得 TRUNCATE 共享业务表。
 
 ## 开发约束

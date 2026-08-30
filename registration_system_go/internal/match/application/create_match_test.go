@@ -102,6 +102,7 @@ func (f *fakeMatchRepository) UpdateDetails(context.Context, domain.Match, *doma
 	return nil
 }
 func (f *fakeMatchRepository) UpdateStatus(context.Context, domain.Match) error { return nil }
+func (f *fakeMatchRepository) UpdateScore(context.Context, domain.Match) error  { return nil }
 func (f *fakeMatchRepository) FinishUpdateStatus(_ context.Context, _ domain.Match) (bool, error) {
 	return true, nil
 }

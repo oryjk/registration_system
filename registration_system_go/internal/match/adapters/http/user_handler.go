@@ -31,15 +31,21 @@ type FinishMatchUseCase interface {
 	Execute(context.Context, sharedauth.Actor, uuid.UUID, application.FinishMatchCommand) (domain.Match, error)
 }
 
+// RecordMatchScoreUseCase 比赛管理员录入/修正比赛比分。
+type RecordMatchScoreUseCase interface {
+	Execute(context.Context, sharedauth.Actor, uuid.UUID, application.RecordMatchScoreCommand) (domain.Match, error)
+}
+
 type UserHandler struct {
 	service UserMatchUseCase
 	create  CreateMatchUseCase
 	finish  FinishMatchUseCase
 	update  UserMatchUpdateUseCase
+	score   RecordMatchScoreUseCase
 }
 
-func NewUserHandler(service UserMatchUseCase, create CreateMatchUseCase, finish FinishMatchUseCase, update UserMatchUpdateUseCase) *UserHandler {
-	return &UserHandler{service: service, create: create, finish: finish, update: update}
+func NewUserHandler(service UserMatchUseCase, create CreateMatchUseCase, finish FinishMatchUseCase, update UserMatchUpdateUseCase, score RecordMatchScoreUseCase) *UserHandler {
+	return &UserHandler{service: service, create: create, finish: finish, update: update, score: score}
 }
 
 type UserMatchResponse struct {
@@ -54,8 +60,11 @@ type UserMatchResponse struct {
 	AwayTeamName    *string                `json:"away_team_name"`
 	OpponentName    *string                `json:"opponent_name"`
 	// 发布者用户 ID：散人约球无主队，小程序靠它判定「我创建的比赛」以显示取消入口。
-	CreatedByUserID     *int64             `json:"created_by_user_id"`
-	PlayersPerTeam      int                `json:"players_per_team"`
+	CreatedByUserID *int64 `json:"created_by_user_id"`
+	PlayersPerTeam  int    `json:"players_per_team"`
+	// HostScore/AwayScore 比赛比分；null 表示尚未录入（比赛管理员/管理端录入）。
+	HostScore           *int               `json:"host_score"`
+	AwayScore           *int               `json:"away_score"`
 	StartTime           time.Time          `json:"start_time"`
 	EndTime             time.Time          `json:"end_time"`
 	RegistrationStartAt *time.Time         `json:"registration_start_at"`
@@ -158,16 +167,19 @@ type UserHomeActionMatchResponse struct {
 }
 
 type UserHomeEndedMatchResponse struct {
-	ID              string                    `json:"id"`
-	Name            string                    `json:"name"`
-	PublicationMode domain.PublicationMode    `json:"publication_mode"`
-	Status          domain.MatchStatus        `json:"status"`
-	HostTeamName    string                    `json:"host_team_name"`
-	OpponentName    string                    `json:"opponent_name"`
-	StartTime       time.Time                 `json:"start_time"`
-	EndTime         time.Time                 `json:"end_time"`
-	Location        string                    `json:"location"`
-	Participants    []UserParticipantResponse `json:"participants"`
+	ID              string                 `json:"id"`
+	Name            string                 `json:"name"`
+	PublicationMode domain.PublicationMode `json:"publication_mode"`
+	Status          domain.MatchStatus     `json:"status"`
+	HostTeamName    string                 `json:"host_team_name"`
+	OpponentName    string                 `json:"opponent_name"`
+	// HostScore/AwayScore 最终比分；null 表示尚未录入。
+	HostScore    *int                      `json:"host_score"`
+	AwayScore    *int                      `json:"away_score"`
+	StartTime    time.Time                 `json:"start_time"`
+	EndTime      time.Time                 `json:"end_time"`
+	Location     string                    `json:"location"`
+	Participants []UserParticipantResponse `json:"participants"`
 }
 
 type UserMatchHomeResponse struct {
@@ -328,6 +340,36 @@ func (h *UserHandler) ChangeStatus(c *gin.Context) {
 	sharedhttpapi.WriteSuccess(c, mapUserDetail(detail))
 }
 
+// RecordScore PATCH /matches/:id/score：比赛管理员录入/修正比赛比分。
+func (h *UserHandler) RecordScore(c *gin.Context) {
+	actor, ok := userActor(c)
+	if !ok {
+		return
+	}
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		sharedhttpapi.WriteError(c, sharederror.New(sharederror.KindValidation, "比赛 ID 无效"))
+		return
+	}
+	var request UpdateMatchScoreRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		sharedhttpapi.WriteError(c, sharederror.New(sharederror.KindValidation, "比赛比分不能为空"))
+		return
+	}
+	if _, err := h.score.Execute(c.Request.Context(), actor, id, application.RecordMatchScoreCommand{
+		HostScore: *request.HostScore, AwayScore: *request.AwayScore,
+	}); err != nil {
+		sharedhttpapi.WriteError(c, err)
+		return
+	}
+	detail, err := h.service.Get(c.Request.Context(), actor, id)
+	if err != nil {
+		sharedhttpapi.WriteError(c, err)
+		return
+	}
+	sharedhttpapi.WriteSuccess(c, mapUserDetail(detail))
+}
+
 func (h *UserHandler) RegisterRoutes(group *gin.RouterGroup) {
 	group.GET("/matches", h.List)
 	group.GET("/matches/home", h.Home)
@@ -335,6 +377,7 @@ func (h *UserHandler) RegisterRoutes(group *gin.RouterGroup) {
 	group.GET("/matches/:id", h.Get)
 	group.PATCH("/matches/:id", h.UpdateDetails)
 	group.PATCH("/matches/:id/status", h.ChangeStatus)
+	group.PATCH("/matches/:id/score", h.RecordScore)
 }
 
 func parseUserListQuery(c *gin.Context) (application.UserMatchListQuery, error) {
@@ -419,7 +462,8 @@ func mapUserMatch(item ports.MatchItem) UserMatchResponse {
 		OpponentState: match.OpponentState, Status: match.Status,
 		HostTeamID: match.HostTeamID, HostTeamName: item.HostTeamName, CreatedByUserID: match.CreatedByUserID,
 		AwayTeamID: match.AwayTeamID, AwayTeamName: item.AwayTeamName, OpponentName: match.OpponentName,
-		PlayersPerTeam: match.PlayersPerTeam, StartTime: match.StartTime, EndTime: match.EndTime,
+		PlayersPerTeam: match.PlayersPerTeam, HostScore: match.HostScore, AwayScore: match.AwayScore,
+		StartTime: match.StartTime, EndTime: match.EndTime,
 		RegistrationStartAt: match.RegistrationStartAt, RegistrationEndAt: match.RegistrationEndAt,
 		Location: match.Location, LocationLatitude: match.LocationLatitude, LocationLongitude: match.LocationLongitude,
 		Description: match.Description, RegistrationGroups: groups, CreatedAt: match.CreatedAt, UpdatedAt: match.UpdatedAt,
@@ -496,6 +540,7 @@ func mapUserHome(result application.UserMatchHomeResult) UserMatchHomeResponse {
 		ended = append(ended, UserHomeEndedMatchResponse{
 			ID: match.ID.String(), Name: match.Name, PublicationMode: match.PublicationMode, Status: match.Status,
 			HostTeamName: item.HostTeamName, OpponentName: userOpponentName(item),
+			HostScore: match.HostScore, AwayScore: match.AwayScore,
 			StartTime: match.StartTime, EndTime: match.EndTime, Location: match.Location,
 			Participants: mapUserParticipantResponses(item.Participants),
 		})

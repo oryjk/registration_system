@@ -23,8 +23,10 @@ type User struct {
 	RealName    *string
 	PhoneNumber *string
 	Status      Status
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	// IsMatchAdmin 是否为比赛管理员（管理端设置）：可在小程序端录入比赛比分。
+	IsMatchAdmin bool
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
 }
 
 func (u User) UpdateProfile(realName, phoneNumber string) (User, error) {

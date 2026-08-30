@@ -18,6 +18,15 @@ type AdminUser struct {
 	UpdatedAt    pgtype.Timestamp `json:"updated_at"`
 }
 
+type AuthWebviewCode struct {
+	ID        int64              `json:"id"`
+	UserID    int64              `json:"user_id"`
+	CodeHash  string             `json:"code_hash"`
+	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
+	UsedAt    pgtype.Timestamptz `json:"used_at"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
 type LegacyImportMapping struct {
 	SourceSystem       string             `json:"source_system"`
 	EntityType         string             `json:"entity_type"`
@@ -57,6 +66,8 @@ type Match struct {
 	AwayColor           *string          `json:"away_color"`
 	PaymentMode         string           `json:"payment_mode"`
 	FeePerPersonCents   int64            `json:"fee_per_person_cents"`
+	HostScore           *int32           `json:"host_score"`
+	AwayScore           *int32           `json:"away_score"`
 }
 
 type MatchCaptainMessage struct {
@@ -237,15 +248,16 @@ type Tip struct {
 }
 
 type User struct {
-	ID          int64            `json:"id"`
-	Openid      string           `json:"openid"`
-	Nickname    string           `json:"nickname"`
-	AvatarUrl   *string          `json:"avatar_url"`
-	Status      string           `json:"status"`
-	CreatedAt   pgtype.Timestamp `json:"created_at"`
-	UpdatedAt   pgtype.Timestamp `json:"updated_at"`
-	RealName    *string          `json:"real_name"`
-	PhoneNumber *string          `json:"phone_number"`
+	ID           int64            `json:"id"`
+	Openid       string           `json:"openid"`
+	Nickname     string           `json:"nickname"`
+	AvatarUrl    *string          `json:"avatar_url"`
+	Status       string           `json:"status"`
+	CreatedAt    pgtype.Timestamp `json:"created_at"`
+	UpdatedAt    pgtype.Timestamp `json:"updated_at"`
+	RealName     *string          `json:"real_name"`
+	PhoneNumber  *string          `json:"phone_number"`
+	IsMatchAdmin bool             `json:"is_match_admin"`
 }
 
 type WalletAccount struct {

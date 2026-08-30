@@ -278,6 +278,9 @@ func (f *fakeAdminMatches) UpdateDetails(_ context.Context, _ sharedauth.Actor, 
 func (f *fakeAdminMatches) ChangeStatus(context.Context, sharedauth.Actor, uuid.UUID, domain.MatchStatus) (domain.Match, error) {
 	return domain.Match{}, nil
 }
+func (f *fakeAdminMatches) RecordScore(context.Context, sharedauth.Actor, uuid.UUID, int, int) (domain.Match, error) {
+	return domain.Match{}, nil
+}
 func (f *fakeAdminMatches) Delete(_ context.Context, _ sharedauth.Actor, id uuid.UUID) error {
 	f.deletedID = id
 	return nil

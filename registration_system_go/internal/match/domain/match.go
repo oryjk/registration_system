@@ -51,16 +51,22 @@ const (
 	MatchCancelled   MatchStatus = "cancelled"
 )
 
+// maxMatchScore 单边比分上限，防止误录入天文数字。
+const maxMatchScore = 999
+
 type Match struct {
-	ID                  uuid.UUID
-	Name                string
-	PublicationMode     PublicationMode
-	OpponentState       OpponentState
-	Status              MatchStatus
-	HostTeamID          *int64
-	AwayTeamID          *int64
-	OpponentName        *string
-	PlayersPerTeam      int
+	ID              uuid.UUID
+	Name            string
+	PublicationMode PublicationMode
+	OpponentState   OpponentState
+	Status          MatchStatus
+	HostTeamID      *int64
+	AwayTeamID      *int64
+	OpponentName    *string
+	PlayersPerTeam  int
+	// HostScore/AwayScore 比赛比分；nil 表示尚未录入。
+	HostScore           *int
+	AwayScore           *int
 	StartTime           time.Time
 	EndTime             time.Time
 	RegistrationStartAt *time.Time
@@ -380,6 +386,21 @@ func (m *Match) ChangeStatus(next MatchStatus, now time.Time) error {
 		return sharederror.New(sharederror.KindConflict, "比赛状态不能这样变更")
 	}
 	m.Status = next
+	m.UpdatedAt = now
+	return nil
+}
+
+// RecordScore 录入/修改比赛比分：仅比赛进行中或已结束允许，
+// 报名期与已取消的比赛不能录入。比分可反复修正（例如赛后补录、改错）。
+func (m *Match) RecordScore(hostScore, awayScore int, now time.Time) error {
+	if m.Status != MatchOngoing && m.Status != MatchEnded {
+		return sharederror.New(sharederror.KindConflict, "比赛开始后才能录入比分")
+	}
+	if hostScore < 0 || awayScore < 0 || hostScore > maxMatchScore || awayScore > maxMatchScore {
+		return sharederror.New(sharederror.KindValidation, "比分必须在 0 到 999 之间")
+	}
+	m.HostScore = &hostScore
+	m.AwayScore = &awayScore
 	m.UpdatedAt = now
 	return nil
 }

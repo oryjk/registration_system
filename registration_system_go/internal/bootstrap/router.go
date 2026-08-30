@@ -20,6 +20,7 @@ import (
 type Dependencies struct {
 	AuthMiddleware     *authhttp.Middleware
 	UserAuth           *authhttp.Handler
+	WebviewCodes       *authhttp.WebviewCodeHandler
 	TestAuth           *authhttp.TestHandler
 	AdminAuth          *authhttp.AdminHandler
 	UserProfiles       *userhttp.Handler
@@ -65,6 +66,9 @@ func NewRouter(dependencies Dependencies) *gin.Engine {
 	if dependencies.UserAuth != nil {
 		dependencies.UserAuth.RegisterPublicRoutes(app)
 	}
+	if dependencies.WebviewCodes != nil {
+		dependencies.WebviewCodes.RegisterPublicRoutes(app)
+	}
 	if dependencies.H5TestLoginEnabled && dependencies.TestAuth != nil {
 		dependencies.TestAuth.RegisterRoutes(app)
 	}
@@ -92,6 +96,9 @@ func NewRouter(dependencies Dependencies) *gin.Engine {
 		}
 		if dependencies.AppUsers != nil {
 			dependencies.AppUsers.RegisterAppRoutes(userRoutes)
+		}
+		if dependencies.WebviewCodes != nil {
+			dependencies.WebviewCodes.RegisterUserRoutes(userRoutes)
 		}
 		if dependencies.Teams != nil {
 			dependencies.Teams.RegisterUserRoutes(userRoutes)

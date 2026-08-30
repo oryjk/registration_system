@@ -34,8 +34,8 @@ func TestOpenAPIIsValidAndMatchesGinRoutes(t *testing.T) {
 	if len(missing) != 0 || len(extra) != 0 {
 		t.Fatalf("OpenAPI route mismatch\nmissing: %v\nextra: %v", missing, extra)
 	}
-	if len(documented) != 76 {
-		t.Fatalf("documented operations=%d, want 76", len(documented))
+	if len(documented) != 85 {
+		t.Fatalf("documented operations=%d, want 85", len(documented))
 	}
 }
 
@@ -47,6 +47,7 @@ func TestOpenAPISecurityMatchesPublicAndProtectedRoutes(t *testing.T) {
 	}{
 		{method: http.MethodGet, path: "/health"},
 		{method: http.MethodPost, path: "/api/v1/app/auth/wechat/login"},
+		{method: http.MethodPost, path: "/api/v1/app/auth/webview-codes/exchange"},
 		{method: http.MethodGet, path: "/api/v1/app/test-auth/users"},
 		{method: http.MethodPost, path: "/api/v1/app/test-auth/login"},
 		{method: http.MethodPost, path: "/api/v1/admin/auth/login"},
@@ -62,12 +63,18 @@ func TestOpenAPISecurityMatchesPublicAndProtectedRoutes(t *testing.T) {
 		path   string
 	}{
 		{method: http.MethodGet, path: "/api/v1/app/users/me"},
+		{method: http.MethodPost, path: "/api/v1/app/auth/webview-codes"},
 		{method: http.MethodPost, path: "/api/v1/app/matches"},
 		{method: http.MethodGet, path: "/api/v1/admin/auth/me"},
 		{method: http.MethodPost, path: "/api/v1/app/payments/recharge-orders"},
 		{method: http.MethodGet, path: "/api/v1/app/wallet"},
 		{method: http.MethodGet, path: "/api/v1/admin/payments/orders"},
 		{method: http.MethodGet, path: "/api/v1/admin/wallets/{user_id}"},
+		{method: http.MethodPatch, path: "/api/v1/admin/matches/{id}/score"},
+		{method: http.MethodGet, path: "/api/v1/admin/users"},
+		{method: http.MethodPut, path: "/api/v1/admin/users/{id}/match-admin"},
+		{method: http.MethodDelete, path: "/api/v1/admin/users/{id}/match-admin"},
+		{method: http.MethodPatch, path: "/api/v1/app/matches/{id}/score"},
 	} {
 		if !operationRequiresBearer(operation(t, document, route.method, route.path)) {
 			t.Fatalf("%s %s must require bearerAuth", route.method, route.path)
@@ -128,15 +135,16 @@ func completeRouter() *gin.Engine {
 	return bootstrap.NewRouter(bootstrap.Dependencies{
 		AuthMiddleware:     &middleware,
 		UserAuth:           authhttp.NewHandler(nil),
+		WebviewCodes:       authhttp.NewWebviewCodeHandler(nil),
 		TestAuth:           authhttp.NewTestHandler(nil, 37),
 		AdminAuth:          authhttp.NewAdminHandler(nil),
-		UserProfiles:       userhttp.NewHandler(nil),
+		UserProfiles:       userhttp.NewHandler(nil, nil),
 		AppUsers:           userhttp.NewAppHandler(nil, nil, ""),
 		H5TestLoginEnabled: true,
 		Teams:              teamhttp.NewHandler(nil, nil),
 		AppTeams:           teamhttp.NewAppHandler(nil, nil),
 		AppTeamManage:      teamhttp.NewAppManageHandler(nil),
-		UserMatches:        matchhttp.NewUserHandler(nil, nil, nil, nil),
+		UserMatches:        matchhttp.NewUserHandler(nil, nil, nil, nil, nil),
 		UserRegistrations:  matchhttp.NewUserRegistrationHandler(nil),
 		AdminMatches:       matchhttp.NewAdminHandler(nil, nil),
 		TeamApplications:   matchhttp.NewTeamApplicationHandler(nil),

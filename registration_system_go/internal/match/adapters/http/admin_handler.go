@@ -22,6 +22,7 @@ type AdminMatchUseCase interface {
 	Get(context.Context, sharedauth.Actor, uuid.UUID) (application.AdminMatchDetail, error)
 	UpdateDetails(context.Context, sharedauth.Actor, uuid.UUID, application.UpdateMatchCommand) (domain.Match, error)
 	ChangeStatus(context.Context, sharedauth.Actor, uuid.UUID, domain.MatchStatus) (domain.Match, error)
+	RecordScore(context.Context, sharedauth.Actor, uuid.UUID, int, int) (domain.Match, error)
 	Delete(context.Context, sharedauth.Actor, uuid.UUID) error
 }
 
@@ -99,35 +100,44 @@ type UpdateMatchStatusRequest struct {
 	Status domain.MatchStatus `json:"status" binding:"required"`
 }
 
+// UpdateMatchScoreRequest 比分用指针承载：0 是合法比分，不能当缺失处理。
+type UpdateMatchScoreRequest struct {
+	HostScore *int `json:"host_score" binding:"required"`
+	AwayScore *int `json:"away_score" binding:"required"`
+}
+
 type MatchResponse struct {
-	ID                  string                 `json:"id"`
-	Name                string                 `json:"name"`
-	PublicationMode     domain.PublicationMode `json:"publication_mode"`
-	OpponentState       domain.OpponentState   `json:"opponent_state"`
-	Status              domain.MatchStatus     `json:"status"`
-	HostTeamID          *int64                 `json:"host_team_id"`
-	HostTeamName        string                 `json:"host_team_name"`
-	AwayTeamID          *int64                 `json:"away_team_id"`
-	AwayTeamName        *string                `json:"away_team_name"`
-	OpponentName        *string                `json:"opponent_name"`
-	PlayersPerTeam      int                    `json:"players_per_team"`
-	StartTime           time.Time              `json:"start_time"`
-	EndTime             time.Time              `json:"end_time"`
-	RegistrationStartAt *time.Time             `json:"registration_start_at"`
-	RegistrationEndAt   *time.Time             `json:"registration_end_at"`
-	Location            string                 `json:"location"`
-	LocationLatitude    *float64               `json:"location_latitude"`
-	LocationLongitude   *float64               `json:"location_longitude"`
-	Description         *string                `json:"description"`
-	HostColor           *string                `json:"host_color"`
-	AwayColor           *string                `json:"away_color"`
-	IsFree              bool                   `json:"is_free"`
-	PaymentMode         domain.PaymentMode     `json:"payment_mode"`
-	FeePerPersonCents   int64                  `json:"fee_per_person_cents"`
-	CreatedByUserID     *int64                 `json:"created_by_user_id"`
-	CreatedByAdminID    *int64                 `json:"created_by_admin_id"`
-	CreatedAt           time.Time              `json:"created_at"`
-	UpdatedAt           time.Time              `json:"updated_at"`
+	ID              string                 `json:"id"`
+	Name            string                 `json:"name"`
+	PublicationMode domain.PublicationMode `json:"publication_mode"`
+	OpponentState   domain.OpponentState   `json:"opponent_state"`
+	Status          domain.MatchStatus     `json:"status"`
+	HostTeamID      *int64                 `json:"host_team_id"`
+	HostTeamName    string                 `json:"host_team_name"`
+	AwayTeamID      *int64                 `json:"away_team_id"`
+	AwayTeamName    *string                `json:"away_team_name"`
+	OpponentName    *string                `json:"opponent_name"`
+	PlayersPerTeam  int                    `json:"players_per_team"`
+	// HostScore/AwayScore 比赛比分；null 表示尚未录入。
+	HostScore           *int               `json:"host_score"`
+	AwayScore           *int               `json:"away_score"`
+	StartTime           time.Time          `json:"start_time"`
+	EndTime             time.Time          `json:"end_time"`
+	RegistrationStartAt *time.Time         `json:"registration_start_at"`
+	RegistrationEndAt   *time.Time         `json:"registration_end_at"`
+	Location            string             `json:"location"`
+	LocationLatitude    *float64           `json:"location_latitude"`
+	LocationLongitude   *float64           `json:"location_longitude"`
+	Description         *string            `json:"description"`
+	HostColor           *string            `json:"host_color"`
+	AwayColor           *string            `json:"away_color"`
+	IsFree              bool               `json:"is_free"`
+	PaymentMode         domain.PaymentMode `json:"payment_mode"`
+	FeePerPersonCents   int64              `json:"fee_per_person_cents"`
+	CreatedByUserID     *int64             `json:"created_by_user_id"`
+	CreatedByAdminID    *int64             `json:"created_by_admin_id"`
+	CreatedAt           time.Time          `json:"created_at"`
+	UpdatedAt           time.Time          `json:"updated_at"`
 }
 
 type GroupResponse struct {
@@ -298,12 +308,36 @@ func (h *AdminHandler) Delete(c *gin.Context) {
 	sharedhttpapi.WriteSuccess(c, gin.H{"id": id.String()})
 }
 
+// RecordScore PATCH /matches/:id/score：管理端录入/修正比赛比分。
+func (h *AdminHandler) RecordScore(c *gin.Context) {
+	actor, id, ok := actorAndMatchID(c)
+	if !ok {
+		return
+	}
+	var request UpdateMatchScoreRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		sharedhttpapi.WriteError(c, sharederror.New(sharederror.KindValidation, "比赛比分不能为空"))
+		return
+	}
+	if _, err := h.service.RecordScore(c.Request.Context(), actor, id, *request.HostScore, *request.AwayScore); err != nil {
+		sharedhttpapi.WriteError(c, err)
+		return
+	}
+	detail, err := h.service.Get(c.Request.Context(), actor, id)
+	if err != nil {
+		sharedhttpapi.WriteError(c, err)
+		return
+	}
+	sharedhttpapi.WriteSuccess(c, mapDetail(detail))
+}
+
 func (h *AdminHandler) RegisterRoutes(group *gin.RouterGroup) {
 	group.GET("/matches", h.List)
 	group.POST("/matches", h.Create)
 	group.GET("/matches/:id", h.Get)
 	group.PATCH("/matches/:id", h.Update)
 	group.PATCH("/matches/:id/status", h.ChangeStatus)
+	group.PATCH("/matches/:id/score", h.RecordScore)
 	group.DELETE("/matches/:id", h.Delete)
 }
 
@@ -357,7 +391,8 @@ func mapMatch(item ports.AdminMatchItem) MatchResponse {
 		ID: match.ID.String(), Name: match.Name, PublicationMode: match.PublicationMode, OpponentState: match.OpponentState,
 		Status: match.Status, HostTeamID: match.HostTeamID, HostTeamName: item.HostTeamName,
 		AwayTeamID: match.AwayTeamID, AwayTeamName: item.AwayTeamName, OpponentName: match.OpponentName,
-		PlayersPerTeam: match.PlayersPerTeam, StartTime: match.StartTime, EndTime: match.EndTime,
+		PlayersPerTeam: match.PlayersPerTeam, HostScore: match.HostScore, AwayScore: match.AwayScore,
+		StartTime: match.StartTime, EndTime: match.EndTime,
 		RegistrationStartAt: match.RegistrationStartAt, RegistrationEndAt: match.RegistrationEndAt,
 		Location: match.Location, LocationLatitude: match.LocationLatitude, LocationLongitude: match.LocationLongitude,
 		Description: match.Description, IsFree: match.IsFree, CreatedByUserID: match.CreatedByUserID, CreatedByAdminID: match.CreatedByAdminID,

@@ -396,6 +396,15 @@ SET status = $2,
 WHERE id = $1
   AND status IN ('registering', 'ongoing');
 
+-- name: UpdateMatchScore :one
+-- 录入/修正比赛比分（进行中或已结束）；状态约束在 application 层校验。
+UPDATE matches
+SET host_score = $2,
+    away_score = $3,
+    updated_at = NOW()
+WHERE id = $1
+RETURNING *;
+
 -- name: DeleteMatch :execrows
 DELETE FROM matches
 WHERE id = $1;

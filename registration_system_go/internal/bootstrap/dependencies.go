@@ -80,7 +80,8 @@ func BuildDependencies(ctx context.Context, config Config) (Dependencies, func()
 
 	userRepository := userpostgres.NewRepository(pool)
 	profileService := userapplication.NewProfileService(userRepository)
-	userProfileHandler := userhttp.NewHandler(profileService)
+	adminUserService := userapplication.NewAdminUserService(userRepository)
+	userProfileHandler := userhttp.NewHandler(profileService, adminUserService)
 	appUserService := userapplication.NewAppService(userRepository)
 	avatarStore, err := avatarstore.NewLocal(config.UploadDir)
 	if err != nil {
@@ -93,6 +94,9 @@ func BuildDependencies(ctx context.Context, config Config) (Dependencies, func()
 	userAuthHandler := authhttp.NewHandler(wechatLogin)
 	testLoginService := authapplication.NewTestLoginService(userRepository, tokens)
 	testAuthHandler := authhttp.NewTestHandler(testLoginService, config.H5TestDefaultUserID)
+	webviewCodeRepository := authpostgres.NewWebviewCodeRepository(pool)
+	webviewCodeService := authapplication.NewWebviewCodeService(webviewCodeRepository, tokens)
+	webviewCodeHandler := authhttp.NewWebviewCodeHandler(webviewCodeService)
 
 	teamRepository := teampostgres.NewRepository(pool)
 	teamService := teamapplication.NewQueryService(teamRepository, teampassword.Bcrypt{})
@@ -108,9 +112,10 @@ func BuildDependencies(ctx context.Context, config Config) (Dependencies, func()
 	matchClock := clock.System{}
 	createMatch := matchapplication.NewCreateMatch(matchRepository, teamService, defaults.Service{}, matchClock)
 	finishMatch := matchapplication.NewFinishMatch(matchRepository, teamService, matchClock)
+	recordMatchScore := matchapplication.NewRecordMatchScore(matchRepository, appUserService, matchClock)
 	userMatches := matchapplication.NewUserMatchQueryService(matchRepository)
 	userMatchUpdates := matchapplication.NewUserMatchUpdateService(matchRepository, teamService, matchClock.Now)
-	userMatchHandler := matchhttp.NewUserHandler(userMatches, createMatch, finishMatch, userMatchUpdates)
+	userMatchHandler := matchhttp.NewUserHandler(userMatches, createMatch, finishMatch, userMatchUpdates, recordMatchScore)
 	adminMatches := matchapplication.NewAdminMatchService(matchRepository, matchClock, adminService)
 	adminMatchHandler := matchhttp.NewAdminHandler(adminMatches, createMatch)
 	teamApplications := matchapplication.NewTeamApplicationService(matchRepository, teamService, matchClock)
@@ -162,7 +167,8 @@ func BuildDependencies(ctx context.Context, config Config) (Dependencies, func()
 	return Dependencies{
 		AuthMiddleware: &authMiddleware,
 		UserAuth:       userAuthHandler, AdminAuth: adminAuthHandler,
-		TestAuth: testAuthHandler, H5TestLoginEnabled: config.H5TestLoginEnabled(),
+		WebviewCodes: webviewCodeHandler,
+		TestAuth:     testAuthHandler, H5TestLoginEnabled: config.H5TestLoginEnabled(),
 		UserProfiles: userProfileHandler, AppUsers: appUserHandler, ActiveUsers: appUserService, Teams: teamHandler, AppTeams: appTeamHandler,
 		AppTeamManage: appTeamManageHandler, AppTeamSelf: appTeamSelfHandler,
 		UserMatches: userMatchHandler, UserRegistrations: userRegistrationHandler,

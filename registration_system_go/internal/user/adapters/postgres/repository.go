@@ -27,7 +27,7 @@ func (r *Repository) FindByOpenID(ctx context.Context, openID string) (domain.Us
 	if err != nil {
 		return domain.User{}, false, err
 	}
-	return mapUser(row.ID, row.Openid, row.Nickname, row.AvatarUrl, row.RealName, row.PhoneNumber, row.Status, row.CreatedAt.Time, row.UpdatedAt.Time), true, nil
+	return mapUser(row.ID, row.Openid, row.Nickname, row.AvatarUrl, row.RealName, row.PhoneNumber, row.Status, row.IsMatchAdmin, row.CreatedAt.Time, row.UpdatedAt.Time), true, nil
 }
 
 func (r *Repository) FindByID(ctx context.Context, userID int64) (domain.User, bool, error) {
@@ -38,7 +38,7 @@ func (r *Repository) FindByID(ctx context.Context, userID int64) (domain.User, b
 	if err != nil {
 		return domain.User{}, false, err
 	}
-	return mapUser(row.ID, row.Openid, row.Nickname, row.AvatarUrl, row.RealName, row.PhoneNumber, row.Status, row.CreatedAt.Time, row.UpdatedAt.Time), true, nil
+	return mapUser(row.ID, row.Openid, row.Nickname, row.AvatarUrl, row.RealName, row.PhoneNumber, row.Status, row.IsMatchAdmin, row.CreatedAt.Time, row.UpdatedAt.Time), true, nil
 }
 
 func (r *Repository) Create(ctx context.Context, user domain.User) (domain.User, error) {
@@ -50,7 +50,7 @@ func (r *Repository) Create(ctx context.Context, user domain.User) (domain.User,
 	if err != nil {
 		return domain.User{}, err
 	}
-	return mapUser(row.ID, row.Openid, row.Nickname, row.AvatarUrl, row.RealName, row.PhoneNumber, row.Status, row.CreatedAt.Time, row.UpdatedAt.Time), nil
+	return mapUser(row.ID, row.Openid, row.Nickname, row.AvatarUrl, row.RealName, row.PhoneNumber, row.Status, row.IsMatchAdmin, row.CreatedAt.Time, row.UpdatedAt.Time), nil
 }
 
 func (r *Repository) UpdateProfile(ctx context.Context, user domain.User) (domain.User, error) {
@@ -60,7 +60,7 @@ func (r *Repository) UpdateProfile(ctx context.Context, user domain.User) (domai
 	if err != nil {
 		return domain.User{}, err
 	}
-	return mapUser(row.ID, row.Openid, row.Nickname, row.AvatarUrl, row.RealName, row.PhoneNumber, row.Status, row.CreatedAt.Time, row.UpdatedAt.Time), nil
+	return mapUser(row.ID, row.Openid, row.Nickname, row.AvatarUrl, row.RealName, row.PhoneNumber, row.Status, row.IsMatchAdmin, row.CreatedAt.Time, row.UpdatedAt.Time), nil
 }
 
 func (r *Repository) UpdateAppProfile(ctx context.Context, user domain.User) (domain.User, error) {
@@ -70,7 +70,7 @@ func (r *Repository) UpdateAppProfile(ctx context.Context, user domain.User) (do
 	if err != nil {
 		return domain.User{}, err
 	}
-	return mapUser(row.ID, row.Openid, row.Nickname, row.AvatarUrl, row.RealName, row.PhoneNumber, row.Status, row.CreatedAt.Time, row.UpdatedAt.Time), nil
+	return mapUser(row.ID, row.Openid, row.Nickname, row.AvatarUrl, row.RealName, row.PhoneNumber, row.Status, row.IsMatchAdmin, row.CreatedAt.Time, row.UpdatedAt.Time), nil
 }
 
 func (r *Repository) ListActiveTestLoginUsers(ctx context.Context) ([]ports.TestLoginUser, error) {
@@ -85,7 +85,7 @@ func (r *Repository) ListActiveTestLoginUsers(ctx context.Context) ([]ports.Test
 		if !exists {
 			items = append(items, ports.TestLoginUser{User: mapUser(
 				row.ID, row.Openid, row.Nickname, row.AvatarUrl, row.RealName, row.PhoneNumber,
-				row.Status, row.CreatedAt.Time, row.UpdatedAt.Time,
+				row.Status, row.IsMatchAdmin, row.CreatedAt.Time, row.UpdatedAt.Time,
 			)})
 			index = len(items) - 1
 			indexByUserID[row.ID] = index
@@ -99,10 +99,53 @@ func (r *Repository) ListActiveTestLoginUsers(ctx context.Context) ([]ports.Test
 	return items, nil
 }
 
-func mapUser(id int64, openID, nickname string, avatarURL, realName, phoneNumber *string, status string, createdAt, updatedAt time.Time) domain.User {
+func mapUser(id int64, openID, nickname string, avatarURL, realName, phoneNumber *string, status string, isMatchAdmin bool, createdAt, updatedAt time.Time) domain.User {
 	return domain.User{
 		ID: id, OpenID: openID, Nickname: nickname, AvatarURL: avatarURL,
 		RealName: realName, PhoneNumber: phoneNumber, Status: domain.Status(status),
-		CreatedAt: createdAt, UpdatedAt: updatedAt,
+		IsMatchAdmin: isMatchAdmin,
+		CreatedAt:    createdAt, UpdatedAt: updatedAt,
 	}
+}
+
+func (r *Repository) ListForAdmin(ctx context.Context, filter ports.AdminUserFilter) ([]domain.User, error) {
+	rows, err := r.queries.ListUsersForAdmin(ctx, authsqlc.ListUsersForAdminParams{
+		Search: filter.Search, MatchAdminOnly: optionalMatchAdminFilter(filter.MatchAdminOnly),
+		LimitCount: int32(filter.Limit), OffsetCount: int32(filter.Offset),
+	})
+	if err != nil {
+		return nil, err
+	}
+	users := make([]domain.User, 0, len(rows))
+	for _, row := range rows {
+		users = append(users, mapUser(row.ID, row.Openid, row.Nickname, row.AvatarUrl, row.RealName,
+			row.PhoneNumber, row.Status, row.IsMatchAdmin, row.CreatedAt.Time, row.UpdatedAt.Time))
+	}
+	return users, nil
+}
+
+func (r *Repository) CountForAdmin(ctx context.Context, filter ports.AdminUserFilter) (int64, error) {
+	return r.queries.CountUsersForAdmin(ctx, authsqlc.CountUsersForAdminParams{
+		Search: filter.Search, MatchAdminOnly: optionalMatchAdminFilter(filter.MatchAdminOnly),
+	})
+}
+
+func (r *Repository) UpdateMatchAdmin(ctx context.Context, userID int64, enabled bool) (domain.User, bool, error) {
+	row, err := r.queries.SetUserMatchAdmin(ctx, authsqlc.SetUserMatchAdminParams{ID: userID, IsMatchAdmin: enabled})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return domain.User{}, false, nil
+	}
+	if err != nil {
+		return domain.User{}, false, err
+	}
+	return mapUser(row.ID, row.Openid, row.Nickname, row.AvatarUrl, row.RealName,
+		row.PhoneNumber, row.Status, row.IsMatchAdmin, row.CreatedAt.Time, row.UpdatedAt.Time), true, nil
+}
+
+// optionalMatchAdminFilter 仅在「只看比赛管理员」时下发过滤条件，否则不过滤。
+func optionalMatchAdminFilter(matchAdminOnly bool) *bool {
+	if !matchAdminOnly {
+		return nil
+	}
+	return &matchAdminOnly
 }

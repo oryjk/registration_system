@@ -263,6 +263,7 @@ type fakeAdminMatchRepository struct {
 	updatedDetails   domain.Match
 	updatedHostGroup *domain.RegistrationGroup
 	updatedStatus    domain.Match
+	updatedScore     domain.Match
 	deleteFound      bool
 	deletedID        uuid.UUID
 }
@@ -305,6 +306,11 @@ func (f *fakeAdminMatchRepository) UpdateStatus(_ context.Context, match domain.
 
 func (f *fakeAdminMatchRepository) FinishUpdateStatus(context.Context, domain.Match) (bool, error) {
 	return true, nil
+}
+
+func (f *fakeAdminMatchRepository) UpdateScore(_ context.Context, match domain.Match) error {
+	f.updatedScore = match
+	return nil
 }
 
 func (f *fakeAdminMatchRepository) Delete(_ context.Context, id uuid.UUID) (bool, error) {

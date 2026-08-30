@@ -73,6 +73,44 @@ paths:
           $ref: "#/components/responses/WechatLoginSuccess"
         <<: *standardErrors
 
+  /api/v1/app/auth/webview-codes:
+    post:
+      operationId: issueAppWebviewCode
+      tags: [App Auth]
+      summary: 签发 web-view 一次性 code
+      description: 为当前登录用户签发一次性 code（60 秒有效），供 web-view 页面兑换登录令牌；数据库只存 SHA-256 哈希。
+      security: *bearerSecurity
+      responses:
+        "200":
+          description: 签发成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebviewCodeIssueEnvelope"
+        <<: *standardErrors
+
+  /api/v1/app/auth/webview-codes/exchange:
+    post:
+      operationId: exchangeAppWebviewCode
+      tags: [App Auth]
+      summary: web-view 一次性 code 兑换登录令牌
+      description: code 单次使用且 60 秒内有效；无效、已用或过期统一返回 401，不区分原因。
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WebviewCodeExchangeRequest"
+      responses:
+        "200":
+          description: 兑换成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebviewCodeExchangeEnvelope"
+        <<: *standardErrors
+
   /api/v1/app/test-auth/users:
     get:
       operationId: listH5TestLoginUsers
@@ -317,6 +355,35 @@ paths:
       responses:
         "200":
           description: 更新成功（空 data）
+        <<: *standardErrors
+
+  /api/v1/app/teams/{id}/logo:
+    post:
+      operationId: uploadAppTeamLogo
+      tags: [App Teams]
+      summary: 上传球队 Logo（队长/领队）
+      description: 仅该队 active 的队长或领队可操作。multipart 字段 file，≤1MB，jpg/png/webp，保存后返回新的 logo_url。
+      security: *bearerSecurity
+      parameters:
+        - $ref: "#/components/parameters/TeamID"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "200":
+          description: 上传成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamLogoUploadEnvelope"
         <<: *standardErrors
 
   /api/v1/app/teams/{id}/members:
@@ -607,6 +674,28 @@ paths:
               schema:
                 $ref: "#/components/schemas/UserMatchDetailEnvelope"
         <<: *standardErrors
+    patch:
+      operationId: updateAppMatchDetails
+      tags: [App Matches]
+      summary: 主队管理者编辑比赛（对手名称与报名人数上限）
+      description: 仅主队管理方可用。opponent_name 为 null 表示不改、空串表示清除；max_players 为 null 表示不改。
+      security: *bearerSecurity
+      parameters:
+        - $ref: "#/components/parameters/MatchID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserUpdateMatchRequest"
+      responses:
+        "200":
+          description: 修改后的比赛详情
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserMatchDetailEnvelope"
+        <<: *standardErrors
 
   /api/v1/app/matches/{id}/status:
     patch:
@@ -626,6 +715,30 @@ paths:
       responses:
         "200":
           description: 收尾后的比赛详情
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserMatchDetailEnvelope"
+        <<: *standardErrors
+
+  /api/v1/app/matches/{id}/score:
+    patch:
+      operationId: recordAppMatchScore
+      tags: [App Matches]
+      summary: 比赛管理员录入/修正比赛比分
+      description: 仅比赛管理员（管理端设置的微信用户）可用；比赛进行中（ongoing）或已结束（ended）可录入，比分可反复修正。
+      security: *bearerSecurity
+      parameters:
+        - $ref: "#/components/parameters/MatchID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateMatchScoreRequest"
+      responses:
+        "200":
+          description: 录入后的比赛详情
           content:
             application/json:
               schema:
@@ -1201,6 +1314,31 @@ paths:
                 $ref: "#/components/schemas/MemberManagementEnvelope"
         <<: *standardErrors
 
+  /api/v1/admin/users:
+    get:
+      operationId: listAdminUsers
+      tags: [Admin Users]
+      summary: 搜索微信用户（可只看比赛管理员）
+      security: *bearerSecurity
+      parameters:
+        - $ref: "#/components/parameters/Search"
+        - name: match_admin_only
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: 传 true 时只返回比赛管理员。
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: 分页微信用户列表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminUserListEnvelope"
+        <<: *standardErrors
+
   /api/v1/admin/users/{id}/profile:
     patch:
       operationId: updateAdminUserProfile
@@ -1222,6 +1360,39 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ProfileEnvelope"
+        <<: *standardErrors
+
+  /api/v1/admin/users/{id}/match-admin:
+    put:
+      operationId: setAdminUserMatchAdmin
+      tags: [Admin Users]
+      summary: 把微信用户设为比赛管理员
+      description: 被设置的用户可在小程序端录入比赛比分。
+      security: *bearerSecurity
+      parameters:
+        - $ref: "#/components/parameters/UserIDAsID"
+      responses:
+        "200":
+          description: 更新后的用户信息
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminUserEnvelope"
+        <<: *standardErrors
+    delete:
+      operationId: unsetAdminUserMatchAdmin
+      tags: [Admin Users]
+      summary: 取消微信用户的比赛管理员身份
+      security: *bearerSecurity
+      parameters:
+        - $ref: "#/components/parameters/UserIDAsID"
+      responses:
+        "200":
+          description: 更新后的用户信息
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminUserEnvelope"
         <<: *standardErrors
 
   /api/v1/admin/matches:
@@ -1333,6 +1504,30 @@ paths:
       responses:
         "200":
           description: 更新后的比赛详情
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MatchDetailEnvelope"
+        <<: *standardErrors
+
+  /api/v1/admin/matches/{id}/score:
+    patch:
+      operationId: recordAdminMatchScore
+      tags: [Admin Matches]
+      summary: 管理端录入/修正比赛比分
+      description: 比赛进行中（ongoing）或已结束（ended）可录入，比分可反复修正。
+      security: *bearerSecurity
+      parameters:
+        - $ref: "#/components/parameters/MatchID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateMatchScoreRequest"
+      responses:
+        "200":
+          description: 录入后的比赛详情
           content:
             application/json:
               schema:
@@ -1945,6 +2140,66 @@ components:
         js_code:
           type: string
           minLength: 1
+    WebviewCodeIssueEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              required: [code, expires_at]
+              properties:
+                code:
+                  type: string
+                  description: 一次性 code 明文（64 位十六进制），仅本次响应返回
+                expires_at:
+                  type: string
+                  format: date-time
+                  description: 过期时间（RFC3339）
+    WebviewCodeExchangeRequest:
+      type: object
+      required: [code]
+      properties:
+        code:
+          type: string
+          minLength: 1
+    WebviewCodeExchangeEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              required: [token]
+              properties:
+                token:
+                  type: string
+                  description: 用户登录 JWT
+    UserUpdateMatchRequest:
+      type: object
+      properties:
+        opponent_name:
+          type: string
+          nullable: true
+          description: 手工对手名称；null=不改，空串=清除
+        max_players:
+          type: integer
+          nullable: true
+          description: 主队报名组人数上限；null=不改
+    TeamLogoUploadEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              required: [logo_url]
+              properties:
+                logo_url:
+                  type: string
     MiniAppRuntimeConfigEnvelope:
       allOf:
         - $ref: "#/components/schemas/SuccessBase"
@@ -2191,6 +2446,22 @@ components:
       properties:
         status:
           $ref: "#/components/schemas/MatchStatus"
+    UpdateMatchScoreRequest:
+      type: object
+      required: [host_score, away_score]
+      properties:
+        host_score:
+          type: integer
+          format: int32
+          minimum: 0
+          maximum: 999
+          description: 主队比分；0 是合法比分，必传。
+        away_score:
+          type: integer
+          format: int32
+          minimum: 0
+          maximum: 999
+          description: 客队比分；0 是合法比分，必传。
     MyRegistrationRequest:
       type: object
       required: [status, registration_count]
@@ -2233,6 +2504,34 @@ components:
           nullable: true
         status:
           type: string
+        is_match_admin:
+          type: boolean
+          description: 是否为比赛管理员（可在小程序端录入比赛比分）；/users/me 等个人资料场景返回。
+    AdminUser:
+      type: object
+      required: [id, nickname, avatar_url, real_name, phone_number, status, is_match_admin, created_at]
+      properties:
+        id:
+          type: integer
+          format: int64
+        nickname:
+          type: string
+        avatar_url:
+          type: string
+          nullable: true
+        real_name:
+          type: string
+          nullable: true
+        phone_number:
+          type: string
+          nullable: true
+        status:
+          type: string
+        is_match_admin:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
     Profile:
       allOf:
         - $ref: "#/components/schemas/User"
@@ -2493,6 +2792,16 @@ components:
         players_per_team:
           type: integer
           format: int32
+        host_score:
+          type: integer
+          format: int32
+          nullable: true
+          description: 主队比分；null 表示尚未录入。
+        away_score:
+          type: integer
+          format: int32
+          nullable: true
+          description: 客队比分；null 表示尚未录入。
         start_time:
           type: string
           format: date-time
@@ -2574,6 +2883,16 @@ components:
         players_per_team:
           type: integer
           format: int32
+        host_score:
+          type: integer
+          format: int32
+          nullable: true
+          description: 主队比分；null 表示尚未录入。
+        away_score:
+          type: integer
+          format: int32
+          nullable: true
+          description: 客队比分；null 表示尚未录入。
         start_time:
           type: string
           format: date-time
@@ -2916,6 +3235,16 @@ components:
           type: string
         opponent_name:
           type: string
+        host_score:
+          type: integer
+          format: int32
+          nullable: true
+          description: 主队比分；null 表示尚未录入。
+        away_score:
+          type: integer
+          format: int32
+          nullable: true
+          description: 客队比分；null 表示尚未录入。
         start_time:
           type: string
           format: date-time
@@ -3042,6 +3371,35 @@ components:
           properties:
             data:
               $ref: "#/components/schemas/Profile"
+    AdminUserEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: "#/components/schemas/AdminUser"
+    AdminUserListEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              required: [items, total, page, page_size]
+              properties:
+                items:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/AdminUser"
+                total:
+                  type: integer
+                  format: int64
+                page:
+                  type: integer
+                page_size:
+                  type: integer
     AvatarUploadEnvelope:
       allOf:
         - $ref: "#/components/schemas/SuccessBase"

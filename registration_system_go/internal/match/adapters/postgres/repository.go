@@ -112,6 +112,14 @@ func (r *Repository) UpdateStatus(ctx context.Context, match domain.Match) error
 	return err
 }
 
+// UpdateScore 录入/修正比赛比分；能否录入的状态规则已由领域层校验。
+func (r *Repository) UpdateScore(ctx context.Context, match domain.Match) error {
+	_, err := r.queries.UpdateMatchScore(ctx, matchsqlc.UpdateMatchScoreParams{
+		ID: pgUUID(match.ID), HostScore: int32Pointer(match.HostScore), AwayScore: int32Pointer(match.AwayScore),
+	})
+	return err
+}
+
 // FinishUpdateStatus 条件更新：库内状态仍是非终态才写入，防止并发收尾互相覆盖。
 func (r *Repository) FinishUpdateStatus(ctx context.Context, match domain.Match) (bool, error) {
 	rows, err := r.queries.FinishMatchStatus(ctx, matchsqlc.FinishMatchStatusParams{ID: pgUUID(match.ID), Status: string(match.Status)})
@@ -178,6 +186,8 @@ func mapMatch(row matchsqlc.Match) domain.Match {
 		AwayTeamID:          row.AwayTeamID,
 		OpponentName:        row.OpponentName,
 		PlayersPerTeam:      int(row.PlayersPerTeam),
+		HostScore:           intPointer(row.HostScore),
+		AwayScore:           intPointer(row.AwayScore),
 		StartTime:           row.StartTime.Time,
 		EndTime:             row.EndTime.Time,
 		RegistrationStartAt: timestampPointer(row.RegistrationStartAt),

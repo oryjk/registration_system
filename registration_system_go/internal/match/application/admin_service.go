@@ -223,6 +223,27 @@ func (s AdminMatchService) Delete(ctx context.Context, actor sharedauth.Actor, i
 	return nil
 }
 
+// RecordScore 管理端录入/修正比赛比分（比赛进行中或已结束均可）。
+func (s AdminMatchService) RecordScore(ctx context.Context, actor sharedauth.Actor, id uuid.UUID, hostScore, awayScore int) (domain.Match, error) {
+	if !actor.IsAdmin() {
+		return domain.Match{}, sharederror.ErrForbidden
+	}
+	match, _, found, err := s.repository.FindByID(ctx, id)
+	if err != nil {
+		return domain.Match{}, sharederror.Wrap(sharederror.KindInternal, "查询比赛失败", err)
+	}
+	if !found {
+		return domain.Match{}, sharederror.New(sharederror.KindNotFound, "比赛不存在")
+	}
+	if err := match.RecordScore(hostScore, awayScore, s.clock.Now()); err != nil {
+		return domain.Match{}, err
+	}
+	if err := s.repository.UpdateScore(ctx, match); err != nil {
+		return domain.Match{}, sharederror.Wrap(sharederror.KindInternal, "更新比赛比分失败", err)
+	}
+	return match, nil
+}
+
 func validMatchStatus(status domain.MatchStatus) bool {
 	switch status {
 	case domain.MatchRegistering, domain.MatchOngoing, domain.MatchEnded, domain.MatchCancelled:

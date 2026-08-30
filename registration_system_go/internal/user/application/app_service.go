@@ -57,6 +57,19 @@ func (s AppService) EnsureActive(ctx context.Context, userID int64) error {
 	return err
 }
 
+// EnsureMatchAdmin 校验用户存在、未冻结且被设为比赛管理员。
+// 实现 match 模块的 ports.MatchAdminAccess，供小程序端录入比分鉴权。
+func (s AppService) EnsureMatchAdmin(ctx context.Context, userID int64) error {
+	user, err := s.activeUser(ctx, userID)
+	if err != nil {
+		return err
+	}
+	if !user.IsMatchAdmin {
+		return sharederror.ErrForbidden
+	}
+	return nil
+}
+
 func (s AppService) activeUser(ctx context.Context, userID int64) (domain.User, error) {
 	user, found, err := s.repository.FindByID(ctx, userID)
 	if err != nil {

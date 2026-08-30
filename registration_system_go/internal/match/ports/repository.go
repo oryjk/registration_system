@@ -20,6 +20,8 @@ type Repository interface {
 	// 一并更新该报名组的满员上限，保证两条写入要么同时生效要么同时回滚。
 	UpdateDetails(context.Context, domain.Match, *domain.RegistrationGroup) error
 	UpdateStatus(context.Context, domain.Match) error
+	// UpdateScore 录入/修正比赛比分（进行中或已结束）。
+	UpdateScore(context.Context, domain.Match) error
 	// FinishUpdateStatus 用户端收尾专用条件更新：仅当库内状态仍是非终态时写入，
 	// 返回是否更新到行；false 表示并发收尾已被他人先行落终态。
 	FinishUpdateStatus(context.Context, domain.Match) (bool, error)

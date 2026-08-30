@@ -19,7 +19,7 @@ func TestAdminUpdatesPlayerProfile(t *testing.T) {
 	service := &fakeProfileService{result: domain.User{
 		ID: 7, Nickname: "小王", RealName: &realName, PhoneNumber: &phoneNumber, Status: domain.StatusActive,
 	}}
-	handler := NewHandler(service)
+	handler := NewHandler(service, nil)
 	router := gin.New()
 	group := router.Group("")
 	group.Use(authhttp.NewMiddleware(fakeAdminTokens{}).RequireAdmin())
