@@ -3,18 +3,26 @@ import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { gzipSync } from "node:zlib";
 
-export async function readEntrypointAssets({ statsPath, entryName }) {
-  const stats = JSON.parse(await readFile(statsPath, "utf8"));
-  const entry = stats.entrypoints?.[entryName];
-  if (!entry?.assets?.length) {
-    throw new Error(
-      `Entrypoint ${entryName} has no generated assets in ${statsPath}`,
-    );
+export async function readEntrypointAssets({ manifestPath }) {
+  const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+  const entryKey = Object.keys(manifest).find((key) => manifest[key]?.isEntry);
+  const entry = entryKey ? manifest[entryKey] : undefined;
+  if (!entry?.file) {
+    throw new Error(`No entrypoint found in ${manifestPath}`);
   }
 
-  return entry.assets.map((asset) =>
-    typeof asset === "string" ? asset : asset.name,
-  );
+  const assets = [];
+  const visited = new Set();
+  const collect = (chunk) => {
+    if (!chunk || visited.has(chunk.file)) return;
+    visited.add(chunk.file);
+    assets.push(chunk.file);
+    for (const cssAsset of chunk.css ?? []) assets.push(cssAsset);
+    for (const importKey of chunk.imports ?? []) collect(manifest[importKey]);
+  };
+  collect(entry);
+
+  return assets;
 }
 
 export async function measureEntrypointGzip({ distPath, assets }) {
@@ -37,20 +45,18 @@ function optionValue(args, option, fallback) {
 
 async function main(args) {
   const distPath = resolve(optionValue(args, "--dist", "dist"));
-  const statsPath = resolve(
-    optionValue(args, "--stats", join(distPath, "stats.json")),
+  const manifestPath = resolve(
+    optionValue(args, "--manifest", join(distPath, ".vite/manifest.json")),
   );
-  const entryName = optionValue(args, "--entry", "umi");
   const maxGzipBytes = Number(optionValue(args, "--max-gzip", "220000"));
 
   if (!Number.isSafeInteger(maxGzipBytes) || maxGzipBytes < 0) {
     throw new Error("--max-gzip must be a non-negative integer");
   }
 
-  const assets = await readEntrypointAssets({ statsPath, entryName });
+  const assets = await readEntrypointAssets({ manifestPath });
   const measurement = await measureEntrypointGzip({ distPath, assets });
   const result = {
-    entryName,
     assets,
     ...measurement,
     maxGzipBytes,

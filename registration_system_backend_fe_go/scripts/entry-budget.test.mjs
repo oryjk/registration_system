@@ -14,58 +14,93 @@ async function withFixture(run) {
   const root = await mkdtemp(join(tmpdir(), "entry-budget-"));
   try {
     const distPath = join(root, "dist");
-    await mkdir(distPath);
-    return await run({ distPath, statsPath: join(distPath, "stats.json") });
+    const assetsPath = join(distPath, "assets");
+    const viteDir = join(distPath, ".vite");
+    await mkdir(assetsPath, { recursive: true });
+    await mkdir(viteDir, { recursive: true });
+    return await run({
+      distPath,
+      manifestPath: join(distPath, ".vite/manifest.json"),
+      assetsPath,
+    });
   } finally {
     await rm(root, { force: true, recursive: true });
   }
 }
 
-test("reads named utoopack entry assets and measures each gzip stream", async () => {
-  await withFixture(async ({ distPath, statsPath }) => {
-    const javascript = "const answer = 42;";
-    const stylesheet = ".root{display:block}";
-    await writeFile(join(distPath, "umi.js"), javascript);
-    await writeFile(join(distPath, "umi.css"), stylesheet);
+test("collects the entry chunk, its css and its static imports from the vite manifest", async () => {
+  await withFixture(async ({ distPath, manifestPath, assetsPath }) => {
+    const entryJs = "const answer = 42;";
+    const entryCss = ".root{display:block}";
+    const vendorJs = "export const vendor = true;";
+    const lazyJs = "export const lazy = true;";
+    await writeFile(join(assetsPath, "index-B.js"), entryJs);
+    await writeFile(join(assetsPath, "index-C.css"), entryCss);
+    await writeFile(join(assetsPath, "vendor-D.js"), vendorJs);
+    await writeFile(join(assetsPath, "match-page-E.js"), lazyJs);
     await writeFile(
-      statsPath,
+      manifestPath,
       JSON.stringify({
-        entrypoints: {
-          umi: { assets: [{ name: "umi.js" }, "umi.css"] },
+        "main.tsx": {
+          file: "assets/index-B.js",
+          src: "main.tsx",
+          isEntry: true,
+          css: ["assets/index-C.css"],
+          imports: ["_vendor-D.js"],
+        },
+        "_vendor-D.js": { file: "assets/vendor-D.js" },
+        "match-page.tsx": {
+          file: "assets/match-page-E.js",
+          src: "match-page.tsx",
+          isDynamicEntry: true,
         },
       }),
     );
 
-    const assets = await readEntrypointAssets({ statsPath, entryName: "umi" });
+    const assets = await readEntrypointAssets({ manifestPath });
     const result = await measureEntrypointGzip({ distPath, assets });
 
-    assert.deepEqual(assets, ["umi.js", "umi.css"]);
+    assert.deepEqual(assets.sort(), [
+      "assets/index-B.js",
+      "assets/index-C.css",
+      "assets/vendor-D.js",
+    ]);
     assert.deepEqual(result, {
-      assetBytes: Buffer.byteLength(javascript) + Buffer.byteLength(stylesheet),
+      assetBytes:
+        Buffer.byteLength(entryJs) +
+        Buffer.byteLength(entryCss) +
+        Buffer.byteLength(vendorJs),
       gzipBytes:
-        gzipSync(javascript, { level: 9 }).length +
-        gzipSync(stylesheet, { level: 9 }).length,
+        gzipSync(entryJs, { level: 9 }).length +
+        gzipSync(entryCss, { level: 9 }).length +
+        gzipSync(vendorJs, { level: 9 }).length,
     });
   });
 });
 
-test("rejects a missing named entrypoint", async () => {
-  await withFixture(async ({ statsPath }) => {
-    await writeFile(statsPath, JSON.stringify({ entrypoints: {} }));
+test("rejects a manifest without an entry", async () => {
+  await withFixture(async ({ manifestPath }) => {
+    await writeFile(manifestPath, JSON.stringify({}));
 
     await assert.rejects(
-      readEntrypointAssets({ statsPath, entryName: "umi" }),
-      /Entrypoint umi has no generated assets/,
+      readEntrypointAssets({ manifestPath }),
+      /No entrypoint found/,
     );
   });
 });
 
 test("CLI exits nonzero when the entry exceeds its gzip budget", async () => {
-  await withFixture(async ({ distPath, statsPath }) => {
-    await writeFile(join(distPath, "umi.js"), "console.log('entry');");
+  await withFixture(async ({ distPath, manifestPath, assetsPath }) => {
+    await writeFile(join(assetsPath, "index-B.js"), "console.log('entry');");
     await writeFile(
-      statsPath,
-      JSON.stringify({ entrypoints: { umi: { assets: ["umi.js"] } } }),
+      manifestPath,
+      JSON.stringify({
+        "main.tsx": {
+          file: "assets/index-B.js",
+          src: "main.tsx",
+          isEntry: true,
+        },
+      }),
     );
 
     const result = spawnSync(
@@ -74,8 +109,6 @@ test("CLI exits nonzero when the entry exceeds its gzip budget", async () => {
         new URL("./entry-budget.mjs", import.meta.url).pathname,
         "--dist",
         distPath,
-        "--stats",
-        statsPath,
         "--max-gzip",
         "1",
       ],

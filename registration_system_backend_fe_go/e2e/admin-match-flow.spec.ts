@@ -57,10 +57,10 @@ async function loginWithMockAdmin(page: Page, isSuperAdmin = true) {
 }
 
 async function openNavigation(page: Page, name: string) {
-  if ((page.viewportSize()?.width ?? 0) < 992) {
-    await page.getByRole("img", { name: "menu" }).click();
+  if ((page.viewportSize()?.width ?? 0) < 820) {
+    await page.getByRole("button", { name: "打开导航" }).click();
   }
-  await page.getByRole("link", { name }).click();
+  await page.getByRole("button", { name }).click();
 }
 
 function matchItem(id: string, name: string, status: "registering" | "ended") {
@@ -196,7 +196,7 @@ test("核心管理页面在桌面和移动视口保持一致", async ({ page }, 
   await publicationMode.click();
   for (const label of ["线下已约", "线上约队", "散人对手"]) {
     await expect(
-      page.locator(".ant-select-item-option").filter({ hasText: label }),
+      page.getByRole("option").filter({ hasText: label }),
     ).toBeVisible();
   }
   await publicationMode.press("Escape");
@@ -241,12 +241,16 @@ test("管理员可以登录并查看比赛详情", async ({ page }, testInfo) =>
 
   await login(page);
   await openNavigation(page, "比赛管理");
-  await expect(page.getByRole("heading", { name: "比赛管理" })).toBeVisible();
+  await expect(
+    page.getByRole("main").getByText("比赛管理", { exact: true }),
+  ).toBeVisible();
   await expect(page.getByText("周末管理端联调赛")).toBeVisible();
 
   await page.getByLabel("查看周末管理端联调赛").click();
   await expect(
-    page.getByRole("heading", { name: "周末管理端联调赛" }),
+    page.locator("[data-slot='card-title']").filter({
+      hasText: "周末管理端联调赛",
+    }),
   ).toBeVisible();
   await expect(page.getByText("滨江足球场 2 号场")).toBeVisible();
 
@@ -257,7 +261,9 @@ test("管理员可以登录并查看比赛详情", async ({ page }, testInfo) =>
 
   await page.reload();
   await expect(
-    page.getByRole("heading", { name: "周末管理端联调赛" }),
+    page.locator("[data-slot='card-title']").filter({
+      hasText: "周末管理端联调赛",
+    }),
   ).toBeVisible();
 });
 
@@ -467,10 +473,7 @@ test("比赛筛选写入 URL 并在刷新后恢复", async ({ page }) => {
     /\/matches\?search=%E6%BB%A8%E6%B1%9F&status=ongoing&page_size=50$/,
   );
   await page.locator(".status-filter").click();
-  await page
-    .locator(".ant-select-item-option")
-    .filter({ hasText: "已结束" })
-    .click();
+  await page.getByRole("option").filter({ hasText: "已结束" }).click();
   await expect(page).toHaveURL(
     /\/matches\?search=%E6%BB%A8%E6%B1%9F&status=ended&page_size=50$/,
   );
@@ -535,17 +538,14 @@ test("比赛创建保持 API payload 契约", async ({ page }) => {
 
   await page.goto("/matches/new");
   await page.getByLabel("比赛名称").fill("夏夜联赛");
-  const hostTeam = page.getByRole("combobox", { name: "主队", exact: true });
+  const hostTeam = page.getByRole("button", { name: "选择主队" });
   await hostTeam.click();
-  await hostTeam.press("ArrowDown");
-  await hostTeam.press("Enter");
-  const timeInputs = page.locator(".ant-picker-range input");
-  await timeInputs.nth(0).fill("2026-08-10 19:00");
-  await timeInputs.nth(0).press("Enter");
-  await timeInputs.nth(1).fill("2026-08-10 21:00");
-  await timeInputs.nth(1).press("Enter");
-  await expect(timeInputs.nth(0)).toHaveValue("2026-08-10 19:00");
-  await expect(timeInputs.nth(1)).toHaveValue("2026-08-10 21:00");
+  await page.getByRole("option").first().click();
+  // 比赛时间：日历弹层选日期 + 时间输入；时长独立填写
+  await page.getByRole("button", { name: "比赛时间" }).click();
+  await page.getByLabel("时间").fill("19:00");
+  await page.getByRole("button", { name: "确定" }).click();
+  await page.getByLabel("比赛时长（分钟）").fill("120");
   await page.getByLabel("比赛场地").fill("滨江足球场 1 号场");
   await page.getByLabel("纬度").fill("30.123456");
   await page.getByLabel("经度").fill("120.654321");
@@ -962,11 +962,11 @@ test("管理员可以管理球队成员和队长", async ({ page }, testInfo) =>
   await expect(
     memberDrawer.getByRole("row", { name: /王强.*13800138000/ }),
   ).toBeVisible();
-  await expect(memberDrawer.locator(".ant-avatar img").first()).toBeVisible();
+  await expect(memberDrawer.locator(".member-avatar").first()).toBeVisible();
   await expect
     .poll(() =>
       memberDrawer
-        .locator(".ant-avatar img")
+        .locator(".member-avatar")
         .first()
         .evaluate((image: HTMLImageElement) => image.naturalWidth),
     )
@@ -981,7 +981,7 @@ test("管理员可以管理球队成员和队长", async ({ page }, testInfo) =>
   const addDialog = page.getByRole("dialog", { name: "添加球队成员" });
   await addDialog.getByRole("combobox", { name: "选择球员" }).click();
   await page
-    .locator(".ant-select-item-option")
+    .getByRole("option")
     .filter({ hasText: "张新 · 13900139000 · ID 44" })
     .click();
   await addDialog.getByRole("button", { name: /添\s*加/ }).click();
@@ -992,10 +992,7 @@ test("管理员可以管理球队成员和队长", async ({ page }, testInfo) =>
   await editDialog.getByRole("textbox", { name: "真实姓名" }).fill("李雷新");
   await editDialog.getByRole("textbox", { name: "手机号" }).fill("13700137000");
   await editDialog.getByRole("combobox", { name: "成员角色" }).click();
-  await page
-    .locator(".ant-select-item-option")
-    .filter({ hasText: "副队长" })
-    .click();
+  await page.getByRole("option").filter({ hasText: "副队长" }).click();
   await editDialog.getByText("冻结", { exact: true }).click();
   await editDialog.getByRole("button", { name: /保\s*存/ }).click();
   await expect(memberDrawer.getByText("李雷新")).toBeVisible();
@@ -1065,10 +1062,13 @@ test("发布比赛时可以确认创建不存在的主队", async ({ page }, tes
   });
 
   await page.goto("/matches/new");
-  await expect(page.getByRole("heading", { name: "发布比赛" })).toBeVisible();
-  const teamSelect = page.getByRole("combobox", { name: "主队", exact: true });
+  await expect(
+    page.locator("[data-slot='card-title']").filter({ hasText: "发布比赛" }),
+  ).toBeVisible();
+  const teamSelect = page.getByRole("button", { name: "选择主队" });
   await teamSelect.click();
-  await teamSelect.fill("临时联队");
+  await page.getByLabel("搜索球队").fill("临时联队");
+  await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "保存比赛" }).click();
 
   const confirmDialog = page.getByRole("dialog", { name: "球队不存在" });
@@ -1081,7 +1081,7 @@ test("发布比赛时可以确认创建不存在的主队", async ({ page }, tes
 
   await expect(confirmDialog).toBeHidden();
   await expect(
-    page.locator(".ant-select-selection-item").filter({ hasText: "临时联队" }),
+    page.locator(".team-select-label").filter({ hasText: "临时联队" }),
   ).toBeVisible();
   expect(createdPayload).toEqual({ name: "临时联队", description: null });
   await page.screenshot({

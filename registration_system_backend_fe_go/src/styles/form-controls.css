@@ -1,0 +1,220 @@
+/*
+ * 表单与操作控件：分页、确认气泡、两态切换、日期时间、颜色、球队选择。颜色引用 foundation token。
+ */
+
+/* ---------- 分页条 ---------- */
+.pagination-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  border-top: 1px solid var(--border-subtle);
+  padding-top: var(--space-3);
+}
+
+.pagination-total,
+.pagination-page {
+  color: var(--muted);
+  font-size: var(--font-size-xs);
+}
+
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.pagination-size {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  color: var(--muted);
+  font-size: var(--font-size-xs);
+}
+
+/* ---------- 确认气泡 ---------- */
+.confirm-popover {
+  display: grid;
+  gap: var(--space-3);
+  max-width: 300px;
+}
+
+.confirm-popover-body {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.confirm-popover-body strong {
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+}
+
+.confirm-popover-body span {
+  color: var(--muted);
+  font-size: var(--font-size-xs);
+  line-height: var(--leading-snug);
+}
+
+.confirm-popover-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+/* ---------- 两态切换（Segmented 替代） ---------- */
+.toggle-pair {
+  display: inline-flex;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-control);
+  overflow: hidden;
+}
+
+.toggle-pair button {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  padding: var(--space-1-5) var(--space-4);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
+.toggle-pair button + button {
+  border-left: 1px solid var(--border-subtle);
+}
+
+.toggle-pair button[data-active="true"] {
+  background: var(--primary-solid);
+  color: var(--primary-foreground);
+}
+
+/* ---------- 日期时间选择 ---------- */
+.date-time-trigger {
+  justify-content: flex-start;
+  width: 100%;
+  font-weight: 500;
+}
+
+.date-time-trigger svg {
+  color: var(--muted);
+}
+
+.date-time-popover {
+  display: grid;
+  gap: var(--space-2);
+  width: auto;
+}
+
+.date-time-time-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--muted);
+  font-size: var(--font-size-xs);
+}
+
+/* ---------- 球服颜色选择 ---------- */
+.jersey-color-field {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--control-height);
+}
+
+.jersey-color-presets {
+  display: inline-flex;
+  gap: var(--space-1-5);
+}
+
+.jersey-color-preset {
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  padding: 0;
+}
+
+.jersey-color-preset[data-active="true"] {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+
+.jersey-color-custom {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1-5);
+}
+
+.jersey-color-custom input[type="color"] {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  background: transparent;
+  padding: 2px;
+  cursor: pointer;
+}
+
+/* ---------- 球队选择 ---------- */
+.team-select-trigger {
+  justify-content: space-between;
+  width: 100%;
+  font-weight: 500;
+}
+
+.team-select-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.team-select-popover {
+  display: grid;
+  gap: var(--space-2);
+  width: 260px;
+  padding: var(--space-2);
+}
+
+.team-select-list {
+  display: grid;
+  gap: 2px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.team-select-option {
+  border: none;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--foreground);
+  padding: var(--space-1-5) var(--space-2);
+  font-size: var(--font-size-sm);
+  text-align: left;
+}
+
+.team-select-option:hover {
+  background: var(--surface-hover);
+}
+
+.team-select-option[data-active="true"] {
+  background: var(--surface-sidebar-active);
+  font-weight: 650;
+}
+
+.team-select-empty {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  color: var(--muted);
+  font-size: var(--font-size-xs);
+  padding: var(--space-1-5) var(--space-2);
+}
+
+/* ---------- 表单提示 ---------- */
+.form-field-hint {
+  color: var(--muted);
+  font-size: var(--font-size-xs);
+  line-height: var(--leading-snug);
+}

@@ -1,35 +1,26 @@
+import { Crown, Pencil, Trash2, Wallet } from "lucide-react";
+import { ConfirmPopover } from "@/components/admin/confirm-popover";
+import { DataTable, type DataTableColumn } from "@/components/admin/data-table";
+import { MemberCell } from "@/components/admin/member-cell";
+import { StatusBadge } from "@/components/admin/status-badge";
+import { Button } from "@/components/ui/button";
 import {
-  CrownOutlined,
-  DeleteOutlined,
-  DollarOutlined,
-  EditOutlined,
-} from "@ant-design/icons";
-import ProTable, { type ProColumns } from "@ant-design/pro-components/es/table";
-import {
-  Avatar,
-  Button,
-  Empty,
-  Popconfirm,
-  Space,
-  Tag,
   Tooltip,
-  Typography,
-} from "antd";
-import type { TeamMember } from "../../types/team";
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import type { TeamMember } from "@/types/team";
+import { formatDate, formatYuanAmount } from "@/utils/format";
 import {
   displayMemberName,
-  memberInitial,
   roleColors,
   roleLabels,
   statusLabels,
 } from "./team-member-display";
 
-const { Text } = Typography;
-
 interface TeamMemberTableProps {
   members: TeamMember[];
   loading: boolean;
-  compact: boolean;
   actionKey: string;
   onEdit: (member: TeamMember) => void;
   onCredit: (member: TeamMember) => void;
@@ -37,224 +28,180 @@ interface TeamMemberTableProps {
   onRemove: (member: TeamMember) => void;
 }
 
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat("zh-CN", { dateStyle: "medium" }).format(
-    new Date(value),
-  );
-}
-
-function formatYuan(cents: number) {
-  return (cents / 100).toFixed(2);
-}
-
 export function TeamMemberTable({
   members,
   loading,
-  compact,
   actionKey,
   onEdit,
   onCredit,
   onCaptainChange,
   onRemove,
 }: TeamMemberTableProps) {
-  const columns: ProColumns<TeamMember>[] = [
+  const columns: DataTableColumn<TeamMember>[] = [
     {
-      title: "成员",
       key: "member",
-      render: (_, member) => (
-        <div className="member-identity">
-          <Avatar src={member.avatar_url} size={36}>
-            {memberInitial(member)}
-          </Avatar>
-          <div>
-            <strong>{displayMemberName(member)}</strong>
-            <Text type="secondary">
-              {member.nickname.trim() &&
-              member.nickname.trim() !== displayMemberName(member)
-                ? `${member.nickname.trim()} · `
-                : ""}
-              用户 ID {member.user_id}
-            </Text>
-            {member.phone_number ? (
-              <Text type="secondary">{member.phone_number}</Text>
-            ) : null}
-            {compact ? (
-              <Space size={4} wrap>
-                <Tag color={roleColors[member.role]}>
-                  {roleLabels[member.role]}
-                </Tag>
-                <Tag color={member.status === "active" ? "success" : "warning"}>
-                  {statusLabels[member.status]}
-                </Tag>
-              </Space>
-            ) : null}
-          </div>
-        </div>
+      title: "成员",
+      render: (member) => (
+        <MemberCell
+          avatarUrl={member.avatar_url}
+          name={displayMemberName(member)}
+          secondary={`${
+            member.nickname.trim() &&
+            member.nickname.trim() !== displayMemberName(member)
+              ? `${member.nickname.trim()} · `
+              : ""
+          }用户 ID ${member.user_id}`}
+          size="lg"
+          tertiary={member.phone_number || undefined}
+        />
       ),
     },
-    ...(compact
-      ? []
-      : [
-          {
-            title: "角色",
-            dataIndex: "role",
-            width: 100,
-            render: (_: unknown, member: TeamMember) => (
-              <Tag color={roleColors[member.role]}>
-                {roleLabels[member.role]}
-              </Tag>
-            ),
-          },
-          {
-            title: "状态",
-            dataIndex: "status",
-            width: 100,
-            render: (_: unknown, member: TeamMember) => (
-              <Tag color={member.status === "active" ? "success" : "warning"}>
-                {statusLabels[member.status]}
-              </Tag>
-            ),
-          },
-          {
-            title: "加入时间",
-            dataIndex: "joined_at",
-            width: 126,
-            renderText: formatDate,
-          },
-          {
-            title: "队费余额",
-            dataIndex: "balance_cents",
-            width: 120,
-            render: (_: unknown, member: TeamMember) =>
-              member.balance_cents < 0 ? (
-                <Tag color="error">
-                  欠款 ¥{formatYuan(-member.balance_cents)}
-                </Tag>
-              ) : (
-                <span>¥{formatYuan(member.balance_cents)}</span>
-              ),
-          },
-        ]),
     {
-      title: "操作",
+      key: "role",
+      title: "角色",
+      width: 100,
+      render: (member) => (
+        <StatusBadge
+          label={roleLabels[member.role]}
+          variant={roleColors[member.role]}
+        />
+      ),
+    },
+    {
+      key: "status",
+      title: "状态",
+      width: 100,
+      render: (member) => (
+        <StatusBadge
+          label={statusLabels[member.status]}
+          variant={member.status === "active" ? "success" : "warning"}
+        />
+      ),
+    },
+    {
+      key: "joined_at",
+      title: "加入时间",
+      width: 126,
+      render: (member) => formatDate(member.joined_at),
+    },
+    {
+      key: "balance_cents",
+      title: "队费余额",
+      width: 120,
+      render: (member) =>
+        member.balance_cents < 0 ? (
+          <StatusBadge
+            label={`欠款 ¥${formatYuanAmount(-member.balance_cents)}`}
+            variant="destructive"
+          />
+        ) : (
+          <span>¥{formatYuanAmount(member.balance_cents)}</span>
+        ),
+    },
+    {
       key: "actions",
-      valueType: "option",
-      width: compact ? 156 : 170,
-      fixed: "right",
-      render: (_, member) => {
+      title: "操作",
+      width: 176,
+      render: (member) => {
         const isCaptain = member.role === "captain";
         const memberName = displayMemberName(member);
-        const captainTitle = isCaptain
-          ? "取消队长"
-          : member.status === "active"
-            ? "设为队长"
-            : "冻结成员不能设为队长";
         return (
-          <Space size={0}>
-            <Tooltip title={compact ? undefined : "队费充值"}>
-              <Button
-                type="text"
-                shape="circle"
-                loading={actionKey === `credit-${member.user_id}`}
-                icon={<DollarOutlined />}
-                aria-label={`给${memberName}充值队费`}
-                onClick={() => onCredit(member)}
-              />
+          <div className="table-row-actions">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  aria-label={`给${memberName}充值队费`}
+                  disabled={actionKey === `credit-${member.user_id}`}
+                  onClick={() => onCredit(member)}
+                  size="icon"
+                  type="button"
+                  variant="ghost"
+                >
+                  <Wallet size={15} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>队费充值</TooltipContent>
             </Tooltip>
-            <Popconfirm
-              title={
-                isCaptain
-                  ? `取消${memberName}的队长身份`
-                  : `将${memberName}设为队长`
-              }
+            <ConfirmPopover
+              cancelText="返回"
+              confirmText="确认"
               description={
                 isCaptain
                   ? "取消后该成员将恢复为普通队员。"
                   : "原队长将自动恢复为普通队员。"
               }
-              okText="确认"
-              cancelText="返回"
-              disabled={!isCaptain && member.status !== "active"}
               onConfirm={() => onCaptainChange(member, !isCaptain)}
-            >
-              <Tooltip title={compact ? undefined : captainTitle}>
-                <Button
-                  type="text"
-                  shape="circle"
-                  className={`captain-action${isCaptain ? " captain-action-current" : ""}`}
-                  disabled={!isCaptain && member.status !== "active"}
-                  loading={actionKey === `captain-${member.user_id}`}
-                  icon={<CrownOutlined />}
-                  aria-label={`${isCaptain ? "取消" : "设置"}${memberName}为队长`}
-                />
-              </Tooltip>
-            </Popconfirm>
-            <Tooltip
               title={
-                compact
-                  ? undefined
-                  : isCaptain
-                    ? "请先取消或更换队长"
-                    : "编辑成员"
+                isCaptain
+                  ? `取消${memberName}的队长身份`
+                  : `将${memberName}设为队长`
               }
             >
               <Button
-                type="text"
-                shape="circle"
-                disabled={isCaptain}
-                loading={actionKey === `edit-${member.user_id}`}
-                icon={<EditOutlined />}
-                aria-label={`编辑${memberName}`}
-                onClick={() => onEdit(member)}
-              />
+                aria-label={`${isCaptain ? "取消" : "设置"}${memberName}为队长`}
+                className={
+                  isCaptain ? "text-warning captain-action-current" : undefined
+                }
+                disabled={
+                  (!isCaptain && member.status !== "active") ||
+                  actionKey === `captain-${member.user_id}`
+                }
+                size="icon"
+                type="button"
+                variant="ghost"
+              >
+                <Crown size={15} />
+              </Button>
+            </ConfirmPopover>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  aria-label={`编辑${memberName}`}
+                  disabled={isCaptain || actionKey === `edit-${member.user_id}`}
+                  onClick={() => onEdit(member)}
+                  size="icon"
+                  type="button"
+                  variant="ghost"
+                >
+                  <Pencil size={15} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {isCaptain ? "请先取消或更换队长" : "编辑成员"}
+              </TooltipContent>
             </Tooltip>
-            <Popconfirm
-              title={`移除${memberName}`}
-              description="移除后可通过候选球员重新添加。"
-              okText="移除"
-              okButtonProps={{ danger: true }}
+            <ConfirmPopover
               cancelText="返回"
-              disabled={isCaptain}
+              confirmText="移除"
+              destructive
+              description="移除后可通过候选球员重新添加。"
               onConfirm={() => onRemove(member)}
+              title={`移除${memberName}`}
             >
               <Button
-                type="text"
-                shape="circle"
-                danger
-                disabled={isCaptain}
-                loading={actionKey === `remove-${member.user_id}`}
-                icon={<DeleteOutlined />}
                 aria-label={`移除${memberName}`}
-              />
-            </Popconfirm>
-          </Space>
+                className="text-destructive"
+                disabled={isCaptain || actionKey === `remove-${member.user_id}`}
+                size="icon"
+                type="button"
+                variant="ghost"
+              >
+                <Trash2 size={15} />
+              </Button>
+            </ConfirmPopover>
+          </div>
         );
       },
     },
   ];
 
   return (
-    <ProTable<TeamMember>
-      className="member-table"
-      rowKey="id"
-      search={false}
-      options={false}
-      cardProps={false}
-      loading={loading}
-      dataSource={members}
+    <DataTable
       columns={columns}
-      pagination={
-        members.length > 20 ? { pageSize: 20, showSizeChanger: false } : false
-      }
-      scroll={{ x: compact ? 560 : 680 }}
-      locale={{
-        emptyText: (
-          <Empty
-            image={Empty.PRESENTED_IMAGE_SIMPLE}
-            description="暂无球队成员"
-          />
-        ),
-      }}
+      emptyText="暂无球队成员"
+      items={members}
+      loading={loading}
+      rowKey={(member) => String(member.user_id)}
     />
   );
 }

@@ -1,17 +1,21 @@
-import { PlusOutlined, ReloadOutlined } from "@ant-design/icons";
-import {
-  Alert,
-  Button,
-  Drawer,
-  Form,
-  Grid,
-  message,
-  Space,
-  Tooltip,
-  Typography,
-} from "antd";
+import { Plus, RotateCw } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { useAdminCreditTeamFundMutation } from "../hooks/queries/useTeamFundQueries";
+import { toast } from "sonner";
+import { ErrorAlert } from "@/components/admin/error-alert";
+import { Button } from "@/components/ui/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { useAdminCreditTeamFundMutation } from "@/hooks/queries/useTeamFundQueries";
 import {
   useAddTeamMemberMutation,
   useRemoveTeamMemberMutation,
@@ -20,8 +24,8 @@ import {
   useTeamMembersQuery,
   useUpdatePlayerProfileMutation,
   useUpdateTeamMemberMutation,
-} from "../hooks/queries/useTeamQueries";
-import type { Team, TeamMember } from "../types/team";
+} from "@/hooks/queries/useTeamQueries";
+import type { Team, TeamMember } from "@/types/team";
 import {
   type AddMemberFormValues,
   AddTeamMemberModal,
@@ -36,8 +40,6 @@ import {
 } from "./team-members/EditTeamMemberModal";
 import { TeamMemberTable } from "./team-members/TeamMemberTable";
 import { displayMemberName } from "./team-members/team-member-display";
-
-const { Text } = Typography;
 
 interface TeamMemberManagerProps {
   open: boolean;
@@ -56,11 +58,6 @@ export function TeamMemberManager({
   onClose,
   onTeamChange,
 }: TeamMemberManagerProps) {
-  const screens = Grid.useBreakpoint();
-  const compact = !(screens.md ?? false);
-  const [addForm] = Form.useForm<AddMemberFormValues>();
-  const [editForm] = Form.useForm<EditMemberFormValues>();
-  const [creditForm] = Form.useForm<CreditTeamFundFormValues>();
   const [actionKey, setActionKey] = useState("");
   const [actionError, setActionError] = useState("");
   const [addOpen, setAddOpen] = useState(false);
@@ -91,20 +88,13 @@ export function TeamMemberManager({
   }, [management?.team, onTeamChange]);
 
   const openAdd = () => {
-    addForm.setFieldsValue({ userID: undefined, role: "member" });
     setCandidateSearch("");
     setCandidateError("");
     setAddOpen(true);
   };
 
-  const submitAdd = async () => {
+  const submitAdd = async (values: AddMemberFormValues) => {
     if (!teamID) return;
-    let values: AddMemberFormValues;
-    try {
-      values = await addForm.validateFields();
-    } catch {
-      return;
-    }
     setActionKey("add");
     setCandidateError("");
     let memberAdded = false;
@@ -127,7 +117,6 @@ export function TeamMemberManager({
         onTeamChange(result.team);
       }
       setAddOpen(false);
-      addForm.resetFields();
     } catch (reason) {
       const fallback = memberAdded
         ? "成员已添加，但设置队长失败，请在成员列表中重新设置队长"
@@ -140,24 +129,12 @@ export function TeamMemberManager({
 
   const openEdit = (member: TeamMember) => {
     if (member.role === "captain") return;
-    editForm.setFieldsValue({
-      realName: member.real_name ?? "",
-      phoneNumber: member.phone_number ?? "",
-      role: member.role,
-      status: member.status,
-    });
     setEditingMember(member);
     setActionError("");
   };
 
-  const submitEdit = async () => {
+  const submitEdit = async (values: EditMemberFormValues) => {
     if (!teamID || !editingMember) return;
-    let values: EditMemberFormValues;
-    try {
-      values = await editForm.validateFields();
-    } catch {
-      return;
-    }
     setActionKey(`edit-${editingMember.user_id}`);
     setActionError("");
     let profileUpdated = false;
@@ -177,7 +154,6 @@ export function TeamMemberManager({
       });
       onTeamChange(result.team);
       setEditingMember(null);
-      editForm.resetFields();
     } catch (reason) {
       const fallback = profileUpdated
         ? "球员资料已保存，但成员角色或状态更新失败"
@@ -189,21 +165,14 @@ export function TeamMemberManager({
   };
 
   const openCredit = (member: TeamMember) => {
-    creditForm.setFieldsValue({ amountYuan: undefined, note: "" });
     setCreditingMember(member);
     setActionError("");
   };
 
-  const submitCredit = async () => {
-    // actionKey 为同步防重入守卫：validateFields 的 await 窗口内快速双击
-    // 会先于 confirmLoading 生效重入，导致重复充值。
+  const submitCredit = async (values: CreditTeamFundFormValues) => {
+    // actionKey 为同步防重入守卫：表单校验的 await 窗口内快速双击
+    // 会先于按钮 disabled 生效重入，导致重复充值。
     if (!teamID || !creditingMember || actionKey) return;
-    let values: CreditTeamFundFormValues;
-    try {
-      values = await creditForm.validateFields();
-    } catch {
-      return;
-    }
     setActionKey(`credit-${creditingMember.user_id}`);
     setActionError("");
     try {
@@ -214,8 +183,7 @@ export function TeamMemberManager({
         note: values.note.trim() || undefined,
       });
       setCreditingMember(null);
-      creditForm.resetFields();
-      message.success(
+      toast.success(
         `已充值，新余额 ¥${(result.balance_cents / 100).toFixed(2)}`,
       );
     } catch (reason) {
@@ -285,126 +253,121 @@ export function TeamMemberManager({
 
   return (
     <>
-      <Drawer
-        title={team ? `${team.name} · 成员管理` : "成员管理"}
-        size={compact ? "100%" : 780}
-        open={open}
-        onClose={onClose}
-        extra={
-          <Space size={4}>
-            <Tooltip title="刷新成员">
-              <Button
-                shape="circle"
-                type="text"
-                icon={<ReloadOutlined />}
-                aria-label="刷新成员"
-                loading={membersQuery.isFetching}
-                disabled={!teamID}
-                onClick={() => void membersQuery.refetch()}
-              />
-            </Tooltip>
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              disabled={!teamID}
-              onClick={openAdd}
-            >
-              添加成员
-            </Button>
-          </Space>
-        }
-      >
-        <div className="member-summary">
-          <div>
-            <Text type="secondary">成员总数</Text>
-            <strong>{members.length}</strong>
-          </div>
-          <div>
-            <Text type="secondary">启用成员</Text>
-            <strong>{activeCount}</strong>
-          </div>
-          <div>
-            <Text type="secondary">当前队长</Text>
-            <strong>{captain ? displayMemberName(captain) : "未指定"}</strong>
-          </div>
-        </div>
-
-        {visibleError ? (
-          <Alert
-            className="service-alert"
-            type="error"
-            showIcon
-            closable
-            message={visibleError}
-            onClose={() => setActionError("")}
-            action={
-              membersQuery.isError ? (
-                <Button
-                  size="small"
-                  onClick={() => void membersQuery.refetch()}
-                >
-                  重试
+      <Sheet onOpenChange={(next) => !next && onClose()} open={open}>
+        <SheetContent className="member-manager-sheet" side="right">
+          <SheetHeader>
+            <div className="sheet-header-row">
+              <div>
+                <SheetTitle>
+                  {team ? `${team.name} · 成员管理` : "成员管理"}
+                </SheetTitle>
+                <SheetDescription>管理球队成员、角色与队费。</SheetDescription>
+              </div>
+              <div className="toolbar">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      aria-label="刷新成员"
+                      disabled={!teamID || membersQuery.isFetching}
+                      onClick={() => void membersQuery.refetch()}
+                      size="icon"
+                      type="button"
+                      variant="outline"
+                    >
+                      <RotateCw size={15} />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>刷新成员</TooltipContent>
+                </Tooltip>
+                <Button disabled={!teamID} onClick={openAdd} type="button">
+                  <Plus size={15} />
+                  添加成员
                 </Button>
-              ) : null
-            }
-          />
-        ) : null}
+              </div>
+            </div>
+          </SheetHeader>
+          <div className="sheet-body">
+            <div className="member-summary">
+              <div>
+                <span>成员总数</span>
+                <strong>{members.length}</strong>
+              </div>
+              <div>
+                <span>启用成员</span>
+                <strong>{activeCount}</strong>
+              </div>
+              <div>
+                <span>当前队长</span>
+                <strong>
+                  {captain ? displayMemberName(captain) : "未指定"}
+                </strong>
+              </div>
+            </div>
 
-        <TeamMemberTable
-          members={members}
-          loading={membersQuery.isFetching}
-          compact={compact}
-          actionKey={actionKey}
-          onEdit={openEdit}
-          onCredit={openCredit}
-          onCaptainChange={(member, captain) =>
-            void changeCaptain(member, captain)
-          }
-          onRemove={(member) => void remove(member)}
-        />
-      </Drawer>
+            {visibleError ? (
+              <ErrorAlert
+                message={visibleError}
+                onRetry={
+                  membersQuery.isError
+                    ? () => void membersQuery.refetch()
+                    : undefined
+                }
+              />
+            ) : null}
+
+            <TeamMemberTable
+              actionKey={actionKey}
+              loading={membersQuery.isFetching}
+              members={members}
+              onCaptainChange={(member, captain) =>
+                void changeCaptain(member, captain)
+              }
+              onCredit={openCredit}
+              onEdit={openEdit}
+              onRemove={(member) => void remove(member)}
+            />
+          </div>
+        </SheetContent>
+      </Sheet>
 
       <AddTeamMemberModal
-        open={addOpen}
-        form={addForm}
         candidates={candidatesQuery.data || []}
-        loadingCandidates={candidatesQuery.isFetching}
-        submitting={actionKey === "add"}
         error={visibleCandidateError}
         hasCaptain={Boolean(captain)}
-        onSearch={setCandidateSearch}
-        onSubmit={() => void submitAdd()}
+        loadingCandidates={candidatesQuery.isFetching}
         onClose={() => setAddOpen(false)}
+        onSearch={setCandidateSearch}
+        onSubmit={(values) => void submitAdd(values)}
+        open={addOpen}
+        submitting={actionKey === "add"}
       />
 
       <EditTeamMemberModal
-        member={editingMember}
-        form={editForm}
-        submitting={
-          editingMember ? actionKey === `edit-${editingMember.user_id}` : false
-        }
         error={editingMember ? actionError : ""}
-        onSubmit={() => void submitEdit()}
+        member={editingMember}
         onClose={() => {
           setEditingMember(null);
           setActionError("");
         }}
+        onSubmit={(values) => void submitEdit(values)}
+        submitting={
+          editingMember ? actionKey === `edit-${editingMember.user_id}` : false
+        }
       />
 
       <CreditTeamFundModal
+        error={creditingMember ? actionError : ""}
         member={creditingMember}
-        form={creditForm}
+        onClose={() => {
+          setCreditingMember(null);
+          setActionError("");
+        }}
+        onSubmit={(values) => void submitCredit(values)}
         submitting={
           creditingMember
             ? actionKey === `credit-${creditingMember.user_id}`
             : false
         }
-        error={creditingMember ? actionError : ""}
-        onSubmit={() => void submitCredit()}
-        onClose={() => {
-          setCreditingMember(null);
-          setActionError("");
-        }}
       />
     </>
   );

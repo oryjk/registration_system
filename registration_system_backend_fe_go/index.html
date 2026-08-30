@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>开踢管理台</title>
+    <script>
+      (() => {
+        try {
+          if (
+            localStorage.getItem("registration-admin-theme") === "light"
+          ) {
+            document.documentElement.classList.add("light");
+          }
+        } catch (_) {
+          /* localStorage 不可用时保持深色默认 */
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

@@ -12,7 +12,8 @@ interface IsoDateTime {
 export interface MatchFormPayloadValues {
   name: string;
   publication_mode: PublicationMode;
-  host_team_id: number;
+  /** 散人约球模式允许为空；其余模式由表单校验保证存在。 */
+  host_team_id?: number;
   opponent_name?: string;
   players_per_team: number;
   host_capacity_limit?: number;

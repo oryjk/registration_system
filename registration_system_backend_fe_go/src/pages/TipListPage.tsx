@@ -1,118 +1,101 @@
-import { PageContainer } from "@ant-design/pro-components/es/layout/components/PageContainer";
-import ProTable, { type ProColumns } from "@ant-design/pro-components/es/table";
-import { Alert, Button, Typography } from "antd";
 import { useState } from "react";
-import { useTipsQuery } from "../hooks/queries/useTipQueries";
-import type { TipItem } from "../types/tip";
-
-function formatDateTime(value: string | null) {
-  if (!value) return "-";
-  return new Intl.DateTimeFormat("zh-CN", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).format(new Date(value));
-}
-
-function formatYuan(amountCents: number) {
-  return `¥${(amountCents / 100).toFixed(2)}`;
-}
+import { DataTable, type DataTableColumn } from "@/components/admin/data-table";
+import { ErrorAlert } from "@/components/admin/error-alert";
+import { NameCell } from "@/components/admin/member-cell";
+import { PaginationBar } from "@/components/admin/pagination-bar";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { useTipsQuery } from "@/hooks/queries/useTipQueries";
+import type { TipItem } from "@/types/tip";
+import { formatNumericDateTime, formatYuan } from "@/utils/format";
 
 export default function TipListPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const tips = useTipsQuery({ page, page_size: pageSize });
 
-  const columns: ProColumns<TipItem>[] = [
+  const columns: DataTableColumn<TipItem>[] = [
     {
+      key: "nickname",
       title: "打赏用户",
-      dataIndex: "nickname",
       width: 200,
-      render: (_, item) => (
-        <div className="match-name-cell">
-          <strong>{item.nickname || "未设置昵称"}</strong>
-          <Typography.Text type="secondary">ID {item.user_id}</Typography.Text>
-        </div>
+      render: (item) => (
+        <NameCell
+          subtitle={`ID ${item.user_id}`}
+          title={item.nickname || "未设置昵称"}
+        />
       ),
     },
     {
+      key: "amount_cents",
       title: "金额",
-      dataIndex: "amount_cents",
       width: 110,
-      render: (_, item) => <strong>{formatYuan(item.amount_cents)}</strong>,
+      render: (item) => (
+        <span className="cell-strong">{formatYuan(item.amount_cents)}</span>
+      ),
     },
     {
+      key: "suggestion",
       title: "功能建议",
-      dataIndex: "suggestion",
-      ellipsis: true,
-      render: (_, item) =>
+      render: (item) =>
         item.suggestion ? (
-          <Typography.Text
-            style={{ maxWidth: 420 }}
-            ellipsis={{ tooltip: item.suggestion }}
-          >
+          <span className="cell-ellipsis" title={item.suggestion}>
             {item.suggestion}
-          </Typography.Text>
+          </span>
         ) : (
-          <Typography.Text type="secondary">未留言</Typography.Text>
+          <span className="cell-secondary">未留言</span>
         ),
     },
-    { title: "订单号", dataIndex: "order_no", width: 210 },
+    { key: "order_no", title: "订单号", width: 210 },
     {
+      key: "submitted_at",
       title: "支付时间",
-      dataIndex: "submitted_at",
       width: 170,
-      renderText: formatDateTime,
+      render: (item) => formatNumericDateTime(item.submitted_at),
     },
   ];
 
   const error = tips.error instanceof Error ? tips.error.message : "";
 
   return (
-    <PageContainer
-      title="打赏与建议"
-      content={`共 ${tips.data?.total || 0} 笔已支付打赏；用户"请喝咖啡"时可附功能建议，支付成功后才显示在这里`}
-    >
-      {error ? (
-        <Alert
-          className="service-alert"
-          type="error"
-          showIcon
-          message={error}
-          action={
-            tips.isError ? (
-              <Button size="small" onClick={() => void tips.refetch()}>
-                重试
-              </Button>
-            ) : null
-          }
-        />
-      ) : null}
-
-      <ProTable<TipItem>
-        rowKey="order_no"
-        search={false}
-        options={false}
-        cardProps={{ className: "match-table-panel" }}
-        loading={tips.isFetching}
-        dataSource={tips.data?.items || []}
-        columns={columns}
-        scroll={{ x: 960 }}
-        pagination={{
-          current: page,
-          pageSize,
-          total: tips.data?.total || 0,
-          showSizeChanger: true,
-          showTotal: (value) => `共 ${value} 条`,
-          onChange: (nextPage, nextPageSize) => {
-            setPage(nextPageSize === pageSize ? nextPage : 1);
-            setPageSize(nextPageSize);
-          },
-        }}
-      />
-    </PageContainer>
+    <div className="content-grid">
+      <Card>
+        <CardHeader>
+          <CardTitle>打赏与建议</CardTitle>
+          <CardDescription>
+            {`共 ${tips.data?.total || 0} 笔已支付打赏；用户"请喝咖啡"时可附功能建议，支付成功后才显示在这里`}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="table-card-content">
+          {error ? (
+            <ErrorAlert
+              message={error}
+              onRetry={tips.isError ? () => void tips.refetch() : undefined}
+            />
+          ) : null}
+          <DataTable
+            columns={columns}
+            emptyText="暂无打赏记录"
+            items={tips.data?.items}
+            loading={tips.isFetching}
+            rowKey={(item) => item.order_no}
+          />
+          <PaginationBar
+            onChange={(nextPage, nextPageSize) => {
+              setPage(nextPageSize === pageSize ? nextPage : 1);
+              setPageSize(nextPageSize);
+            }}
+            page={page}
+            pageSize={pageSize}
+            total={tips.data?.total || 0}
+          />
+        </CardContent>
+      </Card>
+    </div>
   );
 }

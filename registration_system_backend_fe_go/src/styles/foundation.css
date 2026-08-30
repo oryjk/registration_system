@@ -1,0 +1,340 @@
+:root {
+  color-scheme: dark;
+  --control-height: 36px;
+  /* 大尺寸档位：登录、关键表单主操作等需要视觉重心的场景 */
+  --control-height-lg: 48px;
+  --control-icon-size: 16px;
+  --shell-header-height: 72px;
+  --sidebar-menu-row-height: 40px;
+  --sidebar-submenu-row-height: 30px;
+  /* 手机框架（H5 预览）：视口高 844、宽按 390:844 宽高比推导，边框为设备色，深浅主题一致 */
+  --phone-viewport-height: 844px;
+  --phone-viewport-aspect: 390 / 844;
+  --radius-phone: 36px;
+  --phone-bezel: #151517;
+  --font-family-sans:
+    "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", -apple-system,
+    BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-family-technical:
+    "JetBrains Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  --shadow-hairline: 0 1px 2px rgba(0, 0, 0, 0.38);
+  --shadow-raised: 0 18px 42px rgba(0, 0, 0, 0.42);
+  --shadow-overlay: -12px 0 42px rgba(0, 0, 0, 0.58);
+  --shadow-panel:
+    0 18px 42px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.035);
+  --shadow-focus:
+    0 0 0 1px rgba(79, 196, 179, 0.34), 0 0 20px rgba(79, 196, 179, 0.1);
+  --background: #0b0d10;
+  --foreground: #e8eaee;
+  --muted: #8b939c;
+  --muted-bg: #171b20;
+  --border: #242a30;
+  --input: #333a42;
+  --card: #121519;
+  --card-foreground: #e8eaee;
+  --popover: #161a1f;
+  --popover-foreground: #e8eaee;
+  --primary: #4fc4b3;
+  --primary-hover: #63d1c1;
+  --primary-solid: #4fc4b3;
+  --primary-solid-hover: #63d1c1;
+  --primary-foreground: #062621;
+  --primary-soft: #12312c;
+  --primary-soft-strong: #194439;
+  --secondary: #1a1f24;
+  --secondary-foreground: #d7dbe0;
+  --accent: #12312c;
+  --accent-foreground: #6fd8c6;
+  --destructive: #ef7070;
+  --destructive-bg: #2a1417;
+  --destructive-border: #52242a;
+  --success: #45c892;
+  --success-bg: #11271e;
+  --success-border: #1f4a37;
+  --warning: #d3a24c;
+  --warning-bg: #292113;
+  --warning-border: #4a3a1c;
+  --info: #74aee2;
+  --info-strong: #8cbcf0;
+  --info-bg: #152232;
+  --info-border: #26435f;
+  --ring: #4fc4b3;
+  --chart-1: #4fc4b3;
+  --chart-2: #d3a24c;
+  --chart-3: #74aee2;
+  --chart-4: #a78bfa;
+  --chart-5: #ef7070;
+  --chart-trend-primary: #3fb3a2;
+  --chart-trend-secondary: #d08b52;
+  --audit-replace-members: #9d6bf0;
+  --audit-replace-members-strong: #7c3aed;
+  --audit-update-sfinx-tag: #2ba189;
+  --audit-update-sfinx-tag-strong: #157e6d;
+  --audit-publish: #7c8af6;
+  --audit-publish-strong: #5a68e8;
+  --surface-canvas: #0b0d10;
+  --surface-sidebar: #0d1013;
+  --surface-chrome: rgba(13, 16, 19, 0.92);
+  --surface-panel: #121519;
+  --surface-panel-raised: #161a1f;
+  --surface-inset: #0f1216;
+  --surface-hover: #1a2025;
+  --surface-active: #12312c;
+  /* 侧边栏选中项的中性填充（比 hover 更亮一档，不带品牌色） */
+  --surface-sidebar-active: #22282f;
+  --border-subtle: rgba(148, 163, 170, 0.14);
+  --border-strong: rgba(148, 163, 170, 0.28);
+  --accent-line: rgba(79, 196, 179, 0.3);
+  --accent-line-strong: rgba(79, 196, 179, 0.5);
+  --accent-glow: rgba(79, 196, 179, 0.16);
+  --grid-line: rgba(148, 163, 170, 0.035);
+  --overlay-backdrop: rgba(3, 5, 7, 0.72);
+  --sidebar: var(--surface-sidebar);
+  --sidebar-foreground: #b9c0c8;
+  --sidebar-primary: #4fc4b3;
+  --sidebar-primary-foreground: #062621;
+  --sidebar-accent: #171c21;
+  --sidebar-accent-foreground: #e8eaee;
+  --sidebar-border: var(--border-subtle);
+  --sidebar-ring: #4fc4b3;
+  --radius-control: 2px;
+  --radius-panel: 4px;
+  --radius-overlay: 4px;
+  /* 兼容旧页面选择器；新样式按 control / panel / overlay 使用语义圆角。 */
+  --radius: var(--radius-control);
+  --font-size-2xs: 11px;
+  --font-size-xs: 12px;
+  --font-size-sm: 13px;
+  --font-size-base: 14px;
+  --font-size-lg: 16px;
+  --font-size-xl: 18px;
+  --font-size-2xl: 20px;
+  --font-size-3xl: 24px;
+  --leading-none: 1;
+  --leading-tight: 1.2;
+  --leading-snug: 1.35;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.65;
+  --space-0-5: 2px;
+  --space-1: 4px;
+  --space-1-5: 6px;
+  --space-2: 8px;
+  --space-2-5: 10px;
+  --space-3: 12px;
+  --space-3-5: 14px;
+  --space-4: 16px;
+  --space-4-5: 18px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 28px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+}
+
+/* 浅色主题（顶栏按钮切换，偏好存 localStorage）：恢复原绿色控制台色板 */
+.light {
+  color-scheme: light;
+  --shadow-hairline: 0 1px 2px rgba(15, 23, 42, 0.08);
+  --shadow-raised: 0 18px 42px rgba(34, 50, 57, 0.12);
+  --shadow-overlay: -12px 0 42px rgba(34, 50, 57, 0.16);
+  --shadow-panel:
+    0 16px 36px rgba(34, 50, 57, 0.07), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  --shadow-focus:
+    0 0 0 1px rgba(67, 146, 136, 0.28), 0 0 16px rgba(67, 146, 136, 0.1);
+  --background: #f4f7f8;
+  --foreground: #1f2937;
+  --muted: #667085;
+  --muted-bg: #eef3f4;
+  --border: #dbe3e5;
+  --input: #cbd6d9;
+  --card: #ffffff;
+  --card-foreground: #1f2937;
+  --popover: #ffffff;
+  --popover-foreground: #1f2937;
+  --primary: #439288;
+  --primary-hover: #367a72;
+  --primary-solid: #367a72;
+  --primary-solid-hover: #2f6b64;
+  --primary-foreground: #ffffff;
+  --primary-soft: #eaf6f4;
+  --primary-soft-strong: #dcefeb;
+  --secondary: #eef3f4;
+  --secondary-foreground: #1f2937;
+  --accent: #eaf6f4;
+  --accent-foreground: #2e7068;
+  --destructive: #dc2626;
+  --destructive-bg: #fef2f2;
+  --destructive-border: #fecaca;
+  --success: #166534;
+  --success-bg: #f0fdf4;
+  --success-border: #bbf7d0;
+  --warning: #a16207;
+  --warning-bg: #fefce8;
+  --warning-border: #fde68a;
+  --info: #285f9f;
+  --info-strong: #1d4ed8;
+  --info-bg: #edf4fb;
+  --info-border: #c7d9ee;
+  --ring: #439288;
+  --chart-1: #2563eb;
+  --chart-2: #16a34a;
+  --chart-3: #ca8a04;
+  --chart-4: #9333ea;
+  --chart-5: #dc2626;
+  --chart-trend-primary: #1f7a68;
+  --chart-trend-secondary: #b8612d;
+  --audit-replace-members: #7c3aed;
+  --audit-replace-members-strong: #6d28d9;
+  --audit-update-sfinx-tag: #0f766e;
+  --audit-update-sfinx-tag-strong: #115e59;
+  --audit-publish: #4f46e5;
+  --audit-publish-strong: #4338ca;
+  --surface-canvas: #f4f7f8;
+  --surface-sidebar: #f8fafb;
+  --surface-chrome: rgba(255, 255, 255, 0.9);
+  --surface-panel: #ffffff;
+  --surface-panel-raised: #ffffff;
+  --surface-inset: #eef3f4;
+  --surface-hover: #e9f1f1;
+  --surface-active: #e4f4f1;
+  /* 侧边栏选中项的中性填充（比 hover 更深一档，不带品牌色） */
+  --surface-sidebar-active: #dde7e9;
+  --border-subtle: rgba(61, 77, 84, 0.14);
+  --border-strong: rgba(61, 77, 84, 0.26);
+  --accent-line: rgba(67, 146, 136, 0.3);
+  --accent-line-strong: rgba(67, 146, 136, 0.48);
+  --accent-glow: rgba(67, 146, 136, 0.12);
+  --grid-line: rgba(61, 77, 84, 0.035);
+  --overlay-backdrop: rgba(27, 39, 43, 0.42);
+  --sidebar: var(--surface-sidebar);
+  --sidebar-foreground: #1f2937;
+  --sidebar-primary: #439288;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #eaf1f2;
+  --sidebar-accent-foreground: #1f2937;
+  --sidebar-border: var(--border-subtle);
+  --sidebar-ring: #439288;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  overflow-y: scroll;
+  scrollbar-gutter: stable;
+}
+
+/* Radix 弹框滚动锁定会给 body[data-scroll-locked] 注入 !important 的 margin-right 滚动条补偿；
+   但 html 已常驻纵向滚动条，弹框开关时视口宽度不变，补偿只会造成内容横移抖动，这里按更高优先级抵消 */
+html body[data-scroll-locked] {
+  /* biome-ignore lint/complexity/noImportantStyles: 抵消 Radix 注入的 !important 滚动条补偿 */
+  margin-right: 0 !important;
+  /* biome-ignore lint/complexity/noImportantStyles: 抵消 Radix 注入的 !important 滚动条补偿 */
+  padding-right: 0 !important;
+}
+
+body {
+  margin: 0;
+  background: var(--surface-canvas);
+  color: var(--foreground);
+  font-family: var(--font-family-sans);
+  font-size: var(--font-size-base);
+  line-height: var(--leading-normal);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+/* 主题切换动画：从右向左擦除（配合 theme.ts 的 startViewTransition） */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+::view-transition-new(root) {
+  animation: theme-wipe-right-to-left 640ms ease both;
+}
+
+@keyframes theme-wipe-right-to-left {
+  from {
+    clip-path: inset(0 0 0 100%);
+  }
+
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+[data-slot="dialog-content"],
+[data-slot="alert-dialog-content"],
+[data-slot="popover-content"] {
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-overlay);
+  background: var(--surface-panel-raised);
+  color: var(--foreground);
+  box-shadow: var(--shadow-raised);
+}
+
+[data-slot="dialog-overlay"],
+[data-slot="alert-dialog-overlay"] {
+  background: var(--overlay-backdrop);
+  backdrop-filter: blur(4px);
+}
+
+[data-slot="dialog-title"],
+[data-slot="alert-dialog-title"] {
+  letter-spacing: 0;
+}
+
+[data-slot="input"] {
+  border-color: var(--input);
+  border-radius: var(--radius-control);
+  background: var(--surface-inset);
+  box-shadow: inset 0 1px 0
+    color-mix(in srgb, var(--foreground) 3%, transparent);
+}
+
+[data-slot="input"]:focus-visible {
+  border-color: var(--accent-line-strong);
+  box-shadow: var(--shadow-focus);
+}
+
+[data-slot="button"] {
+  border-radius: var(--radius-control);
+  box-shadow: inset 0 1px 0
+    color-mix(in srgb, var(--foreground) 4%, transparent);
+}
+
+[data-slot="button"]:focus-visible {
+  box-shadow: var(--shadow-focus);
+}
+
+[data-slot="card"] {
+  border-color: var(--border-subtle);
+  border-radius: var(--radius-panel);
+  background: var(--surface-panel);
+  box-shadow: var(--shadow-panel);
+}
+
+.admin-sonner-toast {
+  /* biome-ignore lint/complexity/noImportantStyles: sonner 组件内联样式需要强制覆盖 */
+  border-radius: var(--radius-overlay) !important;
+  /* biome-ignore lint/complexity/noImportantStyles: sonner 组件内联样式需要强制覆盖 */
+  font-family: inherit !important;
+}

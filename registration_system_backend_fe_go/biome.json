@@ -42,6 +42,9 @@
       "suspicious": {
         "noExplicitAny": "off",
         "noUnknownAtRules": "off"
+      },
+      "style": {
+        "noDescendingSpecificity": "off"
       }
     }
   },

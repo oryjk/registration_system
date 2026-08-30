@@ -12,7 +12,7 @@ function normalizeRouteBase(routeBase: string) {
 
 export function sanitizeRedirect(
   redirect: string | null | undefined,
-  routeBase = process.env.ADMIN_ROUTE_BASE || "/",
+  routeBase = import.meta.env.ADMIN_ROUTE_BASE || "/",
 ) {
   if (!redirect?.startsWith("/") || redirect.startsWith("//")) return "/";
 
@@ -29,7 +29,7 @@ export function sanitizeRedirect(
 
 export function buildLoginUrl(
   location: RedirectLocation,
-  routeBase = process.env.ADMIN_ROUTE_BASE || "/",
+  routeBase = import.meta.env.ADMIN_ROUTE_BASE || "/",
 ) {
   const destination = sanitizeRedirect(
     `${location.pathname}${location.search || ""}${location.hash || ""}`,

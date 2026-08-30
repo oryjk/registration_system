@@ -1,5 +1,5 @@
-import { ReloadOutlined } from "@ant-design/icons";
-import { Button, Result } from "antd";
+import { RotateCcw, TriangleAlert } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface AuthBootstrapErrorProps {
   message: string;
@@ -11,15 +11,18 @@ export function AuthBootstrapError({
   onRetry,
 }: AuthBootstrapErrorProps) {
   return (
-    <Result
-      status="error"
-      title="管理员信息加载失败"
-      subTitle={message}
-      extra={
-        <Button type="primary" icon={<ReloadOutlined />} onClick={onRetry}>
-          重新加载
-        </Button>
-      }
-    />
+    <div className="bootstrap-error">
+      <div className="bootstrap-error-icon">
+        <TriangleAlert size={22} />
+      </div>
+      <div className="bootstrap-error-body">
+        <h3>管理员信息加载失败</h3>
+        <p>{message}</p>
+      </div>
+      <Button onClick={() => onRetry()} type="button" variant="outline">
+        <RotateCcw size={15} />
+        重新加载
+      </Button>
+    </div>
   );
 }

@@ -1,0 +1,233 @@
+/*
+ * 页面布局骨架：工具条、内容网格、表单分区、Sheet、弹窗表单。只管结构与间距，不定义颜色语义。
+ */
+
+/* ---------- 通用布局 ---------- */
+.content-grid {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.toolbar button {
+  white-space: nowrap;
+}
+
+.page-description {
+  color: var(--muted);
+  font-size: var(--font-size-sm);
+}
+
+/* ---------- 卡片内表格布局 ---------- */
+.table-card-content {
+  display: grid;
+  gap: var(--space-3);
+}
+
+/* ---------- 弹窗表单 ---------- */
+.dialog-form {
+  display: grid;
+  gap: var(--space-4);
+}
+
+/* ---------- 表格行内操作 ---------- */
+.table-row-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-0-5);
+}
+
+.match-search {
+  max-width: 260px;
+}
+
+/* ---------- 表单页 ---------- */
+.match-form {
+  display: grid;
+  gap: var(--space-6);
+}
+
+.form-section {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.form-section-title {
+  display: grid;
+  gap: 2px;
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: var(--space-2);
+}
+
+.form-section-title h4 {
+  font-size: var(--font-size-base);
+  font-weight: 700;
+}
+
+.panel-kicker {
+  color: var(--accent-foreground);
+  font-family: var(--font-family-technical);
+  font-size: var(--font-size-2xs);
+  letter-spacing: 0.22em;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--space-4) var(--space-5);
+}
+
+.form-span-2 {
+  grid-column: span 2;
+}
+
+@media (max-width: 640px) {
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .form-span-2 {
+    grid-column: auto;
+  }
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  border-top: 1px solid var(--border-subtle);
+  padding-top: var(--space-4);
+}
+
+.switch-field {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--control-height);
+}
+
+.match-type-option {
+  display: grid;
+  gap: 2px;
+  padding: var(--space-1) 0;
+}
+
+.match-type-option strong {
+  font-size: var(--font-size-sm);
+}
+
+.match-type-option span {
+  color: var(--muted);
+  font-size: var(--font-size-xs);
+}
+
+/* ---------- 结果页（403 / 404） ---------- */
+.page-result {
+  display: grid;
+  place-items: center;
+  gap: var(--space-4);
+  min-height: 60vh;
+  padding: var(--space-8) var(--space-4);
+  text-align: center;
+}
+
+.page-result-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-panel);
+  background: var(--surface-inset);
+  color: var(--muted);
+}
+
+.page-result h3 {
+  font-size: var(--font-size-2xl);
+}
+
+.page-result p {
+  color: var(--muted);
+  font-size: var(--font-size-sm);
+}
+
+/* ---------- 列表工具条 ---------- */
+/* ---------- 列表页工具条与单元格 ---------- */
+.list-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+/* ---------- 成员管理布局 ---------- */
+.member-manager-sheet {
+  width: 800px;
+  max-width: 100vw;
+}
+
+/* ---------- 设置页布局 ---------- */
+/* ---------- 设置页 ---------- */
+.settings-stack {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.setting-row {
+  display: grid;
+  gap: var(--space-2);
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: var(--space-4);
+}
+
+.setting-row:last-of-type {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.setting-row-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.setting-row-description {
+  max-width: 640px;
+  color: var(--muted);
+  font-size: var(--font-size-sm);
+  line-height: var(--leading-relaxed);
+}
+
+/* ---------- Sheet 布局 ---------- */
+/* ---------- 表单提示与 Sheet 布局 ---------- */
+.sheet-header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.sheet-body {
+  display: grid;
+  gap: var(--space-3);
+  overflow-y: auto;
+  padding: 0 var(--space-4) var(--space-4);
+}
+
+.detail-grid-single {
+  grid-template-columns: 1fr;
+}
+
+.team-detail-sheet {
+  width: 460px;
+  max-width: 100vw;
+}

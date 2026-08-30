@@ -1,30 +1,41 @@
-import { DeleteOutlined, EditOutlined } from "@ant-design/icons";
-import { PageContainer } from "@ant-design/pro-components/es/layout/components/PageContainer";
-import ProTable, { type ProColumns } from "@ant-design/pro-components/es/table";
-import {
-  Alert,
-  Avatar,
-  Button,
-  ColorPicker,
-  Descriptions,
-  Modal,
-  Popconfirm,
-  Space,
-  Tag,
-  Typography,
-} from "antd";
+import { ArrowLeft, Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
-import { history, useModel, useParams } from "umi";
+import { useNavigate, useParams } from "react-router";
+import { ConfirmPopover } from "@/components/admin/confirm-popover";
+import { DataTable, type DataTableColumn } from "@/components/admin/data-table";
+import { DetailGrid, DetailItem } from "@/components/admin/detail-grid";
+import { ErrorAlert } from "@/components/admin/error-alert";
+import { MemberCell } from "@/components/admin/member-cell";
+import { StatusBadge } from "@/components/admin/status-badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { useAdminSession } from "@/features/admin-session/useAdminSession";
 import {
   useDeleteMatchMutation,
   useMatchQuery,
   useUpdateMatchStatusMutation,
-} from "../hooks/queries/useMatchQueries";
+} from "@/hooks/queries/useMatchQueries";
 import type {
   MatchRegistrationEntry,
   MatchStatus,
   RegistrationGroup,
-} from "../types/match";
+} from "@/types/match";
+import { formatDateTime } from "@/utils/format";
 import {
   getPublicationModeLabel,
   matchStatusColors,
@@ -33,8 +44,6 @@ import {
   registrationStatusColors,
   registrationStatusLabels,
 } from "./matchLabels";
-
-const { Text } = Typography;
 
 const groupLabels: Record<RegistrationGroup["kind"], string> = {
   host_team: "主队报名组",
@@ -49,73 +58,6 @@ const memberRoleLabels: Record<string, string> = {
   member: "队员",
 };
 
-function rosterColumns(
-  kind: RegistrationGroup["kind"],
-): ProColumns<MatchRegistrationEntry>[] {
-  const columns: ProColumns<MatchRegistrationEntry>[] = [
-    {
-      title: "队员",
-      dataIndex: "nickname",
-      render: (_, record) => (
-        <Space>
-          <Avatar src={record.avatar_url || undefined}>
-            {(record.nickname || String(record.user_id)).slice(0, 1)}
-          </Avatar>
-          <span>{record.nickname || `用户 ${record.user_id}`}</span>
-          {record.real_name ? (
-            <Text type="secondary">{record.real_name}</Text>
-          ) : null}
-        </Space>
-      ),
-    },
-  ];
-  if (kind !== "individual_opponent") {
-    columns.push({
-      title: "角色",
-      dataIndex: "member_role",
-      renderText: (value: string | null) =>
-        value ? memberRoleLabels[value] || value : "--",
-    });
-  }
-  columns.push({
-    title: "报名状态",
-    dataIndex: "status",
-    render: (_, record) => (
-      <Tag color={registrationStatusColors[record.status]}>
-        {registrationStatusLabels[record.status]}
-      </Tag>
-    ),
-  });
-  if (kind === "individual_opponent") {
-    columns.push(
-      {
-        title: "人数",
-        dataIndex: "registration_count",
-        render: (_, record) =>
-          record.registration_count > 1 ? (
-            <Tag color="blue">×{record.registration_count}</Tag>
-          ) : (
-            <Text type="secondary">1</Text>
-          ),
-      },
-      {
-        title: "支付",
-        dataIndex: "paid",
-        render: (_, record) =>
-          record.paid ? <Tag color="success">已付</Tag> : <Tag>未付</Tag>,
-      },
-    );
-  }
-  return columns;
-}
-
-function formatDateTime(value: string) {
-  return new Intl.DateTimeFormat("zh-CN", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
-}
-
 function JerseyColorValue({
   color,
   fallback,
@@ -126,10 +68,14 @@ function JerseyColorValue({
   fallbackLabel: string;
 }) {
   return (
-    <Space size={8}>
-      <ColorPicker value={color || fallback} disabled disabledAlpha />
-      <span>{color || `未设置（默认${fallbackLabel}）`}</span>
-    </Space>
+    <span className="jersey-color-value">
+      <span
+        aria-hidden="true"
+        className="jersey-color-swatch"
+        style={{ background: color || fallback }}
+      />
+      {color || `未设置（默认${fallbackLabel}）`}
+    </span>
   );
 }
 
@@ -151,45 +97,111 @@ function statusActions(
   return [];
 }
 
-const groupColumns: ProColumns<RegistrationGroup>[] = [
+const groupColumns: DataTableColumn<RegistrationGroup>[] = [
   {
+    key: "kind",
     title: "报名组",
-    dataIndex: "kind",
-    renderText: (value: RegistrationGroup["kind"]) => groupLabels[value],
+    render: (item) => groupLabels[item.kind],
   },
   {
+    key: "team_id",
     title: "球队 ID",
-    dataIndex: "team_id",
-    renderText: (value: number | null) => value || "--",
+    render: (item) => item.team_id || "--",
   },
   {
+    key: "min_players",
     title: "最少人数",
-    dataIndex: "min_players",
-    renderText: (value: number | null) => value || "--",
+    render: (item) => item.min_players || "--",
   },
   {
+    key: "max_players",
     title: "人数上限",
-    dataIndex: "max_players",
-    renderText: (value: number | null) => value || "不限",
+    render: (item) => item.max_players || "不限",
   },
   {
+    key: "status",
     title: "状态",
-    dataIndex: "status",
-    render: (_, record) => (
-      <Tag>
-        {record.status === "open"
-          ? "开放"
-          : record.status === "closed"
-            ? "已满"
-            : "已取消"}
-      </Tag>
-    ),
+    render: (item) =>
+      item.status === "open" ? (
+        <StatusBadge label="开放" variant="info" />
+      ) : item.status === "closed" ? (
+        <StatusBadge label="已满" variant="secondary" />
+      ) : (
+        <StatusBadge label="已取消" variant="destructive" />
+      ),
   },
 ];
 
+function rosterColumns(
+  kind: RegistrationGroup["kind"],
+): DataTableColumn<MatchRegistrationEntry>[] {
+  const columns: DataTableColumn<MatchRegistrationEntry>[] = [
+    {
+      key: "nickname",
+      title: "队员",
+      render: (record) => (
+        <MemberCell
+          avatarUrl={record.avatar_url}
+          name={record.nickname || `用户 ${record.user_id}`}
+          secondary={record.real_name || undefined}
+        />
+      ),
+    },
+  ];
+  if (kind !== "individual_opponent") {
+    columns.push({
+      key: "member_role",
+      title: "角色",
+      render: (record) =>
+        record.member_role
+          ? memberRoleLabels[record.member_role] || record.member_role
+          : "--",
+    });
+  }
+  columns.push({
+    key: "status",
+    title: "报名状态",
+    render: (record) => (
+      <StatusBadge
+        label={registrationStatusLabels[record.status]}
+        variant={registrationStatusColors[record.status]}
+      />
+    ),
+  });
+  if (kind === "individual_opponent") {
+    columns.push(
+      {
+        key: "registration_count",
+        title: "人数",
+        render: (record) =>
+          record.registration_count > 1 ? (
+            <StatusBadge
+              label={`×${record.registration_count}`}
+              variant="info"
+            />
+          ) : (
+            <span className="cell-secondary">1</span>
+          ),
+      },
+      {
+        key: "paid",
+        title: "支付",
+        render: (record) =>
+          record.paid ? (
+            <StatusBadge label="已付" variant="success" />
+          ) : (
+            <StatusBadge label="未付" variant="secondary" />
+          ),
+      },
+    );
+  }
+  return columns;
+}
+
 export default function MatchDetailPage() {
   const { id = "" } = useParams();
-  const { initialState } = useModel("@@initialState");
+  const navigate = useNavigate();
+  const { currentAdmin } = useAdminSession();
   const detailQuery = useMatchQuery(id);
   const statusMutation = useUpdateMatchStatusMutation();
   const deleteMutation = useDeleteMatchMutation();
@@ -219,7 +231,7 @@ export default function MatchDetailPage() {
     setActionError("");
     try {
       await deleteMutation.mutateAsync(id);
-      history.replace("/matches");
+      navigate("/matches", { replace: true });
     } catch (reason) {
       setActionError(reason instanceof Error ? reason.message : "删除比赛失败");
     }
@@ -230,181 +242,215 @@ export default function MatchDetailPage() {
   const error = actionError || queryError;
 
   return (
-    <PageContainer
-      className={`match-detail-page${actions.length ? " has-fixed-actions" : ""}`}
-      title={match?.name || "比赛详情"}
-      onBack={() => history.push("/matches")}
-      extra={
-        match ? (
-          <Space className="detail-actions" size={8} aria-label="比赛操作">
-            {actions.length ? (
-              <Button
-                icon={<EditOutlined />}
-                onClick={() => history.push(`/matches/${id}/edit`)}
-              >
-                编辑
-              </Button>
-            ) : null}
-            {orderedActions.map((action) => (
-              <Button
-                key={action.status}
-                danger={action.danger}
-                type={action.danger ? "default" : "primary"}
-                onClick={() => setTargetStatus(action.status)}
-              >
-                {action.label}
-              </Button>
-            ))}
-            {initialState?.currentAdmin?.is_super_admin ? (
-              <Popconfirm
-                title={`永久删除“${match.name}”`}
-                description="比赛及其报名、申请数据将永久删除。"
-                okText="永久删除"
-                okButtonProps={{ danger: true }}
-                cancelText="返回"
-                onConfirm={removeMatch}
-              >
-                <Button
-                  danger
-                  icon={<DeleteOutlined />}
-                  loading={deleteMutation.isPending}
-                >
-                  删除
-                </Button>
-              </Popconfirm>
-            ) : null}
-          </Space>
-        ) : null
-      }
-    >
-      {error ? (
-        <Alert
-          className="service-alert"
-          type="error"
-          showIcon
-          message={error}
-          action={
-            detailQuery.isError ? (
-              <Button size="small" onClick={() => void detailQuery.refetch()}>
-                重试
-              </Button>
-            ) : null
-          }
-        />
-      ) : null}
-
-      {detailQuery.isLoading ? <div className="route-loading" /> : null}
-
-      {match ? (
-        <>
-          <section className="detail-panel">
-            <div className="detail-status-line">
-              <Tag color={matchStatusColors[match.status]}>
-                {matchStatusLabels[match.status]}
-              </Tag>
-              <Tag>{getPublicationModeLabel(match.publication_mode)}</Tag>
-              <Text type="secondary">
-                {opponentStateLabels[match.opponent_state]}
-              </Text>
+    <div className="content-grid">
+      <Card>
+        <CardHeader>
+          <div className="detail-heading">
+            <Button
+              aria-label="返回比赛列表"
+              onClick={() => navigate("/matches")}
+              size="icon"
+              type="button"
+              variant="outline"
+            >
+              <ArrowLeft size={16} />
+            </Button>
+            <div>
+              <CardTitle>{match?.name || "比赛详情"}</CardTitle>
+              {match ? (
+                <CardDescription className="detail-status-line">
+                  <StatusBadge
+                    label={matchStatusLabels[match.status]}
+                    variant={matchStatusColors[match.status]}
+                  />
+                  <StatusBadge
+                    label={getPublicationModeLabel(match.publication_mode)}
+                    variant="secondary"
+                  />
+                  <span className="cell-secondary">
+                    {opponentStateLabels[match.opponent_state]}
+                  </span>
+                </CardDescription>
+              ) : null}
             </div>
-            <Descriptions column={{ xs: 1, sm: 2, lg: 3 }} colon={false}>
-              <Descriptions.Item label="主队">
-                {match.host_team_name}
-              </Descriptions.Item>
-              <Descriptions.Item label="比赛类型">
-                {getPublicationModeLabel(match.publication_mode)}
-              </Descriptions.Item>
-              <Descriptions.Item label="对手">
+          </div>
+          {match ? (
+            <CardAction>
+              <div className="toolbar">
+                {actions.length ? (
+                  <Button
+                    onClick={() => navigate(`/matches/${id}/edit`)}
+                    type="button"
+                    variant="outline"
+                  >
+                    <Pencil size={15} />
+                    编辑
+                  </Button>
+                ) : null}
+                {orderedActions.map((action) => (
+                  <Button
+                    key={action.status}
+                    onClick={() => setTargetStatus(action.status)}
+                    type="button"
+                    variant={action.danger ? "destructive" : "default"}
+                  >
+                    {action.label}
+                  </Button>
+                ))}
+                {currentAdmin?.is_super_admin ? (
+                  <ConfirmPopover
+                    confirmText="永久删除"
+                    destructive
+                    description="比赛及其报名、申请数据将永久删除。"
+                    onConfirm={() => void removeMatch()}
+                    title={`永久删除“${match.name}”`}
+                  >
+                    <Button
+                      disabled={deleteMutation.isPending}
+                      type="button"
+                      variant="outline"
+                    >
+                      <Trash2 size={15} />
+                      删除
+                    </Button>
+                  </ConfirmPopover>
+                ) : null}
+              </div>
+            </CardAction>
+          ) : null}
+        </CardHeader>
+        <CardContent>
+          {error ? (
+            <ErrorAlert
+              message={error}
+              onRetry={
+                detailQuery.isError
+                  ? () => void detailQuery.refetch()
+                  : undefined
+              }
+            />
+          ) : null}
+
+          {detailQuery.isLoading ? (
+            <div aria-label="加载中" className="route-loading" role="status" />
+          ) : null}
+
+          {match ? (
+            <DetailGrid>
+              <DetailItem label="主队">{match.host_team_name}</DetailItem>
+              <DetailItem label="对手">
                 {match.away_team_name || match.opponent_name || "待确认"}
-              </Descriptions.Item>
-              <Descriptions.Item label="主队球服">
+              </DetailItem>
+              <DetailItem label="每队人数">
+                {match.players_per_team} 人
+              </DetailItem>
+              <DetailItem label="主队球服">
                 <JerseyColorValue
                   color={match.host_color}
                   fallback="#FFFFFF"
                   fallbackLabel="白"
                 />
-              </Descriptions.Item>
-              <Descriptions.Item label="客队球服">
+              </DetailItem>
+              <DetailItem label="客队球服">
                 <JerseyColorValue
                   color={match.away_color}
                   fallback="#FF0000"
                   fallbackLabel="红"
                 />
-              </Descriptions.Item>
-              <Descriptions.Item label="每队人数">
-                {match.players_per_team} 人
-              </Descriptions.Item>
-              <Descriptions.Item label="开始时间">
+              </DetailItem>
+              <DetailItem label="比赛场地">{match.location}</DetailItem>
+              <DetailItem label="开始时间">
                 {formatDateTime(match.start_time)}
-              </Descriptions.Item>
-              <Descriptions.Item label="结束时间">
+              </DetailItem>
+              <DetailItem label="结束时间">
                 {formatDateTime(match.end_time)}
-              </Descriptions.Item>
-              <Descriptions.Item label="报名开始时间">
+              </DetailItem>
+              <DetailItem label="报名开始时间">
                 {match.registration_start_at
                   ? formatDateTime(match.registration_start_at)
                   : "未设置"}
-              </Descriptions.Item>
-              <Descriptions.Item label="报名截止时间">
+              </DetailItem>
+              <DetailItem label="报名截止时间">
                 {match.registration_end_at
                   ? formatDateTime(match.registration_end_at)
                   : "未设置"}
-              </Descriptions.Item>
-              <Descriptions.Item label="比赛场地">
-                {match.location}
-              </Descriptions.Item>
-              <Descriptions.Item label="比赛说明" span="filled">
+              </DetailItem>
+              <DetailItem full label="比赛说明">
                 {match.description || "无"}
-              </Descriptions.Item>
-            </Descriptions>
-          </section>
+              </DetailItem>
+            </DetailGrid>
+          ) : null}
+        </CardContent>
+      </Card>
 
-          <section className="table-panel group-table-panel">
-            <ProTable<RegistrationGroup>
-              rowKey="id"
-              headerTitle="报名组"
-              search={false}
-              options={false}
-              cardProps={false}
-              pagination={false}
-              dataSource={detail.groups}
-              columns={groupColumns}
-            />
-          </section>
+      {detail ? (
+        <>
+          <Card>
+            <CardHeader>
+              <CardTitle>报名组</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <DataTable
+                columns={groupColumns}
+                items={detail.groups}
+                loading={false}
+                rowKey={(item) => String(item.id)}
+              />
+            </CardContent>
+          </Card>
 
           {detail.groups.map((group) => (
-            <section key={group.id} className="table-panel roster-table-panel">
-              <ProTable<MatchRegistrationEntry>
-                rowKey="user_id"
-                headerTitle={`${groupLabels[group.kind]} · 队员报名`}
-                search={false}
-                options={false}
-                cardProps={false}
-                pagination={false}
-                dataSource={group.registrations}
-                locale={{ emptyText: "暂无报名记录" }}
-                columns={rosterColumns(group.kind)}
-              />
-            </section>
+            <Card key={group.id}>
+              <CardHeader>
+                <CardTitle>{`${groupLabels[group.kind]} · 队员报名`}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <DataTable
+                  columns={rosterColumns(group.kind)}
+                  emptyText="暂无报名记录"
+                  items={group.registrations}
+                  loading={false}
+                  rowKey={(record) => String(record.user_id)}
+                />
+              </CardContent>
+            </Card>
           ))}
         </>
       ) : null}
 
-      <Modal
+      <Dialog
+        onOpenChange={(open) => {
+          if (!open) setTargetStatus(null);
+        }}
         open={Boolean(targetStatus)}
-        title="确认变更比赛状态"
-        okText="确认"
-        cancelText="返回"
-        confirmLoading={statusMutation.isPending}
-        okButtonProps={{ danger: targetStatus === "cancelled" }}
-        onOk={() => void submitStatus()}
-        onCancel={() => setTargetStatus(null)}
       >
-        <Text>
-          比赛将变更为“{targetStatus ? matchStatusLabels[targetStatus] : ""}
-          ”，该状态流转不可回退。
-        </Text>
-      </Modal>
-    </PageContainer>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>确认变更比赛状态</DialogTitle>
+            <DialogDescription>
+              比赛将变更为“{targetStatus ? matchStatusLabels[targetStatus] : ""}
+              ”，该状态流转不可回退。
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              onClick={() => setTargetStatus(null)}
+              type="button"
+              variant="outline"
+            >
+              返回
+            </Button>
+            <Button
+              disabled={statusMutation.isPending}
+              onClick={() => void submitStatus()}
+              type="button"
+              variant={targetStatus === "cancelled" ? "destructive" : "default"}
+            >
+              确认
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }

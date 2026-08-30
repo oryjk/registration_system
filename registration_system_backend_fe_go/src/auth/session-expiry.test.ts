@@ -7,7 +7,7 @@ describe("expireAdminSession", () => {
   });
 
   it("clears the token and dispatches the expiry event once", () => {
-    const listener = jest.fn();
+    const listener = vi.fn();
     window.addEventListener("admin-auth-expired", listener);
     setAdminToken("test-token");
 

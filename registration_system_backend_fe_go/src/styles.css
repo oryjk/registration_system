@@ -1,0 +1,41 @@
+/*
+ * 样式分层入口：按编号顺序 @import，层级从通用到具体，
+ * 下层文件不得引用上层才定义的语义类（依赖只能向下）。
+ *
+ *   Design token 三层约定：
+ *   1. semantic token —— foundation.css 的 :root / .light（--background、--primary、
+ *      --destructive 等角色变量，深浅两套值），全局唯一定义处；
+ *   2. Tailwind 桥接 —— tokens.css 把 semantic token 映射为 Tailwind v4 工具类
+ *      （bg-card、text-primary …），组件内工具类只允许用映射后的名；
+ *   3. component token —— 页面/组件局部变量在使用处就近定义并带作用域前缀
+ *      （如 login.css 的 --login-*），不得反向提升为全局 token。
+ *
+ *   文件分层（变化原因分离）：
+ *   tokens.css         —— Tailwind @theme 映射（桥接层，无自有样式）
+ *   foundation.css     —— semantic token + 元素基线 + 全局 reset
+ *   primitives.css     —— 无业务语义的基础控件外观（table/select/switch/checkbox…）
+ *   feedback.css       —— 反馈类（横幅、加载、整页结果）
+ *   data-display.css   —— 数据展示（徽章、状态、详情网格、表格单元格）
+ *   form-controls.css  —— 表单与操作控件（分页、确认、日期、颜色、选择器）
+ *   page-layout.css    —— 页面布局骨架（工具条、网格、分区、Sheet）
+ *   shell.css          —— 应用壳层（侧栏、顶栏、工作区）
+ *   login.css          —— 登录页（component token 示范）
+ *   responsive.css     —— 响应式覆盖（只放媒体查询）
+ *
+ *   新增样式的归层规则：先问"变化原因"——颜色语义进 token，控件外观进
+ *   primitives/form-controls，结构间距进 page-layout，页面专属且量小可建
+ *   独立文件并在本入口注册；禁止裸色值与裸像素，一律引用 token。
+ */
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@import "./styles/tokens.css";
+@import "./styles/foundation.css";
+@import "./styles/primitives.css";
+@import "./styles/feedback.css";
+@import "./styles/data-display.css";
+@import "./styles/form-controls.css";
+@import "./styles/page-layout.css";
+@import "./styles/shell.css";
+@import "./styles/login.css";
+@import "./styles/responsive.css";

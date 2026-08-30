@@ -1,0 +1,389 @@
+@media (max-width: 1100px) {
+  .admin-shell,
+  .sidebar-provider {
+    grid-template-columns: 232px minmax(0, 1fr);
+  }
+
+  .sidebar-header {
+    padding: var(--space-2-5);
+  }
+
+  .sidebar-content {
+    padding: var(--space-2-5);
+  }
+
+  .main-workspace {
+    padding: 0;
+  }
+
+  .app-management-grid,
+  .user-management-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .mesh-capability-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .workspace-header {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    height: auto;
+    min-height: var(--shell-header-height);
+  }
+
+  .workspace-chrome {
+    height: auto;
+    min-height: var(--shell-header-height);
+  }
+
+  .workspace-header-actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    margin-left: auto;
+  }
+
+  .global-header-search[data-expanded="true"] {
+    flex: 1 0 100%;
+  }
+}
+
+@media (max-width: 900px) {
+  .environment-runtime-row {
+    grid-template-columns: minmax(88px, 0.7fr) minmax(120px, 1fr) 120px;
+  }
+
+  .environment-runtime-row-head span:nth-child(3),
+  .environment-health-url {
+    display: none;
+  }
+
+  .environment-runtime-error {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (min-width: 641px) and (max-width: 820px) {
+  .workspace-header {
+    align-content: center;
+  }
+
+  .workspace-title-block {
+    flex: 1 0 100%;
+  }
+
+  .workspace-header-actions {
+    justify-content: flex-start;
+    margin-left: 0;
+    width: 100%;
+  }
+}
+
+@media (max-width: 640px) {
+  .app-quick-actions {
+    display: none;
+  }
+
+  .workspace-mobile-quick-actions {
+    display: block;
+  }
+
+  .admin-shell,
+  .sidebar-provider {
+    grid-template-columns: 1fr;
+  }
+
+  /* 折叠状态的高 specificity 规则不能在手机上留下 72px 的空轨道。 */
+  .admin-shell[data-sidebar-collapsed="true"],
+  .sidebar-provider[data-sidebar-collapsed="true"] {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    position: fixed;
+    z-index: 80;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: min(320px, calc(100vw - var(--space-12)));
+    height: 100dvh;
+    min-height: 100dvh;
+    border-right: 1px solid var(--border-strong);
+    border-bottom: 0;
+    box-shadow: var(--shadow-raised);
+    transform: translateX(-100%);
+    visibility: hidden;
+    transition:
+      transform 180ms ease,
+      visibility 180ms ease;
+  }
+
+  .sidebar[data-mobile-open="true"] {
+    transform: translateX(0);
+    visibility: visible;
+  }
+
+  .sidebar-mobile-backdrop {
+    position: fixed;
+    z-index: 70;
+    inset: 0;
+    display: block;
+    border: 0;
+    background: color-mix(in srgb, var(--background) 72%, transparent);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 180ms ease;
+  }
+
+  .sidebar-mobile-backdrop[data-open="true"] {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .sidebar .sidebar-header,
+  .sidebar[data-collapsed="true"] .sidebar-header {
+    padding: var(--space-3-5);
+  }
+
+  .sidebar .sidebar-brand,
+  .sidebar[data-collapsed="true"] .sidebar-brand {
+    position: static;
+    display: grid;
+    grid-template-columns: 36px minmax(0, 1fr);
+    justify-content: initial;
+    width: 100%;
+    height: auto;
+    gap: var(--space-2-5);
+    padding: var(--space-2) var(--space-10) var(--space-2) var(--space-2);
+    transform: none;
+  }
+
+  .sidebar .sidebar-brand > span:last-child,
+  .sidebar .sidebar-menu-label,
+  .sidebar .sidebar-app-label,
+  .sidebar .sidebar-submenu-label,
+  .sidebar[data-collapsed="true"] .sidebar-brand > span:last-child,
+  .sidebar[data-collapsed="true"] .sidebar-menu-label,
+  .sidebar[data-collapsed="true"] .sidebar-app-label,
+  .sidebar[data-collapsed="true"] .sidebar-submenu-label {
+    position: static;
+    width: auto;
+    max-width: 100%;
+    opacity: 1;
+    overflow: hidden;
+    pointer-events: auto;
+  }
+
+  .sidebar-mobile-close {
+    position: absolute;
+    top: 50%;
+    right: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--control-height);
+    height: var(--control-height);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-control);
+    background: var(--surface-panel-raised);
+    color: var(--muted);
+    transform: translateY(-50%);
+  }
+
+  /* 移动端浮层用右上角关闭按钮，折叠开关只在桌面端出现 */
+  .sidebar-collapse-toggle {
+    display: none;
+  }
+
+  .sidebar-content,
+  .sidebar[data-collapsed="true"] .sidebar-content {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--space-2-5);
+    max-height: none;
+    padding: var(--space-3);
+  }
+
+  .sidebar .sidebar-group-label,
+  .sidebar[data-collapsed="true"] .sidebar-group-label {
+    max-height: var(--control-height);
+    opacity: 1;
+    padding: 0 var(--space-2);
+  }
+
+  .sidebar .sidebar-menu-button,
+  .sidebar .sidebar-app-button,
+  .sidebar[data-collapsed="true"] .sidebar-menu-button,
+  .sidebar[data-collapsed="true"] .sidebar-app-button {
+    justify-items: initial;
+    overflow: visible;
+  }
+
+  .sidebar .sidebar-menu-button,
+  .sidebar[data-collapsed="true"] .sidebar-menu-button {
+    grid-template-columns: 24px minmax(0, 1fr) 18px;
+  }
+
+  .sidebar .sidebar-menu-button:not(.sidebar-menu-button-parent),
+  .sidebar[data-collapsed="true"]
+    .sidebar-menu-button:not(.sidebar-menu-button-parent) {
+    grid-template-columns: 24px minmax(0, 1fr);
+  }
+
+  .sidebar .sidebar-app-button,
+  .sidebar[data-collapsed="true"] .sidebar-app-button {
+    grid-template-columns: 16px minmax(0, 1fr) 16px;
+  }
+
+  .sidebar .sidebar-chevron,
+  .sidebar[data-collapsed="true"] .sidebar-chevron {
+    position: static;
+    justify-self: end;
+    opacity: 0.72;
+  }
+
+  .sidebar .sidebar-submenu-button,
+  .sidebar[data-collapsed="true"] .sidebar-submenu-button {
+    justify-content: flex-start;
+    gap: var(--space-2);
+  }
+
+  .sidebar .sidebar-tree,
+  .sidebar .sidebar-tree-apps,
+  .sidebar .sidebar-tree-sections,
+  .sidebar[data-collapsed="true"] .sidebar-tree,
+  .sidebar[data-collapsed="true"] .sidebar-tree-apps,
+  .sidebar[data-collapsed="true"] .sidebar-tree-sections {
+    border-left: 1px solid var(--border-subtle);
+    padding-left: var(--space-1-5);
+  }
+
+  .sidebar .sidebar-tree-apps,
+  .sidebar .sidebar-tree-sections,
+  .sidebar[data-collapsed="true"] .sidebar-tree-apps,
+  .sidebar[data-collapsed="true"] .sidebar-tree-sections {
+    margin-left: var(--space-3);
+  }
+
+  .sidebar-menu-button,
+  .sidebar-app-button {
+    min-height: 48px;
+  }
+
+  .main-workspace {
+    padding: 0;
+  }
+
+  .workspace-content {
+    padding: var(--space-3-5);
+  }
+
+  .workspace-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: var(--space-2-5);
+    padding: var(--space-2-5) var(--space-3-5);
+  }
+
+  .workspace-title-block {
+    width: 100%;
+  }
+
+  .workspace-mobile-menu-button {
+    display: inline-flex;
+  }
+
+  .workspace-sidebar-toggle-button {
+    display: none;
+  }
+
+  .workspace-header-actions {
+    justify-content: flex-start;
+    margin-left: 0;
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  .workspace-user-summary {
+    width: var(--control-height);
+    padding: var(--space-1);
+  }
+
+  .workspace-user-summary strong,
+  .workspace-header-button-label {
+    display: none;
+  }
+
+  .global-header-search[data-expanded="true"] {
+    flex: 1 0 100%;
+    width: 100%;
+  }
+
+  .global-header-search-expanded {
+    width: min(100%, 360px);
+    max-width: 100%;
+  }
+
+  .workspace-environment-switch {
+    width: max-content;
+    max-width: 100%;
+  }
+
+  .app-management-grid,
+  .status-grid,
+  .user-management-grid,
+  .user-management-grid-single {
+    grid-template-columns: 1fr;
+  }
+
+  .mesh-capability-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .environment-target-row {
+    grid-template-columns: 1fr;
+  }
+
+  .environment-runtime-row {
+    grid-template-columns: minmax(88px, 0.7fr) minmax(120px, 1fr) 120px;
+  }
+
+  .environment-runtime-row-head span:nth-child(3),
+  .environment-health-url {
+    display: none;
+  }
+
+  .environment-runtime-error {
+    grid-column: 1 / -1;
+  }
+
+  .environment-target-row-head {
+    display: none;
+  }
+
+  .environment-target-row label:last-child {
+    grid-column: auto;
+  }
+
+  .environment-target-name {
+    padding-top: 0;
+  }
+
+  .shell {
+    grid-template-columns: 1fr;
+  }
+
+  .split-grid,
+  .field-grid,
+  .mini-field-grid,
+  .publish-grid,
+  .diff-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .topbar,
+  .card-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

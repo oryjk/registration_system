@@ -1,22 +1,23 @@
-import { ArrowLeftOutlined } from "@ant-design/icons";
-import { Button, Result } from "antd";
-import { history } from "umi";
+import { ArrowLeft, ShieldX } from "lucide-react";
+import { useNavigate } from "react-router";
+import { Button } from "@/components/ui/button";
 
 export default function ForbiddenPage() {
+  const navigate = useNavigate();
+
   return (
-    <Result
-      status="403"
-      title="无权访问"
-      subTitle="当前管理员没有访问此页面的权限。"
-      extra={
-        <Button
-          type="primary"
-          icon={<ArrowLeftOutlined />}
-          onClick={() => history.push("/")}
-        >
-          返回概览
-        </Button>
-      }
-    />
+    <main className="page-result">
+      <div className="page-result-icon">
+        <ShieldX size={26} />
+      </div>
+      <div>
+        <h3>无权访问</h3>
+        <p>当前管理员没有访问此页面的权限。</p>
+      </div>
+      <Button onClick={() => navigate("/")} type="button" variant="outline">
+        <ArrowLeft size={15} />
+        返回概览
+      </Button>
+    </main>
   );
 }

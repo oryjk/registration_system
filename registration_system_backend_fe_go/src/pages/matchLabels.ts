@@ -30,11 +30,12 @@ export const matchStatusLabels: Record<MatchStatus, string> = {
   cancelled: "已取消",
 };
 
+/** 状态徽章的语义色（对应 Badge variant，见 components/ui/badge.tsx） */
 export const matchStatusColors: Record<MatchStatus, string> = {
-  registering: "processing",
+  registering: "info",
   ongoing: "success",
-  ended: "default",
-  cancelled: "error",
+  ended: "secondary",
+  cancelled: "destructive",
 };
 
 export const opponentStateLabels: Record<OpponentState, string> = {
@@ -57,8 +58,8 @@ export const registrationStatusColors: Record<MatchRegistrationStatus, string> =
   {
     attending: "success",
     unknown: "warning",
-    unregistered: "default",
-    leave: "orange",
-    absent: "error",
-    cancelled: "default",
+    unregistered: "secondary",
+    leave: "warning",
+    absent: "destructive",
+    cancelled: "secondary",
   };

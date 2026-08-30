@@ -27,11 +27,12 @@ export const roleLabels: Record<TeamMemberRole, string> = {
   member: "队员",
 };
 
+/** 角色徽章语义色（对应 Badge variant，见 components/ui/badge.tsx）。 */
 export const roleColors: Record<TeamMemberRole, string> = {
-  captain: "gold",
-  leader: "blue",
-  vice_captain: "cyan",
-  member: "default",
+  captain: "warning",
+  leader: "info",
+  vice_captain: "info",
+  member: "secondary",
 };
 
 export const statusLabels: Record<TeamMemberStatus, string> = {
@@ -46,15 +47,5 @@ export function displayMemberName(
     member.real_name?.trim() ||
     member.nickname.trim() ||
     `用户 ${member.user_id}`
-  );
-}
-
-export function memberInitial(
-  member: Pick<TeamMember, "real_name" | "nickname" | "user_id">,
-) {
-  return (
-    member.real_name?.trim().slice(0, 1) ||
-    member.nickname.trim().slice(0, 1) ||
-    String(member.user_id).slice(-1)
   );
 }

@@ -1,45 +1,53 @@
 import { readFile, symlink, unlink } from "node:fs/promises";
-import { basename, resolve } from "node:path";
+import { resolve } from "node:path";
 import { expect, test } from "@playwright/test";
 
 const routeBase = process.env.PLAYWRIGHT_DIST_BASE;
 const matchID = "11111111-1111-4111-8111-111111111111";
 
-interface BuildStats {
-  modules?: Array<{ name: string; chunks?: string[] }>;
+interface ManifestChunk {
+  file: string;
+  isEntry?: boolean;
+  imports?: string[];
 }
 
-async function modulesForChunks(chunks: Set<string>) {
-  const stats = JSON.parse(
-    await readFile(resolve("dist/stats.json"), "utf8"),
-  ) as BuildStats;
+type ViteManifest = Record<string, ManifestChunk>;
 
-  return (stats.modules || [])
-    .filter((module) => module.chunks?.some((chunk) => chunks.has(chunk)))
-    .map((module) => module.name);
+async function entryAssetPaths() {
+  const manifest = JSON.parse(
+    await readFile(resolve("dist/.vite/manifest.json"), "utf8"),
+  ) as ViteManifest;
+  const entry = Object.values(manifest).find((chunk) => chunk.isEntry);
+  if (!entry) throw new Error("dist/.vite/manifest.json 中未找到入口 chunk");
+
+  const assets: string[] = [];
+  const visited = new Set<string>();
+  const collect = (chunk: ManifestChunk | undefined) => {
+    if (!chunk || visited.has(chunk.file)) return;
+    visited.add(chunk.file);
+    assets.push(chunk.file);
+    for (const key of chunk.imports ?? []) collect(manifest[key]);
+  };
+  collect(entry);
+  return assets;
 }
 
 test.describe("Nginx 子路径路由", () => {
   test.skip(!routeBase, "仅在 dist 路由验证中运行");
 
-  test("登录依赖图不加载 ProComponents", async ({ page }) => {
-    const requestedScripts = new Set<string>();
-    page.on("request", (request) => {
-      if (request.resourceType() === "script") {
-        requestedScripts.add(basename(new URL(request.url()).pathname));
-      }
-    });
-
+  test("登录入口资源不包含 antd 运行时", async ({ page }) => {
     await page.goto(`${routeBase}login`);
     await expect(page.getByPlaceholder("管理员账号")).toBeVisible();
-    await page.waitForLoadState("networkidle");
 
-    const loginModules = await modulesForChunks(requestedScripts);
-    expect(
-      loginModules.filter((module) =>
-        module.includes("node_modules/@ant-design/pro-components/"),
-      ),
-    ).toEqual([]);
+    const assets = await entryAssetPaths();
+    expect(assets.length).toBeGreaterThan(0);
+    for (const asset of assets) {
+      const content = await readFile(resolve("dist", asset), "utf8");
+      expect(
+        content.includes("@ant-design/"),
+        `${asset} 不应包含 antd 运行时`,
+      ).toBe(false);
+    }
   });
 
   test("深链接、刷新、静态资源和 404 保持在路由基址内", async ({

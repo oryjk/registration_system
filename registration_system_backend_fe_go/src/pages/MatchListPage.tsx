@@ -1,30 +1,42 @@
-import {
-  DeleteOutlined,
-  EyeOutlined,
-  PlusOutlined,
-  StopOutlined,
-} from "@ant-design/icons";
-import { PageContainer } from "@ant-design/pro-components/es/layout/components/PageContainer";
-import ProTable, { type ProColumns } from "@ant-design/pro-components/es/table";
-import {
-  Alert,
-  Button,
-  Grid,
-  Input,
-  Popconfirm,
-  Select,
-  Space,
-  Tag,
-  Tooltip,
-} from "antd";
+import { Eye, Plus, Search, Square, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { history, useLocation, useModel } from "umi";
+import { useLocation, useNavigate } from "react-router";
+import { ConfirmPopover } from "@/components/admin/confirm-popover";
+import { DataTable, type DataTableColumn } from "@/components/admin/data-table";
+import { ErrorAlert } from "@/components/admin/error-alert";
+import { NameCell } from "@/components/admin/member-cell";
+import { PaginationBar } from "@/components/admin/pagination-bar";
+import { StatusBadge } from "@/components/admin/status-badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { useAdminSession } from "@/features/admin-session/useAdminSession";
 import {
   useDeleteMatchMutation,
   useMatchesQuery,
   useUpdateMatchStatusMutation,
-} from "../hooks/queries/useMatchQueries";
-import type { MatchItem, MatchListQuery, MatchStatus } from "../types/match";
+} from "@/hooks/queries/useMatchQueries";
+import { formatCompactDateTime } from "@/utils/format";
+import type { MatchItem, MatchListQuery } from "../types/match";
 import {
   parseMatchListQuery,
   serializeMatchListQuery,
@@ -35,26 +47,15 @@ import {
   matchStatusLabels,
 } from "./matchLabels";
 
-const { Search } = Input;
-function formatDateTime(value: string) {
-  return new Intl.DateTimeFormat("zh-CN", {
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).format(new Date(value));
-}
-
 export default function MatchListPage() {
   const location = useLocation();
+  const navigate = useNavigate();
   const query = parseMatchListQuery(location.search);
   const matches = useMatchesQuery(query);
   const updateStatus = useUpdateMatchStatusMutation();
   const deleteMatch = useDeleteMatchMutation();
-  const { initialState } = useModel("@@initialState");
-  const screens = Grid.useBreakpoint();
-  const compact = !(screens.md ?? false);
+  const { currentAdmin } = useAdminSession();
+  const isSuperAdmin = Boolean(currentAdmin?.is_super_admin);
   const [searchDraft, setSearchDraft] = useState(query.search || "");
   const [actionKey, setActionKey] = useState("");
   const [actionError, setActionError] = useState("");
@@ -65,7 +66,7 @@ export default function MatchListPage() {
 
   const updateQuery = (changes: Partial<MatchListQuery>) => {
     const next = { ...query, ...changes };
-    history.push(`/matches${serializeMatchListQuery(next)}`);
+    navigate(`/matches${serializeMatchListQuery(next)}`);
   };
 
   const cancelMatch = async (item: MatchItem) => {
@@ -94,100 +95,104 @@ export default function MatchListPage() {
     }
   };
 
-  const columns: ProColumns<MatchItem>[] = [
+  const columns: DataTableColumn<MatchItem>[] = [
     {
+      key: "name",
       title: "比赛",
-      dataIndex: "name",
-      render: (_, item) => (
-        <div className="match-name-cell">
-          <strong>{item.name}</strong>
-          <Tag className="match-type-tag">
-            {getPublicationModeLabel(item.publication_mode)}
-          </Tag>
-        </div>
+      render: (item) => (
+        <NameCell
+          subtitle={getPublicationModeLabel(item.publication_mode)}
+          title={item.name}
+        />
       ),
     },
-    ...(compact
-      ? []
-      : [
-          { title: "主队", dataIndex: "host_team_name", width: 160 },
-          { title: "场地", dataIndex: "location", width: 180, ellipsis: true },
-        ]),
+    { key: "host_team_name", title: "主队", width: 160 },
     {
+      key: "location",
+      title: "场地",
+      width: 180,
+      render: (item) => (
+        <span className="cell-ellipsis" title={item.location}>
+          {item.location}
+        </span>
+      ),
+    },
+    {
+      key: "start_time",
       title: "开赛时间",
-      dataIndex: "start_time",
-      width: compact ? 120 : 150,
-      renderText: formatDateTime,
+      width: 150,
+      render: (item) => formatCompactDateTime(item.start_time),
     },
     {
+      key: "status",
       title: "状态",
-      dataIndex: "status",
       width: 100,
-      render: (_, item) => (
-        <Tag color={matchStatusColors[item.status]}>
-          {matchStatusLabels[item.status]}
-        </Tag>
+      render: (item) => (
+        <StatusBadge
+          label={matchStatusLabels[item.status]}
+          variant={matchStatusColors[item.status]}
+        />
       ),
     },
     {
-      title: "操作",
       key: "action",
-      valueType: "option",
-      width: initialState?.currentAdmin?.is_super_admin ? 144 : 104,
-      fixed: "right",
-      render: (_, item) => (
-        <Space size={2}>
-          <Tooltip title="查看比赛">
-            <Button
-              type="text"
-              shape="circle"
-              icon={<EyeOutlined />}
-              aria-label={`查看${item.name}`}
-              onClick={() => history.push(`/matches/${item.id}`)}
-            />
+      title: "操作",
+      width: isSuperAdmin ? 150 : 104,
+      render: (item) => (
+        <div className="table-row-actions">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                aria-label={`查看${item.name}`}
+                onClick={() => navigate(`/matches/${item.id}`)}
+                size="icon"
+                type="button"
+                variant="ghost"
+              >
+                <Eye size={15} />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>查看比赛</TooltipContent>
           </Tooltip>
           {item.status === "registering" || item.status === "ongoing" ? (
-            <Popconfirm
-              title={`取消“${item.name}”`}
+            <ConfirmPopover
+              confirmText="确认取消"
               description="比赛取消后不可恢复。"
-              okText="确认取消"
-              cancelText="返回"
-              onConfirm={() => cancelMatch(item)}
+              onConfirm={() => void cancelMatch(item)}
+              title={`取消“${item.name}”`}
             >
-              <Tooltip title="取消比赛">
-                <Button
-                  type="text"
-                  shape="circle"
-                  danger
-                  icon={<StopOutlined />}
-                  loading={actionKey === `cancel:${item.id}`}
-                  aria-label={`取消${item.name}`}
-                />
-              </Tooltip>
-            </Popconfirm>
+              <Button
+                aria-label={`取消${item.name}`}
+                disabled={actionKey === `cancel:${item.id}`}
+                size="icon"
+                type="button"
+                variant="ghost"
+              >
+                <Square size={15} />
+              </Button>
+            </ConfirmPopover>
           ) : null}
-          {initialState?.currentAdmin?.is_super_admin ? (
-            <Popconfirm
-              title={`永久删除“${item.name}”`}
+          {isSuperAdmin ? (
+            <ConfirmPopover
+              confirmText="永久删除"
+              destructive
               description="比赛及其报名、申请数据将永久删除。"
-              okText="永久删除"
-              okButtonProps={{ danger: true }}
-              cancelText="返回"
-              onConfirm={() => removeMatch(item)}
+              onConfirm={() => void removeMatch(item)}
+              title={`永久删除“${item.name}”`}
             >
-              <Tooltip title="永久删除">
-                <Button
-                  type="text"
-                  shape="circle"
-                  danger
-                  icon={<DeleteOutlined />}
-                  loading={actionKey === `delete:${item.id}`}
-                  aria-label={`删除${item.name}`}
-                />
-              </Tooltip>
-            </Popconfirm>
+              <Button
+                aria-label={`删除${item.name}`}
+                className="text-destructive"
+                disabled={actionKey === `delete:${item.id}`}
+                size="icon"
+                type="button"
+                variant="ghost"
+              >
+                <Trash2 size={15} />
+              </Button>
+            </ConfirmPopover>
           ) : null}
-        </Space>
+        </div>
       ),
     },
   ];
@@ -197,82 +202,97 @@ export default function MatchListPage() {
   const error = actionError || queryError;
 
   return (
-    <PageContainer
-      title="比赛管理"
-      content={`共 ${matches.data?.total || 0} 场比赛`}
-      extra={
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          onClick={() => history.push("/matches/new")}
-        >
-          发布比赛
-        </Button>
-      }
-    >
-      <div className="list-toolbar">
-        <Search
-          allowClear
-          placeholder="搜索比赛、场地或主队"
-          className="match-search"
-          value={searchDraft}
-          onChange={(event) => setSearchDraft(event.target.value)}
-          onSearch={(value) => updateQuery({ page: 1, search: value.trim() })}
-        />
-        <Select<MatchStatus>
-          allowClear
-          placeholder="全部状态"
-          className="status-filter"
-          value={query.status}
-          options={Object.entries(matchStatusLabels).map(([value, label]) => ({
-            value: value as MatchStatus,
-            label,
-          }))}
-          onChange={(status) => updateQuery({ page: 1, status })}
-        />
-      </div>
+    <div className="content-grid">
+      <Card>
+        <CardHeader>
+          <CardTitle>比赛管理</CardTitle>
+          <CardDescription>{`共 ${matches.data?.total || 0} 场比赛`}</CardDescription>
+          <CardAction>
+            <Button onClick={() => navigate("/matches/new")} type="button">
+              <Plus size={15} />
+              发布比赛
+            </Button>
+          </CardAction>
+        </CardHeader>
+        <CardContent className="table-card-content">
+          <div className="list-toolbar">
+            <Input
+              aria-label="搜索比赛"
+              className="match-search"
+              onChange={(event) => setSearchDraft(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  updateQuery({ page: 1, search: searchDraft.trim() });
+                }
+              }}
+              placeholder="搜索比赛、场地或主队"
+              value={searchDraft}
+            />
+            <Button
+              onClick={() =>
+                updateQuery({ page: 1, search: searchDraft.trim() })
+              }
+              type="button"
+              variant="outline"
+            >
+              <Search size={15} />
+              搜索
+            </Button>
+            <Select
+              value={query.status || "all"}
+              onValueChange={(value) =>
+                updateQuery({
+                  page: 1,
+                  status:
+                    value === "all"
+                      ? undefined
+                      : (value as MatchListQuery["status"]),
+                })
+              }
+            >
+              <SelectTrigger className="status-filter" style={{ width: 140 }}>
+                <SelectValue placeholder="全部状态" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">全部状态</SelectItem>
+                {Object.entries(matchStatusLabels).map(([value, label]) => (
+                  <SelectItem key={value} value={value}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-      {error ? (
-        <Alert
-          className="service-alert"
-          type="error"
-          showIcon
-          message={error}
-          action={
-            matches.isError ? (
-              <Button size="small" onClick={() => void matches.refetch()}>
-                重试
-              </Button>
-            ) : null
-          }
-        />
-      ) : null}
+          {error ? (
+            <ErrorAlert
+              message={error}
+              onRetry={
+                matches.isError ? () => void matches.refetch() : undefined
+              }
+            />
+          ) : null}
 
-      <ProTable<MatchItem>
-        rowKey="id"
-        search={false}
-        options={false}
-        cardProps={{ className: "match-table-panel" }}
-        loading={matches.isFetching}
-        dataSource={matches.data?.items || []}
-        columns={columns}
-        scroll={{ x: compact ? 620 : 900 }}
-        onRow={(item) => ({
-          onDoubleClick: () => history.push(`/matches/${item.id}`),
-        })}
-        pagination={{
-          current: query.page,
-          pageSize: query.page_size,
-          total: matches.data?.total || 0,
-          showSizeChanger: true,
-          showTotal: (value) => `共 ${value} 场`,
-          onChange: (page, pageSize) =>
-            updateQuery({
-              page: pageSize === query.page_size ? page : 1,
-              page_size: pageSize,
-            }),
-        }}
-      />
-    </PageContainer>
+          <DataTable
+            columns={columns}
+            emptyText="暂无比赛"
+            items={matches.data?.items}
+            loading={matches.isFetching}
+            rowKey={(item) => String(item.id)}
+          />
+          <PaginationBar
+            onChange={(page, pageSize) =>
+              updateQuery({
+                page: pageSize === query.page_size ? page : 1,
+                page_size: pageSize,
+              })
+            }
+            page={query.page}
+            pageSize={query.page_size}
+            total={matches.data?.total || 0}
+          />
+        </CardContent>
+      </Card>
+    </div>
   );
 }

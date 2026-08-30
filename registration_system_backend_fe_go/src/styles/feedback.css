@@ -1,0 +1,50 @@
+/*
+ * 反馈类：错误/成功横幅、加载占位、整页结果。语义色引用 foundation token。
+ */
+
+/* ---------- 错误横幅 ---------- */
+.alert {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+  border: 1px solid var(--destructive-border);
+  border-radius: var(--radius-panel);
+  background: var(--destructive-bg);
+  color: var(--destructive);
+  padding: var(--space-2-5) var(--space-3);
+  font-weight: 600;
+}
+
+.alert > svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.alert-body {
+  display: grid;
+  gap: var(--space-0-5);
+  min-width: 0;
+}
+
+.alert-body strong {
+  color: var(--destructive);
+}
+
+.alert-body span {
+  color: var(--muted);
+  font-weight: 500;
+  font-size: var(--font-size-sm);
+  word-break: break-word;
+}
+
+/* ---------- 错误横幅（成功变体） ---------- */
+.alert-success {
+  border-color: var(--success-border);
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+.alert-success .alert-body strong {
+  color: var(--success);
+}

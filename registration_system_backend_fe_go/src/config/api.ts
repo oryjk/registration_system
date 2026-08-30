@@ -3,7 +3,7 @@ export type AuthMode = "required" | "login" | "none";
 const ADMIN_API_PREFIX = "/api/v1/admin";
 
 export function getApiBaseUrl(): string {
-  return (process.env.ADMIN_API_BASE_URL?.trim() || "").replace(/\/+$/, "");
+  return (import.meta.env.ADMIN_API_BASE_URL?.trim() || "").replace(/\/+$/, "");
 }
 
 export function buildApiUrl(

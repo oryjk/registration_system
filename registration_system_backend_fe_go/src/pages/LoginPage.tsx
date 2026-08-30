@@ -1,106 +1,139 @@
-import { LockOutlined, UserOutlined } from "@ant-design/icons";
-import { Alert, Button, Form, Input, Typography } from "antd";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { ArrowRight } from "lucide-react";
 import { useState } from "react";
-import { history, Navigate, useLocation, useModel } from "umi";
-import { BrandMark } from "../components/BrandMark";
-import { useLoginMutation } from "../hooks/queries/useAuthQueries";
-import { sanitizeRedirect } from "../utils/auth-redirect";
+import { useForm } from "react-hook-form";
+import { Navigate, useLocation, useNavigate } from "react-router";
+import { z } from "zod";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { useAdminSession } from "@/features/admin-session/useAdminSession";
+import { useLoginMutation } from "@/hooks/queries/useAuthQueries";
+import { sanitizeRedirect } from "@/utils/auth-redirect";
 
-const { Text, Title } = Typography;
+const loginSchema = z.object({
+  username: z.string().min(1, { message: "请输入管理员账号" }),
+  password: z.string().min(1, { message: "请输入密码" }),
+});
 
-interface LoginFormValue {
-  username: string;
-  password: string;
-}
+type LoginFormValue = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
-  const { initialState, setInitialState } = useModel("@@initialState");
+  const { currentAdmin, login } = useAdminSession();
   const loginMutation = useLoginMutation();
   const [error, setError] = useState("");
+  const navigate = useNavigate();
   const location = useLocation();
   const destination = sanitizeRedirect(
     new URLSearchParams(location.search).get("redirect"),
   );
 
-  if (initialState?.currentAdmin) return <Navigate to={destination} replace />;
+  const form = useForm<LoginFormValue>({
+    defaultValues: { username: "", password: "" },
+    resolver: zodResolver(loginSchema),
+  });
 
-  const submit = async (values: LoginFormValue) => {
+  if (currentAdmin) return <Navigate replace to={destination} />;
+
+  const submit = form.handleSubmit(async (values: LoginFormValue) => {
     setError("");
     try {
       const result = await loginMutation.mutateAsync(values);
-      await setInitialState((current) => {
-        const state = current || initialState;
-        if (!state) return current;
-
-        return {
-          ...state,
-          authBootstrapError: null,
-          currentAdmin: result.admin,
-        };
-      });
-      history.push(destination);
+      login(result.admin);
+      navigate(destination, { replace: true });
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "登录失败");
     }
-  };
+  });
 
   return (
     <main className="login-page">
-      <section
-        className="login-brand-panel"
-        style={{
-          backgroundImage: `url("${process.env.ADMIN_ROUTE_BASE}login-football.jpg")`,
-        }}
-      >
-        <BrandMark className="brand-symbol login-symbol" />
-        <Text className="login-kicker">GO ADMIN CONSOLE</Text>
-        <Title>开踢管理台</Title>
-        <Text>赛事与球队运营</Text>
-      </section>
-      <section className="login-form-panel">
-        <div className="login-form-inner">
-          <Text className="page-kicker">ADMIN ACCESS</Text>
-          <Title level={2}>管理员登录</Title>
-          {error ? <Alert type="error" showIcon message={error} /> : null}
-          <Form<LoginFormValue>
-            layout="vertical"
-            onFinish={submit}
-            requiredMark={false}
-          >
-            <Form.Item
-              name="username"
-              label="账号"
-              rules={[{ required: true, message: "请输入管理员账号" }]}
-            >
-              <Input
-                prefix={<UserOutlined />}
-                autoComplete="username"
-                placeholder="管理员账号"
-              />
-            </Form.Item>
-            <Form.Item
-              name="password"
-              label="密码"
-              rules={[{ required: true, message: "请输入密码" }]}
-            >
-              <Input.Password
-                prefix={<LockOutlined />}
-                autoComplete="current-password"
-                placeholder="密码"
-              />
-            </Form.Item>
-            <Button
-              block
-              htmlType="submit"
-              loading={loginMutation.isPending}
-              size="large"
-              type="primary"
-            >
-              登录
-            </Button>
-          </Form>
-        </div>
-      </section>
+      <div aria-hidden="true" className="login-grid-bg" />
+      <div aria-hidden="true" className="login-glow login-glow-teal" />
+      <div aria-hidden="true" className="login-glow login-glow-amber" />
+      <div aria-hidden="true" className="login-vignette" />
+      <div aria-hidden="true" className="login-noise" />
+
+      <div className="login-auth-wrap">
+        <Card className="login-auth">
+          <span aria-hidden="true" className="login-corner login-corner-tl" />
+          <span aria-hidden="true" className="login-corner login-corner-tr" />
+          <span aria-hidden="true" className="login-corner login-corner-bl" />
+          <span aria-hidden="true" className="login-corner login-corner-br" />
+          <span aria-hidden="true" className="login-scan" />
+          <CardContent className="login-auth-content">
+            <div className="login-auth-head">
+              <span className="login-auth-id">{"KT // ADMIN"}</span>
+              <span>SECURE ACCESS</span>
+            </div>
+            <div className="login-auth-title">
+              <h2>开踢管理台</h2>
+              <p>赛事与球队运营控制中枢</p>
+            </div>
+
+            <Form {...form}>
+              <form className="login-form" onSubmit={submit}>
+                <FormField
+                  control={form.control}
+                  name="username"
+                  render={({ field }) => (
+                    <FormItem className="login-field">
+                      <FormLabel>账号</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          autoComplete="username"
+                          placeholder="管理员账号"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem className="login-field">
+                      <FormLabel>密码</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          autoComplete="current-password"
+                          placeholder="密码"
+                          type="password"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                {error ? (
+                  <div aria-live="polite" className="login-error" role="alert">
+                    {error}
+                  </div>
+                ) : null}
+                <Button
+                  className="login-submit"
+                  disabled={loginMutation.isPending}
+                  type="submit"
+                >
+                  {loginMutation.isPending ? "登录中" : "登录"}
+                  <ArrowRight size={15} />
+                </Button>
+              </form>
+            </Form>
+          </CardContent>
+        </Card>
+      </div>
     </main>
   );
 }
