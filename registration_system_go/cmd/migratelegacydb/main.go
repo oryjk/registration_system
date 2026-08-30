@@ -399,11 +399,7 @@ func importTeamMembers(ctx context.Context, legacy, target *pgxpool.Pool, option
 }
 
 func seedHostAndCaptain(ctx context.Context, target *pgxpool.Pool, options cliOptions, captain legacyCaptain) error {
-	if _, err := target.Exec(ctx,
-		`INSERT INTO teams (id, name) VALUES ($1, $2)`, options.hostTeamID, options.hostTeamName,
-	); err != nil {
-		return fmt.Errorf("种子主队: %w", err)
-	}
+	// 队长用户先插：teams.captain_id 有外键引用 users(id)。
 	status := "frozen"
 	if captain.Active {
 		status = "active"
@@ -414,6 +410,13 @@ func seedHostAndCaptain(ctx context.Context, target *pgxpool.Pool, options cliOp
 		captain.ID, captain.OpenID, strings.TrimSpace(captain.Nickname), captain.AvatarURL, captain.RealName, captain.Phone, status,
 	); err != nil {
 		return fmt.Errorf("种子队长: %w", err)
+	}
+	// captain_id 与成员关系中的 captain 角色必须同时落库，
+	// 否则管理端按 teams.captain_id 展示队长时会显示未指定。
+	if _, err := target.Exec(ctx,
+		`INSERT INTO teams (id, name, captain_id) VALUES ($1, $2, $3)`, options.hostTeamID, options.hostTeamName, captain.ID,
+	); err != nil {
+		return fmt.Errorf("种子主队: %w", err)
 	}
 	if _, err := target.Exec(ctx, `
 		INSERT INTO team_members (team_id, user_id, role, status, joined_at)
