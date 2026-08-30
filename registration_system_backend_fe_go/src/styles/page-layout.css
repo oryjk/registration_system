@@ -231,3 +231,28 @@
   width: 460px;
   max-width: 100vw;
 }
+
+/* ---------- 比分录入弹窗 ---------- */
+.score-input-row {
+  display: flex;
+  align-items: end;
+  gap: var(--space-3);
+}
+
+.score-input-field {
+  flex: 1;
+  display: grid;
+  gap: var(--space-1);
+}
+
+.score-input-separator {
+  padding-bottom: 0.5rem;
+  font-weight: var(--font-weight-semibold);
+  color: var(--muted-foreground);
+}
+
+.score-input-error {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--destructive);
+}

@@ -9,7 +9,9 @@ import {
   deleteMatch,
   getMatch,
   listMatches,
+  type UpdateMatchScorePayload,
   updateMatch,
+  updateMatchScore,
   updateMatchStatus,
 } from "../../api/matches";
 import type {
@@ -84,6 +86,21 @@ export function useUpdateMatchStatusMutation() {
   return useMutation({
     mutationFn: ({ id, status }: { id: string; status: MatchStatus }) =>
       updateMatchStatus(id, status),
+    onSuccess: refreshMatchData,
+  });
+}
+
+export function useUpdateMatchScoreMutation() {
+  const refreshMatchData = useRefreshMatchData();
+
+  return useMutation({
+    mutationFn: ({
+      id,
+      payload,
+    }: {
+      id: string;
+      payload: UpdateMatchScorePayload;
+    }) => updateMatchScore(id, payload),
     onSuccess: refreshMatchData,
   });
 }

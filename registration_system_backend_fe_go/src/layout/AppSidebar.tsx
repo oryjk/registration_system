@@ -9,6 +9,7 @@ import {
   Settings,
   ShieldCheck,
   Store,
+  UserCog,
   Users,
   X,
 } from "lucide-react";
@@ -54,6 +55,13 @@ const NAV_ITEMS: NavItem[] = [
     description: "球队与成员",
     icon: Users,
     matchPrefixes: ["/teams"],
+  },
+  {
+    path: "/match-admins",
+    label: "比赛管理员",
+    description: "微信用户比分权限",
+    icon: UserCog,
+    matchPrefixes: ["/match-admins"],
   },
   {
     path: "/admins",

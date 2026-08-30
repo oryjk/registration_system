@@ -29,6 +29,10 @@ export interface MatchItem {
   away_team_name: string | null;
   opponent_name: string | null;
   players_per_team: number;
+  /** 主队比分；null 表示尚未录入（进行中/结束后录入）。 */
+  host_score: number | null;
+  /** 客队比分；null 表示尚未录入。 */
+  away_score: number | null;
   start_time: string;
   end_time: string;
   registration_start_at: string | null;

@@ -1,5 +1,6 @@
 import type { MatchListQuery } from "../../types/match";
 import type { MiniReviewStatusQuery } from "../../types/miniReview";
+import type { WeChatUserListQuery } from "../../types/user";
 
 export const queryKeys = {
   health: ["health"] as const,
@@ -13,6 +14,7 @@ export const queryKeys = {
     ["teams", id, "member-candidates", search.trim()] as const,
   matches: (query: MatchListQuery) => ["matches", query] as const,
   match: (id: string) => ["matches", id] as const,
+  weChatUsers: (query: WeChatUserListQuery) => ["users", query] as const,
   miniReviewStatuses: (query: MiniReviewStatusQuery) =>
     ["mini-review", "statuses", query] as const,
   miniAppSettings: ["system", "mini-app-settings"] as const,

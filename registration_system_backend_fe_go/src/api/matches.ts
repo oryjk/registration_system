@@ -47,6 +47,18 @@ export function updateMatchStatus(id: string, status: MatchStatus) {
   });
 }
 
+export interface UpdateMatchScorePayload {
+  host_score: number;
+  away_score: number;
+}
+
+export function updateMatchScore(id: string, payload: UpdateMatchScorePayload) {
+  return request<MatchDetail>(`/matches/${id}/score`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
 export function deleteMatch(id: string) {
   return request<{ id: string }>(`/matches/${id}`, { method: "DELETE" });
 }

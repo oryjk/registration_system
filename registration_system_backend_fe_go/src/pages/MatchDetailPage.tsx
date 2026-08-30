@@ -24,10 +24,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useAdminSession } from "@/features/admin-session/useAdminSession";
 import {
   useDeleteMatchMutation,
   useMatchQuery,
+  useUpdateMatchScoreMutation,
   useUpdateMatchStatusMutation,
 } from "@/hooks/queries/useMatchQueries";
 import type {
@@ -95,6 +98,21 @@ function statusActions(
     ];
   }
   return [];
+}
+
+/** 比分只能在比赛进行中或已结束后录入/修正。 */
+function canRecordScore(status: MatchStatus) {
+  return status === "ongoing" || status === "ended";
+}
+
+function parseScoreInput(
+  value: string,
+  fallback: number | null,
+): number | null {
+  const trimmed = value.trim();
+  if (trimmed === "") return fallback;
+  if (!/^\d{1,3}$/.test(trimmed)) return null;
+  return Number.parseInt(trimmed, 10);
 }
 
 const groupColumns: DataTableColumn<RegistrationGroup>[] = [
@@ -204,8 +222,12 @@ export default function MatchDetailPage() {
   const { currentAdmin } = useAdminSession();
   const detailQuery = useMatchQuery(id);
   const statusMutation = useUpdateMatchStatusMutation();
+  const scoreMutation = useUpdateMatchScoreMutation();
   const deleteMutation = useDeleteMatchMutation();
   const [targetStatus, setTargetStatus] = useState<MatchStatus | null>(null);
+  const [scoreDialogOpen, setScoreDialogOpen] = useState(false);
+  const [hostScoreInput, setHostScoreInput] = useState("");
+  const [awayScoreInput, setAwayScoreInput] = useState("");
   const [actionError, setActionError] = useState("");
 
   const detail = detailQuery.data;
@@ -215,6 +237,36 @@ export default function MatchDetailPage() {
     ...actions.filter((action) => action.danger),
     ...actions.filter((action) => !action.danger),
   ];
+
+  const openScoreDialog = () => {
+    setHostScoreInput(
+      match?.host_score == null ? "" : String(match.host_score),
+    );
+    setAwayScoreInput(
+      match?.away_score == null ? "" : String(match.away_score),
+    );
+    setActionError("");
+    setScoreDialogOpen(true);
+  };
+
+  const submitScore = async () => {
+    const hostScore = parseScoreInput(hostScoreInput, null);
+    const awayScore = parseScoreInput(awayScoreInput, null);
+    if (hostScore == null || awayScore == null) {
+      setActionError("比分需为 0-999 的整数");
+      return;
+    }
+    setActionError("");
+    try {
+      await scoreMutation.mutateAsync({
+        id,
+        payload: { host_score: hostScore, away_score: awayScore },
+      });
+      setScoreDialogOpen(false);
+    } catch (reason) {
+      setActionError(reason instanceof Error ? reason.message : "比分录入失败");
+    }
+  };
 
   const submitStatus = async () => {
     if (!targetStatus) return;
@@ -287,6 +339,15 @@ export default function MatchDetailPage() {
                     编辑
                   </Button>
                 ) : null}
+                {canRecordScore(match.status) ? (
+                  <Button
+                    onClick={openScoreDialog}
+                    type="button"
+                    variant="outline"
+                  >
+                    录入比分
+                  </Button>
+                ) : null}
                 {orderedActions.map((action) => (
                   <Button
                     key={action.status}
@@ -340,6 +401,17 @@ export default function MatchDetailPage() {
               <DetailItem label="主队">{match.host_team_name}</DetailItem>
               <DetailItem label="对手">
                 {match.away_team_name || match.opponent_name || "待确认"}
+              </DetailItem>
+              <DetailItem label="比分">
+                {match.host_score == null || match.away_score == null ? (
+                  <span className="cell-secondary">未录入</span>
+                ) : (
+                  <strong>
+                    {match.host_team_name} {match.host_score} :{" "}
+                    {match.away_score}{" "}
+                    {match.away_team_name || match.opponent_name || "客队"}
+                  </strong>
+                )}
               </DetailItem>
               <DetailItem label="每队人数">
                 {match.players_per_team} 人
@@ -447,6 +519,65 @@ export default function MatchDetailPage() {
               variant={targetStatus === "cancelled" ? "destructive" : "default"}
             >
               确认
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog onOpenChange={setScoreDialogOpen} open={scoreDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>录入比赛比分</DialogTitle>
+            <DialogDescription>
+              比赛进行中与结束后均可录入；重复提交会覆盖此前的比分。
+            </DialogDescription>
+          </DialogHeader>
+          <div className="score-input-row">
+            <div className="score-input-field">
+              <Label htmlFor="match-host-score">
+                {match?.host_team_name || "主队"}
+              </Label>
+              <Input
+                id="match-host-score"
+                inputMode="numeric"
+                onChange={(event) => setHostScoreInput(event.target.value)}
+                placeholder="0"
+                value={hostScoreInput}
+              />
+            </div>
+            <span className="score-input-separator">:</span>
+            <div className="score-input-field">
+              <Label htmlFor="match-away-score">
+                {match?.away_team_name || match?.opponent_name || "客队"}
+              </Label>
+              <Input
+                id="match-away-score"
+                inputMode="numeric"
+                onChange={(event) => setAwayScoreInput(event.target.value)}
+                placeholder="0"
+                value={awayScoreInput}
+              />
+            </div>
+          </div>
+          {actionError && !targetStatus ? (
+            <p className="score-input-error" role="alert">
+              {actionError}
+            </p>
+          ) : null}
+          <DialogFooter>
+            <Button
+              onClick={() => setScoreDialogOpen(false)}
+              type="button"
+              variant="outline"
+            >
+              取消
+            </Button>
+            <Button
+              disabled={scoreMutation.isPending}
+              onClick={() => void submitScore()}
+              type="button"
+            >
+              保存比分
             </Button>
           </DialogFooter>
         </DialogContent>
