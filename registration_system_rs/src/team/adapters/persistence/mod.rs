@@ -1,6 +1,0 @@
-mod models;
-mod postgres_team_command_repository;
-mod postgres_team_query_repository;
-
-pub use postgres_team_command_repository::PostgresTeamCommandRepository;
-pub use postgres_team_query_repository::PostgresTeamQueryRepository;

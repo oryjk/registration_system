@@ -1,18 +1,18 @@
 # 工作区说明（给 AI / Agent）
 
-本仓库是一个**赛事报名与球队管理**工作区，当前包含五个彼此协作的子项目：
+本仓库是一个**赛事报名与球队管理**工作区，当前包含以下彼此协作的子项目（`registration_system_h5/` 为规划待创建）：
 
 | 目录 | 说明 | 技术栈 |
 | --- | --- | --- |
 | `registration_system_mini/` | 微信小程序/H5 端，面向球员/队员/普通用户；**已对接 Go 新后端**（验收环境 oryjk.cn:82，`mini-rust-backend-final` 标记最后一个对接 Rust 后端的基线） | `uni-app + Vue 3 + TypeScript + Vite` |
-| `registration_system_backend_fe_go/` | 对接 Go 新后端的管理后台新版本 | `React + TypeScript + Vite + Ant Design + Bun` |
+| `registration_system_backend_fe_go/` | 对接 Go 新后端的管理后台新版本 | `React + TypeScript + Vite + shadcn/ui（+ reui registry）+ Tailwind CSS 4` |
 | `registration_system_admin_app/` | 移动管理 App，面向赛事运营/管理员；**已暂停开发** | `Flutter + Dart` |
 | `registration_system_go/` | **当前唯一在开发的后端服务端**，承载认证、球队与比赛 API | `Go + Gin + PostgreSQL + pgx + sqlc` |
-| `registration_system_rs/` | 旧后台服务端，**已冻结、不再更新**；仅作为业务与迁移的只读参考 | `Rust + Axum + PostgreSQL + sqlx` |
+| `registration_system_h5/` | **web-view 内嵌 H5 页面专用项目（规划，待创建）**：承载只跑在 H5 环境的页面（小程序 web-view 嵌页、微信内浏览器页面等），不再塞进 uni-app 双端代码库；产物为静态文件，部署推送到 jd 服务器的 nginx，经 `https://match.oryjk.cn`（443，web-view 业务域名）对外服务 | 待定（建议 `Vue 3 + TypeScript + Vite` 纯 Web 技术栈） |
 
 ## 后端演进状态（重要）
 
-- **Rust 项目（`registration_system_rs/`）已停止开发**：它是老项目，未来不再接收任何功能、修复或重构；除阅读参考业务逻辑和迁移核对外，不要改动它。其生产数据库中仍保留旧结构数据（`rs_*` 表）作为迁移源。
+- **Rust 项目（`registration_system_rs/`）已停止开发并从工作区删除**（2026-08-30，需要时从 git 历史找回）：不要恢复、重建或修改它。旧库迁移不依赖该目录（`migrate-legacy.sh` 直连线上旧库 `rs_*` 表），线上旧结构数据仍保留作为迁移源。
 - **所有后端开发都在 `registration_system_go/` 上进行**：历史数据已通过 `registration_system_go/scripts/migrate-legacy.sh` 迁入 Go 结构（独立库 `registration_system_go`）；后续增量迁移、新功能全部落在 Go 项目。
 - 小程序（`registration_system_mini/`）当前对接 Go 后端；旧版 Vue 管理端 `registration_system_backend_fe/` 已从工作区删除（需要时从 git 历史找回），Go 配套管理端是 `registration_system_backend_fe_go/`。
 - out109 验收环境（Go 后端 + mini H5 + Go 管理端）统一使用根目录 `deploy_out109_go_h5.sh` 部署。
@@ -55,14 +55,13 @@
 - Go 配套管理端入口：`registration_system_backend_fe_go/src/main.tsx`、`src/App.tsx`
 - 移动管理 App 入口（已暂停）：`registration_system_admin_app/lib/main.dart`
 - Go 后端入口：`registration_system_go/cmd/api/main.go`、`internal/bootstrap/`
-- Rust 参考后端入口：`registration_system_rs/src/main.rs`、`src/lib.rs`、`src/bootstrap/`
 
 ## 联动规则
 
-- 新后端功能只写入 `registration_system_go/`；`registration_system_rs/` 已冻结不再更新，任何任务都不要修改它（只读参考）。
-- 核对旧实现时只读参考 `registration_system_rs/`；其配套老管理端 `registration_system_backend_fe/` 已删除，两者都不再联动修改。
+- 新后端功能只写入 `registration_system_go/`；旧 Rust 后端 `registration_system_rs/` 已从工作区删除，任何任务都不要重建或修改它。核对旧实现时需要的话从 git 历史检出该目录只读查看，看完不要提交回来。
+- 旧 Rust 链路的配套老管理端 `registration_system_backend_fe/` 同样已删除，两者都不再联动修改。
 - 改 Go 后端时，联动检查对接 Go 的管理端：`registration_system_backend_fe_go/src/api/`；小程序已对接 Go，用户端接口变更需同时检查 `registration_system_mini/src/api/`。
-- `registration_system_mini/` 是唯一的小程序/H5 代码库；后端切换在该项目内完成，不再创建平行的 `registration_system_mini_go/` 项目。
+- `registration_system_mini/` 是唯一的小程序代码库；**H5-only 页面不要加进 uni-app 项目**，统一放到 `registration_system_h5/`（见项目表）。小程序内打开 H5 页面走 web-view 嵌页（`registration_system_mini/src/utils/webview.ts` 的 `navigateToWebView`），登录态用一次性 code 兑换协议（签发 `POST /api/v1/app/auth/webview-codes`、兑换 `POST /api/v1/app/auth/webview-codes/exchange`，桥接参数 `webview_code`/`webview_identity_kind`/`webview_identity_team_id`）——`registration_system_h5/` 创建时必须实现同一套协议，细节见 `registration_system_mini/AGENTS.md` 的「web-view 嵌入 H5」一节。
 - 改管理端或小程序页面时，确认接口字段与后端 DTO / JSON 实际返回一致。
 - 涉及认证、活动、球队、球员、账单等核心领域时，优先沿用既有命名与模块边界，不要把业务规则塞进页面层或 handler。
 - 后端数据结构变更时注意 legacy 迁移工具（`registration_system_go/scripts/migrate-legacy.sh`、`cmd/migratelegacydb`）与集成测试基建（`internal/testsupport`，每用例独立 schema）是否需要同步调整。
@@ -77,7 +76,7 @@
 
 - Go 后端提交前执行：`gofmt -w .`、`go test -race ./...`、`go vet ./...`、`go build -o /tmp/registration-system-go-api ./cmd/api`
 - 后端集成测试**直连线上测试库**跑（用户约定，不另建本地库）：`TEST_DATABASE_URL` 配在 `registration_system_go/.env`（通常与 `DATABASE_URL` 同库），`make test` 已自动加载 .env。testsupport 为每个用例创建独立随机 schema 并自动 DROP，不会读写业务表；禁止在集成测试里向业务表写入数据。
-- Rust 参考后端不再增加代码；仅在迁移核对需要时执行 `cargo test`
+- Rust 参考后端已从工作区删除，不再有任何验证要求
 - Go 配套管理端提交前建议执行：`bun run type-check`、`bun run lint`、`bun run build`
 - 小程序提交前建议执行：`bun run type-check`、必要时 `bun run build:mp-weixin`
 - 移动管理 App 已暂停开发；若恢复改动，提交前建议执行：`dart format lib test`、`flutter analyze`、`flutter test`、必要时 `flutter build apk --debug`

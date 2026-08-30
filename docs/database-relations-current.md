@@ -4,6 +4,8 @@
 
 依据：`registration_system_rs/migrations/*.sql`
 
+> 注：本文档描述的是 Rust 老后端的 `rs_*` 表结构。旧 Rust 后端代码目录已于 2026-08-30 从工作区删除（git 历史可查）；Go 新库结构以 `registration_system_go/db/migrations/` 为准，线上旧库 `rs_*` 表仍保留作为迁移源。
+
 ## 1. 总览
 
 当前数据库为 PostgreSQL，迁移文件位于：

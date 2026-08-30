@@ -1,3 +1,0 @@
-mod postgres_system_settings_repository;
-
-pub use postgres_system_settings_repository::PostgresSystemSettingsRepository;

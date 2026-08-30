@@ -2,7 +2,9 @@
 
 > ⚠️ **本文档是 2026-05-13 的 Rust 老后端链路技术快照，不代表当前工作区结构。**
 >
-> 工作区现已迁移到 **Go 新后端**（`registration_system_go`，主开发），并分化出 7 个子项目（详见根目录 `README.md`）。本文档当时只覆盖 Rust 链路的 3 个项目（`registration_system_rs` + `registration_system_backend_fe` + `registration_system_mini`）。
+> 工作区现已迁移到 **Go 新后端**（`registration_system_go`，主开发）。本文档当时只覆盖 Rust 链路的 3 个项目（`registration_system_rs` + `registration_system_backend_fe` + `registration_system_mini`）。
+>
+> 2026-08-30 起旧 Rust 后端代码目录 `registration_system_rs/` 已从工作区删除（git 历史可查）；本文保留仅作历史参考，不要据其行动。
 >
 > 下文仍有效的部分：Rust 后端的架构、模块、路由、schema、外部服务配置（作为只读参考仍有价值）。
 > 已过时、不应再据其行动的部分：工作区结构（§1）、前端架构（§6）、验证命令（§11 中除 Rust 外的命令）、当前技术债（§12）——这些请以根目录 `README.md` 和各子项目 `AGENTS.md` 为准。

@@ -1,4 +1,0 @@
-mod models;
-mod postgres_challenge_repository;
-
-pub use postgres_challenge_repository::PostgresChallengeRepository;

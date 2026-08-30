@@ -1,3 +1,0 @@
-mod postgres_notification_repository;
-
-pub use postgres_notification_repository::PostgresNotificationRepository;
