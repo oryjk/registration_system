@@ -64,6 +64,7 @@ export function useTeamDetailPage() {
       const detail = await getAppTeamDetail(teamId.value);
       team.value = detail;
       if (detail.my_role) void loadInviteCode();
+      syncShareMenu(detail.my_role === "captain" || detail.my_role === "leader");
     } catch (error) {
       errorMessage.value = error instanceof Error ? error.message : "球队信息加载失败";
     } finally {
@@ -139,6 +140,15 @@ export function useTeamDetailPage() {
       inviteCode.value = (await issueTeamInviteCode(team.value.id)).code;
     } catch {
       inviteCode.value = "";
+    }
+  }
+
+  // 邀请分享仅队长/领队可用：其他人隐藏转发菜单，避免发出无邀请码的无效卡片。
+  function syncShareMenu(canShare: boolean) {
+    if (canShare) {
+      uni.showShareMenu({ withShareTicket: false, menus: ["shareAppMessage", "shareTimeline"] });
+    } else {
+      uni.hideShareMenu({ hideShareItems: ["shareAppMessage", "shareTimeline"] });
     }
   }
 

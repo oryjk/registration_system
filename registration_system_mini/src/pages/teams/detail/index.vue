@@ -116,8 +116,8 @@ onShareTimeline(() => ({
           </NeoButton>
         </NeoSurface>
 
-        <!-- 邀请球友（拉新）：open-type=share 触发与右上角菜单相同的分享配置；比右上角入口更易发现，方便队长拉新。 -->
-        <NeoSurface variant="dark" custom-class="invite-card">
+        <!-- 邀请球友（拉新）：仅队长/领队展示；open-type=share 触发与右上角菜单相同的分享配置。 -->
+        <NeoSurface v-if="canManage" variant="dark" custom-class="invite-card">
           <view class="invite-hero">
             <view class="invite-kicker">
               <text class="invite-kicker__text">人越多，越好玩！</text>

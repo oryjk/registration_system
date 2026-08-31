@@ -50,7 +50,7 @@ func NewAppInviteService(repository AppTeamInviteRepository, secret []byte) *App
 	return &AppInviteService{repository: repository, secret: secret, now: time.Now}
 }
 
-// Issue 为在队成员签发邀请码；码格式 "teamID.expiresUnix.base64url(hmac)"。
+// Issue 为队长/领队签发邀请码（拉新是管理动作，普通队员不签发）；码格式 "teamID.expiresUnix.base64url(hmac)"。
 func (s *AppInviteService) Issue(ctx context.Context, actor sharedauth.Actor, teamID int64) (string, time.Time, error) {
 	if _, err := s.authorizeMember(ctx, actor, teamID); err != nil {
 		return "", time.Time{}, err
@@ -120,6 +120,9 @@ func (s *AppInviteService) authorizeMember(ctx context.Context, actor sharedauth
 	}
 	if !found {
 		return domain.Member{}, sharederror.New(sharederror.KindForbidden, "仅球队成员可分享邀请")
+	}
+	if member.Role != domain.RoleCaptain && member.Role != domain.RoleLeader {
+		return domain.Member{}, sharederror.New(sharederror.KindForbidden, "仅队长或领队可分享邀请")
 	}
 	return member, nil
 }

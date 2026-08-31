@@ -41,12 +41,17 @@ func TestAppInviteServiceIssuesMemberOnlyCodes(t *testing.T) {
 		t.Fatalf("code=%q err=%v", code, err)
 	}
 
-	// 非成员与非用户受众不能签发。
+	// 非成员、普通队员与非用户受众都不能签发（拉新仅队长/领队）。
 	repository.memberFound = false
 	if _, _, err := service.Issue(context.Background(), sharedauth.Actor{Kind: sharedauth.ActorUser, ID: 42}, 7); !isForbidden(err) {
 		t.Fatalf("expected forbidden non-member issue, got %v", err)
 	}
 	repository.memberFound = true
+	repository.member = domain.Member{TeamID: 7, UserID: 42, Role: domain.RoleMember, Status: domain.MemberActive}
+	if _, _, err := service.Issue(context.Background(), sharedauth.Actor{Kind: sharedauth.ActorUser, ID: 42}, 7); !isForbidden(err) {
+		t.Fatalf("expected forbidden ordinary member issue, got %v", err)
+	}
+	repository.member = domain.Member{TeamID: 7, UserID: 42, Role: domain.RoleCaptain, Status: domain.MemberActive}
 	if _, _, err := service.Issue(context.Background(), sharedauth.Actor{Kind: sharedauth.ActorAdmin, ID: 1}, 7); !isForbidden(err) {
 		t.Fatalf("expected forbidden admin issue, got %v", err)
 	}
