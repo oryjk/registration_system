@@ -16,6 +16,10 @@ export interface LoginResponse {
   user: AppUser;
 }
 
+export interface ImpersonationTargetsResponse {
+  items: AppUser[];
+}
+
 export interface WebViewCodeResponse {
   code: string;
   expires_at: string;

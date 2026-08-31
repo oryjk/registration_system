@@ -471,3 +471,55 @@ func (routerNotificationService) MarkAllRead(context.Context, sharedauth.Actor) 
 func (routerNotificationService) MarkRead(_ context.Context, _ sharedauth.Actor, _ int64) (bool, error) {
 	return false, nil
 }
+
+func TestImpersonationRoutesRequireUserAuth(t *testing.T) {
+	middleware := authhttp.NewMiddleware(routerAudienceTokens{})
+	service := &routerImpersonationService{}
+	router := NewRouter(Dependencies{
+		AuthMiddleware: &middleware,
+		Impersonation:  authhttp.NewImpersonationHandler(service),
+	})
+
+	for _, test := range []struct {
+		method string
+		path   string
+		body   string
+	}{
+		{http.MethodGet, "/api/v1/app/auth/impersonation/targets?keyword=张", ""},
+		{http.MethodPost, "/api/v1/app/auth/impersonation", `{"user_id":9}`},
+	} {
+		unauthorized := httptest.NewRecorder()
+		router.ServeHTTP(unauthorized, httptest.NewRequest(test.method, test.path, nil))
+		if unauthorized.Code != http.StatusUnauthorized {
+			t.Fatalf("%s %s unauthorized status=%d", test.method, test.path, unauthorized.Code)
+		}
+
+		request := httptest.NewRequest(test.method, test.path, bytes.NewBufferString(test.body))
+		request.Header.Set("Authorization", "Bearer user-token")
+		request.Header.Set("Content-Type", "application/json")
+		response := httptest.NewRecorder()
+		router.ServeHTTP(response, request)
+		if response.Code != http.StatusOK {
+			t.Fatalf("%s %s authorized status=%d body=%s", test.method, test.path, response.Code, response.Body.String())
+		}
+	}
+	if service.actorID != 42 || service.targetID != 9 {
+		t.Fatalf("expected actor 42 impersonating target 9, got actor=%d target=%d", service.actorID, service.targetID)
+	}
+}
+
+type routerImpersonationService struct {
+	actorID  int64
+	targetID int64
+}
+
+func (s *routerImpersonationService) SearchTargets(_ context.Context, actorID int64, _ string) ([]userdomain.User, error) {
+	s.actorID = actorID
+	return []userdomain.User{}, nil
+}
+
+func (s *routerImpersonationService) Impersonate(_ context.Context, actorID, targetUserID int64) (authapplication.ImpersonationResult, error) {
+	s.actorID = actorID
+	s.targetID = targetUserID
+	return authapplication.ImpersonationResult{Token: "impersonated-token", User: userdomain.User{ID: targetUserID, Status: userdomain.StatusActive}}, nil
+}

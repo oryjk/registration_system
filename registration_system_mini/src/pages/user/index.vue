@@ -10,6 +10,7 @@ import MineStatsGrid from "./components/MineStatsGrid.vue";
 import MineMatchSection from "./components/MineMatchSection.vue";
 import MineSkeleton from "./components/MineSkeleton.vue";
 import MineWalletSection from "./components/MineWalletSection.vue";
+import MineImpersonationPanel from "./components/MineImpersonationPanel.vue";
 import ThemeAccentPicker from "./components/ThemeAccentPicker.vue";
 import { useMinePage } from "./useMinePage";
 
@@ -31,6 +32,19 @@ const {
   mineStats,
   walletSummary,
   settingsEntryVisible,
+  impersonating,
+  impersonationPanelVisible,
+  impersonationCanSwitch,
+  impersonationCurrentName,
+  impersonationKeyword,
+  impersonationResults,
+  impersonationSearching,
+  impersonationSwitching,
+  impersonationRestoring,
+  impersonationSearched,
+  handleImpersonationSearch,
+  handleImpersonationSwitch,
+  handleImpersonationRestore,
   confirmDialogVisible,
   confirmDialogState,
   handleConfirmPrimary,
@@ -90,6 +104,23 @@ onUnload(() => {
           @complete-profile="handleCompleteProfile"
           @login="handleLogin"
           @logout="handleLogout"
+        />
+
+        <!-- 身份切换调试面板：切换中显示恢复入口（任何身份可见）；本人为产品负责人时显示搜索切换入口。 -->
+        <MineImpersonationPanel
+          v-if="currentUser && impersonationPanelVisible"
+          v-model:keyword="impersonationKeyword"
+          :impersonating="impersonating"
+          :can-switch="impersonationCanSwitch"
+          :current-name="impersonationCurrentName"
+          :results="impersonationResults"
+          :searching="impersonationSearching"
+          :switching="impersonationSwitching"
+          :restoring="impersonationRestoring"
+          :searched="impersonationSearched"
+          @search="handleImpersonationSearch"
+          @switch="handleImpersonationSwitch"
+          @restore="handleImpersonationRestore"
         />
 
         <view v-if="visibleErrorMessage" class="mine-error-banner">

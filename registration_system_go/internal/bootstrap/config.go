@@ -49,6 +49,9 @@ type Config struct {
 	// MiniReviewControlUserIDs 允许在小程序端切换审核状态的用户白名单
 	//（env MINI_REVIEW_CONTROL_USER_IDS，逗号分隔）；为空时切换接口对所有人关闭。
 	MiniReviewControlUserIDs map[int64]struct{}
+	// ImpersonationAllowedUserIDs 允许在小程序端切换身份（impersonate）的用户白名单
+	//（env IMPERSONATION_ALLOWED_USER_IDS，逗号分隔，默认 "4" 产品负责人）；为空时接口对所有人关闭。
+	ImpersonationAllowedUserIDs map[int64]struct{}
 }
 
 func LoadConfig() (Config, error) {
@@ -58,30 +61,31 @@ func LoadConfig() (Config, error) {
 		return Config{}, err
 	}
 	config := Config{
-		HTTPAddr:                   envOrDefault("HTTP_ADDR", ":18080"),
-		DatabaseURL:                os.Getenv("DATABASE_URL"),
-		JWTSecret:                  os.Getenv("JWT_SECRET"),
-		WechatAppID:                os.Getenv("WECHAT_APP_ID"),
-		WechatAppSecret:            os.Getenv("WECHAT_APP_SECRET"),
-		AppEnvironment:             parseAppEnvironment(os.Getenv("APP_ENV")),
-		EnableH5TestLogin:          os.Getenv("ENABLE_H5_TEST_LOGIN") == "true",
-		H5TestDefaultUserID:        defaultUserID,
-		WechatPayUseMock:           os.Getenv("WECHAT_PAY_USE_MOCK") == "true",
-		WechatPayMerchantID:        strings.TrimSpace(os.Getenv("WECHAT_PAY_MCH_ID")),
-		WechatPayAPIKey:            strings.TrimSpace(os.Getenv("WECHAT_PAY_API_KEY")),
-		WechatPayAPIBaseURL:        envOrDefault("WECHAT_PAY_API_BASE_URL", "https://api.mch.weixin.qq.com"),
-		PublicBaseURL:              strings.TrimRight(strings.TrimSpace(os.Getenv("PUBLIC_BASE_URL")), "/"),
-		WechatPayNotifyPath:        envOrDefault("WECHAT_PAY_NOTIFY_PATH", "/api/v1/webhooks/wechat-pay"),
-		UploadDir:                  envOrDefault("UPLOAD_DIR", "uploads"),
-		UploadStorage:              os.Getenv("UPLOAD_STORAGE_BACKEND"),
-		UploadMinioEndpoint:        os.Getenv("UPLOAD_MINIO_ENDPOINT"),
-		UploadMinioAccessKey:       os.Getenv("UPLOAD_MINIO_ACCESS_KEY"),
-		UploadMinioSecretKey:       os.Getenv("UPLOAD_MINIO_SECRET_KEY"),
-		UploadMinioBucket:          os.Getenv("UPLOAD_MINIO_BUCKET"),
-		UploadMinioRegion:          os.Getenv("UPLOAD_MINIO_REGION"),
-		UploadMinioPublicURLPrefix: os.Getenv("UPLOAD_MINIO_PUBLIC_URL_PREFIX"),
-		MiniReviewAPIKey:           strings.TrimSpace(os.Getenv("MINI_REVIEW_API_KEY")),
-		MiniReviewControlUserIDs:   parseUserIDListEnv(os.Getenv("MINI_REVIEW_CONTROL_USER_IDS")),
+		HTTPAddr:                    envOrDefault("HTTP_ADDR", ":18080"),
+		DatabaseURL:                 os.Getenv("DATABASE_URL"),
+		JWTSecret:                   os.Getenv("JWT_SECRET"),
+		WechatAppID:                 os.Getenv("WECHAT_APP_ID"),
+		WechatAppSecret:             os.Getenv("WECHAT_APP_SECRET"),
+		AppEnvironment:              parseAppEnvironment(os.Getenv("APP_ENV")),
+		EnableH5TestLogin:           os.Getenv("ENABLE_H5_TEST_LOGIN") == "true",
+		H5TestDefaultUserID:         defaultUserID,
+		WechatPayUseMock:            os.Getenv("WECHAT_PAY_USE_MOCK") == "true",
+		WechatPayMerchantID:         strings.TrimSpace(os.Getenv("WECHAT_PAY_MCH_ID")),
+		WechatPayAPIKey:             strings.TrimSpace(os.Getenv("WECHAT_PAY_API_KEY")),
+		WechatPayAPIBaseURL:         envOrDefault("WECHAT_PAY_API_BASE_URL", "https://api.mch.weixin.qq.com"),
+		PublicBaseURL:               strings.TrimRight(strings.TrimSpace(os.Getenv("PUBLIC_BASE_URL")), "/"),
+		WechatPayNotifyPath:         envOrDefault("WECHAT_PAY_NOTIFY_PATH", "/api/v1/webhooks/wechat-pay"),
+		UploadDir:                   envOrDefault("UPLOAD_DIR", "uploads"),
+		UploadStorage:               os.Getenv("UPLOAD_STORAGE_BACKEND"),
+		UploadMinioEndpoint:         os.Getenv("UPLOAD_MINIO_ENDPOINT"),
+		UploadMinioAccessKey:        os.Getenv("UPLOAD_MINIO_ACCESS_KEY"),
+		UploadMinioSecretKey:        os.Getenv("UPLOAD_MINIO_SECRET_KEY"),
+		UploadMinioBucket:           os.Getenv("UPLOAD_MINIO_BUCKET"),
+		UploadMinioRegion:           os.Getenv("UPLOAD_MINIO_REGION"),
+		UploadMinioPublicURLPrefix:  os.Getenv("UPLOAD_MINIO_PUBLIC_URL_PREFIX"),
+		MiniReviewAPIKey:            strings.TrimSpace(os.Getenv("MINI_REVIEW_API_KEY")),
+		MiniReviewControlUserIDs:    parseUserIDListEnv(os.Getenv("MINI_REVIEW_CONTROL_USER_IDS")),
+		ImpersonationAllowedUserIDs: parseUserIDListEnv(envOrDefault("IMPERSONATION_ALLOWED_USER_IDS", "4")),
 	}
 
 	for name, value := range map[string]string{

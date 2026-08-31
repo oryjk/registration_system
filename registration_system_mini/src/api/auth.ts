@@ -1,4 +1,4 @@
-import type { LoginResponse, TestLoginUsersResponse, WebViewCodeResponse, WebViewExchangeResponse } from "@/types/app";
+import type { LoginResponse, TestLoginUsersResponse, WebViewCodeResponse, WebViewExchangeResponse, ImpersonationTargetsResponse } from "@/types/app";
 import { requestApi } from "@/utils/request";
 
 export function wechatLogin(jsCode: string) {
@@ -38,5 +38,25 @@ export function testLogin(userId: number) {
     url: "/test-auth/login",
     method: "POST",
     data: { user_id: userId },
+  });
+}
+
+/** 身份切换（调试）：搜索可切换的目标用户；仅后端白名单账号可用。 */
+export function searchImpersonationTargets(keyword: string) {
+  return requestApi<ImpersonationTargetsResponse>({
+    url: "/auth/impersonation/targets",
+    method: "GET",
+    data: { keyword },
+    auth: true,
+  });
+}
+
+/** 身份切换（调试）：换取目标用户的登录 token；仅后端白名单账号可用。 */
+export function impersonateUser(userId: number) {
+  return requestApi<LoginResponse>({
+    url: "/auth/impersonation",
+    method: "POST",
+    data: { user_id: userId },
+    auth: true,
   });
 }

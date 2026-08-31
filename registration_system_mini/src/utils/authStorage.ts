@@ -3,6 +3,8 @@ const CURRENT_TEAM_KEY = "registration_system_mini_current_team_id";
 const CURRENT_IDENTITY_KIND_KEY = "registration_system_mini_current_identity_kind";
 const CURRENT_IDENTITY_TEAM_KEY = "registration_system_mini_current_identity_team_id";
 const MANUAL_LOGOUT_KEY = "registration_system_mini_manual_logout";
+// 身份切换（impersonate）调试：切换为目标用户时暂存本人的 token，用于一键恢复。
+const IMPERSONATOR_TOKEN_KEY = "registration_system_mini_impersonator_token";
 
 export type StoredCurrentIdentityKind = "team" | "venue";
 
@@ -83,4 +85,22 @@ export function clearLocalSessionStorage(): void {
   clearAccessToken();
   clearCurrentTeamId();
   clearCurrentIdentitySelection();
+  clearImpersonatorToken();
+}
+
+/** 身份切换（impersonate）：切换中暂存本人 token；存在即表示当前处于切换态。 */
+export function getImpersonatorToken(): string {
+  return uni.getStorageSync(IMPERSONATOR_TOKEN_KEY) || "";
+}
+
+export function setImpersonatorToken(token: string): void {
+  uni.setStorageSync(IMPERSONATOR_TOKEN_KEY, token);
+}
+
+export function clearImpersonatorToken(): void {
+  uni.removeStorageSync(IMPERSONATOR_TOKEN_KEY);
+}
+
+export function isImpersonating(): boolean {
+  return getImpersonatorToken() !== "";
 }

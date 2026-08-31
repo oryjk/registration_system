@@ -11,6 +11,7 @@ import { useNeoConfirmDialog } from "@/components/neo";
 import { PRODUCT_OWNER_USER_ID } from "@/config/productOwner";
 import { hasManualLogout } from "@/utils/authStorage";
 import { getCustomNavMetrics } from "@/utils/customNav";
+import { useMineImpersonation } from "./mineImpersonation";
 import {
   formatDateTimeLabel,
   resolveUserDisplayName,
@@ -37,6 +38,28 @@ export function useMinePage() {
     handleConfirmClose,
   } = useNeoConfirmDialog();
   const navMetrics = getCustomNavMetrics();
+
+  // 身份切换（impersonate）调试面板：产品负责人可切换为任意用户复现问题，切换态下任何人可见恢复入口。
+  const {
+    impersonating,
+    impersonationPanelVisible,
+    impersonationCanSwitch,
+    impersonationCurrentName,
+    impersonationKeyword,
+    impersonationResults,
+    impersonationSearching,
+    impersonationSwitching,
+    impersonationRestoring,
+    impersonationSearched,
+    syncImpersonationState,
+    handleImpersonationSearch,
+    handleImpersonationSwitch,
+    handleImpersonationRestore,
+  } = useMineImpersonation({
+    currentUser,
+    confirm,
+    reload: () => loadPageData(),
+  });
 
   const isLoading = ref(false);
   const isSwitchingTeam = ref(false);
@@ -134,6 +157,7 @@ export function useMinePage() {
 
   async function loadPageData(options?: { preserveContent?: boolean }) {
     const preserveContent = !!options?.preserveContent && hasLoadedOnce.value;
+    syncImpersonationState();
 
     if (preserveContent) {
       isSwitchingTeam.value = true;
@@ -301,6 +325,19 @@ export function useMinePage() {
     mineStats,
     walletSummary,
     settingsEntryVisible,
+    impersonating,
+    impersonationPanelVisible,
+    impersonationCanSwitch,
+    impersonationCurrentName,
+    impersonationKeyword,
+    impersonationResults,
+    impersonationSearching,
+    impersonationSwitching,
+    impersonationRestoring,
+    impersonationSearched,
+    handleImpersonationSearch,
+    handleImpersonationSwitch,
+    handleImpersonationRestore,
     confirmDialogVisible,
     confirmDialogState,
     handleConfirmPrimary,

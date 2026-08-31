@@ -21,6 +21,7 @@ type Dependencies struct {
 	AuthMiddleware     *authhttp.Middleware
 	UserAuth           *authhttp.Handler
 	WebviewCodes       *authhttp.WebviewCodeHandler
+	Impersonation      *authhttp.ImpersonationHandler
 	TestAuth           *authhttp.TestHandler
 	AdminAuth          *authhttp.AdminHandler
 	UserProfiles       *userhttp.Handler
@@ -100,6 +101,9 @@ func NewRouter(dependencies Dependencies) *gin.Engine {
 		}
 		if dependencies.WebviewCodes != nil {
 			dependencies.WebviewCodes.RegisterUserRoutes(userRoutes)
+		}
+		if dependencies.Impersonation != nil {
+			dependencies.Impersonation.RegisterUserRoutes(userRoutes)
 		}
 		if dependencies.Teams != nil {
 			dependencies.Teams.RegisterUserRoutes(userRoutes)

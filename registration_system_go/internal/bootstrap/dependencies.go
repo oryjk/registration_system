@@ -97,6 +97,8 @@ func BuildDependencies(ctx context.Context, config Config) (Dependencies, func()
 	webviewCodeRepository := authpostgres.NewWebviewCodeRepository(pool)
 	webviewCodeService := authapplication.NewWebviewCodeService(webviewCodeRepository, tokens)
 	webviewCodeHandler := authhttp.NewWebviewCodeHandler(webviewCodeService)
+	impersonationService := authapplication.NewImpersonationService(userRepository, tokens, config.ImpersonationAllowedUserIDs)
+	impersonationHandler := authhttp.NewImpersonationHandler(impersonationService)
 
 	teamRepository := teampostgres.NewRepository(pool)
 	teamService := teamapplication.NewQueryService(teamRepository, teampassword.Bcrypt{})
@@ -169,8 +171,9 @@ func BuildDependencies(ctx context.Context, config Config) (Dependencies, func()
 	return Dependencies{
 		AuthMiddleware: &authMiddleware,
 		UserAuth:       userAuthHandler, AdminAuth: adminAuthHandler,
-		WebviewCodes: webviewCodeHandler,
-		TestAuth:     testAuthHandler, H5TestLoginEnabled: config.H5TestLoginEnabled(),
+		WebviewCodes:  webviewCodeHandler,
+		Impersonation: impersonationHandler,
+		TestAuth:      testAuthHandler, H5TestLoginEnabled: config.H5TestLoginEnabled(),
 		UserProfiles: userProfileHandler, AppUsers: appUserHandler, ActiveUsers: appUserService, Teams: teamHandler, AppTeams: appTeamHandler,
 		AppTeamManage: appTeamManageHandler, AppTeamSelf: appTeamSelfHandler, AppTeamInvites: appTeamInviteHandler,
 		UserMatches: userMatchHandler, UserRegistrations: userRegistrationHandler,

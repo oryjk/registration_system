@@ -1,5 +1,5 @@
 import { computed, ref } from "vue";
-import { listTestLoginUsers, testLogin, wechatLogin } from "@/api/auth";
+import { listTestLoginUsers, testLogin, wechatLogin, impersonateUser } from "@/api/auth";
 import { getMyTeams, getTeamDetail } from "@/api/team";
 import { getCurrentUser, toBackendUser } from "@/api/user";
 import { isMockEnabled } from "@/mock";
@@ -16,11 +16,15 @@ import {
   getAccessToken,
   getCurrentIdentitySelection,
   getCurrentTeamId,
+  getImpersonatorToken,
   hasManualLogout,
+  isImpersonating,
   setManualLogout,
   setAccessToken,
   setCurrentIdentitySelection,
   setCurrentTeamId,
+  setImpersonatorToken,
+  clearImpersonatorToken,
   type StoredCurrentIdentitySelection,
 } from "@/utils/authStorage";
 import { buildTeamProfiles } from "@/utils/viewModels";
@@ -296,6 +300,76 @@ export async function loginWithTestUser(userId: number) {
   } catch (error) {
     resetSessionState();
     bootstrapError.value = error instanceof Error ? error.message : "测试用户登录失败";
+    throw error;
+  } finally {
+    isBootstrapping.value = false;
+  }
+}
+
+/**
+ * 身份切换（impersonate）调试：白名单账号切换为任意小程序用户的登录态，用于复现问题。
+ * 本人 token 暂存本地（restoreImpersonatorSession 一键恢复）；切换中再切他人时只换 token，
+ * 不覆盖暂存的本人 token。
+ */
+export async function impersonateAsUser(userId: number) {
+  const switchVersion = ++sessionVersion;
+  clearManualLogout();
+  isBootstrapping.value = true;
+  bootstrapError.value = "";
+  const previousToken = getAccessToken();
+  const hadImpersonatorStash = isImpersonating();
+  let swapped = false;
+
+  try {
+    const result = await impersonateUser(userId);
+    assertSessionVersion(switchVersion);
+    // 先拿到目标 token 再动现有登录态：接口失败时本人会话不受污染。
+    if (!hadImpersonatorStash) {
+      setImpersonatorToken(previousToken);
+    }
+    setAccessToken(result.token);
+    swapped = true;
+    currentUser.value = toBackendUser(result.user);
+    await loadTeamContext();
+    assertSessionVersion(switchVersion);
+  } catch (error) {
+    if (swapped) {
+      // 拿到 token 后的后续步骤失败：回滚到切换前登录态，不留半身会话。
+      setAccessToken(previousToken);
+      if (!hadImpersonatorStash) {
+        clearImpersonatorToken();
+      }
+      resetSessionState();
+    }
+    bootstrapError.value = error instanceof Error ? error.message : "身份切换失败";
+    throw error;
+  } finally {
+    isBootstrapping.value = false;
+  }
+}
+
+/** 恢复本人身份：写回暂存的 token 并重建会话；原 token 过期时清登录态，由调用方回落到重新登录。 */
+export async function restoreImpersonatorSession() {
+  const originalToken = getImpersonatorToken();
+  if (!originalToken) {
+    return;
+  }
+  const restoreVersion = ++sessionVersion;
+  clearImpersonatorToken();
+  clearManualLogout();
+  isBootstrapping.value = true;
+  bootstrapError.value = "";
+
+  try {
+    setAccessToken(originalToken);
+    await bootstrapFromExistingToken();
+    assertSessionVersion(restoreVersion);
+  } catch (error) {
+    if (isUnauthorizedError(error)) {
+      clearAccessToken();
+    }
+    resetSessionState();
+    bootstrapError.value = error instanceof Error ? error.message : "恢复原身份失败";
     throw error;
   } finally {
     isBootstrapping.value = false;
