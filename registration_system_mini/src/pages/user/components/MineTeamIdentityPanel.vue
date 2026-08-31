@@ -42,6 +42,10 @@ function handleSwitchTeam(teamId: number) {
          因此 flex 布局放在面板自己模板内的包裹 view 上，NeoSurface 用 flush 去掉默认内边距。 -->
     <!-- 点击当前球队卡片弹出切换弹层；进入球队详情走下方「我的球队」列表，两个入口职责分开。 -->
     <view v-if="currentTeam" class="mine-current-team">
+      <view class="mine-current-team__head">
+        <text class="mine-current-team__head-title">当前球队</text>
+        <text class="mine-current-team__head-caption">轻点卡片切换当前球队身份</text>
+      </view>
       <NeoSurface interactive flush @press="openSwitchSheet">
         <view class="mine-current-team__inner">
           <view class="mine-current-team__logo">
@@ -54,7 +58,7 @@ function handleSwitchTeam(teamId: number) {
             <text v-else>{{ currentTeam.name.slice(0, 1) || "队" }}</text>
           </view>
           <view class="mine-current-team__copy">
-            <text class="mine-current-team__eyebrow">当前球队 · 轻点切换</text>
+            <text class="mine-current-team__eyebrow">当前球队</text>
             <text class="mine-current-team__name">{{ currentTeam.name }}</text>
             <text class="mine-current-team__meta">{{ currentTeam.myRoleLabel }} · {{ currentTeam.memberCount }} 人</text>
           </view>
@@ -123,6 +127,27 @@ function handleSwitchTeam(teamId: number) {
 
 .mine-current-team {
   margin-top: 18rpx;
+}
+
+/* 与下方「我的球队」标题同一套字号/字重，保持两个子区域视觉一致。 */
+.mine-current-team__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16rpx;
+  margin-bottom: 12rpx;
+}
+
+.mine-current-team__head-title {
+  color: var(--neo-color-text);
+  font-size: 27rpx;
+  font-weight: 900;
+}
+
+.mine-current-team__head-caption {
+  color: var(--neo-color-text-muted);
+  font-size: 21rpx;
+  font-weight: 700;
 }
 
 .mine-current-team__inner {
