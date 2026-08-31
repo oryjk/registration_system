@@ -1,6 +1,6 @@
 import { computed, ref } from "vue";
 import { onLoad, onShow } from "@dcloudio/uni-app";
-import { getAppTeamDetail, getTeamPasswordInfo, joinTeam, leaveTeam, type AppTeamDetailData } from "@/api/team";
+import { getAppTeamDetail, issueTeamInviteCode, leaveTeam, type AppTeamDetailData } from "@/api/team";
 import { createTeamMembershipOrder, syncGoPaymentOrder } from "@/api/payment";
 import { isMockWxPaymentParams, isPaymentCancelled, normalizeWxPaymentParams, requestWxPayment } from "@/utils/payment";
 import { useTeamContext } from "@/stores/teamContext";
@@ -63,6 +63,7 @@ export function useTeamDetailPage() {
     try {
       const detail = await getAppTeamDetail(teamId.value);
       team.value = detail;
+      if (detail.my_role) void loadInviteCode();
     } catch (error) {
       errorMessage.value = error instanceof Error ? error.message : "球队信息加载失败";
     } finally {
@@ -127,44 +128,17 @@ export function useTeamDetailPage() {
   const leaveDialogVisible = ref(false);
   // 非成员（my_role 为空）与队长不展示退出入口；队长需先移交或解散。
   const canLeaveTeam = computed(() => !!team.value?.my_role && team.value?.my_role !== "captain");
-  /** 分享落地等场景下查看球队详情的未入队用户：只展示球队信息与加入入口。 */
-  const isMember = computed(() => !!team.value?.my_role);
 
-  // 非成员申请加入：入队密码要求先查 password-info，再弹确认（需要时带密码输入）。
-  const joinDialogVisible = ref(false);
-  const joinRequiresPassword = ref(false);
-  const joinPassword = ref("");
-  const joining = ref(false);
+  // 分享邀请码：成员加载详情后预取（onShareAppMessage 是同步回调，不能现场请求）。
+  // 失败不影响页面，只是分享出去的落地页会提示邀请失效。
+  const inviteCode = ref("");
 
-  async function handleJoinClick() {
-    if (!team.value || joining.value) return;
-    joinPassword.value = "";
+  async function loadInviteCode() {
+    if (!team.value?.id) return;
     try {
-      joinRequiresPassword.value = (await getTeamPasswordInfo(team.value.id)).requires_password;
+      inviteCode.value = (await issueTeamInviteCode(team.value.id)).code;
     } catch {
-      joinRequiresPassword.value = false;
-      uni.showToast({ title: "密码信息加载失败，请重试", icon: "none" });
-      return;
-    }
-    joinDialogVisible.value = true;
-  }
-
-  async function handleJoinConfirm() {
-    if (!team.value || joining.value) return;
-    if (joinRequiresPassword.value && !joinPassword.value.trim()) {
-      uni.showToast({ title: "请输入入队密码", icon: "none" });
-      return;
-    }
-    joining.value = true;
-    try {
-      await joinTeam({ team_id: team.value.id, password: joinPassword.value.trim() || undefined });
-      joinDialogVisible.value = false;
-      await Promise.all([loadTeam(), refreshSessionContext()]);
-      uni.showToast({ title: "已加入球队", icon: "none" });
-    } catch (error) {
-      uni.showToast({ title: error instanceof Error ? error.message : "加入球队失败", icon: "none" });
-    } finally {
-      joining.value = false;
+      inviteCode.value = "";
     }
   }
 
@@ -203,13 +177,7 @@ export function useTeamDetailPage() {
     roleLabel,
     canManage,
     canLeaveTeam,
-    isMember,
-    joinDialogVisible,
-    joinRequiresPassword,
-    joinPassword,
-    joining,
-    handleJoinClick,
-    handleJoinConfirm,
+    inviteCode,
     leaveDialogVisible,
     handleLeaveTeamClick,
     handleLeaveTeamConfirm,

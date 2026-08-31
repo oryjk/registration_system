@@ -58,6 +58,13 @@
       }
     },
     {
+      "path": "pages/teams/invite/index",
+      "style": {
+        "navigationBarTitleText": "球队邀请",
+        "navigationStyle": "custom"
+      }
+    },
+    {
       "path": "pages/user/index",
       "style": {
         "navigationBarTitleText": "我的",

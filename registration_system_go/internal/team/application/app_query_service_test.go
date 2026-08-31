@@ -24,6 +24,7 @@ func TestAppQueryServiceRequiresActiveTeamMembership(t *testing.T) {
 		t.Fatalf("detail=%+v err=%v", detail, err)
 	}
 
+	// 球队详情仅限在队成员；分享落地走独立邀请链路（invite code），不放宽此接口。
 	repository.memberFound = false
 	if _, err := service.GetTeam(context.Background(), actor, 7); !errors.Is(err, sharederror.ErrForbidden) {
 		t.Fatalf("expected forbidden non-member, got %v", err)
@@ -63,12 +64,17 @@ func TestAppQueryServiceReturnsPrivacyMemberProjection(t *testing.T) {
 }
 
 type fakeAppQueryRepository struct {
-	team        domain.Team
-	teamFound   bool
-	member      domain.Member
-	memberFound bool
-	members     []ports.AppMember
-	err         error
+	team         domain.Team
+	teamFound    bool
+	member       domain.Member
+	memberFound  bool
+	members      []ports.AppMember
+	passwordHash *string
+	err          error
+}
+
+func (f *fakeAppQueryRepository) FindJoinPasswordHash(context.Context, int64) (*string, bool, error) {
+	return f.passwordHash, f.teamFound, f.err
 }
 
 func (f *fakeAppQueryRepository) FindByID(context.Context, int64) (domain.Team, bool, error) {

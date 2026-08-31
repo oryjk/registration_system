@@ -155,6 +155,8 @@ func BuildDependencies(ctx context.Context, config Config) (Dependencies, func()
 	notificationHandler := notificationhttp.NewHandler(notificationService)
 	appTeamSelfService := teamapplication.NewAppTeamSelfService(teamRepository, teampassword.Bcrypt{}, notificationService)
 	appTeamSelfHandler := teamhttp.NewAppSelfHandler(appTeamSelfService)
+	appTeamInviteService := teamapplication.NewAppInviteService(teamRepository, []byte(config.JWTSecret))
+	appTeamInviteHandler := teamhttp.NewAppInviteHandler(appTeamInviteService)
 	captainMessages := matchapplication.NewCaptainMessageService(matchRepository, matchRepository, teamService)
 	captainMessageHandler := matchhttp.NewCaptainMessageHandler(captainMessages)
 	teamFundRepository := teamfundpostgres.NewRepository(pool)
@@ -170,7 +172,7 @@ func BuildDependencies(ctx context.Context, config Config) (Dependencies, func()
 		WebviewCodes: webviewCodeHandler,
 		TestAuth:     testAuthHandler, H5TestLoginEnabled: config.H5TestLoginEnabled(),
 		UserProfiles: userProfileHandler, AppUsers: appUserHandler, ActiveUsers: appUserService, Teams: teamHandler, AppTeams: appTeamHandler,
-		AppTeamManage: appTeamManageHandler, AppTeamSelf: appTeamSelfHandler,
+		AppTeamManage: appTeamManageHandler, AppTeamSelf: appTeamSelfHandler, AppTeamInvites: appTeamInviteHandler,
 		UserMatches: userMatchHandler, UserRegistrations: userRegistrationHandler,
 		AdminMatches: adminMatchHandler, TeamApplications: teamApplicationHandler,
 		CaptainMessages: captainMessageHandler,

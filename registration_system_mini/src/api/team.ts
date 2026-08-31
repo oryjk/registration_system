@@ -166,6 +166,39 @@ export function getTeamPasswordInfo(teamId: number) {
   });
 }
 
+export interface AppTeamInviteCode {
+  code: string;
+  expires_at: string;
+}
+
+export interface AppTeamInviteView {
+  team_id: number;
+  name: string;
+  description?: string | null;
+  logo_url?: string | null;
+  requires_password: boolean;
+  is_member: boolean;
+}
+
+// 邀请码仅限在队成员签发（分享卡片用），7 天有效。
+export function issueTeamInviteCode(teamId: number) {
+  return requestApi<AppTeamInviteCode>({
+    url: `/teams/${teamId}/invite-code`,
+    auth: true,
+  });
+}
+
+// 凭邀请码换取球队公开信息；无效/过期码后端返回 forbidden。
+export function resolveTeamInviteCode(code: string) {
+  return requestApi<AppTeamInviteView>({
+    url: "/teams/invites/resolve",
+    method: "POST",
+    data: { code },
+    auth: true,
+  });
+}
+
+
 // password 非空=设置/替换入队密码；空串=清除（开放加入）。
 export function updateTeamJoinPassword(teamId: number, password: string) {
   return requestApi<void>({
