@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { ref } from "vue";
 import NeoSectionHeader from "@/components/neo/NeoSectionHeader.vue";
-import NeoSegmentedControl from "@/components/neo/NeoSegmentedControl.vue";
 import NeoSurface from "@/components/neo/NeoSurface.vue";
+import MineTeamSwitchSheet from "./MineTeamSwitchSheet.vue";
 import type { TeamProfileViewModel } from "@/types/viewModels";
 
 const props = defineProps<{
@@ -16,19 +16,20 @@ const emit = defineEmits<{
   (event: "manageTeam", teamId?: number): void;
 }>();
 
-const teamOptions = computed(() =>
-  props.teamProfiles.map((team) => ({
-    label: team.name,
-    value: String(team.id),
-    disabled: props.isSwitchingTeam,
-  })),
-);
-const useCompactTeamControl = computed(() => props.teamProfiles.length > 0 && props.teamProfiles.length <= 3);
+const isSwitchSheetVisible = ref(false);
 
-function handleSwitchTeam(value: string) {
+function openSwitchSheet() {
+  if (props.isSwitchingTeam || !props.teamProfiles.length) return;
+  isSwitchSheetVisible.value = true;
+}
+
+function handleSwitchTeam(teamId: number) {
   if (props.isSwitchingTeam) return;
-  const teamId = Number(value);
-  if (!Number.isFinite(teamId) || teamId === props.currentTeam?.id) return;
+  if (teamId === props.currentTeam?.id) {
+    isSwitchSheetVisible.value = false;
+    return;
+  }
+  isSwitchSheetVisible.value = false;
   emit("switchTeam", teamId);
 }
 </script>
@@ -39,8 +40,9 @@ function handleSwitchTeam(value: string) {
 
     <!-- mp-weixin 里 scoped 样式无法穿透 NeoSurface 组件隔离，custom-class 上的布局会失效；
          因此 flex 布局放在面板自己模板内的包裹 view 上，NeoSurface 用 flush 去掉默认内边距。 -->
+    <!-- 点击当前球队卡片弹出切换弹层；进入球队详情走下方「我的球队」列表，两个入口职责分开。 -->
     <view v-if="currentTeam" class="mine-current-team">
-      <NeoSurface interactive flush @press="emit('manageTeam', currentTeam.id)">
+      <NeoSurface interactive flush @press="openSwitchSheet">
         <view class="mine-current-team__inner">
           <view class="mine-current-team__logo">
             <image
@@ -52,7 +54,7 @@ function handleSwitchTeam(value: string) {
             <text v-else>{{ currentTeam.name.slice(0, 1) || "队" }}</text>
           </view>
           <view class="mine-current-team__copy">
-            <text class="mine-current-team__eyebrow">当前球队</text>
+            <text class="mine-current-team__eyebrow">当前球队 · 轻点切换</text>
             <text class="mine-current-team__name">{{ currentTeam.name }}</text>
             <text class="mine-current-team__meta">{{ currentTeam.myRoleLabel }} · {{ currentTeam.memberCount }} 人</text>
           </view>
@@ -68,35 +70,6 @@ function handleSwitchTeam(value: string) {
           <text class="mine-context-empty__copy">加入球队后可查看身份、比赛和球队信用。</text>
         </view>
       </NeoSurface>
-    </view>
-
-    <view v-if="teamProfiles.length > 1" class="mine-switch-group">
-      <text class="mine-switch-group__label">切换球队</text>
-      <NeoSegmentedControl
-        v-if="useCompactTeamControl"
-        :model-value="currentTeam ? String(currentTeam.id) : ''"
-        :options="teamOptions"
-        @change="handleSwitchTeam"
-      />
-      <scroll-view v-else class="mine-switch-scroll" scroll-x enhanced :show-scrollbar="false">
-        <view class="mine-switch-row">
-          <view
-            v-for="team in teamProfiles"
-            :key="team.id"
-            :class="[
-              'mine-switch-chip',
-              team.id === currentTeam?.id ? 'mine-switch-chip--active' : '',
-              isSwitchingTeam ? 'mine-switch-chip--disabled' : '',
-            ]"
-            :hover-class="isSwitchingTeam ? 'none' : 'mine-switch-chip--pressed'"
-            @tap="handleSwitchTeam(String(team.id))"
-          >
-            <text class="mine-switch-chip__role">{{ team.myRoleLabel }}</text>
-            <text class="mine-switch-chip__name">{{ team.name }}</text>
-          </view>
-        </view>
-      </scroll-view>
-      <text v-if="isSwitchingTeam" class="mine-switch-group__pending">球队数据切换中...</text>
     </view>
 
     <view v-if="teamProfiles.length" class="mine-manage-section">
@@ -123,6 +96,15 @@ function handleSwitchTeam(value: string) {
         </NeoSurface>
       </view>
     </view>
+
+    <MineTeamSwitchSheet
+      :visible="isSwitchSheetVisible"
+      :teams="teamProfiles"
+      :current-team-id="currentTeam?.id"
+      :is-switching="isSwitchingTeam"
+      @close="isSwitchSheetVisible = false"
+      @select="handleSwitchTeam"
+    />
   </view>
 </template>
 
@@ -230,80 +212,6 @@ function handleSwitchTeam(value: string) {
   color: var(--neo-color-text-muted);
   font-size: 23rpx;
   line-height: 1.5;
-}
-
-.mine-switch-group {
-  margin-top: 24rpx;
-}
-
-.mine-switch-group__label {
-  display: block;
-  margin-bottom: 10rpx;
-  color: var(--neo-color-text);
-  font-size: 24rpx;
-  font-weight: 900;
-}
-
-.mine-switch-group__pending {
-  display: block;
-  margin-top: 10rpx;
-  color: var(--neo-color-text-muted);
-  font-size: 22rpx;
-  font-weight: 700;
-}
-
-.mine-switch-scroll {
-  width: 100%;
-  white-space: nowrap;
-}
-
-.mine-switch-row {
-  display: inline-flex;
-  gap: 12rpx;
-  padding: 0 8rpx 8rpx 0;
-}
-
-.mine-switch-chip {
-  display: flex;
-  width: 222rpx;
-  min-height: 92rpx;
-  padding: 14rpx 16rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-surface);
-  box-shadow: 4rpx 4rpx 0 var(--neo-color-text);
-  flex-direction: column;
-  justify-content: center;
-  white-space: normal;
-  box-sizing: border-box;
-}
-
-.mine-switch-chip--active {
-  background: var(--neo-color-accent);
-}
-
-.mine-switch-chip--disabled {
-  opacity: 0.46;
-}
-
-.mine-switch-chip--pressed {
-  transform: translate(4rpx, 4rpx);
-  box-shadow: none;
-}
-
-.mine-switch-chip__role {
-  color: var(--neo-color-text-muted);
-  font-size: 20rpx;
-  font-weight: 800;
-}
-
-.mine-switch-chip__name {
-  margin-top: 4rpx;
-  color: var(--neo-color-text);
-  font-size: 25rpx;
-  font-weight: 900;
-  line-height: 1.25;
-  word-break: break-word;
 }
 
 .mine-manage-section {

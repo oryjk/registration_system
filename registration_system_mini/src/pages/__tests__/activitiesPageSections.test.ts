@@ -130,9 +130,10 @@ describe("activities page sections", () => {
     expect(minePageComposableSource.includes("switchIdentity")).toEqual(false);
     expect(identityPanelSource.includes("发布身份")).toEqual(false);
     expect(identityPanelSource.includes("switchIdentity")).toEqual(false);
-    // 切换球队入口保留。
+    // 切换球队入口保留：当前球队卡片打开底部切换弹层，进入详情走「我的球队」列表。
     expect(identityPanelSource.includes('emit("switchTeam", teamId)')).toEqual(true);
-    expect(identityPanelSource.includes("mine-switch-chip--active")).toEqual(true);
+    expect(identityPanelSource.includes("MineTeamSwitchSheet")).toEqual(true);
+    expect(identityPanelSource.includes("NeoSegmentedControl")).toEqual(false);
   });
 
   test("pickup publish page works without any team identity", async () => {
