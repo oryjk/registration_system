@@ -1,5 +1,5 @@
 import { DetailGrid, DetailItem } from "@/components/admin/detail-grid";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/admin/status-badge";
 import {
   Card,
   CardContent,
@@ -28,9 +28,9 @@ export default function AccessPage() {
             </DetailItem>
             <DetailItem label="账号状态">
               {admin?.status === "active" ? (
-                <Badge variant="success">已启用</Badge>
+                <StatusBadge label="已启用" variant="success" />
               ) : (
-                <Badge variant="warning">已冻结</Badge>
+                <StatusBadge label="已冻结" variant="warning" />
               )}
             </DetailItem>
             <DetailItem label="认证方式">Bearer JWT</DetailItem>

@@ -1206,11 +1206,5 @@ h3 {
   border-top-color: var(--primary);
   border-radius: 50%;
   content: "";
-  animation: workspace-loading-spin 0.8s linear infinite;
-}
-
-@keyframes workspace-loading-spin {
-  to {
-    transform: rotate(360deg);
-  }
+  animation: spin 0.8s linear infinite;
 }

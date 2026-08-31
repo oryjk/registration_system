@@ -2,8 +2,9 @@ import { useState } from "react";
 import { ConfirmPopover } from "@/components/admin/confirm-popover";
 import { DataTable, type DataTableColumn } from "@/components/admin/data-table";
 import { ErrorAlert } from "@/components/admin/error-alert";
+import { FilterSelect, ListToolbar } from "@/components/admin/list-toolbar";
 import { PaginationBar } from "@/components/admin/pagination-bar";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/admin/status-badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -12,13 +13,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   useMiniReviewStatusesQuery,
   useSetMiniReviewStatusMutation,
@@ -72,9 +66,9 @@ export default function MiniReviewPage() {
       width: 110,
       render: (item) =>
         item.is_reviewing ? (
-          <Badge variant="warning">审核中</Badge>
+          <StatusBadge label="审核中" variant="warning" />
         ) : (
-          <Badge variant="success">已通过</Badge>
+          <StatusBadge label="已通过" variant="success" />
         ),
     },
     { key: "status_text", title: "状态文案", width: 140 },
@@ -135,25 +129,25 @@ export default function MiniReviewPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="table-card-content">
-          <div className="list-toolbar">
-            <Select
-              value={projectCode}
+          <ListToolbar>
+            <FilterSelect
+              ariaLabel="筛选项目"
               onValueChange={(value) => {
                 setProjectCode(value);
                 setPage(1);
               }}
-            >
-              <SelectTrigger className="status-filter" style={{ width: 220 }}>
-                <SelectValue placeholder="全部项目" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">全部项目</SelectItem>
-                <SelectItem value="registration_system_mini">
-                  registration_system_mini
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+              options={[
+                { value: "all", label: "全部项目" },
+                {
+                  value: "registration_system_mini",
+                  label: "registration_system_mini",
+                },
+              ]}
+              placeholder="全部项目"
+              value={projectCode}
+              width="wide"
+            />
+          </ListToolbar>
 
           {error ? (
             <ErrorAlert

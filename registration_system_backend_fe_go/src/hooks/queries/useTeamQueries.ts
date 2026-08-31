@@ -11,6 +11,7 @@ import {
   getTeam,
   listTeamMemberCandidates,
   listTeamMembers,
+  listTeamOptions,
   listTeams,
   removeTeamMember,
   resetTeamJoinPassword,
@@ -101,6 +102,34 @@ export function useTeamMemberCandidatesQuery(
     queryFn: () => listTeamMemberCandidates(teamID || 0, normalizedSearch),
     enabled: Boolean(teamID) && enabled,
     retry: false,
+  });
+}
+
+/** 球队下拉的轻量选项列表（比赛表单选主队用）。 */
+export function useTeamOptionsQuery() {
+  return useQuery({
+    queryKey: queryKeys.teamOptions,
+    queryFn: listTeamOptions,
+    retry: false,
+  });
+}
+
+/**
+ * 发布比赛时快速创建尚不存在的球队。
+ * 与 useCreateTeamMutation 的区别：后者失效球队列表等重新拉取，
+ * 这里直接把新队插进 teamOptions 缓存，让表单能立刻选中，不等网络往返。
+ */
+export function useCreateTeamOptionMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (name: string) => createTeam({ name, description: null }),
+    onSuccess: (team) => {
+      queryClient.setQueryData<Team[]>(queryKeys.teamOptions, (current = []) =>
+        [...current.filter((item) => item.id !== team.id), team].sort(
+          (left, right) => left.name.localeCompare(right.name, "zh-CN"),
+        ),
+      );
+    },
   });
 }
 

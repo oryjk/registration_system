@@ -2,13 +2,8 @@ import { Crown, Pencil, Trash2, Wallet } from "lucide-react";
 import { ConfirmPopover } from "@/components/admin/confirm-popover";
 import { DataTable, type DataTableColumn } from "@/components/admin/data-table";
 import { MemberCell } from "@/components/admin/member-cell";
+import { RowActionButton, RowActions } from "@/components/admin/row-actions";
 import { StatusBadge } from "@/components/admin/status-badge";
-import { Button } from "@/components/ui/button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import type { TeamMember } from "@/types/team";
 import { formatDate, formatYuanAmount } from "@/utils/format";
 import {
@@ -106,22 +101,14 @@ export function TeamMemberTable({
         const isCaptain = member.role === "captain";
         const memberName = displayMemberName(member);
         return (
-          <div className="table-row-actions">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  aria-label={`给${memberName}充值队费`}
-                  disabled={actionKey === `credit-${member.user_id}`}
-                  onClick={() => onCredit(member)}
-                  size="icon"
-                  type="button"
-                  variant="ghost"
-                >
-                  <Wallet size={15} />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>队费充值</TooltipContent>
-            </Tooltip>
+          <RowActions>
+            <RowActionButton
+              disabled={actionKey === `credit-${member.user_id}`}
+              icon={<Wallet size={15} />}
+              label={`给${memberName}充值队费`}
+              onClick={() => onCredit(member)}
+              tip="队费充值"
+            />
             <ConfirmPopover
               cancelText="返回"
               confirmText="确认"
@@ -137,8 +124,7 @@ export function TeamMemberTable({
                   : `将${memberName}设为队长`
               }
             >
-              <Button
-                aria-label={`${isCaptain ? "取消" : "设置"}${memberName}为队长`}
+              <RowActionButton
                 className={
                   isCaptain ? "text-warning captain-action-current" : undefined
                 }
@@ -146,30 +132,18 @@ export function TeamMemberTable({
                   (!isCaptain && member.status !== "active") ||
                   actionKey === `captain-${member.user_id}`
                 }
-                size="icon"
-                type="button"
-                variant="ghost"
-              >
-                <Crown size={15} />
-              </Button>
+                icon={<Crown size={15} />}
+                label={`${isCaptain ? "取消" : "设置"}${memberName}为队长`}
+                onClick={() => {}}
+              />
             </ConfirmPopover>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  aria-label={`编辑${memberName}`}
-                  disabled={isCaptain || actionKey === `edit-${member.user_id}`}
-                  onClick={() => onEdit(member)}
-                  size="icon"
-                  type="button"
-                  variant="ghost"
-                >
-                  <Pencil size={15} />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                {isCaptain ? "请先取消或更换队长" : "编辑成员"}
-              </TooltipContent>
-            </Tooltip>
+            <RowActionButton
+              disabled={isCaptain || actionKey === `edit-${member.user_id}`}
+              icon={<Pencil size={15} />}
+              label={`编辑${memberName}`}
+              onClick={() => onEdit(member)}
+              tip={isCaptain ? "请先取消或更换队长" : "编辑成员"}
+            />
             <ConfirmPopover
               cancelText="返回"
               confirmText="移除"
@@ -178,18 +152,15 @@ export function TeamMemberTable({
               onConfirm={() => onRemove(member)}
               title={`移除${memberName}`}
             >
-              <Button
-                aria-label={`移除${memberName}`}
-                className="text-destructive"
+              <RowActionButton
+                destructive
                 disabled={isCaptain || actionKey === `remove-${member.user_id}`}
-                size="icon"
-                type="button"
-                variant="ghost"
-              >
-                <Trash2 size={15} />
-              </Button>
+                icon={<Trash2 size={15} />}
+                label={`移除${memberName}`}
+                onClick={() => {}}
+              />
             </ConfirmPopover>
-          </div>
+          </RowActions>
         );
       },
     },

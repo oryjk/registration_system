@@ -26,6 +26,7 @@ import {
   useUpdateTeamMemberMutation,
 } from "@/hooks/queries/useTeamQueries";
 import type { Team, TeamMember } from "@/types/team";
+import { errorMessage } from "@/utils/error-message";
 import {
   type AddMemberFormValues,
   AddTeamMemberModal,
@@ -46,10 +47,6 @@ interface TeamMemberManagerProps {
   team: Team | null;
   onClose: () => void;
   onTeamChange: (team: Team) => void;
-}
-
-function errorMessage(reason: unknown, fallback: string) {
-  return reason instanceof Error ? reason.message : fallback;
 }
 
 export function TeamMemberManager({
@@ -315,17 +312,19 @@ export function TeamMemberManager({
               />
             ) : null}
 
-            <TeamMemberTable
-              actionKey={actionKey}
-              loading={membersQuery.isFetching}
-              members={members}
-              onCaptainChange={(member, captain) =>
-                void changeCaptain(member, captain)
-              }
-              onCredit={openCredit}
-              onEdit={openEdit}
-              onRemove={(member) => void remove(member)}
-            />
+            <div className="member-table-panel">
+              <TeamMemberTable
+                actionKey={actionKey}
+                loading={membersQuery.isFetching}
+                members={members}
+                onCaptainChange={(member, captain) =>
+                  void changeCaptain(member, captain)
+                }
+                onCredit={openCredit}
+                onEdit={openEdit}
+                onRemove={(member) => void remove(member)}
+              />
+            </div>
           </div>
         </SheetContent>
       </Sheet>

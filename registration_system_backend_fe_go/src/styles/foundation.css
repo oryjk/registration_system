@@ -102,6 +102,7 @@
   --radius-overlay: 4px;
   /* 兼容旧页面选择器；新样式按 control / panel / overlay 使用语义圆角。 */
   --radius: var(--radius-control);
+  --font-weight-semibold: 600;
   --font-size-2xs: 11px;
   --font-size-xs: 12px;
   --font-size-sm: 13px;

@@ -27,6 +27,7 @@ import {
   useUpdateTeamMutation,
 } from "@/hooks/queries/useTeamQueries";
 import type { Team } from "@/types/team";
+import { errorMessage } from "@/utils/error-message";
 
 const teamSchema = z.object({
   name: z
@@ -39,10 +40,6 @@ const teamSchema = z.object({
 });
 
 type TeamFormValues = z.infer<typeof teamSchema>;
-
-function errorMessage(reason: unknown, fallback: string) {
-  return reason instanceof Error ? reason.message : fallback;
-}
 
 interface TeamFormDialogProps {
   open: boolean;

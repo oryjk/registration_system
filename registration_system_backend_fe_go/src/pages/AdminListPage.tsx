@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { DataTable, type DataTableColumn } from "@/components/admin/data-table";
 import { ErrorAlert } from "@/components/admin/error-alert";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/admin/status-badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -38,6 +38,7 @@ import {
   useCreateAdminMutation,
 } from "@/hooks/queries/useAdminQueries";
 import type { AdminUser } from "@/types/auth";
+import { errorMessage } from "@/utils/error-message";
 import { formatDateTime } from "@/utils/format";
 
 const createAdminSchema = z
@@ -56,10 +57,6 @@ const createAdminSchema = z
   });
 
 type CreateAdminFormValue = z.infer<typeof createAdminSchema>;
-
-function errorMessage(reason: unknown, fallback: string) {
-  return reason instanceof Error ? reason.message : fallback;
-}
 
 export default function AdminListPage() {
   const { currentAdmin } = useAdminSession();
@@ -117,9 +114,9 @@ export default function AdminListPage() {
       width: 140,
       render: (item) =>
         item.role === "super_admin" ? (
-          <Badge variant="warning">超级管理员</Badge>
+          <StatusBadge label="超级管理员" variant="warning" />
         ) : (
-          <Badge variant="success">场馆管理员</Badge>
+          <StatusBadge label="场馆管理员" variant="success" />
         ),
     },
     {
@@ -128,9 +125,9 @@ export default function AdminListPage() {
       width: 110,
       render: (item) =>
         item.status === "active" ? (
-          <Badge variant="success">已启用</Badge>
+          <StatusBadge label="已启用" variant="success" />
         ) : (
-          <Badge variant="warning">已冻结</Badge>
+          <StatusBadge label="已冻结" variant="warning" />
         ),
     },
     {

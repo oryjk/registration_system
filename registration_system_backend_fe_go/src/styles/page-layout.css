@@ -44,7 +44,22 @@
 }
 
 .match-search {
-  max-width: 260px;
+  width: 260px;
+  flex-shrink: 0;
+  height: var(--control-height);
+}
+
+/* select-trigger 的 width:100% 会让筛选下拉独占一行（Tailwind 分层工具类压不过
+ * 未分层的 primitives.css），这里显式收窄，保证与搜索框同排；
+ * 高度同样钉到 --control-height，与搜索框逐像素一致。 */
+.status-filter {
+  width: calc(var(--space-1) * 35);
+  height: var(--control-height);
+  flex-shrink: 0;
+}
+
+.status-filter.w-55 {
+  width: calc(var(--space-1) * 55);
 }
 
 /* ---------- 表单页 ---------- */
@@ -209,6 +224,126 @@
 
 /* ---------- Sheet 布局 ---------- */
 /* ---------- 表单提示与 Sheet 布局 ---------- */
+/* Sheet 底层是 Radix Dialog，但 shadcn 把 data-slot 改写成了 sheet-*，
+   不落入 foundation 的 dialog-* 外观组，定位与外观统一在此补齐。 */
+.sheet-overlay {
+  backdrop-filter: blur(4px);
+  background: var(--overlay-backdrop);
+  inset: 0;
+  position: fixed;
+  z-index: 50;
+}
+
+.sheet-overlay[data-state="open"] {
+  animation: sheet-fade-in 200ms ease-out;
+}
+
+.sheet-overlay[data-state="closed"] {
+  animation: sheet-fade-out 160ms ease-in;
+}
+
+.sheet-content {
+  background: var(--surface-panel-raised);
+  box-shadow: var(--shadow-overlay);
+  color: var(--foreground);
+  display: flex;
+  flex-direction: column;
+  max-width: 100vw;
+  position: fixed;
+  z-index: 50;
+}
+
+/* 目前只用到 side="right"，其余方向按需再补 */
+.sheet-content[data-side="right"] {
+  border-left: 1px solid var(--border-strong);
+  inset-block: 0;
+  right: 0;
+}
+
+.sheet-content[data-side="right"][data-state="open"] {
+  animation: sheet-slide-in-right 220ms ease-out;
+}
+
+.sheet-content[data-side="right"][data-state="closed"] {
+  animation: sheet-slide-out-right 180ms ease-in;
+}
+
+.sheet-header {
+  display: grid;
+  gap: var(--space-1);
+  /* 右侧给绝对定位的关闭按钮留位 */
+  padding: var(--space-4) var(--space-12) var(--space-4) var(--space-4);
+}
+
+/* 与 foundation 的 dialog-title/description 对应：Dialog 走 Tailwind 类，
+   Sheet 走自定义类，排版语义在此补齐。 */
+.sheet-title {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0;
+  line-height: var(--leading-none);
+}
+
+.sheet-description {
+  color: var(--muted);
+  font-size: var(--font-size-sm);
+}
+
+/* 预留：SheetFooter 暂无使用处，补上最小布局保持组件族完整 */
+.sheet-footer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: auto;
+  padding: var(--space-4);
+}
+
+.sheet-close-button {
+  align-items: center;
+  border-radius: var(--radius-control);
+  color: var(--muted);
+  cursor: pointer;
+  display: inline-flex;
+  height: var(--space-8);
+  justify-content: center;
+  position: absolute;
+  right: var(--space-4);
+  top: var(--space-4);
+  transition:
+    background-color 160ms ease,
+    color 160ms ease;
+  width: var(--space-8);
+}
+
+.sheet-close-button:hover {
+  background: var(--surface-hover);
+  color: var(--foreground);
+}
+
+@keyframes sheet-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes sheet-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes sheet-slide-in-right {
+  from {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes sheet-slide-out-right {
+  to {
+    transform: translateX(100%);
+  }
+}
+
 .sheet-header-row {
   display: flex;
   align-items: flex-start;
@@ -216,9 +351,14 @@
   gap: var(--space-3);
 }
 
+/* flex 列布局：摘要等区块按内容高度，表格面板用 flex:1 吃掉剩余空间，
+   避免内容少时底部留大片空白。 */
 .sheet-body {
-  display: grid;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
   gap: var(--space-3);
+  min-height: 0;
   overflow-y: auto;
   padding: 0 var(--space-4) var(--space-4);
 }
@@ -248,7 +388,7 @@
 .score-input-separator {
   padding-bottom: 0.5rem;
   font-weight: var(--font-weight-semibold);
-  color: var(--muted-foreground);
+  color: var(--muted);
 }
 
 .score-input-error {

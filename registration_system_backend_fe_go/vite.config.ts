@@ -12,7 +12,7 @@ function routePrefix(value: string | undefined) {
 }
 
 const base = routePrefix(process.env.ADMIN_PUBLIC_PATH);
-const apiProxyTarget = process.env.API_PROXY_TARGET || "http://127.0.0.1:18080";
+const apiProxyTarget = process.env.API_PROXY_TARGET || "http://127.0.0.1:18081";
 
 export default defineConfig({
   base,

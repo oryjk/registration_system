@@ -80,3 +80,6 @@ private.*.key
 
 # Go backend local uploads (avatars etc.)
 registration_system_go/uploads/
+
+# AI 工具本地数据
+.workbuddy/

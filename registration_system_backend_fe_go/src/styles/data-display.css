@@ -273,7 +273,7 @@
   border-top-color: var(--primary);
   border-radius: 50%;
   content: "";
-  animation: workspace-loading-spin 0.8s linear infinite;
+  animation: spin 0.8s linear infinite;
 }
 
 /* ---------- 列表单元格 ---------- */
@@ -304,18 +304,20 @@
 /* ---------- 成员信息 ---------- */
 /* ---------- 成员管理 ---------- */
 .member-summary {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  align-items: start;
+  display: flex;
   gap: var(--space-3);
 }
 
 .member-summary > div {
+  align-content: start;
   display: grid;
   gap: var(--space-1);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-panel);
   background: var(--surface-inset);
-  padding: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  width: 160px;
 }
 
 .member-summary span {
@@ -325,6 +327,15 @@
 
 .member-summary strong {
   font-size: var(--font-size-lg);
+}
+
+/* 撑满成员管理 Sheet 的剩余高度，表格自身在内部滚动。 */
+.member-table-panel {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  overflow: auto;
 }
 
 .member-identity {

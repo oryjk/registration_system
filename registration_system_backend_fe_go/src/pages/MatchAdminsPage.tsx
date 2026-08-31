@@ -1,8 +1,9 @@
-import { Search, ShieldCheck, ShieldOff } from "lucide-react";
+import { ShieldCheck, ShieldOff } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { DataTable, type DataTableColumn } from "@/components/admin/data-table";
 import { ErrorAlert } from "@/components/admin/error-alert";
+import { FilterSelect, ListToolbar } from "@/components/admin/list-toolbar";
 import { MemberCell } from "@/components/admin/member-cell";
 import { PaginationBar } from "@/components/admin/pagination-bar";
 import { StatusBadge } from "@/components/admin/status-badge";
@@ -15,14 +16,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   useSetMatchAdminMutation,
   useUnsetMatchAdminMutation,
@@ -157,44 +150,29 @@ export default function MatchAdminsPage() {
             } 人（勾选“只看已授权”查看）`}
           </CardDescription>
           <CardAction>
-            <div className="list-toolbar">
-              <Input
-                aria-label="搜索微信用户"
-                className="match-search"
-                onChange={(event) => setSearchDraft(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    updateQuery({ page: 1, search: searchDraft.trim() });
-                  }
-                }}
-                placeholder="搜索昵称、姓名、手机号或用户 ID"
-                value={searchDraft}
-              />
-              <Button
-                onClick={() =>
-                  updateQuery({ page: 1, search: searchDraft.trim() })
-                }
-                type="button"
-                variant="outline"
-              >
-                <Search size={15} />
-                搜索
-              </Button>
-              <Select
-                value={query.match_admin_only ? "admin" : "all"}
+            <ListToolbar
+              search={{
+                ariaLabel: "搜索微信用户",
+                onValueChange: (value) => setSearchDraft(value),
+                onSubmit: () =>
+                  updateQuery({ page: 1, search: searchDraft.trim() }),
+                placeholder: "搜索昵称、姓名、手机号或用户 ID",
+                value: searchDraft,
+              }}
+            >
+              <FilterSelect
+                ariaLabel="筛选授权状态"
                 onValueChange={(value) =>
                   updateQuery({ page: 1, match_admin_only: value === "admin" })
                 }
-              >
-                <SelectTrigger className="status-filter" style={{ width: 140 }}>
-                  <SelectValue placeholder="全部用户" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">全部用户</SelectItem>
-                  <SelectItem value="admin">只看已授权</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+                options={[
+                  { value: "all", label: "全部用户" },
+                  { value: "admin", label: "只看已授权" },
+                ]}
+                placeholder="全部用户"
+                value={query.match_admin_only ? "admin" : "all"}
+              />
+            </ListToolbar>
           </CardAction>
         </CardHeader>
         <CardContent className="table-card-content">

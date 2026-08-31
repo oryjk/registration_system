@@ -4,7 +4,10 @@ import { ConfirmPopover } from "@/components/admin/confirm-popover";
 import { DataTable, type DataTableColumn } from "@/components/admin/data-table";
 import { DetailGrid, DetailItem } from "@/components/admin/detail-grid";
 import { ErrorAlert } from "@/components/admin/error-alert";
+import { FilterSelect, ListToolbar } from "@/components/admin/list-toolbar";
 import { MemberCell, NameCell } from "@/components/admin/member-cell";
+import { RouteLoading } from "@/components/admin/route-loading";
+import { RowActionButton, RowActions } from "@/components/admin/row-actions";
 import { StatusBadge } from "@/components/admin/status-badge";
 import { TeamMemberManager } from "@/components/TeamMemberManager";
 import { Button } from "@/components/ui/button";
@@ -16,14 +19,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Sheet,
   SheetContent,
@@ -32,11 +27,6 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
   useDeleteTeamMutation,
   useTeamQuery,
   useTeamsQuery,
@@ -44,6 +34,7 @@ import {
 import { JoinPasswordDialog } from "@/pages/team-list/JoinPasswordDialog";
 import { TeamFormDialog } from "@/pages/team-list/TeamFormDialog";
 import type { Team, TeamStatus } from "@/types/team";
+import { errorMessage } from "@/utils/error-message";
 import { formatDateTime } from "@/utils/format";
 
 const statusLabels: Record<TeamStatus, string> = {
@@ -62,10 +53,6 @@ function sortTeams(items: Team[]) {
   return [...items].sort((left, right) =>
     left.name.localeCompare(right.name, "zh-CN"),
   );
-}
-
-function errorMessage(reason: unknown, fallback: string) {
-  return reason instanceof Error ? reason.message : fallback;
 }
 
 function CaptainCell({ team }: { team: Team }) {
@@ -172,66 +159,34 @@ export default function TeamListPage() {
       title: "操作",
       width: 216,
       render: (team) => (
-        <div className="table-row-actions">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                aria-label={`查看${team.name}`}
-                onClick={() => setDetailID(team.id)}
-                size="icon"
-                type="button"
-                variant="ghost"
-              >
-                <Eye size={15} />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>查看球队</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                aria-label={`管理${team.name}成员`}
-                onClick={() => {
-                  setDetailID(null);
-                  setMemberTeam(team);
-                }}
-                size="icon"
-                type="button"
-                variant="ghost"
-              >
-                <Users size={15} />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>管理成员</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                aria-label={`编辑${team.name}`}
-                onClick={() => openEdit(team)}
-                size="icon"
-                type="button"
-                variant="ghost"
-              >
-                <Pencil size={15} />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>编辑球队</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                aria-label={`重置${team.name}入队密码`}
-                onClick={() => setPasswordTeam(team)}
-                size="icon"
-                type="button"
-                variant="ghost"
-              >
-                <KeyRound size={15} />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>重置入队密码</TooltipContent>
-          </Tooltip>
+        <RowActions>
+          <RowActionButton
+            icon={<Eye size={15} />}
+            label={`查看${team.name}`}
+            onClick={() => setDetailID(team.id)}
+            tip="查看球队"
+          />
+          <RowActionButton
+            icon={<Users size={15} />}
+            label={`管理${team.name}成员`}
+            onClick={() => {
+              setDetailID(null);
+              setMemberTeam(team);
+            }}
+            tip="管理成员"
+          />
+          <RowActionButton
+            icon={<Pencil size={15} />}
+            label={`编辑${team.name}`}
+            onClick={() => openEdit(team)}
+            tip="编辑球队"
+          />
+          <RowActionButton
+            icon={<KeyRound size={15} />}
+            label={`重置${team.name}入队密码`}
+            onClick={() => setPasswordTeam(team)}
+            tip="重置入队密码"
+          />
           <ConfirmPopover
             confirmText="永久删除"
             destructive
@@ -239,18 +194,15 @@ export default function TeamListPage() {
             onConfirm={() => void removeTeam(team)}
             title={`永久删除“${team.name}”`}
           >
-            <Button
-              aria-label={`删除${team.name}`}
-              className="text-destructive"
+            <RowActionButton
+              destructive
               disabled={deletingID === team.id}
-              size="icon"
-              type="button"
-              variant="ghost"
-            >
-              <Trash2 size={15} />
-            </Button>
+              icon={<Trash2 size={15} />}
+              label={`删除${team.name}`}
+              onClick={() => {}}
+            />
           </ConfirmPopover>
-        </div>
+        </RowActions>
       ),
     },
   ];
@@ -275,28 +227,28 @@ export default function TeamListPage() {
           </CardAction>
         </CardHeader>
         <CardContent className="table-card-content">
-          <div className="list-toolbar">
-            <Input
-              aria-label="搜索球队"
-              className="match-search"
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="搜索球队名称或简介"
-              value={search}
+          <ListToolbar
+            search={{
+              ariaLabel: "搜索球队",
+              onValueChange: (value) => setSearch(value),
+              placeholder: "搜索球队名称或简介",
+              value: search,
+            }}
+          >
+            <FilterSelect
+              ariaLabel="筛选球队状态"
+              onValueChange={(value) => setStatus(value)}
+              options={[
+                { value: "all", label: "全部状态" },
+                ...Object.entries(statusLabels).map(([value, label]) => ({
+                  value,
+                  label,
+                })),
+              ]}
+              placeholder="全部状态"
+              value={status}
             />
-            <Select value={status} onValueChange={(value) => setStatus(value)}>
-              <SelectTrigger className="status-filter" style={{ width: 140 }}>
-                <SelectValue placeholder="全部状态" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">全部状态</SelectItem>
-                {Object.entries(statusLabels).map(([value, label]) => (
-                  <SelectItem key={value} value={value}>
-                    {label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          </ListToolbar>
 
           {visibleError ? (
             <ErrorAlert
@@ -363,13 +315,7 @@ export default function TeamListPage() {
                 onRetry={() => void detailQuery.refetch()}
               />
             ) : null}
-            {detailQuery.isFetching && !detail ? (
-              <div
-                aria-label="加载中"
-                className="route-loading"
-                role="status"
-              />
-            ) : null}
+            {detailQuery.isFetching && !detail ? <RouteLoading /> : null}
             {detail ? (
               <DetailGrid single>
                 <DetailItem label="球队名称">{detail.name}</DetailItem>

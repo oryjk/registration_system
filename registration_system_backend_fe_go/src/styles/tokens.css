@@ -1,6 +1,9 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  /* 间距刻度锚定 foundation 的 --space-1（4px），与 Tailwind 默认 0.25rem 等价，
+     因此 p-4 = --space-4、w-35 = 140px，改密度只需调 --space-1 一处。 */
+  --spacing: var(--space-1);
   --radius-sm: var(--radius-control);
   --radius-md: var(--radius-panel);
   --radius-lg: var(--radius-overlay);

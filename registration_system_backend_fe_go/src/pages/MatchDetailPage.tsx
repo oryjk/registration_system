@@ -6,6 +6,7 @@ import { DataTable, type DataTableColumn } from "@/components/admin/data-table";
 import { DetailGrid, DetailItem } from "@/components/admin/detail-grid";
 import { ErrorAlert } from "@/components/admin/error-alert";
 import { MemberCell } from "@/components/admin/member-cell";
+import { RouteLoading } from "@/components/admin/route-loading";
 import { StatusBadge } from "@/components/admin/status-badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -392,9 +393,7 @@ export default function MatchDetailPage() {
             />
           ) : null}
 
-          {detailQuery.isLoading ? (
-            <div aria-label="加载中" className="route-loading" role="status" />
-          ) : null}
+          {detailQuery.isLoading ? <RouteLoading /> : null}
 
           {match ? (
             <DetailGrid>

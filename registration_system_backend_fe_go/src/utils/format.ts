@@ -3,7 +3,7 @@
  * 页面不得再各自定义 Intl 格式化（历史上 formatDateTime 曾重复 6 处）。
  */
 
-function toDate(value: string | null | undefined): Date | null {
+function toDate(value: string | Date | null | undefined): Date | null {
   if (!value) return null;
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? null : date;
@@ -54,6 +54,18 @@ export function formatDate(value: string | null | undefined) {
   const date = toDate(value);
   return date
     ? new Intl.DateTimeFormat("zh-CN", { dateStyle: "medium" }).format(date)
+    : "-";
+}
+
+/** 时分秒（14:05:30），仪表盘「最近检查」等需要秒级精度的时间点用。 */
+export function formatClockTime(value: string | Date | null | undefined) {
+  const date = toDate(value);
+  return date
+    ? new Intl.DateTimeFormat("zh-CN", {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      }).format(date)
     : "-";
 }
 

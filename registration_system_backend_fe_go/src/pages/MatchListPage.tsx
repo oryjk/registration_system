@@ -1,11 +1,13 @@
-import { Eye, Plus, Search, Square, Trash2 } from "lucide-react";
+import { Eye, Plus, Square, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { ConfirmPopover } from "@/components/admin/confirm-popover";
 import { DataTable, type DataTableColumn } from "@/components/admin/data-table";
 import { ErrorAlert } from "@/components/admin/error-alert";
+import { FilterSelect, ListToolbar } from "@/components/admin/list-toolbar";
 import { NameCell } from "@/components/admin/member-cell";
 import { PaginationBar } from "@/components/admin/pagination-bar";
+import { RowActionButton, RowActions } from "@/components/admin/row-actions";
 import { StatusBadge } from "@/components/admin/status-badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,19 +18,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { useAdminSession } from "@/features/admin-session/useAdminSession";
 import {
   useDeleteMatchMutation,
@@ -135,21 +124,13 @@ export default function MatchListPage() {
       title: "操作",
       width: isSuperAdmin ? 150 : 104,
       render: (item) => (
-        <div className="table-row-actions">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                aria-label={`查看${item.name}`}
-                onClick={() => navigate(`/matches/${item.id}`)}
-                size="icon"
-                type="button"
-                variant="ghost"
-              >
-                <Eye size={15} />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>查看比赛</TooltipContent>
-          </Tooltip>
+        <RowActions>
+          <RowActionButton
+            icon={<Eye size={15} />}
+            label={`查看${item.name}`}
+            onClick={() => navigate(`/matches/${item.id}`)}
+            tip="查看比赛"
+          />
           {item.status === "registering" || item.status === "ongoing" ? (
             <ConfirmPopover
               confirmText="确认取消"
@@ -157,15 +138,12 @@ export default function MatchListPage() {
               onConfirm={() => void cancelMatch(item)}
               title={`取消“${item.name}”`}
             >
-              <Button
-                aria-label={`取消${item.name}`}
+              <RowActionButton
                 disabled={actionKey === `cancel:${item.id}`}
-                size="icon"
-                type="button"
-                variant="ghost"
-              >
-                <Square size={15} />
-              </Button>
+                icon={<Square size={15} />}
+                label={`取消${item.name}`}
+                onClick={() => {}}
+              />
             </ConfirmPopover>
           ) : null}
           {isSuperAdmin ? (
@@ -176,19 +154,16 @@ export default function MatchListPage() {
               onConfirm={() => void removeMatch(item)}
               title={`永久删除“${item.name}”`}
             >
-              <Button
-                aria-label={`删除${item.name}`}
-                className="text-destructive"
+              <RowActionButton
+                destructive
                 disabled={actionKey === `delete:${item.id}`}
-                size="icon"
-                type="button"
-                variant="ghost"
-              >
-                <Trash2 size={15} />
-              </Button>
+                icon={<Trash2 size={15} />}
+                label={`删除${item.name}`}
+                onClick={() => {}}
+              />
             </ConfirmPopover>
           ) : null}
-        </div>
+        </RowActions>
       ),
     },
   ];
@@ -211,31 +186,18 @@ export default function MatchListPage() {
           </CardAction>
         </CardHeader>
         <CardContent className="table-card-content">
-          <div className="list-toolbar">
-            <Input
-              aria-label="搜索比赛"
-              className="match-search"
-              onChange={(event) => setSearchDraft(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  updateQuery({ page: 1, search: searchDraft.trim() });
-                }
-              }}
-              placeholder="搜索比赛、场地或主队"
-              value={searchDraft}
-            />
-            <Button
-              onClick={() =>
-                updateQuery({ page: 1, search: searchDraft.trim() })
-              }
-              type="button"
-              variant="outline"
-            >
-              <Search size={15} />
-              搜索
-            </Button>
-            <Select
-              value={query.status || "all"}
+          <ListToolbar
+            search={{
+              ariaLabel: "搜索比赛",
+              onValueChange: (value) => setSearchDraft(value),
+              onSubmit: () =>
+                updateQuery({ page: 1, search: searchDraft.trim() }),
+              placeholder: "搜索比赛、场地或主队",
+              value: searchDraft,
+            }}
+          >
+            <FilterSelect
+              ariaLabel="筛选比赛状态"
               onValueChange={(value) =>
                 updateQuery({
                   page: 1,
@@ -245,20 +207,17 @@ export default function MatchListPage() {
                       : (value as MatchListQuery["status"]),
                 })
               }
-            >
-              <SelectTrigger className="status-filter" style={{ width: 140 }}>
-                <SelectValue placeholder="全部状态" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">全部状态</SelectItem>
-                {Object.entries(matchStatusLabels).map(([value, label]) => (
-                  <SelectItem key={value} value={value}>
-                    {label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+              options={[
+                { value: "all", label: "全部状态" },
+                ...Object.entries(matchStatusLabels).map(([value, label]) => ({
+                  value,
+                  label,
+                })),
+              ]}
+              placeholder="全部状态"
+              value={query.status || "all"}
+            />
+          </ListToolbar>
 
           {error ? (
             <ErrorAlert

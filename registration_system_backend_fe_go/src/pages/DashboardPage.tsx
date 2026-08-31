@@ -15,16 +15,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useHealthQuery } from "@/hooks/queries/useSystemQueries";
-
-function formatTime(value: Date | undefined) {
-  return value
-    ? new Intl.DateTimeFormat("zh-CN", {
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-      }).format(value)
-    : "--";
-}
+import { formatClockTime } from "@/utils/format";
 
 export default function DashboardPage() {
   const health = useHealthQuery();
@@ -77,7 +68,7 @@ export default function DashboardPage() {
             </div>
             <div className="status-cell">
               <span>最近检查</span>
-              <strong>{formatTime(health.data?.checkedAt)}</strong>
+              <strong>{formatClockTime(health.data?.checkedAt)}</strong>
             </div>
           </section>
 

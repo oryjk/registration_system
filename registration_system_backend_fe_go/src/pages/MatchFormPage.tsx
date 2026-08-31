@@ -1,12 +1,11 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
 import { ArrowLeft } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useNavigate, useParams } from "react-router";
-import { createTeam, listTeamOptions } from "@/api/teams";
 import { ErrorAlert } from "@/components/admin/error-alert";
+import { RouteLoading } from "@/components/admin/route-loading";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -18,19 +17,21 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Form } from "@/components/ui/form";
-import { queryKeys } from "@/hooks/queries/keys";
 import {
   useCreateMatchMutation,
   useMatchQuery,
   useUpdateMatchMutation,
 } from "@/hooks/queries/useMatchQueries";
+import {
+  useCreateTeamOptionMutation,
+  useTeamOptionsQuery,
+} from "@/hooks/queries/useTeamQueries";
 import { BasicSection } from "@/pages/match-form/basic-section";
 import { ScheduleSection } from "@/pages/match-form/schedule-section";
 import {
   type MatchFormValues,
   matchFormSchema,
 } from "@/pages/match-form/schema";
-import type { Team } from "@/types/team";
 import {
   buildCreateMatchPayload,
   buildUpdateMatchPayload,
@@ -57,25 +58,11 @@ export default function MatchFormPage() {
   const [confirmTeamName, setConfirmTeamName] = useState("");
   const pendingTeamName = useRef("");
   const formRef = useRef<HTMLFormElement>(null);
-  const queryClient = useQueryClient();
   const detailQuery = useMatchQuery(id || "");
-  const teamsQuery = useQuery({
-    queryKey: queryKeys.teamOptions,
-    queryFn: listTeamOptions,
-    retry: false,
-  });
+  const teamsQuery = useTeamOptionsQuery();
   const createMutation = useCreateMatchMutation();
   const updateMutation = useUpdateMatchMutation();
-  const createTeamMutation = useMutation({
-    mutationFn: (name: string) => createTeam({ name, description: null }),
-    onSuccess: (team) => {
-      queryClient.setQueryData<Team[]>(queryKeys.teamOptions, (current = []) =>
-        [...current.filter((item) => item.id !== team.id), team].sort(
-          (left, right) => left.name.localeCompare(right.name, "zh-CN"),
-        ),
-      );
-    },
-  });
+  const createTeamMutation = useCreateTeamOptionMutation();
   const teams = teamsQuery.data || [];
   const submitting = createMutation.isPending || updateMutation.isPending;
   const loading = detailQuery.isLoading || teamsQuery.isLoading;
@@ -267,9 +254,7 @@ export default function MatchFormPage() {
             />
           ) : null}
 
-          {loading ? (
-            <div aria-label="加载中" className="route-loading" role="status" />
-          ) : null}
+          {loading ? <RouteLoading /> : null}
 
           {!loading && (!editing || match) ? (
             <Form {...form}>

@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import type { TeamMember } from "@/types/team";
-import { formatYuanAmount } from "@/utils/format";
+import { formatYuan, formatYuanAmount } from "@/utils/format";
 import { displayMemberName } from "./team-member-display";
 
 export interface CreditTeamFundFormValues {
@@ -38,7 +38,8 @@ const creditSchema = z.object({
     .number({ invalid_type_error: "请输入充值金额" })
     .positive({ message: "充值金额需要大于 0" })
     .max(MAX_CREDIT_YUAN, {
-      message: `单笔手动充值不能超过 ¥${MAX_CREDIT_YUAN.toLocaleString("zh-CN")}，更大金额请拆分多笔`,
+      // MAX_CREDIT_YUAN 单位为元，formatYuan 接受分，故乘 100 对齐。
+      message: `单笔手动充值不能超过 ${formatYuan(MAX_CREDIT_YUAN * 100)}，更大金额请拆分多笔`,
     }),
   note: z.string().max(120, { message: "备注不能超过 120 个字符" }),
 });
