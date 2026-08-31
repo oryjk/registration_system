@@ -6,7 +6,7 @@ import NeoButton from "@/components/neo/NeoButton.vue";
 import NeoSurface from "@/components/neo/NeoSurface.vue";
 import NeoConfirmDialog from "@/components/neo/NeoConfirmDialog.vue";
 import NeoTag from "@/components/neo/NeoTag.vue";
-import { DEFAULT_SHARE_IMAGE_URL } from "@/utils/share";
+import { TEAM_INVITE_SHARE_IMAGE_URL } from "@/utils/share";
 import { useTeamDetailPage } from "./useTeamDetailPage";
 
 const { themePageStyle } = useAccentTheme();
@@ -35,11 +35,11 @@ const {
 } = useTeamDetailPage();
 
 // 分享邀请：落地到独立邀请页（带邀请码），非成员凭码查看球队并申请加入。
-// 缩略图用统一封面：默认截图会带上分享人的队内余额，属敏感信息。
+// 缩略图用拉新专用封面：默认截图会带上分享人的队内余额，属敏感信息。
 onShareAppMessage(() => ({
   title: team.value ? `邀请你加入球队「${team.value.name}」` : "邀请你加入球队",
   path: `/pages/teams/invite/index?code=${encodeURIComponent(inviteCode.value)}`,
-  imageUrl: DEFAULT_SHARE_IMAGE_URL,
+  imageUrl: TEAM_INVITE_SHARE_IMAGE_URL,
 }));
 
 onShareTimeline(() => ({
@@ -116,14 +116,18 @@ onShareTimeline(() => ({
           </NeoButton>
         </NeoSurface>
 
-        <!-- 邀请球友：open-type=share 触发与右上角菜单相同的分享配置；比右上角入口更易发现，方便队长拉新。 -->
-        <NeoSurface variant="raised" custom-class="invite-card">
-          <view class="invite-head">
+        <!-- 邀请球友（拉新）：open-type=share 触发与右上角菜单相同的分享配置；比右上角入口更易发现，方便队长拉新。 -->
+        <NeoSurface variant="dark" custom-class="invite-card">
+          <view class="invite-hero">
+            <view class="invite-kicker">
+              <text class="invite-kicker__text">人越多，越好玩！</text>
+            </view>
             <text class="invite-title">邀请球友加入</text>
-            <text class="invite-copy">把邀请卡片分享给球友，点开即可申请加入{{ team.name }}，7 天内有效。</text>
+            <text class="invite-copy">分享邀请卡片给球友，点开即可申请加入{{ team.name }}，7 天内有效。</text>
           </view>
           <button class="invite-share-button" open-type="share" hover-class="invite-share-button--pressed">
             <text class="invite-share-button__text">分享邀请，拉球友入队</text>
+            <text class="invite-share-button__arrow">↗</text>
           </button>
         </NeoSurface>
 
@@ -366,31 +370,49 @@ onShareTimeline(() => ({
   transform: translateX(-50%);
 }
 /* #endif */
-</style>
 
 .leave-card {
   margin-top: 0;
 }
 
+/* 拉新卡片：深底 hero 卡片 + 青柠错位阴影，与 team-manage-hero 同一 neo 语言。 */
 :deep(.invite-card) {
   padding: 28rpx;
+  background: var(--neo-color-hero);
+  box-shadow: 8rpx 8rpx 0 var(--neo-color-accent);
 }
 
-.invite-head {
+.invite-hero {
   display: flex;
   flex-direction: column;
-  gap: 8rpx;
-  margin-bottom: 20rpx;
+  align-items: flex-start;
+  gap: 14rpx;
+  margin-bottom: 26rpx;
+}
+
+.invite-kicker {
+  padding: 6rpx 16rpx;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-accent);
+}
+
+.invite-kicker__text {
+  color: var(--neo-color-text);
+  font-size: 22rpx;
+  font-weight: 900;
+  letter-spacing: 2rpx;
 }
 
 .invite-title {
-  color: var(--neo-color-text);
-  font-size: 32rpx;
+  color: var(--neo-color-text-inverse);
+  font-size: 40rpx;
   font-weight: 950;
+  line-height: 1.2;
 }
 
 .invite-copy {
-  color: var(--neo-color-text-muted);
+  color: rgba(255, 255, 255, 0.72);
   font-size: 24rpx;
   line-height: 1.5;
   font-weight: 700;
@@ -401,6 +423,7 @@ onShareTimeline(() => ({
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 10rpx;
   width: 100%;
   min-height: 88rpx;
   margin: 0;
@@ -408,7 +431,7 @@ onShareTimeline(() => ({
   border: var(--neo-border-strong);
   border-radius: var(--neo-radius-sm);
   background: var(--neo-color-accent);
-  box-shadow: 4rpx 4rpx 0 var(--neo-color-text);
+  box-shadow: 4rpx 4rpx 0 var(--neo-color-surface);
   box-sizing: border-box;
   line-height: 1;
 }
@@ -424,7 +447,13 @@ onShareTimeline(() => ({
 
 .invite-share-button__text {
   color: var(--neo-color-text);
-  font-size: 28rpx;
+  font-size: 30rpx;
+  font-weight: 900;
+}
+
+.invite-share-button__arrow {
+  color: var(--neo-color-text);
+  font-size: 34rpx;
   font-weight: 900;
 }
 
@@ -447,3 +476,4 @@ onShareTimeline(() => ({
   color: var(--neo-color-text-muted);
   line-height: 1.5;
 }
+</style>
