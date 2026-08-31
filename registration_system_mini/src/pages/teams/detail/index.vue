@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { onShareAppMessage, onShareTimeline } from "@dcloudio/uni-app";
 import { useAccentTheme } from "@/stores/theme";
 import AppTabHeader from "@/components/AppTabHeader.vue";
 import NeoButton from "@/components/neo/NeoButton.vue";
@@ -21,7 +22,14 @@ const {
   roleLabel,
   canManage,
   canLeaveTeam,
+  isMember,
+  joinDialogVisible,
+  joinRequiresPassword,
+  joinPassword,
+  joining,
   leaveDialogVisible,
+  handleJoinClick,
+  handleJoinConfirm,
   handleLeaveTeamClick,
   handleLeaveTeamConfirm,
   totalPriceLabel,
@@ -30,6 +38,17 @@ const {
   openTeamManage,
   handleMembershipPayment,
 } = useTeamDetailPage();
+
+// 分享邀请：落地仍是本页（带 teamId），非成员会看到「申请加入」卡片。
+onShareAppMessage(() => ({
+  title: team.value ? `邀请你加入球队「${team.value.name}」` : "邀请你加入球队",
+  path: `/pages/teams/detail/index?teamId=${team.value?.id ?? ""}&invite=1`,
+}));
+
+onShareTimeline(() => ({
+  title: team.value ? `邀请你加入球队「${team.value.name}」` : "邀请你加入球队",
+  query: `teamId=${team.value?.id ?? ""}&invite=1`,
+}));
 </script>
 
 <template>
@@ -51,13 +70,26 @@ const {
             <view class="hero-badge">{{ team.name.slice(0, 1) || "队" }}</view>
             <view class="hero-copy">
               <text class="hero-title">{{ team.name }}</text>
-              <text class="hero-meta">{{ roleLabel }} · 信用分 {{ team.credit_score }}</text>
+              <text class="hero-meta">{{ isMember ? roleLabel : "非本队成员" }} · 信用分 {{ team.credit_score }}</text>
             </view>
             <NeoTag :tone="team.is_vip ? 'lime' : 'amber'" size="lg">{{ membershipLabel }}</NeoTag>
           </view>
         </view>
 
-        <view class="recharge-card">
+        <!-- 非成员（分享落地等场景）：只提供申请加入，不展示队费/管理/退出等成员区块。 -->
+        <NeoSurface v-if="!isMember" variant="raised" custom-class="join-card">
+          <view class="join-head">
+            <text class="join-title">申请加入「{{ team.name }}」</text>
+            <text class="join-copy">
+              {{ team.description || "加入后即可报名本球队的队内比赛。" }}
+            </text>
+          </view>
+          <NeoButton block :loading="joining" :disabled="joining" @click="handleJoinClick">
+            {{ joining ? "加入中..." : "申请加入" }}
+          </NeoButton>
+        </NeoSurface>
+
+        <view v-else class="recharge-card">
           <view class="balance-hero">
             <text class="balance-hero-label">我的队内余额</text>
             <view class="balance-hero-amount">
@@ -112,6 +144,32 @@ const {
         </NeoSurface>
       </template>
     </view>
+
+    <!-- 申请加入：二次确认；球队设置了入队密码时附带密码输入（样式沿用比赛加入弹层）。 -->
+    <NeoConfirmDialog
+      :visible="joinDialogVisible"
+      title="加入球队"
+      :message="joinRequiresPassword
+        ? `「${team?.name ?? '该球队'}」设置了入队密码，输入密码即可加入。`
+        : `加入「${team?.name ?? '该球队'}」后即可报名本球队的队内比赛。`"
+      :primary-disabled="joinRequiresPassword && !joinPassword.trim()"
+      primary-text="确认加入"
+      :loading="joining"
+      @primary="void handleJoinConfirm()"
+      @secondary="joinDialogVisible = false"
+      @close="!joining && (joinDialogVisible = false)"
+    >
+      <view v-if="joinRequiresPassword" class="join-password-field">
+        <input
+          v-model="joinPassword"
+          class="join-password-input"
+          type="safe-password"
+          password
+          placeholder="输入入队密码"
+          :disabled="joining"
+        />
+      </view>
+    </NeoConfirmDialog>
 
     <!-- 退出球队：二次确认；余额不为零在入口即拦截，后端同样校验。 -->
     <NeoConfirmDialog
@@ -303,6 +361,46 @@ const {
 
 :deep(.manage-card) {
   padding: 28rpx;
+}
+
+:deep(.join-card) {
+  padding: 28rpx;
+}
+
+.join-head {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+  margin-bottom: 20rpx;
+}
+
+.join-title {
+  color: var(--neo-color-text);
+  font-size: 32rpx;
+  font-weight: 950;
+}
+
+.join-copy {
+  color: var(--neo-color-text-muted);
+  font-size: 24rpx;
+  line-height: 1.5;
+  font-weight: 700;
+}
+
+.join-password-field {
+  margin-top: 26rpx;
+}
+
+.join-password-input {
+  box-sizing: border-box;
+  width: 100%;
+  height: 92rpx;
+  padding: 0 24rpx;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-page);
+  font-size: 28rpx;
+  color: var(--neo-color-text);
 }
 
 .manage-head {
