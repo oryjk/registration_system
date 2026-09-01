@@ -5,11 +5,13 @@ import { useTeamContext } from "@/stores/teamContext";
 import { useMiniReviewStatus } from "@/stores/miniReview";
 import type { BackendTeamSummary } from "@/types/backend";
 import { checkTeamRequiresPassword, joinTeamFromForm, searchTeamsByKeyword } from "../teamSelfActions";
+import { useProfileCompletionGate } from "../useProfileCompletionGate";
 
 // 加入球队独立页：对已在球队中的用户同样开放（一人可属于多支球队）。
 export function useTeamJoinPage() {
   const { ensureSessionReady, refreshSessionContext } = useTeamContext();
   const { shouldHideCreationEntrances } = useMiniReviewStatus();
+  const profileGate = useProfileCompletionGate();
   const navMetrics = getCustomNavMetrics();
 
   const submitting = ref(false);
@@ -66,6 +68,8 @@ export function useTeamJoinPage() {
       uni.showToast({ title: "请输入入队密码", icon: "none" });
       return;
     }
+    // 昵称/头像缺失时先弹框完善资料，保存成功后才继续加入。
+    if (!(await profileGate.ensureProfileComplete())) return;
     submitting.value = true;
     try {
       await joinTeamFromForm({ teamId: selectedTeam.value.id, password: joinPassword.value.trim() || undefined });
@@ -94,6 +98,9 @@ export function useTeamJoinPage() {
     canJoin,
     submitting,
     canShowCreateEntry,
+    profileGateVisible: profileGate.profileGateVisible,
+    handleProfileGateCompleted: profileGate.handleProfileGateCompleted,
+    handleProfileGateCancel: profileGate.handleProfileGateCancel,
     handleSearchTeams,
     handleSelectTeam,
     handleJoinTeam,

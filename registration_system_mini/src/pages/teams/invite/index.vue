@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useAccentTheme } from "@/stores/theme";
 import AppTabHeader from "@/components/AppTabHeader.vue";
+import ProfileCompletionDialog from "@/components/ProfileCompletionDialog.vue";
 import NeoButton from "@/components/neo/NeoButton.vue";
 import NeoSurface from "@/components/neo/NeoSurface.vue";
 import { useTeamInvitePage } from "./useTeamInvitePage";
@@ -17,6 +18,9 @@ const {
   joining,
   joined,
   canSubmit,
+  profileGateVisible,
+  handleProfileGateCompleted,
+  handleProfileGateCancel,
   handleJoin,
   goTeamDetail,
   goHome,
@@ -89,6 +93,12 @@ const {
         </NeoSurface>
       </template>
     </view>
+
+    <ProfileCompletionDialog
+      :visible="profileGateVisible"
+      @completed="handleProfileGateCompleted"
+      @cancel="handleProfileGateCancel"
+    />
   </view>
 </template>
 

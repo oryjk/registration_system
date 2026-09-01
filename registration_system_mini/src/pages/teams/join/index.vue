@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useAccentTheme } from "@/stores/theme";
 import AppTabHeader from "@/components/AppTabHeader.vue";
+import ProfileCompletionDialog from "@/components/ProfileCompletionDialog.vue";
 import TeamJoinPanel from "../components/TeamJoinPanel.vue";
 import { useTeamJoinPage } from "./useTeamJoinPage";
 
@@ -17,6 +18,9 @@ const {
   canJoin,
   submitting,
   canShowCreateEntry,
+  profileGateVisible,
+  handleProfileGateCompleted,
+  handleProfileGateCancel,
   handleSearchTeams,
   handleSelectTeam,
   handleJoinTeam,
@@ -64,6 +68,12 @@ const {
         <text class="team-join-alt__arrow">→</text>
       </view>
     </view>
+
+    <ProfileCompletionDialog
+      :visible="profileGateVisible"
+      @completed="handleProfileGateCompleted"
+      @cancel="handleProfileGateCancel"
+    />
   </view>
 </template>
 

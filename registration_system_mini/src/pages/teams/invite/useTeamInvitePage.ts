@@ -3,10 +3,12 @@ import { onLoad } from "@dcloudio/uni-app";
 import { getCustomNavMetrics } from "@/utils/customNav";
 import { useTeamContext } from "@/stores/teamContext";
 import { joinTeam, resolveTeamInviteCode, type AppTeamInviteView } from "@/api/team";
+import { useProfileCompletionGate } from "../useProfileCompletionGate";
 
 // 球队邀请落地页：凭分享携带的邀请码换取球队公开信息并申请加入。
 export function useTeamInvitePage() {
   const { ensureSessionReady, refreshSessionContext } = useTeamContext();
+  const profileGate = useProfileCompletionGate();
   const navMetrics = getCustomNavMetrics();
 
   const code = ref("");
@@ -43,6 +45,8 @@ export function useTeamInvitePage() {
 
   async function handleJoin() {
     if (!team.value || joining.value || !canSubmit.value) return;
+    // 昵称/头像缺失时先弹框完善资料，保存成功后才继续加入。
+    if (!(await profileGate.ensureProfileComplete())) return;
     joining.value = true;
     try {
       await joinTeam({
@@ -83,6 +87,9 @@ export function useTeamInvitePage() {
     joining,
     joined,
     canSubmit,
+    profileGateVisible: profileGate.profileGateVisible,
+    handleProfileGateCompleted: profileGate.handleProfileGateCompleted,
+    handleProfileGateCancel: profileGate.handleProfileGateCancel,
     handleJoin,
     goTeamDetail,
     goHome,
