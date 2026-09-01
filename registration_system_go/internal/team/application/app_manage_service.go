@@ -157,6 +157,8 @@ func (s AppManageService) UpdateMember(ctx context.Context, actor sharedauth.Act
 	return nil
 }
 
+// RemoveMember 移除成员；仓储层会在同一事务内取消其在本队未开始比赛中的报名
+// （进行中/已完赛/已取消比赛与已支付报名保留）。
 func (s AppManageService) RemoveMember(ctx context.Context, actor sharedauth.Actor, teamID, userID int64) error {
 	team, err := s.authorizeManager(ctx, actor, teamID)
 	if err != nil {

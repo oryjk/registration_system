@@ -17,6 +17,8 @@ interface TeamMembershipDependencies {
   usersById: Ref<Record<number, BackendUser>>;
   submitting: Ref<boolean>;
   refreshSessionContext: () => Promise<void>;
+  /** 强制重拉当前球队详情：成员变更后队员列表缓存在 teamDetailsById，不重拉会一直显示旧名单。 */
+  refreshTeamDetail: (teamId: number) => Promise<unknown>;
   invalidateActivityAttendance: () => void;
 }
 
@@ -28,6 +30,7 @@ export function useTeamMembership(dependencies: TeamMembershipDependencies) {
     usersById,
     submitting,
     refreshSessionContext,
+    refreshTeamDetail,
     invalidateActivityAttendance,
   } = dependencies;
 
@@ -139,6 +142,7 @@ export function useTeamMembership(dependencies: TeamMembershipDependencies) {
         userId,
         role: memberForm.role,
       });
+      await refreshTeamDetail(currentTeam.value.id);
       await refreshSessionContext();
       invalidateActivityAttendance();
       resetMemberForm();
@@ -157,6 +161,7 @@ export function useTeamMembership(dependencies: TeamMembershipDependencies) {
       await updateTeamMemberFromForm(currentTeam.value.id, editingMemberId.value, {
         role: editMemberForm.role,
       });
+      await refreshTeamDetail(currentTeam.value.id);
       await refreshSessionContext();
       invalidateActivityAttendance();
       closeEditMemberPopup();
@@ -178,6 +183,7 @@ export function useTeamMembership(dependencies: TeamMembershipDependencies) {
     submitting.value = true;
     try {
       await removeMemberFromTeam(currentTeam.value.id, member.user_id);
+      await refreshTeamDetail(currentTeam.value.id);
       await refreshSessionContext();
       invalidateActivityAttendance();
       if (editingMemberId.value === member.user_id) closeEditMemberPopup();
@@ -195,6 +201,7 @@ export function useTeamMembership(dependencies: TeamMembershipDependencies) {
     submitting.value = true;
     try {
       await setTeamMemberStatus(currentTeam.value.id, member.user_id, nextStatus);
+      await refreshTeamDetail(currentTeam.value.id);
       await refreshSessionContext();
       invalidateActivityAttendance();
       uni.showToast({ title: nextStatus === 1 ? "队员已恢复" : "队员已冻结", icon: "none" });

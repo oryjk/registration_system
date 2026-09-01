@@ -259,6 +259,27 @@ DELETE FROM team_members
 WHERE team_id = $1
   AND user_id = $2;
 
+-- name: CancelMemberUpcomingTeamRegistrations :execrows
+-- 移除队员联动：把该队员在本队「未开始」比赛的球队组报名置为 cancelled。
+-- 未开始 = 比赛未取消且 start_time 未过；进行中、已完赛、已取消比赛的报名一律保留；
+-- 已支付（paid）的报名也不动，避免资金记录不一致。
+UPDATE match_registrations r
+SET status = 'cancelled',
+    cancelled_at = NOW()
+WHERE r.user_id = sqlc.arg('user_id')::bigint
+  AND r.status IN ('attending', 'leave', 'absent')
+  AND r.paid = FALSE
+  AND r.group_id IN (
+      SELECT g.id
+      FROM match_registration_groups g
+      JOIN matches m ON m.id = g.match_id
+      WHERE g.team_id = sqlc.arg('team_id')::bigint
+        AND g.kind IN ('host_team', 'guest_team')
+        AND g.status <> 'cancelled'
+        AND m.status IN ('registering', 'ongoing')
+        AND m.start_time > NOW()
+  );
+
 -- name: SetTeamCaptain :one
 WITH target AS MATERIALIZED (
     SELECT tm.user_id

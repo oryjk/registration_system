@@ -21,6 +21,7 @@ export function useTeamManagePage() {
     ensureSessionReady,
     ensureTeamDetailLoaded,
     refreshSessionContext,
+    refreshTeamDetail,
   } = useTeamContext();
   const { shouldHideCreationEntrances } = useMiniReviewStatus();
   const navMetrics = getCustomNavMetrics();
@@ -61,6 +62,7 @@ export function useTeamManagePage() {
     usersById,
     submitting,
     refreshSessionContext,
+    refreshTeamDetail,
     invalidateActivityAttendance: attendance.invalidateActivityAttendance,
   });
 

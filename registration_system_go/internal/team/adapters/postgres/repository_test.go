@@ -543,3 +543,112 @@ func TestRepositoryDissolveTeamAndBlockers(t *testing.T) {
 		t.Fatalf("other team should only see unfinished matches: %+v", otherBlockers)
 	}
 }
+
+func TestRemoveMemberCancelsUpcomingTeamRegistrations(t *testing.T) {
+	pool := testsupport.StartPostgres(t)
+	ctx := context.Background()
+	repository := NewRepository(pool)
+
+	var captainID, memberID, teamID int64
+	if err := pool.QueryRow(ctx, `INSERT INTO users (openid) VALUES ('rm-captain') RETURNING id`).Scan(&captainID); err != nil {
+		t.Fatalf("seed captain: %v", err)
+	}
+	if err := pool.QueryRow(ctx, `INSERT INTO users (openid) VALUES ('rm-member') RETURNING id`).Scan(&memberID); err != nil {
+		t.Fatalf("seed member: %v", err)
+	}
+	if err := pool.QueryRow(ctx, `INSERT INTO teams (name) VALUES ('移除联动球队') RETURNING id`).Scan(&teamID); err != nil {
+		t.Fatalf("seed team: %v", err)
+	}
+	if _, err := pool.Exec(ctx, `INSERT INTO team_members (team_id, user_id, role) VALUES ($1, $2, 'captain'), ($1, $3, 'member')`, teamID, captainID, memberID); err != nil {
+		t.Fatalf("seed members: %v", err)
+	}
+
+	// startOffsetHours 为正表示未来（未开始），为负表示已开赛。
+	seedRegistration := func(name, status string, startOffsetHours int, groupKind string, paid bool) {
+		var matchID string
+		if err := pool.QueryRow(ctx, `
+			INSERT INTO matches (id, name, publication_mode, opponent_state, status, host_team_id, opponent_name,
+				players_per_team, start_time, end_time, location, created_by_user_id)
+			VALUES (gen_random_uuid(), $1, 'offline_confirmed', 'no_recruitment', $2, $3, '对手', 8,
+				NOW() + make_interval(hours => $4::int), NOW() + make_interval(hours => $4::int) + interval '2 hours',
+				'联动球场', $5)
+			RETURNING id`, name, status, teamID, startOffsetHours, captainID).Scan(&matchID); err != nil {
+			t.Fatalf("seed match %s: %v", name, err)
+		}
+		var groupTeamID *int64
+		var minPlayers, maxPlayers *int
+		if groupKind != "individual_opponent" {
+			groupTeamID = &teamID
+		} else {
+			// 散人组 shape check 要求 min/max_players 均非空。
+			one, eight := 1, 8
+			minPlayers, maxPlayers = &one, &eight
+		}
+		var groupID string
+		if err := pool.QueryRow(ctx, `
+			INSERT INTO match_registration_groups (id, match_id, kind, team_id, min_players, max_players)
+			VALUES (gen_random_uuid(), $1, $2, $3, $4, $5)
+			RETURNING id`, matchID, groupKind, groupTeamID, minPlayers, maxPlayers).Scan(&groupID); err != nil {
+			t.Fatalf("seed group %s: %v", name, err)
+		}
+		if _, err := pool.Exec(ctx, `
+			INSERT INTO match_registrations (id, group_id, user_id, status, registration_count, paid)
+			VALUES (gen_random_uuid(), $1, $2, 'attending', 1, $3)`, groupID, memberID, paid); err != nil {
+			t.Fatalf("seed registration %s: %v", name, err)
+		}
+	}
+
+	seedRegistration("未开始报名中", "registering", 72, "host_team", false)            // 期望：取消
+	seedRegistration("进行中已开赛", "ongoing", -1, "host_team", false)                // 期望：保留
+	seedRegistration("已完赛", "ended", -72, "host_team", false)                    // 期望：保留
+	seedRegistration("未开始已支付", "registering", 96, "guest_team", true)            // 期望：保留（paid 资金保护）
+	seedRegistration("未开始散人组", "registering", 120, "individual_opponent", false) // 期望：保留（非本队球队组）
+
+	removed, err := repository.RemoveMember(ctx, teamID, memberID)
+	if err != nil || !removed {
+		t.Fatalf("remove member: removed=%t err=%v", removed, err)
+	}
+
+	var memberRows int
+	if err := pool.QueryRow(ctx, `SELECT COUNT(*) FROM team_members WHERE team_id = $1 AND user_id = $2`, teamID, memberID).Scan(&memberRows); err != nil {
+		t.Fatalf("count member rows: %v", err)
+	}
+	if memberRows != 0 {
+		t.Fatalf("expected member row deleted, got %d", memberRows)
+	}
+
+	statusByMatch := map[string]string{}
+	rows, err := pool.Query(ctx, `
+		SELECT m.name, r.status
+		FROM match_registrations r
+		JOIN match_registration_groups g ON g.id = r.group_id
+		JOIN matches m ON m.id = g.match_id
+		WHERE r.user_id = $1`, memberID)
+	if err != nil {
+		t.Fatalf("load registrations: %v", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var name, status string
+		if err := rows.Scan(&name, &status); err != nil {
+			t.Fatalf("scan registration: %v", err)
+		}
+		statusByMatch[name] = status
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("iterate registrations: %v", err)
+	}
+
+	expected := map[string]string{
+		"未开始报名中": "cancelled",
+		"进行中已开赛": "attending",
+		"已完赛":    "attending",
+		"未开始已支付": "attending",
+		"未开始散人组": "attending",
+	}
+	for name, want := range expected {
+		if got := statusByMatch[name]; got != want {
+			t.Fatalf("match %s registration status=%s, want %s", name, got, want)
+		}
+	}
+}

@@ -299,9 +299,33 @@ func (r *Repository) UpdateMember(ctx context.Context, teamID, userID int64, rol
 	return rowsAffected > 0, err
 }
 
+// RemoveMember 硬删成员行，并在同一事务内取消其在本队未开始比赛中的球队组报名
+// （进行中/已完赛/已取消比赛与已支付报名保留，见 CancelMemberUpcomingTeamRegistrations）。
 func (r *Repository) RemoveMember(ctx context.Context, teamID, userID int64) (bool, error) {
-	rowsAffected, err := r.queries.RemoveTeamMember(ctx, teamsqlc.RemoveTeamMemberParams{TeamID: teamID, UserID: userID})
-	return rowsAffected > 0, err
+	tx, err := r.database.Begin(ctx)
+	if err != nil {
+		return false, err
+	}
+	defer func() {
+		_ = tx.Rollback(ctx)
+	}()
+	queries := r.queries.WithTx(tx)
+	rowsAffected, err := queries.RemoveTeamMember(ctx, teamsqlc.RemoveTeamMemberParams{TeamID: teamID, UserID: userID})
+	if err != nil {
+		return false, err
+	}
+	if rowsAffected == 0 {
+		return false, nil
+	}
+	if _, err := queries.CancelMemberUpcomingTeamRegistrations(ctx, teamsqlc.CancelMemberUpcomingTeamRegistrationsParams{
+		TeamID: teamID, UserID: userID,
+	}); err != nil {
+		return false, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 func (r *Repository) SetCaptain(ctx context.Context, teamID int64, userID *int64) error {

@@ -140,6 +140,16 @@ async function ensureTeamDetailLoaded(teamId: number) {
   return detail;
 }
 
+/** 强制重拉球队详情：成员/资料变更后调用（ensureTeamDetailLoaded 命中缓存不会重拉）。 */
+async function refreshTeamDetail(teamId: number) {
+  const detail = await getTeamDetail(teamId);
+  teamDetailsById.value = {
+    ...teamDetailsById.value,
+    [teamId]: detail,
+  };
+  return detail;
+}
+
 function assertSessionVersion(version: number) {
   if (version !== sessionVersion || hasManualLogout()) {
     clearLocalSessionStorage();
@@ -431,6 +441,7 @@ export function useAppSession() {
     currentIdentity,
     teamDetailsById,
     ensureTeamDetailLoaded,
+    refreshTeamDetail,
     bootstrapError,
     isBootstrapping,
     switchTeam,

@@ -66,6 +66,41 @@ func (q *Queries) AddTeamMember(ctx context.Context, arg AddTeamMemberParams) (A
 	return i, err
 }
 
+const cancelMemberUpcomingTeamRegistrations = `-- name: CancelMemberUpcomingTeamRegistrations :execrows
+UPDATE match_registrations r
+SET status = 'cancelled',
+    cancelled_at = NOW()
+WHERE r.user_id = $1::bigint
+  AND r.status IN ('attending', 'leave', 'absent')
+  AND r.paid = FALSE
+  AND r.group_id IN (
+      SELECT g.id
+      FROM match_registration_groups g
+      JOIN matches m ON m.id = g.match_id
+      WHERE g.team_id = $2::bigint
+        AND g.kind IN ('host_team', 'guest_team')
+        AND g.status <> 'cancelled'
+        AND m.status IN ('registering', 'ongoing')
+        AND m.start_time > NOW()
+  )
+`
+
+type CancelMemberUpcomingTeamRegistrationsParams struct {
+	UserID int64 `json:"user_id"`
+	TeamID int64 `json:"team_id"`
+}
+
+// 移除队员联动：把该队员在本队「未开始」比赛的球队组报名置为 cancelled。
+// 未开始 = 比赛未取消且 start_time 未过；进行中、已完赛、已取消比赛的报名一律保留；
+// 已支付（paid）的报名也不动，避免资金记录不一致。
+func (q *Queries) CancelMemberUpcomingTeamRegistrations(ctx context.Context, arg CancelMemberUpcomingTeamRegistrationsParams) (int64, error) {
+	result, err := q.db.Exec(ctx, cancelMemberUpcomingTeamRegistrations, arg.UserID, arg.TeamID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const clearTeamCaptain = `-- name: ClearTeamCaptain :one
 WITH demoted AS (
     UPDATE team_members AS tm
