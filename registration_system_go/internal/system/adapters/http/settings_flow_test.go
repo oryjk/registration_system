@@ -131,3 +131,60 @@ func TestMiniAppSettingsPartialUpdateKeepsOtherFlag(t *testing.T) {
 		t.Fatalf("updating one debug flag must not reset the other: %s", body)
 	}
 }
+
+func TestOnboardingFlagFlowsToRuntimeConfig(t *testing.T) {
+	router := newSettingsRouter(t)
+
+	put := httptest.NewRequest(http.MethodPut, "/admin/system/mini-app-settings", strings.NewReader(`{"onboarding":{"enabled":true}}`))
+	put.Header.Set("Content-Type", "application/json")
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, put)
+	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), `"enabled":true`) {
+		t.Fatalf("update failed: status=%d body=%s", response.Code, response.Body.String())
+	}
+
+	runtime := httptest.NewRequest(http.MethodGet, "/app/system/mini-app-runtime-config", nil)
+	response = httptest.NewRecorder()
+	router.ServeHTTP(response, runtime)
+	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), `"onboarding":{"enabled":true}`) {
+		t.Fatalf("runtime config should expose onboarding flag: status=%d body=%s", response.Code, response.Body.String())
+	}
+}
+
+func TestOnboardingDefaultsToOffWithoutRow(t *testing.T) {
+	router := newSettingsRouter(t)
+
+	runtime := httptest.NewRequest(http.MethodGet, "/app/system/mini-app-runtime-config", nil)
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, runtime)
+	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), `"onboarding":{"enabled":false}`) {
+		t.Fatalf("runtime config should default onboarding to off: status=%d body=%s", response.Code, response.Body.String())
+	}
+}
+
+func TestOnboardingUpdateDoesNotResetDebugFlags(t *testing.T) {
+	router := newSettingsRouter(t)
+
+	putDebug := httptest.NewRequest(http.MethodPut, "/admin/system/mini-app-settings", strings.NewReader(`{"debug":{"clear_profile_enabled":true}}`))
+	putDebug.Header.Set("Content-Type", "application/json")
+	router.ServeHTTP(httptest.NewRecorder(), putDebug)
+
+	putOnboarding := httptest.NewRequest(http.MethodPut, "/admin/system/mini-app-settings", strings.NewReader(`{"onboarding":{"enabled":true}}`))
+	putOnboarding.Header.Set("Content-Type", "application/json")
+	router.ServeHTTP(httptest.NewRecorder(), putOnboarding)
+
+	// 反向再更新一次 debug，确认 onboarding 开关不会被跨分区重置。
+	putDebugAgain := httptest.NewRequest(http.MethodPut, "/admin/system/mini-app-settings", strings.NewReader(`{"debug":{"review_status_toggle_enabled":true}}`))
+	putDebugAgain.Header.Set("Content-Type", "application/json")
+	router.ServeHTTP(httptest.NewRecorder(), putDebugAgain)
+
+	runtime := httptest.NewRequest(http.MethodGet, "/app/system/mini-app-runtime-config", nil)
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, runtime)
+	body := response.Body.String()
+	if !strings.Contains(body, `"onboarding":{"enabled":true}`) ||
+		!strings.Contains(body, `"clear_profile_enabled":true`) ||
+		!strings.Contains(body, `"review_status_toggle_enabled":true`) {
+		t.Fatalf("cross-section updates must not reset each other: %s", body)
+	}
+}

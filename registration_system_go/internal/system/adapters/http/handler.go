@@ -14,6 +14,7 @@ import (
 type MiniAppSettingsService interface {
 	Get(ctx context.Context) (domain.MiniAppSettings, error)
 	UpdateDebug(ctx context.Context, patch application.DebugSettingsPatch) (domain.MiniAppSettings, error)
+	UpdateOnboarding(ctx context.Context, patch application.OnboardingSettingsPatch) (domain.MiniAppSettings, error)
 }
 
 // 小程序运行配置（/system/mini-app-runtime-config）。
@@ -51,6 +52,9 @@ type MiniAppRuntimeConfigResponse struct {
 		ClearProfileEnabled       bool `json:"clear_profile_enabled"`
 		ReviewStatusToggleEnabled bool `json:"review_status_toggle_enabled"`
 	} `json:"debug"`
+	Onboarding struct {
+		Enabled bool `json:"enabled"`
+	} `json:"onboarding"`
 }
 
 type HeroBanner struct {
@@ -67,6 +71,9 @@ type UpdateMiniAppSettingsRequest struct {
 		ClearProfileEnabled       *bool `json:"clear_profile_enabled"`
 		ReviewStatusToggleEnabled *bool `json:"review_status_toggle_enabled"`
 	} `json:"debug"`
+	Onboarding *struct {
+		Enabled *bool `json:"enabled"`
+	} `json:"onboarding"`
 }
 
 type Handler struct {
@@ -111,6 +118,7 @@ func (h *Handler) GetMiniAppRuntimeConfig(c *gin.Context) {
 	}
 	config.Debug.ClearProfileEnabled = settings.Debug.ClearProfileEnabled
 	config.Debug.ReviewStatusToggleEnabled = settings.Debug.ReviewStatusToggleEnabled
+	config.Onboarding.Enabled = settings.Onboarding.Enabled
 	sharedhttpapi.WriteSuccess(c, config)
 }
 
@@ -125,18 +133,39 @@ func (h *Handler) GetMiniAppSettings(c *gin.Context) {
 
 func (h *Handler) UpdateMiniAppSettings(c *gin.Context) {
 	var request UpdateMiniAppSettingsRequest
-	if err := c.ShouldBindJSON(&request); err != nil || request.Debug == nil ||
-		(request.Debug.ClearProfileEnabled == nil && request.Debug.ReviewStatusToggleEnabled == nil) {
-		sharedhttpapi.WriteError(c, sharederror.New(sharederror.KindValidation, "请求体无效，需要 debug 分区至少一个布尔开关"))
+	if err := c.ShouldBindJSON(&request); err != nil {
+		sharedhttpapi.WriteError(c, sharederror.New(sharederror.KindValidation, "请求体无效，需要 debug/onboarding 分区至少一个布尔开关"))
 		return
 	}
-	saved, err := h.settings.UpdateDebug(c.Request.Context(), application.DebugSettingsPatch{
-		ClearProfileEnabled:       request.Debug.ClearProfileEnabled,
-		ReviewStatusToggleEnabled: request.Debug.ReviewStatusToggleEnabled,
-	})
-	if err != nil {
-		sharedhttpapi.WriteError(c, err)
+	debugProvided := request.Debug != nil &&
+		(request.Debug.ClearProfileEnabled != nil || request.Debug.ReviewStatusToggleEnabled != nil)
+	onboardingProvided := request.Onboarding != nil && request.Onboarding.Enabled != nil
+	if !debugProvided && !onboardingProvided {
+		sharedhttpapi.WriteError(c, sharederror.New(sharederror.KindValidation, "请求体无效，需要 debug/onboarding 分区至少一个布尔开关"))
 		return
+	}
+
+	var saved domain.MiniAppSettings
+	if debugProvided {
+		result, err := h.settings.UpdateDebug(c.Request.Context(), application.DebugSettingsPatch{
+			ClearProfileEnabled:       request.Debug.ClearProfileEnabled,
+			ReviewStatusToggleEnabled: request.Debug.ReviewStatusToggleEnabled,
+		})
+		if err != nil {
+			sharedhttpapi.WriteError(c, err)
+			return
+		}
+		saved = result
+	}
+	if onboardingProvided {
+		result, err := h.settings.UpdateOnboarding(c.Request.Context(), application.OnboardingSettingsPatch{
+			Enabled: request.Onboarding.Enabled,
+		})
+		if err != nil {
+			sharedhttpapi.WriteError(c, err)
+			return
+		}
+		saved = result
 	}
 	sharedhttpapi.WriteSuccess(c, saved)
 }

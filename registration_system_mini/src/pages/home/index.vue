@@ -4,6 +4,8 @@ import { computed, ref } from "vue";
 import { onHide, onLoad, onPullDownRefresh, onReachBottom, onShareAppMessage, onShareTimeline, onShow, onUnload } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
 import BottomTabBar from "@/components/BottomTabBar.vue";
+import ProfileCompletionDialog from "@/components/ProfileCompletionDialog.vue";
+import NeoConfirmDialog from "@/components/neo/NeoConfirmDialog.vue";
 import NeoSectionHeader from "@/components/neo/NeoSectionHeader.vue";
 import NeoSegmentedControl from "@/components/neo/NeoSegmentedControl.vue";
 import HomeHeroSection from "./components/HomeHeroSection.vue";
@@ -11,6 +13,7 @@ import HomeMatchList from "./components/HomeMatchList.vue";
 import HomeMatchSearch from "./components/HomeMatchSearch.vue";
 import HomeOtherMatchesSection from "./components/HomeOtherMatchesSection.vue";
 import HomeSkeleton from "./components/HomeSkeleton.vue";
+import OnboardingRolePickerDialog from "./components/OnboardingRolePickerDialog.vue";
 import { getMatchHome, listMyMatches, listMatches } from "@/api/match";
 import { defaultMiniAppRuntimeConfig } from "@/config/runtimeConfig";
 import { useNotificationCenter } from "@/stores/notificationCenter";
@@ -31,6 +34,7 @@ import {
   toHomeMatchSearchCard,
 } from "./homeMatchSearchState";
 import { useHomeOtherMatches } from "./useHomeOtherMatches";
+import { useHomeOnboardingGuide } from "./useHomeOnboardingGuide";
 
 type HomeContentTab = "mine" | "others";
 
@@ -43,6 +47,7 @@ const { themePageStyle } = useAccentTheme();
 
 const { ensureSessionReady } = useTeamContext();
 const { syncUnreadCount } = useNotificationCenter();
+const onboardingGuide = useHomeOnboardingGuide();
 
 const isLoading = ref(false);
 const isRefreshing = ref(false);
@@ -242,6 +247,7 @@ function retrySearchPage() {
 async function loadPageData(options?: { preserveContent?: boolean }) {
   const loadVersion = ++homeLoadVersion;
   const preserveContent = !!options?.preserveContent && hasLoadedOnce.value;
+  const isFirstLoad = !hasLoadedOnce.value;
 
   if (preserveContent) {
     isRefreshing.value = true;
@@ -276,6 +282,9 @@ async function loadPageData(options?: { preserveContent?: boolean }) {
     errorMessage.value = "";
     hasLoadedMatchData.value = true;
     hasLoadedOnce.value = true;
+    if (isFirstLoad) {
+      onboardingGuide.maybeStartAfterFirstLoad();
+    }
     void syncUnreadCount({ skipEnsure: true }).catch(() => {
       // Notification count is nice-to-have for the home screen.
     });
@@ -301,6 +310,8 @@ async function loadPageData(options?: { preserveContent?: boolean }) {
 
 function handleSessionLoginCompleted() {
   void loadPageData({ preserveContent: true });
+  // 游客先进首页、之后才登录的场景：登录完成后同样给一次新手引导机会。
+  onboardingGuide.maybeStartAfterFirstLoad();
   if (activeHomeTab.value === "others" && !otherMatches.hasLoadedOnce.value) {
     void otherMatches.loadPage();
   }
@@ -365,6 +376,7 @@ onLoad(() => {
 onUnload(() => {
   uni.$off("session:login-completed", handleSessionLoginCompleted);
   uni.$off("home:data-may-changed", handleHomeDataMayChanged);
+  onboardingGuide.dispose();
 });
 
 onShareAppMessage(() => ({
@@ -485,6 +497,29 @@ onShareTimeline(() => ({
     </view>
 
     <BottomTabBar current="home" />
+
+    <!-- 新手引导：身份选择 → 完善资料 →（队长）去创建球队 -->
+    <OnboardingRolePickerDialog
+      :visible="onboardingGuide.rolePickerVisible.value"
+      @select-captain="onboardingGuide.handleSelectCaptain"
+      @select-player="onboardingGuide.handleSelectPlayer"
+      @skip="onboardingGuide.handleSkip"
+    />
+    <ProfileCompletionDialog
+      :visible="onboardingGuide.profileDialogVisible.value"
+      @completed="onboardingGuide.handleProfileCompleted"
+      @cancel="onboardingGuide.handleProfileCancel"
+    />
+    <NeoConfirmDialog
+      :visible="onboardingGuide.createTeamPromptVisible.value"
+      title="资料已就绪"
+      message="接下来创建你的球队，创建后可以把球队分享给队员，邀请他们加入。"
+      primary-text="去创建球队"
+      secondary-text="稍后再说"
+      @primary="onboardingGuide.handleCreateTeamConfirmed"
+      @secondary="onboardingGuide.handleCreateTeamDeclined"
+      @close="onboardingGuide.handleCreateTeamDeclined"
+    />
   </view>
 </template>
 

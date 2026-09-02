@@ -476,6 +476,9 @@ export interface BackendMiniAppRuntimeConfig {
     clear_profile_enabled: boolean;
     review_status_toggle_enabled: boolean;
   };
+  onboarding: {
+    enabled: boolean;
+  };
 }
 
 /** 队费记账：我在各球队的队费余额。 */

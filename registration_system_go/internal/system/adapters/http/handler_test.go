@@ -31,6 +31,13 @@ func (s *fakeSettingsService) UpdateDebug(_ context.Context, patch application.D
 	return s.settings, nil
 }
 
+func (s *fakeSettingsService) UpdateOnboarding(_ context.Context, patch application.OnboardingSettingsPatch) (domain.MiniAppSettings, error) {
+	if patch.Enabled != nil {
+		s.settings.Onboarding.Enabled = *patch.Enabled
+	}
+	return s.settings, nil
+}
+
 func TestGetMiniAppRuntimeConfigReturnsDefaults(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
@@ -64,6 +71,26 @@ func TestGetMiniAppRuntimeConfigReturnsDefaults(t *testing.T) {
 	}
 	if config.Debug.ClearProfileEnabled {
 		t.Fatalf("debug section should default to off: %+v", config.Debug)
+	}
+	if config.Onboarding.Enabled {
+		t.Fatalf("onboarding section should default to off: %+v", config.Onboarding)
+	}
+}
+
+func TestGetMiniAppRuntimeConfigOverlaysOnboardingSettings(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	NewHandler(&fakeSettingsService{settings: domain.MiniAppSettings{
+		Onboarding: domain.OnboardingSettings{Enabled: true},
+	}}).RegisterPublicRoutes(router.Group("/api/v1/app"))
+
+	recorder := httptest.NewRecorder()
+	router.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/api/v1/app/system/mini-app-runtime-config", nil))
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", recorder.Code, recorder.Body.String())
+	}
+	if !strings.Contains(recorder.Body.String(), `"onboarding":{"enabled":true}`) {
+		t.Fatalf("expected onboarding flag in body: %s", recorder.Body.String())
 	}
 }
 

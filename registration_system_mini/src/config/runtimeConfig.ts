@@ -14,6 +14,7 @@ type RuntimeConfigInput = Partial<{
   notifications: Partial<MiniAppRuntimeConfig["notifications"]>;
   profile: Partial<MiniAppRuntimeConfig["profile"]>;
   debug: Partial<MiniAppRuntimeConfig["debug"]>;
+  onboarding: Partial<MiniAppRuntimeConfig["onboarding"]>;
 }>;
 
 function clampNumber(value: unknown, fallback: number, min: number, max: number) {
@@ -96,6 +97,12 @@ export function sanitizeMiniAppRuntimeConfig(input?: RuntimeConfigInput | null):
         typeof input?.debug?.review_status_toggle_enabled === "boolean"
           ? input.debug.review_status_toggle_enabled
           : defaults.debug.review_status_toggle_enabled,
+    },
+    onboarding: {
+      enabled:
+        typeof input?.onboarding?.enabled === "boolean"
+          ? input.onboarding.enabled
+          : defaults.onboarding.enabled,
     },
   };
 }

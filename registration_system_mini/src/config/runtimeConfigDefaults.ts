@@ -40,4 +40,7 @@ export const defaultMiniAppRuntimeConfig: BackendMiniAppRuntimeConfig = {
     clear_profile_enabled: false,
     review_status_toggle_enabled: false,
   },
+  onboarding: {
+    enabled: false,
+  },
 };

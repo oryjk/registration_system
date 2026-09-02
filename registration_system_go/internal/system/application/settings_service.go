@@ -23,6 +23,11 @@ type DebugSettingsPatch struct {
 	ReviewStatusToggleEnabled *bool
 }
 
+// OnboardingSettingsPatch 与 DebugSettingsPatch 同理：nil 表示未提供。
+type OnboardingSettingsPatch struct {
+	Enabled *bool
+}
+
 func (s SettingsService) Get(ctx context.Context) (domain.MiniAppSettings, error) {
 	settings := domain.DefaultMiniAppSettings()
 	raw, found, err := s.repository.FindSetting(ctx, domain.SettingsSectionDebug)
@@ -31,6 +36,14 @@ func (s SettingsService) Get(ctx context.Context) (domain.MiniAppSettings, error
 	}
 	if found {
 		applyDebugFields(&settings.Debug, raw)
+	}
+
+	onboardingRaw, found, err := s.repository.FindSetting(ctx, domain.SettingsSectionOnboarding)
+	if err != nil {
+		return domain.MiniAppSettings{}, sharederror.Wrap(sharederror.KindInternal, "读取小程序配置失败", err)
+	}
+	if found {
+		applyOnboardingFields(&settings.Onboarding, onboardingRaw)
 	}
 	return settings, nil
 }
@@ -64,5 +77,29 @@ func applyDebugFields(target *domain.DebugSettings, raw map[string]any) {
 	}
 	if value, ok := raw["review_status_toggle_enabled"].(bool); ok {
 		target.ReviewStatusToggleEnabled = value
+	}
+}
+
+// UpdateOnboarding 更新新手引导开关（整分区 JSON 落库，先读旧值合并）。
+func (s SettingsService) UpdateOnboarding(ctx context.Context, patch OnboardingSettingsPatch) (domain.MiniAppSettings, error) {
+	settings, err := s.Get(ctx)
+	if err != nil {
+		return domain.MiniAppSettings{}, err
+	}
+	if patch.Enabled != nil {
+		settings.Onboarding.Enabled = *patch.Enabled
+	}
+	fields := map[string]any{
+		"enabled": settings.Onboarding.Enabled,
+	}
+	if err := s.repository.UpsertSetting(ctx, domain.SettingsSectionOnboarding, fields); err != nil {
+		return domain.MiniAppSettings{}, sharederror.Wrap(sharederror.KindInternal, "保存小程序配置失败", err)
+	}
+	return settings, nil
+}
+
+func applyOnboardingFields(target *domain.OnboardingSettings, raw map[string]any) {
+	if value, ok := raw["enabled"].(bool); ok {
+		target.Enabled = value
 	}
 }
