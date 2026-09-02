@@ -14,6 +14,8 @@ interface ChooseAvatarEvent {
 
 const props = defineProps<{
   visible: boolean;
+  /** 主按钮文案；不传则保留「保存并加入」兼容既有加入/邀请流程。 */
+  primaryText?: string;
 }>();
 
 const emit = defineEmits<{
@@ -108,7 +110,7 @@ function handleCancel() {
     :visible="visible"
     title="先完善个人资料"
     message="设置头像和昵称后再加入球队，队友和队长才能在报名记录里认出你。"
-    primary-text="保存并加入"
+    :primary-text="primaryText ?? '保存并加入'"
     secondary-text="暂不"
     :loading="saving"
     :primary-disabled="!canSubmit"

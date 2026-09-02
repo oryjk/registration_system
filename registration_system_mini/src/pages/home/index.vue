@@ -507,6 +507,7 @@ onShareTimeline(() => ({
     />
     <ProfileCompletionDialog
       :visible="onboardingGuide.profileDialogVisible.value"
+      primary-text="保存并继续"
       @completed="onboardingGuide.handleProfileCompleted"
       @cancel="onboardingGuide.handleProfileCancel"
     />
