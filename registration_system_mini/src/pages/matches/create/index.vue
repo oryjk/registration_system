@@ -36,6 +36,7 @@ const form = reactive<MatchPublishFormModel>({
   opposing: "",
   description: "",
   playersPerTeam: "" as string | number,
+  hostCapacityLimit: "" as string | number,
   color: "#D8DDE6",
   opposingColor: "#2F6BFF",
   publicationMode: "offline_confirmed",
@@ -117,6 +118,7 @@ function initDefaultForm() {
   form.opposing = "";
   form.description = "";
   form.playersPerTeam = 8;
+  form.hostCapacityLimit = "";
   form.color = "#D8DDE6";
   form.opposingColor = "#2F6BFF";
   form.publicationMode = "offline_confirmed";
@@ -158,6 +160,7 @@ function applyActivityToForm(activity: Awaited<ReturnType<typeof getActivity>>) 
   form.opposing = activity.opposing ?? "";
   form.description = activity.description ?? "";
   form.playersPerTeam = activity.players_per_team ?? "";
+  form.hostCapacityLimit = activity.team_capacity_limit ?? "";
   form.color = activity.color?.trim() || "#D8DDE6";
   form.opposingColor = activity.opposing_color?.trim() || "#2F6BFF";
   form.activityMatchKind = activity.match_kind === "internal" ? "internal" : "external";

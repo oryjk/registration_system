@@ -43,6 +43,7 @@ const titleLabel = computed(() => (isChallenge.value ? "约队标题" : "比赛�
 const titlePlaceholder = computed(() => (isChallenge.value ? "例如：周五晚 8 人制约队" : "例如：周五晚友谊赛"));
 const playersLabel = computed(() => (isChallenge.value ? "人数" : "比赛人制"));
 const playersPlaceholder = computed(() => (isChallenge.value ? "8" : "例如：8"));
+const capacityPlaceholder = computed(() => (isChallenge.value ? "" : "例如：10（默认人制+2）"));
 const colorLabel = computed(() => (isChallenge.value ? "主队球服" : "本队球服"));
 const opposingColorLabel = computed(() => (isChallenge.value ? "对手球服" : "对方球服"));
 const descriptionLabel = computed(() => (isChallenge.value ? "备注" : "说明"));
@@ -119,6 +120,17 @@ function handleChooseLocation() {
             :placeholder="playersPlaceholder"
             placeholder-class="form-placeholder"
           />
+        </view>
+        <view v-if="!isChallenge" class="form-field">
+          <text class="form-label">报名人数上限</text>
+          <input
+            v-model="form.hostCapacityLimit"
+            class="form-input"
+            type="number"
+            :placeholder="capacityPlaceholder"
+            placeholder-class="form-placeholder"
+          />
+          <text class="form-caption">本队最多可报名人数；不填默认为人制 + 2</text>
         </view>
         <view v-if="!isChallenge && form.publicationMode === 'offline_confirmed'" class="form-field">
           <text class="form-label">对手</text>

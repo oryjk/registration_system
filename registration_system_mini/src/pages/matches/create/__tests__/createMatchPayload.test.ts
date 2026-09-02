@@ -13,6 +13,7 @@ function buildForm(overrides: Partial<MatchPublishFormModel> = {}): MatchPublish
     opposing: "周末联队",
     description: "准时到场",
     playersPerTeam: 6,
+    hostCapacityLimit: "",
     color: "#2F6BFF",
     opposingColor: "#C8FF00",
     publicationMode: "offline_confirmed",
@@ -62,6 +63,21 @@ describe("buildCreateMatchPayload", () => {
 
     expect(payload.publication_mode).toEqual("online_team");
     expect("opponent_name" in payload).toEqual(false);
+  });
+
+  test("显式填写报名人数上限时使用填写值", () => {
+    const payload = buildCreateMatchPayload(buildForm({ hostCapacityLimit: "12" }), hostTeam);
+    expect(payload.host_capacity_limit).toEqual(12);
+  });
+
+  test("报名人数上限不能低于比赛人制", () => {
+    let message = "";
+    try {
+      buildCreateMatchPayload(buildForm({ hostCapacityLimit: "5" }), hostTeam);
+    } catch (error) {
+      message = error instanceof Error ? error.message : String(error);
+    }
+    expect(message).toEqual("报名人数上限不能低于比赛人制");
   });
 
   test("maps individual recruitment without a handwritten opponent", () => {
