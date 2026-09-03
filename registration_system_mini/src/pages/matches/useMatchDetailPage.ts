@@ -38,6 +38,7 @@ import { useMatchRegistration } from "./useMatchRegistration";
 import { useMatchGuestLogin } from "./useMatchGuestLogin";
 import { useMatchCheckInReview } from "./useMatchCheckInReview";
 import { useMatchSettlement } from "./useMatchSettlement";
+import { useMatchTeamLogos } from "./useMatchTeamLogos";
 import { useMatchFinish } from "./useMatchFinish";
 import { useMatchScore } from "./useMatchScore";
 import { useNeoConfirmDialog } from "@/components/neo";
@@ -263,22 +264,11 @@ export function useMatchDetailPage() {
     return opponentId ? teamsById.value[opponentId] ?? null : null;
   });
 
-  // 主/客队 Logo：优先用比赛详情 DTO 自带的 logo（对非成员也可见，不依赖仅成员可读的
-  // 球队详情接口），回落 teamsById 缓存；散人约球或都取不到时为空，UI 回落球服色条。
-  const homeTeamLogoUrl = computed(() => {
-    if (isPickupMatch.value) return "";
-    const dtoLogo = sourceMatch.value?.host_team_logo_url?.trim();
-    if (dtoLogo) return dtoLogo;
-    const hostTeamId = sourceMatch.value?.host_team_id;
-    return (typeof hostTeamId === "number" ? teamsById.value[hostTeamId]?.logo_url : "")?.trim() || "";
-  });
-  const awayTeamLogoUrl = computed(() => {
-    if (isPickupMatch.value) return "";
-    const dtoLogo = sourceMatch.value?.away_team_logo_url?.trim();
-    if (dtoLogo) return dtoLogo;
-    const awayTeamId = sourceMatch.value?.away_team_id;
-    const awayTeam = typeof awayTeamId === "number" ? teamsById.value[awayTeamId] : undefined;
-    return (awayTeam ?? opponentTeam.value)?.logo_url?.trim() || "";
+  const { homeTeamLogoUrl, awayTeamLogoUrl } = useMatchTeamLogos({
+    sourceMatch,
+    teamsById,
+    opponentTeam,
+    isPickupMatch,
   });
 
   // 纯球队组比赛 + 用户不是主/客队成员：个人报名没有可提交的组，引导先加入球队。

@@ -24,6 +24,7 @@ const {
   description,
   createdLabel,
   inviteCode,
+  shareImagePath,
   leaveDialogVisible,
   handleLeaveTeamClick,
   handleLeaveTeamConfirm,
@@ -34,16 +35,17 @@ const {
 } = useTeamDetailPage();
 
 // 分享邀请：落地到独立邀请页（带邀请码），非成员凭码查看球队并申请加入。
-// 缩略图用拉新专用封面：默认截图会带上分享人的队内余额，属敏感信息。
+// 缩略图用拉新专用封面（有队徽时为预合成图）：默认截图会带上分享人的队内余额，属敏感信息。
 onShareAppMessage(() => ({
   title: team.value ? `邀请你加入球队「${team.value.name}」` : "邀请你加入球队",
   path: `/pages/teams/invite/index?code=${encodeURIComponent(inviteCode.value)}`,
-  imageUrl: TEAM_INVITE_SHARE_IMAGE_URL,
+  imageUrl: shareImagePath.value || TEAM_INVITE_SHARE_IMAGE_URL,
 }));
 
 onShareTimeline(() => ({
   title: team.value ? `邀请你加入球队「${team.value.name}」` : "邀请你加入球队",
   query: `code=${encodeURIComponent(inviteCode.value)}`,
+  imageUrl: shareImagePath.value || TEAM_INVITE_SHARE_IMAGE_URL,
 }));
 </script>
 
@@ -130,6 +132,11 @@ onShareTimeline(() => ({
         </NeoSurface>
       </template>
     </view>
+
+    <!-- 分享封面合成画布：移出屏幕外（canvas 2d 节点不能 display:none，否则无法绘制）。 -->
+    <!-- #ifdef MP-WEIXIN -->
+    <canvas id="team-share-canvas" type="2d" class="team-share-canvas" />
+    <!-- #endif -->
 
     <!-- 退出球队：二次确认；余额不为零在入口即拦截，后端同样校验。 -->
     <NeoConfirmDialog
@@ -345,6 +352,17 @@ onShareTimeline(() => ({
   width: 100%;
   max-width: 750rpx;
   transform: translateX(-50%);
+}
+/* #endif */
+
+/* #ifdef MP-WEIXIN */
+.team-share-canvas {
+  position: fixed;
+  top: -9999px;
+  left: -9999px;
+  width: 1000px;
+  height: 800px;
+  pointer-events: none;
 }
 /* #endif */
 

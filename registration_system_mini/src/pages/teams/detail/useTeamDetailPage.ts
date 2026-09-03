@@ -1,8 +1,9 @@
-import { computed, ref } from "vue";
+import { computed, getCurrentInstance, ref } from "vue";
 import { onLoad, onShow } from "@dcloudio/uni-app";
 import { getAppTeamDetail, issueTeamInviteCode, leaveTeam, type AppTeamDetailData } from "@/api/team";
 import { useTeamContext } from "@/stores/teamContext";
 import { getCustomNavMetrics } from "@/utils/customNav";
+import { composeTeamInviteShareImage } from "@/utils/shareCompose";
 
 const ROLE_LABELS: Record<string, string> = {
   captain: "队长",
@@ -10,6 +11,9 @@ const ROLE_LABELS: Record<string, string> = {
   vice_captain: "副队长",
   member: "队员",
 };
+
+/** 分享封面合成画布的节点 id，与页面模板中的隐藏 canvas 保持一致。 */
+export const TEAM_SHARE_CANVAS_ID = "team-share-canvas";
 
 export function useTeamDetailPage() {
   const { switchTeam, refreshSessionContext } = useTeamContext();
@@ -46,6 +50,7 @@ export function useTeamDetailPage() {
       const detail = await getAppTeamDetail(teamId.value);
       team.value = detail;
       if (detail.my_role) void loadInviteCode();
+      void loadShareImage(logoUrl.value);
       syncShareMenu(detail.my_role === "captain" || detail.my_role === "leader");
     } catch (error) {
       errorMessage.value = error instanceof Error ? error.message : "球队信息加载失败";
@@ -83,6 +88,21 @@ export function useTeamDetailPage() {
   // 分享邀请码：成员加载详情后预取（onShareAppMessage 是同步回调，不能现场请求）。
   // 失败不影响页面，只是分享出去的落地页会提示邀请失效。
   const inviteCode = ref("");
+
+  // 有队徽时预合成「封面 + 圆形队徽」的分享图（临时文件路径）；onShareAppMessage 同样是
+  // 同步回调，合成未完成或失败时回落静态封面。每次会话只合成一次。
+  const shareImagePath = ref("");
+
+  async function loadShareImage(logoUrl: string) {
+    if (shareImagePath.value || !logoUrl) return;
+    // #ifdef MP-WEIXIN
+    try {
+      shareImagePath.value = await composeTeamInviteShareImage(TEAM_SHARE_CANVAS_ID, getCurrentInstance(), logoUrl);
+    } catch {
+      // 合成失败静默回落静态封面，不打扰页面。
+    }
+    // #endif
+  }
 
   async function loadInviteCode() {
     if (!team.value?.id) return;
@@ -138,6 +158,7 @@ export function useTeamDetailPage() {
     description,
     createdLabel,
     inviteCode,
+    shareImagePath,
     leaveDialogVisible,
     handleLeaveTeamClick,
     handleLeaveTeamConfirm,
