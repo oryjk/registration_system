@@ -18,6 +18,8 @@ export const TEAM_SHARE_CANVAS_ID = "team-share-canvas";
 export function useTeamDetailPage() {
   const { switchTeam, refreshSessionContext } = useTeamContext();
   const navMetrics = getCustomNavMetrics();
+  // getCurrentInstance 只能在 setup 同步上下文调用；异步合成分享图时复用该实例。
+  const pageInstance = getCurrentInstance();
   const teamId = ref(0);
   const team = ref<AppTeamDetailData | null>(null);
   const isLoading = ref(false);
@@ -97,7 +99,7 @@ export function useTeamDetailPage() {
     if (shareImagePath.value || !logoUrl) return;
     // #ifdef MP-WEIXIN
     try {
-      shareImagePath.value = await composeTeamInviteShareImage(TEAM_SHARE_CANVAS_ID, getCurrentInstance(), logoUrl);
+      shareImagePath.value = await composeTeamInviteShareImage(TEAM_SHARE_CANVAS_ID, pageInstance, logoUrl);
     } catch {
       // 合成失败静默回落静态封面，不打扰页面。
     }

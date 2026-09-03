@@ -48,7 +48,15 @@ const {
       <template v-else-if="team">
         <view class="team-invite-hero">
           <view class="team-invite-hero__row">
-            <view class="team-invite-hero__badge">{{ team.name.slice(0, 1) || "队" }}</view>
+            <view class="team-invite-hero__badge">
+              <image
+                v-if="team.logo_url?.trim()"
+                class="team-invite-hero__logo"
+                :src="team.logo_url"
+                mode="aspectFill"
+              />
+              <text v-else>{{ team.name.slice(0, 1) || "队" }}</text>
+            </view>
             <view class="team-invite-hero__copy">
               <text class="team-invite-hero__eyebrow">球队邀请</text>
               <text class="team-invite-hero__name">{{ team.name }}</text>
@@ -155,6 +163,11 @@ const {
   font-size: 40rpx;
   font-weight: 900;
   box-sizing: border-box;
+}
+
+.team-invite-hero__logo {
+  width: 100%;
+  height: 100%;
 }
 
 .team-invite-hero__copy {
