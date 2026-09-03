@@ -881,3 +881,17 @@ WHERE t.id = sqlc.arg('team_id');
 SELECT u.id AS user_id, u.nickname, u.avatar_url
 FROM users u
 WHERE u.id = sqlc.arg('user_id');
+
+-- name: ListVenueSuggestions :many
+-- 常用场地建议：按使用次数与最近使用聚合；代表经纬度取该场地最近一条带坐标的比赛。
+SELECT m.location,
+       COUNT(*)::BIGINT AS use_count,
+       MAX(m.start_time)::TIMESTAMPTZ AS last_used_at,
+       (COUNT(m.location_latitude) > 0) AS has_geo,
+       (ARRAY_REMOVE(ARRAY_AGG(m.location_latitude ORDER BY m.start_time DESC NULLS LAST), NULL))[1]::DOUBLE PRECISION AS latitude,
+       (ARRAY_REMOVE(ARRAY_AGG(m.location_longitude ORDER BY m.start_time DESC NULLS LAST), NULL))[1]::DOUBLE PRECISION AS longitude
+FROM matches m
+WHERE m.location IS NOT NULL AND btrim(m.location) <> ''
+GROUP BY m.location
+ORDER BY use_count DESC, last_used_at DESC
+LIMIT sqlc.arg('limit_count');

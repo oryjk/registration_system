@@ -188,3 +188,17 @@ type AdminRosterEntry struct {
 	// RegisteredAt 为 nil 表示该成员尚未报名（球队组未报名成员）。
 	RegisteredAt *time.Time
 }
+
+// VenueSuggestion 是常用场地建议：从历史比赛场地聚合，经纬度可为空（老数据没有坐标）。
+type VenueSuggestion struct {
+	Location   string
+	Latitude   *float64
+	Longitude  *float64
+	UseCount   int64
+	LastUsedAt time.Time
+}
+
+// VenueSuggestionRepository 常用场地聚合查询。
+type VenueSuggestionRepository interface {
+	ListVenueSuggestions(ctx context.Context, limit int32) ([]VenueSuggestion, error)
+}

@@ -118,6 +118,7 @@ func BuildDependencies(ctx context.Context, config Config) (Dependencies, func()
 	userMatches := matchapplication.NewUserMatchQueryService(matchRepository)
 	userMatchUpdates := matchapplication.NewUserMatchUpdateService(matchRepository, teamService, matchClock.Now)
 	userMatchHandler := matchhttp.NewUserHandler(userMatches, createMatch, finishMatch, userMatchUpdates, recordMatchScore)
+	venueSuggestions := matchhttp.NewVenueSuggestionHandler(matchapplication.NewVenueSuggestionService(matchRepository))
 	adminMatches := matchapplication.NewAdminMatchService(matchRepository, matchClock, adminService)
 	adminMatchHandler := matchhttp.NewAdminHandler(adminMatches, createMatch)
 	teamApplications := matchapplication.NewTeamApplicationService(matchRepository, teamService, matchClock)
@@ -176,7 +177,7 @@ func BuildDependencies(ctx context.Context, config Config) (Dependencies, func()
 		TestAuth:      testAuthHandler, H5TestLoginEnabled: config.H5TestLoginEnabled(),
 		UserProfiles: userProfileHandler, AppUsers: appUserHandler, ActiveUsers: appUserService, Teams: teamHandler, AppTeams: appTeamHandler,
 		AppTeamManage: appTeamManageHandler, AppTeamSelf: appTeamSelfHandler, AppTeamInvites: appTeamInviteHandler,
-		UserMatches: userMatchHandler, UserRegistrations: userRegistrationHandler,
+		UserMatches: userMatchHandler, VenueSuggestions: venueSuggestions, UserRegistrations: userRegistrationHandler,
 		AdminMatches: adminMatchHandler, TeamApplications: teamApplicationHandler,
 		CaptainMessages: captainMessageHandler,
 		Payments:        paymentHandler, Wallets: walletHandler, MiniReviews: miniReviewHandler,

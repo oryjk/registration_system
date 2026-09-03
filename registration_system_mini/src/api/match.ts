@@ -175,3 +175,19 @@ export function settleMatch(
     auth: true,
   });
 }
+
+export interface BackendVenueSuggestion {
+  location: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  use_count: number;
+  last_used_at: string;
+}
+
+/** 发布页常用场地建议（历史比赛场地聚合）；减少地图选点 API 消耗。 */
+export function getVenueSuggestions(limit = 10) {
+  return requestApi<BackendVenueSuggestion[]>({
+    url: `/venues/suggestions?limit=${limit}`,
+    auth: true,
+  });
+}

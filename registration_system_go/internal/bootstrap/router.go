@@ -34,6 +34,7 @@ type Dependencies struct {
 	AppTeamSelf        *teamhttp.AppSelfHandler
 	AppTeamInvites     *teamhttp.AppInviteHandler
 	UserMatches        *matchhttp.UserHandler
+	VenueSuggestions   *matchhttp.VenueSuggestionHandler
 	UserRegistrations  *matchhttp.UserRegistrationHandler
 	AdminMatches       *matchhttp.AdminHandler
 	TeamApplications   *matchhttp.TeamApplicationHandler
@@ -122,6 +123,9 @@ func NewRouter(dependencies Dependencies) *gin.Engine {
 		}
 		if dependencies.UserMatches != nil {
 			dependencies.UserMatches.RegisterRoutes(userRoutes)
+		}
+		if dependencies.VenueSuggestions != nil {
+			dependencies.VenueSuggestions.RegisterRoutes(userRoutes)
 		}
 		if dependencies.CaptainMessages != nil {
 			dependencies.CaptainMessages.RegisterRoutes(userRoutes)

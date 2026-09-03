@@ -2453,6 +2453,57 @@ func (q *Queries) ListTeamManagerUserIDs(ctx context.Context, teamID int64) ([]i
 	return items, nil
 }
 
+const listVenueSuggestions = `-- name: ListVenueSuggestions :many
+SELECT m.location,
+       COUNT(*)::BIGINT AS use_count,
+       MAX(m.start_time)::TIMESTAMPTZ AS last_used_at,
+       (COUNT(m.location_latitude) > 0) AS has_geo,
+       (ARRAY_REMOVE(ARRAY_AGG(m.location_latitude ORDER BY m.start_time DESC NULLS LAST), NULL))[1]::DOUBLE PRECISION AS latitude,
+       (ARRAY_REMOVE(ARRAY_AGG(m.location_longitude ORDER BY m.start_time DESC NULLS LAST), NULL))[1]::DOUBLE PRECISION AS longitude
+FROM matches m
+WHERE m.location IS NOT NULL AND btrim(m.location) <> ''
+GROUP BY m.location
+ORDER BY use_count DESC, last_used_at DESC
+LIMIT $1
+`
+
+type ListVenueSuggestionsRow struct {
+	Location   string             `json:"location"`
+	UseCount   int64              `json:"use_count"`
+	LastUsedAt pgtype.Timestamptz `json:"last_used_at"`
+	HasGeo     bool               `json:"has_geo"`
+	Latitude   float64            `json:"latitude"`
+	Longitude  float64            `json:"longitude"`
+}
+
+// 常用场地建议：按使用次数与最近使用聚合；代表经纬度取该场地最近一条带坐标的比赛。
+func (q *Queries) ListVenueSuggestions(ctx context.Context, limitCount int32) ([]ListVenueSuggestionsRow, error) {
+	rows, err := q.db.Query(ctx, listVenueSuggestions, limitCount)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListVenueSuggestionsRow
+	for rows.Next() {
+		var i ListVenueSuggestionsRow
+		if err := rows.Scan(
+			&i.Location,
+			&i.UseCount,
+			&i.LastUsedAt,
+			&i.HasGeo,
+			&i.Latitude,
+			&i.Longitude,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const markRegistrationPaidByMatchUser = `-- name: MarkRegistrationPaidByMatchUser :execrows
 UPDATE match_registrations r
 SET paid = TRUE

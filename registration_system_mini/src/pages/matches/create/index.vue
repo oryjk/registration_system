@@ -9,7 +9,8 @@ import NeoStickyActionBar from "@/components/neo/NeoStickyActionBar.vue";
 import NeoSurface from "@/components/neo/NeoSurface.vue";
 import type { MatchPublishFormModel } from "./components/matchPublishForm";
 import { getActivity, updateActivity } from "@/api/activity";
-import { createMatch } from "@/api/match";
+import { createMatch, getVenueSuggestions, type BackendVenueSuggestion } from "@/api/match";
+import VenuePickerSheet from "./components/VenuePickerSheet.vue";
 import { preloadMiniReviewStatus, useMiniReviewStatus } from "@/stores/miniReview";
 import { useTeamContext } from "@/stores/teamContext";
 import { getCustomNavMetrics } from "@/utils/customNav";
@@ -134,7 +135,46 @@ function handleLocationInput() {
   form.locationLongitude = null;
 }
 
+// 场地选择弹层：常用场地建议懒加载（首次打开请求一次并缓存）。
+const venuePickerVisible = ref(false);
+const venueSuggestions = ref<BackendVenueSuggestion[]>([]);
+const venueSuggestionsLoading = ref(false);
+const venueSuggestionsLoaded = ref(false);
+
+async function loadVenueSuggestions() {
+  if (venueSuggestionsLoaded.value || venueSuggestionsLoading.value) return;
+  venueSuggestionsLoading.value = true;
+  try {
+    venueSuggestions.value = await getVenueSuggestions(10);
+    venueSuggestionsLoaded.value = true;
+  } catch {
+    // 建议加载失败不阻塞选场地：弹层仍可手动输入/地图选点。
+  } finally {
+    venueSuggestionsLoading.value = false;
+  }
+}
+
+function handleOpenVenuePicker() {
+  void loadVenueSuggestions();
+  venuePickerVisible.value = true;
+}
+
+function handleVenueSelected(venue: BackendVenueSuggestion) {
+  form.location = venue.location;
+  form.locationLatitude = venue.latitude ?? null;
+  form.locationLongitude = venue.longitude ?? null;
+  venuePickerVisible.value = false;
+}
+
+function handleVenueManualInput(location: string) {
+  form.location = location;
+  form.locationLatitude = null;
+  form.locationLongitude = null;
+  venuePickerVisible.value = false;
+}
+
 function handleChooseLocation() {
+  venuePickerVisible.value = false;
   uni.chooseLocation({
     success(location) {
       form.location = location.name || location.address || "";
@@ -332,8 +372,20 @@ onShow(async () => {
         :time-valid-message="timeValidMessage"
         @location-input="handleLocationInput"
         @choose-location="handleChooseLocation"
+        @open-venue-picker="handleOpenVenuePicker"
       />
     </view>
+
+    <VenuePickerSheet
+      :visible="venuePickerVisible"
+      :suggestions="venueSuggestions"
+      :loading="venueSuggestionsLoading"
+      :current-location="form.location"
+      @close="venuePickerVisible = false"
+      @select="handleVenueSelected"
+      @manual-input="handleVenueManualInput"
+      @choose-location="handleChooseLocation"
+    />
 
     <NeoStickyActionBar>
       <NeoButton block variant="lime" :disabled="!canSubmit" :loading="submitting" @click="handleSubmit">

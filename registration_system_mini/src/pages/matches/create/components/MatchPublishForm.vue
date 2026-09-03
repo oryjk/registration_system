@@ -31,6 +31,7 @@ const emit = defineEmits<{
   (event: "update:modelValue", value: MatchPublishFormModel): void;
   (event: "locationInput"): void;
   (event: "chooseLocation"): void;
+  (event: "openVenuePicker"): void;
 }>();
 
 const form = computed({
@@ -81,6 +82,10 @@ function handleCheckInSwitchChange(event: Event) {
 
 function handleLocationInput() {
   emit("locationInput");
+}
+
+function handleOpenVenuePicker() {
+  emit("openVenuePicker");
 }
 
 function handleChooseLocation() {
@@ -184,16 +189,16 @@ function handleChooseLocation() {
         marker="03"
         :caption="locationCaption"
         :action-label="form.location ? '重新选择' : '选择地点'"
-        @action="handleChooseLocation"
+        @action="handleOpenVenuePicker"
       />
       <view class="form-field">
-        <input
-          v-model="form.location"
-          class="form-input"
-          placeholder="输入球场/地址，或使用地图选择"
-          placeholder-class="form-placeholder"
-          @input="handleLocationInput"
-        />
+        <!-- 点击打开场地选择弹层（常用场地/手动输入/地图选点），不再直接键入。 -->
+        <view class="venue-entry" hover-class="venue-entry--pressed" @tap="handleOpenVenuePicker">
+          <text :class="['venue-entry__value', form.location ? '' : 'venue-entry__placeholder']">
+            {{ form.location || "点击选择球场/地址" }}
+          </text>
+          <text class="venue-entry__arrow">›</text>
+        </view>
         <text v-if="form.locationLatitude != null && form.locationLongitude != null" class="form-hint">
           已选择地图位置，可用于签到定位。
         </text>
@@ -324,6 +329,48 @@ function handleChooseLocation() {
 
 .form-static {
   color: var(--neo-color-text-muted);
+}
+
+/* 场地选择入口：与 form-input 同规格的点击框，点击打开场地选择弹层。 */
+.venue-entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12rpx;
+  width: 100%;
+  min-height: 84rpx;
+  padding: 0 20rpx;
+  border: var(--neo-border-default);
+  border-radius: var(--neo-radius-sm);
+  background: var(--neo-color-muted);
+  box-sizing: border-box;
+}
+
+.venue-entry--pressed {
+  background: var(--neo-color-surface);
+}
+
+.venue-entry__value {
+  flex: 1;
+  min-width: 0;
+  color: var(--neo-color-text);
+  font-size: 28rpx;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.venue-entry__placeholder {
+  color: var(--neo-color-text-disabled);
+}
+
+.venue-entry__arrow {
+  flex-shrink: 0;
+  color: var(--neo-color-text-muted);
+  font-size: 36rpx;
+  font-weight: 900;
+  line-height: 1;
 }
 
 .form-placeholder {

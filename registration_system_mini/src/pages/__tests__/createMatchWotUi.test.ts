@@ -102,9 +102,9 @@ describe("create match Wot UI integration", () => {
   test("supports manual location input and optional map coordinates", async () => {
     const source = await read("src/pages/matches/create/components/MatchPublishForm.vue");
 
-    expect(source.includes("function handleLocationInput")).toEqual(true);
-    expect(source.includes('@input="handleLocationInput"')).toEqual(true);
-    expect(source.includes('placeholder="输入球场/地址，或使用地图选择"')).toEqual(true);
+    // 场地通过选择弹层录入（常用场地/手动输入/地图选点），表单只保留点击入口。
+    expect(source.includes("function handleOpenVenuePicker")).toEqual(true);
+    expect(source.includes("@tap=\"handleOpenVenuePicker\"")).toEqual(true);
     expect(source.includes("启用签到时请用地图选择经纬度")).toEqual(true);
     expect(source.includes("form.enableCheckIn")).toEqual(true);
     expect(source.includes("locationLatitude")).toEqual(true);

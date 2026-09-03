@@ -325,3 +325,25 @@ func mapHomeEndedMatch(row matchsqlc.ListHomeEndedMatchesForUserRow) domain.Matc
 		CreatedAt: row.CreatedAt.Time, UpdatedAt: row.UpdatedAt.Time,
 	}
 }
+
+// ListVenueSuggestions 常用场地聚合（发布页建议）；has_geo 为 false 时不带经纬度。
+func (r *Repository) ListVenueSuggestions(ctx context.Context, limit int32) ([]ports.VenueSuggestion, error) {
+	rows, err := r.queries.ListVenueSuggestions(ctx, limit)
+	if err != nil {
+		return nil, err
+	}
+	items := make([]ports.VenueSuggestion, 0, len(rows))
+	for _, row := range rows {
+		item := ports.VenueSuggestion{
+			Location:   row.Location,
+			UseCount:   row.UseCount,
+			LastUsedAt: row.LastUsedAt.Time,
+		}
+		if row.HasGeo {
+			latitude, longitude := row.Latitude, row.Longitude
+			item.Latitude, item.Longitude = &latitude, &longitude
+		}
+		items = append(items, item)
+	}
+	return items, nil
+}
