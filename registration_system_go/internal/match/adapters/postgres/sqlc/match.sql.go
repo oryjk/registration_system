@@ -777,7 +777,9 @@ func (q *Queries) GetMatchByIDForUpdate(ctx context.Context, id pgtype.UUID) (Ma
 const getMatchForAdmin = `-- name: GetMatchForAdmin :one
 SELECT m.id, m.name, m.publication_mode, m.opponent_state, m.status, m.host_team_id, m.away_team_id, m.opponent_name, m.players_per_team, m.start_time, m.end_time, m.location, m.location_latitude, m.location_longitude, m.description, m.created_by_user_id, m.created_at, m.updated_at, m.created_by_admin_id, m.registration_start_at, m.registration_end_at, m.is_free, m.host_color, m.away_color, m.payment_mode, m.fee_per_person_cents, m.host_score, m.away_score,
 	   COALESCE(host.name, '') AS host_team_name,
-       away.name AS away_team_name
+       away.name AS away_team_name,
+       host.logo_url AS host_team_logo_url,
+       away.logo_url AS away_team_logo_url
 FROM matches m
 LEFT JOIN teams host ON host.id = m.host_team_id
 LEFT JOIN teams away ON away.id = m.away_team_id
@@ -815,6 +817,8 @@ type GetMatchForAdminRow struct {
 	AwayScore           *int32           `json:"away_score"`
 	HostTeamName        string           `json:"host_team_name"`
 	AwayTeamName        *string          `json:"away_team_name"`
+	HostTeamLogoUrl     *string          `json:"host_team_logo_url"`
+	AwayTeamLogoUrl     *string          `json:"away_team_logo_url"`
 }
 
 func (q *Queries) GetMatchForAdmin(ctx context.Context, id pgtype.UUID) (GetMatchForAdminRow, error) {
@@ -851,6 +855,8 @@ func (q *Queries) GetMatchForAdmin(ctx context.Context, id pgtype.UUID) (GetMatc
 		&i.AwayScore,
 		&i.HostTeamName,
 		&i.AwayTeamName,
+		&i.HostTeamLogoUrl,
+		&i.AwayTeamLogoUrl,
 	)
 	return i, err
 }

@@ -69,6 +69,9 @@ export interface AppMatchSummary extends AppMatchPhaseSource {
   away_team_id: number | null;
   away_team_name: string | null;
   opponent_name: string | null;
+  /** 主/客队 Logo；仅详情接口返回（列表为 null），详情页对阵区展示队徽用。 */
+  host_team_logo_url?: string | null;
+  away_team_logo_url?: string | null;
   /** 发布者用户 ID：散人约球无主队，用它判定「我创建的比赛」以显示取消入口。 */
   created_by_user_id?: number | null;
   players_per_team: number;

@@ -45,7 +45,9 @@ FOR UPDATE;
 -- name: GetMatchForAdmin :one
 SELECT m.*,
 	   COALESCE(host.name, '') AS host_team_name,
-       away.name AS away_team_name
+       away.name AS away_team_name,
+       host.logo_url AS host_team_logo_url,
+       away.logo_url AS away_team_logo_url
 FROM matches m
 LEFT JOIN teams host ON host.id = m.host_team_id
 LEFT JOIN teams away ON away.id = m.away_team_id

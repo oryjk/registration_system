@@ -16,6 +16,8 @@ const props = defineProps<{
   displayOpponentLabel: string;
   homeTeamColor: string;
   awayTeamColor: string;
+  homeTeamLogoUrl?: string;
+  awayTeamLogoUrl?: string;
   matchClockLabel: string;
   matchLocation: string;
   joinedCount: number;
@@ -94,6 +96,8 @@ function handlePayRegistration() {
       :display-opponent-label="displayOpponentLabel"
       :home-team-color="homeTeamColor"
       :away-team-color="awayTeamColor"
+      :home-team-logo-url="homeTeamLogoUrl"
+      :away-team-logo-url="awayTeamLogoUrl"
       :match-clock-label="matchClockLabel"
       :match-location="matchLocation"
       @open-location="handleOpenLocation"

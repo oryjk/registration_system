@@ -23,6 +23,7 @@ func TestUserMatchRoutesReturnPrivacyScopedData(t *testing.T) {
 	matchID := uuid.New()
 	groupID := uuid.New()
 	avatarURL := "https://cdn.example.com/player-37.png"
+	hostLogoURL := "https://cdn.example.com/team-7-logo.png"
 	registration := &domain.Registration{
 		ID: uuid.New(), GroupID: groupID, UserID: 42,
 		Status: domain.RegistrationAttending, RegistrationCount: 1,
@@ -33,7 +34,8 @@ func TestUserMatchRoutesReturnPrivacyScopedData(t *testing.T) {
 			OpponentState: domain.OpponentRecruiting, Status: domain.MatchRegistering,
 			HostTeamID: int64Pointer(7), CreatedByAdminID: int64Pointer(9),
 		},
-		HostTeamName: "东安联队",
+		HostTeamName:    "东安联队",
+		HostTeamLogoURL: &hostLogoURL,
 	}
 	service := &fakeUserMatches{
 		list: application.UserMatchListResult{Items: []ports.MatchItem{item}, Total: 1, Page: 1, PageSize: 20},
@@ -71,7 +73,7 @@ func TestUserMatchRoutesReturnPrivacyScopedData(t *testing.T) {
 	if detailResponse.Code != http.StatusOK || !bytes.Contains(body, []byte(`"attending_count":7`)) || !bytes.Contains(body, []byte(`"my_registration":{"status":"attending","registration_count":1,"paid":false}`)) {
 		t.Fatalf("unexpected detail response %d: %s", detailResponse.Code, detailResponse.Body.String())
 	}
-	for _, expected := range []string{`"participants":[`, `"user_id":37`, `"nickname":"阿睿"`, `"avatar_url":"https://cdn.example.com/player-37.png"`, `"status":"attending"`, `"registered_at":"2026-08-10T02:00:00Z"`} {
+	for _, expected := range []string{`"participants":[`, `"user_id":37`, `"nickname":"阿睿"`, `"avatar_url":"https://cdn.example.com/player-37.png"`, `"status":"attending"`, `"registered_at":"2026-08-10T02:00:00Z"`, `"host_team_logo_url":"https://cdn.example.com/team-7-logo.png"`, `"away_team_logo_url":null`} {
 		if !bytes.Contains(body, []byte(expected)) {
 			t.Fatalf("user detail response missing %s: %s", expected, detailResponse.Body.String())
 		}

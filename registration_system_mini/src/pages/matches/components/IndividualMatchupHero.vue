@@ -12,6 +12,9 @@ const props = defineProps<{
   displayOpponentLabel: string;
   homeTeamColor: string;
   awayTeamColor: string;
+  /** 主/客队 Logo；上传过时替代球服色条展示，空值回落色条。 */
+  homeTeamLogoUrl?: string;
+  awayTeamLogoUrl?: string;
   matchClockLabel: string;
   matchLocation: string;
 }>();
@@ -53,7 +56,13 @@ const matchStatusTag = computed(() => {
 
     <view class="hero-board">
       <view class="hero-team">
-        <view class="hero-flag" :style="{ backgroundColor: homeTeamColor }" />
+        <image
+          v-if="homeTeamLogoUrl"
+          class="hero-logo"
+          :src="homeTeamLogoUrl"
+          mode="aspectFill"
+        />
+        <view v-else class="hero-flag" :style="{ backgroundColor: homeTeamColor }" />
         <view class="hero-team-info">
           <text class="hero-role">主队</text>
           <text class="hero-name">{{ homeTeamLabel }}</text>
@@ -66,7 +75,13 @@ const matchStatusTag = computed(() => {
       </view>
       <text v-else class="hero-vs">VS</text>
       <view class="hero-team hero-team-away">
-        <view class="hero-flag" :style="{ backgroundColor: awayTeamColor }" />
+        <image
+          v-if="awayTeamLogoUrl"
+          class="hero-logo"
+          :src="awayTeamLogoUrl"
+          mode="aspectFill"
+        />
+        <view v-else class="hero-flag" :style="{ backgroundColor: awayTeamColor }" />
         <view class="hero-team-info">
           <text class="hero-role">客队</text>
           <text class="hero-name">{{ displayOpponentLabel }}</text>
@@ -216,6 +231,17 @@ const matchStatusTag = computed(() => {
   border: var(--neo-border-default);
   border-radius: var(--neo-radius-sm);
   flex-shrink: 0;
+}
+
+/* 球队 Logo 徽标：替代球服色条（未上传 Logo 时回落色条）。 */
+.hero-logo {
+  width: 72rpx;
+  height: 72rpx;
+  border: var(--neo-border-default);
+  border-radius: 50%;
+  background: var(--neo-color-muted);
+  flex-shrink: 0;
+  box-sizing: border-box;
 }
 
 .hero-team-info {

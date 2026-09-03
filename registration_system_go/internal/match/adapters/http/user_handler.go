@@ -59,6 +59,9 @@ type UserMatchResponse struct {
 	AwayTeamID      *int64                 `json:"away_team_id"`
 	AwayTeamName    *string                `json:"away_team_name"`
 	OpponentName    *string                `json:"opponent_name"`
+	// 主/客队 Logo；详情场景填充（列表查询不查 logo，保持 null）。
+	HostTeamLogoURL *string `json:"host_team_logo_url"`
+	AwayTeamLogoURL *string `json:"away_team_logo_url"`
 	// 发布者用户 ID：散人约球无主队，小程序靠它判定「我创建的比赛」以显示取消入口。
 	CreatedByUserID *int64 `json:"created_by_user_id"`
 	PlayersPerTeam  int    `json:"players_per_team"`
@@ -462,6 +465,7 @@ func mapUserMatch(item ports.MatchItem) UserMatchResponse {
 		OpponentState: match.OpponentState, Status: match.Status,
 		HostTeamID: match.HostTeamID, HostTeamName: item.HostTeamName, CreatedByUserID: match.CreatedByUserID,
 		AwayTeamID: match.AwayTeamID, AwayTeamName: item.AwayTeamName, OpponentName: match.OpponentName,
+		HostTeamLogoURL: item.HostTeamLogoURL, AwayTeamLogoURL: item.AwayTeamLogoURL,
 		PlayersPerTeam: match.PlayersPerTeam, HostScore: match.HostScore, AwayScore: match.AwayScore,
 		StartTime: match.StartTime, EndTime: match.EndTime,
 		RegistrationStartAt: match.RegistrationStartAt, RegistrationEndAt: match.RegistrationEndAt,

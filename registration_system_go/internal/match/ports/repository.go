@@ -55,9 +55,13 @@ const (
 type AdminMatchFilter = MatchListFilter
 
 type MatchItem struct {
-	Match              domain.Match
-	HostTeamName       string
-	AwayTeamName       *string
+	Match        domain.Match
+	HostTeamName string
+	AwayTeamName *string
+	// HostTeamLogoURL/AwayTeamLogoURL 对阵球队 Logo；仅详情查询填充（列表不查，保持 nil），
+	// 小程序比赛详情的对阵区用它展示队徽，避免依赖「仅成员可读」的球队详情接口。
+	HostTeamLogoURL    *string
+	AwayTeamLogoURL    *string
 	RegistrationGroups []RegistrationGroupSummary
 	// Participants 目前只在首页已结束比赛场景填充：
 	// 合并该比赛全部报名组后，按报名先后返回全部 attending 报名者。

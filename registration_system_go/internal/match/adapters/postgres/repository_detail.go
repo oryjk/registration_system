@@ -31,6 +31,7 @@ func (r *Repository) FindForAdmin(ctx context.Context, matchID uuid.UUID) (ports
 	}
 	return ports.AdminMatchItem{
 		Match: mapAdminDetailMatch(row), HostTeamName: row.HostTeamName, AwayTeamName: row.AwayTeamName,
+		HostTeamLogoURL: row.HostTeamLogoUrl, AwayTeamLogoURL: row.AwayTeamLogoUrl,
 	}, groups, true, nil
 }
 
@@ -78,6 +79,7 @@ func (r *Repository) FindForUser(ctx context.Context, matchID uuid.UUID, userID 
 	}
 	item := ports.MatchItem{
 		Match: mapAdminDetailMatch(row), HostTeamName: row.HostTeamName, AwayTeamName: row.AwayTeamName,
+		HostTeamLogoURL: row.HostTeamLogoUrl, AwayTeamLogoURL: row.AwayTeamLogoUrl,
 	}
 	// 详情场景顺带装配主队队长资料，供「联系队长」入口使用；查不到（无主队/无队长）保持 nil。
 	if item.Match.HostTeamID != nil {

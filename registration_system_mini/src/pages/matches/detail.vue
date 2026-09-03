@@ -47,6 +47,8 @@ const {
   displayOpponentLabel,
   homeTeamColor,
   awayTeamColor,
+  homeTeamLogoUrl,
+  awayTeamLogoUrl,
   matchClockLabel,
   matchLocation,
   joinedCount,
@@ -231,6 +233,8 @@ const metaPageStyle = computed(() =>
         :display-opponent-label="displayOpponentLabel"
         :home-team-color="homeTeamColor"
         :away-team-color="awayTeamColor"
+        :home-team-logo-url="homeTeamLogoUrl"
+        :away-team-logo-url="awayTeamLogoUrl"
         :match-clock-label="matchClockLabel"
         :match-location="matchLocation"
         :joined-count="joinedCount"

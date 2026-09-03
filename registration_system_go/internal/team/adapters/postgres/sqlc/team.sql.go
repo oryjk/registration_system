@@ -370,6 +370,8 @@ type FindTeamByNameRow struct {
 	UpdatedAt        pgtype.Timestamp `json:"updated_at"`
 }
 
+// 名称查重只对 active 球队生效：dissolved/frozen 球队保留行以维持历史比赛引用，
+// 解散后允许同名新建一支新球队。
 func (q *Queries) FindTeamByName(ctx context.Context, name string) (FindTeamByNameRow, error) {
 	row := q.db.QueryRow(ctx, findTeamByName, name)
 	var i FindTeamByNameRow
