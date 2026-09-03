@@ -18,6 +18,10 @@ export function useTeamCreatePage() {
   const createForm = reactive({ name: "", description: "", joinPassword: "" });
   // 来自首页新手引导（from=onboarding）：创建成功后提示分享邀请并落到球队详情页。
   let openedFromOnboarding = false;
+  // 分享提示用自绘 NeoConfirmDialog 呈现：原生 showModal 的按钮文案限制 4 个汉字，
+  // 「去邀请队员」5 字会导致弹窗静默失败。
+  const onboardingShareTeamId = ref<number | null>(null);
+  const onboardingShareVisible = computed(() => onboardingShareTeamId.value !== null);
   const canCreate = computed(() => !!createForm.name.trim() && !submitting.value);
   const pageStyle = computed(() => ({ paddingTop: `${navMetrics.pageTopPadding + 8}px` }));
 
@@ -25,20 +29,16 @@ export function useTeamCreatePage() {
     uni.navigateTo({ url: "/pages/teams/join/index" });
   }
 
-  function handleOnboardingCreated(teamId: number) {
-    uni.showModal({
-      title: "球队创建成功！",
-      content: "把球队分享给队员，邀请他们加入吧。",
-      confirmText: "去邀请队员",
-      cancelText: "稍后",
-      success: (result) => {
-        if (result.confirm) {
-          uni.redirectTo({ url: `/pages/teams/detail/index?teamId=${teamId}` });
-          return;
-        }
-        uni.switchTab({ url: "/pages/user/index" });
-      },
-    });
+  function handleOnboardingShareConfirmed() {
+    const teamId = onboardingShareTeamId.value;
+    onboardingShareTeamId.value = null;
+    if (!teamId) return;
+    uni.redirectTo({ url: `/pages/teams/detail/index?teamId=${teamId}` });
+  }
+
+  function handleOnboardingShareDeclined() {
+    onboardingShareTeamId.value = null;
+    uni.switchTab({ url: "/pages/user/index" });
   }
 
   async function handleCreateTeam() {
@@ -57,7 +57,7 @@ export function useTeamCreatePage() {
       // 创建第二支球队后自动切到新球队，避免仍停留在原球队上下文。
       switchTeam(created.id);
       if (openedFromOnboarding) {
-        handleOnboardingCreated(created.id);
+        onboardingShareTeamId.value = created.id;
         return;
       }
       uni.showToast({ title: "球队已创建", icon: "none" });
@@ -94,6 +94,9 @@ export function useTeamCreatePage() {
     reviewTeamNameOptions,
     canCreate,
     submitting,
+    onboardingShareVisible,
+    handleOnboardingShareConfirmed,
+    handleOnboardingShareDeclined,
     handleCreateTeam,
     goJoinTeam,
   };

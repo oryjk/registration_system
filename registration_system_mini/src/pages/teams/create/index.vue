@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useAccentTheme } from "@/stores/theme";
 import AppTabHeader from "@/components/AppTabHeader.vue";
+import NeoConfirmDialog from "@/components/neo/NeoConfirmDialog.vue";
 import TeamCreatePanel from "../components/TeamCreatePanel.vue";
 import { useTeamCreatePage } from "./useTeamCreatePage";
 
@@ -13,6 +14,9 @@ const {
   reviewTeamNameOptions,
   canCreate,
   submitting,
+  onboardingShareVisible,
+  handleOnboardingShareConfirmed,
+  handleOnboardingShareDeclined,
   handleCreateTeam,
   goJoinTeam,
 } = useTeamCreatePage();
@@ -48,6 +52,18 @@ const {
         <text class="team-create-alt__arrow">→</text>
       </view>
     </view>
+
+    <!-- 新手引导创建成功后的分享提示（自绘弹窗，无 showModal 按钮文案 4 字限制） -->
+    <NeoConfirmDialog
+      :visible="onboardingShareVisible"
+      title="球队创建成功！"
+      message="把球队分享给队员，邀请他们加入吧。"
+      primary-text="去邀请队员"
+      secondary-text="稍后"
+      @primary="handleOnboardingShareConfirmed"
+      @secondary="handleOnboardingShareDeclined"
+      @close="handleOnboardingShareDeclined"
+    />
   </view>
 </template>
 
