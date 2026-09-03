@@ -362,7 +362,7 @@ describe("match detail registration design", () => {
     expect(matchDetail.includes("onShareAppMessage")).toEqual(true);
     expect(matchDetail.includes("onShareTimeline")).toEqual(true);
     expect(matchDetail.includes("path: sharePath.value")).toEqual(true);
-    expect(matchDetail.includes("imageUrl: DEFAULT_SHARE_IMAGE_URL")).toEqual(true);
+    expect(matchDetail.includes("imageUrl: MATCH_DETAIL_SHARE_IMAGE_URL")).toEqual(true);
     expect(matchDetail.includes("query: `id=${matchId.value || match.value?.id || \"\"}`")).toEqual(true);
     expect(matchPageLogic.includes("matchId,")).toEqual(true);
     expect(challengeDetail.includes("onShareAppMessage")).toEqual(true);

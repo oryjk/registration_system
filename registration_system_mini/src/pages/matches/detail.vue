@@ -19,7 +19,7 @@ import MatchJoinTeamSheet from "./components/MatchJoinTeamSheet.vue";
 import MatchIndividualRegistration from "./components/MatchIndividualRegistration.vue";
 import MatchTeamRegistration from "./components/MatchTeamRegistration.vue";
 import TeamSettlementCard from "./components/TeamSettlementCard.vue";
-import { DEFAULT_SHARE_IMAGE_URL } from "@/utils/share";
+import { MATCH_DETAIL_SHARE_IMAGE_URL } from "@/utils/share";
 import { useMatchCaptainContact } from "./useMatchCaptainContact";
 import { useMatchDetailPage } from "./useMatchDetailPage";
 import { useMatchEdit } from "./useMatchEdit";
@@ -185,13 +185,13 @@ function handleJoinSheetContactCaptain() {
 onShareAppMessage(() => ({
   title: shareTitle.value,
   path: sharePath.value,
-  imageUrl: DEFAULT_SHARE_IMAGE_URL,
+  imageUrl: MATCH_DETAIL_SHARE_IMAGE_URL,
 }));
 
 onShareTimeline(() => ({
   title: shareTitle.value,
   query: `id=${matchId.value || match.value?.id || ""}`,
-  imageUrl: DEFAULT_SHARE_IMAGE_URL,
+  imageUrl: MATCH_DETAIL_SHARE_IMAGE_URL,
 }));
 
 // page-meta：主题变量覆盖 + 任一弹层打开时锁定滚动。
