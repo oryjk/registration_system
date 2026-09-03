@@ -58,6 +58,13 @@
       }
     },
     {
+      "path": "pages/teams/fund/index",
+      "style": {
+        "navigationBarTitleText": "队费缴纳",
+        "navigationStyle": "custom"
+      }
+    },
+    {
       "path": "pages/teams/invite/index",
       "style": {
         "navigationBarTitleText": "球队邀请",

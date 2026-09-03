@@ -1,13 +1,8 @@
 import { computed, ref } from "vue";
 import { onLoad, onShow } from "@dcloudio/uni-app";
 import { getAppTeamDetail, issueTeamInviteCode, leaveTeam, type AppTeamDetailData } from "@/api/team";
-import { createTeamMembershipOrder, syncGoPaymentOrder } from "@/api/payment";
-import { isMockWxPaymentParams, isPaymentCancelled, normalizeWxPaymentParams, requestWxPayment } from "@/utils/payment";
 import { useTeamContext } from "@/stores/teamContext";
 import { getCustomNavMetrics } from "@/utils/customNav";
-
-/** 单笔队费金额上限（分）：1 万元，与后端 MembershipMaxAmountCents 一致，防止误操作天价订单。 */
-export const MEMBERSHIP_MAX_AMOUNT_CENTS = 1_000_000;
 
 const ROLE_LABELS: Record<string, string> = {
   captain: "队长",
@@ -23,29 +18,16 @@ export function useTeamDetailPage() {
   const team = ref<AppTeamDetailData | null>(null);
   const isLoading = ref(false);
   const errorMessage = ref("");
-  const paying = ref(false);
-  const amountInput = ref("");
 
   const pageStyle = computed(() => ({
     paddingTop: `${navMetrics.pageTopPadding + 8}px`,
   }));
   const roleLabel = computed(() => ROLE_LABELS[team.value?.my_role ?? ""] ?? "成员");
   const canManage = computed(() => team.value?.my_role === "captain" || team.value?.my_role === "leader");
-  const amountCents = computed(() => {
-    const yuan = Number(amountInput.value);
-    if (!amountInput.value.trim() || !Number.isFinite(yuan)) return 0;
-    return Math.round(yuan * 100);
-  });
-  const amountError = computed(() => {
-    if (!amountInput.value.trim()) return "";
-    if (amountCents.value < 1) return "金额需大于 0";
-    if (amountCents.value > MEMBERSHIP_MAX_AMOUNT_CENTS) return "单笔队费不能超过 1 万元";
-    return "";
-  });
-  const totalPriceLabel = computed(() => {
-    const yuan = amountCents.value / 100;
-    return `¥${Number.isInteger(yuan) ? yuan : yuan.toFixed(2)}`;
-  });
+  /** 球队基本信息：logo 缺省时由模板回落到首字徽标。 */
+  const logoUrl = computed(() => team.value?.logo_url?.trim() || "");
+  const description = computed(() => team.value?.description?.trim() || "");
+  const createdLabel = computed(() => team.value?.created_at?.slice(0, 10) || "");
   /** 我在本队的个人账户余额；队费充值计入这里，不是球队公共余额。 */
   const balanceLabel = computed(() => {
     const yuan = (team.value?.my_balance_cents ?? 0) / 100;
@@ -81,41 +63,9 @@ export function useTeamDetailPage() {
     uni.navigateTo({ url: "/pages/teams/manage/index" });
   }
 
-  async function handleMembershipPayment() {
-    if (!team.value || paying.value) return;
-    if (amountError.value) {
-      uni.showToast({ title: amountError.value, icon: "none" });
-      return;
-    }
-    if (amountCents.value < 1) {
-      uni.showToast({ title: "请输入缴纳金额", icon: "none" });
-      return;
-    }
-    paying.value = true;
-    try {
-      const order = await createTeamMembershipOrder({
-        team_id: team.value.id,
-        amount_cents: amountCents.value,
-      });
-      const paymentParams = normalizeWxPaymentParams(order.payment);
-      if (paymentParams && !isMockWxPaymentParams(paymentParams)) {
-        await requestWxPayment(paymentParams);
-      }
-      const synced = await syncGoPaymentOrder(order.order.order_no);
-      await loadTeam();
-      uni.showToast({
-        title: synced.order.status === "paid" ? "队费缴纳成功" : "支付处理中，到账后自动生效",
-        icon: "none",
-      });
-    } catch (error) {
-      if (isPaymentCancelled(error)) {
-        uni.showToast({ title: "已取消支付", icon: "none" });
-      } else {
-        uni.showToast({ title: error instanceof Error ? error.message : "队费缴纳失败", icon: "none" });
-      }
-    } finally {
-      paying.value = false;
-    }
+  function openTeamFund() {
+    if (!team.value) return;
+    uni.navigateTo({ url: `/pages/teams/fund/index?teamId=${team.value.id}` });
   }
 
   onLoad((options) => {
@@ -180,21 +130,20 @@ export function useTeamDetailPage() {
     team,
     isLoading,
     errorMessage,
-    paying,
-    amountInput,
-    amountError,
     balanceLabel,
     roleLabel,
     canManage,
     canLeaveTeam,
+    logoUrl,
+    description,
+    createdLabel,
     inviteCode,
     leaveDialogVisible,
     handleLeaveTeamClick,
     handleLeaveTeamConfirm,
-    totalPriceLabel,
     membershipLabel,
     loadTeam,
     openTeamManage,
-    handleMembershipPayment,
+    openTeamFund,
   };
 }

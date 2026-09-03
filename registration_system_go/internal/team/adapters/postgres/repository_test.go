@@ -652,3 +652,42 @@ func TestRemoveMemberCancelsUpcomingTeamRegistrations(t *testing.T) {
 		}
 	}
 }
+
+func TestRepositoryTeamNameExistsIgnoresDissolved(t *testing.T) {
+	// 球队名称查重应只对活跃球队生效：解散（dissolved）/冻结（frozen）的球队
+	// 软删除后保留行以维持历史比赛引用，不应继续占用名称。
+	pool := testsupport.StartPostgres(t)
+	ctx := context.Background()
+	repository := NewRepository(pool)
+
+	var creatorID int64
+	if err := pool.QueryRow(ctx, `INSERT INTO users (openid) VALUES ('name-recycle-creator') RETURNING id`).Scan(&creatorID); err != nil {
+		t.Fatalf("seed creator: %v", err)
+	}
+
+	const name = "可复名联队"
+	if exists, err := repository.TeamNameExists(ctx, name); err != nil || exists {
+		t.Fatalf("team name should not exist before seed: exists=%v err=%v", exists, err)
+	}
+
+	team, err := repository.CreateWithCaptain(ctx, name, nil, nil, creatorID)
+	if err != nil {
+		t.Fatalf("create team: %v", err)
+	}
+
+	// 活跃球队仍然占名。
+	if exists, err := repository.TeamNameExists(ctx, name); err != nil || !exists {
+		t.Fatalf("active team should occupy name: exists=%v err=%v", exists, err)
+	}
+
+	// 解散后查重应当放行，否则前端会被"明明不存在却报存在"的误判卡住。
+	if dissolved, err := repository.Dissolve(ctx, team.ID); err != nil || !dissolved {
+		t.Fatalf("dissolve: dissolved=%v err=%v", dissolved, err)
+	}
+	if exists, err := repository.TeamNameExists(ctx, name); err != nil || exists {
+		t.Fatalf("dissolved team should not occupy name: exists=%v err=%v", exists, err)
+	}
+	if _, err := repository.CreateWithCaptain(ctx, name, nil, nil, creatorID); err != nil {
+		t.Fatalf("creating a team with a recycled (dissolved) name should succeed, got: %v", err)
+	}
+}

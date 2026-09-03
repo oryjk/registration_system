@@ -16,22 +16,21 @@ const {
   team,
   isLoading,
   errorMessage,
-  paying,
-  amountInput,
-  amountError,
   balanceLabel,
   roleLabel,
   canManage,
   canLeaveTeam,
+  logoUrl,
+  description,
+  createdLabel,
   inviteCode,
   leaveDialogVisible,
   handleLeaveTeamClick,
   handleLeaveTeamConfirm,
-  totalPriceLabel,
   membershipLabel,
   loadTeam,
   openTeamManage,
-  handleMembershipPayment,
+  openTeamFund,
 } = useTeamDetailPage();
 
 // 分享邀请：落地到独立邀请页（带邀请码），非成员凭码查看球队并申请加入。
@@ -64,45 +63,33 @@ onShareTimeline(() => ({
       <template v-else-if="team">
         <view class="page-hero">
           <view class="hero-row">
-            <view class="hero-badge">{{ team.name.slice(0, 1) || "队" }}</view>
+            <view class="hero-badge">
+              <image v-if="logoUrl" class="hero-badge__logo" :src="logoUrl" mode="aspectFill" />
+              <text v-else>{{ team.name.slice(0, 1) || "队" }}</text>
+            </view>
             <view class="hero-copy">
               <text class="hero-title">{{ team.name }}</text>
               <text class="hero-meta">{{ roleLabel }} · 信用分 {{ team.credit_score }}</text>
+              <text v-if="createdLabel" class="hero-meta">创建于 {{ createdLabel }}</text>
             </view>
             <NeoTag :tone="team.is_vip ? 'lime' : 'amber'" size="lg">{{ membershipLabel }}</NeoTag>
           </view>
+          <text v-if="description" class="hero-description">{{ description }}</text>
         </view>
 
-        <view class="recharge-card">
-          <view class="balance-hero">
-            <text class="balance-hero-label">我的队内余额</text>
-            <view class="balance-hero-amount">
-              <text class="balance-hero-symbol">¥</text>
-              <text class="balance-hero-value">{{ balanceLabel }}</text>
+        <!-- 队费下放子页后的轻量入口：展示余额，点击进入队费缴纳页。 -->
+        <view class="fund-entry" hover-class="fund-entry--pressed" @tap="openTeamFund">
+          <view class="fund-entry__main">
+            <text class="fund-entry__label">队费余额</text>
+            <view class="fund-entry__amount">
+              <text class="fund-entry__symbol">¥</text>
+              <text class="fund-entry__value">{{ balanceLabel }}</text>
             </view>
-            <text class="balance-hero-copy">队费充值计入你在本队的个人账户</text>
           </view>
-          <view class="recharge-amount">
-            <input
-              v-model="amountInput"
-              class="recharge-input"
-              type="digit"
-              placeholder="输入缴纳金额（元）"
-            />
-            <text v-if="amountError" class="recharge-error">{{ amountError }}</text>
+          <view class="fund-entry__action">
+            <text class="fund-entry__action-text">去缴纳</text>
+            <text class="fund-entry__action-arrow">→</text>
           </view>
-          <view class="recharge-total">
-            <text class="recharge-total-label">应付</text>
-            <text class="recharge-total-value">{{ totalPriceLabel }}</text>
-          </view>
-          <NeoButton
-            block
-            :loading="paying"
-            :disabled="paying"
-            @click="handleMembershipPayment"
-          >
-            {{ paying ? "支付中..." : "微信支付缴纳队费" }}
-          </NeoButton>
         </view>
 
         <!-- 球队管理入口仅对队长/领队有意义，普通队员不展示。 -->
@@ -174,7 +161,7 @@ onShareTimeline(() => ({
 
 .state-card,
 .page-hero,
-.recharge-card {
+.fund-entry {
   border: var(--neo-border-default);
   border-radius: var(--neo-radius-md);
   background: var(--neo-color-surface);
@@ -203,6 +190,7 @@ onShareTimeline(() => ({
 }
 
 .hero-badge {
+  position: relative;
   width: 88rpx;
   height: 88rpx;
   border: var(--neo-border-default);
@@ -215,6 +203,12 @@ onShareTimeline(() => ({
   font-size: 40rpx;
   font-weight: 950;
   flex-shrink: 0;
+  overflow: hidden;
+}
+
+.hero-badge__logo {
+  width: 100%;
+  height: 100%;
 }
 
 .hero-copy {
@@ -241,95 +235,78 @@ onShareTimeline(() => ({
   font-weight: 700;
 }
 
-.recharge-card {
-  padding: 28rpx;
+.hero-description {
+  display: block;
+  margin-top: 18rpx;
+  color: var(--neo-color-text-muted);
+  font-size: 25rpx;
+  line-height: 1.55;
+  font-weight: 700;
+  word-break: break-word;
 }
 
-.balance-hero {
+.fund-entry {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 6rpx;
-  padding: 24rpx;
-  margin-bottom: 22rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-success);
+  align-items: center;
+  justify-content: space-between;
+  gap: 18rpx;
+  padding: 26rpx 28rpx;
 }
 
-.balance-hero-label {
+.fund-entry--pressed {
+  transform: translate(2rpx, 2rpx);
+  box-shadow: none;
+}
+
+.fund-entry__label {
+  display: block;
   color: var(--neo-color-text-muted);
   font-size: 24rpx;
   font-weight: 800;
   letter-spacing: 2rpx;
 }
 
-.balance-hero-amount {
+.fund-entry__amount {
   display: flex;
   align-items: baseline;
-  gap: 6rpx;
+  gap: 4rpx;
+  margin-top: 8rpx;
 }
 
-.balance-hero-symbol {
+.fund-entry__symbol {
   color: var(--neo-color-text);
-  font-size: 34rpx;
+  font-size: 28rpx;
   font-weight: 900;
 }
 
-.balance-hero-value {
+.fund-entry__value {
   color: var(--neo-color-text);
-  font-size: 64rpx;
+  font-size: 46rpx;
   line-height: 1.1;
   font-weight: 950;
 }
 
-.balance-hero-copy {
-  color: var(--neo-color-text-muted);
-  font-size: 22rpx;
-  font-weight: 700;
-}
-
-.recharge-amount {
-  margin-top: 22rpx;
-}
-
-.recharge-input {
-  height: 88rpx;
-  padding: 0 24rpx;
+.fund-entry__action {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  padding: 12rpx 20rpx;
   border: var(--neo-border-default);
   border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-surface);
+  background: var(--neo-color-accent);
+  flex-shrink: 0;
+}
+
+.fund-entry__action-text {
   color: var(--neo-color-text);
-  font-size: 30rpx;
-  font-weight: 800;
-  box-sizing: border-box;
-}
-
-.recharge-error {
-  display: block;
-  margin-top: 10rpx;
-  color: var(--neo-color-danger);
-  font-size: 22rpx;
-  font-weight: 700;
-}
-
-.recharge-total {
-  display: flex;
-  align-items: baseline;
-  gap: 12rpx;
-  margin: 22rpx 4rpx;
-}
-
-.recharge-total-label {
-  color: var(--neo-color-text-muted);
   font-size: 24rpx;
-  font-weight: 800;
+  font-weight: 900;
 }
 
-.recharge-total-value {
+.fund-entry__action-arrow {
   color: var(--neo-color-text);
-  font-size: 44rpx;
-  font-weight: 950;
+  font-size: 24rpx;
+  font-weight: 900;
 }
 
 :deep(.manage-card) {

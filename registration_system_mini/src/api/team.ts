@@ -395,6 +395,7 @@ export interface AppTeamDetailData {
   vip_until?: string | null;
   is_vip: boolean;
   my_balance_cents?: number;
+  created_at?: string | null;
 }
 
 export function getAppTeamDetail(teamId: number) {

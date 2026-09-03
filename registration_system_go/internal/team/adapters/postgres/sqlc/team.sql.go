@@ -355,6 +355,7 @@ const findTeamByName = `-- name: FindTeamByName :one
 SELECT id, name, description, logo_url, captain_id, join_password_hash, status, created_at, updated_at
 FROM teams
 WHERE name = $1
+  AND status = 'active'
 `
 
 type FindTeamByNameRow struct {

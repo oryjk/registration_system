@@ -37,6 +37,7 @@ type AppTeamDetailResponse struct {
 	VipUntil       *time.Time        `json:"vip_until"`
 	IsVip          bool              `json:"is_vip"`
 	MyBalanceCents int64             `json:"my_balance_cents"`
+	CreatedAt      time.Time         `json:"created_at"`
 }
 
 type AppTeamMemberResponse struct {
@@ -78,6 +79,7 @@ func (h *AppHandler) GetTeam(c *gin.Context) {
 		CreditScore: detail.Membership.CreditScore, VipUntil: detail.Membership.VipUntil,
 		IsVip:          detail.Membership.VipUntil != nil && detail.Membership.VipUntil.After(time.Now()),
 		MyBalanceCents: detail.Membership.BalanceCents,
+		CreatedAt:      team.CreatedAt,
 	})
 }
 

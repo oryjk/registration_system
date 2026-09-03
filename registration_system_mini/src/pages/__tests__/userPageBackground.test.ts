@@ -66,13 +66,16 @@ describe("mine page visual composition", () => {
     expect(userPageSource.includes("<navigator")).toEqual(false);
   });
 
-  test("keeps membership payment flow on the team detail page", async () => {
+  test("keeps membership payment flow on the team fund page", async () => {
+    const fundFlow = await Bun.file(sourcePath("pages/teams/fund/useTeamFundPage.ts")).text();
     const detailFlow = await Bun.file(sourcePath("pages/teams/detail/useTeamDetailPage.ts")).text();
 
-    // 「我的」页的球队服务板块已移除；微信支付流程收敛在球队二级页。
-    expect(detailFlow.includes("createTeamMembershipOrder")).toEqual(true);
-    expect(detailFlow.includes("requestWxPayment")).toEqual(true);
-    expect(detailFlow.includes("syncGoPaymentOrder")).toEqual(true);
+    // 队费缴纳从球队详情页下放到独立子页；详情页只保留余额入口行。
+    expect(fundFlow.includes("createTeamMembershipOrder")).toEqual(true);
+    expect(fundFlow.includes("requestWxPayment")).toEqual(true);
+    expect(fundFlow.includes("syncGoPaymentOrder")).toEqual(true);
+    expect(detailFlow.includes("createTeamMembershipOrder")).toEqual(false);
+    expect(detailFlow.includes("pages/teams/fund/index")).toEqual(true);
   });
 
   test("keeps slow billing flow out of the mine page wallet card", async () => {

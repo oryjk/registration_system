@@ -21,7 +21,9 @@ func TestAppTeamRoutesReturnPrivacyDTOs(t *testing.T) {
 	now := time.Date(2026, 8, 8, 8, 0, 0, 0, time.UTC)
 	realName := "王睿"
 	queries := &fakeAppTeamQueries{
-		detail:  application.AppTeamDetail{Team: domain.Team{ID: 7, Name: "东安联队", Status: domain.TeamActive}, MyRole: domain.RoleLeader},
+		detail: application.AppTeamDetail{Team: domain.Team{
+			ID: 7, Name: "东安联队", Status: domain.TeamActive, CreatedAt: now,
+		}, MyRole: domain.RoleLeader},
 		members: []application.AppTeamMember{{UserID: 42, Nickname: "阿睿", RealName: &realName, Role: domain.RoleLeader, Status: domain.MemberActive, JoinedAt: now}},
 	}
 	handler := NewAppHandler(queries, nil)
@@ -32,6 +34,7 @@ func TestAppTeamRoutesReturnPrivacyDTOs(t *testing.T) {
 
 	for _, test := range []struct{ path, want string }{
 		{path: "/teams/7", want: `"my_role":"leader"`},
+		{path: "/teams/7", want: `"created_at":"2026-08-08T08:00:00Z"`},
 		{path: "/teams/7/members", want: `"user_id":42`},
 	} {
 		response := httptest.NewRecorder()

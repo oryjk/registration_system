@@ -14,10 +14,13 @@ INSERT INTO teams (name, description, join_password_hash, captain_id, status)
 VALUES ($1, $2, $3, $4, 'active')
 RETURNING teams.id, teams.name, teams.description, teams.logo_url, teams.captain_id, teams.join_password_hash, teams.status, teams.created_at, teams.updated_at;
 
+-- 名称查重只对 active 球队生效：dissolved/frozen 球队保留行以维持历史比赛引用，
+-- 解散后允许同名新建一支新球队。
 -- name: FindTeamByName :one
 SELECT id, name, description, logo_url, captain_id, join_password_hash, status, created_at, updated_at
 FROM teams
-WHERE name = $1;
+WHERE name = $1
+  AND status = 'active';
 
 -- 用户侧加入球队：仅搜索 active 球队，附成员数与信用分供小程序列表展示。
 -- name: SearchActiveTeamsByKeyword :many
