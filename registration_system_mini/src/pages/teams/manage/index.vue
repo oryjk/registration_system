@@ -120,7 +120,13 @@ const metaPageStyle = computed(() =>
           <text class="team-manage-copy">{{ heroCopy }}</text>
         </view>
         <view class="team-manage-hero__mark">
-          <text>{{ currentTeam?.name?.slice(0, 1) || "队" }}</text>
+          <image
+            v-if="currentTeam?.logoUrl"
+            class="team-manage-hero__logo"
+            :src="currentTeam.logoUrl"
+            mode="aspectFill"
+          />
+          <text v-else>{{ currentTeam?.name?.slice(0, 1) || "队" }}</text>
         </view>
       </NeoSurface>
 
@@ -340,6 +346,12 @@ const metaPageStyle = computed(() =>
   font-size: 40rpx;
   font-weight: 900;
   box-sizing: border-box;
+  overflow: hidden;
+}
+
+.team-manage-hero__logo {
+  width: 100%;
+  height: 100%;
 }
 
 :deep(.neo-segmented-control) {

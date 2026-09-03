@@ -33,7 +33,15 @@ defineProps<{
 
     <view class="vs-stage">
       <view class="vs-team-card">
-        <view class="vs-logo">{{ currentTeam?.name?.slice(0, 1) || "队" }}</view>
+        <view class="vs-logo">
+          <image
+            v-if="currentTeam?.logoUrl"
+            class="vs-logo__image"
+            :src="currentTeam.logoUrl"
+            mode="aspectFill"
+          />
+          <text v-else>{{ currentTeam?.name?.slice(0, 1) || "队" }}</text>
+        </view>
         <text class="vs-team-name">{{ currentTeam?.name || "当前球队" }}</text>
         <text class="vs-team-credit">{{ currentTeam?.creditScore ?? 0 }} 分</text>
       </view>
@@ -44,7 +52,15 @@ defineProps<{
       </view>
       <text v-else class="vs-mark">VS</text>
       <view class="vs-team-card">
-        <view class="vs-logo vs-logo-muted">{{ opponentTeam?.name?.slice(0, 1) || "?" }}</view>
+        <view class="vs-logo vs-logo-muted">
+          <image
+            v-if="opponentTeam?.logo_url"
+            class="vs-logo__image vs-logo__image--muted"
+            :src="opponentTeam.logo_url"
+            mode="aspectFill"
+          />
+          <text v-else>{{ opponentTeam?.name?.slice(0, 1) || "?" }}</text>
+        </view>
         <text class="vs-team-name">{{ opponentTeam?.name || match.opposing || "对手待定" }}</text>
         <text class="vs-team-credit vs-team-credit-muted">{{ opponentTeam?.credit_score ? `${opponentTeam.credit_score} 分` : "--" }}</text>
       </view>
@@ -166,6 +182,17 @@ defineProps<{
 .vs-logo-muted {
   border-color: rgba(255, 255, 255, 0.4);
   background: linear-gradient(180deg, #858585 0%, #5e5e5e 100%);
+}
+
+.vs-logo__image {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+}
+
+/* 对手侧 logo 与首字回落保持同级的弱化视觉层级。 */
+.vs-logo__image--muted {
+  opacity: 0.78;
 }
 
 .vs-team-name {
