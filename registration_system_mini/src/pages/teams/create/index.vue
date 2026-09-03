@@ -14,6 +14,9 @@ const {
   reviewTeamNameOptions,
   canCreate,
   submitting,
+  logoLocalPath,
+  handlePickLogo,
+  handleRemoveLogo,
   onboardingShareVisible,
   handleOnboardingShareConfirmed,
   handleOnboardingShareDeclined,
@@ -40,10 +43,13 @@ const {
 
       <TeamCreatePanel
         :form="createForm"
+        :logo-local-path="logoLocalPath"
         :review-mode="createTeamReviewMode"
         :review-team-name-options="reviewTeamNameOptions"
         :can-create="canCreate"
         :submitting="submitting"
+        @pick-logo="handlePickLogo"
+        @remove-logo="handleRemoveLogo"
         @submit="handleCreateTeam"
       />
 
