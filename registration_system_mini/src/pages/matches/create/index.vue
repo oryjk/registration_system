@@ -350,7 +350,13 @@ onShow(async () => {
           <text class="create-hero-title">{{ currentTeam?.name || "当前球队" }}</text>
         </view>
         <view class="create-hero__mark">
-          <text>赛</text>
+          <image
+            v-if="currentTeam?.logoUrl"
+            class="create-hero__logo"
+            :src="currentTeam.logoUrl"
+            mode="aspectFill"
+          />
+          <text v-else>{{ (currentTeam?.name || "队").slice(0, 1) }}</text>
         </view>
       </NeoSurface>
 
@@ -460,6 +466,12 @@ onShow(async () => {
   color: var(--neo-color-text);
   font-size: 44rpx;
   font-weight: 900;
+  overflow: hidden;
+}
+
+.create-hero__logo {
+  width: 100%;
+  height: 100%;
 }
 
 .create-skeleton-form,
