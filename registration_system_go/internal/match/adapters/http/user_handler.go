@@ -284,9 +284,13 @@ type UserUpdateMatchRequest struct {
 	OpponentName *string `json:"opponent_name"`
 	// MaxPlayers 主队报名组人数上限；null=不改。
 	MaxPlayers *int `json:"max_players"`
+	// StartTime/EndTime 比赛起止时间；null=不改。允许设为过去时间（补录历史赛果），
+	// 由小程序端在保存前对过去时间做二次确认。
+	StartTime *time.Time `json:"start_time"`
+	EndTime   *time.Time `json:"end_time"`
 }
 
-// UpdateDetails PATCH /matches/:id：主队管理者编辑比赛（当前仅对手名称与报名人数上限）。
+// UpdateDetails PATCH /matches/:id：主队管理者编辑比赛（对手名称、报名人数上限与起止时间）。
 func (h *UserHandler) UpdateDetails(c *gin.Context) {
 	actor, ok := userActor(c)
 	if !ok {
@@ -304,6 +308,7 @@ func (h *UserHandler) UpdateDetails(c *gin.Context) {
 	}
 	if _, err := h.update.UpdateDetails(c.Request.Context(), actor, id, application.UserUpdateMatchCommand{
 		OpponentName: request.OpponentName, HostCapacityLimit: request.MaxPlayers,
+		StartTime: request.StartTime, EndTime: request.EndTime,
 	}); err != nil {
 		sharedhttpapi.WriteError(c, err)
 		return

@@ -16,8 +16,8 @@ type UserMatchUpdater interface {
 	UpdateDetails(context.Context, domain.Match, *domain.RegistrationGroup) error
 }
 
-// UserMatchUpdateService 小程序端主队管理者编辑比赛：当前仅开放
-// 手工对手名称与主队报名组人数上限两项，其余字段保持原值。
+// UserMatchUpdateService 小程序端主队管理者编辑比赛：当前开放
+// 手工对手名称、主队报名组人数上限与比赛起止时间，其余字段保持原值。
 type UserMatchUpdateService struct {
 	repository UserMatchUpdater
 	authorizer TeamManagerAuthorizer
@@ -29,16 +29,19 @@ func NewUserMatchUpdateService(repository UserMatchUpdater, authorizer TeamManag
 }
 
 // UserUpdateMatchCommand 字段为 nil 表示本次不改；OpponentName 空串表示清除。
+// StartTime/EndTime 允许设为过去时间（补录历史赛果场景），仅需 End 晚于 Start。
 type UserUpdateMatchCommand struct {
 	OpponentName      *string
 	HostCapacityLimit *int
+	StartTime         *time.Time
+	EndTime           *time.Time
 }
 
 func (s UserMatchUpdateService) UpdateDetails(ctx context.Context, actor sharedauth.Actor, id uuid.UUID, command UserUpdateMatchCommand) (domain.Match, error) {
 	if !actor.IsUser() {
 		return domain.Match{}, sharederror.ErrForbidden
 	}
-	if command.OpponentName == nil && command.HostCapacityLimit == nil {
+	if command.OpponentName == nil && command.HostCapacityLimit == nil && command.StartTime == nil && command.EndTime == nil {
 		return domain.Match{}, sharederror.New(sharederror.KindValidation, "没有要修改的内容")
 	}
 	match, groups, found, err := s.repository.FindByID(ctx, id)
@@ -56,8 +59,15 @@ func (s UserMatchUpdateService) UpdateDetails(ctx context.Context, actor shareda
 	}
 	now := s.now()
 	// 其余字段回填当前值：domain 会重跑完整校验并拦截已结束/已取消的比赛。
+	startTime, endTime := match.StartTime, match.EndTime
+	if command.StartTime != nil {
+		startTime = *command.StartTime
+	}
+	if command.EndTime != nil {
+		endTime = *command.EndTime
+	}
 	if err := match.UpdateDetails(domain.UpdateMatchDetails{
-		Name: match.Name, StartTime: match.StartTime, EndTime: match.EndTime,
+		Name: match.Name, StartTime: startTime, EndTime: endTime,
 		RegistrationStartAt: match.RegistrationStartAt, RegistrationEndAt: match.RegistrationEndAt,
 		Location: match.Location, LocationLatitude: match.LocationLatitude, LocationLongitude: match.LocationLongitude,
 		Description: match.Description, OpponentName: command.OpponentName,

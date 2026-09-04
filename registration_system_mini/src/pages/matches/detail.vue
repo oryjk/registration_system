@@ -405,16 +405,33 @@ const metaPageStyle = computed(() =>
       @close="handleCancelClose"
     />
 
-    <!-- 修改比赛：对手名称 + 报名人数上限。 -->
+    <!-- 修改比赛：对手名称 + 报名人数上限 + 比赛起止时间。 -->
     <MatchEditDialog
       :visible="matchEdit.dialogVisible.value"
       :opponent-name="matchEdit.opponentName.value"
       :max-players="matchEdit.maxPlayers.value"
+      :start-time="matchEdit.startTime.value"
+      :end-time="matchEdit.endTime.value"
       :submitting="matchEdit.isSubmitting.value"
       @close="matchEdit.close"
       @update:opponent-name="matchEdit.opponentName.value = $event"
       @update:max-players="matchEdit.maxPlayers.value = $event"
+      @update:start-time="matchEdit.startTime.value = $event"
+      @update:end-time="matchEdit.endTime.value = $event"
       @submit="void matchEdit.submit()"
+    />
+
+    <!-- 过去时间二次确认：开始时间早于当前时间时，确认后才提交（叠加在编辑弹窗之上）。 -->
+    <NeoConfirmDialog
+      :visible="matchEdit.pastTimeDialogVisible.value"
+      title="开始时间已过"
+      :message="matchEdit.pastTimeMessage.value"
+      primary-text="确认无误，保存"
+      secondary-text="返回修改"
+      :loading="matchEdit.isSubmitting.value"
+      @primary="void matchEdit.confirmPastTimeSubmit()"
+      @secondary="matchEdit.cancelPastTimeSubmit()"
+      @close="matchEdit.cancelPastTimeSubmit()"
     />
 
     <!-- 录入比分：比赛管理员专用。 -->

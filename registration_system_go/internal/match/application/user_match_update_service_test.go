@@ -92,6 +92,67 @@ func TestUserUpdateMatchDetailsRules(t *testing.T) {
 	}
 }
 
+func TestUserUpdateMatchDetailsUpdatesSchedule(t *testing.T) {
+	match, groups := newUpdateTestMatch()
+	actor := sharedauth.Actor{Kind: sharedauth.ActorUser, ID: 42}
+	authorizer := fakeUserMatchAuthorizer{allowed: map[int64]bool{42: true}}
+
+	newStart := time.Date(2026, 9, 6, 16, 30, 0, 0, time.UTC)
+	newEnd := newStart.Add(90 * time.Minute)
+	repository := &fakeUserMatchUpdateRepository{match: match, groups: groups, found: true}
+	service := NewUserMatchUpdateService(repository, authorizer, time.Now)
+
+	updated, err := service.UpdateDetails(context.Background(), actor, match.ID,
+		UserUpdateMatchCommand{StartTime: &newStart, EndTime: &newEnd})
+	if err != nil {
+		t.Fatalf("仅更新起止时间应成功: %v", err)
+	}
+	if !updated.StartTime.Equal(newStart) || !updated.EndTime.Equal(newEnd) {
+		t.Fatalf("起止时间应更新: got %s-%s", updated.StartTime, updated.EndTime)
+	}
+	if repository.updated.OpponentName == nil || *repository.updated.OpponentName != "红星队" {
+		t.Fatalf("未提交的字段应保持原值: %+v", repository.updated.OpponentName)
+	}
+	if repository.updatedGp != nil {
+		t.Fatalf("未提交人数上限时不应更新报名组: %+v", repository.updatedGp)
+	}
+}
+
+func TestUserUpdateMatchDetailsScheduleRules(t *testing.T) {
+	match, groups := newUpdateTestMatch()
+	actor := sharedauth.Actor{Kind: sharedauth.ActorUser, ID: 42}
+	authorizer := fakeUserMatchAuthorizer{allowed: map[int64]bool{42: true}}
+	now := time.Date(2026, 9, 4, 12, 0, 0, 0, time.UTC)
+
+	newStart := match.StartTime.Add(24 * time.Hour)
+	endBeforeStart := newStart.Add(-time.Hour)
+	pastStart := now.Add(-2 * time.Hour)
+	pastEnd := pastStart.Add(time.Hour)
+
+	cases := []struct {
+		name    string
+		command UserUpdateMatchCommand
+		wantErr string
+	}{
+		{"end must be after start", UserUpdateMatchCommand{StartTime: &newStart, EndTime: &endBeforeStart}, "结束时间必须晚于开始时间"},
+		{"past schedule is allowed", UserUpdateMatchCommand{StartTime: &pastStart, EndTime: &pastEnd}, ""},
+	}
+	for _, testCase := range cases {
+		repository := &fakeUserMatchUpdateRepository{match: match, groups: groups, found: true}
+		service := NewUserMatchUpdateService(repository, authorizer, func() time.Time { return now })
+		_, err := service.UpdateDetails(context.Background(), actor, match.ID, testCase.command)
+		if testCase.wantErr == "" {
+			if err != nil {
+				t.Fatalf("%s: 不应报错，得到 %v", testCase.name, err)
+			}
+			continue
+		}
+		if err == nil || !strings.Contains(err.Error(), testCase.wantErr) {
+			t.Fatalf("%s: 期望错误含 %q，得到 %v", testCase.name, testCase.wantErr, err)
+		}
+	}
+}
+
 func TestUserUpdateMatchDetailsRequiresHostManager(t *testing.T) {
 	match, groups := newUpdateTestMatch()
 	repository := &fakeUserMatchUpdateRepository{match: match, groups: groups, found: true}
