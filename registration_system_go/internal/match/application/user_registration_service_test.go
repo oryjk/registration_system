@@ -35,6 +35,25 @@ func TestUserRegistrationPutIndividualUpdatesCapacityAndOpponent(t *testing.T) {
 	}
 }
 
+func TestUserRegistrationRejectsTimeExpiredMatch(t *testing.T) {
+	now := time.Now()
+	// 过期未收尾的比赛：状态仍是 registering，但结束时间已过（无独立报名窗口）。
+	fixture := individualRegistrationFixture(now, 1, 2)
+	fixture.match.EndTime = now.Add(-time.Minute)
+	repository := newFakeUserRegistrationRepository(fixture)
+	service := NewUserRegistrationService(repository, fakeClock{now: now})
+
+	_, err := service.Put(context.Background(), userActor(42), repository.match.ID, repository.group.ID, validRegistrationCommand())
+	if err == nil || !errors.Is(err, sharederror.ErrConflict) {
+		t.Fatalf("过期比赛的报名修改应被拒绝: %v", err)
+	}
+
+	_, err = service.Delete(context.Background(), userActor(42), repository.match.ID, repository.group.ID)
+	if err == nil || !errors.Is(err, sharederror.ErrConflict) {
+		t.Fatalf("过期比赛的报名取消应被拒绝: %v", err)
+	}
+}
+
 func TestUserRegistrationPutValidatesActorStatusAndCount(t *testing.T) {
 	now := time.Now()
 	fixture := individualRegistrationFixture(now, 1, 2)

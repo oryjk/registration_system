@@ -146,6 +146,7 @@ export function useMatchDetailPage() {
         isRegistering: sourceMatch.value.status === "registering",
         registrationStartAt: sourceMatch.value.registration_start_at,
         registrationEndAt: sourceMatch.value.registration_end_at,
+        matchEndAt: sourceMatch.value.end_time,
       });
     }
     return resolveRegistrationWindow({

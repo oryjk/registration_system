@@ -45,6 +45,7 @@ export function useApplyTeamPage(matchId: Ref<string>) {
       isRegistering: match.status === "registering",
       registrationStartAt: match.registration_start_at,
       registrationEndAt: match.registration_end_at,
+      matchEndAt: match.end_time,
     }).state;
   });
   const isRegistrationOpen = computed(() => registrationWindowState.value === "open");

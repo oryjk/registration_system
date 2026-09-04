@@ -9,11 +9,14 @@ import {
 import type { AppMatchSummary } from "@/types/match";
 
 function buildMatch(overrides: Partial<AppMatchSummary>): AppMatchSummary {
+  // 起止时间取未来 30 天：报名开放判断会参考比赛结束时间，固定旧日期会让卡片退化为「查看比赛」。
+  const startTime = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+  const endTime = new Date(startTime.getTime() + 2 * 60 * 60 * 1000);
   return {
     id: "match-1",
     status: "registering",
-    start_time: "2026-08-20T15:00:00.000Z",
-    end_time: "2026-08-20T17:00:00.000Z",
+    start_time: startTime.toISOString(),
+    end_time: endTime.toISOString(),
     name: "周六散人约局",
     publication_mode: "online_individual",
     opponent_state: "recruiting",

@@ -95,6 +95,7 @@ function resolveActionKind(match: AppMatchSummary, viewer: HallViewerContext, no
     isRegistering: match.status === "registering",
     registrationStartAt: match.registration_start_at,
     registrationEndAt: match.registration_end_at,
+    matchEndAt: match.end_time,
   });
   if (registrationWindow.state !== "open") return "view";
   if (isIndividualStyle(match)) {

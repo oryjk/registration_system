@@ -161,6 +161,9 @@ func TestMatchRegistrationOpenAtHonorsConfiguredBounds(t *testing.T) {
 		{name: "before end", match: Match{RegistrationEndAt: &end}, now: end.Add(-time.Nanosecond), want: true},
 		{name: "at end", match: Match{RegistrationEndAt: &end}, now: end, want: false},
 		{name: "inside complete window", match: Match{RegistrationStartAt: &start, RegistrationEndAt: &end}, now: start.Add(time.Hour), want: true},
+		{name: "after match end", match: Match{EndTime: end}, now: end, want: false},
+		{name: "after match end even without window", match: Match{EndTime: end}, now: end.Add(time.Hour), want: false},
+		{name: "before match end", match: Match{EndTime: end}, now: end.Add(-time.Nanosecond), want: true},
 	}
 
 	for _, test := range tests {

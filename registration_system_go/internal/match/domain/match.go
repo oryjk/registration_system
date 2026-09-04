@@ -272,6 +272,11 @@ func (m *Match) RecalculateIndividualOpponent(activePlayers, minPlayers int, now
 }
 
 func (m Match) RegistrationOpenAt(now time.Time) bool {
+	// 比赛结束时间已过即视为报名关闭：过期未收尾的比赛状态仍停在 registering，
+	// 不能只依赖状态与报名窗口判断（否则赛后仍可增删报名）。
+	if !m.EndTime.IsZero() && !now.Before(m.EndTime) {
+		return false
+	}
 	if m.RegistrationStartAt != nil && now.Before(*m.RegistrationStartAt) {
 		return false
 	}
