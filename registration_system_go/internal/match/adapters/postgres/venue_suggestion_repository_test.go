@@ -9,13 +9,13 @@ import (
 	"github.com/oryjk/registration_system/registration_system_go/internal/testsupport"
 )
 
-func TestListVenueSuggestionsAggregatesAndToleratesMissingCoordinates(t *testing.T) {
+func TestListVenueSuggestionsFiltersVenuesWithoutCoordinates(t *testing.T) {
 	pool := testsupport.StartPostgres(t)
 	ctx := context.Background()
 	ownerID, teamID := seedMatchOwner(t, pool)
 	repository := NewRepository(pool)
 
-	// 同一不带坐标的场地两次 + 带坐标的场地一次；历史上无坐标场地曾让 NULL 扫描进 float64 报 500。
+	// 无坐标场地用得最多也不进选项；带坐标场地保留并携带代表坐标。
 	seedVenueMatch(t, repository, ownerID, teamID, "驿马河二期", nil, nil, time.Date(2026, 8, 1, 12, 0, 0, 0, time.UTC))
 	seedVenueMatch(t, repository, ownerID, teamID, "驿马河二期", nil, nil, time.Date(2026, 8, 6, 12, 0, 0, 0, time.UTC))
 	latitude, longitude := 30.585638, 104.101672
@@ -25,14 +25,11 @@ func TestListVenueSuggestionsAggregatesAndToleratesMissingCoordinates(t *testing
 	if err != nil {
 		t.Fatalf("list venue suggestions: %v", err)
 	}
-	if len(items) != 2 {
-		t.Fatalf("expected 2 venues, got %d: %+v", len(items), items)
+	if len(items) != 1 {
+		t.Fatalf("expected only the geocoded venue, got %d: %+v", len(items), items)
 	}
-	if items[0].Location != "驿马河二期" || items[0].UseCount != 2 || items[0].Latitude != nil || items[0].Longitude != nil {
-		t.Fatalf("venue without coordinates aggregated wrong: %+v", items[0])
-	}
-	if items[1].Location != "悦享动运动公园" || items[1].Latitude == nil || *items[1].Latitude != latitude || items[1].Longitude == nil {
-		t.Fatalf("venue with coordinates aggregated wrong: %+v", items[1])
+	if items[0].Location != "悦享动运动公园" || items[0].Latitude == nil || *items[0].Latitude != latitude || items[0].Longitude == nil || *items[0].Longitude != longitude {
+		t.Fatalf("geocoded venue aggregated wrong: %+v", items[0])
 	}
 
 	limited, err := repository.ListVenueSuggestions(ctx, 1)
