@@ -82,7 +82,6 @@ function handleSelect(venue: BackendVenueSuggestion) {
           <view class="venue-picker-option" :class="{ 'venue-picker-option--current': venue.location === currentLocation }">
             <view class="venue-picker-option__copy">
               <text class="venue-picker-option__name">{{ venue.location }}</text>
-              <text class="venue-picker-option__meta">用过 {{ venue.use_count }} 次</text>
             </view>
             <text v-if="venue.location === currentLocation" class="venue-picker-option__mark">当前</text>
           </view>
@@ -249,14 +248,6 @@ function handleSelect(venue: BackendVenueSuggestion) {
   font-weight: 900;
   line-height: 1.3;
   word-break: break-word;
-}
-
-.venue-picker-option__meta {
-  display: block;
-  margin-top: 4rpx;
-  color: var(--neo-color-text-muted);
-  font-size: 22rpx;
-  font-weight: 700;
 }
 
 .venue-picker-option__mark {
