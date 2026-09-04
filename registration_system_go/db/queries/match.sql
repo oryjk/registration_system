@@ -888,8 +888,8 @@ SELECT m.location,
        COUNT(*)::BIGINT AS use_count,
        MAX(m.start_time)::TIMESTAMPTZ AS last_used_at,
        (COUNT(m.location_latitude) > 0) AS has_geo,
-       (ARRAY_REMOVE(ARRAY_AGG(m.location_latitude ORDER BY m.start_time DESC NULLS LAST), NULL))[1]::DOUBLE PRECISION AS latitude,
-       (ARRAY_REMOVE(ARRAY_AGG(m.location_longitude ORDER BY m.start_time DESC NULLS LAST), NULL))[1]::DOUBLE PRECISION AS longitude
+       COALESCE((ARRAY_REMOVE(ARRAY_AGG(m.location_latitude ORDER BY m.start_time DESC NULLS LAST), NULL))[1], 0)::DOUBLE PRECISION AS latitude,
+       COALESCE((ARRAY_REMOVE(ARRAY_AGG(m.location_longitude ORDER BY m.start_time DESC NULLS LAST), NULL))[1], 0)::DOUBLE PRECISION AS longitude
 FROM matches m
 WHERE m.location IS NOT NULL AND btrim(m.location) <> ''
 GROUP BY m.location
