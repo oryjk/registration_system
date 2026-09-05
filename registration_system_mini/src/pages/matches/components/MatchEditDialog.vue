@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import NeoConfirmDialog from "@/components/neo/NeoConfirmDialog.vue";
+import NeoSegmentedControl from "@/components/neo/NeoSegmentedControl.vue";
 import { pad } from "@/utils/datetime";
+import { MATCH_PUBLICATION_MODE_OPTIONS } from "@/utils/matchPublicationMode";
 
 const props = withDefaults(
   defineProps<{
@@ -31,17 +33,11 @@ const emit = defineEmits<{
   (event: "submit"): void;
 }>();
 
-const typeLabels = computed(() => props.typeOptions.map((option) => option.label));
-const selectedTypeIndex = computed(() =>
-  Math.max(0, props.typeOptions.findIndex((option) => option.value === props.typeValue)),
-);
-
-function handleTypeChange(event: Event) {
-  const detail = event as Event & { detail?: { value?: number | string } };
-  const index = Number(detail.detail?.value);
-  const option = props.typeOptions[index];
-  if (option) emit("update:typeValue", option.value);
-}
+const selectedTypeDescription = computed(() => {
+  if (!props.showTypeChange) return "";
+  const matched = MATCH_PUBLICATION_MODE_OPTIONS.find((option) => option.value === props.typeValue);
+  return matched?.description ?? "";
+});
 
 function safeDate(value: number) {
   const date = value ? new Date(value) : new Date();
@@ -97,12 +93,12 @@ function pickerChangeValue(event: Event) {
   >
     <view v-if="showTypeChange" class="match-edit-field">
       <text class="match-edit-label">比赛类型</text>
-      <picker mode="selector" :range="typeLabels" :value="selectedTypeIndex" @change="handleTypeChange">
-        <view class="match-edit-input match-edit-type-value">
-          <text>{{ typeOptions[selectedTypeIndex]?.label || "选择比赛类型" }}</text>
-          <text class="match-edit-type-arrow">›</text>
-        </view>
-      </picker>
+      <NeoSegmentedControl
+        :model-value="typeValue"
+        :options="typeOptions"
+        @update:model-value="emit('update:typeValue', $event)"
+      />
+      <text v-if="selectedTypeDescription" class="match-edit-caption">{{ selectedTypeDescription }}</text>
     </view>
     <view class="match-edit-field">
       <text class="match-edit-label">对手名称</text>
@@ -205,18 +201,11 @@ function pickerChangeValue(event: Event) {
   overflow: hidden;
 }
 
-/* 类型选择：外观与输入框一致，右侧箭头提示可点开 selector。 */
-.match-edit-type-value {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.match-edit-type-arrow {
-  flex-shrink: 0;
-  color: var(--neo-color-text-muted);
-  font-size: 40rpx;
+/* 类型选择下的说明文字：与创建页类型选择的 caption 一致。 */
+.match-edit-caption {
+  font-size: 22rpx;
   font-weight: 700;
-  line-height: 1;
+  color: var(--neo-color-text-muted);
+  line-height: 1.45;
 }
 </style>
