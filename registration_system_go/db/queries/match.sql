@@ -378,6 +378,8 @@ SET name = $2,
     opponent_name = $11,
     host_color = $12,
     away_color = $13,
+    publication_mode = $14,
+    opponent_state = $15,
     updated_at = NOW()
 WHERE id = $1
 RETURNING *;

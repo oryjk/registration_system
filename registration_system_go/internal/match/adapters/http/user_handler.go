@@ -288,9 +288,12 @@ type UserUpdateMatchRequest struct {
 	// 由小程序端在保存前对过去时间做二次确认。
 	StartTime *time.Time `json:"start_time"`
 	EndTime   *time.Time `json:"end_time"`
+	// PublicationMode 比赛类型；仅线上约队（尚无球队接招）可改为 offline_confirmed
+	// 或 online_individual，其余情况后端拒绝。
+	PublicationMode *domain.PublicationMode `json:"publication_mode"`
 }
 
-// UpdateDetails PATCH /matches/:id：主队管理者编辑比赛（对手名称、报名人数上限与起止时间）。
+// UpdateDetails PATCH /matches/:id：主队管理者编辑比赛（对手名称、报名人数上限、起止时间与类型转换）。
 func (h *UserHandler) UpdateDetails(c *gin.Context) {
 	actor, ok := userActor(c)
 	if !ok {
@@ -309,6 +312,7 @@ func (h *UserHandler) UpdateDetails(c *gin.Context) {
 	if _, err := h.update.UpdateDetails(c.Request.Context(), actor, id, application.UserUpdateMatchCommand{
 		OpponentName: request.OpponentName, HostCapacityLimit: request.MaxPlayers,
 		StartTime: request.StartTime, EndTime: request.EndTime,
+		PublicationMode: request.PublicationMode,
 	}); err != nil {
 		sharedhttpapi.WriteError(c, err)
 		return

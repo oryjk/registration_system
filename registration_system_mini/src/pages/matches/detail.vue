@@ -293,7 +293,7 @@ const metaPageStyle = computed(() =>
       <NeoSurface v-if="canEditMatch" variant="raised" class="match-edit-card">
         <view class="match-edit-info">
           <text class="match-edit-title">比赛信息有变化？</text>
-          <text class="match-edit-copy">可修改对手名称与报名人数上限。</text>
+          <text class="match-edit-copy">可修改比赛时间、对手与报名人数。</text>
         </view>
         <NeoButton size="sm" variant="outline" @click="matchEdit.open">修改比赛</NeoButton>
       </NeoSurface>
@@ -405,19 +405,23 @@ const metaPageStyle = computed(() =>
       @close="handleCancelClose"
     />
 
-    <!-- 修改比赛：对手名称 + 报名人数上限 + 比赛起止时间。 -->
+    <!-- 修改比赛：对手名称 + 报名人数上限 + 比赛起止时间（线上约队招募中可切类型）。 -->
     <MatchEditDialog
       :visible="matchEdit.dialogVisible.value"
       :opponent-name="matchEdit.opponentName.value"
       :max-players="matchEdit.maxPlayers.value"
       :start-time="matchEdit.startTime.value"
       :end-time="matchEdit.endTime.value"
+      :show-type-change="matchEdit.typeChangeState.value.visible"
+      :type-options="matchEdit.typeChangeState.value.options"
+      :type-value="matchEdit.publicationMode.value"
       :submitting="matchEdit.isSubmitting.value"
       @close="matchEdit.close"
       @update:opponent-name="matchEdit.opponentName.value = $event"
       @update:max-players="matchEdit.maxPlayers.value = $event"
       @update:start-time="matchEdit.startTime.value = $event"
       @update:end-time="matchEdit.endTime.value = $event"
+      @update:type-value="matchEdit.setPublicationMode"
       @submit="void matchEdit.submit()"
     />
 

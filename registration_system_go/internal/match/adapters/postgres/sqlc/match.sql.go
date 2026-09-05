@@ -2585,6 +2585,8 @@ SET name = $2,
     opponent_name = $11,
     host_color = $12,
     away_color = $13,
+    publication_mode = $14,
+    opponent_state = $15,
     updated_at = NOW()
 WHERE id = $1
 RETURNING id, name, publication_mode, opponent_state, status, host_team_id, away_team_id, opponent_name, players_per_team, start_time, end_time, location, location_latitude, location_longitude, description, created_by_user_id, created_at, updated_at, created_by_admin_id, registration_start_at, registration_end_at, is_free, host_color, away_color, payment_mode, fee_per_person_cents, host_score, away_score
@@ -2604,6 +2606,8 @@ type UpdateMatchDetailsParams struct {
 	OpponentName        *string          `json:"opponent_name"`
 	HostColor           *string          `json:"host_color"`
 	AwayColor           *string          `json:"away_color"`
+	PublicationMode     string           `json:"publication_mode"`
+	OpponentState       string           `json:"opponent_state"`
 }
 
 func (q *Queries) UpdateMatchDetails(ctx context.Context, arg UpdateMatchDetailsParams) (Match, error) {
@@ -2621,6 +2625,8 @@ func (q *Queries) UpdateMatchDetails(ctx context.Context, arg UpdateMatchDetails
 		arg.OpponentName,
 		arg.HostColor,
 		arg.AwayColor,
+		arg.PublicationMode,
+		arg.OpponentState,
 	)
 	var i Match
 	err := row.Scan(

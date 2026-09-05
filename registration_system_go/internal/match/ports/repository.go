@@ -28,6 +28,15 @@ type Repository interface {
 	Delete(context.Context, uuid.UUID) (bool, error)
 }
 
+// MatchModeChangeWrites 比赛类型变更（线上约队转出）附带的写入项，
+// 与比赛详情更新在同一事务内生效。
+type MatchModeChangeWrites struct {
+	// CreateIndividualGroup 转为散人对手时要创建的散人报名组。
+	CreateIndividualGroup *domain.RegistrationGroup
+	// RejectTeamApplications 拒绝全部待处理球队申请（离开线上约队时）。
+	RejectTeamApplications bool
+}
+
 type MatchListFilter struct {
 	Scope       MatchScope
 	UserID      int64

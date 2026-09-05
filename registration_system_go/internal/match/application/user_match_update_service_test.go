@@ -8,17 +8,19 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/oryjk/registration_system/registration_system_go/internal/match/domain"
+	"github.com/oryjk/registration_system/registration_system_go/internal/match/ports"
 	sharedauth "github.com/oryjk/registration_system/registration_system_go/internal/shared/auth"
 	sharederror "github.com/oryjk/registration_system/registration_system_go/internal/shared/domain"
 )
 
 type fakeUserMatchUpdateRepository struct {
-	match     domain.Match
-	groups    []domain.RegistrationGroup
-	found     bool
-	updated   domain.Match
-	updatedGp *domain.RegistrationGroup
-	updateErr error
+	match      domain.Match
+	groups     []domain.RegistrationGroup
+	found      bool
+	updated    domain.Match
+	updatedGp  *domain.RegistrationGroup
+	modeWrites *ports.MatchModeChangeWrites
+	updateErr  error
 }
 
 func (f *fakeUserMatchUpdateRepository) FindByID(context.Context, uuid.UUID) (domain.Match, []domain.RegistrationGroup, bool, error) {
@@ -31,6 +33,16 @@ func (f *fakeUserMatchUpdateRepository) UpdateDetails(_ context.Context, match d
 	}
 	f.updated = match
 	f.updatedGp = group
+	return nil
+}
+
+func (f *fakeUserMatchUpdateRepository) UpdateDetailsForModeChange(_ context.Context, match domain.Match, group *domain.RegistrationGroup, writes *ports.MatchModeChangeWrites) error {
+	if f.updateErr != nil {
+		return f.updateErr
+	}
+	f.updated = match
+	f.updatedGp = group
+	f.modeWrites = writes
 	return nil
 }
 
@@ -202,7 +214,105 @@ func TestUserUpdateMatchRejectsMatchWithoutHost(t *testing.T) {
 	}
 }
 
+func newUpdateTestTeamMatch() (domain.Match, []domain.RegistrationGroup) {
+	teamID := int64(7)
+	start := time.Date(2026, 9, 1, 18, 0, 0, 0, time.UTC)
+	match, groups, err := domain.NewMatch(domain.NewMatchInput{
+		Name: "线上约队", PublicationMode: domain.OnlineTeam, HostTeamID: &teamID, CreatedByUserID: userIDPtr(42),
+		PlayersPerTeam: 8, StartTime: start, EndTime: start.Add(2 * time.Hour), Location: "东安球场",
+	}, domain.IndividualLimits{})
+	if err != nil {
+		panic(err)
+	}
+	return match, groups
+}
+
+func TestUserUpdateMatchSwitchesPublicationMode(t *testing.T) {
+	actor := sharedauth.Actor{Kind: sharedauth.ActorUser, ID: 42}
+	authorizer := fakeUserMatchAuthorizer{allowed: map[int64]bool{42: true}}
+
+	t.Run("switch to offline confirmed requires opponent name", func(t *testing.T) {
+		match, groups := newUpdateTestTeamMatch()
+		repository := &fakeUserMatchUpdateRepository{match: match, groups: groups, found: true}
+		service := NewUserMatchUpdateService(repository, authorizer, time.Now)
+		empty := ""
+		_, err := service.UpdateDetails(context.Background(), actor, match.ID,
+			UserUpdateMatchCommand{PublicationMode: modePointer(domain.OfflineConfirmed), OpponentName: &empty})
+		if err == nil || !strings.Contains(err.Error(), "线下已约比赛必须填写对手名称") {
+			t.Fatalf("转线下已约缺对手名称应报错: %v", err)
+		}
+	})
+
+	t.Run("switch to offline confirmed with name stops recruiting", func(t *testing.T) {
+		match, groups := newUpdateTestTeamMatch()
+		repository := &fakeUserMatchUpdateRepository{match: match, groups: groups, found: true}
+		service := NewUserMatchUpdateService(repository, authorizer, time.Now)
+		name := "红星队"
+		updated, err := service.UpdateDetails(context.Background(), actor, match.ID,
+			UserUpdateMatchCommand{PublicationMode: modePointer(domain.OfflineConfirmed), OpponentName: &name})
+		if err != nil {
+			t.Fatalf("转线下已约应成功: %v", err)
+		}
+		if updated.PublicationMode != domain.OfflineConfirmed || updated.OpponentState != domain.OpponentNoRecruitment {
+			t.Fatalf("模式与对手状态错误: %s/%s", updated.PublicationMode, updated.OpponentState)
+		}
+		if repository.modeWrites == nil || !repository.modeWrites.RejectTeamApplications || repository.modeWrites.CreateIndividualGroup != nil {
+			t.Fatalf("应拒绝球队申请且不建散人组: %+v", repository.modeWrites)
+		}
+	})
+
+	t.Run("switch to individual creates group with derived limits", func(t *testing.T) {
+		match, groups := newUpdateTestTeamMatch()
+		repository := &fakeUserMatchUpdateRepository{match: match, groups: groups, found: true}
+		service := NewUserMatchUpdateService(repository, authorizer, time.Now)
+		updated, err := service.UpdateDetails(context.Background(), actor, match.ID,
+			UserUpdateMatchCommand{PublicationMode: modePointer(domain.OnlineIndividual)})
+		if err != nil {
+			t.Fatalf("转散人对手应成功: %v", err)
+		}
+		if updated.PublicationMode != domain.OnlineIndividual || updated.OpponentState != domain.OpponentRecruiting {
+			t.Fatalf("模式与对手状态错误: %s/%s", updated.PublicationMode, updated.OpponentState)
+		}
+		if repository.modeWrites == nil || repository.modeWrites.CreateIndividualGroup == nil {
+			t.Fatalf("应创建散人报名组: %+v", repository.modeWrites)
+		}
+		group := repository.modeWrites.CreateIndividualGroup
+		if group.MinPlayers == nil || group.MaxPlayers == nil || *group.MinPlayers != 8 || *group.MaxPlayers != 10 {
+			t.Fatalf("散人组人数应为 8-10: %+v", group)
+		}
+	})
+
+	t.Run("same mode is a no-op", func(t *testing.T) {
+		match, groups := newUpdateTestTeamMatch()
+		repository := &fakeUserMatchUpdateRepository{match: match, groups: groups, found: true}
+		service := NewUserMatchUpdateService(repository, authorizer, time.Now)
+		if _, err := service.UpdateDetails(context.Background(), actor, match.ID,
+			UserUpdateMatchCommand{PublicationMode: modePointer(domain.OnlineTeam)}); err != nil {
+			t.Fatalf("相同类型应视为未修改: %v", err)
+		}
+		if repository.modeWrites != nil {
+			t.Fatalf("不应产生类型变更写入: %+v", repository.modeWrites)
+		}
+	})
+
+	t.Run("confirmed match cannot switch", func(t *testing.T) {
+		match, groups := newUpdateTestTeamMatch()
+		if err := match.ConfirmTeamOpponent(9, time.Now()); err != nil {
+			t.Fatal(err)
+		}
+		repository := &fakeUserMatchUpdateRepository{match: match, groups: groups, found: true}
+		service := NewUserMatchUpdateService(repository, authorizer, time.Now)
+		_, err := service.UpdateDetails(context.Background(), actor, match.ID,
+			UserUpdateMatchCommand{PublicationMode: modePointer(domain.OnlineIndividual)})
+		if err == nil || !strings.Contains(err.Error(), "不能变更比赛类型") {
+			t.Fatalf("已有球队接招应拒绝转换: %v", err)
+		}
+	})
+}
+
 func stringPointer(value string) *string { return &value }
+
+func modePointer(value domain.PublicationMode) *domain.PublicationMode { return &value }
 
 func updateTestIntPointer(value int) *int { return &value }
 

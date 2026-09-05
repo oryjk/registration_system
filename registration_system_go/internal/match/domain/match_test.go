@@ -211,6 +211,74 @@ func UpdateDetailsInput(m Match, fn func(*UpdateMatchDetails)) UpdateMatchDetail
 	return input
 }
 
+func TestMatchSwitchFromTeamRecruitment(t *testing.T) {
+	buildMatch := func() Match {
+		input := validInput(OnlineTeam)
+		match, _, err := NewMatch(input, IndividualLimits{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return match
+	}
+	now := time.Date(2026, 9, 4, 12, 0, 0, 0, time.UTC)
+
+	t.Run("switches to offline confirmed and stops recruiting", func(t *testing.T) {
+		match := buildMatch()
+		if err := match.SwitchFromTeamRecruitment(OfflineConfirmed, now); err != nil {
+			t.Fatalf("switch to offline: %v", err)
+		}
+		if match.PublicationMode != OfflineConfirmed || match.OpponentState != OpponentNoRecruitment {
+			t.Fatalf("unexpected mode/state: %s/%s", match.PublicationMode, match.OpponentState)
+		}
+	})
+
+	t.Run("switches to individual and keeps recruiting", func(t *testing.T) {
+		match := buildMatch()
+		if err := match.SwitchFromTeamRecruitment(OnlineIndividual, now); err != nil {
+			t.Fatalf("switch to individual: %v", err)
+		}
+		if match.PublicationMode != OnlineIndividual || match.OpponentState != OpponentRecruiting {
+			t.Fatalf("unexpected mode/state: %s/%s", match.PublicationMode, match.OpponentState)
+		}
+	})
+
+	t.Run("rejects same mode and pickup target", func(t *testing.T) {
+		for _, mode := range []PublicationMode{OnlineTeam, OnlinePickup} {
+			match := buildMatch()
+			if err := match.SwitchFromTeamRecruitment(mode, now); err == nil {
+				t.Fatalf("target %s should be rejected", mode)
+			}
+		}
+	})
+
+	t.Run("rejects confirmed opponent or non team match", func(t *testing.T) {
+		confirmed := buildMatch()
+		away := int64(9)
+		if err := confirmed.ConfirmTeamOpponent(away, now); err != nil {
+			t.Fatal(err)
+		}
+		if err := confirmed.SwitchFromTeamRecruitment(OfflineConfirmed, now); err == nil {
+			t.Fatal("confirmed match should not switch")
+		}
+
+		offline, _, err := NewMatch(withOpponent(validInput(OfflineConfirmed), "老对手"), IndividualLimits{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := offline.SwitchFromTeamRecruitment(OnlineIndividual, now); err == nil {
+			t.Fatal("non team match should not switch")
+		}
+	})
+
+	t.Run("rejects terminal status", func(t *testing.T) {
+		ended := buildMatch()
+		ended.Status = MatchEnded
+		if err := ended.SwitchFromTeamRecruitment(OnlineIndividual, now); err == nil {
+			t.Fatal("ended match should not switch")
+		}
+	})
+}
+
 func TestNormalizeJerseyColor(t *testing.T) {
 	got, err := NormalizeJerseyColor("  #2F6BFF ")
 	if err != nil || got != "#2f6bff" {

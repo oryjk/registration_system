@@ -271,6 +271,28 @@ func (m *Match) RecalculateIndividualOpponent(activePlayers, minPlayers int, now
 	return nil
 }
 
+// SwitchFromTeamRecruitment 线上约队且尚无球队接招时转换比赛类型：
+// 可转为线下已约（对手名称由随后的 UpdateDetails 校验并写入）或散人对手。
+func (m *Match) SwitchFromTeamRecruitment(next PublicationMode, now time.Time) error {
+	if m.Status == MatchEnded || m.Status == MatchCancelled {
+		return sharederror.New(sharederror.KindConflict, "已结束或已取消的比赛不能编辑")
+	}
+	if m.PublicationMode != OnlineTeam || m.OpponentState != OpponentRecruiting || m.AwayTeamID != nil {
+		return sharederror.New(sharederror.KindConflict, "已有球队接招或比赛类型不符，不能变更比赛类型")
+	}
+	switch next {
+	case OfflineConfirmed:
+		m.PublicationMode = OfflineConfirmed
+		m.OpponentState = OpponentNoRecruitment
+	case OnlineIndividual:
+		m.PublicationMode = OnlineIndividual
+	default:
+		return sharederror.New(sharederror.KindConflict, "比赛类型只能改为线下已约或散人对手")
+	}
+	m.UpdatedAt = now
+	return nil
+}
+
 func (m Match) RegistrationOpenAt(now time.Time) bool {
 	// 比赛结束时间已过即视为报名关闭：过期未收尾的比赛状态仍停在 registering，
 	// 不能只依赖状态与报名窗口判断（否则赛后仍可增删报名）。

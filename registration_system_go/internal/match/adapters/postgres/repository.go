@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	matchsqlc "github.com/oryjk/registration_system/registration_system_go/internal/match/adapters/postgres/sqlc"
 	"github.com/oryjk/registration_system/registration_system_go/internal/match/domain"
+	"github.com/oryjk/registration_system/registration_system_go/internal/match/ports"
 )
 
 type database interface {
@@ -78,6 +79,16 @@ func (r *Repository) FindByID(ctx context.Context, matchID uuid.UUID) (domain.Ma
 }
 
 func (r *Repository) UpdateDetails(ctx context.Context, match domain.Match, hostGroup *domain.RegistrationGroup) error {
+	return r.updateDetails(ctx, match, hostGroup, nil)
+}
+
+// UpdateDetailsForModeChange 比赛类型变更：详情更新 + 附带写入（创建散人组、
+// 拒绝待处理球队申请）在同一事务内完成。
+func (r *Repository) UpdateDetailsForModeChange(ctx context.Context, match domain.Match, hostGroup *domain.RegistrationGroup, writes *ports.MatchModeChangeWrites) error {
+	return r.updateDetails(ctx, match, hostGroup, writes)
+}
+
+func (r *Repository) updateDetails(ctx context.Context, match domain.Match, hostGroup *domain.RegistrationGroup, writes *ports.MatchModeChangeWrites) error {
 	tx, err := r.database.Begin(ctx)
 	if err != nil {
 		return err
@@ -92,8 +103,9 @@ func (r *Repository) UpdateDetails(ctx context.Context, match domain.Match, host
 		RegistrationStartAt: pgOptionalTimestamp(match.RegistrationStartAt), RegistrationEndAt: pgOptionalTimestamp(match.RegistrationEndAt),
 		Location: match.Location, LocationLatitude: match.LocationLatitude, LocationLongitude: match.LocationLongitude,
 		Description: match.Description, OpponentName: match.OpponentName,
-		HostColor: stringPointerOrNil(match.HostColor),
-		AwayColor: stringPointerOrNil(match.AwayColor),
+		HostColor:       stringPointerOrNil(match.HostColor),
+		AwayColor:       stringPointerOrNil(match.AwayColor),
+		PublicationMode: string(match.PublicationMode), OpponentState: string(match.OpponentState),
 	}); err != nil {
 		return err
 	}
@@ -102,6 +114,31 @@ func (r *Repository) UpdateDetails(ctx context.Context, match domain.Match, host
 			ID: pgUUID(hostGroup.ID), MaxPlayers: int32Pointer(hostGroup.MaxPlayers), UpdatedAt: pgTimestamp(hostGroup.UpdatedAt),
 		}); err != nil {
 			return err
+		}
+	}
+	if writes != nil {
+		if writes.RejectTeamApplications {
+			rows, err := queries.ListPendingTeamApplicationsForUpdate(ctx, pgUUID(match.ID))
+			if err != nil {
+				return err
+			}
+			for _, row := range rows {
+				application := mapTeamApplication(row)
+				if err := application.Reject(match.UpdatedAt); err != nil {
+					return err
+				}
+				if err := queries.UpdateTeamApplication(ctx, matchsqlc.UpdateTeamApplicationParams{
+					ID: pgUUID(application.ID), Status: string(application.Status), SelectedAt: pgOptionalTimestamp(application.SelectedAt),
+					WithdrawnAt: pgOptionalTimestamp(application.WithdrawnAt), UpdatedAt: pgTimestamp(application.UpdatedAt),
+				}); err != nil {
+					return err
+				}
+			}
+		}
+		if writes.CreateIndividualGroup != nil {
+			if _, err := queries.CreateRegistrationGroup(ctx, createGroupParams(*writes.CreateIndividualGroup)); err != nil {
+				return err
+			}
 		}
 	}
 	return tx.Commit(ctx)
