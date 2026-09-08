@@ -146,24 +146,6 @@ describe("activities page sections", () => {
     expect(source.includes("payment_mode: form.paymentMode")).toEqual(true);
   });
 
-  test("venue-created team challenge detail waits for both teams before showing home side", async () => {
-    const progressSource = await Bun.file(sourcePath("pages/challenges/components/ChallengeTeamProgressCard.vue")).text();
-
-    expect(progressSource.includes("hostTeamConfirmed")).toEqual(true);
-    expect(progressSource.includes("props.detail.summary.challenge.host_team_id != null")).toEqual(true);
-    expect(progressSource.includes('hostTeamConfirmed.value ? props.detail.summary.host_team_name : "等待接约"')).toEqual(true);
-    expect(progressSource.includes("!hostTeamConfirmed ? 'vs-logo-muted' : ''")).toEqual(true);
-  });
-
-  test("individual challenge registration relies on the page header instead of a duplicate tab label", async () => {
-    const detailSource = await Bun.file(sourcePath("pages/challenges/detail.vue")).text();
-    const individualRegistrationSource = await Bun.file(sourcePath("pages/challenges/components/ChallengeIndividualRegistration.vue")).text();
-
-    expect(detailSource.includes('card.value?.kind === "individual" ? "散人报名" : "约队详情"')).toEqual(true);
-    expect(individualRegistrationSource.includes('class="challenge-tabs"')).toEqual(false);
-    expect(individualRegistrationSource.includes('class="challenge-tab-active"')).toEqual(false);
-  });
-
   test("enables sharing for the challenge hall with the default share cover", async () => {
     const source = await Bun.file(sourcePath("pages/activities/index.vue")).text();
 

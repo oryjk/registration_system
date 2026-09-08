@@ -1,14 +1,13 @@
 <script setup lang="ts">
 import { useAccentTheme } from "@/stores/theme";
 import { computed, reactive, ref } from "vue";
-import { onLoad, onShow } from "@dcloudio/uni-app";
+import { onShow } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
 import MatchPublishForm from "./components/MatchPublishForm.vue";
 import NeoButton from "@/components/neo/NeoButton.vue";
 import NeoStickyActionBar from "@/components/neo/NeoStickyActionBar.vue";
 import NeoSurface from "@/components/neo/NeoSurface.vue";
 import type { MatchPublishFormModel } from "./components/matchPublishForm";
-import { getActivity, updateActivity } from "@/api/activity";
 import { createMatch, getVenueSuggestions, type BackendVenueSuggestion } from "@/api/match";
 import VenuePickerSheet from "./components/VenuePickerSheet.vue";
 import { preloadMiniReviewStatus, useMiniReviewStatus } from "@/stores/miniReview";
@@ -23,10 +22,7 @@ const { shouldHideCreationEntrances } = useMiniReviewStatus();
 const navMetrics = getCustomNavMetrics();
 
 const submitting = ref(false);
-const loadingActivity = ref(false);
 const reviewGateReady = ref(false);
-const pageMode = ref<"create" | "edit">("create");
-const activityId = ref("");
 const form = reactive<MatchPublishFormModel>({
   name: "",
   location: "",
@@ -82,21 +78,6 @@ const canSubmit = computed(
 const pageStyle = computed(() => ({
   paddingTop: `${navMetrics.pageTopPadding + 8}px`,
 }));
-
-function pad(value: number) {
-  return String(value).padStart(2, "0");
-}
-
-function toBackendDateTime(timestamp: number) {
-  const date = new Date(timestamp);
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:00`;
-}
-
-function parseBackendDateTime(value?: string | null) {
-  if (!value) return 0;
-  const timestamp = new Date(value.replace(" ", "T")).getTime();
-  return Number.isFinite(timestamp) ? timestamp : 0;
-}
 
 function defaultMatchDateTime() {
   const date = new Date();
@@ -190,44 +171,6 @@ function handleChooseLocation() {
   });
 }
 
-function applyActivityToForm(activity: Awaited<ReturnType<typeof getActivity>>) {
-  form.name = activity.name ?? "";
-  form.location = activity.location ?? "";
-  form.locationLatitude = activity.location_latitude ?? null;
-  form.locationLongitude = activity.location_longitude ?? null;
-  form.holdingDate = parseBackendDateTime(activity.holding_date);
-  form.matchEndTime = defaultMatchEndDateTime(form.holdingDate);
-  form.opposing = activity.opposing ?? "";
-  form.description = activity.description ?? "";
-  form.playersPerTeam = activity.players_per_team ?? "";
-  form.hostCapacityLimit = activity.team_capacity_limit ?? "";
-  form.color = activity.color?.trim() || "#D8DDE6";
-  form.opposingColor = activity.opposing_color?.trim() || "#2F6BFF";
-  form.activityMatchKind = activity.match_kind === "internal" ? "internal" : "external";
-  form.publicationMode = "offline_confirmed";
-  const checkInConfig = activity.team_checkin_configs.find((item) => item.team_id === currentTeam.value?.id);
-  form.enableCheckIn = !!checkInConfig?.enabled;
-  form.checkInRadiusMeters = checkInConfig?.radius_meters ?? 200;
-  form.openMinutesBefore = checkInConfig?.open_minutes_before ?? 60;
-  form.closeMinutesAfter = checkInConfig?.close_minutes_after ?? 45;
-}
-
-async function loadEditActivity() {
-  if (pageMode.value !== "edit" || !activityId.value) return;
-  loadingActivity.value = true;
-  try {
-    const activity = await getActivity(activityId.value);
-    applyActivityToForm(activity);
-  } catch (error) {
-    uni.showToast({
-      title: error instanceof Error ? error.message : "读取比赛失败",
-      icon: "none",
-    });
-  } finally {
-    loadingActivity.value = false;
-  }
-}
-
 async function guardReviewMode() {
   await preloadMiniReviewStatus();
   if (!shouldHideCreationEntrances.value) return false;
@@ -251,7 +194,7 @@ async function handleSubmit() {
 
   if (!currentTeam.value || !currentTeam.value.canManageTeam) {
     uni.showToast({
-      title: "只有队长或领队可以创建或编辑比赛",
+      title: "只有队长或领队可以创建比赛",
       icon: "none",
     });
     return;
@@ -270,35 +213,6 @@ async function handleSubmit() {
 
   submitting.value = true;
   try {
-    if (pageMode.value === "edit" && activityId.value) {
-      const submittedAtTimestamp = Date.now();
-      const registrationDeadlineTimestamp = normalizeToMinute(form.holdingDate - 24 * 60 * 60 * 1000);
-      await updateActivity(activityId.value, {
-        name: form.name.trim(),
-        location: form.location.trim(),
-        location_latitude: form.locationLatitude,
-        location_longitude: form.locationLongitude,
-        holding_date: toBackendDateTime(form.holdingDate),
-        start_time: toBackendDateTime(submittedAtTimestamp),
-        end_time: toBackendDateTime(registrationDeadlineTimestamp),
-        opposing: form.opposing.trim() || null,
-        description: form.description.trim() || null,
-        home_team_id: currentTeam.value.id,
-        players_per_team: Number(form.playersPerTeam),
-        color: form.color || null,
-        opposing_color: form.opposingColor || null,
-        match_kind: form.activityMatchKind ?? "external",
-      });
-      uni.showToast({
-        title: "比赛已保存",
-        icon: "none",
-      });
-      uni.redirectTo({
-        url: `/pages/matches/detail?id=${activityId.value}`,
-      });
-      return;
-    }
-
     const detail = await createMatch(buildCreateMatchPayload(form, currentTeam.value));
     const hostGroupId = detail.groups.find((group) => group.team_id === currentTeam.value?.id)?.id ?? detail.groups[0]?.id;
     uni.showToast({
@@ -310,18 +224,13 @@ async function handleSubmit() {
     });
   } catch (error) {
     uni.showToast({
-      title: error instanceof Error ? error.message : pageMode.value === "edit" ? "保存比赛失败" : "创建比赛失败",
+      title: error instanceof Error ? error.message : "创建比赛失败",
       icon: "none",
     });
   } finally {
     submitting.value = false;
   }
 }
-
-onLoad((options) => {
-  pageMode.value = options?.mode === "edit" ? "edit" : "create";
-  activityId.value = options?.id ?? "";
-});
 
 onShow(async () => {
   // 从地图选点等原生页返回会再次触发 onShow；reviewGateReady 已置位时不再重建页面，
@@ -334,19 +243,18 @@ onShow(async () => {
   if (!form.holdingDate) {
     initDefaultForm();
   }
-  await loadEditActivity();
 });
 </script>
 
 <template>
   <page-meta :page-style="themePageStyle" />
   <view v-if="reviewGateReady" class="create-match-page" :style="pageStyle">
-    <AppTabHeader :title="pageMode === 'edit' ? '编辑比赛' : '创建比赛'" showBack />
+    <AppTabHeader title="创建比赛" showBack />
 
     <view class="create-page-content">
       <NeoSurface variant="dark" custom-class="create-hero">
         <view class="create-hero__copy">
-          <text class="create-hero-tag">{{ pageMode === "edit" ? "编辑比赛" : "创建比赛" }}</text>
+          <text class="create-hero-tag">创建比赛</text>
           <text class="create-hero-title">{{ currentTeam?.name || "当前球队" }}</text>
         </view>
         <view class="create-hero__mark">
@@ -360,18 +268,7 @@ onShow(async () => {
         </view>
       </NeoSurface>
 
-      <view v-if="loadingActivity" class="create-skeleton-form">
-        <view class="create-skeleton-line create-skeleton-line-title" />
-        <view class="create-skeleton-line" />
-        <view class="create-skeleton-line" />
-        <view class="create-skeleton-grid">
-          <view class="create-skeleton-pill" />
-          <view class="create-skeleton-pill" />
-        </view>
-      </view>
-
       <MatchPublishForm
-        v-else
         :model-value="form"
         mode="match"
         :show-check-in="false"
@@ -395,7 +292,7 @@ onShow(async () => {
 
     <NeoStickyActionBar>
       <NeoButton block variant="lime" :disabled="!canSubmit" :loading="submitting" @click="handleSubmit">
-        {{ submitting ? (pageMode === "edit" ? "保存中..." : "创建中...") : pageMode === "edit" ? "保存修改" : "创建比赛" }}
+        {{ submitting ? "创建中..." : "创建比赛" }}
       </NeoButton>
     </NeoStickyActionBar>
   </view>

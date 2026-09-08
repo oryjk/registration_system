@@ -52,7 +52,7 @@
 ## 子项目入口
 
 - 小程序入口：`registration_system_mini/src/main.ts`、`src/pages.json`
-- Go 配套管理端入口：`registration_system_backend_fe_go/src/main.tsx`、`src/App.tsx`
+- Go 配套管理端入口：`registration_system_backend_fe_go/src/main.tsx`、`src/router.tsx`
 - 移动管理 App 入口（已暂停）：`registration_system_admin_app/lib/main.dart`
 - Go 后端入口：`registration_system_go/cmd/api/main.go`、`internal/bootstrap/`
 

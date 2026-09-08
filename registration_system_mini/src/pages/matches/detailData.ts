@@ -1,27 +1,22 @@
-import { getActivity, getActivityUsers, listActivities } from "@/api/activity";
 import { getMatchDetail } from "@/api/match";
 import { getTeamDetail } from "@/api/team";
-import { listUsers } from "@/api/user";
 import type { AppMatchDetailResponse, AppMatchGroupDetail, AppMatchParticipant, AppMatchRegistration, AppMatchSummary } from "@/types/match";
 import type { BackendActivity, BackendRegistration, BackendTeam, BackendTeamMember, BackendUser } from "@/types/backend";
 import { getMatchPublicationModeLabel } from "@/utils/matchPublicationMode";
-import { isActiveTeamRegistrationActivity } from "./detailState";
 
 export interface PublicMatchDetailData {
   activity: BackendActivity;
   activityUsers: BackendRegistration[];
   usersById: Record<number, BackendUser>;
-  activityPageItems: BackendActivity[];
   sourceTeamRegistrationCount: number;
   myRegistration: AppMatchRegistration | null;
-  fromMatchApi: boolean;
   registrationGroupId: string;
   publicationModeLabel: string;
-  /** 新比赛接口的原始比赛对象（legacy 活动为 null）；接约申请管理等需要 publication_mode / opponent_state 的功能用它判定。 */
-  sourceMatch: AppMatchSummary | null;
-  /** 球队约队的主/客队报名分组（各自进度），供详情页展示双方进度条；legacy 为空。 */
+  /** Go 比赛原始对象；接约申请管理等功能依赖 publication_mode / opponent_state。 */
+  sourceMatch: AppMatchSummary;
+  /** 球队约队的主/客队报名分组（各自进度），供详情页展示双方进度条。 */
   teamGroups: MatchTeamGroupSummary[];
-  /** 当前选中报名组的最小人数（管理端「最小人数」）；散人约球的报名进度以它为目标，legacy 为 null。 */
+  /** 当前选中报名组的最小人数（管理端「最小人数」）；散人约球的报名进度以它为目标。 */
   selectedGroupMinPlayers: number | null;
   /** 是否存在开放中的散人报名组：没有它且用户未加入任何球队时，个人报名无路径，引导先加入球队。 */
   hasOpenIndividualGroup: boolean;
@@ -55,22 +50,15 @@ function toTeamGroupSummaries(groups: AppMatchGroupDetail[]): MatchTeamGroupSumm
 
 export interface AuthenticatedMatchDetailContext {
   teamsById: Record<number, BackendTeam>;
-  derivedActivity: BackendActivity | null;
-  initialRegistrationCount: number;
   currentUserStand: number;
   currentTeamMembers: BackendTeamMember[];
-  checkInConfig: BackendActivity["team_checkin_configs"][number] | null;
 }
 
 export const MATCH_API_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export interface MatchDetailDataLoaders {
-  getActivity: typeof getActivity;
-  getActivityUsers: typeof getActivityUsers;
   getMatchDetail: typeof getMatchDetail;
   getTeamDetail: typeof getTeamDetail;
-  listActivities: typeof listActivities;
-  listUsers: typeof listUsers;
 }
 
 export interface MatchDetailGroupSelection {
@@ -79,12 +67,8 @@ export interface MatchDetailGroupSelection {
 }
 
 const defaultMatchDetailDataLoaders: MatchDetailDataLoaders = {
-  getActivity,
-  getActivityUsers,
   getMatchDetail,
   getTeamDetail,
-  listActivities,
-  listUsers,
 };
 
 function toActivityStatusCode(status: AppMatchSummary["status"]): number {
@@ -207,9 +191,7 @@ export function buildPublicMatchApiDetailData(
       participant.user_id,
       toBackendParticipantUser(participant),
     ])),
-    activityPageItems: [activity],
     myRegistration,
-    fromMatchApi: true,
     registrationGroupId: group?.id ?? "",
     publicationModeLabel: getMatchPublicationModeLabel(matchDetail.match.publication_mode),
     sourceMatch: matchDetail.match,
@@ -230,50 +212,23 @@ export async function loadPublicMatchDetailData(
   selection: MatchDetailGroupSelection = {},
   loaders: MatchDetailDataLoaders = defaultMatchDetailDataLoaders,
 ): Promise<PublicMatchDetailData> {
-  if (MATCH_API_ID_PATTERN.test(matchId)) {
-    return buildPublicMatchApiDetailData(await loaders.getMatchDetail(matchId), currentUserId, selection);
+  if (!MATCH_API_ID_PATTERN.test(matchId)) {
+    throw new Error("该比赛链接已失效，请从约球大厅重新打开比赛");
   }
-
-  const activity = await loaders.getActivity(matchId);
-  const [activityUsers, users, activityPageItems] = await Promise.all([
-    loaders.getActivityUsers(matchId),
-    loaders.listUsers(),
-    loaders.listActivities({ page: 1, pageSize: 100 }).then((page) => page.items),
-  ]);
-
-  return {
-    activity,
-    activityUsers,
-    usersById: Object.fromEntries(users.map((item) => [item.id, item])),
-    activityPageItems,
-    myRegistration: null,
-    fromMatchApi: false,
-    registrationGroupId: "",
-    publicationModeLabel: activity.match_kind === "internal" ? "队内内战" : "线下已约",
-    sourceMatch: null,
-    teamGroups: [],
-    selectedGroupMinPlayers: null,
-    hasOpenIndividualGroup: false,
-    sourceTeamRegistrationCount: activity.source_activity_id
-      ? 0
-      : activityPageItems
-          .filter((item) => isActiveTeamRegistrationActivity(item) && item.source_activity_id === activity.id)
-          .reduce((total, item) => total + Number(item.team_registration_count ?? 0), 0),
-  };
+  return buildPublicMatchApiDetailData(await loaders.getMatchDetail(matchId), currentUserId, selection);
 }
 
 export async function loadAuthenticatedMatchDetailContext(
   params: {
     activity: BackendActivity;
     activityUsers: BackendRegistration[];
-    activityPageItems: BackendActivity[];
     myRegistration?: AppMatchRegistration | null;
     currentTeamId?: number | null;
     currentUserId?: number;
   },
   loaders: Pick<MatchDetailDataLoaders, "getTeamDetail"> = defaultMatchDetailDataLoaders,
 ): Promise<AuthenticatedMatchDetailContext> {
-  const { activity, activityUsers, activityPageItems, myRegistration, currentTeamId, currentUserId } = params;
+  const { activity, activityUsers, myRegistration, currentTeamId, currentUserId } = params;
   const teamIds = [activity.home_team_id, activity.away_team_id].filter((teamId): teamId is number => typeof teamId === "number");
   // 球队详情接口仅成员可读：非成员浏览广场比赛详情时会 403，拿不到就跳过，
   // 不能让它把整个详情页拖进「会话失败」分支（会被误判为游客）。
@@ -291,22 +246,13 @@ export async function loadAuthenticatedMatchDetailContext(
     fetchedTeamDetails.find((detail) => detail.team.id === currentTeamId)
     ?? fetchedTeamDetails.find((detail) => detail.members.some((member) => member.user_id === currentUserId && member.status === 1));
   const currentTeamMembers = rosterDetail?.members ?? [];
-  const derivedActivity = currentTeamId
-    ? activityPageItems.find(
-        (item) => isActiveTeamRegistrationActivity(item) && item.source_activity_id === activity.id && item.home_team_id === currentTeamId,
-      ) ?? null
-    : null;
 
   return {
     teamsById: Object.fromEntries(fetchedTeams.map((team) => [team.id, team])),
-    derivedActivity,
-    initialRegistrationCount: derivedActivity?.team_registration_count ?? activity.team_registration_count ?? activity.players_per_team ?? 5,
     currentUserStand: myRegistration
       ? toRegistrationStandCode(myRegistration.status)
       : activityUsers.find((item) => item.user_id === currentUserId)?.stand ?? 0,
     currentTeamMembers,
-    checkInConfig: activity.source_activity_id
-      ? null
-      : activity.team_checkin_configs.find((item) => item.team_id === currentTeamId) ?? null,
+
   };
 }

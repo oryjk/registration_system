@@ -15,8 +15,7 @@
 - 统计
 - 我的
 - 比赛详情
-- 约队详情
-- 比赛创建/编辑
+- 比赛创建、详情页内编辑
 - 球队创建、加入与成员管理
 - 散人约队创建
 - 我的比赛
@@ -24,7 +23,7 @@
 - 通知
 - 资料完善
 
-其中首页、约队、统计、我的四个主页面已经按当前产品方向组织信息层级；活动、约队、球队、账单、通知、微信登录/手机号、支付、运行配置等主要流程已通过 `src/api/` 接入后端。`src/mock/` 仅作为历史原型数据留存，当前页面未直接引用，不应作为新增功能的数据来源。
+其中首页、约队、统计、我的四个主页面已经按当前产品方向组织信息层级；比赛/约球、球队、账单、通知、微信登录、用户资料、支付与运行配置等主流程已通过 `src/api/` 接入 Go 后端。已删除旧 `activity`/`challenge` API 和旧约队详情；比赛只使用 Go `/matches`，新增调用以 Go 路由为准。`src/mock/` 仅作为历史原型数据留存，当前页面未直接引用，不应作为新增功能的数据来源。
 
 ## 产品方案
 
@@ -53,8 +52,7 @@
 非 tab 页面包括：
 
 - 比赛详情：`pages/matches/detail`
-- 比赛创建/编辑：`pages/matches/create/index`
-- 约队详情：`pages/challenges/detail`
+- 比赛创建：`pages/matches/create/index`；比赛编辑使用详情页现有功能
 - 散人约队创建：`pages/challenges/create-individual/index`
 - 球队管理：`pages/teams/manage/index`
 - 我的比赛：`pages/user/matches/index`
@@ -103,12 +101,12 @@ bun run dev:h5
 - `.env.development`
 - `.env.production`
 
-当前约定中，`VITE_API_BASE_URL` 直接包含小程序接口前缀 `/api`。
+当前约定中，`VITE_API_BASE_URL` 必须包含完整的用户端接口前缀 `/api/v1/app`。
 
 例如：
 
-- 开发环境默认值：`http://127.0.0.1:18080/api`
-- 生产环境示例值：`https://example.com/api`
+- 开发环境默认值：`http://127.0.0.1:18080/api/v1/app`
+- 生产环境示例值：`https://example.com/api/v1/app`
 
 请求层位于 `src/utils/request.ts`，会直接拼接：
 
@@ -116,16 +114,16 @@ bun run dev:h5
 ${VITE_API_BASE_URL}${url}
 ```
 
-因此这里不要再额外写 `/api/admin`，也不要把 `/api` 漏掉。
+请求路径使用 `/matches` 等相对领域路径，不重复添加 `/api`，也不使用管理端 `/api/v1/admin`。统一响应为 `{ code, message, data }`，成功判定 `code === 0`。
 
 ## 当前实现重点
 
 - 已有统一请求层和登录态存储入口
 - 已有“当前球队”全局上下文切换能力
 - 首页、约队、统计、我的页面已按产品方案完成信息架构，并持续按大 SFC 拆分规范收敛
-- 当前 `src/api/` 已覆盖活动、约队、球队、用户、账单、通知、系统配置、支付和微信能力
-- 首页运行参数通过后端 `/api/system/mini-app-runtime-config` 下发，前端在 `src/config/runtimeConfig.ts` 中提供默认值和兜底逻辑
-- 已拆分的重点页面包括 `home`、`activities`、`matches/detail`、`teams/manage`、`teams/index`、`user/index`、`user/matches`、`challenges/detail`
+- 当前主链路 API 覆盖比赛/球队申请、球队、用户、钱包/队费、通知/留言、系统配置和支付；旧约队/活动通知仅展示内容，不再生成失效的页面跳转
+- 首页运行参数通过后端 `/api/v1/app/system/mini-app-runtime-config` 下发，前端在 `src/config/runtimeConfig.ts` 中提供默认值和兜底逻辑
+- 已拆分的重点页面包括 `home`、`activities`、`matches/detail`、`teams/manage`、`teams/index`、`user/index`、`user/matches`
 - `matches/detail` 已进一步按页面级组合逻辑和报名展示组件拆分，详情见 `docs/mini-architecture.md`
 
 ## 开发建议
@@ -137,39 +135,14 @@ ${VITE_API_BASE_URL}${url}
 
 ## 微信 CI 上传
 
-本项目已经接入本机共享的微信小程序 CI CLI，可以直接在项目内执行：
+使用仓库内 `scripts/mini-ci.mjs`，完整流程见 `AGENTS.md` 的「微信小程序发布」：
 
 ```bash
-bun run mp:preview
-bun run mp:upload
+bun run mp:preview -- --desc "预览说明"
+bun run mp:release -- --desc "开发版说明"           # robot=1 日常开发版
+bun run mp:release -- --robot 2 --desc "体验版说明" # robot=2 体验版专用线
 ```
 
-首次使用前：
+前置条件为上传私钥 `private.<appid>.key`（可用 `MINI_CI_PRIVATE_KEY_PATH` 覆盖）及 `.env.ci.local` 的 `MINI_REVIEW_API_KEY`，均不提交。`mp:release` 会构建、向 Go mini-review 登记版本并上传开发版本；正式发布仍需公众平台提审与发布。`mp:preview` 上传已有构建产物。
 
-1. 复制 `.env.ci.local.example` 为 `.env.ci.local`
-2. 填写真实私钥路径 `MINI_PROGRAM_PRIVATE_KEY_PATH`
-3. 如需覆盖机器人编号，可修改 `MINI_PROGRAM_CI_ROBOT`
-4. 如需上传成功后自动写入审核记录，配置：
-   - `MINI_REVIEW_API_BASE_URL`
-   - `MINI_REVIEW_PROJECT_CODE`
-   - `MINI_REVIEW_INTERNAL_TOKEN`
-
-示例：
-
-```bash
-bun run mp:preview -- --robot 2 --desc "本地预览"
-bun run mp:upload -- --robot 2 --version 1.0.1 --desc "提交体验版"
-```
-
-说明：
-
-- 命令会先自动执行 `bun run build:mp-weixin`
-- 然后调用微信官方 `miniprogram-ci`
-- `preview` 默认在 `dist/build/mp-weixin/preview-qrcode.jpg` 输出预览二维码
-- `upload` 如果不传 `--version`，会按当前版本自动 `+1`，例如 `1.0.30 -> 1.0.31`
-
-审核记录默认写入：
-
-- `project_code`: `registration_system_mini`
-- `is_reviewing`: `true`
-- `status_text`: `正在审核`
+只验证编译时使用 `MINI_REVIEW_SKIP=1 bun run build:mp-weixin`，跳过远程版本登记，不上传。正常发布的版本号由数据库分配，不能用离线跳过命令替代发布流程。

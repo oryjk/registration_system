@@ -60,12 +60,11 @@ src/pages/<domain>/
   - 页面级状态：`homeMatchState.ts` 负责首页阶段分组，`homeMatchSearchState.ts` 负责每页 5 场的搜索分页合并和全状态卡片映射。
   - 父页面保留首页精选数据加载、服务端搜索、触底分页、登录态、跳转和刷新逻辑；`HomeMatchSearch` 通过底部可见性观察补发快速滑动时的加载意图，展示组件不调用 API。
 - `src/pages/matches/detail.vue`
-  - 页面门面：`useMatchDetailPage.ts`
-  - 业务组合模块：`useMatchRegistration.ts`、`useMatchCheckInReview.ts`、`useMatchSettlement.ts`
-  - 局部模块：`detailData.ts`、`detailState.ts`、`detailActions.ts`、`registrationVisibility.ts`
-  - 局部组件：`MatchDetailSkeleton`、`MatchIndividualRegistration`、`MatchTeamRegistration`
-  - 报名子组件继续拆分为 `IndividualMatchupHero`、`IndividualCountdownCard`、`IndividualInfoCard`、`IndividualPromoBanner`、`InterestMatchGrid`、`TeamRegistrationHero`、`TeamRegistrationFormCard`、`TeamMatchInfoCard`、`TeamCheckInPanel`、`TeamCheckInSettingsCard`、`TeamActivityReviewCard`
-  - 父页面保留详情页布局编排；门面负责加载与生命周期，报名、签到/互评和结算按业务域拆分。
+  - 页面门面：`useMatchDetailPage.ts`，负责 Go Match 加载、生命周期与报名组展示模型。
+  - 业务组合模块：`useMatchRegistration.ts`、`useMatchRegistrationPayment.ts`、`useMatchTeamApplications.ts`、`useMatchEdit.ts`、`useMatchFinish.ts`、`useMatchScore.ts`。
+  - 局部模块：`detailData.ts`（只请求 Go Match）、`detailState.ts`、`detailActions.ts`（Go 报名组提交/取消）。
+  - 展示由 `MatchIndividualRegistration`、报名人数面板、球队申请、编辑、比分、收尾和留言等组件组合。
+  - 旧活动的球队代报名、签到/互评区块已删除；Go 接约使用球队申请，不创建旧版派生活动。
 - `src/pages/teams/manage/index.vue`
   - 页面门面：`useTeamManagePage.ts`
   - 业务组合模块：`useTeamProfile.ts`、`useTeamMembership.ts`、`useTeamAttendance.ts`
@@ -85,10 +84,6 @@ src/pages/<domain>/
   - 局部模块：`teamStatsState.ts`
   - 局部组件：`StatsSkeleton`、`StatsOverview`、`AttendanceRecordCard`、`AttendanceRankingCard`
   - 父页面保留球队上下文、统计数据加载、登录态分支和刷新逻辑。
-- `src/pages/challenges/detail.vue`
-  - 局部模块：`detailState.ts`
-  - 局部组件：`ChallengeDetailSkeleton`、`ChallengeHeroCard`、`ChallengeInfoCard`、`ChallengeTeamProgressCard`、`ChallengeIndividualProgressCard`、`ChallengeActions`
-  - 父页面保留约队详情加载、接约/取消动作、状态同步和跳转。
 - `src/pages/user/matches/index.vue`
   - 局部模块：`userMatchesState.ts`
   - 局部组件：`UserMatchesSkeleton`、`UserMatchList`

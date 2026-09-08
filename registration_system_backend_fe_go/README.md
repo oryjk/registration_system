@@ -6,11 +6,10 @@
 
 ```bash
 bun install
-cp .env.example .env.development   # 如需覆盖 API 代理目标
-bun run dev
+API_PROXY_TARGET=http://127.0.0.1:18080 bun run dev  # 对接本地 Go 默认端口
 ```
 
-开发服务器默认监听 `0.0.0.0`（端口 8000，可用 `PORT` 覆盖）。开发时 `ADMIN_API_BASE_URL=/go-api`，Vite 将同源 `/go-api` 代理到 `API_PROXY_TARGET`（默认 `http://127.0.0.1:18080`）；生产构建不设 API base，浏览器直接请求同源 `/api/v1/admin/*` 和 `/health`。管理端已接入管理员认证、球队 CRUD、比赛和场馆管理员 API；普通场馆管理员可以管理球队以及发布、管理和取消比赛，发布时可确认并快速创建不存在的主队。只有超级管理员显示场馆管理员入口和比赛永久删除操作。
+开发服务器默认监听 `0.0.0.0`（端口 8000，可用 `PORT` 覆盖）。开发时 `ADMIN_API_BASE_URL=/go-api`，Vite 将同源 `/go-api` 代理到 `API_PROXY_TARGET`（默认 `http://127.0.0.1:18081`）；生产构建不设 API base，浏览器直接请求同源 `/api/v1/admin/*` 和 `/health`。管理端已接入管理员认证、球队 CRUD、比赛和场馆管理员 API；普通场馆管理员可以管理球队以及发布、管理和取消比赛，发布时可确认并快速创建不存在的主队。只有超级管理员显示场馆管理员入口和比赛永久删除操作。
 
 环境变量通过 `import.meta.env` 注入（`envPrefix: ["ADMIN_"]`）：`ADMIN_API_BASE_URL`、`ADMIN_ROUTE_BASE`、`ADMIN_PUBLIC_PATH`（后两者分别控制 react-router basename 与 Vite `base`）。
 
@@ -46,10 +45,11 @@ bun run perf:budget
 
 ## 架构要点
 
-- 构建为纯 Vite（`vite.config.ts`），无 umi；测试为 Vitest（jsdom）。
+- 入口 `src/main.tsx` 挂载 `src/router.tsx`，不存在 `src/App.tsx`；构建为 Vite（`vite.config.ts`），测试为 Vitest（jsdom）。
+- 已有页面：仪表盘、比赛列表/创建/编辑/详情、球队与成员、比赛管理员、系统管理员、接入状态、小程序审核、打赏列表、系统设置。
 - 会话与守卫：`src/features/admin-session/useAdminSession.tsx`（启动恢复 `getCurrentAdmin`、401 过期、登录注入），挂在 `src/router.tsx` 路由树根部。
 - 壳层：`src/layout/AdminShell.tsx`（可折叠侧栏 + 毛玻璃顶栏 + 主题切换）与 `AppSidebar.tsx`。
-- 设计系统：`src/styles/`（tokens / foundation / primitives / widgets / shell / login / responsive），`components.json` 配置 shadcn CLI 与 `@reui` registry。
+- 设计系统：`src/styles/`（tokens / foundation / primitives / feedback / data-display / form-controls / page-layout / shell / login / responsive），`components.json` 配置 shadcn CLI 与 `@reui` registry。
 - 表格为轻封装 `src/components/admin/data-table.tsx`（shadcn Table + 列定义），分页 `pagination-bar.tsx`，确认气泡 `confirm-popover.tsx`（Popconfirm 等价物）。
 
 ## 性能基准

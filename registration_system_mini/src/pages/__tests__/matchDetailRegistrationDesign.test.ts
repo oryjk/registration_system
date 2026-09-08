@@ -16,8 +16,6 @@ async function matchDetailLogicSource() {
     "pages/matches/useMatchDetailPage.ts",
     "pages/matches/useMatchGuestLogin.ts",
     "pages/matches/useMatchRegistration.ts",
-    "pages/matches/useMatchCheckInReview.ts",
-    "pages/matches/useMatchSettlement.ts",
   ];
   return (await Promise.all(paths.map((path) => sourceFile(path).text()))).join("\n");
 }
@@ -27,24 +25,7 @@ describe("match detail registration design", () => {
     const facade = await sourceFile("pages/matches/useMatchDetailPage.ts").text();
 
     expect(facade.includes('from "./useMatchRegistration"')).toEqual(true);
-    expect(facade.includes('from "./useMatchCheckInReview"')).toEqual(true);
-    expect(facade.includes('from "./useMatchSettlement"')).toEqual(true);
     expect(facade.split("\n").length < 650).toEqual(true);
-  });
-
-  test("uses an in-page segmented layout for individual and team registration", async () => {
-    const source = await sourceFile(
-      "pages/matches/detail.vue",
-    ).text();
-    const pageLogic = await matchDetailLogicSource();
-
-    expect(pageLogic.includes("const registrationMode = ref<\"individual\" | \"team\">(\"individual\");")).toEqual(true);
-    expect(source.includes("个人报名")).toEqual(true);
-    expect(source.includes("球队报名")).toEqual(true);
-    expect(source.includes("NeoSegmentedControl")).toEqual(true);
-    expect(source.includes('v-model="registrationMode"')).toEqual(true);
-    expect(source.includes("registrationMode === 'individual'")).toEqual(true);
-    expect(source.includes("registrationMode === 'team'")).toEqual(true);
   });
 
   test("renders the individual registration view with countdown, guide card, and a primary CTA", async () => {
@@ -82,71 +63,16 @@ describe("match detail registration design", () => {
     expect(pageLogic.includes("const registrationWindow = computed")).toEqual(true);
     expect(pageLogic.includes("registrationStartAt: sourceMatch.value.registration_start_at")).toEqual(true);
     expect(pageLogic.includes("registrationEndAt: sourceMatch.value.registration_end_at")).toEqual(true);
-    // legacy 活动仍使用原有 end_time 语义；Go 比赛缺失截止时间时不再回退比赛开始时间。
-    expect(pageLogic.includes("match.value.registration_end_at || match.value.end_time || match.value.holding_date")).toEqual(true);
     expect(pageLogic.includes('window.state === "not_started" ? `距开放 ${countdown}` : `距截止 ${countdown}`')).toEqual(true);
     expect(pageLogic.includes("formatClock(match.value.holding_date)")).toEqual(true);
     expect(pageLogic.includes("formatClock(match.value.start_time)")).toEqual(false);
     expect(datetime.includes('if (distance <= 0) return "已截止";')).toEqual(true);
   });
 
-  test("renders the team registration view with versus header, registration form, and a team submit bar", async () => {
-    const source = await sourceFile(
-      "pages/matches/detail.vue",
-    ).text();
-    const team = await sourceFile(
-      "pages/matches/components/MatchTeamRegistration.vue",
-    ).text();
-    const teamHero = await sourceFile(
-      "pages/matches/components/TeamRegistrationHero.vue",
-    ).text();
-    const teamForm = await sourceFile(
-      "pages/matches/components/TeamRegistrationFormCard.vue",
-    ).text();
-
-    expect(source.includes("MatchTeamRegistration")).toEqual(true);
-    expect(team.includes("TeamRegistrationHero")).toEqual(true);
-    expect(teamHero.includes("team-vs-card")).toEqual(true);
-    expect(teamForm.includes("team-registration-form")).toEqual(true);
-    expect(source.includes("teamRegistrationCountOptions")).toEqual(true);
-    expect(source.includes("teamRegistrationCount")).toEqual(true);
-    expect(source.includes("teamSubmitLabel")).toEqual(true);
-  });
-
-  test("submits team registration and check-in through real activity api wrappers", async () => {
-    const source = await sourceFile(
-      "pages/matches/detail.vue",
-    ).text();
-    const pageLogic = await matchDetailLogicSource();
-    const actions = await sourceFile(
-      "pages/matches/detailActions.ts",
-    ).text();
-
-    expect(pageLogic.includes("submitTeamRegistrationForMatch")).toEqual(true);
-    expect(pageLogic.includes("submitMatchCheckIn")).toEqual(true);
-    expect(actions.includes("submitTeamRegistration")).toEqual(true);
-    expect(actions.includes("submitActivityCheckIn")).toEqual(true);
-    expect(pageLogic.includes("ensureCurrentLocation")).toEqual(true);
-    expect(source.includes("队长代报名接口待接入")).toEqual(false);
-  });
-
-  test("lets team managers choose the team registration size before submitting", async () => {
-    const pageLogic = await matchDetailLogicSource();
-    const actions = await sourceFile(
-      "pages/matches/detailActions.ts",
-    ).text();
-
-    expect(pageLogic.includes("const teamRegistrationCount = ref(5);")).toEqual(true);
-    expect(pageLogic.includes("const teamRegistrationCountOptions = Array.from")).toEqual(true);
-    expect(pageLogic.includes("submitTeamRegistrationForMatch")).toEqual(true);
-    expect(actions.includes("registration_count: registrationCount")).toEqual(true);
-    expect(actions.includes("submitTeamRegistration")).toEqual(true);
-  });
-
   test("lets individual users cancel an existing registration from the primary CTA", async () => {    const pageLogic = await matchDetailLogicSource();
 
     // 散人约球（pickup）已报名走「调整人数」面板；其余模式保持 CTA 取消报名。
-    expect(pageLogic.includes('if (isPickupMatch.value && isMatchApiDetail.value) return myRegistrationPaid.value ? "已报名" : "调整人数";')).toEqual(true);
+    expect(pageLogic.includes('if (isPickupMatch.value) return myRegistrationPaid.value ? "已报名" : "调整人数";')).toEqual(true);
     expect(pageLogic.includes('return "取消报名";')).toEqual(true);
     expect(pageLogic.includes("handleCancelIndividualSignup")).toEqual(true);
     expect(pageLogic.includes("cancelIndividualRegistration")).toEqual(true);
@@ -347,14 +273,11 @@ describe("match detail registration design", () => {
     expect(pageLogic.includes("await handleGuestLogin();")).toEqual(true);
   });
 
-  test("enables WeChat sharing for match and challenge registration detail pages", async () => {
+  test("enables WeChat sharing for match registration detail page", async () => {
     const matchDetail = await sourceFile(
       "pages/matches/detail.vue",
     ).text();
     const matchPageLogic = await matchDetailLogicSource();
-    const challengeDetail = await sourceFile(
-      "pages/challenges/detail.vue",
-    ).text();
     const shareUtils = await sourceFile(
       "utils/share.ts",
     ).text();
@@ -365,21 +288,7 @@ describe("match detail registration design", () => {
     expect(matchDetail.includes("imageUrl: MATCH_DETAIL_SHARE_IMAGE_URL")).toEqual(true);
     expect(matchDetail.includes("query: `id=${matchId.value || match.value?.id || \"\"}`")).toEqual(true);
     expect(matchPageLogic.includes("matchId,")).toEqual(true);
-    expect(challengeDetail.includes("onShareAppMessage")).toEqual(true);
-    expect(challengeDetail.includes("onShareTimeline")).toEqual(true);
-    expect(challengeDetail.includes("path: sharePath.value")).toEqual(true);
-    expect(challengeDetail.includes("imageUrl: DEFAULT_SHARE_IMAGE_URL")).toEqual(true);
-    expect(challengeDetail.includes("query: `id=${challengeId.value || card.value?.id || \"\"}`")).toEqual(true);
     expect(shareUtils.includes('"/static/share/share-cover.png"')).toEqual(true);
-  });
-
-  test("labels individual challenge countdown by match start because challenge has no registration deadline field", async () => {
-    const individualRegistration = await sourceFile(
-      "pages/challenges/components/ChallengeIndividualRegistration.vue",
-    ).text();
-
-    expect(individualRegistration.includes("开场倒计时")).toEqual(true);
-    expect(individualRegistration.includes("报名截止")).toEqual(false);
   });
 
   test("blocks new individual signup when the activity team capacity limit is full", async () => {
@@ -413,9 +322,8 @@ describe("match detail registration design", () => {
     expect(detailPage.includes('v-if="registrationMode === \'team\' && canManageApplications"')).toEqual(false);
     expect(detailPage.includes('v-if="canManageApplications"')).toEqual(true);
     // 数据层把新比赛接口的原始对象带出来，供 publication_mode / opponent_state 判定。
-    expect(detailData.includes("sourceMatch: AppMatchSummary | null")).toEqual(true);
+    expect(detailData.includes("sourceMatch: AppMatchSummary")).toEqual(true);
     expect(detailData.includes("sourceMatch: matchDetail.match")).toEqual(true);
-    expect(detailData.includes("sourceMatch: null")).toEqual(true);
     expect(pageLogic.includes("sourceMatch.value = publicData.sourceMatch")).toEqual(true);
     expect(detailPage.includes("useMatchTeamApplications(sourceMatch, loadPageData, confirmRegistrationAction)")).toEqual(true);
     expect(applications.includes("isRecruitingTeamMatchSource(sourceMatch.value)")).toEqual(true);
@@ -433,7 +341,6 @@ describe("match detail registration design", () => {
     expect(pageLogic.includes('isRegistering: sourceMatch.value.status === "registering"')).toEqual(true);
     expect(pageLogic.includes('registrationWindowState.value !== "open"')).toEqual(true);
     expect(detailPage.includes(":registration-closed=\"isRegistrationClosed\"")).toEqual(true);
-    expect(detailPage.includes("canUseTeamRegistration && !isRegistrationClosed")).toEqual(true);
     expect(individual.includes(":show-cta=\"!showTeamMemberRegistrationBoard && !registrationClosed\"")).toEqual(true);
     expect(individual.includes(':registration-closed="registrationClosed"')).toEqual(true);
     expect(board.includes('<NeoStickyActionBar v-if="!registrationClosed">')).toEqual(true);
@@ -458,7 +365,6 @@ describe("match detail registration design", () => {
     // 数据链路：主/客队分组从接口带到页面（host_team + guest_team）。
     expect(detailData.includes("toTeamGroupSummaries")).toEqual(true);
     expect(detailData.includes('group.kind === "host_team" || group.kind === "guest_team"')).toEqual(true);
-    expect(detailData.includes("teamGroups: []")).toEqual(true);
     expect(pageLogic.includes("matchTeamGroups.value = publicData.teamGroups")).toEqual(true);
     expect(pageLogic.includes('match.publication_mode !== "online_team"')).toEqual(true);
     expect(pageLogic.includes("group.kind === \"host_team\"")).toEqual(true);

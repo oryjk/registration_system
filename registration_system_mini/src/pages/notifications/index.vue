@@ -52,7 +52,7 @@ async function loadNotifications() {
     await ensureSessionReady();
     notifications.value = await listNotifications({ limit: 50 });
 
-    // 已读完全由用户点开详情驱动：进页不再自动清红点，角标同步真实未读数。
+    // 已读完全由用户点击通知驱动：进页不再自动清红点，角标同步真实未读数。
     await syncUnreadCount({ skipEnsure: true });
     hasLoadedOnce.value = true;
   } catch (error) {
@@ -63,8 +63,7 @@ async function loadNotifications() {
 }
 
 async function openNotification(item: { id: number; relatedPath: string; read: boolean }) {
-  if (!item.relatedPath) return;
-  // 点开详情才算已读；标记失败不阻断跳转。
+  // 点击通知才算已读；无详情链接的历史通知同样可读，标记失败不阻断有效详情跳转。
   if (!item.read) {
     try {
       await markNotificationRead(item.id);
@@ -79,7 +78,7 @@ async function openNotification(item: { id: number; relatedPath: string; read: b
       // 已读标记失败时仍进入详情，下次进列表重新拉取真实状态。
     }
   }
-  uni.navigateTo({ url: item.relatedPath });
+  if (item.relatedPath) uni.navigateTo({ url: item.relatedPath });
 }
 
 function openCaptainThread(threadId: string) {
@@ -116,7 +115,7 @@ onShow(() => {
 
     <view class="notice-header">
       <text class="notice-title">消息中心</text>
-      <text class="notice-subtitle">站内通知与球队留言都在这里，点开详情才算已读。</text>
+      <text class="notice-subtitle">站内通知与球队留言都在这里，点击通知可标为已读。</text>
     </view>
 
     <NeoSegmentedControl
@@ -158,7 +157,7 @@ onShow(() => {
           <view>
             <text class="notice-hero-label">未读提醒</text>
             <text class="notice-hero-value">{{ unreadCount }}</text>
-            <text class="notice-hero-copy">点开通知详情后才会标记为已读。</text>
+            <text class="notice-hero-copy">点击通知后才会标记为已读。</text>
           </view>
         </NeoSurface>
 
@@ -178,7 +177,7 @@ onShow(() => {
             <text class="notice-card-copy">{{ item.content }}</text>
             <view class="notice-card-bottom">
               <text class="notice-card-time">{{ item.createdAtLabel }}</text>
-              <text class="notice-card-action">{{ item.relatedPath ? "查看详情" : "已处理" }}</text>
+              <text class="notice-card-action">{{ item.relatedPath ? "查看详情" : item.read ? "已读" : "标为已读" }}</text>
             </view>
           </NeoSurface>
         </view>

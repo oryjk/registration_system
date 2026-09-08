@@ -57,14 +57,13 @@ describe("FloatingLoginPrompt", () => {
   test("detail pages reload themselves on session login completed so guest views do not stick", async () => {
     const matchDetailSource = await read("src/pages/matches/useMatchDetailPage.ts");
     const matchGuestLoginSource = await read("src/pages/matches/useMatchGuestLogin.ts");
-    const challengeDetailSource = await read("src/pages/challenges/detail.vue");
 
-    for (const source of [matchDetailSource, challengeDetailSource]) {
+    for (const source of [matchDetailSource]) {
       expect(source.includes('uni.$on("session:login-completed", handleSessionLoginCompleted);')).toEqual(true);
       expect(source.includes('uni.$off("session:login-completed", handleSessionLoginCompleted);')).toEqual(true);
     }
-    // 比赛详情页的重载回调抽在游客登录 composable 里，挑战详情页内联定义。
-    for (const source of [matchGuestLoginSource, challengeDetailSource]) {
+    // 比赛详情页的重载回调抽在游客登录 composable 里。
+    for (const source of [matchGuestLoginSource]) {
       expect(source.includes("function handleSessionLoginCompleted")).toEqual(true);
     }
   });

@@ -8,9 +8,9 @@
 
 | 目录 | 说明 | 技术栈 | 对接后端 |
 | --- | --- | --- | --- |
-| `registration_system_go/` | **新后台服务端**，主开发，第一阶段优先实现认证、球队与比赛闭环 | `Go + Gin + PostgreSQL + pgx + sqlc` | （自身） |
+| `registration_system_go/` | **当前唯一开发的后端**，承载认证、球队、比赛和资金业务 | `Go + Gin + PostgreSQL + pgx + sqlc` | （自身） |
 | `registration_system_mini/` | 用户侧小程序/H5，已在同一项目内完成从 Rust 到 Go 的切换 | `uni-app + Vue 3 + TypeScript + Vite + Bun` | **Go** |
-| `registration_system_backend_fe_go/` | 管理后台（**新版 React**，与 Go 后端同步演进，中期阶段） | `Umi Max + React + Ant Design 6 + ProComponents 3 + React Query 5 + Tailwind 4 + antd-style + Biome + utoopack + Bun` | **Go** |
+| `registration_system_backend_fe_go/` | 管理后台（**React**，与 Go 后端同步演进） | `React 19 + TypeScript + Vite 7 + shadcn/ui + Tailwind CSS 4 + React Router 7 + React Query 5 + Biome + Bun` | **Go** |
 | `registration_system_admin_app/` | 移动管理 App，面向赛事运营/管理员（**已暂停开发**） | `Flutter + Dart` | Rust `/api/admin`；Go `/api/v1/admin` |
 
 > 阶段说明：旧 Rust 后端 `registration_system_rs/` 已停止开发并**从工作区删除**（2026-08-30，git 历史可查）；所有后端开发都在 Go 项目进行。`mini-rust-backend-final` 标记小程序最后一个 Rust 后端基线。
@@ -18,6 +18,7 @@
 ## 文档入口
 
 - 工作区协作约定：`AGENTS.md`
+- 当前能力与变更记录：`FEATURES.md`、`CHANGELOG.md`
 - 小程序/H5 说明：`registration_system_mini/README.md`
 - 管理后台（新版）说明：`registration_system_backend_fe_go/README.md`
 - 移动管理 App 说明：`registration_system_admin_app/README.md`
@@ -66,7 +67,7 @@ go run ./cmd/api
 - Swagger UI：`http://127.0.0.1:18080/api/docs/`。
 - OpenAPI YAML：`http://127.0.0.1:18080/api/docs/openapi.yaml`。
 - Swagger UI 静态资源和 OpenAPI 文档均嵌入 Go 二进制，无需 CDN 或 Docker。用户端和管理端受保护接口分别使用用户 JWT 和管理员 JWT；Swagger UI 的 Authorize 输入框填写令牌值即可。
-- 第一阶段不实现订单、支付、账单、结算、签到、通知。
+- 已实现支付订单、钱包流水、队费结算和站内通知；尚无退款、提现、微信内 H5 支付和签到接口。
 
 #### B2. 启动新版 React 管理后台
 
@@ -76,7 +77,7 @@ bun install
 bun run dev
 ```
 
-- 开发使用 `ADMIN_API_BASE_URL=/go-api`，由 Umi 代理 `/go-api → http://127.0.0.1:18080`（可用 `.env` 的 `API_PROXY_TARGET` 覆盖目标）；生产构建保持 API base 为空，由 Nginx 转发同源 `/api/v1/admin/*` 和 `/health` 到 Go 后端。
+- 开发使用 `ADMIN_API_BASE_URL=/go-api`，由 Vite 代理 `/go-api → http://127.0.0.1:18081`（当前配置默认值）；本地 Go 使用默认 18080 端口时，执行 `API_PROXY_TARGET=http://127.0.0.1:18080 bun run dev`；生产构建保持 API base 为空，由 Nginx 转发同源 `/api/v1/admin/*` 和 `/health` 到 Go 后端。
 - 请求层对 `admin` 接口统一加前缀 `/api/v1/admin`，`/health` 等用裸路径。
 - 响应契约 `{ code, message, data }`，成功判定 `code === 0`。
 - 生产构建：`bun run build:nginx`（`ADMIN_PUBLIC_PATH` 与 `ADMIN_ROUTE_BASE` 均为 `/registration-admin/`）；Nginx 必须配置 `/registration-admin/` 到 `/registration-admin/index.html` 的 SPA fallback。
@@ -139,9 +140,9 @@ flutter run
 
 ## 当前状态
 
-- **Go 新后端**（主开发）：已覆盖认证、球队、比赛/约队、用户资料、管理员体系；订单/支付/账单/结算/签到/通知不在第一阶段；MinIO/文件存储尚未引入；系统设置（报名人数默认规则）仅有 sqlc 层、尚无 API。
+- **Go 新后端**（主开发）：已覆盖认证、用户/球队管理、四种比赛发布模式、报名/接约、比分、赛程编辑、微信支付 V2、个人钱包、队费结算/管理员入账、站内通知、队长留言、小程序审核与运行配置。头像支持本地文件存储，球队 Logo 可选本地或 MinIO；报名人数默认规则的配置管理 API 仍待实现。
 - **Rust 老后端**：已停止开发并**从工作区删除**（2026-08-30，git 历史可查）；线上旧库 `rs_*` 表仍保留作为迁移源。
 - **老版 Vue 管理后台**：已从工作区删除（git 历史可查），由新版 React 管理后台替代。
-- **新版 React 管理后台**：登录、鉴权、仪表盘、比赛（CRUD + 状态流转）、球队（含成员/队长/球员资料）、管理员、接入状态已落地，覆盖约老版 3/8 业务域；billing/challenges/venues 尚未开始。
-- **小程序/H5**：**已对接 Go 后端**（`mini-rust-backend-final` 是最后一个 Rust 后端基线）；`src/mock/` 仅作历史原型留存。
+- **新版 React 管理后台**：登录、鉴权、仪表盘、比赛（CRUD、状态、比分、球队申请）、球队（成员/队长/资料及队费入账）、比赛管理员、系统管理员、接入状态、小程序审核、打赏与系统设置已落地。入口为 `src/main.tsx` → `src/router.tsx`。
+- **小程序/H5**：**已对接 Go 后端**（`mini-rust-backend-final` 是最后一个 Rust 后端基线）；主流程使用 Go Match API；已删除无 Go 后端支持的旧约队详情、活动请求与旧报名分支，历史约队/活动通知仅保留内容、不提供跳转；`src/mock/` 仅作历史原型留存。
 - **移动管理 App**：已初始化 Flutter iOS/Android 项目，提供登录 + 工作台 + 创建比赛 + 创建球队首版页面；当前**已暂停开发**。

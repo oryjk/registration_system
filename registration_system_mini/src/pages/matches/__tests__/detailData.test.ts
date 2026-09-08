@@ -28,6 +28,47 @@ const matchSummary: AppMatchSummary = {
 };
 
 describe("Match detail adapter", () => {
+  test("rejects old or invalid match IDs before making any request", async () => {
+    const calls: string[] = [];
+    const unexpectedRequest = async () => {
+      calls.push("request");
+      throw new Error("Unexpected API request");
+    };
+    const loaders = {
+      getMatchDetail: unexpectedRequest,
+      getTeamDetail: unexpectedRequest,
+      getActivity: unexpectedRequest,
+      getActivityUsers: unexpectedRequest,
+      listActivities: unexpectedRequest,
+      listUsers: unexpectedRequest,
+    };
+    for (const id of ["", "123", "legacy-activity", "../activity/123"]) {
+      expect(await loadPublicMatchDetailData(id, undefined, {}, loaders).then(
+        () => "unexpected success", (error: Error) => error.message,
+      )).toEqual("该比赛链接已失效，请从约球大厅重新打开比赛");
+    }
+    expect(calls).toEqual([]);
+  });
+
+  test("does not fall back to old APIs when a Go match is missing", async () => {
+    const calls: string[] = [];
+    const loaders = {
+      getMatchDetail: async () => {
+        calls.push("match");
+        throw new Error("比赛不存在");
+      },
+      getTeamDetail: async () => { throw new Error("Unexpected team request"); },
+      getActivity: async () => { calls.push("activity"); throw new Error("Unexpected activity request"); },
+      getActivityUsers: async () => [],
+      listActivities: async () => ({ items: [], total: 0, page: 1, page_size: 100 }),
+      listUsers: async () => [],
+    };
+    expect(await loadPublicMatchDetailData(matchSummary.id, undefined, {}, loaders).then(
+      () => "unexpected success", (error: Error) => error.message,
+    )).toEqual("比赛不存在");
+    expect(calls).toEqual(["match"]);
+  });
+
   test("maps a match summary to the existing registration detail model", () => {
     const activity = toBackendActivity(matchSummary);
     expect({
@@ -418,29 +459,10 @@ describe("Match detail adapter", () => {
         calls.push("team-detail");
         throw new Error("Match detail must not request a team");
       },
-      getActivity: async () => {
-        calls.push("activity-detail");
-        throw new Error("Match detail must not request an activity");
-      },
-      getActivityUsers: async () => {
-        calls.push("activity-users");
-        throw new Error("Match detail must not request activity users");
-      },
-      listActivities: async () => {
-        calls.push("activity-list");
-        throw new Error("Match detail must not list activities");
-      },
-      listUsers: async () => {
-        calls.push("users");
-        throw new Error("Match detail must not list users");
-      },
     });
 
     expect(calls).toEqual(["match-detail"]);
-    expect({ fromMatchApi: data.fromMatchApi, registrationGroupId: data.registrationGroupId }).toEqual({
-      fromMatchApi: true,
-      registrationGroupId: matchDetail.groups[1].id,
-    });
+    expect(data.registrationGroupId).toEqual(matchDetail.groups[1].id);
     // 散人约球的报名进度目标 = 选中报名组的最小人数（管理端「最小人数」），而不是每队人数。
     expect(data.selectedGroupMinPlayers).toEqual(matchDetail.groups[1].min_players);
   });
@@ -480,7 +502,6 @@ describe("Authenticated match detail context", () => {
     return {
       activity: { ...toBackendActivity(matchSummary) },
       activityUsers: [],
-      activityPageItems: [],
       myRegistration: null,
       currentTeamId,
       currentUserId,

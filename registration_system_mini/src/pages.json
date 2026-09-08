@@ -128,13 +128,6 @@
       }
     },
     {
-      "path": "pages/challenges/detail",
-      "style": {
-        "navigationBarTitleText": "约队详情",
-        "navigationStyle": "custom"
-      }
-    },
-    {
       "path": "pages/challenges/create-individual/index",
       "style": {
         "navigationBarTitleText": "创建散人约队",

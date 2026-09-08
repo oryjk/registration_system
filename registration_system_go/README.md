@@ -9,14 +9,20 @@
 - 微信登录与 JWT 鉴权
 - 超级管理员创建和查看场馆管理员
 - 用户和球队角色
-- 三种比赛发布模式
+- 四种比赛发布模式：线下已约、线上约队、散人对手、纯散人约球
 - `online_team` 球队候选申请、选择与退出事务
 - 队内报名与散人对手报名，包括用户侧幂等更新、取消、容量和并发控制
 - 散人人数默认规则（配置管理 API 待实现）
 - 微信支付 V2 小程序 JSAPI 充值订单、回调、查单与关单
 - 个人钱包余额、不可变资金流水、幂等充值与内部原子扣费
+- 球队会员充值、比赛报名支付与打赏订单
+- 队费结算、队费余额/流水与管理员队费入账
+- 站内通知、未读数、单条/全部已读与队长留言
+- 比赛比分与比赛管理员、主队管理者编辑赛程及限定类型转换
+- 小程序版本审核、运行配置、一次性 web-view 登录桥接
+- 本地头像存储、球队 Logo 本地或 MinIO 存储
 
-退款、提现、人工调账、微信内 H5 支付、签到和通知暂不实现。旧 **Rust 后端已停止开发并从工作区删除**（`registration_system_rs/`，2026-08-30 移除，git 历史可查；迁移不依赖该目录，脚本直连线上旧库）；旧余额、订单和流水不迁移到 Go，所有新后端开发都在本项目进行。历史比赛与报名数据已通过一键迁移脚本（见「一键迁移旧库数据」）从 Rust 旧库迁入 Go 结构。
+目前没有退款、提现、通用人工调账、微信内 H5 支付或签到接口。管理员队费入账是已有的独立能力，不能视为任意余额修改。旧 **Rust 后端已停止开发并从工作区删除**（`registration_system_rs/`，2026-08-30 移除，git 历史可查；迁移不依赖该目录，脚本直连线上旧库）；旧余额、订单和流水不迁移到 Go，所有新后端开发都在本项目进行。历史比赛与报名数据已通过一键迁移脚本（见「一键迁移旧库数据」）从 Rust 旧库迁入 Go 结构。
 
 ## 部署（out109 验收环境）
 
@@ -36,7 +42,10 @@ go env -w GOPROXY=https://goproxy.cn,direct GOSUMDB=sum.golang.google.cn
 
 ```bash
 cp .env.example .env
-make migrate-up
+set -a
+source .env
+set +a
+go run ./cmd/dbmigrate
 go run ./cmd/api
 ```
 
@@ -128,13 +137,14 @@ ADMIN_USERNAME=<username> ADMIN_PASSWORD='<password>' ADMIN_ROLE=super_admin mak
 数据库 migration 使用 goose，SQL 查询类型使用 sqlc：
 
 ```bash
-make migrate-status
-make migrate-up
-make migrate-down
+set -a
+source .env
+set +a
+go run ./cmd/dbmigrate
 make generate
 ```
 
-API 和管理员初始化命令会在进程内自动加载 `.env`；migration 命令会通过 Makefile 将 `.env` 注入 goose。所有 migration 位于 `db/migrations/`，查询位于 `db/queries/`。`DATABASE_URL` 只从本地环境读取，不提交真实密码。
+API 和管理员初始化命令会在进程内自动加载 `.env`；`cmd/dbmigrate` 需要先将 `.env` 导出到环境，再调用仓库内 goose 库执行前向迁移，避免通用 goose CLI 额外引入未锁定的数据库驱动。所有 migration 位于 `db/migrations/`，查询位于 `db/queries/`。`DATABASE_URL` 只从本地环境读取，不提交真实密码。
 
 ## 一键迁移旧库数据（可重复执行）
 
@@ -205,4 +215,4 @@ go vet ./...
 go build -o /tmp/registration-system-go-api ./cmd/api
 ```
 
-以上命令不启动 Docker。完整 PostgreSQL 集成测试需要显式提供专用 `TEST_DATABASE_URL`；支付与钱包测试不会回退使用 `DATABASE_URL`，也不会启动 Docker。没有独立测试库时不要把开发或生产数据库用于测试。
+以上命令不启动 Docker。按工作区约定，集成测试使用 `.env` 中显式配置的线上 `TEST_DATABASE_URL`（可与 `DATABASE_URL` 同库），`make test` 会自动加载。`internal/testsupport` 为每个用例创建独立随机 schema、应用迁移并在结束后删除，不读写业务表；测试禁止 TRUNCATE 或写入共享业务表。未配置 `TEST_DATABASE_URL` 时集成测试会跳过，不会回退使用 `DATABASE_URL`。提交前仍需在加载环境后执行 `go test -race ./...`、`go vet ./...` 和 API 构建。

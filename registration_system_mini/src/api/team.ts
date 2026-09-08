@@ -1,8 +1,6 @@
 import type {
   BackendTeam,
   BackendTeamAttendanceSummary,
-  BackendTeamCreditOverview,
-  BackendTeamCreditTransaction,
   BackendTeamDetail,
   BackendTeamMember,
   BackendTeamMemberAttendance,
@@ -335,52 +333,6 @@ export function removeTeamMember(teamId: number, userId: number) {
 /** 批量冻结/恢复已合并进单人 updateTeamMember（Go app 侧无批量接口，legacy Rust 批量接口已废弃）。 */
 export function setTeamMemberActive(teamId: number, userId: number, active: boolean) {
   return updateTeamMember(teamId, userId, { status: active ? "active" : "inactive" });
-}
-
-export function getTeamCreditOverview(teamId: number) {
-  return requestApi<BackendTeamCreditOverview>({
-    url: `/teams/${teamId}/credit`,
-    auth: true,
-  });
-}
-
-export function getTeamCreditTransactions(teamId: number, limit = 20) {
-  return requestApi<BackendTeamCreditTransaction[]>({
-    url: `/teams/${teamId}/credit/transactions?limit=${limit}`,
-    auth: true,
-  });
-}
-
-export function submitTeamActivityReview(
-  teamId: number,
-  payload: {
-    activity_id: string;
-    reviewer_team_id: number;
-    rating: number;
-    comment?: string;
-  },
-) {
-  return requestApi<BackendTeamCreditOverview>({
-    url: `/teams/${teamId}/credit/reviews`,
-    method: "POST",
-    data: payload,
-    auth: true,
-  });
-}
-
-export function rechargeTeamMembership(
-  teamId: number,
-  payload: {
-    months: number;
-    note?: string;
-  },
-) {
-  return requestApi<BackendTeamCreditOverview>({
-    url: `/teams/${teamId}/credit/membership-recharges`,
-    method: "POST",
-    data: payload,
-    auth: true,
-  });
 }
 
 export interface AppTeamDetailData {

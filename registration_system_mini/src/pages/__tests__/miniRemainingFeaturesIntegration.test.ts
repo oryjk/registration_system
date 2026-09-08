@@ -77,33 +77,6 @@ describe("remaining mini real backend integrations", () => {
     expect(page.includes("队员管理")).toEqual(true);
   });
 
-  test("match detail can submit post-match review and update check-in config", async () => {
-    const activityApi = await read(`${miniRoot}/src/api/activity.ts`);
-    const teamApi = await read(`${miniRoot}/src/api/team.ts`);
-    const page = await read(`${miniRoot}/src/pages/matches/detail.vue`);
-    const pageLogic = (await Promise.all([
-      `${miniRoot}/src/pages/matches/useMatchDetailPage.ts`,
-      `${miniRoot}/src/pages/matches/useMatchCheckInReview.ts`,
-    ].map(read))).join("\n");
-    const actions = await read(`${miniRoot}/src/pages/matches/detailActions.ts`);
-    const teamRegistration = await read(`${miniRoot}/src/pages/matches/components/MatchTeamRegistration.vue`);
-    const checkInSettings = await read(`${miniRoot}/src/pages/matches/components/TeamCheckInSettingsCard.vue`);
-    const activityReview = await read(`${miniRoot}/src/pages/matches/components/TeamActivityReviewCard.vue`);
-
-    expect(activityApi.includes("export function updateTeamCheckInConfig")).toEqual(true);
-    expect(teamApi.includes("submitTeamActivityReview")).toEqual(true);
-    expect(actions.includes("updateTeamCheckInConfig")).toEqual(true);
-    expect(actions.includes("submitTeamActivityReview")).toEqual(true);
-    expect(pageLogic.includes("saveMatchCheckInConfig")).toEqual(true);
-    expect(pageLogic.includes("submitMatchActivityReview")).toEqual(true);
-    expect(pageLogic.includes("handleSaveCheckInConfig")).toEqual(true);
-    expect(pageLogic.includes("handleSubmitActivityReview")).toEqual(true);
-    expect(page.includes("MatchTeamRegistration")).toEqual(true);
-    expect(teamRegistration.includes("TeamCheckInSettingsCard")).toEqual(true);
-    expect(checkInSettings.includes("签到设置")).toEqual(true);
-    expect(activityReview.includes("赛后互评")).toEqual(true);
-  });
-
   test("billing page supports recharge orders and payment order management", async () => {
     const paymentApi = await read(`${miniRoot}/src/api/payment.ts`);
     const page = await read(`${miniRoot}/src/pages/billing/index.vue`);
@@ -122,18 +95,4 @@ describe("remaining mini real backend integrations", () => {
     expect(page.includes("支付订单")).toEqual(true);
   });
 
-  test("location resolution goes through app backend activity routes", async () => {
-    const activityApi = await read(`${miniRoot}/src/api/activity.ts`);
-    const locationUtil = await read(`${miniRoot}/src/utils/location.ts`);
-    const backendRoutes = await read(`${backendRoot}/src/activity/adapters/web/routes.rs`);
-
-    expect(activityApi.includes("export function searchActivityLocations")).toEqual(true);
-    expect(activityApi.includes('url: `/activity/location-search')).toEqual(true);
-    expect(activityApi.includes("export function resolveActivityLocation")).toEqual(true);
-    expect(activityApi.includes('url: `/activity/location-resolve')).toEqual(true);
-    expect(locationUtil.includes("resolveActivityLocation")).toEqual(true);
-    expect(locationUtil.includes("resolveBackendLocationLabel")).toEqual(true);
-    expect(backendRoutes.includes('.route("/location-search", get(search_locations_handler))')).toEqual(true);
-    expect(backendRoutes.includes('.route("/location-resolve", get(resolve_location_handler))')).toEqual(true);
-  });
 });

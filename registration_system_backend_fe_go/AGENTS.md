@@ -65,7 +65,7 @@
 
 ```bash
 bun install
-bun run dev          # dev server，/go-api 代理到 API_PROXY_TARGET（默认 127.0.0.1:18080）
+bun run dev          # dev server，/go-api 代理到 API_PROXY_TARGET（默认 127.0.0.1:18081；本地 Go 默认端口需显式设为 18080）
 bun run type-check
 bun run lint
 bun run test         # vitest（jsdom，环境见 vite.config.ts test 段）

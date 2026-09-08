@@ -1,28 +1,21 @@
 import type { ComputedRef, Ref } from "vue";
 import {
-  cancelIndividualRegistration,
   cancelMatchIndividualRegistration,
-  cancelTeamRegistrationForMatch,
-  submitIndividualLeave,
-  submitIndividualRegistration,
   submitMatchIndividualRegistration,
-  submitTeamRegistrationForMatch,
 } from "./detailActions";
 import type { BackendActivity, BackendRegistration, BackendUser } from "@/types/backend";
-import type { TeamProfileViewModel } from "@/types/viewModels";
 import type { NeoConfirmDialogOptions } from "@/components/neo";
 import { toStandLabel } from "@/utils/viewModels";
-import { applyIndividualRegistrationPatch, clampTeamRegistrationCount } from "./detailState";
+import { applyIndividualRegistrationPatch } from "./detailState";
 import type { RegistrationWindowState } from "@/utils/registrationWindow";
 
 interface MatchRegistrationDependencies {
   match: Ref<BackendActivity | null>;
   registrations: Ref<BackendRegistration[]>;
-  currentStatus: Ref<string>;  currentUser: Ref<BackendUser | null>;
-  currentTeam: ComputedRef<TeamProfileViewModel | null>;
+  currentStatus: Ref<string>;
+  currentUser: Ref<BackendUser | null>;
   submittingStatus: Ref<boolean>;
   isGuestMode: Ref<boolean>;
-  isMatchApiDetail: Ref<boolean>;
   registrationGroupId: Ref<string>;
   /** 纯球队组比赛且用户不是比赛球队成员：报名入口引导加入球队。 */
   needsTeamToRegister: ComputedRef<boolean>;
@@ -30,10 +23,6 @@ interface MatchRegistrationDependencies {
   openJoinTeamSheet: () => void;
   canSubmitIndividualRegistration: ComputedRef<boolean>;
   registrationWindowState: ComputedRef<RegistrationWindowState>;
-  canUseTeamRegistration: ComputedRef<boolean>;
-  existingTeamDerivedActivity: Ref<BackendActivity | null>;
-  sourceTeamRegistrationCount: Ref<number>;
-  teamRegistrationCount: Ref<number>;
   ensureSessionReady: () => Promise<void>;
   handleGuestLogin: () => Promise<void>;
   confirmRegistrationAction: (options: NeoConfirmDialogOptions) => Promise<boolean>;
@@ -56,19 +45,13 @@ export function useMatchRegistration(dependencies: MatchRegistrationDependencies
     registrations,
     currentStatus,
     currentUser,
-    currentTeam,
     submittingStatus,
     isGuestMode,
-    isMatchApiDetail,
     registrationGroupId,
     needsTeamToRegister,
     openJoinTeamSheet,
     canSubmitIndividualRegistration,
     registrationWindowState,
-    canUseTeamRegistration,
-    existingTeamDerivedActivity,
-    sourceTeamRegistrationCount,
-    teamRegistrationCount,
     ensureSessionReady,
     handleGuestLogin,
     confirmRegistrationAction,
@@ -98,26 +81,13 @@ export function useMatchRegistration(dependencies: MatchRegistrationDependencies
   }
 
   async function submitIndividualRegistrationStatus(status: "attending" | "leave", registrationCount = 1) {
-    if (isMatchApiDetail.value) {
-      if (!registrationGroupId.value) throw new Error("未找到可报名分组");
-      await submitMatchIndividualRegistration(match.value!.id, registrationGroupId.value, status, registrationCount);
-      return;
-    }
-
-    if (status === "attending") {
-      await submitIndividualRegistration(match.value!.id);
-      return;
-    }
-    await submitIndividualLeave(match.value!.id);
+    if (!registrationGroupId.value) throw new Error("未找到可报名分组");
+    await submitMatchIndividualRegistration(match.value!.id, registrationGroupId.value, status, registrationCount);
   }
 
   async function cancelIndividualRegistrationStatus() {
-    if (isMatchApiDetail.value) {
-      if (!registrationGroupId.value) throw new Error("未找到可报名分组");
-      await cancelMatchIndividualRegistration(match.value!.id, registrationGroupId.value);
-      return;
-    }
-    await cancelIndividualRegistration(match.value!.id);
+    if (!registrationGroupId.value) throw new Error("未找到可报名分组");
+    await cancelMatchIndividualRegistration(match.value!.id, registrationGroupId.value);
   }
 
   async function handleSelectIndividualSignup() {
@@ -133,12 +103,12 @@ export function useMatchRegistration(dependencies: MatchRegistrationDependencies
       return;
     }
     // 散人约球已支付：人数与取消入口锁定，费用问题线下协商。
-    if (isPickupMatch.value && isMatchApiDetail.value && currentStatus.value === "参加" && myRegistrationPaid.value) {
+    if (isPickupMatch.value && currentStatus.value === "参加" && myRegistrationPaid.value) {
       uni.showToast({ title: "已支付的报名不可修改或取消", icon: "none", duration: 2600 });
       return;
     }
     // 散人约球：报名/调整人数都走人数选择面板（含代朋友报名与费用合计展示）。
-    if (isPickupMatch.value && isMatchApiDetail.value) {
+    if (isPickupMatch.value) {
       if (currentStatus.value !== "参加" && !canSubmitIndividualRegistration.value) {
         uni.showToast({ title: "报名人数已满", icon: "none" });
         return;
@@ -203,7 +173,7 @@ export function useMatchRegistration(dependencies: MatchRegistrationDependencies
 
   async function handleCancelIndividualSignup(skipConfirm = false) {
     if (!match.value || submittingStatus.value) return;
-  if (!ensureRegistrationOpen()) return;
+    if (!ensureRegistrationOpen()) return;
 
     if (!skipConfirm) {
       const confirmed = await confirmRegistrationAction({
@@ -234,7 +204,7 @@ export function useMatchRegistration(dependencies: MatchRegistrationDependencies
 
   async function handleSelectTeamMemberStand(stand: 0 | 1 | 2) {
     if (!match.value || submittingStatus.value) return;
-  if (!ensureRegistrationOpen()) return;
+    if (!ensureRegistrationOpen()) return;
     if (isGuestMode.value) {
       await handleGuestLogin();
       return;
@@ -273,59 +243,10 @@ export function useMatchRegistration(dependencies: MatchRegistrationDependencies
     }
   }
 
-  async function handleTeamSubmit() {
-    if (!match.value || submittingStatus.value) return;
-  if (!ensureRegistrationOpen()) return;
-    if (!canUseTeamRegistration.value || !currentTeam.value) {
-      uni.showToast({ title: "仅队长或领队可发起球队报名", icon: "none", duration: 2800 });
-      return;
-    }
-
-    const registrationCount = clampTeamRegistrationCount(Number(teamRegistrationCount.value));
-    teamRegistrationCount.value = registrationCount;
-    submittingStatus.value = true;
-    try {
-      if (existingTeamDerivedActivity.value) {
-        const confirmed = await confirmRegistrationAction({
-          title: "取消球队报名",
-          content: "确认取消当前球队报名？对应的队内报名也会关闭。",
-          confirmText: "取消报名",
-          danger: true,
-        });
-        if (!confirmed) return;
-
-        await cancelTeamRegistrationForMatch(match.value.id, currentTeam.value.id);
-        sourceTeamRegistrationCount.value = Math.max(
-          sourceTeamRegistrationCount.value - Number(existingTeamDerivedActivity.value.team_registration_count ?? 0),
-          0,
-        );
-        existingTeamDerivedActivity.value = null;
-        uni.$emit("home:data-may-changed");
-        uni.showToast({ title: "球队报名已取消", icon: "none" });
-        return;
-      }
-
-      const derivedActivity = await submitTeamRegistrationForMatch(match.value.id, currentTeam.value.id, registrationCount);
-      existingTeamDerivedActivity.value = derivedActivity;
-      uni.$emit("home:data-may-changed");
-      uni.showToast({ title: "球队报名已发起", icon: "none" });
-      if (derivedActivity.id && derivedActivity.id !== match.value.id) {
-        setTimeout(() => {
-          uni.redirectTo({ url: `/pages/matches/detail?id=${derivedActivity.id}` });
-        }, 500);
-      }
-    } catch (error) {
-      uni.showToast({ title: error instanceof Error ? error.message : "球队报名失败", icon: "none" });
-    } finally {
-      submittingStatus.value = false;
-    }
-  }
-
   return {
     handleSelectIndividualSignup,
     handleSignupSheetConfirm,
     handleSignupSheetCancelRegistration,
     handleSelectTeamMemberStand,
-    handleTeamSubmit,
   };
 }

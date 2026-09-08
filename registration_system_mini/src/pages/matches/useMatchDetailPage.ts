@@ -2,9 +2,7 @@ import { computed, ref } from "vue";
 import { onLoad, onUnload } from "@dcloudio/uni-app";
 import { MATCH_API_ID_PATTERN, loadAuthenticatedMatchDetailContext, loadPublicMatchDetailData, toRegistrationStandCode, type MatchTeamGroupSummary } from "./detailData";
 import { useMatchRegistrationPayment } from "./useMatchRegistrationPayment";
-import { useCurrentLocation } from "@/stores/currentLocation";
 import { useTeamContext } from "@/stores/teamContext";
-import { canShowTeamRegistrationTab } from "./registrationVisibility";
 import { hasManualLogout } from "@/utils/authStorage";
 import type {
   BackendActivity,
@@ -23,21 +21,14 @@ import {
   byRegistrationTimeAsc,
   buildRemainingPlayersLabel,
   buildTeamMemberRegistrationGroups,
-  clampTeamRegistrationCount,
-  describeDaysUntil,
   formatClock,
   formatCountdown,
-  formatMonthDay,
-  formatWeekday,
-  parseDateValue,
   resolveRegistrationCapacityState,
   resolveRegistrationWindow,
 } from "./detailState";
 import { useMatchJoinTeam } from "./useMatchJoinTeam";
 import { useMatchRegistration } from "./useMatchRegistration";
 import { useMatchGuestLogin } from "./useMatchGuestLogin";
-import { useMatchCheckInReview } from "./useMatchCheckInReview";
-import { useMatchSettlement } from "./useMatchSettlement";
 import { useMatchTeamLogos } from "./useMatchTeamLogos";
 import { useMatchFinish } from "./useMatchFinish";
 import { useMatchScore } from "./useMatchScore";
@@ -46,7 +37,6 @@ import type { NeoConfirmDialogOptions } from "@/components/neo";
 
 export function useMatchDetailPage() {
   const { currentTeam, currentUser, ensureSessionReady, myTeams } = useTeamContext();
-  const { ensureCurrentLocation } = useCurrentLocation();
   const {
     confirmDialogVisible,
     confirmDialogState,
@@ -61,7 +51,6 @@ export function useMatchDetailPage() {
   const isLoading = ref(false);
   const errorMessage = ref("");
   const submittingStatus = ref(false);
-  const registrationMode = ref<"individual" | "team">("individual");
   const match = ref<BackendActivity | null>(null);
   // 新比赛接口的原始对象：接约申请管理依赖 publication_mode / opponent_state，转换后的 activity 不带这些字段。
   const sourceMatch = ref<AppMatchSummary | null>(null);
@@ -72,12 +61,9 @@ export function useMatchDetailPage() {
   const teamsById = ref<Record<number, BackendTeam>>({});
   const currentTeamMembers = ref<BackendTeamMember[]>([]);
   const sourceTeamRegistrationCount = ref(0);
-  const existingTeamDerivedActivity = ref<BackendActivity | null>(null);
   const currentStatus = ref("待定");
   const nowTick = ref(Date.now());
-  const teamRegistrationCount = ref(5);
   const isGuestMode = ref(false);
-  const isMatchApiDetail = ref(false);
   const registrationGroupId = ref("");
   const hasOpenIndividualGroup = ref(false);
   const preferredRegistrationGroupId = ref("");
@@ -125,36 +111,19 @@ export function useMatchDetailPage() {
   );
   const canSubmitIndividualRegistration = computed(() => !registrationCapacityState.value.isFull);
 
-  const dateLine = computed(() => {
-    if (!match.value) return "";
-    return `${formatMonthDay(match.value.holding_date)} ${formatWeekday(match.value.holding_date)} ${formatClock(match.value.holding_date)}`;
-  });
   const matchClockLabel = computed(() => (match.value ? formatClock(match.value.holding_date) : ""));
-
-  const matchStartTimestamp = computed(() => {
-    if (!match.value) return 0;
-    return parseDateValue(match.value.holding_date).getTime();
-  });
 
   const registrationWindow = computed(() => {
     if (!match.value) {
       return { state: "closed" as const, countdownTarget: null };
     }
-    if (sourceMatch.value) {
-      return resolveRegistrationWindow({
-        now: nowTick.value,
-        isRegistering: sourceMatch.value.status === "registering",
-        registrationStartAt: sourceMatch.value.registration_start_at,
-        registrationEndAt: sourceMatch.value.registration_end_at,
-        matchEndAt: sourceMatch.value.end_time,
-      });
-    }
+    if (!sourceMatch.value) return { state: "closed" as const, countdownTarget: null };
     return resolveRegistrationWindow({
       now: nowTick.value,
-      isRegistering: match.value.status === 0,
-      registrationStartAt: match.value.registration_start_at,
-      // legacy 活动没有独立窗口时，end_time 仍代表原有报名截止时间。
-      registrationEndAt: match.value.registration_end_at || match.value.end_time || match.value.holding_date,
+      isRegistering: sourceMatch.value.status === "registering",
+      registrationStartAt: sourceMatch.value.registration_start_at,
+      registrationEndAt: sourceMatch.value.registration_end_at,
+      matchEndAt: sourceMatch.value.end_time,
     });
   });
 
@@ -194,15 +163,6 @@ export function useMatchDetailPage() {
     return window.state === "not_started" ? `距开放 ${countdown}` : `距截止 ${countdown}`;
   });
 
-  const heroMetaChips = computed(() => {
-    if (!match.value) return [];
-    return [
-      requiredPlayers.value ? `${requiredPlayers.value}人制` : "人数待定",
-      describeDaysUntil(matchStartTimestamp.value, nowTick.value),
-      "免费报名",
-    ];
-  });
-
   const participantPreview = computed(() =>
     [...joinedRegistrations.value].sort(byRegistrationTimeAsc).map((item) => {
       // 刚报名时 usersById 还没有当前用户（接口只带已有参赛者），回退到会话资料，
@@ -218,7 +178,6 @@ export function useMatchDetailPage() {
       };
     }),
   );
-  const registrationByUserId = computed(() => Object.fromEntries(registrations.value.map((item) => [item.user_id, item])));
 
   // 球队约队展示双边进度：主队/客队各一条，label 优先用真实队名。
   const teamProgressItems = computed<MatchTeamProgressItem[]>(() => {
@@ -249,7 +208,7 @@ export function useMatchDetailPage() {
   }));
 
   const matchKindLabel = computed(() => publicationModeLabel.value);
-  // 主队取约队队名（legacy 队内活动用当前球队兜底）；散人约球无球队概念，主客队统一「待定」。
+  // 主队取约队队名；散人约球无球队概念，主客队统一「待定」。
   const homeTeamLabel = computed(() => (isPickupMatch.value ? "待定" : sourceMatch.value?.host_team_name || currentTeam.value?.name || "主队"));
   const displayOpponentLabel = computed(() => (isPickupMatch.value ? "待定" : match.value?.opposing || opponentTeam.value?.name || "对手待定"));
   const homeTeamColor = computed(() => match.value?.color?.trim() || "#FFFFFF");
@@ -279,7 +238,7 @@ export function useMatchDetailPage() {
     return { id: source.host_team_id, name: source.host_team_name || "该球队" };
   }));
   const needsTeamToRegister = computed(() => {
-    if (!isMatchApiDetail.value || hasOpenIndividualGroup.value) return false;
+    if (!sourceMatch.value || hasOpenIndividualGroup.value) return false;
     const matchTeamIds = [sourceMatch.value?.host_team_id, sourceMatch.value?.away_team_id]
       .filter((teamId): teamId is number => typeof teamId === "number");
     if (!matchTeamIds.length) return false;
@@ -291,32 +250,9 @@ export function useMatchDetailPage() {
     if (registrationCapacityState.value.isFull && currentStatus.value !== "参加") return "报名已满";
     if (currentStatus.value !== "参加") return "立即报名";
     // 散人约球已报名：已支付锁定为只读，未支付可调整人数。
-    if (isPickupMatch.value && isMatchApiDetail.value) return myRegistrationPaid.value ? "已报名" : "调整人数";
+    if (isPickupMatch.value) return myRegistrationPaid.value ? "已报名" : "调整人数";
     return "取消报名";
   });
-  const canUseTeamRegistration = computed(() =>
-    !isMatchApiDetail.value && canShowTeamRegistrationTab({
-      currentTeamId: currentTeam.value?.id,
-      canManageTeam: currentTeam.value?.canManageTeam,
-      sourceActivityId: match.value?.source_activity_id,
-      homeTeamId: match.value?.home_team_id,
-    }),
-  );
-  const teamRegistrationCountOptions = Array.from({ length: 7 }, (_, index) => {
-    const value = index + 5;
-    return { value, label: `${value} 人制` };
-  });
-  const teamSubmitLabel = computed(() =>
-    existingTeamDerivedActivity.value ? "取消球队报名" : `发起球队报名（${teamRegistrationCount.value} 人）`,
-  );
-  const teamSignupHint = computed(() =>
-    existingTeamDerivedActivity.value
-      ? "取消后会关闭本球队对应的队内报名，首页进度会同步减少这组报名人数。"
-      : "发起后会为当前球队创建一场独立报名，队员可在首页进入个人报名。",
-  );
-  const teamFormTitle = computed(() => (existingTeamDerivedActivity.value ? "球队已报名" : "发起球队报名"));
-  const isEndedMatch = computed(() => match.value?.status === 2 || (matchStartTimestamp.value > 0 && nowTick.value > matchStartTimestamp.value));
-
   function openMatchLocation() {
     if (!match.value || match.value.location_latitude == null || match.value.location_longitude == null) {
       uni.showToast({
@@ -345,74 +281,22 @@ export function useMatchDetailPage() {
   } = useMatchGuestLogin({ reload: loadPageData });
 
   const {
-    checkInForm,
-    reviewForm,
-    reviewSubmitted,
-    hasCheckedIn,
-    canShowCheckIn,
-    canManageCurrentMatch,
-    canShowActivityReview,
-    canSubmitActivityReview,
-    resetCheckInReviewState,
-    handleCheckIn,
-    handleCheckInSwitchChange,
-    handleSaveCheckInConfig,
-    handleReviewRatingChange,
-    handleSubmitActivityReview,
-  } = useMatchCheckInReview({
-    match,
-    registrations,
-    currentUser,
-    currentTeam,
-    opponentTeam,
-    isMatchApiDetail,
-    isEndedMatch,
-    submittingStatus,
-    ensureCurrentLocation,
-  });
-
-  const {
-    settlementSummary,
-    settlementForm,
-    canShowSettlement,
-    settlementParticipants,
-    settlementTotalLabel,
-    resetSettlementState,
-    loadSettlementSummaryIfAllowed,
-    handleSettlementChargeAmountInput,
-    handleSubmitSettlement,
-  } = useMatchSettlement({
-    match,
-    canManageCurrentMatch,
-    isEndedMatch,
-    submittingStatus,
-    confirmRegistrationAction,
-  });
-
-  const {
     handleSelectIndividualSignup,
     handleSignupSheetConfirm,
     handleSignupSheetCancelRegistration,
     handleSelectTeamMemberStand,
-    handleTeamSubmit,
   } = useMatchRegistration({
     match,
     registrations,
     currentStatus,
     currentUser,
-    currentTeam,
     submittingStatus,
     isGuestMode,
-    isMatchApiDetail,
     registrationGroupId,
     needsTeamToRegister,
     openJoinTeamSheet: joinTeamSheet.open,
     canSubmitIndividualRegistration,
     registrationWindowState,
-    canUseTeamRegistration,
-    existingTeamDerivedActivity,
-    sourceTeamRegistrationCount,
-    teamRegistrationCount,
     ensureSessionReady,
     handleGuestLogin,
     confirmRegistrationAction,
@@ -442,8 +326,6 @@ export function useMatchDetailPage() {
   });
 
   async function loadPageData() {
-    if (!matchId.value) return;
-
     isLoading.value = true;
     errorMessage.value = "";
 
@@ -461,23 +343,19 @@ export function useMatchDetailPage() {
       registrations.value = activityUsers;
       usersById.value = publicData.usersById;
       sourceTeamRegistrationCount.value = publicData.sourceTeamRegistrationCount;
-      isMatchApiDetail.value = publicData.fromMatchApi;
       registrationGroupId.value = publicData.registrationGroupId;
       hasOpenIndividualGroup.value = publicData.hasOpenIndividualGroup;
       publicationModeLabel.value = publicData.publicationModeLabel;
       sourceMatch.value = publicData.sourceMatch;
       matchTeamGroups.value = publicData.teamGroups;
       selectedGroupMinPlayers.value = publicData.selectedGroupMinPlayers;
-      existingTeamDerivedActivity.value = null;
       currentStatus.value = toStandLabel(toRegistrationStandCode(publicData.myRegistration?.status));
       applyMyRegistrationPaid(!!publicData.myRegistration?.paid);
       teamsById.value = {};
       currentTeamMembers.value = [];
-      resetSettlementState();
       isGuestMode.value = hasManualLogout();
 
       if (isGuestMode.value) {
-        registrationMode.value = "individual";
         return;
       }
 
@@ -487,31 +365,17 @@ export function useMatchDetailPage() {
         const context = await loadAuthenticatedMatchDetailContext({
           activity,
           activityUsers,
-          activityPageItems: publicData.activityPageItems,
           myRegistration: publicData.myRegistration,
           currentTeamId: currentTeam.value?.id,
           currentUserId: currentUser.value?.id,
         });
 
         isGuestMode.value = false;
-        existingTeamDerivedActivity.value = context.derivedActivity;
-        teamRegistrationCount.value = clampTeamRegistrationCount(context.initialRegistrationCount);
         teamsById.value = context.teamsById;
         currentTeamMembers.value = context.currentTeamMembers;
         currentStatus.value = toStandLabel(context.currentUserStand);
-        if (!canUseTeamRegistration.value) {
-          registrationMode.value = "individual";
-        }
-        resetCheckInReviewState({
-          enabled: context.checkInConfig?.enabled,
-          radiusMeters: context.checkInConfig?.radius_meters,
-          openMinutesBefore: context.checkInConfig?.open_minutes_before,
-          closeMinutesAfter: context.checkInConfig?.close_minutes_after,
-        });
-        await loadSettlementSummaryIfAllowed();
       } catch (_sessionError) {
         isGuestMode.value = true;
-        registrationMode.value = "individual";
       }
     } catch (error) {
       errorMessage.value = error instanceof Error ? error.message : "比赛报名页加载失败";
@@ -555,8 +419,6 @@ export function useMatchDetailPage() {
     currentStatus,
     teamProgressItems,
     matchTeamGroups,
-    registrationMode,
-    canUseTeamRegistration,
     isRegistrationClosed,
     registrationWindowState,
     matchKindLabel,
@@ -601,41 +463,12 @@ export function useMatchDetailPage() {
     handleSignupSheetConfirm,
     handleSignupSheetCancelRegistration,
     currentTeam,
-    dateLine,
-    heroMetaChips,
     opponentTeam,
-    existingTeamDerivedActivity,
-    teamFormTitle,
-    teamSignupHint,
-    teamRegistrationCount,
-    teamRegistrationCountOptions,
-    canShowCheckIn,
-    hasCheckedIn,
-    canManageCurrentMatch,
-    checkInForm,
-    canShowActivityReview,
-    canSubmitActivityReview,
-    reviewSubmitted,
-    reviewForm,
-  canShowSettlement,
-  settlementSummary,
-  settlementForm,
-  settlementParticipants,
-  settlementTotalLabel,
-  teamSubmitLabel,
-  openMatchLocation,
-  handleSelectIndividualSignup,
-  joinTeamSheet,
-  handleSelectTeamMemberStand,
-  handleCheckIn,
-  handleCheckInSwitchChange,
-  handleSaveCheckInConfig,
-  handleReviewRatingChange,
-  handleSubmitActivityReview,
-  handleSettlementChargeAmountInput,
-  handleSubmitSettlement,
-  handleTeamSubmit,
-  ...matchFinish,
-  matchScore,
-};
+    openMatchLocation,
+    handleSelectIndividualSignup,
+    joinTeamSheet,
+    handleSelectTeamMemberStand,
+    ...matchFinish,
+    matchScore,
+  };
 }

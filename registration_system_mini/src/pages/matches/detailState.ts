@@ -1,4 +1,4 @@
-import type { BackendActivity, BackendActivityCheckInRecord, BackendRegistration, BackendTeamMember, BackendUser } from "@/types/backend";
+import type { BackendRegistration, BackendTeamMember, BackendUser } from "@/types/backend";
 import {
   describeDaysUntil,
   formatCountdown,
@@ -16,10 +16,6 @@ export { resolveRegistrationWindow } from "@/utils/registrationWindow";
 export const formatMonthDay = formatMonthDayLabel;
 export const formatClock = formatTimeLabel;
 export const formatWeekday = formatWeekdayLabel;
-
-export function isActiveTeamRegistrationActivity(activity: BackendActivity) {
-  return !!activity.source_activity_id && activity.status !== 3;
-}
 
 export function avatarColor(userId: number) {
   const palette = ["#111111", "#1b55ff", "#0f766e", "#8b5cf6", "#ea580c", "#16a34a", "#be123c"];
@@ -109,11 +105,6 @@ export function buildTeamMemberRegistrationGroups({
   };
 }
 
-export function clampTeamRegistrationCount(value: number) {
-  if (!Number.isFinite(value)) return 5;
-  return Math.min(Math.max(Math.round(value), 5), 11);
-}
-
 export function buildRegistrationProgress(joinedCount: number, requiredPlayers: number, maxPlayers?: number) {
   const target = Math.max(Number.isFinite(requiredPlayers) ? requiredPlayers : 0, 0);
   const max = Math.max(
@@ -191,19 +182,4 @@ export function applyIndividualRegistrationPatch(
       operation_time: operationTime,
     },
   ];
-}
-
-export function applyCheckInPatch(
-  registrations: BackendRegistration[],
-  record: BackendActivityCheckInRecord,
-) {
-  return registrations.map((item) =>
-    item.user_id === record.user_id
-      ? {
-          ...item,
-          checked_in_at: record.checked_in_at,
-          checkin_distance_meters: record.distance_meters,
-        }
-      : item,
-  );
 }

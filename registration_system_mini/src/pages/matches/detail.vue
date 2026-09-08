@@ -7,8 +7,6 @@ import NeoButton from "@/components/neo/NeoButton.vue";
 import NeoSurface from "@/components/neo/NeoSurface.vue";
 import NeoConfirmDialog from "@/components/neo/NeoConfirmDialog.vue";
 import MatchSignupCountSheet from "./components/MatchSignupCountSheet.vue";
-import NeoSegmentedControl from "@/components/neo/NeoSegmentedControl.vue";
-import NeoStickyActionBar from "@/components/neo/NeoStickyActionBar.vue";
 import MatchDetailSkeleton from "./components/MatchDetailSkeleton.vue";
 import MatchFinishCard from "./components/MatchFinishCard.vue";
 import MatchCaptainContact from "./components/MatchCaptainContact.vue";
@@ -17,8 +15,6 @@ import MatchScoreCard from "./components/MatchScoreCard.vue";
 import MatchScoreDialog from "./components/MatchScoreDialog.vue";
 import MatchJoinTeamSheet from "./components/MatchJoinTeamSheet.vue";
 import MatchIndividualRegistration from "./components/MatchIndividualRegistration.vue";
-import MatchTeamRegistration from "./components/MatchTeamRegistration.vue";
-import TeamSettlementCard from "./components/TeamSettlementCard.vue";
 import { MATCH_DETAIL_SHARE_IMAGE_URL } from "@/utils/share";
 import { useMatchCaptainContact } from "./useMatchCaptainContact";
 import { useMatchDetailPage } from "./useMatchDetailPage";
@@ -38,8 +34,6 @@ const {
   sourceMatch,
   matchTeamGroups,
   teamProgressItems,
-  registrationMode,
-  canUseTeamRegistration,
   isRegistrationClosed,
   matchKindLabel,
   publicationModeLabel,
@@ -83,40 +77,11 @@ const {
   handleSignupSheetConfirm,
   handleSignupSheetCancelRegistration,
   currentTeam,
-  dateLine,
-  heroMetaChips,
   opponentTeam,
-  existingTeamDerivedActivity,
-  teamFormTitle,
-  teamSignupHint,
-  teamRegistrationCount,
-  teamRegistrationCountOptions,
-  canShowCheckIn,
-  hasCheckedIn,
-  canManageCurrentMatch,
-  checkInForm,
-  canShowActivityReview,
-  canSubmitActivityReview,
-  reviewSubmitted,
-  reviewForm,
-  canShowSettlement,
-  settlementSummary,
-  settlementForm,
-  settlementParticipants,
-  settlementTotalLabel,
-  teamSubmitLabel,
   openMatchLocation,
   handleSelectIndividualSignup,
   joinTeamSheet,
   handleSelectTeamMemberStand,
-  handleCheckIn,
-  handleCheckInSwitchChange,
-  handleSaveCheckInConfig,
-  handleReviewRatingChange,
-  handleSubmitActivityReview,
-  handleSettlementChargeAmountInput,
-  handleSubmitSettlement,
-  handleTeamSubmit,
   canFinishMatch,
   canCancelMatch,
   finishDialogVisible,
@@ -159,11 +124,6 @@ const captainContactCaptain = computed(() => {
   return isHostManager ? null : source.host_captain;
 });
 
-const registrationModeOptions = computed(() => [
-  { label: "个人报名", value: "individual" },
-  ...(canUseTeamRegistration.value ? [{ label: "球队报名", value: "team" }] : []),
-]);
-
 const shareTitle = computed(() => {
   if (!match.value) return "邀请你参加比赛报名";
   return `邀请你报名：${match.value.name}`;
@@ -171,6 +131,10 @@ const shareTitle = computed(() => {
 
 const sharePath = computed(() => `/pages/matches/detail?id=${matchId.value || match.value?.id || ""}`);
 const teamMemberDialogVisible = ref(false);
+
+function openMatchHall() {
+  uni.switchTab({ url: "/pages/activities/index" });
+}
 
 function handleTeamMemberDialogVisibilityChange(visible: boolean) {
   teamMemberDialogVisible.value = visible;
@@ -212,20 +176,14 @@ const metaPageStyle = computed(() =>
     <AppTabHeader title="比赛报名" showBack />
 
     <view class="registration-content" :style="contentStyle">
-      <view v-if="errorMessage" class="registration-empty">{{ errorMessage }}</view>
+      <view v-if="errorMessage" class="registration-empty">
+        <text>{{ errorMessage }}</text>
+        <NeoButton @click="openMatchHall">返回约球大厅</NeoButton>
+      </view>
       <MatchDetailSkeleton v-else-if="isLoading" />
 
       <view v-else-if="match" class="registration-shell">
-      <!-- 只有同时具备球队报名入口时才需要模式切换；单一「个人报名」时隐藏，避免无意义的占高。 -->
-      <NeoSegmentedControl
-        v-if="registrationModeOptions.length > 1"
-        v-model="registrationMode"
-        class="registration-segment"
-        :options="registrationModeOptions"
-      />
-
       <MatchIndividualRegistration
-        v-if="registrationMode === 'individual'"
         :match="match"
         :match-kind-label="matchKindLabel"
         :publication-mode-label="publicationModeLabel"
@@ -261,34 +219,6 @@ const metaPageStyle = computed(() =>
         @dialog-visibility-change="handleTeamMemberDialogVisibilityChange"
       />
 
-      <MatchTeamRegistration
-        v-if="registrationMode === 'team'"
-        v-model:team-registration-count="teamRegistrationCount"
-        :match="match"
-        :date-line="dateLine"
-        :hero-meta-chips="heroMetaChips"
-        :publication-mode-label="publicationModeLabel"
-        :current-team="currentTeam"
-        :opponent-team="opponentTeam"
-        :existing-team-derived-activity="existingTeamDerivedActivity"
-        :team-form-title="teamFormTitle"
-        :team-signup-hint="teamSignupHint"
-        :team-registration-count-options="teamRegistrationCountOptions"
-        :can-show-check-in="canShowCheckIn"
-        :has-checked-in="hasCheckedIn"
-        :can-manage-current-match="canManageCurrentMatch"
-        :check-in-form="checkInForm"
-        :can-show-activity-review="canShowActivityReview"
-        :can-submit-activity-review="canSubmitActivityReview"
-        :review-submitted="reviewSubmitted"
-        :review-form="reviewForm"
-        :submitting-status="submittingStatus"
-        @check-in="handleCheckIn"
-        @check-in-switch-change="handleCheckInSwitchChange"
-        @save-check-in-config="handleSaveCheckInConfig"
-        @review-rating-change="handleReviewRatingChange"
-        @submit-activity-review="handleSubmitActivityReview"
-      />
       <!-- 主队管理者：修改对手名称与报名人数上限。 -->
       <NeoSurface v-if="canEditMatch" variant="raised" class="match-edit-card">
         <view class="match-edit-info">
@@ -338,29 +268,9 @@ const metaPageStyle = computed(() =>
         :can-record="matchScore.canRecordScore.value"
         @open-score-dialog="matchScore.open"
       />
-      <TeamSettlementCard
-        v-if="registrationMode === 'team' && canShowSettlement"
-        :summary="settlementSummary"
-        :form="settlementForm"
-        :participants="settlementParticipants"
-        :total-label="settlementTotalLabel"
-        :submitting-status="submittingStatus"
-        @charge-amount-input="handleSettlementChargeAmountInput"
-        @submit-settlement="handleSubmitSettlement"
-      />
       </view>
     </view>
 
-    <NeoStickyActionBar v-if="match && registrationMode === 'team' && canUseTeamRegistration && !isRegistrationClosed">
-      <NeoButton
-        block
-        :loading="submittingStatus"
-        :disabled="submittingStatus"
-        @click="handleTeamSubmit"
-      >
-        {{ submittingStatus ? "提交中..." : teamSubmitLabel }}
-      </NeoButton>
-    </NeoStickyActionBar>
 
     <NeoConfirmDialog
       :visible="confirmDialogVisible"
@@ -501,6 +411,8 @@ const metaPageStyle = computed(() =>
 
 .registration-empty {
   display: flex;
+  flex-direction: column;
+  gap: 24rpx;
   align-items: center;
   justify-content: center;
   min-height: 520rpx;

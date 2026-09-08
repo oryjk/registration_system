@@ -24,12 +24,6 @@ function toNotificationKindLabel(kind: string): string {
 }
 
 function toNotificationRelatedPath(notification: BackendNotification): string {
-  if (notification.related_type === "challenge" && notification.related_id) {
-    return `/pages/challenges/detail?id=${notification.related_id}`;
-  }
-  if (notification.related_type === "activity" && notification.related_id) {
-    return `/pages/matches/detail?id=${notification.related_id}`;
-  }
   if (notification.related_type === "match" && notification.related_id) {
     return `/pages/matches/detail?id=${notification.related_id}`;
   }
@@ -37,7 +31,7 @@ function toNotificationRelatedPath(notification: BackendNotification): string {
     return `/pages/messages/thread/index?id=${notification.related_id}`;
   }
   if (notification.related_type === "team" && notification.related_id) {
-    return `/pages/teams/detail?id=${notification.related_id}`;
+    return `/pages/teams/detail/index?id=${notification.related_id}`;
   }
   return "";
 }
