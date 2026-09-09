@@ -9,10 +9,6 @@
     "ignoreUnknown": true,
     "includes": [
       "**/*",
-      "!**/.umi",
-      "!**/.umi-production",
-      "!**/.umi-test",
-      "!**/.umi-test-production",
       "!**/.turbopack",
       "!**/dist",
       "!**/coverage",
