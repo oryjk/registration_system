@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 
+	sharederror "github.com/oryjk/registration_system/registration_system_go/internal/shared/domain"
 	"github.com/oryjk/registration_system/registration_system_go/internal/team/domain"
 	"github.com/oryjk/registration_system/registration_system_go/internal/team/ports"
 	"github.com/oryjk/registration_system/registration_system_go/internal/testsupport"
@@ -689,5 +690,102 @@ func TestRepositoryTeamNameExistsIgnoresDissolved(t *testing.T) {
 	}
 	if _, err := repository.CreateWithCaptain(ctx, name, nil, nil, creatorID); err != nil {
 		t.Fatalf("creating a team with a recycled (dissolved) name should succeed, got: %v", err)
+	}
+}
+
+func TestRepositoryDeleteTeamSoftDeletesDissolvedWithHistory(t *testing.T) {
+	// 管理端删除球队的三条路径：
+	// 1) 无引用 → 硬删除；2) 已解散且有历史引用 → 转为 deleted 软删除并从默认列表移除；
+	// 3) 未解散且有历史引用 → 冲突；4) 不存在 → 未删除不报错。
+	pool := testsupport.StartPostgres(t)
+	ctx := context.Background()
+	repository := NewRepository(pool)
+
+	var captainID int64
+	if err := pool.QueryRow(ctx, `INSERT INTO users (openid) VALUES ('delete-captain') RETURNING id`).Scan(&captainID); err != nil {
+		t.Fatalf("seed captain: %v", err)
+	}
+	seedTeam := func(name string) int64 {
+		var teamID int64
+		if err := pool.QueryRow(ctx, `INSERT INTO teams (name) VALUES ($1) RETURNING id`, name).Scan(&teamID); err != nil {
+			t.Fatalf("seed team %s: %v", name, err)
+		}
+		return teamID
+	}
+	seedMatchFor := func(name string, hostTeamID int64) {
+		if _, err := pool.Exec(ctx, `
+			INSERT INTO matches (id, name, publication_mode, opponent_state, status, host_team_id,
+				players_per_team, start_time, end_time, location, created_by_user_id)
+			VALUES (gen_random_uuid(), $1, 'online_team', 'recruiting', 'ended', $2, 8,
+				NOW() - interval '4 hours', NOW() - interval '2 hours', '删除校验球场', $3)`,
+			name, hostTeamID, captainID); err != nil {
+			t.Fatalf("seed match %s: %v", name, err)
+		}
+	}
+
+	cleanTeamID := seedTeam("删除用干净队")
+	dissolvedTeamID := seedTeam("删除用解散队")
+	activeTeamID := seedTeam("删除用在营队")
+	seedMatchFor("解散队历史赛", dissolvedTeamID)
+	seedMatchFor("在营队历史赛", activeTeamID)
+	if _, err := pool.Exec(ctx, `UPDATE teams SET status = 'dissolved' WHERE id = $1`, dissolvedTeamID); err != nil {
+		t.Fatalf("dissolve team: %v", err)
+	}
+
+	// 1) 无引用：硬删除，球队行消失。
+	deleted, err := repository.Delete(ctx, cleanTeamID)
+	if err != nil || !deleted {
+		t.Fatalf("clean team should hard delete: deleted=%v err=%v", deleted, err)
+	}
+	if _, found, err := repository.FindByID(ctx, cleanTeamID); err != nil || found {
+		t.Fatalf("clean team row should be gone: found=%v err=%v", found, err)
+	}
+
+	// 2) 已解散 + 历史引用：软删除为 deleted，行保留。
+	deleted, err = repository.Delete(ctx, dissolvedTeamID)
+	if err != nil || !deleted {
+		t.Fatalf("dissolved team with history should soft delete: deleted=%v err=%v", deleted, err)
+	}
+	team, found, err := repository.FindByID(ctx, dissolvedTeamID)
+	if err != nil || !found {
+		t.Fatalf("soft deleted team row should remain: found=%v err=%v", found, err)
+	}
+	if team.Status != domain.TeamDeleted {
+		t.Fatalf("soft deleted team status = %s, want deleted", team.Status)
+	}
+
+	// 3) 未解散 + 历史引用：冲突。
+	if _, err := repository.Delete(ctx, activeTeamID); !errors.Is(err, sharederror.ErrConflict) {
+		t.Fatalf("active team with history should conflict, got: %v", err)
+	}
+
+	// 4) 不存在：返回未删除且不报错。
+	if deleted, err := repository.Delete(ctx, 999999); err != nil || deleted {
+		t.Fatalf("missing team should not delete nor error: deleted=%v err=%v", deleted, err)
+	}
+
+	// 默认列表排除 deleted；显式按状态可查回。
+	all, err := repository.List(ctx, nil)
+	if err != nil {
+		t.Fatalf("list teams: %v", err)
+	}
+	for _, item := range all {
+		if item.ID == dissolvedTeamID {
+			t.Fatal("deleted team should be excluded from default list")
+		}
+	}
+	deletedStatus := domain.TeamDeleted
+	filtered, err := repository.List(ctx, &deletedStatus)
+	if err != nil {
+		t.Fatalf("list deleted teams: %v", err)
+	}
+	foundFiltered := false
+	for _, item := range filtered {
+		if item.ID == dissolvedTeamID {
+			foundFiltered = true
+		}
+	}
+	if !foundFiltered {
+		t.Fatal("status=deleted filter should include soft deleted team")
 	}
 }

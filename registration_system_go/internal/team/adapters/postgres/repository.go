@@ -170,16 +170,46 @@ func (r *Repository) ActiveUserExists(ctx context.Context, userID int64) (bool, 
 	return r.queries.ActiveUserExists(ctx, userID)
 }
 
+// Delete 删除球队：无历史引用时硬删除（成员/队费流水等随级联清理）；
+// 仍有比赛/申请等引用时，仅已解散球队允许转为 deleted 软删除（保留历史数据），
+// 其余情况返回冲突错误；球队不存在返回 deleted=false。
 func (r *Repository) Delete(ctx context.Context, teamID int64) (bool, error) {
-	rowsAffected, err := r.queries.DeleteTeam(ctx, teamID)
+	references, err := r.queries.CountTeamReferences(ctx, &teamID)
 	if err != nil {
-		var postgresError *pgconn.PgError
-		if errors.As(err, &postgresError) && postgresError.Code == "23503" {
-			return false, sharederror.ErrConflict
-		}
 		return false, err
 	}
-	return rowsAffected > 0, nil
+	if references == 0 {
+		rowsAffected, err := r.queries.DeleteTeam(ctx, teamID)
+		if err != nil {
+			var postgresError *pgconn.PgError
+			if errors.As(err, &postgresError) && postgresError.Code == "23503" {
+				// 并发窗口内新增了引用：按有引用流程改走软删除。
+				return r.softDeleteDissolved(ctx, teamID)
+			}
+			return false, err
+		}
+		return rowsAffected > 0, nil
+	}
+	return r.softDeleteDissolved(ctx, teamID)
+}
+
+// softDeleteDissolved 仅已解散球队可软删除为 deleted；未命中时区分球队不存在与状态不符。
+func (r *Repository) softDeleteDissolved(ctx context.Context, teamID int64) (bool, error) {
+	rowsAffected, err := r.queries.SoftDeleteTeam(ctx, teamID)
+	if err != nil {
+		return false, err
+	}
+	if rowsAffected > 0 {
+		return true, nil
+	}
+	_, found, err := r.FindByID(ctx, teamID)
+	if err != nil {
+		return false, err
+	}
+	if !found {
+		return false, nil
+	}
+	return false, sharederror.ErrConflict
 }
 
 func (r *Repository) Dissolve(ctx context.Context, teamID int64) (bool, error) {

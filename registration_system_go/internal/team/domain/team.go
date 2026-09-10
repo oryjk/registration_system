@@ -31,10 +31,13 @@ const (
 	TeamActive    TeamStatus = "active"
 	TeamFrozen    TeamStatus = "frozen"
 	TeamDissolved TeamStatus = "dissolved"
+	// TeamDeleted 管理端删除已解散球队的软删除终态：球队行保留以维持
+	// 历史/申请/支付数据的引用，从管理列表默认视图移除。
+	TeamDeleted TeamStatus = "deleted"
 )
 
 func (s TeamStatus) IsValid() bool {
-	return s == TeamActive || s == TeamFrozen || s == TeamDissolved
+	return s == TeamActive || s == TeamFrozen || s == TeamDissolved || s == TeamDeleted
 }
 
 type MemberStatus string

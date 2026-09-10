@@ -143,6 +143,23 @@ func (q *Queries) ClearTeamCaptain(ctx context.Context, id int64) (ClearTeamCapt
 	return i, err
 }
 
+const countTeamReferences = `-- name: CountTeamReferences :one
+SELECT
+    (SELECT count(*) FROM matches m WHERE m.host_team_id = $1 OR m.away_team_id = $1) +
+    (SELECT count(*) FROM match_team_applications a WHERE a.applicant_team_id = $1) +
+    (SELECT count(*) FROM match_registration_groups g WHERE g.team_id = $1) +
+    (SELECT count(*) FROM payment_orders p WHERE p.team_id = $1) AS total
+`
+
+// 阻碍硬删除的引用总数（比赛主/客队、约队申请、报名组、队费订单）。
+// 大于 0 时硬删除会被外键拒绝，需走软删除或拒绝操作。
+func (q *Queries) CountTeamReferences(ctx context.Context, hostTeamID *int64) (int32, error) {
+	row := q.db.QueryRow(ctx, countTeamReferences, hostTeamID)
+	var total int32
+	err := row.Scan(&total)
+	return total, err
+}
+
 const createTeam = `-- name: CreateTeam :one
 INSERT INTO teams (name, description, status)
 VALUES ($1, $2, 'active')
@@ -1086,7 +1103,8 @@ SELECT t.id,
        u.real_name AS captain_real_name
 FROM teams t
 LEFT JOIN users u ON u.id = t.captain_id
-WHERE $1::text IS NULL OR t.status = $1::text
+WHERE $1::text IS NULL AND t.status <> 'deleted'
+   OR t.status = $1::text
 ORDER BY t.name, t.id
 `
 
@@ -1308,6 +1326,24 @@ func (q *Queries) SetTeamCaptain(ctx context.Context, arg SetTeamCaptainParams) 
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const softDeleteTeam = `-- name: SoftDeleteTeam :execrows
+UPDATE teams
+SET status = 'deleted',
+    updated_at = NOW()
+WHERE id = $1
+  AND status = 'dissolved'
+`
+
+// 管理端删除有历史引用的已解散球队：转为 deleted 软删除。
+// 仅 dissolved 状态可转入，避免误删在运营球队。
+func (q *Queries) SoftDeleteTeam(ctx context.Context, id int64) (int64, error) {
+	result, err := q.db.Exec(ctx, softDeleteTeam, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const updateTeam = `-- name: UpdateTeam :one

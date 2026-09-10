@@ -202,7 +202,7 @@ func (s QueryService) DeleteTeam(ctx context.Context, actor sharedauth.Actor, te
 	}
 	deleted, err := s.repository.Delete(ctx, teamID)
 	if errors.Is(err, sharederror.ErrConflict) {
-		return sharederror.New(sharederror.KindConflict, "球队已被比赛或申请使用，不能删除")
+		return sharederror.New(sharederror.KindConflict, "球队存在比赛或申请记录，需先解散后再删除")
 	}
 	if err != nil {
 		return sharederror.Wrap(sharederror.KindInternal, "删除球队失败", err)

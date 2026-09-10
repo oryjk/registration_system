@@ -103,7 +103,8 @@ SELECT t.id,
        u.real_name AS captain_real_name
 FROM teams t
 LEFT JOIN users u ON u.id = t.captain_id
-WHERE sqlc.narg('status')::text IS NULL OR t.status = sqlc.narg('status')::text
+WHERE sqlc.narg('status')::text IS NULL AND t.status <> 'deleted'
+   OR t.status = sqlc.narg('status')::text
 ORDER BY t.name, t.id;
 
 -- name: UpdateTeam :one
@@ -135,6 +136,24 @@ SELECT EXISTS (
 -- name: DeleteTeam :execrows
 DELETE FROM teams
 WHERE id = $1;
+
+-- 阻碍硬删除的引用总数（比赛主/客队、约队申请、报名组、队费订单）。
+-- 大于 0 时硬删除会被外键拒绝，需走软删除或拒绝操作。
+-- name: CountTeamReferences :one
+SELECT
+    (SELECT count(*) FROM matches m WHERE m.host_team_id = $1 OR m.away_team_id = $1) +
+    (SELECT count(*) FROM match_team_applications a WHERE a.applicant_team_id = $1) +
+    (SELECT count(*) FROM match_registration_groups g WHERE g.team_id = $1) +
+    (SELECT count(*) FROM payment_orders p WHERE p.team_id = $1) AS total;
+
+-- 管理端删除有历史引用的已解散球队：转为 deleted 软删除。
+-- 仅 dissolved 状态可转入，避免误删在运营球队。
+-- name: SoftDeleteTeam :execrows
+UPDATE teams
+SET status = 'deleted',
+    updated_at = NOW()
+WHERE id = $1
+  AND status = 'dissolved';
 
 -- 用户侧解散球队：软删除，保留球队行以维持历史比赛/申请/支付数据的引用。
 -- 仅 active 状态可解散，避免对已解散/冻结球队重复操作。

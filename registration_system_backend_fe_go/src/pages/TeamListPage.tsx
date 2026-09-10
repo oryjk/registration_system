@@ -41,12 +41,14 @@ const statusLabels: Record<TeamStatus, string> = {
   active: "已启用",
   frozen: "已冻结",
   dissolved: "已解散",
+  deleted: "已删除",
 };
 
 const statusVariants: Record<TeamStatus, string> = {
   active: "success",
   frozen: "warning",
   dissolved: "secondary",
+  deleted: "secondary",
 };
 
 function sortTeams(items: Team[]) {
@@ -192,7 +194,7 @@ export default function TeamListPage() {
           <ConfirmPopover
             confirmText="永久删除"
             destructive
-            description="已用于比赛或申请的球队不能删除。"
+            description="无比赛/申请记录的球队将被彻底删除；已解散且仍有历史记录的球队将转为「已删除」状态并从列表移除，历史数据保留。"
             onConfirm={() => void removeTeam(team)}
             title={`永久删除“${team.name}”`}
           >
