@@ -50,9 +50,11 @@ const statusVariants: Record<TeamStatus, string> = {
 };
 
 function sortTeams(items: Team[]) {
-  return [...items].sort((left, right) =>
-    left.name.localeCompare(right.name, "zh-CN"),
-  );
+  // 按创建时间倒序（新球队在前），时间相同按 id 倒序保证稳定。
+  return [...items].sort((left, right) => {
+    const diff = Date.parse(right.created_at) - Date.parse(left.created_at);
+    return diff !== 0 ? diff : right.id - left.id;
+  });
 }
 
 function CaptainCell({ team }: { team: Team }) {
