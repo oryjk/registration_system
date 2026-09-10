@@ -46,6 +46,9 @@ describe("match detail registration design", () => {
     expect(individual.includes("MatchRegistrationStatusCard")).toEqual(true);
     expect(statusCard.includes("报名进度")).toEqual(true);
     expect(info.includes("比赛说明")).toEqual(true);
+    // 用户填写的比赛说明必须透传到说明卡（按行拆分展示，未填回落默认文案）。
+    expect(individual.includes(':description="match.description"')).toEqual(true);
+    expect(info.includes("description")).toEqual(true);
     expect(statusCard.includes("NeoProgress")).toEqual(true);
     expect(statusCard.includes("NeoAvatarStack")).toEqual(true);
     expect(statusCard.includes("NeoStickyActionBar")).toEqual(true);

@@ -132,6 +132,7 @@ function handlePayRegistration() {
     <IndividualInfoCard
       :credit-score="currentTeam?.creditScore ?? 0"
       :publication-mode-label="publicationModeLabel"
+      :description="match.description"
     />
   </view>
 </template>
