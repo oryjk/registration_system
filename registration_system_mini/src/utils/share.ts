@@ -6,3 +6,6 @@ export const TEAM_INVITE_SHARE_IMAGE_URL = "https://oryjk.cn:82/registration/sta
 
 // 比赛报名详情分享封面：同样放 MinIO（约 256KB），不占主包体积。
 export const MATCH_DETAIL_SHARE_IMAGE_URL = "https://oryjk.cn:82/registration/static/share/match-detail-cover.jpg";
+
+// 首页分享封面：放 MinIO（约 480KB），不占主包体积。
+export const HOME_SHARE_IMAGE_URL = "https://oryjk.cn:82/registration/static/share/home-page-cover.jpg";

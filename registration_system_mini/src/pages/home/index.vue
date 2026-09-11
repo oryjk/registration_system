@@ -22,7 +22,7 @@ import type { AppMatchSummary, AppMatchUiPhase } from "@/types/match";
 import type { HomeMatchCardViewModel } from "@/types/viewModels";
 import { hasManualLogout } from "@/utils/authStorage";
 import { getCustomNavMetrics } from "@/utils/customNav";
-import { DEFAULT_SHARE_IMAGE_URL } from "@/utils/share";
+import { HOME_SHARE_IMAGE_URL } from "@/utils/share";
 import {
   buildHomeMatchSections,
   type HomeMatchSectionViewModel,
@@ -382,13 +382,13 @@ onUnload(() => {
 onShareAppMessage(() => ({
   title: shareTitle,
   path: sharePath,
-  imageUrl: DEFAULT_SHARE_IMAGE_URL,
+  imageUrl: HOME_SHARE_IMAGE_URL,
 }));
 
 onShareTimeline(() => ({
   title: shareTitle,
   query: "",
-  imageUrl: DEFAULT_SHARE_IMAGE_URL,
+  imageUrl: HOME_SHARE_IMAGE_URL,
 }));
 </script>
 
