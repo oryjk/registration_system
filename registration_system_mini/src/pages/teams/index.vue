@@ -18,7 +18,7 @@ import type { BackendTeamAttendanceRankingItem, BackendTeamMemberAttendanceRecor
 import AttendanceCalendarCard from "./components/AttendanceCalendarCard.vue";
 import AttendanceRankingCard from "./components/AttendanceRankingCard.vue";
 import StatsOverview from "./components/StatsOverview.vue";
-import StatsSkeleton from "./components/StatsSkeleton.vue";
+import NeoRunningLoader from "@/components/neo/NeoRunningLoader.vue";
 import { buildAttendanceCalendarMonths, buildRecordSummary } from "./teamStatsState";
 
 const { themePageStyle } = useAccentTheme();
@@ -173,7 +173,7 @@ onUnload(() => {
           </NeoButton>
         </view>
       </view>
-      <StatsSkeleton v-else-if="isLoading && !hasLoadedOnce" />
+      <NeoRunningLoader v-else-if="isLoading && !hasLoadedOnce" text="正在统计战绩" />
 
       <template v-else>
         <StatsOverview
@@ -250,4 +250,21 @@ onUnload(() => {
 .stats-segment {
   margin-bottom: 18rpx;
 }
+
+/* #ifdef H5 */
+.stats-page {
+  width: 100%;
+  max-width: 750rpx;
+  margin: 0 auto;
+}
+
+.stats-page :deep(.app-tab-header-shell),
+.stats-page :deep(.custom-tabbar) {
+  left: 50%;
+  right: auto;
+  width: 100%;
+  max-width: 750rpx;
+  transform: translateX(-50%);
+}
+/* #endif */
 </style>

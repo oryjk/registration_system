@@ -12,17 +12,18 @@ function sourceFile(path: string) {
 }
 
 describe("home page loading states", () => {
-  test("uses a first-load skeleton instead of inserting a temporary empty loading block above content", async () => {
+  test("uses a first-load running loader instead of inserting a temporary empty loading block above content", async () => {
     const homePageSource = await sourceFile(
       "pages/home/index.vue",
     ).text();
-    const skeleton = await sourceFile(
-      "pages/home/components/HomeSkeleton.vue",
+    const loaderSource = await sourceFile(
+      "components/neo/NeoRunningLoader.vue",
     ).text();
 
-    expect(homePageSource.includes('<HomeSkeleton v-if="showInitialLoadingState"')).toEqual(true);
+    expect(homePageSource.includes('<NeoRunningLoader v-if="showInitialLoadingState"')).toEqual(true);
     expect(homePageSource.includes('v-else-if="isLoading" class="home-empty"')).toEqual(false);
-    expect(skeleton.includes('class="home-skeleton-card home-skeleton-card-hero"')).toEqual(true);
+    expect(loaderSource.includes('class="neo-runner__player"')).toEqual(true);
+    expect(loaderSource.includes("@keyframes runner-leg-swing")).toEqual(true);
   });
 
   test("keeps the home layout mounted on refresh and uses a non-layout-shifting refresh mask", async () => {

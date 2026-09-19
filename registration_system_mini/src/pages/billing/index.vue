@@ -3,6 +3,7 @@ import { useAccentTheme } from "@/stores/theme";
 import { computed, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
+import NeoRunningLoader from "@/components/neo/NeoRunningLoader.vue";
 import { getTeamFundBalances, getTeamFundTransactions } from "@/api/teamFund";
 import { cancelPaymentOrder, createRechargeOrder, listPaymentOrders, syncGoPaymentOrder } from "@/api/payment";
 import { useTeamContext } from "@/stores/teamContext";
@@ -162,19 +163,7 @@ onShow(() => {
     </view>
 
     <view v-if="errorMessage" class="billing-empty">{{ errorMessage }}</view>
-    <view v-else-if="isLoading" class="billing-skeleton-stack">
-      <view class="billing-skeleton-card billing-skeleton-hero">
-        <view class="billing-skeleton-line billing-skeleton-line-label" />
-        <view class="billing-skeleton-line billing-skeleton-line-value" />
-        <view class="billing-skeleton-line billing-skeleton-line-body" />
-      </view>
-      <view class="billing-skeleton-grid">
-        <view class="billing-skeleton-card" />
-        <view class="billing-skeleton-card" />
-        <view class="billing-skeleton-card" />
-      </view>
-      <view class="billing-skeleton-card billing-skeleton-list" />
-    </view>
+    <NeoRunningLoader v-else-if="isLoading" text="正在清点账单" />
 
     <template v-else>
     <view class="billing-hero">
@@ -510,81 +499,5 @@ onShow(() => {
   color: #6c7168;
   font-size: 28rpx;
   line-height: 1.6;
-}
-
-.billing-skeleton-stack,
-.billing-skeleton-card,
-.billing-skeleton-line {
-  position: relative;
-  overflow: hidden;
-}
-
-.billing-skeleton-stack {
-  display: flex;
-  flex-direction: column;
-  gap: 18rpx;
-  margin-top: 20rpx;
-}
-
-.billing-skeleton-card {
-  min-height: 132rpx;
-  border-radius: 28rpx;
-  background: #eef2e8;
-}
-
-.billing-skeleton-hero {
-  min-height: 196rpx;
-  padding: 28rpx;
-  background: #ffffff;
-}
-
-.billing-skeleton-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16rpx;
-}
-
-.billing-skeleton-list {
-  min-height: 260rpx;
-  background: #ffffff;
-}
-
-.billing-skeleton-line {
-  height: 24rpx;
-  border-radius: 999rpx;
-  background: #dfe6d8;
-}
-
-.billing-skeleton-line + .billing-skeleton-line {
-  margin-top: 18rpx;
-}
-
-.billing-skeleton-line-label {
-  width: 140rpx;
-}
-
-.billing-skeleton-line-value {
-  width: 260rpx;
-  height: 54rpx;
-}
-
-.billing-skeleton-line-body {
-  width: 64%;
-}
-
-.billing-skeleton-card::after,
-.billing-skeleton-line::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  transform: translateX(-100%);
-  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.78) 50%, transparent 100%);
-  animation: billing-skeleton-shimmer 1.2s ease-in-out infinite;
-}
-
-@keyframes billing-skeleton-shimmer {
-  100% {
-    transform: translateX(100%);
-  }
 }
 </style>

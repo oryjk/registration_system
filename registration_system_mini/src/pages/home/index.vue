@@ -12,7 +12,7 @@ import HomeHeroSection from "./components/HomeHeroSection.vue";
 import HomeMatchList from "./components/HomeMatchList.vue";
 import HomeMatchSearch from "./components/HomeMatchSearch.vue";
 import HomeOtherMatchesSection from "./components/HomeOtherMatchesSection.vue";
-import HomeSkeleton from "./components/HomeSkeleton.vue";
+import NeoRunningLoader from "@/components/neo/NeoRunningLoader.vue";
 import OnboardingRolePickerDialog from "./components/OnboardingRolePickerDialog.vue";
 import { getMatchHome, listMyMatches, listMatches } from "@/api/match";
 import { defaultMiniAppRuntimeConfig } from "@/config/runtimeConfig";
@@ -398,7 +398,7 @@ onShareTimeline(() => ({
     <AppTabHeader title="首页" />
 
     <view class="home-content" :style="contentStyle">
-      <HomeSkeleton v-if="showInitialLoadingState" />
+      <NeoRunningLoader v-if="showInitialLoadingState" />
 
       <view v-else>
         <view v-if="isRefreshing" class="home-refresh-mask">

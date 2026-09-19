@@ -8,7 +8,7 @@ import MineProfileHero from "./components/MineProfileHero.vue";
 import MineTeamIdentityPanel from "./components/MineTeamIdentityPanel.vue";
 import MineStatsGrid from "./components/MineStatsGrid.vue";
 import MineMatchSection from "./components/MineMatchSection.vue";
-import MineSkeleton from "./components/MineSkeleton.vue";
+import NeoRunningLoader from "@/components/neo/NeoRunningLoader.vue";
 import MineWalletSection from "./components/MineWalletSection.vue";
 import MineImpersonationPanel from "./components/MineImpersonationPanel.vue";
 import ThemeAccentPicker from "./components/ThemeAccentPicker.vue";
@@ -93,7 +93,7 @@ onUnload(() => {
   <view class="mine-page">
     <AppTabHeader title="我的" />
     <view class="mine-page-content" :style="contentStyle">
-      <MineSkeleton v-if="showInitialLoadingState" />
+      <NeoRunningLoader v-if="showInitialLoadingState" text="正在热身" />
 
       <template v-else>
         <MineProfileHero

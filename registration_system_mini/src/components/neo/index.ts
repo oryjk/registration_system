@@ -2,6 +2,7 @@ export { default as NeoButton } from "./NeoButton.vue";
 export { default as NeoConfirmDialog } from "./NeoConfirmDialog.vue";
 export { default as NeoDateRail } from "./NeoDateRail.vue";
 export { default as NeoProgress } from "./NeoProgress.vue";
+export { default as NeoRunningLoader } from "./NeoRunningLoader.vue";
 export { default as NeoSectionHeader } from "./NeoSectionHeader.vue";
 export { default as NeoSegmentedControl } from "./NeoSegmentedControl.vue";
 export { default as NeoSurface } from "./NeoSurface.vue";

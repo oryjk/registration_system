@@ -7,7 +7,7 @@ import NeoButton from "@/components/neo/NeoButton.vue";
 import NeoSurface from "@/components/neo/NeoSurface.vue";
 import NeoConfirmDialog from "@/components/neo/NeoConfirmDialog.vue";
 import MatchSignupCountSheet from "./components/MatchSignupCountSheet.vue";
-import MatchDetailSkeleton from "./components/MatchDetailSkeleton.vue";
+import NeoRunningLoader from "@/components/neo/NeoRunningLoader.vue";
 import MatchFinishCard from "./components/MatchFinishCard.vue";
 import MatchCaptainContact from "./components/MatchCaptainContact.vue";
 import MatchEditDialog from "./components/MatchEditDialog.vue";
@@ -180,7 +180,7 @@ const metaPageStyle = computed(() =>
         <text>{{ errorMessage }}</text>
         <NeoButton @click="openMatchHall">返回约球大厅</NeoButton>
       </view>
-      <MatchDetailSkeleton v-else-if="isLoading" />
+      <NeoRunningLoader v-else-if="isLoading" text="正在前往比赛" />
 
       <view v-else-if="match" class="registration-shell">
       <MatchIndividualRegistration

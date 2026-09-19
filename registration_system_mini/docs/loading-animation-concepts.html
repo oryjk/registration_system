@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>加载动画方案预览（动效版）· 足球报名小程序</title>
+<style>
+  :root {
+    --ink: #111310;
+    --surface: #fffdf8;
+    --canvas: #f4f0e8;
+    --lime: #b9f24b;
+    --lime-soft: #dff8a8;
+    --amber: #ffe2a8;
+    --danger: #ff6b5f;
+    --blue-soft: #dce6ff;
+    --muted: #ece9e1;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--muted);
+    color: var(--ink);
+    font-family: "PingFang SC", "Hiragino Sans GB", system-ui, sans-serif;
+    padding: 48px 20px 80px;
+  }
+  .page { max-width: 760px; margin: 0 auto; }
+  .page-head {
+    background: var(--ink);
+    color: var(--lime);
+    border: 3px solid var(--ink);
+    box-shadow: 8px 8px 0 rgba(17, 19, 16, 0.25);
+    border-radius: 12px;
+    padding: 26px 28px;
+    margin-bottom: 14px;
+  }
+  .page-head h1 { font-size: 26px; font-weight: 900; letter-spacing: 1px; }
+  .page-head p { margin-top: 10px; font-size: 14px; line-height: 1.7; color: var(--surface); font-weight: 500; }
+  .palette {
+    display: flex; flex-wrap: wrap; gap: 10px;
+    background: var(--surface); border: 3px solid var(--ink); border-radius: 12px;
+    box-shadow: 8px 8px 0 var(--ink); padding: 14px 16px; margin-bottom: 40px;
+  }
+  .chip {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 12px; font-weight: 700; border: 2px solid var(--ink);
+    border-radius: 6px; padding: 5px 10px; background: var(--canvas);
+  }
+  .chip i { width: 16px; height: 16px; border: 2px solid var(--ink); border-radius: 4px; display: inline-block; }
+
+  .concept { margin-bottom: 48px; }
+  .concept-head { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+  .badge {
+    background: var(--ink); color: var(--lime); font-weight: 900; font-size: 15px;
+    padding: 7px 14px; border-radius: 6px; letter-spacing: 2px;
+  }
+  .concept-head h2 { font-size: 20px; font-weight: 900; }
+  .intent {
+    font-size: 13px; line-height: 1.8; color: #4d514b; font-weight: 600;
+    margin-bottom: 14px; padding-left: 2px;
+  }
+  .intent b { color: var(--ink); }
+  .stage {
+    background: var(--canvas);
+    border: 3px solid var(--ink);
+    border-radius: 12px;
+    box-shadow: 8px 8px 0 var(--ink);
+    padding: 26px 26px 30px;
+  }
+  .stage svg { width: 100%; height: auto; display: block; }
+  .loading-line {
+    margin-top: 18px; text-align: center;
+    font-size: 17px; font-weight: 900; letter-spacing: 3px; color: var(--ink);
+  }
+  .impl {
+    margin-top: 14px; font-size: 12.5px; line-height: 1.8; color: #4d514b; font-weight: 600;
+    border-top: 2px dashed rgba(17, 19, 16, 0.25); padding-top: 12px;
+  }
+  .impl b { color: var(--ink); }
+  .foot-note {
+    font-size: 12.5px; line-height: 1.9; color: #4d514b; font-weight: 600;
+    background: var(--surface); border: 3px solid var(--ink); border-radius: 12px;
+    box-shadow: 8px 8px 0 var(--ink); padding: 18px 20px;
+  }
+  .foot-note b { color: var(--ink); }
+
+  /* ===== 动效（预览用，选定后等价迁移到小程序 CSS） ===== */
+  @media (prefers-reduced-motion: reduce) {
+    .stage svg * { animation: none !important; }
+  }
+
+  /* 方案 A：射门 */
+  .a-traj { animation: traj-flow 0.9s linear infinite; }
+  .a-kick { transform-origin: 204px 242px; animation: a-kick 1.6s cubic-bezier(0.6, -0.2, 0.4, 1.2) infinite; }
+  .a-ball { transform-origin: 455px 148px; animation: a-fly 1.6s cubic-bezier(0.3, 0.6, 0.6, 1) infinite; }
+  .a-ticks { animation: a-ticks 1.6s ease-in-out infinite; }
+  @keyframes traj-flow { to { stroke-dashoffset: -45; } }
+  @keyframes a-kick {
+    0%, 30% { transform: rotate(9deg); }
+    55%, 72% { transform: rotate(-7deg); }
+    100% { transform: rotate(9deg); }
+  }
+  @keyframes a-fly {
+    0%, 52% { transform: translate(0, 0) scale(1); opacity: 1; }
+    86% { opacity: 1; }
+    100% { transform: translate(108px, -80px) scale(0.85); opacity: 0; }
+  }
+  @keyframes a-ticks { 0%, 40% { opacity: 0.2; } 55% { opacity: 1; } 100% { opacity: 0.2; } }
+
+  /* 方案 B：贴纸 */
+  .b-head { transform-origin: 222px 145px; animation: part-sway 1.4s ease-in-out infinite alternate; }
+  .b-arm-back { transform-origin: 200px 160px; animation: part-sway 1.1s ease-in-out infinite alternate-reverse; }
+  .b-arm-front { transform-origin: 286px 162px; animation: part-sway 1.1s ease-in-out infinite alternate; }
+  .b-kick { transform-origin: 278px 264px; animation: b-kick 1.1s ease-in-out infinite; }
+  .b-torso { animation: part-bob 0.55s ease-in-out infinite alternate; }
+  .b-ball { transform-origin: 462px 196px; animation: b-ball 1.1s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+  .b-star { transform-origin: 432px 182px; animation: b-star 1.1s ease-in-out infinite; }
+  .b-speed line { animation: speed-flicker 0.9s linear infinite; }
+  .b-speed line:nth-child(2) { animation-delay: 0.15s; }
+  .b-speed line:nth-child(3) { animation-delay: 0.3s; }
+  @keyframes part-sway { from { transform: rotate(-4deg); } to { transform: rotate(4deg); } }
+  @keyframes part-bob { from { transform: translateY(0); } to { transform: translateY(2px); } }
+  @keyframes b-kick { 0%, 100% { transform: rotate(7deg); } 50% { transform: rotate(-7deg); } }
+  @keyframes b-ball {
+    0%, 100% { transform: translateY(0) scale(1, 1); }
+    50% { transform: translateY(-26px) scale(0.96, 1.06); }
+  }
+  @keyframes b-star { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.15; transform: scale(0.7); } }
+  @keyframes speed-flicker { 0%, 100% { opacity: 0.15; } 50% { opacity: 1; } }
+
+  /* 方案 C：狂奔 */
+  .c-player { animation: part-bob 0.55s ease-in-out infinite alternate; }
+  .c-leg-front { transform-origin: 302px 192px; animation: c-swing 0.55s ease-in-out infinite alternate; }
+  .c-leg-back { transform-origin: 296px 192px; animation: c-swing 0.55s ease-in-out infinite alternate; animation-delay: -0.55s; }
+  .c-arm-far { transform-origin: 288px 140px; animation: c-arm 0.55s ease-in-out infinite alternate; animation-delay: -0.55s; }
+  .c-arm-near { transform-origin: 286px 140px; animation: c-arm 0.55s ease-in-out infinite alternate; }
+  .c-grass { animation: c-scroll 0.7s linear infinite; }
+  .c-lane { animation: lane-flow 0.45s linear infinite; }
+  .c-spin { transform-origin: 466px 216px; animation: c-rotate 0.9s linear infinite; }
+  .c-speed line { animation: speed-flicker 0.7s linear infinite; }
+  .c-speed line:nth-child(2) { animation-delay: 0.12s; }
+  .c-speed line:nth-child(3) { animation-delay: 0.24s; }
+  @keyframes c-swing { from { transform: rotate(15deg); } to { transform: rotate(-15deg); } }
+  @keyframes c-arm { from { transform: rotate(13deg); } to { transform: rotate(-13deg); } }
+  @keyframes c-scroll { to { transform: translateX(-140px); } }
+  @keyframes lane-flow { to { stroke-dashoffset: 52; } }
+  @keyframes c-rotate { to { transform: rotate(360deg); } }
+
+  /* 方案 D：颠球 */
+  .d-figure { animation: d-figure 1.1s ease-in-out infinite; }
+  .d-head { transform-origin: 238px 144px; animation: part-sway 2.2s ease-in-out infinite alternate; }
+  .d-sweat { animation: d-sweat 2.2s ease-in infinite; }
+  .d-ball { transform-origin: 342px 168px; animation: d-ball 1.1s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+  .d-impact { animation: d-impact 1.1s linear infinite; }
+  .d-arrow { animation: speed-flicker 1.1s ease-in-out infinite; }
+  @keyframes d-figure { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(2px); } }
+  @keyframes d-sweat {
+    0% { transform: translateY(0); opacity: 1; }
+    75% { transform: translateY(7px); opacity: 1; }
+    100% { transform: translateY(13px); opacity: 0; }
+  }
+  @keyframes d-ball {
+    0%, 100% { transform: translateY(0) scale(1, 1); }
+    48% { transform: translateY(36px) scale(1.06, 0.88); }
+    52% { transform: translateY(38px) scale(1.08, 0.86); }
+  }
+  @keyframes d-impact { 0%, 36%, 64%, 100% { opacity: 0; } 50% { opacity: 1; } }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="page-head">
+    <h1>加载动画方案预览 · 队员踢球主题（动效版）</h1>
+    <p>四个方案均已<b>带上循环动画</b>：A 摆腿射门→球沿轨迹飞出；B 贴纸果冻抖动+球回弹；C 四肢对角摆动+场地滚动+球旋转；D 球原地 squash &amp; bounce 弹跳。全部沿用 Neo 设计语言，选定后我把动效等价迁移到小程序（view + CSS / 图片 + transform）。</p>
+  </header>
+
+  <div class="palette">
+    <span class="chip"><i style="background:#111310"></i>ink 墨色</span>
+    <span class="chip"><i style="background:#b9f24b"></i>lime 青柠</span>
+    <span class="chip"><i style="background:#fffdf8"></i>surface 纸面</span>
+    <span class="chip"><i style="background:#f4f0e8"></i>canvas 画布</span>
+    <span class="chip"><i style="background:#ffe2a8"></i>amber 皮肤</span>
+    <span class="chip"><i style="background:#ff6b5f"></i>danger 动作标记</span>
+  </div>
+
+  <!-- ============ 方案 A：射门剪影（v2 重画：后倾蓄力 + 甩腿 + 对角摆臂） ============ -->
+  <section class="concept">
+    <div class="concept-head">
+      <span class="badge">方案 A</span>
+      <h2>射门瞬间 · 剪影大场景</h2>
+    </div>
+    <p class="intent"><b>动画设想：</b>踢球腿从后摆到触球小幅循环，足球沿虚线弧线飞出；适合首页首屏 / 整页加载位，气势最足。</p>
+    <div class="stage">
+      <svg viewBox="0 0 620 400" xmlns="http://www.w3.org/2000/svg" font-family="'PingFang SC', system-ui, sans-serif">
+        <!-- 地面 -->
+        <rect x="70" y="336" width="460" height="9" rx="4" fill="#111310"/>
+
+        <!-- 球的飞行轨迹：从触球点右上方向延伸 -->
+        <path class="a-traj" d="M 490 115 Q 545 70 585 52" fill="none" stroke="#111310" stroke-width="9"
+              stroke-linecap="round" stroke-dasharray="0.5 22"/>
+        <path d="M 566 64 L 583 50 L 588 68" fill="none" stroke="#111310" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+
+        <!-- 球：拖影（左下，与飞行方向一致）+ 青柠球面 + 五边形纹 + 旋转弧线 -->
+        <g class="a-ball">
+          <circle cx="446" cy="162" r="50" fill="#111310"/>
+          <circle cx="455" cy="148" r="50" fill="#b9f24b" stroke="#111310" stroke-width="6"/>
+          <polygon points="455,131 471.2,142.7 465,161.8 445,161.8 438.8,142.7" fill="#111310"/>
+          <g stroke="#111310" stroke-width="6" stroke-linecap="round">
+            <line x1="455" y1="131" x2="455" y2="106"/>
+            <line x1="471.2" y1="142.7" x2="494.9" y2="135"/>
+            <line x1="465" y1="161.8" x2="479.7" y2="182"/>
+            <line x1="445" y1="161.8" x2="430.3" y2="182"/>
+            <line x1="438.8" y1="142.7" x2="415.1" y2="135"/>
+          </g>
+          <path d="M 398 108 Q 407 95 423 89" fill="none" stroke="#111310" stroke-width="6" stroke-linecap="round"/>
+          <path d="M 394 124 Q 399 114 409 108" fill="none" stroke="#111310" stroke-width="6" stroke-linecap="round"/>
+        </g>
+
+        <!-- 球员剪影：躯干后倾，先抬膝再甩小腿（折角），双臂对角张开 -->
+        <path d="M 178 140 Q 222 104 264 68" fill="none" stroke="#111310" stroke-width="20" stroke-linecap="round"/>
+        <path d="M 192 150 Q 140 178 98 208" fill="none" stroke="#111310" stroke-width="20" stroke-linecap="round"/>
+        <polygon points="162,130 196,142 226,252 202,244" fill="#111310"/>
+        <circle cx="163" cy="109" r="26" fill="#111310"/>
+        <path d="M 214 246 Q 262 290 300 332" fill="none" stroke="#111310" stroke-width="26" stroke-linecap="round"/>
+        <g class="a-kick">
+          <path d="M 204 242 L 300 238 L 408 190" fill="none" stroke="#111310" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/>
+          <!-- 绷直的脚背，楔入球缘 -->
+          <path d="M 408 190 L 426 177" fill="none" stroke="#111310" stroke-width="26" stroke-linecap="round"/>
+        </g>
+
+        <!-- 触球速度短线：沿踢击方向（右上），留在球后方 -->
+        <g class="a-ticks" stroke="#111310" stroke-width="6" stroke-linecap="round">
+          <line x1="376" y1="214" x2="394" y2="206"/>
+          <line x1="366" y1="196" x2="384" y2="188"/>
+          <line x1="390" y1="232" x2="408" y2="224"/>
+        </g>
+      </svg>
+      <p class="loading-line">正在进入球场……</p>
+    </div>
+    <p class="impl"><b>落地方式：</b>剪影细节多，建议按帧导出 PNG/SVG 图片资源，外层 view 做 transform 循环动画（腿摆 + 球位移）；文案三点呼吸另用 CSS。</p>
+  </section>
+
+  <!-- ============ 方案 B：贴纸小人（v2 重画：胶囊肢体 + 动态挑球姿势） ============ -->
+  <section class="concept">
+    <div class="concept-head">
+      <span class="badge">方案 B</span>
+      <h2>贴纸小人 · 卡片式</h2>
+    </div>
+    <p class="intent"><b>动画设想：</b>贴纸部件果冻式抖动（头/手臂/球交替小幅摆动），足球压缩回弹；与现有 Neo 卡片骨架同构，适合嵌在卡片骨架内部或弹窗加载。</p>
+    <div class="stage">
+      <svg viewBox="0 0 620 400" xmlns="http://www.w3.org/2000/svg" font-family="'PingFang SC', system-ui, sans-serif">
+        <!-- 卡片：硬阴影 + 粗边框 -->
+        <rect x="100" y="52" width="430" height="310" rx="16" fill="#111310"/>
+        <rect x="90" y="42" width="430" height="310" rx="16" fill="#fffdf8" stroke="#111310" stroke-width="5"/>
+        <rect x="378" y="62" width="122" height="34" rx="8" fill="#111310"/>
+        <text x="439" y="85" text-anchor="middle" font-size="15" font-weight="900" fill="#b9f24b" letter-spacing="3">LOADING</text>
+
+        <!-- 卡片内地面 -->
+        <line x1="130" y1="330" x2="490" y2="330" stroke="#111310" stroke-width="5" stroke-dasharray="26 16"/>
+
+        <!-- 后手臂（上举后摆） -->
+        <g class="b-arm-back">
+          <path d="M 200 160 Q 162 132 156 96" fill="none" stroke="#111310" stroke-width="24" stroke-linecap="round"/>
+          <path d="M 200 160 Q 162 132 156 96" fill="none" stroke="#fffdf8" stroke-width="13" stroke-linecap="round"/>
+          <circle cx="156" cy="96" r="11" fill="#ffe2a8" stroke="#111310" stroke-width="4"/>
+        </g>
+
+        <!-- 支撑腿（微弯接地） -->
+        <path d="M 232 272 Q 222 300 228 318" fill="none" stroke="#111310" stroke-width="26" stroke-linecap="round"/>
+        <path d="M 232 272 Q 222 300 228 318" fill="none" stroke="#fffdf8" stroke-width="14" stroke-linecap="round"/>
+        <path d="M 224 304 L 228 318" fill="none" stroke="#111310" stroke-width="26" stroke-linecap="round"/>
+        <path d="M 224 304 L 228 318" fill="none" stroke="#b9f24b" stroke-width="14" stroke-linecap="round"/>
+        <rect x="216" y="313" width="46" height="17" rx="8" fill="#111310" transform="rotate(4 239 321)"/>
+
+        <!-- 踢球腿：从短裤下摆探出 → 弧线抬膝 → 甩小腿 → 靴（向上挑球） -->
+        <g class="b-kick">
+          <path d="M 278 264 Q 320 292 348 252 L 396 210" fill="none" stroke="#111310" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M 278 264 Q 320 292 348 252 L 396 210" fill="none" stroke="#fffdf8" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M 378 219 L 396 210" fill="none" stroke="#111310" stroke-width="26" stroke-linecap="round"/>
+          <path d="M 378 219 L 396 210" fill="none" stroke="#b9f24b" stroke-width="14" stroke-linecap="round"/>
+          <rect x="388" y="200" width="34" height="16" rx="8" fill="#111310" transform="rotate(-38 396 208)"/>
+        </g>
+
+        <!-- 短裤（加宽，罩住两腿根） -->
+        <g transform="rotate(-6 247 258)">
+          <rect x="188" y="236" width="118" height="44" rx="10" fill="#fffdf8" stroke="#111310" stroke-width="5"/>
+          <line x1="247" y1="236" x2="247" y2="280" stroke="#111310" stroke-width="4"/>
+        </g>
+
+        <!-- 球衣（后倾）+ 号码 -->
+        <g class="b-torso">
+          <g transform="rotate(-10 235 196)">
+            <rect x="180" y="150" width="110" height="92" rx="14" fill="#b9f24b" stroke="#111310" stroke-width="5"/>
+            <rect x="228" y="150" width="17" height="92" fill="#fffdf8" opacity="0.85"/>
+            <text x="235" y="212" text-anchor="middle" font-size="34" font-weight="900" fill="#111310">10</text>
+          </g>
+        </g>
+
+        <!-- 前手臂（斜向下前伸，与后臂打破对称） -->
+        <g class="b-arm-front">
+          <path d="M 286 162 Q 315 175 334 198" fill="none" stroke="#111310" stroke-width="24" stroke-linecap="round"/>
+          <path d="M 286 162 Q 315 175 334 198" fill="none" stroke="#fffdf8" stroke-width="13" stroke-linecap="round"/>
+          <circle cx="334" cy="198" r="11" fill="#ffe2a8" stroke="#111310" stroke-width="4"/>
+        </g>
+
+        <!-- 头 + 汗带 + 表情 -->
+        <g class="b-head">
+          <circle cx="222" cy="116" r="30" fill="#ffe2a8" stroke="#111310" stroke-width="5"/>
+          <rect x="196" y="98" width="52" height="11" rx="5" fill="#b9f24b" stroke="#111310" stroke-width="4"/>
+          <circle cx="212" cy="122" r="4" fill="#111310"/>
+          <circle cx="232" cy="122" r="4" fill="#111310"/>
+          <path d="M214 134 Q222 141 230 134" fill="none" stroke="#111310" stroke-width="4" stroke-linecap="round"/>
+        </g>
+
+        <!-- 球：硬阴影 + 旋转弧线 -->
+        <g class="b-ball">
+          <circle cx="472" cy="208" r="42" fill="#111310"/>
+          <circle cx="462" cy="196" r="42" fill="#b9f24b" stroke="#111310" stroke-width="6"/>
+          <polygon points="462,183 474.4,192 469.6,206.5 454.4,206.5 449.6,192" fill="#111310"/>
+          <g stroke="#111310" stroke-width="6" stroke-linecap="round">
+            <line x1="462" y1="183" x2="462" y2="163"/>
+            <line x1="474.4" y1="192" x2="493.5" y2="186.1"/>
+            <line x1="469.6" y1="206.5" x2="481.3" y2="218.7"/>
+            <line x1="454.4" y1="206.5" x2="442.7" y2="218.7"/>
+            <line x1="449.6" y1="192" x2="430.5" y2="186.1"/>
+          </g>
+          <path d="M 412 150 Q 420 138 434 132" fill="none" stroke="#111310" stroke-width="5" stroke-linecap="round"/>
+          <path d="M 408 164 Q 413 155 421 148" fill="none" stroke="#111310" stroke-width="5" stroke-linecap="round"/>
+        </g>
+
+        <!-- 击球星标（靴尖与球之间） -->
+        <g class="b-star" stroke="#ff6b5f" stroke-width="6" stroke-linecap="round">
+          <line x1="432" y1="166" x2="432" y2="198"/>
+          <line x1="416" y1="174" x2="448" y2="190"/>
+          <line x1="448" y1="174" x2="416" y2="190"/>
+        </g>
+        <!-- 挑起速度线：向上放射 -->
+        <g class="b-speed" stroke="#111310" stroke-width="6" stroke-linecap="round">
+          <line x1="470" y1="138" x2="482" y2="126"/>
+          <line x1="486" y1="152" x2="500" y2="144"/>
+          <line x1="458" y1="130" x2="466" y2="116"/>
+        </g>
+      </svg>
+      <p class="loading-line">拼装球队阵容……</p>
+    </div>
+    <p class="impl"><b>落地方式：</b>肢体用「粗描边胶囊」可在 view + CSS 里用双层 view（外层墨色、内层彩色、圆角胶囊）复刻，不需要图片资源；每个部件独立关键帧动画。</p>
+  </section>
+
+  <!-- ============ 方案 C：带球狂奔（v2 重画：前倾跑姿 + 胶囊肢体） ============ -->
+  <section class="concept">
+    <div class="concept-head">
+      <span class="badge">方案 C</span>
+      <h2>带球狂奔 · 无限跑动条</h2>
+    </div>
+    <p class="intent"><b>动画设想：</b>球员固定在画面中，地面/草/锥桶/角旗向左无限滚动（两层视差），手臂腿部循环摆动；适合通栏位置（列表顶部、骨架中部）。</p>
+    <div class="stage">
+      <svg viewBox="0 0 660 280" xmlns="http://www.w3.org/2000/svg" font-family="'PingFang SC', system-ui, sans-serif">
+        <!-- 面板 -->
+        <rect x="30" y="30" width="600" height="230" rx="16" fill="#111310"/>
+        <rect x="20" y="20" width="600" height="230" rx="16" fill="#fffdf8" stroke="#111310" stroke-width="5"/>
+
+        <!-- 太阳 -->
+        <circle cx="545" cy="85" r="30" fill="#b9f24b" stroke="#111310" stroke-width="5"/>
+        <g stroke="#111310" stroke-width="5" stroke-linecap="round">
+          <line x1="583" y1="85" x2="597" y2="85"/>
+          <line x1="507" y1="85" x2="493" y2="85"/>
+          <line x1="545" y1="47" x2="545" y2="33"/>
+          <line x1="545" y1="123" x2="545" y2="137"/>
+          <line x1="571.8" y1="58.2" x2="581.8" y2="48.2"/>
+          <line x1="518.2" y1="58.2" x2="508.2" y2="48.2"/>
+          <line x1="571.8" y1="111.8" x2="581.8" y2="121.8"/>
+          <line x1="518.2" y1="111.8" x2="508.2" y2="121.8"/>
+        </g>
+
+        <!-- 场地 -->
+        <rect x="40" y="180" width="560" height="60" fill="#dff8a8" stroke="#111310" stroke-width="5"/>
+        <line class="c-lane" x1="60" y1="215" x2="580" y2="215" stroke="#111310" stroke-width="5" stroke-dasharray="30 22"/>
+        <g class="c-grass">
+          <rect x="90" y="168" width="14" height="10" fill="#111310"/>
+          <rect x="230" y="166" width="14" height="12" fill="#111310"/>
+          <rect x="370" y="168" width="14" height="10" fill="#111310"/>
+          <rect x="510" y="166" width="14" height="12" fill="#111310"/>
+          <rect x="650" y="168" width="14" height="10" fill="#111310"/>
+          <rect x="790" y="166" width="14" height="12" fill="#111310"/>
+        </g>
+
+        <!-- 角旗 -->
+        <line x1="95" y1="120" x2="95" y2="178" stroke="#111310" stroke-width="6"/>
+        <polygon points="95,120 135,130 95,140" fill="#ff6b5f" stroke="#111310" stroke-width="4" stroke-linejoin="round"/>
+
+        <!-- 训练锥 -->
+        <polygon points="560,178 584,178 572,136" fill="#ffe2a8" stroke="#111310" stroke-width="4" stroke-linejoin="round"/>
+        <line x1="563" y1="162" x2="577" y2="162" stroke="#fffdf8" stroke-width="5"/>
+
+        <!-- 速度线（人物身后，避开角旗） -->
+        <g class="c-speed" stroke="#111310" stroke-width="6" stroke-linecap="round" stroke-dasharray="20 14">
+          <line x1="205" y1="120" x2="265" y2="120"/>
+          <line x1="195" y1="138" x2="245" y2="138"/>
+          <line x1="205" y1="156" x2="249" y2="156"/>
+        </g>
+
+        <!-- 跑动球员：前倾 + 对角摆臂摆腿（胶囊肢体） -->
+        <g class="c-player">
+          <!-- 远侧手臂（对角：前腿在前 → 远臂前摆上举） -->
+          <g class="c-arm-far">
+            <path d="M 288 140 Q 316 118 328 88" fill="none" stroke="#111310" stroke-width="22" stroke-linecap="round"/>
+            <path d="M 288 140 Q 316 118 328 88" fill="none" stroke="#fffdf8" stroke-width="12" stroke-linecap="round"/>
+            <circle cx="328" cy="88" r="9" fill="#ffe2a8" stroke="#111310" stroke-width="4"/>
+          </g>
+          <!-- 后腿（折叠后摆，脚跟翘起） -->
+          <g class="c-leg-back">
+            <path d="M 296 192 Q 270 232 240 214" fill="none" stroke="#111310" stroke-width="24" stroke-linecap="round"/>
+            <path d="M 296 192 Q 270 232 240 214" fill="none" stroke="#fffdf8" stroke-width="13" stroke-linecap="round"/>
+            <path d="M 252 222 L 240 214" fill="none" stroke="#111310" stroke-width="24" stroke-linecap="round"/>
+            <path d="M 252 222 L 240 214" fill="none" stroke="#b9f24b" stroke-width="13" stroke-linecap="round"/>
+            <rect x="220" y="202" width="30" height="14" rx="7" fill="#111310" transform="rotate(125 236 210)"/>
+          </g>
+          <!-- 前腿（向前跨步落地） -->
+          <g class="c-leg-front">
+            <path d="M 302 192 Q 340 205 366 238" fill="none" stroke="#111310" stroke-width="24" stroke-linecap="round"/>
+            <path d="M 302 192 Q 340 205 366 238" fill="none" stroke="#fffdf8" stroke-width="13" stroke-linecap="round"/>
+            <path d="M 352 228 L 366 238" fill="none" stroke="#111310" stroke-width="24" stroke-linecap="round"/>
+            <path d="M 352 228 L 366 238" fill="none" stroke="#b9f24b" stroke-width="13" stroke-linecap="round"/>
+            <rect x="356" y="236" width="30" height="14" rx="7" fill="#111310" transform="rotate(48 372 244)"/>
+          </g>
+          <!-- 身体（明显前倾）+ 号码 -->
+          <g transform="rotate(18 304 160)">
+            <rect x="272" y="126" width="64" height="78" rx="14" fill="#b9f24b" stroke="#111310" stroke-width="5"/>
+            <text x="304" y="180" text-anchor="middle" font-size="30" font-weight="900" fill="#111310">7</text>
+          </g>
+          <!-- 近侧手臂（对角：向后下压） -->
+          <g class="c-arm-near">
+            <path d="M 286 140 Q 266 168 256 200" fill="none" stroke="#111310" stroke-width="22" stroke-linecap="round"/>
+            <path d="M 286 140 Q 266 168 256 200" fill="none" stroke="#fffdf8" stroke-width="12" stroke-linecap="round"/>
+            <circle cx="256" cy="200" r="9" fill="#ffe2a8" stroke="#111310" stroke-width="4"/>
+          </g>
+          <!-- 头（随前倾前移，与躯干重叠衔接） -->
+          <circle cx="312" cy="100" r="23" fill="#ffe2a8" stroke="#111310" stroke-width="5"/>
+          <rect x="294" y="88" width="36" height="9" rx="4" fill="#b9f24b" stroke="#111310" stroke-width="4"/>
+          <circle cx="320" cy="104" r="3.5" fill="#111310"/>
+          <path d="M322 115 L330 113" stroke="#111310" stroke-width="3.5" stroke-linecap="round"/>
+        </g>
+
+        <!-- 球（在前脚前方约 1.5 个球径处滚动） -->
+        <ellipse cx="472" cy="240" rx="24" ry="7" fill="#111310" opacity="0.18"/>
+        <circle cx="466" cy="216" r="22" fill="#b9f24b" stroke="#111310" stroke-width="5"/>
+        <g class="c-spin">
+          <polygon points="466,209 472.7,213.8 470.1,221.7 461.9,221.7 459.3,213.8" fill="#111310"/>
+        </g>
+      </svg>
+      <p class="loading-line">奔向球场中……</p>
+    </div>
+    <p class="impl"><b>落地方式：</b>球员可静态（或手臂/腿两帧切换），滚动用一条超出容器的横向 view + 循环 translateX 即可，overflow: hidden 裁切；锥桶/角旗第二层慢速视差。</p>
+  </section>
+
+  <!-- ============ 方案 D：颠球热身（v2 重画：胶囊肢体 + 抬膝颠球） ============ -->
+  <section class="concept">
+    <div class="concept-head">
+      <span class="badge">方案 D</span>
+      <h2>颠球热身 · 弹跳球</h2>
+    </div>
+    <p class="intent"><b>动画设想：</b>球在脚背上方原地反复弹起（squash &amp; stretch 挤压回弹），球员头部/手臂轻微跟随晃动，触球瞬间星标闪现；实现成本最低，适合「我的」页、次级页加载。</p>
+    <div class="stage">
+      <svg viewBox="0 0 620 400" xmlns="http://www.w3.org/2000/svg" font-family="'PingFang SC', system-ui, sans-serif">
+        <!-- 地面与草屑 -->
+        <rect x="70" y="326" width="480" height="9" rx="4" fill="#111310"/>
+        <rect x="140" y="314" width="16" height="10" fill="#b9f24b"/>
+        <rect x="300" y="310" width="16" height="14" fill="#b9f24b"/>
+        <rect x="470" y="314" width="16" height="10" fill="#b9f24b"/>
+
+        <!-- 球的地面投影（球在脚背正上方竖直弹跳） -->
+        <ellipse cx="348" cy="318" rx="26" ry="7" fill="#111310" opacity="0.15"/>
+
+        <g class="d-figure">
+        <!-- 后手臂（从躯干左缘伸出） -->
+        <g>
+          <path d="M 206 166 Q 186 188 176 214" fill="none" stroke="#111310" stroke-width="24" stroke-linecap="round"/>
+          <path d="M 206 166 Q 186 188 176 214" fill="none" stroke="#fffdf8" stroke-width="13" stroke-linecap="round"/>
+          <circle cx="176" cy="214" r="10" fill="#ffe2a8" stroke="#111310" stroke-width="4"/>
+        </g>
+
+        <!-- 颠球腿：大腿高抬 → 小腿自然下垂 → 脚背绷平朝上 -->
+        <path d="M 272 258 Q 300 214 322 196 Q 330 214 330 238" fill="none" stroke="#111310" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M 272 258 Q 300 214 322 196 Q 330 214 330 238" fill="none" stroke="#fffdf8" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M 330 222 L 330 238" fill="none" stroke="#111310" stroke-width="26" stroke-linecap="round"/>
+        <path d="M 330 222 L 330 238" fill="none" stroke="#b9f24b" stroke-width="14" stroke-linecap="round"/>
+        <rect x="326" y="228" width="34" height="15" rx="7" fill="#111310" transform="rotate(-12 342 235)"/>
+
+        <!-- 支撑腿（直立接地） -->
+        <path d="M 242 266 Q 238 292 244 318" fill="none" stroke="#111310" stroke-width="26" stroke-linecap="round"/>
+        <path d="M 242 266 Q 238 292 244 318" fill="none" stroke="#fffdf8" stroke-width="14" stroke-linecap="round"/>
+        <path d="M 242 302 L 244 318" fill="none" stroke="#111310" stroke-width="26" stroke-linecap="round"/>
+        <path d="M 242 302 L 244 318" fill="none" stroke="#b9f24b" stroke-width="14" stroke-linecap="round"/>
+        <rect x="226" y="310" width="48" height="16" rx="8" fill="#111310"/>
+
+        <!-- 短裤 -->
+        <rect x="200" y="230" width="100" height="40" rx="10" fill="#fffdf8" stroke="#111310" stroke-width="5"/>
+        <line x1="250" y1="230" x2="250" y2="270" stroke="#111310" stroke-width="4"/>
+
+        <!-- 球衣（微前倾）+ 号码 -->
+        <g transform="rotate(4 252 190)">
+          <rect x="205" y="148" width="95" height="85" rx="14" fill="#b9f24b" stroke="#111310" stroke-width="5"/>
+          <text x="252" y="204" text-anchor="middle" font-size="26" font-weight="900" fill="#111310">9</text>
+        </g>
+
+        <!-- 前手臂（从躯干右缘伸出，向下让位） -->
+        <g>
+          <path d="M 296 170 Q 318 200 326 232" fill="none" stroke="#111310" stroke-width="24" stroke-linecap="round"/>
+          <path d="M 296 170 Q 318 200 326 232" fill="none" stroke="#fffdf8" stroke-width="13" stroke-linecap="round"/>
+          <circle cx="326" cy="232" r="10" fill="#ffe2a8" stroke="#111310" stroke-width="4"/>
+        </g>
+
+        <!-- 头 + 汗带 + 专注表情 -->
+        <g class="d-head">
+          <circle cx="238" cy="116" r="28" fill="#ffe2a8" stroke="#111310" stroke-width="5"/>
+          <rect x="214" y="99" width="48" height="11" rx="5" fill="#b9f24b" stroke="#111310" stroke-width="4"/>
+          <circle cx="229" cy="122" r="4" fill="#111310"/>
+          <circle cx="247" cy="122" r="4" fill="#111310"/>
+          <line x1="232" y1="134" x2="242" y2="134" stroke="#111310" stroke-width="4" stroke-linecap="round"/>
+        </g>
+        <path class="d-sweat" d="M272 96 c8 8 8 16 0 16 c-8 0 -8 -8 0 -16" fill="#dce6ff" stroke="#111310" stroke-width="3"/>
+        </g>
+
+        <!-- 颠起的球（脚背正上方） -->
+        <g class="d-ball">
+          <circle cx="342" cy="168" r="33" fill="#b9f24b" stroke="#111310" stroke-width="6"/>
+          <polygon points="342,157 352.5,164.6 348.5,176.6 335.5,176.6 331.5,164.6" fill="#111310"/>
+          <g stroke="#111310" stroke-width="6" stroke-linecap="round">
+            <line x1="342" y1="157" x2="342" y2="141"/>
+            <line x1="352.5" y1="164.6" x2="367.8" y2="159.4"/>
+            <line x1="348.5" y1="176.6" x2="358" y2="190.3"/>
+            <line x1="335.5" y1="176.6" x2="326" y2="190.3"/>
+            <line x1="331.5" y1="164.6" x2="316.2" y2="159.4"/>
+          </g>
+        </g>
+
+        <!-- 弹起箭头（与竖直弹跳轨迹一致） + 触球冲击短线 -->
+        <line class="d-arrow" x1="392" y1="190" x2="392" y2="146" stroke="#111310" stroke-width="6" stroke-linecap="round"/>
+        <polyline points="381,158 392,146 403,158" fill="none" stroke="#111310" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+        <g class="d-impact" stroke="#ff6b5f" stroke-width="6" stroke-linecap="round">
+          <line x1="330" y1="208" x2="330" y2="222"/>
+          <line x1="342" y1="212" x2="342" y2="228"/>
+          <line x1="354" y1="208" x2="354" y2="222"/>
+        </g>
+      </svg>
+      <p class="loading-line">热身准备中……</p>
+    </div>
+    <p class="impl"><b>落地方式：</b>人物完全静态，只需给球加一个 translateY + scaleY 关键帧（弹起拉伸、触地压扁），实现成本四个方案里最低，纯 view + CSS。</p>
+  </section>
+
+  <footer class="foot-note">
+    <b>说明：</b>本页为浏览器预览稿，用 SVG 绘制。微信小程序模板不支持内联 SVG，落地时：方案 B / D 用 view + CSS 纯代码拼装即可（双层胶囊肢体：外层墨色、内层彩色）；方案 A / C 建议把人物导出为图片资源，动画用外层 view 的 transform 实现。四个方案均沿用 neo-tokens.css 的既有 token（ink / lime / surface / amber / danger），不引入新颜色。
+  </footer>
+
+</div>
+</body>
+</html>

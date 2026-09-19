@@ -3,6 +3,7 @@ import { useAccentTheme } from "@/stores/theme";
 import { computed, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
+import NeoRunningLoader from "@/components/neo/NeoRunningLoader.vue";
 import NeoSegmentedControl from "@/components/neo/NeoSegmentedControl.vue";
 import NeoSurface from "@/components/neo/NeoSurface.vue";
 import CaptainThreadsSection from "./components/CaptainThreadsSection.vue";
@@ -141,16 +142,7 @@ onShow(() => {
 
     <template v-else>
       <view v-if="errorMessage" class="notice-empty">{{ errorMessage }}</view>
-      <view v-else-if="showInitialLoadingState" class="notice-skeleton-stack">
-        <view v-for="index in 4" :key="index" class="notice-skeleton-card">
-          <view class="notice-skeleton-row">
-            <view class="notice-skeleton-line notice-skeleton-line-title" />
-            <view class="notice-skeleton-pill" />
-          </view>
-          <view class="notice-skeleton-line notice-skeleton-line-body" />
-          <view class="notice-skeleton-line notice-skeleton-line-body short" />
-        </view>
-      </view>
+      <NeoRunningLoader v-else-if="showInitialLoadingState" text="正在收取战报" />
 
       <view v-else class="notice-loaded-content">
         <NeoSurface v-if="notificationItems.length" variant="raised" class="notice-hero">
@@ -252,71 +244,6 @@ onShow(() => {
   font-weight: 700;
 }
 
-.notice-skeleton-stack {
-  display: flex;
-  flex-direction: column;
-  gap: 18rpx;
-  margin-top: 22rpx;
-}
-
-.notice-skeleton-card {
-  position: relative;
-  overflow: hidden;
-  min-height: 168rpx;
-  padding: 24rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-md);
-  background: var(--neo-color-surface);
-  box-sizing: border-box;
-}
-
-.notice-skeleton-card::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  transform: translateX(-100%);
-  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.55) 50%, transparent 100%);
-  animation: notice-skeleton-shimmer 1.2s ease-in-out infinite;
-}
-
-.notice-skeleton-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 18rpx;
-}
-
-.notice-skeleton-line {
-  height: 24rpx;
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-accent-soft);
-}
-
-.notice-skeleton-line + .notice-skeleton-line {
-  margin-top: 16rpx;
-}
-
-.notice-skeleton-line-title {
-  width: 360rpx;
-  height: 30rpx;
-}
-
-.notice-skeleton-line-body {
-  width: 100%;
-  margin-top: 22rpx;
-}
-
-.notice-skeleton-line-body.short {
-  width: 62%;
-}
-
-.notice-skeleton-pill {
-  width: 128rpx;
-  height: 44rpx;
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-accent-soft);
-  flex-shrink: 0;
-}
 
 .notice-list {
   display: flex;
@@ -398,11 +325,6 @@ onShow(() => {
   font-weight: 700;
 }
 
-@keyframes notice-skeleton-shimmer {
-  100% {
-    transform: translateX(100%);
-  }
-}
 
 /* #ifdef H5 */
 .notice-page {

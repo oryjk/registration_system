@@ -5,7 +5,7 @@ import AppTabHeader from "@/components/AppTabHeader.vue";
 import BottomTabBar from "@/components/BottomTabBar.vue";
 import NeoButton from "@/components/neo/NeoButton.vue";
 import NeoSectionHeader from "@/components/neo/NeoSectionHeader.vue";
-import ActivitiesSkeleton from "./components/ActivitiesSkeleton.vue";
+import NeoRunningLoader from "@/components/neo/NeoRunningLoader.vue";
 import HallCalendarStrip from "./components/HallCalendarStrip.vue";
 import HallQuickFilters from "./components/HallQuickFilters.vue";
 import HallMatchList from "./components/HallMatchList.vue";
@@ -152,7 +152,7 @@ onShareTimeline(() => ({
     <AppTabHeader title="约队大厅" />
 
     <view class="hall-content" :style="contentStyle">
-      <ActivitiesSkeleton v-if="showInitialLoadingState" />
+      <NeoRunningLoader v-if="showInitialLoadingState" text="正在奔向球场" />
 
       <view v-else-if="isGuestMode" class="hall-guest-card">
         <text class="hall-guest-title">登录后查看约队大厅</text>
