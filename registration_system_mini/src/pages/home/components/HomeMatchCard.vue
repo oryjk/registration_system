@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
+import NeoAvatarStack from "@/components/neo/NeoAvatarStack.vue";
+import type { NeoAvatarItem } from "@/components/neo/NeoAvatarStack.vue";
 import NeoButton from "@/components/neo/NeoButton.vue";
 import NeoProgress from "@/components/neo/NeoProgress.vue";
 import NeoTag from "@/components/neo/NeoTag.vue";
@@ -16,6 +18,15 @@ const emit = defineEmits<{
 }>();
 
 const actionLabel = computed(() => props.match.actionLabel || (props.match.canRegister ? "去报名" : "查看比赛"));
+
+const participantItems = computed<NeoAvatarItem[]>(() =>
+  props.match.participantAvatars.map((avatar) => ({
+    id: avatar.userId,
+    name: avatar.displayText,
+    avatarUrl: avatar.avatarUrl || undefined,
+    tone: avatar.tone,
+  })),
+);
 
 function handleTap() {
   if (props.match.canOpenDetail) {
@@ -70,22 +81,12 @@ function handleTap() {
 
       <view v-if="match.showParticipantAvatars" class="home-avatars-row">
         <view class="home-avatars">
-          <template v-if="match.participantAvatars.length > 0">
-            <view
-              v-for="avatar in match.participantAvatars"
-              :key="avatar.userId"
-              class="home-avatar"
-              :style="{ backgroundColor: avatar.tone }"
-            >
-              <image
-                v-if="avatar.avatarUrl"
-                class="home-avatar-image"
-                :src="avatar.avatarUrl"
-                mode="aspectFill"
-              />
-              <text v-else class="home-avatar-text">{{ avatar.displayText }}</text>
-            </view>
-          </template>
+          <NeoAvatarStack
+            v-if="match.participantAvatars.length > 0"
+            :items="participantItems"
+            :max-visible="13"
+            size="xs"
+          />
           <view v-else class="home-avatars-empty">
             <view class="home-avatars-empty-badge" />
             <text class="home-avatars-empty-text">暂时没有球星报名</text>
@@ -237,35 +238,12 @@ function handleTap() {
   align-items: center;
   flex: 1;
   min-width: 0;
-  overflow: hidden;
 }
 
-.home-avatar {
-  width: 42rpx;
-  height: 42rpx;
-  margin-left: -10rpx;
-  flex-shrink: 0;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-round);
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.home-avatar:first-child {
-  margin-left: 0;
-}
-
-.home-avatar-image {
+/* 组件根节点占满可用宽度：+N 展开时按容器实测宽度计算头像间隙，
+   保证满行两端与左右留白对齐。 */
+.home-avatars :deep(.neo-avatar-stack) {
   width: 100%;
-  height: 100%;
-}
-
-.home-avatar-text {
-  color: var(--neo-color-text-inverse);
-  font-size: 18rpx;
-  font-weight: 700;
 }
 
 .home-avatar-summary {

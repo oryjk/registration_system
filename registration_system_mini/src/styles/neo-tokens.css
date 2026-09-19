@@ -112,12 +112,22 @@ page {
   --neo-segment-active-bg: var(--neo-color-accent);
   --neo-segment-font-size: 26rpx;
 
+  --neo-avatar-size-xs: 42rpx;
   --neo-avatar-size-sm: 52rpx;
   --neo-avatar-size-md: 68rpx;
   --neo-avatar-size-lg: 84rpx;
   --neo-avatar-overlap: 14rpx;
   --neo-avatar-overlap-negative: -14rpx;
-  --neo-avatar-border: 2rpx solid var(--neo-color-surface);
+  /* xs 档头像更小，重叠量相应放浅，避免小头像被压掉过多。 */
+  --neo-avatar-overlap-xs: 10rpx;
+  --neo-avatar-overlap-negative-xs: -10rpx;
+  /* 展开态（点 +N 后）头像互不遮挡的间隙，收紧以免行距松散。 */
+  --neo-avatar-gap: 10rpx;
+  --neo-avatar-gap-xs: 8rpx;
+  --neo-avatar-restore-duration: 220ms;
+  /* 两端缓、中段顺滑的减速曲线，减弱换行重排带来的跳变感。 */
+  --neo-avatar-restore-easing: cubic-bezier(0.33, 0, 0.2, 1);
+  --neo-avatar-border: 1rpx solid var(--neo-color-surface);
   --neo-avatar-plus-bg: var(--neo-color-text);
   --neo-avatar-plus-fg: var(--neo-color-text-inverse);
 
