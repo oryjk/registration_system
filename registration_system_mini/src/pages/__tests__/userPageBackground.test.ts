@@ -43,7 +43,7 @@ describe("mine page visual composition", () => {
     const loaderSource = await Bun.file(sourcePath("components/neo/NeoRunningLoader.vue")).text();
 
     expect(userPageSource.includes('<NeoRunningLoader v-if="showInitialLoadingState"')).toEqual(true);
-    expect(loaderSource.includes('class="neo-runner__player"')).toEqual(true);
+    expect(loaderSource.includes('class="neo-runner__sprite"')).toEqual(true);
     expect(userPageSource.includes("正在加载个人中心")).toEqual(false);
     expect(userPageSource.includes('v-else-if="isLoading" class="mine-empty"')).toEqual(false);
     expect(userPageSource.includes('class="team-switch-status"')).toEqual(false);

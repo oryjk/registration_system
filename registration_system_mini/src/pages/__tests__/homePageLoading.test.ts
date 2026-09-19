@@ -22,8 +22,8 @@ describe("home page loading states", () => {
 
     expect(homePageSource.includes('<NeoRunningLoader v-if="showInitialLoadingState"')).toEqual(true);
     expect(homePageSource.includes('v-else-if="isLoading" class="home-empty"')).toEqual(false);
-    expect(loaderSource.includes('class="neo-runner__player"')).toEqual(true);
-    expect(loaderSource.includes("@keyframes runner-leg-swing")).toEqual(true);
+    expect(loaderSource.includes('class="neo-runner__sprite"')).toEqual(true);
+    expect(loaderSource.includes("@keyframes runner-dribble")).toEqual(true);
   });
 
   test("keeps the home layout mounted on refresh and uses a non-layout-shifting refresh mask", async () => {
