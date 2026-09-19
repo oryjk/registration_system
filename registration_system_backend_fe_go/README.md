@@ -15,7 +15,7 @@ API_PROXY_TARGET=http://127.0.0.1:18080 bun run dev  # 对接本地 Go 默认端
 
 ## 构建与部署
 
-默认 `bun run build` 使用路由根路径 `/`。部署到 `/registration-admin/` 时执行 `bun run build:nginx`，它会同时设置 `ADMIN_PUBLIC_PATH` 与 `ADMIN_ROUTE_BASE` 为 `/registration-admin/`；外网验收执行 `bun run build:out109`（`/regist-admin-v3/` + 外网 API base）。Nginx 必须为该路由基址提供 SPA fallback，并将同源 API 代理到 Go 后端：
+默认 `bun run build` 使用路由根路径 `/`。部署到 `/registration-admin/` 时执行 `bun run build:nginx`，它会同时设置 `ADMIN_PUBLIC_PATH` 与 `ADMIN_ROUTE_BASE` 为 `/registration-admin/`；外网验收执行 `bun run build:jd`（`/regist-admin-v3/` + 外网 API base）。Nginx 必须为该路由基址提供 SPA fallback，并将同源 API 代理到 Go 后端：
 
 ```nginx
 location /registration-admin/ {
@@ -75,3 +75,5 @@ bun run perf:measure -- \
 | load 中位数 | 28 ms | 52 ms | +24 ms |
 | 请求数中位数 | 10 | 16 | +6 |
 | 传输字节中位数 | 921,281 B | 931,062 B | +1.1% |
+
+当前发布目标为 jd，运行仓库根目录 `./deploy_jd_go_h5.sh`；前端目录 `/root/docker_data/nginx/html/regist-admin-v3/`。`build:out109` 仅是 `build:jd` 的旧名称别名；日常部署不要使用旧 `/registration-admin/` 入口。详见 [部署文档](../docs/deployment-jd.md)。

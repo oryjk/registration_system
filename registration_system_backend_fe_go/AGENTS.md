@@ -71,7 +71,7 @@ bun run lint
 bun run test         # vitest（jsdom，环境见 vite.config.ts test 段）
 bun run build        # 根路径构建
 bun run build:nginx  # /registration-admin/ 子路径
-bun run build:out109 # /regist-admin-v3/ 子路径 + 外网 API base
+bun run build:jd # /regist-admin-v3/ 子路径 + 外网 API base
 ```
 
 ## 验证
@@ -81,3 +81,5 @@ bun run build:out109 # /regist-admin-v3/ 子路径 + 外网 API base
 ## e2e
 
 Playwright spec 在 `e2e/`。选择器基于 role / label / 语义类名（如 `.status-filter`、`.team-select-label`、`[data-slot='card-title']`），不要引入组件库私有类名。
+
+当前发布目标为 jd，运行仓库根目录 `./deploy_jd_go_h5.sh`；前端目录 `/root/docker_data/nginx/html/regist-admin-v3/`。`build:out109` 仅是 `build:jd` 的旧名称别名；日常部署不要使用旧 `/registration-admin/` 入口。详见 [部署文档](../docs/deployment-jd.md)。

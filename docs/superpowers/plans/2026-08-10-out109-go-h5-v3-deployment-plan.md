@@ -1,3 +1,5 @@
+> 历史方案：服务已于 2026-09-19 迁至 jd。当前部署以 [deployment-jd.md](../../deployment-jd.md) 为准，本文件不再作为执行步骤。
+
 # out109 Go + H5 V3 Parallel Deployment Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.

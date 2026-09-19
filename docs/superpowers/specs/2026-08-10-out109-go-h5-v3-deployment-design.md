@@ -1,3 +1,5 @@
+> 历史方案：服务已于 2026-09-19 迁至 jd。当前部署以 [deployment-jd.md](../../deployment-jd.md) 为准，本文件不再作为执行步骤。
+
 # out109 Go + H5 V3 Parallel Deployment Design
 
 ## Goal

@@ -56,3 +56,7 @@ go build -o /tmp/registration-system-go-api ./cmd/api
 ```
 
 未运行的验证必须在最终回复中说明原因。
+
+## 当前部署位置
+
+Go API 已迁移到 jd，使用根目录 `deploy_jd_go_h5.sh`，拓扑和运维约定见 [jd 部署文档](../docs/deployment-jd.md)。服务器环境文件为 `/root/docker_data/registration-go-v3/backend.env`，数据库仍为原远端 PostgreSQL。不要读取旧 out109 环境文件来覆盖 jd 配置。新镜像启动后必须 reload `nginx-server`，刷新容器上游 IP。普通部署不自动变更 schema；需要时显式使用 `--migrate`，数据库迁移无法随镜像回滚。

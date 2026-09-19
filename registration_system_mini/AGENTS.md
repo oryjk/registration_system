@@ -22,7 +22,7 @@ bun run mp:preview -- --desc "预览说明"       # 只传预览版，生成 dis
 bun run mp:release -- --desc "本次变更说明"   # 发布：构建 + 登记版本号 + miniprogram-ci 上传开发版本
 ```
 
-验收环境（oryjk.cn:82）的 H5 构建由仓库根目录的 `deploy_out109_go_h5.sh` 一键完成（读取本目录 `.env.test`），不需要手动执行 `build:h5:acceptance`。
+jd 环境（oryjk.cn:82）的 H5 构建由仓库根目录的 `deploy_jd_go_h5.sh` 一键完成（读取本目录 `.env.test`），不需要手动执行 `build:h5:acceptance`。
 
 `mp:preview` / `mp:release` 的前置条件（上传私钥、`.env.ci.local`）与上传后的版本号收尾见下方「微信小程序发布」一节。
 
@@ -36,10 +36,10 @@ bun run mp:release -- --robot 2 --desc "体验版说明"    # robot=2：体验�
 bun run mp:preview -- --desc "预览说明"               # 只传预览版，生成 dist/preview-qrcode.jpg
 ```
 
-**在 out109 上构建发布（推荐）**：编译链是 Vite + uni-app + miniprogram-ci 的多进程 Node 工具链，本地峰值内存可达数 GB；out109 内存充裕，push 代码后远程构建发布即可。环境已一次性配好（bun、node 22、`.env.ci.local`、上传私钥），一条命令从本地触发：
+**在家庭构建机上构建并上传微信（与 jd 服务部署不同）**：编译链是 Vite + uni-app + miniprogram-ci 的多进程 Node 工具链，本地峰值内存可达数 GB；原 out109 家庭机器内存充裕，push 代码后远程构建发布即可。环境已一次性配好（bun、node 22、`.env.ci.local`、上传私钥），一条命令从本地触发：
 
 ```bash
-ssh out109 "cd /home/wangrui/projects/registration_system_repo \
+ssh local109 "cd /home/wangrui/projects/registration_system_repo \
   && git pull --ff-only \
   && cd registration_system_mini \
   && export PATH=\$HOME/.local/bin:\$HOME/.bun/bin:\$PATH \
@@ -47,7 +47,7 @@ ssh out109 "cd /home/wangrui/projects/registration_system_repo \
   && bun run mp:release -- --desc '本次变更说明'"
 ```
 
-（交互式登录 out109 时 PATH 已在 `.zshrc` 配好，无需 export。版本号登记以数据库为权威，本地/服务器交替构建结果一致。）
+（此处只发布微信小程序，不部署 Go/H5；`ssh out109` 现仍指向主域名，不能用来连接家庭机器。交互式登录家庭构建机时 PATH 已在 `.zshrc` 配好，无需 export。版本号登记以数据库为权威，本地/服务器交替构建结果一致。）
 
 **robot 双轨约定**：`robot=1` 日常开发版本，随便传互不影响；`robot=2` 是体验版专用线——首次用 robot=2 上传后，需在公众平台「版本管理 → 开发版本」对该版本点一次「选为体验版」，之后每次 robot=2 上传的新代码会自动成为体验版内容，无需再手动操作。robot=1 的上传不会影响体验版。
 
@@ -60,7 +60,7 @@ ssh out109 "cd /home/wangrui/projects/registration_system_repo \
 前置条件（缺失时脚本会明确报错）：
 
 - 项目根 `private.<appid>.key`：微信公众平台「开发管理 → 开发设置 → 小程序代码上传」下载的私钥（已 git-ignore）；可用 `MINI_CI_PRIVATE_KEY_PATH` 覆盖路径。
-- `.env.ci.local` 配置 `MINI_REVIEW_API_KEY`（git-ignore；从 out109 的 `registration_system_go/.env.acceptance-v3` 同名键获取）。纯本地离线构建可设 `MINI_REVIEW_SKIP=1` 跳过登记。
+- `.env.ci.local` 配置 `MINI_REVIEW_API_KEY`（git-ignore；从 jd 的 `/root/docker_data/registration-go-v3/backend.env` 同名键安全获取，不输出密钥）。纯本地离线构建可设 `MINI_REVIEW_SKIP=1` 跳过登记。
 
 上传后的收尾：
 
@@ -99,7 +99,7 @@ src/
 - 登录态桥接用**一次性 code 换 token**（token 不进 URL / nginx 日志）：`navigateToWebView` 先调 `POST /auth/webview-codes` 签发 60s 一次性 code 拼进 URL query（`webview_code` 及身份选择参数）；H5 启动时 `src/main.ts` 调 `ingestWebViewAuthFromUrl()` 立即抹掉地址栏参数，再异步调 `POST /auth/webview-codes/exchange` 换正式 token 写入 `authStorage`；`appSession.ensureSessionReady` 开始前会 `await waitWebViewAuthIngest()` 等待兑换落地，避免误判游客态。兑换失败（code 过期/已用/网络异常）保持游客态。
 - H5 端 web-view 由 uni-app 编译为 iframe。
 - **H5-only 页面的归属**：后续专门跑在 H5 环境的页面（web-view 嵌页、微信内浏览器页面）不再加入本 uni-app 项目，统一放到独立项目 `registration_system_h5/`（规划待创建，纯 Web 技术栈，静态产物推送到 jd 服务器 nginx，经 `match.oryjk.cn` 对外服务）。该项目必须实现上述一次性 code 兑换协议（`webview_code`/`webview_identity_*` 参数 + 两个 `/auth/webview-codes*` 接口）作为登录态契约；本项目 `src/utils/webview.ts` 与 `src/main.ts` 里的桥接代码即为该协议的参考实现。
-- 微信侧前置条件（仓库外手动配置）：公众平台为小程序 `wx0b5cef0e7f1af280` 配置业务域名 `match.oryjk.cn`（443 端口 HTTPS，需 ICP 备案），校验文件需放到该域名根路径（out109 nginx 层操作）。
+- 微信侧前置条件（仓库外手动配置）：公众平台为小程序 `wx0b5cef0e7f1af280` 配置业务域名 `match.oryjk.cn`（443 端口 HTTPS，需 ICP 备案），校验文件需放到该域名根路径（jd 的 nginx-server 层操作）。
 - **业务域名硬限制**：web-view 的 src 必须是 443 默认端口的 HTTPS（业务域名不能配端口，而服务器域名/request 合法域名可以）。因此验收环境现有的 `https://oryjk.cn:82/mini-v3/` 不能直接用于 web-view，`match.oryjk.cn` 的 443 入口需指向同一份 H5 静态文件，`:82` 入口保留给浏览器直连与 API。开发者工具勾选「不校验业务域名」可绕过该限制做本地调试。
 
 ## 协作约定

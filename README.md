@@ -146,3 +146,7 @@ flutter run
 - **新版 React 管理后台**：登录、鉴权、仪表盘、比赛（CRUD、状态、比分、球队申请）、球队（成员/队长/资料及队费入账）、比赛管理员、系统管理员、接入状态、小程序审核、打赏与系统设置已落地。入口为 `src/main.tsx` → `src/router.tsx`。
 - **小程序/H5**：**已对接 Go 后端**（`mini-rust-backend-final` 是最后一个 Rust 后端基线）；主流程使用 Go Match API；已删除无 Go 后端支持的旧约队详情、活动请求与旧报名分支，历史约队/活动通知仅保留内容、不提供跳转；`src/mock/` 仅作历史原型留存。
 - **移动管理 App**：已初始化 Flutter iOS/Android 项目，提供登录 + 工作台 + 创建比赛 + 创建球队首版页面；当前**已暂停开发**。
+
+## 当前部署（jd）
+
+Go 后端、报名 H5、管理端及 MinIO 已迁到 jd。发布使用 `./deploy_jd_go_h5.sh`，只读检查使用 `./deploy_jd_go_h5.sh --check`；详细说明见 [jd 部署文档](docs/deployment-jd.md)。旧脚本名仅兼容转调 jd。

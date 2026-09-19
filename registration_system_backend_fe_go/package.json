@@ -10,7 +10,7 @@
     "dev": "cross-env ADMIN_API_BASE_URL=/go-api vite --host 0.0.0.0",
     "build": "cross-env ADMIN_PUBLIC_PATH=/ ADMIN_ROUTE_BASE=/ vite build",
     "build:nginx": "cross-env ADMIN_PUBLIC_PATH=/registration-admin/ ADMIN_ROUTE_BASE=/registration-admin/ vite build",
-    "build:out109": "cross-env ADMIN_PUBLIC_PATH=/regist-admin-v3/ ADMIN_ROUTE_BASE=/regist-admin-v3/ ADMIN_API_BASE_URL=https://oryjk.cn:82/regist-v3 vite build",
+    "build:out109": "bun run build:jd",
     "type-check": "tsc --noEmit",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
@@ -19,7 +19,8 @@
     "perf:budget": "node scripts/entry-budget.mjs --max-gzip 220000",
     "perf:measure": "node scripts/measure-login-performance.mjs",
     "test:e2e": "cross-env PORT=5175 playwright test",
-    "test:e2e:nginx": "bun run build:nginx && cross-env PORT=5185 PLAYWRIGHT_DIST_BASE=/registration-admin/ PLAYWRIGHT_BASE_URL=http://127.0.0.1:5185/registration-admin/ playwright test e2e/admin-routing.spec.ts"
+    "test:e2e:nginx": "bun run build:nginx && cross-env PORT=5185 PLAYWRIGHT_DIST_BASE=/registration-admin/ PLAYWRIGHT_BASE_URL=http://127.0.0.1:5185/registration-admin/ playwright test e2e/admin-routing.spec.ts",
+    "build:jd": "cross-env ADMIN_PUBLIC_PATH=/regist-admin-v3/ ADMIN_ROUTE_BASE=/regist-admin-v3/ ADMIN_API_BASE_URL=https://oryjk.cn:82/regist-v3 vite build"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
