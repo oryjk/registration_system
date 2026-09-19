@@ -6,7 +6,10 @@
 import { writeFile } from 'node:fs/promises';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
+// PNG 进包（static 会被整体拷入小程序包，注意 2MB 主包上限，必要时做调色板量化）；
+// SVG 是可编辑矢量源，只留在脚本目录，不打进包里。
 const output = new URL('../../src/static/illustrations/', import.meta.url);
+const svgSource = new URL('./', import.meta.url);
 const count = 16;
 const width = 320;
 const height = 240;
@@ -103,7 +106,7 @@ function frame(index) {
 
 const frames = Array.from({ length: count }, (_, index) => `<g transform="translate(${(index % 4) * width} ${Math.floor(index / 4) * height})">${frame(index)}</g>`).join('');
 const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width * 4}" height="${height * 4}" viewBox="0 0 ${width * 4} ${height * 4}">${frames}</svg>`;
-await writeFile(new URL('dribbling-sprite.svg', output), svg);
+await writeFile(new URL('dribbling-sprite.svg', svgSource), svg);
 const sharpModule = process.argv[2] ? pathToFileURL(process.argv[2]).href : 'sharp';
 const { default: sharp } = await import(sharpModule);
 await sharp(Buffer.from(svg), { density: 144 }).png().toFile(fileURLToPath(new URL('dribbling-sprite.png', output)));
