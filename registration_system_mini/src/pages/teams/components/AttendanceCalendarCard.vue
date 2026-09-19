@@ -423,4 +423,10 @@ function closeDayMatches() {
   font-weight: 750;
   line-height: 1.35;
 }
+
+/* #ifdef H5 */
+.calendar-popup {
+  max-width: 694rpx;
+}
+/* #endif */
 </style>
