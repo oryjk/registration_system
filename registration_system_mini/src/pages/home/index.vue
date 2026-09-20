@@ -97,8 +97,8 @@ const upcomingEmptyText = computed(() => (
 ));
 const activeHomeTab = ref<HomeContentTab>("mine");
 const otherMatches = useHomeOtherMatches();
-// L1「球队即标题」：登录且加入 ≥ 2 支球队时，顶部标题位换成球队切换入口；否则保持「首页」标题。
-const showTeamSwitcher = computed(() => !isGuestMode.value && teamProfiles.value.length >= 2);
+// L1「球队即标题」：登录且有球队时标题位显示球队身份；≥2 支可下拉切换，单队纯展示。
+const showTeamSwitcher = computed(() => !isGuestMode.value && teamProfiles.value.length >= 1);
 // banner 位优先展示「下一场比赛」（最近要处理的首场），下方列表从第二场开始，避免重复。
 const heroNextMatch = computed(() => upcomingMatches.value[0] ?? null);
 const shareTitle = "约球开踢：组队、报名、上场";

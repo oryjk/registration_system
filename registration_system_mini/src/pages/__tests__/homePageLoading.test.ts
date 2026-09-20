@@ -47,18 +47,21 @@ describe("home page loading states", () => {
     expect(homePageSource.includes("await otherMatchesRefresh;")).toEqual(true);
   });
 
-  test("swaps the home title for the L1 team switcher when logged in with multiple teams", async () => {
+  test("swaps the home title for the L1 team switcher when logged in with at least one team", async () => {
     const homePageSource = await sourceFile("pages/home/index.vue").text();
     const switcherSource = await sourceFile("pages/home/components/HomeTeamSwitcher.vue").text();
     const headerSource = await sourceFile("components/AppTabHeader.vue").text();
 
     expect(headerSource.includes('<slot name="title">')).toEqual(true);
-    expect(homePageSource.includes("const showTeamSwitcher = computed(() => !isGuestMode.value && teamProfiles.value.length >= 2);")).toEqual(true);
+    expect(homePageSource.includes("const showTeamSwitcher = computed(() => !isGuestMode.value && teamProfiles.value.length >= 1);")).toEqual(true);
     expect(homePageSource.includes("<HomeTeamSwitcher")).toEqual(true);
     expect(homePageSource.includes('@switch-team="switchTeam"')).toEqual(true);
     // 选项行 logo 优先、无 logo 回退首字；切换事件带 teamId。
     expect(switcherSource.includes("team.logoUrl")).toEqual(true);
     expect(switcherSource.includes('(event: "switchTeam", teamId: number): void;')).toEqual(true);
+    // 单队：入口仅作身份展示——无箭头、点击不弹面板。
+    expect(switcherSource.includes("if (props.teams.length < 2) return;")).toEqual(true);
+    expect(switcherSource.includes('v-if="teams.length >= 2" class="home-team-entry__caret"')).toEqual(true);
   });
 
   test("does not refresh the home page on every onShow; uses hidden duration threshold and pending-reload flag instead", async () => {

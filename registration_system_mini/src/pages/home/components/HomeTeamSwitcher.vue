@@ -23,6 +23,8 @@ const overlayStyle = { top: `${headerBottomPx}px` };
 const panelStyle = { top: `${headerBottomPx + 6}px` };
 
 function toggle() {
+  // 单队无切换对象：入口只作身份展示，不弹面板。
+  if (props.teams.length < 2) return;
   isOpen.value = !isOpen.value;
 }
 
@@ -48,7 +50,7 @@ function handleSelect(team: TeamProfileViewModel) {
         <text v-else class="home-team-entry__initial">{{ currentTeam.name.slice(0, 1) || "队" }}</text>
       </view>
       <text class="home-team-entry__name">{{ currentTeam.name }}</text>
-      <text class="home-team-entry__caret">{{ isOpen ? "▴" : "▾" }}</text>
+      <text v-if="teams.length >= 2" class="home-team-entry__caret">{{ isOpen ? "▴" : "▾" }}</text>
     </view>
 
     <view v-if="isOpen" class="home-team-overlay" :style="overlayStyle" @tap="close" />
@@ -88,7 +90,7 @@ function handleSelect(team: TeamProfileViewModel) {
 .home-team-entry {
   display: flex;
   align-items: center;
-  gap: 12rpx;
+  gap: 10rpx;
   min-height: 64rpx;
   padding: 0 8rpx 0 4rpx;
 }
@@ -98,13 +100,13 @@ function handleSelect(team: TeamProfileViewModel) {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  width: 56rpx;
-  height: 56rpx;
+  width: 52rpx;
+  height: 52rpx;
   overflow: hidden;
-  border: var(--neo-border-strong);
-  border-radius: 14rpx;
+  border: var(--neo-border-default);
+  border-radius: 12rpx;
   background: var(--neo-color-surface);
-  box-shadow: 4rpx 4rpx 0 var(--neo-color-text);
+  box-shadow: 3rpx 3rpx 0 var(--neo-color-text);
   box-sizing: border-box;
 }
 
@@ -115,17 +117,16 @@ function handleSelect(team: TeamProfileViewModel) {
 
 .home-team-entry__initial {
   color: var(--neo-color-text);
-  font-size: 28rpx;
+  font-size: 26rpx;
   font-weight: 900;
 }
 
 .home-team-entry__name {
-  max-width: 320rpx;
+  max-width: 340rpx;
   overflow: hidden;
   color: var(--neo-color-text);
-  font-size: 40rpx;
-  font-weight: 900;
-  letter-spacing: 1rpx;
+  font-size: 34rpx;
+  font-weight: 800;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
@@ -137,7 +138,7 @@ function handleSelect(team: TeamProfileViewModel) {
 .home-team-entry__caret {
   margin-top: 2rpx;
   color: var(--neo-color-text-muted);
-  font-size: 26rpx;
+  font-size: 24rpx;
   font-weight: 900;
   line-height: 1;
 }
