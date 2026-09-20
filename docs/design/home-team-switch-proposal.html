@@ -1,0 +1,1383 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>首页 · 切换球队入口 — 设计提案</title>
+<style>
+  /* ================================================================
+     提案页画布 —— 编辑式排版，让手机 mockup 当主角
+     页面本身克制留白；Neo 设计语言只出现在 mockup 内部，保证还原度
+     ================================================================ */
+  :root {
+    --paper: #FAF9F5;
+    --card: #FFFFFF;
+    --line: #E8E4DA;
+    --ink: #171A16;
+    --muted: #6F7369;
+    --faint: #A3A69C;
+    --lime: #B9F24B;
+    --lime-deep: #4F6800;
+    --amber: #E8B84B;
+
+    /* mockup 内部的 Neo token（与小程序 neo-tokens 一致，1px ≈ 2rpx） */
+    --n-canvas: #F4F0E8;
+    --n-surface: #FFFDF8;
+    --n-ink: #111310;
+    --n-muted: #4D514B;
+    --n-lime: #B9F24B;
+    --n-lime-soft: #EAF7CE;
+    --n-lime-deep: #4F6800;
+    --n-blue: #DCE6FF;
+    --n-amber-soft: #FFE2A8;
+    --n-track: #F0ECE4;
+    --n-hero: #172018;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .topline { height: 4px; background: var(--lime); border-bottom: 1px solid var(--n-ink); }
+
+  .wrap { max-width: 1240px; margin: 0 auto; padding: 0 44px; }
+
+  /* ---------- 页眉 ---------- */
+  .hero { padding: 64px 0 52px; }
+  .hero .eyebrow {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 11px; font-weight: 800; letter-spacing: 3px; color: var(--muted);
+  }
+  .hero .eyebrow::before {
+    content: ""; width: 10px; height: 10px; background: var(--lime);
+    border: 1.5px solid var(--ink); border-radius: 2px;
+  }
+  .hero h1 {
+    margin-top: 18px;
+    font-size: 38px; font-weight: 800; letter-spacing: -0.5px; line-height: 1.25;
+  }
+  .hero .sub {
+    margin-top: 16px; max-width: 640px;
+    font-size: 14px; line-height: 1.9; color: var(--muted);
+  }
+  .hero .sub b { color: var(--ink); font-weight: 700; }
+  .hero .meta { display: flex; gap: 8px; margin-top: 22px; flex-wrap: wrap; }
+  .hero .meta span {
+    font-size: 11.5px; font-weight: 700; color: var(--muted);
+    border: 1px solid var(--line); background: var(--card);
+    border-radius: 999px; padding: 5px 12px;
+  }
+
+  /* ---------- 方案区块 ---------- */
+  .proposal {
+    position: relative;
+    display: grid;
+    grid-template-columns: 330px 1fr;
+    gap: 48px;
+    padding: 72px 0;
+    border-top: 1px solid var(--line);
+  }
+  .p-ghost {
+    position: absolute; top: 34px; left: -6px;
+    font-size: 120px; font-weight: 900; line-height: 1;
+    color: rgba(185, 242, 75, 0.38);
+    letter-spacing: -6px; pointer-events: none; user-select: none;
+  }
+  .p-info { position: relative; z-index: 1; }
+  .p-index {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; margin-bottom: 14px;
+    background: var(--ink); color: var(--lime);
+    font-size: 14px; font-weight: 900; border-radius: 3px;
+  }
+  .p-info h2 { font-size: 22px; font-weight: 800; line-height: 1.35; letter-spacing: -0.3px; }
+  .p-form {
+    display: inline-block; margin-top: 10px;
+    font-size: 11.5px; font-weight: 700; color: var(--lime-deep);
+    background: #F1F7DF; border: 1px solid #DCE8B8; border-radius: 3px;
+    padding: 4px 9px;
+  }
+  .p-desc { margin-top: 16px; font-size: 13px; line-height: 1.85; color: var(--muted); }
+  .p-desc b { color: var(--ink); font-weight: 700; }
+  .p-points { margin-top: 18px; display: grid; gap: 9px; list-style: none; }
+  .p-points li {
+    display: flex; gap: 9px; align-items: flex-start;
+    font-size: 12.5px; line-height: 1.65; color: var(--muted);
+  }
+  .p-points li::before {
+    content: ""; flex-shrink: 0; width: 7px; height: 7px; margin-top: 6px;
+    border-radius: 50%; background: var(--lime); box-shadow: inset 0 0 0 1.5px var(--lime-deep);
+  }
+  .p-points li.warn::before { background: var(--amber); box-shadow: inset 0 0 0 1.5px #9A6F14; }
+  .p-points li b { color: var(--ink); font-weight: 700; }
+
+  .p-phones { display: flex; gap: 28px; flex-wrap: wrap; }
+  .shot { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+  .shot figcaption {
+    font-size: 12px; font-weight: 700; color: var(--faint); letter-spacing: 1.5px;
+  }
+  .shot figcaption b { color: var(--ink); }
+
+  /* ---------- 手机 mockup ---------- */
+  .phone {
+    width: 391px; padding: 8px;
+    background: #1B1E1A;
+    border-radius: 52px;
+    box-shadow: 0 24px 48px -18px rgba(23, 26, 22, 0.45), inset 0 2px 0 rgba(255,255,255,0.08);
+  }
+  .screen {
+    position: relative; width: 375px; height: 700px;
+    background: var(--n-canvas);
+    border-radius: 44px; overflow: hidden;
+    display: flex; flex-direction: column;
+  }
+  .island {
+    position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+    width: 98px; height: 26px; background: #111310; border-radius: 14px; z-index: 40;
+  }
+
+  /* 状态栏 */
+  .sbar {
+    height: 48px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 6px 28px 0 32px;
+    font-size: 14px; font-weight: 700;
+    z-index: 5;
+  }
+  .sbar .sicons { display: flex; align-items: center; gap: 6px; }
+  .sbar svg { display: block; color: var(--n-ink); }
+
+  /* 自定义导航 */
+  .nheader {
+    flex-shrink: 0; position: relative; z-index: 30;
+    background: var(--n-canvas);
+    border-bottom: 1px solid var(--n-ink);
+    padding-bottom: 7px;
+  }
+  .nrow { height: 44px; display: flex; align-items: center; padding-left: 16px; gap: 8px; }
+  .ntitle { font-size: 17px; font-weight: 800; letter-spacing: 0.5px; }
+
+  /* 微信原生胶囊（视觉模拟） */
+  .wxcap {
+    margin-right: 8px; flex-shrink: 0;
+    width: 87px; height: 32px; border-radius: 16px;
+    background: rgba(255, 253, 248, 0.72);
+    border: 1px solid rgba(17, 19, 16, 0.08);
+    display: flex; align-items: center;
+  }
+  .wxcap .side { flex: 1; display: flex; align-items: center; justify-content: center; color: rgba(17,19,16,0.82); }
+  .wxcap .sep { width: 1px; height: 18px; background: rgba(17, 19, 16, 0.12); }
+
+  /* ---------- 入口 A：队名胶囊 ---------- */
+  .tcap {
+    margin-left: auto; flex-shrink: 0;
+    height: 32px; border-radius: 16px;
+    display: flex; align-items: center; gap: 6px;
+    padding: 0 10px 0 4px;
+    background: rgba(255, 253, 248, 0.72);
+    border: 1px solid rgba(17, 19, 16, 0.08);
+    max-width: 152px;
+  }
+  .tcap.open { background: var(--n-lime); border: 1px solid var(--n-ink); }
+  .tcap .logo { flex-shrink: 0; }
+  .tcap .tname {
+    font-size: 12.5px; font-weight: 800;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .tcap .caret { flex-shrink: 0; color: var(--n-muted); display: flex; }
+
+  /* ---------- 入口 B：队徽角标 ---------- */
+  .crest {
+    margin-left: auto; margin-right: 8px; position: relative; flex-shrink: 0;
+    width: 37px; height: 37px;
+  }
+  .crest .face {
+    width: 36px; height: 36px;
+    background: var(--n-surface);
+    border: 1.5px solid var(--n-ink); border-radius: 8px;
+    box-shadow: 2px 2px 0 var(--n-ink);
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+  }
+  .crest.open .face { background: var(--n-lime); }
+  .crest .swap {
+    position: absolute; right: -5px; bottom: -5px;
+    width: 16px; height: 16px; border-radius: 50%;
+    background: var(--n-lime); border: 1px solid var(--n-ink);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--n-ink);
+  }
+
+  /* ---------- 入口 C：轻文字 ---------- */
+  .ttext {
+    margin-left: auto; margin-right: 8px; flex-shrink: 0;
+    height: 32px; display: flex; align-items: center; gap: 4px;
+    font-size: 13px; font-weight: 800; max-width: 140px;
+  }
+  .ttext .tname { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ttext .caret { color: var(--n-muted); display: flex; }
+  .ttext.open .tname { color: var(--lime-deep); }
+
+  /* ---------- mockup 正文 ---------- */
+  .nbody { flex: 1; overflow: hidden; padding: 12px 14px 0; }
+
+  .nhero {
+    height: 92px; background: var(--n-hero);
+    border: 1.5px solid var(--n-ink); border-radius: 3px;
+    box-shadow: 4px 4px 0 var(--n-ink);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 18px;
+  }
+  .nhero .slogan { font-size: 15px; font-weight: 800; letter-spacing: 1.5px; color: #FFFDF8; }
+  .nhero .slogan small {
+    display: block; margin-top: 6px;
+    font-size: 8.5px; font-weight: 600; letter-spacing: 3px;
+    color: rgba(255, 253, 248, 0.5);
+  }
+
+  .nseg {
+    margin-top: 14px; height: 34px;
+    background: #ECE9E1; border-radius: 2px;
+    display: flex; padding: 3px; gap: 4px;
+  }
+  .nseg .s {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    font-size: 12.5px; font-weight: 600; color: var(--n-muted); border-radius: 2px;
+  }
+  .nseg .s.on { background: var(--n-lime); color: var(--n-ink); font-weight: 800; }
+
+  .nsec { margin-top: 16px; display: flex; align-items: center; gap: 8px; }
+  .nsec .mk {
+    font-size: 10px; font-weight: 800;
+    border: 1px solid var(--n-ink); border-radius: 2px;
+    background: var(--n-surface); padding: 1px 6px;
+  }
+  .nsec .t { font-size: 14.5px; font-weight: 800; }
+  .nsec .more { margin-left: auto; font-size: 10.5px; font-weight: 600; color: var(--n-muted); }
+
+  /* 比赛卡 */
+  .mcard {
+    margin-top: 10px; background: var(--n-surface);
+    border: 1.5px solid var(--n-ink); border-radius: 3px;
+    box-shadow: 4px 4px 0 var(--n-ink);
+    padding: 12px; display: flex; gap: 12px;
+  }
+  .dblock {
+    width: 54px; flex-shrink: 0;
+    background: var(--n-ink); color: var(--n-surface);
+    border-radius: 2px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 7px 0 6px;
+  }
+  .dblock .mo { font-size: 9px; font-weight: 800; opacity: 0.65; letter-spacing: 1px; }
+  .dblock .d { font-size: 20px; font-weight: 900; line-height: 1.15; margin-top: 1px; }
+  .dblock .w {
+    font-size: 9px; font-weight: 800; margin-top: 4px;
+    background: var(--n-lime); color: var(--n-ink);
+    padding: 1px 5px; border-radius: 2px;
+  }
+  .dblock.slim { width: 42px; padding: 6px 0 5px; }
+  .dblock.slim .d { font-size: 16px; }
+  .mcard .info { flex: 1; min-width: 0; }
+  .mcard .mname { font-size: 13.5px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mcard .mmeta { margin-top: 4px; font-size: 10.5px; font-weight: 600; color: var(--n-muted); line-height: 1.6; }
+  .chips { margin-top: 7px; display: flex; gap: 6px; align-items: center; }
+  .nchip {
+    font-size: 9.5px; font-weight: 800;
+    border: 1px solid var(--n-ink); border-radius: 2px;
+    padding: 2px 6px; background: var(--n-surface);
+  }
+  .nchip.lime { background: var(--n-lime); }
+  .nchip.blue { background: var(--n-blue); }
+  .prow { margin-top: 9px; display: flex; align-items: center; gap: 8px; }
+  .ptrack { flex: 1; height: 7px; background: var(--n-track); border-radius: 1px; overflow: hidden; }
+  .pfill { width: 76%; height: 100%; background: var(--n-lime); border-right: 1px solid var(--n-ink); }
+  .pnum { font-size: 9.5px; font-weight: 800; color: var(--n-muted); }
+  .avrow { display: flex; }
+  .avrow i {
+    width: 17px; height: 17px; border-radius: 50%;
+    border: 1.5px solid var(--n-surface);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 8px; font-weight: 800; font-style: normal;
+    margin-left: -5px;
+  }
+  .avrow i:first-child { margin-left: 0; }
+  .avrow i.a { background: var(--n-amber-soft); }
+  .avrow i.b { background: var(--n-blue); }
+  .avrow i.c { background: var(--n-lime-soft); }
+
+  .mcard.slim { box-shadow: 3px 3px 0 var(--n-ink); padding: 10px 12px; }
+
+  /* 底部 tabbar */
+  .ntab {
+    position: absolute; left: 0; right: 0; bottom: 0; z-index: 5;
+    height: 58px; background: var(--n-surface);
+    border-top: 1.5px solid var(--n-ink);
+    display: flex; align-items: center;
+  }
+  .ntab .ti {
+    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px;
+    font-size: 9px; font-weight: 600; color: var(--n-muted);
+  }
+  .ntab .ti .ic {
+    width: 27px; height: 27px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .ntab .ti.on { color: var(--n-ink); font-weight: 800; }
+  .ntab .ti.on .ic { background: var(--n-lime); border: 1px solid var(--n-ink); }
+  .homebar {
+    position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%);
+    width: 112px; height: 4px; border-radius: 3px;
+    background: rgba(17, 19, 16, 0.8); z-index: 6;
+  }
+
+  /* ---------- 展开层 ---------- */
+  .dim { position: absolute; inset: 0; background: rgba(17, 19, 16, 0.34); z-index: 20; }
+
+  .dropdown {
+    position: absolute; top: 99px; right: 12px; z-index: 25;
+    width: 294px;
+    background: var(--n-surface);
+    border: 1.5px solid var(--n-ink); border-radius: 3px;
+    box-shadow: 5px 5px 0 var(--n-ink);
+    padding: 5px;
+  }
+  .dd-head {
+    display: flex; align-items: baseline; gap: 8px;
+    padding: 9px 11px 10px; border-bottom: 1px solid var(--n-ink);
+    margin-bottom: 4px;
+  }
+  .dd-head .t { font-size: 13px; font-weight: 800; }
+  .dd-head .c { font-size: 9.5px; font-weight: 600; color: var(--n-muted); }
+  .dd-head .x { margin-left: auto; align-self: center; color: var(--n-muted); display: flex; }
+
+  .opt {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 10px; border-radius: 2px;
+  }
+  .opt + .opt { margin-top: 2px; }
+  .opt .tlogo {
+    width: 30px; height: 30px; flex-shrink: 0;
+    border: 1px solid var(--n-ink); border-radius: 7px;
+    background: var(--n-surface); overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 900;
+  }
+  .opt .tlogo.fallback { background: var(--n-amber-soft); }
+  .opt .copy { flex: 1; min-width: 0; }
+  .opt .tname2 { font-size: 13px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .opt .tmeta { margin-top: 2px; font-size: 10px; font-weight: 600; color: var(--n-muted); }
+  .opt .go { color: var(--n-muted); display: flex; }
+  .opt .now {
+    font-size: 9px; font-weight: 800;
+    background: var(--n-lime); border: 1px solid var(--n-ink);
+    border-radius: 2px; padding: 2.5px 7px;
+  }
+  .opt.cur { background: var(--n-blue); outline: 1px solid var(--n-ink); outline-offset: -1px; }
+
+  /* 左侧变体：下拉面板锚定左缘 */
+  .dropdown.left { left: 14px; right: auto; }
+  .tcap.keep-left { margin-left: 0; }
+
+  /* ---------- 左上角精修：标题 × 切换器融合 ---------- */
+  /* L1 球队即标题 */
+  .l1-row { height: 46px; display: flex; align-items: center; gap: 10px; padding-left: 16px; }
+  .l1-row .llogo {
+    width: 28px; height: 28px; flex-shrink: 0;
+    border: 1.5px solid var(--n-ink); border-radius: 7px;
+    background: var(--n-surface); box-shadow: 2px 2px 0 var(--n-ink);
+    display: flex; align-items: center; justify-content: center; overflow: hidden;
+  }
+  .l1-row .lname { font-size: 21px; font-weight: 900; letter-spacing: 0.5px; }
+  .l1-row .lcaret { color: var(--n-muted); display: flex; margin-top: 3px; }
+  .l1-row.open .lname { color: var(--n-lime-deep); }
+
+  /* L2 主副标题 */
+  .l2-row { min-height: 56px; display: flex; flex-direction: column; justify-content: center; gap: 3px; padding-left: 16px; }
+  .l2-eyebrow { font-size: 10px; font-weight: 800; letter-spacing: 3px; color: var(--n-muted); }
+  .l2-main { display: flex; align-items: center; gap: 8px; }
+  .l2-main .llogo {
+    width: 22px; height: 22px; flex-shrink: 0;
+    border: 1px solid var(--n-ink); border-radius: 5px;
+    background: var(--n-surface); overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .l2-main .lname { font-size: 18px; font-weight: 900; }
+  .l2-main .lcaret { color: var(--n-muted); display: flex; margin-top: 2px; }
+  .l2-row.open .lname { color: var(--n-lime-deep); }
+
+  /* L3 面包屑内联 */
+  .l3-row { height: 46px; display: flex; align-items: baseline; gap: 8px; padding-left: 16px; }
+  .l3-row .lhome { font-size: 16px; font-weight: 800; color: var(--n-muted); }
+  .l3-row .lsep { font-size: 13px; font-weight: 700; color: var(--n-muted); opacity: 0.6; }
+  .l3-row .lname {
+    font-size: 15.5px; font-weight: 800; color: var(--n-lime-deep);
+    border-bottom: 2px solid var(--n-lime); padding-bottom: 2px;
+  }
+  .l3-row .lcaret { color: var(--n-lime-deep); display: flex; align-self: center; }
+
+  /* 底部弹层（方案 B） */
+  .sheet {
+    position: absolute; left: 0; right: 0; bottom: 0; z-index: 25;
+    background: var(--n-surface);
+    border-top: 1.5px solid var(--n-ink);
+    border-radius: 3px 3px 0 0;
+    box-shadow: 0 -3px 0 var(--n-ink);
+    padding: 10px 14px 24px;
+  }
+  .sheet .grab { width: 36px; height: 4px; border-radius: 2px; background: #E5E1D9; margin: 0 auto 13px; }
+  .sheet .sh-head { display: flex; align-items: flex-start; gap: 10px; }
+  .sheet .sh-t { font-size: 16px; font-weight: 900; line-height: 1.3; }
+  .sheet .sh-c { margin-top: 3px; font-size: 10.5px; font-weight: 600; color: var(--n-muted); }
+  .sheet .sh-x {
+    margin-left: auto; width: 26px; height: 26px; flex-shrink: 0;
+    border: 1px solid var(--n-ink); border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--n-muted); background: var(--n-surface);
+  }
+  .sopt {
+    margin-top: 9px; background: var(--n-surface);
+    border: 1.5px solid var(--n-ink); border-radius: 3px;
+    box-shadow: 2px 2px 0 var(--n-ink);
+    display: flex; align-items: center; gap: 10px; padding: 9px 12px;
+  }
+  .sopt.cur { background: var(--n-blue); }
+
+  /* ---------- 边界状态 ---------- */
+  .edges {
+    margin-top: 68px; background: var(--card);
+    border: 1px solid var(--line); border-radius: 10px;
+    padding: 30px 32px;
+    box-shadow: 0 1px 2px rgba(23,26,22,0.04);
+  }
+  .edges h3 { font-size: 17px; font-weight: 800; }
+  .edges .sub { margin-top: 6px; font-size: 12.5px; color: var(--muted); line-height: 1.7; }
+  .edge-grid { margin-top: 22px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .edge {
+    border: 1px solid var(--line); border-radius: 8px;
+    background: var(--paper); padding: 16px 18px;
+  }
+  .edge .k {
+    display: inline-block; font-size: 10.5px; font-weight: 800;
+    border-radius: 3px; padding: 3px 8px; margin-bottom: 10px;
+  }
+  .edge .k.show { background: var(--lime); border: 1px solid var(--n-ink); }
+  .edge .k.hide { background: #EFEDE6; border: 1px solid var(--line); color: var(--muted); }
+  .edge .k.optk { background: var(--n-amber-soft); border: 1px solid var(--n-ink); }
+  .edge .v { font-size: 12.5px; line-height: 1.75; color: var(--muted); }
+  .edge .v b { color: var(--ink); }
+  .strip {
+    margin-top: 12px; height: 42px;
+    background: var(--n-canvas);
+    border: 1px solid var(--line); border-radius: 6px;
+    display: flex; align-items: center; gap: 8px; padding: 0 10px;
+  }
+  .strip .ht { font-size: 12px; font-weight: 800; }
+  .strip .mini-entry {
+    margin-left: auto; height: 26px; border-radius: 13px;
+    display: flex; align-items: center; gap: 5px; padding: 0 9px 0 3px;
+    background: var(--n-surface); border: 1px solid rgba(17,19,16,0.12);
+    font-size: 10.5px; font-weight: 800;
+  }
+  .strip .mini-entry .ml {
+    width: 20px; height: 20px; border: 1px solid var(--n-ink); border-radius: 5px;
+    display: flex; align-items: center; justify-content: center; overflow: hidden;
+  }
+  .strip .mini-wx {
+    width: 62px; height: 26px; border-radius: 13px; flex-shrink: 0;
+    background: rgba(255,253,248,0.72); border: 1px solid rgba(17,19,16,0.08);
+    display: flex; align-items: center; justify-content: space-evenly; color: rgba(17,19,16,0.8);
+  }
+  .strip .join {
+    margin-left: auto; height: 26px; border-radius: 13px;
+    display: flex; align-items: center; gap: 3px; padding: 0 11px;
+    border: 1.5px dashed var(--n-ink); background: rgba(255,253,248,0.7);
+    font-size: 10.5px; font-weight: 800;
+  }
+
+  /* ---------- 对比总结 ---------- */
+  .compare {
+    margin: 40px 0 96px;
+    background: var(--n-hero); color: rgba(255,253,248,0.88);
+    border-radius: 12px; padding: 32px 36px;
+    box-shadow: 0 24px 48px -20px rgba(23,26,22,0.5);
+  }
+  .compare h3 { font-size: 18px; font-weight: 800; color: var(--lime); }
+  .compare table { width: 100%; border-collapse: collapse; margin-top: 18px; }
+  .compare th {
+    text-align: left; font-size: 10.5px; font-weight: 800; letter-spacing: 1.5px;
+    color: rgba(255,253,248,0.45); padding: 8px 12px;
+    border-bottom: 1px solid rgba(255,253,248,0.16);
+  }
+  .compare td {
+    font-size: 12.5px; font-weight: 500; padding: 11px 12px;
+    border-bottom: 1px solid rgba(255,253,248,0.1);
+  }
+  .compare td:first-child { font-weight: 800; color: #FFFDF8; }
+  .compare td .yes { color: var(--lime); font-weight: 800; }
+  .compare td .no { color: rgba(255,253,248,0.4); font-weight: 700; }
+  .compare .note {
+    margin-top: 18px; font-size: 12.5px; line-height: 1.9; color: rgba(255,253,248,0.66);
+  }
+  .compare .note b { color: var(--lime); font-weight: 700; }
+
+  footer {
+    border-top: 1px solid var(--line);
+    padding: 22px 0 34px;
+    font-size: 11.5px; color: var(--faint); letter-spacing: 1px;
+    display: flex; justify-content: space-between;
+  }
+
+  @media (max-width: 1120px) {
+    .proposal { grid-template-columns: 1fr; gap: 32px; }
+    .edge-grid { grid-template-columns: 1fr; }
+    .wrap { padding: 0 20px; }
+    .hero { padding: 40px 0 36px; }
+    .hero h1 { font-size: 30px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- SVG 符号库：状态栏 / 胶囊 / 图标 / 球队 logo -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-caret" viewBox="0 0 10 6"><path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-caret-up" viewBox="0 0 10 6"><path d="M1 5l4-4 4 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-right" viewBox="0 0 6 10"><path d="M1 1l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-swap" viewBox="0 0 10 10"><path d="M1 3h6.5M5.8 1.2L7.7 3l-1.9 1.8M9 7H2.5M4.2 5.2L2.3 7l1.9 1.8" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-close" viewBox="0 0 10 10"><path d="M1.2 1.2l7.6 7.6M8.8 1.2L1.2 8.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+    <symbol id="i-dots" viewBox="0 0 16 4"><circle cx="2.5" cy="2" r="1.5" fill="currentColor"/><circle cx="8" cy="2" r="1.5" fill="currentColor"/><circle cx="13.5" cy="2" r="1.5" fill="currentColor"/></symbol>
+    <symbol id="i-ring" viewBox="0 0 12 12"><circle cx="6" cy="6" r="4.3" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="6" cy="6" r="1.4" fill="currentColor"/></symbol>
+    <symbol id="i-signal" viewBox="0 0 17 11"><rect x="0" y="7" width="3" height="4" rx="1" fill="currentColor"/><rect x="4.6" y="5" width="3" height="6" rx="1" fill="currentColor"/><rect x="9.2" y="3" width="3" height="8" rx="1" fill="currentColor"/><rect x="13.8" y="0.5" width="3" height="10.5" rx="1" fill="currentColor"/></symbol>
+    <symbol id="i-wifi" viewBox="0 0 16 11"><path d="M1.2 3.6a9.8 9.8 0 0 1 13.6 0" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M4.1 6.4a5.6 5.6 0 0 1 7.8 0" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="8" cy="9.4" r="1.7" fill="currentColor"/></symbol>
+    <symbol id="i-battery" viewBox="0 0 25 12"><rect x="0.6" y="0.6" width="20" height="10.8" rx="3.2" fill="none" stroke="currentColor" stroke-width="1.1"/><rect x="2.4" y="2.4" width="14.5" height="7.2" rx="1.8" fill="currentColor"/><rect x="22.2" y="3.8" width="2.2" height="4.4" rx="1.1" fill="currentColor"/></symbol>
+    <symbol id="i-home" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 8.2l3.3 2.4-1.3 3.9h-4L8.7 10.6z" fill="currentColor"/><path d="M12 8.2V3.4M15.3 10.6l4.6-1.5M14 14.5l2.9 4M10 14.5l-2.9 4M8.7 10.6L4.1 9.1" stroke="currentColor" stroke-width="1.3" fill="none"/></symbol>
+    <symbol id="i-trophy" viewBox="0 0 24 24"><path d="M7 4h10v4.5a5 5 0 0 1-10 0z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M7 5H4v1.5A3.2 3.2 0 0 0 7.2 9.7M17 5h3v1.5a3.2 3.2 0 0 1-3.2 3.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M12 13.5V16M8.8 20h6.4M10 16h4l.8 4H9.2z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v7a2.5 2.5 0 0 1-2.5 2.5H10l-5.5 4.5V15h-.5A2.5 2.5 0 0 1 4 12.5z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="9" cy="9" r="1.2" fill="currentColor"/><circle cx="12.5" cy="9" r="1.2" fill="currentColor"/><circle cx="16" cy="9" r="1.2" fill="currentColor"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M4.8 20.5a7.2 7.2 0 0 1 14.4 0" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+    <!-- hero 足球 -->
+    <symbol id="i-ball" viewBox="0 0 48 48"><circle cx="24" cy="24" r="20" fill="#B9F24B" stroke="#111310" stroke-width="2"/><path d="M24 14l8.1 5.9-3.1 9.5h-10l-3.1-9.5z" fill="#111310"/><path d="M24 14V4.5M32.1 19.9l9-3M29 29.4l5.6 7.9M19 29.4l-5.6 7.9M15.9 19.9l-9-3" stroke="#111310" stroke-width="2" fill="none"/></symbol>
+    <!-- 球队 logo：旋风FC 盾形队徽（有 logo 示例） -->
+    <symbol id="lg-whirl" viewBox="0 0 40 40">
+      <defs><clipPath id="shieldW"><path d="M20 2.5l13.5 4.7V19c0 8.8-5.7 14.6-13.5 18.2C11.2 33.6 6.5 27.8 6.5 19V7.2z"/></clipPath></defs>
+      <path d="M20 2.5l13.5 4.7V19c0 8.8-5.7 14.6-13.5 18.2C11.2 33.6 6.5 27.8 6.5 19V7.2z" fill="#172018"/>
+      <g clip-path="url(#shieldW)">
+        <path d="M1 27L31 -3" stroke="#B9F24B" stroke-width="5"/>
+        <path d="M9 36L39 6" stroke="#B9F24B" stroke-width="3"/>
+      </g>
+      <path d="M20 2.5l13.5 4.7V19c0 8.8-5.7 14.6-13.5 18.2C11.2 33.6 6.5 27.8 6.5 19V7.2z" fill="none" stroke="#111310" stroke-width="2"/>
+    </symbol>
+    <!-- 球队 logo：周末皮球会 足球徽（有 logo 示例） -->
+    <symbol id="lg-pitch" viewBox="0 0 40 40">
+      <circle cx="20" cy="20" r="16.5" fill="#FFFDF8" stroke="#111310" stroke-width="2"/>
+      <path d="M20 12.5l6.7 4.9-2.6 7.9h-8.2l-2.6-7.9z" fill="#111310"/>
+      <path d="M20 12.5V5M26.7 17.4l6.9-2.3M24.1 25.3l4.3 5.8M15.9 25.3l-4.3 5.8M13.3 17.4l-6.9-2.3" stroke="#111310" stroke-width="1.8" fill="none"/>
+    </symbol>
+  </defs>
+</svg>
+
+<div class="topline"></div>
+
+<header class="hero wrap">
+  <div class="eyebrow">MINI APP · 首页改版提案</div>
+  <h1>切换球队，放进首页顶部</h1>
+  <p class="sub">
+    入口与右上角微信胶囊同一排，一次点击直达；<b>已登录且加入 ≥ 2 支球队</b>时出现，其余状态首页保持原样。
+    球队均带 logo 展示——有队徽用队徽，没有则回退首字徽章。以下三个方案均可直接按现有 Neo 设计变量落地。
+  </p>
+  <div class="meta">
+    <span>3 个方案</span><span>入口 × 展开 可自由组合</span><span>logo 与队名同显</span><span>1px ≈ 2rpx</span>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ================= 方案 A ================= -->
+  <section class="proposal">
+    <div class="p-ghost">A</div>
+    <aside class="p-info">
+      <div class="p-index">A</div>
+      <h2>队名胶囊<br>顶部下拉</h2>
+      <span class="p-form">入口：logo + 队名胶囊 ｜ 展开：header 下拉卡片</span>
+      <p class="p-desc">
+        入口与微信胶囊<b>同高（32px）、同语言</b>：队徽 logo + 当前队名 + 下箭头。
+        左「首页」、中球队胶囊、右微信胶囊，一排三段、左右呼应。
+        点击后从 header 下缘就近展开 Neo 卡片，<b>动线最短</b>。
+      </p>
+      <ul class="p-points">
+        <li><b>队名 + logo 常驻可见</b>，随时知道自己身处哪支球队上下文</li>
+        <li>下拉就近展开，不打断浏览节奏，切完即收</li>
+        <li>长队名截断为 6 字（最大宽 152px），不影响胶囊形态</li>
+        <li class="warn">下拉面板是新组件形态，实现成本中等</li>
+      </ul>
+    </aside>
+
+    <div class="p-phones">
+      <figure class="shot">
+        <div class="phone"><div class="screen">
+          <div class="island"></div>
+          <div class="sbar"><span>9:41</span><span class="sicons"><svg width="17" height="11"><use href="#i-signal"/></svg><svg width="16" height="11"><use href="#i-wifi"/></svg><svg width="25" height="12"><use href="#i-battery"/></svg></span></div>
+          <div class="nheader">
+            <div class="nrow">
+              <span class="ntitle">首页</span>
+              <div class="tcap">
+                <svg class="logo" width="24" height="24"><use href="#lg-whirl"/></svg>
+                <span class="tname">旋风FC</span>
+                <span class="caret"><svg width="10" height="6"><use href="#i-caret"/></svg></span>
+              </div>
+              <div class="wxcap"><span class="side"><svg width="16" height="4"><use href="#i-dots"/></svg></span><span class="sep"></span><span class="side"><svg width="12" height="12"><use href="#i-ring"/></svg></span></div>
+            </div>
+          </div>
+          <div class="nbody">
+            <div class="nhero">
+              <div class="slogan">约球开踢<small>组队 · 报名 · 上场</small></div>
+              <svg width="42" height="42"><use href="#i-ball"/></svg>
+            </div>
+            <div class="nseg"><span class="s on">我的比赛</span><span class="s">广场</span></div>
+            <div class="nsec"><span class="mk">热</span><span class="t">最近要处理的比赛</span><span class="more">更多 ›</span></div>
+            <div class="mcard">
+              <div class="dblock"><span class="mo">9月</span><span class="d">26</span><span class="w">周六</span></div>
+              <div class="info">
+                <div class="mname">旋风FC × 老鹰联 · 5人制友谊赛</div>
+                <div class="mmeta">14:00 · 世纪公园足球场 · 队内报名</div>
+                <div class="chips"><span class="nchip lime">报名中</span><span class="nchip">还差 2 人成行</span></div>
+                <div class="prow"><div class="ptrack"><div class="pfill"></div></div><span class="avrow"><i class="a">李</i><i class="b">王</i><i class="c">陈</i></span><span class="pnum">12/14</span></div>
+              </div>
+            </div>
+            <div class="nsec" style="margin-top:14px"><span class="mk">赛</span><span class="t">进行中的比赛</span></div>
+            <div class="mcard slim">
+              <div class="dblock slim"><span class="mo">9月</span><span class="d">20</span></div>
+              <div class="info">
+                <div class="mname">旋风FC × 周末皮球会</div>
+                <div class="prow" style="margin-top:6px"><span class="nchip blue">进行中</span><span class="mmeta" style="margin-top:0">16:00 · 滨江足球公园</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="ntab">
+            <div class="ti on"><span class="ic"><svg width="20" height="20"><use href="#i-home"/></svg></span>首页</div>
+            <div class="ti"><span class="ic"><svg width="20" height="20"><use href="#i-trophy"/></svg></span>比赛</div>
+            <div class="ti"><span class="ic"><svg width="20" height="20"><use href="#i-chat"/></svg></span>消息</div>
+            <div class="ti"><span class="ic"><svg width="20" height="20"><use href="#i-user"/></svg></span>我的</div>
+          </div>
+          <div class="homebar"></div>
+        </div></div>
+        <figcaption>① 收起态</figcaption>
+      </figure>
+
+      <figure class="shot">
+        <div class="phone"><div class="screen">
+          <div class="island"></div>
+          <div class="sbar"><span>9:41</span><span class="sicons"><svg width="17" height="11"><use href="#i-signal"/></svg><svg width="16" height="11"><use href="#i-wifi"/></svg><svg width="25" height="12"><use href="#i-battery"/></svg></span></div>
+          <div class="nheader">
+            <div class="nrow">
+              <span class="ntitle">首页</span>
+              <div class="tcap open">
+                <svg class="logo" width="24" height="24"><use href="#lg-whirl"/></svg>
+                <span class="tname">旋风FC</span>
+                <span class="caret"><svg width="10" height="6"><use href="#i-caret-up"/></svg></span>
+              </div>
+              <div class="wxcap"><span class="side"><svg width="16" height="4"><use href="#i-dots"/></svg></span><span class="sep"></span><span class="side"><svg width="12" height="12"><use href="#i-ring"/></svg></span></div>
+            </div>
+          </div>
+          <div class="nbody">
+            <div class="nhero">
+              <div class="slogan">约球开踢<small>组队 · 报名 · 上场</small></div>
+              <svg width="42" height="42"><use href="#i-ball"/></svg>
+            </div>
+            <div class="nseg"><span class="s on">我的比赛</span><span class="s">广场</span></div>
+          </div>
+          <div class="dim"></div>
+          <div class="dropdown">
+            <div class="dd-head"><span class="t">切换当前球队</span><span class="c">比赛与信用数据随身份更新</span><span class="x"><svg width="10" height="10"><use href="#i-close"/></svg></span></div>
+            <div class="opt cur">
+              <span class="tlogo"><svg width="26" height="26"><use href="#lg-whirl"/></svg></span>
+              <span class="copy"><span class="tname2">旋风FC</span><span class="tmeta">队长 · 18 人</span></span>
+              <span class="now">当前</span>
+            </div>
+            <div class="opt">
+              <span class="tlogo fallback">鹰</span>
+              <span class="copy"><span class="tname2">老鹰联</span><span class="tmeta">队员 · 15 人</span></span>
+              <span class="go"><svg width="6" height="10"><use href="#i-right"/></svg></span>
+            </div>
+            <div class="opt">
+              <span class="tlogo"><svg width="26" height="26"><use href="#lg-pitch"/></svg></span>
+              <span class="copy"><span class="tname2">周末皮球会</span><span class="tmeta">队员 · 22 人</span></span>
+              <span class="go"><svg width="6" height="10"><use href="#i-right"/></svg></span>
+            </div>
+          </div>
+          <div class="ntab">
+            <div class="ti on"><span class="ic"><svg width="20" height="20"><use href="#i-home"/></svg></span>首页</div>
+            <div class="ti"><span class="ic"><svg width="20" height="20"><use href="#i-trophy"/></svg></span>比赛</div>
+            <div class="ti"><span class="ic"><svg width="20" height="20"><use href="#i-chat"/></svg></span>消息</div>
+            <div class="ti"><span class="ic"><svg width="20" height="20"><use href="#i-user"/></svg></span>我的</div>
+          </div>
+          <div class="homebar"></div>
+        </div></div>
+        <figcaption>② 展开 — <b>顶部下拉</b></figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- ================= 方案 A′：左侧变体 ================= -->
+  <section class="proposal">
+    <div class="p-ghost">A′</div>
+    <aside class="p-info">
+      <div class="p-index">A′</div>
+      <h2>同一方案<br>入口靠左</h2>
+      <span class="p-form">位置变体 · 适用于 A / B / C 任一入口形态</span>
+      <p class="p-desc">
+        入口紧跟「首页」标题，右侧只留微信胶囊。<b>「首页 · 旋风FC」</b>从左往右自然读出
+        「我在哪个球队的主场」；下拉面板锚定左缘。
+      </p>
+      <ul class="p-points">
+        <li><b>远离微信原生胶囊</b>——右侧紧贴 87px 宽的系统胶囊，误触会弹出设置/分享菜单；靠左无此风险</li>
+        <li>与二级页顶部<b>左侧返回胶囊</b>的既有形态呼应，全 App 顶部语言统一</li>
+        <li>触达距离与右侧持平（同一行、同为顶部），取舍点不在手够不够得着，在误触与语义</li>
+        <li class="warn">右侧是导航栏「操作区」的惯例位，靠左后「切换」的动作感稍弱，更像上下文标签</li>
+      </ul>
+    </aside>
+
+    <div class="p-phones">
+      <figure class="shot">
+        <div class="phone"><div class="screen">
+          <div class="island"></div>
+          <div class="sbar"><span>9:41</span><span class="sicons"><svg width="17" height="11"><use href="#i-signal"/></svg><svg width="16" height="11"><use href="#i-wifi"/></svg><svg width="25" height="12"><use href="#i-battery"/></svg></span></div>
+          <div class="nheader">
+            <div class="nrow">
+              <span class="ntitle">首页</span>
+              <div class="tcap keep-left">
+                <svg class="logo" width="24" height="24"><use href="#lg-whirl"/></svg>
+                <span class="tname">旋风FC</span>
+                <span class="caret"><svg width="10" height="6"><use href="#i-caret"/></svg></span>
+              </div>
+              <div class="wxcap" style="margin-left:auto"><span class="side"><svg width="16" height="4"><use href="#i-dots"/></svg></span><span class="sep"></span><span class="side"><svg width="12" height="12"><use href="#i-ring"/></svg></span></div>
+            </div>
+          </div>
+          <div class="nbody">
+            <div class="nhero">
+              <div class="slogan">约球开踢<small>组队 · 报名 · 上场</small></div>
+              <svg width="42" height="42"><use href="#i-ball"/></svg>
+            </div>
+            <div class="nseg"><span class="s on">我的比赛</span><span class="s">广场</span></div>
+            <div class="nsec"><span class="mk">热</span><span class="t">最近要处理的比赛</span><span class="more">更多 ›</span></div>
+            <div class="mcard">
+              <div class="dblock"><span class="mo">9月</span><span class="d">26</span><span class="w">周六</span></div>
+              <div class="info">
+                <div class="mname">旋风FC × 老鹰联 · 5人制友谊赛</div>
+                <div class="mmeta">14:00 · 世纪公园足球场 · 队内报名</div>
+                <div class="chips"><span class="nchip lime">报名中</span><span class="nchip">还差 2 人成行</span></div>
+                <div class="prow"><div class="ptrack"><div class="pfill"></div></div><span class="avrow"><i class="a">李</i><i class="b">王</i><i class="c">陈</i></span><span class="pnum">12/14</span></div>
+              </div>
+            </div>
+            <div class="nsec" style="margin-top:14px"><span class="mk">赛</span><span class="t">进行中的比赛</span></div>
+            <div class="mcard slim">
+              <div class="dblock slim"><span class="mo">9月</span><span class="d">20</span></div>
+              <div class="info">
+                <div class="mname">旋风FC × 周末皮球会</div>
+                <div class="prow" style="margin-top:6px"><span class="nchip blue">进行中</span><span class="mmeta" style="margin-top:0">16:00 · 滨江足球公园</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="ntab">
+            <div class="ti on"><span class="ic"><svg width="20" height="20"><use href="#i-home"/></svg></span>首页</div>
+            <div class="ti"><span class="ic"><svg width="20" height="20"><use href="#i-trophy"/></svg></span>比赛</div>
+            <div class="ti"><span class="ic"><svg width="20" height="20"><use href="#i-chat"/></svg></span>消息</div>
+            <div class="ti"><span class="ic"><svg width="20" height="20"><use href="#i-user"/></svg></span>我的</div>
+          </div>
+          <div class="homebar"></div>
+        </div></div>
+        <figcaption>① 收起态 · 入口靠左</figcaption>
+      </figure>
+
+      <figure class="shot">
+        <div class="phone"><div class="screen">
+          <div class="island"></div>
+          <div class="sbar"><span>9:41</span><span class="sicons"><svg width="17" height="11"><use href="#i-signal"/></svg><svg width="16" height="11"><use href="#i-wifi"/></svg><svg width="25" height="12"><use href="#i-battery"/></svg></span></div>
+          <div class="nheader">
+            <div class="nrow">
+              <span class="ntitle">首页</span>
+              <div class="tcap keep-left open">
+                <svg class="logo" width="24" height="24"><use href="#lg-whirl"/></svg>
+                <span class="tname">旋风FC</span>
+                <span class="caret"><svg width="10" height="6"><use href="#i-caret-up"/></svg></span>
+              </div>
+              <div class="wxcap" style="margin-left:auto"><span class="side"><svg width="16" height="4"><use href="#i-dots"/></svg></span><span class="sep"></span><span class="side"><svg width="12" height="12"><use href="#i-ring"/></svg></span></div>
+            </div>
+          </div>
+          <div class="nbody">
+            <div class="nhero">
+              <div class="slogan">约球开踢<small>组队 · 报名 · 上场</small></div>
+              <svg width="42" height="42"><use href="#i-ball"/></svg>
+            </div>
+            <div class="nseg"><span class="s on">我的比赛</span><span class="s">广场</span></div>
+          </div>
+          <div class="dim"></div>
+          <div class="dropdown left">
+            <div class="dd-head"><span class="t">切换当前球队</span><span class="c">比赛与信用数据随身份更新</span><span class="x"><svg width="10" height="10"><use href="#i-close"/></svg></span></div>
+            <div class="opt cur">
+              <span class="tlogo"><svg width="26" height="26"><use href="#lg-whirl"/></svg></span>
+              <span class="copy"><span class="tname2">旋风FC</span><span class="tmeta">队长 · 18 人</span></span>
+              <span class="now">当前</span>
+            </div>
+            <div class="opt">
+              <span class="tlogo fallback">鹰</span>
+              <span class="copy"><span class="tname2">老鹰联</span><span class="tmeta">队员 · 15 人</span></span>
+              <span class="go"><svg width="6" height="10"><use href="#i-right"/></svg></span>
+            </div>
+            <div class="opt">
+              <span class="tlogo"><svg width="26" height="26"><use href="#lg-pitch"/></svg></span>
+              <span class="copy"><span class="tname2">周末皮球会</span><span class="tmeta">队员 · 22 人</span></span>
+              <span class="go"><svg width="6" height="10"><use href="#i-right"/></svg></span>
+            </div>
+          </div>
+          <div class="ntab">
+            <div class="ti on"><span class="ic"><svg width="20" height="20"><use href="#i-home"/></svg></span>首页</div>
+            <div class="ti"><span class="ic"><svg width="20" height="20"><use href="#i-trophy"/></svg></span>比赛</div>
+            <div class="ti"><span class="ic"><svg width="20" height="20"><use href="#i-chat"/></svg></span>消息</div>
+            <div class="ti"><span class="ic"><svg width="20" height="20"><use href="#i-user"/></svg></span>我的</div>
+          </div>
+          <div class="homebar"></div>
+        </div></div>
+        <figcaption>② 展开 — <b>下拉锚定左缘</b></figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- ================= 左上角精修：标题 × 切换融合 ================= -->
+  <section class="proposal">
+    <div class="p-ghost">L</div>
+    <aside class="p-info">
+      <div class="p-index">L</div>
+      <h2>左上角精修<br>标题 × 切换融合</h2>
+      <span class="p-form">L1 球队即标题 ｜ L2 主副标题 ｜ L3 面包屑</span>
+      <p class="p-desc">
+        原方案不搭的根源：「首页」18px/900 大标题旁边贴一个 12.5px 半透明小胶囊，
+        字号、字重、控件形态<b>三级跳</b>，像两套系统拼在一起。
+        这组变体让切换器<b>长进标题行本身</b>，而不是作为附件贴在旁边。
+      </p>
+      <ul class="p-points">
+        <li><b>L1 球队即标题</b>：「首页」信息量低（tabbar 已标明），当前球队才是有价值的上下文——logo + 队名直接当标题，参考企业微信/飞书的组织切换，身份感最强</li>
+        <li><b>L2 主副标题</b>：小字「首页」保留定位、大字球队名做主角，信息最全；header 增高约 12px</li>
+        <li><b>L3 面包屑</b>：「首页 · 旋风FC ▾」一行内联基线对齐，改动最小；青柠下划线提示可点，切换暗示最弱</li>
+        <li>三个变体的展开态统一：<b>顶部下拉锚定左缘</b>（同 A′，见 L1 展开屏）</li>
+      </ul>
+    </aside>
+
+    <div class="p-phones">
+      <figure class="shot">
+        <div class="phone"><div class="screen">
+          <div class="island"></div>
+          <div class="sbar"><span>9:41</span><span class="sicons"><svg width="17" height="11"><use href="#i-signal"/></svg><svg width="16" height="11"><use href="#i-wifi"/></svg><svg width="25" height="12"><use href="#i-battery"/></svg></span></div>
+          <div class="nheader">
+            <div class="l1-row">
+              <span class="llogo"><svg width="24" height="24"><use href="#lg-whirl"/></svg></span>
+              <span class="lname">旋风FC</span>
+              <span class="lcaret"><svg width="12" height="7"><use href="#i-caret"/></svg></span>
+              <div class="wxcap" style="margin-left:auto"><span class="side"><svg width="16" height="4"><use href="#i-dots"/></svg></span><span class="sep"></span><span class="side"><svg width="12" height="12"><use href="#i-ring"/></svg></span></div>
+            </div>
+          </div>
+          <div class="nbody">
+            <div class="nhero">
+              <div class="slogan">约球开踢<small>组队 · 报名 · 上场</small></div>
+              <svg width="42" height="42"><use href="#i-ball"/></svg>
+            </div>
+            <div class="nseg"><span class="s on">我的比赛</span><span class="s">广场</span></div>
+            <div class="nsec"><span class="mk">热</span><span class="t">最近要处理的比赛</span><span class="more">更多 ›</span></div>
+            <div class="mcard">
+              <div class="dblock"><span class="mo">9月</span><span class="d">26</span><span class="w">周六</span></div>
+              <div class="info">
+                <div class="mname">旋风FC × 老鹰联 · 5人制友谊赛</div>
+                <div class="mmeta">14:00 · 世纪公园足球场 · 队内报名</div>
+                <div class="chips"><span class="nchip lime">报名中</span><span class="nchip">还差 2 人成行</span></div>
+                <div class="prow"><div class="ptrack"><div class="pfill"></div></div><span class="avrow"><i class="a">李</i><i class="b">王</i><i class="c">陈</i></span><span class="pnum">12/14</span></div>
+              </div>
+            </div>
+            <div class="nsec" style="margin-top:14px"><span class="mk">赛</span><span class="t">进行中的比赛</span></div>
+            <div class="mcard slim">
+              <div class="dblock slim"><span class="mo">9月</span><span class="d">20</span></div>
+              <div class="info">
+                <div class="mname">旋风FC × 周末皮球会</div>
+                <div class="prow" style="margin-top:6px"><span class="nchip blue">进行中</span><span class="mmeta" style="margin-top:0">16:00 · 滨江足球公园</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="ntab">
+            <div class="ti on"><span class="ic"><svg width="20" height="20"><use href="#i-home"/></svg></span>首页</div>
+            <div class="ti"><span class="ic"><svg width="20" height="20"><use href="#i-trophy"/></svg></span>比赛</div>
+            <div class="ti"><span class="ic"><svg width="20" height="20"><use href="#i-chat"/></svg></span>消息</div>
+            <div class="ti"><span class="ic"><svg width="20" height="20"><use href="#i-user"/></svg></span>我的</div>
+          </div>
+          <div class="homebar"></div>
+        </div></div>
+        <figcaption>L1 · <b>球队即标题</b></figcaption>
+      </figure>
+
+      <figure class="shot">
+        <div class="phone"><div class="screen">
+          <div class="island"></div>
+          <div class="sbar"><span>9:41</span><span class="sicons"><svg width="17" height="11"><use href="#i-signal"/></svg><svg width="16" height="11"><use href="#i-wifi"/></svg><svg width="25" height="12"><use href="#i-battery"/></svg></span></div>
+          <div class="nheader">
+            <div class="l2-row">
+              <span class="l2-eyebrow">首页</span>
+              <div class="l2-main">
+                <span class="llogo"><svg width="19" height="19"><use href="#lg-whirl"/></svg></span>
+                <span class="lname">旋风FC</span>
+                <span class="lcaret"><svg width="11" height="6"><use href="#i-caret"/></svg></span>
+              </div>
+              <div class="wxcap" style="margin-left:auto; align-self:center"><span class="side"><svg width="16" height="4"><use href="#i-dots"/></svg></span><span class="sep"></span><span class="side"><svg width="12" height="12"><use href="#i-ring"/></svg></span></div>
+            </div>
+          </div>
+          <div class="nbody">
+            <div class="nhero">
+              <div class="slogan">约球开踢<small>组队 · 报名 · 上场</small></div>
+              <svg width="42" height="42"><use href="#i-ball"/></svg>
+            </div>
+            <div class="nseg"><span class="s on">我的比赛</span><span class="s">广场</span></div>
+            <div class="nsec"><span class="mk">热</span><span class="t">最近要处理的比赛</span><span class="more">更多 ›</span></div>
+            <div class="mcard">
+              <div class="dblock"><span class="mo">9月</span><span class="d">26</span><span class="w">周六</span></div>
+              <div class="info">
+                <div class="mname">旋风FC × 老鹰联 · 5人制友谊赛</div>
+                <div class="mmeta">14:00 · 世纪公园足球场 · 队内报名</div>
+                <div class="chips"><span class="nchip lime">报名中</span><span class="nchip">还差 2 人成行</span></div>
+                <div class="prow"><div class="ptrack"><div class="pfill"></div></div><span class="avrow"><i class="a">李</i><i class="b">王</i><i class="c">陈</i></span><span class="pnum">12/14</span></div>
+              </div>
+            </div>
+            <div class="nsec" style="margin-top:14px"><span class="mk">赛</span><span class="t">进行中的比赛</span></div>
+            <div class="mcard slim">
+              <div class="dblock slim"><span class="mo">9月</span><span class="d">20</span></div>
+              <div class="info">
+                <div class="mname">旋风FC × 周末皮球会</div>
+                <div class="prow" style="margin-top:6px"><span class="nchip blue">进行中</span><span class="mmeta" style="margin-top:0">16:00 · 滨江足球公园</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="ntab">
+            <div class="ti on"><span class="ic"><svg width="20" height="20"><use href="#i-home"/></svg></span>首页</div>
+            <div class="ti"><span class="ic"><svg width="20" height="20"><use href="#i-trophy"/></svg></span>比赛</div>
+            <div class="ti"><span class="ic"><svg width="20" height="20"><use href="#i-chat"/></svg></span>消息</div>
+            <div class="ti"><span class="ic"><svg width="20" height="20"><use href="#i-user"/></svg></span>我的</div>
+          </div>
+          <div class="homebar"></div>
+        </div></div>
+        <figcaption>L2 · <b>主副标题</b></figcaption>
+      </figure>
+
+      <figure class="shot">
+        <div class="phone"><div class="screen">
+          <div class="island"></div>
+          <div class="sbar"><span>9:41</span><span class="sicons"><svg width="17" height="11"><use href="#i-signal"/></svg><svg width="16" height="11"><use href="#i-wifi"/></svg><svg width="25" height="12"><use href="#i-battery"/></svg></span></div>
+          <div class="nheader">
+            <div class="l3-row">
+              <span class="lhome">首页</span>
+              <span class="lsep">·</span>
+              <span class="lname">旋风FC</span>
+              <span class="lcaret"><svg width="10" height="6"><use href="#i-caret"/></svg></span>
+              <div class="wxcap" style="margin-left:auto; align-self:center"><span class="side"><svg width="16" height="4"><use href="#i-dots"/></svg></span><span class="sep"></span><span class="side"><svg width="12" height="12"><use href="#i-ring"/></svg></span></div>
+            </div>
+          </div>
+          <div class="nbody">
+            <div class="nhero">
+              <div class="slogan">约球开踢<small>组队 · 报名 · 上场</small></div>
+              <svg width="42" height="42"><use href="#i-ball"/></svg>
+            </div>
+            <div class="nseg"><span class="s on">我的比赛</span><span class="s">广场</span></div>
+            <div class="nsec"><span class="mk">热</span><span class="t">最近要处理的比赛</span><span class="more">更多 ›</span></div>
+            <div class="mcard">
+              <div class="dblock"><span class="mo">9月</span><span class="d">26</span><span class="w">周六</span></div>
+              <div class="info">
+                <div class="mname">旋风FC × 老鹰联 · 5人制友谊赛</div>
+                <div class="mmeta">14:00 · 世纪公园足球场 · 队内报名</div>
+                <div class="chips"><span class="nchip lime">报名中</span><span class="nchip">还差 2 人成行</span></div>
+                <div class="prow"><div class="ptrack"><div class="pfill"></div></div><span class="avrow"><i class="a">李</i><i class="b">王</i><i class="c">陈</i></span><span class="pnum">12/14</span></div>
+              </div>
+            </div>
+            <div class="nsec" style="margin-top:14px"><span class="mk">赛</span><span class="t">进行中的比赛</span></div>
+            <div class="mcard slim">
+              <div class="dblock slim"><span class="mo">9月</span><span class="d">20</span></div>
+              <div class="info">
+                <div class="mname">旋风FC × 周末皮球会</div>
+                <div class="prow" style="margin-top:6px"><span class="nchip blue">进行中</span><span class="mmeta" style="margin-top:0">16:00 · 滨江足球公园</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="ntab">
+            <div class="ti on"><span class="ic"><svg width="20" height="20"><use href="#i-home"/></svg></span>首页</div>
+            <div class="ti"><span class="ic"><svg width="20" height="20"><use href="#i-trophy"/></svg></span>比赛</div>
+            <div class="ti"><span class="ic"><svg width="20" height="20"><use href="#i-chat"/></svg></span>消息</div>
+            <div class="ti"><span class="ic"><svg width="20" height="20"><use href="#i-user"/></svg></span>我的</div>
+          </div>
+          <div class="homebar"></div>
+        </div></div>
+        <figcaption>L3 · <b>面包屑</b></figcaption>
+      </figure>
+
+      <figure class="shot">
+        <div class="phone"><div class="screen">
+          <div class="island"></div>
+          <div class="sbar"><span>9:41</span><span class="sicons"><svg width="17" height="11"><use href="#i-signal"/></svg><svg width="16" height="11"><use href="#i-wifi"/></svg><svg width="25" height="12"><use href="#i-battery"/></svg></span></div>
+          <div class="nheader">
+            <div class="l1-row open">
+              <span class="llogo"><svg width="24" height="24"><use href="#lg-whirl"/></svg></span>
+              <span class="lname">旋风FC</span>
+              <span class="lcaret"><svg width="12" height="7"><use href="#i-caret-up"/></svg></span>
+              <div class="wxcap" style="margin-left:auto"><span class="side"><svg width="16" height="4"><use href="#i-dots"/></svg></span><span class="sep"></span><span class="side"><svg width="12" height="12"><use href="#i-ring"/></svg></span></div>
+            </div>
+          </div>
+          <div class="nbody">
+            <div class="nhero">
+              <div class="slogan">约球开踢<small>组队 · 报名 · 上场</small></div>
+              <svg width="42" height="42"><use href="#i-ball"/></svg>
+            </div>
+            <div class="nseg"><span class="s on">我的比赛</span><span class="s">广场</span></div>
+          </div>
+          <div class="dim"></div>
+          <div class="dropdown left">
+            <div class="dd-head"><span class="t">切换当前球队</span><span class="c">比赛与信用数据随身份更新</span><span class="x"><svg width="10" height="10"><use href="#i-close"/></svg></span></div>
+            <div class="opt cur">
+              <span class="tlogo"><svg width="26" height="26"><use href="#lg-whirl"/></svg></span>
+              <span class="copy"><span class="tname2">旋风FC</span><span class="tmeta">队长 · 18 人</span></span>
+              <span class="now">当前</span>
+            </div>
+            <div class="opt">
+              <span class="tlogo fallback">鹰</span>
+              <span class="copy"><span class="tname2">老鹰联</span><span class="tmeta">队员 · 15 人</span></span>
+              <span class="go"><svg width="6" height="10"><use href="#i-right"/></svg></span>
+            </div>
+            <div class="opt">
+              <span class="tlogo"><svg width="26" height="26"><use href="#lg-pitch"/></svg></span>
+              <span class="copy"><span class="tname2">周末皮球会</span><span class="tmeta">队员 · 22 人</span></span>
+              <span class="go"><svg width="6" height="10"><use href="#i-right"/></svg></span>
+            </div>
+          </div>
+          <div class="ntab">
+            <div class="ti on"><span class="ic"><svg width="20" height="20"><use href="#i-home"/></svg></span>首页</div>
+            <div class="ti"><span class="ic"><svg width="20" height="20"><use href="#i-trophy"/></svg></span>比赛</div>
+            <div class="ti"><span class="ic"><svg width="20" height="20"><use href="#i-chat"/></svg></span>消息</div>
+            <div class="ti"><span class="ic"><svg width="20" height="20"><use href="#i-user"/></svg></span>我的</div>
+          </div>
+          <div class="homebar"></div>
+        </div></div>
+        <figcaption>L1 · <b>展开态（三变体通用）</b></figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- ================= 方案 B ================= -->
+  <section class="proposal">
+    <div class="p-ghost">B</div>
+    <aside class="p-info">
+      <div class="p-index">B</div>
+      <h2>队徽角标<br>底部弹层</h2>
+      <span class="p-form">入口：logo 队徽 + ⇄ 角标 ｜ 展开：底部弹层（复用现有）</span>
+      <p class="p-desc">
+        入口是一枚 Neo 队徽（37px，墨线 + 硬阴影），直接展示<b>球队 logo</b>；
+        右下角青柠 ⇄ 小角标暗示可切换。点击弹出与「我的」页<b>完全一致</b>的底部弹层，
+        交互零学习成本、实现成本最低。
+      </p>
+      <ul class="p-points">
+        <li><b>占地最小</b>，顶部视觉最轻；队徽 logo 图形辨识快</li>
+        <li>底部弹层为既有组件（MineTeamSwitchSheet），落地最快</li>
+        <li>队名在入口不可见，依赖队徽记忆；logo 相近时辨识度下降</li>
+        <li class="warn">弹层离点击位置远，动线比顶部下拉长一截</li>
+      </ul>
+    </aside>
+
+    <div class="p-phones">
+      <figure class="shot">
+        <div class="phone"><div class="screen">
+          <div class="island"></div>
+          <div class="sbar"><span>9:41</span><span class="sicons"><svg width="17" height="11"><use href="#i-signal"/></svg><svg width="16" height="11"><use href="#i-wifi"/></svg><svg width="25" height="12"><use href="#i-battery"/></svg></span></div>
+          <div class="nheader">
+            <div class="nrow">
+              <span class="ntitle">首页</span>
+              <div class="crest">
+                <div class="face"><svg width="30" height="30"><use href="#lg-whirl"/></svg></div>
+                <div class="swap"><svg width="10" height="10"><use href="#i-swap"/></svg></div>
+              </div>
+              <div class="wxcap"><span class="side"><svg width="16" height="4"><use href="#i-dots"/></svg></span><span class="sep"></span><span class="side"><svg width="12" height="12"><use href="#i-ring"/></svg></span></div>
+            </div>
+          </div>
+          <div class="nbody">
+            <div class="nhero">
+              <div class="slogan">约球开踢<small>组队 · 报名 · 上场</small></div>
+              <svg width="42" height="42"><use href="#i-ball"/></svg>
+            </div>
+            <div class="nseg"><span class="s on">我的比赛</span><span class="s">广场</span></div>
+            <div class="nsec"><span class="mk">热</span><span class="t">最近要处理的比赛</span><span class="more">更多 ›</span></div>
+            <div class="mcard">
+              <div class="dblock"><span class="mo">9月</span><span class="d">26</span><span class="w">周六</span></div>
+              <div class="info">
+                <div class="mname">旋风FC × 老鹰联 · 5人制友谊赛</div>
+                <div class="mmeta">14:00 · 世纪公园足球场 · 队内报名</div>
+                <div class="chips"><span class="nchip lime">报名中</span><span class="nchip">还差 2 人成行</span></div>
+                <div class="prow"><div class="ptrack"><div class="pfill"></div></div><span class="avrow"><i class="a">李</i><i class="b">王</i><i class="c">陈</i></span><span class="pnum">12/14</span></div>
+              </div>
+            </div>
+            <div class="nsec" style="margin-top:14px"><span class="mk">赛</span><span class="t">进行中的比赛</span></div>
+            <div class="mcard slim">
+              <div class="dblock slim"><span class="mo">9月</span><span class="d">20</span></div>
+              <div class="info">
+                <div class="mname">旋风FC × 周末皮球会</div>
+                <div class="prow" style="margin-top:6px"><span class="nchip blue">进行中</span><span class="mmeta" style="margin-top:0">16:00 · 滨江足球公园</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="ntab">
+            <div class="ti on"><span class="ic"><svg width="20" height="20"><use href="#i-home"/></svg></span>首页</div>
+            <div class="ti"><span class="ic"><svg width="20" height="20"><use href="#i-trophy"/></svg></span>比赛</div>
+            <div class="ti"><span class="ic"><svg width="20" height="20"><use href="#i-chat"/></svg></span>消息</div>
+            <div class="ti"><span class="ic"><svg width="20" height="20"><use href="#i-user"/></svg></span>我的</div>
+          </div>
+          <div class="homebar"></div>
+        </div></div>
+        <figcaption>① 收起态</figcaption>
+      </figure>
+
+      <figure class="shot">
+        <div class="phone"><div class="screen">
+          <div class="island"></div>
+          <div class="sbar"><span>9:41</span><span class="sicons"><svg width="17" height="11"><use href="#i-signal"/></svg><svg width="16" height="11"><use href="#i-wifi"/></svg><svg width="25" height="12"><use href="#i-battery"/></svg></span></div>
+          <div class="nheader">
+            <div class="nrow">
+              <span class="ntitle">首页</span>
+              <div class="crest open">
+                <div class="face"><svg width="30" height="30"><use href="#lg-whirl"/></svg></div>
+                <div class="swap"><svg width="10" height="10"><use href="#i-swap"/></svg></div>
+              </div>
+              <div class="wxcap"><span class="side"><svg width="16" height="4"><use href="#i-dots"/></svg></span><span class="sep"></span><span class="side"><svg width="12" height="12"><use href="#i-ring"/></svg></span></div>
+            </div>
+          </div>
+          <div class="nbody">
+            <div class="nhero">
+              <div class="slogan">约球开踢<small>组队 · 报名 · 上场</small></div>
+              <svg width="42" height="42"><use href="#i-ball"/></svg>
+            </div>
+            <div class="nseg"><span class="s on">我的比赛</span><span class="s">广场</span></div>
+          </div>
+          <div class="dim"></div>
+          <div class="sheet">
+            <div class="grab"></div>
+            <div class="sh-head">
+              <div>
+                <div class="sh-t">切换当前球队</div>
+                <div class="sh-c">切换后，比赛和信用数据会同步更新</div>
+              </div>
+              <div class="sh-x"><svg width="10" height="10"><use href="#i-close"/></svg></div>
+            </div>
+            <div class="sopt cur">
+              <span class="tlogo" style="width:32px;height:32px"><svg width="28" height="28"><use href="#lg-whirl"/></svg></span>
+              <span class="copy"><span class="tname2">旋风FC</span><span class="tmeta">队长 · 18 人</span></span>
+              <span class="now">当前</span>
+            </div>
+            <div class="sopt">
+              <span class="tlogo fallback" style="width:32px;height:32px">鹰</span>
+              <span class="copy"><span class="tname2">老鹰联</span><span class="tmeta">队员 · 15 人</span></span>
+            </div>
+            <div class="sopt">
+              <span class="tlogo" style="width:32px;height:32px"><svg width="28" height="28"><use href="#lg-pitch"/></svg></span>
+              <span class="copy"><span class="tname2">周末皮球会</span><span class="tmeta">队员 · 22 人</span></span>
+            </div>
+          </div>
+          <div class="ntab" style="z-index:5">
+            <div class="ti on"><span class="ic"><svg width="20" height="20"><use href="#i-home"/></svg></span>首页</div>
+            <div class="ti"><span class="ic"><svg width="20" height="20"><use href="#i-trophy"/></svg></span>比赛</div>
+            <div class="ti"><span class="ic"><svg width="20" height="20"><use href="#i-chat"/></svg></span>消息</div>
+            <div class="ti"><span class="ic"><svg width="20" height="20"><use href="#i-user"/></svg></span>我的</div>
+          </div>
+          <div class="homebar" style="z-index:26"></div>
+        </div></div>
+        <figcaption>② 展开 — <b>底部弹层</b></figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- ================= 方案 C ================= -->
+  <section class="proposal">
+    <div class="p-ghost">C</div>
+    <aside class="p-info">
+      <div class="p-index">C</div>
+      <h2>轻文字链<br>顶部下拉</h2>
+      <span class="p-form">入口：队名文字 + ▾ ｜ 展开：header 下拉卡片（同 A）</span>
+      <p class="p-desc">
+        入口退到最轻：当前队名 + 下箭头的纯文字，无底无框，像标题行的自然延伸；
+        展开态与方案 A 相同的顶部下拉卡片，<b>logo 在选项行内展示</b>。
+        适合「切换低频、但要随时可见当前身份」的取向。
+      </p>
+      <ul class="p-points">
+        <li><b>视觉最克制</b>，不与微信胶囊争夺注意力</li>
+        <li>队名仍直接可见，身份感保留</li>
+        <li class="warn">入口不带 logo；无按钮形态，可点击性暗示最弱</li>
+      </ul>
+    </aside>
+
+    <div class="p-phones">
+      <figure class="shot">
+        <div class="phone"><div class="screen">
+          <div class="island"></div>
+          <div class="sbar"><span>9:41</span><span class="sicons"><svg width="17" height="11"><use href="#i-signal"/></svg><svg width="16" height="11"><use href="#i-wifi"/></svg><svg width="25" height="12"><use href="#i-battery"/></svg></span></div>
+          <div class="nheader">
+            <div class="nrow">
+              <span class="ntitle">首页</span>
+              <div class="ttext">
+                <span class="tname">旋风FC</span>
+                <span class="caret"><svg width="10" height="6"><use href="#i-caret"/></svg></span>
+              </div>
+              <div class="wxcap"><span class="side"><svg width="16" height="4"><use href="#i-dots"/></svg></span><span class="sep"></span><span class="side"><svg width="12" height="12"><use href="#i-ring"/></svg></span></div>
+            </div>
+          </div>
+          <div class="nbody">
+            <div class="nhero">
+              <div class="slogan">约球开踢<small>组队 · 报名 · 上场</small></div>
+              <svg width="42" height="42"><use href="#i-ball"/></svg>
+            </div>
+            <div class="nseg"><span class="s on">我的比赛</span><span class="s">广场</span></div>
+            <div class="nsec"><span class="mk">热</span><span class="t">最近要处理的比赛</span><span class="more">更多 ›</span></div>
+            <div class="mcard">
+              <div class="dblock"><span class="mo">9月</span><span class="d">26</span><span class="w">周六</span></div>
+              <div class="info">
+                <div class="mname">旋风FC × 老鹰联 · 5人制友谊赛</div>
+                <div class="mmeta">14:00 · 世纪公园足球场 · 队内报名</div>
+                <div class="chips"><span class="nchip lime">报名中</span><span class="nchip">还差 2 人成行</span></div>
+                <div class="prow"><div class="ptrack"><div class="pfill"></div></div><span class="avrow"><i class="a">李</i><i class="b">王</i><i class="c">陈</i></span><span class="pnum">12/14</span></div>
+              </div>
+            </div>
+            <div class="nsec" style="margin-top:14px"><span class="mk">赛</span><span class="t">进行中的比赛</span></div>
+            <div class="mcard slim">
+              <div class="dblock slim"><span class="mo">9月</span><span class="d">20</span></div>
+              <div class="info">
+                <div class="mname">旋风FC × 周末皮球会</div>
+                <div class="prow" style="margin-top:6px"><span class="nchip blue">进行中</span><span class="mmeta" style="margin-top:0">16:00 · 滨江足球公园</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="ntab">
+            <div class="ti on"><span class="ic"><svg width="20" height="20"><use href="#i-home"/></svg></span>首页</div>
+            <div class="ti"><span class="ic"><svg width="20" height="20"><use href="#i-trophy"/></svg></span>比赛</div>
+            <div class="ti"><span class="ic"><svg width="20" height="20"><use href="#i-chat"/></svg></span>消息</div>
+            <div class="ti"><span class="ic"><svg width="20" height="20"><use href="#i-user"/></svg></span>我的</div>
+          </div>
+          <div class="homebar"></div>
+        </div></div>
+        <figcaption>① 收起态</figcaption>
+      </figure>
+
+      <figure class="shot">
+        <div class="phone"><div class="screen">
+          <div class="island"></div>
+          <div class="sbar"><span>9:41</span><span class="sicons"><svg width="17" height="11"><use href="#i-signal"/></svg><svg width="16" height="11"><use href="#i-wifi"/></svg><svg width="25" height="12"><use href="#i-battery"/></svg></span></div>
+          <div class="nheader">
+            <div class="nrow">
+              <span class="ntitle">首页</span>
+              <div class="ttext open">
+                <span class="tname">旋风FC</span>
+                <span class="caret"><svg width="10" height="6"><use href="#i-caret-up"/></svg></span>
+              </div>
+              <div class="wxcap"><span class="side"><svg width="16" height="4"><use href="#i-dots"/></svg></span><span class="sep"></span><span class="side"><svg width="12" height="12"><use href="#i-ring"/></svg></span></div>
+            </div>
+          </div>
+          <div class="nbody">
+            <div class="nhero">
+              <div class="slogan">约球开踢<small>组队 · 报名 · 上场</small></div>
+              <svg width="42" height="42"><use href="#i-ball"/></svg>
+            </div>
+            <div class="nseg"><span class="s on">我的比赛</span><span class="s">广场</span></div>
+          </div>
+          <div class="dim"></div>
+          <div class="dropdown">
+            <div class="dd-head"><span class="t">切换当前球队</span><span class="c">比赛与信用数据随身份更新</span><span class="x"><svg width="10" height="10"><use href="#i-close"/></svg></span></div>
+            <div class="opt cur">
+              <span class="tlogo"><svg width="26" height="26"><use href="#lg-whirl"/></svg></span>
+              <span class="copy"><span class="tname2">旋风FC</span><span class="tmeta">队长 · 18 人</span></span>
+              <span class="now">当前</span>
+            </div>
+            <div class="opt">
+              <span class="tlogo fallback">鹰</span>
+              <span class="copy"><span class="tname2">老鹰联</span><span class="tmeta">队员 · 15 人</span></span>
+              <span class="go"><svg width="6" height="10"><use href="#i-right"/></svg></span>
+            </div>
+            <div class="opt">
+              <span class="tlogo"><svg width="26" height="26"><use href="#lg-pitch"/></svg></span>
+              <span class="copy"><span class="tname2">周末皮球会</span><span class="tmeta">队员 · 22 人</span></span>
+              <span class="go"><svg width="6" height="10"><use href="#i-right"/></svg></span>
+            </div>
+          </div>
+          <div class="ntab">
+            <div class="ti on"><span class="ic"><svg width="20" height="20"><use href="#i-home"/></svg></span>首页</div>
+            <div class="ti"><span class="ic"><svg width="20" height="20"><use href="#i-trophy"/></svg></span>比赛</div>
+            <div class="ti"><span class="ic"><svg width="20" height="20"><use href="#i-chat"/></svg></span>消息</div>
+            <div class="ti"><span class="ic"><svg width="20" height="20"><use href="#i-user"/></svg></span>我的</div>
+          </div>
+          <div class="homebar"></div>
+        </div></div>
+        <figcaption>② 展开 — <b>顶部下拉（同 A）</b></figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- ================= 边界状态 ================= -->
+  <section class="edges">
+    <h3>边界状态 · 三个方案通用</h3>
+    <p class="sub">入口出现与否由「球队数量 + 登录态」决定；未加入球队时的引导样式为可选项，默认建议不显示。</p>
+    <div class="edge-grid">
+      <div class="edge">
+        <span class="k show">显示</span>
+        <div class="v"><b>已登录 · ≥ 2 支球队</b><br>正常显示入口，点击切换，logo 与队名同显。</div>
+        <div class="strip">
+          <span class="ht">首页</span>
+          <span class="mini-entry"><span class="ml"><svg width="18" height="18"><use href="#lg-whirl"/></svg></span>旋风FC <svg width="8" height="5" style="color:#4D514B"><use href="#i-caret"/></svg></span>
+          <span class="mini-wx"><svg width="13" height="3.5"><use href="#i-dots"/></svg><svg width="10" height="10"><use href="#i-ring"/></svg></span>
+        </div>
+      </div>
+      <div class="edge">
+        <span class="k hide">不显示</span>
+        <div class="v"><b>仅 1 支球队 / 游客</b><br>无切换需求，顶部维持「首页 + 微信胶囊」原样。</div>
+        <div class="strip">
+          <span class="ht">首页</span>
+          <span class="mini-wx" style="margin-left:auto"><svg width="13" height="3.5"><use href="#i-dots"/></svg><svg width="10" height="10"><use href="#i-ring"/></svg></span>
+        </div>
+      </div>
+      <div class="edge">
+        <span class="k optk">可选</span>
+        <div class="v"><b>已登录 · 未加入球队</b><br>可显示虚线「+ 加入球队」引导（点击进球队页）；默认不显示。</div>
+        <div class="strip">
+          <span class="ht">首页</span>
+          <span class="join">＋ 加入球队</span>
+          <span class="mini-wx"><svg width="13" height="3.5"><use href="#i-dots"/></svg><svg width="10" height="10"><use href="#i-ring"/></svg></span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 对比总结 ================= -->
+  <section class="compare">
+    <h3>怎么选</h3>
+    <table>
+      <tr><th>方案</th><th>入口形态</th><th>展开形态</th><th>入口 logo</th><th>队名可见</th><th>落地成本</th><th>适合取向</th></tr>
+      <tr><td>A</td><td>logo + 队名胶囊</td><td>顶部下拉卡片</td><td><span class="yes">✔</span></td><td><span class="yes">✔</span></td><td>中（新写下拉组件）</td><td>切换高频 · 最快动线</td></tr>
+      <tr><td>B</td><td>logo 队徽 + ⇄ 角标</td><td>底部弹层（复用现有）</td><td><span class="yes">✔</span></td><td><span class="no">—</span></td><td>低（复用 sheet）</td><td>快速上线 · 视觉最轻</td></tr>
+      <tr><td>C</td><td>队名文字 + ▾</td><td>顶部下拉卡片（同 A）</td><td><span class="no">—</span></td><td><span class="yes">✔</span></td><td>中（同 A）</td><td>克制低调 · 低频切换</td></tr>
+    </table>
+    <p class="note">
+      <b>logo 规则（通用）</b>：切换面板的选项行一律「logo + 队名 + 角色 · 人数」；有 logoUrl 显示图片，无则回退首字徽章（琥珀底）。
+      <b>位置已定左上角</b>，剩下选「融合方式 + 展开形态」：L1 球队即标题（推荐，最干净、身份感最强）、L2 主副标题（信息最全）、L3 面包屑（改动最小）；
+      展开态推荐顶部下拉锚定左缘，也可换成底部弹层。<b>推荐组合：L1 + 顶部下拉</b>。
+      落地时入口挂在 AppTabHeader，触控高度 ≥ 64rpx，切换逻辑复用 appSession 的 switchTeam。
+    </p>
+  </section>
+
+  <footer>
+    <span>REGISTRATION SYSTEM · MINI APP DESIGN PROPOSAL</span>
+    <span>Neo tokens · 1px ≈ 2rpx · 2026-09</span>
+  </footer>
+
+</main>
+
+</body>
+</html>
