@@ -27,8 +27,9 @@ func TestMyTeamsHandlerUsesAuthenticatedUser(t *testing.T) {
 		t.Fatalf("issue token: %v", err)
 	}
 	query := &fakeTeamQuery{items: []domain.TeamMembership{{
-		Team:   domain.Team{ID: 7, Name: "东安联队", Status: domain.TeamActive},
-		Member: domain.Member{TeamID: 7, UserID: 42, Role: domain.RoleLeader, Status: domain.MemberActive},
+		Team:        domain.Team{ID: 7, Name: "东安联队", Status: domain.TeamActive},
+		Member:      domain.Member{TeamID: 7, UserID: 42, Role: domain.RoleLeader, Status: domain.MemberActive},
+		MemberCount: 15,
 	}}}
 	handler := NewHandler(query, &fakeTeamMembers{})
 	router := gin.New()
@@ -47,6 +48,11 @@ func TestMyTeamsHandlerUsesAuthenticatedUser(t *testing.T) {
 	}
 	if !bytes.Contains(response.Body.Bytes(), []byte(`"role":"leader"`)) {
 		t.Fatalf("expected leader role in response: %s", response.Body.String())
+	}
+	// 列表接口须直接带活跃成员数：小程序首页球队切换等入口依赖该字段，
+	// 否则未加载过球队详情的队伍会显示 0 人。
+	if !bytes.Contains(response.Body.Bytes(), []byte(`"member_count":15`)) {
+		t.Fatalf("expected member_count in response: %s", response.Body.String())
 	}
 }
 

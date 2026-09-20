@@ -97,6 +97,7 @@ func (r *Repository) ListByUser(ctx context.Context, userID int64) ([]domain.Tea
 				Status:   domain.MemberActive,
 				JoinedAt: row.JoinedAt.Time,
 			},
+			MemberCount: int(row.MemberCount),
 		})
 	}
 	return items, nil

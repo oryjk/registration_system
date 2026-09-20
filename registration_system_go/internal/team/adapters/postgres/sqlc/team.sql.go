@@ -596,7 +596,9 @@ SELECT t.id,
        tm.role AS member_role,
        tm.joined_at,
        t.created_at,
-       t.updated_at
+       t.updated_at,
+       (SELECT COUNT(*) FROM team_members cm
+         WHERE cm.team_id = t.id AND cm.status = 'active') AS member_count
 FROM team_members tm
 JOIN teams t ON t.id = tm.team_id
 WHERE tm.user_id = $1
@@ -616,6 +618,7 @@ type ListActiveUserTeamsRow struct {
 	JoinedAt    pgtype.Timestamp `json:"joined_at"`
 	CreatedAt   pgtype.Timestamp `json:"created_at"`
 	UpdatedAt   pgtype.Timestamp `json:"updated_at"`
+	MemberCount int64            `json:"member_count"`
 }
 
 func (q *Queries) ListActiveUserTeams(ctx context.Context, userID int64) ([]ListActiveUserTeamsRow, error) {
@@ -638,6 +641,7 @@ func (q *Queries) ListActiveUserTeams(ctx context.Context, userID int64) ([]List
 			&i.JoinedAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.MemberCount,
 		); err != nil {
 			return nil, err
 		}

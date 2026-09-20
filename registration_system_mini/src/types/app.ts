@@ -38,6 +38,8 @@ export interface MyTeam {
   logo_url: string | null;
   role: MyTeamRole;
   joined_at: string;
+  /** 活跃成员数；/teams/my 列表接口直接返回，避免未加载详情的球队显示 0 人。 */
+  member_count?: number;
 }
 
 export interface AppTeamDetail {

@@ -36,6 +36,7 @@ type TeamMembershipResponse struct {
 	LogoURL     *string `json:"logo_url"`
 	Role        string  `json:"role"`
 	JoinedAt    string  `json:"joined_at"`
+	MemberCount int     `json:"member_count"`
 }
 
 func NewHandler(query TeamQuery, members TeamMembers) *Handler {
@@ -62,6 +63,7 @@ func (h *Handler) MyTeams(c *gin.Context) {
 			LogoURL:     item.Team.LogoURL,
 			Role:        string(item.Member.Role),
 			JoinedAt:    item.Member.JoinedAt.Format("2006-01-02T15:04:05"),
+			MemberCount: item.MemberCount,
 		})
 	}
 	sharedhttpapi.WriteSuccess(c, response)

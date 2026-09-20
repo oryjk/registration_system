@@ -81,7 +81,9 @@ SELECT t.id,
        tm.role AS member_role,
        tm.joined_at,
        t.created_at,
-       t.updated_at
+       t.updated_at,
+       (SELECT COUNT(*) FROM team_members cm
+         WHERE cm.team_id = t.id AND cm.status = 'active') AS member_count
 FROM team_members tm
 JOIN teams t ON t.id = tm.team_id
 WHERE tm.user_id = $1
