@@ -109,7 +109,10 @@ function handleHome() {
             </view>
           </view>
         </view>
-        <text class="app-tab-header-title">{{ props.title }}</text>
+        <!-- 具名 title slot：允许页面替换标题区（如首页的球队切换器）；不传时回落到 title 文本。 -->
+        <slot name="title">
+          <text class="app-tab-header-title">{{ props.title }}</text>
+        </slot>
       </view>
     </view>
   </view>

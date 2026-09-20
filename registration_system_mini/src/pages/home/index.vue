@@ -12,6 +12,7 @@ import HomeHeroSection from "./components/HomeHeroSection.vue";
 import HomeMatchList from "./components/HomeMatchList.vue";
 import HomeMatchSearch from "./components/HomeMatchSearch.vue";
 import HomeOtherMatchesSection from "./components/HomeOtherMatchesSection.vue";
+import HomeTeamSwitcher from "./components/HomeTeamSwitcher.vue";
 import NeoRunningLoader from "@/components/neo/NeoRunningLoader.vue";
 import OnboardingRolePickerDialog from "./components/OnboardingRolePickerDialog.vue";
 import { getMatchHome, listMyMatches, listMatches } from "@/api/match";
@@ -45,7 +46,7 @@ const homeTabOptions = [
 
 const { themePageStyle } = useAccentTheme();
 
-const { ensureSessionReady } = useTeamContext();
+const { ensureSessionReady, teamProfiles, currentTeam, switchTeam } = useTeamContext();
 const { syncUnreadCount } = useNotificationCenter();
 const onboardingGuide = useHomeOnboardingGuide();
 
@@ -96,6 +97,8 @@ const upcomingEmptyText = computed(() => (
 ));
 const activeHomeTab = ref<HomeContentTab>("mine");
 const otherMatches = useHomeOtherMatches();
+// L1「球队即标题」：登录且加入 ≥ 2 支球队时，顶部标题位换成球队切换入口；否则保持「首页」标题。
+const showTeamSwitcher = computed(() => !isGuestMode.value && teamProfiles.value.length >= 2);
 // banner 位优先展示「下一场比赛」（最近要处理的首场），下方列表从第二场开始，避免重复。
 const heroNextMatch = computed(() => upcomingMatches.value[0] ?? null);
 const shareTitle = "约球开踢：组队、报名、上场";
@@ -350,8 +353,11 @@ onHide(() => {
 });
 
 onPullDownRefresh(async () => {
+  // 停在「广场」tab 下拉时同步刷新广场列表；与「我的比赛」并行请求，全部结束后再收起下拉。
+  const otherMatchesRefresh = activeHomeTab.value === "others" && !isGuestMode.value ? otherMatches.loadPage() : null;
   try {
     await loadPageData({ preserveContent: hasLoadedOnce.value });
+    await otherMatchesRefresh;
   } finally {
     uni.stopPullDownRefresh();
   }
@@ -395,7 +401,18 @@ onShareTimeline(() => ({
 <template>
   <page-meta :page-style="themePageStyle" />
   <view class="home-page" :style="pageStyle">
-    <AppTabHeader title="首页" />
+    <AppTabHeader title="首页">
+      <!-- mp 端 slot 内容不吃子组件 scoped 样式，回落标题用页面自己的类保持同款字号。 -->
+      <template #title>
+        <HomeTeamSwitcher
+          v-if="showTeamSwitcher"
+          :teams="teamProfiles"
+          :current-team-id="currentTeam?.id"
+          @switch-team="switchTeam"
+        />
+        <text v-else class="home-header-title">首页</text>
+      </template>
+    </AppTabHeader>
 
     <view class="home-content" :style="contentStyle">
       <NeoRunningLoader v-if="showInitialLoadingState" />
@@ -565,6 +582,12 @@ onShareTimeline(() => ({
   font-size: 22rpx;
   font-weight: 700;
   box-shadow: 4rpx 4rpx 0 var(--neo-color-accent);
+}
+
+.home-header-title {
+  color: var(--neo-color-text);
+  font-size: 36rpx;
+  font-weight: 900;
 }
 
 .home-empty {
