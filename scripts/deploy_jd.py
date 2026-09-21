@@ -134,12 +134,14 @@ def remote(args):
             image = 'registration-system-backend-go-v3:' + release.name
             command('docker', 'build', '-t', image, source)
             if args.migrate:
+                # backend.env 自带 PATH 会覆盖镜像默认 PATH（不含 /usr/local/go/bin），
+                # 迁移必须用绝对路径调 go，否则容器启动即报 executable file not found。
                 command('docker', 'run', '--rm', '--network', 'host',
                         '--env-file', BASE / 'backend.env',
                         '-e', 'GOPROXY=https://goproxy.cn,direct',
                         '-e', 'GOSUMDB=sum.golang.google.cn',
                         '-v', str(source) + ':/src:ro', '-v', 'registration-go-mod-cache:/go/pkg/mod',
-                        '-w', '/src', 'golang:1.26.5-bookworm', 'go', 'run', './cmd/dbmigrate')
+                        '-w', '/src', 'golang:1.26.5-bookworm', '/usr/local/go/bin/go', 'run', './cmd/dbmigrate')
             activate_backend(BASE, image)
         for name, skip in [('mini-v3', args.skip_h5), ('regist-admin-v3', args.skip_admin)]:
             if not skip:
