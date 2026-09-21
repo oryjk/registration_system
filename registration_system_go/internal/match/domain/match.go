@@ -177,9 +177,11 @@ func NewMatch(input NewMatchInput, individualLimits IndividualLimits) (Match, []
 		UpdatedAt:           now,
 	}
 	// 散人约球没有主队，全部报名进同一个散人组；其余模式先建主队组。
+	// 主队组（队内报名）的成行线 = 每队人数，随创建直接落库。
 	var groups []RegistrationGroup
 	if input.PublicationMode != OnlinePickup {
-		groups = append(groups, NewTeamGroup(matchID, GroupHostTeam, derefTeamID(input.HostTeamID), input.HostCapacityLimit, now))
+		hostMinimum := input.PlayersPerTeam
+		groups = append(groups, NewTeamGroup(matchID, GroupHostTeam, derefTeamID(input.HostTeamID), &hostMinimum, input.HostCapacityLimit, now))
 	}
 	if input.PublicationMode == OnlineIndividual || input.PublicationMode == OnlinePickup {
 		if err := individualLimits.Validate(); err != nil {

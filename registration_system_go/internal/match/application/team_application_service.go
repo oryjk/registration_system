@@ -130,7 +130,8 @@ func (s TeamApplicationService) Select(ctx context.Context, actor sharedauth.Act
 				return wrapTeamApplicationStoreError("拒绝其他球队申请失败", err)
 			}
 		}
-		guestGroup := domain.NewTeamGroup(matchID, domain.GroupGuestTeam, application.ApplicantTeamID, nil, now)
+		// 客队（接约报名）组暂不设成行线；展示侧沿用「人制」回落口径。
+		guestGroup := domain.NewTeamGroup(matchID, domain.GroupGuestTeam, application.ApplicantTeamID, nil, nil, now)
 		if err := tx.UpdateApplication(ctx, application); err != nil {
 			return wrapTeamApplicationStoreError("选择球队申请失败", err)
 		}

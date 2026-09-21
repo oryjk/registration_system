@@ -50,7 +50,7 @@ func TestTeamApplicationFlowReopensAfterSelectedTeamWithdraws(t *testing.T) {
 	match.OpponentState = domain.OpponentConfirmed
 	application, _ := domain.NewTeamApplication(matchID, awayTeamID, 81, "申请参赛", fixedClock().Now())
 	_ = application.Select(fixedClock().Now())
-	guestGroup := domain.NewTeamGroup(matchID, domain.GroupGuestTeam, awayTeamID, nil, fixedClock().Now())
+	guestGroup := domain.NewTeamGroup(matchID, domain.GroupGuestTeam, awayTeamID, nil, nil, fixedClock().Now())
 	repository := newFakeTeamApplicationRepository(match, application)
 	repository.guestGroup = &guestGroup
 	access := &fakeApplicationTeamAccess{managers: map[int64]map[int64]bool{7: {71: true}, 8: {81: true}}}

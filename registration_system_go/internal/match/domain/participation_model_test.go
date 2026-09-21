@@ -53,7 +53,7 @@ func TestIndividualGroupClosesAtMaximumAndReopensBelowIt(t *testing.T) {
 func TestHostGroupUpdatesCapacity(t *testing.T) {
 	now := time.Date(2026, 8, 17, 10, 0, 0, 0, time.UTC)
 	teamID := int64(11)
-	group := NewTeamGroup(uuid.New(), GroupHostTeam, teamID, nil, now)
+	group := NewTeamGroup(uuid.New(), GroupHostTeam, teamID, nil, nil, now)
 
 	changedAt := now.Add(time.Hour)
 	if err := group.UpdateHostCapacity(12, changedAt); err != nil {

@@ -36,8 +36,8 @@ type RegistrationGroup struct {
 	CancelledAt *time.Time
 }
 
-func NewTeamGroup(matchID uuid.UUID, kind GroupKind, teamID int64, maxPlayers *int, now time.Time) RegistrationGroup {
-	return RegistrationGroup{ID: uuid.New(), MatchID: matchID, Kind: kind, TeamID: &teamID, MaxPlayers: maxPlayers, Status: GroupOpen, CreatedAt: now, UpdatedAt: now}
+func NewTeamGroup(matchID uuid.UUID, kind GroupKind, teamID int64, minPlayers *int, maxPlayers *int, now time.Time) RegistrationGroup {
+	return RegistrationGroup{ID: uuid.New(), MatchID: matchID, Kind: kind, TeamID: &teamID, MinPlayers: minPlayers, MaxPlayers: maxPlayers, Status: GroupOpen, CreatedAt: now, UpdatedAt: now}
 }
 
 func NewIndividualGroup(matchID uuid.UUID, limits IndividualLimits, now time.Time) RegistrationGroup {

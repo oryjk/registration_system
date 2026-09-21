@@ -442,7 +442,7 @@ func teamRegistrationFixture(now time.Time, kind domain.GroupKind, teamID int64)
 	matchID := uuid.New()
 	return registrationFixture{
 		match: domain.Match{ID: matchID, HostTeamID: int64Pointer(7), PublicationMode: domain.OnlineTeam, OpponentState: domain.OpponentRecruiting, Status: domain.MatchRegistering, UpdatedAt: now},
-		group: domain.NewTeamGroup(matchID, kind, teamID, nil, now),
+		group: domain.NewTeamGroup(matchID, kind, teamID, nil, nil, now),
 	}
 }
 

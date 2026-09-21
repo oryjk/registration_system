@@ -99,6 +99,21 @@ func TestResolveIndividualLimitsUsesSingleSideFormula(t *testing.T) {
 	}
 }
 
+func TestNewMatchHostGroupCarriesPlayersPerTeamMinimum(t *testing.T) {
+	// 成行人数即队内报名组的最小人数：创建时按人制落库，客户端不再依赖回落口径。
+	input := withOpponent(validInput(OfflineConfirmed), "周末联队")
+	_, groups, err := NewMatch(input, IndividualLimits{})
+	if err != nil {
+		t.Fatalf("new match: %v", err)
+	}
+	if len(groups) != 1 || groups[0].Kind != GroupHostTeam {
+		t.Fatalf("expected single host group, got %+v", groups)
+	}
+	if groups[0].MinPlayers == nil || *groups[0].MinPlayers != input.PlayersPerTeam {
+		t.Fatalf("expected host minimum %d, got %v", input.PlayersPerTeam, groups[0].MinPlayers)
+	}
+}
+
 func TestNewMatchRejectsOnlineOpponentName(t *testing.T) {
 	input := withOpponent(validInput(OnlineTeam), "不应出现")
 	if _, _, err := NewMatch(input, IndividualLimits{}); err == nil {
