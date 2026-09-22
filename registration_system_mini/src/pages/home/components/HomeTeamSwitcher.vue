@@ -124,7 +124,7 @@ function handleSelect(team: TeamProfileViewModel) {
             <text class="home-team-option__name">{{ team.name }}</text>
             <view class="home-team-option__meta">
               <TeamRoleIcon :team-role="team.myRole" :label="team.myRoleLabel" />
-              <text>{{ team.memberCount }} 人</text>
+              <text class="home-team-option__count">{{ team.memberCount }} 人</text>
             </view>
           </view>
           <view v-if="team.id === currentTeamId" class="home-team-option__now" aria-hidden="true">
@@ -333,6 +333,14 @@ function handleSelect(team: TeamProfileViewModel) {
   font-size: 20rpx;
   font-weight: 500;
   line-height: 1.4;
+}
+
+/* meta 整体右贴，人数位数不同（8 人 / 12 人）会把角色图标顶得左右错开；
+   固定右对齐占位后角色图标列保持同一竖直线，超过三位数时优雅退化。 */
+.home-team-option__count {
+  min-width: 60rpx;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 .home-team-option--pressed { background: var(--ui-color-neutral-bg); }
