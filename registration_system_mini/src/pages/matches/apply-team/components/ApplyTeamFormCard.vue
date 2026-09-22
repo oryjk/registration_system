@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import NeoSurface from "@/components/neo/NeoSurface.vue";
+import AppSurface from "@/components/ui/AppSurface.vue";
 
 defineProps<{
   teamName: string;
@@ -14,7 +14,7 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <NeoSurface variant="raised">
+  <AppSurface variant="raised">
     <view class="form-row">
       <text class="form-label">我的球队</text>
       <text class="form-team">{{ teamName }}</text>
@@ -38,7 +38,7 @@ const emit = defineEmits<{
     >
       {{ isSubmitting ? "提交中..." : "确认接约" }}
     </view>
-  </NeoSurface>
+  </AppSurface>
 </template>
 
 <style scoped>
@@ -51,14 +51,14 @@ const emit = defineEmits<{
 
 .form-label {
   font-size: 26rpx;
-  font-weight: 800;
-  color: var(--neo-color-text);
+  font-weight: 500;
+  color: var(--ui-color-text);
 }
 
 .form-team {
   font-size: 28rpx;
-  font-weight: 900;
-  color: var(--neo-color-text);
+  font-weight: 600;
+  color: var(--ui-color-text);
 }
 
 .form-field {
@@ -71,12 +71,12 @@ const emit = defineEmits<{
   min-height: 180rpx;
   margin-top: 14rpx;
   padding: 18rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-surface);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-button);
+  background: var(--ui-color-surface);
   font-size: 26rpx;
   line-height: 1.6;
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
   box-sizing: border-box;
 }
 
@@ -85,8 +85,8 @@ const emit = defineEmits<{
   right: 6rpx;
   bottom: -34rpx;
   font-size: 20rpx;
-  font-weight: 700;
-  color: var(--neo-color-text-disabled);
+  font-weight: 400;
+  color: var(--ui-color-text-disabled);
 }
 
 .form-submit {
@@ -95,19 +95,18 @@ const emit = defineEmits<{
   justify-content: center;
   margin-top: 52rpx;
   height: 84rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-text);
-  color: var(--neo-color-text-inverse);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-button);
+  background: var(--ui-color-text);
+  color: var(--ui-color-text-inverse);
   font-size: 30rpx;
-  font-weight: 900;
-  box-shadow: 6rpx 6rpx 0 var(--neo-color-accent);
-  transition: transform var(--neo-motion-fast), box-shadow var(--neo-motion-fast);
+  font-weight: 600;
+  box-shadow: var(--ui-shadow-card);
+  transition: transform var(--ui-motion-press-duration) var(--ui-motion-ease-out);
 }
 
 .form-submit:active {
-  transform: translate(var(--neo-motion-press-offset), var(--neo-motion-press-offset));
-  box-shadow: var(--neo-shadow-pressed);
+  transform: scale(0.98);
 }
 
 .form-submit-disabled {

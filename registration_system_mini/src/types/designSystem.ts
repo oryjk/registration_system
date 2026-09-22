@@ -1,1 +1,1 @@
-export type NeoTagTone = "lime" | "green" | "amber" | "red" | "blue" | "dark" | "muted";
+export type AppTagTone = "lime" | "green" | "amber" | "red" | "blue" | "dark" | "muted";

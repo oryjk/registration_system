@@ -30,19 +30,11 @@ const {
 
 <template>
   <page-meta :page-style="themePageStyle" />
-  <view class="team-join-page" :style="pageStyle">
+  <view class="app-theme-scope team-join-page" :style="[themePageStyle, pageStyle]">
     <AppTabHeader title="加入球队" showBack />
 
     <view class="team-join-content">
-      <view class="team-join-hero">
-        <view class="team-join-hero__copy">
-          <text class="team-join-title">加入一支球队</text>
-          <text class="team-join-copy">搜索球队名称并申请加入；已经在球队中的队员也可以加入其他球队。</text>
-        </view>
-        <view class="team-join-hero__mark">
-          <text>加</text>
-        </view>
-      </view>
+      <text class="team-page-note">搜索球队名称，选择后申请加入。</text>
 
       <TeamJoinPanel
         v-model:search-keyword="searchKeyword"
@@ -81,7 +73,7 @@ const {
 .team-join-page {
   min-height: 100vh;
   padding: 0 28rpx 112rpx;
-  background: var(--neo-color-page);
+  background: var(--ui-color-page);
   box-sizing: border-box;
 }
 
@@ -92,56 +84,6 @@ const {
   box-sizing: border-box;
 }
 
-.team-join-hero {
-  display: flex;
-  align-items: center;
-  gap: 22rpx;
-  margin: 22rpx 0 24rpx;
-  padding: 28rpx 26rpx;
-  border: var(--neo-border-strong);
-  border-radius: var(--neo-radius-md);
-  background: var(--neo-color-hero);
-  box-shadow: 8rpx 8rpx 0 var(--neo-color-accent);
-}
-
-.team-join-hero__copy {
-  flex: 1;
-  min-width: 0;
-}
-
-.team-join-title {
-  display: block;
-  color: var(--neo-color-hero-fg);
-  font-size: 42rpx;
-  font-weight: 900;
-  line-height: 1.18;
-}
-
-.team-join-copy {
-  display: block;
-  margin-top: 12rpx;
-  color: rgba(255, 255, 255, 0.72);
-  font-size: 23rpx;
-  font-weight: 700;
-  line-height: 1.55;
-}
-
-.team-join-hero__mark {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  width: 104rpx;
-  height: 104rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-accent);
-  color: var(--neo-color-text);
-  font-size: 40rpx;
-  font-weight: 900;
-  box-sizing: border-box;
-}
-
 .team-join-alt {
   display: flex;
   align-items: center;
@@ -149,33 +91,28 @@ const {
   gap: 10rpx;
   margin-top: 26rpx;
   padding: 24rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-md);
-  background: var(--neo-color-surface);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-card);
+  background: var(--ui-color-surface);
 }
 
 .team-join-alt--pressed {
-  transform: translate(var(--neo-motion-press-offset), var(--neo-motion-press-offset));
+  transform: scale(0.98);
   box-shadow: none;
 }
 
 .team-join-alt__label {
-  color: var(--neo-color-text-muted);
+  color: var(--ui-color-text-muted);
   font-size: 26rpx;
-  font-weight: 800;
+  font-weight: 500;
 }
 
 .team-join-alt__arrow {
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
   font-size: 26rpx;
-  font-weight: 900;
+  font-weight: 600;
 }
 
-@media (max-width: 560rpx) {
-  .team-join-hero__mark {
-    width: 88rpx;
-    height: 88rpx;
-    font-size: 34rpx;
-  }
-}
+
+.team-page-note { display: block; margin: 4rpx 4rpx 20rpx; color: var(--ui-color-text-muted); font-size: 24rpx; line-height: 1.5; }
 </style>

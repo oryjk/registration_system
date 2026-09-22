@@ -1,21 +1,25 @@
 <script setup lang="ts">
 import { useAccentTheme } from "@/stores/theme";
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { onHide, onLoad, onPullDownRefresh, onReachBottom, onShareAppMessage, onShareTimeline, onShow, onUnload } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
 import BottomTabBar from "@/components/BottomTabBar.vue";
 import ProfileCompletionDialog from "@/components/ProfileCompletionDialog.vue";
-import NeoConfirmDialog from "@/components/neo/NeoConfirmDialog.vue";
-import NeoSectionHeader from "@/components/neo/NeoSectionHeader.vue";
-import NeoSegmentedControl from "@/components/neo/NeoSegmentedControl.vue";
+import AvatarPreviewDialog from "@/components/ui/AvatarPreviewDialog.vue";
+import type { AvatarItem } from "@/components/ui/avatarTypes";
+import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
+import HomeSectionHeader from "./components/HomeSectionHeader.vue";
 import HomeHeroSection from "./components/HomeHeroSection.vue";
+import HomeActionMatchDeck from "./components/HomeActionMatchDeck.vue";
+import HomeActionMatchCard from "./components/HomeActionMatchCard.vue";
+import { useHomeActionDeckDetails } from "./useHomeActionDeckDetails";
 import HomeMatchList from "./components/HomeMatchList.vue";
-import HomeMatchSearch from "./components/HomeMatchSearch.vue";
-import HomeOtherMatchesSection from "./components/HomeOtherMatchesSection.vue";
+import HomeMatchSearchResults from "./components/HomeMatchSearchResults.vue";
+import HomeHeaderSearch from "./components/HomeHeaderSearch.vue";
 import HomeTeamSwitcher from "./components/HomeTeamSwitcher.vue";
-import NeoRunningLoader from "@/components/neo/NeoRunningLoader.vue";
+import RunningLoader from "@/components/ui/RunningLoader.vue";
 import OnboardingRolePickerDialog from "./components/OnboardingRolePickerDialog.vue";
-import { getMatchHome, listMyMatches, listMatches } from "@/api/match";
+import { getMatchHome, listMyMatches } from "@/api/match";
 import { defaultMiniAppRuntimeConfig } from "@/config/runtimeConfig";
 import { useNotificationCenter } from "@/stores/notificationCenter";
 import { useTeamContext } from "@/stores/teamContext";
@@ -34,17 +38,16 @@ import {
   resolveHomeMatchSearchLoadMoreIntent,
   toHomeMatchSearchCard,
 } from "./homeMatchSearchState";
-import { useHomeOtherMatches } from "./useHomeOtherMatches";
 import { useHomeOnboardingGuide } from "./useHomeOnboardingGuide";
 
-type HomeContentTab = "mine" | "others";
-
-const homeTabOptions = [
-  { label: "我的比赛", value: "mine" },
-  { label: "广场", value: "others" },
-];
-
 const { themePageStyle } = useAccentTheme();
+const previewAvatar = ref<AvatarItem | null>(null);
+const avatarPreviewVisible = ref(false);
+const avatarPreviewRendered = ref(false);
+function openAvatarPreview(avatar: AvatarItem) {
+  previewAvatar.value = { ...avatar };
+  avatarPreviewVisible.value = true;
+}
 
 const { ensureSessionReady, teamProfiles, currentTeam, switchTeam } = useTeamContext();
 const { syncUnreadCount } = useNotificationCenter();
@@ -64,6 +67,8 @@ const upcomingMatches = ref<HomeMatchCardViewModel[]>([]);
 const ongoingMatches = ref<HomeMatchCardViewModel[]>([]);
 const endedMatches = ref<HomeMatchCardViewModel[]>([]);
 const homeHeroBanners = ref(defaultMiniAppRuntimeConfig.home.hero_banners);
+// header 搜索展开态：展开时标题行的球队切换器让位给搜索框。
+const headerSearchActive = ref(false);
 const searchQuery = ref("");
 const activeSearchQuery = ref("");
 const searchSourceMatches = ref<AppMatchSummary[]>([]);
@@ -95,24 +100,28 @@ const upcomingEmptyText = computed(() => (
     ? "登录后可以查看最近要处理的比赛"
     : "当前没有最近要处理的比赛，稍后再回来看看。"
 ));
-const activeHomeTab = ref<HomeContentTab>("mine");
-const otherMatches = useHomeOtherMatches();
 // L1「球队即标题」：登录且有球队时标题位显示球队身份；≥2 支可下拉切换，单队纯展示。
 const showTeamSwitcher = computed(() => !isGuestMode.value && teamProfiles.value.length >= 1);
-// banner 位优先展示「下一场比赛」（最近要处理的首场），下方列表从第二场开始，避免重复。
-const heroNextMatch = computed(() => upcomingMatches.value[0] ?? null);
+// D 风格主次层级：待处理叠卡只承载 upcoming；进行中/已结束留在各自的查看型分区，
+// 没有待处理时进行中比赛仍显示在「进行中的比赛」区域，不顶替成大卡。
+const actionDeckMatches = computed(() => upcomingMatches.value);
+const actionDeckIndex = ref(0);
+const deckInteracting = ref(false);
+watch(actionDeckMatches, (matches, previous) => {
+  const previousId = previous?.[actionDeckIndex.value]?.id;
+  const next = matches.findIndex((match) => match.id === previousId);
+  actionDeckIndex.value = next >= 0 ? next : 0;
+});
+const heroNextMatch = computed(() => actionDeckMatches.value[actionDeckIndex.value] ?? null);
+const deckDetails = useHomeActionDeckDetails(actionDeckMatches, actionDeckIndex);
+const actionMatchCard = deckDetails.active;
+const nextMatchCard = computed(() => actionDeckMatches.value[actionDeckIndex.value + 1] ?? null);
+const previousMatchCard = computed(() => actionDeckMatches.value[actionDeckIndex.value - 1] ?? null);
+const actionMatchCardTimestamp = ref(Date.now());
+const additionalUpcomingMatches = computed(() => upcomingMatches.value.filter((match) => !actionDeckMatches.value.some((item) => item.id === match.id)));
+const additionalOngoingMatches = computed(() => ongoingMatches.value.filter((match) => !actionDeckMatches.value.some((item) => item.id === match.id)));
 const shareTitle = "约球开踢：组队、报名、上场";
 const sharePath = "/pages/home/index";
-
-function handleHomeTabChange(value: string) {
-  const next: HomeContentTab = value === "others" ? "others" : "mine";
-  if (next === activeHomeTab.value) return;
-  activeHomeTab.value = next;
-  // 切到「广场」时首次拉取；guest 模式下不请求。
-  if (next === "others" && !isGuestMode.value && !otherMatches.hasLoadedOnce.value) {
-    void otherMatches.loadPage();
-  }
-}
 
 function clearMatchSections() {
   upcomingMatches.value = [];
@@ -129,7 +138,7 @@ function applyMatchSection(section: HomeMatchSectionViewModel) {
       ongoingMatches.value = section.items;
       return;
     case "ended":
-      endedMatches.value = section.items;
+      endedMatches.value = section.items.slice(0, 3);
       return;
   }
 }
@@ -178,21 +187,12 @@ async function loadSearchPage(page: number, query: string, loadVersion: number) 
   searchErrorMessage.value = "";
   isSearching.value = true;
   try {
-    // 搜索范围跟随当前 tab：mine 保持既有行为，others 附加与列表一致的主队/未结束过滤。
-    const response = activeHomeTab.value === "others"
-      ? await listMatches({
-          page,
-          pageSize: HOME_MATCH_SEARCH_PAGE_SIZE,
-          search: query,
-          scope: "others",
-          endsAfter: new Date(),
-          hostTeamOnly: true,
-        })
-      : await listMyMatches({
-          page,
-          pageSize: HOME_MATCH_SEARCH_PAGE_SIZE,
-          search: query,
-        });
+    // 广场入口已下线（发现场景归约队页），首页搜索只搜自己的比赛。
+    const response = await listMyMatches({
+      page,
+      pageSize: HOME_MATCH_SEARCH_PAGE_SIZE,
+      search: query,
+    });
     if (loadVersion !== searchLoadVersion) return;
 
     const merged = mergeHomeMatchSearchPage(searchSourceMatches.value, response);
@@ -248,6 +248,7 @@ function retrySearchPage() {
 }
 
 async function loadPageData(options?: { preserveContent?: boolean }) {
+  actionMatchCardTimestamp.value = Date.now();
   const loadVersion = ++homeLoadVersion;
   const preserveContent = !!options?.preserveContent && hasLoadedOnce.value;
   const isFirstLoad = !hasLoadedOnce.value;
@@ -274,7 +275,7 @@ async function loadPageData(options?: { preserveContent?: boolean }) {
     if (loadVersion !== homeLoadVersion) return;
     const response = await getMatchHome();
     if (loadVersion !== homeLoadVersion) return;
-    const sections = buildHomeMatchSections(response, new Date(), 2);
+    const sections = buildHomeMatchSections(response, new Date());
     if (loadVersion !== homeLoadVersion) return;
 
     clearMatchSections();
@@ -315,9 +316,6 @@ function handleSessionLoginCompleted() {
   void loadPageData({ preserveContent: true });
   // 游客先进首页、之后才登录的场景：登录完成后同样给一次新手引导机会。
   onboardingGuide.maybeStartAfterFirstLoad();
-  if (activeHomeTab.value === "others" && !otherMatches.hasLoadedOnce.value) {
-    void otherMatches.loadPage();
-  }
 }
 
 function handleHomeDataMayChanged() {
@@ -325,7 +323,9 @@ function handleHomeDataMayChanged() {
 }
 
 onShow(() => {
-  uni.hideTabBar({ animation: false });
+  actionMatchCardTimestamp.value = Date.now();
+  // H5 路由切换时 onShow 可能早于 TabBar 挂载，此时无需隐藏。
+  uni.hideTabBar({ animation: false, fail: () => {} });
 
   if (!hasLoadedOnce.value) {
     void loadPageData();
@@ -346,6 +346,7 @@ onShow(() => {
 });
 
 onHide(() => {
+  avatarPreviewVisible.value = false;
   hiddenAt.value = Date.now();
   if (navigatingMatchId.value) {
     navigatingMatchId.value = "";
@@ -353,24 +354,16 @@ onHide(() => {
 });
 
 onPullDownRefresh(async () => {
-  // 停在「广场」tab 下拉时同步刷新广场列表；与「我的比赛」并行请求，全部结束后再收起下拉。
-  const otherMatchesRefresh = activeHomeTab.value === "others" && !isGuestMode.value ? otherMatches.loadPage() : null;
   try {
     await loadPageData({ preserveContent: hasLoadedOnce.value });
-    await otherMatchesRefresh;
   } finally {
     uni.stopPullDownRefresh();
   }
 });
 
 onReachBottom(() => {
-  // 搜索态优先走搜索分页；否则「广场」tab 触底加载更多。
   if (hasSearched.value && activeSearchQuery.value) {
     loadMoreSearchResults();
-    return;
-  }
-  if (activeHomeTab.value === "others") {
-    void otherMatches.loadMore();
   }
 });
 
@@ -399,91 +392,120 @@ onShareTimeline(() => ({
 </script>
 
 <template>
-  <page-meta :page-style="themePageStyle" />
-  <view class="home-page" :style="pageStyle">
+  <page-meta :page-style="`${themePageStyle}${avatarPreviewRendered ? ';overflow:hidden;' : ''}`" />
+  <view class="app-theme-scope home-page" :style="[themePageStyle, pageStyle]">
     <AppTabHeader title="首页">
       <!-- mp 端 slot 内容不吃子组件 scoped 样式，回落标题用页面自己的类保持同款字号。 -->
       <template #title>
-        <HomeTeamSwitcher
-          v-if="showTeamSwitcher"
-          :teams="teamProfiles"
-          :current-team-id="currentTeam?.id"
-          @switch-team="switchTeam"
-        />
-        <text v-else class="home-header-title">首页</text>
+        <view class="home-title-row">
+          <!-- 球队名容器允许被搜索框从右往左挤掉（宽度随兄弟节点过渡收缩并裁切）。 -->
+          <view class="home-title-team">
+            <HomeTeamSwitcher
+              v-if="showTeamSwitcher"
+              :teams="teamProfiles"
+              :current-team-id="currentTeam?.id"
+              :force-closed="headerSearchActive"
+              @switch-team="switchTeam"
+            />
+            <text v-else class="home-header-title">首页</text>
+          </view>
+          <!-- 搜索入口与球队同在标题行：收起时只是右端放大镜图标，点击后宽度动画展开为整行搜索框。 -->
+          <HomeHeaderSearch
+            :class="['home-title-search', headerSearchActive ? 'home-title-search--active' : '']"
+            :active="headerSearchActive"
+            :query="searchQuery"
+            @update:active="headerSearchActive = $event"
+            @update:query="searchQuery = $event"
+            @search="handleSearch"
+            @clear="clearSearchResults"
+          />
+        </view>
       </template>
     </AppTabHeader>
 
     <view class="home-content" :style="contentStyle">
-      <NeoRunningLoader v-if="showInitialLoadingState" />
+      <RunningLoader v-if="showInitialLoadingState" />
 
       <view v-else>
         <view v-if="isRefreshing" class="home-refresh-mask">
           <view class="home-refresh-chip">更新中...</view>
         </view>
 
+        <HomeActionMatchDeck v-if="heroNextMatch" :index="actionDeckIndex" :count="actionDeckMatches.length" @change="actionDeckIndex = $event" @interaction="deckInteracting = $event">
+        <HomeActionMatchCard
+          :deck-count="actionDeckMatches.length"
+          :deck-index="actionDeckIndex"
+          :interaction-blocked="deckInteracting"
+          :match="heroNextMatch"
+          :detail="actionMatchCard.detail"
+          :loading="actionMatchCard.loading"
+          :error="actionMatchCard.error"
+          :navigating="navigatingMatchId === heroNextMatch.id"
+          :now="actionMatchCardTimestamp"
+          @match-tap="handleMatchTap"
+          @retry="deckDetails.reload"
+          @avatar-select="openAvatarPreview"
+        />
+        <template #next>
+          <HomeActionMatchCard v-if="nextMatchCard" :match="nextMatchCard" :detail="deckDetails.next.value.detail" :loading="deckDetails.next.value.loading" :error="deckDetails.next.value.error" :navigating="false" :now="actionMatchCardTimestamp" :deck-count="actionDeckMatches.length" :deck-index="actionDeckIndex + 1" preview />
+        </template>
+        <template #previous>
+          <HomeActionMatchCard v-if="previousMatchCard" :match="previousMatchCard" :detail="deckDetails.previous.value.detail" :loading="deckDetails.previous.value.loading" :error="deckDetails.previous.value.error" :navigating="false" :now="actionMatchCardTimestamp" :deck-count="actionDeckMatches.length" :deck-index="actionDeckIndex - 1" preview />
+        </template>
+        </HomeActionMatchDeck>
         <HomeHeroSection
+          v-else
           :hero-banners="homeHeroBanners"
           :next-match="heroNextMatch"
           @banner-tap="openTab('/pages/activities/index')"
           @match-tap="handleMatchTap"
         />
 
-        <!-- 小程序端样式隔离：父级 scoped 类落在子组件根节点会失效，间距放包裹 view 上。 -->
-        <view class="home-tab-segment">
-          <NeoSegmentedControl
-            :model-value="activeHomeTab"
-            :options="homeTabOptions"
-            @update:model-value="handleHomeTabChange"
-          />
-        </view>
-
-        <HomeMatchSearch
-          :query="searchQuery"
-          :is-loading="isSearching"
+        <HomeMatchSearchResults
           :has-searched="hasSearched"
+          :is-loading="isSearching"
           :is-guest-mode="isGuestMode"
           :navigating-match-id="navigatingMatchId"
           :matches="searchMatches"
           :error-message="searchErrorMessage"
           :has-more="searchHasMore"
           :total="searchTotal"
-          @update:query="searchQuery = $event"
-          @search="handleSearch"
-          @clear="clearSearchResults"
           @retry="retrySearchPage"
           @load-more="loadMoreSearchResults"
           @match-tap="handleMatchTap"
         />
 
-        <view v-if="!hasSearched && activeHomeTab === 'mine' && showHomeLoadError" class="home-empty home-empty-compact">
+        <view v-if="!hasSearched && showHomeLoadError" class="home-empty home-empty-compact">
           <view>{{ errorMessage }}</view>
           <view class="home-empty-action" @tap="handleRetryLoad">点击重试</view>
         </view>
 
-        <template v-else-if="!hasSearched && activeHomeTab === 'mine'">
-          <!-- hero 只作首场预览位；「最近要处理的比赛」区域常驻，列表始终展示全部待处理场次。 -->
-          <NeoSectionHeader title="最近要处理的比赛" marker="热" :action-label="upcomingMatches.length ? '更多' : undefined" @action='openMatchList("upcoming")' />
+        <template v-else-if="!hasSearched">
+          <!-- 最近要处理的比赛卡已展示待处理集合，列表只放未包含的比赛；完整列表入口保留。 -->
+          <HomeSectionHeader v-if="additionalUpcomingMatches.length || !heroNextMatch" title="最近要处理的比赛" :action-label="upcomingMatches.length ? '更多' : undefined" @action='openMatchList("upcoming")' />
           <HomeMatchList
-            v-if="upcomingMatches.length"
-            :matches="upcomingMatches"
+            v-if="additionalUpcomingMatches.length"
+            :matches="additionalUpcomingMatches"
             :is-guest-mode="isGuestMode"
             :navigating-match-id="navigatingMatchId"
             @match-tap="handleMatchTap"
           />
-          <view v-else class="home-empty home-empty-compact">{{ upcomingEmptyText }}</view>
+          <view v-else-if="!heroNextMatch" class="home-empty home-empty-compact">
+            <text>{{ upcomingEmptyText }}</text>
+            <view v-if="!isGuestMode" class="home-empty-link" hover-class="home-empty-link--pressed" :hover-stay-time="100" @tap="openTab('/pages/activities/index')">去约队大厅看看 ›</view>
+          </view>
 
-          <NeoSectionHeader v-if="!isGuestMode" title="进行中的比赛" marker="赛" :action-label="ongoingMatches.length ? '更多' : undefined" @action='openMatchList("ongoing")' />
+          <HomeSectionHeader v-if="!isGuestMode && additionalOngoingMatches.length" title="进行中的比赛" :action-label="ongoingMatches.length ? '更多' : undefined" @action='openMatchList("ongoing")' />
           <HomeMatchList
-            v-if="!isGuestMode && ongoingMatches.length"
-            :matches="ongoingMatches"
+            v-if="!isGuestMode && additionalOngoingMatches.length"
+            :matches="additionalOngoingMatches"
             :is-guest-mode="isGuestMode"
             :navigating-match-id="navigatingMatchId"
             @match-tap="handleMatchTap"
           />
-          <view v-else-if="!isGuestMode" class="home-empty home-empty-compact">当前没有进行中的比赛。</view>
+          <view v-else-if="!isGuestMode && !ongoingMatches.length" class="home-empty home-empty-compact">当前没有进行中的比赛。</view>
 
-          <NeoSectionHeader v-if="!isGuestMode" title="已结束的比赛" marker="终" :action-label="endedMatches.length ? '更多' : undefined" @action='openMatchList("ended")' />
+          <HomeSectionHeader v-if="!isGuestMode" title="已结束的比赛" :action-label="endedMatches.length ? '更多' : undefined" @action='openMatchList("ended")' />
           <HomeMatchList
             v-if="!isGuestMode && endedMatches.length"
             :matches="endedMatches"
@@ -493,29 +515,13 @@ onShareTimeline(() => ({
           />
           <view v-else-if="!isGuestMode" class="home-empty home-empty-compact">当前没有已结束的比赛。</view>
         </template>
-
-        <template v-else-if="!hasSearched && activeHomeTab === 'others'">
-          <view v-if="isGuestMode" class="home-empty home-empty-compact">登录后可以浏览广场的比赛，并给队长留言约球。</view>
-          <HomeOtherMatchesSection
-            v-else
-            :matches="otherMatches.matches.value"
-            :is-loading="otherMatches.isLoading.value"
-            :is-loading-more="otherMatches.isLoadingMore.value"
-            :has-loaded-once="otherMatches.hasLoadedOnce.value"
-            :error-message="otherMatches.errorMessage.value"
-            :has-more="otherMatches.hasMore.value"
-            :navigating-match-id="navigatingMatchId"
-            @match-tap="handleMatchTap"
-            @retry="void otherMatches.loadPage()"
-            @load-more="void otherMatches.loadMore()"
-          />
-        </template>
       </view>
     </view>
 
     <BottomTabBar current="home" />
 
     <!-- 新手引导：身份选择 → 完善资料 →（队长）去创建球队 -->
+    <AvatarPreviewDialog :visible="avatarPreviewVisible" :avatar="previewAvatar" @close="avatarPreviewVisible = false" @presence="avatarPreviewRendered = $event" />
     <OnboardingRolePickerDialog
       :visible="onboardingGuide.rolePickerVisible.value"
       @select-captain="onboardingGuide.handleSelectCaptain"
@@ -528,7 +534,7 @@ onShareTimeline(() => ({
       @completed="onboardingGuide.handleProfileCompleted"
       @cancel="onboardingGuide.handleProfileCancel"
     />
-    <NeoConfirmDialog
+    <ConfirmDialog
       :visible="onboardingGuide.createTeamPromptVisible.value"
       title="资料已就绪"
       message="接下来创建你的球队，创建后可以把球队分享给队员，邀请他们加入。"
@@ -545,16 +551,12 @@ onShareTimeline(() => ({
 .home-page {
   min-height: 100vh;
   padding: 0 28rpx 164rpx;
-  background: var(--neo-color-page);
+  background: var(--ui-color-page);
   box-sizing: border-box;
 }
 
 .home-content {
   position: relative;
-}
-
-.home-tab-segment {
-  margin-top: 36rpx;
 }
 
 .home-refresh-mask {
@@ -575,36 +577,59 @@ onShareTimeline(() => ({
   min-width: 132rpx;
   height: 48rpx;
   padding: 0 18rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-text);
-  color: var(--neo-color-text-inverse);
+  border-radius: var(--ui-radius-round);
+  background: var(--ui-color-text);
+  color: var(--ui-color-text-inverse);
   font-size: 22rpx;
-  font-weight: 700;
-  box-shadow: 4rpx 4rpx 0 var(--neo-color-accent);
+  font-weight: 500;
 }
 
 .home-header-title {
-  color: var(--neo-color-text);
-  font-size: 36rpx;
-  font-weight: 900;
+  color: var(--ui-color-text);
+  font-size: 34rpx;
+  font-weight: 600;
+}
+
+/* 标题行：球队区在左（可被挤掉）、搜索入口在右；展开动画靠搜索宿主宽度过渡驱动。 */
+.home-title-row {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+}
+
+.home-title-team {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* 收起宽 76rpx = 64rpx 图标 + 12rpx 与球队名的间距；展开过渡到整行，球队名随之被挤出视野。 */
+.home-title-search {
+  flex-shrink: 0;
+  width: 76rpx;
+  transition: width 240ms cubic-bezier(0.33, 0, 0.2, 1);
+}
+
+.home-title-search--active {
+  width: 100%;
 }
 
 .home-empty {
   margin-top: 24rpx;
   padding: 28rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-surface);
-  color: var(--neo-color-text-muted);
-  font-size: 28rpx;
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-button);
+  background: var(--ui-color-surface);
+  color: var(--ui-color-text-muted);
+  font-size: 26rpx;
   line-height: 1.6;
 }
 
 .home-empty-compact {
   margin-bottom: 12rpx;
   padding: 22rpx 24rpx;
-  font-size: 26rpx;
+  font-size: 24rpx;
 }
 
 .home-empty-action {
@@ -613,12 +638,26 @@ onShareTimeline(() => ({
   justify-content: center;
   margin-top: 16rpx;
   padding: 10rpx 18rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-surface);
-  color: var(--neo-color-text);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-button);
+  background: var(--ui-color-surface);
+  color: var(--ui-color-text);
   font-size: 24rpx;
-  font-weight: 700;
+  font-weight: 500;
+}
+
+/* 待处理空态的轻量浏览入口：链接语义，不做大按钮。 */
+.home-empty-link {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 12rpx;
+  color: var(--ui-color-accent-deep);
+  font-size: 24rpx;
+  font-weight: 500;
+}
+
+.home-empty-link--pressed {
+  opacity: 0.72;
 }
 
 /* #ifdef H5 */

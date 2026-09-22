@@ -12,7 +12,7 @@ const accentTheme = ref<AccentThemeId>(getStoredAccentTheme());
 
 const palette = computed<AccentThemePalette>(() => ACCENT_THEMES[accentTheme.value]);
 
-/** 注入每页 page-meta page-style 的变量覆盖串；默认青柠主题也返回显式值，避免 H5 从其他主题切回时旧覆盖残留。 */
+/** 注入每页 page-meta page-style 的变量覆盖串；默认薄荷蓝主题也返回显式值，避免 H5 从其他主题切回时旧覆盖残留。 */
 const themePageStyle = computed(() => buildAccentThemePageStyle(accentTheme.value));
 
 /** 原生组件（如 switch 的 color 属性）只接受 hex，不接受 CSS 变量。 */

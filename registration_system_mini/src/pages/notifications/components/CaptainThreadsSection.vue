@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import NeoSurface from "@/components/neo/NeoSurface.vue";
+import AppSurface from "@/components/ui/AppSurface.vue";
 import type { CaptainThreadItemViewModel } from "../captainThreadListState";
 
 defineProps<{
@@ -27,7 +27,7 @@ const emit = defineEmits<{
     <view v-else-if="isLoading && !hasLoadedOnce" class="threads-card">正在加载留言...</view>
 
     <template v-else>
-      <NeoSurface
+      <AppSurface
         v-for="item in items"
         :key="item.id"
         variant="raised"
@@ -56,7 +56,7 @@ const emit = defineEmits<{
         </view>
         <text class="threads-item-preview">{{ item.preview }}</text>
         <text class="threads-item-action">查看对话</text>
-      </NeoSurface>
+      </AppSurface>
 
       <view v-if="!items.length" class="threads-card">还没有球队留言。在比赛详情页点「联系队长」即可给对方队长留言。</view>
       <view v-else-if="hasMore" class="threads-more" @tap="emit('loadMore')">
@@ -77,25 +77,25 @@ const emit = defineEmits<{
 
 .threads-card {
   padding: 26rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-surface);
-  color: var(--neo-color-text-muted);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-button);
+  background: var(--ui-color-surface);
+  color: var(--ui-color-text-muted);
   font-size: 28rpx;
   line-height: 1.6;
-  font-weight: 700;
+  font-weight: 400;
 }
 
 .threads-action {
   display: inline-flex;
   margin-top: 14rpx;
   padding: 8rpx 16rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-surface);
-  color: var(--neo-color-text);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-button);
+  background: var(--ui-color-surface);
+  color: var(--ui-color-text);
   font-size: 24rpx;
-  font-weight: 800;
+  font-weight: 500;
 }
 
 .threads-item {
@@ -123,18 +123,18 @@ const emit = defineEmits<{
   width: 72rpx;
   height: 72rpx;
   border-radius: 50%;
-  border: var(--neo-border-default);
+  border: var(--ui-border-default);
   flex-shrink: 0;
-  background: var(--neo-color-accent-soft);
+  background: var(--ui-color-accent-soft);
 }
 
 .threads-avatar-fallback {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
   font-size: 30rpx;
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .threads-item-text {
@@ -152,59 +152,59 @@ const emit = defineEmits<{
 
 .threads-item-title {
   font-size: 29rpx;
-  color: var(--neo-color-text);
-  font-weight: 900;
+  color: var(--ui-color-text);
+  font-weight: 600;
 }
 
 .threads-item-unread {
   padding: 2rpx 12rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-round);
-  background: var(--neo-color-danger-soft);
-  color: var(--neo-color-danger);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-round);
+  background: var(--ui-color-danger-soft);
+  color: var(--ui-color-danger);
   font-size: 21rpx;
-  font-weight: 900;
+  font-weight: 600;
   line-height: 1.5;
 }
 
 .threads-item-subtitle {
   font-size: 23rpx;
-  color: var(--neo-color-text-muted);
-  font-weight: 700;
+  color: var(--ui-color-text-muted);
+  font-weight: 400;
 }
 
 .threads-item-time {
   flex-shrink: 0;
   font-size: 22rpx;
-  color: var(--neo-color-text-muted);
-  font-weight: 700;
+  color: var(--ui-color-text-muted);
+  font-weight: 400;
 }
 
 .threads-item-preview {
   font-size: 26rpx;
-  color: var(--neo-color-text-muted);
-  font-weight: 700;
+  color: var(--ui-color-text-muted);
+  font-weight: 400;
   line-height: 1.55;
 }
 
 .threads-item-action {
   font-size: 22rpx;
-  color: var(--neo-color-text);
-  font-weight: 800;
+  color: var(--ui-color-text);
+  font-weight: 500;
 }
 
 .threads-more {
   padding: 18rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-surface);
-  color: var(--neo-color-text);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-button);
+  background: var(--ui-color-surface);
+  color: var(--ui-color-text);
   font-size: 26rpx;
-  font-weight: 800;
+  font-weight: 500;
   text-align: center;
 }
 
 .threads-more-end {
-  color: var(--neo-color-text-muted);
+  color: var(--ui-color-text-muted);
 }
 </style>

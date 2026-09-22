@@ -19,7 +19,7 @@ export function useTeamCreatePage() {
   const createForm = reactive({ name: "", description: "", joinPassword: "" });
   // 来自首页新手引导（from=onboarding）：创建成功后提示分享邀请并落到球队详情页。
   let openedFromOnboarding = false;
-  // 分享提示用自绘 NeoConfirmDialog 呈现：原生 showModal 的按钮文案限制 4 个汉字，
+  // 分享提示用自绘 ConfirmDialog 呈现：原生 showModal 的按钮文案限制 4 个汉字，
   // 「去邀请队员」5 字会导致弹窗静默失败。
   const onboardingShareTeamId = ref<number | null>(null);
   const onboardingShareVisible = computed(() => onboardingShareTeamId.value !== null);

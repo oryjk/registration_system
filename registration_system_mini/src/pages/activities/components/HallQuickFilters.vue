@@ -32,6 +32,8 @@ const sizeFilters: Array<{ key: HallMatchSizeFilter; label: string }> = [
         v-for="filter in kindFilters"
         :key="filter.key"
         :class="['hall-filter-chip', activeKind === filter.key ? 'hall-filter-chip-active' : '']"
+        hover-class="hall-filter-chip--pressed"
+        :hover-stay-time="100"
         @tap="emit('selectKind', filter.key)"
       >
         {{ filter.label }}
@@ -43,6 +45,8 @@ const sizeFilters: Array<{ key: HallMatchSizeFilter; label: string }> = [
         v-for="filter in sizeFilters"
         :key="filter.key"
         :class="['hall-filter-chip', 'hall-filter-chip-size', activeSize === filter.key ? 'hall-filter-chip-active' : '']"
+        hover-class="hall-filter-chip--pressed"
+        :hover-stay-time="100"
         @tap="emit('selectSize', filter.key)"
       >
         {{ filter.label }}
@@ -71,13 +75,14 @@ const sizeFilters: Array<{ key: HallMatchSizeFilter; label: string }> = [
   min-width: 104rpx;
   height: 56rpx;
   padding: 0 20rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-surface);
-  color: var(--neo-color-text);
+  border: 2rpx solid var(--ui-color-line);
+  border-radius: var(--ui-radius-round);
+  background: var(--ui-color-surface);
+  color: var(--ui-color-text-muted);
   font-size: 24rpx;
-  font-weight: 800;
-  transition: transform var(--neo-motion-fast), box-shadow var(--neo-motion-fast);
+  font-weight: 500;
+  box-sizing: border-box;
+  transition: background-color var(--ui-motion-switch-duration) var(--ui-motion-ease-out), color var(--ui-motion-switch-duration) var(--ui-motion-ease-out), border-color var(--ui-motion-switch-duration) var(--ui-motion-ease-out), opacity var(--ui-motion-press-duration) ease;
 }
 
 .hall-filter-chip-size {
@@ -87,9 +92,15 @@ const sizeFilters: Array<{ key: HallMatchSizeFilter; label: string }> = [
   font-size: 22rpx;
 }
 
+/* 选中态：墨底反白，颜色平滑过渡而非瞬间换色。 */
 .hall-filter-chip-active {
-  background: var(--neo-color-text);
-  color: var(--neo-color-text-inverse);
-  box-shadow: 4rpx 4rpx 0 var(--neo-color-accent);
+  border-color: var(--ui-color-text);
+  background: var(--ui-color-text);
+  color: var(--ui-color-text-inverse);
+  font-weight: 600;
+}
+
+.hall-filter-chip--pressed {
+  opacity: 0.72;
 }
 </style>

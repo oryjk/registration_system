@@ -1,11 +1,16 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import TeamRoleIcon from "@/components/ui/TeamRoleIcon.vue";
+import { computed, getCurrentInstance, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
+import { useOverlayPresence } from "@/components/ui/useOverlayPresence";
+import { prefersReducedMotion } from "@/utils/reducedMotion";
 import { getCustomNavMetrics } from "@/utils/customNav";
 import type { TeamProfileViewModel } from "@/types/viewModels";
 
 const props = defineProps<{
   teams: TeamProfileViewModel[];
   currentTeamId?: number;
+  /** 外部交互（如 header 搜索展开）需要强制收起下拉面板时置 true；置回 false 不会自动重新打开。 */
+  forceClosed?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -14,25 +19,66 @@ const emit = defineEmits<{
 
 const navMetrics = getCustomNavMetrics();
 const isOpen = ref(false);
+const { rendered, leaving } = useOverlayPresence(isOpen, {
+  leaveDurationMs: () => prefersReducedMotion() ? 0 : 210,
+});
 
 const currentTeam = computed(() => props.teams.find((team) => team.id === props.currentTeamId) ?? props.teams[0]);
 
-// 遮罩与面板从 header 底缘（headerTop + 胶囊高 + 底 padding 14rpx）之下开始，不遮顶部入口。
+// 下拉面板紧贴入口底边，实际位置和宽度在打开前测量。
 const headerBottomPx = navMetrics.headerTop + navMetrics.headerMinHeight + 7;
 const overlayStyle = { top: `${headerBottomPx}px` };
-const panelStyle = { top: `${headerBottomPx + 6}px` };
+const entryWidth = ref(0);
+const entryBottom = ref(headerBottomPx);
+const panelStyle = computed(() => ({
+  top: `${entryBottom.value}px`,
+  width: `${entryWidth.value}px`,
+}));
+const instance = getCurrentInstance();
+let disposed = false;
+let openRequest = 0;
 
-function toggle() {
+async function measureEntry() {
+  await nextTick();
+  if (disposed) return;
+  // 测量未缩放的外层，避免按压动画把下拉宽度缩小。
+  await new Promise<void>(resolve => {
+    uni.createSelectorQuery().in(instance?.proxy).select(".home-team-switch")
+      .boundingClientRect(rect => {
+        const box = Array.isArray(rect) ? rect[0] : rect;
+        if (!disposed && box?.width) {
+          entryWidth.value = box.width;
+          if (typeof box.bottom === "number") entryBottom.value = box.bottom;
+        }
+        resolve();
+      }).exec();
+  });
+}
+onMounted(() => { uni.onWindowResize(measureEntry); });
+onUnmounted(() => { disposed = true; openRequest++; uni.offWindowResize(measureEntry); });
+
+watch(() => props.forceClosed, (forceClosed) => {
+  if (forceClosed) close();
+});
+
+async function toggle() {
   // 单队无切换对象：入口只作身份展示，不弹面板。
-  if (props.teams.length < 2) return;
-  isOpen.value = !isOpen.value;
+  if (props.teams.length < 2 || props.forceClosed) return;
+  if (isOpen.value) { close(); return; }
+  const request = ++openRequest;
+  await measureEntry();
+  if (!disposed && request === openRequest && !props.forceClosed && entryWidth.value > 0) {
+    isOpen.value = true;
+  }
 }
 
 function close() {
+  openRequest++;
   isOpen.value = false;
 }
 
 function handleSelect(team: TeamProfileViewModel) {
+  if (!isOpen.value || leaving.value) return;
   if (team.id === props.currentTeamId) {
     close();
     return;
@@ -44,30 +90,30 @@ function handleSelect(team: TeamProfileViewModel) {
 
 <template>
   <view v-if="currentTeam" class="home-team-switch">
-    <view :class="['home-team-entry', isOpen ? 'home-team-entry--open' : '']" @tap.stop="toggle">
+    <view :class="['home-team-entry', rendered ? 'home-team-entry--open' : '']"
+      :hover-class="teams.length >= 2 && !rendered ? 'home-team-entry--pressed' : 'none'"
+      :role="teams.length >= 2 ? 'button' : undefined"
+      :aria-expanded="isOpen" :aria-label="teams.length >= 2 ? '切换球队，当前' + currentTeam.name : currentTeam.name"
+      @tap.stop="toggle">
       <view class="home-team-entry__logo">
         <image v-if="currentTeam.logoUrl" class="home-team-entry__logo-image" :src="currentTeam.logoUrl" mode="aspectFill" />
         <text v-else class="home-team-entry__initial">{{ currentTeam.name.slice(0, 1) || "队" }}</text>
       </view>
       <text class="home-team-entry__name">{{ currentTeam.name }}</text>
-      <text v-if="teams.length >= 2" class="home-team-entry__caret">{{ isOpen ? "▴" : "▾" }}</text>
+      <view v-if="teams.length >= 2" class="home-team-entry__caret" :class="{ 'home-team-entry__caret--open': isOpen }" />
     </view>
 
-    <view v-if="isOpen" class="home-team-overlay" :style="overlayStyle" @tap="close" />
-    <view v-if="isOpen" class="home-team-panel" :style="panelStyle" @tap.stop>
-      <view class="home-team-panel__head">
-        <view class="home-team-panel__texts">
-          <text class="home-team-panel__title">切换当前球队</text>
-          <text class="home-team-panel__caption">比赛与信用数据随身份更新</text>
-        </view>
-        <view class="home-team-panel__close" @tap="close">×</view>
-      </view>
-
+    <view v-if="rendered" class="home-team-overlay" :class="{ 'home-team-overlay--leaving': leaving }" :style="overlayStyle" @tap="close" />
+    <!-- 关闭时保留节点完成退场动画；退出期间拒绝重复选队。 -->
+    <view v-if="rendered" class="home-team-panel" :class="{ 'home-team-panel--leaving': leaving }" :style="panelStyle" @tap.stop>
       <scroll-view class="home-team-panel__list" scroll-y>
         <view
           v-for="team in teams"
           :key="team.id"
           :class="['home-team-option', team.id === currentTeamId ? 'home-team-option--current' : '']"
+          role="button"
+          :aria-label="team.id === currentTeamId ? team.name + '，当前球队，点击收起' : '切换到' + team.name"
+          hover-class="home-team-option--pressed"
           @tap="handleSelect(team)"
         >
           <view class="home-team-option__logo">
@@ -76,10 +122,17 @@ function handleSelect(team: TeamProfileViewModel) {
           </view>
           <view class="home-team-option__copy">
             <text class="home-team-option__name">{{ team.name }}</text>
-            <text class="home-team-option__meta">{{ team.myRoleLabel }} · {{ team.memberCount }} 人</text>
+            <view class="home-team-option__meta">
+              <TeamRoleIcon :team-role="team.myRole" :label="team.myRoleLabel" />
+              <text>{{ team.memberCount }} 人</text>
+            </view>
           </view>
-          <text v-if="team.id === currentTeamId" class="home-team-option__now">当前</text>
-          <text v-else class="home-team-option__go">›</text>
+          <view v-if="team.id === currentTeamId" class="home-team-option__now" aria-hidden="true">
+            <wd-icon name="check" size="28rpx" color="var(--ui-color-accent-deep)" />
+          </view>
+          <view v-else class="home-team-option__action">
+            <wd-icon name="arrow-right" size="28rpx" color="var(--ui-color-accent-deep)" />
+          </view>
         </view>
       </scroll-view>
     </view>
@@ -87,12 +140,17 @@ function handleSelect(team: TeamProfileViewModel) {
 </template>
 
 <style scoped>
+.home-team-switch { min-width: 0; max-width: 100%; }
+
 .home-team-entry {
   display: flex;
   align-items: center;
   gap: 10rpx;
   min-height: 64rpx;
-  padding: 0 8rpx 0 4rpx;
+  padding: 0 14rpx 0 6rpx;
+  min-width: 0;
+  border-radius: 18rpx;
+  transition: background-color var(--ui-motion-press-duration) ease, transform var(--ui-motion-press-duration) ease;
 }
 
 .home-team-entry__logo {
@@ -100,13 +158,12 @@ function handleSelect(team: TeamProfileViewModel) {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  width: 52rpx;
-  height: 52rpx;
+  width: 44rpx;
+  height: 44rpx;
   overflow: hidden;
-  border: var(--neo-border-default);
-  border-radius: 12rpx;
-  background: var(--neo-color-surface);
-  box-shadow: 3rpx 3rpx 0 var(--neo-color-text);
+  border: 0;
+  border-radius: 14rpx;
+  background: var(--ui-color-surface);
   box-sizing: border-box;
 }
 
@@ -116,32 +173,39 @@ function handleSelect(team: TeamProfileViewModel) {
 }
 
 .home-team-entry__initial {
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
   font-size: 26rpx;
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .home-team-entry__name {
-  max-width: 340rpx;
+  max-width: 300rpx;
+  min-width: 0;
   overflow: hidden;
-  color: var(--neo-color-text);
-  font-size: 34rpx;
-  font-weight: 800;
+  color: var(--ui-color-text);
+  font-size: 28rpx;
+  font-weight: 600;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 
 .home-team-entry--open .home-team-entry__name {
-  color: var(--neo-color-accent-deep);
+  color: var(--ui-color-accent-deep);
 }
 
+.home-team-entry--pressed { background: var(--ui-color-neutral-bg); transform: scale(0.98); }
+.home-team-entry--open { background: var(--ui-color-surface); border-radius: 18rpx 18rpx 0 0; }
 .home-team-entry__caret {
-  margin-top: 2rpx;
-  color: var(--neo-color-text-muted);
-  font-size: 24rpx;
-  font-weight: 900;
-  line-height: 1;
+  width: 10rpx;
+  height: 10rpx;
+  margin: -5rpx 4rpx 0 8rpx;
+  flex-shrink: 0;
+  border-right: 2rpx solid var(--ui-color-text-muted);
+  border-bottom: 2rpx solid var(--ui-color-text-muted);
+  transform: rotate(45deg);
+  transition: transform var(--ui-motion-overlay-duration) var(--ui-motion-ease-out);
 }
+.home-team-entry__caret--open { transform: translateY(5rpx) rotate(225deg); }
 
 .home-team-overlay {
   position: fixed;
@@ -149,8 +213,8 @@ function handleSelect(team: TeamProfileViewModel) {
   right: 0;
   bottom: 0;
   z-index: 60;
-  background: var(--neo-color-overlay);
-  animation: home-team-overlay-fade 220ms ease;
+  background: var(--ui-color-overlay);
+  animation: home-team-overlay-fade var(--ui-motion-overlay-duration) ease both;
 }
 
 .home-team-panel {
@@ -159,82 +223,58 @@ function handleSelect(team: TeamProfileViewModel) {
   z-index: 61;
   display: flex;
   flex-direction: column;
-  width: 588rpx;
   max-height: 60vh;
-  padding: 8rpx;
-  border: var(--neo-border-strong);
-  border-radius: var(--neo-radius-md);
-  background: var(--neo-surface-bg);
-  box-shadow: var(--neo-shadow-raised);
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0 0 18rpx 18rpx;
+  background: var(--ui-color-surface);
+  box-shadow: var(--ui-shadow-soft);
   box-sizing: border-box;
-  animation: home-team-panel-in 200ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.home-team-panel__head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16rpx;
-  padding: 16rpx 18rpx 20rpx;
-  border-bottom: var(--neo-border-default);
-  flex-shrink: 0;
-}
-
-.home-team-panel__texts {
-  min-width: 0;
-}
-
-.home-team-panel__title {
-  display: block;
-  color: var(--neo-color-text);
-  font-size: 27rpx;
-  font-weight: 900;
-}
-
-.home-team-panel__caption {
-  display: block;
-  margin-top: 6rpx;
-  color: var(--neo-color-text-muted);
-  font-size: 20rpx;
-  font-weight: 700;
-  line-height: 1.4;
-}
-
-.home-team-panel__close {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  width: 48rpx;
-  height: 48rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-round);
-  background: var(--neo-surface-bg);
-  color: var(--neo-color-text-muted);
-  font-size: 30rpx;
-  line-height: 1;
-  box-sizing: border-box;
+  transform-origin: top left;
+  animation: home-team-panel-in var(--ui-motion-overlay-duration) var(--ui-motion-ease-out) both;
 }
 
 .home-team-panel__list {
   flex: 1;
   min-height: 0;
   max-height: 46vh;
-  margin-top: 8rpx;
+  border-top: 1rpx solid var(--ui-color-line);
+
 }
 
 .home-team-option {
   display: flex;
   align-items: center;
-  gap: 16rpx;
-  min-height: 100rpx;
-  padding: 14rpx 16rpx;
-  border-radius: var(--neo-radius-sm);
+  gap: 10rpx;
+  min-height: 72rpx;
+  background: transparent;
+  transition: background-color var(--ui-motion-press-duration) ease;
+  padding: 12rpx 14rpx;
+  border-radius: 0;
   box-sizing: border-box;
 }
 
 .home-team-option--current {
-  background: var(--neo-color-info-soft);
+  background: var(--ui-color-accent-soft);
+}
+
+.home-team-option--current .home-team-option__name {
+  color: var(--ui-color-accent-deep);
+}
+
+.home-team-option__action,
+.home-team-option__now {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 32rpx;
+  height: 40rpx;
+}
+
+.home-team-option__action {
+  transition: transform var(--ui-motion-press-duration) ease;
 }
 
 .home-team-option__logo {
@@ -242,12 +282,12 @@ function handleSelect(team: TeamProfileViewModel) {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  width: 60rpx;
-  height: 60rpx;
+  width: 44rpx;
+  height: 44rpx;
   overflow: hidden;
-  border: var(--neo-border-default);
-  border-radius: 12rpx;
-  background: var(--neo-color-surface);
+  border: 0;
+  border-radius: 14rpx;
+  background: var(--ui-color-surface);
   box-sizing: border-box;
 }
 
@@ -257,54 +297,48 @@ function handleSelect(team: TeamProfileViewModel) {
 }
 
 .home-team-option__initial {
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
   font-size: 27rpx;
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .home-team-option__copy {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
   min-width: 0;
   flex: 1;
 }
 
 .home-team-option__name {
   display: block;
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
-  color: var(--neo-color-text);
-  font-size: 27rpx;
-  font-weight: 900;
-  line-height: 1.25;
+  color: var(--ui-color-text);
+  font-size: 24rpx;
+  font-weight: 600;
+  line-height: 1.4;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 
 .home-team-option__meta {
-  display: block;
-  margin-top: 6rpx;
-  color: var(--neo-color-text-muted);
-  font-size: 21rpx;
-  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 6rpx;
+  flex-shrink: 0;
+  white-space: nowrap;
+  color: var(--ui-color-text-muted);
+  font-size: 20rpx;
+  font-weight: 500;
   line-height: 1.4;
 }
 
-.home-team-option__now {
-  flex-shrink: 0;
-  padding: 5rpx 13rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-accent);
-  color: var(--neo-color-text);
-  font-size: 20rpx;
-  font-weight: 900;
-}
-
-.home-team-option__go {
-  flex-shrink: 0;
-  color: var(--neo-color-text-muted);
-  font-size: 32rpx;
-  font-weight: 900;
-  line-height: 1;
-}
+.home-team-option--pressed { background: var(--ui-color-neutral-bg); }
+.home-team-option--pressed .home-team-option__action { transform: scale(0.9); }
+.home-team-overlay--leaving { animation: home-team-overlay-fade var(--ui-motion-overlay-duration) ease reverse both; }
+.home-team-panel--leaving { pointer-events: none; animation: home-team-panel-in var(--ui-motion-overlay-duration) ease reverse both; }
 
 @keyframes home-team-overlay-fade {
   from {
@@ -319,12 +353,17 @@ function handleSelect(team: TeamProfileViewModel) {
 @keyframes home-team-panel-in {
   from {
     opacity: 0;
-    transform: translateY(-12rpx) scale(0.98);
+    transform: translateY(-8rpx);
   }
 
   to {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translateY(0);
   }
+}
+@media (prefers-reduced-motion: reduce) {
+  .home-team-entry, .home-team-entry__caret { transition: none; }
+  .home-team-entry--pressed, .home-team-option--pressed .home-team-option__action { transform: none; }
+  .home-team-overlay, .home-team-panel { animation: none; }
 }
 </style>

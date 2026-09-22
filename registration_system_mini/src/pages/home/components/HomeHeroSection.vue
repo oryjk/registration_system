@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import NeoSurface from "@/components/neo/NeoSurface.vue";
+import AppSurface from "@/components/ui/AppSurface.vue";
 import { defaultMiniAppRuntimeConfig } from "@/config/runtimeConfig";
 import type { BackendMiniAppHomeHeroBanner } from "@/types/backend";
 import type { HomeMatchCardViewModel } from "@/types/viewModels";
@@ -57,7 +57,7 @@ const nextMatchMeta = computed(() => {
 </script>
 
 <template>
-  <NeoSurface
+  <AppSurface
     class="home-hero-shell"
     variant="raised"
     interactive
@@ -128,14 +128,14 @@ const nextMatchMeta = computed(() => {
         <view class="home-banner-ball" />
       </template>
     </view>
-  </NeoSurface>
+  </AppSurface>
 </template>
 
 <style scoped>
 .home-hero-shell {
   position: relative;
   margin-top: 18rpx;
-  background: var(--neo-color-hero);
+  background: var(--ui-color-hero);
 }
 
 .home-banner-swiper {
@@ -151,7 +151,7 @@ const nextMatchMeta = computed(() => {
   margin-top: 0;
   min-height: 194rpx;
   padding: 24rpx 24rpx;
-  background: var(--neo-color-hero);
+  background: var(--ui-color-hero);
 }
 
 .home-banner-swiper .home-banner {
@@ -195,8 +195,8 @@ const nextMatchMeta = computed(() => {
 .home-banner-title {
   font-size: 58rpx;
   line-height: 1.06;
-  color: var(--neo-color-hero-fg);
-  font-weight: 900;
+  color: var(--ui-color-hero-fg);
+  font-weight: 600;
   letter-spacing: 0;
 }
 
@@ -204,8 +204,8 @@ const nextMatchMeta = computed(() => {
   margin-top: 14rpx;
   font-size: 28rpx;
   line-height: 1.2;
-  color: var(--neo-color-hero-fg);
-  font-weight: 800;
+  color: var(--ui-color-hero-fg);
+  font-weight: 500;
 }
 
 .home-banner-button {
@@ -216,13 +216,11 @@ const nextMatchMeta = computed(() => {
   height: 54rpx;
   margin-top: 20rpx;
   padding: 0 22rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-accent);
-  color: var(--neo-color-text);
+  border-radius: var(--ui-radius-round);
+  background: var(--ui-color-accent);
+  color: var(--ui-color-text);
   font-size: 24rpx;
-  font-weight: 900;
-  box-shadow: 3rpx 3rpx 0 var(--neo-color-hero-fg);
+  font-weight: 600;
 }
 
 .home-banner-goal {
@@ -231,12 +229,12 @@ const nextMatchMeta = computed(() => {
   right: 160rpx;
   z-index: 2;
   padding: 6rpx 10rpx;
-  border: var(--neo-border-default);
-  background: var(--neo-color-accent);
-  color: var(--neo-color-text);
+  border-radius: var(--ui-radius-button);
+  background: var(--ui-color-accent);
+  color: var(--ui-color-text);
   font-size: 24rpx;
   font-style: italic;
-  font-weight: 800;
+  font-weight: 600;
   transform: rotate(-10deg);
 }
 
@@ -262,7 +260,7 @@ const nextMatchMeta = computed(() => {
   z-index: 2;
   width: 154rpx;
   height: 154rpx;
-  border: var(--neo-border-strong);
+  border: var(--ui-border-strong);
   border-radius: 999rpx;
   background:
     radial-gradient(circle at 35% 35%, #ffffff 0%, #f4f2ea 38%, #1c231d 39%, #1c231d 48%, #e6e4dc 49%, #ffffff 62%, #d6d6d0 100%);
@@ -287,25 +285,25 @@ const nextMatchMeta = computed(() => {
 }
 
 .home-nextmatch-kicker {
-  color: var(--neo-color-hero-fg);
+  color: var(--ui-color-hero-fg);
   font-size: 24rpx;
-  font-weight: 800;
+  font-weight: 500;
   opacity: 0.8;
 }
 
 .home-nextmatch-title {
   margin-top: 10rpx;
-  color: var(--neo-color-hero-fg);
+  color: var(--ui-color-hero-fg);
   font-size: 44rpx;
   line-height: 1.15;
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .home-nextmatch-meta {
   margin-top: 10rpx;
-  color: var(--neo-color-hero-fg);
+  color: var(--ui-color-hero-fg);
   font-size: 24rpx;
-  font-weight: 700;
+  font-weight: 400;
   opacity: 0.85;
 }
 
@@ -318,12 +316,11 @@ const nextMatchMeta = computed(() => {
 
 .home-nextmatch-status {
   padding: 8rpx 14rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-surface);
-  color: var(--neo-color-text);
+  border-radius: var(--ui-radius-round);
+  background: var(--ui-color-surface);
+  color: var(--ui-color-text);
   font-size: 22rpx;
-  font-weight: 800;
+  font-weight: 500;
 }
 
 .home-nextmatch-button {

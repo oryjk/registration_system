@@ -51,10 +51,10 @@ defineProps<{
 <style scoped>
 .stats-overview,
 .stats-summary-row {
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-md);
-  background: var(--neo-color-surface);
-  box-shadow: var(--neo-shadow-raised);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-card);
+  background: var(--ui-color-surface);
+  box-shadow: var(--ui-shadow-raised);
 }
 
 .stats-overview {
@@ -77,19 +77,19 @@ defineProps<{
 .stats-profile-avatar {
   width: 76rpx;
   height: 76rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-button);
   flex-shrink: 0;
-  background: var(--neo-color-hero);
+  background: var(--ui-color-hero);
 }
 
 .stats-profile-avatar-fallback {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--neo-color-hero-fg);
+  color: var(--ui-color-hero-fg);
   font-size: 28rpx;
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .stats-profile-copy {
@@ -100,8 +100,8 @@ defineProps<{
 .stats-kicker {
   display: block;
   font-size: 21rpx;
-  color: var(--neo-color-text-muted);
-  font-weight: 800;
+  color: var(--ui-color-text-muted);
+  font-weight: 500;
 }
 
 .stats-title {
@@ -109,24 +109,24 @@ defineProps<{
   margin-top: 5rpx;
   font-size: 34rpx;
   line-height: 1.15;
-  color: var(--neo-color-text);
-  font-weight: 900;
+  color: var(--ui-color-text);
+  font-weight: 600;
 }
 
 .stats-subtitle {
   display: block;
   margin-top: 6rpx;
   font-size: 22rpx;
-  color: var(--neo-color-text-muted);
-  font-weight: 700;
+  color: var(--ui-color-text-muted);
+  font-weight: 400;
 }
 
 .stats-rate-box {
   min-width: 128rpx;
   padding: 16rpx 14rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-success);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-button);
+  background: var(--ui-color-success);
   text-align: center;
 }
 
@@ -134,16 +134,16 @@ defineProps<{
   display: block;
   font-size: 40rpx;
   line-height: 1;
-  color: var(--neo-color-text);
-  font-weight: 900;
+  color: var(--ui-color-text);
+  font-weight: 600;
 }
 
 .stats-rate-label {
   display: block;
   margin-top: 7rpx;
   font-size: 20rpx;
-  color: var(--neo-color-text-muted);
-  font-weight: 800;
+  color: var(--ui-color-text-muted);
+  font-weight: 500;
 }
 
 .stats-summary-row {
@@ -156,7 +156,7 @@ defineProps<{
 
 .stats-summary-item {
   text-align: center;
-  border-right: 2rpx solid var(--neo-color-track);
+  border-right: 2rpx solid var(--ui-color-track);
 }
 
 .stats-summary-item:last-child {
@@ -167,15 +167,15 @@ defineProps<{
   display: block;
   font-size: 34rpx;
   line-height: 1;
-  color: var(--neo-color-text);
-  font-weight: 900;
+  color: var(--ui-color-text);
+  font-weight: 600;
 }
 
 .stats-summary-label {
   display: block;
   margin-top: 8rpx;
   font-size: 21rpx;
-  color: var(--neo-color-text-muted);
-  font-weight: 700;
+  color: var(--ui-color-text-muted);
+  font-weight: 400;
 }
 </style>

@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import NeoButton from "@/components/neo/NeoButton.vue";
-import NeoSectionHeader from "@/components/neo/NeoSectionHeader.vue";
-import NeoSurface from "@/components/neo/NeoSurface.vue";
+import AppButton from "@/components/ui/AppButton.vue";
+import SectionHeader from "@/components/ui/SectionHeader.vue";
+import AppSurface from "@/components/ui/AppSurface.vue";
 import type { BackendTeamSummary } from "@/types/backend";
 
 defineProps<{
@@ -47,8 +47,8 @@ function handleJoin() {
 </script>
 
 <template>
-  <NeoSurface custom-class="form-card">
-    <NeoSectionHeader title="查找已有球队" marker="01" caption="搜索球队名称，选择后确认加入" />
+  <AppSurface custom-class="form-card">
+    <SectionHeader title="搜索球队" />
     <view class="search-row">
       <input
         :value="searchKeyword"
@@ -58,9 +58,9 @@ function handleJoin() {
         @input="updateSearchKeyword"
         @confirm="handleSearch"
       />
-      <NeoButton class="search-button" variant="lime" :loading="searching" @click="handleSearch">
+      <AppButton icon="search-line" class="search-button" variant="lime" :loading="searching" @click="handleSearch">
         {{ searching ? "搜索中" : "搜索" }}
-      </NeoButton>
+      </AppButton>
     </view>
 
     <view v-if="searchResults.length" class="team-result-list">
@@ -90,46 +90,34 @@ function handleJoin() {
         @input="updateJoinPassword"
       />
       <view v-else class="open-team-note">该球队无需入队密码。</view>
-      <NeoButton block :disabled="!canJoin" :loading="submitting" @click="handleJoin">
+      <AppButton icon="user-add" block :disabled="!canJoin" :loading="submitting" @click="handleJoin">
         {{ submitting ? "加入中..." : "确认加入" }}
-      </NeoButton>
+      </AppButton>
     </view>
-  </NeoSurface>
+  </AppSurface>
 </template>
 
 <style scoped>
+@import "@/styles/form-controls.css";
 .form-card {
   padding: 6rpx 24rpx 24rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-md);
-  box-shadow: 8rpx 8rpx 0 var(--neo-color-text);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-card);
+  box-shadow: var(--ui-shadow-card);
 }
 
 .form-label,
 .team-result-meta {
-  color: var(--neo-color-text-muted);
+  color: var(--ui-color-text-muted);
   font-size: 24rpx;
-  font-weight: 700;
+  font-weight: 400;
 }
 
 .form-label {
   display: block;
   margin-bottom: 10rpx;
-  color: var(--neo-color-text);
-  font-weight: 900;
-}
-
-.form-input {
-  width: 100%;
-  height: 84rpx;
-  padding: 0 20rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-muted);
-  color: var(--neo-color-text);
-  font-size: 28rpx;
-  font-weight: 700;
-  box-sizing: border-box;
+  color: var(--ui-color-text);
+  font-weight: 600;
 }
 
 .search-row {
@@ -160,22 +148,22 @@ function handleJoin() {
   justify-content: space-between;
   gap: 18rpx;
   padding: 22rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-surface);
-  box-shadow: 4rpx 4rpx 0 var(--neo-color-text);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-button);
+  background: var(--ui-color-surface);
+  box-shadow: var(--ui-shadow-card);
 }
 
 .team-result-card-active {
-  background: var(--neo-color-success);
-  box-shadow: 2rpx 2rpx 0 var(--neo-color-text);
+  background: var(--ui-color-success);
+  box-shadow: var(--ui-shadow-card);
 }
 
 .team-result-title {
   display: block;
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
   font-size: 30rpx;
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .team-result-meta {
@@ -186,12 +174,12 @@ function handleJoin() {
 .team-result-action {
   flex-shrink: 0;
   padding: 8rpx 12rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-xs);
-  background: var(--neo-color-accent);
-  color: var(--neo-color-text);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-xs);
+  background: var(--ui-color-accent);
+  color: var(--ui-color-text);
   font-size: 24rpx;
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .join-panel,
@@ -199,23 +187,23 @@ function handleJoin() {
 .open-team-note {
   margin-top: 22rpx;
   padding: 22rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-info-soft);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-button);
+  background: var(--ui-color-info-soft);
 }
 
 .empty-box,
 .open-team-note {
-  color: var(--neo-color-text-muted);
+  color: var(--ui-color-text-muted);
   font-size: 26rpx;
-  font-weight: 700;
+  font-weight: 400;
 }
 
 .empty-box {
-  background: var(--neo-color-warning-soft);
+  background: var(--ui-color-warning-soft);
 }
 
-:deep(.join-panel .neo-button--block) {
+:deep(.join-panel .ui-button--block) {
   margin-top: 24rpx;
 }
 </style>

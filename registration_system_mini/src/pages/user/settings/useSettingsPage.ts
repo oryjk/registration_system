@@ -1,5 +1,5 @@
 import { computed, ref } from "vue";
-import { useNeoConfirmDialog } from "@/components/neo/useNeoConfirmDialog";
+import { useConfirmDialog } from "@/components/ui/useConfirmDialog";
 import { putMiniReviewReviewStatus } from "@/api/miniReview";
 import { updateMyProfile } from "@/api/user";
 import { useTeamContext } from "@/stores/teamContext";
@@ -26,7 +26,7 @@ export function useSettingsPage() {
     handleConfirmSecondary,
     handleConfirmClose,
     handleConfirmLink,
-  } = useNeoConfirmDialog();
+  } = useConfirmDialog();
 
   const isOwner = computed(() => currentUser.value?.id === PRODUCT_OWNER_USER_ID);
 

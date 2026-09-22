@@ -60,6 +60,7 @@ async function main() {
     type: "miniProgram",
     projectPath: distPath,
     privateKeyPath,
+    // 旧个人页背景已不再被界面引用；保留源文件，但不占小程序主包。
     ignores: ["node_modules/**/*"],
   });
 

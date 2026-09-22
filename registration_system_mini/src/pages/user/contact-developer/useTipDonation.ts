@@ -1,7 +1,7 @@
 import { computed, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import { createTipOrder, syncGoPaymentOrder } from "@/api/payment";
-import { useNeoConfirmDialog } from "@/components/neo/useNeoConfirmDialog";
+import { useConfirmDialog } from "@/components/ui/useConfirmDialog";
 import { useTeamContext } from "@/stores/teamContext";
 import { isMockWxPaymentParams, isPaymentCancelled, normalizeWxPaymentParams, requestWxPayment } from "@/utils/payment";
 
@@ -19,7 +19,7 @@ export function parseYuanToCents(input: string): number | null {
 /** "请开发者喝咖啡"打赏：金额校验、可选功能建议、下单拉起支付、成功后感谢反馈。 */
 export function useTipDonation() {
   const { currentUser, ensureSessionReady } = useTeamContext();
-  const dialog = useNeoConfirmDialog();
+  const dialog = useConfirmDialog();
 
   const amountInput = ref("");
   const suggestionInput = ref("");

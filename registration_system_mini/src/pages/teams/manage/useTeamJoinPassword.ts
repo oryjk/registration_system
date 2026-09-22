@@ -1,6 +1,6 @@
 import { computed, reactive, ref, type ComputedRef, type Ref } from "vue";
 import type { TeamProfileViewModel } from "@/types/viewModels";
-import { useNeoConfirmDialog } from "@/components/neo";
+import { useConfirmDialog } from "@/components/ui";
 import { checkTeamRequiresPassword } from "../teamSelfActions";
 import { updateJoinPasswordFromForm } from "./teamManageActions";
 
@@ -18,7 +18,7 @@ export function useTeamJoinPassword({ currentTeam, submitting }: TeamJoinPasswor
     handleConfirmPrimary: handleJoinPasswordPrimary,
     handleConfirmSecondary: handleJoinPasswordSecondary,
     handleConfirmClose: handleJoinPasswordClose,
-  } = useNeoConfirmDialog();
+  } = useConfirmDialog();
   const joinPasswordForm = reactive({ password: "" });
   const requiresPassword = ref(false);
   const canSubmitJoinPassword = computed(() => !submitting.value);

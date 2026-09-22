@@ -105,10 +105,10 @@ function closeDayMatches() {
 .stats-card {
   margin-top: 16rpx;
   padding: 22rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-md);
-  background: var(--neo-color-surface);
-  box-shadow: var(--neo-shadow-raised);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-card);
+  background: var(--ui-color-surface);
+  box-shadow: var(--ui-shadow-raised);
 }
 
 .stats-card-embedded {
@@ -129,16 +129,16 @@ function closeDayMatches() {
   display: block;
   font-size: 31rpx;
   line-height: 1.2;
-  color: var(--neo-color-text);
-  font-weight: 900;
+  color: var(--ui-color-text);
+  font-weight: 600;
 }
 
 .stats-card-caption {
   display: block;
   margin-top: 8rpx;
   font-size: 21rpx;
-  color: var(--neo-color-text-muted);
-  font-weight: 700;
+  color: var(--ui-color-text-muted);
+  font-weight: 400;
 }
 
 .calendar-legend {
@@ -148,9 +148,9 @@ function closeDayMatches() {
   flex-wrap: wrap;
   gap: 9rpx;
   max-width: 300rpx;
-  color: var(--neo-color-text-muted);
+  color: var(--ui-color-text-muted);
   font-size: 24rpx;
-  font-weight: 950;
+  font-weight: var(--ui-font-weight-heading);
 }
 
 .legend-dot {
@@ -161,20 +161,20 @@ function closeDayMatches() {
 }
 
 .legend-dot-joined {
-  border: 2rpx solid var(--neo-color-text);
-  background: var(--neo-color-accent);
+  border: var(--ui-border-default);
+  background: var(--ui-color-accent);
   box-sizing: border-box;
 }
 
 .legend-dot-leave {
-  border: 2rpx solid var(--neo-color-text);
-  background: var(--neo-color-warning-soft);
+  border: var(--ui-border-default);
+  background: var(--ui-color-warning-soft);
   box-sizing: border-box;
 }
 
 .legend-dot-unchecked {
-  border: 2rpx solid var(--neo-color-text);
-  background: var(--neo-color-danger);
+  border: var(--ui-border-default);
+  background: var(--ui-color-danger);
   box-sizing: border-box;
 }
 
@@ -187,10 +187,10 @@ function closeDayMatches() {
 
 .calendar-month-card {
   padding: 18rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-muted);
-  box-shadow: 4rpx 4rpx 0 var(--neo-color-text);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-button);
+  background: var(--ui-color-muted);
+  box-shadow: var(--ui-shadow-card);
 }
 
 .calendar-month-head {
@@ -202,17 +202,17 @@ function closeDayMatches() {
 
 .calendar-month-title {
   display: block;
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
   font-size: 29rpx;
-  font-weight: 950;
+  font-weight: var(--ui-font-weight-heading);
 }
 
 .calendar-month-caption {
   display: block;
   margin-top: 5rpx;
-  color: var(--neo-color-text-muted);
+  color: var(--ui-color-text-muted);
   font-size: 20rpx;
-  font-weight: 750;
+  font-weight: 600;
 }
 
 .calendar-weekdays {
@@ -223,7 +223,7 @@ function closeDayMatches() {
 }
 
 .calendar-weekday {
-  color: var(--neo-color-text-muted);
+  color: var(--ui-color-text-muted);
   font-size: 19rpx;
   font-weight: 850;
   text-align: center;
@@ -249,9 +249,9 @@ function closeDayMatches() {
   justify-content: center;
   min-height: 96rpx;
   padding: 9rpx 6rpx;
-  border-radius: var(--neo-radius-xs);
-  background: var(--neo-color-surface-translucent);
-  border: 2rpx solid var(--neo-color-track);
+  border-radius: var(--ui-radius-xs);
+  background: var(--ui-color-surface-translucent);
+  border: 2rpx solid var(--ui-color-track);
   box-sizing: border-box;
 }
 
@@ -260,35 +260,35 @@ function closeDayMatches() {
 }
 
 .calendar-day-match {
-  background: var(--neo-color-surface);
-  border-color: var(--neo-color-text);
+  background: var(--ui-color-surface);
+  border-color: var(--ui-color-text);
 }
 
 .calendar-day-joined {
-  background: var(--neo-color-accent);
-  border-color: var(--neo-color-text);
+  background: var(--ui-color-accent);
+  border-color: var(--ui-color-text);
 }
 
 .calendar-day-leave {
-  background: var(--neo-color-warning-soft);
-  border-color: var(--neo-color-text);
+  background: var(--ui-color-warning-soft);
+  border-color: var(--ui-color-text);
 }
 
 .calendar-day-unchecked {
-  background: var(--neo-color-danger);
-  border-color: var(--neo-color-text);
+  background: var(--ui-color-danger);
+  border-color: var(--ui-color-text);
 }
 
 .calendar-day-today {
-  border-color: var(--neo-color-text);
-  box-shadow: 3rpx 3rpx 0 var(--neo-color-text);
+  border-color: var(--ui-color-text);
+  box-shadow: var(--ui-shadow-card);
 }
 
 .calendar-day-number {
   display: block;
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
   font-size: 38rpx;
-  font-weight: 900;
+  font-weight: 600;
   line-height: 1;
   text-align: center;
 }
@@ -296,11 +296,11 @@ function closeDayMatches() {
 .calendar-day-joined .calendar-day-number,
 .calendar-day-leave .calendar-day-number,
 .calendar-day-unchecked .calendar-day-number {
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
 }
 
 .calendar-day-unchecked .calendar-day-number {
-  color: var(--neo-color-text-inverse);
+  color: var(--ui-color-text-inverse);
 }
 
 .calendar-day-marks {
@@ -315,9 +315,9 @@ function closeDayMatches() {
   justify-content: center;
   min-width: 28rpx;
   height: 24rpx;
-  border-radius: var(--neo-radius-round);
-  background: var(--neo-color-surface-translucent);
-  color: var(--neo-color-text);
+  border-radius: var(--ui-radius-round);
+  background: var(--ui-color-surface-translucent);
+  color: var(--ui-color-text);
   font-size: 17rpx;
   font-weight: 1000;
   line-height: 1;
@@ -325,19 +325,19 @@ function closeDayMatches() {
 }
 
 .calendar-day-unchecked .calendar-more {
-  color: var(--neo-color-text-inverse);
-  background: var(--neo-color-overlay);
+  color: var(--ui-color-text-inverse);
+  background: var(--ui-color-overlay);
 }
 
 .stats-empty {
   margin-top: 18rpx;
   padding: 24rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-muted);
-  color: var(--neo-color-text-muted);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-button);
+  background: var(--ui-color-muted);
+  color: var(--ui-color-text-muted);
   font-size: 27rpx;
-  font-weight: 700;
+  font-weight: 400;
   line-height: 1.6;
 }
 
@@ -356,7 +356,7 @@ function closeDayMatches() {
   align-items: flex-end;
   justify-content: center;
   padding: 28rpx;
-  background: var(--neo-color-overlay);
+  background: var(--ui-color-overlay);
   box-sizing: border-box;
 }
 
@@ -364,10 +364,10 @@ function closeDayMatches() {
   width: 100%;
   max-height: 58vh;
   padding: 26rpx;
-  border: var(--neo-border-strong);
-  border-radius: var(--neo-radius-md);
-  background: var(--neo-color-surface);
-  box-shadow: var(--neo-shadow-modal);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-card);
+  background: var(--ui-color-surface);
+  box-shadow: var(--ui-shadow-modal);
   box-sizing: border-box;
 }
 
@@ -379,17 +379,17 @@ function closeDayMatches() {
 }
 
 .calendar-popup-title {
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
   font-size: 31rpx;
-  font-weight: 950;
+  font-weight: var(--ui-font-weight-heading);
 }
 
 .calendar-popup-close {
   padding: 8rpx 18rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-round);
-  background: var(--neo-color-muted);
-  color: var(--neo-color-text);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-round);
+  background: var(--ui-color-muted);
+  color: var(--ui-color-text);
   font-size: 22rpx;
   font-weight: 850;
 }
@@ -403,24 +403,24 @@ function closeDayMatches() {
 
 .calendar-popup-item {
   padding: 18rpx;
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-surface);
-  border: var(--neo-border-default);
+  border-radius: var(--ui-radius-button);
+  background: var(--ui-color-surface);
+  border: var(--ui-border-default);
 }
 
 .calendar-popup-match {
   display: block;
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
   font-size: 28rpx;
-  font-weight: 950;
+  font-weight: var(--ui-font-weight-heading);
 }
 
 .calendar-popup-location {
   display: block;
   margin-top: 8rpx;
-  color: var(--neo-color-text-muted);
+  color: var(--ui-color-text-muted);
   font-size: 23rpx;
-  font-weight: 750;
+  font-weight: 600;
   line-height: 1.35;
 }
 

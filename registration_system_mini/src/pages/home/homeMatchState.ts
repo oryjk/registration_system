@@ -165,8 +165,21 @@ function toShowRegistrationProgress(phase: VisibleHomeMatchPhase): boolean {
   return phase !== "ended";
 }
 
+// 查看型阶段（进行中/已结束）不渲染头像行：紧凑卡以标题和时间为主。
 function toShowParticipantAvatars(phase: VisibleHomeMatchPhase): boolean {
-  return phase !== "ended";
+  return phase === "upcoming";
+}
+
+function toViewMode(phase: VisibleHomeMatchPhase): "action" | "compact" {
+  return phase === "upcoming" ? "action" : "compact";
+}
+
+/** 只有接口真实录入的比分才返回标签（"3 : 1"）；未录入为 null，不虚构比分。 */
+function toScoreLabel(item: HomeMatchCardSource): string | null {
+  if (!("host_score" in item) || !("away_score" in item)) return null;
+  const host = item.host_score;
+  const away = item.away_score;
+  return Number.isFinite(host) && Number.isFinite(away) ? `${host} : ${away}` : null;
 }
 
 export function resolveMatchPhase(match: AppMatchPhaseSource, now: Date): AppMatchUiPhase {
@@ -214,12 +227,10 @@ export function toHomeMatchCard(
     displayText: (participant.nickname || `U${participant.user_id}`).slice(0, 1),
     tone: avatarTone(participant.user_id),
   }));
-  // 已结束的首页比赛也保留头像行：无人报名时由卡片渲染占位符，保持卡片视觉一致。
+  // 已结束的首页比赛不再渲染头像行（查看型紧凑卡）；participants 数据仍映射供后续使用。
   const showParticipantAvatars = actionMatch
     ? toShowParticipantAvatars(phase)
-    : summaryMatch
-      ? false
-      : true;
+    : false;
   const canRegister = actionMatch
     ? phase === "upcoming" && actionMatch.group.status === "open"
     : summaryMatch
@@ -255,9 +266,14 @@ export function toHomeMatchCard(
   }
 
   const dateLabel = formatDateLabel(item.start_time);
+  const scoreLabel = phase === "upcoming" ? null : toScoreLabel(item);
+  // 比分前缀以后端 status 为准：只有后端明确 ended 才是「最终比分」。
+  // 超过预定结束时间但 status 仍 ongoing 的比赛（时间戳归入 ended 分区）不能暗示已结束。
+  const scoreNote = scoreLabel === null ? null : item.status === "ended" ? "最终比分" : "当前比分";
 
   return {
     id: item.id,
+    registrationGroupId: actionMatch?.group.id,
     detailUrl: actionMatch
       ? `/pages/matches/detail?id=${item.id}&groupId=${actionMatch.group.id}`
       : `/pages/matches/detail?id=${item.id}`,
@@ -291,6 +307,9 @@ export function toHomeMatchCard(
     remainingPlayersLabel,
     canRegister,
     actionLabel: phase === "upcoming" && canRegister ? "去报名" : "查看比赛",
+    viewMode: toViewMode(phase),
+    scoreLabel,
+    scoreNote,
   };
 }
 

@@ -146,7 +146,7 @@ onReachBottom(() => {
 
 <template>
   <page-meta :page-style="themePageStyle" />
-  <view class="phase-matches-page">
+  <view class="app-theme-scope phase-matches-page" :style="themePageStyle">
     <AppTabHeader :title="pageMeta.title" showBack />
 
     <view class="phase-matches-content" :style="contentStyle">
@@ -177,16 +177,16 @@ onReachBottom(() => {
 .phase-matches-page {
   min-height: 100vh;
   padding: 0 28rpx 96rpx;
-  background: var(--neo-color-page);
+  background: var(--ui-color-page);
   box-sizing: border-box;
 }
 
 .empty-card,
 .phase-footer {
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-md);
-  background: var(--neo-color-surface);
-  box-shadow: var(--neo-shadow-raised);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-button);
+  background: var(--ui-color-surface);
+  box-shadow: var(--ui-shadow-raised);
 }
 
 .empty-card,
@@ -202,10 +202,10 @@ onReachBottom(() => {
 
 .empty-text,
 .phase-footer-text {
-  color: var(--neo-color-text-muted);
-  font-size: 28rpx;
+  color: var(--ui-color-text-muted);
+  font-size: 26rpx;
   line-height: 1.5;
-  font-weight: 800;
+  font-weight: 500;
 }
 
 .phase-footer {
@@ -217,7 +217,7 @@ onReachBottom(() => {
 }
 
 .phase-footer-error {
-  background: var(--neo-color-danger-soft);
+  background: var(--ui-color-danger-soft);
 }
 
 /* #ifdef H5 */

@@ -11,6 +11,10 @@ function sourceFile(path: string) {
   return Bun.file(sourcePath(path));
 }
 
+function boardSrc(individual: string): boolean {
+  return individual.includes("TeamMemberRegistrationBoard");
+}
+
 async function matchDetailLogicSource() {
   const paths = [
     "pages/matches/useMatchDetailPage.ts",
@@ -49,9 +53,13 @@ describe("match detail registration design", () => {
     // 用户填写的比赛说明必须透传到说明卡（按行拆分展示，未填回落默认文案）。
     expect(individual.includes(':description="match.description"')).toEqual(true);
     expect(info.includes("description")).toEqual(true);
-    expect(statusCard.includes("NeoProgress")).toEqual(true);
-    expect(statusCard.includes("NeoAvatarStack")).toEqual(true);
-    expect(statusCard.includes("NeoStickyActionBar")).toEqual(true);
+    expect(statusCard.includes("RegistrationProgressSummary")).toEqual(true);
+    // 单一行动栏上收到 MatchIndividualRegistration：支付 > 名单状态 > 报名 CTA 合并渲染。
+    expect(individual.includes("StickyActionBar")).toEqual(true);
+    expect(statusCard.includes("StickyActionBar")).toEqual(false);
+    expect(boardSrc(individual)).toEqual(true);
+    // 概览卡不再重复头像/人数：报名名单（头像）单一来源是成员名单板。
+    expect(statusCard.includes(':avatars="participants"')).toEqual(true);
     expect(source.includes("interestCards")).toEqual(false);
     expect(individual.includes("IndividualPromoBanner")).toEqual(false);
     expect(individual.includes("InterestMatchGrid")).toEqual(false);
@@ -97,6 +105,9 @@ describe("match detail registration design", () => {
     expect(detail.includes("<MatchSignupCountSheet")).toEqual(true);
     expect(sheet.includes("wd-input-number")).toEqual(true);
     expect(actions.includes("registrationCount = 1")).toEqual(true);
+    // 退场窗口内不得触发确认/取消报名（守卫条件历史写反过一次，防回归）。
+    expect(sheet.includes('if (props.visible && rendered.value && !props.submitting && !leaving.value) emit("confirm", count.value);')).toEqual(true);
+    expect(sheet.includes('if (props.visible && rendered.value && !props.submitting && !leaving.value) emit("cancelRegistration");')).toEqual(true);
     // 待支付金额按人数合计；已支付后锁定修改与取消。
     expect(payment.includes("myRegistrationCount")).toEqual(true);
     expect(payment.includes("* Math.max(myRegistrationCount.value, 1)")).toEqual(true);
@@ -111,9 +122,9 @@ describe("match detail registration design", () => {
     ).text();
 
     expect(pageLogic.includes("function confirmRegistrationAction")).toEqual(true);
-    expect(pageLogic.includes("useNeoConfirmDialog")).toEqual(true);
+    expect(pageLogic.includes("useConfirmDialog")).toEqual(true);
     expect(pageLogic.includes("uni.showModal")).toEqual(false);
-    expect(detail.includes("<NeoConfirmDialog")).toEqual(true);
+    expect(detail.includes("<ConfirmDialog")).toEqual(true);
     expect(pageLogic.includes('title: "确认报名"')).toEqual(true);
     expect(pageLogic.includes('title: "确认取消报名"')).toEqual(true);
     expect(pageLogic.includes("const confirmed = await confirmRegistrationAction")).toEqual(true);
@@ -156,12 +167,14 @@ describe("match detail registration design", () => {
     expect(detail.includes('"overflow: hidden;"')).toEqual(true);
     expect(individual.includes('@dialog-visibility-change="handleTeamMemberDialogVisibilityChange"')).toEqual(true);
     expect(individual.includes('emit("dialogVisibilityChange", visible);')).toEqual(true);
-    expect(board.includes("NeoStickyActionBar")).toEqual(true);
-    expect(board.includes("NeoButton")).toEqual(true);
+    // 名单板不再自带底部操作栏，由父级单一行动栏经 statusDialogRequest 触发对话框。
+    expect(board.includes("StickyActionBar")).toEqual(false);
+    expect(board.includes("statusDialogRequest")).toEqual(true);
+    expect(board.includes("ConfirmDialog")).toEqual(true);
     expect(board.includes("statusDialogMode")).toEqual(true);
     expect(board.includes("statusDialogConfig")).toEqual(true);
-    expect(board.includes("team-member-dialog-mask")).toEqual(true);
-    expect(board.includes("team-member-dialog-actions")).toEqual(true);
+    expect(board.includes(':visible="statusDialogVisible"')).toEqual(true);
+    expect(board.includes('@secondary="handleDialogSecondaryAction"')).toEqual(true);
     expect(board.includes('emit("dialogVisibilityChange", true);')).toEqual(true);
     expect(board.includes('emit("dialogVisibilityChange", false);')).toEqual(true);
     expect(board.includes('title: "选择报名状态"')).toEqual(true);
@@ -186,18 +199,18 @@ describe("match detail registration design", () => {
     expect(board.includes("selectedGroup.value = value;")).toEqual(true);
     expect(board.includes("const memberSummaryLabel = computed")).toEqual(true);
     expect(board.includes('return `${total}人`;')).toEqual(true);
-    expect(board.includes('<text class="section-title">队员状态</text>')).toEqual(true);
+    expect(board.includes('<text class="section-title">参赛名单</text>')).toEqual(true);
     expect(board.includes("member-segment")).toEqual(true);
     expect(board.includes("member-segment-item")).toEqual(true);
     expect(board.includes("member-segment-item-active")).toEqual(true);
     expect(board.includes("handleSelectGroup(section.key)")).toEqual(true);
     expect(board.includes("const activeSection = computed")).toEqual(true);
     expect(board.includes("activeSection.members.length")).toEqual(true);
-    expect(board.includes("activeMemberAvatarItems")).toEqual(true);
-    expect(board.includes("selectedMember?.group === activeSection.key")).toEqual(true);
+    expect(board.includes("activeMemberAvatars")).toEqual(true);
+    expect(board.includes('emit("avatarSelect", avatar)')).toEqual(true);
     expect(board.includes("member-panel")).toEqual(true);
-    expect(board.includes("member-panel-title")).toEqual(true);
-    expect(board.includes("member-panel-count")).toEqual(true);
+    expect(board.includes('<view class="member-panel-head">')).toEqual(false);
+
     expect(board.includes("member-status-column")).toEqual(false);
   });
 
@@ -215,11 +228,12 @@ describe("match detail registration design", () => {
     expect(pageLogic.includes("joinedRegistrations.value.slice(0, 5)")).toEqual(false);
     expect(pageLogic.includes("const maxPlayers = computed")).toEqual(true);
     expect(pageLogic.includes("buildRegistrationProgress")).toEqual(false);
-    expect(statusCard.includes(':max="maxPlayers"')).toEqual(true);
-    expect(statusCard.includes("handleSelectParticipant")).toEqual(true);
-    expect(statusCard.includes("selectedParticipant")).toEqual(true);
-    expect(statusCard.includes("NeoProgress")).toEqual(true);
-    expect(statusCard.includes("NeoAvatarStack")).toEqual(true);
+    expect(statusCard.includes(':maximum="maxPlayers"')).toEqual(true);
+    expect(statusCard.includes("RegistrationProgressSummary")).toEqual(true);
+    // 概览复用共享头像与进度组件，传入实际报名预览。
+    expect(statusCard.includes("handleSelectParticipant")).toEqual(false);
+    expect(statusCard.includes("selectedParticipant")).toEqual(false);
+    expect(statusCard.includes(':avatars="participants"')).toEqual(true);
     const state = await sourceFile(
       "pages/matches/detailState.ts",
     ).text();
@@ -250,7 +264,8 @@ describe("match detail registration design", () => {
       "pages/matches/components/TeamMemberRegistrationBoard.vue",
     ).text();
 
-    expect(board.includes("NeoAvatarStack")).toEqual(true);
+    expect(board.includes("ExpandableAvatarStack")).toEqual(true);
+    expect(board.includes('@select="selectMemberAvatar"')).toEqual(true);
     expect(board.includes("border: 4rpx solid #ffffff")).toEqual(false);
     expect(board.includes("border-color: #171717")).toEqual(false);
     expect(board.includes("member-avatar-current .member-avatar")).toEqual(false);
@@ -258,14 +273,12 @@ describe("match detail registration design", () => {
 
   test("keeps match information visible after manual logout and gates only signup", async () => {
     const pageLogic = await matchDetailLogicSource();
-    const statusCard = await sourceFile(
-      "pages/matches/components/MatchRegistrationStatusCard.vue",
-    ).text();
+    const individual = await sourceFile("pages/matches/components/MatchIndividualRegistration.vue").text();
 
     expect(pageLogic.includes('import { hasManualLogout } from "@/utils/authStorage";')).toEqual(true);
     expect(pageLogic.includes('const isGuestMode = ref(false);')).toEqual(true);
     expect(pageLogic.includes('if (isGuestMode.value) return "登录后报名";')).toEqual(true);
-    expect(statusCard.includes("isGuestMode")).toEqual(true);
+    expect(individual.includes("isGuestMode")).toEqual(true);
     expect(pageLogic.indexOf("const publicData = await loadPublicMatchDetailData(matchId.value);") < pageLogic.indexOf("await ensureSessionReady();")).toEqual(
       true,
     );
@@ -296,11 +309,9 @@ describe("match detail registration design", () => {
 
   test("blocks new individual signup when the activity team capacity limit is full", async () => {
     const pageLogic = await matchDetailLogicSource();
+    const individual = await sourceFile("pages/matches/components/MatchIndividualRegistration.vue").text();
     const state = await sourceFile(
       "pages/matches/detailState.ts",
-    ).text();
-    const statusCard = await sourceFile(
-      "pages/matches/components/MatchRegistrationStatusCard.vue",
     ).text();
 
     expect(state.includes("resolveRegistrationCapacityState")).toEqual(true);
@@ -310,7 +321,7 @@ describe("match detail registration design", () => {
     expect(pageLogic.includes("registrationCapacityState.value.isFull")).toEqual(true);
     expect(pageLogic.includes('title: "报名人数已满"')).toEqual(true);
     expect(pageLogic.includes("canSubmitIndividualRegistration")).toEqual(true);
-    expect(statusCard.includes(":disabled=\"ctaDisabled\"")).toEqual(true);
+    expect(individual.includes("canSubmitIndividualRegistration")).toEqual(true);
   });
 
   test("decouples team application management from the team registration tab", async () => {
@@ -336,17 +347,16 @@ describe("match detail registration design", () => {
     const pageLogic = await sourceFile("pages/matches/useMatchDetailPage.ts").text();
     const detailPage = await sourceFile("pages/matches/detail.vue").text();
     const individual = await sourceFile("pages/matches/components/MatchIndividualRegistration.vue").text();
-    const board = await sourceFile("pages/matches/components/TeamMemberRegistrationBoard.vue").text();
 
     // 未开始或截止后都不支持修改报名状态：报名/取消报名/状态调整入口全部隐藏。
     expect(pageLogic.includes("const isRegistrationClosed = computed")).toEqual(true);
     expect(pageLogic.includes("const registrationWindowState = computed")).toEqual(true);
     expect(pageLogic.includes('isRegistering: sourceMatch.value.status === "registering"')).toEqual(true);
     expect(pageLogic.includes('registrationWindowState.value !== "open"')).toEqual(true);
-    expect(detailPage.includes(":registration-closed=\"isRegistrationClosed\"")).toEqual(true);
-    expect(individual.includes(":show-cta=\"!showTeamMemberRegistrationBoard && !registrationClosed\"")).toEqual(true);
-    expect(individual.includes(':registration-closed="registrationClosed"')).toEqual(true);
-    expect(board.includes('<NeoStickyActionBar v-if="!registrationClosed">')).toEqual(true);
+    expect(detailPage.includes(":registration-closed=\"isRegistrationReadOnly\"")).toEqual(true);
+    expect(individual.includes("hasPendingPayment.value")).toEqual(true);
+    expect(individual.includes("resolveDetailActions")).toEqual(true);
+    expect(individual.includes("statusDialogRequest")).toEqual(true);
   });
 
   test("labels the hosting team from the match itself, not the current team", async () => {
@@ -375,7 +385,7 @@ describe("match detail registration design", () => {
     expect(individual.includes(':team-progress="teamProgress"')).toEqual(true);
     // 状态卡：双边进度替代单条进度与“已报”计数。
     expect(statusCard.includes('v-for="team in teamProgress"')).toEqual(true);
-    expect(statusCard.includes('v-if="!hasTeamProgress" class="status-total"')).toEqual(true);
-    expect(statusCard.includes('v-else\n        :value="joinedCount"')).toEqual(true);
+    expect(statusCard.includes(':joined="team.attending"')).toEqual(true);
+    expect(statusCard.includes('v-else\n        :joined="joinedCount"')).toEqual(true);
   });
 });

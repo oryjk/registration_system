@@ -2,10 +2,10 @@
 import { useAccentTheme } from "@/stores/theme";
 import { computed } from "vue";
 import AppTabHeader from "@/components/AppTabHeader.vue";
-import NeoButton from "@/components/neo/NeoButton.vue";
-import NeoConfirmDialog from "@/components/neo/NeoConfirmDialog.vue";
-import NeoSectionHeader from "@/components/neo/NeoSectionHeader.vue";
-import NeoSurface from "@/components/neo/NeoSurface.vue";
+import AppButton from "@/components/ui/AppButton.vue";
+import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
+import SectionHeader from "@/components/ui/SectionHeader.vue";
+import AppSurface from "@/components/ui/AppSurface.vue";
 import { useMiniReviewStatus } from "@/stores/miniReview";
 import { DEVELOPER_WECHAT_QRCODE_URL, OFFICIAL_ACCOUNT_QRCODE_URL } from "@/utils/developerContact";
 import { getCustomNavMetrics } from "@/utils/customNav";
@@ -26,12 +26,12 @@ const { amountInput, suggestionInput, isSubmitting, isLoggedIn, suggestionMaxLen
 
 <template>
   <page-meta :page-style="themePageStyle" />
-  <view class="contact-developer-page" :style="pageStyle">
+  <view class="app-theme-scope contact-developer-page" :style="[themePageStyle, pageStyle]">
     <AppTabHeader title="联系开发者" showBack />
 
     <view class="contact-developer-content">
-      <NeoSurface custom-class="contact-developer-card">
-        <NeoSectionHeader title="联系开发者" marker="联" caption="长按二维码识别" />
+      <AppSurface custom-class="contact-developer-card">
+        <SectionHeader title="微信与公众号" caption="长按二维码识别" />
         <view class="contact-developer-qrcodes">
           <view class="contact-developer-qrcode-item">
             <image
@@ -52,10 +52,10 @@ const { amountInput, suggestionInput, isSubmitting, isLoggedIn, suggestionMaxLen
             <text class="contact-developer-qrcode-caption">关注公众号</text>
           </view>
         </view>
-      </NeoSurface>
+      </AppSurface>
 
-      <NeoSurface v-if="!shouldHideCreationEntrances" custom-class="contact-developer-card">
-        <NeoSectionHeader title="请开发者喝咖啡" marker="咖" caption="可选金额 · 可留功能建议" />
+      <AppSurface v-if="!shouldHideCreationEntrances" custom-class="contact-developer-card">
+        <SectionHeader title="请开发者喝咖啡" caption="可选金额 · 可留功能建议" />
         <text class="contact-developer-thanks">
           如果这个小程序帮到了你，可以请开发者喝杯咖啡。你的支持是我持续迭代的动力，也欢迎顺手写下你希望拥有的功能。
         </text>
@@ -82,7 +82,7 @@ const { amountInput, suggestionInput, isSubmitting, isLoggedIn, suggestionMaxLen
           />
         </view>
 
-        <NeoButton
+        <AppButton
           variant="lime"
           block
           :loading="isSubmitting"
@@ -90,11 +90,11 @@ const { amountInput, suggestionInput, isSubmitting, isLoggedIn, suggestionMaxLen
           @click="submitTipDonation"
         >
           {{ isSubmitting ? "正在拉起支付..." : isLoggedIn ? "请喝咖啡" : "登录后请喝咖啡" }}
-        </NeoButton>
-      </NeoSurface>
+        </AppButton>
+      </AppSurface>
     </view>
 
-    <NeoConfirmDialog
+    <ConfirmDialog
       :visible="dialog.confirmDialogVisible.value"
       :title="dialog.confirmDialogState.title"
       :message="dialog.confirmDialogState.message"
@@ -115,7 +115,7 @@ const { amountInput, suggestionInput, isSubmitting, isLoggedIn, suggestionMaxLen
 .contact-developer-page {
   min-height: 100vh;
   padding: calc(env(safe-area-inset-top) + 30rpx) 24rpx 164rpx;
-  background: var(--neo-color-page);
+  background: var(--ui-color-page);
   box-sizing: border-box;
 }
 
@@ -128,10 +128,10 @@ const { amountInput, suggestionInput, isSubmitting, isLoggedIn, suggestionMaxLen
 .contact-developer-thanks {
   display: block;
   margin-top: 20rpx;
-  color: var(--neo-color-text-muted);
+  color: var(--ui-color-text-muted);
   font-size: 26rpx;
   line-height: 1.6;
-  font-weight: 700;
+  font-weight: 400;
 }
 
 .contact-developer-qrcodes {
@@ -152,17 +152,17 @@ const { amountInput, suggestionInput, isSubmitting, isLoggedIn, suggestionMaxLen
 .contact-developer-qrcode {
   display: block;
   width: 100%;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-md);
-  background: var(--neo-color-surface);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-card);
+  background: var(--ui-color-surface);
 }
 
 .contact-developer-qrcode-caption {
   margin-top: 12rpx;
-  color: var(--neo-color-text-muted);
+  color: var(--ui-color-text-muted);
   font-size: 24rpx;
   line-height: 34rpx;
-  font-weight: 700;
+  font-weight: 400;
   text-align: center;
 }
 
@@ -172,9 +172,9 @@ const { amountInput, suggestionInput, isSubmitting, isLoggedIn, suggestionMaxLen
 
 .contact-developer-field__label {
   display: block;
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
   font-size: 26rpx;
-  font-weight: 900;
+  font-weight: 600;
   line-height: 1.4;
 }
 
@@ -184,12 +184,12 @@ const { amountInput, suggestionInput, isSubmitting, isLoggedIn, suggestionMaxLen
   width: 100%;
   margin-top: 14rpx;
   padding: 18rpx 20rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-md);
-  background: var(--neo-color-surface);
-  color: var(--neo-color-text);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-card);
+  background: var(--ui-color-surface);
+  color: var(--ui-color-text);
   font-size: 28rpx;
-  font-weight: 700;
+  font-weight: 400;
   box-sizing: border-box;
 }
 
@@ -204,8 +204,8 @@ const { amountInput, suggestionInput, isSubmitting, isLoggedIn, suggestionMaxLen
 }
 
 .contact-developer-field__placeholder {
-  color: var(--neo-color-text-muted);
-  font-weight: 700;
+  color: var(--ui-color-text-muted);
+  font-weight: 400;
 }
 
 .contact-developer-page :deep(.contact-developer-card) {

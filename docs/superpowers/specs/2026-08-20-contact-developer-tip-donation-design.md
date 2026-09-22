@@ -1,5 +1,7 @@
 # 设计：联系开发者 + 请喝咖啡打赏
 
+> **历史资料：视觉规范已失效。** 本文的 Neo / Soft Neo 样式要求、旧组件与 token 路径不再适用；业务决策仅供追溯。所有新界面工作以[现行统一设计系统](../../../registration_system_mini/docs/mini-design-system.md)及实际代码为准，不得依据本文恢复旧皮肤。
+
 - 日期：2026-08-20
 - 状态：已与产品负责人确认设计方向，待实施
 - 涉及子项目：`registration_system_mini`（小程序/H5）、`registration_system_go`（后端）、`registration_system_backend_fe_go`（Go 管理端）

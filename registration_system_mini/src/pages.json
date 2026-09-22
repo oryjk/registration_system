@@ -110,7 +110,9 @@
       "path": "pages/matches/detail",
       "style": {
         "navigationBarTitleText": "比赛详情",
-        "navigationStyle": "custom"
+        "navigationStyle": "custom",
+        "enablePullDownRefresh": true,
+        "backgroundTextStyle": "dark"
       }
     },
     {

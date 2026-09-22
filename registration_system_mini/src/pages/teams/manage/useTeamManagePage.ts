@@ -1,6 +1,6 @@
 import { computed, ref, watch } from "vue";
 import { onShow } from "@dcloudio/uni-app";
-import type { NeoSegmentOption } from "@/components/neo/NeoSegmentedControl.vue";
+import type { SegmentOption } from "@/components/ui/SegmentedControl.vue";
 import { getCustomNavMetrics } from "@/utils/customNav";
 import { useTeamContext } from "@/stores/teamContext";
 import { useMiniReviewStatus } from "@/stores/miniReview";
@@ -45,7 +45,7 @@ export function useTeamManagePage() {
   const pageStyle = computed(() => ({ paddingTop: `${navMetrics.pageTopPadding + 8}px` }));
   // 无球队空态里的创建入口同样受审核模式开关控制。
   const canShowCreateTeamEntry = computed(() => !shouldHideCreationEntrances.value);
-  const modeOptions = computed<NeoSegmentOption[]>(() => [
+  const modeOptions = computed<SegmentOption[]>(() => [
     { label: "球队资料", value: "profile" },
     { label: "队员管理", value: "members" },
     { label: "比赛出勤", value: "attendance" },

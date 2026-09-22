@@ -36,6 +36,10 @@ function select(value: string) {
         v-for="option in colorOptions"
         :key="option.value"
         :class="['color-option', modelValue === option.value ? 'color-option-active' : '']"
+        role="button"
+        :aria-label="label + '：' + option.name"
+        :aria-pressed="modelValue === option.value"
+        hover-class="color-option--pressed"
         @tap="select(option.value)"
       >
         <view class="color-swatch" :style="{ backgroundColor: option.value }" />
@@ -53,39 +57,40 @@ function select(value: string) {
 .form-label {
   display: block;
   margin-bottom: 10rpx;
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
   font-size: 24rpx;
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .color-select-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12rpx;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 6rpx;
 }
 
 .color-option {
   display: flex;
   align-items: center;
-  gap: 10rpx;
+  justify-content: center;
+  flex-direction: column;
+  gap: 8rpx;
   min-width: 0;
-  min-height: 76rpx;
-  padding: 0 14rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-muted);
+  min-height: 84rpx;
+  padding: 10rpx 2rpx;
+  border: 0;
+  border-radius: var(--ui-radius-button);
+  background: transparent;
   box-sizing: border-box;
 }
 
 .color-option-active {
-  border: var(--neo-border-strong);
-  background: var(--neo-color-accent);
-  box-shadow: 3rpx 3rpx 0 var(--neo-color-text);
+  background: var(--ui-color-accent-soft);
+  color: var(--ui-color-text);
 }
 
 .color-swatch {
-  width: 28rpx;
-  height: 28rpx;
+  width: 32rpx;
+  height: 32rpx;
   border-radius: 50%;
   border: 2rpx solid rgba(17, 19, 16, 0.18);
   flex-shrink: 0;
@@ -93,11 +98,12 @@ function select(value: string) {
 
 .color-option-text {
   min-width: 0;
-  font-size: 22rpx;
-  font-weight: 800;
-  color: var(--neo-color-text);
+  font-size: 20rpx;
+  font-weight: 500;
+  color: var(--ui-color-text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.color-option--pressed { opacity: 0.7; }
 </style>

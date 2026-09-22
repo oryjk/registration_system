@@ -29,8 +29,8 @@ async function loadSharedUsers() {
 
 <script setup lang="ts">
 import { computed, onMounted } from "vue";
-import NeoButton from "@/components/neo/NeoButton.vue";
-import NeoSurface from "@/components/neo/NeoSurface.vue";
+import AppButton from "@/components/ui/AppButton.vue";
+import AppSurface from "@/components/ui/AppSurface.vue";
 import { loginWithTestUser, useAppSession } from "@/stores/appSession";
 
 const { currentUser, isBootstrapping } = useAppSession();
@@ -79,7 +79,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <NeoSurface v-if="shouldShow" variant="dark" custom-class="h5-test-login-panel">
+  <AppSurface v-if="shouldShow" variant="outlined" custom-class="h5-test-login-panel">
     <view class="h5-test-login-panel__eyebrow">H5 DEV LOGIN</view>
     <text class="h5-test-login-panel__title">选择测试用户</text>
     <text class="h5-test-login-panel__copy">使用后端测试登录接口签发真实 JWT。</text>
@@ -100,11 +100,11 @@ onMounted(() => {
           <text class="h5-test-login-panel__picker-arrow">⌄</text>
         </view>
       </picker>
-      <NeoButton block :loading="isBootstrapping" :disabled="!selectedUserId" @click="handleLogin">
+      <AppButton block :loading="isBootstrapping" :disabled="!selectedUserId" @click="handleLogin">
         {{ isBootstrapping ? "登录中..." : "使用测试用户登录" }}
-      </NeoButton>
+      </AppButton>
     </template>
-  </NeoSurface>
+  </AppSurface>
 </template>
 
 <style scoped>
@@ -115,17 +115,17 @@ onMounted(() => {
   bottom: calc(env(safe-area-inset-bottom) + 126rpx);
   z-index: 90;
   padding: 24rpx;
-  border: var(--neo-border-strong);
-  border-radius: var(--neo-radius-md);
-  background: var(--neo-color-text);
-  color: var(--neo-color-text-inverse);
-  box-shadow: 8rpx 8rpx 0 var(--neo-color-accent);
+  border: var(--ui-border-strong);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-color-surface);
+  color: var(--ui-color-text);
+  box-shadow: var(--ui-shadow-modal);
 }
 
 .h5-test-login-panel__eyebrow {
-  color: var(--neo-color-accent);
+  color: var(--ui-color-accent);
   font-size: 20rpx;
-  font-weight: 900;
+  font-weight: 600;
   letter-spacing: 1rpx;
 }
 
@@ -133,21 +133,21 @@ onMounted(() => {
   display: block;
   margin-top: 8rpx;
   font-size: 30rpx;
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .h5-test-login-panel__copy,
 .h5-test-login-panel__state {
   display: block;
   margin-top: 8rpx;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--ui-color-text-muted);
   font-size: 22rpx;
-  font-weight: 700;
+  font-weight: 400;
   line-height: 1.45;
 }
 
 .h5-test-login-panel__state--error {
-  color: #ff9d8d;
+  color: var(--ui-color-danger-fg);
 }
 
 .h5-test-login-panel__picker {
@@ -157,12 +157,12 @@ onMounted(() => {
   min-height: 76rpx;
   margin: 18rpx 0;
   padding: 0 18rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-surface);
-  color: var(--neo-color-text);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-color-surface);
+  color: var(--ui-color-text);
   font-size: 24rpx;
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .h5-test-login-panel__picker-arrow {

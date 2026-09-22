@@ -1,5 +1,7 @@
 # 球队入队密码修改 Implementation Plan
 
+> **历史资料：视觉规范已失效。** 本文的 Neo / Soft Neo 样式要求、旧组件与 token 路径不再适用；业务决策仅供追溯。所有新界面工作以[现行统一设计系统](../../../registration_system_mini/docs/mini-design-system.md)及实际代码为准，不得依据本文恢复旧皮肤。
+
 > **For agentic workers:** 按 Task 顺序逐个实现，每个 Task 内先写失败测试再实现（后端 TDD）。步骤使用 checkbox（`- [ ]`）跟踪。
 
 **Goal:** 队长/领队可在小程序设置、更换、清除球队入队密码；Go 管理端可代为重置/清除。语义统一：`join_password` 非空=设置/替换，空串=清除（开放加入）。

@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
-import NeoButton from "@/components/neo/NeoButton.vue";
-import NeoSurface from "@/components/neo/NeoSurface.vue";
+import AppButton from "@/components/ui/AppButton.vue";
+import AppSurface from "@/components/ui/AppSurface.vue";
+import { useOverlayPresence } from "@/components/ui/useOverlayPresence";
+import { prefersReducedMotion } from "@/utils/reducedMotion";
 import type { BackendVenueSuggestion } from "@/api/match";
 
 // 发布比赛的场地选择弹层：常用场地（历史聚合）+ 手动输入 + 地图选点，
@@ -20,6 +22,17 @@ const emit = defineEmits<{
   (event: "chooseLocation"): void;
 }>();
 
+// 底部弹层退场时序：淡出下滑期间遮罩继续拦截点击（防点穿），结束才卸载。
+const { rendered, leaving } = useOverlayPresence(
+  computed(() => props.visible),
+  { leaveDurationMs: () => prefersReducedMotion() ? 0 : 210 },
+);
+
+function handleClose() {
+  if (!rendered.value || leaving.value) return;
+  emit("close");
+}
+
 const draftLocation = ref("");
 
 watch(
@@ -33,24 +46,25 @@ const canConfirmManual = computed(() => !!draftLocation.value.trim());
 
 function handleConfirmManual() {
   const location = draftLocation.value.trim();
-  if (!location) return;
+  if (!location || leaving.value) return;
   emit("manualInput", location);
 }
 
 function handleSelect(venue: BackendVenueSuggestion) {
+  if (leaving.value) return;
   emit("select", venue);
 }
 </script>
 
 <template>
-  <view v-if="visible" class="venue-picker-mask" @tap="emit('close')">
+  <view v-if="rendered" :class="['venue-picker-mask', leaving ? 'venue-picker-mask--leaving' : '']" @tap="handleClose">
     <view class="venue-picker-sheet" @tap.stop>
       <view class="venue-picker-head">
         <view class="venue-picker-head__texts">
           <text class="venue-picker-head__title">选择场地</text>
           <text class="venue-picker-head__caption">优先选择常用场地，可减少地图选点</text>
         </view>
-        <view class="venue-picker-head__close" @tap="emit('close')">×</view>
+        <view class="venue-picker-head__close" @tap="handleClose">×</view>
       </view>
 
       <view class="venue-picker-field">
@@ -62,9 +76,9 @@ function handleSelect(venue: BackendVenueSuggestion) {
           confirm-type="done"
           @confirm="handleConfirmManual"
         />
-        <NeoButton class="venue-picker-field__action" size="sm" :disabled="!canConfirmManual" @click="handleConfirmManual">
+        <AppButton class="venue-picker-field__action" size="sm" :disabled="!canConfirmManual" @click="handleConfirmManual">
           使用
-        </NeoButton>
+        </AppButton>
       </view>
 
       <view class="venue-picker-list-head">
@@ -72,7 +86,7 @@ function handleSelect(venue: BackendVenueSuggestion) {
         <text v-if="loading" class="venue-picker-list-head__state">加载中...</text>
       </view>
       <scroll-view class="venue-picker-list" scroll-y>
-        <NeoSurface
+        <AppSurface
           v-for="venue in suggestions"
           :key="venue.location"
           interactive
@@ -85,15 +99,15 @@ function handleSelect(venue: BackendVenueSuggestion) {
             </view>
             <text v-if="venue.location === currentLocation" class="venue-picker-option__mark">当前</text>
           </view>
-        </NeoSurface>
+        </AppSurface>
         <view v-if="!loading && !suggestions.length" class="venue-picker-empty">
           <text class="venue-picker-empty__text">还没有常用场地记录</text>
         </view>
       </scroll-view>
 
-      <NeoButton class="venue-picker-map" variant="outline" block @click="emit('chooseLocation')">
+      <AppButton class="venue-picker-map" variant="outline" block @click="emit('chooseLocation')">
         用地图选择地点
-      </NeoButton>
+      </AppButton>
     </view>
   </view>
 </template>
@@ -105,23 +119,73 @@ function handleSelect(venue: BackendVenueSuggestion) {
   z-index: 120;
   display: flex;
   align-items: flex-end;
-  background: rgba(11, 14, 10, 0.34);
-  animation: venue-picker-mask-fade-in 220ms ease;
+  background: var(--ui-color-overlay);
+  animation: venue-picker-mask-fade-in var(--ui-motion-overlay-duration) ease;
+}
+
+/* 退场：遮罩淡出期间仍覆盖屏幕拦截点击（防点穿），面板下滑收起且不再接受交互。 */
+.venue-picker-mask--leaving {
+  animation: venue-picker-mask-fade-out var(--ui-motion-overlay-duration) ease forwards;
+}
+
+.venue-picker-mask--leaving .venue-picker-sheet {
+  pointer-events: none;
+  animation: venue-picker-sheet-exit var(--ui-motion-overlay-duration) var(--ui-motion-ease-out) forwards;
+}
+
+@keyframes venue-picker-mask-fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes venue-picker-mask-fade-out {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes venue-picker-sheet-exit {
+  from {
+    transform: translateY(0);
+  }
+
+  to {
+    transform: translateY(100%);
+  }
+}
+
+/* H5 减少动态效果：弹层直接出现/消失。 */
+@media (prefers-reduced-motion: reduce) {
+  .venue-picker-mask,
+  .venue-picker-mask--leaving,
+  .venue-picker-sheet,
+  .venue-picker-mask--leaving .venue-picker-sheet {
+    animation: none;
+  }
 }
 
 .venue-picker-sheet {
   width: 100%;
   max-height: 74vh;
   padding: 34rpx 28rpx calc(env(safe-area-inset-bottom) + 28rpx);
-  border: var(--neo-border-strong);
+  border: var(--ui-border-default);
   border-bottom: none;
-  border-radius: var(--neo-radius-md) var(--neo-radius-md) 0 0;
-  background: var(--neo-surface-bg);
-  box-shadow: var(--neo-surface-shadow);
+  border-radius: var(--ui-radius-md) var(--ui-radius-md) 0 0;
+  background: var(--ui-surface-bg);
+  box-shadow: var(--ui-surface-shadow);
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  animation: venue-picker-sheet-enter 240ms cubic-bezier(0.22, 1, 0.36, 1);
+  animation: venue-picker-sheet-enter var(--ui-motion-overlay-duration) var(--ui-motion-ease-out);
 }
 
 .venue-picker-head {
@@ -138,28 +202,28 @@ function handleSelect(venue: BackendVenueSuggestion) {
 
 .venue-picker-head__title {
   display: block;
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
   font-size: 34rpx;
   line-height: 44rpx;
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .venue-picker-head__caption {
   display: block;
   margin-top: 8rpx;
-  color: var(--neo-color-text-muted);
+  color: var(--ui-color-text-muted);
   font-size: 23rpx;
   line-height: 1.5;
-  font-weight: 700;
+  font-weight: 400;
 }
 
 .venue-picker-head__close {
   width: 56rpx;
   height: 56rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-round);
-  background: var(--neo-surface-bg);
-  color: var(--neo-color-text-muted);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-round);
+  background: var(--ui-surface-bg);
+  color: var(--ui-color-text-muted);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -182,11 +246,11 @@ function handleSelect(venue: BackendVenueSuggestion) {
   min-width: 0;
   height: 84rpx;
   padding: 0 24rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-page);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-button);
+  background: var(--ui-color-page);
   font-size: 28rpx;
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
   box-sizing: border-box;
 }
 
@@ -200,15 +264,15 @@ function handleSelect(venue: BackendVenueSuggestion) {
 }
 
 .venue-picker-list-head__label {
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
   font-size: 24rpx;
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .venue-picker-list-head__state {
-  color: var(--neo-color-text-muted);
+  color: var(--ui-color-text-muted);
   font-size: 22rpx;
-  font-weight: 700;
+  font-weight: 400;
 }
 
 .venue-picker-list {
@@ -218,7 +282,7 @@ function handleSelect(venue: BackendVenueSuggestion) {
   max-height: 40vh;
 }
 
-.venue-picker-list :deep(.neo-surface) {
+.venue-picker-list :deep(.ui-surface) {
   display: block;
   margin-bottom: 14rpx;
 }
@@ -233,7 +297,7 @@ function handleSelect(venue: BackendVenueSuggestion) {
 }
 
 .venue-picker-option--current {
-  background: var(--neo-color-info-soft);
+  background: var(--ui-color-info-soft);
 }
 
 .venue-picker-option__copy {
@@ -243,9 +307,9 @@ function handleSelect(venue: BackendVenueSuggestion) {
 
 .venue-picker-option__name {
   display: block;
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
   font-size: 28rpx;
-  font-weight: 900;
+  font-weight: 600;
   line-height: 1.3;
   word-break: break-word;
 }
@@ -253,12 +317,12 @@ function handleSelect(venue: BackendVenueSuggestion) {
 .venue-picker-option__mark {
   flex-shrink: 0;
   padding: 4rpx 12rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-round);
-  background: var(--neo-color-accent);
-  color: var(--neo-color-text);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-round);
+  background: var(--ui-color-accent);
+  color: var(--ui-color-text);
   font-size: 20rpx;
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .venue-picker-empty {
@@ -268,9 +332,9 @@ function handleSelect(venue: BackendVenueSuggestion) {
 }
 
 .venue-picker-empty__text {
-  color: var(--neo-color-text-muted);
+  color: var(--ui-color-text-muted);
   font-size: 24rpx;
-  font-weight: 700;
+  font-weight: 400;
 }
 
 .venue-picker-map {

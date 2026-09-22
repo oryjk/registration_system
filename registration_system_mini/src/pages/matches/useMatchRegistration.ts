@@ -4,7 +4,7 @@ import {
   submitMatchIndividualRegistration,
 } from "./detailActions";
 import type { BackendActivity, BackendRegistration, BackendUser } from "@/types/backend";
-import type { NeoConfirmDialogOptions } from "@/components/neo";
+import type { ConfirmDialogOptions } from "@/components/ui";
 import { toStandLabel } from "@/utils/viewModels";
 import { applyIndividualRegistrationPatch } from "./detailState";
 import type { RegistrationWindowState } from "@/utils/registrationWindow";
@@ -25,7 +25,7 @@ interface MatchRegistrationDependencies {
   registrationWindowState: ComputedRef<RegistrationWindowState>;
   ensureSessionReady: () => Promise<void>;
   handleGuestLogin: () => Promise<void>;
-  confirmRegistrationAction: (options: NeoConfirmDialogOptions) => Promise<boolean>;
+  confirmRegistrationAction: (options: ConfirmDialogOptions) => Promise<boolean>;
   /** 赛前支付且有人均费用时，报名成功后立即发起支付。 */
   requiresPrepaidPayment: ComputedRef<boolean>;
   payRegistrationFee: () => Promise<boolean>;
@@ -130,6 +130,8 @@ export function useMatchRegistration(dependencies: MatchRegistrationDependencies
       content: `确认报名参加${match.value.name}？`,
       highlight: match.value.name,
       confirmText: "确认报名",
+      confirmIcon: "check",
+      cancelIcon: "undo",
     });
     if (!confirmed) return;
 
@@ -181,6 +183,8 @@ export function useMatchRegistration(dependencies: MatchRegistrationDependencies
         content: `确认取消${match.value.name}的报名？取消后可重新报名。`,
         highlight: match.value.name,
         confirmText: "取消报名",
+        confirmIcon: "close",
+        cancelIcon: "undo",
         danger: true,
       });
       if (!confirmed) return;

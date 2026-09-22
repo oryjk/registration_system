@@ -22,6 +22,7 @@ describe("create match Wot UI integration", () => {
   test("uses native date and time pickers for create match time fields", async () => {
     const source = await read("src/components/MatchScheduleFields.vue");
     const pageSource = await read("src/pages/matches/create/index.vue");
+    const payloadSource = await read("src/pages/matches/create/createMatchPayload.ts");
 
     expect((source.match(/<picker/g)?.length ?? 0) >= 3).toEqual(true);
     expect(source.includes('mode="date"')).toEqual(true);
@@ -36,9 +37,12 @@ describe("create match Wot UI integration", () => {
     expect(source.includes("date-option-active")).toEqual(true);
     expect(source.includes("displayTimeLabel")).toEqual(true);
     expect(pageSource.includes('import type { MatchPublishFormModel } from "./components/matchPublishForm"')).toEqual(true);
-    expect(pageSource.includes('import { toBackendDateTime')).toEqual(false);
-    expect(pageSource.includes("function toBackendDateTime")).toEqual(true);
-    expect(pageSource.includes("submittedAtTimestamp")).toEqual(true);
+    // 时间序列化已收敛到 createMatchPayload：页面不再自带 toBackendDateTime/提交时刻推导。
+    expect(pageSource.includes("toBackendDateTime")).toEqual(false);
+    expect(pageSource.includes("submittedAtTimestamp")).toEqual(false);
+    expect(pageSource.includes("buildCreateMatchPayload")).toEqual(true);
+    expect(payloadSource.includes("start_time: new Date(form.holdingDate).toISOString()")).toEqual(true);
+    expect(payloadSource.includes("end_time: new Date(form.matchEndTime).toISOString()")).toEqual(true);
     expect(pageSource.includes("MatchPublishForm")).toEqual(true);
   });
 
@@ -73,21 +77,21 @@ describe("create match Wot UI integration", () => {
     expect(source.includes("form-input")).toEqual(true);
   });
 
-  test("styles the publish form with the neo design system", async () => {
+  test("styles the publish form with the current design system", async () => {
     const source = await read("src/pages/matches/create/components/MatchPublishForm.vue");
     const pageSource = await read("src/pages/matches/create/index.vue");
 
-    expect(source.includes('import NeoSegmentedControl from "@/components/neo/NeoSegmentedControl.vue"')).toEqual(true);
-    expect(source.includes('import NeoSurface from "@/components/neo/NeoSurface.vue"')).toEqual(true);
-    expect(source.includes('import NeoSectionHeader from "@/components/neo/NeoSectionHeader.vue"')).toEqual(true);
-    expect(source.includes("<NeoSegmentedControl")).toEqual(true);
+    expect(source.includes('import SegmentedControl from "@/components/ui/SegmentedControl.vue"')).toEqual(true);
+    expect(source.includes('import AppSurface from "@/components/ui/AppSurface.vue"')).toEqual(true);
+    expect(source.includes('import SectionHeader from "@/components/ui/SectionHeader.vue"')).toEqual(true);
+    expect(source.includes("<SegmentedControl")).toEqual(true);
     expect(source.includes('custom-class="form-card"')).toEqual(true);
-    // 表单皮肤用 neo token；球衣色板（colorOptions）允许保留 hex 色值。
+    // 表单皮肤用 语义 token；球衣色板（colorOptions）允许保留 hex 色值。
     expect(source.includes("border-radius: 24rpx")).toEqual(false);
-    expect(source.includes("var(--neo-color")).toEqual(true);
-    expect(pageSource.includes('import NeoStickyActionBar from "@/components/neo/NeoStickyActionBar.vue"')).toEqual(true);
-    expect(pageSource.includes('variant="dark" custom-class="create-hero"')).toEqual(true);
-    expect(pageSource.includes("<NeoButton block variant=\"lime\"")).toEqual(true);
+    expect(source.includes("var(--ui-color")).toEqual(true);
+    expect(pageSource.includes('import StickyActionBar from "@/components/ui/StickyActionBar.vue"')).toEqual(true);
+    expect(pageSource.includes('variant="outlined" custom-class="create-hero"')).toEqual(true);
+    expect(pageSource.includes("<AppButton block variant=\"lime\"")).toEqual(true);
     expect(pageSource.includes("#c8ff00")).toEqual(false);
     expect(pageSource.includes("#111310")).toEqual(false);
   });
@@ -142,13 +146,16 @@ describe("create match Wot UI integration", () => {
     expect(scriptSource.includes("version: manifest.versionName")).toEqual(true);
   });
 
-  test("derives registration times from submit time and match start time", async () => {
-    const source = await read("src/pages/matches/create/index.vue");
+  test("payload times come from the schedule pickers and omit the registration window", async () => {
+    const payloadSource = await read("src/pages/matches/create/createMatchPayload.ts");
 
-    expect(source.includes("const submittedAtTimestamp = Date.now();")).toEqual(true);
-    expect(source.includes("const registrationDeadlineTimestamp = normalizeToMinute(form.holdingDate - 24 * 60 * 60 * 1000);")).toEqual(true);
-    expect(source.includes("start_time: toBackendDateTime(submittedAtTimestamp),")).toEqual(true);
-    expect(source.includes("end_time: toBackendDateTime(registrationDeadlineTimestamp),")).toEqual(true);
-    expect(source.includes("matchEndTime")).toEqual(true);
+    // 时间契约（与 createMatchPayload.test.ts 的行为用例一致）：
+    // start/end 直接来自表单的比赛开始/结束选择器，不再从提交时刻或"开赛前 24h"推导。
+    expect(payloadSource.includes("start_time: new Date(form.holdingDate).toISOString()")).toEqual(true);
+    expect(payloadSource.includes("end_time: new Date(form.matchEndTime).toISOString()")).toEqual(true);
+    // 报名窗口不在表单内暴露：缺省由后端按"创建即开放、比赛状态控制截止"处理，
+    // 避免发送不可见的相等时间对被后端拒绝。
+    expect(payloadSource.includes("registration_start_at")).toEqual(false);
+    expect(payloadSource.includes("registration_end_at")).toEqual(false);
   });
 });

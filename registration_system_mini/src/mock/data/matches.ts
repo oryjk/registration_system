@@ -6,7 +6,6 @@ import type {
   AppMatchGroupDetail,
   AppMatchHomeResponse,
   AppMatchParticipant,
-  AppMatchRegistration,
   AppMatchRegistrationStatus,
   AppMatchRegistrationGroupSummary,
   AppMatchStatus,

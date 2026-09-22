@@ -28,8 +28,8 @@ describe("activities page sections", () => {
     expect(source.includes('card.actionKind === "accept" ? card.applyUrl : card.detailUrl')).toEqual(true);
     expect(state.includes("/pages/matches/detail?id=")).toEqual(true);
     expect(state.includes("/pages/matches/apply-team/index?id=")).toEqual(true);
-    expect(card.includes("neo-border-strong")).toEqual(true);
-    expect(card.includes("NeoProgress")).toEqual(true);
+    expect(card.includes("ui-border-default")).toEqual(true);
+    expect(card.includes("AppProgress")).toEqual(true);
     expect(card.includes(':stop-propagation="false"')).toEqual(true);
     expect(source.includes("acceptChallenge")).toEqual(false);
     expect(source.includes("cancelIndividualChallengeAcceptance")).toEqual(false);
@@ -44,11 +44,11 @@ describe("activities page sections", () => {
     expect(source.includes("canOpenPublishSheet")).toEqual(true);
     expect(source.includes("hasPublishIdentity")).toEqual(true);
     expect(source.includes("MATCH_CREATION_IDENTITY_HINT")).toEqual(true);
-    expect(source.includes("<NeoConfirmDialog")).toEqual(true);
+    expect(source.includes("<ConfirmDialog")).toEqual(true);
     expect(publishTypeSheet.includes("publish-menu-overlay")).toEqual(true);
     expect(publishTypeSheet.includes("publish-menu-overlay-open")).toEqual(true);
     expect(publishTypeSheet.includes("publish-menu-action")).toEqual(true);
-    expect(publishTypeSheet.includes("cubic-bezier(0.22, 1, 0.36, 1)")).toEqual(true);
+    expect(publishTypeSheet.includes("var(--ui-motion-overlay-duration) var(--ui-motion-ease-out)")).toEqual(true);
     expect(source.includes("handlePublishTeamChallenge")).toEqual(true);
     expect(source.includes("handlePublishIndividualChallenge")).toEqual(true);
     // 球队约队走创建比赛页；散人约球走独立的散人发布页（online_pickup）。
@@ -133,7 +133,7 @@ describe("activities page sections", () => {
     // 切换球队入口保留：当前球队卡片打开底部切换弹层，进入详情走「我的球队」列表。
     expect(identityPanelSource.includes('emit("switchTeam", teamId)')).toEqual(true);
     expect(identityPanelSource.includes("MineTeamSwitchSheet")).toEqual(true);
-    expect(identityPanelSource.includes("NeoSegmentedControl")).toEqual(false);
+    expect(identityPanelSource.includes("SegmentedControl")).toEqual(false);
   });
 
   test("pickup publish page works without any team identity", async () => {
@@ -157,14 +157,14 @@ describe("activities page sections", () => {
   });
 
   test("match card lists share the card list spacing token", async () => {
-    const tokens = await Bun.file(sourcePath("styles/neo-tokens.css")).text();
+    const tokens = await Bun.file(sourcePath("styles/design-tokens.css")).text();
     const homeList = await Bun.file(sourcePath("pages/home/components/HomeMatchList.vue")).text();
     const hallList = await Bun.file(sourcePath("pages/activities/components/HallMatchList.vue")).text();
 
-    expect(tokens.includes("--neo-card-list-gap: 20rpx;")).toEqual(true);
-    expect(tokens.includes("--neo-card-list-offset: 24rpx;")).toEqual(true);
-    expect(homeList.includes("gap: var(--neo-card-list-gap);")).toEqual(true);
-    expect(hallList.includes("gap: var(--neo-card-list-gap);")).toEqual(true);
+    expect(tokens.includes("--ui-card-list-gap: 20rpx;")).toEqual(true);
+    expect(tokens.includes("--ui-card-list-offset: 24rpx;")).toEqual(true);
+    expect(homeList.includes("gap: var(--ui-card-list-gap);")).toEqual(true);
+    expect(hallList.includes("gap: var(--ui-card-list-gap);")).toEqual(true);
   });
 
   test("requires login before showing the hall list", async () => {    const source = await Bun.file(sourcePath("pages/activities/index.vue")).text();

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import NeoConfirmDialog from "@/components/neo/NeoConfirmDialog.vue";
-import NeoSegmentedControl from "@/components/neo/NeoSegmentedControl.vue";
+import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
+import SegmentedControl from "@/components/ui/SegmentedControl.vue";
 import { pad } from "@/utils/datetime";
 import { MATCH_PUBLICATION_MODE_OPTIONS } from "@/utils/matchPublicationMode";
 
@@ -79,7 +79,7 @@ function pickerChangeValue(event: Event) {
 
 <template>
   <!-- 修改比赛：对手名称 + 报名人数上限 + 比赛起止时间（借对话框默认插槽承载轻量表单）。 -->
-  <NeoConfirmDialog
+  <ConfirmDialog
     :visible="visible"
     title="修改比赛"
     :message="showTypeChange ? '可修改比赛类型、对手名称、报名人数上限与比赛时间；切换类型会自动拒绝待处理的球队申请。' : '可修改对手名称、报名人数上限与比赛时间。'"
@@ -93,7 +93,7 @@ function pickerChangeValue(event: Event) {
   >
     <view v-if="showTypeChange" class="match-edit-field">
       <text class="match-edit-label">比赛类型</text>
-      <NeoSegmentedControl
+      <SegmentedControl
         :model-value="typeValue"
         :options="typeOptions"
         @update:model-value="emit('update:typeValue', $event)"
@@ -143,7 +143,7 @@ function pickerChangeValue(event: Event) {
         </picker>
       </view>
     </view>
-  </NeoConfirmDialog>
+  </ConfirmDialog>
 </template>
 
 <style scoped>
@@ -156,8 +156,8 @@ function pickerChangeValue(event: Event) {
 
 .match-edit-label {
   font-size: 25rpx;
-  font-weight: 800;
-  color: var(--neo-color-text-muted);
+  font-weight: 500;
+  color: var(--ui-color-text-muted);
 }
 
 .match-edit-input {
@@ -165,11 +165,11 @@ function pickerChangeValue(event: Event) {
   width: 100%;
   height: 84rpx;
   padding: 0 22rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-page);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-button);
+  background: var(--ui-color-page);
   font-size: 28rpx;
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
 }
 
 /* 起止时间：日期 + 钟点两段选择，各占一半宽度。 */
@@ -191,12 +191,12 @@ function pickerChangeValue(event: Event) {
   justify-content: center;
   height: 84rpx;
   padding: 0 12rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-page);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-button);
+  background: var(--ui-color-page);
   font-size: 28rpx;
-  font-weight: 800;
-  color: var(--neo-color-text);
+  font-weight: 500;
+  color: var(--ui-color-text);
   white-space: nowrap;
   overflow: hidden;
 }
@@ -204,8 +204,8 @@ function pickerChangeValue(event: Event) {
 /* 类型选择下的说明文字：与创建页类型选择的 caption 一致。 */
 .match-edit-caption {
   font-size: 22rpx;
-  font-weight: 700;
-  color: var(--neo-color-text-muted);
+  font-weight: 400;
+  color: var(--ui-color-text-muted);
   line-height: 1.45;
 }
 </style>

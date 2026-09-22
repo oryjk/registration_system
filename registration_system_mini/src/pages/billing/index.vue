@@ -3,7 +3,7 @@ import { useAccentTheme } from "@/stores/theme";
 import { computed, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
-import NeoRunningLoader from "@/components/neo/NeoRunningLoader.vue";
+import RunningLoader from "@/components/ui/RunningLoader.vue";
 import { getTeamFundBalances, getTeamFundTransactions } from "@/api/teamFund";
 import { cancelPaymentOrder, createRechargeOrder, listPaymentOrders, syncGoPaymentOrder } from "@/api/payment";
 import { useTeamContext } from "@/stores/teamContext";
@@ -151,19 +151,11 @@ onShow(() => {
 
 <template>
   <page-meta :page-style="themePageStyle" />
-  <view class="billing-page" :style="pageStyle">
+  <view class="app-theme-scope billing-page" :style="[themePageStyle, pageStyle]">
     <AppTabHeader title="账单明细" showBack />
 
-    <view class="billing-header">
-      <view>
-        <text class="billing-title">账单明细</text>
-        <text class="billing-subtitle">队费余额、充值、扣费流水以真实账单接口为准。</text>
-      </view>
-      <view class="billing-header-badge">{{ transactions.length }} 条</view>
-    </view>
-
     <view v-if="errorMessage" class="billing-empty">{{ errorMessage }}</view>
-    <NeoRunningLoader v-else-if="isLoading" text="正在清点账单" />
+    <RunningLoader v-else-if="isLoading" text="正在清点账单" />
 
     <template v-else>
     <view class="billing-hero">
@@ -220,7 +212,7 @@ onShow(() => {
     <view class="billing-card">
       <view class="billing-card-head">
         <view>
-          <text class="billing-card-title">队费流水</text>
+          <text class="billing-card-title">队费流水 · {{ transactions.length }} 条</text>
           <text class="billing-card-caption">充值、比赛扣费与结算冲正，按时间倒序。</text>
         </view>
       </view>
@@ -246,48 +238,19 @@ onShow(() => {
 <style scoped>
 .billing-page {
   min-height: 100vh;
-  padding: 30rpx 28rpx 100rpx;
-  background:
-    radial-gradient(circle at top left, rgba(200, 255, 0, 0.12), transparent 24%),
-    linear-gradient(180deg, #fbfcf7 0%, #f2f4ed 100%);
+
+  padding: 0 28rpx 100rpx;
+
+  background: var(--ui-color-page);
   box-sizing: border-box;
-}
-
-.billing-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-}
-
-.billing-title {
-  display: block;
-  font-size: 64rpx;
-  color: #131410;
-  font-weight: 900;
-}
-
-.billing-subtitle {
-  display: block;
-  margin-top: 8rpx;
-  font-size: 24rpx;
-  color: #6d7269;
-  font-weight: 700;
-}
-
-.billing-header-badge {
-  padding: 14rpx 22rpx;
-  border-radius: 999rpx;
-  background: #151613;
-  color: #ffffff;
-  font-size: 24rpx;
-  font-weight: 800;
 }
 
 .billing-hero,
 .billing-card,
 .billing-metric-card {
-  background: #ffffff;
-  box-shadow: 0 20rpx 38rpx rgba(17, 17, 17, 0.05);
+  background: var(--ui-color-surface);
+  border: var(--ui-border-default);
+  box-shadow: none;
 }
 
 .billing-hero {
@@ -295,40 +258,44 @@ onShow(() => {
   align-items: flex-start;
   justify-content: space-between;
   gap: 20rpx;
-  margin-top: 22rpx;
-  padding: 30rpx 28rpx;
-  border-radius: 34rpx;
+
+  margin-top: 0;
+
+  padding: 26rpx;
+
+  border-radius: var(--ui-radius-card);
 }
 
 .billing-hero-label {
   display: block;
   font-size: 24rpx;
-  color: #72776f;
-  font-weight: 700;
+  color: var(--ui-color-text-muted);
+  font-weight: 400;
 }
 
 .billing-hero-value {
   display: block;
   margin-top: 10rpx;
-  font-size: 64rpx;
-  color: #131410;
-  font-weight: 900;
+
+  font-size: 48rpx;
+  color: var(--ui-color-text);
+  font-weight: 600;
 }
 
 .billing-hero-copy {
   display: block;
   margin-top: 10rpx;
   font-size: 24rpx;
-  color: #6c7168;
+  color: var(--ui-color-text-muted);
 }
 
 .billing-hero-pill {
   padding: 10rpx 16rpx;
   border-radius: 999rpx;
-  background: var(--neo-color-accent-soft);
-  color: var(--neo-color-accent-deep);
+  background: var(--ui-color-accent-soft);
+  color: var(--ui-color-accent-deep);
   font-size: 22rpx;
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .billing-recharge-box {
@@ -343,10 +310,12 @@ onShow(() => {
   height: 66rpx;
   padding: 0 14rpx;
   border-radius: 18rpx;
-  background: #f3f5ef;
-  color: #141512;
+  background: var(--ui-color-surface);
+  color: var(--ui-color-text);
   font-size: 26rpx;
-  font-weight: 900;
+  font-weight: 600;
+  box-sizing: border-box;
+  border: var(--ui-border-default);
   box-sizing: border-box;
 }
 
@@ -363,7 +332,7 @@ onShow(() => {
 }
 
 .billing-metric-card-debt .billing-metric-value {
-  color: #d04860;
+  color: var(--ui-color-danger-fg);
 }
 
 .billing-metric-card-wide {
@@ -373,16 +342,16 @@ onShow(() => {
 .billing-metric-label {
   display: block;
   font-size: 24rpx;
-  color: #71766f;
-  font-weight: 700;
+  color: var(--ui-color-text-muted);
+  font-weight: 400;
 }
 
 .billing-metric-value {
   display: block;
   margin-top: 10rpx;
   font-size: 42rpx;
-  color: #141512;
-  font-weight: 900;
+  color: var(--ui-color-text);
+  font-weight: 600;
 }
 
 .billing-card {
@@ -400,15 +369,15 @@ onShow(() => {
 .billing-card-title {
   display: block;
   font-size: 30rpx;
-  color: #171814;
-  font-weight: 900;
+  color: var(--ui-color-text);
+  font-weight: 600;
 }
 
 .billing-card-caption {
   display: block;
   margin-top: 8rpx;
   font-size: 22rpx;
-  color: #747972;
+  color: var(--ui-color-text-muted);
 }
 
 .billing-list {
@@ -430,13 +399,13 @@ onShow(() => {
 }
 
 .order-action {
-  color: #111310;
+  color: var(--ui-color-accent-deep);
   font-size: 23rpx;
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .order-action-danger {
-  color: #b42318;
+  color: var(--ui-color-danger-fg);
 }
 
 .billing-item {
@@ -454,15 +423,15 @@ onShow(() => {
 .billing-item-title {
   display: block;
   font-size: 28rpx;
-  color: #171814;
-  font-weight: 800;
+  color: var(--ui-color-text);
+  font-weight: 500;
 }
 
 .billing-item-meta {
   display: block;
   margin-top: 8rpx;
   font-size: 22rpx;
-  color: #787d75;
+  color: var(--ui-color-text-muted);
   line-height: 1.5;
 }
 
@@ -474,30 +443,34 @@ onShow(() => {
 
 .billing-amount {
   font-size: 28rpx;
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .billing-amount-plus {
-  color: #4f9d00;
+  color: var(--ui-color-success-fg);
 }
 
 .billing-amount-minus {
-  color: #d04860;
+  color: var(--ui-color-danger-fg);
 }
 
 .billing-item-balance {
   margin-top: 8rpx;
   font-size: 22rpx;
-  color: #737870;
+  color: var(--ui-color-text-muted);
 }
 
 .billing-empty {
   margin-top: 20rpx;
   padding: 26rpx;
   border-radius: 28rpx;
-  background: #ffffff;
-  color: #6c7168;
+  background: var(--ui-color-surface);
+  color: var(--ui-color-text-muted);
   font-size: 28rpx;
   line-height: 1.6;
 }
+/* #ifdef H5 */
+.billing-page { width: 100%; max-width: 750rpx; margin: 0 auto; }
+.billing-page :deep(.app-tab-header-shell) { left: 50%; right: auto; width: 100%; max-width: 750rpx; transform: translateX(-50%); }
+/* #endif */
 </style>

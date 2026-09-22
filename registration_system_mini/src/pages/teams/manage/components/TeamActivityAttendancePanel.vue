@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import NeoSectionHeader from "@/components/neo/NeoSectionHeader.vue";
-import NeoSurface from "@/components/neo/NeoSurface.vue";
+import SectionHeader from "@/components/ui/SectionHeader.vue";
+import AppSurface from "@/components/ui/AppSurface.vue";
+import SmoothCollapse from "@/components/ui/SmoothCollapse.vue";
 import type {
   BackendTeamMemberAttendanceRecord,
   BackendTeamMatchAttendance,
@@ -12,7 +13,7 @@ interface MatchAttendanceState {
   detail: BackendTeamMatchAttendance | null;
 }
 
-const props = defineProps<{
+defineProps<{
   currentTeam: TeamProfileViewModel | null;
   loading: boolean;
   matches: BackendTeamMemberAttendanceRecord[];
@@ -55,15 +56,14 @@ function memberInitial(nickname: string) {
 </script>
 
 <template>
-  <NeoSurface custom-class="form-card attendance-panel">
+  <AppSurface custom-class="form-card attendance-panel">
     <view class="attendance-panel-head">
-      <NeoSectionHeader title="比赛出勤" marker="01" caption="点击比赛查看该场每位队员的报名与打卡情况" />
+      <SectionHeader title="比赛出勤" caption="点击比赛查看该场每位队员的报名与打卡情况" />
       <view v-if="matches.length" class="attendance-total-badge">
         <text>{{ matches.length }}</text>
         <text>场</text>
       </view>
     </view>
-
     <view v-if="!currentTeam" class="empty-box">请先创建或加入球队。</view>
     <view v-else-if="loading" class="empty-box">正在加载球队比赛...</view>
     <view v-else-if="!matches.length" class="empty-box">暂无可展示的球队比赛出勤。</view>
@@ -76,8 +76,8 @@ function memberInitial(nickname: string) {
           </view>
           <text class="activity-expand-arrow" :class="{ 'activity-expand-arrow-open': expandedActivityId === match.activity_id }">›</text>
         </view>
-
-        <template v-if="expandedActivityId === match.activity_id">
+        <SmoothCollapse :visible="expandedActivityId === match.activity_id">
+          <view class="activity-detail">
           <view v-if="matchAttendanceById[match.activity_id]?.loading" class="activity-loading">正在加载出勤明细...</view>
           <template v-else-if="matchAttendanceById[match.activity_id]?.detail">
             <view class="activity-stat-grid">
@@ -94,7 +94,6 @@ function memberInitial(nickname: string) {
                 <text class="activity-stat-label">未打卡</text>
               </view>
             </view>
-
             <view class="activity-member-list">
               <view
                 v-for="member in matchAttendanceById[match.activity_id]!.detail!.records"
@@ -114,18 +113,19 @@ function memberInitial(nickname: string) {
             </view>
           </template>
           <view v-else class="activity-loading">出勤明细加载失败，点击标题重试。</view>
-        </template>
+          </view>
+        </SmoothCollapse>
       </view>
     </view>
-  </NeoSurface>
+  </AppSurface>
 </template>
 
 <style scoped>
 .form-card {
   padding: 6rpx 24rpx 24rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-md);
-  box-shadow: 8rpx 8rpx 0 var(--neo-color-text);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-card);
+  box-shadow: none;
 }
 
 .attendance-panel {
@@ -141,38 +141,38 @@ function memberInitial(nickname: string) {
   margin-bottom: 22rpx;
 }
 
-:deep(.attendance-panel-head .neo-section-header) {
+:deep(.attendance-panel-head .ui-section-header) {
   flex: 1;
   margin-top: 30rpx;
 }
 
 .attendance-total-badge {
-  min-width: 86rpx;
-  height: 62rpx;
-  padding: 0 16rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-xs);
-  background: var(--neo-color-accent);
-  color: var(--neo-color-text);
+  min-width: 0;
+  height: 44rpx;
+  padding: 0;
+  border: none;
+  border-radius: var(--ui-radius-xs);
+  background: transparent;
+  color: var(--ui-color-text-muted);
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 4rpx;
   font-size: 24rpx;
-  font-weight: 900;
+  font-weight: 600;
   box-sizing: border-box;
   flex-shrink: 0;
 }
 
 .empty-box {
   margin-top: 22rpx;
-  padding: 22rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-warning-soft);
-  color: var(--neo-color-text-muted);
-  font-size: 26rpx;
-  font-weight: 700;
+  padding: 20rpx 0;
+  border: none;
+  border-radius: var(--ui-radius-button);
+  background: transparent;
+  color: var(--ui-color-text-muted);
+  font-size: 24rpx;
+  font-weight: 400;
 }
 
 .activity-attendance-list {
@@ -182,12 +182,13 @@ function memberInitial(nickname: string) {
 }
 
 .activity-attendance-card {
-  padding: 22rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-md);
-  background: var(--neo-color-surface);
-  box-shadow: var(--neo-shadow-raised);
+  padding: 24rpx 0;
+  border: none;
+  border-radius: 0;
+  background: var(--ui-color-surface);
+  box-shadow: none;
   overflow: hidden;
+  border-bottom: var(--ui-border-default);
 }
 
 .activity-card-topline {
@@ -204,10 +205,10 @@ function memberInitial(nickname: string) {
 
 .activity-name {
   display: block;
-  color: var(--neo-color-text);
-  font-size: 31rpx;
+  color: var(--ui-color-text);
+  font-size: 28rpx;
   line-height: 1.25;
-  font-weight: 950;
+  font-weight: var(--ui-font-weight-heading);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -216,10 +217,10 @@ function memberInitial(nickname: string) {
 .activity-meta {
   display: block;
   margin-top: 8rpx;
-  color: var(--neo-color-text-muted);
+  color: var(--ui-color-text-muted);
   font-size: 22rpx;
   line-height: 1.35;
-  font-weight: 750;
+  font-weight: 400;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -229,34 +230,63 @@ function memberInitial(nickname: string) {
   flex-shrink: 0;
   width: 52rpx;
   height: 52rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-round);
-  background: var(--neo-color-text);
-  color: var(--neo-color-accent);
+  border: none;
+  border-radius: var(--ui-radius-round);
+  background: transparent;
+  color: var(--ui-color-text-muted);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 32rpx;
   line-height: 1;
-  font-weight: 900;
+  font-weight: 600;
   box-sizing: border-box;
   transform: rotate(0deg);
-  transition: transform 180ms ease;
+  transition: transform var(--ui-motion-switch-duration) var(--ui-motion-ease-out);
 }
 
 .activity-expand-arrow-open {
   transform: rotate(90deg);
 }
 
+/* 展开内容淡入：小程序无法稳定测量动态高度，按规范保持布局、内容轻淡入（≤8rpx 位移）。 */
+.activity-detail {
+  animation: activity-detail-fade-in var(--ui-motion-expand-duration) var(--ui-motion-ease-out);
+}
+
+@keyframes activity-detail-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8rpx);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* H5 减少动态效果：内容直接出现，箭头直接切换。 */
+@media (prefers-reduced-motion: reduce) {
+  .activity-detail {
+    animation: none;
+  }
+  .activity-expand-arrow {
+    transition: none;
+  background: transparent;
+  border: none;
+  color: var(--ui-color-text-muted);
+}
+}
+
 .activity-loading {
   margin-top: 16rpx;
   padding: 18rpx;
-  border: 2rpx solid var(--neo-color-track);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-muted);
-  color: var(--neo-color-text-muted);
+  border: 2rpx solid var(--ui-color-track);
+  border-radius: var(--ui-radius-button);
+  background: var(--ui-color-muted);
+  color: var(--ui-color-text-muted);
   font-size: 23rpx;
-  font-weight: 750;
+  font-weight: 400;
 }
 
 .activity-stat-grid {
@@ -269,46 +299,46 @@ function memberInitial(nickname: string) {
 .activity-stat {
   min-width: 0;
   padding: 16rpx 8rpx 14rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-xs);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-xs);
   text-align: center;
   box-sizing: border-box;
 }
 
 .activity-stat-joined {
-  background: var(--neo-color-success);
-  color: var(--neo-color-text);
+  background: var(--ui-color-success);
+  color: var(--ui-color-text);
 }
 
 .activity-stat-leave {
-  background: var(--neo-color-warning-soft);
-  color: var(--neo-color-text);
+  background: var(--ui-color-warning-soft);
+  color: var(--ui-color-text);
 }
 
 .activity-stat-unchecked {
-  background: var(--neo-color-danger-soft);
-  color: var(--neo-color-text);
+  background: var(--ui-color-danger-soft);
+  color: var(--ui-color-text);
 }
 
 .activity-stat-value {
   display: block;
   font-size: 34rpx;
   line-height: 1;
-  font-weight: 950;
+  font-weight: var(--ui-font-weight-heading);
 }
 
 .activity-stat-label {
   display: block;
   margin-top: 7rpx;
   font-size: 20rpx;
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .activity-member-list {
   margin-top: 14rpx;
-  border: 2rpx solid var(--neo-color-text);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-muted);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-button);
+  background: var(--ui-color-muted);
   overflow: hidden;
 }
 
@@ -318,7 +348,7 @@ function memberInitial(nickname: string) {
   display: flex;
   align-items: center;
   gap: 12rpx;
-  border-bottom: 2rpx solid var(--neo-color-track);
+  border-bottom: 2rpx solid var(--ui-color-track);
   box-sizing: border-box;
 }
 
@@ -329,20 +359,20 @@ function memberInitial(nickname: string) {
 .activity-member-avatar {
   width: 54rpx;
   height: 54rpx;
-  border: 2rpx solid var(--neo-color-text);
-  border-radius: var(--neo-radius-xs);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-xs);
   flex-shrink: 0;
   overflow: hidden;
-  background: var(--neo-color-muted);
+  background: var(--ui-color-muted);
 }
 
 .activity-member-avatar-fallback {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
   font-size: 22rpx;
-  font-weight: 950;
+  font-weight: var(--ui-font-weight-heading);
 }
 
 .activity-member-copy {
@@ -352,9 +382,9 @@ function memberInitial(nickname: string) {
 
 .activity-member-name {
   display: block;
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
   font-size: 24rpx;
-  font-weight: 900;
+  font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -363,38 +393,38 @@ function memberInitial(nickname: string) {
 .activity-member-meta {
   display: block;
   margin-top: 4rpx;
-  color: var(--neo-color-text-muted);
+  color: var(--ui-color-text-muted);
   font-size: 19rpx;
-  font-weight: 750;
+  font-weight: 400;
 }
 
 .activity-member-status {
   min-width: 84rpx;
   height: 42rpx;
   padding: 0 14rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-xs);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-xs);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 21rpx;
-  font-weight: 950;
+  font-weight: var(--ui-font-weight-heading);
   box-sizing: border-box;
   flex-shrink: 0;
 }
 
 .activity-member-status-joined {
-  background: var(--neo-color-accent);
-  color: var(--neo-color-text);
+  background: var(--ui-color-accent);
+  color: var(--ui-color-text);
 }
 
 .activity-member-status-leave {
-  background: var(--neo-color-warning-soft);
-  color: var(--neo-color-text);
+  background: var(--ui-color-warning-soft);
+  color: var(--ui-color-text);
 }
 
 .activity-member-status-unchecked {
-  background: var(--neo-color-danger);
-  color: var(--neo-color-text);
+  background: var(--ui-color-danger);
+  color: var(--ui-color-text);
 }
 </style>

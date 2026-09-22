@@ -1,17 +1,24 @@
 <script setup lang="ts">
-import NeoSurface from "@/components/neo/NeoSurface.vue";
-import NeoTag from "@/components/neo/NeoTag.vue";
+import AppSurface from "@/components/ui/AppSurface.vue";
+import AppTag from "@/components/ui/AppTag.vue";
 
-defineProps<{
-  title: string;
-  items: string[];
-  score: number;
-  scoreLabel: string;
-}>();
+withDefaults(
+  defineProps<{
+    title: string;
+    items: string[];
+    /** 可选角标分值（如信用分）；不需要时不传，角标整块不渲染。 */
+    score?: number;
+    scoreLabel?: string;
+  }>(),
+  {
+    score: 0,
+    scoreLabel: "",
+  },
+);
 </script>
 
 <template>
-  <NeoSurface custom-class="match-info-card">
+  <AppSurface custom-class="match-info-card">
     <view class="match-info-card__main">
       <text class="match-info-card__title">{{ title }}</text>
       <view class="match-info-card__list">
@@ -21,11 +28,11 @@ defineProps<{
         </view>
       </view>
     </view>
-    <NeoTag tone="lime" size="lg" class="match-info-card__score">
+    <AppTag v-if="scoreLabel" tone="lime" size="lg" class="match-info-card__score">
       <text class="match-info-card__score-value">{{ score }} 分</text>
       <text class="match-info-card__score-label">{{ scoreLabel }}</text>
-    </NeoTag>
-  </NeoSurface>
+    </AppTag>
+  </AppSurface>
 </template>
 
 <style scoped>
@@ -42,10 +49,10 @@ defineProps<{
 
 .match-info-card__title {
   display: block;
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
   font-size: 34rpx;
   line-height: 1.2;
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .match-info-card__list {
@@ -62,14 +69,14 @@ defineProps<{
 }
 
 .match-info-card__dot {
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
   font-size: 24rpx;
-  font-weight: 900;
+  font-weight: 600;
   line-height: 1.45;
 }
 
 .match-info-card__text {
-  color: var(--neo-color-text-muted);
+  color: var(--ui-color-text-muted);
   font-size: 26rpx;
   line-height: 1.45;
 }
@@ -88,16 +95,16 @@ defineProps<{
 }
 
 .match-info-card__score-value {
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
   font-size: 34rpx;
   line-height: 1;
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .match-info-card__score-label {
-  color: var(--neo-color-text-muted);
+  color: var(--ui-color-text-muted);
   font-size: 20rpx;
   line-height: 1.2;
-  font-weight: 800;
+  font-weight: 500;
 }
 </style>

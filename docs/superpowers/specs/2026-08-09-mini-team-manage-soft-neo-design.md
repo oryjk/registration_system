@@ -1,5 +1,7 @@
 # Mini Team Manage Soft Neo Design
 
+> **历史资料：视觉规范已失效。** 本文的 Neo / Soft Neo 样式要求、旧组件与 token 路径不再适用；业务决策仅供追溯。所有新界面工作以[现行统一设计系统](../../../registration_system_mini/docs/mini-design-system.md)及实际代码为准，不得依据本文恢复旧皮肤。
+
 ## Goal
 
 将小程序/H5 的球队管理完整工作台统一为当前已确认的 Soft Neo-Brutalism 视觉语言，同时保持球队资料、创建/加入、队员管理和出勤统计的现有业务行为不变。

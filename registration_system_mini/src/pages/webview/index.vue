@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
+import { useAccentTheme } from "@/stores/theme";
 import { isAllowedWebViewUrl } from "@/utils/webview";
 
 /**
@@ -8,6 +9,7 @@ import { isAllowedWebViewUrl } from "@/utils/webview";
  * 通过 `/pages/webview/index?url=<encoded>&title=<可选>` 进入，
  * 业务侧请使用 `navigateToWebView`（会自动桥接登录态），不要手拼路由。
  */
+const { themePageStyle } = useAccentTheme();
 const targetUrl = ref("");
 
 onLoad((query) => {
@@ -36,6 +38,8 @@ onLoad((query) => {
 </script>
 
 <template>
-  <!-- web-view 占满整页，页面不使用自定义导航栏；H5 端 uni-app 将其编译为 iframe。 -->
+  <!-- page-meta 与业务页面同套主题注入（守卫测试要求所有注册页面带 page-meta）；
+       web-view 占满整页，页面不使用自定义导航栏；H5 端 uni-app 将其编译为 iframe。 -->
+  <page-meta :page-style="themePageStyle" />
   <web-view v-if="targetUrl" :src="targetUrl" />
 </template>

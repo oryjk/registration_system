@@ -1,152 +1,73 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
-import NeoAvatarStack from "@/components/neo/NeoAvatarStack.vue";
-import NeoButton from "@/components/neo/NeoButton.vue";
-import NeoProgress from "@/components/neo/NeoProgress.vue";
-import NeoStickyActionBar from "@/components/neo/NeoStickyActionBar.vue";
-import NeoSurface from "@/components/neo/NeoSurface.vue";
-import NeoTag from "@/components/neo/NeoTag.vue";
+import { computed } from "vue";
+import RegistrationProgressSummary from "@/components/ui/RegistrationProgressSummary.vue";
+import type { AvatarItem } from "@/components/ui/avatarTypes";
+import AppSurface from "@/components/ui/AppSurface.vue";
 import type { MatchTeamProgressItem } from "@/types/viewModels";
-
-type Participant = {
-  id: number;
-  name: string;
-  avatarUrl: string;
-  tone: string;
-};
 
 const props = defineProps<{
   joinedCount: number;
+  participants?: AvatarItem[];
   requiredPlayers: number;
   maxPlayers: number;
   countdownText: string;
-  participantPreview: Participant[];
   remainingPlayersLabel: string;
-  submittingStatus: boolean;
-  individualCtaLabel: string;
-  isGuestMode: boolean;
-  ctaDisabled: boolean;
-  showCta?: boolean;
   /** 球队约队双边进度（主/客队）；非空时替代单条进度与“已报”计数。 */
   teamProgress?: MatchTeamProgressItem[];
-  /** 待支付报名费标签（如 ¥25.00）；非空时展示「去支付」面板。 */
+  /** 待支付报名费标签（如 ¥25.00，按人数合计的总应付）；非空时提示待支付。 */
   pendingPaymentFeeLabel?: string;
   /** 待支付面板标题（如「已报 3 人 · 报名费待支付」）；缺省为「报名费待支付」。 */
   pendingPaymentTitle?: string;
-  /** 支付流程进行中（下单/拉起/核销）。 */
-  submittingPayment?: boolean;
 }>();
+
+const emit = defineEmits<{ (event: "avatarSelect", avatar: AvatarItem): void }>();
 
 const hasTeamProgress = computed(() => !!props.teamProgress && props.teamProgress.length > 0);
-
-const emit = defineEmits<{
-  selectIndividualSignup: [];
-  selectParticipant: [id: number];
-  payRegistration: [];
-}>();
-
-const selectedParticipantId = ref<number | null>(null);
-const selectedParticipant = computed(() => (
-  props.participantPreview.find((participant) => participant.id === selectedParticipantId.value) ?? null
-));
-
-function handleSelectParticipant(id: string | number) {
-  const participantId = Number(id);
-  selectedParticipantId.value = selectedParticipantId.value === participantId ? null : participantId;
-  emit("selectParticipant", participantId);
-}
-
-function handleSignup() {
-  if (!props.ctaDisabled && !props.submittingStatus) emit("selectIndividualSignup");
+const hasPendingPayment = computed(() => !!props.pendingPaymentFeeLabel);
+function selectAvatar(id: string | number) {
+  const participant = props.participants?.find(item => item.id === id);
+  if (participant) emit("avatarSelect", participant);
 }
 </script>
 
 <template>
   <view class="registration-status-wrap">
-    <NeoSurface custom-class="registration-status-surface">
-      <view class="status-head">
+    <AppSurface variant="outlined">
+      <view v-if="hasTeamProgress" class="status-head">
         <view class="status-heading">
-          <NeoTag tone="dark">报名进度</NeoTag>
-          <text class="status-countdown">{{ countdownText }}</text>
-        </view>
-        <view v-if="!hasTeamProgress" class="status-total">
-          <text class="status-total-label">已报</text>
-          <text class="status-total-value">{{ joinedCount }}</text>
-          <text class="status-total-target">/{{ requiredPlayers || "?" }}</text>
+          <text class="status-title">报名进度</text>
+          <text v-if="countdownText && countdownText !== '报名进行中'" class="status-countdown">{{ countdownText }}</text>
         </view>
       </view>
 
       <template v-if="hasTeamProgress">
-        <!-- 球队约队：主/客队各自的报名进度条。 -->
-        <view
-          v-for="team in teamProgress"
-          :key="team.id"
-          :class="['status-team-progress', team.label.length > 6 ? 'status-team-progress-tight' : '']"
-        >
-          <NeoProgress
-            :value="team.attending"
-            :target="team.required ?? team.max ?? team.attending"
-            :max="team.max ?? team.required ?? team.attending"
-            :label="team.label"
-            :value-text="`${team.attending}/${team.required ?? team.max ?? '?'}`"
+        <view v-for="team in teamProgress" :key="team.id" class="status-team-progress">
+          <RegistrationProgressSummary
+            :title="team.label"
+            :joined="team.attending"
+            :minimum="team.required"
+            :maximum="team.max"
           />
         </view>
       </template>
-      <NeoProgress
+      <RegistrationProgressSummary
         v-else
-        :value="joinedCount"
-        :target="requiredPlayers"
-        :max="maxPlayers"
-        label="成行 / 满员"
-        :value-text="`${joinedCount}/${requiredPlayers || '?'}`"
+        :joined="joinedCount"
+        :subtitle="countdownText !== '报名进行中' ? countdownText : ''"
+        :minimum="requiredPlayers"
+        :maximum="maxPlayers"
+        :avatars="participants"
+        @avatar-select="selectAvatar"
       />
 
-      <view v-if="!hasTeamProgress" class="status-meta">
-        <text class="status-meta-label">{{ remainingPlayersLabel }}</text>
-        <NeoTag v-if="maxPlayers > requiredPlayers" tone="red">满员 {{ maxPlayers }} 人</NeoTag>
-      </view>
-
-      <view class="participants-section">
-        <view class="participants-heading">
-          <text class="participants-title">已报名队员</text>
-          <text class="participants-count">{{ joinedCount }} 人</text>
-        </view>
-        <NeoAvatarStack
-          :items="participantPreview"
-          :selected-id="selectedParticipantId"
-          :max-visible="0"
-          interactive
-          size="md"
-          @select="handleSelectParticipant"
-        />
-        <view v-if="selectedParticipant" class="selected-participant">
-          <text>{{ selectedParticipant.name }}</text>
-          <text class="selected-participant-hint">已选中</text>
-        </view>
-      </view>
-
-      <view v-if="pendingPaymentFeeLabel" class="payment-panel">
+      <!-- 待支付仅提示信息，支付动作统一到页面底部单一行动栏。 -->
+      <view v-if="hasPendingPayment" class="payment-panel">
         <view class="payment-panel-copy">
           <text class="payment-panel-title">{{ pendingPaymentTitle || "报名费待支付" }}</text>
-          <text class="payment-panel-fee">{{ pendingPaymentFeeLabel }}</text>
+          <text class="payment-panel-fee">合计 {{ pendingPaymentFeeLabel }}</text>
         </view>
-        <NeoButton variant="dark" :loading="submittingPayment" :disabled="submittingPayment" @click="emit('payRegistration')">
-          去支付
-        </NeoButton>
       </view>
-    </NeoSurface>
-
-    <NeoStickyActionBar v-if="showCta !== false">
-      <NeoButton
-        :variant="ctaDisabled ? 'muted' : 'dark'"
-        block
-        :loading="submittingStatus"
-        :disabled="ctaDisabled"
-        @click="handleSignup"
-      >
-        {{ submittingStatus ? "提交中..." : individualCtaLabel }}
-      </NeoButton>
-    </NeoStickyActionBar>
+    </AppSurface>
   </view>
 </template>
 
@@ -155,9 +76,17 @@ function handleSignup() {
   position: relative;
 }
 
+.status-title {
+  color: var(--ui-color-text);
+  font-size: 28rpx;
+  font-weight: 600;
+}
+
 .status-head {
+  margin-bottom: 20rpx;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
+  flex-wrap: wrap;
   justify-content: space-between;
   gap: 20rpx;
 }
@@ -166,98 +95,18 @@ function handleSignup() {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 18rpx;
+  gap: 10rpx;
   min-width: 0;
 }
 
 .status-countdown {
-  color: var(--neo-color-text);
-  font-size: 46rpx;
-  line-height: 1;
-  font-weight: 900;
+  color: var(--ui-color-text-muted);
+  font-size: 22rpx;
+  line-height: 1.3;
+  font-weight: 400;
 }
 
-.status-total {
-  display: flex;
-  align-items: baseline;
-  flex-shrink: 0;
-  gap: 4rpx;
-  color: var(--neo-color-text-muted);
-  font-size: 24rpx;
-  font-weight: 800;
-}
-
-.status-total-value {
-  color: var(--neo-color-text);
-  font-size: 54rpx;
-  line-height: 0.9;
-  font-weight: 900;
-}
-
-.status-total-target {
-  font-size: 28rpx;
-}
-
-.status-meta,
-.participants-heading,
-.selected-participant {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16rpx;
-}
-
-.status-team-progress + .status-team-progress {
-  margin-top: 16rpx;
-}
-
-.status-team-progress-tight :deep(.neo-progress__label) {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 320rpx;
-}
-
-.status-meta {
-  margin-top: 18rpx;
-}
-
-.status-meta-label,
-.participants-count,
-.selected-participant-hint {
-  color: var(--neo-color-text-muted);
-  font-size: 24rpx;
-  line-height: 1.35;
-  font-weight: 800;
-}
-
-.participants-section {
-  margin-top: 26rpx;
-  padding-top: 22rpx;
-  border-top: var(--neo-border-default);
-}
-
-.participants-title {
-  color: var(--neo-color-text);
-  font-size: 28rpx;
-  font-weight: 900;
-}
-
-.participants-section :deep(.neo-avatar-stack) {
-  margin-top: 18rpx;
-}
-
-.selected-participant {
-  justify-content: flex-start;
-  margin-top: 16rpx;
-  padding: 10rpx 14rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-warning-soft);
-  color: var(--neo-color-text);
-  font-size: 24rpx;
-  font-weight: 900;
-}
+.status-team-progress + .status-team-progress { margin-top: 24rpx; }
 .payment-panel {
   display: flex;
   align-items: center;
@@ -265,24 +114,27 @@ function handleSignup() {
   gap: 16rpx;
   margin-top: 18rpx;
   padding: 16rpx 18rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-warning-soft);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-button);
+  background: var(--ui-color-warning-soft);
 }
+
 .payment-panel-copy {
   display: flex;
   flex-direction: column;
   gap: 4rpx;
   min-width: 0;
 }
+
 .payment-panel-title {
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
   font-size: 24rpx;
-  font-weight: 900;
+  font-weight: 600;
 }
+
 .payment-panel-fee {
-  color: var(--neo-color-text-muted);
+  color: var(--ui-color-text-muted);
   font-size: 22rpx;
-  font-weight: 800;
+  font-weight: 500;
 }
 </style>

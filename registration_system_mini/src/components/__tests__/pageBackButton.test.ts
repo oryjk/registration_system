@@ -17,9 +17,9 @@ const secondaryPages = [
   { path: "src/pages/profile/setup/index.vue", title: "完善资料", titleBinding: ':title="headerTitle"' },
 ];
 
-describe("PageBackButton", () => {
+describe("secondary page navigation", () => {
   test("uses navigateBack with a home fallback", async () => {
-    const source = await Bun.file(miniPath("src/components/PageBackButton.vue")).text();
+    const source = await Bun.file(miniPath("src/components/AppTabHeader.vue")).text();
 
     expect(source.includes("function handleBack")).toEqual(true);
     expect(source.includes("getCurrentPages()")).toEqual(true);
@@ -63,7 +63,7 @@ describe("PageBackButton", () => {
     const source = await Bun.file(miniPath("src/pages/matches/detail.vue")).text();
 
     expect(source.includes('import AppTabHeader from "@/components/AppTabHeader.vue";')).toEqual(true);
-    expect(source.includes('<AppTabHeader title="比赛报名" showBack')).toEqual(true);
+    expect(source.includes(":title=\"match?.name || '比赛报名'\" showBack")).toEqual(true);
     expect(source.includes('import PageBackButton from "@/components/PageBackButton.vue";')).toEqual(false);
     expect(source.includes("<PageBackButton fixed")).toEqual(false);
   });

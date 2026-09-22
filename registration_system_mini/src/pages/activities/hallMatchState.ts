@@ -1,5 +1,5 @@
 import type { AppMatchRegistrationGroupSummary, AppMatchSummary } from "@/types/match";
-import type { NeoTagTone } from "@/types/designSystem";
+import type { AppTagTone } from "@/types/designSystem";
 import { formatDateLabel, pad, parseDateValue } from "@/utils/datetime";
 import { resolveInheritedGuestLimit } from "@/utils/matchCapacity";
 import { getMatchPublicationModeLabel } from "@/utils/matchPublicationMode";
@@ -24,9 +24,9 @@ export interface HallMatchCardViewModel {
   title: string;
   dateBlock: { monthDay: string; weekday: string; timeLabel: string };
   kindLabel: string;
-  kindTone: NeoTagTone;
+  kindTone: AppTagTone;
   opponentStateLabel: string;
-  opponentStateTone: NeoTagTone;
+  opponentStateTone: AppTagTone;
   hostTeamName: string;
   hostTeamId: number | null;
   formatLabel: string;
@@ -58,7 +58,7 @@ const KIND_LABELS: Record<AppMatchSummary["publication_mode"], string> = {
   offline_confirmed: "线下已约",
 };
 
-const KIND_TONES: Record<AppMatchSummary["publication_mode"], NeoTagTone> = {
+const KIND_TONES: Record<AppMatchSummary["publication_mode"], AppTagTone> = {
   online_team: "blue",
   online_individual: "lime",
   online_pickup: "lime",
@@ -76,7 +76,7 @@ function isIndividualStyle(match: AppMatchSummary): boolean {
   return match.publication_mode === "online_individual" || match.publication_mode === "online_pickup";
 }
 
-function toOpponentStateLabel(match: AppMatchSummary): { label: string; tone: NeoTagTone } {
+function toOpponentStateLabel(match: AppMatchSummary): { label: string; tone: AppTagTone } {
   if (isIndividualStyle(match)) {
     return match.opponent_state === "confirmed"
       ? { label: "已成局", tone: "green" }

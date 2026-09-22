@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
-import NeoButton from "@/components/neo/NeoButton.vue";
+import AppButton from "@/components/ui/AppButton.vue";
+import { useOverlayPresence } from "@/components/ui/useOverlayPresence";
+import { prefersReducedMotion } from "@/utils/reducedMotion";
 
 const props = defineProps<{
   visible: boolean;
@@ -21,6 +23,12 @@ const emit = defineEmits<{
   (event: "cancelRegistration"): void;
 }>();
 
+// 底部弹层退场时序：淡出下滑期间遮罩继续拦截点击（防点穿），结束才放行。
+const { rendered, leaving } = useOverlayPresence(
+  computed(() => props.visible),
+  { leaveDurationMs: () => prefersReducedMotion() ? 0 : 210 },
+);
+
 const count = ref(props.currentCount || 1);
 watch(
   () => props.visible,
@@ -39,17 +47,29 @@ const totalFeeLabel = computed(() => {
   return `¥${(perPerson * count.value).toFixed(2)}`;
 });
 
+function handleClose() {
+  if (!rendered.value || leaving.value) return;
+  emit("close");
+}
+
 function handleConfirm() {
-  if (!props.submitting) emit("confirm", count.value);
+  if (props.visible && rendered.value && !props.submitting && !leaving.value) emit("confirm", count.value);
 }
 
 function handleCancelRegistration() {
-  if (!props.submitting) emit("cancelRegistration");
+  if (props.visible && rendered.value && !props.submitting && !leaving.value) emit("cancelRegistration");
 }
 </script>
 
 <template>
-  <view :class="['signup-sheet-overlay', visible ? 'signup-sheet-overlay-open' : '']" @tap="emit('close')">
+  <view
+    :class="[
+      'signup-sheet-overlay',
+      rendered && !leaving ? 'signup-sheet-overlay-open' : '',
+      leaving ? 'signup-sheet-overlay-closing' : '',
+    ]"
+    @tap="handleClose"
+  >
     <view class="signup-sheet-backdrop" />
     <view class="signup-sheet-panel" @tap.stop>
       <view class="signup-sheet-head">
@@ -75,15 +95,17 @@ function handleCancelRegistration() {
       </view>
 
       <view class="signup-sheet-actions">
-        <NeoButton
+        <AppButton
+          icon="close"
           v-if="canCancel"
           variant="muted"
           :disabled="submitting"
           @click="handleCancelRegistration"
         >
           取消报名
-        </NeoButton>
-        <NeoButton
+        </AppButton>
+        <AppButton
+          icon="check"
           class="signup-sheet-confirm"
           variant="dark"
           :loading="submitting"
@@ -91,7 +113,7 @@ function handleCancelRegistration() {
           @click="handleConfirm"
         >
           {{ submitting ? "提交中..." : confirmText }}
-        </NeoButton>
+        </AppButton>
       </view>
     </view>
   </view>
@@ -104,7 +126,7 @@ function handleCancelRegistration() {
   z-index: 130;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 240ms ease;
+  transition: opacity var(--ui-motion-overlay-duration) ease;
 }
 
 .signup-sheet-overlay-open {
@@ -112,10 +134,16 @@ function handleCancelRegistration() {
   pointer-events: auto;
 }
 
+/* 淡出期间保持点击拦截，退场结束才放行页面（防点穿）。 */
+.signup-sheet-overlay-closing {
+  opacity: 0;
+  pointer-events: auto;
+}
+
 .signup-sheet-backdrop {
   position: absolute;
   inset: 0;
-  background: var(--neo-color-overlay);
+  background: var(--ui-color-overlay);
 }
 
 .signup-sheet-panel {
@@ -127,13 +155,26 @@ function handleCancelRegistration() {
   padding: 34rpx 30rpx calc(30rpx + env(safe-area-inset-bottom));
   border-top-left-radius: 36rpx;
   border-top-right-radius: 36rpx;
-  background: var(--neo-color-surface, #ffffff);
+  background: var(--ui-color-surface, #ffffff);
   transform: translateY(100%);
-  transition: transform 240ms ease;
+  transition: transform var(--ui-motion-overlay-duration) var(--ui-motion-ease-out);
 }
 
 .signup-sheet-overlay-open .signup-sheet-panel {
   transform: translateY(0);
+}
+
+.signup-sheet-overlay-closing .signup-sheet-panel {
+  pointer-events: none;
+  transform: translateY(100%);
+}
+
+/* H5 减少动态效果：弹层直接出现/消失。 */
+@media (prefers-reduced-motion: reduce) {
+  .signup-sheet-overlay,
+  .signup-sheet-panel {
+    transition: none;
+  }
 }
 
 .signup-sheet-head {
@@ -143,15 +184,15 @@ function handleCancelRegistration() {
 }
 
 .signup-sheet-title {
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
   font-size: 36rpx;
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .signup-sheet-hint {
-  color: var(--neo-color-text-muted);
+  color: var(--ui-color-text-muted);
   font-size: 24rpx;
-  font-weight: 800;
+  font-weight: 500;
 }
 
 .signup-sheet-count {
@@ -160,15 +201,15 @@ function handleCancelRegistration() {
   gap: 14rpx;
   margin-top: 28rpx;
   padding: 22rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-warning-soft);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-button);
+  background: var(--ui-color-warning-soft);
 }
 
 .signup-sheet-count-unit {
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
   font-size: 30rpx;
-  font-weight: 900;
+  font-weight: 600;
   flex-shrink: 0;
 }
 
@@ -181,15 +222,15 @@ function handleCancelRegistration() {
 }
 
 .signup-sheet-fee-label {
-  color: var(--neo-color-text-muted);
+  color: var(--ui-color-text-muted);
   font-size: 24rpx;
-  font-weight: 800;
+  font-weight: 500;
 }
 
 .signup-sheet-fee-total {
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
   font-size: 34rpx;
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .signup-sheet-actions {

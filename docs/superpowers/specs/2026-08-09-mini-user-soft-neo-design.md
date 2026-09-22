@@ -1,5 +1,7 @@
 # 小程序“我的”页 Soft Neo-Brutalism 改造设计
 
+> **历史资料：视觉规范已失效。** 本文的 Neo / Soft Neo 样式要求、旧组件与 token 路径不再适用；业务决策仅供追溯。所有新界面工作以[现行统一设计系统](../../../registration_system_mini/docs/mini-design-system.md)及实际代码为准，不得依据本文恢复旧皮肤。
+
 ## 背景
 
 小程序首页和比赛详情页已经采用 Soft Neo-Brutalism 视觉语言，“我的”页仍保留大圆角、柔光阴影、背景图和渐变遮罩，与其他核心页面不一致。本次改造统一“我的”页视觉，并拆分过大的 `MineHeroProfile.vue`，为后续其他个人与球队页面复用建立稳定组件边界。

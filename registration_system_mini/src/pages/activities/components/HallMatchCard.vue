@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import NeoButton from "@/components/neo/NeoButton.vue";
-import NeoProgress from "@/components/neo/NeoProgress.vue";
-import NeoTag from "@/components/neo/NeoTag.vue";
+import AppButton from "@/components/ui/AppButton.vue";
+import AppProgress from "@/components/ui/AppProgress.vue";
+import AppTag from "@/components/ui/AppTag.vue";
 import type { HallMatchCardViewModel } from "../hallMatchState";
 
 const props = defineProps<{
@@ -35,18 +35,18 @@ export default { options: { virtualHost: true } };
       <view class="hall-match-title-row">
         <text class="hall-match-title">{{ card.title }}</text>
         <view class="hall-match-tags">
-          <NeoTag :tone="card.kindTone">{{ card.kindLabel }}</NeoTag>
-          <NeoTag :tone="card.opponentStateTone">{{ card.opponentStateLabel }}</NeoTag>
+          <AppTag :tone="card.kindTone">{{ card.kindLabel }}</AppTag>
+          <AppTag :tone="card.opponentStateTone">{{ card.opponentStateLabel }}</AppTag>
         </view>
       </view>
       <text class="hall-match-meta">{{ card.hostTeamName }} · {{ card.formatLabel }}</text>
       <text class="hall-match-meta">{{ card.venue }} · 对手 {{ card.opponentName }}</text>
 
       <template v-if="card.showProgress">
-        <NeoProgress
+        <AppProgress
           v-for="bar in card.progressBars"
           :key="bar.key"
-          class="hall-neo-progress"
+          class="hall-ui-progress"
           :label="bar.label"
           :value="bar.joined"
           :target="bar.required"
@@ -57,13 +57,13 @@ export default { options: { virtualHost: true } };
 
       <view class="hall-match-bottom">
         <view v-if="card.hostJoinedLabel || card.guestJoinedLabel" class="hall-match-team-tags">
-          <NeoTag v-if="card.hostJoinedLabel" tone="dark" size="lg">{{ card.hostJoinedLabel }}</NeoTag>
-          <NeoTag v-if="card.guestJoinedLabel" tone="dark" size="lg">{{ card.guestJoinedLabel }}</NeoTag>
+          <AppTag v-if="card.hostJoinedLabel" tone="dark" size="lg">{{ card.hostJoinedLabel }}</AppTag>
+          <AppTag v-if="card.guestJoinedLabel" tone="dark" size="lg">{{ card.guestJoinedLabel }}</AppTag>
         </view>
         <view v-else class="hall-match-bottom-spacer" />
-        <NeoButton class="hall-neo-match-button" :variant="card.actionKind === 'view' ? 'outline' : 'dark'" :stop-propagation="false">
+        <AppButton class="hall-ui-match-button" :variant="card.actionKind === 'view' ? 'outline' : 'dark'" :stop-propagation="false">
           {{ card.actionLabel }}
-        </NeoButton>
+        </AppButton>
       </view>
     </view>
   </view>
@@ -73,17 +73,17 @@ export default { options: { virtualHost: true } };
 .hall-match-card {
   display: flex;
   gap: 18rpx;
-  padding: 18rpx;
-  border: var(--neo-border-strong);
-  border-radius: var(--neo-radius-md);
-  background: var(--neo-color-surface);
-  box-shadow: var(--neo-shadow-raised);
-  transition: transform var(--neo-motion-fast), box-shadow var(--neo-motion-fast);
+  padding: 20rpx;
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-card);
+  background: var(--ui-color-surface);
+  box-shadow: var(--ui-shadow-raised);
+  box-sizing: border-box;
+  transition: transform var(--ui-motion-press-duration) var(--ui-motion-ease-out);
 }
 
 .hall-match-card-pressed {
-  transform: translate(var(--neo-motion-press-offset), var(--neo-motion-press-offset));
-  box-shadow: var(--neo-shadow-pressed);
+  transform: scale(0.98);
 }
 
 .hall-match-date {
@@ -94,21 +94,22 @@ export default { options: { virtualHost: true } };
   flex-shrink: 0;
   flex-direction: column;
   align-items: center;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-xs);
-  background: var(--neo-color-text);
-  color: var(--neo-color-text-inverse);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-button);
+  background: var(--ui-color-page);
+  color: var(--ui-color-text);
 }
 
 .hall-match-month {
   font-size: 28rpx;
-  font-weight: 800;
+  font-weight: 600;
 }
 
 .hall-match-weekday {
   margin-top: 8rpx;
   font-size: 44rpx;
-  font-weight: 900;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
 .hall-match-time-chip {
@@ -119,16 +120,16 @@ export default { options: { virtualHost: true } };
   width: 100%;
   margin-top: auto;
   padding: 14rpx 6rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-accent);
-  color: var(--neo-color-text);
+  border-radius: var(--ui-radius-button);
+  background: var(--ui-color-accent);
+  color: var(--ui-color-text);
 }
 
 .hall-match-time {
   font-size: 36rpx;
   line-height: 1.05;
-  font-weight: 800;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
 .hall-match-body {
@@ -143,12 +144,11 @@ export default { options: { virtualHost: true } };
   gap: 12rpx;
 }
 
-.hall-match-title {
-  flex: 1;
+.hall-match-title {  flex: 1;
   font-size: 32rpx;
   line-height: 1.32;
-  color: var(--neo-color-text);
-  font-weight: 900;
+  color: var(--ui-color-text);
+  font-weight: 600;
 }
 
 .hall-match-tags {
@@ -158,19 +158,18 @@ export default { options: { virtualHost: true } };
   flex-shrink: 0;
 }
 
-.hall-match-meta {
-  display: block;
+.hall-match-meta {  display: block;
   margin-top: 10rpx;
   font-size: 26rpx;
   line-height: 1.5;
-  color: var(--neo-color-text-muted);
-  font-weight: 600;
+  color: var(--ui-color-text-muted);
+  font-weight: 400;
 }
 
-.hall-neo-progress {
+.hall-ui-progress {
   margin-top: 18rpx;
-  --neo-progress-meta-font-size: 26rpx;
-  --neo-progress-track-margin-top: 10rpx;
+  --ui-progress-meta-font-size: 26rpx;
+  --ui-progress-track-margin-top: 10rpx;
 }
 
 .hall-match-bottom {
@@ -194,7 +193,7 @@ export default { options: { virtualHost: true } };
   flex-wrap: wrap;
 }
 
-.hall-neo-match-button {
+.hall-ui-match-button {
   min-width: 142rpx;
 }
 </style>

@@ -1,6 +1,6 @@
 import { computed, ref, type ComputedRef, type Ref } from "vue";
 import { updateMatchStatus } from "@/api/match";
-import { useNeoConfirmDialog } from "@/components/neo";
+import { useConfirmDialog } from "@/components/ui";
 import type { AppMatchSummary } from "@/types/match";
 import type { TeamProfileViewModel } from "@/types/viewModels";
 import { parseDateValue } from "./detailState";
@@ -106,7 +106,7 @@ export function useMatchFinish(dependencies: MatchFinishDependencies) {
     handleConfirmPrimary: handleCancelPrimary,
     handleConfirmSecondary: handleCancelSecondary,
     handleConfirmClose: handleCancelClose,
-  } = useNeoConfirmDialog();
+  } = useConfirmDialog();
 
   const canFinishMatch = computed(() => {
     if (isGuestMode.value) return false;

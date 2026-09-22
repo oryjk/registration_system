@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useAccentTheme } from "@/stores/theme";
 import AppTabHeader from "@/components/AppTabHeader.vue";
-import NeoButton from "@/components/neo/NeoButton.vue";
+import AppButton from "@/components/ui/AppButton.vue";
 import { useTeamFundPage } from "./useTeamFundPage";
 
 const { themePageStyle } = useAccentTheme();
@@ -23,7 +23,7 @@ const {
 
 <template>
   <page-meta :page-style="themePageStyle" />
-  <view class="team-fund-page" :style="pageStyle">
+  <view class="app-theme-scope team-fund-page" :style="[themePageStyle, pageStyle]">
     <AppTabHeader :title="teamName" showBack />
 
     <view class="team-fund-content">
@@ -56,14 +56,14 @@ const {
           <text class="recharge-total-label">应付</text>
           <text class="recharge-total-value">{{ totalPriceLabel }}</text>
         </view>
-        <NeoButton
+        <AppButton
           block
           :loading="paying"
           :disabled="paying"
           @click="handleMembershipPayment"
         >
           {{ paying ? "支付中..." : "微信支付缴纳队费" }}
-        </NeoButton>
+        </AppButton>
       </view>
     </view>
   </view>
@@ -73,7 +73,7 @@ const {
 .team-fund-page {
   min-height: 100vh;
   padding: 0 28rpx 96rpx;
-  background: var(--neo-color-page);
+  background: var(--ui-color-page);
   box-sizing: border-box;
 }
 
@@ -85,10 +85,10 @@ const {
 
 .state-card,
 .recharge-card {
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-md);
-  background: var(--neo-color-surface);
-  box-shadow: var(--neo-shadow-raised);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-card);
+  background: var(--ui-color-surface);
+  box-shadow: var(--ui-shadow-raised);
 }
 
 .state-card {
@@ -97,9 +97,9 @@ const {
 }
 
 .state-text {
-  color: var(--neo-color-text-muted);
+  color: var(--ui-color-text-muted);
   font-size: 28rpx;
-  font-weight: 800;
+  font-weight: 500;
 }
 
 .recharge-card {
@@ -111,17 +111,22 @@ const {
   flex-direction: column;
   align-items: flex-start;
   gap: 6rpx;
-  padding: 24rpx;
+
+  padding: 0 0 24rpx;
   margin-bottom: 22rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-success);
+
+  border: 0;
+
+  border-radius: 0;
+
+  background: transparent;
+  border-bottom: var(--ui-border-default);
 }
 
 .balance-hero-label {
-  color: var(--neo-color-text-muted);
+  color: var(--ui-color-text-muted);
   font-size: 24rpx;
-  font-weight: 800;
+  font-weight: 500;
   letter-spacing: 2rpx;
 }
 
@@ -132,22 +137,23 @@ const {
 }
 
 .balance-hero-symbol {
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
   font-size: 34rpx;
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .balance-hero-value {
-  color: var(--neo-color-text);
-  font-size: 64rpx;
+  color: var(--ui-color-text);
+
+  font-size: 48rpx;
   line-height: 1.1;
-  font-weight: 950;
+  font-weight: var(--ui-font-weight-heading);
 }
 
 .balance-hero-copy {
-  color: var(--neo-color-text-muted);
+  color: var(--ui-color-text-muted);
   font-size: 22rpx;
-  font-weight: 700;
+  font-weight: 400;
 }
 
 .recharge-amount {
@@ -157,21 +163,21 @@ const {
 .recharge-input {
   height: 88rpx;
   padding: 0 24rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-page);
-  color: var(--neo-color-text);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-button);
+  background: var(--ui-color-page);
+  color: var(--ui-color-text);
   font-size: 30rpx;
-  font-weight: 800;
+  font-weight: 500;
   box-sizing: border-box;
 }
 
 .recharge-error {
   display: block;
   margin-top: 10rpx;
-  color: var(--neo-color-danger);
+  color: var(--ui-color-danger);
   font-size: 22rpx;
-  font-weight: 700;
+  font-weight: 400;
 }
 
 .recharge-total {
@@ -182,15 +188,15 @@ const {
 }
 
 .recharge-total-label {
-  color: var(--neo-color-text-muted);
+  color: var(--ui-color-text-muted);
   font-size: 24rpx;
-  font-weight: 800;
+  font-weight: 500;
 }
 
 .recharge-total-value {
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
   font-size: 44rpx;
-  font-weight: 950;
+  font-weight: var(--ui-font-weight-heading);
 }
 
 /* #ifdef H5 */

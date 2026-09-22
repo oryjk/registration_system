@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
-import NeoButton from "@/components/neo/NeoButton.vue";
-import NeoConfirmDialog from "@/components/neo/NeoConfirmDialog.vue";
+import AppButton from "@/components/ui/AppButton.vue";
+import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
 import { updateMyProfile, uploadMyAvatar } from "@/api/user";
 import { useTeamContext } from "@/stores/teamContext";
 import defaultAvatarUrl from "@/static/tab-png/user-active.png";
@@ -106,7 +106,7 @@ function handleCancel() {
 </script>
 
 <template>
-  <NeoConfirmDialog
+  <ConfirmDialog
     :visible="visible"
     title="先完善个人资料"
     message="设置头像和昵称后再加入球队，队友和队长才能在报名记录里认出你。"
@@ -141,7 +141,7 @@ function handleCancel() {
         </button>
         <!-- #endif -->
         <!-- #ifndef MP-WEIXIN -->
-        <NeoButton variant="outline" size="sm" @click="handlePickAvatarFallback">选择头像</NeoButton>
+        <AppButton variant="outline" size="sm" @click="handlePickAvatarFallback">选择头像</AppButton>
         <!-- #endif -->
       </view>
       <input
@@ -153,7 +153,7 @@ function handleCancel() {
         placeholder-class="profile-gate-input-placeholder"
       />
     </view>
-  </NeoConfirmDialog>
+  </ConfirmDialog>
 </template>
 
 <style scoped>
@@ -175,9 +175,9 @@ function handleCancel() {
   width: 112rpx;
   height: 112rpx;
   overflow: hidden;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-accent);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-button);
+  background: var(--ui-color-accent-soft);
   box-sizing: border-box;
 }
 
@@ -195,20 +195,20 @@ function handleCancel() {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: var(--neo-button-height-sm, 72rpx);
+  height: var(--ui-button-height-sm, 72rpx);
   padding: 0 26rpx;
-  border: var(--neo-button-border);
-  border-radius: var(--neo-button-radius);
-  background: var(--neo-color-accent);
-  color: var(--neo-color-text);
+  border: var(--ui-button-border);
+  border-radius: var(--ui-button-radius);
+  background: var(--ui-color-accent);
+  color: var(--ui-color-text);
   font-size: 24rpx;
-  font-weight: 900;
+  font-weight: 600;
   box-sizing: border-box;
+  transition: transform var(--ui-motion-press-duration) var(--ui-motion-ease-out);
 }
 
 .profile-gate-avatar-button--pressed {
-  transform: translate(2rpx, 2rpx);
-  box-shadow: none;
+  transform: scale(0.98);
 }
 
 .profile-gate-input {
@@ -217,17 +217,17 @@ function handleCancel() {
   min-height: 84rpx;
   margin-top: 22rpx;
   padding: 0 20rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-muted);
-  color: var(--neo-color-text);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-button);
+  background: var(--ui-color-neutral-bg);
+  color: var(--ui-color-text);
   font-size: 28rpx;
-  font-weight: 800;
+  font-weight: 500;
   line-height: 84rpx;
   box-sizing: border-box;
 }
 
 .profile-gate-input-placeholder {
-  color: var(--neo-color-text-muted);
+  color: var(--ui-color-text-muted);
 }
 </style>

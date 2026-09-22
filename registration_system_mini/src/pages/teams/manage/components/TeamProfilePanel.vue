@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import NeoButton from "@/components/neo/NeoButton.vue";
-import NeoSectionHeader from "@/components/neo/NeoSectionHeader.vue";
-import NeoSurface from "@/components/neo/NeoSurface.vue";
+import TeamLogoField from "../../components/TeamLogoField.vue";
+import AppButton from "@/components/ui/AppButton.vue";
+import SectionHeader from "@/components/ui/SectionHeader.vue";
+import AppSurface from "@/components/ui/AppSurface.vue";
 import type { TeamProfileViewModel } from "@/types/viewModels";
 
 defineProps<{
@@ -28,8 +29,8 @@ function handleSubmit() {
 </script>
 
 <template>
-  <NeoSurface custom-class="form-card">
-    <NeoSectionHeader title="当前球队资料" marker="01" caption="更新球队在报名和成员列表中的公开信息" />
+  <AppSurface custom-class="form-card">
+    <SectionHeader title="当前球队资料" caption="更新球队在报名和成员列表中的公开信息" />
     <view v-if="!currentTeam" class="empty-box">请先创建或加入球队。</view>
     <view v-else-if="!canManageMembers" class="empty-box">只有队长或领队可以修改球队资料。</view>
     <view v-else>
@@ -39,36 +40,26 @@ function handleSubmit() {
       </view>
       <view class="form-field">
         <text class="form-label">球队 Logo</text>
-        <view class="team-logo-field">
-          <view class="team-logo-preview">
-            <image v-if="form.logoUrl" class="team-logo-image" :src="form.logoUrl" mode="aspectFill" />
-            <text v-else class="team-logo-fallback">{{ currentTeam?.name?.slice(0, 1) || "队" }}</text>
-          </view>
-          <view class="team-logo-main">
-            <text class="team-logo-note">jpg/png/webp，1MB 以内；上传后立即生效。</text>
-            <NeoButton size="sm" variant="outline" :loading="uploadingLogo" :disabled="uploadingLogo || submitting" @click="emit('uploadLogo')">
-              {{ uploadingLogo ? "上传中..." : "上传 Logo" }}
-            </NeoButton>
-          </view>
-        </view>
+        <TeamLogoField :src="form.logoUrl" :name="currentTeam?.name || ''" hint="jpg/png/webp，1MB 以内；上传后立即生效。" action-label="上传 Logo" :loading="uploadingLogo" :disabled="submitting" @pick="emit('uploadLogo')" />
       </view>
       <view class="form-field">
         <text class="form-label">球队介绍</text>
         <textarea v-model="form.description" class="form-textarea" placeholder="球队风格、城市或比赛时间" />
       </view>
-      <NeoButton block :disabled="!canUpdate" :loading="submitting" @click="handleSubmit">
+      <AppButton icon="check" block :disabled="!canUpdate" :loading="submitting" @click="handleSubmit">
         {{ submitting ? "保存中..." : "保存球队资料" }}
-      </NeoButton>
+      </AppButton>
     </view>
-  </NeoSurface>
+  </AppSurface>
 </template>
 
 <style scoped>
+@import "@/styles/form-controls.css";
 .form-card {
   padding: 6rpx 24rpx 24rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-md);
-  box-shadow: 8rpx 8rpx 0 var(--neo-color-text);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-card);
+  box-shadow: none;
 }
 
 .form-field {
@@ -78,94 +69,24 @@ function handleSubmit() {
 .form-label {
   display: block;
   margin-bottom: 10rpx;
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
   font-size: 24rpx;
-  font-weight: 900;
-}
-
-.form-input,
-.form-textarea {
-  width: 100%;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-muted);
-  color: var(--neo-color-text);
-  font-size: 28rpx;
-  font-weight: 800;
-  box-sizing: border-box;
-}
-
-.form-input {
-  height: 84rpx;
-  padding: 0 20rpx;
-}
-
-.form-textarea {
-  min-height: 150rpx;
-  padding: 20rpx;
+  font-weight: 600;
 }
 
 .empty-box {
   margin-top: 26rpx;
-  padding: 22rpx 20rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-warning-soft);
-  color: var(--neo-color-text-muted);
-  font-size: 26rpx;
-  font-weight: 700;
+  padding: 20rpx 0;
+  border: none;
+  border-radius: var(--ui-radius-button);
+  background: transparent;
+  color: var(--ui-color-text-muted);
+  font-size: 24rpx;
+  font-weight: 400;
 }
 
-:deep(.neo-button--block) {
+:deep(.ui-button--block) {
   margin-top: 28rpx;
 }
 
-.team-logo-field {
-  display: flex;
-  align-items: center;
-  gap: 20rpx;
-  padding: 20rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-info-soft);
-}
-
-.team-logo-preview {
-  width: 104rpx;
-  height: 104rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  flex-shrink: 0;
-  overflow: hidden;
-  background: var(--neo-color-text);
-}
-
-.team-logo-image,
-.team-logo-fallback {
-  width: 100%;
-  height: 100%;
-}
-
-.team-logo-fallback {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--neo-color-accent);
-  font-size: 38rpx;
-  font-weight: 900;
-}
-
-.team-logo-main {
-  flex: 1;
-  min-width: 0;
-}
-
-.team-logo-note {
-  display: block;
-  margin-top: 10rpx;
-  color: var(--neo-color-text-muted);
-  font-size: 22rpx;
-  font-weight: 700;
-  line-height: 1.35;
-}
 </style>

@@ -1,0 +1,296 @@
+:root,
+page,
+.app-theme-scope {
+  /* Primitive */
+  --ui-primitive-ink: #00214d;
+  --ui-primitive-surface: #fffffe;
+  --ui-primitive-canvas: #fffffe;
+  --ui-primitive-hero: #00214d;
+  --ui-primitive-hero-fg: #fffffe;
+  /* 强调色族：默认薄荷蓝；主题通过 page-meta 覆盖同名变量实现全局切换。 */
+  --ui-primitive-accent: #00ebc7;
+  --ui-primitive-accent-fg: #00214d;
+  --ui-primitive-accent-soft: #dcfff8;
+  --ui-primitive-accent-deep: #00214d;
+  --ui-primitive-accent-rgb: 0, 235, 199;
+  /* 主按钮（CTA）与 hero 深底：默认薄荷底海军蓝字 / 海军蓝深底，其他主题分别覆盖。 */
+  --ui-primitive-cta: #00ebc7;
+  --ui-primitive-cta-fg: #00214d;
+  /* 历史命名别名：保持既有引用不破，值随 accent 主题联动。 */
+  --ui-primitive-lime: var(--ui-primitive-accent);
+  --ui-primitive-lime-soft: var(--ui-primitive-accent-soft);
+  --ui-primitive-danger: #ff5470;
+  --ui-primitive-amber-soft: #fde24f;
+  --ui-primitive-blue-soft: #dce6ff;
+  --ui-primitive-red-soft: #ffd2cc;
+  --ui-primitive-muted: #ece9e1;
+  --ui-primitive-muted-strong: #e5e1d9;
+  --ui-primitive-track: #f0ece4;
+  --ui-primitive-skeleton-surface: #f7f3eb;
+  --ui-primitive-skeleton-block: #dedad2;
+  --ui-primitive-text-muted: #1b2d45;
+  --ui-primitive-text-disabled: #666a63;
+  --ui-primitive-surface-rgb: 255, 255, 254;
+  --ui-primitive-ink-rgb: 0, 33, 77;
+  /* 轻描边线色与柔和阴影基色：D 风格结构线，不随主题切换。 */
+  --ui-primitive-line: #e4eaf2;
+  --ui-primitive-line-strong: #c6d2df;
+  --ui-primitive-shadow-rgb: 24, 55, 100;
+  /* 状态语义原语：固定值，与可切换的品牌主色无关（主色不等于状态色）。 */
+  --ui-primitive-success-fg: #226342;
+  --ui-primitive-success-bg: #e8f5ee;
+  --ui-primitive-warning-fg: #805414;
+  --ui-primitive-warning-bg: #fff3db;
+  --ui-primitive-danger-fg: #a13432;
+  --ui-primitive-danger-bg: #fdecea;
+  --ui-primitive-neutral-fg: #526174;
+  --ui-primitive-neutral-bg: #f0f2f5;
+
+  /* Semantic */
+  --ui-color-page: var(--ui-primitive-canvas);
+  --ui-color-surface: var(--ui-primitive-surface);
+  --ui-color-text: var(--ui-primitive-ink);
+  --ui-color-text-inverse: var(--ui-primitive-surface);
+  --ui-color-text-muted: var(--ui-primitive-text-muted);
+  --ui-color-text-disabled: var(--ui-primitive-text-disabled);
+  --ui-color-accent: var(--ui-primitive-accent);
+  --ui-color-accent-fg: var(--ui-primitive-accent-fg);
+  --ui-color-accent-soft: var(--ui-primitive-accent-soft);
+  --ui-color-accent-deep: var(--ui-primitive-accent-deep);
+  --ui-color-cta: var(--ui-primitive-cta);
+  --ui-color-cta-fg: var(--ui-primitive-cta-fg);
+  --ui-color-hero: var(--ui-primitive-hero);
+  --ui-color-hero-fg: var(--ui-primitive-hero-fg);
+  /* 状态语义：固定浅底 + 对比前景；成功不再跟随主题强调色。付费/待支付用 warning 族，失败/危险用 danger 族。 */
+  --ui-color-success: var(--ui-color-success-bg);
+  --ui-color-success-fg: var(--ui-primitive-success-fg);
+  --ui-color-success-bg: var(--ui-primitive-success-bg);
+  --ui-color-danger: var(--ui-primitive-danger);
+  --ui-color-danger-fg: var(--ui-primitive-danger-fg);
+  --ui-color-danger-bg: var(--ui-primitive-danger-bg);
+  --ui-color-warning-fg: var(--ui-primitive-warning-fg);
+  --ui-color-warning-bg: var(--ui-primitive-warning-bg);
+  --ui-color-warning-soft: var(--ui-primitive-amber-soft);
+  --ui-color-danger-soft: var(--ui-primitive-red-soft);
+  --ui-color-info-soft: var(--ui-primitive-blue-soft);
+  --ui-color-neutral-fg: var(--ui-primitive-neutral-fg);
+  --ui-color-neutral-bg: var(--ui-primitive-neutral-bg);
+  --ui-color-line: var(--ui-primitive-line);
+  --ui-color-line-strong: var(--ui-primitive-line-strong);
+  --ui-color-muted: var(--ui-primitive-muted);
+  --ui-color-disabled: var(--ui-primitive-muted-strong);
+  --ui-color-track: var(--ui-primitive-track);
+  --ui-color-skeleton-surface: var(--ui-primitive-skeleton-surface);
+  --ui-color-skeleton-block: var(--ui-primitive-skeleton-block);
+  --ui-color-surface-translucent: rgba(var(--ui-primitive-surface-rgb), 0.92);
+  --ui-color-surface-fade: rgba(var(--ui-primitive-surface-rgb), 0);
+  --ui-color-overlay: rgba(var(--ui-primitive-ink-rgb), 0.46);
+  --ui-color-overlay-panel: rgba(var(--ui-primitive-ink-rgb), 0.92);
+  /* 轻描边替代旧的墨色粗描边。 */
+  --ui-border-default: 2rpx solid var(--ui-color-line);
+  --ui-border-strong: 2rpx solid var(--ui-color-line-strong);
+  --ui-radius-xs: 3rpx;
+  --ui-radius-sm: 4rpx;
+  --ui-radius-md: 6rpx;
+  --ui-radius-round: 999rpx;
+  /* D 风格容器圆角基准：基准卡 32rpx、按钮 20rpx；紧凑列表可减少装饰。 */
+  --ui-radius-card: 32rpx;
+  --ui-radius-button: 20rpx;
+  /* 柔和阴影替代旧的硬偏移投影，色基用 shadow-rgb 而非墨色。 */
+  --ui-shadow-card: 0 12rpx 36rpx rgba(var(--ui-primitive-shadow-rgb), 0.05);
+  --ui-shadow-raised: var(--ui-shadow-card);
+  --ui-shadow-pressed: 0 6rpx 18rpx rgba(var(--ui-primitive-shadow-rgb), 0.07);
+  --ui-shadow-soft: 0 10rpx 24rpx rgba(var(--ui-primitive-shadow-rgb), 0.1);
+  --ui-shadow-modal: 0 28rpx 64rpx rgba(var(--ui-primitive-shadow-rgb), 0.2);
+  /* Motion：统一动效时长与缓动，组件引用不散落硬编码；场景映射见 docs/mini-design-system.md。 */
+  --ui-motion-press-duration: 100ms;
+  --ui-motion-switch-duration: 180ms;
+  --ui-font-weight-heading: 600;
+  --ui-motion-expand-duration: 220ms;
+  --ui-motion-overlay-duration: 210ms;
+  --ui-motion-progress-duration: 220ms;
+  --ui-motion-ease-out: cubic-bezier(0.33, 0, 0.2, 1);
+  --ui-motion-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  /* 兼容出口：旧组件的按压位移/快时序仍在消费，任务 3 起迁到上面的 motion token。 */
+  --ui-motion-press-offset: 4rpx;
+  --ui-motion-fast: 120ms ease;
+
+  /* Components */
+  /* D 风格基准卡 token：默认值引用通用语义层（值与已验收效果一致），page-meta 只覆盖主题相关项。 */
+  --now-color-surface: var(--ui-color-surface);
+  --now-color-text: var(--ui-color-text);
+  --now-color-muted: var(--ui-color-text-muted);
+  --now-color-line: var(--ui-color-line);
+  --now-color-accent: var(--ui-primitive-accent);
+  --now-color-accent-text: var(--ui-primitive-accent-deep);
+  --now-color-on-accent: var(--ui-primitive-ink);
+  --now-color-soft: var(--ui-primitive-accent-soft);
+  --now-pressed-opacity: 0.82;
+  /* 成行进度三段色是固定语义（黄/薄荷/海军蓝），不随品牌主题改变含义。 */
+  --now-progress-pending: #fde24f;
+  --now-progress-ready: #00ebc7;
+  --now-progress-extra: #00214d;
+  /* 牌堆层次随主题色变化，露出的底卡与白色主卡形成可见区分。 */
+  --now-deck-near: var(--now-color-soft);
+  --now-deck-far: var(--ui-color-line);
+  --now-deck-edge: var(--now-color-accent);
+  /* 报名状态语义色：独立于可切换的品牌主色，与 --ui-color-*-fg/bg 同源。 */
+  --now-status-success-bg: var(--ui-color-success-bg);
+  --now-status-success-fg: var(--ui-color-success-fg);
+  --now-status-warning-bg: var(--ui-color-warning-bg);
+  --now-status-warning-fg: var(--ui-color-warning-fg);
+  --now-status-danger-bg: var(--ui-color-danger-bg);
+  --now-status-danger-fg: var(--ui-color-danger-fg);
+  --now-status-neutral-bg: var(--ui-color-neutral-bg);
+  --now-status-neutral-fg: var(--ui-color-neutral-fg);
+  --now-border: 2rpx solid var(--now-color-line);
+  --now-radius-card: var(--ui-radius-card);
+  --now-radius-button: var(--ui-radius-button);
+  --now-shadow: var(--ui-shadow-card);
+
+  --ui-surface-bg: var(--ui-color-surface);
+  --ui-surface-fg: var(--ui-color-text);
+  --ui-surface-border: var(--ui-border-default);
+  --ui-surface-radius: var(--ui-radius-card);
+  --ui-surface-padding: 26rpx;
+  --ui-surface-shadow: var(--ui-shadow-raised);
+
+  --ui-button-bg: var(--ui-color-cta);
+  --ui-button-fg: var(--ui-color-cta-fg);
+  /* D 风格：色块按钮不带描边，outline 变体单独给线描边。 */
+  --ui-button-border: none;
+  --ui-button-radius: var(--ui-radius-button);
+  --ui-button-font-weight: 600;
+  --ui-button-font-size-sm: 24rpx;
+  --ui-button-font-size-md: 30rpx;
+  --ui-button-height-sm: 48rpx;
+  --ui-button-height-md: 88rpx;
+
+  --ui-tag-border: none;
+  --ui-tag-radius: var(--ui-radius-round);
+  --ui-tag-font-size-sm: 22rpx;
+  --ui-tag-font-size-md: 24rpx;
+
+  --ui-progress-track-bg: var(--ui-color-neutral-bg);
+  --ui-progress-fill-bg: var(--ui-color-accent);
+  --ui-progress-extra-bg: var(--ui-color-danger);
+  --ui-progress-split-bg: var(--ui-color-text);
+  --ui-progress-height: 14rpx;
+  --ui-progress-radius: var(--ui-radius-round);
+  --ui-progress-meta-font-size: 24rpx;
+  --ui-progress-meta-font-weight: 600;
+  --ui-progress-track-margin-top: 8rpx;
+
+  --ui-segment-height: 68rpx;
+  --ui-segment-gap: 0rpx;
+  --ui-segment-padding: 8rpx;
+  --ui-segment-radius: var(--ui-radius-round);
+  --ui-segment-bg: var(--ui-color-neutral-bg);
+  --ui-segment-active-bg: var(--ui-color-accent);
+  --ui-segment-font-size: 26rpx;
+
+  --ui-avatar-size-xs: 42rpx;
+  --ui-avatar-size-sm: 52rpx;
+  --ui-avatar-size-md: 68rpx;
+  --ui-avatar-size-lg: 84rpx;
+  --ui-avatar-overlap: 14rpx;
+  --ui-avatar-overlap-negative: -14rpx;
+  /* xs 档头像更小，重叠量相应放浅，避免小头像被压掉过多。 */
+  --ui-avatar-overlap-xs: 10rpx;
+  --ui-avatar-overlap-negative-xs: -10rpx;
+  /* 展开态（点 +N 后）头像互不遮挡的间隙，收紧以免行距松散。 */
+  --ui-avatar-gap: 10rpx;
+  --ui-avatar-gap-xs: 8rpx;
+  --ui-avatar-restore-duration: 220ms;
+  /* 两端缓、中段顺滑的减速曲线，减弱换行重排带来的跳变感。 */
+  --ui-avatar-restore-easing: cubic-bezier(0.33, 0, 0.2, 1);
+  --ui-avatar-border: 1rpx solid var(--ui-color-surface);
+  --ui-avatar-plus-bg: var(--ui-color-text);
+  --ui-avatar-plus-fg: var(--ui-color-text-inverse);
+
+  --ui-action-bar-bottom: 8rpx;
+  --ui-action-bar-padding: 14rpx;
+  --ui-action-bar-radius: var(--ui-radius-button);
+  --ui-action-bar-bg: var(--ui-color-surface);
+  --ui-action-bar-shadow: var(--ui-shadow-raised);
+  /* 页面为悬浮操作栏预留的底部留白：栏体（bottom + padding×2 + 按钮高）+ 与内容间距 28rpx，兼容全面屏安全区。 */
+  --ui-action-bar-clearance: calc(
+    env(safe-area-inset-bottom) + var(--ui-action-bar-bottom) + var(--ui-action-bar-padding) * 2 +
+    var(--ui-button-height-md) + 28rpx
+  );
+
+  /* D 风格：日期轨改为浅底卡 + 强调色时间块（原墨色深底）。 */
+
+  /* 卡片列表：AppSurface 风格卡片在列表容器内的统一间距。 */
+  --ui-card-list-gap: 20rpx;
+  --ui-card-list-offset: 24rpx;
+
+  --app-primary: var(--ui-color-accent);
+  --app-primary-text: var(--ui-color-accent-fg);
+
+  /* Wot UI overlays keep the same design-token palette when rendered through root-portal. */
+  --wot-popup-bg: var(--ui-color-surface);
+  --wot-popup-radius: var(--ui-radius-md);
+  --wot-picker-bg: var(--ui-color-surface);
+  --wot-picker-action-color-confirm: var(--ui-color-text);
+  --wot-picker-action-color-cancel: var(--ui-color-text-muted);
+  --wot-picker-action-disabled-color: var(--ui-color-text-disabled);
+  --wot-picker-title-color: var(--ui-color-text);
+  --wot-picker-title-font-weight: 600;
+  --wot-picker-radius: var(--ui-radius-md);
+}
+
+/* Wot Picker is rendered through root-portal, so its shared design-token skin is global. */
+.wd-picker__popup {
+  border-top: var(--ui-border-strong);
+  border-radius: var(--ui-radius-md) var(--ui-radius-md) 0 0;
+  box-shadow: 0 -12rpx 36rpx rgba(var(--ui-primitive-shadow-rgb), 0.08);
+}
+
+.wd-picker__wraper {
+  background: var(--ui-color-surface);
+}
+
+.wd-picker__toolbar {
+  min-height: 84rpx;
+  border-bottom: var(--ui-border-default);
+  background: var(--ui-color-surface);
+}
+
+.wd-picker__action {
+  color: var(--ui-color-text) !important;
+  font-size: 26rpx;
+  font-weight: 600;
+}
+
+.wd-picker__action--cancel {
+  color: var(--ui-color-text-muted) !important;
+}
+
+.wd-picker__title {
+  color: var(--ui-color-text) !important;
+  font-size: 30rpx;
+  font-weight: 600;
+}
+
+.wd-picker-view {
+  background: var(--ui-color-surface);
+}
+
+.wd-picker-view__column-item--active {
+  color: var(--ui-color-text);
+  font-weight: 600;
+}
+
+.wd-picker-view__roller {
+  border-top: var(--ui-border-default);
+  border-bottom: var(--ui-border-default);
+  background: var(--ui-color-accent) !important;
+}
+
+.wd-picker-view__mask {
+  background: transparent !important;
+}
+
+/* 各缓存页面独立计算语义色，避免 H5 page-meta 命中其他页面。 */
+.app-theme-scope { color: var(--ui-color-text); background: var(--ui-color-page); }

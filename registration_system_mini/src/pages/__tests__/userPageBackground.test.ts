@@ -11,8 +11,8 @@ describe("mine page visual composition", () => {
   test("uses the shared semantic page background instead of a page-specific image layer", async () => {
     const userPageSource = await Bun.file(sourcePath("pages/user/index.vue")).text();
 
-    expect(userPageSource.includes('class="mine-page"')).toEqual(true);
-    expect(userPageSource.includes("background: var(--neo-color-page);")).toEqual(true);
+    expect(userPageSource.includes('class="app-theme-scope mine-page"')).toEqual(true);
+    expect(userPageSource.includes("background:var(--ui-color-page);")).toEqual(true);
     expect(userPageSource.includes("minePageBackgroundUrl")).toEqual(false);
     expect(userPageSource.includes('url("@/static/backgrounds/mine-page-bg.jpg")')).toEqual(false);
   });
@@ -23,7 +23,7 @@ describe("mine page visual composition", () => {
 
     expect(userPageSource.includes("<MineProfileHero")).toEqual(true);
     expect(userPageSource.includes("<MineStatsGrid")).toEqual(true);
-    expect(heroProfileSource.includes('custom-class="mine-profile-hero"')).toEqual(true);
+    expect(heroProfileSource.includes('class="mine-profile-hero"')).toEqual(true);
     expect(heroProfileSource.includes("profile-stats-row")).toEqual(false);
     expect(userPageSource.includes('class="overview-card"')).toEqual(false);
   });
@@ -40,10 +40,10 @@ describe("mine page visual composition", () => {
 
   test("uses the shared running loader on first load instead of inserting a temporary loading card", async () => {
     const userPageSource = await Bun.file(sourcePath("pages/user/index.vue")).text();
-    const loaderSource = await Bun.file(sourcePath("components/neo/NeoRunningLoader.vue")).text();
+    const loaderSource = await Bun.file(sourcePath("components/ui/RunningLoader.vue")).text();
 
-    expect(userPageSource.includes('<NeoRunningLoader v-if="showInitialLoadingState"')).toEqual(true);
-    expect(loaderSource.includes('class="neo-runner__sprite"')).toEqual(true);
+    expect(userPageSource.includes('<RunningLoader v-if="showInitialLoadingState"')).toEqual(true);
+    expect(loaderSource.includes('class="ui-runner__ball"')).toEqual(true);
     expect(userPageSource.includes("正在加载个人中心")).toEqual(false);
     expect(userPageSource.includes('v-else-if="isLoading" class="mine-empty"')).toEqual(false);
     expect(userPageSource.includes('class="team-switch-status"')).toEqual(false);
@@ -78,7 +78,6 @@ describe("mine page visual composition", () => {
   });
 
   test("keeps slow billing flow out of the mine page wallet card", async () => {
-    const userPageSource = await Bun.file(sourcePath("pages/user/index.vue")).text();
     const composableSource = await Bun.file(sourcePath("pages/user/useMinePage.ts")).text();
     const walletSource = await Bun.file(sourcePath("pages/user/components/MineWalletSection.vue")).text();
     const billingPageSource = await Bun.file(sourcePath("pages/billing/index.vue")).text();
@@ -87,7 +86,7 @@ describe("mine page visual composition", () => {
     expect(composableSource.includes("getMyBalance")).toEqual(false);
     expect(composableSource.includes("getWallet")).toEqual(true);
     expect(composableSource.includes('url: "/pages/billing/index"')).toEqual(true);
-    expect(walletSource.includes("查看账单")).toEqual(true);
+    expect(walletSource.includes("@tap=\"emit('openBilling')\"")).toEqual(true);
     expect(walletSource.includes("账单明细已移到二级页面")).toEqual(false);
     expect(walletSource.includes("compact-record-card")).toEqual(false);
     expect(billingPageSource.includes("getTeamFundTransactions")).toEqual(true);
@@ -131,11 +130,11 @@ describe("mine page visual composition", () => {
     expect(composableSource.includes("async function handleLogin()")).toEqual(true);
     expect(composableSource.includes("await refreshSessionContext();")).toEqual(true);
     expect(userPageSource.includes('@login="handleLogin"')).toEqual(true);
-    expect(heroProfileSource.includes('v-else class="mine-profile-hero__content mine-profile-hero__content--guest"')).toEqual(true);
-    expect(heroProfileSource.includes("登录后开启你的比赛旅程")).toEqual(true);
-    expect(heroProfileSource.includes("立即登录")).toEqual(true);
+    expect(heroProfileSource.includes('@click="emit(\'login\')"')).toEqual(true);
+    expect(heroProfileSource.includes("登录后查看比赛与球队")).toEqual(true);
+    expect(heroProfileSource.includes("emit('login')")).toEqual(true);
     expect(heroProfileSource.includes("编辑资料")).toEqual(true);
-    expect(heroProfileSource.includes("退出登录")).toEqual(true);
+    expect(userPageSource.includes("退出登录")).toEqual(true);
   });
 
   test("keeps the page as a lifecycle and component orchestration layer", async () => {
@@ -154,9 +153,9 @@ describe("mine page visual composition", () => {
     const userPageSource = await Bun.file(sourcePath("pages/user/index.vue")).text();
 
     expect(userPageSource.includes("/* #ifdef H5 */")).toEqual(true);
-    expect(userPageSource.includes("max-width: 750rpx;")).toEqual(true);
+    expect(userPageSource.includes("max-width:750rpx;")).toEqual(true);
     expect(userPageSource.includes(".mine-page :deep(.app-tab-header-shell),")).toEqual(true);
     expect(userPageSource.includes(".mine-page :deep(.custom-tabbar)")).toEqual(true);
-    expect(userPageSource.includes("transform: translateX(-50%);")).toEqual(true);
+    expect(userPageSource.includes("transform:translateX(-50%);")).toEqual(true);
   });
 });

@@ -1,8 +1,8 @@
 import { computed, type ComputedRef, type Ref } from "vue";
 import { useMiniReviewStatus } from "@/stores/miniReview";
 import type { TeamProfileViewModel } from "@/types/viewModels";
-import type { NeoConfirmDialogLinkOptions } from "@/components/neo";
-import { useNeoConfirmDialog } from "@/components/neo";
+import type { ConfirmDialogLinkOptions } from "@/components/ui";
+import { useConfirmDialog } from "@/components/ui";
 import type { TeamDissolveBlockers } from "@/api/team";
 import { dissolveTeam, loadTeamDissolveBlockers } from "./teamManageActions";
 
@@ -24,7 +24,7 @@ export function useTeamDissolve({ currentTeam, submitting, refreshSessionContext
     handleConfirmSecondary: handleDissolveSecondary,
     handleConfirmClose: handleDissolveClose,
     handleConfirmLinkItem: handleDissolveLinkItem,
-  } = useNeoConfirmDialog();
+  } = useConfirmDialog();
 
   // 解散不可恢复：只给队长本人，且小程序审核模式下隐藏入口。
   const canDissolveTeam = computed(
@@ -33,9 +33,9 @@ export function useTeamDissolve({ currentTeam, submitting, refreshSessionContext
 
   /** 阻塞项 → 处理链接：主队比赛去详情页收尾/取消；约队申请去接约页撤回；
    * 客队比赛若已有对应申请入口则去重（撤回申请即可解除引用）。 */
-  function buildBlockerLinks(blockers: TeamDissolveBlockers): NeoConfirmDialogLinkOptions[] {
+  function buildBlockerLinks(blockers: TeamDissolveBlockers): ConfirmDialogLinkOptions[] {
     const applicationMatchIds = new Set(blockers.applications.map((application) => application.match_id));
-    const links: NeoConfirmDialogLinkOptions[] = [];
+    const links: ConfirmDialogLinkOptions[] = [];
     for (const match of blockers.matches) {
       if (!match.is_host && applicationMatchIds.has(match.id)) continue;
       links.push({

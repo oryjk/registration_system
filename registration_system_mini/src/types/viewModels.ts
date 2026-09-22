@@ -1,5 +1,5 @@
 import type { AppMatchUiPhase } from "@/types/match";
-import type { NeoTagTone } from "@/types/designSystem";
+import type { AppTagTone } from "@/types/designSystem";
 
 export interface TeamProfileViewModel {
   id: number;
@@ -31,6 +31,8 @@ export interface CurrentIdentityViewModel {
 
 export interface HomeMatchCardViewModel {
   id: string;
+  /** 首页所属报名组；详情补全必须匹配此组，避免拿到主客队的另一侧状态。 */
+  registrationGroupId?: string;
   detailUrl: string;
   title: string;
   dateLabel: string;
@@ -46,8 +48,8 @@ export interface HomeMatchCardViewModel {
   showParticipantAvatars: boolean;
   canOpenDetail: boolean;
   stage: string;
-  stageTone: NeoTagTone;
-  statusTone: NeoTagTone;
+  stageTone: AppTagTone;
+  statusTone: AppTagTone;
   publicationModeLabel: string;
   signupScopeLabel: string;
   signupScope: "external" | "internal";
@@ -72,6 +74,12 @@ export interface HomeMatchCardViewModel {
   remainingPlayersLabel: string;
   canRegister: boolean;
   actionLabel?: string;
+  /** 展示模式：upcoming 用报名型富卡；ongoing/ended 用紧凑查看型卡（整卡仅查看）。 */
+  viewMode: "action" | "compact";
+  /** 真实接口录入的比分（如 "3 : 1"）；未录入或非查看阶段为 null。 */
+  scoreLabel: string | null;
+  /** 比分前缀文案：已结束「最终比分」、进行中「当前比分」；无比分为 null。 */
+  scoreNote: string | null;
 }
 
 export interface AttendanceSummaryViewModel {

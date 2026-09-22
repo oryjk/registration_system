@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import NeoButton from "@/components/neo/NeoButton.vue";
-import NeoSectionHeader from "@/components/neo/NeoSectionHeader.vue";
-import NeoSurface from "@/components/neo/NeoSurface.vue";
+import AppButton from "@/components/ui/AppButton.vue";
+import SectionHeader from "@/components/ui/SectionHeader.vue";
+import AppSurface from "@/components/ui/AppSurface.vue";
 
 defineProps<{
   submitting: boolean;
@@ -13,24 +13,23 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <NeoSurface custom-class="dissolve-card">
-    <NeoSectionHeader title="危险操作" marker="!" caption="解散球队不可恢复，请谨慎操作" />
-    <NeoButton variant="danger" block :disabled="submitting" @click="emit('dissolve')">
+  <AppSurface custom-class="dissolve-card">
+    <SectionHeader title="危险操作" caption="解散球队不可恢复，请谨慎操作" />
+    <AppButton variant="danger" block :disabled="submitting" @click="emit('dissolve')">
       {{ submitting ? "解散中..." : "解散球队" }}
-    </NeoButton>
-  </NeoSurface>
+    </AppButton>
+  </AppSurface>
 </template>
 
 <style scoped>
 .dissolve-card {
-  margin-top: 22rpx;
   padding: 6rpx 24rpx 24rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-md);
-  box-shadow: var(--neo-shadow-raised);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-card);
+  box-shadow: none;
 }
 
-:deep(.neo-button--block) {
+:deep(.ui-button--block) {
   margin-top: 28rpx;
 }
 </style>

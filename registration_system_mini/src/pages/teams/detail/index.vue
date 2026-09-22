@@ -2,10 +2,10 @@
 import { onShareAppMessage, onShareTimeline } from "@dcloudio/uni-app";
 import { useAccentTheme } from "@/stores/theme";
 import AppTabHeader from "@/components/AppTabHeader.vue";
-import NeoButton from "@/components/neo/NeoButton.vue";
-import NeoSurface from "@/components/neo/NeoSurface.vue";
-import NeoConfirmDialog from "@/components/neo/NeoConfirmDialog.vue";
-import NeoTag from "@/components/neo/NeoTag.vue";
+import AppButton from "@/components/ui/AppButton.vue";
+import AppSurface from "@/components/ui/AppSurface.vue";
+import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
+import AppTag from "@/components/ui/AppTag.vue";
 import { TEAM_INVITE_SHARE_IMAGE_URL } from "@/utils/share";
 import { useTeamDetailPage } from "./useTeamDetailPage";
 
@@ -51,7 +51,7 @@ onShareTimeline(() => ({
 
 <template>
   <page-meta :page-style="themePageStyle" />
-  <view class="team-detail-page" :style="pageStyle">
+  <view class="app-theme-scope team-detail-page" :style="[themePageStyle, pageStyle]">
     <AppTabHeader :title="team?.name || '球队'" showBack />
 
     <view class="team-detail-content">
@@ -74,7 +74,7 @@ onShareTimeline(() => ({
               <text class="hero-meta">{{ roleLabel }} · 信用分 {{ team.credit_score }}</text>
               <text v-if="createdLabel" class="hero-meta">创建于 {{ createdLabel }}</text>
             </view>
-            <NeoTag :tone="team.is_vip ? 'lime' : 'amber'" size="lg">{{ membershipLabel }}</NeoTag>
+            <AppTag :tone="team.is_vip ? 'lime' : 'amber'" size="lg">{{ membershipLabel }}</AppTag>
           </view>
           <text v-if="description" class="hero-description">{{ description }}</text>
         </view>
@@ -95,41 +95,38 @@ onShareTimeline(() => ({
         </view>
 
         <!-- 球队管理入口仅对队长/领队有意义，普通队员不展示。 -->
-        <NeoSurface v-if="canManage" variant="raised" custom-class="manage-card">
+        <AppSurface v-if="canManage" variant="raised" custom-class="manage-card">
           <view class="manage-head">
             <text class="manage-title">球队管理</text>
             <text class="manage-copy">资料、队员与比赛出勤管理</text>
           </view>
-          <NeoButton variant="outline" block @click="openTeamManage">
+          <AppButton icon="settings" variant="outline" block @click="openTeamManage">
             进入球队管理
-          </NeoButton>
-        </NeoSurface>
+          </AppButton>
+        </AppSurface>
 
         <!-- 邀请球友（拉新）：仅队长/领队展示；open-type=share 触发与右上角菜单相同的分享配置。 -->
-        <NeoSurface v-if="canManage" variant="dark" custom-class="invite-card">
+        <AppSurface v-if="canManage" variant="outlined" custom-class="invite-card">
           <view class="invite-hero">
-            <view class="invite-kicker">
-              <text class="invite-kicker__text">人越多，越好玩！</text>
-            </view>
             <text class="invite-title">邀请球友加入</text>
             <text class="invite-copy">分享邀请卡片给球友，点开即可申请加入{{ team.name }}，7 天内有效。</text>
           </view>
           <button class="invite-share-button" open-type="share" hover-class="invite-share-button--pressed">
+            <wd-icon name="share-external" size="34rpx" color="var(--ui-color-accent-fg)" />
             <text class="invite-share-button__text">分享邀请，拉球友入队</text>
-            <text class="invite-share-button__arrow">↗</text>
           </button>
-        </NeoSurface>
+        </AppSurface>
 
         <!-- 退出球队：独立卡片，仅非队长的在队成员可见；余额不为零在入口即拦截，后端同样校验。 -->
-        <NeoSurface v-if="canLeaveTeam" variant="raised" custom-class="leave-card">
+        <AppSurface v-if="canLeaveTeam" variant="raised" custom-class="leave-card">
           <view class="leave-head">
             <text class="leave-title">退出球队</text>
             <text class="leave-copy">退出后不再参与本球队的比赛与报名；队费余额需为 0 才能退出。</text>
           </view>
-          <NeoButton variant="danger" block @click="handleLeaveTeamClick">
+          <AppButton icon="poweroff" variant="danger" block @click="handleLeaveTeamClick">
             退出球队
-          </NeoButton>
-        </NeoSurface>
+          </AppButton>
+        </AppSurface>
       </template>
     </view>
 
@@ -139,7 +136,7 @@ onShareTimeline(() => ({
     <!-- #endif -->
 
     <!-- 退出球队：二次确认；余额不为零在入口即拦截，后端同样校验。 -->
-    <NeoConfirmDialog
+    <ConfirmDialog
       :visible="leaveDialogVisible"
       title="退出球队"
       message="退出后将不再参与本球队的比赛与报名；队费余额需为 0 才能退出。"
@@ -156,7 +153,7 @@ onShareTimeline(() => ({
 .team-detail-page {
   min-height: 100vh;
   padding: 0 28rpx 96rpx;
-  background: var(--neo-color-page);
+  background: var(--ui-color-page);
   box-sizing: border-box;
 }
 
@@ -169,10 +166,10 @@ onShareTimeline(() => ({
 .state-card,
 .page-hero,
 .fund-entry {
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-md);
-  background: var(--neo-color-surface);
-  box-shadow: var(--neo-shadow-raised);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-card);
+  background: var(--ui-color-surface);
+  box-shadow: var(--ui-shadow-raised);
 }
 
 .state-card {
@@ -181,9 +178,9 @@ onShareTimeline(() => ({
 }
 
 .state-text {
-  color: var(--neo-color-text-muted);
+  color: var(--ui-color-text-muted);
   font-size: 28rpx;
-  font-weight: 800;
+  font-weight: 500;
 }
 
 .page-hero {
@@ -200,15 +197,18 @@ onShareTimeline(() => ({
   position: relative;
   width: 88rpx;
   height: 88rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-hero);
-  color: var(--neo-color-accent);
+
+  border: 0;
+  border-radius: var(--ui-radius-button);
+
+  background: var(--ui-color-neutral-bg);
+
+  color: var(--ui-color-text);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 40rpx;
-  font-weight: 950;
+  font-weight: var(--ui-font-weight-heading);
   flex-shrink: 0;
   overflow: hidden;
 }
@@ -225,30 +225,33 @@ onShareTimeline(() => ({
 
 .hero-title {
   display: block;
-  color: var(--neo-color-text);
-  font-size: 38rpx;
+  color: var(--ui-color-text);
+
+  font-size: 32rpx;
   line-height: 1.2;
-  font-weight: 950;
+  font-weight: var(--ui-font-weight-heading);
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
+
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .hero-meta {
   display: block;
   margin-top: 8rpx;
-  color: var(--neo-color-text-muted);
+  color: var(--ui-color-text-muted);
   font-size: 24rpx;
-  font-weight: 700;
+  font-weight: 400;
 }
 
 .hero-description {
   display: block;
   margin-top: 18rpx;
-  color: var(--neo-color-text-muted);
+  color: var(--ui-color-text-muted);
   font-size: 25rpx;
   line-height: 1.55;
-  font-weight: 700;
+  font-weight: 400;
   word-break: break-word;
 }
 
@@ -267,9 +270,9 @@ onShareTimeline(() => ({
 
 .fund-entry__label {
   display: block;
-  color: var(--neo-color-text-muted);
+  color: var(--ui-color-text-muted);
   font-size: 24rpx;
-  font-weight: 800;
+  font-weight: 500;
   letter-spacing: 2rpx;
 }
 
@@ -281,16 +284,16 @@ onShareTimeline(() => ({
 }
 
 .fund-entry__symbol {
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
   font-size: 28rpx;
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .fund-entry__value {
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
   font-size: 46rpx;
   line-height: 1.1;
-  font-weight: 950;
+  font-weight: var(--ui-font-weight-heading);
 }
 
 .fund-entry__action {
@@ -298,22 +301,24 @@ onShareTimeline(() => ({
   align-items: center;
   gap: 8rpx;
   padding: 12rpx 20rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-accent);
+
+  border: 0;
+  border-radius: var(--ui-radius-button);
+
+  background: var(--ui-color-accent-soft);
   flex-shrink: 0;
 }
 
 .fund-entry__action-text {
-  color: var(--neo-color-text);
+  color: var(--ui-color-accent-deep);
   font-size: 24rpx;
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .fund-entry__action-arrow {
-  color: var(--neo-color-text);
+  color: var(--ui-color-accent-deep);
   font-size: 24rpx;
-  font-weight: 900;
+  font-weight: 600;
 }
 
 :deep(.manage-card) {
@@ -328,15 +333,27 @@ onShareTimeline(() => ({
 }
 
 .manage-title {
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
   font-size: 32rpx;
-  font-weight: 950;
+  font-weight: var(--ui-font-weight-heading);
 }
 
 .manage-copy {
-  color: var(--neo-color-text-muted);
+  color: var(--ui-color-text-muted);
   font-size: 24rpx;
-  font-weight: 700;
+  font-weight: 400;
+}
+
+/* H5 减少动态效果：邀请分享按钮只保留表面色反馈，无缩放。 */
+@media (prefers-reduced-motion: reduce) {
+  .invite-share-button {
+    transition: none;
+  }
+
+  .invite-share-button--pressed {
+    transform: none;
+    opacity: 0.85;
+  }
 }
 
 /* #ifdef H5 */
@@ -370,11 +387,13 @@ onShareTimeline(() => ({
   margin-top: 0;
 }
 
-/* 拉新卡片：深底 hero 卡片 + 青柠错位阴影，与 team-manage-hero 同一 neo 语言。 */
+/* 邀请入口与球队资料使用同一轻量表面。 */
 :deep(.invite-card) {
   padding: 28rpx;
-  background: var(--neo-color-hero);
-  box-shadow: 8rpx 8rpx 0 var(--neo-color-accent);
+
+  background: var(--ui-color-surface);
+
+  box-shadow: none;
 }
 
 .invite-hero {
@@ -387,33 +406,35 @@ onShareTimeline(() => ({
 
 .invite-kicker {
   padding: 6rpx 16rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-accent);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-button);
+  background: var(--ui-color-accent);
 }
 
 .invite-kicker__text {
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
   font-size: 22rpx;
-  font-weight: 900;
+  font-weight: 600;
   letter-spacing: 2rpx;
 }
 
 .invite-title {
-  color: var(--neo-color-text-inverse);
-  font-size: 40rpx;
-  font-weight: 950;
+  color: var(--ui-color-text);
+
+  font-size: 30rpx;
+  font-weight: var(--ui-font-weight-heading);
   line-height: 1.2;
 }
 
 .invite-copy {
-  color: rgba(255, 255, 255, 0.72);
-  font-size: 24rpx;
+  color: var(--ui-color-text-muted);
+
+  font-size: 23rpx;
   line-height: 1.5;
-  font-weight: 700;
+  font-weight: 400;
 }
 
-/* open-type=share 只能用原生 button 触发，这里把 button 抹成 neo 按钮外观。 */
+/* 使用原生分享按钮，图标与比赛详情保持一致。 */
 .invite-share-button {
   display: flex;
   align-items: center;
@@ -423,17 +444,16 @@ onShareTimeline(() => ({
   min-height: 88rpx;
   margin: 0;
   padding: 0 24rpx;
-  border: var(--neo-border-strong);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-accent);
-  box-shadow: 4rpx 4rpx 0 var(--neo-color-surface);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-button);
+  background: var(--ui-color-accent);
   box-sizing: border-box;
   line-height: 1;
+  transition: transform var(--ui-motion-press-duration) var(--ui-motion-ease-out);
 }
 
 .invite-share-button--pressed {
-  transform: translate(4rpx, 4rpx);
-  box-shadow: none;
+  transform: scale(0.98);
 }
 
 .invite-share-button::after {
@@ -441,15 +461,9 @@ onShareTimeline(() => ({
 }
 
 .invite-share-button__text {
-  color: var(--neo-color-text);
+  color: var(--ui-color-accent-fg);
   font-size: 30rpx;
-  font-weight: 900;
-}
-
-.invite-share-button__arrow {
-  color: var(--neo-color-text);
-  font-size: 34rpx;
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .leave-head {
@@ -461,14 +475,14 @@ onShareTimeline(() => ({
 
 .leave-title {
   font-size: 30rpx;
-  font-weight: 900;
-  color: var(--neo-color-text);
+  font-weight: 600;
+  color: var(--ui-color-text);
 }
 
 .leave-copy {
   font-size: 24rpx;
-  font-weight: 700;
-  color: var(--neo-color-text-muted);
+  font-weight: 400;
+  color: var(--ui-color-text-muted);
   line-height: 1.5;
 }
 </style>

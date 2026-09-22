@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import NeoButton from "@/components/neo/NeoButton.vue";
-import NeoSectionHeader from "@/components/neo/NeoSectionHeader.vue";
-import NeoSurface from "@/components/neo/NeoSurface.vue";
+import AppButton from "@/components/ui/AppButton.vue";
+import SectionHeader from "@/components/ui/SectionHeader.vue";
+import AppSurface from "@/components/ui/AppSurface.vue";
 import type { BackendTeamMember, BackendUser } from "@/types/backend";
 import type { TeamProfileViewModel } from "@/types/viewModels";
 import { memberRoleOptions, roleLabel } from "../teamManageState";
@@ -81,8 +81,8 @@ function handleRemoveMember(member: BackendTeamMember) {
 </script>
 
 <template>
-  <NeoSurface custom-class="form-card">
-    <NeoSectionHeader title="队员管理" marker="01" caption="添加队员、调整角色并查看个人出勤" />
+  <AppSurface custom-class="form-card">
+    <SectionHeader title="队员管理" caption="添加队员、调整角色并查看个人出勤" />
     <view v-if="!currentTeam" class="empty-box">请先创建或加入球队。</view>
     <view v-else-if="!canManageMembers" class="empty-box">只有队长或领队可以管理队员。</view>
     <view v-else>
@@ -124,13 +124,11 @@ function handleRemoveMember(member: BackendTeamMember) {
           custom-cell-class="member-role-picker-cell"
           custom-value-class="member-role-picker-value"
         />
-
         <!-- Go 队员模型只有 role/status：球衣号与队员会员开关已随 legacy Rust 字段一起移除。 -->
-        <NeoButton block :loading="submitting" @click="handleAddMember">
+        <AppButton icon="user-add" block :loading="submitting" @click="handleAddMember">
           {{ submitting ? "提交中..." : "添加队员" }}
-        </NeoButton>
+        </AppButton>
       </view>
-
       <TeamMemberSection
         title="管理角色"
         empty-text="暂未设置队长、领队或队务。"
@@ -144,7 +142,6 @@ function handleRemoveMember(member: BackendTeamMember) {
         @toggle-member-status="handleToggleMemberStatus"
         @remove-member="handleRemoveMember"
       />
-
       <TeamMemberSection
         title="普通队员"
         empty-text="暂无普通队员。"
@@ -157,7 +154,6 @@ function handleRemoveMember(member: BackendTeamMember) {
         @toggle-member-status="handleToggleMemberStatus"
         @remove-member="handleRemoveMember"
       />
-
       <TeamMemberSection
         title="冻结队员"
         empty-text="暂无冻结队员。"
@@ -172,30 +168,31 @@ function handleRemoveMember(member: BackendTeamMember) {
         @remove-member="handleRemoveMember"
       />
     </view>
-  </NeoSurface>
+  </AppSurface>
 </template>
 
 <style scoped>
 .form-card {
   padding: 6rpx 24rpx 24rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-md);
-  box-shadow: 8rpx 8rpx 0 var(--neo-color-text);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-card);
+  box-shadow: none;
 }
 
 .form-label {
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
   font-size: 24rpx;
   display: block;
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .member-create-panel {
   margin-top: 26rpx;
-  padding: 20rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-info-soft);
+  padding: 0 0 26rpx;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  border-bottom: var(--ui-border-default);
 }
 
 .form-input {
@@ -203,24 +200,24 @@ function handleRemoveMember(member: BackendTeamMember) {
   height: 84rpx;
   margin-top: 12rpx;
   padding: 0 20rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-surface);
-  color: var(--neo-color-text);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-button);
+  background: var(--ui-color-surface);
+  color: var(--ui-color-text);
   font-size: 28rpx;
-  font-weight: 800;
+  font-weight: 500;
   box-sizing: border-box;
 }
 
 .empty-box {
   margin-top: 26rpx;
-  padding: 22rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-warning-soft);
-  color: var(--neo-color-text-muted);
-  font-size: 26rpx;
-  font-weight: 700;
+  padding: 20rpx 0;
+  border: none;
+  border-radius: var(--ui-radius-button);
+  background: transparent;
+  color: var(--ui-color-text-muted);
+  font-size: 24rpx;
+  font-weight: 400;
 }
 
 .member-role-picker {
@@ -230,54 +227,54 @@ function handleRemoveMember(member: BackendTeamMember) {
 }
 
 :deep(.member-role-picker) {
-  --wot-picker-bg: var(--neo-color-surface);
-  --wot-picker-action-color-confirm: var(--neo-color-text);
-  --wot-picker-action-color-cancel: var(--neo-color-text-muted);
-  --wot-picker-action-disabled-color: var(--neo-color-text-disabled);
-  --wot-picker-title-color: var(--neo-color-text);
-  --wot-picker-title-font-weight: 900;
-  --wot-picker-radius: var(--neo-radius-md);
+  --wot-picker-bg: var(--ui-color-surface);
+  --wot-picker-action-color-confirm: var(--ui-color-text);
+  --wot-picker-action-color-cancel: var(--ui-color-text-muted);
+  --wot-picker-action-disabled-color: var(--ui-color-text-disabled);
+  --wot-picker-title-color: var(--ui-color-text);
+  --wot-picker-title-font-weight: 600;
+  --wot-picker-radius: var(--ui-radius-md);
 }
 
 :deep(.member-role-cell) {
   margin-top: 14rpx;
   padding: 0 20rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-surface);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-button);
+  background: var(--ui-color-surface);
   box-sizing: border-box;
 }
 
 :deep(.member-role-cell-title) {
-  color: var(--neo-color-text-muted);
+  color: var(--ui-color-text-muted);
   font-size: 24rpx;
-  font-weight: 900;
+  font-weight: 600;
 }
 
 :deep(.member-role-cell-value) {
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
   font-size: 28rpx;
-  font-weight: 900;
+  font-weight: 600;
 }
 
 :deep(.member-role-picker-cell) {
   width: 100%;
   height: 84rpx;
   padding: 0 20rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-surface);
-  color: var(--neo-color-text);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-button);
+  background: var(--ui-color-surface);
+  color: var(--ui-color-text);
   box-sizing: border-box;
 }
 
 :deep(.member-role-picker-value) {
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
   font-size: 28rpx;
-  font-weight: 900;
+  font-weight: 600;
 }
 
-:deep(.member-create-panel .neo-button--block) {
+:deep(.member-create-panel .ui-button--block) {
   margin-top: 4rpx;
 }
 </style>

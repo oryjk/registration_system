@@ -32,13 +32,13 @@ onPageNotFound((options) => {
 </script>
 
 <style>
-@import "./styles/neo-tokens.css";
+@import "./styles/design-tokens.css";
 @import "./uni.css";
 
 page {
   min-height: 100%;
-  background: var(--neo-color-page);
-  color: var(--neo-color-text);
+  background: var(--ui-color-page);
+  color: var(--ui-color-text);
   font-family: "PingFang SC", "Helvetica Neue", sans-serif;
 }
 

@@ -1,6 +1,8 @@
 <script setup lang="ts">
+import { useAccentTheme } from "@/stores/theme";
+const { themePageStyle } = useAccentTheme();
 import { computed, ref } from "vue";
-import NeoButton from "@/components/neo/NeoButton.vue";
+import AppButton from "@/components/ui/AppButton.vue";
 import type { BackendTeamMember } from "@/types/backend";
 import { memberRoleOptions, roleLabel } from "../teamManageState";
 
@@ -44,6 +46,7 @@ const rolePickerVisible = ref(false);
 
 <template>
   <wd-popup
+    :custom-style="themePageStyle"
     v-model="visible"
     position="bottom"
     custom-class="member-edit-popup"
@@ -52,15 +55,14 @@ const rolePickerVisible = ref(false);
     root-portal
     @close="handleClose"
   >
-    <view class="member-edit-sheet">
+    <view class="app-theme-scope member-edit-sheet" :style="themePageStyle">
       <view class="member-edit-header">
         <view>
           <text class="member-edit-kicker">编辑队员</text>
           <text class="member-edit-title">{{ member ? memberName : "队员" }}</text>
         </view>
-        <NeoButton variant="outline" size="sm" @click="handleClose">取消</NeoButton>
+        <AppButton variant="outline" size="sm" @click="handleClose">取消</AppButton>
       </view>
-
       <wd-cell
         title="队员角色"
         :value="roleLabel(form.role)"
@@ -85,26 +87,25 @@ const rolePickerVisible = ref(false);
         custom-cell-class="member-role-picker-cell"
         custom-value-class="member-role-picker-value"
       />
-
       <!-- Go 队员模型只有 role/status：球衣号与队员会员开关已随 legacy Rust 字段一起移除。 -->
-      <NeoButton block :loading="submitting" @click="handleSubmit">
+      <AppButton icon="check" block :loading="submitting" @click="handleSubmit">
         {{ submitting ? "保存中..." : "保存队员" }}
-      </NeoButton>
+      </AppButton>
     </view>
   </wd-popup>
 </template>
 
 <style scoped>
 :deep(.member-edit-popup) {
-  border-top: var(--neo-border-strong);
-  border-radius: var(--neo-radius-md) var(--neo-radius-md) 0 0;
-  background: var(--neo-color-page);
+  border-top: var(--ui-border-default);
+  border-radius: var(--ui-radius-md) var(--ui-radius-md) 0 0;
+  background: var(--ui-color-surface);
 }
 
 .member-edit-sheet {
   padding: 34rpx 30rpx 38rpx;
-  background: var(--neo-color-page);
-  border-radius: var(--neo-radius-md) var(--neo-radius-md) 0 0;
+  background: var(--ui-color-surface);
+  border-radius: var(--ui-radius-md) var(--ui-radius-md) 0 0;
 }
 
 .member-edit-header {
@@ -117,17 +118,17 @@ const rolePickerVisible = ref(false);
 
 .member-edit-kicker {
   display: block;
-  color: var(--neo-color-text-muted);
+  color: var(--ui-color-text-muted);
   font-size: 24rpx;
-  font-weight: 800;
+  font-weight: 500;
 }
 
 .member-edit-title {
   display: block;
   margin-top: 8rpx;
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
   font-size: 38rpx;
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .member-role-picker {
@@ -137,54 +138,54 @@ const rolePickerVisible = ref(false);
 }
 
 :deep(.member-role-picker) {
-  --wot-picker-bg: var(--neo-color-surface);
-  --wot-picker-action-color-confirm: var(--neo-color-text);
-  --wot-picker-action-color-cancel: var(--neo-color-text-muted);
-  --wot-picker-action-disabled-color: var(--neo-color-text-disabled);
-  --wot-picker-title-color: var(--neo-color-text);
-  --wot-picker-title-font-weight: 900;
-  --wot-picker-radius: var(--neo-radius-md);
+  --wot-picker-bg: var(--ui-color-surface);
+  --wot-picker-action-color-confirm: var(--ui-color-text);
+  --wot-picker-action-color-cancel: var(--ui-color-text-muted);
+  --wot-picker-action-disabled-color: var(--ui-color-text-disabled);
+  --wot-picker-title-color: var(--ui-color-text);
+  --wot-picker-title-font-weight: 600;
+  --wot-picker-radius: var(--ui-radius-md);
 }
 
 :deep(.member-role-cell) {
   margin-top: 14rpx;
   padding: 0 20rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-surface);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-button);
+  background: var(--ui-color-surface);
   box-sizing: border-box;
 }
 
 :deep(.member-role-cell-title) {
-  color: var(--neo-color-text-muted);
+  color: var(--ui-color-text-muted);
   font-size: 24rpx;
-  font-weight: 900;
+  font-weight: 600;
 }
 
 :deep(.member-role-cell-value) {
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
   font-size: 28rpx;
-  font-weight: 900;
+  font-weight: 600;
 }
 
 :deep(.member-role-picker-cell) {
   width: 100%;
   height: 84rpx;
   padding: 0 20rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-surface);
-  color: var(--neo-color-text);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-button);
+  background: var(--ui-color-surface);
+  color: var(--ui-color-text);
   box-sizing: border-box;
 }
 
 :deep(.member-role-picker-value) {
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
   font-size: 28rpx;
-  font-weight: 900;
+  font-weight: 600;
 }
 
-:deep(.member-edit-sheet .neo-button--block) {
+:deep(.member-edit-sheet .ui-button--block) {
   margin-top: 28rpx;
 }
 </style>

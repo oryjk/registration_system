@@ -3,7 +3,7 @@ import { useAccentTheme } from "@/stores/theme";
 import { computed, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
-import NeoSegmentedControl from "@/components/neo/NeoSegmentedControl.vue";
+import SegmentedControl from "@/components/ui/SegmentedControl.vue";
 import HomeMatchList from "@/pages/home/components/HomeMatchList.vue";
 import { useTeamContext } from "@/stores/teamContext";
 import type { HomeMatchCardViewModel } from "@/types/viewModels";
@@ -84,15 +84,12 @@ onShow(() => {
 
 <template>
   <page-meta :page-style="themePageStyle" />
-  <view class="my-matches-page">
+  <view class="app-theme-scope my-matches-page" :style="themePageStyle">
     <AppTabHeader title="我的比赛" showBack />
     <view class="my-matches-content" :style="contentStyle">
-      <view class="page-hero">
-        <text class="page-title">我的比赛</text>
-        <text class="page-copy">{{ heroCopy }}</text>
-      </view>
+      <text class="match-list-note">{{ heroCopy }}</text>
 
-      <NeoSegmentedControl
+      <SegmentedControl
         :model-value="matchScope"
         :options="scopeOptions"
         class="scope-segment"
@@ -123,37 +120,15 @@ onShow(() => {
 .my-matches-page {
   min-height: 100vh;
   padding: 0 28rpx 96rpx;
-  background: var(--neo-color-page);
+  background: var(--ui-color-page);
   box-sizing: border-box;
 }
 
-.page-hero,
 .empty-card {
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-md);
-  background: var(--neo-color-surface);
-  box-shadow: var(--neo-shadow-raised);
-}
-
-.page-hero {
-  padding: 28rpx;
-}
-
-.page-title {
-  display: block;
-  color: var(--neo-color-text);
-  font-size: 48rpx;
-  line-height: 1.15;
-  font-weight: 900;
-}
-
-.page-copy {
-  display: block;
-  margin-top: 12rpx;
-  color: var(--neo-color-text-muted);
-  font-size: 26rpx;
-  line-height: 1.5;
-  font-weight: 700;
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-card);
+  background: var(--ui-color-surface);
+  box-shadow: var(--ui-shadow-raised);
 }
 
 .scope-segment {
@@ -167,10 +142,10 @@ onShow(() => {
 }
 
 .empty-text {
-  color: var(--neo-color-text-muted);
+  color: var(--ui-color-text-muted);
   font-size: 28rpx;
   line-height: 1.5;
-  font-weight: 800;
+  font-weight: 500;
 }
 
 /* #ifdef H5 */
@@ -188,4 +163,5 @@ onShow(() => {
   transform: translateX(-50%);
 }
 /* #endif */
+.match-list-note { display: block; color: var(--ui-color-text-muted); font-size: 23rpx; line-height: 1.5; margin: 4rpx 4rpx 16rpx; }
 </style>

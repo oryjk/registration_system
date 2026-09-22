@@ -166,9 +166,13 @@ describe("Match detail adapter", () => {
 
       expect({
         registration: data.activityUsers[0],
+        minimum: data.selectedGroupMinPlayers,
+        maximum: data.selectedGroupMaxPlayers,
         sourceTeamRegistrationCount: data.sourceTeamRegistrationCount,
         occupiesCapacity: data.activityUsers.some((item) => item.stand === 1),
       }).toEqual({
+        minimum: 0,
+        maximum: 8,
         registration: {
           user_id: 37,
           stand,

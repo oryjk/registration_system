@@ -82,7 +82,13 @@ src/
 
 更详细的小程序结构、页面拆分模式和重构优先级见 [`docs/mini-architecture.md`](docs/mini-architecture.md)。
 
-视觉规范见 [`docs/mini-design-system.md`](docs/mini-design-system.md)（Neo 设计系统）：token 按 primitive / semantic / component 三层组织在 `src/styles/neo-tokens.css`；结构 UI 必须引用 token，不在页面和共享壳层新增散落 hex；球衣/球队颜色等业务数据值与插画装饰色例外。
+视觉规范见 [`docs/mini-design-system.md`](docs/mini-design-system.md)（统一设计系统，组件在 `src/components/ui/`）：token 按 primitive / semantic / component 三层组织在 `src/styles/design-tokens.css`；结构 UI 必须引用 token，不在页面和共享壳层新增散落 hex；球衣/球队颜色等业务数据值与插画装饰色例外。
+
+### 现行 UI 约束（新对话必读）
+
+- 开始任何界面工作先读 [`docs/mini-design-system.md`](docs/mini-design-system.md)，这是 H5 / 小程序唯一现行视觉规范。当前为轻量赛事 UI（历史方案代号 D），Neo / Soft Neo 旧视觉规范已废止。
+- 旧设计稿、基线 patch、迁移计划仅供追溯，不能覆盖现行规范；不要重新创建 `Neo*` / `D*` 风格组件、`components/neo` 或 `--neo-*`。命名按组件职责，主题与状态色通过 token 表达。
+- 主任务卡与只读比赛卡要有主次；布局对齐、叠卡、头像横滑和头像预览的最新规则均见现行规范。不要从过期方案推断默认只显示 5 个头像或旧式展开交互。
 
 ## 入口与配置
 
@@ -131,7 +137,7 @@ src/
 - **禁止使用浏览器 DOM API**：不写 `document.*`、`window.*`、`localStorage`、`sessionStorage`、`querySelector` 等；存储统一用 `uni.getStorageSync` / `uni.setStorageSync`。
 - **微信专属能力必须平台隔离**：`open-type="chooseAvatar"`、`open-type="getPhoneNumber"`、`wx.requestPayment` 等仅小程序可用，必须用条件编译 `<!-- #ifdef MP-WEIXIN -->` / `<!-- #ifndef MP-WEIXIN -->` 隔离，并提供 H5 降级路径或合理跳过。
 - **CSS 避免小程序不友好的特性**：不用 `:hover` 伪类（用 `hover-class` 替代）；`position: fixed` 注意小程序导航栏差异；百分比高度需确保父容器有明确高度；统一使用 `rpx` 单位，不要混用 `px`、`vw`、`rem`。
-- **运行时 Vue 组件必须直接从 `.vue` 文件导入**：例如 `import NeoButton from "@/components/neo/NeoButton.vue"`。不要通过 `@/components/neo` 这类 barrel 文件导入运行时组件；当前 uni-app 小程序编译器不会继续追踪二次导出，可能导致 WXML 已生成组件标签，但 JSON 遗漏 `usingComponents`，构建成功后组件仍无法渲染。类型和普通 TypeScript 函数可以继续通过 barrel 文件导入。
+- **运行时 Vue 组件必须直接从 `.vue` 文件导入**：例如 `import AppButton from "@/components/ui/AppButton.vue"`。不要通过 `@/components/ui` 这类 barrel 文件导入运行时组件；当前 uni-app 小程序编译器不会继续追踪二次导出，可能导致 WXML 已生成组件标签，但 JSON 遗漏 `usingComponents`，构建成功后组件仍无法渲染。类型和普通 TypeScript 函数可以继续通过 barrel 文件导入。
 - **新增页面或功能后**，定期执行 `bun run build:mp-weixin` 确认小程序可编译，避免 H5 运行正常但小程序编译失败的问题积累。
 - `build:mp-weixin` 会在编译后执行组件注册检查；若提示 `Unregistered mini-program components`，先核对对应 SFC 是否把运行时组件直接从 `.vue` 文件导入。
 
@@ -139,10 +145,10 @@ src/
 
 小程序端 uni-app 组件编译为微信自定义组件，存在**宿主节点**与**样式隔离**（默认 `styleIsolation: isolated`），与 H5 行为不同。以下两类写法在 H5 正常、小程序里静默失效，已分别修过一次：
 
-1. **不要用 `custom-class` + 父级 scoped 样式给子组件根节点做布局**。父级 scoped 选择器带父组件作用域 id（如 `.mine-current-team.data-v-xxx`），编译后该类落在子组件内部根 view 上，既没有父级作用域 id、又被组件样式隔离挡住，整条规则失效，布局退化为纵向堆叠。正确做法：布局类加在**自己模板内的包裹 view** 上；若子组件是 `NeoSurface`，用 `flush` 去掉默认内边距后由内层 view 承载 padding/背景/flex。参考修复：`src/pages/user/components/MineTeamIdentityPanel.vue`（当前球队/我的球队卡片）。
-2. **flex 行容器里，子组件宿主节点宽度会收缩为内容宽**，子组件内部的 `width: 100%`（如 `NeoButton block`）相对收缩后的宿主计算，无法撑满容器，表现为按钮靠右、只有文字宽。正确做法：由 flex 容器侧解决——容器改 `flex-direction: column` + `align-items: stretch`，让 flex 布局算法直接拉伸宿主节点。参考修复：`src/components/neo/NeoStickyActionBar.vue` 的 `__actions`。
+1. **不要用 `custom-class` + 父级 scoped 样式给子组件根节点做布局**。父级 scoped 选择器带父组件作用域 id（如 `.mine-current-team.data-v-xxx`），编译后该类落在子组件内部根 view 上，既没有父级作用域 id、又被组件样式隔离挡住，整条规则失效，布局退化为纵向堆叠。正确做法：布局类加在**自己模板内的包裹 view** 上；若子组件是 `AppSurface`，用 `flush` 去掉默认内边距后由内层 view 承载 padding/背景/flex。参考修复：`src/pages/user/components/MineTeamIdentityPanel.vue`（当前球队/我的球队卡片）。
+2. **flex 行容器里，子组件宿主节点宽度会收缩为内容宽**，子组件内部的 `width: 100%`（如 `AppButton block`）相对收缩后的宿主计算，无法撑满容器，表现为按钮靠右、只有文字宽。正确做法：由 flex 容器侧解决——容器改 `flex-direction: column` + `align-items: stretch`，让 flex 布局算法直接拉伸宿主节点。参考修复：`src/components/ui/StickyActionBar.vue` 的 `__actions`。
 
-通用原则：**H5 显示正常不代表小程序正常**，凡涉及跨组件的宽度/布局样式（`width:100%`、flex 对齐、custom-class），必须在 mp-weixin 端实际验证。若需批量排查存量问题，可全局搜索 `custom-class=` 落在 `Neo*` 组件上的用法。
+通用原则：**H5 显示正常不代表小程序正常**，凡涉及跨组件的宽度/布局样式（`width:100%`、flex 对齐、custom-class），必须在 mp-weixin 端实际验证。若需批量排查存量问题，可全局搜索 `custom-class=` 落在 `src/components/ui/*` 组件上的用法。
 
 ## 验证建议
 

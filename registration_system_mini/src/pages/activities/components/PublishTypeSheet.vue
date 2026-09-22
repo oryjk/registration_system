@@ -1,5 +1,9 @@
 <script setup lang="ts">
-defineProps<{
+import { computed } from "vue";
+import { useOverlayPresence } from "@/components/ui/useOverlayPresence";
+import { prefersReducedMotion } from "@/utils/reducedMotion";
+
+const props = defineProps<{
   visible: boolean;
   /** 散人（无可管理球队/场馆身份）不能以球队名义发布，按钮置灰但可点击触发引导。 */
   teamPublishDisabled?: boolean;
@@ -11,21 +15,39 @@ const emit = defineEmits<{
   (event: "publishIndividual"): void;
 }>();
 
+// 与确认弹窗/底栏创建菜单同一退场时序：淡出期间遮罩继续拦截点击，防点穿。
+// 退场时长在关闭时刻实时读取"减少动态效果"，设置切换后立即生效。
+const { rendered, leaving } = useOverlayPresence(
+  computed(() => props.visible),
+  { leaveDurationMs: () => prefersReducedMotion() ? 0 : 210 },
+);
+
 function handleClose() {
+  if (!rendered.value || leaving.value) return;
   emit("close");
 }
 
 function handlePublishTeam() {
+  // 事件入口检查可见状态：面板不可见/退场中一律不触发发布跳转，杜绝透明热区误触。
+  if (!rendered.value || leaving.value) return;
   emit("publishTeam");
 }
 
 function handlePublishIndividual() {
+  if (!rendered.value || leaving.value) return;
   emit("publishIndividual");
 }
 </script>
 
 <template>
-  <view :class="['publish-menu-overlay', visible ? 'publish-menu-overlay-open' : '']" @tap="handleClose">
+  <view
+    :class="[
+      'publish-menu-overlay',
+      rendered && !leaving ? 'publish-menu-overlay-open' : '',
+      leaving ? 'publish-menu-overlay-closing' : '',
+    ]"
+    @tap="handleClose"
+  >
     <view class="publish-menu-backdrop" />
     <view class="publish-menu-actions" @tap.stop>
       <view
@@ -59,7 +81,7 @@ function handlePublishIndividual() {
   z-index: 120;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 240ms ease;
+  transition: opacity var(--ui-motion-overlay-duration) ease;
 }
 
 .publish-menu-overlay-open {
@@ -67,10 +89,16 @@ function handlePublishIndividual() {
   pointer-events: auto;
 }
 
+/* 淡出期间保持点击拦截，退场结束才放行页面（防点穿）。 */
+.publish-menu-overlay-closing {
+  opacity: 0;
+  pointer-events: auto;
+}
+
 .publish-menu-backdrop {
   position: absolute;
   inset: 0;
-  background: var(--neo-color-overlay);
+  background: var(--ui-color-overlay);
 }
 
 .publish-menu-actions {
@@ -89,19 +117,21 @@ function handlePublishIndividual() {
   align-items: center;
   gap: 18rpx;
   width: 190rpx;
-  color: var(--neo-color-text-inverse);
+  color: var(--ui-color-text-inverse);
   font-size: 25rpx;
-  font-weight: 900;
+  font-weight: 600;
   text-align: center;
   opacity: 0;
   transform: translateY(70rpx) scale(0.82);
-  transition: opacity 260ms ease, transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
-  pointer-events: auto;
+  transition: opacity var(--ui-motion-overlay-duration) ease, transform var(--ui-motion-overlay-duration) var(--ui-motion-ease-out);
+  /* 关闭/退场态彻底禁点：子元素显式 none，不依赖遮罩层的 pointer-events 继承。 */
+  pointer-events: none;
 }
 
 .publish-menu-overlay-open .publish-menu-action {
   opacity: 1;
   transform: translateY(0) scale(1);
+  pointer-events: auto;
 }
 
 .publish-menu-action-left {
@@ -122,31 +152,22 @@ function handlePublishIndividual() {
   filter: grayscale(1);
 }
 
-.publish-menu-close {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-md);
-}
-
-/* 与 BottomTabBar 创建菜单按钮保持一致：青柠色块 + 墨色描边 + 硬偏移阴影。 */
+/* 与 BottomTabBar 创建菜单按钮保持一致：主题色圆形按钮 + 柔和阴影。 */
 .publish-menu-action-button {
   display: flex;
   align-items: center;
   justify-content: center;
   width: 116rpx;
   height: 116rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-md);
-  background: var(--neo-color-accent);
-  box-shadow: 4rpx 4rpx 0 var(--neo-color-text);
+  border-radius: var(--ui-radius-round);
+  background: var(--ui-color-accent);
+  box-shadow: var(--ui-shadow-card);
 }
 
 .publish-menu-action-icon {
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
   font-size: 38rpx;
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .publish-menu-action-label {
@@ -158,27 +179,32 @@ function handlePublishIndividual() {
   position: absolute;
   left: 50%;
   bottom: -18rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 96rpx;
   height: 96rpx;
   margin-left: -48rpx;
-  background: var(--neo-color-accent);
-  color: var(--neo-color-text);
-  box-shadow: 4rpx 4rpx 0 var(--neo-color-text);
+  border-radius: var(--ui-radius-round);
+  background: var(--ui-color-accent);
+  color: var(--ui-color-text);
+  box-shadow: var(--ui-shadow-card);
   opacity: 0;
   transform: translateY(72rpx) rotate(-90deg) scale(0.84);
-  transition: opacity 260ms ease, transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition: opacity var(--ui-motion-overlay-duration) ease, transform var(--ui-motion-overlay-duration) var(--ui-motion-ease-out);
   transition-delay: 130ms;
-  pointer-events: auto;
+  pointer-events: none;
 }
 
 .publish-menu-overlay-open .publish-menu-close {
   opacity: 1;
   transform: translateY(0) rotate(0deg) scale(1);
+  pointer-events: auto;
 }
 
 .publish-menu-close-symbol {
   font-size: 46rpx;
-  font-weight: 900;
+  font-weight: 600;
   line-height: 1;
 }
 
@@ -192,4 +218,13 @@ function handlePublishIndividual() {
   transform: translateX(-50%);
 }
 /* #endif */
+
+/* H5 减少动态效果：菜单直接切换（JS 侧同步跳过移除延迟）。 */
+@media (prefers-reduced-motion: reduce) {
+  .publish-menu-overlay,
+  .publish-menu-action,
+  .publish-menu-close {
+    transition: none;
+  }
+}
 </style>

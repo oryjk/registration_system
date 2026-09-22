@@ -3,15 +3,15 @@ import { useAccentTheme } from "@/stores/theme";
 import { onHide, onLoad, onShow, onUnload, onShareAppMessage, onShareTimeline } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
 import BottomTabBar from "@/components/BottomTabBar.vue";
-import NeoButton from "@/components/neo/NeoButton.vue";
-import NeoSectionHeader from "@/components/neo/NeoSectionHeader.vue";
-import NeoRunningLoader from "@/components/neo/NeoRunningLoader.vue";
+import AppButton from "@/components/ui/AppButton.vue";
+import SectionHeader from "@/components/ui/SectionHeader.vue";
+import RunningLoader from "@/components/ui/RunningLoader.vue";
 import HallCalendarStrip from "./components/HallCalendarStrip.vue";
 import HallQuickFilters from "./components/HallQuickFilters.vue";
 import HallMatchList from "./components/HallMatchList.vue";
 import PublishTypeSheet from "./components/PublishTypeSheet.vue";
-import NeoConfirmDialog from "@/components/neo/NeoConfirmDialog.vue";
-import { useNeoConfirmDialog } from "@/components/neo/useNeoConfirmDialog";
+import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
+import { useConfirmDialog } from "@/components/ui/useConfirmDialog";
 import { useHallPage } from "./useHallPage";
 import { getCustomNavMetrics } from "@/utils/customNav";
 import { MATCH_CREATION_IDENTITY_HINT } from "@/utils/matchCreationAccess";
@@ -52,7 +52,7 @@ const {
   handleConfirmSecondary,
   handleConfirmClose,
   handleConfirmLink,
-} = useNeoConfirmDialog();
+} = useConfirmDialog();
 const publishTypeSheetVisible = ref(false);
 const navigatingMatchId = ref("");
 const shareTitle = "约队大厅：看看可报名的散人局";
@@ -114,7 +114,8 @@ function handleSessionLoginCompleted() {
 }
 
 onShow(() => {
-  uni.hideTabBar({ animation: false });
+  // H5 路由切换时 onShow 可能早于 TabBar 挂载，此时无需隐藏。
+  uni.hideTabBar({ animation: false, fail: () => {} });
   startWindowTimer();
   void loadPageData({ preserveContent: true });
 });
@@ -148,16 +149,16 @@ onShareTimeline(() => ({
 
 <template>
   <page-meta :page-style="themePageStyle" />
-  <view class="hall-page" :style="pageStyle">
+  <view class="app-theme-scope hall-page" :style="[themePageStyle, pageStyle]">
     <AppTabHeader title="约队大厅" />
 
     <view class="hall-content" :style="contentStyle">
-      <NeoRunningLoader v-if="showInitialLoadingState" text="正在奔向球场" />
+      <RunningLoader v-if="showInitialLoadingState" text="正在奔向球场" />
 
       <view v-else-if="isGuestMode" class="hall-guest-card">
         <text class="hall-guest-title">登录后查看约队大厅</text>
         <text class="hall-guest-subtitle">浏览球队约队和散人约局，报名凑局一场就出发。</text>
-        <NeoButton block @click="handleLogin">立即登录</NeoButton>
+        <AppButton block @click="handleLogin">立即登录</AppButton>
       </view>
 
       <template v-else>
@@ -186,12 +187,15 @@ onShareTimeline(() => ({
 
           <!-- 审核隐藏期不显示发布入口（与底栏创建按钮一致）；独立成行的主按钮，游客仍显示并引导登录。 -->
           <view v-if="canOpenPublishSheet" class="hall-publish-row">
-            <NeoButton block variant="lime" @click="openPublishTypeSheet">发布约队 / 散人约球</NeoButton>
+            <AppButton block variant="lime" @click="openPublishTypeSheet">发布约队 / 散人约球</AppButton>
           </view>
 
-          <NeoSectionHeader title="可加入的比赛" marker="约" />
+          <SectionHeader title="可加入的比赛" />
 
+          <!-- key 绑定筛选组合：仅筛选变化时重播轻淡入；加载更多追加不清空不重播。 -->
           <HallMatchList
+            :key="`${activeKind}-${activeSize}-${selectedDateKey}`"
+            class="hall-list-transition"
             :cards="hallCards"
             @match-tap="openMatchDetail"
           />
@@ -216,8 +220,8 @@ onShareTimeline(() => ({
       @publish-individual="handlePublishIndividualChallenge"
     />
 
-    <!-- 散人点击“球队约队”时的身份引导弹窗（neo 风格，单按钮提示）。 -->
-    <NeoConfirmDialog
+    <!-- 散人点击“球队约队”时的身份引导弹窗（统一风格，单按钮提示）。 -->
+    <ConfirmDialog
       :visible="confirmDialogVisible"
       :title="confirmDialogState.title"
       :message="confirmDialogState.message"
@@ -244,7 +248,7 @@ onShareTimeline(() => ({
 .hall-page {
   position: relative;
   min-height: 100vh;
-  background: var(--neo-color-page);
+  background: var(--ui-color-page);
   box-sizing: border-box;
 }
 
@@ -269,39 +273,36 @@ onShareTimeline(() => ({
   margin-top: 20rpx;
 }
 
-.hall-guest-card {
-  margin-top: 24rpx;
+.hall-guest-card {  margin-top: 24rpx;
   padding: 32rpx 28rpx;
-  border: var(--neo-border-strong);
-  border-radius: var(--neo-radius-md);
-  background: var(--neo-color-surface);
-  box-shadow: var(--neo-shadow-raised);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-card);
+  background: var(--ui-color-surface);
+  box-shadow: var(--ui-shadow-raised);
 }
 
 .hall-guest-title {
   display: block;
   font-size: 34rpx;
-  font-weight: 900;
-  color: var(--neo-color-text);
+  font-weight: 600;
+  color: var(--ui-color-text);
 }
 
-.hall-guest-subtitle {
-  display: block;
+.hall-guest-subtitle {  display: block;
   margin-top: 12rpx;
   margin-bottom: 26rpx;
   font-size: 26rpx;
   line-height: 1.6;
-  color: var(--neo-color-text-muted);
-  font-weight: 600;
+  color: var(--ui-color-text-muted);
+  font-weight: 400;
 }
 
-.hall-empty {
-  margin-top: 24rpx;
+.hall-empty {  margin-top: 24rpx;
   padding: 28rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-surface);
-  color: var(--neo-color-text-muted);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-button);
+  background: var(--ui-color-surface);
+  color: var(--ui-color-text-muted);
   font-size: 28rpx;
   line-height: 1.6;
 }
@@ -312,33 +313,55 @@ onShareTimeline(() => ({
   font-size: 26rpx;
 }
 
-.hall-empty-action {
-  display: inline-flex;
+.hall-empty-action {  display: inline-flex;
   align-items: center;
   justify-content: center;
   margin-top: 16rpx;
   padding: 10rpx 18rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-surface);
-  color: var(--neo-color-text);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-button);
+  background: var(--ui-color-surface);
+  color: var(--ui-color-text);
   font-size: 24rpx;
-  font-weight: 700;
+  font-weight: 500;
 }
 
-.hall-load-more {
-  display: flex;
+.hall-load-more {  display: flex;
   align-items: center;
   justify-content: center;
   margin-top: 24rpx;
   margin-bottom: 16rpx;
   height: 64rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-surface);
-  color: var(--neo-color-text);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-button);
+  background: var(--ui-color-surface);
+  color: var(--ui-color-text);
   font-size: 26rpx;
-  font-weight: 800;
+  font-weight: 500;
+}
+
+/* 筛选变化时列表内容轻淡入：不超过 8rpx 位移，控件本身不动。 */
+.hall-list-transition {
+  animation: hall-list-fade-in 160ms ease;
+}
+
+@keyframes hall-list-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(6rpx);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* H5 减少动态效果：列表直接切换。 */
+@media (prefers-reduced-motion: reduce) {
+  .hall-list-transition {
+    animation: none;
+  }
 }
 
 /* #ifdef H5 */

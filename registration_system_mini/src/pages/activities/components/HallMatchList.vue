@@ -26,7 +26,7 @@ const emit = defineEmits<{
 .hall-match-list {
   display: flex;
   flex-direction: column;
-  gap: var(--neo-card-list-gap);
-  margin-top: var(--neo-card-list-offset);
+  gap: var(--ui-card-list-gap);
+  margin-top: var(--ui-card-list-offset);
 }
 </style>

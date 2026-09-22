@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import NeoSurface from "@/components/neo/NeoSurface.vue";
-import NeoTag from "@/components/neo/NeoTag.vue";
+import AppSurface from "@/components/ui/AppSurface.vue";
+import AppTag from "@/components/ui/AppTag.vue";
 import type { AppMatchDetailResponse } from "@/types/match";
 import { formatDateTimeWithWeekdayLabel } from "@/utils/datetime";
 
@@ -15,12 +15,12 @@ const hostProgressLabel = hostGroup?.max_players
 </script>
 
 <template>
-  <NeoSurface variant="raised">
+  <AppSurface variant="raised">
     <view class="inherit-head">
       <text class="inherit-title">{{ detail.match.name }}</text>
       <view class="inherit-tags">
-        <NeoTag tone="blue">球队约队</NeoTag>
-        <NeoTag tone="amber">招对手中</NeoTag>
+        <AppTag tone="blue">球队约队</AppTag>
+        <AppTag tone="amber">招对手中</AppTag>
       </view>
     </view>
 
@@ -48,7 +48,7 @@ const hostProgressLabel = hostGroup?.max_players
     </view>
 
     <view class="inherit-note">以上信息由对方球队发布，接约时自动沿用，无需重复填写。</view>
-  </NeoSurface>
+  </AppSurface>
 </template>
 
 <style scoped>
@@ -63,8 +63,8 @@ const hostProgressLabel = hostGroup?.max_players
   flex: 1;
   font-size: 32rpx;
   line-height: 1.35;
-  font-weight: 900;
-  color: var(--neo-color-text);
+  font-weight: 600;
+  color: var(--ui-color-text);
 }
 
 .inherit-tags {
@@ -75,7 +75,7 @@ const hostProgressLabel = hostGroup?.max_players
 
 .inherit-rows {
   margin-top: 20rpx;
-  border-top: var(--neo-border-default);
+  border-top: var(--ui-border-default);
 }
 
 .inherit-row {
@@ -84,7 +84,7 @@ const hostProgressLabel = hostGroup?.max_players
   justify-content: space-between;
   gap: 20rpx;
   padding: 16rpx 0;
-  border-bottom: var(--neo-border-default);
+  border-bottom: var(--ui-border-default);
 }
 
 .inherit-row:last-child {
@@ -94,27 +94,27 @@ const hostProgressLabel = hostGroup?.max_players
 .inherit-row-label {
   flex-shrink: 0;
   font-size: 26rpx;
-  font-weight: 700;
-  color: var(--neo-color-text-muted);
+  font-weight: 400;
+  color: var(--ui-color-text-muted);
 }
 
 .inherit-row-value {
   flex: 1;
   text-align: right;
   font-size: 26rpx;
-  font-weight: 800;
-  color: var(--neo-color-text);
+  font-weight: 500;
+  color: var(--ui-color-text);
 }
 
 .inherit-note {
   margin-top: 18rpx;
   padding: 14rpx 18rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-muted);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-button);
+  background: var(--ui-color-muted);
   font-size: 22rpx;
   line-height: 1.5;
   font-weight: 600;
-  color: var(--neo-color-text-muted);
+  color: var(--ui-color-text-muted);
 }
 </style>

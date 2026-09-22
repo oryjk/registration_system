@@ -126,6 +126,8 @@ function handleMatchEndTimeChange(event: Event) {
           v-for="option in recentDateOptions"
           :key="option.pickerValue"
           :class="['date-option-card', selectedDateValue === option.pickerValue ? 'date-option-active' : '']"
+          hover-class="date-option-card--pressed"
+          :hover-stay-time="100"
           @tap="handleSelectDateOption(option.value)"
         >
           <text class="date-option-top">{{ option.topLabel }}</text>
@@ -177,9 +179,9 @@ function handleMatchEndTimeChange(event: Event) {
 }
 
 .date-head-title {
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
   font-size: 24rpx;
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .date-more-link {
@@ -188,12 +190,12 @@ function handleMatchEndTimeChange(event: Event) {
   justify-content: center;
   height: 56rpx;
   padding: 0 20rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-surface);
-  color: var(--neo-color-text);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-button);
+  background: var(--ui-color-surface);
+  color: var(--ui-color-text);
   font-size: 22rpx;
-  font-weight: 800;
+  font-weight: 500;
 }
 
 .date-option-scroll {
@@ -214,43 +216,48 @@ function handleMatchEndTimeChange(event: Event) {
   justify-content: center;
   width: 132rpx;
   min-height: 164rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-md);
-  background: var(--neo-color-surface);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-button);
+  background: var(--ui-color-surface);
   box-sizing: border-box;
+  transition: transform var(--ui-motion-press-duration) var(--ui-motion-ease-out), background-color var(--ui-motion-switch-duration) var(--ui-motion-ease-out), border-color var(--ui-motion-switch-duration) var(--ui-motion-ease-out);
+}
+
+.date-option-card--pressed {
+  transform: scale(0.98);
 }
 
 .date-option-active {
-  border: var(--neo-border-strong);
-  background: var(--neo-color-accent);
-  box-shadow: 4rpx 4rpx 0 var(--neo-color-text);
+  border-color: var(--ui-color-accent);
+  background: var(--ui-color-accent-soft);
 }
 
 .date-option-top {
-  color: var(--neo-color-text-muted);
+  color: var(--ui-color-text-muted);
   font-size: 24rpx;
-  font-weight: 800;
+  font-weight: 500;
   line-height: 1.2;
 }
 
 .date-option-day {
   margin-top: 10rpx;
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
   font-size: 56rpx;
-  font-weight: 900;
+  font-weight: 600;
   line-height: 1;
+  font-variant-numeric: tabular-nums;
 }
 
 .date-option-month {
   margin-top: 8rpx;
-  color: var(--neo-color-text-muted);
+  color: var(--ui-color-text-muted);
   font-size: 20rpx;
-  font-weight: 700;
+  font-weight: 400;
 }
 
 .date-option-active .date-option-top,
 .date-option-active .date-option-month {
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
 }
 
 .time-tile-grid {
@@ -264,9 +271,9 @@ function handleMatchEndTimeChange(event: Event) {
   width: 100%;
   min-height: 108rpx;
   padding: 18rpx 22rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-muted);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-button);
+  background: var(--ui-color-surface);
   box-sizing: border-box;
   display: grid;
   grid-template-columns: 180rpx minmax(0, 1fr) auto;
@@ -276,9 +283,9 @@ function handleMatchEndTimeChange(event: Event) {
 
 .time-tile-label {
   display: block;
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
   font-size: 26rpx;
-  font-weight: 900;
+  font-weight: 500;
   line-height: 1.25;
 }
 
@@ -292,9 +299,9 @@ function handleMatchEndTimeChange(event: Event) {
 .time-tile-value {
   min-width: 0;
   flex: 1;
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
   font-size: 28rpx;
-  font-weight: 800;
+  font-weight: 600;
   line-height: 1.35;
   white-space: nowrap;
   overflow: hidden;
@@ -302,22 +309,33 @@ function handleMatchEndTimeChange(event: Event) {
 }
 
 .time-tile-value-placeholder {
-  color: var(--neo-color-text-disabled);
+  color: var(--ui-color-text-disabled);
 }
 
 .time-tile-arrow {
   flex: 0 0 auto;
-  color: var(--neo-color-text-muted);
+  color: var(--ui-color-text-muted);
   font-size: 44rpx;
-  font-weight: 700;
+  font-weight: 400;
   line-height: 1;
 }
 
 .form-error {
   margin-top: 16rpx;
-  color: var(--neo-color-danger);
+  color: var(--ui-color-danger);
   font-size: 22rpx;
-  font-weight: 800;
+  font-weight: 500;
   line-height: 1.45;
+}
+
+/* H5 减少动态效果：日期卡直接切换选中态，无缩放位移。 */
+@media (prefers-reduced-motion: reduce) {
+  .date-option-card {
+    transition: none;
+  }
+
+  .date-option-card--pressed {
+    transform: none;
+  }
 }
 </style>

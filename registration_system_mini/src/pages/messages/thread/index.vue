@@ -3,7 +3,7 @@ import { useAccentTheme } from "@/stores/theme";
 import { computed, ref } from "vue";
 import { onLoad, onShow } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
-import NeoButton from "@/components/neo/NeoButton.vue";
+import AppButton from "@/components/ui/AppButton.vue";
 import { getCaptainThread, replyCaptainMessage } from "@/api/captainMessage";
 import type { AppCaptainMessageItem, AppCaptainThreadDetail } from "@/types/captainMessage";
 import { formatDateLabel } from "@/utils/datetime";
@@ -87,7 +87,7 @@ onShow(() => {
 
 <template>
   <page-meta :page-style="themePageStyle" />
-  <view class="thread-page" :style="contentStyle">
+  <view class="app-theme-scope thread-page" :style="[themePageStyle, contentStyle]">
     <AppTabHeader title="球队留言" showBack />
 
     <view class="thread-content">
@@ -125,9 +125,9 @@ onShow(() => {
             :disabled="isSubmitting"
             @input="replyContent = ($event as any).detail.value"
           />
-          <NeoButton size="sm" :loading="isSubmitting" @click="void submitReply()">
+          <AppButton size="sm" :loading="isSubmitting" @click="void submitReply()">
             {{ isSubmitting ? "发送中" : "发送" }}
-          </NeoButton>
+          </AppButton>
         </view>
       </template>
     </view>
@@ -138,7 +138,7 @@ onShow(() => {
 .thread-page {
   min-height: 100vh;
   padding: 0 28rpx calc(180rpx + env(safe-area-inset-bottom));
-  background: var(--neo-color-page);
+  background: var(--ui-color-page);
   box-sizing: border-box;
 }
 
@@ -148,25 +148,25 @@ onShow(() => {
   justify-content: space-between;
   gap: 18rpx;
   padding: 26rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-md);
-  background: var(--neo-color-surface);
-  box-shadow: var(--neo-shadow-raised);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-card);
+  background: var(--ui-color-surface);
+  box-shadow: var(--ui-shadow-raised);
 }
 
 .thread-match {
   display: block;
   font-size: 32rpx;
-  font-weight: 900;
-  color: var(--neo-color-text);
+  font-weight: 600;
+  color: var(--ui-color-text);
 }
 
 .thread-copy {
   display: block;
   margin-top: 8rpx;
   font-size: 24rpx;
-  font-weight: 700;
-  color: var(--neo-color-text-muted);
+  font-weight: 400;
+  color: var(--ui-color-text-muted);
 }
 
 .thread-messages {
@@ -194,23 +194,23 @@ onShow(() => {
 
 .thread-bubble {
   padding: 20rpx 24rpx;
-  border-radius: var(--neo-radius-md);
+  border-radius: var(--ui-radius-card);
 }
 
 .thread-bubble-own {
-  background: var(--neo-color-accent);
-  border: var(--neo-border-default);
+  background: var(--ui-color-accent);
+  border: var(--ui-border-default);
 }
 
 .thread-bubble-other {
-  background: var(--neo-color-surface);
-  border: var(--neo-border-default);
+  background: var(--ui-color-surface);
+  border: var(--ui-border-default);
 }
 
 .thread-bubble-text {
   font-size: 28rpx;
-  font-weight: 700;
-  color: var(--neo-color-text);
+  font-weight: 400;
+  color: var(--ui-color-text);
   line-height: 1.55;
   word-break: break-all;
 }
@@ -218,8 +218,8 @@ onShow(() => {
 .thread-message-meta {
   margin-top: 8rpx;
   font-size: 22rpx;
-  font-weight: 700;
-  color: var(--neo-color-text-muted);
+  font-weight: 400;
+  color: var(--ui-color-text-muted);
 }
 
 .thread-composer {
@@ -232,8 +232,8 @@ onShow(() => {
   align-items: flex-end;
   gap: 16rpx;
   padding: 20rpx 28rpx calc(20rpx + env(safe-area-inset-bottom));
-  background: var(--neo-color-surface);
-  border-top: var(--neo-border-default);
+  background: var(--ui-color-surface);
+  border-top: var(--ui-border-default);
 }
 
 .thread-textarea {
@@ -241,20 +241,20 @@ onShow(() => {
   box-sizing: border-box;
   height: 120rpx;
   padding: 18rpx 20rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-page);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-button);
+  background: var(--ui-color-page);
   font-size: 28rpx;
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
 }
 
 .thread-empty {
   margin-top: 24rpx;
   padding: 28rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-surface);
-  color: var(--neo-color-text-muted);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-button);
+  background: var(--ui-color-surface);
+  color: var(--ui-color-text-muted);
   font-size: 28rpx;
   line-height: 1.6;
 }

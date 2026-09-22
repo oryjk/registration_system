@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
-import NeoButton from "@/components/neo/NeoButton.vue";
+import AppButton from "@/components/ui/AppButton.vue";
 import { resumeSessionBootstrap, useAppSession } from "@/stores/appSession";
 import { hasManualLogout } from "@/utils/authStorage";
 
@@ -64,14 +64,14 @@ async function goToLogin() {
 
 <template>
   <view v-if="shouldShow" class="floating-login-prompt">
-    <!-- 卡片皮肤直接用本组件节点实现（token 与 NeoSurface raised 同值）：
+    <!-- 卡片皮肤直接用本组件节点实现（token 与 AppSurface raised 同值）：
          custom-class 无法穿透小程序组件样式隔离，fixed 定位与 flex 布局会全部失效。 -->
     <view class="floating-login-prompt__card">
       <view class="floating-login-prompt__copy">
         <text class="floating-login-prompt__title">请先登录</text>
         <text class="floating-login-prompt__text">登录后查看你的比赛、出勤和球队数据。</text>
       </view>
-      <NeoButton variant="lime" size="sm" @click="goToLogin">去登录</NeoButton>
+      <AppButton variant="lime" size="sm" @click="goToLogin">去登录</AppButton>
     </view>
   </view>
 </template>
@@ -91,10 +91,10 @@ async function goToLogin() {
   justify-content: space-between;
   gap: 22rpx;
   padding: 22rpx 24rpx;
-  border: var(--neo-border-strong);
-  border-radius: var(--neo-radius-md);
-  background: var(--neo-color-surface);
-  box-shadow: var(--neo-shadow-raised);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-card);
+  background: var(--ui-color-surface);
+  box-shadow: var(--ui-shadow-raised);
 }
 
 .floating-login-prompt__copy {
@@ -104,18 +104,18 @@ async function goToLogin() {
 
 .floating-login-prompt__title {
   display: block;
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
   font-size: 30rpx;
-  font-weight: 900;
+  font-weight: 600;
   line-height: 1.2;
 }
 
 .floating-login-prompt__text {
   display: block;
   margin-top: 6rpx;
-  color: var(--neo-color-text-muted);
+  color: var(--ui-color-text-muted);
   font-size: 22rpx;
-  font-weight: 700;
+  font-weight: 400;
   line-height: 1.35;
 }
 </style>

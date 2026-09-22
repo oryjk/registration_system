@@ -4,12 +4,12 @@ import { computed, reactive, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
 import MatchScheduleFields from "@/components/MatchScheduleFields.vue";
-import NeoButton from "@/components/neo/NeoButton.vue";
-import NeoSectionHeader from "@/components/neo/NeoSectionHeader.vue";
-import NeoSegmentedControl from "@/components/neo/NeoSegmentedControl.vue";
-import NeoStickyActionBar from "@/components/neo/NeoStickyActionBar.vue";
-import NeoSurface from "@/components/neo/NeoSurface.vue";
-import type { NeoSegmentOption } from "@/components/neo/NeoSegmentedControl.vue";
+import AppButton from "@/components/ui/AppButton.vue";
+import SectionHeader from "@/components/ui/SectionHeader.vue";
+import SegmentedControl from "@/components/ui/SegmentedControl.vue";
+import StickyActionBar from "@/components/ui/StickyActionBar.vue";
+import AppSurface from "@/components/ui/AppSurface.vue";
+import type { SegmentOption } from "@/components/ui/SegmentedControl.vue";
 import { createMatch } from "@/api/match";
 import { preloadMiniReviewStatus, useMiniReviewStatus } from "@/stores/miniReview";
 import { useTeamContext } from "@/stores/teamContext";
@@ -54,7 +54,7 @@ const canSubmit = computed(
 );
 const defaultMinPlayers = computed(() => Number(form.playersPerTeam || 0) * 2);
 const defaultMaxPlayers = computed(() => Number(form.playersPerTeam || 0) * 2 + 4);
-const paymentModeOptions: NeoSegmentOption[] = [
+const paymentModeOptions: SegmentOption[] = [
   { label: "赛后支付", value: "postpaid" },
   { label: "赛前支付", value: "prepaid" },
 ];
@@ -200,20 +200,14 @@ onShow(async () => {
 
 <template>
   <page-meta :page-style="themePageStyle" />
-  <view v-if="reviewGateReady" class="individual-create-page" :style="pageStyle">
+  <view v-if="reviewGateReady" class="app-theme-scope individual-create-page" :style="[themePageStyle, pageStyle]">
     <AppTabHeader title="散人约球" showBack />
 
     <view class="create-page-content">
-      <NeoSurface variant="dark" custom-class="create-hero">
-        <view class="create-hero__copy">
-          <text class="create-hero-tag">散人约球</text>
-          <text class="create-hero-title">无球队 · 散人直接报名</text>
-          <text class="create-hero-copy">{{ heroCopy }}</text>
-        </view>
-      </NeoSurface>
+      <text class="create-page-note">{{ heroCopy }}</text>
 
-      <NeoSurface custom-class="form-card">
-        <NeoSectionHeader title="基础信息" marker="01" caption="标题与比赛人制" />
+      <AppSurface custom-class="form-card">
+        <SectionHeader title="基础信息" caption="标题与比赛人制" />
         <view class="form-field">
           <text class="form-label">标题</text>
           <input v-model="form.title" class="form-input" placeholder="例如：周三晚散人局，还缺 4 人" placeholder-class="form-placeholder" />
@@ -243,19 +237,19 @@ onShow(async () => {
         <text class="form-caption form-caption-field">
           比赛人制为每队人数；默认 {{ defaultMinPlayers }} 人开踢，最多 {{ form.maxPlayers || defaultMaxPlayers }} 人。
         </text>
-      </NeoSurface>
+      </AppSurface>
 
-      <NeoSurface custom-class="form-card">
+      <AppSurface custom-class="form-card">
         <MatchScheduleFields
           :holding-date="holdingDate"
           :match-end-time="matchEndTime"
           @update:holding-date="holdingDate = $event"
           @update:match-end-time="matchEndTime = $event"
         />
-      </NeoSurface>
+      </AppSurface>
 
-      <NeoSurface custom-class="form-card">
-        <NeoSectionHeader title="场地与费用" marker="02" caption="场地支持文字地址或地图选择" />
+      <AppSurface custom-class="form-card">
+        <SectionHeader title="场地与费用" caption="场地支持文字地址或地图选择" />
         <view class="form-field">
           <text class="form-label">场地</text>
           <view class="form-location-row">
@@ -291,26 +285,26 @@ onShow(async () => {
             :show-confirm-bar="false"
           />
         </view>
-      </NeoSurface>
+      </AppSurface>
 
-      <NeoSurface custom-class="form-card">
-        <NeoSectionHeader title="支付方式" marker="03" caption="报名费的付款节奏" />
+      <AppSurface custom-class="form-card">
+        <SectionHeader title="支付方式" caption="报名费的付款节奏" />
         <view class="form-field">
-          <NeoSegmentedControl
+          <SegmentedControl
             :model-value="form.paymentMode"
             :options="paymentModeOptions"
             @change="handlePaymentModeChange"
           />
           <text class="form-caption">{{ paymentModeCaption }}</text>
         </view>
-      </NeoSurface>
+      </AppSurface>
     </view>
 
-    <NeoStickyActionBar>
-      <NeoButton block variant="lime" :disabled="!canSubmit" :loading="submitting" @click="handleSubmit">
+    <StickyActionBar>
+      <AppButton block variant="lime" :disabled="!canSubmit" :loading="submitting" @click="handleSubmit">
         {{ submitting ? "发布中..." : "发布散人约球" }}
-      </NeoButton>
-    </NeoStickyActionBar>
+      </AppButton>
+    </StickyActionBar>
   </view>
 </template>
 
@@ -318,8 +312,8 @@ onShow(async () => {
 .individual-create-page {
   min-height: 100vh;
   /* 底部留白用操作栏 clearance token：含悬浮操作栏高度与全面屏安全区，硬编码 132rpx 会被按钮遮挡。 */
-  padding: 0 28rpx var(--neo-action-bar-clearance);
-  background: var(--neo-color-page);
+  padding: 0 28rpx var(--ui-action-bar-clearance);
+  background: var(--ui-color-page);
   box-sizing: border-box;
 }
 
@@ -328,55 +322,12 @@ onShow(async () => {
   margin: 0 auto;
 }
 
-.create-hero {
-  margin: 22rpx 0 6rpx;
-  padding: 28rpx 26rpx;
-  border: var(--neo-border-strong);
-  border-radius: var(--neo-radius-md);
-  background: var(--neo-color-hero);
-  box-shadow: 8rpx 8rpx 0 var(--neo-color-accent);
-}
-
-.create-hero__copy {
-  min-width: 0;
-}
-
-.create-hero-tag {
-  display: inline-flex;
-  padding: 6rpx 14rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-accent);
-  color: var(--neo-color-text);
-  font-size: 22rpx;
-  font-weight: 900;
-}
-
-.create-hero-title {
-  display: block;
-  margin-top: 14rpx;
-  color: var(--neo-color-hero-fg);
-  font-size: 40rpx;
-  font-weight: 900;
-  line-height: 1.18;
-  word-break: break-word;
-}
-
-.create-hero-copy {
-  display: block;
-  margin-top: 12rpx;
-  color: rgba(255, 255, 255, 0.72);
-  font-size: 23rpx;
-  font-weight: 700;
-  line-height: 1.55;
-}
-
 .form-card {
   margin-top: 24rpx;
   padding: 6rpx 24rpx 24rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-md);
-  box-shadow: 8rpx 8rpx 0 var(--neo-color-text);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-card);
+  box-shadow: var(--ui-shadow-card);
 }
 
 .form-grid {
@@ -392,17 +343,17 @@ onShow(async () => {
 .form-label {
   display: block;
   margin-bottom: 10rpx;
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
   font-size: 24rpx;
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .form-caption {
   display: block;
   margin-top: 12rpx;
-  color: var(--neo-color-text-muted);
+  color: var(--ui-color-text-muted);
   font-size: 22rpx;
-  font-weight: 700;
+  font-weight: 400;
   line-height: 1.45;
 }
 
@@ -413,12 +364,12 @@ onShow(async () => {
 .form-input,
 .form-textarea {
   width: 100%;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-muted);
-  color: var(--neo-color-text);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-button);
+  background: var(--ui-color-surface);
+  color: var(--ui-color-text);
   font-size: 28rpx;
-  font-weight: 800;
+  font-weight: 500;
   box-sizing: border-box;
 }
 
@@ -430,7 +381,7 @@ onShow(async () => {
 }
 
 .form-placeholder {
-  color: var(--neo-color-text-disabled);
+  color: var(--ui-color-text-disabled);
   font-size: 28rpx;
 }
 
@@ -459,12 +410,12 @@ onShow(async () => {
   width: 150rpx;
   height: 84rpx;
   padding: 0 14rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-text);
-  color: var(--neo-color-text-inverse);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-button);
+  background: var(--ui-color-text);
+  color: var(--ui-color-text-inverse);
   font-size: 23rpx;
-  font-weight: 900;
+  font-weight: 600;
   white-space: nowrap;
   box-sizing: border-box;
 }
@@ -473,12 +424,13 @@ onShow(async () => {
   display: block;
   margin-top: 14rpx;
   padding: 16rpx 18rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-success);
-  color: var(--neo-color-text);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-button);
+  background: var(--ui-color-success);
+  color: var(--ui-color-text);
   font-size: 22rpx;
-  font-weight: 800;
+  font-weight: 500;
   line-height: 1.5;
 }
+.create-page-note { display: block; margin: 4rpx 4rpx 20rpx; color: var(--ui-color-text-muted); font-size: 24rpx; line-height: 1.5; }
 </style>

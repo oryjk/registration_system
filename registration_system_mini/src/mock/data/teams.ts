@@ -41,7 +41,7 @@ export const mockTeams: BackendTeam[] = [
 ];
 
 function buildMembers(
-  teamId: number,
+  _teamId: number,
   captainId: number,
   memberIds: number[],
   joinedAtByUserId: Record<number, string> = {},

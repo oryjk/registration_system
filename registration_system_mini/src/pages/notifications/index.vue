@@ -3,9 +3,9 @@ import { useAccentTheme } from "@/stores/theme";
 import { computed, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
-import NeoRunningLoader from "@/components/neo/NeoRunningLoader.vue";
-import NeoSegmentedControl from "@/components/neo/NeoSegmentedControl.vue";
-import NeoSurface from "@/components/neo/NeoSurface.vue";
+import RunningLoader from "@/components/ui/RunningLoader.vue";
+import SegmentedControl from "@/components/ui/SegmentedControl.vue";
+import AppSurface from "@/components/ui/AppSurface.vue";
 import CaptainThreadsSection from "./components/CaptainThreadsSection.vue";
 import { listNotifications, markNotificationRead } from "@/api/notification";
 import { setCaptainUnreadCount, setUnreadCount, syncUnreadCount, useNotificationCenter } from "@/stores/notificationCenter";
@@ -111,22 +111,19 @@ onShow(() => {
 
 <template>
   <page-meta :page-style="themePageStyle" />
-  <view class="notice-page" :style="pageStyle">
+  <view class="app-theme-scope notice-page" :style="[themePageStyle, pageStyle]">
     <AppTabHeader title="消息中心" showBack />
 
-    <view class="notice-header">
-      <text class="notice-title">消息中心</text>
-      <text class="notice-subtitle">站内通知与球队留言都在这里，点击通知可标为已读。</text>
-    </view>
-
-    <NeoSegmentedControl
+    <SegmentedControl
       :model-value="activeBoardTab"
       :options="boardOptions"
       class="notice-board-segment"
       @update:model-value="handleBoardTabChange"
     />
 
-    <template v-if="activeBoardTab === 'captainMessages'">
+    <!-- key 绑定分区：仅通知/队长留言切换时重播轻淡入；已读、分页加载不重播。 -->
+    <view :key="activeBoardTab" class="notice-board-content">
+      <template v-if="activeBoardTab === 'captainMessages'">
       <CaptainThreadsSection
         :items="captainThreads.items.value"
         :is-loading="captainThreads.isLoading.value"
@@ -140,21 +137,15 @@ onShow(() => {
       />
     </template>
 
-    <template v-else>
+      <template v-else>
       <view v-if="errorMessage" class="notice-empty">{{ errorMessage }}</view>
-      <NeoRunningLoader v-else-if="showInitialLoadingState" text="正在收取战报" />
+      <RunningLoader v-else-if="showInitialLoadingState" text="正在收取战报" />
 
       <view v-else class="notice-loaded-content">
-        <NeoSurface v-if="notificationItems.length" variant="raised" class="notice-hero">
-          <view>
-            <text class="notice-hero-label">未读提醒</text>
-            <text class="notice-hero-value">{{ unreadCount }}</text>
-            <text class="notice-hero-copy">点击通知后才会标记为已读。</text>
-          </view>
-        </NeoSurface>
+        <view v-if="notificationItems.length" class="notice-summary"><text>未读 {{ unreadCount }} 条</text><text>点击通知标记已读</text></view>
 
         <view v-if="notificationItems.length" class="notice-list">
-          <NeoSurface
+          <AppSurface
             v-for="item in notificationItems"
             :key="item.id"
             variant="raised"
@@ -171,11 +162,12 @@ onShow(() => {
               <text class="notice-card-time">{{ item.createdAtLabel }}</text>
               <text class="notice-card-action">{{ item.relatedPath ? "查看详情" : item.read ? "已读" : "标为已读" }}</text>
             </view>
-          </NeoSurface>
+          </AppSurface>
         </view>
         <view v-else class="notice-empty">当前没有可展示的通知。</view>
       </view>
     </template>
+    </view>
   </view>
 </template>
 
@@ -183,65 +175,35 @@ onShow(() => {
 .notice-page {
   min-height: 100vh;
   padding: 0 28rpx 120rpx;
-  background: var(--neo-color-page);
+  background: var(--ui-color-page);
   box-sizing: border-box;
 }
 
-.notice-header {
-  display: flex;
-  flex-direction: column;
+.notice-board-content {
+  animation: notice-content-fade-in var(--ui-motion-switch-duration) var(--ui-motion-ease-out);
 }
 
-.notice-title {
-  display: block;
-  font-size: 48rpx;
-  color: var(--neo-color-text);
-  font-weight: 900;
+@keyframes notice-content-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(6rpx);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-.notice-subtitle {
-  display: block;
-  margin-top: 8rpx;
-  font-size: 24rpx;
-  color: var(--neo-color-text-muted);
-  line-height: 1.5;
-  font-weight: 700;
+/* H5 减少动态效果：列表直接切换。 */
+@media (prefers-reduced-motion: reduce) {
+  .notice-board-content {
+    animation: none;
+  }
 }
 
 .notice-board-segment {
   margin-top: 22rpx;
-}
-
-.notice-hero {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 20rpx;
-  margin-top: 22rpx;
-  padding: 28rpx;
-}
-
-.notice-hero-label {
-  display: block;
-  font-size: 24rpx;
-  color: var(--neo-color-text-muted);
-  font-weight: 800;
-}
-
-.notice-hero-value {
-  display: block;
-  margin-top: 10rpx;
-  font-size: 56rpx;
-  color: var(--neo-color-text);
-  font-weight: 900;
-}
-
-.notice-hero-copy {
-  display: block;
-  margin-top: 8rpx;
-  font-size: 24rpx;
-  color: var(--neo-color-text-muted);
-  font-weight: 700;
 }
 
 
@@ -267,31 +229,31 @@ onShow(() => {
 .notice-card-title {
   flex: 1;
   font-size: 30rpx;
-  color: var(--neo-color-text);
-  font-weight: 900;
+  color: var(--ui-color-text);
+  font-weight: 600;
 }
 
 .notice-kind-chip {
   padding: 8rpx 14rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-surface);
-  color: var(--neo-color-text-muted);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-button);
+  background: var(--ui-color-surface);
+  color: var(--ui-color-text-muted);
   font-size: 22rpx;
-  font-weight: 800;
+  font-weight: 500;
 }
 
 .notice-kind-chip-unread {
-  background: var(--neo-color-danger-soft);
-  color: var(--neo-color-danger);
+  background: var(--ui-color-danger-soft);
+  color: var(--ui-color-danger);
 }
 
 .notice-card-copy {
   display: block;
   margin-top: 16rpx;
   font-size: 26rpx;
-  color: var(--neo-color-text-muted);
-  font-weight: 700;
+  color: var(--ui-color-text-muted);
+  font-weight: 400;
   line-height: 1.6;
 }
 
@@ -302,27 +264,27 @@ onShow(() => {
 .notice-card-time,
 .notice-card-action {
   font-size: 22rpx;
-  font-weight: 700;
+  font-weight: 400;
 }
 
 .notice-card-time {
-  color: var(--neo-color-text-muted);
+  color: var(--ui-color-text-muted);
 }
 
 .notice-card-action {
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
 }
 
 .notice-empty {
   margin-top: 20rpx;
   padding: 26rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-surface);
-  color: var(--neo-color-text-muted);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-button);
+  background: var(--ui-color-surface);
+  color: var(--ui-color-text-muted);
   font-size: 28rpx;
   line-height: 1.6;
-  font-weight: 700;
+  font-weight: 400;
 }
 
 
@@ -341,4 +303,5 @@ onShow(() => {
   transform: translateX(-50%);
 }
 /* #endif */
+.notice-summary { display: flex; justify-content: space-between; gap: 12rpx; margin: 22rpx 4rpx 0; font-size: 22rpx; color: var(--ui-color-text-muted); }
 </style>

@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>首页 · Apple 风格静态稿</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  :root { color-scheme: light; }
+  html, body { background: #f5f5f7; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    color: #1d1d1f;
+  }
+  .scrollbar-none { scrollbar-width: none; }
+  .scrollbar-none::-webkit-scrollbar { display: none; }
+  .spring { transition-property: all; transition-duration: 500ms; transition-timing-function: cubic-bezier(0.25, 0.1, 0.25, 1); }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+  }
+</style>
+</head>
+<body class="min-h-screen">
+
+<!-- 顶部导航：球队即标题（≥2 队可切换） -->
+<nav class="sticky top-0 z-40 bg-[#f5f5f7]/80 backdrop-blur-xl">
+  <div class="max-w-[430px] mx-auto px-6 h-16 flex items-center justify-between">
+    <button class="group flex items-center gap-3 spring active:scale-[0.98]">
+      <span class="w-10 h-10 rounded-2xl bg-white shadow-[0_2px_8px_rgba(0,0,0,0.04)] flex items-center justify-center text-lg font-semibold text-black group-hover:scale-105 spring">友</span>
+      <span class="flex items-center gap-1.5">
+        <span class="text-lg font-semibold tracking-tight text-black">老友记 FC</span>
+        <svg class="w-3.5 h-3.5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+      </span>
+    </button>
+    <span class="text-xs text-gray-400">周三 · 21:36</span>
+  </div>
+</nav>
+
+<main class="max-w-[430px] mx-auto px-6 pt-8 pb-32">
+
+  <!-- 现在卡：最近要处理的一场 -->
+  <section class="group bg-white rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.08)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.12)] p-7 spring active:scale-[0.98]">
+    <p class="text-sm text-gray-500">下一场比赛 · 队内报名</p>
+
+    <div class="mt-4 flex items-end gap-3 flex-wrap">
+      <span class="text-6xl leading-none font-semibold tracking-tight text-black tabular-nums">20:00</span>
+      <span class="pb-1.5 text-sm text-gray-500">09-24 <span class="text-gray-400">周四</span></span>
+    </div>
+
+    <div class="mt-6 space-y-2.5 text-sm">
+      <div class="flex items-center gap-3">
+        <svg class="w-4 h-4 text-gray-400 shrink-0 group-hover:scale-105 spring" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+        <span class="text-lg font-semibold tracking-tight text-black">周中老友约球局</span>
+      </div>
+      <div class="flex items-center gap-3 text-gray-600">
+        <svg class="w-4 h-4 text-gray-400 shrink-0 group-hover:scale-105 spring" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <span>8 人制 · 对手 望京联队</span>
+      </div>
+      <div class="flex items-center gap-3 text-gray-600">
+        <svg class="w-4 h-4 text-gray-400 shrink-0 group-hover:scale-105 spring" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+        <span>将府公园足球场 · 3 号场</span>
+      </div>
+      <div class="flex items-center gap-3 text-gray-600">
+        <svg class="w-4 h-4 text-gray-400 shrink-0 group-hover:scale-105 spring" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/></svg>
+        <span>¥30 / 人 · 赛后结算</span>
+      </div>
+    </div>
+
+    <div class="mt-7 pt-6 border-t border-gray-200">
+      <div class="flex items-baseline justify-between gap-2 flex-wrap">
+        <p class="text-sm text-gray-600">已报名 <span class="text-lg font-semibold text-black tabular-nums">6</span> 人</p>
+        <p class="text-sm text-gray-500">还差 <span class="font-semibold text-[#0071e3]">2</span> 人成行</p>
+      </div>
+
+      <div class="mt-3.5 flex items-center gap-3">
+        <div class="flex-1 min-w-0 overflow-x-auto scrollbar-none">
+          <div id="avatar-row" class="flex items-center gap-2">
+            <span class="w-9 h-9 rounded-full bg-[#f5f5f7] flex items-center justify-center text-xs font-medium text-gray-600 shrink-0">凯</span>
+            <span class="w-9 h-9 rounded-full bg-[#f5f5f7] flex items-center justify-center text-xs font-medium text-gray-600 shrink-0">睿</span>
+            <span class="w-9 h-9 rounded-full bg-[#f5f5f7] flex items-center justify-center text-xs font-medium text-gray-600 shrink-0">敏</span>
+            <span class="w-9 h-9 rounded-full bg-[#f5f5f7] flex items-center justify-center text-xs font-medium text-gray-600 shrink-0">舟</span>
+            <span class="w-9 h-9 rounded-full bg-[#f5f5f7] flex items-center justify-center text-xs font-medium text-gray-600 shrink-0">迪</span>
+            <span id="avatar-extra" class="h-9 rounded-full bg-[#f5f5f7] flex items-center justify-center text-xs font-medium text-gray-600 shrink-0 w-0 opacity-0 overflow-hidden spring">石</span>
+          </div>
+        </div>
+        <button id="avatar-toggle" class="shrink-0 px-3 h-9 rounded-full bg-[#f5f5f7] text-xs font-medium text-gray-600 hover:bg-[#e8e8ed] transition-colors duration-200 spring active:scale-[0.96]">+1</button>
+      </div>
+
+      <div class="mt-5">
+        <div class="relative h-2 rounded-full bg-[#f5f5f7] overflow-hidden">
+          <div class="absolute inset-y-0 left-0 rounded-full spring" style="width: 43%; background: #0071e3;"></div>
+          <div class="absolute inset-y-0 w-[2px] -translate-x-1/2 spring" style="left: 57%; background: rgba(0,0,0,0.25);"></div>
+        </div>
+        <p class="mt-2 text-xs text-gray-400 text-right">最多 14 人</p>
+      </div>
+    </div>
+
+    <div class="mt-6 flex items-center justify-between gap-3 flex-wrap">
+      <span class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#f5f5f7] text-xs font-medium text-gray-600">
+        <span class="w-1.5 h-1.5 rounded-full bg-gray-400"></span>尚未报名
+      </span>
+      <span class="text-xs text-gray-400">09-23 18:00 截止</span>
+    </div>
+
+    <button class="mt-7 w-full py-3 px-6 bg-[#0071e3] rounded-full text-white font-medium hover:bg-[#0077ed] transition-colors duration-200 spring active:scale-[0.98]">
+      前往报名 <span class="ml-1">→</span>
+    </button>
+  </section>
+
+  <!-- 我的比赛 / 广场 分段控制 -->
+  <div class="mt-7 p-1 rounded-full bg-[#f5f5f7] grid grid-cols-2 gap-1">
+    <button data-tab="mine" class="tab-btn py-2 rounded-full text-sm spring active:scale-[0.98]">我的比赛</button>
+    <button data-tab="others" class="tab-btn py-2 rounded-full text-sm spring active:scale-[0.98]">广场</button>
+  </div>
+
+  <!-- 搜索 -->
+  <div class="mt-4 relative">
+    <svg class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+    <input class="w-full py-3 pl-11 pr-4 bg-[#f5f5f7] rounded-xl text-sm text-black placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0071e3] focus:shadow-[0_0_0_4px_rgba(0,113,227,0.3)] transition-all" placeholder="搜索比赛名称或地点" />
+  </div>
+
+  <!-- ================= 我的比赛 ================= -->
+  <div id="tab-mine" class="tab-panel mt-10 space-y-10">
+
+    <section>
+      <div class="flex items-center justify-between px-1">
+        <h2 class="text-lg font-semibold tracking-tight text-black">最近要处理的比赛</h2>
+        <button class="text-sm text-[#0071e3] hover:underline transition-colors duration-200">更多 ›</button>
+      </div>
+
+      <div class="mt-4 space-y-4">
+        <!-- 列表卡 1：已报名 -->
+        <article class="group bg-white rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.08)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.12)] p-6 spring active:scale-[0.98]">
+          <div class="flex items-start justify-between gap-4">
+            <div class="flex gap-5">
+              <div class="text-center shrink-0">
+                <p class="text-xs text-gray-500">10-03</p>
+                <p class="mt-0.5 text-3xl font-semibold tracking-tight text-black leading-tight">周六</p>
+                <p class="mt-1 text-sm text-gray-600 tabular-nums">14:00</p>
+              </div>
+              <div class="min-w-0 pt-0.5">
+                <h3 class="text-base font-semibold tracking-tight text-black leading-snug">周六朝阳公园联赛</h3>
+                <p class="mt-1.5 text-xs text-gray-500">望京竞技场 · 8 人制 · 对手 北苑流浪者</p>
+              </div>
+            </div>
+            <span class="shrink-0 px-2.5 py-1 rounded-full bg-[#0071e3]/10 text-[11px] font-medium text-[#0071e3]">报名中</span>
+          </div>
+          <div class="mt-5 flex items-center justify-between gap-3 flex-wrap">
+            <span class="inline-flex items-center gap-2 text-xs text-gray-600">
+              <span class="w-1.5 h-1.5 rounded-full bg-[#34c759]"></span>我的状态：参加
+            </span>
+            <span class="text-xs text-gray-400 tabular-nums">5 / 8 人 · 截止报名</span>
+          </div>
+          <div class="mt-2.5 h-1.5 rounded-full bg-[#f5f5f7] overflow-hidden">
+            <div class="h-full rounded-full spring" style="width: 62%; background: #0071e3;"></div>
+          </div>
+          <button class="mt-5 w-full py-2.5 px-6 bg-[#f5f5f7] rounded-full text-sm font-medium text-black hover:bg-[#e8e8ed] transition-colors duration-200 spring active:scale-[0.96]">查看比赛</button>
+        </article>
+
+        <!-- 列表卡 2：待定 -->
+        <article class="group bg-white rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.08)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.12)] p-6 spring active:scale-[0.98]">
+          <div class="flex items-start justify-between gap-4">
+            <div class="flex gap-5">
+              <div class="text-center shrink-0">
+                <p class="text-xs text-gray-500">10-10</p>
+                <p class="mt-0.5 text-3xl font-semibold tracking-tight text-black leading-tight">周六</p>
+                <p class="mt-1 text-sm text-gray-600 tabular-nums">15:00</p>
+              </div>
+              <div class="min-w-0 pt-0.5">
+                <h3 class="text-base font-semibold tracking-tight text-black leading-snug">十月首战友谊赛</h3>
+                <p class="mt-1.5 text-xs text-gray-500">东风公园 · 8 人制 · 对手 酒仙桥联</p>
+              </div>
+            </div>
+            <span class="shrink-0 px-2.5 py-1 rounded-full bg-[#0071e3]/10 text-[11px] font-medium text-[#0071e3]">报名中</span>
+          </div>
+          <div class="mt-5 flex items-center justify-between gap-3 flex-wrap">
+            <span class="inline-flex items-center gap-2 text-xs text-gray-600">
+              <span class="w-1.5 h-1.5 rounded-full bg-gray-400"></span>我的状态：待定
+            </span>
+            <span class="text-xs text-gray-400 tabular-nums">7 / 8 人 · 还差 1 人成行</span>
+          </div>
+          <div class="mt-2.5 h-1.5 rounded-full bg-[#f5f5f7] overflow-hidden">
+            <div class="h-full rounded-full spring" style="width: 88%; background: #0071e3;"></div>
+          </div>
+          <button class="mt-5 w-full py-2.5 px-6 bg-[#f5f5f7] rounded-full text-sm font-medium text-black hover:bg-[#e8e8ed] transition-colors duration-200 spring active:scale-[0.96]">去报名</button>
+        </article>
+      </div>
+    </section>
+
+    <section>
+      <div class="flex items-center justify-between px-1">
+        <h2 class="text-lg font-semibold tracking-tight text-black">进行中的比赛</h2>
+        <button class="text-sm text-[#0071e3] hover:underline transition-colors duration-200">更多 ›</button>
+      </div>
+      <article class="group bg-white rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.08)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.12)] p-6 mt-4 spring active:scale-[0.98]">
+        <div class="flex items-start justify-between gap-4">
+          <div class="flex gap-5">
+            <div class="text-center shrink-0">
+              <p class="text-xs text-gray-500">09-21</p>
+              <p class="mt-0.5 text-3xl font-semibold tracking-tight text-black leading-tight">周日</p>
+              <p class="mt-1 text-sm text-gray-600 tabular-nums">19:00</p>
+            </div>
+            <div class="min-w-0 pt-0.5">
+              <h3 class="text-base font-semibold tracking-tight text-black leading-snug">雨战补时赛</h3>
+              <p class="mt-1.5 text-xs text-gray-500">汽博公园 · 对手 来广营营</p>
+            </div>
+          </div>
+          <span class="shrink-0 px-2.5 py-1 rounded-full bg-[#0071e3]/10 text-[11px] font-medium text-[#0071e3]">进行中</span>
+        </div>
+      </article>
+    </section>
+
+    <section>
+      <div class="flex items-center justify-between px-1">
+        <h2 class="text-lg font-semibold tracking-tight text-black">已结束的比赛</h2>
+        <button class="text-sm text-[#0071e3] hover:underline transition-colors duration-200">更多 ›</button>
+      </div>
+      <article class="group bg-white rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.12)] p-6 mt-4 spring active:scale-[0.98]">
+        <div class="flex items-start justify-between gap-4">
+          <div class="flex gap-5">
+            <div class="text-center shrink-0">
+              <p class="text-xs text-gray-500">09-14</p>
+              <p class="mt-0.5 text-3xl font-semibold tracking-tight text-black/85 leading-tight">周一</p>
+              <p class="mt-1 text-sm text-gray-500 tabular-nums">20:00</p>
+            </div>
+            <div class="min-w-0 pt-0.5">
+              <h3 class="text-base font-semibold tracking-tight text-black/85 leading-snug">秋夜联赛第一轮</h3>
+              <p class="mt-1.5 text-xs text-gray-400">将府公园 · 对手 望京联队</p>
+            </div>
+          </div>
+          <div class="shrink-0 text-right">
+            <p class="text-xl font-semibold tracking-tight text-black tabular-nums">3 : 2</p>
+            <p class="mt-1 text-[11px] text-gray-400">已结束</p>
+          </div>
+        </div>
+      </article>
+    </section>
+  </div>
+
+  <!-- ================= 广场 ================= -->
+  <div id="tab-others" class="tab-panel mt-10 space-y-4 hidden">
+    <section>
+      <h2 class="text-lg font-semibold tracking-tight text-black px-1">广场的比赛</h2>
+      <div class="mt-4 space-y-4">
+        <article class="group bg-white rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.08)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.12)] p-6 spring active:scale-[0.98]">
+          <div class="flex items-start justify-between gap-4">
+            <div class="flex gap-5">
+              <div class="text-center shrink-0">
+                <p class="text-xs text-gray-500">10-02</p>
+                <p class="mt-0.5 text-3xl font-semibold tracking-tight text-black leading-tight">周五</p>
+                <p class="mt-1 text-sm text-gray-600 tabular-nums">21:00</p>
+              </div>
+              <div class="min-w-0 pt-0.5">
+                <h3 class="text-base font-semibold tracking-tight text-black leading-snug">周五夜光杯散人局</h3>
+                <p class="mt-1.5 text-xs text-gray-500">奥体中心 · 6 人制 · 散人拼场</p>
+              </div>
+            </div>
+            <span class="shrink-0 px-2.5 py-1 rounded-full bg-[#f5f5f7] text-[11px] font-medium text-gray-600">散人报名</span>
+          </div>
+          <div class="mt-5 text-xs text-gray-400 tabular-nums">9 / 12 人 · 报名中</div>
+          <div class="mt-2.5 h-1.5 rounded-full bg-[#f5f5f7] overflow-hidden">
+            <div class="h-full rounded-full spring" style="width: 75%; background: #0071e3;"></div>
+          </div>
+          <button class="mt-5 w-full py-2.5 px-6 bg-[#f5f5f7] rounded-full text-sm font-medium text-black hover:bg-[#e8e8ed] transition-colors duration-200 spring active:scale-[0.96]">留言约球</button>
+        </article>
+
+        <article class="group bg-white rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.12)] p-6 spring active:scale-[0.98]">
+          <div class="flex items-start justify-between gap-4">
+            <div class="flex gap-5">
+              <div class="text-center shrink-0">
+                <p class="text-xs text-gray-500">10-05</p>
+                <p class="mt-0.5 text-3xl font-semibold tracking-tight text-black/85 leading-tight">周一</p>
+                <p class="mt-1 text-sm text-gray-500 tabular-nums">10:00</p>
+              </div>
+              <div class="min-w-0 pt-0.5">
+                <h3 class="text-base font-semibold tracking-tight text-black/85 leading-snug">国庆假期训练赛</h3>
+                <p class="mt-1.5 text-xs text-gray-400">朝阳体育中心 · 8 人制 · 散人拼场</p>
+              </div>
+            </div>
+            <span class="shrink-0 px-2.5 py-1 rounded-full bg-[#f5f5f7] text-[11px] font-medium text-gray-500">已满员</span>
+          </div>
+        </article>
+
+        <p class="pt-3 pb-2 text-center text-sm text-gray-400">没有更多了</p>
+      </div>
+    </section>
+  </div>
+</main>
+
+<!-- 底部导航：首页 / 约队 / 统计 / 我的 -->
+<nav class="fixed bottom-0 inset-x-0 z-40 bg-white/80 backdrop-blur-xl border-t border-gray-200" style="padding-bottom: env(safe-area-inset-bottom);">
+  <div class="max-w-[430px] mx-auto grid grid-cols-4 px-2 py-2">
+    <button class="group flex flex-col items-center gap-1 py-1.5 rounded-2xl spring active:scale-[0.96]">
+      <svg class="w-5 h-5 group-hover:scale-105 spring" style="color: #0071e3;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg>
+      <span class="text-[10px] font-medium" style="color: #0071e3;">首页</span>
+    </button>
+    <button class="group flex flex-col items-center gap-1 py-1.5 rounded-2xl text-gray-400 hover:text-gray-600 spring active:scale-[0.96]">
+      <svg class="w-5 h-5 group-hover:scale-105 spring" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 17.5 3 6V3h3l11.5 11.5"/><path d="M13 19l6-6"/><path d="M16 16l4 4"/><path d="M19 21l2-2"/></svg>
+      <span class="text-[10px] font-medium">约队</span>
+    </button>
+    <button class="group flex flex-col items-center gap-1 py-1.5 rounded-2xl text-gray-400 hover:text-gray-600 spring active:scale-[0.96]">
+      <svg class="w-5 h-5 group-hover:scale-105 spring" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+      <span class="text-[10px] font-medium">统计</span>
+    </button>
+    <button class="group flex flex-col items-center gap-1 py-1.5 rounded-2xl text-gray-400 hover:text-gray-600 spring active:scale-[0.96]">
+      <svg class="w-5 h-5 group-hover:scale-105 spring" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <span class="text-[10px] font-medium">我的</span>
+    </button>
+  </div>
+</nav>
+
+<script>
+  // 分段控制：我的比赛 / 广场（iOS 风格：白底滑块 + 微妙阴影）
+  const panels = { mine: document.getElementById('tab-mine'), others: document.getElementById('tab-others') };
+  const activeCls = ['bg-white', 'shadow-[0_2px_8px_rgba(0,0,0,0.04)]', 'text-black', 'font-medium'];
+  const inactiveCls = ['text-gray-500'];
+  function setTab(name) {
+    for (const [key, panel] of Object.entries(panels)) {
+      panel.classList.toggle('hidden', key !== name);
+      const btn = document.querySelector(`.tab-btn[data-tab="${key}"]`);
+      activeCls.forEach(c => btn.classList.toggle(c, key === name));
+      inactiveCls.forEach(c => btn.classList.toggle(c, key !== name));
+    }
+  }
+  document.querySelectorAll('.tab-btn').forEach(btn =>
+    btn.addEventListener('click', () => setTab(btn.dataset.tab)));
+  setTab('mine');
+
+  // 现在卡头像 +N 展开 / 收起（单行横向）
+  const toggle = document.getElementById('avatar-toggle');
+  const extra = document.getElementById('avatar-extra');
+  const row = document.getElementById('avatar-row');
+  let expanded = false;
+  toggle.addEventListener('click', () => {
+    expanded = !expanded;
+    if (expanded) {
+      extra.classList.remove('w-0', 'opacity-0', 'overflow-hidden');
+      extra.classList.add('w-9', 'opacity-100');
+      row.scrollLeft = row.scrollWidth;
+    } else {
+      extra.classList.add('w-0', 'opacity-0', 'overflow-hidden');
+      extra.classList.remove('w-9', 'opacity-100');
+    }
+    toggle.textContent = expanded ? '收起' : '+1';
+  });
+</script>
+</body>
+</html>

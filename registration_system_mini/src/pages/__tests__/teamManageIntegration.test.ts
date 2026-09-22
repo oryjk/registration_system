@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { sourcePath, workspacePath } from "@/test/sourcePaths";
+import { sourcePath } from "@/test/sourcePaths";
 
 declare const Bun: {
   file(path: string): {
@@ -18,7 +18,7 @@ async function teamManageSource() {
   return (await Promise.all(paths.map((path) => Bun.file(sourcePath(path)).text()))).join("\n");
 }
 
-describe("team manage real backend integration", () => {
+describe("team manage source wiring", () => {
   test("keeps the SFC as a composition layer over focused team workflows", async () => {
     const page = await Bun.file(sourcePath("pages/teams/manage/index.vue")).text();
     const pageScript = page.slice(0, page.indexOf("</script>"));
@@ -111,15 +111,8 @@ describe("team manage real backend integration", () => {
 
   test("team manage page edits team profile and searches users before adding members", async () => {
     const source = await teamManageSource();
-    const memberManager = await Bun.file(sourcePath("pages/teams/manage/components/TeamMemberManager.vue")).text();
     const candidateSearch = await Bun.file(sourcePath("pages/teams/manage/components/MemberCandidateSearch.vue")).text();
     const userApi = await Bun.file(sourcePath("api/user.ts")).text();
-    const backendUserService = await Bun.file(workspacePath("registration_system_rs/src/user/application/service.rs")).text();
-    const backendUserRoutes = await Bun.file(workspacePath("registration_system_rs/src/user/adapters/web/routes.rs")).text();
-    const searchUsersBlock = backendUserService.slice(
-      backendUserService.indexOf("pub async fn search_users"),
-      backendUserService.indexOf("pub async fn update_profile"),
-    );
 
     expect(source.includes("updateTeam")).toEqual(true);
     expect(source.includes("handleUpdateTeamProfile")).toEqual(true);
@@ -133,8 +126,8 @@ describe("team manage real backend integration", () => {
     expect(source.includes('@candidate-tap="handleCandidateTap"')).toEqual(true);
     expect(userApi.includes("export function searchUsers")).toEqual(true);
     expect(userApi.includes('url: `/user/search')).toEqual(true);
-    expect(backendUserRoutes.includes('.route("/search", get(search_users_handler))')).toEqual(true);
-    expect(searchUsersBlock.includes("ActorKind::Admin")).toEqual(false);
+    // 原断言曾核对 Rust 后端 /user/search 路由与非 Admin 限制；rs 目录已于 2026-08-30
+    // 删除，后端契约改由 registration_system_go 自身测试覆盖，此处只守前端行为。
   });
 
   test("team member manager delegates candidate search and member sections to focused components", async () => {
@@ -154,7 +147,7 @@ describe("team manage real backend integration", () => {
     const minePage = await Bun.file(sourcePath("pages/user/useMinePage.ts")).text();
     const identityPanel = await Bun.file(sourcePath("pages/user/components/MineTeamIdentityPanel.vue")).text();
 
-    expect(identityPanel.includes("mine-manage-list")).toEqual(true);
+    expect(identityPanel.includes("team-list")).toEqual(true);
     expect(identityPanel.includes('v-for="team in teamProfiles"')).toEqual(true);
     expect(identityPanel.includes("team.myRoleLabel")).toEqual(true);
     expect(identityPanel.includes("@tap=\"emit('manageTeam', team.id)\"")).toEqual(true);

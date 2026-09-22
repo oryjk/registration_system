@@ -117,11 +117,13 @@ export function useTeamDetailPage() {
 
   // 邀请分享仅队长/领队可用：其他人隐藏转发菜单，避免发出无邀请码的无效卡片。
   function syncShareMenu(canShare: boolean) {
+    // #ifdef MP-WEIXIN
     if (canShare) {
       uni.showShareMenu({ withShareTicket: false, menus: ["shareAppMessage", "shareTimeline"] });
     } else {
       uni.hideShareMenu({ hideShareItems: ["shareAppMessage", "shareTimeline"] });
     }
+    // #endif
   }
 
   function handleLeaveTeamClick() {

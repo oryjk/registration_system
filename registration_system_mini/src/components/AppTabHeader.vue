@@ -29,7 +29,7 @@ const contentStyle = computed(() => ({
   paddingRight: `${navMetrics.capsuleReserveRight}px`,
 }));
 
-// 左侧胶囊与右上角微信原生胶囊同高，形成左右对称的形态。
+// 保留原生胶囊的高度与安全区，内部使用独立导航按钮。
 const capsuleStyle = computed(() => ({
   height: `${navMetrics.headerMinHeight}px`,
 }));
@@ -91,25 +91,25 @@ function handleHome() {
             class="app-tab-header-capsule-side"
             hover-class="app-tab-header-capsule-side--pressed"
             :hover-stay-time="100"
+            role="button"
+            aria-label="返回上一页"
             @tap.stop="handleBack"
           >
-            <text class="app-tab-header-back-icon">‹</text>
+            <wd-icon name="arrow-left" size="36rpx" />
           </view>
-          <view v-if="props.showBack && showHomeEntry" class="app-tab-header-capsule-divider" />
           <view
             v-if="showHomeEntry"
             class="app-tab-header-capsule-side"
             hover-class="app-tab-header-capsule-side--pressed"
             :hover-stay-time="100"
+            role="button"
+            aria-label="回到首页"
             @tap.stop="handleHome"
           >
-            <view class="app-tab-header-home-icon">
-              <view class="app-tab-header-home-roof" />
-              <view class="app-tab-header-home-body" />
-            </view>
+            <wd-icon name="home" size="34rpx" />
           </view>
         </view>
-        <!-- 具名 title slot：允许页面替换标题区（如首页的球队切换器）；不传时回落到 title 文本。 -->
+        <!-- 具名 title slot：允许页面替换标题区（如首页的球队切换器 + 搜索入口）；不传时回落到 title 文本。 -->
         <slot name="title">
           <text class="app-tab-header-title">{{ props.title }}</text>
         </slot>
@@ -134,9 +134,9 @@ function handleHome() {
   padding-left: 28rpx;
   padding-right: 28rpx;
   padding-bottom: 14rpx;
-  /* Neo 风格：实色画布底 + 墨线描边，不用毛玻璃。 */
-  background: var(--neo-color-page);
-  border-bottom: var(--neo-border-default);
+  /* D 风格：实色画布底 + 浅色细描边，不用毛玻璃。 */
+  background: var(--ui-color-page);
+  border-bottom: 2rpx solid var(--ui-color-line);
   box-sizing: border-box;
 }
 
@@ -150,79 +150,54 @@ function handleHome() {
   align-items: center;
   justify-content: flex-start;
   width: 100%;
+  box-sizing: border-box;
 }
 
 .app-tab-header-left {
+  flex: 1;
   display: flex;
   align-items: center;
   gap: 14rpx;
   min-width: 0;
 }
 
-/* 对齐右上角微信原生胶囊：半透明白底、细描边、圆角胶囊、中间细分隔线。 */
 .app-tab-header-capsule {
   display: inline-flex;
   align-items: stretch;
-  border-radius: var(--neo-radius-round);
-  border: 2rpx solid rgba(var(--neo-primitive-ink-rgb), 0.08);
-  background: rgba(var(--neo-primitive-surface-rgb), 0.72);
-  overflow: hidden;
+  gap: 8rpx;
   flex-shrink: 0;
 }
 
 .app-tab-header-capsule-side {
-  width: 72rpx;
+  width: 60rpx;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  color: var(--ui-color-text);
+  background: var(--ui-color-neutral-bg);
+  border-radius: 18rpx;
+  transition: transform var(--ui-motion-press-duration) var(--ui-motion-ease-out), background-color var(--ui-motion-press-duration) ease;
 }
 
 .app-tab-header-capsule-side--pressed {
-  background: rgba(var(--neo-primitive-ink-rgb), 0.06);
-}
-
-.app-tab-header-capsule-divider {
-  width: 2rpx;
-  margin: 10rpx 0;
-  background: rgba(var(--neo-primitive-ink-rgb), 0.12);
-  flex-shrink: 0;
-}
-
-.app-tab-header-back-icon {
-  color: var(--neo-color-text);
-  font-size: 46rpx;
-  line-height: 1;
-  font-weight: 900;
-  transform: translateY(-2rpx);
-}
-
-.app-tab-header-home-icon {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin-top: 2rpx;
-}
-
-.app-tab-header-home-roof {
-  width: 0;
-  height: 0;
-  border-left: 13rpx solid transparent;
-  border-right: 13rpx solid transparent;
-  border-bottom: 10rpx solid var(--neo-color-text);
-}
-
-.app-tab-header-home-body {
-  width: 18rpx;
-  height: 11rpx;
-  margin-top: 2rpx;
-  background: var(--neo-color-text);
+  background: var(--ui-color-accent-soft);
+  transform: scale(0.92);
 }
 
 .app-tab-header-title {
-  font-size: 36rpx;
-  font-weight: 900;
-  color: var(--neo-color-text);
-  flex-shrink: 0;
+  min-width: 0;
+  flex: 1;
+  font-size: 30rpx;
+  line-height: 1.4;
+  font-weight: 600;
+  color: var(--ui-color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-tab-header-capsule-side { transition: none; }
+  .app-tab-header-capsule-side--pressed { transform: none; }
 }
 </style>

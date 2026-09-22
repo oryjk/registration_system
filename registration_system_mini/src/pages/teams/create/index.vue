@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useAccentTheme } from "@/stores/theme";
 import AppTabHeader from "@/components/AppTabHeader.vue";
-import NeoConfirmDialog from "@/components/neo/NeoConfirmDialog.vue";
+import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
 import TeamCreatePanel from "../components/TeamCreatePanel.vue";
 import { useTeamCreatePage } from "./useTeamCreatePage";
 
@@ -27,19 +27,11 @@ const {
 
 <template>
   <page-meta :page-style="themePageStyle" />
-  <view class="team-create-page" :style="pageStyle">
+  <view class="app-theme-scope team-create-page" :style="[themePageStyle, pageStyle]">
     <AppTabHeader title="创建球队" showBack />
 
     <view class="team-create-content">
-      <view class="team-create-hero">
-        <view class="team-create-hero__copy">
-          <text class="team-create-title">创建一支新球队</text>
-          <text class="team-create-copy">创建后你自动成为队长，可以邀请队员、约队和报名比赛；一个人可以创建多支球队。</text>
-        </view>
-        <view class="team-create-hero__mark">
-          <text>队</text>
-        </view>
-      </view>
+      <text class="team-page-note">创建后你将成为队长，可邀请队友加入。</text>
 
       <TeamCreatePanel
         :form="createForm"
@@ -60,7 +52,7 @@ const {
     </view>
 
     <!-- 新手引导创建成功后的分享提示（自绘弹窗，无 showModal 按钮文案 4 字限制） -->
-    <NeoConfirmDialog
+    <ConfirmDialog
       :visible="onboardingShareVisible"
       title="球队创建成功！"
       message="把球队分享给队员，邀请他们加入吧。"
@@ -77,7 +69,7 @@ const {
 .team-create-page {
   min-height: 100vh;
   padding: 0 28rpx 112rpx;
-  background: var(--neo-color-page);
+  background: var(--ui-color-page);
   box-sizing: border-box;
 }
 
@@ -88,56 +80,6 @@ const {
   box-sizing: border-box;
 }
 
-.team-create-hero {
-  display: flex;
-  align-items: center;
-  gap: 22rpx;
-  margin: 22rpx 0 24rpx;
-  padding: 28rpx 26rpx;
-  border: var(--neo-border-strong);
-  border-radius: var(--neo-radius-md);
-  background: var(--neo-color-hero);
-  box-shadow: 8rpx 8rpx 0 var(--neo-color-accent);
-}
-
-.team-create-hero__copy {
-  flex: 1;
-  min-width: 0;
-}
-
-.team-create-title {
-  display: block;
-  color: var(--neo-color-text-inverse);
-  font-size: 42rpx;
-  font-weight: 900;
-  line-height: 1.18;
-}
-
-.team-create-copy {
-  display: block;
-  margin-top: 12rpx;
-  color: rgba(255, 255, 255, 0.72);
-  font-size: 23rpx;
-  font-weight: 700;
-  line-height: 1.55;
-}
-
-.team-create-hero__mark {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  width: 104rpx;
-  height: 104rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-accent);
-  color: var(--neo-color-text);
-  font-size: 40rpx;
-  font-weight: 900;
-  box-sizing: border-box;
-}
-
 .team-create-alt {
   display: flex;
   align-items: center;
@@ -145,33 +87,28 @@ const {
   gap: 10rpx;
   margin-top: 26rpx;
   padding: 24rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-md);
-  background: var(--neo-color-surface);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-card);
+  background: var(--ui-color-surface);
 }
 
 .team-create-alt--pressed {
-  transform: translate(var(--neo-motion-press-offset), var(--neo-motion-press-offset));
+  transform: scale(0.98);
   box-shadow: none;
 }
 
 .team-create-alt__label {
-  color: var(--neo-color-text-muted);
+  color: var(--ui-color-text-muted);
   font-size: 26rpx;
-  font-weight: 800;
+  font-weight: 500;
 }
 
 .team-create-alt__arrow {
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
   font-size: 26rpx;
-  font-weight: 900;
+  font-weight: 600;
 }
 
-@media (max-width: 560rpx) {
-  .team-create-hero__mark {
-    width: 88rpx;
-    height: 88rpx;
-    font-size: 34rpx;
-  }
-}
+
+.team-page-note { display: block; margin: 4rpx 4rpx 20rpx; color: var(--ui-color-text-muted); font-size: 24rpx; line-height: 1.5; }
 </style>

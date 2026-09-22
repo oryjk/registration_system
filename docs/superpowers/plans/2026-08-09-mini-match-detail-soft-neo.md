@@ -1,5 +1,7 @@
 # 小程序比赛报名详情页 Soft Neo-Brutalism Implementation Plan
 
+> **历史资料：视觉规范已失效。** 本文的 Neo / Soft Neo 样式要求、旧组件与 token 路径不再适用；业务决策仅供追溯。所有新界面工作以[现行统一设计系统](../../../registration_system_mini/docs/mini-design-system.md)及实际代码为准，不得依据本文恢复旧皮肤。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 将比赛报名详情页的个人报名主流程迁移到已确认的 Soft Neo-Brutalism 视觉系统，并建立可供后续球队报名和其他页面复用的基础视觉组件。

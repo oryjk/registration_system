@@ -20,6 +20,10 @@
 - `oryjk.cn:82` 是 jd 的兼容入口，域名未变不代表服务仍在 out109。`ssh out109` 仍按用户要求保留原域名配置，不能用于连接家庭构建机；家庭机器用用户维护的 `ssh local109`。
 - 微信小程序（mp-weixin）发布用 `registration_system_mini` 的 `bun run mp:release` 上传开发版本，**robot 双轨约定**：`robot=1`（默认）日常开发版，`robot=2` 体验版专用线（`-- --robot 2`；体验版随该槽位上传自动更新，首次需在公众平台点一次「选为体验版」）。详细流程与前置条件见 `registration_system_mini/AGENTS.md` 的「微信小程序发布」一节。
 
+## 用户端 UI 现行规范
+
+`registration_system_mini` 的 H5 / 小程序界面修改，必须先读 [`registration_system_mini/docs/mini-design-system.md`](registration_system_mini/docs/mini-design-system.md)。当前为轻量赛事 UI（原方案代号 D）；Neo / Soft Neo 旧视觉规范已经废止。历史设计稿、迁移记录和基线 patch 不是现行样式依据，不得据其恢复旧组件命名或旧皮肤。该约定不改变管理端的独立设计规范。
+
 ## 文档规范
 
 - 工作区与子项目协作文档统一使用 `AGENTS.md`（大写命名）。

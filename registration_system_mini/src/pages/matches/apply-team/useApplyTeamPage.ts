@@ -3,7 +3,7 @@ import { onLoad, onUnload } from "@dcloudio/uni-app";
 import { getMatchDetail } from "@/api/match";
 import { applyTeamMatch, listTeamApplications, withdrawTeamApplication } from "@/api/teamApplication";
 import { useTeamContext } from "@/stores/teamContext";
-import { useNeoConfirmDialog } from "@/components/neo";
+import { useConfirmDialog } from "@/components/ui";
 import type { AppMatchDetailResponse, AppTeamApplication } from "@/types/match";
 import { resolveRegistrationWindow } from "@/utils/registrationWindow";
 
@@ -18,7 +18,7 @@ export function useApplyTeamPage(matchId: Ref<string>) {
     handleConfirmPrimary,
     handleConfirmSecondary,
     handleConfirmClose,
-  } = useNeoConfirmDialog();
+  } = useConfirmDialog();
 
   const isLoading = ref(false);
   const errorMessage = ref("");

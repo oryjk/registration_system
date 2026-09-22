@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import NeoConfirmDialog from "@/components/neo/NeoConfirmDialog.vue";
+import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
 import type { AppMatchSummary } from "@/types/match";
 
 const props = defineProps<{
@@ -30,7 +30,7 @@ const confirmDisabled = computed(() => props.needsPassword && !props.password.tr
 </script>
 
 <template>
-  <NeoConfirmDialog
+  <ConfirmDialog
     :visible="visible"
     title="加入球队"
     :message="message"
@@ -57,7 +57,7 @@ const confirmDisabled = computed(() => props.needsPassword && !props.password.tr
         <text class="join-team-contact-text">不知道密码？联系队长说明来意</text>
       </view>
     </view>
-  </NeoConfirmDialog>
+  </ConfirmDialog>
 </template>
 
 <style scoped>
@@ -73,11 +73,11 @@ const confirmDisabled = computed(() => props.needsPassword && !props.password.tr
   width: 100%;
   height: 92rpx;
   padding: 0 24rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-page);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-button);
+  background: var(--ui-color-page);
   font-size: 28rpx;
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
 }
 
 .join-team-contact {
@@ -87,8 +87,8 @@ const confirmDisabled = computed(() => props.needsPassword && !props.password.tr
 
 .join-team-contact-text {
   font-size: 25rpx;
-  font-weight: 800;
-  color: var(--neo-color-accent-deep);
+  font-weight: 500;
+  color: var(--ui-color-accent-deep);
   text-decoration: underline;
 }
 </style>

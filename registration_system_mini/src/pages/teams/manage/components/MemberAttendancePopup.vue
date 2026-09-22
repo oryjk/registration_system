@@ -1,6 +1,9 @@
 <script setup lang="ts">
+import { useAccentTheme } from "@/stores/theme";
+const { themePageStyle } = useAccentTheme();
 import { computed } from "vue";
-import NeoButton from "@/components/neo/NeoButton.vue";
+import AppButton from "@/components/ui/AppButton.vue";
+import SmoothCollapse from "@/components/ui/SmoothCollapse.vue";
 import type { BackendTeamMember, BackendTeamMemberAttendanceRecord } from "@/types/backend";
 import type { buildAttendanceGroups, buildAttendanceSummary } from "../teamManageState";
 
@@ -44,6 +47,7 @@ function handleToggleYear(year: string) {
 
 <template>
   <wd-popup
+    :custom-style="themePageStyle"
     v-model="visible"
     position="bottom"
     custom-class="member-attendance-popup"
@@ -53,7 +57,7 @@ function handleToggleYear(year: string) {
     lock-scroll
     @close="handleClose"
   >
-    <view class="member-attendance-sheet" @touchmove.stop>
+    <view class="app-theme-scope member-attendance-sheet" :style="themePageStyle" @touchmove.stop>
       <view class="member-edit-header">
         <view class="attendance-profile">
           <image v-if="member && memberAvatarUrl" class="member-avatar" :src="memberAvatarUrl" mode="aspectFill" />
@@ -65,9 +69,8 @@ function handleToggleYear(year: string) {
             <text class="member-edit-title">{{ member ? memberName : "队员" }}</text>
           </view>
         </view>
-        <NeoButton variant="outline" size="sm" @click="handleClose">关闭</NeoButton>
+        <AppButton variant="outline" size="sm" @click="handleClose">关闭</AppButton>
       </view>
-
       <view class="attendance-summary-grid">
         <view class="attendance-summary-card">
           <text class="attendance-summary-value">{{ summary.attended }}</text>
@@ -82,7 +85,6 @@ function handleToggleYear(year: string) {
           <text class="attendance-summary-label">未报名</text>
         </view>
       </view>
-
       <view v-if="loading" class="empty-box attendance-empty">正在加载出场记录...</view>
       <scroll-view v-else-if="records.length" class="attendance-list" scroll-y>
         <view v-for="group in groups" :key="group.year" class="attendance-year-group">
@@ -95,18 +97,20 @@ function handleToggleYear(year: string) {
               <text :class="['attendance-year-arrow', group.collapsed ? 'attendance-year-arrow-collapsed' : '']">⌃</text>
             </view>
           </view>
-          <view v-if="!group.collapsed" class="attendance-year-records">
-            <view v-for="record in group.records" :key="record.activity_id" class="attendance-item">
-              <view class="attendance-item-main">
-                <text class="attendance-item-title">{{ record.activity_name }}</text>
-                <text class="attendance-item-meta">{{ formatAttendanceDate(record.holding_date) }} · {{ record.location }}</text>
-              </view>
-              <view class="attendance-item-side">
-                <text :class="attendanceStatusClass(record)">{{ attendanceStatusLabel(record) }}</text>
-                <text class="attendance-item-count">{{ record.registration_count }} 人</text>
+          <SmoothCollapse :visible="!group.collapsed">
+            <view class="attendance-year-records">
+              <view v-for="record in group.records" :key="record.activity_id" class="attendance-item">
+                <view class="attendance-item-main">
+                  <text class="attendance-item-title">{{ record.activity_name }}</text>
+                  <text class="attendance-item-meta">{{ formatAttendanceDate(record.holding_date) }} · {{ record.location }}</text>
+                </view>
+                <view class="attendance-item-side">
+                  <text :class="attendanceStatusClass(record)">{{ attendanceStatusLabel(record) }}</text>
+                  <text class="attendance-item-count">{{ record.registration_count }} 人</text>
+                </view>
               </view>
             </view>
-          </view>
+          </SmoothCollapse>
         </view>
       </scroll-view>
       <view v-else class="empty-box attendance-empty">暂无球队比赛记录。</view>
@@ -116,15 +120,15 @@ function handleToggleYear(year: string) {
 
 <style scoped>
 :deep(.member-attendance-popup) {
-  border-top: var(--neo-border-strong);
-  border-radius: var(--neo-radius-md) var(--neo-radius-md) 0 0;
-  background: var(--neo-color-page);
+  border-top: var(--ui-border-default);
+  border-radius: var(--ui-radius-md) var(--ui-radius-md) 0 0;
+  background: var(--ui-color-surface);
 }
 
 .member-attendance-sheet {
   padding: 34rpx 30rpx 38rpx;
-  background: var(--neo-color-page);
-  border-radius: var(--neo-radius-md) var(--neo-radius-md) 0 0;
+  background: var(--ui-color-surface);
+  border-radius: var(--ui-radius-md) var(--ui-radius-md) 0 0;
 }
 
 .member-edit-header {
@@ -137,17 +141,17 @@ function handleToggleYear(year: string) {
 
 .member-edit-kicker {
   display: block;
-  color: var(--neo-color-text-muted);
+  color: var(--ui-color-text-muted);
   font-size: 24rpx;
-  font-weight: 800;
+  font-weight: 500;
 }
 
 .member-edit-title {
   display: block;
   margin-top: 8rpx;
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
   font-size: 38rpx;
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .attendance-profile {
@@ -160,20 +164,20 @@ function handleToggleYear(year: string) {
 .member-avatar {
   width: 76rpx;
   height: 76rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-button);
   flex-shrink: 0;
   overflow: hidden;
-  background: var(--neo-color-text);
+  background: var(--ui-color-text);
 }
 
 .member-avatar-fallback {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--neo-color-accent);
+  color: var(--ui-color-accent);
   font-size: 30rpx;
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .attendance-summary-grid {
@@ -186,39 +190,39 @@ function handleToggleYear(year: string) {
 .attendance-summary-card {
   min-width: 0;
   padding: 18rpx 10rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-surface);
-  box-shadow: 3rpx 3rpx 0 var(--neo-color-text);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-button);
+  background: var(--ui-color-surface);
+  box-shadow: none;
   text-align: center;
   box-sizing: border-box;
 }
 
 .attendance-summary-value {
   display: block;
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
   font-size: 34rpx;
-  font-weight: 900;
+  font-weight: 600;
   line-height: 1.1;
 }
 
 .attendance-summary-label {
   display: block;
   margin-top: 6rpx;
-  color: var(--neo-color-text-muted);
+  color: var(--ui-color-text-muted);
   font-size: 22rpx;
-  font-weight: 800;
+  font-weight: 500;
 }
 
 .empty-box {
   margin-top: 22rpx;
   padding: 22rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-warning-soft);
-  color: var(--neo-color-text-muted);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-button);
+  background: var(--ui-color-warning-soft);
+  color: var(--ui-color-text-muted);
   font-size: 26rpx;
-  font-weight: 700;
+  font-weight: 400;
 }
 
 .attendance-list {
@@ -243,16 +247,16 @@ function handleToggleYear(year: string) {
   justify-content: space-between;
   gap: 18rpx;
   padding: 8rpx 10rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-surface);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-button);
+  background: var(--ui-color-surface);
   box-sizing: border-box;
 }
 
 .attendance-year-title {
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
   font-size: 28rpx;
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .attendance-year-stats {
@@ -268,46 +272,73 @@ function handleToggleYear(year: string) {
 .attendance-year-chip {
   height: 38rpx;
   padding: 0 12rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-xs);
-  background: var(--neo-color-muted);
-  color: var(--neo-color-text-muted);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-xs);
+  background: var(--ui-color-muted);
+  color: var(--ui-color-text-muted);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 20rpx;
-  font-weight: 900;
+  font-weight: 600;
   box-sizing: border-box;
 }
 
 .attendance-year-chip-joined {
-  background: var(--neo-color-success);
-  color: var(--neo-color-text);
+  background: var(--ui-color-success);
+  color: var(--ui-color-text);
 }
 
 .attendance-year-chip-leave {
-  background: var(--neo-color-warning-soft);
-  color: var(--neo-color-text);
+  background: var(--ui-color-warning-soft);
+  color: var(--ui-color-text);
 }
 
 .attendance-year-arrow {
   width: 34rpx;
   height: 34rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-xs);
-  background: var(--neo-color-text);
-  color: var(--neo-color-accent);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-xs);
+  background: var(--ui-color-text);
+  color: var(--ui-color-accent);
   display: flex;
   align-items: center;
+  transition: transform var(--ui-motion-switch-duration) var(--ui-motion-ease-out);
   justify-content: center;
   font-size: 20rpx;
-  font-weight: 900;
+  font-weight: 600;
   line-height: 1;
   transform: rotate(0deg);
 }
 
 .attendance-year-arrow-collapsed {
   transform: rotate(180deg);
+}
+
+/* 年度记录展开淡入：保持布局、内容轻淡入（≤8rpx 位移）。 */
+.attendance-year-records {
+  animation: attendance-records-fade-in var(--ui-motion-expand-duration) var(--ui-motion-ease-out);
+}
+
+@keyframes attendance-records-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8rpx);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* H5 减少动态效果：记录直接出现、箭头直接切换。 */
+@media (prefers-reduced-motion: reduce) {
+  .attendance-year-records {
+    animation: none;
+  }
+  .attendance-year-arrow {
+    transition: none;
+  }
 }
 
 .attendance-item {
@@ -317,9 +348,9 @@ function handleToggleYear(year: string) {
   gap: 18rpx;
   margin-top: 10rpx;
   padding: 18rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-surface);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-button);
+  background: var(--ui-color-surface);
 }
 
 .attendance-item-main {
@@ -329,9 +360,9 @@ function handleToggleYear(year: string) {
 
 .attendance-item-title {
   display: block;
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
   font-size: 28rpx;
-  font-weight: 900;
+  font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -340,9 +371,9 @@ function handleToggleYear(year: string) {
 .attendance-item-meta {
   display: block;
   margin-top: 8rpx;
-  color: var(--neo-color-text-muted);
+  color: var(--ui-color-text-muted);
   font-size: 22rpx;
-  font-weight: 700;
+  font-weight: 400;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -360,41 +391,41 @@ function handleToggleYear(year: string) {
 .attendance-status {
   height: 42rpx;
   padding: 0 14rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-xs);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-xs);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 22rpx;
-  font-weight: 900;
+  font-weight: 600;
   box-sizing: border-box;
 }
 
 .attendance-status-joined {
-  background: var(--neo-color-success);
-  color: var(--neo-color-text);
+  background: var(--ui-color-success);
+  color: var(--ui-color-text);
 }
 
 .attendance-status-leave {
-  background: var(--neo-color-warning-soft);
-  color: var(--neo-color-text);
+  background: var(--ui-color-warning-soft);
+  color: var(--ui-color-text);
 }
 
 .attendance-status-late {
-  background: var(--neo-color-info-soft);
-  color: var(--neo-color-text);
+  background: var(--ui-color-info-soft);
+  color: var(--ui-color-text);
 }
 
 .attendance-status-pending,
 .attendance-status-unregistered {
-  background: var(--neo-color-muted);
-  color: var(--neo-color-text-muted);
+  background: var(--ui-color-muted);
+  color: var(--ui-color-text-muted);
 }
 
 .attendance-item-count {
-  color: #8a9184;
+  color: var(--ui-color-text-muted);
   font-size: 20rpx;
-  font-weight: 800;
+  font-weight: 500;
 }
 
 .attendance-empty {

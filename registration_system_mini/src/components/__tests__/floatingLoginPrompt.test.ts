@@ -26,13 +26,13 @@ describe("FloatingLoginPrompt", () => {
     expect(source.includes('class="floating-login-prompt__card"')).toEqual(true);
     // 定位与卡片皮肤必须写在本组件节点上：custom-class 穿不透小程序组件样式隔离。
     expect(source.includes("custom-class=\"")).toEqual(false);
-    expect(source.includes("NeoButton")).toEqual(true);
+    expect(source.includes("AppButton")).toEqual(true);
     expect(source.includes('variant="lime"')).toEqual(true);
     expect(source.includes("position: fixed;")).toEqual(true);
     expect(source.includes("bottom: calc(env(safe-area-inset-bottom) + 126rpx);")).toEqual(true);
     expect(source.includes("justify-content: space-between;")).toEqual(true);
-    expect(source.includes("var(--neo-border-strong)")).toEqual(true);
-    expect(source.includes("var(--neo-shadow-raised)")).toEqual(true);
+    expect(source.includes("var(--ui-border-default)")).toEqual(true);
+    expect(source.includes("var(--ui-shadow-raised)")).toEqual(true);
     expect(source.includes("请先登录")).toEqual(true);
     expect(source.includes("登录后查看你的比赛、出勤和球队数据。")).toEqual(true);
     expect(source.includes("@click=\"goToLogin\"")).toEqual(true);

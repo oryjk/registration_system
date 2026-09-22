@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import NeoButton from "@/components/neo/NeoButton.vue";
-import NeoSurface from "@/components/neo/NeoSurface.vue";
-import NeoTag from "@/components/neo/NeoTag.vue";
+import AppButton from "@/components/ui/AppButton.vue";
+import AppSurface from "@/components/ui/AppSurface.vue";
+import AppTag from "@/components/ui/AppTag.vue";
 import type { AppTeamApplication, AppTeamApplicationStatus } from "@/types/match";
-import type { NeoTagTone } from "@/types/designSystem";
+import type { AppTagTone } from "@/types/designSystem";
 import { formatDateTimeWithWeekdayLabel } from "@/utils/datetime";
 
 defineProps<{
@@ -17,7 +17,7 @@ const emit = defineEmits<{
   (event: "selectOpponent", application: AppTeamApplication): void;
 }>();
 
-const STATUS_LABELS: Record<AppTeamApplicationStatus, { label: string; tone: NeoTagTone }> = {
+const STATUS_LABELS: Record<AppTeamApplicationStatus, { label: string; tone: AppTagTone }> = {
   pending: { label: "等待选择", tone: "amber" },
   selected: { label: "已选为对手", tone: "green" },
   rejected: { label: "已婉拒", tone: "muted" },
@@ -34,10 +34,10 @@ function statusOf(application: AppTeamApplication) {
 </script>
 
 <template>
-  <NeoSurface variant="raised">
+  <AppSurface variant="raised">
     <view class="applications-head">
       <text class="applications-title">接约申请</text>
-      <NeoTag v-if="isLoading" tone="muted">加载中</NeoTag>
+      <AppTag v-if="isLoading" tone="muted">加载中</AppTag>
     </view>
 
     <view v-if="loadErrorMessage" class="applications-hint">{{ loadErrorMessage }}</view>
@@ -52,12 +52,12 @@ function statusOf(application: AppTeamApplication) {
     >
       <view class="application-head">
         <text class="application-team">{{ teamLabel(application) }}</text>
-        <NeoTag :tone="statusOf(application).tone" size="lg">{{ statusOf(application).label }}</NeoTag>
+        <AppTag :tone="statusOf(application).tone" size="lg">{{ statusOf(application).label }}</AppTag>
       </view>
       <text class="application-time">{{ formatDateTimeWithWeekdayLabel(application.created_at) }} 提交</text>
       <text class="application-introduction">{{ application.introduction }}</text>
 
-      <NeoButton
+      <AppButton
         v-if="application.status === 'pending'"
         class="application-select-button"
         :loading="isSelecting"
@@ -65,9 +65,9 @@ function statusOf(application: AppTeamApplication) {
         @click="emit('selectOpponent', application)"
       >
         选为对手
-      </NeoButton>
+      </AppButton>
     </view>
-  </NeoSurface>
+  </AppSurface>
 </template>
 
 <style scoped>
@@ -80,28 +80,28 @@ function statusOf(application: AppTeamApplication) {
 
 .applications-title {
   font-size: 30rpx;
-  font-weight: 900;
-  color: var(--neo-color-text);
+  font-weight: 600;
+  color: var(--ui-color-text);
 }
 
 .applications-hint {
   margin-top: 18rpx;
   padding: 20rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-muted);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-button);
+  background: var(--ui-color-muted);
   font-size: 24rpx;
   line-height: 1.6;
   font-weight: 600;
-  color: var(--neo-color-text-muted);
+  color: var(--ui-color-text-muted);
 }
 
 .application-card {
   margin-top: 18rpx;
   padding: 20rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-surface);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-button);
+  background: var(--ui-color-surface);
 }
 
 .application-head {
@@ -114,8 +114,8 @@ function statusOf(application: AppTeamApplication) {
 .application-team {
   flex: 1;
   font-size: 28rpx;
-  font-weight: 900;
-  color: var(--neo-color-text);
+  font-weight: 600;
+  color: var(--ui-color-text);
 }
 
 .application-time {
@@ -123,7 +123,7 @@ function statusOf(application: AppTeamApplication) {
   margin-top: 8rpx;
   font-size: 22rpx;
   font-weight: 600;
-  color: var(--neo-color-text-muted);
+  color: var(--ui-color-text-muted);
 }
 
 .application-introduction {
@@ -132,7 +132,7 @@ function statusOf(application: AppTeamApplication) {
   font-size: 26rpx;
   line-height: 1.6;
   font-weight: 600;
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
 }
 
 .application-select-button {

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import NeoButton from "@/components/neo/NeoButton.vue";
-import NeoSurface from "@/components/neo/NeoSurface.vue";
+import AppButton from "@/components/ui/AppButton.vue";
+import AppSurface from "@/components/ui/AppSurface.vue";
 import type { AppUser } from "@/types/app";
 import { impersonationTargetLabel } from "../mineImpersonation";
 
@@ -31,7 +31,7 @@ function handleKeywordInput(event: Event) {
 
 <template>
   <!-- 切换中：醒目警示卡片，任何身份下都提供一键恢复入口。 -->
-  <NeoSurface v-if="impersonating" variant="raised" flush>
+  <AppSurface v-if="impersonating" variant="raised" flush>
     <view class="impersonation-banner">
       <view class="impersonation-banner__chip">
         <text class="impersonation-banner__chip-text">调试模式</text>
@@ -40,14 +40,14 @@ function handleKeywordInput(event: Event) {
         <text class="impersonation-banner__title">正在以「{{ currentName }}」的身份使用小程序</text>
         <text class="impersonation-banner__desc">所有操作都会以该用户身份生效，仅用于问题排查复现。</text>
       </view>
-      <NeoButton block variant="dark" :loading="restoring" :disabled="restoring" @click="emit('restore')">
+      <AppButton icon="undo" block variant="dark" :loading="restoring" :disabled="restoring" @click="emit('restore')">
         {{ restoring ? "恢复中..." : "恢复我的身份" }}
-      </NeoButton>
+      </AppButton>
     </view>
-  </NeoSurface>
+  </AppSurface>
 
   <!-- 产品负责人调试入口：搜索并切换为任意用户。 -->
-  <NeoSurface v-else-if="canSwitch" variant="raised" flush>
+  <AppSurface v-else-if="canSwitch" variant="raised" flush>
     <view class="impersonation-panel">
       <view class="impersonation-panel__head">
         <text class="impersonation-panel__title">身份切换</text>
@@ -62,9 +62,9 @@ function handleKeywordInput(event: Event) {
           @input="handleKeywordInput"
           @confirm="emit('search')"
         />
-        <NeoButton variant="dark" size="sm" :loading="searching" :disabled="searching || switching" @click="emit('search')">
+        <AppButton icon="search-line" variant="dark" size="sm" :loading="searching" :disabled="searching || switching" @click="emit('search')">
           搜索
-        </NeoButton>
+        </AppButton>
       </view>
       <view v-if="results.length" class="impersonation-panel__results">
         <view
@@ -84,31 +84,31 @@ function handleKeywordInput(event: Event) {
       </view>
       <text v-else-if="searched && !searching" class="impersonation-panel__empty">没有匹配的用户</text>
     </view>
-  </NeoSurface>
+  </AppSurface>
 </template>
 
 <style scoped>
-/* 布局与配色都由自己模板内的包裹 view 承载（NeoSurface flush），避免 custom-class 布局在 mp 端失效。 */
+/* 布局与配色都由自己模板内的包裹 view 承载（AppSurface flush），避免 custom-class 布局在 mp 端失效。 */
 .impersonation-banner {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 16rpx;
   padding: 28rpx;
-  background: var(--neo-color-warning-soft);
+  background: var(--ui-color-warning-soft);
 }
 
 .impersonation-banner__chip {
   padding: 4rpx 14rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-text);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-button);
+  background: var(--ui-color-text);
 }
 
 .impersonation-banner__chip-text {
-  color: var(--neo-color-text-inverse);
+  color: var(--ui-color-text-inverse);
   font-size: 20rpx;
-  font-weight: 900;
+  font-weight: 600;
   letter-spacing: 2rpx;
 }
 
@@ -119,20 +119,20 @@ function handleKeywordInput(event: Event) {
 }
 
 .impersonation-banner__title {
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
   font-size: 32rpx;
-  font-weight: 950;
+  font-weight: var(--ui-font-weight-heading);
   line-height: 1.3;
 }
 
 .impersonation-banner__desc {
-  color: var(--neo-color-text-muted);
+  color: var(--ui-color-text-muted);
   font-size: 24rpx;
-  font-weight: 700;
+  font-weight: 400;
   line-height: 1.5;
 }
 
-.impersonation-banner :deep(.neo-button) {
+.impersonation-banner :deep(.ui-button) {
   align-self: stretch;
 }
 
@@ -150,15 +150,15 @@ function handleKeywordInput(event: Event) {
 }
 
 .impersonation-panel__title {
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
   font-size: 32rpx;
-  font-weight: 950;
+  font-weight: var(--ui-font-weight-heading);
 }
 
 .impersonation-panel__desc {
-  color: var(--neo-color-text-muted);
+  color: var(--ui-color-text-muted);
   font-size: 24rpx;
-  font-weight: 700;
+  font-weight: 400;
   line-height: 1.5;
 }
 
@@ -173,20 +173,20 @@ function handleKeywordInput(event: Event) {
   min-width: 0;
   height: 80rpx;
   padding: 0 20rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-surface);
-  color: var(--neo-color-text);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-button);
+  background: var(--ui-color-surface);
+  color: var(--ui-color-text);
   font-size: 26rpx;
-  font-weight: 700;
+  font-weight: 400;
   box-sizing: border-box;
 }
 
 .impersonation-panel__results {
   display: flex;
   flex-direction: column;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-button);
   overflow: hidden;
 }
 
@@ -195,15 +195,15 @@ function handleKeywordInput(event: Event) {
   align-items: center;
   gap: 16rpx;
   padding: 20rpx;
-  background: var(--neo-color-surface);
+  background: var(--ui-color-surface);
 }
 
 .impersonation-panel__result--pressed {
-  background: var(--neo-color-muted);
+  background: var(--ui-color-muted);
 }
 
 .impersonation-panel__result + .impersonation-panel__result {
-  border-top: var(--neo-border-default);
+  border-top: var(--ui-border-default);
 }
 
 .impersonation-panel__result-main {
@@ -215,32 +215,32 @@ function handleKeywordInput(event: Event) {
 }
 
 .impersonation-panel__result-name {
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
   font-size: 28rpx;
-  font-weight: 900;
+  font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .impersonation-panel__result-meta {
-  color: var(--neo-color-text-muted);
+  color: var(--ui-color-text-muted);
   font-size: 22rpx;
-  font-weight: 700;
+  font-weight: 400;
 }
 
 .impersonation-panel__result-action {
-  color: var(--neo-color-accent-deep);
+  color: var(--ui-color-accent-deep);
   font-size: 24rpx;
-  font-weight: 900;
+  font-weight: 600;
   flex-shrink: 0;
 }
 
 .impersonation-panel__empty {
   padding: 12rpx 0;
-  color: var(--neo-color-text-muted);
+  color: var(--ui-color-text-muted);
   font-size: 24rpx;
-  font-weight: 700;
+  font-weight: 400;
   text-align: center;
 }
 </style>

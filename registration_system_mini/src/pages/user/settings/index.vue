@@ -3,10 +3,10 @@ import { useAccentTheme } from "@/stores/theme";
 import { computed } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
-import NeoButton from "@/components/neo/NeoButton.vue";
-import NeoConfirmDialog from "@/components/neo/NeoConfirmDialog.vue";
-import NeoSectionHeader from "@/components/neo/NeoSectionHeader.vue";
-import NeoSurface from "@/components/neo/NeoSurface.vue";
+import AppButton from "@/components/ui/AppButton.vue";
+import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
+import SectionHeader from "@/components/ui/SectionHeader.vue";
+import AppSurface from "@/components/ui/AppSurface.vue";
 import { getCustomNavMetrics } from "@/utils/customNav";
 import { useSettingsPage } from "./useSettingsPage";
 
@@ -53,18 +53,18 @@ onShow(async () => {
 
 <template>
   <page-meta :page-style="themePageStyle" />
-  <view class="settings-page" :style="pageStyle">
+  <view class="app-theme-scope settings-page" :style="[themePageStyle, pageStyle]">
     <AppTabHeader title="设置" showBack />
 
     <view class="settings-content">
-      <NeoSurface v-if="isOwner" custom-class="settings-card">
-        <NeoSectionHeader title="验证与运营" marker="设" caption="各项开关由管理端「系统设置」控制" />
+      <AppSurface v-if="isOwner" custom-class="settings-card">
+        <SectionHeader title="验证与运营" caption="各项开关由管理端「系统设置」控制" />
         <view v-if="clearProfileEnabled" class="settings-item">
           <view class="settings-item__texts">
             <text class="settings-item__title">清除头像和昵称</text>
             <text class="settings-item__desc">清除后回到未完善资料状态，用于验证资料完善引导</text>
           </view>
-          <NeoButton variant="outline" size="sm" @click="handleClearProfile">清除</NeoButton>
+          <AppButton variant="outline" size="sm" @click="handleClearProfile">清除</AppButton>
         </view>
         <view v-if="reviewToggleEnabled" class="settings-item settings-item--stacked">
           <view class="settings-item__texts">
@@ -95,14 +95,14 @@ onShow(async () => {
         <view v-if="!isLoading && !hasVisibleItems" class="settings-empty">
           <text class="settings-empty__text">暂无可用设置项，可在管理端「系统设置」打开对应开关</text>
         </view>
-      </NeoSurface>
+      </AppSurface>
 
-      <NeoSurface v-else custom-class="settings-card">
+      <AppSurface v-else custom-class="settings-card">
         <text class="settings-empty__text">该页面仅对指定账号开放</text>
-      </NeoSurface>
+      </AppSurface>
     </view>
 
-    <NeoConfirmDialog
+    <ConfirmDialog
       :visible="confirmDialogVisible"
       :title="confirmDialogState.title"
       :message="confirmDialogState.message"
@@ -123,7 +123,7 @@ onShow(async () => {
 .settings-page {
   min-height: 100vh;
   padding: 0 28rpx 48rpx;
-  background: var(--neo-color-page);
+  background: var(--ui-color-page);
   box-sizing: border-box;
 }
 
@@ -158,17 +158,17 @@ onShow(async () => {
 
 .settings-item__title {
   display: block;
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
   font-size: 28rpx;
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .settings-item__desc {
   display: block;
   margin-top: 8rpx;
-  color: var(--neo-color-text-muted);
+  color: var(--ui-color-text-muted);
   font-size: 22rpx;
-  font-weight: 700;
+  font-weight: 400;
   line-height: 1.45;
 }
 
@@ -185,9 +185,9 @@ onShow(async () => {
   gap: 14rpx;
   min-height: 84rpx;
   padding: 0 22rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-md);
-  background: var(--neo-color-surface);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-card);
+  background: var(--ui-color-surface);
   box-sizing: border-box;
 }
 
@@ -197,29 +197,29 @@ onShow(async () => {
 
 /* 未选中项保持实线边框与正常文字色（虚线灰显会被当成禁用）；选中态靠实心彩点与加重边框表达。 */
 .settings-radio--active {
-  border: var(--neo-border-strong);
-  box-shadow: var(--neo-shadow-raised);
+  border: var(--ui-border-default);
+  box-shadow: var(--ui-shadow-raised);
 }
 
 .settings-radio__dot {
   width: 30rpx;
   height: 30rpx;
   flex-shrink: 0;
-  border: 4rpx solid var(--neo-color-text);
-  border-radius: var(--neo-radius-round);
-  background: var(--neo-color-surface);
+  border: 4rpx solid var(--ui-color-text);
+  border-radius: var(--ui-radius-round);
+  background: var(--ui-color-surface);
   box-sizing: border-box;
 }
 
 .settings-radio--active .settings-radio__dot {
-  border-color: var(--neo-color-text);
-  background: var(--neo-color-accent);
+  border-color: var(--ui-color-text);
+  background: var(--ui-color-accent);
 }
 
 .settings-radio__label {
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
   font-size: 26rpx;
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .settings-empty {
@@ -227,9 +227,9 @@ onShow(async () => {
 }
 
 .settings-empty__text {
-  color: var(--neo-color-text-muted);
+  color: var(--ui-color-text-muted);
   font-size: 24rpx;
-  font-weight: 700;
+  font-weight: 400;
   line-height: 1.5;
 }
 </style>

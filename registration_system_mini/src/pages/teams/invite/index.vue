@@ -2,8 +2,8 @@
 import { useAccentTheme } from "@/stores/theme";
 import AppTabHeader from "@/components/AppTabHeader.vue";
 import ProfileCompletionDialog from "@/components/ProfileCompletionDialog.vue";
-import NeoButton from "@/components/neo/NeoButton.vue";
-import NeoSurface from "@/components/neo/NeoSurface.vue";
+import AppButton from "@/components/ui/AppButton.vue";
+import AppSurface from "@/components/ui/AppSurface.vue";
 import { useTeamInvitePage } from "./useTeamInvitePage";
 
 const { themePageStyle } = useAccentTheme();
@@ -30,7 +30,7 @@ const {
 
 <template>
   <page-meta :page-style="themePageStyle" />
-  <view class="team-invite-page" :style="pageStyle">
+  <view class="app-theme-scope team-invite-page" :style="[themePageStyle, pageStyle]">
     <AppTabHeader title="球队邀请" showBack />
 
     <view class="team-invite-content">
@@ -40,9 +40,9 @@ const {
 
       <view v-else-if="errorMessage" class="team-invite-state" @tap="resolveInvite">
         <text class="team-invite-state__text">{{ errorMessage }}，点击重试</text>
-        <NeoButton class="team-invite-state__action" variant="outline" size="sm" @click="goHome">
+        <AppButton class="team-invite-state__action" variant="outline" size="sm" @click="goHome">
           回到首页
-        </NeoButton>
+        </AppButton>
       </view>
 
       <template v-else-if="team">
@@ -66,17 +66,17 @@ const {
         </view>
 
         <!-- 已是成员：不重复加入，引导去球队主页。 -->
-        <NeoSurface v-if="team.is_member || joined" variant="raised" custom-class="team-invite-card">
+        <AppSurface v-if="team.is_member || joined" variant="raised" custom-class="team-invite-card">
           <view class="team-invite-card__head">
             <text class="team-invite-card__title">{{ joined ? "加入成功" : "你已是球队成员" }}</text>
             <text class="team-invite-card__copy">
               {{ joined ? "快去球队主页看看吧。" : "无需重复加入，快去球队主页看看吧。" }}
             </text>
           </view>
-          <NeoButton block @click="goTeamDetail">进入球队主页</NeoButton>
-        </NeoSurface>
+          <AppButton block @click="goTeamDetail">进入球队主页</AppButton>
+        </AppSurface>
 
-        <NeoSurface v-else variant="raised" custom-class="team-invite-card">
+        <AppSurface v-else variant="raised" custom-class="team-invite-card">
           <view class="team-invite-card__head">
             <text class="team-invite-card__title">申请加入</text>
             <text class="team-invite-card__copy">
@@ -95,10 +95,10 @@ const {
               :disabled="joining"
             />
           </view>
-          <NeoButton block :loading="joining" :disabled="!canSubmit" @click="handleJoin">
+          <AppButton block :loading="joining" :disabled="!canSubmit" @click="handleJoin">
             {{ joining ? "加入中..." : "加入球队" }}
-          </NeoButton>
-        </NeoSurface>
+          </AppButton>
+        </AppSurface>
       </template>
     </view>
 
@@ -114,7 +114,7 @@ const {
 .team-invite-page {
   min-height: 100vh;
   padding: 0 28rpx 112rpx;
-  background: var(--neo-color-page);
+  background: var(--ui-color-page);
   box-sizing: border-box;
 }
 
@@ -133,9 +133,9 @@ const {
 }
 
 .team-invite-state__text {
-  color: var(--neo-color-text-muted);
+  color: var(--ui-color-text-muted);
   font-size: 26rpx;
-  font-weight: 700;
+  font-weight: 400;
 }
 
 .team-invite-hero {
@@ -156,12 +156,14 @@ const {
   width: 96rpx;
   height: 96rpx;
   overflow: hidden;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-info-soft);
-  color: var(--neo-color-text);
+
+  border: 0;
+  border-radius: var(--ui-radius-button);
+
+  background: var(--ui-color-neutral-bg);
+  color: var(--ui-color-text);
   font-size: 40rpx;
-  font-weight: 900;
+  font-weight: 600;
   box-sizing: border-box;
 }
 
@@ -177,17 +179,18 @@ const {
 
 .team-invite-hero__eyebrow {
   display: block;
-  color: var(--neo-color-text-muted);
+  color: var(--ui-color-text-muted);
   font-size: 22rpx;
-  font-weight: 700;
+  font-weight: 400;
 }
 
 .team-invite-hero__name {
   display: block;
   margin-top: 4rpx;
-  color: var(--neo-color-text);
-  font-size: 38rpx;
-  font-weight: 950;
+  color: var(--ui-color-text);
+
+  font-size: 32rpx;
+  font-weight: var(--ui-font-weight-heading);
   line-height: 1.25;
   word-break: break-word;
 }
@@ -195,10 +198,10 @@ const {
 .team-invite-hero__desc {
   display: block;
   margin-top: 16rpx;
-  color: var(--neo-color-text-muted);
+  color: var(--ui-color-text-muted);
   font-size: 24rpx;
   line-height: 1.6;
-  font-weight: 700;
+  font-weight: 400;
 }
 
 :deep(.team-invite-card) {
@@ -214,16 +217,16 @@ const {
 }
 
 .team-invite-card__title {
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
   font-size: 32rpx;
-  font-weight: 950;
+  font-weight: var(--ui-font-weight-heading);
 }
 
 .team-invite-card__copy {
-  color: var(--neo-color-text-muted);
+  color: var(--ui-color-text-muted);
   font-size: 24rpx;
   line-height: 1.5;
-  font-weight: 700;
+  font-weight: 400;
 }
 
 .team-invite-field {
@@ -235,10 +238,10 @@ const {
   width: 100%;
   height: 92rpx;
   padding: 0 24rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-page);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-button);
+  background: var(--ui-color-page);
   font-size: 28rpx;
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
 }
 </style>

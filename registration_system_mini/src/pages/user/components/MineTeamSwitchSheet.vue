@@ -1,8 +1,12 @@
 <script setup lang="ts">
-import NeoSurface from "@/components/neo/NeoSurface.vue";
+import TeamRoleIcon from "@/components/ui/TeamRoleIcon.vue";
+import { computed } from "vue";
+import AppSurface from "@/components/ui/AppSurface.vue";
+import { useOverlayPresence } from "@/components/ui/useOverlayPresence";
+import { prefersReducedMotion } from "@/utils/reducedMotion";
 import type { TeamProfileViewModel } from "@/types/viewModels";
 
-defineProps<{
+const props = defineProps<{
   visible: boolean;
   teams: TeamProfileViewModel[];
   currentTeamId?: number;
@@ -14,7 +18,19 @@ const emit = defineEmits<{
   (event: "select", teamId: number): void;
 }>();
 
+// 底部弹层退场时序：淡出下滑期间遮罩继续拦截点击（防点穿），结束才卸载。
+const { rendered, leaving } = useOverlayPresence(
+  computed(() => props.visible),
+  { leaveDurationMs: () => prefersReducedMotion() ? 0 : 210 },
+);
+
+function handleClose() {
+  if (!rendered.value || leaving.value || props.isSwitching) return;
+  emit("close");
+}
+
 function handleSelect(teamId: number, isCurrent: boolean) {
+  if (!props.visible || !rendered.value || leaving.value || props.isSwitching) return;
   if (isCurrent) {
     emit("close");
     return;
@@ -24,23 +40,24 @@ function handleSelect(teamId: number, isCurrent: boolean) {
 </script>
 
 <template>
-  <view v-if="visible" class="team-switch-mask" @tap="!isSwitching && emit('close')">
+  <view v-if="rendered" :class="['team-switch-mask', leaving ? 'team-switch-mask--leaving' : '']" @tap="handleClose">
     <view class="team-switch-sheet" @tap.stop>
       <view class="team-switch-sheet__head">
         <view class="team-switch-sheet__texts">
           <text class="team-switch-sheet__title">切换当前球队</text>
           <text class="team-switch-sheet__caption">切换后，比赛和信用数据会同步更新</text>
         </view>
-        <view class="team-switch-sheet__close" @tap="!isSwitching && emit('close')">×</view>
+        <view class="team-switch-sheet__close" @tap="handleClose">×</view>
       </view>
 
       <scroll-view class="team-switch-sheet__list" scroll-y>
-        <NeoSurface
+        <AppSurface
           v-for="team in teams"
           :key="team.id"
           interactive
           flush
-          @tap="handleSelect(team.id, team.id === currentTeamId)"
+          @press="handleSelect(team.id, team.id === currentTeamId)"
+          :disabled="isSwitching || leaving"
         >
           <view
             :class="[
@@ -49,14 +66,17 @@ function handleSelect(teamId: number, isCurrent: boolean) {
               isSwitching ? 'team-switch-option--disabled' : '',
             ]"
           >
-            <view class="team-switch-option__badge">{{ team.name.slice(0, 1) || "队" }}</view>
+            <view class="team-switch-option__badge">
+              <image v-if="team.logoUrl" class="team-switch-option__logo" :src="team.logoUrl" mode="aspectFit" />
+              <text v-else>{{ team.name.slice(0, 1) || "队" }}</text>
+            </view>
             <view class="team-switch-option__copy">
               <text class="team-switch-option__name">{{ team.name }}</text>
-              <text class="team-switch-option__meta">{{ team.myRoleLabel }} · {{ team.memberCount }} 人</text>
+              <view class="team-switch-option__meta"><TeamRoleIcon :team-role="team.myRole" :label="team.myRoleLabel" /><text>{{ team.memberCount }} 人</text></view>
             </view>
             <text v-if="team.id === currentTeamId" class="team-switch-option__mark">当前</text>
           </view>
-        </NeoSurface>
+        </AppSurface>
       </scroll-view>
 
       <text v-if="isSwitching" class="team-switch-sheet__pending">球队数据切换中...</text>
@@ -71,23 +91,33 @@ function handleSelect(teamId: number, isCurrent: boolean) {
   z-index: 120;
   display: flex;
   align-items: flex-end;
-  background: rgba(11, 14, 10, 0.34);
-  animation: team-switch-mask-fade-in 220ms ease;
+  background: var(--ui-color-overlay);
+  animation: team-switch-mask-fade-in var(--ui-motion-overlay-duration) ease;
+}
+
+/* 退场：遮罩淡出期间仍覆盖屏幕拦截点击（防点穿），面板下滑收起且不再接受交互。 */
+.team-switch-mask--leaving {
+  animation: team-switch-mask-fade-out var(--ui-motion-overlay-duration) ease forwards;
+}
+
+.team-switch-mask--leaving .team-switch-sheet {
+  pointer-events: none;
+  animation: team-switch-sheet-exit var(--ui-motion-overlay-duration) var(--ui-motion-ease-out) forwards;
 }
 
 .team-switch-sheet {
   width: 100%;
   max-height: 70vh;
   padding: 34rpx 28rpx calc(env(safe-area-inset-bottom) + 28rpx);
-  border: var(--neo-border-strong);
+  border: var(--ui-border-default);
   border-bottom: none;
-  border-radius: var(--neo-radius-md) var(--neo-radius-md) 0 0;
-  background: var(--neo-surface-bg);
-  box-shadow: var(--neo-surface-shadow);
+  border-radius: var(--ui-radius-md) var(--ui-radius-md) 0 0;
+  background: var(--ui-surface-bg);
+  box-shadow: var(--ui-surface-shadow);
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  animation: team-switch-sheet-enter 240ms cubic-bezier(0.22, 1, 0.36, 1);
+  animation: team-switch-sheet-enter var(--ui-motion-overlay-duration) var(--ui-motion-ease-out);
 }
 
 .team-switch-sheet__head {
@@ -104,28 +134,28 @@ function handleSelect(teamId: number, isCurrent: boolean) {
 
 .team-switch-sheet__title {
   display: block;
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
   font-size: 34rpx;
   line-height: 44rpx;
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .team-switch-sheet__caption {
   display: block;
   margin-top: 8rpx;
-  color: var(--neo-color-text-muted);
+  color: var(--ui-color-text-muted);
   font-size: 23rpx;
   line-height: 1.5;
-  font-weight: 700;
+  font-weight: 400;
 }
 
 .team-switch-sheet__close {
   width: 56rpx;
   height: 56rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-round);
-  background: var(--neo-surface-bg);
-  color: var(--neo-color-text-muted);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-round);
+  background: var(--ui-surface-bg);
+  color: var(--ui-color-text-muted);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -142,7 +172,7 @@ function handleSelect(teamId: number, isCurrent: boolean) {
   max-height: 46vh;
 }
 
-.team-switch-sheet__list :deep(.neo-surface) {
+.team-switch-sheet__list :deep(.ui-surface) {
   display: block;
   margin-bottom: 14rpx;
 }
@@ -157,7 +187,7 @@ function handleSelect(teamId: number, isCurrent: boolean) {
 }
 
 .team-switch-option--current {
-  background: var(--neo-color-info-soft);
+  background: var(--ui-color-info-soft);
 }
 
 .team-switch-option--disabled {
@@ -172,13 +202,18 @@ function handleSelect(teamId: number, isCurrent: boolean) {
   width: 62rpx;
   height: 62rpx;
   overflow: hidden;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-surface);
-  color: var(--neo-color-text);
+  border: none;
+  border-radius: var(--ui-radius-round);
+  background: var(--ui-color-neutral-bg);
+  color: var(--ui-color-text);
   font-size: 26rpx;
-  font-weight: 900;
+  font-weight: 600;
   box-sizing: border-box;
+}
+
+.team-switch-option__logo {
+  width: 100%;
+  height: 100%;
 }
 
 .team-switch-option__copy {
@@ -188,40 +223,39 @@ function handleSelect(teamId: number, isCurrent: boolean) {
 
 .team-switch-option__name {
   display: block;
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
   font-size: 27rpx;
-  font-weight: 900;
+  font-weight: 600;
   line-height: 1.25;
   word-break: break-word;
 }
 
-.team-switch-option__meta {
-  display: block;
+.team-switch-option__meta { display: flex; align-items: center; gap: 8rpx;
   margin-top: 6rpx;
-  color: var(--neo-color-text-muted);
+  color: var(--ui-color-text-muted);
   font-size: 22rpx;
-  font-weight: 700;
+  font-weight: 400;
   line-height: 1.4;
 }
 
 .team-switch-option__mark {
   flex-shrink: 0;
   padding: 4rpx 12rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-round);
-  background: var(--neo-color-accent);
-  color: var(--neo-color-text);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-round);
+  background: var(--ui-color-accent);
+  color: var(--ui-color-text);
   font-size: 20rpx;
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .team-switch-sheet__pending {
   flex-shrink: 0;
   display: block;
   margin-top: 14rpx;
-  color: var(--neo-color-text-muted);
+  color: var(--ui-color-text-muted);
   font-size: 22rpx;
-  font-weight: 700;
+  font-weight: 400;
 }
 
 @keyframes team-switch-mask-fade-in {
@@ -241,6 +275,36 @@ function handleSelect(teamId: number, isCurrent: boolean) {
 
   to {
     transform: translateY(0);
+  }
+}
+
+@keyframes team-switch-mask-fade-out {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes team-switch-sheet-exit {
+  from {
+    transform: translateY(0);
+  }
+
+  to {
+    transform: translateY(100%);
+  }
+}
+
+/* H5 减少动态效果：弹层直接出现/消失。 */
+@media (prefers-reduced-motion: reduce) {
+  .team-switch-mask,
+  .team-switch-mask--leaving,
+  .team-switch-sheet,
+  .team-switch-mask--leaving .team-switch-sheet {
+    animation: none;
   }
 }
 </style>

@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import NeoButton from "@/components/neo/NeoButton.vue";
-import NeoSurface from "@/components/neo/NeoSurface.vue";
-import NeoTag from "@/components/neo/NeoTag.vue";
+import AppButton from "@/components/ui/AppButton.vue";
+import AppSurface from "@/components/ui/AppSurface.vue";
+import AppTag from "@/components/ui/AppTag.vue";
 import type { AppTeamApplication } from "@/types/match";
 
 defineProps<{
@@ -17,14 +17,14 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <NeoSurface variant="raised">
+  <AppSurface variant="raised">
     <view class="status-head">
       <text class="status-title">
         {{ application.status === "selected" ? "已被选为对手" : "已提交接约申请" }}
       </text>
-      <NeoTag :tone="application.status === 'selected' ? 'green' : 'amber'" size="lg">
+      <AppTag :tone="application.status === 'selected' ? 'green' : 'amber'" size="lg">
         {{ application.status === "selected" ? "对手已确认" : "等待对方确认" }}
-      </NeoTag>
+      </AppTag>
     </view>
 
     <view class="status-body">
@@ -36,18 +36,18 @@ const emit = defineEmits<{
       当前不在报名时间内，申请不可撤回。
     </view>
     <view v-if="application.status === 'pending' && canWithdraw" class="status-actions">
-      <NeoButton
+      <AppButton
         variant="outline"
         :loading="isWithdrawing"
         @click="emit('withdraw')"
       >
         {{ isWithdrawing ? "撤回中..." : "撤回申请" }}
-      </NeoButton>
+      </AppButton>
     </view>
     <view v-else-if="application.status === 'selected'" class="status-actions">
-      <NeoButton variant="dark" @click="emit('goMatch')">去报名出场</NeoButton>
+      <AppButton variant="dark" @click="emit('goMatch')">去报名出场</AppButton>
     </view>
-  </NeoSurface>
+  </AppSurface>
 </template>
 
 <style scoped>
@@ -60,23 +60,23 @@ const emit = defineEmits<{
 
 .status-title {
   font-size: 32rpx;
-  font-weight: 900;
-  color: var(--neo-color-text);
+  font-weight: 600;
+  color: var(--ui-color-text);
 }
 
 .status-body {
   margin-top: 20rpx;
   padding: 18rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-muted);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-button);
+  background: var(--ui-color-muted);
 }
 
 .status-body-label {
   display: block;
   font-size: 22rpx;
-  font-weight: 700;
-  color: var(--neo-color-text-muted);
+  font-weight: 400;
+  color: var(--ui-color-text-muted);
 }
 
 .status-body-content {
@@ -85,7 +85,7 @@ const emit = defineEmits<{
   font-size: 26rpx;
   line-height: 1.6;
   font-weight: 600;
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
 }
 
 .status-actions {
@@ -96,13 +96,13 @@ const emit = defineEmits<{
 
 .status-window-note {
   margin-top: 22rpx;
-  color: var(--neo-color-text-muted);
+  color: var(--ui-color-text-muted);
   font-size: 24rpx;
   line-height: 1.5;
   text-align: center;
 }
 
-.status-actions :deep(.neo-button) {
+.status-actions :deep(.ui-button) {
   min-width: 260rpx;
 }
 </style>

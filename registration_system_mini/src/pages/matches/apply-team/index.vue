@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { useAccentTheme } from "@/stores/theme";
-import { onLoad, onShow } from "@dcloudio/uni-app";
+import { onLoad } from "@dcloudio/uni-app";
 import { computed, ref } from "vue";
 import AppTabHeader from "@/components/AppTabHeader.vue";
-import NeoConfirmDialog from "@/components/neo/NeoConfirmDialog.vue";
+import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
 import ApplyTeamInheritCard from "./components/ApplyTeamInheritCard.vue";
 import ApplyTeamFormCard from "./components/ApplyTeamFormCard.vue";
 import ApplyTeamStatusCard from "./components/ApplyTeamStatusCard.vue";
@@ -55,14 +55,11 @@ onLoad((options) => {
   void loadPageData();
 });
 
-onShow(() => {
-  uni.hideTabBar({ animation: false });
-});
 </script>
 
 <template>
   <page-meta :page-style="themePageStyle" />
-  <view class="apply-team-page" :style="pageStyle">
+  <view class="app-theme-scope apply-team-page" :style="[themePageStyle, pageStyle]">
     <AppTabHeader title="接约确认" showBack />
 
     <view class="apply-team-content" :style="contentStyle">
@@ -102,7 +99,7 @@ onShow(() => {
       </template>
     </view>
 
-    <NeoConfirmDialog
+    <ConfirmDialog
       :visible="confirmDialogVisible"
       :title="confirmDialogState.title"
       :message="confirmDialogState.message"
@@ -121,7 +118,7 @@ onShow(() => {
 <style scoped>
 .apply-team-page {
   min-height: 100vh;
-  background: var(--neo-color-page);
+  background: var(--ui-color-page);
   box-sizing: border-box;
 }
 
@@ -131,10 +128,10 @@ onShow(() => {
 
 .apply-team-hint {
   padding: 28rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-surface);
-  color: var(--neo-color-text-muted);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-button);
+  background: var(--ui-color-surface);
+  color: var(--ui-color-text-muted);
   font-size: 26rpx;
   line-height: 1.6;
 }
@@ -143,27 +140,27 @@ onShow(() => {
   display: inline-flex;
   margin-top: 16rpx;
   padding: 10rpx 18rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-surface);
-  color: var(--neo-color-text);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-button);
+  background: var(--ui-color-surface);
+  color: var(--ui-color-text);
   font-size: 24rpx;
-  font-weight: 700;
+  font-weight: 400;
 }
 
 .apply-team-blocked {
   margin-top: 20rpx;
   padding: 28rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-md);
-  background: var(--neo-color-surface);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-card);
+  background: var(--ui-color-surface);
 }
 
 .apply-team-blocked-title {
   display: block;
   font-size: 30rpx;
-  font-weight: 900;
-  color: var(--neo-color-text);
+  font-weight: 600;
+  color: var(--ui-color-text);
 }
 
 .apply-team-blocked-copy {
@@ -172,7 +169,7 @@ onShow(() => {
   font-size: 26rpx;
   line-height: 1.6;
   font-weight: 600;
-  color: var(--neo-color-text-muted);
+  color: var(--ui-color-text-muted);
 }
 
 /* #ifdef H5 */

@@ -4,9 +4,9 @@ import { computed, reactive, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
 import MatchPublishForm from "./components/MatchPublishForm.vue";
-import NeoButton from "@/components/neo/NeoButton.vue";
-import NeoStickyActionBar from "@/components/neo/NeoStickyActionBar.vue";
-import NeoSurface from "@/components/neo/NeoSurface.vue";
+import AppButton from "@/components/ui/AppButton.vue";
+import StickyActionBar from "@/components/ui/StickyActionBar.vue";
+import AppSurface from "@/components/ui/AppSurface.vue";
 import type { MatchPublishFormModel } from "./components/matchPublishForm";
 import { createMatch, getVenueSuggestions, type BackendVenueSuggestion } from "@/api/match";
 import VenuePickerSheet from "./components/VenuePickerSheet.vue";
@@ -248,13 +248,12 @@ onShow(async () => {
 
 <template>
   <page-meta :page-style="themePageStyle" />
-  <view v-if="reviewGateReady" class="create-match-page" :style="pageStyle">
+  <view v-if="reviewGateReady" class="app-theme-scope create-match-page" :style="[themePageStyle, pageStyle]">
     <AppTabHeader title="创建比赛" showBack />
 
     <view class="create-page-content">
-      <NeoSurface variant="dark" custom-class="create-hero">
+      <AppSurface variant="outlined" custom-class="create-hero">
         <view class="create-hero__copy">
-          <text class="create-hero-tag">创建比赛</text>
           <text class="create-hero-title">{{ currentTeam?.name || "当前球队" }}</text>
         </view>
         <view class="create-hero__mark">
@@ -266,7 +265,7 @@ onShow(async () => {
           />
           <text v-else>{{ (currentTeam?.name || "队").slice(0, 1) }}</text>
         </view>
-      </NeoSurface>
+      </AppSurface>
 
       <MatchPublishForm
         :model-value="form"
@@ -290,11 +289,11 @@ onShow(async () => {
       @choose-location="handleChooseLocation"
     />
 
-    <NeoStickyActionBar>
-      <NeoButton block variant="lime" :disabled="!canSubmit" :loading="submitting" @click="handleSubmit">
+    <StickyActionBar>
+      <AppButton block variant="lime" :disabled="!canSubmit" :loading="submitting" @click="handleSubmit">
         {{ submitting ? "创建中..." : "创建比赛" }}
-      </NeoButton>
-    </NeoStickyActionBar>
+      </AppButton>
+    </StickyActionBar>
   </view>
 </template>
 
@@ -302,8 +301,8 @@ onShow(async () => {
 .create-match-page {
   min-height: 100vh;
   /* 底部留白用操作栏 clearance token：含悬浮操作栏高度与全面屏安全区，硬编码 132rpx 会被按钮遮挡。 */
-  padding: 0 28rpx var(--neo-action-bar-clearance);
-  background: var(--neo-color-page);
+  padding: 0 28rpx var(--ui-action-bar-clearance);
+  background: var(--ui-color-page);
   box-sizing: border-box;
 }
 
@@ -316,12 +315,12 @@ onShow(async () => {
   display: flex;
   align-items: center;
   gap: 22rpx;
-  margin: 22rpx 0 6rpx;
+  margin: 0 0 20rpx;
   padding: 28rpx 26rpx;
-  border: var(--neo-border-strong);
-  border-radius: var(--neo-radius-md);
-  background: var(--neo-color-hero);
-  box-shadow: 8rpx 8rpx 0 var(--neo-color-accent);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-card);
+  background: var(--ui-color-surface);
+  box-shadow: none;
 }
 
 .create-hero__copy {
@@ -329,23 +328,11 @@ onShow(async () => {
   min-width: 0;
 }
 
-.create-hero-tag {
-  display: inline-flex;
-  padding: 6rpx 14rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-accent);
-  color: var(--neo-color-text);
-  font-size: 22rpx;
-  font-weight: 900;
-}
-
 .create-hero-title {
   display: block;
-  margin-top: 14rpx;
-  color: var(--neo-color-hero-fg);
-  font-size: 40rpx;
-  font-weight: 900;
+  color: var(--ui-color-text);
+  font-size: 30rpx;
+  font-weight: 600;
   line-height: 1.18;
   word-break: break-word;
 }
@@ -355,14 +342,14 @@ onShow(async () => {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  width: 104rpx;
-  height: 104rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-accent);
-  color: var(--neo-color-text);
-  font-size: 44rpx;
-  font-weight: 900;
+  width: 72rpx;
+  height: 72rpx;
+  border: none;
+  border-radius: var(--ui-radius-round);
+  background: var(--ui-color-neutral-bg);
+  color: var(--ui-color-text);
+  font-size: 30rpx;
+  font-weight: 600;
   overflow: hidden;
 }
 

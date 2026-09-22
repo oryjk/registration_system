@@ -1,7 +1,7 @@
 import { computed, ref, type ComputedRef } from "vue";
 import { listCaptainThreads } from "@/api/captainMessage";
 import type { AppCaptainThreadSummary } from "@/types/captainMessage";
-import { buildCaptainThreadItems, type CaptainThreadItemViewModel } from "./captainThreadListState";
+import { buildCaptainThreadItems } from "./captainThreadListState";
 
 const THREAD_PAGE_SIZE = 20;
 

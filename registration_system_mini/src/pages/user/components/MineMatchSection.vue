@@ -1,8 +1,6 @@
 <script setup lang="ts">
-import NeoButton from "@/components/neo/NeoButton.vue";
-import NeoSectionHeader from "@/components/neo/NeoSectionHeader.vue";
-import NeoSurface from "@/components/neo/NeoSurface.vue";
-import NeoTag from "@/components/neo/NeoTag.vue";
+import SectionHeader from "@/components/ui/SectionHeader.vue";
+import AppTag from "@/components/ui/AppTag.vue";
 import type { MineMatchSummary } from "../mineTypes";
 
 defineProps<{
@@ -17,147 +15,28 @@ const emit = defineEmits<{
 
 <template>
   <view class="mine-match-section">
-    <NeoSectionHeader
-      title="我的比赛"
-      marker="赛"
-      caption="最近与你或所在球队相关的比赛"
-      action-label="全部比赛"
-      @action="emit('openAll')"
-    />
-
-    <view v-if="matches.length" class="mine-match-list">
-      <NeoSurface
-        v-for="match in matches"
-        :key="match.id"
-        interactive
-        custom-class="mine-match-card"
-        @tap="emit('openMatch', match.id)"
-      >
-        <view class="mine-match-card__main">
-          <view class="mine-match-card__topline">
-            <NeoTag :tone="match.statusTone" size="sm">{{ match.statusLabel }}</NeoTag>
-            <text class="mine-match-card__date">{{ match.dateLabel }}</text>
-          </view>
-          <text class="mine-match-card__title">{{ match.title }}</text>
-          <text class="mine-match-card__venue">{{ match.venue }}</text>
-        </view>
-        <NeoButton variant="lime" size="sm" @click="emit('openMatch', match.id)">{{ match.actionLabel }}</NeoButton>
-      </NeoSurface>
+    <SectionHeader title="我的比赛" action-label="全部" @action="emit('openAll')" />
+    <view class="mine-match-list">
+      <button v-for="match in matches" :key="match.id" class="mine-match-row" hover-class="mine-match-row--pressed" @tap="emit('openMatch', match.id)">
+        <view class="match-copy"><text class="match-title">{{ match.title }}</text><text class="match-meta">{{ match.dateLabel }} · {{ match.venue }}</text></view>
+        <view class="match-action"><AppTag :tone="match.statusTone" size="sm">{{ match.statusLabel }}</AppTag><wd-icon name="arrow-right" size="26rpx" color="var(--ui-color-text-muted)" /></view>
+      </button>
+      <text v-if="!matches.length" class="match-empty">暂无近期比赛</text>
     </view>
-
-    <NeoSurface v-else variant="outlined" custom-class="mine-match-empty">
-      <text class="mine-match-empty__marker">00</text>
-      <view class="mine-match-empty__copy">
-        <text class="mine-match-empty__title">暂无近期比赛</text>
-        <text class="mine-match-empty__description">你和所在球队还没有可展示的比赛记录。</text>
-      </view>
-    </NeoSurface>
   </view>
 </template>
-
 <style scoped>
-.mine-match-section {
-  margin-top: 34rpx;
-}
 
-.mine-match-list {
-  display: grid;
-  gap: 16rpx;
-  margin-top: 18rpx;
-}
+.mine-match-section { margin-top:28rpx; }
+.mine-match-list { margin-top:14rpx; border:var(--ui-border-default); border-radius:var(--ui-radius-card); background:var(--ui-color-surface); overflow:hidden; }
+.mine-match-row { margin:0; width:100%; display:flex; align-items:center; gap:16rpx; padding:24rpx; border-radius:0; border:0; background:transparent; text-align:left; line-height:1.4; }
+.mine-match-row::after { border:0; }
+.mine-match-row + .mine-match-row { border-top:var(--ui-border-default); }
+.mine-match-row--pressed { background:var(--ui-color-neutral-bg); }
+.match-copy { flex:1; min-width:0; }
+.match-title { display:block; font-size:28rpx; font-weight:600; color:var(--ui-color-text); overflow-wrap:anywhere; }
+.match-meta { display:block; margin-top:8rpx; font-size:22rpx; color:var(--ui-color-text-muted); }
+.match-action { display:flex; align-items:center; gap:6rpx; flex-shrink:0; }
+.match-empty { display:block; padding:28rpx; color:var(--ui-color-text-muted); font-size:24rpx; }
 
-.mine-match-card {
-  display: flex;
-  min-height: 152rpx;
-  align-items: center;
-  gap: 18rpx;
-  padding: 20rpx;
-}
-
-.mine-match-card__main {
-  min-width: 0;
-  flex: 1;
-}
-
-.mine-match-card__topline {
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
-  flex-wrap: wrap;
-}
-
-.mine-match-card__date {
-  color: var(--neo-color-text-muted);
-  font-size: 22rpx;
-  font-weight: 800;
-  line-height: 1.3;
-}
-
-.mine-match-card__title {
-  display: block;
-  margin-top: 12rpx;
-  color: var(--neo-color-text);
-  font-size: 30rpx;
-  font-weight: 900;
-  line-height: 1.28;
-  word-break: break-word;
-}
-
-.mine-match-card__venue {
-  display: block;
-  margin-top: 8rpx;
-  overflow: hidden;
-  color: var(--neo-color-text-muted);
-  font-size: 22rpx;
-  font-weight: 700;
-  line-height: 1.4;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.mine-match-empty {
-  display: flex;
-  min-height: 160rpx;
-  align-items: center;
-  gap: 18rpx;
-  margin-top: 18rpx;
-  background: var(--neo-color-muted);
-}
-
-.mine-match-empty__marker {
-  display: flex;
-  width: 72rpx;
-  height: 72rpx;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-surface);
-  color: var(--neo-color-text);
-  font-size: 26rpx;
-  font-weight: 900;
-}
-
-.mine-match-empty__copy {
-  min-width: 0;
-}
-
-.mine-match-empty__title,
-.mine-match-empty__description {
-  display: block;
-}
-
-.mine-match-empty__title {
-  color: var(--neo-color-text);
-  font-size: 27rpx;
-  font-weight: 900;
-}
-
-.mine-match-empty__description {
-  margin-top: 6rpx;
-  color: var(--neo-color-text-muted);
-  font-size: 22rpx;
-  line-height: 1.45;
-}
 </style>

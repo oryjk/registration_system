@@ -1,5 +1,4 @@
 import type {
-  BackendPaymentOrder,
   BackendPaymentOrderListResult,
   BackendTeamFundBalance,
   BackendTeamFundTransaction,

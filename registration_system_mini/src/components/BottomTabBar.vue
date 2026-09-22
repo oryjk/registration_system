@@ -3,8 +3,10 @@ import { computed, ref } from "vue";
 import { useNotificationCenter } from "@/stores/notificationCenter";
 import { useTeamContext } from "@/stores/teamContext";
 import { useMiniReviewStatus } from "@/stores/miniReview";
-import NeoConfirmDialog from "@/components/neo/NeoConfirmDialog.vue";
-import { useNeoConfirmDialog } from "@/components/neo/useNeoConfirmDialog";
+import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
+import { useConfirmDialog } from "@/components/ui/useConfirmDialog";
+import { useOverlayPresence } from "@/components/ui/useOverlayPresence";
+import { prefersReducedMotion } from "@/utils/reducedMotion";
 import { MATCH_CREATION_IDENTITY_HINT } from "@/utils/matchCreationAccess";
 import homeIconUrl from "@/static/tab-png/home.png";
 import homeActiveIconUrl from "@/static/tab-png/home-active.png";
@@ -32,8 +34,15 @@ const {
   handleConfirmSecondary,
   handleConfirmClose,
   handleConfirmLink,
-} = useNeoConfirmDialog();
+} = useConfirmDialog();
 const isOpen = ref(false);
+// 创建菜单退场时序：关闭后遮罩在淡出期间继续拦截点击（防点穿），动画结束才放行；
+// 快速关开不会残留旧回调。时长与 --ui-motion-overlay-duration 一致，关闭时刻实时
+// 读取"减少动态效果"设置。
+const { rendered: menuRendered, leaving: menuLeaving } = useOverlayPresence(
+  isOpen,
+  { leaveDurationMs: () => prefersReducedMotion() ? 0 : 210 },
+);
 const shouldShowCreateEntry = computed(() => !shouldHideCreationEntrances.value);
 // 散人（无可管理球队/场馆身份）不能以球队名义创建比赛；按钮置灰但可点击触发引导。
 const matchCreationDisabled = computed(() => !currentIdentity.value);
@@ -85,10 +94,14 @@ function openSheet() {
 }
 
 function closeSheet() {
+  // 退场淡出期间的重复点击不重启关闭流程。
+  if (!isOpen.value) return;
   isOpen.value = false;
 }
 
 function handleCreateMatch() {
+  // 事件入口检查菜单可见状态：关闭/退场中不触发创建跳转（与 pointer-events 禁点双保险）。
+  if (!menuRendered.value || menuLeaving.value) return;
   closeSheet();
   if (matchCreationDisabled.value) {
     void confirmDialog(MATCH_CREATION_IDENTITY_HINT);
@@ -117,6 +130,7 @@ function handleCreateMatch() {
 }
 
 function handleCreateTeam() {
+  if (!menuRendered.value || menuLeaving.value) return;
   closeSheet();
   // 创建球队对所有用户开放（一人可创建多支球队），直达独立的创建页。
   uni.navigateTo({
@@ -125,6 +139,7 @@ function handleCreateTeam() {
 }
 
 function handleCreateIndividualChallenge() {
+  if (!menuRendered.value || menuLeaving.value) return;
   closeSheet();
   // 散人约球：无球队概念的独立发布页（online_pickup，POST /matches）。
   uni.navigateTo({
@@ -141,6 +156,8 @@ function handleCreateIndividualChallenge() {
           v-for="item in items.slice(0, 2)"
           :key="item.key"
           :class="['custom-tab-item', props.current === item.key ? 'custom-tab-item-active' : '']"
+          hover-class="custom-tab-item--pressed"
+          :hover-stay-time="100"
           @tap="switchTab(item.path)"
         >
           <view class="custom-tab-icon-shell">
@@ -166,6 +183,8 @@ function handleCreateIndividualChallenge() {
           v-for="item in items.slice(2)"
           :key="item.key"
           :class="['custom-tab-item', props.current === item.key ? 'custom-tab-item-active' : '']"
+          hover-class="custom-tab-item--pressed"
+          :hover-stay-time="100"
           @tap="switchTab(item.path)"
         >
           <view class="custom-tab-icon-shell">
@@ -187,6 +206,8 @@ function handleCreateIndividualChallenge() {
           v-for="item in items"
           :key="item.key"
           :class="['custom-tab-item', props.current === item.key ? 'custom-tab-item-active' : '']"
+          hover-class="custom-tab-item--pressed"
+          :hover-stay-time="100"
           @tap="switchTab(item.path)"
         >
           <view class="custom-tab-icon-shell">
@@ -204,7 +225,15 @@ function handleCreateIndividualChallenge() {
       </template>
     </view>
 
-    <view v-if="shouldShowCreateEntry" :class="['create-menu-overlay', isOpen ? 'create-menu-overlay-open' : '']" @tap="closeSheet">
+    <view
+      v-if="shouldShowCreateEntry"
+      :class="[
+        'create-menu-overlay',
+        menuRendered && !menuLeaving ? 'create-menu-overlay-open' : '',
+        menuLeaving ? 'create-menu-overlay-closing' : '',
+      ]"
+      @tap="closeSheet"
+    >
       <view class="create-menu-backdrop" />
       <view class="create-menu-actions" @tap.stop>
         <view
@@ -252,9 +281,9 @@ function handleCreateIndividualChallenge() {
         </view>
       </view>
     </view>
-    <!-- 散人点击“创建比赛”时的身份引导弹窗（neo 风格，单按钮提示）。 -->
+    <!-- 散人点击“创建比赛”时的身份引导弹窗（统一风格，单按钮提示）。 -->
     <!-- 根节点 shell 为让点击穿透设了 pointer-events:none，弹窗需显式恢复可点击。 -->
-    <NeoConfirmDialog
+    <ConfirmDialog
       class="tabbar-confirm-dialog"
       :visible="confirmDialogVisible"
       :title="confirmDialogState.title"
@@ -295,7 +324,7 @@ function handleCreateIndividualChallenge() {
 }
 
 .custom-tab-plus {
-  transition: transform 220ms ease;
+  transition: transform var(--ui-motion-expand-duration) var(--ui-motion-ease-out);
 }
 
 .custom-tab-plus-open {
@@ -308,7 +337,7 @@ function handleCreateIndividualChallenge() {
   z-index: 54;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 240ms ease;
+  transition: opacity var(--ui-motion-overlay-duration) ease;
 }
 
 .create-menu-overlay-open {
@@ -316,10 +345,16 @@ function handleCreateIndividualChallenge() {
   pointer-events: auto;
 }
 
+/* 淡出期间保持点击拦截，直到退场结束才放行页面（防点穿）。 */
+.create-menu-overlay-closing {
+  opacity: 0;
+  pointer-events: auto;
+}
+
 .create-menu-backdrop {
   position: absolute;
   inset: 0;
-  background: var(--neo-color-overlay);
+  background: var(--ui-color-overlay);
   backdrop-filter: blur(12rpx);
 }
 
@@ -339,13 +374,13 @@ function handleCreateIndividualChallenge() {
   align-items: center;
   gap: 18rpx;
   width: 180rpx;
-  color: var(--neo-color-text-inverse);
+  color: var(--ui-color-hero-fg);
   font-size: 25rpx;
-  font-weight: 900;
+  font-weight: 600;
   text-align: center;
   opacity: 0;
   transform: translateY(70rpx) scale(0.82);
-  transition: opacity 260ms ease, transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition: opacity var(--ui-motion-overlay-duration) ease, transform var(--ui-motion-overlay-duration) var(--ui-motion-ease-out);
   pointer-events: none;
 }
 
@@ -384,17 +419,16 @@ function handleCreateIndividualChallenge() {
   filter: grayscale(1);
 }
 
-/* 与中间「+」按钮同一 neo 语言：青柠色块 + 墨色描边 + 硬偏移阴影。 */
+/* 创建入口圆形按钮：主题色底 + 柔和阴影，图标为墨色线稿。 */
 .create-menu-action-button {
   display: flex;
   align-items: center;
   justify-content: center;
   width: 116rpx;
   height: 116rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-md);
-  background: var(--neo-color-accent);
-  box-shadow: 4rpx 4rpx 0 var(--neo-color-text);
+  border-radius: var(--ui-radius-round);
+  background: var(--ui-color-accent);
+  box-shadow: var(--ui-shadow-card);
 }
 
 .create-menu-action-icon {
@@ -404,7 +438,7 @@ function handleCreateIndividualChallenge() {
 }
 
 .create-menu-icon-match {
-  border: 6rpx solid var(--neo-color-text);
+  border: 6rpx solid var(--ui-color-text);
   border-radius: 14rpx;
   box-sizing: border-box;
 }
@@ -416,7 +450,7 @@ function handleCreateIndividualChallenge() {
   bottom: 0;
   width: 6rpx;
   margin-left: -3rpx;
-  background: var(--neo-color-text);
+  background: var(--ui-color-text);
 }
 
 .create-menu-field-circle {
@@ -427,22 +461,22 @@ function handleCreateIndividualChallenge() {
   height: 18rpx;
   margin-left: -9rpx;
   margin-top: -9rpx;
-  border: 5rpx solid var(--neo-color-text);
-  border-radius: var(--neo-radius-round);
+  border: 5rpx solid var(--ui-color-text);
+  border-radius: var(--ui-radius-round);
   box-sizing: border-box;
-  background: var(--neo-color-surface);
+  background: var(--ui-color-surface);
 }
 
 .create-menu-icon-ball {
-  border: 6rpx solid var(--neo-color-text);
-  border-radius: var(--neo-radius-round);
+  border: 6rpx solid var(--ui-color-text);
+  border-radius: var(--ui-radius-round);
   box-sizing: border-box;
 }
 
 .create-menu-ball-panel {
   position: absolute;
-  background: var(--neo-color-text);
-  border-radius: var(--neo-radius-round);
+  background: var(--ui-color-text);
+  border-radius: var(--ui-radius-round);
 }
 
 .create-menu-ball-panel-top {
@@ -489,8 +523,8 @@ function handleCreateIndividualChallenge() {
 .create-menu-person-head {
   width: 16rpx;
   height: 16rpx;
-  border-radius: var(--neo-radius-round);
-  background: var(--neo-color-text);
+  border-radius: var(--ui-radius-round);
+  background: var(--ui-color-text);
 }
 
 .create-menu-person-body {
@@ -498,7 +532,7 @@ function handleCreateIndividualChallenge() {
   height: 22rpx;
   margin-top: 3rpx;
   border-radius: 12rpx 12rpx 5rpx 5rpx;
-  background: var(--neo-color-text);
+  background: var(--ui-color-text);
 }
 
 .create-menu-person-side .create-menu-person-head {
@@ -526,4 +560,13 @@ function handleCreateIndividualChallenge() {
   transform: translateX(-50%);
 }
 /* #endif */
+
+/* H5 减少动态效果：菜单直接切换、无缩放位移过渡（JS 侧同步跳过移除延迟）。 */
+@media (prefers-reduced-motion: reduce) {
+  .create-menu-overlay,
+  .create-menu-action,
+  .custom-tab-plus {
+    transition: none;
+  }
+}
 </style>

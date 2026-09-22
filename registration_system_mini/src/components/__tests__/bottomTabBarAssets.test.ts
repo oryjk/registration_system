@@ -42,7 +42,10 @@ describe("bottom tab bar assets", () => {
     expect(tabBarSource.includes("custom-tabbar-no-create")).toEqual(true);
     expect(tabBarSource.includes('<template v-if="shouldShowCreateEntry">')).toEqual(true);
     expect(tabBarSource.includes('<template v-else>')).toEqual(true);
-    expect(tabBarSource.includes('v-if="shouldShowCreateEntry" :class="[\'create-menu-overlay\'')).toEqual(true);
+    expect(tabBarSource.includes('v-if="shouldShowCreateEntry"')).toEqual(true);
+    expect(tabBarSource.includes("'create-menu-overlay',")).toEqual(true);
+    expect(tabBarSource.includes("menuRendered && !menuLeaving ? 'create-menu-overlay-open' : ''")).toEqual(true);
+    expect(tabBarSource.includes("menuLeaving ? 'create-menu-overlay-closing' : ''")).toEqual(true);
     expect(tabBarSource.includes('<text class="create-menu-action-icon">赛</text>')).toEqual(false);
     expect(tabBarSource.includes('<text class="create-menu-action-icon">约</text>')).toEqual(false);
     expect(tabBarSource.includes('<text class="create-menu-action-icon">队</text>')).toEqual(false);
@@ -50,7 +53,7 @@ describe("bottom tab bar assets", () => {
     expect(tabBarSource.includes("创建散人约球")).toEqual(true);
     expect(tabBarSource.includes("创建球队")).toEqual(true);
     expect(tabBarSource.includes('url: "/pages/challenges/create-individual/index"')).toEqual(true);
-    expect(tabBarSource.includes("transition: opacity 260ms ease, transform 280ms cubic-bezier")).toEqual(true);
+    expect(tabBarSource.includes("transition: opacity var(--ui-motion-overlay-duration) ease, transform var(--ui-motion-overlay-duration) var(--ui-motion-ease-out)")).toEqual(true);
     expect(tabBarSource.includes("backdrop-filter: blur")).toEqual(true);
     expect(tabBarSource.includes("custom-tabbar-open")).toEqual(false);
     expect(tabBarSource.includes("fab-sheet")).toEqual(false);

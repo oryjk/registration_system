@@ -18,8 +18,6 @@ export function getCustomNavMetrics(): CustomNavMetrics {
       throw new Error("menu button metrics unavailable");
     }
 
-    const verticalGap = Math.max(menuButton.top - statusBarHeight, fallbackGap);
-
     return {
       headerTop: Math.round(menuButton.top),
       pageTopPadding: Math.round(menuButton.bottom + 16),

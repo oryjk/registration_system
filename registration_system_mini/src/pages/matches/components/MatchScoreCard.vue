@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import NeoButton from "@/components/neo/NeoButton.vue";
-import NeoSurface from "@/components/neo/NeoSurface.vue";
+import AppButton from "@/components/ui/AppButton.vue";
+import AppSurface from "@/components/ui/AppSurface.vue";
 import type { AppMatchSummary } from "@/types/match";
 
 defineProps<{
@@ -17,7 +17,7 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <NeoSurface variant="raised">
+  <AppSurface variant="raised">
     <view class="score-head">
       <text class="score-title">比赛比分</text>
       <text class="score-message">
@@ -28,14 +28,14 @@ const emit = defineEmits<{
         }}
       </text>
     </view>
-    <NeoButton
+    <AppButton
       v-if="canRecord"
       class="score-button"
       @click="emit('openScoreDialog')"
     >
       {{ recordedScore ? "修改比分" : "录入比分" }}
-    </NeoButton>
-  </NeoSurface>
+    </AppButton>
+  </AppSurface>
 </template>
 
 <style scoped>
@@ -47,15 +47,15 @@ const emit = defineEmits<{
 
 .score-title {
   font-size: 30rpx;
-  font-weight: 900;
-  color: var(--neo-color-text);
+  font-weight: 600;
+  color: var(--ui-color-text);
 }
 
 .score-message {
   font-size: 26rpx;
   line-height: 1.6;
-  font-weight: 700;
-  color: var(--neo-color-text);
+  font-weight: 400;
+  color: var(--ui-color-text);
 }
 
 .score-button {

@@ -1,5 +1,7 @@
 # 小程序 Soft Neo-Brutalism 视觉组件设计
 
+> **历史资料：视觉规范已失效。** 本文的 Neo / Soft Neo 样式要求、旧组件与 token 路径不再适用；业务决策仅供追溯。所有新界面工作以[现行统一设计系统](../../../registration_system_mini/docs/mini-design-system.md)及实际代码为准，不得依据本文恢复旧皮肤。
+
 ## 目标
 
 为 `registration_system_mini` 建立一套可跨页面复用的 Soft Neo-Brutalism 视觉基础。第一批组件以当前已获认可的首页为视觉基准，并将首页迁移为首个使用方；后续页面可以逐个迁移，而不需要复制黑框、硬阴影、低圆角、荧光绿和按压反馈 CSS。

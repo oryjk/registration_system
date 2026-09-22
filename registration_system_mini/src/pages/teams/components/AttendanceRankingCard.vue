@@ -43,10 +43,10 @@ defineProps<{
 .stats-card {
   margin-top: 16rpx;
   padding: 22rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-md);
-  background: var(--neo-color-surface);
-  box-shadow: var(--neo-shadow-raised);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-card);
+  background: var(--ui-color-surface);
+  box-shadow: var(--ui-shadow-raised);
 }
 
 .stats-card-embedded {
@@ -66,16 +66,16 @@ defineProps<{
   display: block;
   font-size: 29rpx;
   line-height: 1.2;
-  color: var(--neo-color-text);
-  font-weight: 900;
+  color: var(--ui-color-text);
+  font-weight: 600;
 }
 
 .stats-card-caption {
   display: block;
   margin-top: 6rpx;
   font-size: 21rpx;
-  color: var(--neo-color-text-muted);
-  font-weight: 700;
+  color: var(--ui-color-text-muted);
+  font-weight: 400;
 }
 
 .ranking-list {
@@ -87,7 +87,7 @@ defineProps<{
   align-items: center;
   gap: 14rpx;
   padding: 15rpx 0;
-  border-top: 2rpx solid var(--neo-color-track);
+  border-top: 2rpx solid var(--ui-color-track);
 }
 
 .ranking-item:first-child {
@@ -100,12 +100,12 @@ defineProps<{
   justify-content: center;
   width: 42rpx;
   height: 42rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-xs);
-  background: var(--neo-color-muted);
-  color: var(--neo-color-text);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-xs);
+  background: var(--ui-color-muted);
+  color: var(--ui-color-text);
   font-size: 21rpx;
-  font-weight: 900;
+  font-weight: 600;
   flex-shrink: 0;
   box-sizing: border-box;
 }
@@ -113,19 +113,19 @@ defineProps<{
 .ranking-avatar {
   width: 70rpx;
   height: 70rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-button);
   flex-shrink: 0;
-  background: var(--neo-color-hero);
+  background: var(--ui-color-hero);
 }
 
 .ranking-avatar-fallback {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--neo-color-hero-fg);
+  color: var(--ui-color-hero-fg);
   font-size: 28rpx;
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .ranking-copy {
@@ -143,17 +143,17 @@ defineProps<{
   flex: 1;
   min-width: 0;
   overflow: hidden;
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
   font-size: 27rpx;
-  font-weight: 900;
+  font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .ranking-rate {
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
   font-size: 28rpx;
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .ranking-metrics {
@@ -161,20 +161,20 @@ defineProps<{
   flex-wrap: wrap;
   gap: 12rpx;
   margin-top: 8rpx;
-  color: var(--neo-color-text-muted);
+  color: var(--ui-color-text-muted);
   font-size: 21rpx;
-  font-weight: 700;
+  font-weight: 400;
 }
 
 .stats-empty {
   margin-top: 18rpx;
   padding: 24rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-muted);
-  color: var(--neo-color-text-muted);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-button);
+  background: var(--ui-color-muted);
+  color: var(--ui-color-text-muted);
   font-size: 27rpx;
-  font-weight: 700;
+  font-weight: 400;
   line-height: 1.6;
 }
 

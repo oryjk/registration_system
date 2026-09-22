@@ -1,4 +1,4 @@
-import type { NeoTagTone } from "@/types/designSystem";
+import type { AppTagTone } from "@/types/designSystem";
 
 export type MineStatTone = "accent" | "plain";
 
@@ -16,6 +16,6 @@ export interface MineMatchSummary {
   dateLabel: string;
   venue: string;
   statusLabel: string;
-  statusTone: NeoTagTone;
+  statusTone: AppTagTone;
   actionLabel: string;
 }

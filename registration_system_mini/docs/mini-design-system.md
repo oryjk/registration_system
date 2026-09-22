@@ -1,41 +1,170 @@
-# 小程序 Neo 设计系统
+# 小程序 / H5 统一设计系统（现行规范）
+
+**状态：当前有效。适用范围：`registration_system_mini` 的 H5 与 mp-weixin。**
+
+本文是前端视觉与交互的唯一现行规范，优先于历史设计稿、改版实施计划及基线快照。当前采用「轻量赛事 UI」：浅色表面、柔和圆角、轻描边、清晰主次。D 仅是方案选择时的历史代号，不用于组件命名。
+
+旧 Neo / Soft Neo / Neobrutalism 视觉规范已废止。不得恢复粗黑描边、硬偏移阴影、800/900 常规字重、风格型组件名或 `--neo-*` token。历史文件仅用于追溯业务决策，不可据其复原旧皮肤。现行组件位于 `src/components/ui/`，样式入口为 `src/styles/design-tokens.css`，强调色配置为 `src/config/themePalettes.ts`；命名迁移已经完成。
 
 ## 设计语言
 
-小程序当前采用 Neo / neo-brutalist 方向：高对比墨色文字、浅暖色画布、荧光青柠强调色（可切换为活力橙）、明确边框和偏移阴影。页面应该让信息层级和交互状态一眼可见，不通过大量渐变或装饰色制造层级。
+清晰、轻量、主次分明：白底（`#fffffe`）+ 海军蓝标题（`#00214d`）+ 深蓝灰正文（`#1b2d45`），默认薄荷蓝强调（`#00ebc7`），辅助 `#ff5470` / `#fde24f`；轻描边（`#e4eaf2` 线色）、柔和阴影、明显圆角。信息层级靠排版与留白表达，一处只突出一个主动作；不靠重描边、硬投影或装饰渐变制造层级。
 
 ## Token 层次
 
-`src/styles/neo-tokens.css` 按三层组织：
+`src/styles/design-tokens.css` 按三层组织：
 
-1. primitive：原始色值、透明度、圆角、阴影和动效基础值；
-2. semantic：页面、表面、文字、强调、成功、警告、危险和信息语义；
-3. component：Surface、Button、Tag、Progress、Segmented、Avatar 等组件契约。
+1. **primitive**：原始色值、透明度、圆角、阴影基色（`--ui-primitive-shadow-rgb: 24, 55, 100`）、状态语义原语；
+2. **semantic**：页面/表面/文字/线色、强调、CTA、状态（success/warning/danger/neutral 的 `-fg`/`-bg` 成对）、遮罩；
+3. **component**：Surface、Button、Tag、Progress、Segmented、Avatar、ActionBar 等组件契约，以及 `--now-*` 基准卡层（默认值引用语义层，主题相关项由 page-meta 覆盖）。
 
-结构 UI 使用 semantic 或 component token，不在页面和共享壳层新增散落的 hex。唯一视觉强调色族是 `--neo-color-accent` / `--neo-color-accent-soft` / `--neo-color-accent-deep`（primitive 默认为青柠 `#b9f24b` 族；`--neo-primitive-accent-rgb` 供 rgba 透明变体）。兼容别名 `--app-primary` 只在 token 文件中映射。
+结构 UI 必须引用 token，不在页面和共享壳层新增散落 hex；`--app-primary` 兼容出口仅在 token 文件映射。运行时组件直接 `.vue` 导入（`src/components/ui/`）。
 
-## 强调色主题
+## 配色与语义映射
 
-- 支持两套强调色主题：`lime`（青柠，默认）与 `orange`（活力橙），定义在 `src/config/themePalettes.ts`（token 默认值与该文件保持一致）。活力橙主题除强调色族外还带两个专属变体：主按钮（CTA token 族）换橙底墨字、hero 区（`--neo-color-hero/-hero-fg`）换暖棕深底；两套主题的 hero 都保持深底白字（曾试过浅橙底深棕字，硬阴影观感差，已回退）。文字、描边、硬阴影的墨色、`NeoSurface dark` 深色卡片与时间条底色两套主题保持一致，不做主题化。
-- 切换机制：mp-weixin 无法在运行时给 `page` 加 class，主题通过**每个页面的 `<page-meta :page-style="themePageStyle" />`** 注入 page 级 CSS 变量覆盖实现（`useAccentTheme()` 来自 `src/stores/theme.ts`）。page 级覆盖可级联到 root-portal 渲染的 Wot 弹层；新增页面必须带 page-meta（有守卫测试扫描 `pages.json`）。
-- 偏好持久化在本地（`src/utils/themeStorage.ts`），入口在「我的」页主题色卡片；所有主题（含默认青柠）都注入显式覆盖串——uni-h5 对空串 page-style 不更新，默认主题若为空串会导致切回时旧主题残留。
-- 原生组件（如 `<switch color>`）只接受 hex，绑定 store 的 `accentHex`，不要写字面量色值。
+| 角色 | Token | 值 |
+| --- | --- | --- |
+| 页面背景 | `--ui-color-page` | `#fffffe` |
+| 表面 | `--ui-color-surface` | `#fffffe` |
+| 标题/强调文字 | `--ui-color-text` | `#00214d` |
+| 正文/次要文字 | `--ui-color-text-muted` | `#1b2d45` |
+| 品牌主色（默认薄荷） | `--ui-color-accent` | `#00ebc7`（随主题） |
+| 主按钮 | `--ui-color-cta` / `-fg` | 薄荷底海军蓝字（随主题） |
+| 结构线 | `--ui-color-line` / `-strong` | `#e4eaf2` / `#c6d2df` |
 
-## 组件边界
+### 可选主题
 
-- 全局 `src/components/` 只放跨页面且 API 稳定的壳层或 Neo 基础组件。
-- `src/pages/<domain>/components/` 放页面专属展示组件；通过 props 接收 ViewModel，通过 emits 发出用户意图。
-- 页面 `index.vue` 负责生命周期、数据加载、权限、错误和导航编排；复杂状态和纯转换放到同目录 `*State.ts` 或 `use*Page.ts`。
-- 首页精选比赛和首页全状态搜索是两条独立数据流：`homeMatchState.ts` 不承担关键词搜索；搜索使用服务端模糊匹配和时间倒序，每页 5 场通过页面触底与结果底部可见性观察追加，`homeMatchSearchState.ts` 只合并分页并映射卡片，不修改首页阶段分组。
+提供薄荷蓝（默认）、青柠、晴空蓝、珊瑚紫、曜夜橙五套主题。晴空蓝替代活力橙；旧 `orange` 本地偏好自动迁移为 `blue`。
+
+晴空蓝采用白底 `#fffffe`、深蓝标题 `#094067`、灰蓝正文 `#5f6c7b`、蓝色按钮 `#3da9fc` 配白字；辅助蓝 `#90b4ce` 用于较强结构线，粉红 `#ef4565` 用于辅助高亮。补充浅蓝选中底 `#e8f4ff`、细线 `#e0eaf2`、冷灰禁用底 `#dce7ef`。按压反馈沿用组件的透明度/位移动效。下方状态色及报名进度语义保持不变。切回其他主题时基础色必须显式恢复，不能残留晴空蓝的正文/线色。
+
+珊瑚紫采用白底 `#ffffff`、深紫标题 `#1f1235`、正文 `#1b1425`、珊瑚按钮 `#ff6e6c` 配深紫字；柔紫辅助 `#67568c`、浅黄图形高亮 `#fbdd74`，补充选中浅底 `#fff0ef`、细线 `#e9e2ef`、禁用底 `#e5dfed`。主题选择使用两列布局。
+
+曜夜橙为深色主题：页面 `#0f0e17`、卡片/弹窗 `#1b1926`、标题 `#fffffe`、正文 `#a7a9be`、橙色按钮 `#ff8906` 配白字；辅助色 `#f25f4c` / `#e53170`。补充深色选中底、结构线、禁用色及状态徽章浅字深底；状态含义保持一致。单色 PNG 图标随主题提亮，头像和队徽保持原图。切换主题必须同时恢复深浅表面、状态色及图标滤镜。
+
+**主色不等于状态色**：状态语义是固定值，不随品牌主题切换（换主题不能把「成功」变成任意颜色）：
+
+| 语义 | Token 对（fg/bg） | 值 | 用途 |
+| --- | --- | --- | --- |
+| 成功/已报名 | `--ui-color-success-fg/-bg` | `#226342` / `#e8f5ee` | 成功状态徽章、已完成标记 |
+| 提醒/待支付/付费 | `--ui-color-warning-fg/-bg` | `#805414` / `#fff3db` | 待办、费用相关提醒 |
+| 失败/危险 | `--ui-color-danger-fg/-bg` | `#a13432` / `#fdecea` | 取消、错误、解散等危险区 |
+| 中性状态 | `--ui-color-neutral-fg/-bg` | `#526174` / `#f0f2f5` | 无倾向的状态说明 |
+
+- 饱和警示色 `--ui-color-danger`（`#ff5470`）与琥珀 `--ui-color-warning-soft`（`#fde24f`）保留作高亮底/图形色，徽章类状态优先用上表淡底 + 对比前景。
+- **报名进度三段色是固定语义**（`--now-progress-pending` 黄 `#fde24f` / `ready` 薄荷 `#00ebc7` / `extra` 海军蓝 `#00214d`），不随主题；低于最低人数黄色、达标段薄荷、超出门槛段海军蓝、剩余容量浅底，保留门槛分隔点。
+
+## 字号与字重
+
+| 层级 | 规格 |
+| --- | --- |
+| 正文 | 24–26rpx |
+| 次要信息 | 22rpx |
+| 状态徽章 | 24rpx / 600 |
+| 卡标题 | 34rpx / 600 |
+| 主按钮 | 30rpx / 600 |
+| 短徽章（20rpx） | 仅限短语徽章 |
+| 时间强调 68rpx | 仅限「最近要处理」关键比赛卡 |
+
+常规层级字重 400–600，不使用 800/900；数字用 `font-variant-numeric: tabular-nums`。
+
+## 间距、圆角、描边、阴影、点击尺寸
+
+- 基准卡内边距 26rpx / 28rpx；相关信息横向组合，长内容自然换行（`overflow-wrap: anywhere`），不删信息压高度。
+- 圆角：基准卡 `--ui-radius-card: 32rpx`、按钮 `--ui-radius-button: 20rpx`；紧凑列表可减少装饰（小圆角、无阴影）。
+- 描边：轻线 `--ui-border-default: 2rpx solid var(--ui-color-line)`；`--ui-border-strong` 用 `line-strong`，不再用墨色粗描边。深底组件（hero、时间条）可用自身底色对比，不加描边。
+- 阴影：柔和投影族 `--ui-shadow-card/raised/pressed/soft/modal`（色基 `24, 55, 100`），无硬偏移阴影。
+- 点击尺寸：主按钮最小高度 88rpx；次要操作保持足够热区但不做满宽大按钮。
+
+## 主题运行时
+
+- 五套完整主题由 `src/config/themePalettes.ts` 定义，页面、卡片、文字、线色、按钮和状态前景/背景统一切换；状态的含义保持不变。
+- 每个本地页面同时绑定 `page-meta` 与根节点 `app-theme-scope` 的 `themePageStyle`，避免 H5 缓存页面间变量残留。
+- 脱离页面层级的 root-portal 弹窗必须显式绑定主题变量；仅依赖页面继承不足以覆盖 H5。
+- 偏好由 `src/utils/themeStorage.ts` 持久化；原生 switch 使用 `accentHex`。
+
+## 动效规范（Motion）
+
+统一 duration/easing token（`--ui-motion-*`），组件引用不散落硬编码；禁止 `transition: all`，优先 transform/opacity/颜色过渡。
+
+| Token | 值 | 适用场景 |
+| --- | --- | --- |
+| `--ui-motion-press-duration` | 100ms | 按钮/可点卡按压（80–120ms；缩放 0.98 或表面色变化，禁用态无反馈） |
+| `--ui-motion-switch-duration` | 180ms | 分段筛选/标签切换指示块平移（160–200ms，支持快速反向） |
+| `--ui-motion-expand-duration` | 220ms | 展开/收起内容（180–220ms；用于需要展开的内容；首页头像不折叠） |
+| `--ui-motion-overlay-duration` | 210ms | 底部弹层/确认弹窗进退（180–240ms，退场保留遮罩防点穿） |
+| `--ui-motion-progress-duration` | 220ms | 进度/状态徽章颜色过渡（180–220ms；与已验收报名进度一致） |
+| `--ui-motion-ease-out` | `cubic-bezier(0.33, 0, 0.2, 1)` | 两端缓、中段顺滑（默认） |
+| `--ui-motion-ease-in-out` | `cubic-bezier(0.4, 0, 0.2, 1)` | 进出场对称过渡 |
+
+约束：轻触立即响应、业务动作不等动画；快速连点转向最新目标；卸载/切队/关弹层清理 timer；不新增常驻定时器、轮播、循环装饰动画，不为长列表全体条目绑动画；H5 尊重 `prefers-reduced-motion`（缩短过渡、减位移），小程序保持短时非循环。首页叠卡遵循下方现行交互，不因其他组件改版顺手调整手势参数；用户明确要求时单独迭代。
 
 ## 颜色例外
 
-- 球衣颜色、球队颜色等业务数据值不是视觉 token，不能因为颜色扫描而删除。
-- 首页球体、球网、图片遮罩等插画内部颜色属于 decorative asset colors，可以保留在组件样式中，并在相邻 CSS 注释中标明。
-- 其他结构性背景、文字、边框、圆角和阴影必须引用 token。
+- 球衣颜色、球队颜色等业务数据值不是视觉 token，不能因颜色扫描而删除。
+- 首页球体、球网、图片遮罩等插画内部颜色属 decorative asset colors，可保留在组件样式中并在相邻注释标明。
+- 其他结构性背景、文字、边框、圆角、阴影必须引用 token。
+
+## 组件边界
+
+- 全局 `src/components/ui/` 只放跨页面且 API 稳定的 UI 基础组件；壳层（头部/底栏/返回等）在 `src/components/`。
+- `src/pages/<domain>/components/` 放页面专属展示组件；props 接 ViewModel，emits 发用户意图，不私自调业务 API。
+- 页面 `index.vue` 负责生命周期、数据加载、权限、错误和导航编排；复杂状态和纯转换放同目录 `*State.ts` 或 `use*Page.ts`。
+- 首页阶段分组与搜索是两条独立数据流：`homeMatchState.ts` 不承担关键词搜索；搜索分页合并在 `homeMatchSearchState.ts`。
 
 ## 跨端约束
 
-- H5 与 MP-Weixin 共用 Vue/TypeScript 组件和 `uni.*` API。
-- 不使用 DOM API、浏览器存储或仅 H5 可用的布局能力。
-- Wot UI 组件继续遵循项目 `.agents/skills/wot-ui-v2/SKILL.md`，Neo 组件通过 `custom-class` / `custom-style` 和 token 适配，不修改组件库 API。
+- H5 与 MP-Weixin 共用 Vue/TypeScript 组件和 `uni.*` API；不用 DOM API、浏览器存储或仅 H5 可用的布局能力。
+- Wot UI 组件遵循项目 `.agents/skills/wot-ui-v2/SKILL.md`；Wot 弹层经 root-portal 渲染，其皮肤在 `design-tokens.css` 全局定义（轻字重、柔和阴影）。
+- 小程序宿主节点/样式隔离陷阱见 mini `AGENTS.md`「mp-weixin 已踩坑」一节。
+
+
+## 任务 8 收尾约定（2026-09-22）
+
+- 页面展示用的粗字重统一通过 `--ui-font-weight-heading`（600）；`H5TestLoginPanel` 为开发辅助界面，保留其独立视觉，不计入生产 UI 改版。
+- 记录/排行、通知/留言内容切换复用 switch duration/easing token；只在选择改变时播放，不在分页更新时全量重播。
+- 详情只渲染一个个人行动栏，入口由 `detailPresentation.resolveDetailActions` 选择。付款资格沿用原业务返回；报名关闭/开赛只关闭参赛状态修改，不同时屏蔽有效付款。
+- `isPickupMatch` 必须由源数据 `publication_mode` 推导，不使用兼容层统一的 `match_kind=external` 判断。已支付散人不能经名单按钮绕过人数锁定。
+- 人均费用区分未提供、零元、赛前支付与赛后结算；应付费用仍是按报名人数合计。报名门槛显示实际组配置，缺失不冒充人制。
+- 跨组件布局放当前模板的 wrapper；AppSurface 使用 flush 去掉默认内边距，再由 wrapper 提供间距。不要依赖父 scoped class 穿透组件内根节点。
+- SmoothCollapse 在实测当前容器高度与内容高度之间过渡，反向操作丢弃旧回调；卸载使待返回测量失效。双端实际速度、图片加载后的高度与快速点按仍需用户验收。
+
+## 首页现行组件规则（2026-09-22 后续迭代）
+
+### 最近要处理的比赛
+
+- 多场待处理比赛使用横向跟手叠卡，单场不伪造底卡；禁止纵向翻卡与页面滚动争抢手势。
+- 主卡下露出带浅主题色的右下错位底卡，静止时可感知还有比赛；滑动时底卡显现真实比赛内容，主题色层渐退。底卡用 `--now-deck-*` token，不写死品牌色。
+- 预览卡与主卡的布局坐标一致，防止顶部 margin 折叠造成交接跳位；最后一小段上移有过渡，不在交接时突然顶上去，也不重播缩小放大的弹跳。
+- 全卡除头像横滑区外支持翻卡；首尾越界给出“已经是最早的比赛了”或“没有更多的比赛了”。
+- 报名数量、成行门槛与容量相邻显示；保留最低人数分隔点和三段语义色。比赛性质作为名称旁的小徽章，不增加重复标题或操作。
+
+### 报名头像与预览
+
+- 首页行动卡与报名详情共用 `RegistrationProgressSummary`，统一“已报名人数 → 头像 → 成行进度 → 最多人数”的完整区域。人数直接使用业务计数，不用头像数量替代；两处共用成行、满员与人数不限的展示计算。
+- 首页与详情名单共用 `ExpandableAvatarStack`：默认叠放全部头像，不按固定人数截断；只有超出可用宽度时才横向滚动，右侧显示“展开”。展开后头像不重叠并自动换行，按钮变为“收起”。切换比赛或名单分类时恢复折叠；首页叠卡头像区保留手势隔离。
+- 点击头像打开 `AvatarPreviewDialog`，显示完整大图与姓名；按真实图片比例确定元素尺寸，圆角贴合图片边缘，留白采用表面色，不加主题色绿边。
+- 缺图或加载失败显示姓名首字和简短状态。弹层居中，右上角关闭、点遮罩关闭，进退场轻微缩放/淡入淡出，减少动画适配与退场遮罩保留。
+- 弹层由页面编排，不能放进带 transform / overflow 的叠卡内部。当前不含队员基础资料、资料跳转或占位按钮；后续功能须另行实现。
+
+### 进行中 / 已结束的查看型卡片
+
+- 左侧为标题与时间/地点信息，右侧为浅主题色胶囊详情按钮，状态文字与右箭头共用背景和点击区域（如「已结束 ›」「进行中 ›」），按钮相对卡片垂直居中。
+- 不再把状态徽章和箭头拆成两个独立元素；不能查看详情时只显示状态徽章。布局由本组件负责，不能依赖父 scoped 样式穿透子组件。
+- 胶囊按钮热区最小高度为 72rpx，色彩和圆角引用 token，并保留按压反馈；整卡与按钮进入同一详情，导航中禁止重复点击。保留长标题和地点换行。
+- 这是次要查看入口，不使用满宽主色 CTA，不提供普通用户不能执行的报名操作，视觉强调弱于最近要处理卡片。
+
+## 页面主题作用域与个人中心
+
+所有本地页面的最外层 view 同时绑定 `app-theme-scope` 和响应式 `themePageStyle`；`page-meta` 继续用于原生页面及滚动锁。H5 的 page-meta 实现通过 document.querySelector 命中首个缓存页，不能作为唯一主题载体。语义 token 必须在 `.app-theme-scope` 上重新计算，避免继承到其他页面已解析的旧配色。外部 web-view 文档独立管理主题。
+
+个人中心沿用首页/比赛详情的轻边框、单层卡片及统一主题语义色：资料卡只突出编辑，统计为单张中性卡，球队列表合并当前身份标记并保留独立切换入口，比赛按行展示，钱包不使用大块警告底色。消息/联系/设置合并为服务列表；主题选项折叠展示，低频退出与清理操作放底部；调试身份入口折叠，正在代用身份时始终露出恢复入口。业务能力和权限保持不变。
+
+## 复用与表单收口
+
+- 确认/报名状态选择使用 `ConfirmDialog`，通过按钮文字、图标、tone 和事件区分业务，不能另写弹窗蒙层与动画。
+- 球队创建与管理的队徽区域共用 `TeamLogoField`；组件只负责预览和操作入口，上传与保存由页面负责。
+- 可编辑输入框使用主题 surface 与轻边框；灰色中性底仅用于状态、占位头像等非输入场景。
+- 加载态共用 `RunningLoader`，不再维护人物精灵图；图形及文字使用主题变量。
+
+头像列表统一使用 `ExpandableAvatarStack`；头像类型定义位于 `components/ui/avatarTypes.ts`。旧 `AvatarStack` 与 `DateRail` 已无运行时入口并移除。

@@ -2,10 +2,10 @@
 import { computed } from "vue";
 import { useAccentTheme } from "@/stores/theme";
 import AppTabHeader from "@/components/AppTabHeader.vue";
-import NeoButton from "@/components/neo/NeoButton.vue";
-import NeoConfirmDialog from "@/components/neo/NeoConfirmDialog.vue";
-import NeoSegmentedControl from "@/components/neo/NeoSegmentedControl.vue";
-import NeoSurface from "@/components/neo/NeoSurface.vue";
+import AppButton from "@/components/ui/AppButton.vue";
+import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
+import SegmentedControl from "@/components/ui/SegmentedControl.vue";
+import AppSurface from "@/components/ui/AppSurface.vue";
 import MemberAttendancePopup from "./components/MemberAttendancePopup.vue";
 import MemberEditPopup from "./components/MemberEditPopup.vue";
 import TeamActivityAttendancePanel from "./components/TeamActivityAttendancePanel.vue";
@@ -110,34 +110,38 @@ const metaPageStyle = computed(() =>
 
 <template>
   <page-meta :page-style="metaPageStyle" />
-  <view class="team-manage-page" :style="pageStyle">
+  <view class="app-theme-scope team-manage-page" :style="[themePageStyle, pageStyle]">
     <AppTabHeader title="球队管理" showBack />
 
     <view class="team-manage-content">
-      <NeoSurface variant="dark" custom-class="team-manage-hero">
-        <view class="team-manage-hero__copy">
-          <text class="team-manage-title">{{ heroTitle }}</text>
-          <text class="team-manage-copy">{{ heroCopy }}</text>
+      <!-- mp-weixin 陷阱：不能用 custom-class + 父级 scoped 给子组件根节点做布局（样式隔离挡住，
+           布局退化为纵向堆叠）。AppSurface 只承担表面皮肤，横排布局放在页面自己模板的包裹 view 上。 -->
+      <AppSurface variant="outlined" flush class="team-manage-hero-surface">
+        <view class="team-manage-hero">
+          <view class="team-manage-hero__copy">
+            <text class="team-manage-title">{{ heroTitle }}</text>
+            <text class="team-manage-copy">{{ heroCopy }}</text>
+          </view>
+          <view class="team-manage-hero__mark">
+            <image
+              v-if="currentTeam?.logoUrl"
+              class="team-manage-hero__logo"
+              :src="currentTeam.logoUrl"
+              mode="aspectFill"
+            />
+            <text v-else>{{ currentTeam?.name?.slice(0, 1) || "队" }}</text>
+          </view>
         </view>
-        <view class="team-manage-hero__mark">
-          <image
-            v-if="currentTeam?.logoUrl"
-            class="team-manage-hero__logo"
-            :src="currentTeam.logoUrl"
-            mode="aspectFill"
-          />
-          <text v-else>{{ currentTeam?.name?.slice(0, 1) || "队" }}</text>
-        </view>
-      </NeoSurface>
+      </AppSurface>
 
       <template v-if="canManageCurrentTeam">
-        <NeoSegmentedControl
+        <SegmentedControl
           :model-value="activeMode"
           :options="modeOptions"
           @change="handleModeChange"
         />
 
-        <template v-if="activeMode === 'profile'">
+        <view v-if="activeMode === 'profile'" class="team-profile-sections">
           <TeamProfilePanel
             :current-team="currentTeam"
             :can-manage-members="canManageMembers"
@@ -164,7 +168,7 @@ const metaPageStyle = computed(() =>
             :submitting="submitting"
             @dissolve="handleDissolveTeam"
           />
-        </template>
+        </view>
 
         <TeamMemberManager
           v-else-if="activeMode === 'members'"
@@ -206,22 +210,22 @@ const metaPageStyle = computed(() =>
         />
       </template>
 
-      <NeoSurface v-else-if="isManagementBlocked" variant="outlined">
+      <AppSurface v-else-if="isManagementBlocked" variant="outlined">
         <view class="manage-blocked">
           <text class="manage-blocked__title">暂无管理权限</text>
           <text class="manage-blocked__copy">只有队长或领队可以管理球队，普通队员可在球队主页查看球队信息。</text>
-          <NeoButton variant="outline" block @click="handleGoBack">返回上一页</NeoButton>
+          <AppButton variant="outline" block @click="handleGoBack">返回上一页</AppButton>
         </view>
-      </NeoSurface>
+      </AppSurface>
 
-      <NeoSurface v-else variant="outlined">
+      <AppSurface v-else variant="outlined">
         <view class="manage-blocked">
           <text class="manage-blocked__title">还没有球队</text>
           <text class="manage-blocked__copy">创建一支球队成为队长，或搜索加入现有球队后再回来管理。</text>
-          <NeoButton v-if="canShowCreateTeamEntry" variant="lime" block @click="goCreateTeam">创建球队</NeoButton>
-          <NeoButton variant="outline" block @click="goJoinTeam">加入球队</NeoButton>
+          <AppButton icon="plus" v-if="canShowCreateTeamEntry" variant="lime" block @click="goCreateTeam">创建球队</AppButton>
+          <AppButton icon="user-add" variant="outline" block @click="goJoinTeam">加入球队</AppButton>
         </view>
-      </NeoSurface>
+      </AppSurface>
     </view>
 
     <MemberEditPopup
@@ -251,7 +255,7 @@ const metaPageStyle = computed(() =>
       @toggle-year="toggleAttendanceYear"
     />
 
-    <NeoConfirmDialog
+    <ConfirmDialog
       :visible="joinPasswordDialogVisible"
       :title="joinPasswordDialogState.title"
       :message="joinPasswordDialogState.message"
@@ -264,7 +268,7 @@ const metaPageStyle = computed(() =>
       @close="handleJoinPasswordClose"
     />
 
-    <NeoConfirmDialog
+    <ConfirmDialog
       :visible="dissolveDialogVisible"
       :title="dissolveDialogState.title"
       :message="dissolveDialogState.message"
@@ -283,10 +287,17 @@ const metaPageStyle = computed(() =>
 </template>
 
 <style scoped>
+.team-profile-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+  margin-top: 20rpx;
+}
+
 .team-manage-page {
   min-height: 100vh;
   padding: 0 28rpx 112rpx;
-  background: var(--neo-color-page);
+  background: var(--ui-color-page);
   box-sizing: border-box;
 }
 
@@ -297,16 +308,17 @@ const metaPageStyle = computed(() =>
   box-sizing: border-box;
 }
 
+/* 宿主节点只承担外边距；横排布局与内边距在包裹 view 上（mp 样式隔离安全）。 */
+.team-manage-hero-surface {
+  margin: 0 0 20rpx;
+}
+
 .team-manage-hero {
   display: flex;
   align-items: center;
   gap: 22rpx;
-  margin: 22rpx 0 24rpx;
-  padding: 28rpx 26rpx;
-  border: var(--neo-border-strong);
-  border-radius: var(--neo-radius-md);
-  background: var(--neo-color-hero);
-  box-shadow: 8rpx 8rpx 0 var(--neo-color-accent);
+
+  padding: 24rpx;
 }
 
 .team-manage-hero__copy {
@@ -316,19 +328,24 @@ const metaPageStyle = computed(() =>
 
 .team-manage-title {
   display: block;
-  color: var(--neo-color-text-inverse);
-  font-size: 42rpx;
-  font-weight: 900;
+
+  color: var(--ui-color-text);
+
+  font-size: 30rpx;
+  font-weight: 600;
   line-height: 1.18;
   word-break: break-word;
 }
 
 .team-manage-copy {
   display: block;
-  margin-top: 12rpx;
-  color: rgba(255, 255, 255, 0.72);
-  font-size: 23rpx;
-  font-weight: 700;
+
+  margin-top: 8rpx;
+
+  color: var(--ui-color-text-muted);
+
+  font-size: 22rpx;
+  font-weight: 400;
   line-height: 1.55;
 }
 
@@ -337,14 +354,18 @@ const metaPageStyle = computed(() =>
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  width: 104rpx;
-  height: 104rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-accent);
-  color: var(--neo-color-text);
+
+  width: 72rpx;
+
+  height: 72rpx;
+
+  border: 0;
+  border-radius: var(--ui-radius-button);
+
+  background: var(--ui-color-neutral-bg);
+  color: var(--ui-color-text);
   font-size: 40rpx;
-  font-weight: 900;
+  font-weight: 600;
   box-sizing: border-box;
   overflow: hidden;
 }
@@ -354,7 +375,7 @@ const metaPageStyle = computed(() =>
   height: 100%;
 }
 
-:deep(.neo-segmented-control) {
+:deep(.ui-segmented-control) {
   margin-bottom: 24rpx;
 }
 
@@ -365,15 +386,15 @@ const metaPageStyle = computed(() =>
 }
 
 .manage-blocked__title {
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
   font-size: 30rpx;
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .manage-blocked__copy {
-  color: var(--neo-color-text-muted);
+  color: var(--ui-color-text-muted);
   font-size: 24rpx;
-  font-weight: 700;
+  font-weight: 400;
   line-height: 1.55;
 }
 

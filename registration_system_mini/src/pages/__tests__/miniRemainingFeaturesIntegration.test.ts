@@ -8,7 +8,6 @@ declare const Bun: {
 };
 
 const miniRoot = miniPath("").replace(/\/$/, "");
-const backendRoot = workspacePath("registration_system_rs").replace(/\/$/, "");
 
 async function read(path: string) {
   return Bun.file(path).text();

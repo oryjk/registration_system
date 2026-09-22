@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import NeoButton from "@/components/neo/NeoButton.vue";
-import NeoSurface from "@/components/neo/NeoSurface.vue";
+import AppButton from "@/components/ui/AppButton.vue";
+import AppSurface from "@/components/ui/AppSurface.vue";
 import type { AppMatchSummary } from "@/types/match";
 import { formatMonthDay, formatClock } from "../detailState";
 
@@ -18,7 +18,7 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <NeoSurface variant="raised">
+  <AppSurface variant="raised">
     <view class="finish-head">
       <text class="finish-title">{{ canCancel ? "比赛管理" : "比赛收尾" }}</text>
       <text class="finish-message">
@@ -29,7 +29,7 @@ const emit = defineEmits<{
         }}
       </text>
     </view>
-    <NeoButton
+    <AppButton
       v-if="canCancel"
       class="finish-button"
       variant="danger"
@@ -38,8 +38,8 @@ const emit = defineEmits<{
       @click="emit('cancelMatch')"
     >
       取消比赛
-    </NeoButton>
-    <NeoButton
+    </AppButton>
+    <AppButton
       v-else
       class="finish-button"
       :loading="submittingStatus"
@@ -47,8 +47,8 @@ const emit = defineEmits<{
       @click="emit('openFinishDialog')"
     >
       结束比赛
-    </NeoButton>
-  </NeoSurface>
+    </AppButton>
+  </AppSurface>
 </template>
 
 <style scoped>
@@ -60,15 +60,15 @@ const emit = defineEmits<{
 
 .finish-title {
   font-size: 30rpx;
-  font-weight: 900;
-  color: var(--neo-color-text);
+  font-weight: 600;
+  color: var(--ui-color-text);
 }
 
 .finish-message {
   font-size: 24rpx;
   line-height: 1.6;
   font-weight: 600;
-  color: var(--neo-color-text-muted);
+  color: var(--ui-color-text-muted);
 }
 
 .finish-button {

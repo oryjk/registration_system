@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import NeoConfirmDialog from "@/components/neo/NeoConfirmDialog.vue";
+import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
 
 defineProps<{
   visible: boolean;
@@ -16,7 +16,7 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <NeoConfirmDialog
+  <ConfirmDialog
     :visible="visible"
     title="欢迎来到比赛报名"
     message="完善头像和昵称后，队友才能在报名记录里认出你。你是哪种玩家？"
@@ -38,7 +38,7 @@ const emit = defineEmits<{
         <text class="onboarding-role-option__desc">完善资料，逛约队大厅找球队上车</text>
       </view>
     </view>
-  </NeoConfirmDialog>
+  </ConfirmDialog>
 </template>
 
 <style scoped>
@@ -54,23 +54,23 @@ const emit = defineEmits<{
   flex-direction: column;
   gap: 6rpx;
   padding: 18rpx 22rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-muted);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-button);
+  background: var(--ui-color-neutral-bg);
   box-sizing: border-box;
 }
 
 .onboarding-role-option__title {
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
   font-size: 26rpx;
-  font-weight: 900;
+  font-weight: 600;
   line-height: 1.3;
 }
 
 .onboarding-role-option__desc {
-  color: var(--neo-color-text-muted);
+  color: var(--ui-color-text-muted);
   font-size: 23rpx;
-  font-weight: 700;
+  font-weight: 400;
   line-height: 1.5;
 }
 </style>

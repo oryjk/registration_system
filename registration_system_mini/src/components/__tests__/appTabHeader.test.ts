@@ -27,7 +27,8 @@ describe("AppTabHeader", () => {
 
     expect(home.includes('<AppTabHeader title="首页" showLocation')).toEqual(false);
     expect(matchDetail.includes('<AppTabHeader title="比赛报名" showBack showLocation')).toEqual(false);
-    expect(matchDetail.includes('<AppTabHeader title="比赛报名" showBack />')).toEqual(true);
+    // 详情页导航标题动态显示比赛名（加载前回落通用标题）。
+    expect(matchDetail.includes(":title=\"match?.name || '比赛报名'\" showBack />")).toEqual(true);
   });
 
   test("tab pages keep the header without current location", async () => {
@@ -60,23 +61,25 @@ describe("AppTabHeader", () => {
     expect(source.includes("uni.pageScrollTo({ scrollTop: 0, duration: 300 })")).toEqual(true);
   });
 
-  test("renders the header in solid neo style instead of glass blur", async () => {
+  test("renders the header in solid canvas style instead of glass blur", async () => {
     const source = await read("src/components/AppTabHeader.vue");
 
     expect(source.includes("backdrop-filter")).toEqual(false);
-    expect(source.includes("linear-gradient(180deg, var(--neo-color-surface-translucent)")).toEqual(false);
-    expect(source.includes("background: var(--neo-color-page);")).toEqual(true);
-    expect(source.includes("border-bottom: var(--neo-border-default);")).toEqual(true);
+    expect(source.includes("linear-gradient(180deg, var(--ui-color-surface-translucent)")).toEqual(false);
+    expect(source.includes("background: var(--ui-color-page);")).toEqual(true);
+    // D 风格：浅色结构线分隔（--ui-color-line），不再用墨色粗描边 token。
+    expect(source.includes("border-bottom: 2rpx solid var(--ui-color-line);")).toEqual(true);
   });
 
-  test("back and home entries share one capsule styled like the native menu capsule", async () => {
+  test("back and home use independent navigation buttons within the safe area", async () => {
     const source = await read("src/components/AppTabHeader.vue");
 
-    // 返回与回首页合并进同一个胶囊容器，中间用细分隔线隔开，高度对齐原生胶囊。
+    // 导航高度仍对齐原生胶囊，内部改成独立的浅底图标按钮。
     expect(source.includes('class="app-tab-header-capsule"')).toEqual(true);
-    expect(source.includes('class="app-tab-header-capsule-divider"')).toEqual(true);
+    expect(source.includes('class="app-tab-header-capsule-divider"')).toEqual(false);
     expect(source.includes("height: `${navMetrics.headerMinHeight}px`")).toEqual(true);
-    expect(source.includes("background: rgba(var(--neo-primitive-surface-rgb), 0.72);")).toEqual(true);
-    expect(source.includes("box-shadow: 3rpx 3rpx 0 var(--neo-color-text);")).toEqual(false);
+    expect(source.includes('name="arrow-left"')).toEqual(true);
+    expect(source.includes('name="home"')).toEqual(true);
+    expect(source.includes("box-shadow: 3rpx 3rpx 0 var(--ui-color-text);")).toEqual(false);
   });
 });

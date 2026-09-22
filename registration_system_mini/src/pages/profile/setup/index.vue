@@ -3,16 +3,13 @@ import { useAccentTheme } from "@/stores/theme";
 import { computed, ref, watch } from "vue";
 import { onLoad, onShow } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
-import NeoButton from "@/components/neo/NeoButton.vue";
-import NeoSectionHeader from "@/components/neo/NeoSectionHeader.vue";
-import NeoSurface from "@/components/neo/NeoSurface.vue";
+import AppButton from "@/components/ui/AppButton.vue";
 import { bindMyPhoneNumber, updateMyProfile, uploadMyAvatar } from "@/api/user";
 import { getPhoneNumber } from "@/api/wx";
 import { loadMiniAppRuntimeConfig } from "@/config/runtimeConfig";
 import { useTeamContext } from "@/stores/teamContext";
 import { getCustomNavMetrics } from "@/utils/customNav";
 import { needsProfileCompletion } from "@/utils/profileCompletion";
-import defaultAvatarUrl from "@/static/tab-png/user-active.png";
 
 const { themePageStyle } = useAccentTheme();
 
@@ -43,12 +40,6 @@ const canSubmit = computed(() => (
   !!nicknameInput.value.trim() && (isEditMode.value || !!avatarPreview.value)
 ));
 const headerTitle = computed(() => (isEditMode.value ? "编辑资料" : "完善资料"));
-const heroTitle = computed(() => (isEditMode.value ? "编辑头像和昵称" : "完善头像和昵称"));
-const heroCopy = computed(() =>
-  isEditMode.value
-    ? "更新头像和昵称后会同步到个人中心、报名记录和球队成员信息中。"
-    : "选择头像并填写昵称，方便队友在报名记录和球队成员中认出你。",
-);
 const submitText = computed(() => {
   if (isSaving.value) return "保存中...";
   return "保存资料";
@@ -234,285 +225,76 @@ onShow(async () => {
 
 <template>
   <page-meta :page-style="themePageStyle" />
-  <view class="profile-setup-page" :style="pageStyle">
+  <view class="app-theme-scope profile-setup-page" :style="[themePageStyle, pageStyle]">
     <AppTabHeader :title="headerTitle" showBack />
-
     <view class="profile-setup-content">
-      <NeoSurface variant="dark" custom-class="profile-editor-hero">
-        <view class="profile-editor-hero__main">
-          <view class="profile-editor-hero__copy">
-            <text class="profile-editor-hero__title">{{ heroTitle }}</text>
-            <text class="profile-editor-hero__description">{{ heroCopy }}</text>
-          </view>
-          <view class="profile-editor-avatar">
-            <image
-              v-if="avatarPreview && !avatarLoadFailed"
-              class="profile-editor-avatar__image"
-              :src="avatarPreview"
-              mode="aspectFill"
-              @error="avatarLoadFailed = true"
-            />
-            <image v-else class="profile-editor-avatar__fallback" :src="defaultAvatarUrl" mode="aspectFit" />
-          </view>
-        </view>
-
+      <view class="profile-editor-form">
         <!-- #ifdef MP-WEIXIN -->
-        <button
-          class="profile-editor-avatar-button"
-          hover-class="profile-editor-button--pressed"
-          open-type="chooseAvatar"
-          @chooseavatar="handleChooseAvatar"
-        >
-          更换头像
+        <button class="profile-avatar-row" hover-class="profile-editor-button--pressed" open-type="chooseAvatar" :disabled="isSaving" @chooseavatar="handleChooseAvatar" aria-label="更换头像">
+          <view class="profile-avatar-copy"><text class="profile-editor-label">头像</text><text class="profile-avatar-hint">点击更换头像</text></view>
+          <view class="profile-editor-avatar">
+            <image v-if="avatarPreview && !avatarLoadFailed" class="profile-editor-avatar__image" :src="avatarPreview" mode="aspectFill" @error="avatarLoadFailed = true" />
+            <wd-icon v-else name="user" size="42rpx" color="var(--ui-color-text-muted)" />
+          </view>
+          <wd-icon name="arrow-right" size="28rpx" color="var(--ui-color-text-muted)" />
         </button>
         <!-- #endif -->
-
         <!-- #ifndef MP-WEIXIN -->
-        <NeoButton variant="lime" block @click="handlePickAvatarFallback">更换头像</NeoButton>
+        <button class="profile-avatar-row" hover-class="profile-editor-button--pressed" :disabled="isSaving" @tap="handlePickAvatarFallback" aria-label="更换头像">
+          <view class="profile-avatar-copy"><text class="profile-editor-label">头像</text><text class="profile-avatar-hint">点击更换头像</text></view>
+          <view class="profile-editor-avatar">
+            <image v-if="avatarPreview && !avatarLoadFailed" class="profile-editor-avatar__image" :src="avatarPreview" mode="aspectFill" @error="avatarLoadFailed = true" />
+            <wd-icon v-else name="user" size="42rpx" color="var(--ui-color-text-muted)" />
+          </view>
+          <wd-icon name="arrow-right" size="28rpx" color="var(--ui-color-text-muted)" />
+        </button>
         <!-- #endif -->
-      </NeoSurface>
-
-      <NeoSurface custom-class="profile-editor-form">
-        <NeoSectionHeader title="基础资料" marker="01" caption="这些信息会同步到报名记录和球队成员信息中" />
-
         <view class="profile-editor-field">
           <text class="profile-editor-label">昵称</text>
-          <input
-            v-model="nicknameInput"
-            class="profile-editor-input"
-            type="nickname"
-            maxlength="24"
-            placeholder="请输入你的昵称"
-            placeholder-class="profile-setup-input-placeholder"
-            @input="hasUnsavedEdits = true"
-          />
+          <input v-model="nicknameInput" class="profile-editor-input" type="nickname" maxlength="24" placeholder="请输入你的昵称" placeholder-class="profile-setup-input-placeholder" @input="hasUnsavedEdits = true" />
         </view>
-
         <view v-if="shouldShowPhoneBinding" class="profile-editor-field">
           <text class="profile-editor-label">手机号</text>
           <view class="profile-phone-row">
-            <input
-              v-model="phoneInput"
-              class="profile-editor-input profile-phone-input"
-              type="number"
-              maxlength="20"
-              placeholder="可选，绑定后方便队长联系"
-              placeholder-class="profile-setup-input-placeholder"
-              @input="hasUnsavedEdits = true"
-            />
+            <input v-model="phoneInput" class="profile-editor-input profile-phone-input" type="number" maxlength="20" placeholder="可选，方便队长联系" placeholder-class="profile-setup-input-placeholder" @input="hasUnsavedEdits = true" />
             <!-- #ifdef MP-WEIXIN -->
-            <button
-              class="profile-phone-button"
-              hover-class="profile-editor-button--pressed"
-              open-type="getPhoneNumber"
-              @getphonenumber="handleGetPhoneNumber"
-            >
-              {{ isBindingPhone ? "绑定中" : "一键绑定" }}
-            </button>
+            <button class="profile-phone-button" hover-class="profile-editor-button--pressed" open-type="getPhoneNumber" @getphonenumber="handleGetPhoneNumber">{{ isBindingPhone ? "绑定中" : "一键绑定" }}</button>
             <!-- #endif -->
           </view>
         </view>
-
-        <view class="profile-editor-actions">
-          <NeoButton
-            block
-            :disabled="!canSubmit"
-            :loading="isSaving"
-            @click="handleSubmit"
-          >
-            {{ submitText }}
-          </NeoButton>
-        </view>
-      </NeoSurface>
+      </view>
+      <text class="profile-editor-note">{{ isEditMode ? '头像和昵称会同步到报名记录与球队名单。' : '完善头像和昵称，方便队友认出你。' }}</text>
+      <view class="profile-editor-actions"><AppButton icon="check" block :disabled="!canSubmit" :loading="isSaving" @click="handleSubmit">{{ submitText }}</AppButton></view>
     </view>
   </view>
 </template>
-
 <style scoped>
 .profile-setup-page {
   min-height: 100vh;
-  padding: 0 28rpx 100rpx;
-  background: var(--neo-color-page);
+  padding: 0 28rpx calc(60rpx + env(safe-area-inset-bottom));
+  background: var(--ui-color-page);
   box-sizing: border-box;
 }
-
-.profile-setup-content {
-  width: 100%;
-  max-width: 900rpx;
-  margin: 0 auto;
-  box-sizing: border-box;
-}
-
-.profile-editor-hero {
-  margin-top: 22rpx;
-  padding: 24rpx;
-  border: var(--neo-border-strong);
-  border-radius: var(--neo-radius-md);
-  box-shadow: 8rpx 8rpx 0 var(--neo-color-accent);
-}
-
-.profile-editor-hero__main {
-  display: flex;
-  align-items: center;
-  gap: 20rpx;
-}
-
-.profile-editor-hero__copy {
-  min-width: 0;
-  flex: 1;
-}
-
-.profile-editor-hero__title {
-  display: block;
-  color: var(--neo-color-text-inverse);
-  font-size: 38rpx;
-  font-weight: 900;
-  line-height: 1.2;
-  word-break: break-word;
-}
-
-.profile-editor-hero__description {
-  display: block;
-  margin-top: 12rpx;
-  color: rgba(255, 255, 255, 0.74);
-  font-size: 23rpx;
-  font-weight: 700;
-  line-height: 1.6;
-  word-break: break-word;
-}
-
-.profile-editor-avatar {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  width: 132rpx;
-  height: 132rpx;
-  overflow: hidden;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-accent);
-  box-sizing: border-box;
-}
-
-.profile-editor-avatar__image {
-  width: 100%;
-  height: 100%;
-}
-
-.profile-editor-avatar__fallback {
-  width: 74rpx;
-  height: 74rpx;
-}
-
-.profile-editor-avatar-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: var(--neo-button-height-md);
-  margin-top: 20rpx;
-  padding: 0 26rpx;
-  border: var(--neo-button-border);
-  border-radius: var(--neo-button-radius);
-  background: var(--neo-color-accent);
-  color: var(--neo-color-text);
-  font-size: var(--neo-button-font-size-md);
-  font-weight: 900;
-  line-height: var(--neo-button-height-md);
-  box-sizing: border-box;
-}
-
-.profile-editor-button--pressed {
-  transform: translate(2rpx, 2rpx);
-  box-shadow: none;
-}
-
-.profile-editor-form {
-  margin-top: 24rpx;
-  margin-bottom: 28rpx;
-  padding: 6rpx 24rpx 24rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-md);
-  background: var(--neo-color-surface);
-  box-shadow: 8rpx 8rpx 0 var(--neo-color-text);
-}
-
-.profile-phone-row {
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
-}
-
-.profile-editor-field {
-  margin-top: 26rpx;
-}
-
-.profile-editor-label {
-  display: block;
-  color: var(--neo-color-text);
-  font-size: 24rpx;
-  font-weight: 900;
-  line-height: 1.3;
-}
-
-.profile-editor-input {
-  display: block;
-  width: 100%;
-  min-height: 84rpx;
-  margin-top: 10rpx;
-  padding: 0 20rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-muted);
-  color: var(--neo-color-text);
-  font-size: 28rpx;
-  font-weight: 800;
-  line-height: 84rpx;
-  box-sizing: border-box;
-}
-
-.profile-phone-input {
-  flex: 1;
-  min-width: 0;
-}
-
-.profile-phone-button {
-  flex-shrink: 0;
-  width: 168rpx;
-  height: 84rpx;
-  padding: 0;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-text);
-  color: var(--neo-color-accent);
-  font-size: 22rpx;
-  font-weight: 900;
-  line-height: 84rpx;
-  box-sizing: border-box;
-}
-
-.profile-setup-input-placeholder {
-  color: var(--neo-color-text-muted);
-}
-
-.profile-editor-actions {
-  margin-top: 28rpx;
-}
-
-@media (max-width: 560rpx) {
-  .profile-editor-hero__main {
-    align-items: flex-start;
-  }
-
-  .profile-editor-avatar {
-    width: 112rpx;
-    height: 112rpx;
-  }
-
-  .profile-editor-avatar__fallback {
-    width: 66rpx;
-    height: 66rpx;
-  }
-}
+.profile-setup-content { width: 100%; max-width: 750rpx; margin: 0 auto; }
+.profile-editor-form { overflow: hidden; border: var(--ui-border-default); border-radius: var(--ui-radius-card); background: var(--ui-color-surface); }
+.profile-avatar-row { display: flex; align-items: center; gap: 16rpx; width: 100%; margin: 0; padding: 24rpx; border: 0; border-radius: 0; background: transparent; text-align: left; line-height: 1.5; }
+.profile-avatar-row::after,.profile-phone-button::after { border: 0; }
+.profile-avatar-copy { flex: 1; min-width: 0; }
+.profile-avatar-hint { display: block; margin-top: 8rpx; font-size: 22rpx; color: var(--ui-color-text-muted); }
+.profile-editor-avatar { display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 96rpx; height: 96rpx; overflow: hidden; border-radius: 50%; background: var(--ui-color-neutral-bg); }
+.profile-editor-avatar__image { width: 100%; height: 100%; }
+.profile-editor-field { margin: 0 24rpx; padding: 24rpx 0; border-top: var(--ui-border-default); }
+.profile-editor-label { display: block; font-size: 26rpx; font-weight: 600; color: var(--ui-color-text); }
+.profile-editor-input { width: 100%; height: 80rpx; margin-top: 14rpx; padding: 0 20rpx; border: var(--ui-border-default); border-radius: 16rpx; background: var(--ui-color-surface); color: var(--ui-color-text); font-size: 28rpx; box-sizing: border-box; }
+.profile-phone-row { display: flex; align-items: center; gap: 12rpx; }
+.profile-phone-input { flex: 1; min-width: 0; }
+.profile-phone-button { flex-shrink: 0; margin: 14rpx 0 0; padding: 0 18rpx; height: 80rpx; line-height: 80rpx; border: 0; border-radius: 16rpx; background: var(--ui-color-accent-soft); color: var(--ui-color-accent-deep); font-size: 24rpx; }
+.profile-setup-input-placeholder { color: var(--ui-color-text-muted); }
+.profile-editor-note { display: block; padding: 18rpx 8rpx 0; color: var(--ui-color-text-muted); font-size: 22rpx; line-height: 1.5; }
+.profile-editor-actions { margin-top: 28rpx; }
+.profile-editor-button--pressed { opacity: .75; }
+/* #ifdef H5 */
+.profile-setup-page { width: 100%; max-width: 750rpx; margin: 0 auto; }
+.profile-setup-page :deep(.app-tab-header-shell) { left: 50%; right: auto; width: 100%; max-width: 750rpx; transform: translateX(-50%); }
+/* #endif */
 </style>

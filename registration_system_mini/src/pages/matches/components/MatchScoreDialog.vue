@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import NeoConfirmDialog from "@/components/neo/NeoConfirmDialog.vue";
+import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
 
 defineProps<{
   visible: boolean;
@@ -24,7 +24,7 @@ function isValidScore(value: string): boolean {
 
 <template>
   <!-- 录入比分：主/客两个数字输入（0 是合法比分，空视为无效，提交前校验）。 -->
-  <NeoConfirmDialog
+  <ConfirmDialog
     :visible="visible"
     title="录入比分"
     message="比赛进行中与结束后均可录入，重复提交会覆盖此前的比分。"
@@ -61,7 +61,7 @@ function isValidScore(value: string): boolean {
         />
       </view>
     </view>
-  </NeoConfirmDialog>
+  </ConfirmDialog>
 </template>
 
 <style scoped>
@@ -82,8 +82,8 @@ function isValidScore(value: string): boolean {
 
 .score-field-label {
   font-size: 25rpx;
-  font-weight: 800;
-  color: var(--neo-color-text-muted);
+  font-weight: 500;
+  color: var(--ui-color-text-muted);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -94,19 +94,19 @@ function isValidScore(value: string): boolean {
   width: 100%;
   height: 84rpx;
   padding: 0 22rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-page);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-button);
+  background: var(--ui-color-page);
   font-size: 32rpx;
-  font-weight: 900;
+  font-weight: 600;
   text-align: center;
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
 }
 
 .score-field-separator {
   font-size: 40rpx;
-  font-weight: 900;
-  color: var(--neo-color-text-muted);
+  font-weight: 600;
+  color: var(--ui-color-text-muted);
   padding-bottom: 20rpx;
 }
 </style>

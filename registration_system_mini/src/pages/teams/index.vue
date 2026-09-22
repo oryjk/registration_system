@@ -4,8 +4,8 @@ import { computed, ref } from "vue";
 import { onLoad, onShow, onUnload } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
 import BottomTabBar from "@/components/BottomTabBar.vue";
-import NeoButton from "@/components/neo/NeoButton.vue";
-import NeoSegmentedControl from "@/components/neo/NeoSegmentedControl.vue";
+import AppButton from "@/components/ui/AppButton.vue";
+import SegmentedControl from "@/components/ui/SegmentedControl.vue";
 import { getTeamAttendanceSummary } from "@/api/team";
 import { useMiniReviewStatus } from "@/stores/miniReview";
 import { useNotificationCenter } from "@/stores/notificationCenter";
@@ -18,7 +18,7 @@ import type { BackendTeamAttendanceRankingItem, BackendTeamMemberAttendanceRecor
 import AttendanceCalendarCard from "./components/AttendanceCalendarCard.vue";
 import AttendanceRankingCard from "./components/AttendanceRankingCard.vue";
 import StatsOverview from "./components/StatsOverview.vue";
-import NeoRunningLoader from "@/components/neo/NeoRunningLoader.vue";
+import RunningLoader from "@/components/ui/RunningLoader.vue";
 import { buildAttendanceCalendarMonths, buildRecordSummary } from "./teamStatsState";
 
 const { themePageStyle } = useAccentTheme();
@@ -140,7 +140,8 @@ function handleSessionLoginCompleted() {
 }
 
 onShow(() => {
-  uni.hideTabBar({ animation: false });
+  // H5 路由切换时 onShow 可能早于 TabBar 挂载，此时无需隐藏。
+  uni.hideTabBar({ animation: false, fail: () => {} });
   void loadPageData();
 });
 
@@ -155,25 +156,25 @@ onUnload(() => {
 
 <template>
   <page-meta :page-style="themePageStyle" />
-  <view class="stats-page" :style="pageStyle">
+  <view class="app-theme-scope stats-page" :style="[themePageStyle, pageStyle]">
     <AppTabHeader title="统计" />
 
     <template v-if="!requiresLogin">
       <view v-if="errorMessage" class="stats-empty">
         {{ errorMessage }}
         <view v-if="hasNoTeam" class="stats-empty-actions">
-          <NeoButton class="stats-empty-action" variant="lime" @click="goJoinTeam">加入球队</NeoButton>
-          <NeoButton
+          <AppButton class="stats-empty-action" variant="lime" @click="goJoinTeam">加入球队</AppButton>
+          <AppButton
             v-if="canShowCreateTeamEntry"
             class="stats-empty-action"
             variant="dark"
             @click="goCreateTeam"
           >
             创建球队
-          </NeoButton>
+          </AppButton>
         </view>
       </view>
-      <NeoRunningLoader v-else-if="isLoading && !hasLoadedOnce" text="正在统计战绩" />
+      <RunningLoader v-else-if="isLoading && !hasLoadedOnce" text="正在统计战绩" />
 
       <template v-else>
         <StatsOverview
@@ -185,20 +186,23 @@ onUnload(() => {
           :my-summary="mySummary"
         />
         <view class="stats-tab-card">
-          <NeoSegmentedControl
+          <SegmentedControl
             :model-value="statsTab"
             :options="statsTabOptions"
             class="stats-segment"
             @update:model-value="handleStatsTabChange"
           />
 
-          <AttendanceCalendarCard
-            v-if="statsTab === 'records'"
-            :my-records-count="myRecords.length"
-            :calendar-months="attendanceCalendarMonths"
-            embedded
-          />
-          <AttendanceRankingCard v-else :ranking-items="rankingItems" embedded />
+          <!-- key 绑定分页签：仅记录/排行切换时重播轻淡入；年月翻页、下拉刷新不重播。 -->
+          <view :key="statsTab" class="stats-tab-content">
+            <AttendanceCalendarCard
+              v-if="statsTab === 'records'"
+              :my-records-count="myRecords.length"
+              :calendar-months="attendanceCalendarMonths"
+              embedded
+            />
+            <AttendanceRankingCard v-else :ranking-items="rankingItems" embedded />
+          </view>
         </view>
       </template>
     </template>
@@ -211,20 +215,20 @@ onUnload(() => {
 .stats-page {
   min-height: 100vh;
   padding: calc(env(safe-area-inset-top) + 30rpx) 24rpx 164rpx;
-  background: var(--neo-color-page);
+  background: var(--ui-color-page);
   box-sizing: border-box;
 }
 
 .stats-empty {
   margin-top: 18rpx;
   padding: 24rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-md);
-  background: var(--neo-color-surface);
-  box-shadow: var(--neo-shadow-raised);
-  color: var(--neo-color-text-muted);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-card);
+  background: var(--ui-color-surface);
+  box-shadow: var(--ui-shadow-raised);
+  color: var(--ui-color-text-muted);
   font-size: 27rpx;
-  font-weight: 700;
+  font-weight: 400;
   line-height: 1.6;
 }
 
@@ -241,14 +245,37 @@ onUnload(() => {
 .stats-tab-card {
   margin-top: 16rpx;
   padding: 16rpx 22rpx 22rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-md);
-  background: var(--neo-color-surface);
-  box-shadow: var(--neo-shadow-raised);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-card);
+  background: var(--ui-color-surface);
+  box-shadow: var(--ui-shadow-raised);
 }
 
 .stats-segment {
   margin-bottom: 18rpx;
+}
+
+.stats-tab-content {
+  animation: stats-tab-fade-in var(--ui-motion-switch-duration) var(--ui-motion-ease-out);
+}
+
+@keyframes stats-tab-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(6rpx);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* H5 减少动态效果：内容直接切换。 */
+@media (prefers-reduced-motion: reduce) {
+  .stats-tab-content {
+    animation: none;
+  }
 }
 
 /* #ifdef H5 */

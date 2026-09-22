@@ -1,7 +1,7 @@
 import { computed, ref, watch, type Ref } from "vue";
 import { listTeamApplications, selectTeamApplication } from "@/api/teamApplication";
 import { useTeamContext } from "@/stores/teamContext";
-import type { NeoConfirmDialogOptions } from "@/components/neo";
+import type { ConfirmDialogOptions } from "@/components/ui";
 import type { AppMatchSummary, AppTeamApplication } from "@/types/match";
 
 /**
@@ -14,7 +14,7 @@ import type { AppMatchSummary, AppTeamApplication } from "@/types/match";
 export function useMatchTeamApplications(
   sourceMatch: Ref<unknown>,
   reloadMatch: () => Promise<void> | void,
-  confirm: (options: NeoConfirmDialogOptions) => Promise<boolean>,
+  confirm: (options: ConfirmDialogOptions) => Promise<boolean>,
 ) {
   const { currentTeam } = useTeamContext();
 

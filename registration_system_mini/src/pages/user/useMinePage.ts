@@ -7,13 +7,12 @@ import { useNotificationCenter } from "@/stores/notificationCenter";
 import { useTeamContext } from "@/stores/teamContext";
 import { useMiniReviewStatus } from "@/stores/miniReview";
 import { clearSession, resetLocalSession } from "@/stores/appSession";
-import { useNeoConfirmDialog } from "@/components/neo";
+import { useConfirmDialog } from "@/components/ui";
 import { PRODUCT_OWNER_USER_ID } from "@/config/productOwner";
 import { hasManualLogout } from "@/utils/authStorage";
 import { getCustomNavMetrics } from "@/utils/customNav";
 import { useMineImpersonation } from "./mineImpersonation";
 import {
-  formatDateTimeLabel,
   resolveUserDisplayName,
 } from "@/utils/viewModels";
 
@@ -36,7 +35,7 @@ export function useMinePage() {
     handleConfirmPrimary,
     handleConfirmSecondary,
     handleConfirmClose,
-  } = useNeoConfirmDialog();
+  } = useConfirmDialog();
   const navMetrics = getCustomNavMetrics();
 
   // 身份切换（impersonate）调试面板：产品负责人可切换为任意用户复现问题，切换态下任何人可见恢复入口。

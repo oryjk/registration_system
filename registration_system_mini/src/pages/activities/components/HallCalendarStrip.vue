@@ -55,34 +55,36 @@ const emit = defineEmits<{
   justify-content: center;
   gap: 4rpx;
   padding: 14rpx 0;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-surface);
-  transition: transform var(--neo-motion-fast), box-shadow var(--neo-motion-fast);
+  border: 2rpx solid var(--ui-color-line);
+  border-radius: var(--ui-radius-button);
+  background: var(--ui-color-surface);
+  box-sizing: border-box;
+  transition: background-color var(--ui-motion-switch-duration) var(--ui-motion-ease-out), color var(--ui-motion-switch-duration) var(--ui-motion-ease-out), border-color var(--ui-motion-switch-duration) var(--ui-motion-ease-out);
 }
 
 .hall-calendar-item-active {
-  background: var(--neo-color-text);
-  box-shadow: var(--neo-shadow-pressed);
+  border-color: var(--ui-color-text);
+  background: var(--ui-color-text);
 }
 
 .hall-calendar-badge {
   font-size: 20rpx;
-  font-weight: 700;
-  color: var(--neo-color-text-muted);
+  font-weight: 400;
+  color: var(--ui-color-text-muted);
 }
 
 .hall-calendar-item-active .hall-calendar-badge {
-  color: var(--neo-color-accent);
+  color: var(--ui-color-accent-soft);
 }
 
 .hall-calendar-day {
   font-size: 34rpx;
-  font-weight: 900;
-  color: var(--neo-color-text);
+  font-weight: 600;
+  color: var(--ui-color-text);
+  font-variant-numeric: tabular-nums;
 }
 
 .hall-calendar-item-active .hall-calendar-day {
-  color: var(--neo-color-text-inverse);
+  color: var(--ui-color-text-inverse);
 }
 </style>

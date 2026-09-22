@@ -119,24 +119,24 @@ function handleRemoveMember(member: BackendTeamMember) {
 }
 
 .member-section-title {
-  color: #10110f;
+  color: var(--ui-color-text);
   font-size: 30rpx;
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .member-section-count {
-  min-width: 88rpx;
+  min-width: 0;
   height: 46rpx;
-  padding: 0 18rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-xs);
-  background: var(--neo-color-accent);
-  color: var(--neo-color-text);
+  padding: 0;
+  border: none;
+  border-radius: var(--ui-radius-xs);
+  background: transparent;
+  color: var(--ui-color-text-muted);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 22rpx;
-  font-weight: 900;
+  font-weight: 600;
   box-sizing: border-box;
 }
 
@@ -153,13 +153,13 @@ function handleRemoveMember(member: BackendTeamMember) {
 
 .empty-box {
   margin-top: 22rpx;
-  padding: 22rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-muted);
-  color: var(--neo-color-text-muted);
-  font-size: 26rpx;
-  font-weight: 700;
+  padding: 20rpx 0;
+  border: none;
+  border-radius: var(--ui-radius-button);
+  background: transparent;
+  color: var(--ui-color-text-muted);
+  font-size: 24rpx;
+  font-weight: 400;
 }
 
 .member-section-empty {
@@ -170,12 +170,13 @@ function handleRemoveMember(member: BackendTeamMember) {
   display: flex;
   flex-direction: column;
   gap: 16rpx;
-  padding: 18rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
-  background: var(--neo-color-surface);
-  box-shadow: 4rpx 4rpx 0 var(--neo-color-text);
+  padding: 20rpx 0;
+  border: none;
+  border-radius: 0;
+  background: var(--ui-color-surface);
+  box-shadow: none;
   box-sizing: border-box;
+  border-bottom: var(--ui-border-default);
 }
 
 .member-card-main {
@@ -186,31 +187,31 @@ function handleRemoveMember(member: BackendTeamMember) {
 }
 
 .member-card-leadership {
-  background: var(--neo-color-success);
+  background: transparent;
 }
 
 .member-card-frozen {
-  background: var(--neo-color-muted);
+  background: transparent;
   opacity: 0.86;
 }
 
 .member-avatar {
   width: 76rpx;
   height: 76rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-sm);
+  border: none;
+  border-radius: var(--ui-radius-round);
   flex-shrink: 0;
   overflow: hidden;
-  background: var(--neo-color-text);
+  background: var(--ui-color-neutral-bg);
 }
 
 .member-avatar-fallback {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--neo-color-accent);
+  color: var(--ui-color-accent);
   font-size: 30rpx;
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .member-avatar-muted {
@@ -239,38 +240,38 @@ function handleRemoveMember(member: BackendTeamMember) {
 
 .team-result-title {
   display: block;
-  color: var(--neo-color-text);
+  color: var(--ui-color-text);
   font-size: 30rpx;
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .team-result-meta {
   display: block;
   margin-top: 6rpx;
-  color: var(--neo-color-text-muted);
+  color: var(--ui-color-text-muted);
   font-size: 24rpx;
-  font-weight: 700;
+  font-weight: 400;
 }
 
 .member-role-badge {
   flex-shrink: 0;
   height: 42rpx;
   padding: 0 16rpx;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-xs);
-  background: var(--neo-color-text);
-  color: var(--neo-color-accent);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-xs);
+  background: var(--ui-color-text);
+  color: var(--ui-color-accent);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 22rpx;
-  font-weight: 900;
+  font-weight: 600;
   box-sizing: border-box;
 }
 
 .member-role-badge-muted {
-  background: var(--neo-color-disabled);
-  color: var(--neo-color-text-muted);
+  background: var(--ui-color-disabled);
+  color: var(--ui-color-text-muted);
 }
 
 
@@ -287,19 +288,19 @@ function handleRemoveMember(member: BackendTeamMember) {
   display: flex;
   align-items: center;
   justify-content: center;
-  border: var(--neo-border-default);
-  border-radius: var(--neo-radius-xs);
-  background: var(--neo-color-surface);
-  color: var(--neo-color-text);
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-xs);
+  background: var(--ui-color-surface);
+  color: var(--ui-color-text);
   font-size: 24rpx;
-  font-weight: 900;
+  font-weight: 600;
   line-height: 1;
-  box-shadow: 2rpx 2rpx 0 var(--neo-color-text);
+  box-shadow: none;
   box-sizing: border-box;
 }
 
 .member-link-danger {
-  background: var(--neo-color-danger-soft);
+  background: var(--ui-color-danger-soft);
 }
 
 .member-link-pressed {

@@ -1,5 +1,7 @@
 # 小程序比赛报名详情页 Soft Neo-Brutalism 设计
 
+> **历史资料：视觉规范已失效。** 本文的 Neo / Soft Neo 样式要求、旧组件与 token 路径不再适用；业务决策仅供追溯。所有新界面工作以[现行统一设计系统](../../../registration_system_mini/docs/mini-design-system.md)及实际代码为准，不得依据本文恢复旧皮肤。
+
 ## 背景与目标
 
 `registration_system_mini` 首页已经建立 Soft Neo-Brutalism 视觉令牌与第一批 `Neo*` 组件。比赛报名详情页仍使用大圆角、柔和阴影、渐变背景和页面内重复 CSS，与首页风格不一致；个人报名与球队报名之间也存在 Hero、说明卡、操作按钮等重复结构。

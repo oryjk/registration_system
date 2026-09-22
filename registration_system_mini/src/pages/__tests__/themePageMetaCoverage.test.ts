@@ -7,7 +7,7 @@ declare const Bun: {
   };
 };
 
-// 主题靠每页 page-meta 注入 page 级变量覆盖；任何新页面漏挂都会出现“半绿半橙”的混色页面。
+// 原生 page-meta + 页面根节点双重绑定，避免 H5 缓存页共享 page-meta 的样式目标。
 describe("accent theme page-meta coverage", () => {
   test("every registered page injects the accent theme via page-meta", async () => {
     const raw = await Bun.file(miniPath("src/pages.json")).text();
@@ -19,6 +19,19 @@ describe("accent theme page-meta coverage", () => {
       expect(source.includes("<page-meta")).toEqual(true);
       expect(source.includes("themePageStyle")).toEqual(true);
     }
+  });
+
+  test("every local page owns a reactive theme scope instead of relying on H5 page-meta", async () => {
+    const { pages } = JSON.parse(await Bun.file(miniPath("src/pages.json")).text()) as { pages: { path: string }[] };
+    for (const { path } of pages) {
+      if (path === "pages/webview/index") continue; // 外部文档由其自身管理样式。
+      const source = await Bun.file(miniPath(`src/${path}.vue`)).text();
+      const root = source.split("<template>")[1]?.match(/<view\b[^>]*>/)?.[0] || "";
+      expect(root.includes("app-theme-scope")).toEqual(true);
+      expect(/:style="[^"]*themePageStyle/.test(root)).toEqual(true);
+    }
+    const tokens = await Bun.file(miniPath("src/styles/design-tokens.css")).text();
+    expect(tokens.includes("page,\n.app-theme-scope {")).toEqual(true);
   });
 
   test("pages with dialog scroll lock merge theme overrides into one page-style", async () => {

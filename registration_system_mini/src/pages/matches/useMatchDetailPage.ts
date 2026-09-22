@@ -1,5 +1,6 @@
+import { formatDetailFee, isDetailRegistrationReadOnly } from "./detailPresentation";
 import { computed, ref } from "vue";
-import { onLoad, onUnload } from "@dcloudio/uni-app";
+import { onLoad, onPullDownRefresh, onUnload } from "@dcloudio/uni-app";
 import { MATCH_API_ID_PATTERN, loadAuthenticatedMatchDetailContext, loadPublicMatchDetailData, toRegistrationStandCode, type MatchTeamGroupSummary } from "./detailData";
 import { useMatchRegistrationPayment } from "./useMatchRegistrationPayment";
 import { useTeamContext } from "@/stores/teamContext";
@@ -32,8 +33,8 @@ import { useMatchGuestLogin } from "./useMatchGuestLogin";
 import { useMatchTeamLogos } from "./useMatchTeamLogos";
 import { useMatchFinish } from "./useMatchFinish";
 import { useMatchScore } from "./useMatchScore";
-import { useNeoConfirmDialog } from "@/components/neo";
-import type { NeoConfirmDialogOptions } from "@/components/neo";
+import { useConfirmDialog } from "@/components/ui";
+import type { ConfirmDialogOptions } from "@/components/ui";
 
 export function useMatchDetailPage() {
   const { currentTeam, currentUser, ensureSessionReady, myTeams } = useTeamContext();
@@ -44,7 +45,7 @@ export function useMatchDetailPage() {
     handleConfirmPrimary,
     handleConfirmSecondary,
     handleConfirmClose,
-  } = useNeoConfirmDialog();
+  } = useConfirmDialog();
 
   const navMetrics = getCustomNavMetrics();
   const matchId = ref("");
@@ -69,12 +70,13 @@ export function useMatchDetailPage() {
   const preferredRegistrationGroupId = ref("");
   const publicationModeLabel = ref("其他类型");
   const selectedGroupMinPlayers = ref<number | null>(null);
+  const selectedGroupMaxPlayers = ref<number | null>(null);
 
   let countdownTimer: ReturnType<typeof setInterval> | null = null;
 
   // 底部留白复用全局 token：悬浮操作栏占位 + 与内容间距，兼容全面屏安全区。
   const pageStyle = computed(() => ({
-    paddingBottom: "var(--neo-action-bar-clearance)",
+    paddingBottom: "var(--ui-action-bar-clearance)",
   }));
 
   const contentStyle = computed(() => ({
@@ -101,6 +103,7 @@ export function useMatchDetailPage() {
     return Math.max(configuredCapacity ?? requiredPlayers.value, requiredPlayers.value);
   });
 
+  const detailRemainingPlayersLabel = computed(() => selectedGroupMinPlayers.value == null ? "" : buildRemainingPlayersLabel(joinedCount.value, selectedGroupMinPlayers.value));
   const remainingPlayersLabel = computed(() => buildRemainingPlayersLabel(joinedCount.value, progressTargetPlayers.value));
   const registrationCapacityState = computed(() =>
     resolveRegistrationCapacityState({
@@ -129,6 +132,7 @@ export function useMatchDetailPage() {
 
   const registrationWindowState = computed(() => registrationWindow.value.state);
   const isRegistrationClosed = computed(() => registrationWindowState.value !== "open");
+  const isRegistrationReadOnly = computed(() => isDetailRegistrationReadOnly(sourceMatch.value, isRegistrationClosed.value, nowTick.value));
 
   const {
     myRegistrationPaid,
@@ -145,6 +149,7 @@ export function useMatchDetailPage() {
     maxPlayers.value - joinedCount.value + (currentStatus.value === "参加" ? myRegistrationCount.value : 0),
     1,
   ));
+  const matchFeeLabel = computed(() => formatDetailFee(sourceMatch.value));
   const feePerPersonLabel = computed(() => {
     const cents = sourceMatch.value?.fee_per_person_cents ?? 0;
     return cents > 0 ? `¥${(cents / 100).toFixed(2)}` : "";
@@ -211,8 +216,8 @@ export function useMatchDetailPage() {
   // 主队取约队队名；散人约球无球队概念，主客队统一「待定」。
   const homeTeamLabel = computed(() => (isPickupMatch.value ? "待定" : sourceMatch.value?.host_team_name || currentTeam.value?.name || "主队"));
   const displayOpponentLabel = computed(() => (isPickupMatch.value ? "待定" : match.value?.opposing || opponentTeam.value?.name || "对手待定"));
-  const homeTeamColor = computed(() => match.value?.color?.trim() || "#FFFFFF");
-  const awayTeamColor = computed(() => match.value?.opposing_color?.trim() || "#FF0000");
+  const homeTeamColor = computed(() => match.value?.color?.trim() || "");
+  const awayTeamColor = computed(() => match.value?.opposing_color?.trim() || "");
   const matchLocation = computed(() => match.value?.location || "");
 
   const opponentTeam = computed(() => {
@@ -270,12 +275,11 @@ export function useMatchDetailPage() {
     });
   }
 
-  function confirmRegistrationAction(options: NeoConfirmDialogOptions) {
+  function confirmRegistrationAction(options: ConfirmDialogOptions) {
     return openConfirmDialog(options);
   }
 
   const {
-    isGuestLoginSubmitting,
     handleGuestLogin,
     handleSessionLoginCompleted,
   } = useMatchGuestLogin({ reload: loadPageData });
@@ -296,7 +300,7 @@ export function useMatchDetailPage() {
     needsTeamToRegister,
     openJoinTeamSheet: joinTeamSheet.open,
     canSubmitIndividualRegistration,
-    registrationWindowState,
+    registrationWindowState: computed(() => isRegistrationReadOnly.value && registrationWindowState.value === "open" ? "closed" : registrationWindowState.value),
     ensureSessionReady,
     handleGuestLogin,
     confirmRegistrationAction,
@@ -325,8 +329,9 @@ export function useMatchDetailPage() {
     reload: loadPageData,
   });
 
-  async function loadPageData() {
-    isLoading.value = true;
+  async function loadPageData(options?: { preserveContent?: boolean }) {
+    const preserveContent = !!options?.preserveContent && !!match.value;
+    isLoading.value = !preserveContent;
     errorMessage.value = "";
 
     try {
@@ -349,6 +354,7 @@ export function useMatchDetailPage() {
       sourceMatch.value = publicData.sourceMatch;
       matchTeamGroups.value = publicData.teamGroups;
       selectedGroupMinPlayers.value = publicData.selectedGroupMinPlayers;
+      selectedGroupMaxPlayers.value = publicData.selectedGroupMaxPlayers;
       currentStatus.value = toStandLabel(toRegistrationStandCode(publicData.myRegistration?.status));
       applyMyRegistrationPaid(!!publicData.myRegistration?.paid);
       teamsById.value = {};
@@ -378,7 +384,12 @@ export function useMatchDetailPage() {
         isGuestMode.value = true;
       }
     } catch (error) {
-      errorMessage.value = error instanceof Error ? error.message : "比赛报名页加载失败";
+      const message = error instanceof Error ? error.message : "比赛报名页加载失败";
+      if (preserveContent) {
+        uni.showToast({ title: message, icon: "none" });
+      } else {
+        errorMessage.value = message;
+      }
     } finally {
       isLoading.value = false;
     }
@@ -397,6 +408,14 @@ export function useMatchDetailPage() {
     startCountdownTimer();
     uni.$on("session:login-completed", handleSessionLoginCompleted);
     void loadPageData();
+  });
+
+  onPullDownRefresh(async () => {
+    try {
+      await loadPageData({ preserveContent: true });
+    } finally {
+      uni.stopPullDownRefresh();
+    }
   });
 
   onUnload(() => {
@@ -420,6 +439,7 @@ export function useMatchDetailPage() {
     teamProgressItems,
     matchTeamGroups,
     isRegistrationClosed,
+    isRegistrationReadOnly,
     registrationWindowState,
     matchKindLabel,
     publicationModeLabel,
@@ -434,11 +454,14 @@ export function useMatchDetailPage() {
     joinedCount,
     requiredPlayers,
     progressTargetPlayers,
+    selectedGroupMinPlayers,
+    selectedGroupMaxPlayers,
     maxPlayers,
     countdownText,
     participantPreview,
     teamMemberRegistrationGroups,
     remainingPlayersLabel,
+    detailRemainingPlayersLabel,
     registrationCapacityState,
     canSubmitIndividualRegistration,
     submittingStatus,
@@ -459,6 +482,7 @@ export function useMatchDetailPage() {
     signupMaxCount,
     myRegistrationCount,
     feePerPersonLabel,
+    matchFeeLabel,
     closeSignupSheet,
     handleSignupSheetConfirm,
     handleSignupSheetCancelRegistration,
