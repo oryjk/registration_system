@@ -134,7 +134,6 @@ const nextMatchMeta = computed(() => {
 <style scoped>
 .home-hero-shell {
   position: relative;
-  margin-top: 18rpx;
   background: var(--ui-color-hero);
 }
 

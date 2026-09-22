@@ -179,7 +179,7 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-.action-deck { margin-top: 18rpx; overflow: hidden; }
+.action-deck { overflow: hidden; }
 .deck-control { touch-action: pan-y; }
 .deck-control :deep(.home-section-header) { margin-top: 0; }
 .deck-position { font-size: 22rpx; color: var(--now-color-muted); }
