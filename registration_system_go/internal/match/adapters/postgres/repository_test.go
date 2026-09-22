@@ -119,7 +119,7 @@ func TestUserRegistrationMembershipCheckUsesTransactionConnection(t *testing.T) 
 	t.Cleanup(singleConnectionPool.Close)
 	service := matchapplication.NewUserRegistrationService(
 		NewRepository(singleConnectionPool),
-		repositoryTestClock{now: time.Date(2026, 8, 8, 12, 0, 0, 0, time.UTC)},
+		repositoryTestClock{now: match.StartTime.Add(-time.Hour)},
 	)
 	operationContext, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
