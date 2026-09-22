@@ -84,8 +84,16 @@ const items: Array<{
   },
 ];
 
+const switchingTab = ref(false);
+
 function switchTab(path: string) {
-  uni.switchTab({ url: path });
+  // 当前页重复点击不重新触发生命周期；切换期间也不叠加路由请求。
+  if (switchingTab.value || items.find(item => item.path === path)?.key === props.current) return;
+  switchingTab.value = true;
+  uni.switchTab({
+    url: path,
+    complete: () => { switchingTab.value = false; },
+  });
 }
 
 function openSheet() {
