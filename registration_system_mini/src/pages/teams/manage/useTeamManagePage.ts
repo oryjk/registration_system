@@ -1,3 +1,4 @@
+import { usePageRefresh } from "@/composables/usePageRefresh";
 import { computed, ref, watch } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import type { SegmentOption } from "@/components/ui/SegmentedControl.vue";
@@ -84,6 +85,20 @@ export function useTeamManagePage() {
   }
 
   watch(() => currentTeam.value?.id, attendance.invalidateActivityAttendance);
+
+  usePageRefresh(async () => {
+    if (submitting.value || profile.isUploadingLogo.value) return;
+    await refreshSessionContext();
+    if (isManagementBlocked.value || !currentTeam.value) return;
+    await refreshTeamDetail(currentTeam.value.id);
+    // Refresh server data without resynchronizing the editable name, description or password.
+    await passwordPanel.syncJoinPasswordStatus();
+    usersById.value = await loadUsersById();
+    if (activeMode.value === 'attendance') {
+      attendance.invalidateActivityAttendance();
+      await attendance.loadTeamActivityAttendanceSummaries();
+    }
+  });
 
   onShow(async () => {
     await ensureSessionReady();

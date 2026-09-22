@@ -1,3 +1,4 @@
+import { usePageRefresh } from "@/composables/usePageRefresh";
 import { computed, getCurrentInstance, ref } from "vue";
 import { onLoad, onShow } from "@dcloudio/uni-app";
 import { getAppTeamDetail, issueTeamInviteCode, leaveTeam, type AppTeamDetailData } from "@/api/team";
@@ -74,6 +75,8 @@ export function useTeamDetailPage() {
     if (!team.value) return;
     uni.navigateTo({ url: `/pages/teams/fund/index?teamId=${team.value.id}` });
   }
+
+  usePageRefresh(loadTeam);
 
   onLoad((options) => {
     teamId.value = Number(options?.teamId ?? 0);

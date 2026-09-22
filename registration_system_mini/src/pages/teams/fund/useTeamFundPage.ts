@@ -1,3 +1,4 @@
+import { usePageRefresh } from "@/composables/usePageRefresh";
 import { computed, ref } from "vue";
 import { onLoad, onShow } from "@dcloudio/uni-app";
 import { getAppTeamDetail, type AppTeamDetailData } from "@/api/team";
@@ -92,6 +93,8 @@ export function useTeamFundPage() {
       paying.value = false;
     }
   }
+
+  usePageRefresh(loadTeam);
 
   onLoad((options) => {
     teamId.value = Number(options?.teamId ?? 0);

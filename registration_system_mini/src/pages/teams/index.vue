@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { usePageRefresh } from "@/composables/usePageRefresh";
 import { useAccentTheme } from "@/stores/theme";
 import { computed, ref } from "vue";
 import { onLoad, onShow, onUnload } from "@dcloudio/uni-app";
@@ -152,6 +153,7 @@ onLoad(() => {
 onUnload(() => {
   uni.$off("session:login-completed", handleSessionLoginCompleted);
 });
+usePageRefresh(loadPageData);
 </script>
 
 <template>

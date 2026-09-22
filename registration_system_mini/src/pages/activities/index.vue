@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { usePageRefresh } from "@/composables/usePageRefresh";
 import { useAccentTheme } from "@/stores/theme";
 import { onHide, onLoad, onShow, onUnload, onShareAppMessage, onShareTimeline } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
@@ -145,6 +146,7 @@ onShareTimeline(() => ({
   query: "",
   imageUrl: DEFAULT_SHARE_IMAGE_URL,
 }));
+usePageRefresh(() => loadPageData({ preserveContent: true }));
 </script>
 
 <template>

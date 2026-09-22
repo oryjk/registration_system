@@ -109,9 +109,7 @@ function updateQuery(event: Event) {
 </template>
 
 <style scoped>
-/* D 风格浅色描边：与 AppTabHeader 的 --app-tab-header-line 同值，待统一 token 收敛。 */
 .home-header-search {
-  --home-header-search-line: #e4eaf2;
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -133,13 +131,20 @@ function updateQuery(event: Event) {
 }
 
 /* 裸图标态：无外框，图形比搜索框内的小图标略大。 */
+.home-header-search__icon .home-header-search__glyph {
+  width: 32rpx;
+  height: 32rpx;
+}
+
 .home-header-search__icon .home-header-search__glyph-lens {
-  width: 22rpx;
-  height: 22rpx;
+  width: 24rpx;
+  height: 24rpx;
 }
 
 .home-header-search__icon .home-header-search__glyph-handle {
-  width: 11rpx;
+  left: 21rpx;
+  top: 21rpx;
+  width: 12rpx;
 }
 
 /* 纯 CSS 放大镜：镜片 + 斜柄，两处复用（图标与搜索框内）。 */
@@ -151,24 +156,26 @@ function updateQuery(event: Event) {
 }
 
 .home-header-search__glyph-lens {
-  width: 18rpx;
-  height: 18rpx;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 20rpx;
+  height: 20rpx;
   border: 3rpx solid var(--ui-color-text);
   border-radius: 50%;
   box-sizing: border-box;
-  margin: 1rpx 0 0 1rpx;
 }
 
 .home-header-search__glyph-handle {
   position: absolute;
-  right: 0;
-  bottom: 1rpx;
-  width: 9rpx;
+  left: 17rpx;
+  top: 17rpx;
+  width: 10rpx;
   height: 3rpx;
   background: var(--ui-color-text);
   border-radius: 2rpx;
   transform: rotate(45deg);
-  transform-origin: right center;
+  transform-origin: left center;
 }
 
 .home-header-search__row {
@@ -187,7 +194,7 @@ function updateQuery(event: Event) {
   flex: 1;
   height: 64rpx;
   padding: 0 18rpx 0 22rpx;
-  border: 2rpx solid var(--home-header-search-line);
+  border: 2rpx solid var(--ui-color-line);
   border-radius: var(--ui-radius-round);
   background: var(--ui-color-surface);
   box-sizing: border-box;

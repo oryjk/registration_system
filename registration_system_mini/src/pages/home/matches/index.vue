@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { usePageRefresh } from "@/composables/usePageRefresh";
 import { useAccentTheme } from "@/stores/theme";
 import { computed, ref } from "vue";
 import { onLoad, onReachBottom, onShow } from "@dcloudio/uni-app";
@@ -141,6 +142,11 @@ onShow(() => {
 onReachBottom(() => {
   if (!hasInitialized.value || errorMessage.value || isLoading.value || sourceLoaded.value) return;
   void loadVisiblePhaseBatch();
+});
+usePageRefresh(async () => {
+  if (isLoading.value) return;
+  resetPaginationState();
+  await loadVisiblePhaseBatch();
 });
 </script>
 

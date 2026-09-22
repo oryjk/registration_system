@@ -1,3 +1,4 @@
+import { usePageRefresh } from "@/composables/usePageRefresh";
 import { computed, ref, type Ref } from "vue";
 import { onLoad, onUnload } from "@dcloudio/uni-app";
 import { getMatchDetail } from "@/api/match";
@@ -63,6 +64,8 @@ export function useApplyTeamPage(matchId: Ref<string>) {
     if (registrationWindowState.value === "closed") return "接约报名已结束。";
     return "当前比赛不在球队招募中。";
   });
+
+  usePageRefresh(loadPageData);
 
   onLoad(() => {
     nowTick.value = Date.now();

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { usePageRefresh } from "@/composables/usePageRefresh";
 import { useAccentTheme } from "@/stores/theme";
 import { computed, reactive, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
@@ -18,7 +19,7 @@ import { getCustomNavMetrics } from "@/utils/customNav";
 // 散人约球（online_pickup）：所有参与者都是散人、无球队概念，任何登录用户可发布。
 const { themePageStyle } = useAccentTheme();
 
-const { ensureSessionReady } = useTeamContext();
+const { ensureSessionReady, refreshSessionContext } = useTeamContext();
 const { shouldHideCreationEntrances } = useMiniReviewStatus();
 const navMetrics = getCustomNavMetrics();
 const submitting = ref(false);
@@ -196,6 +197,7 @@ onShow(async () => {
   }
   await ensureSessionReady();
 });
+usePageRefresh(() => refreshSessionContext());
 </script>
 
 <template>

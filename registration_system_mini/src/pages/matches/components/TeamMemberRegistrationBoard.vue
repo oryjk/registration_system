@@ -294,6 +294,7 @@ function selectMemberAvatar(id: string | number) {
 .member-segment-label { font-size: 22rpx; line-height: 1.2; white-space: nowrap; }
 .member-segment-count { font-variant-numeric: tabular-nums; font-size: 36rpx; line-height: 1.1; font-weight: 600; }
 .member-panel { margin-top: 24rpx; }
+.member-avatar-row { display: flex; flex-direction: column; align-items: stretch; }
 
 .member-empty {
   margin-top: 16rpx;

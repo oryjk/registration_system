@@ -13,97 +13,124 @@
         "navigationStyle": "custom",
         "enablePullDownRefresh": true,
         "backgroundColor": "#eef2e9",
-        "backgroundTextStyle": "dark"
+        "backgroundTextStyle": "dark",
+        "disableScroll": false
       }
     },
     {
       "path": "pages/activities/index",
       "style": {
         "navigationBarTitleText": "约队大厅",
-        "navigationStyle": "custom"
+        "navigationStyle": "custom",
+        "disableScroll": false,
+        "enablePullDownRefresh": true
       }
     },
     {
       "path": "pages/teams/index",
       "style": {
         "navigationBarTitleText": "统计",
-        "navigationStyle": "custom"
+        "navigationStyle": "custom",
+        "disableScroll": false,
+        "enablePullDownRefresh": true
       }
     },
     {
       "path": "pages/teams/manage/index",
       "style": {
         "navigationBarTitleText": "球队管理",
-        "navigationStyle": "custom"
+        "navigationStyle": "custom",
+        "disableScroll": false,
+        "enablePullDownRefresh": true
       }
     },
     {
       "path": "pages/teams/create/index",
       "style": {
         "navigationBarTitleText": "创建球队",
-        "navigationStyle": "custom"
+        "navigationStyle": "custom",
+        "disableScroll": false,
+        "enablePullDownRefresh": true
       }
     },
     {
       "path": "pages/teams/join/index",
       "style": {
         "navigationBarTitleText": "加入球队",
-        "navigationStyle": "custom"
+        "navigationStyle": "custom",
+        "disableScroll": false,
+        "enablePullDownRefresh": true
       }
     },
     {
       "path": "pages/teams/detail/index",
       "style": {
-        "navigationStyle": "custom"
+        "navigationStyle": "custom",
+        "disableScroll": false,
+        "enablePullDownRefresh": true
       }
     },
     {
       "path": "pages/teams/fund/index",
       "style": {
         "navigationBarTitleText": "队费缴纳",
-        "navigationStyle": "custom"
+        "navigationStyle": "custom",
+        "disableScroll": false,
+        "enablePullDownRefresh": true
       }
     },
     {
       "path": "pages/teams/invite/index",
       "style": {
         "navigationBarTitleText": "球队邀请",
-        "navigationStyle": "custom"
+        "navigationStyle": "custom",
+        "disableScroll": false,
+        "enablePullDownRefresh": true
       }
     },
     {
       "path": "pages/user/index",
       "style": {
         "navigationBarTitleText": "我的",
-        "navigationStyle": "custom"
+        "navigationStyle": "custom",
+        "disableScroll": false,
+        "enablePullDownRefresh": true
       }
     },
     {
       "path": "pages/user/matches/index",
       "style": {
         "navigationBarTitleText": "我的比赛",
-        "navigationStyle": "custom"
+        "navigationStyle": "custom",
+        "disableScroll": false,
+        "enablePullDownRefresh": true
       }
     },
     {
       "path": "pages/user/settings/index",
       "style": {
         "navigationBarTitleText": "设置",
-        "navigationStyle": "custom"
+        "navigationStyle": "custom",
+        "disableScroll": false,
+        "enablePullDownRefresh": true
       }
     },
     {
       "path": "pages/user/contact-developer/index",
       "style": {
         "navigationBarTitleText": "联系开发者",
-        "navigationStyle": "custom"
+        "navigationStyle": "custom",
+        "disableScroll": false,
+        "enablePullDownRefresh": true
       }
     },
     {
       "path": "pages/home/matches/index",
       "style": {
         "navigationBarTitleText": "全部比赛",
-        "navigationStyle": "custom"
+        "navigationStyle": "custom",
+        "disableScroll": false,
+        "enablePullDownRefresh": true
       }
     },
     {
@@ -112,62 +139,78 @@
         "navigationBarTitleText": "比赛详情",
         "navigationStyle": "custom",
         "enablePullDownRefresh": true,
-        "backgroundTextStyle": "dark"
+        "backgroundTextStyle": "dark",
+        "disableScroll": false
       }
     },
     {
       "path": "pages/matches/create/index",
       "style": {
         "navigationBarTitleText": "创建比赛",
-        "navigationStyle": "custom"
+        "navigationStyle": "custom",
+        "disableScroll": false,
+        "enablePullDownRefresh": true
       }
     },
     {
       "path": "pages/matches/apply-team/index",
       "style": {
         "navigationBarTitleText": "接约确认",
-        "navigationStyle": "custom"
+        "navigationStyle": "custom",
+        "disableScroll": false,
+        "enablePullDownRefresh": true
       }
     },
     {
       "path": "pages/challenges/create-individual/index",
       "style": {
         "navigationBarTitleText": "创建散人约队",
-        "navigationStyle": "custom"
+        "navigationStyle": "custom",
+        "disableScroll": false,
+        "enablePullDownRefresh": true
       }
     },
     {
       "path": "pages/notifications/index",
       "style": {
         "navigationBarTitleText": "消息中心",
-        "navigationStyle": "custom"
+        "navigationStyle": "custom",
+        "disableScroll": false,
+        "enablePullDownRefresh": true
       }
     },
     {
       "path": "pages/messages/thread/index",
       "style": {
         "navigationBarTitleText": "球队留言",
-        "navigationStyle": "custom"
+        "navigationStyle": "custom",
+        "disableScroll": false,
+        "enablePullDownRefresh": true
       }
     },
     {
       "path": "pages/billing/index",
       "style": {
         "navigationBarTitleText": "账单明细",
-        "navigationStyle": "custom"
+        "navigationStyle": "custom",
+        "disableScroll": false,
+        "enablePullDownRefresh": true
       }
     },
     {
       "path": "pages/profile/setup/index",
       "style": {
         "navigationBarTitleText": "完善资料",
-        "navigationStyle": "custom"
+        "navigationStyle": "custom",
+        "disableScroll": false,
+        "enablePullDownRefresh": true
       }
     },
     {
       "path": "pages/webview/index",
       "style": {
-        "navigationBarTitleText": "详情"
+        "navigationBarTitleText": "详情",
+        "disableScroll": false
       }
     }
   ],

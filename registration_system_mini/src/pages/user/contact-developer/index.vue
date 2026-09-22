@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { usePageRefresh } from "@/composables/usePageRefresh";
 import { useAccentTheme } from "@/stores/theme";
 import { computed } from "vue";
 import AppTabHeader from "@/components/AppTabHeader.vue";
@@ -19,9 +20,10 @@ const pageStyle = computed(() => ({
 }));
 
 // 审核模式下隐藏打赏入口（小程序审核对打赏类目敏感），仅保留二维码联系区。
-const { shouldHideCreationEntrances } = useMiniReviewStatus();
+const { shouldHideCreationEntrances, preloadMiniReviewStatus } = useMiniReviewStatus();
 const { amountInput, suggestionInput, isSubmitting, isLoggedIn, suggestionMaxLength, submitTipDonation, dialog } =
   useTipDonation();
+usePageRefresh(() => preloadMiniReviewStatus(true));
 </script>
 
 <template>

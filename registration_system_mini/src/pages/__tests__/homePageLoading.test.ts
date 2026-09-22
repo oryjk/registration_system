@@ -33,7 +33,7 @@ describe("home page loading states", () => {
 
     expect(homePageSource.includes("const isRefreshing = ref(false);")).toEqual(true);
     expect(homePageSource.includes('class="home-refresh-mask"')).toEqual(true);
-    expect(homePageSource.includes("await loadPageData({ preserveContent: hasLoadedOnce.value });")).toEqual(true);
+    expect(homePageSource.includes("usePageRefresh(() => loadPageData({ preserveContent: hasLoadedOnce.value }));")).toEqual(true);
     expect(homePageSource.includes("void loadPageData({ preserveContent: true });")).toEqual(true);
   });
 
@@ -72,8 +72,8 @@ describe("home page loading states", () => {
     expect(homePageSource.includes("if (hiddenDuration < HIDDEN_RELOAD_THRESHOLD_MS) return;")).toEqual(true);
     expect(homePageSource.includes("onHide(() => {")).toEqual(true);
     expect(homePageSource.includes("hiddenAt.value = Date.now();")).toEqual(true);
-    expect(homePageSource.includes("onPullDownRefresh(async () => {")).toEqual(true);
-    expect(homePageSource.includes("uni.stopPullDownRefresh();")).toEqual(true);
+    expect(homePageSource.includes("usePageRefresh(() => loadPageData(")).toEqual(true);
+    expect(homePageSource.includes('import { usePageRefresh } from "@/composables/usePageRefresh";')).toEqual(true);
     expect(homePageSource.includes("shouldSkipNextShowRefresh")).toEqual(false);
     expect(pagesJson.includes('"enablePullDownRefresh": true')).toEqual(true);
   });

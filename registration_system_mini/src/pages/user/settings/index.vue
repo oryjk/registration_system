@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { usePageRefresh } from "@/composables/usePageRefresh";
 import { useAccentTheme } from "@/stores/theme";
 import { computed } from "vue";
 import { onShow } from "@dcloudio/uni-app";
@@ -49,6 +50,7 @@ onShow(async () => {
     }, 600);
   }
 });
+usePageRefresh(loadPageData);
 </script>
 
 <template>

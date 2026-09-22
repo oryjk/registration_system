@@ -242,3 +242,8 @@ export function buildAccentThemePageStyle(theme: AccentThemeId): string {
     `--ui-primitive-hero-fg:${palette.heroFg}`,
   ].join(";");
 }
+
+/** Native pull-to-refresh and rubber-band areas cannot read CSS variables. */
+export function getThemeWindowBackground(theme: AccentThemeId): string {
+  return themePrimitives[theme].canvas;
+}

@@ -1,6 +1,7 @@
+import { usePageRefresh } from "@/composables/usePageRefresh";
 import { formatDetailFee, isDetailRegistrationReadOnly } from "./detailPresentation";
 import { computed, ref } from "vue";
-import { onLoad, onPullDownRefresh, onUnload } from "@dcloudio/uni-app";
+import { onLoad, onUnload } from "@dcloudio/uni-app";
 import { MATCH_API_ID_PATTERN, loadAuthenticatedMatchDetailContext, loadPublicMatchDetailData, toRegistrationStandCode, type MatchTeamGroupSummary } from "./detailData";
 import { useMatchRegistrationPayment } from "./useMatchRegistrationPayment";
 import { useTeamContext } from "@/stores/teamContext";
@@ -410,13 +411,7 @@ export function useMatchDetailPage() {
     void loadPageData();
   });
 
-  onPullDownRefresh(async () => {
-    try {
-      await loadPageData({ preserveContent: true });
-    } finally {
-      uni.stopPullDownRefresh();
-    }
-  });
+  usePageRefresh(() => loadPageData({ preserveContent: true }));
 
   onUnload(() => {
     if (countdownTimer) {

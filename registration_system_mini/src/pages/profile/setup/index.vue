@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { usePageRefresh } from "@/composables/usePageRefresh";
 import { useAccentTheme } from "@/stores/theme";
 import { computed, ref, watch } from "vue";
 import { onLoad, onShow } from "@dcloudio/uni-app";
@@ -220,6 +221,10 @@ onShow(async () => {
       icon: "none",
     });
   }
+});
+usePageRefresh(async () => {
+  await Promise.all([refreshSessionContext(), hydrateRuntimeConfig()]);
+  if (!hasUnsavedEdits.value) hydrateFormFromCurrentUser();
 });
 </script>
 

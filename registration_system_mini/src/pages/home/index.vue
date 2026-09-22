@@ -1,7 +1,8 @@
 <script setup lang="ts">
+import { usePageRefresh } from "@/composables/usePageRefresh";
 import { useAccentTheme } from "@/stores/theme";
 import { computed, ref, watch } from "vue";
-import { onHide, onLoad, onPullDownRefresh, onReachBottom, onShareAppMessage, onShareTimeline, onShow, onUnload } from "@dcloudio/uni-app";
+import { onHide, onLoad, onReachBottom, onShareAppMessage, onShareTimeline, onShow, onUnload } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
 import BottomTabBar from "@/components/BottomTabBar.vue";
 import ProfileCompletionDialog from "@/components/ProfileCompletionDialog.vue";
@@ -353,13 +354,7 @@ onHide(() => {
   }
 });
 
-onPullDownRefresh(async () => {
-  try {
-    await loadPageData({ preserveContent: hasLoadedOnce.value });
-  } finally {
-    uni.stopPullDownRefresh();
-  }
-});
+usePageRefresh(() => loadPageData({ preserveContent: hasLoadedOnce.value }));
 
 onReachBottom(() => {
   if (hasSearched.value && activeSearchQuery.value) {
@@ -410,15 +405,16 @@ onShareTimeline(() => ({
             <text v-else class="home-header-title">首页</text>
           </view>
           <!-- 搜索入口与球队同在标题行：收起时只是右端放大镜图标，点击后宽度动画展开为整行搜索框。 -->
-          <HomeHeaderSearch
-            :class="['home-title-search', headerSearchActive ? 'home-title-search--active' : '']"
-            :active="headerSearchActive"
-            :query="searchQuery"
-            @update:active="headerSearchActive = $event"
-            @update:query="searchQuery = $event"
-            @search="handleSearch"
-            @clear="clearSearchResults"
-          />
+          <view :class="['home-title-search', headerSearchActive ? 'home-title-search--active' : '']">
+            <HomeHeaderSearch
+              :active="headerSearchActive"
+              :query="searchQuery"
+              @update:active="headerSearchActive = $event"
+              @update:query="searchQuery = $event"
+              @search="handleSearch"
+              @clear="clearSearchResults"
+            />
+          </view>
         </view>
       </template>
     </AppTabHeader>
@@ -606,6 +602,10 @@ onShareTimeline(() => ({
 
 /* 收起宽 76rpx = 64rpx 图标 + 12rpx 与球队名的间距；展开过渡到整行，球队名随之被挤出视野。 */
 .home-title-search {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: stretch;
   flex-shrink: 0;
   width: 76rpx;
   transition: width 240ms cubic-bezier(0.33, 0, 0.2, 1);

@@ -46,7 +46,8 @@ const state = computed(() => registrationProgressState(props.joined, props.minim
 <style scoped>
 .registration-summary { --ui-avatar-border: 0; min-width: 0; color: var(--now-color-text); }
 .registration-meta { color: var(--now-color-muted); font-size: 24rpx; line-height: 1.6; }
-.registration-crowd { display: flex; align-items: center; }
+/* 小程序的组件宿主需要由父容器拉伸，内部 width: 100% 不能撑开横向 flex 宿主。 */
+.registration-crowd { display: flex; flex-direction: column; align-items: stretch; }
 .registration-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16rpx; margin-bottom: 10rpx; }
 .registration-title { min-width: 0; font-size: 26rpx; line-height: 1.5; font-weight: 600; overflow-wrap: anywhere; }
 .registration-count { flex-shrink: 0; white-space: nowrap; font-size: 24rpx; line-height: 1.5; }

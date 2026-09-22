@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { usePageRefresh } from "@/composables/usePageRefresh";
 import { useAccentTheme } from "@/stores/theme";
 import { computed, reactive, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
@@ -17,7 +18,7 @@ import { buildCreateMatchPayload } from "./createMatchPayload";
 
 const { themePageStyle } = useAccentTheme();
 
-const { currentTeam, ensureSessionReady } = useTeamContext();
+const { currentTeam, ensureSessionReady, refreshSessionContext } = useTeamContext();
 const { shouldHideCreationEntrances } = useMiniReviewStatus();
 const navMetrics = getCustomNavMetrics();
 
@@ -244,6 +245,7 @@ onShow(async () => {
     initDefaultForm();
   }
 });
+usePageRefresh(() => refreshSessionContext());
 </script>
 
 <template>

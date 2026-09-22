@@ -1,3 +1,4 @@
+import { usePageRefresh } from "@/composables/usePageRefresh";
 import { computed, reactive, ref } from "vue";
 import { onLoad, onShow } from "@dcloudio/uni-app";
 import { uploadTeamLogo } from "@/api/team";
@@ -100,6 +101,8 @@ export function useTeamCreatePage() {
       submitting.value = false;
     }
   }
+
+  usePageRefresh(() => refreshSessionContext());
 
   onLoad((options) => {
     openedFromOnboarding = options?.from === "onboarding";

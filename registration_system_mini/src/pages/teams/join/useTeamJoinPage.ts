@@ -1,3 +1,4 @@
+import { usePageRefresh } from "@/composables/usePageRefresh";
 import { computed, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import { getCustomNavMetrics } from "@/utils/customNav";
@@ -82,6 +83,12 @@ export function useTeamJoinPage() {
       submitting.value = false;
     }
   }
+
+  usePageRefresh(async () => {
+    await ensureSessionReady();
+    if (searchKeyword.value.trim()) searchResults.value = await searchTeamsByKeyword(searchKeyword.value.trim());
+    if (selectedTeam.value) selectedTeamRequiresPassword.value = await checkTeamRequiresPassword(selectedTeam.value.id);
+  });
 
   onShow(async () => {
     await ensureSessionReady();

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { usePageRefresh } from "@/composables/usePageRefresh";
 import { useAccentTheme } from "@/stores/theme";
 import { computed, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
@@ -106,6 +107,9 @@ onShow(() => {
   if (activeBoardTab.value === "captainMessages") {
     void captainThreads.loadPage();
   }
+});
+usePageRefresh(async () => {
+  await Promise.all([loadNotifications(), ...(activeBoardTab.value === 'captainMessages' ? [captainThreads.loadPage()] : [])]);
 });
 </script>
 

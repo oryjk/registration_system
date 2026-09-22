@@ -1,3 +1,4 @@
+import { usePageRefresh } from "@/composables/usePageRefresh";
 import { computed, ref } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
 import { getCustomNavMetrics } from "@/utils/customNav";
@@ -71,6 +72,8 @@ export function useTeamInvitePage() {
   function goHome() {
     uni.switchTab({ url: "/pages/home/index" });
   }
+
+  usePageRefresh(resolveInvite);
 
   onLoad((options) => {
     code.value = decodeURIComponent(options?.code ?? "");

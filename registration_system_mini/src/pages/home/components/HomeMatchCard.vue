@@ -375,15 +375,10 @@ function handleTap() {
 
 .home-avatars {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
   flex: 1;
   min-width: 0;
-}
-
-/* 组件根节点占满可用宽度：+N 展开时按容器实测宽度计算头像间隙，
-   保证满行两端与左右留白对齐。 */
-.home-avatars :deep(.ui-avatar-stack) {
-  width: 100%;
 }
 
 .home-avatar-summary {
