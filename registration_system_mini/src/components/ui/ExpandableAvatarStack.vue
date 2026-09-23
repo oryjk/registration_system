@@ -16,7 +16,7 @@ const props = withDefaults(defineProps<{
   interactive: true,
   disabled: false,
 });
-const emit = defineEmits<{ (event: "select", id: string | number): void; (event: "layoutChange"): void }>();
+const emit = defineEmits<{ (event: "select", id: string | number): void; (event: "layoutChange"): void; (event: "expandedChange", expanded: boolean): void }>();
 const expanded = ref(false);
 const containerWidth = ref(0);
 const scrollLeft = ref(0);
@@ -54,6 +54,7 @@ function toggle() {
   if (props.disabled) return;
   scrollLeft.value = 0;
   expanded.value = !expanded.value;
+  emit("expandedChange", expanded.value);
   void measure();
 }
 function imageKey(item: AvatarItem) { return `${item.id}:${item.avatarUrl}`; }

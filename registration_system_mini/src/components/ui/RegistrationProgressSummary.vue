@@ -16,7 +16,7 @@ const props = defineProps<{
   /** 密集列表：报名人数与容量合并展示，省去单独的底部刻度行。 */
   compact?: boolean;
 }>();
-const emit = defineEmits<{ (event: "avatarSelect", id: string | number): void; (event: "layoutChange"): void }>();
+const emit = defineEmits<{ (event: "avatarSelect", id: string | number): void; (event: "layoutChange"): void; (event: "expandedChange", expanded: boolean): void }>();
 const state = computed(() => registrationProgressState(props.joined, props.minimum, props.maximum));
 </script>
 
@@ -29,7 +29,7 @@ const state = computed(() => registrationProgressState(props.joined, props.minim
     </view>
     <text v-if="subtitle" class="registration-subtitle">{{ subtitle }}</text>
     <view v-if="avatars" class="registration-crowd">
-      <ExpandableAvatarStack v-if="avatars.length" :items="avatars" size="sm" :disabled="disabled" @select="emit('avatarSelect', $event)" @layout-change="emit('layoutChange')" />
+      <ExpandableAvatarStack v-if="avatars.length" :items="avatars" size="sm" :disabled="disabled" @select="emit('avatarSelect', $event)" @layout-change="emit('layoutChange')" @expanded-change="emit('expandedChange', $event)" />
       <text v-else class="registration-meta">暂无报名球员</text>
     </view>
     <view class="registration-progress">

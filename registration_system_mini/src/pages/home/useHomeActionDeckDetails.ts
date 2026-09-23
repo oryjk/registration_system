@@ -17,7 +17,8 @@ export function useHomeActionDeckDetails(
   const requests = new Map<string, symbol>();
   let disposed = false;
   function entryAt(offset: number): HomeMatchDetailEntry {
-    const match = matches.value[index.value + offset];
+    const count = matches.value.length;
+    const match = count ? matches.value[(index.value + offset + count) % count] : undefined;
     return match ? entries.value[match.id] ?? empty : empty;
   }
   async function ensure(id: string, force = false) {
@@ -42,7 +43,10 @@ export function useHomeActionDeckDetails(
       entries.value = {};
       requests.clear();
     }
-    const ids = [list[index.value], list[index.value + 1], list[index.value - 1]].filter(Boolean).map(item => item!.id);
+    const ids = [...new Set([0, 1, -1].flatMap(offset => {
+      const match = list.length ? list[(index.value + offset + list.length) % list.length] : undefined;
+      return match ? [match.id] : [];
+    }))];
     entries.value = Object.fromEntries(Object.entries(entries.value).filter(([id]) => ids.includes(id)));
     for (const id of requests.keys()) if (!ids.includes(id)) requests.delete(id);
     for (const id of ids) void ensure(id);

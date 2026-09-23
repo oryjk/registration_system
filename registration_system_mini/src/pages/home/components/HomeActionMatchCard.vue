@@ -22,6 +22,7 @@ const emit = defineEmits<{
   (event: "matchTap", match: HomeMatchCardViewModel): void;
   (event: "retry"): void;
   (event: "layoutChange"): void;
+  (event: "expandedChange", expanded: boolean): void;
   (event: "avatarSelect", avatar: AvatarItem): void;
 }>();
 const card = computed(() => buildHomeActionMatchCardState(props.match, props.detail, new Date(props.now)));
@@ -86,6 +87,7 @@ function openDetail() {
         :disabled="interactionBlocked || navigating"
         @avatar-select="selectAvatar"
         @layout-change="emit('layoutChange')"
+        @expanded-change="emit('expandedChange', $event)"
       />
     </view>
 

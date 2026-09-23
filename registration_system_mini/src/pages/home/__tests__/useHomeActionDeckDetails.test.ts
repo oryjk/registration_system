@@ -10,10 +10,11 @@ test('preloads adjacent details and reuses them on a turn', async () => {
   const calls: string[] = [];
   const state = scope.run(() => useHomeActionDeckDetails(matches, index, async id => { calls.push(id); return detail(id); }))!;
   await nextTick();
-  expect(calls).toEqual(['a', 'b']);
+  expect(calls).toEqual(['a', 'b', 'd']);
+  expect(state.previous.value.detail?.match.id).toEqual('d');
   expect(state.next.value.detail?.match.id).toEqual('b');
   index.value = 1; await nextTick(); await nextTick();
-  expect(calls).toEqual(['a', 'b', 'c']);
+  expect(calls).toEqual(['a', 'b', 'd', 'c']);
   expect(state.active.value.detail?.match.id).toEqual('b');
   expect(state.previous.value.detail?.match.id).toEqual('a');
   scope.stop();
@@ -35,5 +36,19 @@ test('a refreshed collection rejects late old responses, and failed preload can 
   await state.reload();
   expect(state.active.value.detail?.match.id).toEqual('a');
   expect(state.active.value.error).toEqual(false);
+  scope.stop();
+});
+
+test('last slide preloads the first slide for circular autoplay', async () => {
+  const scope = effectScope();
+  const matches = ref(['a', 'b', 'c', 'd'].map(card));
+  const index = ref(3);
+  const state = scope.run(() => useHomeActionDeckDetails(matches, index, async id => detail(id)))!;
+  await nextTick();
+  expect(state.next.value.detail?.match.id).toEqual('a');
+  index.value = 0;
+  await nextTick();
+  expect(state.active.value.detail?.match.id).toEqual('a');
+  expect(state.previous.value.detail?.match.id).toEqual('d');
   scope.stop();
 });

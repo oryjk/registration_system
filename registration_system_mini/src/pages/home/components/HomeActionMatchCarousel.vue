@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { getCurrentInstance, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
+import { onHide, onShow } from '@dcloudio/uni-app';
 import HomeSectionHeader from './HomeSectionHeader.vue';
 import HomeActionMatchCard from './HomeActionMatchCard.vue';
 import type { HomeMatchCardViewModel } from '@/types/viewModels';
@@ -24,6 +25,15 @@ const emit = defineEmits<{
 const instance = getCurrentInstance();
 const height = ref(getWindowMetrics().windowWidth * 780 / 750);
 const swiping = ref(false);
+const rosterExpanded = ref(false);
+const pageVisible = ref(true);
+onShow(() => { pageVisible.value = true; });
+onHide(() => { pageVisible.value = false; });
+watch(() => props.index, () => { rosterExpanded.value = false; });
+function isNearby(slideIndex: number) {
+  const distance = Math.abs(slideIndex - props.index);
+  return Math.min(distance, props.matches.length - distance) <= 1;
+}
 const duration = prefersReducedMotion() ? 0 : 220;
 let disposed = false;
 let measurement = 0;
@@ -43,9 +53,12 @@ function change(event: { detail: { current: number } }) {
   emit('change', event.detail.current);
 }
 function step(delta: number) {
-  const next = props.index + delta;
-  if (next < 0 || next >= props.matches.length || swiping.value) return;
+  if (props.matches.length < 2 || swiping.value) return;
+  const next = (props.index + delta + props.matches.length) % props.matches.length;
   emit('change', next);
+}
+function transition(event: { detail: { dx: number } }) {
+  if (Math.abs(event.detail.dx) > 1) swiping.value = true;
 }
 function finish() {
   swiping.value = false;
@@ -61,16 +74,16 @@ onUnmounted(() => { disposed = true; measurement++; uni.offWindowResize(measureA
     <HomeSectionHeader title="最近要处理">
       <template #actions>
         <view v-if="matches.length > 1" class="match-actions">
-          <button class="match-arrow" :class="{ 'match-arrow--disabled': index === 0 || swiping }" aria-label="上一场比赛" :disabled="index === 0 || swiping" @tap="step(-1)">←</button>
-          <button class="match-arrow" :class="{ 'match-arrow--disabled': index === matches.length - 1 || swiping }" aria-label="下一场比赛" :disabled="index === matches.length - 1 || swiping" @tap="step(1)">→</button>
+          <button class="match-arrow" :class="{ 'match-arrow--disabled': swiping }" :disabled="swiping" aria-label="上一场比赛" @tap="step(-1)">←</button>
+          <button class="match-arrow" :class="{ 'match-arrow--disabled': swiping }" :disabled="swiping" aria-label="下一场比赛" @tap="step(1)">→</button>
         </view>
       </template>
     </HomeSectionHeader>
-    <swiper class="match-swiper" :style="{ height: `${height}px` }" :current="index" :duration="duration" :circular="false" :autoplay="false" @change="change" @transition="swiping = true" @animationfinish="finish">
+    <swiper class="match-swiper" :style="{ height: `${height}px` }" :current="index" :duration="duration" :circular="matches.length > 1" :autoplay="matches.length > 1 && pageVisible && !rosterExpanded && !navigatingMatchId" :interval="5000" @change="change" @transition="transition" @animationfinish="finish">
       <swiper-item v-for="(match, slideIndex) in matches" :key="match.id">
         <view class="match-slide" :class="`match-slide-${slideIndex}`">
           <HomeActionMatchCard
-            v-if="Math.abs(slideIndex - index) <= 1"
+            v-if="isNearby(slideIndex)"
             :match="match"
             :detail="details[match.id]?.detail ?? null"
             :loading="details[match.id]?.loading ?? false"
@@ -80,11 +93,12 @@ onUnmounted(() => { disposed = true; measurement++; uni.offWindowResize(measureA
             :active="slideIndex === index"
             :page-count="matches.length"
             :page-index="slideIndex"
-            :interaction-blocked="swiping || slideIndex !== index"
+            :interaction-blocked="slideIndex !== index"
             @match-tap="emit('matchTap', $event)"
             @retry="emit('retry')"
             @avatar-select="emit('avatarSelect', $event)"
             @layout-change="measureActiveCard"
+            @expanded-change="slideIndex === index && (rosterExpanded = $event)"
           />
         </view>
       </swiper-item>
