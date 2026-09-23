@@ -1,5 +1,6 @@
 import type { CreateMatchPayload } from "@/api/match";
-import type { MatchPublishFormModel } from "./components/matchPublishForm";
+import { defaultMatchFeeType } from "./components/matchPublishFormModel";
+import type { MatchPublishFormModel } from "./components/matchPublishFormModel";
 
 interface HostTeamInput {
   id: number;
@@ -29,6 +30,9 @@ export function buildCreateMatchPayload(form: MatchPublishFormModel, hostTeam: H
   const description = form.description.trim();
   const hasCoordinates = form.locationLatitude != null && form.locationLongitude != null;
 
+  const feeType = form.feeType ?? defaultMatchFeeType(form.publicationMode);
+  const cents = feeType === "fixed_amount" ? Math.round(Number(form.feePerPerson) * 100) : 0;
+  if (feeType === "fixed_amount" && (!Number.isSafeInteger(cents) || cents < 1)) throw new Error("请填写有效的人均金额");
   return {
     name: form.name.trim(),
     publication_mode: form.publicationMode,
@@ -41,8 +45,10 @@ export function buildCreateMatchPayload(form: MatchPublishFormModel, hostTeam: H
     // 报名窗口不在表单内暴露；缺省时后端按“创建即开放、比赛状态控制截止”处理，
     // 与散人约球发布页保持一致，避免发送不可见的相等时间对被后端拒绝。
     location: form.location.trim(),
-    // 填了人均费用视为收费比赛；不填或 0 视为免费。
-    is_free: !form.feePerPerson || Number(form.feePerPerson) <= 0,
+    is_free: feeType === "free",
+    fee_type: feeType,
+    payment_mode: "postpaid",
+    fee_per_person_cents: cents,
     ...(form.color ? { host_color: form.color } : {}),
     ...(form.opposingColor ? { away_color: form.opposingColor } : {}),
     ...(hasCoordinates

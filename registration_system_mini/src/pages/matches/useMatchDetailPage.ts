@@ -15,8 +15,7 @@ import type {
 } from "@/types/backend";
 import type { AppMatchSummary } from "@/types/match";
 import { getCustomNavMetrics } from "@/utils/customNav";
-import { resolveInheritedGuestLimit } from "@/utils/matchCapacity";
-import type { MatchTeamProgressItem } from "@/types/viewModels";
+import { buildMatchTeamProgress } from "./detailTeamProgress";
 import { resolveUserDisplayName, toStandLabel } from "@/utils/viewModels";
 import {
   avatarColor,
@@ -185,26 +184,13 @@ export function useMatchDetailPage() {
     }),
   );
 
-  // 球队约队展示双边进度：主队/客队各一条，label 优先用真实队名。
-  const teamProgressItems = computed<MatchTeamProgressItem[]>(() => {
-    const match = sourceMatch.value;
-    if (!match || match.publication_mode !== "online_team") return [];
-    const hostGroup = matchTeamGroups.value.find((group) => group.kind === "host_team");
-    return matchTeamGroups.value.map((group) => ({
-      id: group.id,
-      label: group.kind === "host_team"
-        ? (group.teamId === match.host_team_id ? match.host_team_name : "主队")
-        : (group.teamId === match.away_team_id && match.away_team_name ? match.away_team_name : "客队"),
-      attending: group.attendingCount,
-      // 客队上限未配置时继承主队（主客同制），规则与约队大厅列表共用。
-      required: group.kind === "guest_team"
-        ? resolveInheritedGuestLimit(hostGroup?.minPlayers ?? null, group.minPlayers)
-        : group.minPlayers,
-      max: group.kind === "guest_team"
-        ? resolveInheritedGuestLimit(hostGroup?.maxPlayers ?? null, group.maxPlayers)
-        : group.maxPlayers,
-    }));
-  });
+  const teamProgressItems = computed(() => buildMatchTeamProgress(
+    sourceMatch.value,
+    matchTeamGroups.value,
+    registrationGroupId.value,
+    joinedCount.value,
+    participantPreview.value,
+  ));
   const activeTeamMembers = computed(() => currentTeamMembers.value.filter((member) => member.status === 1));
   const teamMemberRegistrationGroups = computed(() => buildTeamMemberRegistrationGroups({
     members: activeTeamMembers.value,
@@ -482,6 +468,7 @@ export function useMatchDetailPage() {
     handleSignupSheetConfirm,
     handleSignupSheetCancelRegistration,
     currentTeam,
+    currentUser,
     opponentTeam,
     openMatchLocation,
     handleSelectIndividualSignup,

@@ -9,6 +9,10 @@ const props = withDefaults(
   defineProps<{
     visible: boolean;
     opponentName: string;
+    name?: string;
+    location?: string;
+    description?: string;
+    isPickup?: boolean;
     maxPlayers: string;
     /** 比赛起止时间（毫秒时间戳）；0 视为未选择。 */
     startTime: number;
@@ -25,6 +29,9 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   (event: "close"): void;
+  (event: "update:name", value: string): void;
+  (event: "update:location", value: string): void;
+  (event: "update:description", value: string): void;
   (event: "update:opponentName", value: string): void;
   (event: "update:maxPlayers", value: string): void;
   (event: "update:startTime", value: number): void;
@@ -82,7 +89,7 @@ function pickerChangeValue(event: Event) {
   <ConfirmDialog
     :visible="visible"
     title="修改比赛"
-    :message="showTypeChange ? '可修改比赛类型、对手名称、报名人数上限与比赛时间；切换类型会自动拒绝待处理的球队申请。' : '可修改对手名称、报名人数上限与比赛时间。'"
+    :message="isPickup ? '可修改标题、场地、比赛时间与说明。' : showTypeChange ? '可修改比赛类型、对手名称、报名人数上限与比赛时间；切换类型会自动拒绝待处理的球队申请。' : '可修改对手名称、报名人数上限与比赛时间。'"
     primary-text="保存修改"
     secondary-text="取消"
     :loading="submitting"
@@ -91,6 +98,7 @@ function pickerChangeValue(event: Event) {
     @secondary="emit('close')"
     @close="emit('close')"
   >
+    <scroll-view scroll-y style="height: 52vh" :show-scrollbar="false">
     <view v-if="showTypeChange" class="match-edit-field">
       <text class="match-edit-label">比赛类型</text>
       <SegmentedControl
@@ -101,6 +109,18 @@ function pickerChangeValue(event: Event) {
       <text v-if="selectedTypeDescription" class="match-edit-caption">{{ selectedTypeDescription }}</text>
     </view>
     <view class="match-edit-field">
+      <text class="match-edit-label">比赛标题</text>
+      <input class="match-edit-input" :value="name" :disabled="submitting" @input="emit('update:name', ($event as any).detail.value)" />
+    </view>
+    <view class="match-edit-field">
+      <text class="match-edit-label">场地</text>
+      <input class="match-edit-input" :value="location" :disabled="submitting" @input="emit('update:location', ($event as any).detail.value)" />
+    </view>
+    <view class="match-edit-field">
+      <text class="match-edit-label">比赛说明</text>
+      <textarea class="match-edit-input" style="height: 120rpx" maxlength="200" :value="description" :disabled="submitting" @input="emit('update:description', ($event as any).detail.value)" />
+    </view>
+    <view v-if="!isPickup" class="match-edit-field">
       <text class="match-edit-label">对手名称</text>
       <input
         class="match-edit-input"
@@ -110,7 +130,7 @@ function pickerChangeValue(event: Event) {
         @input="emit('update:opponentName', ($event as any).detail.value)"
       />
     </view>
-    <view class="match-edit-field">
+    <view v-if="!isPickup" class="match-edit-field">
       <text class="match-edit-label">报名人数上限</text>
       <input
         class="match-edit-input"
@@ -143,6 +163,7 @@ function pickerChangeValue(event: Event) {
         </picker>
       </view>
     </view>
+    </scroll-view>
   </ConfirmDialog>
 </template>
 

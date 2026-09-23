@@ -28,6 +28,7 @@ export interface MatchTeamGroupSummary {
   kind: "host_team" | "guest_team";
   teamId: number | null;
   attendingCount: number;
+  participants?: AppMatchParticipant[];
   minPlayers: number | null;
   maxPlayers: number | null;
 }
@@ -44,6 +45,7 @@ function toTeamGroupSummaries(groups: AppMatchGroupDetail[]): MatchTeamGroupSumm
       kind: group.kind,
       teamId: group.team_id ?? null,
       attendingCount: group.attending_count ?? 0,
+      participants: group.participants ?? [],
       minPlayers: group.min_players ?? null,
       maxPlayers: group.max_players ?? null,
     }));

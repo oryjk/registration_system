@@ -1,20 +1,13 @@
 <script setup lang="ts">
 import AppButton from "@/components/ui/AppButton.vue";
-import AppProgress from "@/components/ui/AppProgress.vue";
-import AppTag from "@/components/ui/AppTag.vue";
+import RegistrationProgressSummary from "@/components/ui/RegistrationProgressSummary.vue";
 import type { HallMatchCardViewModel } from "../hallMatchState";
 
-const props = defineProps<{
-  card: HallMatchCardViewModel;
-}>();
-
+const props = defineProps<{ card: HallMatchCardViewModel }>();
 const emit = defineEmits<{
   (event: "matchTap", card: HallMatchCardViewModel): void;
 }>();
-
-function handleTap() {
-  emit("matchTap", props.card);
-}
+function handleTap() { emit("matchTap", props.card); }
 </script>
 
 <script lang="ts">
@@ -22,178 +15,90 @@ export default { options: { virtualHost: true } };
 </script>
 
 <template>
-  <view class="hall-match-card" hover-class="hall-match-card-pressed" @tap="handleTap">
-    <view class="hall-match-date">
-      <text class="hall-match-month">{{ card.dateBlock.monthDay }}</text>
-      <text class="hall-match-weekday">{{ card.dateBlock.weekday }}</text>
-      <view class="hall-match-time-chip">
+  <view class="hall-match-card" @tap="handleTap">
+    <view class="hall-match-heading">
+      <view class="hall-match-heading-main">
+        <text class="hall-match-title">{{ card.title }}</text>
+        <view class="hall-match-tags">
+          <text class="hall-match-kind">{{ card.kindLabel }}</text>
+          <text class="hall-match-status" :class="card.opponentStateTone === 'muted' ? 'hall-match-status--full' : card.opponentStateTone === 'green' ? 'hall-match-status--success' : 'hall-match-status--warning'">{{ card.opponentStateLabel }}</text>
+        </view>
+      </view>
+      <view class="hall-match-date">
         <text class="hall-match-time">{{ card.dateBlock.timeLabel }}</text>
+        <text class="hall-match-calendar">{{ card.dateBlock.monthDay }} {{ card.dateBlock.weekday }}</text>
       </view>
     </view>
 
-    <view class="hall-match-body">
-      <view class="hall-match-title-row">
-        <text class="hall-match-title">{{ card.title }}</text>
-        <view class="hall-match-tags">
-          <AppTag :tone="card.kindTone">{{ card.kindLabel }}</AppTag>
-          <AppTag :tone="card.opponentStateTone">{{ card.opponentStateLabel }}</AppTag>
-        </view>
+    <view class="hall-match-info">
+      <image class="hall-match-icon" src="/static/icons/lucide/map-pin.png" mode="aspectFit" aria-hidden="true" />
+      <text class="hall-match-location">{{ card.venue || '场地待定' }}</text>
+      <text class="hall-match-format">{{ card.formatLabel }}</text>
+    </view>
+    <view v-if="card.hostTeamName" class="hall-match-info hall-match-team-row">
+      <image class="hall-match-icon" src="/static/icons/lucide/users.png" mode="aspectFit" aria-hidden="true" />
+      <text class="hall-match-teams">{{ card.hostTeamName }}<text v-if="card.opponentName && card.opponentName !== '待定'"> · 对手 {{ card.opponentName }}</text></text>
+    </view>
+
+    <view class="hall-match-footer">
+      <view class="hall-match-progress-list">
+        <template v-if="card.showProgress">
+          <view v-for="bar in card.progressBars" :key="bar.key" class="hall-match-progress">
+            <RegistrationProgressSummary
+              compact
+              :title="bar.key === 'host' ? '主队报名' : bar.key === 'guest' ? '客队报名' : bar.label"
+              :joined="bar.joined"
+              :minimum="bar.required"
+              :maximum="bar.max"
+            />
+          </view>
+        </template>
+        <text v-else class="hall-match-progress-hint">报名情况见详情</text>
       </view>
-      <text class="hall-match-meta">{{ card.hostTeamName }} · {{ card.formatLabel }}</text>
-      <text class="hall-match-meta">{{ card.venue }} · 对手 {{ card.opponentName }}</text>
-
-      <template v-if="card.showProgress">
-        <AppProgress
-          v-for="bar in card.progressBars"
-          :key="bar.key"
-          class="hall-ui-progress"
-          :label="bar.label"
-          :value="bar.joined"
-          :target="bar.required"
-          :max="bar.max"
-          :value-text="`${bar.joined}/${bar.required}`"
-        />
-      </template>
-
-      <view class="hall-match-bottom">
-        <view v-if="card.hostJoinedLabel || card.guestJoinedLabel" class="hall-match-team-tags">
-          <AppTag v-if="card.hostJoinedLabel" tone="dark" size="lg">{{ card.hostJoinedLabel }}</AppTag>
-          <AppTag v-if="card.guestJoinedLabel" tone="dark" size="lg">{{ card.guestJoinedLabel }}</AppTag>
-        </view>
-        <view v-else class="hall-match-bottom-spacer" />
-        <AppButton class="hall-ui-match-button" :variant="card.actionKind === 'view' ? 'outline' : 'dark'" :stop-propagation="false">
-          {{ card.actionLabel }}
+      <view class="hall-match-actions">
+        <AppButton block size="sm" :variant="card.actionKind === 'view' ? 'outline' : 'dark'" :stop-propagation="false">
+          <view class="hall-match-action-content"><text>{{ card.actionLabel }}</text><text class="hall-match-arrow">→</text></view>
         </AppButton>
       </view>
+    </view>
+    <view v-if="card.capacityHint" class="hall-match-capacity-hint">
+      <text>{{ card.capacityHint }}</text>
     </view>
   </view>
 </template>
 
 <style scoped>
 .hall-match-card {
-  display: flex;
-  gap: 18rpx;
-  padding: 20rpx;
+  padding: 22rpx 24rpx;
   border: var(--ui-border-default);
   border-radius: var(--ui-radius-card);
   background: var(--ui-color-surface);
-  box-shadow: var(--ui-shadow-raised);
+  color: var(--ui-color-text);
   box-sizing: border-box;
-  transition: transform var(--ui-motion-press-duration) var(--ui-motion-ease-out);
 }
-
-.hall-match-card-pressed {
-  transform: scale(0.98);
-}
-
-.hall-match-date {
-  display: flex;
-  width: 150rpx;
-  min-height: 210rpx;
-  padding: 16rpx 14rpx;
-  flex-shrink: 0;
-  flex-direction: column;
-  align-items: center;
-  border: var(--ui-border-default);
-  border-radius: var(--ui-radius-button);
-  background: var(--ui-color-page);
-  color: var(--ui-color-text);
-}
-
-.hall-match-month {
-  font-size: 28rpx;
-  font-weight: 600;
-}
-
-.hall-match-weekday {
-  margin-top: 8rpx;
-  font-size: 44rpx;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}
-
-.hall-match-time-chip {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  margin-top: auto;
-  padding: 14rpx 6rpx;
-  border-radius: var(--ui-radius-button);
-  background: var(--ui-color-accent);
-  color: var(--ui-color-text);
-}
-
-.hall-match-time {
-  font-size: 36rpx;
-  line-height: 1.05;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}
-
-.hall-match-body {
-  flex: 1;
-  min-width: 0;
-}
-
-.hall-match-title-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12rpx;
-}
-
-.hall-match-title {  flex: 1;
-  font-size: 32rpx;
-  line-height: 1.32;
-  color: var(--ui-color-text);
-  font-weight: 600;
-}
-
-.hall-match-tags {
-  display: flex;
-  align-items: center;
-  gap: 8rpx;
-  flex-shrink: 0;
-}
-
-.hall-match-meta {  display: block;
-  margin-top: 10rpx;
-  font-size: 26rpx;
-  line-height: 1.5;
-  color: var(--ui-color-text-muted);
-  font-weight: 400;
-}
-
-.hall-ui-progress {
-  margin-top: 18rpx;
-  --ui-progress-meta-font-size: 26rpx;
-  --ui-progress-track-margin-top: 10rpx;
-}
-
-.hall-match-bottom {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14rpx;
-  margin-top: 20rpx;
-}
-
-.hall-match-bottom-spacer {
-  flex: 1;
-}
-
-.hall-match-team-tags {
-  display: flex;
-  align-items: center;
-  gap: 10rpx;
-  min-width: 0;
-  flex: 1;
-  flex-wrap: wrap;
-}
-
-.hall-ui-match-button {
-  min-width: 142rpx;
-}
+.hall-match-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 18rpx; }
+.hall-match-heading-main { flex: 1; min-width: 0; }
+.hall-match-title { display: block; font-size: 30rpx; font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; }
+.hall-match-tags { display: flex; align-items: center; flex-wrap: wrap; gap: 6rpx 12rpx; margin-top: 8rpx; }
+.hall-match-kind { padding: 3rpx 10rpx; border-radius: var(--ui-radius-md); background: var(--ui-color-accent-soft); color: var(--ui-color-accent-deep); font-size: 20rpx; line-height: 1.5; }
+.hall-match-status { font-size: 22rpx; line-height: 1.5; }
+.hall-match-status--full { color: var(--ui-color-neutral-fg); background: var(--ui-color-neutral-bg); padding: 3rpx 10rpx; border-radius: var(--ui-radius-md); }
+.hall-match-capacity-hint { margin-top: 16rpx; padding: 12rpx 16rpx; border-radius: var(--ui-radius-button); background: var(--ui-color-neutral-bg); color: var(--ui-color-neutral-fg); font-size: 22rpx; line-height: 1.5; }
+.hall-match-status--success { color: var(--ui-color-success-fg); }
+.hall-match-status--warning { color: var(--ui-color-warning-fg); }
+.hall-match-date { display: flex; flex-direction: column; align-items: flex-end; flex-shrink: 0; gap: 4rpx; padding-top: 1rpx; }
+.hall-match-time { font-size: 40rpx; line-height: 1.1; font-weight: 600; letter-spacing: -1rpx; font-variant-numeric: tabular-nums; }
+.hall-match-calendar { color: var(--ui-color-text-muted); font-size: 22rpx; line-height: 1.5; }
+.hall-match-info { display: flex; align-items: flex-start; gap: 10rpx; margin-top: 14rpx; color: var(--ui-color-text-muted); }
+.hall-match-icon { width: 26rpx; height: 26rpx; margin-top: 4rpx; flex-shrink: 0; filter: var(--ui-primitive-icon-filter, none); }
+.hall-match-location, .hall-match-teams { flex: 1; min-width: 0; font-size: 24rpx; line-height: 1.5; overflow-wrap: anywhere; }
+.hall-match-format { flex-shrink: 0; margin-left: 6rpx; font-size: 22rpx; line-height: 1.6; }
+.hall-match-team-row { margin-top: 6rpx; }
+.hall-match-footer { display: flex; align-items: center; gap: 22rpx; margin-top: 16rpx; padding-top: 16rpx; border-top: var(--ui-border-default); }
+.hall-match-progress-list { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 12rpx; }
+.hall-match-progress { min-width: 0; display: flex; flex-direction: column; align-items: stretch; }
+.hall-match-progress-hint { color: var(--ui-color-text-muted); font-size: 22rpx; }
+.hall-match-actions { display: flex; flex-direction: column; align-items: stretch; flex-shrink: 0; width: 200rpx; --ui-button-height-sm: 72rpx; --ui-button-font-size-sm: 28rpx; }
+.hall-match-action-content { display: flex; align-items: center; justify-content: center; gap: 12rpx; font-size: 28rpx; font-weight: 600; line-height: 1.2; white-space: nowrap; }
+.hall-match-arrow { font-size: 32rpx; line-height: 1; }
 </style>

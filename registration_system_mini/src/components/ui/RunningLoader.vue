@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { useAccentTheme } from "@/stores/theme";
 const { themePageStyle } = useAccentTheme();
-withDefaults(defineProps<{ text?: string }>(), { text: "正在进入球场" });
+withDefaults(defineProps<{ text?: string; compact?: boolean }>(), { text: "正在进入球场", compact: false });
 </script>
 
 <template>
-  <view class="app-theme-scope ui-runner" :style="themePageStyle" role="status" aria-live="polite" aria-busy="true">
+  <view :class="['app-theme-scope', 'ui-runner', compact ? 'ui-runner--compact' : '']" :style="themePageStyle" role="status" aria-live="polite" aria-busy="true">
     <view class="ui-runner__scene" aria-hidden="true">
       <view class="ui-runner__track" />
       <view class="ui-runner__orbit" />
@@ -34,6 +34,17 @@ withDefaults(defineProps<{ text?: string }>(), { text: "正在进入球场" });
 .ui-runner__patch--bottom { bottom: -12rpx; left: 17rpx; }
 .ui-runner__patch--left { top: 17rpx; left: -12rpx; }
 .ui-runner__text { color: var(--ui-color-text-muted); font-size: 24rpx; font-weight: 400; line-height: 1.5; text-align: center; }
+.ui-runner--compact { display: inline-flex; flex-direction: row; gap: 12rpx; width: auto; max-width: 100%; min-height: 0; padding: 12rpx 20rpx; border: var(--ui-border-default); border-radius: var(--ui-radius-round); background: var(--ui-color-surface); box-shadow: var(--ui-shadow-soft); }
+.ui-runner--compact .ui-runner__scene { width: 48rpx; height: 48rpx; flex-shrink: 0; }
+.ui-runner--compact .ui-runner__track, .ui-runner--compact .ui-runner__orbit { border-width: 2rpx; }
+.ui-runner--compact .ui-runner__ball { width: 24rpx; height: 24rpx; }
+.ui-runner--compact .ui-runner__patch { width: 8rpx; height: 8rpx; border-radius: 2rpx; }
+.ui-runner--compact .ui-runner__patch--center { top: 6rpx; left: 6rpx; }
+.ui-runner--compact .ui-runner__patch--top { top: -5rpx; left: 6rpx; }
+.ui-runner--compact .ui-runner__patch--right { top: 6rpx; right: -5rpx; }
+.ui-runner--compact .ui-runner__patch--bottom { bottom: -5rpx; left: 6rpx; }
+.ui-runner--compact .ui-runner__patch--left { top: 6rpx; left: -5rpx; }
+.ui-runner--compact .ui-runner__text { font-size: 23rpx; white-space: nowrap; }
 @keyframes loader-orbit { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .ui-runner__orbit { animation: none; } }
 </style>

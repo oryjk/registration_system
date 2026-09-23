@@ -28,15 +28,17 @@ describe("create match Wot UI integration", () => {
     expect(source.includes('mode="date"')).toEqual(true);
     expect(source.match(/mode="time"/g)?.length).toEqual(2);
     expect(source.includes("<wd-datetime-picker")).toEqual(false);
+    // 时间区为「时间磁贴」：日期 + 开始/结束时间磁贴，仍走原生 picker。
     expect(source.includes("比赛日期")).toEqual(true);
-    expect(source.includes("比赛开始时间")).toEqual(true);
-    expect(source.includes("比赛结束时间")).toEqual(true);
+    expect(source.includes("time-tile-label")).toEqual(true);
+    expect(source.includes("开始时间")).toEqual(true);
+    expect(source.includes("结束时间")).toEqual(true);
     expect(source.includes("报名开始")).toEqual(false);
     expect(source.includes("报名截止")).toEqual(false);
     expect(source.includes('placeholder="YYYY-MM-DD hh:mm:ss"')).toEqual(false);
     expect(source.includes("date-option-active")).toEqual(true);
     expect(source.includes("displayTimeLabel")).toEqual(true);
-    expect(pageSource.includes('import type { MatchPublishFormModel } from "./components/matchPublishForm"')).toEqual(true);
+    expect(pageSource.includes('import type { MatchPublishFormModel } from "./components/matchPublishFormModel"')).toEqual(true);
     // 时间序列化已收敛到 createMatchPayload：页面不再自带 toBackendDateTime/提交时刻推导。
     expect(pageSource.includes("toBackendDateTime")).toEqual(false);
     expect(pageSource.includes("submittedAtTimestamp")).toEqual(false);
@@ -51,8 +53,8 @@ describe("create match Wot UI integration", () => {
 
     expect(source.includes("date-option-scroll")).toEqual(true);
     expect(source.includes("比赛日期")).toEqual(true);
-    expect(source.includes("比赛开始时间")).toEqual(true);
-    expect(source.includes("比赛结束时间")).toEqual(true);
+    expect(source.includes("开始时间")).toEqual(true);
+    expect(source.includes("结束时间")).toEqual(true);
     expect(source.includes("handleSelectDateOption")).toEqual(true);
     expect(source.includes("handleMatchStartTimeChange")).toEqual(true);
     expect(source.includes("handleMatchEndTimeChange")).toEqual(true);
@@ -134,7 +136,7 @@ describe("create match Wot UI integration", () => {
     expect(source.includes('uni.switchTab({ url: "/pages/home/index" });')).toEqual(true);
     expect(source.includes('const reviewGateReady = ref(false);')).toEqual(true);
     expect(source.includes('v-if="reviewGateReady"')).toEqual(true);
-    expect(source.includes("async function handleSubmit() {\n  if (await guardReviewMode()) return;")).toEqual(true);
+    expect(source.includes("async function handleSubmit() {\n  if (!editId.value && await guardReviewMode()) return;")).toEqual(true);
   });
 
   test("syncs runtime version via prebuild hook before building and uploading", async () => {

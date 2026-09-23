@@ -12,6 +12,8 @@ function dateIsValid(value?: string | null): value is string {
 function feeLabel(detail?: AppMatchDetailResponse | null): string {
   const match = detail?.match;
   if (!match) return "费用见比赛详情";
+  if (match.fee_type === "team_fund") return "队费扣除";
+  if (match.fee_type === "offline_aa") return "线下 AA";
   if (match.is_free === true) return "免费报名";
   if (typeof match.fee_per_person_cents !== "number" || match.fee_per_person_cents <= 0) return "费用见比赛详情";
   const price = (match.fee_per_person_cents / 100).toFixed(2).replace(/\.00$/, "");

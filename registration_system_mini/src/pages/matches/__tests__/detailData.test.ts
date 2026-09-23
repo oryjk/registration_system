@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { AppMatchDetailResponse, AppMatchSummary } from "@/types/match";
-import { byRegistrationTimeAsc } from "../detailState";
+import { buildMatchTeamProgress } from "../detailTeamProgress";
+import { applyIndividualRegistrationPatch, byRegistrationTimeAsc } from "../detailState";
 import { buildPublicMatchApiDetailData, loadAuthenticatedMatchDetailContext, loadPublicMatchDetailData, toBackendActivity, toBackendRegistration } from "../detailData";
 
 const matchSummary: AppMatchSummary = {
@@ -559,3 +560,42 @@ describe("Authenticated match detail context", () => {
 });
 
 export {};
+
+
+describe("online team progress after registration", () => {
+  for (const selectedGroupId of ["host", "guest"]) {
+    test(`${selectedGroupId}: signup, leave and cancellation update only the selected team`, () => {
+      let registrations: import("@/types/backend").BackendRegistration[] = [];
+      const groups: import("../detailData").MatchTeamGroupSummary[] = [
+        { id: "host", kind: "host_team", teamId: 101, attendingCount: 3, minPlayers: 8, maxPlayers: 10 },
+        { id: "guest", kind: "guest_team", teamId: 102, attendingCount: 3, minPlayers: null, maxPlayers: null },
+      ];
+      for (const [stand, count, expected] of [[1, 1, 4], [2, 0, 3], [1, 1, 4], [0, 0, 3]]) {
+        registrations = applyIndividualRegistrationPatch(registrations, 7, stand!, count!);
+        // 已有 3 人未展开在本地名单中，仍需保留。
+        const joined = 3 + registrations.filter((item) => item.stand === 1).reduce((sum, item) => sum + item.registration_count, 0);
+        const progress = buildMatchTeamProgress({ ...matchSummary, publication_mode: "online_team" }, groups, selectedGroupId, joined);
+        expect(progress.find((item) => item.id === selectedGroupId)!.attending).toEqual(expected!);
+        expect(progress.find((item) => item.id !== selectedGroupId)!.attending).toEqual(3);
+        expect(progress.find((item) => item.id === selectedGroupId)!.max).toEqual(10);
+      }
+    });
+  }
+});
+
+
+test("team progress keeps avatars within each group and uses live selected avatars", () => {
+  const groups: import("../detailData").MatchTeamGroupSummary[] = [
+    { id: "host", kind: "host_team", teamId: 101, attendingCount: 1, minPlayers: 8, maxPlayers: 10,
+      participants: [{ user_id: 1, nickname: "主队球员", avatar_url: "host.png", status: "attending", registration_count: 1 }] },
+    { id: "guest", kind: "guest_team", teamId: 102, attendingCount: 0, minPlayers: null, maxPlayers: null,
+      participants: [{ user_id: 2, nickname: "请假球员", avatar_url: null, status: "leave", registration_count: 0 }] },
+  ];
+  const source = { ...matchSummary, publication_mode: "online_team" as const };
+  const live = [{ id: 3, name: "刚报名的客队球员", avatarUrl: "guest.png" }];
+  const progress = buildMatchTeamProgress(source, groups, "guest", 1, live);
+  expect(progress[0]!.avatars).toEqual([{ id: 1, name: "主队球员", avatarUrl: "host.png" }]);
+  expect(progress[1]!.avatars).toEqual(live);
+  expect(buildMatchTeamProgress(source, groups, "host", 0, [])[0]!.avatars).toEqual([]);
+  expect(buildMatchTeamProgress(source, groups, "host", 0, [])[1]!.avatars).toEqual([]);
+});

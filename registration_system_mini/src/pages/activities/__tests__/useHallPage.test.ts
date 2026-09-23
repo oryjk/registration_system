@@ -31,21 +31,32 @@ const match: AppMatchSummary = {
 
 const hideCreationEntrancesRef = ref(false);
 const identityRef = ref<{ kind: string; teamId: number } | null>({ kind: "team", teamId: 99 });
+let sessionRequests = 0;
+let matchRequests = 0;
+const matchScopes: string[] = [];
+let currentToken = "token-a";
 
 mock.module("@/api/match", () => ({
-  listMatches: async () => ({ items: [match], total: 1, page: 1, page_size: 20 }),
+  listMatches: async (params: { scope: string }) => {
+    matchRequests += 1;
+    matchScopes.push(params.scope);
+    return { items: [match], total: 1, page: 1, page_size: 20 };
+  },
 }));
 mock.module("@/stores/miniReview", () => ({
   useMiniReviewStatus: () => ({ shouldHideCreationEntrances: hideCreationEntrancesRef }),
 }));
 mock.module("@/stores/teamContext", () => ({
   useTeamContext: () => ({
-    ensureSessionReady: async () => undefined,
+    ensureSessionReady: async () => { sessionRequests += 1; },
     currentIdentity: identityRef,
-    currentTeam: ref({ id: 99, canManageTeam: true }),
+    currentTeam: ref({ id: 99, canManageTeam: true, isCaptain: true }),
   }),
 }));
-mock.module("@/utils/authStorage", () => ({ hasManualLogout: () => false }));
+mock.module("@/utils/authStorage", () => ({
+  hasManualLogout: () => false,
+  getAccessToken: () => currentToken,
+}));
 
 const { useHallPage } = await import("../useHallPage");
 
@@ -59,6 +70,44 @@ afterEach(() => {
   globalThis.clearInterval = originalClearInterval;
   hideCreationEntrancesRef.value = false;
   identityRef.value = { kind: "team", teamId: 99 };
+  sessionRequests = 0;
+  matchRequests = 0;
+  matchScopes.length = 0;
+  currentToken = "token-a";
+});
+
+test("date changes reuse session data but fetch matches; token changes and explicit refresh recheck session", async () => {
+  const page = useHallPage();
+  await page.loadPageData();
+  expect([sessionRequests, matchRequests]).toEqual([1, 1]);
+
+  page.selectDate("2026-09-24");
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  expect([sessionRequests, matchRequests]).toEqual([1, 2]);
+
+  currentToken = "token-b";
+  page.selectDate("2026-09-25");
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  expect([sessionRequests, matchRequests]).toEqual([2, 3]);
+
+  await page.loadPageData();
+  expect([sessionRequests, matchRequests]).toEqual([3, 4]);
+});
+
+test("kind and size filters stay local while every date fetch uses all scope", async () => {
+  const page = useHallPage();
+  await page.loadPageData();
+  page.selectKind("mine");
+  page.selectSize(5);
+  page.selectKind("team");
+  page.selectKind("individual");
+  expect(matchScopes).toEqual(["all"]);
+
+  page.selectKind("mine");
+  page.selectDate("2026-09-24");
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  expect(matchScopes).toEqual(["all", "all"]);
+  expect(sessionRequests).toEqual(1);
 });
 
 describe("useHallPage registration window clock", () => {

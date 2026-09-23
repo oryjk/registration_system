@@ -768,6 +768,7 @@ button::after {
 }
 
 .custom-tab-item {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -797,10 +798,7 @@ button::after {
   height: 48rpx;
 }
 
-/* 激活 tab 的图标壳用主题浅底轻色块表达选中，不做描边与硬投影。 */
-.custom-tab-item-active .custom-tab-icon-shell {
-  background: var(--ui-color-accent-soft);
-}
+/* 选中浅色背景由 BottomTabBar 的独立滑块承载。 */
 
 .custom-tab-badge {
   position: absolute;

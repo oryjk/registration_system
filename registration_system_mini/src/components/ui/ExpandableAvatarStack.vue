@@ -61,13 +61,14 @@ watch(() => [props.items.length, props.size], () => { void measure(); });
 </script>
 
 <template>
-  <view class="expandable-avatars" @tap.stop>
-    <view class="expandable-avatars__items">
-      <scroll-view scroll-x :show-scrollbar="false" :scroll-left="scrollLeft" class="expandable-avatars__scroll" @scroll="scrollLeft = $event.detail.scrollLeft">
-        <view class="expandable-avatars__track" :style="{ width: `${layout.width}px`, height: `${layout.height + 8}px` }">
+  <view data-deck-ignore="true" class="expandable-avatars" @tap.stop>
+    <view data-deck-ignore="true" class="expandable-avatars__items">
+      <scroll-view data-deck-ignore="true" scroll-x :show-scrollbar="false" :scroll-left="scrollLeft" class="expandable-avatars__scroll" @scroll="scrollLeft = $event.detail.scrollLeft">
+        <view data-deck-ignore="true" class="expandable-avatars__track" :style="{ width: `${layout.width}px`, height: `${layout.height + 8}px` }">
           <view
             v-for="(item, index) in items"
             :key="item.id"
+            data-deck-ignore="true"
             class="expandable-avatars__avatar"
             :style="{
               width: `${avatarSize}px`, height: `${avatarSize}px`,
@@ -78,23 +79,24 @@ watch(() => [props.items.length, props.size], () => { void measure(); });
             :hover-class="interactive && !disabled ? 'expandable-avatars__avatar--pressed' : 'none'"
             @tap.stop="select(item)"
           >
-            <image v-if="item.avatarUrl && !failedImages[imageKey(item)]" class="expandable-avatars__image" :src="item.avatarUrl" mode="aspectFill" @error="failedImages[imageKey(item)] = true" />
-            <text v-else class="expandable-avatars__fallback">{{ Array.from(item.name.trim())[0] || '?' }}</text>
+            <image data-deck-ignore="true" v-if="item.avatarUrl && !failedImages[imageKey(item)]" class="expandable-avatars__image" :src="item.avatarUrl" mode="aspectFill" @error="failedImages[imageKey(item)] = true" />
+            <text data-deck-ignore="true" v-else class="expandable-avatars__fallback">{{ Array.from(item.name.trim())[0] || '?' }}</text>
           </view>
         </view>
       </scroll-view>
     </view>
     <button
-      v-if="items.length > 1"
+      v-if="items.length > 0"
+      data-deck-ignore="true"
       class="expandable-avatars__toggle"
       :disabled="disabled"
       :aria-expanded="expanded"
-      :aria-label="expanded ? '收起头像' : `展开全部 ${items.length} 人头像`"
+      :aria-label="expanded ? '收起报名名单' : '展开报名名单'"
       hover-class="expandable-avatars__toggle--pressed"
       @tap.stop="toggle"
     >
-      <text>{{ expanded ? '收起' : '展开' }}</text>
-      <view class="expandable-avatars__chevron" :class="{ 'expandable-avatars__chevron--left': expanded }" />
+      <text data-deck-ignore="true">{{ expanded ? '收起' : '展开' }}</text>
+      <view data-deck-ignore="true" class="expandable-avatars__chevron" :class="{ 'expandable-avatars__chevron--left': expanded }" />
     </button>
   </view>
 </template>

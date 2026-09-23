@@ -10,9 +10,12 @@ const { themePageStyle } = useAccentTheme();
 const {
   pageStyle,
   searching,
+  hasSearched,
   searchKeyword,
   searchResults,
   selectedTeam,
+  selectedTeamIsMember,
+  joinedTeamIds,
   selectedTeamRequiresPassword,
   joinPassword,
   canJoin,
@@ -34,14 +37,17 @@ const {
     <AppTabHeader title="加入球队" showBack />
 
     <view class="team-join-content">
-      <text class="team-page-note">搜索球队名称，选择后申请加入。</text>
+      <text class="team-page-note">找到一起踢球的伙伴，搜索名称即可加入。</text>
 
       <TeamJoinPanel
         v-model:search-keyword="searchKeyword"
         v-model:join-password="joinPassword"
         :searching="searching"
+        :has-searched="hasSearched"
         :search-results="searchResults"
         :selected-team="selectedTeam"
+        :selected-team-is-member="selectedTeamIsMember"
+        :joined-team-ids="joinedTeamIds"
         :selected-team-requires-password="selectedTeamRequiresPassword"
         :can-join="canJoin"
         :submitting="submitting"
@@ -56,7 +62,7 @@ const {
         hover-class="team-join-alt--pressed"
         @tap="goCreateTeam"
       >
-        <text class="team-join-alt__label">没找到想要的球队？创建一支</text>
+        <text class="team-join-alt__label">没有找到？创建自己的球队</text>
         <text class="team-join-alt__arrow">→</text>
       </view>
     </view>

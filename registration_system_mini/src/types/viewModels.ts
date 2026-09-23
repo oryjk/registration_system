@@ -138,6 +138,7 @@ export interface MatchTeamProgressItem {
   id: string;
   label: string;
   attending: number;
+  avatars?: import("@/components/ui/avatarTypes").AvatarItem[];
   required: number | null;
   max: number | null;
 }

@@ -7,7 +7,8 @@ import AppSurface from "@/components/ui/AppSurface.vue";
 import type { SegmentOption } from "@/components/ui/SegmentedControl.vue";
 import MatchScheduleFields from "@/components/MatchScheduleFields.vue";
 import TeamColorPicker from "./TeamColorPicker.vue";
-import type { MatchPublishFormModel } from "./matchPublishForm";
+import { defaultMatchFeeType } from "./matchPublishFormModel";
+import type { MatchPublishFormModel } from "./matchPublishFormModel";
 import type { AppMatchPublicationMode } from "@/types/match";
 import { MATCH_PUBLICATION_MODE_OPTIONS } from "@/utils/matchPublicationMode";
 
@@ -19,6 +20,7 @@ const props = withDefaults(
     mode?: "match" | "challenge";
     timeValidMessage?: string;
     showCheckIn?: boolean;
+    allowedPublicationModes?: AppMatchPublicationMode[];
   }>(),
   {
     mode: "match",
@@ -39,6 +41,12 @@ const form = computed({
   set: (value) => emit("update:modelValue", value),
 });
 
+const selectedFeeType = computed(() => form.value.feeType ?? defaultMatchFeeType(form.value.publicationMode));
+const feeOptions: SegmentOption[] = [
+ { label: "线下 AA", value: "offline_aa" }, { label: "队费扣除", value: "team_fund" },
+ { label: "免费", value: "free" }, { label: "具体金额", value: "fixed_amount" },
+];
+function handleFeeTypeChange(value: string) { updateField("feeType", value as NonNullable<MatchPublishFormModel["feeType"]>); }
 const isChallenge = computed(() => props.mode === "challenge");
 const titleLabel = computed(() => (isChallenge.value ? "约队标题" : "比赛名称"));
 const titlePlaceholder = computed(() => (isChallenge.value ? "例如：周五晚 8 人制约队" : "例如：周五晚友谊赛"));
@@ -56,7 +64,7 @@ const locationCaption = computed(() =>
 );
 
 const publicationModeOptions = computed<SegmentOption[]>(() =>
-  MATCH_PUBLICATION_MODE_OPTIONS.map((option) => ({ label: option.label, value: option.value })),
+  MATCH_PUBLICATION_MODE_OPTIONS.filter(option => !props.allowedPublicationModes || props.allowedPublicationModes.includes(option.value)).map((option) => ({ label: option.label, value: option.value })),
 );
 const selectedPublicationModeDescription = computed(
   () => MATCH_PUBLICATION_MODE_OPTIONS.find((option) => option.value === form.value.publicationMode)?.description ?? "",
@@ -70,6 +78,7 @@ function updateField<K extends keyof MatchPublishFormModel>(key: K, value: Match
 function handlePublicationModeChange(value: string) {
   const mode = value as AppMatchPublicationMode;
   updateField("publicationMode", mode);
+  updateField("feeType", defaultMatchFeeType(mode));
   if (mode !== "offline_confirmed") {
     updateField("opposing", "");
   }
@@ -138,17 +147,14 @@ function handleOpenVenuePicker() {
             placeholder-class="form-placeholder"
           />
         </view>
-        <view v-if="isChallenge" class="form-field">
-          <text class="form-label">预计费用/人</text>
-          <input
-            v-model="form.feePerPerson"
-            class="form-input"
-            type="digit"
-            placeholder="25"
-            placeholder-class="form-placeholder"
-          />
-        </view>
       </view>
+        <view class="form-field">
+          <text class="form-label">预计费用</text>
+          <SegmentedControl :model-value="selectedFeeType" :options="feeOptions" @change="handleFeeTypeChange" />
+          <input v-if="selectedFeeType === 'fixed_amount'" v-model="form.feePerPerson" class="form-input" type="digit" placeholder="填写人均金额（元）" placeholder-class="form-placeholder" />
+          <text v-if="selectedFeeType === 'team_fund'" class="form-caption">费用由队费承担，当前仅作说明，不会自动扣款。</text>
+          <text v-else-if="selectedFeeType === 'offline_aa'" class="form-caption">费用由参与者线下分摊。</text>
+        </view>
       <view v-if="!isChallenge" class="form-kit-section">
         <TeamColorPicker
           :label="colorLabel"

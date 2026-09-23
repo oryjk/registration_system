@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, inject, ref } from "vue";
 import { getCustomNavMetrics } from "@/utils/customNav";
+import { APP_SCROLL_CONTROLLER } from "@/components/appScroll";
 import FloatingLoginPrompt from "@/components/FloatingLoginPrompt.vue";
 // #ifdef H5
 import H5TestLoginPanel from "@/components/H5TestLoginPanel.vue";
@@ -38,10 +39,17 @@ const DOUBLE_TAP_SCROLL_INTERVAL_MS = 300;
 let lastHeaderTapAt = 0;
 
 /** 双击头部任意空白区域平滑回到页面顶部（胶囊内返回/回首页已 stop，不参与判定）。 */
+// scroll-view 滚动架构的页面注入控制器；未注入的页面维持原生页面滚动。
+const scrollController = inject(APP_SCROLL_CONTROLLER, null);
+
 function handleHeaderTap() {
   const now = Date.now();
   if (now - lastHeaderTapAt <= DOUBLE_TAP_SCROLL_INTERVAL_MS) {
     lastHeaderTapAt = 0;
+    if (scrollController) {
+      scrollController.scrollToTop();
+      return;
+    }
     uni.pageScrollTo({ scrollTop: 0, duration: 300 });
     return;
   }

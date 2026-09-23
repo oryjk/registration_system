@@ -1,9 +1,12 @@
 <script setup lang="ts">
-import { usePageRefresh } from "@/composables/usePageRefresh";
+import { usePullRefresh } from "@/composables/usePullRefresh";
+import { APP_SCROLL_CONTROLLER, createAppScrollAnchor } from "@/components/appScroll";
 import { useAccentTheme } from "@/stores/theme";
 import { onHide, onLoad, onShow, onUnload, onShareAppMessage, onShareTimeline } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
+import AppPullScrollView from "@/components/AppPullScrollView.vue";
 import BottomTabBar from "@/components/BottomTabBar.vue";
+import { tabBarMotion } from "@/components/tabBarMotion";
 import AppButton from "@/components/ui/AppButton.vue";
 import SectionHeader from "@/components/ui/SectionHeader.vue";
 import RunningLoader from "@/components/ui/RunningLoader.vue";
@@ -17,7 +20,7 @@ import { useHallPage } from "./useHallPage";
 import { getCustomNavMetrics } from "@/utils/customNav";
 import { MATCH_CREATION_IDENTITY_HINT } from "@/utils/matchCreationAccess";
 import { DEFAULT_SHARE_IMAGE_URL } from "@/utils/share";
-import { computed, ref } from "vue";
+import { computed, provide, ref } from "vue";
 
 const { themePageStyle } = useAccentTheme();
 
@@ -58,9 +61,6 @@ const publishTypeSheetVisible = ref(false);
 const navigatingMatchId = ref("");
 const shareTitle = "约队大厅：看看可报名的散人局";
 const sharePath = "/pages/activities/index";
-const pageStyle = computed(() => ({
-  padding: "0 28rpx 180rpx",
-}));
 const contentStyle = computed(() => ({
   paddingTop: `${navMetrics.pageTopPadding + 8}px`,
 }));
@@ -115,10 +115,11 @@ function handleSessionLoginCompleted() {
 }
 
 onShow(() => {
+  tabBarMotion.show("challenge");
   // H5 路由切换时 onShow 可能早于 TabBar 挂载，此时无需隐藏。
   uni.hideTabBar({ animation: false, fail: () => {} });
   startWindowTimer();
-  void loadPageData({ preserveContent: true });
+  void loadPageData({ preserveContent: true, reuseSession: true });
 });
 
 onHide(() => {
@@ -146,15 +147,21 @@ onShareTimeline(() => ({
   query: "",
   imageUrl: DEFAULT_SHARE_IMAGE_URL,
 }));
-usePageRefresh(() => loadPageData({ preserveContent: true }));
+// scroll-view 自定义下拉：页面本体不滚动，固定 header 不随下拉拖动。
+const { refreshing, handleRefresherRefresh } = usePullRefresh(() => loadPageData({ preserveContent: true }));
+// 滚动锚点提升到页面根：AppTabHeader 与滚动容器是兄弟节点，provide 必须来自页面。
+const { anchor: appScrollAnchor, controller: appScrollController } = createAppScrollAnchor();
+provide(APP_SCROLL_CONTROLLER, appScrollController);
 </script>
 
 <template>
-  <page-meta :page-style="themePageStyle" />
-  <view class="app-theme-scope hall-page" :style="[themePageStyle, pageStyle]">
+  <!-- 页面本体锁定不滚动（滚动在 AppPullScrollView 内），header 不随下拉移动。 -->
+  <page-meta :page-style="`${themePageStyle};overflow:hidden`" />
+  <view class="app-theme-scope hall-page" :style="themePageStyle">
     <AppTabHeader title="约队大厅" />
 
-    <view class="hall-content" :style="contentStyle">
+    <AppPullScrollView ref="appScrollAnchor" :refreshing="refreshing" @refresh="handleRefresherRefresh">
+      <view class="hall-content" :style="contentStyle">
       <RunningLoader v-if="showInitialLoadingState" text="正在奔向球场" />
 
       <view v-else-if="isGuestMode" class="hall-guest-card">
@@ -206,13 +213,14 @@ usePageRefresh(() => loadPageData({ preserveContent: true }));
             {{ hasMore ? "本页没有符合筛选条件的约队，可以加载更多继续找。" : "当前筛选条件下还没有可加入的约队，换个日期或类型再看看。" }}
           </view>
 
-          <!-- 类型/人数是前端过滤，只作用于已加载页：过滤后为空但还有下一页时，入口不能消失。 -->
+          <!-- 所有筛选只作用于已加载页：过滤后为空但还有下一页时，入口不能消失。 -->
           <view v-if="hasMore" class="hall-load-more" @tap="loadMore">
             {{ isLoadingMore ? "加载中..." : "加载更多" }}
           </view>
         </template>
       </template>
     </view>
+    </AppPullScrollView>
 
     <PublishTypeSheet
       :visible="publishTypeSheetVisible"
@@ -250,12 +258,15 @@ usePageRefresh(() => loadPageData({ preserveContent: true }));
 .hall-page {
   position: relative;
   min-height: 100vh;
+  padding: 0 28rpx;
   background: var(--ui-color-page);
   box-sizing: border-box;
 }
 
 .hall-content {
   position: relative;
+  /* 滚动收进 AppPullScrollView 后，底栏留白由滚动内容自己承担。 */
+  padding-bottom: 180rpx;
 }
 
 .hall-toolbar-row {

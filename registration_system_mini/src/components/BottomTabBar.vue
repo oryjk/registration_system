@@ -17,7 +17,8 @@ import statsActiveIconUrl from "@/static/tab-png/stats-active.png";
 import userIconUrl from "@/static/tab-png/user.png";
 import userActiveIconUrl from "@/static/tab-png/user-active.png";
 
-type TabKey = "home" | "challenge" | "stats" | "mine";
+import { tabBarMotion, tabIndicatorTransform } from "./tabBarMotion";
+import type { TabKey } from "./tabBarMotion";
 
 const props = defineProps<{
   current: TabKey;
@@ -85,13 +86,21 @@ const items: Array<{
 ];
 
 const switchingTab = ref(false);
+const indicatorMotion = computed(() => tabBarMotion.active.value?.to === props.current ? tabBarMotion.active.value : null);
+const indicatorStyle = computed(() => ({
+  transform: tabIndicatorTransform(props.current, shouldShowCreateEntry.value),
+  "--tab-indicator-from": tabIndicatorTransform(indicatorMotion.value?.from ?? props.current, shouldShowCreateEntry.value),
+}));
 
 function switchTab(path: string) {
   // 当前页重复点击不重新触发生命周期；切换期间也不叠加路由请求。
-  if (switchingTab.value || items.find(item => item.path === path)?.key === props.current) return;
+  const target = items.find(item => item.path === path);
+  if (switchingTab.value || !target || target.key === props.current) return;
   switchingTab.value = true;
+  const motionId = tabBarMotion.prepare(props.current, target.key);
   uni.switchTab({
     url: path,
+    fail: () => { tabBarMotion.cancel(motionId); },
     complete: () => { switchingTab.value = false; },
   });
 }
@@ -159,6 +168,16 @@ function handleCreateIndividualChallenge() {
 <template>
   <view class="custom-tabbar-shell">
     <view :class="['custom-tabbar', shouldShowCreateEntry ? '' : 'custom-tabbar-no-create']">
+      <view class="custom-tab-indicator-track" aria-hidden="true">
+        <view
+          :key="indicatorMotion ? indicatorMotion.id : 0"
+          class="custom-tab-item custom-tab-indicator-lane"
+          :class="indicatorMotion ? 'custom-tab-indicator-lane--moving' : ''"
+          :style="indicatorStyle"
+        >
+          <view class="custom-tab-indicator" />
+        </view>
+      </view>
       <template v-if="shouldShowCreateEntry">
         <view
           v-for="item in items.slice(0, 2)"
@@ -325,6 +344,40 @@ function handleCreateIndividualChallenge() {
 
 .custom-tabbar {
   pointer-events: auto;
+}
+
+/* 轨道与底栏使用同样的内边距；圆角色块包住图标和文字，随整个 tab 平移。 */
+.custom-tab-indicator-track {
+  position: absolute;
+  top: 0;
+  bottom: env(safe-area-inset-bottom);
+  left: 18rpx;
+  right: 18rpx;
+  pointer-events: none;
+}
+.custom-tab-indicator-lane {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: calc(25% - 33rpx);
+}
+.custom-tabbar-no-create .custom-tab-indicator-lane { width: 25%; }
+.custom-tab-indicator {
+  width: 100rpx;
+  max-width: calc(100% - 16rpx);
+  height: 92rpx;
+  flex-shrink: 0;
+  border-radius: var(--ui-radius-button);
+  background: var(--ui-color-accent-soft);
+}
+.custom-tab-indicator-lane--moving {
+  animation: tab-indicator-slide var(--ui-motion-switch-duration) var(--ui-motion-ease-out) backwards;
+}
+@keyframes tab-indicator-slide {
+  from { transform: var(--tab-indicator-from); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .custom-tab-indicator-lane--moving { animation: none; }
 }
 
 .custom-tabbar-no-create {

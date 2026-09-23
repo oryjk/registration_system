@@ -2,6 +2,7 @@ export type AppMatchStatus = "registering" | "ongoing" | "ended" | "cancelled";
 export type AppMatchUiPhase = "upcoming" | "ongoing" | "ended" | "excluded";
 export type AppMatchRegistrationStatus = "unknown" | "attending" | "leave" | "absent" | "cancelled";
 export type AppMatchPublicationMode = "offline_confirmed" | "online_team" | "online_individual" | "online_pickup";
+export type AppMatchFeeType = "offline_aa" | "free" | "fixed_amount" | "team_fund";
 export type AppMatchPaymentMode = "postpaid" | "prepaid";
 
 /** 主队队长资料：详情接口返回，供「联系队长」留言入口使用。 */
@@ -74,6 +75,8 @@ export interface AppMatchSummary extends AppMatchPhaseSource {
   away_team_logo_url?: string | null;
   /** 发布者用户 ID：散人约球无主队，用它判定「我创建的比赛」以显示取消入口。 */
   created_by_user_id?: number | null;
+  /** 用户列表返回；与后端 scope=mine 的判定一致，供约队大厅本地筛选。 */
+  is_related_to_me?: boolean;
   players_per_team: number;
   /** 主队比分；null 表示尚未录入（比赛管理员/管理端录入）。 */
   host_score?: number | null;
@@ -88,6 +91,7 @@ export interface AppMatchSummary extends AppMatchPhaseSource {
   is_free?: boolean;
   payment_mode?: AppMatchPaymentMode;
   fee_per_person_cents?: number;
+  fee_type?: AppMatchFeeType;
   host_color?: string | null;
   away_color?: string | null;
   registration_groups?: AppMatchRegistrationGroupSummary[];

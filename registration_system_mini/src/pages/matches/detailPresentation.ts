@@ -17,7 +17,9 @@ export function resolveDetailActions(input: {
     : { primary: registration, secondary: null };
 }
 
-export function formatDetailFee(match: Pick<AppMatchSummary, "fee_per_person_cents" | "payment_mode"> | null): string {
+export function formatDetailFee(match: Pick<AppMatchSummary, "fee_per_person_cents" | "payment_mode" | "fee_type"> | null): string {
+  if (match?.fee_type === "team_fund") return "队费扣除";
+  if (match?.fee_type === "offline_aa") return "线下 AA";
   const cents = match?.fee_per_person_cents;
   if (cents == null || !Number.isFinite(cents) || cents < 0) return "费用待确认";
   if (cents === 0) return "免费";

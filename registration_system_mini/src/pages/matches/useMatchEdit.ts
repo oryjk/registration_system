@@ -54,6 +54,9 @@ export function useMatchEdit(params: {
   reload: () => Promise<void> | void;
 }) {
   const dialogVisible = ref(false);
+  const name = ref("");
+  const location = ref("");
+  const description = ref("");
   const opponentName = ref("");
   const maxPlayers = ref("");
   const startTime = ref(0);
@@ -70,6 +73,9 @@ export function useMatchEdit(params: {
     const source = params.sourceMatch.value;
     if (!source) return;
     const hostGroup = params.matchTeamGroups.value.find((group) => group.kind === "host_team");
+    name.value = source.name;
+    location.value = source.location;
+    description.value = source.description ?? "";
     opponentName.value = source.opponent_name ?? "";
     maxPlayers.value = String(hostGroup?.maxPlayers ?? source.players_per_team ?? "");
     startTime.value = parseBackendTimestamp(source.start_time);
@@ -97,8 +103,10 @@ export function useMatchEdit(params: {
     isSubmitting.value = true;
     try {
       await updateMyMatch(source.id, {
-        opponent_name: opponentName.value.trim(),
-        max_players: limit,
+        name: name.value.trim(),
+        location: location.value.trim(),
+        description: description.value.trim(),
+        ...(source.publication_mode !== "online_pickup" ? { opponent_name: opponentName.value.trim(), max_players: limit } : {}),
         start_time: new Date(startTime.value).toISOString(),
         end_time: new Date(endTime.value).toISOString(),
         ...(modeChanged ? { publication_mode: publicationMode.value } : {}),
@@ -115,6 +123,7 @@ export function useMatchEdit(params: {
   }
 
   async function submit() {
+    if (!name.value.trim() || !location.value.trim()) { uni.showToast({ title: "请填写比赛标题和场地", icon: "none" }); return; }
     const limit = Number(maxPlayers.value.trim());
     if (Number.isNaN(limit) || limit <= 0) {
       uni.showToast({ title: "请填写有效的人数上限", icon: "none" });
@@ -154,7 +163,7 @@ export function useMatchEdit(params: {
   }
 
   return {
-    dialogVisible, opponentName, maxPlayers, startTime, endTime,
+    dialogVisible, name, location, description, opponentName, maxPlayers, startTime, endTime,
     publicationMode, typeChangeState, setPublicationMode,
     pastTimeDialogVisible, pastTimeMessage, isSubmitting,
     open, close, submit, confirmPastTimeSubmit, cancelPastTimeSubmit,

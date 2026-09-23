@@ -369,7 +369,7 @@ describe("match detail registration design", () => {
   });
 
   test("shows both team progress bars for online team matches", async () => {
-    const pageLogic = await sourceFile("pages/matches/useMatchDetailPage.ts").text();
+    const pageLogic = (await sourceFile("pages/matches/useMatchDetailPage.ts").text()) + (await sourceFile("pages/matches/detailTeamProgress.ts").text());
     const detailData = await sourceFile("pages/matches/detailData.ts").text();
     const detailPage = await sourceFile("pages/matches/detail.vue").text();
     const individual = await sourceFile("pages/matches/components/MatchIndividualRegistration.vue").text();

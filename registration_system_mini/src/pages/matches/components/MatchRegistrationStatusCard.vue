@@ -24,8 +24,8 @@ const emit = defineEmits<{ (event: "avatarSelect", avatar: AvatarItem): void }>(
 
 const hasTeamProgress = computed(() => !!props.teamProgress && props.teamProgress.length > 0);
 const hasPendingPayment = computed(() => !!props.pendingPaymentFeeLabel);
-function selectAvatar(id: string | number) {
-  const participant = props.participants?.find(item => item.id === id);
+function selectAvatar(id: string | number, participants = props.participants) {
+  const participant = participants?.find(item => item.id === id);
   if (participant) emit("avatarSelect", participant);
 }
 </script>
@@ -47,6 +47,8 @@ function selectAvatar(id: string | number) {
             :joined="team.attending"
             :minimum="team.required"
             :maximum="team.max"
+            :avatars="team.avatars"
+            @avatar-select="selectAvatar($event, team.avatars)"
           />
         </view>
       </template>

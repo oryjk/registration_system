@@ -7,6 +7,7 @@ const props = defineProps<{
   holdingDate: number;
   matchEndTime: number;
   timeValidMessage?: string;
+  compact?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -112,7 +113,7 @@ function handleMatchEndTimeChange(event: Event) {
 </script>
 
 <template>
-  <view>
+  <view :class="['match-schedule-fields', { 'match-schedule-fields--compact': compact }]">
     <view class="date-head">
       <text class="date-head-title">比赛日期</text>
       <picker mode="date" :value="selectedDateValue" @change="handleDatePickerChange">
@@ -140,24 +141,24 @@ function handleMatchEndTimeChange(event: Event) {
     <view class="time-tile-grid">
       <picker mode="time" :value="formatPickerTimeValue(holdingDate)" @change="handleMatchStartTimeChange">
         <view class="time-tile">
-          <text class="time-tile-label">比赛开始时间</text>
+          <text class="time-tile-label">开始时间</text>
           <view class="time-tile-value-row">
             <text :class="['time-tile-value', !holdingDate ? 'time-tile-value-placeholder' : '']">
-              {{ displayTimeLabel(holdingDate) || "请选择比赛开始时间" }}
+              {{ displayTimeLabel(holdingDate) || "选择时间" }}
             </text>
-            <text class="time-tile-arrow">›</text>
+            <view class="time-tile-edit" aria-label="修改时间"><view class="time-tile-edit-pencil" /></view>
           </view>
         </view>
       </picker>
 
       <picker mode="time" :value="formatPickerTimeValue(matchEndTime)" @change="handleMatchEndTimeChange">
         <view class="time-tile">
-          <text class="time-tile-label">比赛结束时间</text>
+          <text class="time-tile-label">结束时间</text>
           <view class="time-tile-value-row">
             <text :class="['time-tile-value', !matchEndTime ? 'time-tile-value-placeholder' : '']">
-              {{ displayTimeLabel(matchEndTime) || "请选择比赛结束时间" }}
+              {{ displayTimeLabel(matchEndTime) || "选择时间" }}
             </text>
-            <text class="time-tile-arrow">›</text>
+            <view class="time-tile-edit" aria-label="修改时间"><view class="time-tile-edit-pencil" /></view>
           </view>
         </view>
       </picker>
@@ -261,8 +262,8 @@ function handleMatchEndTimeChange(event: Event) {
 }
 
 .time-tile-grid {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16rpx;
   margin-top: 22rpx;
 }
@@ -276,7 +277,7 @@ function handleMatchEndTimeChange(event: Event) {
   background: var(--ui-color-surface);
   box-sizing: border-box;
   display: grid;
-  grid-template-columns: 180rpx minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
   align-items: center;
   gap: 18rpx;
 }
@@ -312,12 +313,42 @@ function handleMatchEndTimeChange(event: Event) {
   color: var(--ui-color-text-disabled);
 }
 
-.time-tile-arrow {
+.time-tile-edit {
   flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36rpx;
+  height: 36rpx;
   color: var(--ui-color-text-muted);
-  font-size: 44rpx;
-  font-weight: 400;
-  line-height: 1;
+}
+.time-tile-edit-pencil {
+  position: relative;
+  width: 12rpx;
+  height: 28rpx;
+  border: 3rpx solid currentColor;
+  border-radius: 3rpx 3rpx 0 0;
+  box-sizing: border-box;
+  transform: rotate(45deg);
+}
+.time-tile-edit-pencil::before {
+  content: "";
+  position: absolute;
+  top: 3rpx;
+  left: 0;
+  right: 0;
+  border-top: 2rpx solid currentColor;
+}
+.time-tile-edit-pencil::after {
+  content: "";
+  position: absolute;
+  bottom: -9rpx;
+  left: -3rpx;
+  width: 0;
+  height: 0;
+  border-left: 6rpx solid transparent;
+  border-right: 6rpx solid transparent;
+  border-top: 7rpx solid currentColor;
 }
 
 .form-error {
@@ -327,6 +358,29 @@ function handleMatchEndTimeChange(event: Event) {
   font-weight: 500;
   line-height: 1.45;
 }
+
+.match-schedule-fields--compact .date-head { margin-top: 22rpx; }
+.match-schedule-fields--compact .date-head-title { font-size: 23rpx; }
+.match-schedule-fields--compact .date-more-link { height: 48rpx; padding: 0 16rpx; }
+.match-schedule-fields--compact .date-option-scroll { margin-top: 14rpx; }
+.match-schedule-fields--compact .date-option-row { gap: 10rpx; }
+.match-schedule-fields--compact .date-option-card { width: 114rpx; min-height: 136rpx; }
+.match-schedule-fields--compact .date-option-top { font-size: 21rpx; }
+.match-schedule-fields--compact .date-option-day { margin-top: 6rpx; font-size: 46rpx; }
+.match-schedule-fields--compact .date-option-month { margin-top: 5rpx; font-size: 19rpx; }
+.match-schedule-fields--compact .time-tile-grid { gap: 12rpx; margin-top: 18rpx; }
+.match-schedule-fields--compact .time-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12rpx;
+  min-height: 88rpx;
+  padding: 14rpx 18rpx;
+}
+.match-schedule-fields--compact .time-tile-label { font-size: 23rpx; }
+.match-schedule-fields--compact .time-tile-value-row { flex: 0 0 auto; gap: 12rpx; }
+.match-schedule-fields--compact .time-tile-value { font-size: 27rpx; }
+
 
 /* H5 减少动态效果：日期卡直接切换选中态，无缩放位移。 */
 @media (prefers-reduced-motion: reduce) {

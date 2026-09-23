@@ -1,10 +1,13 @@
 <script setup lang="ts">
-import { usePageRefresh } from "@/composables/usePageRefresh";
+import { usePullRefresh } from "@/composables/usePullRefresh";
+import { APP_SCROLL_CONTROLLER, createAppScrollAnchor } from "@/components/appScroll";
 import { useAccentTheme } from "@/stores/theme";
-import { computed, ref } from "vue";
+import { computed, provide, ref } from "vue";
 import { onLoad, onShow, onUnload } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
+import AppPullScrollView from "@/components/AppPullScrollView.vue";
 import BottomTabBar from "@/components/BottomTabBar.vue";
+import { tabBarMotion } from "@/components/tabBarMotion";
 import AppButton from "@/components/ui/AppButton.vue";
 import SegmentedControl from "@/components/ui/SegmentedControl.vue";
 import { getTeamAttendanceSummary } from "@/api/team";
@@ -42,7 +45,7 @@ const statsTab = ref<"records" | "ranking">("records");
 
 const currentYear = new Date().getFullYear();
 const currentTeamName = computed(() => currentTeam.value?.name || "当前球队");
-const pageStyle = computed(() => ({
+const contentStyle = computed(() => ({
   paddingTop: `${navMetrics.pageTopPadding + 8}px`,
 }));
 const myDisplayName = computed(() => resolveUserDisplayName(currentUser.value));
@@ -141,6 +144,7 @@ function handleSessionLoginCompleted() {
 }
 
 onShow(() => {
+  tabBarMotion.show("stats");
   // H5 路由切换时 onShow 可能早于 TabBar 挂载，此时无需隐藏。
   uni.hideTabBar({ animation: false, fail: () => {} });
   void loadPageData();
@@ -153,14 +157,21 @@ onLoad(() => {
 onUnload(() => {
   uni.$off("session:login-completed", handleSessionLoginCompleted);
 });
-usePageRefresh(loadPageData);
+// scroll-view 自定义下拉：页面本体不滚动，固定 header 不随下拉拖动。
+const { refreshing, handleRefresherRefresh } = usePullRefresh(loadPageData);
+// 滚动锚点提升到页面根：AppTabHeader 与滚动容器是兄弟节点，provide 必须来自页面。
+const { anchor: appScrollAnchor, controller: appScrollController } = createAppScrollAnchor();
+provide(APP_SCROLL_CONTROLLER, appScrollController);
 </script>
 
 <template>
-  <page-meta :page-style="themePageStyle" />
-  <view class="app-theme-scope stats-page" :style="[themePageStyle, pageStyle]">
+  <!-- 页面本体锁定不滚动（滚动在 AppPullScrollView 内），header 不随下拉移动。 -->
+  <page-meta :page-style="`${themePageStyle};overflow:hidden`" />
+  <view class="app-theme-scope stats-page" :style="themePageStyle">
     <AppTabHeader title="统计" />
 
+    <AppPullScrollView ref="appScrollAnchor" :refreshing="refreshing" @refresh="handleRefresherRefresh">
+      <view class="stats-content" :style="contentStyle">
     <template v-if="!requiresLogin">
       <view v-if="errorMessage" class="stats-empty">
         {{ errorMessage }}
@@ -207,7 +218,9 @@ usePageRefresh(loadPageData);
           </view>
         </view>
       </template>
-    </template>
+      </template>
+      </view>
+    </AppPullScrollView>
 
     <BottomTabBar current="stats" />
   </view>
@@ -216,9 +229,14 @@ usePageRefresh(loadPageData);
 <style scoped>
 .stats-page {
   min-height: 100vh;
-  padding: calc(env(safe-area-inset-top) + 30rpx) 24rpx 164rpx;
+  padding: 0 24rpx;
   background: var(--ui-color-page);
   box-sizing: border-box;
+}
+
+.stats-content {
+  /* 滚动收进 AppPullScrollView 后，底栏留白由滚动内容自己承担。 */
+  padding-bottom: 164rpx;
 }
 
 .stats-empty {

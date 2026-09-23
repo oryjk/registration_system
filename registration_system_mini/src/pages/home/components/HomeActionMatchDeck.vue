@@ -110,7 +110,11 @@ function change(step: number) {
     }, reduced ? 0 : 32);
   }, settleDuration.value);
 }
-function start(event: { touches: ArrayLike<Point> }) {
+function start(event: { touches: ArrayLike<Point>; target?: unknown }) {
+  // 头像区域由内部 scroll-view 处理滚动与点击，不拦截其原生触摸事件。
+  const target = event.target as { dataset?: { deckIgnore?: string | boolean } } | null;
+  const ignore = target?.dataset?.deckIgnore;
+  if (ignore === true || ignore === "true") { origin = null; return; }
   if (settling.value || dragging.value || event.touches.length !== 1) return;
   gestureWidth = Math.max(1, uni.getWindowInfo().windowWidth);
   const point = event.touches[0];

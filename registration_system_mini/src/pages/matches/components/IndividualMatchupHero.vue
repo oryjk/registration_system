@@ -91,10 +91,6 @@ const matchStatusTag = computed(() => {
       <view class="hero-venue" @tap="$emit('openLocation')">
         <image class="hero-info-icon" src="/static/icons/lucide/map-pin.png" mode="aspectFit" aria-hidden="true" />
         <text class="hero-venue-text">{{ matchLocation }}</text>
-        <text
-          v-if="matchLocation && match.location_latitude != null && match.location_longitude != null"
-          class="hero-venue-arrow"
-        >›</text>
       </view>
     </view>
 
@@ -267,8 +263,10 @@ const matchStatusTag = computed(() => {
   text-align: center;
 }
 
-/* 队徽不加外框；缺图时用同尺寸的队名首字占位。 */
+/* 主客队徽与缺图占位统一使用圆角矩形。 */
 .hero-logo {
+  border-radius: var(--ui-radius-button);
+  overflow: hidden;
   width: 96rpx;
   height: 96rpx;
   border: 0;
@@ -281,7 +279,6 @@ const matchStatusTag = computed(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: var(--ui-radius-round);
   background: var(--ui-color-neutral-bg);
   color: var(--ui-color-text);
   font-size: 32rpx;
@@ -344,10 +341,4 @@ const matchStatusTag = computed(() => {
 
 }
 
-.hero-venue-arrow {
-  flex-shrink: 0;
-  font-size: 30rpx;
-  line-height: 1;
-  font-weight: 600;
-}
 </style>

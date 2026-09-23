@@ -33,7 +33,9 @@ describe("home page loading states", () => {
 
     expect(homePageSource.includes("const isRefreshing = ref(false);")).toEqual(true);
     expect(homePageSource.includes('class="home-refresh-mask"')).toEqual(true);
-    expect(homePageSource.includes("usePageRefresh(() => loadPageData({ preserveContent: hasLoadedOnce.value }));")).toEqual(true);
+    // scroll-view 自定义下拉：页面本体不滚动，固定 header 不随下拉拖动。
+    expect(homePageSource.includes("const { refreshing, handleRefresherRefresh } = usePullRefresh(() => loadPageData({ preserveContent: hasLoadedOnce.value }));")).toEqual(true);
+    expect(homePageSource.includes("<AppPullScrollView")).toEqual(true);
     expect(homePageSource.includes("void loadPageData({ preserveContent: true });")).toEqual(true);
   });
 
@@ -72,10 +74,15 @@ describe("home page loading states", () => {
     expect(homePageSource.includes("if (hiddenDuration < HIDDEN_RELOAD_THRESHOLD_MS) return;")).toEqual(true);
     expect(homePageSource.includes("onHide(() => {")).toEqual(true);
     expect(homePageSource.includes("hiddenAt.value = Date.now();")).toEqual(true);
-    expect(homePageSource.includes("usePageRefresh(() => loadPageData(")).toEqual(true);
-    expect(homePageSource.includes('import { usePageRefresh } from "@/composables/usePageRefresh";')).toEqual(true);
+    expect(homePageSource.includes("usePullRefresh(() => loadPageData(")).toEqual(true);
+    expect(homePageSource.includes('import { usePullRefresh } from "@/composables/usePullRefresh";')).toEqual(true);
     expect(homePageSource.includes("shouldSkipNextShowRefresh")).toEqual(false);
-    expect(pagesJson.includes('"enablePullDownRefresh": true')).toEqual(true);
+    // 四个 tab 页改为 scroll-view 自定义下拉，pages.json 不再开启原生下拉。
+    for (const tabPath of ["pages/home/index", "pages/activities/index", "pages/teams/index", "pages/user/index"]) {
+      const entryMatch = pagesJson.match(new RegExp(`"path": "${tabPath}",\\s*"style":\\s*\\{[^}]*\\}`));
+      if (!entryMatch) throw new Error(`pages.json 缺少 ${tabPath} 条目`);
+      expect(entryMatch[0].includes("enablePullDownRefresh")).toEqual(false);
+    }
   });
 
   test("switches the home page to /matches/home sections and removes legacy opportunity sources", async () => {
@@ -184,7 +191,9 @@ describe("home page loading states", () => {
     expect(source.includes("<HomeMatchSearchResults")).toEqual(true);
     expect(source.includes("template #extension")).toEqual(false);
     expect(source.includes("APP_TAB_HEADER_EXTENSION_RPX")).toEqual(false);
-    expect(source.includes("onReachBottom")).toEqual(true);
+    // 触底加载由 AppPullScrollView 的 scrolltolower 转发（reach-bottom），不再用页面 onReachBottom。
+    expect(source.includes('@reach-bottom="loadMoreSearchResults"')).toEqual(true);
+    expect(source.includes("onReachBottom")).toEqual(false);
     expect(source.includes("HOME_MATCH_SEARCH_PAGE_SIZE")).toEqual(true);
     expect(source.includes("loadAllHomeMatchSearchResults")).toEqual(false);
     // 收起态只有放大镜图标：搜索框组件不渲染「搜索」文字按钮，靠键盘确认与取消收起。

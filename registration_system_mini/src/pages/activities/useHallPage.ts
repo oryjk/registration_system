@@ -2,7 +2,7 @@ import { computed, ref } from "vue";
 import { listMatches } from "@/api/match";
 import { useMiniReviewStatus } from "@/stores/miniReview";
 import { useTeamContext } from "@/stores/teamContext";
-import { hasManualLogout } from "@/utils/authStorage";
+import { getAccessToken, hasManualLogout } from "@/utils/authStorage";
 import type { AppMatchSummary } from "@/types/match";
 import {
   buildHallCalendarDays,
@@ -54,6 +54,8 @@ export function useHallPage() {
   const nowTick = ref(Date.now());
 
   let loadVersion = 0;
+  // 会话数据已由 useTeamContext 持有；切换日期只需要重新拉比赛。
+  let validatedSessionToken: string | null = null;
   let windowTimer: ReturnType<typeof setInterval> | null = null;
 
   const showInitialLoadingState = computed(() => isLoading.value && !hasLoadedOnce.value);
@@ -61,22 +63,22 @@ export function useHallPage() {
   const canOpenPublishSheet = computed(() => !shouldHideCreationEntrances.value);
   // 球队约队/创建比赛需要可管理的球队或场馆身份；散人点击时由页面弹窗引导开通。
   const hasPublishIdentity = computed(() => !!currentIdentity.value);
-  // 按钮判定依赖当前球队身份：主队成员见"去报名"，对方队长见"去接约"，其余见"查看比赛"。
+  // 按钮判定依赖当前球队身份：主队成员见"去报名"，其他球队队长见"接约"，其余见"查看详情"。
   const hallViewer = computed(() => ({
     teamId: currentTeam.value?.id ?? null,
-    canManageTeam: !!currentTeam.value?.canManageTeam,
+    isCaptain: !!currentTeam.value?.isCaptain,
   }));
   const hallCards = computed<HallMatchCardViewModel[]>(() => {
     const cards = sourceMatches.value.map((match) =>
       toHallMatchCard(match, hallViewer.value, nowTick.value),
     );
-    return filterHallMatches(cards, sourceMatches.value, activeKind.value === "mine" ? "all" : activeKind.value, activeSize.value);
+    return filterHallMatches(cards, sourceMatches.value, activeKind.value, activeSize.value);
   });
   const hasMore = computed(() => !isPaginationComplete(sourceMatches.value, pagination.value));
 
   function fetchHallPage(page: number) {
     return listMatches({
-      scope: activeKind.value === "mine" ? "mine" : "all",
+      scope: "all",
       status: "registering",
       // 后端 start_time 存 UTC 时刻；时间过滤统一传 UTC 时刻。
       startsAfter: new Date(),
@@ -87,7 +89,7 @@ export function useHallPage() {
     });
   }
 
-  async function loadPageData(options?: { preserveContent?: boolean }) {
+  async function loadPageData(options?: { preserveContent?: boolean; reuseSession?: boolean }) {
     const version = ++loadVersion;
     const preserveContent = !!options?.preserveContent && hasLoadedOnce.value;
 
@@ -109,8 +111,11 @@ export function useHallPage() {
       }
 
       isGuestMode.value = false;
-      await ensureSessionReady();
-      if (version !== loadVersion) return;
+      if (!options?.reuseSession || validatedSessionToken !== getAccessToken()) {
+        await ensureSessionReady();
+        if (version !== loadVersion) return;
+        validatedSessionToken = getAccessToken();
+      }
 
       const response = await fetchHallPage(1);
       if (version !== loadVersion) return;
@@ -157,11 +162,7 @@ export function useHallPage() {
   }
 
   function selectKind(kind: HallMatchKindFilter) {
-    const scopeChanged = (kind === "mine") !== (activeKind.value === "mine");
     activeKind.value = kind;
-    if (scopeChanged) {
-      void loadPageData({ preserveContent: hasLoadedOnce.value });
-    }
   }
 
   function selectSize(size: HallMatchSizeFilter) {
@@ -171,13 +172,14 @@ export function useHallPage() {
   function selectDate(key: string) {
     if (key === selectedDateKey.value) return;
     selectedDateKey.value = key;
-    void loadPageData({ preserveContent: hasLoadedOnce.value });
+    void loadPageData({ preserveContent: hasLoadedOnce.value, reuseSession: true });
   }
 
   async function handleLogin() {
     try {
       await ensureSessionReady(true);
-      await loadPageData({ preserveContent: false });
+      validatedSessionToken = getAccessToken();
+      await loadPageData({ preserveContent: false, reuseSession: true });
     } catch (error) {
       uni.showToast({
         title: error instanceof Error ? error.message : "登录失败",

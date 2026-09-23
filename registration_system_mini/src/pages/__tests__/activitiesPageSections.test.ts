@@ -29,7 +29,7 @@ describe("activities page sections", () => {
     expect(state.includes("/pages/matches/detail?id=")).toEqual(true);
     expect(state.includes("/pages/matches/apply-team/index?id=")).toEqual(true);
     expect(card.includes("ui-border-default")).toEqual(true);
-    expect(card.includes("AppProgress")).toEqual(true);
+    expect(card.includes("RegistrationProgressSummary")).toEqual(true);
     expect(card.includes(':stop-propagation="false"')).toEqual(true);
     expect(source.includes("acceptChallenge")).toEqual(false);
     expect(source.includes("cancelIndividualChallengeAcceptance")).toEqual(false);
@@ -76,8 +76,8 @@ describe("activities page sections", () => {
     const source = await Bun.file(sourcePath("pages/challenges/create-individual/index.vue")).text();
 
     expect(pages.includes('"path": "pages/challenges/create-individual/index"')).toEqual(true);
-    // 散人约球对接 Go 后端：POST /matches，publication_mode=online_pickup（无球队概念）。
-    expect(source.includes('import { createMatch } from "@/api/match";')).toEqual(true);
+    // 散人约球对接 Go 后端：POST /matches，publication_mode=online_pickup（无球队概念）；支持编辑已发布的散人局。
+    expect(source.includes('import { createMatch, getMatchDetail, updateMyMatch, getVenueSuggestions } from "@/api/match";')).toEqual(true);
     expect(source.includes('publication_mode: "online_pickup"')).toEqual(true);
     expect(source.includes("createChallenge")).toEqual(false);
     expect(source.includes("challengeKind")).toEqual(false);
@@ -98,25 +98,28 @@ describe("activities page sections", () => {
     expect(source.includes('uni.switchTab({ url: "/pages/home/index" });')).toEqual(true);
     expect(source.includes('const reviewGateReady = ref(false);')).toEqual(true);
     expect(source.includes('v-if="reviewGateReady"')).toEqual(true);
-    expect(source.includes("async function handleSubmit() {\n  if (await guardReviewMode()) return;")).toEqual(true);
+    // 编辑已发布散人局时不再重复过审核门控，仅新发布需要。
+    expect(source.includes("async function handleSubmit() {\n  if (!editId.value && await guardReviewMode()) return;")).toEqual(true);
   });
 
   test("supports map location picking when creating an individual challenge", async () => {
     const source = await Bun.file(sourcePath("pages/challenges/create-individual/index.vue")).text();
+    const venueField = await Bun.file(sourcePath("pages/challenges/create-individual/IndividualVenueField.vue")).text();
 
     expect(source.includes("function handleChooseLocation")).toEqual(true);
     expect(source.includes("uni.chooseLocation")).toEqual(true);
     expect(source.includes("function handleLocationInput")).toEqual(true);
-    expect(source.includes("@input=\"handleLocationInput\"")).toEqual(true);
-    expect(source.includes("@tap=\"handleChooseLocation\"")).toEqual(true);
-    expect(source.includes("form-location-row")).toEqual(true);
-    expect(source.includes("grid-template-columns: minmax(0, 1fr) 150rpx")).toEqual(true);
-    expect(source.includes("create-location-head")).toEqual(false);
+    expect(source.includes("<IndividualVenueField")).toEqual(true);
+    expect(source.includes('@manual-input="handleLocationInput"')).toEqual(true);
+    expect(source.includes('@choose-location="handleChooseLocation"')).toEqual(true);
+    expect(venueField.includes('@tap="handleChooseLocation"')).toEqual(true);
+    expect(venueField.includes('@focus="handleFocus"')).toEqual(true);
+    expect(venueField.includes("没有历史？打开地图选择")).toEqual(true);
     expect(source.includes("locationLatitude: null as number | null")).toEqual(true);
     expect(source.includes("locationLongitude: null as number | null")).toEqual(true);
     expect(source.includes("location_latitude: form.locationLatitude ?? undefined")).toEqual(true);
     expect(source.includes("location_longitude: form.locationLongitude ?? undefined")).toEqual(true);
-    expect(source.includes("已选择地图位置，详情页可直接打开地图。")).toEqual(true);
+    expect(source.includes("rememberVenue(currentUser.value?.id ?? null")).toEqual(true);
   });
 
   test("mine profile keeps team switch without the identity switcher card", async () => {

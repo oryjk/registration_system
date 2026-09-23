@@ -65,7 +65,7 @@ export function listMyMatches(params: { page: number; pageSize: number; search?:
 }
 
 /** 主队管理者编辑比赛：对手名称（空串=清除）、主队报名组人数上限、起止时间与比赛类型；均可选，不传不改。 */
-export function updateMyMatch(matchId: string, payload: { opponent_name?: string; max_players?: number; start_time?: string; end_time?: string; publication_mode?: AppMatchSummary["publication_mode"] }) {
+export function updateMyMatch(matchId: string, payload: Partial<CreateMatchPayload> & { max_players?: number }) {
   return requestApi<AppMatchDetailResponse>({
     url: `/matches/${matchId}`,
     method: "PATCH",
@@ -120,6 +120,7 @@ export interface CreateMatchPayload {
   payment_mode?: AppMatchPaymentMode;
   /** 人均报名费（分）。 */
   fee_per_person_cents?: number;
+  fee_type?: import("@/types/match").AppMatchFeeType;
   host_color?: string;
   away_color?: string;
 }

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { MatchPublishFormModel } from "../components/matchPublishForm";
+import type { MatchPublishFormModel } from "../components/matchPublishFormModel";
 import { buildCreateMatchPayload } from "../createMatchPayload";
 
 function buildForm(overrides: Partial<MatchPublishFormModel> = {}): MatchPublishFormModel {
@@ -30,7 +30,10 @@ describe("buildCreateMatchPayload", () => {
     expect(buildCreateMatchPayload(buildForm(), { id: 7, name: "东安联队" })).toEqual({
       name: "周末友谊赛",
       publication_mode: "offline_confirmed",
-      is_free: true,
+      is_free: false,
+      fee_type: "team_fund",
+      payment_mode: "postpaid",
+      fee_per_person_cents: 0,
       host_color: "#2F6BFF",
       away_color: "#C8FF00",
       host_team_id: 7,
@@ -108,4 +111,12 @@ describe("buildCreateMatchPayload", () => {
     expect(payload.host_color).toEqual("#2F6BFF");
     expect(payload.away_color).toEqual("#C8FF00");
   });
+});
+
+test("online team modes default to AA while explicit fee choices are respected", () => {
+ for (const publicationMode of ["online_team", "online_individual"] as const) {
+  expect(buildCreateMatchPayload(buildForm({ publicationMode }), hostTeam).fee_type).toEqual("offline_aa");
+ }
+ expect(buildCreateMatchPayload(buildForm({ feeType: "free" }), hostTeam).is_free).toEqual(true);
+ expect(buildCreateMatchPayload(buildForm({ feeType: "fixed_amount", feePerPerson: "25" }), hostTeam).fee_per_person_cents).toEqual(2500);
 });

@@ -11,7 +11,6 @@
       "style": {
         "navigationBarTitleText": "首页",
         "navigationStyle": "custom",
-        "enablePullDownRefresh": true,
         "backgroundColor": "#eef2e9",
         "backgroundTextStyle": "dark",
         "disableScroll": false
@@ -22,8 +21,7 @@
       "style": {
         "navigationBarTitleText": "约队大厅",
         "navigationStyle": "custom",
-        "disableScroll": false,
-        "enablePullDownRefresh": true
+        "disableScroll": false
       }
     },
     {
@@ -31,8 +29,7 @@
       "style": {
         "navigationBarTitleText": "统计",
         "navigationStyle": "custom",
-        "disableScroll": false,
-        "enablePullDownRefresh": true
+        "disableScroll": false
       }
     },
     {
@@ -93,8 +90,7 @@
       "style": {
         "navigationBarTitleText": "我的",
         "navigationStyle": "custom",
-        "disableScroll": false,
-        "enablePullDownRefresh": true
+        "disableScroll": false
       }
     },
     {

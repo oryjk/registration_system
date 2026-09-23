@@ -9,12 +9,12 @@ import { resolveRegistrationWindow } from "@/utils/registrationWindow";
 export type HallMatchKindFilter = "all" | "team" | "individual" | "mine";
 export type HallMatchSizeFilter = 0 | 5 | 8;
 
-/** 按钮动作：报名（主队/客队成员）、接约（对方队长）、凑局（散人）、查看（其他）。 */
+/** 按钮动作：报名（主队及已确认客队成员）、接约（其他球队队长）、凑局（散人）、查看（其他）。 */
 export type HallCardActionKind = "register" | "accept" | "join" | "view";
 
 export interface HallViewerContext {
   teamId: number | null;
-  canManageTeam: boolean;
+  isCaptain: boolean;
 }
 
 export interface HallMatchCardViewModel {
@@ -40,9 +40,10 @@ export interface HallMatchCardViewModel {
   hostJoinedLabel: string;
   guestJoinedLabel: string;
   /** 列表进度条：球队约队有客队时为主/客两条，其余单条。 */
-  progressBars: Array<{ key: string; label: string; joined: number; required: number; max: number }>;
+  progressBars: Array<{ key: string; label: string; joined: number; required: number | null; max: number | null }>;
   actionKind: HallCardActionKind;
   actionLabel: string;
+  capacityHint: string;
 }
 
 export interface HallCalendarDay {
@@ -87,7 +88,7 @@ function toOpponentStateLabel(match: AppMatchSummary): { label: string; tone: Ap
     : { label: "招对手中", tone: "amber" };
 }
 
-const DEFAULT_VIEWER: HallViewerContext = { teamId: null, canManageTeam: false };
+const DEFAULT_VIEWER: HallViewerContext = { teamId: null, isCaptain: false };
 
 function resolveActionKind(match: AppMatchSummary, viewer: HallViewerContext, now: number): HallCardActionKind {
   const registrationWindow = resolveRegistrationWindow({
@@ -102,13 +103,14 @@ function resolveActionKind(match: AppMatchSummary, viewer: HallViewerContext, no
     return match.opponent_state === "confirmed" ? "view" : "join";
   }
   if (match.publication_mode === "online_team") {
-    // 主队和已确认客队的成员都视为“与我们球队相关”，直接去详情页报名。
-    const isViewerTeamInvolved = viewer.teamId !== null
-      && (viewer.teamId === match.host_team_id || viewer.teamId === match.away_team_id);
-    if (isViewerTeamInvolved) {
+    // 主队及已确认客队成员进入报名；其他球队仅队长可在招募期间进入接约。
+    const isHostMember = viewer.teamId !== null && viewer.teamId === match.host_team_id;
+    const isGuestMember = viewer.teamId !== null && viewer.teamId === match.away_team_id
+      && match.opponent_state === "confirmed";
+    if (isHostMember || isGuestMember) {
       return "register";
     }
-    if (match.opponent_state === "recruiting" && viewer.canManageTeam) {
+    if (match.opponent_state === "recruiting" && viewer.teamId !== null && viewer.isCaptain) {
       return "accept";
     }
     return "view";
@@ -118,9 +120,9 @@ function resolveActionKind(match: AppMatchSummary, viewer: HallViewerContext, no
 
 const ACTION_LABELS: Record<HallCardActionKind, string> = {
   register: "去报名",
-  accept: "去接约",
+  accept: "接约",
   join: "去凑局",
-  view: "查看比赛",
+  view: "查看详情",
 };
 
 export function toHallMatchCard(
@@ -156,20 +158,22 @@ export function toHallMatchCard(
       : "";
 
   // 有客队分组时渲染主/客两条进度条（与详情页一致）；否则保持单条进度。
-  const progressBars = !isIndividual && guestGroup && guestMax
+  const hostMinimum = hostGroup?.min_players ?? (match.players_per_team > 0 ? match.players_per_team : null);
+  const guestMinimum = resolveInheritedGuestLimit(hostMinimum, guestGroup?.min_players);
+  const progressBars = !isIndividual && guestGroup
     ? [
         {
           key: "host",
           label: match.host_team_name || "主队",
           joined: hostGroup?.attending_count ?? 0,
-          required: hostMax ?? match.players_per_team,
-          max: hostMax ?? match.players_per_team,
+          required: hostMinimum,
+          max: hostMax ?? null,
         },
         {
           key: "guest",
           label: match.away_team_name || "客队",
           joined: guestGroup.attending_count,
-          required: guestMax,
+          required: guestMinimum,
           max: guestMax,
         },
       ]
@@ -178,12 +182,15 @@ export function toHallMatchCard(
           key: "main",
           label: isIndividual ? "凑人进度" : "报名进度",
           joined: joinedPlayers,
-          required: requiredPlayers,
-          max: maxPlayers,
+          required: progressGroup?.min_players ?? (match.players_per_team > 0 ? match.players_per_team : null),
+          max: progressGroup?.max_players ?? null,
         },
       ];
 
-  const actionKind = resolveActionKind(match, viewer, now);
+  const individualFull = isIndividual && individualGroup?.max_players != null
+    && individualGroup.max_players > 0 && joinedPlayers >= individualGroup.max_players;
+  const capacityHint = individualFull ? "暂时没有名额，可查看比赛详情" : "";
+  const actionKind = individualFull ? "view" : resolveActionKind(match, viewer, now);
 
   return {
     id: match.id,
@@ -193,8 +200,8 @@ export function toHallMatchCard(
     dateBlock: formatHomeMatchDateBlock({ dateLabel, dateSource: match.start_time }),
     kindLabel: KIND_LABELS[match.publication_mode] ?? getMatchPublicationModeLabel(match.publication_mode),
     kindTone: KIND_TONES[match.publication_mode] ?? "muted",
-    opponentStateLabel: opponentState.label,
-    opponentStateTone: opponentState.tone,
+    opponentStateLabel: individualFull ? "报名已满" : opponentState.label,
+    opponentStateTone: individualFull ? "muted" : opponentState.tone,
     hostTeamName: match.host_team_name,
     hostTeamId: match.host_team_id,
     formatLabel: match.players_per_team > 0 ? `${match.players_per_team} 人制` : "人数待定",
@@ -208,6 +215,7 @@ export function toHallMatchCard(
     hostJoinedLabel,
     guestJoinedLabel,
     progressBars,
+    capacityHint,
     actionKind,
     actionLabel: ACTION_LABELS[actionKind],
   };
@@ -225,6 +233,7 @@ export function filterHallMatches(
     if (!match) return false;
     if (kind === "team" && match.publication_mode !== "online_team") return false;
     if (kind === "individual" && !isIndividualStyle(match)) return false;
+    if (kind === "mine" && match.is_related_to_me !== true) return false;
     if (size && match.players_per_team !== size) return false;
     return true;
   });

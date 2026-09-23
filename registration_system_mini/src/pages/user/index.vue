@@ -1,10 +1,13 @@
 <script setup lang="ts">
-import { usePageRefresh } from "@/composables/usePageRefresh";
-import { ref } from "vue";
+import { usePullRefresh } from "@/composables/usePullRefresh";
+import { APP_SCROLL_CONTROLLER, createAppScrollAnchor } from "@/components/appScroll";
+import { provide, ref } from "vue";
 import { useAccentTheme } from "@/stores/theme";
 import { onLoad, onShow, onUnload } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
+import AppPullScrollView from "@/components/AppPullScrollView.vue";
 import BottomTabBar from "@/components/BottomTabBar.vue";
+import { tabBarMotion } from "@/components/tabBarMotion";
 import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
 import MineProfileHero from "./components/MineProfileHero.vue";
 import MineTeamIdentityPanel from "./components/MineTeamIdentityPanel.vue";
@@ -77,6 +80,7 @@ function openContactDeveloper() {
 }
 
 onShow(() => {
+  tabBarMotion.show("mine");
   // H5 路由切换时 onShow 可能早于 TabBar 挂载，此时无需隐藏。
   uni.hideTabBar({ animation: false, fail: () => {} });
   void loadPageData();
@@ -89,14 +93,20 @@ onLoad(() => {
 onUnload(() => {
   uni.$off("session:login-completed", handleSessionLoginCompleted);
 });
-usePageRefresh(loadPageData);
+// scroll-view 自定义下拉：页面本体不滚动，固定 header 不随下拉拖动。
+const { refreshing, handleRefresherRefresh } = usePullRefresh(loadPageData);
+// 滚动锚点提升到页面根：AppTabHeader 与滚动容器是兄弟节点，provide 必须来自页面。
+const { anchor: appScrollAnchor, controller: appScrollController } = createAppScrollAnchor();
+provide(APP_SCROLL_CONTROLLER, appScrollController);
 </script>
 
 <template>
-  <page-meta :page-style="themePageStyle" />
+  <!-- 页面本体锁定不滚动（滚动在 AppPullScrollView 内），header 不随下拉移动。 -->
+  <page-meta :page-style="`${themePageStyle};overflow:hidden`" />
   <view class="app-theme-scope mine-page" :style="themePageStyle">
     <AppTabHeader title="我的" />
-    <view class="mine-page-content" :style="contentStyle">
+    <AppPullScrollView ref="appScrollAnchor" :refreshing="refreshing" @refresh="handleRefresherRefresh">
+      <view class="mine-page-content" :style="contentStyle">
       <RunningLoader v-if="showInitialLoadingState" text="正在热身" />
       <template v-else>
         <MineProfileHero :current-user="currentUser" :display-name="displayName" :team-joined-days-label="currentTeamJoinedDaysLabel" @edit-profile="handleEditProfile" @complete-profile="handleCompleteProfile" @login="handleLogin" />
@@ -133,9 +143,10 @@ usePageRefresh(loadPageData);
         </view>
       </template>
       <view class="mine-bottom-spacer" />
+      </view>
+    </AppPullScrollView>
       <ConfirmDialog :visible="confirmDialogVisible" :title="confirmDialogState.title" :message="confirmDialogState.message" :highlight="confirmDialogState.highlight" :primary-text="confirmDialogState.primaryText" :secondary-text="confirmDialogState.secondaryText" :primary-tone="confirmDialogState.primaryTone" @primary="handleConfirmPrimary" @secondary="handleConfirmSecondary" @close="handleConfirmClose" />
       <BottomTabBar current="mine" />
-    </view>
   </view>
 </template>
 <style scoped>

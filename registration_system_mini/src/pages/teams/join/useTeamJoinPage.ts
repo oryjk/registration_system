@@ -10,18 +10,21 @@ import { useProfileCompletionGate } from "../useProfileCompletionGate";
 
 // 加入球队独立页：对已在球队中的用户同样开放（一人可属于多支球队）。
 export function useTeamJoinPage() {
-  const { ensureSessionReady, refreshSessionContext } = useTeamContext();
+  const { myTeams, ensureSessionReady, refreshSessionContext } = useTeamContext();
   const { shouldHideCreationEntrances } = useMiniReviewStatus();
   const profileGate = useProfileCompletionGate();
   const navMetrics = getCustomNavMetrics();
 
   const submitting = ref(false);
   const searching = ref(false);
+  const hasSearched = ref(false);
   const searchKeyword = ref("");
   const searchResults = ref<BackendTeamSummary[]>([]);
   const selectedTeam = ref<BackendTeamSummary | null>(null);
   const selectedTeamRequiresPassword = ref(false);
   const joinPassword = ref("");
+  const joinedTeamIds = computed(() => myTeams.value.map(team => team.id));
+  const selectedTeamIsMember = computed(() => !!selectedTeam.value && joinedTeamIds.value.includes(selectedTeam.value.id));
   const canJoin = computed(() => !!selectedTeam.value && !submitting.value);
   const canShowCreateEntry = computed(() => !shouldHideCreationEntrances.value);
   const pageStyle = computed(() => ({ paddingTop: `${navMetrics.pageTopPadding + 8}px` }));
@@ -36,12 +39,15 @@ export function useTeamJoinPage() {
       uni.showToast({ title: "请输入球队名称", icon: "none" });
       return;
     }
+    if (searching.value) return;
     searching.value = true;
+    searchResults.value = [];
     selectedTeam.value = null;
     selectedTeamRequiresPassword.value = false;
     joinPassword.value = "";
     try {
       searchResults.value = await searchTeamsByKeyword(keyword);
+      hasSearched.value = true;
     } catch (error) {
       uni.showToast({ title: error instanceof Error ? error.message : "搜索球队失败", icon: "none" });
     } finally {
@@ -52,8 +58,11 @@ export function useTeamJoinPage() {
   async function handleSelectTeam(team: BackendTeamSummary) {
     selectedTeam.value = team;
     joinPassword.value = "";
+    selectedTeamRequiresPassword.value = false;
+    if (selectedTeamIsMember.value) return;
     try {
-      selectedTeamRequiresPassword.value = await checkTeamRequiresPassword(team.id);
+      const requiresPassword = await checkTeamRequiresPassword(team.id);
+      if (selectedTeam.value?.id === team.id) selectedTeamRequiresPassword.value = requiresPassword;
     } catch (error) {
       selectedTeamRequiresPassword.value = false;
       uni.showToast({ title: error instanceof Error ? error.message : "密码信息加载失败", icon: "none" });
@@ -63,6 +72,10 @@ export function useTeamJoinPage() {
   async function handleJoinTeam() {
     if (!selectedTeam.value) {
       uni.showToast({ title: "请选择要加入的球队", icon: "none" });
+      return;
+    }
+    if (selectedTeamIsMember.value) {
+      uni.navigateTo({ url: `/pages/teams/detail/index?teamId=${selectedTeam.value.id}` });
       return;
     }
     if (selectedTeamRequiresPassword.value && !joinPassword.value.trim()) {
@@ -87,7 +100,7 @@ export function useTeamJoinPage() {
   usePageRefresh(async () => {
     await ensureSessionReady();
     if (searchKeyword.value.trim()) searchResults.value = await searchTeamsByKeyword(searchKeyword.value.trim());
-    if (selectedTeam.value) selectedTeamRequiresPassword.value = await checkTeamRequiresPassword(selectedTeam.value.id);
+    if (selectedTeam.value && !selectedTeamIsMember.value) selectedTeamRequiresPassword.value = await checkTeamRequiresPassword(selectedTeam.value.id);
   });
 
   onShow(async () => {
@@ -97,9 +110,12 @@ export function useTeamJoinPage() {
   return {
     pageStyle,
     searching,
+    hasSearched,
     searchKeyword,
     searchResults,
     selectedTeam,
+    selectedTeamIsMember,
+    joinedTeamIds,
     selectedTeamRequiresPassword,
     joinPassword,
     canJoin,

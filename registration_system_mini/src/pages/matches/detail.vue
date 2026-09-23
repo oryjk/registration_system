@@ -13,7 +13,6 @@ import MatchSignupCountSheet from "./components/MatchSignupCountSheet.vue";
 import RunningLoader from "@/components/ui/RunningLoader.vue";
 import MatchFinishCard from "./components/MatchFinishCard.vue";
 import MatchCaptainContact from "./components/MatchCaptainContact.vue";
-import MatchEditDialog from "./components/MatchEditDialog.vue";
 import MatchScoreCard from "./components/MatchScoreCard.vue";
 import MatchScoreDialog from "./components/MatchScoreDialog.vue";
 import MatchJoinTeamSheet from "./components/MatchJoinTeamSheet.vue";
@@ -21,7 +20,6 @@ import MatchIndividualRegistration from "./components/MatchIndividualRegistratio
 import { MATCH_DETAIL_SHARE_IMAGE_URL } from "@/utils/share";
 import { useMatchCaptainContact } from "./useMatchCaptainContact";
 import { useMatchDetailPage } from "./useMatchDetailPage";
-import { useMatchEdit } from "./useMatchEdit";
 import { useMatchTeamApplications } from "./useMatchTeamApplications";
 import MatchTeamApplications from "./components/MatchTeamApplications.vue";
 
@@ -79,6 +77,7 @@ const {
   handleSignupSheetConfirm,
   handleSignupSheetCancelRegistration,
   currentTeam,
+  currentUser,
   openMatchLocation,
   handleSelectIndividualSignup,
   joinTeamSheet,
@@ -109,10 +108,16 @@ const {
 } = useMatchTeamApplications(sourceMatch, loadPageData, confirmRegistrationAction);
 
 const captainContact = useMatchCaptainContact();
-const matchEdit = useMatchEdit({ sourceMatch, matchTeamGroups, reload: loadPageData });
+function openMatchEditor() {
+  if (!sourceMatch.value) return;
+  const page = isPickupMatch.value ? "/pages/challenges/create-individual/index" : "/pages/matches/create/index";
+  uni.navigateTo({ url: `${page}?editId=${sourceMatch.value.id}` });
+}
 // 主队管理者可编辑比赛（对手名称与报名上限）；口径与接约申请的管理者判定一致。
 const canEditMatch = computed(() => {
   const source = sourceMatch.value;
+  if (!source || isGuestMode.value || source.status === "ended" || source.status === "cancelled") return false;
+  if (source.publication_mode === "online_pickup") return source.created_by_user_id === currentUser.value?.id;
   return !!source?.host_team_id
     && currentTeam.value?.id === source.host_team_id
     && !!currentTeam.value?.canManageTeam;
@@ -172,7 +177,7 @@ const { themePageStyle } = useAccentTheme();
 const metaPageStyle = computed(() =>
   [
     themePageStyle.value,
-    avatarPreviewRendered.value || teamMemberDialogVisible.value || confirmDialogVisible.value || finishDialogVisible.value || cancelDialogVisible.value || signupSheetVisible.value || captainContact.popupVisible.value || joinTeamSheet.sheetVisible.value || matchEdit.dialogVisible.value || matchScore.dialogVisible.value
+    avatarPreviewRendered.value || teamMemberDialogVisible.value || confirmDialogVisible.value || finishDialogVisible.value || cancelDialogVisible.value || signupSheetVisible.value || captainContact.popupVisible.value || joinTeamSheet.sheetVisible.value || matchScore.dialogVisible.value
       ? "overflow: hidden;"
       : "",
   ].filter(Boolean).join(";"),
@@ -259,7 +264,7 @@ const metaPageStyle = computed(() =>
         <SectionHeader title="比赛管理" />
         <AppSurface v-if="canEditMatch || (canCancelMatch && sourceMatch)" variant="outlined">
           <view class="match-manage-actions">
-            <button v-if="canEditMatch" class="match-manage-action" hover-class="match-manage-action--pressed" :disabled="submittingStatus" @tap="matchEdit.open">
+            <button v-if="canEditMatch" class="match-manage-action" hover-class="match-manage-action--pressed" :disabled="submittingStatus" @tap="openMatchEditor">
               修改比赛
             </button>
             <button v-if="canCancelMatch && sourceMatch" class="match-manage-action match-manage-action--cancel" hover-class="match-manage-action--pressed" :disabled="submittingStatus" @tap="handleCancelMatch">
@@ -344,39 +349,6 @@ const metaPageStyle = computed(() =>
       @close="handleCancelClose"
     />
 
-    <!-- 修改比赛：对手名称 + 报名人数上限 + 比赛起止时间（线上约队招募中可切类型）。 -->
-    <MatchEditDialog
-      :visible="matchEdit.dialogVisible.value"
-      :opponent-name="matchEdit.opponentName.value"
-      :max-players="matchEdit.maxPlayers.value"
-      :start-time="matchEdit.startTime.value"
-      :end-time="matchEdit.endTime.value"
-      :show-type-change="matchEdit.typeChangeState.value.visible"
-      :type-options="matchEdit.typeChangeState.value.options"
-      :type-value="matchEdit.publicationMode.value"
-      :submitting="matchEdit.isSubmitting.value"
-      @close="matchEdit.close"
-      @update:opponent-name="matchEdit.opponentName.value = $event"
-      @update:max-players="matchEdit.maxPlayers.value = $event"
-      @update:start-time="matchEdit.startTime.value = $event"
-      @update:end-time="matchEdit.endTime.value = $event"
-      @update:type-value="matchEdit.setPublicationMode"
-      @submit="void matchEdit.submit()"
-    />
-
-    <!-- 过去时间二次确认：开始时间早于当前时间时，确认后才提交（叠加在编辑弹窗之上）。 -->
-    <ConfirmDialog
-      :visible="matchEdit.pastTimeDialogVisible.value"
-      title="开始时间已过"
-      :message="matchEdit.pastTimeMessage.value"
-      primary-text="确认无误，保存"
-      secondary-text="返回修改"
-      :loading="matchEdit.isSubmitting.value"
-      @primary="void matchEdit.confirmPastTimeSubmit()"
-      @secondary="matchEdit.cancelPastTimeSubmit()"
-      @close="matchEdit.cancelPastTimeSubmit()"
-    />
-
     <!-- 录入比分：比赛管理员专用。 -->
     <MatchScoreDialog
       :visible="matchScore.dialogVisible.value"
@@ -410,6 +382,7 @@ const metaPageStyle = computed(() =>
       :max-count="signupMaxCount"
       :current-count="currentStatus === '参加' ? myRegistrationCount : 1"
       :fee-per-person-label="feePerPersonLabel"
+      :fee-type="sourceMatch?.fee_type"
       :submitting="submittingStatus"
       :can-cancel="currentStatus === '参加' && !myRegistrationPaid"
       @close="closeSignupSheet"

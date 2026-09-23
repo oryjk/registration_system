@@ -16,9 +16,14 @@ export interface MatchPublishFormModel {
   opposingColor: string;
   publicationMode: AppMatchPublicationMode;
   activityMatchKind?: "external" | "internal";
+  feeType?: import("@/types/match").AppMatchFeeType;
   feePerPerson?: string | number;
   enableCheckIn?: boolean;
   checkInRadiusMeters?: string | number;
   openMinutesBefore?: string | number;
   closeMinutesAfter?: string | number;
+}
+
+export function defaultMatchFeeType(mode: AppMatchPublicationMode) {
+  return mode === "offline_confirmed" ? "team_fund" as const : "offline_aa" as const;
 }

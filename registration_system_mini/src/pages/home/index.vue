@@ -1,10 +1,13 @@
 <script setup lang="ts">
-import { usePageRefresh } from "@/composables/usePageRefresh";
+import { computed, provide, ref, watch } from "vue";
 import { useAccentTheme } from "@/stores/theme";
-import { computed, ref, watch } from "vue";
-import { onHide, onLoad, onReachBottom, onShareAppMessage, onShareTimeline, onShow, onUnload } from "@dcloudio/uni-app";
+import { usePullRefresh } from "@/composables/usePullRefresh";
+import { APP_SCROLL_CONTROLLER, createAppScrollAnchor } from "@/components/appScroll";
+import { onHide, onLoad, onShareAppMessage, onShareTimeline, onShow, onUnload } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
+import AppPullScrollView from "@/components/AppPullScrollView.vue";
 import BottomTabBar from "@/components/BottomTabBar.vue";
+import { tabBarMotion } from "@/components/tabBarMotion";
 import ProfileCompletionDialog from "@/components/ProfileCompletionDialog.vue";
 import AvatarPreviewDialog from "@/components/ui/AvatarPreviewDialog.vue";
 import type { AvatarItem } from "@/components/ui/avatarTypes";
@@ -88,9 +91,6 @@ let searchLoadingTargetPage = 0;
 type MatchSectionPhase = Exclude<AppMatchUiPhase, "excluded">;
 
 const navMetrics = getCustomNavMetrics();
-const pageStyle = computed(() => ({
-  padding: "0 28rpx 180rpx",
-}));
 const contentStyle = computed(() => ({
   paddingTop: `${navMetrics.pageTopPadding + 8}px`,
 }));
@@ -324,6 +324,7 @@ function handleHomeDataMayChanged() {
 }
 
 onShow(() => {
+  tabBarMotion.show("home");
   actionMatchCardTimestamp.value = Date.now();
   // H5 路由切换时 onShow 可能早于 TabBar 挂载，此时无需隐藏。
   uni.hideTabBar({ animation: false, fail: () => {} });
@@ -354,13 +355,11 @@ onHide(() => {
   }
 });
 
-usePageRefresh(() => loadPageData({ preserveContent: hasLoadedOnce.value }));
-
-onReachBottom(() => {
-  if (hasSearched.value && activeSearchQuery.value) {
-    loadMoreSearchResults();
-  }
-});
+// scroll-view 自定义下拉：页面本体不滚动，固定 header 不随下拉拖动。
+const { refreshing, handleRefresherRefresh } = usePullRefresh(() => loadPageData({ preserveContent: hasLoadedOnce.value }));
+// 滚动锚点提升到页面根：AppTabHeader 与滚动容器是兄弟节点，provide 必须来自页面。
+const { anchor: appScrollAnchor, controller: appScrollController } = createAppScrollAnchor();
+provide(APP_SCROLL_CONTROLLER, appScrollController);
 
 onLoad(() => {
   uni.$on("session:login-completed", handleSessionLoginCompleted);
@@ -387,8 +386,9 @@ onShareTimeline(() => ({
 </script>
 
 <template>
-  <page-meta :page-style="`${themePageStyle}${avatarPreviewRendered ? ';overflow:hidden;' : ''}`" />
-  <view class="app-theme-scope home-page" :style="[themePageStyle, pageStyle]">
+  <!-- 页面本体锁定不滚动（滚动在 AppPullScrollView 内），原生下拉不再触发，header 不随下拉移动。 -->
+  <page-meta :page-style="`${themePageStyle};overflow:hidden`" />
+  <view class="app-theme-scope home-page" :style="themePageStyle">
     <AppTabHeader title="首页">
       <!-- mp 端 slot 内容不吃子组件 scoped 样式，回落标题用页面自己的类保持同款字号。 -->
       <template #title>
@@ -419,11 +419,12 @@ onShareTimeline(() => ({
       </template>
     </AppTabHeader>
 
-    <view class="home-content" :style="contentStyle">
+    <AppPullScrollView ref="appScrollAnchor" :refreshing="refreshing" :locked="avatarPreviewRendered" @refresh="handleRefresherRefresh" @reach-bottom="loadMoreSearchResults">
+      <view class="home-content" :style="contentStyle">
       <RunningLoader v-if="showInitialLoadingState" />
 
       <view v-else>
-        <view v-if="isRefreshing" class="home-refresh-mask">
+        <view v-if="isRefreshing && !refreshing" class="home-refresh-mask">
           <view class="home-refresh-chip">更新中...</view>
         </view>
 
@@ -513,6 +514,7 @@ onShareTimeline(() => ({
         </template>
       </view>
     </view>
+    </AppPullScrollView>
 
     <BottomTabBar current="home" />
 
@@ -546,13 +548,15 @@ onShareTimeline(() => ({
 <style scoped>
 .home-page {
   min-height: 100vh;
-  padding: 0 28rpx 164rpx;
+  padding: 0 28rpx;
   background: var(--ui-color-page);
   box-sizing: border-box;
 }
 
 .home-content {
   position: relative;
+  /* 滚动收进 AppPullScrollView 后，底栏留白由滚动内容自己承担。 */
+  padding-bottom: 180rpx;
 }
 
 .home-refresh-mask {

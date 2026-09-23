@@ -10,8 +10,9 @@ const props = defineProps<{
   maxCount: number;
   /** 当前已报人数（调整时预填）。 */
   currentCount: number;
-  /** 人均费用标签（如 ¥25.00）；空串表示免费。 */
+  /** 人均费用标签（如 ¥25.00）；空串表示无确定金额，结合 feeType 区分免费与线下 AA。 */
   feePerPersonLabel?: string;
+  feeType?: import("@/types/match").AppMatchFeeType;
   submitting?: boolean;
   /** 已报名未支付时展示「取消报名」次按钮。 */
   canCancel?: boolean;
@@ -63,6 +64,7 @@ function handleCancelRegistration() {
 
 <template>
   <view
+    v-if="rendered"
     :class="[
       'signup-sheet-overlay',
       rendered && !leaving ? 'signup-sheet-overlay-open' : '',
@@ -73,47 +75,59 @@ function handleCancelRegistration() {
     <view class="signup-sheet-backdrop" />
     <view class="signup-sheet-panel" @tap.stop>
       <view class="signup-sheet-head">
-        <text class="signup-sheet-title">报名人数</text>
-        <text class="signup-sheet-hint">最多可报 {{ maxCount }} 人（含自己）</text>
+        <view class="signup-sheet-heading">
+          <text class="signup-sheet-title">{{ isAdjusting ? "调整报名人数" : "报名散人约球" }}</text>
+          <text class="signup-sheet-hint">人数包含自己，可代朋友报名</text>
+        </view>
+        <button class="signup-sheet-close" aria-label="关闭报名弹窗" @tap="handleClose">×</button>
       </view>
 
       <view class="signup-sheet-count">
-        <wd-input-number
-          v-model="count"
-          :min="1"
-          :max="maxCount"
-          :step="1"
-          integer
-          custom-class="signup-count-input"
-        />
-        <text class="signup-sheet-count-unit">人</text>
+        <view class="signup-sheet-count-label">
+          <image class="signup-sheet-icon" src="/static/icons/lucide/users.png" mode="aspectFit" />
+          <text>参加人数</text>
+        </view>
+        <view class="signup-sheet-stepper">
+          <wd-input-number
+            v-model="count"
+            :min="1"
+            :max="maxCount"
+            :step="1"
+            :disabled="submitting"
+            integer
+            custom-class="signup-count-input"
+          />
+          <text class="signup-sheet-count-unit">人</text>
+        </view>
+        <text class="signup-sheet-hint">本次最多可报 {{ maxCount }} 人</text>
       </view>
 
       <view class="signup-sheet-fee">
-        <text class="signup-sheet-fee-label">{{ feePerPersonLabel ? `人均 ${feePerPersonLabel}` : "免费报名" }}</text>
-        <text v-if="totalFeeLabel" class="signup-sheet-fee-total">合计 {{ totalFeeLabel }}</text>
+        <view class="signup-sheet-fee-caption">
+          <text class="signup-sheet-fee-label">报名费用</text>
+          <text v-if="feeType === 'offline_aa'" class="signup-sheet-hint">具体费用由组织者线下结算</text>
+          <text v-else-if="feePerPersonLabel" class="signup-sheet-hint">{{ feePerPersonLabel }} / 人 × {{ count }} 人</text>
+        </view>
+        <text class="signup-sheet-fee-total">{{ feeType === "offline_aa" ? "线下 AA" : totalFeeLabel || "免费" }}</text>
       </view>
 
       <view class="signup-sheet-actions">
-        <AppButton
-          icon="close"
-          v-if="canCancel"
-          variant="muted"
-          :disabled="submitting"
-          @click="handleCancelRegistration"
-        >
-          取消报名
-        </AppButton>
-        <AppButton
-          icon="check"
-          class="signup-sheet-confirm"
-          variant="dark"
-          :loading="submitting"
-          :disabled="submitting"
-          @click="handleConfirm"
-        >
-          {{ submitting ? "提交中..." : confirmText }}
-        </AppButton>
+        <view class="signup-sheet-primary">
+          <AppButton
+            block
+            variant="dark"
+            :loading="submitting"
+            :disabled="submitting"
+            @click="handleConfirm"
+          >
+            {{ submitting ? "提交中..." : confirmText }}
+          </AppButton>
+        </view>
+        <view v-if="canCancel" class="signup-sheet-secondary">
+          <AppButton block variant="muted" :disabled="submitting" @click="handleCancelRegistration">
+            取消报名
+          </AppButton>
+        </view>
       </view>
     </view>
   </view>
@@ -155,7 +169,7 @@ function handleCancelRegistration() {
   padding: 34rpx 30rpx calc(30rpx + env(safe-area-inset-bottom));
   border-top-left-radius: 36rpx;
   border-top-right-radius: 36rpx;
-  background: var(--ui-color-surface, #ffffff);
+  background: var(--ui-color-surface);
   transform: translateY(100%);
   transition: transform var(--ui-motion-overlay-duration) var(--ui-motion-ease-out);
 }
@@ -179,67 +193,123 @@ function handleCancelRegistration() {
 
 .signup-sheet-head {
   display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20rpx;
+}
+
+.signup-sheet-heading,
+.signup-sheet-fee-caption {
+  display: flex;
   flex-direction: column;
-  gap: 8rpx;
+  gap: 10rpx;
+  min-width: 0;
 }
 
 .signup-sheet-title {
   color: var(--ui-color-text);
   font-size: 36rpx;
   font-weight: 600;
+  line-height: 1.4;
 }
 
 .signup-sheet-hint {
   color: var(--ui-color-text-muted);
   font-size: 24rpx;
-  font-weight: 500;
+  line-height: 1.5;
 }
+
+.signup-sheet-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 64rpx;
+  height: 64rpx;
+  margin: 0;
+  padding: 0;
+  border-radius: var(--ui-radius-button);
+  background: var(--ui-color-neutral-bg);
+  color: var(--ui-color-text-muted);
+  font-size: 40rpx;
+  line-height: 1;
+}
+
+.signup-sheet-close::after { border: 0; }
 
 .signup-sheet-count {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 14rpx;
+  gap: 22rpx;
   margin-top: 28rpx;
-  padding: 22rpx;
+  padding: 28rpx 20rpx;
   border: var(--ui-border-default);
   border-radius: var(--ui-radius-button);
-  background: var(--ui-color-warning-soft);
+  background: var(--ui-color-surface);
+}
+
+.signup-sheet-count-label {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+  color: var(--ui-color-text);
+  font-size: 26rpx;
+  font-weight: 500;
+}
+
+.signup-sheet-icon { width: 30rpx; height: 30rpx; }
+
+.signup-sheet-stepper {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  --wot-input-number-action-size: 88rpx;
+  --wot-input-number-input-height: 88rpx;
+  --wot-input-number-input-width: 148rpx;
+  --wot-input-number-font-size: 48rpx;
+  --wot-input-number-icon-size: 28rpx;
+  --wot-input-number-action-border-radius: 20rpx;
+  --wot-input-number-action-bg: var(--ui-color-neutral-bg);
+  --wot-input-number-input-bg: var(--ui-color-surface);
+  --wot-input-number-action-color: var(--ui-color-text);
+  --wot-input-number-input-color: var(--ui-color-text);
+  --wot-input-number-action-disabled-color: var(--ui-color-line-strong);
+  --wot-input-number-action-divider-width: 0;
 }
 
 .signup-sheet-count-unit {
-  color: var(--ui-color-text);
-  font-size: 30rpx;
-  font-weight: 600;
-  flex-shrink: 0;
+  color: var(--ui-color-text-muted);
+  font-size: 26rpx;
 }
 
 .signup-sheet-fee {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 16rpx;
-  margin-top: 20rpx;
+  padding: 26rpx 0;
 }
 
 .signup-sheet-fee-label {
   color: var(--ui-color-text-muted);
-  font-size: 24rpx;
-  font-weight: 500;
+  font-size: 26rpx;
 }
 
 .signup-sheet-fee-total {
   color: var(--ui-color-text);
-  font-size: 34rpx;
+  font-size: 36rpx;
   font-weight: 600;
+  flex-shrink: 0;
 }
 
 .signup-sheet-actions {
   display: flex;
+  flex-direction: column;
   gap: 16rpx;
-  margin-top: 28rpx;
 }
 
-.signup-sheet-actions .signup-sheet-confirm {
-  flex: 1;
-}
+/* 由原生 view 承担宽度，不依赖样式穿透小程序按钮组件。 */
+.signup-sheet-primary,
+.signup-sheet-secondary { width: 100%; }
 </style>

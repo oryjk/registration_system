@@ -25,6 +25,7 @@ describe("match detail action composition", () => {
   test("fees distinguish missing, free, and payment timing without multiplying by attendees", () => {
     expect(formatDetailFee(null)).toEqual("费用待确认");
     expect(formatDetailFee({ fee_per_person_cents: 0 })).toEqual("免费");
+    expect(formatDetailFee({ fee_per_person_cents: 0, fee_type: "offline_aa" })).toEqual("线下 AA");
     expect(formatDetailFee({ fee_per_person_cents: 2500, payment_mode: "prepaid" })).toEqual("¥25.00/人 · 赛前支付");
     expect(formatDetailFee({ fee_per_person_cents: 2500, payment_mode: "postpaid" })).toEqual("¥25.00/人 · 赛后结算");
   });
