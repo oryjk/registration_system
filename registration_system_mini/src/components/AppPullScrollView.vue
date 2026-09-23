@@ -23,6 +23,8 @@ const refresherBackground = computed(() => getThemeWindowBackground(accentTheme.
 const refreshStatusStyle = { top: `${getCustomNavMetrics().pageTopPadding + 16}px` };
 
 // 用户滚动只记录位置，不能回写 scroll-top，否则原生滚动会被新的定位命令打断。
+// 原生属性单位为 px；提高触发距离，避免顶部轻拉误刷新。
+const refreshThreshold = 80;
 const scrollTop = ref(0);
 let currentScrollTop = 0;
 
@@ -47,7 +49,8 @@ defineExpose<AppScrollController>({
       :scroll-y="!props.locked"
       :scroll-top="scrollTop"
       scroll-with-animation
-      refresher-enabled
+      :refresher-enabled="!props.locked"
+      :refresher-threshold="refreshThreshold"
       :refresher-triggered="props.refreshing"
       refresher-default-style="none"
       :refresher-background="refresherBackground"
