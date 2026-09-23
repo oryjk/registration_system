@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, nextTick, ref } from "vue";
 import { useAccentTheme } from "@/stores/theme";
 import { getThemeWindowBackground } from "@/config/themePalettes";
 import { getCustomNavMetrics } from "@/utils/customNav";
@@ -22,16 +22,19 @@ const { accentTheme } = useAccentTheme();
 const refresherBackground = computed(() => getThemeWindowBackground(accentTheme.value));
 const refreshStatusStyle = { top: `${getCustomNavMetrics().pageTopPadding + 16}px` };
 
-// scroll-top 受控跟踪：每次滚动回写当前值，回顶赋 0 才会触发真实滚动。
+// 用户滚动只记录位置，不能回写 scroll-top，否则原生滚动会被新的定位命令打断。
 const scrollTop = ref(0);
+let currentScrollTop = 0;
 
 function handleScroll(event: { detail: { scrollTop: number } }) {
-  scrollTop.value = event.detail.scrollTop;
+  currentScrollTop = event.detail.scrollTop;
 }
 
-// 由页面持有模板 ref 并 provide 给组件树（AppTabHeader 等），见 createAppScrollAnchor。
+// 主动回顶时先同步当前位置，再在下一次渲染写 0，支持重复回顶。
 defineExpose<AppScrollController>({
-  scrollToTop: () => {
+  scrollToTop: async () => {
+    scrollTop.value = currentScrollTop;
+    await nextTick();
     scrollTop.value = 0;
   },
 });
