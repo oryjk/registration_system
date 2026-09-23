@@ -212,4 +212,5 @@ type VenueSuggestion struct {
 // VenueSuggestionRepository 常用场地聚合查询。
 type VenueSuggestionRepository interface {
 	ListVenueSuggestions(ctx context.Context, limit int32) ([]VenueSuggestion, error)
+	ListVenueMap(ctx context.Context) ([]VenueSuggestion, error)
 }

@@ -16,6 +16,7 @@ import (
 // VenueSuggestionUseCase 发布页常用场地建议。
 type VenueSuggestionUseCase interface {
 	Suggestions(ctx context.Context, actor sharedauth.Actor, limit int) ([]ports.VenueSuggestion, error)
+	Map(ctx context.Context, actor sharedauth.Actor) ([]ports.VenueSuggestion, error)
 }
 
 type VenueSuggestionHandler struct {
@@ -28,6 +29,7 @@ func NewVenueSuggestionHandler(venues VenueSuggestionUseCase) *VenueSuggestionHa
 
 func (h *VenueSuggestionHandler) RegisterRoutes(group *gin.RouterGroup) {
 	group.GET("/venues/suggestions", h.Suggestions)
+	group.GET("/venues/map", h.Map)
 }
 
 type VenueSuggestionResponse struct {
@@ -54,6 +56,10 @@ func (h *VenueSuggestionHandler) Suggestions(c *gin.Context) {
 		sharedhttpapi.WriteError(c, err)
 		return
 	}
+	writeVenueResponses(c, items)
+}
+
+func writeVenueResponses(c *gin.Context, items []ports.VenueSuggestion) {
 	responses := make([]VenueSuggestionResponse, 0, len(items))
 	for _, item := range items {
 		lastUsedAt := ""
@@ -66,4 +72,19 @@ func (h *VenueSuggestionHandler) Suggestions(c *gin.Context) {
 		})
 	}
 	sharedhttpapi.WriteSuccess(c, responses)
+}
+
+// Map 返回全部已保存定位的球场，不受常用场地推荐数量限制。
+func (h *VenueSuggestionHandler) Map(c *gin.Context) {
+	actor, ok := authhttp.ActorFromContext(c)
+	if !ok {
+		sharedhttpapi.WriteError(c, sharederror.ErrUnauthorized)
+		return
+	}
+	items, err := h.venues.Map(c.Request.Context(), actor)
+	if err != nil {
+		sharedhttpapi.WriteError(c, err)
+		return
+	}
+	writeVenueResponses(c, items)
 }

@@ -923,3 +923,17 @@ GROUP BY m.location
 HAVING COUNT(m.location_latitude) > 0
 ORDER BY use_count DESC, last_used_at DESC
 LIMIT sqlc.arg('limit_count');
+
+-- name: ListVenueMap :many
+-- 地图使用所有有坐标的场地；同名场地取最新一条完整坐标，避免混合两条记录的经纬度。
+SELECT DISTINCT ON (btrim(m.location))
+       btrim(m.location)::TEXT AS location,
+       m.location_latitude::DOUBLE PRECISION AS latitude,
+       m.location_longitude::DOUBLE PRECISION AS longitude,
+       COUNT(*) OVER (PARTITION BY btrim(m.location))::BIGINT AS use_count,
+       m.start_time::TIMESTAMPTZ AS last_used_at
+FROM matches m
+WHERE m.location IS NOT NULL AND btrim(m.location) <> ''
+  AND m.location_latitude BETWEEN -90 AND 90
+  AND m.location_longitude BETWEEN -180 AND 180
+ORDER BY btrim(m.location), m.start_time DESC NULLS LAST, m.id DESC;

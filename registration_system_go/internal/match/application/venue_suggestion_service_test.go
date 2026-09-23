@@ -78,3 +78,26 @@ func (f *fakeVenueSuggestionRepository) ListVenueSuggestions(_ context.Context, 
 	}
 	return f.items, nil
 }
+
+func TestVenueMapReturnsAllAndRequiresUser(t *testing.T) {
+	repository := &fakeVenueSuggestionRepository{items: make([]ports.VenueSuggestion, 25)}
+	service := NewVenueSuggestionService(repository)
+	items, err := service.Map(context.Background(), sharedauth.Actor{Kind: sharedauth.ActorUser, ID: 42})
+	if err != nil || len(items) != 25 {
+		t.Fatalf("map should not be limited to 20: %d %v", len(items), err)
+	}
+	if _, err := service.Map(context.Background(), sharedauth.Actor{}); !errors.Is(err, sharederror.ErrUnauthorized) {
+		t.Fatalf("anonymous: %v", err)
+	}
+	if _, err := service.Map(context.Background(), sharedauth.Actor{Kind: sharedauth.ActorAdmin, ID: 1}); !errors.Is(err, sharederror.ErrForbidden) {
+		t.Fatalf("admin: %v", err)
+	}
+	repository.err = errors.New("database unavailable")
+	if _, err := service.Map(context.Background(), sharedauth.Actor{Kind: sharedauth.ActorUser, ID: 42}); !errors.Is(err, sharederror.ErrInternal) {
+		t.Fatalf("repository error: %v", err)
+	}
+}
+
+func (f *fakeVenueSuggestionRepository) ListVenueMap(_ context.Context) ([]ports.VenueSuggestion, error) {
+	return f.items, f.err
+}

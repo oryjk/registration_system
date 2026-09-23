@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -59,5 +60,27 @@ func seedVenueMatch(
 	}
 	if err := repository.CreateWithGroups(context.Background(), match, groups); err != nil {
 		t.Fatalf("create match: %v", err)
+	}
+}
+
+func TestVenueMapReturnsAllDistinctCoordinatePairs(t *testing.T) {
+	pool := testsupport.StartPostgres(t)
+	ownerID, teamID := seedMatchOwner(t, pool)
+	repository := NewRepository(pool)
+	start := time.Date(2026, 9, 1, 12, 0, 0, 0, time.UTC)
+	lat, lng := 30.6, 104.1
+	for i := 0; i < 25; i++ {
+		seedVenueMatch(t, repository, ownerID, teamID, fmt.Sprintf("球场%02d", i), &lat, &lng, start)
+	}
+	seedVenueMatch(t, repository, ownerID, teamID, "无坐标", nil, nil, start)
+	newLat, newLng := 31.1, 105.2
+	seedVenueMatch(t, repository, ownerID, teamID, "球场00", &newLat, &newLng, start.Add(time.Hour))
+	seedVenueMatch(t, repository, ownerID, teamID, "球场00", nil, nil, start.Add(2*time.Hour))
+	items, err := repository.ListVenueMap(context.Background())
+	if err != nil || len(items) != 25 {
+		t.Fatalf("items=%d err=%v", len(items), err)
+	}
+	if items[0].Location != "球场00" || *items[0].Latitude != newLat || *items[0].Longitude != newLng {
+		t.Fatalf("latest coordinate pair not retained: %+v", items[0])
 	}
 }

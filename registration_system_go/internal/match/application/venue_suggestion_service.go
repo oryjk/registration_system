@@ -40,3 +40,17 @@ func (s *VenueSuggestionService) normalizeLimit(limit int) int32 {
 	}
 	return int32(limit)
 }
+
+func (s *VenueSuggestionService) Map(ctx context.Context, actor sharedauth.Actor) ([]ports.VenueSuggestion, error) {
+	if actor.Kind == "" {
+		return nil, sharederror.ErrUnauthorized
+	}
+	if !actor.IsUser() {
+		return nil, sharederror.ErrForbidden
+	}
+	items, err := s.repository.ListVenueMap(ctx)
+	if err != nil {
+		return nil, sharederror.Wrap(sharederror.KindInternal, "查询球场地图失败", err)
+	}
+	return items, nil
+}

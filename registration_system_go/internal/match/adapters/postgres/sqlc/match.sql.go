@@ -2488,6 +2488,55 @@ func (q *Queries) ListTeamManagerUserIDs(ctx context.Context, teamID int64) ([]i
 	return items, nil
 }
 
+const listVenueMap = `-- name: ListVenueMap :many
+SELECT DISTINCT ON (btrim(m.location))
+       btrim(m.location)::TEXT AS location,
+       m.location_latitude::DOUBLE PRECISION AS latitude,
+       m.location_longitude::DOUBLE PRECISION AS longitude,
+       COUNT(*) OVER (PARTITION BY btrim(m.location))::BIGINT AS use_count,
+       m.start_time::TIMESTAMPTZ AS last_used_at
+FROM matches m
+WHERE m.location IS NOT NULL AND btrim(m.location) <> ''
+  AND m.location_latitude BETWEEN -90 AND 90
+  AND m.location_longitude BETWEEN -180 AND 180
+ORDER BY btrim(m.location), m.start_time DESC NULLS LAST, m.id DESC
+`
+
+type ListVenueMapRow struct {
+	Location   string             `json:"location"`
+	Latitude   float64            `json:"latitude"`
+	Longitude  float64            `json:"longitude"`
+	UseCount   int64              `json:"use_count"`
+	LastUsedAt pgtype.Timestamptz `json:"last_used_at"`
+}
+
+// 地图使用所有有坐标的场地；同名场地取最新一条完整坐标，避免混合两条记录的经纬度。
+func (q *Queries) ListVenueMap(ctx context.Context) ([]ListVenueMapRow, error) {
+	rows, err := q.db.Query(ctx, listVenueMap)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListVenueMapRow
+	for rows.Next() {
+		var i ListVenueMapRow
+		if err := rows.Scan(
+			&i.Location,
+			&i.Latitude,
+			&i.Longitude,
+			&i.UseCount,
+			&i.LastUsedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listVenueSuggestions = `-- name: ListVenueSuggestions :many
 SELECT m.location,
        COUNT(*)::BIGINT AS use_count,
