@@ -14,8 +14,7 @@ import type { AvatarItem } from "@/components/ui/avatarTypes";
 import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
 import HomeSectionHeader from "./components/HomeSectionHeader.vue";
 import HomeHeroSection from "./components/HomeHeroSection.vue";
-import HomeActionMatchDeck from "./components/HomeActionMatchDeck.vue";
-import HomeActionMatchCard from "./components/HomeActionMatchCard.vue";
+import HomeActionMatchCarousel from "./components/HomeActionMatchCarousel.vue";
 import { useHomeActionDeckDetails } from "./useHomeActionDeckDetails";
 import HomeMatchList from "./components/HomeMatchList.vue";
 import HomeMatchSearchResults from "./components/HomeMatchSearchResults.vue";
@@ -107,7 +106,6 @@ const showTeamSwitcher = computed(() => !isGuestMode.value && teamProfiles.value
 // 没有待处理时进行中比赛仍显示在「进行中的比赛」区域，不顶替成大卡。
 const actionDeckMatches = computed(() => upcomingMatches.value);
 const actionDeckIndex = ref(0);
-const deckInteracting = ref(false);
 watch(actionDeckMatches, (matches, previous) => {
   const previousId = previous?.[actionDeckIndex.value]?.id;
   const next = matches.findIndex((match) => match.id === previousId);
@@ -115,9 +113,6 @@ watch(actionDeckMatches, (matches, previous) => {
 });
 const heroNextMatch = computed(() => actionDeckMatches.value[actionDeckIndex.value] ?? null);
 const deckDetails = useHomeActionDeckDetails(actionDeckMatches, actionDeckIndex);
-const actionMatchCard = deckDetails.active;
-const nextMatchCard = computed(() => actionDeckMatches.value[actionDeckIndex.value + 1] ?? null);
-const previousMatchCard = computed(() => actionDeckMatches.value[actionDeckIndex.value - 1] ?? null);
 const actionMatchCardTimestamp = ref(Date.now());
 const additionalUpcomingMatches = computed(() => upcomingMatches.value.filter((match) => !actionDeckMatches.value.some((item) => item.id === match.id)));
 const additionalOngoingMatches = computed(() => ongoingMatches.value.filter((match) => !actionDeckMatches.value.some((item) => item.id === match.id)));
@@ -428,28 +423,18 @@ onShareTimeline(() => ({
           <view class="home-refresh-chip">更新中...</view>
         </view>
 
-        <HomeActionMatchDeck v-if="heroNextMatch" :index="actionDeckIndex" :count="actionDeckMatches.length" @change="actionDeckIndex = $event" @interaction="deckInteracting = $event">
-        <HomeActionMatchCard
-          :deck-count="actionDeckMatches.length"
-          :deck-index="actionDeckIndex"
-          :interaction-blocked="deckInteracting"
-          :match="heroNextMatch"
-          :detail="actionMatchCard.detail"
-          :loading="actionMatchCard.loading"
-          :error="actionMatchCard.error"
-          :navigating="navigatingMatchId === heroNextMatch.id"
+        <HomeActionMatchCarousel
+          v-if="heroNextMatch"
+          :matches="actionDeckMatches"
+          :index="actionDeckIndex"
+          :details="deckDetails.entries.value"
+          :navigating-match-id="navigatingMatchId"
           :now="actionMatchCardTimestamp"
+          @change="actionDeckIndex = $event"
           @match-tap="handleMatchTap"
           @retry="deckDetails.reload"
           @avatar-select="openAvatarPreview"
         />
-        <template #next>
-          <HomeActionMatchCard v-if="nextMatchCard" :match="nextMatchCard" :detail="deckDetails.next.value.detail" :loading="deckDetails.next.value.loading" :error="deckDetails.next.value.error" :navigating="false" :now="actionMatchCardTimestamp" :deck-count="actionDeckMatches.length" :deck-index="actionDeckIndex + 1" preview />
-        </template>
-        <template #previous>
-          <HomeActionMatchCard v-if="previousMatchCard" :match="previousMatchCard" :detail="deckDetails.previous.value.detail" :loading="deckDetails.previous.value.loading" :error="deckDetails.previous.value.error" :navigating="false" :now="actionMatchCardTimestamp" :deck-count="actionDeckMatches.length" :deck-index="actionDeckIndex - 1" preview />
-        </template>
-        </HomeActionMatchDeck>
         <HomeHeroSection
           v-else
           :hero-banners="homeHeroBanners"

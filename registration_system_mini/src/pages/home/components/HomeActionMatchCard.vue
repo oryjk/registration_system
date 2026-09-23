@@ -13,36 +13,39 @@ const props = defineProps<{
   error: boolean;
   navigating: boolean;
   now: number;
-  preview?: boolean;
+  active?: boolean;
+  pageCount?: number;
+  pageIndex?: number;
   interactionBlocked?: boolean;
-  deckCount?: number;
-  deckIndex?: number;
 }>();
 const emit = defineEmits<{
   (event: "matchTap", match: HomeMatchCardViewModel): void;
   (event: "retry"): void;
+  (event: "layoutChange"): void;
   (event: "avatarSelect", avatar: AvatarItem): void;
 }>();
 const card = computed(() => buildHomeActionMatchCardState(props.match, props.detail, new Date(props.now)));
 function selectAvatar(id: string | number) {
-  if (props.preview || props.interactionBlocked || props.navigating) return;
+  if (props.interactionBlocked || props.navigating) return;
   const avatar = card.value.avatars.find(item => item.id === id);
   if (avatar) emit('avatarSelect', avatar);
 }
-const hasDeck = computed(() => (props.deckCount ?? 1) > 1);
-const visibleDots = computed(() => {
-  const count = props.deckCount ?? 1;
-  const start = Math.max(0, Math.min((props.deckIndex ?? 0) - 2, count - 5));
+const visiblePages = computed(() => {
+  const count = props.pageCount ?? 1;
+  const start = Math.max(0, Math.min((props.pageIndex ?? 0) - 2, count - 5));
   return Array.from({ length: Math.min(count, 5) }, (_, offset) => start + offset);
 });
 function openDetail() {
-  if (!props.preview && !props.interactionBlocked && !props.navigating && props.match.canOpenDetail) emit("matchTap", props.match);
+  if (!props.interactionBlocked && !props.navigating && props.match.canOpenDetail) emit("matchTap", props.match);
 }
 </script>
 
 <template>
-  <view class="home-now-card" :class="{ 'home-now-card--preview': preview }">
-    <view class="now-flip-zone" :class="{ 'now-flip-zone--active': hasDeck }">
+  <view class="home-now-card">
+    <view class="now-card-heading" :class="{ 'now-card-heading--paged': (pageCount ?? 1) > 1 }">
+      <view v-if="(pageCount ?? 1) > 1" class="now-page-dots" :aria-label="`第 ${(pageIndex ?? 0) + 1} 场，共 ${pageCount} 场`">
+        <view v-for="page in visiblePages" :key="page" class="now-page-dot" :class="{ 'now-page-dot--active': page === (pageIndex ?? 0) }" />
+      </view>
     <view class="now-date">
       <text class="now-time">{{ card.time }}</text>
       <view class="now-calendar">
@@ -56,9 +59,6 @@ function openDetail() {
         <text class="now-title">{{ card.title }}</text>
         <text v-if="match.signupScopeLabel" class="now-scope-badge">{{ match.signupScopeLabel }}</text>
       </view>
-    </view>
-    <view v-if="hasDeck" class="now-deck-cues" aria-hidden="true">
-      <view class="now-deck-dots"><view v-for="dot in visibleDots" :key="dot" class="now-deck-dot" :class="{ 'now-deck-dot--active': dot === (deckIndex ?? 0) }" /></view>
     </view>
     </view>
     <view class="now-info now-venue-row">
@@ -78,13 +78,14 @@ function openDetail() {
 
     <view v-if="match.showRegistrationProgress" class="now-registration">
       <RegistrationProgressSummary
-        :key="match.id"
+        :key="`${match.id}-${active !== false}`"
         :joined="card.joined"
         :minimum="card.minimum"
         :maximum="card.maximum"
         :avatars="card.avatars"
-        :disabled="preview || interactionBlocked || navigating"
+        :disabled="interactionBlocked || navigating"
         @avatar-select="selectAvatar"
+        @layout-change="emit('layoutChange')"
       />
     </view>
 
@@ -95,15 +96,14 @@ function openDetail() {
           <text>{{ card.statusLabel }}</text>
         </view>
       </view>
-      <text v-if="card.deadlineLabel" class="now-deadline">{{ card.deadlineLabel }}</text>
+      <text v-if="card.availability || card.deadlineLabel" class="now-deadline">{{ [card.availability, card.deadlineLabel].filter(Boolean).join(" · ") }}</text>
     </view>
-    <text v-if="card.availability" class="now-meta now-availability">{{ card.availability }}</text>
-    <button class="now-primary" :disabled="preview || navigating || !match.canOpenDetail" hover-class="now-primary-pressed" @tap="openDetail">
+    <button class="now-primary" :disabled="navigating || !match.canOpenDetail" hover-class="now-primary-pressed" @tap="openDetail">
       {{ navigating ? "正在打开…" : card.actionLabel }} <text class="now-arrow">→</text>
     </button>
     <view v-if="loading || error" class="now-footer">
       <text v-if="loading" class="now-meta">正在核对报名信息…</text>
-      <button v-else-if="error" class="now-link now-retry" :disabled="preview" hover-class="now-link-pressed" @tap="!interactionBlocked && emit('retry')">部分信息未加载，点击重试</button>
+      <button v-else-if="error" class="now-link now-retry" :disabled="interactionBlocked" hover-class="now-link-pressed" @tap="!interactionBlocked && emit('retry')">部分信息未加载，点击重试</button>
     </view>
   </view>
 </template>
@@ -124,7 +124,6 @@ function openDetail() {
   color: var(--now-color-text);
   box-sizing: border-box;
 }
-.home-now-card--preview { border-color: transparent; }
 .now-date, .now-status-row, .now-footer { display: flex; align-items: center; gap: 16rpx; }
 .now-status-row, .now-footer { justify-content: space-between; }
 .now-date { margin: 16rpx 0; padding-left: 20rpx; border-left: 6rpx solid var(--now-color-accent); flex-wrap: wrap; }
@@ -153,10 +152,8 @@ function openDetail() {
 .now-venue-row { margin-top: 10rpx; }
 .now-title-row .now-icon { width: 34rpx; height: 34rpx; margin-top: 9rpx; }
 .now-deadline { color: var(--now-color-muted); font-size: 22rpx; }
-.now-availability { margin: -4rpx 0 16rpx; }
 .now-primary { display: flex; align-items: center; justify-content: center; gap: 18rpx; width: 100%; min-height: 88rpx; padding: 16rpx 24rpx; border: 0; border-radius: var(--now-radius-button); background: var(--now-color-accent); color: var(--now-color-on-accent); font-size: 30rpx; font-weight: 600; line-height: 1.5; box-sizing: border-box; }
 .now-primary::after, .now-link::after { border: 0; }
-.home-now-card--preview .now-primary[disabled] { background: var(--now-color-accent); color: var(--now-color-on-accent); }
 .now-primary-pressed { opacity: var(--now-pressed-opacity); }
 .now-primary[disabled] { background: var(--now-color-soft); color: var(--now-color-muted); }
 .now-arrow { font-size: 32rpx; }
@@ -168,10 +165,9 @@ function openDetail() {
 </style>
 
 <style scoped>
-.now-flip-zone--active { position: relative; margin: -26rpx -28rpx 14rpx; padding: 20rpx 28rpx 12rpx; background: var(--now-color-surface); border-top: 0; border-radius: var(--now-radius-card) var(--now-radius-card) 0 0; touch-action: pan-y; }
-.now-deck-cues { position: absolute; top: 28rpx; right: 28rpx; display: flex; align-items: center; pointer-events: none; }
-.now-flip-zone--active .now-date { padding-right: 96rpx; }
-.now-deck-dots { display: flex; align-items: center; gap: 8rpx; }
-.now-deck-dot { width: 8rpx; height: 8rpx; border-radius: 8rpx; background: var(--now-color-accent-text); opacity: 0.2; }
-.now-deck-dot--active { width: 20rpx; opacity: 0.8; }
+.now-page-dots { position: absolute; top: 28rpx; right: 28rpx; display: flex; align-items: center; gap: 8rpx; pointer-events: none; }
+.now-page-dot { width: 8rpx; height: 8rpx; border-radius: 8rpx; background: var(--now-color-accent-text); opacity: 0.2; }
+.now-page-dot--active { width: 20rpx; opacity: 0.8; }
+.now-card-heading--paged .now-date { padding-right: 96rpx; }
+.now-card-heading { position: relative; margin: -26rpx -28rpx 14rpx; padding: 20rpx 28rpx 12rpx; background: var(--now-color-surface); border-top: 0; border-radius: var(--now-radius-card) var(--now-radius-card) 0 0; touch-action: pan-y; }
 </style>

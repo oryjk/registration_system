@@ -2,6 +2,7 @@
 import { computed, getCurrentInstance, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import type { AvatarItem, AvatarSize } from "./avatarTypes";
 import { avatarStackLayout } from "./avatarStackLayout";
+import { getWindowMetrics } from "@/utils/systemInfo";
 
 const props = withDefaults(defineProps<{
   items: AvatarItem[];
@@ -15,7 +16,7 @@ const props = withDefaults(defineProps<{
   interactive: true,
   disabled: false,
 });
-const emit = defineEmits<{ (event: "select", id: string | number): void }>();
+const emit = defineEmits<{ (event: "select", id: string | number): void; (event: "layoutChange"): void }>();
 const expanded = ref(false);
 const containerWidth = ref(0);
 const scrollLeft = ref(0);
@@ -24,18 +25,21 @@ const instance = getCurrentInstance();
 let disposed = false;
 let measurement = 0;
 const sizes: Record<AvatarSize, number> = { xs: 42, sm: 52, md: 68, lg: 84 };
-const avatarSize = computed(() => uni.upx2px(sizes[props.size]));
+const viewportWidth = ref(getWindowMetrics().windowWidth);
+const toPixels = (rpx: number) => rpx * viewportWidth.value / 750;
+const avatarSize = computed(() => toPixels(sizes[props.size]));
 const layout = computed(() => avatarStackLayout(
   props.items.length,
   containerWidth.value,
   avatarSize.value,
-  uni.upx2px(props.size === "xs" ? 10 : 14),
-  uni.upx2px(10),
+  toPixels(props.size === "xs" ? 10 : 14),
+  toPixels(10),
   expanded.value,
 ));
 
 async function measure() {
   const version = ++measurement;
+  viewportWidth.value = getWindowMetrics().windowWidth;
   await nextTick();
   if (disposed) return;
   uni.createSelectorQuery().in(instance?.proxy).select(".expandable-avatars__items")
@@ -43,6 +47,7 @@ async function measure() {
       if (disposed || version !== measurement) return;
       const box = Array.isArray(rect) ? rect[0] : rect;
       if (box?.width) containerWidth.value = box.width;
+      void nextTick(() => { if (!disposed) emit("layoutChange"); });
     }).exec();
 }
 function toggle() {
@@ -62,8 +67,9 @@ watch(() => [props.items.length, props.size], () => { void measure(); });
 
 <template>
   <view data-deck-ignore="true" class="expandable-avatars" @tap.stop>
+    <!-- 只隔离头像滚动，勿在外层拦截 touchstart，否则小程序按钮 tap 无法触发。 -->
     <view data-deck-ignore="true" class="expandable-avatars__items">
-      <scroll-view data-deck-ignore="true" scroll-x :show-scrollbar="false" :scroll-left="scrollLeft" class="expandable-avatars__scroll" @scroll="scrollLeft = $event.detail.scrollLeft">
+      <scroll-view data-deck-ignore="true" scroll-x :show-scrollbar="false" :scroll-left="scrollLeft" class="expandable-avatars__scroll" @touchmove.stop :style="{ height: `${layout.height + 8}px` }" @scroll="scrollLeft = $event.detail.scrollLeft">
         <view data-deck-ignore="true" class="expandable-avatars__track" :style="{ width: `${layout.width}px`, height: `${layout.height + 8}px` }">
           <view
             v-for="(item, index) in items"

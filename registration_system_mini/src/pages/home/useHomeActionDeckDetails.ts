@@ -3,8 +3,8 @@ import { getMatchDetail } from '@/api/match';
 import type { AppMatchDetailResponse } from '@/types/match';
 import type { HomeMatchCardViewModel } from '@/types/viewModels';
 
-type Entry = { detail: AppMatchDetailResponse | null; loading: boolean; error: boolean };
-const empty: Entry = { detail: null, loading: false, error: false };
+export type HomeMatchDetailEntry = { detail: AppMatchDetailResponse | null; loading: boolean; error: boolean };
+const empty: HomeMatchDetailEntry = { detail: null, loading: false, error: false };
 
 /** 只保留当前及相邻两场；刷新比赛集合时失效，旧请求不能污染新球队/新一轮数据。 */
 export function useHomeActionDeckDetails(
@@ -12,11 +12,11 @@ export function useHomeActionDeckDetails(
   index: Readonly<Ref<number>>,
   fetchDetail = getMatchDetail,
 ) {
-  const entries = shallowRef<Record<string, Entry>>({});
+  const entries = shallowRef<Record<string, HomeMatchDetailEntry>>({});
   let generation = 0;
   const requests = new Map<string, symbol>();
   let disposed = false;
-  function entryAt(offset: number): Entry {
+  function entryAt(offset: number): HomeMatchDetailEntry {
     const match = matches.value[index.value + offset];
     return match ? entries.value[match.id] ?? empty : empty;
   }
@@ -49,6 +49,7 @@ export function useHomeActionDeckDetails(
   }, { immediate: true });
   onScopeDispose(() => { disposed = true; requests.clear(); });
   return {
+    entries,
     active: computed(() => entryAt(0)),
     next: computed(() => entryAt(1)),
     previous: computed(() => entryAt(-1)),

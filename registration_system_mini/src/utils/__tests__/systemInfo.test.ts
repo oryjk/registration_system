@@ -70,6 +70,17 @@ describe("system info helpers", () => {
     delete runtime.uni;
   });
 
+  test("missing window dimensions still provide a finite width for gesture progress", () => {
+    runtime.uni = { getWindowInfo: () => ({}) };
+    try {
+      const { windowWidth } = getWindowMetrics();
+      expect(windowWidth).toEqual(375);
+      expect(Number.isFinite(160 / (windowWidth * 0.5))).toEqual(true);
+    } finally {
+      delete runtime.uni;
+    }
+  });
+
   test("app tab header should avoid component-level onShow", async () => {
     const headerSource = await Bun.file(sourcePath("components/AppTabHeader.vue")).text();
 
