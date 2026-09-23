@@ -50,6 +50,7 @@ export interface MatchItem {
   is_free: boolean;
   payment_mode: PaymentMode;
   fee_per_person_cents: number;
+  fee_type?: "offline_aa" | "free" | "fixed_amount" | "team_fund";
 }
 
 export interface MatchRegistrationEntry {

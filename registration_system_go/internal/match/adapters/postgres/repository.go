@@ -98,6 +98,21 @@ func (r *Repository) updateDetails(ctx context.Context, match domain.Match, host
 	}()
 
 	queries := r.queries.WithTx(tx)
+	if hostGroup != nil && hostGroup.Kind == domain.GroupIndividualOpponent {
+		if _, err := queries.GetMatchByIDForUpdate(ctx, pgUUID(match.ID)); err != nil {
+			return err
+		}
+		count, err := queries.CountAttendingRegistrationsForGroup(ctx, pgUUID(hostGroup.ID))
+		if err != nil {
+			return err
+		}
+		if err := hostGroup.RecalculateIndividualStatus(int(count), match.UpdatedAt); err != nil {
+			return err
+		}
+		if err := match.RecalculateIndividualOpponent(int(count), *hostGroup.MinPlayers, match.UpdatedAt); err != nil {
+			return err
+		}
+	}
 	if _, err := queries.UpdateMatchDetails(ctx, matchsqlc.UpdateMatchDetailsParams{
 		ID: pgUUID(match.ID), Name: match.Name, StartTime: pgTimestamp(match.StartTime), EndTime: pgTimestamp(match.EndTime),
 		RegistrationStartAt: pgOptionalTimestamp(match.RegistrationStartAt), RegistrationEndAt: pgOptionalTimestamp(match.RegistrationEndAt),
@@ -106,11 +121,13 @@ func (r *Repository) updateDetails(ctx context.Context, match domain.Match, host
 		HostColor:       stringPointerOrNil(match.HostColor),
 		AwayColor:       stringPointerOrNil(match.AwayColor),
 		PublicationMode: string(match.PublicationMode), OpponentState: string(match.OpponentState),
+		PlayersPerTeam: int32(match.PlayersPerTeam), FeeType: string(match.FeeType), PaymentMode: string(match.PaymentMode), FeePerPersonCents: match.FeePerPersonCents, IsFree: match.IsFree,
 	}); err != nil {
 		return err
 	}
 	if hostGroup != nil {
 		if err := queries.UpdateRegistrationGroupCapacity(ctx, matchsqlc.UpdateRegistrationGroupCapacityParams{
+			MinPlayers: int32Pointer(hostGroup.MinPlayers), Status: string(hostGroup.Status),
 			ID: pgUUID(hostGroup.ID), MaxPlayers: int32Pointer(hostGroup.MaxPlayers), UpdatedAt: pgTimestamp(hostGroup.UpdatedAt),
 		}); err != nil {
 			return err
@@ -193,6 +210,7 @@ func createMatchParams(match domain.Match) matchsqlc.CreateMatchParams {
 		IsFree:              match.IsFree,
 		PaymentMode:         string(match.PaymentMode),
 		FeePerPersonCents:   match.FeePerPersonCents,
+		FeeType:             string(match.FeeType),
 		HostColor:           stringPointerOrNil(match.HostColor),
 		AwayColor:           stringPointerOrNil(match.AwayColor),
 		CreatedByUserID:     match.CreatedByUserID,
@@ -238,6 +256,7 @@ func mapMatch(row matchsqlc.Match) domain.Match {
 		IsFree:              row.IsFree,
 		PaymentMode:         domain.PaymentMode(row.PaymentMode),
 		FeePerPersonCents:   row.FeePerPersonCents,
+		FeeType:             domain.FeeType(row.FeeType),
 		CreatedByUserID:     row.CreatedByUserID,
 		CreatedByAdminID:    row.CreatedByAdminID,
 		CreatedAt:           row.CreatedAt.Time,

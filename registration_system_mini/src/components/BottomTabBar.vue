@@ -9,13 +9,12 @@ import { useOverlayPresence } from "@/components/ui/useOverlayPresence";
 import { prefersReducedMotion } from "@/utils/reducedMotion";
 import { MATCH_CREATION_IDENTITY_HINT } from "@/utils/matchCreationAccess";
 import homeIconUrl from "@/static/tab-png/home.png";
-import homeActiveIconUrl from "@/static/tab-png/home-active.png";
 import challengeIconUrl from "@/static/tab-png/challenge.png";
-import challengeActiveIconUrl from "@/static/tab-png/challenge-active.png";
 import statsIconUrl from "@/static/tab-png/stats.png";
-import statsActiveIconUrl from "@/static/tab-png/stats-active.png";
 import userIconUrl from "@/static/tab-png/user.png";
-import userActiveIconUrl from "@/static/tab-png/user-active.png";
+
+import { tabBarSelectedIcons } from "./tabBarSelectedIcons";
+import { useAccentTheme } from "@/stores/theme";
 
 import { tabBarMotion, tabIndicatorTransform } from "./tabBarMotion";
 import type { TabKey } from "./tabBarMotion";
@@ -24,6 +23,7 @@ const props = defineProps<{
   current: TabKey;
 }>();
 
+const { accentTheme } = useAccentTheme();
 const { currentTeam, currentIdentity } = useTeamContext();
 const { unreadCount } = useNotificationCenter();
 const { shouldHideCreationEntrances } = useMiniReviewStatus();
@@ -53,35 +53,30 @@ const items: Array<{
   label: string;
   path: string;
   icon: string;
-  activeIcon: string;
 }> = [
   {
     key: "home",
     label: "首页",
     path: "/pages/home/index",
     icon: homeIconUrl,
-    activeIcon: homeActiveIconUrl,
   },
   {
     key: "challenge",
     label: "约队",
     path: "/pages/activities/index",
     icon: challengeIconUrl,
-    activeIcon: challengeActiveIconUrl,
   },
   {
     key: "stats",
     label: "统计",
     path: "/pages/teams/index",
     icon: statsIconUrl,
-    activeIcon: statsActiveIconUrl,
   },
   {
     key: "mine",
     label: "我的",
     path: "/pages/user/index",
     icon: userIconUrl,
-    activeIcon: userActiveIconUrl,
   },
 ];
 
@@ -190,7 +185,8 @@ function handleCreateIndividualChallenge() {
           <view class="custom-tab-icon-shell">
             <image
               class="custom-tab-icon-image"
-              :src="props.current === item.key ? item.activeIcon : item.icon"
+              :class="props.current === item.key ? 'custom-tab-icon-image--selected' : ''"
+              :src="props.current === item.key ? tabBarSelectedIcons[accentTheme][item.key] : item.icon"
               mode="aspectFit"
             />
             <view v-if="item.key === 'mine' && unreadCount > 0" class="custom-tab-badge">
@@ -217,7 +213,8 @@ function handleCreateIndividualChallenge() {
           <view class="custom-tab-icon-shell">
             <image
               class="custom-tab-icon-image"
-              :src="props.current === item.key ? item.activeIcon : item.icon"
+              :class="props.current === item.key ? 'custom-tab-icon-image--selected' : ''"
+              :src="props.current === item.key ? tabBarSelectedIcons[accentTheme][item.key] : item.icon"
               mode="aspectFit"
             />
             <view v-if="item.key === 'mine' && unreadCount > 0" class="custom-tab-badge">
@@ -240,7 +237,8 @@ function handleCreateIndividualChallenge() {
           <view class="custom-tab-icon-shell">
             <image
               class="custom-tab-icon-image"
-              :src="props.current === item.key ? item.activeIcon : item.icon"
+              :class="props.current === item.key ? 'custom-tab-icon-image--selected' : ''"
+              :src="props.current === item.key ? tabBarSelectedIcons[accentTheme][item.key] : item.icon"
               mode="aspectFit"
             />
             <view v-if="item.key === 'mine' && unreadCount > 0" class="custom-tab-badge">
@@ -346,13 +344,18 @@ function handleCreateIndividualChallenge() {
   pointer-events: auto;
 }
 
+.custom-tab-icon-image--selected { filter: none; }
+.custom-tab-item-active .custom-tab-label {
+  color: var(--ui-tabbar-selected-text);
+}
+
 /* 轨道与底栏使用同样的内边距；圆角色块包住图标和文字，随整个 tab 平移。 */
 .custom-tab-indicator-track {
   position: absolute;
-  top: 0;
-  bottom: env(safe-area-inset-bottom);
-  left: 18rpx;
-  right: 18rpx;
+  top: 4rpx;
+  bottom: 4rpx;
+  left: 12rpx;
+  right: 12rpx;
   pointer-events: none;
 }
 .custom-tab-indicator-lane {
@@ -367,8 +370,8 @@ function handleCreateIndividualChallenge() {
   max-width: calc(100% - 16rpx);
   height: 92rpx;
   flex-shrink: 0;
-  border-radius: var(--ui-radius-button);
-  background: var(--ui-color-accent-soft);
+  border-radius: var(--ui-radius-round);
+  background: var(--ui-tabbar-selected-bg);
 }
 .custom-tab-indicator-lane--moving {
   animation: tab-indicator-slide var(--ui-motion-switch-duration) var(--ui-motion-ease-out) backwards;
@@ -423,7 +426,7 @@ function handleCreateIndividualChallenge() {
   position: absolute;
   left: 0;
   right: 0;
-  bottom: calc(132rpx + env(safe-area-inset-bottom));
+  bottom: var(--ui-tabbar-clearance);
   height: 300rpx;
   pointer-events: none;
 }

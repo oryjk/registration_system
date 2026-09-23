@@ -920,6 +920,9 @@ func TestRepositoryListsUserMatchesWithPublicationAndDateFilters(t *testing.T) {
 	if items[0].Match.ID != individualID || items[1].Match.Name != "今天线上约队" {
 		t.Fatalf("expected start_time descending order: %+v", items)
 	}
+	if items[0].IsRelatedToMe == nil || *items[0].IsRelatedToMe || items[1].IsRelatedToMe == nil || *items[1].IsRelatedToMe {
+		t.Fatalf("cancelled registration and unrelated team must not count as mine: %+v", items)
+	}
 	individual := items[0]
 	if len(individual.RegistrationGroups) != 2 {
 		t.Fatalf("expected host and individual summaries, got %+v", individual.RegistrationGroups)
@@ -957,6 +960,23 @@ func TestRepositoryListsUserMatchesWithPublicationAndDateFilters(t *testing.T) {
 	}
 	if len(unfiltered) != 4 {
 		t.Fatalf("expected all four matches without filters, got %d", len(unfiltered))
+	}
+	if _, err := pool.Exec(ctx, `UPDATE match_registrations SET status = 'attending', cancelled_at = NULL WHERE group_id = $1 AND user_id = $2`, individualGroupID, viewerID); err != nil {
+		t.Fatalf("restore viewer registration: %v", err)
+	}
+	if _, err := pool.Exec(ctx, `INSERT INTO team_members (team_id, user_id, role, status) VALUES ($1, $2, 'member', 'active')`, teamID, viewerID); err != nil {
+		t.Fatalf("add viewer team membership: %v", err)
+	}
+	items, err = repository.ListForUser(ctx, ports.MatchListFilter{
+		Scope: ports.MatchScopeAll, UserID: viewerID,
+		PublicationModes: []domain.PublicationMode{domain.OnlineTeam, domain.OnlineIndividual},
+		DateStart:        &dayStart, Limit: 20,
+	})
+	if err != nil {
+		t.Fatalf("list related hall matches: %v", err)
+	}
+	if items[0].IsRelatedToMe == nil || !*items[0].IsRelatedToMe || items[1].IsRelatedToMe == nil || !*items[1].IsRelatedToMe {
+		t.Fatalf("active registration and team membership must count as mine: %+v", items)
 	}
 }
 
@@ -1508,5 +1528,85 @@ func TestListSettlementAttendeesFiltersAndMapsTeams(t *testing.T) {
 		if _, found := byUser[excludedID]; found {
 			t.Fatalf("user %d 不应出现在结算名单: %+v", excludedID, attendees)
 		}
+	}
+}
+
+func TestRepositoryPreservesOfflineAAFeeType(t *testing.T) {
+	pool := testsupport.StartPostgres(t)
+	ctx := context.Background()
+	ownerID, _ := seedMatchOwner(t, pool)
+	match, groups := newPersistablePickupMatch(t, ownerID, 4, 12, domain.PaymentPostpaid, 0)
+	match.FeeType = domain.FeeOfflineAA
+	match.IsFree = false
+	repository := NewRepository(pool)
+	if err := repository.CreateWithGroups(ctx, match, groups); err != nil {
+		t.Fatal(err)
+	}
+	item, _, found, err := repository.FindForUser(ctx, match.ID, ownerID)
+	if err != nil || !found {
+		t.Fatalf("load: %v found=%v", err, found)
+	}
+	if item.Match.FeeType != domain.FeeOfflineAA || item.Match.IsFree || item.Match.FeePerPersonCents != 0 {
+		t.Fatalf("AA must remain distinct from free: %+v", item.Match)
+	}
+}
+
+func TestRepositoryPreservesTeamFundFeeType(t *testing.T) {
+	pool := testsupport.StartPostgres(t)
+	ctx := context.Background()
+	ownerID, teamID := seedMatchOwner(t, pool)
+	start := time.Now().Add(24 * time.Hour)
+	match, groups, err := domain.NewMatch(domain.NewMatchInput{
+		Name: "队费承担比赛", PublicationMode: domain.OnlineTeam, HostTeamID: &teamID,
+		CreatedByUserID: &ownerID, PlayersPerTeam: 8, StartTime: start, EndTime: start.Add(2 * time.Hour),
+		Location: "球场", FeeType: domain.FeeTeamFund, PaymentMode: domain.PaymentPostpaid,
+	}, domain.IndividualLimits{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	repository := NewRepository(pool)
+	if err := repository.CreateWithGroups(ctx, match, groups); err != nil {
+		t.Fatal(err)
+	}
+	item, _, found, err := repository.FindForUser(ctx, match.ID, ownerID)
+	if err != nil || !found {
+		t.Fatalf("load: %v found=%v", err, found)
+	}
+	if item.Match.FeeType != domain.FeeTeamFund || item.Match.IsFree || item.Match.FeePerPersonCents != 0 {
+		t.Fatal("team fund fee type not preserved")
+	}
+}
+
+func TestRepositoryPickupEditPersistsForm(t *testing.T) {
+	pool := testsupport.StartPostgres(t)
+	ctx := context.Background()
+	userID, _ := seedMatchOwner(t, pool)
+	start := time.Now().Add(24 * time.Hour)
+	m, groups, err := domain.NewMatch(domain.NewMatchInput{Name: "pickup", PublicationMode: domain.OnlinePickup, CreatedByUserID: &userID, PlayersPerTeam: 8, StartTime: start, EndTime: start.Add(2 * time.Hour), Location: "old"}, domain.IndividualLimits{MinPlayers: 16, MaxPlayers: 20})
+	if err != nil {
+		t.Fatal(err)
+	}
+	repo := NewRepository(pool)
+	if err := repo.CreateWithGroups(ctx, m, groups); err != nil {
+		t.Fatal(err)
+	}
+	m.PlayersPerTeam = 5
+	if err := m.UpdateFeeConfig(domain.FeeFixed, domain.PaymentPrepaid, 2500); err != nil {
+		t.Fatal(err)
+	}
+	min, max := 10, 12
+	groups[0].MinPlayers, groups[0].MaxPlayers = &min, &max
+	if err := repo.UpdateDetails(ctx, m, &groups[0]); err != nil {
+		t.Fatal(err)
+	}
+	saved, savedGroups, found, err := repo.FindByID(ctx, m.ID)
+	if err != nil || !found {
+		t.Fatalf("read: %v", err)
+	}
+	if saved.PlayersPerTeam != 5 || saved.FeeType != domain.FeeFixed || saved.FeePerPersonCents != 2500 || saved.PaymentMode != domain.PaymentPrepaid || saved.IsFree {
+		t.Fatalf("wrong persisted form: %+v", saved)
+	}
+	if *savedGroups[0].MinPlayers != 10 || *savedGroups[0].MaxPlayers != 12 {
+		t.Fatal("limits not persisted")
 	}
 }

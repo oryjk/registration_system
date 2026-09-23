@@ -78,9 +78,10 @@ type Match struct {
 	HostColor           string
 	AwayColor           string
 	IsFree              bool
-	// PaymentMode 报名费支付节奏；FeePerPersonCents 人均报名费（分），0 表示免费。
+	// PaymentMode 报名费支付节奏；FeePerPersonCents 人均报名费（分）；FeeType 区分零金额的线下 AA 与免费。
 	PaymentMode       PaymentMode
 	FeePerPersonCents int64
+	FeeType           FeeType
 	CreatedByUserID   *int64
 	CreatedByAdminID  *int64
 	CreatedAt         time.Time
@@ -111,6 +112,7 @@ type NewMatchInput struct {
 	// PaymentMode/FeePerPersonCents 报名支付配置；PaymentMode 空串按赛后支付处理。
 	PaymentMode       PaymentMode
 	FeePerPersonCents int64
+	FeeType           FeeType
 	CreatedAt         time.Time
 }
 
@@ -140,14 +142,23 @@ func NewMatch(input NewMatchInput, individualLimits IndividualLimits) (Match, []
 	if err != nil {
 		return Match{}, nil, err
 	}
+	if input.FeeType == FeeTeamFund && input.HostTeamID == nil {
+		return Match{}, nil, sharederror.New(sharederror.KindValidation, "队费扣除仅适用于球队比赛")
+	}
 	paymentMode := input.PaymentMode.normalized()
 	if err := validatePaymentConfig(paymentMode, input.FeePerPersonCents); err != nil {
 		return Match{}, nil, err
 	}
+	if err := validateFeeType(input.FeeType, paymentMode, input.FeePerPersonCents); err != nil {
+		return Match{}, nil, err
+	}
 	// 有人均报名费时强制视为收费比赛，避免 is_free 与费用互相矛盾。
 	isFree := input.IsFree == nil || *input.IsFree
-	if input.FeePerPersonCents > 0 {
+	if input.FeePerPersonCents > 0 || input.FeeType == FeeOfflineAA || input.FeeType == FeeTeamFund {
 		isFree = false
+	}
+	if input.FeeType == FeeFree {
+		isFree = true
 	}
 	match := Match{
 		ID:                  matchID,
@@ -171,6 +182,7 @@ func NewMatch(input NewMatchInput, individualLimits IndividualLimits) (Match, []
 		IsFree:              isFree,
 		PaymentMode:         paymentMode,
 		FeePerPersonCents:   input.FeePerPersonCents,
+		FeeType:             input.FeeType,
 		CreatedByUserID:     input.CreatedByUserID,
 		CreatedByAdminID:    input.CreatedByAdminID,
 		CreatedAt:           now,

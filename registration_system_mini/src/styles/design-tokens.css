@@ -1,6 +1,17 @@
 :root,
 page,
 .app-theme-scope {
+  /* Shared glass material for navigation; surface RGB adapts to light/dark themes. */
+  --ui-glass-bg: rgba(var(--ui-primitive-surface-rgb), 0.68);
+  --ui-glass-highlight: rgba(255, 255, 255, 0.48);
+  --ui-glass-filter: blur(24px) saturate(160%);
+  --ui-glass-shadow: 0 8rpx 32rpx rgba(var(--ui-primitive-shadow-rgb), 0.10), inset 0 2rpx 0 var(--ui-glass-highlight);
+  --ui-glass-header-shadow: 0 6rpx 24rpx rgba(var(--ui-primitive-shadow-rgb), 0.04);
+  --ui-tabbar-selected-bg: #ffffff;
+  --ui-tabbar-selected-text: #00214d;
+  --ui-tabbar-glass-bg: var(--ui-glass-bg);
+  --ui-tabbar-glass-border: var(--ui-glass-highlight);
+  --ui-tabbar-clearance: calc(164rpx + env(safe-area-inset-bottom));
   /* Primitive */
   --ui-primitive-ink: #00214d;
   --ui-primitive-surface: #fffffe;

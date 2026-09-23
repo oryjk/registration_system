@@ -754,13 +754,20 @@ button::after {
 
 .custom-tabbar {
   position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: calc(108rpx + env(safe-area-inset-bottom));
-  padding: 0 18rpx env(safe-area-inset-bottom);
-  background: var(--ui-color-surface);
-  border-top: var(--ui-border-strong);
+  left: 50%;
+  bottom: calc(12rpx + env(safe-area-inset-bottom));
+  width: calc(100% - 48rpx);
+  max-width: 702rpx;
+  height: 116rpx;
+  padding: 4rpx 12rpx;
+  box-sizing: border-box;
+  transform: translateX(-50%);
+  background: var(--ui-tabbar-glass-bg);
+  border: 2rpx solid var(--ui-tabbar-glass-border);
+  border-radius: var(--ui-radius-round);
+  box-shadow: var(--ui-glass-shadow);
+  -webkit-backdrop-filter: var(--ui-glass-filter);
+  backdrop-filter: var(--ui-glass-filter);
   display: grid;
   grid-template-columns: 1fr 1fr 132rpx 1fr 1fr;
   align-items: center;

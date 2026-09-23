@@ -164,9 +164,9 @@ provide(APP_SCROLL_CONTROLLER, appScrollController);
 .mine-tools-content { padding:0 16rpx 16rpx; }
 .mine-account-actions { display:flex; justify-content:center; gap:32rpx; margin-top:24rpx; }
 .mine-account-action { margin:0; padding:16rpx 4rpx; border:0; background:transparent; color:var(--ui-color-text-muted); font-size:22rpx; line-height:1.4; }
-.mine-bottom-spacer { height:calc(168rpx + env(safe-area-inset-bottom)); }
+.mine-bottom-spacer { height:var(--ui-tabbar-clearance); }
 /* #ifdef H5 */
 .mine-page { width:100%; max-width:750rpx; margin:0 auto; }
-.mine-page :deep(.app-tab-header-shell),.mine-page :deep(.custom-tabbar) { left:50%; right:auto; width:100%; max-width:750rpx; transform:translateX(-50%); }
+.mine-page :deep(.app-tab-header-shell) { left:50%; right:auto; width:100%; max-width:750rpx; transform:translateX(-50%); }
 /* #endif */
 </style>

@@ -142,14 +142,20 @@ function handleHome() {
   padding-left: 28rpx;
   padding-right: 28rpx;
   padding-bottom: 14rpx;
-  /* D 风格：实色画布底 + 浅色细描边，不用毛玻璃。 */
-  background: var(--ui-color-page);
-  border-bottom: 2rpx solid var(--ui-color-line);
+  /* 顶部与悬浮底栏共用玻璃材质，保持无分割线。 */
+  background: var(--ui-glass-bg);
+  -webkit-backdrop-filter: var(--ui-glass-filter);
+  backdrop-filter: var(--ui-glass-filter);
+  box-shadow: var(--ui-glass-header-shadow);
+  border-bottom: none;
   box-sizing: border-box;
 }
 
 .app-tab-header-shell-plain {
   background: transparent;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  box-shadow: none;
   border-bottom: none;
 }
 

@@ -196,7 +196,7 @@ func TestUserUpdateMatchDetailsAppliesFields(t *testing.T) {
 	}
 }
 
-func TestUserUpdateMatchRejectsMatchWithoutHost(t *testing.T) {
+func TestPickupCreatorCanEditMatch(t *testing.T) {
 	start := time.Date(2026, 9, 1, 18, 0, 0, 0, time.UTC)
 	match, groups, err := domain.NewMatch(domain.NewMatchInput{
 		Name: "散人约球", PublicationMode: domain.OnlinePickup, CreatedByUserID: userIDPtr(42),
@@ -208,9 +208,53 @@ func TestUserUpdateMatchRejectsMatchWithoutHost(t *testing.T) {
 	repository := &fakeUserMatchUpdateRepository{match: match, groups: groups, found: true}
 	service := NewUserMatchUpdateService(repository, fakeUserMatchAuthorizer{allowed: map[int64]bool{42: true}}, time.Now)
 
-	_, err = service.UpdateDetails(context.Background(), sharedauth.Actor{Kind: sharedauth.ActorUser, ID: 42}, match.ID, UserUpdateMatchCommand{HostCapacityLimit: updateTestIntPointer(10)})
-	if err == nil || !strings.Contains(err.Error(), "没有主队") {
-		t.Fatalf("无主队比赛应被拒绝: %v", err)
+	updated, err := service.UpdateDetails(context.Background(), sharedauth.Actor{Kind: sharedauth.ActorUser, ID: 42}, match.ID, UserUpdateMatchCommand{Name: stringPointer("新标题"), Location: stringPointer("新球场"), Description: stringPointer("新说明")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if updated.Name != "新标题" || updated.Location != "新球场" || updated.Description == nil || *updated.Description != "新说明" {
+		t.Fatal("fields not updated")
+	}
+	if repository.updatedGp != nil {
+		t.Fatal("pickup limits must stay unchanged")
+	}
+	_, err = service.UpdateDetails(context.Background(), sharedauth.Actor{Kind: sharedauth.ActorUser, ID: 99}, match.ID, UserUpdateMatchCommand{Name: stringPointer("越权修改")})
+	if err == nil {
+		t.Fatal("non-creator must not edit")
+	}
+
+}
+
+func TestPickupEditAllCreationFields(t *testing.T) {
+	start := time.Now().Add(24 * time.Hour)
+	m, groups, err := domain.NewMatch(domain.NewMatchInput{Name: "pickup", PublicationMode: domain.OnlinePickup, CreatedByUserID: userIDPtr(42), PlayersPerTeam: 8, StartTime: start, EndTime: start.Add(2 * time.Hour), Location: "old"}, domain.IndividualLimits{MinPlayers: 16, MaxPlayers: 20})
+	if err != nil {
+		t.Fatal(err)
+	}
+	repo := &fakeUserMatchUpdateRepository{match: m, groups: groups, found: true}
+	service := NewUserMatchUpdateService(repo, fakeUserMatchAuthorizer{}, time.Now)
+	players, limit := 5, 12
+	fee, mode, cents := domain.FeeFixed, domain.PaymentPrepaid, int64(2500)
+	lat, lng := 30.5, 104.1
+	updated, err := service.UpdateDetails(context.Background(), sharedauth.Actor{Kind: sharedauth.ActorUser, ID: 42}, m.ID, UserUpdateMatchCommand{
+		PlayersPerTeam: &players, HostCapacityLimit: &limit, FeeType: &fee, PaymentMode: &mode, FeePerPersonCents: &cents,
+		Location: stringPointer("new"), LocationLatitude: &lat, LocationLongitude: &lng, Description: stringPointer(""),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if updated.ID != m.ID || updated.PlayersPerTeam != 5 || updated.FeePerPersonCents != cents || updated.PaymentMode != mode || updated.FeeType != fee || updated.IsFree {
+		t.Fatalf("wrong update: %+v", updated)
+	}
+	if updated.LocationLatitude == nil || *updated.LocationLatitude != lat || (updated.Description != nil && *updated.Description != "") {
+		t.Fatal("location or description not updated")
+	}
+	if repo.updatedGp == nil || *repo.updatedGp.MinPlayers != 10 || *repo.updatedGp.MaxPlayers != 12 {
+		t.Fatal("pickup limits not updated")
+	}
+	limit = 9
+	if _, err := service.UpdateDetails(context.Background(), sharedauth.Actor{Kind: sharedauth.ActorUser, ID: 42}, m.ID, UserUpdateMatchCommand{PlayersPerTeam: &players, HostCapacityLimit: &limit}); err == nil {
+		t.Fatal("invalid limits accepted")
 	}
 }
 

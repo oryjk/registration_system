@@ -266,7 +266,7 @@ provide(APP_SCROLL_CONTROLLER, appScrollController);
 .hall-content {
   position: relative;
   /* 滚动收进 AppPullScrollView 后，底栏留白由滚动内容自己承担。 */
-  padding-bottom: 180rpx;
+  padding-bottom: var(--ui-tabbar-clearance);
 }
 
 .hall-toolbar-row {
@@ -384,8 +384,7 @@ provide(APP_SCROLL_CONTROLLER, appScrollController);
   margin: 0 auto;
 }
 
-.hall-page :deep(.app-tab-header-shell),
-.hall-page :deep(.custom-tabbar) {
+.hall-page :deep(.app-tab-header-shell) {
   left: 50%;
   right: auto;
   width: 100%;

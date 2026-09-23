@@ -37,9 +37,10 @@ type CreateMatchCommand struct {
 	AwayColor           *string
 	// IsFree 为 nil 时默认免费；历史迁移数据显式传 false。
 	IsFree *bool
-	// PaymentMode 报名费支付节奏；FeePerPersonCents 人均报名费（分），0 表示免费。
+	// PaymentMode 报名费支付节奏；FeePerPersonCents 人均报名费（分）；FeeType 区分零金额的线下 AA 与免费。
 	PaymentMode       domain.PaymentMode
 	FeePerPersonCents int64
+	FeeType           domain.FeeType
 }
 
 type CreateMatchResult struct {
@@ -125,6 +126,7 @@ func (u CreateMatch) Execute(ctx context.Context, actor sharedauth.Actor, comman
 		IsFree:              command.IsFree,
 		PaymentMode:         command.PaymentMode,
 		FeePerPersonCents:   command.FeePerPersonCents,
+		FeeType:             command.FeeType,
 		CreatedAt:           u.clock.Now(),
 	}, limits)
 	if err != nil {

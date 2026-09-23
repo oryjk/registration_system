@@ -2179,15 +2179,26 @@ components:
                   description: 用户登录 JWT
     UserUpdateMatchRequest:
       type: object
+      description: 主队管理者或散人约球创建者编辑比赛；所有字段可选，省略保留原值。
       properties:
-        opponent_name:
+        name: { type: string }
+        location: { type: string }
+        location_latitude: { type: number }
+        location_longitude: { type: number }
+        description: { type: string, description: 空串清除说明 }
+        opponent_name: { type: string }
+        max_players: { type: integer, description: 主队或散人约球报名上限 }
+        players_per_team: { type: integer }
+        start_time: { type: string, format: date-time }
+        end_time: { type: string, format: date-time }
+        host_color: { type: string }
+        away_color: { type: string }
+        fee_type: { type: string, enum: [offline_aa, team_fund, free, fixed_amount] }
+        payment_mode: { type: string, enum: [prepaid, postpaid] }
+        fee_per_person_cents: { type: integer, format: int64 }
+        publication_mode:
           type: string
-          nullable: true
-          description: 手工对手名称；null=不改，空串=清除
-        max_players:
-          type: integer
-          nullable: true
-          description: 主队报名组人数上限；null=不改
+          description: 仅允许仍在招募的线上约队转为线下已约或散人对手。
     TeamLogoUploadEnvelope:
       allOf:
         - $ref: "#/components/schemas/SuccessBase"
@@ -2400,7 +2411,11 @@ components:
           type: integer
           format: int64
           minimum: 0
-          description: 人均报名费（分）；0 表示免费。赛前支付必须大于 0。
+          description: 人均报名费（分）；线下 AA 与免费为 0，具体金额必须大于 0。未传 fee_type 的旧客户端保留原语义。
+        fee_type:
+          type: string
+          enum: [offline_aa, free, fixed_amount, team_fund]
+          description: 可选费用类型；线下 AA、免费、具体金额、队费扣除（仅球队比赛，零金额赛后，仅说明不扣款）。省略兼容旧客户端。AA 与免费必须使用 postpaid 和零金额，仅具体金额可选 prepaid。比赛列表和详情也返回该字段（历史记录可能省略）。
     UpdateMatchRequest:
       type: object
       required: [name, start_time, end_time, location]

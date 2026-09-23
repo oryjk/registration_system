@@ -556,7 +556,7 @@ onShareTimeline(() => ({
 .home-content {
   position: relative;
   /* 滚动收进 AppPullScrollView 后，底栏留白由滚动内容自己承担。 */
-  padding-bottom: 180rpx;
+  padding-bottom: var(--ui-tabbar-clearance);
 }
 
 .home-refresh-mask {
@@ -671,8 +671,7 @@ onShareTimeline(() => ({
   margin: 0 auto;
 }
 
-.home-page :deep(.app-tab-header-shell),
-.home-page :deep(.custom-tabbar) {
+.home-page :deep(.app-tab-header-shell) {
   left: 50%;
   right: auto;
   width: 100%;

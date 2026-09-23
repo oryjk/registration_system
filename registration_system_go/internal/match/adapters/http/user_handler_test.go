@@ -24,6 +24,7 @@ func TestUserMatchRoutesReturnPrivacyScopedData(t *testing.T) {
 	groupID := uuid.New()
 	avatarURL := "https://cdn.example.com/player-37.png"
 	hostLogoURL := "https://cdn.example.com/team-7-logo.png"
+	isRelatedToMe := true
 	registration := &domain.Registration{
 		ID: uuid.New(), GroupID: groupID, UserID: 42,
 		Status: domain.RegistrationAttending, RegistrationCount: 1,
@@ -36,6 +37,7 @@ func TestUserMatchRoutesReturnPrivacyScopedData(t *testing.T) {
 		},
 		HostTeamName:    "东安联队",
 		HostTeamLogoURL: &hostLogoURL,
+		IsRelatedToMe:   &isRelatedToMe,
 	}
 	service := &fakeUserMatches{
 		list: application.UserMatchListResult{Items: []ports.MatchItem{item}, Total: 1, Page: 1, PageSize: 20},
@@ -63,6 +65,9 @@ func TestUserMatchRoutesReturnPrivacyScopedData(t *testing.T) {
 	router.ServeHTTP(listResponse, listRequest)
 	if listResponse.Code != http.StatusOK || !bytes.Contains(listResponse.Body.Bytes(), []byte(`"publication_mode":"online_individual"`)) {
 		t.Fatalf("unexpected list response %d: %s", listResponse.Code, listResponse.Body.String())
+	}
+	if !bytes.Contains(listResponse.Body.Bytes(), []byte(`"is_related_to_me":true`)) {
+		t.Fatalf("related match marker missing from list response: %s", listResponse.Body.String())
 	}
 
 	detailRequest := httptest.NewRequest(http.MethodGet, "/matches/"+matchID.String(), nil)

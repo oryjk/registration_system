@@ -67,6 +67,8 @@ type MatchItem struct {
 	Match        domain.Match
 	HostTeamName string
 	AwayTeamName *string
+	// IsRelatedToMe 仅用户列表填充；与 scope=mine 的报名/球队成员判定一致。
+	IsRelatedToMe *bool
 	// HostTeamLogoURL/AwayTeamLogoURL 对阵球队 Logo；仅详情查询填充（列表不查，保持 nil），
 	// 小程序比赛详情的对阵区用它展示队徽，避免依赖「仅成员可读」的球队详情接口。
 	HostTeamLogoURL    *string

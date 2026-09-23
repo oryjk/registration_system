@@ -64,7 +64,9 @@ type UserMatchResponse struct {
 	AwayTeamLogoURL *string `json:"away_team_logo_url"`
 	// 发布者用户 ID：散人约球无主队，小程序靠它判定「我创建的比赛」以显示取消入口。
 	CreatedByUserID *int64 `json:"created_by_user_id"`
-	PlayersPerTeam  int    `json:"players_per_team"`
+	// 列表项的当前用户关联状态；详情等响应不填充。
+	IsRelatedToMe  *bool `json:"is_related_to_me,omitempty"`
+	PlayersPerTeam int   `json:"players_per_team"`
 	// HostScore/AwayScore 比赛比分；null 表示尚未录入（比赛管理员/管理端录入）。
 	HostScore           *int               `json:"host_score"`
 	AwayScore           *int               `json:"away_score"`
@@ -81,6 +83,7 @@ type UserMatchResponse struct {
 	IsFree              bool               `json:"is_free"`
 	PaymentMode         domain.PaymentMode `json:"payment_mode"`
 	FeePerPersonCents   int64              `json:"fee_per_person_cents"`
+	FeeType             domain.FeeType     `json:"fee_type,omitempty"`
 	// HostCaptain 主队队长资料（详情场景填充；无主队或未设置队长时为 null），
 	// 供小程序「联系队长」留言入口使用。
 	HostCaptain        *UserCaptainResponse           `json:"host_captain"`
@@ -265,7 +268,7 @@ func (h *UserHandler) Create(c *gin.Context) {
 		Location: request.Location, LocationLatitude: request.LocationLatitude, LocationLongitude: request.LocationLongitude,
 		Description: request.Description, IsFree: request.IsFree,
 		HostColor: request.HostColor, AwayColor: request.AwayColor,
-		PaymentMode: request.PaymentMode, FeePerPersonCents: request.FeePerPersonCents,
+		PaymentMode: request.PaymentMode, FeePerPersonCents: request.FeePerPersonCents, FeeType: request.FeeType,
 	})
 	if err != nil {
 		sharedhttpapi.WriteError(c, err)
@@ -280,6 +283,17 @@ func (h *UserHandler) Create(c *gin.Context) {
 }
 
 type UserUpdateMatchRequest struct {
+	PlayersPerTeam    *int                `json:"players_per_team"`
+	FeeType           *domain.FeeType     `json:"fee_type"`
+	PaymentMode       *domain.PaymentMode `json:"payment_mode"`
+	FeePerPersonCents *int64              `json:"fee_per_person_cents"`
+	LocationLatitude  *float64            `json:"location_latitude"`
+	LocationLongitude *float64            `json:"location_longitude"`
+	HostColor         *string             `json:"host_color"`
+	AwayColor         *string             `json:"away_color"`
+	Name              *string             `json:"name"`
+	Location          *string             `json:"location"`
+	Description       *string             `json:"description"`
 	// OpponentName 手工对手名称；null=不改，空串=清除。
 	OpponentName *string `json:"opponent_name"`
 	// MaxPlayers 主队报名组人数上限；null=不改。
@@ -310,6 +324,9 @@ func (h *UserHandler) UpdateDetails(c *gin.Context) {
 		return
 	}
 	if _, err := h.update.UpdateDetails(c.Request.Context(), actor, id, application.UserUpdateMatchCommand{
+		PlayersPerTeam: request.PlayersPerTeam, FeeType: request.FeeType, PaymentMode: request.PaymentMode, FeePerPersonCents: request.FeePerPersonCents,
+		LocationLatitude: request.LocationLatitude, LocationLongitude: request.LocationLongitude, HostColor: request.HostColor, AwayColor: request.AwayColor,
+		Name: request.Name, Location: request.Location, Description: request.Description,
 		OpponentName: request.OpponentName, HostCapacityLimit: request.MaxPlayers,
 		StartTime: request.StartTime, EndTime: request.EndTime,
 		PublicationMode: request.PublicationMode,
@@ -473,14 +490,15 @@ func mapUserMatch(item ports.MatchItem) UserMatchResponse {
 		ID: match.ID.String(), Name: match.Name, PublicationMode: match.PublicationMode,
 		OpponentState: match.OpponentState, Status: match.Status,
 		HostTeamID: match.HostTeamID, HostTeamName: item.HostTeamName, CreatedByUserID: match.CreatedByUserID,
-		AwayTeamID: match.AwayTeamID, AwayTeamName: item.AwayTeamName, OpponentName: match.OpponentName,
+		IsRelatedToMe: item.IsRelatedToMe,
+		AwayTeamID:    match.AwayTeamID, AwayTeamName: item.AwayTeamName, OpponentName: match.OpponentName,
 		HostTeamLogoURL: item.HostTeamLogoURL, AwayTeamLogoURL: item.AwayTeamLogoURL,
 		PlayersPerTeam: match.PlayersPerTeam, HostScore: match.HostScore, AwayScore: match.AwayScore,
 		StartTime: match.StartTime, EndTime: match.EndTime,
 		RegistrationStartAt: match.RegistrationStartAt, RegistrationEndAt: match.RegistrationEndAt,
 		Location: match.Location, LocationLatitude: match.LocationLatitude, LocationLongitude: match.LocationLongitude,
 		Description: match.Description, RegistrationGroups: groups, CreatedAt: match.CreatedAt, UpdatedAt: match.UpdatedAt,
-		IsFree: match.IsFree, PaymentMode: match.PaymentMode, FeePerPersonCents: match.FeePerPersonCents,
+		IsFree: match.IsFree, PaymentMode: match.PaymentMode, FeePerPersonCents: match.FeePerPersonCents, FeeType: match.FeeType,
 		HostColor: jerseyColorResponse(match.HostColor), AwayColor: jerseyColorResponse(match.AwayColor),
 		HostCaptain: mapUserCaptainResponse(item.HostCaptain),
 	}

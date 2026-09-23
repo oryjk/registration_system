@@ -23,11 +23,12 @@ INSERT INTO matches (
     host_color,
     away_color,
     created_by_user_id,
-    created_by_admin_id
+    created_by_admin_id,
+    fee_type
 )
 VALUES (
     $1, $2, $3, $4, $5, $6, $7, $8,
-    $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24
+    $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25
 )
 RETURNING *;
 
@@ -85,7 +86,24 @@ WHERE (sqlc.narg('status')::text IS NULL OR m.status = sqlc.narg('status'))
 -- name: ListMatchesForUser :many
 SELECT m.*,
 	   COALESCE(host.name, '') AS host_team_name,
-       away.name AS away_team_name
+       away.name AS away_team_name,
+       (
+           EXISTS (
+               SELECT 1
+               FROM match_registration_groups registration_group
+               JOIN match_registrations registration ON registration.group_id = registration_group.id
+               WHERE registration_group.match_id = m.id
+                 AND registration.user_id = sqlc.arg('user_id')
+                 AND registration.status <> 'cancelled'
+           )
+           OR EXISTS (
+               SELECT 1
+               FROM team_members membership
+               WHERE membership.user_id = sqlc.arg('user_id')
+                 AND membership.status = 'active'
+                 AND (membership.team_id = m.host_team_id OR membership.team_id = m.away_team_id)
+           )
+       ) AS is_related_to_me
 FROM matches m
 LEFT JOIN teams host ON host.id = m.host_team_id
 LEFT JOIN teams away ON away.id = m.away_team_id
@@ -380,6 +398,11 @@ SET name = $2,
     away_color = $13,
     publication_mode = $14,
     opponent_state = $15,
+    players_per_team = $16,
+    fee_type = $17,
+    payment_mode = $18,
+    fee_per_person_cents = $19,
+    is_free = $20,
     updated_at = NOW()
 WHERE id = $1
 RETURNING *;
@@ -450,7 +473,9 @@ WHERE id = $1;
 -- name: UpdateRegistrationGroupCapacity :exec
 UPDATE match_registration_groups
 SET max_players = $2,
-    updated_at = $3
+    updated_at = $3,
+    min_players = $4,
+    status = $5
 WHERE id = $1;
 
 -- name: GetRegistrationGroupForUpdate :one

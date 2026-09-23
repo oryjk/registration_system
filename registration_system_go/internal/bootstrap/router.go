@@ -1,6 +1,7 @@
 package bootstrap
 
 import (
+	"log/slog"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -51,10 +52,10 @@ type Dependencies struct {
 
 func NewRouter(dependencies Dependencies) *gin.Engine {
 	// 默认 debug 模式会打印全部路由注册明细；日常启动只需要端口与关键事件，
-	// 统一切到 release 口径（请求访问日志由下方 gin.Logger 继续输出）。
+	// 统一切到 release 口径，访问日志由下方业务语义中间件输出。
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.New()
-	router.Use(gin.Logger(), gin.Recovery())
+	router.Use(accessLogger(slog.Default()), gin.Recovery())
 	router.Use(localDevelopmentCORS())
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, sharedhttp.Success(gin.H{"status": "ok"}))

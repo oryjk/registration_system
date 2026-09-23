@@ -60,6 +60,7 @@ type CreateMatchRequest struct {
 	IsFree              *bool              `json:"is_free"`
 	PaymentMode         domain.PaymentMode `json:"payment_mode"`
 	FeePerPersonCents   int64              `json:"fee_per_person_cents"`
+	FeeType             domain.FeeType     `json:"fee_type,omitempty"`
 }
 
 type UpdateMatchRequest struct {
@@ -134,6 +135,7 @@ type MatchResponse struct {
 	IsFree              bool               `json:"is_free"`
 	PaymentMode         domain.PaymentMode `json:"payment_mode"`
 	FeePerPersonCents   int64              `json:"fee_per_person_cents"`
+	FeeType             domain.FeeType     `json:"fee_type,omitempty"`
 	CreatedByUserID     *int64             `json:"created_by_user_id"`
 	CreatedByAdminID    *int64             `json:"created_by_admin_id"`
 	CreatedAt           time.Time          `json:"created_at"`
@@ -230,7 +232,7 @@ func (h *AdminHandler) Create(c *gin.Context) {
 		Location: request.Location, LocationLatitude: request.LocationLatitude, LocationLongitude: request.LocationLongitude,
 		Description: request.Description, IsFree: request.IsFree,
 		HostColor: request.HostColor, AwayColor: request.AwayColor,
-		PaymentMode: request.PaymentMode, FeePerPersonCents: request.FeePerPersonCents,
+		PaymentMode: request.PaymentMode, FeePerPersonCents: request.FeePerPersonCents, FeeType: request.FeeType,
 	})
 	if err != nil {
 		sharedhttpapi.WriteError(c, err)
@@ -397,7 +399,7 @@ func mapMatch(item ports.AdminMatchItem) MatchResponse {
 		Location: match.Location, LocationLatitude: match.LocationLatitude, LocationLongitude: match.LocationLongitude,
 		Description: match.Description, IsFree: match.IsFree, CreatedByUserID: match.CreatedByUserID, CreatedByAdminID: match.CreatedByAdminID,
 		HostColor: jerseyColorResponse(match.HostColor), AwayColor: jerseyColorResponse(match.AwayColor),
-		PaymentMode: match.PaymentMode, FeePerPersonCents: match.FeePerPersonCents,
+		PaymentMode: match.PaymentMode, FeePerPersonCents: match.FeePerPersonCents, FeeType: match.FeeType,
 		CreatedAt: match.CreatedAt, UpdatedAt: match.UpdatedAt,
 	}
 }

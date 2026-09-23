@@ -789,3 +789,19 @@ func TestRepositoryDeleteTeamSoftDeletesDissolvedWithHistory(t *testing.T) {
 		t.Fatal("status=deleted filter should include soft deleted team")
 	}
 }
+
+func TestTeamSearchMatchesYueVariants(t *testing.T) {
+	pool := testsupport.StartPostgres(t)
+	ctx := context.Background()
+	for _, name := range []string{"东安洺悅联队", "洺悦御府", "其他球队"} {
+		if _, err := pool.Exec(ctx, `INSERT INTO teams (name) VALUES ($1)`, name); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, keyword := range []string{"洺悦", "洺悅"} {
+		items, err := NewRepository(pool).SearchByKeyword(ctx, keyword)
+		if err != nil || len(items) != 2 {
+			t.Fatalf("keyword=%s results=%d err=%v", keyword, len(items), err)
+		}
+	}
+}

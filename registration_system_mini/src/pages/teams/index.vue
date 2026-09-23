@@ -236,7 +236,7 @@ provide(APP_SCROLL_CONTROLLER, appScrollController);
 
 .stats-content {
   /* 滚动收进 AppPullScrollView 后，底栏留白由滚动内容自己承担。 */
-  padding-bottom: 164rpx;
+  padding-bottom: var(--ui-tabbar-clearance);
 }
 
 .stats-empty {
@@ -305,8 +305,7 @@ provide(APP_SCROLL_CONTROLLER, appScrollController);
   margin: 0 auto;
 }
 
-.stats-page :deep(.app-tab-header-shell),
-.stats-page :deep(.custom-tabbar) {
+.stats-page :deep(.app-tab-header-shell) {
   left: 50%;
   right: auto;
   width: 100%;

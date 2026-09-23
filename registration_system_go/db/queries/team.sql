@@ -37,7 +37,7 @@ SELECT t.id,
        (SELECT count(*) FROM team_members tm WHERE tm.team_id = t.id AND tm.status = 'active')::bigint AS member_count
 FROM teams t
 WHERE t.status = 'active'
-  AND ($1::text = '' OR t.name ILIKE '%' || $1::text || '%')
+  AND ($1::text = '' OR replace(t.name, '悅', '悦') ILIKE '%' || replace($1::text, '悅', '悦') || '%')
 ORDER BY t.name, t.id
 LIMIT 50;
 
