@@ -4,7 +4,7 @@ import { onLoad, onUnload } from "@dcloudio/uni-app";
 import { getMatchDetail } from "@/api/match";
 import { applyTeamMatch, listTeamApplications, withdrawTeamApplication } from "@/api/teamApplication";
 import { useTeamContext } from "@/stores/teamContext";
-import { useConfirmDialog } from "@/components/ui";
+import { useConfirmDialog } from "@/components/ui/useConfirmDialog";
 import type { AppMatchDetailResponse, AppTeamApplication } from "@/types/match";
 import { resolveRegistrationWindow } from "@/utils/registrationWindow";
 

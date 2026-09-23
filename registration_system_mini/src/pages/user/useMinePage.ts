@@ -7,7 +7,7 @@ import { useNotificationCenter } from "@/stores/notificationCenter";
 import { useTeamContext } from "@/stores/teamContext";
 import { useMiniReviewStatus } from "@/stores/miniReview";
 import { clearSession, resetLocalSession } from "@/stores/appSession";
-import { useConfirmDialog } from "@/components/ui";
+import { useConfirmDialog } from "@/components/ui/useConfirmDialog";
 import { PRODUCT_OWNER_USER_ID } from "@/config/productOwner";
 import { hasManualLogout } from "@/utils/authStorage";
 import { getCustomNavMetrics } from "@/utils/customNav";

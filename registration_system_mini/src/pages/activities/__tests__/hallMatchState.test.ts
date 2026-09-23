@@ -315,3 +315,14 @@ describe("hall card action kinds by viewer context", () => {
      if (full) expect(card.actionLabel).toEqual("查看详情");
    }
  });
+
+
+test("historical search cards show match state and only allow viewing", () => {
+  for (const [status, label] of [["ended", "已结束"], ["cancelled", "已取消"], ["ongoing", "进行中"]] as const) {
+    const card = toHallMatchCard(buildMatch({ status }));
+    expect([card.opponentStateLabel, card.actionKind, card.actionLabel, card.capacityHint])
+      .toEqual([label, "view", "查看详情", ""]);
+  }
+  const expired = toHallMatchCard(buildMatch({ start_time: "2020-01-01T12:00:00Z", end_time: "2020-01-01T14:00:00Z" }));
+  expect([expired.opponentStateLabel, expired.actionKind]).toEqual(["已结束", "view"]);
+});

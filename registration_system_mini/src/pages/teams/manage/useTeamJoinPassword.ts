@@ -1,6 +1,6 @@
 import { computed, reactive, ref, type ComputedRef, type Ref } from "vue";
 import type { TeamProfileViewModel } from "@/types/viewModels";
-import { useConfirmDialog } from "@/components/ui";
+import { useConfirmDialog } from "@/components/ui/useConfirmDialog";
 import { checkTeamRequiresPassword } from "../teamSelfActions";
 import { updateJoinPasswordFromForm } from "./teamManageActions";
 

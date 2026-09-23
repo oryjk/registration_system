@@ -4,6 +4,7 @@ import { formatDateLabel, pad, parseDateValue } from "@/utils/datetime";
 import { resolveInheritedGuestLimit } from "@/utils/matchCapacity";
 import { getMatchPublicationModeLabel } from "@/utils/matchPublicationMode";
 import { formatHomeMatchDateBlock } from "@/pages/home/homeMatchDate";
+import { resolveMatchPhase } from "../home/homeMatchState";
 import { resolveRegistrationWindow } from "@/utils/registrationWindow";
 
 export type HallMatchKindFilter = "all" | "team" | "individual" | "mine";
@@ -131,7 +132,15 @@ export function toHallMatchCard(
   now = Date.now(),
 ): HallMatchCardViewModel {
   const dateLabel = formatDateLabel(match.start_time);
-  const opponentState = toOpponentStateLabel(match);
+  const phase = resolveMatchPhase(match, new Date(now));
+  const isClosed = phase === "ended" || phase === "excluded" || phase === "ongoing";
+  const opponentState = phase === "excluded"
+    ? { label: "已取消", tone: "muted" as const }
+    : phase === "ended"
+      ? { label: "已结束", tone: "muted" as const }
+      : phase === "ongoing"
+        ? { label: "进行中", tone: "green" as const }
+        : toOpponentStateLabel(match);
   const individualGroup = findGroupSummary(match, "individual_opponent");
   const hostGroup = findGroupSummary(match, "host_team");
 
@@ -187,10 +196,10 @@ export function toHallMatchCard(
         },
       ];
 
-  const individualFull = isIndividual && individualGroup?.max_players != null
+  const individualFull = !isClosed && isIndividual && individualGroup?.max_players != null
     && individualGroup.max_players > 0 && joinedPlayers >= individualGroup.max_players;
   const capacityHint = individualFull ? "暂时没有名额，可查看比赛详情" : "";
-  const actionKind = individualFull ? "view" : resolveActionKind(match, viewer, now);
+  const actionKind = isClosed || individualFull ? "view" : resolveActionKind(match, viewer, now);
 
   return {
     id: match.id,

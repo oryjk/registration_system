@@ -52,9 +52,11 @@ async function measureActiveCard() {
 function change(event: { detail: { current: number } }) {
   emit('change', event.detail.current);
 }
+// 滑动期间只拦截重复操作，不改变按钮外观；禁用状态仅由首尾位置决定。
 function step(delta: number) {
   if (props.matches.length < 2 || swiping.value) return;
-  const next = (props.index + delta + props.matches.length) % props.matches.length;
+  const next = props.index + delta;
+  if (next < 0 || next >= props.matches.length) return;
   emit('change', next);
 }
 function transition(event: { detail: { dx: number } }) {
@@ -74,8 +76,8 @@ onUnmounted(() => { disposed = true; measurement++; uni.offWindowResize(measureA
     <HomeSectionHeader title="最近要处理">
       <template #actions>
         <view v-if="matches.length > 1" class="match-actions">
-          <button class="match-arrow" :class="{ 'match-arrow--disabled': swiping }" :disabled="swiping" aria-label="上一场比赛" @tap="step(-1)">←</button>
-          <button class="match-arrow" :class="{ 'match-arrow--disabled': swiping }" :disabled="swiping" aria-label="下一场比赛" @tap="step(1)">→</button>
+          <button class="match-arrow" :class="{ 'match-arrow--disabled': index === 0 }" :disabled="index === 0" aria-label="上一场比赛" @tap="step(-1)">←</button>
+          <button class="match-arrow" :class="{ 'match-arrow--disabled': index === matches.length - 1 }" :disabled="index === matches.length - 1" aria-label="下一场比赛" @tap="step(1)">→</button>
         </view>
       </template>
     </HomeSectionHeader>

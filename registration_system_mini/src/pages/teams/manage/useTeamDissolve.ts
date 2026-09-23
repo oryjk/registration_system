@@ -2,7 +2,7 @@ import { computed, type ComputedRef, type Ref } from "vue";
 import { useMiniReviewStatus } from "@/stores/miniReview";
 import type { TeamProfileViewModel } from "@/types/viewModels";
 import type { ConfirmDialogLinkOptions } from "@/components/ui";
-import { useConfirmDialog } from "@/components/ui";
+import { useConfirmDialog } from "@/components/ui/useConfirmDialog";
 import type { TeamDissolveBlockers } from "@/api/team";
 import { dissolveTeam, loadTeamDissolveBlockers } from "./teamManageActions";
 

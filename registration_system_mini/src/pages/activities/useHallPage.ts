@@ -213,6 +213,8 @@ export function useHallPage() {
     canOpenPublishSheet,
     hasPublishIdentity,
     hallCards,
+    hallViewer,
+    nowTick,
     hasMore,
     calendarDays,
     activeKind,

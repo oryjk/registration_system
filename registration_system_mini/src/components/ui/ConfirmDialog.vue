@@ -9,6 +9,8 @@ export type ConfirmDialogTone = "accent" | "danger";
 const props = withDefaults(
   defineProps<{
     visible: boolean;
+    /** 去掉弹窗卡片与展示图片的边框。 */
+    borderless?: boolean;
     title: string;
     message?: string;
     /** message 中需要醒目展示的片段，命中后以高亮样式渲染。 */
@@ -36,6 +38,7 @@ const props = withDefaults(
   }>(),
   {
     message: "",
+    borderless: false,
     highlight: "",
     linkText: "",
     linkItems: () => [],
@@ -110,7 +113,7 @@ function handleClose() {
     :class="['ui-confirm-dialog-mask', leaving ? 'ui-confirm-dialog-mask--leaving' : '']"
     @tap="handleClose"
   >
-    <view :class="['ui-confirm-dialog', leaving ? 'ui-confirm-dialog--leaving' : '']" @tap.stop>
+    <view :class="['ui-confirm-dialog', leaving ? 'ui-confirm-dialog--leaving' : '', borderless ? 'ui-confirm-dialog--borderless' : '']" @tap.stop>
       <view class="ui-confirm-dialog-head">
         <view class="ui-confirm-dialog-texts">
           <text class="ui-confirm-dialog-title">{{ title }}</text>
@@ -276,6 +279,11 @@ function handleClose() {
   border: var(--ui-border-default);
   border-radius: var(--ui-radius-md);
   background: var(--ui-color-surface);
+}
+
+.ui-confirm-dialog--borderless,
+.ui-confirm-dialog--borderless .ui-confirm-dialog-image {
+  border: 0;
 }
 
 .ui-confirm-dialog-images {

@@ -17,6 +17,14 @@
       }
     },
     {
+      "path": "pages/venues/map",
+      "style": {
+        "navigationBarTitleText": "球场地图",
+        "navigationStyle": "custom",
+        "disableScroll": true
+      }
+    },
+    {
       "path": "pages/activities/index",
       "style": {
         "navigationBarTitleText": "约队大厅",

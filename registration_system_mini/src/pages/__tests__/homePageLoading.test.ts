@@ -48,8 +48,6 @@ describe("home page loading states", () => {
     expect(homePageSource.includes("const showTeamSwitcher = computed(() => !isGuestMode.value && teamProfiles.value.length >= 1);")).toEqual(true);
     expect(homePageSource.includes("<HomeTeamSwitcher")).toEqual(true);
     expect(homePageSource.includes('@switch-team="switchTeam"')).toEqual(true);
-    // 搜索展开时强制收起球队下拉面板。
-    expect(homePageSource.includes(':force-closed="headerSearchActive"')).toEqual(true);
     // 选项行 logo 优先、无 logo 回退首字；切换事件带 teamId。
     expect(switcherSource.includes("team.logoUrl")).toEqual(true);
     expect(switcherSource.includes('(event: "switchTeam", teamId: number): void;')).toEqual(true);
@@ -90,7 +88,7 @@ describe("home page loading states", () => {
       "pages/home/index.vue",
     ).text();
 
-    expect(source.includes('import { getMatchHome, listMyMatches } from "@/api/match";')).toEqual(true);
+    expect(source.includes('import { getMatchHome } from "@/api/match";')).toEqual(true);
     expect(source.includes("buildHomeMatchSections")).toEqual(true);
     expect(source.includes('openMatchList("ongoing")')).toEqual(true);
     expect(source.includes('openMatchList("ended")')).toEqual(true);
@@ -99,13 +97,13 @@ describe("home page loading states", () => {
     expect(source.includes("listActivities")).toEqual(false);
   });
 
-  test("uses default hero banners, keeps guests public, and only calls protected match home after session readiness", async () => {
+  test("keeps guests public and only calls protected match home after session readiness", async () => {
     const source = await sourceFile(
       "pages/home/index.vue",
     ).text();
 
-    expect(source.includes('import { defaultMiniAppRuntimeConfig } from "@/config/runtimeConfig";')).toEqual(true);
-    expect(source.includes("const homeHeroBanners = ref(defaultMiniAppRuntimeConfig.home.hero_banners);")).toEqual(true);
+    expect(source.includes('<HomeEmptyHero')).toEqual(true);
+    expect(source.includes('v-else-if="hasLoadedMatchData"')).toEqual(true);
     expect(source.includes("const upcomingMatches = ref<HomeMatchCardViewModel[]>([]);")).toEqual(true);
     expect(source.includes("const ongoingMatches = ref<HomeMatchCardViewModel[]>([]);")).toEqual(true);
     expect(source.includes("const endedMatches = ref<HomeMatchCardViewModel[]>([]);")).toEqual(true);
@@ -132,7 +130,7 @@ describe("home page loading states", () => {
     expect(source.includes("const hasLoadedMatchData = ref(false);")).toEqual(true);
     expect(source.includes("const showHomeLoadError = computed(() => !hasLoadedMatchData.value && !!errorMessage.value);")).toEqual(true);
     expect(source.includes("errorMessage.value = error instanceof Error ? error.message : \"首页数据加载失败\";")).toEqual(true);
-    expect(source.includes('v-if="!hasSearched && showHomeLoadError" class="home-empty home-empty-compact"')).toEqual(true);
+    expect(source.includes('v-if="showHomeLoadError" class="home-empty home-empty-compact"')).toEqual(true);
     expect(source.includes("@tap=\"handleRetryLoad\"")).toEqual(true);
     expect(source.includes("点击重试")).toEqual(true);
   });
@@ -159,7 +157,7 @@ describe("home page loading states", () => {
     expect(source.includes("useHomeOtherMatches")).toEqual(false);
     expect(source.includes('title="最近要处理的比赛"')).toEqual(true);
     expect(source.includes('title="进行中的比赛"')).toEqual(true);
-    expect(source.includes('v-if="!isGuestMode" title="已结束的比赛"')).toEqual(true);
+    expect(source.includes('v-if="!isGuestMode && endedMatches.length" title="已结束的比赛"')).toEqual(true);
   });
 
   test("keeps match list consumers declarative without presentation callback props", async () => {
@@ -175,43 +173,6 @@ describe("home page loading states", () => {
       expect(source.includes("stage-class")).toEqual(false);
       expect(source.includes("status-class")).toEqual(false);
     }
-  });
-
-  test("keeps homepage search as a parent orchestration with header icon field and body results split", async () => {
-    const source = await Bun.file(sourcePath("pages/home/index.vue")).text();
-    const headerFieldSource = await Bun.file(sourcePath("pages/home/components/HomeHeaderSearch.vue")).text();
-    const resultsSource = await Bun.file(sourcePath("pages/home/components/HomeMatchSearchResults.vue")).text();
-
-    expect(source.includes("<HomeHeaderSearch")).toEqual(true);
-    expect(source.includes("home-title-search")).toEqual(true);
-    expect(source.includes("home-title-search--active")).toEqual(true);
-    // 展开动画：搜索宿主从 76rpx 宽度过渡到 100%，把球队名从右往左挤掉。
-    expect(source.includes("transition: width")).toEqual(true);
-    expect(source.includes("headerSearchActive")).toEqual(true);
-    expect(source.includes("<HomeMatchSearchResults")).toEqual(true);
-    expect(source.includes("template #extension")).toEqual(false);
-    expect(source.includes("APP_TAB_HEADER_EXTENSION_RPX")).toEqual(false);
-    // 触底加载由 AppPullScrollView 的 scrolltolower 转发（reach-bottom），不再用页面 onReachBottom。
-    expect(source.includes('@reach-bottom="loadMoreSearchResults"')).toEqual(true);
-    expect(source.includes("onReachBottom")).toEqual(false);
-    expect(source.includes("HOME_MATCH_SEARCH_PAGE_SIZE")).toEqual(true);
-    expect(source.includes("loadAllHomeMatchSearchResults")).toEqual(false);
-    // 收起态只有放大镜图标：搜索框组件不渲染「搜索」文字按钮，靠键盘确认与取消收起。
-    expect(headerFieldSource.includes("取消")).toEqual(true);
-    expect(headerFieldSource.includes("{{ isLoading ? \"搜索中\" : \"搜索\" }}")).toEqual(false);
-    for (const childSource of [headerFieldSource, resultsSource]) {
-      expect(childSource.includes("@/api/match")).toEqual(false);
-      expect(childSource.includes("useTeamContext")).toEqual(false);
-    }
-  });
-
-  test("dedupes in-flight search page requests by target page instead of queueing replays", async () => {
-    const source = await Bun.file(sourcePath("pages/home/index.vue")).text();
-
-    expect(source.includes("let searchLoadingTargetPage = 0;")).toEqual(true);
-    expect(source.includes("if (page === searchLoadingTargetPage) return;")).toEqual(true);
-    expect(source.includes("pendingSearchLoadMore")).toEqual(false);
-    expect(source.includes('"queue"')).toEqual(false);
   });
 
   test("allows ongoing and ended cards to navigate to detail and only blocks missing detail or duplicate navigation", async () => {

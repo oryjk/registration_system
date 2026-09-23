@@ -11,6 +11,8 @@ import AppSurface from "@/components/ui/AppSurface.vue";
 import type { MatchPublishFormModel } from "./components/matchPublishFormModel";
 import { createMatch, getMatchDetail, updateMyMatch, getVenueSuggestions, type BackendVenueSuggestion } from "@/api/match";
 import VenuePickerSheet from "./components/VenuePickerSheet.vue";
+import { openVenueLocation } from "@/utils/venueLocation";
+import { readVenueMatchPreset, type VenueMatchPreset } from "@/utils/venueMatchPreset";
 import { preloadMiniReviewStatus, useMiniReviewStatus } from "@/stores/miniReview";
 import { useTeamContext } from "@/stores/teamContext";
 import { getCustomNavMetrics } from "@/utils/customNav";
@@ -28,7 +30,11 @@ const editReady = ref(false);
 const allowedPublicationModes = ref<MatchPublishFormModel["publicationMode"][]>();
 const originalMode = ref<MatchPublishFormModel["publicationMode"]>();
 const originalPaymentMode = ref<"prepaid" | "postpaid">("postpaid");
-onLoad(query => { editId.value = String(query?.editId || ""); });
+let initialVenue: VenueMatchPreset | null = null;
+onLoad(query => {
+  editId.value = String(query?.editId || "");
+  initialVenue = readVenueMatchPreset(query);
+});
 async function loadEditForm() {
   if (!editId.value || editReady.value) return;
   const detail = await getMatchDetail(editId.value);
@@ -287,6 +293,7 @@ onShow(async () => {
     }
   } else if (!form.holdingDate) {
     initDefaultForm();
+    if (initialVenue) Object.assign(form, initialVenue);
   }
 });
 usePageRefresh(() => refreshSessionContext());
@@ -332,6 +339,7 @@ usePageRefresh(() => refreshSessionContext());
       :current-location="form.location"
       @close="venuePickerVisible = false"
       @select="handleVenueSelected"
+      @preview="openVenueLocation"
       @manual-input="handleVenueManualInput"
       @choose-location="handleChooseLocation"
     />

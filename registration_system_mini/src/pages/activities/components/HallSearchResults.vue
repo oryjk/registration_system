@@ -1,24 +1,22 @@
 <script setup lang="ts">
 import { getCurrentInstance, nextTick, onBeforeUnmount, onMounted, watch } from "vue";
-import type { HomeMatchCardViewModel } from "@/types/viewModels";
-import { shouldAutoLoadHomeMatchSearchPage } from "../homeMatchSearchState";
-import HomeMatchList from "./HomeMatchList.vue";
+import type { HallMatchCardViewModel } from "../hallMatchState";
+import { shouldAutoLoadHomeMatchSearchPage } from "../../home/homeMatchSearchState";
+import HallMatchList from "./HallMatchList.vue";
 
 const props = defineProps<{
   hasSearched: boolean;
   isLoading: boolean;
   isGuestMode: boolean;
-  navigatingMatchId: string;
-  matches: HomeMatchCardViewModel[];
+  matches: HallMatchCardViewModel[];
   errorMessage: string;
   hasMore: boolean;
-  total: number;
 }>();
 
 const emit = defineEmits<{
   (event: "retry"): void;
   (event: "loadMore"): void;
-  (event: "matchTap", match: HomeMatchCardViewModel): void;
+  (event: "matchTap", match: HallMatchCardViewModel): void;
 }>();
 
 const componentProxy = getCurrentInstance()?.proxy;
@@ -54,7 +52,7 @@ async function refreshFooterObserver() {
   });
   footerObserver
     .relativeToViewport({ bottom: 160 })
-    .observe(".home-match-search-results__sentinel", (result) => {
+    .observe(".hall-search-results__sentinel", (result) => {
       if (shouldAutoLoadHomeMatchSearchPage({
         intersectionRatio: result.intersectionRatio,
         hasMore: props.hasMore,
@@ -91,55 +89,49 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <!-- 搜索框在 header 扩展行（HomeHeaderSearch）；这里只承载结果与状态。 -->
-  <view v-if="hasSearched" class="home-match-search-results">
-    <view v-if="isGuestMode" class="home-match-search-results__state">
+  <!-- 搜索范围为大厅可加入的比赛，以及当前用户相关的全部比赛。 -->
+  <view v-if="hasSearched" class="hall-search-results">
+    <view v-if="isGuestMode" class="hall-search-results__state">
       登录后可搜索你有权限查看的全部比赛。
     </view>
-    <view v-else-if="isLoading && !matches.length" class="home-match-search-results__state">正在搜索比赛...</view>
-    <view v-else-if="errorMessage && !matches.length" class="home-match-search-results__state home-match-search-results__state--error">
+    <view v-else-if="isLoading && !matches.length" class="hall-search-results__state">正在搜索比赛...</view>
+    <view v-else-if="errorMessage && !matches.length" class="hall-search-results__state hall-search-results__state--error">
       <text>{{ errorMessage }}</text>
-      <view class="home-match-search-results__retry" @tap="emit('retry')">点击重试</view>
+      <view class="hall-search-results__retry" @tap="emit('retry')">点击重试</view>
     </view>
-    <view v-else-if="matches.length" class="home-match-search-results__list">
-      <text class="home-match-search-results__caption">搜索结果 {{ total }} 场 · 按开始时间倒序</text>
-      <HomeMatchList
-        :matches="matches"
-        :is-guest-mode="false"
-        :navigating-match-id="navigatingMatchId"
+    <view v-else-if="matches.length" class="hall-search-results__list">
+      <text class="hall-search-results__caption">已找到 {{ matches.length }} 场{{ hasMore ? " · 下滑继续加载" : "" }}</text>
+      <HallMatchList
+        :cards="matches"
         @match-tap="emit('matchTap', $event)"
       />
-      <view class="home-match-search-results__sentinel">
-        <view v-if="errorMessage" class="home-match-search-results__footer home-match-search-results__footer--error">
+      <view class="hall-search-results__sentinel">
+        <view v-if="errorMessage" class="hall-search-results__footer hall-search-results__footer--error">
           <text>{{ errorMessage }}</text>
-          <view class="home-match-search-results__retry" @tap="emit('retry')">点击重试</view>
+          <view class="hall-search-results__retry" @tap="emit('retry')">点击重试</view>
         </view>
-        <view v-else-if="isLoading" class="home-match-search-results__footer">正在加载更多...</view>
-        <view v-else-if="hasMore" class="home-match-search-results__footer">继续下滑加载更多</view>
-        <view v-else class="home-match-search-results__footer">已经捅到底了</view>
+        <view v-else-if="isLoading" class="hall-search-results__footer">正在加载更多...</view>
+        <view v-else-if="hasMore" class="hall-search-results__footer">继续下滑加载更多</view>
+        <view v-else class="hall-search-results__footer">已显示全部搜索结果</view>
       </view>
     </view>
-    <view v-else class="home-match-search-results__state">没有找到名称或地点匹配的比赛。</view>
+    <view v-else class="hall-search-results__state">没有找到名称或地点匹配的比赛。</view>
   </view>
 </template>
 
 <style scoped>
-.home-match-search-results {
+.hall-search-results {
   margin-top: 24rpx;
 }
 
-.home-match-search-results__caption {
+.hall-search-results__caption {
   display: block;
   color: var(--ui-color-text-muted);
   font-size: 24rpx;
   font-weight: 400;
 }
 
-.home-match-search-results__list :deep(.match-list) {
-  margin-top: 14rpx;
-}
-
-.home-match-search-results__state {
+.hall-search-results__state {
   margin-top: 14rpx;
   padding: 22rpx 24rpx;
   border: var(--ui-border-default);
@@ -151,12 +143,12 @@ onBeforeUnmount(() => {
   line-height: 1.5;
 }
 
-.home-match-search-results__state--error {
+.hall-search-results__state--error {
   background: var(--ui-color-danger-soft);
   color: var(--ui-color-text);
 }
 
-.home-match-search-results__footer {
+.hall-search-results__footer {
   padding: 24rpx 0 8rpx;
   color: var(--ui-color-text-muted);
   font-size: 24rpx;
@@ -164,11 +156,11 @@ onBeforeUnmount(() => {
   text-align: center;
 }
 
-.home-match-search-results__footer--error {
+.hall-search-results__footer--error {
   color: var(--ui-color-text);
 }
 
-.home-match-search-results__retry {
+.hall-search-results__retry {
   display: inline-flex;
   margin-top: 10rpx;
   padding: 8rpx 14rpx;

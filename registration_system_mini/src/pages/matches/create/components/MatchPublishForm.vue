@@ -181,8 +181,6 @@ function handleOpenVenuePicker() {
       <SectionHeader
         title="比赛地点"
         :caption="locationCaption"
-        :action-label="form.location ? '重新选择' : '选择地点'"
-        @action="handleOpenVenuePicker"
       />
       <view class="form-field">
         <!-- 点击打开场地选择弹层（常用场地/手动输入/地图选点），不再直接键入。 -->
@@ -190,7 +188,9 @@ function handleOpenVenuePicker() {
           <text :class="['venue-entry__value', form.location ? '' : 'venue-entry__placeholder']">
             {{ form.location || "点击选择球场/地址" }}
           </text>
-          <text class="venue-entry__arrow">›</text>
+          <view class="venue-entry__icon" aria-hidden="true">
+            <wd-icon name="location" size="32rpx" color="var(--ui-color-text-muted)" />
+          </view>
         </view>
         <text v-if="form.locationLatitude != null && form.locationLongitude != null" class="form-hint">
           已选择地图位置，可用于签到定位。
@@ -357,12 +357,13 @@ function handleOpenVenuePicker() {
   color: var(--ui-color-text-disabled);
 }
 
-.venue-entry__arrow {
+.venue-entry__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
-  color: var(--ui-color-text-muted);
-  font-size: 36rpx;
-  font-weight: 600;
-  line-height: 1;
+  width: 40rpx;
+  height: 40rpx;
 }
 
 .form-placeholder {

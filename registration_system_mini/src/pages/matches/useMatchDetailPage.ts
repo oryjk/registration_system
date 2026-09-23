@@ -33,7 +33,7 @@ import { useMatchGuestLogin } from "./useMatchGuestLogin";
 import { useMatchTeamLogos } from "./useMatchTeamLogos";
 import { useMatchFinish } from "./useMatchFinish";
 import { useMatchScore } from "./useMatchScore";
-import { useConfirmDialog } from "@/components/ui";
+import { useConfirmDialog } from "@/components/ui/useConfirmDialog";
 import type { ConfirmDialogOptions } from "@/components/ui";
 
 export function useMatchDetailPage() {

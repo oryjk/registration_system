@@ -10,6 +10,10 @@ import { tabBarMotion } from "@/components/tabBarMotion";
 import AppButton from "@/components/ui/AppButton.vue";
 import SectionHeader from "@/components/ui/SectionHeader.vue";
 import RunningLoader from "@/components/ui/RunningLoader.vue";
+import HallSearchResults from "./components/HallSearchResults.vue";
+import { toHallMatchCard } from "./hallMatchState";
+import { useHallMatchSearch } from "./useHallMatchSearch";
+import HallSearchField from "./components/HallSearchField.vue";
 import HallCalendarStrip from "./components/HallCalendarStrip.vue";
 import HallQuickFilters from "./components/HallQuickFilters.vue";
 import HallMatchList from "./components/HallMatchList.vue";
@@ -32,6 +36,8 @@ const {
   canOpenPublishSheet,
   hasPublishIdentity,
   hallCards,
+  hallViewer,
+  nowTick,
   hasMore,
   calendarDays,
   activeKind,
@@ -46,6 +52,13 @@ const {
   startWindowTimer,
   stopWindowTimer,
 } = useHallPage();
+const {
+  searchQuery, isSearching, hasSearched, searchMatches, searchHasMore, searchErrorMessage,
+  handleSearch, clearSearchResults, loadMoreSearchResults,
+} = useHallMatchSearch(isGuestMode);
+const searchCards = computed(() => searchMatches.value.map(match =>
+  toHallMatchCard(match, hallViewer.value, nowTick.value),
+));
 
 const navMetrics = getCustomNavMetrics();
 const {
@@ -133,6 +146,7 @@ onLoad(() => {
 
 onUnload(() => {
   stopWindowTimer();
+  clearSearchResults();
   uni.$off("session:login-completed", handleSessionLoginCompleted);
 });
 
@@ -148,7 +162,7 @@ onShareTimeline(() => ({
   imageUrl: DEFAULT_SHARE_IMAGE_URL,
 }));
 // scroll-view 自定义下拉：页面本体不滚动，固定 header 不随下拉拖动。
-const { refreshing, handleRefresherRefresh } = usePullRefresh(() => loadPageData({ preserveContent: true }));
+const { refreshing, handleRefresherRefresh } = usePullRefresh(() => hasSearched.value ? handleSearch() : loadPageData({ preserveContent: true }));
 // 滚动锚点提升到页面根：AppTabHeader 与滚动容器是兄弟节点，provide 必须来自页面。
 const { anchor: appScrollAnchor, controller: appScrollController } = createAppScrollAnchor();
 provide(APP_SCROLL_CONTROLLER, appScrollController);
@@ -160,7 +174,7 @@ provide(APP_SCROLL_CONTROLLER, appScrollController);
   <view class="app-theme-scope hall-page" :style="themePageStyle">
     <AppTabHeader title="约队大厅" />
 
-    <AppPullScrollView ref="appScrollAnchor" :refreshing="refreshing" @refresh="handleRefresherRefresh">
+    <AppPullScrollView ref="appScrollAnchor" :refreshing="refreshing" @refresh="handleRefresherRefresh" @reach-bottom="loadMoreSearchResults">
       <view class="hall-content" :style="contentStyle">
       <RunningLoader v-if="showInitialLoadingState" text="正在奔向球场" />
 
@@ -171,7 +185,22 @@ provide(APP_SCROLL_CONTROLLER, appScrollController);
       </view>
 
       <template v-else>
-        <view v-if="errorMessage" class="hall-empty">
+        <HallSearchField v-model="searchQuery" :loading="isSearching" @search="handleSearch" @clear="clearSearchResults" />
+        <template v-if="hasSearched">
+          <text class="hall-search-scope">搜索大厅比赛及与我相关的比赛，包含已结束、已取消的比赛</text>
+          <HallSearchResults
+            :has-searched="hasSearched"
+            :is-loading="isSearching"
+            :is-guest-mode="isGuestMode"
+            :matches="searchCards"
+            :error-message="searchErrorMessage"
+            :has-more="searchHasMore"
+            @retry="loadMoreSearchResults"
+            @load-more="loadMoreSearchResults"
+            @match-tap="openMatchDetail"
+          />
+        </template>
+        <view v-else-if="errorMessage" class="hall-empty">
           <view>{{ errorMessage }}</view>
           <view class="hall-empty-action" @tap="loadPageData()">点击重试</view>
         </view>
@@ -268,6 +297,8 @@ provide(APP_SCROLL_CONTROLLER, appScrollController);
   /* 滚动收进 AppPullScrollView 后，底栏留白由滚动内容自己承担。 */
   padding-bottom: var(--ui-tabbar-clearance);
 }
+
+.hall-search-scope { display: block; color: var(--ui-color-text-muted); font-size: 22rpx; line-height: 1.5; }
 
 .hall-toolbar-row {
   display: flex;

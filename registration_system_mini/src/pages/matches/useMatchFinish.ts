@@ -1,6 +1,6 @@
 import { computed, ref, type ComputedRef, type Ref } from "vue";
 import { updateMatchStatus } from "@/api/match";
-import { useConfirmDialog } from "@/components/ui";
+import { useConfirmDialog } from "@/components/ui/useConfirmDialog";
 import type { AppMatchSummary } from "@/types/match";
 import type { TeamProfileViewModel } from "@/types/viewModels";
 import { parseDateValue } from "./detailState";
