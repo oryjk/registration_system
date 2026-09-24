@@ -1,8 +1,11 @@
+import { useState } from "react";
+
+import { ImageLightbox } from "@/components/admin/image-lightbox";
 import { cn } from "@/lib/utils";
 
 /**
  * 人员单元格：头像 + 名称（+ 可选副行信息）。
- * 球队队长列、比赛报名名单、成员管理列表共用。
+ * 球队队长列、比赛报名名单、成员管理列表共用；有头像时点击可放大查看。
  */
 export function MemberCell({
   avatarUrl,
@@ -17,14 +20,30 @@ export function MemberCell({
   tertiary?: string;
   size?: "sm" | "lg";
 }) {
+  const [previewOpen, setPreviewOpen] = useState(false);
+
   return (
     <span className="member-cell">
       {avatarUrl ? (
-        <img
-          alt=""
-          className={cn("member-avatar", size === "lg" && "member-avatar-lg")}
-          src={avatarUrl}
-        />
+        <>
+          <button
+            aria-label={`查看${name}的头像`}
+            className={cn(
+              "member-avatar-button",
+              size === "lg" && "member-avatar-lg",
+            )}
+            onClick={() => setPreviewOpen(true)}
+            type="button"
+          >
+            <img alt="" className="member-avatar" src={avatarUrl} />
+          </button>
+          <ImageLightbox
+            caption={name}
+            onOpenChange={setPreviewOpen}
+            open={previewOpen}
+            src={avatarUrl}
+          />
+        </>
       ) : (
         <span
           aria-hidden="true"
