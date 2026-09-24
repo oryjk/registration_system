@@ -219,7 +219,7 @@ function handleToggleYear(year: string) {
   padding: 22rpx;
   border: var(--ui-border-default);
   border-radius: var(--ui-radius-button);
-  background: var(--ui-color-warning-soft);
+  background: var(--ui-color-neutral-bg);
   color: var(--ui-color-text-muted);
   font-size: 26rpx;
   font-weight: 400;
@@ -273,7 +273,7 @@ function handleToggleYear(year: string) {
   height: 38rpx;
   padding: 0 12rpx;
   border: var(--ui-border-default);
-  border-radius: var(--ui-radius-xs);
+  border-radius: var(--ui-radius-round);
   background: var(--ui-color-muted);
   color: var(--ui-color-text-muted);
   display: flex;
@@ -285,20 +285,20 @@ function handleToggleYear(year: string) {
 }
 
 .attendance-year-chip-joined {
-  background: var(--ui-color-success);
-  color: var(--ui-color-text);
+  background: var(--ui-color-success-bg);
+  color: var(--ui-color-success-fg);
 }
 
 .attendance-year-chip-leave {
-  background: var(--ui-color-warning-soft);
-  color: var(--ui-color-text);
+  background: var(--ui-color-warning-bg);
+  color: var(--ui-color-warning-fg);
 }
 
 .attendance-year-arrow {
   width: 34rpx;
   height: 34rpx;
   border: var(--ui-border-default);
-  border-radius: var(--ui-radius-xs);
+  border-radius: var(--ui-radius-round);
   background: var(--ui-color-text);
   color: var(--ui-color-accent);
   display: flex;
@@ -363,9 +363,8 @@ function handleToggleYear(year: string) {
   color: var(--ui-color-text);
   font-size: 28rpx;
   font-weight: 600;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  line-height: 1.5;
 }
 
 .attendance-item-meta {
@@ -374,9 +373,8 @@ function handleToggleYear(year: string) {
   color: var(--ui-color-text-muted);
   font-size: 22rpx;
   font-weight: 400;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  line-height: 1.5;
 }
 
 .attendance-item-side {
@@ -392,7 +390,7 @@ function handleToggleYear(year: string) {
   height: 42rpx;
   padding: 0 14rpx;
   border: var(--ui-border-default);
-  border-radius: var(--ui-radius-xs);
+  border-radius: var(--ui-radius-round);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -402,13 +400,13 @@ function handleToggleYear(year: string) {
 }
 
 .attendance-status-joined {
-  background: var(--ui-color-success);
-  color: var(--ui-color-text);
+  background: var(--ui-color-success-bg);
+  color: var(--ui-color-success-fg);
 }
 
 .attendance-status-leave {
-  background: var(--ui-color-warning-soft);
-  color: var(--ui-color-text);
+  background: var(--ui-color-warning-bg);
+  color: var(--ui-color-warning-fg);
 }
 
 .attendance-status-late {

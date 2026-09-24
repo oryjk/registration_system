@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import TeamManagePanel from "./TeamManagePanel.vue";
 import type { BackendTeamMember } from "@/types/backend";
 import { isLeadershipRole, memberStatusLabel, roleLabel } from "../teamManageState";
 
@@ -70,11 +71,8 @@ function handleRemoveMember(member: BackendTeamMember) {
 </script>
 
 <template>
-  <view class="member-section">
-    <view class="member-section-header">
-      <text class="member-section-title">{{ title }}</text>
-      <text class="member-section-count">{{ members.length }} 人</text>
-    </view>
+  <TeamManagePanel :title="title">
+    <template #accessory><text class="member-section-count">{{ members.length }} 人</text></template>
     <view v-if="members.length" class="team-result-list member-section-list">
       <view v-for="member in members" :key="member.user_id" :class="memberCardClass(member)" @tap="handleOpenMemberAttendance(member)">
         <view class="member-card-main">
@@ -96,215 +94,43 @@ function handleRemoveMember(member: BackendTeamMember) {
           </view>
         </view>
         <view class="member-actions">
-          <view class="member-link" hover-class="member-link-pressed" @tap.stop="handleEditMember(member)">编辑</view>
-          <view class="member-link" hover-class="member-link-pressed" @tap.stop="handleToggleMemberStatus(member)">{{ toggleLabel(member) }}</view>
-          <view v-if="member.role !== 'captain'" class="member-link member-link-danger" hover-class="member-link-pressed" @tap.stop="handleRemoveMember(member)">移除</view>
+          <view class="member-link" role="button" hover-class="member-link-pressed" @tap.stop="handleOpenMemberAttendance(member)">
+            <wd-icon name="calendar-line" size="26rpx" /><text>出勤</text>
+          </view>
+          <view class="member-link" role="button" hover-class="member-link-pressed" @tap.stop="handleEditMember(member)">
+            <wd-icon name="edit" size="26rpx" /><text>编辑</text>
+          </view>
+          <view class="member-link" role="button" hover-class="member-link-pressed" @tap.stop="handleToggleMemberStatus(member)">
+            <wd-icon :name="member.status === 1 ? 'lock' : 'unlock'" size="26rpx" /><text>{{ toggleLabel(member) }}</text>
+          </view>
+          <view v-if="member.role !== 'captain'" class="member-link member-link-danger" role="button" hover-class="member-link-pressed" @tap.stop="handleRemoveMember(member)">
+            <wd-icon name="delete" size="26rpx" /><text>移除</text>
+          </view>
         </view>
       </view>
     </view>
     <view v-else class="empty-box member-section-empty">{{ emptyText }}</view>
-  </view>
+  </TeamManagePanel>
 </template>
 
 <style scoped>
-.member-section {
-  margin-top: 30rpx;
-}
-
-.member-section-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 18rpx;
-}
-
-.member-section-title {
-  color: var(--ui-color-text);
-  font-size: 30rpx;
-  font-weight: 600;
-}
-
-.member-section-count {
-  min-width: 0;
-  height: 46rpx;
-  padding: 0;
-  border: none;
-  border-radius: var(--ui-radius-xs);
-  background: transparent;
-  color: var(--ui-color-text-muted);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 22rpx;
-  font-weight: 600;
-  box-sizing: border-box;
-}
-
-.team-result-list {
-  display: flex;
-  flex-direction: column;
-  gap: 14rpx;
-  margin-top: 22rpx;
-}
-
-.member-section-list {
-  margin-top: 14rpx;
-}
-
-.empty-box {
-  margin-top: 22rpx;
-  padding: 20rpx 0;
-  border: none;
-  border-radius: var(--ui-radius-button);
-  background: transparent;
-  color: var(--ui-color-text-muted);
-  font-size: 24rpx;
-  font-weight: 400;
-}
-
-.member-section-empty {
-  margin-top: 14rpx;
-}
-
-.member-card {
-  display: flex;
-  flex-direction: column;
-  gap: 16rpx;
-  padding: 20rpx 0;
-  border: none;
-  border-radius: 0;
-  background: var(--ui-color-surface);
-  box-shadow: none;
-  box-sizing: border-box;
-  border-bottom: var(--ui-border-default);
-}
-
-.member-card-main {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-  width: 100%;
-}
-
-.member-card-leadership {
-  background: transparent;
-}
-
-.member-card-frozen {
-  background: transparent;
-  opacity: 0.86;
-}
-
-.member-avatar {
-  width: 76rpx;
-  height: 76rpx;
-  border: none;
-  border-radius: var(--ui-radius-round);
-  flex-shrink: 0;
-  overflow: hidden;
-  background: var(--ui-color-neutral-bg);
-}
-
-.member-avatar-fallback {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--ui-color-accent);
-  font-size: 30rpx;
-  font-weight: 600;
-}
-
-.member-avatar-muted {
-  filter: grayscale(1);
-  opacity: 0.68;
-}
-
-.member-main {
-  flex: 1;
-  min-width: 0;
-}
-
-.member-title-row {
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
-  min-width: 0;
-}
-
-.member-name {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.team-result-title {
-  display: block;
-  color: var(--ui-color-text);
-  font-size: 30rpx;
-  font-weight: 600;
-}
-
-.team-result-meta {
-  display: block;
-  margin-top: 6rpx;
-  color: var(--ui-color-text-muted);
-  font-size: 24rpx;
-  font-weight: 400;
-}
-
-.member-role-badge {
-  flex-shrink: 0;
-  height: 42rpx;
-  padding: 0 16rpx;
-  border: var(--ui-border-default);
-  border-radius: var(--ui-radius-xs);
-  background: var(--ui-color-text);
-  color: var(--ui-color-accent);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 22rpx;
-  font-weight: 600;
-  box-sizing: border-box;
-}
-
-.member-role-badge-muted {
-  background: var(--ui-color-disabled);
-  color: var(--ui-color-text-muted);
-}
-
-
-.member-actions {
-  display: flex;
-  gap: 10rpx;
-  width: 100%;
-}
-
-.member-link {
-  flex: 1;
-  min-width: 0;
-  height: 54rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: var(--ui-border-default);
-  border-radius: var(--ui-radius-xs);
-  background: var(--ui-color-surface);
-  color: var(--ui-color-text);
-  font-size: 24rpx;
-  font-weight: 600;
-  line-height: 1;
-  box-shadow: none;
-  box-sizing: border-box;
-}
-
-.member-link-danger {
-  background: var(--ui-color-danger-soft);
-}
-
-.member-link-pressed {
-  transform: translate(2rpx, 2rpx);
-  box-shadow: none;
-}
+.member-section-count { flex-shrink: 0; padding: 6rpx 14rpx; border-radius: var(--ui-radius-round); background: var(--ui-color-neutral-bg); color: var(--ui-color-neutral-fg); font-size: 22rpx; font-variant-numeric: tabular-nums; }
+.member-card { padding: 16rpx 0; border-top: var(--ui-border-default); }
+.member-card:first-child { padding-top: 0; border-top: 0; }
+.member-card:last-child { padding-bottom: 0; }
+.member-card-main { display: flex; align-items: center; gap: 16rpx; min-height: 68rpx; }
+.member-avatar { width: 68rpx; height: 68rpx; border-radius: var(--ui-radius-round); flex-shrink: 0; overflow: hidden; background: var(--ui-color-neutral-bg); }
+.member-avatar-fallback { display: flex; align-items: center; justify-content: center; color: var(--ui-color-text); font-size: 30rpx; font-weight: 600; }
+.member-avatar-muted { filter: grayscale(1); }
+.member-main { flex: 1; min-width: 0; }
+.member-title-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8rpx 12rpx; }
+.member-name { color: var(--ui-color-text); font-size: 28rpx; font-weight: 600; line-height: 1.5; overflow-wrap: anywhere; }
+.team-result-meta { display: block; margin-top: 4rpx; color: var(--ui-color-text-muted); font-size: 22rpx; line-height: 1.5; }
+.member-role-badge { padding: 4rpx 12rpx; border-radius: var(--ui-radius-round); background: var(--ui-color-accent-soft); color: var(--ui-color-accent-deep); font-size: 22rpx; font-weight: 500; }
+.member-role-badge-muted { background: var(--ui-color-neutral-bg); color: var(--ui-color-neutral-fg); }
+.member-actions { display: flex; gap: 10rpx; margin-top: 12rpx; }
+.member-link { flex: 1; min-width: 0; min-height: 64rpx; padding: 8rpx; display: flex; align-items: center; justify-content: center; gap: 6rpx; white-space: nowrap; border-radius: var(--ui-radius-round); background: var(--ui-color-neutral-bg); color: var(--ui-color-neutral-fg); font-size: 24rpx; line-height: 1.5; box-sizing: border-box; }
+.member-link-danger { background: var(--ui-color-danger-bg); color: var(--ui-color-danger-fg); }
+.member-link-pressed { opacity: 0.7; }
+.empty-box { padding: 16rpx 0; color: var(--ui-color-text-muted); font-size: 24rpx; line-height: 1.6; }
 </style>

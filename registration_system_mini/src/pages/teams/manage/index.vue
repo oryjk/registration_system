@@ -135,11 +135,13 @@ const metaPageStyle = computed(() =>
       </AppSurface>
 
       <template v-if="canManageCurrentTeam">
+        <view class="manage-tabs">
         <SegmentedControl
           :model-value="activeMode"
           :options="modeOptions"
           @change="handleModeChange"
         />
+        </view>
 
         <view v-if="activeMode === 'profile'" class="team-profile-sections">
           <TeamProfilePanel
@@ -290,8 +292,8 @@ const metaPageStyle = computed(() =>
 .team-profile-sections {
   display: flex;
   flex-direction: column;
-  gap: 20rpx;
-  margin-top: 20rpx;
+  gap: 24rpx;
+  margin-top: 0;
 }
 
 .team-manage-page {
@@ -318,7 +320,7 @@ const metaPageStyle = computed(() =>
   align-items: center;
   gap: 22rpx;
 
-  padding: 24rpx;
+  padding: 26rpx 28rpx;
 }
 
 .team-manage-hero__copy {
@@ -331,9 +333,9 @@ const metaPageStyle = computed(() =>
 
   color: var(--ui-color-text);
 
-  font-size: 30rpx;
+  font-size: 34rpx;
   font-weight: 600;
-  line-height: 1.18;
+  line-height: 1.4;
   word-break: break-word;
 }
 
@@ -375,7 +377,7 @@ const metaPageStyle = computed(() =>
   height: 100%;
 }
 
-:deep(.ui-segmented-control) {
+.manage-tabs {
   margin-bottom: 24rpx;
 }
 
@@ -387,7 +389,7 @@ const metaPageStyle = computed(() =>
 
 .manage-blocked__title {
   color: var(--ui-color-text);
-  font-size: 30rpx;
+  font-size: 34rpx;
   font-weight: 600;
 }
 

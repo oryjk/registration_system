@@ -41,7 +41,7 @@ export function useTeamManagePage() {
   const isManagementBlocked = computed(() => hasCurrentTeam.value && !canManageCurrentTeam.value);
   const heroTitle = computed(() => (currentTeam.value ? currentTeam.value.name : "还没有球队"));
   const heroCopy = computed(() =>
-    currentTeam.value ? "管理当前球队资料、队员和球队上下文。" : "创建一支球队，或搜索加入现有球队后再来管理。",
+    currentTeam.value ? "维护球队资料、管理队员与查看出勤。" : "创建一支球队，或搜索加入现有球队后再来管理。",
   );
   const pageStyle = computed(() => ({ paddingTop: `${navMetrics.pageTopPadding + 8}px` }));
   // 无球队空态里的创建入口同样受审核模式开关控制。
@@ -49,7 +49,7 @@ export function useTeamManagePage() {
   const modeOptions = computed<SegmentOption[]>(() => [
     { label: "球队资料", value: "profile" },
     { label: "队员管理", value: "members" },
-    { label: "比赛出勤", value: "attendance" },
+    { label: "队员出勤", value: "attendance" },
   ]);
 
   const profile = useTeamProfile({ currentTeam, submitting, refreshSessionContext });

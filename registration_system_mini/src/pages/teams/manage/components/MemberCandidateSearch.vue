@@ -44,7 +44,7 @@ function handleCandidateTap(candidate: BackendUser) {
         @input="updateUserSearchKeyword"
         @confirm="handleSearchUsers"
       />
-      <AppButton icon="search-line" class="search-button" variant="lime" :loading="userSearching" @click="handleSearchUsers">
+      <AppButton icon="search-line" class="search-button" variant="outline" :loading="userSearching" @click="handleSearchUsers">
         {{ userSearching ? "搜索中" : "搜索" }}
       </AppButton>
     </view>
@@ -83,6 +83,7 @@ function handleCandidateTap(candidate: BackendUser) {
 .search-input {
   flex: 1;
   min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .search-button {
@@ -109,7 +110,8 @@ function handleCandidateTap(candidate: BackendUser) {
 }
 
 .candidate-card-active {
-  background: var(--ui-color-success);
+  background: var(--ui-color-accent-soft);
+  border-color: var(--ui-color-accent);
   box-shadow: none;
 }
 
@@ -126,8 +128,8 @@ function handleCandidateTap(candidate: BackendUser) {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--ui-color-text);
-  color: var(--ui-color-accent);
+  background: var(--ui-color-neutral-bg);
+  color: var(--ui-color-text);
   font-size: 28rpx;
   font-weight: 600;
 }
@@ -135,12 +137,13 @@ function handleCandidateTap(candidate: BackendUser) {
 .candidate-main {
   flex: 1;
   min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .team-result-title {
   display: block;
   color: var(--ui-color-text);
-  font-size: 30rpx;
+  font-size: 26rpx;
   font-weight: 600;
 }
 
@@ -156,15 +159,15 @@ function handleCandidateTap(candidate: BackendUser) {
   flex-shrink: 0;
   padding: 8rpx 10rpx;
   border: var(--ui-border-default);
-  border-radius: var(--ui-radius-xs);
-  background: var(--ui-color-accent);
-  color: var(--ui-color-text);
+  border-radius: var(--ui-radius-round);
+  background: var(--ui-color-accent-soft);
+  color: var(--ui-color-accent-deep);
   font-size: 24rpx;
   font-weight: 600;
 }
 
 .team-result-action-danger {
-  background: var(--ui-color-danger-soft);
-  color: var(--ui-color-text);
+  background: var(--ui-color-danger-bg);
+  color: var(--ui-color-danger-fg);
 }
 </style>

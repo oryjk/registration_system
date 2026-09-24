@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import AppButton from "@/components/ui/AppButton.vue";
-import SectionHeader from "@/components/ui/SectionHeader.vue";
-import AppSurface from "@/components/ui/AppSurface.vue";
+import TeamManagePanel from "./TeamManagePanel.vue";
 
 defineProps<{
   requiresPassword: boolean;
@@ -27,8 +26,7 @@ function handleClear() {
 </script>
 
 <template>
-  <AppSurface custom-class="form-card">
-    <SectionHeader title="入队密码" caption="设置后队员需要输入密码才能加入球队" />
+  <TeamManagePanel title="入队密码" caption="设置后队员需要输入密码才能加入球队">
     <view class="status-row">
       <text :class="requiresPassword ? 'status-badge status-badge-set' : 'status-badge status-badge-open'">
         {{ requiresPassword ? "已设置入队密码" : "开放加入，无需密码" }}
@@ -43,6 +41,7 @@ function handleClear() {
         password
       />
     </view>
+    <view class="form-actions">
     <AppButton icon="lock" block :disabled="!canSubmit" :loading="submitting" @click="handleSubmit">
       {{ submitting ? "保存中..." : "保存入队密码" }}
     </AppButton>
@@ -56,17 +55,12 @@ function handleClear() {
     >
       清除密码（开放加入）
     </AppButton>
-  </AppSurface>
+    </view>
+  </TeamManagePanel>
 </template>
 
 <style scoped>
 @import "@/styles/form-controls.css";
-.form-card {
-  padding: 6rpx 24rpx 24rpx;
-  border: var(--ui-border-default);
-  border-radius: var(--ui-radius-card);
-  box-shadow: none;
-}
 
 .form-field {
   margin-top: 26rpx;
@@ -88,13 +82,13 @@ function handleClear() {
   display: inline-block;
   padding: 8rpx 14rpx;
   border: none;
-  border-radius: var(--ui-radius-xs);
+  border-radius: var(--ui-radius-round);
   font-size: 24rpx;
   font-weight: 600;
 }
 
 .status-badge-set {
-  background: var(--ui-color-info-soft);
+  background: var(--ui-color-neutral-bg);
   color: var(--ui-color-text);
 }
 
@@ -103,11 +97,5 @@ function handleClear() {
   color: var(--ui-color-success-fg);
 }
 
-:deep(.ui-button--block) {
-  margin-top: 26rpx;
-}
-
-:deep(.clear-button.ui-button--block) {
-  margin-top: 16rpx;
-}
+.form-actions { display: flex; flex-direction: column; gap: 16rpx; margin-top: 28rpx; }
 </style>

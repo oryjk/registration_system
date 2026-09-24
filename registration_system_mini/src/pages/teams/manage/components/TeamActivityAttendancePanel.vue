@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import SectionHeader from "@/components/ui/SectionHeader.vue";
-import AppSurface from "@/components/ui/AppSurface.vue";
+import TeamManagePanel from "./TeamManagePanel.vue";
+import RunningLoader from "@/components/ui/RunningLoader.vue";
 import SmoothCollapse from "@/components/ui/SmoothCollapse.vue";
 import type {
   BackendTeamMemberAttendanceRecord,
@@ -56,20 +56,14 @@ function memberInitial(nickname: string) {
 </script>
 
 <template>
-  <AppSurface custom-class="form-card attendance-panel">
-    <view class="attendance-panel-head">
-      <SectionHeader title="比赛出勤" caption="点击比赛查看该场每位队员的报名与打卡情况" />
-      <view v-if="matches.length" class="attendance-total-badge">
-        <text>{{ matches.length }}</text>
-        <text>场</text>
-      </view>
-    </view>
+  <TeamManagePanel title="队员出勤" caption="按比赛查看队员报名与打卡情况">
+    <template #accessory><text v-if="matches.length" class="attendance-total-badge">{{ matches.length }} 场</text></template>
     <view v-if="!currentTeam" class="empty-box">请先创建或加入球队。</view>
-    <view v-else-if="loading" class="empty-box">正在加载球队比赛...</view>
+    <RunningLoader v-else-if="loading" text="正在加载球队比赛" />
     <view v-else-if="!matches.length" class="empty-box">暂无可展示的球队比赛出勤。</view>
     <view v-else class="activity-attendance-list">
       <view v-for="match in matches" :key="match.activity_id" class="activity-attendance-card">
-        <view class="activity-card-topline" @tap="emit('toggleActivity', match.activity_id)">
+        <view class="activity-card-topline" role="button" :aria-expanded="expandedActivityId === match.activity_id" hover-class="activity-card-pressed" @tap="emit('toggleActivity', match.activity_id)">
           <view class="activity-card-main">
             <text class="activity-name">{{ match.activity_name }}</text>
             <text class="activity-meta">{{ formatAttendanceDate(match.holding_date) }} · {{ match.location || "地点待定" }}</text>
@@ -78,7 +72,7 @@ function memberInitial(nickname: string) {
         </view>
         <SmoothCollapse :visible="expandedActivityId === match.activity_id">
           <view class="activity-detail">
-          <view v-if="matchAttendanceById[match.activity_id]?.loading" class="activity-loading">正在加载出勤明细...</view>
+          <RunningLoader v-if="matchAttendanceById[match.activity_id]?.loading" text="正在加载出勤明细" />
           <template v-else-if="matchAttendanceById[match.activity_id]?.detail">
             <view class="activity-stat-grid">
               <view class="activity-stat activity-stat-joined">
@@ -117,314 +111,37 @@ function memberInitial(nickname: string) {
         </SmoothCollapse>
       </view>
     </view>
-  </AppSurface>
+  </TeamManagePanel>
 </template>
 
 <style scoped>
-.form-card {
-  padding: 6rpx 24rpx 24rpx;
-  border: var(--ui-border-default);
-  border-radius: var(--ui-radius-card);
-  box-shadow: none;
-}
-
-.attendance-panel {
-  position: relative;
-  overflow: hidden;
-}
-
-.attendance-panel-head {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 20rpx;
-  margin-bottom: 22rpx;
-}
-
-:deep(.attendance-panel-head .ui-section-header) {
-  flex: 1;
-  margin-top: 30rpx;
-}
-
-.attendance-total-badge {
-  min-width: 0;
-  height: 44rpx;
-  padding: 0;
-  border: none;
-  border-radius: var(--ui-radius-xs);
-  background: transparent;
-  color: var(--ui-color-text-muted);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4rpx;
-  font-size: 24rpx;
-  font-weight: 600;
-  box-sizing: border-box;
-  flex-shrink: 0;
-}
-
-.empty-box {
-  margin-top: 22rpx;
-  padding: 20rpx 0;
-  border: none;
-  border-radius: var(--ui-radius-button);
-  background: transparent;
-  color: var(--ui-color-text-muted);
-  font-size: 24rpx;
-  font-weight: 400;
-}
-
-.activity-attendance-list {
-  display: flex;
-  flex-direction: column;
-  gap: 18rpx;
-}
-
-.activity-attendance-card {
-  padding: 24rpx 0;
-  border: none;
-  border-radius: 0;
-  background: var(--ui-color-surface);
-  box-shadow: none;
-  overflow: hidden;
-  border-bottom: var(--ui-border-default);
-}
-
-.activity-card-topline {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 18rpx;
-}
-
-.activity-card-main {
-  min-width: 0;
-  flex: 1;
-}
-
-.activity-name {
-  display: block;
-  color: var(--ui-color-text);
-  font-size: 28rpx;
-  line-height: 1.25;
-  font-weight: var(--ui-font-weight-heading);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.activity-meta {
-  display: block;
-  margin-top: 8rpx;
-  color: var(--ui-color-text-muted);
-  font-size: 22rpx;
-  line-height: 1.35;
-  font-weight: 400;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.activity-expand-arrow {
-  flex-shrink: 0;
-  width: 52rpx;
-  height: 52rpx;
-  border: none;
-  border-radius: var(--ui-radius-round);
-  background: transparent;
-  color: var(--ui-color-text-muted);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 32rpx;
-  line-height: 1;
-  font-weight: 600;
-  box-sizing: border-box;
-  transform: rotate(0deg);
-  transition: transform var(--ui-motion-switch-duration) var(--ui-motion-ease-out);
-}
-
-.activity-expand-arrow-open {
-  transform: rotate(90deg);
-}
-
-/* 展开内容淡入：小程序无法稳定测量动态高度，按规范保持布局、内容轻淡入（≤8rpx 位移）。 */
-.activity-detail {
-  animation: activity-detail-fade-in var(--ui-motion-expand-duration) var(--ui-motion-ease-out);
-}
-
-@keyframes activity-detail-fade-in {
-  from {
-    opacity: 0;
-    transform: translateY(8rpx);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* H5 减少动态效果：内容直接出现，箭头直接切换。 */
-@media (prefers-reduced-motion: reduce) {
-  .activity-detail {
-    animation: none;
-  }
-  .activity-expand-arrow {
-    transition: none;
-  background: transparent;
-  border: none;
-  color: var(--ui-color-text-muted);
-}
-}
-
-.activity-loading {
-  margin-top: 16rpx;
-  padding: 18rpx;
-  border: 2rpx solid var(--ui-color-track);
-  border-radius: var(--ui-radius-button);
-  background: var(--ui-color-muted);
-  color: var(--ui-color-text-muted);
-  font-size: 23rpx;
-  font-weight: 400;
-}
-
-.activity-stat-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10rpx;
-  margin-top: 18rpx;
-}
-
-.activity-stat {
-  min-width: 0;
-  padding: 16rpx 8rpx 14rpx;
-  border: var(--ui-border-default);
-  border-radius: var(--ui-radius-xs);
-  text-align: center;
-  box-sizing: border-box;
-}
-
-.activity-stat-joined {
-  background: var(--ui-color-success);
-  color: var(--ui-color-text);
-}
-
-.activity-stat-leave {
-  background: var(--ui-color-warning-soft);
-  color: var(--ui-color-text);
-}
-
-.activity-stat-unchecked {
-  background: var(--ui-color-danger-soft);
-  color: var(--ui-color-text);
-}
-
-.activity-stat-value {
-  display: block;
-  font-size: 34rpx;
-  line-height: 1;
-  font-weight: var(--ui-font-weight-heading);
-}
-
-.activity-stat-label {
-  display: block;
-  margin-top: 7rpx;
-  font-size: 20rpx;
-  font-weight: 600;
-}
-
-.activity-member-list {
-  margin-top: 14rpx;
-  border: var(--ui-border-default);
-  border-radius: var(--ui-radius-button);
-  background: var(--ui-color-muted);
-  overflow: hidden;
-}
-
-.activity-member-row {
-  min-height: 82rpx;
-  padding: 12rpx 14rpx;
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
-  border-bottom: 2rpx solid var(--ui-color-track);
-  box-sizing: border-box;
-}
-
-.activity-member-row:last-child {
-  border-bottom: 0;
-}
-
-.activity-member-avatar {
-  width: 54rpx;
-  height: 54rpx;
-  border: var(--ui-border-default);
-  border-radius: var(--ui-radius-xs);
-  flex-shrink: 0;
-  overflow: hidden;
-  background: var(--ui-color-muted);
-}
-
-.activity-member-avatar-fallback {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--ui-color-text);
-  font-size: 22rpx;
-  font-weight: var(--ui-font-weight-heading);
-}
-
-.activity-member-copy {
-  min-width: 0;
-  flex: 1;
-}
-
-.activity-member-name {
-  display: block;
-  color: var(--ui-color-text);
-  font-size: 24rpx;
-  font-weight: 600;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.activity-member-meta {
-  display: block;
-  margin-top: 4rpx;
-  color: var(--ui-color-text-muted);
-  font-size: 19rpx;
-  font-weight: 400;
-}
-
-.activity-member-status {
-  min-width: 84rpx;
-  height: 42rpx;
-  padding: 0 14rpx;
-  border: var(--ui-border-default);
-  border-radius: var(--ui-radius-xs);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 21rpx;
-  font-weight: var(--ui-font-weight-heading);
-  box-sizing: border-box;
-  flex-shrink: 0;
-}
-
-.activity-member-status-joined {
-  background: var(--ui-color-accent);
-  color: var(--ui-color-text);
-}
-
-.activity-member-status-leave {
-  background: var(--ui-color-warning-soft);
-  color: var(--ui-color-text);
-}
-
-.activity-member-status-unchecked {
-  background: var(--ui-color-danger);
-  color: var(--ui-color-text);
-}
+.attendance-total-badge { flex-shrink: 0; padding: 6rpx 14rpx; border-radius: var(--ui-radius-round); background: var(--ui-color-neutral-bg); color: var(--ui-color-neutral-fg); font-size: 22rpx; font-variant-numeric: tabular-nums; }
+.empty-box, .activity-loading { padding: 24rpx 0; color: var(--ui-color-text-muted); font-size: 24rpx; line-height: 1.6; }
+.activity-attendance-card { border-top: var(--ui-border-default); }
+.activity-attendance-card:first-child { border-top: 0; }
+.activity-card-topline { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; padding: 24rpx 0; min-height: 96rpx; }
+.activity-card-pressed { opacity: 0.7; }
+.activity-card-main { flex: 1; min-width: 0; }
+.activity-name { display: block; color: var(--ui-color-text); font-size: 28rpx; line-height: 1.5; font-weight: 600; overflow-wrap: anywhere; }
+.activity-meta { display: block; margin-top: 8rpx; color: var(--ui-color-text-muted); font-size: 22rpx; line-height: 1.6; overflow-wrap: anywhere; }
+.activity-expand-arrow { display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 64rpx; height: 64rpx; border-radius: var(--ui-radius-round); background: var(--ui-color-accent-soft); color: var(--ui-color-accent-deep); font-size: 36rpx; transition: transform var(--ui-motion-switch-duration) var(--ui-motion-ease-out); }
+.activity-expand-arrow-open { transform: rotate(90deg); }
+.activity-detail { padding-bottom: 24rpx; }
+.activity-stat-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12rpx; }
+.activity-stat { min-width: 0; padding: 20rpx 8rpx; border-radius: var(--ui-radius-button); text-align: center; }
+.activity-stat-joined, .activity-member-status-joined { background: var(--ui-color-success-bg); color: var(--ui-color-success-fg); }
+.activity-stat-leave, .activity-member-status-leave { background: var(--ui-color-warning-bg); color: var(--ui-color-warning-fg); }
+.activity-stat-unchecked, .activity-member-status-unchecked { background: var(--ui-color-neutral-bg); color: var(--ui-color-neutral-fg); }
+.activity-stat-value { display: block; font-size: 34rpx; font-weight: 600; line-height: 1.2; font-variant-numeric: tabular-nums; }
+.activity-stat-label { display: block; margin-top: 8rpx; font-size: 22rpx; }
+.activity-member-list { margin-top: 16rpx; }
+.activity-member-row { display: flex; align-items: center; gap: 14rpx; min-height: 88rpx; padding: 16rpx 0; border-bottom: var(--ui-border-default); }
+.activity-member-row:last-child { border-bottom: 0; }
+.activity-member-avatar { width: 64rpx; height: 64rpx; border-radius: var(--ui-radius-round); flex-shrink: 0; background: var(--ui-color-neutral-bg); }
+.activity-member-avatar-fallback { display: flex; align-items: center; justify-content: center; color: var(--ui-color-text); font-size: 26rpx; font-weight: 600; }
+.activity-member-copy { min-width: 0; flex: 1; }
+.activity-member-name { display: block; color: var(--ui-color-text); font-size: 26rpx; line-height: 1.5; font-weight: 500; overflow-wrap: anywhere; }
+.activity-member-meta { display: block; margin-top: 4rpx; color: var(--ui-color-text-muted); font-size: 22rpx; }
+.activity-member-status { flex-shrink: 0; padding: 8rpx 14rpx; border-radius: var(--ui-radius-round); font-size: 24rpx; font-weight: 600; }
+@media (prefers-reduced-motion: reduce) { .activity-expand-arrow { transition: none; } }
 </style>

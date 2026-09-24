@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import AppButton from "@/components/ui/AppButton.vue";
-import SectionHeader from "@/components/ui/SectionHeader.vue";
-import AppSurface from "@/components/ui/AppSurface.vue";
+import TeamManagePanel from "./TeamManagePanel.vue";
 import type { BackendTeamMember, BackendUser } from "@/types/backend";
 import type { TeamProfileViewModel } from "@/types/viewModels";
 import { memberRoleOptions, roleLabel } from "../teamManageState";
@@ -81,13 +80,12 @@ function handleRemoveMember(member: BackendTeamMember) {
 </script>
 
 <template>
-  <AppSurface custom-class="form-card">
-    <SectionHeader title="队员管理" caption="添加队员、调整角色并查看个人出勤" />
+  <view class="member-manager">
+  <TeamManagePanel title="添加队员" caption="搜索已注册用户，选择角色后加入球队">
     <view v-if="!currentTeam" class="empty-box">请先创建或加入球队。</view>
     <view v-else-if="!canManageMembers" class="empty-box">只有队长或领队可以管理队员。</view>
     <view v-else>
       <view class="member-create-panel">
-        <text class="form-label">添加队员</text>
         <MemberCandidateSearch
           :user-search-keyword="userSearchKeyword"
           :user-searching="userSearching"
@@ -100,16 +98,11 @@ function handleRemoveMember(member: BackendTeamMember) {
           @search-users="handleSearchUsers"
           @candidate-tap="handleCandidateTap"
         />
-        <wd-cell
-          title="队员角色"
-          :value="roleLabel(memberForm.role)"
-          is-link
-          clickable
-          custom-class="member-role-cell"
-          custom-title-class="member-role-cell-title"
-          custom-value-class="member-role-cell-value"
-          @click="rolePickerVisible = true"
-        />
+        <view class="member-role-field" role="button" aria-label="选择队员角色" @tap="rolePickerVisible = true">
+          <text class="member-role-label">队员角色</text>
+          <text class="member-role-value">{{ roleLabel(memberForm.role) }}</text>
+          <text class="member-role-arrow">›</text>
+        </view>
         <wd-picker
           v-model="roleModel"
           v-model:visible="rolePickerVisible"
@@ -125,10 +118,15 @@ function handleRemoveMember(member: BackendTeamMember) {
           custom-value-class="member-role-picker-value"
         />
         <!-- Go 队员模型只有 role/status：球衣号与队员会员开关已随 legacy Rust 字段一起移除。 -->
+        <view class="member-add-action">
         <AppButton icon="user-add" block :loading="submitting" @click="handleAddMember">
           {{ submitting ? "提交中..." : "添加队员" }}
         </AppButton>
+        </view>
       </view>
+    </view>
+  </TeamManagePanel>
+  <view v-if="currentTeam && canManageMembers" class="member-sections">
       <TeamMemberSection
         title="管理角色"
         empty-text="暂未设置队长、领队或队务。"
@@ -168,46 +166,16 @@ function handleRemoveMember(member: BackendTeamMember) {
         @remove-member="handleRemoveMember"
       />
     </view>
-  </AppSurface>
+  </view>
 </template>
 
 <style scoped>
-.form-card {
-  padding: 6rpx 24rpx 24rpx;
-  border: var(--ui-border-default);
-  border-radius: var(--ui-radius-card);
-  box-shadow: none;
-}
 
-.form-label {
-  color: var(--ui-color-text);
-  font-size: 24rpx;
-  display: block;
-  font-weight: 600;
-}
 
-.member-create-panel {
-  margin-top: 26rpx;
-  padding: 0 0 26rpx;
-  border: none;
-  border-radius: 0;
-  background: transparent;
-  border-bottom: var(--ui-border-default);
-}
+.member-create-panel { min-width: 0; }
+.member-manager, .member-sections { display: flex; flex-direction: column; gap: 24rpx; }
+.member-add-action { margin-top: 24rpx; }
 
-.form-input {
-  width: 100%;
-  height: 84rpx;
-  margin-top: 12rpx;
-  padding: 0 20rpx;
-  border: var(--ui-border-default);
-  border-radius: var(--ui-radius-button);
-  background: var(--ui-color-surface);
-  color: var(--ui-color-text);
-  font-size: 28rpx;
-  font-weight: 500;
-  box-sizing: border-box;
-}
 
 .empty-box {
   margin-top: 26rpx;
@@ -236,26 +204,8 @@ function handleRemoveMember(member: BackendTeamMember) {
   --wot-picker-radius: var(--ui-radius-md);
 }
 
-:deep(.member-role-cell) {
-  margin-top: 14rpx;
-  padding: 0 20rpx;
-  border: var(--ui-border-default);
-  border-radius: var(--ui-radius-button);
-  background: var(--ui-color-surface);
-  box-sizing: border-box;
-}
 
-:deep(.member-role-cell-title) {
-  color: var(--ui-color-text-muted);
-  font-size: 24rpx;
-  font-weight: 600;
-}
 
-:deep(.member-role-cell-value) {
-  color: var(--ui-color-text);
-  font-size: 28rpx;
-  font-weight: 600;
-}
 
 :deep(.member-role-picker-cell) {
   width: 100%;
@@ -274,7 +224,9 @@ function handleRemoveMember(member: BackendTeamMember) {
   font-weight: 600;
 }
 
-:deep(.member-create-panel .ui-button--block) {
-  margin-top: 4rpx;
-}
+
+.member-role-field { display: flex; align-items: center; gap: 16rpx; min-height: 88rpx; padding: 0 20rpx; margin-top: 16rpx; border: var(--ui-border-default); border-radius: var(--ui-radius-button); background: var(--ui-color-surface); }
+.member-role-label { flex: 1; color: var(--ui-color-text-muted); font-size: 24rpx; }
+.member-role-value { color: var(--ui-color-text); font-size: 26rpx; }
+.member-role-arrow { color: var(--ui-color-text-muted); font-size: 32rpx; }
 </style>
