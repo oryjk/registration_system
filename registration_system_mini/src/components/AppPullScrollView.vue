@@ -77,6 +77,16 @@ defineExpose<AppScrollController>({
   height: 100%;
 }
 
+/* #ifdef H5 */
+/*
+ * uni-h5 的 refresher 会在内容前动态增减刷新区高度。浏览器若选中首屏输入框作为
+ * scroll anchor，刷新区收起时会补偿 scrollTop，表现为首行内容被固定导航遮住。
+ */
+.app-pull-scroll :deep(.uni-scroll-view) {
+  overflow-anchor: none;
+}
+/* #endif */
+
 .app-pull-scroll__status {
   position: absolute;
   left: 0;
