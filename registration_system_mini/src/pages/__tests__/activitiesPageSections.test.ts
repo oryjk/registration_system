@@ -58,6 +58,27 @@ describe("activities page sections", () => {
     expect(source.includes("showCreateForm")).toEqual(false);
   });
 
+  test("guides empty, filtered-empty, and search-empty states toward a useful next step", async () => {
+    const source = await Bun.file(sourcePath("pages/activities/index.vue")).text();
+    const searchResults = await Bun.file(sourcePath("pages/activities/components/HallSearchResults.vue")).text();
+    const emptyState = await Bun.file(sourcePath("pages/activities/components/HallEmptyState.vue")).text();
+
+    expect(source.includes("const hallEmptyMode = computed")).toEqual(true);
+    expect(source.includes("还没人发起合适的比赛")).toEqual(true);
+    expect(source.includes("这个条件下暂时没有比赛")).toEqual(true);
+    expect(source.includes("resetHallFilters")).toEqual(true);
+    expect(source.includes("handleSuggestedPublish")).toEqual(true);
+    expect(source.includes(':create-label="suggestedCreateLabel"')).toEqual(true);
+
+    expect(searchResults.includes('(event: "clear"): void;')).toEqual(true);
+    expect(searchResults.includes('(event: "create"): void;')).toEqual(true);
+    expect(searchResults.includes("没找到匹配的比赛")).toEqual(true);
+    expect(searchResults.includes("清空搜索")).toEqual(true);
+
+    expect(emptyState.includes("<AppSurface")).toEqual(true);
+    expect(emptyState.includes("<AppButton")).toEqual(true);
+  });
+
   test("keeps the load-more entry when client filters empty the current page", async () => {
     const source = await Bun.file(sourcePath("pages/activities/index.vue")).text();
     const logic = await Bun.file(sourcePath("pages/activities/useHallPage.ts")).text();
@@ -65,7 +86,8 @@ describe("activities page sections", () => {
     // 类型/人数是前端过滤，只作用于已加载页；过滤后为空但仍有下一页时，“加载更多”不能消失。
     expect(source.includes('v-if="hasMore && hallCards.length"')).toEqual(false);
     expect(source.includes('v-if="hasMore"')).toEqual(true);
-    expect(source.includes("本页没有符合筛选条件的约队")).toEqual(true);
+    expect(source.includes("这个条件下暂时没有比赛")).toEqual(true);
+    expect(source.includes(':primary-label="hallEmptyPrimaryLabel"')).toEqual(true);
     // 服务端 total=0 表示确实没有数据，避免空大厅出现无效的“加载更多”。
     expect(logic.includes("return pagination.page > 1;")).toEqual(false);
     expect(logic.includes("if (pagination.total === 0) {")).toEqual(true);

@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"strings"
 
 	sharederror "github.com/oryjk/registration_system/registration_system_go/internal/shared/domain"
 	"github.com/oryjk/registration_system/registration_system_go/internal/system/domain"
@@ -28,6 +29,11 @@ type OnboardingSettingsPatch struct {
 	Enabled *bool
 }
 
+// HomeSettingsPatch 与 DebugSettingsPatch 同理：nil 表示未提供。
+type HomeSettingsPatch struct {
+	NextMatchSocialImageURL *string
+}
+
 func (s SettingsService) Get(ctx context.Context) (domain.MiniAppSettings, error) {
 	settings := domain.DefaultMiniAppSettings()
 	raw, found, err := s.repository.FindSetting(ctx, domain.SettingsSectionDebug)
@@ -44,6 +50,14 @@ func (s SettingsService) Get(ctx context.Context) (domain.MiniAppSettings, error
 	}
 	if found {
 		applyOnboardingFields(&settings.Onboarding, onboardingRaw)
+	}
+
+	homeRaw, found, err := s.repository.FindSetting(ctx, domain.SettingsSectionHome)
+	if err != nil {
+		return domain.MiniAppSettings{}, sharederror.Wrap(sharederror.KindInternal, "读取小程序配置失败", err)
+	}
+	if found {
+		applyHomeFields(&settings.Home, homeRaw)
 	}
 	return settings, nil
 }
@@ -101,5 +115,29 @@ func (s SettingsService) UpdateOnboarding(ctx context.Context, patch OnboardingS
 func applyOnboardingFields(target *domain.OnboardingSettings, raw map[string]any) {
 	if value, ok := raw["enabled"].(bool); ok {
 		target.Enabled = value
+	}
+}
+
+// UpdateHome 更新首页运营资源分区（整分区 JSON 落库，先读旧值合并）。
+func (s SettingsService) UpdateHome(ctx context.Context, patch HomeSettingsPatch) (domain.MiniAppSettings, error) {
+	settings, err := s.Get(ctx)
+	if err != nil {
+		return domain.MiniAppSettings{}, err
+	}
+	if patch.NextMatchSocialImageURL != nil {
+		settings.Home.NextMatchSocialImageURL = strings.TrimSpace(*patch.NextMatchSocialImageURL)
+	}
+	fields := map[string]any{
+		"next_match_social_image_url": settings.Home.NextMatchSocialImageURL,
+	}
+	if err := s.repository.UpsertSetting(ctx, domain.SettingsSectionHome, fields); err != nil {
+		return domain.MiniAppSettings{}, sharederror.Wrap(sharederror.KindInternal, "保存小程序配置失败", err)
+	}
+	return settings, nil
+}
+
+func applyHomeFields(target *domain.HomeSettings, raw map[string]any) {
+	if value, ok := raw["next_match_social_image_url"].(string); ok {
+		target.NextMatchSocialImageURL = strings.TrimSpace(value)
 	}
 }

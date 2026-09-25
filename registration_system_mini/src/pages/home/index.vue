@@ -36,6 +36,8 @@ import {
 } from "./homeMatchState";
 import { useHomeOnboardingGuide } from "./useHomeOnboardingGuide";
 import { resolveHomeEmptyHeroState } from "./homeEmptyHeroState";
+import { createHomeRuntimeConfigCycle } from "./homeRuntimeConfigCycle";
+import { useHomeNextMatchSocialImage } from "./useHomeNextMatchSocialImage";
 
 const { themePageStyle } = useAccentTheme();
 const previewAvatar = ref<AvatarItem | null>(null);
@@ -49,7 +51,13 @@ function openAvatarPreview(avatar: AvatarItem) {
 const { ensureSessionReady, teamProfiles, currentTeam, switchTeam } = useTeamContext();
 const { syncUnreadCount } = useNotificationCenter();
 const { shouldHideCreationEntrances } = useMiniReviewStatus();
-const onboardingGuide = useHomeOnboardingGuide();
+// 首页 runtime config 按加载周期共享：本轮内空状态插画与新手引导共用一次请求；
+// 每轮 loadPageData reset 开启新周期，下拉刷新/隔时回访可拿到换图后的新配置，失败也可重试。
+const homeRuntimeConfig = createHomeRuntimeConfigCycle();
+const onboardingGuide = useHomeOnboardingGuide({ loadRuntimeConfig: homeRuntimeConfig.load });
+const { nextMatchSocialImageUrl, ensureSocialImageLoaded } = useHomeNextMatchSocialImage({
+  loadRuntimeConfig: homeRuntimeConfig.load,
+});
 
 const isLoading = ref(false);
 const isRefreshing = ref(false);
@@ -79,6 +87,7 @@ const emptyHeroState = computed(() => resolveHomeEmptyHeroState({
   hasTeam: teamProfiles.value.length > 0,
   canManageTeam: !!currentTeam.value?.canManageTeam,
   creationAllowed: !shouldHideCreationEntrances.value,
+  intent: onboardingGuide.intent.value,
 }));
 // L1「球队即标题」：登录且有球队时标题位显示球队身份；≥2 支可下拉切换，单队纯展示。
 const showTeamSwitcher = computed(() => !isGuestMode.value && teamProfiles.value.length >= 1);
@@ -122,9 +131,27 @@ function openTab(path: string) {
   uni.switchTab({ url: path });
 }
 
+function openBrowseMatches() {
+  if (!isGuestMode.value && teamProfiles.value.length === 0 && !onboardingGuide.intent.value) {
+    onboardingGuide.setIntent("player");
+  }
+  openTab("/pages/activities/index");
+}
+
 function openCreateTeam() {
   if (shouldHideCreationEntrances.value) return;
+  if (teamProfiles.value.length === 0) {
+    onboardingGuide.setIntent("captain");
+  }
   uni.navigateTo({ url: "/pages/teams/create/index" });
+}
+
+function openCreatePickup() {
+  if (shouldHideCreationEntrances.value) return;
+  if (teamProfiles.value.length === 0) {
+    onboardingGuide.setIntent("player");
+  }
+  uni.navigateTo({ url: "/pages/challenges/create-individual/index" });
 }
 
 function openCreateMatch() {
@@ -157,6 +184,10 @@ async function loadPageData(options?: { preserveContent?: boolean }) {
   const loadVersion = ++homeLoadVersion;
   const preserveContent = !!options?.preserveContent && hasLoadedOnce.value;
   const isFirstLoad = !hasLoadedOnce.value;
+  // 每轮首页加载开启新的 runtime config 周期并触发插画加载（增强体验，静默失败，
+  // 不 await：不阻塞比赛数据主链路）。
+  homeRuntimeConfig.reset();
+  ensureSocialImageLoaded();
 
   if (preserveContent) {
     isRefreshing.value = true;
@@ -335,9 +366,11 @@ onShareTimeline(() => ({
         <HomeEmptyHero
           v-else-if="hasLoadedMatchData"
           :state="emptyHeroState"
-          @browse="openTab('/pages/activities/index')"
+          :social-image-url="nextMatchSocialImageUrl"
+          @browse="openBrowseMatches"
           @create-team="openCreateTeam"
           @create-match="openCreateMatch"
+          @create-pickup="openCreatePickup"
         />
 
         <HomeVenueMapEntry />

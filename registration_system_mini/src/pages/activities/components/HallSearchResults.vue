@@ -3,6 +3,7 @@ import { getCurrentInstance, nextTick, onBeforeUnmount, onMounted, watch } from 
 import type { HallMatchCardViewModel } from "../hallMatchState";
 import { shouldAutoLoadHomeMatchSearchPage } from "../../home/homeMatchSearchState";
 import HallMatchList from "./HallMatchList.vue";
+import HallEmptyState from "./HallEmptyState.vue";
 
 const props = defineProps<{
   hasSearched: boolean;
@@ -11,12 +12,15 @@ const props = defineProps<{
   matches: HallMatchCardViewModel[];
   errorMessage: string;
   hasMore: boolean;
+  createLabel?: string;
 }>();
 
 const emit = defineEmits<{
   (event: "retry"): void;
   (event: "loadMore"): void;
   (event: "matchTap", match: HallMatchCardViewModel): void;
+  (event: "clear"): void;
+  (event: "create"): void;
 }>();
 
 const componentProxy = getCurrentInstance()?.proxy;
@@ -115,7 +119,15 @@ onBeforeUnmount(() => {
         <view v-else class="hall-search-results__footer">已显示全部搜索结果</view>
       </view>
     </view>
-    <view v-else class="hall-search-results__state">没有找到名称或地点匹配的比赛。</view>
+    <HallEmptyState
+      v-else
+      title="没找到匹配的比赛"
+      description="换个关键词再试试，或者自己发起一场，让合适的人来找到你。"
+      primary-label="清空搜索"
+      :secondary-label="createLabel"
+      @primary="emit('clear')"
+      @secondary="emit('create')"
+    />
   </view>
 </template>
 

@@ -1,9 +1,22 @@
-export type HomeEmptyHeroAudience = "guest" | "no-team" | "team";
-export type HomeEmptyHeroSecondaryAction = "create-team" | "create-match" | null;
+import type { OnboardingIntent } from "@/utils/onboardingGuideStorage";
+
+export type HomeEmptyHeroMode =
+  | "guest"
+  | "no-team-unknown"
+  | "no-team-captain"
+  | "no-team-player"
+  | "team-manager"
+  | "team-member";
+
+export type HomeEmptyHeroAction =
+  | "browse"
+  | "create-team"
+  | "create-match"
+  | "create-pickup";
 
 export interface HomeEmptyHeroState {
-  audience: HomeEmptyHeroAudience;
-  secondaryAction: HomeEmptyHeroSecondaryAction;
+  mode: HomeEmptyHeroMode;
+  actions: HomeEmptyHeroAction[];
 }
 
 export interface HomeEmptyHeroContext {
@@ -11,20 +24,42 @@ export interface HomeEmptyHeroContext {
   hasTeam: boolean;
   canManageTeam: boolean;
   creationAllowed: boolean;
+  intent: OnboardingIntent | null;
 }
 
 export function resolveHomeEmptyHeroState(context: HomeEmptyHeroContext): HomeEmptyHeroState {
   if (context.isGuest) {
-    return { audience: "guest", secondaryAction: null };
+    return { mode: "guest", actions: ["browse"] };
   }
-  if (!context.hasTeam) {
+
+  if (context.hasTeam) {
+    if (context.canManageTeam) {
+      return {
+        mode: "team-manager",
+        actions: context.creationAllowed ? ["create-match", "browse"] : ["browse"],
+      };
+    }
+    return { mode: "team-member", actions: ["browse"] };
+  }
+
+  if (!context.creationAllowed) {
     return {
-      audience: "no-team",
-      secondaryAction: context.creationAllowed ? "create-team" : null,
+      mode: context.intent === "captain"
+        ? "no-team-captain"
+        : context.intent === "player"
+          ? "no-team-player"
+          : "no-team-unknown",
+      actions: ["browse"],
     };
   }
-  return {
-    audience: "team",
-    secondaryAction: context.creationAllowed && context.canManageTeam ? "create-match" : null,
-  };
+
+  if (context.intent === "captain") {
+    return { mode: "no-team-captain", actions: ["create-team", "browse"] };
+  }
+
+  if (context.intent === "player") {
+    return { mode: "no-team-player", actions: ["browse", "create-pickup", "create-team"] };
+  }
+
+  return { mode: "no-team-unknown", actions: ["create-team", "browse"] };
 }

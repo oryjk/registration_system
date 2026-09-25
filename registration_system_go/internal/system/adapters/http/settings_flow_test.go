@@ -1,6 +1,8 @@
 package systemhttp
 
 import (
+	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -12,15 +14,24 @@ import (
 	"github.com/oryjk/registration_system/registration_system_go/internal/testsupport"
 )
 
+// flowFakeStore 让集成测试走真实 PG 持久化，仅对象存储用内存替身。
+type flowFakeStore struct{}
+
+func (flowFakeStore) Save(_ context.Context, key, _ string, _ []byte) (string, error) {
+	return fmt.Sprintf("https://cdn.example.com/%s", key), nil
+}
+
 func newSettingsRouter(t *testing.T) *gin.Engine {
 	t.Helper()
 	pool := testsupport.OpenTestPostgres(t)
 	service := systemapplication.NewSettingsService(postgres.NewSettingsRepository(pool))
-	handler := NewHandler(service)
+	homeAssets := systemapplication.NewHomeAssetService(flowFakeStore{}, service)
+	handler := NewHandler(service, homeAssets)
 	router := gin.New()
 	router.PUT("/admin/system/mini-app-settings", handler.UpdateMiniAppSettings)
 	router.GET("/admin/system/mini-app-settings", handler.GetMiniAppSettings)
 	router.GET("/app/system/mini-app-runtime-config", handler.GetMiniAppRuntimeConfig)
+	router.POST("/admin/system/mini-app-settings/home/next-match-social-image", handler.UploadHomeNextMatchSocialImage)
 	return router
 }
 
@@ -186,5 +197,56 @@ func TestOnboardingUpdateDoesNotResetDebugFlags(t *testing.T) {
 		!strings.Contains(body, `"clear_profile_enabled":true`) ||
 		!strings.Contains(body, `"review_status_toggle_enabled":true`) {
 		t.Fatalf("cross-section updates must not reset each other: %s", body)
+	}
+}
+
+func TestHomeSettingsFlowToRuntimeConfig(t *testing.T) {
+	router := newSettingsRouter(t)
+
+	put := httptest.NewRequest(http.MethodPut, "/admin/system/mini-app-settings",
+		strings.NewReader(`{"home":{"next_match_social_image_url":"https://cdn.example.com/static/home/next-match-social/abc.png"}}`))
+	put.Header.Set("Content-Type", "application/json")
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, put)
+	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), `"next_match_social_image_url":"https://cdn.example.com/static/home/next-match-social/abc.png"`) {
+		t.Fatalf("home update failed: status=%d body=%s", response.Code, response.Body.String())
+	}
+
+	get := httptest.NewRequest(http.MethodGet, "/admin/system/mini-app-settings", nil)
+	response = httptest.NewRecorder()
+	router.ServeHTTP(response, get)
+	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), `"home":{"next_match_social_image_url"`) {
+		t.Fatalf("admin settings should include home section: status=%d body=%s", response.Code, response.Body.String())
+	}
+
+	runtime := httptest.NewRequest(http.MethodGet, "/app/system/mini-app-runtime-config", nil)
+	response = httptest.NewRecorder()
+	router.ServeHTTP(response, runtime)
+	body := response.Body.String()
+	if response.Code != http.StatusOK || !strings.Contains(body, `"next_match_social_image_url":"https://cdn.example.com/static/home/next-match-social/abc.png"`) {
+		t.Fatalf("runtime config should expose home image URL: status=%d body=%s", response.Code, body)
+	}
+	// home 分区更新不能重置其他分区。
+	if !strings.Contains(body, `"onboarding":{"enabled":false}`) {
+		t.Fatalf("home update must not reset onboarding defaults: %s", body)
+	}
+}
+
+func TestUploadHomeNextMatchSocialImagePersistsToDatabase(t *testing.T) {
+	router := newSettingsRouter(t)
+
+	upload := multipartUploadRequest("/admin/system/mini-app-settings/home/next-match-social-image", "image/png", "social.png", validPNG())
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, upload)
+	if response.Code != http.StatusOK {
+		t.Fatalf("upload failed: status=%d body=%s", response.Code, response.Body.String())
+	}
+
+	runtime := httptest.NewRequest(http.MethodGet, "/app/system/mini-app-runtime-config", nil)
+	response = httptest.NewRecorder()
+	router.ServeHTTP(response, runtime)
+	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(),
+		`"next_match_social_image_url":"https://cdn.example.com/static/home/next-match-social/`) {
+		t.Fatalf("runtime config should expose uploaded home image URL: status=%d body=%s", response.Code, response.Body.String())
 	}
 }

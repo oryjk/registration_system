@@ -1,11 +1,15 @@
 import { ref } from "vue";
-import { loadMiniAppRuntimeConfig } from "@/config/runtimeConfig";
 import { preloadMiniReviewStatus, useMiniReviewStatus } from "@/stores/miniReview";
 import { useTeamContext } from "@/stores/teamContext";
-import { isOnboardingGuideDismissed, markOnboardingGuideDismissed } from "@/utils/onboardingGuideStorage";
+import type { RuntimeConfigLoader } from "./homeRuntimeConfigCycle";
+import {
+  getOnboardingIntent,
+  isOnboardingGuideDismissed,
+  markOnboardingGuideDismissed,
+  setOnboardingIntent,
+  type OnboardingIntent,
+} from "@/utils/onboardingGuideStorage";
 import { needsProfileCompletion } from "@/utils/profileCompletion";
-
-type OnboardingRole = "captain" | "player";
 
 // 首屏数据加载完成后到弹出引导的间隔：先让用户看到首页内容，再引导。
 const GUIDE_TRIGGER_DELAY_MS = 600;
@@ -14,14 +18,15 @@ const GUIDE_TRIGGER_DELAY_MS = 600;
 // 队长路线引导完善资料 → 创建球队 → 创建后由创建页提示分享邀请；
 // 散人路线只引导完善资料。审核态与运营开关（runtime config onboarding.enabled，
 // 默认关闭）双重控制；用户主动跳过后本机不再自动弹出。
-export function useHomeOnboardingGuide() {
+export function useHomeOnboardingGuide(options: { loadRuntimeConfig: RuntimeConfigLoader }) {
   const { currentUser } = useTeamContext();
   const { shouldHideCreationEntrances } = useMiniReviewStatus();
 
   const rolePickerVisible = ref(false);
   const profileDialogVisible = ref(false);
   const createTeamPromptVisible = ref(false);
-  const activeRole = ref<OnboardingRole>("player");
+  const activeRole = ref<OnboardingIntent>("player");
+  const intent = ref<OnboardingIntent | null>(getOnboardingIntent());
   // 资料弹窗点「暂不」不算跳过（资料仍未完善，下次冷启动还会引导），但本次会话不再弹。
   let suppressedForSession = false;
   let triggerTimer: ReturnType<typeof setTimeout> | null = null;
@@ -39,7 +44,8 @@ export function useHomeOnboardingGuide() {
     }
     try {
       // 审核态与配置开关都就绪后再判断；任一请求失败视为本次不引导。
-      const [config] = await Promise.all([loadMiniAppRuntimeConfig(), preloadMiniReviewStatus()]);
+      // runtime config 与首页空状态插画共享本轮加载周期的同一次请求。
+      const [config] = await Promise.all([options.loadRuntimeConfig(), preloadMiniReviewStatus()]);
       if (!config.onboarding.enabled || shouldHideCreationEntrances.value) {
         return;
       }
@@ -63,14 +69,21 @@ export function useHomeOnboardingGuide() {
     }, GUIDE_TRIGGER_DELAY_MS);
   }
 
+  function setIntent(nextIntent: OnboardingIntent): void {
+    intent.value = nextIntent;
+    setOnboardingIntent(nextIntent);
+  }
+
   function handleSelectCaptain(): void {
     activeRole.value = "captain";
+    setIntent("captain");
     rolePickerVisible.value = false;
     profileDialogVisible.value = true;
   }
 
   function handleSelectPlayer(): void {
     activeRole.value = "player";
+    setIntent("player");
     rolePickerVisible.value = false;
     profileDialogVisible.value = true;
   }
@@ -112,6 +125,8 @@ export function useHomeOnboardingGuide() {
     rolePickerVisible,
     profileDialogVisible,
     createTeamPromptVisible,
+    intent,
+    setIntent,
     maybeStartAfterFirstLoad,
     handleSelectCaptain,
     handleSelectPlayer,

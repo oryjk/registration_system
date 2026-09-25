@@ -121,6 +121,16 @@ describe("home page loading states", () => {
     expect(source.includes("loadMiniAppRuntimeConfig")).toEqual(false);
   });
 
+  test("wires persisted onboarding intent into the empty-home actions", async () => {
+    const source = await sourceFile("pages/home/index.vue").text();
+
+    expect(source.includes("intent: onboardingGuide.intent.value")).toEqual(true);
+    expect(source.includes('url: "/pages/challenges/create-individual/index"')).toEqual(true);
+    expect(source.includes('@create-pickup="openCreatePickup"')).toEqual(true);
+    expect(source.includes("onboardingGuide.setIntent(\"captain\")")).toEqual(true);
+    expect(source.includes("onboardingGuide.setIntent(\"player\")")).toEqual(true);
+  });
+
   test("guards initial failure with explicit error state and keeps empty states gated behind a successful load", async () => {
     const source = await sourceFile(
       "pages/home/index.vue",

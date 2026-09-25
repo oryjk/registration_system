@@ -25,10 +25,12 @@ export async function request<T>(
 ): Promise<T> {
   const { auth = "required", headers, ...requestOptions } = options;
   const token = auth === "required" ? getAdminToken() : null;
+  // FormData 交给浏览器自动补 multipart boundary，手动设置 JSON Content-Type 会破坏表单解析。
+  const isFormData = requestOptions.body instanceof FormData;
   const response = await fetch(buildApiUrl(getApiBaseUrl(), auth, path), {
     ...requestOptions,
     headers: {
-      "Content-Type": "application/json",
+      ...(isFormData ? {} : { "Content-Type": "application/json" }),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...headers,
     },

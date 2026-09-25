@@ -1,52 +1,137 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref, watch } from "vue";
+import AppButton from "@/components/ui/AppButton.vue";
 import AppSurface from "@/components/ui/AppSurface.vue";
-import type { HomeEmptyHeroState } from "../homeEmptyHeroState";
+import type {
+  HomeEmptyHeroAction,
+  HomeEmptyHeroState,
+} from "../homeEmptyHeroState";
 
 const props = defineProps<{
   state: HomeEmptyHeroState;
+  /** 「下一场还没安排」社交插画 URL（运行配置下发）；空串表示未配置，回退内置球场视觉。 */
+  socialImageUrl?: string;
 }>();
 
 const emit = defineEmits<{
   (event: "browse"): void;
   (event: "create-team"): void;
   (event: "create-match"): void;
+  (event: "create-pickup"): void;
 }>();
 
+// 远程插画加载失败（配置 URL 失效/网络问题）时回退内置视觉，不弹 toast、不露破图。
+const socialImageFailed = ref(false);
+watch(
+  () => props.socialImageUrl,
+  () => {
+    socialImageFailed.value = false;
+  },
+);
+const showSocialImage = computed(() =>
+  props.state.mode === "team-manager"
+  && !!props.socialImageUrl
+  && !socialImageFailed.value,
+);
+
 const copy = computed(() => {
-  if (props.state.audience === "guest") {
-    return {
-      kicker: "一起上场",
-      title: "好球，等你上场",
-      description: "发现一场比赛，认识一起踢球的人。",
-      browseHint: "看看有哪些比赛可以参加",
-    };
+  switch (props.state.mode) {
+    case "no-team-unknown":
+      return {
+        kicker: "从这里开始",
+        title: "你准备怎么开始？",
+        description: "想组队带人，还是先找一场球上车？",
+      };
+    case "no-team-captain":
+      return {
+        kicker: "先把球队建起来",
+        title: "创建你的球队",
+        description: "邀请队友加入，之后就能发起比赛、组织报名。",
+      };
+    case "no-team-player":
+      return {
+        kicker: "先找到一场球",
+        title: "找一场球上车",
+        description: "看看正在招人的比赛，或者自己发起一场散人约球。",
+      };
+    case "team-manager":
+      return {
+        kicker: "安排下一场",
+        title: "下一场还没安排",
+        description: "约上队友，把下一场定下来。",
+      };
+    case "team-member":
+      return {
+        kicker: "看看下一场",
+        title: "还没有待参加的比赛",
+        description: "去看看有没有能参加的比赛，也可以等队长发起下一场。",
+      };
+    default:
+      return {
+        kicker: "一起上场",
+        title: "从一场球开始",
+        description: "先看看有哪些比赛，登录后就能报名上场。",
+      };
   }
-  if (props.state.audience === "no-team") {
-    return {
-      kicker: "找到你的球友",
-      title: "一起踢，才尽兴",
-      description: "从一场球开始，把热爱变成默契。",
-      browseHint: "发现比赛，找到一起踢的人",
-    };
-  }
-  return {
-    kicker: "和队友一起上场",
-    title: "下一场，约起来",
-    description: "新的对手，熟悉的队友，再踢一场。",
-    browseHint: "发现比赛，寻找新对手",
-  };
 });
 
-const secondaryCopy = computed(() => props.state.secondaryAction === "create-team"
-  ? { title: "创建球队", hint: "组建自己的队伍，邀朋友加入", icon: "user-group" }
-  : { title: "发起比赛", hint: "定好时间，邀请队友报名", icon: "calendar-line" });
+function actionCopy(action: HomeEmptyHeroAction) {
+  switch (action) {
+    case "create-team":
+      return {
+        title: "创建球队",
+        hint: "邀请队友加入，开始组织比赛",
+        icon: "user-group",
+      };
+    case "create-match":
+      return {
+        title: "发起下一场比赛",
+        hint: "定好时间，让队友直接报名",
+        icon: "calendar-line",
+      };
+    case "create-pickup":
+      return {
+        title: "发起散人约球",
+        hint: "自己定时间和球场，等球友上车",
+        icon: "calendar-line",
+      };
+    default:
+      return props.state.mode === "team-manager"
+        ? {
+            title: "去找对手",
+            hint: "看看约队大厅里有没有合适的对手",
+            icon: "search-line",
+          }
+        : {
+            title: "找一场球",
+            hint: "浏览正在招人的比赛",
+            icon: "search-line",
+          };
+  }
+}
 
-function handleSecondaryAction() {
-  if (props.state.secondaryAction === "create-team") {
-    emit("create-team");
-  } else if (props.state.secondaryAction === "create-match") {
-    emit("create-match");
+const balancedChoices = computed(() => (
+  props.state.mode === "no-team-unknown" && props.state.actions.length > 1
+));
+const primaryAction = computed(() => balancedChoices.value ? null : props.state.actions[0] ?? null);
+const secondaryActions = computed(() => balancedChoices.value
+  ? props.state.actions.slice(0, 2)
+  : props.state.actions.slice(1, 2));
+const tertiaryAction = computed(() => balancedChoices.value ? null : props.state.actions[2] ?? null);
+
+function emitAction(action: HomeEmptyHeroAction) {
+  switch (action) {
+    case "create-team":
+      emit("create-team");
+      return;
+    case "create-match":
+      emit("create-match");
+      return;
+    case "create-pickup":
+      emit("create-pickup");
+      return;
+    default:
+      emit("browse");
   }
 }
 </script>
@@ -60,7 +145,20 @@ function handleSecondaryAction() {
           <text class="home-empty-hero-title">{{ copy.title }}</text>
           <text class="home-empty-hero-description">{{ copy.description }}</text>
         </view>
-        <view class="home-empty-hero-art" aria-hidden="true">
+        <view
+          v-if="showSocialImage"
+          class="home-empty-hero-art home-empty-hero-art--social"
+          aria-hidden="true"
+        >
+          <image
+            class="home-empty-social-image"
+            :src="socialImageUrl"
+            mode="widthFix"
+            @error="socialImageFailed = true"
+          />
+        </view>
+
+        <view v-else class="home-empty-hero-art" aria-hidden="true">
           <view class="home-empty-hero-field">
             <view class="home-empty-hero-circle" />
             <view class="home-empty-hero-goal home-empty-hero-goal--top" />
@@ -69,37 +167,42 @@ function handleSecondaryAction() {
           <view class="home-empty-hero-ball" />
         </view>
       </view>
-      <view class="home-empty-hero-actions">
+
+      <view v-if="primaryAction" class="home-empty-hero-primary">
+        <AppButton block variant="lime" @click="emitAction(primaryAction)">
+          {{ actionCopy(primaryAction).title }}
+        </AppButton>
+        <text class="home-empty-hero-primary-hint">{{ actionCopy(primaryAction).hint }}</text>
+      </view>
+
+      <view v-if="secondaryActions.length" class="home-empty-hero-actions">
         <button
+          v-for="action in secondaryActions"
+          :key="action"
           class="home-empty-hero-action"
           hover-class="home-empty-hero-action--pressed"
-          @tap="emit('browse')"
+          @tap="emitAction(action)"
         >
           <view class="home-empty-hero-icon" aria-hidden="true">
-            <wd-icon name="search-line" size="34rpx" />
+            <wd-icon :name="actionCopy(action).icon" size="34rpx" />
           </view>
           <view class="home-empty-hero-action-copy">
-            <text class="home-empty-hero-action-title">去约队大厅</text>
-            <text class="home-empty-hero-action-hint">{{ copy.browseHint }}</text>
-          </view>
-          <text class="home-empty-hero-arrow" aria-hidden="true">→</text>
-        </button>
-        <button
-          v-if="state.secondaryAction"
-          class="home-empty-hero-action"
-          hover-class="home-empty-hero-action--pressed"
-          @tap="handleSecondaryAction"
-        >
-          <view class="home-empty-hero-icon" aria-hidden="true">
-            <wd-icon :name="secondaryCopy.icon" size="34rpx" />
-          </view>
-          <view class="home-empty-hero-action-copy">
-            <text class="home-empty-hero-action-title">{{ secondaryCopy.title }}</text>
-            <text class="home-empty-hero-action-hint">{{ secondaryCopy.hint }}</text>
+            <text class="home-empty-hero-action-title">{{ actionCopy(action).title }}</text>
+            <text class="home-empty-hero-action-hint">{{ actionCopy(action).hint }}</text>
           </view>
           <text class="home-empty-hero-arrow" aria-hidden="true">→</text>
         </button>
       </view>
+
+      <button
+        v-if="tertiaryAction"
+        class="home-empty-hero-tertiary"
+        hover-class="home-empty-hero-tertiary--pressed"
+        @tap="emitAction(tertiaryAction)"
+      >
+        <text>想自己组队？{{ actionCopy(tertiaryAction).title }}</text>
+        <text aria-hidden="true">→</text>
+      </button>
     </AppSurface>
   </view>
 </template>
@@ -200,8 +303,39 @@ function handleSecondaryAction() {
   border-radius: var(--ui-radius-round);
 }
 
+.home-empty-hero-art--social {
+  display: flex;
+  flex-basis: 184rpx;
+  height: 144rpx;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.home-empty-social-image {
+  display: block;
+  width: 184rpx;
+  height: auto;
+}
+
+.home-empty-hero-primary {
+  padding: 26rpx 28rpx 24rpx;
+}
+
+.home-empty-hero-primary-hint {
+  display: block;
+  margin-top: 12rpx;
+  color: var(--ui-color-text-muted);
+  font-size: 22rpx;
+  line-height: 1.5;
+  text-align: center;
+}
+
 .home-empty-hero-actions {
   padding: 0 28rpx;
+}
+
+.home-empty-hero-primary + .home-empty-hero-actions {
+  border-top: var(--ui-border-default);
 }
 
 .home-empty-hero-action {
@@ -209,9 +343,9 @@ function handleSecondaryAction() {
   align-items: center;
   gap: 20rpx;
   width: 100%;
-  min-height: 136rpx;
+  min-height: 128rpx;
   margin: 0;
-  padding: 24rpx 0;
+  padding: 22rpx 0;
   border: 0;
   border-radius: 0;
   background: var(--ui-color-surface);
@@ -263,4 +397,23 @@ function handleSecondaryAction() {
   flex-shrink: 0;
   font-size: 32rpx;
 }
+
+.home-empty-hero-tertiary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+  width: 100%;
+  min-height: 72rpx;
+  margin: 0;
+  padding: 12rpx 28rpx 20rpx;
+  border: 0;
+  background: var(--ui-color-surface);
+  color: var(--ui-color-text-muted);
+  font-size: 23rpx;
+  line-height: 1.4;
+}
+
+.home-empty-hero-tertiary::after { border: 0; }
+.home-empty-hero-tertiary--pressed { opacity: 0.65; }
 </style>

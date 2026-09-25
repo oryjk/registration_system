@@ -17,6 +17,7 @@ import HallSearchField from "./components/HallSearchField.vue";
 import HallCalendarStrip from "./components/HallCalendarStrip.vue";
 import HallQuickFilters from "./components/HallQuickFilters.vue";
 import HallMatchList from "./components/HallMatchList.vue";
+import HallEmptyState from "./components/HallEmptyState.vue";
 import PublishTypeSheet from "./components/PublishTypeSheet.vue";
 import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
 import { useConfirmDialog } from "@/components/ui/useConfirmDialog";
@@ -39,6 +40,7 @@ const {
   hallViewer,
   nowTick,
   hasMore,
+  sourceMatchCount,
   calendarDays,
   activeKind,
   activeSize,
@@ -48,6 +50,7 @@ const {
   selectKind,
   selectSize,
   selectDate,
+  resetHallFilters,
   handleLogin,
   startWindowTimer,
   stopWindowTimer,
@@ -77,6 +80,34 @@ const sharePath = "/pages/activities/index";
 const contentStyle = computed(() => ({
   paddingTop: `${navMetrics.pageTopPadding + 8}px`,
 }));
+const hallFiltersActive = computed(() => (
+  activeKind.value !== "all" || activeSize.value !== 0 || !!selectedDateKey.value
+));
+const hallEmptyMode = computed<"empty" | "filtered" | null>(() => {
+  if (hallCards.value.length) return null;
+  if (hallFiltersActive.value) return "filtered";
+  if (sourceMatchCount.value === 0 && !hasMore.value) return "empty";
+  return "filtered";
+});
+const suggestedCreateLabel = computed(() => {
+  if (!canOpenPublishSheet.value) return "";
+  return hasPublishIdentity.value ? "发布约队" : "发起散人约球";
+});
+const hallEmptyTitle = computed(() => (
+  hallEmptyMode.value === "empty" ? "还没人发起合适的比赛" : "这个条件下暂时没有比赛"
+));
+const hallEmptyDescription = computed(() => (
+  hallEmptyMode.value === "empty"
+    ? "与其等别人开局，不如自己定好时间和球场，等队友或对手来加入。"
+    : "换个日期，或者放宽类型和人数条件，可能就有合适的。"
+));
+const hallEmptyPrimaryLabel = computed(() => {
+  if (hallEmptyMode.value === "filtered") return "查看全部比赛";
+  return suggestedCreateLabel.value || "刷新看看";
+});
+const hallEmptySecondaryLabel = computed(() => (
+  hallEmptyMode.value === "filtered" ? suggestedCreateLabel.value : ""
+));
 
 function openMatchDetail(card: { id: string; actionKind: string; detailUrl: string; applyUrl: string }) {
   if (navigatingMatchId.value) return;
@@ -121,6 +152,26 @@ function handlePublishIndividualChallenge() {
   closePublishTypeSheet();
   // 散人约球：无球队概念的独立发布页（online_pickup，POST /matches）。
   uni.navigateTo({ url: "/pages/challenges/create-individual/index" });
+}
+
+function handleSuggestedPublish() {
+  if (!canOpenPublishSheet.value) {
+    void loadPageData({ preserveContent: true });
+    return;
+  }
+  if (hasPublishIdentity.value) {
+    handlePublishTeamChallenge();
+    return;
+  }
+  handlePublishIndividualChallenge();
+}
+
+function handleHallEmptyPrimary() {
+  if (hallEmptyMode.value === "filtered") {
+    resetHallFilters();
+    return;
+  }
+  handleSuggestedPublish();
 }
 
 function handleSessionLoginCompleted() {
@@ -195,9 +246,12 @@ provide(APP_SCROLL_CONTROLLER, appScrollController);
             :matches="searchCards"
             :error-message="searchErrorMessage"
             :has-more="searchHasMore"
+            :create-label="suggestedCreateLabel"
             @retry="loadMoreSearchResults"
             @load-more="loadMoreSearchResults"
             @match-tap="openMatchDetail"
+            @clear="clearSearchResults"
+            @create="handleSuggestedPublish"
           />
         </template>
         <view v-else-if="errorMessage" class="hall-empty">
@@ -223,9 +277,9 @@ provide(APP_SCROLL_CONTROLLER, appScrollController);
             </view>
           </view>
 
-          <!-- 审核隐藏期不显示发布入口（与底栏创建按钮一致）；独立成行的主按钮，游客仍显示并引导登录。 -->
-          <view v-if="canOpenPublishSheet" class="hall-publish-row">
-            <AppButton block variant="lime" @click="openPublishTypeSheet">发布约队 / 散人约球</AppButton>
+          <!-- 有结果时发布入口退为次要动作；无结果时由空状态把“自己发起”提升为主动作。 -->
+          <view v-if="canOpenPublishSheet && hallCards.length" class="hall-publish-row">
+            <AppButton block variant="outline" @click="openPublishTypeSheet">发起一场</AppButton>
           </view>
 
           <SectionHeader title="可加入的比赛" />
@@ -238,9 +292,16 @@ provide(APP_SCROLL_CONTROLLER, appScrollController);
             @match-tap="openMatchDetail"
           />
 
-          <view v-if="!hallCards.length" class="hall-empty hall-empty-spacious">
-            {{ hasMore ? "本页没有符合筛选条件的约队，可以加载更多继续找。" : "当前筛选条件下还没有可加入的约队，换个日期或类型再看看。" }}
-          </view>
+          <HallEmptyState
+            v-if="hallEmptyMode"
+            class="hall-empty-guidance"
+            :title="hallEmptyTitle"
+            :description="hallEmptyDescription"
+            :primary-label="hallEmptyPrimaryLabel"
+            :secondary-label="hallEmptySecondaryLabel"
+            @primary="handleHallEmptyPrimary"
+            @secondary="handleSuggestedPublish"
+          />
 
           <!-- 所有筛选只作用于已加载页：过滤后为空但还有下一页时，入口不能消失。 -->
           <view v-if="hasMore" class="hall-load-more" @tap="loadMore">

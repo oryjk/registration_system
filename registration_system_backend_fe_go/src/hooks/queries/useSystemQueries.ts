@@ -1,8 +1,14 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  type QueryClient,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import {
   getHealth,
   getMiniAppSettings,
   updateMiniAppSettings,
+  uploadNextMatchSocialImage,
 } from "../../api/system";
 import type { HealthStatus } from "../../types/api";
 import type { MiniAppSettingsUpdate } from "../../types/system";
@@ -41,13 +47,28 @@ export function useMiniAppSettingsQuery() {
   });
 }
 
+// 上传成功后让 mini-app-settings 缓存失效，页面立即拉到带新 URL 的配置。
+export function invalidateMiniAppSettings(queryClient: QueryClient) {
+  return queryClient.invalidateQueries({
+    queryKey: queryKeys.miniAppSettings,
+  });
+}
+
 export function useUpdateMiniAppSettingsMutation() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (payload: MiniAppSettingsUpdate) =>
       updateMiniAppSettings(payload),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: queryKeys.miniAppSettings }),
+    onSuccess: () => invalidateMiniAppSettings(queryClient),
+  });
+}
+
+export function useUploadNextMatchSocialImageMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (file: File) => uploadNextMatchSocialImage(file),
+    onSuccess: () => invalidateMiniAppSettings(queryClient),
   });
 }

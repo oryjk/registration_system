@@ -65,6 +65,7 @@ export function sanitizeMiniAppRuntimeConfig(input?: RuntimeConfigInput | null):
           ? input.home.hide_matches_after_holding_time
           : defaults.home.hide_matches_after_holding_time,
       hero_banners: sanitizeHomeHeroBanners(input?.home?.hero_banners),
+      next_match_social_image_url: truncateText(input?.home?.next_match_social_image_url, "", 512),
     },
     matches: {
       related_activity_limit: clampNumber(input?.matches?.related_activity_limit, defaults.matches.related_activity_limit, 1, 10),

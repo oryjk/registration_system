@@ -62,6 +62,29 @@ describe("mini app runtime config", () => {
     });
   });
 
+  test("keeps the home next-match social image empty by default and reads configured urls", () => {
+    expect(defaultMiniAppRuntimeConfig.home.next_match_social_image_url).toEqual("");
+    expect(sanitizeMiniAppRuntimeConfig({}).home.next_match_social_image_url).toEqual("");
+    expect(
+      sanitizeMiniAppRuntimeConfig({
+        home: { next_match_social_image_url: " https://oryjk.cn:82/registration/static/a.png " },
+      }).home.next_match_social_image_url,
+    ).toEqual("https://oryjk.cn:82/registration/static/a.png");
+  });
+
+  test("falls back to empty when the home social image url is not a string and clamps its length", () => {
+    expect(
+      sanitizeMiniAppRuntimeConfig({
+        home: { next_match_social_image_url: 123 as unknown as string },
+      }).home.next_match_social_image_url,
+    ).toEqual("");
+    const oversizedUrl = `https://example.com/${"a".repeat(600)}.png`;
+    const clamped = sanitizeMiniAppRuntimeConfig({
+      home: { next_match_social_image_url: oversizedUrl },
+    }).home.next_match_social_image_url;
+    expect(clamped.length <= 512 && clamped.length > 0).toEqual(true);
+  });
+
   test("sanitizes home hero banners and keeps a default fallback", () => {
     const config = sanitizeMiniAppRuntimeConfig({
       home: {

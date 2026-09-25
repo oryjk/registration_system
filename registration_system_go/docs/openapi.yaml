@@ -1694,6 +1694,33 @@ paths:
                 $ref: "#/components/schemas/MiniAppSettingsEnvelope"
         <<: *standardErrors
 
+  /api/v1/admin/system/mini-app-settings/home/next-match-social-image:
+    post:
+      operationId: uploadAdminHomeNextMatchSocialImage
+      tags: [Admin System]
+      summary: 上传首页「下一场还没安排」空状态插画
+      description: multipart 表单字段 file，仅支持 PNG/JPG/WebP，大小不超过 2MB；上传到对象存储后自动把公网 URL 写入 home 分区，返回最新小程序配置。
+      security: *bearerSecurity
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "200":
+          description: 上传成功，返回已写入 URL 的最新配置
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MiniAppSettingsEnvelope"
+        <<: *standardErrors
+
 components:
   securitySchemes:
     bearerAuth:
@@ -2229,6 +2256,10 @@ components:
             challenge_card_limit: { type: integer, example: 2 }
             activity_fetch_page_size: { type: integer, example: 100 }
             hide_matches_after_holding_time: { type: boolean, example: true }
+            next_match_social_image_url:
+              type: string
+              example: ""
+              description: 首页「下一场还没安排」空状态插画 URL，来自 mini_app_settings home 分区；为空时小程序回退内置视觉
             hero_banners:
               type: array
               items:
@@ -3353,6 +3384,10 @@ components:
       properties:
         debug:
           $ref: "#/components/schemas/MiniAppDebugSettings"
+        onboarding:
+          $ref: "#/components/schemas/MiniAppOnboardingSettings"
+        home:
+          $ref: "#/components/schemas/MiniAppHomeSettings"
     MiniAppDebugSettings:
       type: object
       required: [clear_profile_enabled]
@@ -3360,16 +3395,41 @@ components:
         clear_profile_enabled:
           type: boolean
           description: 是否在小程序端显示“清除头像和昵称”验证入口，默认关闭
+    MiniAppOnboardingSettings:
+      type: object
+      required: [enabled]
+      properties:
+        enabled:
+          type: boolean
+          description: 是否开启小程序新手引导，默认关闭
+    MiniAppHomeSettings:
+      type: object
+      required: [next_match_social_image_url]
+      properties:
+        next_match_social_image_url:
+          type: string
+          description: 首页「下一场还没安排」空状态插画的公网 URL；为空时小程序回退内置视觉
     MiniAppSettingsUpdate:
       type: object
-      required: [debug]
       properties:
         debug:
           type: object
-          required: [clear_profile_enabled]
           properties:
             clear_profile_enabled:
               type: boolean
+            review_status_toggle_enabled:
+              type: boolean
+        onboarding:
+          type: object
+          properties:
+            enabled:
+              type: boolean
+        home:
+          type: object
+          description: 正常情况下由上传接口自动写入，手动 PUT 仅作兜底通道
+          properties:
+            next_match_social_image_url:
+              type: string
     TestLoginUsersEnvelope:
       allOf:
         - $ref: "#/components/schemas/SuccessBase"

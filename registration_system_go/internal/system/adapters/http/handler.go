@@ -2,6 +2,8 @@ package systemhttp
 
 import (
 	"context"
+	"io"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 	sharedhttpapi "github.com/oryjk/registration_system/registration_system_go/internal/shared/adapters/httpapi"
@@ -15,12 +17,19 @@ type MiniAppSettingsService interface {
 	Get(ctx context.Context) (domain.MiniAppSettings, error)
 	UpdateDebug(ctx context.Context, patch application.DebugSettingsPatch) (domain.MiniAppSettings, error)
 	UpdateOnboarding(ctx context.Context, patch application.OnboardingSettingsPatch) (domain.MiniAppSettings, error)
+	UpdateHome(ctx context.Context, patch application.HomeSettingsPatch) (domain.MiniAppSettings, error)
+}
+
+// HomeAssetUploadService 是 handler 依赖的首页运营图片上传用例
+// （由 application.HomeAssetService 实现；存储适配器在 application 层之后注入）。
+type HomeAssetUploadService interface {
+	UploadNextMatchSocialImage(ctx context.Context, contentType, fileName string, data []byte) (domain.MiniAppSettings, error)
 }
 
 // 小程序运行配置（/system/mini-app-runtime-config）。
 // 静态默认值与小程序端内置默认值（registration_system_mini
 // src/config/runtimeConfigDefaults.ts）一致；可运营调整的部分
-// （当前仅 debug 分区）从 mini_app_settings 表读取叠加。
+// （debug / onboarding / home 分区）从 mini_app_settings 表读取叠加。
 type MiniAppRuntimeConfigResponse struct {
 	Home struct {
 		MatchCardLimit              int          `json:"match_card_limit"`
@@ -28,6 +37,7 @@ type MiniAppRuntimeConfigResponse struct {
 		ActivityFetchPageSize       int          `json:"activity_fetch_page_size"`
 		HideMatchesAfterHoldingTime bool         `json:"hide_matches_after_holding_time"`
 		HeroBanners                 []HeroBanner `json:"hero_banners"`
+		NextMatchSocialImageURL     string       `json:"next_match_social_image_url"`
 	} `json:"home"`
 	Matches struct {
 		RelatedActivityLimit   int `json:"related_activity_limit"`
@@ -74,13 +84,19 @@ type UpdateMiniAppSettingsRequest struct {
 	Onboarding *struct {
 		Enabled *bool `json:"enabled"`
 	} `json:"onboarding"`
+	Home *struct {
+		NextMatchSocialImageURL *string `json:"next_match_social_image_url"`
+	} `json:"home"`
 }
 
 type Handler struct {
-	settings MiniAppSettingsService
+	settings   MiniAppSettingsService
+	homeAssets HomeAssetUploadService
 }
 
-func NewHandler(settings MiniAppSettingsService) *Handler { return &Handler{settings: settings} }
+func NewHandler(settings MiniAppSettingsService, homeAssets HomeAssetUploadService) *Handler {
+	return &Handler{settings: settings, homeAssets: homeAssets}
+}
 
 func (h *Handler) RegisterPublicRoutes(group *gin.RouterGroup) {
 	group.GET("/system/mini-app-runtime-config", h.GetMiniAppRuntimeConfig)
@@ -89,6 +105,7 @@ func (h *Handler) RegisterPublicRoutes(group *gin.RouterGroup) {
 func (h *Handler) RegisterAdminRoutes(group *gin.RouterGroup) {
 	group.GET("/system/mini-app-settings", h.GetMiniAppSettings)
 	group.PUT("/system/mini-app-settings", h.UpdateMiniAppSettings)
+	group.POST("/system/mini-app-settings/home/next-match-social-image", h.UploadHomeNextMatchSocialImage)
 }
 
 func (h *Handler) GetMiniAppRuntimeConfig(c *gin.Context) {
@@ -119,6 +136,7 @@ func (h *Handler) GetMiniAppRuntimeConfig(c *gin.Context) {
 	config.Debug.ClearProfileEnabled = settings.Debug.ClearProfileEnabled
 	config.Debug.ReviewStatusToggleEnabled = settings.Debug.ReviewStatusToggleEnabled
 	config.Onboarding.Enabled = settings.Onboarding.Enabled
+	config.Home.NextMatchSocialImageURL = settings.Home.NextMatchSocialImageURL
 	sharedhttpapi.WriteSuccess(c, config)
 }
 
@@ -134,14 +152,15 @@ func (h *Handler) GetMiniAppSettings(c *gin.Context) {
 func (h *Handler) UpdateMiniAppSettings(c *gin.Context) {
 	var request UpdateMiniAppSettingsRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
-		sharedhttpapi.WriteError(c, sharederror.New(sharederror.KindValidation, "请求体无效，需要 debug/onboarding 分区至少一个布尔开关"))
+		sharedhttpapi.WriteError(c, sharederror.New(sharederror.KindValidation, "请求体无效，需要 debug/onboarding/home 分区至少一个可更新字段"))
 		return
 	}
 	debugProvided := request.Debug != nil &&
 		(request.Debug.ClearProfileEnabled != nil || request.Debug.ReviewStatusToggleEnabled != nil)
 	onboardingProvided := request.Onboarding != nil && request.Onboarding.Enabled != nil
-	if !debugProvided && !onboardingProvided {
-		sharedhttpapi.WriteError(c, sharederror.New(sharederror.KindValidation, "请求体无效，需要 debug/onboarding 分区至少一个布尔开关"))
+	homeProvided := request.Home != nil && request.Home.NextMatchSocialImageURL != nil
+	if !debugProvided && !onboardingProvided && !homeProvided {
+		sharedhttpapi.WriteError(c, sharederror.New(sharederror.KindValidation, "请求体无效，需要 debug/onboarding/home 分区至少一个可更新字段"))
 		return
 	}
 
@@ -167,5 +186,52 @@ func (h *Handler) UpdateMiniAppSettings(c *gin.Context) {
 		}
 		saved = result
 	}
+	if homeProvided {
+		result, err := h.settings.UpdateHome(c.Request.Context(), application.HomeSettingsPatch{
+			NextMatchSocialImageURL: request.Home.NextMatchSocialImageURL,
+		})
+		if err != nil {
+			sharedhttpapi.WriteError(c, err)
+			return
+		}
+		saved = result
+	}
 	sharedhttpapi.WriteSuccess(c, saved)
+}
+
+// UploadHomeNextMatchSocialImage 接收 multipart 字段 file，上传插画并把 URL 写入 home 分区。
+// 校验与存储在 application.HomeAssetService；这里只做协议适配。
+func (h *Handler) UploadHomeNextMatchSocialImage(c *gin.Context) {
+	if h.homeAssets == nil {
+		sharedhttpapi.WriteError(c, sharederror.New(sharederror.KindInternal, "图片上传未配置"))
+		return
+	}
+	// 请求体上限 = 文件上限 + 1MB multipart 开销余量，防止超大表单耗尽内存。
+	maxBodyBytes := int64(application.MaxHomeAssetUploadBytes) + 1<<20
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxBodyBytes)
+
+	fileHeader, err := c.FormFile("file")
+	if err != nil {
+		sharedhttpapi.WriteError(c, sharederror.New(sharederror.KindValidation, "请选择要上传的插画文件"))
+		return
+	}
+	file, err := fileHeader.Open()
+	if err != nil {
+		sharedhttpapi.WriteError(c, sharederror.Wrap(sharederror.KindInternal, "读取插画文件失败", err))
+		return
+	}
+	defer file.Close()
+	data, err := io.ReadAll(io.LimitReader(file, application.MaxHomeAssetUploadBytes+1))
+	if err != nil {
+		sharedhttpapi.WriteError(c, sharederror.Wrap(sharederror.KindInternal, "读取插画文件失败", err))
+		return
+	}
+
+	settings, err := h.homeAssets.UploadNextMatchSocialImage(c.Request.Context(),
+		fileHeader.Header.Get("Content-Type"), fileHeader.Filename, data)
+	if err != nil {
+		sharedhttpapi.WriteError(c, err)
+		return
+	}
+	sharedhttpapi.WriteSuccess(c, settings)
 }

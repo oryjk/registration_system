@@ -32,9 +32,11 @@ import (
 	paymentapplication "github.com/oryjk/registration_system/registration_system_go/internal/payment/application"
 	paymentports "github.com/oryjk/registration_system/registration_system_go/internal/payment/ports"
 	"github.com/oryjk/registration_system/registration_system_go/internal/shared/adapters/clock"
+	systemassetstore "github.com/oryjk/registration_system/registration_system_go/internal/system/adapters/assetstore"
 	systemhttp "github.com/oryjk/registration_system/registration_system_go/internal/system/adapters/http"
 	systempostgres "github.com/oryjk/registration_system/registration_system_go/internal/system/adapters/postgres"
 	systemapplication "github.com/oryjk/registration_system/registration_system_go/internal/system/application"
+	systemports "github.com/oryjk/registration_system/registration_system_go/internal/system/ports"
 	teamhttp "github.com/oryjk/registration_system/registration_system_go/internal/team/adapters/http"
 	"github.com/oryjk/registration_system/registration_system_go/internal/team/adapters/logostore"
 	teampassword "github.com/oryjk/registration_system/registration_system_go/internal/team/adapters/password"
@@ -152,6 +154,12 @@ func BuildDependencies(ctx context.Context, config Config) (Dependencies, func()
 	miniReviewHandler := minireviewhttp.NewHandler(miniReviewService, config.MiniReviewAPIKey)
 	systemSettingsRepository := systempostgres.NewSettingsRepository(pool)
 	systemSettingsService := systemapplication.NewSettingsService(systemSettingsRepository)
+	// 上传存储只在 UPLOAD_STORAGE_BACKEND=minio 时启用；nil 时上传接口返回「未配置」，
+	// 配置读取与开关更新不受影响。
+	var systemHomeAssets systemhttp.HomeAssetUploadService
+	if assetStore := buildSystemAssetStore(config); assetStore != nil {
+		systemHomeAssets = systemapplication.NewHomeAssetService(assetStore, systemSettingsService)
+	}
 
 	notificationRepository := notificationpostgres.NewRepository(pool)
 	notificationService := notificationapplication.NewService(notificationRepository)
@@ -181,7 +189,7 @@ func BuildDependencies(ctx context.Context, config Config) (Dependencies, func()
 		AdminMatches: adminMatchHandler, TeamApplications: teamApplicationHandler,
 		CaptainMessages: captainMessageHandler,
 		Payments:        paymentHandler, Wallets: walletHandler, MiniReviews: miniReviewHandler,
-		SystemRuntime: systemhttp.NewHandler(systemSettingsService),
+		SystemRuntime: systemhttp.NewHandler(systemSettingsService, systemHomeAssets),
 		TeamFunds:     teamFundHandler, Notifications: notificationHandler,
 		UploadDir: config.UploadDir,
 	}, closePool, nil
@@ -199,4 +207,19 @@ func buildTeamLogoStore(config Config) teamapplication.TeamLogoStore {
 		return store
 	}
 	return logostore.NewLocal(config.UploadDir, config.PublicBaseURL)
+}
+
+// buildSystemAssetStore 按 UPLOAD_STORAGE_BACKEND 提供首页运营资源的对象存储；
+// 仅 minio 后端支持（管理端上传是运营行为，本地目录不对外可达），其余返回 nil。
+func buildSystemAssetStore(config Config) systemports.AssetStore {
+	if strings.EqualFold(strings.TrimSpace(config.UploadStorage), "minio") {
+		store, err := systemassetstore.NewMinio(config.UploadMinioEndpoint, config.UploadMinioAccessKey,
+			config.UploadMinioSecretKey, config.UploadMinioBucket, config.UploadMinioRegion,
+			config.UploadMinioPublicURLPrefix)
+		if err != nil {
+			panic(fmt.Errorf("初始化 MinIO 运营资源存储: %w", err))
+		}
+		return store
+	}
+	return nil
 }

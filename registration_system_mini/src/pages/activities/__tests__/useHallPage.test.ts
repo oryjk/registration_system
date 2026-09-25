@@ -110,6 +110,24 @@ test("kind and size filters stay local while every date fetch uses all scope", a
   expect(sessionRequests).toEqual(1);
 });
 
+test("resetHallFilters clears date, kind and size and reloads when a date had narrowed the server query", async () => {
+  const page = useHallPage();
+  await page.loadPageData();
+
+  page.selectKind("team");
+  page.selectSize(8);
+  page.selectDate("2026-09-24");
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  page.resetHallFilters();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  expect(page.activeKind.value).toEqual("all");
+  expect(page.activeSize.value).toEqual(0);
+  expect(page.selectedDateKey.value).toEqual("");
+  expect(matchRequests).toEqual(3);
+});
+
 describe("useHallPage registration window clock", () => {
   test("updates card actions across the opening boundary and stops its timer", async () => {
     let currentTime = registrationStartsAt - 1;

@@ -75,6 +75,7 @@ export function useHallPage() {
     return filterHallMatches(cards, sourceMatches.value, activeKind.value, activeSize.value);
   });
   const hasMore = computed(() => !isPaginationComplete(sourceMatches.value, pagination.value));
+  const sourceMatchCount = computed(() => sourceMatches.value.length);
 
   function fetchHallPage(page: number) {
     return listMatches({
@@ -175,6 +176,16 @@ export function useHallPage() {
     void loadPageData({ preserveContent: hasLoadedOnce.value, reuseSession: true });
   }
 
+  function resetHallFilters() {
+    const hadDateFilter = !!selectedDateKey.value;
+    activeKind.value = "all";
+    activeSize.value = 0;
+    selectedDateKey.value = "";
+    if (hadDateFilter) {
+      void loadPageData({ preserveContent: hasLoadedOnce.value, reuseSession: true });
+    }
+  }
+
   async function handleLogin() {
     try {
       await ensureSessionReady(true);
@@ -216,6 +227,7 @@ export function useHallPage() {
     hallViewer,
     nowTick,
     hasMore,
+    sourceMatchCount,
     calendarDays,
     activeKind,
     activeSize,
@@ -225,6 +237,7 @@ export function useHallPage() {
     selectKind,
     selectSize,
     selectDate,
+    resetHallFilters,
     handleLogin,
     startWindowTimer,
     stopWindowTimer,
