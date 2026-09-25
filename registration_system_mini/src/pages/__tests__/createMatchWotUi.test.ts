@@ -139,12 +139,14 @@ describe("create match Wot UI integration", () => {
     expect(source.includes("async function handleSubmit() {\n  if (!editId.value && await guardReviewMode()) return;")).toEqual(true);
   });
 
-  test("syncs runtime version via prebuild hook before building and uploading", async () => {
-    const packageSource = await read("package.json");
+  test("routes mini-program builds and uploads through the production-safe Bun entry", async () => {
+    const { scripts } = JSON.parse(await read("package.json"));
     const scriptSource = await read("scripts/mini-ci.mjs");
 
-    expect(packageSource.includes('"prebuild:mp-weixin": "node scripts/sync-manifest-version.mjs"')).toEqual(true);
-    expect(packageSource.includes('"mp:release": "bun run build:mp-weixin && node scripts/mini-ci.mjs upload"')).toEqual(true);
+    expect(scripts["prebuild:mp-weixin"]).toEqual(undefined);
+    expect(scripts["build:mp-weixin"]).toEqual("bun --no-env-file scripts/mini-release.mjs build");
+    expect(scripts["mp:release"]).toEqual("bun --no-env-file scripts/mini-release.mjs upload");
+    expect(scripts["mp:preview"]).toEqual("bun --no-env-file scripts/mini-release.mjs preview");
     expect(scriptSource.includes("version: manifest.versionName")).toEqual(true);
   });
 

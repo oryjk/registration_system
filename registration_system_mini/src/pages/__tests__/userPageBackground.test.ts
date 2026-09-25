@@ -149,13 +149,31 @@ describe("mine page visual composition", () => {
     expect(userPageSource.includes("onUnload(() => {")).toEqual(true);
   });
 
-  test("constrains the mine page to the centered column on wide H5 screens", async () => {
+  test("centers mine content and header on wide H5 screens without overriding the shared floating tabbar", async () => {
     const userPageSource = await Bun.file(sourcePath("pages/user/index.vue")).text();
+    const sharedStyles = await Bun.file(sourcePath("uni.css")).text();
+    const styles = userPageSource.match(/<style\b[^>]*>([\s\S]*?)<\/style>/)?.[1] ?? "";
+    const h5Styles = styles.match(/\/\*\s*#ifdef H5\s*\*\/([\s\S]*?)\/\*\s*#endif\s*\*\//)?.[1] ?? "";
+    const content = styles.match(/\.mine-page-content\s*\{([^}]*)\}/)?.[1]?.replace(/\s+/g, "") ?? "";
+    const page = h5Styles.match(/\.mine-page\s*\{([^}]*)\}/)?.[1]?.replace(/\s+/g, "") ?? "";
+    const header = h5Styles.match(/\.mine-page\s+:deep\(\.app-tab-header-shell\)\s*\{([^}]*)\}/)?.[1]?.replace(/\s+/g, "") ?? "";
+    const tabbar = sharedStyles.match(/\.custom-tabbar\s*\{([^}]*)\}/)?.[1]?.replace(/\s+/g, "") ?? "";
 
-    expect(userPageSource.includes("/* #ifdef H5 */")).toEqual(true);
-    expect(userPageSource.includes("max-width:750rpx;")).toEqual(true);
-    expect(userPageSource.includes(".mine-page :deep(.app-tab-header-shell),")).toEqual(true);
-    expect(userPageSource.includes(".mine-page :deep(.custom-tabbar)")).toEqual(true);
-    expect(userPageSource.includes("transform:translateX(-50%);")).toEqual(true);
+    // 内容列与 H5 页面保持居中；不依赖声明顺序、空格或旧的合并选择器逗号。
+    for (const rule of [content, page]) {
+      for (const declaration of ["width:100%;", "max-width:750rpx;", "margin:0auto;"]) {
+        expect(`;${rule}`.includes(`;${declaration}`)).toEqual(true);
+      }
+    }
+    for (const declaration of ["left:50%;", "right:auto;", "width:100%;", "max-width:750rpx;", "transform:translateX(-50%);"]) {
+      expect(`;${header}`.includes(`;${declaration}`)).toEqual(true);
+    }
+
+    // 底栏由共享样式负责悬浮和居中，不再被页面强行拉伸到 750rpx。
+    expect(userPageSource.includes('<BottomTabBar current="mine" />')).toEqual(true);
+    expect(/:deep\(\s*\.custom-tabbar\s*\)/.test(styles)).toEqual(false);
+    for (const declaration of ["position:fixed;", "left:50%;", "width:calc(100%-48rpx);", "max-width:702rpx;", "transform:translateX(-50%);"]) {
+      expect(`;${tabbar}`.includes(`;${declaration}`)).toEqual(true);
+    }
   });
 });

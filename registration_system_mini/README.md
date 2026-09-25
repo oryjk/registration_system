@@ -135,7 +135,7 @@ ${VITE_API_BASE_URL}${url}
 
 ## 微信 CI 上传
 
-使用仓库内 `scripts/mini-ci.mjs`，完整流程见 `AGENTS.md` 的「微信小程序发布」：
+统一通过 `scripts/mini-release.mjs` 执行，版本登记、uni-app 编译、组件检查及微信 CI 均由 Bun 运行。完整流程见 `AGENTS.md` 的「微信小程序发布」：
 
 ```bash
 bun run mp:preview -- --desc "预览说明"
@@ -143,6 +143,16 @@ bun run mp:release -- --desc "开发版说明"           # robot=1 日常开发�
 bun run mp:release -- --robot 2 --desc "体验版说明" # robot=2 体验版专用线
 ```
 
-前置条件为上传私钥 `private.<appid>.key`（可用 `MINI_CI_PRIVATE_KEY_PATH` 覆盖）及 `.env.ci.local` 的 `MINI_REVIEW_API_KEY`，均不提交。`mp:release` 会构建、向 Go mini-review 登记版本并上传开发版本；正式发布仍需公众平台提审与发布。`mp:preview` 上传已有构建产物。
+前置条件为 Bun（当前验证版本 1.3.10）、上传私钥 `private.<appid>.key`（可用 `MINI_CI_PRIVATE_KEY_PATH` 覆盖）及 `.env.ci.local` 的 `MINI_REVIEW_API_KEY`，密钥文件均不提交。`mp:release` 依次登记版本、生产构建、检查组件注册、校验编译包 API，然后上传开发版本；正式发布仍需公众平台提审与发布。`mp:preview` 不重建、不登记版本，只在相同 API 校验通过后上传已有生产产物。
 
-只验证编译时使用 `MINI_REVIEW_SKIP=1 bun run build:mp-weixin`，跳过远程版本登记，不上传。正常发布的版本号由数据库分配，不能用离线跳过命令替代发布流程。
+发布入口会清理继承的 `VITE_*` / `UNI_*` 构建变量，以 `NODE_ENV=production` 和显式 `.env.production` 重新建立子进程环境，uni-app 固定使用 `--mode production`。生产文件中的 API 不接受 shell 或本地配置覆盖；需要更换发布后端时修改该文件，不要临时给上传命令注入 `VITE_API_BASE_URL`。不要绕开统一入口手工拼接构建和上传命令。
+
+上传前读取 `dist/build/mp-weixin/config/apiBase.js` 中 `getApiBaseUrl()` 的真实返回值：必须与生产文件一致、使用 HTTPS 公共域名，并保留 `/api/v1/app` 根路径。缺失产物、本机/内网 IP、错误域名或检查失败都会中止，不能继续上传旧包。直接调用底层 `mini-ci.mjs` 同样执行此校验。
+
+```bash
+MINI_REVIEW_SKIP=1 bun run build:mp-weixin  # 只做生产构建与产物检查，不登记远程版本、不上传
+bun run verify:mp-release                 # 只校验现有产物的生产 API，无远程调用
+bun run test:mp-release                   # 发布链路回归测试，无真实上传
+```
+
+正常 `mp:release` 始终开启远程版本登记，即便外层残留 `MINI_REVIEW_SKIP=1` 也不会跳过。保留 robot=1 日常开发版、robot=2 体验版专用线约定。

@@ -110,7 +110,6 @@ usePageRefresh(loadPageData);
       <HomeMatchList
         v-else
         :matches="matches"
-        :is-guest-mode="false"
         :navigating-match-id="navigatingMatchId"
         @match-tap="handleMatchTap"
       />

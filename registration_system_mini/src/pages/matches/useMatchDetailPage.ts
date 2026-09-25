@@ -20,7 +20,6 @@ import { resolveUserDisplayName, toStandLabel } from "@/utils/viewModels";
 import {
   avatarColor,
   byRegistrationTimeAsc,
-  buildRemainingPlayersLabel,
   buildTeamMemberRegistrationGroups,
   formatClock,
   formatCountdown,
@@ -94,7 +93,6 @@ export function useMatchDetailPage() {
   );
   const isPickupMatch = computed(() => sourceMatch.value?.publication_mode === "online_pickup");
   const requiredPlayers = computed(() => match.value?.players_per_team ?? 0);
-  const progressTargetPlayers = computed(() => (isPickupMatch.value ? selectedGroupMinPlayers.value ?? 0 : requiredPlayers.value));
   const maxPlayers = computed(() => {
     const configuredCapacity = match.value?.team_capacity_limit;
     if (!Number.isFinite(configuredCapacity) || (configuredCapacity ?? 0) <= 0) {
@@ -103,8 +101,6 @@ export function useMatchDetailPage() {
     return Math.max(configuredCapacity ?? requiredPlayers.value, requiredPlayers.value);
   });
 
-  const detailRemainingPlayersLabel = computed(() => selectedGroupMinPlayers.value == null ? "" : buildRemainingPlayersLabel(joinedCount.value, selectedGroupMinPlayers.value));
-  const remainingPlayersLabel = computed(() => buildRemainingPlayersLabel(joinedCount.value, progressTargetPlayers.value));
   const registrationCapacityState = computed(() =>
     resolveRegistrationCapacityState({
       joinedCount: joinedCount.value,
@@ -434,15 +430,12 @@ export function useMatchDetailPage() {
     matchLocation,
     joinedCount,
     requiredPlayers,
-    progressTargetPlayers,
     selectedGroupMinPlayers,
     selectedGroupMaxPlayers,
     maxPlayers,
     countdownText,
     participantPreview,
     teamMemberRegistrationGroups,
-    remainingPlayersLabel,
-    detailRemainingPlayersLabel,
     registrationCapacityState,
     canSubmitIndividualRegistration,
     submittingStatus,

@@ -7,12 +7,13 @@
     "dev:mp-weixin": "uni -p mp-weixin",
     "build:h5": "uni build",
     "build:h5:acceptance": "uni build --mode test",
-    "prebuild:mp-weixin": "node scripts/sync-manifest-version.mjs",
-    "build:mp-weixin": "uni build -p mp-weixin && node scripts/verify-mp-component-registrations.mjs",
-    "verify:mp-components": "node scripts/verify-mp-component-registrations.mjs",
+    "build:mp-weixin": "bun --no-env-file scripts/mini-release.mjs build",
+    "verify:mp-components": "bun --no-env-file scripts/verify-mp-component-registrations.mjs",
+    "verify:mp-release": "bun --no-env-file scripts/mini-release.mjs verify",
+    "test:mp-release": "bun test scripts/mini-release.test.mjs",
     "type-check": "vue-tsc --noEmit",
-    "mp:release": "bun run build:mp-weixin && node scripts/mini-ci.mjs upload",
-    "mp:preview": "node scripts/mini-ci.mjs preview"
+    "mp:release": "bun --no-env-file scripts/mini-release.mjs upload",
+    "mp:preview": "bun --no-env-file scripts/mini-release.mjs preview"
   },
   "dependencies": {
     "@dcloudio/uni-app": "3.0.0-4080420251103001",

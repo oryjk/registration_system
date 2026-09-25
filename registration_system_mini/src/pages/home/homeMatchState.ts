@@ -170,10 +170,6 @@ function toShowParticipantAvatars(phase: VisibleHomeMatchPhase): boolean {
   return phase === "upcoming";
 }
 
-function toViewMode(phase: VisibleHomeMatchPhase): "action" | "compact" {
-  return phase === "upcoming" ? "action" : "compact";
-}
-
 /** 只有接口真实录入的比分才返回标签（"3 : 1"）；未录入为 null，不虚构比分。 */
 function toScoreLabel(item: HomeMatchCardSource): string | null {
   if (!("host_score" in item) || !("away_score" in item)) return null;
@@ -239,7 +235,6 @@ export function toHomeMatchCard(
   // 广场/搜索等 summary 来源不含我的报名状态，显示「待定」会误导，置 null 由卡片隐藏。
   const myStatus: string | null = actionMatch ? toMyStatusLabel(actionMatch.group.my_registration_status) : null;
   let highlight: string;
-  let remainingPlayersLabel: string;
   if (actionMatch) {
     highlight =
       phase === "upcoming"
@@ -249,20 +244,10 @@ export function toHomeMatchCard(
         : phase === "ongoing"
           ? "比赛进行中"
           : "比赛已结束";
-    remainingPlayersLabel =
-      phase === "upcoming"
-        ? remainingPlayers > 0
-          ? `还差 ${remainingPlayers} 人成行`
-          : "已达成行"
-        : phase === "ongoing"
-          ? "报名已结束"
-          : "比赛已结束";
   } else if (summaryMatch) {
     highlight = summaryMatch.description?.trim() || dateNote;
-    remainingPlayersLabel = dateNote;
   } else {
     highlight = dateNote;
-    remainingPlayersLabel = dateNote;
   }
 
   const dateLabel = formatDateLabel(item.start_time);
@@ -304,10 +289,8 @@ export function toHomeMatchCard(
     myStatus,
     highlight,
     participantAvatars,
-    remainingPlayersLabel,
     canRegister,
     actionLabel: phase === "upcoming" && canRegister ? "去报名" : "查看比赛",
-    viewMode: toViewMode(phase),
     scoreLabel,
     scoreNote,
   };

@@ -94,7 +94,6 @@ watch(actionDeckMatches, (matches, previous) => {
 const heroNextMatch = computed(() => actionDeckMatches.value[actionDeckIndex.value] ?? null);
 const deckDetails = useHomeActionDeckDetails(actionDeckMatches, actionDeckIndex);
 const actionMatchCardTimestamp = ref(Date.now());
-const additionalUpcomingMatches = computed(() => upcomingMatches.value.filter((match) => !actionDeckMatches.value.some((item) => item.id === match.id)));
 const additionalOngoingMatches = computed(() => ongoingMatches.value.filter((match) => !actionDeckMatches.value.some((item) => item.id === match.id)));
 const shareTitle = "约球开踢：组队、报名、上场";
 const sharePath = "/pages/home/index";
@@ -349,20 +348,11 @@ onShareTimeline(() => ({
         </view>
 
         <template v-else>
-          <!-- 最近要处理的比赛卡已展示待处理集合，列表只放未包含的比赛；完整列表入口保留。 -->
-          <HomeSectionHeader v-if="additionalUpcomingMatches.length" title="最近要处理的比赛" action-label="更多" @action='openMatchList("upcoming")' />
-          <HomeMatchList
-            v-if="additionalUpcomingMatches.length"
-            :matches="additionalUpcomingMatches"
-            :is-guest-mode="isGuestMode"
-            :navigating-match-id="navigatingMatchId"
-            @match-tap="handleMatchTap"
-          />
+          <!-- 待处理比赛统一由上方行动卡展示；下方列表仅保留进行中与已结束的查看入口。 -->
           <HomeSectionHeader v-if="!isGuestMode && additionalOngoingMatches.length" title="进行中的比赛" :action-label="ongoingMatches.length ? '更多' : undefined" @action='openMatchList("ongoing")' />
           <HomeMatchList
             v-if="!isGuestMode && additionalOngoingMatches.length"
             :matches="additionalOngoingMatches"
-            :is-guest-mode="isGuestMode"
             :navigating-match-id="navigatingMatchId"
             @match-tap="handleMatchTap"
           />
@@ -370,7 +360,6 @@ onShareTimeline(() => ({
           <HomeMatchList
             v-if="!isGuestMode && endedMatches.length"
             :matches="endedMatches"
-            :is-guest-mode="isGuestMode"
             :navigating-match-id="navigatingMatchId"
             @match-tap="handleMatchTap"
           />

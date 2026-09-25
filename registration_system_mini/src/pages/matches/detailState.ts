@@ -123,12 +123,6 @@ export function buildRegistrationProgress(joinedCount: number, requiredPlayers: 
   };
 }
 
-export function buildRemainingPlayersLabel(joinedCount: number, requiredPlayers: number) {
-  if (!requiredPlayers) return "人数待定";
-  const left = Math.max(requiredPlayers - joinedCount, 0);
-  return left > 0 ? `还差 ${left} 人成行` : "已达成行人数";
-}
-
 export function resolveRegistrationCapacityState({
   joinedCount,
   teamCapacityLimit,

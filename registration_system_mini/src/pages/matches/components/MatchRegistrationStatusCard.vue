@@ -11,7 +11,6 @@ const props = defineProps<{
   requiredPlayers: number;
   maxPlayers: number;
   countdownText: string;
-  remainingPlayersLabel: string;
   /** 球队约队双边进度（主/客队）；非空时替代单条进度与“已报”计数。 */
   teamProgress?: MatchTeamProgressItem[];
   /** 待支付报名费标签（如 ¥25.00，按人数合计的总应付）；非空时提示待支付。 */

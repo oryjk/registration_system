@@ -4,7 +4,6 @@ import HomeMatchCard from "./HomeMatchCard.vue";
 
 defineProps<{
   matches: HomeMatchCardViewModel[];
-  isGuestMode: boolean;
   navigatingMatchId: string;
 }>();
 
@@ -23,7 +22,6 @@ function handleMatchTap(match: HomeMatchCardViewModel) {
       v-for="match in matches"
       :key="match.id"
       :match="match"
-      :is-guest-mode="isGuestMode"
       :is-navigating="navigatingMatchId === match.id"
       @match-tap="handleMatchTap"
     />

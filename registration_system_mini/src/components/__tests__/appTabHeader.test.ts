@@ -61,14 +61,34 @@ describe("AppTabHeader", () => {
     expect(source.includes("uni.pageScrollTo({ scrollTop: 0, duration: 300 })")).toEqual(true);
   });
 
-  test("renders the header in solid canvas style instead of glass blur", async () => {
+  test("uses the shared glass tokens without a divider and keeps plain headers transparent", async () => {
     const source = await read("src/components/AppTabHeader.vue");
+    const styles = (source.match(/<style\b[^>]*>([\s\S]*?)<\/style>/)?.[1] ?? "").replace(/\/\*[\s\S]*?\*\//g, "");
+    const shell = styles.match(/\.app-tab-header-shell\s*\{([^}]*)\}/)?.[1]?.replace(/\s+/g, "") ?? "";
+    const plain = styles.match(/\.app-tab-header-shell-plain\s*\{([^}]*)\}/)?.[1]?.replace(/\s+/g, "") ?? "";
 
-    expect(source.includes("backdrop-filter")).toEqual(false);
-    expect(source.includes("linear-gradient(180deg, var(--ui-color-surface-translucent)")).toEqual(false);
-    expect(source.includes("background: var(--ui-color-page);")).toEqual(true);
-    // D 风格：浅色结构线分隔（--ui-color-line），不再用墨色粗描边 token。
-    expect(source.includes("border-bottom: 2rpx solid var(--ui-color-line);")).toEqual(true);
+    // 分别检查普通壳层和 plain 覆盖，避免另一条规则中的同名属性让断言误通过。
+    for (const declaration of [
+      "position:fixed;",
+      "background:var(--ui-glass-bg);",
+      "-webkit-backdrop-filter:var(--ui-glass-filter);",
+      "backdrop-filter:var(--ui-glass-filter);",
+      "box-shadow:var(--ui-glass-header-shadow);",
+      "border-bottom:none;",
+    ]) {
+      expect(`;${shell}`.includes(`;${declaration}`)).toEqual(true);
+    }
+    expect(source.includes("props.plain ? 'app-tab-header-shell-plain'")).toEqual(true);
+    for (const declaration of [
+      "background:transparent;",
+      "-webkit-backdrop-filter:none;",
+      "backdrop-filter:none;",
+      "box-shadow:none;",
+      "border-bottom:none;",
+    ]) {
+      expect(`;${plain}`.includes(`;${declaration}`)).toEqual(true);
+    }
+    expect(shell.includes("linear-gradient(")).toEqual(false);
   });
 
   test("back and home use independent navigation buttons within the safe area", async () => {

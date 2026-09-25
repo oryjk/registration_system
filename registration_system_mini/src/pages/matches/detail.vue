@@ -52,7 +52,6 @@ const {
   countdownText,
   currentStatus,
   teamMemberRegistrationGroups,
-  detailRemainingPlayersLabel,
   submittingStatus,
   pendingPaymentFeeLabel,
   submittingPayment,
@@ -215,7 +214,6 @@ const metaPageStyle = computed(() =>
         :required-players="selectedGroupMinPlayers ?? 0"
         :max-players="selectedGroupMaxPlayers ?? 0"
         :countdown-text="countdownText"
-        :remaining-players-label="detailRemainingPlayersLabel"
         :submitting-status="submittingStatus"
         :individual-cta-label="individualCtaLabel"
         :is-guest-mode="isGuestMode"

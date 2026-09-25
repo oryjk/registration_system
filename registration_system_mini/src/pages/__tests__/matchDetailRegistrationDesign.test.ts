@@ -237,7 +237,6 @@ describe("match detail registration design", () => {
     const state = await sourceFile(
       "pages/matches/detailState.ts",
     ).text();
-    expect(state.includes('"已达成行人数"')).toEqual(true);
     expect(state.includes("maxPlayers?: number")).toEqual(true);
     expect(state.includes("const target =")).toEqual(true);
     expect(state.includes("overflowVisualWidth")).toEqual(false);

@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 // 小程序 CI 上传/预览：基于官方 miniprogram-ci。
 // 用法：
 //   bun run mp:release  -- [--robot 2] [--desc 文案]   # 构建 + 分配版本号 + 上传
@@ -9,7 +9,7 @@ import path from "node:path";
 import process from "node:process";
 
 import JSON5 from "json5";
-import ci from "miniprogram-ci";
+import { loadProductionEnvironment, verifyReleaseBundle } from "./mini-release.mjs";
 
 const projectRoot = path.resolve(new URL("..", import.meta.url).pathname);
 const command = process.argv[2];
@@ -55,6 +55,12 @@ const desc = argValue("--desc") || `v${manifest.versionName} CI 上传`;
 const setting = { es6: false, minifyJS: false, minifyWXML: false, minifyWXSS: false };
 
 async function main() {
+  // 即便直接调用本上传脚本，也必须先确认产物实际连接生产 API。
+  // 在加载微信 SDK 前失败，避免错误构建触发任何上传副作用。
+  const production = loadProductionEnvironment(projectRoot);
+  const apiBase = verifyReleaseBundle(projectRoot, production.VITE_API_BASE_URL);
+  console.log(`[mini-ci] 上传前 API 校验通过: ${apiBase}`);
+  const { default: ci } = await import("miniprogram-ci");
   const project = new ci.Project({
     appid,
     type: "miniProgram",

@@ -155,7 +155,9 @@ describe("home page loading states", () => {
     expect(source.includes("activeHomeTab")).toEqual(false);
     expect(source.includes("HomeOtherMatchesSection")).toEqual(false);
     expect(source.includes("useHomeOtherMatches")).toEqual(false);
-    expect(source.includes('title="最近要处理的比赛"')).toEqual(true);
+    expect(source.includes("<HomeActionMatchCarousel")).toEqual(true);
+    expect(source.includes(':matches="actionDeckMatches"')).toEqual(true);
+    expect(source.includes("additionalUpcomingMatches")).toEqual(false);
     expect(source.includes('title="进行中的比赛"')).toEqual(true);
     expect(source.includes('v-if="!isGuestMode && endedMatches.length" title="已结束的比赛"')).toEqual(true);
   });

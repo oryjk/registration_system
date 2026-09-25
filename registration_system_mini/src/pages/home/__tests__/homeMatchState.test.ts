@@ -218,14 +218,17 @@ describe("home phase layering", () => {
     expect(sections.map((section) => section.items)).toEqual([[], [], []]);
   });
 
-  test("ongoing and ended cards are compact view cards with view-only actions", () => {
+  test("omits legacy rich-card fields while preserving match detail navigation", () => {
     const ongoingCard = toHomeMatchCard(buildActionMatch({ id: "on-view", start_time: earlierIso, end_time: laterIso }), "ongoing");
     const endedCard = toHomeMatchCard(buildEndedMatch({ id: "end-view" }), "ended");
     const upcomingCard = toHomeMatchCard(buildActionMatch({ id: "up-view" }), "upcoming");
 
-    expect(upcomingCard.viewMode).toEqual("action");
-    expect(ongoingCard.viewMode).toEqual("compact");
-    expect(endedCard.viewMode).toEqual("compact");
+    for (const card of [upcomingCard, ongoingCard, endedCard]) {
+      expect("viewMode" in card).toEqual(false);
+      expect("remainingPlayersLabel" in card).toEqual(false);
+      expect(card.canOpenDetail).toEqual(true);
+      expect(card.detailUrl.includes(`/pages/matches/detail?id=${card.id}`)).toEqual(true);
+    }
     // 查看型卡片的普通用户操作仅为查看：不可报名、按钮语义为查看。
     expect(ongoingCard.canRegister).toEqual(false);
     expect(endedCard.canRegister).toEqual(false);

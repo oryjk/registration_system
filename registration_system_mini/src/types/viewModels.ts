@@ -71,11 +71,8 @@ export interface HomeMatchCardViewModel {
     displayText: string;
     tone: string;
   }>;
-  remainingPlayersLabel: string;
   canRegister: boolean;
   actionLabel?: string;
-  /** 展示模式：upcoming 用报名型富卡；ongoing/ended 用紧凑查看型卡（整卡仅查看）。 */
-  viewMode: "action" | "compact";
   /** 真实接口录入的比分（如 "3 : 1"）；未录入或非查看阶段为 null。 */
   scoreLabel: string | null;
   /** 比分前缀文案：已结束「最终比分」、进行中「当前比分」；无比分为 null。 */

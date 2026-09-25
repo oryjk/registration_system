@@ -1,6 +1,5 @@
 export { default as AppButton } from "./AppButton.vue";
 export { default as ConfirmDialog } from "./ConfirmDialog.vue";
-export { default as AppProgress } from "./AppProgress.vue";
 export { default as RunningLoader } from "./RunningLoader.vue";
 export { default as SectionHeader } from "./SectionHeader.vue";
 export { default as SegmentedControl } from "./SegmentedControl.vue";

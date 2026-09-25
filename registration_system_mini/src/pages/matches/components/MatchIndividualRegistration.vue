@@ -28,7 +28,6 @@ const props = defineProps<{
   requiredPlayers: number;
   maxPlayers: number;
   countdownText: string;
-  remainingPlayersLabel: string;
   submittingStatus: boolean;
   individualCtaLabel: string;
   isGuestMode: boolean;
@@ -164,7 +163,6 @@ function handleTeamMemberDialogVisibilityChange(visible: boolean) {
       :required-players="requiredPlayers"
       :max-players="maxPlayers"
       :countdown-text="countdownText"
-      :remaining-players-label="remainingPlayersLabel"
       :team-progress="teamProgress"
       :pending-payment-fee-label="pendingPaymentFeeLabel"
       :pending-payment-title="pendingPaymentTitle"
