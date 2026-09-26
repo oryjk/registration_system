@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { miniPath } from "@/test/sourcePaths";
+import { registeredPages } from "@/test/registeredPages";
 
 declare const Bun: {
   file(path: string): {
@@ -41,6 +42,7 @@ describe("secondary page navigation", () => {
 
   test("secondary pages use custom navigation so the shared header is not duplicated", async () => {
     const source = await Bun.file(miniPath("src/pages.json")).text();
+    const pages = registeredPages(JSON.parse(source));
 
     for (const page of [
       "pages/teams/manage/index",
@@ -51,11 +53,7 @@ describe("secondary page navigation", () => {
       "pages/billing/index",
       "pages/profile/setup/index",
     ]) {
-      const pageIndex = source.indexOf(`"path": "${page}"`);
-      expect(pageIndex >= 0).toEqual(true);
-      const nextPageIndex = source.indexOf('"path": "', pageIndex + 1);
-      const block = source.slice(pageIndex, nextPageIndex >= 0 ? nextPageIndex : source.length);
-      expect(block.includes('"navigationStyle": "custom"')).toEqual(true);
+      expect(pages.find((entry) => entry.path === page)?.style?.navigationStyle).toEqual("custom");
     }
   });
 

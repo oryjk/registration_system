@@ -2,7 +2,9 @@ import { computed, ref } from "vue";
 import { listTestLoginUsers, testLogin, wechatLogin, impersonateUser } from "@/api/auth";
 import { getMyTeams, getTeamDetail } from "@/api/team";
 import { getCurrentUser, toBackendUser } from "@/api/user";
+// #ifdef H5
 import { isMockEnabled } from "@/mock";
+// #endif
 import type { BackendTeam, BackendTeamDetail, BackendUser } from "@/types/backend";
 import type { TeamProfileViewModel } from "@/types/viewModels";
 import { resolveSessionBootstrapMode } from "@/stores/bootstrapStrategy";
@@ -27,6 +29,7 @@ import {
   clearImpersonatorToken,
   type StoredCurrentIdentitySelection,
 } from "@/utils/authStorage";
+import { clearOnboardingIntent } from "@/utils/onboardingGuideStorage";
 import { buildTeamProfiles } from "@/utils/viewModels";
 import { isUnauthorizedError } from "@/utils/request";
 import { waitWebViewAuthIngest } from "@/utils/webview";
@@ -122,6 +125,13 @@ function requestWechatCode(): Promise<string> {
 async function loadTeamContext() {
   const teams = await getMyTeams();
 
+  // onboarding intent 只描述「还没建立球队关系时想怎么开始」。
+  // 一旦后端确认用户已经拥有球队，就永久清掉这段临时意图；
+  // 以后即使球队被解散/退出/被移除，也应重新回到 no-team-unknown。
+  if (teams.length > 0) {
+    clearOnboardingIntent(currentUser.value?.id);
+  }
+
   myTeams.value = teams;
   selectAvailableTeam();
   selectAvailableIdentity();
@@ -207,11 +217,13 @@ export async function ensureSessionReady(force = false) {
       // 小程序端该 promise 立即 resolve，无额外开销。
       await waitWebViewAuthIngest();
 
-      // Mock 模式：跳过微信登录，直接用 mock 数据建立会话
+      // Mock 模式：仅 H5 开发环境可用；MP 构建时整段条件编译移除，避免 mock 数据进入主包。
+      // #ifdef H5
       if (isMockEnabled()) {
         await bootstrapMockSession();
         return;
       }
+      // #endif
 
       const bootstrapMode = resolveSessionBootstrapMode({
         hasAccessToken: !!getAccessToken(),

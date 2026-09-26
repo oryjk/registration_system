@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { sourcePath } from "@/test/sourcePaths";
+import { registeredPages } from "@/test/registeredPages";
 
 declare const Bun: {
   file(path: string): {
@@ -56,13 +57,10 @@ describe("team manage source wiring", () => {
 
   test("pages config registers the team manage create and join pages", async () => {
     const source = await Bun.file(sourcePath("pages.json")).text();
-
-    expect(source.includes('"path": "pages/teams/manage/index"')).toEqual(true);
-    expect(source.includes('"navigationBarTitleText": "球队管理"')).toEqual(true);
-    expect(source.includes('"path": "pages/teams/create/index"')).toEqual(true);
-    expect(source.includes('"navigationBarTitleText": "创建球队"')).toEqual(true);
-    expect(source.includes('"path": "pages/teams/join/index"')).toEqual(true);
-    expect(source.includes('"navigationBarTitleText": "加入球队"')).toEqual(true);
+    const pages = registeredPages(JSON.parse(source));
+    expect(pages.find((page) => page.path === "pages/teams/manage/index")?.style?.navigationBarTitleText).toEqual("球队管理");
+    expect(pages.find((page) => page.path === "pages/teams/create/index")?.style?.navigationBarTitleText).toEqual("创建球队");
+    expect(pages.find((page) => page.path === "pages/teams/join/index")?.style?.navigationBarTitleText).toEqual("加入球队");
   });
 
   test("team api wraps create search join and password-info backend endpoints", async () => {

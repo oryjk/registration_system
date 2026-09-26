@@ -18,6 +18,13 @@ export const defaultMiniAppRuntimeConfig: BackendMiniAppRuntimeConfig = {
     ],
     // 运营插画由管理端上传后经运行配置下发；默认空串 = 用内置轻量视觉。
     next_match_social_image_url: "",
+    onboarding_welcome_image_url: "",
+    onboarding_team_image_url: "",
+    onboarding_match_image_url: "",
+    share_home_image_url: "",
+    share_hall_image_url: "",
+    share_team_image_url: "",
+    share_match_image_url: "",
   },
   matches: {
     related_activity_limit: 2,

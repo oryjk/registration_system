@@ -7,6 +7,7 @@ defineProps<{
   description: string;
   primaryLabel: string;
   secondaryLabel?: string;
+  backgroundImageUrl?: string;
 }>();
 
 const emit = defineEmits<{
@@ -19,10 +20,16 @@ const emit = defineEmits<{
   <AppSurface variant="outlined" flush>
     <view class="hall-empty-state">
       <view class="hall-empty-state__copy">
-        <view class="hall-empty-state__ball" aria-hidden="true" />
         <view class="hall-empty-state__text">
           <text class="hall-empty-state__title">{{ title }}</text>
           <text class="hall-empty-state__description">{{ description }}</text>
+        </view>
+        <view v-if="backgroundImageUrl" class="hall-empty-state__art" aria-hidden="true">
+          <image
+            class="hall-empty-state__image"
+            :src="backgroundImageUrl"
+            mode="widthFix"
+          />
         </view>
       </view>
 
@@ -44,24 +51,29 @@ const emit = defineEmits<{
 
 <style scoped>
 .hall-empty-state {
+  overflow: hidden;
   padding: 30rpx 28rpx 26rpx;
 }
 
 .hall-empty-state__copy {
   display: flex;
-  align-items: flex-start;
-  gap: 18rpx;
+  align-items: center;
+  gap: 20rpx;
 }
 
-.hall-empty-state__ball {
-  flex: 0 0 52rpx;
-  width: 52rpx;
-  height: 52rpx;
-  margin-top: 2rpx;
-  border: 4rpx solid var(--ui-color-text);
-  border-radius: var(--ui-radius-round);
-  background: var(--ui-color-accent-soft);
-  box-sizing: border-box;
+/* 与首页 HomeEmptyHero 的社交插画保持同尺寸、同原图比例。 */
+.hall-empty-state__art {
+  display: flex;
+  flex: 0 0 184rpx;
+  height: 144rpx;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.hall-empty-state__image {
+  display: block;
+  width: 184rpx;
+  height: auto;
 }
 
 .hall-empty-state__text {

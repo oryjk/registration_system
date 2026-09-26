@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { miniPath } from "@/test/sourcePaths";
+import { registeredPages } from "@/test/registeredPages";
 
 declare const Bun: {
   file(path: string): {
@@ -11,7 +12,7 @@ declare const Bun: {
 describe("accent theme page-meta coverage", () => {
   test("every registered page injects the accent theme via page-meta", async () => {
     const raw = await Bun.file(miniPath("src/pages.json")).text();
-    const pages = (JSON.parse(raw).pages as { path: string }[]).map((item) => item.path);
+    const pages = registeredPages(JSON.parse(raw)).map((item) => item.path);
     expect(pages.length >= 20).toEqual(true);
 
     for (const path of pages) {
@@ -22,7 +23,7 @@ describe("accent theme page-meta coverage", () => {
   });
 
   test("every local page owns a reactive theme scope instead of relying on H5 page-meta", async () => {
-    const { pages } = JSON.parse(await Bun.file(miniPath("src/pages.json")).text()) as { pages: { path: string }[] };
+    const pages = registeredPages(JSON.parse(await Bun.file(miniPath("src/pages.json")).text()));
     for (const { path } of pages) {
       if (path === "pages/webview/index") continue; // 外部文档由其自身管理样式。
       const source = await Bun.file(miniPath(`src/${path}.vue`)).text();

@@ -1,6 +1,8 @@
 import { buildAppApiUrl, getApiBaseUrl } from "@/config/apiBase";
 import { getAccessToken } from "@/utils/authStorage";
+// #ifdef H5
 import { isMockEnabled, tryMockRequest } from "@/mock";
+// #endif
 import type { BackendApiResponse } from "@/types/backend";
 
 type RequestMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
@@ -69,6 +71,7 @@ export async function requestRaw<TResponse, TBody extends RequestPayload = Recor
   // Mock 拦截：开发环境下通过 VITE_USE_MOCK 开启。
   // 开启后必须“全有或全无”：未覆盖的接口直接报错，不允许回落到真实后端，
   // 否则页面会混显 mock 数据和真实数据，误导联调判断。
+  // #ifdef H5
   if (isMockEnabled()) {
     const mockResult = tryMockRequest(method, requestUrl, options.data);
     if (mockResult === null) {
@@ -76,6 +79,7 @@ export async function requestRaw<TResponse, TBody extends RequestPayload = Recor
     }
     return mockResult as Promise<TResponse>;
   }
+  // #endif
 
   return new Promise<TResponse>((resolve, reject) => {
     uni.request({

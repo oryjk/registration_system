@@ -1,5 +1,7 @@
 import { readdir, readFile } from "node:fs/promises";
 import { extname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { verifySubpackages } from "./verify-mp-subpackages.mjs";
 
 const outputDir = new URL("../dist/build/mp-weixin/", import.meta.url);
 
@@ -82,3 +84,4 @@ if (failures.length > 0) {
 }
 
 console.log("All mini-program custom components are registered.");
+verifySubpackages(fileURLToPath(outputDir));

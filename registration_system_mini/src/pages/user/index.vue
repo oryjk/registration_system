@@ -79,6 +79,10 @@ function openContactDeveloper() {
   uni.navigateTo({ url: "/pages/user/contact-developer/index" });
 }
 
+function openHelp() {
+  uni.navigateTo({ url: "/pages/user/help/index" });
+}
+
 onShow(() => {
   tabBarMotion.show("mine");
   // H5 路由切换时 onShow 可能早于 TabBar 挂载，此时无需隐藏。
@@ -116,18 +120,21 @@ provide(APP_SCROLL_CONTROLLER, appScrollController);
           <MineTeamIdentityPanel :current-team="currentTeam" :team-profiles="teamProfiles" :is-switching-team="isSwitchingTeam" @manage-team="openTeamManage" @switch-team="handleSwitchTeam" />
           <MineMatchSection :matches="myMatches" @open-all="openUserMatches" @open-match="openMatchDetail" />
           <MineWalletSection v-if="!shouldHideCreationEntrances" :wallet-summary="walletSummary" @open-billing="openBilling" />
+        </template>
           <view class="mine-services">
-            <button class="mine-service" hover-class="mine-service--pressed" @tap="openNotifications">
+            <button class="mine-service" hover-class="mine-service--pressed" @tap="openHelp">
+              <text class="mine-help-icon">?</text><text class="mine-service-label">使用帮助</text><text>›</text>
+            </button>
+            <button v-if="currentUser" class="mine-service" hover-class="mine-service--pressed" @tap="openNotifications">
               <wd-icon name="notification" size="32rpx" /><text class="mine-service-label">消息中心</text><text v-if="unreadCount > 0" class="mine-badge">{{ unreadCount > 99 ? '99+' : unreadCount }}</text><wd-icon name="arrow-right" size="26rpx" />
             </button>
-            <button class="mine-service" hover-class="mine-service--pressed" @tap="openContactDeveloper">
+            <button v-if="currentUser" class="mine-service" hover-class="mine-service--pressed" @tap="openContactDeveloper">
               <wd-icon name="email" size="32rpx" /><text class="mine-service-label">联系开发者</text><wd-icon name="arrow-right" size="26rpx" />
             </button>
-            <button v-if="settingsEntryVisible" class="mine-service" hover-class="mine-service--pressed" @tap="openSettings">
+            <button v-if="currentUser && settingsEntryVisible" class="mine-service" hover-class="mine-service--pressed" @tap="openSettings">
               <wd-icon name="settings" size="32rpx" /><text class="mine-service-label">设置</text><wd-icon name="arrow-right" size="26rpx" />
             </button>
           </view>
-        </template>
         <ThemeAccentPicker />
         <view v-if="currentUser && impersonationPanelVisible" class="mine-tools">
           <button class="mine-service" @tap="toolsExpanded = !toolsExpanded" :aria-expanded="toolsExpanded || impersonating">
@@ -158,6 +165,7 @@ provide(APP_SCROLL_CONTROLLER, appScrollController);
 .mine-service::after,.mine-account-action::after { border:0; }
 .mine-service + .mine-service { border-top:var(--ui-border-default); }
 .mine-service-label { flex:1; color:var(--ui-color-text); }
+.mine-help-icon { width:32rpx; text-align:center; font-size:30rpx; font-weight:var(--ui-font-weight-heading); }
 .mine-service--pressed { background:var(--ui-color-neutral-bg); }
 .mine-badge { padding:2rpx 12rpx; border-radius:var(--ui-radius-round); font-size:22rpx; background:var(--ui-color-danger-bg); color:var(--ui-color-danger-fg); }
 .mine-tool-state { font-size:20rpx; color:var(--ui-color-warning-fg); }

@@ -52,6 +52,7 @@ if (!existsSync(path.join(distPath, "app.json"))) {
 
 const robot = Number(argValue("--robot")) || 1;
 const desc = argValue("--desc") || `v${manifest.versionName} CI 上传`;
+// 当前 miniprogram-ci/微信编译器对本项目开启 minify 会让 __FULL__ 反而增加约 49KB；
 const setting = { es6: false, minifyJS: false, minifyWXML: false, minifyWXSS: false };
 
 async function main() {
@@ -66,8 +67,14 @@ async function main() {
     type: "miniProgram",
     projectPath: distPath,
     privateKeyPath,
-    // 旧个人页背景已不再被界面引用；保留源文件，但不占小程序主包。
-    ignores: ["node_modules/**/*"],
+    // 开发素材与已迁到 MinIO 的分享封面不进入微信上传包。
+    ignores: [
+      "node_modules/**/*",
+      "static/**/*.svg",
+      "static/icons/lucide/README.md",
+      "static/icons/lucide/LICENSE",
+      "static/share/share-cover.png",
+    ],
   });
 
   if (command === "upload") {
@@ -80,8 +87,11 @@ async function main() {
   }
 
   const qrcodeOutputDest = path.join(projectRoot, "dist", "preview-qrcode.jpg");
-  await ci.preview({ project, desc, robot, setting, qrcodeFormat: "image", qrcodeOutputDest });
+  const result = await ci.preview({ project, desc, robot, setting, qrcodeFormat: "image", qrcodeOutputDest });
   console.log(`[mini-ci] 预览已生成: ${qrcodeOutputDest}（robot=${robot}）`);
+  if (result?.subPackageInfo) {
+    console.log("[mini-ci] 预览分包信息:", JSON.stringify(result.subPackageInfo));
+  }
 }
 
 main().catch((error) => {

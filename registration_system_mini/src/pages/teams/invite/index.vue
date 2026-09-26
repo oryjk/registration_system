@@ -1,7 +1,11 @@
 <script setup lang="ts">
+import { watch } from "vue";
+import { onShow } from "@dcloudio/uni-app";
+import { useOnboardingIllustrations } from "@/composables/useOnboardingIllustrations";
 import { useAccentTheme } from "@/stores/theme";
 import AppTabHeader from "@/components/AppTabHeader.vue";
 import ProfileCompletionDialog from "@/components/ProfileCompletionDialog.vue";
+import TeamJoinedNextSteps from "../onboarding/TeamJoinedNextSteps.vue";
 import AppButton from "@/components/ui/AppButton.vue";
 import AppSurface from "@/components/ui/AppSurface.vue";
 import { useTeamInvitePage } from "./useTeamInvitePage";
@@ -24,8 +28,13 @@ const {
   handleJoin,
   goTeamDetail,
   goHome,
+  goFindMatches,
   resolveInvite,
 } = useTeamInvitePage();
+
+const { illustrations, illustrationRevision, refreshIllustrations } = useOnboardingIllustrations();
+watch(() => joined.value || team.value?.is_member, (ready) => { if (ready) void refreshIllustrations(); });
+onShow(() => { if (joined.value || team.value?.is_member) void refreshIllustrations(); });
 </script>
 
 <template>
@@ -65,16 +74,9 @@ const {
           <text v-if="team.description" class="team-invite-hero__desc">{{ team.description }}</text>
         </view>
 
-        <!-- 已是成员：不重复加入，引导去球队主页。 -->
-        <AppSurface v-if="team.is_member || joined" variant="raised" custom-class="team-invite-card">
-          <view class="team-invite-card__head">
-            <text class="team-invite-card__title">{{ joined ? "加入成功" : "你已是球队成员" }}</text>
-            <text class="team-invite-card__copy">
-              {{ joined ? "快去球队主页看看吧。" : "无需重复加入，快去球队主页看看吧。" }}
-            </text>
-          </view>
-          <AppButton block @click="goTeamDetail">进入球队主页</AppButton>
-        </AppSurface>
+        <view v-if="team.is_member || joined" class="team-invite-next">
+          <TeamJoinedNextSteps :image-revision="illustrationRevision" :image-url="illustrations.team" :already-member="!joined" @team="goTeamDetail" @matches="goFindMatches" />
+        </view>
 
         <AppSurface v-else variant="raised" custom-class="team-invite-card">
           <view class="team-invite-card__head">
@@ -111,6 +113,7 @@ const {
 </template>
 
 <style scoped>
+.team-invite-next { margin-top: 26rpx; }
 .team-invite-page {
   min-height: 100vh;
   padding: 0 28rpx 112rpx;

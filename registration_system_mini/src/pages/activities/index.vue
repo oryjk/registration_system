@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { usePullRefresh } from "@/composables/usePullRefresh";
 import { APP_SCROLL_CONTROLLER, createAppScrollAnchor } from "@/components/appScroll";
+import { loadMiniAppRuntimeConfig } from "@/config/runtimeConfig";
 import { useAccentTheme } from "@/stores/theme";
 import { onHide, onLoad, onShow, onUnload, onShareAppMessage, onShareTimeline } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
@@ -18,14 +19,20 @@ import HallCalendarStrip from "./components/HallCalendarStrip.vue";
 import HallQuickFilters from "./components/HallQuickFilters.vue";
 import HallMatchList from "./components/HallMatchList.vue";
 import HallEmptyState from "./components/HallEmptyState.vue";
+import HomeMatchList from "@/pages/home/components/HomeMatchList.vue";
+import type { HomeMatchCardViewModel } from "@/types/viewModels";
 import PublishTypeSheet from "./components/PublishTypeSheet.vue";
 import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
 import { useConfirmDialog } from "@/components/ui/useConfirmDialog";
 import { useHallPage } from "./useHallPage";
 import { getCustomNavMetrics } from "@/utils/customNav";
 import { MATCH_CREATION_IDENTITY_HINT } from "@/utils/matchCreationAccess";
-import { DEFAULT_SHARE_IMAGE_URL } from "@/utils/share";
+import { useShareCover } from "@/composables/useShareCover";
+
 import { computed, provide, ref } from "vue";
+
+const { shareCoverUrl, refreshShareCover } = useShareCover("hall");
+onShow(() => { void refreshShareCover(); });
 
 const { themePageStyle } = useAccentTheme();
 
@@ -37,6 +44,7 @@ const {
   canOpenPublishSheet,
   hasPublishIdentity,
   hallCards,
+  endedReferenceCards,
   hallViewer,
   nowTick,
   hasMore,
@@ -75,6 +83,8 @@ const {
 } = useConfirmDialog();
 const publishTypeSheetVisible = ref(false);
 const navigatingMatchId = ref("");
+const hallEmptyBackgroundImageUrl = ref("");
+let hallBackgroundLoadVersion = 0;
 const shareTitle = "约队大厅：看看可报名的散人局";
 const sharePath = "/pages/activities/index";
 const contentStyle = computed(() => ({
@@ -114,6 +124,17 @@ function openMatchDetail(card: { id: string; actionKind: string; detailUrl: stri
   navigatingMatchId.value = card.id;
   uni.navigateTo({
     url: card.actionKind === "accept" ? card.applyUrl : card.detailUrl,
+    fail: () => {
+      navigatingMatchId.value = "";
+    },
+  });
+}
+
+function openEndedReferenceMatch(match: HomeMatchCardViewModel) {
+  if (navigatingMatchId.value) return;
+  navigatingMatchId.value = match.id;
+  uni.navigateTo({
+    url: match.detailUrl,
     fail: () => {
       navigatingMatchId.value = "";
     },
@@ -178,11 +199,24 @@ function handleSessionLoginCompleted() {
   void loadPageData({ preserveContent: true });
 }
 
+function loadHallEmptyBackgroundImage(): void {
+  const loadVersion = ++hallBackgroundLoadVersion;
+  void loadMiniAppRuntimeConfig()
+    .then((config) => {
+      if (loadVersion !== hallBackgroundLoadVersion) return;
+      hallEmptyBackgroundImageUrl.value = config.home.next_match_social_image_url;
+    })
+    .catch(() => {
+      // 背景图只是增强视觉；配置请求失败时保持当前纯色空状态。
+    });
+}
+
 onShow(() => {
   tabBarMotion.show("challenge");
   // H5 路由切换时 onShow 可能早于 TabBar 挂载，此时无需隐藏。
   uni.hideTabBar({ animation: false, fail: () => {} });
   startWindowTimer();
+  loadHallEmptyBackgroundImage();
   void loadPageData({ preserveContent: true, reuseSession: true });
 });
 
@@ -196,6 +230,7 @@ onLoad(() => {
 });
 
 onUnload(() => {
+  hallBackgroundLoadVersion += 1;
   stopWindowTimer();
   clearSearchResults();
   uni.$off("session:login-completed", handleSessionLoginCompleted);
@@ -204,13 +239,13 @@ onUnload(() => {
 onShareAppMessage(() => ({
   title: shareTitle,
   path: sharePath,
-  imageUrl: DEFAULT_SHARE_IMAGE_URL,
+  imageUrl: shareCoverUrl.value,
 }));
 
 onShareTimeline(() => ({
   title: shareTitle,
   query: "",
-  imageUrl: DEFAULT_SHARE_IMAGE_URL,
+  imageUrl: shareCoverUrl.value,
 }));
 // scroll-view 自定义下拉：页面本体不滚动，固定 header 不随下拉拖动。
 const { refreshing, handleRefresherRefresh } = usePullRefresh(() => hasSearched.value ? handleSearch() : loadPageData({ preserveContent: true }));
@@ -299,9 +334,19 @@ provide(APP_SCROLL_CONTROLLER, appScrollController);
             :description="hallEmptyDescription"
             :primary-label="hallEmptyPrimaryLabel"
             :secondary-label="hallEmptySecondaryLabel"
+            :background-image-url="hallEmptyMode === 'empty' ? hallEmptyBackgroundImageUrl : ''"
             @primary="handleHallEmptyPrimary"
             @secondary="handleSuggestedPublish"
           />
+
+          <template v-if="hallEmptyMode === 'empty' && endedReferenceCards.length">
+            <SectionHeader title="已结束的比赛" />
+            <HomeMatchList
+              :matches="endedReferenceCards"
+              :navigating-match-id="navigatingMatchId"
+              @match-tap="openEndedReferenceMatch"
+            />
+          </template>
 
           <!-- 所有筛选只作用于已加载页：过滤后为空但还有下一页时，入口不能消失。 -->
           <view v-if="hasMore" class="hall-load-more" @tap="loadMore">

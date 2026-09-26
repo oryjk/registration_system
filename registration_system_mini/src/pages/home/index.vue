@@ -8,10 +8,8 @@ import AppTabHeader from "@/components/AppTabHeader.vue";
 import AppPullScrollView from "@/components/AppPullScrollView.vue";
 import BottomTabBar from "@/components/BottomTabBar.vue";
 import { tabBarMotion } from "@/components/tabBarMotion";
-import ProfileCompletionDialog from "@/components/ProfileCompletionDialog.vue";
 import AvatarPreviewDialog from "@/components/ui/AvatarPreviewDialog.vue";
 import type { AvatarItem } from "@/components/ui/avatarTypes";
-import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
 import HomeSectionHeader from "./components/HomeSectionHeader.vue";
 import HomeEmptyHero from "./components/HomeEmptyHero.vue";
 import HomeVenueMapEntry from "./components/HomeVenueMapEntry.vue";
@@ -20,7 +18,6 @@ import { useHomeActionDeckDetails } from "./useHomeActionDeckDetails";
 import HomeMatchList from "./components/HomeMatchList.vue";
 import HomeTeamSwitcher from "./components/HomeTeamSwitcher.vue";
 import RunningLoader from "@/components/ui/RunningLoader.vue";
-import OnboardingRolePickerDialog from "./components/OnboardingRolePickerDialog.vue";
 import { getMatchHome } from "@/api/match";
 import { useNotificationCenter } from "@/stores/notificationCenter";
 import { useMiniReviewStatus } from "@/stores/miniReview";
@@ -29,15 +26,21 @@ import type { AppMatchUiPhase } from "@/types/match";
 import type { HomeMatchCardViewModel } from "@/types/viewModels";
 import { hasManualLogout } from "@/utils/authStorage";
 import { getCustomNavMetrics } from "@/utils/customNav";
-import { HOME_SHARE_IMAGE_URL } from "@/utils/share";
+import { useShareCover } from "@/composables/useShareCover";
+
 import {
   buildHomeMatchSections,
   type HomeMatchSectionViewModel,
 } from "./homeMatchState";
 import { useHomeOnboardingGuide } from "./useHomeOnboardingGuide";
-import { resolveHomeEmptyHeroState } from "./homeEmptyHeroState";
+import { resolveHomeEmptyHeroState, type HomeEmptyHeroAction } from "./homeEmptyHeroState";
+import { useOnboardingNavigation } from "@/composables/useOnboardingNavigation";
 import { createHomeRuntimeConfigCycle } from "./homeRuntimeConfigCycle";
+import { useOnboardingIllustrations } from "@/composables/useOnboardingIllustrations";
 import { useHomeNextMatchSocialImage } from "./useHomeNextMatchSocialImage";
+
+const { shareCoverUrl, refreshShareCover } = useShareCover("home");
+onShow(() => { void refreshShareCover(); });
 
 const { themePageStyle } = useAccentTheme();
 const previewAvatar = ref<AvatarItem | null>(null);
@@ -48,13 +51,15 @@ function openAvatarPreview(avatar: AvatarItem) {
   avatarPreviewVisible.value = true;
 }
 
-const { ensureSessionReady, teamProfiles, currentTeam, switchTeam } = useTeamContext();
+const { ensureSessionReady, currentUser, teamProfiles, currentTeam, switchTeam } = useTeamContext();
 const { syncUnreadCount } = useNotificationCenter();
 const { shouldHideCreationEntrances } = useMiniReviewStatus();
-// 首页 runtime config 按加载周期共享：本轮内空状态插画与新手引导共用一次请求；
+// 首页 runtime config 按加载周期缓存插画请求；
 // 每轮 loadPageData reset 开启新周期，下拉刷新/隔时回访可拿到换图后的新配置，失败也可重试。
 const homeRuntimeConfig = createHomeRuntimeConfigCycle();
-const onboardingGuide = useHomeOnboardingGuide({ loadRuntimeConfig: homeRuntimeConfig.load });
+const onboardingGuide = useHomeOnboardingGuide();
+const guidanceNavigation = useOnboardingNavigation();
+const { illustrations, illustrationRevision, refreshIllustrations } = useOnboardingIllustrations(homeRuntimeConfig.load);
 const { nextMatchSocialImageUrl, ensureSocialImageLoaded } = useHomeNextMatchSocialImage({
   loadRuntimeConfig: homeRuntimeConfig.load,
 });
@@ -88,6 +93,7 @@ const emptyHeroState = computed(() => resolveHomeEmptyHeroState({
   canManageTeam: !!currentTeam.value?.canManageTeam,
   creationAllowed: !shouldHideCreationEntrances.value,
   intent: onboardingGuide.intent.value,
+  memberCount: currentTeam.value?.memberCount,
 }));
 // L1「球队即标题」：登录且有球队时标题位显示球队身份；≥2 支可下拉切换，单队纯展示。
 const showTeamSwitcher = computed(() => !isGuestMode.value && teamProfiles.value.length >= 1);
@@ -132,31 +138,49 @@ function openTab(path: string) {
 }
 
 function openBrowseMatches() {
-  if (!isGuestMode.value && teamProfiles.value.length === 0 && !onboardingGuide.intent.value) {
-    onboardingGuide.setIntent("player");
-  }
+  // 普通浏览不记录身份；只在用户明确选择任务时保存偏好。
   openTab("/pages/activities/index");
 }
 
-function openCreateTeam() {
-  if (shouldHideCreationEntrances.value) return;
-  if (teamProfiles.value.length === 0) {
-    onboardingGuide.setIntent("captain");
-  }
-  uni.navigateTo({ url: "/pages/teams/create/index" });
+async function openCreateTeam() {
+  if (shouldHideCreationEntrances.value) return false;
+  return guidanceNavigation.navigateTo("/pages/teams/create/index?from=onboarding");
+}
+
+function openJoinTeam() {
+  return guidanceNavigation.navigateTo("/pages/teams/join/index");
+}
+
+function openTeamDetail() {
+  if (!currentTeam.value) return;
+  void guidanceNavigation.navigateTo(`/pages/teams/detail/index?teamId=${currentTeam.value.id}`);
+}
+
+function openHelp() {
+  uni.navigateTo({ url: "/pages/user/help/index" });
 }
 
 function openCreatePickup() {
   if (shouldHideCreationEntrances.value) return;
-  if (teamProfiles.value.length === 0) {
-    onboardingGuide.setIntent("player");
-  }
-  uni.navigateTo({ url: "/pages/challenges/create-individual/index" });
+  void guidanceNavigation.navigateTo("/pages/challenges/create-individual/index");
 }
 
 function openCreateMatch() {
   if (shouldHideCreationEntrances.value || !currentTeam.value?.canManageTeam) return;
-  uni.navigateTo({ url: "/pages/matches/create/index" });
+  void guidanceNavigation.navigateTo("/pages/matches/create/index");
+}
+
+async function handleTaskChoice(action: HomeEmptyHeroAction) {
+  if (guidanceNavigation.busy.value) return;
+  if (action === "browse") {
+    if (!teamProfiles.value.length) onboardingGuide.setIntent("player");
+    openBrowseMatches();
+  } else if (action === "create-team" || action === "join-team") {
+    const opened = await (action === "create-team" ? openCreateTeam() : openJoinTeam());
+    if (opened && !teamProfiles.value.length) {
+      onboardingGuide.setIntent(action === "create-team" ? "captain" : "member");
+    }
+  }
 }
 
 function openMatchList(phase: MatchSectionPhase) {
@@ -183,11 +207,11 @@ async function loadPageData(options?: { preserveContent?: boolean }) {
   actionMatchCardTimestamp.value = Date.now();
   const loadVersion = ++homeLoadVersion;
   const preserveContent = !!options?.preserveContent && hasLoadedOnce.value;
-  const isFirstLoad = !hasLoadedOnce.value;
   // 每轮首页加载开启新的 runtime config 周期并触发插画加载（增强体验，静默失败，
   // 不 await：不阻塞比赛数据主链路）。
   homeRuntimeConfig.reset();
   ensureSocialImageLoaded();
+  void refreshIllustrations();
 
   if (preserveContent) {
     isRefreshing.value = true;
@@ -209,6 +233,13 @@ async function loadPageData(options?: { preserveContent?: boolean }) {
     isGuestMode.value = false;
     await ensureSessionReady();
     if (loadVersion !== homeLoadVersion) return;
+    if (!currentUser.value) {
+      isGuestMode.value = true;
+      clearMatchSections();
+      hasLoadedMatchData.value = true;
+      hasLoadedOnce.value = true;
+      return;
+    }
     const response = await getMatchHome();
     if (loadVersion !== homeLoadVersion) return;
     const sections = buildHomeMatchSections(response, new Date());
@@ -222,9 +253,6 @@ async function loadPageData(options?: { preserveContent?: boolean }) {
     errorMessage.value = "";
     hasLoadedMatchData.value = true;
     hasLoadedOnce.value = true;
-    if (isFirstLoad) {
-      onboardingGuide.maybeStartAfterFirstLoad();
-    }
     void syncUnreadCount({ skipEnsure: true }).catch(() => {
       // Notification count is nice-to-have for the home screen.
     });
@@ -250,8 +278,6 @@ async function loadPageData(options?: { preserveContent?: boolean }) {
 
 function handleSessionLoginCompleted() {
   void loadPageData({ preserveContent: true });
-  // 游客先进首页、之后才登录的场景：登录完成后同样给一次新手引导机会。
-  onboardingGuide.maybeStartAfterFirstLoad();
 }
 
 function handleHomeDataMayChanged() {
@@ -310,13 +336,13 @@ onUnload(() => {
 onShareAppMessage(() => ({
   title: shareTitle,
   path: sharePath,
-  imageUrl: HOME_SHARE_IMAGE_URL,
+  imageUrl: shareCoverUrl.value,
 }));
 
 onShareTimeline(() => ({
   title: shareTitle,
   query: "",
-  imageUrl: HOME_SHARE_IMAGE_URL,
+  imageUrl: shareCoverUrl.value,
 }));
 </script>
 
@@ -364,13 +390,25 @@ onShareTimeline(() => ({
           @avatar-select="openAvatarPreview"
         />
         <HomeEmptyHero
-          v-else-if="hasLoadedMatchData"
+          v-else-if="hasLoadedMatchData && !ongoingMatches.length"
           :state="emptyHeroState"
+          :collapsed="onboardingGuide.collapsed.value"
+          :busy="guidanceNavigation.busy.value"
           :social-image-url="nextMatchSocialImageUrl"
+          :onboarding-images="illustrations"
+          :image-revision="illustrationRevision"
           @browse="openBrowseMatches"
           @create-team="openCreateTeam"
           @create-match="openCreateMatch"
           @create-pickup="openCreatePickup"
+          @join-team="openJoinTeam"
+          @invite-team="openTeamDetail"
+          @view-team="openTeamDetail"
+          @select-task="handleTaskChoice"
+          @reset-intent="onboardingGuide.resetIntent"
+          @collapse="onboardingGuide.collapse"
+          @expand="onboardingGuide.expand"
+          @help="openHelp"
         />
 
         <HomeVenueMapEntry />
@@ -403,30 +441,7 @@ onShareTimeline(() => ({
 
     <BottomTabBar current="home" />
 
-    <!-- 新手引导：身份选择 → 完善资料 →（队长）去创建球队 -->
     <AvatarPreviewDialog :visible="avatarPreviewVisible" :avatar="previewAvatar" @close="avatarPreviewVisible = false" @presence="avatarPreviewRendered = $event" />
-    <OnboardingRolePickerDialog
-      :visible="onboardingGuide.rolePickerVisible.value"
-      @select-captain="onboardingGuide.handleSelectCaptain"
-      @select-player="onboardingGuide.handleSelectPlayer"
-      @skip="onboardingGuide.handleSkip"
-    />
-    <ProfileCompletionDialog
-      :visible="onboardingGuide.profileDialogVisible.value"
-      primary-text="保存并继续"
-      @completed="onboardingGuide.handleProfileCompleted"
-      @cancel="onboardingGuide.handleProfileCancel"
-    />
-    <ConfirmDialog
-      :visible="onboardingGuide.createTeamPromptVisible.value"
-      title="资料已就绪"
-      message="接下来创建你的球队，创建后可以把球队分享给队员，邀请他们加入。"
-      primary-text="去创建球队"
-      secondary-text="稍后再说"
-      @primary="onboardingGuide.handleCreateTeamConfirmed"
-      @secondary="onboardingGuide.handleCreateTeamDeclined"
-      @close="onboardingGuide.handleCreateTeamDeclined"
-    />
   </view>
 </template>
 

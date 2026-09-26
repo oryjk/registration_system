@@ -1,7 +1,12 @@
 <script setup lang="ts">
+import { watch } from "vue";
+import { onShow } from "@dcloudio/uni-app";
+import OnboardingIllustration from "@/components/OnboardingIllustration.vue";
+import { useOnboardingIllustrations } from "@/composables/useOnboardingIllustrations";
 import { useAccentTheme } from "@/stores/theme";
 import AppTabHeader from "@/components/AppTabHeader.vue";
-import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
+import AppButton from "@/components/ui/AppButton.vue";
+import AppSurface from "@/components/ui/AppSurface.vue";
 import TeamCreatePanel from "../components/TeamCreatePanel.vue";
 import { useTeamCreatePage } from "./useTeamCreatePage";
 
@@ -17,12 +22,18 @@ const {
   logoLocalPath,
   handlePickLogo,
   handleRemoveLogo,
-  onboardingShareVisible,
-  handleOnboardingShareConfirmed,
-  handleOnboardingShareDeclined,
+  createdTeamId,
+  nextStepBusy,
+  canArrangeMatch,
+  goInviteTeam,
+  goArrangeMatch,
   handleCreateTeam,
   goJoinTeam,
 } = useTeamCreatePage();
+
+const { illustrations, illustrationRevision, refreshIllustrations } = useOnboardingIllustrations();
+watch(createdTeamId, (id) => { if (id) void refreshIllustrations(); });
+onShow(() => { if (createdTeamId.value) void refreshIllustrations(); });
 </script>
 
 <template>
@@ -31,41 +42,45 @@ const {
     <AppTabHeader title="创建球队" showBack />
 
     <view class="team-create-content">
-      <text class="team-page-note">创建后你将成为队长，可邀请队友加入。</text>
+      <AppSurface v-if="createdTeamId" flush>
+        <view class="created-next">
+          <OnboardingIllustration :revision="illustrationRevision" :src="illustrations.team" />
+          <text class="created-next__status">球队创建成功</text>
+          <text class="created-next__title">邀请队友，准备第一场比赛</text>
+          <text class="team-page-note">进入球队主页，点击「分享邀请，拉球友入队」，把邀请卡片发给队友。</text>
+          <AppButton block @click="goInviteTeam">邀请队友</AppButton>
+          <AppButton v-if="canArrangeMatch" block variant="outline" :loading="nextStepBusy" @click="goArrangeMatch">先安排比赛</AppButton>
+        </view>
+      </AppSurface>
+      <template v-else>
+        <text class="team-page-note">创建后你将成为队长，可邀请队友加入。</text>
 
-      <TeamCreatePanel
-        :form="createForm"
-        :logo-local-path="logoLocalPath"
-        :review-mode="createTeamReviewMode"
-        :review-team-name-options="reviewTeamNameOptions"
-        :can-create="canCreate"
-        :submitting="submitting"
-        @pick-logo="handlePickLogo"
-        @remove-logo="handleRemoveLogo"
-        @submit="handleCreateTeam"
-      />
+        <TeamCreatePanel
+          :form="createForm"
+          :logo-local-path="logoLocalPath"
+          :review-mode="createTeamReviewMode"
+          :review-team-name-options="reviewTeamNameOptions"
+          :can-create="canCreate"
+          :submitting="submitting"
+          @pick-logo="handlePickLogo"
+          @remove-logo="handleRemoveLogo"
+          @submit="handleCreateTeam"
+        />
 
-      <view class="team-create-alt" hover-class="team-create-alt--pressed" @tap="goJoinTeam">
-        <text class="team-create-alt__label">已有心仪的球队？去搜索加入</text>
-        <text class="team-create-alt__arrow">→</text>
-      </view>
+        <view class="team-create-alt" hover-class="team-create-alt--pressed" @tap="goJoinTeam">
+          <text class="team-create-alt__label">已有心仪的球队？去搜索加入</text>
+          <text class="team-create-alt__arrow">→</text>
+        </view>
+      </template>
     </view>
 
-    <!-- 新手引导创建成功后的分享提示（自绘弹窗，无 showModal 按钮文案 4 字限制） -->
-    <ConfirmDialog
-      :visible="onboardingShareVisible"
-      title="球队创建成功！"
-      message="把球队分享给队员，邀请他们加入吧。"
-      primary-text="去邀请队员"
-      secondary-text="稍后"
-      @primary="handleOnboardingShareConfirmed"
-      @secondary="handleOnboardingShareDeclined"
-      @close="handleOnboardingShareDeclined"
-    />
   </view>
 </template>
 
 <style scoped>
+.created-next { display: flex; flex-direction: column; gap: 20rpx; padding: 28rpx; }
+.created-next__status { color: var(--ui-color-success-fg); font-size: 24rpx; font-weight: 600; }
+.created-next__title { color: var(--ui-color-text); font-size: 32rpx; font-weight: 600; }
 .team-create-page {
   min-height: 100vh;
   padding: 0 28rpx 112rpx;

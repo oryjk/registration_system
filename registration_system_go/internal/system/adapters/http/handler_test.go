@@ -162,7 +162,7 @@ func TestGetMiniAppSettingsIncludesHomeSection(t *testing.T) {
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", recorder.Code, recorder.Body.String())
 	}
-	if !strings.Contains(recorder.Body.String(), `"home":{"next_match_social_image_url":"https://cdn.example.com/x.png"}`) {
+	if !strings.Contains(recorder.Body.String(), `"home":{"next_match_social_image_url":"https://cdn.example.com/x.png"`) {
 		t.Fatalf("admin settings should include home section: %s", recorder.Body.String())
 	}
 }

@@ -1721,6 +1721,74 @@ paths:
                 $ref: "#/components/schemas/MiniAppSettingsEnvelope"
         <<: *standardErrors
 
+  /api/v1/admin/system/mini-app-settings/home/onboarding-images/{scene}:
+    post:
+      operationId: uploadAdminHomeOnboardingImage
+      tags: [Admin System]
+      summary: 上传新手引导场景插画
+      description: multipart 表单字段 file，仅支持 PNG/JPG/WebP，大小不超过 2MB；上传到对象存储后自动把公网 URL 写入 home 分区，返回最新小程序配置。
+      security: *bearerSecurity
+      parameters:
+        - name: scene
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [welcome, team, match]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "200":
+          description: 上传成功，返回已写入 URL 的最新配置
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MiniAppSettingsEnvelope"
+        <<: *standardErrors
+
+  /api/v1/admin/system/mini-app-settings/home/share-images/{scene}:
+    post:
+      operationId: uploadAdminHomeShareImage
+      tags: [Admin System]
+      summary: 上传分享封面
+      description: multipart 表单字段 file，仅支持 PNG/JPG/WebP，大小不超过 2MB，建议宽高比 5:4（如 1000×800），不强制限制像素尺寸；上传到对象存储后自动把公网 URL 写入 home 分区，返回最新小程序配置。
+      security: *bearerSecurity
+      parameters:
+        - name: scene
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [home, hall, team, match]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "200":
+          description: 上传成功，返回已写入 URL 的最新配置
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MiniAppSettingsEnvelope"
+        <<: *standardErrors
+
 components:
   securitySchemes:
     bearerAuth:
@@ -2256,6 +2324,13 @@ components:
             challenge_card_limit: { type: integer, example: 2 }
             activity_fetch_page_size: { type: integer, example: 100 }
             hide_matches_after_holding_time: { type: boolean, example: true }
+            onboarding_welcome_image_url: { type: string, default: "", description: "新手引导 welcome 图片 URL，空值回退默认图片" }
+            onboarding_team_image_url: { type: string, default: "", description: "新手引导 team 图片 URL，空值回退默认图片" }
+            onboarding_match_image_url: { type: string, default: "", description: "新手引导 match 图片 URL，空值回退默认图片" }
+            share_home_image_url: { type: string, default: "", description: "home 分享封面 URL，空值回退默认图片；建议宽高比 5:4" }
+            share_hall_image_url: { type: string, default: "", description: "hall 分享封面 URL，空值回退默认图片；建议宽高比 5:4" }
+            share_team_image_url: { type: string, default: "", description: "team 分享封面 URL，空值回退默认图片；建议宽高比 5:4" }
+            share_match_image_url: { type: string, default: "", description: "match 分享封面 URL，空值回退默认图片；建议宽高比 5:4" }
             next_match_social_image_url:
               type: string
               example: ""
@@ -3404,8 +3479,15 @@ components:
           description: 是否开启小程序新手引导，默认关闭
     MiniAppHomeSettings:
       type: object
-      required: [next_match_social_image_url]
+      required: [next_match_social_image_url, onboarding_welcome_image_url, onboarding_team_image_url, onboarding_match_image_url, share_home_image_url, share_hall_image_url, share_team_image_url, share_match_image_url]
       properties:
+        onboarding_welcome_image_url: { type: string, default: "", description: "新手引导 welcome 图片 URL，空值回退默认图片" }
+        onboarding_team_image_url: { type: string, default: "", description: "新手引导 team 图片 URL，空值回退默认图片" }
+        onboarding_match_image_url: { type: string, default: "", description: "新手引导 match 图片 URL，空值回退默认图片" }
+        share_home_image_url: { type: string, default: "", description: "home 分享封面 URL，空值回退默认图片；建议宽高比 5:4" }
+        share_hall_image_url: { type: string, default: "", description: "hall 分享封面 URL，空值回退默认图片；建议宽高比 5:4" }
+        share_team_image_url: { type: string, default: "", description: "team 分享封面 URL，空值回退默认图片；建议宽高比 5:4" }
+        share_match_image_url: { type: string, default: "", description: "match 分享封面 URL，空值回退默认图片；建议宽高比 5:4" }
         next_match_social_image_url:
           type: string
           description: 首页「下一场还没安排」空状态插画的公网 URL；为空时小程序回退内置视觉
@@ -3428,6 +3510,13 @@ components:
           type: object
           description: 正常情况下由上传接口自动写入，手动 PUT 仅作兜底通道
           properties:
+            onboarding_welcome_image_url: { type: string, default: "", description: "新手引导 welcome 图片 URL，空值回退默认图片" }
+            onboarding_team_image_url: { type: string, default: "", description: "新手引导 team 图片 URL，空值回退默认图片" }
+            onboarding_match_image_url: { type: string, default: "", description: "新手引导 match 图片 URL，空值回退默认图片" }
+            share_home_image_url: { type: string, default: "", description: "home 分享封面 URL，空值回退默认图片；建议宽高比 5:4" }
+            share_hall_image_url: { type: string, default: "", description: "hall 分享封面 URL，空值回退默认图片；建议宽高比 5:4" }
+            share_team_image_url: { type: string, default: "", description: "team 分享封面 URL，空值回退默认图片；建议宽高比 5:4" }
+            share_match_image_url: { type: string, default: "", description: "match 分享封面 URL，空值回退默认图片；建议宽高比 5:4" }
             next_match_social_image_url:
               type: string
     TestLoginUsersEnvelope:

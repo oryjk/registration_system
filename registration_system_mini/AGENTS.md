@@ -132,6 +132,16 @@ src/
 
 ## 跨端约束（H5 与小程序兼容）
 
+### 微信普通分包
+
+- `src/pages.json` 目前配置三个普通分包：`pages/matches`（比赛详情、创建、接约）、`pages/teams/manage`（球队管理）、`pages/challenges`（散人约球发布）。四个 Tab 页面必须留在主包。
+- 分包根目录沿用现有目录，完整页面 URL 不变；不要为分包迁移页面路径，避免历史分享链接失效。
+- 主包不能同步引用分包内的 JS、组件、样式或模板，分包之间也不能互相同步引用；公共依赖留在主包。新增跨模块共享代码时先检查它所属的包。
+- 普通分包由 `pages.json.subPackages` 配置；`manifest.json` 的 `optimization.subPackages` 是另一个编译优化开关，不是普通分包的启用条件。
+- `build:mp-weixin` 的组件注册检查会一并执行 `scripts/verify-mp-subpackages.mjs`，校验编译后页面存在、Tab 归属和静态跨包引用。已有产物可用 `bun run verify:mp-components` 重查；校验器测试使用 `bun test scripts/verify-mp-subpackages.test.mjs`。
+- 页面配置测试使用 `src/test/registeredPages.ts` 展平主包和分包，不能只遍历顶层 `pages` 而漏掉分包页面。
+- 本地文件字节数仅供比较；微信最终包体积以开发者工具或上传返回的数据为准。发布前用开发者工具/真机验证首次进入分包、分享直达比赛详情及返回 Tab。
+
 本项目同时面向 H5 和微信小程序，日常开发以 H5 为主，但必须保证小程序可编译可运行。
 
 - **统一使用 `uni.*` API**，不要直接调用 `wx.*`；`uni.*` 是 uni-app 的跨端封装，在 H5 和小程序里各有实现。

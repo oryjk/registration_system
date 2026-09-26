@@ -41,15 +41,6 @@
       }
     },
     {
-      "path": "pages/teams/manage/index",
-      "style": {
-        "navigationBarTitleText": "球队管理",
-        "navigationStyle": "custom",
-        "disableScroll": false,
-        "enablePullDownRefresh": true
-      }
-    },
-    {
       "path": "pages/teams/create/index",
       "style": {
         "navigationBarTitleText": "创建球队",
@@ -138,43 +129,6 @@
       }
     },
     {
-      "path": "pages/matches/detail",
-      "style": {
-        "navigationBarTitleText": "比赛详情",
-        "navigationStyle": "custom",
-        "enablePullDownRefresh": true,
-        "backgroundTextStyle": "dark",
-        "disableScroll": false
-      }
-    },
-    {
-      "path": "pages/matches/create/index",
-      "style": {
-        "navigationBarTitleText": "创建比赛",
-        "navigationStyle": "custom",
-        "disableScroll": false,
-        "enablePullDownRefresh": true
-      }
-    },
-    {
-      "path": "pages/matches/apply-team/index",
-      "style": {
-        "navigationBarTitleText": "接约确认",
-        "navigationStyle": "custom",
-        "disableScroll": false,
-        "enablePullDownRefresh": true
-      }
-    },
-    {
-      "path": "pages/challenges/create-individual/index",
-      "style": {
-        "navigationBarTitleText": "创建散人约队",
-        "navigationStyle": "custom",
-        "disableScroll": false,
-        "enablePullDownRefresh": true
-      }
-    },
-    {
       "path": "pages/notifications/index",
       "style": {
         "navigationBarTitleText": "消息中心",
@@ -216,6 +170,14 @@
         "navigationBarTitleText": "详情",
         "disableScroll": false
       }
+    },
+    {
+      "path": "pages/user/help/index",
+      "style": {
+        "navigationBarTitleText": "使用帮助",
+        "navigationStyle": "custom",
+        "disableScroll": false
+      }
     }
   ],
   "tabBar": {
@@ -255,5 +217,68 @@
     "navigationBarTitleText": "比赛报名",
     "navigationBarBackgroundColor": "#f3f4f6",
     "backgroundColor": "#f3f4f6"
-  }
+  },
+  "subPackages": [
+    {
+      "root": "pages/matches",
+      "pages": [
+        {
+          "path": "detail",
+          "style": {
+            "navigationBarTitleText": "比赛详情",
+            "navigationStyle": "custom",
+            "enablePullDownRefresh": true,
+            "backgroundTextStyle": "dark",
+            "disableScroll": false
+          }
+        },
+        {
+          "path": "create/index",
+          "style": {
+            "navigationBarTitleText": "创建比赛",
+            "navigationStyle": "custom",
+            "disableScroll": false,
+            "enablePullDownRefresh": true
+          }
+        },
+        {
+          "path": "apply-team/index",
+          "style": {
+            "navigationBarTitleText": "接约确认",
+            "navigationStyle": "custom",
+            "disableScroll": false,
+            "enablePullDownRefresh": true
+          }
+        }
+      ]
+    },
+    {
+      "root": "pages/teams/manage",
+      "pages": [
+        {
+          "path": "index",
+          "style": {
+            "navigationBarTitleText": "球队管理",
+            "navigationStyle": "custom",
+            "disableScroll": false,
+            "enablePullDownRefresh": true
+          }
+        }
+      ]
+    },
+    {
+      "root": "pages/challenges",
+      "pages": [
+        {
+          "path": "create-individual/index",
+          "style": {
+            "navigationBarTitleText": "创建散人约队",
+            "navigationStyle": "custom",
+            "disableScroll": false,
+            "enablePullDownRefresh": true
+          }
+        }
+      ]
+    }
+  ]
 }

@@ -2,6 +2,8 @@
 import { computed, ref, watch } from "vue";
 import AppButton from "@/components/ui/AppButton.vue";
 import AppSurface from "@/components/ui/AppSurface.vue";
+import type { OnboardingIllustrations } from "@/composables/useOnboardingIllustrations";
+import { resolveHomeOnboardingIllustration } from "../homeOnboardingIllustration";
 import type {
   HomeEmptyHeroAction,
   HomeEmptyHeroState,
@@ -11,6 +13,10 @@ const props = defineProps<{
   state: HomeEmptyHeroState;
   /** 「下一场还没安排」社交插画 URL（运行配置下发）；空串表示未配置，回退内置球场视觉。 */
   socialImageUrl?: string;
+  onboardingImages?: OnboardingIllustrations;
+  imageRevision?: number;
+  collapsed?: boolean;
+  busy?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -18,29 +24,34 @@ const emit = defineEmits<{
   (event: "create-team"): void;
   (event: "create-match"): void;
   (event: "create-pickup"): void;
+  (event: "join-team"): void;
+  (event: "invite-team"): void;
+  (event: "view-team"): void;
+  (event: "select-task", action: HomeEmptyHeroAction): void;
+  (event: "reset-intent"): void;
+  (event: "collapse"): void;
+  (event: "expand"): void;
+  (event: "help"): void;
 }>();
 
-// 远程插画加载失败（配置 URL 失效/网络问题）时回退内置视觉，不弹 toast、不露破图。
+// 配置或场景变化后重新尝试；失败回退内置球场，不遮挡任务入口。
+const selectedImageUrl = computed(() => resolveHomeOnboardingIllustration(
+  props.state,
+  props.onboardingImages ?? { welcome: "", team: "", match: "" },
+  props.socialImageUrl || "",
+));
 const socialImageFailed = ref(false);
-watch(
-  () => props.socialImageUrl,
-  () => {
-    socialImageFailed.value = false;
-  },
-);
-const showSocialImage = computed(() =>
-  props.state.mode === "team-manager"
-  && !!props.socialImageUrl
-  && !socialImageFailed.value,
-);
+watch(() => [selectedImageUrl.value, props.imageRevision], () => { socialImageFailed.value = false; });
+const showSocialImage = computed(() => !!selectedImageUrl.value && !socialImageFailed.value);
 
 const copy = computed(() => {
   switch (props.state.mode) {
     case "no-team-unknown":
+    case "guest":
       return {
         kicker: "从这里开始",
-        title: "你准备怎么开始？",
-        description: "想组队带人，还是先找一场球上车？",
+        title: "你想先做什么？",
+        description: "在这里组织球队、约球和报名比赛。",
       };
     case "no-team-captain":
       return {
@@ -51,11 +62,23 @@ const copy = computed(() => {
     case "no-team-player":
       return {
         kicker: "先找到一场球",
-        title: "找一场球上车",
+        title: "找一场球踢",
         description: "看看正在招人的比赛，或者自己发起一场散人约球。",
       };
-    case "team-manager":
+    case "no-team-member":
       return {
+        kicker: "下一步 · 加入球队",
+        title: "找到你的球队",
+        description: "搜索球队名称，或直接打开队友发来的邀请卡片。加入后就能跟队报名。",
+      };
+    case "team-manager":
+      return props.state.actions[0] === "invite-team" ? {
+        kicker: "下一步 · 邀请队友",
+        title: "叫上队友，一起开踢",
+        description: props.state.actions.includes("create-match")
+          ? "把球队邀请发到群里，让大家加入。也可以先安排一场比赛。"
+          : "把球队邀请发到群里，让大家加入。",
+      } : {
         kicker: "安排下一场",
         title: "下一场还没安排",
         description: "约上队友，把下一场定下来。",
@@ -64,7 +87,7 @@ const copy = computed(() => {
       return {
         kicker: "看看下一场",
         title: "还没有待参加的比赛",
-        description: "去看看有没有能参加的比赛，也可以等队长发起下一场。",
+        description: "队长安排比赛后，会在首页显示报名入口。现在也可以去找其他比赛。",
       };
     default:
       return {
@@ -79,10 +102,24 @@ function actionCopy(action: HomeEmptyHeroAction) {
   switch (action) {
     case "create-team":
       return {
-        title: "创建球队",
-        hint: "邀请队友加入，开始组织比赛",
+        title: "创建我的球队",
+        hint: "我来组织比赛、邀请队友",
         icon: "user-group",
       };
+    case "join-team":
+      return {
+        title: "加入已有球队",
+        hint: "队友已经在用，我来加入并报名",
+        icon: "user-group",
+      };
+    case "invite-team":
+      return {
+        title: "邀请队友",
+        hint: "进入球队页，点击分享邀请发给队友",
+        icon: "user-group",
+      };
+    case "view-team":
+      return { title: "查看我的球队", hint: "查看球队信息和成员", icon: "user-group" };
     case "create-match":
       return {
         title: "发起下一场比赛",
@@ -92,7 +129,7 @@ function actionCopy(action: HomeEmptyHeroAction) {
     case "create-pickup":
       return {
         title: "发起散人约球",
-        hint: "自己定时间和球场，等球友上车",
+        hint: "自己定时间和球场，邀请球友报名",
         icon: "calendar-line",
       };
     default:
@@ -103,24 +140,39 @@ function actionCopy(action: HomeEmptyHeroAction) {
             icon: "search-line",
           }
         : {
-            title: "找一场球",
-            hint: "浏览正在招人的比赛",
+            title: "找一场球踢",
+            hint: "先看看可以参加的比赛，确认时间、地点和费用",
             icon: "search-line",
           };
   }
 }
 
 const balancedChoices = computed(() => (
-  props.state.mode === "no-team-unknown" && props.state.actions.length > 1
+  (props.state.mode === "no-team-unknown" || props.state.mode === "guest") && props.state.actions.length > 1
 ));
+const canChangeTask = computed(() => props.state.mode.startsWith("no-team-") && !balancedChoices.value);
 const primaryAction = computed(() => balancedChoices.value ? null : props.state.actions[0] ?? null);
 const secondaryActions = computed(() => balancedChoices.value
-  ? props.state.actions.slice(0, 2)
+  ? props.state.actions
   : props.state.actions.slice(1, 2));
 const tertiaryAction = computed(() => balancedChoices.value ? null : props.state.actions[2] ?? null);
 
 function emitAction(action: HomeEmptyHeroAction) {
+  if (props.busy) return;
+  if (balancedChoices.value) {
+    emit("select-task", action);
+    return;
+  }
   switch (action) {
+    case "join-team":
+      emit("join-team");
+      return;
+    case "invite-team":
+      emit("invite-team");
+      return;
+    case "view-team":
+      emit("view-team");
+      return;
     case "create-team":
       emit("create-team");
       return;
@@ -138,7 +190,12 @@ function emitAction(action: HomeEmptyHeroAction) {
 
 <template>
   <view class="home-empty-hero-shell">
-    <AppSurface variant="outlined" flush>
+    <view v-if="collapsed" class="home-guide-collapsed">
+      <text class="home-guide-collapsed__title">下一步怎么做？</text>
+      <button class="home-guide-link" @tap="emit('expand')">展开指引</button>
+      <button class="home-guide-link" @tap="emit('help')">使用帮助</button>
+    </view>
+    <AppSurface v-else variant="outlined" flush>
       <view class="home-empty-hero-intro">
         <view class="home-empty-hero-copy">
           <text class="home-empty-hero-kicker">{{ copy.kicker }}</text>
@@ -152,7 +209,7 @@ function emitAction(action: HomeEmptyHeroAction) {
         >
           <image
             class="home-empty-social-image"
-            :src="socialImageUrl"
+            :src="selectedImageUrl"
             mode="widthFix"
             @error="socialImageFailed = true"
           />
@@ -169,7 +226,7 @@ function emitAction(action: HomeEmptyHeroAction) {
       </view>
 
       <view v-if="primaryAction" class="home-empty-hero-primary">
-        <AppButton block variant="lime" @click="emitAction(primaryAction)">
+        <AppButton block variant="lime" :disabled="busy" @click="emitAction(primaryAction)">
           {{ actionCopy(primaryAction).title }}
         </AppButton>
         <text class="home-empty-hero-primary-hint">{{ actionCopy(primaryAction).hint }}</text>
@@ -179,6 +236,7 @@ function emitAction(action: HomeEmptyHeroAction) {
         <button
           v-for="action in secondaryActions"
           :key="action"
+          :disabled="busy"
           class="home-empty-hero-action"
           hover-class="home-empty-hero-action--pressed"
           @tap="emitAction(action)"
@@ -200,14 +258,66 @@ function emitAction(action: HomeEmptyHeroAction) {
         hover-class="home-empty-hero-tertiary--pressed"
         @tap="emitAction(tertiaryAction)"
       >
-        <text>想自己组队？{{ actionCopy(tertiaryAction).title }}</text>
+        <text>{{ actionCopy(tertiaryAction).title }}</text>
         <text aria-hidden="true">→</text>
       </button>
+      <text v-if="balancedChoices" class="home-guide-invite-hint">已有邀请？直接打开队友发来的邀请卡片。</text>
+      <view class="home-guide-footer">
+        <button v-if="canChangeTask" class="home-guide-link" @tap="emit('reset-intent')">换个方式开始</button>
+        <button class="home-guide-link" @tap="emit('help')">使用帮助</button>
+        <button class="home-guide-link" @tap="emit('collapse')">收起指引</button>
+      </view>
     </AppSurface>
   </view>
 </template>
 
 <style scoped>
+.home-guide-collapsed,
+.home-guide-footer {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8rpx;
+  padding: 12rpx 20rpx;
+}
+
+.home-guide-collapsed {
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-card);
+  background: var(--ui-color-surface);
+}
+
+.home-guide-collapsed__title {
+  flex: 1;
+  color: var(--ui-color-text);
+  font-size: 26rpx;
+}
+
+.home-guide-footer {
+  border-top: var(--ui-border-default);
+  justify-content: flex-end;
+}
+
+.home-guide-link {
+  margin: 0;
+  padding: 16rpx 10rpx;
+  border: 0;
+  background: transparent;
+  color: var(--ui-color-text-muted);
+  font-size: 22rpx;
+  line-height: 1.5;
+}
+
+.home-guide-link::after { border: 0; }
+
+.home-guide-invite-hint {
+  display: block;
+  padding: 8rpx 28rpx 24rpx;
+  color: var(--ui-color-text-muted);
+  font-size: 22rpx;
+  line-height: 1.5;
+}
+
 .home-empty-hero-intro {
   display: flex;
   align-items: center;

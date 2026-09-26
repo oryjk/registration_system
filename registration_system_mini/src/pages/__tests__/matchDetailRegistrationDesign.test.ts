@@ -300,10 +300,11 @@ describe("match detail registration design", () => {
     expect(matchDetail.includes("onShareAppMessage")).toEqual(true);
     expect(matchDetail.includes("onShareTimeline")).toEqual(true);
     expect(matchDetail.includes("path: sharePath.value")).toEqual(true);
-    expect(matchDetail.includes("imageUrl: MATCH_DETAIL_SHARE_IMAGE_URL")).toEqual(true);
+    expect(matchDetail.includes("imageUrl: shareCoverUrl.value")).toEqual(true);
     expect(matchDetail.includes("query: `id=${matchId.value || match.value?.id || \"\"}`")).toEqual(true);
     expect(matchPageLogic.includes("matchId,")).toEqual(true);
-    expect(shareUtils.includes('"/static/share/share-cover.png"')).toEqual(true);
+    expect(shareUtils.includes('DEFAULT_SHARE_IMAGE_URL = "https://')).toEqual(true);
+    expect(shareUtils.includes('"/static/share/share-cover.png"')).toEqual(false);
   });
 
   test("blocks new individual signup when the activity team capacity limit is full", async () => {

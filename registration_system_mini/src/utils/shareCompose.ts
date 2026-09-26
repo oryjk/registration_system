@@ -77,16 +77,21 @@ export async function composeTeamInviteShareImage(
   canvasId: string,
   pageInstance: unknown,
   logoUrl: string,
+  coverUrl: string = TEAM_INVITE_SHARE_IMAGE_URL,
+  isCurrent: () => boolean = () => true,
 ): Promise<string> {
   const canvas = await queryCanvasNode(canvasId, pageInstance);
   const [coverPath, logoPath] = await Promise.all([
-    getImagePath(TEAM_INVITE_SHARE_IMAGE_URL),
+    getImagePath(coverUrl),
     getImagePath(logoUrl),
   ]);
   const [coverImage, logoImage] = await Promise.all([
     loadImage(canvas, coverPath),
     loadImage(canvas, logoPath),
   ]);
+
+  // 下载完成后再确认版本，过期任务不得绘制到共享 canvas 干扰较新的导出。
+  if (!isCurrent()) throw new Error("分享封面已更新");
 
   canvas.width = CANVAS_WIDTH;
   canvas.height = CANVAS_HEIGHT;

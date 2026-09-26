@@ -5,13 +5,21 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import {
+  clearOnboardingImage,
+  clearShareImage,
   getHealth,
   getMiniAppSettings,
   updateMiniAppSettings,
   uploadNextMatchSocialImage,
+  uploadOnboardingImage,
+  uploadShareImage,
 } from "../../api/system";
 import type { HealthStatus } from "../../types/api";
-import type { MiniAppSettingsUpdate } from "../../types/system";
+import type {
+  MiniAppSettingsUpdate,
+  OnboardingImageScene,
+  ShareImageScene,
+} from "../../types/system";
 import { queryKeys } from "./keys";
 
 export interface HealthSnapshot {
@@ -71,4 +79,32 @@ export function useUploadNextMatchSocialImageMutation() {
     mutationFn: (file: File) => uploadNextMatchSocialImage(file),
     onSuccess: () => invalidateMiniAppSettings(queryClient),
   });
+}
+
+export function useOnboardingImageMutations(scene: OnboardingImageScene) {
+  const queryClient = useQueryClient();
+  const onSuccess = () => invalidateMiniAppSettings(queryClient);
+  const upload = useMutation({
+    mutationFn: (file: File) => uploadOnboardingImage(scene, file),
+    onSuccess,
+  });
+  const clear = useMutation({
+    mutationFn: () => clearOnboardingImage(scene),
+    onSuccess,
+  });
+  return { upload, clear };
+}
+
+export function useShareImageMutations(scene: ShareImageScene) {
+  const queryClient = useQueryClient();
+  const onSuccess = () => invalidateMiniAppSettings(queryClient);
+  const upload = useMutation({
+    mutationFn: (file: File) => uploadShareImage(scene, file),
+    onSuccess,
+  });
+  const clear = useMutation({
+    mutationFn: () => clearShareImage(scene),
+    onSuccess,
+  });
+  return { upload, clear };
 }

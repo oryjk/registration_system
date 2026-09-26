@@ -1,9 +1,10 @@
 import { usePageRefresh } from "@/composables/usePageRefresh";
-import { computed, getCurrentInstance, ref } from "vue";
-import { onLoad, onShow } from "@dcloudio/uni-app";
+import { computed, getCurrentInstance, ref, watch } from "vue";
+import { onLoad, onShow, onUnload } from "@dcloudio/uni-app";
 import { getAppTeamDetail, issueTeamInviteCode, leaveTeam, type AppTeamDetailData } from "@/api/team";
 import { useTeamContext } from "@/stores/teamContext";
 import { getCustomNavMetrics } from "@/utils/customNav";
+import { useShareCover } from "@/composables/useShareCover";
 import { composeTeamInviteShareImage } from "@/utils/shareCompose";
 
 const ROLE_LABELS: Record<string, string> = {
@@ -53,7 +54,6 @@ export function useTeamDetailPage() {
       const detail = await getAppTeamDetail(teamId.value);
       team.value = detail;
       if (detail.my_role) void loadInviteCode();
-      void loadShareImage(logoUrl.value);
       syncShareMenu(detail.my_role === "captain" || detail.my_role === "leader");
     } catch (error) {
       errorMessage.value = error instanceof Error ? error.message : "球队信息加载失败";
@@ -83,6 +83,7 @@ export function useTeamDetailPage() {
   });
 
   onShow(() => {
+    void refreshShareCover();
     if (teamId.value) void loadTeam();
   });
 
@@ -95,14 +96,29 @@ export function useTeamDetailPage() {
   const inviteCode = ref("");
 
   // 有队徽时预合成「封面 + 圆形队徽」的分享图（临时文件路径）；onShareAppMessage 同样是
-  // 同步回调，合成未完成或失败时回落静态封面。每次会话只合成一次。
+  // 同步回调，合成未完成或失败时回落静态封面。队徽或后台封面变化时重新合成。
   const shareImagePath = ref("");
+  const { shareCoverUrl, refreshShareCover } = useShareCover("team");
+  let shareImageVersion = 0;
+  let composedShareKey = "";
+  watch([team, shareCoverUrl], () => {
+    const key = `${team.value?.id || 0}:${logoUrl.value}:${shareCoverUrl.value}`;
+    if (key === composedShareKey && shareImagePath.value) return;
+    composedShareKey = key;
+    shareImageVersion += 1;
+    shareImagePath.value = "";
+    void loadShareImage(logoUrl.value);
+  });
+  onUnload(() => { shareImageVersion += 1; });
 
   async function loadShareImage(logoUrl: string) {
-    if (shareImagePath.value || !logoUrl) return;
+    if (!logoUrl) return;
+    const version = ++shareImageVersion;
+    const coverUrl = shareCoverUrl.value;
     // #ifdef MP-WEIXIN
     try {
-      shareImagePath.value = await composeTeamInviteShareImage(TEAM_SHARE_CANVAS_ID, pageInstance, logoUrl);
+      const path = await composeTeamInviteShareImage(TEAM_SHARE_CANVAS_ID, pageInstance, logoUrl, coverUrl, () => version === shareImageVersion);
+      if (version === shareImageVersion) shareImagePath.value = path;
     } catch {
       // 合成失败静默回落静态封面，不打扰页面。
     }
@@ -166,6 +182,7 @@ export function useTeamDetailPage() {
     createdLabel,
     inviteCode,
     shareImagePath,
+    shareCoverUrl,
     leaveDialogVisible,
     handleLeaveTeamClick,
     handleLeaveTeamConfirm,

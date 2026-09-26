@@ -1,13 +1,20 @@
 <script setup lang="ts">
+import { watch } from "vue";
+import { onShow } from "@dcloudio/uni-app";
+import { useOnboardingIllustrations } from "@/composables/useOnboardingIllustrations";
 import { useAccentTheme } from "@/stores/theme";
 import AppTabHeader from "@/components/AppTabHeader.vue";
 import ProfileCompletionDialog from "@/components/ProfileCompletionDialog.vue";
+import TeamJoinedNextSteps from "../onboarding/TeamJoinedNextSteps.vue";
 import TeamJoinPanel from "../components/TeamJoinPanel.vue";
 import { useTeamJoinPage } from "./useTeamJoinPage";
 
 const { themePageStyle } = useAccentTheme();
 
 const {
+  joinedTeam,
+  goJoinedTeam,
+  goFindMatches,
   pageStyle,
   searching,
   hasSearched,
@@ -29,6 +36,10 @@ const {
   handleJoinTeam,
   goCreateTeam,
 } = useTeamJoinPage();
+
+const { illustrations, illustrationRevision, refreshIllustrations } = useOnboardingIllustrations();
+watch(() => joinedTeam.value, (ready) => { if (ready) void refreshIllustrations(); });
+onShow(() => { if (joinedTeam.value) void refreshIllustrations(); });
 </script>
 
 <template>
@@ -37,6 +48,8 @@ const {
     <AppTabHeader title="加入球队" showBack />
 
     <view class="team-join-content">
+      <TeamJoinedNextSteps :image-revision="illustrationRevision" :image-url="illustrations.team" v-if="joinedTeam" @team="goJoinedTeam" @matches="goFindMatches" />
+      <template v-else>
       <text class="team-page-note">找到一起踢球的伙伴，搜索名称即可加入。</text>
 
       <TeamJoinPanel
@@ -65,6 +78,7 @@ const {
         <text class="team-join-alt__label">没有找到？创建自己的球队</text>
         <text class="team-join-alt__arrow">→</text>
       </view>
+      </template>
     </view>
 
     <ProfileCompletionDialog
