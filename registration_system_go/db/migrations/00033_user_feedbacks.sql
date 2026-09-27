@@ -1,3 +1,4 @@
+-- +goose Up
 -- 用户主动提交的产品建议，与打赏支付完全解耦。
 CREATE TABLE IF NOT EXISTS user_feedbacks (
     id BIGSERIAL PRIMARY KEY,
@@ -13,3 +14,6 @@ CREATE INDEX IF NOT EXISTS idx_user_feedbacks_created_at
 
 CREATE INDEX IF NOT EXISTS idx_user_feedbacks_user_id_created_at
     ON user_feedbacks (user_id, created_at DESC);
+
+-- +goose Down
+DROP TABLE IF EXISTS user_feedbacks;
