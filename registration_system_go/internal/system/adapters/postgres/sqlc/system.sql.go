@@ -80,6 +80,19 @@ func (q *Queries) ListMatchRegistrationDefaults(ctx context.Context) ([]MatchReg
 	return items, nil
 }
 
+const mergeMiniAppHomeSetting = `-- name: MergeMiniAppHomeSetting :exec
+INSERT INTO mini_app_settings (key, value)
+VALUES ('home', $1)
+ON CONFLICT (key) DO UPDATE
+SET value = mini_app_settings.value || EXCLUDED.value,
+    updated_at = NOW()
+`
+
+func (q *Queries) MergeMiniAppHomeSetting(ctx context.Context, value []byte) error {
+	_, err := q.db.Exec(ctx, mergeMiniAppHomeSetting, value)
+	return err
+}
+
 const upsertMatchRegistrationDefault = `-- name: UpsertMatchRegistrationDefault :one
 INSERT INTO match_registration_defaults (
     players_per_team,

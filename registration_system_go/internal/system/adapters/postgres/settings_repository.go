@@ -44,3 +44,12 @@ func (r *SettingsRepository) UpsertSetting(ctx context.Context, key string, valu
 	_, err = r.queries.UpsertMiniAppSetting(ctx, systemsqlc.UpsertMiniAppSettingParams{Key: key, Value: encoded})
 	return err
 }
+
+// MergeHomeSetting merges a patch atomically so independent uploads cannot overwrite each other.
+func (r *SettingsRepository) MergeHomeSetting(ctx context.Context, fields map[string]any) error {
+	encoded, err := json.Marshal(fields)
+	if err != nil {
+		return err
+	}
+	return r.queries.MergeMiniAppHomeSetting(ctx, encoded)
+}

@@ -60,9 +60,11 @@ describe("app session bootstrap request coalescing", () => {
     expect(bootstrapSource.includes("// #ifdef H5")).toEqual(true);
     // H5 无 token 时静默保持游客态，不能抛错把页面数据加载打成错误卡片。
     expect(bootstrapSource.includes("throw new Error(\"H5 环境不支持微信静默登录")).toEqual(false);
-    const guardStart = bootstrapSource.indexOf("// #ifdef H5");
-    const guardEnd = bootstrapSource.indexOf("// #endif", guardStart);
+    const noTokenStart = bootstrapSource.indexOf("if (!getAccessToken())");
+    const guardStart = bootstrapSource.lastIndexOf("// #ifdef H5", noTokenStart);
+    const guardEnd = bootstrapSource.indexOf("// #endif", noTokenStart);
     const guardSource = bootstrapSource.slice(guardStart, guardEnd);
+    expect(noTokenStart > guardStart).toEqual(true);
     expect(guardSource.includes("resetSessionState();")).toEqual(true);
     expect(guardSource.includes("return;")).toEqual(true);
     expect(guardEnd < bootstrapSource.indexOf("await loginAndBootstrap(sessionBootstrapVersion);")).toEqual(true);
@@ -75,6 +77,8 @@ describe("app session bootstrap request coalescing", () => {
     const loadTeamContextSource = source.slice(loadTeamContextStart, ensureTeamDetailLoadedStart);
 
     expect(loadTeamContextSource.includes("const teams = await getMyTeams();")).toEqual(true);
+    expect(loadTeamContextSource.includes("if (teams.length > 0)")).toEqual(true);
+    expect(loadTeamContextSource.includes("clearOnboardingIntent(currentUser.value?.id);")).toEqual(true);
     expect(loadTeamContextSource.includes("getTeamDetail(")).toEqual(false);
     expect(source.includes("async function ensureTeamDetailLoaded")).toEqual(true);
   });

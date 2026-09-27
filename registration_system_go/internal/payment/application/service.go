@@ -36,6 +36,26 @@ func NewService(orders paymentports.OrderRepository, users paymentports.UserOpen
 	return &Service{orders: orders, users: users, nicknames: nicknames, gateway: gateway, settlement: settlement, memberships: memberships, teams: teams, matchFees: matchFees, registrations: registrations, tips: tips, orderNos: orderNos, clock: clock}
 }
 
+const MaxFeedbackRunes = 500
+
+type CreateFeedbackCommand struct {
+	Content string
+}
+
+func (s *Service) CreateFeedback(ctx context.Context, actor sharedauth.Actor, command CreateFeedbackCommand) error {
+	if !actor.IsUser() {
+		return sharederror.ErrForbidden
+	}
+	content := strings.TrimSpace(command.Content)
+	if content == "" {
+		return sharederror.New(sharederror.KindValidation, "请填写功能建议")
+	}
+	if len([]rune(content)) > MaxFeedbackRunes {
+		return sharederror.New(sharederror.KindValidation, "功能建议不能超过 500 字")
+	}
+	return s.tips.CreateFeedback(ctx, actor.ID, content, s.clock.Now())
+}
+
 type CreateRechargeCommand struct {
 	AmountCents int64
 	ClientIP    string

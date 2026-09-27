@@ -1,6 +1,6 @@
 import { computed, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
-import { createTipOrder, syncGoPaymentOrder } from "@/api/payment";
+import { createTipOrder, submitDeveloperFeedback, syncGoPaymentOrder } from "@/api/payment";
 import { useConfirmDialog } from "@/components/ui/useConfirmDialog";
 import { useTeamContext } from "@/stores/teamContext";
 import { isMockWxPaymentParams, isPaymentCancelled, normalizeWxPaymentParams, requestWxPayment } from "@/utils/payment";
@@ -24,6 +24,7 @@ export function useTipDonation() {
   const amountInput = ref("");
   const suggestionInput = ref("");
   const isSubmitting = ref(false);
+  const isSubmittingSuggestion = ref(false);
   const isLoggedIn = computed(() => Boolean(currentUser.value));
 
   onShow(() => {
@@ -45,13 +46,37 @@ export function useTipDonation() {
 
   function showThankYou(amountCents: number) {
     void dialog.confirm({
-      title: "多谢请客！",
-      content: `已收到你的 ${(amountCents / 100).toFixed(2)} 元咖啡钱，开发者会带着咖啡继续用心迭代。${
-        suggestionInput.value.trim() ? "你的功能建议我也会认真看。" : ""
-      }`,
-      confirmText: "不客气",
+      title: "谢谢你的支持",
+      content: `已收到你的 ${(amountCents / 100).toFixed(2)} 元支持。每一份认可都会变成继续维护、修复问题和开发新功能的动力。`,
+      confirmText: "继续加油",
       cancelText: "",
     });
+  }
+
+  async function submitSuggestion() {
+    if (isSubmittingSuggestion.value) return;
+    if (!isLoggedIn.value) {
+      uni.showToast({ title: "请先登录后提交建议", icon: "none" });
+      return;
+    }
+    const content = suggestionInput.value.trim().slice(0, TIP_SUGGESTION_MAX_LENGTH);
+    if (!content) {
+      uni.showToast({ title: "写下你的建议再提交吧", icon: "none" });
+      return;
+    }
+    isSubmittingSuggestion.value = true;
+    try {
+      await submitDeveloperFeedback({ content });
+      suggestionInput.value = "";
+      uni.showToast({ title: "建议已收到，谢谢你", icon: "success" });
+    } catch (error) {
+      uni.showToast({
+        title: error instanceof Error ? error.message : "提交失败，请稍后再试",
+        icon: "none",
+      });
+    } finally {
+      isSubmittingSuggestion.value = false;
+    }
   }
 
   async function submitTipDonation() {
@@ -62,11 +87,9 @@ export function useTipDonation() {
     }
     const amountCents = validateAmountCents();
     if (amountCents === null) return;
-    const suggestion = suggestionInput.value.trim().slice(0, TIP_SUGGESTION_MAX_LENGTH);
-
     isSubmitting.value = true;
     try {
-      const result = await createTipOrder({ amount_cents: amountCents, suggestion: suggestion || undefined });
+      const result = await createTipOrder({ amount_cents: amountCents });
       const params = result.payment ? normalizeWxPaymentParams(result.payment) : null;
       if (params && !isMockWxPaymentParams(params)) {
         await requestWxPayment(params);
@@ -74,7 +97,6 @@ export function useTipDonation() {
       const synced = await syncGoPaymentOrder(result.order.order_no);
       if (synced.order.status === "paid") {
         amountInput.value = "";
-        suggestionInput.value = "";
         showThankYou(amountCents);
         return;
       }
@@ -98,8 +120,10 @@ export function useTipDonation() {
     amountInput,
     suggestionInput,
     isSubmitting,
+    isSubmittingSuggestion,
     isLoggedIn,
     suggestionMaxLength: TIP_SUGGESTION_MAX_LENGTH,
+    submitSuggestion,
     submitTipDonation,
     dialog,
   };

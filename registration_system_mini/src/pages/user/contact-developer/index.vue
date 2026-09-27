@@ -21,8 +21,22 @@ const pageStyle = computed(() => ({
 
 // 审核模式下隐藏打赏入口（小程序审核对打赏类目敏感），仅保留二维码联系区。
 const { shouldHideCreationEntrances, preloadMiniReviewStatus } = useMiniReviewStatus();
-const { amountInput, suggestionInput, isSubmitting, isLoggedIn, suggestionMaxLength, submitTipDonation, dialog } =
-  useTipDonation();
+const {
+  amountInput,
+  suggestionInput,
+  isSubmitting,
+  isSubmittingSuggestion,
+  isLoggedIn,
+  suggestionMaxLength,
+  submitSuggestion,
+  submitTipDonation,
+  dialog,
+} = useTipDonation();
+
+const contactImages = [DEVELOPER_WECHAT_QRCODE_URL, OFFICIAL_ACCOUNT_QRCODE_URL];
+function previewContactImage(current: string) {
+  uni.previewImage({ current, urls: contactImages });
+}
 usePageRefresh(() => preloadMiniReviewStatus(true));
 </script>
 
@@ -33,14 +47,15 @@ usePageRefresh(() => preloadMiniReviewStatus(true));
 
     <view class="contact-developer-content">
       <AppSurface custom-class="contact-developer-card">
-        <SectionHeader title="微信与公众号" caption="长按二维码识别" />
+        <SectionHeader title="微信与公众号" caption="点击可放大查看 · 长按二维码识别" />
         <view class="contact-developer-qrcodes">
           <view class="contact-developer-qrcode-item">
             <image
               class="contact-developer-qrcode"
               :src="DEVELOPER_WECHAT_QRCODE_URL"
-              mode="widthFix"
+              mode="aspectFit"
               :show-menu-by-longpress="true"
+              @tap="previewContactImage(DEVELOPER_WECHAT_QRCODE_URL)"
             />
             <text class="contact-developer-qrcode-caption">加开发者微信</text>
           </view>
@@ -48,51 +63,72 @@ usePageRefresh(() => preloadMiniReviewStatus(true));
             <image
               class="contact-developer-qrcode"
               :src="OFFICIAL_ACCOUNT_QRCODE_URL"
-              mode="widthFix"
+              mode="aspectFit"
               :show-menu-by-longpress="true"
+              @tap="previewContactImage(OFFICIAL_ACCOUNT_QRCODE_URL)"
             />
             <text class="contact-developer-qrcode-caption">关注公众号</text>
           </view>
         </view>
       </AppSurface>
 
-      <AppSurface v-if="!shouldHideCreationEntrances" custom-class="contact-developer-card">
-        <SectionHeader title="请开发者喝咖啡" caption="可选金额 · 可留功能建议" />
+      <AppSurface custom-class="contact-developer-card">
+        <SectionHeader title="一起把它做得更好" caption="功能建议免费提交，不需要打赏" />
         <text class="contact-developer-thanks">
-          如果这个小程序帮到了你，可以请开发者喝杯咖啡。你的支持是我持续迭代的动力，也欢迎顺手写下你希望拥有的功能。
+          有不好用的地方、缺少的功能，或者你想到更好的做法，都欢迎直接告诉我。每一条建议我都会认真看。
         </text>
-
         <view class="contact-developer-field">
-          <text class="contact-developer-field__label">打赏金额（元）</text>
-          <input
-            v-model="amountInput"
-            class="contact-developer-field__input"
-            type="digit"
-            :placeholder="'我干了，你随意'"
-            placeholder-class="contact-developer-field__placeholder"
-          />
-        </view>
-
-        <view class="contact-developer-field">
-          <text class="contact-developer-field__label">功能建议（可选，支付成功后提交）</text>
+          <text class="contact-developer-field__label">功能建议</text>
           <textarea
             v-model="suggestionInput"
             class="contact-developer-field__textarea"
             :maxlength="suggestionMaxLength"
-            placeholder="希望小程序有什么功能？可不填"
+            placeholder="例如：希望增加赛后聚餐、比赛提醒……"
+            placeholder-class="contact-developer-field__placeholder"
+          />
+        </view>
+        <view class="contact-developer-submit">
+          <AppButton
+            variant="outline"
+            block
+            :loading="isSubmittingSuggestion"
+            :disabled="isSubmittingSuggestion"
+            @click="submitSuggestion"
+          >
+            {{ isSubmittingSuggestion ? "正在提交..." : isLoggedIn ? "提交建议" : "登录后提交建议" }}
+          </AppButton>
+        </view>
+      </AppSurface>
+
+      <AppSurface v-if="!shouldHideCreationEntrances" custom-class="contact-developer-card contact-developer-support-card">
+        <SectionHeader title="支持持续开发" caption="完全自愿 · 量力而行" />
+        <text class="contact-developer-thanks">
+          小程序的维护、问题修复和持续开发都需要投入不少时间和精力。如果它确实帮到了你，一份自愿的支持会让我更有动力把它长期维护下去，也继续把大家真正需要的功能做出来。
+        </text>
+        <text class="contact-developer-support-note">不支持也完全没关系，正常使用和提交建议都不会受到任何影响。</text>
+
+        <view class="contact-developer-field">
+          <text class="contact-developer-field__label">支持金额（元）</text>
+          <input
+            v-model="amountInput"
+            class="contact-developer-field__input"
+            type="digit"
+            placeholder="随心支持，多少都谢谢"
             placeholder-class="contact-developer-field__placeholder"
           />
         </view>
 
-        <AppButton
-          variant="lime"
-          block
-          :loading="isSubmitting"
-          :disabled="isSubmitting"
-          @click="submitTipDonation"
-        >
-          {{ isSubmitting ? "正在拉起支付..." : isLoggedIn ? "请喝咖啡" : "登录后请喝咖啡" }}
-        </AppButton>
+        <view class="contact-developer-submit">
+          <AppButton
+            variant="lime"
+            block
+            :loading="isSubmitting"
+            :disabled="isSubmitting"
+            @click="submitTipDonation"
+          >
+            {{ isSubmitting ? "正在拉起支付..." : isLoggedIn ? "支持一下" : "登录后支持" }}
+          </AppButton>
+        </view>
       </AppSurface>
     </view>
 
@@ -153,8 +189,8 @@ usePageRefresh(() => preloadMiniReviewStatus(true));
 
 .contact-developer-qrcode {
   display: block;
-  width: 100%;
-  border: var(--ui-border-default);
+  width: 240rpx;
+  height: 240rpx;
   border-radius: var(--ui-radius-card);
   background: var(--ui-color-surface);
 }
@@ -168,8 +204,26 @@ usePageRefresh(() => preloadMiniReviewStatus(true));
   text-align: center;
 }
 
+.contact-developer-support-note {
+  display: block;
+  margin-top: 12rpx;
+  padding: 14rpx 16rpx;
+  border-radius: var(--ui-radius-button);
+  background: var(--ui-color-neutral-bg);
+  color: var(--ui-color-text-muted);
+  font-size: 22rpx;
+  line-height: 1.5;
+}
+
 .contact-developer-field {
   margin-top: 26rpx;
+}
+
+.contact-developer-submit {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  margin-top: 22rpx;
 }
 
 .contact-developer-field__label {

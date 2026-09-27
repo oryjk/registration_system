@@ -31,7 +31,14 @@ type OnboardingSettingsPatch struct {
 
 // HomeSettingsPatch 与 DebugSettingsPatch 同理：nil 表示未提供。
 type HomeSettingsPatch struct {
-	NextMatchSocialImageURL *string
+	NextMatchSocialImageURL   *string
+	OnboardingWelcomeImageURL *string
+	OnboardingTeamImageURL    *string
+	OnboardingMatchImageURL   *string
+	ShareHomeImageURL         *string
+	ShareHallImageURL         *string
+	ShareTeamImageURL         *string
+	ShareMatchImageURL        *string
 }
 
 func (s SettingsService) Get(ctx context.Context) (domain.MiniAppSettings, error) {
@@ -118,25 +125,67 @@ func applyOnboardingFields(target *domain.OnboardingSettings, raw map[string]any
 	}
 }
 
-// UpdateHome 更新首页运营资源分区（整分区 JSON 落库，先读旧值合并）。
+// UpdateHome atomically merges supplied fields, preserving concurrent updates to other slots.
 func (s SettingsService) UpdateHome(ctx context.Context, patch HomeSettingsPatch) (domain.MiniAppSettings, error) {
-	settings, err := s.Get(ctx)
-	if err != nil {
-		return domain.MiniAppSettings{}, err
-	}
+	fields := map[string]any{}
 	if patch.NextMatchSocialImageURL != nil {
-		settings.Home.NextMatchSocialImageURL = strings.TrimSpace(*patch.NextMatchSocialImageURL)
+		fields["next_match_social_image_url"] = strings.TrimSpace(*patch.NextMatchSocialImageURL)
 	}
-	fields := map[string]any{
-		"next_match_social_image_url": settings.Home.NextMatchSocialImageURL,
+	if patch.OnboardingWelcomeImageURL != nil {
+		fields["onboarding_welcome_image_url"] = strings.TrimSpace(*patch.OnboardingWelcomeImageURL)
 	}
-	if err := s.repository.UpsertSetting(ctx, domain.SettingsSectionHome, fields); err != nil {
-		return domain.MiniAppSettings{}, sharederror.Wrap(sharederror.KindInternal, "保存小程序配置失败", err)
+	if patch.OnboardingTeamImageURL != nil {
+		fields["onboarding_team_image_url"] = strings.TrimSpace(*patch.OnboardingTeamImageURL)
 	}
-	return settings, nil
+	if patch.OnboardingMatchImageURL != nil {
+		fields["onboarding_match_image_url"] = strings.TrimSpace(*patch.OnboardingMatchImageURL)
+	}
+
+	if patch.ShareHomeImageURL != nil {
+		fields["share_home_image_url"] = strings.TrimSpace(*patch.ShareHomeImageURL)
+	}
+	if patch.ShareHallImageURL != nil {
+		fields["share_hall_image_url"] = strings.TrimSpace(*patch.ShareHallImageURL)
+	}
+	if patch.ShareTeamImageURL != nil {
+		fields["share_team_image_url"] = strings.TrimSpace(*patch.ShareTeamImageURL)
+	}
+	if patch.ShareMatchImageURL != nil {
+		fields["share_match_image_url"] = strings.TrimSpace(*patch.ShareMatchImageURL)
+	}
+
+	if len(fields) > 0 {
+		if err := s.repository.MergeHomeSetting(ctx, fields); err != nil {
+			return domain.MiniAppSettings{}, sharederror.Wrap(sharederror.KindInternal, "保存小程序配置失败", err)
+		}
+	}
+	return s.Get(ctx)
 }
 
 func applyHomeFields(target *domain.HomeSettings, raw map[string]any) {
+	if value, ok := raw["share_home_image_url"].(string); ok {
+		target.ShareHomeImageURL = strings.TrimSpace(value)
+	}
+	if value, ok := raw["share_hall_image_url"].(string); ok {
+		target.ShareHallImageURL = strings.TrimSpace(value)
+	}
+	if value, ok := raw["share_team_image_url"].(string); ok {
+		target.ShareTeamImageURL = strings.TrimSpace(value)
+	}
+	if value, ok := raw["share_match_image_url"].(string); ok {
+		target.ShareMatchImageURL = strings.TrimSpace(value)
+	}
+
+	if value, ok := raw["onboarding_welcome_image_url"].(string); ok {
+		target.OnboardingWelcomeImageURL = strings.TrimSpace(value)
+	}
+	if value, ok := raw["onboarding_team_image_url"].(string); ok {
+		target.OnboardingTeamImageURL = strings.TrimSpace(value)
+	}
+	if value, ok := raw["onboarding_match_image_url"].(string); ok {
+		target.OnboardingMatchImageURL = strings.TrimSpace(value)
+	}
+
 	if value, ok := raw["next_match_social_image_url"].(string); ok {
 		target.NextMatchSocialImageURL = strings.TrimSpace(value)
 	}

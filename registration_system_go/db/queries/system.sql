@@ -35,3 +35,10 @@ ON CONFLICT (key) DO UPDATE
 SET value = EXCLUDED.value,
     updated_at = NOW()
 RETURNING key, value, created_at, updated_at;
+
+-- name: MergeMiniAppHomeSetting :exec
+INSERT INTO mini_app_settings (key, value)
+VALUES ('home', $1)
+ON CONFLICT (key) DO UPDATE
+SET value = mini_app_settings.value || EXCLUDED.value,
+    updated_at = NOW();

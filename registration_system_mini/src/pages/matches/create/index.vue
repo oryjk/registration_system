@@ -69,7 +69,7 @@ const form = reactive<MatchPublishFormModel>({
   description: "",
   playersPerTeam: "" as string | number,
   hostCapacityLimit: "" as string | number,
-  color: "#D8DDE6",
+  color: "#FFFFFF",
   opposingColor: "#2F6BFF",
   publicationMode: "offline_confirmed",
   activityMatchKind: "external",
@@ -137,7 +137,7 @@ function initDefaultForm() {
   form.description = "";
   form.playersPerTeam = 8;
   form.hostCapacityLimit = "";
-  form.color = "#D8DDE6";
+  form.color = "#FFFFFF";
   form.opposingColor = "#2F6BFF";
   form.publicationMode = "offline_confirmed";
   form.feeType = undefined;

@@ -151,7 +151,7 @@ function handleOpenVenuePicker() {
         <view class="form-field">
           <text class="form-label">预计费用</text>
           <SegmentedControl :model-value="selectedFeeType" :options="feeOptions" @change="handleFeeTypeChange" />
-          <input v-if="selectedFeeType === 'fixed_amount'" v-model="form.feePerPerson" class="form-input" type="digit" placeholder="填写人均金额（元）" placeholder-class="form-placeholder" />
+          <input v-if="selectedFeeType === 'fixed_amount'" v-model="form.feePerPerson" class="form-input form-fee-amount" type="digit" placeholder="填写人均金额（元）" placeholder-class="form-placeholder" />
           <text v-if="selectedFeeType === 'team_fund'" class="form-caption">费用由队费承担，当前仅作说明，不会自动扣款。</text>
           <text v-else-if="selectedFeeType === 'offline_aa'" class="form-caption">费用由参与者线下分摊。</text>
         </view>
@@ -287,6 +287,10 @@ function handleOpenVenuePicker() {
   color: var(--ui-color-text);
   font-size: 24rpx;
   font-weight: 600;
+}
+
+.form-fee-amount {
+  margin-top: 14rpx;
 }
 
 .form-caption {

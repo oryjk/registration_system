@@ -6,7 +6,6 @@ import AppButton from "@/components/ui/AppButton.vue";
 import AppSurface from "@/components/ui/AppSurface.vue";
 import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
 import AppTag from "@/components/ui/AppTag.vue";
-import { TEAM_INVITE_SHARE_IMAGE_URL } from "@/utils/share";
 import { useTeamDetailPage } from "./useTeamDetailPage";
 
 const { themePageStyle } = useAccentTheme();
@@ -25,6 +24,7 @@ const {
   createdLabel,
   inviteCode,
   shareImagePath,
+  shareCoverUrl,
   leaveDialogVisible,
   handleLeaveTeamClick,
   handleLeaveTeamConfirm,
@@ -39,13 +39,13 @@ const {
 onShareAppMessage(() => ({
   title: team.value ? `邀请你加入球队「${team.value.name}」` : "邀请你加入球队",
   path: `/pages/teams/invite/index?code=${encodeURIComponent(inviteCode.value)}`,
-  imageUrl: shareImagePath.value || TEAM_INVITE_SHARE_IMAGE_URL,
+  imageUrl: shareImagePath.value || shareCoverUrl.value,
 }));
 
 onShareTimeline(() => ({
   title: team.value ? `邀请你加入球队「${team.value.name}」` : "邀请你加入球队",
   query: `code=${encodeURIComponent(inviteCode.value)}`,
-  imageUrl: shareImagePath.value || TEAM_INVITE_SHARE_IMAGE_URL,
+  imageUrl: shareImagePath.value || shareCoverUrl.value,
 }));
 </script>
 

@@ -123,3 +123,16 @@ func TestSettingsServiceUpdateHomeDoesNotResetOtherSections(t *testing.T) {
 		t.Fatalf("home URL mismatch: %+v", settings.Home)
 	}
 }
+
+func (r *fakeSettingsRepository) MergeHomeSetting(_ context.Context, fields map[string]any) error {
+	if r.upsertErr != nil {
+		return r.upsertErr
+	}
+	if r.sections["home"] == nil {
+		r.sections["home"] = map[string]any{}
+	}
+	for key, value := range fields {
+		r.sections["home"][key] = value
+	}
+	return nil
+}

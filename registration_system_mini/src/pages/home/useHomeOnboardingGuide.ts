@@ -1,140 +1,61 @@
-import { ref } from "vue";
-import { preloadMiniReviewStatus, useMiniReviewStatus } from "@/stores/miniReview";
+import { ref, watch } from "vue";
 import { useTeamContext } from "@/stores/teamContext";
-import type { RuntimeConfigLoader } from "./homeRuntimeConfigCycle";
 import {
+  clearOnboardingIntent,
   getOnboardingIntent,
   isOnboardingGuideDismissed,
   markOnboardingGuideDismissed,
+  restoreOnboardingGuide,
   setOnboardingIntent,
   type OnboardingIntent,
 } from "@/utils/onboardingGuideStorage";
-import { needsProfileCompletion } from "@/utils/profileCompletion";
 
-// 首屏数据加载完成后到弹出引导的间隔：先让用户看到首页内容，再引导。
-const GUIDE_TRIGGER_DELAY_MS = 600;
+// 首页常驻任务指引，不再根据头像/昵称决定是否自动弹窗。
+// 选择、收起按账号保存；资料补全仍由具体的加入/报名动作按需触发。
+export function useHomeOnboardingGuide() {
+  const { currentUser, teamProfiles } = useTeamContext();
+  const intent = ref<OnboardingIntent | null>(null);
+  const collapsed = ref(false);
+  const currentUserId = () => currentUser.value?.id ?? null;
 
-// 首页新手引导：资料未完善的登录用户在首屏加载完成后选择身份（队长/散人），
-// 队长路线引导完善资料 → 创建球队 → 创建后由创建页提示分享邀请；
-// 散人路线只引导完善资料。审核态与运营开关（runtime config onboarding.enabled，
-// 默认关闭）双重控制；用户主动跳过后本机不再自动弹出。
-export function useHomeOnboardingGuide(options: { loadRuntimeConfig: RuntimeConfigLoader }) {
-  const { currentUser } = useTeamContext();
-  const { shouldHideCreationEntrances } = useMiniReviewStatus();
+  const stopUserWatch = watch(currentUserId, (userId) => {
+    intent.value = getOnboardingIntent(userId);
+    collapsed.value = isOnboardingGuideDismissed(userId);
+  }, { immediate: true });
 
-  const rolePickerVisible = ref(false);
-  const profileDialogVisible = ref(false);
-  const createTeamPromptVisible = ref(false);
-  const activeRole = ref<OnboardingIntent>("player");
-  const intent = ref<OnboardingIntent | null>(getOnboardingIntent());
-  // 资料弹窗点「暂不」不算跳过（资料仍未完善，下次冷启动还会引导），但本次会话不再弹。
-  let suppressedForSession = false;
-  let triggerTimer: ReturnType<typeof setTimeout> | null = null;
-
-  function isFlowActive(): boolean {
-    return rolePickerVisible.value || profileDialogVisible.value || createTeamPromptVisible.value;
-  }
-
-  async function evaluateAndShow(): Promise<void> {
-    if (suppressedForSession || isFlowActive() || isOnboardingGuideDismissed()) {
-      return;
-    }
-    if (!needsProfileCompletion(currentUser.value)) {
-      return;
-    }
-    try {
-      // 审核态与配置开关都就绪后再判断；任一请求失败视为本次不引导。
-      // runtime config 与首页空状态插画共享本轮加载周期的同一次请求。
-      const [config] = await Promise.all([options.loadRuntimeConfig(), preloadMiniReviewStatus()]);
-      if (!config.onboarding.enabled || shouldHideCreationEntrances.value) {
-        return;
-      }
-      if (!needsProfileCompletion(currentUser.value)) {
-        return;
-      }
-      rolePickerVisible.value = true;
-    } catch (_error) {
-      // 引导是增强体验，配置/审核状态拉取失败时静默放弃。
-    }
-  }
-
-  /** 首屏数据首次加载成功后调用；延迟弹出避免打断首屏渲染。 */
-  function maybeStartAfterFirstLoad(): void {
-    if (triggerTimer) {
-      clearTimeout(triggerTimer);
-    }
-    triggerTimer = setTimeout(() => {
-      triggerTimer = null;
-      void evaluateAndShow();
-    }, GUIDE_TRIGGER_DELAY_MS);
-  }
+  // appSession 在当前账号球队请求完成后清理持久化 intent。
+  // 完整 profiles 变化时重读，兼顾同数量切号；不凭上一账号残留球队清理新账号。
+  const stopTeamWatch = watch(teamProfiles, () => {
+    intent.value = getOnboardingIntent(currentUserId());
+  });
 
   function setIntent(nextIntent: OnboardingIntent): void {
+    const userId = currentUserId();
+    if (!userId) return;
     intent.value = nextIntent;
-    setOnboardingIntent(nextIntent);
+    setOnboardingIntent(userId, nextIntent);
   }
 
-  function handleSelectCaptain(): void {
-    activeRole.value = "captain";
-    setIntent("captain");
-    rolePickerVisible.value = false;
-    profileDialogVisible.value = true;
+  function expand(): void {
+    collapsed.value = false;
+    restoreOnboardingGuide(currentUserId());
   }
 
-  function handleSelectPlayer(): void {
-    activeRole.value = "player";
-    setIntent("player");
-    rolePickerVisible.value = false;
-    profileDialogVisible.value = true;
+  function collapse(): void {
+    collapsed.value = true;
+    markOnboardingGuideDismissed(currentUserId());
   }
 
-  function handleSkip(): void {
-    rolePickerVisible.value = false;
-    markOnboardingGuideDismissed();
-  }
-
-  function handleProfileCompleted(): void {
-    profileDialogVisible.value = false;
-    if (activeRole.value === "captain") {
-      createTeamPromptVisible.value = true;
-    }
-  }
-
-  function handleProfileCancel(): void {
-    profileDialogVisible.value = false;
-    suppressedForSession = true;
-  }
-
-  function handleCreateTeamConfirmed(): void {
-    createTeamPromptVisible.value = false;
-    uni.navigateTo({ url: "/pages/teams/create/index?from=onboarding" });
-  }
-
-  function handleCreateTeamDeclined(): void {
-    createTeamPromptVisible.value = false;
+  function resetIntent(): void {
+    clearOnboardingIntent(currentUserId());
+    intent.value = null;
+    expand();
   }
 
   function dispose(): void {
-    if (triggerTimer) {
-      clearTimeout(triggerTimer);
-      triggerTimer = null;
-    }
+    stopUserWatch();
+    stopTeamWatch();
   }
 
-  return {
-    rolePickerVisible,
-    profileDialogVisible,
-    createTeamPromptVisible,
-    intent,
-    setIntent,
-    maybeStartAfterFirstLoad,
-    handleSelectCaptain,
-    handleSelectPlayer,
-    handleSkip,
-    handleProfileCompleted,
-    handleProfileCancel,
-    handleCreateTeamConfirmed,
-    handleCreateTeamDeclined,
-    dispose,
-  };
+  return { intent, collapsed, setIntent, resetIntent, expand, collapse, dispose };
 }

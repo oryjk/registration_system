@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
+  clearOnboardingIntent,
   getOnboardingIntent,
   isOnboardingGuideDismissed,
   markOnboardingGuideDismissed,
@@ -19,33 +20,72 @@ const storage = new Map<string, unknown>();
 } as UniApp.Uni;
 
 describe("onboardingGuideStorage", () => {
-  test("defaults to not dismissed", () => {
+  test("defaults to empty state for each user", () => {
     storage.clear();
-    expect(isOnboardingGuideDismissed()).toEqual(false);
+
+    expect(isOnboardingGuideDismissed(101)).toEqual(false);
+    expect(isOnboardingGuideDismissed(202)).toEqual(false);
+    expect(getOnboardingIntent(101)).toEqual(null);
+    expect(getOnboardingIntent(202)).toEqual(null);
   });
 
-  test("stays dismissed after marking", () => {
+  test("dismissed state is isolated by user id", () => {
     storage.clear();
-    markOnboardingGuideDismissed();
 
-    expect(isOnboardingGuideDismissed()).toEqual(true);
+    markOnboardingGuideDismissed(101);
+
+    expect(isOnboardingGuideDismissed(101)).toEqual(true);
+    expect(isOnboardingGuideDismissed(202)).toEqual(false);
   });
 
-  test("persists the user's captain or player intent", () => {
+  test("captain or player intent is isolated by user id", () => {
     storage.clear();
-    expect(getOnboardingIntent()).toEqual(null);
 
-    setOnboardingIntent("captain");
-    expect(getOnboardingIntent()).toEqual("captain");
+    setOnboardingIntent(101, "captain");
+    setOnboardingIntent(202, "player");
 
-    setOnboardingIntent("player");
-    expect(getOnboardingIntent()).toEqual("player");
+    expect(getOnboardingIntent(101)).toEqual("captain");
+    expect(getOnboardingIntent(202)).toEqual("player");
   });
 
-  test("ignores stale or unknown stored intent values", () => {
+  test("ignores legacy device-wide onboarding keys instead of assigning them to a new user", () => {
     storage.clear();
-    storage.set("registration_system_mini_onboarding_intent_v1", "manager");
+    storage.set("registration_system_mini_onboarding_intent_v1", "captain");
+    storage.set("registration_system_mini_onboarding_guide_dismissed_v1", "1");
 
-    expect(getOnboardingIntent()).toEqual(null);
+    expect(getOnboardingIntent(101)).toEqual(null);
+    expect(isOnboardingGuideDismissed(101)).toEqual(false);
+  });
+
+  test("does not read or persist onboarding state without a logged-in user id", () => {
+    storage.clear();
+
+    setOnboardingIntent(null, "captain");
+    markOnboardingGuideDismissed(null);
+
+    expect(getOnboardingIntent(null)).toEqual(null);
+    expect(isOnboardingGuideDismissed(null)).toEqual(false);
+    expect(storage.size).toEqual(0);
+  });
+
+  test("clears only the completed user's intent and leaves other users untouched", () => {
+    storage.clear();
+    setOnboardingIntent(101, "captain");
+    setOnboardingIntent(202, "player");
+    markOnboardingGuideDismissed(101);
+
+    clearOnboardingIntent(101);
+
+    expect(getOnboardingIntent(101)).toEqual(null);
+    expect(getOnboardingIntent(202)).toEqual("player");
+    // 清 intent 不代表重新开启已跳过的新手弹窗。
+    expect(isOnboardingGuideDismissed(101)).toEqual(true);
+  });
+
+  test("ignores stale or unknown values in a user-scoped key", () => {
+    storage.clear();
+    storage.set("registration_system_mini_onboarding_intent_v2:101", "manager");
+
+    expect(getOnboardingIntent(101)).toEqual(null);
   });
 });

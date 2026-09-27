@@ -27,6 +27,7 @@ type PaymentService interface {
 	CreateTeamMembership(context.Context, sharedauth.Actor, paymentapplication.CreateTeamMembershipCommand) (paymentapplication.CreateRechargeResult, error)
 	CreateMatchRegistration(context.Context, sharedauth.Actor, paymentapplication.CreateMatchRegistrationCommand) (paymentapplication.CreateRechargeResult, error)
 	CreateTip(context.Context, sharedauth.Actor, paymentapplication.CreateTipCommand) (paymentapplication.CreateRechargeResult, error)
+	CreateFeedback(context.Context, sharedauth.Actor, paymentapplication.CreateFeedbackCommand) error
 	List(context.Context, sharedauth.Actor, paymentapplication.ListQuery) (paymentapplication.ListResult, error)
 	ListTips(context.Context, sharedauth.Actor, paymentapplication.TipListQuery) (paymentapplication.TipListResult, error)
 	Get(context.Context, sharedauth.Actor, string) (paymentdomain.Order, error)
@@ -54,8 +55,12 @@ type CreateMatchRegistrationRequest struct {
 
 type CreateTipRequest struct {
 	AmountCents int64 `json:"amount_cents" binding:"required,min=1"`
-	// 功能建议可选；长度上限在领域层校验（按 rune 计），handler 不重复绑定规则。
+	// 兼容旧版小程序：历史版本仍可能随打赏携带 suggestion，新版已改为独立免费反馈接口。
 	Suggestion string `json:"suggestion"`
+}
+
+type CreateFeedbackRequest struct {
+	Content string `json:"content"`
 }
 
 type OrderResponse struct {
@@ -125,6 +130,7 @@ func (h *Handler) RegisterAppRoutes(group *gin.RouterGroup) {
 	group.POST("/payments/team-membership-orders", h.CreateTeamMembership)
 	group.POST("/payments/match-registration-orders", h.CreateMatchRegistration)
 	group.POST("/payments/tip-orders", h.CreateTip)
+	group.POST("/feedback", h.CreateFeedback)
 	group.GET("/payments/orders", h.List)
 	group.GET("/payments/orders/:order_no", h.Get)
 	group.POST("/payments/orders/:order_no/sync", h.Sync)
@@ -202,6 +208,23 @@ func (h *Handler) CreateMatchRegistration(c *gin.Context) {
 		return
 	}
 	sharedhttpapi.WriteSuccess(c, CreateRechargeResponse{Order: mapOrder(result.Order), Payment: result.Payment})
+}
+
+func (h *Handler) CreateFeedback(c *gin.Context) {
+	actor, ok := paymentActor(c)
+	if !ok {
+		return
+	}
+	var request CreateFeedbackRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		sharedhttpapi.WriteError(c, sharederror.New(sharederror.KindValidation, "功能建议格式无效"))
+		return
+	}
+	if err := h.service.CreateFeedback(c.Request.Context(), actor, paymentapplication.CreateFeedbackCommand{Content: request.Content}); err != nil {
+		writePaymentError(c, err)
+		return
+	}
+	sharedhttpapi.WriteSuccess(c, gin.H{"submitted": true})
 }
 
 func (h *Handler) CreateTip(c *gin.Context) {

@@ -37,7 +37,17 @@ export function createMatchRegistrationOrder(payload: { match_id: string }) {
   });
 }
 
-/** 为"请开发者喝咖啡"创建打赏订单并发起微信支付；可选功能建议随订单提交。 */
+/** 免费提交产品建议，与打赏支付完全解耦。 */
+export function submitDeveloperFeedback(payload: { content: string }) {
+  return requestApi<{ submitted: boolean }>({
+    url: "/feedback",
+    method: "POST",
+    data: payload,
+    auth: true,
+  });
+}
+
+/** 创建自愿支持订单并发起微信支付；保留 suggestion 参数兼容旧版调用。 */
 export function createTipOrder(payload: { amount_cents: number; suggestion?: string }) {
   return requestApi<BackendPaymentOrderResult>({
     url: "/payments/tip-orders",

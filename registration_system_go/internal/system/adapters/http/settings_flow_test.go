@@ -32,6 +32,7 @@ func newSettingsRouter(t *testing.T) *gin.Engine {
 	router.GET("/admin/system/mini-app-settings", handler.GetMiniAppSettings)
 	router.GET("/app/system/mini-app-runtime-config", handler.GetMiniAppRuntimeConfig)
 	router.POST("/admin/system/mini-app-settings/home/next-match-social-image", handler.UploadHomeNextMatchSocialImage)
+	router.POST("/admin/system/mini-app-settings/home/share-images/:scene", handler.UploadHomeShareImage)
 	return router
 }
 
@@ -248,5 +249,66 @@ func TestUploadHomeNextMatchSocialImagePersistsToDatabase(t *testing.T) {
 	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(),
 		`"next_match_social_image_url":"https://cdn.example.com/static/home/next-match-social/`) {
 		t.Fatalf("runtime config should expose uploaded home image URL: status=%d body=%s", response.Code, response.Body.String())
+	}
+}
+
+func TestOnboardingImagesPersistToRuntimeConfig(t *testing.T) {
+	router := newSettingsRouter(t)
+	for _, scene := range []string{"welcome", "team", "match"} {
+		request := httptest.NewRequest(http.MethodPut, "/admin/system/mini-app-settings", strings.NewReader(fmt.Sprintf(`{"home":{"onboarding_%s_image_url":"https://cdn.example.com/%s.png"}}`, scene, scene)))
+		request.Header.Set("Content-Type", "application/json")
+		response := httptest.NewRecorder()
+		router.ServeHTTP(response, request)
+		readHome(t, response)
+	}
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/app/system/mini-app-runtime-config", nil))
+	home := readHome(t, response)
+	for _, scene := range []string{"welcome", "team", "match"} {
+		if home["onboarding_"+scene+"_image_url"] != "https://cdn.example.com/"+scene+".png" {
+			t.Fatalf("persisted URL missing: %+v", home)
+		}
+	}
+	if home["next_match_social_image_url"] != "" {
+		t.Fatalf("legacy default changed: %+v", home)
+	}
+}
+
+func TestShareImagesPersistToRuntimeConfig(t *testing.T) {
+	router := newSettingsRouter(t)
+	for _, scene := range []string{"home", "hall", "team", "match"} {
+		request := httptest.NewRequest(http.MethodPut, "/admin/system/mini-app-settings", strings.NewReader(fmt.Sprintf(`{"home":{"share_%s_image_url":"https://cdn.example.com/%s.png"}}`, scene, scene)))
+		request.Header.Set("Content-Type", "application/json")
+		response := httptest.NewRecorder()
+		router.ServeHTTP(response, request)
+		readHome(t, response)
+	}
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/app/system/mini-app-runtime-config", nil))
+	home := readHome(t, response)
+	for _, scene := range []string{"home", "hall", "team", "match"} {
+		if home["share_"+scene+"_image_url"] != "https://cdn.example.com/"+scene+".png" {
+			t.Fatalf("persisted URL missing: %+v", home)
+		}
+	}
+	if home["next_match_social_image_url"] != "" {
+		t.Fatalf("legacy default changed: %+v", home)
+	}
+}
+
+func TestShareUploadsPersistToDatabase(t *testing.T) {
+	router := newSettingsRouter(t)
+	for _, scene := range []string{"home", "hall", "team", "match"} {
+		response := httptest.NewRecorder()
+		router.ServeHTTP(response, multipartUploadRequest("/admin/system/mini-app-settings/home/share-images/"+scene, "application/octet-stream", "untrusted.bin", validPNG()))
+		readHome(t, response)
+	}
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/app/system/mini-app-runtime-config", nil))
+	home := readHome(t, response)
+	for _, scene := range []string{"home", "hall", "team", "match"} {
+		if !strings.HasPrefix(fmt.Sprint(home["share_"+scene+"_image_url"]), "https://cdn.example.com/static/home/share/"+scene+"/") {
+			t.Fatalf("persisted upload missing: %+v", home)
+		}
 	}
 }

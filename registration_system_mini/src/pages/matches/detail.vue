@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useAccentTheme } from "@/stores/theme";
 import { computed, ref } from "vue";
-import { onHide, onShareAppMessage, onShareTimeline } from "@dcloudio/uni-app";
+import { onShow, onHide, onShareAppMessage, onShareTimeline } from "@dcloudio/uni-app";
 import AvatarPreviewDialog from "@/components/ui/AvatarPreviewDialog.vue";
 import type { AvatarItem } from "@/components/ui/avatarTypes";
 import AppTabHeader from "@/components/AppTabHeader.vue";
@@ -17,11 +17,15 @@ import MatchScoreCard from "./components/MatchScoreCard.vue";
 import MatchScoreDialog from "./components/MatchScoreDialog.vue";
 import MatchJoinTeamSheet from "./components/MatchJoinTeamSheet.vue";
 import MatchIndividualRegistration from "./components/MatchIndividualRegistration.vue";
-import { MATCH_DETAIL_SHARE_IMAGE_URL } from "@/utils/share";
+import { useShareCover } from "@/composables/useShareCover";
+
 import { useMatchCaptainContact } from "./useMatchCaptainContact";
 import { useMatchDetailPage } from "./useMatchDetailPage";
 import { useMatchTeamApplications } from "./useMatchTeamApplications";
 import MatchTeamApplications from "./components/MatchTeamApplications.vue";
+
+const { shareCoverUrl, refreshShareCover } = useShareCover("match");
+onShow(() => { void refreshShareCover(); });
 
 defineOptions({ inheritAttrs: false });
 
@@ -162,13 +166,13 @@ function handleJoinSheetContactCaptain() {
 onShareAppMessage(() => ({
   title: shareTitle.value,
   path: sharePath.value,
-  imageUrl: MATCH_DETAIL_SHARE_IMAGE_URL,
+  imageUrl: shareCoverUrl.value,
 }));
 
 onShareTimeline(() => ({
   title: shareTitle.value,
   query: `id=${matchId.value || match.value?.id || ""}`,
-  imageUrl: MATCH_DETAIL_SHARE_IMAGE_URL,
+  imageUrl: shareCoverUrl.value,
 }));
 
 // page-meta：主题变量覆盖 + 任一弹层打开时锁定滚动。

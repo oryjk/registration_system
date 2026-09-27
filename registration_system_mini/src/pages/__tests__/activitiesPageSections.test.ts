@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { sourcePath } from "@/test/sourcePaths";
+import { registeredPages } from "@/test/registeredPages";
 
 declare const Bun: {
   file(path: string): {
@@ -77,6 +78,13 @@ describe("activities page sections", () => {
 
     expect(emptyState.includes("<AppSurface")).toEqual(true);
     expect(emptyState.includes("<AppButton")).toEqual(true);
+
+    // 真正空大厅补最近已结束比赛作为创建参考；筛选空状态不展示历史列表。
+    expect(source.includes('v-if="hallEmptyMode === \'empty\' && endedReferenceCards.length"')).toEqual(true);
+    expect(source.includes('<SectionHeader title="已结束的比赛"')).toEqual(true);
+    expect(source.includes("<HomeMatchList")).toEqual(true);
+    expect(source.includes(':matches="endedReferenceCards"')).toEqual(true);
+    expect(source.includes('@match-tap="openEndedReferenceMatch"')).toEqual(true);
   });
 
   test("keeps the load-more entry when client filters empty the current page", async () => {
@@ -97,7 +105,7 @@ describe("activities page sections", () => {
     const pages = await Bun.file(sourcePath("pages.json")).text();
     const source = await Bun.file(sourcePath("pages/challenges/create-individual/index.vue")).text();
 
-    expect(pages.includes('"path": "pages/challenges/create-individual/index"')).toEqual(true);
+    expect(registeredPages(JSON.parse(pages)).some((page) => page.path === "pages/challenges/create-individual/index")).toEqual(true);
     // 散人约球对接 Go 后端：POST /matches，publication_mode=online_pickup（无球队概念）；支持编辑已发布的散人局。
     expect(source.includes('import { createMatch, getMatchDetail, updateMyMatch, getVenueSuggestions } from "@/api/match";')).toEqual(true);
     expect(source.includes('publication_mode: "online_pickup"')).toEqual(true);
@@ -171,6 +179,17 @@ describe("activities page sections", () => {
     expect(source.includes("payment_mode: form.paymentMode")).toEqual(true);
   });
 
+  test("uses the home next-match artwork for the true empty hall state without the ambiguous dot", async () => {
+    const source = await Bun.file(sourcePath("pages/activities/index.vue")).text();
+    const emptyState = await Bun.file(sourcePath("pages/activities/components/HallEmptyState.vue")).text();
+
+    expect(source.includes('import { loadMiniAppRuntimeConfig } from "@/config/runtimeConfig";')).toEqual(true);
+    expect(source.includes("config.home.next_match_social_image_url")).toEqual(true);
+    expect(source.includes(':background-image-url="hallEmptyMode === \'empty\' ? hallEmptyBackgroundImageUrl : \'\'"')).toEqual(true);
+    expect(emptyState.includes("backgroundImageUrl?: string")).toEqual(true);
+    expect(emptyState.includes("hall-empty-state__ball")).toEqual(false);
+  });
+
   test("enables sharing for the challenge hall with the default share cover", async () => {
     const source = await Bun.file(sourcePath("pages/activities/index.vue")).text();
 
@@ -178,7 +197,7 @@ describe("activities page sections", () => {
     expect(source.includes("onShareTimeline")).toEqual(true);
     expect(source.includes('const shareTitle = "约队大厅：看看可报名的散人局";')).toEqual(true);
     expect(source.includes('const sharePath = "/pages/activities/index";')).toEqual(true);
-    expect(source.includes("imageUrl: DEFAULT_SHARE_IMAGE_URL")).toEqual(true);
+    expect(source.includes("imageUrl: shareCoverUrl.value")).toEqual(true);
   });
 
   test("match card lists share the card list spacing token", async () => {

@@ -36,23 +36,77 @@ func NewHomeAssetService(assets ports.AssetStore, settings SettingsService) Home
 // Content-Type 都用检测结果。存储失败时不会写入配置；配置保存失败时对象可能已上传，
 // 重传即可覆盖（同内容同 key）。
 func (s HomeAssetService) UploadNextMatchSocialImage(ctx context.Context, contentType, fileName string, data []byte) (domain.MiniAppSettings, error) {
+	url, err := s.saveImage(ctx, homeNextMatchSocialKeyPrefix, data)
+	if err != nil {
+		return domain.MiniAppSettings{}, err
+	}
+	return s.settings.UpdateHome(ctx, HomeSettingsPatch{NextMatchSocialImageURL: &url})
+}
+
+// UploadOnboardingImage uploads one of the three controlled onboarding scenes.
+func (s HomeAssetService) UploadOnboardingImage(ctx context.Context, scene, contentType, fileName string, data []byte) (domain.MiniAppSettings, error) {
+	var patch HomeSettingsPatch
+	var url string
+	switch scene {
+	case "welcome":
+		patch.OnboardingWelcomeImageURL = &url
+	case "team":
+		patch.OnboardingTeamImageURL = &url
+	case "match":
+		patch.OnboardingMatchImageURL = &url
+	default:
+		return domain.MiniAppSettings{}, sharederror.New(sharederror.KindValidation, "不支持的新手引导图片场景")
+	}
+	var err error
+	url, err = s.saveImage(ctx, "static/home/onboarding/"+scene+"/", data)
+	if err != nil {
+		return domain.MiniAppSettings{}, err
+	}
+	return s.settings.UpdateHome(ctx, patch)
+}
+
+// UploadShareImage uploads one of the four controlled share scenes.
+func (s HomeAssetService) UploadShareImage(ctx context.Context, scene, contentType, fileName string, data []byte) (domain.MiniAppSettings, error) {
+	var patch HomeSettingsPatch
+	var url string
+	switch scene {
+	case "home":
+		patch.ShareHomeImageURL = &url
+	case "hall":
+		patch.ShareHallImageURL = &url
+	case "team":
+		patch.ShareTeamImageURL = &url
+	case "match":
+		patch.ShareMatchImageURL = &url
+	default:
+		return domain.MiniAppSettings{}, sharederror.New(sharederror.KindValidation, "不支持的分享封面图片场景")
+	}
+	var err error
+	url, err = s.saveImage(ctx, "static/home/share/"+scene+"/", data)
+	if err != nil {
+		return domain.MiniAppSettings{}, err
+	}
+	return s.settings.UpdateHome(ctx, patch)
+}
+
+func (s HomeAssetService) saveImage(ctx context.Context, prefix string, data []byte) (string, error) {
 	if s.assets == nil {
-		return domain.MiniAppSettings{}, sharederror.New(sharederror.KindInternal, "图片上传存储未配置")
+		return "", sharederror.New(sharederror.KindInternal, "图片上传存储未配置")
 	}
 	if len(data) == 0 || len(data) > MaxHomeAssetUploadBytes {
-		return domain.MiniAppSettings{}, sharederror.New(sharederror.KindValidation, "插画文件大小需在 2MB 以内")
+		return "", sharederror.New(sharederror.KindValidation, "插画文件大小需在 2MB 以内")
 	}
 	image, ok := detectHomeImageByContent(data)
 	if !ok {
-		return domain.MiniAppSettings{}, sharederror.New(sharederror.KindValidation, "插画仅支持 PNG、JPG、WebP 格式")
+		return "", sharederror.New(sharederror.KindValidation, "插画仅支持 PNG、JPG、WebP 格式")
 	}
 
-	objectKey := fmt.Sprintf("%s%s.%s", homeNextMatchSocialKeyPrefix, contentHash(data), image.Extension)
+	objectKey := fmt.Sprintf("%s%s.%s", prefix, contentHash(data), image.Extension)
 	url, err := s.assets.Save(ctx, objectKey, image.ContentType, data)
 	if err != nil {
-		return domain.MiniAppSettings{}, sharederror.Wrap(sharederror.KindInternal, "上传插画到对象存储失败", err)
+		return "", sharederror.Wrap(sharederror.KindInternal, "上传插画到对象存储失败", err)
 	}
-	return s.settings.UpdateHome(ctx, HomeSettingsPatch{NextMatchSocialImageURL: &url})
+	return url, nil
 }
 
 // detectedHomeImage 是按文件内容识别出的可信格式。

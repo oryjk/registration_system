@@ -5,8 +5,11 @@ const props = defineProps<{ color: string }>();
 const palette: Record<string, string> = {
   "#ffffff": "白色", "#ff0000": "红色", "#000000": "黑色",
   "#0000ff": "蓝色", "#00ff00": "绿色", "#ffff00": "黄色",
-  "#2f6bff": "深蓝", "#c8ff00": "荧光绿", "#ff6b35": "橙红",
-  "#b34dff": "紫红", "#111310": "墨黑", "#d8dde6": "白银",
+  "#22c55e": "绿色", "#ef4444": "红色", "#2f6bff": "蓝色",
+  "#111310": "黑色", "#facc15": "黄色", "#ff6b35": "橙色",
+  "#b34dff": "紫色", "#ec4899": "粉色", "#06b6d4": "青色",
+  "#38bdf8": "天蓝", "#c8ff00": "荧光绿", "#d8dde6": "银灰",
+  "#94a3b8": "灰色",
 };
 const namedColors: Record<string, string> = {
   白色: "#ffffff", 红色: "#ff0000", 黑色: "#000000",

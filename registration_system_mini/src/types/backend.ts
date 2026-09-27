@@ -454,6 +454,13 @@ export interface BackendMiniAppRuntimeConfig {
     hero_banners: BackendMiniAppHomeHeroBanner[];
     /** 首页「下一场还没安排」空状态插画 URL；空串表示未配置，回退内置视觉。 */
     next_match_social_image_url: string;
+    onboarding_welcome_image_url: string;
+    onboarding_team_image_url: string;
+    onboarding_match_image_url: string;
+    share_home_image_url: string;
+    share_hall_image_url: string;
+    share_team_image_url: string;
+    share_match_image_url: string;
   };
   matches: {
     related_activity_limit: number;

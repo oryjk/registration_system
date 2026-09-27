@@ -33,7 +33,14 @@ const SettingsSectionHome = "home"
 // HomeSettings 承载首页运营资源（如空状态插画 URL）。默认为空：
 // 未配置时小程序回退到内置的轻量视觉，不影响首页主体。
 type HomeSettings struct {
-	NextMatchSocialImageURL string `json:"next_match_social_image_url"`
+	NextMatchSocialImageURL   string `json:"next_match_social_image_url"`
+	OnboardingWelcomeImageURL string `json:"onboarding_welcome_image_url"`
+	OnboardingTeamImageURL    string `json:"onboarding_team_image_url"`
+	OnboardingMatchImageURL   string `json:"onboarding_match_image_url"`
+	ShareHomeImageURL         string `json:"share_home_image_url"`
+	ShareHallImageURL         string `json:"share_hall_image_url"`
+	ShareTeamImageURL         string `json:"share_team_image_url"`
+	ShareMatchImageURL        string `json:"share_match_image_url"`
 }
 
 // DefaultMiniAppSettings 返回全部关闭的安全默认值。

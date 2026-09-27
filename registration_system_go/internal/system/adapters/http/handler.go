@@ -2,8 +2,6 @@ package systemhttp
 
 import (
 	"context"
-	"io"
-	"net/http"
 
 	"github.com/gin-gonic/gin"
 	sharedhttpapi "github.com/oryjk/registration_system/registration_system_go/internal/shared/adapters/httpapi"
@@ -24,6 +22,8 @@ type MiniAppSettingsService interface {
 // （由 application.HomeAssetService 实现；存储适配器在 application 层之后注入）。
 type HomeAssetUploadService interface {
 	UploadNextMatchSocialImage(ctx context.Context, contentType, fileName string, data []byte) (domain.MiniAppSettings, error)
+	UploadShareImage(ctx context.Context, scene, contentType, fileName string, data []byte) (domain.MiniAppSettings, error)
+	UploadOnboardingImage(ctx context.Context, scene, contentType, fileName string, data []byte) (domain.MiniAppSettings, error)
 }
 
 // 小程序运行配置（/system/mini-app-runtime-config）。
@@ -38,6 +38,13 @@ type MiniAppRuntimeConfigResponse struct {
 		HideMatchesAfterHoldingTime bool         `json:"hide_matches_after_holding_time"`
 		HeroBanners                 []HeroBanner `json:"hero_banners"`
 		NextMatchSocialImageURL     string       `json:"next_match_social_image_url"`
+		OnboardingWelcomeImageURL   string       `json:"onboarding_welcome_image_url"`
+		OnboardingTeamImageURL      string       `json:"onboarding_team_image_url"`
+		OnboardingMatchImageURL     string       `json:"onboarding_match_image_url"`
+		ShareHomeImageURL           string       `json:"share_home_image_url"`
+		ShareHallImageURL           string       `json:"share_hall_image_url"`
+		ShareTeamImageURL           string       `json:"share_team_image_url"`
+		ShareMatchImageURL          string       `json:"share_match_image_url"`
 	} `json:"home"`
 	Matches struct {
 		RelatedActivityLimit   int `json:"related_activity_limit"`
@@ -85,7 +92,14 @@ type UpdateMiniAppSettingsRequest struct {
 		Enabled *bool `json:"enabled"`
 	} `json:"onboarding"`
 	Home *struct {
-		NextMatchSocialImageURL *string `json:"next_match_social_image_url"`
+		NextMatchSocialImageURL   *string `json:"next_match_social_image_url"`
+		OnboardingWelcomeImageURL *string `json:"onboarding_welcome_image_url"`
+		OnboardingTeamImageURL    *string `json:"onboarding_team_image_url"`
+		OnboardingMatchImageURL   *string `json:"onboarding_match_image_url"`
+		ShareHomeImageURL         *string `json:"share_home_image_url"`
+		ShareHallImageURL         *string `json:"share_hall_image_url"`
+		ShareTeamImageURL         *string `json:"share_team_image_url"`
+		ShareMatchImageURL        *string `json:"share_match_image_url"`
 	} `json:"home"`
 }
 
@@ -106,6 +120,8 @@ func (h *Handler) RegisterAdminRoutes(group *gin.RouterGroup) {
 	group.GET("/system/mini-app-settings", h.GetMiniAppSettings)
 	group.PUT("/system/mini-app-settings", h.UpdateMiniAppSettings)
 	group.POST("/system/mini-app-settings/home/next-match-social-image", h.UploadHomeNextMatchSocialImage)
+	group.POST("/system/mini-app-settings/home/onboarding-images/:scene", h.UploadHomeOnboardingImage)
+	group.POST("/system/mini-app-settings/home/share-images/:scene", h.UploadHomeShareImage)
 }
 
 func (h *Handler) GetMiniAppRuntimeConfig(c *gin.Context) {
@@ -137,6 +153,14 @@ func (h *Handler) GetMiniAppRuntimeConfig(c *gin.Context) {
 	config.Debug.ReviewStatusToggleEnabled = settings.Debug.ReviewStatusToggleEnabled
 	config.Onboarding.Enabled = settings.Onboarding.Enabled
 	config.Home.NextMatchSocialImageURL = settings.Home.NextMatchSocialImageURL
+	config.Home.OnboardingWelcomeImageURL = settings.Home.OnboardingWelcomeImageURL
+	config.Home.OnboardingTeamImageURL = settings.Home.OnboardingTeamImageURL
+	config.Home.OnboardingMatchImageURL = settings.Home.OnboardingMatchImageURL
+	config.Home.ShareHomeImageURL = settings.Home.ShareHomeImageURL
+	config.Home.ShareHallImageURL = settings.Home.ShareHallImageURL
+	config.Home.ShareTeamImageURL = settings.Home.ShareTeamImageURL
+	config.Home.ShareMatchImageURL = settings.Home.ShareMatchImageURL
+
 	sharedhttpapi.WriteSuccess(c, config)
 }
 
@@ -158,7 +182,7 @@ func (h *Handler) UpdateMiniAppSettings(c *gin.Context) {
 	debugProvided := request.Debug != nil &&
 		(request.Debug.ClearProfileEnabled != nil || request.Debug.ReviewStatusToggleEnabled != nil)
 	onboardingProvided := request.Onboarding != nil && request.Onboarding.Enabled != nil
-	homeProvided := request.Home != nil && request.Home.NextMatchSocialImageURL != nil
+	homeProvided := request.Home != nil && (request.Home.NextMatchSocialImageURL != nil || request.Home.OnboardingWelcomeImageURL != nil || request.Home.OnboardingTeamImageURL != nil || request.Home.OnboardingMatchImageURL != nil || request.Home.ShareHomeImageURL != nil || request.Home.ShareHallImageURL != nil || request.Home.ShareTeamImageURL != nil || request.Home.ShareMatchImageURL != nil)
 	if !debugProvided && !onboardingProvided && !homeProvided {
 		sharedhttpapi.WriteError(c, sharederror.New(sharederror.KindValidation, "请求体无效，需要 debug/onboarding/home 分区至少一个可更新字段"))
 		return
@@ -188,7 +212,14 @@ func (h *Handler) UpdateMiniAppSettings(c *gin.Context) {
 	}
 	if homeProvided {
 		result, err := h.settings.UpdateHome(c.Request.Context(), application.HomeSettingsPatch{
-			NextMatchSocialImageURL: request.Home.NextMatchSocialImageURL,
+			NextMatchSocialImageURL:   request.Home.NextMatchSocialImageURL,
+			OnboardingWelcomeImageURL: request.Home.OnboardingWelcomeImageURL,
+			OnboardingTeamImageURL:    request.Home.OnboardingTeamImageURL,
+			OnboardingMatchImageURL:   request.Home.OnboardingMatchImageURL,
+			ShareHomeImageURL:         request.Home.ShareHomeImageURL,
+			ShareHallImageURL:         request.Home.ShareHallImageURL,
+			ShareTeamImageURL:         request.Home.ShareTeamImageURL,
+			ShareMatchImageURL:        request.Home.ShareMatchImageURL,
 		})
 		if err != nil {
 			sharedhttpapi.WriteError(c, err)
@@ -197,41 +228,4 @@ func (h *Handler) UpdateMiniAppSettings(c *gin.Context) {
 		saved = result
 	}
 	sharedhttpapi.WriteSuccess(c, saved)
-}
-
-// UploadHomeNextMatchSocialImage 接收 multipart 字段 file，上传插画并把 URL 写入 home 分区。
-// 校验与存储在 application.HomeAssetService；这里只做协议适配。
-func (h *Handler) UploadHomeNextMatchSocialImage(c *gin.Context) {
-	if h.homeAssets == nil {
-		sharedhttpapi.WriteError(c, sharederror.New(sharederror.KindInternal, "图片上传未配置"))
-		return
-	}
-	// 请求体上限 = 文件上限 + 1MB multipart 开销余量，防止超大表单耗尽内存。
-	maxBodyBytes := int64(application.MaxHomeAssetUploadBytes) + 1<<20
-	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxBodyBytes)
-
-	fileHeader, err := c.FormFile("file")
-	if err != nil {
-		sharedhttpapi.WriteError(c, sharederror.New(sharederror.KindValidation, "请选择要上传的插画文件"))
-		return
-	}
-	file, err := fileHeader.Open()
-	if err != nil {
-		sharedhttpapi.WriteError(c, sharederror.Wrap(sharederror.KindInternal, "读取插画文件失败", err))
-		return
-	}
-	defer file.Close()
-	data, err := io.ReadAll(io.LimitReader(file, application.MaxHomeAssetUploadBytes+1))
-	if err != nil {
-		sharedhttpapi.WriteError(c, sharederror.Wrap(sharederror.KindInternal, "读取插画文件失败", err))
-		return
-	}
-
-	settings, err := h.homeAssets.UploadNextMatchSocialImage(c.Request.Context(),
-		fileHeader.Header.Get("Content-Type"), fileHeader.Filename, data)
-	if err != nil {
-		sharedhttpapi.WriteError(c, err)
-		return
-	}
-	sharedhttpapi.WriteSuccess(c, settings)
 }

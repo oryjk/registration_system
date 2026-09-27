@@ -152,6 +152,7 @@ type RegistrationSettlement interface {
 // 由 payment 的 postgres 仓储实现（订单核销与 tips 状态同事务）。
 type TipRepository interface {
 	CreateTip(context.Context, paymentdomain.Tip) error
+	CreateFeedback(context.Context, int64, string, time.Time) error
 	ApplyTipPayment(context.Context, VerifiedPayment) (SettlementResult, error)
 	ListTips(context.Context, TipFilter) ([]paymentdomain.Tip, int64, error)
 }

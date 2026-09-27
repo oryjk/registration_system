@@ -220,3 +220,20 @@ describe("mini app runtime config", () => {
     ).toEqual(false);
   });
 });
+
+test("onboarding artwork accepts independent URLs and handles old servers and clearing", () => {
+  const old = sanitizeMiniAppRuntimeConfig({ home: { next_match_social_image_url: "old.png" } });
+  expect(old.home.onboarding_welcome_image_url).toEqual("");
+  expect(old.home.onboarding_team_image_url).toEqual("");
+  expect(old.home.onboarding_match_image_url).toEqual("");
+  const configured = sanitizeMiniAppRuntimeConfig({ home: {
+    onboarding_welcome_image_url: " https://cdn.example.com/welcome.png ",
+    onboarding_team_image_url: "",
+    onboarding_match_image_url: 1 as unknown as string,
+    next_match_social_image_url: "old.png",
+  } });
+  expect(configured.home.onboarding_welcome_image_url).toEqual("https://cdn.example.com/welcome.png");
+  expect(configured.home.onboarding_team_image_url).toEqual("");
+  expect(configured.home.onboarding_match_image_url).toEqual("");
+  expect(configured.home.next_match_social_image_url).toEqual("old.png");
+});

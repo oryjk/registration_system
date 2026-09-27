@@ -562,6 +562,10 @@ func (f *fakePaymentStore) NicknameForUser(_ context.Context, userID int64) (str
 	return "昵称-37", nil
 }
 
+func (f *fakePaymentStore) CreateFeedback(_ context.Context, _ int64, _ string, _ time.Time) error {
+	return nil
+}
+
 func (f *fakePaymentStore) CreateTip(_ context.Context, tip paymentdomain.Tip) error {
 	f.tip = tip
 	return nil

@@ -1,5 +1,10 @@
 import type { HealthStatus } from "../types/api";
-import type { MiniAppSettings, MiniAppSettingsUpdate } from "../types/system";
+import type {
+  MiniAppSettings,
+  MiniAppSettingsUpdate,
+  OnboardingImageScene,
+  ShareImageScene,
+} from "../types/system";
 import { request } from "./client";
 
 export function getHealth() {
@@ -23,6 +28,35 @@ export function uploadNextMatchSocialImage(file: File) {
   formData.append("file", file);
   return request<MiniAppSettings>(
     "/system/mini-app-settings/home/next-match-social-image",
+    { method: "POST", body: formData },
+  );
+}
+
+// 每次仅更新目标场景，避免覆盖其他图片或开关。
+export function clearOnboardingImage(scene: OnboardingImageScene) {
+  return updateMiniAppSettings({
+    home: { [`onboarding_${scene}_image_url`]: "" },
+  });
+}
+
+export function uploadOnboardingImage(scene: OnboardingImageScene, file: File) {
+  const formData = new FormData();
+  formData.append("file", file);
+  return request<MiniAppSettings>(
+    `/system/mini-app-settings/home/onboarding-images/${scene}`,
+    { method: "POST", body: formData },
+  );
+}
+
+export function clearShareImage(scene: ShareImageScene) {
+  return updateMiniAppSettings({ home: { [`share_${scene}_image_url`]: "" } });
+}
+
+export function uploadShareImage(scene: ShareImageScene, file: File) {
+  const formData = new FormData();
+  formData.append("file", file);
+  return request<MiniAppSettings>(
+    `/system/mini-app-settings/home/share-images/${scene}`,
     { method: "POST", body: formData },
   );
 }

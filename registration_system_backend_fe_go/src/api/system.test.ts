@@ -1,6 +1,13 @@
 import { clearAdminToken, setAdminToken } from "../auth/token-storage";
 import { request } from "./client";
-import { getMiniAppSettings, uploadNextMatchSocialImage } from "./system";
+import {
+  clearOnboardingImage,
+  clearShareImage,
+  getMiniAppSettings,
+  uploadNextMatchSocialImage,
+  uploadOnboardingImage,
+  uploadShareImage,
+} from "./system";
 
 function jsonResponse(status: number, body: unknown) {
   return {
@@ -84,6 +91,71 @@ describe("mini app settings api", () => {
       expect.objectContaining({ Authorization: "Bearer token" }),
     );
   });
+
+  it.each(["welcome", "team", "match"] as const)(
+    "uploads only the %s scene without sending other settings",
+    async (scene) => {
+      const saved = {
+        home: {
+          next_match_social_image_url: "existing.png",
+          onboarding_team_image_url: "team.png",
+        },
+      };
+      vi.mocked(fetch).mockResolvedValueOnce(
+        jsonResponse(200, { code: 0, data: saved }),
+      );
+      const file = new File(["png"], "guide.png", { type: "image/png" });
+      await expect(uploadOnboardingImage(scene, file)).resolves.toEqual(saved);
+      const [url, options] = vi.mocked(fetch).mock.calls[0];
+      expect(url).toBe(
+        `/go-api/api/v1/admin/system/mini-app-settings/home/onboarding-images/${scene}`,
+      );
+      expect(options?.method).toBe("POST");
+      const body = options?.body as FormData;
+      expect([...body.keys()]).toEqual(["file"]);
+      expect(body.get("file")).toBe(file);
+    },
+  );
+
+  it.each(["welcome", "team", "match"] as const)(
+    "clears only the %s scene without overwriting other fields",
+    async (scene) => {
+      vi.mocked(fetch).mockResolvedValueOnce(
+        jsonResponse(200, { code: 0, data: {} }),
+      );
+      await clearOnboardingImage(scene);
+      const [url, options] = vi.mocked(fetch).mock.calls[0];
+      expect(url).toBe("/go-api/api/v1/admin/system/mini-app-settings");
+      expect(options?.method).toBe("PUT");
+      expect(JSON.parse(options?.body as string)).toEqual({
+        home: { [`onboarding_${scene}_image_url`]: "" },
+      });
+    },
+  );
+
+  it.each(["home", "hall", "team", "match"] as const)(
+    "uploads and clears the %s share scene independently",
+    async (scene) => {
+      vi.mocked(fetch).mockResolvedValue(
+        jsonResponse(200, { code: 0, data: {} }),
+      );
+      const file = new File(["png"], "cover.png", { type: "image/png" });
+      await uploadShareImage(scene, file);
+      const [url, options] = vi.mocked(fetch).mock.calls[0];
+      expect(url).toBe(
+        `/go-api/api/v1/admin/system/mini-app-settings/home/share-images/${scene}`,
+      );
+      expect(options?.method).toBe("POST");
+      const body = options?.body as FormData;
+      expect(body.get("file")).toBe(file);
+      await clearShareImage(scene);
+      const [, clearOptions] = vi.mocked(fetch).mock.calls[1];
+      expect(clearOptions?.method).toBe("PUT");
+      expect(JSON.parse(clearOptions?.body as string)).toEqual({
+        home: { [`share_${scene}_image_url`]: "" },
+      });
+    },
+  );
 
   it("surfaces the backend validation message for rejected uploads", async () => {
     setAdminToken("token");

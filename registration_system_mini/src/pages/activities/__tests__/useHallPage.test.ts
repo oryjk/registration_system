@@ -29,18 +29,40 @@ const match: AppMatchSummary = {
   updated_at: "2026-08-01T00:00:00.000Z",
 };
 
+const endedMatch: AppMatchSummary = {
+  ...match,
+  id: "ended-reference-match",
+  name: "上周五人制夜场",
+  status: "ended",
+  start_time: "2026-08-10T12:00:00.000Z",
+  end_time: "2026-08-10T14:00:00.000Z",
+};
+
 const hideCreationEntrancesRef = ref(false);
 const identityRef = ref<{ kind: string; teamId: number } | null>({ kind: "team", teamId: 99 });
 let sessionRequests = 0;
 let matchRequests = 0;
+let registeringItems: AppMatchSummary[] = [match];
+let endedItems: AppMatchSummary[] = [endedMatch];
+let pendingEndedResponse: Promise<{ items: AppMatchSummary[]; total: number }> | null = null;
 const matchScopes: string[] = [];
+const matchStatuses: Array<string | undefined> = [];
+const matchPageSizes: number[] = [];
 let currentToken = "token-a";
 
 mock.module("@/api/match", () => ({
-  listMatches: async (params: { scope: string }) => {
+  listMatches: async (params: { scope: string; status?: string; pageSize: number }) => {
     matchRequests += 1;
     matchScopes.push(params.scope);
-    return { items: [match], total: 1, page: 1, page_size: 20 };
+    matchStatuses.push(params.status);
+    matchPageSizes.push(params.pageSize);
+    if (params.status === "ended" && pendingEndedResponse) {
+      const pending = pendingEndedResponse;
+      pendingEndedResponse = null;
+      return pending;
+    }
+    const items = params.status === "ended" ? endedItems : registeringItems;
+    return { items, total: items.length, page: 1, page_size: params.pageSize };
   },
 }));
 mock.module("@/stores/miniReview", () => ({
@@ -72,7 +94,12 @@ afterEach(() => {
   identityRef.value = { kind: "team", teamId: 99 };
   sessionRequests = 0;
   matchRequests = 0;
+  registeringItems = [match];
+  endedItems = [endedMatch];
+  pendingEndedResponse = null;
   matchScopes.length = 0;
+  matchStatuses.length = 0;
+  matchPageSizes.length = 0;
   currentToken = "token-a";
 });
 
@@ -92,6 +119,50 @@ test("date changes reuse session data but fetch matches; token changes and expli
 
   await page.loadPageData();
   expect([sessionRequests, matchRequests]).toEqual([3, 4]);
+});
+
+test("loads recent ended public matches only when the unfiltered hall is truly empty", async () => {
+  registeringItems = [];
+  const page = useHallPage();
+
+  await page.loadPageData();
+
+  expect(matchRequests).toEqual(2);
+  expect(matchScopes).toEqual(["all", "all"]);
+  expect(matchStatuses).toEqual(["registering", "ended"]);
+  expect(matchPageSizes).toEqual([20, 3]);
+  expect(page.hallCards.value.length).toEqual(0);
+  expect(page.endedReferenceCards.value.length).toEqual(1);
+  expect(page.endedReferenceCards.value[0].title).toEqual("上周五人制夜场");
+  expect(page.endedReferenceCards.value[0].phase).toEqual("ended");
+  expect(page.endedReferenceCards.value[0].actionLabel).toEqual("查看比赛");
+});
+
+test("does not fetch ended references when a current hall match exists", async () => {
+  const page = useHallPage();
+
+  await page.loadPageData();
+
+  expect(matchRequests).toEqual(1);
+  expect(matchStatuses).toEqual(["registering"]);
+  expect(page.endedReferenceCards.value).toEqual([]);
+});
+
+test("an outdated ended-reference failure cannot erase a newer successful refresh", async () => {
+  registeringItems = [];
+  let rejectOld!: (error: Error) => void;
+  pendingEndedResponse = new Promise((_resolve, reject) => { rejectOld = reject; });
+  const page = useHallPage();
+  const oldLoad = page.loadPageData();
+  while (matchRequests < 2) await Promise.resolve();
+
+  await page.loadPageData();
+  expect(page.endedReferenceCards.value.map((card) => card.id)).toEqual([endedMatch.id]);
+
+  rejectOld(new Error("old request timed out"));
+  await oldLoad;
+  expect(page.endedReferenceCards.value.map((card) => card.id)).toEqual([endedMatch.id]);
+  expect(page.errorMessage.value).toEqual("");
 });
 
 test("kind and size filters stay local while every date fetch uses all scope", async () => {

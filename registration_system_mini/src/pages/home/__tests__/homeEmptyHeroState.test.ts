@@ -11,11 +11,11 @@ describe("resolveHomeEmptyHeroState", () => {
       intent: null,
     })).toEqual({
       mode: "guest",
-      actions: ["browse"],
+      actions: ["create-team", "join-team", "browse"],
     });
   });
 
-  test("new users without a known intent choose between building a team and finding a match", () => {
+  test("new users can create a team, join an existing team, or find a match", () => {
     expect(resolveHomeEmptyHeroState({
       isGuest: false,
       hasTeam: false,
@@ -24,7 +24,7 @@ describe("resolveHomeEmptyHeroState", () => {
       intent: null,
     })).toEqual({
       mode: "no-team-unknown",
-      actions: ["create-team", "browse"],
+      actions: ["create-team", "join-team", "browse"],
     });
   });
 
@@ -37,11 +37,11 @@ describe("resolveHomeEmptyHeroState", () => {
       intent: "captain",
     })).toEqual({
       mode: "no-team-captain",
-      actions: ["create-team", "browse"],
+      actions: ["create-team", "join-team"],
     });
   });
 
-  test("player-intent users without a team can find or start a pickup match, with team creation as a low-priority option", () => {
+  test("player-intent users without a team can find or start a pickup match", () => {
     expect(resolveHomeEmptyHeroState({
       isGuest: false,
       hasTeam: false,
@@ -50,7 +50,7 @@ describe("resolveHomeEmptyHeroState", () => {
       intent: "player",
     })).toEqual({
       mode: "no-team-player",
-      actions: ["browse", "create-pickup", "create-team"],
+      actions: ["browse", "create-pickup"],
     });
   });
 
@@ -63,7 +63,7 @@ describe("resolveHomeEmptyHeroState", () => {
       intent: "player",
     })).toEqual({
       mode: "team-manager",
-      actions: ["create-match", "browse"],
+      actions: ["create-match", "invite-team", "browse"],
     });
 
     expect(resolveHomeEmptyHeroState({
@@ -74,12 +74,12 @@ describe("resolveHomeEmptyHeroState", () => {
       intent: "captain",
     })).toEqual({
       mode: "team-member",
-      actions: ["browse"],
+      actions: ["browse", "view-team"],
     });
   });
 
   test("review mode hides creation actions while keeping the browsing path", () => {
-    for (const intent of [null, "captain", "player"] as const) {
+    for (const intent of [null, "captain", "member", "player"] as const) {
       const state = resolveHomeEmptyHeroState({
         isGuest: false,
         hasTeam: false,
@@ -87,7 +87,7 @@ describe("resolveHomeEmptyHeroState", () => {
         creationAllowed: false,
         intent,
       });
-      expect(state.actions).toEqual(["browse"]);
+      expect(state.actions).toEqual(["join-team", "browse"]);
     }
 
     expect(resolveHomeEmptyHeroState({
@@ -96,6 +96,27 @@ describe("resolveHomeEmptyHeroState", () => {
       canManageTeam: true,
       creationAllowed: false,
       intent: "captain",
-    }).actions).toEqual(["browse"]);
+    }).actions).toEqual(["invite-team", "browse"]);
   });
+});
+
+test("joining a team is a distinct reversible intention", () => {
+  expect(resolveHomeEmptyHeroState({
+    isGuest: false,
+    hasTeam: false,
+    canManageTeam: false,
+    creationAllowed: true,
+    intent: "member",
+  })).toEqual({ mode: "no-team-member", actions: ["join-team", "browse"] });
+});
+
+test("a sole-member captain is invited to bring teammates, without blocking match creation", () => {
+  expect(resolveHomeEmptyHeroState({
+    isGuest: false,
+    hasTeam: true,
+    canManageTeam: true,
+    creationAllowed: true,
+    memberCount: 1,
+    intent: null,
+  }).actions).toEqual(["invite-team", "create-match", "browse"]);
 });

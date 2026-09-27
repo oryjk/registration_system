@@ -66,6 +66,13 @@ export function sanitizeMiniAppRuntimeConfig(input?: RuntimeConfigInput | null):
           : defaults.home.hide_matches_after_holding_time,
       hero_banners: sanitizeHomeHeroBanners(input?.home?.hero_banners),
       next_match_social_image_url: truncateText(input?.home?.next_match_social_image_url, "", 512),
+      onboarding_welcome_image_url: truncateText(input?.home?.onboarding_welcome_image_url, "", 512),
+      onboarding_team_image_url: truncateText(input?.home?.onboarding_team_image_url, "", 512),
+      onboarding_match_image_url: truncateText(input?.home?.onboarding_match_image_url, "", 512),
+      share_home_image_url: truncateText(input?.home?.share_home_image_url, "", 512),
+      share_hall_image_url: truncateText(input?.home?.share_hall_image_url, "", 512),
+      share_team_image_url: truncateText(input?.home?.share_team_image_url, "", 512),
+      share_match_image_url: truncateText(input?.home?.share_match_image_url, "", 512),
     },
     matches: {
       related_activity_limit: clampNumber(input?.matches?.related_activity_limit, defaults.matches.related_activity_limit, 1, 10),

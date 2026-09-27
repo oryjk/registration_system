@@ -191,6 +191,7 @@ func TestPaymentWalletRoutesUseVersionedAudiencePrefixes(t *testing.T) {
 	}{
 		{http.MethodPost, "/api/v1/app/payments/recharge-orders", "user-token"},
 		{http.MethodPost, "/api/v1/app/payments/tip-orders", "user-token"},
+		{http.MethodPost, "/api/v1/app/feedback", "user-token"},
 		{http.MethodGet, "/api/v1/app/payments/orders", "user-token"},
 		{http.MethodGet, "/api/v1/app/payments/orders/P1", "user-token"},
 		{http.MethodPost, "/api/v1/app/payments/orders/P1/sync", "user-token"},
@@ -207,6 +208,8 @@ func TestPaymentWalletRoutesUseVersionedAudiencePrefixes(t *testing.T) {
 			var body *bytes.Reader
 			if test.path == "/api/v1/app/payments/recharge-orders" || test.path == "/api/v1/app/payments/tip-orders" {
 				body = bytes.NewReader([]byte(`{"amount_cents":1}`))
+			} else if test.path == "/api/v1/app/feedback" {
+				body = bytes.NewReader([]byte(`{"content":"建议"}`))
 			} else {
 				body = bytes.NewReader(nil)
 			}
@@ -293,6 +296,9 @@ func (routerPaymentService) Cancel(context.Context, sharedauth.Actor, string) (p
 }
 func (routerPaymentService) HandleNotification(context.Context, []byte) (paymentports.SettlementResult, error) {
 	return paymentports.SettlementResult{}, nil
+}
+func (routerPaymentService) CreateFeedback(context.Context, sharedauth.Actor, paymentapplication.CreateFeedbackCommand) error {
+	return nil
 }
 func (routerPaymentService) CreateTip(context.Context, sharedauth.Actor, paymentapplication.CreateTipCommand) (paymentapplication.CreateRechargeResult, error) {
 	return paymentapplication.CreateRechargeResult{}, nil

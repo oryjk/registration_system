@@ -1,9 +1,11 @@
 import { computed, ref } from "vue";
 import { listMatches } from "@/api/match";
+import { toHomeMatchCard } from "@/pages/home/homeMatchState";
 import { useMiniReviewStatus } from "@/stores/miniReview";
 import { useTeamContext } from "@/stores/teamContext";
 import { getAccessToken, hasManualLogout } from "@/utils/authStorage";
 import type { AppMatchSummary } from "@/types/match";
+import type { HomeMatchCardViewModel } from "@/types/viewModels";
 import {
   buildHallCalendarDays,
   filterHallMatches,
@@ -16,6 +18,7 @@ import {
 } from "./hallMatchState";
 
 const HALL_PAGE_SIZE = 20;
+const HALL_ENDED_REFERENCE_LIMIT = 3;
 const HALL_PUBLICATION_MODES = ["online_team", "online_individual", "online_pickup"] as const;
 
 interface HallPaginationState {
@@ -46,6 +49,7 @@ export function useHallPage() {
   const errorMessage = ref("");
   const isGuestMode = ref(true);
   const sourceMatches = ref<AppMatchSummary[]>([]);
+  const endedReferenceMatches = ref<AppMatchSummary[]>([]);
   const pagination = ref<HallPaginationState>(createInitialPagination());
   const activeKind = ref<HallMatchKindFilter>("all");
   const activeSize = ref<HallMatchSizeFilter>(0);
@@ -74,6 +78,9 @@ export function useHallPage() {
     );
     return filterHallMatches(cards, sourceMatches.value, activeKind.value, activeSize.value);
   });
+  const endedReferenceCards = computed<HomeMatchCardViewModel[]>(() =>
+    endedReferenceMatches.value.map((match) => toHomeMatchCard(match, "ended")),
+  );
   const hasMore = computed(() => !isPaginationComplete(sourceMatches.value, pagination.value));
   const sourceMatchCount = computed(() => sourceMatches.value.length);
 
@@ -87,6 +94,16 @@ export function useHallPage() {
       dateStart: selectedDateKey.value ? toLocalMidnightDate(selectedDateKey.value) ?? undefined : undefined,
       page,
       pageSize: HALL_PAGE_SIZE,
+    });
+  }
+
+  function fetchEndedReferences() {
+    return listMatches({
+      scope: "all",
+      status: "ended",
+      publicationModes: [...HALL_PUBLICATION_MODES],
+      page: 1,
+      pageSize: HALL_ENDED_REFERENCE_LIMIT,
     });
   }
 
@@ -106,6 +123,7 @@ export function useHallPage() {
         if (version !== loadVersion) return;
         isGuestMode.value = true;
         sourceMatches.value = [];
+        endedReferenceMatches.value = [];
         pagination.value = createInitialPagination();
         hasLoadedOnce.value = true;
         return;
@@ -123,6 +141,27 @@ export function useHallPage() {
 
       sourceMatches.value = response.items;
       pagination.value = { page: 1, total: response.total };
+
+      // 只有「全大厅确实没有可加入比赛」时才补历史参考。
+      // 日期筛选导致的空结果属于 filtered empty，不展示历史卡片以免混淆。
+      const shouldLoadEndedReferences =
+        response.total === 0
+        && response.items.length === 0
+        && !selectedDateKey.value;
+      if (shouldLoadEndedReferences) {
+        try {
+          const endedResponse = await fetchEndedReferences();
+          if (version !== loadVersion) return;
+          endedReferenceMatches.value = endedResponse.items;
+        } catch (_error) {
+          if (version !== loadVersion) return;
+          // 历史比赛只是空状态增强；失败不影响大厅主体和发布入口。
+          endedReferenceMatches.value = [];
+        }
+      } else {
+        endedReferenceMatches.value = [];
+      }
+
       hasLoadedOnce.value = true;
     } catch (error) {
       if (version !== loadVersion) return;
@@ -224,6 +263,7 @@ export function useHallPage() {
     canOpenPublishSheet,
     hasPublishIdentity,
     hallCards,
+    endedReferenceCards,
     hallViewer,
     nowTick,
     hasMore,

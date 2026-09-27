@@ -99,6 +99,7 @@ type fakePaymentService struct {
 	actor           sharedauth.Actor
 	createCommand   paymentapplication.CreateRechargeCommand
 	tipCommand      paymentapplication.CreateTipCommand
+	feedbackCommand paymentapplication.CreateFeedbackCommand
 	tipListResult   paymentapplication.TipListResult
 	createResult    paymentapplication.CreateRechargeResult
 	createErr       error
@@ -197,6 +198,11 @@ func TestListTipsRequiresAdminAndMapsItems(t *testing.T) {
 	if adminResponse.Code != http.StatusOK || !strings.Contains(body, `"nickname":"小程序用户"`) || !strings.Contains(body, `"suggestion":"建议"`) {
 		t.Fatalf("status=%d body=%s", adminResponse.Code, body)
 	}
+}
+
+func (f *fakePaymentService) CreateFeedback(_ context.Context, actor sharedauth.Actor, command paymentapplication.CreateFeedbackCommand) error {
+	f.actor, f.feedbackCommand = actor, command
+	return f.createErr
 }
 
 func (f *fakePaymentService) CreateTip(_ context.Context, actor sharedauth.Actor, command paymentapplication.CreateTipCommand) (paymentapplication.CreateRechargeResult, error) {

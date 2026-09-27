@@ -13,15 +13,14 @@ const emit = defineEmits<{
 
 <template>
   <TeamManagePanel title="解散球队" caption="解散球队不可恢复，请谨慎操作">
-    <view class="dissolve-action">
-    <AppButton variant="danger" size="sm" :disabled="submitting" @click="emit('dissolve')">
+    <AppButton
+      variant="danger"
+      block
+      :disabled="submitting"
+      :loading="submitting"
+      @click="emit('dissolve')"
+    >
       {{ submitting ? "解散中..." : "解散球队" }}
     </AppButton>
-    </view>
   </TeamManagePanel>
 </template>
-
-<style scoped>
-
-.dissolve-action { display: flex; justify-content: flex-end; }
-</style>

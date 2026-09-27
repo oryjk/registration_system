@@ -46,6 +46,14 @@ func (r *Repository) NicknameForUser(ctx context.Context, userID int64) (string,
 	return nickname, err
 }
 
+func (r *Repository) CreateFeedback(ctx context.Context, userID int64, content string, createdAt time.Time) error {
+	_, err := r.database.Exec(ctx,
+		`INSERT INTO user_feedbacks (user_id, content, created_at) VALUES ($1, $2, $3)`,
+		userID, content, createdAt,
+	)
+	return mapConstraintError(err)
+}
+
 func (r *Repository) CreateTip(ctx context.Context, tip paymentdomain.Tip) error {
 	_, err := r.queries.CreateTip(ctx, paymentsqlc.CreateTipParams{
 		OrderNo: tip.OrderNo, UserID: tip.UserID, Nickname: tip.Nickname,

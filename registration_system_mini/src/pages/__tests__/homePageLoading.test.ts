@@ -103,7 +103,7 @@ describe("home page loading states", () => {
     ).text();
 
     expect(source.includes('<HomeEmptyHero')).toEqual(true);
-    expect(source.includes('v-else-if="hasLoadedMatchData"')).toEqual(true);
+    expect(source.includes('v-else-if="hasLoadedMatchData && !ongoingMatches.length"')).toEqual(true);
     expect(source.includes("const upcomingMatches = ref<HomeMatchCardViewModel[]>([]);")).toEqual(true);
     expect(source.includes("const ongoingMatches = ref<HomeMatchCardViewModel[]>([]);")).toEqual(true);
     expect(source.includes("const endedMatches = ref<HomeMatchCardViewModel[]>([]);")).toEqual(true);
@@ -121,14 +121,17 @@ describe("home page loading states", () => {
     expect(source.includes("loadMiniAppRuntimeConfig")).toEqual(false);
   });
 
-  test("wires persisted onboarding intent into the empty-home actions", async () => {
+  test("wires user-scoped onboarding intent into the empty-home actions", async () => {
     const source = await sourceFile("pages/home/index.vue").text();
 
     expect(source.includes("intent: onboardingGuide.intent.value")).toEqual(true);
-    expect(source.includes('url: "/pages/challenges/create-individual/index"')).toEqual(true);
+    expect(source.includes('guidanceNavigation.navigateTo("/pages/challenges/create-individual/index")')).toEqual(true);
     expect(source.includes('@create-pickup="openCreatePickup"')).toEqual(true);
-    expect(source.includes("onboardingGuide.setIntent(\"captain\")")).toEqual(true);
+    expect(source.includes('onboardingGuide.setIntent(action === "create-team" ? "captain" : "member")')).toEqual(true);
     expect(source.includes("onboardingGuide.setIntent(\"player\")")).toEqual(true);
+
+    // 账号隔离、收起和恢复由 useHomeOnboardingGuide 的行为测试覆盖。
+
   });
 
   test("guards initial failure with explicit error state and keeps empty states gated behind a successful load", async () => {
@@ -219,6 +222,6 @@ describe("home page loading states", () => {
     expect(source.includes("onShareTimeline")).toEqual(true);
     expect(source.includes('const shareTitle = "约球开踢：组队、报名、上场";')).toEqual(true);
     expect(source.includes('const sharePath = "/pages/home/index";')).toEqual(true);
-    expect(source.includes("imageUrl: HOME_SHARE_IMAGE_URL")).toEqual(true);
+    expect(source.includes("imageUrl: shareCoverUrl.value")).toEqual(true);
   });
 });
