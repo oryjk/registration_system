@@ -34,9 +34,20 @@ const {
 } = useTipDonation();
 
 const contactImages = [DEVELOPER_WECHAT_QRCODE_URL, OFFICIAL_ACCOUNT_QRCODE_URL];
+const supportAmountOptions = [
+  { amount: "19.9", label: "喝杯咖啡" },
+  { amount: "59.9", label: "吃包耙华华" },
+  { amount: "99.9", label: "整包黄金叶" },
+];
+
 function previewContactImage(current: string) {
   uni.previewImage({ current, urls: contactImages });
 }
+
+function selectSupportAmount(amount: string) {
+  amountInput.value = amount;
+}
+
 usePageRefresh(() => preloadMiniReviewStatus(true));
 </script>
 
@@ -73,7 +84,7 @@ usePageRefresh(() => preloadMiniReviewStatus(true));
       </AppSurface>
 
       <AppSurface custom-class="contact-developer-card">
-        <SectionHeader title="一起把它做得更好" caption="功能建议免费提交，不需要打赏" />
+        <SectionHeader title="一起把它做得更好" />
         <text class="contact-developer-thanks">
           有不好用的地方、缺少的功能，或者你想到更好的做法，都欢迎直接告诉我。每一条建议我都会认真看。
         </text>
@@ -109,11 +120,24 @@ usePageRefresh(() => preloadMiniReviewStatus(true));
 
         <view class="contact-developer-field">
           <text class="contact-developer-field__label">支持金额（元）</text>
+          <view class="contact-developer-amount-options">
+            <view
+              v-for="option in supportAmountOptions"
+              :key="option.amount"
+              class="contact-developer-amount-option"
+              :class="{ 'contact-developer-amount-option--selected': amountInput === option.amount }"
+              hover-class="contact-developer-amount-option--pressed"
+              @tap="selectSupportAmount(option.amount)"
+            >
+              <text class="contact-developer-amount-option__price">¥{{ option.amount }}</text>
+              <text class="contact-developer-amount-option__label">{{ option.label }}</text>
+            </view>
+          </view>
           <input
             v-model="amountInput"
             class="contact-developer-field__input"
             type="digit"
-            placeholder="随心支持，多少都谢谢"
+            placeholder="也可以输入其他金额"
             placeholder-class="contact-developer-field__placeholder"
           />
         </view>
@@ -232,6 +256,53 @@ usePageRefresh(() => preloadMiniReviewStatus(true));
   font-size: 26rpx;
   font-weight: 600;
   line-height: 1.4;
+}
+
+.contact-developer-amount-options {
+  display: flex;
+  gap: 14rpx;
+  margin-top: 14rpx;
+}
+
+.contact-developer-amount-option {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  height: 92rpx;
+  border-radius: var(--ui-radius-button);
+  background: var(--ui-color-neutral-bg);
+  color: var(--ui-color-text);
+}
+
+.contact-developer-amount-option__price {
+  font-size: 26rpx;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.contact-developer-amount-option__label {
+  margin-top: 6rpx;
+  color: var(--ui-color-text-muted);
+  font-size: 20rpx;
+  font-weight: 400;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.contact-developer-amount-option--selected .contact-developer-amount-option__label {
+  color: var(--ui-color-accent-deep);
+}
+
+.contact-developer-amount-option--selected {
+  background: var(--ui-color-accent-soft);
+  color: var(--ui-color-accent-deep);
+}
+
+.contact-developer-amount-option--pressed {
+  opacity: 0.78;
 }
 
 .contact-developer-field__input,
