@@ -2,6 +2,7 @@ package ports
 
 import (
 	"context"
+	"time"
 
 	"github.com/oryjk/registration_system/registration_system_go/internal/user/domain"
 )
@@ -9,6 +10,7 @@ import (
 type AppRepository interface {
 	FindByID(context.Context, int64) (domain.User, bool, error)
 	UpdateAppProfile(context.Context, domain.User) (domain.User, error)
+	TouchLastActive(context.Context, int64, time.Time, time.Time) error
 }
 
 type TestLoginTeam struct {
@@ -31,6 +33,7 @@ type TestLoginRepository interface {
 type AdminUserFilter struct {
 	Search         string
 	MatchAdminOnly bool
+	Activity       string
 	Limit          int
 	Offset         int
 }

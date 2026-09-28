@@ -9,6 +9,7 @@ import {
   Settings,
   ShieldCheck,
   Store,
+  User,
   UserCog,
   Users,
   X,
@@ -55,6 +56,13 @@ const NAV_ITEMS: NavItem[] = [
     description: "球队与成员",
     icon: Users,
     matchPrefixes: ["/teams"],
+  },
+  {
+    path: "/users",
+    label: "用户管理",
+    description: "用户与活跃状态",
+    icon: User,
+    matchPrefixes: ["/users"],
   },
   {
     path: "/match-admins",

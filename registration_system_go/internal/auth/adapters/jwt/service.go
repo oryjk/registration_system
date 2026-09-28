@@ -19,9 +19,10 @@ type Service struct {
 }
 
 type actorClaims struct {
-	ActorKind    sharedauth.ActorKind `json:"actor_kind"`
-	ActorID      int64                `json:"actor_id"`
-	IsSuperAdmin bool                 `json:"is_super_admin,omitempty"`
+	ActorKind      sharedauth.ActorKind `json:"actor_kind"`
+	ActorID        int64                `json:"actor_id"`
+	IsSuperAdmin   bool                 `json:"is_super_admin,omitempty"`
+	IsImpersonated bool                 `json:"is_impersonated,omitempty"`
 	jwtlib.RegisteredClaims
 }
 
@@ -37,6 +38,10 @@ func NewService(secret string, ttl time.Duration) (*Service, error) {
 
 func (s *Service) IssueUser(ctx context.Context, userID int64) (string, error) {
 	return s.issue(ctx, sharedauth.Actor{Kind: sharedauth.ActorUser, ID: userID})
+}
+
+func (s *Service) IssueImpersonatedUser(ctx context.Context, userID int64) (string, error) {
+	return s.issue(ctx, sharedauth.Actor{Kind: sharedauth.ActorUser, ID: userID, IsImpersonated: true})
 }
 
 func (s *Service) IssueAdmin(ctx context.Context, adminID int64, isSuperAdmin bool) (string, error) {
@@ -67,18 +72,20 @@ func (s *Service) Parse(_ context.Context, tokenString string) (sharedauth.Actor
 		return sharedauth.Actor{}, errors.New("invalid JWT actor kind")
 	}
 	return sharedauth.Actor{
-		Kind:         claims.ActorKind,
-		ID:           claims.ActorID,
-		IsSuperAdmin: claims.IsSuperAdmin,
+		Kind:           claims.ActorKind,
+		ID:             claims.ActorID,
+		IsSuperAdmin:   claims.IsSuperAdmin,
+		IsImpersonated: claims.IsImpersonated,
 	}, nil
 }
 
 func (s *Service) issue(_ context.Context, actor sharedauth.Actor) (string, error) {
 	now := s.now()
 	claims := actorClaims{
-		ActorKind:    actor.Kind,
-		ActorID:      actor.ID,
-		IsSuperAdmin: actor.IsSuperAdmin,
+		ActorKind:      actor.Kind,
+		ActorID:        actor.ID,
+		IsSuperAdmin:   actor.IsSuperAdmin,
+		IsImpersonated: actor.IsImpersonated,
 		RegisteredClaims: jwtlib.RegisteredClaims{
 			IssuedAt:  jwtlib.NewNumericDate(now),
 			ExpiresAt: jwtlib.NewNumericDate(now.Add(s.ttl)),

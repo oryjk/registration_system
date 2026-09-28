@@ -47,14 +47,15 @@ type ProfileResponse struct {
 
 // AdminUserResponse 管理端的微信用户条目（不暴露 openid）。
 type AdminUserResponse struct {
-	ID           int64     `json:"id"`
-	Nickname     string    `json:"nickname"`
-	AvatarURL    *string   `json:"avatar_url"`
-	RealName     *string   `json:"real_name"`
-	PhoneNumber  *string   `json:"phone_number"`
-	Status       string    `json:"status"`
-	IsMatchAdmin bool      `json:"is_match_admin"`
-	CreatedAt    time.Time `json:"created_at"`
+	ID           int64      `json:"id"`
+	Nickname     string     `json:"nickname"`
+	AvatarURL    *string    `json:"avatar_url"`
+	RealName     *string    `json:"real_name"`
+	PhoneNumber  *string    `json:"phone_number"`
+	Status       string     `json:"status"`
+	IsMatchAdmin bool       `json:"is_match_admin"`
+	LastActiveAt *time.Time `json:"last_active_at"`
+	CreatedAt    time.Time  `json:"created_at"`
 }
 
 type AdminUserListResponse struct {
@@ -109,7 +110,9 @@ func (h *Handler) ListUsers(c *gin.Context) {
 		sharedhttpapi.WriteError(c, sharederror.ErrUnauthorized)
 		return
 	}
-	query := application.AdminUserListQuery{Search: c.Query("search"), MatchAdminOnly: c.Query("match_admin_only") == "true"}
+	query := application.AdminUserListQuery{
+		Search: c.Query("search"), MatchAdminOnly: c.Query("match_admin_only") == "true", Activity: c.Query("activity"),
+	}
 	var err error
 	if raw := c.Query("page"); raw != "" {
 		query.Page, err = strconv.Atoi(raw)
@@ -172,7 +175,7 @@ func mapAdminUser(user domain.User) AdminUserResponse {
 	return AdminUserResponse{
 		ID: user.ID, Nickname: user.Nickname, AvatarURL: user.AvatarURL,
 		RealName: user.RealName, PhoneNumber: user.PhoneNumber, Status: string(user.Status),
-		IsMatchAdmin: user.IsMatchAdmin, CreatedAt: user.CreatedAt,
+		IsMatchAdmin: user.IsMatchAdmin, LastActiveAt: user.LastActiveAt, CreatedAt: user.CreatedAt,
 	}
 }
 

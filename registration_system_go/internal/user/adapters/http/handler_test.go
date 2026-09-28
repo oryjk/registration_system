@@ -6,10 +6,12 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	authhttp "github.com/oryjk/registration_system/registration_system_go/internal/auth/adapters/http"
 	sharedauth "github.com/oryjk/registration_system/registration_system_go/internal/shared/auth"
+	"github.com/oryjk/registration_system/registration_system_go/internal/user/application"
 	"github.com/oryjk/registration_system/registration_system_go/internal/user/domain"
 )
 
@@ -37,6 +39,46 @@ func TestAdminUpdatesPlayerProfile(t *testing.T) {
 	if service.actor.ID != 1 || service.userID != 7 || service.realName != "王小明" || service.phoneNumber != "13800138000" {
 		t.Fatalf("request was not mapped: %+v", service)
 	}
+}
+
+func TestAdminListsUsersWithLastActiveAtAndActivityFilter(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	lastActiveAt := time.Date(2026, 9, 28, 10, 30, 0, 0, time.UTC)
+	users := &fakeAdminUsers{result: application.AdminUserListResult{
+		Items: []domain.User{{ID: 7, Nickname: "小王", Status: domain.StatusActive, LastActiveAt: &lastActiveAt}},
+		Total: 1, Page: 1, PageSize: 20,
+	}}
+	handler := NewHandler(nil, users)
+	router := gin.New()
+	group := router.Group("")
+	group.Use(authhttp.NewMiddleware(fakeAdminTokens{}).RequireAdmin())
+	handler.RegisterAdminRoutes(group)
+
+	request := httptest.NewRequest(http.MethodGet, "/users?activity=active_7d", nil)
+	request.Header.Set("Authorization", "Bearer admin-token")
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+
+	if response.Code != http.StatusOK || !bytes.Contains(response.Body.Bytes(), []byte(`"last_active_at":"2026-09-28T10:30:00Z"`)) {
+		t.Fatalf("unexpected response %d: %s", response.Code, response.Body.String())
+	}
+	if users.query.Activity != "active_7d" {
+		t.Fatalf("activity query=%q, want active_7d", users.query.Activity)
+	}
+}
+
+type fakeAdminUsers struct {
+	result application.AdminUserListResult
+	query  application.AdminUserListQuery
+}
+
+func (f *fakeAdminUsers) List(_ context.Context, _ sharedauth.Actor, query application.AdminUserListQuery) (application.AdminUserListResult, error) {
+	f.query = query
+	return f.result, nil
+}
+
+func (f *fakeAdminUsers) SetMatchAdmin(context.Context, sharedauth.Actor, int64, bool) (domain.User, error) {
+	return domain.User{}, nil
 }
 
 type fakeProfileService struct {

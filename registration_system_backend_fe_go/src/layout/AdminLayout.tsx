@@ -15,6 +15,7 @@ const PATH_TITLES: Record<string, string> = {
   "/": "系统概览",
   "/matches": "比赛管理",
   "/teams": "球队管理",
+  "/users": "用户管理",
   "/match-admins": "比赛管理员",
   "/admins": "场馆管理员",
   "/access": "接入状态",

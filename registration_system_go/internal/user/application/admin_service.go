@@ -24,8 +24,10 @@ type AdminUserListQuery struct {
 	Search string
 	// MatchAdminOnly 为 true 时只返回比赛管理员。
 	MatchAdminOnly bool
-	Page           int
-	PageSize       int
+	// Activity: all / active_7d / inactive_30d / never。
+	Activity string
+	Page     int
+	PageSize int
 }
 
 type AdminUserListResult struct {
@@ -52,8 +54,12 @@ func (s AdminUserService) List(ctx context.Context, actor sharedauth.Actor, quer
 	if query.PageSize > maxAdminUserPageSize {
 		query.PageSize = maxAdminUserPageSize
 	}
+	activity, err := normalizeAdminUserActivity(query.Activity)
+	if err != nil {
+		return AdminUserListResult{}, err
+	}
 	filter := ports.AdminUserFilter{
-		Search: strings.TrimSpace(query.Search), MatchAdminOnly: query.MatchAdminOnly,
+		Search: strings.TrimSpace(query.Search), MatchAdminOnly: query.MatchAdminOnly, Activity: activity,
 		Limit: query.PageSize, Offset: (query.Page - 1) * query.PageSize,
 	}
 	items, err := s.repository.ListForAdmin(ctx, filter)
@@ -65,6 +71,17 @@ func (s AdminUserService) List(ctx context.Context, actor sharedauth.Actor, quer
 		return AdminUserListResult{}, sharederror.Wrap(sharederror.KindInternal, "统计用户失败", err)
 	}
 	return AdminUserListResult{Items: items, Total: total, Page: query.Page, PageSize: query.PageSize}, nil
+}
+
+func normalizeAdminUserActivity(value string) (string, error) {
+	switch value = strings.TrimSpace(value); value {
+	case "", "all":
+		return "all", nil
+	case "active_7d", "inactive_30d", "never":
+		return value, nil
+	default:
+		return "", sharederror.New(sharederror.KindValidation, "用户活跃筛选条件无效")
+	}
 }
 
 // SetMatchAdmin 把任意微信用户设为/取消比赛管理员。

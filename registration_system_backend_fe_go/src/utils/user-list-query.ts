@@ -1,4 +1,4 @@
-import type { WeChatUserListQuery } from "../types/user";
+import type { WeChatUserActivity, WeChatUserListQuery } from "../types/user";
 
 const DEFAULT_PAGE = 1;
 const DEFAULT_PAGE_SIZE = 20;
@@ -6,6 +6,17 @@ const DEFAULT_PAGE_SIZE = 20;
 export interface ParsedUserListQuery extends WeChatUserListQuery {
   page: number;
   page_size: number;
+}
+
+function parseActivity(value: string | null): WeChatUserActivity {
+  switch (value) {
+    case "active_7d":
+    case "inactive_30d":
+    case "never":
+      return value;
+    default:
+      return "all";
+  }
 }
 
 function positiveInteger(value: string | null, fallback: number) {
@@ -20,6 +31,7 @@ export function parseUserListQuery(search: string): ParsedUserListQuery {
     page: positiveInteger(params.get("page"), DEFAULT_PAGE),
     page_size: positiveInteger(params.get("page_size"), DEFAULT_PAGE_SIZE),
     match_admin_only: params.get("match_admin_only") === "true",
+    activity: parseActivity(params.get("activity")),
   };
   const normalizedSearch = params.get("search")?.trim();
   if (normalizedSearch) query.search = normalizedSearch;
@@ -33,6 +45,9 @@ export function serializeUserListQuery(query: WeChatUserListQuery): string {
 
   if (search) params.set("search", search);
   if (query.match_admin_only) params.set("match_admin_only", "true");
+  if (query.activity && query.activity !== "all") {
+    params.set("activity", query.activity);
+  }
   if (query.page && query.page !== DEFAULT_PAGE) {
     params.set("page", String(query.page));
   }

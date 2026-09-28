@@ -69,6 +69,25 @@ export function formatClockTime(value: string | Date | null | undefined) {
     : "-";
 }
 
+/** 相对时间（刚刚 / N 分钟前 / N 小时前 / N 天前），用于最近活跃等运营时间点。 */
+export function formatRelativeDateTime(
+  value: string | Date | null | undefined,
+  now = new Date(),
+) {
+  const date = toDate(value);
+  if (!date) return "-";
+
+  const elapsedMs = Math.max(0, now.getTime() - date.getTime());
+  const minuteMs = 60 * 1000;
+  const hourMs = 60 * minuteMs;
+  const dayMs = 24 * hourMs;
+
+  if (elapsedMs < minuteMs) return "刚刚";
+  if (elapsedMs < hourMs) return `${Math.floor(elapsedMs / minuteMs)} 分钟前`;
+  if (elapsedMs < dayMs) return `${Math.floor(elapsedMs / hourMs)} 小时前`;
+  return `${Math.floor(elapsedMs / dayMs)} 天前`;
+}
+
 /** 分转元并加前缀（¥100.00）。 */
 export function formatYuan(amountCents: number) {
   return `¥${(amountCents / 100).toFixed(2)}`;

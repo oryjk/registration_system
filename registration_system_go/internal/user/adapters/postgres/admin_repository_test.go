@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"testing"
+	"time"
 
 	sharedauth "github.com/oryjk/registration_system/registration_system_go/internal/shared/auth"
 	"github.com/oryjk/registration_system/registration_system_go/internal/testsupport"
@@ -13,6 +14,57 @@ import (
 
 // TestAdminUserRepositorySearchAndMatchAdmin 覆盖管理端用户搜索、
 // 比赛管理员过滤与设置/取消标记的持久化。
+func TestAdminUserRepositoryFiltersByActivity(t *testing.T) {
+	pool := testsupport.StartPostgres(t)
+	repository := NewRepository(pool)
+	ctx := context.Background()
+	now := time.Now().UTC()
+
+	seed := func(openID, nickname string) domain.User {
+		t.Helper()
+		user, err := repository.Create(ctx, domain.User{OpenID: openID, Nickname: nickname, Status: domain.StatusActive})
+		if err != nil {
+			t.Fatalf("create user %s: %v", nickname, err)
+		}
+		return user
+	}
+	active := seed("activity-active", "最近活跃")
+	inactive := seed("activity-inactive", "长期未活跃")
+	never := seed("activity-never", "从未活跃")
+
+	activeAt := now.Add(-24 * time.Hour)
+	inactiveAt := now.Add(-31 * 24 * time.Hour)
+	if err := repository.TouchLastActive(ctx, active.ID, activeAt, now); err != nil {
+		t.Fatalf("touch active user: %v", err)
+	}
+	if err := repository.TouchLastActive(ctx, inactive.ID, inactiveAt, now); err != nil {
+		t.Fatalf("touch inactive user: %v", err)
+	}
+
+	adminActor := sharedauth.Actor{Kind: sharedauth.ActorAdmin, ID: 1}
+	service := userapplication.NewAdminUserService(repository)
+	assertIDs := func(activity string, want ...int64) {
+		t.Helper()
+		result, err := service.List(ctx, adminActor, userapplication.AdminUserListQuery{Activity: activity, PageSize: 100})
+		if err != nil {
+			t.Fatalf("list activity=%s: %v", activity, err)
+		}
+		if len(result.Items) != len(want) {
+			t.Fatalf("activity=%s items=%d, want=%d: %+v", activity, len(result.Items), len(want), result.Items)
+		}
+		for index, userID := range want {
+			if result.Items[index].ID != userID {
+				t.Fatalf("activity=%s item[%d]=%d, want=%d", activity, index, result.Items[index].ID, userID)
+			}
+		}
+	}
+
+	assertIDs("active_7d", active.ID)
+	assertIDs("inactive_30d", inactive.ID)
+	assertIDs("never", never.ID)
+	assertIDs("all", active.ID, inactive.ID, never.ID)
+}
+
 func TestAdminUserRepositorySearchAndMatchAdmin(t *testing.T) {
 	pool := testsupport.StartPostgres(t)
 	repository := NewRepository(pool)

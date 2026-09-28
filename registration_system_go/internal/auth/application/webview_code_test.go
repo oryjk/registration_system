@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"regexp"
+	"strings"
 	"testing"
 	"time"
 
@@ -60,6 +61,32 @@ func TestWebviewCodeIssueStoresHashAndReturnsPlainCode(t *testing.T) {
 	}
 }
 
+func TestWebviewCodePreservesImpersonatedSession(t *testing.T) {
+	repository := &fakeWebviewCodeRepository{consumedUserID: 37, consumed: true}
+	tokens := &fakeWebviewCodeTokens{}
+	service := NewWebviewCodeService(repository, tokens)
+	actor := sharedauth.Actor{Kind: sharedauth.ActorUser, ID: 37, IsImpersonated: true}
+
+	issued, err := service.Issue(context.Background(), actor)
+	if err != nil {
+		t.Fatalf("Issue() error=%v", err)
+	}
+	if !strings.HasPrefix(issued.Code, "imp_") {
+		t.Fatalf("impersonated webview code missing protected marker: %q", issued.Code)
+	}
+	if repository.created.CodeHash != authdomain.HashWebviewCode(issued.Code) {
+		t.Fatal("stored hash must cover the impersonation marker")
+	}
+
+	result, err := service.Exchange(context.Background(), issued.Code)
+	if err != nil {
+		t.Fatalf("Exchange() error=%v", err)
+	}
+	if result.Token != "impersonated-user-token" || !tokens.impersonated || tokens.userID != 37 {
+		t.Fatalf("result=%+v tokens=%+v", result, tokens)
+	}
+}
+
 func TestWebviewCodeExchangeIssuesUserToken(t *testing.T) {
 	repository := &fakeWebviewCodeRepository{consumedUserID: 37, consumed: true}
 	tokens := &fakeWebviewCodeTokens{}
@@ -113,11 +140,20 @@ func (f *fakeWebviewCodeRepository) Consume(_ context.Context, codeHash string) 
 	return f.consumedUserID, f.consumed, nil
 }
 
-type fakeWebviewCodeTokens struct{ userID int64 }
+type fakeWebviewCodeTokens struct {
+	userID       int64
+	impersonated bool
+}
 
 func (f *fakeWebviewCodeTokens) IssueUser(_ context.Context, userID int64) (string, error) {
 	f.userID = userID
 	return "user-token", nil
+}
+
+func (f *fakeWebviewCodeTokens) IssueImpersonatedUser(_ context.Context, userID int64) (string, error) {
+	f.userID = userID
+	f.impersonated = true
+	return "impersonated-user-token", nil
 }
 
 func (*fakeWebviewCodeTokens) IssueAdmin(context.Context, int64, bool) (string, error) {

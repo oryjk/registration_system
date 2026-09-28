@@ -2,12 +2,15 @@ package application
 
 import (
 	"context"
+	"time"
 
 	sharedauth "github.com/oryjk/registration_system/registration_system_go/internal/shared/auth"
 	sharederror "github.com/oryjk/registration_system/registration_system_go/internal/shared/domain"
 	"github.com/oryjk/registration_system/registration_system_go/internal/user/domain"
 	"github.com/oryjk/registration_system/registration_system_go/internal/user/ports"
 )
+
+const userActivityTouchInterval = 30 * time.Minute
 
 type AppService struct {
 	repository ports.AppRepository
@@ -53,8 +56,23 @@ func (s AppService) UpdateMe(ctx context.Context, actor sharedauth.Actor, comman
 }
 
 func (s AppService) EnsureActive(ctx context.Context, userID int64) error {
-	_, err := s.activeUser(ctx, userID)
-	return err
+	return s.EnsureActiveForRequest(ctx, userID, true)
+}
+
+func (s AppService) EnsureActiveForRequest(ctx context.Context, userID int64, trackActivity bool) error {
+	user, err := s.activeUser(ctx, userID)
+	if err != nil {
+		return err
+	}
+	if !trackActivity {
+		return nil
+	}
+	now := time.Now().UTC()
+	if user.LastActiveAt == nil || now.Sub(user.LastActiveAt.UTC()) >= userActivityTouchInterval {
+		// 活跃时间只是运营元数据，写入失败不能阻断用户正常请求；后续请求会再次尝试补记。
+		_ = s.repository.TouchLastActive(ctx, userID, now, now.Add(-userActivityTouchInterval))
+	}
+	return nil
 }
 
 // EnsureMatchAdmin 校验用户存在、未冻结且被设为比赛管理员。

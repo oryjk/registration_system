@@ -57,6 +57,9 @@ func TestImpersonateIssuesTokenForTargetUser(t *testing.T) {
 	if result.Token != "impersonated-token" || result.User.ID != 9 {
 		t.Fatalf("expected token for user 9, got %+v", result)
 	}
+	if !service.tokens.(*fakeTokenService).impersonated {
+		t.Fatal("impersonation must issue an impersonated user token")
+	}
 }
 
 func TestImpersonateRejectsActorOutsideAllowlist(t *testing.T) {

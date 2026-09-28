@@ -14,10 +14,14 @@ import (
 const impersonationSearchLimit = 20
 
 // ImpersonationService 身份切换（impersonate）：白名单账号换取任意小程序用户的登录 token，
-// 用于复现用户反馈的问题。签出的 token 与正常登录 token 同构。
+// 用于复现用户反馈的问题。token 保持普通用户权限语义，但带内部 impersonation 标记，避免调试访问污染活跃数据。
+type ImpersonationTokenIssuer interface {
+	IssueImpersonatedUser(context.Context, int64) (string, error)
+}
+
 type ImpersonationService struct {
 	users  ports.ImpersonationUserRepository
-	tokens ports.TokenService
+	tokens ImpersonationTokenIssuer
 	// allowedUserIDs 允许发起身份切换的用户白名单（env IMPERSONATION_ALLOWED_USER_IDS）；
 	// 为空时接口对所有人关闭。
 	allowedUserIDs map[int64]struct{}
@@ -28,7 +32,7 @@ type ImpersonationResult struct {
 	User  userdomain.User
 }
 
-func NewImpersonationService(users ports.ImpersonationUserRepository, tokens ports.TokenService, allowedUserIDs map[int64]struct{}) *ImpersonationService {
+func NewImpersonationService(users ports.ImpersonationUserRepository, tokens ImpersonationTokenIssuer, allowedUserIDs map[int64]struct{}) *ImpersonationService {
 	return &ImpersonationService{users: users, tokens: tokens, allowedUserIDs: allowedUserIDs}
 }
 
@@ -65,7 +69,7 @@ func (s *ImpersonationService) Impersonate(ctx context.Context, actorID, targetU
 	if !user.IsActive() {
 		return ImpersonationResult{}, sharederror.New(sharederror.KindForbidden, "目标用户已冻结，无法切换")
 	}
-	token, err := s.tokens.IssueUser(ctx, user.ID)
+	token, err := s.tokens.IssueImpersonatedUser(ctx, user.ID)
 	if err != nil {
 		return ImpersonationResult{}, sharederror.Wrap(sharederror.KindInternal, "签发身份切换凭证失败", err)
 	}

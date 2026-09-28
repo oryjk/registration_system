@@ -14,6 +14,8 @@ import (
 // WebviewCodeTTL 一次性 code 有效期 60 秒。
 const WebviewCodeTTL = 60 * time.Second
 
+const impersonatedWebviewCodePrefix = "imp_"
+
 type WebviewCodeIssueResult struct {
 	Code      string
 	ExpiresAt time.Time
@@ -23,14 +25,19 @@ type WebviewCodeExchangeResult struct {
 	Token string
 }
 
+type WebviewTokenService interface {
+	ports.TokenService
+	IssueImpersonatedUser(context.Context, int64) (string, error)
+}
+
 // WebviewCodeService web-view 一次性 code 的签发与兑换。
 type WebviewCodeService struct {
 	repository ports.WebviewCodeRepository
-	tokens     ports.TokenService
+	tokens     WebviewTokenService
 	now        func() time.Time
 }
 
-func NewWebviewCodeService(repository ports.WebviewCodeRepository, tokens ports.TokenService) *WebviewCodeService {
+func NewWebviewCodeService(repository ports.WebviewCodeRepository, tokens WebviewTokenService) *WebviewCodeService {
 	return &WebviewCodeService{repository: repository, tokens: tokens, now: time.Now}
 }
 
@@ -39,10 +46,14 @@ func (s *WebviewCodeService) Issue(ctx context.Context, actor sharedauth.Actor) 
 	if !actor.IsUser() {
 		return WebviewCodeIssueResult{}, sharederror.ErrForbidden
 	}
-	plain, hash, err := authdomain.GenerateWebviewCode()
+	plain, _, err := authdomain.GenerateWebviewCode()
 	if err != nil {
 		return WebviewCodeIssueResult{}, sharederror.Wrap(sharederror.KindInternal, "生成 web-view code 失败", err)
 	}
+	if actor.IsImpersonated {
+		plain = impersonatedWebviewCodePrefix + plain
+	}
+	hash := authdomain.HashWebviewCode(plain)
 	expiresAt := s.now().Add(WebviewCodeTTL)
 	code, err := authdomain.NewWebviewCode(actor.ID, hash, expiresAt, s.now())
 	if err != nil {
@@ -67,7 +78,12 @@ func (s *WebviewCodeService) Exchange(ctx context.Context, code string) (Webview
 	if !consumed {
 		return WebviewCodeExchangeResult{}, sharederror.New(sharederror.KindUnauthorized, "code 无效或已过期")
 	}
-	token, err := s.tokens.IssueUser(ctx, userID)
+	var token string
+	if strings.HasPrefix(code, impersonatedWebviewCodePrefix) {
+		token, err = s.tokens.IssueImpersonatedUser(ctx, userID)
+	} else {
+		token, err = s.tokens.IssueUser(ctx, userID)
+	}
 	if err != nil {
 		return WebviewCodeExchangeResult{}, sharederror.Wrap(sharederror.KindInternal, "签发用户令牌失败", err)
 	}

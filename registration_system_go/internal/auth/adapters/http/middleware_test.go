@@ -50,9 +50,35 @@ func TestRequireActiveUserReturnsInternalErrorForCheckerFailure(t *testing.T) {
 
 var errActiveUserLookup = errors.New("lookup failed")
 
-type fakeActiveUserChecker struct{ err error }
+type fakeActiveUserChecker struct {
+	err           error
+	trackActivity bool
+}
 
-func (f *fakeActiveUserChecker) EnsureActive(context.Context, int64) error { return f.err }
+func (f *fakeActiveUserChecker) EnsureActiveForRequest(_ context.Context, _ int64, trackActivity bool) error {
+	f.trackActivity = trackActivity
+	return f.err
+}
+
+func TestRequireActiveUserDoesNotTrackImpersonatedUserActivity(t *testing.T) {
+	router, service := testRouter(t)
+	checker := &fakeActiveUserChecker{}
+	router.GET("/user", NewMiddleware(service).RequireUser(), NewMiddleware(service).RequireActiveUser(checker), func(c *gin.Context) {
+		c.Status(http.StatusNoContent)
+	})
+	token, err := service.IssueImpersonatedUser(context.Background(), 42)
+	if err != nil {
+		t.Fatalf("issue impersonated user token: %v", err)
+	}
+
+	response := performRequest(router, "/user", token)
+	if response.Code != http.StatusNoContent {
+		t.Fatalf("status=%d, want %d", response.Code, http.StatusNoContent)
+	}
+	if checker.trackActivity {
+		t.Fatal("impersonated requests must not refresh last_active_at")
+	}
+}
 
 func TestRequireUserStoresUserActor(t *testing.T) {
 	router, service := testRouter(t)

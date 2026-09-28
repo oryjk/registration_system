@@ -30,6 +30,26 @@ func TestServiceRoundTripsUserActor(t *testing.T) {
 	}
 }
 
+func TestServiceRoundTripsImpersonatedUserActor(t *testing.T) {
+	service, err := NewService(testSecret, time.Hour)
+	if err != nil {
+		t.Fatalf("create JWT service: %v", err)
+	}
+	token, err := service.IssueImpersonatedUser(context.Background(), 42)
+	if err != nil {
+		t.Fatalf("issue impersonated user token: %v", err)
+	}
+
+	actor, err := service.Parse(context.Background(), token)
+	if err != nil {
+		t.Fatalf("parse impersonated user token: %v", err)
+	}
+	expected := sharedauth.Actor{Kind: sharedauth.ActorUser, ID: 42, IsImpersonated: true}
+	if actor != expected {
+		t.Fatalf("expected actor %+v, got %+v", expected, actor)
+	}
+}
+
 func TestServiceRoundTripsSuperAdminActor(t *testing.T) {
 	service, err := NewService(testSecret, time.Hour)
 	if err != nil {

@@ -80,11 +80,17 @@ func (f *fakeUsers) UpdateProfile(_ context.Context, user userdomain.User) (user
 var _ userports.Repository = (*fakeUsers)(nil)
 
 type fakeTokenService struct {
-	token      string
-	adminSuper bool
+	token        string
+	adminSuper   bool
+	impersonated bool
 }
 
 func (f *fakeTokenService) IssueUser(context.Context, int64) (string, error) {
+	return f.token, nil
+}
+
+func (f *fakeTokenService) IssueImpersonatedUser(context.Context, int64) (string, error) {
+	f.impersonated = true
 	return f.token, nil
 }
 

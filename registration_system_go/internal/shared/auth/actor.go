@@ -8,9 +8,10 @@ const (
 )
 
 type Actor struct {
-	Kind         ActorKind
-	ID           int64
-	IsSuperAdmin bool
+	Kind           ActorKind
+	ID             int64
+	IsSuperAdmin   bool
+	IsImpersonated bool
 }
 
 func (a Actor) IsUser() bool {

@@ -21,7 +21,7 @@ type Middleware struct {
 }
 
 type ActiveUserChecker interface {
-	EnsureActive(context.Context, int64) error
+	EnsureActiveForRequest(context.Context, int64, bool) error
 }
 
 func NewMiddleware(tokens ports.TokenService) Middleware {
@@ -43,7 +43,7 @@ func (m Middleware) RequireActiveUser(checker ActiveUserChecker) gin.HandlerFunc
 			abort(c, http.StatusUnauthorized, "unauthorized")
 			return
 		}
-		if err := checker.EnsureActive(c.Request.Context(), actor.ID); err != nil {
+		if err := checker.EnsureActiveForRequest(c.Request.Context(), actor.ID, !actor.IsImpersonated); err != nil {
 			if errors.Is(err, sharederror.ErrUnauthorized) {
 				c.Abort()
 				sharedhttpapi.WriteError(c, sharederror.ErrUnauthorized)

@@ -25,6 +25,7 @@ type User struct {
 	Status      Status
 	// IsMatchAdmin 是否为比赛管理员（管理端设置）：可在小程序端录入比赛比分。
 	IsMatchAdmin bool
+	LastActiveAt *time.Time
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
 }

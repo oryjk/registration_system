@@ -249,16 +249,24 @@ type Tip struct {
 }
 
 type User struct {
-	ID           int64            `json:"id"`
-	Openid       string           `json:"openid"`
-	Nickname     string           `json:"nickname"`
-	AvatarUrl    *string          `json:"avatar_url"`
-	Status       string           `json:"status"`
-	CreatedAt    pgtype.Timestamp `json:"created_at"`
-	UpdatedAt    pgtype.Timestamp `json:"updated_at"`
-	RealName     *string          `json:"real_name"`
-	PhoneNumber  *string          `json:"phone_number"`
-	IsMatchAdmin bool             `json:"is_match_admin"`
+	ID           int64              `json:"id"`
+	Openid       string             `json:"openid"`
+	Nickname     string             `json:"nickname"`
+	AvatarUrl    *string            `json:"avatar_url"`
+	Status       string             `json:"status"`
+	CreatedAt    pgtype.Timestamp   `json:"created_at"`
+	UpdatedAt    pgtype.Timestamp   `json:"updated_at"`
+	RealName     *string            `json:"real_name"`
+	PhoneNumber  *string            `json:"phone_number"`
+	IsMatchAdmin bool               `json:"is_match_admin"`
+	LastActiveAt pgtype.Timestamptz `json:"last_active_at"`
+}
+
+type UserFeedback struct {
+	ID        int64              `json:"id"`
+	UserID    int64              `json:"user_id"`
+	Content   string             `json:"content"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
 }
 
 type WalletAccount struct {

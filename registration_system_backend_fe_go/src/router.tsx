@@ -14,6 +14,7 @@ const MatchListPage = lazy(() => import("@/pages/MatchListPage"));
 const MatchFormPage = lazy(() => import("@/pages/MatchFormPage"));
 const MatchDetailPage = lazy(() => import("@/pages/MatchDetailPage"));
 const TeamListPage = lazy(() => import("@/pages/TeamListPage"));
+const UserListPage = lazy(() => import("@/pages/UserListPage"));
 const MatchAdminsPage = lazy(() => import("@/pages/MatchAdminsPage"));
 const AdminListPage = lazy(() => import("@/pages/AdminListPage"));
 const AccessPage = lazy(() => import("@/pages/AccessPage"));
@@ -52,6 +53,7 @@ export const router = createBrowserRouter(
             { path: "/matches/:id", element: <MatchDetailPage /> },
             { path: "/matches/:id/edit", element: <MatchFormPage /> },
             { path: "/teams", element: <TeamListPage /> },
+            { path: "/users", element: <UserListPage /> },
             { path: "/match-admins", element: <MatchAdminsPage /> },
             {
               element: <RequireSuperAdmin />,
