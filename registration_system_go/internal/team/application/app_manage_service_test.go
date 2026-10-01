@@ -270,6 +270,59 @@ func TestAppUpdateJoinPasswordRules(t *testing.T) {
 	}
 }
 
+func TestAppManagerUpdatesPaidMembershipAccount(t *testing.T) {
+	repository := &fakeAppManageRepository{
+		team: domain.Team{ID: 7, Name: "东安联队", Status: domain.TeamActive}, teamFound: true,
+		manager: domain.Member{TeamID: 7, UserID: 42, Role: domain.RoleCaptain, Status: domain.MemberActive}, managerFound: true,
+		member: domain.Member{TeamID: 7, UserID: 50, Role: domain.RoleMember, Status: domain.MemberActive}, memberFound: true,
+	}
+	update := domain.MemberPaidMembershipUpdate{IsPaidMember: boolPtr(true)}
+
+	if err := NewAppManageService(repository, plainHasher{}, nil).UpdatePaidMembership(context.Background(), managerActor(42), 7, 50, update); err != nil {
+		t.Fatalf("update paid membership: %v", err)
+	}
+	if repository.paidMembershipUserID != 50 || repository.paidMembershipUpdate != update {
+		t.Fatalf("unexpected financial update: user=%d update=%+v", repository.paidMembershipUserID, repository.paidMembershipUpdate)
+	}
+
+	forbidden := *repository
+	forbidden.manager = domain.Member{TeamID: 7, UserID: 9, Role: domain.RoleMember, Status: domain.MemberActive}
+	forbidden.managerFound = true
+	forbidden.paidMembershipUserID = 0
+	if err := NewAppManageService(&forbidden, plainHasher{}, nil).UpdatePaidMembership(context.Background(), managerActor(9), 7, 50, update); !errors.Is(err, sharederror.ErrForbidden) {
+		t.Fatalf("regular member must be forbidden, got %v", err)
+	}
+	if forbidden.paidMembershipUserID != 0 {
+		t.Fatal("repository must not update financials when forbidden")
+	}
+}
+
+func TestAppPaidMembershipUpdateValidation(t *testing.T) {
+	base := fakeAppManageRepository{
+		team: domain.Team{ID: 7, Name: "东安联队", Status: domain.TeamActive}, teamFound: true,
+		manager: domain.Member{TeamID: 7, UserID: 42, Role: domain.RoleCaptain, Status: domain.MemberActive}, managerFound: true,
+		member: domain.Member{TeamID: 7, UserID: 50, Role: domain.RoleMember, Status: domain.MemberActive}, memberFound: true,
+	}
+	service := NewAppManageService(&base, plainHasher{}, nil)
+
+	if err := service.UpdatePaidMembership(context.Background(), managerActor(42), 7, 50, domain.MemberPaidMembershipUpdate{}); !errors.Is(err, sharederror.ErrValidation) {
+		t.Fatalf("missing is_paid_member must be rejected, got %v", err)
+	}
+}
+
+// 被移除（removed）成员不能修改资料：需先重新添加恢复成员关系。
+func TestAppUpdateMemberRejectsRemovedMember(t *testing.T) {
+	repository := &fakeAppManageRepository{
+		team: domain.Team{ID: 7, Name: "东安联队", Status: domain.TeamActive}, teamFound: true,
+		manager: domain.Member{TeamID: 7, UserID: 42, Role: domain.RoleCaptain, Status: domain.MemberActive}, managerFound: true,
+		member: domain.Member{TeamID: 7, UserID: 50, Role: domain.RoleMember, Status: domain.MemberRemoved}, memberFound: true,
+	}
+	role := domain.RoleMember
+	if err := NewAppManageService(repository, plainHasher{}, nil).UpdateMember(context.Background(), managerActor(42), 7, 50, &role, nil); !errors.Is(err, sharederror.ErrConflict) {
+		t.Fatalf("removed member update must conflict, got %v", err)
+	}
+}
+
 func TestAppDeleteTeamRequiresCaptain(t *testing.T) {
 	cases := []struct {
 		name         string
@@ -388,32 +441,35 @@ func TestAppDissolveBlockers(t *testing.T) {
 }
 
 type fakeAppManageRepository struct {
-	team            domain.Team
-	teamFound       bool
-	manager         domain.Member
-	managerFound    bool
-	member          domain.Member
-	memberFound     bool
-	activeUser      bool
-	addErr          error
-	profileUpdated  bool
-	updatedProfile  domain.Team
-	addedUserID     int64
-	addedRole       domain.Role
-	updatedRole     domain.Role
-	updatedStatus   domain.MemberStatus
-	removedUserID   int64
-	joinHashTeamID  int64
-	joinHashValue   *string
-	joinHashFound   bool
-	joinHashErr     error
-	deletedTeamID   int64
-	deleteFound     bool
-	deleteErr       error
-	blockers        domain.DissolveBlockers
-	dissolvedTeamID int64
-	dissolveFound   bool
-	dissolveErr     error
+	team                 domain.Team
+	teamFound            bool
+	manager              domain.Member
+	managerFound         bool
+	member               domain.Member
+	memberFound          bool
+	activeUser           bool
+	addErr               error
+	profileUpdated       bool
+	updatedProfile       domain.Team
+	addedUserID          int64
+	addedRole            domain.Role
+	updatedRole          domain.Role
+	updatedStatus        domain.MemberStatus
+	paidMembershipUserID int64
+	paidMembershipUpdate domain.MemberPaidMembershipUpdate
+	paidMembershipErr    error
+	removedUserID        int64
+	joinHashTeamID       int64
+	joinHashValue        *string
+	joinHashFound        bool
+	joinHashErr          error
+	deletedTeamID        int64
+	deleteFound          bool
+	deleteErr            error
+	blockers             domain.DissolveBlockers
+	dissolvedTeamID      int64
+	dissolveFound        bool
+	dissolveErr          error
 }
 
 func (f *fakeAppManageRepository) FindByID(context.Context, int64) (domain.Team, bool, error) {
@@ -459,6 +515,18 @@ func (f *fakeAppManageRepository) UpdateMember(_ context.Context, _, userID int6
 	}
 	f.updatedRole = role
 	f.updatedStatus = status
+	return true, nil
+}
+
+func (f *fakeAppManageRepository) UpdatePaidMembership(_ context.Context, _, userID int64, update domain.MemberPaidMembershipUpdate, _ string) (bool, error) {
+	if f.paidMembershipErr != nil {
+		return false, f.paidMembershipErr
+	}
+	if !f.memberFound || f.member.UserID != userID {
+		return false, nil
+	}
+	f.paidMembershipUserID = userID
+	f.paidMembershipUpdate = update
 	return true, nil
 }
 

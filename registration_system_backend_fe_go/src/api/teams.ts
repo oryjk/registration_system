@@ -7,6 +7,7 @@ import type {
   TeamMemberManagement,
   TeamStatus,
   UpdatePlayerProfilePayload,
+  UpdateTeamMemberPaidMembershipPayload,
   UpdateTeamMemberPayload,
 } from "../types/team";
 import { request } from "./client";
@@ -79,6 +80,20 @@ export function updateTeamMember(
     method: "PATCH",
     body: JSON.stringify(payload),
   });
+}
+
+export function updateTeamMemberPaidMembership(
+  teamID: number,
+  userID: number,
+  payload: UpdateTeamMemberPaidMembershipPayload,
+) {
+  return request<TeamMemberManagement>(
+    `/teams/${teamID}/members/${userID}/paid-membership`,
+    {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    },
+  );
 }
 
 export function updatePlayerProfile(

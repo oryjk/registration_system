@@ -436,6 +436,309 @@ func TestRepositoryUpdatesJoinPasswordHash(t *testing.T) {
 	}
 }
 
+// 手动切换付费会员标记不得触碰余额与充值时间（余额只由充值/消费/冲正动作改变）。
+func TestRepositoryUpdatesPaidMembershipFlagOnly(t *testing.T) {
+	pool := testsupport.StartPostgres(t)
+	ctx := context.Background()
+	var userID, teamID int64
+	if err := pool.QueryRow(ctx, `INSERT INTO users (openid) VALUES ('paid-member-update') RETURNING id`).Scan(&userID); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(ctx, `INSERT INTO teams (name) VALUES ('付费会员测试队') RETURNING id`).Scan(&teamID); err != nil {
+		t.Fatal(err)
+	}
+	// 带毫秒的真实服务端充值时间：切换标记必须原样保留，不得被截断或清空。
+	lastRechargeAt := time.Date(2026, 9, 10, 8, 0, 23, 456_000_000, time.UTC)
+	if _, err := pool.Exec(ctx,
+		`INSERT INTO team_members (team_id, user_id, role, status, balance_cents, is_paid_member, last_recharge_at)
+		 VALUES ($1, $2, 'member', 'active', 1500, FALSE, $3)`, teamID, userID, lastRechargeAt); err != nil {
+		t.Fatal(err)
+	}
+	repository := NewRepository(pool)
+
+	updated, err := repository.UpdatePaidMembership(ctx, teamID, userID, domain.MemberPaidMembershipUpdate{
+		IsPaidMember: &[]bool{true}[0],
+	}, "球队管理手动调整队费账户")
+	if err != nil || !updated {
+		t.Fatalf("update paid membership: updated=%v err=%v", updated, err)
+	}
+
+	var isPaidMember bool
+	var balance int64
+	var storedRechargeAt *time.Time
+	if err := pool.QueryRow(ctx, `SELECT is_paid_member, balance_cents, last_recharge_at FROM team_members WHERE team_id=$1 AND user_id=$2`, teamID, userID).Scan(&isPaidMember, &balance, &storedRechargeAt); err != nil {
+		t.Fatal(err)
+	}
+	if !isPaidMember || balance != 1500 || storedRechargeAt == nil || !storedRechargeAt.Equal(lastRechargeAt) {
+		t.Fatalf("flag toggle must keep balance and full-precision recharge time: paid=%v balance=%d last=%v", isPaidMember, balance, storedRechargeAt)
+	}
+	var ledgerCount int
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM team_fund_transactions WHERE team_id=$1 AND user_id=$2`, teamID, userID).Scan(&ledgerCount); err != nil {
+		t.Fatal(err)
+	}
+	if ledgerCount != 0 {
+		t.Fatalf("flag toggle must not write ledger, got %d rows", ledgerCount)
+	}
+
+	// removed 成员不能切换标记。
+	if _, err := pool.Exec(ctx, `UPDATE team_members SET status='removed' WHERE team_id=$1 AND user_id=$2`, teamID, userID); err != nil {
+		t.Fatal(err)
+	}
+	updated, err = repository.UpdatePaidMembership(ctx, teamID, userID, domain.MemberPaidMembershipUpdate{
+		IsPaidMember: &[]bool{false}[0],
+	}, "球队管理手动调整队费账户")
+	if err != nil || updated {
+		t.Fatalf("removed member flag update must not apply: updated=%v err=%v", updated, err)
+	}
+}
+
+// 从未充值（last_recharge_at 为 NULL）的成员切换付费标记：充值时间保持 NULL、
+// 余额不动、不产生流水——只有真实充值动作才能写入充值时间。
+func TestRepositoryPaidMembershipFlagKeepsNullRechargeTime(t *testing.T) {
+	pool := testsupport.StartPostgres(t)
+	ctx := context.Background()
+	var userID, teamID int64
+	if err := pool.QueryRow(ctx, `INSERT INTO users (openid) VALUES ('paid-member-null-recharge') RETURNING id`).Scan(&userID); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(ctx, `INSERT INTO teams (name) VALUES ('付费会员空充值时间队') RETURNING id`).Scan(&teamID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx,
+		`INSERT INTO team_members (team_id, user_id, role, status, balance_cents, is_paid_member, last_recharge_at)
+		 VALUES ($1, $2, 'member', 'active', 900, FALSE, NULL)`, teamID, userID); err != nil {
+		t.Fatal(err)
+	}
+	repository := NewRepository(pool)
+
+	updated, err := repository.UpdatePaidMembership(ctx, teamID, userID, domain.MemberPaidMembershipUpdate{
+		IsPaidMember: &[]bool{true}[0],
+	}, "球队管理手动调整队费账户")
+	if err != nil || !updated {
+		t.Fatalf("toggle flag on member without recharge: updated=%v err=%v", updated, err)
+	}
+
+	// 可空扫描：NULL 必须读到 nil，而不是把 SQL NULL 灌进 time.Time。
+	var isPaidMember bool
+	var balance int64
+	var storedRechargeAt *time.Time
+	if err := pool.QueryRow(ctx,
+		`SELECT is_paid_member, balance_cents, last_recharge_at FROM team_members WHERE team_id=$1 AND user_id=$2`,
+		teamID, userID).Scan(&isPaidMember, &balance, &storedRechargeAt); err != nil {
+		t.Fatal(err)
+	}
+	if !isPaidMember || balance != 900 || storedRechargeAt != nil {
+		t.Fatalf("toggle must keep balance and NULL recharge time: paid=%v balance=%d last=%v", isPaidMember, balance, storedRechargeAt)
+	}
+	var ledgerCount int
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM team_fund_transactions WHERE team_id=$1 AND user_id=$2`, teamID, userID).Scan(&ledgerCount); err != nil {
+		t.Fatal(err)
+	}
+	if ledgerCount != 0 {
+		t.Fatalf("toggle must not write ledger, got %d rows", ledgerCount)
+	}
+}
+
+// 移除成员改为软移除：保留成员行与队费账户（余额/付费会员/充值时间），重复移除返回 false。
+func TestRepositoryRemoveMemberKeepsFundAccount(t *testing.T) {
+	pool := testsupport.StartPostgres(t)
+	ctx := context.Background()
+	var userID, teamID int64
+	if err := pool.QueryRow(ctx, `INSERT INTO users (openid) VALUES ('soft-remove-member') RETURNING id`).Scan(&userID); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(ctx, `INSERT INTO teams (name) VALUES ('软移除测试队') RETURNING id`).Scan(&teamID); err != nil {
+		t.Fatal(err)
+	}
+	lastRechargeAt := time.Date(2026, 9, 20, 10, 0, 0, 0, time.UTC)
+	if _, err := pool.Exec(ctx,
+		`INSERT INTO team_members (team_id, user_id, role, status, balance_cents, is_paid_member, last_recharge_at)
+		 VALUES ($1, $2, 'leader', 'active', 4200, TRUE, $3)`, teamID, userID, lastRechargeAt); err != nil {
+		t.Fatal(err)
+	}
+	repository := NewRepository(pool)
+
+	removed, err := repository.RemoveMember(ctx, teamID, userID)
+	if err != nil || !removed {
+		t.Fatalf("remove member: removed=%v err=%v", removed, err)
+	}
+
+	var status string
+	var balance int64
+	var isPaidMember bool
+	var storedRechargeAt time.Time
+	if err := pool.QueryRow(ctx,
+		`SELECT status, balance_cents, is_paid_member, last_recharge_at FROM team_members WHERE team_id=$1 AND user_id=$2`,
+		teamID, userID).Scan(&status, &balance, &isPaidMember, &storedRechargeAt); err != nil {
+		t.Fatal(err)
+	}
+	if status != string(domain.MemberRemoved) || balance != 4200 || !isPaidMember || !storedRechargeAt.Equal(lastRechargeAt) {
+		t.Fatalf("removed member account must be retained: status=%s balance=%d paid=%v last=%v", status, balance, isPaidMember, storedRechargeAt)
+	}
+
+	again, err := repository.RemoveMember(ctx, teamID, userID)
+	if err != nil || again {
+		t.Fatalf("double remove should be a no-op: removed=%v err=%v", again, err)
+	}
+}
+
+// 重新添加被移除成员：恢复 active、沿用请求角色，余额/付费会员/充值时间保持原值且不产生重复行。
+func TestRepositoryRestoreRemovedMemberOnAdd(t *testing.T) {
+	pool := testsupport.StartPostgres(t)
+	ctx := context.Background()
+	var userID, teamID int64
+	if err := pool.QueryRow(ctx, `INSERT INTO users (openid) VALUES ('restore-member') RETURNING id`).Scan(&userID); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(ctx, `INSERT INTO teams (name) VALUES ('恢复测试队') RETURNING id`).Scan(&teamID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx,
+		`INSERT INTO team_members (team_id, user_id, role, status, balance_cents, is_paid_member)
+		 VALUES ($1, $2, 'member', 'removed', 6600, TRUE)`, teamID, userID); err != nil {
+		t.Fatal(err)
+	}
+	repository := NewRepository(pool)
+
+	if err := repository.AddMember(ctx, teamID, userID, domain.RoleLeader); err != nil {
+		t.Fatalf("re-add removed member: %v", err)
+	}
+
+	var count int
+	var status string
+	var role string
+	var balance int64
+	var isPaidMember bool
+	if err := pool.QueryRow(ctx,
+		`SELECT COUNT(*), MIN(status), MIN(role), MIN(balance_cents), MIN(is_paid_member) FROM team_members WHERE team_id=$1 AND user_id=$2`,
+		teamID, userID).Scan(&count, &status, &role, &balance, &isPaidMember); err != nil {
+		t.Fatal(err)
+	}
+	if count != 1 || status != "active" || role != string(domain.RoleLeader) || balance != 6600 || !isPaidMember {
+		t.Fatalf("restore must keep single row and account: count=%d status=%s role=%s balance=%d paid=%v", count, status, role, balance, isPaidMember)
+	}
+
+	// 自助重新加入同样恢复（ReactivateMember 覆盖 removed），余额不动。
+	if _, err := pool.Exec(ctx, `UPDATE team_members SET status='removed' WHERE team_id=$1 AND user_id=$2`, teamID, userID); err != nil {
+		t.Fatal(err)
+	}
+	reactivated, err := repository.ReactivateMember(ctx, teamID, userID)
+	if err != nil || !reactivated {
+		t.Fatalf("reactivate removed member: reactivated=%v err=%v", reactivated, err)
+	}
+	if err := pool.QueryRow(ctx, `SELECT status, balance_cents FROM team_members WHERE team_id=$1 AND user_id=$2`, teamID, userID).Scan(&status, &balance); err != nil {
+		t.Fatal(err)
+	}
+	if status != "active" || balance != 6600 {
+		t.Fatalf("reactivate must keep balance: status=%s balance=%d", status, balance)
+	}
+}
+
+// 成员列表不显示被移除成员；候选人搜索重新包含被移除用户以便重新添加。
+// 管理端成员列表默认按加入时间升序（最早加入在前），removed 仍被排除。
+func TestRepositoryListsMembersByJoinTimeAscending(t *testing.T) {
+	pool := testsupport.StartPostgres(t)
+	ctx := context.Background()
+	var firstUser, secondUser, thirdUser, removedUser, teamID int64
+	if err := pool.QueryRow(ctx, `INSERT INTO users (openid) VALUES ('join-first') RETURNING id`).Scan(&firstUser); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(ctx, `INSERT INTO users (openid) VALUES ('join-second') RETURNING id`).Scan(&secondUser); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(ctx, `INSERT INTO users (openid) VALUES ('join-third') RETURNING id`).Scan(&thirdUser); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(ctx, `INSERT INTO users (openid) VALUES ('join-removed') RETURNING id`).Scan(&removedUser); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(ctx, `INSERT INTO teams (name) VALUES ('加入时间排序队') RETURNING id`).Scan(&teamID); err != nil {
+		t.Fatal(err)
+	}
+	// 故意让后加入的担任队长、先加入的是普通队员：排序仍以 joined_at 为准。
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO team_members (team_id, user_id, role, status, joined_at) VALUES
+		    ($1, $2, 'member', 'active', NOW() - INTERVAL '30 days'),
+		    ($1, $3, 'member', 'active', NOW() - INTERVAL '20 days'),
+		    ($1, $4, 'captain', 'active', NOW() - INTERVAL '10 days'),
+		    ($1, $5, 'leader', 'removed', NOW() - INTERVAL '40 days')`,
+		teamID, firstUser, secondUser, thirdUser, removedUser); err != nil {
+		t.Fatal(err)
+	}
+	repository := NewRepository(pool)
+
+	members, err := repository.ListMembers(ctx, teamID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gotIDs := make([]int64, 0, len(members))
+	for _, member := range members {
+		gotIDs = append(gotIDs, member.UserID)
+	}
+	wantIDs := []int64{firstUser, secondUser, thirdUser}
+	if len(gotIDs) != len(wantIDs) {
+		t.Fatalf("member list should contain active members only: %+v", gotIDs)
+	}
+	for index, want := range wantIDs {
+		if gotIDs[index] != want {
+			t.Fatalf("members must be ordered by joined_at ascending: want %+v got %+v", wantIDs, gotIDs)
+		}
+	}
+}
+
+func TestRepositoryListsAndCandidatesExcludeRemoved(t *testing.T) {
+	pool := testsupport.StartPostgres(t)
+	ctx := context.Background()
+	var removedUser, activeUser, teamID int64
+	if err := pool.QueryRow(ctx, `INSERT INTO users (openid) VALUES ('list-removed') RETURNING id`).Scan(&removedUser); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(ctx, `INSERT INTO users (openid, real_name) VALUES ('list-active', '张三') RETURNING id`).Scan(&activeUser); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(ctx, `INSERT INTO teams (name) VALUES ('列表过滤测试队') RETURNING id`).Scan(&teamID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx,
+		`INSERT INTO team_members (team_id, user_id, role, status) VALUES ($1, $2, 'member', 'removed'), ($1, $3, 'member', 'active')`,
+		teamID, removedUser, activeUser); err != nil {
+		t.Fatal(err)
+	}
+	repository := NewRepository(pool)
+
+	members, err := repository.ListMembers(ctx, teamID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(members) != 1 || members[0].UserID != activeUser {
+		t.Fatalf("admin member list must exclude removed: %+v", members)
+	}
+	appMembers, err := repository.ListAppMembers(ctx, teamID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(appMembers) != 1 || appMembers[0].UserID != activeUser {
+		t.Fatalf("app member list must exclude removed: %+v", appMembers)
+	}
+
+	candidates, err := repository.ListMemberCandidates(ctx, teamID, "", 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	foundRemoved := false
+	for _, candidate := range candidates {
+		if candidate.UserID == removedUser {
+			foundRemoved = true
+		}
+		if candidate.UserID == activeUser {
+			t.Fatal("active member must not appear in candidates")
+		}
+	}
+	if !foundRemoved {
+		t.Fatal("removed member must be addable again via candidates")
+	}
+}
+
 func TestRepositoryDissolveTeamAndBlockers(t *testing.T) {
 	// 覆盖用户侧解散球队的软删除与引用校验：
 	// 未结束比赛（主/客队）与进行中申请阻塞；已结束/已取消比赛上的引用不阻塞。
@@ -610,12 +913,13 @@ func TestRemoveMemberCancelsUpcomingTeamRegistrations(t *testing.T) {
 		t.Fatalf("remove member: removed=%t err=%v", removed, err)
 	}
 
-	var memberRows int
-	if err := pool.QueryRow(ctx, `SELECT COUNT(*) FROM team_members WHERE team_id = $1 AND user_id = $2`, teamID, memberID).Scan(&memberRows); err != nil {
-		t.Fatalf("count member rows: %v", err)
+	// 移除是软移除：成员行保留为 removed（队费账户/流水引用仍在），不再物理删除。
+	var memberStatus string
+	if err := pool.QueryRow(ctx, `SELECT status FROM team_members WHERE team_id = $1 AND user_id = $2`, teamID, memberID).Scan(&memberStatus); err != nil {
+		t.Fatalf("member row must survive removal: %v", err)
 	}
-	if memberRows != 0 {
-		t.Fatalf("expected member row deleted, got %d", memberRows)
+	if memberStatus != "removed" {
+		t.Fatalf("expected member status removed after removal, got %q", memberStatus)
 	}
 
 	statusByMatch := map[string]string{}

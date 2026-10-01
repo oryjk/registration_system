@@ -12,6 +12,7 @@ const props = defineProps<{
   memberName: string;
   form: {
     role: string;
+    isPaidMember: boolean;
   };
   submitting: boolean;
 }>();
@@ -20,11 +21,13 @@ const emit = defineEmits<{
   (event: "update:modelValue", value: boolean): void;
   (event: "close"): void;
   (event: "submit"): void;
+  (event: "recharge"): void;
+  (event: "consume"): void;
 }>();
 
 const visible = computed({
   get: () => props.modelValue,
-  set: (value) => emit("update:modelValue", value),
+  set: (value: boolean) => emit("update:modelValue", value),
 });
 
 function handleClose() {
@@ -42,6 +45,32 @@ const roleModel = computed({
   },
 });
 const rolePickerVisible = ref(false);
+
+function yuanLabel(cents: number) {
+  return (Math.abs(cents) / 100).toFixed(2);
+}
+
+const balanceLabel = computed(() => {
+  const cents = props.member?.balance_cents ?? 0;
+  return cents < 0 ? `欠款 ¥${yuanLabel(cents)}` : `¥${yuanLabel(cents)}`;
+});
+
+const balanceToneClass = computed(() =>
+  (props.member?.balance_cents ?? 0) < 0 ? "member-balance-debt" : "member-balance-amount",
+);
+
+const lastRechargeLabel = computed(() => {
+  const value = props.member?.last_recharge_at;
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  const pad = (part: number) => String(part).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+});
+
+function handlePaidMemberChange(event: Event) {
+  props.form.isPaidMember = !!(event as Event & { detail?: { value?: boolean } }).detail?.value;
+}
 </script>
 
 <template>
@@ -63,31 +92,70 @@ const rolePickerVisible = ref(false);
         </view>
         <AppButton variant="outline" size="sm" @click="handleClose">取消</AppButton>
       </view>
-      <wd-cell
-        title="队员角色"
-        :value="roleLabel(form.role)"
-        is-link
-        clickable
-        custom-class="member-role-cell"
-        custom-title-class="member-role-cell-title"
-        custom-value-class="member-role-cell-value"
-        @click="rolePickerVisible = true"
-      />
-      <wd-picker
-        v-model="roleModel"
-        v-model:visible="rolePickerVisible"
-        title="选择角色"
-        placeholder="请选择角色"
-        :columns="memberRoleOptions"
-        value-key="value"
-        label-key="label"
-        confirm-button-text="确定"
-        cancel-button-text="取消"
-        custom-class="member-role-picker"
-        custom-cell-class="member-role-picker-cell"
-        custom-value-class="member-role-picker-value"
-      />
-      <!-- Go 队员模型只有 role/status：球衣号与队员会员开关已随 legacy Rust 字段一起移除。 -->
+      <template v-if="member?.role === 'captain'">
+        <view class="member-readonly-field">
+          <text class="member-readonly-label">队员角色</text>
+          <text class="member-readonly-value">队长</text>
+        </view>
+      </template>
+      <template v-else>
+        <wd-cell
+          title="队员角色"
+          :value="roleLabel(form.role)"
+          is-link
+          clickable
+          custom-class="member-role-cell"
+          custom-title-class="member-role-cell-title"
+          custom-value-class="member-role-cell-value"
+          @click="rolePickerVisible = true"
+        />
+        <wd-picker
+          v-model="roleModel"
+          v-model:visible="rolePickerVisible"
+          title="选择角色"
+          placeholder="请选择角色"
+          :columns="memberRoleOptions.filter((option) => option.value !== 'captain')"
+          value-key="value"
+          label-key="label"
+          confirm-button-text="确定"
+          cancel-button-text="取消"
+          custom-class="member-role-picker"
+          custom-cell-class="member-role-picker-cell"
+          custom-value-class="member-role-picker-value"
+        />
+      </template>
+
+      <view class="member-finance-section">
+        <view class="member-finance-row">
+          <view class="member-finance-copy">
+            <text class="member-finance-label">付费会员</text>
+            <text class="member-finance-hint">充值到账会自动标记为会员</text>
+          </view>
+          <switch :checked="form.isPaidMember" @change="handlePaidMemberChange" />
+        </view>
+
+        <view class="member-finance-readonly">
+          <view class="member-finance-readonly-row">
+            <text class="member-finance-label">当前队费余额</text>
+            <text :class="balanceToneClass">{{ balanceLabel }}</text>
+          </view>
+          <view class="member-finance-readonly-row">
+            <text class="member-finance-label">最近充值</text>
+            <text class="member-finance-value">{{ lastRechargeLabel }}</text>
+          </view>
+          <text class="member-finance-hint">余额由充值与消费扣费产生，不能直接修改</text>
+        </view>
+
+        <view class="member-finance-actions">
+          <AppButton variant="outline" size="sm" icon="add" :disabled="submitting" @click="emit('recharge')">
+            充值
+          </AppButton>
+          <AppButton variant="outline" size="sm" icon="minus" :disabled="submitting" @click="emit('consume')">
+            消费扣费
+          </AppButton>
+        </view>
+      </view>
+
       <AppButton icon="check" block :loading="submitting" @click="handleSubmit">
         {{ submitting ? "保存中..." : "保存队员" }}
       </AppButton>
@@ -131,61 +199,93 @@ const rolePickerVisible = ref(false);
   font-weight: 600;
 }
 
-.member-role-picker {
-  width: 100%;
-  display: block;
-  margin-top: 14rpx;
+.member-readonly-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20rpx 0;
 }
 
-:deep(.member-role-picker) {
-  --wot-picker-bg: var(--ui-color-surface);
-  --wot-picker-action-color-confirm: var(--ui-color-text);
-  --wot-picker-action-color-cancel: var(--ui-color-text-muted);
-  --wot-picker-action-disabled-color: var(--ui-color-text-disabled);
-  --wot-picker-title-color: var(--ui-color-text);
-  --wot-picker-title-font-weight: 600;
-  --wot-picker-radius: var(--ui-radius-md);
-}
-
-:deep(.member-role-cell) {
-  margin-top: 14rpx;
-  padding: 0 20rpx;
-  border: var(--ui-border-default);
-  border-radius: var(--ui-radius-button);
-  background: var(--ui-color-surface);
-  box-sizing: border-box;
-}
-
-:deep(.member-role-cell-title) {
+.member-readonly-label {
   color: var(--ui-color-text-muted);
-  font-size: 24rpx;
-  font-weight: 600;
+  font-size: 26rpx;
 }
 
-:deep(.member-role-cell-value) {
+.member-readonly-value {
   color: var(--ui-color-text);
   font-size: 28rpx;
   font-weight: 600;
 }
 
-:deep(.member-role-picker-cell) {
-  width: 100%;
-  height: 84rpx;
-  padding: 0 20rpx;
+.member-finance-section {
+  margin-top: 10rpx;
+  padding: 24rpx;
   border: var(--ui-border-default);
-  border-radius: var(--ui-radius-button);
-  background: var(--ui-color-surface);
-  color: var(--ui-color-text);
-  box-sizing: border-box;
+  border-radius: var(--ui-radius-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
 }
 
-:deep(.member-role-picker-value) {
+.member-finance-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rpx;
+}
+
+.member-finance-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 6rpx;
+}
+
+.member-finance-label {
   color: var(--ui-color-text);
-  font-size: 28rpx;
+  font-size: 26rpx;
   font-weight: 600;
 }
 
-:deep(.member-edit-sheet .ui-button--block) {
-  margin-top: 28rpx;
+.member-finance-hint {
+  color: var(--ui-color-text-muted);
+  font-size: 22rpx;
+}
+
+.member-finance-value {
+  color: var(--ui-color-text);
+  font-size: 26rpx;
+}
+
+.member-finance-readonly {
+  display: flex;
+  flex-direction: column;
+  gap: 14rpx;
+}
+
+.member-finance-readonly-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rpx;
+}
+
+.member-balance-amount {
+  color: var(--ui-color-text);
+  font-size: 28rpx;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.member-balance-debt {
+  color: var(--ui-color-danger-fg);
+  font-size: 28rpx;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.member-finance-actions {
+  display: flex;
+  flex-direction: row;
+  gap: 16rpx;
 }
 </style>

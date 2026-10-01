@@ -41,8 +41,12 @@ export interface TeamMember {
   role: TeamMemberRole;
   status: TeamMemberStatus;
   joined_at: string;
+  /** 该成员在此球队是否为已缴队费会员。 */
+  is_paid_member: boolean;
   /** 该成员在此球队的队费余额（分），负数表示欠款。 */
   balance_cents: number;
+  /** 最近一次队费充值/登记时间；历史数据可能为空。 */
+  last_recharge_at: string | null;
 }
 
 export interface TeamMemberCandidate {
@@ -66,6 +70,11 @@ export interface AddTeamMemberPayload {
 export interface UpdateTeamMemberPayload {
   role: AssignableTeamMemberRole;
   status: TeamMemberStatus;
+}
+
+// 付费会员标记手动切换；余额与最近充值时间由充值/消费/冲正动作维护，不能在此设置。
+export interface UpdateTeamMemberPaidMembershipPayload {
+  is_paid_member?: boolean;
 }
 
 export interface UpdatePlayerProfilePayload {

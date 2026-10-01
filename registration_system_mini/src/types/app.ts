@@ -60,6 +60,9 @@ export interface AppTeamMember {
   role: MyTeamRole;
   status: string;
   joined_at: string;
+  balance_cents: number;
+  is_paid_member: boolean;
+  last_recharge_at: string | null;
 }
 
 export interface TestLoginUser {

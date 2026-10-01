@@ -1,11 +1,22 @@
-import { Crown, Pencil, Trash2, Wallet } from "lucide-react";
+import {
+  Crown,
+  Pencil,
+  ReceiptText,
+  Trash2,
+  Wallet,
+  WalletMinimal,
+} from "lucide-react";
 import { ConfirmPopover } from "@/components/admin/confirm-popover";
 import { DataTable, type DataTableColumn } from "@/components/admin/data-table";
 import { MemberCell } from "@/components/admin/member-cell";
 import { RowActionButton, RowActions } from "@/components/admin/row-actions";
 import { StatusBadge } from "@/components/admin/status-badge";
 import type { TeamMember } from "@/types/team";
-import { formatDate, formatYuanAmount } from "@/utils/format";
+import {
+  formatCompactDateTime,
+  formatDate,
+  formatYuanAmount,
+} from "@/utils/format";
 import {
   displayMemberName,
   roleColors,
@@ -19,6 +30,8 @@ interface TeamMemberTableProps {
   actionKey: string;
   onEdit: (member: TeamMember) => void;
   onCredit: (member: TeamMember) => void;
+  onConsume: (member: TeamMember) => void;
+  onTransactions: (member: TeamMember) => void;
   onCaptainChange: (member: TeamMember, captain: boolean) => void;
   onRemove: (member: TeamMember) => void;
 }
@@ -29,6 +42,8 @@ export function TeamMemberTable({
   actionKey,
   onEdit,
   onCredit,
+  onConsume,
+  onTransactions,
   onCaptainChange,
   onRemove,
 }: TeamMemberTableProps) {
@@ -80,6 +95,17 @@ export function TeamMemberTable({
       render: (member) => formatDate(member.joined_at),
     },
     {
+      key: "is_paid_member",
+      title: "会员",
+      width: 96,
+      render: (member) => (
+        <StatusBadge
+          label={member.is_paid_member ? "付费会员" : "普通"}
+          variant={member.is_paid_member ? "success" : "secondary"}
+        />
+      ),
+    },
+    {
       key: "balance_cents",
       title: "队费余额",
       width: 120,
@@ -92,6 +118,15 @@ export function TeamMemberTable({
         ) : (
           <span>¥{formatYuanAmount(member.balance_cents)}</span>
         ),
+    },
+    {
+      key: "last_recharge_at",
+      title: "最近充值",
+      width: 150,
+      render: (member) =>
+        member.last_recharge_at
+          ? formatCompactDateTime(member.last_recharge_at)
+          : "—",
     },
     {
       key: "actions",
@@ -108,6 +143,20 @@ export function TeamMemberTable({
               label={`给${memberName}充值队费`}
               onClick={() => onCredit(member)}
               tip="队费充值"
+            />
+            <RowActionButton
+              disabled={actionKey === `consume-${member.user_id}`}
+              icon={<WalletMinimal size={15} />}
+              label={`给${memberName}消费扣费`}
+              onClick={() => onConsume(member)}
+              tip="消费扣费"
+            />
+            <RowActionButton
+              disabled={actionKey === `transactions-${member.user_id}`}
+              icon={<ReceiptText size={15} />}
+              label={`查看${memberName}的队费流水`}
+              onClick={() => onTransactions(member)}
+              tip="队费流水"
             />
             <ConfirmPopover
               cancelText="返回"
@@ -138,17 +187,17 @@ export function TeamMemberTable({
               />
             </ConfirmPopover>
             <RowActionButton
-              disabled={isCaptain || actionKey === `edit-${member.user_id}`}
+              disabled={actionKey === `edit-${member.user_id}`}
               icon={<Pencil size={15} />}
               label={`编辑${memberName}`}
               onClick={() => onEdit(member)}
-              tip={isCaptain ? "请先取消或更换队长" : "编辑成员"}
+              tip="编辑成员与会员账户"
             />
             <ConfirmPopover
               cancelText="返回"
               confirmText="移除"
               destructive
-              description="移除后可通过候选球员重新添加。"
+              description="移除后保留其队费账户与流水，可通过候选球员重新添加恢复。"
               onConfirm={() => onRemove(member)}
               title={`移除${memberName}`}
             >

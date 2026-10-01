@@ -660,10 +660,14 @@ SELECT tm.user_id,
        u.real_name,
        tm.role,
        tm.status,
-       tm.joined_at
+       tm.joined_at,
+       tm.balance_cents,
+       tm.is_paid_member,
+       tm.last_recharge_at
 FROM team_members tm
 JOIN users u ON u.id = tm.user_id
 WHERE tm.team_id = $1
+  AND tm.status <> 'removed'
 ORDER BY
     CASE tm.status WHEN 'active' THEN 0 ELSE 1 END,
     CASE tm.role
@@ -677,13 +681,16 @@ ORDER BY
 `
 
 type ListAppTeamMembersRow struct {
-	UserID    int64            `json:"user_id"`
-	Nickname  string           `json:"nickname"`
-	AvatarUrl *string          `json:"avatar_url"`
-	RealName  *string          `json:"real_name"`
-	Role      string           `json:"role"`
-	Status    string           `json:"status"`
-	JoinedAt  pgtype.Timestamp `json:"joined_at"`
+	UserID         int64              `json:"user_id"`
+	Nickname       string             `json:"nickname"`
+	AvatarUrl      *string            `json:"avatar_url"`
+	RealName       *string            `json:"real_name"`
+	Role           string             `json:"role"`
+	Status         string             `json:"status"`
+	JoinedAt       pgtype.Timestamp   `json:"joined_at"`
+	BalanceCents   int64              `json:"balance_cents"`
+	IsPaidMember   bool               `json:"is_paid_member"`
+	LastRechargeAt pgtype.Timestamptz `json:"last_recharge_at"`
 }
 
 func (q *Queries) ListAppTeamMembers(ctx context.Context, teamID int64) ([]ListAppTeamMembersRow, error) {
@@ -703,6 +710,9 @@ func (q *Queries) ListAppTeamMembers(ctx context.Context, teamID int64) ([]ListA
 			&i.Role,
 			&i.Status,
 			&i.JoinedAt,
+			&i.BalanceCents,
+			&i.IsPaidMember,
+			&i.LastRechargeAt,
 		); err != nil {
 			return nil, err
 		}
@@ -968,6 +978,7 @@ WHERE u.status = 'active'
       FROM team_members tm
       WHERE tm.team_id = $1
         AND tm.user_id = u.id
+        AND tm.status <> 'removed'
   )
   AND (
       $2::text = ''
@@ -1028,6 +1039,8 @@ SELECT tm.id,
        tm.status,
        tm.joined_at,
        tm.balance_cents,
+       tm.is_paid_member,
+       tm.last_recharge_at,
        u.nickname,
        u.avatar_url,
        u.real_name,
@@ -1035,32 +1048,29 @@ SELECT tm.id,
 FROM team_members tm
 JOIN users u ON u.id = tm.user_id
 WHERE tm.team_id = $1
+  AND tm.status <> 'removed'
 ORDER BY
-    CASE tm.status WHEN 'active' THEN 0 ELSE 1 END,
-    CASE tm.role
-        WHEN 'captain' THEN 0
-        WHEN 'leader' THEN 1
-        WHEN 'vice_captain' THEN 2
-        ELSE 3
-    END,
-	    tm.joined_at,
-	    tm.user_id
+    tm.joined_at,
+    tm.user_id
 `
 
 type ListTeamMembersRow struct {
-	ID           int64            `json:"id"`
-	TeamID       int64            `json:"team_id"`
-	UserID       int64            `json:"user_id"`
-	Role         string           `json:"role"`
-	Status       string           `json:"status"`
-	JoinedAt     pgtype.Timestamp `json:"joined_at"`
-	BalanceCents int64            `json:"balance_cents"`
-	Nickname     string           `json:"nickname"`
-	AvatarUrl    *string          `json:"avatar_url"`
-	RealName     *string          `json:"real_name"`
-	PhoneNumber  *string          `json:"phone_number"`
+	ID             int64              `json:"id"`
+	TeamID         int64              `json:"team_id"`
+	UserID         int64              `json:"user_id"`
+	Role           string             `json:"role"`
+	Status         string             `json:"status"`
+	JoinedAt       pgtype.Timestamp   `json:"joined_at"`
+	BalanceCents   int64              `json:"balance_cents"`
+	IsPaidMember   bool               `json:"is_paid_member"`
+	LastRechargeAt pgtype.Timestamptz `json:"last_recharge_at"`
+	Nickname       string             `json:"nickname"`
+	AvatarUrl      *string            `json:"avatar_url"`
+	RealName       *string            `json:"real_name"`
+	PhoneNumber    *string            `json:"phone_number"`
 }
 
+// 管理端成员视图默认按加入时间升序（最早加入在前）；同一时刻加入按 user_id 稳定排序。
 func (q *Queries) ListTeamMembers(ctx context.Context, teamID int64) ([]ListTeamMembersRow, error) {
 	rows, err := q.db.Query(ctx, listTeamMembers, teamID)
 	if err != nil {
@@ -1078,6 +1088,8 @@ func (q *Queries) ListTeamMembers(ctx context.Context, teamID int64) ([]ListTeam
 			&i.Status,
 			&i.JoinedAt,
 			&i.BalanceCents,
+			&i.IsPaidMember,
+			&i.LastRechargeAt,
 			&i.Nickname,
 			&i.AvatarUrl,
 			&i.RealName,
@@ -1183,9 +1195,12 @@ func (q *Queries) ReactivateTeamMember(ctx context.Context, arg ReactivateTeamMe
 }
 
 const removeTeamMember = `-- name: RemoveTeamMember :execrows
-DELETE FROM team_members
+UPDATE team_members
+SET status = 'removed',
+    updated_at = NOW()
 WHERE team_id = $1
   AND user_id = $2
+  AND status <> 'removed'
 `
 
 type RemoveTeamMemberParams struct {
@@ -1193,8 +1208,34 @@ type RemoveTeamMemberParams struct {
 	UserID int64 `json:"user_id"`
 }
 
+// 软移除：保留成员行及其队费账户（余额/付费会员/充值时间/流水引用），历史结算与待付订单到账仍可核销。
 func (q *Queries) RemoveTeamMember(ctx context.Context, arg RemoveTeamMemberParams) (int64, error) {
 	result, err := q.db.Exec(ctx, removeTeamMember, arg.TeamID, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const restoreRemovedTeamMember = `-- name: RestoreRemovedTeamMember :execrows
+UPDATE team_members
+SET role = $3,
+    status = 'active',
+    updated_at = NOW()
+WHERE team_id = $1
+  AND user_id = $2
+  AND status = 'removed'
+`
+
+type RestoreRemovedTeamMemberParams struct {
+	TeamID int64  `json:"team_id"`
+	UserID int64  `json:"user_id"`
+	Role   string `json:"role"`
+}
+
+// 重新添加被移除成员：恢复 active 并沿用指定角色；余额、付费会员与充值时间保持原值。
+func (q *Queries) RestoreRemovedTeamMember(ctx context.Context, arg RestoreRemovedTeamMemberParams) (int64, error) {
+	result, err := q.db.Exec(ctx, restoreRemovedTeamMember, arg.TeamID, arg.UserID, arg.Role)
 	if err != nil {
 		return 0, err
 	}
@@ -1427,6 +1468,7 @@ SET role = $3,
     updated_at = NOW()
 WHERE team_id = $1
   AND user_id = $2
+  AND status <> 'removed'
 `
 
 type UpdateTeamMemberParams struct {
@@ -1436,6 +1478,7 @@ type UpdateTeamMemberParams struct {
 	Status string `json:"status"`
 }
 
+// removed 是移除后的账户保留态，不能通过资料编辑改动；恢复走 RestoreRemovedTeamMember。
 func (q *Queries) UpdateTeamMember(ctx context.Context, arg UpdateTeamMemberParams) (int64, error) {
 	result, err := q.db.Exec(ctx, updateTeamMember,
 		arg.TeamID,
@@ -1443,6 +1486,29 @@ func (q *Queries) UpdateTeamMember(ctx context.Context, arg UpdateTeamMemberPara
 		arg.Role,
 		arg.Status,
 	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const updateTeamMemberPaidMembership = `-- name: UpdateTeamMemberPaidMembership :execrows
+UPDATE team_members
+SET is_paid_member = $1,
+    updated_at = NOW()
+WHERE team_id = $2 AND user_id = $3
+  AND status <> 'removed'
+`
+
+type UpdateTeamMemberPaidMembershipParams struct {
+	IsPaidMember bool  `json:"is_paid_member"`
+	TeamID       int64 `json:"team_id"`
+	UserID       int64 `json:"user_id"`
+}
+
+// 仅支持手动切换付费会员标记；余额与充值时间由充值/消费/冲正动作维护，不再直接设置。
+func (q *Queries) UpdateTeamMemberPaidMembership(ctx context.Context, arg UpdateTeamMemberPaidMembershipParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updateTeamMemberPaidMembership, arg.IsPaidMember, arg.TeamID, arg.UserID)
 	if err != nil {
 		return 0, err
 	}

@@ -11,9 +11,34 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const addTeamMemberFundBalance = `-- name: AddTeamMemberFundBalance :one
+UPDATE team_members
+SET balance_cents = balance_cents + $1,
+    updated_at = NOW()
+WHERE team_id = $2 AND user_id = $3
+RETURNING balance_cents
+`
+
+type AddTeamMemberFundBalanceParams struct {
+	AmountCents int64 `json:"amount_cents"`
+	TeamID      int64 `json:"team_id"`
+	UserID      int64 `json:"user_id"`
+}
+
+// 纯余额回加（冲正/结算重算回加）：不触发付费会员与最近充值时间语义。
+func (q *Queries) AddTeamMemberFundBalance(ctx context.Context, arg AddTeamMemberFundBalanceParams) (int64, error) {
+	row := q.db.QueryRow(ctx, addTeamMemberFundBalance, arg.AmountCents, arg.TeamID, arg.UserID)
+	var balance_cents int64
+	err := row.Scan(&balance_cents)
+	return balance_cents, err
+}
+
 const creditTeamMemberFund = `-- name: CreditTeamMemberFund :one
 UPDATE team_members
-SET balance_cents = balance_cents + $1, updated_at = NOW()
+SET balance_cents = balance_cents + $1,
+    is_paid_member = TRUE,
+    last_recharge_at = NOW(),
+    updated_at = NOW()
 WHERE team_id = $2 AND user_id = $3
 RETURNING balance_cents
 `
@@ -24,6 +49,7 @@ type CreditTeamMemberFundParams struct {
 	UserID      int64 `json:"user_id"`
 }
 
+// 实际充值语义：入账同时标记付费会员并刷新最近充值时间（微信到账与人工充值共用）。
 func (q *Queries) CreditTeamMemberFund(ctx context.Context, arg CreditTeamMemberFundParams) (int64, error) {
 	row := q.db.QueryRow(ctx, creditTeamMemberFund, arg.AmountCents, arg.TeamID, arg.UserID)
 	var balance_cents int64
@@ -117,6 +143,41 @@ func (q *Queries) GetActiveTeamMemberForCredit(ctx context.Context, arg GetActiv
 	return id, err
 }
 
+const getManualReversalOriginalByKey = `-- name: GetManualReversalOriginalByKey :one
+SELECT orig.id AS original_id, orig.team_id AS team_id,
+       rev.id AS reversal_id, rev.balance_after_cents AS balance_after_cents
+FROM team_fund_transactions rev
+JOIN team_fund_transactions orig ON orig.reversed_by_transaction_id = rev.id
+WHERE rev.source = 'manual_reversal'
+  AND rev.source_id = $1
+  AND rev.user_id = $2
+`
+
+type GetManualReversalOriginalByKeyParams struct {
+	SourceID string `json:"source_id"`
+	UserID   int64  `json:"user_id"`
+}
+
+type GetManualReversalOriginalByKeyRow struct {
+	OriginalID        int64 `json:"original_id"`
+	TeamID            int64 `json:"team_id"`
+	ReversalID        int64 `json:"reversal_id"`
+	BalanceAfterCents int64 `json:"balance_after_cents"`
+}
+
+// 冲正幂等复查：按键定位已落库的冲正流水及其关联的原流水（金额由原流水推导，不随请求携带）。
+func (q *Queries) GetManualReversalOriginalByKey(ctx context.Context, arg GetManualReversalOriginalByKeyParams) (GetManualReversalOriginalByKeyRow, error) {
+	row := q.db.QueryRow(ctx, getManualReversalOriginalByKey, arg.SourceID, arg.UserID)
+	var i GetManualReversalOriginalByKeyRow
+	err := row.Scan(
+		&i.OriginalID,
+		&i.TeamID,
+		&i.ReversalID,
+		&i.BalanceAfterCents,
+	)
+	return i, err
+}
+
 const getNextSettlementBatchNo = `-- name: GetNextSettlementBatchNo :one
 SELECT COALESCE(MAX(batch_no), 0) + 1 FROM match_settlement_batches WHERE match_id = $1
 `
@@ -126,6 +187,37 @@ func (q *Queries) GetNextSettlementBatchNo(ctx context.Context, matchID pgtype.U
 	var column_1 int32
 	err := row.Scan(&column_1)
 	return column_1, err
+}
+
+const getTeamFundTransactionForUpdate = `-- name: GetTeamFundTransactionForUpdate :one
+SELECT id, team_id, user_id, amount_cents, source, reversed_by_transaction_id
+FROM team_fund_transactions
+WHERE id = $1
+FOR UPDATE
+`
+
+type GetTeamFundTransactionForUpdateRow struct {
+	ID                      int64  `json:"id"`
+	TeamID                  int64  `json:"team_id"`
+	UserID                  int64  `json:"user_id"`
+	AmountCents             int64  `json:"amount_cents"`
+	Source                  string `json:"source"`
+	ReversedByTransactionID *int64 `json:"reversed_by_transaction_id"`
+}
+
+// 冲正前锁定原流水行；reversed_by_transaction_id 非空表示已冲正。
+func (q *Queries) GetTeamFundTransactionForUpdate(ctx context.Context, id int64) (GetTeamFundTransactionForUpdateRow, error) {
+	row := q.db.QueryRow(ctx, getTeamFundTransactionForUpdate, id)
+	var i GetTeamFundTransactionForUpdateRow
+	err := row.Scan(
+		&i.ID,
+		&i.TeamID,
+		&i.UserID,
+		&i.AmountCents,
+		&i.Source,
+		&i.ReversedByTransactionID,
+	)
+	return i, err
 }
 
 const getTeamMemberFundBalance = `-- name: GetTeamMemberFundBalance :one
@@ -147,9 +239,10 @@ func (q *Queries) GetTeamMemberFundBalance(ctx context.Context, arg GetTeamMembe
 
 const insertAdminCreditFundTransaction = `-- name: InsertAdminCreditFundTransaction :one
 INSERT INTO team_fund_transactions
-    (team_id, user_id, amount_cents, balance_after_cents, source, source_id, match_id, description)
+    (team_id, user_id, amount_cents, balance_after_cents, source, source_id, match_id, description, created_by_user_id)
 VALUES ($1, $2, $3,
-        $4, 'admin_credit', $5, NULL, $6)
+        $4, 'admin_credit', $5, NULL,
+        $6, $7)
 RETURNING id
 `
 
@@ -160,9 +253,10 @@ type InsertAdminCreditFundTransactionParams struct {
 	BalanceAfterCents int64  `json:"balance_after_cents"`
 	SourceID          string `json:"source_id"`
 	Description       string `json:"description"`
+	CreatedByUserID   *int64 `json:"created_by_user_id"`
 }
 
-// 管理员手动充值流水；source_id 为本次操作生成的 UUID 字符串。
+// 管理员手动充值流水；source_id 为幂等键（未提供时为操作生成的 UUID）。
 func (q *Queries) InsertAdminCreditFundTransaction(ctx context.Context, arg InsertAdminCreditFundTransactionParams) (int64, error) {
 	row := q.db.QueryRow(ctx, insertAdminCreditFundTransaction,
 		arg.TeamID,
@@ -171,6 +265,44 @@ func (q *Queries) InsertAdminCreditFundTransaction(ctx context.Context, arg Inse
 		arg.BalanceAfterCents,
 		arg.SourceID,
 		arg.Description,
+		arg.CreatedByUserID,
+	)
+	var id int64
+	err := row.Scan(&id)
+	return id, err
+}
+
+const insertManualFundTransaction = `-- name: InsertManualFundTransaction :one
+INSERT INTO team_fund_transactions
+    (team_id, user_id, amount_cents, balance_after_cents, source, source_id, match_id, description, created_by_user_id)
+VALUES ($1, $2, $3,
+        $4, $5, $6, NULL,
+        $7, $8)
+RETURNING id
+`
+
+type InsertManualFundTransactionParams struct {
+	TeamID            int64  `json:"team_id"`
+	UserID            int64  `json:"user_id"`
+	AmountCents       int64  `json:"amount_cents"`
+	BalanceAfterCents int64  `json:"balance_after_cents"`
+	Source            string `json:"source"`
+	SourceID          string `json:"source_id"`
+	Description       string `json:"description"`
+	CreatedByUserID   *int64 `json:"created_by_user_id"`
+}
+
+// 人工消费扣费 / 人工冲正流水；source_id 为幂等键。
+func (q *Queries) InsertManualFundTransaction(ctx context.Context, arg InsertManualFundTransactionParams) (int64, error) {
+	row := q.db.QueryRow(ctx, insertManualFundTransaction,
+		arg.TeamID,
+		arg.UserID,
+		arg.AmountCents,
+		arg.BalanceAfterCents,
+		arg.Source,
+		arg.SourceID,
+		arg.Description,
+		arg.CreatedByUserID,
 	)
 	var id int64
 	err := row.Scan(&id)
@@ -323,7 +455,7 @@ func (q *Queries) ListTeamFundBalances(ctx context.Context, userID int64) ([]Lis
 }
 
 const listTeamFundTransactionsBySource = `-- name: ListTeamFundTransactionsBySource :many
-SELECT id, team_id, user_id, amount_cents, balance_after_cents, source, source_id, match_id, description, created_at FROM team_fund_transactions
+SELECT id, team_id, user_id, amount_cents, balance_after_cents, source, source_id, match_id, description, created_at, created_by_user_id, reversed_by_transaction_id FROM team_fund_transactions
 WHERE source = $1 AND source_id = $2
 ORDER BY id
 `
@@ -353,6 +485,82 @@ func (q *Queries) ListTeamFundTransactionsBySource(ctx context.Context, arg List
 			&i.MatchID,
 			&i.Description,
 			&i.CreatedAt,
+			&i.CreatedByUserID,
+			&i.ReversedByTransactionID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listTeamFundTransactionsForMember = `-- name: ListTeamFundTransactionsForMember :many
+SELECT tr.id, tr.team_id, tr.user_id, tr.amount_cents, tr.balance_after_cents, tr.source, tr.source_id, tr.match_id, tr.description, tr.created_at, tr.created_by_user_id, tr.reversed_by_transaction_id, m.name AS match_name
+FROM team_fund_transactions tr
+LEFT JOIN matches m ON m.id = tr.match_id
+WHERE tr.team_id = $1
+  AND tr.user_id = $2
+  AND ($3::bigint = 0 OR tr.id < $3)
+ORDER BY tr.id DESC
+LIMIT $4
+`
+
+type ListTeamFundTransactionsForMemberParams struct {
+	TeamID    int64 `json:"team_id"`
+	UserID    int64 `json:"user_id"`
+	BeforeID  int64 `json:"before_id"`
+	LimitRows int32 `json:"limit_rows"`
+}
+
+type ListTeamFundTransactionsForMemberRow struct {
+	ID                      int64              `json:"id"`
+	TeamID                  int64              `json:"team_id"`
+	UserID                  int64              `json:"user_id"`
+	AmountCents             int64              `json:"amount_cents"`
+	BalanceAfterCents       int64              `json:"balance_after_cents"`
+	Source                  string             `json:"source"`
+	SourceID                string             `json:"source_id"`
+	MatchID                 pgtype.UUID        `json:"match_id"`
+	Description             string             `json:"description"`
+	CreatedAt               pgtype.Timestamptz `json:"created_at"`
+	CreatedByUserID         *int64             `json:"created_by_user_id"`
+	ReversedByTransactionID *int64             `json:"reversed_by_transaction_id"`
+	MatchName               *string            `json:"match_name"`
+}
+
+// 管理员/队长查看指定成员的队费流水（冲正需要定位原流水 ID）。
+func (q *Queries) ListTeamFundTransactionsForMember(ctx context.Context, arg ListTeamFundTransactionsForMemberParams) ([]ListTeamFundTransactionsForMemberRow, error) {
+	rows, err := q.db.Query(ctx, listTeamFundTransactionsForMember,
+		arg.TeamID,
+		arg.UserID,
+		arg.BeforeID,
+		arg.LimitRows,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListTeamFundTransactionsForMemberRow
+	for rows.Next() {
+		var i ListTeamFundTransactionsForMemberRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.TeamID,
+			&i.UserID,
+			&i.AmountCents,
+			&i.BalanceAfterCents,
+			&i.Source,
+			&i.SourceID,
+			&i.MatchID,
+			&i.Description,
+			&i.CreatedAt,
+			&i.CreatedByUserID,
+			&i.ReversedByTransactionID,
+			&i.MatchName,
 		); err != nil {
 			return nil, err
 		}
@@ -365,7 +573,7 @@ func (q *Queries) ListTeamFundTransactionsBySource(ctx context.Context, arg List
 }
 
 const listTeamFundTransactionsForUser = `-- name: ListTeamFundTransactionsForUser :many
-SELECT tr.id, tr.team_id, tr.user_id, tr.amount_cents, tr.balance_after_cents, tr.source, tr.source_id, tr.match_id, tr.description, tr.created_at, t.name AS team_name, m.name AS match_name
+SELECT tr.id, tr.team_id, tr.user_id, tr.amount_cents, tr.balance_after_cents, tr.source, tr.source_id, tr.match_id, tr.description, tr.created_at, tr.created_by_user_id, tr.reversed_by_transaction_id, t.name AS team_name, m.name AS match_name
 FROM team_fund_transactions tr
 JOIN teams t ON t.id = tr.team_id
 LEFT JOIN matches m ON m.id = tr.match_id
@@ -382,18 +590,20 @@ type ListTeamFundTransactionsForUserParams struct {
 }
 
 type ListTeamFundTransactionsForUserRow struct {
-	ID                int64              `json:"id"`
-	TeamID            int64              `json:"team_id"`
-	UserID            int64              `json:"user_id"`
-	AmountCents       int64              `json:"amount_cents"`
-	BalanceAfterCents int64              `json:"balance_after_cents"`
-	Source            string             `json:"source"`
-	SourceID          string             `json:"source_id"`
-	MatchID           pgtype.UUID        `json:"match_id"`
-	Description       string             `json:"description"`
-	CreatedAt         pgtype.Timestamptz `json:"created_at"`
-	TeamName          string             `json:"team_name"`
-	MatchName         *string            `json:"match_name"`
+	ID                      int64              `json:"id"`
+	TeamID                  int64              `json:"team_id"`
+	UserID                  int64              `json:"user_id"`
+	AmountCents             int64              `json:"amount_cents"`
+	BalanceAfterCents       int64              `json:"balance_after_cents"`
+	Source                  string             `json:"source"`
+	SourceID                string             `json:"source_id"`
+	MatchID                 pgtype.UUID        `json:"match_id"`
+	Description             string             `json:"description"`
+	CreatedAt               pgtype.Timestamptz `json:"created_at"`
+	CreatedByUserID         *int64             `json:"created_by_user_id"`
+	ReversedByTransactionID *int64             `json:"reversed_by_transaction_id"`
+	TeamName                string             `json:"team_name"`
+	MatchName               *string            `json:"match_name"`
 }
 
 func (q *Queries) ListTeamFundTransactionsForUser(ctx context.Context, arg ListTeamFundTransactionsForUserParams) ([]ListTeamFundTransactionsForUserRow, error) {
@@ -416,6 +626,8 @@ func (q *Queries) ListTeamFundTransactionsForUser(ctx context.Context, arg ListT
 			&i.MatchID,
 			&i.Description,
 			&i.CreatedAt,
+			&i.CreatedByUserID,
+			&i.ReversedByTransactionID,
 			&i.TeamName,
 			&i.MatchName,
 		); err != nil {
@@ -459,5 +671,21 @@ type MarkSettlementBatchReversedParams struct {
 
 func (q *Queries) MarkSettlementBatchReversed(ctx context.Context, arg MarkSettlementBatchReversedParams) error {
 	_, err := q.db.Exec(ctx, markSettlementBatchReversed, arg.ReversedByBatchID, arg.BatchID)
+	return err
+}
+
+const markTeamFundTransactionReversed = `-- name: MarkTeamFundTransactionReversed :exec
+UPDATE team_fund_transactions
+SET reversed_by_transaction_id = $1
+WHERE id = $2
+`
+
+type MarkTeamFundTransactionReversedParams struct {
+	ReversalID *int64 `json:"reversal_id"`
+	ID         int64  `json:"id"`
+}
+
+func (q *Queries) MarkTeamFundTransactionReversed(ctx context.Context, arg MarkTeamFundTransactionReversedParams) error {
+	_, err := q.db.Exec(ctx, markTeamFundTransactionReversed, arg.ReversalID, arg.ID)
 	return err
 }

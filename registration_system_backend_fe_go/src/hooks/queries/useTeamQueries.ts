@@ -19,6 +19,7 @@ import {
   updatePlayerProfile,
   updateTeam,
   updateTeamMember,
+  updateTeamMemberPaidMembership,
 } from "../../api/teams";
 import type {
   AddTeamMemberPayload,
@@ -26,6 +27,7 @@ import type {
   Team,
   TeamMemberManagement,
   UpdatePlayerProfilePayload,
+  UpdateTeamMemberPaidMembershipPayload,
   UpdateTeamMemberPayload,
 } from "../../types/team";
 import { queryKeys } from "./keys";
@@ -216,6 +218,21 @@ export function useUpdateTeamMemberMutation() {
       userID: number;
       payload: UpdateTeamMemberPayload;
     }) => updateTeamMember(teamID, userID, payload),
+    () => null,
+  );
+}
+
+export function useUpdateTeamMemberPaidMembershipMutation() {
+  return useManagementMutation(
+    ({
+      teamID,
+      userID,
+      payload,
+    }: {
+      teamID: number;
+      userID: number;
+      payload: UpdateTeamMemberPaidMembershipPayload;
+    }) => updateTeamMemberPaidMembership(teamID, userID, payload),
     () => null,
   );
 }

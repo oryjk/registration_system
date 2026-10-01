@@ -23,8 +23,20 @@ WHERE team_id = sqlc.arg('team_id') AND user_id = sqlc.arg('user_id')
 RETURNING balance_cents;
 
 -- name: CreditTeamMemberFund :one
+-- 实际充值语义：入账同时标记付费会员并刷新最近充值时间（微信到账与人工充值共用）。
 UPDATE team_members
-SET balance_cents = balance_cents + sqlc.arg('amount_cents'), updated_at = NOW()
+SET balance_cents = balance_cents + sqlc.arg('amount_cents'),
+    is_paid_member = TRUE,
+    last_recharge_at = NOW(),
+    updated_at = NOW()
+WHERE team_id = sqlc.arg('team_id') AND user_id = sqlc.arg('user_id')
+RETURNING balance_cents;
+
+-- name: AddTeamMemberFundBalance :one
+-- 纯余额回加（冲正/结算重算回加）：不触发付费会员与最近充值时间语义。
+UPDATE team_members
+SET balance_cents = balance_cents + sqlc.arg('amount_cents'),
+    updated_at = NOW()
 WHERE team_id = sqlc.arg('team_id') AND user_id = sqlc.arg('user_id')
 RETURNING balance_cents;
 
@@ -69,6 +81,27 @@ VALUES (sqlc.arg('team_id'), sqlc.arg('user_id'), sqlc.arg('amount_cents'), sqlc
 -- name: ListSettlementBatches :many
 SELECT * FROM match_settlement_batches WHERE match_id = sqlc.arg('match_id') ORDER BY batch_no DESC;
 
+-- name: ListTeamFundTransactionsForMember :many
+-- 管理员/队长查看指定成员的队费流水（冲正需要定位原流水 ID）。
+SELECT tr.*, m.name AS match_name
+FROM team_fund_transactions tr
+LEFT JOIN matches m ON m.id = tr.match_id
+WHERE tr.team_id = sqlc.arg('team_id')
+  AND tr.user_id = sqlc.arg('user_id')
+  AND (sqlc.arg('before_id')::bigint = 0 OR tr.id < sqlc.arg('before_id'))
+ORDER BY tr.id DESC
+LIMIT sqlc.arg('limit_rows');
+
+-- name: GetManualReversalOriginalByKey :one
+-- 冲正幂等复查：按键定位已落库的冲正流水及其关联的原流水（金额由原流水推导，不随请求携带）。
+SELECT orig.id AS original_id, orig.team_id AS team_id,
+       rev.id AS reversal_id, rev.balance_after_cents AS balance_after_cents
+FROM team_fund_transactions rev
+JOIN team_fund_transactions orig ON orig.reversed_by_transaction_id = rev.id
+WHERE rev.source = 'manual_reversal'
+  AND rev.source_id = sqlc.arg('source_id')
+  AND rev.user_id = sqlc.arg('user_id');
+
 -- name: ListTeamFundBalances :many
 SELECT tm.team_id, t.name AS team_name, tm.balance_cents
 FROM team_members tm
@@ -87,9 +120,31 @@ ORDER BY tr.id DESC
 LIMIT sqlc.arg('limit_rows');
 
 -- name: InsertAdminCreditFundTransaction :one
--- 管理员手动充值流水；source_id 为本次操作生成的 UUID 字符串。
+-- 管理员手动充值流水；source_id 为幂等键（未提供时为操作生成的 UUID）。
 INSERT INTO team_fund_transactions
-    (team_id, user_id, amount_cents, balance_after_cents, source, source_id, match_id, description)
+    (team_id, user_id, amount_cents, balance_after_cents, source, source_id, match_id, description, created_by_user_id)
 VALUES (sqlc.arg('team_id'), sqlc.arg('user_id'), sqlc.arg('amount_cents'),
-        sqlc.arg('balance_after_cents'), 'admin_credit', sqlc.arg('source_id'), NULL, sqlc.arg('description'))
+        sqlc.arg('balance_after_cents'), 'admin_credit', sqlc.arg('source_id'), NULL,
+        sqlc.arg('description'), sqlc.narg('created_by_user_id'))
 RETURNING id;
+
+-- name: InsertManualFundTransaction :one
+-- 人工消费扣费 / 人工冲正流水；source_id 为幂等键。
+INSERT INTO team_fund_transactions
+    (team_id, user_id, amount_cents, balance_after_cents, source, source_id, match_id, description, created_by_user_id)
+VALUES (sqlc.arg('team_id'), sqlc.arg('user_id'), sqlc.arg('amount_cents'),
+        sqlc.arg('balance_after_cents'), sqlc.arg('source'), sqlc.arg('source_id'), NULL,
+        sqlc.arg('description'), sqlc.narg('created_by_user_id'))
+RETURNING id;
+
+-- name: GetTeamFundTransactionForUpdate :one
+-- 冲正前锁定原流水行；reversed_by_transaction_id 非空表示已冲正。
+SELECT id, team_id, user_id, amount_cents, source, reversed_by_transaction_id
+FROM team_fund_transactions
+WHERE id = sqlc.arg('id')
+FOR UPDATE;
+
+-- name: MarkTeamFundTransactionReversed :exec
+UPDATE team_fund_transactions
+SET reversed_by_transaction_id = sqlc.arg('reversal_id')
+WHERE id = sqlc.arg('id');

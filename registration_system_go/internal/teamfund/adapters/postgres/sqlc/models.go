@@ -212,28 +212,32 @@ type Team struct {
 }
 
 type TeamFundTransaction struct {
-	ID                int64              `json:"id"`
-	TeamID            int64              `json:"team_id"`
-	UserID            int64              `json:"user_id"`
-	AmountCents       int64              `json:"amount_cents"`
-	BalanceAfterCents int64              `json:"balance_after_cents"`
-	Source            string             `json:"source"`
-	SourceID          string             `json:"source_id"`
-	MatchID           pgtype.UUID        `json:"match_id"`
-	Description       string             `json:"description"`
-	CreatedAt         pgtype.Timestamptz `json:"created_at"`
+	ID                      int64              `json:"id"`
+	TeamID                  int64              `json:"team_id"`
+	UserID                  int64              `json:"user_id"`
+	AmountCents             int64              `json:"amount_cents"`
+	BalanceAfterCents       int64              `json:"balance_after_cents"`
+	Source                  string             `json:"source"`
+	SourceID                string             `json:"source_id"`
+	MatchID                 pgtype.UUID        `json:"match_id"`
+	Description             string             `json:"description"`
+	CreatedAt               pgtype.Timestamptz `json:"created_at"`
+	CreatedByUserID         *int64             `json:"created_by_user_id"`
+	ReversedByTransactionID *int64             `json:"reversed_by_transaction_id"`
 }
 
 type TeamMember struct {
-	ID           int64            `json:"id"`
-	TeamID       int64            `json:"team_id"`
-	UserID       int64            `json:"user_id"`
-	Role         string           `json:"role"`
-	Status       string           `json:"status"`
-	JoinedAt     pgtype.Timestamp `json:"joined_at"`
-	CreatedAt    pgtype.Timestamp `json:"created_at"`
-	UpdatedAt    pgtype.Timestamp `json:"updated_at"`
-	BalanceCents int64            `json:"balance_cents"`
+	ID             int64              `json:"id"`
+	TeamID         int64              `json:"team_id"`
+	UserID         int64              `json:"user_id"`
+	Role           string             `json:"role"`
+	Status         string             `json:"status"`
+	JoinedAt       pgtype.Timestamp   `json:"joined_at"`
+	CreatedAt      pgtype.Timestamp   `json:"created_at"`
+	UpdatedAt      pgtype.Timestamp   `json:"updated_at"`
+	BalanceCents   int64              `json:"balance_cents"`
+	IsPaidMember   bool               `json:"is_paid_member"`
+	LastRechargeAt pgtype.Timestamptz `json:"last_recharge_at"`
 }
 
 type Tip struct {

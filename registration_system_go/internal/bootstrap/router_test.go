@@ -422,10 +422,22 @@ func (routerTeamFundQueries) ListTransactions(context.Context, sharedauth.Actor,
 	return nil, nil
 }
 
+func (routerTeamFundQueries) ListMemberTransactions(context.Context, sharedauth.Actor, int64, int64, int64, int) ([]teamfundports.TeamFundTransaction, error) {
+	return nil, nil
+}
+
 type routerTeamFundAdminCredit struct{}
 
-func (routerTeamFundAdminCredit) Credit(context.Context, sharedauth.Actor, teamfundapplication.AdminCreditRequest) (teamfundports.AdminCreditResult, error) {
-	return teamfundports.AdminCreditResult{}, nil
+func (routerTeamFundAdminCredit) Recharge(context.Context, sharedauth.Actor, teamfundapplication.ManualFundRequest) (teamfundports.ManualFundResult, error) {
+	return teamfundports.ManualFundResult{}, nil
+}
+
+func (routerTeamFundAdminCredit) Consume(context.Context, sharedauth.Actor, teamfundapplication.ManualFundRequest) (teamfundports.ManualFundResult, error) {
+	return teamfundports.ManualFundResult{}, nil
+}
+
+func (routerTeamFundAdminCredit) Reverse(context.Context, sharedauth.Actor, teamfundapplication.ManualFundRequest) (teamfundports.ManualFundResult, error) {
+	return teamfundports.ManualFundResult{}, nil
 }
 
 func TestAdminTeamFundCreditRouteRequiresAdminToken(t *testing.T) {

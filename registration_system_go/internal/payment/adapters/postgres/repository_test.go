@@ -276,10 +276,12 @@ func TestApplyMembershipPaymentCreditsPayingMemberBalanceWithoutTouchingCreditOr
 
 	var actualVipUntil time.Time
 	var creditScore, myBalance, otherBalance int64
+	var isPaidMember bool
+	var lastRechargeAt time.Time
 	if err := pool.QueryRow(ctx, `SELECT vip_until, credit_score FROM teams WHERE id=$1`, teamID).Scan(&actualVipUntil, &creditScore); err != nil {
 		t.Fatal(err)
 	}
-	if err := pool.QueryRow(ctx, `SELECT balance_cents FROM team_members WHERE team_id=$1 AND user_id=$2`, teamID, userID).Scan(&myBalance); err != nil {
+	if err := pool.QueryRow(ctx, `SELECT balance_cents, is_paid_member, last_recharge_at FROM team_members WHERE team_id=$1 AND user_id=$2`, teamID, userID).Scan(&myBalance, &isPaidMember, &lastRechargeAt); err != nil {
 		t.Fatal(err)
 	}
 	if err := pool.QueryRow(ctx, `SELECT balance_cents FROM team_members WHERE team_id=$1 AND user_id=$2`, teamID, otherID).Scan(&otherBalance); err != nil {
@@ -291,6 +293,9 @@ func TestApplyMembershipPaymentCreditsPayingMemberBalanceWithoutTouchingCreditOr
 	}
 	if myBalance != 7500 || otherBalance != 0 || first.BalanceCents != 7500 {
 		t.Fatalf("myBalance=%d otherBalance=%d result.BalanceCents=%d", myBalance, otherBalance, first.BalanceCents)
+	}
+	if !isPaidMember || !lastRechargeAt.Equal(payment.PaidAt) {
+		t.Fatalf("队费支付后应自动成为付费会员并记录充值时间: paid=%v last=%v want=%v", isPaidMember, lastRechargeAt, payment.PaidAt)
 	}
 	if !actualVipUntil.Equal(vipUntil) {
 		t.Fatalf("vip_until changed: before=%v after=%v", vipUntil, actualVipUntil)
@@ -319,6 +324,112 @@ func TestApplyMembershipPaymentCreditsPayingMemberBalanceWithoutTouchingCreditOr
 	if ledgerCount != 1 || ledgerAmount != 7500 || ledgerBalance != 7500 || ledgerSource != "membership_payment" {
 		t.Fatalf("队费流水应恰好一条且金额/快照正确: count=%d amount=%d balance=%d source=%s",
 			ledgerCount, ledgerAmount, ledgerBalance, ledgerSource)
+	}
+}
+
+// 成员被移除（removed，账户保留）后，已成立的待付订单到账仍必须核销入账，不能吞掉已付款项。
+func TestApplyMembershipPaymentCreditsRemovedMemberAccount(t *testing.T) {
+	pool := testsupport.OpenTestPostgres(t)
+	ctx := context.Background()
+	userID := seedPaymentUser(t, pool, "removed-pay")
+	var teamID int64
+	if err := pool.QueryRow(ctx, `INSERT INTO teams (name) VALUES ('移除后到账队') RETURNING id`).Scan(&teamID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx,
+		`INSERT INTO team_members (team_id, user_id, role, status, balance_cents) VALUES ($1, $2, 'member', 'removed', 1200)`,
+		teamID, userID); err != nil {
+		t.Fatal(err)
+	}
+	order, err := paymentdomain.NewTeamMembershipOrder(uniquePaymentOrderNo("removedfee"), userID, teamID, 5000, time.Now().UTC())
+	if err != nil {
+		t.Fatal(err)
+	}
+	repository := NewRepository(pool)
+	if err := repository.Create(ctx, order); err != nil {
+		t.Fatal(err)
+	}
+	payment := paymentports.VerifiedPayment{OrderNo: order.OrderNo, AmountCents: order.AmountCents, TransactionID: "wx-" + order.OrderNo, PaidAt: time.Now().UTC()}
+	credit := paymentports.TeamFundCredit{TeamID: teamID, UserID: userID, AmountCents: order.AmountCents}
+
+	result, err := repository.ApplyMembershipPayment(ctx, payment, credit)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.Credited || result.BalanceCents != 6200 {
+		t.Fatalf("removed member payment must still credit: %+v", result)
+	}
+
+	var status string
+	var balance int64
+	if err := pool.QueryRow(ctx,
+		`SELECT status, balance_cents FROM team_members WHERE team_id=$1 AND user_id=$2`, teamID, userID,
+	).Scan(&status, &balance); err != nil {
+		t.Fatal(err)
+	}
+	if status != "removed" || balance != 6200 {
+		t.Fatalf("credit must keep removed status and accumulate balance: status=%s balance=%d", status, balance)
+	}
+}
+
+// 较早付款的回调延迟到达时，最近充值时间不得倒退（GREATEST 语义），余额照常累计。
+func TestApplyMembershipPaymentKeepsLatestRechargeTime(t *testing.T) {
+	pool := testsupport.OpenTestPostgres(t)
+	ctx := context.Background()
+	userID := seedPaymentUser(t, pool, "late-callback")
+	var teamID int64
+	if err := pool.QueryRow(ctx, `INSERT INTO teams (name) VALUES ('充值时间防倒退队') RETURNING id`).Scan(&teamID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx,
+		`INSERT INTO team_members (team_id, user_id, role, status) VALUES ($1, $2, 'member', 'active')`,
+		teamID, userID); err != nil {
+		t.Fatal(err)
+	}
+	repository := NewRepository(pool)
+
+	recentPaidAt := time.Now().UTC().Truncate(time.Microsecond)
+	stalePaidAt := recentPaidAt.Add(-24 * time.Hour)
+
+	recentOrder, err := paymentdomain.NewTeamMembershipOrder(uniquePaymentOrderNo("latefee-new"), userID, teamID, 1000, time.Now().UTC())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := repository.Create(ctx, recentOrder); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := repository.ApplyMembershipPayment(ctx,
+		paymentports.VerifiedPayment{OrderNo: recentOrder.OrderNo, AmountCents: recentOrder.AmountCents, TransactionID: "wx-new", PaidAt: recentPaidAt},
+		paymentports.TeamFundCredit{TeamID: teamID, UserID: userID, AmountCents: recentOrder.AmountCents}); err != nil {
+		t.Fatal(err)
+	}
+
+	// 另一笔更早付款的订单，回调延迟到现在才核销。
+	staleOrder, err := paymentdomain.NewTeamMembershipOrder(uniquePaymentOrderNo("latefee-old"), userID, teamID, 500, stalePaidAt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := repository.Create(ctx, staleOrder); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := repository.ApplyMembershipPayment(ctx,
+		paymentports.VerifiedPayment{OrderNo: staleOrder.OrderNo, AmountCents: staleOrder.AmountCents, TransactionID: "wx-old", PaidAt: stalePaidAt},
+		paymentports.TeamFundCredit{TeamID: teamID, UserID: userID, AmountCents: staleOrder.AmountCents}); err != nil {
+		t.Fatal(err)
+	}
+
+	var balance int64
+	var lastRechargeAt time.Time
+	if err := pool.QueryRow(ctx,
+		`SELECT balance_cents, last_recharge_at FROM team_members WHERE team_id=$1 AND user_id=$2`, teamID, userID,
+	).Scan(&balance, &lastRechargeAt); err != nil {
+		t.Fatal(err)
+	}
+	if balance != 1500 {
+		t.Fatalf("both payments must credit: balance=%d", balance)
+	}
+	if !lastRechargeAt.Equal(recentPaidAt) {
+		t.Fatalf("late stale callback must not rewind last_recharge_at: want %v got %v", recentPaidAt, lastRechargeAt)
 	}
 }
 

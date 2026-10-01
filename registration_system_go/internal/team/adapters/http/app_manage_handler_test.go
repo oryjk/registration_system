@@ -62,6 +62,20 @@ func TestAppManageRoutesForwardParamsAndReturnEmptyEnvelope(t *testing.T) {
 		t.Fatalf("update member not forwarded: %+v", manage)
 	}
 
+	response = do(http.MethodPut, "/teams/7/members/50/paid-membership", `{"is_paid_member":true}`)
+	if response.Code != http.StatusOK {
+		t.Fatalf("update paid membership: status=%d body=%s", response.Code, response.Body.String())
+	}
+	if manage.paidMembershipUserID != 50 || manage.paidMembershipUpdate.IsPaidMember == nil || !*manage.paidMembershipUpdate.IsPaidMember {
+		t.Fatalf("paid membership not forwarded: %+v", manage.paidMembershipUpdate)
+	}
+
+	// 已废弃的余额字段必须显式拒绝，不允许静默忽略。
+	response = do(http.MethodPut, "/teams/7/members/50/paid-membership", `{"is_paid_member":true,"balance_cents":100}`)
+	if response.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("deprecated balance field must be rejected: status=%d body=%s", response.Code, response.Body.String())
+	}
+
 	response = do(http.MethodDelete, "/teams/7/members/50", "")
 	if response.Code != http.StatusOK {
 		t.Fatalf("remove member: status=%d body=%s", response.Code, response.Body.String())
@@ -142,23 +156,25 @@ func TestAppManageRoutesMapBusinessErrors(t *testing.T) {
 }
 
 type fakeAppManageCommands struct {
-	err                error
-	actor              sharedauth.Actor
-	teamID             int64
-	name               *string
-	description        *string
-	logoURL            *string
-	addedUserID        int64
-	addedRole          domain.Role
-	updatedUserID      int64
-	updatedRole        *domain.Role
-	updatedStatus      *domain.MemberStatus
-	removedUserID      int64
-	joinPassword       string
-	joinPasswordTeamID int64
-	deleteTeamID       int64
-	blockers           domain.DissolveBlockers
-	blockersTeamID     int64
+	err                  error
+	actor                sharedauth.Actor
+	teamID               int64
+	name                 *string
+	description          *string
+	logoURL              *string
+	addedUserID          int64
+	addedRole            domain.Role
+	updatedUserID        int64
+	updatedRole          *domain.Role
+	updatedStatus        *domain.MemberStatus
+	paidMembershipUserID int64
+	paidMembershipUpdate domain.MemberPaidMembershipUpdate
+	removedUserID        int64
+	joinPassword         string
+	joinPasswordTeamID   int64
+	deleteTeamID         int64
+	blockers             domain.DissolveBlockers
+	blockersTeamID       int64
 }
 
 func (f *fakeAppManageCommands) UpdateProfile(_ context.Context, actor sharedauth.Actor, teamID int64, name, description, logoURL *string) error {
@@ -178,6 +194,11 @@ func (f *fakeAppManageCommands) AddMember(_ context.Context, actor sharedauth.Ac
 
 func (f *fakeAppManageCommands) UpdateMember(_ context.Context, actor sharedauth.Actor, teamID, userID int64, role *domain.Role, status *domain.MemberStatus) error {
 	f.actor, f.teamID, f.updatedUserID, f.updatedRole, f.updatedStatus = actor, teamID, userID, role, status
+	return f.err
+}
+
+func (f *fakeAppManageCommands) UpdatePaidMembership(_ context.Context, actor sharedauth.Actor, teamID, userID int64, update domain.MemberPaidMembershipUpdate) error {
+	f.actor, f.teamID, f.paidMembershipUserID, f.paidMembershipUpdate = actor, teamID, userID, update
 	return f.err
 }
 

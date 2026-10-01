@@ -2,6 +2,7 @@ package teamhttp
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -17,6 +18,7 @@ type TeamMembers interface {
 	ListCandidates(context.Context, sharedauth.Actor, int64, string) ([]domain.MemberCandidate, error)
 	Add(context.Context, sharedauth.Actor, int64, int64, domain.Role) (application.MemberManagementResult, error)
 	Update(context.Context, sharedauth.Actor, int64, int64, domain.Role, domain.MemberStatus) (application.MemberManagementResult, error)
+	UpdatePaidMembership(context.Context, sharedauth.Actor, int64, int64, domain.MemberPaidMembershipUpdate) (application.MemberManagementResult, error)
 	Remove(context.Context, sharedauth.Actor, int64, int64) (application.MemberManagementResult, error)
 	SetCaptain(context.Context, sharedauth.Actor, int64, *int64) (application.MemberManagementResult, error)
 }
@@ -32,7 +34,9 @@ type MemberResponse struct {
 	Status      domain.MemberStatus `json:"status"`
 	JoinedAt    time.Time           `json:"joined_at"`
 	// BalanceCents 该成员在此球队的队费余额（分），负数表示欠款。
-	BalanceCents int64 `json:"balance_cents"`
+	BalanceCents   int64      `json:"balance_cents"`
+	IsPaidMember   bool       `json:"is_paid_member"`
+	LastRechargeAt *time.Time `json:"last_recharge_at"`
 }
 
 type MemberManagementResponse struct {
@@ -130,6 +134,49 @@ func (h *Handler) AdminUpdateMember(c *gin.Context) {
 	sharedhttpapi.WriteSuccess(c, mapMemberManagement(result))
 }
 
+// UpdatePaidMembershipRequest 只支持付费会员标记；余额与充值时间由充值/消费/冲正动作维护。
+// 携带已废弃的余额/充值时间字段会被显式拒绝，不静默忽略。
+type UpdatePaidMembershipRequest struct {
+	IsPaidMember         *bool           `json:"is_paid_member"`
+	BalanceCents         json.RawMessage `json:"balance_cents"`
+	ExpectedBalanceCents json.RawMessage `json:"expected_balance_cents"`
+	LastRechargeAt       json.RawMessage `json:"last_recharge_at"`
+	ClearLastRechargeAt  json.RawMessage `json:"clear_last_recharge_at"`
+}
+
+func rejectDeprecatedPaidMembershipFields(c *gin.Context, request UpdatePaidMembershipRequest) bool {
+	if len(request.BalanceCents) > 0 || len(request.ExpectedBalanceCents) > 0 ||
+		len(request.LastRechargeAt) > 0 || len(request.ClearLastRechargeAt) > 0 {
+		sharedhttpapi.WriteError(c, sharederror.New(sharederror.KindValidation,
+			"余额与最近充值时间不再支持直接设置，请使用充值、消费扣费或冲正接口"))
+		return true
+	}
+	return false
+}
+
+func (h *Handler) AdminUpdatePaidMembership(c *gin.Context) {
+	actor, teamID, userID, ok := adminActorTeamAndUserID(c)
+	if !ok {
+		return
+	}
+	var request UpdatePaidMembershipRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		sharedhttpapi.WriteError(c, sharederror.New(sharederror.KindValidation, "付费会员信息无效"))
+		return
+	}
+	if rejectDeprecatedPaidMembershipFields(c, request) {
+		return
+	}
+	result, err := h.members.UpdatePaidMembership(c.Request.Context(), actor, teamID, userID, domain.MemberPaidMembershipUpdate{
+		IsPaidMember: request.IsPaidMember,
+	})
+	if err != nil {
+		sharedhttpapi.WriteError(c, err)
+		return
+	}
+	sharedhttpapi.WriteSuccess(c, mapMemberManagement(result))
+}
+
 func (h *Handler) AdminRemoveMember(c *gin.Context) {
 	actor, teamID, userID, ok := adminActorTeamAndUserID(c)
 	if !ok {
@@ -170,6 +217,7 @@ func (h *Handler) registerAdminMemberRoutes(group *gin.RouterGroup) {
 	group.GET("/teams/:id/member-candidates", h.AdminMemberCandidates)
 	group.POST("/teams/:id/members", h.AdminAddMember)
 	group.PATCH("/teams/:id/members/:user_id", h.AdminUpdateMember)
+	group.PUT("/teams/:id/members/:user_id/paid-membership", h.AdminUpdatePaidMembership)
 	group.DELETE("/teams/:id/members/:user_id", h.AdminRemoveMember)
 	group.PATCH("/teams/:id/captain", h.AdminSetCaptain)
 }
@@ -181,7 +229,7 @@ func mapMemberManagement(result application.MemberManagementResult) MemberManage
 			ID: item.ID, UserID: item.UserID, Nickname: item.Nickname, AvatarURL: item.AvatarURL,
 			RealName: item.RealName, PhoneNumber: item.PhoneNumber,
 			Role: item.Role, Status: item.Status, JoinedAt: item.JoinedAt,
-			BalanceCents: item.BalanceCents,
+			BalanceCents: item.BalanceCents, IsPaidMember: item.IsPaidMember, LastRechargeAt: item.LastRechargeAt,
 		})
 	}
 	return MemberManagementResponse{Team: mapTeam(result.Team), Members: members}

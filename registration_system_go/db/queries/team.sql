@@ -192,6 +192,7 @@ WHERE a.applicant_team_id = $1
 ORDER BY m.start_time, a.created_at, a.id;
 
 -- name: ListTeamMembers :many
+-- 管理端成员视图默认按加入时间升序（最早加入在前）；同一时刻加入按 user_id 稳定排序。
 SELECT tm.id,
        tm.team_id,
        tm.user_id,
@@ -199,6 +200,8 @@ SELECT tm.id,
        tm.status,
        tm.joined_at,
        tm.balance_cents,
+       tm.is_paid_member,
+       tm.last_recharge_at,
        u.nickname,
        u.avatar_url,
        u.real_name,
@@ -206,22 +209,24 @@ SELECT tm.id,
 FROM team_members tm
 JOIN users u ON u.id = tm.user_id
 WHERE tm.team_id = $1
+  AND tm.status <> 'removed'
 ORDER BY
-    CASE tm.status WHEN 'active' THEN 0 ELSE 1 END,
-    CASE tm.role
-        WHEN 'captain' THEN 0
-        WHEN 'leader' THEN 1
-        WHEN 'vice_captain' THEN 2
-        ELSE 3
-    END,
-	    tm.joined_at,
-	    tm.user_id;
+    tm.joined_at,
+    tm.user_id;
 
 -- name: FindTeamMembership :one
 SELECT tm.id, tm.team_id, tm.user_id, tm.role, tm.status, tm.joined_at
 FROM team_members tm
 WHERE tm.team_id = $1
   AND tm.user_id = $2;
+
+-- name: UpdateTeamMemberPaidMembership :execrows
+-- 仅支持手动切换付费会员标记；余额与充值时间由充值/消费/冲正动作维护，不再直接设置。
+UPDATE team_members
+SET is_paid_member = sqlc.arg('is_paid_member'),
+    updated_at = NOW()
+WHERE team_id = sqlc.arg('team_id') AND user_id = sqlc.arg('user_id')
+  AND status <> 'removed';
 
 -- name: ListAppTeamMembers :many
 SELECT tm.user_id,
@@ -230,10 +235,14 @@ SELECT tm.user_id,
        u.real_name,
        tm.role,
        tm.status,
-       tm.joined_at
+       tm.joined_at,
+       tm.balance_cents,
+       tm.is_paid_member,
+       tm.last_recharge_at
 FROM team_members tm
 JOIN users u ON u.id = tm.user_id
 WHERE tm.team_id = $1
+  AND tm.status <> 'removed'
 ORDER BY
     CASE tm.status WHEN 'active' THEN 0 ELSE 1 END,
     CASE tm.role
@@ -254,6 +263,7 @@ WHERE u.status = 'active'
       FROM team_members tm
       WHERE tm.team_id = $1
         AND tm.user_id = u.id
+        AND tm.status <> 'removed'
   )
   AND (
       sqlc.arg('search')::text = ''
@@ -271,17 +281,33 @@ VALUES ($1, $2, $3, 'active')
 RETURNING id, team_id, user_id, role, status, joined_at, created_at, updated_at;
 
 -- name: UpdateTeamMember :execrows
+-- removed 是移除后的账户保留态，不能通过资料编辑改动；恢复走 RestoreRemovedTeamMember。
 UPDATE team_members
 SET role = $3,
     status = $4,
     updated_at = NOW()
 WHERE team_id = $1
-  AND user_id = $2;
+  AND user_id = $2
+  AND status <> 'removed';
 
 -- name: RemoveTeamMember :execrows
-DELETE FROM team_members
+-- 软移除：保留成员行及其队费账户（余额/付费会员/充值时间/流水引用），历史结算与待付订单到账仍可核销。
+UPDATE team_members
+SET status = 'removed',
+    updated_at = NOW()
 WHERE team_id = $1
-  AND user_id = $2;
+  AND user_id = $2
+  AND status <> 'removed';
+
+-- name: RestoreRemovedTeamMember :execrows
+-- 重新添加被移除成员：恢复 active 并沿用指定角色；余额、付费会员与充值时间保持原值。
+UPDATE team_members
+SET role = $3,
+    status = 'active',
+    updated_at = NOW()
+WHERE team_id = $1
+  AND user_id = $2
+  AND status = 'removed';
 
 -- name: CancelMemberUpcomingTeamRegistrations :execrows
 -- 移除队员联动：把该队员在本队「未开始」比赛的球队组报名置为 cancelled。

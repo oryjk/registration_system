@@ -41,13 +41,16 @@ type AppTeamDetailResponse struct {
 }
 
 type AppTeamMemberResponse struct {
-	UserID    int64               `json:"user_id"`
-	Nickname  string              `json:"nickname"`
-	AvatarURL *string             `json:"avatar_url"`
-	RealName  *string             `json:"real_name"`
-	Role      domain.Role         `json:"role"`
-	Status    domain.MemberStatus `json:"status"`
-	JoinedAt  time.Time           `json:"joined_at"`
+	UserID         int64               `json:"user_id"`
+	Nickname       string              `json:"nickname"`
+	AvatarURL      *string             `json:"avatar_url"`
+	RealName       *string             `json:"real_name"`
+	Role           domain.Role         `json:"role"`
+	Status         domain.MemberStatus `json:"status"`
+	JoinedAt       time.Time           `json:"joined_at"`
+	BalanceCents   int64               `json:"balance_cents"`
+	IsPaidMember   bool                `json:"is_paid_member"`
+	LastRechargeAt *time.Time          `json:"last_recharge_at"`
 }
 
 func NewAppHandler(queries AppTeamQueries, attendance AppAttendanceQueries) *AppHandler {
@@ -98,6 +101,7 @@ func (h *AppHandler) ListMembers(c *gin.Context) {
 		response = append(response, AppTeamMemberResponse{
 			UserID: item.UserID, Nickname: item.Nickname, AvatarURL: item.AvatarURL,
 			RealName: item.RealName, Role: item.Role, Status: item.Status, JoinedAt: item.JoinedAt,
+			BalanceCents: item.BalanceCents, IsPaidMember: item.IsPaidMember, LastRechargeAt: item.LastRechargeAt,
 		})
 	}
 	sharedhttpapi.WriteSuccess(c, response)

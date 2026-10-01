@@ -8,6 +8,7 @@ import {
   normalizeReleaseApiBase,
   runMiniRelease,
   verifyReleaseBundle,
+  verifyUploadGitState,
 } from "./mini-release.mjs";
 
 const productionApi = "https://api.example.com:82/regist-v3/api/v1/app";
@@ -40,6 +41,20 @@ function recordingRunner(failScript) {
 
 function scriptNames(steps) {
   return steps.map(({ cmd }) => path.basename(cmd[3]));
+}
+
+function gitRunner(responses) {
+  const calls = [];
+  return {
+    calls,
+    runGit: (args) => {
+      calls.push(args);
+      const key = args.join(" ");
+      const value = responses[key];
+      if (!value) return { exitCode: 1, stdout: "", stderr: `unexpected git command: ${key}` };
+      return { exitCode: value.exitCode ?? 0, stdout: value.stdout ?? "", stderr: value.stderr ?? "" };
+    },
+  };
 }
 
 afterEach(() => {
@@ -94,6 +109,43 @@ describe("production release environment", () => {
   }
 });
 
+describe("upload git guard", () => {
+  test("accepts only a clean main checkout whose HEAD equals fetched origin/main", () => {
+    const runner = gitRunner({
+      "rev-parse --show-toplevel": { stdout: "/repo\n" },
+      "branch --show-current": { stdout: "main\n" },
+      "status --porcelain --untracked-files=normal": { stdout: "" },
+      "fetch origin main --quiet": {},
+      "rev-parse HEAD": { stdout: "abc123\n" },
+      "rev-parse origin/main": { stdout: "abc123\n" },
+    });
+
+    const state = verifyUploadGitState("/repo/registration_system_mini", { runGit: runner.runGit });
+
+    expect(state).toEqual({ repoRoot: "/repo", head: "abc123" });
+    expect(runner.calls.map((args) => args.join(" "))).toContain("fetch origin main --quiet");
+  });
+
+  test("rejects dirty worktrees and unpushed main commits", () => {
+    const dirty = gitRunner({
+      "rev-parse --show-toplevel": { stdout: "/repo\n" },
+      "branch --show-current": { stdout: "main\n" },
+      "status --porcelain --untracked-files=normal": { stdout: " M registration_system_mini/src/a.ts\n" },
+    });
+    expect(() => verifyUploadGitState("/repo/registration_system_mini", { runGit: dirty.runGit })).toThrow("工作区不干净");
+
+    const unpushed = gitRunner({
+      "rev-parse --show-toplevel": { stdout: "/repo\n" },
+      "branch --show-current": { stdout: "main\n" },
+      "status --porcelain --untracked-files=normal": { stdout: "" },
+      "fetch origin main --quiet": {},
+      "rev-parse HEAD": { stdout: "local123\n" },
+      "rev-parse origin/main": { stdout: "remote456\n" },
+    });
+    expect(() => verifyUploadGitState("/repo/registration_system_mini", { runGit: unpushed.runGit })).toThrow("origin/main");
+  });
+});
+
 describe("compiled release API guard", () => {
   test("evaluates the actual getter, allowing an unused local fallback string", () => {
     const root = fixture();
@@ -142,13 +194,38 @@ describe("compiled release API guard", () => {
     expect(result.stderr.toString()).not.toContain("Cannot find package");
     expect(result.stdout.toString()).not.toContain("上传完成");
   });
+
+  test("direct mini-ci upload also refuses an uncommitted or unpushed checkout", () => {
+    const root = fixture();
+    mkdirSync(path.join(root, "scripts"));
+    mkdirSync(path.join(root, "src"));
+    mkdirSync(path.join(root, "node_modules"));
+    const require = createRequire(import.meta.url);
+    symlinkSync(path.dirname(require.resolve("json5/package.json")), path.join(root, "node_modules/json5"), "dir");
+    for (const file of ["mini-ci.mjs", "mini-release.mjs"]) {
+      writeFileSync(path.join(root, "scripts", file), readFileSync(new URL(file, import.meta.url)));
+    }
+    writeFileSync(path.join(root, "src/manifest.json"), JSON.stringify({ "mp-weixin": { appid: "wx-test-only" }, versionName: "0.0.1" }));
+    const privateKeyPath = path.join(root, "private.test.key");
+    writeFileSync(privateKeyPath, "not-a-real-key");
+
+    const result = Bun.spawnSync([process.execPath, "--no-env-file", "--bun", "scripts/mini-ci.mjs", "upload"], {
+      cwd: root, env: { ...process.env, MINI_CI_PRIVATE_KEY_PATH: privateKeyPath }, stdout: "pipe", stderr: "pipe",
+    });
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr.toString()).toContain("Git");
+    expect(result.stderr.toString()).not.toContain("Cannot find package");
+    expect(result.stdout.toString()).not.toContain("上传完成");
+  });
 });
 
 describe("Bun release pipeline", () => {
   test("allocates once, builds production, checks components, then uploads with the requested slot and description", async () => {
     const root = fixture();
     const runner = recordingRunner();
-    await runMiniRelease("upload", ["--", "--robot", "2", "--desc", "报名修复，含空格 and symbols"], { projectRoot: root, env: { ...process.env, MINI_REVIEW_SKIP: "1", VITE_API_BASE_URL: localApi }, ...runner });
+    const gitChecks = [];
+    await runMiniRelease("upload", ["--", "--robot", "2", "--desc", "报名修复，含空格 and symbols"], { projectRoot: root, env: { ...process.env, MINI_REVIEW_SKIP: "1", VITE_API_BASE_URL: localApi }, checkGitState: (_root, options) => gitChecks.push(options ?? {}), ...runner });
     expect(scriptNames(runner.steps)).toEqual(["sync-manifest-version.mjs", "uni.js", "verify-mp-component-registrations.mjs", "mini-ci.mjs"]);
     for (const { cmd, env } of runner.steps) {
       expect(cmd.slice(0, 3)).toEqual([process.execPath, "--no-env-file", "--bun"]);
@@ -158,6 +235,20 @@ describe("Bun release pipeline", () => {
     }
     expect(runner.steps[1].cmd.slice(4)).toEqual(["build", "-p", "mp-weixin", "--mode", "production"]);
     expect(runner.steps[3].cmd.slice(4)).toEqual(["upload", "--robot", "2", "--desc", "报名修复，含空格 and symbols"]);
+    expect(gitChecks.length).toBeGreaterThanOrEqual(2);
+  });
+
+  test("stops after version allocation when generated version files still need commit and push", async () => {
+    const root = fixture();
+    const runner = recordingRunner();
+    let checks = 0;
+    const checkGitState = () => {
+      checks += 1;
+      if (checks === 2) throw new Error("工作区不干净，请先 commit + push 后重新执行 mp:release");
+    };
+
+    await expect(runMiniRelease("upload", [], { projectRoot: root, checkGitState, ...runner })).rejects.toThrow("commit + push");
+    expect(scriptNames(runner.steps)).toEqual(["sync-manifest-version.mjs"]);
   });
 
   test("build-only retains the offline version flag and never uploads", async () => {
@@ -171,7 +262,7 @@ describe("Bun release pipeline", () => {
   test("never reaches upload when the compiled API is local", async () => {
     const root = fixture(localApi);
     const runner = recordingRunner();
-    await expect(runMiniRelease("upload", [], { projectRoot: root, ...runner })).rejects.toThrow();
+    await expect(runMiniRelease("upload", [], { projectRoot: root, checkGitState: () => undefined, ...runner })).rejects.toThrow();
     expect(scriptNames(runner.steps)).not.toContain("mini-ci.mjs");
   });
 
@@ -179,7 +270,7 @@ describe("Bun release pipeline", () => {
     test(`stops on ${failed} failure instead of uploading stale output`, async () => {
       const root = fixture();
       const runner = recordingRunner(failed);
-      await expect(runMiniRelease("upload", [], { projectRoot: root, ...runner })).rejects.toThrow();
+      await expect(runMiniRelease("upload", [], { projectRoot: root, checkGitState: () => undefined, ...runner })).rejects.toThrow();
       expect(scriptNames(runner.steps).at(-1)).toBe(failed);
       expect(scriptNames(runner.steps)).not.toContain("mini-ci.mjs");
     });
@@ -209,7 +300,7 @@ describe("Bun release pipeline", () => {
     const root = fixture();
     for (const args of [["--mode", "development"], ["--robot", "0"], ["--robot"], ["--desc"]]) {
       const runner = recordingRunner();
-      await expect(runMiniRelease("upload", args, { projectRoot: root, ...runner })).rejects.toThrow();
+      await expect(runMiniRelease("upload", args, { projectRoot: root, checkGitState: () => undefined, ...runner })).rejects.toThrow();
       expect(runner.steps).toEqual([]);
     }
   });

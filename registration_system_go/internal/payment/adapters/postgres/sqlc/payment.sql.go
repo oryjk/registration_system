@@ -228,20 +228,29 @@ func (q *Queries) CreditRechargeWallet(ctx context.Context, arg CreditRechargeWa
 const creditTeamMemberFundBalance = `-- name: CreditTeamMemberFundBalance :one
 UPDATE team_members
 SET balance_cents = balance_cents + $1::bigint,
+    is_paid_member = TRUE,
+    -- 最近充值时间只前进不倒退：较早付款的回调延迟到达（GREATEST 对 NULL 取另一侧）。
+    last_recharge_at = GREATEST(last_recharge_at, $2::timestamptz),
     updated_at = NOW()
-WHERE team_id = $2::bigint
-  AND user_id = $3::bigint
+WHERE team_id = $3::bigint
+  AND user_id = $4::bigint
 RETURNING balance_cents
 `
 
 type CreditTeamMemberFundBalanceParams struct {
-	AmountCents int64 `json:"amount_cents"`
-	TeamID      int64 `json:"team_id"`
-	UserID      int64 `json:"user_id"`
+	AmountCents int64              `json:"amount_cents"`
+	RechargedAt pgtype.Timestamptz `json:"recharged_at"`
+	TeamID      int64              `json:"team_id"`
+	UserID      int64              `json:"user_id"`
 }
 
 func (q *Queries) CreditTeamMemberFundBalance(ctx context.Context, arg CreditTeamMemberFundBalanceParams) (int64, error) {
-	row := q.db.QueryRow(ctx, creditTeamMemberFundBalance, arg.AmountCents, arg.TeamID, arg.UserID)
+	row := q.db.QueryRow(ctx, creditTeamMemberFundBalance,
+		arg.AmountCents,
+		arg.RechargedAt,
+		arg.TeamID,
+		arg.UserID,
+	)
 	var balance_cents int64
 	err := row.Scan(&balance_cents)
 	return balance_cents, err

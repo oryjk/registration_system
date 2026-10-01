@@ -270,22 +270,31 @@ func TestConcurrentSettleYieldsConflictForLoser(t *testing.T) {
 	}
 }
 
-func TestAdminCreditAppendsBalanceAndRecordsTransaction(t *testing.T) {
+func TestManualRechargeAppendsBalanceAndRecordsTransaction(t *testing.T) {
 	pool := testsupport.OpenTestPostgres(t)
 	seed := seedSettlement(t, pool, 5000)
 	repository := NewRepository(pool)
 
-	result, err := repository.AdminCredit(context.Background(), teamfundports.AdminCredit{
+	result, err := repository.ManualRecharge(context.Background(), teamfundports.ManualFundAction{
 		TeamID: seed.teamID, UserID: seed.payer, AmountCents: 2500, Note: "线下现金",
+		OperatorUserID: seed.cold, IdempotencyKey: "recharge-key-1",
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.BalanceCents != 7500 {
-		t.Fatalf("充值后余额应为 7500，得到 %d", result.BalanceCents)
+	if result.BalanceCents != 7500 || result.Duplicated {
+		t.Fatalf("充值后余额应为 7500，得到 %+v", result)
 	}
 	if got := memberBalance(t, pool, seed.teamID, seed.payer); got != 7500 {
 		t.Fatalf("库内余额应为 7500，得到 %d", got)
+	}
+	var isPaidMember bool
+	var lastRechargeAt time.Time
+	if err := pool.QueryRow(context.Background(), `SELECT is_paid_member, last_recharge_at FROM team_members WHERE team_id=$1 AND user_id=$2`, seed.teamID, seed.payer).Scan(&isPaidMember, &lastRechargeAt); err != nil {
+		t.Fatal(err)
+	}
+	if !isPaidMember || lastRechargeAt.IsZero() {
+		t.Fatalf("人工充值应自动标记付费会员并记录充值时间: paid=%v last=%v", isPaidMember, lastRechargeAt)
 	}
 	transactions, err := repository.ListTransactions(context.Background(), seed.payer, 0, 10)
 	if err != nil {
@@ -295,17 +304,20 @@ func TestAdminCreditAppendsBalanceAndRecordsTransaction(t *testing.T) {
 		transactions[0].BalanceAfterCents != 7500 || transactions[0].Source != "admin_credit" {
 		t.Fatalf("应记一条 admin_credit 流水: %+v", transactions)
 	}
-	if transactions[0].Description != "线下现金" || transactions[0].MatchID != nil {
-		t.Fatalf("备注应透传且不关联比赛: %+v", transactions[0])
+	if transactions[0].Description != "人工充值：线下现金" || transactions[0].MatchID != nil {
+		t.Fatalf("备注应进入流水描述且不关联比赛: %+v", transactions[0])
+	}
+	if transactions[0].CreatedByUserID == nil || *transactions[0].CreatedByUserID != 77 {
+		t.Fatalf("流水应记录操作人: %+v", transactions[0])
 	}
 }
 
-func TestAdminCreditRejectsNonMember(t *testing.T) {
+func TestManualRechargeRejectsNonMember(t *testing.T) {
 	pool := testsupport.OpenTestPostgres(t)
 	seed := seedSettlement(t, pool, 100)
 	repository := NewRepository(pool)
 
-	_, err := repository.AdminCredit(context.Background(), teamfundports.AdminCredit{
+	_, err := repository.ManualRecharge(context.Background(), teamfundports.ManualFundAction{
 		TeamID: seed.teamID, UserID: seed.cold, AmountCents: 800,
 	})
 	if !errors.Is(err, sharederror.ErrValidation) {
@@ -322,37 +334,651 @@ func TestAdminCreditRejectsNonMember(t *testing.T) {
 	}
 }
 
-func TestAdminCreditRejectsInactiveMember(t *testing.T) {
+func TestManualActionsRejectNonActiveMember(t *testing.T) {
 	pool := testsupport.OpenTestPostgres(t)
 	seed := seedSettlement(t, pool, 100)
 	repository := NewRepository(pool)
-	if _, err := pool.Exec(context.Background(),
-		`INSERT INTO team_members (team_id, user_id, role, status) VALUES ($1, $2, 'member', 'inactive')`,
-		seed.teamID, seed.cold,
-	); err != nil {
-		t.Fatal(err)
-	}
+	for _, status := range []string{"inactive", "removed"} {
+		if _, err := pool.Exec(context.Background(),
+			`INSERT INTO team_members (team_id, user_id, role, status) VALUES ($1, $2, 'member', $3)
+			 ON CONFLICT (team_id, user_id) DO UPDATE SET status = $3`,
+			seed.teamID, seed.cold, status,
+		); err != nil {
+			t.Fatal(err)
+		}
 
-	_, err := repository.AdminCredit(context.Background(), teamfundports.AdminCredit{
-		TeamID: seed.teamID, UserID: seed.cold, AmountCents: 800,
-	})
-	if !errors.Is(err, sharederror.ErrValidation) {
-		t.Fatalf("已退出成员充值应返回校验错误，得到 %v", err)
-	}
-	if got := memberBalance(t, pool, seed.teamID, seed.cold); got != 0 {
-		t.Fatalf("已退出成员余额不应变动，得到 %d", got)
+		_, err := repository.ManualRecharge(context.Background(), teamfundports.ManualFundAction{
+			TeamID: seed.teamID, UserID: seed.cold, AmountCents: 800,
+		})
+		if !errors.Is(err, sharederror.ErrValidation) {
+			t.Fatalf("%s 成员充值应返回校验错误，得到 %v", status, err)
+		}
+		_, err = repository.ManualConsume(context.Background(), teamfundports.ManualFundAction{
+			TeamID: seed.teamID, UserID: seed.cold, AmountCents: 800, Note: "n",
+		})
+		if !errors.Is(err, sharederror.ErrValidation) {
+			t.Fatalf("%s 成员消费应返回校验错误，得到 %v", status, err)
+		}
+		if got := memberBalance(t, pool, seed.teamID, seed.cold); got != 0 {
+			t.Fatalf("%s 成员余额不应变动，得到 %d", status, got)
+		}
 	}
 }
 
-func TestAdminCreditRejectsNonPositiveAmount(t *testing.T) {
+func TestManualFundRejectsNonPositiveAmount(t *testing.T) {
 	pool := testsupport.OpenTestPostgres(t)
 	seed := seedSettlement(t, pool, 100)
 	repository := NewRepository(pool)
-	_, err := repository.AdminCredit(context.Background(), teamfundports.AdminCredit{
+	_, err := repository.ManualRecharge(context.Background(), teamfundports.ManualFundAction{
 		TeamID: seed.teamID, UserID: seed.payer, AmountCents: 0,
 	})
 	if !errors.Is(err, sharederror.ErrValidation) {
 		t.Fatalf("金额 0 应返回校验错误，得到 %v", err)
+	}
+}
+
+// 消费扣费只动余额：允许扣成负数（欠款），不得触碰付费会员标记与最近充值时间。
+func TestManualConsumeDebitsWithoutMembershipSideEffects(t *testing.T) {
+	pool := testsupport.OpenTestPostgres(t)
+	seed := seedSettlement(t, pool, 300)
+	repository := NewRepository(pool)
+
+	result, err := repository.ManualConsume(context.Background(), teamfundports.ManualFundAction{
+		TeamID: seed.teamID, UserID: seed.payer, AmountCents: 800, Note: "购买队服",
+		OperatorUserID: seed.cold, IdempotencyKey: "consume-key-1",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.BalanceCents != -500 {
+		t.Fatalf("余额应扣成 -500（欠款），得到 %d", result.BalanceCents)
+	}
+	var isPaidMember bool
+	var lastRechargeAt *time.Time
+	if err := pool.QueryRow(context.Background(),
+		`SELECT is_paid_member, last_recharge_at FROM team_members WHERE team_id=$1 AND user_id=$2`,
+		seed.teamID, seed.payer).Scan(&isPaidMember, &lastRechargeAt); err != nil {
+		t.Fatal(err)
+	}
+	if isPaidMember || lastRechargeAt != nil {
+		t.Fatalf("消费不得伪造会员身份或充值时间: paid=%v last=%v", isPaidMember, lastRechargeAt)
+	}
+	transactions, err := repository.ListTransactions(context.Background(), seed.payer, 0, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(transactions) != 1 || transactions[0].AmountCents != -800 ||
+		transactions[0].BalanceAfterCents != -500 || transactions[0].Source != "manual_consume" {
+		t.Fatalf("应记一条负向 manual_consume 流水: %+v", transactions)
+	}
+	if transactions[0].Description != "消费扣费：购买队服" {
+		t.Fatalf("流水描述应含消费原因: %+v", transactions[0])
+	}
+}
+
+// 同一幂等键同参数重试只记一笔；同键不同金额不能静默成功。
+func TestManualFundIdempotencyKeyDeduplicates(t *testing.T) {
+	pool := testsupport.OpenTestPostgres(t)
+	seed := seedSettlement(t, pool, 1000)
+	repository := NewRepository(pool)
+	ctx := context.Background()
+	action := teamfundports.ManualFundAction{
+		TeamID: seed.teamID, UserID: seed.payer, AmountCents: 2500,
+		OperatorUserID: seed.cold, IdempotencyKey: "idem-recharge-1",
+	}
+
+	first, err := repository.ManualRecharge(ctx, action)
+	if err != nil {
+		t.Fatal(err)
+	}
+	replay, err := repository.ManualRecharge(ctx, action)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !replay.Duplicated || replay.TransactionID != first.TransactionID {
+		t.Fatalf("同键重试应幂等命中: first=%+v replay=%+v", first, replay)
+	}
+	if got := memberBalance(t, pool, seed.teamID, seed.payer); got != 3500 {
+		t.Fatalf("幂等重试后余额应只加一次，得到 %d", got)
+	}
+	var count int
+	if err := pool.QueryRow(ctx,
+		`SELECT COUNT(*) FROM team_fund_transactions WHERE source='admin_credit' AND source_id='idem-recharge-1'`,
+	).Scan(&count); err != nil {
+		t.Fatal(err)
+	}
+	if count != 1 {
+		t.Fatalf("同键应只有一条流水，得到 %d", count)
+	}
+
+	conflicting := action
+	conflicting.AmountCents = 9999
+	if _, err := repository.ManualRecharge(ctx, conflicting); !errors.Is(err, teamfundports.ErrIdempotencyConflict) {
+		t.Fatalf("同键不同金额应显式冲突，得到 %v", err)
+	}
+	if got := memberBalance(t, pool, seed.teamID, seed.payer); got != 3500 {
+		t.Fatalf("冲突请求不应改动余额，得到 %d", got)
+	}
+}
+
+// 冲正：反向回加原金额、关联原流水、防止重复冲正与非人工流水冲正。
+func TestManualReverseReversesManualTransaction(t *testing.T) {
+	pool := testsupport.OpenTestPostgres(t)
+	seed := seedSettlement(t, pool, 1000)
+	repository := NewRepository(pool)
+	ctx := context.Background()
+
+	recharge, err := repository.ManualRecharge(ctx, teamfundports.ManualFundAction{
+		TeamID: seed.teamID, UserID: seed.payer, AmountCents: 2000, Note: "误记 200",
+		OperatorUserID: seed.cold, IdempotencyKey: "rev-recharge-1",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	consume, err := repository.ManualConsume(ctx, teamfundports.ManualFundAction{
+		TeamID: seed.teamID, UserID: seed.payer, AmountCents: 300, Note: "误扣 3 元",
+		OperatorUserID: seed.cold, IdempotencyKey: "rev-consume-1",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := memberBalance(t, pool, seed.teamID, seed.payer); got != 2700 {
+		t.Fatalf("充值+消费后余额应为 2700，得到 %d", got)
+	}
+
+	// 冲正充值：余额回退 2000，不得清除付费会员标记（冲正是回加而非充值）。
+	reversed, err := repository.ManualReverse(ctx, teamfundports.ManualFundAction{
+		TeamID: seed.teamID, UserID: seed.payer, OriginalTransactionID: recharge.TransactionID,
+		Note: "金额记错", OperatorUserID: seed.cold, IdempotencyKey: "rev-key-1",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reversed.BalanceCents != 700 {
+		t.Fatalf("冲正后余额应为 700，得到 %d", reversed.BalanceCents)
+	}
+	var isPaidMember bool
+	if err := pool.QueryRow(ctx,
+		`SELECT is_paid_member FROM team_members WHERE team_id=$1 AND user_id=$2`, seed.teamID, seed.payer,
+	).Scan(&isPaidMember); err != nil {
+		t.Fatal(err)
+	}
+	if !isPaidMember {
+		t.Fatal("冲正回加不应清除付费会员标记（会员身份由人工/实际充值授予，冲正只回滚金额）")
+	}
+
+	// 原流水被标记冲正；重复冲正被拒绝。
+	var reversedBy *int64
+	if err := pool.QueryRow(ctx,
+		`SELECT reversed_by_transaction_id FROM team_fund_transactions WHERE id=$1`, recharge.TransactionID,
+	).Scan(&reversedBy); err != nil {
+		t.Fatal(err)
+	}
+	if reversedBy == nil || *reversedBy != reversed.TransactionID {
+		t.Fatalf("原流水应关联冲正流水: %+v", reversedBy)
+	}
+	if _, err := repository.ManualReverse(ctx, teamfundports.ManualFundAction{
+		TeamID: seed.teamID, UserID: seed.payer, OriginalTransactionID: recharge.TransactionID,
+		Note: "再次冲正", IdempotencyKey: "rev-key-2",
+	}); !errors.Is(err, sharederror.ErrConflict) {
+		t.Fatalf("重复冲正应返回冲突，得到 %v", err)
+	}
+
+	// 冲正消费：扣回多扣的钱（负向回加）。
+	if _, err := repository.ManualReverse(ctx, teamfundports.ManualFundAction{
+		TeamID: seed.teamID, UserID: seed.payer, OriginalTransactionID: consume.TransactionID,
+		Note: "误扣", OperatorUserID: seed.cold, IdempotencyKey: "rev-key-3",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if got := memberBalance(t, pool, seed.teamID, seed.payer); got != 1000 {
+		t.Fatalf("全部冲正后余额应回到 1000，得到 %d", got)
+	}
+
+	// 微信支付到账流水不允许人工冲正。
+	var payTxID int64
+	if err := pool.QueryRow(ctx, `
+		INSERT INTO team_fund_transactions (team_id, user_id, amount_cents, balance_after_cents, source, source_id)
+		VALUES ($1, $2, 100, 1000, 'membership_payment', 'pay-rev-1') RETURNING id`, seed.teamID, seed.payer,
+	).Scan(&payTxID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := repository.ManualReverse(ctx, teamfundports.ManualFundAction{
+		TeamID: seed.teamID, UserID: seed.payer, OriginalTransactionID: payTxID,
+		Note: "x", IdempotencyKey: "rev-key-4",
+	}); !errors.Is(err, sharederror.ErrValidation) {
+		t.Fatalf("membership_payment 人工冲正应被拒绝，得到 %v", err)
+	}
+}
+
+// 并发人工动作：行锁保证余额串行累计，最终余额等于各动作之和。
+func TestManualActionsConcurrentConsistency(t *testing.T) {
+	pool := testsupport.OpenTestPostgres(t)
+	seed := seedSettlement(t, pool, 0)
+	repository := NewRepository(pool)
+	ctx := context.Background()
+
+	const workers = 6
+	done := make(chan error, workers)
+	for index := 0; index < workers; index++ {
+		go func(index int) {
+			if index%2 == 0 {
+				done <- func() error {
+					_, err := repository.ManualRecharge(ctx, teamfundports.ManualFundAction{
+						TeamID: seed.teamID, UserID: seed.payer, AmountCents: 100,
+						IdempotencyKey: fmt.Sprintf("conc-recharge-%d", index),
+					})
+					return err
+				}()
+			} else {
+				done <- func() error {
+					_, err := repository.ManualConsume(ctx, teamfundports.ManualFundAction{
+						TeamID: seed.teamID, UserID: seed.payer, AmountCents: 50, Note: "并发消费",
+						IdempotencyKey: fmt.Sprintf("conc-consume-%d", index),
+					})
+					return err
+				}()
+			}
+		}(index)
+	}
+	for index := 0; index < workers; index++ {
+		if err := <-done; err != nil {
+			t.Fatalf("并发动作失败: %v", err)
+		}
+	}
+	if got := memberBalance(t, pool, seed.teamID, seed.payer); got != 3*100-3*50 {
+		t.Fatalf("并发后余额应等于动作之和 150，得到 %d", got)
+	}
+	var count int
+	if err := pool.QueryRow(ctx,
+		`SELECT COUNT(*) FROM team_fund_transactions WHERE team_id=$1 AND user_id=$2`, seed.teamID, seed.payer,
+	).Scan(&count); err != nil {
+		t.Fatal(err)
+	}
+	if count != workers {
+		t.Fatalf("应有 %d 条流水，得到 %d", workers, count)
+	}
+}
+
+// 已结束比赛的历史结算与重算可以处理非 active（removed）账户，但不得把成员恢复为 active。
+func TestSettlementProcessesRemovedMemberWithoutReactivating(t *testing.T) {
+	pool := testsupport.OpenTestPostgres(t)
+	seed := seedSettlement(t, pool, 0)
+	ctx := context.Background()
+	// 把付费成员置为 removed：结算仍要能扣款，但不能顺手恢复成员身份。
+	if _, err := pool.Exec(ctx,
+		`UPDATE team_members SET status='removed', balance_cents=10000 WHERE team_id=$1 AND user_id=$2`,
+		seed.teamID, seed.payer); err != nil {
+		t.Fatal(err)
+	}
+	repository := NewRepository(pool)
+
+	if _, err := repository.SettleInTransaction(ctx, seed.match, 1, "历史结算", []teamfundports.SettlementCharge{
+		{TeamID: seed.teamID, UserID: seed.payer, AmountCents: 3000},
+	}); err != nil {
+		t.Fatalf("settle removed member: %v", err)
+	}
+
+	var status string
+	var balance int64
+	if err := pool.QueryRow(ctx,
+		`SELECT status, balance_cents FROM team_members WHERE team_id=$1 AND user_id=$2`, seed.teamID, seed.payer,
+	).Scan(&status, &balance); err != nil {
+		t.Fatal(err)
+	}
+	if status != "removed" {
+		t.Fatalf("结算不得把 removed 成员恢复为 active: status=%s", status)
+	}
+	if balance != 7000 {
+		t.Fatalf("removed 账户应正常扣款: balance=%d", balance)
+	}
+
+	// 重算（冲正回加 + 重新扣款）同样不恢复身份。
+	if _, err := repository.SettleInTransaction(ctx, seed.match, 1, "重算", []teamfundports.SettlementCharge{
+		{TeamID: seed.teamID, UserID: seed.payer, AmountCents: 1000},
+	}); err != nil {
+		t.Fatalf("re-settle removed member: %v", err)
+	}
+	if err := pool.QueryRow(ctx,
+		`SELECT status, balance_cents FROM team_members WHERE team_id=$1 AND user_id=$2`, seed.teamID, seed.payer,
+	).Scan(&status, &balance); err != nil {
+		t.Fatal(err)
+	}
+	if status != "removed" || balance != 9000 {
+		t.Fatalf("重算后应保持 removed 且余额正确: status=%s balance=%d", status, balance)
+	}
+}
+
+// 管理员身份来自 admin_users：不能写入引用 users 的操作人外键，动作照常成功并记 NULL；
+// 用户身份（队长/领队）如实记录操作人。
+func TestManualFundOperatorRecording(t *testing.T) {
+	pool := testsupport.OpenTestPostgres(t)
+	seed := seedSettlement(t, pool, 100)
+	repository := NewRepository(pool)
+	ctx := context.Background()
+
+	adminResult, err := repository.ManualRecharge(ctx, teamfundports.ManualFundAction{
+		TeamID: seed.teamID, UserID: seed.payer, AmountCents: 500,
+		OperatorUserID: 0, IdempotencyKey: "operator-admin-1",
+	})
+	if err != nil {
+		t.Fatalf("admin recharge must succeed without users FK: %v", err)
+	}
+	var createdBy *int64
+	if err := pool.QueryRow(ctx,
+		`SELECT created_by_user_id FROM team_fund_transactions WHERE id=$1`, adminResult.TransactionID,
+	).Scan(&createdBy); err != nil {
+		t.Fatal(err)
+	}
+	if createdBy != nil {
+		t.Fatalf("admin operator must be recorded as NULL, got %d", *createdBy)
+	}
+
+	userResult, err := repository.ManualConsume(ctx, teamfundports.ManualFundAction{
+		TeamID: seed.teamID, UserID: seed.payer, AmountCents: 100, Note: "队服",
+		OperatorUserID: seed.cold, IdempotencyKey: "operator-user-1",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(ctx,
+		`SELECT created_by_user_id FROM team_fund_transactions WHERE id=$1`, userResult.TransactionID,
+	).Scan(&createdBy); err != nil {
+		t.Fatal(err)
+	}
+	if createdBy == nil || *createdBy != seed.cold {
+		t.Fatalf("user operator must be recorded, got %v", createdBy)
+	}
+}
+
+// 同键冲正重试：金额由原流水推导（请求不携带金额），重放必须幂等成功而非误判冲突。
+func TestManualReverseIdempotentRetry(t *testing.T) {
+	pool := testsupport.OpenTestPostgres(t)
+	seed := seedSettlement(t, pool, 1000)
+	repository := NewRepository(pool)
+	ctx := context.Background()
+
+	recharge, err := repository.ManualRecharge(ctx, teamfundports.ManualFundAction{
+		TeamID: seed.teamID, UserID: seed.payer, AmountCents: 2000,
+		OperatorUserID: seed.cold, IdempotencyKey: "retry-recharge-1",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	action := teamfundports.ManualFundAction{
+		TeamID: seed.teamID, UserID: seed.payer, OriginalTransactionID: recharge.TransactionID,
+		Note: "记错金额", OperatorUserID: seed.cold, IdempotencyKey: "retry-reverse-1",
+	}
+	first, err := repository.ManualReverse(ctx, action)
+	if err != nil {
+		t.Fatal(err)
+	}
+	replay, err := repository.ManualReverse(ctx, action)
+	if err != nil {
+		t.Fatalf("same-key reversal retry must replay idempotently: %v", err)
+	}
+	if !replay.Duplicated || replay.TransactionID != first.TransactionID || replay.BalanceCents != first.BalanceCents {
+		t.Fatalf("reversal retry should hit replay: first=%+v replay=%+v", first, replay)
+	}
+	var count int
+	if err := pool.QueryRow(ctx,
+		`SELECT COUNT(*) FROM team_fund_transactions WHERE source='manual_reversal' AND source_id='retry-reverse-1'`,
+	).Scan(&count); err != nil {
+		t.Fatal(err)
+	}
+	if count != 1 {
+		t.Fatalf("same-key reversal must record once, got %d", count)
+	}
+	if got := memberBalance(t, pool, seed.teamID, seed.payer); got != 1000 {
+		t.Fatalf("balance after reversal should be 1000, got %d", got)
+	}
+}
+
+// 同一用户在两队使用相同键+金额：B 队不能拿到 A 队的“重复成功”，必须显式冲突且不入账。
+func TestManualFundCrossTeamSameKeyConflicts(t *testing.T) {
+	pool := testsupport.OpenTestPostgres(t)
+	seed := seedSettlement(t, pool, 0)
+	repository := NewRepository(pool)
+	ctx := context.Background()
+
+	var teamB int64
+	if err := pool.QueryRow(ctx, `INSERT INTO teams (name) VALUES ('跨队幂等测试队 B') RETURNING id`).Scan(&teamB); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx,
+		`INSERT INTO team_members (team_id, user_id, role, status, balance_cents) VALUES ($1, $2, 'member', 'active', 0)`,
+		teamB, seed.payer); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := repository.ManualRecharge(ctx, teamfundports.ManualFundAction{
+		TeamID: seed.teamID, UserID: seed.payer, AmountCents: 1500,
+		OperatorUserID: seed.cold, IdempotencyKey: "cross-team-key",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	_, err := repository.ManualRecharge(ctx, teamfundports.ManualFundAction{
+		TeamID: teamB, UserID: seed.payer, AmountCents: 1500,
+		OperatorUserID: seed.cold, IdempotencyKey: "cross-team-key",
+	})
+	if !errors.Is(err, teamfundports.ErrIdempotencyConflict) {
+		t.Fatalf("cross-team same key must conflict explicitly, got %v", err)
+	}
+	if got := memberBalance(t, pool, teamB, seed.payer); got != 0 {
+		t.Fatalf("team B must not be credited, got %d", got)
+	}
+}
+
+// 并发同键：一请求成功、另一请求按幂等重放成功（不在已中止事务里继续查询，避免 25P02）。
+func TestManualFundConcurrentSameKeyReplays(t *testing.T) {
+	pool := testsupport.OpenTestPostgres(t)
+	seed := seedSettlement(t, pool, 0)
+	repository := NewRepository(pool)
+	ctx := context.Background()
+	action := teamfundports.ManualFundAction{
+		TeamID: seed.teamID, UserID: seed.payer, AmountCents: 800,
+		OperatorUserID: seed.cold, IdempotencyKey: "concurrent-same-key",
+	}
+
+	results := make([]teamfundports.ManualFundResult, 2)
+	errs := make([]error, 2)
+	done := make(chan struct{})
+	go func() {
+		results[0], errs[0] = repository.ManualRecharge(ctx, action)
+		done <- struct{}{}
+	}()
+	go func() {
+		results[1], errs[1] = repository.ManualRecharge(ctx, action)
+		done <- struct{}{}
+	}()
+	<-done
+	<-done
+
+	for index, err := range errs {
+		if err != nil {
+			t.Fatalf("concurrent request %d must not error: %v", index, err)
+		}
+	}
+	duplicated := 0
+	for _, result := range results {
+		if result.Duplicated {
+			duplicated++
+		}
+	}
+	if duplicated != 1 {
+		t.Fatalf("exactly one request should replay, got %d: %+v", duplicated, results)
+	}
+	if results[0].TransactionID != results[1].TransactionID {
+		t.Fatalf("both requests should point at the same transaction: %+v", results)
+	}
+	if got := memberBalance(t, pool, seed.teamID, seed.payer); got != 800 {
+		t.Fatalf("concurrent same key must credit once, got %d", got)
+	}
+}
+
+// 结算冲正回加不得伪造充值时间或自动升级会员（仅回滚金额）。
+func TestSettlementReversalDoesNotFakeRecharge(t *testing.T) {
+	pool := testsupport.OpenTestPostgres(t)
+	seed := seedSettlement(t, pool, 5000)
+	repository := NewRepository(pool)
+	ctx := context.Background()
+
+	first, err := repository.SettleInTransaction(ctx, seed.match, 1, "首轮结算", []teamfundports.SettlementCharge{
+		{TeamID: seed.teamID, UserID: seed.payer, AmountCents: 2000},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.ReversedBatchNo != 0 {
+		t.Fatalf("首轮结算不应有冲正: %+v", first)
+	}
+	if got := memberBalance(t, pool, seed.teamID, seed.payer); got != 3000 {
+		t.Fatalf("结算后余额应为 3000，得到 %d", got)
+	}
+
+	// 重算：先冲正回加 2000 再按新金额扣 500。
+	second, err := repository.SettleInTransaction(ctx, seed.match, 1, "重算", []teamfundports.SettlementCharge{
+		{TeamID: seed.teamID, UserID: seed.payer, AmountCents: 500},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if second.ReversedBatchNo == 0 {
+		t.Fatalf("重算应产生冲正批次: %+v", second)
+	}
+	if got := memberBalance(t, pool, seed.teamID, seed.payer); got != 4500 {
+		t.Fatalf("重算后余额应为 4500，得到 %d", got)
+	}
+
+	var isPaidMember bool
+	var lastRechargeAt *time.Time
+	if err := pool.QueryRow(ctx,
+		`SELECT is_paid_member, last_recharge_at FROM team_members WHERE team_id=$1 AND user_id=$2`,
+		seed.teamID, seed.payer).Scan(&isPaidMember, &lastRechargeAt); err != nil {
+		t.Fatal(err)
+	}
+	if isPaidMember || lastRechargeAt != nil {
+		t.Fatalf("结算冲正回加不得标记付费会员或充值时间: paid=%v last=%v", isPaidMember, lastRechargeAt)
+	}
+
+	// 冲正 + 重新扣费后的流水完整：两条结算扣款、一条冲正回加，金额与余额快照正确。
+	type ledgerRow struct {
+		amount, balanceAfter int64
+		source               string
+	}
+	rows, err := pool.Query(ctx,
+		`SELECT amount_cents, balance_after_cents, source FROM team_fund_transactions
+		 WHERE team_id=$1 AND user_id=$2 ORDER BY id`, seed.teamID, seed.payer)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+	ledger := []ledgerRow{}
+	for rows.Next() {
+		var row ledgerRow
+		if err := rows.Scan(&row.amount, &row.balanceAfter, &row.source); err != nil {
+			t.Fatal(err)
+		}
+		ledger = append(ledger, row)
+	}
+	expected := []ledgerRow{
+		{amount: -2000, balanceAfter: 3000, source: "match_settlement"},
+		{amount: 2000, balanceAfter: 5000, source: "settlement_reversal"},
+		{amount: -500, balanceAfter: 4500, source: "match_settlement"},
+	}
+	if len(ledger) != len(expected) {
+		t.Fatalf("重算后应有 %d 条流水，得到 %d: %+v", len(expected), len(ledger), ledger)
+	}
+	for index, want := range expected {
+		if ledger[index] != want {
+			t.Fatalf("流水第 %d 条不符: want %+v got %+v", index, want, ledger[index])
+		}
+	}
+}
+
+// 已充值会员重算后：会员身份保持，真实充值时间原样保留（不被冲正回加刷新为 NOW）。
+func TestSettlementRecalcKeepsRechargedMembershipIntact(t *testing.T) {
+	pool := testsupport.OpenTestPostgres(t)
+	seed := seedSettlement(t, pool, 0)
+	repository := NewRepository(pool)
+	ctx := context.Background()
+
+	// 真实充值：入账并自动标记会员 + 记录充值时间。
+	if _, err := repository.ManualRecharge(ctx, teamfundports.ManualFundAction{
+		TeamID: seed.teamID, UserID: seed.payer, AmountCents: 3000, Note: "线下现金",
+		OperatorUserID: seed.cold, IdempotencyKey: "recalc-recharge-1",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	var paidBefore bool
+	var rechargeBefore *time.Time
+	if err := pool.QueryRow(ctx,
+		`SELECT is_paid_member, last_recharge_at FROM team_members WHERE team_id=$1 AND user_id=$2`,
+		seed.teamID, seed.payer).Scan(&paidBefore, &rechargeBefore); err != nil {
+		t.Fatal(err)
+	}
+	if !paidBefore || rechargeBefore == nil {
+		t.Fatalf("充值后应为付费会员且有充值时间: paid=%v last=%v", paidBefore, rechargeBefore)
+	}
+
+	// 结算扣 1200，再重算改为扣 700。
+	if _, err := repository.SettleInTransaction(ctx, seed.match, 1, "首轮", []teamfundports.SettlementCharge{
+		{TeamID: seed.teamID, UserID: seed.payer, AmountCents: 1200},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := repository.SettleInTransaction(ctx, seed.match, 1, "重算", []teamfundports.SettlementCharge{
+		{TeamID: seed.teamID, UserID: seed.payer, AmountCents: 700},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	if got := memberBalance(t, pool, seed.teamID, seed.payer); got != 2300 {
+		t.Fatalf("充值+重算后余额应为 2300，得到 %d", got)
+	}
+	var paidAfter bool
+	var rechargeAfter *time.Time
+	if err := pool.QueryRow(ctx,
+		`SELECT is_paid_member, last_recharge_at FROM team_members WHERE team_id=$1 AND user_id=$2`,
+		seed.teamID, seed.payer).Scan(&paidAfter, &rechargeAfter); err != nil {
+		t.Fatal(err)
+	}
+	if !paidAfter {
+		t.Fatal("重算不得清除付费会员身份")
+	}
+	if rechargeAfter == nil || !rechargeAfter.Equal(*rechargeBefore) {
+		t.Fatalf("重算不得改写真实充值时间: before=%v after=%v", rechargeBefore, rechargeAfter)
+	}
+
+	// 流水顺序与金额：充值 +3000、结算 -1200、冲正 +1200、再结算 -700。
+	var amounts []int64
+	var sources []string
+	rows, err := pool.Query(ctx,
+		`SELECT amount_cents, source FROM team_fund_transactions WHERE team_id=$1 AND user_id=$2 ORDER BY id`,
+		seed.teamID, seed.payer)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var amount int64
+		var source string
+		if err := rows.Scan(&amount, &source); err != nil {
+			t.Fatal(err)
+		}
+		amounts = append(amounts, amount)
+		sources = append(sources, source)
+	}
+	wantAmounts := []int64{3000, -1200, 1200, -700}
+	wantSources := []string{"admin_credit", "match_settlement", "settlement_reversal", "match_settlement"}
+	if len(amounts) != len(wantAmounts) {
+		t.Fatalf("流水条数不符: want %+v got %+v", wantAmounts, amounts)
+	}
+	for index := range wantAmounts {
+		if amounts[index] != wantAmounts[index] || sources[index] != wantSources[index] {
+			t.Fatalf("流水第 %d 条不符: want (%d,%s) got (%d,%s)",
+				index, wantAmounts[index], wantSources[index], amounts[index], sources[index])
+		}
 	}
 }
 

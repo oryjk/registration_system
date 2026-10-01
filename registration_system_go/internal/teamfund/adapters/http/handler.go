@@ -23,20 +23,24 @@ type SettlementService interface {
 type QueryService interface {
 	ListBalances(ctx context.Context, actor sharedauth.Actor) ([]teamfundports.TeamFundBalance, error)
 	ListTransactions(ctx context.Context, actor sharedauth.Actor, beforeID int64, limit int) ([]teamfundports.TeamFundTransaction, error)
+	ListMemberTransactions(ctx context.Context, actor sharedauth.Actor, teamID, userID, beforeID int64, limit int) ([]teamfundports.TeamFundTransaction, error)
 }
 
-type AdminCreditService interface {
-	Credit(ctx context.Context, actor sharedauth.Actor, request teamfundapplication.AdminCreditRequest) (teamfundports.AdminCreditResult, error)
+// ManualFundService 人工余额动作：充值 / 消费扣费 / 冲正。
+type ManualFundService interface {
+	Recharge(ctx context.Context, actor sharedauth.Actor, request teamfundapplication.ManualFundRequest) (teamfundports.ManualFundResult, error)
+	Consume(ctx context.Context, actor sharedauth.Actor, request teamfundapplication.ManualFundRequest) (teamfundports.ManualFundResult, error)
+	Reverse(ctx context.Context, actor sharedauth.Actor, request teamfundapplication.ManualFundRequest) (teamfundports.ManualFundResult, error)
 }
 
 type Handler struct {
 	settlements SettlementService
 	queries     QueryService
-	adminCredit AdminCreditService
+	manualFund  ManualFundService
 }
 
-func NewHandler(settlements SettlementService, queries QueryService, adminCredit AdminCreditService) *Handler {
-	return &Handler{settlements: settlements, queries: queries, adminCredit: adminCredit}
+func NewHandler(settlements SettlementService, queries QueryService, manualFund ManualFundService) *Handler {
+	return &Handler{settlements: settlements, queries: queries, manualFund: manualFund}
 }
 
 type settlementItemRequest struct {
@@ -81,18 +85,43 @@ func (h *Handler) RegisterAppRoutes(group *gin.RouterGroup) {
 	group.POST("/matches/:id/settlement", h.Settle)
 	group.GET("/team-fund/balances", h.ListBalances)
 	group.GET("/team-fund/transactions", h.ListTransactions)
+	// 队长/领队替队员记账：充值登记、消费扣费、冲正与成员流水查询。
+	group.POST("/teams/:id/members/:user_id/fund-credits", h.AppFundCredit)
+	group.POST("/teams/:id/members/:user_id/fund-consumptions", h.AppFundConsumption)
+	group.POST("/teams/:id/members/:user_id/fund-reversals", h.AppFundReversal)
+	group.GET("/teams/:id/members/:user_id/fund-transactions", h.MemberFundTransactions)
 }
 
 type adminCreditRequest struct {
-	TeamID      int64  `json:"team_id"`
-	UserID      int64  `json:"user_id"`
-	AmountCents int64  `json:"amount_cents"`
-	Note        string `json:"note"`
+	TeamID         int64  `json:"team_id"`
+	UserID         int64  `json:"user_id"`
+	AmountCents    int64  `json:"amount_cents"`
+	Note           string `json:"note"`
+	IdempotencyKey string `json:"idempotency_key"`
 }
 
-// RegisterAdminRoutes 管理端：手动充值队费（纯记账）。
+type adminConsumptionRequest struct {
+	TeamID         int64  `json:"team_id"`
+	UserID         int64  `json:"user_id"`
+	AmountCents    int64  `json:"amount_cents"`
+	Note           string `json:"note"`
+	IdempotencyKey string `json:"idempotency_key"`
+}
+
+type adminReversalRequest struct {
+	TeamID                int64  `json:"team_id"`
+	UserID                int64  `json:"user_id"`
+	OriginalTransactionID int64  `json:"original_transaction_id"`
+	Note                  string `json:"note"`
+	IdempotencyKey        string `json:"idempotency_key"`
+}
+
+// RegisterAdminRoutes 管理端：人工队费动作（充值 / 消费扣费 / 冲正）与成员流水查询。
 func (h *Handler) RegisterAdminRoutes(group *gin.RouterGroup) {
 	group.POST("/team-fund/credits", h.AdminCredit)
+	group.POST("/team-fund/consumptions", h.AdminFundConsumption)
+	group.POST("/team-fund/reversals", h.AdminFundReversal)
+	group.GET("/teams/:id/members/:user_id/fund-transactions", h.MemberFundTransactions)
 }
 
 func (h *Handler) AdminCredit(c *gin.Context) {
@@ -105,17 +134,125 @@ func (h *Handler) AdminCredit(c *gin.Context) {
 		sharedhttpapi.WriteError(c, sharederror.New(sharederror.KindValidation, "请求体格式无效"))
 		return
 	}
-	result, err := h.adminCredit.Credit(c.Request.Context(), actor, teamfundapplication.AdminCreditRequest{
+	result, err := h.manualFund.Recharge(c.Request.Context(), actor, teamfundapplication.ManualFundRequest{
 		TeamID: request.TeamID, UserID: request.UserID,
-		AmountCents: request.AmountCents, Note: request.Note,
+		AmountCents: request.AmountCents, Note: request.Note, IdempotencyKey: request.IdempotencyKey,
 	})
 	if err != nil {
 		sharedhttpapi.WriteError(c, err)
 		return
 	}
 	sharedhttpapi.WriteSuccess(c, gin.H{
-		"balance_cents": result.BalanceCents, "transaction_id": result.TransactionID,
+		"balance_cents": result.BalanceCents, "transaction_id": result.TransactionID, "duplicated": result.Duplicated,
 	})
+}
+
+func (h *Handler) AdminFundConsumption(c *gin.Context) {
+	actor, ok := teamfundActor(c)
+	if !ok {
+		return
+	}
+	var request adminConsumptionRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		sharedhttpapi.WriteError(c, sharederror.New(sharederror.KindValidation, "请求体格式无效"))
+		return
+	}
+	result, err := h.manualFund.Consume(c.Request.Context(), actor, teamfundapplication.ManualFundRequest{
+		TeamID: request.TeamID, UserID: request.UserID,
+		AmountCents: request.AmountCents, Note: request.Note, IdempotencyKey: request.IdempotencyKey,
+	})
+	if err != nil {
+		sharedhttpapi.WriteError(c, err)
+		return
+	}
+	sharedhttpapi.WriteSuccess(c, gin.H{
+		"balance_cents": result.BalanceCents, "transaction_id": result.TransactionID, "duplicated": result.Duplicated,
+	})
+}
+
+func (h *Handler) AdminFundReversal(c *gin.Context) {
+	actor, ok := teamfundActor(c)
+	if !ok {
+		return
+	}
+	var request adminReversalRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		sharedhttpapi.WriteError(c, sharederror.New(sharederror.KindValidation, "请求体格式无效"))
+		return
+	}
+	result, err := h.manualFund.Reverse(c.Request.Context(), actor, teamfundapplication.ManualFundRequest{
+		TeamID: request.TeamID, UserID: request.UserID,
+		OriginalTransactionID: request.OriginalTransactionID,
+		Note:                  request.Note, IdempotencyKey: request.IdempotencyKey,
+	})
+	if err != nil {
+		sharedhttpapi.WriteError(c, err)
+		return
+	}
+	sharedhttpapi.WriteSuccess(c, gin.H{
+		"balance_cents": result.BalanceCents, "transaction_id": result.TransactionID, "duplicated": result.Duplicated,
+	})
+}
+
+type appFundActionRequest struct {
+	AmountCents           int64  `json:"amount_cents"`
+	Note                  string `json:"note"`
+	IdempotencyKey        string `json:"idempotency_key"`
+	OriginalTransactionID int64  `json:"original_transaction_id"`
+}
+
+func (h *Handler) AppFundCredit(c *gin.Context) {
+	h.handleAppFundAction(c, h.manualFund.Recharge)
+}
+
+func (h *Handler) AppFundConsumption(c *gin.Context) {
+	h.handleAppFundAction(c, h.manualFund.Consume)
+}
+
+func (h *Handler) AppFundReversal(c *gin.Context) {
+	h.handleAppFundAction(c, h.manualFund.Reverse)
+}
+
+func (h *Handler) handleAppFundAction(c *gin.Context, action func(context.Context, sharedauth.Actor, teamfundapplication.ManualFundRequest) (teamfundports.ManualFundResult, error)) {
+	actor, ok := teamfundActor(c)
+	if !ok {
+		return
+	}
+	teamID, userID, ok := teamAndUserIDFromPath(c)
+	if !ok {
+		return
+	}
+	var request appFundActionRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		sharedhttpapi.WriteError(c, sharederror.New(sharederror.KindValidation, "请求体格式无效"))
+		return
+	}
+	result, err := action(c.Request.Context(), actor, teamfundapplication.ManualFundRequest{
+		TeamID: teamID, UserID: userID,
+		AmountCents: request.AmountCents, Note: request.Note, IdempotencyKey: request.IdempotencyKey,
+		OriginalTransactionID: request.OriginalTransactionID,
+	})
+	if err != nil {
+		sharedhttpapi.WriteError(c, err)
+		return
+	}
+	sharedhttpapi.WriteSuccess(c, gin.H{
+		"balance_cents": result.BalanceCents, "transaction_id": result.TransactionID, "duplicated": result.Duplicated,
+	})
+}
+
+func teamAndUserIDFromPath(c *gin.Context) (int64, int64, bool) {
+	teamID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil || teamID <= 0 {
+		sharedhttpapi.WriteError(c, sharederror.New(sharederror.KindValidation, "球队 ID 无效"))
+		return 0, 0, false
+	}
+	userID, err := strconv.ParseInt(c.Param("user_id"), 10, 64)
+	if err != nil || userID <= 0 {
+		sharedhttpapi.WriteError(c, sharederror.New(sharederror.KindValidation, "成员用户无效"))
+		return 0, 0, false
+	}
+	return teamID, userID, true
 }
 
 func (h *Handler) GetSettlement(c *gin.Context) {
@@ -204,12 +341,43 @@ func (h *Handler) ListTransactions(c *gin.Context) {
 		sharedhttpapi.WriteError(c, err)
 		return
 	}
+	sharedhttpapi.WriteSuccess(c, mapFundTransactionItems(transactions))
+}
+
+// MemberFundTransactions 管理员/队长查看指定成员的队费流水（冲正需定位原流水）。
+func (h *Handler) MemberFundTransactions(c *gin.Context) {
+	actor, ok := teamfundActor(c)
+	if !ok {
+		return
+	}
+	teamID, userID, ok := teamAndUserIDFromPath(c)
+	if !ok {
+		return
+	}
+	beforeID, _ := strconv.ParseInt(c.Query("before_id"), 10, 64)
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "30"))
+	transactions, err := h.queries.ListMemberTransactions(c.Request.Context(), actor, teamID, userID, beforeID, limit)
+	if err != nil {
+		sharedhttpapi.WriteError(c, err)
+		return
+	}
+	sharedhttpapi.WriteSuccess(c, mapFundTransactionItems(transactions))
+}
+
+func mapFundTransactionItems(transactions []teamfundports.TeamFundTransaction) []gin.H {
 	items := make([]gin.H, 0, len(transactions))
 	for _, transaction := range transactions {
 		item := gin.H{
 			"id": transaction.ID, "team_id": transaction.TeamID, "team_name": transaction.TeamName,
 			"amount_cents": transaction.AmountCents, "balance_after_cents": transaction.BalanceAfterCents,
 			"source": transaction.Source, "description": transaction.Description, "created_at": transaction.CreatedAt,
+			// 操作人与冲正状态：人工动作可追溯，已冲正流水不能再冲正。
+			"created_by_user_id": transaction.CreatedByUserID,
+		}
+		if transaction.ReversedByTransactionID != nil {
+			item["reversed_by_transaction_id"] = *transaction.ReversedByTransactionID
+		} else {
+			item["reversed_by_transaction_id"] = nil
 		}
 		if transaction.MatchID != nil {
 			item["match_id"] = transaction.MatchID.String()
@@ -223,7 +391,7 @@ func (h *Handler) ListTransactions(c *gin.Context) {
 		}
 		items = append(items, item)
 	}
-	sharedhttpapi.WriteSuccess(c, items)
+	return items
 }
 
 func teamfundActor(c *gin.Context) (sharedauth.Actor, bool) {

@@ -267,7 +267,8 @@ func (r *Repository) ListMembers(ctx context.Context, teamID int64) ([]domain.Me
 			},
 			Nickname: row.Nickname, AvatarURL: row.AvatarUrl,
 			RealName: row.RealName, PhoneNumber: row.PhoneNumber,
-			BalanceCents: row.BalanceCents,
+			IsPaidMember: row.IsPaidMember, BalanceCents: row.BalanceCents,
+			LastRechargeAt: nullableTimestamptz(row.LastRechargeAt),
 		})
 	}
 	return items, nil
@@ -283,10 +284,29 @@ func (r *Repository) ListAppMembers(ctx context.Context, teamID int64) ([]ports.
 		items = append(items, ports.AppMember{
 			UserID: row.UserID, Nickname: row.Nickname, AvatarURL: row.AvatarUrl,
 			RealName: row.RealName, Role: domain.Role(row.Role), Status: domain.MemberStatus(row.Status),
-			JoinedAt: row.JoinedAt.Time,
+			JoinedAt: row.JoinedAt.Time, BalanceCents: row.BalanceCents, IsPaidMember: row.IsPaidMember,
+			LastRechargeAt: nullableTimestamptz(row.LastRechargeAt),
 		})
 	}
 	return items, nil
+}
+
+func (r *Repository) UpdatePaidMembership(ctx context.Context, teamID, userID int64, update domain.MemberPaidMembershipUpdate, description string) (bool, error) {
+	rows, err := r.queries.UpdateTeamMemberPaidMembership(ctx, teamsqlc.UpdateTeamMemberPaidMembershipParams{
+		TeamID: teamID, UserID: userID, IsPaidMember: *update.IsPaidMember,
+	})
+	if err != nil {
+		return false, err
+	}
+	return rows > 0, nil
+}
+
+func nullableTimestamptz(value pgtype.Timestamptz) *time.Time {
+	if !value.Valid {
+		return nil
+	}
+	result := value.Time
+	return &result
 }
 
 func (r *Repository) ListMemberCandidates(ctx context.Context, teamID int64, search string, limit int) ([]domain.MemberCandidate, error) {
@@ -315,6 +335,22 @@ func (r *Repository) AddMember(ctx context.Context, teamID, userID int64, role d
 	if errors.As(err, &postgresError) {
 		switch postgresError.Code {
 		case "23505":
+			// 已有成员行：被移除（removed）成员重新添加时恢复原账户（余额/付费会员/充值时间保留），
+			// 其余非 active 状态维持「已是成员」语义。
+			membership, findErr := r.queries.FindTeamMembership(ctx, teamsqlc.FindTeamMembershipParams{
+				TeamID: teamID, UserID: userID,
+			})
+			if findErr == nil && membership.Status == string(domain.MemberRemoved) {
+				restored, restoreErr := r.queries.RestoreRemovedTeamMember(ctx, teamsqlc.RestoreRemovedTeamMemberParams{
+					TeamID: teamID, UserID: userID, Role: string(role),
+				})
+				if restoreErr != nil {
+					return restoreErr
+				}
+				if restored > 0 {
+					return nil
+				}
+			}
 			return ports.ErrMemberAlreadyExists
 		case "23503":
 			return ports.ErrUserNotFound
@@ -330,7 +366,8 @@ func (r *Repository) UpdateMember(ctx context.Context, teamID, userID int64, rol
 	return rowsAffected > 0, err
 }
 
-// RemoveMember 硬删成员行，并在同一事务内取消其在本队未开始比赛中的球队组报名
+// RemoveMember 软移除成员（status -> removed，保留队费账户与流水引用），
+// 并在同一事务内取消其在本队未开始比赛中的球队组报名
 // （进行中/已完赛/已取消比赛与已支付报名保留，见 CancelMemberUpcomingTeamRegistrations）。
 func (r *Repository) RemoveMember(ctx context.Context, teamID, userID int64) (bool, error) {
 	tx, err := r.database.Begin(ctx)

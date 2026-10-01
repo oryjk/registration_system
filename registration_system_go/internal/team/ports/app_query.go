@@ -8,13 +8,16 @@ import (
 )
 
 type AppMember struct {
-	UserID    int64
-	Nickname  string
-	AvatarURL *string
-	RealName  *string
-	Role      domain.Role
-	Status    domain.MemberStatus
-	JoinedAt  time.Time
+	UserID         int64
+	Nickname       string
+	AvatarURL      *string
+	RealName       *string
+	Role           domain.Role
+	Status         domain.MemberStatus
+	JoinedAt       time.Time
+	BalanceCents   int64
+	IsPaidMember   bool
+	LastRechargeAt *time.Time
 }
 
 // AppMembershipState 是应用端展示的球队会员状态与"我的队内余额"（该成员个人账户）。

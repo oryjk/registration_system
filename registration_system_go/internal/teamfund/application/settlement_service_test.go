@@ -73,8 +73,20 @@ func (f *fakeFundRepository) ListTransactions(_ context.Context, _ int64, _ int6
 	return nil, nil
 }
 
-func (f *fakeFundRepository) AdminCredit(_ context.Context, _ teamfundports.AdminCredit) (teamfundports.AdminCreditResult, error) {
-	return teamfundports.AdminCreditResult{}, nil
+func (f *fakeFundRepository) ListMemberTransactions(_ context.Context, _, _, _ int64, _ int) ([]teamfundports.TeamFundTransaction, error) {
+	return nil, nil
+}
+
+func (f *fakeFundRepository) ManualRecharge(_ context.Context, _ teamfundports.ManualFundAction) (teamfundports.ManualFundResult, error) {
+	return teamfundports.ManualFundResult{}, nil
+}
+
+func (f *fakeFundRepository) ManualConsume(_ context.Context, _ teamfundports.ManualFundAction) (teamfundports.ManualFundResult, error) {
+	return teamfundports.ManualFundResult{}, nil
+}
+
+func (f *fakeFundRepository) ManualReverse(_ context.Context, _ teamfundports.ManualFundAction) (teamfundports.ManualFundResult, error) {
+	return teamfundports.ManualFundResult{}, nil
 }
 
 func endedRoster() matchapplication.SettlementRoster {

@@ -42,6 +42,7 @@ func TestAdminMemberManagementRoutes(t *testing.T) {
 		{name: "candidates", method: http.MethodGet, path: "/teams/7/member-candidates?search=小", wantBody: `"phone_number":"13800138000"`},
 		{name: "add", method: http.MethodPost, path: "/teams/7/members", body: `{"user_id":43,"role":"member"}`, wantBody: `"name":"东安联队"`},
 		{name: "update", method: http.MethodPatch, path: "/teams/7/members/42", body: `{"role":"vice_captain","status":"active"}`, wantBody: `"members"`},
+		{name: "paid membership", method: http.MethodPut, path: "/teams/7/members/42/paid-membership", body: `{"is_paid_member":true}`, wantBody: `"members"`},
 		{name: "remove", method: http.MethodDelete, path: "/teams/7/members/42", wantBody: `"members"`},
 		{name: "set captain", method: http.MethodPatch, path: "/teams/7/captain", body: `{"user_id":42}`, wantBody: `"team"`},
 		{name: "clear captain", method: http.MethodPatch, path: "/teams/7/captain", body: `{"user_id":null}`, wantBody: `"team"`},
@@ -68,17 +69,31 @@ func TestAdminMemberManagementRoutes(t *testing.T) {
 	if members.search != "小" || members.addedUserID != 43 || members.updatedUserID != 42 || members.removedUserID != 42 {
 		t.Fatalf("requests were not mapped: %+v", members)
 	}
+	if members.paidMembershipUserID != 42 || members.paidMembershipUpdate.IsPaidMember == nil || !*members.paidMembershipUpdate.IsPaidMember {
+		t.Fatalf("paid membership request not mapped: %+v", members.paidMembershipUpdate)
+	}
+	// 已废弃的余额字段必须显式拒绝，不允许静默忽略。
+	deprecated := httptest.NewRequest(http.MethodPut, "/teams/7/members/42/paid-membership", bytes.NewBufferString(`{"balance_cents":100}`))
+	deprecated.Header.Set("Authorization", "Bearer admin-token")
+	deprecated.Header.Set("Content-Type", "application/json")
+	deprecatedResponse := httptest.NewRecorder()
+	router.ServeHTTP(deprecatedResponse, deprecated)
+	if deprecatedResponse.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("deprecated balance field must be rejected: %d %s", deprecatedResponse.Code, deprecatedResponse.Body.String())
+	}
 }
 
 type fakeTeamMembers struct {
-	result        application.MemberManagementResult
-	candidates    []domain.MemberCandidate
-	actor         sharedauth.Actor
-	teamID        int64
-	search        string
-	addedUserID   int64
-	updatedUserID int64
-	removedUserID int64
+	result               application.MemberManagementResult
+	candidates           []domain.MemberCandidate
+	actor                sharedauth.Actor
+	teamID               int64
+	search               string
+	addedUserID          int64
+	updatedUserID        int64
+	paidMembershipUserID int64
+	paidMembershipUpdate domain.MemberPaidMembershipUpdate
+	removedUserID        int64
 }
 
 func (f *fakeTeamMembers) capture(actor sharedauth.Actor, teamID int64) {
@@ -106,6 +121,13 @@ func (f *fakeTeamMembers) Add(_ context.Context, actor sharedauth.Actor, teamID,
 func (f *fakeTeamMembers) Update(_ context.Context, actor sharedauth.Actor, teamID, userID int64, _ domain.Role, _ domain.MemberStatus) (application.MemberManagementResult, error) {
 	f.capture(actor, teamID)
 	f.updatedUserID = userID
+	return f.result, nil
+}
+
+func (f *fakeTeamMembers) UpdatePaidMembership(_ context.Context, actor sharedauth.Actor, teamID, userID int64, update domain.MemberPaidMembershipUpdate) (application.MemberManagementResult, error) {
+	f.capture(actor, teamID)
+	f.paidMembershipUserID = userID
+	f.paidMembershipUpdate = update
 	return f.result, nil
 }
 

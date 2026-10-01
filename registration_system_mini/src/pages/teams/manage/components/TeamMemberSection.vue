@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import TeamManagePanel from "./TeamManagePanel.vue";
 import type { BackendTeamMember } from "@/types/backend";
+import { formatDateLabel } from "@/utils/datetime";
 import { isLeadershipRole, memberStatusLabel, roleLabel } from "../teamManageState";
 
 const props = withDefaults(
@@ -42,11 +43,19 @@ function roleBadgeClass() {
 }
 
 function statusMeta(member: BackendTeamMember) {
-  // Go 队员模型只有 role/status，不再展示球衣号与会员身份。
   if (props.variant === "regular") {
     return `${roleLabel(member.role)} · ${memberStatusLabel(member.status)}`;
   }
   return memberStatusLabel(member.status);
+}
+
+function paidMemberMeta(member: BackendTeamMember) {
+  const balanceCents = member.balance_cents ?? 0;
+  const balance = balanceCents < 0
+    ? `欠款 ¥${(-balanceCents / 100).toFixed(2)}`
+    : `余额 ¥${(balanceCents / 100).toFixed(2)}`;
+  const recharge = member.last_recharge_at ? `最近充值 ${formatDateLabel(member.last_recharge_at)}` : "充值时间未记录";
+  return `${member.is_paid_member ? "付费会员" : "普通队员"} · ${balance} · ${recharge}`;
 }
 
 function toggleLabel(member: BackendTeamMember) {
@@ -91,6 +100,7 @@ function handleRemoveMember(member: BackendTeamMember) {
               <text v-if="showRoleBadge(member)" :class="roleBadgeClass()">{{ roleLabel(member.role) }}</text>
             </view>
             <text class="team-result-meta">{{ statusMeta(member) }}</text>
+            <text :class="['member-paid-meta', member.is_paid_member ? 'member-paid-meta-active' : '']">{{ paidMemberMeta(member) }}</text>
           </view>
         </view>
         <view class="member-actions">
@@ -126,6 +136,8 @@ function handleRemoveMember(member: BackendTeamMember) {
 .member-title-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8rpx 12rpx; }
 .member-name { color: var(--ui-color-text); font-size: 28rpx; font-weight: 600; line-height: 1.5; overflow-wrap: anywhere; }
 .team-result-meta { display: block; margin-top: 4rpx; color: var(--ui-color-text-muted); font-size: 22rpx; line-height: 1.5; }
+.member-paid-meta { display: block; margin-top: 2rpx; color: var(--ui-color-text-muted); font-size: 21rpx; line-height: 1.5; }
+.member-paid-meta-active { color: var(--ui-color-success-fg); font-weight: 600; }
 .member-role-badge { padding: 4rpx 12rpx; border-radius: var(--ui-radius-round); background: var(--ui-color-accent-soft); color: var(--ui-color-accent-deep); font-size: 22rpx; font-weight: 500; }
 .member-role-badge-muted { background: var(--ui-color-neutral-bg); color: var(--ui-color-neutral-fg); }
 .member-actions { display: flex; gap: 10rpx; margin-top: 12rpx; }

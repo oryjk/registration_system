@@ -34,6 +34,8 @@ export function teamFundSourceLabel(source: string) {
       return "结算冲正";
     case "admin_credit":
       return "后台充值";
+    case "manual_adjustment":
+      return "余额校准";
     default:
       return "队费变动";
   }

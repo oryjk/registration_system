@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"errors"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -47,6 +48,9 @@ const (
 	MemberInactive MemberStatus = "inactive"
 	// MemberLeft 成员自助退出（软删除）：保留关联与历史，区别于被移除的 inactive。
 	MemberLeft MemberStatus = "left"
+	// MemberRemoved 管理端/队长移除（软删除）：保留成员行与队费账户
+	// （余额、付费会员、充值时间、流水引用），重新添加或自助加入时恢复。
+	MemberRemoved MemberStatus = "removed"
 )
 
 func (s MemberStatus) IsValid() bool {
@@ -87,8 +91,25 @@ type MemberDetails struct {
 	AvatarURL   *string
 	RealName    *string
 	PhoneNumber *string
+	// IsPaidMember 表示该队员在当前球队是否为已缴队费会员；与是否为球队成员是两个概念。
+	IsPaidMember bool
 	// BalanceCents 该成员在此球队的队费余额（分），负数表示欠款。
 	BalanceCents int64
+	// LastRechargeAt 最近一次队费充值/登记时间；历史数据无法确定时可为空。
+	LastRechargeAt *time.Time
+}
+
+// MemberPaidMembershipUpdate 仅支持手动切换付费会员标记；
+// 余额与最近充值时间由充值/消费/冲正动作维护，不再支持直接设置。
+type MemberPaidMembershipUpdate struct {
+	IsPaidMember *bool
+}
+
+func (u MemberPaidMembershipUpdate) Validate() error {
+	if u.IsPaidMember == nil {
+		return errors.New("is_paid_member 不能为空")
+	}
+	return nil
 }
 
 type MemberCandidate struct {

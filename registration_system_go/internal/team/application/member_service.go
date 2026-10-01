@@ -96,6 +96,29 @@ func (s MemberService) Update(ctx context.Context, actor sharedauth.Actor, teamI
 
 // Remove 移除成员；仓储层会在同一事务内取消其在本队未开始比赛中的报名
 // （进行中/已完赛/已取消比赛与已支付报名保留）。
+func (s MemberService) UpdatePaidMembership(ctx context.Context, actor sharedauth.Actor, teamID, userID int64, update domain.MemberPaidMembershipUpdate) (MemberManagementResult, error) {
+	if !actor.IsAdmin() {
+		return MemberManagementResult{}, sharederror.ErrForbidden
+	}
+	if userID <= 0 {
+		return MemberManagementResult{}, sharederror.New(sharederror.KindValidation, "球队成员无效")
+	}
+	if err := update.Validate(); err != nil {
+		return MemberManagementResult{}, sharederror.New(sharederror.KindValidation, err.Error())
+	}
+	if _, err := s.findTeam(ctx, teamID); err != nil {
+		return MemberManagementResult{}, err
+	}
+	updated, err := s.repository.UpdatePaidMembership(ctx, teamID, userID, update, "后台手动调整队费账户")
+	if err != nil {
+		return MemberManagementResult{}, sharederror.Wrap(sharederror.KindInternal, "更新付费会员信息失败", err)
+	}
+	if !updated {
+		return MemberManagementResult{}, sharederror.New(sharederror.KindNotFound, "球队成员不存在")
+	}
+	return s.load(ctx, teamID)
+}
+
 func (s MemberService) Remove(ctx context.Context, actor sharedauth.Actor, teamID, userID int64) (MemberManagementResult, error) {
 	if !actor.IsAdmin() {
 		return MemberManagementResult{}, sharederror.ErrForbidden

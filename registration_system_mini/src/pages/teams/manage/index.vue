@@ -8,6 +8,7 @@ import SegmentedControl from "@/components/ui/SegmentedControl.vue";
 import AppSurface from "@/components/ui/AppSurface.vue";
 import MemberAttendancePopup from "./components/MemberAttendancePopup.vue";
 import MemberEditPopup from "./components/MemberEditPopup.vue";
+import MemberFundActionPopup from "./components/MemberFundActionPopup.vue";
 import TeamActivityAttendancePanel from "./components/TeamActivityAttendancePanel.vue";
 import TeamDissolvePanel from "./components/TeamDissolvePanel.vue";
 import TeamJoinPasswordPanel from "./components/TeamJoinPasswordPanel.vue";
@@ -42,6 +43,12 @@ const {
   memberForm,
   editMemberForm,
   editingMember,
+  fundActionMode,
+  fundActionMember,
+  fundActionForm,
+  closeFundActionPopup,
+  handleOpenFundAction,
+  handleSubmitFundAction,
   leadershipMembers,
   regularMembers,
   frozenMembers,
@@ -238,6 +245,20 @@ const metaPageStyle = computed(() =>
       :submitting="submitting"
       @close="closeEditMemberPopup"
       @submit="handleUpdateMember"
+      @recharge="handleOpenFundAction('recharge')"
+      @consume="handleOpenFundAction('consume')"
+    />
+
+    <MemberFundActionPopup
+      :model-value="fundActionMode !== null"
+      :mode="fundActionMode || 'recharge'"
+      :member="fundActionMember"
+      :member-name="fundActionMember ? memberName(fundActionMember.user_id) : '队员'"
+      :form="fundActionForm"
+      :submitting="submitting"
+      @update:model-value="(value: boolean) => { if (!value) closeFundActionPopup(); }"
+      @close="closeFundActionPopup"
+      @submit="handleSubmitFundAction"
     />
 
     <MemberAttendancePopup

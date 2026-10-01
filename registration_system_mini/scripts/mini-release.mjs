@@ -117,16 +117,66 @@ async function executeStep(cmd, options) {
   return await child.exited;
 }
 
+function executeGit(args, cwd) {
+  const result = Bun.spawnSync(["git", ...args], { cwd, stdout: "pipe", stderr: "pipe" });
+  return {
+    exitCode: result.exitCode,
+    stdout: result.stdout.toString(),
+    stderr: result.stderr.toString(),
+  };
+}
+
+function gitValue(runGit, args, cwd, label) {
+  const result = runGit(args, cwd);
+  if (result.exitCode !== 0) {
+    const detail = String(result.stderr || result.stdout || "").trim();
+    throw new Error(`${label}失败${detail ? `：${detail}` : ""}，已阻止小程序上传。`);
+  }
+  return String(result.stdout || "").trim();
+}
+
+export function verifyUploadGitState(projectRoot = defaultProjectRoot, {
+  runGit = executeGit,
+  fetch = true,
+} = {}) {
+  const repoRoot = gitValue(runGit, ["rev-parse", "--show-toplevel"], projectRoot, "读取 Git 仓库");
+  const branch = gitValue(runGit, ["branch", "--show-current"], repoRoot, "读取当前分支");
+  if (branch !== "main") {
+    throw new Error(`小程序上传只允许从 main 分支执行；当前分支为 ${branch || "detached HEAD"}。`);
+  }
+
+  const status = gitValue(runGit, ["status", "--porcelain", "--untracked-files=normal"], repoRoot, "检查 Git 工作区");
+  if (status) {
+    throw new Error("检测到工作区不干净，已阻止小程序上传；请先 commit 全部改动并 push 到 origin/main 后重新执行 mp:release。");
+  }
+
+  if (fetch) {
+    gitValue(runGit, ["fetch", "origin", "main", "--quiet"], repoRoot, "刷新 origin/main");
+  }
+  const head = gitValue(runGit, ["rev-parse", "HEAD"], repoRoot, "读取本地 HEAD");
+  const originMain = gitValue(runGit, ["rev-parse", "origin/main"], repoRoot, "读取 origin/main");
+  if (head !== originMain) {
+    throw new Error("小程序上传要求本地 HEAD 与 origin/main 完全一致；请先 commit + push（或同步远端 main）后重新执行 mp:release。");
+  }
+  return { repoRoot, head };
+}
+
 export async function runMiniRelease(command, args = [], {
   projectRoot = defaultProjectRoot,
   env = process.env,
   runStep = executeStep,
+  checkGitState = verifyUploadGitState,
 } = {}) {
   const forwarded = validateArguments(command, args);
   const production = loadProductionEnvironment(projectRoot, env);
   // 上传必须走登记库，不能被上一次离线验证留下的 MINI_REVIEW_SKIP=1 意外跳过。
   if (command === "upload") production.MINI_REVIEW_SKIP = "0";
   console.log(`[mini-release] Bun ${Bun.version}; mode=production; API=${production.VITE_API_BASE_URL}`);
+
+  if (command === "upload") {
+    console.log("[mini-release] 检查 Git：main / clean / origin/main 已推送");
+    await checkGitState(projectRoot, { fetch: true });
+  }
 
   const run = async (label, script, scriptArgs = []) => {
     console.log(`[mini-release] ${label}`);
@@ -138,12 +188,21 @@ export async function runMiniRelease(command, args = [], {
 
   if (command === "build" || command === "upload") {
     await run("同步审核版本", "scripts/sync-manifest-version.mjs");
+    if (command === "upload") {
+      // 新分配版本会修改 manifest/version 常量：必须先提交并推送，再重新执行发布，
+      // 保证最终上传到微信的源码与 origin/main 精确对应。
+      await checkGitState(projectRoot, { fetch: false });
+    }
     await run("构建生产小程序", "node_modules/@dcloudio/vite-plugin-uni/bin/uni.js", ["build", "-p", "mp-weixin", "--mode", "production"]);
     await run("检查小程序组件注册", "scripts/verify-mp-component-registrations.mjs");
   }
   const actualApi = verifyReleaseBundle(projectRoot, production.VITE_API_BASE_URL);
   console.log(`[mini-release] 编译包 API 校验通过: ${actualApi}`);
   if (command === "upload" || command === "preview") {
+    if (command === "upload") {
+      // 构建后再次确认源代码没有被任何步骤改动，且远端 main 仍与当前 HEAD 一致。
+      await checkGitState(projectRoot, { fetch: true });
+    }
     await run(command === "upload" ? "上传微信开发版本" : "生成微信预览", "scripts/mini-ci.mjs", [command, ...forwarded]);
   }
 }

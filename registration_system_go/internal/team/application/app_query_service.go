@@ -17,13 +17,16 @@ type AppTeamDetail struct {
 }
 
 type AppTeamMember struct {
-	UserID    int64
-	Nickname  string
-	AvatarURL *string
-	RealName  *string
-	Role      domain.Role
-	Status    domain.MemberStatus
-	JoinedAt  time.Time
+	UserID         int64
+	Nickname       string
+	AvatarURL      *string
+	RealName       *string
+	Role           domain.Role
+	Status         domain.MemberStatus
+	JoinedAt       time.Time
+	BalanceCents   int64
+	IsPaidMember   bool
+	LastRechargeAt *time.Time
 }
 
 type AppQueryService struct {
@@ -47,19 +50,27 @@ func (s AppQueryService) GetTeam(ctx context.Context, actor sharedauth.Actor, te
 }
 
 func (s AppQueryService) ListMembers(ctx context.Context, actor sharedauth.Actor, teamID int64) ([]AppTeamMember, error) {
-	if _, _, err := s.authorize(ctx, actor, teamID); err != nil {
+	_, requester, err := s.authorize(ctx, actor, teamID)
+	if err != nil {
 		return nil, err
 	}
+	canSeePaidMembership := requester.CanManageTeam()
 	rows, err := s.repository.ListAppMembers(ctx, teamID)
 	if err != nil {
 		return nil, sharederror.Wrap(sharederror.KindInternal, "查询球队成员失败", err)
 	}
 	items := make([]AppTeamMember, 0, len(rows))
 	for _, row := range rows {
-		items = append(items, AppTeamMember{
+		item := AppTeamMember{
 			UserID: row.UserID, Nickname: row.Nickname, AvatarURL: row.AvatarURL,
 			RealName: row.RealName, Role: row.Role, Status: row.Status, JoinedAt: row.JoinedAt,
-		})
+		}
+		if canSeePaidMembership {
+			item.BalanceCents = row.BalanceCents
+			item.IsPaidMember = row.IsPaidMember
+			item.LastRechargeAt = row.LastRechargeAt
+		}
+		items = append(items, item)
 	}
 	return items, nil
 }

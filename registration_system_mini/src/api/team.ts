@@ -82,6 +82,9 @@ function toBackendMember(member: AppTeamMember): BackendTeamMember {
     role: member.role,
     jersey_number: null,
     is_member: member.status === "active",
+    is_paid_member: member.is_paid_member,
+    balance_cents: member.balance_cents,
+    last_recharge_at: member.last_recharge_at,
     joined_at: member.joined_at,
     status: memberStatusNumber(member.status),
     // 队员管理页的头像/昵称依赖这两个字段，映射时不能丢弃。
@@ -291,6 +294,61 @@ export function updateTeamMember(
   return requestApi<void>({
     url: `/teams/${teamId}/members/${userId}`,
     method: "PATCH",
+    data: payload,
+    auth: true,
+  });
+}
+
+// 手动切换付费会员标记；余额与最近充值时间由充值/消费/冲正动作维护，不能在此设置。
+export function updateTeamMemberPaidMembership(
+  teamId: number,
+  userId: number,
+  payload: { is_paid_member: boolean },
+) {
+  return requestApi<void>({
+    url: `/teams/${teamId}/members/${userId}/paid-membership`,
+    method: "PUT",
+    data: payload,
+    auth: true,
+  });
+}
+
+export type TeamMemberFundActionPayload = {
+  amount_cents: number;
+  note?: string;
+  /** 幂等键：同一键重试只记一笔；同一意图重试应复用同一键。 */
+  idempotency_key?: string;
+};
+
+export type TeamMemberFundActionResult = {
+  balance_cents: number;
+  transaction_id: number;
+  duplicated?: boolean;
+};
+
+/** 队长/领队登记实际收到的线下款项：入账并自动标记付费会员、刷新充值时间。 */
+export function rechargeTeamMemberFund(
+  teamId: number,
+  userId: number,
+  payload: TeamMemberFundActionPayload,
+) {
+  return requestApi<TeamMemberFundActionResult>({
+    url: `/teams/${teamId}/members/${userId}/fund-credits`,
+    method: "POST",
+    data: payload,
+    auth: true,
+  });
+}
+
+/** 队长/领队消费扣费：扣减余额（允许扣成负数即欠款），不改会员身份与充值时间。 */
+export function consumeTeamMemberFund(
+  teamId: number,
+  userId: number,
+  payload: TeamMemberFundActionPayload & { note: string },
+) {
+  return requestApi<TeamMemberFundActionResult>({
+    url: `/teams/${teamId}/members/${userId}/fund-consumptions`,
+    method: "POST",
     data: payload,
     auth: true,
   });

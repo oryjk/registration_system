@@ -56,6 +56,37 @@ func TestCurrentCaptainCannotBeUpdatedOrRemoved(t *testing.T) {
 	}
 }
 
+func TestAdminUpdatesPaidMembershipAccount(t *testing.T) {
+	repository := &fakeMemberRepository{
+		team: domain.Team{ID: 7, Name: "东安联队", Status: domain.TeamActive}, found: true,
+		members: []domain.MemberDetails{{Member: domain.Member{TeamID: 7, UserID: 42, Role: domain.RoleMember, Status: domain.MemberActive}}},
+	}
+	service := NewMemberService(repository)
+	update := domain.MemberPaidMembershipUpdate{IsPaidMember: boolPtr(true)}
+
+	result, err := service.UpdatePaidMembership(context.Background(), adminActor(), 7, 42, update)
+	if err != nil {
+		t.Fatalf("update paid membership: %v", err)
+	}
+	if repository.paidMembershipUserID != 42 || repository.paidMembershipUpdate != update {
+		t.Fatalf("unexpected update call: user=%d update=%+v", repository.paidMembershipUserID, repository.paidMembershipUpdate)
+	}
+	if len(result.Members) != 1 || !result.Members[0].IsPaidMember {
+		t.Fatalf("unexpected updated member: %+v", result.Members)
+	}
+}
+
+func TestAdminPaidMembershipUpdateValidation(t *testing.T) {
+	service := NewMemberService(&fakeMemberRepository{found: true})
+
+	missing := domain.MemberPaidMembershipUpdate{}
+	if _, err := service.UpdatePaidMembership(context.Background(), adminActor(), 7, 42, missing); !errors.Is(err, sharederror.ErrValidation) {
+		t.Fatalf("missing is_paid_member must be rejected, got %v", err)
+	}
+}
+
+func boolPtr(value bool) *bool { return &value }
+
 func TestAdminSetsAndClearsCaptain(t *testing.T) {
 	repository := &fakeMemberRepository{
 		team: domain.Team{ID: 7, Name: "东安联队", Status: domain.TeamActive}, found: true,
@@ -103,13 +134,16 @@ func TestUserCannotManageTeamMembers(t *testing.T) {
 }
 
 type fakeMemberRepository struct {
-	team          domain.Team
-	members       []domain.MemberDetails
-	candidates    []domain.MemberCandidate
-	found         bool
-	addedUserID   int64
-	addedRole     domain.Role
-	setCaptainErr error
+	team                 domain.Team
+	members              []domain.MemberDetails
+	candidates           []domain.MemberCandidate
+	found                bool
+	addedUserID          int64
+	addedRole            domain.Role
+	paidMembershipUserID int64
+	paidMembershipUpdate domain.MemberPaidMembershipUpdate
+	paidMembershipErr    error
+	setCaptainErr        error
 }
 
 func (f *fakeMemberRepository) FindByID(context.Context, int64) (domain.Team, bool, error) {
@@ -136,6 +170,23 @@ func (f *fakeMemberRepository) UpdateMember(_ context.Context, _, userID int64, 
 		if f.members[index].UserID == userID {
 			f.members[index].Role = role
 			f.members[index].Status = status
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func (f *fakeMemberRepository) UpdatePaidMembership(_ context.Context, _, userID int64, update domain.MemberPaidMembershipUpdate, _ string) (bool, error) {
+	if f.paidMembershipErr != nil {
+		return false, f.paidMembershipErr
+	}
+	f.paidMembershipUserID = userID
+	f.paidMembershipUpdate = update
+	for index := range f.members {
+		if f.members[index].UserID == userID {
+			if update.IsPaidMember != nil {
+				f.members[index].IsPaidMember = *update.IsPaidMember
+			}
 			return true, nil
 		}
 	}

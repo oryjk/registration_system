@@ -212,6 +212,12 @@ export interface BackendTeamMember {
   role: string;
   jersey_number?: string | null;
   is_member: boolean;
+  /** 队员级付费会员，与 is_member（是否为球队成员）不同。 */
+  is_paid_member?: boolean;
+  /** 当前队费余额（分），负数表示欠款。 */
+  balance_cents?: number;
+  /** 最近一次队费充值/登记时间。 */
+  last_recharge_at?: string | null;
   joined_at: string;
   status: number;
   /** 用户资料：新接口的队员列表自带；legacy 结构可能缺失，展示层需兜底。 */
@@ -504,7 +510,7 @@ export interface BackendTeamFundTransaction {
   team_name: string;
   amount_cents: number;
   balance_after_cents: number;
-  source: "membership_payment" | "match_settlement" | "settlement_reversal" | "admin_credit" | string;
+  source: "membership_payment" | "match_settlement" | "settlement_reversal" | "admin_credit" | "manual_adjustment" | string;
   match_id?: string | null;
   match_name?: string | null;
   description: string;

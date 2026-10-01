@@ -134,6 +134,10 @@ func (s AppManageService) UpdateMember(ctx context.Context, actor sharedauth.Act
 	if !found {
 		return sharederror.New(sharederror.KindNotFound, "球队成员不存在")
 	}
+	// removed 是移除后的账户保留态：修改资料前需先重新添加恢复成员关系。
+	if member.Status == domain.MemberRemoved {
+		return sharederror.New(sharederror.KindConflict, "该成员已移除，请重新添加后再修改")
+	}
 	newRole, newStatus := member.Role, member.Status
 	if role != nil {
 		if !role.CanAssignDirectly() {
@@ -159,6 +163,32 @@ func (s AppManageService) UpdateMember(ctx context.Context, actor sharedauth.Act
 
 // RemoveMember 移除成员；仓储层会在同一事务内取消其在本队未开始比赛中的报名
 // （进行中/已完赛/已取消比赛与已支付报名保留）。
+func (s AppManageService) UpdatePaidMembership(ctx context.Context, actor sharedauth.Actor, teamID, userID int64, update domain.MemberPaidMembershipUpdate) error {
+	if _, err := s.authorizeManager(ctx, actor, teamID); err != nil {
+		return err
+	}
+	if userID <= 0 {
+		return sharederror.New(sharederror.KindValidation, "球队成员无效")
+	}
+	if err := update.Validate(); err != nil {
+		return sharederror.New(sharederror.KindValidation, err.Error())
+	}
+	updated, err := s.repository.UpdatePaidMembership(ctx, teamID, userID, update, "球队管理手动调整队费账户")
+	if err != nil {
+		return sharederror.Wrap(sharederror.KindInternal, "更新付费会员信息失败", err)
+	}
+	if !updated {
+		return sharederror.New(sharederror.KindNotFound, "球队成员不存在")
+	}
+	return nil
+}
+
+// AuthorizeManager 暴露队长/领队管理权限校验给跨模块组合（如队费人工动作）。
+func (s AppManageService) AuthorizeManager(ctx context.Context, actor sharedauth.Actor, teamID int64) error {
+	_, err := s.authorizeManager(ctx, actor, teamID)
+	return err
+}
+
 func (s AppManageService) RemoveMember(ctx context.Context, actor sharedauth.Actor, teamID, userID int64) error {
 	team, err := s.authorizeManager(ctx, actor, teamID)
 	if err != nil {

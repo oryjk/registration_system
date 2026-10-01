@@ -18,7 +18,7 @@
 - **当前服务部署在 jd**（2026-09-19 已迁移）：Go 后端、mini H5、Go 管理端使用根目录 `deploy_jd_go_h5.sh`；先运行 `./deploy_jd_go_h5.sh --check`。旧 `deploy_out109_go_h5.sh` 仅为转调 jd 的兼容入口；MinIO 已在 jd 运行，日常发布不重建它。
 - 当前部署拓扑、环境文件、数据目录、数据库迁移与回滚见 [`docs/deployment-jd.md`](docs/deployment-jd.md)。不要沿用旧 WSL 路径或重建 MinIO/上传卷。
 - `oryjk.cn:82` 是 jd 的兼容入口，域名未变不代表服务仍在 out109。`ssh out109` 仍按用户要求保留原域名配置，不能用于连接家庭构建机；家庭机器用用户维护的 `ssh local109`。
-- 微信小程序（mp-weixin）发布用 `registration_system_mini` 的 `bun run mp:release` 上传开发版本，**robot 双轨约定**：`robot=1`（默认）日常开发版，`robot=2` 体验版专用线（`-- --robot 2`；体验版随该槽位上传自动更新，首次需在公众平台点一次「选为体验版」）。详细流程与前置条件见 `registration_system_mini/AGENTS.md` 的「微信小程序发布」一节。
+- 微信小程序（mp-weixin）发布用 `registration_system_mini` 的 `bun run mp:release` 上传开发版本。**上传前必须先把本次代码提交并 push 到 `origin/main`，且工作区保持干净、本地 `HEAD` 与最新 `origin/main` 完全一致**；发布脚本会硬校验，未满足时直接拒绝上传。若版本登记生成新的 `manifest.json` / `generatedMiniProgramVersion.ts` 变更，发布会先停止，必须再提交并 push 这两个版本文件后重新执行 `mp:release`，确保微信上传包可精确追溯到 `origin/main`。**robot 双轨约定**：`robot=1`（默认）日常开发版，`robot=2` 体验版专用线（`-- --robot 2`；体验版随该槽位上传自动更新，首次需在公众平台点一次「选为体验版」）。详细流程与前置条件见 `registration_system_mini/AGENTS.md` 的「微信小程序发布」一节。
 
 ## 用户端 UI 现行规范
 
@@ -36,6 +36,7 @@
 - 与用户沟通优先使用**简体中文**。
 - 不要臆造接口、字段、表结构；以代码、路由、DTO、SQL 迁移为准。
 - **兼容性硬规则**：接口与数据结构变更必须保证**已发布（旧版本）小程序请求新后端不报错**——不删除/改名既有路由，不删除既有请求/响应字段或改变其类型，不让旧客户端的既有调用从成功变为失败。新增路由、新增字段、放宽限制都允许。若业务上确实要让旧客户端的某个既有调用开始失败（如禁止某类操作），属于产品决策：必须显式告知用户影响面，由用户拍板后才可实施。
+- **数据库迁移兼容**：共享库的 schema 变更必须与**线上正在运行的旧版后端镜像**兼容（该库同时被 jd 后端与本地开发共用）——新增列（带默认值）、放宽约束等加法变更可以先行应用；删除/改名列、改类型、收紧约束必须等使用新 schema 的镜像部署后才可执行。应用迁移前先核对已提交版本查询的依赖面（老 SQL 是否有 `SELECT *`、是否引用被改对象）。「加法迁移先行、新镜像后到」是默认顺序，deploy 脚本的 `--migrate` 即为此设计。
 - 后端遵循**六边形 / 整洁分层**：`domain` / `application` / `ports` / `adapters`。
 - 管理端接口通常在 `/api/admin` 前缀下，常见响应为 `ApiResponse<T>`。
 - 小步修改，优先做**可验证**且范围清晰的变更，避免无关重构。

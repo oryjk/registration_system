@@ -40,7 +40,7 @@ export function useTeamJoinPassword({ currentTeam, submitting }: TeamJoinPasswor
     }
     submitting.value = true;
     try {
-      await updateJoinPasswordFromForm(currentTeam.value.id, joinPasswordForm.password);
+      await updateJoinPasswordFromForm(currentTeam.value.id, joinPasswordForm.password.trim());
       joinPasswordForm.password = "";
       await syncJoinPasswordStatus();
       uni.showToast({ title: "入队密码已更新", icon: "none" });

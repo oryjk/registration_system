@@ -509,7 +509,8 @@ func (r *Repository) ApplyMembershipPayment(ctx context.Context, payment payment
 		return result, mapConstraintError(err)
 	}
 	balanceCents, err := queries.CreditTeamMemberFundBalance(ctx, paymentsqlc.CreditTeamMemberFundBalanceParams{
-		AmountCents: credit.AmountCents, TeamID: credit.TeamID, UserID: credit.UserID,
+		AmountCents: credit.AmountCents, RechargedAt: timestamptz(payment.PaidAt),
+		TeamID: credit.TeamID, UserID: credit.UserID,
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {

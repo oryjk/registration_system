@@ -34,8 +34,8 @@ func TestOpenAPIIsValidAndMatchesGinRoutes(t *testing.T) {
 	if len(missing) != 0 || len(extra) != 0 {
 		t.Fatalf("OpenAPI route mismatch\nmissing: %v\nextra: %v", missing, extra)
 	}
-	if len(documented) != 89 {
-		t.Fatalf("documented operations=%d, want 89", len(documented))
+	if len(documented) != 91 {
+		t.Fatalf("documented operations=%d, want 91", len(documented))
 	}
 }
 
@@ -76,6 +76,8 @@ func TestOpenAPISecurityMatchesPublicAndProtectedRoutes(t *testing.T) {
 		{method: http.MethodPut, path: "/api/v1/admin/users/{id}/match-admin"},
 		{method: http.MethodDelete, path: "/api/v1/admin/users/{id}/match-admin"},
 		{method: http.MethodPatch, path: "/api/v1/app/matches/{id}/score"},
+		{method: http.MethodPut, path: "/api/v1/app/teams/{id}/members/{user_id}/paid-membership"},
+		{method: http.MethodPut, path: "/api/v1/admin/teams/{id}/members/{user_id}/paid-membership"},
 	} {
 		if !operationRequiresBearer(operation(t, document, route.method, route.path)) {
 			t.Fatalf("%s %s must require bearerAuth", route.method, route.path)

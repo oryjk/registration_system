@@ -7,6 +7,9 @@ RETURNING *;
 -- name: CreditTeamMemberFundBalance :one
 UPDATE team_members
 SET balance_cents = balance_cents + sqlc.arg('amount_cents')::bigint,
+    is_paid_member = TRUE,
+    -- 最近充值时间只前进不倒退：较早付款的回调延迟到达（GREATEST 对 NULL 取另一侧）。
+    last_recharge_at = GREATEST(last_recharge_at, sqlc.arg('recharged_at')::timestamptz),
     updated_at = NOW()
 WHERE team_id = sqlc.arg('team_id')::bigint
   AND user_id = sqlc.arg('user_id')::bigint

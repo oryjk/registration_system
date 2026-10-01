@@ -2,9 +2,11 @@ package ports
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
+	sharedauth "github.com/oryjk/registration_system/registration_system_go/internal/shared/auth"
 )
 
 // SettlementCharge 一次结算中单人扣款指令（调用方保证按 (TeamID, UserID) 排序）。
@@ -46,17 +48,33 @@ type TeamFundBalance struct {
 	BalanceCents int64
 }
 
-// AdminCredit 管理员手动充值指令（纯记账，无支付）。
-type AdminCredit struct {
-	TeamID      int64
-	UserID      int64
-	AmountCents int64 // > 0
-	Note        string
+var (
+	// ErrIdempotencyConflict 同一幂等键被不同参数重复使用：不能静默成功，必须显式拒绝。
+	ErrIdempotencyConflict = errors.New("idempotency key conflict")
+)
+
+// TeamManagerAuthorizer 校验操作者是该球队 active 的队长/领队（小程序侧记账权限）。
+type TeamManagerAuthorizer interface {
+	AuthorizeTeamManager(ctx context.Context, actor sharedauth.Actor, teamID int64) error
 }
 
-type AdminCreditResult struct {
+// ManualFundAction 手动余额动作载荷：充值、消费扣费、冲正共用。
+type ManualFundAction struct {
+	TeamID      int64
+	UserID      int64
+	AmountCents int64 // > 0；冲正时为原流水金额的绝对值（由仓储从原流水推导）
+	Note        string
+	// OperatorUserID 操作人，取自后端认证身份，不信任前端传值。
+	OperatorUserID        int64
+	IdempotencyKey        string // 流水 source_id；为空时仓储生成随机 UUID
+	OriginalTransactionID int64  // 仅冲正：被冲正的原流水
+}
+
+// ManualFundResult 手动动作结果；Duplicated 表示幂等命中（同键同参数重放，未重复记账）。
+type ManualFundResult struct {
 	BalanceCents  int64
 	TransactionID int64
+	Duplicated    bool
 }
 
 type TeamFundTransaction struct {
@@ -65,11 +83,14 @@ type TeamFundTransaction struct {
 	TeamName          string
 	AmountCents       int64 // 带符号：正=入账，负=扣费
 	BalanceAfterCents int64
-	Source            string // membership_payment | match_settlement | settlement_reversal | admin_credit
+	Source            string // membership_payment | match_settlement | settlement_reversal | admin_credit | manual_consume | manual_reversal | manual_adjustment(历史)
 	MatchID           *uuid.UUID
 	MatchName         string
 	Description       string
-	CreatedAt         time.Time
+	// CreatedByUserID 人工动作操作人（历史行为空）；ReversedByTransactionID 非空表示已被冲正。
+	CreatedByUserID         *int64
+	ReversedByTransactionID *int64
+	CreatedAt               time.Time
 }
 
 type SettlementSummary struct {
@@ -88,7 +109,15 @@ type Repository interface {
 	GetSummary(ctx context.Context, matchID uuid.UUID) (SettlementSummary, error)
 	ListBalances(ctx context.Context, userID int64) ([]TeamFundBalance, error)
 	ListTransactions(ctx context.Context, userID int64, beforeID int64, limit int) ([]TeamFundTransaction, error)
-	// AdminCredit 管理员手动充值：单事务校验正式成员身份（并锁定成员行）后加钱、记 admin_credit 流水；
-	// 非正式成员返回校验错误，不自动建行。
-	AdminCredit(ctx context.Context, credit AdminCredit) (AdminCreditResult, error)
+	// ListMemberTransactions 管理员/队长查看指定成员的队费流水（冲正需定位原流水）。
+	ListMemberTransactions(ctx context.Context, teamID, userID, beforeID int64, limit int) ([]TeamFundTransaction, error)
+	// ManualRecharge 人工充值（登记实际收到的线下款项）：校验 active 正式成员并锁行后入账，
+	// 标记付费会员并刷新最近充值时间；幂等键去重。
+	ManualRecharge(ctx context.Context, action ManualFundAction) (ManualFundResult, error)
+	// ManualConsume 人工消费扣费：active 正式成员扣减余额（允许扣成负数即欠款），
+	// 不触碰付费会员标记与最近充值时间；幂等键去重。
+	ManualConsume(ctx context.Context, action ManualFundAction) (ManualFundResult, error)
+	// ManualReverse 冲正人工流水（admin_credit/manual_consume/manual_adjustment）：
+	// 反向金额回加余额并回写原流水的冲正引用；原流水与目标成员必须匹配且未被冲正。
+	ManualReverse(ctx context.Context, action ManualFundAction) (ManualFundResult, error)
 }

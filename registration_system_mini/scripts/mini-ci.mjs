@@ -9,7 +9,7 @@ import path from "node:path";
 import process from "node:process";
 
 import JSON5 from "json5";
-import { loadProductionEnvironment, verifyReleaseBundle } from "./mini-release.mjs";
+import { loadProductionEnvironment, verifyReleaseBundle, verifyUploadGitState } from "./mini-release.mjs";
 
 const projectRoot = path.resolve(new URL("..", import.meta.url).pathname);
 const command = process.argv[2];
@@ -61,6 +61,10 @@ async function main() {
   const production = loadProductionEnvironment(projectRoot);
   const apiBase = verifyReleaseBundle(projectRoot, production.VITE_API_BASE_URL);
   console.log(`[mini-ci] 上传前 API 校验通过: ${apiBase}`);
+  if (command === "upload") {
+    verifyUploadGitState(projectRoot);
+    console.log("[mini-ci] Git 校验通过: main / clean / origin/main 已推送");
+  }
   const { default: ci } = await import("miniprogram-ci");
   const project = new ci.Project({
     appid,

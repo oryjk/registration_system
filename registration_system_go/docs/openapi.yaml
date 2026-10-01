@@ -4,7 +4,7 @@ info:
   version: 1.0.0
   description: 赛事报名与球队管理 Go 后端 HTTP API。
 servers:
-  - url: http://127.0.0.1:18080
+  - url: http://127.0.0.1:18081
     description: 本地开发服务
 tags:
   - name: System
@@ -468,6 +468,30 @@ paths:
           description: 移除成功（空 data）
         <<: *standardErrors
 
+  /api/v1/app/teams/{id}/members/{user_id}/paid-membership:
+    put:
+      operationId: updateAppTeamMemberPaidMembership
+      tags: [App Teams]
+      summary: 更新队员付费会员与队费账户（队长/领队）
+      description: 仅该队 active 的队长或领队可操作。手动切换付费会员标记；余额只能通过充值（fund-credits）、消费扣费（fund-consumptions）与冲正（fund-reversals）动作改变，直接设置余额的参数会被显式拒绝。
+      security: *bearerSecurity
+      parameters:
+        - $ref: "#/components/parameters/TeamID"
+        - name: user_id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PaidMembershipUpdateRequest"
+      responses:
+        "200":
+          description: 更新成功（空 data）
+        <<: *standardErrors
+
   /api/v1/app/teams/{id}/members/{user_id}/attendance:
     get:
       operationId: getAppTeamMemberAttendance
@@ -536,7 +560,7 @@ paths:
       operationId: createAppTeamMembershipOrder
       tags: [App Payments]
       summary: 为球队创建队费订单并发起微信支付
-      description: 仅该队队长/领队可操作；金额由用户填写（单位分，上限 100 万分），支付成功后金额计入付款人在该球队的个人账户余额，与球队公共数据、信用分、会员时长无关。
+      description: 仅该队队长/领队可操作；金额由用户填写（单位分，上限 100 万分）。支付成功后金额计入付款人在该球队的个人账户余额，同时将该队员标记为付费会员并记录本次充值时间；不影响球队公共信用分或球队级 vip_until。
       security: *bearerSecurity
       requestBody:
         required: true
@@ -1303,6 +1327,31 @@ paths:
       parameters:
         - $ref: "#/components/parameters/TeamID"
         - $ref: "#/components/parameters/UserID"
+      responses:
+        "200":
+          description: 更新后的球队及成员
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MemberManagementEnvelope"
+        <<: *standardErrors
+
+  /api/v1/admin/teams/{id}/members/{user_id}/paid-membership:
+    put:
+      operationId: updateAdminTeamMemberPaidMembership
+      tags: [Admin Teams]
+      summary: 设置队员付费会员与队费账户
+      description: 管理员手动切换付费会员标记；余额只能通过充值、消费扣费与冲正动作改变，直接设置余额的参数会被显式拒绝。
+      security: *bearerSecurity
+      parameters:
+        - $ref: "#/components/parameters/TeamID"
+        - $ref: "#/components/parameters/UserID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PaidMembershipUpdateRequest"
       responses:
         "200":
           description: 更新后的球队及成员
@@ -2470,6 +2519,14 @@ components:
           $ref: "#/components/schemas/MemberRole"
         status:
           $ref: "#/components/schemas/MemberStatus"
+    PaidMembershipUpdateRequest:
+      type: object
+      description: 仅支持手动切换付费会员标记；余额与最近充值时间由充值/消费/冲正动作维护。携带 balance_cents、last_recharge_at 等已废弃字段会被显式拒绝（422），不会静默忽略。
+      required: [is_paid_member]
+      properties:
+        is_paid_member:
+          type: boolean
+          description: 该队员在当前球队是否为已缴队费会员；实际充值（微信到账或人工登记）会自动置为 true。
     SetCaptainRequest:
       type: object
       required: [user_id]
@@ -2824,7 +2881,7 @@ components:
           $ref: "#/components/schemas/MemberRole"
     AppTeamMember:
       type: object
-      required: [user_id, nickname, avatar_url, real_name, role, status, joined_at]
+      required: [user_id, nickname, avatar_url, real_name, role, status, joined_at, balance_cents, is_paid_member, last_recharge_at]
       properties:
         user_id:
           type: integer
@@ -2844,9 +2901,18 @@ components:
         joined_at:
           type: string
           format: date-time
+        balance_cents:
+          type: integer
+          format: int64
+        is_paid_member:
+          type: boolean
+        last_recharge_at:
+          type: string
+          format: date-time
+          nullable: true
     Member:
       type: object
-      required: [id, user_id, nickname, avatar_url, real_name, phone_number, role, status, joined_at]
+      required: [id, user_id, nickname, avatar_url, real_name, phone_number, role, status, joined_at, balance_cents, is_paid_member, last_recharge_at]
       properties:
         id:
           type: integer
@@ -2872,6 +2938,16 @@ components:
         joined_at:
           type: string
           format: date-time
+        balance_cents:
+          type: integer
+          format: int64
+          description: 当前队费余额（分），负数表示欠款。
+        is_paid_member:
+          type: boolean
+        last_recharge_at:
+          type: string
+          format: date-time
+          nullable: true
     MemberManagement:
       type: object
       required: [team, members]

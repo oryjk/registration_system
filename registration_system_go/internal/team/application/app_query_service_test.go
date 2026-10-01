@@ -51,15 +51,29 @@ func TestAppQueryServiceHidesMissingAndFrozenTeams(t *testing.T) {
 
 func TestAppQueryServiceReturnsPrivacyMemberProjection(t *testing.T) {
 	now := time.Date(2026, 8, 8, 8, 0, 0, 0, time.UTC)
+	rechargeAt := now.Add(-24 * time.Hour)
 	realName := "王睿"
 	repository := &fakeAppQueryRepository{
 		team: domain.Team{ID: 7, Status: domain.TeamActive}, teamFound: true,
 		member: domain.Member{TeamID: 7, UserID: 42, Role: domain.RoleMember, Status: domain.MemberActive}, memberFound: true,
-		members: []ports.AppMember{{UserID: 42, Nickname: "阿睿", RealName: &realName, Role: domain.RoleMember, Status: domain.MemberActive, JoinedAt: now}},
+		members: []ports.AppMember{{
+			UserID: 42, Nickname: "阿睿", RealName: &realName, Role: domain.RoleMember, Status: domain.MemberActive, JoinedAt: now,
+			BalanceCents: 8800, IsPaidMember: true, LastRechargeAt: &rechargeAt,
+		}},
 	}
-	items, err := NewAppQueryService(repository).ListMembers(context.Background(), sharedauth.Actor{Kind: sharedauth.ActorUser, ID: 42}, 7)
+	service := NewAppQueryService(repository)
+	items, err := service.ListMembers(context.Background(), sharedauth.Actor{Kind: sharedauth.ActorUser, ID: 42}, 7)
 	if err != nil || len(items) != 1 || items[0].UserID != 42 || items[0].RealName == nil {
 		t.Fatalf("items=%+v err=%v", items, err)
+	}
+	if items[0].BalanceCents != 0 || items[0].IsPaidMember || items[0].LastRechargeAt != nil {
+		t.Fatalf("普通队员不应看到队费账户信息: %+v", items[0])
+	}
+
+	repository.member.Role = domain.RoleCaptain
+	items, err = service.ListMembers(context.Background(), sharedauth.Actor{Kind: sharedauth.ActorUser, ID: 42}, 7)
+	if err != nil || len(items) != 1 || items[0].BalanceCents != 8800 || !items[0].IsPaidMember || items[0].LastRechargeAt == nil {
+		t.Fatalf("队长应看到队费账户信息: items=%+v err=%v", items, err)
 	}
 }
 

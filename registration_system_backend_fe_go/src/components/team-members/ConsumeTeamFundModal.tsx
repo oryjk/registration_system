@@ -25,52 +25,55 @@ import type { TeamMember } from "@/types/team";
 import { formatYuan, formatYuanAmount } from "@/utils/format";
 import { displayMemberName } from "./team-member-display";
 
-export interface CreditTeamFundFormValues {
+export interface ConsumeTeamFundFormValues {
   amountYuan: number;
-  note: string;
+  reason: string;
   idempotencyKey: string;
 }
 
-/** 单笔手动充值上限（元），与后端 teamfund.AdminCreditService 的上限保持一致。 */
-export const MAX_CREDIT_YUAN = 10000;
+/** 单笔消费扣费上限（元），与后端 teamfund 上限保持一致。 */
+export const MAX_CONSUME_YUAN = 10000;
 
-const creditSchema = z.object({
+const consumeSchema = z.object({
   amountYuan: z
-    .number({ invalid_type_error: "请输入充值金额" })
-    .positive({ message: "充值金额需要大于 0" })
-    .max(MAX_CREDIT_YUAN, {
-      // MAX_CREDIT_YUAN 单位为元，formatYuan 接受分，故乘 100 对齐。
-      message: `单笔手动充值不能超过 ${formatYuan(MAX_CREDIT_YUAN * 100)}，更大金额请拆分多笔`,
+    .number({ invalid_type_error: "请输入扣费金额" })
+    .positive({ message: "扣费金额需要大于 0" })
+    .max(MAX_CONSUME_YUAN, {
+      message: `单笔扣费不能超过 ${formatYuan(MAX_CONSUME_YUAN * 100)}，更大金额请拆分多笔`,
     }),
-  note: z.string().max(40, { message: "备注不能超过 40 个字符" }),
+  reason: z
+    .string()
+    .trim()
+    .min(1, { message: "请填写消费原因" })
+    .max(40, { message: "消费原因不能超过 40 个字符" }),
 });
 
-interface CreditTeamFundModalProps {
+interface ConsumeTeamFundModalProps {
   member: TeamMember | null;
   submitting: boolean;
   error: string;
-  onSubmit: (values: CreditTeamFundFormValues) => void;
+  onSubmit: (values: ConsumeTeamFundFormValues) => void;
   onClose: () => void;
 }
 
-export function CreditTeamFundModal({
+export function ConsumeTeamFundModal({
   member,
   submitting,
   error,
   onSubmit,
   onClose,
-}: CreditTeamFundModalProps) {
+}: ConsumeTeamFundModalProps) {
   const [idempotencyKey, setIdempotencyKey] = useState("");
-  const form = useForm<z.infer<typeof creditSchema>>({
-    defaultValues: { amountYuan: undefined, note: "" },
-    resolver: zodResolver(creditSchema),
+  const form = useForm<z.infer<typeof consumeSchema>>({
+    defaultValues: { amountYuan: undefined, reason: "" },
+    resolver: zodResolver(consumeSchema),
   });
 
   useEffect(() => {
     if (!member) return;
     // 每次打开重新生成幂等键：同一意图重试共用一键，后端只记一笔。
     setIdempotencyKey(crypto.randomUUID());
-    form.reset({ amountYuan: undefined, note: "" });
+    form.reset({ amountYuan: undefined, reason: "" });
   }, [member, form]);
 
   const submit = form.handleSubmit((values) =>
@@ -87,10 +90,10 @@ export function CreditTeamFundModal({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            {member ? `队费充值 · ${displayMemberName(member)}` : "队费充值"}
+            消费扣费 · {member ? displayMemberName(member) : ""}
           </DialogTitle>
           <DialogDescription>
-            登记实际收到的线下款项并追加到该成员的队费余额；入账后自动标记付费会员。
+            扣减该成员的队费余额；余额不足时将记为欠款（负数）。
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -113,11 +116,11 @@ export function CreditTeamFundModal({
               name="amountYuan"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>充值金额（元）</FormLabel>
+                  <FormLabel>扣费金额（元）</FormLabel>
                   <div className="credit-amount-input">
                     <span aria-hidden="true">¥</span>
                     <Input
-                      max={MAX_CREDIT_YUAN}
+                      max={MAX_CONSUME_YUAN}
                       min={0.01}
                       onBlur={(event) =>
                         field.onChange(
@@ -133,7 +136,7 @@ export function CreditTeamFundModal({
                             : Number(event.target.value),
                         )
                       }
-                      placeholder="例如 100"
+                      placeholder="例如 20"
                       step="0.01"
                       type="number"
                       value={field.value ?? ""}
@@ -145,12 +148,12 @@ export function CreditTeamFundModal({
             />
             <FormField
               control={form.control}
-              name="note"
+              name="reason"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>备注（可选，40 字内）</FormLabel>
+                  <FormLabel>消费原因（必填，40 字内）</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="例如：线下现金收款" />
+                    <Input {...field} placeholder="例如：购买队服 / 场地分摊" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -161,7 +164,7 @@ export function CreditTeamFundModal({
                 取消
               </Button>
               <Button disabled={submitting} type="submit">
-                充值
+                扣费
               </Button>
             </DialogFooter>
           </form>

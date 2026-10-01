@@ -32,6 +32,7 @@ import (
 	paymentapplication "github.com/oryjk/registration_system/registration_system_go/internal/payment/application"
 	paymentports "github.com/oryjk/registration_system/registration_system_go/internal/payment/ports"
 	"github.com/oryjk/registration_system/registration_system_go/internal/shared/adapters/clock"
+	sharedauth "github.com/oryjk/registration_system/registration_system_go/internal/shared/auth"
 	systemassetstore "github.com/oryjk/registration_system/registration_system_go/internal/system/adapters/assetstore"
 	systemhttp "github.com/oryjk/registration_system/registration_system_go/internal/system/adapters/http"
 	systempostgres "github.com/oryjk/registration_system/registration_system_go/internal/system/adapters/postgres"
@@ -173,9 +174,12 @@ func BuildDependencies(ctx context.Context, config Config) (Dependencies, func()
 	teamFundRepository := teamfundpostgres.NewRepository(pool)
 	teamFundSettlement := teamfundapplication.NewSettlementService(teamFundRepository,
 		matchapplication.NewSettlementRosterService(matchRepository), teamService, notificationService)
-	teamFundQueries := teamfundapplication.NewQueryService(teamFundRepository)
-	teamFundAdminCredit := teamfundapplication.NewAdminCreditService(teamFundRepository, notificationService)
-	teamFundHandler := teamfundhttp.NewHandler(teamFundSettlement, teamFundQueries, teamFundAdminCredit)
+	teamFundQueries := teamfundapplication.NewQueryService(teamFundRepository, appTeamManagerAuthorizer{manage: appTeamManageService})
+	// 队费人工动作（充值/消费/冲正）的管理端与队长端共用一个服务；
+	// 队长/领队权限校验复用 team 模块的 AppManageService 规则。
+	teamFundManualFund := teamfundapplication.NewManualFundService(
+		teamFundRepository, appTeamManagerAuthorizer{manage: appTeamManageService}, notificationService)
+	teamFundHandler := teamfundhttp.NewHandler(teamFundSettlement, teamFundQueries, teamFundManualFund)
 
 	return Dependencies{
 		AuthMiddleware: &authMiddleware,
@@ -196,6 +200,16 @@ func BuildDependencies(ctx context.Context, config Config) (Dependencies, func()
 }
 
 // buildTeamLogoStore 按 UPLOAD_STORAGE_BACKEND 选择球队 Logo 存储：minio 或本地目录。
+// appTeamManagerAuthorizer 把 team 模块的队长/领队管理权限校验适配为
+// teamfund 的记账权限端口：普通队员不能替别人记账。
+type appTeamManagerAuthorizer struct {
+	manage teamapplication.AppManageService
+}
+
+func (a appTeamManagerAuthorizer) AuthorizeTeamManager(ctx context.Context, actor sharedauth.Actor, teamID int64) error {
+	return a.manage.AuthorizeManager(ctx, actor, teamID)
+}
+
 func buildTeamLogoStore(config Config) teamapplication.TeamLogoStore {
 	if strings.EqualFold(strings.TrimSpace(config.UploadStorage), "minio") {
 		store, err := logostore.NewMinio(config.UploadMinioEndpoint, config.UploadMinioAccessKey,

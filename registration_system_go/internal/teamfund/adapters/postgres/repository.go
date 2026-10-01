@@ -70,7 +70,8 @@ func (r *Repository) SettleInTransaction(ctx context.Context, matchID uuid.UUID,
 			return outcome, err
 		}
 		for _, transaction := range oldTransactions {
-			balance, err := queries.CreditTeamMemberFund(ctx, teamfundsqlc.CreditTeamMemberFundParams{
+			// 结算冲正是资金回加而非充值：不得触发付费会员标记与最近充值时间。
+			balance, err := queries.AddTeamMemberFundBalance(ctx, teamfundsqlc.AddTeamMemberFundBalanceParams{
 				AmountCents: -transaction.AmountCents, TeamID: transaction.TeamID, UserID: transaction.UserID,
 			})
 			if err != nil {
@@ -230,11 +231,8 @@ func (r *Repository) ListBalances(ctx context.Context, userID int64) ([]teamfund
 }
 
 func (r *Repository) ListTransactions(ctx context.Context, userID int64, beforeID int64, limit int) ([]teamfundports.TeamFundTransaction, error) {
-	if limit <= 0 || limit > 100 {
-		limit = 30
-	}
 	rows, err := r.queries.ListTeamFundTransactionsForUser(ctx, teamfundsqlc.ListTeamFundTransactionsForUserParams{
-		UserID: userID, BeforeID: beforeID, LimitRows: int32(limit),
+		UserID: userID, BeforeID: beforeID, LimitRows: transactionLimit(limit),
 	})
 	if err != nil {
 		return nil, err
@@ -245,6 +243,7 @@ func (r *Repository) ListTransactions(ctx context.Context, userID int64, beforeI
 			ID: row.ID, TeamID: row.TeamID, TeamName: row.TeamName,
 			AmountCents: row.AmountCents, BalanceAfterCents: row.BalanceAfterCents,
 			Source: row.Source, Description: row.Description, CreatedAt: row.CreatedAt.Time,
+			CreatedByUserID: row.CreatedByUserID, ReversedByTransactionID: row.ReversedByTransactionID,
 		}
 		if row.MatchID.Valid {
 			matchID := uuid.UUID(row.MatchID.Bytes)
@@ -256,6 +255,41 @@ func (r *Repository) ListTransactions(ctx context.Context, userID int64, beforeI
 		transactions = append(transactions, transaction)
 	}
 	return transactions, nil
+}
+
+func (r *Repository) ListMemberTransactions(ctx context.Context, teamID, userID, beforeID int64, limit int) ([]teamfundports.TeamFundTransaction, error) {
+	rows, err := r.queries.ListTeamFundTransactionsForMember(ctx, teamfundsqlc.ListTeamFundTransactionsForMemberParams{
+		TeamID: teamID, UserID: userID, BeforeID: beforeID, LimitRows: transactionLimit(limit),
+	})
+	if err != nil {
+		return nil, err
+	}
+	transactions := make([]teamfundports.TeamFundTransaction, 0, len(rows))
+	for _, row := range rows {
+		// member 视角不回填 team_name：球队由请求路径给出。
+		transaction := teamfundports.TeamFundTransaction{
+			ID: row.ID, TeamID: row.TeamID,
+			AmountCents: row.AmountCents, BalanceAfterCents: row.BalanceAfterCents,
+			Source: row.Source, Description: row.Description, CreatedAt: row.CreatedAt.Time,
+			CreatedByUserID: row.CreatedByUserID, ReversedByTransactionID: row.ReversedByTransactionID,
+		}
+		if row.MatchID.Valid {
+			matchID := uuid.UUID(row.MatchID.Bytes)
+			transaction.MatchID = &matchID
+		}
+		if row.MatchName != nil {
+			transaction.MatchName = *row.MatchName
+		}
+		transactions = append(transactions, transaction)
+	}
+	return transactions, nil
+}
+
+func transactionLimit(limit int) int32 {
+	if limit <= 0 || limit > 100 {
+		return 30
+	}
+	return int32(limit)
 }
 
 func mapConstraintError(err error) error {
@@ -273,44 +307,240 @@ func mapConstraintError(err error) error {
 	return err
 }
 
-// AdminCredit 管理员手动充值：校验目标是正式成员（FOR UPDATE 锁定该行）后加钱并记流水（单事务）；
-// 非正式成员返回校验错误，不自动建行。
-func (r *Repository) AdminCredit(ctx context.Context, credit teamfundports.AdminCredit) (teamfundports.AdminCreditResult, error) {
-	if credit.AmountCents <= 0 {
-		return teamfundports.AdminCreditResult{}, sharederror.New(sharederror.KindValidation, "充值金额需要大于 0")
+// ManualRecharge 人工充值：单事务内校验 active 正式成员（锁行）→ 入账（标记付费会员、
+// 刷新最近充值时间）→ 记 admin_credit 流水（含操作人）；幂等键同参数重放不重复记账。
+func (r *Repository) ManualRecharge(ctx context.Context, action teamfundports.ManualFundAction) (teamfundports.ManualFundResult, error) {
+	return r.applyManualAction(ctx, action, "admin_credit", true)
+}
+
+// ManualConsume 人工消费扣费：单事务内校验 active 正式成员（锁行）→ 扣减余额（允许负数）
+// → 记 manual_consume 流水；不触碰付费会员标记与最近充值时间。
+func (r *Repository) ManualConsume(ctx context.Context, action teamfundports.ManualFundAction) (teamfundports.ManualFundResult, error) {
+	return r.applyManualAction(ctx, action, "manual_consume", false)
+}
+
+// applyManualAction 充值/消费共用的单事务骨架：幂等预检（含球队）→ 成员校验锁行 → 余额变动 → 流水。
+// recharge=true 走充值语义（CreditTeamMemberFund 带付费会员/充值时间副作用），否则走普通扣减。
+func (r *Repository) applyManualAction(ctx context.Context, action teamfundports.ManualFundAction, source string, recharge bool) (teamfundports.ManualFundResult, error) {
+	if action.AmountCents <= 0 {
+		return teamfundports.ManualFundResult{}, sharederror.New(sharederror.KindValidation, "金额需要大于 0")
+	}
+	key := action.IdempotencyKey
+	if key == "" {
+		key = uuid.NewString()
+	}
+	expectedAmount := action.AmountCents
+	if !recharge {
+		expectedAmount = -action.AmountCents
 	}
 	tx, err := r.database.Begin(ctx)
 	if err != nil {
-		return teamfundports.AdminCreditResult{}, err
+		return teamfundports.ManualFundResult{}, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	queries := r.queries.WithTx(tx)
+
+	if replay, found, replayErr := findReplay(ctx, queries, source, key, action.TeamID, action.UserID, expectedAmount); replayErr != nil {
+		return teamfundports.ManualFundResult{}, replayErr
+	} else if found {
+		return replay, nil
+	}
 	if _, err := queries.GetActiveTeamMemberForCredit(ctx, teamfundsqlc.GetActiveTeamMemberForCreditParams{
-		TeamID: credit.TeamID, UserID: credit.UserID,
+		TeamID: action.TeamID, UserID: action.UserID,
 	}); errors.Is(err, pgx.ErrNoRows) {
-		return teamfundports.AdminCreditResult{}, sharederror.New(sharederror.KindValidation, "该用户不是该球队的正式成员")
+		return teamfundports.ManualFundResult{}, sharederror.New(sharederror.KindValidation, "该用户不是该球队的正式成员")
 	} else if err != nil {
-		return teamfundports.AdminCreditResult{}, err
+		return teamfundports.ManualFundResult{}, err
 	}
-	balance, err := queries.CreditTeamMemberFund(ctx, teamfundsqlc.CreditTeamMemberFundParams{
-		AmountCents: credit.AmountCents, TeamID: credit.TeamID, UserID: credit.UserID,
+
+	var balance int64
+	if recharge {
+		balance, err = queries.CreditTeamMemberFund(ctx, teamfundsqlc.CreditTeamMemberFundParams{
+			AmountCents: action.AmountCents, TeamID: action.TeamID, UserID: action.UserID,
+		})
+	} else {
+		balance, err = queries.DebitTeamMemberFund(ctx, teamfundsqlc.DebitTeamMemberFundParams{
+			AmountCents: action.AmountCents, TeamID: action.TeamID, UserID: action.UserID,
+		})
+	}
+	if err != nil {
+		return teamfundports.ManualFundResult{}, err
+	}
+	transactionID, err := queries.InsertManualFundTransaction(ctx, teamfundsqlc.InsertManualFundTransactionParams{
+		TeamID: action.TeamID, UserID: action.UserID, AmountCents: expectedAmount,
+		BalanceAfterCents: balance, Source: source, SourceID: key,
+		Description: manualDescription(source, action.Note), CreatedByUserID: operatorRef(action.OperatorUserID),
 	})
 	if err != nil {
-		return teamfundports.AdminCreditResult{}, err
-	}
-	description := strings.TrimSpace(credit.Note)
-	if description == "" {
-		description = "后台充值"
-	}
-	transactionID, err := queries.InsertAdminCreditFundTransaction(ctx, teamfundsqlc.InsertAdminCreditFundTransactionParams{
-		TeamID: credit.TeamID, UserID: credit.UserID, AmountCents: credit.AmountCents,
-		BalanceAfterCents: balance, SourceID: uuid.NewString(), Description: description,
-	})
-	if err != nil {
-		return teamfundports.AdminCreditResult{}, mapConstraintError(err)
+		if isUniqueViolation(err) {
+			// 并发同键已由先到请求落库：本事务因唯一约束冲突已中止，必须先回滚，
+			// 再用池级连接复查，按幂等重放或键冲突收敛（在已中止事务里继续查询会得到 25P02）。
+			_ = tx.Rollback(ctx)
+			return r.resolveReplay(ctx, source, key, action.TeamID, action.UserID, expectedAmount)
+		}
+		return teamfundports.ManualFundResult{}, mapConstraintError(err)
 	}
 	if err := tx.Commit(ctx); err != nil {
-		return teamfundports.AdminCreditResult{}, err
+		return teamfundports.ManualFundResult{}, err
 	}
-	return teamfundports.AdminCreditResult{BalanceCents: balance, TransactionID: transactionID}, nil
+	return teamfundports.ManualFundResult{BalanceCents: balance, TransactionID: transactionID}, nil
+}
+
+// ManualReverse 冲正人工流水：锁原流水行（防并发双冲正）→ 反向金额回加余额（无充值副作用）
+// → 记 manual_reversal 流水并回写原流水的冲正引用。
+func (r *Repository) ManualReverse(ctx context.Context, action teamfundports.ManualFundAction) (teamfundports.ManualFundResult, error) {
+	if action.OriginalTransactionID <= 0 {
+		return teamfundports.ManualFundResult{}, sharederror.New(sharederror.KindValidation, "原流水无效")
+	}
+	key := action.IdempotencyKey
+	if key == "" {
+		key = uuid.NewString()
+	}
+	tx, err := r.database.Begin(ctx)
+	if err != nil {
+		return teamfundports.ManualFundResult{}, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	queries := r.queries.WithTx(tx)
+
+	// 冲正幂等按「同键 + 同原流水」判定：金额由原流水推导，不随请求携带。
+	if replay, found, replayErr := findReversalReplay(ctx, queries, key, action.TeamID, action.UserID, action.OriginalTransactionID); replayErr != nil {
+		return teamfundports.ManualFundResult{}, replayErr
+	} else if found {
+		return replay, nil
+	}
+	original, err := queries.GetTeamFundTransactionForUpdate(ctx, action.OriginalTransactionID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return teamfundports.ManualFundResult{}, sharederror.New(sharederror.KindNotFound, "原流水不存在")
+	}
+	if err != nil {
+		return teamfundports.ManualFundResult{}, err
+	}
+	if original.ReversedByTransactionID != nil {
+		return teamfundports.ManualFundResult{}, sharederror.New(sharederror.KindConflict, "该流水已冲正，不能重复冲正")
+	}
+	if original.Source != "admin_credit" && original.Source != "manual_consume" && original.Source != "manual_adjustment" {
+		return teamfundports.ManualFundResult{}, sharederror.New(sharederror.KindValidation, "该流水不支持人工冲正（微信支付与比赛结算请走各自的重算流程）")
+	}
+	if original.TeamID != action.TeamID || original.UserID != action.UserID {
+		return teamfundports.ManualFundResult{}, sharederror.New(sharederror.KindValidation, "原流水与目标成员不匹配")
+	}
+
+	addBack := -original.AmountCents
+	balance, err := queries.AddTeamMemberFundBalance(ctx, teamfundsqlc.AddTeamMemberFundBalanceParams{
+		AmountCents: addBack, TeamID: action.TeamID, UserID: action.UserID,
+	})
+	if err != nil {
+		return teamfundports.ManualFundResult{}, err
+	}
+	transactionID, err := queries.InsertManualFundTransaction(ctx, teamfundsqlc.InsertManualFundTransactionParams{
+		TeamID: action.TeamID, UserID: action.UserID, AmountCents: addBack,
+		BalanceAfterCents: balance, Source: "manual_reversal", SourceID: key,
+		Description: manualDescription("manual_reversal", action.Note), CreatedByUserID: operatorRef(action.OperatorUserID),
+	})
+	if err != nil {
+		if isUniqueViolation(err) {
+			_ = tx.Rollback(ctx)
+			return r.resolveReversalReplay(ctx, key, action.TeamID, action.UserID, action.OriginalTransactionID)
+		}
+		return teamfundports.ManualFundResult{}, mapConstraintError(err)
+	}
+	if err := queries.MarkTeamFundTransactionReversed(ctx, teamfundsqlc.MarkTeamFundTransactionReversedParams{
+		ReversalID: &transactionID, ID: original.ID,
+	}); err != nil {
+		return teamfundports.ManualFundResult{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return teamfundports.ManualFundResult{}, err
+	}
+	return teamfundports.ManualFundResult{BalanceCents: balance, TransactionID: transactionID}, nil
+}
+
+// findReplay 幂等预检：同 source+key+用户+球队+金额 → 重放成功；同键但球队或金额不同 → 显式冲突。
+func findReplay(ctx context.Context, queries *teamfundsqlc.Queries, source, key string, teamID, userID, expectedAmount int64) (teamfundports.ManualFundResult, bool, error) {
+	rows, err := queries.ListTeamFundTransactionsBySource(ctx, teamfundsqlc.ListTeamFundTransactionsBySourceParams{
+		Source: source, SourceID: key,
+	})
+	if err != nil {
+		return teamfundports.ManualFundResult{}, false, err
+	}
+	for _, row := range rows {
+		if row.UserID != userID {
+			continue
+		}
+		if row.TeamID != teamID || row.AmountCents != expectedAmount {
+			return teamfundports.ManualFundResult{}, false, teamfundports.ErrIdempotencyConflict
+		}
+		return teamfundports.ManualFundResult{BalanceCents: row.BalanceAfterCents, TransactionID: row.ID, Duplicated: true}, true, nil
+	}
+	return teamfundports.ManualFundResult{}, false, nil
+}
+
+// findReversalReplay 冲正幂等预检：按键查已落库的冲正流水及其关联原流水，同键同原流水才重放。
+func findReversalReplay(ctx context.Context, queries *teamfundsqlc.Queries, key string, teamID, userID, originalTransactionID int64) (teamfundports.ManualFundResult, bool, error) {
+	row, err := queries.GetManualReversalOriginalByKey(ctx, teamfundsqlc.GetManualReversalOriginalByKeyParams{
+		SourceID: key, UserID: userID,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return teamfundports.ManualFundResult{}, false, nil
+	}
+	if err != nil {
+		return teamfundports.ManualFundResult{}, false, err
+	}
+	if row.TeamID != teamID || row.OriginalID != originalTransactionID {
+		return teamfundports.ManualFundResult{}, false, teamfundports.ErrIdempotencyConflict
+	}
+	return teamfundports.ManualFundResult{
+		BalanceCents: row.BalanceAfterCents, TransactionID: row.ReversalID, Duplicated: true,
+	}, true, nil
+}
+
+// resolveReplay 并发冲突后的池级复查：与 findReplay 同规则；理论上必命中（约束保证同键同行），兜底返回键冲突。
+func (r *Repository) resolveReplay(ctx context.Context, source, key string, teamID, userID, expectedAmount int64) (teamfundports.ManualFundResult, error) {
+	if replay, found, err := findReplay(ctx, r.queries, source, key, teamID, userID, expectedAmount); err != nil {
+		return teamfundports.ManualFundResult{}, err
+	} else if found {
+		return replay, nil
+	}
+	return teamfundports.ManualFundResult{}, teamfundports.ErrIdempotencyConflict
+}
+
+func (r *Repository) resolveReversalReplay(ctx context.Context, key string, teamID, userID, originalTransactionID int64) (teamfundports.ManualFundResult, error) {
+	if replay, found, err := findReversalReplay(ctx, r.queries, key, teamID, userID, originalTransactionID); err != nil {
+		return teamfundports.ManualFundResult{}, err
+	} else if found {
+		return replay, nil
+	}
+	return teamfundports.ManualFundResult{}, teamfundports.ErrIdempotencyConflict
+}
+
+// operatorRef 操作人引用 users 表：管理员身份来自 admin_users，不能写入该外键；
+// 未登录体系内的操作人（<=0）记 NULL。
+func operatorRef(operatorUserID int64) *int64 {
+	if operatorUserID <= 0 {
+		return nil
+	}
+	return &operatorUserID
+}
+
+func isUniqueViolation(err error) bool {
+	var postgresError *pgconn.PgError
+	return errors.As(err, &postgresError) && postgresError.Code == "23505"
+}
+
+func manualDescription(source, note string) string {
+	note = strings.TrimSpace(note)
+	switch source {
+	case "admin_credit":
+		if note == "" {
+			return "人工充值"
+		}
+		return "人工充值：" + note
+	case "manual_consume":
+		return "消费扣费：" + note
+	case "manual_reversal":
+		return "冲正：" + note
+	default:
+		return note
+	}
 }

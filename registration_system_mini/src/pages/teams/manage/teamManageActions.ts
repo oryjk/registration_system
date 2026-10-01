@@ -1,14 +1,17 @@
 import {
   addTeamMember,
+  consumeTeamMemberFund,
   deleteTeam,
   getTeamDissolveBlockers,
   getTeamMatchAttendance,
   getTeamMemberAttendance,
+  rechargeTeamMemberFund,
   removeTeamMember,
   setTeamMemberActive,
   updateTeam,
   updateTeamJoinPassword,
   updateTeamMember,
+  updateTeamMemberPaidMembership,
 } from "@/api/team";
 import { listUsers, searchUsers } from "@/api/user";
 
@@ -76,6 +79,41 @@ export function updateTeamMemberFromForm(
 ) {
   return updateTeamMember(teamId, userId, {
     role: payload.role,
+  });
+}
+
+// 付费会员标记手动切换；余额与充值时间由充值/消费/冲正动作维护，编辑资料不触碰财务。
+export function updateTeamMemberPaidMembershipFromForm(
+  teamId: number,
+  userId: number,
+  payload: { isPaidMember: boolean },
+) {
+  return updateTeamMemberPaidMembership(teamId, userId, {
+    is_paid_member: payload.isPaidMember,
+  });
+}
+
+export function rechargeTeamMemberFundFromForm(
+  teamId: number,
+  userId: number,
+  payload: { amountCents: number; note: string; idempotencyKey: string },
+) {
+  return rechargeTeamMemberFund(teamId, userId, {
+    amount_cents: payload.amountCents,
+    note: payload.note.trim() || undefined,
+    idempotency_key: payload.idempotencyKey,
+  });
+}
+
+export function consumeTeamMemberFundFromForm(
+  teamId: number,
+  userId: number,
+  payload: { amountCents: number; note: string; idempotencyKey: string },
+) {
+  return consumeTeamMemberFund(teamId, userId, {
+    amount_cents: payload.amountCents,
+    note: payload.note.trim(),
+    idempotency_key: payload.idempotencyKey,
   });
 }
 

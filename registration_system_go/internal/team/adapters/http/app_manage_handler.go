@@ -2,6 +2,7 @@ package teamhttp
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"strconv"
 	"strings"
@@ -20,6 +21,7 @@ type AppTeamManageCommands interface {
 	UpdateJoinPassword(context.Context, sharedauth.Actor, int64, string) error
 	AddMember(context.Context, sharedauth.Actor, int64, int64, domain.Role) error
 	UpdateMember(context.Context, sharedauth.Actor, int64, int64, *domain.Role, *domain.MemberStatus) error
+	UpdatePaidMembership(context.Context, sharedauth.Actor, int64, int64, domain.MemberPaidMembershipUpdate) error
 	RemoveMember(context.Context, sharedauth.Actor, int64, int64) error
 	// DeleteTeam 解散球队：仅队长本人可操作。
 	DeleteTeam(context.Context, sharedauth.Actor, int64) error
@@ -42,6 +44,7 @@ func (h *AppManageHandler) RegisterRoutes(group *gin.RouterGroup) {
 	group.PUT("/teams/:id/join-password", h.UpdateJoinPassword)
 	group.POST("/teams/:id/members", h.AddMember)
 	group.PATCH("/teams/:id/members/:user_id", h.UpdateMember)
+	group.PUT("/teams/:id/members/:user_id/paid-membership", h.UpdatePaidMembership)
 	group.DELETE("/teams/:id/members/:user_id", h.RemoveMember)
 	group.GET("/teams/:id/dissolve-blockers", h.DissolveBlockers)
 	group.POST("/teams/:id/logo", h.UploadLogo)
@@ -137,6 +140,41 @@ func (h *AppManageHandler) UpdateMember(c *gin.Context) {
 		return
 	}
 	if err := h.manage.UpdateMember(c.Request.Context(), actor, teamID, userID, request.Role, request.Status); err != nil {
+		sharedhttpapi.WriteError(c, err)
+		return
+	}
+	sharedhttpapi.WriteSuccess(c, gin.H{})
+}
+
+// AppUpdatePaidMembershipRequest 只支持付费会员标记；余额与充值时间由充值/消费/冲正动作维护。
+// 携带已废弃的余额/充值时间字段会被显式拒绝，不静默忽略。
+type AppUpdatePaidMembershipRequest struct {
+	IsPaidMember         *bool           `json:"is_paid_member"`
+	BalanceCents         json.RawMessage `json:"balance_cents"`
+	ExpectedBalanceCents json.RawMessage `json:"expected_balance_cents"`
+	LastRechargeAt       json.RawMessage `json:"last_recharge_at"`
+	ClearLastRechargeAt  json.RawMessage `json:"clear_last_recharge_at"`
+}
+
+func (h *AppManageHandler) UpdatePaidMembership(c *gin.Context) {
+	actor, teamID, userID, ok := appActorTeamAndUserID(c)
+	if !ok {
+		return
+	}
+	var request AppUpdatePaidMembershipRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		sharedhttpapi.WriteError(c, sharederror.New(sharederror.KindValidation, "付费会员信息无效"))
+		return
+	}
+	if len(request.BalanceCents) > 0 || len(request.ExpectedBalanceCents) > 0 ||
+		len(request.LastRechargeAt) > 0 || len(request.ClearLastRechargeAt) > 0 {
+		sharedhttpapi.WriteError(c, sharederror.New(sharederror.KindValidation,
+			"余额与最近充值时间不再支持直接设置，请使用充值、消费扣费或冲正接口"))
+		return
+	}
+	if err := h.manage.UpdatePaidMembership(c.Request.Context(), actor, teamID, userID, domain.MemberPaidMembershipUpdate{
+		IsPaidMember: request.IsPaidMember,
+	}); err != nil {
 		sharedhttpapi.WriteError(c, err)
 		return
 	}
