@@ -105,7 +105,7 @@ bun run dev:h5
 
 例如：
 
-- 开发环境默认值：`http://127.0.0.1:18080/api/v1/app`
+- 开发环境默认值：`http://127.0.0.1:18081/api/v1/app`
 - 生产环境示例值：`https://example.com/api/v1/app`
 
 请求层位于 `src/utils/request.ts`，会直接拼接：

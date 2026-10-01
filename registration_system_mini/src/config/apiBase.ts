@@ -1,4 +1,4 @@
-export const FALLBACK_APP_API_BASE = "http://127.0.0.1:18080/api/v1/app";
+export const FALLBACK_APP_API_BASE = "http://127.0.0.1:18081/api/v1/app";
 
 export function normalizeAppApiBase(value: string): string {
   const normalized = value.trim().replace(/\/+$/, "");

@@ -47,7 +47,7 @@ git push origin main
 
 ## 推荐联调顺序
 
-> Go 后端默认端口 `18080`。判断某个前端对接哪个后端，以路径形态（`/activities` vs `/matches`、`{success,...}` vs `{code:0,...}`）为准，不要用端口判断。
+> Go 后端默认端口 `18081`。判断某个前端对接哪个后端，以路径形态（`/activities` vs `/matches`、`{success,...}` vs `{code:0,...}`）为准，不要用端口判断。
 >
 > 旧 Rust 后端 `registration_system_rs/` 已从工作区删除，本地无法再启动；其历史接口形态见下文「前后端边界」表格。
 
@@ -57,15 +57,15 @@ git push origin main
 
 ```bash
 cd registration_system_go
-cp .env.example .env   # 默认 HTTP_ADDR=:18080
+cp .env.example .env   # 默认 HTTP_ADDR=:18081
 go run ./cmd/api
 ```
 
 - 必填配置：`DATABASE_URL`、`JWT_SECRET`、`WECHAT_APP_ID`、`WECHAT_APP_SECRET`。
 - Go API 在宿主机直接运行，本地开发不需要 Docker；`DATABASE_URL` 指向已准备好的 PostgreSQL。
 - 健康检查 `GET /health`；管理端接口挂在 `/api/v1/admin`；小程序/H5 接口挂在 `/api/v1/app`。
-- Swagger UI：`http://127.0.0.1:18080/api/docs/`。
-- OpenAPI YAML：`http://127.0.0.1:18080/api/docs/openapi.yaml`。
+- Swagger UI：`http://127.0.0.1:18081/api/docs/`。
+- OpenAPI YAML：`http://127.0.0.1:18081/api/docs/openapi.yaml`。
 - Swagger UI 静态资源和 OpenAPI 文档均嵌入 Go 二进制，无需 CDN 或 Docker。用户端和管理端受保护接口分别使用用户 JWT 和管理员 JWT；Swagger UI 的 Authorize 输入框填写令牌值即可。
 - 已实现支付订单、钱包流水、队费结算和站内通知；尚无退款、提现、微信内 H5 支付和签到接口。
 
@@ -77,7 +77,7 @@ bun install
 bun run dev
 ```
 
-- 开发使用 `ADMIN_API_BASE_URL=/go-api`，由 Vite 代理 `/go-api → http://127.0.0.1:18081`（当前配置默认值）；本地 Go 使用默认 18080 端口时，执行 `API_PROXY_TARGET=http://127.0.0.1:18080 bun run dev`；生产构建保持 API base 为空，由 Nginx 转发同源 `/api/v1/admin/*` 和 `/health` 到 Go 后端。
+- 开发使用 `ADMIN_API_BASE_URL=/go-api`，由 Vite 代理 `/go-api → http://127.0.0.1:18081`（默认值，与本地 Go 后端默认端口一致）；生产构建保持 API base 为空，由 Nginx 转发同源 `/api/v1/admin/*` 和 `/health` 到 Go 后端。
 - 请求层对 `admin` 接口统一加前缀 `/api/v1/admin`，`/health` 等用裸路径。
 - 响应契约 `{ code, message, data }`，成功判定 `code === 0`。
 - 生产构建：`bun run build:nginx`（`ADMIN_PUBLIC_PATH` 与 `ADMIN_ROUTE_BASE` 均为 `/registration-admin/`）；Nginx 必须配置 `/registration-admin/` 到 `/registration-admin/index.html` 的 SPA fallback。
@@ -104,7 +104,7 @@ flutter run
 ```
 
 - 后端地址可配置；Rust 管理接口使用 `/api/admin`，Go 管理接口使用 `/api/v1/admin`，切换后端时必须同步切换 base URL。
-- baseURL 在登录页可手填并持久化到 `SharedPreferences`（Android 模拟器需 `adb reverse tcp:18080 tcp:18080`）。
+- baseURL 在登录页可手填并持久化到 `SharedPreferences`（Android 模拟器需 `adb reverse tcp:18081 tcp:18081`）。
 - 首版聚焦：登录 + 工作台首页 + 创建比赛 + 创建球队（共 4 个页面）。
 
 ## 前后端边界

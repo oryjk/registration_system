@@ -6,7 +6,7 @@
 
 ```bash
 bun install
-API_PROXY_TARGET=http://127.0.0.1:18080 bun run dev  # 对接本地 Go 默认端口
+bun run dev  # /go-api 默认代理到本地 Go 后端（127.0.0.1:18081）
 ```
 
 开发服务器默认监听 `0.0.0.0`（端口 8000，可用 `PORT` 覆盖）。开发时 `ADMIN_API_BASE_URL=/go-api`，Vite 将同源 `/go-api` 代理到 `API_PROXY_TARGET`（默认 `http://127.0.0.1:18081`）；生产构建不设 API base，浏览器直接请求同源 `/api/v1/admin/*` 和 `/health`。管理端已接入管理员认证、球队 CRUD、比赛和场馆管理员 API；普通场馆管理员可以管理球队以及发布、管理和取消比赛，发布时可确认并快速创建不存在的主队。只有超级管理员显示场馆管理员入口和比赛永久删除操作。
@@ -23,11 +23,11 @@ location /registration-admin/ {
 }
 
 location /api/ {
-  proxy_pass http://127.0.0.1:18080;
+  proxy_pass http://127.0.0.1:18081;
 }
 
 location = /health {
-  proxy_pass http://127.0.0.1:18080/health;
+  proxy_pass http://127.0.0.1:18081/health;
 }
 ```
 

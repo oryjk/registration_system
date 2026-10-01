@@ -61,7 +61,7 @@ func LoadConfig() (Config, error) {
 		return Config{}, err
 	}
 	config := Config{
-		HTTPAddr:                    envOrDefault("HTTP_ADDR", ":18080"),
+		HTTPAddr:                    envOrDefault("HTTP_ADDR", ":18081"),
 		DatabaseURL:                 os.Getenv("DATABASE_URL"),
 		JWTSecret:                   os.Getenv("JWT_SECRET"),
 		WechatAppID:                 os.Getenv("WECHAT_APP_ID"),
