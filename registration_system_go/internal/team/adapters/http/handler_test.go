@@ -62,8 +62,9 @@ func TestAdminTeamCRUDRoutes(t *testing.T) {
 	captainID := int64(42)
 	team := domain.Team{
 		ID: 7, Name: "东安联队", Status: domain.TeamActive, CreatedAt: now, UpdatedAt: now,
-		CaptainID: &captainID,
-		Captain:   &domain.CaptainSummary{UserID: captainID, Nickname: "队长昵称"},
+		CaptainID:   &captainID,
+		Captain:     &domain.CaptainSummary{UserID: captainID, Nickname: "队长昵称"},
+		MemberCount: 39,
 	}
 	query := &fakeTeamQuery{teams: []domain.Team{team}, team: team}
 	handler := NewHandler(query, &fakeTeamMembers{})
@@ -104,6 +105,9 @@ func TestAdminTeamCRUDRoutes(t *testing.T) {
 			}
 			if query.receivedActor.ID != 7 {
 				t.Fatalf("expected admin actor 7, got %+v", query.receivedActor)
+			}
+			if test.name == "list" && !bytes.Contains(response.Body.Bytes(), []byte(`"member_count":39`)) {
+				t.Fatalf("expected member count in admin team list: %s", response.Body.String())
 			}
 		})
 	}

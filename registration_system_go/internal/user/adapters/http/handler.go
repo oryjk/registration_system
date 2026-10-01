@@ -103,7 +103,9 @@ func (h *Handler) RegisterAdminRoutes(group *gin.RouterGroup) {
 	group.DELETE("/users/:id/match-admin", h.UnsetMatchAdmin)
 }
 
-// ListUsers GET /users：按昵称/姓名/手机号/用户 ID 搜索微信用户，可只看比赛管理员。
+// ListUsers GET /users：按昵称/姓名/手机号/用户 ID 搜索微信用户，
+// 支持身份（identity，旧参数 match_admin_only=true 等价 match_admin）、账号状态（status）、
+// 活跃（activity）筛选与排序（sort）。
 func (h *Handler) ListUsers(c *gin.Context) {
 	actor, ok := authhttp.ActorFromContext(c)
 	if !ok {
@@ -111,7 +113,8 @@ func (h *Handler) ListUsers(c *gin.Context) {
 		return
 	}
 	query := application.AdminUserListQuery{
-		Search: c.Query("search"), MatchAdminOnly: c.Query("match_admin_only") == "true", Activity: c.Query("activity"),
+		Search: c.Query("search"), MatchAdminOnly: c.Query("match_admin_only") == "true",
+		Identity: c.Query("identity"), StatusFilter: c.Query("status"), Activity: c.Query("activity"), Sort: c.Query("sort"),
 	}
 	var err error
 	if raw := c.Query("page"); raw != "" {

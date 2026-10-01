@@ -88,9 +88,12 @@ func (h *Handler) AdminTeams(c *gin.Context) {
 		sharedhttpapi.WriteError(c, err)
 		return
 	}
-	response := make([]TeamResponse, 0, len(items))
+	response := make([]TeamListResponse, 0, len(items))
 	for _, item := range items {
-		response = append(response, mapTeam(item))
+		response = append(response, TeamListResponse{
+			TeamResponse: mapTeam(item),
+			MemberCount:  item.MemberCount,
+		})
 	}
 	sharedhttpapi.WriteSuccess(c, response)
 }
@@ -105,6 +108,11 @@ type TeamResponse struct {
 	Status      domain.TeamStatus `json:"status"`
 	CreatedAt   time.Time         `json:"created_at"`
 	UpdatedAt   time.Time         `json:"updated_at"`
+}
+
+type TeamListResponse struct {
+	TeamResponse
+	MemberCount int64 `json:"member_count"`
 }
 
 type CreateTeamRequest struct {

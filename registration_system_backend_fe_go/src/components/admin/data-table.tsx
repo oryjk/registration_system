@@ -7,6 +7,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { cn } from "@/lib/utils";
 
 export interface DataTableColumn<T> {
   key: string;
@@ -22,6 +23,11 @@ interface DataTableProps<T> {
   loading: boolean;
   emptyText?: string;
   rowKey: (item: T) => string;
+  className?: string;
+  /** 固定布局按列配置分配空间，避免首列吞掉所有剩余宽度。 */
+  layout?: "auto" | "fixed";
+  /** 表格内部滚动，表头持续可见；不改变默认页面滚动行为。 */
+  scrollable?: boolean;
 }
 
 export function DataTable<T>({
@@ -30,12 +36,30 @@ export function DataTable<T>({
   loading,
   emptyText = "暂无数据",
   rowKey,
+  className,
+  layout = "auto",
+  scrollable = false,
 }: DataTableProps<T>) {
   const columnCount = columns.length;
   const rows = items ?? [];
 
   return (
-    <Table className="ui-table" data-loading={loading || undefined}>
+    <Table
+      className={cn(
+        "ui-table",
+        layout === "fixed" && "data-table-fixed",
+        className,
+      )}
+      containerClassName={scrollable ? "data-table-scroll-region" : undefined}
+      data-loading={loading || undefined}
+    >
+      {layout === "fixed" ? (
+        <colgroup>
+          {columns.map((column) => (
+            <col key={column.key} style={{ width: column.width }} />
+          ))}
+        </colgroup>
+      ) : null}
       <TableHeader>
         <TableRow>
           {columns.map((column) => (

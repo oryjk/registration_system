@@ -1,5 +1,5 @@
 import { Plus, RotateCw } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import type { TeamFundTransactionItem } from "@/api/teamFund";
 import { ErrorAlert } from "@/components/admin/error-alert";
@@ -69,6 +69,7 @@ export function TeamMemberManager({
 }: TeamMemberManagerProps) {
   const [actionKey, setActionKey] = useState("");
   const [actionError, setActionError] = useState("");
+  const paidMembershipInFlight = useRef(false);
   const [addOpen, setAddOpen] = useState(false);
   const [candidateSearch, setCandidateSearch] = useState("");
   const [candidateError, setCandidateError] = useState("");
@@ -200,6 +201,30 @@ export function TeamMemberManager({
     }
   };
 
+  const changePaidMembership = async (
+    member: TeamMember,
+    isPaidMember: boolean,
+  ) => {
+    if (!teamID || actionKey || paidMembershipInFlight.current) return;
+    paidMembershipInFlight.current = true;
+    setActionKey(`membership-${member.user_id}`);
+    setActionError("");
+    try {
+      const result = await updatePaidMembership.mutateAsync({
+        teamID,
+        userID: member.user_id,
+        payload: { is_paid_member: isPaidMember },
+      });
+      onTeamChange(result.team);
+      toast.success(isPaidMember ? "已设为付费会员" : "已设为普通队员");
+    } catch (reason) {
+      setActionError(errorMessage(reason, "更新付费会员状态失败"));
+    } finally {
+      paidMembershipInFlight.current = false;
+      setActionKey("");
+    }
+  };
+
   const openCredit = (member: TeamMember) => {
     setCreditingMember(member);
     setActionError("");
@@ -216,6 +241,7 @@ export function TeamMemberManager({
         team_id: teamID,
         user_id: creditingMember.user_id,
         amount_cents: Math.round(values.amountYuan * 100),
+        received_on: values.receivedOn,
         note: values.note.trim() || undefined,
         idempotency_key: values.idempotencyKey,
       });
@@ -414,6 +440,7 @@ export function TeamMemberManager({
             <div className="member-table-panel">
               <TeamMemberTable
                 actionKey={actionKey}
+                key={teamID}
                 loading={membersQuery.isFetching}
                 members={members}
                 onCaptainChange={(member, captain) =>
@@ -422,6 +449,9 @@ export function TeamMemberManager({
                 onConsume={openConsume}
                 onCredit={openCredit}
                 onEdit={openEdit}
+                onPaidMembershipChange={(member, isPaidMember) =>
+                  void changePaidMembership(member, isPaidMember)
+                }
                 onRemove={(member) => void remove(member)}
                 onTransactions={openTransactions}
               />

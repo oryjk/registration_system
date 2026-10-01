@@ -259,6 +259,45 @@ code {
   white-space: nowrap;
 }
 
+/* 可选的固定列布局；其他表格继续使用原来的自动布局。 */
+.data-table-fixed {
+  table-layout: fixed;
+}
+
+.data-table-fixed th,
+.data-table-fixed td {
+  padding: var(--space-3) var(--space-4);
+  vertical-align: middle;
+}
+
+.data-table-fixed th {
+  height: var(--space-12);
+  color: var(--muted);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+}
+
+.data-table-scroll-region {
+  --data-table-max-height: calc(
+    100dvh -
+    var(--shell-header-height) -
+    var(--space-10) *
+    5
+  );
+  max-height: max(calc(var(--space-10) * 6), var(--data-table-max-height));
+  overflow: auto;
+  border: calc(var(--space-0-5) / 2) solid var(--border-subtle);
+  border-radius: var(--radius-panel);
+}
+
+.data-table-scroll-region thead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface-inset);
+  box-shadow: inset 0 calc(-1 * var(--space-0-5) / 2) var(--border-subtle);
+}
+
 .ui-table-caption {
   margin-top: var(--space-2-5);
   color: var(--muted);

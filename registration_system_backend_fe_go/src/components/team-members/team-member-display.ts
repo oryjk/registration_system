@@ -38,6 +38,13 @@ export const roleColors: Record<TeamMemberRole, string> = {
 export const statusLabels: Record<TeamMemberStatus, string> = {
   active: "已启用",
   inactive: "已冻结",
+  left: "已退队",
+};
+
+export const statusColors: Record<TeamMemberStatus, string> = {
+  active: "success",
+  inactive: "warning",
+  left: "secondary",
 };
 
 export function displayMemberName(

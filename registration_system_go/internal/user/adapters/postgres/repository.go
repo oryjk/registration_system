@@ -127,7 +127,8 @@ func timestamptzPointer(value pgtype.Timestamptz) *time.Time {
 
 func (r *Repository) ListForAdmin(ctx context.Context, filter ports.AdminUserFilter) ([]domain.User, error) {
 	rows, err := r.queries.ListUsersForAdmin(ctx, authsqlc.ListUsersForAdminParams{
-		Search: filter.Search, MatchAdminOnly: optionalMatchAdminFilter(filter.MatchAdminOnly), Activity: resolvedAdminActivity(filter.Activity),
+		Search: filter.Search, Identity: resolvedAdminEnum(filter.Identity), StatusFilter: resolvedAdminEnum(filter.StatusFilter),
+		Activity: resolvedAdminActivity(filter.Activity), Sort: resolvedAdminSort(filter.Sort),
 		LimitCount: int32(filter.Limit), OffsetCount: int32(filter.Offset),
 	})
 	if err != nil {
@@ -143,7 +144,8 @@ func (r *Repository) ListForAdmin(ctx context.Context, filter ports.AdminUserFil
 
 func (r *Repository) CountForAdmin(ctx context.Context, filter ports.AdminUserFilter) (int64, error) {
 	return r.queries.CountUsersForAdmin(ctx, authsqlc.CountUsersForAdminParams{
-		Search: filter.Search, MatchAdminOnly: optionalMatchAdminFilter(filter.MatchAdminOnly), Activity: resolvedAdminActivity(filter.Activity),
+		Search: filter.Search, Identity: resolvedAdminEnum(filter.Identity), StatusFilter: resolvedAdminEnum(filter.StatusFilter),
+		Activity: resolvedAdminActivity(filter.Activity),
 	})
 }
 
@@ -166,10 +168,18 @@ func resolvedAdminActivity(activity string) string {
 	return activity
 }
 
-// optionalMatchAdminFilter 仅在「只看比赛管理员」时下发过滤条件，否则不过滤。
-func optionalMatchAdminFilter(matchAdminOnly bool) *bool {
-	if !matchAdminOnly {
-		return nil
+// resolvedAdminEnum 身份/账号状态等枚举筛选项的兜底：未指定时不过滤。
+func resolvedAdminEnum(value string) string {
+	if value == "" {
+		return "all"
 	}
-	return &matchAdminOnly
+	return value
+}
+
+// resolvedAdminSort 排序 token 的兜底：与历史默认行为一致（最近活跃倒序）。
+func resolvedAdminSort(value string) string {
+	if value == "" {
+		return "last_active_desc"
+	}
+	return value
 }

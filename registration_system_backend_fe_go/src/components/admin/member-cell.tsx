@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 
 import { ImageLightbox } from "@/components/admin/image-lightbox";
 import { cn } from "@/lib/utils";
@@ -12,12 +12,15 @@ export function MemberCell({
   name,
   secondary,
   tertiary,
+  metadata,
   size = "sm",
 }: {
   avatarUrl?: string | null;
   name: string;
   secondary?: string;
   tertiary?: string;
+  /** 紧凑的第二行，可组合姓名、编号等元信息；旧用法保持不变。 */
+  metadata?: ReactNode;
   size?: "sm" | "lg";
 }) {
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -56,9 +59,12 @@ export function MemberCell({
         </span>
       )}
       <span className="match-name-cell">
-        <strong>{name}</strong>
+        <strong title={name}>{name}</strong>
         {secondary ? <span>{secondary}</span> : null}
         {tertiary ? <span>{tertiary}</span> : null}
+        {metadata ? (
+          <span className="member-cell-metadata">{metadata}</span>
+        ) : null}
       </span>
     </span>
   );

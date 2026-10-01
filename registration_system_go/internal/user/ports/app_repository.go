@@ -29,13 +29,19 @@ type TestLoginRepository interface {
 	ListActiveTestLoginUsers(context.Context) ([]TestLoginUser, error)
 }
 
-// AdminUserFilter 管理端微信用户搜索条件。
+// AdminUserFilter 管理端微信用户搜索条件（枚举值均由服务层归一化后传入）。
 type AdminUserFilter struct {
-	Search         string
-	MatchAdminOnly bool
-	Activity       string
-	Limit          int
-	Offset         int
+	Search string
+	// Identity: all / match_admin / normal。
+	Identity string
+	// StatusFilter: all / active / frozen。
+	StatusFilter string
+	// Activity: all / active_7d / inactive_30d / never。
+	Activity string
+	// Sort: last_active_desc / last_active_asc / created_desc / created_asc。
+	Sort   string
+	Limit  int
+	Offset int
 }
 
 // AdminRepository 管理端用户管理仓储。

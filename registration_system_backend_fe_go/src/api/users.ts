@@ -12,6 +12,15 @@ function buildQuery(query: WeChatUserListQuery) {
   if (query.activity && query.activity !== "all") {
     params.set("activity", query.activity);
   }
+  if (query.status && query.status !== "all") {
+    params.set("status", query.status);
+  }
+  if (query.identity && query.identity !== "all") {
+    params.set("identity", query.identity);
+  }
+  if (query.sort && query.sort !== "last_active_desc") {
+    params.set("sort", query.sort);
+  }
   if (query.page) params.set("page", String(query.page));
   if (query.page_size) params.set("page_size", String(query.page_size));
   const value = params.toString();

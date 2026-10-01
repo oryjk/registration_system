@@ -30,6 +30,7 @@ type ManualFundRequest struct {
 	UserID      int64
 	AmountCents int64
 	Note        string
+	ReceivedOn  string // 可选 YYYY-MM-DD；实际收款日期，仅充值使用。
 	// IdempotencyKey 客户端幂等键：同一键重试只记一笔；为空时仓储生成随机键（不具重放去重语义）。
 	IdempotencyKey        string
 	OriginalTransactionID int64 // 仅冲正
@@ -63,11 +64,17 @@ func (s *ManualFundService) authorize(ctx context.Context, actor sharedauth.Acto
 	return s.authorizer.AuthorizeTeamManager(ctx, actor, teamID)
 }
 
-// operatorUserID 操作人取自后端认证身份；但管理员 ID 来自 admin_users，
-// 而 team_fund_transactions.created_by_user_id 引用 users 表——管理员动作不写操作人（记 NULL），
-// 避免外键失败或误记成同 ID 的另一个用户。队长/领队（用户身份）如实记录。
+// 操作人只取自后端认证 Actor，客户端不能指定：普通用户身份写 users 引用列，
+// 后台管理员身份写 admin_users 引用列——两张表可能存在相同数字 ID，必须各记各的列，不能混用。
 func operatorUserID(actor sharedauth.Actor) int64 {
 	if actor.IsUser() {
+		return actor.ID
+	}
+	return 0
+}
+
+func operatorAdminID(actor sharedauth.Actor) int64 {
+	if actor.IsAdmin() {
 		return actor.ID
 	}
 	return 0
@@ -82,10 +89,15 @@ func (s *ManualFundService) Recharge(ctx context.Context, actor sharedauth.Actor
 	if err := validateManualRequest(request, false); err != nil {
 		return teamfundports.ManualFundResult{}, err
 	}
+	receivedOn, err := parseReceiptDate(request.ReceivedOn)
+	if err != nil {
+		return teamfundports.ManualFundResult{}, err
+	}
 	result, err := s.repository.ManualRecharge(ctx, teamfundports.ManualFundAction{
 		TeamID: request.TeamID, UserID: request.UserID,
 		AmountCents: request.AmountCents, Note: strings.TrimSpace(request.Note),
-		OperatorUserID: operatorUserID(actor), IdempotencyKey: request.IdempotencyKey,
+		ReceivedOn:     receivedOn,
+		OperatorUserID: operatorUserID(actor), OperatorAdminID: operatorAdminID(actor), IdempotencyKey: request.IdempotencyKey,
 	})
 	if err != nil {
 		return teamfundports.ManualFundResult{}, mapManualFundError(err)
@@ -114,7 +126,7 @@ func (s *ManualFundService) Consume(ctx context.Context, actor sharedauth.Actor,
 	result, err := s.repository.ManualConsume(ctx, teamfundports.ManualFundAction{
 		TeamID: request.TeamID, UserID: request.UserID,
 		AmountCents: request.AmountCents, Note: request.Note,
-		OperatorUserID: operatorUserID(actor), IdempotencyKey: request.IdempotencyKey,
+		OperatorUserID: operatorUserID(actor), OperatorAdminID: operatorAdminID(actor), IdempotencyKey: request.IdempotencyKey,
 	})
 	if err != nil {
 		return teamfundports.ManualFundResult{}, mapManualFundError(err)
@@ -141,7 +153,7 @@ func (s *ManualFundService) Reverse(ctx context.Context, actor sharedauth.Actor,
 	}
 	result, err := s.repository.ManualReverse(ctx, teamfundports.ManualFundAction{
 		TeamID: request.TeamID, UserID: request.UserID,
-		Note: request.Note, OperatorUserID: operatorUserID(actor), IdempotencyKey: request.IdempotencyKey,
+		Note: request.Note, OperatorUserID: operatorUserID(actor), OperatorAdminID: operatorAdminID(actor), IdempotencyKey: request.IdempotencyKey,
 		OriginalTransactionID: request.OriginalTransactionID,
 	})
 	if err != nil {
@@ -180,7 +192,7 @@ func validateManualRequest(request ManualFundRequest, reversal bool) error {
 
 func mapManualFundError(err error) error {
 	if errors.Is(err, teamfundports.ErrIdempotencyConflict) {
-		return sharederror.New(sharederror.KindConflict, "同一幂等键已被不同金额使用，请勿复用重试键")
+		return sharederror.New(sharederror.KindConflict, "同一幂等键已被不同记账参数使用，请勿复用重试键")
 	}
 	return err
 }

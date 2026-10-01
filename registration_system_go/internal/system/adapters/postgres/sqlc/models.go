@@ -211,6 +211,11 @@ type Team struct {
 	JoinPasswordHash *string            `json:"join_password_hash"`
 }
 
+type TeamFundCreditReceipt struct {
+	TransactionID int64       `json:"transaction_id"`
+	ReceivedOn    pgtype.Date `json:"received_on"`
+}
+
 type TeamFundTransaction struct {
 	ID                      int64              `json:"id"`
 	TeamID                  int64              `json:"team_id"`
@@ -224,6 +229,7 @@ type TeamFundTransaction struct {
 	CreatedAt               pgtype.Timestamptz `json:"created_at"`
 	CreatedByUserID         *int64             `json:"created_by_user_id"`
 	ReversedByTransactionID *int64             `json:"reversed_by_transaction_id"`
+	CreatedByAdminID        *int64             `json:"created_by_admin_id"`
 }
 
 type TeamMember struct {

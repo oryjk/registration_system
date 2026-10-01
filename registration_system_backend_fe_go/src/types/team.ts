@@ -1,7 +1,7 @@
 export type TeamStatus = "active" | "frozen" | "dissolved" | "deleted";
 export type TeamMemberRole = "captain" | "leader" | "vice_captain" | "member";
 export type AssignableTeamMemberRole = Exclude<TeamMemberRole, "captain">;
-export type TeamMemberStatus = "active" | "inactive";
+export type TeamMemberStatus = "active" | "inactive" | "left";
 
 export interface TeamOption {
   id: number;
@@ -17,6 +17,8 @@ export interface TeamCaptain {
 }
 
 export interface Team extends TeamOption {
+  /** 列表返回的成员总数，包含停用成员，不包含已移除成员。 */
+  member_count?: number;
   description: string | null;
   captain_id: number | null;
   captain: TeamCaptain | null;

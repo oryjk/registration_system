@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -243,7 +244,11 @@ func (r *Repository) ListTransactions(ctx context.Context, userID int64, beforeI
 			ID: row.ID, TeamID: row.TeamID, TeamName: row.TeamName,
 			AmountCents: row.AmountCents, BalanceAfterCents: row.BalanceAfterCents,
 			Source: row.Source, Description: row.Description, CreatedAt: row.CreatedAt.Time,
-			CreatedByUserID: row.CreatedByUserID, ReversedByTransactionID: row.ReversedByTransactionID,
+			CreatedByUserID: row.CreatedByUserID, CreatedByAdminID: row.CreatedByAdminID, ReversedByTransactionID: row.ReversedByTransactionID,
+		}
+		if row.ReceivedOn.Valid {
+			receivedOn := row.ReceivedOn.Time
+			transaction.ReceivedOn = &receivedOn
 		}
 		if row.MatchID.Valid {
 			matchID := uuid.UUID(row.MatchID.Bytes)
@@ -271,7 +276,11 @@ func (r *Repository) ListMemberTransactions(ctx context.Context, teamID, userID,
 			ID: row.ID, TeamID: row.TeamID,
 			AmountCents: row.AmountCents, BalanceAfterCents: row.BalanceAfterCents,
 			Source: row.Source, Description: row.Description, CreatedAt: row.CreatedAt.Time,
-			CreatedByUserID: row.CreatedByUserID, ReversedByTransactionID: row.ReversedByTransactionID,
+			CreatedByUserID: row.CreatedByUserID, CreatedByAdminID: row.CreatedByAdminID, ReversedByTransactionID: row.ReversedByTransactionID,
+		}
+		if row.ReceivedOn.Valid {
+			receivedOn := row.ReceivedOn.Time
+			transaction.ReceivedOn = &receivedOn
 		}
 		if row.MatchID.Valid {
 			matchID := uuid.UUID(row.MatchID.Bytes)
@@ -340,7 +349,7 @@ func (r *Repository) applyManualAction(ctx context.Context, action teamfundports
 	defer func() { _ = tx.Rollback(ctx) }()
 	queries := r.queries.WithTx(tx)
 
-	if replay, found, replayErr := findReplay(ctx, queries, source, key, action.TeamID, action.UserID, expectedAmount); replayErr != nil {
+	if replay, found, replayErr := findReplay(ctx, queries, source, key, action.TeamID, action.UserID, expectedAmount, action.ReceivedOn); replayErr != nil {
 		return teamfundports.ManualFundResult{}, replayErr
 	} else if found {
 		return replay, nil
@@ -357,6 +366,7 @@ func (r *Repository) applyManualAction(ctx context.Context, action teamfundports
 	if recharge {
 		balance, err = queries.CreditTeamMemberFund(ctx, teamfundsqlc.CreditTeamMemberFundParams{
 			AmountCents: action.AmountCents, TeamID: action.TeamID, UserID: action.UserID,
+			ReceivedOn: receiptDate(action.ReceivedOn),
 		})
 	} else {
 		balance, err = queries.DebitTeamMemberFund(ctx, teamfundsqlc.DebitTeamMemberFundParams{
@@ -369,16 +379,24 @@ func (r *Repository) applyManualAction(ctx context.Context, action teamfundports
 	transactionID, err := queries.InsertManualFundTransaction(ctx, teamfundsqlc.InsertManualFundTransactionParams{
 		TeamID: action.TeamID, UserID: action.UserID, AmountCents: expectedAmount,
 		BalanceAfterCents: balance, Source: source, SourceID: key,
-		Description: manualDescription(source, action.Note), CreatedByUserID: operatorRef(action.OperatorUserID),
+		Description:     manualDescription(source, action.Note),
+		CreatedByUserID: operatorRef(action.OperatorUserID), CreatedByAdminID: operatorRef(action.OperatorAdminID),
 	})
 	if err != nil {
 		if isUniqueViolation(err) {
 			// 并发同键已由先到请求落库：本事务因唯一约束冲突已中止，必须先回滚，
 			// 再用池级连接复查，按幂等重放或键冲突收敛（在已中止事务里继续查询会得到 25P02）。
 			_ = tx.Rollback(ctx)
-			return r.resolveReplay(ctx, source, key, action.TeamID, action.UserID, expectedAmount)
+			return r.resolveReplay(ctx, source, key, action.TeamID, action.UserID, expectedAmount, action.ReceivedOn)
 		}
 		return teamfundports.ManualFundResult{}, mapConstraintError(err)
+	}
+	if recharge && action.ReceivedOn != nil {
+		if err := queries.InsertTeamFundCreditReceipt(ctx, teamfundsqlc.InsertTeamFundCreditReceiptParams{
+			TransactionID: transactionID, ReceivedOn: receiptDate(action.ReceivedOn),
+		}); err != nil {
+			return teamfundports.ManualFundResult{}, err
+		}
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return teamfundports.ManualFundResult{}, err
@@ -417,6 +435,13 @@ func (r *Repository) ManualReverse(ctx context.Context, action teamfundports.Man
 		return teamfundports.ManualFundResult{}, err
 	}
 	if original.ReversedByTransactionID != nil {
+		// 并发同键：两个请求都通过预检后在此争锁，先到者已提交冲正。
+		// 先按本键复查是否为同键重放（幂等成功），再拒绝不同键的重复冲正。
+		if replay, found, replayErr := findReversalReplay(ctx, queries, key, action.TeamID, action.UserID, action.OriginalTransactionID); replayErr != nil {
+			return teamfundports.ManualFundResult{}, replayErr
+		} else if found {
+			return replay, nil
+		}
 		return teamfundports.ManualFundResult{}, sharederror.New(sharederror.KindConflict, "该流水已冲正，不能重复冲正")
 	}
 	if original.Source != "admin_credit" && original.Source != "manual_consume" && original.Source != "manual_adjustment" {
@@ -436,7 +461,8 @@ func (r *Repository) ManualReverse(ctx context.Context, action teamfundports.Man
 	transactionID, err := queries.InsertManualFundTransaction(ctx, teamfundsqlc.InsertManualFundTransactionParams{
 		TeamID: action.TeamID, UserID: action.UserID, AmountCents: addBack,
 		BalanceAfterCents: balance, Source: "manual_reversal", SourceID: key,
-		Description: manualDescription("manual_reversal", action.Note), CreatedByUserID: operatorRef(action.OperatorUserID),
+		Description:     manualDescription("manual_reversal", action.Note),
+		CreatedByUserID: operatorRef(action.OperatorUserID), CreatedByAdminID: operatorRef(action.OperatorAdminID),
 	})
 	if err != nil {
 		if isUniqueViolation(err) {
@@ -457,7 +483,7 @@ func (r *Repository) ManualReverse(ctx context.Context, action teamfundports.Man
 }
 
 // findReplay 幂等预检：同 source+key+用户+球队+金额 → 重放成功；同键但球队或金额不同 → 显式冲突。
-func findReplay(ctx context.Context, queries *teamfundsqlc.Queries, source, key string, teamID, userID, expectedAmount int64) (teamfundports.ManualFundResult, bool, error) {
+func findReplay(ctx context.Context, queries *teamfundsqlc.Queries, source, key string, teamID, userID, expectedAmount int64, receivedOn *time.Time) (teamfundports.ManualFundResult, bool, error) {
 	rows, err := queries.ListTeamFundTransactionsBySource(ctx, teamfundsqlc.ListTeamFundTransactionsBySourceParams{
 		Source: source, SourceID: key,
 	})
@@ -470,6 +496,15 @@ func findReplay(ctx context.Context, queries *teamfundsqlc.Queries, source, key 
 		}
 		if row.TeamID != teamID || row.AmountCents != expectedAmount {
 			return teamfundports.ManualFundResult{}, false, teamfundports.ErrIdempotencyConflict
+		}
+		if receivedOn != nil {
+			date, err := queries.GetTeamFundCreditReceiptDate(ctx, row.ID)
+			if errors.Is(err, pgx.ErrNoRows) || (err == nil && (!date.Valid || date.Time.Format("2006-01-02") != receivedOn.Format("2006-01-02"))) {
+				return teamfundports.ManualFundResult{}, false, teamfundports.ErrIdempotencyConflict
+			}
+			if err != nil {
+				return teamfundports.ManualFundResult{}, false, err
+			}
 		}
 		return teamfundports.ManualFundResult{BalanceCents: row.BalanceAfterCents, TransactionID: row.ID, Duplicated: true}, true, nil
 	}
@@ -496,8 +531,8 @@ func findReversalReplay(ctx context.Context, queries *teamfundsqlc.Queries, key 
 }
 
 // resolveReplay 并发冲突后的池级复查：与 findReplay 同规则；理论上必命中（约束保证同键同行），兜底返回键冲突。
-func (r *Repository) resolveReplay(ctx context.Context, source, key string, teamID, userID, expectedAmount int64) (teamfundports.ManualFundResult, error) {
-	if replay, found, err := findReplay(ctx, r.queries, source, key, teamID, userID, expectedAmount); err != nil {
+func (r *Repository) resolveReplay(ctx context.Context, source, key string, teamID, userID, expectedAmount int64, receivedOn *time.Time) (teamfundports.ManualFundResult, error) {
+	if replay, found, err := findReplay(ctx, r.queries, source, key, teamID, userID, expectedAmount, receivedOn); err != nil {
 		return teamfundports.ManualFundResult{}, err
 	} else if found {
 		return replay, nil
@@ -514,8 +549,7 @@ func (r *Repository) resolveReversalReplay(ctx context.Context, key string, team
 	return teamfundports.ManualFundResult{}, teamfundports.ErrIdempotencyConflict
 }
 
-// operatorRef 操作人引用 users 表：管理员身份来自 admin_users，不能写入该外键；
-// 未登录体系内的操作人（<=0）记 NULL。
+// operatorRef 操作人外键引用（users / admin_users 各自的列共用此规则）：身份不适用或未知（<=0）记 NULL。
 func operatorRef(operatorUserID int64) *int64 {
 	if operatorUserID <= 0 {
 		return nil

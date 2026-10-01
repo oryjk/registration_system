@@ -71,6 +71,8 @@ type Team struct {
 	LogoURL     *string
 	CaptainID   *int64
 	Captain     *CaptainSummary
+	// MemberCount 管理端列表的成员总数，包含停用成员，不包含已移除成员。
+	MemberCount int64
 	Status      TeamStatus
 	CreatedAt   time.Time
 	UpdatedAt   time.Time

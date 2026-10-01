@@ -1116,7 +1116,9 @@ SELECT t.id,
        t.updated_at,
        u.nickname AS captain_nickname,
        u.avatar_url AS captain_avatar_url,
-       u.real_name AS captain_real_name
+       u.real_name AS captain_real_name,
+       (SELECT count(*) FROM team_members tm
+        WHERE tm.team_id = t.id AND tm.status <> 'removed') AS member_count
 FROM teams t
 LEFT JOIN users u ON u.id = t.captain_id
 WHERE $1::text IS NULL AND t.status <> 'deleted'
@@ -1136,6 +1138,7 @@ type ListTeamsRow struct {
 	CaptainNickname  *string          `json:"captain_nickname"`
 	CaptainAvatarUrl *string          `json:"captain_avatar_url"`
 	CaptainRealName  *string          `json:"captain_real_name"`
+	MemberCount      int64            `json:"member_count"`
 }
 
 func (q *Queries) ListTeams(ctx context.Context, status *string) ([]ListTeamsRow, error) {
@@ -1159,6 +1162,7 @@ func (q *Queries) ListTeams(ctx context.Context, status *string) ([]ListTeamsRow
 			&i.CaptainNickname,
 			&i.CaptainAvatarUrl,
 			&i.CaptainRealName,
+			&i.MemberCount,
 		); err != nil {
 			return nil, err
 		}

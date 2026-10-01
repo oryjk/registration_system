@@ -22,6 +22,8 @@ ALTER TABLE team_fund_transactions
 -- +goose Down
 -- 回滚前置校验：已产生人工消费/冲正流水或被移除成员时禁止回滚。
 -- 删除真实资金流水会导致余额与账目脱节无法对账；如确需回滚，先人工核销这些数据。
+-- StatementBegin/End：DO 块内含分号，必须显式包裹，否则 goose 会按分号截断语句。
+-- +goose StatementBegin
 DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM team_fund_transactions WHERE source IN ('manual_consume', 'manual_reversal')) THEN
@@ -32,6 +34,7 @@ BEGIN
     END IF;
 END
 $$;
+-- +goose StatementEnd
 
 ALTER TABLE team_fund_transactions DROP COLUMN reversed_by_transaction_id;
 ALTER TABLE team_fund_transactions DROP COLUMN created_by_user_id;

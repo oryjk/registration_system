@@ -5,6 +5,8 @@ export interface AdminCreditTeamFundPayload {
   user_id: number;
   amount_cents: number;
   note?: string;
+  /** 实际收款日期 YYYY-MM-DD；省略时按录入时刻记账。 */
+  received_on?: string;
   /** 幂等键：同一键重试只记一笔；不传则后端每次独立记账。 */
   idempotency_key?: string;
 }
@@ -65,7 +67,11 @@ export interface TeamFundTransactionItem {
   source: string;
   description: string;
   created_at: string;
+  received_on?: string | null;
+  /** 普通用户操作人（队长/领队记账）；与管理员操作人互斥，历史记录两者均可为空。 */
   created_by_user_id?: number | null;
+  /** 后台管理员操作人；与普通用户操作人互斥，历史记录两者均可为空。 */
+  created_by_admin_id?: number | null;
   reversed_by_transaction_id?: number | null;
   match_id?: string | null;
   match_name?: string | null;

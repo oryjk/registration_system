@@ -65,6 +65,132 @@ func TestAdminUserRepositoryFiltersByActivity(t *testing.T) {
 	assertIDs("all", active.ID, inactive.ID, never.ID)
 }
 
+// TestAdminUserRepositorySorting 验证最近活跃/注册时间的升降序，
+// 从未活跃（last_active_at 为 NULL）在任何方向都排最后。
+func TestAdminUserRepositorySorting(t *testing.T) {
+	pool := testsupport.StartPostgres(t)
+	repository := NewRepository(pool)
+	ctx := context.Background()
+	now := time.Now().UTC()
+
+	seed := func(openID string) domain.User {
+		t.Helper()
+		user, err := repository.Create(ctx, domain.User{OpenID: openID, Nickname: openID, Status: domain.StatusActive})
+		if err != nil {
+			t.Fatalf("create user %s: %v", openID, err)
+		}
+		return user
+	}
+	recent := seed("sort-recent")
+	earlier := seed("sort-earlier")
+	never := seed("sort-never")
+
+	// created_at 由数据库默认值生成（同事务时间接近），这里显式设定以便断言注册时间排序。
+	createdRecent := now.Add(-72 * time.Hour)
+	createdEarlier := now.Add(-24 * time.Hour)
+	createdNever := now.Add(-48 * time.Hour)
+	for _, seedTime := range []struct {
+		id int64
+		at time.Time
+	}{{recent.ID, createdRecent}, {earlier.ID, createdEarlier}, {never.ID, createdNever}} {
+		if _, err := pool.Exec(ctx, `UPDATE users SET created_at=$1 WHERE id=$2`, seedTime.at, seedTime.id); err != nil {
+			t.Fatalf("set created_at for %d: %v", seedTime.id, err)
+		}
+	}
+	if err := repository.TouchLastActive(ctx, recent.ID, now.Add(-1*time.Hour), now); err != nil {
+		t.Fatalf("touch recent: %v", err)
+	}
+	if err := repository.TouchLastActive(ctx, earlier.ID, now.Add(-2*time.Hour), now); err != nil {
+		t.Fatalf("touch earlier: %v", err)
+	}
+
+	adminActor := sharedauth.Actor{Kind: sharedauth.ActorAdmin, ID: 1}
+	service := userapplication.NewAdminUserService(repository)
+	assertOrder := func(sort string, want ...int64) {
+		t.Helper()
+		result, err := service.List(ctx, adminActor, userapplication.AdminUserListQuery{Sort: sort, PageSize: 100})
+		if err != nil {
+			t.Fatalf("list sort=%s: %v", sort, err)
+		}
+		if len(result.Items) != len(want) {
+			t.Fatalf("sort=%s items=%d, want=%d: %+v", sort, len(result.Items), len(want), result.Items)
+		}
+		for index, userID := range want {
+			if result.Items[index].ID != userID {
+				t.Fatalf("sort=%s item[%d]=%d, want=%d", sort, index, result.Items[index].ID, userID)
+			}
+		}
+	}
+
+	// 默认与历史行为一致：最近活跃倒序、从未活跃最后。
+	assertOrder("", recent.ID, earlier.ID, never.ID)
+	assertOrder("last_active_desc", recent.ID, earlier.ID, never.ID)
+	assertOrder("last_active_asc", earlier.ID, recent.ID, never.ID)
+	assertOrder("created_desc", earlier.ID, never.ID, recent.ID)
+	assertOrder("created_asc", recent.ID, never.ID, earlier.ID)
+}
+
+// TestAdminUserRepositoryFiltersByStatusAndIdentity 验证账号状态与身份筛选，计数与列表一致。
+func TestAdminUserRepositoryFiltersByStatusAndIdentity(t *testing.T) {
+	pool := testsupport.StartPostgres(t)
+	repository := NewRepository(pool)
+	ctx := context.Background()
+
+	seed := func(openID string, frozen bool) domain.User {
+		t.Helper()
+		user, err := repository.Create(ctx, domain.User{OpenID: openID, Nickname: openID, Status: domain.StatusActive})
+		if err != nil {
+			t.Fatalf("create user %s: %v", openID, err)
+		}
+		if frozen {
+			if _, err := pool.Exec(ctx, `UPDATE users SET status='frozen' WHERE id=$1`, user.ID); err != nil {
+				t.Fatalf("freeze user %s: %v", openID, err)
+			}
+		}
+		return user
+	}
+	normalActive := seed("filter-normal-active", false)
+	normalFrozen := seed("filter-normal-frozen", true)
+	adminActive := seed("filter-admin-active", false)
+	adminFrozen := seed("filter-admin-frozen", true)
+
+	adminActor := sharedauth.Actor{Kind: sharedauth.ActorAdmin, ID: 1}
+	service := userapplication.NewAdminUserService(repository)
+	if _, err := service.SetMatchAdmin(ctx, adminActor, adminActive.ID, true); err != nil {
+		t.Fatalf("set match admin: %v", err)
+	}
+	if _, err := service.SetMatchAdmin(ctx, adminActor, adminFrozen.ID, true); err != nil {
+		t.Fatalf("set match admin frozen: %v", err)
+	}
+
+	assertResult := func(identity, status string, want ...int64) {
+		t.Helper()
+		result, err := service.List(ctx, adminActor, userapplication.AdminUserListQuery{Identity: identity, StatusFilter: status, PageSize: 100})
+		if err != nil {
+			t.Fatalf("list identity=%s status=%s: %v", identity, status, err)
+		}
+		if result.Total != int64(len(want)) {
+			t.Fatalf("identity=%s status=%s total=%d, want %d", identity, status, result.Total, len(want))
+		}
+		if len(result.Items) != len(want) {
+			t.Fatalf("identity=%s status=%s items=%d, want %d", identity, status, len(result.Items), len(want))
+		}
+		for index, userID := range want {
+			if result.Items[index].ID != userID {
+				t.Fatalf("identity=%s status=%s item[%d]=%d, want=%d", identity, status, index, result.Items[index].ID, userID)
+			}
+		}
+	}
+
+	assertResult("all", "all", adminFrozen.ID, adminActive.ID, normalFrozen.ID, normalActive.ID)
+	assertResult("normal", "all", normalFrozen.ID, normalActive.ID)
+	assertResult("match_admin", "all", adminFrozen.ID, adminActive.ID)
+	assertResult("all", "frozen", adminFrozen.ID, normalFrozen.ID)
+	assertResult("all", "active", adminActive.ID, normalActive.ID)
+	assertResult("match_admin", "frozen", adminFrozen.ID)
+	assertResult("normal", "active", normalActive.ID)
+}
+
 func TestAdminUserRepositorySearchAndMatchAdmin(t *testing.T) {
 	pool := testsupport.StartPostgres(t)
 	repository := NewRepository(pool)
@@ -122,7 +248,7 @@ func TestAdminUserRepositorySearchAndMatchAdmin(t *testing.T) {
 	if _, err := service.SetMatchAdmin(ctx, adminActor, li.ID, false); err != nil {
 		t.Fatalf("unset match admin: %v", err)
 	}
-	items, err := repository.ListForAdmin(ctx, ports.AdminUserFilter{MatchAdminOnly: true})
+	items, err := repository.ListForAdmin(ctx, ports.AdminUserFilter{Identity: "match_admin"})
 	if err != nil {
 		t.Fatalf("list after unset: %v", err)
 	}

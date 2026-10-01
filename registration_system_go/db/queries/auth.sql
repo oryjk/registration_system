@@ -53,7 +53,7 @@ WHERE id = $1
 RETURNING id, openid, nickname, avatar_url, real_name, phone_number, status, is_match_admin, last_active_at, created_at, updated_at;
 
 -- name: ListUsersForAdmin :many
--- 管理端微信用户搜索：按昵称/姓名/手机号/用户 ID 模糊匹配，可只看比赛管理员。
+-- 管理端微信用户搜索：按昵称/姓名/手机号/用户 ID 模糊匹配，支持身份/账号状态/活跃筛选与排序。
 SELECT id, openid, nickname, avatar_url, real_name, phone_number, status, is_match_admin, last_active_at, created_at, updated_at
 FROM users
 WHERE (
@@ -63,14 +63,28 @@ WHERE (
     OR phone_number ILIKE '%' || sqlc.arg('search')::text || '%'
     OR id::text = sqlc.arg('search')::text
 )
-  AND (sqlc.narg('match_admin_only')::bool IS NULL OR is_match_admin = sqlc.narg('match_admin_only'))
+  AND (
+      sqlc.arg('identity')::text = 'all'
+      OR is_match_admin = (sqlc.arg('identity')::text = 'match_admin')
+  )
+  AND (
+      sqlc.arg('status_filter')::text = 'all'
+      OR status = sqlc.arg('status_filter')::text
+  )
   AND (
       sqlc.arg('activity')::text = 'all'
       OR (sqlc.arg('activity')::text = 'active_7d' AND last_active_at >= NOW() - INTERVAL '7 days')
       OR (sqlc.arg('activity')::text = 'inactive_30d' AND last_active_at < NOW() - INTERVAL '30 days')
       OR (sqlc.arg('activity')::text = 'never' AND last_active_at IS NULL)
   )
-ORDER BY last_active_at DESC NULLS LAST, id DESC
+  -- 排序键由应用层白名单归一化后传入；同一时刻仅一个 CASE 分支非空，
+  -- 未命中分支全为 NULL 不参与排序，从未活跃恒排最后，id 保证稳定分页。
+  ORDER BY
+      CASE WHEN sqlc.arg('sort')::text = 'last_active_asc' THEN last_active_at END ASC NULLS LAST,
+      CASE WHEN sqlc.arg('sort')::text = 'last_active_desc' THEN last_active_at END DESC NULLS LAST,
+      CASE WHEN sqlc.arg('sort')::text = 'created_asc' THEN created_at END ASC,
+      CASE WHEN sqlc.arg('sort')::text = 'created_desc' THEN created_at END DESC,
+      id DESC
 LIMIT sqlc.arg('limit_count') OFFSET sqlc.arg('offset_count');
 
 -- name: CountUsersForAdmin :one
@@ -83,7 +97,14 @@ WHERE (
     OR phone_number ILIKE '%' || sqlc.arg('search')::text || '%'
     OR id::text = sqlc.arg('search')::text
 )
-  AND (sqlc.narg('match_admin_only')::bool IS NULL OR is_match_admin = sqlc.narg('match_admin_only'))
+  AND (
+      sqlc.arg('identity')::text = 'all'
+      OR is_match_admin = (sqlc.arg('identity')::text = 'match_admin')
+  )
+  AND (
+      sqlc.arg('status_filter')::text = 'all'
+      OR status = sqlc.arg('status_filter')::text
+  )
   AND (
       sqlc.arg('activity')::text = 'all'
       OR (sqlc.arg('activity')::text = 'active_7d' AND last_active_at >= NOW() - INTERVAL '7 days')

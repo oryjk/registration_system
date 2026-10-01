@@ -20,10 +20,23 @@ export interface WeChatUserListPage {
 
 export type WeChatUserActivity = "all" | "active_7d" | "inactive_30d" | "never";
 
+export type WeChatUserStatusFilter = "all" | "active" | "frozen";
+
+export type WeChatUserIdentityFilter = "all" | "match_admin" | "normal";
+
+export type WeChatUserSort =
+  | "last_active_desc"
+  | "last_active_asc"
+  | "created_desc"
+  | "created_asc";
+
 export interface WeChatUserListQuery {
   search?: string;
   match_admin_only?: boolean;
   activity?: WeChatUserActivity;
+  status?: WeChatUserStatusFilter;
+  identity?: WeChatUserIdentityFilter;
+  sort?: WeChatUserSort;
   page?: number;
   page_size?: number;
 }

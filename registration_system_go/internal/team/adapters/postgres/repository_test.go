@@ -146,6 +146,12 @@ func TestRepositoryAttendanceQueriesCountFinishedMatchesOnly(t *testing.T) {
 	pool := testsupport.StartPostgres(t)
 	ctx := context.Background()
 	repository := NewRepository(pool)
+	// 比赛时间在 SQL 中按 UTC 存储；固定一次数据库时钟作为夹具与日期边界的共同基准，
+	// 避免本机北京时间凌晨与数据库 UTC 日期相差一天、或用例执行时跨越午夜。
+	var baseTime time.Time
+	if err := pool.QueryRow(ctx, `SELECT NOW() AT TIME ZONE 'UTC'`).Scan(&baseTime); err != nil {
+		t.Fatalf("load fixture UTC clock: %v", err)
+	}
 
 	var captainID, memberID int64
 	if err := pool.QueryRow(ctx, `INSERT INTO users (openid) VALUES ('att-captain') RETURNING id`).Scan(&captainID); err != nil {
@@ -175,9 +181,9 @@ func TestRepositoryAttendanceQueriesCountFinishedMatchesOnly(t *testing.T) {
 			INSERT INTO matches (id, name, publication_mode, opponent_state, status, host_team_id, opponent_name,
 				players_per_team, start_time, end_time, location, created_by_user_id)
 			VALUES (gen_random_uuid(), $1, 'offline_confirmed', 'no_recruitment', $2, $3, '对手', 8,
-				NOW() - make_interval(days => $4::int), NOW() - make_interval(days => $4::int) + interval '2 hours',
+				$4::timestamp, $4::timestamp + interval '2 hours',
 				'出勤球场', $5)
-			RETURNING id`, name, status, teamID, startOffsetDays, captainID).Scan(&matchID)
+			RETURNING id`, name, status, teamID, baseTime.AddDate(0, 0, -startOffsetDays), captainID).Scan(&matchID)
 		if err != nil {
 			return "", err
 		}
@@ -258,8 +264,8 @@ func TestRepositoryAttendanceQueriesCountFinishedMatchesOnly(t *testing.T) {
 
 	// 日期过滤：窗口落在 [8 天前, 4 天前] 只覆盖 7 天前的已结束赛，
 	// 排除 3 天前的过期未收尾赛与未来的未开赛。
-	start := time.Now().AddDate(0, 0, -8)
-	end := time.Now().AddDate(0, 0, -4)
+	start := baseTime.AddDate(0, 0, -8)
+	end := baseTime.AddDate(0, 0, -4)
 	filtered, err := repository.ListMemberAttendanceRecords(ctx, teamID, captainID, &start, &end)
 	if err != nil {
 		t.Fatalf("filtered records: %v", err)
@@ -610,7 +616,8 @@ func TestRepositoryRestoreRemovedMemberOnAdd(t *testing.T) {
 	var balance int64
 	var isPaidMember bool
 	if err := pool.QueryRow(ctx,
-		`SELECT COUNT(*), MIN(status), MIN(role), MIN(balance_cents), MIN(is_paid_member) FROM team_members WHERE team_id=$1 AND user_id=$2`,
+		// PostgreSQL 无 MIN(boolean) 聚合，布尔列用 BOOL_AND。
+		`SELECT COUNT(*), MIN(status), MIN(role), MIN(balance_cents), BOOL_AND(is_paid_member) FROM team_members WHERE team_id=$1 AND user_id=$2`,
 		teamID, userID).Scan(&count, &status, &role, &balance, &isPaidMember); err != nil {
 		t.Fatal(err)
 	}

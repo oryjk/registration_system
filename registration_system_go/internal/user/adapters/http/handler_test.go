@@ -67,6 +67,36 @@ func TestAdminListsUsersWithLastActiveAtAndActivityFilter(t *testing.T) {
 	}
 }
 
+func TestAdminListsUsersMapsSortStatusAndIdentityQuery(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	users := &fakeAdminUsers{result: application.AdminUserListResult{PageSize: 20}}
+	handler := NewHandler(nil, users)
+	router := gin.New()
+	group := router.Group("")
+	group.Use(authhttp.NewMiddleware(fakeAdminTokens{}).RequireAdmin())
+	handler.RegisterAdminRoutes(group)
+
+	request := httptest.NewRequest(http.MethodGet, "/users?sort=created_asc&status=frozen&identity=normal", nil)
+	request.Header.Set("Authorization", "Bearer admin-token")
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+
+	if response.Code != http.StatusOK {
+		t.Fatalf("unexpected response %d: %s", response.Code, response.Body.String())
+	}
+	if users.query.Sort != "created_asc" || users.query.StatusFilter != "frozen" || users.query.Identity != "normal" {
+		t.Fatalf("query=%+v, want sort=created_asc status=frozen identity=normal", users.query)
+	}
+
+	// 旧参数 match_admin_only=true 继续映射到服务层。
+	request = httptest.NewRequest(http.MethodGet, "/users?match_admin_only=true", nil)
+	request.Header.Set("Authorization", "Bearer admin-token")
+	router.ServeHTTP(response, request)
+	if !users.query.MatchAdminOnly {
+		t.Fatalf("query=%+v, want match_admin_only mapped", users.query)
+	}
+}
+
 type fakeAdminUsers struct {
 	result application.AdminUserListResult
 	query  application.AdminUserListQuery

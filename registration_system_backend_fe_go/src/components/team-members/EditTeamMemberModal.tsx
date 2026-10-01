@@ -30,7 +30,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import type { AssignableTeamMemberRole, TeamMember } from "@/types/team";
+import type {
+  AssignableTeamMemberRole,
+  TeamMember,
+  TeamMemberStatus,
+} from "@/types/team";
 import { formatYuanAmount } from "@/utils/format";
 import {
   assignableRoleOptions,
@@ -41,7 +45,7 @@ export interface EditMemberFormValues {
   realName: string;
   phoneNumber: string;
   role: AssignableTeamMemberRole;
-  status: "active" | "inactive";
+  status: TeamMemberStatus;
   isPaidMember: boolean;
 }
 
@@ -49,7 +53,7 @@ const editMemberSchema = z.object({
   realName: z.string().max(120, { message: "真实姓名不能超过 120 个字符" }),
   phoneNumber: z.string().max(32, { message: "手机号不能超过 32 个字符" }),
   role: z.enum(["leader", "vice_captain", "member"]),
-  status: z.enum(["active", "inactive"]),
+  status: z.enum(["active", "inactive", "left"]),
   isPaidMember: z.boolean(),
 });
 
@@ -88,7 +92,7 @@ export function EditTeamMemberModal({
         member.role === "captain" || member.role === "member"
           ? "member"
           : member.role,
-      status: member.status === "inactive" ? "inactive" : "active",
+      status: member.status,
       isPaidMember: member.is_paid_member,
     });
   }, [member, form]);
@@ -200,6 +204,15 @@ export function EditTeamMemberModal({
                     <FormItem>
                       <FormLabel>成员状态</FormLabel>
                       <fieldset aria-label="成员状态" className="toggle-pair">
+                        {member?.status === "left" ? (
+                          <button
+                            data-active={field.value === "left"}
+                            onClick={() => field.onChange("left")}
+                            type="button"
+                          >
+                            已退队
+                          </button>
+                        ) : null}
                         <button
                           data-active={field.value === "active"}
                           onClick={() => field.onChange("active")}
@@ -215,6 +228,11 @@ export function EditTeamMemberModal({
                           冻结
                         </button>
                       </fieldset>
+                      {member?.status === "left" ? (
+                        <p className="cell-secondary">
+                          该成员已自行退队；选择「启用」可恢复成员身份。
+                        </p>
+                      ) : null}
                       <FormMessage />
                     </FormItem>
                   )}

@@ -57,6 +57,19 @@ export function formatDate(value: string | null | undefined) {
     : "-";
 }
 
+/** 按北京时间生成日期输入值，确保收款日期与后端的业务日一致。 */
+export function formatShanghaiDateInput(value = new Date()) {
+  const parts = new Intl.DateTimeFormat("en", {
+    timeZone: "Asia/Shanghai",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(value);
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((item) => item.type === type)?.value;
+  return `${part("year")}-${part("month")}-${part("day")}`;
+}
+
 /** 时分秒（14:05:30），仪表盘「最近检查」等需要秒级精度的时间点用。 */
 export function formatClockTime(value: string | Date | null | undefined) {
   const date = toDate(value);

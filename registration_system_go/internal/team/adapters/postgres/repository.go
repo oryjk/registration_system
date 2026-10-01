@@ -133,6 +133,7 @@ func (r *Repository) List(ctx context.Context, status *domain.TeamStatus) ([]dom
 				RealName:  row.CaptainRealName,
 			}
 		}
+		team.MemberCount = row.MemberCount
 		items = append(items, team)
 	}
 	return items, nil

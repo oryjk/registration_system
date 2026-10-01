@@ -323,25 +323,92 @@
   font-weight: 700;
 }
 
-.activity-cell {
+.date-time-cell {
   display: grid;
-  justify-items: start;
-  gap: var(--space-1-5);
+  gap: var(--space-1);
+  font-variant-numeric: tabular-nums;
 }
 
-.activity-cell time {
-  display: grid;
-  gap: var(--space-0-5);
-  color: var(--foreground);
-  font-size: var(--font-size-sm);
-  font-weight: 650;
+.date-time-cell-main {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--space-5);
 }
 
-.activity-cell time span,
-.activity-cell > .cell-secondary {
+.date-time-cell-secondary {
   color: var(--muted);
   font-size: var(--font-size-xs);
-  font-weight: 400;
+}
+
+.cell-tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+.member-cell-metadata {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.member-cell-id {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.member-cell-real-name + .member-cell-id {
+  border-inline-start: calc(var(--space-0-5) / 2) solid var(--border-strong);
+  padding-inline-start: var(--space-2);
+}
+
+/* 用户目录复用公共单元格，只约束本页的最小列宽与长名称显示。 */
+.user-directory-count {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-1-5);
+  border: calc(var(--space-0-5) / 2) solid var(--border-subtle);
+  border-radius: var(--radius-control);
+  background: var(--surface-inset);
+  padding: var(--space-0-5) var(--space-2);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.user-directory-count > span {
+  color: var(--muted);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-normal);
+}
+
+.user-directory-table {
+  --user-directory-min-width: calc(var(--space-10) * 26);
+  min-width: var(--user-directory-min-width);
+}
+
+.user-directory-table .member-cell {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.user-directory-table .member-avatar,
+.user-directory-table .member-avatar-button {
+  width: var(--space-8);
+  height: var(--space-8);
+}
+
+.user-directory-table .match-name-cell {
+  flex: 1;
+  gap: var(--space-1);
+}
+
+.user-directory-table .match-name-cell strong,
+.user-directory-table .member-cell-real-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* ---------- 成员信息 ---------- */

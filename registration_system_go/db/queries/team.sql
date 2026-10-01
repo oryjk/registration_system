@@ -102,7 +102,9 @@ SELECT t.id,
        t.updated_at,
        u.nickname AS captain_nickname,
        u.avatar_url AS captain_avatar_url,
-       u.real_name AS captain_real_name
+       u.real_name AS captain_real_name,
+       (SELECT count(*) FROM team_members tm
+        WHERE tm.team_id = t.id AND tm.status <> 'removed') AS member_count
 FROM teams t
 LEFT JOIN users u ON u.id = t.captain_id
 WHERE sqlc.narg('status')::text IS NULL AND t.status <> 'deleted'

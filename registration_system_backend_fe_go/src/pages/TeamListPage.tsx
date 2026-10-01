@@ -136,6 +136,12 @@ export default function TeamListPage() {
       render: (team) => <span>{team.description || "--"}</span>,
     },
     {
+      key: "member_count",
+      title: "队员数",
+      width: 100,
+      render: (team) => team.member_count ?? "—",
+    },
+    {
       key: "captain_id",
       title: "队长",
       width: 170,

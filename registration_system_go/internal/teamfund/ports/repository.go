@@ -64,8 +64,11 @@ type ManualFundAction struct {
 	UserID      int64
 	AmountCents int64 // > 0；冲正时为原流水金额的绝对值（由仓储从原流水推导）
 	Note        string
-	// OperatorUserID 操作人，取自后端认证身份，不信任前端传值。
+	ReceivedOn  *time.Time // 可选实际收款日期（仅充值），与流水录入时间分开保存。
+	// 操作人取自后端认证身份，不信任前端传值：普通用户写 OperatorUserID，
+	// 后台管理员写 OperatorAdminID；<=0 表示该身份不落库（列记 NULL）。
 	OperatorUserID        int64
+	OperatorAdminID       int64
 	IdempotencyKey        string // 流水 source_id；为空时仓储生成随机 UUID
 	OriginalTransactionID int64  // 仅冲正：被冲正的原流水
 }
@@ -87,10 +90,13 @@ type TeamFundTransaction struct {
 	MatchID           *uuid.UUID
 	MatchName         string
 	Description       string
-	// CreatedByUserID 人工动作操作人（历史行为空）；ReversedByTransactionID 非空表示已被冲正。
+	// CreatedByUserID / CreatedByAdminID 操作人：普通用户与后台管理员各记各的列，
+	// 历史流水两者均可为空；ReversedByTransactionID 非空表示已被冲正。
 	CreatedByUserID         *int64
+	CreatedByAdminID        *int64
 	ReversedByTransactionID *int64
 	CreatedAt               time.Time
+	ReceivedOn              *time.Time
 }
 
 type SettlementSummary struct {

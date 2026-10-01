@@ -27,7 +27,8 @@ RETURNING balance_cents;
 UPDATE team_members
 SET balance_cents = balance_cents + sqlc.arg('amount_cents'),
     is_paid_member = TRUE,
-    last_recharge_at = NOW(),
+    last_recharge_at = GREATEST(last_recharge_at,
+        COALESCE(sqlc.narg('received_on')::date::timestamp AT TIME ZONE 'Asia/Shanghai', NOW())),
     updated_at = NOW()
 WHERE team_id = sqlc.arg('team_id') AND user_id = sqlc.arg('user_id')
 RETURNING balance_cents;
@@ -83,9 +84,10 @@ SELECT * FROM match_settlement_batches WHERE match_id = sqlc.arg('match_id') ORD
 
 -- name: ListTeamFundTransactionsForMember :many
 -- 管理员/队长查看指定成员的队费流水（冲正需要定位原流水 ID）。
-SELECT tr.*, m.name AS match_name
+SELECT tr.*, m.name AS match_name, receipt.received_on
 FROM team_fund_transactions tr
 LEFT JOIN matches m ON m.id = tr.match_id
+LEFT JOIN team_fund_credit_receipts receipt ON receipt.transaction_id = tr.id
 WHERE tr.team_id = sqlc.arg('team_id')
   AND tr.user_id = sqlc.arg('user_id')
   AND (sqlc.arg('before_id')::bigint = 0 OR tr.id < sqlc.arg('before_id'))
@@ -110,10 +112,11 @@ WHERE tm.user_id = sqlc.arg('user_id') AND tm.status = 'active'
 ORDER BY tm.joined_at, tm.team_id;
 
 -- name: ListTeamFundTransactionsForUser :many
-SELECT tr.*, t.name AS team_name, m.name AS match_name
+SELECT tr.*, t.name AS team_name, m.name AS match_name, receipt.received_on
 FROM team_fund_transactions tr
 JOIN teams t ON t.id = tr.team_id
 LEFT JOIN matches m ON m.id = tr.match_id
+LEFT JOIN team_fund_credit_receipts receipt ON receipt.transaction_id = tr.id
 WHERE tr.user_id = sqlc.arg('user_id')
   AND (sqlc.arg('before_id')::bigint = 0 OR tr.id < sqlc.arg('before_id'))
 ORDER BY tr.id DESC
@@ -122,19 +125,21 @@ LIMIT sqlc.arg('limit_rows');
 -- name: InsertAdminCreditFundTransaction :one
 -- 管理员手动充值流水；source_id 为幂等键（未提供时为操作生成的 UUID）。
 INSERT INTO team_fund_transactions
-    (team_id, user_id, amount_cents, balance_after_cents, source, source_id, match_id, description, created_by_user_id)
+    (team_id, user_id, amount_cents, balance_after_cents, source, source_id, match_id, description,
+     created_by_user_id, created_by_admin_id)
 VALUES (sqlc.arg('team_id'), sqlc.arg('user_id'), sqlc.arg('amount_cents'),
         sqlc.arg('balance_after_cents'), 'admin_credit', sqlc.arg('source_id'), NULL,
-        sqlc.arg('description'), sqlc.narg('created_by_user_id'))
+        sqlc.arg('description'), sqlc.narg('created_by_user_id'), sqlc.narg('created_by_admin_id'))
 RETURNING id;
 
 -- name: InsertManualFundTransaction :one
 -- 人工消费扣费 / 人工冲正流水；source_id 为幂等键。
 INSERT INTO team_fund_transactions
-    (team_id, user_id, amount_cents, balance_after_cents, source, source_id, match_id, description, created_by_user_id)
+    (team_id, user_id, amount_cents, balance_after_cents, source, source_id, match_id, description,
+     created_by_user_id, created_by_admin_id)
 VALUES (sqlc.arg('team_id'), sqlc.arg('user_id'), sqlc.arg('amount_cents'),
         sqlc.arg('balance_after_cents'), sqlc.arg('source'), sqlc.arg('source_id'), NULL,
-        sqlc.arg('description'), sqlc.narg('created_by_user_id'))
+        sqlc.arg('description'), sqlc.narg('created_by_user_id'), sqlc.narg('created_by_admin_id'))
 RETURNING id;
 
 -- name: GetTeamFundTransactionForUpdate :one
@@ -148,3 +153,10 @@ FOR UPDATE;
 UPDATE team_fund_transactions
 SET reversed_by_transaction_id = sqlc.arg('reversal_id')
 WHERE id = sqlc.arg('id');
+
+-- name: InsertTeamFundCreditReceipt :exec
+INSERT INTO team_fund_credit_receipts (transaction_id, received_on)
+VALUES (sqlc.arg('transaction_id'), sqlc.arg('received_on'));
+
+-- name: GetTeamFundCreditReceiptDate :one
+SELECT received_on FROM team_fund_credit_receipts WHERE transaction_id = sqlc.arg('transaction_id');

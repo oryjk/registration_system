@@ -307,7 +307,7 @@ func TestManualRechargeAppendsBalanceAndRecordsTransaction(t *testing.T) {
 	if transactions[0].Description != "人工充值：线下现金" || transactions[0].MatchID != nil {
 		t.Fatalf("备注应进入流水描述且不关联比赛: %+v", transactions[0])
 	}
-	if transactions[0].CreatedByUserID == nil || *transactions[0].CreatedByUserID != 77 {
+	if transactions[0].CreatedByUserID == nil || *transactions[0].CreatedByUserID != seed.cold {
 		t.Fatalf("流水应记录操作人: %+v", transactions[0])
 	}
 }
@@ -649,45 +649,115 @@ func TestSettlementProcessesRemovedMemberWithoutReactivating(t *testing.T) {
 	}
 }
 
-// 管理员身份来自 admin_users：不能写入引用 users 的操作人外键，动作照常成功并记 NULL；
-// 用户身份（队长/领队）如实记录操作人。
+// 操作人追溯：管理员身份写 created_by_admin_id（admin_users），普通用户身份写
+// created_by_user_id（users）；两张表可存在相同数字 ID，各记各的列不混淆；
+// 历史 NULL 记录保持双 NULL；幂等重试沿用首次成功流水的操作人不覆盖。
 func TestManualFundOperatorRecording(t *testing.T) {
 	pool := testsupport.OpenTestPostgres(t)
 	seed := seedSettlement(t, pool, 100)
 	repository := NewRepository(pool)
 	ctx := context.Background()
 
-	adminResult, err := repository.ManualRecharge(ctx, teamfundports.ManualFundAction{
-		TeamID: seed.teamID, UserID: seed.payer, AmountCents: 500,
-		OperatorUserID: 0, IdempotencyKey: "operator-admin-1",
-	})
-	if err != nil {
-		t.Fatalf("admin recharge must succeed without users FK: %v", err)
-	}
-	var createdBy *int64
-	if err := pool.QueryRow(ctx,
-		`SELECT created_by_user_id FROM team_fund_transactions WHERE id=$1`, adminResult.TransactionID,
-	).Scan(&createdBy); err != nil {
+	// 构造与普通用户 seed.cold 同数字 ID 的管理员，证明身份不会因 ID 相同混淆。
+	sameIDAdmin := seed.cold
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO admin_users (id, username, password_hash) OVERRIDING SYSTEM VALUE
+		VALUES ($1, 'op-admin-same-id', 'x')`, sameIDAdmin); err != nil {
 		t.Fatal(err)
-	}
-	if createdBy != nil {
-		t.Fatalf("admin operator must be recorded as NULL, got %d", *createdBy)
 	}
 
-	userResult, err := repository.ManualConsume(ctx, teamfundports.ManualFundAction{
-		TeamID: seed.teamID, UserID: seed.payer, AmountCents: 100, Note: "队服",
-		OperatorUserID: seed.cold, IdempotencyKey: "operator-user-1",
+	type operatorRow struct {
+		byUser  *int64
+		byAdmin *int64
+	}
+	operatorOf := func(transactionID int64) operatorRow {
+		var row operatorRow
+		if err := pool.QueryRow(ctx,
+			`SELECT created_by_user_id, created_by_admin_id FROM team_fund_transactions WHERE id=$1`,
+			transactionID).Scan(&row.byUser, &row.byAdmin); err != nil {
+			t.Fatal(err)
+		}
+		return row
+	}
+
+	// 管理员充值：写管理员列，用户列为 NULL（即便存在同 ID 的用户）。
+	adminRecharge, err := repository.ManualRecharge(ctx, teamfundports.ManualFundAction{
+		TeamID: seed.teamID, UserID: seed.payer, AmountCents: 500,
+		OperatorAdminID: sameIDAdmin, IdempotencyKey: "operator-admin-recharge",
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := pool.QueryRow(ctx,
-		`SELECT created_by_user_id FROM team_fund_transactions WHERE id=$1`, userResult.TransactionID,
-	).Scan(&createdBy); err != nil {
+	if row := operatorOf(adminRecharge.TransactionID); row.byAdmin == nil || *row.byAdmin != sameIDAdmin || row.byUser != nil {
+		t.Fatalf("admin recharge operator mismatch: %+v", row)
+	}
+
+	// 普通用户消费：写用户列，管理员列为 NULL（即便存在同 ID 的管理员）。
+	userConsume, err := repository.ManualConsume(ctx, teamfundports.ManualFundAction{
+		TeamID: seed.teamID, UserID: seed.payer, AmountCents: 100, Note: "队服",
+		OperatorUserID: seed.cold, IdempotencyKey: "operator-user-consume",
+	})
+	if err != nil {
 		t.Fatal(err)
 	}
-	if createdBy == nil || *createdBy != seed.cold {
-		t.Fatalf("user operator must be recorded, got %v", createdBy)
+	if row := operatorOf(userConsume.TransactionID); row.byUser == nil || *row.byUser != seed.cold || row.byAdmin != nil {
+		t.Fatalf("user consume operator mismatch: %+v", row)
+	}
+
+	// 管理员冲正：冲正流水同样记录管理员操作人。
+	adminReverse, err := repository.ManualReverse(ctx, teamfundports.ManualFundAction{
+		TeamID: seed.teamID, UserID: seed.payer, OriginalTransactionID: adminRecharge.TransactionID,
+		Note: "记错", OperatorAdminID: sameIDAdmin, IdempotencyKey: "operator-admin-reverse",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if row := operatorOf(adminReverse.TransactionID); row.byAdmin == nil || *row.byAdmin != sameIDAdmin || row.byUser != nil {
+		t.Fatalf("admin reverse operator mismatch: %+v", row)
+	}
+
+	// 普通用户冲正用户流水：同样按用户列记录。
+	userReverse, err := repository.ManualReverse(ctx, teamfundports.ManualFundAction{
+		TeamID: seed.teamID, UserID: seed.payer, OriginalTransactionID: userConsume.TransactionID,
+		Note: "误扣", OperatorUserID: seed.cold, IdempotencyKey: "operator-user-reverse",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if row := operatorOf(userReverse.TransactionID); row.byUser == nil || *row.byUser != seed.cold || row.byAdmin != nil {
+		t.Fatalf("user reverse operator mismatch: %+v", row)
+	}
+
+	// 幂等重试不覆盖原操作人：管理员首充后，携带普通用户身份的同键重试命中重放，
+	// 流水操作人仍是最初的管理员。
+	replay, err := repository.ManualRecharge(ctx, teamfundports.ManualFundAction{
+		TeamID: seed.teamID, UserID: seed.payer, AmountCents: 500,
+		OperatorUserID: seed.cold, IdempotencyKey: "operator-admin-recharge",
+	})
+	if err != nil || !replay.Duplicated {
+		t.Fatalf("same-key retry should replay: result=%+v err=%v", replay, err)
+	}
+	if row := operatorOf(adminRecharge.TransactionID); row.byAdmin == nil || *row.byAdmin != sameIDAdmin || row.byUser != nil {
+		t.Fatalf("replay must keep the original operator: %+v", row)
+	}
+
+	// 历史 NULL 记录：操作人双空的流水在查询结果中保持双空，不错误归属。
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO team_fund_transactions (team_id, user_id, amount_cents, balance_after_cents, source, source_id)
+		VALUES ($1, $2, 100, 100, 'membership_payment', 'operator-history-null')`, seed.teamID, seed.payer); err != nil {
+		t.Fatal(err)
+	}
+	transactions, err := repository.ListMemberTransactions(ctx, seed.teamID, seed.payer, 0, 50)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, transaction := range transactions {
+		if transaction.Source != "membership_payment" {
+			continue
+		}
+		if transaction.CreatedByUserID != nil || transaction.CreatedByAdminID != nil {
+			t.Fatalf("historical NULL operator must stay NULL: %+v", transaction)
+		}
 	}
 }
 
@@ -813,6 +883,80 @@ func TestManualFundConcurrentSameKeyReplays(t *testing.T) {
 	}
 	if got := memberBalance(t, pool, seed.teamID, seed.payer); got != 800 {
 		t.Fatalf("concurrent same key must credit once, got %d", got)
+	}
+}
+
+// 并发同键冲正：两个请求都通过预检后在原流水锁上竞争，先到者提交、后到者必须
+// 按同键重放成功（而不是误报“该流水已冲正”冲突）；不同键的重复冲正仍被拒绝。
+func TestManualReverseConcurrentSameKeyReplays(t *testing.T) {
+	pool := testsupport.OpenTestPostgres(t)
+	seed := seedSettlement(t, pool, 1000)
+	repository := NewRepository(pool)
+	ctx := context.Background()
+
+	recharge, err := repository.ManualRecharge(ctx, teamfundports.ManualFundAction{
+		TeamID: seed.teamID, UserID: seed.payer, AmountCents: 2000,
+		OperatorUserID: seed.cold, IdempotencyKey: "conc-rev-recharge-1",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	action := teamfundports.ManualFundAction{
+		TeamID: seed.teamID, UserID: seed.payer, OriginalTransactionID: recharge.TransactionID,
+		Note: "记错", OperatorUserID: seed.cold, IdempotencyKey: "conc-rev-key",
+	}
+
+	results := make([]teamfundports.ManualFundResult, 2)
+	errs := make([]error, 2)
+	done := make(chan struct{})
+	go func() {
+		results[0], errs[0] = repository.ManualReverse(ctx, action)
+		done <- struct{}{}
+	}()
+	go func() {
+		results[1], errs[1] = repository.ManualReverse(ctx, action)
+		done <- struct{}{}
+	}()
+	<-done
+	<-done
+
+	for index, err := range errs {
+		if err != nil {
+			t.Fatalf("concurrent same-key reversal %d must not error: %v", index, err)
+		}
+	}
+	duplicated := 0
+	for _, result := range results {
+		if result.Duplicated {
+			duplicated++
+		}
+	}
+	if duplicated != 1 {
+		t.Fatalf("exactly one reversal should replay, got %d: %+v", duplicated, results)
+	}
+	if results[0].TransactionID != results[1].TransactionID {
+		t.Fatalf("both requests should point at the same reversal transaction: %+v", results)
+	}
+	if got := memberBalance(t, pool, seed.teamID, seed.payer); got != 1000 {
+		t.Fatalf("concurrent same-key reversal must apply once, balance got %d", got)
+	}
+	var count int
+	if err := pool.QueryRow(ctx,
+		`SELECT COUNT(*) FROM team_fund_transactions WHERE source='manual_reversal' AND source_id='conc-rev-key'`,
+	).Scan(&count); err != nil {
+		t.Fatal(err)
+	}
+	if count != 1 {
+		t.Fatalf("same-key reversal must record once, got %d", count)
+	}
+
+	// 不同键的重复冲正仍被显式拒绝。
+	_, err = repository.ManualReverse(ctx, teamfundports.ManualFundAction{
+		TeamID: seed.teamID, UserID: seed.payer, OriginalTransactionID: recharge.TransactionID,
+		Note: "再次冲正", OperatorUserID: seed.cold, IdempotencyKey: "conc-rev-key-other",
+	})
+	if !errors.Is(err, sharederror.ErrConflict) {
+		t.Fatalf("different-key duplicate reversal must conflict, got %v", err)
 	}
 }
 

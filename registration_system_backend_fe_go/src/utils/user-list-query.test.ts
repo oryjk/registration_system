@@ -7,6 +7,9 @@ describe("user list URL query", () => {
       page_size: 20,
       match_admin_only: false,
       activity: "all",
+      status: "all",
+      identity: "all",
+      sort: "last_active_desc",
     });
   });
 
@@ -21,6 +24,9 @@ describe("user list URL query", () => {
       match_admin_only: false,
       search: "张三",
       activity: "inactive_30d",
+      status: "all",
+      identity: "all",
+      sort: "last_active_desc",
     });
   });
 
@@ -32,9 +38,33 @@ describe("user list URL query", () => {
         page_size: 20,
         match_admin_only: false,
         activity: "all",
+        status: "all",
+        identity: "all",
+        sort: "last_active_desc",
       });
     },
   );
+
+  it.each(["banned", "ACTIVE", "unknown"])(
+    "drops an unsupported status filter: %s",
+    (status) => {
+      expect(parseUserListQuery(`?status=${status}`).status).toBe("all");
+    },
+  );
+
+  it.each(["superuser", "MATCH_ADMIN", "unknown"])(
+    "drops an unsupported identity filter: %s",
+    (identity) => {
+      expect(parseUserListQuery(`?identity=${identity}`).identity).toBe("all");
+    },
+  );
+
+  it("keeps supported sort values and defaults to recent activity desc", () => {
+    expect(parseUserListQuery("?sort=created_asc").sort).toBe("created_asc");
+    expect(parseUserListQuery("?sort=nickname_asc").sort).toBe(
+      "last_active_desc",
+    );
+  });
 
   it("preserves match-admin filter and serializes activity", () => {
     expect(
@@ -55,6 +85,25 @@ describe("user list URL query", () => {
         page_size: 20,
         match_admin_only: false,
         activity: "all",
+      }),
+    ).toBe("");
+  });
+
+  it("serializes status, identity and non-default sort", () => {
+    expect(
+      serializeUserListQuery({
+        status: "frozen",
+        identity: "normal",
+        sort: "created_asc",
+      }),
+    ).toBe("?status=frozen&identity=normal&sort=created_asc");
+
+    // 默认值不进 URL，保持链接干净。
+    expect(
+      serializeUserListQuery({
+        status: "all",
+        identity: "all",
+        sort: "last_active_desc",
       }),
     ).toBe("");
   });

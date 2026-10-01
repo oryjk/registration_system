@@ -6,11 +6,14 @@ import {
   Wallet,
   WalletMinimal,
 } from "lucide-react";
+import { useState } from "react";
 import { ConfirmPopover } from "@/components/admin/confirm-popover";
 import { DataTable, type DataTableColumn } from "@/components/admin/data-table";
+import { FilterSelect, ListToolbar } from "@/components/admin/list-toolbar";
 import { MemberCell } from "@/components/admin/member-cell";
 import { RowActionButton, RowActions } from "@/components/admin/row-actions";
 import { StatusBadge } from "@/components/admin/status-badge";
+import { Switch } from "@/components/ui/switch";
 import type { TeamMember } from "@/types/team";
 import {
   formatCompactDateTime,
@@ -21,6 +24,7 @@ import {
   displayMemberName,
   roleColors,
   roleLabels,
+  statusColors,
   statusLabels,
 } from "./team-member-display";
 
@@ -34,6 +38,7 @@ interface TeamMemberTableProps {
   onTransactions: (member: TeamMember) => void;
   onCaptainChange: (member: TeamMember, captain: boolean) => void;
   onRemove: (member: TeamMember) => void;
+  onPaidMembershipChange: (member: TeamMember, isPaidMember: boolean) => void;
 }
 
 export function TeamMemberTable({
@@ -46,7 +51,13 @@ export function TeamMemberTable({
   onTransactions,
   onCaptainChange,
   onRemove,
+  onPaidMembershipChange,
 }: TeamMemberTableProps) {
+  const [statusFilter, setStatusFilter] = useState("all");
+  const filteredMembers =
+    statusFilter === "all"
+      ? members
+      : members.filter((member) => member.status === statusFilter);
   const columns: DataTableColumn<TeamMember>[] = [
     {
       key: "member",
@@ -83,8 +94,8 @@ export function TeamMemberTable({
       width: 100,
       render: (member) => (
         <StatusBadge
-          label={statusLabels[member.status]}
-          variant={member.status === "active" ? "success" : "warning"}
+          label={statusLabels[member.status] ?? "未知状态"}
+          variant={statusColors[member.status] ?? "secondary"}
         />
       ),
     },
@@ -99,9 +110,13 @@ export function TeamMemberTable({
       title: "会员",
       width: 96,
       render: (member) => (
-        <StatusBadge
-          label={member.is_paid_member ? "付费会员" : "普通"}
-          variant={member.is_paid_member ? "success" : "secondary"}
+        <Switch
+          aria-busy={actionKey === `membership-${member.user_id}` || undefined}
+          aria-label={`${displayMemberName(member)}的付费会员`}
+          checked={member.is_paid_member}
+          disabled={loading || Boolean(actionKey)}
+          onCheckedChange={(checked) => onPaidMembershipChange(member, checked)}
+          title={member.is_paid_member ? "付费会员" : "普通队员"}
         />
       ),
     },
@@ -216,12 +231,34 @@ export function TeamMemberTable({
   ];
 
   return (
-    <DataTable
-      columns={columns}
-      emptyText="暂无球队成员"
-      items={members}
-      loading={loading}
-      rowKey={(member) => String(member.user_id)}
-    />
+    <>
+      <ListToolbar>
+        <FilterSelect
+          ariaLabel="筛选成员状态"
+          onValueChange={setStatusFilter}
+          options={[
+            { value: "all", label: "全部状态" },
+            ...Object.entries(statusLabels).map(([value, label]) => ({
+              value,
+              label,
+            })),
+          ]}
+          placeholder="全部状态"
+          value={statusFilter}
+        />
+        <span aria-live="polite" className="cell-secondary">
+          显示 {filteredMembers.length} / {members.length} 名成员
+        </span>
+      </ListToolbar>
+      <DataTable
+        columns={columns}
+        emptyText={
+          statusFilter === "all" ? "暂无球队成员" : "暂无符合该状态的成员"
+        }
+        items={filteredMembers}
+        loading={loading}
+        rowKey={(member) => String(member.user_id)}
+      />
+    </>
   );
 }

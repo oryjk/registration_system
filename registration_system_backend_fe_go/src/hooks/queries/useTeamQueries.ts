@@ -49,7 +49,11 @@ function invalidateTeamLists(queryClient: QueryClient) {
 function updateTeamCaches(queryClient: QueryClient, team: Team) {
   queryClient.setQueryData(queryKeys.team(team.id), team);
   queryClient.setQueryData<Team[]>(queryKeys.teams, (current) =>
-    current?.map((item) => (item.id === team.id ? team : item)),
+    current?.map((item) =>
+      item.id === team.id
+        ? { ...team, member_count: team.member_count ?? item.member_count }
+        : item,
+    ),
   );
 }
 
@@ -57,7 +61,10 @@ function updateManagementCaches(
   queryClient: QueryClient,
   result: TeamMemberManagement,
 ) {
-  updateTeamCaches(queryClient, result.team);
+  updateTeamCaches(queryClient, {
+    ...result.team,
+    member_count: result.members.length,
+  });
   queryClient.setQueryData(queryKeys.teamMembers(result.team.id), result);
 }
 

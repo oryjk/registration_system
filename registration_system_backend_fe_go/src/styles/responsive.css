@@ -64,6 +64,15 @@
 }
 
 @media (min-width: 641px) and (max-width: 820px) {
+  .user-directory-card {
+    height: auto;
+    min-height: 0;
+  }
+
+  .user-directory-content > .data-table-scroll-region {
+    max-height: calc(var(--space-10) * 14);
+  }
+
   .workspace-header {
     align-content: center;
   }
@@ -80,6 +89,49 @@
 }
 
 @media (max-width: 640px) {
+  .user-directory-card {
+    height: auto;
+    min-height: 0;
+    padding: var(--space-3);
+  }
+
+  .user-directory-header {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .user-directory-actions {
+    margin-left: auto;
+  }
+
+  .user-directory-search {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .user-directory-search-input {
+    grid-column: 1 / -1;
+  }
+
+  .user-directory-filter-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-2);
+  }
+
+  .user-directory-filter-field {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  .user-directory-content > .data-table-scroll-region {
+    max-height: calc(var(--space-10) * 14);
+  }
+
+  .user-directory-content .pagination-total {
+    flex-basis: 100%;
+  }
+
   .app-quick-actions {
     display: none;
   }

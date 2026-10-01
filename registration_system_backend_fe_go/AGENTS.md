@@ -56,6 +56,7 @@
 
 - `components/ui/`：shadcn 基础件（不 import 业务代码）。
 - `components/admin/`：跨页面业务组件——`data-table` / `pagination-bar` / `confirm-popover` / `error-alert` / `status-badge` / `detail-grid` / `member-cell`（含 `NameCell`）。新页面**优先复用**这些组件，禁止再手写 `<dl className="detail-grid">`、头像单元格、两行单元格等已被组件化的模式。
+- 时间与活跃信息复用 `DateTimeCell` / `ActivityCell`；人员副行可用 `MemberCell.metadata` 组合姓名与编号。需要稳定列宽与表头时，使用 `DataTable` 的 `layout="fixed"`、`scrollable`，为各列配置宽度；默认表格行为保持不变。
 - `components/team-members/`、`pages/match-form/`、`pages/team-list/`：按领域内聚的组件族。
 - `layout/`：壳层。`features/admin-session/`：会话状态。
 - **展示格式化统一走 `src/utils/format.ts`**（`formatDateTime` / `formatCompactDateTime` / `formatNumericDateTime` / `formatDate` / `formatYuan` / `formatYuanAmount`），页面不得自定义 Intl 格式化。

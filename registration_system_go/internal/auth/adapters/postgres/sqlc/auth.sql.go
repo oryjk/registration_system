@@ -47,23 +47,36 @@ WHERE (
     OR phone_number ILIKE '%' || $1::text || '%'
     OR id::text = $1::text
 )
-  AND ($2::bool IS NULL OR is_match_admin = $2)
+  AND (
+      $2::text = 'all'
+      OR is_match_admin = ($2::text = 'match_admin')
+  )
   AND (
       $3::text = 'all'
-      OR ($3::text = 'active_7d' AND last_active_at >= NOW() - INTERVAL '7 days')
-      OR ($3::text = 'inactive_30d' AND last_active_at < NOW() - INTERVAL '30 days')
-      OR ($3::text = 'never' AND last_active_at IS NULL)
+      OR status = $3::text
+  )
+  AND (
+      $4::text = 'all'
+      OR ($4::text = 'active_7d' AND last_active_at >= NOW() - INTERVAL '7 days')
+      OR ($4::text = 'inactive_30d' AND last_active_at < NOW() - INTERVAL '30 days')
+      OR ($4::text = 'never' AND last_active_at IS NULL)
   )
 `
 
 type CountUsersForAdminParams struct {
-	Search         string `json:"search"`
-	MatchAdminOnly *bool  `json:"match_admin_only"`
-	Activity       string `json:"activity"`
+	Search       string `json:"search"`
+	Identity     string `json:"identity"`
+	StatusFilter string `json:"status_filter"`
+	Activity     string `json:"activity"`
 }
 
 func (q *Queries) CountUsersForAdmin(ctx context.Context, arg CountUsersForAdminParams) (int64, error) {
-	row := q.db.QueryRow(ctx, countUsersForAdmin, arg.Search, arg.MatchAdminOnly, arg.Activity)
+	row := q.db.QueryRow(ctx, countUsersForAdmin,
+		arg.Search,
+		arg.Identity,
+		arg.StatusFilter,
+		arg.Activity,
+	)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -411,23 +424,39 @@ WHERE (
     OR phone_number ILIKE '%' || $1::text || '%'
     OR id::text = $1::text
 )
-  AND ($2::bool IS NULL OR is_match_admin = $2)
+  AND (
+      $2::text = 'all'
+      OR is_match_admin = ($2::text = 'match_admin')
+  )
   AND (
       $3::text = 'all'
-      OR ($3::text = 'active_7d' AND last_active_at >= NOW() - INTERVAL '7 days')
-      OR ($3::text = 'inactive_30d' AND last_active_at < NOW() - INTERVAL '30 days')
-      OR ($3::text = 'never' AND last_active_at IS NULL)
+      OR status = $3::text
   )
-ORDER BY last_active_at DESC NULLS LAST, id DESC
-LIMIT $5 OFFSET $4
+  AND (
+      $4::text = 'all'
+      OR ($4::text = 'active_7d' AND last_active_at >= NOW() - INTERVAL '7 days')
+      OR ($4::text = 'inactive_30d' AND last_active_at < NOW() - INTERVAL '30 days')
+      OR ($4::text = 'never' AND last_active_at IS NULL)
+  )
+  -- 排序键由应用层白名单归一化后传入；同一时刻仅一个 CASE 分支非空，
+  -- 未命中分支全为 NULL 不参与排序，从未活跃恒排最后，id 保证稳定分页。
+  ORDER BY
+      CASE WHEN $5::text = 'last_active_asc' THEN last_active_at END ASC NULLS LAST,
+      CASE WHEN $5::text = 'last_active_desc' THEN last_active_at END DESC NULLS LAST,
+      CASE WHEN $5::text = 'created_asc' THEN created_at END ASC,
+      CASE WHEN $5::text = 'created_desc' THEN created_at END DESC,
+      id DESC
+LIMIT $7 OFFSET $6
 `
 
 type ListUsersForAdminParams struct {
-	Search         string `json:"search"`
-	MatchAdminOnly *bool  `json:"match_admin_only"`
-	Activity       string `json:"activity"`
-	OffsetCount    int32  `json:"offset_count"`
-	LimitCount     int32  `json:"limit_count"`
+	Search       string `json:"search"`
+	Identity     string `json:"identity"`
+	StatusFilter string `json:"status_filter"`
+	Activity     string `json:"activity"`
+	Sort         string `json:"sort"`
+	OffsetCount  int32  `json:"offset_count"`
+	LimitCount   int32  `json:"limit_count"`
 }
 
 type ListUsersForAdminRow struct {
@@ -444,12 +473,14 @@ type ListUsersForAdminRow struct {
 	UpdatedAt    pgtype.Timestamp   `json:"updated_at"`
 }
 
-// 管理端微信用户搜索：按昵称/姓名/手机号/用户 ID 模糊匹配，可只看比赛管理员。
+// 管理端微信用户搜索：按昵称/姓名/手机号/用户 ID 模糊匹配，支持身份/账号状态/活跃筛选与排序。
 func (q *Queries) ListUsersForAdmin(ctx context.Context, arg ListUsersForAdminParams) ([]ListUsersForAdminRow, error) {
 	rows, err := q.db.Query(ctx, listUsersForAdmin,
 		arg.Search,
-		arg.MatchAdminOnly,
+		arg.Identity,
+		arg.StatusFilter,
 		arg.Activity,
+		arg.Sort,
 		arg.OffsetCount,
 		arg.LimitCount,
 	)

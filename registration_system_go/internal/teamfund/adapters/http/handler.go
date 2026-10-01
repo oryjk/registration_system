@@ -93,6 +93,7 @@ func (h *Handler) RegisterAppRoutes(group *gin.RouterGroup) {
 }
 
 type adminCreditRequest struct {
+	ReceivedOn     string `json:"received_on"`
 	TeamID         int64  `json:"team_id"`
 	UserID         int64  `json:"user_id"`
 	AmountCents    int64  `json:"amount_cents"`
@@ -135,7 +136,8 @@ func (h *Handler) AdminCredit(c *gin.Context) {
 		return
 	}
 	result, err := h.manualFund.Recharge(c.Request.Context(), actor, teamfundapplication.ManualFundRequest{
-		TeamID: request.TeamID, UserID: request.UserID,
+		ReceivedOn: request.ReceivedOn,
+		TeamID:     request.TeamID, UserID: request.UserID,
 		AmountCents: request.AmountCents, Note: request.Note, IdempotencyKey: request.IdempotencyKey,
 	})
 	if err != nil {
@@ -371,8 +373,14 @@ func mapFundTransactionItems(transactions []teamfundports.TeamFundTransaction) [
 			"id": transaction.ID, "team_id": transaction.TeamID, "team_name": transaction.TeamName,
 			"amount_cents": transaction.AmountCents, "balance_after_cents": transaction.BalanceAfterCents,
 			"source": transaction.Source, "description": transaction.Description, "created_at": transaction.CreatedAt,
-			// 操作人与冲正状态：人工动作可追溯，已冲正流水不能再冲正。
-			"created_by_user_id": transaction.CreatedByUserID,
+			// 操作人与冲正状态：普通用户与后台管理员各记各的列，历史流水可为空。
+			"created_by_user_id":  transaction.CreatedByUserID,
+			"created_by_admin_id": transaction.CreatedByAdminID,
+		}
+		if transaction.ReceivedOn != nil {
+			item["received_on"] = transaction.ReceivedOn.Format("2006-01-02")
+		} else {
+			item["received_on"] = nil
 		}
 		if transaction.ReversedByTransactionID != nil {
 			item["reversed_by_transaction_id"] = *transaction.ReversedByTransactionID

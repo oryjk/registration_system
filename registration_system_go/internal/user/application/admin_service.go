@@ -22,10 +22,16 @@ type AdminUserService struct {
 
 type AdminUserListQuery struct {
 	Search string
-	// MatchAdminOnly 为 true 时只返回比赛管理员。
+	// MatchAdminOnly 为 true 时只返回比赛管理员（旧参数，等价于 Identity=match_admin）。
 	MatchAdminOnly bool
+	// Identity: all / match_admin / normal。
+	Identity string
+	// StatusFilter: all / active / frozen。
+	StatusFilter string
 	// Activity: all / active_7d / inactive_30d / never。
 	Activity string
+	// Sort: last_active_desc / last_active_asc / created_desc / created_asc。
+	Sort     string
 	Page     int
 	PageSize int
 }
@@ -58,8 +64,23 @@ func (s AdminUserService) List(ctx context.Context, actor sharedauth.Actor, quer
 	if err != nil {
 		return AdminUserListResult{}, err
 	}
+	identity, err := normalizeAdminUserIdentity(query.Identity)
+	if err != nil {
+		return AdminUserListResult{}, err
+	}
+	if identity == "all" && query.MatchAdminOnly {
+		identity = "match_admin"
+	}
+	statusFilter, err := normalizeAdminUserStatus(query.StatusFilter)
+	if err != nil {
+		return AdminUserListResult{}, err
+	}
+	sort, err := normalizeAdminUserSort(query.Sort)
+	if err != nil {
+		return AdminUserListResult{}, err
+	}
 	filter := ports.AdminUserFilter{
-		Search: strings.TrimSpace(query.Search), MatchAdminOnly: query.MatchAdminOnly, Activity: activity,
+		Search: strings.TrimSpace(query.Search), Identity: identity, StatusFilter: statusFilter, Activity: activity, Sort: sort,
 		Limit: query.PageSize, Offset: (query.Page - 1) * query.PageSize,
 	}
 	items, err := s.repository.ListForAdmin(ctx, filter)
@@ -81,6 +102,40 @@ func normalizeAdminUserActivity(value string) (string, error) {
 		return value, nil
 	default:
 		return "", sharederror.New(sharederror.KindValidation, "用户活跃筛选条件无效")
+	}
+}
+
+func normalizeAdminUserIdentity(value string) (string, error) {
+	switch value = strings.TrimSpace(value); value {
+	case "", "all":
+		return "all", nil
+	case "match_admin", "normal":
+		return value, nil
+	default:
+		return "", sharederror.New(sharederror.KindValidation, "用户身份筛选条件无效")
+	}
+}
+
+func normalizeAdminUserStatus(value string) (string, error) {
+	switch value = strings.TrimSpace(value); value {
+	case "", "all":
+		return "all", nil
+	case "active", "frozen":
+		return value, nil
+	default:
+		return "", sharederror.New(sharederror.KindValidation, "用户账号状态筛选条件无效")
+	}
+}
+
+// normalizeAdminUserSort 排序方向由 token 携带；默认与历史行为一致（最近活跃倒序）。
+func normalizeAdminUserSort(value string) (string, error) {
+	switch value = strings.TrimSpace(value); value {
+	case "":
+		return "last_active_desc", nil
+	case "last_active_desc", "last_active_asc", "created_desc", "created_asc":
+		return value, nil
+	default:
+		return "", sharederror.New(sharederror.KindValidation, "用户列表排序条件无效")
 	}
 }
 

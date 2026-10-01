@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { TeamFundTransactionItem } from "@/api/teamFund";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,6 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useAdminsQuery } from "@/hooks/queries/useAdminQueries";
 import type { TeamMember } from "@/types/team";
 import { formatCompactDateTime, formatYuanAmount } from "@/utils/format";
 import { displayMemberName } from "./team-member-display";
@@ -58,6 +59,28 @@ export function MemberFundTransactionsDialog({
   onClose,
 }: MemberFundTransactionsDialogProps) {
   const [reversingID, setReversingID] = useState<number | null>(null);
+  // 操作人身份以流水记录为准：管理员名称查不到（已下线/查询失败）时回退显示编号。
+  const adminsQuery = useAdminsQuery(Boolean(member));
+  const adminNames = useMemo(() => {
+    const names = new Map<number, string>();
+    for (const admin of adminsQuery.data || []) {
+      names.set(admin.id, admin.username);
+    }
+    return names;
+  }, [adminsQuery.data]);
+
+  const operatorLabel = (transaction: TeamFundTransactionItem): string => {
+    if (transaction.created_by_admin_id != null) {
+      const name = adminNames.get(transaction.created_by_admin_id);
+      return name
+        ? `后台管理员 ${name}`
+        : `后台管理员 #${transaction.created_by_admin_id}`;
+    }
+    if (transaction.created_by_user_id != null) {
+      return `用户 #${transaction.created_by_user_id}`;
+    }
+    return "操作人未记录";
+  };
 
   return (
     <Dialog
@@ -84,10 +107,12 @@ export function MemberFundTransactionsDialog({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>时间</TableHead>
+                <TableHead>录入时间</TableHead>
+                <TableHead>收款日期</TableHead>
                 <TableHead>类型</TableHead>
                 <TableHead>金额</TableHead>
                 <TableHead>余额</TableHead>
+                <TableHead>操作人</TableHead>
                 <TableHead>说明</TableHead>
                 <TableHead className="table-head-actions">操作</TableHead>
               </TableRow>
@@ -101,6 +126,9 @@ export function MemberFundTransactionsDialog({
                   <TableRow key={transaction.id}>
                     <TableCell className="cell-secondary">
                       {formatCompactDateTime(transaction.created_at)}
+                    </TableCell>
+                    <TableCell className="cell-secondary">
+                      {transaction.received_on ?? "—"}
                     </TableCell>
                     <TableCell>
                       {sourceLabels[transaction.source] ?? transaction.source}
@@ -128,6 +156,9 @@ export function MemberFundTransactionsDialog({
                       }
                     >
                       {formatYuanAmount(transaction.balance_after_cents)}
+                    </TableCell>
+                    <TableCell className="cell-secondary">
+                      {operatorLabel(transaction)}
                     </TableCell>
                     <TableCell className="cell-secondary">
                       {transaction.description}

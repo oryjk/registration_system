@@ -1,4 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
+import dayjs from "dayjs";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -15,6 +16,7 @@ import {
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -22,12 +24,17 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import type { TeamMember } from "@/types/team";
-import { formatYuan, formatYuanAmount } from "@/utils/format";
+import {
+  formatShanghaiDateInput,
+  formatYuan,
+  formatYuanAmount,
+} from "@/utils/format";
 import { displayMemberName } from "./team-member-display";
 
 export interface CreditTeamFundFormValues {
   amountYuan: number;
   note: string;
+  receivedOn: string;
   idempotencyKey: string;
 }
 
@@ -35,6 +42,18 @@ export interface CreditTeamFundFormValues {
 export const MAX_CREDIT_YUAN = 10000;
 
 const creditSchema = z.object({
+  receivedOn: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "请选择收款日期")
+    .refine(
+      (value) =>
+        dayjs(value).isValid() && dayjs(value).format("YYYY-MM-DD") === value,
+      "请选择有效的收款日期",
+    )
+    .refine(
+      (value) => value <= formatShanghaiDateInput(),
+      "收款日期不能晚于今天",
+    ),
   amountYuan: z
     .number({ invalid_type_error: "请输入充值金额" })
     .positive({ message: "充值金额需要大于 0" })
@@ -62,7 +81,11 @@ export function CreditTeamFundModal({
 }: CreditTeamFundModalProps) {
   const [idempotencyKey, setIdempotencyKey] = useState("");
   const form = useForm<z.infer<typeof creditSchema>>({
-    defaultValues: { amountYuan: undefined, note: "" },
+    defaultValues: {
+      amountYuan: undefined,
+      note: "",
+      receivedOn: formatShanghaiDateInput(),
+    },
     resolver: zodResolver(creditSchema),
   });
 
@@ -70,7 +93,11 @@ export function CreditTeamFundModal({
     if (!member) return;
     // 每次打开重新生成幂等键：同一意图重试共用一键，后端只记一笔。
     setIdempotencyKey(crypto.randomUUID());
-    form.reset({ amountYuan: undefined, note: "" });
+    form.reset({
+      amountYuan: undefined,
+      note: "",
+      receivedOn: formatShanghaiDateInput(),
+    });
   }, [member, form]);
 
   const submit = form.handleSubmit((values) =>
@@ -145,13 +172,53 @@ export function CreditTeamFundModal({
             />
             <FormField
               control={form.control}
+              name="receivedOn"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>收款日期</FormLabel>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      disabled={submitting}
+                      max={formatShanghaiDateInput()}
+                      type="date"
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    选择实际收到款项的日期，可补录之前的收款。
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
               name="note"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>备注（可选，40 字内）</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="例如：线下现金收款" />
+                    <Input
+                      {...field}
+                      disabled={submitting}
+                      maxLength={40}
+                      placeholder="例如：线下现金收款"
+                    />
                   </FormControl>
+                  <fieldset aria-label="快捷备注" className="toolbar">
+                    {["队费充值"].map((note) => (
+                      <Button
+                        disabled={submitting}
+                        key={note}
+                        onClick={() => field.onChange(note)}
+                        size="sm"
+                        type="button"
+                        variant="outline"
+                      >
+                        {note}
+                      </Button>
+                    ))}
+                  </fieldset>
                   <FormMessage />
                 </FormItem>
               )}

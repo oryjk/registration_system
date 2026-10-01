@@ -31,6 +31,27 @@
   gap: var(--space-1-5);
   color: var(--muted);
   font-size: var(--font-size-xs);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.pagination-size .ui-select-trigger {
+  width: calc(var(--space-10) * 1.5);
+  flex-shrink: 0;
+}
+
+/* 用户目录查询控件只定义外观，结构归 page-layout。 */
+.user-directory-filters {
+  border: calc(var(--space-0-5) / 2) solid var(--border-subtle);
+  border-radius: var(--radius-panel);
+  background: var(--surface-inset);
+  padding: var(--space-4);
+}
+
+.user-directory-filter-field > span {
+  color: var(--muted);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
 }
 
 /* ---------- 确认气泡 ---------- */
