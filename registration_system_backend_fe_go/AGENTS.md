@@ -2,7 +2,9 @@
 
 ## 项目定位
 
-对接 `../registration_system_go/` 的新管理后台。技术栈为 React 19、TypeScript、Vite 7、Tailwind CSS 4（CSS-first）、shadcn/ui（new-york / neutral，配合 `radix-ui` 统一包）、reui registry、react-router 7、react-hook-form + zod、React Query 5、dayjs、sonner、Biome、Vitest 和 Bun。视觉风格对齐 `betalpha-admin`（深色默认 + 青绿主色 `#4fc4b3`，可切浅色）。
+对接 `../registration_system_go/` 的新管理后台。技术栈为 React 19、TypeScript、Vite 7、Tailwind CSS 4（CSS-first）、shadcn/ui（new-york / neutral，配合 `radix-ui` 统一包）、reui registry、react-router 7、react-hook-form + zod、React Query 5、dayjs、sonner、Biome、Vitest 和 Bun。视觉采用紧凑运营控制台规范（深色默认 + 青绿主色 `#4fc4b3`，可切浅色）。
+
+现行视觉规范见 [docs/admin-design-system.md](docs/admin-design-system.md)：采用 Linear 风格的清晰层级和 shadcn/ui 语义 token，保留青绿主色。修改界面前先读该规范，字号、控件高度和圆角不得逐页定义。
 
 旧版 `../registration_system_backend_fe/`（Vue 管理后台）已从工作区删除，需要参考时从 git 历史查看；接口、DTO、权限和响应结构以 Go 后端为准。
 

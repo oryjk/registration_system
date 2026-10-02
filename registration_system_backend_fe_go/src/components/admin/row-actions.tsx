@@ -35,7 +35,11 @@ export function RowActionButton({
     <Button
       {...buttonProps}
       aria-label={label}
-      className={cn(destructive && "text-destructive", className)}
+      className={cn(
+        "size-control-sm min-h-control-sm",
+        destructive && "text-destructive",
+        className,
+      )}
       size="icon"
       type="button"
       variant="ghost"

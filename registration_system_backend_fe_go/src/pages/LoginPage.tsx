@@ -56,27 +56,15 @@ export default function LoginPage() {
 
   return (
     <main className="login-page">
-      <div aria-hidden="true" className="login-grid-bg" />
-      <div aria-hidden="true" className="login-glow login-glow-teal" />
-      <div aria-hidden="true" className="login-glow login-glow-amber" />
-      <div aria-hidden="true" className="login-vignette" />
-      <div aria-hidden="true" className="login-noise" />
-
       <div className="login-auth-wrap">
         <Card className="login-auth">
-          <span aria-hidden="true" className="login-corner login-corner-tl" />
-          <span aria-hidden="true" className="login-corner login-corner-tr" />
-          <span aria-hidden="true" className="login-corner login-corner-bl" />
-          <span aria-hidden="true" className="login-corner login-corner-br" />
-          <span aria-hidden="true" className="login-scan" />
           <CardContent className="login-auth-content">
-            <div className="login-auth-head">
-              <span className="login-auth-id">{"KT // ADMIN"}</span>
-              <span>SECURE ACCESS</span>
-            </div>
+            <span aria-hidden="true" className="login-brand-mark">
+              KT
+            </span>
             <div className="login-auth-title">
               <h2>开踢管理台</h2>
-              <p>赛事与球队运营控制中枢</p>
+              <p>使用管理员账号登录，管理比赛、球队与成员。</p>
             </div>
 
             <Form {...form}>

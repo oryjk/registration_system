@@ -89,6 +89,43 @@
 }
 
 @media (max-width: 640px) {
+  :root {
+    --control-height: var(--control-height-touch);
+    --control-height-sm: var(--control-height-touch);
+    --font-size-control: var(--font-size-lg);
+    --sidebar-menu-row-height: var(--control-height-touch);
+  }
+
+  .login-page {
+    padding: var(--space-4);
+  }
+
+  .login-auth-content[data-slot="card-content"] {
+    padding: var(--space-6);
+  }
+
+  .sheet-close-button,
+  [data-slot="dialog-content"] > [data-slot="dialog-close"] {
+    width: var(--control-height-touch);
+    height: var(--control-height-touch);
+  }
+
+  .sheet-header {
+    padding-right: calc(var(--control-height-touch) + var(--space-6));
+  }
+
+  .sheet-header-row {
+    flex-wrap: wrap;
+  }
+
+  [data-slot="dialog-header"] {
+    padding-right: var(--control-height-touch);
+  }
+
+  .user-directory-content .pagination-size {
+    margin-left: auto;
+  }
+
   .user-directory-card {
     height: auto;
     min-height: 0;
@@ -160,7 +197,7 @@
     width: min(320px, calc(100vw - var(--space-12)));
     height: 100dvh;
     min-height: 100dvh;
-    border-right: 1px solid var(--border-strong);
+    border-right: var(--border-width) solid var(--border-strong);
     border-bottom: 0;
     box-shadow: var(--shadow-raised);
     transform: translateX(-100%);
@@ -235,7 +272,7 @@
     justify-content: center;
     width: var(--control-height);
     height: var(--control-height);
-    border: 1px solid var(--border-subtle);
+    border: var(--border-width) solid var(--border-subtle);
     border-radius: var(--radius-control);
     background: var(--surface-panel-raised);
     color: var(--muted);
@@ -306,7 +343,7 @@
   .sidebar[data-collapsed="true"] .sidebar-tree,
   .sidebar[data-collapsed="true"] .sidebar-tree-apps,
   .sidebar[data-collapsed="true"] .sidebar-tree-sections {
-    border-left: 1px solid var(--border-subtle);
+    border-left: var(--border-width) solid var(--border-subtle);
     padding-left: var(--space-1-5);
   }
 
@@ -319,7 +356,7 @@
 
   .sidebar-menu-button,
   .sidebar-app-button {
-    min-height: 48px;
+    min-height: var(--control-height-touch);
   }
 
   .main-workspace {

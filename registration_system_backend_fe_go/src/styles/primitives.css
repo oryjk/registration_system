@@ -1,25 +1,93 @@
+/* 基础件通过语义 token 共享字号、圆角、边框与焦点反馈。 */
+[data-slot="dialog-content"],
+[data-slot="alert-dialog-content"],
+[data-slot="popover-content"] {
+  border: var(--border-width) solid var(--border-strong);
+  border-radius: var(--radius-overlay);
+  background: var(--surface-panel-raised);
+  color: var(--foreground);
+  box-shadow: var(--shadow-raised);
+}
+
+[data-slot="dialog-overlay"],
+[data-slot="alert-dialog-overlay"] {
+  background: var(--overlay-backdrop);
+  backdrop-filter: blur(4px);
+}
+
+[data-slot="dialog-content"] {
+  max-height: calc(100dvh - var(--space-8));
+  overflow-y: auto;
+}
+
+[data-slot="dialog-title"],
+[data-slot="alert-dialog-title"] {
+  letter-spacing: 0;
+}
+
+[data-slot="dialog-header"] {
+  padding-right: var(--control-height-sm);
+}
+
+.ui-input,
+.ui-textarea {
+  border-color: var(--input);
+  border-radius: var(--radius-control);
+  background: var(--surface-inset);
+  box-shadow: inset 0 1px 0
+    color-mix(in srgb, var(--foreground) 3%, transparent);
+}
+
+.ui-input:focus-visible,
+.ui-textarea:focus-visible {
+  border-color: var(--accent-line-strong);
+  box-shadow: var(--shadow-focus);
+}
+
+.ui-button {
+  border-radius: var(--radius-control);
+  box-shadow: inset 0 1px 0
+    color-mix(in srgb, var(--foreground) 4%, transparent);
+}
+
+.ui-button:focus-visible {
+  box-shadow: var(--shadow-focus);
+}
+
+.ui-button > svg {
+  width: var(--control-icon-size);
+  height: var(--control-icon-size);
+}
+
+[data-slot="card"] {
+  border-color: var(--border-subtle);
+  border-radius: var(--radius-panel);
+  background: var(--surface-panel);
+  box-shadow: var(--shadow-panel);
+}
+
 .field-grid label,
 .stacked-field {
   display: grid;
   gap: var(--space-1-5);
 }
 
-.field-grid span,
-.stacked-field span {
+.field-grid label > span,
+.stacked-field > span {
   color: var(--muted);
-  font-size: var(--font-size-xs);
-  font-weight: 700;
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-medium);
 }
 
 .checkbox {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 16px;
-  height: 16px;
-  flex: 0 0 16px;
-  border: 1px solid var(--input);
-  border-radius: var(--radius-control);
+  width: var(--control-icon-size);
+  height: var(--control-icon-size);
+  flex: 0 0 var(--control-icon-size);
+  border: var(--border-width) solid var(--input);
+  border-radius: var(--radius-check);
   background: var(--surface-inset);
   color: var(--primary-foreground);
   outline: none;
@@ -60,8 +128,8 @@
   width: 38px;
   height: 22px;
   flex: 0 0 38px;
-  border: 1px solid var(--input);
-  border-radius: 999px;
+  border: var(--border-width) solid var(--input);
+  border-radius: var(--radius-full);
   background: var(--border-strong);
   padding: 0;
   cursor: pointer;
@@ -87,9 +155,9 @@
 
 .ui-switch-thumb {
   display: block;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
+  width: var(--space-4);
+  height: var(--space-4);
+  border-radius: var(--radius-full);
   background: var(--surface-panel-raised);
   box-shadow: var(--shadow-hairline);
   transform: translateX(2px);
@@ -117,7 +185,7 @@
 .table-wrap {
   contain: layout;
   overflow: auto;
-  border: 1px solid var(--border-subtle);
+  border: var(--border-width) solid var(--border-subtle);
   border-radius: var(--radius-panel);
   background: var(--surface-panel);
   box-shadow: var(--shadow-panel);
@@ -135,7 +203,7 @@ table {
 
 th,
 td {
-  border-bottom: 1px solid var(--border-subtle);
+  border-bottom: var(--border-width) solid var(--border-subtle);
   padding: var(--space-2-5) var(--space-3);
   text-align: left;
   vertical-align: middle;
@@ -145,7 +213,7 @@ th {
   background: var(--surface-inset);
   color: var(--muted);
   font-size: var(--font-size-xs);
-  font-weight: 700;
+  font-weight: var(--font-weight-semibold);
 }
 
 tbody tr:last-child td {
@@ -241,7 +309,7 @@ code {
 .table-container {
   width: 100%;
   overflow: auto;
-  border: 1px solid var(--border-subtle);
+  border: var(--border-width) solid var(--border-subtle);
   border-radius: var(--radius-panel);
   background: var(--surface-panel);
   box-shadow: var(--shadow-panel);
@@ -271,9 +339,9 @@ code {
 }
 
 .data-table-fixed th {
-  height: var(--space-12);
+  height: var(--table-header-height);
   color: var(--muted);
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-label);
   font-weight: var(--font-weight-semibold);
 }
 
@@ -306,16 +374,16 @@ code {
 
 .ui-table-header tr,
 .ui-table-footer tr {
-  border-bottom: 1px solid var(--border-subtle);
+  border-bottom: var(--border-width) solid var(--border-subtle);
 }
 
 .ui-table-footer {
   background: var(--surface-inset);
-  font-weight: 750;
+  font-weight: var(--font-weight-semibold);
 }
 
 .ui-table-row {
-  border-bottom: 1px solid var(--border-subtle);
+  border-bottom: var(--border-width) solid var(--border-subtle);
 }
 
 .ui-table-body .ui-table-row:last-child {
@@ -323,14 +391,14 @@ code {
 }
 
 .ui-table-head {
-  height: 44px;
+  height: var(--table-header-height);
   background: var(--surface-inset);
   color: var(--muted);
   padding: var(--space-2-5) var(--space-3);
   text-align: left;
   vertical-align: middle;
-  font-size: var(--font-size-xs);
-  font-weight: 750;
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-semibold);
 }
 
 .ui-table-cell {
@@ -345,12 +413,12 @@ code {
   gap: var(--space-2);
   min-height: var(--control-height);
   width: 100%;
-  border: 1px solid var(--border-strong);
+  border: var(--border-width) solid var(--input);
   border-radius: var(--radius-control);
   background: var(--surface-inset);
   color: var(--foreground);
-  padding: var(--space-1-5) var(--space-2-5);
-  font-size: var(--font-size-base);
+  padding: var(--control-padding-y) var(--control-padding-x);
+  font-size: var(--font-size-control);
   line-height: var(--leading-normal);
   outline: none;
 }
@@ -368,7 +436,7 @@ code {
   z-index: 50;
   min-width: 128px;
   overflow: hidden;
-  border: 1px solid var(--border-strong);
+  border: var(--border-width) solid var(--border-strong);
   border-radius: var(--radius-overlay);
   background: var(--surface-panel-raised);
   color: var(--popover-foreground);
@@ -387,17 +455,17 @@ code {
   padding: var(--space-1-5) var(--space-2);
   color: var(--muted);
   font-size: var(--font-size-xs);
-  font-weight: 750;
+  font-weight: var(--font-weight-semibold);
 }
 
 .select-item {
   position: relative;
   display: flex;
   align-items: center;
-  min-height: 32px;
+  min-height: var(--control-height-sm);
   border-radius: var(--radius-control);
   padding: var(--space-1-5) var(--space-2) var(--space-1-5) var(--space-7);
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-control);
   outline: none;
   user-select: none;
 }
@@ -419,7 +487,7 @@ code {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 14px;
+  width: var(--space-3-5);
 }
 
 .select-scroll-button {
@@ -439,8 +507,8 @@ code {
 .tabs-list {
   display: inline-flex;
   align-items: center;
-  min-height: 36px;
-  border: 1px solid var(--border-subtle);
+  min-height: var(--control-height);
+  border: var(--border-width) solid var(--border-subtle);
   border-radius: var(--radius-panel);
   background: var(--surface-inset);
   padding: var(--space-0-5);
@@ -450,13 +518,13 @@ code {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 28px;
-  border: 1px solid transparent;
+  min-height: calc(var(--control-height) - var(--space-1-5));
+  border: var(--border-width) solid transparent;
   border-radius: var(--radius-control);
   color: var(--muted);
   padding: var(--space-1) var(--space-2-5);
   font-size: var(--font-size-sm);
-  font-weight: 700;
+  font-weight: var(--font-weight-semibold);
   outline: none;
 }
 
@@ -496,13 +564,13 @@ code {
   display: inline-flex;
   align-items: center;
   min-height: 22px;
-  border: 1px solid var(--border-subtle);
-  border-radius: 999px;
+  border: var(--border-width) solid var(--border-subtle);
+  border-radius: var(--radius-full);
   background: var(--surface-inset);
   color: var(--foreground);
   padding: var(--space-0-5) var(--space-2);
   font-size: var(--font-size-2xs);
-  font-weight: 750;
+  font-weight: var(--font-weight-semibold);
   white-space: nowrap;
 }
 
@@ -525,7 +593,7 @@ code {
   overflow-x: auto;
   min-height: 0;
   border: 0;
-  border-bottom: 1px solid var(--border-subtle);
+  border-bottom: var(--border-width) solid var(--border-subtle);
   border-radius: 0;
   background: transparent;
   padding: 0;
@@ -544,7 +612,7 @@ code {
   cursor: pointer;
   font: inherit;
   font-size: var(--font-size-xs);
-  font-weight: 700;
+  font-weight: var(--font-weight-semibold);
 }
 
 .workspace-tabs .tabs-trigger:focus-visible {

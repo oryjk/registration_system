@@ -61,11 +61,13 @@ export function BasicSection({
           render={({ field }) => (
             <FormItem>
               <FormLabel>比赛名称</FormLabel>
-              <Input
-                {...field}
-                maxLength={255}
-                placeholder="例如：周末友谊赛"
-              />
+              <FormControl>
+                <Input
+                  {...field}
+                  maxLength={255}
+                  placeholder="例如：周末友谊赛"
+                />
+              </FormControl>
               <FormMessage />
             </FormItem>
           )}
@@ -85,7 +87,9 @@ export function BasicSection({
               >
                 <FormControl>
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue>
+                      {publicationModeLabels[field.value]}
+                    </SelectValue>
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>

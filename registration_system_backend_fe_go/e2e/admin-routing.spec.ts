@@ -84,7 +84,9 @@ test.describe("Nginx 子路径路由", () => {
       }
     });
 
-    const loginAssetPath = `${routeBase}login-football.jpg`;
+    const [loginEntryAsset] = await entryAssetPaths();
+    if (!loginEntryAsset) throw new Error("未找到登录入口资源");
+    const loginAssetPath = `${routeBase}${loginEntryAsset}`;
     await page.goto(`${routeBase}login`);
     await expect(page.getByPlaceholder("管理员账号")).toBeVisible();
     await expect.poll(() => assetStatuses.get(loginAssetPath)).toBe(200);

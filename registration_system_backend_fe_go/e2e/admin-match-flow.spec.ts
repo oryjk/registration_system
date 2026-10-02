@@ -127,7 +127,7 @@ test("核心管理页面在桌面和移动视口保持一致", async ({ page }, 
     loginViewport.innerWidth,
   );
   const loginContainerSize = await page
-    .locator(".login-form-inner")
+    .locator(".login-form")
     .evaluate((element) => ({
       clientWidth: element.clientWidth,
       scrollWidth: element.scrollWidth,
@@ -214,7 +214,9 @@ test("核心管理页面在桌面和移动视口保持一致", async ({ page }, 
   await capture("teams");
 
   await page.goto("/admins");
-  await expect(page.getByText("e2e-super-admin")).toBeVisible();
+  await expect(
+    page.getByRole("table").getByText("e2e-super-admin"),
+  ).toBeVisible();
   await capture("admins");
 
   await page.goto("/access");
@@ -270,15 +272,19 @@ test("管理员可以登录并查看比赛详情", async ({ page }, testInfo) =>
 test("普通管理员不能访问管理员管理权限路由", async ({ page }) => {
   await loginWithMockAdmin(page, false);
 
-  await expect(page.getByRole("link", { name: "场馆管理员" })).toHaveCount(0);
+  await expect(
+    page.getByRole("navigation").getByRole("button", {
+      name: "场馆管理员",
+      exact: true,
+    }),
+  ).toHaveCount(0);
   await page.goto("/admins");
   await expect(page.getByText("无权访问")).toBeVisible();
   await expect(
     page.getByText("当前管理员没有访问此页面的权限。"),
   ).toBeVisible();
-  await expect(
-    page.getByRole("main").getByText("场馆管理员", { exact: true }),
-  ).toHaveCount(0);
+  await expect(page.getByRole("table")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "创建管理员" })).toHaveCount(0);
 });
 
 test("超级管理员创建管理员保持权限与 API payload 契约", async ({

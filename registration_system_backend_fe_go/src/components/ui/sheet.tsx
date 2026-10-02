@@ -55,7 +55,7 @@ function SheetContent({
       <SheetPrimitive.Content
         data-side={side}
         data-slot="sheet-content"
-        className={cn("sheet-content", className)}
+        className={cn("sheet-content text-base leading-normal", className)}
         {...props}
       >
         {children}
@@ -98,7 +98,10 @@ function SheetTitle({
   return (
     <SheetPrimitive.Title
       data-slot="sheet-title"
-      className={cn("sheet-title", className)}
+      className={cn(
+        "sheet-title text-[length:var(--font-size-overlay)] leading-snug font-semibold",
+        className,
+      )}
       {...props}
     />
   );
@@ -111,7 +114,7 @@ function SheetDescription({
   return (
     <SheetPrimitive.Description
       data-slot="sheet-description"
-      className={cn("sheet-description", className)}
+      className={cn("sheet-description text-sm leading-normal", className)}
       {...props}
     />
   );

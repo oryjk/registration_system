@@ -1,10 +1,23 @@
 :root {
   color-scheme: dark;
+  /* 尺寸角色：标准操作、紧凑行内操作、主表单操作。 */
+  --control-height-sm: 32px;
   --control-height: 36px;
-  /* 大尺寸档位：登录、关键表单主操作等需要视觉重心的场景 */
-  --control-height-lg: 48px;
+  --control-height-lg: 44px;
+  --control-height-touch: 44px;
+  --control-padding-x: var(--space-3);
+  --control-padding-y: var(--space-1-5);
+  --control-focus-ring-width: 2px;
+  --textarea-min-height: 96px;
+  --border-width: 1px;
+  --table-header-height: 44px;
+  --font-size-control: var(--font-size-base);
+  --font-size-label: var(--font-size-sm);
+  --font-size-section: var(--font-size-lg);
+  --font-size-page: var(--font-size-2xl);
+  --font-size-overlay: var(--font-size-xl);
   --control-icon-size: 16px;
-  --shell-header-height: 72px;
+  --shell-header-height: 64px;
   --sidebar-menu-row-height: 40px;
   --sidebar-submenu-row-height: 30px;
   /* 手机框架（H5 预览）：视口高 844、宽按 390:844 宽高比推导，边框为设备色，深浅主题一致 */
@@ -20,19 +33,17 @@
   --shadow-hairline: 0 1px 2px rgba(0, 0, 0, 0.38);
   --shadow-raised: 0 18px 42px rgba(0, 0, 0, 0.42);
   --shadow-overlay: -12px 0 42px rgba(0, 0, 0, 0.58);
-  --shadow-panel:
-    0 18px 42px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.035);
-  --shadow-focus:
-    0 0 0 1px rgba(79, 196, 179, 0.34), 0 0 20px rgba(79, 196, 179, 0.1);
-  --background: #0b0d10;
+  --shadow-panel: none;
+  --shadow-focus: 0 0 0 var(--control-focus-ring-width) rgba(79, 196, 179, 0.3);
+  --background: #101114;
   --foreground: #e8eaee;
   --muted: #8b939c;
   --muted-bg: #171b20;
   --border: #242a30;
   --input: #333a42;
-  --card: #121519;
+  --card: #18191d;
   --card-foreground: #e8eaee;
-  --popover: #161a1f;
+  --popover: #1c1d22;
   --popover-foreground: #e8eaee;
   --primary: #4fc4b3;
   --primary-hover: #63d1c1;
@@ -72,13 +83,13 @@
   --audit-update-sfinx-tag-strong: #157e6d;
   --audit-publish: #7c8af6;
   --audit-publish-strong: #5a68e8;
-  --surface-canvas: #0b0d10;
-  --surface-sidebar: #0d1013;
+  --surface-canvas: #101114;
+  --surface-sidebar: #141518;
   --surface-chrome: rgba(13, 16, 19, 0.92);
-  --surface-panel: #121519;
-  --surface-panel-raised: #161a1f;
-  --surface-inset: #0f1216;
-  --surface-hover: #1a2025;
+  --surface-panel: #18191d;
+  --surface-panel-raised: #1c1d22;
+  --surface-inset: #202126;
+  --surface-hover: #24252b;
   --surface-active: #12312c;
   /* 侧边栏选中项的中性填充（比 hover 更亮一档，不带品牌色） */
   --surface-sidebar-active: #22282f;
@@ -97,9 +108,11 @@
   --sidebar-accent-foreground: #e8eaee;
   --sidebar-border: var(--border-subtle);
   --sidebar-ring: #4fc4b3;
-  --radius-control: 2px;
-  --radius-panel: 4px;
-  --radius-overlay: 4px;
+  --radius-control: 6px;
+  --radius-panel: 8px;
+  --radius-overlay: 12px;
+  --radius-check: 4px;
+  --radius-full: 9999px;
   /* 兼容旧页面选择器；新样式按 control / panel / overlay 使用语义圆角。 */
   --radius: var(--radius-control);
   --font-weight-normal: 400;
@@ -131,24 +144,24 @@
   --space-6: 24px;
   --space-7: 28px;
   --space-8: 32px;
+  --space-9: 36px;
   --space-10: 40px;
+  --space-11: 44px;
   --space-12: 48px;
 }
 
-/* 浅色主题（顶栏按钮切换，偏好存 localStorage）：恢复原绿色控制台色板 */
+/* 浅色主题：中性工作表面，青绿只强调操作与选中状态。 */
 .light {
   color-scheme: light;
   --shadow-hairline: 0 1px 2px rgba(15, 23, 42, 0.08);
   --shadow-raised: 0 18px 42px rgba(34, 50, 57, 0.12);
   --shadow-overlay: -12px 0 42px rgba(34, 50, 57, 0.16);
-  --shadow-panel:
-    0 16px 36px rgba(34, 50, 57, 0.07), inset 0 1px 0 rgba(255, 255, 255, 0.9);
-  --shadow-focus:
-    0 0 0 1px rgba(67, 146, 136, 0.28), 0 0 16px rgba(67, 146, 136, 0.1);
-  --background: #f4f7f8;
+  --shadow-panel: none;
+  --shadow-focus: 0 0 0 var(--control-focus-ring-width) rgba(67, 146, 136, 0.24);
+  --background: #f7f8fa;
   --foreground: #1f2937;
   --muted: #667085;
-  --muted-bg: #eef3f4;
+  --muted-bg: #f3f4f6;
   --border: #dbe3e5;
   --input: #cbd6d9;
   --card: #ffffff;
@@ -162,7 +175,7 @@
   --primary-foreground: #ffffff;
   --primary-soft: #eaf6f4;
   --primary-soft-strong: #dcefeb;
-  --secondary: #eef3f4;
+  --secondary: #f3f4f6;
   --secondary-foreground: #1f2937;
   --accent: #eaf6f4;
   --accent-foreground: #2e7068;
@@ -193,16 +206,16 @@
   --audit-update-sfinx-tag-strong: #115e59;
   --audit-publish: #4f46e5;
   --audit-publish-strong: #4338ca;
-  --surface-canvas: #f4f7f8;
-  --surface-sidebar: #f8fafb;
+  --surface-canvas: #f7f8fa;
+  --surface-sidebar: #fafbfc;
   --surface-chrome: rgba(255, 255, 255, 0.9);
   --surface-panel: #ffffff;
   --surface-panel-raised: #ffffff;
-  --surface-inset: #eef3f4;
-  --surface-hover: #e9f1f1;
+  --surface-inset: #f3f4f6;
+  --surface-hover: #f0f2f5;
   --surface-active: #e4f4f1;
   /* 侧边栏选中项的中性填充（比 hover 更深一档，不带品牌色） */
-  --surface-sidebar-active: #dde7e9;
+  --surface-sidebar-active: #e9edf0;
   --border-subtle: rgba(61, 77, 84, 0.14);
   --border-strong: rgba(61, 77, 84, 0.26);
   --accent-line: rgba(67, 146, 136, 0.3);
@@ -251,7 +264,7 @@ button,
 input,
 select,
 textarea {
-  font: inherit;
+  font-family: inherit;
 }
 
 button {
@@ -282,57 +295,6 @@ button:disabled {
   to {
     clip-path: inset(0 0 0 0);
   }
-}
-
-[data-slot="dialog-content"],
-[data-slot="alert-dialog-content"],
-[data-slot="popover-content"] {
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-overlay);
-  background: var(--surface-panel-raised);
-  color: var(--foreground);
-  box-shadow: var(--shadow-raised);
-}
-
-[data-slot="dialog-overlay"],
-[data-slot="alert-dialog-overlay"] {
-  background: var(--overlay-backdrop);
-  backdrop-filter: blur(4px);
-}
-
-[data-slot="dialog-title"],
-[data-slot="alert-dialog-title"] {
-  letter-spacing: 0;
-}
-
-[data-slot="input"] {
-  border-color: var(--input);
-  border-radius: var(--radius-control);
-  background: var(--surface-inset);
-  box-shadow: inset 0 1px 0
-    color-mix(in srgb, var(--foreground) 3%, transparent);
-}
-
-[data-slot="input"]:focus-visible {
-  border-color: var(--accent-line-strong);
-  box-shadow: var(--shadow-focus);
-}
-
-[data-slot="button"] {
-  border-radius: var(--radius-control);
-  box-shadow: inset 0 1px 0
-    color-mix(in srgb, var(--foreground) 4%, transparent);
-}
-
-[data-slot="button"]:focus-visible {
-  box-shadow: var(--shadow-focus);
-}
-
-[data-slot="card"] {
-  border-color: var(--border-subtle);
-  border-radius: var(--radius-panel);
-  background: var(--surface-panel);
-  box-shadow: var(--shadow-panel);
 }
 
 .admin-sonner-toast {
