@@ -349,7 +349,9 @@ code {
   border-radius: var(--radius-control);
   background: var(--surface-inset);
   color: var(--foreground);
-  padding: var(--space-2) var(--space-2-5);
+  padding: var(--space-1-5) var(--space-2-5);
+  font-size: var(--font-size-base);
+  line-height: var(--leading-normal);
   outline: none;
 }
 

@@ -35,8 +35,8 @@
   flex-shrink: 0;
 }
 
-.pagination-size .ui-select-trigger {
-  width: calc(var(--space-10) * 1.5);
+.pagination-size .select-trigger {
+  width: calc(var(--control-height) * 2);
   flex-shrink: 0;
 }
 
