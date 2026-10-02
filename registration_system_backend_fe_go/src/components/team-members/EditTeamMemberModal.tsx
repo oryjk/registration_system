@@ -1,5 +1,4 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import dayjs from "dayjs";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -35,7 +34,7 @@ import type {
   TeamMember,
   TeamMemberStatus,
 } from "@/types/team";
-import { formatYuanAmount } from "@/utils/format";
+import { formatNumericDateTime, formatYuanAmount } from "@/utils/format";
 import {
   assignableRoleOptions,
   displayMemberName,
@@ -275,9 +274,7 @@ export function EditTeamMemberModal({
                   最近充值：
                   <strong>
                     {member.last_recharge_at
-                      ? dayjs(member.last_recharge_at).format(
-                          "YYYY-MM-DD HH:mm",
-                        )
+                      ? formatNumericDateTime(member.last_recharge_at)
                       : "—"}
                   </strong>
                 </p>

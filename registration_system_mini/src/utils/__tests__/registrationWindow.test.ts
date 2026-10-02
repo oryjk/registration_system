@@ -52,3 +52,8 @@ describe("resolveRegistrationWindow", () => {
     })).toEqual({ state: "closed", countdownTarget: null });
   });
 });
+
+
+test("legacy UTC timestamps close registration at the same instant on every device", () => {
+  expect(resolveRegistrationWindow({ now: NOW, isRegistering: true, matchEndAt: "2026-09-04 11:00:00" })).toEqual({ state: "closed", countdownTarget: null });
+});

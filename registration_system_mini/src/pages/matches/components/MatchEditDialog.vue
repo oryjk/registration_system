@@ -2,7 +2,7 @@
 import { computed } from "vue";
 import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
 import SegmentedControl from "@/components/ui/SegmentedControl.vue";
-import { pad } from "@/utils/datetime";
+import { beijingDateKey, formatTimeLabel, mergeBeijingDate, mergeBeijingTime } from "@/utils/datetime";
 import { MATCH_PUBLICATION_MODE_OPTIONS } from "@/utils/matchPublicationMode";
 
 const props = withDefaults(
@@ -46,36 +46,20 @@ const selectedTypeDescription = computed(() => {
   return matched?.description ?? "";
 });
 
-function safeDate(value: number) {
-  const date = value ? new Date(value) : new Date();
-  return Number.isFinite(date.getTime()) ? date : new Date();
-}
-
 function pickerDateValue(value: number) {
-  const date = safeDate(value);
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+  return beijingDateKey(value || Date.now());
 }
 
 function pickerTimeValue(value: number) {
-  const date = safeDate(value);
-  return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  return formatTimeLabel(value || Date.now());
 }
 
-/** 日期 picker 只改年月日，保留已选钟点。 */
 function mergeDate(baseValue: number, pickerValue: string) {
-  const date = safeDate(baseValue);
-  const [year, month, day] = pickerValue.split("-").map((item) => Number(item));
-  date.setFullYear(year, (month || 1) - 1, day || 1);
-  date.setSeconds(0, 0);
-  return date.getTime();
+  return mergeBeijingDate(baseValue, pickerValue);
 }
 
-/** 时间 picker 只改钟点，保留已选日期。 */
 function mergeTime(baseValue: number, pickerValue: string) {
-  const date = safeDate(baseValue);
-  const [hour, minute] = pickerValue.split(":").map((item) => Number(item));
-  date.setHours(hour || 0, minute || 0, 0, 0);
-  return date.getTime();
+  return mergeBeijingTime(baseValue, pickerValue);
 }
 
 function pickerChangeValue(event: Event) {
@@ -142,7 +126,7 @@ function pickerChangeValue(event: Event) {
       />
     </view>
     <view class="match-edit-field">
-      <text class="match-edit-label">比赛开始时间</text>
+      <text class="match-edit-label">比赛开始时间（北京时间）</text>
       <view class="match-edit-datetime">
         <picker mode="date" :value="pickerDateValue(startTime)" @change="emit('update:startTime', mergeDate(startTime, pickerChangeValue($event)))">
           <view class="match-edit-chip">{{ pickerDateValue(startTime) }}</view>
@@ -153,7 +137,7 @@ function pickerChangeValue(event: Event) {
       </view>
     </view>
     <view class="match-edit-field">
-      <text class="match-edit-label">比赛结束时间</text>
+      <text class="match-edit-label">比赛结束时间（北京时间）</text>
       <view class="match-edit-datetime">
         <picker mode="date" :value="pickerDateValue(endTime)" @change="emit('update:endTime', mergeDate(endTime, pickerChangeValue($event)))">
           <view class="match-edit-chip">{{ pickerDateValue(endTime) }}</view>

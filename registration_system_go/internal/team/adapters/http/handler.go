@@ -62,7 +62,7 @@ func (h *Handler) MyTeams(c *gin.Context) {
 			Description: item.Team.Description,
 			LogoURL:     item.Team.LogoURL,
 			Role:        string(item.Member.Role),
-			JoinedAt:    item.Member.JoinedAt.Format("2006-01-02T15:04:05"),
+			JoinedAt:    item.Member.JoinedAt.UTC().Format(time.RFC3339),
 			MemberCount: item.MemberCount,
 		})
 	}

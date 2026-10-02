@@ -4,7 +4,7 @@ import {
   filterHallMatches,
   hallDateKey,
   toHallMatchCard,
-  toLocalMidnightDate,
+  toBeijingMidnightDate,
 } from "../hallMatchState";
 import type { AppMatchSummary } from "@/types/match";
 
@@ -197,7 +197,7 @@ describe("filterHallMatches", () => {
 
 describe("buildHallCalendarDays", () => {
   test("builds seven days starting from today", () => {
-    const days = buildHallCalendarDays(new Date(2026, 7, 15, 18, 30));
+    const days = buildHallCalendarDays(new Date("2026-08-15T10:30:00Z"));
 
     expect(days.length).toEqual(7);
     expect(days[0]).toEqual({ key: "2026-08-15", badgeLabel: "今天", dayNumber: "15" });
@@ -207,25 +207,23 @@ describe("buildHallCalendarDays", () => {
 });
 
 describe("hallDateKey", () => {
-  test("formats local calendar date key", () => {
+  test("formats Beijing calendar date key", () => {
     expect(hallDateKey("2026-08-20 15:00:00")).toEqual(`2026-08-20`);
   });
 });
 
-describe("toLocalMidnightDate", () => {
-  test("returns local midnight for a calendar date key", () => {
-    const midnight = toLocalMidnightDate("2026-08-16");
+describe("toBeijingMidnightDate", () => {
+  test("returns the UTC instant of Beijing midnight", () => {
+    const midnight = toBeijingMidnightDate("2026-08-16");
 
     expect(midnight === null).toEqual(false);
-    expect(midnight!.getFullYear()).toEqual(2026);
-    expect(midnight!.getMonth()).toEqual(7);
-    expect(midnight!.getDate()).toEqual(16);
-    expect(midnight!.getHours()).toEqual(0);
+    expect(midnight!.toISOString()).toEqual("2026-08-15T16:00:00.000Z");
   });
 
   test("rejects malformed keys", () => {
-    expect(toLocalMidnightDate("2026/08/16")).toEqual(null);
-    expect(toLocalMidnightDate("")).toEqual(null);
+    expect(toBeijingMidnightDate("2026/08/16")).toEqual(null);
+    expect(toBeijingMidnightDate("")).toEqual(null);
+    expect(toBeijingMidnightDate("2026-02-30")).toEqual(null);
   });
 });
 
@@ -325,4 +323,14 @@ test("historical search cards show match state and only allow viewing", () => {
   }
   const expired = toHallMatchCard(buildMatch({ start_time: "2020-01-01T12:00:00Z", end_time: "2020-01-01T14:00:00Z" }));
   expect([expired.opponentStateLabel, expired.actionKind]).toEqual(["已结束", "view"]);
+});
+
+
+test("hall days and match keys follow Beijing across UTC year boundaries", () => {
+  expect(buildHallCalendarDays(new Date("2026-12-31T16:30:00Z"), 2)).toEqual([
+    { key: "2027-01-01", badgeLabel: "今天", dayNumber: "01" },
+    { key: "2027-01-02", badgeLabel: "周六", dayNumber: "02" },
+  ]);
+  expect(hallDateKey("2026-12-31T16:30:00Z")).toEqual("2027-01-01");
+  expect(hallDateKey("2026-12-31")).toEqual("2026-12-31");
 });

@@ -74,7 +74,7 @@ describe("buildMineOverviewState", () => {
         {
           id: "match-upcoming",
           title: "周末友谊赛",
-          dateLabel: "08/12 20:00",
+          dateLabel: "08/13 04:00",
           venue: "驿马河二期",
           statusLabel: "报名中",
           statusTone: "blue",
@@ -130,7 +130,7 @@ describe("buildMineOverviewState", () => {
       {
         id: "future-short",
         title: "未来短赛",
-        dateLabel: "08/11 20:00",
+        dateLabel: "08/12 04:00",
         venue: "驿马河二期",
         statusLabel: "报名中",
         statusTone: "blue",
@@ -160,4 +160,14 @@ describe("buildMineOverviewState", () => {
 
     expect(state.totalHoursLabel).toEqual("5.5 h");
   });
+});
+
+
+test("mine yearly totals follow Beijing year boundaries", () => {
+  const state = buildOverview([
+    { ...baseMatch, id: "beijing-new-year", start_time: "2026-12-31T16:00:00Z", end_time: "2026-12-31T18:00:00Z" },
+    { ...baseMatch, id: "previous-year", start_time: "2026-12-31T14:00:00Z", end_time: "2026-12-31T15:00:00Z" },
+  ], new Date("2026-12-31T16:30:00Z"));
+  expect(state.activityCount).toEqual(1);
+  expect(state.totalHoursLabel).toEqual("2 h");
 });

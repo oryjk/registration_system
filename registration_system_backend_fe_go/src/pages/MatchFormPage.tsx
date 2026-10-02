@@ -1,5 +1,4 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import dayjs from "dayjs";
 import { ArrowLeft } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -32,6 +31,7 @@ import {
   type MatchFormValues,
   matchFormSchema,
 } from "@/pages/match-form/schema";
+import { toShanghaiTime } from "@/utils/datetime";
 import {
   buildCreateMatchPayload,
   buildUpdateMatchPayload,
@@ -89,16 +89,19 @@ export default function MatchFormPage() {
         host_capacity_limit:
           hostGroup?.max_players ??
           defaultHostCapacityLimit(match.players_per_team),
-        start_time: dayjs(match.start_time),
+        start_time: toShanghaiTime(match.start_time),
         duration_minutes: Math.max(
           1,
-          dayjs(match.end_time).diff(dayjs(match.start_time), "minute"),
+          toShanghaiTime(match.end_time).diff(
+            toShanghaiTime(match.start_time),
+            "minute",
+          ),
         ),
         registration_start_at: match.registration_start_at
-          ? dayjs(match.registration_start_at)
+          ? toShanghaiTime(match.registration_start_at)
           : undefined,
         registration_end_at: match.registration_end_at
-          ? dayjs(match.registration_end_at)
+          ? toShanghaiTime(match.registration_end_at)
           : undefined,
         location: match.location,
         location_latitude: match.location_latitude ?? undefined,
@@ -118,7 +121,7 @@ export default function MatchFormPage() {
     if (!value) return;
     form.setValue(
       "registration_start_at",
-      form.getValues("registration_start_at") ?? dayjs(),
+      form.getValues("registration_start_at") ?? toShanghaiTime(),
     );
     form.setValue("registration_end_at", value.subtract(2, "hour"));
   };

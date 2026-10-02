@@ -1,3 +1,4 @@
+import { beijingStartOfDay, parseDateValue } from "@/utils/datetime";
 import { computed, ref } from "vue";
 import { getWallet } from "@/api/wallet";
 import type { MineMatchSummary, MineStatItem } from "./mineTypes";
@@ -92,9 +93,8 @@ export function useMinePage() {
     if (!Number.isFinite(joinedTime)) return "";
 
     const todayStart = todayStartTimestamp();
-    const joinedStart = new Date(joinedTime);
-    joinedStart.setHours(0, 0, 0, 0);
-    const days = Math.max(1, Math.floor((todayStart - joinedStart.getTime()) / 86_400_000) + 1);
+    const joinedStart = beijingStartOfDay(joinedTime);
+    const days = Math.max(1, Math.floor((todayStart - joinedStart) / 86_400_000) + 1);
     return `${days} 天`;
   });
   const mineStats = computed<MineStatItem[]>(() => [
@@ -127,13 +127,11 @@ export function useMinePage() {
   ]);
 
   function parseDateTime(value: string) {
-    return new Date(value.replace(" ", "T")).getTime();
+    return parseDateValue(value).getTime();
   }
 
   function todayStartTimestamp() {
-    const date = new Date();
-    date.setHours(0, 0, 0, 0);
-    return date.getTime();
+    return beijingStartOfDay();
   }
 
   function resetPageState(message = "已退出登录，请点击顶部卡片重新登录") {

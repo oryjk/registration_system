@@ -10,7 +10,7 @@ import {
   buildHallCalendarDays,
   filterHallMatches,
   toHallMatchCard,
-  toLocalMidnightDate,
+  toBeijingMidnightDate,
   type HallCalendarDay,
   type HallMatchCardViewModel,
   type HallMatchKindFilter,
@@ -91,7 +91,7 @@ export function useHallPage() {
       // 后端 start_time 存 UTC 时刻；时间过滤统一传 UTC 时刻。
       startsAfter: new Date(),
       publicationModes: [...HALL_PUBLICATION_MODES],
-      dateStart: selectedDateKey.value ? toLocalMidnightDate(selectedDateKey.value) ?? undefined : undefined,
+      dateStart: selectedDateKey.value ? toBeijingMidnightDate(selectedDateKey.value) ?? undefined : undefined,
       page,
       pageSize: HALL_PAGE_SIZE,
     });

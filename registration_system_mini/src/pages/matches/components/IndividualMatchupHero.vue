@@ -4,7 +4,7 @@ import type { BackendActivity } from "@/types/backend";
 import AppSurface from "@/components/ui/AppSurface.vue";
 import AppTag from "@/components/ui/AppTag.vue";
 import TeamKitColor from "./TeamKitColor.vue";
-import { formatMonthDayLabel, formatTimeLabel, formatWeekdayLabel } from "@/utils/datetime";
+import { beijingDateKey, formatMonthDayLabel, formatTimeLabel, formatWeekdayLabel } from "@/utils/datetime";
 
 const props = defineProps<{
   match: BackendActivity;
@@ -43,7 +43,7 @@ const dateBlockWeekday = computed(() => formatWeekdayLabel(props.match.holding_d
 const endClockLabel = computed(() => {
   const end = props.match.end_time;
   if (!end) return "";
-  const nextDay = new Date(end).toDateString() !== new Date(props.match.holding_date).toDateString();
+  const nextDay = beijingDateKey(end) !== beijingDateKey(props.match.holding_date);
   return `${nextDay ? formatMonthDayLabel(end) + " " : ""}${formatTimeLabel(end)}`;
 });
 const formatLabel = computed(() => {

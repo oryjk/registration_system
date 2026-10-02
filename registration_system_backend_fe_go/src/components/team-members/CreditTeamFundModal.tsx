@@ -1,5 +1,4 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import dayjs from "dayjs";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -24,6 +23,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import type { TeamMember } from "@/types/team";
+import { isCalendarDate } from "@/utils/datetime";
 import {
   formatShanghaiDateInput,
   formatYuan,
@@ -45,11 +45,7 @@ const creditSchema = z.object({
   receivedOn: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, "请选择收款日期")
-    .refine(
-      (value) =>
-        dayjs(value).isValid() && dayjs(value).format("YYYY-MM-DD") === value,
-      "请选择有效的收款日期",
-    )
+    .refine(isCalendarDate, "请选择有效的收款日期")
     .refine(
       (value) => value <= formatShanghaiDateInput(),
       "收款日期不能晚于今天",

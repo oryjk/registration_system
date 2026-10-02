@@ -1,6 +1,6 @@
 import type { AppMatchRegistrationGroupSummary, AppMatchSummary } from "@/types/match";
 import type { AppTagTone } from "@/types/designSystem";
-import { formatDateLabel, pad, parseDateValue } from "@/utils/datetime";
+import { DAY_MS, beijingDateKey, beijingStartOfDay, beijingDateTimeToTimestamp, formatDayNumberLabel, formatDateLabel, formatWeekdayLabel } from "@/utils/datetime";
 import { resolveInheritedGuestLimit } from "@/utils/matchCapacity";
 import { getMatchPublicationModeLabel } from "@/utils/matchPublicationMode";
 import { formatHomeMatchDateBlock } from "@/pages/home/homeMatchDate";
@@ -249,32 +249,23 @@ export function filterHallMatches(
 }
 
 export function buildHallCalendarDays(now: Date, dayCount = 7): HallCalendarDay[] {
-  const weekdayLabels = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
-  const base = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
+  const base = beijingStartOfDay(now);
   return Array.from({ length: dayCount }, (_, index) => {
-    const date = new Date(base);
-    date.setDate(base.getDate() + index);
-    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+    const timestamp = base + index * DAY_MS;
     return {
-      key,
-      badgeLabel: index === 0 ? "今天" : weekdayLabels[date.getDay()] ?? "",
-      dayNumber: String(date.getDate()).padStart(2, "0"),
+      key: beijingDateKey(timestamp),
+      badgeLabel: index === 0 ? "今天" : formatWeekdayLabel(timestamp),
+      dayNumber: formatDayNumberLabel(timestamp),
     };
   });
 }
 
 export function hallDateKey(isoText: string): string {
-  const date = parseDateValue(isoText);
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+  return beijingDateKey(isoText);
 }
 
-// date_start 语义：所选日期本地零点的时刻（序列化为 UTC 后由后端按 24 小时窗口过滤）。
-export function toLocalMidnightDate(dateKey: string): Date | null {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) {
-    return null;
-  }
-  const [year, month, day] = dateKey.split("-").map(Number);
-  const date = new Date(year, month - 1, day, 0, 0, 0, 0);
-  return Number.isNaN(date.getTime()) ? null : date;
+// date_start 为北京时间所选日期零点的真实时刻，接口序列化为 UTC。
+export function toBeijingMidnightDate(dateKey: string): Date | null {
+  const timestamp = beijingDateTimeToTimestamp(dateKey);
+  return Number.isFinite(timestamp) ? new Date(timestamp) : null;
 }

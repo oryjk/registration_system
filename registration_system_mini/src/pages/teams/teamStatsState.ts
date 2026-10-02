@@ -1,4 +1,4 @@
-import { formatDateLabel, formatYearLabel } from "@/utils/datetime";
+import { beijingDateKey, formatDateLabel, formatTimeLabel, formatYearLabel, parseDateValue } from "@/utils/datetime";
 import { toStandLabel } from "@/utils/viewModels";
 import type { BackendTeamAttendanceRankingItem, BackendTeamMemberAttendanceRecord } from "@/types/backend";
 
@@ -102,8 +102,8 @@ export function buildAttendanceGroups(
   return groups;
 }
 
-export function buildAttendanceCalendarMonths(records: BackendTeamMemberAttendanceRecord[]): AttendanceCalendarMonth[] {
-  const sortedRecords = [...records].sort((left, right) => right.holding_date.localeCompare(left.holding_date));
+export function buildAttendanceCalendarMonths(records: BackendTeamMemberAttendanceRecord[], now = new Date()): AttendanceCalendarMonth[] {
+  const sortedRecords = [...records].sort((left, right) => parseDateValue(right.holding_date).getTime() - parseDateValue(left.holding_date).getTime());
   const recordsByMonth = new Map<string, BackendTeamMemberAttendanceRecord[]>();
 
   for (const record of sortedRecords) {
@@ -114,18 +114,20 @@ export function buildAttendanceCalendarMonths(records: BackendTeamMemberAttendan
   }
 
   return Array.from(recordsByMonth.entries()).map(([monthKey, monthRecords]) =>
-    buildAttendanceCalendarMonth(monthKey, monthRecords),
+    buildAttendanceCalendarMonth(monthKey, monthRecords, now),
   );
 }
 
 function buildAttendanceCalendarMonth(
   monthKey: string,
   records: BackendTeamMemberAttendanceRecord[],
+  now: Date,
 ): AttendanceCalendarMonth {
   const [year, month] = monthKey.split("-").map((item) => Number(item));
-  const firstDay = new Date(year, month - 1, 1);
-  const daysInMonth = new Date(year, month, 0).getDate();
-  const leadingDays = firstDay.getDay();
+  // Date.UTC 在这里仅生成纯日历格点，用 UTC getters 运算年月日，不承载比赛时刻。
+  const firstDay = new Date(Date.UTC(year, month - 1, 1));
+  const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  const leadingDays = firstDay.getUTCDay();
   const totalCells = Math.ceil((leadingDays + daysInMonth) / 7) * 7;
   const recordsByDate = new Map<string, BackendTeamMemberAttendanceRecord[]>();
 
@@ -138,15 +140,15 @@ function buildAttendanceCalendarMonth(
 
   const days: AttendanceCalendarDay[] = [];
   for (let index = 0; index < totalCells; index += 1) {
-    const date = new Date(year, month - 1, index - leadingDays + 1);
-    const key = dateKeyFromDate(date);
-    const inMonth = date.getMonth() === month - 1;
+    const date = new Date(Date.UTC(year, month - 1, index - leadingDays + 1));
+    const key = date.toISOString().slice(0, 10);
+    const inMonth = date.getUTCMonth() === month - 1;
     const dayRecords = inMonth ? recordsByDate.get(key) ?? [] : [];
     days.push({
       dateKey: key,
-      dayNumber: date.getDate(),
+      dayNumber: date.getUTCDate(),
       inMonth,
-      isToday: key === dateKeyFromDate(new Date()),
+      isToday: key === beijingDateKey(now),
       records: dayRecords.map(toCalendarRecord),
     });
   }
@@ -215,18 +217,11 @@ function attendanceCalendarStatusTone(record: BackendTeamMemberAttendanceRecord)
 }
 
 function dateKey(value: string) {
-  return value.slice(0, 10);
-}
-
-function dateKeyFromDate(date: Date) {
-  const year = date.getFullYear();
-  const month = `${date.getMonth() + 1}`.padStart(2, "0");
-  const day = `${date.getDate()}`.padStart(2, "0");
-  return `${year}-${month}-${day}`;
+  return beijingDateKey(value);
 }
 
 function timeLabel(value: string) {
-  return value.slice(11, 16) || "--:--";
+  return formatTimeLabel(value);
 }
 
 export { formatDateLabel, formatYearLabel };

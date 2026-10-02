@@ -68,7 +68,7 @@ describe("buildTeamProfiles", () => {
         canManageTeam: true,
         creditScore: 78,
         trustLabel: "评价稳定",
-        vipUntil: "05/01 00:00",
+        vipUntil: "05/01 08:00",
         isVip: true,
       },
     ]);
@@ -196,7 +196,7 @@ describe("buildNotificationItems", () => {
         title: "约队已约成",
         content: "银河联队与柏林二队已约成，待报名。",
         kindLabel: "约队已约成",
-        createdAtLabel: "04/17 20:15",
+        createdAtLabel: "04/18 04:15",
         read: false,
         relatedPath: "",
       },

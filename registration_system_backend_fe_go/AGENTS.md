@@ -60,6 +60,7 @@
 - `components/team-members/`、`pages/match-form/`、`pages/team-list/`：按领域内聚的组件族。
 - `layout/`：壳层。`features/admin-session/`：会话状态。
 - **展示格式化统一走 `src/utils/format.ts`**（`formatDateTime` / `formatCompactDateTime` / `formatNumericDateTime` / `formatDate` / `formatYuan` / `formatYuanAmount`），页面不得自定义 Intl 格式化。
+- **业务时区统一北京时间 `Asia/Shanghai`**：具体时间由后端按 UTC 传输，展示、输入、日历的「今天」和日期边界都不能依赖设备时区。解析与表单转换复用 `src/utils/datetime.ts`；旧版无时区 timestamp 字符串按 UTC 解释。日历的 `Date` 仅承载所选年月日，通过 `fromCalendarDate` 解释为北京时间，再提交 ISO UTC。`received_on` 等 `YYYY-MM-DD` 是纯日期，保持原日期语义，不做时区换算。
 - 页面（`pages/`）只做数据编排与组合，业务规则放 hooks/api 层；新出现的重复 UI 模式（≥3 处）必须抽组件而不是复制类名。
 
 ## 常用命令

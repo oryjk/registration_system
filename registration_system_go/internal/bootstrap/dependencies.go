@@ -61,7 +61,11 @@ const (
 )
 
 func BuildDependencies(ctx context.Context, config Config) (Dependencies, func(), error) {
-	pool, err := pgxpool.New(ctx, config.DatabaseURL)
+	poolConfig, err := postgresPoolConfig(config.DatabaseURL)
+	if err != nil {
+		return Dependencies{}, nil, fmt.Errorf("configure PostgreSQL pool: %w", err)
+	}
+	pool, err := pgxpool.NewWithConfig(ctx, poolConfig)
 	if err != nil {
 		return Dependencies{}, nil, fmt.Errorf("open PostgreSQL pool: %w", err)
 	}

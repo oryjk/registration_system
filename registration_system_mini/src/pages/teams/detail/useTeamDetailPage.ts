@@ -1,3 +1,4 @@
+import { beijingDateKey } from "@/utils/datetime";
 import { usePageRefresh } from "@/composables/usePageRefresh";
 import { computed, getCurrentInstance, ref, watch } from "vue";
 import { onLoad, onShow, onUnload } from "@dcloudio/uni-app";
@@ -35,7 +36,7 @@ export function useTeamDetailPage() {
   /** 球队基本信息：logo 缺省时由模板回落到首字徽标。 */
   const logoUrl = computed(() => team.value?.logo_url?.trim() || "");
   const description = computed(() => team.value?.description?.trim() || "");
-  const createdLabel = computed(() => team.value?.created_at?.slice(0, 10) || "");
+  const createdLabel = computed(() => team.value?.created_at ? beijingDateKey(team.value.created_at) : "");
   /** 我在本队的个人账户余额；队费充值计入这里，不是球队公共余额。 */
   const balanceLabel = computed(() => {
     const yuan = (team.value?.my_balance_cents ?? 0) / 100;
@@ -43,7 +44,7 @@ export function useTeamDetailPage() {
   });
   const membershipLabel = computed(() => {
     if (!team.value?.is_vip || !team.value.vip_until) return "未开通会员";
-    return `会员有效 · 至 ${team.value.vip_until.slice(0, 10)}`;
+    return `会员有效 · 至 ${beijingDateKey(team.value.vip_until)}`;
   });
 
   async function loadTeam() {

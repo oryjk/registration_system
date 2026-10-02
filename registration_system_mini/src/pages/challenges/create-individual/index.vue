@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { beijingTodayAt, parseDateValue } from "@/utils/datetime";
 import { usePageRefresh } from "@/composables/usePageRefresh";
 import { useAccentTheme } from "@/stores/theme";
 import { computed, reactive, ref } from "vue";
@@ -41,8 +42,8 @@ async function loadEditForm() {
     paymentMode: match.payment_mode || "postpaid", feePerPerson: String((match.fee_per_person_cents ?? 0) / 100),
     note: match.description || "",
   });
-  holdingDate.value = new Date(match.start_time).getTime();
-  matchEndTime.value = new Date(match.end_time).getTime();
+  holdingDate.value = parseDateValue(match.start_time).getTime();
+  matchEndTime.value = parseDateValue(match.end_time).getTime();
   editReady.value = true;
 }
 const reviewGateReady = ref(false);
@@ -97,9 +98,7 @@ function selectFeeType(value: typeof form.feeType) {
 }
 
 function defaultTodayAt(hour: number) {
-  const date = new Date();
-  date.setHours(hour, 0, 0, 0);
-  return date.getTime();
+  return beijingTodayAt(hour);
 }
 
 // Go 后端 time.Time 只接受带时区的 RFC3339（如 ...T18:00:00.000Z），不能发本地无时区格式。

@@ -1,3 +1,4 @@
+import { parseDateValue } from "@/utils/datetime";
 import { computed, ref, watch, type Ref } from "vue";
 import { listMatches, type ListMatchesParams } from "@/api/match";
 import type { AppMatchSummary } from "@/types/match";
@@ -21,7 +22,7 @@ export function useHallMatchSearch(isGuest: Ref<boolean>, fetchMatches = listMat
     const merged = new Map<string, AppMatchSummary>();
     for (const stream of streams.value) for (const match of stream.items) merged.set(match.id, match);
     return [...merged.values()]
-      .sort((a, b) => Date.parse(b.start_time) - Date.parse(a.start_time) || a.id.localeCompare(b.id));
+      .sort((a, b) => parseDateValue(b.start_time).getTime() - parseDateValue(a.start_time).getTime() || a.id.localeCompare(b.id));
   });
 
   async function loadMoreSearchResults() {

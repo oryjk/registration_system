@@ -1,3 +1,4 @@
+import { mergeBeijingDate, mergeBeijingTime, parseDateValue } from "@/utils/datetime";
 import { describe, expect, test } from "bun:test";
 import type { MatchPublishFormModel } from "../components/matchPublishFormModel";
 import { buildCreateMatchPayload } from "../createMatchPayload";
@@ -119,4 +120,13 @@ test("online team modes default to AA while explicit fee choices are respected",
  }
  expect(buildCreateMatchPayload(buildForm({ feeType: "free" }), hostTeam).is_free).toEqual(true);
  expect(buildCreateMatchPayload(buildForm({ feeType: "fixed_amount", feePerPerson: "25" }), hostTeam).fee_per_person_cents).toEqual(2500);
+});
+
+
+test("Beijing picker edits submit UTC once without changing the displayed clock", () => {
+  const loadedStart = parseDateValue("2026-10-02 12:00:00").getTime();
+  const nextStart = mergeBeijingTime(mergeBeijingDate(loadedStart, "2026-10-03"), "21:00");
+  const payload = buildCreateMatchPayload(buildForm({ holdingDate: nextStart, matchEndTime: nextStart + 2 * 3_600_000 }), hostTeam);
+  expect(payload.start_time).toEqual("2026-10-03T13:00:00.000Z");
+  expect(payload.end_time).toEqual("2026-10-03T15:00:00.000Z");
 });

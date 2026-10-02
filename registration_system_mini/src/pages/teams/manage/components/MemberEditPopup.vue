@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatFullDateTimeLabel, parseDateValue } from "@/utils/datetime";
 import { useAccentTheme } from "@/stores/theme";
 const { themePageStyle } = useAccentTheme();
 import { computed, ref } from "vue";
@@ -62,10 +63,9 @@ const balanceToneClass = computed(() =>
 const lastRechargeLabel = computed(() => {
   const value = props.member?.last_recharge_at;
   if (!value) return "—";
-  const date = new Date(value);
+  const date = parseDateValue(value);
   if (Number.isNaN(date.getTime())) return "—";
-  const pad = (part: number) => String(part).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  return formatFullDateTimeLabel(value);
 });
 
 function handlePaidMemberChange(event: Event) {

@@ -284,7 +284,8 @@ func pgUUID(value uuid.UUID) pgtype.UUID {
 }
 
 func pgTimestamp(value time.Time) pgtype.Timestamp {
-	return pgtype.Timestamp{Time: value, Valid: true}
+	// timestamp without time zone 会丢弃偏移；先规范为 UTC 墙钟，保留原时刻。
+	return pgtype.Timestamp{Time: value.UTC(), Valid: true}
 }
 
 func pgOptionalTimestamp(value *time.Time) pgtype.Timestamp {

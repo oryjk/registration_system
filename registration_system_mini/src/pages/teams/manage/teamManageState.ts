@@ -1,3 +1,4 @@
+import { formatDateLabel, formatYearLabel } from "@/utils/datetime";
 import type { BackendTeamMember, BackendTeamMemberAttendanceRecord } from "@/types/backend";
 
 // 管理页只保留当前球队的管理模式；创建/加入球队在独立二级页面（pages/teams/create、pages/teams/join）。
@@ -53,17 +54,11 @@ export function attendanceStatusClass(record: BackendTeamMemberAttendanceRecord)
 }
 
 export function formatAttendanceDate(isoText: string) {
-  const date = new Date(isoText.replace(" ", "T"));
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  const hours = String(date.getHours()).padStart(2, "0");
-  const minutes = String(date.getMinutes()).padStart(2, "0");
-  return `${month}/${day} ${hours}:${minutes}`;
+  return formatDateLabel(isoText);
 }
 
 export function formatAttendanceYear(isoText: string) {
-  const date = new Date(isoText.replace(" ", "T"));
-  return Number.isNaN(date.getTime()) ? "未知年份" : `${date.getFullYear()} 年`;
+  return formatYearLabel(isoText);
 }
 
 export function buildAttendanceSummary(records: BackendTeamMemberAttendanceRecord[]) {

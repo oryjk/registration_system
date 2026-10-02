@@ -1,3 +1,4 @@
+import { parseDateValue } from "@/utils/datetime";
 import type { AppMatchSummary } from "@/types/match";
 
 export type DetailAction = "pay" | "individual" | "roster";
@@ -31,6 +32,6 @@ export function formatDetailFee(match: Pick<AppMatchSummary, "fee_per_person_cen
 /** 与首页一致：已开赛普通用户只查看；不参与付款资格判断。 */
 export function isDetailRegistrationReadOnly(match: Pick<AppMatchSummary, "status" | "start_time"> | null, windowClosed: boolean, now: number): boolean {
   if (!match || windowClosed || match.status !== "registering") return true;
-  const start = Date.parse(match.start_time);
+  const start = parseDateValue(match.start_time).getTime();
   return Number.isFinite(start) && now >= start;
 }

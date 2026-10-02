@@ -1,6 +1,6 @@
 import type { AppMatchSummary } from "@/types/match";
 import type { AppWalletAccount } from "@/types/wallet";
-import { formatDateLabel, parseDateValue } from "@/utils/datetime";
+import { beijingDateParts, formatDateLabel, parseDateValue } from "@/utils/datetime";
 import { resolveMatchPhase } from "@/pages/home/homeMatchState";
 import { attendanceStatusTone } from "@/utils/statusTone";
 import type { MineMatchSummary } from "./mineTypes";
@@ -58,7 +58,7 @@ export function buildMineOverviewState(
   const currentYearMatches = matches.filter(
     (match) =>
       resolveMatchPhase(match, now) !== "excluded" &&
-      parseDateValue(match.start_time).getFullYear() === now.getFullYear(),
+      beijingDateParts(match.start_time).year === beijingDateParts(now).year,
   );
   const upcomingMatches = matches
     .filter((match) => resolveMatchPhase(match, now) === "upcoming")

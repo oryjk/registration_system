@@ -1,7 +1,7 @@
 import { ref, type Ref } from "vue";
 import { updateMyMatch } from "@/api/match";
 import { MATCH_PUBLICATION_MODE_OPTIONS } from "@/utils/matchPublicationMode";
-import { pad, parseDateValue } from "@/utils/datetime";
+import { formatFullDateTimeLabel, parseDateValue } from "@/utils/datetime";
 import type { AppMatchPublicationMode, AppMatchSummary } from "@/types/match";
 import type { MatchTeamGroupSummary } from "@/pages/matches/detailData";
 
@@ -43,8 +43,7 @@ function parseBackendTimestamp(value?: string | null): number {
 }
 
 function formatFullDateTime(timestamp: number): string {
-  const date = new Date(timestamp);
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  return formatFullDateTimeLabel(timestamp);
 }
 
 /** 比赛详情页「修改比赛」弹窗：编辑对手名称、主队报名组人数上限与比赛起止时间。 */

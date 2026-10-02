@@ -1,3 +1,4 @@
+import { parseDateValue } from "@/utils/datetime";
 import { getMiniAppRuntimeConfig } from "@/api/system";
 import type { BackendMiniAppRuntimeConfig } from "@/types/backend";
 import { defaultMiniAppRuntimeConfig } from "@/config/runtimeConfigDefaults";
@@ -124,7 +125,7 @@ export async function loadMiniAppRuntimeConfig() {
 }
 
 export function parseRuntimeDateTime(value: string) {
-  return new Date(value.replace(" ", "T")).getTime();
+  return parseDateValue(value).getTime();
 }
 
 export function isRuntimeVisibleActivity(

@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
+import { DAY_MS, beijingDateKey, beijingDateParts, beijingStartOfDay, formatTimeLabel,
+  formatWeekdayLabel, mergeBeijingDate, mergeBeijingTime, pad } from "@/utils/datetime";
 
 // 比赛日期与起止时间：日期走近 7 日横滑卡 + 更多日期 picker，时间走两个 time picker。
 // 日期变更时同步保持已选的开始/结束钟点。
@@ -15,63 +17,37 @@ const emit = defineEmits<{
   (event: "update:matchEndTime", value: number): void;
 }>();
 
-function pad(value: number) {
-  return String(value).padStart(2, "0");
-}
-
-function parsePickerDate(value: number) {
-  const date = value ? new Date(value) : new Date();
-  return Number.isFinite(date.getTime()) ? date : new Date();
-}
-
-function normalizeToMinute(timestamp: number) {
-  const date = new Date(timestamp);
-  date.setSeconds(0, 0);
-  return date.getTime();
-}
-
 function displayTimeLabel(value: number) {
-  if (!value) return "";
-  const date = parsePickerDate(value);
-  return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  return value ? formatTimeLabel(value) : "";
 }
 
 function formatPickerDateValue(value: number) {
-  const date = parsePickerDate(value);
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+  return beijingDateKey(value || Date.now());
 }
 
 function formatPickerTimeValue(value: number) {
-  const date = parsePickerDate(value);
-  return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  return formatTimeLabel(value || Date.now());
 }
 
 function mergeDate(baseValue: number, pickerValue: string) {
-  const date = parsePickerDate(baseValue);
-  const [year, month, day] = pickerValue.split("-").map((item) => Number(item));
-  date.setFullYear(year, (month || 1) - 1, day || 1);
-  return normalizeToMinute(date.getTime());
+  return mergeBeijingDate(baseValue, pickerValue);
 }
 
 function mergeTime(baseValue: number, pickerValue: string, fallbackBase: number) {
-  const date = new Date(baseValue || fallbackBase);
-  const [hour, minute] = pickerValue.split(":").map((item) => Number(item));
-  date.setHours(hour || 0, minute || 0, 0, 0);
-  return normalizeToMinute(date.getTime());
+  return mergeBeijingTime(baseValue || fallbackBase, pickerValue);
 }
 
 function buildRecentDateOptions() {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const today = beijingStartOfDay();
   return Array.from({ length: 7 }, (_, index) => {
-    const date = new Date(today.getTime() + index * 24 * 60 * 60 * 1000);
-    const timestamp = date.getTime();
+    const timestamp = today + index * DAY_MS;
+    const date = beijingDateParts(timestamp);
     return {
       value: timestamp,
-      topLabel: index === 0 ? "今天" : ["周日", "周一", "周二", "周三", "周四", "周五", "周六"][date.getDay()] ?? "",
-      dayLabel: pad(date.getDate()),
-      monthLabel: `${pad(date.getMonth() + 1)}月`,
-      pickerValue: formatPickerDateValue(timestamp),
+      topLabel: index === 0 ? "今天" : formatWeekdayLabel(timestamp),
+      dayLabel: pad(date.day),
+      monthLabel: `${pad(date.month)}月`,
+      pickerValue: beijingDateKey(timestamp),
     };
   });
 }
@@ -115,7 +91,7 @@ function handleMatchEndTimeChange(event: Event) {
 <template>
   <view :class="['match-schedule-fields', { 'match-schedule-fields--compact': compact }]">
     <view class="date-head">
-      <text class="date-head-title">比赛日期</text>
+      <text class="date-head-title">比赛日期 · 北京时间</text>
       <picker mode="date" :value="selectedDateValue" @change="handleDatePickerChange">
         <view class="date-more-link">更多日期</view>
       </picker>

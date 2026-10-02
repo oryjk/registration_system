@@ -235,7 +235,8 @@ func (h *AppHandler) AttendanceSummary(c *gin.Context) {
 	})
 }
 
-// parseAttendanceDateRange 解析小程序传入的 startDate / endDate（YYYY-MM-DD）。
+// parseAttendanceDateRange 解析北京时间纯日期 startDate / endDate（YYYY-MM-DD）。
+// time.Time 在此仅承载日期分量；仓储负责将起止日换成 UTC 时刻范围。
 func parseAttendanceDateRange(c *gin.Context) (*time.Time, *time.Time, bool) {
 	parse := func(raw string, label string) (*time.Time, bool) {
 		if raw == "" {

@@ -65,8 +65,8 @@ describe("create match Wot UI integration", () => {
 
     expect(source.includes("function displayTimeLabel")).toEqual(true);
     expect(source.includes("buildRecentDateOptions")).toEqual(true);
-    expect(source.includes('"周日", "周一", "周二", "周三", "周四", "周五", "周六"')).toEqual(true);
-    expect(source.includes('monthLabel: `${pad(date.getMonth() + 1)}月`')).toEqual(true);
+    expect(source.includes("formatWeekdayLabel(timestamp)")).toEqual(true);
+    expect(source.includes('monthLabel: `${pad(date.month)}月`')).toEqual(true);
   });
 
   test("uses native input and textarea components for editable fields", async () => {

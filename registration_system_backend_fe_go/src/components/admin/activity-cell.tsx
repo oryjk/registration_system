@@ -1,12 +1,14 @@
 import { DateTimeCell } from "@/components/admin/date-time-cell";
 import { StatusBadge } from "@/components/admin/status-badge";
+import { parseInstant } from "@/utils/datetime";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 function activityStatus(lastActiveAt: string | null) {
   if (!lastActiveAt) return { label: "从未记录", variant: "secondary" };
-  const timestamp = new Date(lastActiveAt).getTime();
-  if (Number.isNaN(timestamp)) return { label: "时间异常", variant: "warning" };
+  const date = parseInstant(lastActiveAt);
+  if (!date) return { label: "时间异常", variant: "warning" };
+  const timestamp = date.getTime();
   const elapsed = Math.max(0, Date.now() - timestamp);
   if (elapsed <= 7 * DAY_MS) return { label: "7 日内活跃", variant: "success" };
   if (elapsed <= 30 * DAY_MS) return { label: "30 日内活跃", variant: "info" };

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { beijingTodayAt, parseDateValue } from "@/utils/datetime";
 import { usePageRefresh } from "@/composables/usePageRefresh";
 import { useAccentTheme } from "@/stores/theme";
 import { computed, reactive, ref } from "vue";
@@ -47,7 +48,7 @@ async function loadEditForm() {
   Object.assign(form, {
     name: m.name, location: m.location, locationLatitude: m.location_latitude ?? null,
     locationLongitude: m.location_longitude ?? null,
-    holdingDate: new Date(m.start_time).getTime(), matchEndTime: new Date(m.end_time).getTime(),
+    holdingDate: parseDateValue(m.start_time).getTime(), matchEndTime: parseDateValue(m.end_time).getTime(),
     opposing: m.opponent_name || "", description: m.description || "",
     playersPerTeam: m.players_per_team,
     hostCapacityLimit: detail.groups.find(g => g.kind === "host_team")?.max_players ?? "",
@@ -80,9 +81,7 @@ const form = reactive<MatchPublishFormModel>({
 });
 
 function normalizeToMinute(timestamp: number) {
-  const date = new Date(timestamp);
-  date.setSeconds(0, 0);
-  return date.getTime();
+  return Math.floor(timestamp / 60_000) * 60_000;
 }
 
 const timeValid = computed(() => {
@@ -116,9 +115,7 @@ const pageStyle = computed(() => ({
 }));
 
 function defaultMatchDateTime() {
-  const date = new Date();
-  date.setHours(20, 0, 0, 0);
-  return normalizeToMinute(date.getTime());
+  return beijingTodayAt(20);
 }
 
 function defaultMatchEndDateTime(holdingDate: number) {

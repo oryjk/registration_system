@@ -56,13 +56,13 @@ describe("Match API", () => {
     });
   });
 
-  test("accepts a raw RFC3339 starts_after string without reformatting", async () => {
+  test("normalizes an offset RFC3339 starts_after string to UTC", async () => {
     capturedCalls.length = 0;
 
     await listMatches({ scope: "others", startsAfter: "2026-08-09T12:00:00+08:00", page: 3, pageSize: 10 });
 
     expect(capturedCalls[0]).toEqual({
-      url: "/matches?scope=others&starts_after=2026-08-09T12%3A00%3A00%2B08%3A00&page=3&page_size=10",
+      url: "/matches?scope=others&starts_after=2026-08-09T04%3A00%3A00.000Z&page=3&page_size=10",
       auth: true,
     });
   });
@@ -513,3 +513,10 @@ describe("Match API", () => {
 });
 
 export {};
+
+
+test("date_start sends the UTC instant of a Beijing selected date", async () => {
+  capturedCalls.length = 0;
+  await listMatches({ scope: "all", dateStart: "2027-01-01", page: 1, pageSize: 20 });
+  expect(capturedCalls[0]).toEqual({ url: "/matches?scope=all&date_start=2026-12-31T16%3A00%3A00.000Z&page=1&page_size=20", auth: true });
+});

@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { parseInstant } from "@/utils/datetime";
 import {
   formatCompactDateTime,
   formatDateTime,
@@ -18,7 +19,8 @@ export function DateTimeCell({
   badge?: ReactNode;
   emptyText?: string;
 }) {
-  if (!value || Number.isNaN(new Date(value).getTime())) {
+  const instant = parseInstant(value);
+  if (!instant) {
     return (
       <div className="date-time-cell">
         {badge ? <div className="date-time-cell-main">{badge}</div> : null}
@@ -31,7 +33,7 @@ export function DateTimeCell({
   return (
     <div className="date-time-cell">
       <div className="date-time-cell-main">
-        <time dateTime={value} title={formatDateTime(value)}>
+        <time dateTime={instant.toISOString()} title={formatDateTime(value)}>
           {relative ? formatRelativeDateTime(value) : date}
         </time>
         {badge}

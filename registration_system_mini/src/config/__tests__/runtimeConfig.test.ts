@@ -145,7 +145,7 @@ describe("mini app runtime config", () => {
         hide_matches_after_holding_time: true,
       },
     });
-    const now = new Date("2026-05-11T12:00:00");
+    const now = new Date("2026-05-11T12:00:00Z");
 
     expect(
       isRuntimeVisibleActivity(
@@ -170,7 +170,7 @@ describe("mini app runtime config", () => {
         hide_matches_after_holding_time: false,
       },
     });
-    const now = new Date("2026-05-11T12:00:00");
+    const now = new Date("2026-05-11T12:00:00Z");
 
     expect(
       isRuntimeVisibleActivity(
@@ -195,7 +195,7 @@ describe("mini app runtime config", () => {
         hide_matches_after_holding_time: true,
       },
     });
-    const now = new Date("2026-05-11T12:00:00");
+    const now = new Date("2026-05-11T12:00:00Z");
 
     expect(
       isRuntimeVisibleChallengeSummary(

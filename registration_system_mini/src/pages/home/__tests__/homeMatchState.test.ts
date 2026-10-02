@@ -20,7 +20,7 @@ describe("formatHomeMatchDateBlock", () => {
   test("keeps the displayed month-day and time while deriving the weekday from the raw cross-year start time", () => {
     expect(formatHomeMatchDateBlock({
       dateLabel: "01/01 20:00",
-      dateSource: "2027-01-01T20:00:00.000Z",
+      dateSource: "2027-01-01T12:00:00.000Z",
     })).toEqual({
       monthDay: "01/01",
       weekday: "周五",

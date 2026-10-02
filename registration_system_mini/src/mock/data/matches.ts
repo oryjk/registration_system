@@ -1,3 +1,4 @@
+import { parseDateValue } from "@/utils/datetime";
 import type {
   AppHomeActionMatch,
   AppHomeEndedMatch,
@@ -576,7 +577,7 @@ export function updateMockMatchStatus(matchId: string, status: "ended" | "cancel
   if (match.status === "ended" || match.status === "cancelled") {
     throw new Error("比赛已结束或已取消，不能再次变更");
   }
-  const endTimestamp = Date.parse(match.end_time);
+  const endTimestamp = parseDateValue(match.end_time).getTime();
   if (Number.isFinite(endTimestamp) && baseNow <= endTimestamp) {
     throw new Error("比赛尚未到结束时间，暂不能收尾");
   }
@@ -610,7 +611,7 @@ function buildMatchHome(baseNow = Date.now()): AppMatchHomeResponse {
       }, baseNow),
     ),
     ...createdMatches
-      .filter((item) => Date.parse(item.summary.end_time) > baseNow)
+      .filter((item) => parseDateValue(item.summary.end_time).getTime() > baseNow)
       .map(buildCreatedActionMatch),
   ]
     .sort(compareAction)
@@ -622,7 +623,7 @@ function buildMatchHome(baseNow = Date.now()): AppMatchHomeResponse {
   const endedMatches = [
     ...endedSeeds.map((seed) => buildEndedMatch(seed, baseNow)),
     ...createdMatches
-      .filter((item) => Date.parse(item.summary.end_time) <= baseNow)
+      .filter((item) => parseDateValue(item.summary.end_time).getTime() <= baseNow)
       .map(buildCreatedEndedMatch),
   ]
     .sort(compareEnded)
@@ -630,9 +631,9 @@ function buildMatchHome(baseNow = Date.now()): AppMatchHomeResponse {
 
   return {
     action_items: actionMatches,
-    action_has_more: actionSeeds.length + createdMatches.filter((item) => Date.parse(item.summary.end_time) > baseNow).length > actionMatches.length,
+    action_has_more: actionSeeds.length + createdMatches.filter((item) => parseDateValue(item.summary.end_time).getTime() > baseNow).length > actionMatches.length,
     ended_items: endedMatches,
-    ended_has_more: endedSeeds.length + createdMatches.filter((item) => Date.parse(item.summary.end_time) <= baseNow).length > endedMatches.length,
+    ended_has_more: endedSeeds.length + createdMatches.filter((item) => parseDateValue(item.summary.end_time).getTime() <= baseNow).length > endedMatches.length,
   };
 }
 
@@ -675,9 +676,9 @@ export function filterMockMatchesByQuery(query: Record<string, string>, baseNow 
   }
 
   if (query.starts_after) {
-    const threshold = Date.parse(query.starts_after);
+    const threshold = parseDateValue(query.starts_after).getTime();
     if (Number.isFinite(threshold)) {
-      items = items.filter((item) => Date.parse(item.start_time) > threshold);
+      items = items.filter((item) => parseDateValue(item.start_time).getTime() > threshold);
     }
   }
 
@@ -687,10 +688,10 @@ export function filterMockMatchesByQuery(query: Record<string, string>, baseNow 
 
   // 与后端 ends_after 一致：未结束（end_time 晚于该时刻）且未取消。
   if (query.ends_after) {
-    const threshold = Date.parse(query.ends_after);
+    const threshold = parseDateValue(query.ends_after).getTime();
     if (Number.isFinite(threshold)) {
       items = items.filter((item) => (
-        item.status !== "cancelled" && Date.parse(item.end_time) > threshold
+        item.status !== "cancelled" && parseDateValue(item.end_time).getTime() > threshold
       ));
     }
   }
@@ -708,10 +709,10 @@ export function filterMockMatchesByQuery(query: Record<string, string>, baseNow 
 
   if (query.date_start) {
     // 与后端一致：date_start 是"该时刻起的 24 小时窗口"。
-    const dayStart = Date.parse(query.date_start);
+    const dayStart = parseDateValue(query.date_start).getTime();
     if (Number.isFinite(dayStart)) {
       items = items.filter((item) => {
-        const start = Date.parse(item.start_time);
+        const start = parseDateValue(item.start_time).getTime();
         return start >= dayStart && start < dayStart + 24 * 60 * 60 * 1000;
       });
     }

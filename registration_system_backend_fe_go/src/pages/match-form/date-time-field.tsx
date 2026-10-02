@@ -1,5 +1,5 @@
 import { zhCN } from "date-fns/locale";
-import dayjs, { type Dayjs } from "dayjs";
+import type { Dayjs } from "dayjs";
 import { CalendarIcon } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,11 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  fromCalendarDate,
+  toCalendarDate,
+  toShanghaiTime,
+} from "@/utils/datetime";
 
 interface DateTimeFieldProps {
   id?: string;
@@ -39,18 +44,24 @@ export function DateTimeField({
   "aria-label": ariaLabel,
 }: DateTimeFieldProps) {
   const [open, setOpen] = useState(false);
-  const [timeDraft, setTimeDraft] = useState(value?.format("HH:mm") ?? "");
+  const shanghaiValue = value ? toShanghaiTime(value) : undefined;
+  const today = toCalendarDate(toShanghaiTime());
+  const selected = shanghaiValue ? toCalendarDate(shanghaiValue) : undefined;
+  const [timeDraft, setTimeDraft] = useState(
+    shanghaiValue?.format("HH:mm") ?? "",
+  );
 
   const commitTime = (raw: string) => {
     const parsed = parseTimeInput(raw);
     if (!parsed) {
-      setTimeDraft(value?.format("HH:mm") ?? "");
+      setTimeDraft(shanghaiValue?.format("HH:mm") ?? "");
       return;
     }
-    const next = (value ?? dayjs())
-      .hour(parsed.hour)
-      .minute(parsed.minute)
-      .second(0);
+    const next = fromCalendarDate(
+      selected ?? today,
+      parsed.hour,
+      parsed.minute,
+    );
     onChange(next);
     setTimeDraft(next.format("HH:mm"));
   };
@@ -59,7 +70,7 @@ export function DateTimeField({
     <Popover
       onOpenChange={(next) => {
         setOpen(next);
-        if (next) setTimeDraft(value?.format("HH:mm") ?? "");
+        if (next) setTimeDraft(shanghaiValue?.format("HH:mm") ?? "");
       }}
       open={open}
     >
@@ -73,26 +84,31 @@ export function DateTimeField({
           variant="outline"
         >
           <CalendarIcon size={15} />
-          {value ? value.format("YYYY-MM-DD HH:mm") : placeholder || "选择时间"}
+          {shanghaiValue
+            ? shanghaiValue.format("YYYY-MM-DD HH:mm")
+            : placeholder || "选择时间"}
         </Button>
       </PopoverTrigger>
       <PopoverContent align="start" className="date-time-popover">
         <Calendar
           locale={zhCN}
           mode="single"
-          selected={value?.toDate()}
+          selected={selected}
+          today={today}
+          defaultMonth={selected ?? today}
           onSelect={(date) => {
             if (!date) return;
             const parsed = parseTimeInput(timeDraft);
-            const next = dayjs(date)
-              .hour(parsed?.hour ?? value?.hour() ?? 0)
-              .minute(parsed?.minute ?? value?.minute() ?? 0)
-              .second(0);
+            const next = fromCalendarDate(
+              date,
+              parsed?.hour ?? shanghaiValue?.hour() ?? 0,
+              parsed?.minute ?? shanghaiValue?.minute() ?? 0,
+            );
             onChange(next);
           }}
         />
         <div className="date-time-time-row">
-          <span>时间</span>
+          <span>北京时间</span>
           <Input
             aria-label="时间"
             onBlur={(event) => commitTime(event.target.value)}

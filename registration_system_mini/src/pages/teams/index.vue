@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { beijingDateParts } from "@/utils/datetime";
 import { usePullRefresh } from "@/composables/usePullRefresh";
 import { APP_SCROLL_CONTROLLER, createAppScrollAnchor } from "@/components/appScroll";
 import { useAccentTheme } from "@/stores/theme";
@@ -43,7 +44,7 @@ const myYearRecords = ref<BackendTeamMemberAttendanceRecord[]>([]);
 const rankingItems = ref<BackendTeamAttendanceRankingItem[]>([]);
 const statsTab = ref<"records" | "ranking">("records");
 
-const currentYear = new Date().getFullYear();
+const currentYear = beijingDateParts(Date.now()).year;
 const currentTeamName = computed(() => currentTeam.value?.name || "当前球队");
 const contentStyle = computed(() => ({
   paddingTop: `${navMetrics.pageTopPadding + 8}px`,

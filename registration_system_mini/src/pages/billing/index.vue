@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatFullDateTimeLabel } from "@/utils/datetime";
 import { usePageRefresh } from "@/composables/usePageRefresh";
 import { useAccentTheme } from "@/stores/theme";
 import { computed, ref } from "vue";
@@ -223,7 +224,7 @@ usePageRefresh(loadPageData);
         <view v-for="item in transactions" :key="item.id" class="billing-item">
           <view class="billing-item-copy">
             <text class="billing-item-title">{{ transactionMetaLabel(item) }}</text>
-            <text class="billing-item-meta">{{ item.description || (item.created_at || "").slice(0, 16).replace("T", " ") }}</text>
+            <text class="billing-item-meta">{{ item.description || (item.created_at ? formatFullDateTimeLabel(item.created_at) : "") }}</text>
           </view>
           <view class="billing-item-side">
             <text :class="amountClass(item.amount_cents)">{{ amountLabel(item.amount_cents) }}</text>

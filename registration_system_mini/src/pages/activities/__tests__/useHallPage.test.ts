@@ -46,14 +46,16 @@ let registeringItems: AppMatchSummary[] = [match];
 let endedItems: AppMatchSummary[] = [endedMatch];
 let pendingEndedResponse: Promise<{ items: AppMatchSummary[]; total: number }> | null = null;
 const matchScopes: string[] = [];
+const matchDateStarts: Array<string | undefined> = [];
 const matchStatuses: Array<string | undefined> = [];
 const matchPageSizes: number[] = [];
 let currentToken = "token-a";
 
 mock.module("@/api/match", () => ({
-  listMatches: async (params: { scope: string; status?: string; pageSize: number }) => {
+  listMatches: async (params: { scope: string; status?: string; pageSize: number; dateStart?: Date }) => {
     matchRequests += 1;
     matchScopes.push(params.scope);
+    matchDateStarts.push(params.dateStart?.toISOString());
     matchStatuses.push(params.status);
     matchPageSizes.push(params.pageSize);
     if (params.status === "ended" && pendingEndedResponse) {
@@ -98,6 +100,7 @@ afterEach(() => {
   endedItems = [endedMatch];
   pendingEndedResponse = null;
   matchScopes.length = 0;
+  matchDateStarts.length = 0;
   matchStatuses.length = 0;
   matchPageSizes.length = 0;
   currentToken = "token-a";
@@ -111,6 +114,7 @@ test("date changes reuse session data but fetch matches; token changes and expli
   page.selectDate("2026-09-24");
   await new Promise((resolve) => setTimeout(resolve, 0));
   expect([sessionRequests, matchRequests]).toEqual([1, 2]);
+  expect(matchDateStarts.at(-1)).toEqual("2026-09-23T16:00:00.000Z");
 
   currentToken = "token-b";
   page.selectDate("2026-09-25");

@@ -28,7 +28,7 @@ func TestMyTeamsHandlerUsesAuthenticatedUser(t *testing.T) {
 	}
 	query := &fakeTeamQuery{items: []domain.TeamMembership{{
 		Team:        domain.Team{ID: 7, Name: "东安联队", Status: domain.TeamActive},
-		Member:      domain.Member{TeamID: 7, UserID: 42, Role: domain.RoleLeader, Status: domain.MemberActive},
+		Member:      domain.Member{TeamID: 7, UserID: 42, Role: domain.RoleLeader, Status: domain.MemberActive, JoinedAt: time.Date(2026, 1, 1, 0, 30, 0, 0, time.FixedZone("Asia/Shanghai", 8*60*60))},
 		MemberCount: 15,
 	}}}
 	handler := NewHandler(query, &fakeTeamMembers{})
@@ -53,6 +53,9 @@ func TestMyTeamsHandlerUsesAuthenticatedUser(t *testing.T) {
 	// 否则未加载过球队详情的队伍会显示 0 人。
 	if !bytes.Contains(response.Body.Bytes(), []byte(`"member_count":15`)) {
 		t.Fatalf("expected member_count in response: %s", response.Body.String())
+	}
+	if !bytes.Contains(response.Body.Bytes(), []byte(`"joined_at":"2025-12-31T16:30:00Z"`)) {
+		t.Fatalf("joined_at must identify the UTC instant across a year boundary: %s", response.Body.String())
 	}
 }
 

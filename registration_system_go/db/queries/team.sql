@@ -381,6 +381,7 @@ RETURNING teams.id, teams.name, teams.description, teams.logo_url, teams.captain
 -- 比赛出勤：口径与首页"已结束"一致——非取消，且（状态已结束或已过结束时间）。
 -- 队员报名挂在该队对应的报名组（host_team/guest_team）上；撤销（cancelled）的报名按未报名处理。
 -- matches 时间列存 UTC 墙钟，用 (NOW() AT TIME ZONE 'utc') 保持同类型比较，避免会话时区歧义。
+-- start_date/end_date 为北京时间纯日期：转换为 UTC 墙钟范围，结束日含整天。
 
 -- name: ListTeamMemberAttendanceRecords :many
 SELECT m.id::text AS activity_id,
@@ -402,8 +403,8 @@ LEFT JOIN match_registrations r
  AND r.status <> 'cancelled'
 WHERE m.status <> 'cancelled'
   AND (m.status = 'ended' OR m.end_time <= (NOW() AT TIME ZONE 'utc'))
-  AND (sqlc.narg('start_date')::date IS NULL OR m.start_time::date >= sqlc.narg('start_date')::date)
-  AND (sqlc.narg('end_date')::date IS NULL OR m.start_time::date <= sqlc.narg('end_date')::date)
+  AND (sqlc.narg('start_date')::date IS NULL OR m.start_time >= ((sqlc.narg('start_date')::date::timestamp AT TIME ZONE 'Asia/Shanghai') AT TIME ZONE 'UTC'))
+  AND (sqlc.narg('end_date')::date IS NULL OR m.start_time < (((sqlc.narg('end_date')::date::timestamp + INTERVAL '1 day') AT TIME ZONE 'Asia/Shanghai') AT TIME ZONE 'UTC'))
 ORDER BY m.start_time DESC, m.id;
 
 -- name: ListTeamAttendanceRanking :many
@@ -415,8 +416,8 @@ WITH team_matches AS (
       AND g.team_id = $1
       AND m.status <> 'cancelled'
       AND (m.status = 'ended' OR m.end_time <= (NOW() AT TIME ZONE 'utc'))
-      AND (sqlc.narg('start_date')::date IS NULL OR m.start_time::date >= sqlc.narg('start_date')::date)
-      AND (sqlc.narg('end_date')::date IS NULL OR m.start_time::date <= sqlc.narg('end_date')::date)
+      AND (sqlc.narg('start_date')::date IS NULL OR m.start_time >= ((sqlc.narg('start_date')::date::timestamp AT TIME ZONE 'Asia/Shanghai') AT TIME ZONE 'UTC'))
+      AND (sqlc.narg('end_date')::date IS NULL OR m.start_time < (((sqlc.narg('end_date')::date::timestamp + INTERVAL '1 day') AT TIME ZONE 'Asia/Shanghai') AT TIME ZONE 'UTC'))
 )
 SELECT tm.user_id,
        u.nickname AS user_name,

@@ -1,3 +1,4 @@
+import { parseDateValue } from "@/utils/datetime";
 import type { BackendVenueSuggestion } from "@/api/match";
 
 export interface VenueHistoryItem {
@@ -52,7 +53,7 @@ export function rememberVenue(userId: number | null, venue: VenueHistoryItem): v
 }
 
 export function mergeVenueHistory(local: VenueHistoryItem[], suggested: BackendVenueSuggestion[]): VenueHistoryItem[] {
-  const recentSuggestions = [...suggested].sort((a, b) => Date.parse(b.last_used_at) - Date.parse(a.last_used_at));
+  const recentSuggestions = [...suggested].sort((a, b) => parseDateValue(b.last_used_at).getTime() - parseDateValue(a.last_used_at).getTime());
   const merged: VenueHistoryItem[] = [];
   for (const value of [...local, ...recentSuggestions]) {
     const item = toHistoryItem(value);

@@ -1,3 +1,4 @@
+import { parseDateValue } from "@/utils/datetime";
 export type RegistrationWindowState = "not_started" | "open" | "closed";
 
 export interface RegistrationWindowResult {
@@ -7,7 +8,7 @@ export interface RegistrationWindowResult {
 
 function timestamp(value?: string | null): number | null {
   if (!value) return null;
-  const parsed = Date.parse(value);
+  const parsed = parseDateValue(value).getTime();
   return Number.isFinite(parsed) ? parsed : null;
 }
 
