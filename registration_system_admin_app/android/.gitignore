@@ -12,3 +12,7 @@ GeneratedPluginRegistrant.java
 key.properties
 **/*.keystore
 **/*.jks
+
+# Native generated outputs and Kotlin local cache
+/build/
+/.kotlin/

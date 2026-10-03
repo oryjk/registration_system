@@ -77,6 +77,7 @@ abstract final class AdminTheme {
           vertical: AdminComponents.controlPaddingY,
         ),
         errorMaxLines: 4,
+        helperMaxLines: 4,
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
@@ -88,6 +89,22 @@ abstract final class AdminTheme {
             fontSize: AdminScale.fontBody,
             fontWeight: FontWeight.w500,
           ),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AdminComponents.controlPaddingX,
+            vertical: AdminComponents.controlPaddingY,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AdminComponents.controlRadius),
+          ),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          minimumSize: const Size(
+            AdminComponents.touchTarget,
+            AdminComponents.touchTarget,
+          ),
+          textStyle: const TextStyle(fontSize: AdminScale.fontBody),
           padding: const EdgeInsets.symmetric(
             horizontal: AdminComponents.controlPaddingX,
             vertical: AdminComponents.controlPaddingY,

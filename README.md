@@ -11,7 +11,7 @@
 | `registration_system_go/` | **当前唯一开发的后端**，承载认证、球队、比赛和资金业务 | `Go + Gin + PostgreSQL + pgx + sqlc` | （自身） |
 | `registration_system_mini/` | 用户侧小程序/H5，已在同一项目内完成从 Rust 到 Go 的切换 | `uni-app + Vue 3 + TypeScript + Vite + Bun` | **Go** |
 | `registration_system_backend_fe_go/` | 管理后台（**React**，与 Go 后端同步演进） | `React 19 + TypeScript + Vite 7 + shadcn/ui + Tailwind CSS 4 + React Router 7 + React Query 5 + Biome + Bun` | **Go** |
-| `registration_system_admin_app/` | 移动管理 App，面向赛事运营/管理员（**已暂停开发**） | `Flutter + Dart` | Rust `/api/admin`；Go `/api/v1/admin` |
+| `registration_system_admin_app/` | 移动管理 App，面向赛事运营/管理员（**已恢复开发，首版已实现**） | `Flutter + Dart` | Go `/api/v1/admin` |
 
 > 阶段说明：旧 Rust 后端 `registration_system_rs/` 已停止开发并**从工作区删除**（2026-08-30，git 历史可查）；所有后端开发都在 Go 项目进行。`mini-rust-backend-final` 标记小程序最后一个 Rust 后端基线。
 
@@ -94,18 +94,15 @@ bun run dev:mp-weixin
 - 后端地址与端口等环境变量说明见 `registration_system_mini/AGENTS.md`；接口契约统一为 Go 的 `{ code, message, data }`（成功判定 `code === 0`）。
 - 小程序对接 Go 后端的改造统一在 `registration_system_mini/` 内完成，不再启动或维护 `registration_system_mini_go/`。
 
-### C：移动管理 App（独立链路，已暂停）
+### C：移动管理 App（Go 管理链路，已恢复）
 
-> 该项目**已暂停开发**，以下说明供恢复时参考。
-
-```bash
+```sh
 cd registration_system_admin_app
-flutter run
+flutter pub get
+flutter run --dart-define=ADMIN_API_BASE_URL=https://oryjk.cn:82/regist-v3
 ```
 
-- 后端地址可配置；Rust 管理接口使用 `/api/admin`，Go 管理接口使用 `/api/v1/admin`，切换后端时必须同步切换 base URL。
-- baseURL 在登录页可手填并持久化到 `SharedPreferences`（Android 模拟器需 `adb reverse tcp:18081 tcp:18081`）。
-- 首版聚焦：登录 + 工作台首页 + 创建比赛 + 创建球队（共 4 个页面）。
+使用 Go `/api/v1/admin` 与 `{code,message,data}`，首版包含登录、工作台、比赛与报名查询、球队/成员、会员及人工队费。开发、构建、签名限制和离线原生 harness 见 [App README](registration_system_admin_app/README.md)，实际交付与未验证项见 [验收记录](docs/admin-app-v1-acceptance.md)。
 
 ## 前后端边界
 
@@ -145,7 +142,7 @@ flutter run
 - **老版 Vue 管理后台**：已从工作区删除（git 历史可查），由新版 React 管理后台替代。
 - **新版 React 管理后台**：登录、鉴权、仪表盘、比赛（CRUD、状态、比分、球队申请）、球队（成员/队长/资料及队费入账）、比赛管理员、系统管理员、接入状态、小程序审核、打赏与系统设置已落地。入口为 `src/main.tsx` → `src/router.tsx`。
 - **小程序/H5**：**已对接 Go 后端**（`mini-rust-backend-final` 是最后一个 Rust 后端基线）；主流程使用 Go Match API；已删除无 Go 后端支持的旧约队详情、活动请求与旧报名分支，历史约队/活动通知仅保留内容、不提供跳转；`src/mock/` 仅作历史原型留存。
-- **移动管理 App**：已初始化 Flutter iOS/Android 项目，提供登录 + 工作台 + 创建比赛 + 创建球队首版页面；当前**已暂停开发**。
+- **移动管理 App**：已恢复 Android/iOS Flutter 工程并实现 Go 管理首版；范围与平台验收限制见 App README 和验收记录。
 
 ## 当前部署（jd）
 

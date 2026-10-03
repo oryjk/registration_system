@@ -6,7 +6,7 @@
 | --- | --- | --- |
 | `registration_system_mini/` | 微信小程序/H5 端，面向球员/队员/普通用户；**已对接 Go 新后端**（验收环境 oryjk.cn:82，`mini-rust-backend-final` 标记最后一个对接 Rust 后端的基线） | `uni-app + Vue 3 + TypeScript + Vite` |
 | `registration_system_backend_fe_go/` | 对接 Go 新后端的管理后台新版本 | `React + TypeScript + Vite + shadcn/ui（+ reui registry）+ Tailwind CSS 4` |
-| `registration_system_admin_app/` | 移动管理 App，面向赛事运营/管理员；**已暂停开发** | `Flutter + Dart` |
+| `registration_system_admin_app/` | 移动管理 App，面向赛事运营/管理员；**已恢复开发，首版对接 Go** | `Flutter + Dart` |
 | `registration_system_go/` | **当前唯一在开发的后端服务端**，承载认证、球队与比赛 API | `Go + Gin + PostgreSQL + pgx + sqlc` |
 | `registration_system_h5/` | **web-view 内嵌 H5 页面专用项目（规划，待创建）**：承载只跑在 H5 环境的页面（小程序 web-view 嵌页、微信内浏览器页面等），不再塞进 uni-app 双端代码库；产物为静态文件，部署推送到 jd 服务器的 nginx，经 `https://match.oryjk.cn`（443，web-view 业务域名）对外服务 | 待定（建议 `Vue 3 + TypeScript + Vite` 纯 Web 技术栈） |
 
@@ -43,7 +43,7 @@
 - **兼容性硬规则**：接口与数据结构变更必须保证**已发布（旧版本）小程序请求新后端不报错**——不删除/改名既有路由，不删除既有请求/响应字段或改变其类型，不让旧客户端的既有调用从成功变为失败。新增路由、新增字段、放宽限制都允许。若业务上确实要让旧客户端的某个既有调用开始失败（如禁止某类操作），属于产品决策：必须显式告知用户影响面，由用户拍板后才可实施。
 - **数据库迁移兼容**：共享库的 schema 变更必须与**线上正在运行的旧版后端镜像**兼容（该库同时被 jd 后端与本地开发共用）——新增列（带默认值）、放宽约束等加法变更可以先行应用；删除/改名列、改类型、收紧约束必须等使用新 schema 的镜像部署后才可执行。应用迁移前先核对已提交版本查询的依赖面（老 SQL 是否有 `SELECT *`、是否引用被改对象）。「加法迁移先行、新镜像后到」是默认顺序，deploy 脚本的 `--migrate` 即为此设计。
 - 后端遵循**六边形 / 整洁分层**：`domain` / `application` / `ports` / `adapters`。
-- 管理端接口通常在 `/api/admin` 前缀下，常见响应为 `ApiResponse<T>`。
+- Go 管理端与移动管理 App 使用 `/api/v1/admin`，统一响应 `{ code, message, data }`，成功 `code = 0`。
 - 小步修改，优先做**可验证**且范围清晰的变更，避免无关重构。
 
 ## AI 编程与代码可维护性
@@ -65,7 +65,7 @@
 
 - 小程序入口：`registration_system_mini/src/main.ts`、`src/pages.json`
 - Go 配套管理端入口：`registration_system_backend_fe_go/src/main.tsx`、`src/router.tsx`
-- 移动管理 App 入口（已暂停）：`registration_system_admin_app/lib/main.dart`
+- 移动管理 App 入口：`registration_system_admin_app/lib/main.dart`
 - Go 后端入口：`registration_system_go/cmd/api/main.go`、`internal/bootstrap/`
 
 ## 联动规则
@@ -91,7 +91,7 @@
 - Rust 参考后端已从工作区删除，不再有任何验证要求
 - Go 配套管理端提交前建议执行：`bun run type-check`、`bun run lint`、`bun run build`
 - 小程序提交前建议执行：`bun run type-check`、必要时 `bun run build:mp-weixin`
-- 移动管理 App 已暂停开发；若恢复改动，提交前建议执行：`dart format lib test`、`flutter analyze`、`flutter test`、必要时 `flutter build apk --debug`
+- 移动管理 App 提交前执行：`dart format lib test`、`flutter analyze`、`flutter test`、必要时 `flutter build apk --debug`
 - 如因环境、依赖、耗时或任务范围原因未运行相关验证命令，必须在最终回复中说明未验证项和原因。
 - TDD 规则：后端业务逻辑、仓储、路由等行为变更需要优先考虑 TDD 或补充后端测试；前端不要求每次按 TDD 开发，页面、样式、交互和小程序 UI 变更通常以类型检查、构建和人工/模拟器验证为主。
 - 前端测试策略：不要为了普通前端改动机械新增单元测试或静态断言；只有涉及路由、接口调用、权限、数据提交、共享工具函数或关键业务状态变化时，才按风险补充必要测试。

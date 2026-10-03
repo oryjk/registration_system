@@ -1,14 +1,29 @@
 # registration_system_admin_app 工作区说明
 
-这是 `registration_system` 工作区里的移动端管理 App，面向赛事运营/管理员，首版聚焦 `创建比赛`、`创建球队` 等管理动作。
+移动管理 App 已恢复开发，首版对接当前 Go 后端，面向赛事运营与管理员。当前范围及验收限制见 [README.md](README.md) 和 [首版验收记录](../docs/admin-app-v1-acceptance.md)。
 
-> **状态：已暂停开发。** 在用户明确要求恢复前，不要在此项目内新增功能、修复或重构；如任务涉及移动管理 App，先向用户确认是否恢复。以下约定在恢复开发后继续适用。
+## 协作与分层
 
-## 协作约定
+- 修改前先读根 `AGENTS.md`、本文件和获批首版 spec；不恢复 Rust 或旧 Vue 项目，不改 Go API/schema。
+- `lib/features/*/domain` 为纯 Dart 模型、规则与 repository 契约；data 负责 HTTP/JSON 映射；application 负责状态与业务编排；presentation 负责页面交互；`lib/app` 负责组合、会话与资源生命周期。
+- HTTP 统一经过 ApiClient，接口为 base + `/api/v1/admin`，响应 `{code,message,data}` 成功 code=0；实际 DTO/路由以 Go 为准。
+- 默认 base `https://oryjk.cn:82/regist-v3`，由 `ADMIN_API_BASE_URL` dart-define 覆盖；健康检查 base + `/health`。
+- 具体时刻 UTC 传输，北京时间展示/输入；纯日期保留 `YYYY-MM-DD`。金额使用整数分，不在页面推算余额。
+- AppStores 的安全存储、偏好及 pending-fund store 在整个 App 生命周期共用；环境替换使用 `forEnvironment` 或转交相同 stores，保留跨环境待确认写入的序列化。
+- 401 清理受保护导航与控制器，403 保留会话；旧会话响应不能污染新账号。退出不删除待确认资金动作；不自动重放写请求。
+- 共享主题位于 design_system；深色默认，浅色持久化。非声明式文件超过约 600 行先评估责任边界，避免无关重构。
+- 独立离线 fixture harness 位于 `test/harness`，生产入口 `lib/main.dart` 不导入 fixture、不读取 HARNESS_*。原生验收截图与产物放忽略的 `build/`。
 
-- 这是给管理人员使用的移动端，不是给普通队员的入口；第一个版本优先围绕 `创建比赛` 和 `创建球队` 这类管理任务。
-- 优先保持页面职责清晰，首页只负责入口编排，具体表单页面独立拆分。
-- 复用的表单样式、校验和卡片组件尽量抽到独立文件。
-- 新增后端接口时，要同步核对对应的管理端 DTO 和字段约定，避免前后端命名漂移。
-- 与后端交互时，以实际 API 和 DTO 为准，不猜字段。
-- 小步修改，优先可验证的变更。
+## 验证
+
+所有 Flutter 测试/构建/运行串行执行，避免 native-assets 输出竞争。
+
+```sh
+dart format lib test
+flutter analyze
+flutter test
+flutter build apk --debug
+flutter build ios --simulator
+```
+
+原生工具链及 harness 命令见 README。Android release 仍使用 scaffold debug 签名，不作为商店发行配置；iOS simulator `.app` 不是设备/商店发行包。不读/打印凭据，不向生产业务表写验收数据；没有合法账号时明确记录真实认证接口未验证。

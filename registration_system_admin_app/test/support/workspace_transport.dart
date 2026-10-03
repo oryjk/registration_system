@@ -9,7 +9,8 @@ class WorkspaceTransport extends http.BaseClient {
       uncertainFund = false,
       uncertainMatch = false;
   int detailStatus = 200;
-  Completer<void>? detailBarrier, currentBarrier;
+  String readErrorMessage = '读取暂时失败，请重试';
+  Completer<void>? detailBarrier, currentBarrier, readBarrier;
   final requests = <http.BaseRequest>[];
   final fundBodies = <Map<String, dynamic>>[];
   final Map<String, Map<String, Object?>> _results = {};
@@ -129,8 +130,9 @@ class WorkspaceTransport extends http.BaseClient {
       await currentBarrier?.future;
       return envelope(admin);
     }
+    if (request.method == 'GET') await readBarrier?.future;
     if (failRead && request.method == 'GET') {
-      return envelope(null, code: 503, message: '读取暂时失败，请重试', status: 503);
+      return envelope(null, code: 503, message: readErrorMessage, status: 503);
     }
     if (path == '/teams') {
       if (request.method == 'POST') {

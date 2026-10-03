@@ -145,7 +145,9 @@ class _MemberDetailPageState extends State<MemberDetailPage> {
                                       : null,
                                 ),
                               ),
-                              Text('电话：${m.phoneNumber ?? '未提供'}'),
+                              Text(
+                                '电话：${m.phoneNumber?.trim().isNotEmpty == true ? m.phoneNumber! : '未提供'}',
+                              ),
                               Text('入队：${memberInstant(m.joinedAt)}'),
                               Text(
                                 m.lastRechargeAt == null

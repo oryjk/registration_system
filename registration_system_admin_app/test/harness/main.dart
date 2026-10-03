@@ -1,5 +1,8 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:developer' as developer;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:registration_system_admin_app/app/admin_navigation.dart';
 import 'package:registration_system_admin_app/app/admin_shell.dart';
 import 'package:registration_system_admin_app/app/app_dependencies.dart';
@@ -50,6 +53,7 @@ class _NativeSceneHarnessState extends State<NativeSceneHarness> {
     'empty',
     'error',
     'long',
+    'loading',
   ];
   static const initial = String.fromEnvironment(
     'HARNESS_SCENE',
@@ -68,10 +72,18 @@ class _NativeSceneHarnessState extends State<NativeSceneHarness> {
     defaultValue: '0',
   );
   final transport = WorkspaceTransport();
+  bool buildInfoFailure = false;
   late final dependencies = AppDependencies(
-    baseUrl: Uri.parse('https://fixture.invalid'),
+    baseUrl: Uri.parse(
+      const bool.fromEnvironment('HARNESS_LONG_ACCOUNT')
+          ? 'https://offline-mobile-acceptance.environment.fixture.invalid'
+          : 'https://fixture.invalid',
+    ),
     transport: transport,
-    buildVersionReader: () async => "离线验收fixture (1)",
+    buildVersionReader: () async {
+      if (buildInfoFailure) throw StateError('离线构建版本读取失败，请重试');
+      return '离线验收fixture (1)';
+    },
     storage: FakeSecureStore(),
     preferences: FakePreferencesStore(dark: initialDark),
   );
@@ -84,6 +96,120 @@ class _NativeSceneHarnessState extends State<NativeSceneHarness> {
   void initState() {
     super.initState();
     unawaited(_prepare());
+    if (const bool.fromEnvironment('HARNESS_CONTROL')) {
+      developer.registerExtension('ext.adminAcceptance.configure', _configure);
+    }
+  }
+
+  /// Debug VM service control, available only in this offline test entrypoint.
+  Future<developer.ServiceExtensionResponse> _configure(
+    String method,
+    Map<String, String> params,
+  ) async {
+    final scene = params['scene'];
+    if (params.containsKey('orientation')) {
+      await SystemChrome.setPreferredOrientations(
+        params['orientation'] == 'landscape'
+            ? [
+                DeviceOrientation.landscapeLeft,
+                DeviceOrientation.landscapeRight,
+              ]
+            : [DeviceOrientation.portraitUp],
+      );
+    }
+    if (params['retryPending'] == 'true') {
+      await workspace?.funds(42, 7).retryPending();
+    }
+    if (params.containsKey('buildInfoError')) {
+      buildInfoFailure = params['buildInfoError'] == 'true';
+      await dependencies.buildInfo.refresh();
+    }
+    if (params.containsKey('longError')) {
+      transport.readErrorMessage = params['longError'] == 'true'
+          ? '离线验收读取失败：当前数据暂时无法加载，请核对网络连接，稍后重试；已有输入会保留，操作结果需要先核实，避免重复提交。'
+          : '读取暂时失败，请重试';
+    }
+    if (!ready || (scene != null && !scenes.contains(scene))) {
+      return developer.ServiceExtensionResponse.error(
+        -32602,
+        'Invalid scene or not ready',
+      );
+    }
+    if (scene != null) {
+      workspace?.navigatorKey.currentState?.popUntil((route) => route.isFirst);
+    }
+    if (scene != null) {
+      transport.readBarrier?.complete();
+      transport.readBarrier = null;
+    }
+    if (scene == 'loading') transport.readBarrier = Completer<void>();
+    if (scene == 'login') await dependencies.session.logout();
+    if (scene != null && scene != 'login' && !workspace!.isCurrent) {
+      workspace!.dispose();
+      await dependencies.session.login('离线验收运营员', 'offline-only');
+      workspace = ProtectedWorkspace(dependencies);
+    }
+    setState(() {
+      if (params.containsKey('dark')) dark = params['dark'] == 'true';
+      if (params.containsKey('scale')) scale = double.parse(params['scale']!);
+      if (params.containsKey('width')) width = double.parse(params['width']!);
+    });
+    await dependencies.theme.setDark(dark);
+    if (scene != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (scene == 'login') {
+          unawaited(_push(LoginPage(controller: dependencies.session)));
+        } else {
+          unawaited(_open(scene));
+        }
+      });
+    }
+    if (params['scroll'] == 'bottom' ||
+        params['keyboard'] == 'show' ||
+        params.containsKey('tab')) {
+      var focused = false;
+      void visit(Element element) {
+        if (params.containsKey('tab') &&
+            element.widget is NavigationBar &&
+            ModalRoute.of(element)?.isCurrent == true) {
+          (element.widget as NavigationBar).onDestinationSelected?.call(
+            int.parse(params['tab']!),
+          );
+        }
+        if (element is StatefulElement &&
+            ModalRoute.of(element)?.isCurrent == true) {
+          final state = element.state;
+          if (params['scroll'] == 'bottom' &&
+              state is ScrollableState &&
+              state.position.hasContentDimensions) {
+            state.position.jumpTo(state.position.maxScrollExtent);
+          }
+          if (!focused &&
+              params['keyboard'] == 'show' &&
+              state is EditableTextState &&
+              !state.widget.readOnly) {
+            focused = true;
+            state.widget.focusNode.requestFocus();
+            return;
+          }
+        }
+        element.visitChildren(visit);
+      }
+
+      (context as Element).visitChildren(visit);
+    }
+    final view = View.of(context);
+    final nativeWidth = view.physicalSize.width / view.devicePixelRatio;
+    return developer.ServiceExtensionResponse.result(
+      jsonEncode({
+        'scene': scene,
+        'dark': dark,
+        'textScale': scale,
+        'nativeLogicalWidth': nativeWidth,
+        'layoutWidth': width > 0 ? width.clamp(0, nativeWidth) : nativeWidth,
+        'nativeLogicalHeight': view.physicalSize.height / view.devicePixelRatio,
+      }),
+    );
   }
 
   Future<void> _prepare() async {
@@ -162,6 +288,7 @@ class _NativeSceneHarnessState extends State<NativeSceneHarness> {
       case 'empty':
       case 'error':
       case 'long':
+      case 'loading':
         await nav.openMatchQuery();
         return;
       case 'match-detail':
