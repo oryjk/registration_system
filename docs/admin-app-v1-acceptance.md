@@ -1,6 +1,6 @@
 # 移动管理 App 首版验收记录
 
-验收日期：2026-10-03。范围为已批准的 [设计](superpowers/specs/2026-10-03-admin-app-v1-design.md) 与 [实施计划](superpowers/plans/2026-10-03-admin-app-v1.md)。Task1–9 已逐项实施并独立审阅；Task10 完成本文记录的构建、离线原生视觉和架构检查，最终全分支评审发现 F1–F4；本次统一修复后状态为 **pending SCOPED REVIEW**，由 controller 审阅修复并更新结论。
+验收日期：2026-10-03。范围为已批准的 [设计](superpowers/specs/2026-10-03-admin-app-v1-design.md) 与 [实施计划](superpowers/plans/2026-10-03-admin-app-v1.md)。Task1–10 已实施并完成独立审查；最终全分支初审的 F1–F4 在一个修复波次后全部 ADDRESSED，scoped review 未发现新增破坏或越界变更。最终产品代码评审通过，源码基线 `445a426ad49b39482872d3db9bdfc81fa7b0eae5`，完整测试 251/251；初审及修复后的结论见 [代码审查归档](admin-app-v1-code-review.md)。本文的原生产物身份对应该修复源码，后续仅做文档闭环。
 
 客户端首版已恢复，Android debug APK 和 iOS simulator App 可运行。**未完成真实账号验收**：没有提供管理员凭据，真实登录、受保护 Go 读接口与端到端业务操作未验证。没有向生产业务表写入验收数据。健康探测成功仅证明服务可达；离线 fixture 成功不证明线上账号权限、生产数据或服务端记账成功。
 
@@ -41,7 +41,7 @@ F4 候选输入采用 300ms 可取消 debounce，输入立即清除选择，等�
 
 最新原生 main APK/iOS App/ZIP 在 lib 修复后重建、复制、哈希、安装并启动。`final-fix-android-main-login.png` 与 `final-fix-ios-main-login.png` 已通过 view_image 实际查看：标题/输入/按钮清楚、上下安全区正常；两平台 version=1.0.0 (1)、error=null、loading=false。没有重新执行整套旧 fixture 视觉矩阵；这些行为修复由真实 AdminApp/widget 和 HTTP 回归覆盖。真实账号、token 生命周期、普通 iOS 文字键盘、商店/真机与未来 Kotlin 迁移限制仍按下文保留。
 
-最终状态：**pending SCOPED REVIEW**。未合并、push 或发布。
+最终状态：**代码评审已完成，无开放发现项**。scoped review 通过源码 `445a426ad49b39482872d3db9bdfc81fa7b0eae5`，F1–F4 全部 ADDRESSED；[完整审查归档](admin-app-v1-code-review.md) 保留初审与修复结论。未合并、push 或发布。
 
 ## 最终检查与原生运行
 
@@ -124,7 +124,7 @@ Artifact root：`/Users/carlwang/.codex/worktrees/admin-app-v1/registration_syst
 - 真实账户 token 写入/删除与安全存储故障只通过行为 fake 测试；真实插件初始化无错误，不能代替真实账号生命周期验收。
 - iOS 普通文字键盘首次系统教程遮挡，数字键盘与底部安全区已验证；需有可操作模拟器/真机时补普通文字键盘交互。没有请求解锁或绕过宿主锁屏。
 - 商店签名、真实设备/不同OS性能与完整发行流水线未验；当前交付是 debug APK/simulator App。
-- 最终 F1–F4 已在一个修复波次内处理并验证；状态保留 pending SCOPED REVIEW，由 controller 作最终裁定。
+- 最终代码评审已完成：F1–F4 全部 ADDRESSED，scoped review 无新增破坏或越界变更，结论见 [代码审查归档](admin-app-v1-code-review.md)；上述真实账号与平台验收限制仍保留。
 
 ## 附录：执行 ledger 的全部 Ruling 原文（按出现顺序）
 
