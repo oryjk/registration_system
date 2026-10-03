@@ -194,7 +194,7 @@ class _MemberDetailPageState extends State<MemberDetailPage> {
                               ),
                               OutlinedButton(
                                 onPressed: captain
-                                    ? (c.canManageTeam
+                                    ? (c.canRevokeCaptain(m)
                                           ? () => unawaited(
                                               _confirm(
                                                 m,

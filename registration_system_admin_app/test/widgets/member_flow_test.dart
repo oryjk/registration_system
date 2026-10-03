@@ -145,8 +145,8 @@ void main() {
     expect(find.text('暂无成员，可从真实球员查询中添加'), findsOneWidget);
     r.value = management(
       members: [
-        member(id: 7, paid: true),
-        member(id: 8, status: 'inactive'),
+        member(userId: 7, paid: true),
+        member(userId: 8, status: 'inactive'),
       ],
     );
     await c.load();
@@ -200,7 +200,7 @@ void main() {
           captainId: 7,
           members: [
             member(role: 'captain'),
-            member(id: 8),
+            member(userId: 8),
           ],
         );
       final c = MemberController(repository: r, teamId: 42);
@@ -225,7 +225,7 @@ void main() {
         captainId: 8,
         members: [
           member(),
-          member(id: 8, role: 'captain'),
+          member(userId: 8, role: 'captain'),
         ],
       );
       await c.load();
@@ -353,6 +353,68 @@ void main() {
       expect(find.textContaining('详细失败原因'), findsOneWidget);
       expect(tester.takeException(), isNull);
     }
+    c.dispose();
+  });
+  testWidgets('unknown role or status captain cancel button sends no request', (
+    tester,
+  ) async {
+    for (final captain in [
+      member(role: 'future'),
+      member(role: 'captain', status: 'future'),
+    ]) {
+      final r = FakeMembers()
+        ..value = management(captainId: 7, members: [captain]);
+      final c = MemberController(repository: r, teamId: 42);
+      await c.load();
+      await tester.pumpWidget(
+        host(
+          MemberDetailPage(
+            key: ValueKey(captain.role + captain.status),
+            controller: c,
+            userId: 7,
+            onEditMember: (_) {},
+            onEditProfile: (_) {},
+          ),
+        ),
+      );
+      await tester.scrollUntilVisible(find.text('取消队长'), 250);
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('取消队长'));
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<OutlinedButton>(find.widgetWithText(OutlinedButton, '取消队长'))
+            .onPressed,
+        isNull,
+      );
+      await tester.tap(find.text('取消队长'));
+      await tester.pumpAndSettle();
+      expect(find.text('取消队长？'), findsNothing);
+      expect(r.writes, 0);
+      c.dispose();
+    }
+  });
+  testWidgets('list navigation receives user id distinct from membership id', (
+    tester,
+  ) async {
+    final r = FakeMembers();
+    final c = MemberController(repository: r, teamId: 42);
+    await c.load();
+    Member? selected;
+    await tester.pumpWidget(
+      host(
+        MemberListPage(
+          controller: c,
+          loadOnStart: false,
+          onMember: (member) => selected = member,
+          onAdd: () {},
+        ),
+      ),
+    );
+    await tester.tap(find.text('球员7'));
+    await tester.pumpAndSettle();
+    expect(selected!.id, 1);
+    expect(selected!.userId, 7);
     c.dispose();
   });
 }

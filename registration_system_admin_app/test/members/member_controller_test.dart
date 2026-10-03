@@ -54,8 +54,8 @@ void main() {
           captainId: 7,
           members: [
             member(role: 'captain'),
-            member(id: 8, status: 'inactive'),
-            member(id: 9, role: 'future'),
+            member(userId: 8, status: 'inactive'),
+            member(userId: 9, role: 'future'),
           ],
         );
       final c = MemberController(repository: r, teamId: 42);
@@ -201,4 +201,55 @@ void main() {
       c.dispose();
     },
   );
+  test(
+    'unknown role or status and missing current captain cannot revoke',
+    () async {
+      for (final members in [
+        [member(role: 'future')],
+        [member(role: 'captain', status: 'future')],
+        <Member>[],
+      ]) {
+        final r = FakeMembers()
+          ..value = management(captainId: 7, members: members);
+        final c = MemberController(repository: r, teamId: 42);
+        await c.load();
+        await c.assignCaptain(null);
+        expect(
+          r.writes,
+          0,
+          reason: 'unknown or missing actual captain must not mutate',
+        );
+        c.dispose();
+      }
+    },
+  );
+  test(
+    'known inactive or left captain can revoke and uses user lookup',
+    () async {
+      for (final status in ['active', 'inactive', 'left']) {
+        final captain = member(role: 'captain', status: status);
+        expect(captain.id, 1);
+        expect(captain.userId, 7);
+        final r = FakeMembers()
+          ..value = management(captainId: 7, members: [captain]);
+        final c = MemberController(repository: r, teamId: 42);
+        await c.load();
+        expect(c.memberById(7), same(captain));
+        expect(c.memberById(1), isNull);
+        await c.assignCaptain(null);
+        expect(r.writes, 1);
+        expect(c.writeSucceeded, isTrue);
+        c.dispose();
+      }
+    },
+  );
+  test('member update sends user id rather than membership row id', () async {
+    final r = FakeMembers();
+    final c = MemberController(repository: r, teamId: 42);
+    await c.load();
+    await c.updateMember(r.value.members.single, 'leader', 'active');
+    expect(r.lastWriteUserId, 7);
+    expect(r.writes, 1);
+    c.dispose();
+  });
 }

@@ -89,6 +89,11 @@ class MemberController extends ChangeNotifier {
   bool canEdit(Member member) => canManage(member) && !isCaptain(member);
   bool canAssignCaptain(Member member) =>
       canManage(member) && memberById(member.userId)?.status == 'active';
+
+  /// Revocation accepts known inactive/left members too, but only the actual
+  /// current captain identified by the team can be revoked.
+  bool canRevokeCaptain(Member member) =>
+      canManage(member) && _state.data?.team.captainId == member.userId;
   Future<void> load() async {
     if (_disposed || _submitting) return;
     await _load();
@@ -218,12 +223,15 @@ class MemberController extends ChangeNotifier {
 
   Future<void> assignCaptain(int? userId) async {
     if (locked) return;
-    final member = userId == null ? null : memberById(userId);
-    if (!canManageTeam ||
-        (userId != null && (member == null || !canAssignCaptain(member)))) {
+    final targetId = userId ?? _state.data?.team.captainId;
+    final member = targetId == null ? null : memberById(targetId);
+    final allowed =
+        member != null &&
+        (userId == null ? canRevokeCaptain(member) : canAssignCaptain(member));
+    if (!allowed) {
       _reject(
         MemberWriteAction.captain,
-        '队长必须是当前已启用且资料状态明确的球队成员',
+        userId == null ? '当前队长不存在或角色、状态未知，请刷新核实' : '队长必须是当前已启用且资料状态明确的球队成员',
         userId: userId,
       );
       return;

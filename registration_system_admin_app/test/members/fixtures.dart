@@ -3,16 +3,17 @@ import 'package:registration_system_admin_app/features/members/domain/member_rep
 import '../teams/fixtures.dart' as teams;
 
 Member member({
-  int id = 7,
+  int userId = 7,
+  int? membershipId,
   String role = 'member',
   String status = 'active',
   bool paid = false,
   int balance = -150,
   String? name,
 }) => Member(
-  id: id,
-  userId: id,
-  nickname: '球员$id',
+  id: membershipId ?? (userId == 7 ? 1 : userId + 1000),
+  userId: userId,
+  nickname: '球员$userId',
   realName: name,
   role: role,
   status: status,
@@ -40,6 +41,7 @@ class FakeMembers implements MemberRepository {
   MemberManagement value = management();
   Object? readError, writeError;
   int reads = 0, writes = 0, profiles = 0;
+  int? lastWriteUserId;
   final searches = <String, Completer<List<MemberCandidate>>>{};
   Completer<MemberManagement>? pending;
   @override
@@ -52,28 +54,30 @@ class FakeMembers implements MemberRepository {
   @override
   Future<List<MemberCandidate>> candidates(int teamId, String search) =>
       (searches[search] = Completer()).future;
-  Future<MemberManagement> write() async {
+  Future<MemberManagement> write([int? userId]) async {
+    lastWriteUserId = userId;
     writes++;
     if (writeError != null) throw writeError!;
     return pending?.future ?? value;
   }
 
   @override
-  Future<MemberManagement> add(int teamId, int userId, String role) => write();
+  Future<MemberManagement> add(int teamId, int userId, String role) =>
+      write(userId);
   @override
   Future<MemberManagement> update(
     int teamId,
     int userId,
     String role,
     String status,
-  ) => write();
+  ) => write(userId);
   @override
-  Future<MemberManagement> remove(int teamId, int userId) => write();
+  Future<MemberManagement> remove(int teamId, int userId) => write(userId);
   @override
-  Future<MemberManagement> setCaptain(int teamId, int? userId) => write();
+  Future<MemberManagement> setCaptain(int teamId, int? userId) => write(userId);
   @override
   Future<MemberManagement> setPaid(int teamId, int userId, bool paid) =>
-      write();
+      write(userId);
   @override
   Future<PlayerProfile> updateProfile(
     int userId, {
