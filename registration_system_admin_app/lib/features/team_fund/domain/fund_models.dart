@@ -42,7 +42,9 @@ class FundDraft {
     if (action != FundAction.credit && note.trim().isEmpty) {
       errors['note'] = '请填写原因';
     }
-    if (utf8.encode(note.trim()).length > 120) {
+    // Go validates credit before trimming; consume/reversal trim first.
+    final validatedNote = action == FundAction.credit ? note : note.trim();
+    if (utf8.encode(validatedNote).length > 120) {
       errors['note'] = '备注最多 120 字节（通常 40 个汉字）';
     }
     if (action == FundAction.reversal &&

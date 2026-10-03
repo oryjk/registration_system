@@ -357,4 +357,50 @@ void main() {
       c.dispose();
     },
   );
+  test(
+    'busy-start pre-write GET cannot overwrite confirmed balance during cleanup',
+    () async {
+      final storage = MemorySecureStore()
+        ..deleteGate = Completer<void>()
+        ..deleteStarted = Completer<void>();
+      final store = SecurePendingFundStore(storage),
+          r = FakeFunds()..executeGate = Completer<FundResult>();
+      await store.save(action());
+      final c = FundController(scope: scope, repository: r, store: store);
+      await c.restore();
+      final retry = c.retryPending();
+      await Future<void>.delayed(Duration.zero);
+      expect(r.calls.length, 1);
+      final oldRead = Completer<List<FundTransaction>>();
+      r.readGates.add(oldRead);
+      final read = c.refreshTransactions();
+      expect(r.cursors, [0]);
+      r.executeGate!.complete(
+        const FundResult(
+          balanceCents: 12400,
+          transactionId: 99,
+          duplicated: false,
+        ),
+      );
+      await storage.deleteStarted!.future;
+      expect(c.balanceCents, 12400);
+      oldRead.complete([
+        transaction(1),
+      ]); // snapshot taken before POST committed
+      await read;
+      expect(c.balanceCents, 12400);
+      r.readFailure = StateError('post-cleanup GET failed');
+      storage.deleteGate!.complete();
+      await retry;
+      expect(c.phase, FundPhase.confirmed);
+      expect(c.result!.balanceCents, 12400);
+      expect(c.balanceCents, 12400);
+      expect(c.transactionsError, isNotNull);
+      expect(c.pending, isNull);
+      expect(r.calls.length, 1);
+      expect(r.calls.single.key, 'original');
+      expect(r.cursors, [0, 0]);
+      c.dispose();
+    },
+  );
 }

@@ -27,7 +27,7 @@ class MemorySecureStore implements SecureStore {
       failDelete = false,
       partialDelete = false,
       partialWrite = false;
-  Completer<void>? writeGate, readGate;
+  Completer<void>? writeGate, readGate, deleteGate, deleteStarted;
   bool failRead = false;
   @override
   Future<String?> read(String key) async {
@@ -46,6 +46,8 @@ class MemorySecureStore implements SecureStore {
 
   @override
   Future<void> delete(String key) async {
+    deleteStarted?.complete();
+    if (deleteGate != null) await deleteGate!.future;
     if (partialDelete) values.remove(key);
     if (failDelete) throw StateError('storage delete');
     values.remove(key);

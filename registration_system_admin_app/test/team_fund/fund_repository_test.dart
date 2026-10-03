@@ -183,4 +183,64 @@ void main() {
       expect(transaction(1, source: source).canReverse, false);
     }
   });
+  test(
+    'raw credit UTF8 whitespace boundary matches Go while consume reversal trim first',
+    () async {
+      final requests = <http.Request>[];
+      final api = ApiClient(
+        baseUrl: scope.environment,
+        session: Session(),
+        transport: MockClient((r) async {
+          requests.add(r);
+          return http.Response(
+            '{"code":0,"message":"ok","data":{"balance_cents":0,"transaction_id":1,"duplicated":false}}',
+            200,
+          );
+        }),
+      );
+      final repository = HttpFundRepository(api);
+      final rawTooLong = ' ${'汉' * 40} ';
+      final rejected = FundDraft(
+        action: FundAction.credit,
+        amountCents: 100,
+        note: rawTooLong,
+      );
+      expect(rejected.validate()['note'], isNotNull);
+      await expectLater(
+        repository.execute(action(value: rejected)),
+        throwsA(
+          isA<ApiError>().having(
+            (e) => e.kind,
+            'kind',
+            ApiErrorKind.validation,
+          ),
+        ),
+      );
+      expect(requests, isEmpty);
+      final exactBoundary = ' ${'汉' * 39}  ';
+      await repository.execute(
+        action(
+          value: FundDraft(
+            action: FundAction.credit,
+            amountCents: 100,
+            note: exactBoundary,
+          ),
+        ),
+      );
+      expect(jsonDecode(requests.single.body)['note'], exactBoundary);
+      for (final operation in [FundAction.consume, FundAction.reversal]) {
+        final d = FundDraft(
+          action: operation,
+          amountCents: operation == FundAction.consume ? 100 : 0,
+          originalTransactionId: operation == FundAction.reversal ? 9 : null,
+          note: rawTooLong,
+        );
+        expect(d.validate(), isEmpty);
+        await repository.execute(action(value: d));
+        expect(jsonDecode(requests.last.body)['note'], rawTooLong);
+      }
+      expect(requests.length, 3);
+      api.close();
+    },
+  );
 }

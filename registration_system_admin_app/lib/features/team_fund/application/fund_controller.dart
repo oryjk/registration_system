@@ -193,6 +193,10 @@ class FundController extends ChangeNotifier {
   Future<void> _execute(PendingFundAction action, int generation) async {
     final confirmed = await _repository.execute(action);
     if (!_current(generation)) return;
+    // A refresh started while POST was pending may still contain the pre-write
+    // snapshot. Invalidate it before publishing success or awaiting cleanup.
+    _reads.invalidate();
+    loadingTransactions = false;
     _balanceCents = confirmed.balanceCents;
     _state = FundState(
       phase: FundPhase.confirmed,
