@@ -23,7 +23,14 @@ void main() {
 }
 
 class NativeSceneHarness extends StatefulWidget {
-  const NativeSceneHarness({super.key});
+  const NativeSceneHarness({
+    super.key,
+    this.initialScene = const String.fromEnvironment(
+      'HARNESS_SCENE',
+      defaultValue: 'shell',
+    ),
+  });
+  final String initialScene;
   @override
   State<NativeSceneHarness> createState() => _NativeSceneHarnessState();
 }
@@ -55,10 +62,7 @@ class _NativeSceneHarnessState extends State<NativeSceneHarness> {
     'long',
     'loading',
   ];
-  static const initial = String.fromEnvironment(
-    'HARNESS_SCENE',
-    defaultValue: 'shell',
-  );
+  String get initial => widget.initialScene;
   static const initialDark = bool.fromEnvironment(
     'HARNESS_DARK',
     defaultValue: true,
@@ -97,12 +101,12 @@ class _NativeSceneHarnessState extends State<NativeSceneHarness> {
     super.initState();
     unawaited(_prepare());
     if (const bool.fromEnvironment('HARNESS_CONTROL')) {
-      developer.registerExtension('ext.adminAcceptance.configure', _configure);
+      developer.registerExtension('ext.adminAcceptance.configure', configure);
     }
   }
 
   /// Debug VM service control, available only in this offline test entrypoint.
-  Future<developer.ServiceExtensionResponse> _configure(
+  Future<developer.ServiceExtensionResponse> configure(
     String method,
     Map<String, String> params,
   ) async {
@@ -144,8 +148,8 @@ class _NativeSceneHarnessState extends State<NativeSceneHarness> {
     }
     if (scene == 'loading') transport.readBarrier = Completer<void>();
     if (scene == 'login') await dependencies.session.logout();
-    if (scene != null && scene != 'login' && !workspace!.isCurrent) {
-      workspace!.dispose();
+    if (scene != null && scene != 'login' && workspace?.isCurrent != true) {
+      workspace?.dispose();
       await dependencies.session.login('离线验收运营员', 'offline-only');
       workspace = ProtectedWorkspace(dependencies);
     }
@@ -412,7 +416,7 @@ class _NativeSceneHarnessState extends State<NativeSceneHarness> {
         ? Scaffold(body: Center(child: Text(error!)))
         : !ready
         ? const Scaffold(body: Center(child: CircularProgressIndicator()))
-        : initial == 'login'
+        : workspace == null
         ? LoginPage(controller: dependencies.session)
         : ScaffoldMessenger(
             key: workspace!.messengerKey,
