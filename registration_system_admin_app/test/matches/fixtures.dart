@@ -13,7 +13,7 @@ Map<String, Object?> matchJson({
   'opponent_state': 'recruiting',
   'status': status,
   'host_team_id': mode == 'online_pickup' ? null : 12,
-  'host_team_name': '测试球队',
+  'host_team_name': mode == 'online_pickup' ? '' : '测试球队',
   'away_team_id': null,
   'away_team_name': null,
   'opponent_name': null,
@@ -48,10 +48,10 @@ Map<String, Object?> detailJson({
   'groups': [
     {
       'id': 'group-1',
-      'kind': 'host_team',
-      'team_id': 12,
-      'min_players': null,
-      'max_players': 8,
+      'kind': mode == 'online_pickup' ? 'individual_opponent' : 'host_team',
+      'team_id': mode == 'online_pickup' ? null : 12,
+      'min_players': mode == 'online_pickup' ? 10 : null,
+      'max_players': mode == 'online_pickup' ? 14 : 8,
       'status': 'open',
       'registrations': [
         {

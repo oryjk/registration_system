@@ -129,6 +129,13 @@ class MatchDraft {
         (!isEditing || hostCapacityLimit != original!.hostCapacityLimit)) {
       errors['host_capacity_limit'] = '报名上限须为 1 到 100';
     }
+    // PATCH capacity only updates an existing host_team registration group.
+    // Pickup capacity belongs to individual_opponent and has no update contract.
+    if (isEditing &&
+        hostCapacityLimit != null &&
+        !original!.groups.any((group) => group.kind == 'host_team')) {
+      errors['host_capacity_limit'] = '当前比赛没有主队报名组，不能修改报名上限';
+    }
     if (startTime == null) errors['start_time'] = '请选择开始时间';
     if ((durationMinutes < 30 || durationMinutes > 600) &&
         (prior == null ||

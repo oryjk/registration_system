@@ -196,4 +196,53 @@ void main() {
     expect(await save, isNull);
     expect(c.writeSucceeded, isFalse);
   });
+  test(
+    'pickup with only individual group rejects unsupported capacity before sending',
+    () async {
+      final pickup = detail(mode: 'online_pickup');
+      expect(pickup.groups.single.kind, 'individual_opponent');
+      expect(pickup.groups.single.teamId, isNull);
+      expect(pickup.hostCapacityLimit, isNull);
+      final d = MatchDraft.fromDetail(pickup)..hostCapacityLimit = 12;
+      expect(d.validate(), contains('host_capacity_limit'));
+      final repo = FakeMatchRepository();
+      final c = MatchFormController(repository: repo, id: pickup.match.id);
+      expect(await c.save(d), isNull);
+      expect(c.fieldErrors, contains('host_capacity_limit'));
+      expect(repo.commands, isEmpty);
+      expect(c.writeOutcomeUncertain, isFalse);
+      c.dispose();
+    },
+  );
+  test(
+    'pickup mapper omits capacity even if unsupported draft bypasses validation',
+    () {
+      final d = MatchDraft.fromDetail(detail(mode: 'online_pickup'))
+        ..hostCapacityLimit = 12;
+      expect(
+        MatchPayloadMapper.updateJson(d).containsKey('host_capacity_limit'),
+        isFalse,
+      );
+    },
+  );
+  test(
+    'pickup ordinary edits preserve individual limits and stay submitable',
+    () async {
+      final d = MatchDraft.fromDetail(detail(mode: 'online_pickup'))
+        ..name = '更新散人比赛';
+      expect(d.validate(), isEmpty);
+      final payload = MatchPayloadMapper.updateJson(d);
+      expect(payload['name'], '更新散人比赛');
+      expect(payload.containsKey('host_capacity_limit'), isFalse);
+      final repo = FakeMatchRepository();
+      final c = MatchFormController(repository: repo, id: 'match-1');
+      final save = c.save(d);
+      expect(repo.commands, ['update:match-1']);
+      repo.writes.single.complete(detail(mode: 'online_pickup'));
+      expect(await save, isNotNull);
+      expect(c.writeSucceeded, isTrue);
+      expect(c.state.data!.groups.single.maxPlayers, 14);
+      c.dispose();
+    },
+  );
 }

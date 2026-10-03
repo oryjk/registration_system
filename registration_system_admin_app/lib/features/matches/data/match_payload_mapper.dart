@@ -41,6 +41,7 @@ abstract final class MatchPayloadMapper {
       j['opponent_name'] = d.opponentName!.trim();
     }
     if (d.hostCapacityLimit != null &&
+        original.groups.any((group) => group.kind == 'host_team') &&
         d.hostCapacityLimit != original.hostCapacityLimit) {
       j['host_capacity_limit'] = d.hostCapacityLimit;
     }
