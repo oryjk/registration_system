@@ -1,3 +1,5 @@
+import '../../../core/network/environment_identity.dart'
+    as environment_identity;
 import 'package:flutter/foundation.dart';
 import '../../../core/network/api_error.dart';
 import '../../../core/network/session_access.dart';
@@ -39,22 +41,8 @@ class SessionController extends ChangeNotifier implements SessionAccess {
            'admin_app.session.${Uri.encodeComponent(normalizeEnvironment(environment))}.token';
 
   /// Shared environment identity for session and future pending-fund namespaces.
-  static String normalizeEnvironment(Uri value) {
-    if (!['http', 'https'].contains(value.scheme) ||
-        value.host.isEmpty ||
-        value.userInfo.isNotEmpty ||
-        value.hasQuery ||
-        value.hasFragment) {
-      throw ArgumentError('API environment must be an HTTP(S) base URL');
-    }
-    final path = value.normalizePath().path.replaceFirst(RegExp(r'/+$'), '');
-    return Uri(
-      scheme: value.scheme.toLowerCase(),
-      host: value.host.toLowerCase(),
-      port: value.hasPort ? value.port : null,
-      path: path,
-    ).toString();
-  }
+  static String normalizeEnvironment(Uri value) =>
+      environment_identity.normalizeEnvironment(value);
 
   final SessionRepository _repository;
   final SecureStore _storage;
