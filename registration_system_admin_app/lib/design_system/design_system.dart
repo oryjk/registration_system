@@ -10,3 +10,4 @@ export 'widgets/submit_bar.dart';
 export 'widgets/unsaved_guard.dart';
 export 'widgets/admin_scaffold.dart';
 export 'widgets/form_section.dart';
+export 'widgets/person_row.dart';
