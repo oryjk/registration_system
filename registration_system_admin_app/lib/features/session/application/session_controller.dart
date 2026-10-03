@@ -55,6 +55,10 @@ class SessionController extends ChangeNotifier implements SessionAccess {
   int _generation = 0;
   @override
   int get generation => _generation;
+  int _loginFormEpoch = 0;
+
+  /// Form identity changes on explicit teardown, not on request attempts.
+  int get loginFormEpoch => _loginFormEpoch;
   bool _busy = false;
   bool _cleanupRequired = false;
   bool _disposed = false;
@@ -170,6 +174,7 @@ class SessionController extends ChangeNotifier implements SessionAccess {
     final existing = _clearing;
     if (existing != null) return existing;
     final operation = ++_generation;
+    ++_loginFormEpoch;
     _token = null;
     _busy = false;
     _cleanupRequired = true;

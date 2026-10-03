@@ -60,7 +60,7 @@ class _SessionGateState extends State<SessionGate> {
         key: workspace.messengerKey,
         child: NavigatorPopHandler<Object?>(
           onPopWithResult: (result) =>
-              workspace.navigatorKey.currentState?.pop(result),
+              workspace.navigatorKey.currentState?.maybePop(result),
           child: Navigator(
             key: workspace.navigatorKey,
             onGenerateRoute: (_) => MaterialPageRoute<void>(
@@ -75,7 +75,10 @@ class _SessionGateState extends State<SessionGate> {
       );
     }
     if (session.state.phase == SessionPhase.signedOut) {
-      return LoginPage(key: ValueKey(session.generation), controller: session);
+      return LoginPage(
+        key: ValueKey(session.loginFormEpoch),
+        controller: session,
+      );
     }
     return Scaffold(
       body: SafeArea(

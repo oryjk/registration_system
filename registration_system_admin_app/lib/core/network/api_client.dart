@@ -108,6 +108,12 @@ class ApiClient {
         code: code,
         kind: kind,
         uncertainWrite: isWrite && kind == ApiErrorKind.server,
+        authoritativeValidation:
+            status == 422 &&
+            code == 422 &&
+            message?.trim().isNotEmpty == true &&
+            envelope!.containsKey('data') &&
+            envelope['data'] == null,
       );
     }
     if (code != 0 || message == null || !envelope!.containsKey('data')) {

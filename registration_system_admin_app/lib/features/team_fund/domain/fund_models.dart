@@ -33,7 +33,7 @@ class FundDraft {
   final String note;
   final String? receivedOn;
   final int? originalTransactionId;
-  Map<String, String> validate() {
+  Map<String, String> validate({BeijingClock? today}) {
     final errors = <String, String>{};
     if (action != FundAction.reversal &&
         (amountCents < 1 || amountCents > 1000000)) {
@@ -62,7 +62,10 @@ class FundDraft {
     }
     if (receivedOn != null) {
       try {
-        BeijingClock.fromDateKey(receivedOn!);
+        final date = BeijingClock.fromDateKey(receivedOn!);
+        if (today != null && date.dateKey.compareTo(today.dateKey) > 0) {
+          errors['date'] = '收款日期不能晚于今天（北京时间）';
+        }
       } on Object {
         errors['date'] = '请输入有效的 YYYY-MM-DD 日期';
       }

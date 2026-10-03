@@ -1,6 +1,6 @@
 # 移动管理 App 首版验收记录
 
-验收日期：2026-10-03。范围为已批准的 [设计](superpowers/specs/2026-10-03-admin-app-v1-design.md) 与 [实施计划](superpowers/plans/2026-10-03-admin-app-v1.md)。Task1–9 已逐项实施并独立审阅；Task10 完成本文记录的构建、离线原生视觉和架构检查，最后的全分支独立审查由 controller 执行并更新执行状态。
+验收日期：2026-10-03。范围为已批准的 [设计](superpowers/specs/2026-10-03-admin-app-v1-design.md) 与 [实施计划](superpowers/plans/2026-10-03-admin-app-v1.md)。Task1–9 已逐项实施并独立审阅；Task10 完成本文记录的构建、离线原生视觉和架构检查，最终全分支评审发现 F1–F4；本次统一修复后状态为 **pending SCOPED REVIEW**，由 controller 审阅修复并更新结论。
 
 客户端首版已恢复，Android debug APK 和 iOS simulator App 可运行。**未完成真实账号验收**：没有提供管理员凭据，真实登录、受保护 Go 读接口与端到端业务操作未验证。没有向生产业务表写入验收数据。健康探测成功仅证明服务可达；离线 fixture 成功不证明线上账号权限、生产数据或服务端记账成功。
 
@@ -31,21 +31,33 @@
 
 检查 `AppDependencies`/`ProtectedWorkspace`/navigation、各 form/controller 的 ownership、dispose 与监听清理；全量测试覆盖注销、环境替换和旧请求。domain 唯一 `dart:convert` 用于 UTF-8 字节业务校验，不做 JSON 映射；JSON payload 构造位于 data mapper。架构扫描记录在 logs/domain-boundary.txt、presentation-protocol.txt、file-size-audit.txt。正式 `lib/main.dart` 无 fixture 或 HARNESS 控制导入。
 
+## 最终评审统一修复 F1–F4
+
+本轮增加 26 个行为回归，完整测试 251/251 通过。F1 真实 AdminApp 系统返回走 nested maybePop，dirty 取消/确认、进行中写入阻止退出、普通弹窗/干净页面/root 行为均验证。F3 登录表单采用独立 teardown epoch；失败保留用户名/密码并可修正成功重试，退出（含无中间渲染帧）与环境切换清空输入，请求 generation 安全隔离保持原实现。
+
+F2 只将完整 Go HTTP 422/code422/message/data=null 校验拒绝映射为 domain FundRejected；submit/retry 共用 expectedKey 清理，安全删除失败或已有另一 key 均保留待确认。401、5xx、超时、网络错误、409、malformed success/422 与不一致 envelope 保留原 key/payload。新收款按注入的北京时间今天校验，date picker 的 lastDate 为北京时间今天；存量未来日期仍可从 secure store 读取并显式以原请求交给后端确认拒绝，避免在本地读取时再次锁死。Go service/repository 的校验前置与事务回滚已只读核对，无 API/schema 修改。
+
+F4 候选输入采用 300ms 可取消 debounce，输入立即清除选择，等待期间禁止选择旧候选；refresh/retry/键盘 search 立即查询并取消 timer，dispose 取消回调。连打仅发送最新查询、立即刷新不再延迟重复请求与销毁不发送查询均验证。
+
+最新原生 main APK/iOS App/ZIP 在 lib 修复后重建、复制、哈希、安装并启动。`final-fix-android-main-login.png` 与 `final-fix-ios-main-login.png` 已通过 view_image 实际查看：标题/输入/按钮清楚、上下安全区正常；两平台 version=1.0.0 (1)、error=null、loading=false。没有重新执行整套旧 fixture 视觉矩阵；这些行为修复由真实 AdminApp/widget 和 HTTP 回归覆盖。真实账号、token 生命周期、普通 iOS 文字键盘、商店/真机与未来 Kotlin 迁移限制仍按下文保留。
+
+最终状态：**pending SCOPED REVIEW**。未合并、push 或发布。
+
 ## 最终检查与原生运行
 
 工具：Flutter 3.44.2、Dart 3.12.2、AGP 8.12.1、Gradle 8.14、JDK21、Kotlin 2.2.20、Android SDK35/36；Xcode26.6、iOS26.5 iPhone17 模拟器。Android SDK/JDK/Gradle/AVD 位于工作树旁隔离目录，仅按命令注入环境；无全局 Flutter/toolchain 修改。
 
 | 命令（App 目录执行，串行） | 最终结果 | 日志（下述 artifact root/logs） |
 | --- | --- | --- |
-| dart format lib test | exit0，136 文件、0 改动 | format-final.log |
-| flutter analyze | exit0，No issues found | analyze-final.log |
-| flutter test | exit0，224/224 | test-final.log |
+| dart format lib test | exit0，140 文件、0 改动 | final-fix-format-check.log |
+| flutter analyze | exit0，No issues found（1.9s） | final-fix-analyze.log |
+| flutter test | exit0，251/251（20s） | final-fix-full-test.log |
 | flutter pub get | exit0，依赖锁保持不变 | pub-get-final.log |
-| git diff --check | exit0 | diff-check-final.log |
-| flutter build apk --debug（隔离 wrapper，Java 仅当前命令接收本机网络代理） | exit0，26.7s | android-production-delivery.log |
-| flutter build ios --simulator | exit0，17.4s | ios-production-delivery.log |
-| adb install/start，simctl install/launch 保存的 main 产物 | exit0，实际登录页/安全存储初始化正常 | main 最终截图及 native-buildinfo.json |
-| 只读 VM 检查已初始化 BuildInfoController | 两平台 exit0，version=1.0.0 (1)、error=null、loading=false | android-native-buildinfo.json、ios-native-buildinfo.json |
+| git diff --check | exit0 | final-fix-diff-check.log |
+| flutter build apk --debug（隔离 wrapper，Java 仅当前命令接收本机网络代理） | exit0，8.3s，显式 -t lib/main.dart | final-fix-android-main-build.log |
+| flutter build ios --simulator | exit0，12.6s，显式 -t lib/main.dart | final-fix-ios-main-build.log |
+| adb install/start，simctl install/launch 保存的 main 产物 | exit0，实际登录页/安全存储初始化正常 | final-fix-android/ios-main-login.png、install/launch 日志 |
+| 只读 VM 检查已初始化 BuildInfoController | 两平台 exit0，version=1.0.0 (1)、error=null、loading=false | final-fix-android/ios-native-buildinfo.json |
 | GET 默认 base/health | exit0，code0 / status ok | health.json |
 
 Android 初次构建 Maven TLS 失败，Java 未继承系统网络代理；仅当前 build 命令设置代理后通过。iOS 首次 Flutter 自动迁移 SwiftPM，所有插件均支持，但旧 Pods 集成仍触发缺失 CocoaPods；用隔离 cocoapods-deintegrate/xcodeproj 工具移除停止使用的 Pods target/file 引用、Podfile、xcconfig/workspace 引用后纯 SwiftPM 构建通过。未安装全局 CocoaPods、未改变 bundle ID/signing；两平台显示名统一“赛事管理”。保留 Flutter 自动迁移的本项目 Android Kotlin 兼容 flags，当前构建通过。未来迁移 Built-in Kotlin 需 AGP9+ 和 Flutter3.47+，因此保留已验证的 Flutter3.44.2/AGP8.12.1；升级时应连同插件迁移并重新验证原生构建，依据 [Flutter 官方迁移指引](https://docs.flutter.dev/release/breaking-changes/migrate-to-built-in-kotlin/for-app-developers#validate)。初始失败日志保留 android-production.log、ios-production.log；修复后首次成功日志 android-production-proxy.log、ios-production-swiftpm.log。
@@ -54,13 +66,13 @@ Android AVD emulator-5554，截图 1080×2400。原 density420 时逻辑 411.43�
 
 ## 交付产物（真实入口 lib/main.dart）
 
-正式产物在所有 fixture 构建结束后重新构建并复制，然后从保存文件安装启动。产物忽略且保留在当前 worktree，不提交二进制。main 登录截图均已实际查看；两平台只读 VM class 列表均未发现 NativeSceneHarness、_NativeSceneHarnessState、WorkspaceTransport，身份记录见 android/ios-main-identity.json。
+正式产物在所有 fixture 构建结束后重新构建并复制，然后从保存文件安装启动。产物忽略且保留在当前 worktree，不提交二进制。main 登录截图均已实际查看；本修复后两平台只读 VM class 列表均未发现 NativeSceneHarness、_NativeSceneHarnessState、WorkspaceTransport，身份记录见 final-fix-android/ios-main-identity.json；最新 hash/大小见 delivery/admin-app-v1/identity.json，旧产物身份不再代表当前源码。
 
-- Android debug APK：`/Users/carlwang/.codex/worktrees/admin-app-v1/registration_system/registration_system_admin_app/build/delivery/admin-app-v1/admin-app-v1-main-debug.apk`，197744157 bytes。 SHA-256：`1a69dc2a1293857108e64fbd1dfa950d6e0ceb5dc9e56df3ddcc75b677b25652`。
+- Android debug APK：`/Users/carlwang/.codex/worktrees/admin-app-v1/registration_system/registration_system_admin_app/build/delivery/admin-app-v1/admin-app-v1-main-debug.apk`，197744157 bytes。 SHA-256：`94328b98c038ce2dc719243306bdad36a9bcf54a62f7c29660b5f2bc8bed61fb`。
 
-- iOS simulator App：`/Users/carlwang/.codex/worktrees/admin-app-v1/registration_system/registration_system_admin_app/build/delivery/admin-app-v1/admin-app-v1-main-simulator.app`，174863409 bytes。 SHA-256：`07676adba3064cba8d0a3fffda60d74c2581159c0023b98d22f393f1908878b9`。App 的 hash 指 Runner 可执行文件；总大小为普通文件字节和。
+- iOS simulator App：`/Users/carlwang/.codex/worktrees/admin-app-v1/registration_system/registration_system_admin_app/build/delivery/admin-app-v1/admin-app-v1-main-simulator.app`，174869137 bytes。 SHA-256：`19d833788b63d180708cfe93116d8e3fc099bef9c2d20e79d54c07d7cfc03422`。App 的 hash 指 Runner 可执行文件；总大小为普通文件字节和。
 
-- iOS simulator ZIP：`/Users/carlwang/.codex/worktrees/admin-app-v1/registration_system/registration_system_admin_app/build/delivery/admin-app-v1/admin-app-v1-main-simulator.zip`，53442352 bytes。 SHA-256：`b51ce241b84fd48b21f4ed17d07eef3fc162d17415b3901c038b44c0dc3dd37c`。
+- iOS simulator ZIP：`/Users/carlwang/.codex/worktrees/admin-app-v1/registration_system/registration_system_admin_app/build/delivery/admin-app-v1/admin-app-v1-main-simulator.zip`，53445157 bytes。 SHA-256：`9f7e0728a14b493446f92d7cd8d7effdf595c074d99925fb74c88153898ac76b`。
 
 Android debug 签名仅供安装验证；release scaffold 仍引用 debug signing，需维护者配置正式签名。iOS simulator App 不能装在真实 iPhone；设备签名/归档、App Store/Play 发布、真机性能与系统版本矩阵均未验证。
 
@@ -112,7 +124,7 @@ Artifact root：`/Users/carlwang/.codex/worktrees/admin-app-v1/registration_syst
 - 真实账户 token 写入/删除与安全存储故障只通过行为 fake 测试；真实插件初始化无错误，不能代替真实账号生命周期验收。
 - iOS 普通文字键盘首次系统教程遮挡，数字键盘与底部安全区已验证；需有可操作模拟器/真机时补普通文字键盘交互。没有请求解锁或绕过宿主锁屏。
 - 商店签名、真实设备/不同OS性能与完整发行流水线未验；当前交付是 debug APK/simulator App。
-- 最后的全分支独立评审仍由 controller 完成；Task10 implementer 未自行启动 reviewer 或扩大功能范围。
+- 最终 F1–F4 已在一个修复波次内处理并验证；状态保留 pending SCOPED REVIEW，由 controller 作最终裁定。
 
 ## 附录：执行 ledger 的全部 Ruling 原文（按出现顺序）
 
@@ -138,5 +150,10 @@ Ruling: Use package_info_plus10.2.2 with a local Android AGP8.12.1 update — ol
 
 Ruling: Use a new task-owned clean iPhone simulator for headless iOS acceptance instead of asking to unlock the Mac or altering existing Apple-account prompts — existing simulator screenshot is covered by personal account verification and CUA refuses locked-Mac control; an independent empty test device preserves old user state and permits authorized CLI testing — if wrong, only removable simulator data/disk space and additional QA time are spent; no screen-lock bypass or account change.
 
-
 Ruling: Retain verified Flutter3.44.2/AGP8.12.1 legacy Kotlin configuration and document its future migration warning — official Flutter guidance requires Flutter3.47+ and AGP9+ to enable built-in Kotlin, so changing it now exceeds the validated toolchain — if wrong, a future Flutter upgrade needs Android migration and native revalidation; current debug build remains verified. Source https://docs.flutter.dev/release/breaking-changes/migrate-to-built-in-kotlin/for-app-developers .
+
+Ruling: Keep real-admin login/restore, protected live reads/permissions and business/fund writes explicitly unverified without supplied authorized credentials — reviewer declined item1 and production writes are outside acceptance authorization — if wrong, live permission/DTO mismatches may require follow-up fixes after an authorized account is provided.
+
+Ruling: Deliver debug Android and iOS simulator builds while retaining store signing/distribution and real-device performance as unverified — reviewer declined item2 and approved first-version implementation does not authorize publication/signing configuration — if wrong, device compatibility or release setup needs subsequent verification before distribution.
+
+Ruling: Keep ordinary iOS text-keyboard acceptance unverified where the first-run system tutorial obscures the test, while preserving verified numeric-keyboard evidence — reviewer declined item3 and no host unlock/account/tutorial interaction was authorized — if wrong, ordinary-input layout issues may remain until unobstructed native verification.

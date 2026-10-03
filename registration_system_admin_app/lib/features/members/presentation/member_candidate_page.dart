@@ -24,6 +24,7 @@ class MemberCandidatePage extends StatefulWidget {
 
 class _MemberCandidatePageState extends State<MemberCandidatePage> {
   final _search = TextEditingController();
+  Timer? _searchTimer;
   MemberCandidate? _selected;
   String _role = 'member';
   bool _completed = false, _attempted = false;
@@ -66,8 +67,25 @@ class _MemberCandidatePageState extends State<MemberCandidatePage> {
     }
   }
 
+  void _queryNow() {
+    _searchTimer?.cancel();
+    _searchTimer = null;
+    if (widget.controller.locked || _completed) return;
+    setState(() => _selected = null);
+    unawaited(widget.controller.searchCandidates(_search.text));
+  }
+
+  void _typing(String value) {
+    _searchTimer?.cancel();
+    setState(() => _selected = null);
+    _searchTimer = Timer(const Duration(milliseconds: 300), () {
+      if (mounted && !widget.controller.locked && !_completed) _queryNow();
+    });
+  }
+
   @override
   void dispose() {
+    _searchTimer?.cancel();
     _search.dispose();
     super.dispose();
   }
@@ -91,9 +109,7 @@ class _MemberCandidatePageState extends State<MemberCandidatePage> {
           actions: [
             IconButton(
               tooltip: '重新查询候选',
-              onPressed: c.submitting || _completed
-                  ? null
-                  : () => unawaited(c.searchCandidates(_search.text)),
+              onPressed: c.submitting || _completed ? null : _queryNow,
               icon: const Icon(Icons.refresh),
             ),
           ],
@@ -131,10 +147,8 @@ class _MemberCandidatePageState extends State<MemberCandidatePage> {
                               decoration: const InputDecoration(
                                 labelText: '查询球员',
                               ),
-                              onChanged: (value) {
-                                setState(() => _selected = null);
-                                unawaited(c.searchCandidates(value));
-                              },
+                              onChanged: _typing,
+                              onSubmitted: (_) => _queryNow(),
                             ),
                             DropdownButtonFormField<String>(
                               initialValue: _role,
@@ -165,11 +179,7 @@ class _MemberCandidatePageState extends State<MemberCandidatePage> {
                         if (c.candidateState.error != null) ...[
                           Text('候选查询失败：${c.candidateState.error}'),
                           TextButton(
-                            onPressed: c.locked
-                                ? null
-                                : () => unawaited(
-                                    c.searchCandidates(_search.text),
-                                  ),
+                            onPressed: c.locked ? null : _queryNow,
                             child: const Text('重试查询'),
                           ),
                         ],
@@ -186,7 +196,9 @@ class _MemberCandidatePageState extends State<MemberCandidatePage> {
                                 avatarUrl: candidate.avatarUrl,
                                 subtitle:
                                     '用户 ${candidate.userId} · ${candidate.phoneNumber ?? '电话未提供'}',
-                                onTap: c.locked
+                                onTap:
+                                    c.locked ||
+                                        (_searchTimer?.isActive ?? false)
                                     ? null
                                     : () =>
                                           setState(() => _selected = candidate),

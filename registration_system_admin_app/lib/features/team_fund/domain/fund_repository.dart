@@ -15,3 +15,12 @@ abstract interface class PendingFundStore {
   Future<void> save(PendingFundAction action);
   Future<void> remove(FundScope scope, {String? expectedKey});
 }
+
+/// The server authoritatively rejected this action without committing it.
+/// Other errors must preserve the original action for explicit confirmation.
+class FundRejected implements Exception {
+  const FundRejected(this.message);
+  final String message;
+  @override
+  String toString() => message;
+}

@@ -61,15 +61,14 @@ class _FundFormPageState extends State<FundFormPage> {
   }
 
   Future<void> _chooseDate() async {
-    final b = _date == null
-        ? BeijingClock.fromInstant(DateTime.now())
-        : BeijingClock.fromDateKey(_date!);
+    final today = BeijingClock.fromInstant(DateTime.now());
+    final b = _date == null ? today : BeijingClock.fromDateKey(_date!);
     final date = await showDatePicker(
       context: context,
       useRootNavigator: false,
       initialDate: DateTime(b.year, b.month, b.day),
       firstDate: DateTime(1900),
-      lastDate: DateTime(9999, 12, 31),
+      lastDate: DateTime(today.year, today.month, today.day),
     );
     if (!mounted || date == null || !widget.controller.ready || _completed) {
       return;
@@ -99,7 +98,9 @@ class _FundFormPageState extends State<FundFormPage> {
       receivedOn: _date,
       originalTransactionId: widget.original?.id,
     );
-    final errors = draft.validate();
+    final errors = draft.validate(
+      today: BeijingClock.fromInstant(DateTime.now()),
+    );
     if (errors.isNotEmpty) {
       await c.submit(draft);
       return;

@@ -30,21 +30,27 @@ class HttpFundRepository implements FundRepository {
       FundAction.consume => 'consumptions',
       FundAction.reversal => 'reversals',
     };
-    final raw = await api.request(
-      'POST',
-      '/team-fund/$route',
-      body: {
-        'team_id': scope.teamId,
-        'user_id': scope.userId,
-        'note': d.note,
-        'idempotency_key': action.key,
-        if (d.action != FundAction.reversal) 'amount_cents': d.amountCents,
-        if (d.action == FundAction.credit && d.receivedOn != null)
-          'received_on': d.receivedOn,
-        if (d.action == FundAction.reversal)
-          'original_transaction_id': d.originalTransactionId,
-      },
-    );
+    final Object? raw;
+    try {
+      raw = await api.request(
+        'POST',
+        '/team-fund/$route',
+        body: {
+          'team_id': scope.teamId,
+          'user_id': scope.userId,
+          'note': d.note,
+          'idempotency_key': action.key,
+          if (d.action != FundAction.reversal) 'amount_cents': d.amountCents,
+          if (d.action == FundAction.credit && d.receivedOn != null)
+            'received_on': d.receivedOn,
+          if (d.action == FundAction.reversal)
+            'original_transaction_id': d.originalTransactionId,
+        },
+      );
+    } on ApiError catch (error) {
+      if (error.authoritativeValidation) throw FundRejected(error.message);
+      rethrow;
+    }
     return JsonValue.decode(raw, (value) {
       final j = JsonValue.object(value),
           id = JsonValue.integer(JsonValue.object(value)['transaction_id']);

@@ -1,4 +1,5 @@
 import 'dart:math';
+import '../../../core/time/beijing_time.dart';
 import 'package:flutter/foundation.dart';
 import '../../../core/state/request_controller.dart';
 import '../../../core/state/resource_changes.dart';
@@ -28,12 +29,15 @@ class FundController extends ChangeNotifier {
     required FundRepository repository,
     required PendingFundStore store,
     bool Function()? isCurrent,
+    DateTime Function()? now,
     ResourceChanges? changes,
   }) : _repository = repository,
+       _now = now ?? DateTime.now,
        _store = store,
        _isCurrent = isCurrent ?? (() => true),
        _changes = changes;
   final FundScope scope;
+  final DateTime Function() _now;
   final FundRepository _repository;
   final PendingFundStore _store;
   final bool Function() _isCurrent;
@@ -97,7 +101,7 @@ class FundController extends ChangeNotifier {
 
   Future<void> submit(FundDraft draft) async {
     if (!_active || _busy || pending != null) return;
-    fieldErrors = draft.validate();
+    fieldErrors = draft.validate(today: BeijingClock.fromInstant(_now()));
     if (draft.action == FundAction.reversal &&
         (loadingTransactions ||
             transactionsError != null ||
@@ -191,7 +195,18 @@ class FundController extends ChangeNotifier {
   }
 
   Future<void> _execute(PendingFundAction action, int generation) async {
-    final confirmed = await _repository.execute(action);
+    final FundResult confirmed;
+    try {
+      confirmed = await _repository.execute(action);
+    } on FundRejected catch (rejection) {
+      if (!_current(generation)) return;
+      // Only unlock once compare-and-delete succeeds. A platform failure keeps
+      // this exact action pending; both submit and retry share this path.
+      await _store.remove(scope, expectedKey: action.key);
+      if (!_current(generation)) return;
+      _state = FundState(phase: FundPhase.error, error: rejection);
+      return;
+    }
     if (!_current(generation)) return;
     // A refresh started while POST was pending may still contain the pre-write
     // snapshot. Invalidate it before publishing success or awaiting cleanup.

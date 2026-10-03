@@ -17,6 +17,7 @@ class ApiError implements Exception {
     this.httpStatus,
     this.code,
     this.uncertainWrite = false,
+    this.authoritativeValidation = false,
   });
 
   final String message;
@@ -31,6 +32,9 @@ class ApiError implements Exception {
   /// The caller must confirm the outcome before considering another write.
   /// This is not permission to retry the request.
   final bool uncertainWrite;
+
+  /// A complete Go HTTP 422 envelope, rather than a proxy/status-only rejection.
+  final bool authoritativeValidation;
 
   @override
   String toString() => message;

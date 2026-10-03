@@ -1,3 +1,4 @@
+import 'package:registration_system_admin_app/core/time/beijing_time.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:registration_system_admin_app/core/network/api_error.dart';
@@ -326,12 +327,17 @@ void main() {
       final dateButton = find.textContaining('收款日期：');
       await tapVisible(tester, dateButton);
       expect(find.byType(DatePickerDialog), findsOneWidget);
-      await tester.tap(find.text('15').last);
+      final picker = tester.widget<DatePickerDialog>(
+        find.byType(DatePickerDialog),
+      );
+      final today = BeijingClock.fromInstant(DateTime.now());
+      expect(picker.lastDate, DateTime(today.year, today.month, today.day));
+      await tester.tap(find.text('1').last);
       await tester.pumpAndSettle();
       await tester.tap(find.widgetWithText(TextButton, '确定'));
       await tester.pumpAndSettle();
       final date = tester.widget<Text>(dateButton).data!.split('：').last;
-      expect(date, matches(RegExp(r'^\d{4}-\d{2}-15$')));
+      expect(date, matches(RegExp(r'^\d{4}-\d{2}-01$')));
       await tapVisible(tester, find.text('确认收款登记'));
       await tapVisible(tester, find.text('确认'));
       expect(r.calls.single.draft.receivedOn, date);
