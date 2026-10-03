@@ -299,6 +299,7 @@ class _MatchDetailPageState extends State<MatchDetailPage> {
                                 if (d.match.canRecordScore) ...[
                                   const SizedBox(height: AdminSpacing.section),
                                   MatchScorePanel(
+                                    key: ValueKey('score-${d.match.id}'),
                                     match: d.match,
                                     enabled: !locked,
                                     onSave: c.saveScore,

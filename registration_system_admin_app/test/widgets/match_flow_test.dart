@@ -529,6 +529,63 @@ void main() {
     c.dispose();
   });
   testWidgets(
+    'roster additions and removals retain dirty scores and update detail',
+    (t) async {
+      final r = FakeMatchRepository();
+      final c = MatchDetailController(repository: r, id: 'match-1');
+      await t.pumpWidget(app(MatchDetailPage(controller: c, onEdit: (_) {})));
+      final first = detail(status: 'ongoing');
+      r.reads.last.complete(first);
+      await t.pumpAndSettle();
+      await scrollTo(t, field('主队比分'));
+      await t.enterText(field('主队比分'), '2');
+      await t.enterText(field('客队比分'), '1');
+      for (final addGroup in [true, false]) {
+        final status = addGroup ? 'ended' : 'ongoing';
+        final name = addGroup ? '新增分组后的比赛' : '移除分组后的比赛';
+        final json = detailJson(status: status);
+        (json['match'] as Map)['name'] = name;
+        final updatedMatch = MatchResponseMapper.detail(json).match;
+        final reload = c.load();
+        r.reads.last.complete(
+          MatchDetail(
+            match: updatedMatch,
+            groups: addGroup
+                ? [
+                    ...first.groups,
+                    RegistrationGroup(
+                      id: 'new-guest',
+                      kind: 'guest_team',
+                      teamId: 13,
+                      minPlayers: null,
+                      maxPlayers: 8,
+                      status: 'open',
+                      registrations: [],
+                    ),
+                  ]
+                : [],
+          ),
+        );
+        await reload;
+        await t.pumpAndSettle();
+        await scrollTo(t, field('主队比分'));
+        expect(t.widget<TextField>(field('主队比分')).controller!.text, '2');
+        expect(t.widget<TextField>(field('客队比分')).controller!.text, '1');
+        await t.drag(find.byType(ListView), const Offset(0, 3000));
+        await t.pumpAndSettle();
+        await scrollTo(t, find.text(name));
+        expect(find.text(name), findsOneWidget);
+        expect(find.text(addGroup ? '已结束' : '进行中'), findsOneWidget);
+        expect(c.state.data!.groups.length, addGroup ? 2 : 0);
+        await scrollTo(t, field('主队比分'));
+        expect(t.widget<TextField>(field('主队比分')).controller!.text, '2');
+        expect(t.widget<TextField>(field('客队比分')).controller!.text, '1');
+      }
+      await t.pumpWidget(app(const Text('离开页面')));
+      c.dispose();
+    },
+  );
+  testWidgets(
     'Beijing date and time pickers are Chinese and convert wall clock explicitly',
     (t) async {
       BeijingClock? selected;
