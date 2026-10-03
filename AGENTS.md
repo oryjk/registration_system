@@ -92,6 +92,7 @@
 - Go 配套管理端提交前建议执行：`bun run type-check`、`bun run lint`、`bun run build`
 - 小程序提交前建议执行：`bun run type-check`、必要时 `bun run build:mp-weixin`
 - 移动管理 App 提交前执行：`dart format lib test`、`flutter analyze`、`flutter test`、必要时 `flutter build apk --debug`
+- Android App 后续版本完成后，交付包括上传到开发主页 `http://172.16.60.233/` 供下载，并提供每版 release notes；沿用“抢票助手 Android”的最新版本、历史版本和发布信息展示方式。具体发布步骤与更新说明约定见 `registration_system_admin_app/README.md` 的「开发主页下载交付」。
 - 如因环境、依赖、耗时或任务范围原因未运行相关验证命令，必须在最终回复中说明未验证项和原因。
 - TDD 规则：后端业务逻辑、仓储、路由等行为变更需要优先考虑 TDD 或补充后端测试；前端不要求每次按 TDD 开发，页面、样式、交互和小程序 UI 变更通常以类型检查、构建和人工/模拟器验证为主。
 - 前端测试策略：不要为了普通前端改动机械新增单元测试或静态断言；只有涉及路由、接口调用、权限、数据提交、共享工具函数或关键业务状态变化时，才按风险补充必要测试。

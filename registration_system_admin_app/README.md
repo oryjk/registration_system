@@ -34,6 +34,30 @@ flutter build ios --simulator
 
 Debug APK 可安装在 Android 设备；simulator `.app` 仅用于 iOS 模拟器。Android scaffold release 当前仍引用 debug 签名，商店发布前需由项目维护者配置正式签名；iOS 设备发行需独立签名和归档，本次未作商店发布。
 
+## 开发主页下载交付
+
+用户约定：后续 Android 版本开发完成后上传到 [开发主页](http://172.16.60.233/)，提供最新 APK、历史版本与每版 release notes。**自动整理并随包发布，不需要每次确认文案**；说明只列本版“新增功能 / 问题修复”，测试范围和已知限制另列。
+
+本 App 下载入口为 [赛事管理 Android](http://172.16.60.233/registration-admin-android/)，页面模板在 [distribution/index.html](distribution/index.html)，Nginx 路由片段在 [distribution/nginx-location.conf](distribution/nginx-location.conf)。首版说明见 [1.0.0+1](releases/1.0.0+1.md)。2026-10-03 首版 1.0.0+1（Debug）已接入主页；最新包和不可变版本文件均通过完整 HTTP 下载哈希回验，实际发布信息及验收限制见首版说明。
+
+网关部署位置（2026-10-03 核实）：
+
+- 通过 `ssh local233` 维护容器 `betalpha-internal-gateway-nginx-1`，配置在 `/home/betalpha/services/betalpha-internal-gateway/nginx.conf`。
+- 静态根目录 `/home/betalpha/.local/share/betalpha-admin-downloads` 挂载到 `/usr/share/nginx/html`；本 App 使用独立目录 `registration-admin-android/`。
+- 主页线上文件为静态根目录的 `index.html`，源文件为 `/home/betalpha/services/betalpha-internal-gateway/index.html`。修改导航时以最新线上文件为基线，同步两个文件，保留其他入口、访问限制与密码逻辑。
+
+每版发布按以下顺序执行：
+
+1. 完成相关验证，按本次交付范围和实际修复整理 `releases/<版本名>+<版本代码>.md`，不要直接把提交标题当作用户说明。
+2. 核对实际 APK 的版本名、版本代码、应用 ID、构建类型和签名；记录构建源代码提交、字节数、SHA-256。已有验收包只在产品代码未变且来源可追溯时复用，不能把当前文档提交冒充构建源提交。
+3. 在网关服务目录的 `staging/` 上传完整文件并校验哈希，再放入本 App 静态目录。版本包放 `releases/<唯一版本文件>.apk`，同名历史文件不覆盖；更新 `latest.apk`、页面、`metadata.json` 和 `releases.json`，保留完整历史。
+4. `metadata.json` 包含 `versionName`、`versionCode`、`buildType`、`publishedAt`、`fileSizeBytes`、`sha256`、`gitCommit`、`releaseFile`、`releaseNotes`；`releases.json` 是同结构的数组，最新在前。`releaseFile` 是相对目录 `releases/` 下的 APK 路径，`releaseNotes` 字符串分别以 `新增：`、`修复：` 开头，页面据此分组；没有某类更新时显示“本版无此类更新”。
+5. 元数据发布时间用含时区的 UTC ISO 时间，页面固定北京时间展示。页面下载按钮绑定元数据中的不可变版本文件，避免发布期间说明与下载包不一致；`latest.apk` 保留为固定下载地址。
+6. 首次接入路由或修改网关时，先备份配置和主页，用容器内 `nginx -t -c <候选配置>` 验证。配置是单文件绑定挂载，须原位更新，不能通过原子重命名换掉宿主配置 inode；执行 `nginx -t` 通过后 `nginx -s reload`。失败恢复备份并重新验证，不调用会同步其他项目的 `manage.sh sync`。
+7. 从 HTTP 地址完整下载 APK 并核对 SHA-256，检查版本文件和最新包、主页入口、更新说明、北京时间、网关健康及既有下载入口。只完成构建或上传不算下载交付完成。
+
+Debug 签名包标明内部测试，正式发行需独立签名配置。真实账号验收限制如实记录。参考抢票助手的下载结构，但其原生 Gradle 发布脚本不直接用于 Flutter；目前采用上述交付流程与静态模板，没有专用上传脚本。
+
 ## 独立离线原生验收
 
 `lib/main.dart` 是真实入口，没有 fixture 导入或 HARNESS_* 开关。`test/harness/main.dart` 通过虚构 Go envelope、内存存储驱动实际产品 repository/controller/page，不访问网络。
