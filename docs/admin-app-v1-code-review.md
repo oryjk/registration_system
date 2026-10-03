@@ -13,7 +13,7 @@
 
 验证基线：完整测试 **251/251**、analyze 无问题、140 文件格式检查 0 改动；最终真实入口 APK/iOS simulator 构建通过（8.3s/12.6s），已保存、安装启动并核对身份/版本。scoped reviewer 独立核对日志、产物 SHA 与两张最终 main 登录截图；并未重跑套件或把离线证据当作真实账号验收。
 
-当前交付仍为 Android debug APK 与 iOS simulator App。真实管理员登录/恢复、受保护线上读请求/权限/业务写入、真实账户 token 生命周期、未遮挡的 iOS 普通文字键盘、商店签名/发行及真机性能矩阵仍未验证；未来 Kotlin 升级按已记录裁定另行迁移。构建、截图、产物最新大小/hash、15 条裁定及全部限制见 [验收记录](admin-app-v1-acceptance.md)。范围依据 [设计](superpowers/specs/2026-10-03-admin-app-v1-design.md) 与 [已完成实施计划](superpowers/plans/2026-10-03-admin-app-v1.md)。未合并、push 或发布。
+当前交付仍为 Android debug APK 与 iOS simulator App。真实管理员登录/恢复、受保护线上读请求/权限/业务写入、真实账户 token 生命周期、未遮挡的 iOS 普通文字键盘、商店签名/发行及真机性能矩阵仍未验证；未来 Kotlin 升级按已记录裁定另行迁移。构建、截图、产物最新大小/hash、15 条裁定及全部限制见 [验收记录](admin-app-v1-acceptance.md)。范围依据 [设计](superpowers/specs/2026-10-03-admin-app-v1-design.md) 与 [已完成实施计划](superpowers/plans/2026-10-03-admin-app-v1.md)。已本地合并到 main，未 push 或发布。
 
 ## 修复后独立 scoped review 原文（当前通过结论）
 

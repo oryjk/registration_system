@@ -41,7 +41,7 @@ F4 候选输入采用 300ms 可取消 debounce，输入立即清除选择，等�
 
 最新原生 main APK/iOS App/ZIP 在 lib 修复后重建、复制、哈希、安装并启动。`final-fix-android-main-login.png` 与 `final-fix-ios-main-login.png` 已通过 view_image 实际查看：标题/输入/按钮清楚、上下安全区正常；两平台 version=1.0.0 (1)、error=null、loading=false。没有重新执行整套旧 fixture 视觉矩阵；这些行为修复由真实 AdminApp/widget 和 HTTP 回归覆盖。真实账号、token 生命周期、普通 iOS 文字键盘、商店/真机与未来 Kotlin 迁移限制仍按下文保留。
 
-最终状态：**代码评审已完成，无开放发现项**。scoped review 通过源码 `445a426ad49b39482872d3db9bdfc81fa7b0eae5`，F1–F4 全部 ADDRESSED；[完整审查归档](admin-app-v1-code-review.md) 保留初审与修复结论。未合并、push 或发布。
+最终状态：**代码评审已完成，无开放发现项**。scoped review 通过源码 `445a426ad49b39482872d3db9bdfc81fa7b0eae5`，F1–F4 全部 ADDRESSED；[完整审查归档](admin-app-v1-code-review.md) 保留初审与修复结论。已本地合并到 main，合并后完整测试 251/251、analyze 无问题、140 文件格式检查 0 改动；日志见 artifact root 下 logs/main-merged-test.log 与 logs/main-merged-analyze.log。未 push 或发布。
 
 ## 最终检查与原生运行
 
@@ -66,19 +66,19 @@ Android AVD emulator-5554，截图 1080×2400。原 density420 时逻辑 411.43�
 
 ## 交付产物（真实入口 lib/main.dart）
 
-正式产物在所有 fixture 构建结束后重新构建并复制，然后从保存文件安装启动。产物忽略且保留在当前 worktree，不提交二进制。main 登录截图均已实际查看；本修复后两平台只读 VM class 列表均未发现 NativeSceneHarness、_NativeSceneHarnessState、WorkspaceTransport，身份记录见 final-fix-android/ios-main-identity.json；最新 hash/大小见 delivery/admin-app-v1/identity.json，旧产物身份不再代表当前源码。
+正式产物在所有 fixture 构建结束后重新构建并复制，然后从保存文件安装启动。产物忽略且已迁移到主工作区，不提交二进制；本地合并后逐文件核对迁移副本，记录见 logs/artifact-relocation.json。main 登录截图均已实际查看；本修复后两平台只读 VM class 列表均未发现 NativeSceneHarness、_NativeSceneHarnessState、WorkspaceTransport，身份记录见 final-fix-android/ios-main-identity.json；最新 hash/大小见 delivery/admin-app-v1/identity.json，旧产物身份不再代表当前源码。
 
-- Android debug APK：`/Users/carlwang/.codex/worktrees/admin-app-v1/registration_system/registration_system_admin_app/build/delivery/admin-app-v1/admin-app-v1-main-debug.apk`，197744157 bytes。 SHA-256：`94328b98c038ce2dc719243306bdad36a9bcf54a62f7c29660b5f2bc8bed61fb`。
+- Android debug APK：`/Users/carlwang/projects/registration_system/registration_system_admin_app/build/delivery/admin-app-v1/admin-app-v1-main-debug.apk`，197744157 bytes。 SHA-256：`94328b98c038ce2dc719243306bdad36a9bcf54a62f7c29660b5f2bc8bed61fb`。
 
-- iOS simulator App：`/Users/carlwang/.codex/worktrees/admin-app-v1/registration_system/registration_system_admin_app/build/delivery/admin-app-v1/admin-app-v1-main-simulator.app`，174869137 bytes。 SHA-256：`19d833788b63d180708cfe93116d8e3fc099bef9c2d20e79d54c07d7cfc03422`。App 的 hash 指 Runner 可执行文件；总大小为普通文件字节和。
+- iOS simulator App：`/Users/carlwang/projects/registration_system/registration_system_admin_app/build/delivery/admin-app-v1/admin-app-v1-main-simulator.app`，174869137 bytes。 SHA-256：`19d833788b63d180708cfe93116d8e3fc099bef9c2d20e79d54c07d7cfc03422`。App 的 hash 指 Runner 可执行文件；总大小为普通文件字节和。
 
-- iOS simulator ZIP：`/Users/carlwang/.codex/worktrees/admin-app-v1/registration_system/registration_system_admin_app/build/delivery/admin-app-v1/admin-app-v1-main-simulator.zip`，53445157 bytes。 SHA-256：`9f7e0728a14b493446f92d7cd8d7effdf595c074d99925fb74c88153898ac76b`。
+- iOS simulator ZIP：`/Users/carlwang/projects/registration_system/registration_system_admin_app/build/delivery/admin-app-v1/admin-app-v1-main-simulator.zip`，53445157 bytes。 SHA-256：`9f7e0728a14b493446f92d7cd8d7effdf595c074d99925fb74c88153898ac76b`。
 
 Android debug 签名仅供安装验证；release scaffold 仍引用 debug signing，需维护者配置正式签名。iOS simulator App 不能装在真实 iPhone；设备签名/归档、App Store/Play 发布、真机性能与系统版本矩阵均未验证。
 
 ## 原生截图覆盖与实际检查
 
-Artifact root：`/Users/carlwang/.codex/worktrees/admin-app-v1/registration_system/registration_system_admin_app/build/acceptance/admin-app-v1`。原图在 `screenshots/`，每次 scene/theme/scale 请求的实际 viewport 在 `logs/android-coverage.jsonl` 与 `ios-coverage.jsonl`；修改 width 仅约束页面布局，不能超过设备可用宽度。
+Artifact root：`/Users/carlwang/projects/registration_system/registration_system_admin_app/build/acceptance/admin-app-v1`。原图在 `screenshots/`，每次 scene/theme/scale 请求的实际 viewport 在 `logs/android-coverage.jsonl` 与 `ios-coverage.jsonl`；修改 width 仅约束页面布局，不能超过设备可用宽度。
 
 表内 scene 采用真实产品 page/repository/controller，网络与账号/存储为离线虚构实现。`P` 为 android 或 ios；`T` 为 dark 或 light。每行深/浅两张都存在且已检查，覆盖表并不表示每一页都测试全部宽度/字号组合。
 
