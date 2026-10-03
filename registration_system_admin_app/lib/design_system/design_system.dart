@@ -8,3 +8,5 @@ export 'widgets/confirm_action.dart';
 export 'widgets/status_badge.dart';
 export 'widgets/submit_bar.dart';
 export 'widgets/unsaved_guard.dart';
+export 'widgets/admin_scaffold.dart';
+export 'widgets/form_section.dart';
