@@ -23,6 +23,7 @@ class BeijingTimeField extends StatelessWidget {
     final initial = DateTime.utc(b.year, b.month, b.day);
     final date = await showDatePicker(
       context: context,
+      useRootNavigator: false,
       locale: AdminLocalizations.locale,
       initialDate: initial,
       firstDate: DateTime.utc(b.year < 2000 ? b.year : 2000),
@@ -32,6 +33,7 @@ class BeijingTimeField extends StatelessWidget {
     if (date == null || !context.mounted) return;
     final time = await showTimePicker(
       context: context,
+      useRootNavigator: false,
       initialTime: TimeOfDay(hour: b.hour, minute: b.minute),
       helpText: '选择时间（北京时间）',
       builder: (context, child) => Localizations.override(

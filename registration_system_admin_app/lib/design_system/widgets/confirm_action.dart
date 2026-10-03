@@ -7,6 +7,8 @@ Future<bool> confirmAction(
 }) async =>
     await showDialog<bool>(
       context: context,
+      useRootNavigator: false,
+
       builder: (context) => AlertDialog(
         title: Text(title),
         content: SingleChildScrollView(child: Text(message)),

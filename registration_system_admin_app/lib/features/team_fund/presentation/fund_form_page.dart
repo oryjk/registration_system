@@ -66,6 +66,7 @@ class _FundFormPageState extends State<FundFormPage> {
         : BeijingClock.fromDateKey(_date!);
     final date = await showDatePicker(
       context: context,
+      useRootNavigator: false,
       initialDate: DateTime(b.year, b.month, b.day),
       firstDate: DateTime(1900),
       lastDate: DateTime(9999, 12, 31),
