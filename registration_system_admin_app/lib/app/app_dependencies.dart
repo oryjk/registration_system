@@ -20,11 +20,27 @@ import '../features/team_fund/data/http_fund_repository.dart';
 import '../features/team_fund/data/secure_pending_fund_store.dart';
 import '../features/team_fund/domain/fund_repository.dart';
 
+/// App-lifetime storage boundary. Keep this identity across environment swaps:
+/// pending serialization must survive disposal of old HTTP/session dependencies.
+class AppStores {
+  AppStores._({required this.storage, required this.preferences})
+    : pendingFunds = SecurePendingFundStore(storage);
+  factory AppStores({SecureStore? storage, PreferencesStore? preferences}) =>
+      AppStores._(
+        storage: storage ?? PlatformSecureStore(),
+        preferences: preferences ?? PlatformPreferencesStore(),
+      );
+  final SecureStore storage;
+  final PreferencesStore preferences;
+  final PendingFundStore pendingFunds;
+}
+
 /// Owns the real HTTP repositories and one shared secure pending-fund store.
 /// Owns its transport/controllers. Await initialize before selecting app routes.
 class AppDependencies {
   AppDependencies._({
     required this.api,
+    required this.stores,
     required this.buildInfo,
     required this.baseUrl,
     required this.sessionRepository,
@@ -37,17 +53,25 @@ class AppDependencies {
        teams = HttpTeamRepository(api),
        members = HttpMemberRepository(api),
        funds = HttpFundRepository(api),
-       pendingFunds = SecurePendingFundStore(storage);
+       pendingFunds = stores.pendingFunds;
 
   factory AppDependencies({
     required Uri baseUrl,
     http.Client? transport,
     SecureStore? storage,
     PreferencesStore? preferences,
+    AppStores? stores,
     Future<String> Function()? buildVersionReader,
   }) {
-    final secure = storage ?? PlatformSecureStore();
-    final prefs = preferences ?? PlatformPreferencesStore();
+    if (stores != null && (storage != null || preferences != null)) {
+      throw ArgumentError(
+        'Pass stores or individual storage/preferences, not both',
+      );
+    }
+    final shared =
+        stores ?? AppStores(storage: storage, preferences: preferences);
+    final secure = shared.storage;
+    final prefs = shared.preferences;
     final bridge = _SessionBridge();
     final api = ApiClient(
       baseUrl: baseUrl,
@@ -63,6 +87,7 @@ class AppDependencies {
     bridge.session = session;
     return AppDependencies._(
       api: api,
+      stores: shared,
       buildInfo: BuildInfoController(reader: buildVersionReader),
       baseUrl: baseUrl,
       sessionRepository: repository,
@@ -74,6 +99,7 @@ class AppDependencies {
     );
   }
 
+  final AppStores stores;
   final BuildInfoController buildInfo;
   final Uri baseUrl;
   final ApiClient api;
@@ -88,6 +114,19 @@ class AppDependencies {
   final SecureStore storage;
   final PreferencesStore preferences;
   final ResourceChanges changes;
+
+  /// Default environment recreation always retains the pending-store queue.
+  AppDependencies forEnvironment(
+    Uri environment, {
+    http.Client? transport,
+    Future<String> Function()? buildVersionReader,
+  }) => AppDependencies(
+    baseUrl: environment,
+    transport: transport,
+    stores: stores,
+    buildVersionReader: buildVersionReader,
+  );
+
   Future<void> initialize() async {
     unawaited(buildInfo.refresh());
     await theme.restore();

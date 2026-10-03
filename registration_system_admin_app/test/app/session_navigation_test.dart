@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:registration_system_admin_app/app/admin_app.dart';
@@ -10,6 +11,9 @@ import '../support/workspace_transport.dart';
 import 'package:registration_system_admin_app/features/matches/presentation/beijing_time_field.dart';
 import 'package:registration_system_admin_app/features/matches/presentation/match_form_page.dart';
 import 'package:registration_system_admin_app/features/matches/presentation/match_detail_page.dart';
+import 'package:registration_system_admin_app/app/admin_shell.dart';
+import 'package:registration_system_admin_app/app/protected_workspace.dart';
+import 'package:registration_system_admin_app/features/team_fund/domain/fund_models.dart';
 
 void main() {
   testWidgets(
@@ -160,15 +164,14 @@ void main() {
       await tester.pumpWidget(
         AdminApp(
           dependencies: d,
-          environmentFactory: (uri) {
+          environmentFactory: (uri, stores) {
             creations++;
             expect(d.session.token, isNull);
             expect(d.session.state.phase, SessionPhase.signedOut);
             return next = AppDependencies(
               baseUrl: uri,
               transport: WorkspaceTransport(),
-              storage: storage,
-              preferences: d.preferences,
+              stores: stores,
             );
           },
         ),
@@ -243,4 +246,241 @@ void main() {
       d.dispose();
     },
   );
+  testWidgets(
+    'environment A B A preserves queued pending persistence across actual navigation',
+    (tester) async {
+      final storage = _BlockFirstPendingWrite();
+      final transports = <WorkspaceTransport>[];
+      final dependencies = <AppDependencies>[];
+      AppDependencies create(Uri uri, [AppStores? stores]) {
+        final transport = WorkspaceTransport()..uncertainFund = true;
+        transports.add(transport);
+        final d = AppDependencies(
+          baseUrl: uri,
+          transport: transport,
+          stores:
+              stores ??
+              AppStores(storage: storage, preferences: FakePreferencesStore()),
+        );
+        dependencies.add(d);
+        return d;
+      }
+
+      final initial = create(Uri.parse('https://environment-a.invalid'));
+      await tester.pumpWidget(
+        AdminApp(
+          dependencies: initial,
+          environmentFactory: (uri, stores) => create(uri, stores),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await initial.session.login('同一管理员', 'fixture');
+      await tester.pumpAndSettle();
+      final original = tester
+          .widget<AdminShell>(find.byType(AdminShell))
+          .workspace
+          .funds(42, 7);
+      await original.restore();
+      final lateSave = original.submit(
+        const FundDraft(
+          action: FundAction.credit,
+          amountCents: 100,
+          receivedOn: '2026-10-03',
+          note: '原100分动作',
+        ),
+      );
+      await storage.started.future;
+      final oldKey = storage.originalKey;
+      Future<void> switchTo(String url) async {
+        await tester.tap(find.widgetWithText(NavigationDestination, '我的'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('切换开发环境'));
+        await tester.pumpAndSettle();
+        await tester.enterText(find.byType(TextField).last, url);
+        await tester.tap(find.text('切换'));
+        await tester.pumpAndSettle();
+        await dependencies.last.session.login('同一管理员', 'fixture');
+        await tester.pumpAndSettle();
+      }
+
+      await switchTo('https://environment-b.invalid');
+      await switchTo('https://environment-a.invalid');
+      final current = tester
+          .widget<AdminShell>(find.byType(AdminShell))
+          .workspace
+          .funds(42, 7);
+      final restoring = current.restore();
+      await tester.pump();
+      await current.submit(
+        const FundDraft(
+          action: FundAction.credit,
+          amountCents: 500,
+          receivedOn: '2026-10-03',
+          note: '不应发出的新500分动作',
+        ),
+      );
+      expect(transports.expand((transport) => transport.fundBodies), isEmpty);
+      expect(
+        current.ready,
+        isFalse,
+        reason: 'Same-scope read waits behind original secure write',
+      );
+      storage.release.complete();
+      await lateSave;
+      await restoring;
+      await tester.pumpAndSettle();
+      expect(current.pending!.key, oldKey);
+      expect(current.pending!.draft.amountCents, 100);
+      expect(current.pending!.draft.note, '原100分动作');
+      await current.submit(
+        const FundDraft(
+          action: FundAction.credit,
+          amountCents: 500,
+          receivedOn: '2026-10-03',
+        ),
+      );
+      expect(transports.expand((transport) => transport.fundBodies), isEmpty);
+      expect(
+        (await dependencies.last.pendingFunds.read(current.scope))!.key,
+        oldKey,
+      );
+      await tester.pumpWidget(const SizedBox());
+      for (final d in dependencies) {
+        d.dispose();
+      }
+    },
+  );
+  test(
+    'default forEnvironment A B A retains the original serializer and payload',
+    () async {
+      final storage = _BlockFirstPendingWrite();
+      final transports = List.generate(3, (_) => WorkspaceTransport());
+      final a = AppDependencies(
+        baseUrl: Uri.parse('https://environment-a.invalid'),
+        transport: transports[0],
+        storage: storage,
+        preferences: FakePreferencesStore(),
+      );
+      await a.initialize();
+      await a.session.login('同一管理员', 'fixture');
+      final oldWorkspace = ProtectedWorkspace(a);
+      final oldFund = oldWorkspace.funds(42, 7);
+      await oldFund.restore();
+      final saving = oldFund.submit(
+        const FundDraft(
+          action: FundAction.credit,
+          amountCents: 100,
+          receivedOn: '2026-10-03',
+        ),
+      );
+      await storage.started.future;
+      await a.session.logout();
+      oldWorkspace.dispose();
+      final b = a.forEnvironment(
+        Uri.parse('https://environment-b.invalid'),
+        transport: transports[1],
+      );
+      final returned = b.forEnvironment(a.baseUrl, transport: transports[2]);
+      expect(identical(a.stores, b.stores), isTrue);
+      expect(identical(a.pendingFunds, returned.pendingFunds), isTrue);
+      a.dispose();
+      b.dispose();
+      await returned.initialize();
+      await returned.session.login('同一管理员', 'fixture');
+      final workspace = ProtectedWorkspace(returned);
+      final fund = workspace.funds(42, 7);
+      final restoring = fund.restore();
+      await Future<void>.delayed(Duration.zero);
+      await fund.submit(
+        const FundDraft(
+          action: FundAction.credit,
+          amountCents: 500,
+          receivedOn: '2026-10-03',
+        ),
+      );
+      expect(transports.expand((t) => t.fundBodies), isEmpty);
+      storage.release.complete();
+      await saving;
+      await restoring;
+      expect(fund.pending!.key, storage.originalKey);
+      expect(fund.pending!.draft.amountCents, 100);
+      workspace.dispose();
+      returned.dispose();
+    },
+  );
+  testWidgets(
+    'factory with independent pending serializer is rejected before initialization and disposed',
+    (tester) async {
+      final d = AppDependencies(
+        baseUrl: Uri.parse('https://environment-a.invalid'),
+        transport: WorkspaceTransport(),
+        storage: FakeSecureStore(),
+        preferences: FakePreferencesStore(),
+      );
+      final wrongTransport = _TrackedTransport();
+      AppDependencies? wrong;
+      await tester.pumpWidget(
+        AdminApp(
+          dependencies: d,
+          environmentFactory: (uri, stores) => wrong = AppDependencies(
+            baseUrl: uri,
+            transport: wrongTransport,
+            storage: stores.storage,
+            preferences: stores.preferences,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await d.session.login('运营甲', 'fixture');
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(NavigationDestination, '我的'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('切换开发环境'));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byType(TextField).last,
+        'https://environment-b.invalid',
+      );
+      await tester.tap(find.text('切换'));
+      await tester.pumpAndSettle();
+      expect(wrongTransport.closed, isTrue);
+      expect(wrongTransport.requests, isEmpty);
+      expect(
+        wrong!.session.generation,
+        1,
+        reason: 'disposed before any restore/init',
+      );
+      expect(d.session.state.phase, SessionPhase.signedOut);
+      expect(find.text('环境切换未完成，请重试或继续当前环境'), findsOneWidget);
+      expect(find.byKey(const Key('login.username')), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+      d.dispose();
+    },
+  );
+}
+
+class _BlockFirstPendingWrite extends FakeSecureStore {
+  final started = Completer<void>(), release = Completer<void>();
+  bool first = true;
+  late String originalKey;
+  @override
+  Future<void> write(String key, String value) async {
+    if (key.startsWith('admin_app.fund.') && first) {
+      first = false;
+      originalKey =
+          (jsonDecode(value) as Map<String, dynamic>)['key'] as String;
+      started.complete();
+      await release.future;
+    }
+    await super.write(key, value);
+  }
+}
+
+class _TrackedTransport extends WorkspaceTransport {
+  bool closed = false;
+  @override
+  void close() {
+    closed = true;
+    super.close();
+  }
 }
