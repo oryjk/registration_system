@@ -84,6 +84,7 @@ function toBackendMember(member: AppTeamMember): BackendTeamMember {
     is_member: member.status === "active",
     is_paid_member: member.is_paid_member,
     attended_count: member.attended_count,
+    attendance_rank: member.attendance_rank,
     balance_cents: member.balance_cents,
     last_recharge_at: member.last_recharge_at,
     joined_at: member.joined_at,

@@ -13,6 +13,7 @@ type TeamMemberCard = {
   isCurrentUser: boolean;
   isPaidMember?: boolean;
   teamAttendedCount?: number;
+  teamAttendanceRank?: number;
 };
 
 type MemberGroupKey = "joined" | "leave" | "pending";
@@ -190,6 +191,7 @@ const activeMemberAvatars = computed(() => activeSection.value.members.map(membe
   tone: member.tone,
   isPaidMember: member.isPaidMember,
   teamAttendedCount: member.teamAttendedCount,
+  teamAttendanceRank: member.teamAttendanceRank,
 })));
 function selectMemberAvatar(id: string | number) {
   const avatar = activeMemberAvatars.value.find(item => item.id === id);

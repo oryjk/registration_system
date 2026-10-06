@@ -285,7 +285,7 @@ func (r *Repository) ListAppMembers(ctx context.Context, teamID int64) ([]ports.
 		items = append(items, ports.AppMember{
 			UserID: row.UserID, Nickname: row.Nickname, AvatarURL: row.AvatarUrl,
 			RealName: row.RealName, Role: domain.Role(row.Role), Status: domain.MemberStatus(row.Status),
-			JoinedAt: row.JoinedAt.Time, BalanceCents: row.BalanceCents, IsPaidMember: row.IsPaidMember, AttendedCount: row.AttendedCount,
+			JoinedAt: row.JoinedAt.Time, BalanceCents: row.BalanceCents, IsPaidMember: row.IsPaidMember, AttendedCount: row.AttendedCount, AttendanceRank: attendanceRankPointer(row.AttendanceRank),
 			LastRechargeAt: nullableTimestamptz(row.LastRechargeAt),
 		})
 	}
@@ -645,4 +645,11 @@ func (r *Repository) ReactivateMember(ctx context.Context, teamID, userID int64)
 		return false, err
 	}
 	return rows > 0, nil
+}
+
+func attendanceRankPointer(rank int64) *int64 {
+	if rank < 1 {
+		return nil
+	}
+	return &rank
 }

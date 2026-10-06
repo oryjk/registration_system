@@ -17,6 +17,7 @@ type AppTeamDetail struct {
 }
 
 type AppTeamMember struct {
+	AttendanceRank *int64
 	AttendedCount  int64
 	UserID         int64
 	Nickname       string
@@ -65,7 +66,7 @@ func (s AppQueryService) ListMembers(ctx context.Context, actor sharedauth.Actor
 		item := AppTeamMember{
 			UserID: row.UserID, Nickname: row.Nickname, AvatarURL: row.AvatarURL,
 			RealName: row.RealName, Role: row.Role, Status: row.Status, JoinedAt: row.JoinedAt,
-			IsPaidMember: row.IsPaidMember, AttendedCount: row.AttendedCount,
+			IsPaidMember: row.IsPaidMember, AttendedCount: row.AttendedCount, AttendanceRank: row.AttendanceRank,
 		}
 		if canSeeFundDetails {
 			item.BalanceCents = row.BalanceCents

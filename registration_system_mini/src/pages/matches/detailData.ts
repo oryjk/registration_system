@@ -187,6 +187,7 @@ export function buildPublicMatchApiDetailData(
     ),
     ...(participant.is_paid_member === undefined ? {} : { is_paid_member: participant.is_paid_member }),
     ...(participant.team_attended_count === undefined ? {} : { team_attended_count: participant.team_attended_count }),
+    ...(participant.team_attendance_rank === undefined ? {} : { team_attendance_rank: participant.team_attendance_rank }),
   }));
   if (myRegistration && currentUserId && !activityUsers.some((item) => item.user_id === currentUserId)) {
     activityUsers.push(toBackendRegistration(myRegistration, currentUserId, matchDetail.match.updated_at));

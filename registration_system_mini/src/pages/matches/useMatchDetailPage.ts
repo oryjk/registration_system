@@ -180,6 +180,9 @@ export function useMatchDetailPage() {
         name: item.registration_count > 1 ? `${displayName}（${item.registration_count}人）` : displayName,
         avatarUrl: user?.avatar_url ?? "",
         tone: avatarColor(item.user_id),
+        teamAttendanceRank: item.team_attendance_rank
+          ?? (rosterMatchesRegistrationTeam.value
+            ? currentTeamMembers.value.find(member => member.user_id === item.user_id && member.status === 1)?.attendance_rank ?? undefined : undefined),
         teamAttendedCount: item.team_attended_count
           ?? (rosterMatchesRegistrationTeam.value
             ? currentTeamMembers.value.find(member => member.user_id === item.user_id && member.status === 1)?.attended_count : undefined),

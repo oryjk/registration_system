@@ -104,6 +104,7 @@ export function buildHomeActionMatchCardState(
     avatars: group?.participants?.filter((item) => item.status === "attending").map((item) => ({
       id: item.user_id, name: item.nickname || "球友", avatarUrl: item.avatar_url || undefined, isPaidMember: item.is_paid_member === true,
       teamAttendedCount: item.team_attended_count ?? undefined,
-    })) ?? card.participantAvatars.map((item) => ({ id: item.userId, name: item.displayText, avatarUrl: item.avatarUrl || undefined, isPaidMember: item.isPaidMember, teamAttendedCount: item.teamAttendedCount })),
+      teamAttendanceRank: item.team_attendance_rank ?? undefined,
+    })) ?? card.participantAvatars.map((item) => ({ id: item.userId, name: item.displayText, avatarUrl: item.avatarUrl || undefined, isPaidMember: item.isPaidMember, teamAttendedCount: item.teamAttendedCount, teamAttendanceRank: item.teamAttendanceRank })),
   };
 }

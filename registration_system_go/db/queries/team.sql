@@ -232,17 +232,32 @@ WHERE team_id = sqlc.arg('team_id') AND user_id = sqlc.arg('user_id')
 
 -- name: ListAppTeamMembers :many
 -- 年度出勤次数保持与统计页出勤排名（北京时间年初至今天）一致。
-WITH team_attendance AS (
-    SELECT hr.user_id, COUNT(hr.id)::bigint AS attended_count
+WITH team_matches AS (
+    SELECT hg.id, hg.team_id
     FROM match_registration_groups hg
     JOIN matches hm ON hm.id = hg.match_id
-    JOIN match_registrations hr ON hr.group_id = hg.id AND hr.status = 'attending'
     WHERE hg.kind IN ('host_team', 'guest_team') AND hg.team_id = $1
       AND hm.status <> 'cancelled'
       AND (hm.status = 'ended' OR hm.end_time <= (NOW() AT TIME ZONE 'utc'))
       AND hm.start_time >= ((date_trunc('year', NOW() AT TIME ZONE 'Asia/Shanghai') AT TIME ZONE 'Asia/Shanghai') AT TIME ZONE 'UTC')
       AND hm.start_time < (((date_trunc('day', NOW() AT TIME ZONE 'Asia/Shanghai') + INTERVAL '1 day') AT TIME ZONE 'Asia/Shanghai') AT TIME ZONE 'UTC')
-    GROUP BY hr.user_id
+), team_attendance AS (
+    SELECT ht.team_id, hr.user_id,
+           COUNT(hr.id) FILTER (WHERE hr.status = 'attending')::bigint AS attended_count,
+           COUNT(hr.id) FILTER (WHERE hr.status = 'leave')::bigint AS leave_count,
+           COUNT(hr.id)::bigint AS registered_count
+    FROM team_matches ht
+    JOIN match_registrations hr ON hr.group_id = ht.id AND hr.status <> 'cancelled'
+    GROUP BY ht.team_id, hr.user_id
+), team_attendance_ranks AS (
+    SELECT tm.team_id, tm.user_id,
+           ROW_NUMBER() OVER (PARTITION BY tm.team_id ORDER BY
+               ta.attended_count DESC, ta.leave_count ASC,
+               ta.registered_count DESC, tm.joined_at ASC, tm.user_id ASC) AS attendance_rank
+    FROM team_members tm
+    JOIN team_attendance ta ON ta.team_id = tm.team_id AND ta.user_id = tm.user_id
+    WHERE tm.status = 'active' AND ta.attended_count > 0
+    -- 同队比赛总数相同：registered_count DESC 等价于排名页 unregistered_count ASC。
 )
 SELECT tm.user_id,
        u.nickname,
@@ -254,10 +269,12 @@ SELECT tm.user_id,
        tm.balance_cents,
        tm.is_paid_member,
        tm.last_recharge_at,
-       COALESCE(ta.attended_count, 0)::bigint AS attended_count
+       COALESCE(ta.attended_count, 0)::bigint AS attended_count,
+       COALESCE(tar.attendance_rank, 0)::bigint AS attendance_rank
 FROM team_members tm
 JOIN users u ON u.id = tm.user_id
 LEFT JOIN team_attendance ta ON ta.user_id = tm.user_id
+LEFT JOIN team_attendance_ranks tar ON tar.team_id = tm.team_id AND tar.user_id = tm.user_id
 WHERE tm.team_id = $1
   AND tm.status <> 'removed'
 ORDER BY
@@ -452,7 +469,7 @@ LEFT JOIN match_registrations r
 WHERE tm.team_id = $1
   AND tm.status = 'active'
 GROUP BY tm.user_id, u.nickname, u.avatar_url, tm.joined_at
-ORDER BY attended_count DESC, leave_count ASC, unregistered_count ASC, tm.joined_at ASC;
+ORDER BY attended_count DESC, leave_count ASC, unregistered_count ASC, tm.joined_at ASC, tm.user_id ASC;
 
 -- name: ListTeamMatchAttendance :many
 -- 单场比赛的全队出勤：只含在职（active）成员，已退队成员不展示，按状态分组排序。

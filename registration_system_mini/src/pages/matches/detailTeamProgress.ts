@@ -35,6 +35,7 @@ export function buildMatchTeamProgress(
           avatarUrl: person.avatar_url ?? "",
           isPaidMember: person.is_paid_member === true,
           teamAttendedCount: person.team_attended_count ?? undefined,
+          teamAttendanceRank: person.team_attendance_rank ?? undefined,
         })),
     // 客队上限未配置时继承主队（主客同制），规则与约队大厅列表共用。
     required: group.kind === "guest_team"

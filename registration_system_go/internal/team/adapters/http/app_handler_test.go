@@ -24,7 +24,7 @@ func TestAppTeamRoutesReturnPrivacyDTOs(t *testing.T) {
 		detail: application.AppTeamDetail{Team: domain.Team{
 			ID: 7, Name: "东安联队", Status: domain.TeamActive, CreatedAt: now,
 		}, MyRole: domain.RoleLeader},
-		members: []application.AppTeamMember{{AttendedCount: 12, UserID: 42, Nickname: "阿睿", RealName: &realName, Role: domain.RoleLeader, Status: domain.MemberActive, JoinedAt: now}},
+		members: []application.AppTeamMember{{AttendanceRank: func() *int64 { r := int64(2); return &r }(), AttendedCount: 12, UserID: 42, Nickname: "阿睿", RealName: &realName, Role: domain.RoleLeader, Status: domain.MemberActive, JoinedAt: now}},
 	}
 	handler := NewAppHandler(queries, nil)
 	router := gin.New()
@@ -37,6 +37,7 @@ func TestAppTeamRoutesReturnPrivacyDTOs(t *testing.T) {
 		{path: "/teams/7", want: `"created_at":"2026-08-08T08:00:00Z"`},
 		{path: "/teams/7/members", want: `"user_id":42`},
 		{path: "/teams/7/members", want: `"attended_count":12`},
+		{path: "/teams/7/members", want: `"attendance_rank":2`},
 	} {
 		response := httptest.NewRecorder()
 		request := httptest.NewRequest(http.MethodGet, test.path, nil)

@@ -109,7 +109,7 @@ func mapUserParticipants(entries []ports.AdminRosterEntry) []ports.UserParticipa
 		seen[entry.UserID] = struct{}{}
 		participants = append(participants, ports.UserParticipant{
 			UserID: entry.UserID, Nickname: entry.Nickname, AvatarURL: entry.AvatarURL, Status: *entry.Status,
-			RegistrationCount: entry.RegistrationCount, RegisteredAt: entry.RegisteredAt, IsPaidMember: entry.IsPaidMember, TeamAttendedCount: entry.TeamAttendedCount,
+			RegistrationCount: entry.RegistrationCount, RegisteredAt: entry.RegisteredAt, IsPaidMember: entry.IsPaidMember, TeamAttendedCount: entry.TeamAttendedCount, TeamAttendanceRank: entry.TeamAttendanceRank,
 		})
 	}
 	return participants
@@ -137,4 +137,11 @@ func teamAttendedCount(teamID *int64, count int64) *int64 {
 		return nil
 	}
 	return &count
+}
+
+func attendanceRankPointer(rank int64) *int64 {
+	if rank < 1 {
+		return nil
+	}
+	return &rank
 }

@@ -56,6 +56,9 @@ page,
   --ui-primitive-danger-bg: #fdecea;
   --ui-primitive-neutral-fg: #526174;
   --ui-primitive-neutral-bg: #f0f2f5;
+  --ui-primitive-medal-gold: #9a6a00;
+  --ui-primitive-medal-silver: #64748b;
+  --ui-primitive-medal-bronze: #9d5c32;
 
   /* Semantic */
   --ui-color-page: var(--ui-primitive-canvas);
@@ -216,6 +219,9 @@ page,
   /* 两端缓、中段顺滑的减速曲线，减弱换行重排带来的跳变感。 */
   --ui-avatar-restore-easing: cubic-bezier(0.33, 0, 0.2, 1);
   --ui-avatar-crown-sway-duration: 2400ms;
+  --ui-avatar-attendance-gold: var(--ui-primitive-medal-gold);
+  --ui-avatar-attendance-silver: var(--ui-primitive-medal-silver);
+  --ui-avatar-attendance-bronze: var(--ui-primitive-medal-bronze);
   --ui-avatar-border: 1rpx solid var(--ui-color-surface);
   --ui-avatar-plus-bg: var(--ui-color-text);
   --ui-avatar-plus-fg: var(--ui-color-text-inverse);

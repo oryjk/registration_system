@@ -110,6 +110,9 @@ export function isAccentThemeId(value: unknown): value is AccentThemeId {
  */
 // 每次切换都显式恢复基础色，避免从晴空蓝切回后残留正文、边框等颜色。
 const basePrimitives = {
+  "medal-gold": "#9a6a00",
+  "medal-silver": "#64748b",
+  "medal-bronze": "#9d5c32",
   "icon-filter": "none",
   "success-fg": "#226342",
   "success-bg": "#e8f5ee",
@@ -182,6 +185,9 @@ const coralPrimitives: typeof basePrimitives = {
 
 const nightPrimitives: typeof basePrimitives = {
   ...basePrimitives,
+  "medal-gold": "#f3c96d",
+  "medal-silver": "#b9c3d3",
+  "medal-bronze": "#dfa273",
   "icon-filter": "brightness(0) invert(1)",
   canvas: "#0f0e17",
   surface: "#1b1926",

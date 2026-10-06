@@ -5,5 +5,6 @@ export type AvatarItem = {
   tone?: string;
   isPaidMember?: boolean;
   teamAttendedCount?: number;
+  teamAttendanceRank?: number;
 };
 export type AvatarSize = "xs" | "sm" | "md" | "lg";

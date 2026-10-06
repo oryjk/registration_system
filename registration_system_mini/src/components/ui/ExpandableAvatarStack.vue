@@ -33,7 +33,7 @@ const hasMembers = computed(() => props.items.some(item => item.isPaidMember));
 // 给皇冠及摇摆范围留出滚动容器内空间，避免折叠/展开时被裁切。
 const hasAttendance = computed(() => props.items.some(item => hasAttendanceCount(item)));
 function hasAttendanceCount(item: AvatarItem) { return typeof item.teamAttendedCount === "number" && Number.isFinite(item.teamAttendedCount) && item.teamAttendedCount >= 0; }
-const attendanceHeight = computed(() => hasAttendance.value ? toPixels(28) : 0);
+const attendanceHeight = computed(() => expanded.value && hasAttendance.value ? toPixels(28) : 0);
 const crownHeadroom = computed(() => hasMembers.value ? avatarSize.value * 0.44 : 0);
 const trackHeight = computed(() => layout.value.height + crownHeadroom.value + 8);
 const layout = computed(() => avatarStackLayout(
@@ -99,7 +99,9 @@ watch(() => [props.items.length, props.size, hasMembers.value, hasAttendance.val
               <image data-deck-ignore="true" v-if="item.avatarUrl && !failedImages[imageKey(item)]" class="expandable-avatars__image" :src="item.avatarUrl" mode="aspectFill" @error="failedImages[imageKey(item)] = true" />
               <text data-deck-ignore="true" v-else class="expandable-avatars__fallback">{{ Array.from(item.name.trim())[0] || '?' }}</text>
             </view>
-            <text v-if="hasAttendanceCount(item)" class="expandable-avatars__attendance">{{ item.teamAttendedCount }}次</text>
+            <view v-if="expanded && hasAttendanceCount(item)" data-deck-ignore="true" class="expandable-avatars__attendance">
+              <text :class="(item.teamAttendedCount ?? 0) > 0 && item.teamAttendanceRank ? `expandable-avatars__attendance--rank-${item.teamAttendanceRank}` : ''">{{ item.teamAttendedCount }}</text><text>次</text>
+            </view>
             <view v-if="item.isPaidMember" data-deck-ignore="true" class="expandable-avatars__crown"><MembershipCrown :width="`${avatarSize * 0.72}px`" :height="`${avatarSize * 0.4}px`" /></view>
           </view>
         </view>
@@ -155,7 +157,10 @@ watch(() => [props.items.length, props.size, hasMembers.value, hasAttendance.val
 }
 .expandable-avatars__face { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; border: var(--ui-avatar-border); border-radius: var(--ui-radius-round); overflow: hidden; box-sizing: border-box; }
 .expandable-avatars__crown { position: absolute; z-index: 1; width: 72%; height: 40%; left: 14%; top: -34%; pointer-events: none; }
-.expandable-avatars__attendance { position: absolute; top: 100%; left: 50%; transform: translateX(-50%); margin-top: 4rpx; font-size: 20rpx; line-height: 24rpx; white-space: nowrap; color: var(--ui-color-text-muted); font-variant-numeric: tabular-nums; }
+.expandable-avatars__attendance { position: absolute; display: flex; align-items: baseline; top: 100%; left: 50%; transform: translateX(-50%); margin-top: 4rpx; font-size: 20rpx; line-height: 24rpx; white-space: nowrap; color: var(--ui-color-text-muted); font-variant-numeric: tabular-nums; }
+.expandable-avatars__attendance--rank-1 { color: var(--ui-avatar-attendance-gold); font-weight: 600; }
+.expandable-avatars__attendance--rank-2 { color: var(--ui-avatar-attendance-silver); font-weight: 600; }
+.expandable-avatars__attendance--rank-3 { color: var(--ui-avatar-attendance-bronze); font-weight: 600; }
 .expandable-avatars__avatar--pressed { opacity: 0.7; }
 .expandable-avatars__image { width: 100%; height: 100%; }
 .expandable-avatars__fallback { color: var(--ui-color-text-inverse); font-size: 22rpx; }

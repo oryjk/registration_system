@@ -224,6 +224,7 @@ export function toHomeMatchCard(
     tone: avatarTone(participant.user_id),
     isPaidMember: participant.is_paid_member === true,
     teamAttendedCount: participant.team_attended_count ?? undefined,
+    teamAttendanceRank: participant.team_attendance_rank ?? undefined,
   }));
   // 已结束的首页比赛不再渲染头像行（查看型紧凑卡）；participants 数据仍映射供后续使用。
   const showParticipantAvatars = actionMatch

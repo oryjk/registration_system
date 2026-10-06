@@ -17,9 +17,14 @@ func TestParticipantMembershipIsScopedToRegistrationTeam(t *testing.T) {
 	owner, team := seedMatchOwner(t, pool)
 	_, otherTeam := seedMatchOwner(t, pool)
 	paid, ordinary, inactive, outsider := seedMatchUser(t, pool), seedMatchUser(t, pool), seedMatchUser(t, pool), seedMatchUser(t, pool)
+	top, tied := seedMatchUser(t, pool), seedMatchUser(t, pool)
 	if _, err := pool.Exec(ctx, `INSERT INTO team_members (team_id,user_id,role,status,is_paid_member)
 		VALUES ($1,$2,'member','active',true), ($1,$3,'member','active',false),
 		($1,$4,'member','left',true), ($5,$3,'member','active',true)`, team, paid, ordinary, inactive, otherTeam); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `INSERT INTO team_members (team_id,user_id,role,status,is_paid_member)
+   VALUES ($1,$2,'member','active',false), ($1,$3,'member','active',false)`, team, top, tied); err != nil {
 		t.Fatal(err)
 	}
 	match, groups := newPersistableIndividualMatch(t, owner, team, 1, 8)
@@ -66,6 +71,12 @@ func TestParticipantMembershipIsScopedToRegistrationTeam(t *testing.T) {
 		{team, paid, domain.MatchEnded, yearStart.UTC().Add(-time.Second), domain.RegistrationAttending},
 		{team, paid, domain.MatchEnded, yearStart.UTC(), domain.RegistrationAttending},
 		{team, paid, domain.MatchEnded, time.Now().UTC().Add(48 * time.Hour), domain.RegistrationAttending},
+		{team, top, domain.MatchEnded, yearStart.UTC(), domain.RegistrationAttending},
+		{team, top, domain.MatchEnded, yearStart.UTC(), domain.RegistrationAttending},
+		{team, top, domain.MatchEnded, yearStart.UTC(), domain.RegistrationAttending},
+		{team, top, domain.MatchEnded, yearStart.UTC(), domain.RegistrationAttending},
+		{team, tied, domain.MatchEnded, yearStart.UTC(), domain.RegistrationAttending},
+		{team, tied, domain.MatchEnded, yearStart.UTC(), domain.RegistrationLeave},
 	} {
 		_, groupID := seedHomeMatch(t, pool, owner, fixture.team, "出勤统计样本", fixture.status, fixture.start)
 		registration, err := domain.NewRegistration(groupID, fixture.user, fixture.stand, 1, past)
@@ -76,10 +87,27 @@ func TestParticipantMembershipIsScopedToRegistrationTeam(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	expectedCounts := map[int64]int64{paid: 1, ordinary: 0, inactive: 0, outsider: 0}
+	expectedCounts := map[int64]int64{paid: 1, ordinary: 0, inactive: 0, outsider: 0, top: 4, tied: 1}
 	if !past.Before(yearStart.UTC()) {
 		expectedCounts[paid] += 2
 		expectedCounts[ordinary] = 1
+	}
+	teamRepo := teampostgres.NewRepository(pool)
+	ranking, err := teamRepo.ListAttendanceRanking(ctx, team, &rankingStart, &yearEnd)
+	if err != nil {
+		t.Fatal(err)
+	}
+	expectedRanks := make(map[int64]int64)
+	for index, item := range ranking {
+		if item.AttendedCount != expectedCounts[item.UserID] {
+			t.Fatalf("ranking count=%+v", item)
+		}
+		if item.AttendedCount > 0 {
+			expectedRanks[item.UserID] = int64(index + 1)
+		}
+	}
+	if expectedRanks[top] != 1 {
+		t.Fatalf("highest attendance must belong to the player not signed up: %+v", ranking)
 	}
 	assertParticipants := func(participants []ports.UserParticipant, teamGroup bool) {
 		t.Helper()
@@ -87,6 +115,13 @@ func TestParticipantMembershipIsScopedToRegistrationTeam(t *testing.T) {
 			t.Fatalf("participants=%+v", participants)
 		}
 		for _, person := range participants {
+			wantRank := expectedRanks[person.UserID]
+			if !teamGroup {
+				wantRank = 0
+			}
+			if wantRank == 0 && person.TeamAttendanceRank != nil || wantRank > 0 && (person.TeamAttendanceRank == nil || *person.TeamAttendanceRank != wantRank) {
+				t.Fatalf("global team rank: user=%d want=%d got=%v", person.UserID, wantRank, person.TeamAttendanceRank)
+			}
 			if !teamGroup && person.TeamAttendedCount != nil {
 				t.Fatalf("individual group attendance=%+v", person)
 			}
@@ -122,21 +157,15 @@ func TestParticipantMembershipIsScopedToRegistrationTeam(t *testing.T) {
 		t.Fatal(err)
 	}
 	assertParticipants(ended[0].Participants, groups[0].TeamID != nil)
-	teamRepo := teampostgres.NewRepository(pool)
-	ranking, err := teamRepo.ListAttendanceRanking(ctx, team, &rankingStart, &yearEnd)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, item := range ranking {
-		if item.AttendedCount != expectedCounts[item.UserID] {
-			t.Fatalf("ranking must match avatar: %+v", item)
-		}
-	}
 	members, err := teamRepo.ListAppMembers(ctx, team)
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, member := range members {
+		wantRank := expectedRanks[member.UserID]
+		if wantRank == 0 && member.AttendanceRank != nil || wantRank > 0 && (member.AttendanceRank == nil || *member.AttendanceRank != wantRank) {
+			t.Fatalf("roster rank: user=%d want=%d got=%v", member.UserID, wantRank, member.AttendanceRank)
+		}
 		if member.AttendedCount != expectedCounts[member.UserID] {
 			t.Fatalf("roster count=%+v", member)
 		}

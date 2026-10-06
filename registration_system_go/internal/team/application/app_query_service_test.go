@@ -58,7 +58,7 @@ func TestAppQueryServiceReturnsPrivacyMemberProjection(t *testing.T) {
 		member: domain.Member{TeamID: 7, UserID: 42, Role: domain.RoleMember, Status: domain.MemberActive}, memberFound: true,
 		members: []ports.AppMember{{
 			UserID: 42, Nickname: "阿睿", RealName: &realName, Role: domain.RoleMember, Status: domain.MemberActive, JoinedAt: now,
-			BalanceCents: 8800, IsPaidMember: true, LastRechargeAt: &rechargeAt, AttendedCount: 11,
+			AttendanceRank: func() *int64 { r := int64(2); return &r }(), BalanceCents: 8800, IsPaidMember: true, LastRechargeAt: &rechargeAt, AttendedCount: 11,
 		}},
 	}
 	service := NewAppQueryService(repository)
@@ -66,7 +66,7 @@ func TestAppQueryServiceReturnsPrivacyMemberProjection(t *testing.T) {
 	if err != nil || len(items) != 1 || items[0].UserID != 42 || items[0].RealName == nil {
 		t.Fatalf("items=%+v err=%v", items, err)
 	}
-	if items[0].AttendedCount != 11 || items[0].BalanceCents != 0 || !items[0].IsPaidMember || items[0].LastRechargeAt != nil {
+	if items[0].AttendanceRank == nil || *items[0].AttendanceRank != 2 || items[0].AttendedCount != 11 || items[0].BalanceCents != 0 || !items[0].IsPaidMember || items[0].LastRechargeAt != nil {
 		t.Fatalf("普通队员应看到会员标识，但不应看到队费账户信息: %+v", items[0])
 	}
 

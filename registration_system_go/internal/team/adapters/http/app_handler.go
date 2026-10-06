@@ -41,6 +41,7 @@ type AppTeamDetailResponse struct {
 }
 
 type AppTeamMemberResponse struct {
+	AttendanceRank *int64              `json:"attendance_rank"`
 	AttendedCount  int64               `json:"attended_count"`
 	UserID         int64               `json:"user_id"`
 	Nickname       string              `json:"nickname"`
@@ -102,7 +103,7 @@ func (h *AppHandler) ListMembers(c *gin.Context) {
 		response = append(response, AppTeamMemberResponse{
 			UserID: item.UserID, Nickname: item.Nickname, AvatarURL: item.AvatarURL,
 			RealName: item.RealName, Role: item.Role, Status: item.Status, JoinedAt: item.JoinedAt,
-			BalanceCents: item.BalanceCents, IsPaidMember: item.IsPaidMember, LastRechargeAt: item.LastRechargeAt, AttendedCount: item.AttendedCount,
+			BalanceCents: item.BalanceCents, IsPaidMember: item.IsPaidMember, LastRechargeAt: item.LastRechargeAt, AttendedCount: item.AttendedCount, AttendanceRank: item.AttendanceRank,
 		})
 	}
 	sharedhttpapi.WriteSuccess(c, response)
