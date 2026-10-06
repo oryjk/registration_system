@@ -25,6 +25,7 @@ const failedImages = ref<Record<string, boolean>>({});
 const instance = getCurrentInstance();
 let disposed = false;
 let measurement = 0;
+let layoutSettleTimer: ReturnType<typeof setTimeout> | undefined;
 const sizes: Record<AvatarSize, number> = { xs: 42, sm: 52, md: 68, lg: 84 };
 const viewportWidth = ref(getWindowMetrics().windowWidth);
 const toPixels = (rpx: number) => rpx * viewportWidth.value / 750;
@@ -35,7 +36,8 @@ const hasAttendance = computed(() => props.items.some(item => hasAttendanceCount
 function hasAttendanceCount(item: AvatarItem) { return typeof item.teamAttendedCount === "number" && Number.isFinite(item.teamAttendedCount) && item.teamAttendedCount >= 0; }
 const attendanceHeight = computed(() => expanded.value && hasAttendance.value ? toPixels(28) : 0);
 const crownHeadroom = computed(() => hasMembers.value ? avatarSize.value * 0.44 : 0);
-const trackHeight = computed(() => layout.value.height + crownHeadroom.value + 8);
+// 包含头像的 4px 下移量与标签后的留白，避免次数贴近进度条。
+const trackHeight = computed(() => layout.value.height + crownHeadroom.value + 4 + toPixels(16));
 const layout = computed(() => avatarStackLayout(
   props.items.length,
   containerWidth.value,
@@ -72,8 +74,13 @@ function select(item: AvatarItem) {
   if (props.interactive && !props.disabled) emit("select", item.id);
 }
 onMounted(() => { void measure(); uni.onWindowResize(measure); });
-onUnmounted(() => { disposed = true; measurement++; uni.offWindowResize(measure); });
+onUnmounted(() => { disposed = true; measurement++; if (layoutSettleTimer !== undefined) clearTimeout(layoutSettleTimer); uni.offWindowResize(measure); });
 watch(() => [props.items.length, props.size, hasMembers.value, hasAttendance.value], () => { void measure(); });
+watch(trackHeight, () => {
+  if (layoutSettleTimer !== undefined) clearTimeout(layoutSettleTimer);
+  // 与 expand 的 220ms 过渡一致，留一帧余量再让首页 swiper 测量最终高度。
+  layoutSettleTimer = setTimeout(() => { if (!disposed) emit("layoutChange"); }, 252);
+}, { flush: "post" });
 </script>
 
 <template>
@@ -143,7 +150,7 @@ watch(() => [props.items.length, props.size, hasMembers.value, hasAttendance.val
 }
 .expandable-avatars__toggle::after { border: 0; }
 .expandable-avatars__toggle--pressed { opacity: 0.65; }
-.expandable-avatars__scroll { width: 100%; }
+.expandable-avatars__scroll { width: 100%; transition: height var(--ui-motion-expand-duration) var(--ui-motion-ease-out); }
 .expandable-avatars__track { position: relative; transition: height var(--ui-motion-expand-duration) var(--ui-motion-ease-out); }
 .expandable-avatars__avatar {
   position: absolute;
@@ -168,6 +175,6 @@ watch(() => [props.items.length, props.size, hasMembers.value, hasAttendance.val
 .expandable-avatars__chevron { width: 10rpx; height: 10rpx; border-right: 3rpx solid currentColor; border-bottom: 3rpx solid currentColor; transform: rotate(-45deg); transition: transform var(--ui-motion-expand-duration) var(--ui-motion-ease-out); }
 .expandable-avatars__chevron--left { transform: rotate(135deg); }
 @media (prefers-reduced-motion: reduce) {
-  .expandable-avatars__track, .expandable-avatars__avatar, .expandable-avatars__chevron { transition: none; }
+  .expandable-avatars__scroll, .expandable-avatars__track, .expandable-avatars__avatar, .expandable-avatars__chevron { transition: none; }
 }
 </style>
