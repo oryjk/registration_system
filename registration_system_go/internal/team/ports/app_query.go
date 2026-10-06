@@ -8,6 +8,7 @@ import (
 )
 
 type AppMember struct {
+	AttendedCount  int64
 	UserID         int64
 	Nickname       string
 	AvatarURL      *string

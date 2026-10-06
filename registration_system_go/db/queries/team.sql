@@ -231,6 +231,19 @@ WHERE team_id = sqlc.arg('team_id') AND user_id = sqlc.arg('user_id')
   AND status <> 'removed';
 
 -- name: ListAppTeamMembers :many
+-- 年度出勤次数保持与统计页出勤排名（北京时间年初至今天）一致。
+WITH team_attendance AS (
+    SELECT hr.user_id, COUNT(hr.id)::bigint AS attended_count
+    FROM match_registration_groups hg
+    JOIN matches hm ON hm.id = hg.match_id
+    JOIN match_registrations hr ON hr.group_id = hg.id AND hr.status = 'attending'
+    WHERE hg.kind IN ('host_team', 'guest_team') AND hg.team_id = $1
+      AND hm.status <> 'cancelled'
+      AND (hm.status = 'ended' OR hm.end_time <= (NOW() AT TIME ZONE 'utc'))
+      AND hm.start_time >= ((date_trunc('year', NOW() AT TIME ZONE 'Asia/Shanghai') AT TIME ZONE 'Asia/Shanghai') AT TIME ZONE 'UTC')
+      AND hm.start_time < (((date_trunc('day', NOW() AT TIME ZONE 'Asia/Shanghai') + INTERVAL '1 day') AT TIME ZONE 'Asia/Shanghai') AT TIME ZONE 'UTC')
+    GROUP BY hr.user_id
+)
 SELECT tm.user_id,
        u.nickname,
        u.avatar_url,
@@ -240,9 +253,11 @@ SELECT tm.user_id,
        tm.joined_at,
        tm.balance_cents,
        tm.is_paid_member,
-       tm.last_recharge_at
+       tm.last_recharge_at,
+       COALESCE(ta.attended_count, 0)::bigint AS attended_count
 FROM team_members tm
 JOIN users u ON u.id = tm.user_id
+LEFT JOIN team_attendance ta ON ta.user_id = tm.user_id
 WHERE tm.team_id = $1
   AND tm.status <> 'removed'
 ORDER BY

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import MembershipCrown from './MembershipCrown.vue';
 import type { AvatarItem } from './avatarTypes';
 import { useOverlayPresence } from './useOverlayPresence';
 import { prefersReducedMotion } from '@/utils/reducedMotion';
@@ -43,14 +44,18 @@ function close() {
   <view v-if="rendered" class="avatar-preview-mask" :class="{ 'avatar-preview-mask--leaving': leaving }" @tap="close" @touchmove.stop.prevent @keydown.esc="close">
     <view class="avatar-preview-panel" role="dialog" aria-modal="true" :aria-label="`${name}的头像`" @tap.stop>
       <button class="avatar-preview-close" aria-label="关闭头像预览" hover-class="avatar-preview-close--pressed" :disabled="leaving" @tap.stop="close">×</button>
-      <view class="avatar-preview-image-frame">
-        <image v-if="avatar?.avatarUrl && !imageFailed" :key="avatar.avatarUrl" class="avatar-preview-image" :style="imageStyle" @load="onImageLoad" :src="avatar.avatarUrl" mode="aspectFit" :aria-label="`${name}的头像`" @error="imageFailed = true" />
-        <view v-else class="avatar-preview-fallback">
-          <text class="avatar-preview-initial">{{ name.slice(0, 1) }}</text>
-          <text class="avatar-preview-empty">{{ imageFailed ? '头像暂时无法加载' : '暂无头像' }}</text>
+      <view class="avatar-preview-portrait" :style="imageStyle">
+        <view v-if="avatar?.isPaidMember" class="avatar-preview-crown"><MembershipCrown width="100rpx" height="50rpx" /></view>
+        <view class="avatar-preview-image-frame">
+          <image v-if="avatar?.avatarUrl && !imageFailed" :key="avatar.avatarUrl" class="avatar-preview-image" :style="imageStyle" @load="onImageLoad" :src="avatar.avatarUrl" mode="aspectFit" :aria-label="`${name}的头像`" @error="imageFailed = true" />
+          <view v-else class="avatar-preview-fallback">
+            <text class="avatar-preview-initial">{{ name.slice(0, 1) }}</text>
+            <text class="avatar-preview-empty">{{ imageFailed ? '头像暂时无法加载' : '暂无头像' }}</text>
+          </view>
         </view>
       </view>
       <text class="avatar-preview-name">{{ name }}</text>
+      <text v-if="avatar?.teamAttendedCount != null" class="avatar-preview-attendance">今年出勤 {{ avatar.teamAttendedCount }} 次</text>
     </view>
   </view>
 </template>
@@ -61,12 +66,15 @@ function close() {
 .avatar-preview-close { position: absolute; top: 8rpx; right: 8rpx; display: flex; align-items: center; justify-content: center; width: 64rpx; height: 64rpx; padding: 0; margin: 0; line-height: 1; font-size: 44rpx; color: var(--ui-color-text); background: transparent; border-radius: var(--ui-radius-round); }
 .avatar-preview-close::after { border: 0; }
 .avatar-preview-close--pressed { background: var(--ui-color-accent-soft); }
-.avatar-preview-image-frame { display: flex; align-items: center; justify-content: center; height: 500rpx; max-height: 52vh; border-radius: var(--ui-radius-button); overflow: hidden; background: var(--ui-color-surface); }
+.avatar-preview-portrait { position: relative; margin: 0 auto; }
+.avatar-preview-crown { position: absolute; z-index: 1; left: 50%; top: -40rpx; margin-left: -50rpx; width: 100rpx; height: 50rpx; pointer-events: none; }
+.avatar-preview-image-frame { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; border-radius: var(--ui-radius-button); overflow: hidden; background: var(--ui-color-surface); }
 .avatar-preview-image { display: block; flex-shrink: 0; border-radius: var(--ui-radius-card); overflow: hidden; }
 .avatar-preview-fallback { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 24rpx; color: var(--ui-color-text); }
 .avatar-preview-initial { font-size: 120rpx; font-weight: var(--ui-font-weight-heading); }
 .avatar-preview-empty { font-size: 24rpx; color: var(--ui-color-text-muted); }
 .avatar-preview-name { display: block; margin-top: 24rpx; font-size: 34rpx; line-height: 1.5; text-align: center; font-weight: var(--ui-font-weight-heading); color: var(--ui-color-text); overflow-wrap: anywhere; max-height: 18vh; overflow-y: auto; }
+.avatar-preview-attendance { display: block; margin-top: 8rpx; text-align: center; color: var(--ui-color-text-muted); font-size: 24rpx; }
 .avatar-preview-mask--leaving { animation: avatar-preview-fade var(--ui-motion-overlay-duration) ease reverse both; }
 .avatar-preview-mask--leaving .avatar-preview-panel { pointer-events: none; animation: avatar-preview-enter var(--ui-motion-overlay-duration) ease reverse both; }
 @keyframes avatar-preview-fade { from { opacity: 0; } to { opacity: 1; } }

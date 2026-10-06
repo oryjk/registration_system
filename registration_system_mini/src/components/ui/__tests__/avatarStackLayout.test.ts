@@ -18,3 +18,10 @@ test("empty and very narrow containers have finite dimensions", () => {
   expect(avatarStackLayout(0, 0, 26, 7, 5, true).height).toEqual(0);
   expect(avatarStackLayout(2, 10, 26, 7, 5, true).positions[1]).toEqual({ x: 0, y: 31 });
 });
+
+test("attendance labels reserve vertical space on every expanded row", () => {
+ const layout = avatarStackLayout(7, 100, 26, -2, 5, true, 40);
+ expect(layout.positions[3]).toEqual({x:0,y:45});
+ expect(layout.height).toEqual(130);
+ expect(avatarStackLayout(7,100,26,-2,5,false,40).height).toEqual(40);
+});

@@ -130,3 +130,18 @@ describe("Home action match card", () => {
     expect(state.feeLabel).toEqual("费用见比赛详情");
   });
 });
+
+test("keeps membership from the selected group before and after detail arrives", () => {
+  const participant = { user_id: 7, nickname: "球友", avatar_url: null, status: "attending" as const, is_paid_member: true, team_attended_count: 12 };
+  const sourceWithMembers = { ...source, group: { ...source.group, participants: [participant] } };
+  const memberCard = toHomeMatchCard(sourceWithMembers, "upcoming");
+  expect(buildHomeActionMatchCardState(memberCard, null, now).avatars[0].isPaidMember).toEqual(true);
+  expect(buildHomeActionMatchCardState(memberCard, null, now).avatars[0].teamAttendedCount).toEqual(12);
+  const data = detail();
+  data.groups[0].participants = [participant];
+  data.groups[1].participants = [{ ...participant, is_paid_member: false }];
+  expect(buildHomeActionMatchCardState(memberCard, data, now).avatars[0].isPaidMember).toEqual(false);
+  expect(buildHomeActionMatchCardState(memberCard, data, now).avatars[0].teamAttendedCount).toEqual(12);
+  data.groups[1].participants = [{ ...participant, is_paid_member: undefined }];
+  expect(buildHomeActionMatchCardState(memberCard, data, now).avatars[0].isPaidMember).toEqual(false);
+});

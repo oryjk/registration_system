@@ -109,6 +109,10 @@ export interface AppMatchRegistration {
 }
 
 export interface AppMatchParticipant {
+  /** 与统计页今年出勤排名相同（北京时间年初至今天）；个人组为 null。 */
+  team_attended_count?: number | null;
+  /** 报名组所属球队的在队付费会员；旧后端缺失时不显示皇冠。 */
+  is_paid_member?: boolean;
   user_id: number;
   nickname: string;
   avatar_url: string | null;

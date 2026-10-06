@@ -125,10 +125,12 @@ type UserGroupResponse struct {
 }
 
 type UserParticipantResponse struct {
-	UserID    int64                     `json:"user_id"`
-	Nickname  string                    `json:"nickname"`
-	AvatarURL *string                   `json:"avatar_url"`
-	Status    domain.RegistrationStatus `json:"status"`
+	TeamAttendedCount *int64                    `json:"team_attended_count"`
+	IsPaidMember      bool                      `json:"is_paid_member"`
+	UserID            int64                     `json:"user_id"`
+	Nickname          string                    `json:"nickname"`
+	AvatarURL         *string                   `json:"avatar_url"`
+	Status            domain.RegistrationStatus `json:"status"`
 	// RegistrationCount 该成员报名占用的人数；散人约球一人代多人时大于 1，其余恒为 1。
 	RegistrationCount int `json:"registration_count"`
 	// RegisteredAt 是该成员本次报名的落库时间；为 nil 时（旧数据/未报名）调用方需自行兜底排序。
@@ -536,7 +538,7 @@ func mapUserParticipantResponses(participants []ports.UserParticipant) []UserPar
 	for _, participant := range participants {
 		responses = append(responses, UserParticipantResponse{
 			UserID: participant.UserID, Nickname: participant.Nickname,
-			AvatarURL: participant.AvatarURL, Status: participant.Status,
+			AvatarURL: participant.AvatarURL, Status: participant.Status, IsPaidMember: participant.IsPaidMember, TeamAttendedCount: participant.TeamAttendedCount,
 			RegistrationCount: participant.RegistrationCount, RegisteredAt: participant.RegisteredAt,
 		})
 	}

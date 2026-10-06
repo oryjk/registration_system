@@ -47,6 +47,8 @@ export interface TeamMemberRegistrationCard {
   tone: string;
   jerseyNumber: string;
   isCurrentUser: boolean;
+  isPaidMember?: boolean;
+  teamAttendedCount?: number;
 }
 
 export function buildTeamMemberRegistrationGroups({
@@ -54,8 +56,11 @@ export function buildTeamMemberRegistrationGroups({
   registrations,
   usersById,
   currentUserId,
+  rosterMatchesRegistrationTeam = true,
 }: {
   members: BackendTeamMember[];
+  /** 名册仅在与报名组球队相同时可补齐未报名/乐观记录的会员标识。 */
+  rosterMatchesRegistrationTeam?: boolean;
   registrations: BackendRegistration[];
   usersById: Record<number, BackendUser>;
   currentUserId?: number;
@@ -84,6 +89,10 @@ export function buildTeamMemberRegistrationGroups({
       tone: avatarColor(member.user_id),
       jerseyNumber: member.jersey_number ?? "",
       isCurrentUser: member.user_id === currentUserId,
+      isPaidMember: (registrationByUserId.get(member.user_id)?.is_paid_member
+        ?? (rosterMatchesRegistrationTeam && member.is_paid_member)) === true,
+      teamAttendedCount: registrationByUserId.get(member.user_id)?.team_attended_count
+        ?? (rosterMatchesRegistrationTeam ? member.attended_count : undefined),
     };
   };
 

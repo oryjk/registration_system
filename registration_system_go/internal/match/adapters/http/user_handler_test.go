@@ -78,7 +78,7 @@ func TestUserMatchRoutesReturnPrivacyScopedData(t *testing.T) {
 	if detailResponse.Code != http.StatusOK || !bytes.Contains(body, []byte(`"attending_count":7`)) || !bytes.Contains(body, []byte(`"my_registration":{"status":"attending","registration_count":1,"paid":false}`)) {
 		t.Fatalf("unexpected detail response %d: %s", detailResponse.Code, detailResponse.Body.String())
 	}
-	for _, expected := range []string{`"participants":[`, `"user_id":37`, `"nickname":"阿睿"`, `"avatar_url":"https://cdn.example.com/player-37.png"`, `"status":"attending"`, `"registered_at":"2026-08-10T02:00:00Z"`, `"host_team_logo_url":"https://cdn.example.com/team-7-logo.png"`, `"away_team_logo_url":null`} {
+	for _, expected := range []string{`"is_paid_member":false`, `"team_attended_count":null`, `"participants":[`, `"user_id":37`, `"nickname":"阿睿"`, `"avatar_url":"https://cdn.example.com/player-37.png"`, `"status":"attending"`, `"registered_at":"2026-08-10T02:00:00Z"`, `"host_team_logo_url":"https://cdn.example.com/team-7-logo.png"`, `"away_team_logo_url":null`} {
 		if !bytes.Contains(body, []byte(expected)) {
 			t.Fatalf("user detail response missing %s: %s", expected, detailResponse.Body.String())
 		}
@@ -533,5 +533,13 @@ func TestMapUserParticipantResponsesIncludeRegistrationCount(t *testing.T) {
 	})
 	if len(responses) != 2 || responses[0].RegistrationCount != 3 || responses[1].RegistrationCount != 1 {
 		t.Fatalf("participant responses should carry registration count: %+v", responses)
+	}
+}
+
+func TestMapUserParticipantResponsesCarriesTeamIdentityAndAttendance(t *testing.T) {
+	count := int64(12)
+	responses := mapUserParticipantResponses([]ports.UserParticipant{{UserID: 1, IsPaidMember: true, TeamAttendedCount: &count}, {UserID: 2}})
+	if !responses[0].IsPaidMember || responses[1].IsPaidMember || responses[0].TeamAttendedCount == nil || *responses[0].TeamAttendedCount != 12 || responses[1].TeamAttendedCount != nil {
+		t.Fatalf("responses=%+v", responses)
 	}
 }

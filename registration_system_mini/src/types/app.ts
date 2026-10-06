@@ -53,6 +53,7 @@ export interface AppTeamDetail {
 }
 
 export interface AppTeamMember {
+  attended_count?: number;
   user_id: number;
   nickname: string;
   avatar_url: string | null;

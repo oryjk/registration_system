@@ -557,6 +557,28 @@ describe("Authenticated match detail context", () => {
 
     expect(context.currentTeamMembers).toEqual([]);
   });
+  test("selected registration team overrides a dual member's current team", async () => {
+    const context = await loadAuthenticatedMatchDetailContext(
+      { ...buildContextParams(101, 37), registrationTeamId: 102 },
+      { getTeamDetail: async teamId => {
+        const detail = rosterTeamDetail(teamId, [{user_id:37,status:1}]);
+        detail.members[0].attended_count = teamId === 101 ? 12 : 3;
+        detail.members[0].is_paid_member = teamId === 101;
+        return detail;
+      } },
+    );
+    expect(context.currentTeamMembersTeamId).toEqual(102);
+    expect(context.currentTeamMembers[0].attended_count).toEqual(3);
+    expect(context.currentTeamMembers[0].is_paid_member).toEqual(false);
+  });
+  test("personal registration groups never borrow an active team's roster", async () => {
+    const context = await loadAuthenticatedMatchDetailContext(
+      {...buildContextParams(101,37),registrationTeamId:null},
+      {getTeamDetail: async teamId => rosterTeamDetail(teamId,[{user_id:37,status:1}])},
+    );
+    expect(context.currentTeamMembers).toEqual([]);
+    expect(context.currentTeamMembersTeamId).toEqual(null);
+  });
 });
 
 export {};
@@ -587,15 +609,31 @@ describe("online team progress after registration", () => {
 test("team progress keeps avatars within each group and uses live selected avatars", () => {
   const groups: import("../detailData").MatchTeamGroupSummary[] = [
     { id: "host", kind: "host_team", teamId: 101, attendingCount: 1, minPlayers: 8, maxPlayers: 10,
-      participants: [{ user_id: 1, nickname: "主队球员", avatar_url: "host.png", status: "attending", registration_count: 1 }] },
+      participants: [{ user_id: 1, nickname: "主队球员", avatar_url: "host.png", status: "attending", registration_count: 1, is_paid_member: true }] },
     { id: "guest", kind: "guest_team", teamId: 102, attendingCount: 0, minPlayers: null, maxPlayers: null,
       participants: [{ user_id: 2, nickname: "请假球员", avatar_url: null, status: "leave", registration_count: 0 }] },
   ];
   const source = { ...matchSummary, publication_mode: "online_team" as const };
   const live = [{ id: 3, name: "刚报名的客队球员", avatarUrl: "guest.png" }];
   const progress = buildMatchTeamProgress(source, groups, "guest", 1, live);
-  expect(progress[0]!.avatars).toEqual([{ id: 1, name: "主队球员", avatarUrl: "host.png" }]);
+  expect(progress[0]!.avatars).toEqual([{ id: 1, name: "主队球员", avatarUrl: "host.png", isPaidMember: true, teamAttendedCount: undefined }]);
   expect(progress[1]!.avatars).toEqual(live);
   expect(buildMatchTeamProgress(source, groups, "host", 0, [])[0]!.avatars).toEqual([]);
   expect(buildMatchTeamProgress(source, groups, "host", 0, [])[1]!.avatars).toEqual([]);
+});
+
+test("keeps selected-group membership in participant registration data", () => {
+  const participant = { user_id: 7, nickname: "球友", avatar_url: null, status: "attending" as const, is_paid_member: true, team_attended_count: 12 };
+  const groups = [
+    { id: "host", kind: "host_team" as const, team_id: 101, status: "open" as const, min_players: null, max_players: null, attending_count: 1, my_registration: null, participants: [participant] },
+    { id: "guest", kind: "guest_team" as const, team_id: 102, status: "open" as const, min_players: null, max_players: null, attending_count: 1, my_registration: null, participants: [{ ...participant, is_paid_member: false }] },
+  ];
+  const data = { match: matchSummary, groups };
+  expect(buildPublicMatchApiDetailData(data, undefined, { preferredGroupId: "host" }).activityUsers[0].is_paid_member).toEqual(true);
+  expect(buildPublicMatchApiDetailData(data, undefined, { preferredGroupId: "guest" }).activityUsers[0].is_paid_member).toEqual(false);
+});
+
+test("passes annual team attendance through the detail projection", () => {
+ const data = buildPublicMatchApiDetailData({match:matchSummary, groups:[{id:"host",kind:"host_team",team_id:101,status:"open",min_players:null,max_players:null,attending_count:1,my_registration:null,participants:[{user_id:7,nickname:"球友",avatar_url:null,status:"attending",team_attended_count:0}]}]});
+ expect(data.activityUsers[0].team_attended_count).toEqual(0);
 });

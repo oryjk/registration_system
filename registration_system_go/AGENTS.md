@@ -48,9 +48,11 @@
 
 ## 验证
 
+测试范围限定为本次修改：运行相关单元测试；涉及数据库或接口集成行为时，只运行本次修改相关的集成测试用例。未涉及集成测试时只需相关单元测试，不默认执行全量集成测试。
+
 ```bash
 gofmt -w .
-go test -race ./...
+go test -race ./<本次修改涉及的包> -run '<相关测试名>'
 go vet ./...
 go build -o /tmp/registration-system-go-api ./cmd/api
 ```

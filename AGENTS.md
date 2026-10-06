@@ -86,7 +86,7 @@
 
 ## 质量要求
 
-- Go 后端提交前执行：`gofmt -w .`、`go test -race ./...`、`go vet ./...`、`go build -o /tmp/registration-system-go-api ./cmd/api`
+- Go 后端提交前执行：`gofmt -w .`、本次修改涉及的单元测试（使用 `go test -race`）、`go vet ./...`、`go build -o /tmp/registration-system-go-api ./cmd/api`。集成测试最多只跑本次修改涉及的用例；未涉及集成测试时只跑相关单元测试，不默认执行全量集成测试。
 - 后端集成测试**直连线上测试库**跑（用户约定，不另建本地库）：`TEST_DATABASE_URL` 配在 `registration_system_go/.env`（通常与 `DATABASE_URL` 同库），`make test` 已自动加载 .env。testsupport 为每个用例创建独立随机 schema 并自动 DROP，不会读写业务表；禁止在集成测试里向业务表写入数据。
 - Rust 参考后端已从工作区删除，不再有任何验证要求
 - Go 配套管理端提交前建议执行：`bun run type-check`、`bun run lint`、`bun run build`

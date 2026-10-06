@@ -66,6 +66,8 @@ export interface HomeMatchCardViewModel {
   myStatus: string | null;
   highlight: string;
   participantAvatars: Array<{
+    isPaidMember?: boolean;
+    teamAttendedCount?: number;
     userId: number;
     avatarUrl: string;
     displayText: string;

@@ -109,7 +109,7 @@ func mapUserParticipants(entries []ports.AdminRosterEntry) []ports.UserParticipa
 		seen[entry.UserID] = struct{}{}
 		participants = append(participants, ports.UserParticipant{
 			UserID: entry.UserID, Nickname: entry.Nickname, AvatarURL: entry.AvatarURL, Status: *entry.Status,
-			RegistrationCount: entry.RegistrationCount, RegisteredAt: entry.RegisteredAt,
+			RegistrationCount: entry.RegistrationCount, RegisteredAt: entry.RegisteredAt, IsPaidMember: entry.IsPaidMember, TeamAttendedCount: entry.TeamAttendedCount,
 		})
 	}
 	return participants
@@ -129,4 +129,12 @@ func mapAdminDetailMatch(row matchsqlc.GetMatchForAdminRow) domain.Match {
 		HostColor: textValue(row.HostColor), AwayColor: textValue(row.AwayColor),
 		CreatedAt: row.CreatedAt.Time, UpdatedAt: row.UpdatedAt.Time,
 	}
+}
+
+// 个人报名组没有球队维度，不把「无统计」伪装成零次。
+func teamAttendedCount(teamID *int64, count int64) *int64 {
+	if teamID == nil {
+		return nil
+	}
+	return &count
 }

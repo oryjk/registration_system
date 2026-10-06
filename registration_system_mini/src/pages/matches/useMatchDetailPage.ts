@@ -60,6 +60,7 @@ export function useMatchDetailPage() {
   const usersById = ref<Record<number, BackendUser>>({});
   const teamsById = ref<Record<number, BackendTeam>>({});
   const currentTeamMembers = ref<BackendTeamMember[]>([]);
+  const currentTeamMembersTeamId = ref<number | null>(null);
   const sourceTeamRegistrationCount = ref(0);
   const currentStatus = ref("待定");
   const nowTick = ref(Date.now());
@@ -164,6 +165,9 @@ export function useMatchDetailPage() {
     return window.state === "not_started" ? `距开放 ${countdown}` : `距截止 ${countdown}`;
   });
 
+  const rosterMatchesRegistrationTeam = computed(() => currentTeamMembersTeamId.value != null
+    && matchTeamGroups.value.some(group => group.id === registrationGroupId.value && group.teamId === currentTeamMembersTeamId.value));
+
   const participantPreview = computed(() =>
     [...joinedRegistrations.value].sort(byRegistrationTimeAsc).map((item) => {
       // 刚报名时 usersById 还没有当前用户（接口只带已有参赛者），回退到会话资料，
@@ -176,6 +180,12 @@ export function useMatchDetailPage() {
         name: item.registration_count > 1 ? `${displayName}（${item.registration_count}人）` : displayName,
         avatarUrl: user?.avatar_url ?? "",
         tone: avatarColor(item.user_id),
+        teamAttendedCount: item.team_attended_count
+          ?? (rosterMatchesRegistrationTeam.value
+            ? currentTeamMembers.value.find(member => member.user_id === item.user_id && member.status === 1)?.attended_count : undefined),
+        // 新报名的乐观记录尚无会员字段，只从同一个报名球队的名册补齐。
+        isPaidMember: (item.is_paid_member ?? (rosterMatchesRegistrationTeam.value
+          && currentTeamMembers.value.find(member => member.user_id === item.user_id && member.status === 1)?.is_paid_member)) === true,
       };
     }),
   );
@@ -190,6 +200,7 @@ export function useMatchDetailPage() {
   const activeTeamMembers = computed(() => currentTeamMembers.value.filter((member) => member.status === 1));
   const teamMemberRegistrationGroups = computed(() => buildTeamMemberRegistrationGroups({
     members: activeTeamMembers.value,
+    rosterMatchesRegistrationTeam: rosterMatchesRegistrationTeam.value,
     registrations: registrations.value,
     usersById: usersById.value,
     currentUserId: currentUser.value?.id,
@@ -342,6 +353,7 @@ export function useMatchDetailPage() {
       applyMyRegistrationPaid(!!publicData.myRegistration?.paid);
       teamsById.value = {};
       currentTeamMembers.value = [];
+      currentTeamMembersTeamId.value = null;
       isGuestMode.value = hasManualLogout();
 
       if (isGuestMode.value) {
@@ -356,12 +368,14 @@ export function useMatchDetailPage() {
           activityUsers,
           myRegistration: publicData.myRegistration,
           currentTeamId: currentTeam.value?.id,
+          registrationTeamId: publicData.teamGroups.find(group => group.id === publicData.registrationGroupId)?.teamId ?? null,
           currentUserId: currentUser.value?.id,
         });
 
         isGuestMode.value = false;
         teamsById.value = context.teamsById;
         currentTeamMembers.value = context.currentTeamMembers;
+        currentTeamMembersTeamId.value = context.currentTeamMembersTeamId;
         currentStatus.value = toStandLabel(context.currentUserStand);
       } catch (_sessionError) {
         isGuestMode.value = true;

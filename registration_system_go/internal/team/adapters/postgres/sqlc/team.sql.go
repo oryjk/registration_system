@@ -654,6 +654,18 @@ func (q *Queries) ListActiveUserTeams(ctx context.Context, userID int64) ([]List
 }
 
 const listAppTeamMembers = `-- name: ListAppTeamMembers :many
+WITH team_attendance AS (
+    SELECT hr.user_id, COUNT(hr.id)::bigint AS attended_count
+    FROM match_registration_groups hg
+    JOIN matches hm ON hm.id = hg.match_id
+    JOIN match_registrations hr ON hr.group_id = hg.id AND hr.status = 'attending'
+    WHERE hg.kind IN ('host_team', 'guest_team') AND hg.team_id = $1
+      AND hm.status <> 'cancelled'
+      AND (hm.status = 'ended' OR hm.end_time <= (NOW() AT TIME ZONE 'utc'))
+      AND hm.start_time >= ((date_trunc('year', NOW() AT TIME ZONE 'Asia/Shanghai') AT TIME ZONE 'Asia/Shanghai') AT TIME ZONE 'UTC')
+      AND hm.start_time < (((date_trunc('day', NOW() AT TIME ZONE 'Asia/Shanghai') + INTERVAL '1 day') AT TIME ZONE 'Asia/Shanghai') AT TIME ZONE 'UTC')
+    GROUP BY hr.user_id
+)
 SELECT tm.user_id,
        u.nickname,
        u.avatar_url,
@@ -663,9 +675,11 @@ SELECT tm.user_id,
        tm.joined_at,
        tm.balance_cents,
        tm.is_paid_member,
-       tm.last_recharge_at
+       tm.last_recharge_at,
+       COALESCE(ta.attended_count, 0)::bigint AS attended_count
 FROM team_members tm
 JOIN users u ON u.id = tm.user_id
+LEFT JOIN team_attendance ta ON ta.user_id = tm.user_id
 WHERE tm.team_id = $1
   AND tm.status <> 'removed'
 ORDER BY
@@ -691,8 +705,10 @@ type ListAppTeamMembersRow struct {
 	BalanceCents   int64              `json:"balance_cents"`
 	IsPaidMember   bool               `json:"is_paid_member"`
 	LastRechargeAt pgtype.Timestamptz `json:"last_recharge_at"`
+	AttendedCount  int64              `json:"attended_count"`
 }
 
+// 年度出勤次数保持与统计页出勤排名（北京时间年初至今天）一致。
 func (q *Queries) ListAppTeamMembers(ctx context.Context, teamID int64) ([]ListAppTeamMembersRow, error) {
 	rows, err := q.db.Query(ctx, listAppTeamMembers, teamID)
 	if err != nil {
@@ -713,6 +729,7 @@ func (q *Queries) ListAppTeamMembers(ctx context.Context, teamID int64) ([]ListA
 			&i.BalanceCents,
 			&i.IsPaidMember,
 			&i.LastRechargeAt,
+			&i.AttendedCount,
 		); err != nil {
 			return nil, err
 		}

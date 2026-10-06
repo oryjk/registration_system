@@ -1080,6 +1080,19 @@ func (q *Queries) ListCaptainMessagesByThread(ctx context.Context, arg ListCapta
 }
 
 const listGroupRegistrations = `-- name: ListGroupRegistrations :many
+WITH team_attendance AS (
+    SELECT hg.team_id, hr.user_id, COUNT(hr.id)::bigint AS attended_count
+    FROM match_registration_groups hg
+    JOIN matches hm ON hm.id = hg.match_id
+    JOIN match_registrations hr ON hr.group_id = hg.id AND hr.status = 'attending'
+    WHERE hg.kind IN ('host_team', 'guest_team')
+      AND hg.team_id IN (SELECT team_id FROM match_registration_groups WHERE id = $1)
+      AND hm.status <> 'cancelled'
+      AND (hm.status = 'ended' OR hm.end_time <= (NOW() AT TIME ZONE 'utc'))
+      AND hm.start_time >= ((date_trunc('year', NOW() AT TIME ZONE 'Asia/Shanghai') AT TIME ZONE 'Asia/Shanghai') AT TIME ZONE 'UTC')
+      AND hm.start_time < (((date_trunc('day', NOW() AT TIME ZONE 'Asia/Shanghai') + INTERVAL '1 day') AT TIME ZONE 'Asia/Shanghai') AT TIME ZONE 'UTC')
+    GROUP BY hg.team_id, hr.user_id
+)
 SELECT r.user_id,
        u.nickname,
        u.avatar_url,
@@ -1087,9 +1100,15 @@ SELECT r.user_id,
        r.status AS registration_status,
        r.registration_count,
        r.paid,
-       r.created_at AS registered_at
+       r.created_at AS registered_at,
+       COALESCE(tm.is_paid_member, false)::boolean AS is_paid_member,
+       g.team_id AS participant_team_id,
+       COALESCE(ta.attended_count, 0)::bigint AS team_attended_count
 FROM match_registrations r
+JOIN match_registration_groups g ON g.id = r.group_id
 JOIN users u ON u.id = r.user_id
+LEFT JOIN team_members tm ON tm.team_id = g.team_id AND tm.user_id = r.user_id AND tm.status = 'active'
+LEFT JOIN team_attendance ta ON ta.team_id = g.team_id AND ta.user_id = r.user_id
 WHERE r.group_id = $1
 ORDER BY
     CASE r.status
@@ -1112,9 +1131,13 @@ type ListGroupRegistrationsRow struct {
 	RegistrationCount  int32            `json:"registration_count"`
 	Paid               bool             `json:"paid"`
 	RegisteredAt       pgtype.Timestamp `json:"registered_at"`
+	IsPaidMember       bool             `json:"is_paid_member"`
+	ParticipantTeamID  *int64           `json:"participant_team_id"`
+	TeamAttendedCount  int64            `json:"team_attended_count"`
 }
 
 // 报名组的全部报名记录（含用户资料）；个人组花名册与用户端详情 participants 共用。
+// 年度次数与 ListTeamAttendanceRanking / 小程序 getCurrentYearDateRange 一致：北京时间年初至今天。
 func (q *Queries) ListGroupRegistrations(ctx context.Context, groupID pgtype.UUID) ([]ListGroupRegistrationsRow, error) {
 	rows, err := q.db.Query(ctx, listGroupRegistrations, groupID)
 	if err != nil {
@@ -1133,6 +1156,9 @@ func (q *Queries) ListGroupRegistrations(ctx context.Context, groupID pgtype.UUI
 			&i.RegistrationCount,
 			&i.Paid,
 			&i.RegisteredAt,
+			&i.IsPaidMember,
+			&i.ParticipantTeamID,
+			&i.TeamAttendedCount,
 		); err != nil {
 			return nil, err
 		}
@@ -1145,28 +1171,51 @@ func (q *Queries) ListGroupRegistrations(ctx context.Context, groupID pgtype.UUI
 }
 
 const listHomeActionGroupParticipants = `-- name: ListHomeActionGroupParticipants :many
+WITH team_attendance AS (
+    SELECT hg.team_id, hr.user_id, COUNT(hr.id)::bigint AS attended_count
+    FROM match_registration_groups hg
+    JOIN matches hm ON hm.id = hg.match_id
+    JOIN match_registrations hr ON hr.group_id = hg.id AND hr.status = 'attending'
+    WHERE hg.kind IN ('host_team', 'guest_team')
+      AND hg.team_id IN (SELECT team_id FROM match_registration_groups WHERE id = ANY($1::uuid[]))
+      AND hm.status <> 'cancelled'
+      AND (hm.status = 'ended' OR hm.end_time <= (NOW() AT TIME ZONE 'utc'))
+      AND hm.start_time >= ((date_trunc('year', NOW() AT TIME ZONE 'Asia/Shanghai') AT TIME ZONE 'Asia/Shanghai') AT TIME ZONE 'UTC')
+      AND hm.start_time < (((date_trunc('day', NOW() AT TIME ZONE 'Asia/Shanghai') + INTERVAL '1 day') AT TIME ZONE 'Asia/Shanghai') AT TIME ZONE 'UTC')
+    GROUP BY hg.team_id, hr.user_id
+)
 SELECT r.group_id,
        r.user_id,
        u.nickname,
        u.avatar_url,
-       r.status
+       r.status,
+       COALESCE(tm.is_paid_member, false)::boolean AS is_paid_member,
+       g.team_id AS participant_team_id,
+       COALESCE(ta.attended_count, 0)::bigint AS team_attended_count
 FROM match_registrations r
+JOIN match_registration_groups g ON g.id = r.group_id
 JOIN users u ON u.id = r.user_id
+LEFT JOIN team_members tm ON tm.team_id = g.team_id AND tm.user_id = r.user_id AND tm.status = 'active'
+LEFT JOIN team_attendance ta ON ta.team_id = g.team_id AND ta.user_id = r.user_id
 WHERE r.group_id = ANY($1::uuid[])
   AND r.status = 'attending'
 ORDER BY r.group_id, r.created_at, r.user_id
 `
 
 type ListHomeActionGroupParticipantsRow struct {
-	GroupID   pgtype.UUID `json:"group_id"`
-	UserID    int64       `json:"user_id"`
-	Nickname  string      `json:"nickname"`
-	AvatarUrl *string     `json:"avatar_url"`
-	Status    string      `json:"status"`
+	GroupID           pgtype.UUID `json:"group_id"`
+	UserID            int64       `json:"user_id"`
+	Nickname          string      `json:"nickname"`
+	AvatarUrl         *string     `json:"avatar_url"`
+	Status            string      `json:"status"`
+	IsPaidMember      bool        `json:"is_paid_member"`
+	ParticipantTeamID *int64      `json:"participant_team_id"`
+	TeamAttendedCount int64       `json:"team_attended_count"`
 }
 
 // 首页比赛卡片的报名人头像列表：一次性按 group 批量取全部 attending 报名者，
 // 按报名先后（created_at, user_id）排序，避免 N+1 查询。
+// 年度次数与 ListTeamAttendanceRanking / 小程序 getCurrentYearDateRange 一致：北京时间年初至今天。
 func (q *Queries) ListHomeActionGroupParticipants(ctx context.Context, groupIds []pgtype.UUID) ([]ListHomeActionGroupParticipantsRow, error) {
 	rows, err := q.db.Query(ctx, listHomeActionGroupParticipants, groupIds)
 	if err != nil {
@@ -1182,6 +1231,9 @@ func (q *Queries) ListHomeActionGroupParticipants(ctx context.Context, groupIds 
 			&i.Nickname,
 			&i.AvatarUrl,
 			&i.Status,
+			&i.IsPaidMember,
+			&i.ParticipantTeamID,
+			&i.TeamAttendedCount,
 		); err != nil {
 			return nil, err
 		}
@@ -1385,14 +1437,32 @@ func (q *Queries) ListHomeActionMatchesForUser(ctx context.Context, arg ListHome
 }
 
 const listHomeEndedMatchParticipants = `-- name: ListHomeEndedMatchParticipants :many
+WITH team_attendance AS (
+    SELECT hg.team_id, hr.user_id, COUNT(hr.id)::bigint AS attended_count
+    FROM match_registration_groups hg
+    JOIN matches hm ON hm.id = hg.match_id
+    JOIN match_registrations hr ON hr.group_id = hg.id AND hr.status = 'attending'
+    WHERE hg.kind IN ('host_team', 'guest_team')
+      AND hg.team_id IN (SELECT team_id FROM match_registration_groups WHERE match_id = ANY($1::uuid[]))
+      AND hm.status <> 'cancelled'
+      AND (hm.status = 'ended' OR hm.end_time <= (NOW() AT TIME ZONE 'utc'))
+      AND hm.start_time >= ((date_trunc('year', NOW() AT TIME ZONE 'Asia/Shanghai') AT TIME ZONE 'Asia/Shanghai') AT TIME ZONE 'UTC')
+      AND hm.start_time < (((date_trunc('day', NOW() AT TIME ZONE 'Asia/Shanghai') + INTERVAL '1 day') AT TIME ZONE 'Asia/Shanghai') AT TIME ZONE 'UTC')
+    GROUP BY hg.team_id, hr.user_id
+)
 SELECT g.match_id,
        r.user_id,
        u.nickname,
        u.avatar_url,
-       r.status
+       r.status,
+       COALESCE(tm.is_paid_member, false)::boolean AS is_paid_member,
+       g.team_id AS participant_team_id,
+       COALESCE(ta.attended_count, 0)::bigint AS team_attended_count
 FROM match_registration_groups g
 JOIN match_registrations r ON r.group_id = g.id
 JOIN users u ON u.id = r.user_id
+LEFT JOIN team_members tm ON tm.team_id = g.team_id AND tm.user_id = r.user_id AND tm.status = 'active'
+LEFT JOIN team_attendance ta ON ta.team_id = g.team_id AND ta.user_id = r.user_id
 WHERE g.match_id = ANY($1::uuid[])
   AND g.status <> 'cancelled'
   AND r.status = 'attending'
@@ -1400,15 +1470,19 @@ ORDER BY g.match_id, r.created_at, r.user_id
 `
 
 type ListHomeEndedMatchParticipantsRow struct {
-	MatchID   pgtype.UUID `json:"match_id"`
-	UserID    int64       `json:"user_id"`
-	Nickname  string      `json:"nickname"`
-	AvatarUrl *string     `json:"avatar_url"`
-	Status    string      `json:"status"`
+	MatchID           pgtype.UUID `json:"match_id"`
+	UserID            int64       `json:"user_id"`
+	Nickname          string      `json:"nickname"`
+	AvatarUrl         *string     `json:"avatar_url"`
+	Status            string      `json:"status"`
+	IsPaidMember      bool        `json:"is_paid_member"`
+	ParticipantTeamID *int64      `json:"participant_team_id"`
+	TeamAttendedCount int64       `json:"team_attended_count"`
 }
 
 // 首页已结束比赛卡片的报名人头像列表：一次性按 match 批量取全部 attending 报名者，
 // 合并该比赛全部报名组后按报名先后（created_at, user_id）排序，避免 N+1 查询。
+// 年度次数与 ListTeamAttendanceRanking / 小程序 getCurrentYearDateRange 一致：北京时间年初至今天。
 func (q *Queries) ListHomeEndedMatchParticipants(ctx context.Context, matchIds []pgtype.UUID) ([]ListHomeEndedMatchParticipantsRow, error) {
 	rows, err := q.db.Query(ctx, listHomeEndedMatchParticipants, matchIds)
 	if err != nil {
@@ -1424,6 +1498,9 @@ func (q *Queries) ListHomeEndedMatchParticipants(ctx context.Context, matchIds [
 			&i.Nickname,
 			&i.AvatarUrl,
 			&i.Status,
+			&i.IsPaidMember,
+			&i.ParticipantTeamID,
+			&i.TeamAttendedCount,
 		); err != nil {
 			return nil, err
 		}

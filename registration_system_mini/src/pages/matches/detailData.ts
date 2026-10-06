@@ -55,6 +55,7 @@ export interface AuthenticatedMatchDetailContext {
   teamsById: Record<number, BackendTeam>;
   currentUserStand: number;
   currentTeamMembers: BackendTeamMember[];
+  currentTeamMembersTeamId: number | null;
 }
 
 export const MATCH_API_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -178,11 +179,15 @@ export function buildPublicMatchApiDetailData(
   const participants = group?.participants ?? [];
   // 三态报名板需要全部队友的出勤状态：attending→已报名、leave→请假，其余（unknown/absent/cancelled）由页面归入未报名组。
   // operation_time 用报名落库时间，保证「已报名队员」按报名先后升序；旧数据缺失时回退比赛更新时间。
-  const activityUsers = participants.map((participant) => toBackendRegistration(
-    { status: participant.status, registration_count: participant.registration_count ?? 1 },
-    participant.user_id,
-    participant.registered_at ?? matchDetail.match.updated_at,
-  ));
+  const activityUsers: BackendRegistration[] = participants.map((participant) => ({
+    ...toBackendRegistration(
+      { status: participant.status, registration_count: participant.registration_count ?? 1 },
+      participant.user_id,
+      participant.registered_at ?? matchDetail.match.updated_at,
+    ),
+    ...(participant.is_paid_member === undefined ? {} : { is_paid_member: participant.is_paid_member }),
+    ...(participant.team_attended_count === undefined ? {} : { team_attended_count: participant.team_attended_count }),
+  }));
   if (myRegistration && currentUserId && !activityUsers.some((item) => item.user_id === currentUserId)) {
     activityUsers.push(toBackendRegistration(myRegistration, currentUserId, matchDetail.match.updated_at));
   }
@@ -228,11 +233,13 @@ export async function loadAuthenticatedMatchDetailContext(
     activityUsers: BackendRegistration[];
     myRegistration?: AppMatchRegistration | null;
     currentTeamId?: number | null;
+    /** 选中报名组的球队；显式 null 表示个人组，不使用其他球队名册。 */
+    registrationTeamId?: number | null;
     currentUserId?: number;
   },
   loaders: Pick<MatchDetailDataLoaders, "getTeamDetail"> = defaultMatchDetailDataLoaders,
 ): Promise<AuthenticatedMatchDetailContext> {
-  const { activity, activityUsers, myRegistration, currentTeamId, currentUserId } = params;
+  const { activity, activityUsers, myRegistration, currentTeamId, currentUserId, registrationTeamId } = params;
   const teamIds = [activity.home_team_id, activity.away_team_id].filter((teamId): teamId is number => typeof teamId === "number");
   // 球队详情接口仅成员可读：非成员浏览广场比赛详情时会 403，拿不到就跳过，
   // 不能让它把整个详情页拖进「会话失败」分支（会被误判为游客）。
@@ -244,10 +251,11 @@ export async function loadAuthenticatedMatchDetailContext(
     }
   }))).filter((detail): detail is Awaited<ReturnType<typeof loaders.getTeamDetail>> => detail !== null);
   const fetchedTeams = fetchedTeamDetails.map((detail) => detail.team);
-  // 报名板跟随比赛所属球队：优先当前选中球队；用户切换到其他球队后，回退到
-  // 「当前用户是活跃成员」的那支比赛队伍（主队在前），两边都不属于时才留空隐藏。
-  const rosterDetail =
-    fetchedTeamDetails.find((detail) => detail.team.id === currentTeamId)
+  // 显式选择报名组时，名册跟随该组球队，避免双队成员首次报名时取到另一队数据。
+  // 旧调用未指定报名组时保留当前球队/活跃成员的兜底。
+  const rosterDetail = registrationTeamId !== undefined
+    ? fetchedTeamDetails.find(detail => detail.team.id === registrationTeamId)
+    : fetchedTeamDetails.find((detail) => detail.team.id === currentTeamId)
     ?? fetchedTeamDetails.find((detail) => detail.members.some((member) => member.user_id === currentUserId && member.status === 1));
   const currentTeamMembers = rosterDetail?.members ?? [];
 
@@ -257,6 +265,6 @@ export async function loadAuthenticatedMatchDetailContext(
       ? toRegistrationStandCode(myRegistration.status)
       : activityUsers.find((item) => item.user_id === currentUserId)?.stand ?? 0,
     currentTeamMembers,
-
+    currentTeamMembersTeamId: rosterDetail?.team.id ?? null,
   };
 }

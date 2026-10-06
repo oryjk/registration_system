@@ -208,6 +208,8 @@ export interface BackendTeamPasswordInfo {
 }
 
 export interface BackendTeamMember {
+  /** 与统计页今年出勤排名相同。 */
+  attended_count?: number;
   user_id: number;
   role: string;
   jersey_number?: string | null;
@@ -392,6 +394,8 @@ export interface BackendAttendanceRankingItem {
 }
 
 export interface BackendRegistration {
+  team_attended_count?: number | null;
+  is_paid_member?: boolean;
   user_id: number;
   stand: number;
   registration_count: number;

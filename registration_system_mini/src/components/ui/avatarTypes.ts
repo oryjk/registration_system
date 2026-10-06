@@ -3,5 +3,7 @@ export type AvatarItem = {
   name: string;
   avatarUrl?: string;
   tone?: string;
+  isPaidMember?: boolean;
+  teamAttendedCount?: number;
 };
 export type AvatarSize = "xs" | "sm" | "md" | "lg";

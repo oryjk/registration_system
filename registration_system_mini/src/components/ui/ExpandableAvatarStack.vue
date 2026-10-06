@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, getCurrentInstance, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
+import MembershipCrown from "./MembershipCrown.vue";
 import type { AvatarItem, AvatarSize } from "./avatarTypes";
 import { avatarStackLayout } from "./avatarStackLayout";
 import { getWindowMetrics } from "@/utils/systemInfo";
@@ -28,13 +29,21 @@ const sizes: Record<AvatarSize, number> = { xs: 42, sm: 52, md: 68, lg: 84 };
 const viewportWidth = ref(getWindowMetrics().windowWidth);
 const toPixels = (rpx: number) => rpx * viewportWidth.value / 750;
 const avatarSize = computed(() => toPixels(sizes[props.size]));
+const hasMembers = computed(() => props.items.some(item => item.isPaidMember));
+// 给皇冠及摇摆范围留出滚动容器内空间，避免折叠/展开时被裁切。
+const hasAttendance = computed(() => props.items.some(item => hasAttendanceCount(item)));
+function hasAttendanceCount(item: AvatarItem) { return typeof item.teamAttendedCount === "number" && Number.isFinite(item.teamAttendedCount) && item.teamAttendedCount >= 0; }
+const attendanceHeight = computed(() => hasAttendance.value ? toPixels(28) : 0);
+const crownHeadroom = computed(() => hasMembers.value ? avatarSize.value * 0.44 : 0);
+const trackHeight = computed(() => layout.value.height + crownHeadroom.value + 8);
 const layout = computed(() => avatarStackLayout(
   props.items.length,
   containerWidth.value,
   avatarSize.value,
-  toPixels(props.size === "xs" ? 10 : 14),
-  toPixels(10),
+  hasAttendance.value ? -toPixels(10) : toPixels(props.size === "xs" ? 10 : 14),
+  hasMembers.value ? crownHeadroom.value + toPixels(10) : toPixels(10),
   expanded.value,
+  avatarSize.value + attendanceHeight.value,
 ));
 
 async function measure() {
@@ -63,15 +72,15 @@ function select(item: AvatarItem) {
 }
 onMounted(() => { void measure(); uni.onWindowResize(measure); });
 onUnmounted(() => { disposed = true; measurement++; uni.offWindowResize(measure); });
-watch(() => [props.items.length, props.size], () => { void measure(); });
+watch(() => [props.items.length, props.size, hasMembers.value, hasAttendance.value], () => { void measure(); });
 </script>
 
 <template>
   <view data-deck-ignore="true" class="expandable-avatars" @tap.stop>
     <!-- 只隔离头像滚动，勿在外层拦截 touchstart，否则小程序按钮 tap 无法触发。 -->
     <view data-deck-ignore="true" class="expandable-avatars__items">
-      <scroll-view data-deck-ignore="true" scroll-x :show-scrollbar="false" :scroll-left="scrollLeft" class="expandable-avatars__scroll" @touchmove.stop :style="{ height: `${layout.height + 8}px` }" @scroll="scrollLeft = $event.detail.scrollLeft">
-        <view data-deck-ignore="true" class="expandable-avatars__track" :style="{ width: `${layout.width}px`, height: `${layout.height + 8}px` }">
+      <scroll-view data-deck-ignore="true" scroll-x :show-scrollbar="false" :scroll-left="scrollLeft" class="expandable-avatars__scroll" @touchmove.stop :style="{ height: `${trackHeight}px` }" @scroll="scrollLeft = $event.detail.scrollLeft">
+        <view data-deck-ignore="true" class="expandable-avatars__track" :style="{ width: `${layout.width}px`, height: `${trackHeight}px` }">
           <view
             v-for="(item, index) in items"
             :key="item.id"
@@ -79,15 +88,18 @@ watch(() => [props.items.length, props.size], () => { void measure(); });
             class="expandable-avatars__avatar"
             :style="{
               width: `${avatarSize}px`, height: `${avatarSize}px`,
-              transform: `translate(${layout.positions[index].x}px, ${layout.positions[index].y + (selectedId === item.id ? 0 : 4)}px)`,
-              backgroundColor: item.tone || 'var(--ui-color-text)',
+              transform: `translate(${layout.positions[index].x}px, ${layout.positions[index].y + crownHeadroom + (selectedId === item.id ? 0 : 4)}px)`,
             }"
-            :aria-label="item.name"
+            :aria-label="`${item.name}${item.isPaidMember ? '，球队会员' : ''}${hasAttendanceCount(item) ? `，今年出勤${item.teamAttendedCount}次` : ''}`"
             :hover-class="interactive && !disabled ? 'expandable-avatars__avatar--pressed' : 'none'"
             @tap.stop="select(item)"
           >
-            <image data-deck-ignore="true" v-if="item.avatarUrl && !failedImages[imageKey(item)]" class="expandable-avatars__image" :src="item.avatarUrl" mode="aspectFill" @error="failedImages[imageKey(item)] = true" />
-            <text data-deck-ignore="true" v-else class="expandable-avatars__fallback">{{ Array.from(item.name.trim())[0] || '?' }}</text>
+            <view data-deck-ignore="true" class="expandable-avatars__face" :style="{ backgroundColor: item.tone || 'var(--ui-color-text)' }">
+              <image data-deck-ignore="true" v-if="item.avatarUrl && !failedImages[imageKey(item)]" class="expandable-avatars__image" :src="item.avatarUrl" mode="aspectFill" @error="failedImages[imageKey(item)] = true" />
+              <text data-deck-ignore="true" v-else class="expandable-avatars__fallback">{{ Array.from(item.name.trim())[0] || '?' }}</text>
+            </view>
+            <text v-if="hasAttendanceCount(item)" class="expandable-avatars__attendance">{{ item.teamAttendedCount }}次</text>
+            <view v-if="item.isPaidMember" data-deck-ignore="true" class="expandable-avatars__crown"><MembershipCrown :width="`${avatarSize * 0.72}px`" :height="`${avatarSize * 0.4}px`" /></view>
           </view>
         </view>
       </scroll-view>
@@ -96,6 +108,7 @@ watch(() => [props.items.length, props.size], () => { void measure(); });
       v-if="items.length > 0"
       data-deck-ignore="true"
       class="expandable-avatars__toggle"
+      :style="{ marginTop: `${crownHeadroom}px` }"
       :disabled="disabled"
       :aria-expanded="expanded"
       :aria-label="expanded ? '收起报名名单' : '展开报名名单'"
@@ -136,12 +149,12 @@ watch(() => [props.items.length, props.size], () => { void measure(); });
   display: flex;
   align-items: center;
   justify-content: center;
-  border: var(--ui-avatar-border);
-  border-radius: var(--ui-radius-round);
-  overflow: hidden;
   box-sizing: border-box;
   transition: transform var(--ui-motion-expand-duration) var(--ui-motion-ease-out);
 }
+.expandable-avatars__face { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; border: var(--ui-avatar-border); border-radius: var(--ui-radius-round); overflow: hidden; box-sizing: border-box; }
+.expandable-avatars__crown { position: absolute; z-index: 1; width: 72%; height: 40%; left: 14%; top: -34%; pointer-events: none; }
+.expandable-avatars__attendance { position: absolute; top: 100%; left: 50%; transform: translateX(-50%); margin-top: 4rpx; font-size: 20rpx; line-height: 24rpx; white-space: nowrap; color: var(--ui-color-text-muted); font-variant-numeric: tabular-nums; }
 .expandable-avatars__avatar--pressed { opacity: 0.7; }
 .expandable-avatars__image { width: 100%; height: 100%; }
 .expandable-avatars__fallback { color: var(--ui-color-text-inverse); font-size: 22rpx; }

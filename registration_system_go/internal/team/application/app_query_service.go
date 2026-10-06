@@ -17,6 +17,7 @@ type AppTeamDetail struct {
 }
 
 type AppTeamMember struct {
+	AttendedCount  int64
 	UserID         int64
 	Nickname       string
 	AvatarURL      *string
@@ -54,7 +55,7 @@ func (s AppQueryService) ListMembers(ctx context.Context, actor sharedauth.Actor
 	if err != nil {
 		return nil, err
 	}
-	canSeePaidMembership := requester.CanManageTeam()
+	canSeeFundDetails := requester.CanManageTeam()
 	rows, err := s.repository.ListAppMembers(ctx, teamID)
 	if err != nil {
 		return nil, sharederror.Wrap(sharederror.KindInternal, "查询球队成员失败", err)
@@ -64,10 +65,10 @@ func (s AppQueryService) ListMembers(ctx context.Context, actor sharedauth.Actor
 		item := AppTeamMember{
 			UserID: row.UserID, Nickname: row.Nickname, AvatarURL: row.AvatarURL,
 			RealName: row.RealName, Role: row.Role, Status: row.Status, JoinedAt: row.JoinedAt,
+			IsPaidMember: row.IsPaidMember, AttendedCount: row.AttendedCount,
 		}
-		if canSeePaidMembership {
+		if canSeeFundDetails {
 			item.BalanceCents = row.BalanceCents
-			item.IsPaidMember = row.IsPaidMember
 			item.LastRechargeAt = row.LastRechargeAt
 		}
 		items = append(items, item)

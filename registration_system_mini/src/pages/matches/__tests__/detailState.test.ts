@@ -166,3 +166,29 @@ describe("resolveRegistrationWindow", () => {
     })).toEqual({ state: "closed", countdownTarget: null });
   });
 });
+
+test("member identity survives joined, leave and pending roster projections", () => {
+  const groups = buildTeamMemberRegistrationGroups({
+    members: [teamMember(1, { is_paid_member: true }), teamMember(2, { is_paid_member: true }), teamMember(3, { is_paid_member: true }), teamMember(4)],
+    registrations: [
+      { user_id: 1, stand: 1, registration_count: 1, paid: 0, operation_time: "2026-10-06T01:00:00Z" },
+      { user_id: 2, stand: 2, registration_count: 0, paid: 0, operation_time: "2026-10-06T01:00:00Z" },
+    ], usersById: {},
+  });
+  expect(groups.joined[0].isPaidMember).toEqual(true);
+  expect(groups.leave[0].isPaidMember).toEqual(true);
+  expect(groups.pending.map(person => person.isPaidMember)).toEqual([true, false]);
+});
+
+test("roster from another team cannot supply membership to a registration group", () => {
+  const groups = buildTeamMemberRegistrationGroups({
+    members: [teamMember(1, { is_paid_member: true, attended_count: 12 }), teamMember(2, { is_paid_member: true, attended_count: 12 }), teamMember(3, { is_paid_member: false, attended_count: 12 })],
+    registrations: [
+      { user_id: 1, stand: 1, registration_count: 1, paid: 0, operation_time: "2026-10-06T01:00:00Z", is_paid_member: false },
+      { user_id: 3, stand: 1, registration_count: 1, paid: 0, operation_time: "2026-10-06T01:00:00Z", is_paid_member: true },
+    ], usersById: {}, rosterMatchesRegistrationTeam: false,
+  });
+  expect(groups.joined.map(person => person.isPaidMember)).toEqual([false, true]);
+  expect(groups.pending[0].isPaidMember).toEqual(false);
+  expect(groups.pending[0].teamAttendedCount).toEqual(undefined);
+});

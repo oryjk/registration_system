@@ -102,10 +102,14 @@ type UserGroupState struct {
 }
 
 type UserParticipant struct {
-	UserID    int64
-	Nickname  string
-	AvatarURL *string
-	Status    domain.RegistrationStatus
+	// TeamAttendedCount 沿用球队出勤统计口径；个人组为 nil。
+	TeamAttendedCount *int64
+	// IsPaidMember 仅指报名组所属球队的在队会员；个人组为 false。
+	IsPaidMember bool
+	UserID       int64
+	Nickname     string
+	AvatarURL    *string
+	Status       domain.RegistrationStatus
 	// RegistrationCount 是该成员本次报名占用的人数；散人约球一人代多人时大于 1，其余恒为 1。
 	RegistrationCount int
 	// RegisteredAt 是该成员本次报名的落库时间；小程序端用它把已报名队员按报名先后排序。
@@ -186,12 +190,14 @@ type CaptainMessageRepository interface {
 // AdminRosterEntry 是管理端报名组花名册中的一行：球队组包含全部成员
 // （Status 为 nil 表示尚未报名），散人组只包含已有报名记录的用户。
 type AdminRosterEntry struct {
-	UserID     int64
-	Nickname   string
-	RealName   *string
-	AvatarURL  *string
-	MemberRole *string
-	Status     *domain.RegistrationStatus
+	TeamAttendedCount *int64
+	IsPaidMember      bool
+	UserID            int64
+	Nickname          string
+	RealName          *string
+	AvatarURL         *string
+	MemberRole        *string
+	Status            *domain.RegistrationStatus
 	// RegistrationCount 是该行报名占用的人数；散人约球一人代多人时大于 1，其余恒为 1。
 	RegistrationCount int
 	// Paid 报名费是否已支付（散人约球赛前支付场景）。
