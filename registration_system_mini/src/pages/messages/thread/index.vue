@@ -185,12 +185,12 @@ usePageRefresh(loadThread);
   border-radius: var(--ui-radius-card);
   background: var(--ui-color-surface);
   box-shadow: var(--ui-shadow-card);
-  transition: transform var(--ui-motion-press-duration) var(--ui-motion-ease-out), opacity var(--ui-motion-press-duration) ease;
+  transition: transform var(--ui-motion-press-duration) var(--ui-motion-ease-out), box-shadow var(--ui-motion-press-duration) ease;
 }
 
 .thread-hero--pressed {
   transform: scale(0.99);
-  opacity: 0.88;
+  box-shadow: var(--ui-shadow-card), var(--ui-shadow-control-pressed);
 }
 
 .thread-hero-label {

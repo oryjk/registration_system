@@ -244,9 +244,10 @@ function handleTeamMemberDialogVisibilityChange(visible: boolean) {
   font-weight: var(--ui-button-font-weight);
   line-height: 1.4;
   box-sizing: border-box;
+  transition: background-color var(--ui-motion-press-duration) var(--ui-motion-ease-out);
 }
 .registration-share::after { border: 0; }
-.registration-share--pressed { opacity: 0.75; }
+.registration-share--pressed { background: var(--ui-color-neutral-bg); }
 .registration-primary { flex: 1; min-width: 0; }
 .registration-button-content { display: flex; align-items: center; justify-content: center; gap: 12rpx; }
 .registration-action-icon { width: 34rpx; height: 34rpx; flex-shrink: 0; }

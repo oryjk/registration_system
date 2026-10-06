@@ -120,7 +120,7 @@ function memberInitial(nickname: string) {
 .activity-attendance-card { border-top: var(--ui-border-default); }
 .activity-attendance-card:first-child { border-top: 0; }
 .activity-card-topline { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; padding: 24rpx 0; min-height: 96rpx; }
-.activity-card-pressed { opacity: 0.7; }
+.activity-card-pressed { box-shadow: var(--ui-shadow-control-pressed); }
 .activity-card-main { flex: 1; min-width: 0; }
 .activity-name { display: block; color: var(--ui-color-text); font-size: 28rpx; line-height: 1.5; font-weight: 600; overflow-wrap: anywhere; }
 .activity-meta { display: block; margin-top: 8rpx; color: var(--ui-color-text-muted); font-size: 22rpx; line-height: 1.6; overflow-wrap: anywhere; }

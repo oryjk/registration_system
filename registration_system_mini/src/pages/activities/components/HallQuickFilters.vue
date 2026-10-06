@@ -82,7 +82,7 @@ const sizeFilters: Array<{ key: HallMatchSizeFilter; label: string }> = [
   font-size: 24rpx;
   font-weight: 500;
   box-sizing: border-box;
-  transition: background-color var(--ui-motion-switch-duration) var(--ui-motion-ease-out), color var(--ui-motion-switch-duration) var(--ui-motion-ease-out), border-color var(--ui-motion-switch-duration) var(--ui-motion-ease-out), opacity var(--ui-motion-press-duration) ease;
+  transition: background-color var(--ui-motion-switch-duration) var(--ui-motion-ease-out), color var(--ui-motion-switch-duration) var(--ui-motion-ease-out), border-color var(--ui-motion-switch-duration) var(--ui-motion-ease-out), box-shadow var(--ui-motion-press-duration) ease;
 }
 
 .hall-filter-chip-size {
@@ -101,6 +101,6 @@ const sizeFilters: Array<{ key: HallMatchSizeFilter; label: string }> = [
 }
 
 .hall-filter-chip--pressed {
-  opacity: 0.72;
+  box-shadow: var(--ui-shadow-control-pressed);
 }
 </style>

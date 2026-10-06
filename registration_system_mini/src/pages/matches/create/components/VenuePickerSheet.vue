@@ -387,7 +387,7 @@ function handleSelect(venue: BackendVenueSuggestion) {
   font-size: 22rpx;
 }
 
-.venue-picker-control--pressed { opacity: 0.65; }
+.venue-picker-control--pressed { box-shadow: var(--ui-shadow-control-pressed); }
 
 .venue-picker-empty {
   display: flex;

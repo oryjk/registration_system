@@ -302,7 +302,7 @@ usePageRefresh(() => preloadMiniReviewStatus(true));
 }
 
 .contact-developer-amount-option--pressed {
-  opacity: 0.78;
+  box-shadow: var(--ui-shadow-control-pressed);
 }
 
 .contact-developer-field__input,

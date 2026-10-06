@@ -108,7 +108,7 @@ function select(value: string) {
   box-shadow: var(--ui-shadow-soft);
   transition:
     transform var(--ui-motion-press-duration) var(--ui-motion-ease-out),
-    opacity var(--ui-motion-press-duration) ease;
+    box-shadow var(--ui-motion-press-duration) ease;
 }
 
 .color-option-active {
@@ -136,6 +136,6 @@ function select(value: string) {
 
 .color-option--pressed {
   transform: scale(0.92);
-  opacity: 0.82;
+  box-shadow: var(--ui-shadow-soft), var(--ui-shadow-control-pressed);
 }
 </style>

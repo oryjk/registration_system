@@ -102,7 +102,7 @@ function handleClick(event: { stopPropagation?: () => void }) {
   color: var(--ui-button-current-fg);
   font-weight: var(--ui-button-font-weight);
   box-sizing: border-box;
-  transition: transform var(--ui-motion-press-duration) var(--ui-motion-ease-out), opacity var(--ui-motion-press-duration) ease;
+  transition: transform var(--ui-motion-press-duration) var(--ui-motion-ease-out), box-shadow var(--ui-motion-press-duration) ease;
 }
 
 .ui-button--dark {
@@ -151,7 +151,7 @@ function handleClick(event: { stopPropagation?: () => void }) {
 
 .ui-button--pressed {
   transform: scale(0.98);
-  opacity: 0.92;
+  box-shadow: var(--ui-shadow-control-pressed);
 }
 
 .ui-button--disabled,
@@ -159,10 +159,10 @@ function handleClick(event: { stopPropagation?: () => void }) {
   pointer-events: none;
 }
 
-/* H5 减少动态效果：去掉缩放，只保留短促的不透明度反馈，操作逻辑不受影响。 */
+/* H5 减少动态效果：去掉缩放，只保留内侧阴影反馈，背景始终不透明。 */
 @media (prefers-reduced-motion: reduce) {
   .ui-button {
-    transition: opacity 80ms ease;
+    transition: box-shadow 80ms ease;
   }
 
   .ui-button--pressed {

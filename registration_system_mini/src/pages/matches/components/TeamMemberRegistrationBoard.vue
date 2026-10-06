@@ -273,7 +273,7 @@ function selectMemberAvatar(id: string | number) {
 .member-segment-item--joined.member-segment-item-active { background: var(--ui-color-accent); }
 .member-segment-item--leave.member-segment-item-active { background: var(--ui-color-warning-soft); }
 .member-segment-item--pending.member-segment-item-active { background: var(--ui-color-line-strong); }
-.member-segment-item-pressed { opacity: 0.7; }
+.member-segment-item-pressed { box-shadow: var(--ui-shadow-control-pressed); }
 .member-segment-icon-wrap {
   display: flex;
   align-items: center;

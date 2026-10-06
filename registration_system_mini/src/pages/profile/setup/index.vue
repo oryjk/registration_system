@@ -297,7 +297,7 @@ usePageRefresh(async () => {
 .profile-setup-input-placeholder { color: var(--ui-color-text-muted); }
 .profile-editor-note { display: block; padding: 18rpx 8rpx 0; color: var(--ui-color-text-muted); font-size: 22rpx; line-height: 1.5; }
 .profile-editor-actions { margin-top: 28rpx; }
-.profile-editor-button--pressed { opacity: .75; }
+.profile-editor-button--pressed { box-shadow: var(--ui-shadow-control-pressed); }
 /* #ifdef H5 */
 .profile-setup-page { width: 100%; max-width: 750rpx; margin: 0 auto; }
 .profile-setup-page :deep(.app-tab-header-shell) { left: 50%; right: auto; width: 100%; max-width: 750rpx; transform: translateX(-50%); }

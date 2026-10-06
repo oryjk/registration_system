@@ -558,7 +558,7 @@ function emitAction(action: HomeEmptyHeroAction) {
   text-align: left;
   line-height: 1.4;
   box-sizing: border-box;
-  transition: opacity var(--ui-motion-press-duration) var(--ui-motion-ease-out);
+  transition: box-shadow var(--ui-motion-press-duration) var(--ui-motion-ease-out);
 }
 
 .home-empty-hero-action::after { border: 0; }
@@ -567,7 +567,7 @@ function emitAction(action: HomeEmptyHeroAction) {
   border-top: var(--ui-border-default);
 }
 
-.home-empty-hero-action--pressed { opacity: 0.65; }
+.home-empty-hero-action--pressed { box-shadow: var(--ui-shadow-control-pressed); }
 
 .home-empty-hero-icon {
   display: flex;
@@ -620,5 +620,5 @@ function emitAction(action: HomeEmptyHeroAction) {
 }
 
 .home-empty-hero-tertiary::after { border: 0; }
-.home-empty-hero-tertiary--pressed { opacity: 0.65; }
+.home-empty-hero-tertiary--pressed { box-shadow: var(--ui-shadow-control-pressed); }
 </style>

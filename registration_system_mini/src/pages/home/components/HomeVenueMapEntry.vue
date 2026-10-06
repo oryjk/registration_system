@@ -21,5 +21,5 @@ function openMap() { uni.navigateTo({ url: "/pages/venues/map" }); }
 .home-venue-map__title { font-size: 28rpx; font-weight: var(--ui-font-weight-heading); }
 .home-venue-map__hint { font-size: 22rpx; color: var(--ui-color-text-muted); }
 .home-venue-map__arrow { font-size: 32rpx; }
-.home-venue-map--pressed { opacity: 0.7; }
+.home-venue-map--pressed { box-shadow: var(--ui-shadow-control-pressed); }
 </style>

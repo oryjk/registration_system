@@ -143,6 +143,6 @@ function handleRemoveMember(member: BackendTeamMember) {
 .member-actions { display: flex; gap: 10rpx; margin-top: 12rpx; }
 .member-link { flex: 1; min-width: 0; min-height: 64rpx; padding: 8rpx; display: flex; align-items: center; justify-content: center; gap: 6rpx; white-space: nowrap; border-radius: var(--ui-radius-round); background: var(--ui-color-neutral-bg); color: var(--ui-color-neutral-fg); font-size: 24rpx; line-height: 1.5; box-sizing: border-box; }
 .member-link-danger { background: var(--ui-color-danger-bg); color: var(--ui-color-danger-fg); }
-.member-link-pressed { opacity: 0.7; }
+.member-link-pressed { box-shadow: var(--ui-shadow-control-pressed); }
 .empty-box { padding: 16rpx 0; color: var(--ui-color-text-muted); font-size: 24rpx; line-height: 1.6; }
 </style>

@@ -75,7 +75,7 @@ const captainName = computed(() => props.captain.nickname || "队长");
 
 .captain-contact-button { margin: 0; padding: 12rpx 22rpx; border: 0; border-radius: var(--ui-radius-round); background: var(--ui-color-accent-soft); color: var(--ui-color-text); font-size: 24rpx; font-weight: 600; line-height: 1.4; flex-shrink: 0; }
 .captain-contact-button::after { border: 0; }
-.captain-contact-button--pressed { opacity: 0.7; }
+.captain-contact-button--pressed { box-shadow: var(--ui-shadow-control-pressed); }
 
 .captain-card {
   padding: 20rpx 24rpx;

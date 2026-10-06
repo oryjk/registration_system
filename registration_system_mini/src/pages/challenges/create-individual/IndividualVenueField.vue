@@ -157,7 +157,7 @@ onBeforeUnmount(cancelClose);
 }
 
 .venue-field__option--map { background: var(--ui-color-accent-soft); }
-.venue-field__option--pressed { opacity: 0.7; }
+.venue-field__option--pressed { box-shadow: var(--ui-shadow-control-pressed); }
 .venue-field__icon {
   width: 26rpx;
   height: 26rpx;

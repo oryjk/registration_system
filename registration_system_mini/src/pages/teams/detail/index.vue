@@ -352,7 +352,7 @@ onShareTimeline(() => ({
 
   .invite-share-button--pressed {
     transform: none;
-    opacity: 0.85;
+    box-shadow: var(--ui-shadow-control-pressed);
   }
 }
 

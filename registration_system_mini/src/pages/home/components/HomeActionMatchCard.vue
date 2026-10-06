@@ -156,7 +156,7 @@ function openDetail() {
 .now-deadline { color: var(--now-color-muted); font-size: 22rpx; }
 .now-primary { display: flex; align-items: center; justify-content: center; gap: 18rpx; width: 100%; min-height: 88rpx; padding: 16rpx 24rpx; border: 0; border-radius: var(--now-radius-button); background: var(--now-color-accent); color: var(--now-color-on-accent); font-size: 30rpx; font-weight: 600; line-height: 1.5; box-sizing: border-box; }
 .now-primary::after, .now-link::after { border: 0; }
-.now-primary-pressed { opacity: var(--now-pressed-opacity); }
+.now-primary-pressed { box-shadow: var(--ui-shadow-control-pressed); }
 .now-primary[disabled] { background: var(--now-color-soft); color: var(--now-color-muted); }
 .now-arrow { font-size: 32rpx; }
 .now-link { margin: 0; padding: 12rpx 4rpx; border: 0; background: transparent; border-radius: 8rpx; color: var(--now-color-muted); font-size: 24rpx; line-height: 1.5; flex-shrink: 0; }

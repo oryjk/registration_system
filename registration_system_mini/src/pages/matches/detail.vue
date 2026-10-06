@@ -442,7 +442,7 @@ const metaPageStyle = computed(() =>
 }
 .match-manage-action::after { border: 0; }
 .match-manage-action--cancel { background: var(--ui-color-danger-bg); color: var(--ui-color-danger-fg); }
-.match-manage-action--pressed { opacity: 0.75; }
+.match-manage-action--pressed { box-shadow: var(--ui-shadow-control-pressed); }
 .match-manage-action[disabled] { opacity: 0.5; }
 
 .registration-segment {

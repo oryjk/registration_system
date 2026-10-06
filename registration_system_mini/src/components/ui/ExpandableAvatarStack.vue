@@ -168,7 +168,9 @@ watch(trackHeight, () => {
 .expandable-avatars__attendance--rank-1 { color: var(--ui-avatar-attendance-gold); font-weight: 600; }
 .expandable-avatars__attendance--rank-2 { color: var(--ui-avatar-attendance-silver); font-weight: 600; }
 .expandable-avatars__attendance--rank-3 { color: var(--ui-avatar-attendance-bronze); font-weight: 600; }
-.expandable-avatars__avatar--pressed { opacity: 0.7; }
+/* 只淡化头像内容，保留 face 的不透明底色，避免叠放头像互相透出。 */
+.expandable-avatars__avatar--pressed .expandable-avatars__image,
+.expandable-avatars__avatar--pressed .expandable-avatars__fallback { opacity: 0.7; }
 .expandable-avatars__image { width: 100%; height: 100%; }
 .expandable-avatars__fallback { color: var(--ui-color-text-inverse); font-size: 22rpx; }
 

@@ -118,6 +118,8 @@ page,
   --ui-shadow-card: 0 12rpx 36rpx rgba(var(--ui-primitive-shadow-rgb), 0.05);
   --ui-shadow-raised: var(--ui-shadow-card);
   --ui-shadow-pressed: 0 6rpx 18rpx rgba(var(--ui-primitive-shadow-rgb), 0.07);
+  /* 按压只叠加内侧阴影，保留底色不透明，避免悬浮按钮透出页面内容。 */
+  --ui-shadow-control-pressed: inset 0 0 0 999rpx rgba(var(--ui-primitive-ink-rgb), 0.08);
   --ui-shadow-soft: 0 10rpx 24rpx rgba(var(--ui-primitive-shadow-rgb), 0.1);
   --ui-shadow-modal: 0 28rpx 64rpx rgba(var(--ui-primitive-shadow-rgb), 0.2);
   /* Motion：统一动效时长与缓动，组件引用不散落硬编码；场景映射见 docs/mini-design-system.md。 */
@@ -143,7 +145,6 @@ page,
   --now-color-accent-text: var(--ui-primitive-accent-deep);
   --now-color-on-accent: var(--ui-primitive-ink);
   --now-color-soft: var(--ui-primitive-accent-soft);
-  --now-pressed-opacity: 0.82;
   /* 成行进度三段色是固定语义（黄/薄荷/海军蓝），不随品牌主题改变含义。 */
   --now-progress-pending: #fde24f;
   --now-progress-ready: #00ebc7;

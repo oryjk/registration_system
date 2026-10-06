@@ -99,7 +99,7 @@ function handleSelect(id: AccentThemeId) {
 }
 
 .theme-picker__option--pressed {
-  opacity: 0.72;
+  box-shadow: var(--ui-shadow-pressed), var(--ui-shadow-control-pressed);
 }
 
 .theme-picker__swatch {

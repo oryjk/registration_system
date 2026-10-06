@@ -194,7 +194,7 @@ usePageRefresh(loadPageData);
 }
 
 .settings-radio--pressed {
-  opacity: 0.72;
+  box-shadow: var(--ui-shadow-control-pressed);
 }
 
 /* 未选中项保持实线边框与正常文字色（虚线灰显会被当成禁用）；选中态靠实心彩点与加重边框表达。 */
