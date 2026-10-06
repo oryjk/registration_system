@@ -25,3 +25,10 @@ test("attendance labels reserve vertical space on every expanded row", () => {
  expect(layout.height).toEqual(130);
  expect(avatarStackLayout(7,100,26,-2,5,false,40).height).toEqual(40);
 });
+
+test("crown row spacing preserves the original horizontal avatar spacing", () => {
+  const layout = avatarStackLayout(7, 100, 26, 7, 5, true, 40, 17);
+  expect(layout.positions[1]).toEqual({ x: 31, y: 0 });
+  expect(layout.positions[3]).toEqual({ x: 0, y: 57 });
+  expect(layout.height).toEqual(154);
+});

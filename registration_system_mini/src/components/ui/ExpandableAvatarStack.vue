@@ -40,10 +40,11 @@ const layout = computed(() => avatarStackLayout(
   props.items.length,
   containerWidth.value,
   avatarSize.value,
-  hasAttendance.value ? -toPixels(10) : toPixels(props.size === "xs" ? 10 : 14),
-  hasMembers.value ? crownHeadroom.value + toPixels(10) : toPixels(10),
+  toPixels(props.size === "xs" ? 10 : 14),
+  toPixels(10),
   expanded.value,
   avatarSize.value + attendanceHeight.value,
+  crownHeadroom.value + toPixels(10),
 ));
 
 async function measure() {
