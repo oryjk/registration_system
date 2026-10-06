@@ -59,6 +59,10 @@ page,
   --ui-primitive-medal-gold: #9a6a00;
   --ui-primitive-medal-silver: #64748b;
   --ui-primitive-medal-bronze: #9d5c32;
+  --ui-primitive-medal-gold-bg: #fff4d8;
+  --ui-primitive-medal-silver-bg: #eef2f6;
+  --ui-primitive-medal-bronze-bg: #f8ede5;
+  --ui-primitive-member-gold: #d9ab38;
 
   /* Semantic */
   --ui-color-page: var(--ui-primitive-canvas);
@@ -222,6 +226,10 @@ page,
   --ui-avatar-attendance-gold: var(--ui-primitive-medal-gold);
   --ui-avatar-attendance-silver: var(--ui-primitive-medal-silver);
   --ui-avatar-attendance-bronze: var(--ui-primitive-medal-bronze);
+  --ui-avatar-attendance-gold-bg: var(--ui-primitive-medal-gold-bg);
+  --ui-avatar-attendance-silver-bg: var(--ui-primitive-medal-silver-bg);
+  --ui-avatar-attendance-bronze-bg: var(--ui-primitive-medal-bronze-bg);
+  --ui-avatar-member-frame: var(--ui-primitive-member-gold);
   --ui-avatar-border: 1rpx solid var(--ui-color-surface);
   --ui-avatar-plus-bg: var(--ui-color-text);
   --ui-avatar-plus-fg: var(--ui-color-text-inverse);
