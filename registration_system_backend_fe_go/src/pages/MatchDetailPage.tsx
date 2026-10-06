@@ -5,7 +5,6 @@ import { ConfirmPopover } from "@/components/admin/confirm-popover";
 import { DataTable, type DataTableColumn } from "@/components/admin/data-table";
 import { DetailGrid, DetailItem } from "@/components/admin/detail-grid";
 import { ErrorAlert } from "@/components/admin/error-alert";
-import { MemberCell } from "@/components/admin/member-cell";
 import { RouteLoading } from "@/components/admin/route-loading";
 import { StatusBadge } from "@/components/admin/status-badge";
 import { Button } from "@/components/ui/button";
@@ -34,32 +33,20 @@ import {
   useUpdateMatchScoreMutation,
   useUpdateMatchStatusMutation,
 } from "@/hooks/queries/useMatchQueries";
-import type {
-  MatchRegistrationEntry,
-  MatchStatus,
-  RegistrationGroup,
-} from "@/types/match";
+import type { MatchStatus, RegistrationGroup } from "@/types/match";
 import { formatDateTime } from "@/utils/format";
+import { MatchRegistrationRoster } from "./match-detail/MatchRegistrationRoster";
 import {
   getPublicationModeLabel,
   matchStatusColors,
   matchStatusLabels,
   opponentStateLabels,
-  registrationStatusColors,
-  registrationStatusLabels,
 } from "./matchLabels";
 
 const groupLabels: Record<RegistrationGroup["kind"], string> = {
   host_team: "主队报名组",
   guest_team: "客队报名组",
   individual_opponent: "散人对手组",
-};
-
-const memberRoleLabels: Record<string, string> = {
-  captain: "队长",
-  leader: "领队",
-  vice_captain: "副队长",
-  member: "队员",
 };
 
 function JerseyColorValue({
@@ -151,72 +138,6 @@ const groupColumns: DataTableColumn<RegistrationGroup>[] = [
   },
 ];
 
-function rosterColumns(
-  kind: RegistrationGroup["kind"],
-): DataTableColumn<MatchRegistrationEntry>[] {
-  const columns: DataTableColumn<MatchRegistrationEntry>[] = [
-    {
-      key: "nickname",
-      title: "队员",
-      render: (record) => (
-        <MemberCell
-          avatarUrl={record.avatar_url}
-          name={record.nickname || `用户 ${record.user_id}`}
-          secondary={record.real_name || undefined}
-        />
-      ),
-    },
-  ];
-  if (kind !== "individual_opponent") {
-    columns.push({
-      key: "member_role",
-      title: "角色",
-      render: (record) =>
-        record.member_role
-          ? memberRoleLabels[record.member_role] || record.member_role
-          : "--",
-    });
-  }
-  columns.push({
-    key: "status",
-    title: "报名状态",
-    render: (record) => (
-      <StatusBadge
-        label={registrationStatusLabels[record.status]}
-        variant={registrationStatusColors[record.status]}
-      />
-    ),
-  });
-  if (kind === "individual_opponent") {
-    columns.push(
-      {
-        key: "registration_count",
-        title: "人数",
-        render: (record) =>
-          record.registration_count > 1 ? (
-            <StatusBadge
-              label={`×${record.registration_count}`}
-              variant="info"
-            />
-          ) : (
-            <span className="cell-secondary">1</span>
-          ),
-      },
-      {
-        key: "paid",
-        title: "支付",
-        render: (record) =>
-          record.paid ? (
-            <StatusBadge label="已付" variant="success" />
-          ) : (
-            <StatusBadge label="未付" variant="secondary" />
-          ),
-      },
-    );
-  }
-  return columns;
-}
-
 export default function MatchDetailPage() {
   const { id = "" } = useParams();
   const navigate = useNavigate();
@@ -295,7 +216,7 @@ export default function MatchDetailPage() {
   const error = actionError || queryError;
 
   return (
-    <div className="content-grid">
+    <div className="content-grid match-detail-content">
       <Card>
         <CardHeader>
           <div className="detail-heading">
@@ -476,12 +397,10 @@ export default function MatchDetailPage() {
                 <CardTitle>{`${groupLabels[group.kind]} · 队员报名`}</CardTitle>
               </CardHeader>
               <CardContent>
-                <DataTable
-                  columns={rosterColumns(group.kind)}
-                  emptyText="暂无报名记录"
-                  items={group.registrations}
-                  loading={false}
-                  rowKey={(record) => String(record.user_id)}
+                <MatchRegistrationRoster
+                  matchId={detail.match.id}
+                  matchStatus={detail.match.status}
+                  group={group}
                 />
               </CardContent>
             </Card>

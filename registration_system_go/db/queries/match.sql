@@ -578,6 +578,19 @@ ORDER BY registration.created_at, registration.id
 LIMIT 1
 FOR UPDATE OF registration;
 
+-- name: HasOtherActiveRegistrationInMatch :one
+SELECT EXISTS (
+    SELECT 1
+    FROM match_registrations registration
+    JOIN match_registration_groups registration_group
+      ON registration_group.id = registration.group_id
+    WHERE registration_group.match_id = sqlc.arg('match_id')
+      AND registration_group.id <> sqlc.arg('group_id')
+      AND registration_group.status <> 'cancelled'
+      AND registration.user_id = sqlc.arg('user_id')
+      AND registration.status <> 'cancelled'
+);
+
 -- name: CountAttendingRegistrationsForGroup :one
 SELECT COALESCE(SUM(registration_count), 0)::bigint
 FROM match_registrations
@@ -606,6 +619,13 @@ SELECT EXISTS (
     WHERE team_id = sqlc.arg('team_id')
       AND user_id = sqlc.arg('user_id')
       AND status = 'active'
+);
+
+-- 管理端沿用球队花名册，冻结成员仍可补录历史出勤。
+-- name: IsTeamRosterMember :one
+SELECT EXISTS (
+    SELECT 1 FROM team_members
+    WHERE team_id = sqlc.arg('team_id') AND user_id = sqlc.arg('user_id')
 );
 
 -- name: SaveUserRegistration :exec

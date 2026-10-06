@@ -8,6 +8,11 @@
   gap: var(--space-4);
 }
 
+/* 限制详情卡片的网格宽度，让队员表格在卡片内滚动。 */
+.match-detail-content {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .toolbar {
   display: flex;
   flex-wrap: wrap;

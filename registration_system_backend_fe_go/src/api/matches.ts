@@ -1,9 +1,11 @@
 import type {
   CreateMatchPayload,
+  EditableMatchRegistrationStatus,
   MatchDetail,
   MatchListPage,
   MatchListQuery,
   MatchStatus,
+  UpdatedMatchRegistration,
   UpdateMatchPayload,
 } from "../types/match";
 import { request } from "./client";
@@ -61,4 +63,16 @@ export function updateMatchScore(id: string, payload: UpdateMatchScorePayload) {
 
 export function deleteMatch(id: string) {
   return request<{ id: string }>(`/matches/${id}`, { method: "DELETE" });
+}
+
+export function updateMatchRegistration(
+  matchId: string,
+  groupId: string,
+  userId: number,
+  status: EditableMatchRegistrationStatus,
+) {
+  return request<UpdatedMatchRegistration>(
+    `/matches/${matchId}/groups/${groupId}/registrations/${userId}`,
+    { method: "PATCH", body: JSON.stringify({ status }) },
+  );
 }

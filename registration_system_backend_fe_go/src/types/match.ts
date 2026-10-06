@@ -16,6 +16,20 @@ export type MatchRegistrationStatus =
   | "cancelled"
   | "unregistered";
 
+export type EditableMatchRegistrationStatus = Extract<
+  MatchRegistrationStatus,
+  "unknown" | "attending" | "leave" | "absent"
+>;
+
+export interface UpdatedMatchRegistration {
+  group_id: string;
+  user_id: number;
+  status: EditableMatchRegistrationStatus;
+  registration_count: number;
+  paid: boolean;
+  updated_at: string;
+}
+
 export interface MatchItem {
   id: string;
   name: string;

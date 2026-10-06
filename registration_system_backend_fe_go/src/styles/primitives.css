@@ -1,4 +1,43 @@
 /* 基础件通过语义 token 共享字号、圆角、边框与焦点反馈。 */
+.ui-radio-item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--control-icon-size);
+  height: var(--control-icon-size);
+  flex: 0 0 var(--control-icon-size);
+  border: var(--border-width) solid var(--input);
+  border-radius: var(--radius-full);
+  background: var(--surface-inset);
+  color: var(--primary);
+  outline: none;
+}
+
+.ui-radio-item[data-state="checked"] {
+  border-color: var(--primary);
+}
+
+.ui-radio-item:focus-visible {
+  box-shadow: var(--shadow-focus);
+}
+
+.ui-radio-item:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.ui-radio-indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ui-radio-indicator svg {
+  width: calc(var(--control-icon-size) / 2);
+  height: calc(var(--control-icon-size) / 2);
+  fill: currentColor;
+}
+
 [data-slot="dialog-content"],
 [data-slot="alert-dialog-content"],
 [data-slot="popover-content"] {

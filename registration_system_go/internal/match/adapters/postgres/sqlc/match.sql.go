@@ -1002,6 +1002,33 @@ func (q *Queries) GetUserRegistrationForUpdate(ctx context.Context, arg GetUserR
 	return i, err
 }
 
+const hasOtherActiveRegistrationInMatch = `-- name: HasOtherActiveRegistrationInMatch :one
+SELECT EXISTS (
+    SELECT 1
+    FROM match_registrations registration
+    JOIN match_registration_groups registration_group
+      ON registration_group.id = registration.group_id
+    WHERE registration_group.match_id = $1
+      AND registration_group.id <> $2
+      AND registration_group.status <> 'cancelled'
+      AND registration.user_id = $3
+      AND registration.status <> 'cancelled'
+)
+`
+
+type HasOtherActiveRegistrationInMatchParams struct {
+	MatchID pgtype.UUID `json:"match_id"`
+	GroupID pgtype.UUID `json:"group_id"`
+	UserID  int64       `json:"user_id"`
+}
+
+func (q *Queries) HasOtherActiveRegistrationInMatch(ctx context.Context, arg HasOtherActiveRegistrationInMatchParams) (bool, error) {
+	row := q.db.QueryRow(ctx, hasOtherActiveRegistrationInMatch, arg.MatchID, arg.GroupID, arg.UserID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const isActiveTeamMember = `-- name: IsActiveTeamMember :one
 SELECT EXISTS (
     SELECT 1
@@ -1019,6 +1046,26 @@ type IsActiveTeamMemberParams struct {
 
 func (q *Queries) IsActiveTeamMember(ctx context.Context, arg IsActiveTeamMemberParams) (bool, error) {
 	row := q.db.QueryRow(ctx, isActiveTeamMember, arg.TeamID, arg.UserID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
+const isTeamRosterMember = `-- name: IsTeamRosterMember :one
+SELECT EXISTS (
+    SELECT 1 FROM team_members
+    WHERE team_id = $1 AND user_id = $2
+)
+`
+
+type IsTeamRosterMemberParams struct {
+	TeamID int64 `json:"team_id"`
+	UserID int64 `json:"user_id"`
+}
+
+// 管理端沿用球队花名册，冻结成员仍可补录历史出勤。
+func (q *Queries) IsTeamRosterMember(ctx context.Context, arg IsTeamRosterMemberParams) (bool, error) {
+	row := q.db.QueryRow(ctx, isTeamRosterMember, arg.TeamID, arg.UserID)
 	var exists bool
 	err := row.Scan(&exists)
 	return exists, err

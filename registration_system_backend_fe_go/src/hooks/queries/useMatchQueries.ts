@@ -11,11 +11,13 @@ import {
   listMatches,
   type UpdateMatchScorePayload,
   updateMatch,
+  updateMatchRegistration,
   updateMatchScore,
   updateMatchStatus,
 } from "../../api/matches";
 import type {
   CreateMatchPayload,
+  EditableMatchRegistrationStatus,
   MatchDetail,
   MatchListQuery,
   MatchStatus,
@@ -113,6 +115,59 @@ export function useDeleteMatchMutation() {
     onSuccess: (_, id) => {
       queryClient.removeQueries({ queryKey: queryKeys.match(id), exact: true });
       return invalidateMatchLists(queryClient);
+    },
+  });
+}
+
+export function useUpdateMatchRegistrationMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      matchId,
+      groupId,
+      userId,
+      status,
+    }: {
+      matchId: string;
+      groupId: string;
+      userId: number;
+      status: EditableMatchRegistrationStatus;
+    }) => updateMatchRegistration(matchId, groupId, userId, status),
+    onSuccess: (registration, { matchId }) => {
+      queryClient.setQueryData<MatchDetail>(
+        queryKeys.match(matchId),
+        (detail) =>
+          detail
+            ? {
+                ...detail,
+                groups: detail.groups.map((group) =>
+                  group.id === registration.group_id
+                    ? {
+                        ...group,
+                        registrations: group.registrations.map((record) =>
+                          record.user_id === registration.user_id
+                            ? {
+                                ...record,
+                                status: registration.status,
+                                registration_count:
+                                  registration.registration_count,
+                                paid: registration.paid,
+                              }
+                            : record,
+                        ),
+                      }
+                    : group,
+                ),
+              }
+            : detail,
+      );
+      return Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.match(matchId),
+          exact: true,
+        }),
+        invalidateMatchLists(queryClient),
+      ]);
     },
   });
 }

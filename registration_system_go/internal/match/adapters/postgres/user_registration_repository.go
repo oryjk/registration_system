@@ -87,8 +87,16 @@ func (t userRegistrationTransaction) CountAttendingForGroup(ctx context.Context,
 	return int(count), err
 }
 
+func (t userRegistrationTransaction) HasOtherActiveRegistrationInMatch(ctx context.Context, matchID, groupID uuid.UUID, userID int64) (bool, error) {
+	return t.queries.HasOtherActiveRegistrationInMatch(ctx, matchsqlc.HasOtherActiveRegistrationInMatchParams{MatchID: pgUUID(matchID), GroupID: pgUUID(groupID), UserID: userID})
+}
+
 func (t userRegistrationTransaction) IsActiveTeamMember(ctx context.Context, teamID, userID int64) (bool, error) {
 	return t.queries.IsActiveTeamMember(ctx, matchsqlc.IsActiveTeamMemberParams{TeamID: teamID, UserID: userID})
+}
+
+func (t userRegistrationTransaction) IsTeamMember(ctx context.Context, teamID, userID int64) (bool, error) {
+	return t.queries.IsTeamRosterMember(ctx, matchsqlc.IsTeamRosterMemberParams{TeamID: teamID, UserID: userID})
 }
 
 func (t userRegistrationTransaction) SaveRegistration(ctx context.Context, registration domain.Registration) error {

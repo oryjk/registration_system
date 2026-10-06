@@ -1557,6 +1557,37 @@ paths:
                 $ref: "#/components/schemas/UUIDIDEnvelope"
         <<: *standardErrors
 
+  /api/v1/admin/matches/{id}/groups/{group_id}/registrations/{user_id}:
+    patch:
+      operationId: updateAdminMatchRegistration
+      tags: [Admin Matches]
+      summary: 修改球队队员报名与出勤状态
+      description: 仅主客队花名册队员可修改，包含冻结队员。未报名时创建记录，已取消报名可恢复；允许报名截止后、比赛进行中或结束后补录。已取消比赛或报名组不可修改，仍校验参赛人数上限与其他有效组的报名冲突。保留人数、创建时间与支付标识，不执行收费操作。
+      security: *bearerSecurity
+      parameters:
+        - $ref: "#/components/parameters/MatchID"
+        - $ref: "#/components/parameters/GroupID"
+        - $ref: "#/components/parameters/UserID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [unknown, attending, leave, absent]
+      responses:
+        "200":
+          description: 已保存的报名记录
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MyRegistrationEnvelope"
+        <<: *standardErrors
+
   /api/v1/admin/matches/{id}/status:
     patch:
       operationId: updateAdminMatchStatus
@@ -3285,7 +3316,7 @@ components:
           format: int32
         paid:
           type: boolean
-          description: 报名费是否已支付；已支付后报名人数与状态不可再修改，也不可取消。
+          description: 报名费是否已支付；用户端已支付后不可修改人数、状态或取消。管理端球队出勤补录保留支付标识，不执行收费操作。
         updated_at:
           type: string
           format: date-time

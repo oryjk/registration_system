@@ -128,6 +128,8 @@ func BuildDependencies(ctx context.Context, config Config) (Dependencies, func()
 	venueSuggestions := matchhttp.NewVenueSuggestionHandler(matchapplication.NewVenueSuggestionService(matchRepository))
 	adminMatches := matchapplication.NewAdminMatchService(matchRepository, matchClock, adminService)
 	adminMatchHandler := matchhttp.NewAdminHandler(adminMatches, createMatch)
+	adminRegistrations := matchapplication.NewAdminRegistrationService(matchRepository, matchClock)
+	adminRegistrationHandler := matchhttp.NewAdminRegistrationHandler(adminRegistrations)
 	teamApplications := matchapplication.NewTeamApplicationService(matchRepository, teamService, matchClock)
 	teamApplicationHandler := matchhttp.NewTeamApplicationHandler(teamApplications)
 	userRegistrations := matchapplication.NewUserRegistrationService(matchRepository, matchClock)
@@ -194,7 +196,7 @@ func BuildDependencies(ctx context.Context, config Config) (Dependencies, func()
 		UserProfiles: userProfileHandler, AppUsers: appUserHandler, ActiveUsers: appUserService, Teams: teamHandler, AppTeams: appTeamHandler,
 		AppTeamManage: appTeamManageHandler, AppTeamSelf: appTeamSelfHandler, AppTeamInvites: appTeamInviteHandler,
 		UserMatches: userMatchHandler, VenueSuggestions: venueSuggestions, UserRegistrations: userRegistrationHandler,
-		AdminMatches: adminMatchHandler, TeamApplications: teamApplicationHandler,
+		AdminMatches: adminMatchHandler, AdminRegistrations: adminRegistrationHandler, TeamApplications: teamApplicationHandler,
 		CaptainMessages: captainMessageHandler,
 		Payments:        paymentHandler, Wallets: walletHandler, MiniReviews: miniReviewHandler,
 		SystemRuntime: systemhttp.NewHandler(systemSettingsService, systemHomeAssets),

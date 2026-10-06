@@ -256,3 +256,43 @@
   font-size: var(--font-size-xs);
   line-height: var(--leading-snug);
 }
+
+.registration-state-field {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-1);
+}
+
+.registration-state-options {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: var(--space-4);
+  row-gap: var(--space-1);
+}
+
+.registration-state-option {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  white-space: nowrap;
+}
+
+.registration-state-option label {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--control-height-sm);
+  cursor: pointer;
+}
+
+.registration-state-option:has(:disabled) label {
+  cursor: not-allowed;
+  color: var(--muted);
+}
+
+.registration-state-change {
+  margin: 0;
+  padding: var(--space-3);
+  border-radius: var(--radius-control);
+  background: var(--surface-inset);
+  font-weight: var(--font-weight-medium);
+}

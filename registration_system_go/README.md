@@ -90,6 +90,7 @@ Mock 创建订单后保持 `pending`，调用订单同步接口才模拟支付�
 - `PATCH /api/v1/admin/users/:id/profile`
 - `GET/POST /api/v1/admin/matches`
 - `PATCH /api/v1/admin/matches/:id/status`
+- `PATCH /api/v1/admin/matches/:id/groups/:group_id/registrations/:user_id`：修改主客队名单中队员的出勤状态（`unknown` / `attending` / `leave` / `absent`）；未报名时创建记录，允许截止后与比赛进行中、结束后补录。已取消比赛或报名组不可修改，仍校验球队名单、人数上限与跨组报名冲突，保留既有人数和收费数据。
 - `DELETE /api/v1/admin/matches/:id`
 - `GET /api/v1/admin/matches/:id/team-applications`
 - `POST /api/v1/admin/matches/:id/team-applications/:application_id/select`

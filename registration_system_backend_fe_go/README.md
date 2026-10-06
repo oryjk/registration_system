@@ -47,6 +47,7 @@ bun run perf:budget
 
 - 入口 `src/main.tsx` 挂载 `src/router.tsx`，不存在 `src/App.tsx`；构建为 Vite（`vite.config.ts`），测试为 Vitest（jsdom）。
 - 已有页面：仪表盘、比赛列表/创建/编辑/详情、球队与成员、比赛管理员、系统管理员、接入状态、小程序审核、打赏列表、系统设置。
+- 比赛详情主客队队员报名状态使用 shadcn Radio Group（未表态、参赛、请假、缺席）。选择后先弹出姓名与原状态 → 新状态的确认框，确认才保存；取消或失败保留原状态，保存中禁止重复提交和关闭。散人组只读，已取消比赛或报名组不可编辑。
 - 会话与守卫：`src/features/admin-session/useAdminSession.tsx`（启动恢复 `getCurrentAdmin`、401 过期、登录注入），挂在 `src/router.tsx` 路由树根部。
 - 壳层：`src/layout/AdminShell.tsx`（可折叠侧栏 + 毛玻璃顶栏 + 主题切换）与 `AppSidebar.tsx`。
 - 设计系统：`src/styles/`（tokens / foundation / primitives / feedback / data-display / form-controls / page-layout / shell / login / responsive），`components.json` 配置 shadcn CLI 与 `@reui` registry。

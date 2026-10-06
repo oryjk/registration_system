@@ -91,6 +91,29 @@ func (r *Registration) ApplyUserStatus(status RegistrationStatus, count int, now
 	return nil
 }
 
+func (s RegistrationStatus) IsAdminEditable() bool {
+	switch s {
+	case RegistrationUnknown, RegistrationAttending, RegistrationLeave, RegistrationAbsent:
+		return true
+	default:
+		return false
+	}
+}
+
+// ApplyAdminStatus 修正球队成员出勤，保留人数、支付状态和原始报名时间。
+func (r *Registration) ApplyAdminStatus(status RegistrationStatus, now time.Time) error {
+	if !status.IsAdminEditable() {
+		return sharederror.New(sharederror.KindValidation, "报名状态无效")
+	}
+	if r.Status == status && r.CancelledAt == nil {
+		return nil
+	}
+	r.Status = status
+	r.CancelledAt = nil
+	r.UpdatedAt = now
+	return nil
+}
+
 // Cancel marks the registration as cancelled without changing an already-cancelled row.
 func (r *Registration) Cancel(now time.Time) {
 	if r.Status == RegistrationCancelled {

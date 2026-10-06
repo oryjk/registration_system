@@ -521,8 +521,29 @@ func (f *fakeUserRegistrationRepository) CountAttendingForGroup(_ context.Contex
 	return count, nil
 }
 
+func (f *fakeUserRegistrationRepository) HasOtherActiveRegistrationInMatch(_ context.Context, matchID, groupID uuid.UUID, userID int64) (bool, error) {
+	if f.match.ID != matchID {
+		return false, nil
+	}
+	for id, registrations := range f.registrations {
+		if id == groupID {
+			continue
+		}
+		for _, registration := range registrations {
+			if registration.UserID == userID && registration.Status != domain.RegistrationCancelled {
+				return true, nil
+			}
+		}
+	}
+	return false, nil
+}
+
 func (f *fakeUserRegistrationRepository) IsActiveTeamMember(_ context.Context, teamID, userID int64) (bool, error) {
 	f.membershipChecks++
+	return f.members[teamID][userID], nil
+}
+
+func (f *fakeUserRegistrationRepository) IsTeamMember(_ context.Context, teamID, userID int64) (bool, error) {
 	return f.members[teamID][userID], nil
 }
 
