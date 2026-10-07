@@ -50,18 +50,20 @@ function shareInMini(){uni.showModal({title:"分享我的荣誉",content:"请在
     </view>
     <text class="honor-footnote">保存到相册后可分享朋友圈。积分与荣誉以当前统计为准。</text>
    </view>
-   <AppSurface v-else variant="raised" custom-class="honor-join-card">
-    <view class="honor-card-content"><text class="honor-section-title">{{view.team_name}}</text><text class="honor-card-copy">{{view.team_description || '和这支球队一起报名比赛，记录每一次参与。'}}</text>
-     <template v-if="!view.is_member && !joined">
-      <input v-if="view.requires_password" v-model="password" class="honor-password" password type="safe-password" placeholder="请输入入队密码" :disabled="joining" />
-      <AppButton block :loading="joining" :disabled="joining || (view.requires_password && !password.trim())" @click="join">加入这支球队</AppButton>
-     </template>
-     <AppButton v-else block @click="goTeam">{{joined ? '已加入，查看球队' : '查看这支球队'}}</AppButton>
-    </view>
-   </AppSurface>
-   <AppSurface v-if="!isSelf && canCreate" variant="outlined" custom-class="honor-create-card">
-    <view class="honor-card-content"><text class="honor-section-title">把你的球队也带来</text><text class="honor-card-copy">比赛报名、队员管理、年度荣誉，让每一次参与都有记录。</text><AppButton block variant="outline" @click="createTeam">创建我的球队</AppButton></view>
-   </AppSurface>
+   <view v-else class="honor-recipient-cards">
+    <AppSurface variant="raised">
+     <view class="honor-card-content"><text class="honor-section-title">{{view.team_name}}</text><text class="honor-card-copy">{{view.team_description || '和这支球队一起报名比赛，记录每一次参与。'}}</text>
+      <template v-if="!view.is_member && !joined">
+       <input v-if="view.requires_password" v-model="password" class="honor-password" password type="safe-password" placeholder="请输入入队密码" :disabled="joining" />
+       <AppButton block :loading="joining" :disabled="joining || (view.requires_password && !password.trim())" @click="join">加入这支球队</AppButton>
+      </template>
+      <AppButton v-else block @click="goTeam">{{joined ? '已加入，查看球队' : '查看这支球队'}}</AppButton>
+     </view>
+    </AppSurface>
+    <AppSurface v-if="canCreate" variant="outlined">
+     <view class="honor-card-content"><text class="honor-section-title">把你的球队也带来</text><text class="honor-card-copy">比赛报名、队员管理、年度荣誉，让每一次参与都有记录。</text><AppButton block variant="outline" @click="createTeam">创建我的球队</AppButton></view>
+    </AppSurface>
+   </view>
    <view v-if="!isSelf" class="honor-home-link" @tap="goHome"><text>去首页看看更多比赛</text></view>
   </template>
   <ProfileCompletionDialog :visible="profileGate.profileGateVisible.value" @completed="profileGate.handleProfileGateCompleted" @cancel="profileGate.handleProfileGateCancel" />
@@ -85,7 +87,8 @@ function shareInMini(){uni.showModal({title:"分享我的荣誉",content:"请在
 .honor-share-button[disabled]{color:var(--ui-color-text-muted)}.honor-footnote{display:block;margin-top:20rpx;font-size:22rpx;color:var(--ui-color-text-muted);line-height:1.6}
 .honor-code-error{display:flex;align-items:center;gap:16rpx;margin-bottom:20rpx;font-size:22rpx;color:var(--ui-color-danger-fg);line-height:1.6}
 .honor-card-content,.honor-error-copy{display:flex;flex-direction:column;gap:20rpx}
-.honor-join-card,.honor-create-card,.honor-error{margin-top:28rpx}
+.honor-recipient-cards{display:flex;flex-direction:column;gap:var(--ui-card-list-gap);margin-top:var(--ui-card-list-gap)}
+.honor-error{margin-top:28rpx}
 .honor-password{height:88rpx;padding:0 24rpx;border:2rpx solid var(--ui-color-line);border-radius:var(--ui-radius-button);color:var(--ui-color-text);background:var(--ui-color-surface);font-size:26rpx}
 .honor-home-link{text-align:center;margin-top:28rpx;color:var(--ui-color-text-muted);font-size:24rpx;padding:20rpx}
 .honor-canvas{position:fixed;left:-4000px;top:0;pointer-events:none}.honor-canvas--poster{width:1024px;height:1536px}.honor-canvas--card{width:1000px;height:800px}

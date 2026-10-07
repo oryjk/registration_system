@@ -123,18 +123,10 @@ export function useHonorPage(pageInstance: unknown) {
  }
  async function savePoster() {
   if(saving.value || !isSelf.value || !view.value)return;
-  const previous=view.value,actor=context.currentUser.value?.id,bg=background.value,version=loadVersion;
+  const record=view.value,actor=context.currentUser.value?.id,bg=background.value,version=loadVersion;
   saving.value=true;
   try {
-   // Revalidate for export without resetting the visible poster or page loader.
-   // The honor endpoint checks the current token; no full session bootstrap is needed here.
-   const record=await fetchHonor();
-   if(disposed || version!==loadVersion || actor!==context.currentUser.value?.id || previous.code!==view.value?.code || bg.id!==background.value.id)throw new Error("海报内容已更新，请重新保存");
-   if(record.user_id!==actor)throw new Error("只能保存自己的荣誉海报");
-   if(record.code!==previous.code) {
-    codeVersion++;codePromise=null;codeLoading.value=false;miniCodeUrl.value="";codeError.value="";
-   }
-   view.value=record;
+   // Save exactly the loaded view. Scores refresh on page entry, not on export.
    const code=await ensureMiniCode();
    const key=imageKey(record,bg,code);
    const current=()=>version===loadVersion && !disposed && actor===context.currentUser.value?.id &&
@@ -148,7 +140,6 @@ export function useHonorPage(pageInstance: unknown) {
    // #ifdef H5
    uni.previewImage({urls:[path],current:path});
    // #endif
-   if(imageKey(previous,bg,"")!==imageKey(record,bg,""))void prepareCover();
   } catch(failure) {
    const detail=failure && typeof failure==="object" && "errMsg" in failure?String(failure.errMsg):"";
    if(/auth|deny|denied/i.test(detail)) {

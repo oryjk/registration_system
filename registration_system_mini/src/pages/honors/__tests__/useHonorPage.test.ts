@@ -29,11 +29,11 @@ test("returning to own page refreshes current year, code links preserve their so
  makePage({teamId:"11"});await flush();const before=issues;
  expect(onShowCallback).toBeDefined();onShowCallback!();await flush();expect(issues).toBe(before+1);
 });
-test("save revalidates cached data and refuses a revoked share",async()=>{
+test("save uses the loaded snapshot without fetching honor data again",async()=>{
  const page=makePage({teamId:"11"});await flush();const before=exports,displayed=page.view.value;revoked=true;
- await page.savePoster();expect(issues).toBe(2);expect(exports).toBe(before);
+ await page.savePoster();expect(issues).toBe(1);expect(exports).toBe(before);
  expect(page.view.value).toBe(displayed);expect(page.loading.value).toBe(false);expect(page.error.value).toBe("");
- expect(albumFiles).toEqual([]);
+ expect(albumFiles).toEqual(["poster.jpg"]);
 });
 test("confirmed join survives refresh failure but active logout clears it",async()=>{
  record.user_id=5;
@@ -53,35 +53,36 @@ test("shared link opens the sharer's honor for a different user without issuing 
  expect(recipient.view.value?.user_id).toBe(4);expect(recipient.isSelf.value).toBe(false);
  expect(codes).toBe(1);
 });
-test("saving keeps the poster visible while checking fresh scores, then saves the chosen poster directly",async()=>{
+test("saving preserves the displayed score even if a newer score is available",async()=>{
  const page=makePage({teamId:"11"});await flush();
  const displayed=page.view.value,bg=page.background.value,codeUrl=page.miniCodeUrl.value;
- let finish!:(value:typeof record)=>void;
- pendingHonor=new Promise(resolve=>{finish=resolve;});
+ pendingHonor=Promise.resolve({...record,participation_points:260.2});
  const saving=page.savePoster();await nextTick();
  expect(page.saving.value).toBe(true);expect(page.loading.value).toBe(false);
  expect(page.view.value).toBe(displayed);expect(page.background.value).toBe(bg);
  expect(page.miniCodeUrl.value).toBe(codeUrl);expect(page.shareReady.value).toBe(true);
- finish({...record,participation_points:260.2});await saving;
+ await saving;
  expect(page.saving.value).toBe(false);expect(page.loading.value).toBe(false);
- expect(page.view.value?.participation_points).toBe(260.2);
- expect(posterRecord?.participation_points).toBe(260.2);
+ expect(page.view.value?.participation_points).toBe(259);
+ expect(posterRecord?.participation_points).toBe(259);expect(issues).toBe(1);
  expect(albumFiles).toEqual(["poster.jpg"]);expect(codes).toBe(1);
 });
-test("saving after annual rollover refreshes the mini code without resetting the page",async()=>{
+test("saving after annual rollover keeps the shown year until the page is refreshed",async()=>{
  const page=makePage({teamId:"11"});await flush();
  const nextYear={...record,code:"zyxwvutsrqponmlkjihgfe",year:2027,participation_points:0};
  pendingHonor=Promise.resolve(nextYear);
  await page.savePoster();
+ expect(page.view.value?.year).toBe(2026);expect(posterRecord?.year).toBe(2026);expect(codes).toBe(1);expect(issues).toBe(1);
+ expect(albumFiles).toEqual(["poster.jpg"]);expect(page.loading.value).toBe(false);
+ await page.load();await flush();
  expect(page.view.value?.year).toBe(2027);expect(page.view.value?.code).toBe(nextYear.code);
  expect(posterRecord?.year).toBe(2027);expect(codes).toBe(2);
- expect(albumFiles).toEqual(["poster.jpg"]);expect(page.loading.value).toBe(false);
 });
-test("page prepares the poster before a click and repeated saves reuse it after revalidation",async()=>{
+test("page prepares the poster before a click and repeated saves reuse it without network requests",async()=>{
  const page=makePage({teamId:"11"});await flush();
  expect(posterExports).toBe(1);const before=exports;
  await page.savePoster();await page.savePoster();await flush();
- expect(posterExports).toBe(1);expect(exports).toBe(before);expect(issues).toBe(3);
+ expect(posterExports).toBe(1);expect(exports).toBe(before);expect(issues).toBe(1);expect(codes).toBe(1);
  expect(albumFiles).toEqual(["poster.jpg","poster.jpg"]);
 });
 test("changing a background prepares its poster and saving uses that prepared image",async()=>{
@@ -96,10 +97,10 @@ test("a failed background preparation can be retried by saving",async()=>{
  await page.savePoster();expect(posterExports).toBe(2);expect(albumFiles).toEqual(["poster.jpg"]);
 });
 test("an account change during save never exports the previous user's prepared image",async()=>{
+ let finish!:(value:string)=>void;pendingPoster=new Promise(resolve=>{finish=resolve;});
  const page=makePage({teamId:"11"});await flush();
- let finish!:(value:typeof record)=>void;pendingHonor=new Promise(resolve=>{finish=resolve;});
  const saving=page.savePoster();await nextTick();sessionActor=99;user.value={id:99};await nextTick();
- finish({...record});await saving;await flush();expect(albumFiles).toEqual([]);
+ finish("poster.jpg");await saving;await flush();expect(albumFiles).toEqual([]);
 });
 test("saving while preparation is pending waits for the same export",async()=>{
  let finish!:(value:string)=>void;pendingPoster=new Promise(resolve=>{finish=resolve;});
