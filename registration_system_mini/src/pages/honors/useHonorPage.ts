@@ -7,7 +7,8 @@ import { HONOR_BACKGROUNDS, readHonorBackground, rememberHonorBackground, type H
 import { useTeamContext } from "@/stores/teamContext";
 import { useMiniReviewStatus } from "@/stores/miniReview";
 import { useProfileCompletionGate } from "@/pages/teams/useProfileCompletionGate";
-import { composeHonorImage } from "@/utils/honorPosterCompose";
+import { composeHonorImage, createHonorImageLoader } from "@/utils/honorPosterCompose";
+import { beijingDateKey } from "@/utils/datetime";
 import { formatHonorPoints, honorSharePath, resolveHonorSource, type HonorSource } from "./honorState";
 
 export function useHonorPage(pageInstance: unknown) {
@@ -24,11 +25,18 @@ export function useHonorPage(pageInstance: unknown) {
  let source:HonorSource|null=null,loadVersion=0,renderVersion=0,codeVersion=0,disposed=false;
  let renderQueue:Promise<unknown>=Promise.resolve();
  let codePromise:Promise<string>|null=null;
+ const images=createHonorImageLoader();
+ let preparedPoster:{key:string;task:Promise<string>}|null=null;
+ function imageKey(record:HonorShare,bg:HonorBackground,code:string) {
+  return JSON.stringify([record.code,record.user_id,record.team_id,record.year,record.nickname,record.avatar_url,
+   record.team_name,record.participation_points,record.participation_rank,record.is_paid_member,
+   bg.id,bg.version,bg.imageUrl,bg.textColor,bg.mutedTextColor,code,beijingDateKey(Date.now())]);
+ }
  function hideSharing() { uni.hideShareMenu({hideShareItems:["shareAppMessage","shareTimeline"]}); }
  function reset() {
   successUserId=undefined;codeLoading.value=false;
   view.value=null;coverUrl.value="";miniCodeUrl.value="";codeError.value="";password.value="";joined.value=false;
-  renderVersion++;codeVersion++;codePromise=null;hideSharing();
+  renderVersion++;codeVersion++;codePromise=null;preparedPoster=null;images.clear();hideSharing();
  }
  function enqueue<T>(action:()=>Promise<T>):Promise<T> {
   const task=renderQueue.catch(()=>undefined).then(action);renderQueue=task;return task;
@@ -42,10 +50,26 @@ export function useHonorPage(pageInstance: unknown) {
   try {
    await nextTick();
    const path=await enqueue(()=>composeHonorImage("honor-card-canvas",pageInstance,record,bg,"card",null,
-    ()=>!disposed && version===renderVersion && record.code===view.value?.code && owner===context.currentUser.value?.id));
+    ()=>!disposed && version===renderVersion && record.code===view.value?.code && owner===context.currentUser.value?.id,images.load));
    if(version===renderVersion)coverUrl.value=path;
   } catch { /* Native share keeps a valid static backdrop and descriptive title. */ }
   // #endif
+ }
+ async function preparePoster():Promise<string> {
+  const record=view.value,bg=background.value,actor=context.currentUser.value?.id,version=loadVersion;
+  if(!record || !isSelf.value)throw new Error("只能保存自己的荣誉海报");
+  const code=await ensureMiniCode(),key=imageKey(record,bg,code);
+  const current=()=>!disposed && version===loadVersion && actor===context.currentUser.value?.id &&
+   !!view.value && key===imageKey(view.value,background.value,miniCodeUrl.value);
+  if(!current())throw new Error("海报内容已更新，请重新保存");
+  if(preparedPoster?.key===key)return preparedPoster.task;
+  const task=(async()=>{
+   await nextTick();
+   return enqueue(()=>composeHonorImage("honor-poster-canvas",pageInstance,record,bg,"poster",code,current,images.load));
+  })();
+  preparedPoster={key,task};
+  try {return await task;}
+  catch(failure){if(preparedPoster?.task===task)preparedPoster=null;throw failure;}
  }
  async function fetchHonor():Promise<HonorShare> {
   if(!source)throw new Error("荣誉分享链接无效");
@@ -62,7 +86,7 @@ export function useHonorPage(pageInstance: unknown) {
    view.value=result;
    uni.showShareMenu({withShareTicket:true,menus:["shareAppMessage","shareTimeline"]});
    void prepareCover();
-   if(isSelf.value)void ensureMiniCode().catch(()=>undefined);
+   if(isSelf.value)void preparePoster().catch(()=>undefined);
   } catch(failure) {
    if(!disposed && version===loadVersion)error.value=failure instanceof Error?failure.message:"打开荣誉失败";
   } finally { if(version===loadVersion)loading.value=false; }
@@ -95,7 +119,7 @@ export function useHonorPage(pageInstance: unknown) {
  }
  function chooseBackground(item:HonorBackground) {
   if(!isSelf.value || background.value.id===item.id)return;
-  background.value=item;rememberHonorBackground(item.id);void prepareCover();
+  background.value=item;rememberHonorBackground(item.id);void prepareCover();void preparePoster().catch(()=>undefined);
  }
  async function savePoster() {
   if(saving.value || !isSelf.value || !view.value)return;
@@ -112,9 +136,10 @@ export function useHonorPage(pageInstance: unknown) {
    }
    view.value=record;
    const code=await ensureMiniCode();
-   const current=()=>version===loadVersion && !disposed && record.code===view.value?.code && actor===context.currentUser.value?.id && bg.id===background.value.id;
-   await nextTick();
-   const path=await enqueue(()=>composeHonorImage("honor-poster-canvas",pageInstance,record,bg,"poster",code,current));
+   const key=imageKey(record,bg,code);
+   const current=()=>version===loadVersion && !disposed && actor===context.currentUser.value?.id &&
+    !!view.value && key===imageKey(view.value,background.value,miniCodeUrl.value);
+   const path=await preparePoster();
    if(!current())throw new Error("海报内容已更新，请重新保存");
    // #ifdef MP-WEIXIN
    await new Promise<void>((resolve,reject)=>uni.saveImageToPhotosAlbum({filePath:path,success:()=>resolve(),fail:reject}));
@@ -123,7 +148,7 @@ export function useHonorPage(pageInstance: unknown) {
    // #ifdef H5
    uni.previewImage({urls:[path],current:path});
    // #endif
-   void prepareCover();
+   if(imageKey(previous,bg,"")!==imageKey(record,bg,""))void prepareCover();
   } catch(failure) {
    const detail=failure && typeof failure==="object" && "errMsg" in failure?String(failure.errMsg):"";
    if(/auth|deny|denied/i.test(detail)) {
@@ -175,7 +200,7 @@ export function useHonorPage(pageInstance: unknown) {
    void restoreSuccessAccount().then(restored=>{if(restored)void load();});
   } else void load();
  });
- onUnload(()=>{disposed=true;loadVersion++;renderVersion++;codeVersion++;});
+ onUnload(()=>{disposed=true;loadVersion++;renderVersion++;codeVersion++;preparedPoster=null;images.clear();});
  const title=computed(()=>view.value?`${view.value.nickname || "球友"}的${view.value.year}足球年度 · ${formatHonorPoints(view.value.participation_points)}分`:"我的足球年度");
  function friendShare(){return {title:title.value,path:view.value?honorSharePath(view.value.code):"/pages/home/index",imageUrl:coverUrl.value || background.value.imageUrl};}
  function timelineShare(){return {title:title.value,query:view.value?`code=${encodeURIComponent(view.value.code)}`:"",imageUrl:coverUrl.value || background.value.imageUrl};}

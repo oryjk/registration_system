@@ -5,6 +5,20 @@ import { beijingDateKey } from "@/utils/datetime";
 
 type ImageInfo = { path: string; width: number; height: number };
 const imageInfo = (src: string): Promise<ImageInfo> => new Promise((resolve,reject) => uni.getImageInfo({src,success:resolve,fail:reject}));
+/** Page-scoped local image paths; coalesce downloads and retry failed requests. */
+export function createHonorImageLoader() {
+ const images=new Map<string,Promise<ImageInfo>>();
+ return {
+  load(src:string):Promise<ImageInfo> {
+   const cached=images.get(src);if(cached)return cached;
+   const task=imageInfo(src).catch(failure=>{if(images.get(src)===task)images.delete(src);throw failure;});
+   // The three presets plus avatars/codes fit comfortably; bound changing data too.
+   if(images.size>=16)images.delete(images.keys().next().value!);
+   images.set(src,task);return task;
+  },
+  clear(){images.clear();},
+ };
+}
 function text(ctx: UniApp.CanvasContext,value: string,x: number,y: number,size: number,color: string,align: "left" | "center" = "center",weight = 400) {
  ctx.setFillStyle(color);ctx.setTextAlign(align);ctx.setTextBaseline("middle");ctx.font=`${weight} ${size}px sans-serif`;ctx.fillText(value,x,y);
 }
@@ -42,13 +56,15 @@ function portrait(ctx: UniApp.CanvasContext,avatar: ImageInfo | null,view: Honor
 export async function composeHonorImage(
  canvasId: string,pageInstance: unknown,view: HonorShare,background: HonorBackground,
  kind: "poster" | "card",miniCodeUrl: string | null,isCurrent: () => boolean,
+ loadImage: (src:string)=>Promise<ImageInfo> = imageInfo,
 ): Promise<string> {
+ if(!isCurrent())throw new Error("海报内容已更新");
  if(kind==="poster" && !miniCodeUrl)throw new Error("小程序码还未生成");
  const [backdrop,avatar,crown,code]=await Promise.all([
-  imageInfo(background.imageUrl),
-  view.avatar_url ? imageInfo(view.avatar_url).catch(()=>null) : null,
-  view.is_paid_member ? imageInfo("/static/icons/lucide/member-crown.png") : null,
-  kind==="poster" && miniCodeUrl ? imageInfo(miniCodeUrl) : null,
+  loadImage(background.imageUrl),
+  view.avatar_url ? loadImage(view.avatar_url).catch(()=>null) : null,
+  view.is_paid_member ? loadImage("/static/icons/lucide/member-crown.png") : null,
+  kind==="poster" && miniCodeUrl ? loadImage(miniCodeUrl) : null,
  ]);
  if(!isCurrent())throw new Error("海报内容已更新");
  const width=kind==="poster"?1024:1000,height=kind==="poster"?1536:800;
