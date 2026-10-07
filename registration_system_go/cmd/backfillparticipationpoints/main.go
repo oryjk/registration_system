@@ -28,13 +28,19 @@ type report struct {
 	Skipped          int                      `json:"skipped"`
 	Legacy           int                      `json:"legacy_operation_time"`
 	Native           int                      `json:"go_operation_time"`
+	NativeCreated    int                      `json:"go_registration_created_at"`
+	RepairGoHistory  bool                     `json:"repair_go_history"`
+	ScoreChanges     int                      `json:"score_changes"`
 	Rewarded         int                      `json:"positive_bonus_records"`
 	AddedCurrentYear float64                  `json:"added_current_year_points"`
 	Written          int64                    `json:"written"`
 }
 
-func run(ctx context.Context, apply bool, before time.Time, reportUser int64) (report, error) {
-	r := report{Apply: apply, Before: before}
+func run(ctx context.Context, apply bool, before time.Time, reportUser int64, repairGoHistory bool) (report, error) {
+	r := report{Apply: apply, Before: before, RepairGoHistory: repairGoHistory}
+	if repairGoHistory && before.After(time.Date(2026, 10, 7, 0, 52, 35, 0, time.UTC)) {
+		return r, fmt.Errorf("Go history repair cutoff must not exceed the initial points release: 2026-10-07T00:52:35Z")
+	}
 	targetURL, sourceURL := os.Getenv("DATABASE_URL"), os.Getenv("LEGACY_PG_URL")
 	if targetURL == "" || sourceURL == "" {
 		return r, fmt.Errorf("DATABASE_URL and LEGACY_PG_URL are required")
@@ -70,7 +76,11 @@ func run(ctx context.Context, apply bool, before time.Time, reportUser int64) (r
 	if _, err = tx.Exec(ctx, `SET LOCAL lock_timeout='5s'; SET LOCAL statement_timeout='60s'`); err != nil {
 		return r, err
 	}
-	candidates, err := loadCandidates(ctx, tx, before, apply)
+	loader := loadCandidates
+	if repairGoHistory {
+		loader = loadNativeRepairCandidates
+	}
+	candidates, err := loader(ctx, tx, before, apply)
 	if err != nil {
 		return r, fmt.Errorf("cannot load historical candidates")
 	}
@@ -98,16 +108,22 @@ func run(ctx context.Context, apply bool, before time.Time, reportUser int64) (r
 		updates = append(updates, update)
 		if update.Source == "legacy-operation-time" {
 			r.Legacy++
+		} else if update.Source == "go-created-at" {
+			r.NativeCreated++
 		} else {
 			r.Native++
 		}
 		if update.Bonus > 0 {
 			r.Rewarded++
 		}
+		delta := int64(update.Bonus) - int64(update.PreviousBonus)
+		if delta != 0 {
+			r.ScoreChanges++
+		}
 		if c.Eligible && c.Year == year {
-			addedTenths += int64(update.Bonus)
+			addedTenths += delta
 			if c.UserID == reportUser {
-				userAdded[c.TeamID] += int64(update.Bonus)
+				userAdded[c.TeamID] += delta
 			}
 		}
 	}
@@ -161,6 +177,7 @@ func main() {
 	apply := flag.Bool("apply", false, "Apply rewards; default previews without writes")
 	beforeFlag := flag.String("before", "", "Required exclusive UTC cutoff, RFC3339; excludes recent operations")
 	reportUser := flag.Int64("report-user", 0, "Optionally preview this user's current annual scores")
+	repairGoHistory := flag.Bool("repair-go-history", false, "Repair native records from the original faulty backfill; cutoff cannot exceed initial release")
 	flag.Parse()
 	before, err := time.Parse(time.RFC3339, *beforeFlag)
 	if err != nil {
@@ -169,7 +186,7 @@ func main() {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
-	result, err := run(ctx, *apply, before, *reportUser)
+	result, err := run(ctx, *apply, before, *reportUser, *repairGoHistory)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
