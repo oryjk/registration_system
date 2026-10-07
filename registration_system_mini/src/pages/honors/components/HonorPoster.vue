@@ -22,8 +22,8 @@ const backgroundStyle=computed(()=>({color:props.background.textColor,background
   <view v-if="view.is_paid_member" class="honor-poster-crown"><MembershipCrown width="44rpx" height="26rpx" /></view>
   <text class="honor-poster-name">{{view.nickname || '球友'}}</text>
   <text class="honor-poster-team">{{view.team_name}}</text>
-  <text class="honor-poster-label">年度参与积分</text>
-  <view class="honor-poster-points"><text>{{formatHonorPoints(view.participation_points)}}</text><text class="honor-poster-unit">分</text></view>
+  <text class="honor-poster-label">年度参与星</text>
+  <view class="honor-poster-points"><text>{{formatHonorPoints(view.participation_points)}}</text><text class="honor-poster-unit">星</text></view>
   <text v-if="title" class="honor-poster-honor">{{title}}</text>
   <text class="honor-poster-motto" :class="{'honor-poster-motto--without-honor':!title}">每一次参与，都值得记录</text>
   <view v-if="showCode" class="honor-poster-scan">

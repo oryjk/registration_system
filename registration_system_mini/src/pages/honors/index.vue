@@ -48,7 +48,7 @@ function shareInMini(){uni.showModal({title:"分享我的荣誉",content:"请在
      <!-- #endif -->
      <AppButton block :loading="saving" :disabled="saving || !shareReady" @click="savePoster">{{saving ? '正在保存' : '保存海报'}}</AppButton>
     </view>
-    <text class="honor-footnote">保存到相册后可分享朋友圈。积分与荣誉以当前统计为准。</text>
+    <text class="honor-footnote">保存到相册后可分享朋友圈。星数与荣誉以当前统计为准。</text>
    </view>
    <view v-else class="honor-recipient-cards">
     <AppSurface variant="raised">

@@ -15,7 +15,7 @@ const scoreRanking = computed(() => sortParticipationRanking(props.rankingItems)
     <view class="stats-card-head">
       <view>
         <text class="stats-card-title">年度参与榜</text>
-        <text class="stats-card-caption">本年度当前球队累计积分</text>
+        <text class="stats-card-caption">本年度当前球队累计星数</text>
       </view>
     </view>
 
@@ -27,7 +27,7 @@ const scoreRanking = computed(() => sortParticipationRanking(props.rankingItems)
         <view class="ranking-copy">
           <view class="ranking-title-row">
             <text class="ranking-name">{{ item.user_name }}</text>
-            <text class="ranking-rate">{{ item.participation_points == null ? "待更新" : `${item.participation_points}分` }}</text>
+            <text class="ranking-rate">{{ item.participation_points == null ? "待更新" : `${item.participation_points}星` }}</text>
           </view>
 
         </view>

@@ -77,8 +77,8 @@ export async function composeHonorImage(
   portrait(ctx,avatar,view,422,315,180);if(crown)ctx.drawImage(crown.path,477,258,70,70);
   ctx.font="600 54px sans-serif";nameLines(ctx,view.nickname,700).forEach((line,index)=>text(ctx,line,512,546+index*62,54,fg,"center",600));
   ctx.font="400 32px sans-serif";nameLines(ctx,view.team_name,700,1).forEach(line=>text(ctx,line,512,665,32,muted));
-  text(ctx,"年度参与积分",512,721,36,muted);
-  text(ctx,formatHonorPoints(view.participation_points)+" 分",512,835,152,fg,"center",600);
+  text(ctx,"年度参与星",512,721,36,muted);
+  text(ctx,formatHonorPoints(view.participation_points)+" 星",512,835,152,fg,"center",600);
   const honor=honorTitle(view.participation_points,view.participation_rank);
   if(honor)text(ctx,honor,512,957,36,muted,"center",600);
   text(ctx,"每一次参与，都值得记录",512,honor?1012:969,34,fg);
@@ -93,7 +93,7 @@ export async function composeHonorImage(
   portrait(ctx,avatar,view,116,232,172);if(crown)ctx.drawImage(crown.path,168,180,65,65);
   ctx.font="600 54px sans-serif";nameLines(ctx,view.nickname,550).forEach((line,index)=>text(ctx,line,350,256+index*64,54,fg,"left",600));
   ctx.font="400 30px sans-serif";nameLines(ctx,view.team_name,550,1).forEach(line=>text(ctx,line,350,405,30,muted,"left"));
-  text(ctx,formatHonorPoints(view.participation_points)+" 分",500,556,126,fg,"center",600);
+  text(ctx,formatHonorPoints(view.participation_points)+" 星",500,556,126,fg,"center",600);
   text(ctx,honorTitle(view.participation_points,view.participation_rank) || "每一次参与，都值得记录",500,671,36,muted);
  }
  return new Promise((resolve,reject)=>{

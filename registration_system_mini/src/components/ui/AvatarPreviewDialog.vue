@@ -71,7 +71,7 @@ function close() {
         <text>{{ attendanceHonor.title }}</text>
       </view>
       <view v-if="attendanceCount != null" class="avatar-preview-attendance">
-        <text>年度积分</text><text class="avatar-preview-attendance-number" :class="attendanceHonor ? `avatar-preview-attendance-number--${attendanceHonor.tone}` : ''">{{ attendanceCount }}</text><text>分</text>
+        <text>年度星数</text><text class="avatar-preview-attendance-number" :class="attendanceHonor ? `avatar-preview-attendance-number--${attendanceHonor.tone}` : ''">{{ attendanceCount }}</text><text>星</text>
       </view>
       <view v-if="canShare" class="avatar-preview-share"><AppButton block :disabled="leaving" @click="emit('share')">分享我的荣誉</AppButton></view>
     </view>

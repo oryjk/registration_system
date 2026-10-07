@@ -98,7 +98,7 @@ watch(trackHeight, () => {
               width: `${avatarSize}px`, height: `${avatarSize}px`,
               transform: `translate(${layout.positions[index].x}px, ${layout.positions[index].y + crownHeadroom + (selectedId === item.id ? 0 : 4)}px)`,
             }"
-            :aria-label="`${item.name}${item.isPaidMember ? '，球队会员' : ''}${hasAttendanceCount(item) ? `，年度积分${item.teamParticipationPoints}分` : ''}`"
+            :aria-label="`${item.name}${item.isPaidMember ? '，球队会员' : ''}${hasAttendanceCount(item) ? `，年度星数${item.teamParticipationPoints}星` : ''}`"
             :hover-class="interactive && !disabled ? 'expandable-avatars__avatar--pressed' : 'none'"
             @tap.stop="select(item)"
           >
@@ -107,7 +107,7 @@ watch(trackHeight, () => {
               <text data-deck-ignore="true" v-else class="expandable-avatars__fallback">{{ Array.from(item.name.trim())[0] || '?' }}</text>
             </view>
             <view v-if="expanded && hasAttendanceCount(item)" data-deck-ignore="true" class="expandable-avatars__attendance">
-              <text :class="(item.teamParticipationPoints ?? 0) > 0 && item.teamParticipationRank ? `expandable-avatars__attendance--rank-${item.teamParticipationRank}` : ''">{{ item.teamParticipationPoints }}</text><text>分</text>
+              <text :class="(item.teamParticipationPoints ?? 0) > 0 && item.teamParticipationRank ? `expandable-avatars__attendance--rank-${item.teamParticipationRank}` : ''">{{ item.teamParticipationPoints }}</text><text>星</text>
             </view>
             <view v-if="item.isPaidMember" data-deck-ignore="true" class="expandable-avatars__crown"><MembershipCrown :width="`${avatarSize * 0.72}px`" :height="`${avatarSize * 0.4}px`" /></view>
           </view>

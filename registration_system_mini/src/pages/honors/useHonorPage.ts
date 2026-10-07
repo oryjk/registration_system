@@ -192,7 +192,7 @@ export function useHonorPage(pageInstance: unknown) {
   } else void load();
  });
  onUnload(()=>{disposed=true;loadVersion++;renderVersion++;codeVersion++;preparedPoster=null;images.clear();});
- const title=computed(()=>view.value?`${view.value.nickname || "球友"}的${view.value.year}足球年度 · ${formatHonorPoints(view.value.participation_points)}分`:"我的足球年度");
+ const title=computed(()=>view.value?`${view.value.nickname || "球友"}的${view.value.year}足球年度 · ${formatHonorPoints(view.value.participation_points)}星`:"我的足球年度");
  function friendShare(){return {title:title.value,path:view.value?honorSharePath(view.value.code):"/pages/home/index",imageUrl:coverUrl.value || background.value.imageUrl};}
  function timelineShare(){return {title:title.value,query:view.value?`code=${encodeURIComponent(view.value.code)}`:"",imageUrl:coverUrl.value || background.value.imageUrl};}
  return {view,loading,error,background,backgrounds:HONOR_BACKGROUNDS,miniCodeUrl,codeError,codeLoading,saving,isSelf,shareReady,canCreate,password,joining,joined,profileGate,load,ensureMiniCode,chooseBackground,savePoster,join,goTeam,createTeam,goHome,friendShare,timelineShare};
