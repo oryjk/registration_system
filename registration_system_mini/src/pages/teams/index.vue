@@ -72,6 +72,9 @@ function goJoinTeam() {
 function goCreateTeam() {
   uni.navigateTo({ url: "/pages/teams/create/index" });
 }
+function shareMyHonor() {
+  if (currentTeam.value && currentUser.value) uni.navigateTo({ url: `/pages/honors/index?teamId=${currentTeam.value.id}` });
+}
 
 function resetStatsData() {
   myRecords.value = [];
@@ -199,6 +202,7 @@ provide(APP_SCROLL_CONTROLLER, appScrollController);
           :current-team-name="currentTeamName"
           :my-summary="mySummary"
         />
+        <view v-if="currentTeam && currentUser" class="stats-honor-share"><AppButton block variant="outline" @click="shareMyHonor">分享我的荣誉</AppButton></view>
         <view class="stats-tab-card">
           <SegmentedControl
             :model-value="statsTab"
@@ -228,6 +232,7 @@ provide(APP_SCROLL_CONTROLLER, appScrollController);
 </template>
 
 <style scoped>
+.stats-honor-share { margin-top: 24rpx; }
 .stats-page {
   min-height: 100vh;
   padding: 0 24rpx;

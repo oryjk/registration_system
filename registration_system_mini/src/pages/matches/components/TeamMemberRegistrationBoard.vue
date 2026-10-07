@@ -6,6 +6,7 @@ import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
 import AppSurface from "@/components/ui/AppSurface.vue";
 
 type TeamMemberCard = {
+  teamId?: number;
   userId: number;
   name: string;
   avatarUrl: string;
@@ -188,6 +189,7 @@ function handleSelectGroup(group: MemberGroupKey) {
 
 const activeMemberAvatars = computed(() => activeSection.value.members.map(member => ({
   id: member.userId,
+  ...(member.teamId ? { teamId: member.teamId } : {}),
   name: member.name,
   avatarUrl: member.avatarUrl,
   tone: member.tone,

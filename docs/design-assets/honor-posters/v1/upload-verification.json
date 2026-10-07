@@ -1,0 +1,32 @@
+{
+  "verifiedAt": "2026-10-07T04:48:30.766969+00:00",
+  "checks": [
+    {
+      "id": "pitch",
+      "url": "https://oryjk.cn:82/registration/static/share/honor-backgrounds/v1/pitch/2d51f31cb46c3eea.png",
+      "httpStatus": 200,
+      "contentType": "image/png",
+      "bytes": 1963889,
+      "sha256": "2d51f31cb46c3eea618d4e711b0a67e4bc9097403a17b1193e8267315e7c39db",
+      "cacheControl": "public, max-age=31536000, immutable"
+    },
+    {
+      "id": "gold",
+      "url": "https://oryjk.cn:82/registration/static/share/honor-backgrounds/v1/gold/cc0c4a2aa7859e52.png",
+      "httpStatus": 200,
+      "contentType": "image/png",
+      "bytes": 2242636,
+      "sha256": "cc0c4a2aa7859e526a6c800a515ba3e4dce55048aaaf1210e09fc1897ee9c4d6",
+      "cacheControl": "public, max-age=31536000, immutable"
+    },
+    {
+      "id": "night",
+      "url": "https://oryjk.cn:82/registration/static/share/honor-backgrounds/v1/night/5014b02961d35122.png",
+      "httpStatus": 200,
+      "contentType": "image/png",
+      "bytes": 2026741,
+      "sha256": "5014b02961d35122c14f4428d57bb0ff369b404f76174aad193b4dc4402bab1e",
+      "cacheControl": "public, max-age=31536000, immutable"
+    }
+  ]
+}

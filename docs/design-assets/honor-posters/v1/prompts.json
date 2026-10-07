@@ -1,0 +1,21 @@
+{
+  "tool": "built-in image_gen",
+  "date": "2026-10-07",
+  "prompts": [
+    {
+      "id": "pitch",
+      "name": "绿茵日常",
+      "prompt": "Use case: ads-marketing. Asset type: portrait background for a Chinese amateur football team's personal annual participation honor share poster, 1024x1536, 2:3. This is ONLY the empty reusable background, not a finished poster or UI mockup. Composition: reserve the middle 72% width and top 78% height as very calm low-contrast negative space where software will later overlay avatar, nickname, team, score and awards. Keep bottom center clear for a QR code panel. Sports-themed decoration concentrated near edges and lower corners, refined premium editorial sports aesthetic. No text, letters, digits, logos, watermark, people, crowns, trophies, badges, QR codes, placeholders, framed cards, panels or phone mockups. Full bleed background. Palette: airy warm ivory and pale mint with gentle deep-green accents confined to outermost corners. Stylized football pitch geometry, thin elegant boundary and center-circle hints along bottom edges, subtle organic grass grain, soft morning sun. Flat refined illustration with restrained paper texture. The entire central area remains uniform very pale mint/ivory for dark text readability. Welcoming, relaxed team spirit."
+    },
+    {
+      "id": "gold",
+      "name": "荣耀金",
+      "prompt": "Use case: ads-marketing. Asset type: portrait background for a Chinese amateur football team's personal annual participation honor share poster, 1024x1536, 2:3. This is ONLY the empty reusable background, not a finished poster or UI mockup. Composition: reserve the middle 72% width and top 78% height as very calm low-contrast negative space where software will later overlay avatar, nickname, team, score and awards. Keep bottom center clear for a QR code panel. Sports-themed decoration concentrated near edges and lower corners, refined premium editorial sports aesthetic. No text, letters, digits, logos, watermark, people, crowns, trophies, badges, QR codes, placeholders, framed cards, panels or phone mockups. Full bleed background. Palette: warm ivory and champagne gold, softly lit cream central negative space suitable for dark text. Abstract golden stadium light arcs along top outer edges and very restrained sparkling dust in bottom corners. Fine tactile paper texture, subtle metallic line accents with ample breathing room. Elegant celebratory sports editorial illustration. Avoid extravagant ornaments, heavy borders, laurel wreaths and any award symbols."
+    },
+    {
+      "id": "night",
+      "name": "夜场聚光",
+      "prompt": "Use case: ads-marketing. Asset type: portrait background for a Chinese amateur football team's personal annual participation honor share poster, 1024x1536, 2:3. This is ONLY the empty reusable background, not a finished poster or UI mockup. Composition: reserve the middle 72% width and top 78% height as very calm low-contrast negative space where software will later overlay avatar, nickname, team, score and awards. Keep bottom center clear for a QR code panel. Sports-themed decoration concentrated near edges and lower corners, refined premium editorial sports aesthetic. No text, letters, digits, logos, watermark, people, crowns, trophies, badges, QR codes, placeholders, framed cards, panels or phone mockups. Full bleed background. Palette: deep midnight navy with cool teal side highlights. Calm very dark navy central area for bright white typography. Cinematic football stadium floodlights at far upper left and right edges, narrow soft light beams confined to side margins, discreet dark pitch geometry along bottom edge. Modern atmospheric illustration, crisp depth and faint grain, energizing but understated. No bright light crossing the central typography zone."
+    }
+  ]
+}

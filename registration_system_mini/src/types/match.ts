@@ -21,6 +21,7 @@ export interface AppMatchPhaseSource {
 
 export interface AppHomeMatchGroup {
   id: string;
+  team_id?: number | null;
   kind: "host_team" | "guest_team" | "individual_opponent";
   status: "open" | "closed" | "cancelled";
   min_players: number | null;

@@ -219,6 +219,7 @@ export function toHomeMatchCard(
     actionMatch?.group.participants ?? ("participants" in item ? item.participants : undefined);
   const participantAvatars = (sourceParticipants ?? []).map((participant) => ({
     userId: participant.user_id,
+    ...(actionMatch?.group.team_id ? { teamId: actionMatch.group.team_id } : {}),
     avatarUrl: participant.avatar_url ?? "",
     displayText: (participant.nickname || `U${participant.user_id}`).slice(0, 1),
     tone: avatarTone(participant.user_id),

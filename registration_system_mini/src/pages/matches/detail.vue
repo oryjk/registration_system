@@ -3,6 +3,7 @@ import { useAccentTheme } from "@/stores/theme";
 import { computed, ref } from "vue";
 import { onShow, onHide, onShareAppMessage, onShareTimeline } from "@dcloudio/uni-app";
 import AvatarPreviewDialog from "@/components/ui/AvatarPreviewDialog.vue";
+import { ownHonorAvatarTeam } from "@/pages/honors/honorState";
 import type { AvatarItem } from "@/components/ui/avatarTypes";
 import AppTabHeader from "@/components/AppTabHeader.vue";
 import AppButton from "@/components/ui/AppButton.vue";
@@ -143,6 +144,13 @@ const teamMemberDialogVisible = ref(false);
 const previewAvatar = ref<AvatarItem | null>(null);
 const avatarPreviewVisible = ref(false);
 const avatarPreviewRendered = ref(false);
+const canSharePreviewAvatar = computed(() => !!ownHonorAvatarTeam(previewAvatar.value, currentUser.value?.id));
+function sharePreviewAvatar() {
+  const teamId = ownHonorAvatarTeam(previewAvatar.value, currentUser.value?.id);
+  if (!teamId) return;
+  avatarPreviewVisible.value = false;
+  uni.navigateTo({ url: `/pages/honors/index?teamId=${teamId}` });
+}
 function openAvatarPreview(avatar: AvatarItem) {
   previewAvatar.value = { ...avatar };
   avatarPreviewVisible.value = true;
@@ -394,6 +402,8 @@ const metaPageStyle = computed(() =>
     <AvatarPreviewDialog
       :visible="avatarPreviewVisible"
       :avatar="previewAvatar"
+      :can-share="canSharePreviewAvatar"
+      @share="sharePreviewAvatar"
       @close="avatarPreviewVisible = false"
       @presence="avatarPreviewRendered = $event"
     />

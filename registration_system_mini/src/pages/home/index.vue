@@ -10,6 +10,7 @@ import BottomTabBar from "@/components/BottomTabBar.vue";
 import { tabBarMotion } from "@/components/tabBarMotion";
 import AvatarPreviewDialog from "@/components/ui/AvatarPreviewDialog.vue";
 import type { AvatarItem } from "@/components/ui/avatarTypes";
+import { ownHonorAvatarTeam, resolveHonorSource, honorSharePath } from "@/pages/honors/honorState";
 import HomeSectionHeader from "./components/HomeSectionHeader.vue";
 import HomeEmptyHero from "./components/HomeEmptyHero.vue";
 import HomeVenueMapEntry from "./components/HomeVenueMapEntry.vue";
@@ -52,6 +53,13 @@ function openAvatarPreview(avatar: AvatarItem) {
 }
 
 const { ensureSessionReady, currentUser, teamProfiles, currentTeam, switchTeam } = useTeamContext();
+const canSharePreviewAvatar = computed(() => !!ownHonorAvatarTeam(previewAvatar.value, currentUser.value?.id));
+function sharePreviewAvatar() {
+  const teamId = ownHonorAvatarTeam(previewAvatar.value, currentUser.value?.id);
+  if (!teamId) return;
+  avatarPreviewVisible.value = false;
+  uni.navigateTo({ url: `/pages/honors/index?teamId=${teamId}` });
+}
 const { syncUnreadCount } = useNotificationCenter();
 const { shouldHideCreationEntrances } = useMiniReviewStatus();
 // 首页 runtime config 按加载周期缓存插画请求；
@@ -322,7 +330,11 @@ const { refreshing, handleRefresherRefresh } = usePullRefresh(() => loadPageData
 const { anchor: appScrollAnchor, controller: appScrollController } = createAppScrollAnchor();
 provide(APP_SCROLL_CONTROLLER, appScrollController);
 
-onLoad(() => {
+onLoad((options) => {
+  if (options?.scene) {
+    const source = resolveHonorSource({ scene: options.scene });
+    if (source && 'code' in source) uni.navigateTo({ url: honorSharePath(source.code) });
+  }
   uni.$on("session:login-completed", handleSessionLoginCompleted);
   uni.$on("home:data-may-changed", handleHomeDataMayChanged);
 });
@@ -441,7 +453,7 @@ onShareTimeline(() => ({
 
     <BottomTabBar current="home" />
 
-    <AvatarPreviewDialog :visible="avatarPreviewVisible" :avatar="previewAvatar" @close="avatarPreviewVisible = false" @presence="avatarPreviewRendered = $event" />
+    <AvatarPreviewDialog :visible="avatarPreviewVisible" :avatar="previewAvatar" :can-share="canSharePreviewAvatar" @share="sharePreviewAvatar" @close="avatarPreviewVisible = false" @presence="avatarPreviewRendered = $event" />
   </view>
 </template>
 

@@ -177,6 +177,7 @@ export function useMatchDetailPage() {
       const displayName = resolveUserDisplayName(user);
       return {
         id: item.user_id,
+        teamId: matchTeamGroups.value.find(group => group.id === registrationGroupId.value)?.teamId ?? undefined,
         name: item.registration_count > 1 ? `${displayName}（${item.registration_count}人）` : displayName,
         avatarUrl: user?.avatar_url ?? "",
         tone: avatarColor(item.user_id),
@@ -210,6 +211,7 @@ export function useMatchDetailPage() {
   const teamMemberRegistrationGroups = computed(() => buildTeamMemberRegistrationGroups({
     members: activeTeamMembers.value,
     rosterMatchesRegistrationTeam: rosterMatchesRegistrationTeam.value,
+    teamId: rosterMatchesRegistrationTeam.value ? currentTeamMembersTeamId.value ?? undefined : undefined,
     registrations: registrations.value,
     usersById: usersById.value,
     currentUserId: currentUser.value?.id,

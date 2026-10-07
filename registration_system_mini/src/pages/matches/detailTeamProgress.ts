@@ -31,6 +31,7 @@ export function buildMatchTeamProgress(
         ))
         .map((person) => ({
           id: person.user_id,
+          ...(group.teamId ? { teamId: group.teamId } : {}),
           name: (person.nickname || `用户 ${person.user_id}`) + ((person.registration_count ?? 1) > 1 ? `（${person.registration_count}人）` : ""),
           avatarUrl: person.avatar_url ?? "",
           isPaidMember: person.is_paid_member === true,

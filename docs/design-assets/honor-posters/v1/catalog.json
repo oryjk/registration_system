@@ -1,0 +1,74 @@
+{
+  "schemaVersion": 1,
+  "backgrounds": [
+    {
+      "id": "pitch",
+      "name": "绿茵日常",
+      "version": 1,
+      "source": "preset",
+      "access": "free",
+      "imageUrl": "https://oryjk.cn:82/registration/static/share/honor-backgrounds/v1/pitch/2d51f31cb46c3eea.png",
+      "objectKey": "static/share/honor-backgrounds/v1/pitch/2d51f31cb46c3eea.png",
+      "localFile": "pitch.png",
+      "width": 1024,
+      "height": 1536,
+      "contentType": "image/png",
+      "bytes": 1963889,
+      "sha256": "2d51f31cb46c3eea618d4e711b0a67e4bc9097403a17b1193e8267315e7c39db",
+      "textColor": "#00214d",
+      "mutedTextColor": "#226342",
+      "safeContentRect": {
+        "x": 0.14,
+        "y": 0.14,
+        "width": 0.72,
+        "height": 0.64
+      }
+    },
+    {
+      "id": "gold",
+      "name": "荣耀金",
+      "version": 1,
+      "source": "preset",
+      "access": "free",
+      "imageUrl": "https://oryjk.cn:82/registration/static/share/honor-backgrounds/v1/gold/cc0c4a2aa7859e52.png",
+      "objectKey": "static/share/honor-backgrounds/v1/gold/cc0c4a2aa7859e52.png",
+      "localFile": "gold.png",
+      "width": 1024,
+      "height": 1536,
+      "contentType": "image/png",
+      "bytes": 2242636,
+      "sha256": "cc0c4a2aa7859e526a6c800a515ba3e4dce55048aaaf1210e09fc1897ee9c4d6",
+      "textColor": "#00214d",
+      "mutedTextColor": "#805414",
+      "safeContentRect": {
+        "x": 0.14,
+        "y": 0.14,
+        "width": 0.72,
+        "height": 0.64
+      }
+    },
+    {
+      "id": "night",
+      "name": "夜场聚光",
+      "version": 1,
+      "source": "preset",
+      "access": "free",
+      "imageUrl": "https://oryjk.cn:82/registration/static/share/honor-backgrounds/v1/night/5014b02961d35122.png",
+      "objectKey": "static/share/honor-backgrounds/v1/night/5014b02961d35122.png",
+      "localFile": "night.png",
+      "width": 1024,
+      "height": 1536,
+      "contentType": "image/png",
+      "bytes": 2026741,
+      "sha256": "5014b02961d35122c14f4428d57bb0ff369b404f76174aad193b4dc4402bab1e",
+      "textColor": "#fffffe",
+      "mutedTextColor": "#bdeee7",
+      "safeContentRect": {
+        "x": 0.14,
+        "y": 0.14,
+        "width": 0.72,
+        "height": 0.64
+      }
+    }
+  ]
+}

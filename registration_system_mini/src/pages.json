@@ -7,6 +7,10 @@
   },
   "pages": [
     {
+      "path": "pages/honors/index",
+      "style": { "navigationBarTitleText": "足球年度荣誉", "navigationStyle": "custom" }
+    },
+    {
       "path": "pages/home/index",
       "style": {
         "navigationBarTitleText": "首页",

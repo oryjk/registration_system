@@ -3,11 +3,13 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import type { AvatarItem } from './avatarTypes';
 import { useOverlayPresence } from './useOverlayPresence';
 import { prefersReducedMotion } from '@/utils/reducedMotion';
+import AppButton from './AppButton.vue';
 
-const props = defineProps<{ visible: boolean; avatar: AvatarItem | null }>();
+const props = defineProps<{ visible: boolean; avatar: AvatarItem | null; canShare?: boolean }>();
 const emit = defineEmits<{
   (event: 'close'): void;
   (event: 'presence', rendered: boolean): void;
+  (event: 'share'): void;
 }>();
 const { rendered, leaving } = useOverlayPresence(computed(() => props.visible), {
   leaveDurationMs: () => prefersReducedMotion() ? 0 : 210,
@@ -71,11 +73,13 @@ function close() {
       <view v-if="attendanceCount != null" class="avatar-preview-attendance">
         <text>年度积分</text><text class="avatar-preview-attendance-number" :class="attendanceHonor ? `avatar-preview-attendance-number--${attendanceHonor.tone}` : ''">{{ attendanceCount }}</text><text>分</text>
       </view>
+      <view v-if="canShare" class="avatar-preview-share"><AppButton block :disabled="leaving" @click="emit('share')">分享我的荣誉</AppButton></view>
     </view>
   </view>
 </template>
 
 <style scoped>
+.avatar-preview-share { margin-top: 24rpx; }
 .avatar-preview-mask { position: fixed; inset: 0; z-index: 150; padding: 32rpx; display: flex; align-items: center; justify-content: center; box-sizing: border-box; background: var(--ui-color-overlay); animation: avatar-preview-fade var(--ui-motion-overlay-duration) var(--ui-motion-ease-out) both; }
 .avatar-preview-panel { position: relative; width: 600rpx; max-width: 100%; padding: 76rpx 28rpx 32rpx; box-sizing: border-box; border-radius: var(--ui-radius-card); background: var(--ui-color-surface); box-shadow: var(--ui-shadow-modal); animation: avatar-preview-enter var(--ui-motion-overlay-duration) var(--ui-motion-ease-out) both; }
 .avatar-preview-close { position: absolute; top: 8rpx; right: 8rpx; display: flex; align-items: center; justify-content: center; width: 64rpx; height: 64rpx; padding: 0; margin: 0; line-height: 1; font-size: 44rpx; color: var(--ui-color-text); background: transparent; border-radius: var(--ui-radius-round); }

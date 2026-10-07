@@ -42,6 +42,7 @@ export function byRegistrationTimeAsc(
 
 export interface TeamMemberRegistrationCard {
   userId: number;
+  teamId?: number;
   name: string;
   avatarUrl: string;
   tone: string;
@@ -60,10 +61,12 @@ export function buildTeamMemberRegistrationGroups({
   usersById,
   currentUserId,
   rosterMatchesRegistrationTeam = true,
+  teamId,
 }: {
   members: BackendTeamMember[];
   /** 名册仅在与报名组球队相同时可补齐未报名/乐观记录的会员标识。 */
   rosterMatchesRegistrationTeam?: boolean;
+  teamId?: number;
   registrations: BackendRegistration[];
   usersById: Record<number, BackendUser>;
   currentUserId?: number;
@@ -87,6 +90,7 @@ export function buildTeamMemberRegistrationGroups({
       : member.real_name || member.nickname || `用户 ${member.user_id}`;
     return {
       userId: member.user_id,
+      ...(teamId ? { teamId } : {}),
       name,
       avatarUrl: user?.avatar_url || member.avatar_url || "",
       tone: avatarColor(member.user_id),
