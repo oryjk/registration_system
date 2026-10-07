@@ -160,6 +160,35 @@ func (q *Queries) CountTeamReferences(ctx context.Context, hostTeamID *int64) (i
 	return total, err
 }
 
+const createHonorShare = `-- name: CreateHonorShare :one
+INSERT INTO team_honor_shares (id,team_id,user_id,score_year)
+SELECT $1, tm.team_id, tm.user_id, $2
+FROM team_members tm JOIN teams t ON t.id=tm.team_id JOIN users u ON u.id=tm.user_id
+WHERE tm.team_id=$3 AND tm.user_id=$4
+  AND tm.status='active' AND t.status='active' AND u.status='active'
+ON CONFLICT (team_id,user_id,score_year) DO UPDATE SET team_id=EXCLUDED.team_id
+RETURNING id
+`
+
+type CreateHonorShareParams struct {
+	ID        pgtype.UUID `json:"id"`
+	ScoreYear int32       `json:"score_year"`
+	TeamID    int64       `json:"team_id"`
+	UserID    int64       `json:"user_id"`
+}
+
+func (q *Queries) CreateHonorShare(ctx context.Context, arg CreateHonorShareParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, createHonorShare,
+		arg.ID,
+		arg.ScoreYear,
+		arg.TeamID,
+		arg.UserID,
+	)
+	var id pgtype.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
 const createTeam = `-- name: CreateTeam :one
 INSERT INTO teams (name, description, status)
 VALUES ($1, $2, 'active')
@@ -366,6 +395,58 @@ func (q *Queries) FindDissolveBlockingMatches(ctx context.Context, hostTeamID *i
 		return nil, err
 	}
 	return items, nil
+}
+
+const findHonorShare = `-- name: FindHonorShare :one
+SELECT hs.id,hs.team_id,hs.user_id,hs.score_year,
+       t.name AS team_name,t.description AS team_description,t.logo_url AS team_logo_url,
+       u.nickname,u.avatar_url,tm.is_paid_member,
+       (t.join_password_hash IS NOT NULL)::boolean AS requires_password,
+       COALESCE(ps.participation_points,0)::bigint AS participation_points,
+       COALESCE(ps.participation_rank,0)::bigint AS participation_rank
+FROM team_honor_shares hs
+JOIN teams t ON t.id=hs.team_id AND t.status='active'
+JOIN users u ON u.id=hs.user_id AND u.status='active'
+JOIN team_members tm ON tm.team_id=hs.team_id AND tm.user_id=hs.user_id AND tm.status='active'
+LEFT JOIN team_participation_ranks ps ON ps.team_id=hs.team_id AND ps.user_id=hs.user_id AND ps.score_year=hs.score_year
+WHERE hs.id=$1
+`
+
+type FindHonorShareRow struct {
+	ID                  pgtype.UUID `json:"id"`
+	TeamID              int64       `json:"team_id"`
+	UserID              int64       `json:"user_id"`
+	ScoreYear           int32       `json:"score_year"`
+	TeamName            string      `json:"team_name"`
+	TeamDescription     *string     `json:"team_description"`
+	TeamLogoUrl         *string     `json:"team_logo_url"`
+	Nickname            string      `json:"nickname"`
+	AvatarUrl           *string     `json:"avatar_url"`
+	IsPaidMember        bool        `json:"is_paid_member"`
+	RequiresPassword    bool        `json:"requires_password"`
+	ParticipationPoints int64       `json:"participation_points"`
+	ParticipationRank   int64       `json:"participation_rank"`
+}
+
+func (q *Queries) FindHonorShare(ctx context.Context, id pgtype.UUID) (FindHonorShareRow, error) {
+	row := q.db.QueryRow(ctx, findHonorShare, id)
+	var i FindHonorShareRow
+	err := row.Scan(
+		&i.ID,
+		&i.TeamID,
+		&i.UserID,
+		&i.ScoreYear,
+		&i.TeamName,
+		&i.TeamDescription,
+		&i.TeamLogoUrl,
+		&i.Nickname,
+		&i.AvatarUrl,
+		&i.IsPaidMember,
+		&i.RequiresPassword,
+		&i.ParticipationPoints,
+		&i.ParticipationRank,
+	)
+	return i, err
 }
 
 const findTeamByName = `-- name: FindTeamByName :one

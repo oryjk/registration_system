@@ -3,6 +3,7 @@ package bootstrap
 import (
 	"context"
 	"fmt"
+	"github.com/oryjk/registration_system/registration_system_go/internal/shared/adapters/wechatcode"
 	"net/http"
 	"strings"
 	"time"
@@ -175,6 +176,8 @@ func BuildDependencies(ctx context.Context, config Config) (Dependencies, func()
 	appTeamSelfHandler := teamhttp.NewAppSelfHandler(appTeamSelfService)
 	appTeamInviteService := teamapplication.NewAppInviteService(teamRepository, []byte(config.JWTSecret))
 	appTeamInviteHandler := teamhttp.NewAppInviteHandler(appTeamInviteService)
+	honorCodes := wechatcode.New(&http.Client{Timeout: 20 * time.Second}, "https://api.weixin.qq.com", config.WechatAppID, config.WechatAppSecret, buildSystemAssetStore(config))
+	honorShareHandler := teamhttp.NewHonorShareHandler(teamapplication.NewHonorShareService(teamRepository, honorCodes))
 	captainMessages := matchapplication.NewCaptainMessageService(matchRepository, matchRepository, teamService)
 	captainMessageHandler := matchhttp.NewCaptainMessageHandler(captainMessages)
 	teamFundRepository := teamfundpostgres.NewRepository(pool)
@@ -195,7 +198,8 @@ func BuildDependencies(ctx context.Context, config Config) (Dependencies, func()
 		TestAuth:      testAuthHandler, H5TestLoginEnabled: config.H5TestLoginEnabled(),
 		UserProfiles: userProfileHandler, AppUsers: appUserHandler, ActiveUsers: appUserService, Teams: teamHandler, AppTeams: appTeamHandler,
 		AppTeamManage: appTeamManageHandler, AppTeamSelf: appTeamSelfHandler, AppTeamInvites: appTeamInviteHandler,
-		UserMatches: userMatchHandler, VenueSuggestions: venueSuggestions, UserRegistrations: userRegistrationHandler,
+		AppHonorShares: honorShareHandler,
+		UserMatches:    userMatchHandler, VenueSuggestions: venueSuggestions, UserRegistrations: userRegistrationHandler,
 		AdminMatches: adminMatchHandler, AdminRegistrations: adminRegistrationHandler, TeamApplications: teamApplicationHandler,
 		CaptainMessages: captainMessageHandler,
 		Payments:        paymentHandler, Wallets: walletHandler, MiniReviews: miniReviewHandler,

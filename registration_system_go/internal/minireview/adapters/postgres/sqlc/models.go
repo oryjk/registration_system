@@ -236,6 +236,14 @@ type TeamFundTransaction struct {
 	CreatedByAdminID        *int64             `json:"created_by_admin_id"`
 }
 
+type TeamHonorShare struct {
+	ID        pgtype.UUID      `json:"id"`
+	TeamID    int64            `json:"team_id"`
+	UserID    int64            `json:"user_id"`
+	ScoreYear int32            `json:"score_year"`
+	CreatedAt pgtype.Timestamp `json:"created_at"`
+}
+
 type TeamMember struct {
 	ID             int64              `json:"id"`
 	TeamID         int64              `json:"team_id"`

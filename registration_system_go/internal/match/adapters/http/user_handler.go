@@ -155,6 +155,7 @@ type UserMatchListResponse struct {
 
 type UserHomeGroupResponse struct {
 	ID                   string                     `json:"id"`
+	TeamID               *int64                     `json:"team_id"`
 	Kind                 domain.GroupKind           `json:"kind"`
 	Status               domain.GroupStatus         `json:"status"`
 	MinPlayers           *int                       `json:"min_players"`
@@ -565,6 +566,7 @@ func mapUserHome(result application.UserMatchHomeResult) UserMatchHomeResponse {
 			Location: match.Location,
 			Group: UserHomeGroupResponse{
 				ID: item.Group.Group.ID.String(), Kind: item.Group.Group.Kind, Status: item.Group.Group.Status,
+				TeamID:     item.Group.Group.TeamID,
 				MinPlayers: item.Group.Group.MinPlayers, MaxPlayers: item.Group.Group.MaxPlayers,
 				AttendingCount: item.Group.AttendingCount, MyRegistrationStatus: registrationStatus,
 				Participants: mapUserParticipantResponses(item.Group.Participants),

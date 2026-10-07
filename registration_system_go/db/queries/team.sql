@@ -539,3 +539,26 @@ SELECT nickname FROM users WHERE id = $1;
 -- 无日期过滤，保留每个历史年度与跨年求和能力；包括已离队成员的历史事实。
 SELECT score_year, participation_points FROM team_participation_totals
 WHERE team_id=$1 AND user_id=$2 ORDER BY score_year DESC;
+
+-- name: CreateHonorShare :one
+INSERT INTO team_honor_shares (id,team_id,user_id,score_year)
+SELECT sqlc.arg(id), tm.team_id, tm.user_id, sqlc.arg(score_year)
+FROM team_members tm JOIN teams t ON t.id=tm.team_id JOIN users u ON u.id=tm.user_id
+WHERE tm.team_id=sqlc.arg(team_id) AND tm.user_id=sqlc.arg(user_id)
+  AND tm.status='active' AND t.status='active' AND u.status='active'
+ON CONFLICT (team_id,user_id,score_year) DO UPDATE SET team_id=EXCLUDED.team_id
+RETURNING id;
+
+-- name: FindHonorShare :one
+SELECT hs.id,hs.team_id,hs.user_id,hs.score_year,
+       t.name AS team_name,t.description AS team_description,t.logo_url AS team_logo_url,
+       u.nickname,u.avatar_url,tm.is_paid_member,
+       (t.join_password_hash IS NOT NULL)::boolean AS requires_password,
+       COALESCE(ps.participation_points,0)::bigint AS participation_points,
+       COALESCE(ps.participation_rank,0)::bigint AS participation_rank
+FROM team_honor_shares hs
+JOIN teams t ON t.id=hs.team_id AND t.status='active'
+JOIN users u ON u.id=hs.user_id AND u.status='active'
+JOIN team_members tm ON tm.team_id=hs.team_id AND tm.user_id=hs.user_id AND tm.status='active'
+LEFT JOIN team_participation_ranks ps ON ps.team_id=hs.team_id AND ps.user_id=hs.user_id AND ps.score_year=hs.score_year
+WHERE hs.id=$1;

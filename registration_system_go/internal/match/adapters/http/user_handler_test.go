@@ -193,7 +193,7 @@ func TestUserMatchHomeReturnsUserScopedSummary(t *testing.T) {
 			},
 			Group: ports.UserGroupState{
 				Group: domain.RegistrationGroup{
-					ID: groupID, MatchID: matchID, Kind: domain.GroupHostTeam,
+					ID: groupID, MatchID: matchID, Kind: domain.GroupHostTeam, TeamID: &[]int64{11}[0],
 					Status: domain.GroupOpen, MaxPlayers: &maxPlayers,
 				},
 				AttendingCount: 6,
@@ -229,7 +229,7 @@ func TestUserMatchHomeReturnsUserScopedSummary(t *testing.T) {
 		t.Fatalf("unexpected home response %d: %s", response.Code, response.Body.String())
 	}
 	for _, expected := range []string{
-		`"action_items"`, `"ended_items"`, `"ended_has_more":true`,
+		`"action_items"`, `"ended_items"`, `"ended_has_more":true`, `"team_id":11`,
 		`"action_has_more":false`,
 		`"name":"周六晚场友谊赛"`, `"opponent_name":"客家人"`,
 		`"publication_mode":"online_team"`, `"publication_mode":"offline_confirmed"`,
