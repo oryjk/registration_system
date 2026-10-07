@@ -3,7 +3,7 @@ import { onLoad, onShow, onUnload } from "@dcloudio/uni-app";
 import { hasManualLogout } from "@/utils/authStorage";
 import { issueHonorShare, resolveHonorShare, getHonorMiniCode, type HonorShare } from "@/api/honors";
 import { joinTeam } from "@/api/team";
-import { HONOR_BACKGROUNDS, readHonorBackground, rememberHonorBackground, type HonorBackground } from "@/config/honorBackgrounds";
+import { HONOR_BACKGROUNDS, readHonorBackground, rememberHonorBackground, resolveHonorBackground, type HonorBackground } from "@/config/honorBackgrounds";
 import { useTeamContext } from "@/stores/teamContext";
 import { useMiniReviewStatus } from "@/stores/miniReview";
 import { useProfileCompletionGate } from "@/pages/teams/useProfileCompletionGate";
@@ -183,7 +183,11 @@ export function useHonorPage(pageInstance: unknown) {
   profileGate.handleProfileGateCancel();
   if(id)void load();
  });
- onLoad(options=>{hideSharing();source=resolveHonorSource(options??{});void load();});
+ onLoad(options=>{
+  hideSharing();source=resolveHonorSource(options??{});
+  if(source && "code" in source)background.value=resolveHonorBackground(options?.background);
+  void load();
+ });
  onShow(()=>{
   if(disposed || !source || loading.value || saving.value || joining.value)return;
   if(hasManualLogout()){loadVersion++;reset();error.value="请重新登录后打开荣誉";return;}
@@ -193,7 +197,7 @@ export function useHonorPage(pageInstance: unknown) {
  });
  onUnload(()=>{disposed=true;loadVersion++;renderVersion++;codeVersion++;preparedPoster=null;images.clear();});
  const title=computed(()=>view.value?`${view.value.nickname || "球友"}的${view.value.year}足球年度 · ${formatHonorPoints(view.value.participation_points)}星`:"我的足球年度");
- function friendShare(){return {title:title.value,path:view.value?honorSharePath(view.value.code):"/pages/home/index",imageUrl:coverUrl.value || background.value.imageUrl};}
- function timelineShare(){return {title:title.value,query:view.value?`code=${encodeURIComponent(view.value.code)}`:"",imageUrl:coverUrl.value || background.value.imageUrl};}
+ function friendShare(){return {title:title.value,path:view.value?honorSharePath(view.value.code,background.value.id):"/pages/home/index",imageUrl:coverUrl.value || background.value.imageUrl};}
+ function timelineShare(){return {title:title.value,query:view.value?honorSharePath(view.value.code,background.value.id).split("?")[1]:"",imageUrl:coverUrl.value || background.value.imageUrl};}
  return {view,loading,error,background,backgrounds:HONOR_BACKGROUNDS,miniCodeUrl,codeError,codeLoading,saving,isSelf,shareReady,canCreate,password,joining,joined,profileGate,load,ensureMiniCode,chooseBackground,savePoster,join,goTeam,createTeam,goHome,friendShare,timelineShare};
 }

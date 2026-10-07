@@ -10,6 +10,7 @@ let posterRecord:typeof record|undefined;
 let posterExports=0,posterBackground="",failPoster=false;
 let pendingPoster:Promise<string>|null=null;
 const actualNow=Date.now;
+let storedBackground="pitch";
 const record={code:"abcdefghijklmnopqrstuv",team_id:11,user_id:4,year:2026,nickname:"球友",team_name:"球队",participation_points:259,participation_rank:4,is_paid_member:false,is_member:false,requires_password:false};
 mock.module("@dcloudio/uni-app",()=>({onLoad:(fn:any)=>onLoadCallback=fn,onShow:(fn:any)=>onShowCallback=fn,onUnload:()=>undefined,onShareAppMessage:()=>undefined,onShareTimeline:()=>undefined}));
 mock.module("@/api/honors",()=>({issueHonorShare:async()=>{issues++;if(revoked)throw new Error("分享已失效");if(pendingHonor)return pendingHonor;return {...record};},resolveHonorShare:async()=>{resolves++;if(revoked)throw new Error("分享已失效");return {...record};},getHonorMiniCode:async()=>{codes++;return {image_url:"actual-code.png"};}}));
@@ -23,8 +24,8 @@ const {useHonorPage}=await import("../useHonorPage");
 let scope=effectScope();
 function makePage(options:any){scope=effectScope();const page=scope.run(()=>useHonorPage(null))!;onLoadCallback(options);return page;}
 async function flush(){for(let i=0;i<8;i++)await new Promise(resolve=>setTimeout(resolve,0));}
-afterEach(()=>{scope.stop();sessionActor=4;user.value={id:4};issues=resolves=codes=exports=joinedRequests=posterExports=0;refreshFails=manualLogout=revoked=failPoster=false;onShowCallback=undefined;pendingHonor=pendingPoster=null;albumFiles.length=0;posterRecord=undefined;posterBackground="";Date.now=actualNow;});
-(globalThis as unknown as {uni:typeof uni}).uni={getStorageSync:()=>"pitch",setStorageSync:()=>undefined,hideShareMenu:()=>undefined,showShareMenu:()=>undefined,getAccountInfoSync:()=>({miniProgram:{envVersion:"develop"}}),saveImageToPhotosAlbum:({filePath,success}:any)=>{albumFiles.push(filePath);success();},previewImage:()=>undefined,showToast:()=>undefined} as unknown as typeof uni;
+afterEach(()=>{scope.stop();sessionActor=4;user.value={id:4};issues=resolves=codes=exports=joinedRequests=posterExports=0;refreshFails=manualLogout=revoked=failPoster=false;onShowCallback=undefined;pendingHonor=pendingPoster=null;albumFiles.length=0;posterRecord=undefined;posterBackground="";storedBackground="pitch";Date.now=actualNow;});
+(globalThis as unknown as {uni:typeof uni}).uni={getStorageSync:()=>storedBackground,setStorageSync:(_key:string,value:string)=>{storedBackground=value;},hideShareMenu:()=>undefined,showShareMenu:()=>undefined,getAccountInfoSync:()=>({miniProgram:{envVersion:"develop"}}),saveImageToPhotosAlbum:({filePath,success}:any)=>{albumFiles.push(filePath);success();},previewImage:()=>undefined,showToast:()=>undefined} as unknown as typeof uni;
 test("returning to own page refreshes current year, code links preserve their source",async()=>{
  makePage({teamId:"11"});await flush();const before=issues;
  expect(onShowCallback).toBeDefined();onShowCallback!();await flush();expect(issues).toBe(before+1);
@@ -44,14 +45,24 @@ test("confirmed join survives refresh failure but active logout clears it",async
 });
 test("shared link opens the sharer's honor for a different user without issuing their own",async()=>{
  const owner=makePage({teamId:"11"});await flush();
+ owner.chooseBackground(owner.backgrounds[2]!);await flush();
  const share=owner.friendShare();
- expect(share.path).toBe("/pages/honors/index?code="+record.code);
- expect(owner.timelineShare().query).toBe("code="+record.code);
- scope.stop();sessionActor=99;user.value={id:99};
- const recipient=makePage({code:share.path.split("code=")[1]});await flush();
+ expect(share.path).toBe("/pages/honors/index?code="+record.code+"&background=night");
+ expect(owner.timelineShare().query).toBe("code="+record.code+"&background=night");
+ scope.stop();sessionActor=99;user.value={id:99};storedBackground="pitch";
+ const query=new URLSearchParams(share.path.split("?")[1]);
+ const recipient=makePage({code:query.get("code"),background:query.get("background")});await flush();
  expect(issues).toBe(1);expect(resolves).toBe(1);
  expect(recipient.view.value?.user_id).toBe(4);expect(recipient.isSelf.value).toBe(false);
+ expect(recipient.background.value.id).toBe("night");
  expect(codes).toBe(1);
+});
+test("incoming background is validated without changing the owner's stored preference",async()=>{
+ sessionActor=99;user.value={id:99};storedBackground="gold";
+ const recipient=makePage({code:record.code,background:"https://untrusted.example/image.png"});await flush();
+ expect(recipient.background.value.id).toBe("pitch");expect(resolves).toBe(1);
+ scope.stop();sessionActor=4;user.value={id:4};
+ const own=makePage({teamId:"11"});await flush();expect(own.background.value.id).toBe("gold");
 });
 test("saving preserves the displayed score even if a newer score is available",async()=>{
  const page=makePage({teamId:"11"});await flush();

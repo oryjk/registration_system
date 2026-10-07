@@ -7,6 +7,7 @@ test("honor source accepts scene/code and rejects invalid route inputs",()=>{
  expect(resolveHonorSource({teamId:"11"})).toEqual({teamId:11});
  for(const input of [{code:"bad",teamId:"11"},{teamId:"-1"},{teamId:"1.5"},{scene:"%invalid"},{teamId:"Infinity"}])expect(resolveHonorSource(input)).toEqual(null);
  expect(honorSharePath(code)).toEqual("/pages/honors/index?code="+code);
+ expect(honorSharePath(code,"night")).toEqual("/pages/honors/index?code="+code+"&background=night");
 });
 test("avatar sharing requires own user and actual registration team",()=>{
  expect(ownHonorAvatarTeam({id:4,name:"Carl",teamId:11},4)).toEqual(11);

@@ -1,4 +1,5 @@
 import type { AvatarItem } from "@/components/ui/avatarTypes";
+import type { HonorBackground } from "@/config/honorBackgrounds";
 export type HonorSource = { code: string } | { teamId: number };
 export function resolveHonorSource(options: Record<string, unknown>): HonorSource | null {
  const raw = options.code ?? options.scene;
@@ -18,4 +19,6 @@ export function honorTitle(points: number, rank: number): string {
 export function formatHonorPoints(points: number): string {
  return Number.isFinite(points) && points>=0 ? String(Math.round(points*10)/10) : "0";
 }
-export function honorSharePath(code: string): string { return `/pages/honors/index?code=${encodeURIComponent(code)}`; }
+export function honorSharePath(code: string,background?:HonorBackground["id"]): string {
+ return `/pages/honors/index?code=${encodeURIComponent(code)}${background ? `&background=${encodeURIComponent(background)}` : ""}`;
+}
