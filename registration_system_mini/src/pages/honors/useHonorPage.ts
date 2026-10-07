@@ -1,5 +1,5 @@
 import { computed, nextTick, ref, watch } from "vue";
-import { onLoad, onShow, onUnload, onShareAppMessage, onShareTimeline } from "@dcloudio/uni-app";
+import { onLoad, onShow, onUnload } from "@dcloudio/uni-app";
 import { hasManualLogout } from "@/utils/authStorage";
 import { issueHonorShare, resolveHonorShare, getHonorMiniCode, type HonorShare } from "@/api/honors";
 import { joinTeam } from "@/api/team";
@@ -166,7 +166,7 @@ export function useHonorPage(pageInstance: unknown) {
  });
  onUnload(()=>{disposed=true;loadVersion++;renderVersion++;codeVersion++;});
  const title=computed(()=>view.value?`${view.value.nickname || "球友"}的${view.value.year}足球年度 · ${formatHonorPoints(view.value.participation_points)}分`:"我的足球年度");
- onShareAppMessage(()=>({title:title.value,path:view.value?honorSharePath(view.value.code):"/pages/home/index",imageUrl:coverUrl.value || background.value.imageUrl}));
- onShareTimeline(()=>({title:title.value,query:view.value?`code=${encodeURIComponent(view.value.code)}`:"",imageUrl:coverUrl.value || background.value.imageUrl}));
- return {view,loading,error,background,backgrounds:HONOR_BACKGROUNDS,miniCodeUrl,codeError,codeLoading,saving,isSelf,shareReady,canCreate,password,joining,joined,profileGate,load,ensureMiniCode,chooseBackground,savePoster,join,goTeam,createTeam,goHome};
+ function friendShare(){return {title:title.value,path:view.value?honorSharePath(view.value.code):"/pages/home/index",imageUrl:coverUrl.value || background.value.imageUrl};}
+ function timelineShare(){return {title:title.value,query:view.value?`code=${encodeURIComponent(view.value.code)}`:"",imageUrl:coverUrl.value || background.value.imageUrl};}
+ return {view,loading,error,background,backgrounds:HONOR_BACKGROUNDS,miniCodeUrl,codeError,codeLoading,saving,isSelf,shareReady,canCreate,password,joining,joined,profileGate,load,ensureMiniCode,chooseBackground,savePoster,join,goTeam,createTeam,goHome,friendShare,timelineShare};
 }

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed,getCurrentInstance } from "vue";
+import { onShareAppMessage,onShareTimeline } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
 import AppButton from "@/components/ui/AppButton.vue";
 import AppSurface from "@/components/ui/AppSurface.vue";
@@ -12,7 +13,11 @@ import HonorPoster from "./components/HonorPoster.vue";
 const {themePageStyle}=useAccentTheme();
 const metrics=getCustomNavMetrics();
 const pageStyle=computed(()=>({paddingTop:`${metrics.pageTopPadding+8}px`}));
-const {view,loading,error,background,backgrounds,miniCodeUrl,codeError,codeLoading,saving,isSelf,shareReady,canCreate,password,joining,joined,profileGate,load,ensureMiniCode,chooseBackground,savePoster,join,goTeam,createTeam,goHome}=useHonorPage(getCurrentInstance()?.proxy);
+const {view,loading,error,background,backgrounds,miniCodeUrl,codeError,codeLoading,saving,isSelf,shareReady,canCreate,password,joining,joined,profileGate,load,ensureMiniCode,chooseBackground,savePoster,join,goTeam,createTeam,goHome,friendShare,timelineShare}=useHonorPage(getCurrentInstance()?.proxy);
+// uni MP detects these hooks in the page SFC to install native share callbacks.
+// Keeping registration here prevents WeChat from sharing the self-only teamId URL.
+onShareAppMessage(friendShare);
+onShareTimeline(timelineShare);
 function shareInMini(){uni.showModal({title:"分享我的荣誉",content:"请在微信小程序中打开，可发给朋友或保存海报。",showCancel:false});}
 </script>
 <template>
