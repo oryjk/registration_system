@@ -3,6 +3,7 @@ import { computed, getCurrentInstance, nextTick, onMounted, onUnmounted, ref, wa
 import MembershipCrown from "./MembershipCrown.vue";
 import type { AvatarItem, AvatarSize } from "./avatarTypes";
 import { avatarStackLayout } from "./avatarStackLayout";
+import { avatarParticipationLevel } from "./avatarParticipationLevel";
 import { getWindowMetrics } from "@/utils/systemInfo";
 
 const props = withDefaults(defineProps<{
@@ -32,11 +33,11 @@ const toPixels = (rpx: number) => rpx * viewportWidth.value / 750;
 const avatarSize = computed(() => toPixels(sizes[props.size]));
 const hasMembers = computed(() => props.items.some(item => item.isPaidMember));
 // 给皇冠及摇摆范围留出滚动容器内空间，避免折叠/展开时被裁切。
-const hasAttendance = computed(() => props.items.some(item => hasAttendanceCount(item)));
-function hasAttendanceCount(item: AvatarItem) { return typeof item.teamParticipationPoints === "number" && Number.isFinite(item.teamParticipationPoints) && item.teamParticipationPoints >= 0; }
+const hasAttendance = computed(() => props.items.some(item => hasParticipationLevel(item)));
+function hasParticipationLevel(item: AvatarItem) { return avatarParticipationLevel(item.teamParticipationPoints) !== null; }
 const attendanceHeight = computed(() => expanded.value && hasAttendance.value ? toPixels(28) : 0);
 const crownHeadroom = computed(() => hasMembers.value ? avatarSize.value * 0.44 : 0);
-// 包含头像的 4px 下移量与标签后的留白，避免次数贴近进度条。
+// 包含头像的 4px 下移量与标签后的留白，避免等级贴近进度条。
 const trackHeight = computed(() => layout.value.height + crownHeadroom.value + 4 + toPixels(16));
 const layout = computed(() => avatarStackLayout(
   props.items.length,
@@ -98,7 +99,7 @@ watch(trackHeight, () => {
               width: `${avatarSize}px`, height: `${avatarSize}px`,
               transform: `translate(${layout.positions[index].x}px, ${layout.positions[index].y + crownHeadroom + (selectedId === item.id ? 0 : 4)}px)`,
             }"
-            :aria-label="`${item.name}${item.isPaidMember ? '，球队会员' : ''}${hasAttendanceCount(item) ? `，年度星数${item.teamParticipationPoints}星` : ''}`"
+            :aria-label="`${item.name}${item.isPaidMember ? '，球队会员' : ''}${hasParticipationLevel(item) ? `，等级${avatarParticipationLevel(item.teamParticipationPoints)}级` : ''}`"
             :hover-class="interactive && !disabled ? 'expandable-avatars__avatar--pressed' : 'none'"
             @tap.stop="select(item)"
           >
@@ -106,8 +107,8 @@ watch(trackHeight, () => {
               <image data-deck-ignore="true" v-if="item.avatarUrl && !failedImages[imageKey(item)]" class="expandable-avatars__image" :src="item.avatarUrl" mode="aspectFill" @error="failedImages[imageKey(item)] = true" />
               <text data-deck-ignore="true" v-else class="expandable-avatars__fallback">{{ Array.from(item.name.trim())[0] || '?' }}</text>
             </view>
-            <view v-if="expanded && hasAttendanceCount(item)" data-deck-ignore="true" class="expandable-avatars__attendance">
-              <text :class="(item.teamParticipationPoints ?? 0) > 0 && item.teamParticipationRank ? `expandable-avatars__attendance--rank-${item.teamParticipationRank}` : ''">{{ item.teamParticipationPoints }}</text><text>星</text>
+            <view v-if="expanded && hasParticipationLevel(item)" data-deck-ignore="true" class="expandable-avatars__attendance">
+              <text :class="(item.teamParticipationPoints ?? 0) > 0 && item.teamParticipationRank ? `expandable-avatars__attendance--rank-${item.teamParticipationRank}` : ''">{{ avatarParticipationLevel(item.teamParticipationPoints) }}</text><text>级</text>
             </view>
             <view v-if="item.isPaidMember" data-deck-ignore="true" class="expandable-avatars__crown"><MembershipCrown :width="`${avatarSize * 0.72}px`" :height="`${avatarSize * 0.4}px`" /></view>
           </view>
