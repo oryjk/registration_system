@@ -1,0 +1,116 @@
+{
+  "schemaVersion": 2,
+  "backgrounds": [
+    {
+      "id": "pitch",
+      "name": "绿茵日常",
+      "source": "preset",
+      "access": "free",
+      "textColor": "#00214d",
+      "mutedTextColor": "#226342",
+      "safeContentRect": {
+        "x": 0.14,
+        "y": 0.14,
+        "width": 0.72,
+        "height": 0.64
+      },
+      "version": 2,
+      "image": {
+        "url": "https://oryjk.cn:82/registration/static/share/honor-backgrounds/v2/pitch/4d8ee2edf056f8d8.jpg",
+        "objectKey": "static/share/honor-backgrounds/v2/pitch/4d8ee2edf056f8d8.jpg",
+        "localFile": "pitch.jpg",
+        "width": 1024,
+        "height": 1536,
+        "contentType": "image/jpeg",
+        "bytes": 224805,
+        "sha256": "4d8ee2edf056f8d86de179082559b57639e7d973c0b21c547b073085919bb98f",
+        "quality": 80
+      },
+      "thumbnail": {
+        "url": "https://oryjk.cn:82/registration/static/share/honor-backgrounds/v2/pitch/aa0a1ea65ec02442.jpg",
+        "objectKey": "static/share/honor-backgrounds/v2/pitch/aa0a1ea65ec02442.jpg",
+        "localFile": "pitch-thumb.jpg",
+        "width": 256,
+        "height": 384,
+        "contentType": "image/jpeg",
+        "bytes": 15713,
+        "sha256": "aa0a1ea65ec02442fe19c22451936f63164645ecb312b04a5bf7b55c8816d432",
+        "quality": 70
+      }
+    },
+    {
+      "id": "gold",
+      "name": "荣耀金",
+      "source": "preset",
+      "access": "free",
+      "textColor": "#00214d",
+      "mutedTextColor": "#805414",
+      "safeContentRect": {
+        "x": 0.14,
+        "y": 0.14,
+        "width": 0.72,
+        "height": 0.64
+      },
+      "version": 2,
+      "image": {
+        "url": "https://oryjk.cn:82/registration/static/share/honor-backgrounds/v2/gold/240965d36ee9791e.jpg",
+        "objectKey": "static/share/honor-backgrounds/v2/gold/240965d36ee9791e.jpg",
+        "localFile": "gold.jpg",
+        "width": 1024,
+        "height": 1536,
+        "contentType": "image/jpeg",
+        "bytes": 277670,
+        "sha256": "240965d36ee9791ecf4e7cf750c002c1a4c3a6492c4c691da43c48796fd88b8d",
+        "quality": 80
+      },
+      "thumbnail": {
+        "url": "https://oryjk.cn:82/registration/static/share/honor-backgrounds/v2/gold/647b5d47052ffc29.jpg",
+        "objectKey": "static/share/honor-backgrounds/v2/gold/647b5d47052ffc29.jpg",
+        "localFile": "gold-thumb.jpg",
+        "width": 256,
+        "height": 384,
+        "contentType": "image/jpeg",
+        "bytes": 13774,
+        "sha256": "647b5d47052ffc299e0bfb72275320c0fbdb84370e38ce68bf673b067f56ac22",
+        "quality": 70
+      }
+    },
+    {
+      "id": "night",
+      "name": "夜场聚光",
+      "source": "preset",
+      "access": "free",
+      "textColor": "#fffffe",
+      "mutedTextColor": "#bdeee7",
+      "safeContentRect": {
+        "x": 0.14,
+        "y": 0.14,
+        "width": 0.72,
+        "height": 0.64
+      },
+      "version": 2,
+      "image": {
+        "url": "https://oryjk.cn:82/registration/static/share/honor-backgrounds/v2/night/bd507b4eb67f1885.jpg",
+        "objectKey": "static/share/honor-backgrounds/v2/night/bd507b4eb67f1885.jpg",
+        "localFile": "night.jpg",
+        "width": 1024,
+        "height": 1536,
+        "contentType": "image/jpeg",
+        "bytes": 252430,
+        "sha256": "bd507b4eb67f1885a19466acc4be1f4f47d796cad3e08a3a6b067439ee74cd66",
+        "quality": 80
+      },
+      "thumbnail": {
+        "url": "https://oryjk.cn:82/registration/static/share/honor-backgrounds/v2/night/fc192a335c4a6587.jpg",
+        "objectKey": "static/share/honor-backgrounds/v2/night/fc192a335c4a6587.jpg",
+        "localFile": "night-thumb.jpg",
+        "width": 256,
+        "height": 384,
+        "contentType": "image/jpeg",
+        "bytes": 15164,
+        "sha256": "fc192a335c4a658732ce4561591c00ef7b6aa1e54a147a3e12c746d55ce39089",
+        "quality": 70
+      }
+    }
+  ]
+}

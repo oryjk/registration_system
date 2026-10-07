@@ -10,6 +10,7 @@ import { useProfileCompletionGate } from "@/pages/teams/useProfileCompletionGate
 import { composeHonorImage, createHonorImageLoader } from "@/utils/honorPosterCompose";
 import { beijingDateKey } from "@/utils/datetime";
 import { formatHonorPoints, honorSharePath, resolveHonorSource, type HonorSource } from "./honorState";
+import { useHonorBackgroundImages } from "./useHonorBackgroundImages";
 
 export function useHonorPage(pageInstance: unknown) {
  const context=useTeamContext();
@@ -19,6 +20,7 @@ export function useHonorPage(pageInstance: unknown) {
  const background=ref<HonorBackground>(readHonorBackground());
  const coverUrl=ref(""),miniCodeUrl=ref(""),codeError=ref(""),codeLoading=ref(false),saving=ref(false),joining=ref(false),joined=ref(false),password=ref("");
  const isSelf=computed(()=>!!view.value && view.value.user_id===context.currentUser.value?.id);
+ const {backgroundImageUrl,backgroundThumbnailUrls}=useHonorBackgroundImages(background,isSelf,computed(()=>!!view.value));
  const shareReady=computed(()=>!!view.value && !loading.value && !error.value);
  const canCreate=computed(()=>!shouldHideCreationEntrances.value);
  let successUserId:number|undefined;
@@ -199,5 +201,5 @@ export function useHonorPage(pageInstance: unknown) {
  const title=computed(()=>view.value?`${view.value.nickname || "球友"}的${view.value.year}足球年度 · ${formatHonorPoints(view.value.participation_points)}星`:"我的足球年度");
  function friendShare(){return {title:title.value,path:view.value?honorSharePath(view.value.code,background.value.id):"/pages/home/index",imageUrl:coverUrl.value || background.value.imageUrl};}
  function timelineShare(){return {title:title.value,query:view.value?honorSharePath(view.value.code,background.value.id).split("?")[1]:"",imageUrl:coverUrl.value || background.value.imageUrl};}
- return {view,loading,error,background,backgrounds:HONOR_BACKGROUNDS,miniCodeUrl,codeError,codeLoading,saving,isSelf,shareReady,canCreate,password,joining,joined,profileGate,load,ensureMiniCode,chooseBackground,savePoster,join,goTeam,createTeam,goHome,friendShare,timelineShare};
+ return {view,loading,error,background,backgroundImageUrl,backgroundThumbnailUrls,backgrounds:HONOR_BACKGROUNDS,miniCodeUrl,codeError,codeLoading,saving,isSelf,shareReady,canCreate,password,joining,joined,profileGate,load,ensureMiniCode,chooseBackground,savePoster,join,goTeam,createTeam,goHome,friendShare,timelineShare};
 }

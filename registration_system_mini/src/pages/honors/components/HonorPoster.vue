@@ -4,7 +4,7 @@ import type { HonorShare } from "@/api/honors";
 import type { HonorBackground } from "@/config/honorBackgrounds";
 import MembershipCrown from "@/components/ui/MembershipCrown.vue";
 import { formatHonorPoints,honorTitle } from "../honorState";
-const props=defineProps<{ view:HonorShare; background:HonorBackground; miniCodeUrl?:string; showCode?:boolean; codeLoading?:boolean }>();
+const props=defineProps<{ view:HonorShare; background:HonorBackground; backgroundImageUrl:string; miniCodeUrl?:string; showCode?:boolean; codeLoading?:boolean }>();
 const avatarFailed=ref(false),backgroundFailed=ref(false);
 watch(()=>props.view.avatar_url,()=>avatarFailed.value=false);
 watch(()=>props.background.id,()=>backgroundFailed.value=false);
@@ -13,7 +13,7 @@ const backgroundStyle=computed(()=>({color:props.background.textColor,background
 </script>
 <template>
  <view class="honor-poster" :style="backgroundStyle">
-  <image class="honor-poster-background" :src="background.imageUrl" mode="aspectFill" @error="backgroundFailed=true" />
+  <image v-if="backgroundImageUrl" class="honor-poster-background" :src="backgroundImageUrl" mode="aspectFill" @error="backgroundFailed=true" />
   <text class="honor-poster-year">{{view.year}} · 我的足球年度</text>
   <view class="honor-poster-avatar" :class="{'honor-poster-avatar--member':view.is_paid_member}">
    <image v-if="view.avatar_url && !avatarFailed" :src="view.avatar_url" mode="aspectFill" @error="avatarFailed=true" />

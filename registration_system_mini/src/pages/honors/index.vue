@@ -13,7 +13,7 @@ import HonorPoster from "./components/HonorPoster.vue";
 const {themePageStyle}=useAccentTheme();
 const metrics=getCustomNavMetrics();
 const pageStyle=computed(()=>({paddingTop:`${metrics.pageTopPadding+8}px`}));
-const {view,loading,error,background,backgrounds,miniCodeUrl,codeError,codeLoading,saving,isSelf,shareReady,canCreate,password,joining,joined,profileGate,load,ensureMiniCode,chooseBackground,savePoster,join,goTeam,createTeam,goHome,friendShare,timelineShare}=useHonorPage(getCurrentInstance()?.proxy);
+const {view,loading,error,background,backgroundImageUrl,backgroundThumbnailUrls,backgrounds,miniCodeUrl,codeError,codeLoading,saving,isSelf,shareReady,canCreate,password,joining,joined,profileGate,load,ensureMiniCode,chooseBackground,savePoster,join,goTeam,createTeam,goHome,friendShare,timelineShare}=useHonorPage(getCurrentInstance()?.proxy);
 // uni MP detects these hooks in the page SFC to install native share callbacks.
 // Keeping registration here prevents WeChat from sharing the self-only teamId URL.
 onShareAppMessage(friendShare);
@@ -30,12 +30,12 @@ function shareInMini(){uni.showModal({title:"分享我的荣誉",content:"请在
   </AppSurface>
   <template v-else-if="view">
    <view class="honor-intro"><text class="honor-intro-title">{{isSelf ? '为每一次参与，留下纪念' : view.nickname+'的足球年度'}}</text><text class="honor-intro-caption">{{isSelf ? '选一款喜欢的背景，把这份热爱分享出去。' : '一起踢球，也一起积累属于球队的荣誉。'}}</text></view>
-   <view class="honor-poster-stage"><HonorPoster :view="view" :background="background" :mini-code-url="miniCodeUrl" :show-code="isSelf" :code-loading="codeLoading" /></view>
+   <view class="honor-poster-stage"><HonorPoster :view="view" :background="background" :background-image-url="backgroundImageUrl" :mini-code-url="miniCodeUrl" :show-code="isSelf" :code-loading="codeLoading" /></view>
    <view v-if="isSelf" class="honor-picker">
     <text class="honor-section-title">选择海报背景</text>
     <view class="honor-backgrounds">
      <button v-for="item in backgrounds" :key="item.id" class="honor-background" :class="{'honor-background--selected':background.id===item.id}" :disabled="saving" :aria-label="item.name+'，免费'" :aria-pressed="background.id===item.id" @tap="chooseBackground(item)">
-      <image :src="item.imageUrl" mode="aspectFill" /><text>{{item.name}}</text><text class="honor-background-free">免费</text>
+      <image v-if="backgroundThumbnailUrls[item.id]" class="honor-background-image" :src="backgroundThumbnailUrls[item.id]" mode="aspectFill" /><view v-else class="honor-background-image honor-background-image--pending" /><text>{{item.name}}</text><text class="honor-background-free">免费</text>
      </button>
     </view>
     <view v-if="codeError" class="honor-code-error"><text>{{codeError}}</text><AppButton size="sm" variant="outline" :loading="codeLoading" @click="ensureMiniCode().catch(()=>undefined)">重新生成</AppButton></view>
@@ -81,7 +81,7 @@ function shareInMini(){uni.showModal({title:"分享我的荣誉",content:"请在
 .honor-backgrounds{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16rpx;margin:18rpx 0 26rpx}
 .honor-background{margin:0;padding:8rpx 8rpx 14rpx;border:2rpx solid var(--ui-color-line);background:var(--ui-color-surface);border-radius:var(--ui-radius-button);font-size:22rpx;color:var(--ui-color-text);line-height:1.5;display:flex;flex-direction:column;align-items:center;gap:8rpx}
 .honor-background::after,.honor-share-button::after{border:0}.honor-background--selected{border-color:var(--ui-color-accent);background:var(--ui-color-accent-soft)}
-.honor-background image{width:100%;height:220rpx;border-radius:12rpx}.honor-background-free{font-size:20rpx;color:var(--ui-color-text-muted)}
+.honor-background-image{width:100%;height:220rpx;border-radius:12rpx}.honor-background-image--pending{background:var(--ui-color-neutral-bg)}.honor-background-free{font-size:20rpx;color:var(--ui-color-text-muted)}
 .honor-actions{display:grid;grid-template-columns:1fr 1fr;gap:16rpx}
 .honor-share-button{width:100%;height:88rpx;margin:0;padding:0;display:flex;align-items:center;justify-content:center;border:2rpx solid var(--ui-color-line);border-radius:var(--ui-radius-button);color:var(--ui-color-text);background:var(--ui-color-surface);font-size:30rpx;font-weight:600}
 .honor-share-button[disabled]{color:var(--ui-color-text-muted)}.honor-footnote{display:block;margin-top:20rpx;font-size:22rpx;color:var(--ui-color-text-muted);line-height:1.6}

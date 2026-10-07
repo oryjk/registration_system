@@ -23,7 +23,7 @@
 
 ## 背景及后续扩展
 
-三款背景为 1024×1536，图片与提示词保存于 `docs/design-assets/honor-posters/v1/`，MinIO 对象使用内容哈希且已校验公网 SHA256。目录元数据含稳定 id/version/source/access/url 与文字颜色。此次 access 全为 free。后续精品背景由服务端权益校验，自定义图片由上传接口校验文件/尺寸并确定归属；不能以修改客户端 free 标记获得权益。付费和上传入口本期不展示。
+三款背景原图和提示词保留在 `docs/design-assets/honor-posters/v1/`；客户端使用 `v2/` 的 1024×1536 压缩 JPEG 和 256×384 缩略 JPEG。只加载所选高清背景，选择区加载缩略图，小程序预览与导出共用可验证的本地文件缓存，H5 使用 immutable HTTP 缓存。旧 PNG 对象不删除。MinIO 对象使用内容哈希且已校验公网 SHA256。目录元数据含稳定 id/version/source/access/url 与文字颜色。此次 access 全为 free。后续精品背景由服务端权益校验，自定义图片由上传接口校验文件/尺寸并确定归属；不能以修改客户端 free 标记获得权益。付费和上传入口本期不展示。
 
 ## 验证与交付
 

@@ -21,12 +21,13 @@ test("image loading coalesces pending requests, retries failures and clears on p
  let requests=0,finish:any;
  (globalThis as unknown as {uni:typeof uni}).uni={getImageInfo:(options:any)=>{requests++;finish=options;}} as unknown as typeof uni;
  const loader=createHonorImageLoader(),first=loader.load("background.png"),second=loader.load("background.png");
+ await Promise.resolve();
  expect(first).toBe(second);expect(requests).toBe(1);
  finish.fail(new Error("network"));await expect(first).rejects.toThrow("network");
- const retry=loader.load("background.png");expect(requests).toBe(2);
+ const retry=loader.load("background.png");await Promise.resolve();expect(requests).toBe(2);
  finish.success({path:"local.png",width:1024,height:1536});await retry;
  expect((await loader.load("background.png")).path).toBe("local.png");expect(requests).toBe(2);
- loader.clear();const fresh=loader.load("background.png");expect(requests).toBe(3);
+ loader.clear();const fresh=loader.load("background.png");await Promise.resolve();expect(requests).toBe(3);
  finish.success({path:"fresh.png",width:1024,height:1536});await fresh;
 });
 test("poster truncates long team name to one line and preserves full resolution QR", async () => {

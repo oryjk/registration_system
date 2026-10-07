@@ -2,6 +2,7 @@ import type { HonorShare } from "@/api/honors";
 import type { HonorBackground } from "@/config/honorBackgrounds";
 import { formatHonorPoints, honorTitle } from "@/pages/honors/honorState";
 import { beijingDateKey } from "@/utils/datetime";
+import { resolveHonorBackgroundImage } from "@/utils/honorBackgroundCache";
 
 type ImageInfo = { path: string; width: number; height: number };
 const imageInfo = (src: string): Promise<ImageInfo> => new Promise((resolve,reject) => uni.getImageInfo({src,success:resolve,fail:reject}));
@@ -11,7 +12,7 @@ export function createHonorImageLoader() {
  return {
   load(src:string):Promise<ImageInfo> {
    const cached=images.get(src);if(cached)return cached;
-   const task=imageInfo(src).catch(failure=>{if(images.get(src)===task)images.delete(src);throw failure;});
+   const task=resolveHonorBackgroundImage(src).then(imageInfo).catch(failure=>{if(images.get(src)===task)images.delete(src);throw failure;});
    // The three presets plus avatars/codes fit comfortably; bound changing data too.
    if(images.size>=16)images.delete(images.keys().next().value!);
    images.set(src,task);return task;

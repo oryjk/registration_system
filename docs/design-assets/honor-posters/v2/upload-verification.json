@@ -1,0 +1,59 @@
+{
+  "verifiedAt": "2026-10-07T07:29:13.504917+00:00",
+  "assets": [
+    {
+      "url": "https://oryjk.cn:82/registration/static/share/honor-backgrounds/v2/pitch/4d8ee2edf056f8d8.jpg",
+      "status": 200,
+      "bytes": 224805,
+      "contentType": "image/jpeg",
+      "sha256": "4d8ee2edf056f8d86de179082559b57639e7d973c0b21c547b073085919bb98f",
+      "cacheControl": "public,max-age=31536000,immutable",
+      "allowOrigin": "https://oryjk.cn:82"
+    },
+    {
+      "url": "https://oryjk.cn:82/registration/static/share/honor-backgrounds/v2/pitch/aa0a1ea65ec02442.jpg",
+      "status": 200,
+      "bytes": 15713,
+      "contentType": "image/jpeg",
+      "sha256": "aa0a1ea65ec02442fe19c22451936f63164645ecb312b04a5bf7b55c8816d432",
+      "cacheControl": "public,max-age=31536000,immutable",
+      "allowOrigin": "https://oryjk.cn:82"
+    },
+    {
+      "url": "https://oryjk.cn:82/registration/static/share/honor-backgrounds/v2/gold/240965d36ee9791e.jpg",
+      "status": 200,
+      "bytes": 277670,
+      "contentType": "image/jpeg",
+      "sha256": "240965d36ee9791ecf4e7cf750c002c1a4c3a6492c4c691da43c48796fd88b8d",
+      "cacheControl": "public,max-age=31536000,immutable",
+      "allowOrigin": "https://oryjk.cn:82"
+    },
+    {
+      "url": "https://oryjk.cn:82/registration/static/share/honor-backgrounds/v2/gold/647b5d47052ffc29.jpg",
+      "status": 200,
+      "bytes": 13774,
+      "contentType": "image/jpeg",
+      "sha256": "647b5d47052ffc299e0bfb72275320c0fbdb84370e38ce68bf673b067f56ac22",
+      "cacheControl": "public,max-age=31536000,immutable",
+      "allowOrigin": "https://oryjk.cn:82"
+    },
+    {
+      "url": "https://oryjk.cn:82/registration/static/share/honor-backgrounds/v2/night/bd507b4eb67f1885.jpg",
+      "status": 200,
+      "bytes": 252430,
+      "contentType": "image/jpeg",
+      "sha256": "bd507b4eb67f1885a19466acc4be1f4f47d796cad3e08a3a6b067439ee74cd66",
+      "cacheControl": "public,max-age=31536000,immutable",
+      "allowOrigin": "https://oryjk.cn:82"
+    },
+    {
+      "url": "https://oryjk.cn:82/registration/static/share/honor-backgrounds/v2/night/fc192a335c4a6587.jpg",
+      "status": 200,
+      "bytes": 15164,
+      "contentType": "image/jpeg",
+      "sha256": "fc192a335c4a658732ce4561591c00ef7b6aa1e54a147a3e12c746d55ce39089",
+      "cacheControl": "public,max-age=31536000,immutable",
+      "allowOrigin": "https://oryjk.cn:82"
+    }
+  ]
+}
