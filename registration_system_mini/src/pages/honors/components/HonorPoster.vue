@@ -42,8 +42,8 @@ const backgroundStyle=computed(()=>({color:props.background.textColor,background
 .honor-poster-year{top:14%;font-size:20rpx;letter-spacing:3rpx;opacity:.8}
 .honor-poster-avatar{position:absolute;top:20.5%;left:41%;width:18%;height:12%;border:3rpx solid #fff;border-radius:20rpx;box-sizing:border-box;overflow:hidden;background:#e8f5ee;display:flex;align-items:center;justify-content:center;color:#226342;font-size:42rpx}
 .honor-poster-avatar--member{border-color:#d1ad5c}.honor-poster-avatar image{width:100%;height:100%}.honor-poster-crown{position:absolute;top:17.8%;left:calc(50% - 22rpx)}
-.honor-poster-name{top:34%;max-height:10%;font-size:34rpx;font-weight:600;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow-wrap:anywhere}
-.honor-poster-team{top:41%;font-size:18rpx;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;opacity:.8}
+.honor-poster-name{top:34%;max-height:9%;font-size:28rpx;font-weight:600;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow-wrap:anywhere}
+.honor-poster-team{top:43.5%;font-size:18rpx;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;opacity:.8}
 .honor-poster-label{top:46%;font-size:20rpx;opacity:.8}
 .honor-poster-points{position:absolute;top:50%;left:8%;width:84%;text-align:center;font-size:82rpx;font-weight:600;line-height:1.3;font-variant-numeric:tabular-nums}
 .honor-poster-unit{font-size:22rpx;font-weight:400;margin-left:10rpx}.honor-poster-honor{top:61%;font-size:20rpx;font-weight:600}

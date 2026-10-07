@@ -1,5 +1,6 @@
 import { computed, nextTick, ref, watch } from "vue";
-import { onLoad, onUnload, onShareAppMessage, onShareTimeline } from "@dcloudio/uni-app";
+import { onLoad, onShow, onUnload, onShareAppMessage, onShareTimeline } from "@dcloudio/uni-app";
+import { hasManualLogout } from "@/utils/authStorage";
 import { issueHonorShare, resolveHonorShare, getHonorMiniCode, type HonorShare } from "@/api/honors";
 import { joinTeam } from "@/api/team";
 import { HONOR_BACKGROUNDS, readHonorBackground, rememberHonorBackground, type HonorBackground } from "@/config/honorBackgrounds";
@@ -19,11 +20,13 @@ export function useHonorPage(pageInstance: unknown) {
  const isSelf=computed(()=>!!view.value && view.value.user_id===context.currentUser.value?.id);
  const shareReady=computed(()=>!!view.value && !loading.value && !error.value);
  const canCreate=computed(()=>!shouldHideCreationEntrances.value);
+ let successUserId:number|undefined;
  let source:HonorSource|null=null,loadVersion=0,renderVersion=0,codeVersion=0,disposed=false;
  let renderQueue:Promise<unknown>=Promise.resolve();
  let codePromise:Promise<string>|null=null;
  function hideSharing() { uni.hideShareMenu({hideShareItems:["shareAppMessage","shareTimeline"]}); }
  function reset() {
+  successUserId=undefined;codeLoading.value=false;
   view.value=null;coverUrl.value="";miniCodeUrl.value="";codeError.value="";password.value="";joined.value=false;
   renderVersion++;codeVersion++;codePromise=null;hideSharing();
  }
@@ -92,11 +95,14 @@ export function useHonorPage(pageInstance: unknown) {
  }
  async function savePoster() {
   if(saving.value || !isSelf.value || !view.value)return;
-  const record=view.value,actor=context.currentUser.value?.id,bg=background.value;
   saving.value=true;
   try {
+   await load();
+   const record=view.value,actor=context.currentUser.value?.id,bg=background.value;
+   if(!record || !isSelf.value || error.value)throw new Error(error.value || "荣誉已变化，请重新打开");
+   const version=loadVersion;
    const code=await ensureMiniCode();
-   const current=()=>!disposed && record.code===view.value?.code && actor===context.currentUser.value?.id && bg.id===background.value.id;
+   const current=()=>version===loadVersion && !disposed && record.code===view.value?.code && actor===context.currentUser.value?.id && bg.id===background.value.id;
    await nextTick();
    const path=await enqueue(()=>composeHonorImage("honor-poster-canvas",pageInstance,record,bg,"poster",code,current));
    if(!current())throw new Error("海报内容已更新，请重新保存");
@@ -124,21 +130,40 @@ export function useHonorPage(pageInstance: unknown) {
    if(disposed || actor!==context.currentUser.value?.id || version!==loadVersion)return;
    await joinTeam({team_id:record.team_id,password:password.value.trim() || undefined});
    if(disposed || actor!==context.currentUser.value?.id || version!==loadVersion)return;
-   joined.value=true;password.value="";
+   successUserId=actor;joined.value=true;password.value="";
    try {await context.refreshSessionContext();}catch{uni.showToast({title:"已加入球队，列表稍后刷新",icon:"none"});}
   } catch(failure) {uni.showToast({title:failure instanceof Error?failure.message:"加入球队失败",icon:"none"});}
   finally {joining.value=false;}
  }
- function goTeam(){if(view.value)uni.navigateTo({url:`/pages/teams/detail/index?teamId=${view.value.team_id}`});}
+ async function restoreSuccessAccount():Promise<boolean> {
+  const owner=successUserId || context.currentUser.value?.id;
+  if(hasManualLogout()){reset();return false;}
+  if(!owner)return false;
+  try {
+   await context.ensureSessionReady();
+   if(hasManualLogout() || owner!==context.currentUser.value?.id)return false;
+   return true;
+  } catch {uni.showToast({title:"已加入球队，请稍后重试",icon:"none"});return false;}
+ }
+ async function goTeam(){if(view.value && await restoreSuccessAccount())uni.navigateTo({url:`/pages/teams/detail/index?teamId=${view.value.team_id}`});}
  function createTeam(){if(canCreate.value)uni.navigateTo({url:"/pages/teams/create/index"});}
  function goHome(){uni.switchTab({url:"/pages/home/index"});}
  watch(()=>context.currentUser.value?.id,(id,previous)=>{
-  if(!previous || id===previous)return;
+  if(id===previous)return;
+  if(successUserId && !hasManualLogout() && (!id || id===successUserId))return;
+  if(!previous && !view.value)return;
   loadVersion++;reset();loading.value=false;error.value="登录状态已变化，请重新打开荣誉";
   profileGate.handleProfileGateCancel();
   if(id)void load();
  });
  onLoad(options=>{hideSharing();source=resolveHonorSource(options??{});void load();});
+ onShow(()=>{
+  if(disposed || !source || loading.value || saving.value || joining.value)return;
+  if(hasManualLogout()){loadVersion++;reset();error.value="请重新登录后打开荣誉";return;}
+  if(successUserId && !context.currentUser.value) {
+   void restoreSuccessAccount().then(restored=>{if(restored)void load();});
+  } else void load();
+ });
  onUnload(()=>{disposed=true;loadVersion++;renderVersion++;codeVersion++;});
  const title=computed(()=>view.value?`${view.value.nickname || "球友"}的${view.value.year}足球年度 · ${formatHonorPoints(view.value.participation_points)}分`:"我的足球年度");
  onShareAppMessage(()=>({title:title.value,path:view.value?honorSharePath(view.value.code):"/pages/home/index",imageUrl:coverUrl.value || background.value.imageUrl}));

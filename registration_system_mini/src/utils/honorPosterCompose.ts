@@ -9,24 +9,19 @@ function text(ctx: UniApp.CanvasContext,value: string,x: number,y: number,size: 
  ctx.setFillStyle(color);ctx.setTextAlign(align);ctx.setTextBaseline("middle");ctx.font=`${weight} ${size}px sans-serif`;ctx.fillText(value,x,y);
 }
 function nameLines(ctx: UniApp.CanvasContext,value: string,maxWidth: number,maxLines = 2): string[] {
- const lines: string[]=[];let line="";
- const chars=Array.from(value.trim() || "球友");
- for(let i=0;i<chars.length;i++) {
-  const next=line+chars[i];
-  if(ctx.measureText(next).width>maxWidth && line) {
-   lines.push(line);line=chars[i]!;
-   if(lines.length===maxLines-1) {
-    let tail=chars.slice(i).join("");
-    while(ctx.measureText(tail).width>maxWidth && tail.length)tail=Array.from(tail).slice(0,-1).join("");
-    if(i+Array.from(tail).length<chars.length) {
-     while(tail && ctx.measureText(tail+"…").width>maxWidth)tail=Array.from(tail).slice(0,-1).join("");
-     tail+="…";
-    }
-    lines.push(tail);return lines;
-   }
-  } else line=next;
+ const lines:string[]=[];const chars=Array.from(value.trim() || "球友");
+ let offset=0;
+ while(offset<chars.length && lines.length<maxLines) {
+  let line="";
+  while(offset<chars.length && ctx.measureText(line+chars[offset]).width<=maxWidth)line+=chars[offset++]!;
+  if(!line)line=chars[offset++]!;
+  if(lines.length===maxLines-1 && offset<chars.length) {
+   while(line && ctx.measureText(line+"…").width>maxWidth)line=Array.from(line).slice(0,-1).join("");
+   line+="…";
+  }
+  lines.push(line);
  }
- if(line)lines.push(line);return lines;
+ return lines;
 }
 function roundRect(ctx: UniApp.CanvasContext,x: number,y: number,width: number,height: number,radius: number) {
  ctx.beginPath();ctx.moveTo(x+radius,y);ctx.lineTo(x+width-radius,y);ctx.quadraticCurveTo(x+width,y,x+width,y+radius);
@@ -64,8 +59,8 @@ export async function composeHonorImage(
  if(kind==="poster") {
   text(ctx,`${view.year} · 我的足球年度`,512,225,34,muted);
   portrait(ctx,avatar,view,422,315,180);if(crown)ctx.drawImage(crown.path,477,258,70,70);
-  ctx.font="600 62px sans-serif";nameLines(ctx,view.nickname,700).forEach((line,index)=>text(ctx,line,512,550+index*72,62,fg,"center",600));
-  ctx.font="400 32px sans-serif";nameLines(ctx,view.team_name,700,1).forEach(line=>text(ctx,line,512,637,32,muted));
+  ctx.font="600 54px sans-serif";nameLines(ctx,view.nickname,700).forEach((line,index)=>text(ctx,line,512,546+index*62,54,fg,"center",600));
+  ctx.font="400 32px sans-serif";nameLines(ctx,view.team_name,700,1).forEach(line=>text(ctx,line,512,665,32,muted));
   text(ctx,"年度参与积分",512,721,36,muted);
   text(ctx,formatHonorPoints(view.participation_points)+" 分",512,835,152,fg,"center",600);
   const honor=honorTitle(view.participation_points,view.participation_rank);
