@@ -4,28 +4,33 @@ const {ref,nextTick,effectScope}=await import("vue");
 const user=ref<{id:number}|null>({id:4});
 let onLoadCallback:(options:any)=>void,onShowCallback:(()=>void)|undefined;
 let sessionActor=4,issues=0,resolves=0,codes=0,exports=0,joinedRequests=0,refreshFails=false,manualLogout=false,revoked=false;
+let pendingHonor:Promise<typeof record>|null=null;
+const albumFiles:string[]=[];
+let posterRecord:typeof record|undefined;
 const record={code:"abcdefghijklmnopqrstuv",team_id:11,user_id:4,year:2026,nickname:"球友",team_name:"球队",participation_points:259,participation_rank:4,is_paid_member:false,is_member:false,requires_password:false};
 mock.module("@dcloudio/uni-app",()=>({onLoad:(fn:any)=>onLoadCallback=fn,onShow:(fn:any)=>onShowCallback=fn,onUnload:()=>undefined,onShareAppMessage:()=>undefined,onShareTimeline:()=>undefined}));
-mock.module("@/api/honors",()=>({issueHonorShare:async()=>{issues++;if(revoked)throw new Error("分享已失效");return {...record};},resolveHonorShare:async()=>{resolves++;if(revoked)throw new Error("分享已失效");return {...record};},getHonorMiniCode:async()=>{codes++;return {image_url:"actual-code.png"};}}));
+mock.module("@/api/honors",()=>({issueHonorShare:async()=>{issues++;if(revoked)throw new Error("分享已失效");if(pendingHonor)return pendingHonor;return {...record};},resolveHonorShare:async()=>{resolves++;if(revoked)throw new Error("分享已失效");return {...record};},getHonorMiniCode:async()=>{codes++;return {image_url:"actual-code.png"};}}));
 mock.module("@/api/team",()=>({joinTeam:async()=>{joinedRequests++;}}));
 mock.module("@/utils/authStorage",()=>({hasManualLogout:()=>manualLogout}));
 mock.module("@/stores/teamContext",()=>({useTeamContext:()=>({currentUser:user,ensureSessionReady:async()=>{user.value={id:sessionActor};},refreshSessionContext:async()=>{if(refreshFails){user.value=null;await nextTick();throw new Error("network");}}})}));
 mock.module("@/stores/miniReview",()=>({useMiniReviewStatus:()=>({shouldHideCreationEntrances:ref(false)})}));
 mock.module("@/pages/teams/useProfileCompletionGate",()=>({useProfileCompletionGate:()=>({ensureProfileComplete:async()=>true,handleProfileGateCancel:()=>undefined})}));
-mock.module("@/utils/honorPosterCompose",()=>({composeHonorImage:async()=>{exports++;return "poster.jpg";}}));
+mock.module("@/utils/honorPosterCompose",()=>({composeHonorImage:async(_canvas:any,_page:any,view:any,_background:any,kind:string)=>{exports++;if(kind==="poster")posterRecord=view;return "poster.jpg";}}));
 const {useHonorPage}=await import("../useHonorPage");
 let scope=effectScope();
 function makePage(options:any){scope=effectScope();const page=scope.run(()=>useHonorPage(null))!;onLoadCallback(options);return page;}
 async function flush(){for(let i=0;i<8;i++)await new Promise(resolve=>setTimeout(resolve,0));}
-afterEach(()=>{scope.stop();sessionActor=4;user.value={id:4};issues=resolves=codes=exports=joinedRequests=0;refreshFails=manualLogout=revoked=false;onShowCallback=undefined;});
-(globalThis as unknown as {uni:typeof uni}).uni={getStorageSync:()=>"pitch",hideShareMenu:()=>undefined,showShareMenu:()=>undefined,getAccountInfoSync:()=>({miniProgram:{envVersion:"develop"}}),saveImageToPhotosAlbum:({success}:any)=>success(),previewImage:()=>undefined,showToast:()=>undefined} as unknown as typeof uni;
+afterEach(()=>{scope.stop();sessionActor=4;user.value={id:4};issues=resolves=codes=exports=joinedRequests=0;refreshFails=manualLogout=revoked=false;onShowCallback=undefined;pendingHonor=null;albumFiles.length=0;posterRecord=undefined;});
+(globalThis as unknown as {uni:typeof uni}).uni={getStorageSync:()=>"pitch",hideShareMenu:()=>undefined,showShareMenu:()=>undefined,getAccountInfoSync:()=>({miniProgram:{envVersion:"develop"}}),saveImageToPhotosAlbum:({filePath,success}:any)=>{albumFiles.push(filePath);success();},previewImage:()=>undefined,showToast:()=>undefined} as unknown as typeof uni;
 test("returning to own page refreshes current year, code links preserve their source",async()=>{
  makePage({teamId:"11"});await flush();const before=issues;
  expect(onShowCallback).toBeDefined();onShowCallback!();await flush();expect(issues).toBe(before+1);
 });
 test("save revalidates cached data and refuses a revoked share",async()=>{
- const page=makePage({teamId:"11"});await flush();const before=exports;revoked=true;
+ const page=makePage({teamId:"11"});await flush();const before=exports,displayed=page.view.value;revoked=true;
  await page.savePoster();expect(issues).toBe(2);expect(exports).toBe(before);
+ expect(page.view.value).toBe(displayed);expect(page.loading.value).toBe(false);expect(page.error.value).toBe("");
+ expect(albumFiles).toEqual([]);
 });
 test("confirmed join survives refresh failure but active logout clears it",async()=>{
  record.user_id=5;
@@ -44,4 +49,28 @@ test("shared link opens the sharer's honor for a different user without issuing 
  expect(issues).toBe(1);expect(resolves).toBe(1);
  expect(recipient.view.value?.user_id).toBe(4);expect(recipient.isSelf.value).toBe(false);
  expect(codes).toBe(1);
+});
+test("saving keeps the poster visible while checking fresh scores, then saves the chosen poster directly",async()=>{
+ const page=makePage({teamId:"11"});await flush();
+ const displayed=page.view.value,bg=page.background.value,codeUrl=page.miniCodeUrl.value;
+ let finish!:(value:typeof record)=>void;
+ pendingHonor=new Promise(resolve=>{finish=resolve;});
+ const saving=page.savePoster();await nextTick();
+ expect(page.saving.value).toBe(true);expect(page.loading.value).toBe(false);
+ expect(page.view.value).toBe(displayed);expect(page.background.value).toBe(bg);
+ expect(page.miniCodeUrl.value).toBe(codeUrl);expect(page.shareReady.value).toBe(true);
+ finish({...record,participation_points:260.2});await saving;
+ expect(page.saving.value).toBe(false);expect(page.loading.value).toBe(false);
+ expect(page.view.value?.participation_points).toBe(260.2);
+ expect(posterRecord?.participation_points).toBe(260.2);
+ expect(albumFiles).toEqual(["poster.jpg"]);expect(codes).toBe(1);
+});
+test("saving after annual rollover refreshes the mini code without resetting the page",async()=>{
+ const page=makePage({teamId:"11"});await flush();
+ const nextYear={...record,code:"zyxwvutsrqponmlkjihgfe",year:2027,participation_points:0};
+ pendingHonor=Promise.resolve(nextYear);
+ await page.savePoster();
+ expect(page.view.value?.year).toBe(2027);expect(page.view.value?.code).toBe(nextYear.code);
+ expect(posterRecord?.year).toBe(2027);expect(codes).toBe(2);
+ expect(albumFiles).toEqual(["poster.jpg"]);expect(page.loading.value).toBe(false);
 });

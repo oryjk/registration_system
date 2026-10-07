@@ -47,13 +47,17 @@ export function useHonorPage(pageInstance: unknown) {
   } catch { /* Native share keeps a valid static backdrop and descriptive title. */ }
   // #endif
  }
+ async function fetchHonor():Promise<HonorShare> {
+  if(!source)throw new Error("荣誉分享链接无效");
+  return "code" in source ? resolveHonorShare(source.code) : issueHonorShare(source.teamId);
+ }
  async function load() {
   const version=++loadVersion;reset();loading.value=true;error.value="";
   try {
    if(!source)throw new Error("荣誉分享链接无效");
    await context.ensureSessionReady();
    const actor=context.currentUser.value?.id;
-   const result="code" in source ? await resolveHonorShare(source.code) : await issueHonorShare(source.teamId);
+   const result=await fetchHonor();
    if(disposed || version!==loadVersion || actor!==context.currentUser.value?.id)return;
    view.value=result;
    uni.showShareMenu({withShareTicket:true,menus:["shareAppMessage","shareTimeline"]});
@@ -95,12 +99,18 @@ export function useHonorPage(pageInstance: unknown) {
  }
  async function savePoster() {
   if(saving.value || !isSelf.value || !view.value)return;
+  const previous=view.value,actor=context.currentUser.value?.id,bg=background.value,version=loadVersion;
   saving.value=true;
   try {
-   await load();
-   const record=view.value,actor=context.currentUser.value?.id,bg=background.value;
-   if(!record || !isSelf.value || error.value)throw new Error(error.value || "荣誉已变化，请重新打开");
-   const version=loadVersion;
+   // Revalidate for export without resetting the visible poster or page loader.
+   // The honor endpoint checks the current token; no full session bootstrap is needed here.
+   const record=await fetchHonor();
+   if(disposed || version!==loadVersion || actor!==context.currentUser.value?.id || previous.code!==view.value?.code || bg.id!==background.value.id)throw new Error("海报内容已更新，请重新保存");
+   if(record.user_id!==actor)throw new Error("只能保存自己的荣誉海报");
+   if(record.code!==previous.code) {
+    codeVersion++;codePromise=null;codeLoading.value=false;miniCodeUrl.value="";codeError.value="";
+   }
+   view.value=record;
    const code=await ensureMiniCode();
    const current=()=>version===loadVersion && !disposed && record.code===view.value?.code && actor===context.currentUser.value?.id && bg.id===background.value.id;
    await nextTick();
@@ -113,6 +123,7 @@ export function useHonorPage(pageInstance: unknown) {
    // #ifdef H5
    uni.previewImage({urls:[path],current:path});
    // #endif
+   void prepareCover();
   } catch(failure) {
    const detail=failure && typeof failure==="object" && "errMsg" in failure?String(failure.errMsg):"";
    if(/auth|deny|denied/i.test(detail)) {
