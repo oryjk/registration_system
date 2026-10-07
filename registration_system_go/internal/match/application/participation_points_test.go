@@ -40,23 +40,24 @@ func TestUserParticipationConfirmationAndAdminCorrection(t *testing.T) {
 	}
 	put(user, domain.RegistrationLeave)
 	later := put(NewUserRegistrationService(repo, fakeClock{now: now.Add(7 * time.Hour)}), domain.RegistrationAttending)
-	if later.EarlyRegistrationBonus != 15 || !later.ParticipationConfirmedAt.Equal(now.Add(7*time.Hour)) {
+	if later.EarlyRegistrationBonus != 30 || !later.ParticipationConfirmedAt.Equal(now) {
 		t.Fatalf("bad re-entry %+v", later)
 	}
 }
 
-func TestRepeatedHistoricalAttendingDoesNotInventBonus(t *testing.T) {
+func TestFirstSelfResponseToExistingAttendingRecordsBonus(t *testing.T) {
 	now := time.Now().UTC()
 	repo := adminRegistrationFixture(now)
+	repo.match.CreatedAt = now.Add(-time.Minute)
 	old, _ := domain.NewRegistration(repo.group.ID, 42, domain.RegistrationAttending, 1, now.Add(-time.Hour))
 	repo.registrations[repo.group.ID] = []domain.Registration{old}
 	r, err := NewUserRegistrationService(repo, fakeClock{now: now}).Put(context.Background(), sharedauth.Actor{Kind: sharedauth.ActorUser, ID: 42}, repo.match.ID, repo.group.ID, PutMyRegistrationCommand{Status: domain.RegistrationAttending, RegistrationCount: 1})
-	if err != nil || r.ParticipationConfirmedAt != nil || r.EarlyRegistrationBonus != 0 {
-		t.Fatalf("invented reward %+v err=%v", r, err)
+	if err != nil || r.ParticipationConfirmedAt == nil || r.EarlyRegistrationBonus != 30 {
+		t.Fatalf("missing first self response %+v err=%v", r, err)
 	}
 }
 
-func TestUserAcknowledgesAdminAbsentClearsOldReward(t *testing.T) {
+func TestUserAcknowledgesAdminAbsentPreservesFirstReward(t *testing.T) {
 	now := time.Now().UTC()
 	repo := adminRegistrationFixture(now)
 	old, _ := domain.NewRegistration(repo.group.ID, 42, domain.RegistrationAttending, 1, now)
@@ -67,7 +68,22 @@ func TestUserAcknowledgesAdminAbsentClearsOldReward(t *testing.T) {
 	old.Paid = true // An identical paid request must retain the existing success contract.
 	repo.registrations[repo.group.ID] = []domain.Registration{old}
 	r, err := NewUserRegistrationService(repo, fakeClock{now: now.Add(2 * time.Minute)}).Put(context.Background(), sharedauth.Actor{Kind: sharedauth.ActorUser, ID: 42}, repo.match.ID, repo.group.ID, PutMyRegistrationCommand{Status: domain.RegistrationAbsent, RegistrationCount: 1})
-	if err != nil || r.ParticipationConfirmedAt != nil || r.EarlyRegistrationBonus != 0 || !r.Paid {
-		t.Fatalf("user non-attending confirmation kept reward %+v err=%v", r, err)
+	if err != nil || r.ParticipationConfirmedAt == nil || r.EarlyRegistrationBonus != 30 || !r.Paid {
+		t.Fatalf("user non-attending confirmation lost reward %+v err=%v", r, err)
+	}
+}
+
+func TestFirstLeaveThenAttendanceKeepsEarlyResponseBonus(t *testing.T) {
+	now := time.Now().UTC()
+	repo := adminRegistrationFixture(now)
+	repo.match.CreatedAt = now.Add(-time.Minute)
+	actor := sharedauth.Actor{Kind: sharedauth.ActorUser, ID: 42}
+	first, err := NewUserRegistrationService(repo, fakeClock{now: now}).Put(context.Background(), actor, repo.match.ID, repo.group.ID, PutMyRegistrationCommand{Status: domain.RegistrationLeave, RegistrationCount: 1})
+	if err != nil || first.ParticipationConfirmedAt == nil || first.EarlyRegistrationBonus != 30 {
+		t.Fatalf("first leave=%+v err=%v", first, err)
+	}
+	later, err := NewUserRegistrationService(repo, fakeClock{now: now.Add(8 * time.Hour)}).Put(context.Background(), actor, repo.match.ID, repo.group.ID, PutMyRegistrationCommand{Status: domain.RegistrationAttending, RegistrationCount: 1})
+	if err != nil || later.EarlyRegistrationBonus != 30 || !later.ParticipationConfirmedAt.Equal(now) {
+		t.Fatalf("later attendance=%+v err=%v", later, err)
 	}
 }

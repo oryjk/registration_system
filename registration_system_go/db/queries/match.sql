@@ -647,16 +647,21 @@ INSERT INTO match_registrations (
     updated_at,
     cancelled_at,
     participation_confirmed_at,
-    early_registration_bonus
+    early_registration_bonus,
+    participation_rule_version
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, sqlc.narg('participation_confirmed_at'), sqlc.arg('early_registration_bonus'))
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, sqlc.narg('participation_confirmed_at'), sqlc.arg('early_registration_bonus'),
+    CASE WHEN sqlc.narg('participation_confirmed_at')::timestamp IS NULL THEN 1 ELSE 2 END)
 ON CONFLICT (group_id, user_id) DO UPDATE
 SET status = EXCLUDED.status,
     registration_count = EXCLUDED.registration_count,
     updated_at = EXCLUDED.updated_at,
     cancelled_at = EXCLUDED.cancelled_at,
     participation_confirmed_at = EXCLUDED.participation_confirmed_at,
-    early_registration_bonus = EXCLUDED.early_registration_bonus;
+    early_registration_bonus = EXCLUDED.early_registration_bonus,
+    participation_rule_version = CASE
+        WHEN match_registrations.participation_confirmed_at IS NULL AND EXCLUDED.participation_confirmed_at IS NOT NULL THEN 2
+        ELSE match_registrations.participation_rule_version END;
 
 -- name: ListRegistrationGroupStatesForUser :many
 SELECT g.*,

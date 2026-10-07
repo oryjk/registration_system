@@ -40,20 +40,37 @@ func TestParticipationConfirmationLifecycle(t *testing.T) {
 		t.Fatal("admin correction lost original reward")
 	}
 	r.Cancel(start.Add(time.Minute))
-	if r.ParticipationConfirmedAt != nil || r.EarlyRegistrationBonus != 0 {
-		t.Fatal("user cancellation must clear reward")
+	if r.ParticipationConfirmedAt == nil || !r.ParticipationConfirmedAt.Equal(start) || r.EarlyRegistrationBonus != 30 {
+		t.Fatal("cancellation must preserve first response reward")
 	}
 	if err := r.ApplyUserStatus(RegistrationAttending, 1, start.Add(8*time.Hour)); err != nil {
 		t.Fatal(err)
 	}
 	r.ConfirmParticipation(start.Add(8*time.Hour), start)
-	if r.EarlyRegistrationBonus != 15 {
-		t.Fatal("re-registration must use new time")
+	if r.EarlyRegistrationBonus != 30 || !r.ParticipationConfirmedAt.Equal(start) {
+		t.Fatal("re-registration must keep the first response")
 	}
 	if err := r.ApplyUserStatus(RegistrationLeave, 1, start.Add(9*time.Hour)); err != nil {
 		t.Fatal(err)
 	}
-	if r.ParticipationConfirmedAt != nil || r.EarlyRegistrationBonus != 0 {
-		t.Fatal("user leave must clear reward")
+	if r.ParticipationConfirmedAt == nil || !r.ParticipationConfirmedAt.Equal(start) || r.EarlyRegistrationBonus != 30 {
+		t.Fatal("leave must preserve first response reward")
+	}
+}
+
+func TestFirstLeaveResponseFreezesParticipationBonus(t *testing.T) {
+	start := time.Now().UTC()
+	r, _ := NewRegistration(uuid.New(), 1, RegistrationLeave, 1, start)
+	r.ConfirmParticipation(start.Add(time.Minute), start)
+	if r.ParticipationConfirmedAt == nil || r.EarlyRegistrationBonus != 30 {
+		t.Fatal("first leave must record early response")
+	}
+	first := *r.ParticipationConfirmedAt
+	if err := r.ApplyUserStatus(RegistrationAttending, 1, start.Add(48*time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	r.ConfirmParticipation(start.Add(48*time.Hour), start)
+	if !r.ParticipationConfirmedAt.Equal(first) || r.EarlyRegistrationBonus != 30 {
+		t.Fatal("later attendance changed first response bonus")
 	}
 }

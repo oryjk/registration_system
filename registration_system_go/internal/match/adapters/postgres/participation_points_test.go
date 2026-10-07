@@ -51,8 +51,8 @@ func TestAnnualParticipationPointsHistoryAndCorrections(t *testing.T) {
 				t.Fatal(err)
 			}
 			var count int
-			if err = pool.QueryRow(ctx, `SELECT count(*) FROM team_participation_points WHERE registration_id=$1`, r.ID).Scan(&count); err != nil || count != 0 {
-				t.Fatalf("absent counted %d err=%v", count, err)
+			if err = pool.QueryRow(ctx, `SELECT count(*) FROM team_participation_points WHERE registration_id=$1`, r.ID).Scan(&count); err != nil || count != 1 {
+				t.Fatalf("absent lost fixed response reward %d err=%v", count, err)
 			}
 			if _, err = pool.Exec(ctx, `UPDATE match_registrations SET status='attending' WHERE id=$1`, r.ID); err != nil {
 				t.Fatal(err)
@@ -135,6 +135,23 @@ func TestSelfParticipationRewardPersistedWithAvailabilityAndAdminCorrection(t *t
 	if err != nil || r.EarlyRegistrationBonus != 30 {
 		t.Fatalf("self confirm %+v err=%v", r, err)
 	}
+	// First response survives leave, cancellation and later attendance in storage.
+	for _, status := range []domain.RegistrationStatus{domain.RegistrationLeave, domain.RegistrationAttending} {
+		service := matchapplication.NewUserRegistrationService(repo, repositoryTestClock{now: now.Add(8 * time.Hour)})
+		updated, err := service.Put(ctx, sharedauth.Actor{Kind: sharedauth.ActorUser, ID: owner}, m.ID, groups[0].ID, matchapplication.PutMyRegistrationCommand{Status: status, RegistrationCount: 1})
+		if err != nil || updated.EarlyRegistrationBonus != 30 || !updated.ParticipationConfirmedAt.Equal(now) {
+			t.Fatalf("status changed first response %+v err=%v", updated, err)
+		}
+	}
+	service := matchapplication.NewUserRegistrationService(repo, repositoryTestClock{now: now.Add(9 * time.Hour)})
+	cancelled, err := service.Delete(ctx, sharedauth.Actor{Kind: sharedauth.ActorUser, ID: owner}, m.ID, groups[0].ID)
+	if err != nil || cancelled.EarlyRegistrationBonus != 30 || !cancelled.ParticipationConfirmedAt.Equal(now) {
+		t.Fatalf("cancellation lost first response %+v err=%v", cancelled, err)
+	}
+	restored, err := service.Put(ctx, sharedauth.Actor{Kind: sharedauth.ActorUser, ID: owner}, m.ID, groups[0].ID, matchapplication.PutMyRegistrationCommand{Status: domain.RegistrationAttending, RegistrationCount: 1})
+	if err != nil || restored.EarlyRegistrationBonus != 30 || !restored.ParticipationConfirmedAt.Equal(now) {
+		t.Fatalf("re-entry changed first response %+v err=%v", restored, err)
+	}
 	// End the match and edit its opening time. Persisted bonus remains unchanged.
 	if _, err = pool.Exec(ctx, `UPDATE matches SET status='ended',start_time=$2,end_time=$3,registration_start_at=$4 WHERE id=$1`, m.ID, now.Add(-2*time.Hour), now.Add(-time.Hour), now.Add(-72*time.Hour)); err != nil {
 		t.Fatal(err)
@@ -158,5 +175,67 @@ func TestSelfParticipationRewardPersistedWithAvailabilityAndAdminCorrection(t *t
 	var n int
 	if err = pool.QueryRow(ctx, `SELECT count(*) FROM team_participation_points WHERE registration_id=$1`, r.ID).Scan(&n); err != nil || n != 0 {
 		t.Fatalf("cancelled group counted %d err=%v", n, err)
+	}
+}
+
+func TestFirstResponseScoresLeaveWithoutAttendanceBase(t *testing.T) {
+	pool := testsupport.StartPostgres(t)
+	ctx := context.Background()
+	owner, team := seedMatchOwner(t, pool)
+	if _, err := pool.Exec(ctx, `INSERT INTO team_members (team_id,user_id,role,status) VALUES ($1,$2,'captain','active')`, team, owner); err != nil {
+		t.Fatal(err)
+	}
+	repo := NewRepository(pool)
+	teamRepo := teampostgres.NewRepository(pool)
+	m, groups := newPersistableMatch(t, owner, team)
+	m.Status = domain.MatchEnded
+	if err := repo.CreateWithGroups(ctx, m, groups); err != nil {
+		t.Fatal(err)
+	}
+	r, _ := domain.NewRegistration(groups[0].ID, owner, domain.RegistrationAttending, 1, m.CreatedAt.Add(time.Minute))
+	if err := repo.CreateRegistration(ctx, r); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `UPDATE match_registrations SET participation_confirmed_at=$2,early_registration_bonus=30 WHERE id=$1`, r.ID, r.CreatedAt); err != nil {
+		t.Fatal(err)
+	}
+	for _, status := range []string{"attending", "leave", "absent", "cancelled"} {
+		if _, err := pool.Exec(ctx, `UPDATE match_registrations SET status=$2::varchar,cancelled_at=CASE WHEN $2::varchar='cancelled' THEN updated_at ELSE NULL END WHERE id=$1`, r.ID, status); err != nil {
+			t.Fatal(err)
+		}
+		var points int64
+		if err := pool.QueryRow(ctx, `SELECT points FROM team_participation_points WHERE registration_id=$1`, r.ID).Scan(&points); err != nil {
+			t.Fatalf("response bonus disappeared on %s: %v", status, err)
+		}
+		expected := int64(30)
+		if status == "attending" {
+			expected = 100
+		}
+		if points != expected {
+			t.Fatalf("status=%s points=%d expected=%d", status, points, expected)
+		}
+		var attended int64
+		if err := pool.QueryRow(ctx, `SELECT attended_count FROM team_participation_totals WHERE team_id=$1 AND user_id=$2`, team, owner).Scan(&attended); err != nil {
+			t.Fatal(err)
+		}
+		expectedCount := int64(0)
+		if status == "attending" {
+			expectedCount = 1
+		}
+		if attended != expectedCount {
+			t.Fatalf("leave treated as attendance: %d", attended)
+		}
+		ranking, err := teamRepo.ListAttendanceRanking(ctx, team, nil, nil)
+		if err != nil || len(ranking) != 1 || ranking[0].ParticipationPoints != expected || ranking[0].AttendedCount != expectedCount {
+			t.Fatalf("status=%s ranking=%+v err=%v", status, ranking, err)
+		}
+		records, err := teamRepo.ListMemberAttendanceRecords(ctx, team, owner, nil, nil)
+		if err != nil || len(records) != 1 || records[0].ParticipationPoints != expected {
+			t.Fatalf("status=%s records=%+v err=%v", status, records, err)
+		}
+		_, members, found, err := teamRepo.ListMatchAttendance(ctx, team, m.ID)
+		if err != nil || !found || len(members) != 1 || members[0].ParticipationPoints != expected {
+			t.Fatalf("status=%s match members=%+v err=%v", status, members, err)
+		}
 	}
 }

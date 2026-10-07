@@ -251,14 +251,17 @@ type TeamMember struct {
 }
 
 type TeamParticipationPoint struct {
-	RegistrationID pgtype.UUID      `json:"registration_id"`
-	MatchID        pgtype.UUID      `json:"match_id"`
-	TeamID         *int64           `json:"team_id"`
-	UserID         int64            `json:"user_id"`
-	MatchStartTime pgtype.Timestamp `json:"match_start_time"`
-	ScoreYear      int32            `json:"score_year"`
-	Points         int64            `json:"points"`
-	RuleVersion    int32            `json:"rule_version"`
+	RegistrationID   pgtype.UUID      `json:"registration_id"`
+	MatchID          pgtype.UUID      `json:"match_id"`
+	TeamID           *int64           `json:"team_id"`
+	UserID           int64            `json:"user_id"`
+	MatchStartTime   pgtype.Timestamp `json:"match_start_time"`
+	ScoreYear        int32            `json:"score_year"`
+	Points           int64            `json:"points"`
+	RuleVersion      int32            `json:"rule_version"`
+	AttendancePoints int64            `json:"attendance_points"`
+	ResponsePoints   int64            `json:"response_points"`
+	GroupID          pgtype.UUID      `json:"group_id"`
 }
 
 type TeamParticipationRank struct {

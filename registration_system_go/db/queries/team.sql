@@ -438,7 +438,7 @@ LEFT JOIN match_registrations r
   ON r.group_id = g.id
  AND r.user_id = $2
  AND r.status <> 'cancelled'
-LEFT JOIN team_participation_points pp ON pp.registration_id=r.id
+LEFT JOIN team_participation_points pp ON pp.group_id=g.id AND pp.user_id=$2
 WHERE m.status <> 'cancelled'
   AND (m.status = 'ended' OR m.end_time <= (NOW() AT TIME ZONE 'utc'))
   AND (sqlc.narg('start_date')::date IS NULL OR m.start_time >= ((sqlc.narg('start_date')::date::timestamp AT TIME ZONE 'Asia/Shanghai') AT TIME ZONE 'UTC'))
@@ -476,7 +476,7 @@ LEFT JOIN match_registrations r
   ON r.group_id = t.group_id
  AND r.user_id = tm.user_id
  AND r.status <> 'cancelled'
-LEFT JOIN team_participation_points pp ON pp.registration_id=r.id
+LEFT JOIN team_participation_points pp ON pp.group_id=t.group_id AND pp.user_id=tm.user_id
 WHERE tm.team_id = $1
   AND tm.status = 'active'
 GROUP BY tm.user_id, u.nickname, u.avatar_url, tm.joined_at
@@ -507,7 +507,7 @@ LEFT JOIN match_registrations r
   ON r.group_id = g.id
  AND r.user_id = tm.user_id
  AND r.status <> 'cancelled'
-LEFT JOIN team_participation_points pp ON pp.registration_id=r.id
+LEFT JOIN team_participation_points pp ON pp.group_id=g.id AND pp.user_id=tm.user_id
 WHERE m.id = sqlc.arg('match_id')
   AND m.status <> 'cancelled'
   AND (m.status = 'ended' OR m.end_time <= (NOW() AT TIME ZONE 'utc'))
