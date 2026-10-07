@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -99,12 +100,17 @@ func (t userRegistrationTransaction) IsTeamMember(ctx context.Context, teamID, u
 	return t.queries.IsTeamRosterMember(ctx, matchsqlc.IsTeamRosterMemberParams{TeamID: teamID, UserID: userID})
 }
 
+func (t userRegistrationTransaction) ParticipationAvailableAt(ctx context.Context, groupID uuid.UUID, userID int64) (time.Time, error) {
+	value, err := t.queries.GetParticipationAvailableAt(ctx, matchsqlc.GetParticipationAvailableAtParams{GroupID: pgUUID(groupID), UserID: userID})
+	return value.Time, err
+}
+
 func (t userRegistrationTransaction) SaveRegistration(ctx context.Context, registration domain.Registration) error {
 	err := t.queries.SaveUserRegistration(ctx, matchsqlc.SaveUserRegistrationParams{
 		ID: pgUUID(registration.ID), GroupID: pgUUID(registration.GroupID), UserID: registration.UserID,
 		Status: string(registration.Status), RegistrationCount: int32(registration.RegistrationCount),
 		CreatedAt: pgTimestamp(registration.CreatedAt), UpdatedAt: pgTimestamp(registration.UpdatedAt),
-		CancelledAt: pgOptionalTimestamp(registration.CancelledAt),
+		CancelledAt: pgOptionalTimestamp(registration.CancelledAt), ParticipationConfirmedAt: pgOptionalTimestamp(registration.ParticipationConfirmedAt), EarlyRegistrationBonus: registration.EarlyRegistrationBonus,
 	})
 	var postgresError *pgconn.PgError
 	if !errors.As(err, &postgresError) {
@@ -136,7 +142,7 @@ func mapRegistration(row matchsqlc.MatchRegistration) domain.Registration {
 	return domain.Registration{
 		ID: uuid.UUID(row.ID.Bytes), GroupID: uuid.UUID(row.GroupID.Bytes), UserID: row.UserID,
 		Status: domain.RegistrationStatus(row.Status), RegistrationCount: int(row.RegistrationCount),
-		Paid:      row.Paid,
+		Paid: row.Paid, ParticipationConfirmedAt: timestampPointer(row.ParticipationConfirmedAt), EarlyRegistrationBonus: row.EarlyRegistrationBonus,
 		CreatedAt: row.CreatedAt.Time, UpdatedAt: row.UpdatedAt.Time, CancelledAt: timestampPointer(row.CancelledAt),
 	}
 }

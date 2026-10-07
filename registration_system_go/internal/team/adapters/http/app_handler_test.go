@@ -14,6 +14,7 @@ import (
 	sharedauth "github.com/oryjk/registration_system/registration_system_go/internal/shared/auth"
 	"github.com/oryjk/registration_system/registration_system_go/internal/team/application"
 	"github.com/oryjk/registration_system/registration_system_go/internal/team/domain"
+	"github.com/oryjk/registration_system/registration_system_go/internal/team/ports"
 )
 
 func TestAppTeamRoutesReturnPrivacyDTOs(t *testing.T) {
@@ -24,7 +25,7 @@ func TestAppTeamRoutesReturnPrivacyDTOs(t *testing.T) {
 		detail: application.AppTeamDetail{Team: domain.Team{
 			ID: 7, Name: "东安联队", Status: domain.TeamActive, CreatedAt: now,
 		}, MyRole: domain.RoleLeader},
-		members: []application.AppTeamMember{{AttendanceRank: func() *int64 { r := int64(2); return &r }(), AttendedCount: 12, UserID: 42, Nickname: "阿睿", RealName: &realName, Role: domain.RoleLeader, Status: domain.MemberActive, JoinedAt: now}},
+		members: []application.AppTeamMember{{AttendanceRank: func() *int64 { r := int64(2); return &r }(), AttendedCount: 12, ParticipationPoints: 945, UserID: 42, Nickname: "阿睿", RealName: &realName, Role: domain.RoleLeader, Status: domain.MemberActive, JoinedAt: now}},
 	}
 	handler := NewAppHandler(queries, nil)
 	router := gin.New()
@@ -38,6 +39,7 @@ func TestAppTeamRoutesReturnPrivacyDTOs(t *testing.T) {
 		{path: "/teams/7/members", want: `"user_id":42`},
 		{path: "/teams/7/members", want: `"attended_count":12`},
 		{path: "/teams/7/members", want: `"attendance_rank":2`},
+		{path: "/teams/7/members", want: `"participation_points":94.5`},
 	} {
 		response := httptest.NewRecorder()
 		request := httptest.NewRequest(http.MethodGet, test.path, nil)
@@ -115,7 +117,7 @@ func TestAppTeamAttendanceRoutesMapStandAndForwardDateRange(t *testing.T) {
 	operation := pgtypeTimestampForTest(time.Date(2026, 8, 14, 12, 0, 0, 0, time.UTC))
 	attendance := &fakeAppAttendanceQueries{
 		records: []application.AttendanceQueryRecord{
-			{ActivityID: "m-1", ActivityName: "周四友谊赛", HoldingDate: time.Date(2026, 8, 13, 12, 0, 0, 0, time.UTC), Location: "球场", Stand: "attending", RegistrationCount: 1, OperationTime: operation, Registered: true},
+			{ActivityID: "m-1", ActivityName: "周四友谊赛", HoldingDate: time.Date(2026, 8, 13, 12, 0, 0, 0, time.UTC), Location: "球场", Stand: "attending", RegistrationCount: 1, OperationTime: operation, Registered: true, ParticipationPoints: 94},
 			{ActivityID: "m-2", ActivityName: "未报名赛", HoldingDate: time.Date(2026, 8, 6, 12, 0, 0, 0, time.UTC), Location: "球场", Stand: "unknown", RegistrationCount: 0, Registered: false},
 		},
 	}
@@ -134,7 +136,7 @@ func TestAppTeamAttendanceRoutesMapStandAndForwardDateRange(t *testing.T) {
 		t.Fatalf("unexpected member attendance response %d: %s", response.Code, response.Body.String())
 	}
 	body := response.Body.String()
-	for _, expected := range []string{`"stand":1`, `"stand":0`, `"registered":true`, `"activity_id":"m-1"`} {
+	for _, expected := range []string{`"stand":1`, `"stand":0`, `"registered":true`, `"activity_id":"m-1"`, `"participation_points":9.4`} {
 		if !bytes.Contains(response.Body.Bytes(), []byte(expected)) {
 			t.Fatalf("member attendance body missing %s: %s", expected, body)
 		}
@@ -144,8 +146,9 @@ func TestAppTeamAttendanceRoutesMapStandAndForwardDateRange(t *testing.T) {
 	}
 
 	attendance.summary = application.AttendanceSummary{
-		MyRecords: attendance.records[:1],
-		Ranking:   []application.AttendanceQueryRankingItem{{UserID: 9, UserName: "队长", TotalCount: 3, AttendedCount: 2, UnregisteredCount: 1}},
+		MyRecords:    attendance.records[:1],
+		Ranking:      []application.AttendanceQueryRankingItem{{UserID: 9, UserName: "队长", TotalCount: 3, AttendedCount: 2, UnregisteredCount: 1, ParticipationPoints: 170}},
+		AnnualPoints: []ports.AnnualParticipationPoints{{ScoreYear: 2026, ParticipationPoints: 170}},
 	}
 	request = httptest.NewRequest(http.MethodGet, "/teams/7/attendance-summary", nil)
 	request.Header.Set("Authorization", "Bearer user-token")
@@ -155,7 +158,7 @@ func TestAppTeamAttendanceRoutesMapStandAndForwardDateRange(t *testing.T) {
 	if response.Code != http.StatusOK {
 		t.Fatalf("unexpected summary response %d: %s", response.Code, response.Body.String())
 	}
-	for _, expected := range []string{`"my_records":`, `"ranking":`, `"attended_count":2`} {
+	for _, expected := range []string{`"my_records":`, `"ranking":`, `"attended_count":2`, `"participation_points":17`, `"annual_points":[{"year":2026,"participation_points":17}]`} {
 		if !bytes.Contains(response.Body.Bytes(), []byte(expected)) {
 			t.Fatalf("summary body missing %s: %s", expected, response.Body.String())
 		}
@@ -180,7 +183,7 @@ func TestAppTeamMatchAttendanceRouteMapsMembers(t *testing.T) {
 	attendance := &fakeAppAttendanceQueries{
 		matchHeader: application.AttendanceQueryHeader{ActivityID: matchID.String(), ActivityName: "周四友谊赛", HoldingDate: time.Date(2026, 8, 13, 12, 0, 0, 0, time.UTC), Location: "球场"},
 		matchMembers: []application.AttendanceQueryMember{
-			{UserID: 4, Nickname: "队长", Stand: "attending", RegistrationCount: 1, Registered: true},
+			{UserID: 4, Nickname: "队长", Stand: "attending", RegistrationCount: 1, Registered: true, ParticipationPoints: 76},
 			{UserID: 9, Nickname: "队员", Stand: "unknown", RegistrationCount: 0, Registered: false},
 		},
 	}
@@ -198,7 +201,7 @@ func TestAppTeamMatchAttendanceRouteMapsMembers(t *testing.T) {
 	if response.Code != http.StatusOK {
 		t.Fatalf("unexpected match attendance response %d: %s", response.Code, response.Body.String())
 	}
-	for _, expected := range []string{`"activity_name":"周四友谊赛"`, `"stand":1`, `"stand":0`, `"nickname":"队长"`} {
+	for _, expected := range []string{`"activity_name":"周四友谊赛"`, `"stand":1`, `"stand":0`, `"nickname":"队长"`, `"participation_points":7.6`} {
 		if !bytes.Contains(response.Body.Bytes(), []byte(expected)) {
 			t.Fatalf("match attendance body missing %s: %s", expected, response.Body.String())
 		}

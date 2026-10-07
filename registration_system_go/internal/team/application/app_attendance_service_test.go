@@ -29,6 +29,10 @@ func (f *fakeAttendanceRepository) ListAttendanceRanking(_ context.Context, _ in
 	return f.ranking, nil
 }
 
+func (f *fakeAttendanceRepository) ListAnnualParticipationPoints(context.Context, int64, int64) ([]ports.AnnualParticipationPoints, error) {
+	return nil, nil
+}
+
 func (f *fakeAttendanceRepository) ListMatchAttendance(_ context.Context, _ int64, _ uuid.UUID) (ports.MatchAttendanceHeader, []ports.MatchAttendanceMember, bool, error) {
 	return f.matchHeader, f.matchMembers, f.matchFound, nil
 }

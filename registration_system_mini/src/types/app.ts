@@ -54,6 +54,8 @@ export interface AppTeamDetail {
 
 export interface AppTeamMember {
   attended_count?: number;
+  participation_points?: number;
+  participation_rank?: number | null;
   attendance_rank?: number | null;
   user_id: number;
   nickname: string;

@@ -270,11 +270,15 @@ SELECT tm.user_id,
        tm.is_paid_member,
        tm.last_recharge_at,
        COALESCE(ta.attended_count, 0)::bigint AS attended_count,
-       COALESCE(tar.attendance_rank, 0)::bigint AS attendance_rank
+       COALESCE(tar.attendance_rank, 0)::bigint AS attendance_rank,
+       COALESCE(ps.participation_points, 0)::bigint AS participation_points,
+       COALESCE(ps.participation_rank, 0)::bigint AS participation_rank
 FROM team_members tm
 JOIN users u ON u.id = tm.user_id
 LEFT JOIN team_attendance ta ON ta.user_id = tm.user_id
 LEFT JOIN team_attendance_ranks tar ON tar.team_id = tm.team_id AND tar.user_id = tm.user_id
+LEFT JOIN team_participation_ranks ps ON ps.team_id=tm.team_id AND ps.user_id=tm.user_id
+ AND ps.score_year=EXTRACT(YEAR FROM NOW() AT TIME ZONE 'Asia/Shanghai')::integer
 WHERE tm.team_id = $1
   AND tm.status <> 'removed'
 ORDER BY
@@ -420,6 +424,7 @@ SELECT m.id::text AS activity_id,
        m.name AS activity_name,
        m.start_time AS holding_date,
        m.location,
+       COALESCE(pp.points, 0)::bigint AS participation_points,
        COALESCE(r.status, 'unknown') AS stand_status,
        COALESCE(r.registration_count, 0) AS registration_count,
        r.updated_at AS operation_time,
@@ -433,6 +438,7 @@ LEFT JOIN match_registrations r
   ON r.group_id = g.id
  AND r.user_id = $2
  AND r.status <> 'cancelled'
+LEFT JOIN team_participation_points pp ON pp.registration_id=r.id
 WHERE m.status <> 'cancelled'
   AND (m.status = 'ended' OR m.end_time <= (NOW() AT TIME ZONE 'utc'))
   AND (sqlc.narg('start_date')::date IS NULL OR m.start_time >= ((sqlc.narg('start_date')::date::timestamp AT TIME ZONE 'Asia/Shanghai') AT TIME ZONE 'UTC'))
@@ -458,7 +464,11 @@ SELECT tm.user_id,
        COUNT(r.id) FILTER (WHERE r.status = 'attending') AS attended_count,
        COUNT(r.id) FILTER (WHERE r.status = 'leave') AS leave_count,
        COUNT(r.id) FILTER (WHERE r.status = 'absent') AS late_count,
-       COUNT(*) FILTER (WHERE r.id IS NULL) AS unregistered_count
+       COUNT(*) FILTER (WHERE r.id IS NULL) AS unregistered_count,
+       COALESCE(SUM(pp.points), 0)::bigint AS participation_points,
+       ROW_NUMBER() OVER (ORDER BY COALESCE(SUM(pp.points), 0) DESC,
+         COUNT(r.id) FILTER (WHERE r.status = 'attending') DESC,
+         tm.joined_at ASC, tm.user_id ASC) AS participation_rank
 FROM team_members tm
 JOIN users u ON u.id = tm.user_id
 CROSS JOIN team_matches t
@@ -466,6 +476,7 @@ LEFT JOIN match_registrations r
   ON r.group_id = t.group_id
  AND r.user_id = tm.user_id
  AND r.status <> 'cancelled'
+LEFT JOIN team_participation_points pp ON pp.registration_id=r.id
 WHERE tm.team_id = $1
   AND tm.status = 'active'
 GROUP BY tm.user_id, u.nickname, u.avatar_url, tm.joined_at
@@ -477,6 +488,7 @@ SELECT m.id::text AS activity_id,
        m.name AS activity_name,
        m.start_time AS holding_date,
        m.location,
+       COALESCE(pp.points, 0)::bigint AS participation_points,
        tm.user_id,
        u.nickname,
        u.avatar_url,
@@ -495,6 +507,7 @@ LEFT JOIN match_registrations r
   ON r.group_id = g.id
  AND r.user_id = tm.user_id
  AND r.status <> 'cancelled'
+LEFT JOIN team_participation_points pp ON pp.registration_id=r.id
 WHERE m.id = sqlc.arg('match_id')
   AND m.status <> 'cancelled'
   AND (m.status = 'ended' OR m.end_time <= (NOW() AT TIME ZONE 'utc'))
@@ -521,3 +534,8 @@ WHERE team_id = $1
 
 -- name: GetUserNickname :one
 SELECT nickname FROM users WHERE id = $1;
+
+-- name: ListAnnualParticipationPoints :many
+-- 无日期过滤，保留每个历史年度与跨年求和能力；包括已离队成员的历史事实。
+SELECT score_year, participation_points FROM team_participation_totals
+WHERE team_id=$1 AND user_id=$2 ORDER BY score_year DESC;

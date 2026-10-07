@@ -392,13 +392,17 @@ SELECT r.group_id,
        COALESCE(tm.is_paid_member, false)::boolean AS is_paid_member,
        g.team_id AS participant_team_id,
        COALESCE(ta.attended_count, 0)::bigint AS team_attended_count,
-       COALESCE(tar.attendance_rank, 0)::bigint AS team_attendance_rank
+       COALESCE(tar.attendance_rank, 0)::bigint AS team_attendance_rank,
+       COALESCE(ps.participation_points, 0)::bigint AS team_participation_points,
+       COALESCE(ps.participation_rank, 0)::bigint AS team_participation_rank
 FROM match_registrations r
 JOIN match_registration_groups g ON g.id = r.group_id
 JOIN users u ON u.id = r.user_id
 LEFT JOIN team_members tm ON tm.team_id = g.team_id AND tm.user_id = r.user_id AND tm.status = 'active'
 LEFT JOIN team_attendance ta ON ta.team_id = g.team_id AND ta.user_id = r.user_id
 LEFT JOIN team_attendance_ranks tar ON tar.team_id = g.team_id AND tar.user_id = r.user_id
+LEFT JOIN team_participation_ranks ps ON ps.team_id=g.team_id AND ps.user_id=r.user_id
+ AND ps.score_year=EXTRACT(YEAR FROM NOW() AT TIME ZONE 'Asia/Shanghai')::integer
 WHERE r.group_id = ANY(sqlc.arg('group_ids')::uuid[])
   AND r.status = 'attending'
 ORDER BY r.group_id, r.created_at, r.user_id;
@@ -443,13 +447,17 @@ SELECT g.match_id,
        COALESCE(tm.is_paid_member, false)::boolean AS is_paid_member,
        g.team_id AS participant_team_id,
        COALESCE(ta.attended_count, 0)::bigint AS team_attended_count,
-       COALESCE(tar.attendance_rank, 0)::bigint AS team_attendance_rank
+       COALESCE(tar.attendance_rank, 0)::bigint AS team_attendance_rank,
+       COALESCE(ps.participation_points, 0)::bigint AS team_participation_points,
+       COALESCE(ps.participation_rank, 0)::bigint AS team_participation_rank
 FROM match_registration_groups g
 JOIN match_registrations r ON r.group_id = g.id
 JOIN users u ON u.id = r.user_id
 LEFT JOIN team_members tm ON tm.team_id = g.team_id AND tm.user_id = r.user_id AND tm.status = 'active'
 LEFT JOIN team_attendance ta ON ta.team_id = g.team_id AND ta.user_id = r.user_id
 LEFT JOIN team_attendance_ranks tar ON tar.team_id = g.team_id AND tar.user_id = r.user_id
+LEFT JOIN team_participation_ranks ps ON ps.team_id=g.team_id AND ps.user_id=r.user_id
+ AND ps.score_year=EXTRACT(YEAR FROM NOW() AT TIME ZONE 'Asia/Shanghai')::integer
 WHERE g.match_id = ANY(sqlc.arg('match_ids')::uuid[])
   AND g.status <> 'cancelled'
   AND r.status = 'attending'
@@ -637,14 +645,18 @@ INSERT INTO match_registrations (
     registration_count,
     created_at,
     updated_at,
-    cancelled_at
+    cancelled_at,
+    participation_confirmed_at,
+    early_registration_bonus
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, sqlc.narg('participation_confirmed_at'), sqlc.arg('early_registration_bonus'))
 ON CONFLICT (group_id, user_id) DO UPDATE
 SET status = EXCLUDED.status,
     registration_count = EXCLUDED.registration_count,
     updated_at = EXCLUDED.updated_at,
-    cancelled_at = EXCLUDED.cancelled_at;
+    cancelled_at = EXCLUDED.cancelled_at,
+    participation_confirmed_at = EXCLUDED.participation_confirmed_at,
+    early_registration_bonus = EXCLUDED.early_registration_bonus;
 
 -- name: ListRegistrationGroupStatesForUser :many
 SELECT g.*,
@@ -837,13 +849,17 @@ SELECT r.user_id,
        COALESCE(tm.is_paid_member, false)::boolean AS is_paid_member,
        g.team_id AS participant_team_id,
        COALESCE(ta.attended_count, 0)::bigint AS team_attended_count,
-       COALESCE(tar.attendance_rank, 0)::bigint AS team_attendance_rank
+       COALESCE(tar.attendance_rank, 0)::bigint AS team_attendance_rank,
+       COALESCE(ps.participation_points, 0)::bigint AS team_participation_points,
+       COALESCE(ps.participation_rank, 0)::bigint AS team_participation_rank
 FROM match_registrations r
 JOIN match_registration_groups g ON g.id = r.group_id
 JOIN users u ON u.id = r.user_id
 LEFT JOIN team_members tm ON tm.team_id = g.team_id AND tm.user_id = r.user_id AND tm.status = 'active'
 LEFT JOIN team_attendance ta ON ta.team_id = g.team_id AND ta.user_id = r.user_id
 LEFT JOIN team_attendance_ranks tar ON tar.team_id = g.team_id AND tar.user_id = r.user_id
+LEFT JOIN team_participation_ranks ps ON ps.team_id=g.team_id AND ps.user_id=r.user_id
+ AND ps.score_year=EXTRACT(YEAR FROM NOW() AT TIME ZONE 'Asia/Shanghai')::integer
 WHERE r.group_id = $1
 ORDER BY
     CASE r.status
@@ -1067,3 +1083,11 @@ WHERE m.location IS NOT NULL AND btrim(m.location) <> ''
   AND m.location_latitude BETWEEN -90 AND 90
   AND m.location_longitude BETWEEN -180 AND 180
 ORDER BY btrim(m.location), m.start_time DESC NULLS LAST, m.id DESC;
+
+-- name: GetParticipationAvailableAt :one
+-- 比赛、报名组与入队时间均为 UTC timestamp，不依赖数据库会话时区。
+SELECT GREATEST(m.created_at, g.created_at, m.registration_start_at,
+                tm.joined_at)::timestamp AS available_at
+FROM match_registration_groups g JOIN matches m ON m.id=g.match_id
+JOIN team_members tm ON tm.team_id=g.team_id AND tm.user_id=sqlc.arg('user_id')
+WHERE g.id=sqlc.arg('group_id');

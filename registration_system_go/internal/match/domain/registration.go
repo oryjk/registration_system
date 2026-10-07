@@ -43,6 +43,9 @@ type Registration struct {
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 	CancelledAt *time.Time
+	// Only a user's effective attending confirmation earns an early reward.
+	ParticipationConfirmedAt *time.Time
+	EarlyRegistrationBonus   int32
 }
 
 // NewRegistration 构造一条报名记录，校验组、用户、状态与计数。
@@ -82,12 +85,20 @@ func (r *Registration) ApplyUserStatus(status RegistrationStatus, count int, now
 		return sharederror.New(sharederror.KindValidation, "报名人数必须大于 0")
 	}
 	if r.Status == status && r.CancelledAt == nil && r.RegistrationCount == count {
+		if status != RegistrationAttending {
+			r.ParticipationConfirmedAt = nil
+			r.EarlyRegistrationBonus = 0
+		}
 		return nil
 	}
 	r.Status = status
 	r.RegistrationCount = count
 	r.CancelledAt = nil
 	r.UpdatedAt = now
+	if status != RegistrationAttending {
+		r.ParticipationConfirmedAt = nil
+		r.EarlyRegistrationBonus = 0
+	}
 	return nil
 }
 
@@ -122,6 +133,8 @@ func (r *Registration) Cancel(now time.Time) {
 	r.Status = RegistrationCancelled
 	r.CancelledAt = &now
 	r.UpdatedAt = now
+	r.ParticipationConfirmedAt = nil
+	r.EarlyRegistrationBonus = 0
 }
 
 func (r Registration) OccupiesCapacity() bool {

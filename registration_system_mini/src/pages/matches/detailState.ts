@@ -49,6 +49,8 @@ export interface TeamMemberRegistrationCard {
   isCurrentUser: boolean;
   isPaidMember?: boolean;
   teamAttendedCount?: number;
+  teamParticipationPoints?: number;
+  teamParticipationRank?: number;
   teamAttendanceRank?: number;
 }
 
@@ -94,6 +96,10 @@ export function buildTeamMemberRegistrationGroups({
         ?? (rosterMatchesRegistrationTeam && member.is_paid_member)) === true,
       teamAttendanceRank: registrationByUserId.get(member.user_id)?.team_attendance_rank
         ?? (rosterMatchesRegistrationTeam ? member.attendance_rank ?? undefined : undefined),
+      teamParticipationPoints: registrationByUserId.get(member.user_id)?.team_participation_points
+        ?? (rosterMatchesRegistrationTeam ? member.participation_points : undefined),
+      teamParticipationRank: registrationByUserId.get(member.user_id)?.team_participation_rank
+        ?? (rosterMatchesRegistrationTeam ? member.participation_rank ?? undefined : undefined),
       teamAttendedCount: registrationByUserId.get(member.user_id)?.team_attended_count
         ?? (rosterMatchesRegistrationTeam ? member.attended_count : undefined),
     };

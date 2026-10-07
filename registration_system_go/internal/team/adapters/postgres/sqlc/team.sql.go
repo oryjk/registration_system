@@ -653,6 +653,42 @@ func (q *Queries) ListActiveUserTeams(ctx context.Context, userID int64) ([]List
 	return items, nil
 }
 
+const listAnnualParticipationPoints = `-- name: ListAnnualParticipationPoints :many
+SELECT score_year, participation_points FROM team_participation_totals
+WHERE team_id=$1 AND user_id=$2 ORDER BY score_year DESC
+`
+
+type ListAnnualParticipationPointsParams struct {
+	TeamID *int64 `json:"team_id"`
+	UserID int64  `json:"user_id"`
+}
+
+type ListAnnualParticipationPointsRow struct {
+	ScoreYear           int32 `json:"score_year"`
+	ParticipationPoints int64 `json:"participation_points"`
+}
+
+// 无日期过滤，保留每个历史年度与跨年求和能力；包括已离队成员的历史事实。
+func (q *Queries) ListAnnualParticipationPoints(ctx context.Context, arg ListAnnualParticipationPointsParams) ([]ListAnnualParticipationPointsRow, error) {
+	rows, err := q.db.Query(ctx, listAnnualParticipationPoints, arg.TeamID, arg.UserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListAnnualParticipationPointsRow
+	for rows.Next() {
+		var i ListAnnualParticipationPointsRow
+		if err := rows.Scan(&i.ScoreYear, &i.ParticipationPoints); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listAppTeamMembers = `-- name: ListAppTeamMembers :many
 WITH team_matches AS (
     SELECT hg.id, hg.team_id
@@ -692,11 +728,15 @@ SELECT tm.user_id,
        tm.is_paid_member,
        tm.last_recharge_at,
        COALESCE(ta.attended_count, 0)::bigint AS attended_count,
-       COALESCE(tar.attendance_rank, 0)::bigint AS attendance_rank
+       COALESCE(tar.attendance_rank, 0)::bigint AS attendance_rank,
+       COALESCE(ps.participation_points, 0)::bigint AS participation_points,
+       COALESCE(ps.participation_rank, 0)::bigint AS participation_rank
 FROM team_members tm
 JOIN users u ON u.id = tm.user_id
 LEFT JOIN team_attendance ta ON ta.user_id = tm.user_id
 LEFT JOIN team_attendance_ranks tar ON tar.team_id = tm.team_id AND tar.user_id = tm.user_id
+LEFT JOIN team_participation_ranks ps ON ps.team_id=tm.team_id AND ps.user_id=tm.user_id
+ AND ps.score_year=EXTRACT(YEAR FROM NOW() AT TIME ZONE 'Asia/Shanghai')::integer
 WHERE tm.team_id = $1
   AND tm.status <> 'removed'
 ORDER BY
@@ -712,18 +752,20 @@ ORDER BY
 `
 
 type ListAppTeamMembersRow struct {
-	UserID         int64              `json:"user_id"`
-	Nickname       string             `json:"nickname"`
-	AvatarUrl      *string            `json:"avatar_url"`
-	RealName       *string            `json:"real_name"`
-	Role           string             `json:"role"`
-	Status         string             `json:"status"`
-	JoinedAt       pgtype.Timestamp   `json:"joined_at"`
-	BalanceCents   int64              `json:"balance_cents"`
-	IsPaidMember   bool               `json:"is_paid_member"`
-	LastRechargeAt pgtype.Timestamptz `json:"last_recharge_at"`
-	AttendedCount  int64              `json:"attended_count"`
-	AttendanceRank int64              `json:"attendance_rank"`
+	UserID              int64              `json:"user_id"`
+	Nickname            string             `json:"nickname"`
+	AvatarUrl           *string            `json:"avatar_url"`
+	RealName            *string            `json:"real_name"`
+	Role                string             `json:"role"`
+	Status              string             `json:"status"`
+	JoinedAt            pgtype.Timestamp   `json:"joined_at"`
+	BalanceCents        int64              `json:"balance_cents"`
+	IsPaidMember        bool               `json:"is_paid_member"`
+	LastRechargeAt      pgtype.Timestamptz `json:"last_recharge_at"`
+	AttendedCount       int64              `json:"attended_count"`
+	AttendanceRank      int64              `json:"attendance_rank"`
+	ParticipationPoints int64              `json:"participation_points"`
+	ParticipationRank   int64              `json:"participation_rank"`
 }
 
 // 年度出勤次数保持与统计页出勤排名（北京时间年初至今天）一致。
@@ -749,6 +791,8 @@ func (q *Queries) ListAppTeamMembers(ctx context.Context, teamID int64) ([]ListA
 			&i.LastRechargeAt,
 			&i.AttendedCount,
 			&i.AttendanceRank,
+			&i.ParticipationPoints,
+			&i.ParticipationRank,
 		); err != nil {
 			return nil, err
 		}
@@ -779,7 +823,11 @@ SELECT tm.user_id,
        COUNT(r.id) FILTER (WHERE r.status = 'attending') AS attended_count,
        COUNT(r.id) FILTER (WHERE r.status = 'leave') AS leave_count,
        COUNT(r.id) FILTER (WHERE r.status = 'absent') AS late_count,
-       COUNT(*) FILTER (WHERE r.id IS NULL) AS unregistered_count
+       COUNT(*) FILTER (WHERE r.id IS NULL) AS unregistered_count,
+       COALESCE(SUM(pp.points), 0)::bigint AS participation_points,
+       ROW_NUMBER() OVER (ORDER BY COALESCE(SUM(pp.points), 0) DESC,
+         COUNT(r.id) FILTER (WHERE r.status = 'attending') DESC,
+         tm.joined_at ASC, tm.user_id ASC) AS participation_rank
 FROM team_members tm
 JOIN users u ON u.id = tm.user_id
 CROSS JOIN team_matches t
@@ -787,6 +835,7 @@ LEFT JOIN match_registrations r
   ON r.group_id = t.group_id
  AND r.user_id = tm.user_id
  AND r.status <> 'cancelled'
+LEFT JOIN team_participation_points pp ON pp.registration_id=r.id
 WHERE tm.team_id = $1
   AND tm.status = 'active'
 GROUP BY tm.user_id, u.nickname, u.avatar_url, tm.joined_at
@@ -800,14 +849,16 @@ type ListTeamAttendanceRankingParams struct {
 }
 
 type ListTeamAttendanceRankingRow struct {
-	UserID            int64   `json:"user_id"`
-	UserName          string  `json:"user_name"`
-	AvatarUrl         *string `json:"avatar_url"`
-	TotalCount        int64   `json:"total_count"`
-	AttendedCount     int64   `json:"attended_count"`
-	LeaveCount        int64   `json:"leave_count"`
-	LateCount         int64   `json:"late_count"`
-	UnregisteredCount int64   `json:"unregistered_count"`
+	UserID              int64   `json:"user_id"`
+	UserName            string  `json:"user_name"`
+	AvatarUrl           *string `json:"avatar_url"`
+	TotalCount          int64   `json:"total_count"`
+	AttendedCount       int64   `json:"attended_count"`
+	LeaveCount          int64   `json:"leave_count"`
+	LateCount           int64   `json:"late_count"`
+	UnregisteredCount   int64   `json:"unregistered_count"`
+	ParticipationPoints int64   `json:"participation_points"`
+	ParticipationRank   int64   `json:"participation_rank"`
 }
 
 func (q *Queries) ListTeamAttendanceRanking(ctx context.Context, arg ListTeamAttendanceRankingParams) ([]ListTeamAttendanceRankingRow, error) {
@@ -828,6 +879,8 @@ func (q *Queries) ListTeamAttendanceRanking(ctx context.Context, arg ListTeamAtt
 			&i.LeaveCount,
 			&i.LateCount,
 			&i.UnregisteredCount,
+			&i.ParticipationPoints,
+			&i.ParticipationRank,
 		); err != nil {
 			return nil, err
 		}
@@ -844,6 +897,7 @@ SELECT m.id::text AS activity_id,
        m.name AS activity_name,
        m.start_time AS holding_date,
        m.location,
+       COALESCE(pp.points, 0)::bigint AS participation_points,
        tm.user_id,
        u.nickname,
        u.avatar_url,
@@ -862,6 +916,7 @@ LEFT JOIN match_registrations r
   ON r.group_id = g.id
  AND r.user_id = tm.user_id
  AND r.status <> 'cancelled'
+LEFT JOIN team_participation_points pp ON pp.registration_id=r.id
 WHERE m.id = $2
   AND m.status <> 'cancelled'
   AND (m.status = 'ended' OR m.end_time <= (NOW() AT TIME ZONE 'utc'))
@@ -878,17 +933,18 @@ type ListTeamMatchAttendanceParams struct {
 }
 
 type ListTeamMatchAttendanceRow struct {
-	ActivityID        string           `json:"activity_id"`
-	ActivityName      string           `json:"activity_name"`
-	HoldingDate       pgtype.Timestamp `json:"holding_date"`
-	Location          string           `json:"location"`
-	UserID            int64            `json:"user_id"`
-	Nickname          string           `json:"nickname"`
-	AvatarUrl         *string          `json:"avatar_url"`
-	StandStatus       string           `json:"stand_status"`
-	RegistrationCount int32            `json:"registration_count"`
-	OperationTime     pgtype.Timestamp `json:"operation_time"`
-	Registered        interface{}      `json:"registered"`
+	ActivityID          string           `json:"activity_id"`
+	ActivityName        string           `json:"activity_name"`
+	HoldingDate         pgtype.Timestamp `json:"holding_date"`
+	Location            string           `json:"location"`
+	ParticipationPoints int64            `json:"participation_points"`
+	UserID              int64            `json:"user_id"`
+	Nickname            string           `json:"nickname"`
+	AvatarUrl           *string          `json:"avatar_url"`
+	StandStatus         string           `json:"stand_status"`
+	RegistrationCount   int32            `json:"registration_count"`
+	OperationTime       pgtype.Timestamp `json:"operation_time"`
+	Registered          interface{}      `json:"registered"`
 }
 
 // 单场比赛的全队出勤：只含在职（active）成员，已退队成员不展示，按状态分组排序。
@@ -906,6 +962,7 @@ func (q *Queries) ListTeamMatchAttendance(ctx context.Context, arg ListTeamMatch
 			&i.ActivityName,
 			&i.HoldingDate,
 			&i.Location,
+			&i.ParticipationPoints,
 			&i.UserID,
 			&i.Nickname,
 			&i.AvatarUrl,
@@ -930,6 +987,7 @@ SELECT m.id::text AS activity_id,
        m.name AS activity_name,
        m.start_time AS holding_date,
        m.location,
+       COALESCE(pp.points, 0)::bigint AS participation_points,
        COALESCE(r.status, 'unknown') AS stand_status,
        COALESCE(r.registration_count, 0) AS registration_count,
        r.updated_at AS operation_time,
@@ -943,6 +1001,7 @@ LEFT JOIN match_registrations r
   ON r.group_id = g.id
  AND r.user_id = $2
  AND r.status <> 'cancelled'
+LEFT JOIN team_participation_points pp ON pp.registration_id=r.id
 WHERE m.status <> 'cancelled'
   AND (m.status = 'ended' OR m.end_time <= (NOW() AT TIME ZONE 'utc'))
   AND ($3::date IS NULL OR m.start_time >= (($3::date::timestamp AT TIME ZONE 'Asia/Shanghai') AT TIME ZONE 'UTC'))
@@ -958,14 +1017,15 @@ type ListTeamMemberAttendanceRecordsParams struct {
 }
 
 type ListTeamMemberAttendanceRecordsRow struct {
-	ActivityID        string           `json:"activity_id"`
-	ActivityName      string           `json:"activity_name"`
-	HoldingDate       pgtype.Timestamp `json:"holding_date"`
-	Location          string           `json:"location"`
-	StandStatus       string           `json:"stand_status"`
-	RegistrationCount int32            `json:"registration_count"`
-	OperationTime     pgtype.Timestamp `json:"operation_time"`
-	Registered        interface{}      `json:"registered"`
+	ActivityID          string           `json:"activity_id"`
+	ActivityName        string           `json:"activity_name"`
+	HoldingDate         pgtype.Timestamp `json:"holding_date"`
+	Location            string           `json:"location"`
+	ParticipationPoints int64            `json:"participation_points"`
+	StandStatus         string           `json:"stand_status"`
+	RegistrationCount   int32            `json:"registration_count"`
+	OperationTime       pgtype.Timestamp `json:"operation_time"`
+	Registered          interface{}      `json:"registered"`
 }
 
 // 比赛出勤：口径与首页"已结束"一致——非取消，且（状态已结束或已过结束时间）。
@@ -991,6 +1051,7 @@ func (q *Queries) ListTeamMemberAttendanceRecords(ctx context.Context, arg ListT
 			&i.ActivityName,
 			&i.HoldingDate,
 			&i.Location,
+			&i.ParticipationPoints,
 			&i.StandStatus,
 			&i.RegistrationCount,
 			&i.OperationTime,

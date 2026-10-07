@@ -11,6 +11,7 @@ import (
 	sharedhttpapi "github.com/oryjk/registration_system/registration_system_go/internal/shared/adapters/httpapi"
 	sharedauth "github.com/oryjk/registration_system/registration_system_go/internal/shared/auth"
 	sharederror "github.com/oryjk/registration_system/registration_system_go/internal/shared/domain"
+	"github.com/oryjk/registration_system/registration_system_go/internal/shared/participation"
 	"github.com/oryjk/registration_system/registration_system_go/internal/team/application"
 	"github.com/oryjk/registration_system/registration_system_go/internal/team/domain"
 )
@@ -41,18 +42,20 @@ type AppTeamDetailResponse struct {
 }
 
 type AppTeamMemberResponse struct {
-	AttendanceRank *int64              `json:"attendance_rank"`
-	AttendedCount  int64               `json:"attended_count"`
-	UserID         int64               `json:"user_id"`
-	Nickname       string              `json:"nickname"`
-	AvatarURL      *string             `json:"avatar_url"`
-	RealName       *string             `json:"real_name"`
-	Role           domain.Role         `json:"role"`
-	Status         domain.MemberStatus `json:"status"`
-	JoinedAt       time.Time           `json:"joined_at"`
-	BalanceCents   int64               `json:"balance_cents"`
-	IsPaidMember   bool                `json:"is_paid_member"`
-	LastRechargeAt *time.Time          `json:"last_recharge_at"`
+	ParticipationPoints float64             `json:"participation_points"`
+	ParticipationRank   *int64              `json:"participation_rank"`
+	AttendanceRank      *int64              `json:"attendance_rank"`
+	AttendedCount       int64               `json:"attended_count"`
+	UserID              int64               `json:"user_id"`
+	Nickname            string              `json:"nickname"`
+	AvatarURL           *string             `json:"avatar_url"`
+	RealName            *string             `json:"real_name"`
+	Role                domain.Role         `json:"role"`
+	Status              domain.MemberStatus `json:"status"`
+	JoinedAt            time.Time           `json:"joined_at"`
+	BalanceCents        int64               `json:"balance_cents"`
+	IsPaidMember        bool                `json:"is_paid_member"`
+	LastRechargeAt      *time.Time          `json:"last_recharge_at"`
 }
 
 func NewAppHandler(queries AppTeamQueries, attendance AppAttendanceQueries) *AppHandler {
@@ -103,7 +106,7 @@ func (h *AppHandler) ListMembers(c *gin.Context) {
 		response = append(response, AppTeamMemberResponse{
 			UserID: item.UserID, Nickname: item.Nickname, AvatarURL: item.AvatarURL,
 			RealName: item.RealName, Role: item.Role, Status: item.Status, JoinedAt: item.JoinedAt,
-			BalanceCents: item.BalanceCents, IsPaidMember: item.IsPaidMember, LastRechargeAt: item.LastRechargeAt, AttendedCount: item.AttendedCount, AttendanceRank: item.AttendanceRank,
+			BalanceCents: item.BalanceCents, IsPaidMember: item.IsPaidMember, LastRechargeAt: item.LastRechargeAt, AttendedCount: item.AttendedCount, AttendanceRank: item.AttendanceRank, ParticipationPoints: participation.FromTenths(item.ParticipationPoints), ParticipationRank: item.ParticipationRank,
 		})
 	}
 	sharedhttpapi.WriteSuccess(c, response)
@@ -130,30 +133,39 @@ type AppAttendanceQueries interface {
 }
 
 type AppAttendanceRecordResponse struct {
-	ActivityID        string     `json:"activity_id"`
-	ActivityName      string     `json:"activity_name"`
-	HoldingDate       time.Time  `json:"holding_date"`
-	Location          string     `json:"location"`
-	Stand             int        `json:"stand"`
-	RegistrationCount int        `json:"registration_count"`
-	OperationTime     *time.Time `json:"operation_time"`
-	Registered        bool       `json:"registered"`
+	ActivityID          string     `json:"activity_id"`
+	ActivityName        string     `json:"activity_name"`
+	HoldingDate         time.Time  `json:"holding_date"`
+	Location            string     `json:"location"`
+	Stand               int        `json:"stand"`
+	RegistrationCount   int        `json:"registration_count"`
+	OperationTime       *time.Time `json:"operation_time"`
+	Registered          bool       `json:"registered"`
+	ParticipationPoints float64    `json:"participation_points"`
 }
 
 type AppAttendanceRankingItemResponse struct {
-	UserID            int64   `json:"user_id"`
-	UserName          string  `json:"user_name"`
-	AvatarURL         *string `json:"avatar_url"`
-	TotalCount        int64   `json:"total_count"`
-	AttendedCount     int64   `json:"attended_count"`
-	LeaveCount        int64   `json:"leave_count"`
-	LateCount         int64   `json:"late_count"`
-	UnregisteredCount int64   `json:"unregistered_count"`
+	UserID              int64   `json:"user_id"`
+	UserName            string  `json:"user_name"`
+	AvatarURL           *string `json:"avatar_url"`
+	TotalCount          int64   `json:"total_count"`
+	AttendedCount       int64   `json:"attended_count"`
+	LeaveCount          int64   `json:"leave_count"`
+	LateCount           int64   `json:"late_count"`
+	UnregisteredCount   int64   `json:"unregistered_count"`
+	ParticipationPoints float64 `json:"participation_points"`
+	ParticipationRank   int64   `json:"participation_rank"`
+}
+
+type AppAnnualParticipationPointsResponse struct {
+	Year                int32   `json:"year"`
+	ParticipationPoints float64 `json:"participation_points"`
 }
 
 type AppAttendanceSummaryResponse struct {
-	MyRecords []AppAttendanceRecordResponse      `json:"my_records"`
-	Ranking   []AppAttendanceRankingItemResponse `json:"ranking"`
+	AnnualPoints []AppAnnualParticipationPointsResponse `json:"annual_points"`
+	MyRecords    []AppAttendanceRecordResponse          `json:"my_records"`
+	Ranking      []AppAttendanceRankingItemResponse     `json:"ranking"`
 }
 
 type AppMemberAttendanceResponse struct {
@@ -181,7 +193,7 @@ func mapAttendanceRecords(records []application.AttendanceQueryRecord) []AppAtte
 			ActivityID: record.ActivityID, ActivityName: record.ActivityName,
 			HoldingDate: record.HoldingDate, Location: record.Location,
 			Stand: attendanceStand(record.Stand), RegistrationCount: record.RegistrationCount,
-			OperationTime: record.OperationTime, Registered: record.Registered,
+			OperationTime: record.OperationTime, Registered: record.Registered, ParticipationPoints: participation.FromTenths(record.ParticipationPoints),
 		})
 	}
 	return items
@@ -229,11 +241,15 @@ func (h *AppHandler) AttendanceSummary(c *gin.Context) {
 			UserID: item.UserID, UserName: item.UserName, AvatarURL: item.AvatarURL,
 			TotalCount: item.TotalCount, AttendedCount: item.AttendedCount,
 			LeaveCount: item.LeaveCount, LateCount: item.LateCount,
-			UnregisteredCount: item.UnregisteredCount,
+			UnregisteredCount: item.UnregisteredCount, ParticipationPoints: participation.FromTenths(item.ParticipationPoints), ParticipationRank: item.ParticipationRank,
 		})
 	}
+	annualPoints := make([]AppAnnualParticipationPointsResponse, 0, len(summary.AnnualPoints))
+	for _, annual := range summary.AnnualPoints {
+		annualPoints = append(annualPoints, AppAnnualParticipationPointsResponse{Year: annual.ScoreYear, ParticipationPoints: participation.FromTenths(annual.ParticipationPoints)})
+	}
 	sharedhttpapi.WriteSuccess(c, AppAttendanceSummaryResponse{
-		MyRecords: mapAttendanceRecords(summary.MyRecords), Ranking: ranking,
+		MyRecords: mapAttendanceRecords(summary.MyRecords), Ranking: ranking, AnnualPoints: annualPoints,
 	})
 }
 
@@ -270,13 +286,14 @@ type AppMatchAttendanceHeaderResponse struct {
 }
 
 type AppMatchAttendanceMemberResponse struct {
-	UserID            int64      `json:"user_id"`
-	Nickname          string     `json:"nickname"`
-	AvatarURL         *string    `json:"avatar_url"`
-	Stand             int        `json:"stand"`
-	RegistrationCount int        `json:"registration_count"`
-	OperationTime     *time.Time `json:"operation_time"`
-	Registered        bool       `json:"registered"`
+	UserID              int64      `json:"user_id"`
+	Nickname            string     `json:"nickname"`
+	AvatarURL           *string    `json:"avatar_url"`
+	Stand               int        `json:"stand"`
+	RegistrationCount   int        `json:"registration_count"`
+	OperationTime       *time.Time `json:"operation_time"`
+	Registered          bool       `json:"registered"`
+	ParticipationPoints float64    `json:"participation_points"`
 }
 
 type AppMatchAttendanceResponse struct {
@@ -304,7 +321,7 @@ func (h *AppHandler) MatchAttendance(c *gin.Context) {
 		records = append(records, AppMatchAttendanceMemberResponse{
 			UserID: member.UserID, Nickname: member.Nickname, AvatarURL: member.AvatarURL,
 			Stand: attendanceStand(member.Stand), RegistrationCount: member.RegistrationCount,
-			OperationTime: member.OperationTime, Registered: member.Registered,
+			OperationTime: member.OperationTime, Registered: member.Registered, ParticipationPoints: participation.FromTenths(member.ParticipationPoints),
 		})
 	}
 	sharedhttpapi.WriteSuccess(c, AppMatchAttendanceResponse{

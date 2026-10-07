@@ -539,8 +539,13 @@ func TestMapUserParticipantResponsesIncludeRegistrationCount(t *testing.T) {
 func TestMapUserParticipantResponsesCarriesTeamIdentityAndAttendance(t *testing.T) {
 	count := int64(12)
 	rank := int64(2)
-	responses := mapUserParticipantResponses([]ports.UserParticipant{{UserID: 1, IsPaidMember: true, TeamAttendedCount: &count, TeamAttendanceRank: &rank}, {UserID: 2}})
+	points := int64(945)
+	pointsRank := int64(3)
+	responses := mapUserParticipantResponses([]ports.UserParticipant{{UserID: 1, IsPaidMember: true, TeamAttendedCount: &count, TeamAttendanceRank: &rank, TeamParticipationPoints: &points, TeamParticipationRank: &pointsRank}, {UserID: 2}})
 	if !responses[0].IsPaidMember || responses[1].IsPaidMember || responses[0].TeamAttendedCount == nil || *responses[0].TeamAttendedCount != 12 || responses[1].TeamAttendedCount != nil || responses[0].TeamAttendanceRank == nil || *responses[0].TeamAttendanceRank != 2 || responses[1].TeamAttendanceRank != nil {
 		t.Fatalf("responses=%+v", responses)
+	}
+	if responses[0].TeamParticipationPoints == nil || *responses[0].TeamParticipationPoints != 94.5 || responses[0].TeamParticipationRank == nil || *responses[0].TeamParticipationRank != 3 || responses[1].TeamParticipationPoints != nil || responses[1].TeamParticipationRank != nil {
+		t.Fatalf("participation scores must preserve team scope: %+v", responses)
 	}
 }

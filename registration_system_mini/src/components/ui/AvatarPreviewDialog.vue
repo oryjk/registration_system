@@ -34,16 +34,16 @@ watch(() => props.visible, visible => { if (visible) viewport.value = uni.getWin
 watch(() => [props.avatar?.id, props.avatar?.avatarUrl, props.visible], () => { if (props.visible) imageFailed.value = false; });
 const name = computed(() => props.avatar?.name.trim() || '球友');
 const attendanceCount = computed(() => {
-  const count = props.avatar?.teamAttendedCount;
+  const count = props.avatar?.teamParticipationPoints;
   return typeof count === 'number' && Number.isFinite(count) && count >= 0 ? count : null;
 });
 const honors: Record<number, { title: string; tone: string }> = {
-  1: { title: '出勤冠军', tone: 'gold' },
-  2: { title: '出勤亚军', tone: 'silver' },
-  3: { title: '出勤季军', tone: 'bronze' },
+  1: { title: '年度活跃冠军', tone: 'gold' },
+  2: { title: '年度活跃亚军', tone: 'silver' },
+  3: { title: '年度活跃季军', tone: 'bronze' },
 };
 const attendanceHonor = computed(() => (attendanceCount.value ?? 0) > 0
-  ? honors[props.avatar?.teamAttendanceRank ?? 0] ?? null
+  ? honors[props.avatar?.teamParticipationRank ?? 0] ?? null
   : null);
 function close() {
   if (props.visible && !leaving.value) emit('close');
@@ -69,7 +69,7 @@ function close() {
         <text>{{ attendanceHonor.title }}</text>
       </view>
       <view v-if="attendanceCount != null" class="avatar-preview-attendance">
-        <text>今年出勤</text><text class="avatar-preview-attendance-number" :class="attendanceHonor ? `avatar-preview-attendance-number--${attendanceHonor.tone}` : ''">{{ attendanceCount }}</text><text>次</text>
+        <text>年度积分</text><text class="avatar-preview-attendance-number" :class="attendanceHonor ? `avatar-preview-attendance-number--${attendanceHonor.tone}` : ''">{{ attendanceCount }}</text><text>分</text>
       </view>
     </view>
   </view>

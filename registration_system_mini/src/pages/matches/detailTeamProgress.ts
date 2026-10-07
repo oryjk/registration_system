@@ -35,6 +35,8 @@ export function buildMatchTeamProgress(
           avatarUrl: person.avatar_url ?? "",
           isPaidMember: person.is_paid_member === true,
           teamAttendedCount: person.team_attended_count ?? undefined,
+          teamParticipationPoints: person.team_participation_points ?? undefined,
+          teamParticipationRank: person.team_participation_rank ?? undefined,
           teamAttendanceRank: person.team_attendance_rank ?? undefined,
         })),
     // 客队上限未配置时继承主队（主客同制），规则与约队大厅列表共用。

@@ -210,6 +210,8 @@ export interface BackendTeamPasswordInfo {
 export interface BackendTeamMember {
   /** 与统计页今年出勤排名相同。 */
   attended_count?: number;
+  participation_points?: number;
+  participation_rank?: number | null;
   attendance_rank?: number | null;
   user_id: number;
   role: string;
@@ -258,6 +260,8 @@ export interface BackendTeamAttendanceRankingItem {
   leave_count: number;
   late_count: number;
   unregistered_count: number;
+  participation_points?: number;
+  participation_rank?: number;
 }
 
 export interface BackendTeamMatchAttendanceMember {
@@ -281,6 +285,7 @@ export interface BackendTeamMatchAttendance {
 }
 
 export interface BackendTeamAttendanceSummary {
+  annual_points?: { year: number; participation_points: number }[];
   my_records: BackendTeamMemberAttendanceRecord[];
   ranking: BackendTeamAttendanceRankingItem[];
 }
@@ -396,6 +401,8 @@ export interface BackendAttendanceRankingItem {
 
 export interface BackendRegistration {
   team_attended_count?: number | null;
+  team_participation_points?: number | null;
+  team_participation_rank?: number | null;
   team_attendance_rank?: number | null;
   is_paid_member?: boolean;
   user_id: number;

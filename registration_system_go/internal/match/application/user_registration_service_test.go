@@ -547,6 +547,10 @@ func (f *fakeUserRegistrationRepository) IsTeamMember(_ context.Context, teamID,
 	return f.members[teamID][userID], nil
 }
 
+func (f *fakeUserRegistrationRepository) ParticipationAvailableAt(context.Context, uuid.UUID, int64) (time.Time, error) {
+	return f.match.CreatedAt, nil
+}
+
 func (f *fakeUserRegistrationRepository) SaveRegistration(_ context.Context, registration domain.Registration) error {
 	f.recordWrite()
 	if f.saveRegistrationErr != nil {

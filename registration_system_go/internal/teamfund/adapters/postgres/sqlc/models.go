@@ -88,15 +88,19 @@ type MatchCaptainThreadRead struct {
 }
 
 type MatchRegistration struct {
-	ID                pgtype.UUID      `json:"id"`
-	GroupID           pgtype.UUID      `json:"group_id"`
-	UserID            int64            `json:"user_id"`
-	Status            string           `json:"status"`
-	RegistrationCount int32            `json:"registration_count"`
-	CreatedAt         pgtype.Timestamp `json:"created_at"`
-	UpdatedAt         pgtype.Timestamp `json:"updated_at"`
-	CancelledAt       pgtype.Timestamp `json:"cancelled_at"`
-	Paid              bool             `json:"paid"`
+	ID                       pgtype.UUID      `json:"id"`
+	GroupID                  pgtype.UUID      `json:"group_id"`
+	UserID                   int64            `json:"user_id"`
+	Status                   string           `json:"status"`
+	RegistrationCount        int32            `json:"registration_count"`
+	CreatedAt                pgtype.Timestamp `json:"created_at"`
+	UpdatedAt                pgtype.Timestamp `json:"updated_at"`
+	CancelledAt              pgtype.Timestamp `json:"cancelled_at"`
+	Paid                     bool             `json:"paid"`
+	ParticipationConfirmedAt pgtype.Timestamp `json:"participation_confirmed_at"`
+	EarlyRegistrationBonus   int32            `json:"early_registration_bonus"`
+	ParticipationBasePoints  int32            `json:"participation_base_points"`
+	ParticipationRuleVersion int32            `json:"participation_rule_version"`
 }
 
 type MatchRegistrationDefault struct {
@@ -244,6 +248,33 @@ type TeamMember struct {
 	BalanceCents   int64              `json:"balance_cents"`
 	IsPaidMember   bool               `json:"is_paid_member"`
 	LastRechargeAt pgtype.Timestamptz `json:"last_recharge_at"`
+}
+
+type TeamParticipationPoint struct {
+	RegistrationID pgtype.UUID      `json:"registration_id"`
+	MatchID        pgtype.UUID      `json:"match_id"`
+	TeamID         *int64           `json:"team_id"`
+	UserID         int64            `json:"user_id"`
+	MatchStartTime pgtype.Timestamp `json:"match_start_time"`
+	ScoreYear      int32            `json:"score_year"`
+	Points         int64            `json:"points"`
+	RuleVersion    int32            `json:"rule_version"`
+}
+
+type TeamParticipationRank struct {
+	TeamID              *int64 `json:"team_id"`
+	UserID              int64  `json:"user_id"`
+	ScoreYear           int32  `json:"score_year"`
+	ParticipationPoints int64  `json:"participation_points"`
+	ParticipationRank   int64  `json:"participation_rank"`
+}
+
+type TeamParticipationTotal struct {
+	TeamID              *int64 `json:"team_id"`
+	UserID              int64  `json:"user_id"`
+	ScoreYear           int32  `json:"score_year"`
+	ParticipationPoints int64  `json:"participation_points"`
+	AttendedCount       int64  `json:"attended_count"`
 }
 
 type Tip struct {

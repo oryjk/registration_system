@@ -111,6 +111,8 @@ export interface AppMatchRegistration {
 export interface AppMatchParticipant {
   /** 与统计页今年出勤排名相同（北京时间年初至今天）；个人组为 null。 */
   team_attended_count?: number | null;
+  team_participation_points?: number | null;
+  team_participation_rank?: number | null;
   /** 全球队年度出勤排名；未入榜为 null。 */
   team_attendance_rank?: number | null;
   /** 报名组所属球队的在队付费会员；旧后端缺失时不显示皇冠。 */

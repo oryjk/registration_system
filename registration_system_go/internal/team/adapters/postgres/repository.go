@@ -285,7 +285,7 @@ func (r *Repository) ListAppMembers(ctx context.Context, teamID int64) ([]ports.
 		items = append(items, ports.AppMember{
 			UserID: row.UserID, Nickname: row.Nickname, AvatarURL: row.AvatarUrl,
 			RealName: row.RealName, Role: domain.Role(row.Role), Status: domain.MemberStatus(row.Status),
-			JoinedAt: row.JoinedAt.Time, BalanceCents: row.BalanceCents, IsPaidMember: row.IsPaidMember, AttendedCount: row.AttendedCount, AttendanceRank: attendanceRankPointer(row.AttendanceRank),
+			JoinedAt: row.JoinedAt.Time, BalanceCents: row.BalanceCents, IsPaidMember: row.IsPaidMember, AttendedCount: row.AttendedCount, AttendanceRank: attendanceRankPointer(row.AttendanceRank), ParticipationPoints: row.ParticipationPoints, ParticipationRank: attendanceRankPointer(row.ParticipationRank),
 			LastRechargeAt: nullableTimestamptz(row.LastRechargeAt),
 		})
 	}
@@ -452,7 +452,7 @@ func (r *Repository) ListMemberAttendanceRecords(ctx context.Context, teamID, us
 			ActivityID: row.ActivityID, ActivityName: row.ActivityName,
 			HoldingDate: row.HoldingDate.Time, Location: row.Location,
 			Stand: row.StandStatus, RegistrationCount: int(row.RegistrationCount),
-			OperationTime: operationTime, Registered: boolRegistered(row.Registered),
+			OperationTime: operationTime, Registered: boolRegistered(row.Registered), ParticipationPoints: row.ParticipationPoints,
 		})
 	}
 	return records, nil
@@ -472,7 +472,7 @@ func (r *Repository) ListAttendanceRanking(ctx context.Context, teamID int64, st
 			UserID: row.UserID, UserName: row.UserName, AvatarURL: row.AvatarUrl,
 			TotalCount: row.TotalCount, AttendedCount: row.AttendedCount,
 			LeaveCount: row.LeaveCount, LateCount: row.LateCount,
-			UnregisteredCount: row.UnregisteredCount,
+			UnregisteredCount: row.UnregisteredCount, ParticipationPoints: row.ParticipationPoints, ParticipationRank: row.ParticipationRank,
 		})
 	}
 	return items, nil
@@ -502,7 +502,7 @@ func (r *Repository) ListMatchAttendance(ctx context.Context, teamID int64, matc
 		members = append(members, ports.MatchAttendanceMember{
 			UserID: row.UserID, Nickname: row.Nickname, AvatarURL: row.AvatarUrl,
 			Stand: row.StandStatus, RegistrationCount: int(row.RegistrationCount),
-			OperationTime: operationTime, Registered: boolRegistered(row.Registered),
+			OperationTime: operationTime, Registered: boolRegistered(row.Registered), ParticipationPoints: row.ParticipationPoints,
 		})
 	}
 	return header, members, true, nil

@@ -33,7 +33,7 @@ const avatarSize = computed(() => toPixels(sizes[props.size]));
 const hasMembers = computed(() => props.items.some(item => item.isPaidMember));
 // 给皇冠及摇摆范围留出滚动容器内空间，避免折叠/展开时被裁切。
 const hasAttendance = computed(() => props.items.some(item => hasAttendanceCount(item)));
-function hasAttendanceCount(item: AvatarItem) { return typeof item.teamAttendedCount === "number" && Number.isFinite(item.teamAttendedCount) && item.teamAttendedCount >= 0; }
+function hasAttendanceCount(item: AvatarItem) { return typeof item.teamParticipationPoints === "number" && Number.isFinite(item.teamParticipationPoints) && item.teamParticipationPoints >= 0; }
 const attendanceHeight = computed(() => expanded.value && hasAttendance.value ? toPixels(28) : 0);
 const crownHeadroom = computed(() => hasMembers.value ? avatarSize.value * 0.44 : 0);
 // 包含头像的 4px 下移量与标签后的留白，避免次数贴近进度条。
@@ -98,7 +98,7 @@ watch(trackHeight, () => {
               width: `${avatarSize}px`, height: `${avatarSize}px`,
               transform: `translate(${layout.positions[index].x}px, ${layout.positions[index].y + crownHeadroom + (selectedId === item.id ? 0 : 4)}px)`,
             }"
-            :aria-label="`${item.name}${item.isPaidMember ? '，球队会员' : ''}${hasAttendanceCount(item) ? `，今年出勤${item.teamAttendedCount}次` : ''}`"
+            :aria-label="`${item.name}${item.isPaidMember ? '，球队会员' : ''}${hasAttendanceCount(item) ? `，年度积分${item.teamParticipationPoints}分` : ''}`"
             :hover-class="interactive && !disabled ? 'expandable-avatars__avatar--pressed' : 'none'"
             @tap.stop="select(item)"
           >
@@ -107,7 +107,7 @@ watch(trackHeight, () => {
               <text data-deck-ignore="true" v-else class="expandable-avatars__fallback">{{ Array.from(item.name.trim())[0] || '?' }}</text>
             </view>
             <view v-if="expanded && hasAttendanceCount(item)" data-deck-ignore="true" class="expandable-avatars__attendance">
-              <text :class="(item.teamAttendedCount ?? 0) > 0 && item.teamAttendanceRank ? `expandable-avatars__attendance--rank-${item.teamAttendanceRank}` : ''">{{ item.teamAttendedCount }}</text><text>次</text>
+              <text :class="(item.teamParticipationPoints ?? 0) > 0 && item.teamParticipationRank ? `expandable-avatars__attendance--rank-${item.teamParticipationRank}` : ''">{{ item.teamParticipationPoints }}</text><text>分</text>
             </view>
             <view v-if="item.isPaidMember" data-deck-ignore="true" class="expandable-avatars__crown"><MembershipCrown :width="`${avatarSize * 0.72}px`" :height="`${avatarSize * 0.4}px`" /></view>
           </view>

@@ -233,3 +233,11 @@ export function rankingInitial(item: BackendTeamAttendanceRankingItem) {
 export function rankingRate(item: BackendTeamAttendanceRankingItem) {
   return `${Math.round((item.attended_count / Math.max(item.total_count, 1)) * 100)}%`;
 }
+
+
+/** Score and tie order are supplied by Go; never infer rewards from old counts. */
+export function sortParticipationRanking(items: BackendTeamAttendanceRankingItem[]) {
+  return [...items].sort((a, b) =>
+    (b.participation_points ?? 0) - (a.participation_points ?? 0)
+    || (a.participation_rank ?? 0) - (b.participation_rank ?? 0));
+}

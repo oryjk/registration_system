@@ -98,7 +98,14 @@ func TestParticipantMembershipIsScopedToRegistrationTeam(t *testing.T) {
 		t.Fatal(err)
 	}
 	expectedRanks := make(map[int64]int64)
+	expectedScoreRanks := make(map[int64]int64)
 	for index, item := range ranking {
+		if item.ParticipationPoints != expectedCounts[item.UserID]*70 {
+			t.Fatalf("score total mismatch %+v", item)
+		}
+		if item.ParticipationPoints > 0 {
+			expectedScoreRanks[item.UserID] = item.ParticipationRank
+		}
 		if item.AttendedCount != expectedCounts[item.UserID] {
 			t.Fatalf("ranking count=%+v", item)
 		}
@@ -124,6 +131,15 @@ func TestParticipantMembershipIsScopedToRegistrationTeam(t *testing.T) {
 			}
 			if !teamGroup && person.TeamAttendedCount != nil {
 				t.Fatalf("individual group attendance=%+v", person)
+			}
+			if !teamGroup && (person.TeamParticipationPoints != nil || person.TeamParticipationRank != nil) {
+				t.Fatal("personal group borrowed team score")
+			}
+			if teamGroup && (person.TeamParticipationPoints == nil || *person.TeamParticipationPoints != expectedCounts[person.UserID]*70) {
+				t.Fatalf("participant score mismatch %+v", person)
+			}
+			if teamGroup && expectedScoreRanks[person.UserID] > 0 && (person.TeamParticipationRank == nil || *person.TeamParticipationRank != expectedScoreRanks[person.UserID]) {
+				t.Fatalf("participant score rank mismatch %+v", person)
 			}
 			if teamGroup && (person.TeamAttendedCount == nil || *person.TeamAttendedCount != expectedCounts[person.UserID]) {
 				t.Fatalf("attendance=%+v", person)

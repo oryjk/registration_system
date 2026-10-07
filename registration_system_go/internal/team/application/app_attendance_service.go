@@ -26,8 +26,9 @@ type TeamAccessQueries interface {
 }
 
 type AttendanceSummary struct {
-	MyRecords []ports.AttendanceRecord
-	Ranking   []ports.AttendanceRankingItem
+	AnnualPoints []ports.AnnualParticipationPoints
+	MyRecords    []ports.AttendanceRecord
+	Ranking      []ports.AttendanceRankingItem
 }
 
 // AttendanceQueryRecord / AttendanceQueryRankingItem 暴露给 http 层的出勤行类型。
@@ -74,7 +75,11 @@ func (s AppAttendanceService) Summary(ctx context.Context, actor sharedauth.Acto
 	if err != nil {
 		return AttendanceSummary{}, sharederror.Wrap(sharederror.KindInternal, "查询出勤排名失败", err)
 	}
-	return AttendanceSummary{MyRecords: myRecords, Ranking: ranking}, nil
+	annual, err := s.repository.ListAnnualParticipationPoints(ctx, teamID, actor.ID)
+	if err != nil {
+		return AttendanceSummary{}, sharederror.Wrap(sharederror.KindInternal, "查询年度积分失败", err)
+	}
+	return AttendanceSummary{MyRecords: myRecords, Ranking: ranking, AnnualPoints: annual}, nil
 }
 
 // MatchAttendance 返回单场比赛的全队出勤明细，供管理端展开某场比赛时按需加载。

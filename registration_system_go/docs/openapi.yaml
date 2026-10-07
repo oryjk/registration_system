@@ -535,7 +535,26 @@ paths:
           schema: { type: string, format: date }
       responses:
         "200":
-          description: 当前队员的出勤记录与全队出勤排名
+          description: 当前队员的出勤记录与全队出勤排名。ranking 新增 participation_points / participation_rank；my_records 新增单场 participation_points；annual_points 提供当前队员本球队全部历史年度积分，与日期筛选独立。旧出勤字段与顺序保持兼容。
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code: { type: integer }
+                  message: { type: string }
+                  data:
+                    type: object
+                    properties:
+                      my_records: { type: array, items: { type: object } }
+                      ranking: { type: array, items: { type: object } }
+                      annual_points:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            year: { type: integer }
+                            participation_points: { type: number, format: double, multipleOf: 0.1 }
         <<: *standardErrors
 
   /api/v1/app/teams/{id}/matches/{match_id}/attendance:
@@ -2941,6 +2960,16 @@ components:
           type: string
           format: date-time
           nullable: true
+        participation_points:
+          type: number
+          format: double
+          multipleOf: 0.1
+          description: 本球队本年度累计参与积分（北京时间比赛年份）
+        participation_rank:
+          type: integer
+          format: int64
+          nullable: true
+          description: 本年度参与积分排名，无积分或非在队成员为 null
     Member:
       type: object
       required: [id, user_id, nickname, avatar_url, real_name, phone_number, role, status, joined_at, balance_cents, is_paid_member, last_recharge_at]
@@ -3299,6 +3328,18 @@ components:
           format: date-time
           nullable: true
           description: 该成员本次报名的落库时间；小程序端按它对已报名队员按报名先后排序。
+        team_participation_points:
+          type: number
+          format: double
+          multipleOf: 0.1
+          nullable: true
+          description: 报名组所属球队本年度参与积分；个人组为 null
+        team_participation_rank:
+          type: integer
+          format: int64
+          nullable: true
+          description: 报名组所属球队本年度积分排名；无积分或个人组为 null
+
     MyRegistration:
       type: object
       required: [group_id, user_id, status, registration_count, paid, updated_at]

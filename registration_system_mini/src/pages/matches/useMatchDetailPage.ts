@@ -183,6 +183,12 @@ export function useMatchDetailPage() {
         teamAttendanceRank: item.team_attendance_rank
           ?? (rosterMatchesRegistrationTeam.value
             ? currentTeamMembers.value.find(member => member.user_id === item.user_id && member.status === 1)?.attendance_rank ?? undefined : undefined),
+        teamParticipationPoints: item.team_participation_points
+          ?? (rosterMatchesRegistrationTeam.value
+            ? currentTeamMembers.value.find(member => member.user_id === item.user_id && member.status === 1)?.participation_points : undefined),
+        teamParticipationRank: item.team_participation_rank
+          ?? (rosterMatchesRegistrationTeam.value
+            ? currentTeamMembers.value.find(member => member.user_id === item.user_id && member.status === 1)?.participation_rank ?? undefined : undefined),
         teamAttendedCount: item.team_attended_count
           ?? (rosterMatchesRegistrationTeam.value
             ? currentTeamMembers.value.find(member => member.user_id === item.user_id && member.status === 1)?.attended_count : undefined),

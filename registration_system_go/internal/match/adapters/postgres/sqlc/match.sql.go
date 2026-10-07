@@ -658,7 +658,7 @@ func (q *Queries) GetActiveGuestGroupForUpdate(ctx context.Context, matchID pgty
 }
 
 const getActiveUserRegistrationInMatchForUpdate = `-- name: GetActiveUserRegistrationInMatchForUpdate :one
-SELECT registration.id, registration.group_id, registration.user_id, registration.status, registration.registration_count, registration.created_at, registration.updated_at, registration.cancelled_at, registration.paid
+SELECT registration.id, registration.group_id, registration.user_id, registration.status, registration.registration_count, registration.created_at, registration.updated_at, registration.cancelled_at, registration.paid, registration.participation_confirmed_at, registration.early_registration_bonus, registration.participation_base_points, registration.participation_rule_version
 FROM match_registrations registration
 JOIN match_registration_groups registration_group
   ON registration_group.id = registration.group_id
@@ -689,6 +689,10 @@ func (q *Queries) GetActiveUserRegistrationInMatchForUpdate(ctx context.Context,
 		&i.UpdatedAt,
 		&i.CancelledAt,
 		&i.Paid,
+		&i.ParticipationConfirmedAt,
+		&i.EarlyRegistrationBonus,
+		&i.ParticipationBasePoints,
+		&i.ParticipationRuleVersion,
 	)
 	return i, err
 }
@@ -869,6 +873,27 @@ func (q *Queries) GetMatchForAdmin(ctx context.Context, id pgtype.UUID) (GetMatc
 	return i, err
 }
 
+const getParticipationAvailableAt = `-- name: GetParticipationAvailableAt :one
+SELECT GREATEST(m.created_at, g.created_at, m.registration_start_at,
+                tm.joined_at)::timestamp AS available_at
+FROM match_registration_groups g JOIN matches m ON m.id=g.match_id
+JOIN team_members tm ON tm.team_id=g.team_id AND tm.user_id=$1
+WHERE g.id=$2
+`
+
+type GetParticipationAvailableAtParams struct {
+	UserID  int64       `json:"user_id"`
+	GroupID pgtype.UUID `json:"group_id"`
+}
+
+// 比赛、报名组与入队时间均为 UTC timestamp，不依赖数据库会话时区。
+func (q *Queries) GetParticipationAvailableAt(ctx context.Context, arg GetParticipationAvailableAtParams) (pgtype.Timestamp, error) {
+	row := q.db.QueryRow(ctx, getParticipationAvailableAt, arg.UserID, arg.GroupID)
+	var available_at pgtype.Timestamp
+	err := row.Scan(&available_at)
+	return available_at, err
+}
+
 const getRegistrationGroupForUpdate = `-- name: GetRegistrationGroupForUpdate :one
 SELECT id, match_id, kind, team_id, min_players, max_players, status, created_at, updated_at, cancelled_at
 FROM match_registration_groups
@@ -973,7 +998,7 @@ func (q *Queries) GetUserBrief(ctx context.Context, userID int64) (GetUserBriefR
 }
 
 const getUserRegistrationForUpdate = `-- name: GetUserRegistrationForUpdate :one
-SELECT id, group_id, user_id, status, registration_count, created_at, updated_at, cancelled_at, paid
+SELECT id, group_id, user_id, status, registration_count, created_at, updated_at, cancelled_at, paid, participation_confirmed_at, early_registration_bonus, participation_base_points, participation_rule_version
 FROM match_registrations
 WHERE group_id = $1
   AND user_id = $2
@@ -998,6 +1023,10 @@ func (q *Queries) GetUserRegistrationForUpdate(ctx context.Context, arg GetUserR
 		&i.UpdatedAt,
 		&i.CancelledAt,
 		&i.Paid,
+		&i.ParticipationConfirmedAt,
+		&i.EarlyRegistrationBonus,
+		&i.ParticipationBasePoints,
+		&i.ParticipationRuleVersion,
 	)
 	return i, err
 }
@@ -1166,13 +1195,17 @@ SELECT r.user_id,
        COALESCE(tm.is_paid_member, false)::boolean AS is_paid_member,
        g.team_id AS participant_team_id,
        COALESCE(ta.attended_count, 0)::bigint AS team_attended_count,
-       COALESCE(tar.attendance_rank, 0)::bigint AS team_attendance_rank
+       COALESCE(tar.attendance_rank, 0)::bigint AS team_attendance_rank,
+       COALESCE(ps.participation_points, 0)::bigint AS team_participation_points,
+       COALESCE(ps.participation_rank, 0)::bigint AS team_participation_rank
 FROM match_registrations r
 JOIN match_registration_groups g ON g.id = r.group_id
 JOIN users u ON u.id = r.user_id
 LEFT JOIN team_members tm ON tm.team_id = g.team_id AND tm.user_id = r.user_id AND tm.status = 'active'
 LEFT JOIN team_attendance ta ON ta.team_id = g.team_id AND ta.user_id = r.user_id
 LEFT JOIN team_attendance_ranks tar ON tar.team_id = g.team_id AND tar.user_id = r.user_id
+LEFT JOIN team_participation_ranks ps ON ps.team_id=g.team_id AND ps.user_id=r.user_id
+ AND ps.score_year=EXTRACT(YEAR FROM NOW() AT TIME ZONE 'Asia/Shanghai')::integer
 WHERE r.group_id = $1
 ORDER BY
     CASE r.status
@@ -1187,18 +1220,20 @@ ORDER BY
 `
 
 type ListGroupRegistrationsRow struct {
-	UserID             int64            `json:"user_id"`
-	Nickname           string           `json:"nickname"`
-	AvatarUrl          *string          `json:"avatar_url"`
-	RealName           *string          `json:"real_name"`
-	RegistrationStatus string           `json:"registration_status"`
-	RegistrationCount  int32            `json:"registration_count"`
-	Paid               bool             `json:"paid"`
-	RegisteredAt       pgtype.Timestamp `json:"registered_at"`
-	IsPaidMember       bool             `json:"is_paid_member"`
-	ParticipantTeamID  *int64           `json:"participant_team_id"`
-	TeamAttendedCount  int64            `json:"team_attended_count"`
-	TeamAttendanceRank int64            `json:"team_attendance_rank"`
+	UserID                  int64            `json:"user_id"`
+	Nickname                string           `json:"nickname"`
+	AvatarUrl               *string          `json:"avatar_url"`
+	RealName                *string          `json:"real_name"`
+	RegistrationStatus      string           `json:"registration_status"`
+	RegistrationCount       int32            `json:"registration_count"`
+	Paid                    bool             `json:"paid"`
+	RegisteredAt            pgtype.Timestamp `json:"registered_at"`
+	IsPaidMember            bool             `json:"is_paid_member"`
+	ParticipantTeamID       *int64           `json:"participant_team_id"`
+	TeamAttendedCount       int64            `json:"team_attended_count"`
+	TeamAttendanceRank      int64            `json:"team_attendance_rank"`
+	TeamParticipationPoints int64            `json:"team_participation_points"`
+	TeamParticipationRank   int64            `json:"team_participation_rank"`
 }
 
 // 报名组的全部报名记录（含用户资料）；个人组花名册与用户端详情 participants 共用。
@@ -1225,6 +1260,8 @@ func (q *Queries) ListGroupRegistrations(ctx context.Context, groupID pgtype.UUI
 			&i.ParticipantTeamID,
 			&i.TeamAttendedCount,
 			&i.TeamAttendanceRank,
+			&i.TeamParticipationPoints,
+			&i.TeamParticipationRank,
 		); err != nil {
 			return nil, err
 		}
@@ -1273,28 +1310,34 @@ SELECT r.group_id,
        COALESCE(tm.is_paid_member, false)::boolean AS is_paid_member,
        g.team_id AS participant_team_id,
        COALESCE(ta.attended_count, 0)::bigint AS team_attended_count,
-       COALESCE(tar.attendance_rank, 0)::bigint AS team_attendance_rank
+       COALESCE(tar.attendance_rank, 0)::bigint AS team_attendance_rank,
+       COALESCE(ps.participation_points, 0)::bigint AS team_participation_points,
+       COALESCE(ps.participation_rank, 0)::bigint AS team_participation_rank
 FROM match_registrations r
 JOIN match_registration_groups g ON g.id = r.group_id
 JOIN users u ON u.id = r.user_id
 LEFT JOIN team_members tm ON tm.team_id = g.team_id AND tm.user_id = r.user_id AND tm.status = 'active'
 LEFT JOIN team_attendance ta ON ta.team_id = g.team_id AND ta.user_id = r.user_id
 LEFT JOIN team_attendance_ranks tar ON tar.team_id = g.team_id AND tar.user_id = r.user_id
+LEFT JOIN team_participation_ranks ps ON ps.team_id=g.team_id AND ps.user_id=r.user_id
+ AND ps.score_year=EXTRACT(YEAR FROM NOW() AT TIME ZONE 'Asia/Shanghai')::integer
 WHERE r.group_id = ANY($1::uuid[])
   AND r.status = 'attending'
 ORDER BY r.group_id, r.created_at, r.user_id
 `
 
 type ListHomeActionGroupParticipantsRow struct {
-	GroupID            pgtype.UUID `json:"group_id"`
-	UserID             int64       `json:"user_id"`
-	Nickname           string      `json:"nickname"`
-	AvatarUrl          *string     `json:"avatar_url"`
-	Status             string      `json:"status"`
-	IsPaidMember       bool        `json:"is_paid_member"`
-	ParticipantTeamID  *int64      `json:"participant_team_id"`
-	TeamAttendedCount  int64       `json:"team_attended_count"`
-	TeamAttendanceRank int64       `json:"team_attendance_rank"`
+	GroupID                 pgtype.UUID `json:"group_id"`
+	UserID                  int64       `json:"user_id"`
+	Nickname                string      `json:"nickname"`
+	AvatarUrl               *string     `json:"avatar_url"`
+	Status                  string      `json:"status"`
+	IsPaidMember            bool        `json:"is_paid_member"`
+	ParticipantTeamID       *int64      `json:"participant_team_id"`
+	TeamAttendedCount       int64       `json:"team_attended_count"`
+	TeamAttendanceRank      int64       `json:"team_attendance_rank"`
+	TeamParticipationPoints int64       `json:"team_participation_points"`
+	TeamParticipationRank   int64       `json:"team_participation_rank"`
 }
 
 // 首页比赛卡片的报名人头像列表：一次性按 group 批量取全部 attending 报名者，
@@ -1319,6 +1362,8 @@ func (q *Queries) ListHomeActionGroupParticipants(ctx context.Context, groupIds 
 			&i.ParticipantTeamID,
 			&i.TeamAttendedCount,
 			&i.TeamAttendanceRank,
+			&i.TeamParticipationPoints,
+			&i.TeamParticipationRank,
 		); err != nil {
 			return nil, err
 		}
@@ -1558,13 +1603,17 @@ SELECT g.match_id,
        COALESCE(tm.is_paid_member, false)::boolean AS is_paid_member,
        g.team_id AS participant_team_id,
        COALESCE(ta.attended_count, 0)::bigint AS team_attended_count,
-       COALESCE(tar.attendance_rank, 0)::bigint AS team_attendance_rank
+       COALESCE(tar.attendance_rank, 0)::bigint AS team_attendance_rank,
+       COALESCE(ps.participation_points, 0)::bigint AS team_participation_points,
+       COALESCE(ps.participation_rank, 0)::bigint AS team_participation_rank
 FROM match_registration_groups g
 JOIN match_registrations r ON r.group_id = g.id
 JOIN users u ON u.id = r.user_id
 LEFT JOIN team_members tm ON tm.team_id = g.team_id AND tm.user_id = r.user_id AND tm.status = 'active'
 LEFT JOIN team_attendance ta ON ta.team_id = g.team_id AND ta.user_id = r.user_id
 LEFT JOIN team_attendance_ranks tar ON tar.team_id = g.team_id AND tar.user_id = r.user_id
+LEFT JOIN team_participation_ranks ps ON ps.team_id=g.team_id AND ps.user_id=r.user_id
+ AND ps.score_year=EXTRACT(YEAR FROM NOW() AT TIME ZONE 'Asia/Shanghai')::integer
 WHERE g.match_id = ANY($1::uuid[])
   AND g.status <> 'cancelled'
   AND r.status = 'attending'
@@ -1572,15 +1621,17 @@ ORDER BY g.match_id, r.created_at, r.user_id
 `
 
 type ListHomeEndedMatchParticipantsRow struct {
-	MatchID            pgtype.UUID `json:"match_id"`
-	UserID             int64       `json:"user_id"`
-	Nickname           string      `json:"nickname"`
-	AvatarUrl          *string     `json:"avatar_url"`
-	Status             string      `json:"status"`
-	IsPaidMember       bool        `json:"is_paid_member"`
-	ParticipantTeamID  *int64      `json:"participant_team_id"`
-	TeamAttendedCount  int64       `json:"team_attended_count"`
-	TeamAttendanceRank int64       `json:"team_attendance_rank"`
+	MatchID                 pgtype.UUID `json:"match_id"`
+	UserID                  int64       `json:"user_id"`
+	Nickname                string      `json:"nickname"`
+	AvatarUrl               *string     `json:"avatar_url"`
+	Status                  string      `json:"status"`
+	IsPaidMember            bool        `json:"is_paid_member"`
+	ParticipantTeamID       *int64      `json:"participant_team_id"`
+	TeamAttendedCount       int64       `json:"team_attended_count"`
+	TeamAttendanceRank      int64       `json:"team_attendance_rank"`
+	TeamParticipationPoints int64       `json:"team_participation_points"`
+	TeamParticipationRank   int64       `json:"team_participation_rank"`
 }
 
 // 首页已结束比赛卡片的报名人头像列表：一次性按 match 批量取全部 attending 报名者，
@@ -1605,6 +1656,8 @@ func (q *Queries) ListHomeEndedMatchParticipants(ctx context.Context, matchIds [
 			&i.ParticipantTeamID,
 			&i.TeamAttendedCount,
 			&i.TeamAttendanceRank,
+			&i.TeamParticipationPoints,
+			&i.TeamParticipationRank,
 		); err != nil {
 			return nil, err
 		}
@@ -2801,25 +2854,31 @@ INSERT INTO match_registrations (
     registration_count,
     created_at,
     updated_at,
-    cancelled_at
+    cancelled_at,
+    participation_confirmed_at,
+    early_registration_bonus
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 ON CONFLICT (group_id, user_id) DO UPDATE
 SET status = EXCLUDED.status,
     registration_count = EXCLUDED.registration_count,
     updated_at = EXCLUDED.updated_at,
-    cancelled_at = EXCLUDED.cancelled_at
+    cancelled_at = EXCLUDED.cancelled_at,
+    participation_confirmed_at = EXCLUDED.participation_confirmed_at,
+    early_registration_bonus = EXCLUDED.early_registration_bonus
 `
 
 type SaveUserRegistrationParams struct {
-	ID                pgtype.UUID      `json:"id"`
-	GroupID           pgtype.UUID      `json:"group_id"`
-	UserID            int64            `json:"user_id"`
-	Status            string           `json:"status"`
-	RegistrationCount int32            `json:"registration_count"`
-	CreatedAt         pgtype.Timestamp `json:"created_at"`
-	UpdatedAt         pgtype.Timestamp `json:"updated_at"`
-	CancelledAt       pgtype.Timestamp `json:"cancelled_at"`
+	ID                       pgtype.UUID      `json:"id"`
+	GroupID                  pgtype.UUID      `json:"group_id"`
+	UserID                   int64            `json:"user_id"`
+	Status                   string           `json:"status"`
+	RegistrationCount        int32            `json:"registration_count"`
+	CreatedAt                pgtype.Timestamp `json:"created_at"`
+	UpdatedAt                pgtype.Timestamp `json:"updated_at"`
+	CancelledAt              pgtype.Timestamp `json:"cancelled_at"`
+	ParticipationConfirmedAt pgtype.Timestamp `json:"participation_confirmed_at"`
+	EarlyRegistrationBonus   int32            `json:"early_registration_bonus"`
 }
 
 func (q *Queries) SaveUserRegistration(ctx context.Context, arg SaveUserRegistrationParams) error {
@@ -2832,6 +2891,8 @@ func (q *Queries) SaveUserRegistration(ctx context.Context, arg SaveUserRegistra
 		arg.CreatedAt,
 		arg.UpdatedAt,
 		arg.CancelledAt,
+		arg.ParticipationConfirmedAt,
+		arg.EarlyRegistrationBonus,
 	)
 	return err
 }

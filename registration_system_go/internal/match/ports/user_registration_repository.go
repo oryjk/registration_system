@@ -3,6 +3,7 @@ package ports
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/oryjk/registration_system/registration_system_go/internal/match/domain"
@@ -28,6 +29,7 @@ type UserRegistrationTransaction interface {
 	IsActiveTeamMember(context.Context, int64, int64) (bool, error)
 	// IsTeamMember 用于管理端出勤补录，包含仍在球队名单中的冻结队员。
 	IsTeamMember(context.Context, int64, int64) (bool, error)
+	ParticipationAvailableAt(context.Context, uuid.UUID, int64) (time.Time, error)
 	SaveRegistration(context.Context, domain.Registration) error
 	UpdateGroup(context.Context, domain.RegistrationGroup) error
 	UpdateMatchOpponent(context.Context, domain.Match) error

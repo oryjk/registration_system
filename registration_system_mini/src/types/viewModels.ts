@@ -68,6 +68,8 @@ export interface HomeMatchCardViewModel {
   participantAvatars: Array<{
     isPaidMember?: boolean;
     teamAttendedCount?: number;
+    teamParticipationPoints?: number;
+    teamParticipationRank?: number;
     teamAttendanceRank?: number;
     userId: number;
     avatarUrl: string;

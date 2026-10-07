@@ -1,37 +1,35 @@
 <script setup lang="ts">
+import { computed } from "vue";
 import type { BackendTeamAttendanceRankingItem } from "@/types/backend";
-import { rankingInitial, rankingRate } from "../teamStatsState";
+import { rankingInitial, sortParticipationRanking } from "../teamStatsState";
 
-defineProps<{
+const props = defineProps<{
   rankingItems: BackendTeamAttendanceRankingItem[];
   embedded?: boolean;
 }>();
+const scoreRanking = computed(() => sortParticipationRanking(props.rankingItems));
 </script>
 
 <template>
   <view :class="['stats-card', embedded ? 'stats-card-embedded' : '']">
     <view class="stats-card-head">
       <view>
-        <text class="stats-card-title">当前球队出勤排名</text>
-        <text class="stats-card-caption">按今年以来当前球队比赛统计</text>
+        <text class="stats-card-title">年度参与榜</text>
+        <text class="stats-card-caption">本年度当前球队累计积分</text>
       </view>
     </view>
 
     <view v-if="rankingItems.length" class="ranking-list">
-      <view v-for="(item, index) in rankingItems" :key="item.user_id" class="ranking-item">
+      <view v-for="(item, index) in scoreRanking" :key="item.user_id" class="ranking-item">
         <view class="ranking-order">{{ index + 1 }}</view>
         <image v-if="item.avatar_url" class="ranking-avatar" :src="item.avatar_url" mode="aspectFill" />
         <view v-else class="ranking-avatar ranking-avatar-fallback">{{ rankingInitial(item) }}</view>
         <view class="ranking-copy">
           <view class="ranking-title-row">
             <text class="ranking-name">{{ item.user_name }}</text>
-            <text class="ranking-rate">{{ rankingRate(item) }}</text>
+            <text class="ranking-rate">{{ item.participation_points == null ? "待更新" : `${item.participation_points}分` }}</text>
           </view>
-          <view class="ranking-metrics">
-            <text>参加 {{ item.attended_count }}</text>
-            <text>请假 {{ item.leave_count }}</text>
-            <text>未报名 {{ item.unregistered_count }}</text>
-          </view>
+
         </view>
       </view>
     </view>

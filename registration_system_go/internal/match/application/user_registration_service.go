@@ -67,6 +67,16 @@ func (s UserRegistrationService) Put(ctx context.Context, actor sharedauth.Actor
 			return sharederror.New(sharederror.KindConflict, "报名组已取消")
 		}
 		if found && current.Status == command.Status && current.CancelledAt == nil && current.RegistrationCount == command.RegistrationCount {
+			// Same-state requests keep the old success contract, including paid records.
+			// A user's non-attending confirmation retires any earlier self reward.
+			if command.Status != domain.RegistrationAttending && current.ParticipationConfirmedAt != nil {
+				if err := current.ApplyUserStatus(command.Status, command.RegistrationCount, now); err != nil {
+					return err
+				}
+				if err := tx.SaveRegistration(ctx, current); err != nil {
+					return mapUserRegistrationSaveError(err)
+				}
+			}
 			result = current
 			return nil
 		}
@@ -97,6 +107,7 @@ func (s UserRegistrationService) Put(ctx context.Context, actor sharedauth.Actor
 			return sharederror.New(sharederror.KindConflict, fmt.Sprintf("报名人数超过剩余名额（剩 %d 个）", remaining))
 		}
 
+		wasAttending := found && current.Status == domain.RegistrationAttending && current.CancelledAt == nil
 		if found {
 			if err := current.ApplyUserStatus(command.Status, command.RegistrationCount, now); err != nil {
 				return err
@@ -107,6 +118,13 @@ func (s UserRegistrationService) Put(ctx context.Context, actor sharedauth.Actor
 			if err != nil {
 				return err
 			}
+		}
+		if command.Status == domain.RegistrationAttending && !wasAttending && group.TeamID != nil {
+			availableAt, err := tx.ParticipationAvailableAt(ctx, groupID, actor.ID)
+			if err != nil {
+				return wrapUserRegistrationStoreError("查询报名开放时间失败", err)
+			}
+			result.ConfirmParticipation(now, availableAt)
 		}
 		if err := tx.SaveRegistration(ctx, result); err != nil {
 			return mapUserRegistrationSaveError(err)
