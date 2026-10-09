@@ -87,6 +87,11 @@ type MatchCaptainThreadRead struct {
 	LastReadAt pgtype.Timestamptz `json:"last_read_at"`
 }
 
+type MatchGroupParticipationRule struct {
+	GroupID         pgtype.UUID `json:"group_id"`
+	OrganizerUserID *int64      `json:"organizer_user_id"`
+}
+
 type MatchRegistration struct {
 	ID                       pgtype.UUID      `json:"id"`
 	GroupID                  pgtype.UUID      `json:"group_id"`

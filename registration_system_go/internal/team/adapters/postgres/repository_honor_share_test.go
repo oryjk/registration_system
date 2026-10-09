@@ -51,7 +51,7 @@ func TestHonorShareRepositoryUniqueYearAndRevocation(t *testing.T) {
 		t.Fatalf("year not isolated: %v", err)
 	}
 	view, ok, err := repo.FindHonorShare(ctx, id)
-	if err != nil || !ok || view.ScoreYear != 2026 || view.ParticipationPoints != 100 || view.ParticipationRank != 1 || !view.IsPaidMember || !view.RequiresPassword {
+	if err != nil || !ok || view.ScoreYear != 2026 || view.ParticipationPoints != 90 || view.ParticipationRank != 1 || !view.IsPaidMember || !view.RequiresPassword {
 		t.Fatalf("view: %+v %v %v", view, ok, err)
 	}
 	previous, err := repo.CreateHonorShare(ctx, team, user, 2025)
@@ -59,7 +59,7 @@ func TestHonorShareRepositoryUniqueYearAndRevocation(t *testing.T) {
 		t.Fatal(err)
 	}
 	previousView, ok, err := repo.FindHonorShare(ctx, previous)
-	if err != nil || !ok || previousView.ParticipationPoints != 94 {
+	if err != nil || !ok || previousView.ParticipationPoints != 84 {
 		t.Fatalf("previous Beijing year: %+v %v", previousView, err)
 	}
 	nextView, ok, err := repo.FindHonorShare(ctx, next)

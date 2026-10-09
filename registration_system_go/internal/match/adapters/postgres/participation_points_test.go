@@ -207,7 +207,7 @@ func TestFirstResponseScoresLeaveWithoutAttendanceBase(t *testing.T) {
 		if err := pool.QueryRow(ctx, `SELECT points FROM team_participation_points WHERE registration_id=$1`, r.ID).Scan(&points); err != nil {
 			t.Fatalf("response bonus disappeared on %s: %v", status, err)
 		}
-		expected := int64(30)
+		expected := int64(40) // Fixed response reward plus captain organization, no attendance base.
 		if status == "attending" {
 			expected = 100
 		}
