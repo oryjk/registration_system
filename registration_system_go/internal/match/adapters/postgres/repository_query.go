@@ -194,7 +194,7 @@ func (r *Repository) attachHomeActionParticipants(ctx context.Context, items []p
 		groupID := uuid.UUID(row.GroupID.Bytes)
 		byGroupID[groupID] = append(byGroupID[groupID], ports.UserParticipant{
 			UserID: row.UserID, Nickname: row.Nickname, AvatarURL: row.AvatarUrl,
-			Status: domain.RegistrationStatus(row.Status), IsPaidMember: row.IsPaidMember, TeamAttendedCount: teamAttendedCount(row.ParticipantTeamID, row.TeamAttendedCount), TeamAttendanceRank: attendanceRankPointer(row.TeamAttendanceRank), TeamParticipationPoints: teamAttendedCount(row.ParticipantTeamID, row.TeamParticipationPoints), TeamParticipationRank: attendanceRankPointer(row.TeamParticipationRank),
+			Status: domain.RegistrationStatus(row.Status), IsPaidMember: row.IsPaidMember, TeamAttendedCount: teamAttendedCount(row.ParticipantTeamID, row.TeamAttendedCount), TeamAttendanceRank: attendanceRankPointer(row.TeamAttendanceRank), TeamCumulativeParticipationPoints: teamAttendedCount(row.ParticipantTeamID, row.TeamCumulativeParticipationPoints), TeamParticipationPoints: teamAttendedCount(row.ParticipantTeamID, row.TeamParticipationPoints), TeamParticipationRank: attendanceRankPointer(row.TeamParticipationRank),
 		})
 	}
 	for index := range items {
@@ -256,7 +256,7 @@ func (r *Repository) attachHomeEndedParticipants(ctx context.Context, items []po
 		seen[row.UserID] = struct{}{}
 		byMatchID[matchID] = append(byMatchID[matchID], ports.UserParticipant{
 			UserID: row.UserID, Nickname: row.Nickname, AvatarURL: row.AvatarUrl,
-			Status: domain.RegistrationStatus(row.Status), IsPaidMember: row.IsPaidMember, TeamAttendedCount: teamAttendedCount(row.ParticipantTeamID, row.TeamAttendedCount), TeamAttendanceRank: attendanceRankPointer(row.TeamAttendanceRank), TeamParticipationPoints: teamAttendedCount(row.ParticipantTeamID, row.TeamParticipationPoints), TeamParticipationRank: attendanceRankPointer(row.TeamParticipationRank),
+			Status: domain.RegistrationStatus(row.Status), IsPaidMember: row.IsPaidMember, TeamAttendedCount: teamAttendedCount(row.ParticipantTeamID, row.TeamAttendedCount), TeamAttendanceRank: attendanceRankPointer(row.TeamAttendanceRank), TeamCumulativeParticipationPoints: teamAttendedCount(row.ParticipantTeamID, row.TeamCumulativeParticipationPoints), TeamParticipationPoints: teamAttendedCount(row.ParticipantTeamID, row.TeamParticipationPoints), TeamParticipationRank: attendanceRankPointer(row.TeamParticipationRank),
 		})
 	}
 	for index := range items {

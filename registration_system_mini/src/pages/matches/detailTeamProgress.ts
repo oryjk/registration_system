@@ -37,6 +37,7 @@ export function buildMatchTeamProgress(
           isPaidMember: person.is_paid_member === true,
           teamAttendedCount: person.team_attended_count ?? undefined,
           teamParticipationPoints: person.team_participation_points ?? undefined,
+          teamCumulativeParticipationPoints: person.team_cumulative_participation_points ?? undefined,
           teamParticipationRank: person.team_participation_rank ?? undefined,
           teamAttendanceRank: person.team_attendance_rank ?? undefined,
         })),

@@ -220,6 +220,12 @@ type Team struct {
 	JoinPasswordHash *string            `json:"join_password_hash"`
 }
 
+type TeamCumulativeParticipationTotal struct {
+	TeamID              *int64 `json:"team_id"`
+	UserID              int64  `json:"user_id"`
+	ParticipationPoints int64  `json:"participation_points"`
+}
+
 type TeamFundCreditReceipt struct {
 	TransactionID int64       `json:"transaction_id"`
 	ReceivedOn    pgtype.Date `json:"received_on"`

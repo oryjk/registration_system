@@ -1197,6 +1197,7 @@ SELECT r.user_id,
        COALESCE(ta.attended_count, 0)::bigint AS team_attended_count,
        COALESCE(tar.attendance_rank, 0)::bigint AS team_attendance_rank,
        COALESCE(ps.participation_points, 0)::bigint AS team_participation_points,
+       COALESCE(cps.participation_points, 0)::bigint AS team_cumulative_participation_points,
        COALESCE(ps.participation_rank, 0)::bigint AS team_participation_rank
 FROM match_registrations r
 JOIN match_registration_groups g ON g.id = r.group_id
@@ -1206,6 +1207,7 @@ LEFT JOIN team_attendance ta ON ta.team_id = g.team_id AND ta.user_id = r.user_i
 LEFT JOIN team_attendance_ranks tar ON tar.team_id = g.team_id AND tar.user_id = r.user_id
 LEFT JOIN team_participation_ranks ps ON ps.team_id=g.team_id AND ps.user_id=r.user_id
  AND ps.score_year=EXTRACT(YEAR FROM NOW() AT TIME ZONE 'Asia/Shanghai')::integer
+LEFT JOIN team_cumulative_participation_totals cps ON cps.team_id=g.team_id AND cps.user_id=r.user_id
 WHERE r.group_id = $1
 ORDER BY
     CASE r.status
@@ -1220,20 +1222,21 @@ ORDER BY
 `
 
 type ListGroupRegistrationsRow struct {
-	UserID                  int64            `json:"user_id"`
-	Nickname                string           `json:"nickname"`
-	AvatarUrl               *string          `json:"avatar_url"`
-	RealName                *string          `json:"real_name"`
-	RegistrationStatus      string           `json:"registration_status"`
-	RegistrationCount       int32            `json:"registration_count"`
-	Paid                    bool             `json:"paid"`
-	RegisteredAt            pgtype.Timestamp `json:"registered_at"`
-	IsPaidMember            bool             `json:"is_paid_member"`
-	ParticipantTeamID       *int64           `json:"participant_team_id"`
-	TeamAttendedCount       int64            `json:"team_attended_count"`
-	TeamAttendanceRank      int64            `json:"team_attendance_rank"`
-	TeamParticipationPoints int64            `json:"team_participation_points"`
-	TeamParticipationRank   int64            `json:"team_participation_rank"`
+	UserID                            int64            `json:"user_id"`
+	Nickname                          string           `json:"nickname"`
+	AvatarUrl                         *string          `json:"avatar_url"`
+	RealName                          *string          `json:"real_name"`
+	RegistrationStatus                string           `json:"registration_status"`
+	RegistrationCount                 int32            `json:"registration_count"`
+	Paid                              bool             `json:"paid"`
+	RegisteredAt                      pgtype.Timestamp `json:"registered_at"`
+	IsPaidMember                      bool             `json:"is_paid_member"`
+	ParticipantTeamID                 *int64           `json:"participant_team_id"`
+	TeamAttendedCount                 int64            `json:"team_attended_count"`
+	TeamAttendanceRank                int64            `json:"team_attendance_rank"`
+	TeamParticipationPoints           int64            `json:"team_participation_points"`
+	TeamCumulativeParticipationPoints int64            `json:"team_cumulative_participation_points"`
+	TeamParticipationRank             int64            `json:"team_participation_rank"`
 }
 
 // 报名组的全部报名记录（含用户资料）；个人组花名册与用户端详情 participants 共用。
@@ -1261,6 +1264,7 @@ func (q *Queries) ListGroupRegistrations(ctx context.Context, groupID pgtype.UUI
 			&i.TeamAttendedCount,
 			&i.TeamAttendanceRank,
 			&i.TeamParticipationPoints,
+			&i.TeamCumulativeParticipationPoints,
 			&i.TeamParticipationRank,
 		); err != nil {
 			return nil, err
@@ -1312,6 +1316,7 @@ SELECT r.group_id,
        COALESCE(ta.attended_count, 0)::bigint AS team_attended_count,
        COALESCE(tar.attendance_rank, 0)::bigint AS team_attendance_rank,
        COALESCE(ps.participation_points, 0)::bigint AS team_participation_points,
+       COALESCE(cps.participation_points, 0)::bigint AS team_cumulative_participation_points,
        COALESCE(ps.participation_rank, 0)::bigint AS team_participation_rank
 FROM match_registrations r
 JOIN match_registration_groups g ON g.id = r.group_id
@@ -1321,23 +1326,25 @@ LEFT JOIN team_attendance ta ON ta.team_id = g.team_id AND ta.user_id = r.user_i
 LEFT JOIN team_attendance_ranks tar ON tar.team_id = g.team_id AND tar.user_id = r.user_id
 LEFT JOIN team_participation_ranks ps ON ps.team_id=g.team_id AND ps.user_id=r.user_id
  AND ps.score_year=EXTRACT(YEAR FROM NOW() AT TIME ZONE 'Asia/Shanghai')::integer
+LEFT JOIN team_cumulative_participation_totals cps ON cps.team_id=g.team_id AND cps.user_id=r.user_id
 WHERE r.group_id = ANY($1::uuid[])
   AND r.status = 'attending'
 ORDER BY r.group_id, r.created_at, r.user_id
 `
 
 type ListHomeActionGroupParticipantsRow struct {
-	GroupID                 pgtype.UUID `json:"group_id"`
-	UserID                  int64       `json:"user_id"`
-	Nickname                string      `json:"nickname"`
-	AvatarUrl               *string     `json:"avatar_url"`
-	Status                  string      `json:"status"`
-	IsPaidMember            bool        `json:"is_paid_member"`
-	ParticipantTeamID       *int64      `json:"participant_team_id"`
-	TeamAttendedCount       int64       `json:"team_attended_count"`
-	TeamAttendanceRank      int64       `json:"team_attendance_rank"`
-	TeamParticipationPoints int64       `json:"team_participation_points"`
-	TeamParticipationRank   int64       `json:"team_participation_rank"`
+	GroupID                           pgtype.UUID `json:"group_id"`
+	UserID                            int64       `json:"user_id"`
+	Nickname                          string      `json:"nickname"`
+	AvatarUrl                         *string     `json:"avatar_url"`
+	Status                            string      `json:"status"`
+	IsPaidMember                      bool        `json:"is_paid_member"`
+	ParticipantTeamID                 *int64      `json:"participant_team_id"`
+	TeamAttendedCount                 int64       `json:"team_attended_count"`
+	TeamAttendanceRank                int64       `json:"team_attendance_rank"`
+	TeamParticipationPoints           int64       `json:"team_participation_points"`
+	TeamCumulativeParticipationPoints int64       `json:"team_cumulative_participation_points"`
+	TeamParticipationRank             int64       `json:"team_participation_rank"`
 }
 
 // 首页比赛卡片的报名人头像列表：一次性按 group 批量取全部 attending 报名者，
@@ -1363,6 +1370,7 @@ func (q *Queries) ListHomeActionGroupParticipants(ctx context.Context, groupIds 
 			&i.TeamAttendedCount,
 			&i.TeamAttendanceRank,
 			&i.TeamParticipationPoints,
+			&i.TeamCumulativeParticipationPoints,
 			&i.TeamParticipationRank,
 		); err != nil {
 			return nil, err
@@ -1605,6 +1613,7 @@ SELECT g.match_id,
        COALESCE(ta.attended_count, 0)::bigint AS team_attended_count,
        COALESCE(tar.attendance_rank, 0)::bigint AS team_attendance_rank,
        COALESCE(ps.participation_points, 0)::bigint AS team_participation_points,
+       COALESCE(cps.participation_points, 0)::bigint AS team_cumulative_participation_points,
        COALESCE(ps.participation_rank, 0)::bigint AS team_participation_rank
 FROM match_registration_groups g
 JOIN match_registrations r ON r.group_id = g.id
@@ -1614,6 +1623,7 @@ LEFT JOIN team_attendance ta ON ta.team_id = g.team_id AND ta.user_id = r.user_i
 LEFT JOIN team_attendance_ranks tar ON tar.team_id = g.team_id AND tar.user_id = r.user_id
 LEFT JOIN team_participation_ranks ps ON ps.team_id=g.team_id AND ps.user_id=r.user_id
  AND ps.score_year=EXTRACT(YEAR FROM NOW() AT TIME ZONE 'Asia/Shanghai')::integer
+LEFT JOIN team_cumulative_participation_totals cps ON cps.team_id=g.team_id AND cps.user_id=r.user_id
 WHERE g.match_id = ANY($1::uuid[])
   AND g.status <> 'cancelled'
   AND r.status = 'attending'
@@ -1621,17 +1631,18 @@ ORDER BY g.match_id, r.created_at, r.user_id
 `
 
 type ListHomeEndedMatchParticipantsRow struct {
-	MatchID                 pgtype.UUID `json:"match_id"`
-	UserID                  int64       `json:"user_id"`
-	Nickname                string      `json:"nickname"`
-	AvatarUrl               *string     `json:"avatar_url"`
-	Status                  string      `json:"status"`
-	IsPaidMember            bool        `json:"is_paid_member"`
-	ParticipantTeamID       *int64      `json:"participant_team_id"`
-	TeamAttendedCount       int64       `json:"team_attended_count"`
-	TeamAttendanceRank      int64       `json:"team_attendance_rank"`
-	TeamParticipationPoints int64       `json:"team_participation_points"`
-	TeamParticipationRank   int64       `json:"team_participation_rank"`
+	MatchID                           pgtype.UUID `json:"match_id"`
+	UserID                            int64       `json:"user_id"`
+	Nickname                          string      `json:"nickname"`
+	AvatarUrl                         *string     `json:"avatar_url"`
+	Status                            string      `json:"status"`
+	IsPaidMember                      bool        `json:"is_paid_member"`
+	ParticipantTeamID                 *int64      `json:"participant_team_id"`
+	TeamAttendedCount                 int64       `json:"team_attended_count"`
+	TeamAttendanceRank                int64       `json:"team_attendance_rank"`
+	TeamParticipationPoints           int64       `json:"team_participation_points"`
+	TeamCumulativeParticipationPoints int64       `json:"team_cumulative_participation_points"`
+	TeamParticipationRank             int64       `json:"team_participation_rank"`
 }
 
 // 首页已结束比赛卡片的报名人头像列表：一次性按 match 批量取全部 attending 报名者，
@@ -1657,6 +1668,7 @@ func (q *Queries) ListHomeEndedMatchParticipants(ctx context.Context, matchIds [
 			&i.TeamAttendedCount,
 			&i.TeamAttendanceRank,
 			&i.TeamParticipationPoints,
+			&i.TeamCumulativeParticipationPoints,
 			&i.TeamParticipationRank,
 		); err != nil {
 			return nil, err

@@ -2960,6 +2960,11 @@ components:
           type: string
           format: date-time
           nullable: true
+        cumulative_participation_points:
+          type: number
+          format: double
+          multipleOf: 0.1
+          description: 本球队历年累计参与星数，用于活跃段位与等级，不在跨年时清零。
         participation_points:
           type: number
           format: double
@@ -3328,6 +3333,12 @@ components:
           format: date-time
           nullable: true
           description: 该成员本次报名的落库时间；小程序端按它对已报名队员按报名先后排序。
+        team_cumulative_participation_points:
+          type: number
+          format: double
+          nullable: true
+          multipleOf: 0.1
+          description: 报名组所属球队的历年累计参与星数，用于活跃段位与等级；个人组为 null。
         team_participation_points:
           type: number
           format: double

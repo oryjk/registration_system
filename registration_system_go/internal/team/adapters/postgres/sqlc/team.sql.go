@@ -811,6 +811,7 @@ SELECT tm.user_id,
        COALESCE(ta.attended_count, 0)::bigint AS attended_count,
        COALESCE(tar.attendance_rank, 0)::bigint AS attendance_rank,
        COALESCE(ps.participation_points, 0)::bigint AS participation_points,
+       COALESCE(cps.participation_points, 0)::bigint AS cumulative_participation_points,
        COALESCE(ps.participation_rank, 0)::bigint AS participation_rank
 FROM team_members tm
 JOIN users u ON u.id = tm.user_id
@@ -818,6 +819,7 @@ LEFT JOIN team_attendance ta ON ta.user_id = tm.user_id
 LEFT JOIN team_attendance_ranks tar ON tar.team_id = tm.team_id AND tar.user_id = tm.user_id
 LEFT JOIN team_participation_ranks ps ON ps.team_id=tm.team_id AND ps.user_id=tm.user_id
  AND ps.score_year=EXTRACT(YEAR FROM NOW() AT TIME ZONE 'Asia/Shanghai')::integer
+LEFT JOIN team_cumulative_participation_totals cps ON cps.team_id=tm.team_id AND cps.user_id=tm.user_id
 WHERE tm.team_id = $1
   AND tm.status <> 'removed'
 ORDER BY
@@ -833,20 +835,21 @@ ORDER BY
 `
 
 type ListAppTeamMembersRow struct {
-	UserID              int64              `json:"user_id"`
-	Nickname            string             `json:"nickname"`
-	AvatarUrl           *string            `json:"avatar_url"`
-	RealName            *string            `json:"real_name"`
-	Role                string             `json:"role"`
-	Status              string             `json:"status"`
-	JoinedAt            pgtype.Timestamp   `json:"joined_at"`
-	BalanceCents        int64              `json:"balance_cents"`
-	IsPaidMember        bool               `json:"is_paid_member"`
-	LastRechargeAt      pgtype.Timestamptz `json:"last_recharge_at"`
-	AttendedCount       int64              `json:"attended_count"`
-	AttendanceRank      int64              `json:"attendance_rank"`
-	ParticipationPoints int64              `json:"participation_points"`
-	ParticipationRank   int64              `json:"participation_rank"`
+	UserID                        int64              `json:"user_id"`
+	Nickname                      string             `json:"nickname"`
+	AvatarUrl                     *string            `json:"avatar_url"`
+	RealName                      *string            `json:"real_name"`
+	Role                          string             `json:"role"`
+	Status                        string             `json:"status"`
+	JoinedAt                      pgtype.Timestamp   `json:"joined_at"`
+	BalanceCents                  int64              `json:"balance_cents"`
+	IsPaidMember                  bool               `json:"is_paid_member"`
+	LastRechargeAt                pgtype.Timestamptz `json:"last_recharge_at"`
+	AttendedCount                 int64              `json:"attended_count"`
+	AttendanceRank                int64              `json:"attendance_rank"`
+	ParticipationPoints           int64              `json:"participation_points"`
+	CumulativeParticipationPoints int64              `json:"cumulative_participation_points"`
+	ParticipationRank             int64              `json:"participation_rank"`
 }
 
 // 年度出勤次数保持与统计页出勤排名（北京时间年初至今天）一致。
@@ -873,6 +876,7 @@ func (q *Queries) ListAppTeamMembers(ctx context.Context, teamID int64) ([]ListA
 			&i.AttendedCount,
 			&i.AttendanceRank,
 			&i.ParticipationPoints,
+			&i.CumulativeParticipationPoints,
 			&i.ParticipationRank,
 		); err != nil {
 			return nil, err

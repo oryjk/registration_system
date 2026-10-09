@@ -88,6 +88,7 @@ func TestParticipantMembershipIsScopedToRegistrationTeam(t *testing.T) {
 		}
 	}
 	expectedCounts := map[int64]int64{paid: 1, ordinary: 0, inactive: 0, outsider: 0, top: 4, tied: 1}
+	expectedCumulative := map[int64]int64{paid: 240, ordinary: 60, inactive: 0, outsider: 0, top: 240, tied: 60}
 	if !past.Before(yearStart.UTC()) {
 		expectedCounts[paid] += 2
 		expectedCounts[ordinary] = 1
@@ -122,6 +123,9 @@ func TestParticipantMembershipIsScopedToRegistrationTeam(t *testing.T) {
 			t.Fatalf("participants=%+v", participants)
 		}
 		for _, person := range participants {
+			if !teamGroup && person.TeamCumulativeParticipationPoints != nil || teamGroup && (person.TeamCumulativeParticipationPoints == nil || *person.TeamCumulativeParticipationPoints != expectedCumulative[person.UserID]) {
+				t.Fatalf("cumulative stars must include history and stay within the registration team: %+v", person)
+			}
 			wantRank := expectedRanks[person.UserID]
 			if !teamGroup {
 				wantRank = 0

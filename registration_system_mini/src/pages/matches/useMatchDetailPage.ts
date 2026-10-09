@@ -187,6 +187,9 @@ export function useMatchDetailPage() {
         teamParticipationPoints: item.team_participation_points
           ?? (rosterMatchesRegistrationTeam.value
             ? currentTeamMembers.value.find(member => member.user_id === item.user_id && member.status === 1)?.participation_points : undefined),
+        teamCumulativeParticipationPoints: item.team_cumulative_participation_points
+          ?? (rosterMatchesRegistrationTeam.value
+            ? currentTeamMembers.value.find(member => member.user_id === item.user_id && member.status === 1)?.cumulative_participation_points : undefined),
         teamParticipationRank: item.team_participation_rank
           ?? (rosterMatchesRegistrationTeam.value
             ? currentTeamMembers.value.find(member => member.user_id === item.user_id && member.status === 1)?.participation_rank ?? undefined : undefined),

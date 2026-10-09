@@ -8,20 +8,21 @@ import (
 )
 
 type AppMember struct {
-	ParticipationPoints int64 // Exact tenths of a point; converted at the HTTP boundary.
-	ParticipationRank   *int64
-	AttendanceRank      *int64
-	AttendedCount       int64
-	UserID              int64
-	Nickname            string
-	AvatarURL           *string
-	RealName            *string
-	Role                domain.Role
-	Status              domain.MemberStatus
-	JoinedAt            time.Time
-	BalanceCents        int64
-	IsPaidMember        bool
-	LastRechargeAt      *time.Time
+	CumulativeParticipationPoints int64 // All years within this team, in tenths.
+	ParticipationPoints           int64 // Exact tenths of a point; converted at the HTTP boundary.
+	ParticipationRank             *int64
+	AttendanceRank                *int64
+	AttendedCount                 int64
+	UserID                        int64
+	Nickname                      string
+	AvatarURL                     *string
+	RealName                      *string
+	Role                          domain.Role
+	Status                        domain.MemberStatus
+	JoinedAt                      time.Time
+	BalanceCents                  int64
+	IsPaidMember                  bool
+	LastRechargeAt                *time.Time
 }
 
 // AppMembershipState 是应用端展示的球队会员状态与"我的队内余额"（该成员个人账户）。

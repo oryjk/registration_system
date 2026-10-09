@@ -226,6 +226,7 @@ export function toHomeMatchCard(
     isPaidMember: participant.is_paid_member === true,
     teamAttendedCount: participant.team_attended_count ?? undefined,
     teamParticipationPoints: participant.team_participation_points ?? undefined,
+    teamCumulativeParticipationPoints: participant.team_cumulative_participation_points ?? undefined,
     teamParticipationRank: participant.team_participation_rank ?? undefined,
     teamAttendanceRank: participant.team_attendance_rank ?? undefined,
   }));

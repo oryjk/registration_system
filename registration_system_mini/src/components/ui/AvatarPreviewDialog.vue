@@ -39,11 +39,11 @@ const portraitStyle = computed(() => ({
 watch(() => props.visible, visible => { if (visible) viewport.value = uni.getWindowInfo(); });
 watch(() => [props.avatar?.id, props.avatar?.avatarUrl, props.visible], () => { if (props.visible) imageFailed.value = false; });
 const name = computed(() => props.avatar?.name.trim() || '球友');
-const annualStars = computed(() => {
-  const count = props.avatar?.teamParticipationPoints;
+const cumulativeStars = computed(() => {
+  const count = props.avatar?.teamCumulativeParticipationPoints;
   return typeof count === 'number' && Number.isFinite(count) && count >= 0 ? count : null;
 });
-const participationTier = computed(() => avatarParticipationTier(props.avatar?.teamParticipationPoints));
+const participationTier = computed(() => avatarParticipationTier(props.avatar?.teamCumulativeParticipationPoints));
 function close() {
   if (props.visible && !leaving.value) emit('close');
 }
@@ -65,10 +65,10 @@ function close() {
       <text class="avatar-preview-name">{{ name }}</text>
       <view v-if="participationTier" class="avatar-preview-honor">
         <view class="avatar-preview-honor-icon" aria-hidden="true"><view class="avatar-preview-honor-cup" /><view class="avatar-preview-honor-stem" /></view>
-        <text>年度活跃 · {{ participationTier.title }}</text>
+        <text>活跃段位 · {{ participationTier.title }}</text>
       </view>
-      <view v-if="annualStars != null" class="avatar-preview-attendance">
-        <text>年度星数</text><text class="avatar-preview-attendance-number">{{ annualStars }}</text><text>星</text>
+      <view v-if="cumulativeStars != null" class="avatar-preview-attendance">
+        <text>累计星数</text><text class="avatar-preview-attendance-number">{{ cumulativeStars }}</text><text>星</text>
       </view>
       <view v-if="canShare" class="avatar-preview-share"><AppButton block :disabled="leaving" @click="emit('share')">分享我的荣誉</AppButton></view>
     </view>

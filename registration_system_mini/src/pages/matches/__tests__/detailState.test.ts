@@ -182,7 +182,7 @@ test("member identity survives joined, leave and pending roster projections", ()
 
 test("roster from another team cannot supply membership to a registration group", () => {
   const groups = buildTeamMemberRegistrationGroups({
-    members: [teamMember(1, { is_paid_member: true, attended_count: 12, participation_points: 94.5, participation_rank: 1 }), teamMember(2, { is_paid_member: true, attended_count: 12, participation_points: 94.5, participation_rank: 1 }), teamMember(3, { is_paid_member: false, attended_count: 12 })],
+    members: [teamMember(1, { is_paid_member: true, attended_count: 12, participation_points: 94.5, cumulative_participation_points: 655.5, participation_rank: 1 }), teamMember(2, { is_paid_member: true, attended_count: 12, participation_points: 94.5, cumulative_participation_points: 655.5, participation_rank: 1 }), teamMember(3, { is_paid_member: false, attended_count: 12 })],
     registrations: [
       { user_id: 1, stand: 1, registration_count: 1, paid: 0, operation_time: "2026-10-06T01:00:00Z", is_paid_member: false },
       { user_id: 3, stand: 1, registration_count: 1, paid: 0, operation_time: "2026-10-06T01:00:00Z", is_paid_member: true },
@@ -192,5 +192,6 @@ test("roster from another team cannot supply membership to a registration group"
   expect(groups.pending[0].isPaidMember).toEqual(false);
   expect(groups.pending[0].teamAttendedCount).toEqual(undefined);
   expect(groups.pending[0].teamParticipationPoints).toEqual(undefined);
+  expect(groups.pending[0].teamCumulativeParticipationPoints).toEqual(undefined);
   expect(groups.pending[0].teamParticipationRank).toEqual(undefined);
 });

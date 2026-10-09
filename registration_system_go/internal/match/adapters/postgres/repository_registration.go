@@ -56,7 +56,7 @@ func (r *Repository) listGroupRegistrationEntries(ctx context.Context, groupID u
 		entries = append(entries, ports.AdminRosterEntry{
 			UserID: row.UserID, Nickname: row.Nickname, RealName: row.RealName, AvatarURL: row.AvatarUrl,
 			Status: &status, RegistrationCount: int(row.RegistrationCount), Paid: row.Paid,
-			RegisteredAt: timestampPointer(row.RegisteredAt), IsPaidMember: row.IsPaidMember, TeamAttendedCount: teamAttendedCount(row.ParticipantTeamID, row.TeamAttendedCount), TeamAttendanceRank: attendanceRankPointer(row.TeamAttendanceRank), TeamParticipationPoints: teamAttendedCount(row.ParticipantTeamID, row.TeamParticipationPoints), TeamParticipationRank: attendanceRankPointer(row.TeamParticipationRank),
+			RegisteredAt: timestampPointer(row.RegisteredAt), IsPaidMember: row.IsPaidMember, TeamAttendedCount: teamAttendedCount(row.ParticipantTeamID, row.TeamAttendedCount), TeamAttendanceRank: attendanceRankPointer(row.TeamAttendanceRank), TeamCumulativeParticipationPoints: teamAttendedCount(row.ParticipantTeamID, row.TeamCumulativeParticipationPoints), TeamParticipationPoints: teamAttendedCount(row.ParticipantTeamID, row.TeamParticipationPoints), TeamParticipationRank: attendanceRankPointer(row.TeamParticipationRank),
 		})
 	}
 	return entries, nil

@@ -15,6 +15,7 @@ type TeamMemberCard = {
   isPaidMember?: boolean;
   teamAttendedCount?: number;
   teamParticipationPoints?: number;
+  teamCumulativeParticipationPoints?: number;
   teamParticipationRank?: number;
   teamAttendanceRank?: number;
 };
@@ -196,6 +197,7 @@ const activeMemberAvatars = computed(() => activeSection.value.members.map(membe
   isPaidMember: member.isPaidMember,
   teamAttendedCount: member.teamAttendedCount,
   teamParticipationPoints: member.teamParticipationPoints,
+  teamCumulativeParticipationPoints: member.teamCumulativeParticipationPoints,
   teamParticipationRank: member.teamParticipationRank,
   teamAttendanceRank: member.teamAttendanceRank,
 })));

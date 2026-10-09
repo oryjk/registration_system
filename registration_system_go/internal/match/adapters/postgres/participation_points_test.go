@@ -78,6 +78,10 @@ func TestAnnualParticipationPointsHistoryAndCorrections(t *testing.T) {
 	if rows.Err() != nil || years != 2 || total != 170 {
 		t.Fatalf("history years=%d total=%d err=%v", years, total, rows.Err())
 	}
+	var cumulative int64
+	if err = pool.QueryRow(ctx, `SELECT participation_points FROM team_cumulative_participation_totals WHERE team_id=$1 AND user_id=$2`, team, owner).Scan(&cumulative); err != nil || cumulative != 170 {
+		t.Fatalf("cumulative history=%d want=170 err=%v", cumulative, err)
+	}
 	teamRepo := teampostgres.NewRepository(pool)
 	annual, err := teamRepo.ListAnnualParticipationPoints(ctx, team, owner)
 	if err != nil || len(annual) != 2 || annual[0].ScoreYear != 2025 || annual[0].ParticipationPoints != 100 || annual[1].ParticipationPoints != 70 {
@@ -86,6 +90,9 @@ func TestAnnualParticipationPointsHistoryAndCorrections(t *testing.T) {
 	members, err := teamRepo.ListAppMembers(ctx, team)
 	if err != nil || len(members) != 1 || members[0].ParticipationPoints != 0 || members[0].ParticipationRank != nil {
 		t.Fatalf("current year did not reset %+v err=%v", members, err)
+	}
+	if members[0].CumulativeParticipationPoints != 170 {
+		t.Fatalf("cumulative member stars reset across years: %+v", members[0])
 	}
 	records, err := teamRepo.ListMemberAttendanceRecords(ctx, team, owner, nil, nil)
 	if err != nil || len(records) != 2 || records[0].ParticipationPoints != 100 || records[1].ParticipationPoints != 70 {

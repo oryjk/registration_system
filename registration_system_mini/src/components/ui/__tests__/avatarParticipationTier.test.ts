@@ -8,7 +8,7 @@ test("activity tiers cover every level, independent of leaderboard rank", () => 
   }
   expect(avatarParticipationTier(265)?.title).toEqual("永恒钻石");
   expect(avatarParticipationTier(262.8)?.title).toEqual("永恒钻石");
-  expect(avatarParticipationTier(1000)?.title).toEqual("最强王者");
+  expect(avatarParticipationTier(655.5)?.title).toEqual("最强王者");
 });
 
 test("tiers use the existing rounded level and preserve missing-data behavior", () => {

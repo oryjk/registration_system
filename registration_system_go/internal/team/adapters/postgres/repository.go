@@ -285,7 +285,7 @@ func (r *Repository) ListAppMembers(ctx context.Context, teamID int64) ([]ports.
 		items = append(items, ports.AppMember{
 			UserID: row.UserID, Nickname: row.Nickname, AvatarURL: row.AvatarUrl,
 			RealName: row.RealName, Role: domain.Role(row.Role), Status: domain.MemberStatus(row.Status),
-			JoinedAt: row.JoinedAt.Time, BalanceCents: row.BalanceCents, IsPaidMember: row.IsPaidMember, AttendedCount: row.AttendedCount, AttendanceRank: attendanceRankPointer(row.AttendanceRank), ParticipationPoints: row.ParticipationPoints, ParticipationRank: attendanceRankPointer(row.ParticipationRank),
+			JoinedAt: row.JoinedAt.Time, BalanceCents: row.BalanceCents, IsPaidMember: row.IsPaidMember, AttendedCount: row.AttendedCount, AttendanceRank: attendanceRankPointer(row.AttendanceRank), CumulativeParticipationPoints: row.CumulativeParticipationPoints, ParticipationPoints: row.ParticipationPoints, ParticipationRank: attendanceRankPointer(row.ParticipationRank),
 			LastRechargeAt: nullableTimestamptz(row.LastRechargeAt),
 		})
 	}

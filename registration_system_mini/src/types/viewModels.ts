@@ -70,6 +70,7 @@ export interface HomeMatchCardViewModel {
     isPaidMember?: boolean;
     teamAttendedCount?: number;
     teamParticipationPoints?: number;
+  teamCumulativeParticipationPoints?: number;
     teamParticipationRank?: number;
     teamAttendanceRank?: number;
     userId: number;

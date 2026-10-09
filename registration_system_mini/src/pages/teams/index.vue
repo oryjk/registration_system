@@ -58,7 +58,7 @@ const attendanceCalendarMonths = computed(() => buildAttendanceCalendarMonths(my
 const canShowCreateTeamEntry = computed(() => !shouldHideCreationEntrances.value);
 const statsTabOptions = [
   { value: "records", label: "出勤记录" },
-  { value: "ranking", label: "出勤排名" },
+  { value: "ranking", label: "年度参与榜" },
 ];
 
 function handleStatsTabChange(value: string) {

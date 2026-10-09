@@ -17,20 +17,21 @@ type AppTeamDetail struct {
 }
 
 type AppTeamMember struct {
-	ParticipationPoints int64
-	ParticipationRank   *int64
-	AttendanceRank      *int64
-	AttendedCount       int64
-	UserID              int64
-	Nickname            string
-	AvatarURL           *string
-	RealName            *string
-	Role                domain.Role
-	Status              domain.MemberStatus
-	JoinedAt            time.Time
-	BalanceCents        int64
-	IsPaidMember        bool
-	LastRechargeAt      *time.Time
+	CumulativeParticipationPoints int64
+	ParticipationPoints           int64
+	ParticipationRank             *int64
+	AttendanceRank                *int64
+	AttendedCount                 int64
+	UserID                        int64
+	Nickname                      string
+	AvatarURL                     *string
+	RealName                      *string
+	Role                          domain.Role
+	Status                        domain.MemberStatus
+	JoinedAt                      time.Time
+	BalanceCents                  int64
+	IsPaidMember                  bool
+	LastRechargeAt                *time.Time
 }
 
 type AppQueryService struct {
@@ -68,7 +69,7 @@ func (s AppQueryService) ListMembers(ctx context.Context, actor sharedauth.Actor
 		item := AppTeamMember{
 			UserID: row.UserID, Nickname: row.Nickname, AvatarURL: row.AvatarURL,
 			RealName: row.RealName, Role: row.Role, Status: row.Status, JoinedAt: row.JoinedAt,
-			IsPaidMember: row.IsPaidMember, AttendedCount: row.AttendedCount, AttendanceRank: row.AttendanceRank, ParticipationPoints: row.ParticipationPoints, ParticipationRank: row.ParticipationRank,
+			IsPaidMember: row.IsPaidMember, AttendedCount: row.AttendedCount, AttendanceRank: row.AttendanceRank, CumulativeParticipationPoints: row.CumulativeParticipationPoints, ParticipationPoints: row.ParticipationPoints, ParticipationRank: row.ParticipationRank,
 		}
 		if canSeeFundDetails {
 			item.BalanceCents = row.BalanceCents

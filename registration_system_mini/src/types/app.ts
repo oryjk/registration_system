@@ -53,6 +53,7 @@ export interface AppTeamDetail {
 }
 
 export interface AppTeamMember {
+  cumulative_participation_points?: number;
   attended_count?: number;
   participation_points?: number;
   participation_rank?: number | null;

@@ -132,13 +132,14 @@ describe("Home action match card", () => {
 });
 
 test("keeps membership from the selected group before and after detail arrives", () => {
-  const participant = { user_id: 7, nickname: "球友", avatar_url: null, status: "attending" as const, is_paid_member: true, team_attended_count: 12, team_attendance_rank: 2, team_participation_points: 94.5, team_participation_rank: 3 };
+  const participant = { user_id: 7, nickname: "球友", avatar_url: null, status: "attending" as const, is_paid_member: true, team_attended_count: 12, team_attendance_rank: 2, team_participation_points: 94.5, team_cumulative_participation_points: 655.5, team_participation_rank: 3 };
   const sourceWithMembers = { ...source, group: { ...source.group, participants: [participant] } };
   const memberCard = toHomeMatchCard(sourceWithMembers, "upcoming");
   expect(buildHomeActionMatchCardState(memberCard, null, now).avatars[0].isPaidMember).toEqual(true);
   expect(buildHomeActionMatchCardState(memberCard, null, now).avatars[0].teamAttendedCount).toEqual(12);
   expect(buildHomeActionMatchCardState(memberCard, null, now).avatars[0].teamAttendanceRank).toEqual(2);
   expect(buildHomeActionMatchCardState(memberCard, null, now).avatars[0].teamParticipationPoints).toEqual(94.5);
+  expect(buildHomeActionMatchCardState(memberCard, null, now).avatars[0].teamCumulativeParticipationPoints).toEqual(655.5);
   expect(buildHomeActionMatchCardState(memberCard, null, now).avatars[0].teamParticipationRank).toEqual(3);
   const data = detail();
   data.groups[0].participants = [participant];
@@ -147,6 +148,7 @@ test("keeps membership from the selected group before and after detail arrives",
   expect(buildHomeActionMatchCardState(memberCard, data, now).avatars[0].teamAttendedCount).toEqual(12);
   expect(buildHomeActionMatchCardState(memberCard, data, now).avatars[0].teamAttendanceRank).toEqual(2);
   expect(buildHomeActionMatchCardState(memberCard, data, now).avatars[0].teamParticipationPoints).toEqual(94.5);
+  expect(buildHomeActionMatchCardState(memberCard, data, now).avatars[0].teamCumulativeParticipationPoints).toEqual(655.5);
   expect(buildHomeActionMatchCardState(memberCard, data, now).avatars[0].teamParticipationRank).toEqual(3);
   data.groups[1].participants = [{ ...participant, is_paid_member: undefined }];
   expect(buildHomeActionMatchCardState(memberCard, data, now).avatars[0].isPaidMember).toEqual(false);

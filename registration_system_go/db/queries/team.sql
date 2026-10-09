@@ -272,6 +272,7 @@ SELECT tm.user_id,
        COALESCE(ta.attended_count, 0)::bigint AS attended_count,
        COALESCE(tar.attendance_rank, 0)::bigint AS attendance_rank,
        COALESCE(ps.participation_points, 0)::bigint AS participation_points,
+       COALESCE(cps.participation_points, 0)::bigint AS cumulative_participation_points,
        COALESCE(ps.participation_rank, 0)::bigint AS participation_rank
 FROM team_members tm
 JOIN users u ON u.id = tm.user_id
@@ -279,6 +280,7 @@ LEFT JOIN team_attendance ta ON ta.user_id = tm.user_id
 LEFT JOIN team_attendance_ranks tar ON tar.team_id = tm.team_id AND tar.user_id = tm.user_id
 LEFT JOIN team_participation_ranks ps ON ps.team_id=tm.team_id AND ps.user_id=tm.user_id
  AND ps.score_year=EXTRACT(YEAR FROM NOW() AT TIME ZONE 'Asia/Shanghai')::integer
+LEFT JOIN team_cumulative_participation_totals cps ON cps.team_id=tm.team_id AND cps.user_id=tm.user_id
 WHERE tm.team_id = $1
   AND tm.status <> 'removed'
 ORDER BY

@@ -10,7 +10,7 @@ const participationTiers = [
   { minLevel: 12, title: "最强王者", tone: "king" },
 ] as const;
 
-/** Every valid annual star total, including zero, has an activity tier. */
+/** Every valid cumulative star total, including zero, has an activity tier. */
 export function avatarParticipationTier(stars: number | undefined) {
   const level = avatarParticipationLevel(stars);
   if (level === null) return null;

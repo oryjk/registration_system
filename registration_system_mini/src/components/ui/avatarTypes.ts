@@ -8,6 +8,7 @@ export type AvatarItem = {
   isPaidMember?: boolean;
   teamAttendedCount?: number;
   teamParticipationPoints?: number;
+  teamCumulativeParticipationPoints?: number;
   teamParticipationRank?: number;
   teamAttendanceRank?: number;
 };

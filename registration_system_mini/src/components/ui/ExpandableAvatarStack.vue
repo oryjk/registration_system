@@ -37,7 +37,7 @@ const avatarSize = computed(() => toPixels(sizes[props.size]));
 const hasMembers = computed(() => props.items.some(item => item.isPaidMember));
 // 给皇冠及摇摆范围留出滚动容器内空间，避免折叠/展开时被裁切。
 const hasAttendance = computed(() => props.items.some(item => hasParticipationLevel(item)));
-function hasParticipationLevel(item: AvatarItem) { return avatarParticipationLevel(item.teamParticipationPoints) !== null; }
+function hasParticipationLevel(item: AvatarItem) { return avatarParticipationLevel(item.teamCumulativeParticipationPoints) !== null; }
 const attendanceHeight = computed(() => expanded.value && hasAttendance.value ? toPixels(28) : 0);
 const crownHeadroom = computed(() => hasMembers.value ? avatarSize.value * 0.44 : 0);
 // 包含头像的 4px 下移量与标签后的留白，避免等级贴近进度条。
@@ -102,7 +102,7 @@ watch(trackHeight, () => {
               width: `${avatarSize}px`, height: `${avatarSize}px`,
               transform: `translate(${layout.positions[index].x}px, ${layout.positions[index].y + crownHeadroom + (selectedId === item.id ? 0 : 4)}px)`,
             }"
-            :aria-label="`${item.name}${item.isPaidMember ? '，球队会员' : ''}${hasParticipationLevel(item) ? `，等级${avatarParticipationLevel(item.teamParticipationPoints)}级` : ''}`"
+            :aria-label="`${item.name}${item.isPaidMember ? '，球队会员' : ''}${hasParticipationLevel(item) ? `，等级${avatarParticipationLevel(item.teamCumulativeParticipationPoints)}级` : ''}`"
             :hover-class="interactive && !disabled ? 'expandable-avatars__avatar--pressed' : 'none'"
             @tap.stop="select(item)"
           >
@@ -111,7 +111,7 @@ watch(trackHeight, () => {
               <text data-deck-ignore="true" v-else class="expandable-avatars__fallback">{{ Array.from(item.name.trim())[0] || '?' }}</text>
             </view>
             <view v-if="expanded && hasParticipationLevel(item)" data-deck-ignore="true" class="expandable-avatars__attendance">
-              <text :class="(item.teamParticipationPoints ?? 0) > 0 && item.teamParticipationRank ? `expandable-avatars__attendance--rank-${item.teamParticipationRank}` : ''">{{ avatarParticipationLevel(item.teamParticipationPoints) }}</text><text>级</text>
+              <text :class="(item.teamParticipationPoints ?? 0) > 0 && item.teamParticipationRank ? `expandable-avatars__attendance--rank-${item.teamParticipationRank}` : ''">{{ avatarParticipationLevel(item.teamCumulativeParticipationPoints) }}</text><text>级</text>
             </view>
             <view v-if="item.isPaidMember" data-deck-ignore="true" class="expandable-avatars__crown"><MembershipCrown :width="`${avatarSize * 0.72}px`" :height="`${avatarSize * 0.4}px`" /></view>
           </view>

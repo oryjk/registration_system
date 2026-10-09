@@ -34,8 +34,8 @@ func TestOpenAPIIsValidAndMatchesGinRoutes(t *testing.T) {
 	if len(missing) != 0 || len(extra) != 0 {
 		t.Fatalf("OpenAPI route mismatch\nmissing: %v\nextra: %v", missing, extra)
 	}
-	if len(documented) != 91 {
-		t.Fatalf("documented operations=%d, want 91", len(documented))
+	if len(documented) != 92 {
+		t.Fatalf("documented operations=%d, want 92", len(documented))
 	}
 }
 
@@ -150,6 +150,7 @@ func completeRouter() *gin.Engine {
 		UserMatches:        matchhttp.NewUserHandler(nil, nil, nil, nil, nil),
 		UserRegistrations:  matchhttp.NewUserRegistrationHandler(nil),
 		AdminMatches:       matchhttp.NewAdminHandler(nil, nil),
+		AdminRegistrations: matchhttp.NewAdminRegistrationHandler(nil),
 		TeamApplications:   matchhttp.NewTeamApplicationHandler(nil),
 		Payments:           paymenthttp.NewHandler(nil),
 		Wallets:            wallethttp.NewHandler(nil),

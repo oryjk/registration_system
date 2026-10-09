@@ -106,8 +106,9 @@ export function buildHomeActionMatchCardState(
       ...(group.team_id ? { teamId: group.team_id } : {}),
       teamAttendedCount: item.team_attended_count ?? undefined,
       teamParticipationPoints: item.team_participation_points ?? undefined,
+      teamCumulativeParticipationPoints: item.team_cumulative_participation_points ?? undefined,
       teamParticipationRank: item.team_participation_rank ?? undefined,
       teamAttendanceRank: item.team_attendance_rank ?? undefined,
-    })) ?? card.participantAvatars.map((item) => ({ id: item.userId, ...(item.teamId ? { teamId: item.teamId } : {}), name: item.displayText, avatarUrl: item.avatarUrl || undefined, isPaidMember: item.isPaidMember, teamAttendedCount: item.teamAttendedCount, teamParticipationPoints: item.teamParticipationPoints, teamParticipationRank: item.teamParticipationRank, teamAttendanceRank: item.teamAttendanceRank })),
+    })) ?? card.participantAvatars.map((item) => ({ id: item.userId, ...(item.teamId ? { teamId: item.teamId } : {}), name: item.displayText, avatarUrl: item.avatarUrl || undefined, isPaidMember: item.isPaidMember, teamAttendedCount: item.teamAttendedCount, teamParticipationPoints: item.teamParticipationPoints, teamCumulativeParticipationPoints: item.teamCumulativeParticipationPoints, teamParticipationRank: item.teamParticipationRank, teamAttendanceRank: item.teamAttendanceRank })),
   };
 }

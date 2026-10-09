@@ -208,6 +208,7 @@ export interface BackendTeamPasswordInfo {
 }
 
 export interface BackendTeamMember {
+  cumulative_participation_points?: number;
   /** 与统计页今年出勤排名相同。 */
   attended_count?: number;
   participation_points?: number;
@@ -402,6 +403,7 @@ export interface BackendAttendanceRankingItem {
 export interface BackendRegistration {
   team_attended_count?: number | null;
   team_participation_points?: number | null;
+  team_cumulative_participation_points?: number | null;
   team_participation_rank?: number | null;
   team_attendance_rank?: number | null;
   is_paid_member?: boolean;
