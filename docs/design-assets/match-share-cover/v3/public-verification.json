@@ -1,0 +1,8 @@
+{
+  "status": 200,
+  "bytes": 162096,
+  "sha256": "46e9b1150ec86fbc78343f3f91b96a42205b982adfa0d7360f470ad1ce41a387",
+  "content_type": "image/jpeg",
+  "cache_control": "public,max-age=31536000,immutable",
+  "allow_origin": "https://oryjk.cn:82"
+}

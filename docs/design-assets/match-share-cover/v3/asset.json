@@ -1,0 +1,14 @@
+{
+  "source_url": "https://oryjk.cn:82/registration/static/share/v2/match/18677ed042e00b13.png",
+  "source_bytes": 1524592,
+  "source_sha256": "18677ed042e00b131247b22735afc3b56df7f619e302adfb6d0aded007b7ee25",
+  "url": "https://oryjk.cn:82/registration/static/share/v3/match/46e9b1150ec86fbc.jpg",
+  "bytes": 162096,
+  "sha256": "46e9b1150ec86fbc78343f3f91b96a42205b982adfa0d7360f470ad1ce41a387",
+  "dimensions": [
+    1000,
+    800
+  ],
+  "format": "image/jpeg",
+  "encoder": "macOS sips, resample maximum dimension 1000, JPEG quality 80"
+}
