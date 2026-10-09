@@ -42,7 +42,8 @@ const requiresLogin = ref(false);
 const myRecords = ref<BackendTeamMemberAttendanceRecord[]>([]);
 const myYearRecords = ref<BackendTeamMemberAttendanceRecord[]>([]);
 const rankingItems = ref<BackendTeamAttendanceRankingItem[]>([]);
-const statsTab = ref<"records" | "ranking">("records");
+const historyRankingItems = ref<BackendTeamAttendanceRankingItem[]>([]);
+const statsTab = ref<"records" | "ranking" | "history">("records");
 
 const currentYear = beijingDateParts(Date.now()).year;
 const currentTeamName = computed(() => currentTeam.value?.name || "当前球队");
@@ -58,11 +59,12 @@ const attendanceCalendarMonths = computed(() => buildAttendanceCalendarMonths(my
 const canShowCreateTeamEntry = computed(() => !shouldHideCreationEntrances.value);
 const statsTabOptions = [
   { value: "records", label: "出勤记录" },
-  { value: "ranking", label: "年度参与榜" },
+  { value: "ranking", label: "年度活跃榜" },
+  { value: "history", label: "历史活跃榜" },
 ];
 
 function handleStatsTabChange(value: string) {
-  statsTab.value = value === "ranking" ? "ranking" : "records";
+  statsTab.value = value === "ranking" || value === "history" ? value : "records";
 }
 
 function goJoinTeam() {
@@ -80,6 +82,7 @@ function resetStatsData() {
   myRecords.value = [];
   myYearRecords.value = [];
   rankingItems.value = [];
+  historyRankingItems.value = [];
 }
 
 async function loadPageData() {
@@ -125,6 +128,7 @@ async function loadPageData() {
     myRecords.value = allTimeSummary.my_records;
     myYearRecords.value = yearSummary.my_records;
     rankingItems.value = yearSummary.ranking;
+    historyRankingItems.value = allTimeSummary.ranking;
     hasLoadedOnce.value = true;
   } catch (error) {
     if (preserveContent) {
@@ -219,7 +223,12 @@ provide(APP_SCROLL_CONTROLLER, appScrollController);
               :calendar-months="attendanceCalendarMonths"
               embedded
             />
-            <AttendanceRankingCard v-else :ranking-items="rankingItems" embedded />
+            <AttendanceRankingCard
+              v-else
+              :ranking-items="statsTab === 'history' ? historyRankingItems : rankingItems"
+              :period="statsTab === 'history' ? 'history' : 'annual'"
+              embedded
+            />
           </view>
         </view>
       </template>

@@ -9,6 +9,7 @@ const { minioImageSrc } = useMinioImages();
 const props = defineProps<{
   rankingItems: BackendTeamAttendanceRankingItem[];
   embedded?: boolean;
+  period?: "annual" | "history";
 }>();
 const scoreRanking = computed(() => sortParticipationRanking(props.rankingItems));
 </script>
@@ -17,8 +18,8 @@ const scoreRanking = computed(() => sortParticipationRanking(props.rankingItems)
   <view :class="['stats-card', embedded ? 'stats-card-embedded' : '']">
     <view class="stats-card-head">
       <view>
-        <text class="stats-card-title">年度参与榜</text>
-        <text class="stats-card-caption">本年度当前球队累计星数</text>
+        <text class="stats-card-title">{{ period === "history" ? "历史活跃榜" : "年度活跃榜" }}</text>
+        <text class="stats-card-caption">{{ period === "history" ? "当前球队历年累计星数（含今年）" : "本年度当前球队累计星数" }}</text>
       </view>
     </view>
 
