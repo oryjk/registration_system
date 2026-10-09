@@ -208,12 +208,13 @@ provide(APP_SCROLL_CONTROLLER, appScrollController);
         />
         <view v-if="currentTeam && currentUser" class="stats-honor-share"><AppButton block variant="outline" @click="shareMyHonor">分享我的荣誉</AppButton></view>
         <view class="stats-tab-card">
-          <SegmentedControl
-            :model-value="statsTab"
-            :options="statsTabOptions"
-            class="stats-segment"
-            @update:model-value="handleStatsTabChange"
-          />
+          <view class="stats-segment">
+            <SegmentedControl
+              :model-value="statsTab"
+              :options="statsTabOptions"
+              @update:model-value="handleStatsTabChange"
+            />
+          </view>
 
           <!-- key 绑定分页签：仅记录/排行切换时重播轻淡入；年月翻页、下拉刷新不重播。 -->
           <view :key="statsTab" class="stats-tab-content">
@@ -226,6 +227,7 @@ provide(APP_SCROLL_CONTROLLER, appScrollController);
             <AttendanceRankingCard
               v-else
               :ranking-items="statsTab === 'history' ? historyRankingItems : rankingItems"
+              :cumulative-ranking-items="historyRankingItems"
               :period="statsTab === 'history' ? 'history' : 'annual'"
               embedded
             />
@@ -279,7 +281,7 @@ provide(APP_SCROLL_CONTROLLER, appScrollController);
 
 .stats-tab-card {
   margin-top: 16rpx;
-  padding: 16rpx 22rpx 22rpx;
+  padding: 26rpx;
   border: var(--ui-border-default);
   border-radius: var(--ui-radius-card);
   background: var(--ui-color-surface);
@@ -287,7 +289,7 @@ provide(APP_SCROLL_CONTROLLER, appScrollController);
 }
 
 .stats-segment {
-  margin-bottom: 18rpx;
+  margin-bottom: 32rpx;
 }
 
 .stats-tab-content {

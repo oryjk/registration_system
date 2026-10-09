@@ -2,16 +2,18 @@
 import { useMinioImages } from "@/composables/useMinioImages";
 import { computed } from "vue";
 import type { BackendTeamAttendanceRankingItem } from "@/types/backend";
-import { rankingInitial, sortParticipationRanking } from "../teamStatsState";
+import { rankingInitial } from "../teamStatsState";
+import { buildActivityRanking } from "../activityRanking";
 
 const { minioImageSrc } = useMinioImages();
 
 const props = defineProps<{
   rankingItems: BackendTeamAttendanceRankingItem[];
+  cumulativeRankingItems: BackendTeamAttendanceRankingItem[];
   embedded?: boolean;
   period?: "annual" | "history";
 }>();
-const scoreRanking = computed(() => sortParticipationRanking(props.rankingItems));
+const scoreRanking = computed(() => buildActivityRanking(props.rankingItems, props.cumulativeRankingItems));
 </script>
 
 <template>
@@ -20,20 +22,34 @@ const scoreRanking = computed(() => sortParticipationRanking(props.rankingItems)
       <view>
         <text class="stats-card-title">{{ period === "history" ? "历史活跃榜" : "年度活跃榜" }}</text>
         <text class="stats-card-caption">{{ period === "history" ? "当前球队历年累计星数（含今年）" : "本年度当前球队累计星数" }}</text>
+        <text v-if="period !== 'history'" class="stats-card-caption">段位按历年累计星数评定</text>
       </view>
     </view>
 
     <view v-if="rankingItems.length" class="ranking-list">
-      <view v-for="(item, index) in scoreRanking" :key="item.user_id" class="ranking-item">
+      <view class="ranking-columns">
+        <text>队员 · 活跃段位</text>
+        <text>{{ period === "history" ? "历史星数" : "年度星数" }}</text>
+      </view>
+      <view
+        v-for="(item, index) in scoreRanking"
+        :key="item.user_id"
+        class="ranking-item"
+        :class="item.participation_points && index < 3 ? `ranking-item--${['gold', 'silver', 'bronze'][index]}` : ''"
+      >
         <view class="ranking-order">{{ index + 1 }}</view>
         <image v-if="item.avatar_url" class="ranking-avatar" :src="minioImageSrc(item.avatar_url)" mode="aspectFill" />
         <view v-else class="ranking-avatar ranking-avatar-fallback">{{ rankingInitial(item) }}</view>
         <view class="ranking-copy">
-          <view class="ranking-title-row">
-            <text class="ranking-name">{{ item.user_name }}</text>
-            <text class="ranking-rate">{{ item.participation_points == null ? "待更新" : `${item.participation_points}星` }}</text>
-          </view>
-
+          <text class="ranking-name">{{ item.user_name }}</text>
+          <view
+            v-if="item.tier"
+            class="ranking-tier"
+            :style="{ color: `var(--ui-avatar-tier-${item.tier.tone})`, backgroundColor: `var(--ui-avatar-tier-${item.tier.tone}-bg)` }"
+          >{{ item.tier.title }}</view>
+        </view>
+        <view class="ranking-rate">
+          <text>{{ item.participation_points == null ? "待更新" : item.participation_points }}</text><text v-if="item.participation_points != null" class="ranking-unit">星</text>
         </view>
       </view>
     </view>
@@ -44,7 +60,7 @@ const scoreRanking = computed(() => sortParticipationRanking(props.rankingItems)
 <style scoped>
 .stats-card {
   margin-top: 16rpx;
-  padding: 22rpx;
+  padding: 26rpx;
   border: var(--ui-border-default);
   border-radius: var(--ui-radius-card);
   background: var(--ui-color-surface);
@@ -66,55 +82,66 @@ const scoreRanking = computed(() => sortParticipationRanking(props.rankingItems)
 
 .stats-card-title {
   display: block;
-  font-size: 29rpx;
-  line-height: 1.2;
+  font-size: 34rpx;
+  line-height: 1.35;
   color: var(--ui-color-text);
   font-weight: 600;
 }
 
 .stats-card-caption {
   display: block;
-  margin-top: 6rpx;
-  font-size: 21rpx;
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  line-height: 1.5;
   color: var(--ui-color-text-muted);
   font-weight: 400;
 }
 
 .ranking-list {
-  margin-top: 18rpx;
+  margin-top: 24rpx;
+}
+
+.ranking-columns {
+  display: flex;
+  justify-content: space-between;
+  padding-bottom: 14rpx;
+  color: var(--ui-color-text-muted);
+  font-size: 22rpx;
+  line-height: 1.5;
 }
 
 .ranking-item {
   display: flex;
   align-items: center;
-  gap: 14rpx;
-  padding: 15rpx 0;
-  border-top: 2rpx solid var(--ui-color-track);
+  gap: 12rpx;
+  padding: 22rpx 0;
+  border-top: var(--ui-border-default);
 }
 
-.ranking-item:first-child {
-  border-top: 0;
-}
+.ranking-item--gold { --ranking-order-fg: var(--ui-avatar-tier-gold); --ranking-order-bg: var(--ui-avatar-tier-gold-bg); }
+.ranking-item--silver { --ranking-order-fg: var(--ui-avatar-tier-silver); --ranking-order-bg: var(--ui-avatar-tier-silver-bg); }
+.ranking-item--bronze { --ranking-order-fg: var(--ui-avatar-tier-bronze); --ranking-order-bg: var(--ui-avatar-tier-bronze-bg); }
 
 .ranking-order {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 42rpx;
-  height: 42rpx;
-  border: var(--ui-border-default);
+  min-width: 40rpx;
+  height: 44rpx;
+  padding: 0 6rpx;
   border-radius: var(--ui-radius-xs);
-  background: var(--ui-color-muted);
-  color: var(--ui-color-text);
-  font-size: 21rpx;
+  background: var(--ranking-order-bg, var(--ui-color-muted));
+  color: var(--ranking-order-fg, var(--ui-color-text-muted));
+  font-size: 24rpx;
+  font-variant-numeric: tabular-nums;
   font-weight: 600;
   flex-shrink: 0;
   box-sizing: border-box;
 }
 
 .ranking-avatar {
-  width: 70rpx;
-  height: 70rpx;
+  width: 68rpx;
+  height: 68rpx;
   border: var(--ui-border-default);
   border-radius: var(--ui-radius-button);
   flex-shrink: 0;
@@ -135,37 +162,40 @@ const scoreRanking = computed(() => sortParticipationRanking(props.rankingItems)
   flex: 1;
 }
 
-.ranking-title-row {
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
-}
-
 .ranking-name {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
+  display: block;
   color: var(--ui-color-text);
-  font-size: 27rpx;
+  font-size: 26rpx;
   font-weight: 600;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
 }
 
 .ranking-rate {
+  flex-shrink: 0;
   color: var(--ui-color-text);
-  font-size: 28rpx;
+  font-size: 32rpx;
   font-weight: 600;
+  line-height: 1.3;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
-.ranking-metrics {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
-  margin-top: 8rpx;
+.ranking-unit {
+  margin-left: 4rpx;
   color: var(--ui-color-text-muted);
-  font-size: 21rpx;
+  font-size: 22rpx;
   font-weight: 400;
+}
+
+.ranking-tier {
+  display: inline-flex;
+  margin-top: 8rpx;
+  padding: 4rpx 10rpx;
+  border-radius: var(--ui-radius-xs);
+  font-size: 22rpx;
+  line-height: 1.4;
+  font-weight: 600;
 }
 
 .stats-empty {
