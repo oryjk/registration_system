@@ -1,0 +1,32 @@
+[
+  {
+    "scene": "home",
+    "url": "https://oryjk.cn:82/registration/static/share/v3/home/48a81eeaec54e66f.jpg",
+    "status": 200,
+    "bytes": 169167,
+    "sha256": "48a81eeaec54e66f9bea4a792dcbb65745f2b2e7e819c7416c693dba4c764768",
+    "content_type": "image/jpeg",
+    "cache_control": "public,max-age=31536000,immutable",
+    "allow_origin": "https://oryjk.cn:82"
+  },
+  {
+    "scene": "hall",
+    "url": "https://oryjk.cn:82/registration/static/share/v3/hall/d5d92312777f753d.jpg",
+    "status": 200,
+    "bytes": 143363,
+    "sha256": "d5d92312777f753da640e7aa478f81cb50cea5d5fadf206c24a2426befb08856",
+    "content_type": "image/jpeg",
+    "cache_control": "public,max-age=31536000,immutable",
+    "allow_origin": "https://oryjk.cn:82"
+  },
+  {
+    "scene": "team",
+    "url": "https://oryjk.cn:82/registration/static/share/v3/team/ce41cead949119b7.jpg",
+    "status": 200,
+    "bytes": 148166,
+    "sha256": "ce41cead949119b75193b6b2edfea18cb44dcb81f57b2d2efb20014446421778",
+    "content_type": "image/jpeg",
+    "cache_control": "public,max-age=31536000,immutable",
+    "allow_origin": "https://oryjk.cn:82"
+  }
+]

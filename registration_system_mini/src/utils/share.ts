@@ -1,8 +1,8 @@
 // 新版默认分享封面存于对象存储，不占主包；后台配置为空时回退到这些版本化地址。
-export const DEFAULT_SHARE_IMAGE_URL = "https://oryjk.cn:82/registration/static/share/v2/hall/ce7d5989e065c151.png";
-export const TEAM_INVITE_SHARE_IMAGE_URL = "https://oryjk.cn:82/registration/static/share/v2/team/ff97d8a79c4c24fb.png";
+export const DEFAULT_SHARE_IMAGE_URL = "https://oryjk.cn:82/registration/static/share/v3/hall/d5d92312777f753d.jpg";
+export const TEAM_INVITE_SHARE_IMAGE_URL = "https://oryjk.cn:82/registration/static/share/v3/team/ce41cead949119b7.jpg";
 export const MATCH_DETAIL_SHARE_IMAGE_URL = "https://oryjk.cn:82/registration/static/share/v3/match/46e9b1150ec86fbc.jpg";
-export const HOME_SHARE_IMAGE_URL = "https://oryjk.cn:82/registration/static/share/v2/home/efca682b6c5c37be.png";
+export const HOME_SHARE_IMAGE_URL = "https://oryjk.cn:82/registration/static/share/v3/home/48a81eeaec54e66f.jpg";
 
 export type ShareCoverScene = "home" | "hall" | "team" | "match";
 export const DEFAULT_SHARE_COVERS: Record<ShareCoverScene, string> = {
