@@ -6,6 +6,7 @@ import { avatarParticipationTier } from './avatarParticipationTier';
 import { useOverlayPresence } from './useOverlayPresence';
 import { prefersReducedMotion } from '@/utils/reducedMotion';
 import AppButton from './AppButton.vue';
+import ActivityTrophyIcon from './ActivityTrophyIcon.vue';
 
 const { minioImageSrc } = useMinioImages();
 
@@ -64,7 +65,7 @@ function close() {
       </view>
       <text class="avatar-preview-name">{{ name }}</text>
       <view v-if="participationTier" class="avatar-preview-honor">
-        <view class="avatar-preview-honor-icon" aria-hidden="true"><view class="avatar-preview-honor-cup" /><view class="avatar-preview-honor-stem" /></view>
+        <ActivityTrophyIcon />
         <text>活跃段位 · {{ participationTier.title }}</text>
       </view>
       <view v-if="cumulativeStars != null" class="avatar-preview-attendance">
@@ -99,13 +100,6 @@ function close() {
 .avatar-preview-panel--diamond { --avatar-preview-tier-fg: var(--ui-avatar-tier-diamond); --avatar-preview-tier-bg: var(--ui-avatar-tier-diamond-bg); }
 .avatar-preview-panel--star { --avatar-preview-tier-fg: var(--ui-avatar-tier-star); --avatar-preview-tier-bg: var(--ui-avatar-tier-star-bg); }
 .avatar-preview-panel--king { --avatar-preview-tier-fg: var(--ui-avatar-tier-king); --avatar-preview-tier-bg: var(--ui-avatar-tier-king-bg); }
-/* 小型奖杯用原生 view 轮廓，颜色继承荣誉标签，兼容小程序与深色主题。 */
-.avatar-preview-honor-icon { position: relative; width: 28rpx; height: 28rpx; flex-shrink: 0; border-bottom: 2rpx solid currentColor; box-sizing: border-box; }
-.avatar-preview-honor-cup { position: absolute; left: 7rpx; top: 0; width: 14rpx; height: 18rpx; border: 2rpx solid currentColor; border-radius: 0 0 8rpx 8rpx; box-sizing: border-box; }
-.avatar-preview-honor-icon::before, .avatar-preview-honor-icon::after { content: ''; position: absolute; top: 4rpx; width: 6rpx; height: 10rpx; border: 2rpx solid currentColor; box-sizing: border-box; }
-.avatar-preview-honor-icon::before { left: 1rpx; border-right: 0; border-radius: 0 0 0 6rpx; }
-.avatar-preview-honor-icon::after { right: 1rpx; border-left: 0; border-radius: 0 0 6rpx 0; }
-.avatar-preview-honor-stem { position: absolute; left: 13rpx; top: 18rpx; width: 2rpx; height: 8rpx; background: currentColor; }
 .avatar-preview-attendance { display: flex; align-items: baseline; justify-content: center; gap: 14rpx; margin-top: 22rpx; color: var(--ui-color-text-muted); font-size: 24rpx; line-height: 54rpx; }
 .avatar-preview-attendance-number { color: var(--avatar-preview-tier-fg, var(--ui-color-text)); font-size: 48rpx; font-weight: 600; line-height: 54rpx; font-variant-numeric: tabular-nums; }
 .avatar-preview-mask--leaving { animation: avatar-preview-fade var(--ui-motion-overlay-duration) ease reverse both; }

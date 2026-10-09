@@ -3,16 +3,20 @@ import { useMinioImages } from "@/composables/useMinioImages";
 import { computed } from "vue";
 import type { BackendTeamAttendanceRankingItem } from "@/types/backend";
 import { rankingInitial } from "../teamStatsState";
-import { buildActivityRanking } from "../activityRanking";
+import { activityRankingAvatar, buildActivityRanking } from "../activityRanking";
+import ActivityTrophyIcon from "@/components/ui/ActivityTrophyIcon.vue";
+import type { AvatarItem } from "@/components/ui/avatarTypes";
 
 const { minioImageSrc } = useMinioImages();
 
 const props = defineProps<{
   rankingItems: BackendTeamAttendanceRankingItem[];
   cumulativeRankingItems: BackendTeamAttendanceRankingItem[];
+  teamId: number;
   embedded?: boolean;
   period?: "annual" | "history";
 }>();
+const emit = defineEmits<{ (event: "avatar-click", avatar: AvatarItem): void }>();
 const scoreRanking = computed(() => buildActivityRanking(props.rankingItems, props.cumulativeRankingItems));
 </script>
 
@@ -28,13 +32,17 @@ const scoreRanking = computed(() => buildActivityRanking(props.rankingItems, pro
 
     <view v-if="rankingItems.length" class="ranking-list">
       <view class="ranking-columns">
-        <text>队员 · 活跃段位</text>
+        <text>队员 · 累计段位</text>
         <text>{{ period === "history" ? "历史星数" : "年度星数" }}</text>
       </view>
       <view
         v-for="(item, index) in scoreRanking"
         :key="item.user_id"
         class="ranking-item"
+        role="button"
+        :aria-label="`查看${item.user_name}的头像与活跃段位`"
+        hover-class="ranking-item--pressed"
+        @tap="emit('avatar-click', activityRankingAvatar(item, teamId, item.cumulativeParticipationPoints))"
         :class="item.participation_points && index < 3 ? `ranking-item--${['gold', 'silver', 'bronze'][index]}` : ''"
       >
         <view class="ranking-order">{{ index + 1 }}</view>
@@ -46,7 +54,10 @@ const scoreRanking = computed(() => buildActivityRanking(props.rankingItems, pro
             v-if="item.tier"
             class="ranking-tier"
             :style="{ color: `var(--ui-avatar-tier-${item.tier.tone})`, backgroundColor: `var(--ui-avatar-tier-${item.tier.tone}-bg)` }"
-          >{{ item.tier.title }}</view>
+          >
+            <ActivityTrophyIcon />
+            <text>{{ item.tier.title }}</text>
+          </view>
         </view>
         <view class="ranking-rate">
           <text>{{ item.participation_points == null ? "待更新" : item.participation_points }}</text><text v-if="item.participation_points != null" class="ranking-unit">星</text>
@@ -121,6 +132,7 @@ const scoreRanking = computed(() => buildActivityRanking(props.rankingItems, pro
 .ranking-item--gold { --ranking-order-fg: var(--ui-avatar-tier-gold); --ranking-order-bg: var(--ui-avatar-tier-gold-bg); }
 .ranking-item--silver { --ranking-order-fg: var(--ui-avatar-tier-silver); --ranking-order-bg: var(--ui-avatar-tier-silver-bg); }
 .ranking-item--bronze { --ranking-order-fg: var(--ui-avatar-tier-bronze); --ranking-order-bg: var(--ui-avatar-tier-bronze-bg); }
+.ranking-item--pressed { background: var(--ui-color-accent-soft); }
 
 .ranking-order {
   display: flex;
@@ -190,6 +202,8 @@ const scoreRanking = computed(() => buildActivityRanking(props.rankingItems, pro
 
 .ranking-tier {
   display: inline-flex;
+  align-items: center;
+  gap: 6rpx;
   margin-top: 8rpx;
   padding: 4rpx 10rpx;
   border-radius: var(--ui-radius-xs);

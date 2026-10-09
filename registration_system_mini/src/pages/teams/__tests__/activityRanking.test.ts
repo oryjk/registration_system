@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
 import type { BackendTeamAttendanceRankingItem } from "@/types/backend";
-import { buildActivityRanking } from "../activityRanking";
+import { activityRankingAvatar, buildActivityRanking } from "../activityRanking";
+import { ownHonorAvatarTeam } from "@/pages/honors/honorState";
 
 const rows = (...items: Array<{ user_id: number; participation_points?: number; participation_rank?: number }>) =>
   items as BackendTeamAttendanceRankingItem[];
@@ -44,4 +45,18 @@ test("zero cumulative stars have bronze; missing or invalid cumulative data neve
   expect(buildActivityRanking(items, cumulative).map((item) => item.tier?.title ?? null))
     .toEqual(["倔强青铜", null, null, null, null]);
   expect(buildActivityRanking([], cumulative)).toEqual([]);
+});
+
+test("ranking preview maps the selected identity and cumulative stars without using annual points", () => {
+  const item = {
+    ...rows({ user_id: 4, participation_points: 265 })[0],
+    user_name: "测试队员",
+    avatar_url: "avatar.jpg",
+  };
+  const preview = activityRankingAvatar(item, 11, 655.5);
+  expect(preview).toEqual({ id: 4, teamId: 11, name: "测试队员", avatarUrl: "avatar.jpg", teamCumulativeParticipationPoints: 655.5 });
+  expect(ownHonorAvatarTeam(preview, 4)).toEqual(11);
+  expect(ownHonorAvatarTeam(preview, 5)).toEqual(null);
+  expect(activityRankingAvatar(item, 11, undefined).teamCumulativeParticipationPoints).toEqual(undefined);
+  expect(activityRankingAvatar({ ...item, avatar_url: null }, 11, 0).avatarUrl).toEqual(undefined);
 });

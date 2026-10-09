@@ -3,14 +3,17 @@ import { beijingDateParts } from "@/utils/datetime";
 import { usePullRefresh } from "@/composables/usePullRefresh";
 import { APP_SCROLL_CONTROLLER, createAppScrollAnchor } from "@/components/appScroll";
 import { useAccentTheme } from "@/stores/theme";
-import { computed, provide, ref } from "vue";
-import { onLoad, onShow, onUnload } from "@dcloudio/uni-app";
+import { computed, provide, ref, watch } from "vue";
+import { onHide, onLoad, onShow, onUnload } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
 import AppPullScrollView from "@/components/AppPullScrollView.vue";
 import BottomTabBar from "@/components/BottomTabBar.vue";
 import { tabBarMotion } from "@/components/tabBarMotion";
 import AppButton from "@/components/ui/AppButton.vue";
 import SegmentedControl from "@/components/ui/SegmentedControl.vue";
+import AvatarPreviewDialog from "@/components/ui/AvatarPreviewDialog.vue";
+import type { AvatarItem } from "@/components/ui/avatarTypes";
+import { ownHonorAvatarTeam } from "@/pages/honors/honorState";
 import { getTeamAttendanceSummary } from "@/api/team";
 import { useMiniReviewStatus } from "@/stores/miniReview";
 import { useNotificationCenter } from "@/stores/notificationCenter";
@@ -28,7 +31,7 @@ import { buildAttendanceCalendarMonths, buildRecordSummary } from "./teamStatsSt
 
 const { themePageStyle } = useAccentTheme();
 
-const { currentTeam, currentUser, ensureSessionReady } = useTeamContext();
+const { currentTeam, currentUser, ensureSessionReady, isBootstrapping } = useTeamContext();
 const { syncUnreadCount } = useNotificationCenter();
 const { shouldHideCreationEntrances } = useMiniReviewStatus();
 const navMetrics = getCustomNavMetrics();
@@ -43,7 +46,28 @@ const myRecords = ref<BackendTeamMemberAttendanceRecord[]>([]);
 const myYearRecords = ref<BackendTeamMemberAttendanceRecord[]>([]);
 const rankingItems = ref<BackendTeamAttendanceRankingItem[]>([]);
 const historyRankingItems = ref<BackendTeamAttendanceRankingItem[]>([]);
+const statsContext = ref<{ teamId: number; userId: number } | null>(null);
+let loadVersion = 0;
+let pageVisible = false;
 const statsTab = ref<"records" | "ranking" | "history">("records");
+const previewAvatar = ref<AvatarItem | null>(null);
+const avatarPreviewVisible = ref(false);
+const avatarPreviewRendered = ref(false);
+const canSharePreviewAvatar = computed(() => !!ownHonorAvatarTeam(previewAvatar.value, currentUser.value?.id));
+
+function openAvatarPreview(avatar: AvatarItem) {
+  if (!statsContext.value || avatar.teamId !== statsContext.value.teamId
+    || avatar.teamId !== currentTeam.value?.id || statsContext.value.userId !== currentUser.value?.id) return;
+  previewAvatar.value = { ...avatar };
+  avatarPreviewVisible.value = true;
+}
+
+function sharePreviewAvatar() {
+  const teamId = ownHonorAvatarTeam(previewAvatar.value, currentUser.value?.id);
+  if (!teamId || teamId !== statsContext.value?.teamId || teamId !== currentTeam.value?.id) return;
+  avatarPreviewVisible.value = false;
+  uni.navigateTo({ url: `/pages/honors/index?teamId=${teamId}` });
+}
 
 const currentYear = beijingDateParts(Date.now()).year;
 const currentTeamName = computed(() => currentTeam.value?.name || "当前球队");
@@ -79,14 +103,35 @@ function shareMyHonor() {
 }
 
 function resetStatsData() {
+  avatarPreviewVisible.value = false;
+  previewAvatar.value = null;
   myRecords.value = [];
   myYearRecords.value = [];
   rankingItems.value = [];
   historyRankingItems.value = [];
+  statsContext.value = null;
+  hasLoadedOnce.value = false;
 }
+
+watch(() => [currentTeam.value?.id, currentUser.value?.id], (next, previous) => {
+  if (next[0] === previous[0] && next[1] === previous[1]) return;
+  resetStatsData();
+  // Session initialization owns these intermediate changes. Its current load
+  // continues with the final identity, or surfaces its error without retrying.
+  if (isBootstrapping.value) {
+    if (isSilentRefreshing.value) isLoading.value = true;
+    isSilentRefreshing.value = false;
+    return;
+  }
+  loadVersion += 1;
+  isLoading.value = false;
+  isSilentRefreshing.value = false;
+  if (pageVisible) void loadPageData();
+}, { flush: "sync" });
 
 async function loadPageData() {
   if (hasManualLogout()) {
+    loadVersion += 1;
     requiresLogin.value = true;
     errorMessage.value = "";
     hasNoTeam.value = false;
@@ -108,30 +153,38 @@ async function loadPageData() {
   } else {
     isLoading.value = true;
   }
+  const requestVersion = ++loadVersion;
+  let requestContext: { teamId: number; userId: number } | null = null;
 
   try {
     await ensureSessionReady();
-    if (!currentTeam.value) {
+    if (requestVersion !== loadVersion) return;
+    if (!currentTeam.value || !currentUser.value) {
       resetStatsData();
       hasNoTeam.value = true;
       errorMessage.value = "当前还没有加入球队。";
       return;
     }
+    requestContext = { teamId: currentTeam.value.id, userId: currentUser.value.id };
+    statsContext.value = requestContext;
 
     void syncUnreadCount({ skipEnsure: true }).catch(() => {
       // Notification count is nice-to-have; don't let it block the stats load.
     });
     const [allTimeSummary, yearSummary] = await Promise.all([
-      getTeamAttendanceSummary(currentTeam.value.id),
-      getTeamAttendanceSummary(currentTeam.value.id, getCurrentYearDateRange()),
+      getTeamAttendanceSummary(requestContext.teamId),
+      getTeamAttendanceSummary(requestContext.teamId, getCurrentYearDateRange()),
     ]);
+    if (requestVersion !== loadVersion || hasManualLogout()
+      || requestContext.teamId !== currentTeam.value?.id || requestContext.userId !== currentUser.value?.id) return;
     myRecords.value = allTimeSummary.my_records;
     myYearRecords.value = yearSummary.my_records;
     rankingItems.value = yearSummary.ranking;
     historyRankingItems.value = allTimeSummary.ranking;
     hasLoadedOnce.value = true;
   } catch (error) {
-    if (preserveContent) {
+    if (requestVersion !== loadVersion) return;
+    if (preserveContent && hasLoadedOnce.value) {
       // 刷新失败时保留旧数据，仅轻提示，不把已展示的内容闪成错误卡片。
       uni.showToast({
         title: error instanceof Error ? error.message : "统计数据刷新失败",
@@ -142,8 +195,12 @@ async function loadPageData() {
       errorMessage.value = error instanceof Error ? error.message : "统计数据加载失败";
     }
   } finally {
-    isLoading.value = false;
-    isSilentRefreshing.value = false;
+    if (requestVersion === loadVersion) {
+      isLoading.value = false;
+      isSilentRefreshing.value = false;
+      if (pageVisible && requestContext && (requestContext.teamId !== currentTeam.value?.id
+        || requestContext.userId !== currentUser.value?.id)) void loadPageData();
+    }
   }
 }
 
@@ -152,10 +209,16 @@ function handleSessionLoginCompleted() {
 }
 
 onShow(() => {
+  pageVisible = true;
   tabBarMotion.show("stats");
   // H5 路由切换时 onShow 可能早于 TabBar 挂载，此时无需隐藏。
   uni.hideTabBar({ animation: false, fail: () => {} });
   void loadPageData();
+});
+
+onHide(() => {
+  pageVisible = false;
+  avatarPreviewVisible.value = false;
 });
 
 onLoad(() => {
@@ -163,6 +226,8 @@ onLoad(() => {
 });
 
 onUnload(() => {
+  pageVisible = false;
+  loadVersion += 1;
   uni.$off("session:login-completed", handleSessionLoginCompleted);
 });
 // scroll-view 自定义下拉：页面本体不滚动，固定 header 不随下拉拖动。
@@ -178,7 +243,7 @@ provide(APP_SCROLL_CONTROLLER, appScrollController);
   <view class="app-theme-scope stats-page" :style="themePageStyle">
     <AppTabHeader title="统计" />
 
-    <AppPullScrollView ref="appScrollAnchor" :refreshing="refreshing" @refresh="handleRefresherRefresh">
+    <AppPullScrollView ref="appScrollAnchor" :refreshing="refreshing" :locked="avatarPreviewRendered" @refresh="handleRefresherRefresh">
       <view class="stats-content" :style="contentStyle">
     <template v-if="!requiresLogin">
       <view v-if="errorMessage" class="stats-empty">
@@ -225,11 +290,13 @@ provide(APP_SCROLL_CONTROLLER, appScrollController);
               embedded
             />
             <AttendanceRankingCard
-              v-else
+              v-else-if="statsContext && currentTeam"
               :ranking-items="statsTab === 'history' ? historyRankingItems : rankingItems"
               :cumulative-ranking-items="historyRankingItems"
+              :team-id="statsContext.teamId"
               :period="statsTab === 'history' ? 'history' : 'annual'"
               embedded
+              @avatar-click="openAvatarPreview"
             />
           </view>
         </view>
@@ -239,6 +306,14 @@ provide(APP_SCROLL_CONTROLLER, appScrollController);
     </AppPullScrollView>
 
     <BottomTabBar current="stats" />
+    <AvatarPreviewDialog
+      :visible="avatarPreviewVisible"
+      :avatar="previewAvatar"
+      :can-share="canSharePreviewAvatar"
+      @share="sharePreviewAvatar"
+      @close="avatarPreviewVisible = false"
+      @presence="avatarPreviewRendered = $event"
+    />
   </view>
 </template>
 
