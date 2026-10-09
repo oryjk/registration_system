@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useMinioImages } from "@/composables/useMinioImages";
 import { usePageRefresh } from "@/composables/usePageRefresh";
 import { useAccentTheme } from "@/stores/theme";
 import { computed, ref, watch } from "vue";
@@ -11,6 +12,8 @@ import { loadMiniAppRuntimeConfig } from "@/config/runtimeConfig";
 import { useTeamContext } from "@/stores/teamContext";
 import { getCustomNavMetrics } from "@/utils/customNav";
 import { needsProfileCompletion } from "@/utils/profileCompletion";
+
+const { minioImageSrc } = useMinioImages();
 
 const { themePageStyle } = useAccentTheme();
 
@@ -238,7 +241,7 @@ usePageRefresh(async () => {
         <button class="profile-avatar-row" hover-class="profile-editor-button--pressed" open-type="chooseAvatar" :disabled="isSaving" @chooseavatar="handleChooseAvatar" aria-label="更换头像">
           <view class="profile-avatar-copy"><text class="profile-editor-label">头像</text><text class="profile-avatar-hint">点击更换头像</text></view>
           <view class="profile-editor-avatar">
-            <image v-if="avatarPreview && !avatarLoadFailed" class="profile-editor-avatar__image" :src="avatarPreview" mode="aspectFill" @error="avatarLoadFailed = true" />
+            <image v-if="avatarPreview && !avatarLoadFailed" class="profile-editor-avatar__image" :src="minioImageSrc(avatarPreview)" mode="aspectFill" @error="minioImageSrc(avatarPreview) && (avatarLoadFailed = true)" />
             <wd-icon v-else name="user" size="42rpx" color="var(--ui-color-text-muted)" />
           </view>
           <wd-icon name="arrow-right" size="28rpx" color="var(--ui-color-text-muted)" />
@@ -248,7 +251,7 @@ usePageRefresh(async () => {
         <button class="profile-avatar-row" hover-class="profile-editor-button--pressed" :disabled="isSaving" @tap="handlePickAvatarFallback" aria-label="更换头像">
           <view class="profile-avatar-copy"><text class="profile-editor-label">头像</text><text class="profile-avatar-hint">点击更换头像</text></view>
           <view class="profile-editor-avatar">
-            <image v-if="avatarPreview && !avatarLoadFailed" class="profile-editor-avatar__image" :src="avatarPreview" mode="aspectFill" @error="avatarLoadFailed = true" />
+            <image v-if="avatarPreview && !avatarLoadFailed" class="profile-editor-avatar__image" :src="minioImageSrc(avatarPreview)" mode="aspectFill" @error="minioImageSrc(avatarPreview) && (avatarLoadFailed = true)" />
             <wd-icon v-else name="user" size="42rpx" color="var(--ui-color-text-muted)" />
           </view>
           <wd-icon name="arrow-right" size="28rpx" color="var(--ui-color-text-muted)" />

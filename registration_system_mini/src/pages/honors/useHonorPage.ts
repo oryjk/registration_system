@@ -199,7 +199,9 @@ export function useHonorPage(pageInstance: unknown) {
  });
  onUnload(()=>{disposed=true;loadVersion++;renderVersion++;codeVersion++;preparedPoster=null;images.clear();});
  const title=computed(()=>view.value?`${view.value.nickname || "球友"}的${view.value.year}足球年度 · ${formatHonorPoints(view.value.participation_points)}星`:"我的足球年度");
- function friendShare(){return {title:title.value,path:view.value?honorSharePath(view.value.code,background.value.id):"/pages/home/index",imageUrl:coverUrl.value || background.value.imageUrl};}
- function timelineShare(){return {title:title.value,query:view.value?honorSharePath(view.value.code,background.value.id).split("?")[1]:"",imageUrl:coverUrl.value || background.value.imageUrl};}
+ const shareImageUrl=computed(()=>coverUrl.value && coverUrl.value!==background.value.imageUrl
+  ? coverUrl.value : backgroundImageUrl.value || background.value.imageUrl);
+ function friendShare(){return {title:title.value,path:view.value?honorSharePath(view.value.code,background.value.id):"/pages/home/index",imageUrl:shareImageUrl.value};}
+ function timelineShare(){return {title:title.value,query:view.value?honorSharePath(view.value.code,background.value.id).split("?")[1]:"",imageUrl:shareImageUrl.value};}
  return {view,loading,error,background,backgroundImageUrl,backgroundThumbnailUrls,backgrounds:HONOR_BACKGROUNDS,miniCodeUrl,codeError,codeLoading,saving,isSelf,shareReady,canCreate,password,joining,joined,profileGate,load,ensureMiniCode,chooseBackground,savePoster,join,goTeam,createTeam,goHome,friendShare,timelineShare};
 }

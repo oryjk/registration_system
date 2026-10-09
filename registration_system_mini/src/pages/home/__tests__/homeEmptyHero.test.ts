@@ -24,7 +24,7 @@ describe("HomeEmptyHero", () => {
 
     // URL 由首页从运行配置取出后经 prop 传入，组件不知道 MinIO 地址。
     expect(source.includes("socialImageUrl?: string;")).toEqual(true);
-    expect(source.includes(':src="selectedImageUrl"')).toEqual(true);
+    expect(source.includes(':src="minioImageSrc(selectedImageUrl)"')).toEqual(true);
     expect(source.includes('mode="widthFix"')).toEqual(true);
     expect(source.includes("oryjk.cn")).toEqual(false);
     expect(source.includes("data:image")).toEqual(false);
@@ -37,7 +37,7 @@ describe("HomeEmptyHero", () => {
     // 空 URL / 加载失败回退内置球场视觉，不弹 toast。
 
     expect(source.includes("socialImageFailed")).toEqual(true);
-    expect(source.includes('@error="socialImageFailed = true"')).toEqual(true);
+    expect(source.includes('@error="minioImageSrc(selectedImageUrl) && (socialImageFailed = true)"')).toEqual(true);
     expect(source.includes("showToast")).toEqual(false);
     expect(source.includes("home-empty-hero-field")).toEqual(true);
   });

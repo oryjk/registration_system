@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { useMinioImages } from "@/composables/useMinioImages";
+import { resolveMinioImage } from "@/utils/minioImageCache";
 import { usePageRefresh } from "@/composables/usePageRefresh";
 import { useAccentTheme } from "@/stores/theme";
 import { computed } from "vue";
@@ -11,6 +13,8 @@ import { useMiniReviewStatus } from "@/stores/miniReview";
 import { DEVELOPER_WECHAT_QRCODE_URL, OFFICIAL_ACCOUNT_QRCODE_URL } from "@/utils/developerContact";
 import { getCustomNavMetrics } from "@/utils/customNav";
 import { useTipDonation } from "./useTipDonation";
+
+const { minioImageSrc } = useMinioImages();
 
 const { themePageStyle } = useAccentTheme();
 
@@ -40,8 +44,9 @@ const supportAmountOptions = [
   { amount: "99.9", label: "整包黄金叶" },
 ];
 
-function previewContactImage(current: string) {
-  uni.previewImage({ current, urls: contactImages });
+async function previewContactImage(current: string) {
+  const urls = await Promise.all(contactImages.map(resolveMinioImage));
+  uni.previewImage({ current: urls[contactImages.indexOf(current)] ?? current, urls });
 }
 
 function selectSupportAmount(amount: string) {
@@ -63,7 +68,7 @@ usePageRefresh(() => preloadMiniReviewStatus(true));
           <view class="contact-developer-qrcode-item">
             <image
               class="contact-developer-qrcode"
-              :src="DEVELOPER_WECHAT_QRCODE_URL"
+              :src="minioImageSrc(DEVELOPER_WECHAT_QRCODE_URL)"
               mode="aspectFit"
               :show-menu-by-longpress="true"
               @tap="previewContactImage(DEVELOPER_WECHAT_QRCODE_URL)"
@@ -73,7 +78,7 @@ usePageRefresh(() => preloadMiniReviewStatus(true));
           <view class="contact-developer-qrcode-item">
             <image
               class="contact-developer-qrcode"
-              :src="OFFICIAL_ACCOUNT_QRCODE_URL"
+              :src="minioImageSrc(OFFICIAL_ACCOUNT_QRCODE_URL)"
               mode="aspectFit"
               :show-menu-by-longpress="true"
               @tap="previewContactImage(OFFICIAL_ACCOUNT_QRCODE_URL)"

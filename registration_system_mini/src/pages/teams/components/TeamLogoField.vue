@@ -1,5 +1,8 @@
 <script setup lang="ts">
+import { useMinioImages } from "@/composables/useMinioImages";
 import AppButton from "@/components/ui/AppButton.vue";
+
+const { minioImageSrc } = useMinioImages();
 withDefaults(defineProps<{
   src: string;
   name: string;
@@ -15,7 +18,7 @@ const emit = defineEmits<{ (event: 'pick'): void; (event: 'remove'): void }>();
 <template>
   <view class="team-logo-field">
     <view class="team-logo-field__preview">
-      <image v-if="src" :src="src" mode="aspectFit" />
+      <image v-if="src" :src="minioImageSrc(src)" mode="aspectFit" />
       <text v-else>{{ name.trim().slice(0, 1) || '队' }}</text>
     </view>
     <view class="team-logo-field__main">

@@ -1,8 +1,11 @@
 <script setup lang="ts">
+import { useMinioImages } from "@/composables/useMinioImages";
 import { computed } from "vue";
 import AppButton from "./AppButton.vue";
 import { useOverlayPresence } from "./useOverlayPresence";
 import { prefersReducedMotion } from "@/utils/reducedMotion";
+
+const { minioImageSrc } = useMinioImages();
 
 export type ConfirmDialogTone = "accent" | "danger";
 
@@ -135,7 +138,7 @@ function handleClose() {
         <view class="ui-confirm-dialog-image-item">
           <image
             class="ui-confirm-dialog-image ui-confirm-dialog-image-pair"
-            :src="imageSrc"
+            :src="minioImageSrc(imageSrc)"
             mode="widthFix"
             :show-menu-by-longpress="true"
           />
@@ -144,7 +147,7 @@ function handleClose() {
         <view class="ui-confirm-dialog-image-item">
           <image
             class="ui-confirm-dialog-image ui-confirm-dialog-image-pair"
-            :src="secondImageSrc"
+            :src="minioImageSrc(secondImageSrc)"
             mode="widthFix"
             :show-menu-by-longpress="true"
           />
@@ -156,7 +159,7 @@ function handleClose() {
         <image
           v-if="imageSrc"
           class="ui-confirm-dialog-image"
-          :src="imageSrc"
+          :src="minioImageSrc(imageSrc)"
           mode="widthFix"
           :show-menu-by-longpress="true"
         />

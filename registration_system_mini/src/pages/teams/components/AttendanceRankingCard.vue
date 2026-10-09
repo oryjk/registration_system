@@ -1,7 +1,10 @@
 <script setup lang="ts">
+import { useMinioImages } from "@/composables/useMinioImages";
 import { computed } from "vue";
 import type { BackendTeamAttendanceRankingItem } from "@/types/backend";
 import { rankingInitial, sortParticipationRanking } from "../teamStatsState";
+
+const { minioImageSrc } = useMinioImages();
 
 const props = defineProps<{
   rankingItems: BackendTeamAttendanceRankingItem[];
@@ -22,7 +25,7 @@ const scoreRanking = computed(() => sortParticipationRanking(props.rankingItems)
     <view v-if="rankingItems.length" class="ranking-list">
       <view v-for="(item, index) in scoreRanking" :key="item.user_id" class="ranking-item">
         <view class="ranking-order">{{ index + 1 }}</view>
-        <image v-if="item.avatar_url" class="ranking-avatar" :src="item.avatar_url" mode="aspectFill" />
+        <image v-if="item.avatar_url" class="ranking-avatar" :src="minioImageSrc(item.avatar_url)" mode="aspectFill" />
         <view v-else class="ranking-avatar ranking-avatar-fallback">{{ rankingInitial(item) }}</view>
         <view class="ranking-copy">
           <view class="ranking-title-row">

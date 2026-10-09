@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useMinioImages } from "@/composables/useMinioImages";
 import { onShareAppMessage, onShareTimeline } from "@dcloudio/uni-app";
 import { useAccentTheme } from "@/stores/theme";
 import AppTabHeader from "@/components/AppTabHeader.vue";
@@ -7,6 +8,8 @@ import AppSurface from "@/components/ui/AppSurface.vue";
 import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
 import AppTag from "@/components/ui/AppTag.vue";
 import { useTeamDetailPage } from "./useTeamDetailPage";
+
+const { minioImageSrc } = useMinioImages();
 
 const { themePageStyle } = useAccentTheme();
 
@@ -24,7 +27,7 @@ const {
   createdLabel,
   inviteCode,
   shareImagePath,
-  shareCoverUrl,
+  shareImageUrl,
   leaveDialogVisible,
   handleLeaveTeamClick,
   handleLeaveTeamConfirm,
@@ -39,13 +42,13 @@ const {
 onShareAppMessage(() => ({
   title: team.value ? `邀请你加入球队「${team.value.name}」` : "邀请你加入球队",
   path: `/pages/teams/invite/index?code=${encodeURIComponent(inviteCode.value)}`,
-  imageUrl: shareImagePath.value || shareCoverUrl.value,
+  imageUrl: shareImagePath.value || shareImageUrl.value,
 }));
 
 onShareTimeline(() => ({
   title: team.value ? `邀请你加入球队「${team.value.name}」` : "邀请你加入球队",
   query: `code=${encodeURIComponent(inviteCode.value)}`,
-  imageUrl: shareImagePath.value || shareCoverUrl.value,
+  imageUrl: shareImagePath.value || shareImageUrl.value,
 }));
 </script>
 
@@ -66,7 +69,7 @@ onShareTimeline(() => ({
         <view class="page-hero">
           <view class="hero-row">
             <view class="hero-badge">
-              <image v-if="logoUrl" class="hero-badge__logo" :src="logoUrl" mode="aspectFill" />
+              <image v-if="logoUrl" class="hero-badge__logo" :src="minioImageSrc(logoUrl)" mode="aspectFill" />
               <text v-else>{{ team.name.slice(0, 1) || "队" }}</text>
             </view>
             <view class="hero-copy">

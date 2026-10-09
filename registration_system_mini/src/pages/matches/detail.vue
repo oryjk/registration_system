@@ -25,7 +25,7 @@ import { useMatchDetailPage } from "./useMatchDetailPage";
 import { useMatchTeamApplications } from "./useMatchTeamApplications";
 import MatchTeamApplications from "./components/MatchTeamApplications.vue";
 
-const { shareCoverUrl, refreshShareCover } = useShareCover("match");
+const { shareImageUrl, refreshShareCover } = useShareCover("match");
 onShow(() => { void refreshShareCover(); });
 
 defineOptions({ inheritAttrs: false });
@@ -174,13 +174,13 @@ function handleJoinSheetContactCaptain() {
 onShareAppMessage(() => ({
   title: shareTitle.value,
   path: sharePath.value,
-  imageUrl: shareCoverUrl.value,
+  imageUrl: shareImageUrl.value,
 }));
 
 onShareTimeline(() => ({
   title: shareTitle.value,
   query: `id=${matchId.value || match.value?.id || ""}`,
-  imageUrl: shareCoverUrl.value,
+  imageUrl: shareImageUrl.value,
 }));
 
 // page-meta：主题变量覆盖 + 任一弹层打开时锁定滚动。

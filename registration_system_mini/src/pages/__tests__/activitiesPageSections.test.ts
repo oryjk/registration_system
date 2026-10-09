@@ -197,7 +197,7 @@ describe("activities page sections", () => {
     expect(source.includes("onShareTimeline")).toEqual(true);
     expect(source.includes('const shareTitle = "约队大厅：看看可报名的散人局";')).toEqual(true);
     expect(source.includes('const sharePath = "/pages/activities/index";')).toEqual(true);
-    expect(source.includes("imageUrl: shareCoverUrl.value")).toEqual(true);
+    expect(source.includes("imageUrl: shareImageUrl.value")).toEqual(true);
   });
 
   test("match card lists share the card list spacing token", async () => {

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useMinioImages } from "@/composables/useMinioImages";
 import TeamManagePanel from "./TeamManagePanel.vue";
 import RunningLoader from "@/components/ui/RunningLoader.vue";
 import SmoothCollapse from "@/components/ui/SmoothCollapse.vue";
@@ -7,6 +8,8 @@ import type {
   BackendTeamMatchAttendance,
 } from "@/types/backend";
 import type { TeamProfileViewModel } from "@/types/viewModels";
+
+const { minioImageSrc } = useMinioImages();
 
 interface MatchAttendanceState {
   loading: boolean;
@@ -94,7 +97,7 @@ function memberInitial(nickname: string) {
                 :key="`${match.activity_id}-${member.user_id}`"
                 class="activity-member-row"
               >
-                <image v-if="member.avatar_url" class="activity-member-avatar" :src="member.avatar_url" mode="aspectFill" />
+                <image v-if="member.avatar_url" class="activity-member-avatar" :src="minioImageSrc(member.avatar_url)" mode="aspectFill" />
                 <view v-else class="activity-member-avatar activity-member-avatar-fallback">
                   <text>{{ memberInitial(member.nickname) }}</text>
                 </view>

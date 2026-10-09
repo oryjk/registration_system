@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useMinioImages } from "@/composables/useMinioImages";
 import { beijingTodayAt, parseDateValue } from "@/utils/datetime";
 import { usePageRefresh } from "@/composables/usePageRefresh";
 import { useAccentTheme } from "@/stores/theme";
@@ -18,6 +19,8 @@ import { preloadMiniReviewStatus, useMiniReviewStatus } from "@/stores/miniRevie
 import { useTeamContext } from "@/stores/teamContext";
 import { getCustomNavMetrics } from "@/utils/customNav";
 import { buildCreateMatchPayload } from "./createMatchPayload";
+
+const { minioImageSrc } = useMinioImages();
 
 const { themePageStyle } = useAccentTheme();
 
@@ -310,7 +313,7 @@ usePageRefresh(() => refreshSessionContext());
           <image
             v-if="currentTeam?.logoUrl"
             class="create-hero__logo"
-            :src="currentTeam.logoUrl"
+            :src="minioImageSrc(currentTeam.logoUrl)"
             mode="aspectFill"
           />
           <text v-else>{{ (currentTeam?.name || "队").slice(0, 1) }}</text>

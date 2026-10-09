@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useMinioImages } from "@/composables/useMinioImages";
 import { useAccentTheme } from "@/stores/theme";
 const { themePageStyle } = useAccentTheme();
 import { computed } from "vue";
@@ -6,6 +7,8 @@ import AppButton from "@/components/ui/AppButton.vue";
 import SmoothCollapse from "@/components/ui/SmoothCollapse.vue";
 import type { BackendTeamMember, BackendTeamMemberAttendanceRecord } from "@/types/backend";
 import type { buildAttendanceGroups, buildAttendanceSummary } from "../teamManageState";
+
+const { minioImageSrc } = useMinioImages();
 
 type AttendanceSummary = ReturnType<typeof buildAttendanceSummary>;
 type AttendanceGroups = ReturnType<typeof buildAttendanceGroups>;
@@ -60,7 +63,7 @@ function handleToggleYear(year: string) {
     <view class="app-theme-scope member-attendance-sheet" :style="themePageStyle" @touchmove.stop>
       <view class="member-edit-header">
         <view class="attendance-profile">
-          <image v-if="member && memberAvatarUrl" class="member-avatar" :src="memberAvatarUrl" mode="aspectFill" />
+          <image v-if="member && memberAvatarUrl" class="member-avatar" :src="minioImageSrc(memberAvatarUrl)" mode="aspectFill" />
           <view v-else class="member-avatar member-avatar-fallback">
             {{ member ? memberInitial : "队" }}
           </view>

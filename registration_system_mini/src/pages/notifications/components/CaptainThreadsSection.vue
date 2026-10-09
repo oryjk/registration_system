@@ -1,6 +1,9 @@
 <script setup lang="ts">
+import { useMinioImages } from "@/composables/useMinioImages";
 import AppSurface from "@/components/ui/AppSurface.vue";
 import type { CaptainThreadItemViewModel } from "../captainThreadListState";
+
+const { minioImageSrc } = useMinioImages();
 
 defineProps<{
   items: CaptainThreadItemViewModel[];
@@ -40,7 +43,7 @@ const emit = defineEmits<{
             <image
               v-if="item.avatarUrl"
               class="threads-avatar"
-              :src="item.avatarUrl"
+              :src="minioImageSrc(item.avatarUrl)"
               mode="aspectFill"
             />
             <view v-else class="threads-avatar threads-avatar-fallback">{{ item.title.slice(0, 1) }}</view>

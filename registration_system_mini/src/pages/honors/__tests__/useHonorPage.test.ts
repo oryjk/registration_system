@@ -64,6 +64,18 @@ test("incoming background is validated without changing the owner's stored prefe
  scope.stop();sessionActor=4;user.value={id:4};
  const own=makePage({teamId:"11"});await flush();expect(own.background.value.id).toBe("gold");
 });
+test("sharing before cover composition reuses the resolved local background",async()=>{
+ const page=makePage({teamId:"11"});await flush();
+ const composed=page.friendShare().imageUrl;
+ page.backgroundImageUrl.value="wxfile://cached-background.jpg";
+ expect(page.friendShare().imageUrl).toBe(composed);
+ // Selecting another preset resets the card before the asynchronous canvas work.
+ page.chooseBackground(page.backgrounds[1]!);
+ page.backgroundImageUrl.value="wxfile://cached-gold.jpg";
+ expect(page.friendShare().imageUrl).toBe("wxfile://cached-gold.jpg");
+ expect(page.timelineShare().imageUrl).toBe("wxfile://cached-gold.jpg");
+ await flush();
+});
 test("saving preserves the displayed score even if a newer score is available",async()=>{
  const page=makePage({teamId:"11"});await flush();
  const displayed=page.view.value,bg=page.background.value,codeUrl=page.miniCodeUrl.value;

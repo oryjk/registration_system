@@ -1,4 +1,5 @@
 import { TEAM_INVITE_SHARE_IMAGE_URL } from "@/utils/share";
+import { resolveMinioImage, retainMinioImage } from "./minioImageCache";
 
 const CANVAS_WIDTH = 1000;
 const CANVAS_HEIGHT = 800;
@@ -61,10 +62,17 @@ function loadImage(canvas: Canvas2DNode, src: string): Promise<CanvasImageLike> 
   });
 }
 
-function getImagePath(url: string): Promise<string> {
+async function getImagePath(url: string): Promise<string> {
+  const src = await resolveMinioImage(url);
   return new Promise((resolve, reject) => {
-    uni.getImageInfo({ src: url, success: (result) => resolve(result.path), fail: reject });
+    uni.getImageInfo({ src, success: (result) => resolve(result.path), fail: reject });
   });
+}
+
+async function loadCachedImage(canvas: Canvas2DNode, url: string): Promise<CanvasImageLike> {
+  const release = retainMinioImage(url);
+  try { return await loadImage(canvas, await getImagePath(url)); }
+  finally { release(); }
 }
 
 /**
@@ -81,13 +89,9 @@ export async function composeTeamInviteShareImage(
   isCurrent: () => boolean = () => true,
 ): Promise<string> {
   const canvas = await queryCanvasNode(canvasId, pageInstance);
-  const [coverPath, logoPath] = await Promise.all([
-    getImagePath(coverUrl),
-    getImagePath(logoUrl),
-  ]);
   const [coverImage, logoImage] = await Promise.all([
-    loadImage(canvas, coverPath),
-    loadImage(canvas, logoPath),
+    loadCachedImage(canvas, coverUrl),
+    loadCachedImage(canvas, logoUrl),
   ]);
 
   // 下载完成后再确认版本，过期任务不得绘制到共享 canvas 干扰较新的导出。

@@ -1,9 +1,12 @@
 <script setup lang="ts">
+import { useMinioImages } from "@/composables/useMinioImages";
 import { computed,ref,watch } from "vue";
 import type { HonorShare } from "@/api/honors";
 import type { HonorBackground } from "@/config/honorBackgrounds";
 import MembershipCrown from "@/components/ui/MembershipCrown.vue";
 import { formatHonorPoints,honorTitle } from "../honorState";
+
+const { minioImageSrc } = useMinioImages();
 const props=defineProps<{ view:HonorShare; background:HonorBackground; backgroundImageUrl:string; miniCodeUrl?:string; showCode?:boolean; codeLoading?:boolean }>();
 const avatarFailed=ref(false),backgroundFailed=ref(false);
 watch(()=>props.view.avatar_url,()=>avatarFailed.value=false);
@@ -16,7 +19,7 @@ const backgroundStyle=computed(()=>({color:props.background.textColor,background
   <image v-if="backgroundImageUrl" class="honor-poster-background" :src="backgroundImageUrl" mode="aspectFill" @error="backgroundFailed=true" />
   <text class="honor-poster-year">{{view.year}} · 我的足球年度</text>
   <view class="honor-poster-avatar" :class="{'honor-poster-avatar--member':view.is_paid_member}">
-   <image v-if="view.avatar_url && !avatarFailed" :src="view.avatar_url" mode="aspectFill" @error="avatarFailed=true" />
+   <image v-if="view.avatar_url && !avatarFailed" :src="minioImageSrc(view.avatar_url)" mode="aspectFill" @error="minioImageSrc(view.avatar_url) && (avatarFailed=true)" />
    <text v-else>{{Array.from(view.nickname || '球友')[0]}}</text>
   </view>
   <view v-if="view.is_paid_member" class="honor-poster-crown"><MembershipCrown width="44rpx" height="26rpx" /></view>
@@ -27,7 +30,7 @@ const backgroundStyle=computed(()=>({color:props.background.textColor,background
   <text v-if="title" class="honor-poster-honor">{{title}}</text>
   <text class="honor-poster-motto" :class="{'honor-poster-motto--without-honor':!title}">每一次参与，都值得记录</text>
   <view v-if="showCode" class="honor-poster-scan">
-   <image v-if="miniCodeUrl" class="honor-poster-code" :src="miniCodeUrl" mode="aspectFit" />
+   <image v-if="miniCodeUrl" class="honor-poster-code" :src="minioImageSrc(miniCodeUrl)" mode="aspectFit" />
    <view v-else class="honor-poster-code honor-poster-code--pending"><text>{{codeLoading ? '正在生成' : '待生成'}}<br />小程序码</text></view>
    <view class="honor-poster-scan-copy"><text class="honor-poster-scan-title">扫码看我的荣誉</text><text class="honor-poster-scan-caption">加入球队 · 创建自己的球队</text></view>
   </view>

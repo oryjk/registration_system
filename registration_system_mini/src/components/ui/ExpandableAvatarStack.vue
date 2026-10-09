@@ -1,10 +1,13 @@
 <script setup lang="ts">
+import { useMinioImages } from "@/composables/useMinioImages";
 import { computed, getCurrentInstance, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import MembershipCrown from "./MembershipCrown.vue";
 import type { AvatarItem, AvatarSize } from "./avatarTypes";
 import { avatarStackLayout } from "./avatarStackLayout";
 import { avatarParticipationLevel } from "./avatarParticipationLevel";
 import { getWindowMetrics } from "@/utils/systemInfo";
+
+const { minioImageSrc } = useMinioImages();
 
 const props = withDefaults(defineProps<{
   items: AvatarItem[];
@@ -104,7 +107,7 @@ watch(trackHeight, () => {
             @tap.stop="select(item)"
           >
             <view data-deck-ignore="true" class="expandable-avatars__face" :style="{ backgroundColor: item.tone || 'var(--ui-color-text)' }">
-              <image data-deck-ignore="true" v-if="item.avatarUrl && !failedImages[imageKey(item)]" class="expandable-avatars__image" :src="item.avatarUrl" mode="aspectFill" @error="failedImages[imageKey(item)] = true" />
+              <image data-deck-ignore="true" v-if="item.avatarUrl && !failedImages[imageKey(item)]" class="expandable-avatars__image" :src="minioImageSrc(item.avatarUrl)" mode="aspectFill" @error="minioImageSrc(item.avatarUrl) && (failedImages[imageKey(item)] = true)" />
               <text data-deck-ignore="true" v-else class="expandable-avatars__fallback">{{ Array.from(item.name.trim())[0] || '?' }}</text>
             </view>
             <view v-if="expanded && hasParticipationLevel(item)" data-deck-ignore="true" class="expandable-avatars__attendance">

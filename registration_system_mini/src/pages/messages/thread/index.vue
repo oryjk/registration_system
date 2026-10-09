@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useMinioImages } from "@/composables/useMinioImages";
 import { usePageRefresh } from "@/composables/usePageRefresh";
 import { useAccentTheme } from "@/stores/theme";
 import { computed, ref } from "vue";
@@ -10,6 +11,8 @@ import { getCaptainThread, replyCaptainMessage } from "@/api/captainMessage";
 import type { AppCaptainMessageItem, AppCaptainThreadDetail } from "@/types/captainMessage";
 import { formatDateLabel } from "@/utils/datetime";
 import { getCustomNavMetrics } from "@/utils/customNav";
+
+const { minioImageSrc } = useMinioImages();
 
 const { themePageStyle } = useAccentTheme();
 
@@ -122,7 +125,7 @@ usePageRefresh(loadThread);
               <image
                 v-if="message.sender.avatar_url"
                 class="thread-avatar"
-                :src="message.sender.avatar_url"
+                :src="minioImageSrc(message.sender.avatar_url)"
                 mode="aspectFill"
               />
               <view v-else class="thread-avatar thread-avatar-fallback">{{ message.sender.nickname.slice(0, 1) || "球" }}</view>

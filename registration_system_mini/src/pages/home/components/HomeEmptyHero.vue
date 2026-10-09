@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useMinioImages } from "@/composables/useMinioImages";
 import { computed, ref, watch } from "vue";
 import AppButton from "@/components/ui/AppButton.vue";
 import AppSurface from "@/components/ui/AppSurface.vue";
@@ -9,6 +10,8 @@ import type {
   HomeEmptyHeroAction,
   HomeEmptyHeroState,
 } from "../homeEmptyHeroState";
+
+const { minioImageSrc } = useMinioImages();
 
 const props = defineProps<{
   state: HomeEmptyHeroState;
@@ -207,9 +210,9 @@ function emitAction(action: HomeEmptyHeroAction) {
         >
           <image
             class="home-empty-social-image"
-            :src="selectedImageUrl"
+            :src="minioImageSrc(selectedImageUrl)"
             mode="widthFix"
-            @error="socialImageFailed = true"
+            @error="minioImageSrc(selectedImageUrl) && (socialImageFailed = true)"
           />
         </view>
 

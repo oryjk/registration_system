@@ -222,6 +222,6 @@ describe("home page loading states", () => {
     expect(source.includes("onShareTimeline")).toEqual(true);
     expect(source.includes('const shareTitle = "约球开踢：组队、报名、上场";')).toEqual(true);
     expect(source.includes('const sharePath = "/pages/home/index";')).toEqual(true);
-    expect(source.includes("imageUrl: shareCoverUrl.value")).toEqual(true);
+    expect(source.includes("imageUrl: shareImageUrl.value")).toEqual(true);
   });
 });

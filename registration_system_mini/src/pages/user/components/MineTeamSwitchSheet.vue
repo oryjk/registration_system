@@ -1,10 +1,13 @@
 <script setup lang="ts">
+import { useMinioImages } from "@/composables/useMinioImages";
 import TeamRoleIcon from "@/components/ui/TeamRoleIcon.vue";
 import { computed } from "vue";
 import AppSurface from "@/components/ui/AppSurface.vue";
 import { useOverlayPresence } from "@/components/ui/useOverlayPresence";
 import { prefersReducedMotion } from "@/utils/reducedMotion";
 import type { TeamProfileViewModel } from "@/types/viewModels";
+
+const { minioImageSrc } = useMinioImages();
 
 const props = defineProps<{
   visible: boolean;
@@ -67,7 +70,7 @@ function handleSelect(teamId: number, isCurrent: boolean) {
             ]"
           >
             <view class="team-switch-option__badge">
-              <image v-if="team.logoUrl" class="team-switch-option__logo" :src="team.logoUrl" mode="aspectFit" />
+              <image v-if="team.logoUrl" class="team-switch-option__logo" :src="minioImageSrc(team.logoUrl)" mode="aspectFit" />
               <text v-else>{{ team.name.slice(0, 1) || "队" }}</text>
             </view>
             <view class="team-switch-option__copy">

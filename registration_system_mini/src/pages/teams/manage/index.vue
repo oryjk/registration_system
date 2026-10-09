@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useMinioImages } from "@/composables/useMinioImages";
 import { computed } from "vue";
 import { useAccentTheme } from "@/stores/theme";
 import AppTabHeader from "@/components/AppTabHeader.vue";
@@ -16,6 +17,8 @@ import TeamMemberManager from "./components/TeamMemberManager.vue";
 import TeamProfilePanel from "./components/TeamProfilePanel.vue";
 import { attendanceStatusClass } from "./teamManageState";
 import { useTeamManagePage } from "./useTeamManagePage";
+
+const { minioImageSrc } = useMinioImages();
 
 const {
   currentTeam,
@@ -133,7 +136,7 @@ const metaPageStyle = computed(() =>
             <image
               v-if="currentTeam?.logoUrl"
               class="team-manage-hero__logo"
-              :src="currentTeam.logoUrl"
+              :src="minioImageSrc(currentTeam.logoUrl)"
               mode="aspectFill"
             />
             <text v-else>{{ currentTeam?.name?.slice(0, 1) || "队" }}</text>

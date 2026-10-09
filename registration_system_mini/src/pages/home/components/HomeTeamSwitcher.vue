@@ -1,10 +1,13 @@
 <script setup lang="ts">
+import { useMinioImages } from "@/composables/useMinioImages";
 import TeamRoleIcon from "@/components/ui/TeamRoleIcon.vue";
 import { computed, getCurrentInstance, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { useOverlayPresence } from "@/components/ui/useOverlayPresence";
 import { prefersReducedMotion } from "@/utils/reducedMotion";
 import { getCustomNavMetrics } from "@/utils/customNav";
 import type { TeamProfileViewModel } from "@/types/viewModels";
+
+const { minioImageSrc } = useMinioImages();
 
 const props = defineProps<{
   teams: TeamProfileViewModel[];
@@ -96,7 +99,7 @@ function handleSelect(team: TeamProfileViewModel) {
       :aria-expanded="isOpen" :aria-label="teams.length >= 2 ? '切换球队，当前' + currentTeam.name : currentTeam.name"
       @tap.stop="toggle">
       <view class="home-team-entry__logo">
-        <image v-if="currentTeam.logoUrl" class="home-team-entry__logo-image" :src="currentTeam.logoUrl" mode="aspectFill" />
+        <image v-if="currentTeam.logoUrl" class="home-team-entry__logo-image" :src="minioImageSrc(currentTeam.logoUrl)" mode="aspectFill" />
         <text v-else class="home-team-entry__initial">{{ currentTeam.name.slice(0, 1) || "队" }}</text>
       </view>
       <text class="home-team-entry__name">{{ currentTeam.name }}</text>
@@ -117,7 +120,7 @@ function handleSelect(team: TeamProfileViewModel) {
           @tap="handleSelect(team)"
         >
           <view class="home-team-option__logo">
-            <image v-if="team.logoUrl" class="home-team-option__logo-image" :src="team.logoUrl" mode="aspectFill" />
+            <image v-if="team.logoUrl" class="home-team-option__logo-image" :src="minioImageSrc(team.logoUrl)" mode="aspectFill" />
             <text v-else class="home-team-option__initial">{{ team.name.slice(0, 1) || "队" }}</text>
           </view>
           <view class="home-team-option__copy">

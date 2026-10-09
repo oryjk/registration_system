@@ -1,7 +1,10 @@
 <script setup lang="ts">
+import { useMinioImages } from "@/composables/useMinioImages";
 import AppButton from "@/components/ui/AppButton.vue";
 import type { BackendUser } from "@/types/backend";
 import { resolveUserDisplayName } from "@/utils/viewModels";
+
+const { minioImageSrc } = useMinioImages();
 
 defineProps<{
   userSearchKeyword: string;
@@ -55,7 +58,7 @@ function handleCandidateTap(candidate: BackendUser) {
         :class="['candidate-card', selectedCandidate?.id === candidate.id ? 'candidate-card-active' : '']"
         @tap="handleCandidateTap(candidate)"
       >
-        <image v-if="candidate.avatar_url" class="candidate-avatar" :src="candidate.avatar_url" mode="aspectFill" />
+        <image v-if="candidate.avatar_url" class="candidate-avatar" :src="minioImageSrc(candidate.avatar_url)" mode="aspectFill" />
         <view v-else class="candidate-avatar candidate-avatar-fallback">{{ resolveUserDisplayName(candidate).slice(0, 1) }}</view>
         <view class="candidate-main">
           <text class="team-result-title">{{ resolveUserDisplayName(candidate) }}</text>

@@ -31,7 +31,7 @@ import { useShareCover } from "@/composables/useShareCover";
 
 import { computed, provide, ref } from "vue";
 
-const { shareCoverUrl, refreshShareCover } = useShareCover("hall");
+const { shareImageUrl, refreshShareCover } = useShareCover("hall");
 onShow(() => { void refreshShareCover(); });
 
 const { themePageStyle } = useAccentTheme();
@@ -239,13 +239,13 @@ onUnload(() => {
 onShareAppMessage(() => ({
   title: shareTitle,
   path: sharePath,
-  imageUrl: shareCoverUrl.value,
+  imageUrl: shareImageUrl.value,
 }));
 
 onShareTimeline(() => ({
   title: shareTitle,
   query: "",
-  imageUrl: shareCoverUrl.value,
+  imageUrl: shareImageUrl.value,
 }));
 // scroll-view 自定义下拉：页面本体不滚动，固定 header 不随下拉拖动。
 const { refreshing, handleRefresherRefresh } = usePullRefresh(() => hasSearched.value ? handleSearch() : loadPageData({ preserveContent: true }));

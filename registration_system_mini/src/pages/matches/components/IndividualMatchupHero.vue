@@ -1,10 +1,13 @@
 <script setup lang="ts">
+import { useMinioImages } from "@/composables/useMinioImages";
 import { computed, ref, watch } from "vue";
 import type { BackendActivity } from "@/types/backend";
 import AppSurface from "@/components/ui/AppSurface.vue";
 import AppTag from "@/components/ui/AppTag.vue";
 import TeamKitColor from "./TeamKitColor.vue";
 import { beijingDateKey, formatMonthDayLabel, formatTimeLabel, formatWeekdayLabel } from "@/utils/datetime";
+
+const { minioImageSrc } = useMinioImages();
 
 const props = defineProps<{
   match: BackendActivity;
@@ -99,8 +102,8 @@ const matchStatusTag = computed(() => {
         <image
           v-if="homeTeamLogoUrl && !homeLogoFailed"
           class="hero-logo"
-          :src="homeTeamLogoUrl"
-          @error="homeLogoFailed = true"
+          :src="minioImageSrc(homeTeamLogoUrl)"
+          @error="minioImageSrc(homeTeamLogoUrl) && (homeLogoFailed = true)"
           mode="aspectFit"
         />
         <view v-else class="hero-logo hero-logo--fallback">{{ homeInitial }}</view>
@@ -115,8 +118,8 @@ const matchStatusTag = computed(() => {
         <image
           v-if="awayTeamLogoUrl && !awayLogoFailed"
           class="hero-logo"
-          :src="awayTeamLogoUrl"
-          @error="awayLogoFailed = true"
+          :src="minioImageSrc(awayTeamLogoUrl)"
+          @error="minioImageSrc(awayTeamLogoUrl) && (awayLogoFailed = true)"
           mode="aspectFit"
         />
         <view v-else class="hero-logo hero-logo--fallback">{{ awayInitial }}</view>

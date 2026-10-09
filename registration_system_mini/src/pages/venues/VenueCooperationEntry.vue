@@ -4,16 +4,18 @@ import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
 import { useOverlayPresence } from "@/components/ui/useOverlayPresence";
 import { prefersReducedMotion } from "@/utils/reducedMotion";
 import { DEVELOPER_WECHAT_QRCODE_URL } from "@/utils/developerContact";
+import { resolveMinioImage } from "@/utils/minioImageCache";
 
 const emit = defineEmits<{ (event: "presence", rendered: boolean): void }>();
 const visible = ref(false);
 const { rendered } = useOverlayPresence(visible, { leaveDurationMs: () => prefersReducedMotion() ? 0 : 210 });
 watch(rendered, value => emit("presence", value));
 onUnmounted(() => emit("presence", false));
-function previewCode() {
+async function previewCode() {
+  const path = await resolveMinioImage(DEVELOPER_WECHAT_QRCODE_URL);
   uni.previewImage({
-    urls: [DEVELOPER_WECHAT_QRCODE_URL],
-    current: DEVELOPER_WECHAT_QRCODE_URL,
+    urls: [path],
+    current: path,
     fail: () => uni.showToast({ title: "图片打开失败，请重试", icon: "none" }),
   });
 }

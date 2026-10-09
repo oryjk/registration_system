@@ -1,8 +1,11 @@
 <script setup lang="ts">
+import { useMinioImages } from "@/composables/useMinioImages";
 import { computed, ref, watch } from "vue";
 import type { BackendUser } from "@/types/backend";
 import AppButton from "@/components/ui/AppButton.vue";
 import { needsProfileCompletion } from "@/utils/profileCompletion";
+
+const { minioImageSrc } = useMinioImages();
 
 const props = defineProps<{
   currentUser: BackendUser | null;
@@ -30,7 +33,7 @@ const emit = defineEmits<{
   <view class="mine-profile-hero">
     <view class="profile-row">
       <view class="profile-avatar">
-        <image v-if="currentUser?.avatar_url && !avatarLoadFailed" :src="currentUser.avatar_url" mode="aspectFill" @error="avatarLoadFailed = true" />
+        <image v-if="currentUser?.avatar_url && !avatarLoadFailed" :src="minioImageSrc(currentUser.avatar_url)" mode="aspectFill" @error="minioImageSrc(currentUser.avatar_url) && (avatarLoadFailed = true)" />
         <wd-icon v-else name="user" size="48rpx" color="var(--ui-color-text-muted)" />
       </view>
       <view class="profile-copy">

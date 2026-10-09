@@ -1,6 +1,9 @@
 <script setup lang="ts">
+import { useMinioImages } from "@/composables/useMinioImages";
 import AppButton from "@/components/ui/AppButton.vue";
 import AppSurface from "@/components/ui/AppSurface.vue";
+
+const { minioImageSrc } = useMinioImages();
 
 defineProps<{
   title: string;
@@ -27,7 +30,7 @@ const emit = defineEmits<{
         <view v-if="backgroundImageUrl" class="hall-empty-state__art" aria-hidden="true">
           <image
             class="hall-empty-state__image"
-            :src="backgroundImageUrl"
+            :src="minioImageSrc(backgroundImageUrl)"
             mode="widthFix"
           />
         </view>

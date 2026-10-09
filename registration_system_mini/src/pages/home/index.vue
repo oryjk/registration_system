@@ -40,7 +40,7 @@ import { createHomeRuntimeConfigCycle } from "./homeRuntimeConfigCycle";
 import { useOnboardingIllustrations } from "@/composables/useOnboardingIllustrations";
 import { useHomeNextMatchSocialImage } from "./useHomeNextMatchSocialImage";
 
-const { shareCoverUrl, refreshShareCover } = useShareCover("home");
+const { shareImageUrl, refreshShareCover } = useShareCover("home");
 onShow(() => { void refreshShareCover(); });
 
 const { themePageStyle } = useAccentTheme();
@@ -348,13 +348,13 @@ onUnload(() => {
 onShareAppMessage(() => ({
   title: shareTitle,
   path: sharePath,
-  imageUrl: shareCoverUrl.value,
+  imageUrl: shareImageUrl.value,
 }));
 
 onShareTimeline(() => ({
   title: shareTitle,
   query: "",
-  imageUrl: shareCoverUrl.value,
+  imageUrl: shareImageUrl.value,
 }));
 </script>
 

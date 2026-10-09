@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useMinioImages } from "@/composables/useMinioImages";
 import { watch } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import { useOnboardingIllustrations } from "@/composables/useOnboardingIllustrations";
@@ -9,6 +10,8 @@ import TeamJoinedNextSteps from "../onboarding/TeamJoinedNextSteps.vue";
 import AppButton from "@/components/ui/AppButton.vue";
 import AppSurface from "@/components/ui/AppSurface.vue";
 import { useTeamInvitePage } from "./useTeamInvitePage";
+
+const { minioImageSrc } = useMinioImages();
 
 const { themePageStyle } = useAccentTheme();
 
@@ -61,7 +64,7 @@ onShow(() => { if (joined.value || team.value?.is_member) void refreshIllustrati
               <image
                 v-if="team.logo_url?.trim()"
                 class="team-invite-hero__logo"
-                :src="team.logo_url"
+                :src="minioImageSrc(team.logo_url)"
                 mode="aspectFill"
               />
               <text v-else>{{ team.name.slice(0, 1) || "队" }}</text>

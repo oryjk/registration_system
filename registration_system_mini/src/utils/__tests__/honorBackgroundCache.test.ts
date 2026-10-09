@@ -28,7 +28,7 @@ test("redownloads when the saved file was removed",async()=>{
 });
 test("cache quota failure keeps the usable temporary file",async()=>{
  saveFails=true;const cache=createHonorBackgroundCache();
- expect(await cache.get(url)).toBe("tmp-1");expect(storage).toEqual({});
+ expect(await cache.get(url)).toBe("tmp-1");expect(storage).toEqual({version:1,files:{}});
  expect(await cache.get(url)).toBe("tmp-1");expect(downloads).toBe(1);
 });
 test("failed downloads fall back to the remote image and can retry",async()=>{

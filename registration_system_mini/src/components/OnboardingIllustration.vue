@@ -1,5 +1,8 @@
 <script setup lang="ts">
+import { useMinioImages } from "@/composables/useMinioImages";
 import { ref, watch } from "vue";
+
+const { minioImageSrc } = useMinioImages();
 
 const props = defineProps<{ src: string; revision?: number }>();
 const failed = ref(false);
@@ -8,7 +11,7 @@ watch(() => [props.src, props.revision], () => { failed.value = false; });
 
 <template>
   <view v-if="src && !failed" class="onboarding-illustration" aria-hidden="true">
-    <image :src="src" mode="widthFix" class="onboarding-illustration__image" @error="failed = true" />
+    <image :src="minioImageSrc(src)" mode="widthFix" class="onboarding-illustration__image" @error="minioImageSrc(src) && (failed = true)" />
   </view>
 </template>
 

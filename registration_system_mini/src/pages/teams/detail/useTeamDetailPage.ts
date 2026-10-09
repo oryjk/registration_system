@@ -99,7 +99,7 @@ export function useTeamDetailPage() {
   // 有队徽时预合成「封面 + 圆形队徽」的分享图（临时文件路径）；onShareAppMessage 同样是
   // 同步回调，合成未完成或失败时回落静态封面。队徽或后台封面变化时重新合成。
   const shareImagePath = ref("");
-  const { shareCoverUrl, refreshShareCover } = useShareCover("team");
+  const { shareCoverUrl, shareImageUrl, refreshShareCover } = useShareCover("team");
   let shareImageVersion = 0;
   let composedShareKey = "";
   watch([team, shareCoverUrl], () => {
@@ -184,6 +184,7 @@ export function useTeamDetailPage() {
     inviteCode,
     shareImagePath,
     shareCoverUrl,
+    shareImageUrl,
     leaveDialogVisible,
     handleLeaveTeamClick,
     handleLeaveTeamConfirm,

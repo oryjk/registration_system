@@ -1,9 +1,12 @@
 <script setup lang="ts">
+import { useMinioImages } from "@/composables/useMinioImages";
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import type { AvatarItem } from './avatarTypes';
 import { useOverlayPresence } from './useOverlayPresence';
 import { prefersReducedMotion } from '@/utils/reducedMotion';
 import AppButton from './AppButton.vue';
+
+const { minioImageSrc } = useMinioImages();
 
 const props = defineProps<{ visible: boolean; avatar: AvatarItem | null; canShare?: boolean }>();
 const emit = defineEmits<{
@@ -58,7 +61,7 @@ function close() {
       <button class="avatar-preview-close" aria-label="关闭头像预览" hover-class="avatar-preview-close--pressed" :disabled="leaving" @tap.stop="close">×</button>
       <view class="avatar-preview-portrait" :class="{ 'avatar-preview-portrait--member': avatar?.isPaidMember }" :style="portraitStyle">
         <view class="avatar-preview-image-frame">
-          <image v-if="avatar?.avatarUrl && !imageFailed" :key="avatar.avatarUrl" class="avatar-preview-image" :style="imageStyle" :src="avatar.avatarUrl" mode="aspectFill" :aria-label="`${name}的头像`" @error="imageFailed = true" />
+          <image v-if="avatar?.avatarUrl && !imageFailed" :key="avatar.avatarUrl" class="avatar-preview-image" :style="imageStyle" :src="minioImageSrc(avatar.avatarUrl)" mode="aspectFill" :aria-label="`${name}的头像`" @error="minioImageSrc(avatar.avatarUrl) && (imageFailed = true)" />
           <view v-else class="avatar-preview-fallback">
             <text class="avatar-preview-initial">{{ name.slice(0, 1) }}</text>
             <text class="avatar-preview-empty">{{ imageFailed ? '头像暂时无法加载' : '暂无头像' }}</text>

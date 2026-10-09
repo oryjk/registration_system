@@ -1,8 +1,11 @@
 <script setup lang="ts">
+import { useMinioImages } from "@/composables/useMinioImages";
 import TeamManagePanel from "./TeamManagePanel.vue";
 import type { BackendTeamMember } from "@/types/backend";
 import { formatDateLabel } from "@/utils/datetime";
 import { isLeadershipRole, memberStatusLabel, roleLabel } from "../teamManageState";
+
+const { minioImageSrc } = useMinioImages();
 
 const props = withDefaults(
   defineProps<{
@@ -88,7 +91,7 @@ function handleRemoveMember(member: BackendTeamMember) {
           <image
             v-if="memberAvatarUrl(member.user_id)"
             :class="['member-avatar', variant === 'frozen' ? 'member-avatar-muted' : '']"
-            :src="memberAvatarUrl(member.user_id)"
+            :src="minioImageSrc(memberAvatarUrl(member.user_id))"
             mode="aspectFill"
           />
           <view v-else :class="['member-avatar', 'member-avatar-fallback', variant === 'frozen' ? 'member-avatar-muted' : '']">

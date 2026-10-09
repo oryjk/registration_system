@@ -2,22 +2,25 @@ import type { HonorShare } from "@/api/honors";
 import type { HonorBackground } from "@/config/honorBackgrounds";
 import { formatHonorPoints, honorTitle } from "@/pages/honors/honorState";
 import { beijingDateKey } from "@/utils/datetime";
-import { resolveHonorBackgroundImage } from "@/utils/honorBackgroundCache";
+import { resolveMinioImage, retainMinioImage } from "@/utils/minioImageCache";
 
 type ImageInfo = { path: string; width: number; height: number };
 const imageInfo = (src: string): Promise<ImageInfo> => new Promise((resolve,reject) => uni.getImageInfo({src,success:resolve,fail:reject}));
 /** Page-scoped local image paths; coalesce downloads and retry failed requests. */
 export function createHonorImageLoader() {
  const images=new Map<string,Promise<ImageInfo>>();
+ const releases=new Map<string,()=>void>();
+ function drop(src:string){releases.get(src)?.();releases.delete(src);images.delete(src);}
  return {
   load(src:string):Promise<ImageInfo> {
    const cached=images.get(src);if(cached)return cached;
-   const task=resolveHonorBackgroundImage(src).then(imageInfo).catch(failure=>{if(images.get(src)===task)images.delete(src);throw failure;});
+   const task=resolveMinioImage(src).then(imageInfo).catch(failure=>{if(images.get(src)===task)drop(src);throw failure;});
    // The three presets plus avatars/codes fit comfortably; bound changing data too.
-   if(images.size>=16)images.delete(images.keys().next().value!);
+   if(images.size>=16)drop(images.keys().next().value!);
+   releases.set(src,retainMinioImage(src));
    images.set(src,task);return task;
   },
-  clear(){images.clear();},
+  clear(){for(const src of images.keys())drop(src);},
  };
 }
 function text(ctx: UniApp.CanvasContext,value: string,x: number,y: number,size: number,color: string,align: "left" | "center" = "center",weight = 400) {

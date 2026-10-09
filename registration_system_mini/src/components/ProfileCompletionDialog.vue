@@ -1,10 +1,13 @@
 <script setup lang="ts">
+import { useMinioImages } from "@/composables/useMinioImages";
 import { computed, ref, watch } from "vue";
 import AppButton from "@/components/ui/AppButton.vue";
 import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
 import { updateMyProfile, uploadMyAvatar } from "@/api/user";
 import { useTeamContext } from "@/stores/teamContext";
 import defaultAvatarUrl from "@/static/tab-png/user-active.png";
+
+const { minioImageSrc } = useMinioImages();
 
 interface ChooseAvatarEvent {
   detail?: {
@@ -124,11 +127,11 @@ function handleCancel() {
           <image
             v-if="avatarPreview && !avatarLoadFailed"
             class="profile-gate-avatar__image"
-            :src="avatarPreview"
+            :src="minioImageSrc(avatarPreview)"
             mode="aspectFill"
-            @error="avatarLoadFailed = true"
+            @error="minioImageSrc(avatarPreview) && (avatarLoadFailed = true)"
           />
-          <image v-else class="profile-gate-avatar__fallback" :src="defaultAvatarUrl" mode="aspectFit" />
+          <image v-else class="profile-gate-avatar__fallback" :src="minioImageSrc(defaultAvatarUrl)" mode="aspectFit" />
         </view>
         <!-- #ifdef MP-WEIXIN -->
         <button

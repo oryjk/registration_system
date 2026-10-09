@@ -1,5 +1,8 @@
 <script setup lang="ts">
+import { useMinioImages } from "@/composables/useMinioImages";
 import type { TeamStatsSummary } from "../teamStatsState";
+
+const { minioImageSrc } = useMinioImages();
 
 defineProps<{
   currentYear: number;
@@ -14,7 +17,7 @@ defineProps<{
 <template>
   <view class="stats-overview">
     <view class="stats-profile">
-      <image v-if="myAvatarUrl" class="stats-profile-avatar" :src="myAvatarUrl" mode="aspectFill" />
+      <image v-if="myAvatarUrl" class="stats-profile-avatar" :src="minioImageSrc(myAvatarUrl)" mode="aspectFill" />
       <view v-else class="stats-profile-avatar stats-profile-avatar-fallback">{{ myInitial }}</view>
       <view class="stats-profile-copy">
         <text class="stats-kicker">{{ currentYear }} 年出勤</text>

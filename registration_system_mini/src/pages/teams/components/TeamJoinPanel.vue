@@ -1,6 +1,9 @@
 <script setup lang="ts">
+import { useMinioImages } from "@/composables/useMinioImages";
 import AppButton from "@/components/ui/AppButton.vue";
 import type { BackendTeamSummary } from "@/types/backend";
+
+const { minioImageSrc } = useMinioImages();
 
 defineProps<{
   searchKeyword: string;
@@ -59,7 +62,7 @@ function handleJoin() {
     <view class="results-heading"><text>搜索结果</text><text class="results-count">{{ searching ? '正在查找…' : hasSearched ? `${searchResults.length} 支球队` : '按名称查找' }}</text></view>
     <view v-if="searchResults.length" class="team-result-list">
       <view v-for="team in searchResults" :key="team.id" class="team-result-card" :class="{ 'team-result-card-active': selectedTeam?.id === team.id }" @tap="handleSelectTeam(team)">
-        <image v-if="team.logo_url" class="team-logo" :src="team.logo_url" mode="aspectFit" />
+        <image v-if="team.logo_url" class="team-logo" :src="minioImageSrc(team.logo_url)" mode="aspectFit" />
         <view v-else class="team-logo team-logo-fallback">{{ team.name.slice(0, 1) }}</view>
         <view class="team-result-copy">
           <text class="team-result-title">{{ team.name }}</text>

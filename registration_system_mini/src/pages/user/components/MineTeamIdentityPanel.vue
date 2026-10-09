@@ -1,8 +1,11 @@
 <script setup lang="ts">
+import { useMinioImages } from "@/composables/useMinioImages";
 import TeamRoleIcon from "@/components/ui/TeamRoleIcon.vue";
 import { ref } from "vue";
 import MineTeamSwitchSheet from "./MineTeamSwitchSheet.vue";
 import type { TeamProfileViewModel } from "@/types/viewModels";
+
+const { minioImageSrc } = useMinioImages();
 
 const props = defineProps<{
   currentTeam: TeamProfileViewModel | null;
@@ -40,7 +43,7 @@ function handleSwitchTeam(teamId: number) {
     </view>
     <view class="team-list">
       <button v-for="team in teamProfiles" :key="team.id" class="team-row" hover-class="team-row--pressed" @tap="emit('manageTeam', team.id)">
-        <view class="team-logo"><image v-if="team.logoUrl" :src="team.logoUrl" mode="aspectFit" /><text v-else>{{ team.name.slice(0,1) }}</text></view>
+        <view class="team-logo"><image v-if="team.logoUrl" :src="minioImageSrc(team.logoUrl)" mode="aspectFit" /><text v-else>{{ team.name.slice(0,1) }}</text></view>
         <view class="team-copy"><view class="team-name-row"><text class="team-name">{{ team.name }}</text><text v-if="team.id === currentTeam?.id" class="team-current">当前</text></view><view class="team-meta"><TeamRoleIcon :team-role="team.myRole" :label="team.myRoleLabel" /><text>{{ team.memberCount }} 人</text></view></view>
         <wd-icon name="arrow-right" size="28rpx" color="var(--ui-color-text-muted)" />
       </button>
