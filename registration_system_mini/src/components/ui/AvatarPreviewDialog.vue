@@ -2,6 +2,7 @@
 import { useMinioImages } from "@/composables/useMinioImages";
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import type { AvatarItem } from './avatarTypes';
+import { avatarParticipationTier } from './avatarParticipationTier';
 import { useOverlayPresence } from './useOverlayPresence';
 import { prefersReducedMotion } from '@/utils/reducedMotion';
 import AppButton from './AppButton.vue';
@@ -38,18 +39,11 @@ const portraitStyle = computed(() => ({
 watch(() => props.visible, visible => { if (visible) viewport.value = uni.getWindowInfo(); });
 watch(() => [props.avatar?.id, props.avatar?.avatarUrl, props.visible], () => { if (props.visible) imageFailed.value = false; });
 const name = computed(() => props.avatar?.name.trim() || '球友');
-const attendanceCount = computed(() => {
+const annualStars = computed(() => {
   const count = props.avatar?.teamParticipationPoints;
   return typeof count === 'number' && Number.isFinite(count) && count >= 0 ? count : null;
 });
-const honors: Record<number, { title: string; tone: string }> = {
-  1: { title: '年度活跃冠军', tone: 'gold' },
-  2: { title: '年度活跃亚军', tone: 'silver' },
-  3: { title: '年度活跃季军', tone: 'bronze' },
-};
-const attendanceHonor = computed(() => (attendanceCount.value ?? 0) > 0
-  ? honors[props.avatar?.teamParticipationRank ?? 0] ?? null
-  : null);
+const participationTier = computed(() => avatarParticipationTier(props.avatar?.teamParticipationPoints));
 function close() {
   if (props.visible && !leaving.value) emit('close');
 }
@@ -57,7 +51,7 @@ function close() {
 
 <template>
   <view v-if="rendered" class="avatar-preview-mask" :class="{ 'avatar-preview-mask--leaving': leaving }" @tap="close" @touchmove.stop.prevent @keydown.esc="close">
-    <view class="avatar-preview-panel" role="dialog" aria-modal="true" :aria-label="`${name}的头像`" @tap.stop>
+    <view class="avatar-preview-panel" :class="participationTier ? `avatar-preview-panel--${participationTier.tone}` : ''" role="dialog" aria-modal="true" :aria-label="`${name}的头像`" @tap.stop>
       <button class="avatar-preview-close" aria-label="关闭头像预览" hover-class="avatar-preview-close--pressed" :disabled="leaving" @tap.stop="close">×</button>
       <view class="avatar-preview-portrait" :class="{ 'avatar-preview-portrait--member': avatar?.isPaidMember }" :style="portraitStyle">
         <view class="avatar-preview-image-frame">
@@ -69,12 +63,12 @@ function close() {
         </view>
       </view>
       <text class="avatar-preview-name">{{ name }}</text>
-      <view v-if="attendanceHonor" class="avatar-preview-honor" :class="`avatar-preview-honor--${attendanceHonor.tone}`">
+      <view v-if="participationTier" class="avatar-preview-honor">
         <view class="avatar-preview-honor-icon" aria-hidden="true"><view class="avatar-preview-honor-cup" /><view class="avatar-preview-honor-stem" /></view>
-        <text>{{ attendanceHonor.title }}</text>
+        <text>年度活跃 · {{ participationTier.title }}</text>
       </view>
-      <view v-if="attendanceCount != null" class="avatar-preview-attendance">
-        <text>年度星数</text><text class="avatar-preview-attendance-number" :class="attendanceHonor ? `avatar-preview-attendance-number--${attendanceHonor.tone}` : ''">{{ attendanceCount }}</text><text>星</text>
+      <view v-if="annualStars != null" class="avatar-preview-attendance">
+        <text>年度星数</text><text class="avatar-preview-attendance-number">{{ annualStars }}</text><text>星</text>
       </view>
       <view v-if="canShare" class="avatar-preview-share"><AppButton block :disabled="leaving" @click="emit('share')">分享我的荣誉</AppButton></view>
     </view>
@@ -97,9 +91,14 @@ function close() {
 .avatar-preview-empty { font-size: 24rpx; color: var(--ui-color-text-muted); }
 .avatar-preview-name { display: block; margin-top: 24rpx; font-size: 34rpx; line-height: 1.5; text-align: center; font-weight: var(--ui-font-weight-heading); color: var(--ui-color-text); overflow-wrap: anywhere; max-height: 18vh; overflow-y: auto; }
 .avatar-preview-honor { display: flex; align-items: center; justify-content: center; gap: 10rpx; width: fit-content; max-width: 100%; margin: 14rpx auto 0; padding: 10rpx 20rpx; border-radius: var(--ui-radius-round); font-size: 24rpx; line-height: 32rpx; font-weight: 600; }
-.avatar-preview-honor--gold { color: var(--ui-avatar-attendance-gold); background: var(--ui-avatar-attendance-gold-bg); }
-.avatar-preview-honor--silver { color: var(--ui-avatar-attendance-silver); background: var(--ui-avatar-attendance-silver-bg); }
-.avatar-preview-honor--bronze { color: var(--ui-avatar-attendance-bronze); background: var(--ui-avatar-attendance-bronze-bg); }
+.avatar-preview-honor { color: var(--avatar-preview-tier-fg); background: var(--avatar-preview-tier-bg); }
+.avatar-preview-panel--bronze { --avatar-preview-tier-fg: var(--ui-avatar-tier-bronze); --avatar-preview-tier-bg: var(--ui-avatar-tier-bronze-bg); }
+.avatar-preview-panel--silver { --avatar-preview-tier-fg: var(--ui-avatar-tier-silver); --avatar-preview-tier-bg: var(--ui-avatar-tier-silver-bg); }
+.avatar-preview-panel--gold { --avatar-preview-tier-fg: var(--ui-avatar-tier-gold); --avatar-preview-tier-bg: var(--ui-avatar-tier-gold-bg); }
+.avatar-preview-panel--platinum { --avatar-preview-tier-fg: var(--ui-avatar-tier-platinum); --avatar-preview-tier-bg: var(--ui-avatar-tier-platinum-bg); }
+.avatar-preview-panel--diamond { --avatar-preview-tier-fg: var(--ui-avatar-tier-diamond); --avatar-preview-tier-bg: var(--ui-avatar-tier-diamond-bg); }
+.avatar-preview-panel--star { --avatar-preview-tier-fg: var(--ui-avatar-tier-star); --avatar-preview-tier-bg: var(--ui-avatar-tier-star-bg); }
+.avatar-preview-panel--king { --avatar-preview-tier-fg: var(--ui-avatar-tier-king); --avatar-preview-tier-bg: var(--ui-avatar-tier-king-bg); }
 /* 小型奖杯用原生 view 轮廓，颜色继承荣誉标签，兼容小程序与深色主题。 */
 .avatar-preview-honor-icon { position: relative; width: 28rpx; height: 28rpx; flex-shrink: 0; border-bottom: 2rpx solid currentColor; box-sizing: border-box; }
 .avatar-preview-honor-cup { position: absolute; left: 7rpx; top: 0; width: 14rpx; height: 18rpx; border: 2rpx solid currentColor; border-radius: 0 0 8rpx 8rpx; box-sizing: border-box; }
@@ -108,10 +107,7 @@ function close() {
 .avatar-preview-honor-icon::after { right: 1rpx; border-left: 0; border-radius: 0 0 6rpx 0; }
 .avatar-preview-honor-stem { position: absolute; left: 13rpx; top: 18rpx; width: 2rpx; height: 8rpx; background: currentColor; }
 .avatar-preview-attendance { display: flex; align-items: baseline; justify-content: center; gap: 14rpx; margin-top: 22rpx; color: var(--ui-color-text-muted); font-size: 24rpx; line-height: 54rpx; }
-.avatar-preview-attendance-number { color: var(--ui-color-text); font-size: 48rpx; font-weight: 600; line-height: 54rpx; font-variant-numeric: tabular-nums; }
-.avatar-preview-attendance-number--gold { color: var(--ui-avatar-attendance-gold); }
-.avatar-preview-attendance-number--silver { color: var(--ui-avatar-attendance-silver); }
-.avatar-preview-attendance-number--bronze { color: var(--ui-avatar-attendance-bronze); }
+.avatar-preview-attendance-number { color: var(--avatar-preview-tier-fg, var(--ui-color-text)); font-size: 48rpx; font-weight: 600; line-height: 54rpx; font-variant-numeric: tabular-nums; }
 .avatar-preview-mask--leaving { animation: avatar-preview-fade var(--ui-motion-overlay-duration) ease reverse both; }
 .avatar-preview-mask--leaving .avatar-preview-panel { pointer-events: none; animation: avatar-preview-enter var(--ui-motion-overlay-duration) ease reverse both; }
 @keyframes avatar-preview-fade { from { opacity: 0; } to { opacity: 1; } }

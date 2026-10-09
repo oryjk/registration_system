@@ -63,6 +63,15 @@ page,
   --ui-primitive-medal-silver-bg: #eef2f6;
   --ui-primitive-medal-bronze-bg: #f8ede5;
   --ui-primitive-member-gold: #d9ab38;
+  /* 年度活跃段位：金属、宝石色独立于品牌主题和榜单名次。 */
+  --ui-primitive-tier-platinum: #357575;
+  --ui-primitive-tier-platinum-bg: #e5f3f0;
+  --ui-primitive-tier-diamond: #366eac;
+  --ui-primitive-tier-diamond-bg: #e8f2ff;
+  --ui-primitive-tier-star: #7851ad;
+  --ui-primitive-tier-star-bg: #f1eafb;
+  --ui-primitive-tier-king: #a35d12;
+  --ui-primitive-tier-king-bg: #fff0d6;
 
   /* Semantic */
   --ui-color-page: var(--ui-primitive-canvas);
@@ -231,6 +240,20 @@ page,
   --ui-avatar-attendance-silver-bg: var(--ui-primitive-medal-silver-bg);
   --ui-avatar-attendance-bronze-bg: var(--ui-primitive-medal-bronze-bg);
   --ui-avatar-member-frame: var(--ui-primitive-member-gold);
+  --ui-avatar-tier-bronze: var(--ui-primitive-medal-bronze);
+  --ui-avatar-tier-bronze-bg: var(--ui-primitive-medal-bronze-bg);
+  --ui-avatar-tier-silver: var(--ui-primitive-medal-silver);
+  --ui-avatar-tier-silver-bg: var(--ui-primitive-medal-silver-bg);
+  --ui-avatar-tier-gold: var(--ui-primitive-medal-gold);
+  --ui-avatar-tier-gold-bg: var(--ui-primitive-medal-gold-bg);
+  --ui-avatar-tier-platinum: var(--ui-primitive-tier-platinum);
+  --ui-avatar-tier-platinum-bg: var(--ui-primitive-tier-platinum-bg);
+  --ui-avatar-tier-diamond: var(--ui-primitive-tier-diamond);
+  --ui-avatar-tier-diamond-bg: var(--ui-primitive-tier-diamond-bg);
+  --ui-avatar-tier-star: var(--ui-primitive-tier-star);
+  --ui-avatar-tier-star-bg: var(--ui-primitive-tier-star-bg);
+  --ui-avatar-tier-king: var(--ui-primitive-tier-king);
+  --ui-avatar-tier-king-bg: var(--ui-primitive-tier-king-bg);
   --ui-avatar-border: 1rpx solid var(--ui-color-surface);
   --ui-avatar-plus-bg: var(--ui-color-text);
   --ui-avatar-plus-fg: var(--ui-color-text-inverse);
