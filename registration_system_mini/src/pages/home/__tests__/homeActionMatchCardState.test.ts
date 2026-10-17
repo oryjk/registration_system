@@ -86,7 +86,26 @@ describe("Home action match card", () => {
       expect(state.feeLabel).toEqual("费用见比赛详情");
       expect(state.deadlineLabel).toEqual("");
       expect(state.actionLabel).toEqual("查看比赛与报名");
+      expect(state.availability).toEqual("报名状态待确认");
     }
+  });
+  test("missing selected group keeps availability unconfirmed even when another group is open", () => {
+    const data = detail(); data.groups = [data.groups[0]];
+    const state = buildHomeActionMatchCardState(card, data, now);
+    expect(state.availability).toEqual("报名状态待确认");
+    expect(state.actionLabel).toEqual("查看比赛与报名");
+  });
+  test("confirmed open registration keeps the signup action", () => {
+    const state = buildHomeActionMatchCardState(card, detail(), now);
+    expect(state.availability).toEqual("");
+    expect(state.actionLabel).toEqual("前往报名");
+  });
+  test("closed groups and ended matches retain their confirmed status", () => {
+    const data = detail(); data.groups[1].status = "closed";
+    expect(buildHomeActionMatchCardState(card, data, now).availability).toEqual("报名已关闭");
+    data.match.status = "ended";
+    expect(buildHomeActionMatchCardState(card, data, now).availability).toEqual("比赛已结束");
+    expect(buildHomeActionMatchCardState({ ...card, phase: "ended" }, null, now).availability).toEqual("比赛已结束");
   });
   test("full groups keep a detail action without suggesting another signup", () => {
     const data = detail(); data.groups[1].attending_count = 10;

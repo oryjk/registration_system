@@ -60,7 +60,8 @@ export function buildHomeActionMatchCardState(
     matchEndAt: match.end_time,
   }) : null;
   let phaseLabel = "下一场比赛";
-  let availability = "";
+  // 只有目标报名组详情确认后，空文案才表示报名开放；加载中或失败不能视为开放。
+  let availability = "报名状态待确认";
   let actionLabel = "查看比赛与报名";
   if (phase === "excluded") {
     phaseLabel = "比赛已取消";
