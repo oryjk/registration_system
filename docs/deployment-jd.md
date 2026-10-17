@@ -51,6 +51,13 @@ Go 源码快照放在 jd 的 `releases/<时间>-<提交>/registration_system_go`
 
 前端先检查资源前缀，再在同一文件系统暂存及替换目录；旧文件保存在 `html/_backups/<应用>-<发布号>/`。脚本不自动删备份、旧镜像或发布源代码；2核4GB/60GB 实例应定期检查磁盘，按发布记录人工保留需要的回退版本。前后端不是一个跨服务原子事务，失败时以输出检查已完成的步骤。
 
+## 比赛封面资源
+
+- 默认封面在 MinIO 桶 `registration` 的 `match-covers/default-football-v1.webp`，小程序不内置图片；未设置 `matches.cover_image_url` 时使用此图。
+- 管理端上传的比赛图片也写入 `match-covers/`，按内容哈希命名。桶策略为该前缀增加 `s3:GetObject` 公共只读权限，保留其余既有策略；不开放公开写入。
+- 2026-10-17 首次配置前的桶策略备份在 jd 的 `/root/docker_data/registration-go-v3/match-cover-policy-before-20261017.json`。还原策略前先确认不会影响现有比赛封面访问。
+- schema 迁移 `00044_match_cover_image.sql` 仅新增带空串默认值的列，旧版显式列查询/写入继续兼容；按日常发布的 `--migrate` 流程执行。
+
 ## 验证及回滚
 
 ```bash

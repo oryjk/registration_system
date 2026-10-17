@@ -33,6 +33,8 @@ export interface UpdatedMatchRegistration {
 export interface MatchItem {
   id: string;
   name: string;
+  /** 空串或旧响应缺失时使用默认比赛封面。 */
+  cover_image_url?: string;
   publication_mode: PublicationMode;
   opponent_state: OpponentState;
   status: MatchStatus;
@@ -111,6 +113,7 @@ export interface MatchListQuery {
 
 export interface CreateMatchPayload {
   name: string;
+  cover_image_url?: string;
   publication_mode: PublicationMode;
   /** 散人约球（online_pickup）不传；其余模式必填。 */
   host_team_id?: number;
@@ -132,6 +135,8 @@ export interface CreateMatchPayload {
 
 export interface UpdateMatchPayload {
   name: string;
+  /** 省略保留原值，空串恢复默认封面。 */
+  cover_image_url?: string;
   start_time: string;
   end_time: string;
   registration_start_at: string | null;

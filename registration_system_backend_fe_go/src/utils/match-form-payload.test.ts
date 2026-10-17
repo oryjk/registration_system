@@ -29,6 +29,21 @@ const baseFormValues = (
 });
 
 describe("match form payload", () => {
+  it("preserves cover update omission and sends an empty string to restore the default", () => {
+    expect(buildUpdateMatchPayload(baseValues)).not.toHaveProperty(
+      "cover_image_url",
+    );
+    expect(
+      buildUpdateMatchPayload({ ...baseValues, cover_image_url: "" }),
+    ).toHaveProperty("cover_image_url", "");
+    const coverUrl = "https://cdn.example.com/match.webp";
+    for (const build of [buildCreateMatchPayload, buildUpdateMatchPayload]) {
+      expect(
+        build({ ...baseValues, cover_image_url: ` ${coverUrl} ` }),
+      ).toHaveProperty("cover_image_url", coverUrl);
+    }
+  });
+
   it("builds the complete create contract with ISO dates", () => {
     expect(buildCreateMatchPayload(baseValues)).toEqual({
       name: "夏夜联赛",

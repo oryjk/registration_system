@@ -12,6 +12,7 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/pressly/goose/v3 v3.27.2
 	github.com/swaggest/swgui v1.8.9
+	golang.org/x/image v0.32.0
 	golang.org/x/crypto v0.55.0
 )
 

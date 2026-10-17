@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/oryjk/registration_system/registration_system_go/internal/system/ports"
+	"github.com/oryjk/registration_system/registration_system_go/internal/testsupport/imagefixture"
 )
 
 // fakeAssetStore 记录保存调用，可注入失败。
@@ -34,22 +35,11 @@ func newHomeAssetServiceForTest(store ports.AssetStore, repository *fakeSettings
 	return NewHomeAssetService(store, NewSettingsService(repository))
 }
 
-func validPNGBytes() []byte {
-	// 最小合法 PNG 头 + 填充内容，服务层只校验声明类型与大小，不解码像素。
-	return append([]byte{0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A}, []byte("fake-png-body")...)
-}
+func validPNGBytes() []byte { return imagefixture.PNG() }
 
-func validJPEGBytes() []byte {
-	return append([]byte{0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 'J', 'F', 'I', 'F'}, []byte("fake-jpeg-body")...)
-}
+func validJPEGBytes() []byte { return imagefixture.JPEG() }
 
-func validWebPBytes() []byte {
-	data := make([]byte, 20)
-	copy(data[0:4], "RIFF")
-	copy(data[8:12], "WEBP")
-	copy(data[12:16], "VP8 ")
-	return data
-}
+func validWebPBytes() []byte { return imagefixture.WebP() }
 
 func TestUploadNextMatchSocialImageSavesAssetAndPersistsURL(t *testing.T) {
 	store := &fakeAssetStore{}

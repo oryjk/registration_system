@@ -33,13 +33,19 @@ type CreateMatchUseCase interface {
 type AdminHandler struct {
 	service AdminMatchUseCase
 	create  CreateMatchUseCase
+	covers  CoverImageUploadUseCase
 }
 
-func NewAdminHandler(service AdminMatchUseCase, create CreateMatchUseCase) *AdminHandler {
-	return &AdminHandler{service: service, create: create}
+func NewAdminHandler(service AdminMatchUseCase, create CreateMatchUseCase, covers ...CoverImageUploadUseCase) *AdminHandler {
+	handler := &AdminHandler{service: service, create: create}
+	if len(covers) > 0 {
+		handler.covers = covers[0]
+	}
+	return handler
 }
 
 type CreateMatchRequest struct {
+	CoverImageURL   *string                `json:"cover_image_url"`
 	Name            string                 `json:"name" binding:"required"`
 	PublicationMode domain.PublicationMode `json:"publication_mode" binding:"required"`
 	// HostTeamID 为 nil 表示散人约球（online_pickup）这类无主队模式。
@@ -64,6 +70,8 @@ type CreateMatchRequest struct {
 }
 
 type UpdateMatchRequest struct {
+	// CoverImageURL omission or null preserves the current cover; empty restores default.
+	CoverImageURL       *string                  `json:"cover_image_url"`
 	Name                string                   `json:"name" binding:"required"`
 	StartTime           time.Time                `json:"start_time" binding:"required"`
 	EndTime             time.Time                `json:"end_time" binding:"required"`
@@ -108,6 +116,7 @@ type UpdateMatchScoreRequest struct {
 }
 
 type MatchResponse struct {
+	CoverImageURL   string                 `json:"cover_image_url"`
 	ID              string                 `json:"id"`
 	Name            string                 `json:"name"`
 	PublicationMode domain.PublicationMode `json:"publication_mode"`
@@ -225,7 +234,8 @@ func (h *AdminHandler) Create(c *gin.Context) {
 		return
 	}
 	result, err := h.create.Execute(c.Request.Context(), actor, application.CreateMatchCommand{
-		Name: request.Name, PublicationMode: request.PublicationMode, HostTeamID: request.HostTeamID,
+		CoverImageURL: request.CoverImageURL,
+		Name:          request.Name, PublicationMode: request.PublicationMode, HostTeamID: request.HostTeamID,
 		OpponentName: request.OpponentName, PlayersPerTeam: request.PlayersPerTeam,
 		HostCapacityLimit: request.HostCapacityLimit, StartTime: request.StartTime, EndTime: request.EndTime,
 		RegistrationStartAt: request.RegistrationStartAt, RegistrationEndAt: request.RegistrationEndAt,
@@ -257,7 +267,8 @@ func (h *AdminHandler) Update(c *gin.Context) {
 		return
 	}
 	_, err := h.service.UpdateDetails(c.Request.Context(), actor, id, application.UpdateMatchCommand{
-		Name: request.Name, StartTime: request.StartTime, EndTime: request.EndTime,
+		CoverImageURL: request.CoverImageURL,
+		Name:          request.Name, StartTime: request.StartTime, EndTime: request.EndTime,
 		RegistrationStartAt: request.RegistrationStartAt.commandValue(), RegistrationEndAt: request.RegistrationEndAt.commandValue(), Location: request.Location,
 		LocationLatitude: request.LocationLatitude, LocationLongitude: request.LocationLongitude, Description: request.Description,
 		OpponentName:      request.OpponentName,
@@ -336,6 +347,7 @@ func (h *AdminHandler) RecordScore(c *gin.Context) {
 func (h *AdminHandler) RegisterRoutes(group *gin.RouterGroup) {
 	group.GET("/matches", h.List)
 	group.POST("/matches", h.Create)
+	group.POST("/matches/cover-images", h.UploadCoverImage)
 	group.GET("/matches/:id", h.Get)
 	group.PATCH("/matches/:id", h.Update)
 	group.PATCH("/matches/:id/status", h.ChangeStatus)
@@ -397,7 +409,8 @@ func mapMatch(item ports.AdminMatchItem) MatchResponse {
 		StartTime: match.StartTime, EndTime: match.EndTime,
 		RegistrationStartAt: match.RegistrationStartAt, RegistrationEndAt: match.RegistrationEndAt,
 		Location: match.Location, LocationLatitude: match.LocationLatitude, LocationLongitude: match.LocationLongitude,
-		Description: match.Description, IsFree: match.IsFree, CreatedByUserID: match.CreatedByUserID, CreatedByAdminID: match.CreatedByAdminID,
+		CoverImageURL: match.CoverImageURL,
+		Description:   match.Description, IsFree: match.IsFree, CreatedByUserID: match.CreatedByUserID, CreatedByAdminID: match.CreatedByAdminID,
 		HostColor: jerseyColorResponse(match.HostColor), AwayColor: jerseyColorResponse(match.AwayColor),
 		PaymentMode: match.PaymentMode, FeePerPersonCents: match.FeePerPersonCents, FeeType: match.FeeType,
 		CreatedAt: match.CreatedAt, UpdatedAt: match.UpdatedAt,

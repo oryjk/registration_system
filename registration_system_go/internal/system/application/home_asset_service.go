@@ -1,13 +1,13 @@
 package application
 
 import (
-	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
 
 	sharederror "github.com/oryjk/registration_system/registration_system_go/internal/shared/domain"
+	"github.com/oryjk/registration_system/registration_system_go/internal/shared/imagefile"
 	"github.com/oryjk/registration_system/registration_system_go/internal/system/domain"
 	"github.com/oryjk/registration_system/registration_system_go/internal/system/ports"
 )
@@ -96,7 +96,7 @@ func (s HomeAssetService) saveImage(ctx context.Context, prefix string, data []b
 	if len(data) == 0 || len(data) > MaxHomeAssetUploadBytes {
 		return "", sharederror.New(sharederror.KindValidation, "插画文件大小需在 2MB 以内")
 	}
-	image, ok := detectHomeImageByContent(data)
+	image, ok := imagefile.DetectRasterImage(data)
 	if !ok {
 		return "", sharederror.New(sharederror.KindValidation, "插画仅支持 PNG、JPG、WebP 格式")
 	}
@@ -107,28 +107,6 @@ func (s HomeAssetService) saveImage(ctx context.Context, prefix string, data []b
 		return "", sharederror.Wrap(sharederror.KindInternal, "上传插画到对象存储失败", err)
 	}
 	return url, nil
-}
-
-// detectedHomeImage 是按文件内容识别出的可信格式。
-type detectedHomeImage struct {
-	Extension   string
-	ContentType string
-}
-
-// detectHomeImageByContent 只认文件头 magic bytes：PNG/JPEG/WebP 之外的请求一律拒绝，
-// 防止把 HTML/SVG 等内容以图片 Content-Type 存进公网对象存储。
-// 不用 http.DetectContentType：它无法识别 WebP。
-func detectHomeImageByContent(data []byte) (detectedHomeImage, bool) {
-	switch {
-	case bytes.HasPrefix(data, []byte{0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A}):
-		return detectedHomeImage{Extension: "png", ContentType: "image/png"}, true
-	case bytes.HasPrefix(data, []byte{0xFF, 0xD8, 0xFF}):
-		return detectedHomeImage{Extension: "jpg", ContentType: "image/jpeg"}, true
-	case len(data) >= 12 && string(data[0:4]) == "RIFF" && string(data[8:12]) == "WEBP":
-		return detectedHomeImage{Extension: "webp", ContentType: "image/webp"}, true
-	default:
-		return detectedHomeImage{}, false
-	}
 }
 
 func contentHash(data []byte) string {

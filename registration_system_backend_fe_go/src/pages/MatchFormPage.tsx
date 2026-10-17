@@ -20,12 +20,14 @@ import {
   useCreateMatchMutation,
   useMatchQuery,
   useUpdateMatchMutation,
+  useUploadMatchCoverImageMutation,
 } from "@/hooks/queries/useMatchQueries";
 import {
   useCreateTeamOptionMutation,
   useTeamOptionsQuery,
 } from "@/hooks/queries/useTeamQueries";
 import { BasicSection } from "@/pages/match-form/basic-section";
+import { MatchCoverSection } from "@/pages/match-form/match-cover-section";
 import { ScheduleSection } from "@/pages/match-form/schedule-section";
 import {
   type MatchFormValues,
@@ -40,6 +42,7 @@ import {
 
 const initialValues: MatchFormValues = {
   name: "",
+  cover_image_url: "",
   publication_mode: "online_team",
   players_per_team: 8,
   host_capacity_limit: defaultHostCapacityLimit(8),
@@ -62,6 +65,7 @@ export default function MatchFormPage() {
   const teamsQuery = useTeamOptionsQuery();
   const createMutation = useCreateMatchMutation();
   const updateMutation = useUpdateMatchMutation();
+  const coverUpload = useUploadMatchCoverImageMutation();
   const createTeamMutation = useCreateTeamOptionMutation();
   const teams = teamsQuery.data || [];
   const submitting = createMutation.isPending || updateMutation.isPending;
@@ -82,6 +86,7 @@ export default function MatchFormPage() {
     if (match) {
       form.reset({
         name: match.name,
+        cover_image_url: match.cover_image_url ?? "",
         publication_mode: match.publication_mode,
         host_team_id: match.host_team_id ?? undefined,
         opponent_name: match.opponent_name || undefined,
@@ -147,6 +152,7 @@ export default function MatchFormPage() {
 
   const submit = form.handleSubmit(
     async (values: MatchFormValues) => {
+      if (coverUpload.isPending || submitting) return;
       // zod 校验已保证比赛时间存在；字面量捕获窄化类型以满足 payload 约定。
       if (!values.start_time) return;
       const payloadValues = { ...values, start_time: values.start_time };
@@ -279,6 +285,11 @@ export default function MatchFormPage() {
                   form={form}
                   onStartTimeChange={handleStartTimeChange}
                 />
+                <MatchCoverSection
+                  disabled={submitting || form.formState.isSubmitting}
+                  form={form}
+                  uploadImage={coverUpload}
+                />
                 <div className="form-actions">
                   <Button
                     onClick={() => navigate(id ? `/matches/${id}` : "/matches")}
@@ -287,7 +298,10 @@ export default function MatchFormPage() {
                   >
                     取消
                   </Button>
-                  <Button disabled={submitting} type="submit">
+                  <Button
+                    disabled={submitting || coverUpload.isPending}
+                    type="submit"
+                  >
                     保存比赛
                   </Button>
                 </div>

@@ -1,7 +1,8 @@
 import { registrationProgressState } from "@/components/ui/registrationProgressState";
 import type { AppMatchDetailResponse } from "@/types/match";
 import type { HomeMatchCardViewModel } from "@/types/viewModels";
-import { formatDateLabel, formatTimeLabel, formatWeekdayLabel, parseDateValue } from "@/utils/datetime";
+import { beijingDateParts, formatDateLabel, formatTimeLabel, formatWeekdayLabel, pad, parseDateValue } from "@/utils/datetime";
+import { DEFAULT_MATCH_COVER_URL } from "@/config/matchCover";
 import { resolveRegistrationWindow } from "@/utils/registrationWindow";
 import { resolveMatchPhase } from "./homeMatchState";
 
@@ -32,7 +33,9 @@ export function buildHomeActionMatchCardState(
   const group = detail?.groups.find((item) => item.id === card.registrationGroupId);
   const phase = match ? resolveMatchPhase(match, now) : card.phase;
   const rawDate = match?.start_time ?? card.dateSource;
+  const rawEndDate = match?.end_time;
   const validDate = dateIsValid(rawDate);
+  const calendar = validDate ? beijingDateParts(rawDate) : null;
   const registration = group?.my_registration;
   const status = group
     ? ({ attending: "已报名", leave: "已请假", absent: "缺席", cancelled: "已取消报名", unknown: "尚未报名" }[registration?.status ?? "unknown"])
@@ -87,9 +90,13 @@ export function buildHomeActionMatchCardState(
     phaseLabel,
     phase,
     title: match?.name || card.title,
+    coverImageUrl: (match ? match.cover_image_url : card.coverImageUrl)?.trim() || DEFAULT_MATCH_COVER_URL,
+    calendarMonth: calendar ? `${calendar.month}月` : "待定",
+    calendarDay: calendar ? pad(calendar.day) : "—",
     date: validDate ? formatDateLabel(rawDate).split(" ")[0] : "日期待定",
     weekday: validDate ? formatWeekdayLabel(rawDate) : "",
     time: validDate ? formatTimeLabel(rawDate) : "时间待定",
+    endTime: dateIsValid(rawEndDate) ? formatTimeLabel(rawEndDate) : "",
     venue: match?.location?.trim() || card.venue?.trim() || "场地待定",
     opponent: match?.opponent_name?.trim() || card.opponent?.trim() || "待定",
     feeLabel: feeLabel(detail),

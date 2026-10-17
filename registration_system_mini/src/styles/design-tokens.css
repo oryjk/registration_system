@@ -175,6 +175,17 @@ page,
   --now-radius-card: var(--ui-radius-card);
   --now-radius-button: var(--ui-radius-button);
   --now-shadow: var(--ui-shadow-card);
+  /* 比赛封面：照片上的字保持浅色，日历完整跟随五套主题。 */
+  --now-cover-fg: #fffffe;
+  --now-cover-muted: rgba(255, 255, 254, 0.85);
+  --now-cover-shade: linear-gradient(90deg, rgba(0, 28, 40, 0.44), rgba(0, 28, 40, 0) 85%), linear-gradient(180deg, rgba(0, 28, 40, 0.12), rgba(0, 28, 40, 0) 20%, rgba(0, 28, 40, 0.72) 100%);
+  --now-cover-label-bg: rgba(0, 28, 40, 0.44);
+  --now-cover-icon-filter: brightness(0) invert(1);
+  --now-calendar-surface: var(--ui-color-surface);
+  --now-calendar-fg: var(--ui-color-text);
+  --now-calendar-muted: var(--ui-color-text-muted);
+  --now-calendar-accent: var(--ui-color-accent);
+  --now-calendar-on-accent: var(--ui-color-accent-fg);
 
   --ui-surface-bg: var(--ui-color-surface);
   --ui-surface-fg: var(--ui-color-text);

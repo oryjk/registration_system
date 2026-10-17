@@ -17,6 +17,7 @@ import (
 	systemapplication "github.com/oryjk/registration_system/registration_system_go/internal/system/application"
 	"github.com/oryjk/registration_system/registration_system_go/internal/system/domain"
 	"github.com/oryjk/registration_system/registration_system_go/internal/system/ports"
+	"github.com/oryjk/registration_system/registration_system_go/internal/testsupport/imagefixture"
 )
 
 // uploadFakeRepo / uploadFakeStore 让上传 handler 测试走真实 application 用例，
@@ -91,9 +92,7 @@ func multipartUploadRequest(path, contentType, fileName string, data []byte) *ht
 
 const uploadPath = "/api/v1/admin/system/mini-app-settings/home/next-match-social-image"
 
-func validPNG() []byte {
-	return append([]byte{0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A}, []byte("fake-png-body")...)
-}
+func validPNG() []byte { return imagefixture.PNG() }
 
 func TestUploadHomeNextMatchSocialImageSucceeds(t *testing.T) {
 	store := &uploadFakeStore{}

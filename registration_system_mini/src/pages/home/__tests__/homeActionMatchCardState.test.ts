@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import type { AppHomeActionMatch, AppMatchDetailResponse } from "@/types/match";
 import { toHomeMatchCard } from "../homeMatchState";
 import { buildHomeActionMatchCardState } from "../homeActionMatchCardState";
+import { DEFAULT_MATCH_COVER_URL } from "@/config/matchCover";
 
 const now = new Date("2026-09-21T10:00:00Z");
 const source: AppHomeActionMatch = {
@@ -27,6 +28,28 @@ function detail(): AppMatchDetailResponse {
   };
 }
 describe("Home action match card", () => {
+  test("covers prefer the matching detail, clear to default, and retain home data while loading", () => {
+    const home = toHomeMatchCard({ ...source, cover_image_url: "https://cdn.example.com/home.webp" }, "upcoming");
+    expect(buildHomeActionMatchCardState(home, null, now).coverImageUrl).toEqual("https://cdn.example.com/home.webp");
+    const data = detail(); data.match.cover_image_url = "https://cdn.example.com/custom.webp";
+    expect(buildHomeActionMatchCardState(home, data, now).coverImageUrl).toEqual(data.match.cover_image_url);
+    data.match.cover_image_url = "";
+    expect(buildHomeActionMatchCardState(home, data, now).coverImageUrl).toEqual(DEFAULT_MATCH_COVER_URL);
+    expect(buildHomeActionMatchCardState(card, null, now).coverImageUrl).toEqual(DEFAULT_MATCH_COVER_URL);
+  });
+  test("cover calendar uses Beijing dates across UTC year and month boundaries", () => {
+    const data = detail();
+    data.match.start_time = "2026-12-31T16:30:00Z";
+    data.match.end_time = "2026-12-31T18:00:00Z";
+    const state = buildHomeActionMatchCardState(card, data, now);
+    expect([state.calendarMonth, state.calendarDay, state.weekday, state.time, state.endTime]).toEqual(["1月", "01", "周五", "00:30", "02:00"]);
+  });
+  test("cover calendar never invents a date or end time without valid source data", () => {
+    const data = detail(); data.match.start_time = "bad-date"; data.match.end_time = "bad-date";
+    const state = buildHomeActionMatchCardState(card, data, now);
+    expect([state.calendarMonth, state.calendarDay, state.endTime]).toEqual(["待定", "—", ""]);
+    expect(buildHomeActionMatchCardState(card, null, now).endTime).toEqual("");
+  });
   test("progress separates the minimum turnout from additional registrations", () => {
     const data = detail(); data.groups[1].min_players = 10; data.groups[1].max_players = 16;
     for (const [joined, base, extra, pending] of [[8, 50, 0, true], [10, 62.5, 0, false], [12, 62.5, 12.5, false], [16, 62.5, 37.5, false], [20, 62.5, 37.5, false]] as const) {

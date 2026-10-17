@@ -1513,7 +1513,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/CreateMatchRequest"
+              $ref: "#/components/schemas/AdminCreateMatchRequest"
       responses:
         "200":
           description: 创建后的比赛详情
@@ -1521,6 +1521,44 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/MatchDetailEnvelope"
+        <<: *standardErrors
+
+  /api/v1/admin/matches/cover-images:
+    post:
+      operationId: uploadAdminMatchCoverImage
+      tags: [Admin Matches]
+      summary: 上传比赛封面图片
+      description: 仅管理员可用；multipart 字段 file，按文件内容识别并完整解码 PNG/JPEG/WebP，不超过 2MB 和 1600 万像素。上传到 MinIO 后返回公网 URL，保存比赛表单时才写入 cover_image_url；未配置存储或存储不可用返回 500，格式、体积或缺少文件返回 422。
+      security: *bearerSecurity
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "200":
+          description: 已上传图片的公网 URL
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessBase"
+                  - type: object
+                    required: [data]
+                    properties:
+                      data:
+                        type: object
+                        required: [image_url]
+                        properties:
+                          image_url:
+                            type: string
+                            format: uri
         <<: *standardErrors
 
   /api/v1/admin/matches/{id}:
@@ -2650,10 +2688,25 @@ components:
           type: string
           enum: [offline_aa, free, fixed_amount, team_fund]
           description: 可选费用类型；线下 AA、免费、具体金额、队费扣除（仅球队比赛，零金额赛后，仅说明不扣款）。省略兼容旧客户端。AA 与免费必须使用 postpaid 和零金额，仅具体金额可选 prepaid。比赛列表和详情也返回该字段（历史记录可能省略）。
+    AdminCreateMatchRequest:
+      allOf:
+        - $ref: "#/components/schemas/CreateMatchRequest"
+        - type: object
+          properties:
+            cover_image_url:
+              type: string
+              maxLength: 2048
+              nullable: true
+              description: 可选 HTTP(S) 图片 URL；不传、null 或空串使用统一默认封面。
     UpdateMatchRequest:
       type: object
       required: [name, start_time, end_time, location]
       properties:
+        cover_image_url:
+          type: string
+          maxLength: 2048
+          nullable: true
+          description: HTTP(S) 图片 URL；不传或 null 保留原值，空串恢复统一默认封面。
         name:
           type: string
         start_time:
@@ -3046,6 +3099,10 @@ components:
       type: object
       required: [id, name, publication_mode, opponent_state, status, host_team_id, host_team_name, away_team_id, away_team_name, opponent_name, players_per_team, start_time, end_time, location, location_latitude, location_longitude, description, created_by_user_id, created_by_admin_id, created_at, updated_at]
       properties:
+        cover_image_url:
+          type: string
+          maxLength: 2048
+          description: 自定义封面公网 URL；空串表示使用统一默认封面。
         id:
           type: string
           format: uuid
@@ -3132,6 +3189,10 @@ components:
       type: object
       required: [id, name, publication_mode, opponent_state, status, host_team_id, host_team_name, away_team_id, away_team_name, opponent_name, players_per_team, start_time, end_time, location, location_latitude, location_longitude, description, created_at, updated_at]
       properties:
+        cover_image_url:
+          type: string
+          maxLength: 2048
+          description: 自定义封面公网 URL；空串表示使用统一默认封面。
         id:
           type: string
           format: uuid
@@ -3493,6 +3554,10 @@ components:
       type: object
       required: [id, name, publication_mode, status, host_team_name, opponent_name, players_per_team, start_time, end_time, location, group]
       properties:
+        cover_image_url:
+          type: string
+          maxLength: 2048
+          description: 自定义封面公网 URL；空串表示使用统一默认封面。
         id:
           type: string
           format: uuid
@@ -3523,6 +3588,10 @@ components:
       type: object
       required: [id, name, publication_mode, status, host_team_name, opponent_name, start_time, end_time, location]
       properties:
+        cover_image_url:
+          type: string
+          maxLength: 2048
+          description: 自定义封面公网 URL；空串表示使用统一默认封面。
         id:
           type: string
           format: uuid

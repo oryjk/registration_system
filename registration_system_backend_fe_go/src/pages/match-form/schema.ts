@@ -4,6 +4,7 @@ import type { PublicationMode } from "@/types/match";
 
 export interface MatchFormValues {
   name: string;
+  cover_image_url?: string;
   publication_mode: PublicationMode;
   host_team_id?: number;
   opponent_name?: string;
@@ -41,6 +42,14 @@ export const matchFormSchema = z
       .trim()
       .min(1, { message: "请输入比赛名称" })
       .max(255, { message: "比赛名称不能超过 255 个字符" }),
+    cover_image_url: z
+      .string()
+      .trim()
+      .max(2048, { message: "封面地址过长，请重新上传" })
+      .refine((value) => !value || /^https?:\/\/[^\s]+$/i.test(value), {
+        message: "封面地址必须为 HTTP 或 HTTPS 图片地址",
+      })
+      .optional(),
     publication_mode: z.enum([
       "offline_confirmed",
       "online_team",

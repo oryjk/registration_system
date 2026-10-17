@@ -50,6 +50,7 @@ func NewUserHandler(service UserMatchUseCase, create CreateMatchUseCase, finish 
 }
 
 type UserMatchResponse struct {
+	CoverImageURL   string                 `json:"cover_image_url"`
 	ID              string                 `json:"id"`
 	Name            string                 `json:"name"`
 	PublicationMode domain.PublicationMode `json:"publication_mode"`
@@ -167,6 +168,7 @@ type UserHomeGroupResponse struct {
 }
 
 type UserHomeActionMatchResponse struct {
+	CoverImageURL   string                 `json:"cover_image_url"`
 	ID              string                 `json:"id"`
 	Name            string                 `json:"name"`
 	PublicationMode domain.PublicationMode `json:"publication_mode"`
@@ -181,6 +183,7 @@ type UserHomeActionMatchResponse struct {
 }
 
 type UserHomeEndedMatchResponse struct {
+	CoverImageURL   string                 `json:"cover_image_url"`
 	ID              string                 `json:"id"`
 	Name            string                 `json:"name"`
 	PublicationMode domain.PublicationMode `json:"publication_mode"`
@@ -505,7 +508,8 @@ func mapUserMatch(item ports.MatchItem) UserMatchResponse {
 		StartTime: match.StartTime, EndTime: match.EndTime,
 		RegistrationStartAt: match.RegistrationStartAt, RegistrationEndAt: match.RegistrationEndAt,
 		Location: match.Location, LocationLatitude: match.LocationLatitude, LocationLongitude: match.LocationLongitude,
-		Description: match.Description, RegistrationGroups: groups, CreatedAt: match.CreatedAt, UpdatedAt: match.UpdatedAt,
+		CoverImageURL: match.CoverImageURL,
+		Description:   match.Description, RegistrationGroups: groups, CreatedAt: match.CreatedAt, UpdatedAt: match.UpdatedAt,
 		IsFree: match.IsFree, PaymentMode: match.PaymentMode, FeePerPersonCents: match.FeePerPersonCents, FeeType: match.FeeType,
 		HostColor: jerseyColorResponse(match.HostColor), AwayColor: jerseyColorResponse(match.AwayColor),
 		HostCaptain: mapUserCaptainResponse(item.HostCaptain),
@@ -561,7 +565,8 @@ func mapUserHome(result application.UserMatchHomeResult) UserMatchHomeResponse {
 		}
 		match := item.Item.Match
 		actions = append(actions, UserHomeActionMatchResponse{
-			ID: match.ID.String(), Name: match.Name, PublicationMode: match.PublicationMode, Status: match.Status,
+			CoverImageURL: match.CoverImageURL,
+			ID:            match.ID.String(), Name: match.Name, PublicationMode: match.PublicationMode, Status: match.Status,
 			HostTeamName: item.Item.HostTeamName, OpponentName: userOpponentName(item.Item),
 			PlayersPerTeam: match.PlayersPerTeam, StartTime: match.StartTime, EndTime: match.EndTime,
 			Location: match.Location,
@@ -578,7 +583,8 @@ func mapUserHome(result application.UserMatchHomeResult) UserMatchHomeResponse {
 	for _, item := range result.EndedItems {
 		match := item.Match
 		ended = append(ended, UserHomeEndedMatchResponse{
-			ID: match.ID.String(), Name: match.Name, PublicationMode: match.PublicationMode, Status: match.Status,
+			CoverImageURL: match.CoverImageURL,
+			ID:            match.ID.String(), Name: match.Name, PublicationMode: match.PublicationMode, Status: match.Status,
 			HostTeamName: item.HostTeamName, OpponentName: userOpponentName(item),
 			HostScore: match.HostScore, AwayScore: match.AwayScore,
 			StartTime: match.StartTime, EndTime: match.EndTime, Location: match.Location,

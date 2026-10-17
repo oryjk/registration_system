@@ -129,6 +129,14 @@
 
 ## 组件边界
 
+### 首页比赛封面卡
+
+「最近要处理」采用已确认的原高度沉浸封面：足球图片替换原时间和标题区，照片上保留开踢时间、比赛名、报名范围，右上角使用日历。下方保留场地、赛制/对手、费用、报名进度与可展开头像，个人报名状态与详情操作横向排列。正常收起态与原卡片保持相同高度预算；长标题、较长费用/截止说明和展开名单允许自然增高，不截断业务信息。
+
+背景统一存放 MinIO，未配置时使用 `match-covers/default-football-v1.webp`；比赛的 `cover_image_url` 可由管理后台上传并保存，空串/旧接口缺字段回退默认。小程序沿用 MinIO 本地缓存，自定义图加载失败也回退默认图，不将图片打进主包。
+
+日历组件为 `HomeMatchCalendar`。月份条使用主题 accent/accent-fg，日期区使用 surface/text/text-muted，确保薄荷蓝、青柠、晴空蓝、珊瑚紫及曜夜橙全部适配，切回浅色时同步恢复。封面文字和暗遮罩使用独立 `--now-cover-*` token，照片上的字始终保持浅色对比。
+
 - 全局 `src/components/ui/` 只放跨页面且 API 稳定的 UI 基础组件；壳层（头部/底栏/返回等）在 `src/components/`。
 - `src/pages/<domain>/components/` 放页面专属展示组件；props 接 ViewModel，emits 发用户意图，不私自调业务 API。
 - 页面 `index.vue` 负责生命周期、数据加载、权限、错误和导航编排；复杂状态和纯转换放同目录 `*State.ts` 或 `use*Page.ts`。

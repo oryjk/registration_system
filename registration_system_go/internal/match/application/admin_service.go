@@ -49,6 +49,7 @@ type OptionalTimestamp struct {
 }
 
 type UpdateMatchCommand struct {
+	CoverImageURL       *string
 	Name                string
 	StartTime           time.Time
 	EndTime             time.Time
@@ -143,7 +144,8 @@ func (s AdminMatchService) UpdateDetails(ctx context.Context, actor sharedauth.A
 		return domain.Match{}, sharederror.New(sharederror.KindNotFound, "比赛不存在")
 	}
 	if err := match.UpdateDetails(domain.UpdateMatchDetails{
-		Name: command.Name, StartTime: command.StartTime, EndTime: command.EndTime,
+		CoverImageURL: command.CoverImageURL,
+		Name:          command.Name, StartTime: command.StartTime, EndTime: command.EndTime,
 		RegistrationStartAt: resolveOptionalTimestamp(command.RegistrationStartAt, match.RegistrationStartAt),
 		RegistrationEndAt:   resolveOptionalTimestamp(command.RegistrationEndAt, match.RegistrationEndAt),
 		Location:            command.Location, LocationLatitude: command.LocationLatitude,

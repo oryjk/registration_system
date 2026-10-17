@@ -15,16 +15,18 @@ const props = defineProps<{
   disabled?: boolean;
   /** 密集列表：报名人数与容量合并展示，省去单独的底部刻度行。 */
   compact?: boolean;
+  /** 首页封面行动卡：紧凑进度、容量与成行状态，保留原头像交互。 */
+  actionCard?: boolean;
 }>();
 const emit = defineEmits<{ (event: "avatarSelect", id: string | number): void; (event: "layoutChange"): void; (event: "expandedChange", expanded: boolean): void }>();
 const state = computed(() => registrationProgressState(props.joined, props.minimum, props.maximum));
 </script>
 
 <template>
-  <view class="registration-summary" :class="{ 'registration-summary--compact': compact }">
+  <view class="registration-summary" :class="{ 'registration-summary--compact': compact, 'registration-summary--action-card': actionCard }">
     <view class="registration-head">
       <text class="registration-title">{{ title || '报名进度' }}</text>
-      <text v-if="compact" class="registration-count"><text class="registration-count-number">{{ joined }}</text>{{ state.maximum ? `/${state.maximum} 人` : ' 人 · 不限' }}</text>
+      <view v-if="compact || actionCard" class="registration-count"><text class="registration-count-number">{{ joined }}</text><text>{{ state.maximum ? ` / ${state.maximum} 人` : ' 人 · 不限' }}</text><text v-if="actionCard && state.minimum" class="registration-readiness" :class="{ 'registration-readiness--pending': state.belowMinimum }">{{ state.belowMinimum ? state.countLabel : '已成行' }}</text></view>
       <text v-else class="registration-count">已报名 <text class="registration-count-number">{{ joined }}</text> 人</text>
     </view>
     <text v-if="subtitle" class="registration-subtitle">{{ subtitle }}</text>
@@ -40,6 +42,7 @@ const state = computed(() => registrationProgressState(props.joined, props.minim
       </view>
       <!-- 保留成行分隔点与分段颜色，刻度只标右端容量。 -->
       <view v-if="!compact" class="registration-scale">
+        <text v-if="actionCard && state.minimum && state.minimum !== state.maximum" class="registration-scale-start">{{ state.minimum }} 人成行</text>
         <text class="registration-scale-end">{{ state.minimum && state.minimum === state.maximum ? `${state.minimum} 人成行 · 满员` : state.maximum ? `最多 ${state.maximum} 人` : '人数不限' }}</text>
       </view>
     </view>
@@ -69,6 +72,14 @@ const state = computed(() => registrationProgressState(props.joined, props.minim
 .registration-summary--compact .registration-count { font-size: 22rpx; }
 .registration-summary--compact .registration-title { font-weight: 500; }
 .registration-summary--compact .registration-track { height: 8rpx; margin-top: 8rpx; }
+.registration-summary--action-card .registration-head { margin-bottom: 10rpx; }
+.registration-summary--action-card .registration-title { font-size: 24rpx; font-weight: 500; }
+.registration-summary--action-card .registration-count { display: flex; align-items: baseline; color: var(--now-color-muted); font-size: 22rpx; }
+.registration-summary--action-card .registration-count-number { color: var(--now-color-text); font-size: 32rpx; }
+.registration-readiness { margin-left: 14rpx; color: var(--now-status-success-fg); font-size: 22rpx; }
+.registration-readiness--pending { color: var(--now-status-warning-fg); }
+.registration-summary--action-card .registration-track { margin-top: 10rpx; }
+.registration-scale-start { position: absolute; left: 0; top: 0; }
 
 @media (prefers-reduced-motion: reduce) {
   .registration-fill, .registration-extra { transition: none; }

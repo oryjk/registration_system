@@ -55,6 +55,7 @@ const (
 const maxMatchScore = 999
 
 type Match struct {
+	CoverImageURL   string
 	ID              uuid.UUID
 	Name            string
 	PublicationMode PublicationMode
@@ -89,6 +90,7 @@ type Match struct {
 }
 
 type NewMatchInput struct {
+	CoverImageURL   *string
 	Name            string
 	PublicationMode PublicationMode
 	// HostTeamID 为 nil 表示散人约球（online_pickup）这类无主队模式。
@@ -124,6 +126,14 @@ type IndividualLimits struct {
 func NewMatch(input NewMatchInput, individualLimits IndividualLimits) (Match, []RegistrationGroup, error) {
 	if err := validateNewMatchInput(input); err != nil {
 		return Match{}, nil, err
+	}
+	coverImageURL := ""
+	if input.CoverImageURL != nil {
+		var err error
+		coverImageURL, err = NormalizeCoverImageURL(*input.CoverImageURL)
+		if err != nil {
+			return Match{}, nil, err
+		}
 	}
 	now := input.CreatedAt
 	if now.IsZero() {
@@ -161,6 +171,7 @@ func NewMatch(input NewMatchInput, individualLimits IndividualLimits) (Match, []
 		isFree = true
 	}
 	match := Match{
+		CoverImageURL:       coverImageURL,
 		ID:                  matchID,
 		Name:                strings.TrimSpace(input.Name),
 		PublicationMode:     input.PublicationMode,
@@ -320,6 +331,8 @@ func (m Match) RegistrationOpenAt(now time.Time) bool {
 }
 
 type UpdateMatchDetails struct {
+	// CoverImageURL nil 保留原值，空串恢复默认封面。
+	CoverImageURL       *string
 	Name                string
 	StartTime           time.Time
 	EndTime             time.Time
@@ -340,6 +353,14 @@ type UpdateMatchDetails struct {
 func (m *Match) UpdateDetails(input UpdateMatchDetails, now time.Time) error {
 	if m.Status == MatchEnded || m.Status == MatchCancelled {
 		return sharederror.New(sharederror.KindConflict, "已结束或已取消的比赛不能编辑")
+	}
+	coverImageURL := m.CoverImageURL
+	if input.CoverImageURL != nil {
+		var err error
+		coverImageURL, err = NormalizeCoverImageURL(*input.CoverImageURL)
+		if err != nil {
+			return err
+		}
 	}
 	opponentName := m.OpponentName
 	if input.OpponentName != nil {
@@ -374,6 +395,7 @@ func (m *Match) UpdateDetails(input UpdateMatchDetails, now time.Time) error {
 	if err := validateNewMatchInput(validation); err != nil {
 		return err
 	}
+	m.CoverImageURL = coverImageURL
 	m.Name = strings.TrimSpace(input.Name)
 	m.StartTime = input.StartTime
 	m.EndTime = input.EndTime

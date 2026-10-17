@@ -11,6 +11,7 @@ interface IsoDateTime {
 
 export interface MatchFormPayloadValues {
   name: string;
+  cover_image_url?: string;
   publication_mode: PublicationMode;
   /** 散人约球模式允许为空；其余模式由表单校验保证存在。 */
   host_team_id?: number;
@@ -46,6 +47,9 @@ export function buildUpdateMatchPayload(
 ): UpdateMatchPayload {
   return {
     name: values.name.trim(),
+    ...(values.cover_image_url !== undefined
+      ? { cover_image_url: values.cover_image_url.trim() }
+      : {}),
     start_time: values.start_time.toISOString(),
     end_time: new Date(
       values.start_time.valueOf() + values.duration_minutes * 60_000,

@@ -18,6 +18,7 @@ type CreateMatch struct {
 }
 
 type CreateMatchCommand struct {
+	CoverImageURL   *string
 	Name            string
 	PublicationMode domain.PublicationMode
 	// HostTeamID 为 nil 表示散人约球（online_pickup）这类无主队模式。
@@ -105,6 +106,7 @@ func (u CreateMatch) Execute(ctx context.Context, actor sharedauth.Actor, comman
 		createdByAdminID = &actor.ID
 	}
 	match, groups, err := domain.NewMatch(domain.NewMatchInput{
+		CoverImageURL:       command.CoverImageURL,
 		Name:                command.Name,
 		PublicationMode:     command.PublicationMode,
 		HostTeamID:          command.HostTeamID,

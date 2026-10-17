@@ -69,6 +69,7 @@ type Match struct {
 	HostScore           *int32           `json:"host_score"`
 	AwayScore           *int32           `json:"away_score"`
 	FeeType             string           `json:"fee_type"`
+	CoverImageUrl       string           `json:"cover_image_url"`
 }
 
 type MatchCaptainMessage struct {

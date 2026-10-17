@@ -35,6 +35,15 @@ export function createMatch(payload: CreateMatchPayload) {
   });
 }
 
+export function uploadMatchCoverImage(file: File) {
+  const formData = new FormData();
+  formData.append("file", file);
+  return request<{ image_url: string }>("/matches/cover-images", {
+    method: "POST",
+    body: formData,
+  });
+}
+
 export function updateMatch(id: string, payload: UpdateMatchPayload) {
   return request<MatchDetail>(`/matches/${id}`, {
     method: "PATCH",

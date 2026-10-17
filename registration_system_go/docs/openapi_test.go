@@ -34,8 +34,8 @@ func TestOpenAPIIsValidAndMatchesGinRoutes(t *testing.T) {
 	if len(missing) != 0 || len(extra) != 0 {
 		t.Fatalf("OpenAPI route mismatch\nmissing: %v\nextra: %v", missing, extra)
 	}
-	if len(documented) != 92 {
-		t.Fatalf("documented operations=%d, want 92", len(documented))
+	if len(documented) != 93 {
+		t.Fatalf("documented operations=%d, want 93", len(documented))
 	}
 }
 
@@ -72,6 +72,7 @@ func TestOpenAPISecurityMatchesPublicAndProtectedRoutes(t *testing.T) {
 		{method: http.MethodGet, path: "/api/v1/admin/payments/orders"},
 		{method: http.MethodGet, path: "/api/v1/admin/wallets/{user_id}"},
 		{method: http.MethodPatch, path: "/api/v1/admin/matches/{id}/score"},
+		{method: http.MethodPost, path: "/api/v1/admin/matches/cover-images"},
 		{method: http.MethodGet, path: "/api/v1/admin/users"},
 		{method: http.MethodPut, path: "/api/v1/admin/users/{id}/match-admin"},
 		{method: http.MethodDelete, path: "/api/v1/admin/users/{id}/match-admin"},

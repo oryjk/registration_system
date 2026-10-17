@@ -24,11 +24,12 @@ INSERT INTO matches (
     away_color,
     created_by_user_id,
     created_by_admin_id,
-    fee_type
+    fee_type,
+    cover_image_url
 )
 VALUES (
     $1, $2, $3, $4, $5, $6, $7, $8,
-    $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25
+    $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26
 )
 RETURNING *;
 
@@ -488,6 +489,7 @@ SET name = $2,
     payment_mode = $18,
     fee_per_person_cents = $19,
     is_free = $20,
+    cover_image_url = $21,
     updated_at = NOW()
 WHERE id = $1
 RETURNING *;

@@ -265,6 +265,7 @@ export function toHomeMatchCard(
 
   return {
     id: item.id,
+    coverImageUrl: item.cover_image_url?.trim() || undefined,
     registrationGroupId: actionMatch?.group.id,
     detailUrl: actionMatch
       ? `/pages/matches/detail?id=${item.id}&groupId=${actionMatch.group.id}`

@@ -14,6 +14,7 @@ import {
   updateMatchRegistration,
   updateMatchScore,
   updateMatchStatus,
+  uploadMatchCoverImage,
 } from "../../api/matches";
 import type {
   CreateMatchPayload,
@@ -65,6 +66,10 @@ export function useCreateMatchMutation() {
     mutationFn: (payload: CreateMatchPayload) => createMatch(payload),
     onSuccess: refreshMatchData,
   });
+}
+
+export function useUploadMatchCoverImageMutation() {
+  return useMutation({ mutationFn: uploadMatchCoverImage });
 }
 
 export function useUpdateMatchMutation() {

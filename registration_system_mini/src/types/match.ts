@@ -14,6 +14,8 @@ export interface AppMatchCaptain {
 
 export interface AppMatchPhaseSource {
   id: string;
+  /** 未设置时使用统一的 MinIO 默认封面，兼容旧接口缺少此字段。 */
+  cover_image_url?: string | null;
   status: AppMatchStatus;
   start_time: string;
   end_time: string;

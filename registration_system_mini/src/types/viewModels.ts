@@ -30,6 +30,7 @@ export interface CurrentIdentityViewModel {
 }
 
 export interface HomeMatchCardViewModel {
+  coverImageUrl?: string;
   id: string;
   /** 首页所属报名组；详情补全必须匹配此组，避免拿到主客队的另一侧状态。 */
   registrationGroupId?: string;
