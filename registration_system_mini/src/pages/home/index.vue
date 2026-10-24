@@ -460,13 +460,16 @@ onShareTimeline(() => ({
 <style scoped>
 .home-page {
   min-height: 100vh;
-  padding: 0 28rpx;
+  /* 左右留白放进滚动内容里：页面根节点带内边距会把 scroll-view 连同滚动条一起往里推。 */
+  padding: 0;
   background: var(--ui-color-page);
   box-sizing: border-box;
 }
 
 .home-content {
   position: relative;
+  padding-right: 28rpx;
+  padding-left: 28rpx;
   /* 滚动收进 AppPullScrollView 后，底栏留白由滚动内容自己承担。 */
   padding-bottom: var(--ui-tabbar-clearance);
 }

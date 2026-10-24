@@ -157,8 +157,8 @@ provide(APP_SCROLL_CONTROLLER, appScrollController);
   </view>
 </template>
 <style scoped>
-.mine-page { position:relative; min-height:100vh; padding:0 28rpx; background:var(--ui-color-page); box-sizing:border-box; }
-.mine-page-content { width:100%; max-width:750rpx; margin:0 auto; box-sizing:border-box; }
+.mine-page { position:relative; min-height:100vh; padding:0; background:var(--ui-color-page); box-sizing:border-box; }
+.mine-page-content { padding:0 28rpx; width:100%; max-width:750rpx; margin:0 auto; box-sizing:border-box; }
 .mine-error-banner { margin-top:20rpx; padding:20rpx; border-radius:var(--ui-radius-button); background:var(--ui-color-danger-bg); color:var(--ui-color-danger-fg); font-size:24rpx; }
 .mine-services,.mine-tools { margin-top:24rpx; border:var(--ui-border-default); border-radius:var(--ui-radius-card); background:var(--ui-color-surface); overflow:hidden; }
 .mine-service { display:flex; align-items:center; gap:16rpx; min-height:96rpx; width:100%; margin:0; padding:20rpx 24rpx; background:transparent; color:var(--ui-color-text-muted); border:0; border-radius:0; text-align:left; font-size:26rpx; line-height:1.4; }
