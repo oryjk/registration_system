@@ -96,7 +96,7 @@ function handleJoin() {
     </view>
     <!-- #endif -->
     <!-- #ifdef MP-WEIXIN -->
-    <StickyActionBar v-if="selectedTeam" flat reserve-space>
+    <StickyActionBar v-if="selectedTeam" flat reserve-space enter-from-bottom>
     <!-- #endif -->
     <view v-if="selectedTeam" class="join-panel ui-card-panel">
       <text class="join-panel-title">{{ selectedTeamIsMember ? '你已加入' : '加入' }} {{ selectedTeam.name }}</text>

@@ -244,7 +244,7 @@ H5 提供薄荷蓝（默认）、青柠、晴空蓝、珊瑚紫、曜夜橙五�
 
 ### 底部固定悬浮操作面板
 
-选中球队的确认区复用 `StickyActionBar flat reserve-space`，整块卡片（标题、说明、可选密码和按钮）固定在视口底部。`reserveSpace` 默认关闭；开启时以组件自身原生节点实际高度生成滚动占位，结合底部安全区、`--ui-action-bar-bottom` 和 `--ui-card-gap`，内容/窗口变化后重新测量。业务内容由原有组件负责，布局不依赖跨组件 scoped 穿透；H5 加入页保留页面内布局。
+选中球队的确认区复用 `StickyActionBar flat reserve-space`，整块卡片（标题、说明、可选密码和按钮）固定在视口底部。`reserveSpace` 默认关闭；开启时以组件自身原生节点实际高度生成滚动占位，结合底部安全区、`--ui-action-bar-bottom` 和 `--ui-card-gap`，内容/窗口变化后重新测量。业务内容由原有组件负责，布局不依赖跨组件 scoped 穿透；H5 加入页保留页面内布局。微信确认面板通过 `enter-from-bottom` 开启首次上滑淡入，复用 overlay 时长和 ease-out token，始终保留横向居中 transform；同一面板切换内容不重播，减少动态效果设置下停用动画。
 
 ## 加入球队目录
 

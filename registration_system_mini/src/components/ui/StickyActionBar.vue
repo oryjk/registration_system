@@ -8,10 +8,12 @@ const props = withDefaults(defineProps<{
   flat?: boolean;
   /** Reserve the measured height for taller action panels in the scrolling content. */
   reserveSpace?: boolean;
+  enterFromBottom?: boolean;
 }>(), {
   visible: true,
   flat: false,
   reserveSpace: false,
+  enterFromBottom: false,
 });
 
 const instance = getCurrentInstance();
@@ -55,7 +57,7 @@ onUnmounted(() => {
 
 <template>
   <view v-if="visible && reserveSpace" class="ui-sticky-action-spacer" :style="spacerStyle" aria-hidden="true" />
-  <view v-if="visible" class="ui-sticky-action-bar" :class="[$attrs.class, { 'ui-sticky-action-bar--flat': flat }]" :style="$attrs.style">
+  <view v-if="visible" class="ui-sticky-action-bar" :class="[$attrs.class, { 'ui-sticky-action-bar--flat': flat, 'ui-sticky-action-bar--enter': enterFromBottom }]" :style="$attrs.style">
     <view v-if="$slots.leading" class="ui-sticky-action-bar__leading">
       <slot name="leading" />
     </view>
@@ -115,5 +117,13 @@ onUnmounted(() => {
 .ui-sticky-action-bar { gap: var(--ui-space-4); width: calc(100% - var(--ui-floating-action-inset) * 2); max-width: var(--ui-content-max-width); border: var(--ui-border-hairline); }
 .ui-sticky-action-bar--flat { border: var(--ui-panel-border); }
 .ui-sticky-action-bar__actions { gap: var(--ui-space-3); }
+.ui-sticky-action-bar--enter { animation: ui-action-bar-enter var(--ui-motion-overlay-duration) var(--ui-motion-ease-out) both; }
+@keyframes ui-action-bar-enter {
+  from { opacity: 0; transform: translate(-50%, calc(100% + env(safe-area-inset-bottom) + var(--ui-action-bar-bottom))); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ui-sticky-action-bar--enter { animation: none; }
+}
 /* #endif */
 </style>
