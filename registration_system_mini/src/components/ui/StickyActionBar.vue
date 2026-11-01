@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { computed, getCurrentInstance, nextTick, onMounted, onUpdated, onUnmounted, ref, watch } from "vue";
+import { useOverlayPresence } from "./useOverlayPresence";
+import { prefersReducedMotion } from "@/utils/reducedMotion";
 import { getWindowMetrics } from "@/utils/systemInfo";
 
 defineOptions({ inheritAttrs: false });
@@ -9,13 +11,18 @@ const props = withDefaults(defineProps<{
   /** Reserve the measured height for taller action panels in the scrolling content. */
   reserveSpace?: boolean;
   enterFromBottom?: boolean;
+  leaveToBottom?: boolean;
 }>(), {
   visible: true,
   flat: false,
   reserveSpace: false,
   enterFromBottom: false,
+  leaveToBottom: false,
 });
 
+const { rendered, leaving } = useOverlayPresence(computed(() => props.visible), {
+  leaveDurationMs: () => props.leaveToBottom && !prefersReducedMotion() ? 210 : 0,
+});
 const instance = getCurrentInstance();
 const measuredHeight = ref(0);
 let disposed = false;
@@ -56,8 +63,8 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <view v-if="visible && reserveSpace" class="ui-sticky-action-spacer" :style="spacerStyle" aria-hidden="true" />
-  <view v-if="visible" class="ui-sticky-action-bar" :class="[$attrs.class, { 'ui-sticky-action-bar--flat': flat, 'ui-sticky-action-bar--enter': enterFromBottom }]" :style="$attrs.style">
+  <view v-if="rendered && reserveSpace" class="ui-sticky-action-spacer" :style="spacerStyle" aria-hidden="true" />
+  <view v-if="rendered" class="ui-sticky-action-bar" :class="[$attrs.class, { 'ui-sticky-action-bar--flat': flat, 'ui-sticky-action-bar--enter': enterFromBottom, 'ui-sticky-action-bar--leaving': leaving }]" :style="$attrs.style">
     <view v-if="$slots.leading" class="ui-sticky-action-bar__leading">
       <slot name="leading" />
     </view>
@@ -122,8 +129,14 @@ onUnmounted(() => {
   from { opacity: 0; transform: translate(-50%, calc(100% + env(safe-area-inset-bottom) + var(--ui-action-bar-bottom))); }
   to { opacity: 1; transform: translate(-50%, 0); }
 }
+.ui-sticky-action-bar--leaving { pointer-events: none; animation: ui-action-bar-leave var(--ui-motion-overlay-duration) var(--ui-motion-ease-in-out) both; }
+@keyframes ui-action-bar-leave {
+  from { opacity: 1; transform: translate(-50%, 0); }
+  to { opacity: 0; transform: translate(-50%, calc(100% + env(safe-area-inset-bottom) + var(--ui-action-bar-bottom))); }
+}
 @media (prefers-reduced-motion: reduce) {
-  .ui-sticky-action-bar--enter { animation: none; }
+  .ui-sticky-action-bar--enter,
+  .ui-sticky-action-bar--leaving { animation: none; }
 }
 /* #endif */
 </style>

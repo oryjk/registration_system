@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed, shallowRef, watch } from "vue";
 import { useMinioImages } from "@/composables/useMinioImages";
 import AppButton from "@/components/ui/AppButton.vue";
 // #ifdef MP-WEIXIN
@@ -8,12 +9,13 @@ import type { BackendTeamSummary } from "@/types/backend";
 
 const { minioImageSrc } = useMinioImages();
 
-withDefaults(defineProps<{
+const props = withDefaults(defineProps<{
   searchKeyword: string;
   searching: boolean;
   hasSearched: boolean;
   loadError?: string;
   showCreateEntry?: boolean;
+  inactive?: boolean;
   searchResults: BackendTeamSummary[];
   selectedTeam: BackendTeamSummary | null;
   selectedTeamIsMember: boolean;
@@ -22,7 +24,26 @@ withDefaults(defineProps<{
   joinPassword: string;
   canJoin: boolean;
   submitting: boolean;
-}>(), { loadError: "", showCreateEntry: false });
+}>(), { loadError: "", showCreateEntry: false, inactive: false });
+
+// Keep only public display metadata while the fixed panel animates out.
+// The live selection remains the sole source for actual join actions.
+const liveConfirmation = computed(() => props.selectedTeam && !props.inactive ? {
+  team: props.selectedTeam,
+  isMember: props.selectedTeamIsMember,
+  requiresPassword: props.selectedTeamRequiresPassword,
+} : null);
+const lastConfirmation = shallowRef(liveConfirmation.value);
+watch(liveConfirmation, value => { if (value) lastConfirmation.value = value; }, { flush: "sync" });
+const confirmation = computed(() => {
+  // #ifdef MP-WEIXIN
+  return liveConfirmation.value ?? lastConfirmation.value;
+  // #endif
+  // #ifndef MP-WEIXIN
+  return liveConfirmation.value;
+  // #endif
+});
+const confirmationVisible = computed(() => !!props.selectedTeam && !props.inactive);
 
 const emit = defineEmits<{
   (event: "update:searchKeyword", value: string): void;
@@ -57,6 +78,9 @@ function handleJoin() {
 
 <template>
   <view class="join-search">
+    <!-- #ifdef MP-WEIXIN -->
+    <view v-if="!inactive" class="join-directory">
+    <!-- #endif -->
     <view class="search-row">
       <view class="search-field">
         <view class="search-icon" aria-hidden="true" />
@@ -96,17 +120,18 @@ function handleJoin() {
     </view>
     <!-- #endif -->
     <!-- #ifdef MP-WEIXIN -->
-    <StickyActionBar v-if="selectedTeam" flat reserve-space enter-from-bottom>
+    </view>
+    <StickyActionBar :visible="confirmationVisible" flat reserve-space enter-from-bottom leave-to-bottom>
     <!-- #endif -->
-    <view v-if="selectedTeam" class="join-panel ui-card-panel">
-      <text class="join-panel-title">{{ selectedTeamIsMember ? '你已加入' : '加入' }} {{ selectedTeam.name }}</text>
-      <text class="join-panel-note">{{ selectedTeamIsMember ? '你已经是该球队成员，可直接查看球队详情。' : selectedTeamRequiresPassword ? '该球队设置了入队密码，请向队长获取。' : '该球队开放加入，确认后即可成为队员。' }}</text>
-      <input v-if="selectedTeamRequiresPassword && !selectedTeamIsMember" :value="joinPassword" class="password-input" placeholder="请输入入队密码" password @input="updateJoinPassword" />
+    <view v-if="confirmation" class="join-panel ui-card-panel">
+      <text class="join-panel-title">{{ confirmation.isMember ? '你已加入' : '加入' }} {{ confirmation.team.name }}</text>
+      <text class="join-panel-note">{{ confirmation.isMember ? '你已经是该球队成员，可直接查看球队详情。' : confirmation.requiresPassword ? '该球队设置了入队密码，请向队长获取。' : '该球队开放加入，确认后即可成为队员。' }}</text>
+      <input v-if="confirmation.requiresPassword && !confirmation.isMember" :value="joinPassword" class="password-input" :disabled="!confirmationVisible" placeholder="请输入入队密码" password @input="updateJoinPassword" />
       <!-- #ifdef MP-WEIXIN -->
-      <view class="join-action"><AppButton block :disabled="!canJoin" :loading="submitting" @click="handleJoin"><text class="ui-arrow-text">{{ selectedTeamIsMember ? '查看球队 →' : submitting ? '加入中…' : '确认加入球队' }}</text></AppButton></view>
+      <view class="join-action"><AppButton block :disabled="!confirmationVisible || !canJoin" :loading="submitting" @click="handleJoin"><text class="ui-arrow-text">{{ confirmation.isMember ? '查看球队 →' : submitting ? '加入中…' : '确认加入球队' }}</text></AppButton></view>
       <!-- #endif -->
       <!-- #ifndef MP-WEIXIN -->
-      <view class="join-action"><AppButton block :disabled="!canJoin" :loading="submitting" @click="handleJoin">{{ selectedTeamIsMember ? '查看球队 →' : submitting ? '加入中…' : '确认加入球队' }}</AppButton></view>
+      <view class="join-action"><AppButton block :disabled="!confirmationVisible || !canJoin" :loading="submitting" @click="handleJoin">{{ confirmation.isMember ? '查看球队 →' : submitting ? '加入中…' : '确认加入球队' }}</AppButton></view>
       <!-- #endif -->
     </view>
     <!-- #ifdef MP-WEIXIN -->

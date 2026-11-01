@@ -22,11 +22,13 @@ export function useTeamJoinPage() {
   // #endif
 
   let successUserId: number | undefined;
+  let successCheckVersion = 0;
   const joinedTeam = ref<BackendTeamSummary | null>(null);
   const checkingPassword = ref(false);
   let selectionVersion = 0;
   watch(() => currentUser.value?.id, (id) => {
     if (successUserId && !hasManualLogout() && (!id || id === successUserId)) return;
+    successCheckVersion++;
     successUserId = undefined;
     if (browseAllTeams) directory.reset();
     selectionVersion++;
@@ -117,6 +119,8 @@ export function useTeamJoinPage() {
   // 刷新失败可暂时清空会话；成功结果仍属于原账号，不能因此再次提交。
   async function restoreSuccessAccount(): Promise<boolean> {
     const ownerId = successUserId;
+    const team = joinedTeam.value;
+    const checkVersion = ++successCheckVersion;
     if (hasManualLogout()) {
       successUserId = undefined;
       joinedTeam.value = null;
@@ -124,9 +128,27 @@ export function useTeamJoinPage() {
     }
     if (!ownerId) return false;
     try {
-      await ensureSessionReady();
+      // 微信的成功记录只描述曾经加入；返回、刷新与下一步都须重新确认成员关系。
+      // 强制刷新避免复用加入/退出前已经在途的旧会话请求。
+      if (browseAllTeams) await refreshSessionContext();
+      else await ensureSessionReady();
+      if (browseAllTeams && (checkVersion !== successCheckVersion || joinedTeam.value !== team || successUserId !== ownerId)) return false;
       if (hasManualLogout() || currentUser.value?.id !== ownerId) {
         uni.showToast({ title: "请恢复原账号后继续", icon: "none" });
+        return false;
+      }
+      if (browseAllTeams && team && !myTeams.value.some(item => item.id === team.id)) {
+        successCheckVersion++;
+        successUserId = undefined;
+        joinedTeam.value = null;
+        selectionVersion++;
+        checkingPassword.value = false;
+        selectedTeam.value = null;
+        selectedTeamRequiresPassword.value = false;
+        joinPassword.value = "";
+        searchKeyword.value = "";
+        directory.reset();
+        await directory.load();
         return false;
       }
       return true;
@@ -150,6 +172,7 @@ export function useTeamJoinPage() {
     if (!canJoin.value || !selectedTeam.value) return;
     const team = selectedTeam.value;
     const userId = currentUser.value?.id;
+    const version = selectionVersion;
     if (selectedTeamIsMember.value) {
       uni.navigateTo({ url: `/pages/teams/detail/index?teamId=${team.id}` });
       return;
@@ -163,9 +186,10 @@ export function useTeamJoinPage() {
     submitting.value = true;
     try {
       if (!(await profileGate.ensureProfileComplete())) return;
-      if (userId !== currentUser.value?.id || selectedTeam.value?.id !== team.id) return;
+      if (userId !== currentUser.value?.id || selectedTeam.value?.id !== team.id || (browseAllTeams && version !== selectionVersion)) return;
       await joinTeamFromForm({ teamId: team.id, password });
-      if (userId !== currentUser.value?.id) return;
+      if (userId !== currentUser.value?.id || (browseAllTeams && version !== selectionVersion)) return;
+      successCheckVersion++;
       successUserId = userId;
       joinedTeam.value = team;
       joinPassword.value = "";
@@ -182,6 +206,10 @@ export function useTeamJoinPage() {
   }
 
   usePageRefresh(async () => {
+    if (browseAllTeams && joinedTeam.value) {
+      await restoreSuccessAccount();
+      return;
+    }
     await ensureSessionReady();
     if (browseAllTeams) {
       if (!joinedTeam.value) await directory.load(true);
@@ -191,6 +219,10 @@ export function useTeamJoinPage() {
 
   onShow(async () => {
     if (hasManualLogout()) {
+      await restoreSuccessAccount();
+      return;
+    }
+    if (browseAllTeams && joinedTeam.value) {
       await restoreSuccessAccount();
       return;
     }

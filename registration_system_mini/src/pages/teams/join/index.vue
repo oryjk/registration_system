@@ -15,6 +15,10 @@ import { HOME_VISUAL_ASSETS } from "@/config/homeVisualAssets";
 import { useTeamJoinPage } from "./useTeamJoinPage";
 
 const { themePageStyle } = useAccentTheme();
+let keepJoinPanelMounted = false;
+// #ifdef MP-WEIXIN
+keepJoinPanelMounted = true;
+// #endif
 
 const {
   joinedTeam,
@@ -55,9 +59,9 @@ onShow(() => { if (joinedTeam.value) void refreshIllustrations(); });
 
     <view class="team-join-content">
       <TeamJoinedNextSteps :image-revision="illustrationRevision" :image-url="illustrations.team" v-if="joinedTeam" @team="goJoinedTeam" @matches="goFindMatches" />
-      <template v-else>
+      <template v-if="!joinedTeam || keepJoinPanelMounted">
       <!-- #ifdef MP-WEIXIN -->
-      <view class="team-join-intro"><AppPageIntro title="找到你的球队" description="找到一起踢球的伙伴，搜索名称即可加入。" :image-url="HOME_VISUAL_ASSETS.joinTeam" /></view>
+      <view v-if="!joinedTeam" class="team-join-intro"><AppPageIntro title="找到你的球队" description="找到一起踢球的伙伴，搜索名称即可加入。" :image-url="HOME_VISUAL_ASSETS.joinTeam" /></view>
       <!-- #endif -->
       <!-- #ifndef MP-WEIXIN -->
       <text class="team-page-note">找到一起踢球的伙伴，搜索名称即可加入。</text>
@@ -67,6 +71,7 @@ onShow(() => { if (joinedTeam.value) void refreshIllustrations(); });
         v-model:search-keyword="searchKeyword"
         v-model:join-password="joinPassword"
         :searching="searching"
+        :inactive="!!joinedTeam"
         :has-searched="hasSearched"
         :load-error="loadError"
         :show-create-entry="canShowCreateEntry"

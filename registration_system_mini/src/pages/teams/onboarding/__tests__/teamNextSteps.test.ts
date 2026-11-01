@@ -22,29 +22,38 @@ const currentTeam = ref<{ id: number } | null>(null);
 const myTeams = ref<{ id: number }[]>([]);
 const hide = ref(false);
 let refreshFails = false;
+let refreshedTeams: Array<{ id: number }> = [{ id: 42 }];
+let refreshSession: () => Promise<void> = defaultRefreshSession;
+async function defaultRefreshSession() {
+  if (refreshFails) { user.value = null; await nextTick(); throw new Error("offline"); }
+  if (!manualLogout && !user.value) user.value = { id: 1 };
+  myTeams.value = [...refreshedTeams];
+}
 let switchWorks = true;
 let createCalls = 0;
 let joinCalls = 0;
+let joinAction: () => Promise<void> = async () => {};
 let gate: () => Promise<boolean> = async () => true;
 let passwordCheck: (id: number) => Promise<boolean> = async () => false;
 const shows: Array<() => Promise<void>> = [];
+const refreshes: Array<() => Promise<void>> = [];
 let searchDirectory: (keyword: string, offset?: number) => Promise<any[]> = async () => [];
 const urls: string[] = [];
 const toasts: string[] = [];
 let load: ((options: any) => void) | undefined;
 mock.module("@/utils/authStorage", () => ({ hasManualLogout: () => manualLogout }));
 mock.module("@dcloudio/uni-app", () => ({ onLoad: (fn: any) => { load = fn; }, onShow: (fn: () => Promise<void>) => { shows.push(fn); } }));
-mock.module("@/composables/usePageRefresh", () => ({ usePageRefresh: () => {} }));
+mock.module("@/composables/usePageRefresh", () => ({ usePageRefresh: (fn: () => Promise<void>) => { refreshes.push(fn); } }));
 mock.module("@/utils/customNav", () => ({ getCustomNavMetrics: () => ({ pageTopPadding: 0 }) }));
 mock.module("@/stores/teamContext", () => ({ useTeamContext: () => ({
   currentUser: user, currentTeam, myTeams, ensureSessionReady: async () => { if (!refreshFails && !manualLogout && !user.value) user.value = { id: 1 }; },
-  refreshSessionContext: async () => { if (refreshFails) { user.value = null; await nextTick(); throw new Error("offline"); } },
+  refreshSessionContext: () => refreshSession(),
   switchTeam: (id: number) => { if (switchWorks) currentTeam.value = { id }; },
 }) }));
 mock.module("@/stores/miniReview", () => ({ preloadMiniReviewStatus: async () => {}, useMiniReviewStatus: () => ({ reviewMode: ref(false), shouldHideCreationEntrances: hide }) }));
 mock.module("../../teamSelfActions", () => ({
   createTeamFromForm: async () => { createCalls++; return { id: 42 }; },
-  joinTeamFromForm: async () => { joinCalls++; },
+  joinTeamFromForm: async () => { joinCalls++; await joinAction(); },
   searchTeamsByKeyword: (keyword: string, offset?: number) => searchDirectory(keyword, offset),
   checkTeamRequiresPassword: (id: number) => passwordCheck(id),
 }));
@@ -69,8 +78,9 @@ beforeEach(async () => {
   manualLogout = false; user.value = { id: 1 }; await nextTick();
   switchWorks = true; refreshFails = false; hide.value = false; createCalls = 0; joinCalls = 0;
   myTeams.value = []; currentTeam.value = null; urls.length = 0; toasts.length = 0;
-  gate = async () => true; passwordCheck = async () => false;
-  shows.length = 0; searchDirectory = async () => [];
+  gate = async () => true; passwordCheck = async () => false; joinAction = async () => {};
+  shows.length = 0; refreshes.length = 0; searchDirectory = async () => [];
+  refreshedTeams = [{ id: 42 }]; refreshSession = defaultRefreshSession;
 });
 describe("加入页默认球队目录", () => {
   test("进入即加载全部，输入即时筛选，清空恢复，重复显示不重复请求", async () => {
@@ -103,6 +113,125 @@ describe("加入页默认球队目录", () => {
     expect(page.loadError.value).toBe("");
     expect(page.searchResults.value[0]?.id).toBe(42);
     page.goCreateTeam(); expect(urls.at(-1)).toBe("/pages/teams/create/index");
+  });
+});
+
+describe("加入成功后的成员关系核对", () => {
+  async function joinedPage() {
+    searchDirectory = async () => [{ id: 41, name: "东安球队" }, { id: 42, name: "城西球队" }];
+    const page = useTeamJoinPage();
+    await shows.at(-1)!();
+    await page.handleSelectTeam(page.searchResults.value[1]);
+    await page.handleJoinTeam();
+    expect(page.joinedTeam.value?.id).toBe(42);
+    return page;
+  }
+
+  test("查看球队后退出再返回，清理成功和筛选并恢复完整目录", async () => {
+    const page = await joinedPage();
+    await page.goJoinedTeam();
+    expect(urls.at(-1)).toBe("/pages/teams/detail/index?teamId=42");
+    page.searchKeyword.value = "城西";
+    page.joinPassword.value = "旧密码";
+    await nextTick();
+    refreshedTeams = [{ id: 9 }]; currentTeam.value = { id: 9 };
+    await shows.at(-1)!();
+    expect(page.joinedTeam.value).toBe(null);
+    expect(page.selectedTeam.value).toBe(null);
+    expect(page.joinPassword.value).toBe("");
+    expect(page.selectedTeamRequiresPassword.value).toBe(false);
+    expect(page.searchKeyword.value).toBe("");
+    expect(page.searchResults.value.map(team => team.id)).toEqual([41, 42]);
+    expect(page.joinedTeamIds.value).toEqual([9]);
+    expect(currentTeam.value?.id).toBe(9);
+  });
+
+  test("返回和刷新后仍在球队中，保留成功状态", async () => {
+    const page = await joinedPage();
+    await shows.at(-1)!(); await refreshes.at(-1)!();
+    expect(page.joinedTeam.value?.id).toBe(42);
+    expect(page.canJoin.value).toBe(false);
+    await page.goFindMatches(); expect(urls.at(-1)).toBe("/pages/activities/index");
+  });
+
+  test("返回和刷新失败或会话暂时为空时保留成功，不能重复加入", async () => {
+    const page = await joinedPage();
+    refreshFails = true;
+    await shows.at(-1)!(); await refreshes.at(-1)!();
+    expect(page.joinedTeam.value?.id).toBe(42);
+    await page.handleJoinTeam(); expect(joinCalls).toBe(1);
+    refreshFails = false;
+    refreshSession = async () => { user.value = null; myTeams.value = []; await nextTick(); };
+    await shows.at(-1)!();
+    expect(page.joinedTeam.value?.id).toBe(42);
+    await page.goJoinedTeam(); expect(urls).toHaveLength(0);
+  });
+
+  test("下拉刷新确认已退队也恢复目录", async () => {
+    const page = await joinedPage(); refreshedTeams = [];
+    await refreshes.at(-1)!();
+    expect(page.joinedTeam.value).toBe(null);
+    expect(page.searchResults.value.map(team => team.id)).toEqual([41, 42]);
+  });
+
+  for (const action of ["goJoinedTeam", "goFindMatches"] as const) {
+    test(`${action} 在成员关系失效后恢复目录且不继续导航`, async () => {
+      const page = await joinedPage(); refreshedTeams = [];
+      await page[action]();
+      expect(page.joinedTeam.value).toBe(null);
+      expect(urls).toHaveLength(0);
+      expect(page.searchResults.value.map(team => team.id)).toEqual([41, 42]);
+    });
+  }
+
+  test("旧账号的迟到核对结果不能清理新账号的新成功状态", async () => {
+    const page = await joinedPage();
+    let finish!: () => void;
+    refreshSession = () => new Promise(resolve => { finish = resolve; });
+    const pending = shows.at(-1)!(); await Promise.resolve();
+    user.value = { id: 2 }; await nextTick();
+    refreshSession = defaultRefreshSession; refreshedTeams = [{ id: 43 }];
+    await page.handleSelectTeam({ id: 43, name: "新账号球队" } as any);
+    await page.handleJoinTeam();
+    expect(finish).toBeDefined(); finish(); await pending;
+    expect(page.joinedTeam.value?.id).toBe(43);
+    expect(page.selectedTeam.value?.id).toBe(43);
+    expect(urls).toHaveLength(0);
+  });
+
+  test("下一步等待核对时切换账号，不导航到旧球队", async () => {
+    const page = await joinedPage();
+    let finish!: () => void;
+    refreshSession = () => new Promise(resolve => { finish = resolve; });
+    const pending = page.goJoinedTeam(); await Promise.resolve();
+    user.value = { id: 2 }; await nextTick();
+    expect(finish).toBeDefined(); finish(); await pending;
+    expect(page.joinedTeam.value).toBe(null);
+    expect(urls).toHaveLength(0);
+  });
+
+  test("加入请求迟到且期间切换过账号，不能恢复旧的成功记录", async () => {
+    const page = useTeamJoinPage();
+    await page.handleSelectTeam({ id: 42, name: "城西球队" } as any);
+    let finish!: () => void;
+    joinAction = () => new Promise(resolve => { finish = resolve; });
+    const pending = page.handleJoinTeam(); await Promise.resolve();
+    user.value = { id: 2 }; await nextTick();
+    user.value = { id: 1 }; await nextTick();
+    expect(finish).toBeDefined(); finish(); await pending;
+    expect(joinCalls).toBe(1);
+    expect(page.joinedTeam.value).toBe(null);
+  });
+
+  test("较旧核对响应不能覆盖更新的成功核对", async () => {
+    const page = await joinedPage();
+    let finish!: () => void;
+    refreshSession = () => new Promise(resolve => { finish = () => { myTeams.value = []; resolve(); }; });
+    const pending = shows.at(-1)!(); await Promise.resolve();
+    refreshSession = defaultRefreshSession;
+    await refreshes.at(-1)!();
+    expect(finish).toBeDefined(); finish(); await pending;
+    expect(page.joinedTeam.value?.id).toBe(42);
   });
 });
 

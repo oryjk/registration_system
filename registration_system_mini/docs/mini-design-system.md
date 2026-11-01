@@ -244,11 +244,11 @@ H5 提供薄荷蓝（默认）、青柠、晴空蓝、珊瑚紫、曜夜橙五�
 
 ### 底部固定悬浮操作面板
 
-选中球队的确认区复用 `StickyActionBar flat reserve-space`，整块卡片（标题、说明、可选密码和按钮）固定在视口底部。`reserveSpace` 默认关闭；开启时以组件自身原生节点实际高度生成滚动占位，结合底部安全区、`--ui-action-bar-bottom` 和 `--ui-card-gap`，内容/窗口变化后重新测量。业务内容由原有组件负责，布局不依赖跨组件 scoped 穿透；H5 加入页保留页面内布局。微信确认面板通过 `enter-from-bottom` 开启首次上滑淡入，复用 overlay 时长和 ease-out token，始终保留横向居中 transform；同一面板切换内容不重播，减少动态效果设置下停用动画。
+选中球队的确认区复用 `StickyActionBar flat reserve-space`，整块卡片（标题、说明、可选密码和按钮）固定在视口底部。`reserveSpace` 默认关闭；开启时以组件自身原生节点实际高度生成滚动占位，结合底部安全区、`--ui-action-bar-bottom` 和 `--ui-card-gap`，内容/窗口变化后重新测量。业务内容由原有组件负责，布局不依赖跨组件 scoped 穿透；H5 加入页保留页面内布局。微信确认面板通过 `enter-from-bottom` 开启首次上滑淡入，复用 overlay 时长和 ease-out token，始终保留横向居中 transform；同一面板切换内容不重播。通过 `leave-to-bottom` 开启下滑淡出，复用 `useOverlayPresence` 延迟卸载、overlay 时长与 ease-in-out token；退场保留展示快照及占位，禁用输入和确认操作。加入成功时父级保留确认组件直至动画结束，快速重新选队取消旧的移除回调；减少动态效果设置下立即收起。
 
 ## 加入球队目录
 
-微信加入页默认展示全部可加入球队，按固定 50 条 offset 分页读取后在本页缓存，输入即时筛选、清空恢复；加载和筛选均不改变密码/资料 gate 语义。创建入口位于搜索框下方，复用 AppButton 的 `secondary` 变体（`--ui-button-secondary-bg/fg`），海军蓝白字区别于薄荷搜索按钮。审核态仍按 `canShowCreateEntry` 隐藏，slot 容器通过列布局拉伸组件宿主。H5 保留手动搜索及原入口。
+微信加入页默认展示全部可加入球队，按固定 50 条 offset 分页读取后在本页缓存，输入即时筛选、清空恢复；加载和筛选均不改变密码/资料 gate 语义。创建入口位于搜索框下方，复用 AppButton 的 `secondary` 变体（`--ui-button-secondary-bg/fg`），海军蓝白字区别于薄荷搜索按钮。审核态仍按 `canShowCreateEntry` 隐藏，slot 容器通过列布局拉伸组件宿主。加入成功页在返回、下拉刷新与下一步导航前刷新成员关系，确认已退队则清理成功状态、密码和筛选并恢复完整目录；网络失败与临时空会话不能视为已退队，迟到结果不得影响其他账号或较新的成功记录。H5 保留手动搜索及原入口。
 
 ## 球队管理
 
