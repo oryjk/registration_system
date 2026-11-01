@@ -18,13 +18,16 @@ function handleMatchTap(match: HomeMatchCardViewModel) {
 
 <template>
   <view class="match-list">
-    <HomeMatchCard
-      v-for="match in matches"
-      :key="match.id"
-      :match="match"
-      :is-navigating="navigatingMatchId === match.id"
-      @match-tap="handleMatchTap"
-    />
+    <template v-for="(match, index) in matches" :key="match.id">
+      <HomeMatchCard
+        :match="match"
+        :is-navigating="navigatingMatchId === match.id"
+        @match-tap="handleMatchTap"
+      />
+      <!-- #ifdef MP-WEIXIN -->
+      <view v-if="index < matches.length - 1" class="match-list__separator" aria-hidden="true" />
+      <!-- #endif -->
+    </template>
   </view>
 </template>
 
@@ -35,4 +38,8 @@ function handleMatchTap(match: HomeMatchCardViewModel) {
   gap: var(--ui-card-list-gap);
   margin-top: var(--ui-card-list-offset);
 }
+/* #ifdef MP-WEIXIN */
+.match-list { gap: 16rpx; }
+.match-list__separator { flex-shrink: 0; height: 1rpx; margin-left: 156rpx; background: var(--ui-color-line); }
+/* #endif */
 </style>

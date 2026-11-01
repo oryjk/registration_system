@@ -83,6 +83,7 @@ page,
   --ui-color-accent: var(--ui-primitive-accent);
   --ui-color-accent-fg: var(--ui-primitive-accent-fg);
   --ui-color-accent-soft: var(--ui-primitive-accent-soft);
+  --ui-color-accent-subtle: rgba(var(--ui-primitive-accent-rgb), 0.06);
   --ui-color-accent-deep: var(--ui-primitive-accent-deep);
   --ui-color-cta: var(--ui-primitive-cta);
   --ui-color-cta-fg: var(--ui-primitive-cta-fg);

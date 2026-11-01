@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, getCurrentInstance, ref } from "vue";
-import AppSurface from "@/components/ui/AppSurface.vue";
 import { useMinioImages } from "@/composables/useMinioImages";
 import { HOME_VISUAL_ASSETS } from "@/config/homeVisualAssets";
 import type { HomeEmptyHeroAction } from "../homeEmptyHeroState";
@@ -30,7 +29,7 @@ function select(action: HomeEmptyHeroAction) { if (!props.busy) emit("select-tas
 </script>
 
 <template>
-  <AppSurface variant="outlined" flush>
+  <view class="home-start-panel">
     <view class="home-start">
       <view class="home-start__hero">
         <image v-if="imageSrc(HOME_VISUAL_ASSETS.hero)" class="home-start__background" :src="imageSrc(HOME_VISUAL_ASSETS.hero)" mode="aspectFill" aria-hidden="true" @error="imageError(HOME_VISUAL_ASSETS.hero)" />
@@ -58,10 +57,11 @@ function select(action: HomeEmptyHeroAction) { if (!props.busy) emit("select-tas
         </button>
       </view>
     </view>
-  </AppSurface>
+  </view>
 </template>
 
 <style scoped>
+.home-start-panel { overflow: hidden; border: 1rpx solid var(--ui-color-line); border-radius: var(--ui-radius-card); background: var(--ui-color-surface); }
 .home-start__hero { position: relative; overflow: hidden; min-height: 242rpx; padding: 38rpx 28rpx; box-sizing: border-box; background: var(--ui-color-hero); color: var(--now-cover-fg); }
 .home-start__background, .home-start__shade { position: absolute; inset: 0; width: 100%; height: 100%; }
 /* 照片遮罩使用既有封面语义，确保五个主题上白色文案均有足够对比度。 */
@@ -70,10 +70,10 @@ function select(action: HomeEmptyHeroAction) { if (!props.busy) emit("select-tas
 .home-start__kicker { font-size: 22rpx; line-height: 1.4; color: var(--now-cover-muted); }
 .home-start__title { margin-top: 12rpx; font-size: 38rpx; font-weight: var(--ui-font-weight-heading); line-height: 1.35; }
 .home-start__description { margin-top: 16rpx; font-size: 24rpx; line-height: 1.6; color: var(--now-cover-muted); }
-.home-start__entries { display: flex; gap: 12rpx; padding: 20rpx 20rpx 12rpx; }
-.home-start__entry { display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center; gap: 10rpx; width: 0; min-width: 0; margin: 0; padding: 16rpx 6rpx 22rpx; border: var(--ui-border-default); border-radius: var(--ui-radius-button); background: var(--ui-color-surface); color: var(--ui-color-text); line-height: 1.4; box-sizing: border-box; }
+.home-start__entries { display: flex; gap: 12rpx; padding: 24rpx 20rpx 12rpx; }
+.home-start__entry { display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center; gap: 10rpx; width: 0; min-width: 0; margin: 0; padding: 12rpx 6rpx 18rpx; border: 0; border-radius: var(--ui-radius-button); background: transparent; color: var(--ui-color-text); line-height: 1.4; box-sizing: border-box; }
 .home-start__entry::after, .home-start__help::after { border: 0; }
-.home-start__entry--pressed { box-shadow: var(--ui-shadow-control-pressed); }
+.home-start__entry--pressed { background: var(--ui-color-accent-subtle); }
 .home-start__art { position: relative; display: flex; align-items: center; justify-content: center; width: 140rpx; height: 132rpx; }
 .home-start__art-backdrop { position: absolute; width: 118rpx; height: 118rpx; border-radius: var(--ui-radius-round); background: var(--ui-color-accent-soft); }
 .home-start__illustration { position: relative; width: 140rpx; height: 132rpx; }
