@@ -34,7 +34,7 @@ function openMap() { uni.navigateTo({ url: "/pages/venues/map" }); }
 .home-venue-map__arrow { font-size: 32rpx; }
 .home-venue-map--pressed { box-shadow: var(--ui-shadow-control-pressed); }
 /* #ifdef MP-WEIXIN */
-.home-venue-map { position: relative; min-height: var(--ui-map-entry-min-height); overflow: hidden; border: 0; background: var(--ui-color-accent-subtle); }
+.home-venue-map { position: relative; min-height: var(--ui-map-entry-min-height); overflow: hidden; border: var(--ui-panel-border); border-radius: var(--ui-card-radius); background: var(--ui-card-bg); box-shadow: var(--ui-card-shadow); }
 .home-venue-map--pressed { background: var(--ui-color-accent-soft); box-shadow: none; }
 .home-venue-map__illustration { position: absolute; right: var(--ui-map-entry-art-inset); top: 50%; width: var(--ui-map-entry-art-width); height: var(--ui-map-entry-art-height); transform: translateY(-50%); pointer-events: none; }
 .home-venue-map__icon, .home-venue-map__copy, .home-venue-map__arrow { position: relative; }

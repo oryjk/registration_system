@@ -27,7 +27,7 @@ defineEmits<{ (event: "team"): void; (event: "matches"): void }>();
 
 /* #ifdef MP-WEIXIN */
 /* 微信端复用统一排版尺度；H5 保留原有样式。 */
-.joined-next { gap: var(--ui-list-gap); padding: var(--ui-panel-padding) 0; }
+.joined-next { gap: var(--ui-list-gap); padding: var(--ui-card-padding); }
 .joined-next__status { font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-heading); }
 .joined-next__title { font-size: var(--ui-text-title); font-weight: var(--ui-font-weight-heading); }
 .joined-next__copy { font-size: var(--ui-text-body); line-height: var(--ui-line-height-body); }

@@ -60,7 +60,7 @@ function handleJoin() {
       <view class="search-action"><AppButton block size="sm" variant="lime" :loading="searching" :disabled="searching" @click="handleSearch">搜索</AppButton></view>
     </view>
     <view class="results-heading"><text>搜索结果</text><text class="results-count">{{ searching ? '正在查找…' : hasSearched ? `${searchResults.length} 支球队` : '按名称查找' }}</text></view>
-    <view v-if="searchResults.length" class="team-result-list">
+    <view v-if="searchResults.length" class="team-result-list ui-card-list">
       <view v-for="team in searchResults" :key="team.id" class="team-result-card ui-list-row" :class="{ 'team-result-card-active': selectedTeam?.id === team.id }" @tap="handleSelectTeam(team)">
         <image v-if="team.logo_url" class="team-logo" :src="minioImageSrc(team.logo_url)" mode="aspectFit" />
         <view v-else class="team-logo team-logo-fallback">{{ team.name.slice(0, 1) }}</view>
@@ -71,11 +71,11 @@ function handleJoin() {
         <text class="ui-arrow-text team-result-action">{{ selectedTeam?.id === team.id ? '已选 ✓' : '选择 →' }}</text>
       </view>
     </view>
-    <view v-else class="empty-box">
+    <view v-else class="empty-box ui-card-panel">
       <text class="empty-title">{{ searching ? '正在查找球队' : hasSearched ? '没有找到匹配的球队' : '找到你的球队' }}</text>
       <text>{{ hasSearched ? '试试更短的关键词，或确认球队名称。' : '支持输入部分名称，选择球队后即可加入。' }}</text>
     </view>
-    <view v-if="selectedTeam" class="join-panel ui-soft-panel">
+    <view v-if="selectedTeam" class="join-panel ui-card-panel">
       <text class="join-panel-title">{{ selectedTeamIsMember ? '你已加入' : '加入' }} {{ selectedTeam.name }}</text>
       <text class="join-panel-note">{{ selectedTeamIsMember ? '你已经是该球队成员，可直接查看球队详情。' : selectedTeamRequiresPassword ? '该球队设置了入队密码，请向队长获取。' : '该球队开放加入，确认后即可成为队员。' }}</text>
       <input v-if="selectedTeamRequiresPassword && !selectedTeamIsMember" :value="joinPassword" class="password-input" placeholder="请输入入队密码" password @input="updateJoinPassword" />
@@ -108,9 +108,19 @@ function handleJoin() {
 .team-result-title { display:block; font-size:28rpx; font-weight:600; color:var(--ui-color-text); line-height:1.4; overflow-wrap:anywhere; }
 .team-result-meta { display:block; margin-top:6rpx; font-size:22rpx; color:var(--ui-color-text-muted); line-height:1.5; }
 .team-result-action { flex-shrink:0; color:var(--ui-color-accent-deep); font-size:24rpx; font-weight:600; }
-.empty-box { padding:44rpx 24rpx; text-align:center; border-radius:var(--ui-radius-card); background:var(--ui-color-neutral-bg); color:var(--ui-color-text-muted); font-size:24rpx; line-height:1.6; }
+.empty-box {
+  /* #ifndef MP-WEIXIN */
+  padding:44rpx 24rpx; border-radius:var(--ui-radius-card); background:var(--ui-color-neutral-bg);
+  /* #endif */
+  text-align:center; color:var(--ui-color-text-muted); font-size:24rpx; line-height:1.6;
+}
 .empty-title { display:block; margin-bottom:10rpx; font-size:28rpx; font-weight:600; color:var(--ui-color-text); }
-.join-panel { margin-top:24rpx; padding:24rpx; border:var(--ui-border-default); border-radius:var(--ui-radius-card); background:var(--ui-color-surface); }
+.join-panel {
+  margin-top:24rpx;
+  /* #ifndef MP-WEIXIN */
+  padding:24rpx; border:var(--ui-border-default); border-radius:var(--ui-radius-card); background:var(--ui-color-surface);
+  /* #endif */
+}
 .join-panel-title { display:block; font-size:28rpx; font-weight:600; color:var(--ui-color-text); }
 .join-panel-note { display:block; margin-top:10rpx; font-size:24rpx; color:var(--ui-color-text-muted); line-height:1.5; }
 .password-input { margin-top:20rpx; height:84rpx; padding:0 20rpx; border:var(--ui-border-default); border-radius:var(--ui-radius-button); font-size:26rpx; color:var(--ui-color-text); }
@@ -125,14 +135,14 @@ function handleJoin() {
 .results-heading { margin: var(--ui-space-8) 0 var(--ui-space-4); font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-heading); }
 .results-count { font-size: var(--ui-text-sm); font-weight: var(--ui-font-weight-body); }
 .team-result-list { gap: 0; }
-.team-result-card { gap: var(--ui-list-row-gap); padding: var(--ui-list-row-padding) var(--ui-space-3); border: var(--ui-panel-border); border-radius: var(--ui-panel-radius); }
+.team-result-card { gap: var(--ui-list-row-gap); padding: var(--ui-list-row-padding) 0; border: var(--ui-panel-border); border-radius: var(--ui-panel-radius); background: transparent; }
 .team-logo-fallback { font-size: var(--ui-text-title); font-weight: var(--ui-font-weight-heading); }
 .team-result-title { font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-heading); line-height: var(--ui-line-height-tight); }
 .team-result-meta { margin-top: var(--ui-space-1); font-size: var(--ui-text-sm); line-height: var(--ui-line-height-body); }
 .team-result-action { font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-heading); }
-.empty-box { padding: var(--ui-space-9) var(--ui-space-6); font-size: var(--ui-text-body); line-height: var(--ui-line-height-body); border-radius: var(--ui-panel-soft-radius); background: var(--ui-panel-soft-bg); }
+.empty-box { font-size: var(--ui-text-body); line-height: var(--ui-line-height-body); }
 .empty-title { margin-bottom: var(--ui-space-2); font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-heading); }
-.join-panel { margin-top: var(--ui-section-gap); padding: var(--ui-panel-padding); border: var(--ui-panel-border); border-radius: var(--ui-panel-soft-radius); background: var(--ui-panel-soft-bg); }
+.join-panel { margin-top: var(--ui-card-gap); }
 .join-panel-title { font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-heading); }
 .join-panel-note { margin-top: var(--ui-space-2); font-size: var(--ui-text-body); line-height: var(--ui-line-height-body); }
 .password-input { margin-top: var(--ui-space-5); padding: 0 var(--ui-input-padding); font-size: var(--ui-text-label); height: var(--ui-input-height); border: var(--ui-input-border); border-radius: var(--ui-input-radius); background: var(--ui-color-surface); }

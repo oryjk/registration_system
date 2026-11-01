@@ -54,19 +54,19 @@ onShareTimeline(() => ({
 
 <template>
   <page-meta :page-style="themePageStyle" />
-  <view class="app-theme-scope team-detail-page" :style="[themePageStyle, pageStyle]">
+  <view class="app-theme-scope ui-card-page team-detail-page" :style="[themePageStyle, pageStyle]">
     <AppTabHeader :title="team?.name || '球队'" showBack />
 
     <view class="team-detail-content">
-      <view v-if="errorMessage" class="state-card" @tap="loadTeam">
+      <view v-if="errorMessage" class="state-card ui-card-panel" @tap="loadTeam">
         <text class="state-text">{{ errorMessage }}，点击重试</text>
       </view>
-      <view v-else-if="isLoading && !team" class="state-card">
+      <view v-else-if="isLoading && !team" class="state-card ui-card-panel">
         <text class="state-text">正在加载球队信息...</text>
       </view>
 
       <template v-else-if="team">
-        <view class="page-hero ui-plain-panel">
+        <view class="page-hero ui-card-panel">
           <view class="hero-row">
             <view class="hero-badge">
               <image v-if="logoUrl" class="hero-badge__logo" :src="minioImageSrc(logoUrl)" mode="aspectFill" />
@@ -83,7 +83,7 @@ onShareTimeline(() => ({
         </view>
 
         <!-- 队费下放子页后的轻量入口：展示余额，点击进入队费缴纳页。 -->
-        <view class="fund-entry ui-soft-panel" hover-class="fund-entry--pressed" @tap="openTeamFund">
+        <view class="fund-entry ui-card-panel" hover-class="fund-entry--pressed" @tap="openTeamFund">
           <view class="fund-entry__main">
             <text class="fund-entry__label">队费余额</text>
             <view class="fund-entry__amount">
@@ -153,6 +153,7 @@ onShareTimeline(() => ({
 </template>
 
 <style scoped>
+@import "@/styles/page-surfaces.css";
 @import "@/styles/list-surfaces.css";
 .team-detail-page {
   min-height: 100vh;
@@ -170,14 +171,18 @@ onShareTimeline(() => ({
 .state-card,
 .page-hero,
 .fund-entry {
+  /* #ifndef MP-WEIXIN */
   border: var(--ui-border-default);
   border-radius: var(--ui-radius-card);
   background: var(--ui-color-surface);
   box-shadow: var(--ui-shadow-raised);
+  /* #endif */
 }
 
 .state-card {
+  /* #ifndef MP-WEIXIN */
   padding: 40rpx 28rpx;
+  /* #endif */
   text-align: center;
 }
 
@@ -188,7 +193,9 @@ onShareTimeline(() => ({
 }
 
 .page-hero {
+  /* #ifndef MP-WEIXIN */
   padding: 28rpx;
+  /* #endif */
 }
 
 .hero-row {
@@ -264,9 +271,10 @@ onShareTimeline(() => ({
   align-items: center;
   justify-content: space-between;
   gap: 18rpx;
+  /* #ifndef MP-WEIXIN */
   padding: 26rpx 28rpx;
+  /* #endif */
 }
-
 .fund-entry--pressed {
   transform: translate(2rpx, 2rpx);
   box-shadow: none;
@@ -374,7 +382,7 @@ onShareTimeline(() => ({
   max-width: 750rpx;
   transform: translateX(-50%);
 }
-/* #endif */
+  /* #endif */
 
 /* #ifdef MP-WEIXIN */
 .team-share-canvas {
@@ -494,15 +502,15 @@ onShareTimeline(() => ({
 /* 微信端复用统一排版尺度；H5 保留原有样式。 */
 .team-detail-page { padding: 0 var(--ui-page-padding-inline) var(--ui-page-padding-bottom); }
 .team-detail-content { gap: var(--ui-section-gap); }
-.state-card { padding: var(--ui-space-9) var(--ui-space-7); }
+
 .state-text { font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-medium); }
-.page-hero { padding: var(--ui-space-7); }
+
 .hero-row { gap: var(--ui-space-4); }
 .hero-badge { font-size: var(--ui-text-display); }
 .hero-title { font-size: var(--ui-text-title); line-height: var(--ui-line-height-tight); }
 .hero-meta { margin-top: var(--ui-space-2); font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-body); }
 .hero-description { margin-top: var(--ui-space-4); font-size: var(--ui-text-body); line-height: var(--ui-line-height-body); font-weight: var(--ui-font-weight-body); }
-.fund-entry { gap: var(--ui-space-4); padding: var(--ui-panel-padding); border: var(--ui-panel-border); border-radius: var(--ui-panel-soft-radius); background: var(--ui-panel-soft-bg); box-shadow: var(--ui-panel-shadow); }
+.fund-entry { gap: var(--ui-space-4); }
 .fund-entry__label { font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-medium); letter-spacing: var(--ui-space-1); }
 .fund-entry__amount { gap: var(--ui-space-1); margin-top: var(--ui-space-2); }
 .fund-entry__symbol { font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-heading); }
@@ -523,7 +531,6 @@ onShareTimeline(() => ({
 .leave-head { gap: var(--ui-space-2); padding: var(--ui-space-6) var(--ui-space-6) var(--ui-space-5); }
 .leave-title { font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-heading); }
 .leave-copy { font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-body); line-height: var(--ui-line-height-body); }
-.state-card, .page-hero { padding: var(--ui-panel-padding) 0; border: var(--ui-panel-border); border-radius: var(--ui-panel-radius); box-shadow: var(--ui-panel-shadow); }
 .fund-entry--pressed { transform: none; background: var(--ui-control-selected-bg); }
 /* #endif */
 </style>

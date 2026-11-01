@@ -29,7 +29,7 @@ function select(action: HomeEmptyHeroAction) { if (!props.busy) emit("select-tas
 </script>
 
 <template>
-  <view class="home-start-panel">
+  <view class="home-start-panel ui-card-panel ui-card-panel--flush">
     <view class="home-start">
       <view class="home-start__hero">
         <image v-if="imageSrc(HOME_VISUAL_ASSETS.hero)" class="home-start__background" :src="imageSrc(HOME_VISUAL_ASSETS.hero)" mode="aspectFill" aria-hidden="true" @error="imageError(HOME_VISUAL_ASSETS.hero)" />
@@ -61,7 +61,13 @@ function select(action: HomeEmptyHeroAction) { if (!props.busy) emit("select-tas
 </template>
 
 <style scoped>
+@import "@/styles/list-surfaces.css";
+/* #ifndef MP-WEIXIN */
 .home-start-panel { overflow: hidden; border: var(--ui-border-hairline); border-radius: var(--ui-radius-card); background: var(--ui-color-surface); }
+/* #endif */
+/* #ifdef MP-WEIXIN */
+.home-start-panel { overflow: hidden; }
+/* #endif */
 .home-start__hero { position: relative; overflow: hidden; min-height: var(--ui-home-hero-min-height); padding: var(--ui-space-9) var(--ui-space-7); box-sizing: border-box; background: var(--ui-color-hero); color: var(--now-cover-fg); }
 .home-start__background, .home-start__shade { position: absolute; inset: 0; width: 100%; height: 100%; }
 /* 照片遮罩使用既有封面语义，确保五个主题上白色文案均有足够对比度。 */

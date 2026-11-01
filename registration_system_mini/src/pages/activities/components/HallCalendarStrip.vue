@@ -90,6 +90,7 @@ const emit = defineEmits<{
 }
 
 /* #ifdef MP-WEIXIN */
+.hall-calendar { padding: var(--ui-card-padding); border: var(--ui-panel-border); border-radius: var(--ui-card-radius); background: var(--ui-card-bg); box-shadow: var(--ui-card-shadow); box-sizing: border-box; }
 .hall-calendar-track { gap: var(--ui-space-3); padding: var(--ui-space-1) 0; }
 .hall-calendar-item { width: calc(var(--ui-input-height) + var(--ui-space-4)); border: var(--ui-control-border); padding: var(--ui-space-3) 0; background: var(--ui-control-subtle-bg); }
 .hall-calendar-item-active { background: var(--ui-control-selected-bg); }

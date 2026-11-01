@@ -152,7 +152,7 @@ usePageRefresh(async () => {
 
 <template>
   <page-meta :page-style="themePageStyle" />
-  <view class="app-theme-scope phase-matches-page" :style="themePageStyle">
+  <view class="app-theme-scope ui-card-page phase-matches-page" :style="themePageStyle">
     <AppTabHeader :title="pageMeta.title" showBack />
 
     <view class="phase-matches-content" :style="contentStyle">
@@ -180,6 +180,7 @@ usePageRefresh(async () => {
 </template>
 
 <style scoped>
+@import "@/styles/page-surfaces.css";
 .phase-matches-page {
   min-height: 100vh;
   padding: 0 28rpx 96rpx;
@@ -229,7 +230,7 @@ usePageRefresh(async () => {
 /* #ifdef MP-WEIXIN */
 .phase-matches-page { padding-right: var(--ui-page-padding-inline); padding-left: var(--ui-page-padding-inline); padding-bottom: var(--ui-page-padding-bottom); }
 .empty-card,
-.phase-footer { margin-top: var(--ui-section-gap); padding: var(--ui-panel-padding) 0; border: var(--ui-panel-border); border-radius: var(--ui-panel-radius); box-shadow: var(--ui-panel-shadow); }
+.phase-footer { margin-top: var(--ui-section-gap); padding: var(--ui-card-padding); border: var(--ui-panel-border); border-radius: var(--ui-card-radius); box-shadow: var(--ui-card-shadow); }
 .empty-text,
 .phase-footer-text { font-size: var(--ui-text-label); line-height: var(--ui-line-height-body); font-weight: var(--ui-font-weight-medium); }
 .phase-footer { min-height: var(--ui-control-min-height); }

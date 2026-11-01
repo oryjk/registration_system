@@ -325,7 +325,7 @@ function handleSelect(teamId: number, isCurrent: boolean) {
 .team-switch-sheet__caption { margin-top: var(--ui-space-2); font-size: var(--ui-text-sm); line-height: var(--ui-line-height-body); }
 .team-switch-sheet__close { border: var(--ui-control-border); background: var(--ui-control-subtle-bg); }
 .team-switch-sheet__list { margin-top: var(--ui-space-5); }
-.team-switch-option-shell { display: block; padding: 0; }
+.team-switch-option-shell { display: block; padding: 0; --ui-content-surface-radius: var(--ui-panel-radius); --ui-content-surface-shadow: var(--ui-panel-shadow); }
 .team-switch-option { min-height: var(--ui-list-row-min-height); padding: var(--ui-list-row-padding) var(--ui-space-3); gap: var(--ui-list-row-gap); border-radius: var(--ui-control-radius); }
 .team-switch-option--current { background: var(--ui-control-selected-bg); }
 .team-switch-option__name { font-size: var(--ui-text-subtitle); line-height: var(--ui-line-height-tight); }

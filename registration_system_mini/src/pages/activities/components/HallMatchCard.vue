@@ -103,7 +103,7 @@ export default { options: { virtualHost: true } };
 .hall-match-arrow { font-size: 32rpx; line-height: 1; }
 
 /* #ifdef MP-WEIXIN */
-.hall-match-card { padding: 0; border: var(--ui-panel-border); border-radius: var(--ui-panel-radius); background: transparent; }
+.hall-match-card { padding: var(--ui-card-padding); border: var(--ui-panel-border); border-radius: var(--ui-card-radius); background: var(--ui-card-bg); box-shadow: var(--ui-card-shadow); }
 .hall-match-heading { gap: var(--ui-space-4); }
 .hall-match-title { font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-heading); }
 .hall-match-time { font-size: var(--ui-text-display); font-weight: var(--ui-font-weight-heading); }

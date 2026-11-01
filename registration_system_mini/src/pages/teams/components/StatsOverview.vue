@@ -15,7 +15,7 @@ defineProps<{
 </script>
 
 <template>
-  <view class="stats-overview ui-plain-panel">
+  <view class="stats-overview ui-card-panel">
     <view class="stats-profile">
       <image v-if="myAvatarUrl" class="stats-profile-avatar" :src="minioImageSrc(myAvatarUrl)" mode="aspectFill" />
       <view v-else class="stats-profile-avatar stats-profile-avatar-fallback">{{ myInitial }}</view>
@@ -31,7 +31,7 @@ defineProps<{
     </view>
   </view>
 
-  <view class="stats-summary-row ui-soft-panel">
+  <view class="stats-summary-row ui-card-panel">
     <view class="stats-summary-item">
       <text class="stats-summary-value">{{ mySummary.attended }}</text>
       <text class="stats-summary-label">参加</text>
@@ -55,10 +55,12 @@ defineProps<{
 @import "@/styles/list-surfaces.css";
 .stats-overview,
 .stats-summary-row {
+  /* #ifndef MP-WEIXIN */
   border: var(--ui-border-default);
   border-radius: var(--ui-radius-card);
   background: var(--ui-color-surface);
   box-shadow: var(--ui-shadow-raised);
+  /* #endif */
 }
 
 .stats-overview {
@@ -67,7 +69,9 @@ defineProps<{
   justify-content: space-between;
   gap: 18rpx;
   margin-top: 18rpx;
+  /* #ifndef MP-WEIXIN */
   padding: 22rpx;
+  /* #endif */
 }
 
 .stats-profile {
@@ -155,7 +159,9 @@ defineProps<{
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0;
   margin-top: 14rpx;
+  /* #ifndef MP-WEIXIN */
   padding: 18rpx 4rpx;
+  /* #endif */
 }
 
 .stats-summary-item {
@@ -185,7 +191,7 @@ defineProps<{
 
 /* #ifdef MP-WEIXIN */
 /* 微信端复用统一排版尺度；H5 保留原有样式。 */
-.stats-overview { gap: var(--ui-space-4); margin-top: var(--ui-space-4); padding: var(--ui-space-5) 0; border: var(--ui-panel-border); border-radius: var(--ui-panel-radius); box-shadow: var(--ui-panel-shadow); }
+.stats-overview { gap: var(--ui-space-4); margin-top: var(--ui-card-gap); }
 .stats-profile { gap: var(--ui-space-4); }
 .stats-profile-avatar-fallback { font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-heading); }
 .stats-kicker { font-size: var(--ui-text-xs); font-weight: var(--ui-font-weight-medium); }
@@ -194,11 +200,11 @@ defineProps<{
 .stats-rate-box { padding: var(--ui-space-3); min-width: calc(var(--ui-space-12) * 2); border: var(--ui-panel-border); background: transparent; }
 .stats-rate-value { font-size: var(--ui-text-display); font-weight: var(--ui-font-weight-heading); }
 .stats-rate-label { margin-top: var(--ui-space-2); font-size: var(--ui-text-xs); font-weight: var(--ui-font-weight-medium); }
-.stats-summary-row { margin-top: var(--ui-space-4); padding: var(--ui-panel-padding) var(--ui-space-2); border: var(--ui-panel-border); border-radius: var(--ui-panel-soft-radius); background: var(--ui-panel-soft-bg); box-shadow: var(--ui-panel-shadow); }
+.stats-summary-row { margin-top: var(--ui-card-gap); }
 .stats-summary-value { font-size: var(--ui-text-heading); font-weight: var(--ui-font-weight-heading); }
 .stats-summary-label { margin-top: var(--ui-space-2); font-size: var(--ui-text-xs); font-weight: var(--ui-font-weight-body); }
 .stats-profile-avatar { border: var(--ui-panel-border); width: var(--ui-avatar-size-lg); height: var(--ui-avatar-size-lg); }
 .stats-summary-item { border-right: var(--ui-list-divider); }
 .stats-summary-item:last-child { border-right: 0; }
-/* #endif */
+  /* #endif */
 </style>

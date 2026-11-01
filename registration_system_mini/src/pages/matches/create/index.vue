@@ -304,7 +304,7 @@ usePageRefresh(() => refreshSessionContext());
 
 <template>
   <page-meta :page-style="themePageStyle" />
-  <view v-if="reviewGateReady" class="app-theme-scope create-match-page" :style="[themePageStyle, pageStyle]">
+  <view v-if="reviewGateReady" class="app-theme-scope ui-card-page create-match-page" :style="[themePageStyle, pageStyle]">
     <AppTabHeader :title="editId ? '修改比赛' : '创建比赛'" showBack />
 
     <view class="create-page-content">
@@ -361,6 +361,7 @@ usePageRefresh(() => refreshSessionContext());
 </template>
 
 <style scoped>
+@import "@/styles/page-surfaces.css";
 .create-match-page {
   min-height: 100vh;
   /* 底部留白用操作栏 clearance token：含悬浮操作栏高度与全面屏安全区，硬编码 132rpx 会被按钮遮挡。 */

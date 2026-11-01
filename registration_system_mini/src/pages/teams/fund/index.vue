@@ -23,18 +23,18 @@ const {
 
 <template>
   <page-meta :page-style="themePageStyle" />
-  <view class="app-theme-scope team-fund-page" :style="[themePageStyle, pageStyle]">
+  <view class="app-theme-scope ui-card-page team-fund-page" :style="[themePageStyle, pageStyle]">
     <AppTabHeader :title="teamName" showBack />
 
     <view class="team-fund-content">
-      <view v-if="errorMessage" class="state-card" @tap="loadTeam">
+      <view v-if="errorMessage" class="state-card ui-card-panel" @tap="loadTeam">
         <text class="state-text">{{ errorMessage }}，点击重试</text>
       </view>
-      <view v-else-if="isLoading" class="state-card">
+      <view v-else-if="isLoading" class="state-card ui-card-panel">
         <text class="state-text">正在加载队费信息...</text>
       </view>
 
-      <view v-else class="recharge-card ui-plain-panel">
+      <view v-else class="recharge-card ui-card-panel">
         <view class="balance-hero">
           <text class="balance-hero-label">我的队内余额</text>
           <view class="balance-hero-amount">
@@ -70,6 +70,7 @@ const {
 </template>
 
 <style scoped>
+@import "@/styles/page-surfaces.css";
 @import "@/styles/list-surfaces.css";
 .team-fund-page {
   min-height: 100vh;
@@ -86,14 +87,18 @@ const {
 
 .state-card,
 .recharge-card {
+  /* #ifndef MP-WEIXIN */
   border: var(--ui-border-default);
   border-radius: var(--ui-radius-card);
   background: var(--ui-color-surface);
   box-shadow: var(--ui-shadow-raised);
+  /* #endif */
 }
 
 .state-card {
+  /* #ifndef MP-WEIXIN */
   padding: 40rpx 28rpx;
+  /* #endif */
   text-align: center;
 }
 
@@ -104,9 +109,10 @@ const {
 }
 
 .recharge-card {
+  /* #ifndef MP-WEIXIN */
   padding: 28rpx;
+  /* #endif */
 }
-
 .balance-hero {
   display: flex;
   flex-direction: column;
@@ -214,15 +220,14 @@ const {
   max-width: 750rpx;
   transform: translateX(-50%);
 }
-/* #endif */
+  /* #endif */
 
 /* #ifdef MP-WEIXIN */
 /* 微信端复用统一排版尺度；H5 保留原有样式。 */
 .team-fund-page { padding: 0 var(--ui-page-padding-inline) var(--ui-page-padding-bottom); }
 .team-fund-content { gap: var(--ui-section-gap); }
-.state-card { padding: var(--ui-space-9) var(--ui-space-7); }
+
 .state-text { font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-medium); }
-.recharge-card { padding: var(--ui-space-7); }
 .balance-hero { gap: var(--ui-space-1); padding: 0 0 var(--ui-space-6); margin-bottom: var(--ui-section-gap); border-bottom: var(--ui-list-divider); }
 .balance-hero-label { font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-medium); letter-spacing: var(--ui-space-1); }
 .balance-hero-amount { gap: var(--ui-space-1); }
@@ -235,6 +240,5 @@ const {
 .recharge-total { gap: var(--ui-space-3); margin: var(--ui-space-5) var(--ui-space-1); }
 .recharge-total-label { font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-medium); }
 .recharge-total-value { font-size: var(--ui-text-stat); }
-.state-card, .recharge-card { padding: var(--ui-panel-padding) 0; border: var(--ui-panel-border); border-radius: var(--ui-panel-radius); box-shadow: var(--ui-panel-shadow); }
 /* #endif */
 </style>

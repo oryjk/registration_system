@@ -206,7 +206,7 @@ const metaPageStyle = computed(() =>
 
 <template>
   <page-meta :page-style="metaPageStyle" />
-  <view class="app-theme-scope registration-page" :style="[themePageStyle, pageStyle]">
+  <view class="app-theme-scope ui-card-page registration-page" :style="[themePageStyle, pageStyle]">
     <!-- 导航标题用比赛名（加载前回落通用标题），页面卡片内不再重复大标题。 -->
     <AppTabHeader :title="match?.name || '比赛报名'" showBack />
 
@@ -420,6 +420,7 @@ const metaPageStyle = computed(() =>
 </template>
 
 <style scoped>
+@import "@/styles/page-surfaces.css";
 .registration-page {
   min-height: 100vh;
   padding-left: 24rpx;
@@ -499,11 +500,8 @@ const metaPageStyle = computed(() =>
 
 /* #ifdef MP-WEIXIN */
 .registration-page { background: var(--ui-color-page-muted); padding-left: var(--ui-page-padding-inline); padding-right: var(--ui-page-padding-inline); }
-/* Scope surface elevation to the content: dialogs and other pages retain their own contracts. */
 .registration-shell {
-  --ui-content-surface-radius: var(--ui-radius-card);
-  --ui-content-surface-shadow: var(--ui-shadow-card);
-  gap: var(--ui-space-6);
+  gap: var(--ui-card-gap);
 }
 .match-manage-action { background: var(--ui-control-subtle-bg); min-height: var(--ui-control-min-height); padding: var(--ui-space-3) var(--ui-space-4); font-size: var(--ui-text-label); }
 .match-manage-action--cancel { background: var(--ui-color-danger-bg); }

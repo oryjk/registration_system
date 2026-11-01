@@ -408,7 +408,7 @@ function handleOpenVenuePicker() {
 }
 
 /* #ifdef MP-WEIXIN */
-.publish-form { gap: var(--ui-section-gap); margin-top: var(--ui-section-gap); }
+.publish-form { gap: var(--ui-card-gap); margin-top: var(--ui-card-gap); }
 .form-field { margin-top: var(--ui-space-6); }
 .form-label { margin-bottom: var(--ui-space-3); font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-heading); }
 .form-grid { gap: 0 var(--ui-space-4); }

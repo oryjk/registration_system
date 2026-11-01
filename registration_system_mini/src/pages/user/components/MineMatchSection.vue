@@ -14,7 +14,7 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <view class="mine-match-section">
+  <view class="mine-match-section ui-card-panel">
     <SectionHeader title="我的比赛" action-label="全部" @action="emit('openAll')" />
     <view class="mine-match-list ui-plain-panel">
       <button v-for="match in matches" :key="match.id" class="mine-match-row ui-list-row" hover-class="mine-match-row--pressed" @tap="emit('openMatch', match.id)">
@@ -42,7 +42,7 @@ const emit = defineEmits<{
 
 
 /* #ifdef MP-WEIXIN */
-.mine-match-section { margin-top: var(--ui-section-gap); }
+.mine-match-section { margin-top: var(--ui-card-gap); }
 .mine-match-list { margin-top: var(--ui-space-3); border: var(--ui-panel-border); border-radius: var(--ui-panel-radius); }
 .mine-match-row { gap: var(--ui-list-row-gap); padding: var(--ui-list-row-padding) 0; min-height: var(--ui-list-row-min-height); }
 .mine-match-row + .mine-match-row { border-top: var(--ui-list-divider); }

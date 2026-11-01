@@ -40,4 +40,7 @@ const background = computed(() => imageSrc(props.backgroundUrl));
 .ui-page-intro__description { color: var(--ui-color-text-muted); font-size: var(--ui-text-body); line-height: var(--ui-line-height-body); }
 .ui-page-intro--hero .ui-page-intro__description { color: var(--now-cover-muted); }
 .ui-page-intro__illustration { position: relative; flex-shrink: 0; width: var(--ui-intro-illustration-size); height: var(--ui-intro-illustration-size); }
+/* #ifdef MP-WEIXIN */
+.ui-page-intro { border-radius: var(--ui-card-radius); box-shadow: var(--ui-card-shadow); }
+/* #endif */
 </style>

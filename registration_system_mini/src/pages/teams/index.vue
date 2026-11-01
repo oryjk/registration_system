@@ -240,13 +240,13 @@ provide(APP_SCROLL_CONTROLLER, appScrollController);
 <template>
   <!-- 页面本体锁定不滚动（滚动在 AppPullScrollView 内），header 不随下拉移动。 -->
   <page-meta :page-style="`${themePageStyle};overflow:hidden`" />
-  <view class="app-theme-scope stats-page" :style="themePageStyle">
+  <view class="app-theme-scope ui-card-page stats-page" :style="themePageStyle">
     <AppTabHeader title="统计" />
 
     <AppPullScrollView ref="appScrollAnchor" :refreshing="refreshing" :locked="avatarPreviewRendered" @refresh="handleRefresherRefresh">
       <view class="stats-content" :style="contentStyle">
     <template v-if="!requiresLogin">
-      <view v-if="errorMessage" class="stats-empty ui-plain-panel">
+      <view v-if="errorMessage" class="stats-empty ui-card-panel">
         {{ errorMessage }}
         <view v-if="hasNoTeam" class="stats-empty-actions">
           <AppButton class="stats-empty-action" variant="lime" @click="goJoinTeam">加入球队</AppButton>
@@ -272,7 +272,7 @@ provide(APP_SCROLL_CONTROLLER, appScrollController);
           :my-summary="mySummary"
         />
         <view v-if="currentTeam && currentUser" class="stats-honor-share"><AppButton block variant="outline" @click="shareMyHonor">分享我的荣誉</AppButton></view>
-        <view class="stats-tab-card ui-plain-panel">
+        <view class="stats-tab-card ui-card-panel">
           <view class="stats-segment">
             <SegmentedControl
               :model-value="statsTab"
@@ -318,6 +318,7 @@ provide(APP_SCROLL_CONTROLLER, appScrollController);
 </template>
 
 <style scoped>
+@import "@/styles/page-surfaces.css";
 @import "@/styles/list-surfaces.css";
 .stats-honor-share { margin-top: 24rpx; }
 .stats-page {
@@ -337,11 +338,13 @@ provide(APP_SCROLL_CONTROLLER, appScrollController);
 
 .stats-empty {
   margin-top: 18rpx;
+  /* #ifndef MP-WEIXIN */
   padding: 24rpx;
   border: var(--ui-border-default);
   border-radius: var(--ui-radius-card);
   background: var(--ui-color-surface);
   box-shadow: var(--ui-shadow-raised);
+  /* #endif */
   color: var(--ui-color-text-muted);
   font-size: 27rpx;
   font-weight: 400;
@@ -360,11 +363,13 @@ provide(APP_SCROLL_CONTROLLER, appScrollController);
 
 .stats-tab-card {
   margin-top: 16rpx;
+  /* #ifndef MP-WEIXIN */
   padding: 26rpx;
   border: var(--ui-border-default);
   border-radius: var(--ui-radius-card);
   background: var(--ui-color-surface);
   box-shadow: var(--ui-shadow-raised);
+  /* #endif */
 }
 
 .stats-segment {
@@ -408,15 +413,15 @@ provide(APP_SCROLL_CONTROLLER, appScrollController);
   max-width: 750rpx;
   transform: translateX(-50%);
 }
-/* #endif */
+  /* #endif */
 
 /* #ifdef MP-WEIXIN */
 /* 微信端复用统一排版尺度；H5 保留原有样式。 */
 .stats-honor-share { margin-top: var(--ui-space-6); }
 .stats-content { padding-right: var(--ui-page-padding-inline); padding-left: var(--ui-page-padding-inline); }
-.stats-empty { margin-top: var(--ui-space-4); padding: var(--ui-panel-padding) 0; font-size: var(--ui-text-label); font-weight: var(--ui-font-weight-body); line-height: var(--ui-line-height-body); border: var(--ui-panel-border); border-radius: var(--ui-panel-radius); box-shadow: var(--ui-panel-shadow); }
+.stats-empty { margin-top: var(--ui-card-gap); font-size: var(--ui-text-label); font-weight: var(--ui-font-weight-body); line-height: var(--ui-line-height-body); }
 .stats-empty-actions { gap: var(--ui-space-5); margin-top: var(--ui-space-6); }
-.stats-tab-card { margin-top: var(--ui-section-gap); padding: 0; border: var(--ui-panel-border); border-radius: var(--ui-panel-radius); box-shadow: var(--ui-panel-shadow); }
+.stats-tab-card { margin-top: var(--ui-card-gap); }
 .stats-segment { margin-bottom: var(--ui-section-gap); }
 /* #endif */
 </style>

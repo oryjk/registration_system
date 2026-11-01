@@ -58,7 +58,7 @@ usePageRefresh(() => preloadMiniReviewStatus(true));
 
 <template>
   <page-meta :page-style="themePageStyle" />
-  <view class="app-theme-scope contact-developer-page" :style="[themePageStyle, pageStyle]">
+  <view class="app-theme-scope ui-card-page contact-developer-page" :style="[themePageStyle, pageStyle]">
     <AppTabHeader title="联系开发者" showBack />
 
     <view class="contact-developer-content">
@@ -185,6 +185,7 @@ usePageRefresh(() => preloadMiniReviewStatus(true));
 </template>
 
 <style scoped>
+@import "@/styles/page-surfaces.css";
 @import "@/styles/list-surfaces.css";
 /* #ifdef H5 */
 .contact-developer-section { display: contents; }
@@ -357,7 +358,7 @@ usePageRefresh(() => preloadMiniReviewStatus(true));
 
 /* #ifdef MP-WEIXIN */
 .contact-developer-page { padding-right: var(--ui-page-padding-inline); padding-left: var(--ui-page-padding-inline); padding-bottom: var(--ui-page-padding-bottom); }
-.contact-developer-content { gap: var(--ui-section-gap); --ui-panel-padding: 0; }
+.contact-developer-content { gap: var(--ui-card-gap); }
 .contact-developer-section { padding: 0; border: var(--ui-panel-border); border-radius: var(--ui-panel-radius); }
 .contact-developer-thanks { margin-top: var(--ui-space-5); font-size: var(--ui-text-label); line-height: var(--ui-line-height-body); }
 .contact-developer-qrcodes { gap: var(--ui-space-7); margin-top: var(--ui-space-6); }

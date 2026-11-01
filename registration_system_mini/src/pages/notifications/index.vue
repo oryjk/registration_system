@@ -115,7 +115,7 @@ usePageRefresh(async () => {
 
 <template>
   <page-meta :page-style="themePageStyle" />
-  <view class="app-theme-scope notice-page" :style="[themePageStyle, pageStyle]">
+  <view class="app-theme-scope ui-card-page notice-page" :style="[themePageStyle, pageStyle]">
     <AppTabHeader title="消息中心" showBack />
 
     <SegmentedControl
@@ -142,14 +142,14 @@ usePageRefresh(async () => {
     </template>
 
       <template v-else>
-      <view v-if="errorMessage" class="notice-empty">{{ errorMessage }}</view>
+      <view v-if="errorMessage" class="notice-empty ui-card-panel">{{ errorMessage }}</view>
       <RunningLoader v-else-if="showInitialLoadingState" text="正在收取战报" />
 
       <view v-else class="notice-loaded-content">
         <view v-if="notificationItems.length" class="notice-summary"><text>未读 {{ unreadCount }} 条</text><text>点击通知标记已读</text></view>
 
         <view v-if="notificationItems.length" class="notice-list">
-          <view v-for="item in notificationItems" :key="item.id" class="notice-item-shell ui-list-row">
+          <view v-for="item in notificationItems" :key="item.id" class="notice-item-shell">
             <AppSurface
               variant="raised"
               interactive
@@ -168,7 +168,7 @@ usePageRefresh(async () => {
             </AppSurface>
           </view>
         </view>
-        <view v-else class="notice-empty">当前没有可展示的通知。</view>
+        <view v-else class="notice-empty ui-card-panel">当前没有可展示的通知。</view>
       </view>
     </template>
     </view>
@@ -176,6 +176,7 @@ usePageRefresh(async () => {
 </template>
 
 <style scoped>
+@import "@/styles/page-surfaces.css";
 @import "@/styles/list-surfaces.css";
 /* #ifdef H5 */
 .notice-item-shell { display: contents; }
@@ -316,8 +317,8 @@ usePageRefresh(async () => {
 
 /* #ifdef MP-WEIXIN */
 .notice-page { padding-right: var(--ui-page-padding-inline); padding-left: var(--ui-page-padding-inline); padding-bottom: var(--ui-page-padding-bottom); }
-.notice-list { gap: 0; margin-top: var(--ui-space-4); }
-.notice-item-shell { display: block; padding: 0; --ui-panel-padding: var(--ui-list-row-padding) 0; }
+.notice-list { gap: var(--ui-card-gap); margin-top: var(--ui-space-4); }
+.notice-item-shell { display: block; }
 .notice-card-top,.notice-card-bottom { gap: var(--ui-space-3); align-items: flex-start; }
 .notice-card-title { min-width: 0; font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-heading); overflow-wrap: anywhere; }
 .notice-kind-chip { flex-shrink: 0; padding: var(--ui-space-1) var(--ui-space-3); border: var(--ui-control-border); border-radius: var(--ui-control-radius); background: var(--ui-control-subtle-bg); font-size: var(--ui-text-sm); }
@@ -325,7 +326,7 @@ usePageRefresh(async () => {
 .notice-card-copy { margin-top: var(--ui-space-3); font-size: var(--ui-text-label); line-height: var(--ui-line-height-body); overflow-wrap: anywhere; }
 .notice-card-bottom { margin-top: var(--ui-space-4); }
 .notice-card-time,.notice-card-action { font-size: var(--ui-text-sm); }
-.notice-empty { margin-top: var(--ui-space-4); padding: var(--ui-space-6) 0; border: var(--ui-panel-border); border-radius: var(--ui-panel-radius); font-size: var(--ui-text-body); line-height: var(--ui-line-height-body); }
+.notice-empty { margin-top: var(--ui-space-4); padding: var(--ui-card-padding); border: var(--ui-panel-border); border-radius: var(--ui-card-radius); background: var(--ui-card-bg); font-size: var(--ui-text-body); line-height: var(--ui-line-height-body); }
 .notice-summary { gap: var(--ui-space-3); margin: var(--ui-space-5) 0 0; font-size: var(--ui-text-sm); }
 /* #endif */
 </style>

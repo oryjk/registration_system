@@ -127,4 +127,7 @@ const emit = defineEmits<{
 .hall-empty-state__secondary--pressed {
   opacity: 0.65;
 }
+/* #ifdef MP-WEIXIN */
+.hall-empty-state { padding: var(--ui-card-padding); }
+/* #endif */
 </style>

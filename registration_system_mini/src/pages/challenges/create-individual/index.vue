@@ -270,7 +270,7 @@ usePageRefresh(() => refreshSessionContext());
 
 <template>
   <page-meta :page-style="themePageStyle" />
-  <view v-if="reviewGateReady" class="app-theme-scope individual-create-page" :style="[themePageStyle, pageStyle]">
+  <view v-if="reviewGateReady" class="app-theme-scope ui-card-page individual-create-page" :style="[themePageStyle, pageStyle]">
     <AppTabHeader :title="editId ? '修改散人约球' : '散人约球'" showBack />
 
     <view class="create-page-content">
@@ -287,7 +287,7 @@ usePageRefresh(() => refreshSessionContext());
       </view>
 
       <!-- #endif -->
-      <view class="form-section ui-plain-panel">
+      <view class="form-section ui-card-panel">
         <view class="form-section__head">
           <view class="form-section__mark">
             <image class="form-section__icon" src="/static/icons/lucide/users.png" mode="aspectFit" aria-hidden="true" />
@@ -322,7 +322,7 @@ usePageRefresh(() => refreshSessionContext());
         </text>
       </view>
 
-      <view class="form-section ui-plain-panel">
+      <view class="form-section ui-card-panel">
         <view class="form-section__head">
           <view class="form-section__mark">
             <image class="form-section__icon" src="/static/icons/lucide/clock.png" mode="aspectFit" aria-hidden="true" />
@@ -342,7 +342,7 @@ usePageRefresh(() => refreshSessionContext());
         />
       </view>
 
-      <view class="form-section ui-plain-panel">
+      <view class="form-section ui-card-panel">
         <view class="form-section__head">
           <view class="form-section__mark">
             <image class="form-section__icon" src="/static/icons/lucide/map-pin.png" mode="aspectFit" aria-hidden="true" />
@@ -416,6 +416,7 @@ usePageRefresh(() => refreshSessionContext());
 </template>
 
 <style scoped>
+@import "@/styles/page-surfaces.css";
 @import "@/styles/list-surfaces.css";
 .individual-create-page {
   min-height: 100vh;
@@ -651,7 +652,7 @@ usePageRefresh(() => refreshSessionContext());
 
 /* #ifdef MP-WEIXIN */
 .individual-create-page { padding-inline: var(--ui-page-padding-inline); padding-bottom: calc(var(--ui-page-padding-bottom) + env(safe-area-inset-bottom)); }
-.form-section { margin-top: var(--ui-section-gap); padding: var(--ui-panel-padding); border: var(--ui-panel-border); border-radius: var(--ui-panel-radius); }
+.form-section { margin-top: var(--ui-card-gap); padding: var(--ui-card-padding); border: var(--ui-panel-border); border-radius: var(--ui-card-radius); background: var(--ui-card-bg); box-shadow: var(--ui-card-shadow); }
 .form-section__mark { background: var(--ui-control-subtle-bg); width: var(--ui-icon-xl); height: var(--ui-icon-xl); }
 .form-section__title { font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-heading); }
 .form-label { font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-heading); }

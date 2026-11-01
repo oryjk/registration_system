@@ -21,7 +21,7 @@ const scoreRanking = computed(() => buildActivityRanking(props.rankingItems, pro
 </script>
 
 <template>
-  <view :class="['stats-card', embedded ? 'stats-card-embedded' : '']">
+  <view :class="['stats-card', embedded ? 'stats-card-embedded' : 'ui-card-panel']">
     <view class="stats-card-head">
       <view>
         <text class="stats-card-title">{{ period === "history" ? "历史活跃榜" : "年度活跃榜" }}</text>
@@ -69,13 +69,16 @@ const scoreRanking = computed(() => buildActivityRanking(props.rankingItems, pro
 </template>
 
 <style scoped>
+@import "@/styles/list-surfaces.css";
 .stats-card {
   margin-top: 16rpx;
+  /* #ifndef MP-WEIXIN */
   padding: 26rpx;
   border: var(--ui-border-default);
   border-radius: var(--ui-radius-card);
   background: var(--ui-color-surface);
   box-shadow: var(--ui-shadow-raised);
+  /* #endif */
 }
 
 .stats-card-embedded {
@@ -230,7 +233,8 @@ const scoreRanking = computed(() => buildActivityRanking(props.rankingItems, pro
 
 /* #ifdef MP-WEIXIN */
 /* 微信端复用统一排版尺度；H5 保留原有样式。 */
-.stats-card { margin-top: var(--ui-space-4); padding: var(--ui-space-6); border: var(--ui-panel-border); border-radius: var(--ui-panel-radius); box-shadow: var(--ui-panel-shadow); }
+.stats-card { margin-top: var(--ui-card-gap); }
+.stats-card-embedded { margin-top: 0; padding: 0; border: var(--ui-panel-border); border-radius: var(--ui-panel-radius); background: transparent; box-shadow: var(--ui-panel-shadow); }
 .stats-card-title { font-size: var(--ui-text-heading); line-height: var(--ui-line-height-tight); font-weight: var(--ui-font-weight-heading); }
 .stats-card-caption { margin-top: var(--ui-space-2); font-size: var(--ui-text-sm); line-height: var(--ui-line-height-body); font-weight: var(--ui-font-weight-body); }
 .ranking-list { margin-top: var(--ui-space-6); }
@@ -246,5 +250,5 @@ const scoreRanking = computed(() => buildActivityRanking(props.rankingItems, pro
 .stats-empty-inner { margin-top: var(--ui-space-4); }
 .ranking-item--pressed { background: var(--ui-control-subtle-bg); }
 .ranking-avatar { border: var(--ui-panel-border); }
-/* #endif */
+  /* #endif */
 </style>

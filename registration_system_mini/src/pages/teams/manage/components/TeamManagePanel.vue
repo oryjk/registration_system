@@ -28,7 +28,7 @@ defineProps<{ title: string; caption?: string }>();
 
 /* #ifdef MP-WEIXIN */
 /* 微信端复用统一排版尺度；H5 保留原有样式。 */
-.manage-panel { padding: var(--ui-panel-padding) 0; }
+.manage-panel { padding: var(--ui-card-padding); }
 .manage-panel-heading { gap: var(--ui-list-row-gap); margin-bottom: var(--ui-space-6); }
 .manage-panel-title { font-size: var(--ui-text-heading); font-weight: var(--ui-font-weight-heading); line-height: var(--ui-line-height-tight); }
 .manage-panel-caption { margin-top: var(--ui-space-2); font-size: var(--ui-text-sm); line-height: var(--ui-line-height-body); }

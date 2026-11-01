@@ -59,7 +59,7 @@ onLoad((options) => {
 
 <template>
   <page-meta :page-style="themePageStyle" />
-  <view class="app-theme-scope apply-team-page" :style="[themePageStyle, pageStyle]">
+  <view class="app-theme-scope ui-card-page apply-team-page" :style="[themePageStyle, pageStyle]">
     <AppTabHeader title="接约确认" showBack />
 
     <view class="apply-team-content" :style="contentStyle">
@@ -116,6 +116,7 @@ onLoad((options) => {
 </template>
 
 <style scoped>
+@import "@/styles/page-surfaces.css";
 @import "@/styles/list-surfaces.css";
 .apply-team-page {
   min-height: 100vh;
@@ -190,8 +191,9 @@ onLoad((options) => {
 /* #endif */
 
 /* #ifdef MP-WEIXIN */
-.apply-team-content { display: flex; flex-direction: column; gap: var(--ui-section-gap); }
-.apply-team-hint, .apply-team-blocked { border: var(--ui-panel-border); border-radius: var(--ui-panel-soft-radius); padding: var(--ui-panel-padding); background: var(--ui-panel-soft-bg); }
+.apply-team-content { display: flex; flex-direction: column; gap: var(--ui-card-gap); }
+.apply-team-hint, .apply-team-blocked { border: var(--ui-panel-border); border-radius: var(--ui-card-radius); padding: var(--ui-card-padding); background: var(--ui-card-bg); box-shadow: var(--ui-card-shadow); }
+.apply-team-blocked { margin-top: 0; }
 .apply-team-retry { border: var(--ui-control-border); background: var(--ui-control-subtle-bg); padding: var(--ui-space-3) var(--ui-space-4); }
 .apply-team-blocked-copy { font-weight: var(--ui-font-weight-body); }
 /* #endif */

@@ -21,7 +21,7 @@ const emit = defineEmits<{
     <!-- mp-weixin 陷阱：custom-class + 父级 scoped 给子组件根节点做布局会被样式隔离挡住。
          AppSurface flush 后横排布局放在自己模板的包裹 view 上。 -->
     <AppSurface flush class="mine-wallet-surface">
-      <view class="mine-wallet-strip ui-soft-panel">
+      <view class="mine-wallet-strip">
         <view class="mine-wallet-strip__copy">
           <text class="mine-wallet-strip__label">钱包余额</text>
           <text class="mine-wallet-strip__value">{{ walletSummary.balanceLabel }}</text>
@@ -90,8 +90,8 @@ const emit = defineEmits<{
 .wallet-action::after { border:0; }
 
 /* #ifdef MP-WEIXIN */
-.mine-wallet-section { margin-top: var(--ui-section-gap); }
-.mine-wallet-strip { gap: var(--ui-space-5); margin-top: var(--ui-space-4); padding: var(--ui-panel-padding); background: var(--ui-panel-soft-bg); border-radius: var(--ui-panel-soft-radius); }
+.mine-wallet-section { display: flex; flex-direction: column; gap: var(--ui-space-4); margin-top: var(--ui-card-gap); }
+.mine-wallet-strip { gap: var(--ui-space-5); margin-top: 0; padding: var(--ui-card-padding); background: var(--ui-card-bg); }
 .mine-wallet-strip__label,.mine-wallet-strip__meta { font-size: var(--ui-text-sm); }
 .mine-wallet-strip__value { margin-top: var(--ui-space-1); font-size: var(--ui-text-display); font-weight: var(--ui-font-weight-heading); }
 .mine-wallet-strip__meta { margin-top: var(--ui-space-2); line-height: var(--ui-line-height-body); }

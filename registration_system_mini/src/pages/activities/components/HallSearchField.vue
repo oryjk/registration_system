@@ -35,6 +35,7 @@ function updateInput(event: Event) {
 .hall-search-submit { flex-shrink: 0; }
 
 /* #ifdef MP-WEIXIN */
+.hall-search-row { padding: var(--ui-card-padding); border: var(--ui-panel-border); border-radius: var(--ui-card-radius); background: var(--ui-card-bg); box-shadow: var(--ui-card-shadow); box-sizing: border-box; gap: var(--ui-space-4); margin-bottom: var(--ui-card-gap); }
 .hall-search-field { border: var(--ui-control-border); border-radius: var(--ui-control-radius); background: var(--ui-control-subtle-bg); height: var(--ui-input-height); padding: 0 var(--ui-input-padding); gap: var(--ui-space-3); }
 /* #endif */
 </style>

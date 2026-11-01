@@ -30,7 +30,7 @@ function closeDayMatches() {
 </script>
 
 <template>
-  <view :class="['stats-card', embedded ? 'stats-card-embedded' : '']">
+  <view :class="['stats-card', embedded ? 'stats-card-embedded' : 'ui-card-panel']">
     <view class="stats-card-head">
       <view>
         <text class="stats-card-title">我的出勤日历</text>
@@ -105,11 +105,13 @@ function closeDayMatches() {
 @import "@/styles/list-surfaces.css";
 .stats-card {
   margin-top: 16rpx;
+  /* #ifndef MP-WEIXIN */
   padding: 22rpx;
   border: var(--ui-border-default);
   border-radius: var(--ui-radius-card);
   background: var(--ui-color-surface);
   box-shadow: var(--ui-shadow-raised);
+  /* #endif */
 }
 
 .stats-card-embedded {
@@ -429,11 +431,12 @@ function closeDayMatches() {
 .calendar-popup {
   max-width: 694rpx;
 }
-/* #endif */
+  /* #endif */
 
 /* #ifdef MP-WEIXIN */
 /* 微信端复用统一排版尺度；H5 保留原有样式。 */
-.stats-card { margin-top: var(--ui-space-4); padding: var(--ui-space-5); border: var(--ui-panel-border); border-radius: var(--ui-panel-radius); box-shadow: var(--ui-panel-shadow); }
+.stats-card { margin-top: var(--ui-card-gap); }
+.stats-card-embedded { margin-top: 0; padding: 0; border: var(--ui-panel-border); border-radius: var(--ui-panel-radius); background: transparent; box-shadow: var(--ui-panel-shadow); }
 .stats-card-head { gap: var(--ui-space-3); }
 .stats-card-title { font-size: var(--ui-text-title); line-height: var(--ui-line-height-tight); font-weight: var(--ui-font-weight-heading); }
 .stats-card-caption { margin-top: var(--ui-space-2); font-size: var(--ui-text-xs); font-weight: var(--ui-font-weight-body); }

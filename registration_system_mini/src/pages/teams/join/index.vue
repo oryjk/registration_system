@@ -48,7 +48,7 @@ onShow(() => { if (joinedTeam.value) void refreshIllustrations(); });
 
 <template>
   <page-meta :page-style="themePageStyle" />
-  <view class="app-theme-scope team-join-page" :style="[themePageStyle, pageStyle]">
+  <view class="app-theme-scope ui-card-page team-join-page" :style="[themePageStyle, pageStyle]">
     <AppTabHeader title="加入球队" showBack />
 
     <view class="team-join-content">
@@ -99,6 +99,7 @@ onShow(() => { if (joinedTeam.value) void refreshIllustrations(); });
 </template>
 
 <style scoped>
+@import "@/styles/page-surfaces.css";
 @import "@/styles/list-surfaces.css";
 .team-join-page {
   min-height: 100vh;

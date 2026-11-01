@@ -257,7 +257,7 @@ provide(APP_SCROLL_CONTROLLER, appScrollController);
 <template>
   <!-- 页面本体锁定不滚动（滚动在 AppPullScrollView 内），header 不随下拉移动。 -->
   <page-meta :page-style="`${themePageStyle};overflow:hidden`" />
-  <view class="app-theme-scope hall-page" :style="themePageStyle">
+  <view class="app-theme-scope ui-card-page hall-page" :style="themePageStyle">
     <AppTabHeader title="约队大厅" showBack />
 
     <AppPullScrollView ref="appScrollAnchor" :refreshing="refreshing" @refresh="handleRefresherRefresh" @reach-bottom="loadMoreSearchResults">
@@ -391,6 +391,7 @@ provide(APP_SCROLL_CONTROLLER, appScrollController);
 </template>
 
 <style scoped>
+@import "@/styles/page-surfaces.css";
 @import "@/styles/list-surfaces.css";
 .hall-page {
   position: relative;
@@ -536,7 +537,7 @@ provide(APP_SCROLL_CONTROLLER, appScrollController);
 /* #endif */
 
 /* #ifdef MP-WEIXIN */
-.hall-guest-card, .hall-empty { border: var(--ui-panel-border); box-shadow: var(--ui-panel-shadow); border-radius: var(--ui-panel-soft-radius); background: var(--ui-panel-soft-bg); padding: var(--ui-panel-padding); }
+.hall-guest-card, .hall-empty { border: var(--ui-panel-border); box-shadow: var(--ui-card-shadow); border-radius: var(--ui-card-radius); background: var(--ui-card-bg); padding: var(--ui-card-padding); }
 .hall-content { padding-inline: var(--ui-page-padding-inline); }
 .hall-empty-action, .hall-load-more { border: var(--ui-control-border); background: var(--ui-control-subtle-bg); border-radius: var(--ui-control-radius); }
 /* #endif */

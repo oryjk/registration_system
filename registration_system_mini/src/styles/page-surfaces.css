@@ -1,0 +1,4 @@
+/* Local page roots only; specificity keeps legacy page selectors intact on H5. */
+/* #ifdef MP-WEIXIN */
+.app-theme-scope.ui-card-page { background: var(--ui-color-page-muted); }
+/* #endif */

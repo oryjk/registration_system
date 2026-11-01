@@ -30,7 +30,7 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <view class="mine-profile-hero">
+  <view class="mine-profile-hero ui-card-panel">
     <view class="profile-row">
       <view class="profile-avatar">
         <image v-if="currentUser?.avatar_url && !avatarLoadFailed" :src="minioImageSrc(currentUser.avatar_url)" mode="aspectFill" @error="minioImageSrc(currentUser.avatar_url) && (avatarLoadFailed = true)" />
@@ -66,7 +66,7 @@ const emit = defineEmits<{
 
 
 /* #ifdef MP-WEIXIN */
-.mine-profile-hero { padding: var(--ui-space-4) 0 var(--ui-space-6); border: var(--ui-panel-border); border-radius: var(--ui-panel-radius); }
+.mine-profile-hero { padding: var(--ui-card-padding); border: var(--ui-panel-border); border-radius: var(--ui-card-radius); background: var(--ui-card-bg); }
 .profile-row { gap: var(--ui-space-5); }
 .profile-name { font-size: var(--ui-text-heading); font-weight: var(--ui-font-weight-heading); }
 .profile-meta { margin-top: var(--ui-space-2); font-size: var(--ui-text-sm); line-height: var(--ui-line-height-body); }

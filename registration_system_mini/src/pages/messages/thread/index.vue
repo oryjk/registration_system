@@ -93,7 +93,7 @@ usePageRefresh(loadThread);
 
 <template>
   <page-meta :page-style="themePageStyle" />
-  <view class="app-theme-scope thread-page" :style="[themePageStyle, contentStyle]">
+  <view class="app-theme-scope ui-card-page thread-page" :style="[themePageStyle, contentStyle]">
     <AppTabHeader title="球队留言" showBack />
 
     <view class="thread-content">
@@ -101,7 +101,7 @@ usePageRefresh(loadThread);
       <RunningLoader v-else-if="isLoading && !thread" text="正在收取留言" />
 
       <template v-else-if="thread">
-        <view class="thread-hero ui-soft-panel" hover-class="thread-hero--pressed" role="button" @tap="openMatch">
+        <view class="thread-hero ui-card-panel" hover-class="thread-hero--pressed" role="button" @tap="openMatch">
           <text class="thread-hero-label">关联比赛</text>
           <view class="thread-hero-main">
             <text class="thread-match">{{ thread.match_name }}</text>
@@ -170,6 +170,7 @@ usePageRefresh(loadThread);
 </template>
 
 <style scoped>
+@import "@/styles/page-surfaces.css";
 @import "@/styles/list-surfaces.css";
 
 .thread-page {
@@ -458,7 +459,7 @@ usePageRefresh(loadThread);
 
 /* #ifdef MP-WEIXIN */
 .thread-page { padding-left: var(--ui-page-padding-inline); padding-right: var(--ui-page-padding-inline); }
-.thread-hero { padding: var(--ui-panel-padding); border: var(--ui-panel-border); border-radius: var(--ui-panel-soft-radius); background: var(--ui-panel-soft-bg); box-shadow: var(--ui-panel-shadow); }
+.thread-hero { padding: var(--ui-card-padding); border: var(--ui-panel-border); border-radius: var(--ui-card-radius); background: var(--ui-card-bg); box-shadow: var(--ui-card-shadow); }
 .thread-hero--pressed { transform: none; box-shadow: var(--ui-shadow-control-pressed); }
 .thread-hero-main { gap: var(--ui-space-4); }
 .thread-match { font-size: var(--ui-text-title); font-weight: var(--ui-font-weight-heading); overflow-wrap: anywhere; }

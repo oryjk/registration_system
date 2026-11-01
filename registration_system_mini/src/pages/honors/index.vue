@@ -22,7 +22,7 @@ function shareInMini(){uni.showModal({title:"分享我的荣誉",content:"请在
 </script>
 <template>
  <page-meta :page-style="themePageStyle" />
- <view class="app-theme-scope honor-page" :style="[themePageStyle,pageStyle]">
+ <view class="app-theme-scope ui-card-page honor-page" :style="[themePageStyle,pageStyle]">
   <AppTabHeader :title="isSelf ? '分享我的荣誉' : '足球年度荣誉'" showBack />
   <RunningLoader v-if="loading" text="正在打开荣誉" />
   <AppSurface v-else-if="error" custom-class="honor-error">
@@ -30,8 +30,8 @@ function shareInMini(){uni.showModal({title:"分享我的荣誉",content:"请在
   </AppSurface>
   <template v-else-if="view">
    <view class="honor-intro"><text class="honor-intro-title">{{isSelf ? '为每一次参与，留下纪念' : view.nickname+'的足球年度'}}</text><text class="honor-intro-caption">{{isSelf ? '选一款喜欢的背景，把这份热爱分享出去。' : '一起踢球，也一起积累属于球队的荣誉。'}}</text></view>
-   <view class="honor-poster-stage ui-soft-panel"><HonorPoster :view="view" :background="background" :background-image-url="backgroundImageUrl" :mini-code-url="miniCodeUrl" :show-code="isSelf" :code-loading="codeLoading" /></view>
-   <view v-if="isSelf" class="honor-picker">
+   <view class="honor-poster-stage ui-card-panel"><HonorPoster :view="view" :background="background" :background-image-url="backgroundImageUrl" :mini-code-url="miniCodeUrl" :show-code="isSelf" :code-loading="codeLoading" /></view>
+   <view v-if="isSelf" class="honor-picker ui-card-panel">
     <text class="honor-section-title">选择海报背景</text>
     <view class="honor-backgrounds">
      <button v-for="item in backgrounds" :key="item.id" class="honor-background" :class="{'honor-background--selected':background.id===item.id}" :disabled="saving" :aria-label="item.name+'，免费'" :aria-pressed="background.id===item.id" @tap="chooseBackground(item)">
@@ -72,6 +72,7 @@ function shareInMini(){uni.showModal({title:"分享我的荣誉",content:"请在
  </view>
 </template>
 <style scoped>
+@import "@/styles/page-surfaces.css";
 @import "@/styles/list-surfaces.css";
 
 .honor-page{min-height:100vh;padding:0 28rpx 80rpx;background:var(--ui-color-page);box-sizing:border-box}
@@ -100,8 +101,8 @@ function shareInMini(){uni.showModal({title:"分享我的荣誉",content:"请在
 .honor-intro { gap: var(--ui-space-3); margin: var(--ui-space-3) 0 var(--ui-space-6); }
 .honor-intro-title { font-size: var(--ui-text-heading); }
 .honor-intro-caption,.honor-card-copy { font-size: var(--ui-text-body); line-height: var(--ui-line-height-body); }
-.honor-poster-stage { padding: var(--ui-space-6) var(--ui-space-3); background: var(--ui-panel-soft-bg); border-radius: var(--ui-panel-soft-radius); }
-.honor-picker { margin-top: var(--ui-section-gap); }
+.honor-poster-stage { padding: var(--ui-space-6) var(--ui-space-3); background: var(--ui-card-bg); border-radius: var(--ui-card-radius); }
+.honor-picker { margin-top: var(--ui-card-gap); }
 .honor-section-title { font-size: var(--ui-text-title); }
 .honor-backgrounds { gap: var(--ui-list-gap); margin: var(--ui-space-4) 0 var(--ui-space-6); }
 .honor-background { padding: var(--ui-space-2) var(--ui-space-2) var(--ui-space-3); gap: var(--ui-space-2); border: var(--ui-control-border); border-radius: var(--ui-control-radius); background: var(--ui-control-subtle-bg); font-size: var(--ui-text-sm); }
@@ -112,7 +113,7 @@ function shareInMini(){uni.showModal({title:"分享我的荣誉",content:"请在
 .honor-footnote { margin-top: var(--ui-space-5); font-size: var(--ui-text-sm); line-height: var(--ui-line-height-body); }
 .honor-code-error { gap: var(--ui-space-4); margin-bottom: var(--ui-space-5); font-size: var(--ui-text-sm); }
 .honor-card-content,.honor-error-copy { gap: var(--ui-space-5); }
-.honor-recipient-cards { gap: var(--ui-section-gap); margin-top: var(--ui-section-gap); --ui-panel-padding: var(--ui-space-6) 0; }
+.honor-recipient-cards { gap: var(--ui-card-gap); margin-top: var(--ui-card-gap); }
 .honor-password { height: var(--ui-input-height); padding: 0 var(--ui-input-padding); border: var(--ui-input-border); border-radius: var(--ui-input-radius); font-size: var(--ui-text-label); }
 .honor-home-link { margin-top: var(--ui-section-gap); padding: var(--ui-space-5) 0; font-size: var(--ui-text-body); }
 /* #endif */

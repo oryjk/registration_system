@@ -14,7 +14,7 @@ const emit = defineEmits<{
 <template>
   <view class="hall-match-list">
     <!-- #ifdef MP-WEIXIN -->
-    <view v-for="card in cards" :key="card.id" class="hall-match-row ui-list-row">
+    <view v-for="card in cards" :key="card.id" class="hall-match-row">
       <HallMatchCard :card="card" @match-tap="emit('matchTap', card)" />
     </view>
     <!-- #endif -->
@@ -39,7 +39,7 @@ const emit = defineEmits<{
 }
 
 /* #ifdef MP-WEIXIN */
-.hall-match-list { gap: 0; margin-top: var(--ui-list-gap); }
-.hall-match-row { padding: var(--ui-list-row-padding) 0; }
+.hall-match-list { gap: var(--ui-card-gap); margin-top: var(--ui-list-gap); }
+.hall-match-row { min-width: 0; }
 /* #endif */
 </style>

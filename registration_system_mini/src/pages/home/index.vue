@@ -412,7 +412,7 @@ onShareTimeline(() => ({
 <template>
   <!-- 页面本体锁定不滚动（滚动在 AppPullScrollView 内），原生下拉不再触发，header 不随下拉移动。 -->
   <page-meta :page-style="`${themePageStyle};overflow:hidden`" />
-  <view class="app-theme-scope home-page" :style="themePageStyle">
+  <view class="app-theme-scope ui-card-page home-page" :style="themePageStyle">
     <AppTabHeader title="首页">
       <!-- mp 端 slot 内容不吃子组件 scoped 样式，回落标题用页面自己的类保持同款字号。 -->
       <template #title>
@@ -553,8 +553,10 @@ onShareTimeline(() => ({
 </template>
 
 <style scoped>
+@import "@/styles/page-surfaces.css";
+@import "@/styles/list-surfaces.css";
 /* #ifdef MP-WEIXIN */
-.home-start-entries { margin-bottom: 24rpx; }
+.home-start-entries { margin-bottom: var(--ui-card-gap); }
 /* #endif */
 
 .home-page {
@@ -663,5 +665,8 @@ onShareTimeline(() => ({
   max-width: 750rpx;
   transform: translateX(-50%);
 }
+/* #endif */
+/* #ifdef MP-WEIXIN */
+.home-empty { border: var(--ui-panel-border); border-radius: var(--ui-card-radius); background: var(--ui-card-bg); box-shadow: var(--ui-card-shadow); }
 /* #endif */
 </style>

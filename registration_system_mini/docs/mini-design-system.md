@@ -2,7 +2,7 @@
 
 **状态：当前有效。适用范围：`registration_system_mini` 的 H5 与 mp-weixin。**
 
-本文是前端视觉与交互的唯一现行规范，优先于历史设计稿、改版实施计划及基线快照。当前采用「轻量赛事 UI」：浅色表面、柔和圆角、留白分区、清晰主次。微信端普通内容区默认无外框，表单与浮层保留必要边界；H5 沿用原样式。D 仅是方案选择时的历史代号，不用于组件命名。
+本文是前端视觉与交互的唯一现行规范，优先于历史设计稿、改版实施计划及基线快照。当前采用「轻量赛事 UI」：浅色表面、柔和圆角、留白分区、清晰主次。微信端使用浅中性页面背景、独立圆角卡片与柔和阴影，内部列表保持平面；H5 沿用原样式。D 仅是方案选择时的历史代号，不用于组件命名。
 
 旧 Neo / Soft Neo / Neobrutalism 视觉规范已废止。不得恢复粗黑描边、硬偏移阴影、800/900 常规字重、风格型组件名或 `--neo-*` token。历史文件仅用于追溯业务决策，不可据其复原旧皮肤。现行组件位于 `src/components/ui/`，样式入口为 `src/styles/design-tokens.css`，强调色配置为 `src/config/themePalettes.ts`；命名迁移已经完成。
 
@@ -22,17 +22,13 @@
 
 ### 微信页面共享契约（2026-11-01）
 
-- 间距使用 `--ui-space-*`，字号使用 `--ui-text-*`，行高、图标与字重使用相应 `--ui-line-height-*` / `--ui-icon-*` / `--ui-font-weight-*`；具体场景由 component token 引用这些基础尺度。
-- 普通内容区复用 `AppSurface`，微信端 raised/outlined 默认去边框、圆角与阴影，使用 `--ui-panel-*` 控制。明确的浅底分区使用 `--ui-panel-soft-*`，不叠加多层描边。弹窗与深色 hero 独立保留其表面契约。
-- 页面内原生 wrapper 引入 `src/styles/list-surfaces.css`，复用 `ui-section-stack`、`ui-plain-panel`、`ui-soft-panel`、`ui-list-row` 与 `ui-subtle-control`；相邻列表行使用 `--ui-list-divider`，布局不依赖穿透子组件样式。
-- 创建、加入、帮助与发布页头复用 `AppPageIntro`，由 props 提供文案及现有 MinIO 插画，复用缓存与图片失败降级；业务请求和提交仍由父页面负责。
-- 输入框使用 `--ui-input-*`，时间选择使用 `--ui-schedule-*`，底部操作使用 `StickyActionBar`；输入边界、选中状态、危险操作和确认浮层仍清楚区分，不能因去卡片外框一并移除。
-- 微信比赛报名详情页先行采用独立表面层次：页面使用 `--ui-color-page-muted`，内容区显式提供 `--ui-content-surface-radius` / `--ui-content-surface-shadow`，分别引用现有 card 圆角及柔和阴影 token。`AppSurface` 读取这些可选覆盖，其他页面继续回退 `--ui-panel-*`；覆盖限定在内容 shell，确认弹窗保持自身表面。卡片内部不再嵌套阴影，队长入口随是否位于名单内使用内嵌/独立表面。
-- 本轮页头、列表与表单外观仅在 MP-WEIXIN 下接入；H5 保留原有样式。业务色卡、球衣颜色、海报画布与原生地图不机械套用页面 token。
-
-### 微信端方向箭头
-
-微信端导航、列表、操作按钮、展开收起和日历方向箭头统一采用「实心尖角＋圆点尾迹」。原稿位于 `src/static/icons/dotted-arrow.svg`，通过 `scripts/build-arrow-font.py` 派生内嵌字体；仅在 MP-WEIXIN 引入 `styles/arrow-font.css`。Wot 方向图标集中覆盖，文字箭头使用 `ui-arrow-text`，CSS 尖角通过条件编译替换；H5 保留原字形与布局。方向、点击行为、禁用态和原语义颜色保持一致，双箭头仍显示两个尖角。新入口不要再绘制 CSS 尖角；编辑、分享、播放等独立语义图标继续沿用原组件。生成步骤见 `scripts/arrow-font-README.md`。
+- 页面根节点使用 `app-theme-scope ui-card-page` 并在 scoped 样式引入 `page-surfaces.css`，只在 MP-WEIXIN 使用 `--ui-color-page-muted`，H5 原样。原生地图、海报画布和 web-view 文档不机械套用卡片。
+- 独立内容优先复用 `AppSurface`：微信端 raised/outlined 默认无描边，使用 `--ui-card-padding/radius/shadow`。`flush` 由内部原生 wrapper 承担 padding；深色 hero 与确认浮层继续使用自身契约。
+- 原生容器复用 `list-surfaces.css` 的 `ui-card-panel`（完整内边距）或 `ui-card-list`（横向内边距、行内控制纵向间距），需要图片贴合外层时使用 `ui-card-panel--flush`。卡面颜色使用 `--ui-card-bg`，卡间距使用 `--ui-card-gap`。
+- `--ui-panel-*`、`ui-plain-panel`、`ui-soft-panel` 与 `ui-list-row` 留给卡片内部的平面分组、摘要和列表；不要将它们全局改成带阴影。嵌入内容显式保持平面，避免重复阴影和内边距。AppSurface 允许局部 `--ui-content-surface-radius/shadow` 覆盖，但仅在确有嵌入需求时使用。
+- 创建、加入、帮助与发布页头复用 `AppPageIntro` 和现有 MinIO 缓存插画。间距、字号、行高、字重、图标、表单与底栏尺寸使用对应共享 token，业务请求与提交仍由父页面负责。
+- 输入边界、选中状态、危险操作、确认弹窗和报名进度语义保持清晰；不把球衣颜色、业务色卡或海报画布设计值机械替换成页面 token。
+- 微信仅使用薄荷蓝，不读取历史主题偏好，也不提供切换入口或 setter；H5 继续使用已有主题偏好和选择器。不得因共用 store 恢复微信主题切换。
 
 ## 配色与语义映射
 
@@ -47,9 +43,9 @@
 | 主按钮 | `--ui-color-cta` / `-fg` | 薄荷底海军蓝字（随主题） |
 | 结构线 | `--ui-color-line` / `-strong` | `#e4eaf2` / `#c6d2df` |
 
-### 可选主题
+### H5 可选主题（微信固定薄荷蓝）
 
-提供薄荷蓝（默认）、青柠、晴空蓝、珊瑚紫、曜夜橙五套主题。晴空蓝替代活力橙；旧 `orange` 本地偏好自动迁移为 `blue`。
+H5 提供薄荷蓝（默认）、青柠、晴空蓝、珊瑚紫、曜夜橙五套主题；微信固定薄荷蓝，旧设备偏好不参与微信首屏渲染。晴空蓝替代活力橙；旧 `orange` 本地偏好自动迁移为 `blue`。
 
 晴空蓝采用白底 `#fffffe`、深蓝标题 `#094067`、灰蓝正文 `#5f6c7b`、蓝色按钮 `#3da9fc` 配白字；辅助蓝 `#90b4ce` 用于较强结构线，粉红 `#ef4565` 用于辅助高亮。补充浅蓝选中底 `#e8f4ff`、细线 `#e0eaf2`、冷灰禁用底 `#dce7ef`。按压反馈采用内侧阴影、表面色变化或位移动效。有背景的按钮保持不透明，不能降低整块按钮的 opacity；内侧阴影复用 `--ui-shadow-control-pressed`，避免悬浮按钮透出页面内容。下方状态色及报名进度语义保持不变。切回其他主题时基础色必须显式恢复，不能残留晴空蓝的正文/线色。
 
@@ -93,10 +89,10 @@
 
 ## 主题运行时
 
-- 五套完整主题由 `src/config/themePalettes.ts` 定义，页面、卡片、文字、线色、按钮和状态前景/背景统一切换；状态的含义保持不变。
+- 微信 store 固定 `DEFAULT_ACCENT_THEME`（薄荷蓝），平台编译时排除存储读取和切换方法。H5 的五套主题由 `src/config/themePalettes.ts` 定义并沿用切换；状态的含义保持不变。
 - 每个本地页面同时绑定 `page-meta` 与根节点 `app-theme-scope` 的 `themePageStyle`，避免 H5 缓存页面间变量残留。
 - 脱离页面层级的 root-portal 弹窗必须显式绑定主题变量；仅依赖页面继承不足以覆盖 H5。
-- 偏好由 `src/utils/themeStorage.ts` 持久化；原生 switch 使用 `accentHex`。
+- H5 偏好由 `src/utils/themeStorage.ts` 持久化；微信不读取/写入主题偏好。原生 switch 使用 `accentHex`。
 
 ## 动效规范（Motion）
 
@@ -224,7 +220,7 @@
 
 所有本地页面的最外层 view 同时绑定 `app-theme-scope` 和响应式 `themePageStyle`；`page-meta` 继续用于原生页面及滚动锁。H5 的 page-meta 实现通过 document.querySelector 命中首个缓存页，不能作为唯一主题载体。语义 token 必须在 `.app-theme-scope` 上重新计算，避免继承到其他页面已解析的旧配色。外部 web-view 文档独立管理主题。
 
-微信个人中心沿用首页的无外框内容分区、浅底摘要及统一主题语义色（H5 保留原样式）：资料卡只突出编辑，统计为单张中性卡，球队列表合并当前身份标记并保留独立切换入口，比赛按行展示，钱包不使用大块警告底色。消息/联系/设置合并为服务列表；主题选项折叠展示，低频退出与清理操作放底部；调试身份入口折叠，正在代用身份时始终露出恢复入口。业务能力和权限保持不变。
+微信个人中心沿用报名页的浅底、独立圆角卡片与柔和阴影（H5 保留原样式）：资料卡只突出编辑，统计为单张中性卡，球队列表合并当前身份标记并保留独立切换入口，比赛按行展示，钱包不使用大块警告底色。消息/联系/设置合并为服务列表；微信移除主题入口，H5 主题选项折叠展示；低频退出与清理操作放底部；调试身份入口折叠，正在代用身份时始终露出恢复入口。业务能力和权限保持不变。
 
 ## 复用与表单收口
 
@@ -247,6 +243,6 @@
 
 ## 球队管理
 
-微信创建球队页复用首页的夜场照片、建队盾牌和加入球队球衣插画，使用复用的深色引导页头、无外框表单区与浅底次要加入入口，输入框保留轻描边。素材沿用 MinIO 缓存，不新增大图。密码输入框与提交按钮间距由 `TeamCreatePanel` 内部的原生 view 提供 `var(--ui-space-8)`（32rpx）顶部 padding，不能通过父级 scoped/deep 样式跨组件修改 `AppButton`。
+微信创建球队页复用首页的夜场照片、建队盾牌和加入球队球衣插画，使用复用的深色引导页头、独立圆角表单卡与次要加入入口，输入框保留轻描边。素材沿用 MinIO 缓存，不新增大图。密码输入框与提交按钮间距由 `TeamCreatePanel` 内部的原生 view 提供 `var(--ui-space-8)`（32rpx）顶部 padding，不能通过父级 scoped/deep 样式跨组件修改 `AppButton`。
 
-球队资料、队员管理和队员出勤使用页面内 `TeamManagePanel` 统一无外框分区、标题与 token 内边距；布局由本地 wrapper 承担，不依赖父级 scoped 穿透组件。资料、入队密码与低频解散操作分组；队员按管理角色、普通队员、冻结队员分组，保留姓名和角色；出勤、编辑、冻结／恢复、移除合并为同一排带图标的紧凑胶囊按钮，尺寸及浅底风格统一，移除保留浅危险语义色。比赛出勤展开后使用 success/warning/neutral 的前景和背景对展示统计及状态，姓名、比赛名和地点允许换行。保持原有权限、提交与确认流程。
+球队资料、队员管理和队员出勤使用页面内 `TeamManagePanel` 统一圆角卡面、标题与 token 内边距；布局由本地 wrapper 承担，不依赖父级 scoped 穿透组件。资料、入队密码与低频解散操作分组；队员按管理角色、普通队员、冻结队员分组，保留姓名和角色；出勤、编辑、冻结／恢复、移除合并为同一排带图标的紧凑胶囊按钮，尺寸及浅底风格统一，移除保留浅危险语义色。比赛出勤展开后使用 success/warning/neutral 的前景和背景对展示统计及状态，姓名、比赛名和地点允许换行。保持原有权限、提交与确认流程。

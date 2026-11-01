@@ -149,7 +149,7 @@ const captainName = computed(() => props.captain.nickname || "队长");
 }
 
 /* #ifdef MP-WEIXIN */
-.captain-surface { border: var(--ui-panel-border); border-radius: var(--ui-content-surface-radius, var(--ui-panel-radius)); box-shadow: var(--ui-content-surface-shadow, var(--ui-panel-shadow)); }
+.captain-surface { border: var(--ui-panel-border); border-radius: var(--ui-content-surface-radius, var(--ui-card-radius)); box-shadow: var(--ui-content-surface-shadow, var(--ui-card-shadow)); }
 .captain-surface--embedded { border-top: var(--ui-list-divider); border-radius: var(--ui-panel-radius); box-shadow: var(--ui-panel-shadow); margin-top: var(--ui-space-6); }
 .captain-card { padding: var(--ui-space-5) var(--ui-panel-padding); gap: var(--ui-space-5); }
 .captain-surface--embedded .captain-card { padding: var(--ui-space-5) 0 0; }

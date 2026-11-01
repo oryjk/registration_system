@@ -45,7 +45,7 @@ onShow(() => { void preloadMiniReviewStatus(); void refreshIllustrations(); });
 
 <template>
   <page-meta :page-style="themePageStyle" />
-  <view class="app-theme-scope help-page" :style="[themePageStyle, pageStyle]">
+  <view class="app-theme-scope ui-card-page help-page" :style="[themePageStyle, pageStyle]">
     <AppTabHeader title="使用帮助" showBack />
     <view class="help-content">
       <!-- #ifdef MP-WEIXIN -->
@@ -69,7 +69,7 @@ onShow(() => { void preloadMiniReviewStatus(); void refreshIllustrations(); });
       </view>
       <text class="help-login-note">需要登录时，页面会提示你继续操作。</text>
 
-      <view v-if="!shouldHideCreationEntrances" class="help-route ui-plain-panel">
+      <view v-if="!shouldHideCreationEntrances" class="help-route ui-card-panel">
         <text class="help-route-title">我想组织一支球队</text>
         <text class="ui-arrow-text help-route-summary">创建球队 → 邀请队友 → 发起比赛 → 分享报名</text>
         <view class="help-step"><text class="help-step-number">1</text><text>点击「创建球队」，填写球队资料，创建后你就是队长。</text></view>
@@ -78,7 +78,7 @@ onShow(() => { void preloadMiniReviewStatus(); void refreshIllustrations(); });
         <view class="help-step"><text class="help-step-number">4</text><text>打开比赛详情并分享给队友，队友打开后即可按页面提示报名。</text></view>
       </view>
 
-      <view class="help-route ui-plain-panel">
+      <view class="help-route ui-card-panel">
         <text class="help-route-title">我已经有一起踢球的队友</text>
         <text class="ui-arrow-text help-route-summary">找到球队 → 加入球队 → 报名比赛</text>
         <view class="help-step"><text class="help-step-number">1</text><text>点击「加入球队」搜索球队名称，或直接打开队友发来的球队邀请。</text></view>
@@ -86,7 +86,7 @@ onShow(() => { void preloadMiniReviewStatus(); void refreshIllustrations(); });
         <view class="help-step"><text class="help-step-number">3</text><text>回到首页查看球队比赛，或打开队友分享的比赛，进入详情确认信息后报名。</text></view>
       </view>
 
-      <view class="help-route ui-plain-panel">
+      <view class="help-route ui-card-panel">
         <text class="help-route-title">我想先找一场球踢</text>
         <text class="ui-arrow-text help-route-summary">找比赛 → 确认时间、地点、费用 → 报名</text>
         <view class="help-step"><text class="help-step-number">1</text><text>点击「找比赛」进入约队大厅，浏览适合个人参加的散人约球。</text></view>
@@ -99,6 +99,7 @@ onShow(() => { void preloadMiniReviewStatus(); void refreshIllustrations(); });
 </template>
 
 <style scoped>
+@import "@/styles/page-surfaces.css";
 @import "@/styles/list-surfaces.css";
 
 .help-page { min-height:100vh; padding:0 28rpx calc(env(safe-area-inset-bottom) + 48rpx); box-sizing:border-box; background:var(--ui-color-page); }
@@ -124,7 +125,7 @@ onShow(() => { void preloadMiniReviewStatus(); void refreshIllustrations(); });
 .help-intro-panel { margin-bottom: var(--ui-space-6); }
 .help-replay { margin-bottom: var(--ui-space-6); }
 .help-actions { gap: var(--ui-space-4); }
-.help-route { margin-top: var(--ui-section-gap); padding: var(--ui-space-7) 0 0; border: var(--ui-panel-border); border-top: var(--ui-list-divider); border-radius: var(--ui-panel-radius); }
+.help-route { margin-top: var(--ui-card-gap); padding: var(--ui-card-padding); border: var(--ui-panel-border); border-radius: var(--ui-card-radius); background: var(--ui-card-bg); }
 .help-route-title { font-size: var(--ui-text-title); }
 .help-route-summary { margin-top: var(--ui-space-3); font-size: var(--ui-text-body); line-height: var(--ui-line-height-body); }
 .help-step { gap: var(--ui-space-4); margin-top: var(--ui-space-6); font-size: var(--ui-text-label); line-height: var(--ui-line-height-body); }

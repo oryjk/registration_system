@@ -47,7 +47,7 @@ onShow(() => { if (createdTeamId.value) void refreshIllustrations(); });
 
 <template>
   <page-meta :page-style="themePageStyle" />
-  <view class="app-theme-scope team-create-page" :style="[themePageStyle, pageStyle]">
+  <view class="app-theme-scope ui-card-page team-create-page" :style="[themePageStyle, pageStyle]">
     <AppTabHeader title="创建球队" showBack />
 
     <view class="team-create-content">
@@ -95,6 +95,7 @@ onShow(() => { if (createdTeamId.value) void refreshIllustrations(); });
 </template>
 
 <style scoped>
+@import "@/styles/page-surfaces.css";
 @import "@/styles/list-surfaces.css";
 .created-next { display: flex; flex-direction: column; gap: 20rpx; padding: 28rpx; }
 .created-next__status { color: var(--ui-color-success-fg); font-size: 24rpx; font-weight: 600; }
@@ -153,7 +154,7 @@ onShow(() => { if (createdTeamId.value) void refreshIllustrations(); });
 
 /* #ifdef MP-WEIXIN */
 /* 微信端复用统一排版尺度；H5 保留原有样式。 */
-.created-next { gap: var(--ui-list-gap); padding: 0; }
+.created-next { gap: var(--ui-list-gap); padding: var(--ui-card-padding); }
 .created-next__status { font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-heading); }
 .created-next__title { font-size: var(--ui-text-title); font-weight: var(--ui-font-weight-heading); }
 .team-create-page { padding: 0 var(--ui-page-padding-inline) var(--ui-page-padding-bottom); }

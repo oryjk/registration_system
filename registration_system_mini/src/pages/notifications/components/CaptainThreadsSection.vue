@@ -23,14 +23,14 @@ const emit = defineEmits<{
 
 <template>
   <view class="threads-section">
-    <view v-if="errorMessage && !hasLoadedOnce" class="threads-card" @tap="emit('retry')">
+    <view v-if="errorMessage && !hasLoadedOnce" class="threads-card ui-card-panel" @tap="emit('retry')">
       <view>{{ errorMessage }}</view>
       <view class="threads-action">点击重试</view>
     </view>
-    <view v-else-if="isLoading && !hasLoadedOnce" class="threads-card">正在加载留言...</view>
+    <view v-else-if="isLoading && !hasLoadedOnce" class="threads-card ui-card-panel">正在加载留言...</view>
 
     <template v-else>
-      <view v-for="item in items" :key="item.id" class="threads-item-shell ui-list-row">
+      <view v-for="item in items" :key="item.id" class="threads-item-shell">
         <AppSurface
           variant="raised"
           interactive
@@ -63,7 +63,7 @@ const emit = defineEmits<{
         </AppSurface>
       </view>
 
-      <view v-if="!items.length" class="threads-card">还没有球队留言。在比赛详情页点「联系队长」即可给对方队长留言。</view>
+      <view v-if="!items.length" class="threads-card ui-card-panel">还没有球队留言。在比赛详情页点「联系队长」即可给对方队长留言。</view>
       <view v-else-if="hasMore" class="threads-more" @tap="emit('loadMore')">
         {{ isLoadingMore ? "加载中..." : "加载更多" }}
       </view>
@@ -219,8 +219,8 @@ const emit = defineEmits<{
 }
 
 /* #ifdef MP-WEIXIN */
-.threads-section { gap: 0; margin-top: var(--ui-space-4); }
-.threads-item-shell { display: block; padding: 0; --ui-panel-padding: var(--ui-list-row-padding) 0; }
+.threads-section { gap: var(--ui-card-gap); margin-top: var(--ui-space-4); }
+.threads-item-shell { display: block; }
 .threads-item-content { display: flex; flex-direction: column; gap: var(--ui-space-3); }
 .threads-item-top { align-items: flex-start; gap: var(--ui-space-3); }
 .threads-item-user { flex: 1; gap: var(--ui-list-row-gap); }
@@ -231,7 +231,7 @@ const emit = defineEmits<{
 .threads-item-unread { padding: var(--ui-space-1) var(--ui-space-3); border: var(--ui-control-border); background: var(--ui-color-danger-bg); color: var(--ui-color-danger-fg); font-size: var(--ui-text-xs); }
 .threads-avatar { border: var(--ui-panel-border); background: var(--ui-control-subtle-bg); }
 .threads-item-preview { font-size: var(--ui-text-label); line-height: var(--ui-line-height-body); overflow-wrap: anywhere; }
-.threads-card { padding: var(--ui-space-6) 0; border: var(--ui-panel-border); border-radius: var(--ui-panel-radius); font-size: var(--ui-text-body); line-height: var(--ui-line-height-body); }
+.threads-card { padding: var(--ui-card-padding); border: var(--ui-panel-border); border-radius: var(--ui-card-radius); background: var(--ui-card-bg); font-size: var(--ui-text-body); line-height: var(--ui-line-height-body); }
 .threads-action,.threads-more { min-height: var(--ui-control-min-height); padding: var(--ui-space-3) var(--ui-space-4); border: var(--ui-control-border); border-radius: var(--ui-control-radius); background: var(--ui-control-subtle-bg); font-size: var(--ui-text-body); }
 .threads-more-end { background: transparent; }
 /* #endif */

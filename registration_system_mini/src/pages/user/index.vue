@@ -16,7 +16,9 @@ import MineMatchSection from "./components/MineMatchSection.vue";
 import RunningLoader from "@/components/ui/RunningLoader.vue";
 import MineWalletSection from "./components/MineWalletSection.vue";
 import MineImpersonationPanel from "./components/MineImpersonationPanel.vue";
+// #ifndef MP-WEIXIN
 import ThemeAccentPicker from "./components/ThemeAccentPicker.vue";
+// #endif
 import { useMinePage } from "./useMinePage";
 
 const { themePageStyle } = useAccentTheme();
@@ -107,7 +109,7 @@ provide(APP_SCROLL_CONTROLLER, appScrollController);
 <template>
   <!-- 页面本体锁定不滚动（滚动在 AppPullScrollView 内），header 不随下拉移动。 -->
   <page-meta :page-style="`${themePageStyle};overflow:hidden`" />
-  <view class="app-theme-scope mine-page" :style="themePageStyle">
+  <view class="app-theme-scope ui-card-page mine-page" :style="themePageStyle">
     <AppTabHeader title="我的" />
     <AppPullScrollView ref="appScrollAnchor" :refreshing="refreshing" @refresh="handleRefresherRefresh">
       <view class="mine-page-content" :style="contentStyle">
@@ -121,7 +123,7 @@ provide(APP_SCROLL_CONTROLLER, appScrollController);
           <MineMatchSection :matches="myMatches" @open-all="openUserMatches" @open-match="openMatchDetail" />
           <MineWalletSection v-if="!shouldHideCreationEntrances" :wallet-summary="walletSummary" @open-billing="openBilling" />
         </template>
-          <view class="mine-services ui-plain-panel">
+          <view class="mine-services ui-card-list">
             <button class="mine-service ui-list-row" hover-class="mine-service--pressed" @tap="openHelp">
               <text class="mine-help-icon">?</text><text class="mine-service-label">使用帮助</text><wd-icon name="arrow-right" size="26rpx" />
             </button>
@@ -135,8 +137,10 @@ provide(APP_SCROLL_CONTROLLER, appScrollController);
               <wd-icon name="settings" size="32rpx" /><text class="mine-service-label">设置</text><wd-icon name="arrow-right" size="26rpx" />
             </button>
           </view>
+        <!-- #ifndef MP-WEIXIN -->
         <ThemeAccentPicker />
-        <view v-if="currentUser && impersonationPanelVisible" class="mine-tools ui-plain-panel">
+        <!-- #endif -->
+        <view v-if="currentUser && impersonationPanelVisible" class="mine-tools ui-card-list">
           <button class="mine-service ui-list-row" @tap="toolsExpanded = !toolsExpanded" :aria-expanded="toolsExpanded || impersonating">
             <wd-icon name="tool" size="30rpx" /><text class="mine-service-label">身份切换</text><text v-if="impersonating" class="mine-tool-state">正在使用测试身份</text><wd-icon :name="toolsExpanded || impersonating ? 'arrow-up' : 'arrow-down'" size="24rpx" />
           </button>
@@ -157,6 +161,7 @@ provide(APP_SCROLL_CONTROLLER, appScrollController);
   </view>
 </template>
 <style scoped>
+@import "@/styles/page-surfaces.css";
 @import "@/styles/list-surfaces.css";
 .mine-page { position:relative; min-height:100vh; padding:0; background:var(--ui-color-page); box-sizing:border-box; }
 .mine-page-content { padding:0 28rpx; width:100%; max-width:750rpx; margin:0 auto; box-sizing:border-box; }
@@ -181,11 +186,11 @@ provide(APP_SCROLL_CONTROLLER, appScrollController);
 
 /* #ifdef MP-WEIXIN */
 .mine-page-content { padding: 0 var(--ui-page-padding-inline); }
-.mine-services,.mine-tools { margin-top: var(--ui-section-gap); border: var(--ui-panel-border); border-radius: var(--ui-panel-radius); }
+.mine-services,.mine-tools { margin-top: var(--ui-card-gap); border: var(--ui-panel-border); border-radius: var(--ui-card-radius); background: var(--ui-card-bg); }
 .mine-service { gap: var(--ui-list-row-gap); min-height: var(--ui-list-row-min-height); padding: var(--ui-list-row-padding) 0; font-size: var(--ui-text-label); }
 .mine-service + .mine-service { border-top: var(--ui-list-divider); }
 .mine-service--pressed { background: var(--ui-control-subtle-bg); }
-.mine-tools-content { padding: 0; }
+.mine-tools-content { padding: 0 0 var(--ui-space-4); --ui-content-surface-radius: var(--ui-panel-radius); --ui-content-surface-shadow: var(--ui-panel-shadow); }
 .mine-account-actions { gap: var(--ui-space-8); margin-top: var(--ui-section-gap); }
 .mine-account-action { padding: var(--ui-space-4) var(--ui-space-1); font-size: var(--ui-text-sm); }
 /* #endif */

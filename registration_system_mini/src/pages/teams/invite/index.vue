@@ -42,15 +42,15 @@ onShow(() => { if (joined.value || team.value?.is_member) void refreshIllustrati
 
 <template>
   <page-meta :page-style="themePageStyle" />
-  <view class="app-theme-scope team-invite-page" :style="[themePageStyle, pageStyle]">
+  <view class="app-theme-scope ui-card-page team-invite-page" :style="[themePageStyle, pageStyle]">
     <AppTabHeader title="球队邀请" showBack />
 
     <view class="team-invite-content">
-      <view v-if="resolving" class="team-invite-state" @tap="resolveInvite">
+      <view v-if="resolving" class="team-invite-state ui-card-panel" @tap="resolveInvite">
         <text class="team-invite-state__text">正在打开邀请...</text>
       </view>
 
-      <view v-else-if="errorMessage" class="team-invite-state" @tap="resolveInvite">
+      <view v-else-if="errorMessage" class="team-invite-state ui-card-panel" @tap="resolveInvite">
         <text class="team-invite-state__text">{{ errorMessage }}，点击重试</text>
         <AppButton class="team-invite-state__action" variant="outline" size="sm" @click="goHome">
           回到首页
@@ -58,7 +58,7 @@ onShow(() => { if (joined.value || team.value?.is_member) void refreshIllustrati
       </view>
 
       <template v-else-if="team">
-        <view class="team-invite-hero">
+        <view class="team-invite-hero ui-card-panel">
           <view class="team-invite-hero__row">
             <view class="team-invite-hero__badge">
               <image
@@ -116,6 +116,8 @@ onShow(() => { if (joined.value || team.value?.is_member) void refreshIllustrati
 </template>
 
 <style scoped>
+@import "@/styles/page-surfaces.css";
+@import "@/styles/list-surfaces.css";
 .team-invite-next { margin-top: 26rpx; }
 .team-invite-page {
   min-height: 100vh;

@@ -59,8 +59,8 @@ async function previewCode() {
 .venue-cooperation-link { flex-shrink: 0; font-size: 24rpx; }
 
 /* #ifdef MP-WEIXIN */
-.venue-cooperation { padding: 0 var(--ui-page-padding-inline) calc(env(safe-area-inset-bottom) + var(--ui-space-3)); }
-.venue-cooperation-entry { border-top: var(--ui-list-divider); min-height: var(--ui-list-row-min-height); padding: var(--ui-list-row-padding) 0; gap: var(--ui-space-4); }
+.venue-cooperation { padding: 0 var(--ui-page-padding-inline) calc(env(safe-area-inset-bottom) + var(--ui-space-3)); background: transparent; }
+.venue-cooperation-entry { border: var(--ui-panel-border); border-radius: var(--ui-card-radius); background: var(--ui-card-bg); box-shadow: var(--ui-card-shadow); min-height: var(--ui-list-row-min-height); padding: var(--ui-card-padding); gap: var(--ui-space-4); }
 .venue-cooperation-icon { width: var(--ui-icon-xl); height: var(--ui-icon-xl); background: var(--ui-control-subtle-bg); }
 /* #endif */
 </style>

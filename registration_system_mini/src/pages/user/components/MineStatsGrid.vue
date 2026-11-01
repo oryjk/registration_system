@@ -7,7 +7,7 @@ defineProps<{
 </script>
 
 <template>
-  <view class="mine-stats-grid ui-soft-panel">
+  <view class="mine-stats-grid ui-card-panel">
     <view v-for="item in items" :key="item.key" class="mine-stat">
       <view class="mine-stat__value-row"><text class="mine-stat__value">{{ item.value }}</text><text v-if="item.unit" class="mine-stat__unit">{{ item.unit }}</text></view>
       <text class="mine-stat__label">{{ item.label }}</text>
@@ -27,7 +27,7 @@ defineProps<{
 
 
 /* #ifdef MP-WEIXIN */
-.mine-stats-grid { margin-top: var(--ui-space-4); padding: var(--ui-space-2) var(--ui-panel-padding); border: var(--ui-panel-border); border-radius: var(--ui-panel-soft-radius); background: var(--ui-panel-soft-bg); }
+.mine-stats-grid { margin-top: var(--ui-card-gap); padding: var(--ui-space-2) var(--ui-card-padding); border: var(--ui-panel-border); border-radius: var(--ui-card-radius); background: var(--ui-card-bg); }
 .mine-stat { padding: var(--ui-space-5) var(--ui-space-3); }
 .mine-stat:nth-child(n+3) { border-top: var(--ui-list-divider); }
 .mine-stat__value { font-size: var(--ui-text-heading); font-weight: var(--ui-font-weight-heading); }

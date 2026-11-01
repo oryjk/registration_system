@@ -88,7 +88,7 @@ onShow(() => {
 
 <template>
   <page-meta :page-style="`${themePageStyle};overflow:hidden`" />
-  <view class="app-theme-scope venue-map-page" :style="[themePageStyle, pagePadding]">
+  <view class="app-theme-scope ui-card-page venue-map-page" :style="[themePageStyle, pagePadding]">
     <AppTabHeader title="球场地图" show-back />
     <view v-if="loading || loginRequired || error || !venues.length" class="venue-map-state">
       <view class="venue-map-state__icon"><wd-icon name="location" size="52rpx" /></view>
@@ -163,6 +163,7 @@ onShow(() => {
 </template>
 
 <style scoped>
+@import "@/styles/page-surfaces.css";
 .venue-map-page { height: 100vh; box-sizing: border-box; display: flex; flex-direction: column; background: var(--ui-color-page); color: var(--ui-color-text); }
 .venue-map-tools { padding: 16rpx 28rpx 12rpx; flex-shrink: 0; }
 .venue-map-search { display: flex; align-items: center; gap: 14rpx; height: 84rpx; padding: 0 20rpx; border: var(--ui-border-default); border-radius: var(--ui-radius-button); background: var(--ui-color-surface); color: var(--ui-color-text-muted); }
@@ -199,8 +200,11 @@ onShow(() => {
 .venue-map-warning { display: block; margin-bottom: 16rpx; font-size: 22rpx; color: var(--ui-color-text-muted); line-height: 1.5; }
 
 /* #ifdef MP-WEIXIN */
+.venue-map-tools { margin: var(--ui-card-gap) var(--ui-page-padding-inline); padding: var(--ui-card-padding); border: var(--ui-panel-border); border-radius: var(--ui-card-radius); background: var(--ui-card-bg); box-shadow: var(--ui-card-shadow); }
+.venue-map-state { margin: var(--ui-card-gap) var(--ui-page-padding-inline); padding: var(--ui-card-padding); border: var(--ui-panel-border); border-radius: var(--ui-card-radius); background: var(--ui-card-bg); box-shadow: var(--ui-card-shadow); }
 .venue-map-search { border: var(--ui-control-border); border-radius: var(--ui-control-radius); background: var(--ui-control-subtle-bg); height: var(--ui-input-height); padding: 0 var(--ui-input-padding); gap: var(--ui-space-3); }
-.venue-map-panel { border-top: var(--ui-list-divider); padding: var(--ui-panel-padding) var(--ui-page-padding-inline) calc(env(safe-area-inset-bottom) + var(--ui-space-6)); }
+.venue-map-panel { margin: var(--ui-card-gap) var(--ui-page-padding-inline) calc(env(safe-area-inset-bottom) + var(--ui-space-6)); padding: var(--ui-card-padding); border: var(--ui-panel-border); border-radius: var(--ui-card-radius); background: var(--ui-card-bg); box-shadow: var(--ui-card-shadow); }
+.venue-map-panel--with-cooperation { margin-bottom: var(--ui-card-gap); }
 .venue-map-chip { border: var(--ui-control-border); border-radius: var(--ui-control-radius); background: var(--ui-control-subtle-bg); padding: var(--ui-space-4) var(--ui-space-5); font-size: var(--ui-text-body); }
 .venue-map-chip--selected { background: var(--ui-control-selected-bg); color: var(--ui-color-text); }
 /* #endif */

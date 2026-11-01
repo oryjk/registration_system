@@ -335,6 +335,12 @@ page,
   --ui-panel-shadow: none;
   --ui-panel-soft-bg: var(--ui-color-accent-subtle);
   --ui-panel-soft-radius: var(--ui-radius-card);
+  /* Standalone content surfaces; inner panels and rows retain flat --ui-panel-* tokens. */
+  --ui-card-bg: var(--ui-color-surface);
+  --ui-card-radius: var(--ui-radius-card);
+  --ui-card-shadow: var(--ui-shadow-card);
+  --ui-card-padding: var(--ui-space-6);
+  --ui-card-gap: var(--ui-space-6);
   --ui-list-gap: var(--ui-space-4);
   --ui-list-row-padding: var(--ui-space-5);
   --ui-list-row-gap: var(--ui-space-4);

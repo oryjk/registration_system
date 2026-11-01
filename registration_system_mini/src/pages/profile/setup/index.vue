@@ -233,10 +233,10 @@ usePageRefresh(async () => {
 
 <template>
   <page-meta :page-style="themePageStyle" />
-  <view class="app-theme-scope profile-setup-page" :style="[themePageStyle, pageStyle]">
+  <view class="app-theme-scope ui-card-page profile-setup-page" :style="[themePageStyle, pageStyle]">
     <AppTabHeader :title="headerTitle" showBack />
     <view class="profile-setup-content">
-      <view class="profile-editor-form ui-plain-panel">
+      <view class="profile-editor-form ui-card-list">
         <!-- #ifdef MP-WEIXIN -->
         <button class="profile-avatar-row" hover-class="profile-editor-button--pressed" open-type="chooseAvatar" :disabled="isSaving" @chooseavatar="handleChooseAvatar" aria-label="更换头像">
           <view class="profile-avatar-copy"><text class="profile-editor-label">头像</text><text class="profile-avatar-hint">点击更换头像</text></view>
@@ -277,6 +277,7 @@ usePageRefresh(async () => {
   </view>
 </template>
 <style scoped>
+@import "@/styles/page-surfaces.css";
 @import "@/styles/list-surfaces.css";
 .profile-setup-page {
   min-height: 100vh;
@@ -309,7 +310,7 @@ usePageRefresh(async () => {
 
 /* #ifdef MP-WEIXIN */
 .profile-setup-page { padding-right: var(--ui-page-padding-inline); padding-left: var(--ui-page-padding-inline); padding-bottom: calc(var(--ui-page-padding-bottom) + env(safe-area-inset-bottom)); }
-.profile-editor-form { border: var(--ui-panel-border); border-radius: var(--ui-panel-radius); }
+.profile-editor-form { border: var(--ui-panel-border); border-radius: var(--ui-card-radius); background: var(--ui-card-bg); }
 .profile-avatar-row { gap: var(--ui-list-row-gap); padding: var(--ui-list-row-padding) 0; }
 .profile-editor-field { margin: 0; padding: var(--ui-panel-padding) 0; border-top: var(--ui-list-divider); }
 .profile-editor-label { font-size: var(--ui-text-label); font-weight: var(--ui-font-weight-heading); }

@@ -37,7 +37,7 @@ function handleSwitchTeam(teamId: number) {
 </script>
 
 <template>
-  <view class="mine-context-section">
+  <view class="mine-context-section ui-card-panel">
     <view class="section-heading"><text>我的球队</text>
       <button v-if="teamProfiles.length > 1" class="text-action ui-subtle-control" :disabled="isSwitchingTeam" @tap="openSwitchSheet"><text>切换球队</text><wd-icon name="arrow-right" size="var(--ui-icon-xs)" /></button>
     </view>
@@ -74,7 +74,7 @@ function handleSwitchTeam(teamId: number) {
 
 
 /* #ifdef MP-WEIXIN */
-.mine-context-section { margin-top: var(--ui-section-gap); }
+.mine-context-section { margin-top: var(--ui-card-gap); }
 .section-heading { margin: 0 0 var(--ui-space-3); font-size: var(--ui-text-title); font-weight: var(--ui-font-weight-heading); }
 .text-action { min-height: var(--ui-control-min-height); padding: var(--ui-space-3) var(--ui-space-4); background: var(--ui-control-subtle-bg); font-size: var(--ui-text-sm); border-radius: var(--ui-control-radius); }
 .team-list { border: var(--ui-panel-border); border-radius: var(--ui-panel-radius); }

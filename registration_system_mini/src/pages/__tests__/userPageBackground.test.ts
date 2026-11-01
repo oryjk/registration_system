@@ -11,7 +11,7 @@ describe("mine page visual composition", () => {
   test("uses the shared semantic page background instead of a page-specific image layer", async () => {
     const userPageSource = await Bun.file(sourcePath("pages/user/index.vue")).text();
 
-    expect(userPageSource.includes('class="app-theme-scope mine-page"')).toEqual(true);
+    expect(/class="(?=[^"]*\bapp-theme-scope\b)[^"]*\bmine-page\b[^"]*"/.test(userPageSource)).toEqual(true);
     expect(userPageSource.includes("background:var(--ui-color-page);")).toEqual(true);
     expect(userPageSource.includes("minePageBackgroundUrl")).toEqual(false);
     expect(userPageSource.includes('url("@/static/backgrounds/mine-page-bg.jpg")')).toEqual(false);
@@ -23,7 +23,7 @@ describe("mine page visual composition", () => {
 
     expect(userPageSource.includes("<MineProfileHero")).toEqual(true);
     expect(userPageSource.includes("<MineStatsGrid")).toEqual(true);
-    expect(heroProfileSource.includes('class="mine-profile-hero"')).toEqual(true);
+    expect(/class="[^"]*\bmine-profile-hero\b[^"]*"/.test(heroProfileSource)).toEqual(true);
     expect(heroProfileSource.includes("profile-stats-row")).toEqual(false);
     expect(userPageSource.includes('class="overview-card"')).toEqual(false);
   });

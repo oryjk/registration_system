@@ -94,7 +94,8 @@ src/
 ### 现行 UI 约束（新对话必读）
 
 - 开始任何界面工作先读 [`docs/mini-design-system.md`](docs/mini-design-system.md)，这是 H5 / 小程序唯一现行视觉规范。当前为轻量赛事 UI（历史方案代号 D），Neo / Soft Neo 旧视觉规范已废止。
-- 微信普通内容区默认无外框，列表、浅底分区及页头优先复用 `AppSurface`、`list-surfaces.css` 和 `AppPageIntro`；新增间距、字号、尺寸与颜色统一引用 `design-tokens.css`，输入边界、选中态、危险操作与弹窗保留清晰区分。H5 原样式通过条件编译隔离。
+- 微信采用浅底、独立圆角卡片与柔和阴影：页面使用 `ui-card-page` / `page-surfaces.css`，外卡复用 `AppSurface` 或 `ui-card-panel/list` 及 `--ui-card-*`；卡内 `--ui-panel-*` 保持平面，不叠阴影。新增尺寸/颜色引用 `design-tokens.css`，H5 原样式通过条件编译隔离。
+- 微信固定薄荷蓝，不读取历史主题偏好、不提供主题切换入口或 setter；H5 的主题功能保留，不能因共享主题代码而恢复微信切换。
 - 旧设计稿、基线 patch、迁移计划仅供追溯，不能覆盖现行规范；不要重新创建 `Neo*` / `D*` 风格组件、`components/neo` 或 `--neo-*`。命名按组件职责，主题与状态色通过 token 表达。
 - 主任务卡与只读比赛卡要有主次；布局对齐、叠卡、头像横滑和头像预览的最新规则均见现行规范。不要从过期方案推断默认只显示 5 个头像或旧式展开交互。
 

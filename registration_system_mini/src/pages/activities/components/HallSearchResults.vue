@@ -185,7 +185,7 @@ onBeforeUnmount(() => {
 }
 
 /* #ifdef MP-WEIXIN */
-.hall-search-results__state { border: var(--ui-panel-border); box-shadow: var(--ui-panel-shadow); border-radius: var(--ui-panel-soft-radius); background: var(--ui-panel-soft-bg); padding: var(--ui-panel-padding); }
+.hall-search-results__state { border: var(--ui-panel-border); box-shadow: var(--ui-card-shadow); border-radius: var(--ui-card-radius); background: var(--ui-card-bg); padding: var(--ui-card-padding); }
 .hall-search-results__state--error { background: var(--ui-color-danger-bg); color: var(--ui-color-danger-fg); }
 .hall-search-results__retry { border: var(--ui-control-border); background: var(--ui-control-subtle-bg); padding: var(--ui-space-3) var(--ui-space-4); }
 /* #endif */

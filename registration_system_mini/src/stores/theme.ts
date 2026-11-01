@@ -1,14 +1,20 @@
 import { computed, ref } from "vue";
 import {
   ACCENT_THEMES,
+  DEFAULT_ACCENT_THEME,
   buildAccentThemePageStyle,
   type AccentThemeId,
   type AccentThemePalette,
 } from "@/config/themePalettes";
+// #ifndef MP-WEIXIN
 import { getStoredAccentTheme, setStoredAccentTheme } from "@/utils/themeStorage";
+// #endif
 
-// 模块加载时同步读取本地主题，保证首屏（首个 page-meta 渲染前）就是正确主题。
-const accentTheme = ref<AccentThemeId>(getStoredAccentTheme());
+// 微信固定薄荷蓝，不恢复旧主题，避免首屏闪出历史配色；H5 保留设备偏好。
+const accentTheme = ref<AccentThemeId>(DEFAULT_ACCENT_THEME);
+// #ifndef MP-WEIXIN
+accentTheme.value = getStoredAccentTheme();
+// #endif
 
 const palette = computed<AccentThemePalette>(() => ACCENT_THEMES[accentTheme.value]);
 
@@ -18,10 +24,12 @@ const themePageStyle = computed(() => buildAccentThemePageStyle(accentTheme.valu
 /** 原生组件（如 switch 的 color 属性）只接受 hex，不接受 CSS 变量。 */
 const accentHex = computed(() => palette.value.accent);
 
+// #ifndef MP-WEIXIN
 function changeAccentTheme(theme: AccentThemeId) {
   accentTheme.value = theme;
   setStoredAccentTheme(theme);
 }
+// #endif
 
 export function useAccentTheme() {
   return {
@@ -29,6 +37,8 @@ export function useAccentTheme() {
     palette,
     themePageStyle,
     accentHex,
+    // #ifndef MP-WEIXIN
     setAccentTheme: changeAccentTheme,
+    // #endif
   };
 }

@@ -1,5 +1,9 @@
 /* Import into scoped page styles: every selector belongs to the local native wrapper. */
 /* #ifdef MP-WEIXIN */
+.ui-card-panel, .ui-card-list { box-sizing: border-box; border: var(--ui-panel-border); border-radius: var(--ui-card-radius); background: var(--ui-card-bg); box-shadow: var(--ui-card-shadow); }
+.ui-card-panel { padding: var(--ui-card-padding); }
+.ui-card-list { padding: 0 var(--ui-card-padding); }
+.ui-card-panel--flush { padding: 0; }
 .ui-section-stack { display: flex; flex-direction: column; gap: var(--ui-section-gap); }
 .ui-plain-panel { border: var(--ui-panel-border); border-radius: var(--ui-panel-radius); background: var(--ui-color-surface); box-shadow: var(--ui-panel-shadow); }
 .ui-soft-panel { padding: var(--ui-panel-padding); border: var(--ui-panel-border); border-radius: var(--ui-panel-soft-radius); background: var(--ui-panel-soft-bg); box-shadow: var(--ui-panel-shadow); }

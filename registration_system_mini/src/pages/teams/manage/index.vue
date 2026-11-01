@@ -120,7 +120,7 @@ const metaPageStyle = computed(() =>
 
 <template>
   <page-meta :page-style="metaPageStyle" />
-  <view class="app-theme-scope team-manage-page" :style="[themePageStyle, pageStyle]">
+  <view class="app-theme-scope ui-card-page team-manage-page" :style="[themePageStyle, pageStyle]">
     <AppTabHeader title="球队管理" showBack />
 
     <view class="team-manage-content">
@@ -313,6 +313,7 @@ const metaPageStyle = computed(() =>
 </template>
 
 <style scoped>
+@import "@/styles/page-surfaces.css";
 .team-profile-sections {
   display: flex;
   flex-direction: column;
@@ -437,7 +438,7 @@ const metaPageStyle = computed(() =>
 .team-profile-sections { gap: var(--ui-section-gap); }
 .team-manage-page { padding: 0 var(--ui-page-padding-inline) var(--ui-page-padding-bottom); }
 .team-manage-hero-surface { margin: 0 0 var(--ui-space-5); }
-.team-manage-hero { gap: var(--ui-list-row-gap); padding: var(--ui-panel-padding) 0; }
+.team-manage-hero { gap: var(--ui-list-row-gap); padding: var(--ui-card-padding); }
 .team-manage-title { font-size: var(--ui-text-heading); font-weight: var(--ui-font-weight-heading); line-height: var(--ui-line-height-tight); }
 .team-manage-copy { margin-top: var(--ui-space-2); font-size: var(--ui-text-sm); font-weight: var(--ui-font-weight-body); line-height: var(--ui-line-height-body); }
 .team-manage-hero__mark { font-size: var(--ui-text-heading); font-weight: var(--ui-font-weight-heading); width: var(--ui-avatar-size-lg); height: var(--ui-avatar-size-lg); }

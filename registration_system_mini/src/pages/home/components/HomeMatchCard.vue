@@ -188,12 +188,11 @@ function handleTap() {
 }
 
 /* #ifdef MP-WEIXIN */
-.home-view-card { gap: var(--ui-space-5); padding: var(--ui-match-row-padding) 0; border: 0; border-radius: 0; background: transparent; }
+.home-view-card { gap: var(--ui-space-5); padding: var(--ui-card-padding); border: var(--ui-panel-border); border-radius: var(--ui-card-radius); background: var(--ui-card-bg); box-shadow: var(--ui-card-shadow); }
 .home-view-card--pressed,
 .home-view-card--tapping { background: var(--ui-color-neutral-bg); }
 .home-view-card--with-cover {
   min-height: var(--ui-match-row-min-height);
-  padding: 0;
 }
 .home-view-card__thumbnail {
   position: relative;
@@ -207,9 +206,9 @@ function handleTap() {
 .home-view-card__detail--icon-only { width: var(--ui-control-min-height); min-width: var(--ui-control-min-height); padding: 0; }
 .home-view-card__detail--pressed { background: var(--ui-color-accent-soft); }
 .home-view-card__chevron { width: var(--ui-icon-sm); height: var(--ui-icon-sm); border: 0; font-size: var(--ui-icon-sm); line-height: 1; transform: none; }
-.home-view-card--with-cover .home-view-card__main { padding: var(--ui-match-row-padding) 0; }
+.home-view-card--with-cover .home-view-card__main { padding: 0; }
 .home-view-card--with-cover .home-view-card__detail,
-.home-view-card--with-cover .home-view-card__badge { margin: var(--ui-match-row-padding) 0; }
+.home-view-card--with-cover .home-view-card__badge { margin: 0; }
 /* #endif */
 
 /* H5 减少动态效果：卡片按压只保留表面色反馈。 */

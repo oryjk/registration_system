@@ -55,7 +55,7 @@ usePageRefresh(loadPageData);
 
 <template>
   <page-meta :page-style="themePageStyle" />
-  <view class="app-theme-scope settings-page" :style="[themePageStyle, pageStyle]">
+  <view class="app-theme-scope ui-card-page settings-page" :style="[themePageStyle, pageStyle]">
     <AppTabHeader title="设置" showBack />
 
     <view class="settings-content ui-plain-panel">
@@ -122,6 +122,7 @@ usePageRefresh(loadPageData);
 </template>
 
 <style scoped>
+@import "@/styles/page-surfaces.css";
 @import "@/styles/list-surfaces.css";
 
 .settings-page {
@@ -239,7 +240,6 @@ usePageRefresh(loadPageData);
 
 /* #ifdef MP-WEIXIN */
 .settings-page { padding-right: var(--ui-page-padding-inline); padding-left: var(--ui-page-padding-inline); padding-bottom: var(--ui-page-padding-bottom); }
-.settings-content { --ui-panel-padding: 0; }
 .settings-item { gap: var(--ui-space-5); margin-top: 0; min-height: var(--ui-list-row-min-height); padding: var(--ui-space-6) 0; }
 .settings-item + .settings-item { border-top: var(--ui-list-divider); }
 .settings-item__title { font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-heading); }

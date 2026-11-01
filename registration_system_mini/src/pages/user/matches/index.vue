@@ -86,7 +86,7 @@ usePageRefresh(loadPageData);
 
 <template>
   <page-meta :page-style="themePageStyle" />
-  <view class="app-theme-scope my-matches-page" :style="themePageStyle">
+  <view class="app-theme-scope ui-card-page my-matches-page" :style="themePageStyle">
     <AppTabHeader title="我的比赛" showBack />
     <view class="my-matches-content" :style="contentStyle">
       <text class="match-list-note">{{ heroCopy }}</text>
@@ -98,13 +98,13 @@ usePageRefresh(loadPageData);
         @update:model-value="handleScopeChange"
       />
 
-      <view v-if="isLoading" class="empty-card ui-plain-panel">
+      <view v-if="isLoading" class="empty-card ui-card-panel">
         <text class="empty-text">正在加载我的比赛...</text>
       </view>
-      <view v-else-if="errorMessage" class="empty-card ui-plain-panel" @tap="loadPageData">
+      <view v-else-if="errorMessage" class="empty-card ui-card-panel" @tap="loadPageData">
         <text class="empty-text">{{ errorMessage }}，点击重试</text>
       </view>
-      <view v-else-if="!matches.length" class="empty-card ui-plain-panel">
+      <view v-else-if="!matches.length" class="empty-card ui-card-panel">
         <text class="empty-text">{{ emptyText }}</text>
       </view>
       <HomeMatchList
@@ -119,6 +119,7 @@ usePageRefresh(loadPageData);
 </template>
 
 <style scoped>
+@import "@/styles/page-surfaces.css";
 @import "@/styles/list-surfaces.css";
 .my-matches-page {
   min-height: 100vh;
@@ -170,7 +171,7 @@ usePageRefresh(loadPageData);
 
 /* #ifdef MP-WEIXIN */
 .my-matches-page { padding-right: var(--ui-page-padding-inline); padding-left: var(--ui-page-padding-inline); padding-bottom: var(--ui-page-padding-bottom); }
-.empty-card { margin-top: var(--ui-section-gap); padding: var(--ui-space-10) 0; border: var(--ui-panel-border); border-radius: var(--ui-panel-radius); box-shadow: var(--ui-panel-shadow); }
+.empty-card { margin-top: var(--ui-card-gap); padding: var(--ui-space-10) var(--ui-card-padding); border: var(--ui-panel-border); border-radius: var(--ui-card-radius); background: var(--ui-card-bg); box-shadow: var(--ui-card-shadow); }
 .empty-text { font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-body); line-height: var(--ui-line-height-body); }
 .match-list-note { margin: var(--ui-space-1) 0 var(--ui-space-4); font-size: var(--ui-text-body); line-height: var(--ui-line-height-body); }
 /* #endif */
