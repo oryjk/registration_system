@@ -18,7 +18,7 @@ const failed = ref<Record<string, boolean>>({});
 const choices: Partial<Record<HomeEmptyHeroAction, { title: string; image: string; icon: string }>> = {
   "create-team": { title: "创建我的球队", image: HOME_VISUAL_ASSETS.createTeam, icon: "user-group" },
   "join-team": { title: "加入已有球队", image: HOME_VISUAL_ASSETS.joinTeam, icon: "user-group" },
-  browse: { title: "找一场球踢", image: HOME_VISUAL_ASSETS.findGame, icon: "search-line" },
+  browse: { title: "找一场野球踢", image: HOME_VISUAL_ASSETS.findGame, icon: "search-line" },
 };
 const entries = computed(() => props.actions.flatMap(action => {
   const choice = choices[action];

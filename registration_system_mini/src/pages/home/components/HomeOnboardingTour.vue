@@ -33,6 +33,10 @@ const steps = computed(() => {
       content: "想直接参加？从这里查看比赛，确认时间、地点和费用后报名。",
     },
   ];
+  // #ifdef MP-WEIXIN
+  all[2].title = "找一场野球踢";
+  all[2].content = "想直接参加？从这里查看有没有野球，确认时间、地点和费用后报名。";
+  // #endif
   return props.creationAllowed ? all : all.slice(1);
 });
 const tourSteps = computed(() => {
