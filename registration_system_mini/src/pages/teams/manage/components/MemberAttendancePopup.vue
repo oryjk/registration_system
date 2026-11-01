@@ -97,7 +97,7 @@ function handleToggleYear(year: string) {
               <text class="attendance-year-chip">{{ group.total }} 场</text>
               <text class="attendance-year-chip attendance-year-chip-joined">参加 {{ group.attended }}</text>
               <text class="attendance-year-chip attendance-year-chip-leave">请假 {{ group.leave }}</text>
-              <text :class="['attendance-year-arrow', group.collapsed ? 'attendance-year-arrow-collapsed' : '']">⌃</text>
+              <text :class="['attendance-year-arrow', group.collapsed ? 'attendance-year-arrow-collapsed' : '']" class="ui-arrow-text">⌃</text>
             </view>
           </view>
           <SmoothCollapse :visible="!group.collapsed">

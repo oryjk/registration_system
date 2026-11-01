@@ -20,7 +20,7 @@ function openMap() { uni.navigateTo({ url: "/pages/venues/map" }); }
       <text class="home-venue-map__title">球场地图</text>
       <text class="home-venue-map__hint">找个球场，约下一场</text>
     </view>
-    <text class="home-venue-map__arrow">→</text>
+    <text class="ui-arrow-text home-venue-map__arrow">→</text>
   </button>
 </template>
 

@@ -71,7 +71,7 @@ function memberInitial(nickname: string) {
             <text class="activity-name">{{ match.activity_name }}</text>
             <text class="activity-meta">{{ formatAttendanceDate(match.holding_date) }} · {{ match.location || "地点待定" }}</text>
           </view>
-          <text class="activity-expand-arrow" :class="{ 'activity-expand-arrow-open': expandedActivityId === match.activity_id }">›</text>
+          <text class="ui-arrow-text activity-expand-arrow" :class="{ 'activity-expand-arrow-open': expandedActivityId === match.activity_id }">›</text>
         </view>
         <SmoothCollapse :visible="expandedActivityId === match.activity_id">
           <view class="activity-detail">

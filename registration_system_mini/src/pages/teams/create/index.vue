@@ -86,7 +86,7 @@ onShow(() => { if (createdTeamId.value) void refreshIllustrations(); });
           <image v-if="joinIllustrationSrc" class="team-create-alt__illustration" :src="joinIllustrationSrc" mode="aspectFit" aria-hidden="true" @error="joinIllustrationSrc && (joinIllustrationFailed = true)" />
           <!-- #endif -->
           <text class="team-create-alt__label">已有心仪的球队？去搜索加入</text>
-          <text class="team-create-alt__arrow">→</text>
+          <text class="ui-arrow-text team-create-alt__arrow">→</text>
         </view>
       </template>
     </view>

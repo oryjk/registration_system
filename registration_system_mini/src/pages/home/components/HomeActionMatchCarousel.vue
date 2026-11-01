@@ -76,8 +76,8 @@ onUnmounted(() => { disposed = true; measurement++; uni.offWindowResize(measureA
     <HomeSectionHeader title="最近要处理">
       <template #actions>
         <view v-if="matches.length > 1" class="match-actions">
-          <button class="match-arrow" :class="{ 'match-arrow--disabled': index === 0 }" :disabled="index === 0" aria-label="上一场比赛" @tap="step(-1)">←</button>
-          <button class="match-arrow" :class="{ 'match-arrow--disabled': index === matches.length - 1 }" :disabled="index === matches.length - 1" aria-label="下一场比赛" @tap="step(1)">→</button>
+          <button class="ui-arrow-text match-arrow" :class="{ 'match-arrow--disabled': index === 0 }" :disabled="index === 0" aria-label="上一场比赛" @tap="step(-1)">←</button>
+          <button class="ui-arrow-text match-arrow" :class="{ 'match-arrow--disabled': index === matches.length - 1 }" :disabled="index === matches.length - 1" aria-label="下一场比赛" @tap="step(1)">→</button>
         </view>
       </template>
     </HomeSectionHeader>

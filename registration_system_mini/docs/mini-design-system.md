@@ -20,6 +20,10 @@
 
 结构 UI 必须引用 token，不在页面和共享壳层新增散落 hex；`--app-primary` 兼容出口仅在 token 文件映射。运行时组件直接 `.vue` 导入（`src/components/ui/`）。
 
+### 微信端方向箭头
+
+微信端导航、列表、操作按钮、展开收起和日历方向箭头统一采用「实心尖角＋圆点尾迹」。原稿位于 `src/static/icons/dotted-arrow.svg`，通过 `scripts/build-arrow-font.py` 派生内嵌字体；仅在 MP-WEIXIN 引入 `styles/arrow-font.css`。Wot 方向图标集中覆盖，文字箭头使用 `ui-arrow-text`，CSS 尖角通过条件编译替换；H5 保留原字形与布局。方向、点击行为、禁用态和原语义颜色保持一致，双箭头仍显示两个尖角。新入口不要再绘制 CSS 尖角；编辑、分享、播放等独立语义图标继续沿用原组件。生成步骤见 `scripts/arrow-font-README.md`。
+
 ## 配色与语义映射
 
 | 角色 | Token | 值 |

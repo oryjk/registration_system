@@ -93,7 +93,7 @@ onShareTimeline(() => ({
           </view>
           <view class="fund-entry__action">
             <text class="fund-entry__action-text">去缴纳</text>
-            <text class="fund-entry__action-arrow">→</text>
+            <text class="ui-arrow-text fund-entry__action-arrow">→</text>
           </view>
         </view>
 

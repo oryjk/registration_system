@@ -68,7 +68,7 @@ function handleJoin() {
           <text class="team-result-title">{{ team.name }}</text>
           <text class="team-result-meta"><text v-if="joinedTeamIds.includes(team.id)">已加入 · </text>{{ team.member_count }} 位队员<text v-if="team.trust_label"> · {{ team.trust_label }}</text></text>
         </view>
-        <text class="team-result-action">{{ selectedTeam?.id === team.id ? '已选 ✓' : '选择 →' }}</text>
+        <text class="ui-arrow-text team-result-action">{{ selectedTeam?.id === team.id ? '已选 ✓' : '选择 →' }}</text>
       </view>
     </view>
     <view v-else class="empty-box">
@@ -79,7 +79,12 @@ function handleJoin() {
       <text class="join-panel-title">{{ selectedTeamIsMember ? '你已加入' : '加入' }} {{ selectedTeam.name }}</text>
       <text class="join-panel-note">{{ selectedTeamIsMember ? '你已经是该球队成员，可直接查看球队详情。' : selectedTeamRequiresPassword ? '该球队设置了入队密码，请向队长获取。' : '该球队开放加入，确认后即可成为队员。' }}</text>
       <input v-if="selectedTeamRequiresPassword && !selectedTeamIsMember" :value="joinPassword" class="password-input" placeholder="请输入入队密码" password @input="updateJoinPassword" />
+      <!-- #ifdef MP-WEIXIN -->
+      <view class="join-action"><AppButton block :disabled="!canJoin" :loading="submitting" @click="handleJoin"><text class="ui-arrow-text">{{ selectedTeamIsMember ? '查看球队 →' : submitting ? '加入中…' : '确认加入球队' }}</text></AppButton></view>
+      <!-- #endif -->
+      <!-- #ifndef MP-WEIXIN -->
       <view class="join-action"><AppButton block :disabled="!canJoin" :loading="submitting" @click="handleJoin">{{ selectedTeamIsMember ? '查看球队 →' : submitting ? '加入中…' : '确认加入球队' }}</AppButton></view>
+      <!-- #endif -->
     </view>
   </view>
 </template>

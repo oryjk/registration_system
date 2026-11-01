@@ -105,7 +105,7 @@ usePageRefresh(loadThread);
           <text class="thread-hero-label">关联比赛</text>
           <view class="thread-hero-main">
             <text class="thread-match">{{ thread.match_name }}</text>
-            <text class="thread-hero-link">查看比赛 ›</text>
+            <text class="ui-arrow-text thread-hero-link">查看比赛 ›</text>
           </view>
           <text class="thread-copy">与 {{ counterpartLabel() }} 的留言往来</text>
         </view>

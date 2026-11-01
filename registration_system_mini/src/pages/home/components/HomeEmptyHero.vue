@@ -262,7 +262,7 @@ function emitAction(action: HomeEmptyHeroAction) {
             <text class="home-empty-hero-action-title">{{ actionCopy(action).title }}</text>
             <text v-if="!horizontalChoices" class="home-empty-hero-action-hint">{{ actionCopy(action).hint }}</text>
           </view>
-          <text v-if="!horizontalChoices" class="home-empty-hero-arrow" aria-hidden="true">→</text>
+          <text v-if="!horizontalChoices" class="ui-arrow-text home-empty-hero-arrow" aria-hidden="true">→</text>
         </button>
       </view>
 
@@ -273,7 +273,7 @@ function emitAction(action: HomeEmptyHeroAction) {
         @tap="emitAction(tertiaryAction)"
       >
         <text>{{ actionCopy(tertiaryAction).title }}</text>
-        <text aria-hidden="true">→</text>
+        <text aria-hidden="true" class="ui-arrow-text">→</text>
       </button>
       <text v-if="balancedChoices && !compact" class="home-guide-invite-hint">已有邀请？直接打开队友发来的邀请卡片。</text>
         </view>
@@ -309,11 +309,16 @@ function emitAction(action: HomeEmptyHeroAction) {
             @tap="collapsed ? emit('expand') : emit('collapse')"
           >
             <text>{{ collapsed ? '展开指引' : '收起指引' }}</text>
+            <!-- #ifdef MP-WEIXIN -->
+            <text class="home-guide-chevron ui-arrow-text" :class="collapsed ? 'home-guide-chevron--down' : 'home-guide-chevron--up'" aria-hidden="true">↓</text>
+            <!-- #endif -->
+            <!-- #ifndef MP-WEIXIN -->
             <view
               class="home-guide-chevron"
               :class="collapsed ? 'home-guide-chevron--down' : 'home-guide-chevron--up'"
               aria-hidden="true"
             />
+            <!-- #endif -->
           </button>
         </view>
       </view>
@@ -408,6 +413,11 @@ function emitAction(action: HomeEmptyHeroAction) {
 .home-guide-chevron--up {
   transform: translateY(3rpx) rotate(-135deg);
 }
+/* #ifdef MP-WEIXIN */
+.home-guide-chevron { width: 28rpx; height: 28rpx; border: 0; font-size: 28rpx; line-height: 1; }
+.home-guide-chevron--down { transform: none; }
+.home-guide-chevron--up { transform: rotate(180deg); }
+/* #endif */
 
 .home-guide-reset {
   margin: 0;

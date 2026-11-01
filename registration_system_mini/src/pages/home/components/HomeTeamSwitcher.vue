@@ -103,7 +103,12 @@ function handleSelect(team: TeamProfileViewModel) {
         <text v-else class="home-team-entry__initial">{{ currentTeam.name.slice(0, 1) || "队" }}</text>
       </view>
       <text class="home-team-entry__name">{{ currentTeam.name }}</text>
+      <!-- #ifdef MP-WEIXIN -->
+      <text v-if="teams.length >= 2" class="home-team-entry__caret ui-arrow-text" :class="{ 'home-team-entry__caret--open': isOpen }" aria-hidden="true">↓</text>
+      <!-- #endif -->
+      <!-- #ifndef MP-WEIXIN -->
       <view v-if="teams.length >= 2" class="home-team-entry__caret" :class="{ 'home-team-entry__caret--open': isOpen }" />
+      <!-- #endif -->
     </view>
 
     <view v-if="rendered" class="home-team-overlay" :class="{ 'home-team-overlay--leaving': leaving }" :style="overlayStyle" @tap="close" />
@@ -209,6 +214,10 @@ function handleSelect(team: TeamProfileViewModel) {
   transition: transform var(--ui-motion-overlay-duration) var(--ui-motion-ease-out);
 }
 .home-team-entry__caret--open { transform: translateY(5rpx) rotate(225deg); }
+/* #ifdef MP-WEIXIN */
+.home-team-entry__caret { width: 28rpx; height: 28rpx; margin: 0 4rpx 0 8rpx; border: 0; color: var(--ui-color-text-muted); font-size: 28rpx; line-height: 1; transform: none; }
+.home-team-entry__caret--open { transform: rotate(180deg); }
+/* #endif */
 
 .home-team-overlay {
   position: fixed;

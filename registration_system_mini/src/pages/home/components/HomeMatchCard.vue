@@ -65,7 +65,12 @@ function handleTap() {
       @tap.stop="handleTap"
     >
       <text>{{ match.stage }}</text>
+      <!-- #ifdef MP-WEIXIN -->
+      <text class="home-view-card__chevron ui-arrow-text" aria-hidden="true">→</text>
+      <!-- #endif -->
+      <!-- #ifndef MP-WEIXIN -->
       <view class="home-view-card__chevron" aria-hidden="true" />
+      <!-- #endif -->
     </button>
     <view v-else class="home-view-card__badge">
       <AppTag :tone="match.stageTone" size="sm">{{ match.stage }}</AppTag>
@@ -189,7 +194,7 @@ function handleTap() {
 }
 .home-view-card__detail { gap: 8rpx; padding: 0 16rpx; font-size: 22rpx; background: var(--ui-color-accent-subtle); }
 .home-view-card__detail--pressed { background: var(--ui-color-accent-soft); }
-.home-view-card__chevron { width: 12rpx; height: 12rpx; border-width: 3rpx; }
+.home-view-card__chevron { width: 28rpx; height: 28rpx; border: 0; font-size: 28rpx; line-height: 1; transform: none; }
 .home-view-card--with-cover .home-view-card__main { padding: 22rpx 0; }
 .home-view-card--with-cover .home-view-card__detail,
 .home-view-card--with-cover .home-view-card__badge { margin: 22rpx 0; }

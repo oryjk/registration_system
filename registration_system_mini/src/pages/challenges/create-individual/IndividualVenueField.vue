@@ -87,7 +87,7 @@ onBeforeUnmount(cancelClose);
       <view class="venue-field__option venue-field__option--map" hover-class="venue-field__option--pressed" @tap="handleChooseLocation">
         <image class="venue-field__icon" src="/static/icons/lucide/map-pin.png" mode="aspectFit" aria-hidden="true" />
         <text class="venue-field__option-text">{{ venues.length ? "没有合适的历史？打开地图选择" : "没有历史？打开地图选择" }}</text>
-        <text class="venue-field__arrow">›</text>
+        <text class="ui-arrow-text venue-field__arrow">›</text>
       </view>
 
       <template v-if="filteredVenues.length">
