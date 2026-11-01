@@ -158,6 +158,14 @@ function actionCopy(action: HomeEmptyHeroAction) {
 const balancedChoices = computed(() => (
   (props.state.mode === "no-team-unknown" || props.state.mode === "guest") && props.state.actions.length > 1
 ));
+const horizontalChoices = computed(() => {
+  // #ifdef MP-WEIXIN
+  return balancedChoices.value;
+  // #endif
+  // #ifndef MP-WEIXIN
+  return false;
+  // #endif
+});
 const canChangeTask = computed(() => props.state.mode.startsWith("no-team-") && !balancedChoices.value);
 const primaryAction = computed(() => balancedChoices.value ? null : props.state.actions[0] ?? null);
 const secondaryActions = computed(() => balancedChoices.value
@@ -237,7 +245,7 @@ function emitAction(action: HomeEmptyHeroAction) {
         <text class="home-empty-hero-primary-hint">{{ actionCopy(primaryAction).hint }}</text>
       </view>
 
-      <view v-if="secondaryActions.length" class="home-empty-hero-actions">
+      <view v-if="secondaryActions.length" class="home-empty-hero-actions" :class="{ 'home-empty-hero-actions--choices': horizontalChoices }">
         <button
           v-for="action in secondaryActions"
           :key="action"
@@ -252,9 +260,9 @@ function emitAction(action: HomeEmptyHeroAction) {
           </view>
           <view class="home-empty-hero-action-copy">
             <text class="home-empty-hero-action-title">{{ actionCopy(action).title }}</text>
-            <text class="home-empty-hero-action-hint">{{ actionCopy(action).hint }}</text>
+            <text v-if="!horizontalChoices" class="home-empty-hero-action-hint">{{ actionCopy(action).hint }}</text>
           </view>
-          <text class="home-empty-hero-arrow" aria-hidden="true">→</text>
+          <text v-if="!horizontalChoices" class="home-empty-hero-arrow" aria-hidden="true">→</text>
         </button>
       </view>
 
@@ -631,4 +639,28 @@ function emitAction(action: HomeEmptyHeroAction) {
 
 .home-empty-hero-tertiary::after { border: 0; }
 .home-empty-hero-tertiary--pressed { box-shadow: var(--ui-shadow-control-pressed); }
+
+/* #ifdef MP-WEIXIN */
+.home-empty-hero-actions--choices {
+  display: flex;
+  gap: 12rpx;
+  padding: 20rpx 24rpx;
+}
+.home-empty-hero-actions--choices .home-empty-hero-action {
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  gap: 14rpx;
+  width: 0;
+  min-width: 0;
+  min-height: 168rpx;
+  padding: 18rpx 8rpx;
+  border: var(--ui-border-default);
+  border-radius: var(--ui-radius-button);
+  text-align: center;
+}
+.home-empty-hero-actions--choices .home-empty-hero-icon { width: 68rpx; }
+.home-empty-hero-actions--choices .home-empty-hero-action-copy { flex: none; }
+.home-empty-hero-actions--choices .home-empty-hero-action-title { font-size: 26rpx; white-space: nowrap; }
+/* #endif */
 </style>

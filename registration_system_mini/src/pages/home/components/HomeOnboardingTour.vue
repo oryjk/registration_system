@@ -34,7 +34,14 @@ const steps = computed(() => {
   ];
   return props.creationAllowed ? all : all.slice(1);
 });
-const tourSteps = computed(() => steps.value);
+const tourSteps = computed(() => {
+  // #ifdef MP-WEIXIN
+  return steps.value.map(step => ({ ...step, placement: "bottom" as const }));
+  // #endif
+  // #ifndef MP-WEIXIN
+  return steps.value;
+  // #endif
+});
 const step = computed(() => steps.value[current.value] ?? steps.value[0]);
 const lastStep = computed(() => current.value === steps.value.length - 1);
 
