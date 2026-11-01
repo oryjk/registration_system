@@ -8,6 +8,9 @@ page,
   --ui-glass-shadow: 0 8rpx 32rpx rgba(var(--ui-primitive-shadow-rgb), 0.10), inset 0 2rpx 0 var(--ui-glass-highlight);
   --ui-glass-header-shadow: 0 6rpx 24rpx rgba(var(--ui-primitive-shadow-rgb), 0.04);
   --ui-tabbar-selected-bg: #ffffff;
+  /* #ifdef MP-WEIXIN */
+  --ui-tabbar-selected-bg: var(--ui-color-accent-soft);
+  /* #endif */
   --ui-tabbar-selected-text: #00214d;
   --ui-tabbar-glass-bg: var(--ui-glass-bg);
   --ui-tabbar-glass-border: var(--ui-glass-highlight);
