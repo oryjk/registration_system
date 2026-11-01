@@ -37,9 +37,9 @@ SELECT t.id,
        (SELECT count(*) FROM team_members tm WHERE tm.team_id = t.id AND tm.status = 'active')::bigint AS member_count
 FROM teams t
 WHERE t.status = 'active'
-  AND ($1::text = '' OR replace(t.name, '悅', '悦') ILIKE '%' || replace($1::text, '悅', '悦') || '%')
+  AND (sqlc.arg('keyword')::text = '' OR replace(t.name, '悅', '悦') ILIKE '%' || replace(sqlc.arg('keyword')::text, '悅', '悦') || '%')
 ORDER BY t.name, t.id
-LIMIT 50;
+LIMIT 50 OFFSET sqlc.arg('result_offset')::int;
 
 -- name: GetTeamJoinPasswordHash :one
 SELECT join_password_hash

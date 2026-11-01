@@ -33,6 +33,10 @@ type fakeAppTeamSelfRepository struct {
 	leftUserID          int64
 	leaverNickname      string
 	leaverNicknameFound bool
+	searchKeyword       string
+	searchOffset        int32
+	searchItems         []ports.AppTeamSummary
+	searchErr           error
 }
 
 func (f *fakeAppTeamSelfRepository) FindByID(context.Context, int64) (domain.Team, bool, error) {
@@ -52,8 +56,33 @@ func (f *fakeAppTeamSelfRepository) CreateWithCaptain(_ context.Context, name st
 	return f.createdTeam, nil
 }
 
-func (f *fakeAppTeamSelfRepository) SearchByKeyword(context.Context, string) ([]ports.AppTeamSummary, error) {
-	return nil, nil
+func (f *fakeAppTeamSelfRepository) SearchByKeyword(ctx context.Context, keyword string) ([]ports.AppTeamSummary, error) {
+	return f.SearchByKeywordPage(ctx, keyword, 0)
+}
+
+func (f *fakeAppTeamSelfRepository) SearchByKeywordPage(_ context.Context, keyword string, offset int32) ([]ports.AppTeamSummary, error) {
+	f.searchKeyword, f.searchOffset = keyword, offset
+	return f.searchItems, f.searchErr
+}
+
+func TestAppTeamSelfServiceSearchPages(t *testing.T) {
+	repository := &fakeAppTeamSelfRepository{searchItems: []ports.AppTeamSummary{{Team: domain.Team{ID: 7, Name: "下一页球队"}}}}
+	service := NewAppTeamSelfService(repository, plainHasher{}, &recordingTeamNotifier{})
+	items, err := service.SearchTeamsPage(context.Background(), "  下一页  ", 50)
+	if err != nil || len(items) != 1 || items[0].Team.ID != 7 || repository.searchKeyword != "下一页" || repository.searchOffset != 50 {
+		t.Fatalf("search page: items=%+v keyword=%q offset=%d err=%v", items, repository.searchKeyword, repository.searchOffset, err)
+	}
+	if _, err := service.SearchTeamsPage(context.Background(), "", -1); errorKind(err) != sharederror.KindValidation {
+		t.Fatalf("negative offset must be validation error: %v", err)
+	}
+	repository.searchErr = errors.New("database unavailable")
+	if _, err := service.SearchTeamsPage(context.Background(), "", 0); errorKind(err) != sharederror.KindInternal {
+		t.Fatalf("repository error must be internal error: %v", err)
+	}
+	repository.searchErr = nil
+	if _, err := service.SearchTeams(context.Background(), "  旧请求  "); err != nil || repository.searchKeyword != "旧请求" || repository.searchOffset != 0 {
+		t.Fatalf("legacy search must normalize keyword and use offset zero: keyword=%q offset=%d err=%v", repository.searchKeyword, repository.searchOffset, err)
+	}
 }
 
 func (f *fakeAppTeamSelfRepository) FindJoinPasswordHash(context.Context, int64) (*string, bool, error) {

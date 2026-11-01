@@ -197,6 +197,8 @@ page,
   --ui-surface-padding: 26rpx;
   --ui-surface-shadow: var(--ui-shadow-raised);
 
+  --ui-button-secondary-bg: var(--ui-color-hero);
+  --ui-button-secondary-fg: var(--ui-color-hero-fg);
   --ui-button-bg: var(--ui-color-cta);
   --ui-button-fg: var(--ui-color-cta-fg);
   /* D 风格：色块按钮不带描边，outline 变体单独给线描边。 */

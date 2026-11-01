@@ -15,8 +15,8 @@ export function createTeamFromForm(payload: {
   });
 }
 
-export function searchTeamsByKeyword(keyword: string) {
-  return searchTeams(keyword);
+export function searchTeamsByKeyword(keyword: string, offset?: number) {
+  return searchTeams(keyword, offset);
 }
 
 export async function checkTeamRequiresPassword(teamId: number) {

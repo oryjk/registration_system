@@ -3,6 +3,7 @@ package teamhttp
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -88,13 +89,16 @@ func TestAppSelfRoutesMapBusinessErrors(t *testing.T) {
 }
 
 type fakeAppSelfCommands struct {
-	err            error
-	actor          sharedauth.Actor
-	createName     string
-	createPassword *string
-	joinTeamID     int64
-	joinPassword   *string
-	searchKeyword  string
+	err               error
+	actor             sharedauth.Actor
+	createName        string
+	createPassword    *string
+	joinTeamID        int64
+	joinPassword      *string
+	searchKeyword     string
+	searchOffset      int32
+	legacySearchCalls int
+	pageSearchCalls   int
 }
 
 func (f *fakeAppSelfCommands) CreateTeam(_ context.Context, actor sharedauth.Actor, name string, _ *string, joinPassword *string) (domain.Team, error) {
@@ -111,11 +115,68 @@ func (f *fakeAppSelfCommands) JoinTeam(_ context.Context, _ sharedauth.Actor, te
 }
 
 func (f *fakeAppSelfCommands) SearchTeams(_ context.Context, keyword string) ([]ports.AppTeamSummary, error) {
+	f.legacySearchCalls++
 	f.searchKeyword = keyword
 	if f.err != nil {
 		return nil, f.err
 	}
 	return []ports.AppTeamSummary{{Team: domain.Team{ID: 9, Name: "东安联队", Status: domain.TeamActive}, MemberCount: 12}}, nil
+}
+
+func (f *fakeAppSelfCommands) SearchTeamsPage(ctx context.Context, keyword string, offset int32) ([]ports.AppTeamSummary, error) {
+	f.pageSearchCalls++
+	f.searchOffset = offset
+	f.searchKeyword = keyword
+	if f.err != nil {
+		return nil, f.err
+	}
+	if offset >= 100 {
+		return []ports.AppTeamSummary{}, nil
+	}
+	return []ports.AppTeamSummary{{Team: domain.Team{ID: 9, Name: "东安联队", Status: domain.TeamActive}, MemberCount: 12}}, nil
+}
+
+func TestAppSelfSearchOptionalOffset(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		query      string
+		wantStatus int
+		wantLegacy int
+		wantPage   int
+		wantOffset int32
+		wantItems  int
+	}{
+		{"legacy", "?keyword=东安", http.StatusOK, 1, 0, 0, 1},
+		{"first page", "?keyword=&offset=0", http.StatusOK, 0, 1, 0, 1},
+		{"next page", "?keyword=&offset=50", http.StatusOK, 0, 1, 50, 1},
+		{"empty last page", "?keyword=&offset=100", http.StatusOK, 0, 1, 100, 0},
+		{"maximum int32", "?offset=2147483647", http.StatusOK, 0, 1, 2147483647, 0},
+		{"negative", "?offset=-1", http.StatusUnprocessableEntity, 0, 0, 0, 0},
+		{"not integer", "?offset=abc", http.StatusUnprocessableEntity, 0, 0, 0, 0},
+		{"fractional", "?offset=1.5", http.StatusUnprocessableEntity, 0, 0, 0, 0},
+		{"empty offset", "?offset=", http.StatusUnprocessableEntity, 0, 0, 0, 0},
+		{"overflow", "?offset=2147483648", http.StatusUnprocessableEntity, 0, 0, 0, 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			self := &fakeAppSelfCommands{}
+			response := doAppSelf(newAppSelfRouter(self), http.MethodGet, "/teams/search"+tc.query, "")
+			if response.Code != tc.wantStatus {
+				t.Fatalf("status=%d want=%d body=%s", response.Code, tc.wantStatus, response.Body.String())
+			}
+			if self.legacySearchCalls != tc.wantLegacy || self.pageSearchCalls != tc.wantPage || self.searchOffset != tc.wantOffset {
+				t.Fatalf("legacy=%d page=%d offset=%d", self.legacySearchCalls, self.pageSearchCalls, self.searchOffset)
+			}
+			if tc.wantStatus == http.StatusOK {
+				var body struct {
+					Code int                      `json:"code"`
+					Data []AppTeamSummaryResponse `json:"data"`
+				}
+				if err := json.Unmarshal(response.Body.Bytes(), &body); err != nil || body.Code != 0 || body.Data == nil || len(body.Data) != tc.wantItems {
+					t.Fatalf("expected unchanged array response, body=%s err=%v", response.Body.String(), err)
+				}
+			}
+		})
+	}
 }
 
 func (f *fakeAppSelfCommands) LeaveTeam(_ context.Context, _ sharedauth.Actor, _ int64) error {

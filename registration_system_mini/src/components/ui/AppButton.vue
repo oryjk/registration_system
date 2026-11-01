@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 
-export type AppButtonVariant = "dark" | "lime" | "outline" | "danger" | "muted";
+export type AppButtonVariant = "dark" | "lime" | "secondary" | "outline" | "danger" | "muted";
 export type AppButtonSize = "sm" | "md";
 
 const props = withDefaults(defineProps<{
@@ -76,7 +76,7 @@ function handleClick(event: { stopPropagation?: () => void }) {
         :loading="props.loading"
         :disabled="props.disabled"
         :block="props.block"
-        :loading-color="props.variant === 'dark' ? 'var(--ui-color-cta-fg)' : props.variant === 'danger' ? 'var(--ui-color-hero-fg)' : 'var(--ui-color-text)'"
+        :loading-color="props.variant === 'dark' ? 'var(--ui-color-cta-fg)' : props.variant === 'secondary' ? 'var(--ui-button-secondary-fg)' : props.variant === 'danger' ? 'var(--ui-color-hero-fg)' : 'var(--ui-color-text)'"
         custom-class="ui-button-control"
         :custom-style="controlStyle"
         @click="handleClick"
@@ -113,6 +113,11 @@ function handleClick(event: { stopPropagation?: () => void }) {
 .ui-button--lime {
   --ui-button-current-bg: var(--ui-color-accent);
   --ui-button-current-fg: var(--ui-color-accent-fg);
+}
+
+.ui-button--secondary {
+  --ui-button-current-bg: var(--ui-button-secondary-bg);
+  --ui-button-current-fg: var(--ui-button-secondary-fg);
 }
 
 .ui-button--outline {

@@ -7,6 +7,7 @@ import { useTeamContext } from "@/stores/teamContext";
 import { useMiniReviewStatus } from "@/stores/miniReview";
 import type { BackendTeamSummary } from "@/types/backend";
 import { checkTeamRequiresPassword, joinTeamFromForm, searchTeamsByKeyword } from "../teamSelfActions";
+import { useTeamDirectory } from "./useTeamDirectory";
 import { useProfileCompletionGate } from "../useProfileCompletionGate";
 
 // 加入球队独立页：对已在球队中的用户同样开放（一人可属于多支球队）。
@@ -15,6 +16,10 @@ export function useTeamJoinPage() {
   const { shouldHideCreationEntrances } = useMiniReviewStatus();
   const profileGate = useProfileCompletionGate();
   const navMetrics = getCustomNavMetrics();
+  let browseAllTeams = false;
+  // #ifdef MP-WEIXIN
+  browseAllTeams = true;
+  // #endif
 
   let successUserId: number | undefined;
   const joinedTeam = ref<BackendTeamSummary | null>(null);
@@ -23,6 +28,7 @@ export function useTeamJoinPage() {
   watch(() => currentUser.value?.id, (id) => {
     if (successUserId && !hasManualLogout() && (!id || id === successUserId)) return;
     successUserId = undefined;
+    if (browseAllTeams) directory.reset();
     selectionVersion++;
     checkingPassword.value = false;
     joinedTeam.value = null;
@@ -35,6 +41,7 @@ export function useTeamJoinPage() {
   const hasSearched = ref(false);
   const searchKeyword = ref("");
   const searchResults = ref<BackendTeamSummary[]>([]);
+  const directory = useTeamDirectory(searchKeyword, offset => searchTeamsByKeyword("", offset));
   const selectedTeam = ref<BackendTeamSummary | null>(null);
   const selectedTeamRequiresPassword = ref(false);
   const joinPassword = ref("");
@@ -44,11 +51,25 @@ export function useTeamJoinPage() {
   const canShowCreateEntry = computed(() => !shouldHideCreationEntrances.value);
   const pageStyle = computed(() => ({ paddingTop: `${navMetrics.pageTopPadding + 8}px` }));
 
+  watch(directory.results, () => {
+    if (!browseAllTeams || submitting.value || !selectedTeam.value) return;
+    if (directory.results.value.some(team => team.id === selectedTeam.value?.id)) return;
+    selectionVersion++;
+    checkingPassword.value = false;
+    selectedTeam.value = null;
+    selectedTeamRequiresPassword.value = false;
+    joinPassword.value = "";
+  });
+
   function goCreateTeam() {
     uni.navigateTo({ url: "/pages/teams/create/index" });
   }
 
   async function handleSearchTeams() {
+    if (browseAllTeams) {
+      if (!submitting.value && !joinedTeam.value) await directory.load(!!directory.error.value);
+      return;
+    }
     const keyword = searchKeyword.value.trim();
     if (!keyword) {
       uni.showToast({ title: "请输入球队名称", icon: "none" });
@@ -162,7 +183,9 @@ export function useTeamJoinPage() {
 
   usePageRefresh(async () => {
     await ensureSessionReady();
-    if (searchKeyword.value.trim()) searchResults.value = await searchTeamsByKeyword(searchKeyword.value.trim());
+    if (browseAllTeams) {
+      if (!joinedTeam.value) await directory.load(true);
+    } else if (searchKeyword.value.trim()) searchResults.value = await searchTeamsByKeyword(searchKeyword.value.trim());
     if (selectedTeam.value && !selectedTeamIsMember.value) selectedTeamRequiresPassword.value = await checkTeamRequiresPassword(selectedTeam.value.id);
   });
 
@@ -172,6 +195,7 @@ export function useTeamJoinPage() {
       return;
     }
     await ensureSessionReady();
+    if (browseAllTeams && currentUser.value && !joinedTeam.value) await directory.load();
   });
 
   return {
@@ -179,10 +203,11 @@ export function useTeamJoinPage() {
     goJoinedTeam,
     goFindMatches,
     pageStyle,
-    searching,
-    hasSearched,
+    searching: browseAllTeams ? directory.loading : searching,
+    hasSearched: browseAllTeams ? directory.loaded : hasSearched,
+    loadError: browseAllTeams ? directory.error : ref(""),
     searchKeyword,
-    searchResults,
+    searchResults: browseAllTeams ? directory.results : searchResults,
     selectedTeam,
     selectedTeamIsMember,
     joinedTeamIds,

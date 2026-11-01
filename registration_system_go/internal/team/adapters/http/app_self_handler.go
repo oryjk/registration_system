@@ -20,6 +20,7 @@ type AppTeamSelfCommands interface {
 	JoinTeam(ctx context.Context, actor sharedauth.Actor, teamID int64, password *string) error
 	LeaveTeam(ctx context.Context, actor sharedauth.Actor, teamID int64) error
 	SearchTeams(ctx context.Context, keyword string) ([]ports.AppTeamSummary, error)
+	SearchTeamsPage(ctx context.Context, keyword string, offset int32) ([]ports.AppTeamSummary, error)
 	RequiresJoinPassword(ctx context.Context, teamID int64) (bool, error)
 }
 
@@ -90,7 +91,18 @@ func (h *AppSelfHandler) SearchTeams(c *gin.Context) {
 	if _, ok := appActor(c); !ok {
 		return
 	}
-	items, err := h.self.SearchTeams(c.Request.Context(), c.Query("keyword"))
+	var items []ports.AppTeamSummary
+	var err error
+	if rawOffset, provided := c.GetQuery("offset"); provided {
+		offset, parseErr := strconv.ParseInt(rawOffset, 10, 32)
+		if parseErr != nil || offset < 0 {
+			sharedhttpapi.WriteError(c, sharederror.New(sharederror.KindValidation, "球队搜索偏移量无效"))
+			return
+		}
+		items, err = h.self.SearchTeamsPage(c.Request.Context(), c.Query("keyword"), int32(offset))
+	} else {
+		items, err = h.self.SearchTeams(c.Request.Context(), c.Query("keyword"))
+	}
 	if err != nil {
 		sharedhttpapi.WriteError(c, err)
 		return

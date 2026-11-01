@@ -5,10 +5,12 @@ import type { BackendTeamSummary } from "@/types/backend";
 
 const { minioImageSrc } = useMinioImages();
 
-defineProps<{
+withDefaults(defineProps<{
   searchKeyword: string;
   searching: boolean;
   hasSearched: boolean;
+  loadError?: string;
+  showCreateEntry?: boolean;
   searchResults: BackendTeamSummary[];
   selectedTeam: BackendTeamSummary | null;
   selectedTeamIsMember: boolean;
@@ -17,7 +19,7 @@ defineProps<{
   joinPassword: string;
   canJoin: boolean;
   submitting: boolean;
-}>();
+}>(), { loadError: "", showCreateEntry: false });
 
 const emit = defineEmits<{
   (event: "update:searchKeyword", value: string): void;
@@ -59,7 +61,14 @@ function handleJoin() {
       </view>
       <view class="search-action"><AppButton block size="sm" variant="lime" :loading="searching" :disabled="searching" @click="handleSearch">搜索</AppButton></view>
     </view>
+    <!-- #ifdef MP-WEIXIN -->
+    <view v-if="showCreateEntry" class="directory-create-entry"><slot name="createTeam" /></view>
+    <view class="results-heading"><text>{{ searchKeyword.trim() ? '筛选结果' : '全部球队' }}</text><text class="results-count">{{ searching ? '正在加载…' : hasSearched ? `${searchResults.length} 支球队` : '' }}</text></view>
+    <view v-if="loadError" class="directory-error ui-soft-panel" @tap="handleSearch"><text>{{ loadError }}</text><text>点击重试</text></view>
+    <!-- #endif -->
+    <!-- #ifndef MP-WEIXIN -->
     <view class="results-heading"><text>搜索结果</text><text class="results-count">{{ searching ? '正在查找…' : hasSearched ? `${searchResults.length} 支球队` : '按名称查找' }}</text></view>
+    <!-- #endif -->
     <view v-if="searchResults.length" class="team-result-list ui-card-list">
       <view v-for="team in searchResults" :key="team.id" class="team-result-card ui-list-row" :class="{ 'team-result-card-active': selectedTeam?.id === team.id }" @tap="handleSelectTeam(team)">
         <image v-if="team.logo_url" class="team-logo" :src="minioImageSrc(team.logo_url)" mode="aspectFit" />
@@ -71,10 +80,18 @@ function handleJoin() {
         <text class="ui-arrow-text team-result-action">{{ selectedTeam?.id === team.id ? '已选 ✓' : '选择 →' }}</text>
       </view>
     </view>
+    <!-- #ifdef MP-WEIXIN -->
+    <view v-else-if="!loadError" class="empty-box ui-card-panel">
+      <text class="empty-title">{{ searching ? '正在加载球队' : !hasSearched ? '球队列表待加载' : searchKeyword.trim() ? '没有找到匹配的球队' : '暂无可加入的球队' }}</text>
+      <text>{{ searching ? '稍等一下，马上就好。' : searchKeyword.trim() ? '试试更短的关键词，或确认球队名称。' : '可以创建自己的球队，邀请球友一起加入。' }}</text>
+    </view>
+    <!-- #endif -->
+    <!-- #ifndef MP-WEIXIN -->
     <view v-else class="empty-box ui-card-panel">
       <text class="empty-title">{{ searching ? '正在查找球队' : hasSearched ? '没有找到匹配的球队' : '找到你的球队' }}</text>
       <text>{{ hasSearched ? '试试更短的关键词，或确认球队名称。' : '支持输入部分名称，选择球队后即可加入。' }}</text>
     </view>
+    <!-- #endif -->
     <view v-if="selectedTeam" class="join-panel ui-card-panel">
       <text class="join-panel-title">{{ selectedTeamIsMember ? '你已加入' : '加入' }} {{ selectedTeam.name }}</text>
       <text class="join-panel-note">{{ selectedTeamIsMember ? '你已经是该球队成员，可直接查看球队详情。' : selectedTeamRequiresPassword ? '该球队设置了入队密码，请向队长获取。' : '该球队开放加入，确认后即可成为队员。' }}</text>
@@ -128,6 +145,8 @@ function handleJoin() {
 
 /* #ifdef MP-WEIXIN */
 /* 微信端复用统一排版尺度；H5 保留原有样式。 */
+.directory-create-entry { display: flex; flex-direction: column; align-items: stretch; margin-top: var(--ui-space-4); }
+.directory-error { display: flex; flex-direction: column; gap: var(--ui-space-2); margin-bottom: var(--ui-space-4); font-size: var(--ui-text-body); color: var(--ui-color-danger-fg); }
 .search-row { gap: var(--ui-space-3); }
 .search-field { gap: var(--ui-space-3); padding: 0 var(--ui-input-padding); height: var(--ui-input-height); border: var(--ui-input-border); border-radius: var(--ui-input-radius); }
 .search-icon { margin-right: var(--ui-space-1); }

@@ -576,7 +576,14 @@ func (r *Repository) CreateWithCaptain(ctx context.Context, name string, descrip
 
 // SearchByKeyword 用户侧球队搜索：仅 active 球队，空关键字返回全部（上限 50）。
 func (r *Repository) SearchByKeyword(ctx context.Context, keyword string) ([]ports.AppTeamSummary, error) {
-	rows, err := r.queries.SearchActiveTeamsByKeyword(ctx, keyword)
+	return r.SearchByKeywordPage(ctx, keyword, 0)
+}
+
+// SearchByKeywordPage 按名称、ID 稳定排序，返回指定偏移量起的最多 50 支 active 球队。
+func (r *Repository) SearchByKeywordPage(ctx context.Context, keyword string, offset int32) ([]ports.AppTeamSummary, error) {
+	rows, err := r.queries.SearchActiveTeamsByKeyword(ctx, teamsqlc.SearchActiveTeamsByKeywordParams{
+		Keyword: keyword, ResultOffset: offset,
+	})
 	if err != nil {
 		return nil, err
 	}

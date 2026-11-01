@@ -1445,8 +1445,13 @@ FROM teams t
 WHERE t.status = 'active'
   AND ($1::text = '' OR replace(t.name, '悅', '悦') ILIKE '%' || replace($1::text, '悅', '悦') || '%')
 ORDER BY t.name, t.id
-LIMIT 50
+LIMIT 50 OFFSET $2::int
 `
+
+type SearchActiveTeamsByKeywordParams struct {
+	Keyword      string `json:"keyword"`
+	ResultOffset int32  `json:"result_offset"`
+}
 
 type SearchActiveTeamsByKeywordRow struct {
 	ID          int64              `json:"id"`
@@ -1463,8 +1468,8 @@ type SearchActiveTeamsByKeywordRow struct {
 }
 
 // 用户侧加入球队：仅搜索 active 球队，附成员数与信用分供小程序列表展示。
-func (q *Queries) SearchActiveTeamsByKeyword(ctx context.Context, dollar_1 string) ([]SearchActiveTeamsByKeywordRow, error) {
-	rows, err := q.db.Query(ctx, searchActiveTeamsByKeyword, dollar_1)
+func (q *Queries) SearchActiveTeamsByKeyword(ctx context.Context, arg SearchActiveTeamsByKeywordParams) ([]SearchActiveTeamsByKeywordRow, error) {
+	rows, err := q.db.Query(ctx, searchActiveTeamsByKeyword, arg.Keyword, arg.ResultOffset)
 	if err != nil {
 		return nil, err
 	}

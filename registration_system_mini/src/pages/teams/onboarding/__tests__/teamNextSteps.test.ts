@@ -27,11 +27,13 @@ let createCalls = 0;
 let joinCalls = 0;
 let gate: () => Promise<boolean> = async () => true;
 let passwordCheck: (id: number) => Promise<boolean> = async () => false;
+const shows: Array<() => Promise<void>> = [];
+let searchDirectory: (keyword: string, offset?: number) => Promise<any[]> = async () => [];
 const urls: string[] = [];
 const toasts: string[] = [];
 let load: ((options: any) => void) | undefined;
 mock.module("@/utils/authStorage", () => ({ hasManualLogout: () => manualLogout }));
-mock.module("@dcloudio/uni-app", () => ({ onLoad: (fn: any) => { load = fn; }, onShow: () => {} }));
+mock.module("@dcloudio/uni-app", () => ({ onLoad: (fn: any) => { load = fn; }, onShow: (fn: () => Promise<void>) => { shows.push(fn); } }));
 mock.module("@/composables/usePageRefresh", () => ({ usePageRefresh: () => {} }));
 mock.module("@/utils/customNav", () => ({ getCustomNavMetrics: () => ({ pageTopPadding: 0 }) }));
 mock.module("@/stores/teamContext", () => ({ useTeamContext: () => ({
@@ -43,7 +45,7 @@ mock.module("@/stores/miniReview", () => ({ preloadMiniReviewStatus: async () =>
 mock.module("../../teamSelfActions", () => ({
   createTeamFromForm: async () => { createCalls++; return { id: 42 }; },
   joinTeamFromForm: async () => { joinCalls++; },
-  searchTeamsByKeyword: async () => [],
+  searchTeamsByKeyword: (keyword: string, offset?: number) => searchDirectory(keyword, offset),
   checkTeamRequiresPassword: (id: number) => passwordCheck(id),
 }));
 mock.module("../../useProfileCompletionGate", () => ({ useProfileCompletionGate: () => ({
@@ -68,7 +70,42 @@ beforeEach(async () => {
   switchWorks = true; refreshFails = false; hide.value = false; createCalls = 0; joinCalls = 0;
   myTeams.value = []; currentTeam.value = null; urls.length = 0; toasts.length = 0;
   gate = async () => true; passwordCheck = async () => false;
+  shows.length = 0; searchDirectory = async () => [];
 });
+describe("加入页默认球队目录", () => {
+  test("进入即加载全部，输入即时筛选，清空恢复，重复显示不重复请求", async () => {
+    const calls: Array<[string, number | undefined]> = [];
+    searchDirectory = async (keyword, offset) => {
+      calls.push([keyword, offset]);
+      return [{ id: 41, name: "东安球队" }, { id: 42, name: "城西球队" }];
+    };
+    const page = useTeamJoinPage();
+    await shows.at(-1)!();
+    expect(page.hasSearched.value).toBe(true);
+    expect(page.searchResults.value.map(team => team.id)).toEqual([41, 42]);
+    page.searchKeyword.value = "城西"; await nextTick();
+    expect(page.searchResults.value.map(team => team.id)).toEqual([42]);
+    await page.handleSelectTeam(page.searchResults.value[0]);
+    page.searchKeyword.value = "东安"; await nextTick();
+    expect(page.selectedTeam.value).toBe(null);
+    page.searchKeyword.value = ""; await nextTick();
+    expect(page.searchResults.value).toHaveLength(2);
+    await page.handleSearchTeams(); await shows.at(-1)!();
+    expect(calls).toEqual([["", 0]]);
+    expect(toasts).not.toContain("请输入球队名称");
+  });
+  test("目录加载失败可从搜索按钮重试，不影响创建和选择球队", async () => {
+    searchDirectory = async () => { throw new Error("网络错误"); };
+    const page = useTeamJoinPage(); await shows.at(-1)!();
+    expect(page.loadError.value).toBe("网络错误");
+    searchDirectory = async () => [{ id: 42, name: "新球队" }];
+    await page.handleSearchTeams();
+    expect(page.loadError.value).toBe("");
+    expect(page.searchResults.value[0]?.id).toBe(42);
+    page.goCreateTeam(); expect(urls.at(-1)).toBe("/pages/teams/create/index");
+  });
+});
+
 describe("球队成功后的下一步", () => {
   test("创建成功即锁定表单，刷新失败不误报失败、不重复建队", async () => {
     const page = useTeamCreatePage(); page.createForm.name = "新球队"; refreshFails = true;

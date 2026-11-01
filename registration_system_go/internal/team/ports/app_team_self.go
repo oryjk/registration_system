@@ -28,6 +28,7 @@ type AppTeamSelfRepository interface {
 	// CreateWithCaptain 原子创建球队并把 creator 加入为队长成员。
 	CreateWithCaptain(ctx context.Context, name string, description, joinPasswordHash *string, captainID int64) (domain.Team, error)
 	SearchByKeyword(ctx context.Context, keyword string) ([]AppTeamSummary, error)
+	SearchByKeywordPage(ctx context.Context, keyword string, offset int32) ([]AppTeamSummary, error)
 	// FindJoinPasswordHash 返回入队口令哈希；第二个返回值表示球队是否存在。
 	FindJoinPasswordHash(ctx context.Context, teamID int64) (*string, bool, error)
 	FindMembership(context.Context, int64, int64) (domain.Member, bool, error)

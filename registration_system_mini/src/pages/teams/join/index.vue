@@ -8,6 +8,7 @@ import ProfileCompletionDialog from "@/components/ProfileCompletionDialog.vue";
 import TeamJoinedNextSteps from "../onboarding/TeamJoinedNextSteps.vue";
 import TeamJoinPanel from "../components/TeamJoinPanel.vue";
 // #ifdef MP-WEIXIN
+import AppButton from "@/components/ui/AppButton.vue";
 import AppPageIntro from "@/components/ui/AppPageIntro.vue";
 import { HOME_VISUAL_ASSETS } from "@/config/homeVisualAssets";
 // #endif
@@ -22,6 +23,7 @@ const {
   pageStyle,
   searching,
   hasSearched,
+  loadError,
   searchKeyword,
   searchResults,
   selectedTeam,
@@ -66,6 +68,8 @@ onShow(() => { if (joinedTeam.value) void refreshIllustrations(); });
         v-model:join-password="joinPassword"
         :searching="searching"
         :has-searched="hasSearched"
+        :load-error="loadError"
+        :show-create-entry="canShowCreateEntry"
         :search-results="searchResults"
         :selected-team="selectedTeam"
         :selected-team-is-member="selectedTeamIsMember"
@@ -76,8 +80,15 @@ onShow(() => { if (joinedTeam.value) void refreshIllustrations(); });
         @search="handleSearchTeams"
         @select-team="handleSelectTeam"
         @join="handleJoinTeam"
-      />
+      >
+        <!-- #ifdef MP-WEIXIN -->
+        <template #createTeam>
+          <AppButton variant="secondary" block icon="plus" @click="goCreateTeam">没有找到？创建自己的球队</AppButton>
+        </template>
+        <!-- #endif -->
+      </TeamJoinPanel>
 
+      <!-- #ifndef MP-WEIXIN -->
       <view
         v-if="canShowCreateEntry"
         class="team-join-alt ui-subtle-control"
@@ -87,6 +98,7 @@ onShow(() => { if (joinedTeam.value) void refreshIllustrations(); });
         <text class="team-join-alt__label">没有找到？创建自己的球队</text>
         <text class="ui-arrow-text team-join-alt__arrow">→</text>
       </view>
+      <!-- #endif -->
       </template>
     </view>
 

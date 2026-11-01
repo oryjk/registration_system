@@ -30,8 +30,8 @@ export function createTeam(payload: {
   });
 }
 
-export function searchTeams(keyword: string) {
-  const queryString = buildQueryString({ keyword });
+export function searchTeams(keyword: string, offset?: number) {
+  const queryString = buildQueryString({ keyword, offset });
   return requestApi<BackendTeamSummary[]>({
     url: `/teams/search${queryString ? `?${queryString}` : ""}`,
     auth: true,

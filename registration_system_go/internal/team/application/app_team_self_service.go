@@ -190,7 +190,15 @@ func (s AppTeamSelfService) notifyCaptainMemberLeft(ctx context.Context, team do
 
 // SearchTeams 按关键字搜索可加入的球队（仅 active），附当前成员数。
 func (s AppTeamSelfService) SearchTeams(ctx context.Context, keyword string) ([]ports.AppTeamSummary, error) {
-	items, err := s.repository.SearchByKeyword(ctx, strings.TrimSpace(keyword))
+	return s.SearchTeamsPage(ctx, keyword, 0)
+}
+
+// SearchTeamsPage 按固定 50 条分页搜索可加入的球队，空关键字遍历 active 目录。
+func (s AppTeamSelfService) SearchTeamsPage(ctx context.Context, keyword string, offset int32) ([]ports.AppTeamSummary, error) {
+	if offset < 0 {
+		return nil, sharederror.New(sharederror.KindValidation, "球队搜索偏移量无效")
+	}
+	items, err := s.repository.SearchByKeywordPage(ctx, strings.TrimSpace(keyword), offset)
 	if err != nil {
 		return nil, sharederror.Wrap(sharederror.KindInternal, "搜索球队失败", err)
 	}
