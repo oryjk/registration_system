@@ -1,4 +1,4 @@
-/** 微信首页专用压缩素材；MinIO 对象按内容哈希命名，图片不进小程序包。 */
+/** 微信首页及相关引导页复用的压缩素材；MinIO 按内容哈希命名，图片不进包。 */
 export const HOME_VISUAL_ASSETS = {
   hero: "https://oryjk.cn:82/registration/static/home/visuals/v1/65166cb99b1a5d860e8fff7f.webp",
   createTeam: "https://oryjk.cn:82/registration/static/home/visuals/v1/26de9fb699849290c0cd2d0e.webp",

@@ -9,6 +9,15 @@ import AppButton from "@/components/ui/AppButton.vue";
 import AppSurface from "@/components/ui/AppSurface.vue";
 import TeamCreatePanel from "../components/TeamCreatePanel.vue";
 import { useTeamCreatePage } from "./useTeamCreatePage";
+// #ifdef MP-WEIXIN
+import { computed, ref } from "vue";
+import TeamCreateIntro from "./TeamCreateIntro.vue";
+import { useMinioImages } from "@/composables/useMinioImages";
+import { HOME_VISUAL_ASSETS } from "@/config/homeVisualAssets";
+const { minioImageSrc } = useMinioImages();
+const joinIllustrationFailed = ref(false);
+const joinIllustrationSrc = computed(() => joinIllustrationFailed.value ? "" : minioImageSrc(HOME_VISUAL_ASSETS.joinTeam));
+// #endif
 
 const { themePageStyle } = useAccentTheme();
 
@@ -53,7 +62,12 @@ onShow(() => { if (createdTeamId.value) void refreshIllustrations(); });
         </view>
       </AppSurface>
       <template v-else>
+        <!-- #ifdef MP-WEIXIN -->
+        <TeamCreateIntro />
+        <!-- #endif -->
+        <!-- #ifndef MP-WEIXIN -->
         <text class="team-page-note">创建后你将成为队长，可邀请队友加入。</text>
+        <!-- #endif -->
 
         <TeamCreatePanel
           :form="createForm"
@@ -68,6 +82,9 @@ onShow(() => { if (createdTeamId.value) void refreshIllustrations(); });
         />
 
         <view class="team-create-alt" hover-class="team-create-alt--pressed" @tap="goJoinTeam">
+          <!-- #ifdef MP-WEIXIN -->
+          <image v-if="joinIllustrationSrc" class="team-create-alt__illustration" :src="joinIllustrationSrc" mode="aspectFit" aria-hidden="true" @error="joinIllustrationSrc && (joinIllustrationFailed = true)" />
+          <!-- #endif -->
           <text class="team-create-alt__label">已有心仪的球队？去搜索加入</text>
           <text class="team-create-alt__arrow">→</text>
         </view>
@@ -126,4 +143,10 @@ onShow(() => { if (createdTeamId.value) void refreshIllustrations(); });
 
 
 .team-page-note { display: block; margin: 4rpx 4rpx 20rpx; color: var(--ui-color-text-muted); font-size: 24rpx; line-height: 1.5; }
+/* #ifdef MP-WEIXIN */
+.team-create-alt { justify-content: flex-start; gap: 16rpx; padding: 20rpx 24rpx; }
+.team-create-alt__illustration { flex-shrink: 0; width: 60rpx; height: 60rpx; }
+.team-create-alt__label { flex: 1; min-width: 0; font-size: 24rpx; line-height: 1.5; }
+.team-create-alt__arrow { flex-shrink: 0; }
+/* #endif */
 </style>

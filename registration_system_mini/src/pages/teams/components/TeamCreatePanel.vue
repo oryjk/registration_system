@@ -51,9 +51,15 @@ function handleSubmit() {
       <text class="form-label">入队密码</text>
       <input v-model="form.joinPassword" class="form-input" placeholder="可选，留空则无需密码" password />
     </view>
-    <AppButton icon="plus" block :disabled="!canCreate" :loading="submitting" @click="handleSubmit">
-      {{ submitting ? "创建中..." : "创建球队" }}
-    </AppButton>
+    <!-- #ifdef MP-WEIXIN -->
+    <view class="team-create-submit">
+    <!-- #endif -->
+      <AppButton icon="plus" block :disabled="!canCreate" :loading="submitting" @click="handleSubmit">
+        {{ submitting ? "创建中..." : "创建球队" }}
+      </AppButton>
+    <!-- #ifdef MP-WEIXIN -->
+    </view>
+    <!-- #endif -->
   </AppSurface>
 </template>
 
@@ -83,7 +89,14 @@ function handleSubmit() {
   align-items: center;
 }
 
+/* #ifndef MP-WEIXIN */
 :deep(.ui-button--block) {
   margin-top: 28rpx;
 }
+/* #endif */
+
+/* #ifdef MP-WEIXIN */
+/* 间距由当前组件的 view 承担，不跨过 AppButton 的小程序样式隔离边界。 */
+.team-create-submit { padding-top: 32rpx; }
+/* #endif */
 </style>
