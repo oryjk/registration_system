@@ -38,6 +38,8 @@ const props = withDefaults(
     loading?: boolean;
     /** 额外禁用主按钮（如表单未填完），loading 时始终禁用。 */
     primaryDisabled?: boolean;
+    /** 是否显示右上角关闭按钮；遮罩关闭行为保持独立。 */
+    showClose?: boolean;
   }>(),
   {
     message: "",
@@ -54,6 +56,7 @@ const props = withDefaults(
     primaryTone: "accent",
     loading: false,
     primaryDisabled: false,
+    showClose: true,
   },
 );
 
@@ -122,7 +125,7 @@ function handleClose() {
           <text class="ui-confirm-dialog-title">{{ title }}</text>
           <text v-if="message" class="ui-confirm-dialog-message"><template v-if="messageParts">{{ messageParts.before }}<text v-if="messageParts.kind === 'link'" class="ui-confirm-dialog-link" @tap.stop="emit('link')">{{ messageParts.segment }}</text><text v-else class="ui-confirm-dialog-highlight">{{ messageParts.segment }}</text>{{ messageParts.after }}</template><template v-else>{{ message }}</template></text>
         </view>
-        <view class="ui-confirm-dialog-close" @tap="handleClose">×</view>
+        <view v-if="showClose" class="ui-confirm-dialog-close" @tap="handleClose">×</view>
       </view>
       <!-- 链接列表（如解散球队的阻塞项处理入口）：整行可点，点击后由外层关闭弹窗并跳转。 -->
       <view v-if="linkItems.length" class="ui-confirm-dialog-links">

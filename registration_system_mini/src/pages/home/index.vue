@@ -536,6 +536,7 @@ onShareTimeline(() => ({
     <ConfirmDialog
       :visible="homeTour.confirmingSkip.value"
       title="如何跳过新手引导？"
+      :show-close="false"
       message="仅本次跳过，下次进入仍会提示。永久跳过后不再自动提示，你仍可从使用帮助重新查看。"
       primary-text="仅本次跳过"
       secondary-text="永久跳过"
