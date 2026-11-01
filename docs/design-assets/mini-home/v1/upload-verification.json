@@ -1,0 +1,137 @@
+[
+  {
+    "id": "hero",
+    "url": "https://oryjk.cn:82/registration/static/home/visuals/v1/65166cb99b1a5d860e8fff7f.webp",
+    "status": 200,
+    "bytes": 50858,
+    "sha256": "65166cb99b1a5d860e8fff7ff99a2482631568248747fc671fbc0ffea2f9561e",
+    "content_type": "image/webp",
+    "cache_control": "public,max-age=31536000,immutable"
+  },
+  {
+    "id": "create-team",
+    "url": "https://oryjk.cn:82/registration/static/home/visuals/v1/26de9fb699849290c0cd2d0e.webp",
+    "status": 200,
+    "bytes": 11132,
+    "sha256": "26de9fb699849290c0cd2d0e3938753c9b52fc122464b92f57418e9706341cbd",
+    "content_type": "image/webp",
+    "cache_control": "public,max-age=31536000,immutable"
+  },
+  {
+    "id": "join-team",
+    "url": "https://oryjk.cn:82/registration/static/home/visuals/v1/bfecb31f2565177d39156546.webp",
+    "status": 200,
+    "bytes": 12710,
+    "sha256": "bfecb31f2565177d39156546118782357a0759188a880814cca9f7c141e00215",
+    "content_type": "image/webp",
+    "cache_control": "public,max-age=31536000,immutable"
+  },
+  {
+    "id": "find-game",
+    "url": "https://oryjk.cn:82/registration/static/home/visuals/v1/be2a00dd2bb3702ef0173336.webp",
+    "status": 200,
+    "bytes": 13562,
+    "sha256": "be2a00dd2bb3702ef0173336884b1e0df82fca396646d9b57021dfdc540372c8",
+    "content_type": "image/webp",
+    "cache_control": "public,max-age=31536000,immutable"
+  },
+  {
+    "id": "pitch-dusk",
+    "url": "https://oryjk.cn:82/registration/match-covers/default-pool/v1/dc6e57d71e217a48fcf0e228.webp",
+    "status": 200,
+    "bytes": 22374,
+    "sha256": "dc6e57d71e217a48fcf0e228c7f187e19eab028e87186ace3760d42c0d5f370c",
+    "content_type": "image/webp",
+    "cache_control": "public,max-age=31536000,immutable"
+  },
+  {
+    "id": "ball-turf",
+    "url": "https://oryjk.cn:82/registration/match-covers/default-pool/v1/4d56ae087de77ab3bb3dccc5.webp",
+    "status": 200,
+    "bytes": 17968,
+    "sha256": "4d56ae087de77ab3bb3dccc5094bc57e89be4118cef8e64616213562cc1bf9ff",
+    "content_type": "image/webp",
+    "cache_control": "public,max-age=31536000,immutable"
+  },
+  {
+    "id": "goal-night",
+    "url": "https://oryjk.cn:82/registration/match-covers/default-pool/v1/c5e5625bf912d1a3c3f28e1b.webp",
+    "status": 200,
+    "bytes": 20984,
+    "sha256": "c5e5625bf912d1a3c3f28e1ba2a3b8edb4d21a26fd86b36dbb4433f29daedd23",
+    "content_type": "image/webp",
+    "cache_control": "public,max-age=31536000,immutable"
+  },
+  {
+    "id": "pitch-aerial",
+    "url": "https://oryjk.cn:82/registration/match-covers/default-pool/v1/5e6f6994a7efb3f8dceed254.webp",
+    "status": 200,
+    "bytes": 31174,
+    "sha256": "5e6f6994a7efb3f8dceed2542c795e7d873c498f5e1e7254583049deb13680c9",
+    "content_type": "image/webp",
+    "cache_control": "public,max-age=31536000,immutable"
+  },
+  {
+    "id": "boots-ball",
+    "url": "https://oryjk.cn:82/registration/match-covers/default-pool/v1/781a9e2bfb6c106c11747547.webp",
+    "status": 200,
+    "bytes": 17040,
+    "sha256": "781a9e2bfb6c106c11747547a5a9ef9543640a01280069c12d381dbfb1e02b0a",
+    "content_type": "image/webp",
+    "cache_control": "public,max-age=31536000,immutable"
+  },
+  {
+    "id": "corner-flag",
+    "url": "https://oryjk.cn:82/registration/match-covers/default-pool/v1/822a78bb840eb324c71ee82d.webp",
+    "status": 200,
+    "bytes": 22094,
+    "sha256": "822a78bb840eb324c71ee82dbfe2b35e4ab59841f5db9fbc6316a40a6e544569",
+    "content_type": "image/webp",
+    "cache_control": "public,max-age=31536000,immutable"
+  },
+  {
+    "id": "kickoff",
+    "url": "https://oryjk.cn:82/registration/match-covers/default-pool/v1/87534dfdc933064ac21e3e8a.webp",
+    "status": 200,
+    "bytes": 19608,
+    "sha256": "87534dfdc933064ac21e3e8a0f89cba6a78dfc2a0b6e8947905cbe2aea9fe207",
+    "content_type": "image/webp",
+    "cache_control": "public,max-age=31536000,immutable"
+  },
+  {
+    "id": "net-detail",
+    "url": "https://oryjk.cn:82/registration/match-covers/default-pool/v1/93c682c72bf9f18e8473dd99.webp",
+    "status": 200,
+    "bytes": 23590,
+    "sha256": "93c682c72bf9f18e8473dd99e2e0025030f1503fa78b2794efef18c642d52bff",
+    "content_type": "image/webp",
+    "cache_control": "public,max-age=31536000,immutable"
+  },
+  {
+    "id": "training-cones",
+    "url": "https://oryjk.cn:82/registration/match-covers/default-pool/v1/e064bf4c9374e4e7719da910.webp",
+    "status": 200,
+    "bytes": 18878,
+    "sha256": "e064bf4c9374e4e7719da9104b40bccb003263465348f9557a7d84a82a2e57b6",
+    "content_type": "image/webp",
+    "cache_control": "public,max-age=31536000,immutable"
+  },
+  {
+    "id": "pitch-morning",
+    "url": "https://oryjk.cn:82/registration/match-covers/default-pool/v1/6dac0eaac83f6565dc18ca08.webp",
+    "status": 200,
+    "bytes": 20358,
+    "sha256": "6dac0eaac83f6565dc18ca083fc9cbce11d8e1a5d306b052b16545900ad14eb5",
+    "content_type": "image/webp",
+    "cache_control": "public,max-age=31536000,immutable"
+  },
+  {
+    "id": "venue-map",
+    "url": "https://oryjk.cn:82/registration/static/home/visuals/v1/bf98e5a385fe831c55f8238a.webp",
+    "status": 200,
+    "bytes": 58220,
+    "sha256": "bf98e5a385fe831c55f8238a1915a1ac40c30c4e02f5fc4c255977d0af25d3fc",
+    "content_type": "image/webp",
+    "cache_control": "public,max-age=31536000,immutable"
+  }
+]

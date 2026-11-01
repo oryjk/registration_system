@@ -1,0 +1,257 @@
+[
+  {
+    "id": "hero",
+    "kind": "hero",
+    "file": "hero.webp",
+    "width": 1000,
+    "height": 500,
+    "bytes": 50858,
+    "sha256": "65166cb99b1a5d860e8fff7ff99a2482631568248747fc671fbc0ffea2f9561e",
+    "key": "static/home/visuals/v1/65166cb99b1a5d860e8fff7f.webp",
+    "url": "https://oryjk.cn:82/registration/static/home/visuals/v1/65166cb99b1a5d860e8fff7f.webp",
+    "original_file": "exec-bafb186f-4ef7-41ac-8af6-ac22dd4a2644.png",
+    "original_dimensions": [
+      1774,
+      887
+    ],
+    "original_bytes": 2032897
+  },
+  {
+    "id": "create-team",
+    "kind": "shortcut",
+    "file": "create-team.webp",
+    "width": 256,
+    "height": 256,
+    "bytes": 11132,
+    "sha256": "26de9fb699849290c0cd2d0e3938753c9b52fc122464b92f57418e9706341cbd",
+    "key": "static/home/visuals/v1/26de9fb699849290c0cd2d0e.webp",
+    "url": "https://oryjk.cn:82/registration/static/home/visuals/v1/26de9fb699849290c0cd2d0e.webp",
+    "original_file": "exec-13693799-8b96-4d53-9776-b3fd5bd8b4f6.png",
+    "original_dimensions": [
+      1254,
+      1254
+    ],
+    "original_bytes": 1089514
+  },
+  {
+    "id": "join-team",
+    "kind": "shortcut",
+    "file": "join-team.webp",
+    "width": 256,
+    "height": 256,
+    "bytes": 12710,
+    "sha256": "bfecb31f2565177d39156546118782357a0759188a880814cca9f7c141e00215",
+    "key": "static/home/visuals/v1/bfecb31f2565177d39156546.webp",
+    "url": "https://oryjk.cn:82/registration/static/home/visuals/v1/bfecb31f2565177d39156546.webp",
+    "original_file": "exec-ee6cb7c7-778d-4245-aeee-3968812f4b16.png",
+    "original_dimensions": [
+      1254,
+      1254
+    ],
+    "original_bytes": 1487925
+  },
+  {
+    "id": "find-game",
+    "kind": "shortcut",
+    "file": "find-game.webp",
+    "width": 256,
+    "height": 256,
+    "bytes": 13562,
+    "sha256": "be2a00dd2bb3702ef0173336884b1e0df82fca396646d9b57021dfdc540372c8",
+    "key": "static/home/visuals/v1/be2a00dd2bb3702ef0173336.webp",
+    "url": "https://oryjk.cn:82/registration/static/home/visuals/v1/be2a00dd2bb3702ef0173336.webp",
+    "original_file": "exec-a3ba1191-9dce-4057-8b19-19ff77dfc191.png",
+    "original_dimensions": [
+      1254,
+      1254
+    ],
+    "original_bytes": 1401804
+  },
+  {
+    "id": "pitch-dusk",
+    "kind": "match",
+    "file": "pitch-dusk.webp",
+    "width": 320,
+    "height": 320,
+    "bytes": 22374,
+    "sha256": "dc6e57d71e217a48fcf0e228c7f187e19eab028e87186ace3760d42c0d5f370c",
+    "key": "match-covers/default-pool/v1/dc6e57d71e217a48fcf0e228.webp",
+    "url": "https://oryjk.cn:82/registration/match-covers/default-pool/v1/dc6e57d71e217a48fcf0e228.webp",
+    "original_file": "exec-6fe41d3e-6939-4a11-8eed-534a08772074.png",
+    "original_dimensions": [
+      1254,
+      1254
+    ],
+    "original_bytes": 2654083
+  },
+  {
+    "id": "ball-turf",
+    "kind": "match",
+    "file": "ball-turf.webp",
+    "width": 320,
+    "height": 320,
+    "bytes": 17968,
+    "sha256": "4d56ae087de77ab3bb3dccc5094bc57e89be4118cef8e64616213562cc1bf9ff",
+    "key": "match-covers/default-pool/v1/4d56ae087de77ab3bb3dccc5.webp",
+    "url": "https://oryjk.cn:82/registration/match-covers/default-pool/v1/4d56ae087de77ab3bb3dccc5.webp",
+    "original_file": "exec-c92c1424-ffd9-43d9-bb6c-ef53d8b7527f.png",
+    "original_dimensions": [
+      1254,
+      1254
+    ],
+    "original_bytes": 2181599
+  },
+  {
+    "id": "goal-night",
+    "kind": "match",
+    "file": "goal-night.webp",
+    "width": 320,
+    "height": 320,
+    "bytes": 20984,
+    "sha256": "c5e5625bf912d1a3c3f28e1ba2a3b8edb4d21a26fd86b36dbb4433f29daedd23",
+    "key": "match-covers/default-pool/v1/c5e5625bf912d1a3c3f28e1b.webp",
+    "url": "https://oryjk.cn:82/registration/match-covers/default-pool/v1/c5e5625bf912d1a3c3f28e1b.webp",
+    "original_file": "exec-7ddb21f8-fab1-47d4-bb59-85caf1ba481b.png",
+    "original_dimensions": [
+      1254,
+      1254
+    ],
+    "original_bytes": 2559099
+  },
+  {
+    "id": "pitch-aerial",
+    "kind": "match",
+    "file": "pitch-aerial.webp",
+    "width": 320,
+    "height": 320,
+    "bytes": 31174,
+    "sha256": "5e6f6994a7efb3f8dceed2542c795e7d873c498f5e1e7254583049deb13680c9",
+    "key": "match-covers/default-pool/v1/5e6f6994a7efb3f8dceed254.webp",
+    "url": "https://oryjk.cn:82/registration/match-covers/default-pool/v1/5e6f6994a7efb3f8dceed254.webp",
+    "original_file": "exec-2075e353-a802-42c0-89d7-3734b0580108.png",
+    "original_dimensions": [
+      1254,
+      1254
+    ],
+    "original_bytes": 3587802
+  },
+  {
+    "id": "boots-ball",
+    "kind": "match",
+    "file": "boots-ball.webp",
+    "width": 320,
+    "height": 320,
+    "bytes": 17040,
+    "sha256": "781a9e2bfb6c106c11747547a5a9ef9543640a01280069c12d381dbfb1e02b0a",
+    "key": "match-covers/default-pool/v1/781a9e2bfb6c106c11747547.webp",
+    "url": "https://oryjk.cn:82/registration/match-covers/default-pool/v1/781a9e2bfb6c106c11747547.webp",
+    "original_file": "exec-91c94885-d6a3-4e61-8f64-8f59c64f146f.png",
+    "original_dimensions": [
+      1254,
+      1254
+    ],
+    "original_bytes": 2223141
+  },
+  {
+    "id": "corner-flag",
+    "kind": "match",
+    "file": "corner-flag.webp",
+    "width": 320,
+    "height": 320,
+    "bytes": 22094,
+    "sha256": "822a78bb840eb324c71ee82dbfe2b35e4ab59841f5db9fbc6316a40a6e544569",
+    "key": "match-covers/default-pool/v1/822a78bb840eb324c71ee82d.webp",
+    "url": "https://oryjk.cn:82/registration/match-covers/default-pool/v1/822a78bb840eb324c71ee82d.webp",
+    "original_file": "exec-362f2583-758d-4734-8b38-0f4efe4d4ea5.png",
+    "original_dimensions": [
+      1254,
+      1254
+    ],
+    "original_bytes": 2503838
+  },
+  {
+    "id": "kickoff",
+    "kind": "match",
+    "file": "kickoff.webp",
+    "width": 320,
+    "height": 320,
+    "bytes": 19608,
+    "sha256": "87534dfdc933064ac21e3e8a0f89cba6a78dfc2a0b6e8947905cbe2aea9fe207",
+    "key": "match-covers/default-pool/v1/87534dfdc933064ac21e3e8a.webp",
+    "url": "https://oryjk.cn:82/registration/match-covers/default-pool/v1/87534dfdc933064ac21e3e8a.webp",
+    "original_file": "exec-81e7f88e-e87f-4f71-859e-cd9e18b286b3.png",
+    "original_dimensions": [
+      1254,
+      1254
+    ],
+    "original_bytes": 2434555
+  },
+  {
+    "id": "net-detail",
+    "kind": "match",
+    "file": "net-detail.webp",
+    "width": 320,
+    "height": 320,
+    "bytes": 23590,
+    "sha256": "93c682c72bf9f18e8473dd99e2e0025030f1503fa78b2794efef18c642d52bff",
+    "key": "match-covers/default-pool/v1/93c682c72bf9f18e8473dd99.webp",
+    "url": "https://oryjk.cn:82/registration/match-covers/default-pool/v1/93c682c72bf9f18e8473dd99.webp",
+    "original_file": "exec-205d70c6-2c27-48b4-8185-32e7a8080256.png",
+    "original_dimensions": [
+      1254,
+      1254
+    ],
+    "original_bytes": 2343241
+  },
+  {
+    "id": "training-cones",
+    "kind": "match",
+    "file": "training-cones.webp",
+    "width": 320,
+    "height": 320,
+    "bytes": 18878,
+    "sha256": "e064bf4c9374e4e7719da9104b40bccb003263465348f9557a7d84a82a2e57b6",
+    "key": "match-covers/default-pool/v1/e064bf4c9374e4e7719da910.webp",
+    "url": "https://oryjk.cn:82/registration/match-covers/default-pool/v1/e064bf4c9374e4e7719da910.webp",
+    "original_file": "exec-a99abe33-ea11-4d0f-b577-311efc48f76e.png",
+    "original_dimensions": [
+      1254,
+      1254
+    ],
+    "original_bytes": 2249298
+  },
+  {
+    "id": "pitch-morning",
+    "kind": "match",
+    "file": "pitch-morning.webp",
+    "width": 320,
+    "height": 320,
+    "bytes": 20358,
+    "sha256": "6dac0eaac83f6565dc18ca083fc9cbce11d8e1a5d306b052b16545900ad14eb5",
+    "key": "match-covers/default-pool/v1/6dac0eaac83f6565dc18ca08.webp",
+    "url": "https://oryjk.cn:82/registration/match-covers/default-pool/v1/6dac0eaac83f6565dc18ca08.webp",
+    "original_file": "exec-75355714-1b8e-44ea-b70d-e2de71be4127.png",
+    "original_dimensions": [
+      1254,
+      1254
+    ],
+    "original_bytes": 2679955
+  },
+  {
+    "id": "venue-map",
+    "kind": "map",
+    "file": "venue-map.webp",
+    "width": 640,
+    "height": 427,
+    "bytes": 58220,
+    "sha256": "bf98e5a385fe831c55f8238a1915a1ac40c30c4e02f5fc4c255977d0af25d3fc",
+    "key": "static/home/visuals/v1/bf98e5a385fe831c55f8238a.webp",
+    "url": "https://oryjk.cn:82/registration/static/home/visuals/v1/bf98e5a385fe831c55f8238a.webp",
+    "original_file": "exec-f3085f49-a6bd-43d9-bd84-84c83b8c94a3.png",
+    "original_dimensions": [
+      1536,
+      1024
+    ],
+    "original_bytes": 2526167
+  }
+]

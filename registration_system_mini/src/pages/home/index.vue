@@ -15,6 +15,7 @@ import HomeSectionHeader from "./components/HomeSectionHeader.vue";
 import HomeEmptyHero from "./components/HomeEmptyHero.vue";
 import HomeOnboardingTour from "./components/HomeOnboardingTour.vue";
 // #ifdef MP-WEIXIN
+import HomeStartEntries from "./components/HomeStartEntries.vue";
 import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
 import { useMiniAppEntry } from "@/stores/miniAppEntry";
 // #endif
@@ -441,12 +442,12 @@ onShareTimeline(() => ({
 
         <!-- #ifdef MP-WEIXIN -->
         <view v-if="hasLoadedMatchData" class="home-start-entries">
-          <HomeEmptyHero
+          <HomeStartEntries
             ref="onboardingHero"
-            :state="emptyHeroState"
-            compact
+            :actions="emptyHeroState.actions"
             :busy="guidanceNavigation.busy.value"
             @select-task="handleTaskChoice"
+            @help="openHelp"
           />
         </view>
         <!-- #endif -->

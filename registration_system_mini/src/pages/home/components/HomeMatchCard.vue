@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import AppTag from "@/components/ui/AppTag.vue";
+// #ifdef MP-WEIXIN
+import HomeMatchThumbnail from "./HomeMatchThumbnail.vue";
+// #endif
 import type { HomeMatchCardViewModel } from "@/types/viewModels";
 
 const props = defineProps<{
@@ -32,6 +35,11 @@ function handleTap() {
     :hover-class="match.canOpenDetail ? 'home-view-card--pressed' : 'none'"
     @tap="handleTap"
   >
+    <!-- #ifdef MP-WEIXIN -->
+    <view v-if="match.phase === 'ended'" class="home-view-card__thumbnail">
+      <HomeMatchThumbnail :match="match" />
+    </view>
+    <!-- #endif -->
     <view class="home-view-card__main">
       <view class="home-view-card__title-row">
         <text class="home-view-card__title">{{ match.title }}</text>
@@ -57,6 +65,9 @@ function handleTap() {
 </template>
 
 <style scoped>
+/* #ifdef MP-WEIXIN */
+.home-view-card__thumbnail { flex: 0 0 112rpx; width: 112rpx; height: 112rpx; }
+/* #endif */
 /* ===== 查看型紧凑卡 ===== */
 .home-view-card {
   display: flex;

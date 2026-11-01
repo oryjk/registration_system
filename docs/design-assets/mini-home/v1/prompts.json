@@ -1,0 +1,66 @@
+{
+  "tool": "built-in image_gen",
+  "source": "用户确认的首页设计稿",
+  "assets": [
+    {
+      "id": "hero",
+      "prompt": "Approved homepage hero: evening amateur football, navy/mint jerseys, players on right, navy text space on left."
+    },
+    {
+      "id": "create-team",
+      "prompt": "Transparent navy/mint isometric shortcut icon matching the approved homepage: create-team"
+    },
+    {
+      "id": "join-team",
+      "prompt": "Transparent navy/mint isometric shortcut icon matching the approved homepage: join-team"
+    },
+    {
+      "id": "find-game",
+      "prompt": "Transparent navy/mint isometric shortcut icon matching the approved homepage: find-game"
+    },
+    {
+      "id": "pitch-dusk",
+      "prompt": "Create ONE square football photography asset for a MOBILE APP match thumbnail. Realistic professional sports editorial photograph, refined navy/green/mint palette, clean clear recognizable subject, natural light and detail, modest local amateur football facility rather than huge commercial stadium, suitable for a tiny square crop. No text, no logo, no watermark, no border, no UI. An empty green neighborhood football pitch at dusk, sideline and corner arc foreground, elegant trees and distant silhouettes, warm mauve sunset and two white floodlights. Same subject as first match thumbnail in the approved reference."
+    },
+    {
+      "id": "ball-turf",
+      "prompt": "Create ONE square football photography asset for a MOBILE APP match thumbnail. Realistic professional sports editorial photograph, refined navy/green/mint palette, clean clear recognizable subject, natural light and detail, modest local amateur football facility rather than huge commercial stadium, suitable for a tiny square crop. No text, no logo, no watermark, no border, no UI. One classic white and dark navy pentagon football lying on fresh green artificial turf beside a white touchline, afternoon natural light, shallow depth of field. Same subject as second match thumbnail in the approved reference."
+    },
+    {
+      "id": "goal-night",
+      "prompt": "Create ONE square football photography asset for a MOBILE APP match thumbnail. Realistic professional sports editorial photograph, refined navy/green/mint palette, clean clear recognizable subject, natural light and detail, modest local amateur football facility rather than huge commercial stadium, suitable for a tiny square crop. No text, no logo, no watermark, no border, no UI. A white football goal and detailed clean net seen at an angle on a green community pitch at night, two beautiful soft floodlights, deep navy sky, no people. Same subject as third match thumbnail in the approved reference."
+    },
+    {
+      "id": "pitch-aerial",
+      "prompt": "Create ONE square football photography asset for a MOBILE APP match thumbnail. Realistic professional sports editorial photograph, refined navy/green/mint palette, clean clear recognizable subject, natural light and detail, modest local amateur football facility rather than huge commercial stadium, suitable for a tiny square crop. No text, no logo, no watermark, no border, no UI. An aerial oblique photograph of a beautiful small green football pitch with correct white center circle and markings, low trees surrounding it, late afternoon natural light."
+    },
+    {
+      "id": "boots-ball",
+      "prompt": "Create ONE square football photography asset for a MOBILE APP match thumbnail. Realistic professional sports editorial photograph, refined navy/green/mint palette, clean clear recognizable subject, natural light and detail, modest local amateur football facility rather than huge commercial stadium, suitable for a tiny square crop. No text, no logo, no watermark, no border, no UI. A pair of clean navy and mint football boots beside one white football on green turf, close-up low viewpoint, amateur football training atmosphere, no visible brands."
+    },
+    {
+      "id": "corner-flag",
+      "prompt": "Create ONE square football photography asset for a MOBILE APP match thumbnail. Realistic professional sports editorial photograph, refined navy/green/mint palette, clean clear recognizable subject, natural light and detail, modest local amateur football facility rather than huge commercial stadium, suitable for a tiny square crop. No text, no logo, no watermark, no border, no UI. A small mint colored corner flag on a football pitch, white corner arc prominent, softly blurred empty green field beyond, crisp morning light."
+    },
+    {
+      "id": "kickoff",
+      "prompt": "Create ONE square football photography asset for a MOBILE APP match thumbnail. Realistic professional sports editorial photograph, refined navy/green/mint palette, clean clear recognizable subject, natural light and detail, modest local amateur football facility rather than huge commercial stadium, suitable for a tiny square crop. No text, no logo, no watermark, no border, no UI. A white and navy football on the center spot with center circle and halfway line of an empty community pitch, perfectly calm early evening light, low ground-level camera."
+    },
+    {
+      "id": "net-detail",
+      "prompt": "Create ONE square football photography asset for a MOBILE APP match thumbnail. Realistic professional sports editorial photograph, refined navy/green/mint palette, clean clear recognizable subject, natural light and detail, modest local amateur football facility rather than huge commercial stadium, suitable for a tiny square crop. No text, no logo, no watermark, no border, no UI. Close foreground white football goal net with one white football resting just inside the goal on rich green turf, soft afternoon sunlight, lovely shallow depth of field."
+    },
+    {
+      "id": "training-cones",
+      "prompt": "Create ONE square football photography asset for a MOBILE APP match thumbnail. Realistic professional sports editorial photograph, refined navy/green/mint palette, clean clear recognizable subject, natural light and detail, modest local amateur football facility rather than huge commercial stadium, suitable for a tiny square crop. No text, no logo, no watermark, no border, no UI. Three simple mint and orange football training cones and a white football lined on lush green turf, sunny practice session atmosphere, no people, no lettering."
+    },
+    {
+      "id": "pitch-morning",
+      "prompt": "Create ONE square football photography asset for a MOBILE APP match thumbnail. Realistic professional sports editorial photograph, refined navy/green/mint palette, clean clear recognizable subject, natural light and detail, modest local amateur football facility rather than huge commercial stadium, suitable for a tiny square crop. No text, no logo, no watermark, no border, no UI. An empty football field in peaceful pale misty morning light, lush green grass sparkling with dew, white touchline leads toward a small goal and distant trees, natural atmospheric photograph."
+    },
+    {
+      "id": "venue-map",
+      "prompt": "Generate ONE standalone isometric illustration asset for the football map entry card in the approved reference. Beautiful miniature green football pitch with accurate white center line, center circle, two goals and penalty boxes, gray little access roads curving around it, a few tiny off-white low-rise buildings and green trees, tall mint #00ebc7 location pin standing at the right side of the field. Same refined isometric 3D illustrated style as the reference map card. Wide 3:2 composition, neat readable shapes, matte materials, soft ambient lighting, green, pale mint, white and navy accents. Transparent background, floating miniature diorama without a rectangular background, no words, no UI, no labels, no watermark. Object fills canvas with small transparent margins."
+    }
+  ]
+}
