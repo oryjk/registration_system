@@ -242,6 +242,10 @@ H5 提供薄荷蓝（默认）、青柠、晴空蓝、珊瑚紫、曜夜橙五�
 
 顶部导航与 TabBar 共用 `--ui-glass-*` 材质：半透明 surface、背景模糊，顶部不显示分割线；显式 plain 头部仍保持透明。TabBar 选中胶囊保持白色，主题色 PNG 图标不使用 CSS mask。此效果为跨端 CSS 近似玻璃材质，不包含原生光学折射，真机效果需验收。
 
+### 底部固定悬浮操作面板
+
+选中球队的确认区复用 `StickyActionBar flat reserve-space`，整块卡片（标题、说明、可选密码和按钮）固定在视口底部。`reserveSpace` 默认关闭；开启时以组件自身原生节点实际高度生成滚动占位，结合底部安全区、`--ui-action-bar-bottom` 和 `--ui-card-gap`，内容/窗口变化后重新测量。业务内容由原有组件负责，布局不依赖跨组件 scoped 穿透；H5 加入页保留页面内布局。
+
 ## 加入球队目录
 
 微信加入页默认展示全部可加入球队，按固定 50 条 offset 分页读取后在本页缓存，输入即时筛选、清空恢复；加载和筛选均不改变密码/资料 gate 语义。创建入口位于搜索框下方，复用 AppButton 的 `secondary` 变体（`--ui-button-secondary-bg/fg`），海军蓝白字区别于薄荷搜索按钮。审核态仍按 `canShowCreateEntry` 隐藏，slot 容器通过列布局拉伸组件宿主。H5 保留手动搜索及原入口。

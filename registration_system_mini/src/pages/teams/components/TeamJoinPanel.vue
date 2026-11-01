@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { useMinioImages } from "@/composables/useMinioImages";
 import AppButton from "@/components/ui/AppButton.vue";
+// #ifdef MP-WEIXIN
+import StickyActionBar from "@/components/ui/StickyActionBar.vue";
+// #endif
 import type { BackendTeamSummary } from "@/types/backend";
 
 const { minioImageSrc } = useMinioImages();
@@ -92,6 +95,9 @@ function handleJoin() {
       <text>{{ hasSearched ? '试试更短的关键词，或确认球队名称。' : '支持输入部分名称，选择球队后即可加入。' }}</text>
     </view>
     <!-- #endif -->
+    <!-- #ifdef MP-WEIXIN -->
+    <StickyActionBar v-if="selectedTeam" flat reserve-space>
+    <!-- #endif -->
     <view v-if="selectedTeam" class="join-panel ui-card-panel">
       <text class="join-panel-title">{{ selectedTeamIsMember ? '你已加入' : '加入' }} {{ selectedTeam.name }}</text>
       <text class="join-panel-note">{{ selectedTeamIsMember ? '你已经是该球队成员，可直接查看球队详情。' : selectedTeamRequiresPassword ? '该球队设置了入队密码，请向队长获取。' : '该球队开放加入，确认后即可成为队员。' }}</text>
@@ -103,6 +109,9 @@ function handleJoin() {
       <view class="join-action"><AppButton block :disabled="!canJoin" :loading="submitting" @click="handleJoin">{{ selectedTeamIsMember ? '查看球队 →' : submitting ? '加入中…' : '确认加入球队' }}</AppButton></view>
       <!-- #endif -->
     </view>
+    <!-- #ifdef MP-WEIXIN -->
+    </StickyActionBar>
+    <!-- #endif -->
   </view>
 </template>
 
@@ -161,10 +170,10 @@ function handleJoin() {
 .team-result-action { font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-heading); }
 .empty-box { font-size: var(--ui-text-body); line-height: var(--ui-line-height-body); }
 .empty-title { margin-bottom: var(--ui-space-2); font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-heading); }
-.join-panel { margin-top: var(--ui-card-gap); }
-.join-panel-title { font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-heading); }
+.join-panel { margin-top: 0; }
+.join-panel-title { font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-heading); overflow-wrap: anywhere; }
 .join-panel-note { margin-top: var(--ui-space-2); font-size: var(--ui-text-body); line-height: var(--ui-line-height-body); }
-.password-input { margin-top: var(--ui-space-5); padding: 0 var(--ui-input-padding); font-size: var(--ui-text-label); height: var(--ui-input-height); border: var(--ui-input-border); border-radius: var(--ui-input-radius); background: var(--ui-color-surface); }
+.password-input { width: 100%; box-sizing: border-box; margin-top: var(--ui-space-5); padding: 0 var(--ui-input-padding); font-size: var(--ui-text-label); height: var(--ui-input-height); border: var(--ui-input-border); border-radius: var(--ui-input-radius); background: var(--ui-color-surface); }
 .join-action { margin-top: var(--ui-space-6); }
 .search-action { width: calc(var(--ui-space-12) * 2); --ui-button-height-sm: var(--ui-input-height); }
 .team-result-card + .team-result-card { border-top: var(--ui-list-divider); }

@@ -1,15 +1,61 @@
 <script setup lang="ts">
-withDefaults(defineProps<{
+import { computed, getCurrentInstance, nextTick, onMounted, onUpdated, onUnmounted, ref, watch } from "vue";
+import { getWindowMetrics } from "@/utils/systemInfo";
+
+defineOptions({ inheritAttrs: false });
+const props = withDefaults(defineProps<{
   visible?: boolean;
   flat?: boolean;
+  /** Reserve the measured height for taller action panels in the scrolling content. */
+  reserveSpace?: boolean;
 }>(), {
   visible: true,
   flat: false,
+  reserveSpace: false,
+});
+
+const instance = getCurrentInstance();
+const measuredHeight = ref(0);
+let disposed = false;
+let measurement = 0;
+let listening = false;
+const spacerStyle = computed(() => ({
+  height: measuredHeight.value
+    ? `calc(${measuredHeight.value}rpx + env(safe-area-inset-bottom) + var(--ui-action-bar-bottom) + var(--ui-card-gap))`
+    : "var(--ui-action-bar-clearance)",
+}));
+
+async function measure() {
+  if (!props.reserveSpace || !props.visible || disposed) return;
+  const version = ++measurement;
+  await nextTick();
+  if (disposed || version !== measurement) return;
+  uni.createSelectorQuery().in(instance?.proxy).select(".ui-sticky-action-bar")
+    .boundingClientRect(result => {
+      if (disposed || version !== measurement) return;
+      const rect = Array.isArray(result) ? result[0] : result;
+      if (!rect?.height) return;
+      const height = rect.height * 750 / getWindowMetrics().windowWidth;
+      if (Math.abs(height - measuredHeight.value) > 0.5) measuredHeight.value = height;
+    }).exec();
+}
+
+watch(() => props.reserveSpace, enabled => {
+  if (enabled && !listening) { uni.onWindowResize(measure); listening = true; }
+  else if (!enabled && listening) { uni.offWindowResize(measure); listening = false; }
+}, { immediate: true });
+onMounted(measure);
+onUpdated(measure);
+onUnmounted(() => {
+  disposed = true;
+  measurement++;
+  if (listening) uni.offWindowResize(measure);
 });
 </script>
 
 <template>
-  <view v-if="visible" class="ui-sticky-action-bar" :class="{ 'ui-sticky-action-bar--flat': flat }">
+  <view v-if="visible && reserveSpace" class="ui-sticky-action-spacer" :style="spacerStyle" aria-hidden="true" />
+  <view v-if="visible" class="ui-sticky-action-bar" :class="[$attrs.class, { 'ui-sticky-action-bar--flat': flat }]" :style="$attrs.style">
     <view v-if="$slots.leading" class="ui-sticky-action-bar__leading">
       <slot name="leading" />
     </view>
@@ -20,6 +66,7 @@ withDefaults(defineProps<{
 </template>
 
 <style scoped>
+.ui-sticky-action-spacer { flex-shrink: 0; pointer-events: none; }
 .ui-sticky-action-bar {
   position: fixed;
   left: 50%;
