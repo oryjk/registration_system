@@ -85,7 +85,7 @@ onShow(() => { if (joinedTeam.value) void refreshIllustrations(); });
         @tap="goCreateTeam"
       >
         <text class="team-join-alt__label">没有找到？创建自己的球队</text>
-        <text class="team-join-alt__arrow">→</text>
+        <text class="ui-arrow-text team-join-alt__arrow">→</text>
       </view>
       </template>
     </view>

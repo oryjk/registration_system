@@ -130,7 +130,12 @@ watch(trackHeight, () => {
       @tap.stop="toggle"
     >
       <text data-deck-ignore="true">{{ expanded ? '收起' : '展开' }}</text>
+      <!-- #ifdef MP-WEIXIN -->
+      <text data-deck-ignore="true" class="expandable-avatars__chevron ui-arrow-text" :class="{ 'expandable-avatars__chevron--left': expanded }" aria-hidden="true">→</text>
+      <!-- #endif -->
+      <!-- #ifndef MP-WEIXIN -->
       <view data-deck-ignore="true" class="expandable-avatars__chevron" :class="{ 'expandable-avatars__chevron--left': expanded }" />
+      <!-- #endif -->
     </button>
   </view>
 </template>
@@ -180,6 +185,10 @@ watch(trackHeight, () => {
 
 .expandable-avatars__chevron { width: 10rpx; height: 10rpx; border-right: 3rpx solid currentColor; border-bottom: 3rpx solid currentColor; transform: rotate(-45deg); transition: transform var(--ui-motion-expand-duration) var(--ui-motion-ease-out); }
 .expandable-avatars__chevron--left { transform: rotate(135deg); }
+/* #ifdef MP-WEIXIN */
+.expandable-avatars__chevron { width: 32rpx; height: 32rpx; border: 0; font-size: 32rpx; line-height: 1; transform: none; }
+.expandable-avatars__chevron--left { transform: rotate(180deg); }
+/* #endif */
 @media (prefers-reduced-motion: reduce) {
   .expandable-avatars__scroll, .expandable-avatars__track, .expandable-avatars__avatar, .expandable-avatars__chevron { transition: none; }
 }

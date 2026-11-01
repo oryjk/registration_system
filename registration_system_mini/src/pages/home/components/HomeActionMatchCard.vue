@@ -99,7 +99,7 @@ function openDetail() {
           <view class="now-status" :class="`now-status--${card.statusTone}`"><image class="now-status-icon" :src="`/static/icons/lucide/${card.statusIcon}.png`" mode="aspectFit" aria-hidden="true" /><text>{{ card.statusLabel }}</text></view>
           <text v-if="card.deadlineLabel || remainingLabel" class="now-deadline">{{ [remainingLabel, card.deadlineLabel].filter(Boolean).join(' · ') }}</text>
         </view>
-        <button class="now-primary" :disabled="interactionBlocked || navigating || !match.canOpenDetail" hover-class="now-primary-pressed" @tap="openDetail">{{ navigating ? "正在打开…" : card.actionLabel }} <text class="now-arrow">→</text></button>
+        <button class="now-primary" :disabled="interactionBlocked || navigating || !match.canOpenDetail" hover-class="now-primary-pressed" @tap="openDetail">{{ navigating ? "正在打开…" : card.actionLabel }} <text class="ui-arrow-text now-arrow">→</text></button>
       </view>
       <view v-if="loading || error" class="now-footer">
         <text v-if="loading" class="now-meta">正在核对报名信息…</text>

@@ -9,6 +9,7 @@ import type { HomeMatchCardViewModel } from "@/types/viewModels";
 const props = defineProps<{
   match: HomeMatchCardViewModel;
   isNavigating: boolean;
+  hideStageLabel?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -27,6 +28,15 @@ const hasCover = computed(() => {
   // #endif
   // #ifndef MP-WEIXIN
   return false;
+  // #endif
+});
+
+const showStageLabel = computed(() => {
+  // #ifdef MP-WEIXIN
+  return !props.hideStageLabel;
+  // #endif
+  // #ifndef MP-WEIXIN
+  return true;
   // #endif
 });
 
@@ -59,15 +69,21 @@ function handleTap() {
     <button
       v-if="match.canOpenDetail"
       class="home-view-card__detail"
+      :class="{ 'home-view-card__detail--icon-only': !showStageLabel }"
       :aria-label="`${match.stage}，查看${match.title}详情`"
       :disabled="isNavigating"
       hover-class="home-view-card__detail--pressed"
       @tap.stop="handleTap"
     >
-      <text>{{ match.stage }}</text>
+      <text v-if="showStageLabel">{{ match.stage }}</text>
+      <!-- #ifdef MP-WEIXIN -->
+      <text class="home-view-card__chevron ui-arrow-text" aria-hidden="true">→</text>
+      <!-- #endif -->
+      <!-- #ifndef MP-WEIXIN -->
       <view class="home-view-card__chevron" aria-hidden="true" />
+      <!-- #endif -->
     </button>
-    <view v-else class="home-view-card__badge">
+    <view v-else-if="showStageLabel" class="home-view-card__badge">
       <AppTag :tone="match.stageTone" size="sm">{{ match.stage }}</AppTag>
     </view>
   </view>
@@ -188,8 +204,9 @@ function handleTap() {
   border-radius: var(--ui-radius-button);
 }
 .home-view-card__detail { gap: var(--ui-space-2); padding: 0 var(--ui-space-4); font-size: var(--ui-text-sm); background: var(--ui-color-accent-subtle); }
+.home-view-card__detail--icon-only { width: var(--ui-control-min-height); min-width: var(--ui-control-min-height); padding: 0; }
 .home-view-card__detail--pressed { background: var(--ui-color-accent-soft); }
-.home-view-card__chevron { width: var(--ui-chevron-size); height: var(--ui-chevron-size); border-width: var(--ui-chevron-stroke); }
+.home-view-card__chevron { width: var(--ui-icon-sm); height: var(--ui-icon-sm); border: 0; font-size: var(--ui-icon-sm); line-height: 1; transform: none; }
 .home-view-card--with-cover .home-view-card__main { padding: var(--ui-match-row-padding) 0; }
 .home-view-card--with-cover .home-view-card__detail,
 .home-view-card--with-cover .home-view-card__badge { margin: var(--ui-match-row-padding) 0; }

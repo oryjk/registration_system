@@ -110,6 +110,7 @@ usePageRefresh(loadPageData);
       <HomeMatchList
         v-else
         :matches="matches"
+        :hide-stage-label="matchScope === 'past'"
         :navigating-match-id="navigatingMatchId"
         @match-tap="handleMatchTap"
       />

@@ -79,7 +79,7 @@ function handleKeywordInput(event: Event) {
             <text class="impersonation-panel__result-name">{{ impersonationTargetLabel(user) }}</text>
             <text class="impersonation-panel__result-meta">ID {{ user.id }}{{ user.phone_number ? ` · ${user.phone_number}` : "" }}</text>
           </view>
-          <text class="impersonation-panel__result-action">{{ switching ? "切换中..." : "切换 ›" }}</text>
+          <text class="ui-arrow-text impersonation-panel__result-action">{{ switching ? "切换中..." : "切换 ›" }}</text>
         </view>
       </view>
       <text v-else-if="searched && !searching" class="impersonation-panel__empty">没有匹配的用户</text>

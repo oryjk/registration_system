@@ -359,13 +359,12 @@ page,
   --ui-map-entry-min-height: 144rpx;
   --ui-map-entry-art-width: 292rpx;
   --ui-map-entry-art-height: 194rpx;
-  --ui-map-entry-art-inset: 44rpx;
+  --ui-map-entry-art-inset: 88rpx;
+  --ui-map-entry-arrow-scale-y: 1.25;
   --ui-map-entry-copy-reserve: 248rpx;
   --ui-match-thumbnail-width: 136rpx;
   --ui-match-row-min-height: 160rpx;
   --ui-match-row-padding: 22rpx;
-  --ui-chevron-size: var(--ui-space-3);
-  --ui-chevron-stroke: 3rpx;
   --ui-schedule-date-font-size: 56rpx;
   --ui-schedule-date-width: 128rpx;
   --ui-schedule-date-width-compact: 114rpx;

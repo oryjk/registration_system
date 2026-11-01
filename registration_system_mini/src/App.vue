@@ -40,6 +40,9 @@ onPageNotFound((options) => {
 <style>
 @import "./styles/design-tokens.css";
 @import "./uni.css";
+/* #ifdef MP-WEIXIN */
+@import "./styles/arrow-font.css";
+/* #endif */
 
 page {
   min-height: 100%;

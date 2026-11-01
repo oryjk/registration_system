@@ -45,7 +45,7 @@ const emit = defineEmits<{
           @tap="emit('secondary')"
         >
           {{ secondaryLabel }}
-          <text aria-hidden="true">→</text>
+          <text aria-hidden="true" class="ui-arrow-text">→</text>
         </button>
       </view>
     </view>

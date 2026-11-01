@@ -20,7 +20,7 @@ function openMap() { uni.navigateTo({ url: "/pages/venues/map" }); }
       <text class="home-venue-map__title">球场地图</text>
       <text class="home-venue-map__hint">找个球场，约下一场</text>
     </view>
-    <text class="home-venue-map__arrow">→</text>
+    <text class="ui-arrow-text home-venue-map__arrow">→</text>
   </button>
 </template>
 
@@ -39,5 +39,6 @@ function openMap() { uni.navigateTo({ url: "/pages/venues/map" }); }
 .home-venue-map__illustration { position: absolute; right: var(--ui-map-entry-art-inset); top: 50%; width: var(--ui-map-entry-art-width); height: var(--ui-map-entry-art-height); transform: translateY(-50%); pointer-events: none; }
 .home-venue-map__icon, .home-venue-map__copy, .home-venue-map__arrow { position: relative; }
 .home-venue-map__copy { margin-right: var(--ui-map-entry-copy-reserve); }
+.home-venue-map__arrow { display: inline-block; flex-shrink: 0; width: var(--ui-icon-control); font-size: var(--ui-icon-control); line-height: 1; text-align: center; transform: scaleY(var(--ui-map-entry-arrow-scale-y)); }
 /* #endif */
 </style>

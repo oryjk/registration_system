@@ -29,7 +29,7 @@ async function previewCode() {
         <text class="venue-cooperation-title">场馆入驻</text>
         <text class="venue-cooperation-hint">创建场地 · 商务合作</text>
       </view>
-      <text class="venue-cooperation-link">联系合作 →</text>
+      <text class="ui-arrow-text venue-cooperation-link">联系合作 →</text>
     </button>
     <ConfirmDialog
       :visible="visible"

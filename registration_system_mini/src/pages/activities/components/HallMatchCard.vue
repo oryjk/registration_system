@@ -57,7 +57,7 @@ export default { options: { virtualHost: true } };
       </view>
       <view class="hall-match-actions">
         <AppButton block size="sm" :variant="card.actionKind === 'view' ? 'outline' : 'dark'" :stop-propagation="false">
-          <view class="hall-match-action-content"><text>{{ card.actionLabel }}</text><text class="hall-match-arrow">→</text></view>
+          <view class="hall-match-action-content"><text>{{ card.actionLabel }}</text><text class="ui-arrow-text hall-match-arrow">→</text></view>
         </AppButton>
       </view>
     </view>

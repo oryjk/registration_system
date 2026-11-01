@@ -101,7 +101,7 @@ function handleRemoveMember(member: BackendTeamMember) {
         <view class="member-role-field" role="button" aria-label="选择队员角色" @tap="rolePickerVisible = true">
           <text class="member-role-label">队员角色</text>
           <text class="member-role-value">{{ roleLabel(memberForm.role) }}</text>
-          <text class="member-role-arrow">›</text>
+          <text class="ui-arrow-text member-role-arrow">›</text>
         </view>
         <wd-picker
           v-model="roleModel"

@@ -503,6 +503,7 @@ onShareTimeline(() => ({
           <HomeMatchList
             v-if="!isGuestMode && additionalOngoingMatches.length"
             :matches="additionalOngoingMatches"
+            hide-stage-label
             :navigating-match-id="navigatingMatchId"
             @match-tap="handleMatchTap"
           />
@@ -510,6 +511,7 @@ onShareTimeline(() => ({
           <HomeMatchList
             v-if="!isGuestMode && endedMatches.length"
             :matches="endedMatches"
+            hide-stage-label
             :navigating-match-id="navigatingMatchId"
             @match-tap="handleMatchTap"
           />

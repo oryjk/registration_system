@@ -159,6 +159,7 @@ usePageRefresh(async () => {
       <HomeMatchList
         v-if="visibleMatches.length"
         :matches="visibleMatches"
+        hide-stage-label
         :navigating-match-id="navigatingMatchId"
         @match-tap="handleMatchTap"
       />

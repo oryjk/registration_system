@@ -71,7 +71,7 @@ onShow(() => { void preloadMiniReviewStatus(); void refreshIllustrations(); });
 
       <view v-if="!shouldHideCreationEntrances" class="help-route ui-plain-panel">
         <text class="help-route-title">我想组织一支球队</text>
-        <text class="help-route-summary">创建球队 → 邀请队友 → 发起比赛 → 分享报名</text>
+        <text class="ui-arrow-text help-route-summary">创建球队 → 邀请队友 → 发起比赛 → 分享报名</text>
         <view class="help-step"><text class="help-step-number">1</text><text>点击「创建球队」，填写球队资料，创建后你就是队长。</text></view>
         <view class="help-step"><text class="help-step-number">2</text><text>创建成功后选择「邀请队友」，把球队邀请分享给队友，让他们加入。</text></view>
         <view class="help-step"><text class="help-step-number">3</text><text>回到首页，点击底部「＋」中的「创建比赛」，确认时间、地点和费用后发布。</text></view>
@@ -80,7 +80,7 @@ onShow(() => { void preloadMiniReviewStatus(); void refreshIllustrations(); });
 
       <view class="help-route ui-plain-panel">
         <text class="help-route-title">我已经有一起踢球的队友</text>
-        <text class="help-route-summary">找到球队 → 加入球队 → 报名比赛</text>
+        <text class="ui-arrow-text help-route-summary">找到球队 → 加入球队 → 报名比赛</text>
         <view class="help-step"><text class="help-step-number">1</text><text>点击「加入球队」搜索球队名称，或直接打开队友发来的球队邀请。</text></view>
         <view class="help-step"><text class="help-step-number">2</text><text>确认球队后加入；如需入队密码，向队长或队友索取。按提示完善个人资料。</text></view>
         <view class="help-step"><text class="help-step-number">3</text><text>回到首页查看球队比赛，或打开队友分享的比赛，进入详情确认信息后报名。</text></view>
@@ -88,7 +88,7 @@ onShow(() => { void preloadMiniReviewStatus(); void refreshIllustrations(); });
 
       <view class="help-route ui-plain-panel">
         <text class="help-route-title">我想先找一场球踢</text>
-        <text class="help-route-summary">找比赛 → 确认时间、地点、费用 → 报名</text>
+        <text class="ui-arrow-text help-route-summary">找比赛 → 确认时间、地点、费用 → 报名</text>
         <view class="help-step"><text class="help-step-number">1</text><text>点击「找比赛」进入约队大厅，浏览适合个人参加的散人约球。</text></view>
         <view class="help-step"><text class="help-step-number">2</text><text>打开比赛详情，查看时间、球场位置、费用与支付方式，并确认还有报名名额。</text></view>
         <view class="help-step"><text class="help-step-number">3</text><text>按页面提示登录、完善资料并报名；若要求赛前支付，完成支付后再确认自己的报名状态。</text></view>
