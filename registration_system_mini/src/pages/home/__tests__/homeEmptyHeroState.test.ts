@@ -120,3 +120,21 @@ test("a sole-member captain is invited to bring teammates, without blocking matc
     intent: null,
   }).actions).toEqual(["invite-team", "create-match", "browse"]);
 });
+
+test("uniform home choices ignore earlier intentions and actual team identity", () => {
+  for (const intent of [null, "captain", "member", "player"] as const) {
+    for (const hasTeam of [false, true]) {
+      for (const canManageTeam of [false, true]) {
+        expect(resolveHomeEmptyHeroState({
+          isGuest: false, hasTeam, canManageTeam, creationAllowed: true, intent, uniformChoices: true,
+        })).toEqual({ mode: "no-team-unknown", actions: ["create-team", "join-team", "browse"] });
+      }
+    }
+  }
+});
+
+test("uniform home choices still honor the existing creation restriction", () => {
+  expect(resolveHomeEmptyHeroState({
+    isGuest: true, hasTeam: true, canManageTeam: true, creationAllowed: false, intent: "captain", uniformChoices: true,
+  })).toEqual({ mode: "no-team-unknown", actions: ["join-team", "browse"] });
+});

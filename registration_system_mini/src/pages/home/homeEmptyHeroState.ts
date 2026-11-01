@@ -30,9 +30,17 @@ export interface HomeEmptyHeroContext {
   creationAllowed: boolean;
   intent: OnboardingIntent | null;
   memberCount?: number;
+  /** 微信首页固定提供任务入口；H5 沿用原先的身份与用途分流。 */
+  uniformChoices?: boolean;
 }
 
 export function resolveHomeEmptyHeroState(context: HomeEmptyHeroContext): HomeEmptyHeroState {
+  if (context.uniformChoices) {
+    return {
+      mode: "no-team-unknown",
+      actions: context.creationAllowed ? ["create-team", "join-team", "browse"] : ["join-team", "browse"],
+    };
+  }
   if (context.isGuest) {
     return { mode: "guest", actions: context.creationAllowed
       ? ["create-team", "join-team", "browse"] : ["join-team", "browse"] };

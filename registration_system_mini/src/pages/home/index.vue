@@ -68,7 +68,11 @@ const { shouldHideCreationEntrances, reviewStatusReady } = useMiniReviewStatus()
 // 首页 runtime config 按加载周期缓存插画请求；
 // 每轮 loadPageData reset 开启新周期，下拉刷新/隔时回访可拿到换图后的新配置，失败也可重试。
 const homeRuntimeConfig = createHomeRuntimeConfigCycle();
-const onboardingGuide = useHomeOnboardingGuide();
+const onboardingGuide = useHomeOnboardingGuide({
+  // #ifdef MP-WEIXIN
+  rememberIntent: false,
+  // #endif
+});
 const guidanceNavigation = useOnboardingNavigation();
 const { illustrations, illustrationRevision, refreshIllustrations } = useOnboardingIllustrations(homeRuntimeConfig.load);
 const { nextMatchSocialImageUrl, ensureSocialImageLoaded } = useHomeNextMatchSocialImage({
@@ -99,6 +103,9 @@ const contentStyle = computed(() => ({
 const showInitialLoadingState = computed(() => isLoading.value && !hasLoadedOnce.value);
 const showHomeLoadError = computed(() => !hasLoadedMatchData.value && !!errorMessage.value);
 const emptyHeroState = computed(() => resolveHomeEmptyHeroState({
+  // #ifdef MP-WEIXIN
+  uniformChoices: true,
+  // #endif
   isGuest: isGuestMode.value,
   hasTeam: teamProfiles.value.length > 0,
   canManageTeam: !!currentTeam.value?.canManageTeam,
@@ -198,13 +205,17 @@ function openCreateMatch() {
 async function handleTaskChoice(action: HomeEmptyHeroAction) {
   if (guidanceNavigation.busy.value) return;
   if (action === "browse") {
+    // #ifndef MP-WEIXIN
     if (!teamProfiles.value.length) onboardingGuide.setIntent("player");
+    // #endif
     openBrowseMatches();
   } else if (action === "create-team" || action === "join-team") {
     const opened = await (action === "create-team" ? openCreateTeam() : openJoinTeam());
+    // #ifndef MP-WEIXIN
     if (opened && !teamProfiles.value.length) {
       onboardingGuide.setIntent(action === "create-team" ? "captain" : "member");
     }
+    // #endif
   }
 }
 
@@ -420,6 +431,18 @@ onShareTimeline(() => ({
           <view class="home-refresh-chip">更新中...</view>
         </view>
 
+        <!-- #ifdef MP-WEIXIN -->
+        <view v-if="hasLoadedMatchData" class="home-start-entries">
+          <HomeEmptyHero
+            ref="onboardingHero"
+            :state="emptyHeroState"
+            compact
+            :busy="guidanceNavigation.busy.value"
+            @select-task="handleTaskChoice"
+          />
+        </view>
+        <!-- #endif -->
+
         <HomeActionMatchCarousel
           v-if="heroNextMatch && !homeTour.active.value"
           :matches="actionDeckMatches"
@@ -432,6 +455,7 @@ onShareTimeline(() => ({
           @retry="deckDetails.reload"
           @avatar-select="openAvatarPreview"
         />
+        <!-- #ifndef MP-WEIXIN -->
         <HomeEmptyHero
           v-else-if="homeTour.active.value || (hasLoadedMatchData && !ongoingMatches.length)"
           ref="onboardingHero"
@@ -455,6 +479,7 @@ onShareTimeline(() => ({
           @expand="onboardingGuide.expand"
           @help="openHelp"
         />
+        <!-- #endif -->
 
         <HomeVenueMapEntry />
 
@@ -501,6 +526,10 @@ onShareTimeline(() => ({
 </template>
 
 <style scoped>
+/* #ifdef MP-WEIXIN */
+.home-start-entries { margin-bottom: 24rpx; }
+/* #endif */
+
 .home-page {
   min-height: 100vh;
   /* 左右留白放进滚动内容里：页面根节点带内边距会把 scroll-view 连同滚动条一起往里推。 */

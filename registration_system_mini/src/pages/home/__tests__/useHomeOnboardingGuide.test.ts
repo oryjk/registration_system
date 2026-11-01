@@ -38,8 +38,8 @@ afterEach(() => {
 });
 afterAll(() => { globals.uni = originalUni; });
 
-function createGuide() {
-  guide = useHomeOnboardingGuide();
+function createGuide(options: { rememberIntent?: boolean } = {}) {
+  guide = useHomeOnboardingGuide(options);
   return guide;
 }
 
@@ -92,4 +92,20 @@ test("a user can collapse, restore, and change task without affecting another ac
   expect(flow.collapsed.value).toEqual(false);
   expect(flow.intent.value).toEqual(null);
   expect(getOnboardingIntent(1)).toEqual(null);
+});
+
+test("disabling intention memory ignores saved choices and does not persist new choices", async () => {
+  setOnboardingIntent(1, "member");
+  setOnboardingIntent(2, "captain");
+  const flow = createGuide({ rememberIntent: false });
+  expect(flow.intent.value).toEqual(null);
+  flow.setIntent("player");
+  expect(flow.intent.value).toEqual(null);
+  expect(getOnboardingIntent(1)).toEqual("member");
+  currentUser.value = { id: 2 } as BackendUser;
+  teams.value = [];
+  await nextTick();
+  expect(flow.intent.value).toEqual(null);
+  flow.setIntent("member");
+  expect(getOnboardingIntent(2)).toEqual("captain");
 });
