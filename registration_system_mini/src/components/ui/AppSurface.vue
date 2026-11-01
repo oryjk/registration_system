@@ -95,7 +95,7 @@ function handleTap() {
 /* #ifdef MP-WEIXIN */
 .ui-surface { padding: var(--ui-panel-padding); }
 .ui-surface--raised,
-.ui-surface--outlined { border: var(--ui-panel-border); border-radius: var(--ui-panel-radius); box-shadow: var(--ui-panel-shadow); }
+.ui-surface--outlined { border: var(--ui-panel-border); border-radius: var(--ui-content-surface-radius, var(--ui-panel-radius)); box-shadow: var(--ui-content-surface-shadow, var(--ui-panel-shadow)); }
 .ui-surface--flush { padding: 0; }
 /* #endif */
 

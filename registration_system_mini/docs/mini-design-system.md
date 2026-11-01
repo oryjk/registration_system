@@ -27,6 +27,7 @@
 - 页面内原生 wrapper 引入 `src/styles/list-surfaces.css`，复用 `ui-section-stack`、`ui-plain-panel`、`ui-soft-panel`、`ui-list-row` 与 `ui-subtle-control`；相邻列表行使用 `--ui-list-divider`，布局不依赖穿透子组件样式。
 - 创建、加入、帮助与发布页头复用 `AppPageIntro`，由 props 提供文案及现有 MinIO 插画，复用缓存与图片失败降级；业务请求和提交仍由父页面负责。
 - 输入框使用 `--ui-input-*`，时间选择使用 `--ui-schedule-*`，底部操作使用 `StickyActionBar`；输入边界、选中状态、危险操作和确认浮层仍清楚区分，不能因去卡片外框一并移除。
+- 微信比赛报名详情页先行采用独立表面层次：页面使用 `--ui-color-page-muted`，内容区显式提供 `--ui-content-surface-radius` / `--ui-content-surface-shadow`，分别引用现有 card 圆角及柔和阴影 token。`AppSurface` 读取这些可选覆盖，其他页面继续回退 `--ui-panel-*`；覆盖限定在内容 shell，确认弹窗保持自身表面。卡片内部不再嵌套阴影，队长入口随是否位于名单内使用内嵌/独立表面。
 - 本轮页头、列表与表单外观仅在 MP-WEIXIN 下接入；H5 保留原有样式。业务色卡、球衣颜色、海报画布与原生地图不机械套用页面 token。
 
 ### 微信端方向箭头

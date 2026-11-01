@@ -16,6 +16,7 @@ page,
   --ui-primitive-ink: #00214d;
   --ui-primitive-surface: #fffffe;
   --ui-primitive-canvas: #fffffe;
+  --ui-primitive-canvas-muted: #f5f7f9;
   --ui-primitive-hero: #00214d;
   --ui-primitive-hero-fg: #fffffe;
   /* 强调色族：默认薄荷蓝；主题通过 page-meta 覆盖同名变量实现全局切换。 */
@@ -75,6 +76,7 @@ page,
 
   /* Semantic */
   --ui-color-page: var(--ui-primitive-canvas);
+  --ui-color-page-muted: var(--ui-primitive-canvas-muted);
   --ui-color-surface: var(--ui-primitive-surface);
   --ui-color-text: var(--ui-primitive-ink);
   --ui-color-text-inverse: var(--ui-primitive-surface);

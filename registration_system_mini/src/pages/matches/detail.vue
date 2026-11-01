@@ -157,6 +157,15 @@ function openAvatarPreview(avatar: AvatarItem) {
 }
 onHide(() => { avatarPreviewVisible.value = false; });
 
+function captainIsEmbedded(hasRoster: boolean) {
+  // #ifdef MP-WEIXIN
+  return hasRoster;
+  // #endif
+  // #ifndef MP-WEIXIN
+  return true;
+  // #endif
+}
+
 function openMatchHall() {
   uni.switchTab({ url: "/pages/activities/index" });
 }
@@ -245,13 +254,13 @@ const metaPageStyle = computed(() =>
         @select-team-member-stand="handleSelectTeamMemberStand"
         @dialog-visibility-change="handleTeamMemberDialogVisibilityChange"
       >
-        <template #captain>
+        <template #captain="{ embedded }">
       <!-- 联系主队队长：入口在此，往来留言在消息中心查看。 -->
       <MatchCaptainContact
         @avatar-select="openAvatarPreview"
         v-if="captainContactCaptain && matchId"
         :captain="captainContactCaptain"
-        embedded
+        :embedded="captainIsEmbedded(embedded)"
         :match-id="matchId"
         :popup-visible="captainContact.popupVisible.value"
         :content="captainContact.content.value"
@@ -489,7 +498,13 @@ const metaPageStyle = computed(() =>
 
 
 /* #ifdef MP-WEIXIN */
-.registration-shell { gap: var(--ui-section-gap); }
+.registration-page { background: var(--ui-color-page-muted); padding-left: var(--ui-page-padding-inline); padding-right: var(--ui-page-padding-inline); }
+/* Scope surface elevation to the content: dialogs and other pages retain their own contracts. */
+.registration-shell {
+  --ui-content-surface-radius: var(--ui-radius-card);
+  --ui-content-surface-shadow: var(--ui-shadow-card);
+  gap: var(--ui-space-6);
+}
 .match-manage-action { background: var(--ui-control-subtle-bg); min-height: var(--ui-control-min-height); padding: var(--ui-space-3) var(--ui-space-4); font-size: var(--ui-text-label); }
 .match-manage-action--cancel { background: var(--ui-color-danger-bg); }
 /* #endif */

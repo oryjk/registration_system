@@ -176,9 +176,9 @@ function handleTeamMemberDialogVisibilityChange(visible: boolean) {
       @select-stand="handleSelectTeamMemberStand"
       @dialog-visibility-change="handleTeamMemberDialogVisibilityChange"
     >
-      <slot name="captain" />
+      <slot name="captain" :embedded="true" />
     </TeamMemberRegistrationBoard>
-    <slot v-if="!showTeamMemberRegistrationBoard" name="captain" />
+    <slot v-if="!showTeamMemberRegistrationBoard" name="captain" :embedded="false" />
     <IndividualInfoCard
       :description="match.description"
     />
@@ -251,4 +251,7 @@ function handleTeamMemberDialogVisibilityChange(visible: boolean) {
 .registration-primary { flex: 1; min-width: 0; }
 .registration-button-content { display: flex; align-items: center; justify-content: center; gap: 12rpx; }
 .registration-action-icon { width: 34rpx; height: 34rpx; flex-shrink: 0; }
+/* #ifdef MP-WEIXIN */
+.individual-mode-shell { gap: var(--ui-space-6); }
+/* #endif */
 </style>
