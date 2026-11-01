@@ -13,3 +13,10 @@
 }
 .form-input { height: 84rpx; padding: 0 20rpx; }
 .form-textarea { height: 160rpx; min-height: 160rpx; padding: 20rpx; }
+
+/* #ifdef MP-WEIXIN */
+.form-input,
+.form-textarea { border: var(--ui-input-border); border-radius: var(--ui-input-radius); font-size: var(--ui-text-label); font-weight: var(--ui-font-weight-body); }
+.form-input { height: var(--ui-input-height); padding: 0 var(--ui-input-padding); }
+.form-textarea { height: var(--ui-textarea-min-height); min-height: var(--ui-textarea-min-height); padding: var(--ui-input-padding); }
+/* #endif */

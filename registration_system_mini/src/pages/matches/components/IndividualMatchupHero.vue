@@ -135,6 +135,7 @@ const matchStatusTag = computed(() => {
 </template>
 
 <style scoped>
+@import "@/styles/list-surfaces.css";
 .hero-scoreboard {
   padding: 28rpx 32rpx;
   background: var(--ui-color-surface);
@@ -344,4 +345,11 @@ const matchStatusTag = computed(() => {
 
 }
 
+
+/* #ifdef MP-WEIXIN */
+.hero-scoreboard { padding: var(--ui-panel-padding); }
+.hero-pickup-strip { border: var(--ui-panel-border); background: var(--ui-panel-soft-bg); padding: var(--ui-space-5); }
+.hero-board { border-top: var(--ui-list-divider); margin-top: var(--ui-space-6); padding-top: var(--ui-space-6); }
+.hero-title { font-size: var(--ui-text-heading); font-weight: var(--ui-font-weight-heading); }
+/* #endif */
 </style>

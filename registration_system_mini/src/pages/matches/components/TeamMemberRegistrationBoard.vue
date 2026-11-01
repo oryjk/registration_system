@@ -242,7 +242,7 @@ function selectMemberAvatar(id: string | number) {
           @select="selectMemberAvatar"
         />
       </view>
-      <view v-else class="member-empty">{{ activeSection.emptyText }}</view>
+      <view v-else class="member-empty ui-soft-panel">{{ activeSection.emptyText }}</view>
 
     </view>
 
@@ -261,6 +261,7 @@ function selectMemberAvatar(id: string | number) {
 </template>
 
 <style scoped>
+@import "@/styles/list-surfaces.css";
 .member-board-head { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; }
 .section-title { color: var(--ui-color-text); font-size: 30rpx; line-height: 1.4; font-weight: 600; }
 .member-total { color: var(--ui-color-text-muted); font-size: 24rpx; }
@@ -321,4 +322,11 @@ function selectMemberAvatar(id: string | number) {
   font-weight: 500;
 }
 
+
+/* #ifdef MP-WEIXIN */
+.member-empty { border: var(--ui-panel-border); padding: var(--ui-space-4); background: var(--ui-panel-soft-bg); border-radius: var(--ui-panel-soft-radius); }
+.member-segment-item--joined { background: var(--ui-control-subtle-bg); }
+.member-segment-item--joined.member-segment-item-active { background: var(--ui-control-selected-bg); }
+.section-title { font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-heading); }
+/* #endif */
 </style>

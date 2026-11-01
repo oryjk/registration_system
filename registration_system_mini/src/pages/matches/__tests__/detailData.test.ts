@@ -616,7 +616,10 @@ test("team progress keeps avatars within each group and uses live selected avata
   const source = { ...matchSummary, publication_mode: "online_team" as const };
   const live = [{ id: 3, name: "刚报名的客队球员", avatarUrl: "guest.png" }];
   const progress = buildMatchTeamProgress(source, groups, "guest", 1, live);
-  expect(progress[0]!.avatars).toEqual([{ id: 1, name: "主队球员", avatarUrl: "host.png", isPaidMember: true, teamAttendedCount: undefined }]);
+  // 核对本组球员和球队归属，允许头像同时携带已有的年度/段位元数据。
+  const hostAvatars = progress[0]?.avatars ?? [];
+  expect(hostAvatars.map(({ id, name, avatarUrl, isPaidMember, teamId }) => ({ id, name, avatarUrl, isPaidMember, teamId })))
+    .toEqual([{ id: 1, name: "主队球员", avatarUrl: "host.png", isPaidMember: true, teamId: 101 }]);
   expect(progress[1]!.avatars).toEqual(live);
   expect(buildMatchTeamProgress(source, groups, "host", 0, [])[0]!.avatars).toEqual([]);
   expect(buildMatchTeamProgress(source, groups, "host", 0, [])[1]!.avatars).toEqual([]);

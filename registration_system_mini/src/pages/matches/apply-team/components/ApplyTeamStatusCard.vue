@@ -27,7 +27,7 @@ const emit = defineEmits<{
       </AppTag>
     </view>
 
-    <view class="status-body">
+    <view class="status-body ui-soft-panel">
       <text class="status-body-label">我的申请留言</text>
       <text class="status-body-content">{{ application.introduction }}</text>
     </view>
@@ -51,6 +51,7 @@ const emit = defineEmits<{
 </template>
 
 <style scoped>
+@import "@/styles/list-surfaces.css";
 .status-head {
   display: flex;
   align-items: center;
@@ -105,4 +106,9 @@ const emit = defineEmits<{
 .status-actions :deep(.ui-button) {
   min-width: 260rpx;
 }
+
+/* #ifdef MP-WEIXIN */
+.status-body { border: var(--ui-panel-border); padding: var(--ui-panel-padding); background: var(--ui-panel-soft-bg); border-radius: var(--ui-panel-soft-radius); }
+.status-body-content { font-weight: var(--ui-font-weight-medium); }
+/* #endif */
 </style>

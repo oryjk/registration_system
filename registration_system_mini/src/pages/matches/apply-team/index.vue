@@ -63,9 +63,9 @@ onLoad((options) => {
     <AppTabHeader title="接约确认" showBack />
 
     <view class="apply-team-content" :style="contentStyle">
-      <view v-if="isLoading" class="apply-team-hint">加载接约信息中...</view>
+      <view v-if="isLoading" class="apply-team-hint ui-soft-panel">加载接约信息中...</view>
 
-      <view v-else-if="errorMessage" class="apply-team-hint">
+      <view v-else-if="errorMessage" class="apply-team-hint ui-soft-panel">
         <view>{{ errorMessage }}</view>
         <view class="apply-team-retry" @tap="loadPageData()">点击重试</view>
       </view>
@@ -82,7 +82,7 @@ onLoad((options) => {
           @go-match="openMatchDetail()"
         />
 
-        <view v-else-if="!canApply" class="apply-team-blocked">
+        <view v-else-if="!canApply" class="apply-team-blocked ui-soft-panel">
           <text class="apply-team-blocked-title">暂时无法接约</text>
           <text class="apply-team-blocked-copy">
             {{ blockedMessage }}
@@ -116,6 +116,7 @@ onLoad((options) => {
 </template>
 
 <style scoped>
+@import "@/styles/list-surfaces.css";
 .apply-team-page {
   min-height: 100vh;
   background: var(--ui-color-page);
@@ -186,5 +187,12 @@ onLoad((options) => {
   max-width: 750rpx;
   transform: translateX(-50%);
 }
+/* #endif */
+
+/* #ifdef MP-WEIXIN */
+.apply-team-content { display: flex; flex-direction: column; gap: var(--ui-section-gap); }
+.apply-team-hint, .apply-team-blocked { border: var(--ui-panel-border); border-radius: var(--ui-panel-soft-radius); padding: var(--ui-panel-padding); background: var(--ui-panel-soft-bg); }
+.apply-team-retry { border: var(--ui-control-border); background: var(--ui-control-subtle-bg); padding: var(--ui-space-3) var(--ui-space-4); }
+.apply-team-blocked-copy { font-weight: var(--ui-font-weight-body); }
 /* #endif */
 </style>

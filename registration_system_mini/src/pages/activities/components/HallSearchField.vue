@@ -15,7 +15,7 @@ function updateInput(event: Event) {
 
 <template>
   <view class="hall-search-row">
-    <view class="hall-search-field">
+    <view class="hall-search-field ui-subtle-control">
       <wd-icon name="search-line" size="30rpx" color="var(--ui-color-text-muted)" />
       <input :value="modelValue" class="hall-search-input" :placeholder="placeholder || '搜索比赛名称或地点'" placeholder-class="hall-search-placeholder" confirm-type="search" @input="updateInput" @confirm="emit('search')" />
       <button v-if="modelValue" class="hall-search-clear" aria-label="清空搜索" @tap="emit('clear')"><wd-icon name="close" size="26rpx" /></button>
@@ -25,6 +25,7 @@ function updateInput(event: Event) {
 </template>
 
 <style scoped>
+@import "@/styles/list-surfaces.css";
 .hall-search-row { display: flex; align-items: center; gap: 16rpx; margin-bottom: 24rpx; width: 100%; }
 .hall-search-field { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12rpx; height: 88rpx; padding: 0 16rpx 0 20rpx; border: var(--ui-border-default); border-radius: var(--ui-radius-button); background: var(--ui-color-surface); box-sizing: border-box; }
 .hall-search-input { flex: 1; min-width: 0; height: 100%; color: var(--ui-color-text); font-size: 26rpx; }
@@ -32,4 +33,8 @@ function updateInput(event: Event) {
 .hall-search-clear { flex-shrink: 0; display: flex; align-items: center; justify-content: center; margin: 0; padding: 0; width: 52rpx; height: 64rpx; background: transparent; color: var(--ui-color-text-muted); }
 .hall-search-clear::after { border: 0; }
 .hall-search-submit { flex-shrink: 0; }
+
+/* #ifdef MP-WEIXIN */
+.hall-search-field { border: var(--ui-control-border); border-radius: var(--ui-control-radius); background: var(--ui-control-subtle-bg); height: var(--ui-input-height); padding: 0 var(--ui-input-padding); gap: var(--ui-space-3); }
+/* #endif */
 </style>

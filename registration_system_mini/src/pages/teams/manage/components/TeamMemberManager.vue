@@ -229,4 +229,16 @@ function handleRemoveMember(member: BackendTeamMember) {
 .member-role-label { flex: 1; color: var(--ui-color-text-muted); font-size: 24rpx; }
 .member-role-value { color: var(--ui-color-text); font-size: 26rpx; }
 .member-role-arrow { color: var(--ui-color-text-muted); font-size: 32rpx; }
+
+/* #ifdef MP-WEIXIN */
+/* 微信端复用统一排版尺度；H5 保留原有样式。 */
+.member-manager, .member-sections { gap: var(--ui-space-6); }
+.member-add-action { margin-top: var(--ui-space-6); }
+.empty-box { margin-top: var(--ui-space-6); padding: var(--ui-space-5) 0; font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-body); }
+.member-role-picker { margin-top: var(--ui-space-3); }
+.member-role-field { gap: var(--ui-space-4); padding: 0 var(--ui-space-5); margin-top: var(--ui-space-4); }
+.member-role-label { font-size: var(--ui-text-body); }
+.member-role-value { font-size: var(--ui-text-label); }
+.member-role-arrow { font-size: var(--ui-text-title); }
+/* #endif */
 </style>

@@ -161,7 +161,7 @@ usePageRefresh(loadPageData);
     <RunningLoader v-else-if="isLoading" text="正在清点账单" />
 
     <template v-else>
-    <view class="billing-hero">
+    <view class="billing-hero ui-soft-panel">
       <view>
         <text class="billing-hero-label">队费余额合计</text>
         <text class="billing-hero-value">{{ teamFundCentsLabel(balanceSummary.totalCents) }}</text>
@@ -171,7 +171,7 @@ usePageRefresh(loadPageData);
       </view>
       <view class="billing-recharge-box">
         <input v-model="rechargeAmount" class="billing-recharge-input" type="digit" placeholder="金额" />
-        <view class="billing-hero-pill" @tap="handleRecharge">{{ isPaying ? "处理中" : "充值" }}</view>
+        <view class="billing-hero-pill ui-subtle-control" @tap="handleRecharge">{{ isPaying ? "处理中" : "充值" }}</view>
       </view>
     </view>
 
@@ -179,14 +179,14 @@ usePageRefresh(loadPageData);
       <view
         v-for="balance in balances"
         :key="balance.team_id"
-        :class="['billing-metric-card', balance.balance_cents < 0 ? 'billing-metric-card-debt' : '']"
+        :class="['billing-metric-card ui-list-row', balance.balance_cents < 0 ? 'billing-metric-card-debt' : '']"
       >
         <text class="billing-metric-label">{{ balance.team_name }}</text>
         <text class="billing-metric-value">{{ teamFundCentsLabel(balance.balance_cents) }}</text>
       </view>
     </view>
 
-    <view class="billing-card">
+    <view class="billing-card ui-plain-panel">
       <view class="billing-card-head">
         <view>
           <text class="billing-card-title">支付订单</text>
@@ -195,7 +195,7 @@ usePageRefresh(loadPageData);
       </view>
 
       <view v-if="orders.length" class="billing-list">
-        <view v-for="order in orders" :key="order.order_no" class="billing-item billing-order-item">
+        <view v-for="order in orders" :key="order.order_no" class="billing-item billing-order-item ui-list-row">
           <view class="billing-item-copy">
             <text class="billing-item-title">{{ orderTypeLabel(order.kind) }} · {{ orderStatusLabel(order.status) }}</text>
             <text class="billing-item-meta">{{ order.order_no }}</text>
@@ -212,7 +212,7 @@ usePageRefresh(loadPageData);
       <view v-else class="billing-empty">当前还没有支付订单。</view>
     </view>
 
-    <view class="billing-card">
+    <view class="billing-card ui-plain-panel">
       <view class="billing-card-head">
         <view>
           <text class="billing-card-title">队费流水 · {{ transactions.length }} 条</text>
@@ -221,7 +221,7 @@ usePageRefresh(loadPageData);
       </view>
 
       <view v-if="transactions.length" class="billing-list">
-        <view v-for="item in transactions" :key="item.id" class="billing-item">
+        <view v-for="item in transactions" :key="item.id" class="billing-item ui-list-row">
           <view class="billing-item-copy">
             <text class="billing-item-title">{{ transactionMetaLabel(item) }}</text>
             <text class="billing-item-meta">{{ item.description || (item.created_at ? formatFullDateTimeLabel(item.created_at) : "") }}</text>
@@ -239,6 +239,8 @@ usePageRefresh(loadPageData);
 </template>
 
 <style scoped>
+@import "@/styles/list-surfaces.css";
+
 .billing-page {
   min-height: 100vh;
 
@@ -475,5 +477,34 @@ usePageRefresh(loadPageData);
 /* #ifdef H5 */
 .billing-page { width: 100%; max-width: 750rpx; margin: 0 auto; }
 .billing-page :deep(.app-tab-header-shell) { left: 50%; right: auto; width: 100%; max-width: 750rpx; transform: translateX(-50%); }
+/* #endif */
+
+/* #ifdef MP-WEIXIN */
+.billing-page { padding-right: var(--ui-page-padding-inline); padding-left: var(--ui-page-padding-inline); padding-bottom: var(--ui-page-padding-bottom); }
+.billing-hero { gap: var(--ui-space-5); padding: var(--ui-panel-padding); border: var(--ui-panel-border); border-radius: var(--ui-panel-soft-radius); background: var(--ui-panel-soft-bg); }
+.billing-hero-value { margin-top: var(--ui-space-2); font-size: var(--ui-text-stat); font-weight: var(--ui-font-weight-heading); }
+.billing-hero-label,.billing-hero-copy { font-size: var(--ui-text-body); line-height: var(--ui-line-height-body); }
+.billing-hero-copy { margin-top: var(--ui-space-2); }
+.billing-recharge-box { gap: var(--ui-space-3); }
+.billing-recharge-input { height: var(--ui-input-height); padding: 0 var(--ui-input-padding); border: var(--ui-input-border); border-radius: var(--ui-input-radius); font-size: var(--ui-text-label); }
+.billing-hero-pill { display: flex; justify-content: center; align-items: center; min-height: var(--ui-control-min-height); padding: 0 var(--ui-space-4); border-radius: var(--ui-control-radius); background: var(--ui-control-subtle-bg); font-size: var(--ui-text-body); }
+.billing-metric-grid { display: flex; flex-direction: column; gap: 0; margin-top: var(--ui-space-4); }
+.billing-metric-card { display: flex; align-items: center; justify-content: space-between; gap: var(--ui-list-row-gap); min-height: var(--ui-list-row-min-height); padding: var(--ui-list-row-padding) 0; border: var(--ui-panel-border); border-radius: var(--ui-panel-radius); }
+.billing-metric-card + .billing-metric-card { border-top: var(--ui-list-divider); }
+.billing-metric-label { min-width: 0; flex: 1; font-size: var(--ui-text-body); overflow-wrap: anywhere; }
+.billing-metric-value { margin-top: 0; font-size: var(--ui-text-title); font-weight: var(--ui-font-weight-heading); }
+.billing-card { margin-top: var(--ui-section-gap); padding: 0; border: var(--ui-panel-border); border-radius: var(--ui-panel-radius); }
+.billing-card-title { font-size: var(--ui-text-title); font-weight: var(--ui-font-weight-heading); }
+.billing-card-caption { margin-top: var(--ui-space-2); font-size: var(--ui-text-sm); line-height: var(--ui-line-height-body); }
+.billing-list { gap: 0; margin-top: var(--ui-space-3); }
+.billing-item { min-height: var(--ui-list-row-min-height); padding: var(--ui-list-row-padding) 0; gap: var(--ui-list-row-gap); }
+.billing-item + .billing-item { border-top: var(--ui-list-divider); }
+.billing-item-title { font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-medium); overflow-wrap: anywhere; }
+.billing-item-meta { margin-top: var(--ui-space-2); font-size: var(--ui-text-sm); line-height: var(--ui-line-height-body); overflow-wrap: anywhere; }
+.billing-item-side { flex-shrink: 0; }
+.billing-item-balance { margin-top: var(--ui-space-2); font-size: var(--ui-text-sm); }
+.order-action-row { gap: var(--ui-space-3); margin-top: var(--ui-space-2); }
+.order-action { display: inline-flex; align-items: center; min-height: var(--ui-control-min-height); padding: 0 var(--ui-space-3); border-radius: var(--ui-control-radius); background: var(--ui-control-subtle-bg); font-size: var(--ui-text-sm); }
+.billing-empty { margin-top: var(--ui-space-4); padding: var(--ui-space-6) 0; border-radius: var(--ui-panel-radius); font-size: var(--ui-text-body); line-height: var(--ui-line-height-body); }
 /* #endif */
 </style>

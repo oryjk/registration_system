@@ -250,4 +250,23 @@ onShow(() => { if (joined.value || team.value?.is_member) void refreshIllustrati
   font-size: 28rpx;
   color: var(--ui-color-text);
 }
+
+/* #ifdef MP-WEIXIN */
+/* 微信端复用统一排版尺度；H5 保留原有样式。 */
+.team-invite-next { margin-top: var(--ui-space-6); }
+.team-invite-page { padding: 0 var(--ui-page-padding-inline) var(--ui-page-padding-bottom); }
+.team-invite-state { gap: var(--ui-space-5); margin-top: var(--ui-space-12); }
+.team-invite-state__text { font-size: var(--ui-text-label); font-weight: var(--ui-font-weight-body); }
+.team-invite-hero { margin-top: var(--ui-space-6); margin-bottom: var(--ui-section-gap); }
+.team-invite-hero__row { gap: var(--ui-space-4); }
+.team-invite-hero__badge { font-size: var(--ui-text-display); font-weight: var(--ui-font-weight-heading); }
+.team-invite-hero__eyebrow { font-size: var(--ui-text-sm); font-weight: var(--ui-font-weight-body); }
+.team-invite-hero__name { margin-top: var(--ui-space-1); font-size: var(--ui-text-title); line-height: var(--ui-line-height-tight); }
+.team-invite-hero__desc { margin-top: var(--ui-space-4); font-size: var(--ui-text-body); line-height: var(--ui-line-height-body); font-weight: var(--ui-font-weight-body); }
+.team-invite-card__head { gap: var(--ui-space-2); margin-bottom: var(--ui-space-5); }
+.team-invite-card__title { font-size: var(--ui-text-title); }
+.team-invite-card__copy { font-size: var(--ui-text-body); line-height: var(--ui-line-height-body); font-weight: var(--ui-font-weight-body); }
+.team-invite-field { margin-bottom: var(--ui-space-5); }
+.team-invite-input { padding: 0 var(--ui-input-padding); font-size: var(--ui-text-subtitle); height: var(--ui-input-height); border: var(--ui-input-border); border-radius: var(--ui-input-radius); background: var(--ui-color-surface); }
+/* #endif */
 </style>

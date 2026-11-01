@@ -149,24 +149,24 @@ usePageRefresh(async () => {
         <view v-if="notificationItems.length" class="notice-summary"><text>未读 {{ unreadCount }} 条</text><text>点击通知标记已读</text></view>
 
         <view v-if="notificationItems.length" class="notice-list">
-          <AppSurface
-            v-for="item in notificationItems"
-            :key="item.id"
-            variant="raised"
-            interactive
-            class="notice-card"
-            @press="void openNotification(item)"
-          >
-            <view class="notice-card-top">
-              <text class="notice-card-title">{{ item.title }}</text>
-              <text :class="['notice-kind-chip', item.read ? '' : 'notice-kind-chip-unread']">{{ item.kindLabel }}</text>
-            </view>
-            <text class="notice-card-copy">{{ item.content }}</text>
-            <view class="notice-card-bottom">
-              <text class="notice-card-time">{{ item.createdAtLabel }}</text>
-              <text class="notice-card-action">{{ item.relatedPath ? "查看详情" : item.read ? "已读" : "标为已读" }}</text>
-            </view>
-          </AppSurface>
+          <view v-for="item in notificationItems" :key="item.id" class="notice-item-shell ui-list-row">
+            <AppSurface
+              variant="raised"
+              interactive
+              class="notice-card"
+              @press="void openNotification(item)"
+            >
+              <view class="notice-card-top">
+                <text class="notice-card-title">{{ item.title }}</text>
+                <text :class="['notice-kind-chip', item.read ? '' : 'notice-kind-chip-unread']">{{ item.kindLabel }}</text>
+              </view>
+              <text class="notice-card-copy">{{ item.content }}</text>
+              <view class="notice-card-bottom">
+                <text class="notice-card-time">{{ item.createdAtLabel }}</text>
+                <text class="notice-card-action">{{ item.relatedPath ? "查看详情" : item.read ? "已读" : "标为已读" }}</text>
+              </view>
+            </AppSurface>
+          </view>
         </view>
         <view v-else class="notice-empty">当前没有可展示的通知。</view>
       </view>
@@ -176,6 +176,11 @@ usePageRefresh(async () => {
 </template>
 
 <style scoped>
+@import "@/styles/list-surfaces.css";
+/* #ifdef H5 */
+.notice-item-shell { display: contents; }
+/* #endif */
+
 .notice-page {
   min-height: 100vh;
   padding: 0 28rpx 120rpx;
@@ -308,4 +313,19 @@ usePageRefresh(async () => {
 }
 /* #endif */
 .notice-summary { display: flex; justify-content: space-between; gap: 12rpx; margin: 22rpx 4rpx 0; font-size: 22rpx; color: var(--ui-color-text-muted); }
+
+/* #ifdef MP-WEIXIN */
+.notice-page { padding-right: var(--ui-page-padding-inline); padding-left: var(--ui-page-padding-inline); padding-bottom: var(--ui-page-padding-bottom); }
+.notice-list { gap: 0; margin-top: var(--ui-space-4); }
+.notice-item-shell { display: block; padding: 0; --ui-panel-padding: var(--ui-list-row-padding) 0; }
+.notice-card-top,.notice-card-bottom { gap: var(--ui-space-3); align-items: flex-start; }
+.notice-card-title { min-width: 0; font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-heading); overflow-wrap: anywhere; }
+.notice-kind-chip { flex-shrink: 0; padding: var(--ui-space-1) var(--ui-space-3); border: var(--ui-control-border); border-radius: var(--ui-control-radius); background: var(--ui-control-subtle-bg); font-size: var(--ui-text-sm); }
+.notice-kind-chip-unread { background: var(--ui-color-danger-bg); color: var(--ui-color-danger-fg); }
+.notice-card-copy { margin-top: var(--ui-space-3); font-size: var(--ui-text-label); line-height: var(--ui-line-height-body); overflow-wrap: anywhere; }
+.notice-card-bottom { margin-top: var(--ui-space-4); }
+.notice-card-time,.notice-card-action { font-size: var(--ui-text-sm); }
+.notice-empty { margin-top: var(--ui-space-4); padding: var(--ui-space-6) 0; border: var(--ui-panel-border); border-radius: var(--ui-panel-radius); font-size: var(--ui-text-body); line-height: var(--ui-line-height-body); }
+.notice-summary { gap: var(--ui-space-3); margin: var(--ui-space-5) 0 0; font-size: var(--ui-text-sm); }
+/* #endif */
 </style>

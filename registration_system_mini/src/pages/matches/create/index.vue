@@ -6,6 +6,9 @@ import { useAccentTheme } from "@/stores/theme";
 import { computed, reactive, ref } from "vue";
 import { onLoad, onShow } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
+// #ifdef MP-WEIXIN
+import AppPageIntro from "@/components/ui/AppPageIntro.vue";
+// #endif
 import MatchPublishForm from "./components/MatchPublishForm.vue";
 import AppButton from "@/components/ui/AppButton.vue";
 import StickyActionBar from "@/components/ui/StickyActionBar.vue";
@@ -305,6 +308,10 @@ usePageRefresh(() => refreshSessionContext());
     <AppTabHeader :title="editId ? '修改比赛' : '创建比赛'" showBack />
 
     <view class="create-page-content">
+      <!-- #ifdef MP-WEIXIN -->
+      <AppPageIntro :title="currentTeam?.name || '当前球队'" :image-url="currentTeam?.logoUrl || ''" />
+      <!-- #endif -->
+      <!-- #ifndef MP-WEIXIN -->
       <AppSurface variant="outlined" custom-class="create-hero">
         <view class="create-hero__copy">
           <text class="create-hero-title">{{ currentTeam?.name || "当前球队" }}</text>
@@ -319,6 +326,7 @@ usePageRefresh(() => refreshSessionContext());
           <text v-else>{{ (currentTeam?.name || "队").slice(0, 1) }}</text>
         </view>
       </AppSurface>
+      <!-- #endif -->
 
       <MatchPublishForm
         :model-value="form"
@@ -413,4 +421,8 @@ usePageRefresh(() => refreshSessionContext());
   height: 100%;
 }
 
+
+/* #ifdef MP-WEIXIN */
+.create-match-page { padding-inline: var(--ui-page-padding-inline); }
+/* #endif */
 </style>

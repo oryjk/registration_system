@@ -92,6 +92,13 @@ function handleTap() {
   overflow: hidden;
 }
 
+/* #ifdef MP-WEIXIN */
+.ui-surface { padding: var(--ui-panel-padding); }
+.ui-surface--raised,
+.ui-surface--outlined { border: var(--ui-panel-border); border-radius: var(--ui-panel-radius); box-shadow: var(--ui-panel-shadow); }
+.ui-surface--flush { padding: 0; }
+/* #endif */
+
 /* H5 减少动态效果：去掉缩放过渡，按压仅保持视觉禁用/透明度语义。 */
 @media (prefers-reduced-motion: reduce) {
   .ui-surface--interactive {

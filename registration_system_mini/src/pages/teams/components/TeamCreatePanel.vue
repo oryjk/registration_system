@@ -99,4 +99,11 @@ function handleSubmit() {
 /* 间距由当前组件的 view 承担，不跨过 AppButton 的小程序样式隔离边界。 */
 .team-create-submit { padding-top: 32rpx; }
 /* #endif */
+
+/* #ifdef MP-WEIXIN */
+/* 微信端复用统一排版尺度；H5 保留原有样式。 */
+.form-field { margin-top: var(--ui-space-6); }
+.form-label { margin-bottom: var(--ui-space-2); font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-heading); }
+.team-create-submit { padding-top: var(--ui-section-gap); }
+/* #endif */
 </style>

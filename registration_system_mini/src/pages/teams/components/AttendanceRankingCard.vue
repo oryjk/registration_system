@@ -227,4 +227,24 @@ const scoreRanking = computed(() => buildActivityRanking(props.rankingItems, pro
 .stats-empty-inner {
   margin-top: 16rpx;
 }
+
+/* #ifdef MP-WEIXIN */
+/* 微信端复用统一排版尺度；H5 保留原有样式。 */
+.stats-card { margin-top: var(--ui-space-4); padding: var(--ui-space-6); border: var(--ui-panel-border); border-radius: var(--ui-panel-radius); box-shadow: var(--ui-panel-shadow); }
+.stats-card-title { font-size: var(--ui-text-heading); line-height: var(--ui-line-height-tight); font-weight: var(--ui-font-weight-heading); }
+.stats-card-caption { margin-top: var(--ui-space-2); font-size: var(--ui-text-sm); line-height: var(--ui-line-height-body); font-weight: var(--ui-font-weight-body); }
+.ranking-list { margin-top: var(--ui-space-6); }
+.ranking-columns { padding-bottom: var(--ui-space-3); font-size: var(--ui-text-sm); line-height: var(--ui-line-height-body); }
+.ranking-item { gap: var(--ui-list-row-gap); padding: var(--ui-list-row-padding) 0; border-top: var(--ui-list-divider); }
+.ranking-order { padding: 0 var(--ui-space-1); font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-heading); }
+.ranking-avatar-fallback { font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-heading); }
+.ranking-name { font-size: var(--ui-text-label); font-weight: var(--ui-font-weight-heading); line-height: var(--ui-line-height-tight); }
+.ranking-rate { font-size: var(--ui-text-title); font-weight: var(--ui-font-weight-heading); line-height: var(--ui-line-height-tight); }
+.ranking-unit { margin-left: var(--ui-space-1); font-size: var(--ui-text-sm); font-weight: var(--ui-font-weight-body); }
+.ranking-tier { gap: var(--ui-space-1); margin-top: var(--ui-space-2); padding: var(--ui-space-1) var(--ui-space-2); font-size: var(--ui-text-sm); line-height: var(--ui-line-height-tight); font-weight: var(--ui-font-weight-heading); }
+.stats-empty { margin-top: var(--ui-space-4); padding: var(--ui-panel-padding) 0; font-size: var(--ui-text-label); font-weight: var(--ui-font-weight-body); line-height: var(--ui-line-height-body); border: var(--ui-panel-border); border-radius: var(--ui-panel-radius); background: transparent; }
+.stats-empty-inner { margin-top: var(--ui-space-4); }
+.ranking-item--pressed { background: var(--ui-control-subtle-bg); }
+.ranking-avatar { border: var(--ui-panel-border); }
+/* #endif */
 </style>

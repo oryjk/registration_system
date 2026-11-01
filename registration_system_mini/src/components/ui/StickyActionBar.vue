@@ -63,4 +63,10 @@ withDefaults(defineProps<{
   min-width: 0;
   flex: 1;
 }
+
+/* #ifdef MP-WEIXIN */
+.ui-sticky-action-bar { gap: var(--ui-space-4); width: calc(100% - var(--ui-floating-action-inset) * 2); max-width: var(--ui-content-max-width); border: var(--ui-border-hairline); }
+.ui-sticky-action-bar--flat { border: var(--ui-panel-border); }
+.ui-sticky-action-bar__actions { gap: var(--ui-space-3); }
+/* #endif */
 </style>

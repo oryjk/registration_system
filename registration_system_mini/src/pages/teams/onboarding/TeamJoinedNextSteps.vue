@@ -24,4 +24,12 @@ defineEmits<{ (event: "team"): void; (event: "matches"): void }>();
 .joined-next__status { color: var(--ui-color-success-fg); font-size: 24rpx; font-weight: 600; }
 .joined-next__title { color: var(--ui-color-text); font-size: 32rpx; font-weight: 600; }
 .joined-next__copy { color: var(--ui-color-text-muted); font-size: 24rpx; line-height: 1.6; }
+
+/* #ifdef MP-WEIXIN */
+/* 微信端复用统一排版尺度；H5 保留原有样式。 */
+.joined-next { gap: var(--ui-list-gap); padding: var(--ui-panel-padding) 0; }
+.joined-next__status { font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-heading); }
+.joined-next__title { font-size: var(--ui-text-title); font-weight: var(--ui-font-weight-heading); }
+.joined-next__copy { font-size: var(--ui-text-body); line-height: var(--ui-line-height-body); }
+/* #endif */
 </style>

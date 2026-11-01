@@ -101,7 +101,7 @@ usePageRefresh(loadThread);
       <RunningLoader v-else-if="isLoading && !thread" text="正在收取留言" />
 
       <template v-else-if="thread">
-        <view class="thread-hero" hover-class="thread-hero--pressed" role="button" @tap="openMatch">
+        <view class="thread-hero ui-soft-panel" hover-class="thread-hero--pressed" role="button" @tap="openMatch">
           <text class="thread-hero-label">关联比赛</text>
           <view class="thread-hero-main">
             <text class="thread-match">{{ thread.match_name }}</text>
@@ -170,6 +170,8 @@ usePageRefresh(loadThread);
 </template>
 
 <style scoped>
+@import "@/styles/list-surfaces.css";
+
 .thread-page {
   min-height: 100vh;
   padding: 0 28rpx calc(198rpx + env(safe-area-inset-bottom));
@@ -453,4 +455,30 @@ usePageRefresh(loadThread);
     transform: none;
   }
 }
+
+/* #ifdef MP-WEIXIN */
+.thread-page { padding-left: var(--ui-page-padding-inline); padding-right: var(--ui-page-padding-inline); }
+.thread-hero { padding: var(--ui-panel-padding); border: var(--ui-panel-border); border-radius: var(--ui-panel-soft-radius); background: var(--ui-panel-soft-bg); box-shadow: var(--ui-panel-shadow); }
+.thread-hero--pressed { transform: none; box-shadow: var(--ui-shadow-control-pressed); }
+.thread-hero-main { gap: var(--ui-space-4); }
+.thread-match { font-size: var(--ui-text-title); font-weight: var(--ui-font-weight-heading); overflow-wrap: anywhere; }
+.thread-hero-label,.thread-copy { font-size: var(--ui-text-sm); line-height: var(--ui-line-height-body); }
+.thread-hero-link { display: inline-flex; align-items: center; min-height: var(--ui-control-min-height); font-size: var(--ui-text-sm); }
+.thread-section-heading { margin-top: var(--ui-section-gap); gap: var(--ui-space-4); }
+.thread-section-title { font-size: var(--ui-text-title); }
+.thread-section-count { font-size: var(--ui-text-sm); }
+.thread-messages { gap: var(--ui-space-6); }
+.thread-message-body { gap: var(--ui-space-3); }
+.thread-bubble { padding: var(--ui-space-5) var(--ui-space-6); border-radius: var(--ui-radius-button); }
+.thread-bubble-own { background: var(--ui-control-selected-bg); border-bottom-right-radius: var(--ui-space-2); }
+.thread-bubble-other { border: var(--ui-panel-border); background: var(--ui-panel-soft-bg); border-bottom-left-radius: var(--ui-space-2); }
+.thread-bubble-text { font-size: var(--ui-text-subtitle); line-height: var(--ui-line-height-body); }
+.thread-message-meta { margin-top: var(--ui-space-2); font-size: var(--ui-text-sm); }
+.thread-composer { padding: var(--ui-space-4) var(--ui-page-padding-inline) calc(var(--ui-space-5) + env(safe-area-inset-bottom)); border-top: var(--ui-list-divider); box-shadow: var(--ui-panel-shadow); }
+.thread-composer-row { gap: var(--ui-space-3); }
+.thread-input-shell { border: var(--ui-input-border); border-radius: var(--ui-input-radius); background: var(--ui-color-surface); }
+.thread-textarea { padding: var(--ui-space-4) var(--ui-input-padding) var(--ui-space-9); font-size: var(--ui-text-subtitle); line-height: var(--ui-line-height-body); }
+.thread-composer-count { right: var(--ui-space-4); bottom: var(--ui-space-2); font-size: var(--ui-text-sm); }
+.thread-empty { margin-top: var(--ui-space-6); padding: var(--ui-space-6) 0; border: var(--ui-panel-border); border-radius: var(--ui-panel-radius); font-size: var(--ui-text-body); line-height: var(--ui-line-height-body); }
+/* #endif */
 </style>

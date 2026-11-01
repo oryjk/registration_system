@@ -75,15 +75,15 @@ function handleToggleYear(year: string) {
         <AppButton variant="outline" size="sm" @click="handleClose">关闭</AppButton>
       </view>
       <view class="attendance-summary-grid">
-        <view class="attendance-summary-card">
+        <view class="attendance-summary-card ui-plain-panel">
           <text class="attendance-summary-value">{{ summary.attended }}</text>
           <text class="attendance-summary-label">参加</text>
         </view>
-        <view class="attendance-summary-card">
+        <view class="attendance-summary-card ui-plain-panel">
           <text class="attendance-summary-value">{{ summary.leave }}</text>
           <text class="attendance-summary-label">请假</text>
         </view>
-        <view class="attendance-summary-card">
+        <view class="attendance-summary-card ui-plain-panel">
           <text class="attendance-summary-value">{{ summary.unregistered }}</text>
           <text class="attendance-summary-label">未报名</text>
         </view>
@@ -102,7 +102,7 @@ function handleToggleYear(year: string) {
           </view>
           <SmoothCollapse :visible="!group.collapsed">
             <view class="attendance-year-records">
-              <view v-for="record in group.records" :key="record.activity_id" class="attendance-item">
+              <view v-for="record in group.records" :key="record.activity_id" class="attendance-item ui-list-row">
                 <view class="attendance-item-main">
                   <text class="attendance-item-title">{{ record.activity_name }}</text>
                   <text class="attendance-item-meta">{{ formatAttendanceDate(record.holding_date) }} · {{ record.location }}</text>
@@ -122,6 +122,7 @@ function handleToggleYear(year: string) {
 </template>
 
 <style scoped>
+@import "@/styles/list-surfaces.css";
 :deep(.member-attendance-popup) {
   border-top: var(--ui-border-default);
   border-radius: var(--ui-radius-md) var(--ui-radius-md) 0 0;
@@ -432,4 +433,36 @@ function handleToggleYear(year: string) {
 .attendance-empty {
   margin-top: 18rpx;
 }
+
+/* #ifdef MP-WEIXIN */
+/* 微信端复用统一排版尺度；H5 保留原有样式。 */
+.member-attendance-sheet { padding: var(--ui-panel-padding) var(--ui-page-padding-inline); }
+.member-edit-header { gap: var(--ui-space-5); margin-bottom: var(--ui-space-5); }
+.member-edit-kicker { font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-medium); }
+.member-edit-title { margin-top: var(--ui-space-2); font-size: var(--ui-text-display); font-weight: var(--ui-font-weight-heading); }
+.attendance-profile { gap: var(--ui-space-4); }
+.member-avatar-fallback { font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-heading); }
+.attendance-summary-grid { gap: var(--ui-space-3); margin: var(--ui-space-5) 0 var(--ui-space-4); }
+.attendance-summary-card { padding: var(--ui-space-4) var(--ui-space-2); border: var(--ui-panel-border); border-radius: var(--ui-panel-radius); background: transparent; }
+.attendance-summary-value { font-size: var(--ui-text-heading); font-weight: var(--ui-font-weight-heading); line-height: var(--ui-line-height-tight); }
+.attendance-summary-label { margin-top: var(--ui-space-1); font-size: var(--ui-text-sm); font-weight: var(--ui-font-weight-medium); }
+.empty-box { margin-top: var(--ui-space-5); padding: var(--ui-panel-padding) 0; font-size: var(--ui-text-label); font-weight: var(--ui-font-weight-body); border: var(--ui-panel-border); border-radius: var(--ui-panel-radius); background: transparent; }
+.attendance-year-group { margin-top: var(--ui-space-3); }
+.attendance-year-header { gap: var(--ui-space-4); padding: var(--ui-space-3) 0; border: var(--ui-panel-border); border-radius: var(--ui-panel-radius); border-bottom: var(--ui-list-divider); }
+.attendance-year-title { font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-heading); }
+.attendance-year-stats { gap: var(--ui-space-2); }
+.attendance-year-chip { padding: 0 var(--ui-space-3); font-size: var(--ui-text-xs); font-weight: var(--ui-font-weight-heading); }
+.attendance-year-arrow { font-size: var(--ui-text-xs); font-weight: var(--ui-font-weight-heading); border: var(--ui-control-border); background: var(--ui-control-subtle-bg); color: var(--ui-color-text); }
+.attendance-item { gap: var(--ui-space-4); margin-top: 0; padding: var(--ui-list-row-padding) 0; border: var(--ui-panel-border); border-radius: var(--ui-panel-radius); }
+.attendance-item-title { font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-heading); line-height: var(--ui-line-height-body); }
+.attendance-item-meta { margin-top: var(--ui-space-2); font-size: var(--ui-text-sm); font-weight: var(--ui-font-weight-body); line-height: var(--ui-line-height-body); }
+.attendance-item-side { gap: var(--ui-space-2); }
+.attendance-status { padding: 0 var(--ui-space-3); font-size: var(--ui-text-sm); font-weight: var(--ui-font-weight-heading); }
+.attendance-item-count { font-size: var(--ui-text-xs); font-weight: var(--ui-font-weight-medium); }
+.attendance-empty { margin-top: var(--ui-space-4); }
+.attendance-summary-card + .attendance-summary-card { border-left: var(--ui-list-divider); }
+.attendance-year-chip, .attendance-status { border: var(--ui-control-border); }
+.attendance-item + .attendance-item { border-top: var(--ui-list-divider); }
+.member-avatar { border: var(--ui-panel-border); }
+/* #endif */
 </style>

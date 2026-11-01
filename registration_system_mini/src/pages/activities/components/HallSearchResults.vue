@@ -95,10 +95,10 @@ onBeforeUnmount(() => {
 <template>
   <!-- 搜索范围为大厅可加入的比赛，以及当前用户相关的全部比赛。 -->
   <view v-if="hasSearched" class="hall-search-results">
-    <view v-if="isGuestMode" class="hall-search-results__state">
+    <view v-if="isGuestMode" class="hall-search-results__state ui-soft-panel">
       登录后可搜索你有权限查看的全部比赛。
     </view>
-    <view v-else-if="isLoading && !matches.length" class="hall-search-results__state">正在搜索比赛...</view>
+    <view v-else-if="isLoading && !matches.length" class="hall-search-results__state ui-soft-panel">正在搜索比赛...</view>
     <view v-else-if="errorMessage && !matches.length" class="hall-search-results__state hall-search-results__state--error">
       <text>{{ errorMessage }}</text>
       <view class="hall-search-results__retry" @tap="emit('retry')">点击重试</view>
@@ -132,6 +132,7 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+@import "@/styles/list-surfaces.css";
 .hall-search-results {
   margin-top: 24rpx;
 }
@@ -182,4 +183,10 @@ onBeforeUnmount(() => {
   color: var(--ui-color-text);
   font-weight: 600;
 }
+
+/* #ifdef MP-WEIXIN */
+.hall-search-results__state { border: var(--ui-panel-border); box-shadow: var(--ui-panel-shadow); border-radius: var(--ui-panel-soft-radius); background: var(--ui-panel-soft-bg); padding: var(--ui-panel-padding); }
+.hall-search-results__state--error { background: var(--ui-color-danger-bg); color: var(--ui-color-danger-fg); }
+.hall-search-results__retry { border: var(--ui-control-border); background: var(--ui-control-subtle-bg); padding: var(--ui-space-3) var(--ui-space-4); }
+/* #endif */
 </style>

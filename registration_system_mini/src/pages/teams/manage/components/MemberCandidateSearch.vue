@@ -55,7 +55,7 @@ function handleCandidateTap(candidate: BackendUser) {
       <view
         v-for="candidate in userSearchResults"
         :key="candidate.id"
-        :class="['candidate-card', selectedCandidate?.id === candidate.id ? 'candidate-card-active' : '']"
+        :class="['candidate-card ui-list-row', selectedCandidate?.id === candidate.id ? 'candidate-card-active' : '']"
         @tap="handleCandidateTap(candidate)"
       >
         <image v-if="candidate.avatar_url" class="candidate-avatar" :src="minioImageSrc(candidate.avatar_url)" mode="aspectFill" />
@@ -73,6 +73,7 @@ function handleCandidateTap(candidate: BackendUser) {
 </template>
 
 <style scoped>
+@import "@/styles/list-surfaces.css";
 @import "@/styles/form-controls.css";
 .search-row {
   display: flex;
@@ -173,4 +174,18 @@ function handleCandidateTap(candidate: BackendUser) {
   background: var(--ui-color-danger-bg);
   color: var(--ui-color-danger-fg);
 }
+
+/* #ifdef MP-WEIXIN */
+/* 微信端复用统一排版尺度；H5 保留原有样式。 */
+.member-search-row { margin-top: var(--ui-space-3); }
+.candidate-list { gap: 0; margin-top: var(--ui-space-3); }
+.candidate-card { gap: var(--ui-space-4); padding: var(--ui-list-row-padding) var(--ui-space-3); border: var(--ui-panel-border); border-radius: var(--ui-panel-radius); }
+.candidate-avatar-fallback { font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-heading); }
+.team-result-title { font-size: var(--ui-text-label); font-weight: var(--ui-font-weight-heading); }
+.team-result-meta { margin-top: var(--ui-space-1); font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-body); }
+.team-result-action { padding: var(--ui-space-2) var(--ui-space-3); font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-heading); border: var(--ui-control-border); background: var(--ui-control-subtle-bg); }
+.candidate-card + .candidate-card { border-top: var(--ui-list-divider); }
+.candidate-card-active { background: var(--ui-control-selected-bg); }
+.team-result-action-danger { background: var(--ui-color-danger-bg); }
+/* #endif */
 </style>

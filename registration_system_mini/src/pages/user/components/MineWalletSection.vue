@@ -21,19 +21,20 @@ const emit = defineEmits<{
     <!-- mp-weixin 陷阱：custom-class + 父级 scoped 给子组件根节点做布局会被样式隔离挡住。
          AppSurface flush 后横排布局放在自己模板的包裹 view 上。 -->
     <AppSurface flush class="mine-wallet-surface">
-      <view class="mine-wallet-strip">
+      <view class="mine-wallet-strip ui-soft-panel">
         <view class="mine-wallet-strip__copy">
           <text class="mine-wallet-strip__label">钱包余额</text>
           <text class="mine-wallet-strip__value">{{ walletSummary.balanceLabel }}</text>
           <text class="mine-wallet-strip__meta">累计支出 {{ walletSummary.totalExpenseLabel }} · {{ walletSummary.latestExpenseLabel }}</text>
         </view>
-        <button class="wallet-action" @tap="emit('openBilling')"><text>账单</text><wd-icon name="arrow-right" size="24rpx" /></button>
+        <button class="wallet-action ui-subtle-control" @tap="emit('openBilling')"><text>账单</text><wd-icon name="arrow-right" size="var(--ui-icon-xs)" /></button>
       </view>
     </AppSurface>
   </view>
 </template>
 
 <style scoped>
+@import "@/styles/list-surfaces.css";
 .mine-wallet-section {
   margin-top: 28rpx;
 }
@@ -87,4 +88,13 @@ const emit = defineEmits<{
 }
 .wallet-action { display:flex; align-items:center; gap:6rpx; flex-shrink:0; margin:0; padding:14rpx 0 14rpx 12rpx; border:0; background:transparent; color:var(--ui-color-accent-deep); font-size:24rpx; line-height:1.4; }
 .wallet-action::after { border:0; }
+
+/* #ifdef MP-WEIXIN */
+.mine-wallet-section { margin-top: var(--ui-section-gap); }
+.mine-wallet-strip { gap: var(--ui-space-5); margin-top: var(--ui-space-4); padding: var(--ui-panel-padding); background: var(--ui-panel-soft-bg); border-radius: var(--ui-panel-soft-radius); }
+.mine-wallet-strip__label,.mine-wallet-strip__meta { font-size: var(--ui-text-sm); }
+.mine-wallet-strip__value { margin-top: var(--ui-space-1); font-size: var(--ui-text-display); font-weight: var(--ui-font-weight-heading); }
+.mine-wallet-strip__meta { margin-top: var(--ui-space-2); line-height: var(--ui-line-height-body); }
+.wallet-action { gap: var(--ui-space-2); min-height: var(--ui-control-min-height); padding: var(--ui-space-3) var(--ui-space-4); border-radius: var(--ui-control-radius); background: var(--ui-control-subtle-bg); font-size: var(--ui-text-body); }
+/* #endif */
 </style>

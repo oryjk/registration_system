@@ -138,4 +138,9 @@ function selectAvatar(id: string | number, participants = props.participants) {
   font-size: 22rpx;
   font-weight: 500;
 }
+
+/* #ifdef MP-WEIXIN */
+.payment-panel { border: var(--ui-panel-border); background: var(--ui-color-warning-bg); padding: var(--ui-space-4); border-radius: var(--ui-panel-soft-radius); }
+.payment-panel-title, .payment-panel-fee { color: var(--ui-color-warning-fg); }
+/* #endif */
 </style>

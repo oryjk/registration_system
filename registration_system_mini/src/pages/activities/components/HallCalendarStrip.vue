@@ -15,7 +15,7 @@ const emit = defineEmits<{
   <scroll-view class="hall-calendar" scroll-x :show-scrollbar="false">
     <view class="hall-calendar-track">
       <view
-        :class="['hall-calendar-item', selectedKey === '' ? 'hall-calendar-item-active' : '']"
+        :class="['hall-calendar-item', 'ui-subtle-control', selectedKey === '' ? 'hall-calendar-item-active' : '']"
         @tap="emit('select', '')"
       >
         <text class="hall-calendar-badge">全部</text>
@@ -24,7 +24,7 @@ const emit = defineEmits<{
       <view
         v-for="day in days"
         :key="day.key"
-        :class="['hall-calendar-item', selectedKey === day.key ? 'hall-calendar-item-active' : '']"
+        :class="['hall-calendar-item', 'ui-subtle-control', selectedKey === day.key ? 'hall-calendar-item-active' : '']"
         @tap="emit('select', day.key)"
       >
         <text class="hall-calendar-badge">{{ day.badgeLabel }}</text>
@@ -35,6 +35,7 @@ const emit = defineEmits<{
 </template>
 
 <style scoped>
+@import "@/styles/list-surfaces.css";
 .hall-calendar {
   width: 100%;
   white-space: nowrap;
@@ -87,4 +88,13 @@ const emit = defineEmits<{
 .hall-calendar-item-active .hall-calendar-day {
   color: var(--ui-color-text-inverse);
 }
+
+/* #ifdef MP-WEIXIN */
+.hall-calendar-track { gap: var(--ui-space-3); padding: var(--ui-space-1) 0; }
+.hall-calendar-item { width: calc(var(--ui-input-height) + var(--ui-space-4)); border: var(--ui-control-border); padding: var(--ui-space-3) 0; background: var(--ui-control-subtle-bg); }
+.hall-calendar-item-active { background: var(--ui-control-selected-bg); }
+.hall-calendar-item-active .hall-calendar-badge { color: var(--ui-color-text-muted); }
+.hall-calendar-item-active .hall-calendar-day { color: var(--ui-color-text); }
+.hall-calendar-day { font-size: var(--ui-text-heading); font-weight: var(--ui-font-weight-heading); }
+/* #endif */
 </style>

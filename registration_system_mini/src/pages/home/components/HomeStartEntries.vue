@@ -45,7 +45,7 @@ function select(action: HomeEmptyHeroAction) { if (!props.busy) emit("select-tas
           <view class="home-start__art" aria-hidden="true">
             <view class="home-start__art-backdrop" />
             <image v-if="imageSrc(entry.image)" class="home-start__illustration" :src="imageSrc(entry.image)" mode="aspectFit" @error="imageError(entry.image)" />
-            <wd-icon v-else :name="entry.icon" size="48rpx" />
+            <wd-icon v-else :name="entry.icon" size="var(--ui-icon-xl)" />
           </view>
           <text class="home-start__entry-title">{{ entry.title }}</text>
         </button>
@@ -53,7 +53,7 @@ function select(action: HomeEmptyHeroAction) { if (!props.busy) emit("select-tas
       <view class="home-start__footer">
         <text class="home-start__hint">已有邀请？直接打开队友发来的邀请卡片。</text>
         <button class="home-start__help" hover-class="home-start__help--pressed" @tap="emit('help')">
-          <wd-icon name="question-circle" size="26rpx" /><text>使用帮助</text>
+          <wd-icon name="question-circle" size="var(--ui-icon-sm)" /><text>使用帮助</text>
         </button>
       </view>
     </view>
@@ -61,25 +61,25 @@ function select(action: HomeEmptyHeroAction) { if (!props.busy) emit("select-tas
 </template>
 
 <style scoped>
-.home-start-panel { overflow: hidden; border: 1rpx solid var(--ui-color-line); border-radius: var(--ui-radius-card); background: var(--ui-color-surface); }
-.home-start__hero { position: relative; overflow: hidden; min-height: 242rpx; padding: 38rpx 28rpx; box-sizing: border-box; background: var(--ui-color-hero); color: var(--now-cover-fg); }
+.home-start-panel { overflow: hidden; border: var(--ui-border-hairline); border-radius: var(--ui-radius-card); background: var(--ui-color-surface); }
+.home-start__hero { position: relative; overflow: hidden; min-height: var(--ui-home-hero-min-height); padding: var(--ui-space-9) var(--ui-space-7); box-sizing: border-box; background: var(--ui-color-hero); color: var(--now-cover-fg); }
 .home-start__background, .home-start__shade { position: absolute; inset: 0; width: 100%; height: 100%; }
 /* 照片遮罩使用既有封面语义，确保五个主题上白色文案均有足够对比度。 */
 .home-start__shade { background: var(--now-cover-shade); }
 .home-start__copy { position: relative; display: flex; flex-direction: column; align-items: flex-start; }
-.home-start__kicker { font-size: 22rpx; line-height: 1.4; color: var(--now-cover-muted); }
-.home-start__title { margin-top: 12rpx; font-size: 38rpx; font-weight: var(--ui-font-weight-heading); line-height: 1.35; }
-.home-start__description { margin-top: 16rpx; font-size: 24rpx; line-height: 1.6; color: var(--now-cover-muted); }
-.home-start__entries { display: flex; gap: 12rpx; padding: 24rpx 20rpx 12rpx; }
-.home-start__entry { display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center; gap: 10rpx; width: 0; min-width: 0; margin: 0; padding: 12rpx 6rpx 18rpx; border: 0; border-radius: var(--ui-radius-button); background: transparent; color: var(--ui-color-text); line-height: 1.4; box-sizing: border-box; }
+.home-start__kicker { font-size: var(--ui-text-sm); line-height: var(--ui-line-height-compact); color: var(--now-cover-muted); }
+.home-start__title { margin-top: var(--ui-space-3); font-size: var(--ui-text-display); font-weight: var(--ui-font-weight-heading); line-height: var(--ui-line-height-tight); }
+.home-start__description { margin-top: var(--ui-space-4); font-size: var(--ui-text-body); line-height: var(--ui-line-height-body); color: var(--now-cover-muted); }
+.home-start__entries { display: flex; gap: var(--ui-space-3); padding: var(--ui-space-6) var(--ui-space-5) var(--ui-space-3); }
+.home-start__entry { display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center; gap: var(--ui-space-3); width: 0; min-width: 0; margin: 0; padding: var(--ui-space-3) var(--ui-space-2) var(--ui-space-5); border: 0; border-radius: var(--ui-radius-button); background: transparent; color: var(--ui-color-text); line-height: var(--ui-line-height-compact); box-sizing: border-box; }
 .home-start__entry::after, .home-start__help::after { border: 0; }
 .home-start__entry--pressed { background: var(--ui-color-accent-subtle); }
-.home-start__art { position: relative; display: flex; align-items: center; justify-content: center; width: 140rpx; height: 132rpx; }
-.home-start__art-backdrop { position: absolute; width: 118rpx; height: 118rpx; border-radius: var(--ui-radius-round); background: var(--ui-color-accent-soft); }
-.home-start__illustration { position: relative; width: 140rpx; height: 132rpx; }
-.home-start__entry-title { font-size: 26rpx; font-weight: var(--ui-font-weight-heading); white-space: nowrap; }
-.home-start__footer { display: flex; align-items: center; gap: 12rpx; padding: 10rpx 24rpx 22rpx; }
-.home-start__hint { flex: 1; min-width: 0; font-size: 21rpx; line-height: 1.5; color: var(--ui-color-text-muted); }
-.home-start__help { display: flex; align-items: center; flex-shrink: 0; gap: 6rpx; min-height: 56rpx; margin: 0; padding: 0; background: transparent; color: var(--ui-color-text-muted); font-size: 22rpx; line-height: 1.4; }
+.home-start__art { position: relative; display: flex; align-items: center; justify-content: center; width: var(--ui-shortcut-art-size); height: var(--ui-shortcut-art-size); }
+.home-start__art-backdrop { position: absolute; width: var(--ui-shortcut-backdrop-size); height: var(--ui-shortcut-backdrop-size); border-radius: var(--ui-radius-round); background: var(--ui-color-accent-soft); }
+.home-start__illustration { position: relative; width: var(--ui-shortcut-art-size); height: var(--ui-shortcut-art-size); }
+.home-start__entry-title { font-size: var(--ui-text-label); font-weight: var(--ui-font-weight-heading); white-space: nowrap; }
+.home-start__footer { display: flex; align-items: center; gap: var(--ui-space-3); padding: var(--ui-space-3) var(--ui-space-6) var(--ui-space-5); }
+.home-start__hint { flex: 1; min-width: 0; font-size: var(--ui-text-xs); line-height: var(--ui-line-height-compact); color: var(--ui-color-text-muted); }
+.home-start__help { display: flex; align-items: center; flex-shrink: 0; gap: var(--ui-space-2); min-height: var(--ui-space-11); margin: 0; padding: 0; background: transparent; color: var(--ui-color-text-muted); font-size: var(--ui-text-sm); line-height: var(--ui-line-height-compact); }
 .home-start__help--pressed { color: var(--ui-color-text); }
 </style>

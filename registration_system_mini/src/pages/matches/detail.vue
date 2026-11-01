@@ -487,4 +487,10 @@ const metaPageStyle = computed(() =>
 }
 /* #endif */
 
+
+/* #ifdef MP-WEIXIN */
+.registration-shell { gap: var(--ui-section-gap); }
+.match-manage-action { background: var(--ui-control-subtle-bg); min-height: var(--ui-control-min-height); padding: var(--ui-space-3) var(--ui-space-4); font-size: var(--ui-text-label); }
+.match-manage-action--cancel { background: var(--ui-color-danger-bg); }
+/* #endif */
 </style>

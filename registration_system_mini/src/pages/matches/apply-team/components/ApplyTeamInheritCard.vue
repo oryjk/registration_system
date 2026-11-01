@@ -47,11 +47,12 @@ const hostProgressLabel = hostGroup?.max_players
       </view>
     </view>
 
-    <view class="inherit-note">以上信息由对方球队发布，接约时自动沿用，无需重复填写。</view>
+    <view class="inherit-note ui-soft-panel">以上信息由对方球队发布，接约时自动沿用，无需重复填写。</view>
   </AppSurface>
 </template>
 
 <style scoped>
+@import "@/styles/list-surfaces.css";
 .inherit-head {
   display: flex;
   align-items: flex-start;
@@ -117,4 +118,11 @@ const hostProgressLabel = hostGroup?.max_players
   font-weight: 600;
   color: var(--ui-color-text-muted);
 }
+
+/* #ifdef MP-WEIXIN */
+.inherit-note { border: var(--ui-panel-border); padding: var(--ui-space-4); background: var(--ui-panel-soft-bg); font-weight: var(--ui-font-weight-body); }
+.inherit-rows { border-top: var(--ui-list-divider); }
+.inherit-row { border-bottom: var(--ui-list-divider); padding: var(--ui-space-4) 0; }
+.inherit-row:last-child { border-bottom: 0; }
+/* #endif */
 </style>

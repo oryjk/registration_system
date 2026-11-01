@@ -66,7 +66,7 @@ onShareTimeline(() => ({
       </view>
 
       <template v-else-if="team">
-        <view class="page-hero">
+        <view class="page-hero ui-plain-panel">
           <view class="hero-row">
             <view class="hero-badge">
               <image v-if="logoUrl" class="hero-badge__logo" :src="minioImageSrc(logoUrl)" mode="aspectFill" />
@@ -83,7 +83,7 @@ onShareTimeline(() => ({
         </view>
 
         <!-- 队费下放子页后的轻量入口：展示余额，点击进入队费缴纳页。 -->
-        <view class="fund-entry" hover-class="fund-entry--pressed" @tap="openTeamFund">
+        <view class="fund-entry ui-soft-panel" hover-class="fund-entry--pressed" @tap="openTeamFund">
           <view class="fund-entry__main">
             <text class="fund-entry__label">队费余额</text>
             <view class="fund-entry__amount">
@@ -153,6 +153,7 @@ onShareTimeline(() => ({
 </template>
 
 <style scoped>
+@import "@/styles/list-surfaces.css";
 .team-detail-page {
   min-height: 100vh;
   padding: 0 28rpx 96rpx;
@@ -488,4 +489,41 @@ onShareTimeline(() => ({
   color: var(--ui-color-text-muted);
   line-height: 1.5;
 }
+
+/* #ifdef MP-WEIXIN */
+/* 微信端复用统一排版尺度；H5 保留原有样式。 */
+.team-detail-page { padding: 0 var(--ui-page-padding-inline) var(--ui-page-padding-bottom); }
+.team-detail-content { gap: var(--ui-section-gap); }
+.state-card { padding: var(--ui-space-9) var(--ui-space-7); }
+.state-text { font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-medium); }
+.page-hero { padding: var(--ui-space-7); }
+.hero-row { gap: var(--ui-space-4); }
+.hero-badge { font-size: var(--ui-text-display); }
+.hero-title { font-size: var(--ui-text-title); line-height: var(--ui-line-height-tight); }
+.hero-meta { margin-top: var(--ui-space-2); font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-body); }
+.hero-description { margin-top: var(--ui-space-4); font-size: var(--ui-text-body); line-height: var(--ui-line-height-body); font-weight: var(--ui-font-weight-body); }
+.fund-entry { gap: var(--ui-space-4); padding: var(--ui-panel-padding); border: var(--ui-panel-border); border-radius: var(--ui-panel-soft-radius); background: var(--ui-panel-soft-bg); box-shadow: var(--ui-panel-shadow); }
+.fund-entry__label { font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-medium); letter-spacing: var(--ui-space-1); }
+.fund-entry__amount { gap: var(--ui-space-1); margin-top: var(--ui-space-2); }
+.fund-entry__symbol { font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-heading); }
+.fund-entry__value { font-size: var(--ui-text-stat); line-height: var(--ui-line-height-tight); }
+.fund-entry__action { gap: var(--ui-space-2); padding: 0 var(--ui-space-5); min-height: var(--ui-control-min-height); border-radius: var(--ui-control-radius); background: var(--ui-control-subtle-bg); }
+.fund-entry__action-text { font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-heading); }
+.fund-entry__action-arrow { font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-heading); }
+.manage-head { gap: var(--ui-space-2); margin-bottom: var(--ui-space-5); }
+.manage-title { font-size: var(--ui-text-title); }
+.manage-copy { font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-body); }
+.invite-hero { gap: var(--ui-space-3); margin-bottom: var(--ui-space-6); }
+.invite-kicker { padding: var(--ui-space-1) var(--ui-space-4); }
+.invite-kicker__text { font-size: var(--ui-text-sm); font-weight: var(--ui-font-weight-heading); letter-spacing: var(--ui-space-1); }
+.invite-title { font-size: var(--ui-text-subtitle); line-height: var(--ui-line-height-tight); }
+.invite-copy { font-size: var(--ui-text-sm); line-height: var(--ui-line-height-body); font-weight: var(--ui-font-weight-body); }
+.invite-share-button { gap: var(--ui-space-2); padding: 0 var(--ui-space-6); min-height: var(--ui-button-height-md); border: var(--ui-control-border); }
+.invite-share-button__text { font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-heading); }
+.leave-head { gap: var(--ui-space-2); padding: var(--ui-space-6) var(--ui-space-6) var(--ui-space-5); }
+.leave-title { font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-heading); }
+.leave-copy { font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-body); line-height: var(--ui-line-height-body); }
+.state-card, .page-hero { padding: var(--ui-panel-padding) 0; border: var(--ui-panel-border); border-radius: var(--ui-panel-radius); box-shadow: var(--ui-panel-shadow); }
+.fund-entry--pressed { transform: none; background: var(--ui-control-selected-bg); }
+/* #endif */
 </style>

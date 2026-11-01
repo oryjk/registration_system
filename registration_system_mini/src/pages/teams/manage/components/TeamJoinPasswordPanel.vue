@@ -98,4 +98,12 @@ function handleClear() {
 }
 
 .form-actions { display: flex; flex-direction: column; gap: 16rpx; margin-top: 28rpx; }
+
+/* #ifdef MP-WEIXIN */
+/* 微信端复用统一排版尺度；H5 保留原有样式。 */
+.form-label { margin-bottom: var(--ui-space-2); font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-heading); }
+.status-row { margin-top: var(--ui-space-5); }
+.status-badge { padding: var(--ui-space-2) var(--ui-space-3); font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-heading); }
+.form-actions { gap: var(--ui-space-4); margin-top: var(--ui-space-7); }
+/* #endif */
 </style>

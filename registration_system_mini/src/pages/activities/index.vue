@@ -264,7 +264,7 @@ provide(APP_SCROLL_CONTROLLER, appScrollController);
       <view class="hall-content" :style="contentStyle">
       <RunningLoader v-if="showInitialLoadingState" text="正在奔向球场" />
 
-      <view v-else-if="isGuestMode" class="hall-guest-card">
+      <view v-else-if="isGuestMode" class="hall-guest-card ui-soft-panel">
         <text class="hall-guest-title">登录后查看约队大厅</text>
         <text class="hall-guest-subtitle">浏览球队约队和散人约局，报名凑局一场就出发。</text>
         <AppButton block @click="handleLogin">立即登录</AppButton>
@@ -289,7 +289,7 @@ provide(APP_SCROLL_CONTROLLER, appScrollController);
             @create="handleSuggestedPublish"
           />
         </template>
-        <view v-else-if="errorMessage" class="hall-empty">
+        <view v-else-if="errorMessage" class="hall-empty ui-soft-panel">
           <view>{{ errorMessage }}</view>
           <view class="hall-empty-action" @tap="loadPageData()">点击重试</view>
         </view>
@@ -390,6 +390,7 @@ provide(APP_SCROLL_CONTROLLER, appScrollController);
 </template>
 
 <style scoped>
+@import "@/styles/list-surfaces.css";
 .hall-page {
   position: relative;
   min-height: 100vh;
@@ -531,5 +532,11 @@ provide(APP_SCROLL_CONTROLLER, appScrollController);
   max-width: 750rpx;
   transform: translateX(-50%);
 }
+/* #endif */
+
+/* #ifdef MP-WEIXIN */
+.hall-guest-card, .hall-empty { border: var(--ui-panel-border); box-shadow: var(--ui-panel-shadow); border-radius: var(--ui-panel-soft-radius); background: var(--ui-panel-soft-bg); padding: var(--ui-panel-padding); }
+.hall-content { padding-inline: var(--ui-page-padding-inline); }
+.hall-empty-action, .hall-load-more { border: var(--ui-control-border); background: var(--ui-control-subtle-bg); border-radius: var(--ui-control-radius); }
 /* #endif */
 </style>

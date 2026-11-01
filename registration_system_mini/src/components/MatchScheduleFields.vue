@@ -358,6 +358,40 @@ function handleMatchEndTimeChange(event: Event) {
 .match-schedule-fields--compact .time-tile-value { font-size: 27rpx; }
 
 
+/* #ifdef MP-WEIXIN */
+.date-head { gap: var(--ui-space-4); margin-top: var(--ui-section-gap); }
+.date-head-title { font-size: var(--ui-text-label); font-weight: var(--ui-font-weight-heading); }
+.date-more-link { min-height: var(--ui-control-min-height); padding: 0 var(--ui-space-4); border: var(--ui-control-border); background: var(--ui-control-subtle-bg); font-size: var(--ui-text-sm); }
+.date-option-scroll { margin-top: var(--ui-space-4); }
+.date-option-row { gap: var(--ui-space-3); }
+.date-option-card { width: var(--ui-schedule-date-width); min-height: var(--ui-schedule-date-min-height); padding: var(--ui-space-4) var(--ui-space-3); border: var(--ui-control-border); border-radius: var(--ui-control-radius); background: var(--ui-control-subtle-bg); box-shadow: var(--ui-panel-shadow); }
+.date-option-active { background: var(--ui-control-selected-bg); }
+.date-option-top { font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-medium); }
+.date-option-day { margin-top: var(--ui-space-3); font-size: var(--ui-schedule-date-font-size); font-weight: var(--ui-font-weight-heading); }
+.date-option-month { margin-top: var(--ui-space-2); font-size: var(--ui-text-xs); }
+.time-tile-grid { gap: var(--ui-space-4); margin-top: var(--ui-space-5); }
+.time-tile { min-height: var(--ui-schedule-time-min-height); padding: var(--ui-space-4) var(--ui-space-5); gap: var(--ui-space-4); border: var(--ui-control-border); background: var(--ui-control-subtle-bg); }
+.time-tile-label { font-size: var(--ui-text-label); font-weight: var(--ui-font-weight-medium); line-height: var(--ui-line-height-tight); }
+.time-tile-value-row { gap: var(--ui-space-3); }
+.time-tile-value { font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-heading); line-height: var(--ui-line-height-tight); }
+.time-tile-edit { width: var(--ui-icon-lg); height: var(--ui-icon-lg); }
+.form-error { margin-top: var(--ui-space-4); font-size: var(--ui-text-sm); font-weight: var(--ui-font-weight-medium); line-height: var(--ui-line-height-compact); }
+.match-schedule-fields--compact .date-head { margin-top: var(--ui-space-5); }
+.match-schedule-fields--compact .date-head-title { font-size: var(--ui-text-body); }
+.match-schedule-fields--compact .date-more-link { height: auto; padding: 0 var(--ui-space-4); }
+.match-schedule-fields--compact .date-option-scroll { margin-top: var(--ui-space-3); }
+.match-schedule-fields--compact .date-option-row { gap: var(--ui-space-3); }
+.match-schedule-fields--compact .date-option-card { width: var(--ui-schedule-date-width-compact); min-height: var(--ui-schedule-date-min-height-compact); }
+.match-schedule-fields--compact .date-option-top { font-size: var(--ui-text-sm); }
+.match-schedule-fields--compact .date-option-day { margin-top: var(--ui-space-2); font-size: var(--ui-text-stat); }
+.match-schedule-fields--compact .date-option-month { margin-top: var(--ui-space-1); font-size: var(--ui-text-xs); }
+.match-schedule-fields--compact .time-tile-grid { gap: var(--ui-space-3); margin-top: var(--ui-space-4); }
+.match-schedule-fields--compact .time-tile { gap: var(--ui-space-3); min-height: var(--ui-button-height-md); padding: var(--ui-space-3) var(--ui-space-4); }
+.match-schedule-fields--compact .time-tile-label { font-size: var(--ui-text-body); }
+.match-schedule-fields--compact .time-tile-value-row { gap: var(--ui-space-3); }
+.match-schedule-fields--compact .time-tile-value { font-size: var(--ui-text-subtitle); }
+/* #endif */
+
 /* H5 减少动态效果：日期卡直接切换选中态，无缩放位移。 */
 @media (prefers-reduced-motion: reduce) {
   .date-option-card {

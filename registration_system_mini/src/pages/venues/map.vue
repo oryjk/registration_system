@@ -197,4 +197,11 @@ onShow(() => {
 .venue-map-state__hint { font-size: 24rpx; color: var(--ui-color-text-muted); line-height: 1.5; }
 .venue-map-state__action { margin-top: 12rpx; }
 .venue-map-warning { display: block; margin-bottom: 16rpx; font-size: 22rpx; color: var(--ui-color-text-muted); line-height: 1.5; }
+
+/* #ifdef MP-WEIXIN */
+.venue-map-search { border: var(--ui-control-border); border-radius: var(--ui-control-radius); background: var(--ui-control-subtle-bg); height: var(--ui-input-height); padding: 0 var(--ui-input-padding); gap: var(--ui-space-3); }
+.venue-map-panel { border-top: var(--ui-list-divider); padding: var(--ui-panel-padding) var(--ui-page-padding-inline) calc(env(safe-area-inset-bottom) + var(--ui-space-6)); }
+.venue-map-chip { border: var(--ui-control-border); border-radius: var(--ui-control-radius); background: var(--ui-control-subtle-bg); padding: var(--ui-space-4) var(--ui-space-5); font-size: var(--ui-text-body); }
+.venue-map-chip--selected { background: var(--ui-control-selected-bg); color: var(--ui-color-text); }
+/* #endif */
 </style>

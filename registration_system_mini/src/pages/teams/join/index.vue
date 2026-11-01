@@ -7,6 +7,10 @@ import AppTabHeader from "@/components/AppTabHeader.vue";
 import ProfileCompletionDialog from "@/components/ProfileCompletionDialog.vue";
 import TeamJoinedNextSteps from "../onboarding/TeamJoinedNextSteps.vue";
 import TeamJoinPanel from "../components/TeamJoinPanel.vue";
+// #ifdef MP-WEIXIN
+import AppPageIntro from "@/components/ui/AppPageIntro.vue";
+import { HOME_VISUAL_ASSETS } from "@/config/homeVisualAssets";
+// #endif
 import { useTeamJoinPage } from "./useTeamJoinPage";
 
 const { themePageStyle } = useAccentTheme();
@@ -50,7 +54,12 @@ onShow(() => { if (joinedTeam.value) void refreshIllustrations(); });
     <view class="team-join-content">
       <TeamJoinedNextSteps :image-revision="illustrationRevision" :image-url="illustrations.team" v-if="joinedTeam" @team="goJoinedTeam" @matches="goFindMatches" />
       <template v-else>
+      <!-- #ifdef MP-WEIXIN -->
+      <view class="team-join-intro"><AppPageIntro title="找到你的球队" description="找到一起踢球的伙伴，搜索名称即可加入。" :image-url="HOME_VISUAL_ASSETS.joinTeam" /></view>
+      <!-- #endif -->
+      <!-- #ifndef MP-WEIXIN -->
       <text class="team-page-note">找到一起踢球的伙伴，搜索名称即可加入。</text>
+      <!-- #endif -->
 
       <TeamJoinPanel
         v-model:search-keyword="searchKeyword"
@@ -71,7 +80,7 @@ onShow(() => { if (joinedTeam.value) void refreshIllustrations(); });
 
       <view
         v-if="canShowCreateEntry"
-        class="team-join-alt"
+        class="team-join-alt ui-subtle-control"
         hover-class="team-join-alt--pressed"
         @tap="goCreateTeam"
       >
@@ -90,6 +99,7 @@ onShow(() => { if (joinedTeam.value) void refreshIllustrations(); });
 </template>
 
 <style scoped>
+@import "@/styles/list-surfaces.css";
 .team-join-page {
   min-height: 100vh;
   padding: 0 28rpx 112rpx;
@@ -135,4 +145,14 @@ onShow(() => { if (joinedTeam.value) void refreshIllustrations(); });
 
 
 .team-page-note { display: block; margin: 4rpx 4rpx 20rpx; color: var(--ui-color-text-muted); font-size: 24rpx; line-height: 1.5; }
+
+/* #ifdef MP-WEIXIN */
+/* 微信端复用统一排版尺度；H5 保留原有样式。 */
+.team-join-page { padding: 0 var(--ui-page-padding-inline) var(--ui-page-padding-bottom); }
+.team-join-alt { gap: var(--ui-space-2); margin-top: var(--ui-section-gap); padding: var(--ui-space-4) var(--ui-space-5); border: var(--ui-control-border); border-radius: var(--ui-control-radius); background: var(--ui-control-subtle-bg); }
+.team-join-alt__label { font-size: var(--ui-text-label); font-weight: var(--ui-font-weight-medium); }
+.team-join-alt__arrow { font-size: var(--ui-text-label); font-weight: var(--ui-font-weight-heading); }
+.team-page-note { margin: var(--ui-space-1) var(--ui-space-1) var(--ui-space-5); font-size: var(--ui-text-body); line-height: var(--ui-line-height-body); }
+.team-join-intro { margin-bottom: var(--ui-section-gap); }
+/* #endif */
 </style>

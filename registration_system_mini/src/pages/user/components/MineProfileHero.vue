@@ -40,7 +40,7 @@ const emit = defineEmits<{
         <text class="profile-name">{{ currentUser ? displayName : '欢迎来到约球开踢' }}</text>
         <text class="profile-meta">{{ currentUser ? (teamJoinedDaysLabel ? '加入球队 ' + teamJoinedDaysLabel : '记录每一次上场') : '登录后查看比赛与球队' }}</text>
       </view>
-      <button v-if="currentUser" class="profile-edit" @tap="emit('editProfile')" aria-label="编辑资料">
+      <button v-if="currentUser" class="profile-edit ui-subtle-control" @tap="emit('editProfile')" aria-label="编辑资料">
         <wd-icon name="edit" size="28rpx" /><text>编辑</text>
       </button>
       <AppButton v-else size="sm" @click="emit('login')">登录</AppButton>
@@ -51,6 +51,7 @@ const emit = defineEmits<{
   </view>
 </template>
 <style scoped>
+@import "@/styles/list-surfaces.css";
 
 .mine-profile-hero { padding: 28rpx; border: var(--ui-border-default); border-radius: var(--ui-radius-card); background: var(--ui-color-surface); }
 .profile-row { display:flex; align-items:center; gap:20rpx; }
@@ -63,4 +64,13 @@ const emit = defineEmits<{
 .profile-edit::after,.profile-complete::after { border:0; }
 .profile-complete { margin:20rpx 0 0; padding:16rpx 0 0; display:flex; align-items:center; justify-content:space-between; border:0; border-top:var(--ui-border-default); border-radius:0; background:transparent; color:var(--ui-color-accent-deep); font-size:24rpx; line-height:1.5; }
 
+
+/* #ifdef MP-WEIXIN */
+.mine-profile-hero { padding: var(--ui-space-4) 0 var(--ui-space-6); border: var(--ui-panel-border); border-radius: var(--ui-panel-radius); }
+.profile-row { gap: var(--ui-space-5); }
+.profile-name { font-size: var(--ui-text-heading); font-weight: var(--ui-font-weight-heading); }
+.profile-meta { margin-top: var(--ui-space-2); font-size: var(--ui-text-sm); line-height: var(--ui-line-height-body); }
+.profile-edit { gap: var(--ui-space-2); min-height: var(--ui-control-min-height); padding: var(--ui-space-3) var(--ui-space-4); background: var(--ui-control-subtle-bg); font-size: var(--ui-text-sm); }
+.profile-complete { margin-top: var(--ui-space-5); padding-top: var(--ui-space-4); border-top: var(--ui-list-divider); font-size: var(--ui-text-body); }
+/* #endif */
 </style>

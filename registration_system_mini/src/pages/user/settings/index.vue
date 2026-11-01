@@ -58,17 +58,17 @@ usePageRefresh(loadPageData);
   <view class="app-theme-scope settings-page" :style="[themePageStyle, pageStyle]">
     <AppTabHeader title="设置" showBack />
 
-    <view class="settings-content">
+    <view class="settings-content ui-plain-panel">
       <AppSurface v-if="isOwner" custom-class="settings-card">
         <SectionHeader title="验证与运营" caption="各项开关由管理端「系统设置」控制" />
-        <view v-if="clearProfileEnabled" class="settings-item">
+        <view v-if="clearProfileEnabled" class="settings-item ui-list-row">
           <view class="settings-item__texts">
             <text class="settings-item__title">清除头像和昵称</text>
             <text class="settings-item__desc">清除后回到未完善资料状态，用于验证资料完善引导</text>
           </view>
           <AppButton variant="outline" size="sm" @click="handleClearProfile">清除</AppButton>
         </view>
-        <view v-if="reviewToggleEnabled" class="settings-item settings-item--stacked">
+        <view v-if="reviewToggleEnabled" class="settings-item settings-item--stacked ui-list-row">
           <view class="settings-item__texts">
             <text class="settings-item__title">审核状态</text>
             <text class="settings-item__desc">针对当前小程序版本切换审核状态，全量用户创建入口显隐立即变化</text>
@@ -122,6 +122,8 @@ usePageRefresh(loadPageData);
 </template>
 
 <style scoped>
+@import "@/styles/list-surfaces.css";
+
 .settings-page {
   min-height: 100vh;
   padding: 0 28rpx 48rpx;
@@ -234,4 +236,20 @@ usePageRefresh(loadPageData);
   font-weight: 400;
   line-height: 1.5;
 }
+
+/* #ifdef MP-WEIXIN */
+.settings-page { padding-right: var(--ui-page-padding-inline); padding-left: var(--ui-page-padding-inline); padding-bottom: var(--ui-page-padding-bottom); }
+.settings-content { --ui-panel-padding: 0; }
+.settings-item { gap: var(--ui-space-5); margin-top: 0; min-height: var(--ui-list-row-min-height); padding: var(--ui-space-6) 0; }
+.settings-item + .settings-item { border-top: var(--ui-list-divider); }
+.settings-item__title { font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-heading); }
+.settings-item__desc { margin-top: var(--ui-space-2); font-size: var(--ui-text-sm); line-height: var(--ui-line-height-body); }
+.settings-radio-group { gap: var(--ui-space-4); margin-top: var(--ui-space-4); }
+.settings-radio { gap: var(--ui-space-3); min-height: var(--ui-control-min-height); padding: var(--ui-space-3) var(--ui-space-4); border: var(--ui-control-border); border-radius: var(--ui-control-radius); background: var(--ui-control-subtle-bg); }
+.settings-radio--active { border: var(--ui-control-border); background: var(--ui-control-selected-bg); box-shadow: var(--ui-panel-shadow); }
+.settings-radio__dot { width: var(--ui-icon-xs); height: var(--ui-icon-xs); border: var(--ui-border-hairline); }
+.settings-radio__label { font-size: var(--ui-text-label); font-weight: var(--ui-font-weight-heading); }
+.settings-empty { padding: var(--ui-space-8) 0 var(--ui-space-2); }
+.settings-empty__text { font-size: var(--ui-text-body); line-height: var(--ui-line-height-body); }
+/* #endif */
 </style>

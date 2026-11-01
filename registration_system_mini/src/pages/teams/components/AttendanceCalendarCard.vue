@@ -47,7 +47,7 @@ function closeDayMatches() {
     </view>
 
     <view v-if="myRecordsCount" class="calendar-months">
-      <view v-for="month in calendarMonths" :key="month.monthKey" class="calendar-month-card">
+      <view v-for="month in calendarMonths" :key="month.monthKey" class="calendar-month-card ui-list-row">
         <view class="calendar-month-head">
           <view>
             <text class="calendar-month-title">{{ month.title }}</text>
@@ -91,7 +91,7 @@ function closeDayMatches() {
           <text class="calendar-popup-close" @tap="closeDayMatches">关闭</text>
         </view>
         <view class="calendar-popup-list">
-          <view v-for="record in selectedRecords" :key="record.activityId" class="calendar-popup-item">
+          <view v-for="record in selectedRecords" :key="record.activityId" class="calendar-popup-item ui-list-row">
             <text class="calendar-popup-match">{{ record.activityName }}</text>
             <text class="calendar-popup-location">{{ record.location }}</text>
           </view>
@@ -102,6 +102,7 @@ function closeDayMatches() {
 </template>
 
 <style scoped>
+@import "@/styles/list-surfaces.css";
 .stats-card {
   margin-top: 16rpx;
   padding: 22rpx;
@@ -428,5 +429,45 @@ function closeDayMatches() {
 .calendar-popup {
   max-width: 694rpx;
 }
+/* #endif */
+
+/* #ifdef MP-WEIXIN */
+/* 微信端复用统一排版尺度；H5 保留原有样式。 */
+.stats-card { margin-top: var(--ui-space-4); padding: var(--ui-space-5); border: var(--ui-panel-border); border-radius: var(--ui-panel-radius); box-shadow: var(--ui-panel-shadow); }
+.stats-card-head { gap: var(--ui-space-3); }
+.stats-card-title { font-size: var(--ui-text-title); line-height: var(--ui-line-height-tight); font-weight: var(--ui-font-weight-heading); }
+.stats-card-caption { margin-top: var(--ui-space-2); font-size: var(--ui-text-xs); font-weight: var(--ui-font-weight-body); }
+.calendar-legend { gap: var(--ui-space-2); font-size: var(--ui-text-body); }
+.calendar-months { gap: var(--ui-section-gap); margin-top: var(--ui-space-4); }
+.calendar-month-card { padding: var(--ui-list-row-padding) 0; border: var(--ui-panel-border); border-radius: var(--ui-panel-radius); background: transparent; box-shadow: var(--ui-panel-shadow); }
+.calendar-month-head { gap: var(--ui-space-3); }
+.calendar-month-title { font-size: var(--ui-text-subtitle); }
+.calendar-month-caption { margin-top: var(--ui-space-1); font-size: var(--ui-text-xs); font-weight: var(--ui-font-weight-heading); }
+.calendar-weekdays { margin-top: var(--ui-space-4); padding: 0 var(--ui-space-1); }
+.calendar-weekday { font-size: var(--ui-text-xs); }
+.calendar-grid { gap: var(--ui-space-2); margin-top: var(--ui-space-2); }
+.calendar-week { gap: var(--ui-space-2); }
+.calendar-day { padding: var(--ui-space-2) var(--ui-space-1); border: var(--ui-panel-border); background: var(--ui-color-neutral-bg); }
+.calendar-day-number { font-size: var(--ui-text-display); font-weight: var(--ui-font-weight-heading); }
+.calendar-more { font-size: var(--ui-text-xs); font-weight: var(--ui-font-weight-heading); }
+.stats-empty { margin-top: var(--ui-space-4); padding: var(--ui-panel-padding) 0; font-size: var(--ui-text-label); font-weight: var(--ui-font-weight-body); line-height: var(--ui-line-height-body); border: var(--ui-panel-border); border-radius: var(--ui-panel-radius); background: transparent; }
+.stats-empty-inner { margin-top: var(--ui-space-4); }
+.calendar-popup-mask { padding: var(--ui-space-7); }
+.calendar-popup { padding: var(--ui-panel-padding); border: var(--ui-panel-border); }
+.calendar-popup-head { gap: var(--ui-space-4); }
+.calendar-popup-title { font-size: var(--ui-text-title); }
+.calendar-popup-close { padding: var(--ui-space-2) var(--ui-space-4); font-size: var(--ui-text-sm); border: var(--ui-control-border); background: var(--ui-control-subtle-bg); border-radius: var(--ui-control-radius); }
+.calendar-popup-list { gap: 0; margin-top: var(--ui-space-5); }
+.calendar-popup-item { padding: var(--ui-list-row-padding) 0; border: var(--ui-panel-border); border-radius: var(--ui-panel-radius); }
+.calendar-popup-match { font-size: var(--ui-text-subtitle); }
+.calendar-popup-location { margin-top: var(--ui-space-2); font-size: var(--ui-text-sm); font-weight: var(--ui-font-weight-heading); line-height: var(--ui-line-height-tight); }
+.calendar-month-card + .calendar-month-card { border-top: var(--ui-list-divider); }
+.calendar-day-match { background: var(--ui-color-surface); }
+.calendar-day-joined { background: var(--ui-color-accent); }
+.calendar-day-leave { background: var(--ui-color-warning-soft); }
+.calendar-day-unchecked { background: var(--ui-color-danger); }
+.calendar-day-today { border: var(--ui-border-hairline); box-shadow: var(--ui-panel-shadow); }
+.legend-dot { border: var(--ui-panel-border); }
+.calendar-popup-item + .calendar-popup-item { border-top: var(--ui-list-divider); }
 /* #endif */
 </style>

@@ -30,7 +30,7 @@ function shareInMini(){uni.showModal({title:"分享我的荣誉",content:"请在
   </AppSurface>
   <template v-else-if="view">
    <view class="honor-intro"><text class="honor-intro-title">{{isSelf ? '为每一次参与，留下纪念' : view.nickname+'的足球年度'}}</text><text class="honor-intro-caption">{{isSelf ? '选一款喜欢的背景，把这份热爱分享出去。' : '一起踢球，也一起积累属于球队的荣誉。'}}</text></view>
-   <view class="honor-poster-stage"><HonorPoster :view="view" :background="background" :background-image-url="backgroundImageUrl" :mini-code-url="miniCodeUrl" :show-code="isSelf" :code-loading="codeLoading" /></view>
+   <view class="honor-poster-stage ui-soft-panel"><HonorPoster :view="view" :background="background" :background-image-url="backgroundImageUrl" :mini-code-url="miniCodeUrl" :show-code="isSelf" :code-loading="codeLoading" /></view>
    <view v-if="isSelf" class="honor-picker">
     <text class="honor-section-title">选择海报背景</text>
     <view class="honor-backgrounds">
@@ -72,6 +72,8 @@ function shareInMini(){uni.showModal({title:"分享我的荣誉",content:"请在
  </view>
 </template>
 <style scoped>
+@import "@/styles/list-surfaces.css";
+
 .honor-page{min-height:100vh;padding:0 28rpx 80rpx;background:var(--ui-color-page);box-sizing:border-box}
 .honor-intro{display:flex;flex-direction:column;gap:12rpx;margin:14rpx 0 24rpx}
 .honor-intro-title{font-size:34rpx;font-weight:var(--ui-font-weight-heading);color:var(--ui-color-text)}
@@ -92,4 +94,26 @@ function shareInMini(){uni.showModal({title:"分享我的荣誉",content:"请在
 .honor-password{height:88rpx;padding:0 24rpx;border:2rpx solid var(--ui-color-line);border-radius:var(--ui-radius-button);color:var(--ui-color-text);background:var(--ui-color-surface);font-size:26rpx}
 .honor-home-link{text-align:center;margin-top:28rpx;color:var(--ui-color-text-muted);font-size:24rpx;padding:20rpx}
 .honor-canvas{position:fixed;left:-4000px;top:0;pointer-events:none}.honor-canvas--poster{width:1024px;height:1536px}.honor-canvas--card{width:1000px;height:800px}
+
+/* #ifdef MP-WEIXIN */
+.honor-page { padding-right: var(--ui-page-padding-inline); padding-left: var(--ui-page-padding-inline); padding-bottom: var(--ui-page-padding-bottom); }
+.honor-intro { gap: var(--ui-space-3); margin: var(--ui-space-3) 0 var(--ui-space-6); }
+.honor-intro-title { font-size: var(--ui-text-heading); }
+.honor-intro-caption,.honor-card-copy { font-size: var(--ui-text-body); line-height: var(--ui-line-height-body); }
+.honor-poster-stage { padding: var(--ui-space-6) var(--ui-space-3); background: var(--ui-panel-soft-bg); border-radius: var(--ui-panel-soft-radius); }
+.honor-picker { margin-top: var(--ui-section-gap); }
+.honor-section-title { font-size: var(--ui-text-title); }
+.honor-backgrounds { gap: var(--ui-list-gap); margin: var(--ui-space-4) 0 var(--ui-space-6); }
+.honor-background { padding: var(--ui-space-2) var(--ui-space-2) var(--ui-space-3); gap: var(--ui-space-2); border: var(--ui-control-border); border-radius: var(--ui-control-radius); background: var(--ui-control-subtle-bg); font-size: var(--ui-text-sm); }
+.honor-background--selected { background: var(--ui-control-selected-bg); box-shadow: inset 0 0 0 var(--ui-space-1) var(--ui-color-accent); }
+.honor-background-image { border-radius: var(--ui-control-radius); }
+.honor-actions { gap: var(--ui-space-4); }
+.honor-share-button { height: var(--ui-button-height-md); border: var(--ui-control-border); border-radius: var(--ui-control-radius); background: var(--ui-control-subtle-bg); font-size: var(--ui-button-font-size-md); font-weight: var(--ui-font-weight-heading); }
+.honor-footnote { margin-top: var(--ui-space-5); font-size: var(--ui-text-sm); line-height: var(--ui-line-height-body); }
+.honor-code-error { gap: var(--ui-space-4); margin-bottom: var(--ui-space-5); font-size: var(--ui-text-sm); }
+.honor-card-content,.honor-error-copy { gap: var(--ui-space-5); }
+.honor-recipient-cards { gap: var(--ui-section-gap); margin-top: var(--ui-section-gap); --ui-panel-padding: var(--ui-space-6) 0; }
+.honor-password { height: var(--ui-input-height); padding: 0 var(--ui-input-padding); border: var(--ui-input-border); border-radius: var(--ui-input-radius); font-size: var(--ui-text-label); }
+.honor-home-link { margin-top: var(--ui-section-gap); padding: var(--ui-space-5) 0; font-size: var(--ui-text-body); }
+/* #endif */
 </style>

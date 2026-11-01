@@ -15,7 +15,7 @@ function openMap() { uni.navigateTo({ url: "/pages/venues/map" }); }
     <!-- #ifdef MP-WEIXIN -->
     <image v-if="illustrationSrc" class="home-venue-map__illustration" :src="illustrationSrc" mode="aspectFit" aria-hidden="true" @error="illustrationSrc && (illustrationFailed = true)" />
     <!-- #endif -->
-    <view class="home-venue-map__icon"><wd-icon name="location" size="36rpx" /></view>
+    <view class="home-venue-map__icon"><wd-icon name="location" size="var(--ui-icon-control)" /></view>
     <view class="home-venue-map__copy">
       <text class="home-venue-map__title">球场地图</text>
       <text class="home-venue-map__hint">找个球场，约下一场</text>
@@ -34,10 +34,10 @@ function openMap() { uni.navigateTo({ url: "/pages/venues/map" }); }
 .home-venue-map__arrow { font-size: 32rpx; }
 .home-venue-map--pressed { box-shadow: var(--ui-shadow-control-pressed); }
 /* #ifdef MP-WEIXIN */
-.home-venue-map { position: relative; min-height: 142rpx; overflow: hidden; border: 0; background: var(--ui-color-accent-subtle); }
+.home-venue-map { position: relative; min-height: var(--ui-map-entry-min-height); overflow: hidden; border: 0; background: var(--ui-color-accent-subtle); }
 .home-venue-map--pressed { background: var(--ui-color-accent-soft); box-shadow: none; }
-.home-venue-map__illustration { position: absolute; right: 44rpx; top: 50%; width: 292rpx; height: 194rpx; transform: translateY(-50%); pointer-events: none; }
+.home-venue-map__illustration { position: absolute; right: var(--ui-map-entry-art-inset); top: 50%; width: var(--ui-map-entry-art-width); height: var(--ui-map-entry-art-height); transform: translateY(-50%); pointer-events: none; }
 .home-venue-map__icon, .home-venue-map__copy, .home-venue-map__arrow { position: relative; }
-.home-venue-map__copy { margin-right: 248rpx; }
+.home-venue-map__copy { margin-right: var(--ui-map-entry-copy-reserve); }
 /* #endif */
 </style>

@@ -40,15 +40,15 @@ function statusOf(application: AppTeamApplication) {
       <AppTag v-if="isLoading" tone="muted">加载中</AppTag>
     </view>
 
-    <view v-if="loadErrorMessage" class="applications-hint">{{ loadErrorMessage }}</view>
-    <view v-else-if="!isLoading && !applications.length" class="applications-hint">
+    <view v-if="loadErrorMessage" class="applications-hint ui-soft-panel">{{ loadErrorMessage }}</view>
+    <view v-else-if="!isLoading && !applications.length" class="applications-hint ui-soft-panel">
       还没有球队申请。可以把比赛分享给其他队长，或等待对手主动上门。
     </view>
 
     <view
       v-for="application in applications"
       :key="application.id"
-      class="application-card"
+      class="application-card ui-list-row"
     >
       <view class="application-head">
         <text class="application-team">{{ teamLabel(application) }}</text>
@@ -71,6 +71,7 @@ function statusOf(application: AppTeamApplication) {
 </template>
 
 <style scoped>
+@import "@/styles/list-surfaces.css";
 .applications-head {
   display: flex;
   align-items: center;
@@ -139,4 +140,10 @@ function statusOf(application: AppTeamApplication) {
   margin-top: 18rpx;
   min-width: 200rpx;
 }
+
+/* #ifdef MP-WEIXIN */
+.application-card { padding: var(--ui-list-row-padding) 0; margin-top: var(--ui-space-4); border: var(--ui-panel-border); border-radius: var(--ui-panel-radius); background: transparent; }
+.application-card + .application-card { border-top: var(--ui-list-divider); }
+.applications-hint { border: var(--ui-panel-border); background: var(--ui-panel-soft-bg); padding: var(--ui-panel-padding); font-weight: var(--ui-font-weight-body); }
+/* #endif */
 </style>

@@ -39,10 +39,10 @@ function handleSwitchTeam(teamId: number) {
 <template>
   <view class="mine-context-section">
     <view class="section-heading"><text>我的球队</text>
-      <button v-if="teamProfiles.length > 1" class="text-action" :disabled="isSwitchingTeam" @tap="openSwitchSheet"><text>切换球队</text><wd-icon name="arrow-right" size="24rpx" /></button>
+      <button v-if="teamProfiles.length > 1" class="text-action ui-subtle-control" :disabled="isSwitchingTeam" @tap="openSwitchSheet"><text>切换球队</text><wd-icon name="arrow-right" size="var(--ui-icon-xs)" /></button>
     </view>
-    <view class="team-list">
-      <button v-for="team in teamProfiles" :key="team.id" class="team-row" hover-class="team-row--pressed" @tap="emit('manageTeam', team.id)">
+    <view class="team-list ui-plain-panel">
+      <button v-for="team in teamProfiles" :key="team.id" class="team-row ui-list-row" hover-class="team-row--pressed" @tap="emit('manageTeam', team.id)">
         <view class="team-logo"><image v-if="team.logoUrl" :src="minioImageSrc(team.logoUrl)" mode="aspectFit" /><text v-else>{{ team.name.slice(0,1) }}</text></view>
         <view class="team-copy"><view class="team-name-row"><text class="team-name">{{ team.name }}</text><text v-if="team.id === currentTeam?.id" class="team-current">当前</text></view><view class="team-meta"><TeamRoleIcon :team-role="team.myRole" :label="team.myRoleLabel" /><text>{{ team.memberCount }} 人</text></view></view>
         <wd-icon name="arrow-right" size="28rpx" color="var(--ui-color-text-muted)" />
@@ -53,6 +53,7 @@ function handleSwitchTeam(teamId: number) {
   </view>
 </template>
 <style scoped>
+@import "@/styles/list-surfaces.css";
 
 .mine-context-section { margin-top:28rpx; }
 .section-heading { display:flex; align-items:center; justify-content:space-between; margin:0 4rpx 14rpx; color:var(--ui-color-text); font-size:30rpx; font-weight:600; }
@@ -71,4 +72,19 @@ function handleSwitchTeam(teamId: number) {
 .team-meta { display: flex; align-items: center; gap: 8rpx; margin-top:6rpx; color:var(--ui-color-text-muted); font-size:22rpx; }
 .team-empty { padding:28rpx; color:var(--ui-color-text-muted); font-size:24rpx; }
 
+
+/* #ifdef MP-WEIXIN */
+.mine-context-section { margin-top: var(--ui-section-gap); }
+.section-heading { margin: 0 0 var(--ui-space-3); font-size: var(--ui-text-title); font-weight: var(--ui-font-weight-heading); }
+.text-action { min-height: var(--ui-control-min-height); padding: var(--ui-space-3) var(--ui-space-4); background: var(--ui-control-subtle-bg); font-size: var(--ui-text-sm); border-radius: var(--ui-control-radius); }
+.team-list { border: var(--ui-panel-border); border-radius: var(--ui-panel-radius); }
+.team-row { gap: var(--ui-list-row-gap); min-height: var(--ui-list-row-min-height); padding: var(--ui-list-row-padding) 0; }
+.team-row + .team-row { border-top: var(--ui-list-divider); }
+.team-row--pressed { background: var(--ui-control-subtle-bg); }
+.team-name-row { flex-wrap: wrap; gap: var(--ui-space-3); }
+.team-name { font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-heading); }
+.team-meta { gap: var(--ui-space-2); margin-top: var(--ui-space-2); font-size: var(--ui-text-sm); }
+.team-current { background: var(--ui-control-subtle-bg); border-radius: var(--ui-control-radius); padding: var(--ui-space-1) var(--ui-space-3); font-size: var(--ui-text-xs); }
+.team-empty { padding: var(--ui-list-row-padding) 0; font-size: var(--ui-text-body); }
+/* #endif */
 </style>

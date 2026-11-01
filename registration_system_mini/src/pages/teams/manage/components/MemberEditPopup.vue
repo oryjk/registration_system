@@ -125,7 +125,7 @@ function handlePaidMemberChange(event: Event) {
         />
       </template>
 
-      <view class="member-finance-section">
+      <view class="member-finance-section ui-soft-panel">
         <view class="member-finance-row">
           <view class="member-finance-copy">
             <text class="member-finance-label">付费会员</text>
@@ -164,6 +164,7 @@ function handlePaidMemberChange(event: Event) {
 </template>
 
 <style scoped>
+@import "@/styles/list-surfaces.css";
 :deep(.member-edit-popup) {
   border-top: var(--ui-border-default);
   border-radius: var(--ui-radius-md) var(--ui-radius-md) 0 0;
@@ -288,4 +289,26 @@ function handlePaidMemberChange(event: Event) {
   flex-direction: row;
   gap: 16rpx;
 }
+
+/* #ifdef MP-WEIXIN */
+/* 微信端复用统一排版尺度；H5 保留原有样式。 */
+.member-edit-sheet { padding: var(--ui-panel-padding) var(--ui-page-padding-inline); }
+.member-edit-header { gap: var(--ui-space-5); margin-bottom: var(--ui-space-5); }
+.member-edit-kicker { font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-medium); }
+.member-edit-title { margin-top: var(--ui-space-2); font-size: var(--ui-text-display); font-weight: var(--ui-font-weight-heading); }
+.member-readonly-field { padding: var(--ui-space-5) 0; }
+.member-readonly-label { font-size: var(--ui-text-label); }
+.member-readonly-value { font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-heading); }
+.member-finance-section { margin-top: var(--ui-space-2); padding: var(--ui-panel-padding); gap: var(--ui-space-5); margin-bottom: var(--ui-section-gap); border: var(--ui-panel-border); border-radius: var(--ui-panel-soft-radius); background: var(--ui-panel-soft-bg); }
+.member-finance-row { gap: var(--ui-space-5); }
+.member-finance-copy { gap: var(--ui-space-1); }
+.member-finance-label { font-size: var(--ui-text-label); font-weight: var(--ui-font-weight-heading); }
+.member-finance-hint { font-size: var(--ui-text-sm); }
+.member-finance-value { font-size: var(--ui-text-label); }
+.member-finance-readonly { gap: var(--ui-space-3); }
+.member-finance-readonly-row { gap: var(--ui-space-5); }
+.member-balance-amount { font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-heading); }
+.member-balance-debt { font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-heading); }
+.member-finance-actions { gap: var(--ui-space-4); }
+/* #endif */
 </style>

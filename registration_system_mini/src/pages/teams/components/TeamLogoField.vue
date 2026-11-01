@@ -38,4 +38,12 @@ const emit = defineEmits<{ (event: 'pick'): void; (event: 'remove'): void }>();
 .team-logo-field__main { flex: 1; min-width: 0; }
 .team-logo-field__hint { display: block; color: var(--ui-color-text-muted); font-size: 22rpx; line-height: 1.5; }
 .team-logo-field__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 14rpx; margin-top: 12rpx; }
+
+/* #ifdef MP-WEIXIN */
+/* 微信端复用统一排版尺度；H5 保留原有样式。 */
+.team-logo-field { gap: var(--ui-space-5); padding: var(--ui-space-3) 0; }
+.team-logo-field__preview { font-size: var(--ui-text-display); font-weight: var(--ui-font-weight-heading); }
+.team-logo-field__hint { font-size: var(--ui-text-sm); line-height: var(--ui-line-height-body); }
+.team-logo-field__actions { gap: var(--ui-space-3); margin-top: var(--ui-space-3); }
+/* #endif */
 </style>

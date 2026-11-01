@@ -440,4 +440,11 @@ function handleSelect(venue: BackendVenueSuggestion) {
   .venue-picker-sheet,
   .venue-picker-mask--leaving .venue-picker-sheet { animation: none; }
 }
+
+/* #ifdef MP-WEIXIN */
+.venue-picker-options { border: var(--ui-panel-border); border-radius: var(--ui-panel-radius); }
+.venue-picker-option + .venue-picker-option { border-top: var(--ui-list-divider); }
+.venue-picker-option--current { background: var(--ui-control-subtle-bg); }
+.venue-picker-option__map { border: var(--ui-control-border); background: var(--ui-control-subtle-bg); border-radius: var(--ui-control-radius); min-height: var(--ui-control-min-height); padding: 0 var(--ui-space-3); }
+/* #endif */
 </style>

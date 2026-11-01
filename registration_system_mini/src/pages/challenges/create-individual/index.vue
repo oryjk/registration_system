@@ -5,6 +5,9 @@ import { useAccentTheme } from "@/stores/theme";
 import { computed, reactive, ref } from "vue";
 import { onLoad, onShow } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
+// #ifdef MP-WEIXIN
+import AppPageIntro from "@/components/ui/AppPageIntro.vue";
+// #endif
 import MatchScheduleFields from "@/components/MatchScheduleFields.vue";
 import AppButton from "@/components/ui/AppButton.vue";
 import SegmentedControl from "@/components/ui/SegmentedControl.vue";
@@ -271,6 +274,10 @@ usePageRefresh(() => refreshSessionContext());
     <AppTabHeader :title="editId ? '修改散人约球' : '散人约球'" showBack />
 
     <view class="create-page-content">
+      <!-- #ifdef MP-WEIXIN -->
+      <AppPageIntro title="公开约球" :description="heroCopy" />
+      <!-- #endif -->
+      <!-- #ifndef MP-WEIXIN -->
       <view class="create-intro">
         <view class="create-intro__label">
           <image class="create-intro__icon" src="/static/icons/lucide/trophy.png" mode="aspectFit" aria-hidden="true" />
@@ -279,7 +286,8 @@ usePageRefresh(() => refreshSessionContext());
         <text class="create-intro__copy">{{ heroCopy }}</text>
       </view>
 
-      <view class="form-section">
+      <!-- #endif -->
+      <view class="form-section ui-plain-panel">
         <view class="form-section__head">
           <view class="form-section__mark">
             <image class="form-section__icon" src="/static/icons/lucide/users.png" mode="aspectFit" aria-hidden="true" />
@@ -314,7 +322,7 @@ usePageRefresh(() => refreshSessionContext());
         </text>
       </view>
 
-      <view class="form-section">
+      <view class="form-section ui-plain-panel">
         <view class="form-section__head">
           <view class="form-section__mark">
             <image class="form-section__icon" src="/static/icons/lucide/clock.png" mode="aspectFit" aria-hidden="true" />
@@ -334,7 +342,7 @@ usePageRefresh(() => refreshSessionContext());
         />
       </view>
 
-      <view class="form-section">
+      <view class="form-section ui-plain-panel">
         <view class="form-section__head">
           <view class="form-section__mark">
             <image class="form-section__icon" src="/static/icons/lucide/map-pin.png" mode="aspectFit" aria-hidden="true" />
@@ -408,6 +416,7 @@ usePageRefresh(() => refreshSessionContext());
 </template>
 
 <style scoped>
+@import "@/styles/list-surfaces.css";
 .individual-create-page {
   min-height: 100vh;
   padding: 0 28rpx calc(44rpx + env(safe-area-inset-bottom));
@@ -639,4 +648,19 @@ usePageRefresh(() => refreshSessionContext());
 .fee-option::after { border: 0; }
 .fee-option--selected { border-color: var(--ui-color-accent); background: var(--ui-color-accent-soft); font-weight: 600; }
 .fee-option__icon { width: 36rpx; height: 36rpx; }
+
+/* #ifdef MP-WEIXIN */
+.individual-create-page { padding-inline: var(--ui-page-padding-inline); padding-bottom: calc(var(--ui-page-padding-bottom) + env(safe-area-inset-bottom)); }
+.form-section { margin-top: var(--ui-section-gap); padding: var(--ui-panel-padding); border: var(--ui-panel-border); border-radius: var(--ui-panel-radius); }
+.form-section__mark { background: var(--ui-control-subtle-bg); width: var(--ui-icon-xl); height: var(--ui-icon-xl); }
+.form-section__title { font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-heading); }
+.form-label { font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-heading); }
+.form-field { margin-top: var(--ui-space-6); }
+.form-input, .form-textarea, .form-number { border: var(--ui-input-border); border-radius: var(--ui-input-radius); font-size: var(--ui-text-label); }
+.form-input, .form-number { height: var(--ui-input-height); padding: 0 var(--ui-input-padding); }
+.form-textarea { min-height: var(--ui-textarea-min-height); padding: var(--ui-input-padding); }
+.form-summary { background: var(--ui-panel-soft-bg); padding: var(--ui-space-4); }
+.fee-option { border: var(--ui-control-border); background: var(--ui-control-subtle-bg); padding: var(--ui-space-6) var(--ui-space-2); font-size: var(--ui-text-label); gap: var(--ui-space-3); }
+.fee-option--selected { background: var(--ui-control-selected-bg); font-weight: var(--ui-font-weight-heading); }
+/* #endif */
 </style>

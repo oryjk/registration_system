@@ -101,4 +101,17 @@ export default { options: { virtualHost: true } };
 .hall-match-actions { display: flex; flex-direction: column; align-items: stretch; flex-shrink: 0; width: 200rpx; --ui-button-height-sm: 72rpx; --ui-button-font-size-sm: 28rpx; }
 .hall-match-action-content { display: flex; align-items: center; justify-content: center; gap: 12rpx; font-size: 28rpx; font-weight: 600; line-height: 1.2; white-space: nowrap; }
 .hall-match-arrow { font-size: 32rpx; line-height: 1; }
+
+/* #ifdef MP-WEIXIN */
+.hall-match-card { padding: 0; border: var(--ui-panel-border); border-radius: var(--ui-panel-radius); background: transparent; }
+.hall-match-heading { gap: var(--ui-space-4); }
+.hall-match-title { font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-heading); }
+.hall-match-time { font-size: var(--ui-text-display); font-weight: var(--ui-font-weight-heading); }
+.hall-match-tags { gap: var(--ui-space-2) var(--ui-space-3); margin-top: var(--ui-space-2); }
+.hall-match-kind { padding: var(--ui-space-1) var(--ui-space-3); background: var(--ui-control-subtle-bg); }
+.hall-match-footer { border-top: var(--ui-panel-border); margin-top: var(--ui-space-4); padding-top: 0; gap: var(--ui-space-5); }
+.hall-match-capacity-hint { padding: var(--ui-space-3) var(--ui-space-4); background: var(--ui-color-neutral-bg); }
+.hall-match-action-content { font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-heading); gap: var(--ui-space-3); }
+.hall-match-arrow { font-size: var(--ui-text-title); }
+/* #endif */
 </style>

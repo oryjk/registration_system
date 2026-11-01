@@ -148,4 +148,21 @@ function handleRemoveMember(member: BackendTeamMember) {
 .member-link-danger { background: var(--ui-color-danger-bg); color: var(--ui-color-danger-fg); }
 .member-link-pressed { box-shadow: var(--ui-shadow-control-pressed); }
 .empty-box { padding: 16rpx 0; color: var(--ui-color-text-muted); font-size: 24rpx; line-height: 1.6; }
+
+/* #ifdef MP-WEIXIN */
+/* 微信端复用统一排版尺度；H5 保留原有样式。 */
+.member-section-count { padding: var(--ui-space-1) var(--ui-space-3); font-size: var(--ui-text-sm); }
+.member-card { padding: var(--ui-space-4) 0; border-top: var(--ui-list-divider); }
+.member-card-main { gap: var(--ui-space-4); }
+.member-avatar-fallback { font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-heading); }
+.member-title-row { gap: var(--ui-space-2) var(--ui-space-3); }
+.member-name { font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-heading); line-height: var(--ui-line-height-body); }
+.team-result-meta { margin-top: var(--ui-space-1); font-size: var(--ui-text-sm); line-height: var(--ui-line-height-body); }
+.member-paid-meta { margin-top: var(--ui-space-1); font-size: var(--ui-text-xs); line-height: var(--ui-line-height-body); }
+.member-paid-meta-active { font-weight: var(--ui-font-weight-heading); }
+.member-role-badge { padding: var(--ui-space-1) var(--ui-space-3); font-size: var(--ui-text-sm); font-weight: var(--ui-font-weight-medium); }
+.member-actions { gap: var(--ui-space-2); margin-top: var(--ui-space-3); }
+.member-link { padding: var(--ui-space-2); gap: var(--ui-space-1); font-size: var(--ui-text-body); line-height: var(--ui-line-height-body); }
+.empty-box { padding: var(--ui-space-4) 0; font-size: var(--ui-text-body); line-height: var(--ui-line-height-body); }
+/* #endif */
 </style>

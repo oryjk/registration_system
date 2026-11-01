@@ -121,23 +121,23 @@ provide(APP_SCROLL_CONTROLLER, appScrollController);
           <MineMatchSection :matches="myMatches" @open-all="openUserMatches" @open-match="openMatchDetail" />
           <MineWalletSection v-if="!shouldHideCreationEntrances" :wallet-summary="walletSummary" @open-billing="openBilling" />
         </template>
-          <view class="mine-services">
-            <button class="mine-service" hover-class="mine-service--pressed" @tap="openHelp">
+          <view class="mine-services ui-plain-panel">
+            <button class="mine-service ui-list-row" hover-class="mine-service--pressed" @tap="openHelp">
               <text class="mine-help-icon">?</text><text class="mine-service-label">使用帮助</text><wd-icon name="arrow-right" size="26rpx" />
             </button>
-            <button v-if="currentUser" class="mine-service" hover-class="mine-service--pressed" @tap="openNotifications">
+            <button v-if="currentUser" class="mine-service ui-list-row" hover-class="mine-service--pressed" @tap="openNotifications">
               <wd-icon name="notification" size="32rpx" /><text class="mine-service-label">消息中心</text><text v-if="unreadCount > 0" class="mine-badge">{{ unreadCount > 99 ? '99+' : unreadCount }}</text><wd-icon name="arrow-right" size="26rpx" />
             </button>
-            <button v-if="currentUser" class="mine-service" hover-class="mine-service--pressed" @tap="openContactDeveloper">
+            <button v-if="currentUser" class="mine-service ui-list-row" hover-class="mine-service--pressed" @tap="openContactDeveloper">
               <wd-icon name="email" size="32rpx" /><text class="mine-service-label">联系开发者</text><wd-icon name="arrow-right" size="26rpx" />
             </button>
-            <button v-if="currentUser && settingsEntryVisible" class="mine-service" hover-class="mine-service--pressed" @tap="openSettings">
+            <button v-if="currentUser && settingsEntryVisible" class="mine-service ui-list-row" hover-class="mine-service--pressed" @tap="openSettings">
               <wd-icon name="settings" size="32rpx" /><text class="mine-service-label">设置</text><wd-icon name="arrow-right" size="26rpx" />
             </button>
           </view>
         <ThemeAccentPicker />
-        <view v-if="currentUser && impersonationPanelVisible" class="mine-tools">
-          <button class="mine-service" @tap="toolsExpanded = !toolsExpanded" :aria-expanded="toolsExpanded || impersonating">
+        <view v-if="currentUser && impersonationPanelVisible" class="mine-tools ui-plain-panel">
+          <button class="mine-service ui-list-row" @tap="toolsExpanded = !toolsExpanded" :aria-expanded="toolsExpanded || impersonating">
             <wd-icon name="tool" size="30rpx" /><text class="mine-service-label">身份切换</text><text v-if="impersonating" class="mine-tool-state">正在使用测试身份</text><wd-icon :name="toolsExpanded || impersonating ? 'arrow-up' : 'arrow-down'" size="24rpx" />
           </button>
           <view v-if="toolsExpanded || impersonating" class="mine-tools-content">
@@ -157,6 +157,7 @@ provide(APP_SCROLL_CONTROLLER, appScrollController);
   </view>
 </template>
 <style scoped>
+@import "@/styles/list-surfaces.css";
 .mine-page { position:relative; min-height:100vh; padding:0; background:var(--ui-color-page); box-sizing:border-box; }
 .mine-page-content { padding:0 28rpx; width:100%; max-width:750rpx; margin:0 auto; box-sizing:border-box; }
 .mine-error-banner { margin-top:20rpx; padding:20rpx; border-radius:var(--ui-radius-button); background:var(--ui-color-danger-bg); color:var(--ui-color-danger-fg); font-size:24rpx; }
@@ -176,5 +177,16 @@ provide(APP_SCROLL_CONTROLLER, appScrollController);
 /* #ifdef H5 */
 .mine-page { width:100%; max-width:750rpx; margin:0 auto; }
 .mine-page :deep(.app-tab-header-shell) { left:50%; right:auto; width:100%; max-width:750rpx; transform:translateX(-50%); }
+/* #endif */
+
+/* #ifdef MP-WEIXIN */
+.mine-page-content { padding: 0 var(--ui-page-padding-inline); }
+.mine-services,.mine-tools { margin-top: var(--ui-section-gap); border: var(--ui-panel-border); border-radius: var(--ui-panel-radius); }
+.mine-service { gap: var(--ui-list-row-gap); min-height: var(--ui-list-row-min-height); padding: var(--ui-list-row-padding) 0; font-size: var(--ui-text-label); }
+.mine-service + .mine-service { border-top: var(--ui-list-divider); }
+.mine-service--pressed { background: var(--ui-control-subtle-bg); }
+.mine-tools-content { padding: 0; }
+.mine-account-actions { gap: var(--ui-space-8); margin-top: var(--ui-section-gap); }
+.mine-account-action { padding: var(--ui-space-4) var(--ui-space-1); font-size: var(--ui-text-sm); }
 /* #endif */
 </style>

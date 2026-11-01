@@ -48,7 +48,7 @@ function handleKeywordInput(event: Event) {
 
   <!-- 产品负责人调试入口：搜索并切换为任意用户。 -->
   <AppSurface v-else-if="canSwitch" variant="raised" flush>
-    <view class="impersonation-panel">
+    <view class="impersonation-panel ui-plain-panel">
       <view class="impersonation-panel__head">
         <text class="impersonation-panel__title">身份切换</text>
         <text class="impersonation-panel__desc">调试专用：切换为任意用户复现问题，可随时恢复本人身份。</text>
@@ -70,7 +70,7 @@ function handleKeywordInput(event: Event) {
         <view
           v-for="user in results"
           :key="user.id"
-          class="impersonation-panel__result"
+          class="impersonation-panel__result ui-list-row"
           hover-class="impersonation-panel__result--pressed"
           :hover-stay-time="100"
           @click="emit('switch', user)"
@@ -88,6 +88,8 @@ function handleKeywordInput(event: Event) {
 </template>
 
 <style scoped>
+@import "@/styles/list-surfaces.css";
+
 /* 布局与配色都由自己模板内的包裹 view 承载（AppSurface flush），避免 custom-class 布局在 mp 端失效。 */
 .impersonation-banner {
   display: flex;
@@ -243,4 +245,24 @@ function handleKeywordInput(event: Event) {
   font-weight: 400;
   text-align: center;
 }
+
+/* #ifdef MP-WEIXIN */
+.impersonation-banner { gap: var(--ui-space-4); padding: var(--ui-panel-padding); background: var(--ui-color-warning-bg); border-radius: var(--ui-panel-soft-radius); }
+.impersonation-banner__title { color: var(--ui-color-warning-fg); font-size: var(--ui-text-title); line-height: var(--ui-line-height-tight); }
+.impersonation-banner__desc { font-size: var(--ui-text-body); line-height: var(--ui-line-height-body); }
+.impersonation-banner__chip { padding: var(--ui-space-1) var(--ui-space-3); border: var(--ui-control-border); border-radius: var(--ui-control-radius); background: var(--ui-color-warning-fg); }
+.impersonation-banner__chip-text { font-size: var(--ui-text-xs); letter-spacing: normal; }
+.impersonation-panel { gap: var(--ui-space-5); padding: var(--ui-space-4) 0; }
+.impersonation-panel__title { font-size: var(--ui-text-title); }
+.impersonation-panel__desc { font-size: var(--ui-text-body); line-height: var(--ui-line-height-body); }
+.impersonation-panel__search { gap: var(--ui-space-4); }
+.impersonation-panel__input { height: var(--ui-input-height); padding: 0 var(--ui-input-padding); border: var(--ui-input-border); border-radius: var(--ui-input-radius); font-size: var(--ui-text-label); }
+.impersonation-panel__results { border: var(--ui-panel-border); border-radius: var(--ui-panel-radius); }
+.impersonation-panel__result { min-height: var(--ui-list-row-min-height); gap: var(--ui-list-row-gap); padding: var(--ui-list-row-padding) 0; }
+.impersonation-panel__result + .impersonation-panel__result { border-top: var(--ui-list-divider); }
+.impersonation-panel__result--pressed { background: var(--ui-control-subtle-bg); }
+.impersonation-panel__result-name { overflow: visible; white-space: normal; font-size: var(--ui-text-subtitle); }
+.impersonation-panel__result-meta { font-size: var(--ui-text-sm); }
+.impersonation-panel__result-action,.impersonation-panel__empty { font-size: var(--ui-text-body); }
+/* #endif */
 </style>

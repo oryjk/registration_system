@@ -159,6 +159,10 @@ function handleClick(event: { stopPropagation?: () => void }) {
   pointer-events: none;
 }
 
+/* #ifdef MP-WEIXIN */
+.ui-button--outline { --ui-button-current-bg: var(--ui-control-subtle-bg); border: var(--ui-control-border); }
+/* #endif */
+
 /* H5 减少动态效果：去掉缩放，只保留内侧阴影反馈，背景始终不透明。 */
 @media (prefers-reduced-motion: reduce) {
   .ui-button {

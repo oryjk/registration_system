@@ -81,4 +81,11 @@ function handleSubmit() {
 
 .form-actions { margin-top: 28rpx; }
 
+
+/* #ifdef MP-WEIXIN */
+/* 微信端复用统一排版尺度；H5 保留原有样式。 */
+.form-label { margin-bottom: var(--ui-space-2); font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-heading); }
+.empty-box { margin-top: var(--ui-space-6); padding: var(--ui-space-5) 0; font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-body); }
+.form-actions { margin-top: var(--ui-space-7); }
+/* #endif */
 </style>

@@ -431,4 +431,19 @@ const metaPageStyle = computed(() =>
     font-size: 34rpx;
   }
 }
+
+/* #ifdef MP-WEIXIN */
+/* 微信端复用统一排版尺度；H5 保留原有样式。 */
+.team-profile-sections { gap: var(--ui-section-gap); }
+.team-manage-page { padding: 0 var(--ui-page-padding-inline) var(--ui-page-padding-bottom); }
+.team-manage-hero-surface { margin: 0 0 var(--ui-space-5); }
+.team-manage-hero { gap: var(--ui-list-row-gap); padding: var(--ui-panel-padding) 0; }
+.team-manage-title { font-size: var(--ui-text-heading); font-weight: var(--ui-font-weight-heading); line-height: var(--ui-line-height-tight); }
+.team-manage-copy { margin-top: var(--ui-space-2); font-size: var(--ui-text-sm); font-weight: var(--ui-font-weight-body); line-height: var(--ui-line-height-body); }
+.team-manage-hero__mark { font-size: var(--ui-text-heading); font-weight: var(--ui-font-weight-heading); width: var(--ui-avatar-size-lg); height: var(--ui-avatar-size-lg); }
+.manage-tabs { margin-bottom: var(--ui-section-gap); }
+.manage-blocked { gap: var(--ui-space-3); }
+.manage-blocked__title { font-size: var(--ui-text-heading); font-weight: var(--ui-font-weight-heading); }
+.manage-blocked__copy { font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-body); line-height: var(--ui-line-height-body); }
+/* #endif */
 </style>

@@ -147,4 +147,26 @@ function memberInitial(nickname: string) {
 .activity-member-meta { display: block; margin-top: 4rpx; color: var(--ui-color-text-muted); font-size: 22rpx; }
 .activity-member-status { flex-shrink: 0; padding: 8rpx 14rpx; border-radius: var(--ui-radius-round); font-size: 24rpx; font-weight: 600; }
 @media (prefers-reduced-motion: reduce) { .activity-expand-arrow { transition: none; } }
+
+/* #ifdef MP-WEIXIN */
+/* 微信端复用统一排版尺度；H5 保留原有样式。 */
+.attendance-total-badge { padding: var(--ui-space-1) var(--ui-space-3); font-size: var(--ui-text-sm); }
+.empty-box, .activity-loading { padding: var(--ui-space-6) 0; font-size: var(--ui-text-body); line-height: var(--ui-line-height-body); }
+.activity-attendance-card { border-top: var(--ui-list-divider); }
+.activity-card-topline { gap: var(--ui-space-5); padding: var(--ui-space-6) 0; }
+.activity-name { font-size: var(--ui-text-subtitle); line-height: var(--ui-line-height-body); font-weight: var(--ui-font-weight-heading); }
+.activity-meta { margin-top: var(--ui-space-2); font-size: var(--ui-text-sm); line-height: var(--ui-line-height-body); }
+.activity-expand-arrow { font-size: var(--ui-text-heading); }
+.activity-detail { padding-bottom: var(--ui-space-6); }
+.activity-stat-grid { gap: var(--ui-space-3); }
+.activity-stat { padding: var(--ui-space-5) var(--ui-space-2); }
+.activity-stat-value { font-size: var(--ui-text-heading); font-weight: var(--ui-font-weight-heading); line-height: var(--ui-line-height-tight); }
+.activity-stat-label { margin-top: var(--ui-space-2); font-size: var(--ui-text-sm); }
+.activity-member-list { margin-top: var(--ui-space-4); }
+.activity-member-row { gap: var(--ui-space-3); padding: var(--ui-space-4) 0; border-bottom: var(--ui-list-divider); }
+.activity-member-avatar-fallback { font-size: var(--ui-text-label); font-weight: var(--ui-font-weight-heading); }
+.activity-member-name { font-size: var(--ui-text-label); line-height: var(--ui-line-height-body); font-weight: var(--ui-font-weight-medium); }
+.activity-member-meta { margin-top: var(--ui-space-1); font-size: var(--ui-text-sm); }
+.activity-member-status { padding: var(--ui-space-2) var(--ui-space-3); font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-heading); }
+/* #endif */
 </style>

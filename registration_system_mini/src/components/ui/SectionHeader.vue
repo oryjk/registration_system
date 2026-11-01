@@ -82,4 +82,12 @@ const emit = defineEmits<{
   font-size: 24rpx;
   line-height: 1.55;
 }
+
+/* #ifdef MP-WEIXIN */
+.ui-section-header { gap: var(--ui-space-4); margin-top: var(--ui-space-6); }
+.ui-section-header__title-row { gap: var(--ui-space-3); }
+.ui-section-header__title { font-size: var(--ui-text-heading); font-weight: var(--ui-font-weight-heading); line-height: var(--ui-line-height-tight); }
+.ui-section-header__caption { margin-top: var(--ui-space-2); font-size: var(--ui-text-body); line-height: var(--ui-line-height-body); }
+.ui-section-header__marker { width: var(--ui-icon-lg); height: var(--ui-icon-lg); background: var(--ui-control-subtle-bg); font-size: var(--ui-text-sm); }
+/* #endif */
 </style>

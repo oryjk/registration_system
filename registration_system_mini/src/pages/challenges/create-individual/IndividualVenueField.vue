@@ -186,4 +186,11 @@ onBeforeUnmount(cancelClose);
   font-size: 22rpx;
   line-height: 1.5;
 }
+
+/* #ifdef MP-WEIXIN */
+.venue-field__input { height: var(--ui-input-height); padding: 0 var(--ui-input-padding); border: var(--ui-input-border); border-radius: var(--ui-input-radius); font-size: var(--ui-text-label); }
+.venue-field__list { border: var(--ui-panel-border); box-shadow: var(--ui-panel-shadow); background: var(--ui-panel-soft-bg); padding: var(--ui-space-2); }
+.venue-field__option--map { background: var(--ui-control-subtle-bg); }
+.venue-field__option { min-height: var(--ui-control-min-height); padding: var(--ui-space-3) var(--ui-space-4); gap: var(--ui-space-3); }
+/* #endif */
 </style>

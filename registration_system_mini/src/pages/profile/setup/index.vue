@@ -236,7 +236,7 @@ usePageRefresh(async () => {
   <view class="app-theme-scope profile-setup-page" :style="[themePageStyle, pageStyle]">
     <AppTabHeader :title="headerTitle" showBack />
     <view class="profile-setup-content">
-      <view class="profile-editor-form">
+      <view class="profile-editor-form ui-plain-panel">
         <!-- #ifdef MP-WEIXIN -->
         <button class="profile-avatar-row" hover-class="profile-editor-button--pressed" open-type="chooseAvatar" :disabled="isSaving" @chooseavatar="handleChooseAvatar" aria-label="更换头像">
           <view class="profile-avatar-copy"><text class="profile-editor-label">头像</text><text class="profile-avatar-hint">点击更换头像</text></view>
@@ -277,6 +277,7 @@ usePageRefresh(async () => {
   </view>
 </template>
 <style scoped>
+@import "@/styles/list-surfaces.css";
 .profile-setup-page {
   min-height: 100vh;
   padding: 0 28rpx calc(60rpx + env(safe-area-inset-bottom));
@@ -304,5 +305,19 @@ usePageRefresh(async () => {
 /* #ifdef H5 */
 .profile-setup-page { width: 100%; max-width: 750rpx; margin: 0 auto; }
 .profile-setup-page :deep(.app-tab-header-shell) { left: 50%; right: auto; width: 100%; max-width: 750rpx; transform: translateX(-50%); }
+/* #endif */
+
+/* #ifdef MP-WEIXIN */
+.profile-setup-page { padding-right: var(--ui-page-padding-inline); padding-left: var(--ui-page-padding-inline); padding-bottom: calc(var(--ui-page-padding-bottom) + env(safe-area-inset-bottom)); }
+.profile-editor-form { border: var(--ui-panel-border); border-radius: var(--ui-panel-radius); }
+.profile-avatar-row { gap: var(--ui-list-row-gap); padding: var(--ui-list-row-padding) 0; }
+.profile-editor-field { margin: 0; padding: var(--ui-panel-padding) 0; border-top: var(--ui-list-divider); }
+.profile-editor-label { font-size: var(--ui-text-label); font-weight: var(--ui-font-weight-heading); }
+.profile-avatar-hint { margin-top: var(--ui-space-2); font-size: var(--ui-text-sm); }
+.profile-editor-input { height: var(--ui-input-height); margin-top: var(--ui-space-3); padding: 0 var(--ui-input-padding); border: var(--ui-input-border); border-radius: var(--ui-input-radius); font-size: var(--ui-text-subtitle); }
+.profile-phone-row { gap: var(--ui-space-3); }
+.profile-phone-button { height: var(--ui-input-height); line-height: var(--ui-input-height); margin-top: var(--ui-space-3); padding: 0 var(--ui-space-4); border-radius: var(--ui-control-radius); background: var(--ui-control-subtle-bg); font-size: var(--ui-text-body); }
+.profile-editor-note { padding: var(--ui-space-4) 0 0; font-size: var(--ui-text-sm); line-height: var(--ui-line-height-body); }
+.profile-editor-actions { margin-top: var(--ui-section-gap); }
 /* #endif */
 </style>

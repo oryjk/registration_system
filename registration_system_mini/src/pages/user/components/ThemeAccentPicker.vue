@@ -17,7 +17,7 @@ function handleSelect(id: AccentThemeId) {
 </script>
 
 <template>
-  <view class="theme-picker">
+  <view class="theme-picker ui-plain-panel">
     <view class="theme-picker__head" role="button" :aria-expanded="expanded" @tap="expanded = !expanded">
       <text class="theme-picker__title">主题色</text>
       <view class="theme-picker__current"><view class="theme-picker__dot" :style="{ background: ACCENT_THEMES[accentTheme].accent }" /><text class="theme-picker__caption">{{ ACCENT_THEMES[accentTheme].label }}</text><wd-icon :name="expanded ? 'arrow-up' : 'arrow-down'" size="24rpx" color="var(--ui-color-text-muted)" /></view>
@@ -44,6 +44,7 @@ function handleSelect(id: AccentThemeId) {
 </template>
 
 <style scoped>
+@import "@/styles/list-surfaces.css";
 .theme-picker {
   margin-top: 26rpx;
   padding: 28rpx 24rpx;
@@ -132,4 +133,16 @@ function handleSelect(id: AccentThemeId) {
 .theme-picker__reveal--open { grid-template-rows:1fr; opacity:1; pointer-events:auto; }
 .theme-picker__clip { overflow:hidden; min-height:0; }
 @media(prefers-reduced-motion:reduce) { .theme-picker__reveal { transition:none; } }
+
+/* #ifdef MP-WEIXIN */
+.theme-picker { margin-top: var(--ui-section-gap); padding: var(--ui-space-5) 0; border: var(--ui-panel-border); border-top: var(--ui-list-divider); border-radius: var(--ui-panel-radius); }
+.theme-picker__head { gap: var(--ui-space-4); min-height: var(--ui-control-min-height); }
+.theme-picker__title { font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-heading); }
+.theme-picker__caption { font-size: var(--ui-text-sm); }
+.theme-picker__options { gap: var(--ui-list-gap); margin-top: var(--ui-space-4); }
+.theme-picker__option { gap: var(--ui-space-3); padding: var(--ui-space-5) var(--ui-space-3); border: var(--ui-control-border); border-radius: var(--ui-control-radius); background: var(--ui-control-subtle-bg); }
+.theme-picker__option--active { border: var(--ui-control-border); background: var(--ui-control-selected-bg); box-shadow: var(--ui-panel-shadow); }
+.theme-picker__option--pressed { box-shadow: var(--ui-shadow-control-pressed); }
+.theme-picker__label { font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-medium); }
+/* #endif */
 </style>

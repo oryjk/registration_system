@@ -39,7 +39,7 @@ function handleMatchTap(match: HomeMatchCardViewModel) {
   margin-top: var(--ui-card-list-offset);
 }
 /* #ifdef MP-WEIXIN */
-.match-list { gap: 16rpx; }
-.match-list__separator { flex-shrink: 0; height: 1rpx; margin-left: 156rpx; background: var(--ui-color-line); }
+.match-list { gap: var(--ui-list-gap); }
+.match-list__separator { flex-shrink: 0; height: 0; margin-left: calc(var(--ui-match-thumbnail-width) + var(--ui-space-5)); border-top: var(--ui-list-divider); }
 /* #endif */
 </style>

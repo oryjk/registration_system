@@ -34,7 +34,7 @@ const {
         <text class="state-text">正在加载队费信息...</text>
       </view>
 
-      <view v-else class="recharge-card">
+      <view v-else class="recharge-card ui-plain-panel">
         <view class="balance-hero">
           <text class="balance-hero-label">我的队内余额</text>
           <view class="balance-hero-amount">
@@ -70,6 +70,7 @@ const {
 </template>
 
 <style scoped>
+@import "@/styles/list-surfaces.css";
 .team-fund-page {
   min-height: 100vh;
   padding: 0 28rpx 96rpx;
@@ -213,5 +214,27 @@ const {
   max-width: 750rpx;
   transform: translateX(-50%);
 }
+/* #endif */
+
+/* #ifdef MP-WEIXIN */
+/* 微信端复用统一排版尺度；H5 保留原有样式。 */
+.team-fund-page { padding: 0 var(--ui-page-padding-inline) var(--ui-page-padding-bottom); }
+.team-fund-content { gap: var(--ui-section-gap); }
+.state-card { padding: var(--ui-space-9) var(--ui-space-7); }
+.state-text { font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-medium); }
+.recharge-card { padding: var(--ui-space-7); }
+.balance-hero { gap: var(--ui-space-1); padding: 0 0 var(--ui-space-6); margin-bottom: var(--ui-section-gap); border-bottom: var(--ui-list-divider); }
+.balance-hero-label { font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-medium); letter-spacing: var(--ui-space-1); }
+.balance-hero-amount { gap: var(--ui-space-1); }
+.balance-hero-symbol { font-size: var(--ui-text-heading); font-weight: var(--ui-font-weight-heading); }
+.balance-hero-value { font-size: var(--ui-text-stat); line-height: var(--ui-line-height-tight); }
+.balance-hero-copy { font-size: var(--ui-text-sm); font-weight: var(--ui-font-weight-body); }
+.recharge-amount { margin-top: var(--ui-space-5); }
+.recharge-input { padding: 0 var(--ui-input-padding); font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-medium); width: 100%; height: var(--ui-input-height); border: var(--ui-input-border); border-radius: var(--ui-input-radius); background: var(--ui-color-surface); }
+.recharge-error { margin-top: var(--ui-space-2); font-size: var(--ui-text-sm); font-weight: var(--ui-font-weight-body); }
+.recharge-total { gap: var(--ui-space-3); margin: var(--ui-space-5) var(--ui-space-1); }
+.recharge-total-label { font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-medium); }
+.recharge-total-value { font-size: var(--ui-text-stat); }
+.state-card, .recharge-card { padding: var(--ui-panel-padding) 0; border: var(--ui-panel-border); border-radius: var(--ui-panel-radius); box-shadow: var(--ui-panel-shadow); }
 /* #endif */
 </style>

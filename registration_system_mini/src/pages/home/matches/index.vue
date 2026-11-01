@@ -225,6 +225,16 @@ usePageRefresh(async () => {
   background: var(--ui-color-danger-soft);
 }
 
+/* #ifdef MP-WEIXIN */
+.phase-matches-page { padding-right: var(--ui-page-padding-inline); padding-left: var(--ui-page-padding-inline); padding-bottom: var(--ui-page-padding-bottom); }
+.empty-card,
+.phase-footer { margin-top: var(--ui-section-gap); padding: var(--ui-panel-padding) 0; border: var(--ui-panel-border); border-radius: var(--ui-panel-radius); box-shadow: var(--ui-panel-shadow); }
+.empty-text,
+.phase-footer-text { font-size: var(--ui-text-label); line-height: var(--ui-line-height-body); font-weight: var(--ui-font-weight-medium); }
+.phase-footer { min-height: var(--ui-control-min-height); }
+.phase-footer-error { padding: var(--ui-panel-padding); border-radius: var(--ui-panel-soft-radius); background: var(--ui-color-danger-bg); }
+/* #endif */
+
 /* #ifdef H5 */
 .phase-matches-page {
   width: 100%;

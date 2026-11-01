@@ -81,7 +81,7 @@ onShow(() => { if (createdTeamId.value) void refreshIllustrations(); });
           @submit="handleCreateTeam"
         />
 
-        <view class="team-create-alt" hover-class="team-create-alt--pressed" @tap="goJoinTeam">
+        <view class="team-create-alt ui-subtle-control" hover-class="team-create-alt--pressed" @tap="goJoinTeam">
           <!-- #ifdef MP-WEIXIN -->
           <image v-if="joinIllustrationSrc" class="team-create-alt__illustration" :src="joinIllustrationSrc" mode="aspectFit" aria-hidden="true" @error="joinIllustrationSrc && (joinIllustrationFailed = true)" />
           <!-- #endif -->
@@ -95,6 +95,7 @@ onShow(() => { if (createdTeamId.value) void refreshIllustrations(); });
 </template>
 
 <style scoped>
+@import "@/styles/list-surfaces.css";
 .created-next { display: flex; flex-direction: column; gap: 20rpx; padding: 28rpx; }
 .created-next__status { color: var(--ui-color-success-fg); font-size: 24rpx; font-weight: 600; }
 .created-next__title { color: var(--ui-color-text); font-size: 32rpx; font-weight: 600; }
@@ -148,5 +149,18 @@ onShow(() => { if (createdTeamId.value) void refreshIllustrations(); });
 .team-create-alt__illustration { flex-shrink: 0; width: 60rpx; height: 60rpx; }
 .team-create-alt__label { flex: 1; min-width: 0; font-size: 24rpx; line-height: 1.5; }
 .team-create-alt__arrow { flex-shrink: 0; }
+/* #endif */
+
+/* #ifdef MP-WEIXIN */
+/* 微信端复用统一排版尺度；H5 保留原有样式。 */
+.created-next { gap: var(--ui-list-gap); padding: 0; }
+.created-next__status { font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-heading); }
+.created-next__title { font-size: var(--ui-text-title); font-weight: var(--ui-font-weight-heading); }
+.team-create-page { padding: 0 var(--ui-page-padding-inline) var(--ui-page-padding-bottom); }
+.team-create-alt { gap: var(--ui-space-4); margin-top: var(--ui-section-gap); padding: var(--ui-space-4) var(--ui-space-5); border: var(--ui-control-border); border-radius: var(--ui-control-radius); background: var(--ui-control-subtle-bg); }
+.team-create-alt__label { font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-medium); line-height: var(--ui-line-height-body); }
+.team-create-alt__arrow { font-size: var(--ui-text-label); font-weight: var(--ui-font-weight-heading); }
+.team-page-note { margin: var(--ui-space-1) var(--ui-space-1) var(--ui-space-5); font-size: var(--ui-text-body); line-height: var(--ui-line-height-body); }
+.team-create-alt__illustration { width: var(--ui-avatar-size-lg); height: var(--ui-avatar-size-lg); }
 /* #endif */
 </style>

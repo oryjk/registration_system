@@ -96,7 +96,7 @@ function handleOpenVenuePicker() {
 </script>
 
 <template>
-  <view class="publish-form">
+  <view class="publish-form ui-section-stack">
     <AppSurface custom-class="form-card">
       <SectionHeader title="基础信息" caption="填写比赛名称、对手和报名人数" />
       <view v-if="!isChallenge" class="form-field">
@@ -260,6 +260,7 @@ function handleOpenVenuePicker() {
 </template>
 
 <style scoped>
+@import "@/styles/list-surfaces.css";
 .publish-form { display: flex; flex-direction: column; gap: 20rpx; margin-top: 20rpx; }
 .form-card {
   padding: 6rpx 24rpx 24rpx;
@@ -405,4 +406,18 @@ function handleOpenVenuePicker() {
 .checkin-switch-row .form-label {
   margin-bottom: 0;
 }
+
+/* #ifdef MP-WEIXIN */
+.publish-form { gap: var(--ui-section-gap); margin-top: var(--ui-section-gap); }
+.form-field { margin-top: var(--ui-space-6); }
+.form-label { margin-bottom: var(--ui-space-3); font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-heading); }
+.form-grid { gap: 0 var(--ui-space-4); }
+.form-input, .form-textarea, .form-static, .venue-entry { border: var(--ui-input-border); border-radius: var(--ui-input-radius); font-size: var(--ui-text-label); font-weight: var(--ui-font-weight-body); }
+.form-input, .form-static { height: var(--ui-input-height); padding: 0 var(--ui-input-padding); }
+.venue-entry { min-height: var(--ui-input-height); padding: var(--ui-space-3) var(--ui-input-padding); }
+.form-textarea { min-height: var(--ui-textarea-min-height); padding: var(--ui-input-padding); }
+.form-kit-section { border-top: var(--ui-list-divider); margin-top: var(--ui-space-6); }
+.form-section-divider { border-top: var(--ui-list-divider); margin: var(--ui-space-7) 0; }
+.form-hint { border: var(--ui-panel-border); background: var(--ui-color-success-bg); color: var(--ui-color-success-fg); padding: var(--ui-space-4); font-size: var(--ui-text-sm); }
+/* #endif */
 </style>

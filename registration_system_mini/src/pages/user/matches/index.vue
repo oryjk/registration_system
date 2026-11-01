@@ -98,13 +98,13 @@ usePageRefresh(loadPageData);
         @update:model-value="handleScopeChange"
       />
 
-      <view v-if="isLoading" class="empty-card">
+      <view v-if="isLoading" class="empty-card ui-plain-panel">
         <text class="empty-text">正在加载我的比赛...</text>
       </view>
-      <view v-else-if="errorMessage" class="empty-card" @tap="loadPageData">
+      <view v-else-if="errorMessage" class="empty-card ui-plain-panel" @tap="loadPageData">
         <text class="empty-text">{{ errorMessage }}，点击重试</text>
       </view>
-      <view v-else-if="!matches.length" class="empty-card">
+      <view v-else-if="!matches.length" class="empty-card ui-plain-panel">
         <text class="empty-text">{{ emptyText }}</text>
       </view>
       <HomeMatchList
@@ -118,6 +118,7 @@ usePageRefresh(loadPageData);
 </template>
 
 <style scoped>
+@import "@/styles/list-surfaces.css";
 .my-matches-page {
   min-height: 100vh;
   padding: 0 28rpx 96rpx;
@@ -165,4 +166,11 @@ usePageRefresh(loadPageData);
 }
 /* #endif */
 .match-list-note { display: block; color: var(--ui-color-text-muted); font-size: 23rpx; line-height: 1.5; margin: 4rpx 4rpx 16rpx; }
+
+/* #ifdef MP-WEIXIN */
+.my-matches-page { padding-right: var(--ui-page-padding-inline); padding-left: var(--ui-page-padding-inline); padding-bottom: var(--ui-page-padding-bottom); }
+.empty-card { margin-top: var(--ui-section-gap); padding: var(--ui-space-10) 0; border: var(--ui-panel-border); border-radius: var(--ui-panel-radius); box-shadow: var(--ui-panel-shadow); }
+.empty-text { font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-body); line-height: var(--ui-line-height-body); }
+.match-list-note { margin: var(--ui-space-1) 0 var(--ui-space-4); font-size: var(--ui-text-body); line-height: var(--ui-line-height-body); }
+/* #endif */
 </style>

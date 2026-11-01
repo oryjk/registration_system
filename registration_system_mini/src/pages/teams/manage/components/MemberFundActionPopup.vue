@@ -197,4 +197,20 @@ function yuanLabel(cents: number) {
   color: var(--ui-color-text);
   font-size: 28rpx;
 }
+
+/* #ifdef MP-WEIXIN */
+/* 微信端复用统一排版尺度；H5 保留原有样式。 */
+.member-fund-sheet { padding: var(--ui-panel-padding) var(--ui-page-padding-inline); gap: var(--ui-list-gap); }
+.member-fund-header { gap: var(--ui-space-5); }
+.member-fund-kicker { font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-medium); }
+.member-fund-title { margin-top: var(--ui-space-2); font-size: var(--ui-text-display); font-weight: var(--ui-font-weight-heading); }
+.member-fund-balance { gap: var(--ui-space-5); }
+.member-fund-balance-label,
+.member-fund-label { font-size: var(--ui-text-label); font-weight: var(--ui-font-weight-heading); }
+.member-fund-amount,
+.member-fund-debt { font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-heading); }
+.member-fund-hint { font-size: var(--ui-text-sm); }
+.member-fund-field { gap: var(--ui-space-3); }
+.member-fund-input { padding: 0 var(--ui-input-padding); font-size: var(--ui-text-subtitle); height: var(--ui-input-height); border: var(--ui-input-border); border-radius: var(--ui-input-radius); background: var(--ui-color-surface); }
+/* #endif */
 </style>

@@ -54,32 +54,32 @@ function handleSelect(teamId: number, isCurrent: boolean) {
       </view>
 
       <scroll-view class="team-switch-sheet__list" scroll-y>
-        <AppSurface
-          v-for="team in teams"
-          :key="team.id"
-          interactive
-          flush
-          @press="handleSelect(team.id, team.id === currentTeamId)"
-          :disabled="isSwitching || leaving"
-        >
-          <view
-            :class="[
-              'team-switch-option',
-              team.id === currentTeamId ? 'team-switch-option--current' : '',
-              isSwitching ? 'team-switch-option--disabled' : '',
-            ]"
+        <view v-for="team in teams" :key="team.id" class="team-switch-option-shell ui-list-row">
+          <AppSurface
+            interactive
+            flush
+            @press="handleSelect(team.id, team.id === currentTeamId)"
+            :disabled="isSwitching || leaving"
           >
-            <view class="team-switch-option__badge">
-              <image v-if="team.logoUrl" class="team-switch-option__logo" :src="minioImageSrc(team.logoUrl)" mode="aspectFit" />
-              <text v-else>{{ team.name.slice(0, 1) || "队" }}</text>
+            <view
+              :class="[
+                'team-switch-option',
+                team.id === currentTeamId ? 'team-switch-option--current' : '',
+                isSwitching ? 'team-switch-option--disabled' : '',
+              ]"
+            >
+              <view class="team-switch-option__badge">
+                <image v-if="team.logoUrl" class="team-switch-option__logo" :src="minioImageSrc(team.logoUrl)" mode="aspectFit" />
+                <text v-else>{{ team.name.slice(0, 1) || "队" }}</text>
+              </view>
+              <view class="team-switch-option__copy">
+                <text class="team-switch-option__name">{{ team.name }}</text>
+                <view class="team-switch-option__meta"><TeamRoleIcon :team-role="team.myRole" :label="team.myRoleLabel" /><text>{{ team.memberCount }} 人</text></view>
+              </view>
+              <text v-if="team.id === currentTeamId" class="team-switch-option__mark">当前</text>
             </view>
-            <view class="team-switch-option__copy">
-              <text class="team-switch-option__name">{{ team.name }}</text>
-              <view class="team-switch-option__meta"><TeamRoleIcon :team-role="team.myRole" :label="team.myRoleLabel" /><text>{{ team.memberCount }} 人</text></view>
-            </view>
-            <text v-if="team.id === currentTeamId" class="team-switch-option__mark">当前</text>
-          </view>
-        </AppSurface>
+          </AppSurface>
+        </view>
       </scroll-view>
 
       <text v-if="isSwitching" class="team-switch-sheet__pending">球队数据切换中...</text>
@@ -88,6 +88,11 @@ function handleSelect(teamId: number, isCurrent: boolean) {
 </template>
 
 <style scoped>
+@import "@/styles/list-surfaces.css";
+/* #ifdef H5 */
+.team-switch-option-shell { display: contents; }
+/* #endif */
+
 .team-switch-mask {
   position: fixed;
   inset: 0;
@@ -175,10 +180,12 @@ function handleSelect(teamId: number, isCurrent: boolean) {
   max-height: 46vh;
 }
 
+/* #ifndef MP-WEIXIN */
 .team-switch-sheet__list :deep(.ui-surface) {
   display: block;
   margin-bottom: 14rpx;
 }
+/* #endif */
 
 .team-switch-option {
   display: flex;
@@ -310,4 +317,19 @@ function handleSelect(teamId: number, isCurrent: boolean) {
     animation: none;
   }
 }
+
+/* #ifdef MP-WEIXIN */
+.team-switch-sheet { padding: var(--ui-space-8) var(--ui-page-padding-inline) calc(env(safe-area-inset-bottom) + var(--ui-space-7)); border: var(--ui-panel-border); border-radius: var(--ui-radius-card) var(--ui-radius-card) 0 0; }
+.team-switch-sheet__head { gap: var(--ui-space-4); }
+.team-switch-sheet__title { font-size: var(--ui-text-heading); line-height: var(--ui-line-height-tight); }
+.team-switch-sheet__caption { margin-top: var(--ui-space-2); font-size: var(--ui-text-sm); line-height: var(--ui-line-height-body); }
+.team-switch-sheet__close { border: var(--ui-control-border); background: var(--ui-control-subtle-bg); }
+.team-switch-sheet__list { margin-top: var(--ui-space-5); }
+.team-switch-option-shell { display: block; padding: 0; }
+.team-switch-option { min-height: var(--ui-list-row-min-height); padding: var(--ui-list-row-padding) var(--ui-space-3); gap: var(--ui-list-row-gap); border-radius: var(--ui-control-radius); }
+.team-switch-option--current { background: var(--ui-control-selected-bg); }
+.team-switch-option__name { font-size: var(--ui-text-subtitle); line-height: var(--ui-line-height-tight); }
+.team-switch-option__meta { margin-top: var(--ui-space-2); gap: var(--ui-space-2); font-size: var(--ui-text-sm); }
+.team-switch-option__mark { padding: var(--ui-space-1) var(--ui-space-3); border: var(--ui-control-border); background: var(--ui-control-subtle-bg); font-size: var(--ui-text-xs); }
+/* #endif */
 </style>

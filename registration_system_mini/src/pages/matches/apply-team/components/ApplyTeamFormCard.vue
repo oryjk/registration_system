@@ -112,4 +112,9 @@ const emit = defineEmits<{
 .form-submit-disabled {
   opacity: 0.6;
 }
+
+/* #ifdef MP-WEIXIN */
+.form-textarea { border: var(--ui-input-border); border-radius: var(--ui-input-radius); min-height: var(--ui-textarea-min-height); padding: var(--ui-input-padding); font-size: var(--ui-text-label); }
+.form-submit { min-height: var(--ui-button-height-md); height: auto; border: var(--ui-control-border); border-radius: var(--ui-button-radius); background: var(--ui-color-cta); color: var(--ui-color-cta-fg); box-shadow: var(--ui-panel-shadow); font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-heading); }
+/* #endif */
 </style>

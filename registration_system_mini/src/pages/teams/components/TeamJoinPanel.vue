@@ -61,7 +61,7 @@ function handleJoin() {
     </view>
     <view class="results-heading"><text>搜索结果</text><text class="results-count">{{ searching ? '正在查找…' : hasSearched ? `${searchResults.length} 支球队` : '按名称查找' }}</text></view>
     <view v-if="searchResults.length" class="team-result-list">
-      <view v-for="team in searchResults" :key="team.id" class="team-result-card" :class="{ 'team-result-card-active': selectedTeam?.id === team.id }" @tap="handleSelectTeam(team)">
+      <view v-for="team in searchResults" :key="team.id" class="team-result-card ui-list-row" :class="{ 'team-result-card-active': selectedTeam?.id === team.id }" @tap="handleSelectTeam(team)">
         <image v-if="team.logo_url" class="team-logo" :src="minioImageSrc(team.logo_url)" mode="aspectFit" />
         <view v-else class="team-logo team-logo-fallback">{{ team.name.slice(0, 1) }}</view>
         <view class="team-result-copy">
@@ -75,7 +75,7 @@ function handleJoin() {
       <text class="empty-title">{{ searching ? '正在查找球队' : hasSearched ? '没有找到匹配的球队' : '找到你的球队' }}</text>
       <text>{{ hasSearched ? '试试更短的关键词，或确认球队名称。' : '支持输入部分名称，选择球队后即可加入。' }}</text>
     </view>
-    <view v-if="selectedTeam" class="join-panel">
+    <view v-if="selectedTeam" class="join-panel ui-soft-panel">
       <text class="join-panel-title">{{ selectedTeamIsMember ? '你已加入' : '加入' }} {{ selectedTeam.name }}</text>
       <text class="join-panel-note">{{ selectedTeamIsMember ? '你已经是该球队成员，可直接查看球队详情。' : selectedTeamRequiresPassword ? '该球队设置了入队密码，请向队长获取。' : '该球队开放加入，确认后即可成为队员。' }}</text>
       <input v-if="selectedTeamRequiresPassword && !selectedTeamIsMember" :value="joinPassword" class="password-input" placeholder="请输入入队密码" password @input="updateJoinPassword" />
@@ -85,6 +85,7 @@ function handleJoin() {
 </template>
 
 <style scoped>
+@import "@/styles/list-surfaces.css";
 .search-row { display:flex; align-items:center; gap:12rpx; }
 .search-field { display:flex; align-items:center; flex:1; min-width:0; gap:12rpx; height:88rpx; padding:0 20rpx; border:var(--ui-border-default); border-radius:var(--ui-radius-button); background:var(--ui-color-surface); box-sizing:border-box; }
 .search-icon { position:relative; width:24rpx; height:24rpx; margin-right:6rpx; flex-shrink:0; border:3rpx solid var(--ui-color-text-muted); border-radius:50%; box-sizing:border-box; }
@@ -109,4 +110,30 @@ function handleJoin() {
 .join-panel-note { display:block; margin-top:10rpx; font-size:24rpx; color:var(--ui-color-text-muted); line-height:1.5; }
 .password-input { margin-top:20rpx; height:84rpx; padding:0 20rpx; border:var(--ui-border-default); border-radius:var(--ui-radius-button); font-size:26rpx; color:var(--ui-color-text); }
 .join-action { margin-top:24rpx; display:flex; flex-direction:column; align-items:stretch; }
+
+/* #ifdef MP-WEIXIN */
+/* 微信端复用统一排版尺度；H5 保留原有样式。 */
+.search-row { gap: var(--ui-space-3); }
+.search-field { gap: var(--ui-space-3); padding: 0 var(--ui-input-padding); height: var(--ui-input-height); border: var(--ui-input-border); border-radius: var(--ui-input-radius); }
+.search-icon { margin-right: var(--ui-space-1); }
+.search-input { font-size: var(--ui-text-label); }
+.results-heading { margin: var(--ui-space-8) 0 var(--ui-space-4); font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-heading); }
+.results-count { font-size: var(--ui-text-sm); font-weight: var(--ui-font-weight-body); }
+.team-result-list { gap: 0; }
+.team-result-card { gap: var(--ui-list-row-gap); padding: var(--ui-list-row-padding) var(--ui-space-3); border: var(--ui-panel-border); border-radius: var(--ui-panel-radius); }
+.team-logo-fallback { font-size: var(--ui-text-title); font-weight: var(--ui-font-weight-heading); }
+.team-result-title { font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-heading); line-height: var(--ui-line-height-tight); }
+.team-result-meta { margin-top: var(--ui-space-1); font-size: var(--ui-text-sm); line-height: var(--ui-line-height-body); }
+.team-result-action { font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-heading); }
+.empty-box { padding: var(--ui-space-9) var(--ui-space-6); font-size: var(--ui-text-body); line-height: var(--ui-line-height-body); border-radius: var(--ui-panel-soft-radius); background: var(--ui-panel-soft-bg); }
+.empty-title { margin-bottom: var(--ui-space-2); font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-heading); }
+.join-panel { margin-top: var(--ui-section-gap); padding: var(--ui-panel-padding); border: var(--ui-panel-border); border-radius: var(--ui-panel-soft-radius); background: var(--ui-panel-soft-bg); }
+.join-panel-title { font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-heading); }
+.join-panel-note { margin-top: var(--ui-space-2); font-size: var(--ui-text-body); line-height: var(--ui-line-height-body); }
+.password-input { margin-top: var(--ui-space-5); padding: 0 var(--ui-input-padding); font-size: var(--ui-text-label); height: var(--ui-input-height); border: var(--ui-input-border); border-radius: var(--ui-input-radius); background: var(--ui-color-surface); }
+.join-action { margin-top: var(--ui-space-6); }
+.search-action { width: calc(var(--ui-space-12) * 2); --ui-button-height-sm: var(--ui-input-height); }
+.team-result-card + .team-result-card { border-top: var(--ui-list-divider); }
+.team-result-card-active { background: var(--ui-control-selected-bg); }
+/* #endif */
 </style>

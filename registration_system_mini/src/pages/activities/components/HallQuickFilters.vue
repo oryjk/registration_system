@@ -31,7 +31,7 @@ const sizeFilters: Array<{ key: HallMatchSizeFilter; label: string }> = [
       <view
         v-for="filter in kindFilters"
         :key="filter.key"
-        :class="['hall-filter-chip', activeKind === filter.key ? 'hall-filter-chip-active' : '']"
+        :class="['hall-filter-chip', 'ui-subtle-control', activeKind === filter.key ? 'hall-filter-chip-active' : '']"
         hover-class="hall-filter-chip--pressed"
         :hover-stay-time="100"
         @tap="emit('selectKind', filter.key)"
@@ -44,7 +44,7 @@ const sizeFilters: Array<{ key: HallMatchSizeFilter; label: string }> = [
       <view
         v-for="filter in sizeFilters"
         :key="filter.key"
-        :class="['hall-filter-chip', 'hall-filter-chip-size', activeSize === filter.key ? 'hall-filter-chip-active' : '']"
+        :class="['hall-filter-chip', 'ui-subtle-control', 'hall-filter-chip-size', activeSize === filter.key ? 'hall-filter-chip-active' : '']"
         hover-class="hall-filter-chip--pressed"
         :hover-stay-time="100"
         @tap="emit('selectSize', filter.key)"
@@ -56,6 +56,7 @@ const sizeFilters: Array<{ key: HallMatchSizeFilter; label: string }> = [
 </template>
 
 <style scoped>
+@import "@/styles/list-surfaces.css";
 .hall-filters {
   display: flex;
   flex-direction: column;
@@ -103,4 +104,9 @@ const sizeFilters: Array<{ key: HallMatchSizeFilter; label: string }> = [
 .hall-filter-chip--pressed {
   box-shadow: var(--ui-shadow-control-pressed);
 }
+
+/* #ifdef MP-WEIXIN */
+.hall-filter-chip, .hall-filter-chip-size { border: var(--ui-control-border); height: auto; min-height: var(--ui-control-min-height); padding: var(--ui-space-3) var(--ui-space-4); border-radius: var(--ui-control-radius); background: var(--ui-control-subtle-bg); font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-medium); }
+.hall-filter-chip-active { background: var(--ui-control-selected-bg); color: var(--ui-color-text); font-weight: var(--ui-font-weight-heading); }
+/* #endif */
 </style>
