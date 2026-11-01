@@ -14,6 +14,8 @@
 cd registration_system_mini
 bun install
 bun run dev:mp-weixin
+bun run dev:mp-weixin:sync # Mac 自动同步远端提交并编译（local233 开发、push 后在 Mac 看效果）
+bun run test:mp-sync      # 同步与进程退出的回归测试，使用临时 Git 仓库
 bun run build:mp-weixin
 bun run dev:h5
 bun run build:h5
@@ -23,6 +25,8 @@ bun run mp:release -- --desc "本次变更说明"   # 发布：构建 + 登记�
 ```
 
 jd 环境（oryjk.cn:82）的 H5 构建由仓库根目录的 `deploy_jd_go_h5.sh` 一键完成（读取本目录 `.env.test`），不需要手动执行 `build:h5:acceptance`。
+
+两机开发时在 local233 修改、提交并 push，Mac 运行 `dev:mp-weixin:sync`，微信开发者工具打开 Mac 仓库的 `dist/dev/mp-weixin`。默认每 10 秒同步当前分支的远端上游，可用 `-- --interval 5` 或 `MINI_SYNC_INTERVAL_SECONDS` 调整。只在整个仓库干净且可快进时更新；有本地修改、未跟踪文件或领先/分叉提交时暂停。小程序目录变化后重启编译，依赖文件变化后先安装依赖；分支/上游变化时退出。详细说明见 README 的「local233 开发、Mac 预览」。
 
 `mp:preview` / `mp:release` 的前置条件（上传私钥、`.env.ci.local`）与上传后的版本号收尾见下方「微信小程序发布」一节。
 

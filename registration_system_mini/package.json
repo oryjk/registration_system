@@ -5,6 +5,8 @@
   "scripts": {
     "dev:h5": "uni",
     "dev:mp-weixin": "uni -p mp-weixin",
+    "dev:mp-weixin:sync": "bun scripts/dev-mp-weixin-sync.mjs",
+    "test:mp-sync": "bun test scripts/dev-mp-weixin-sync.test.mjs",
     "build:h5": "uni build",
     "build:h5:acceptance": "uni build --mode test",
     "build:mp-weixin": "bun --no-env-file scripts/mini-release.mjs build",

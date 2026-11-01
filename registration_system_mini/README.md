@@ -88,6 +88,27 @@ bun run dev:mp-weixin
 
 - `registration_system_mini/dist/dev/mp-weixin`
 
+### local233 开发、Mac 预览
+
+在 local233 上开发并将提交 push 到远端；Mac 检出同一分支，配置好远端上游（例如 `origin/main`），在小程序目录运行：
+
+```bash
+bun install
+bun run dev:mp-weixin:sync
+# 可选：改为每 5 秒检查一次
+bun run dev:mp-weixin:sync -- --interval 5
+```
+
+Mac 的微信开发者工具打开该 Mac 仓库下的 `registration_system_mini/dist/dev/mp-weixin`。命令默认每 10 秒检查当前分支的远端上游，也可通过 `MINI_SYNC_INTERVAL_SECONDS` 配置间隔。local233 上尚未提交、尚未 push 的改动不会同步。
+
+- 工作区干净且可快进时更新整个仓库；只有小程序目录变化才重启开发编译。
+- 小程序的 `package.json`、`bun.lock` 或 `bun.lockb` 变化时，先执行 `bun install --frozen-lockfile`，成功后重启编译。
+- 仓库内存在未提交修改或未跟踪文件时暂停同步，清理后自动恢复；被 Git 忽略的本地配置和编译产物不影响同步。
+- 本地有领先提交或与远端分叉时暂停同步，手动处理后自动恢复；分支或上游变更时退出，需重新启动命令。
+- 网络失败会按间隔重试；按 `Ctrl+C` 停止同步及编译子进程。
+
+Mac 使用自己的接口环境配置连接后端；同步命令只更新代码和编译，不启动或部署后端。保留 `dev:mp-weixin` 供只监听本地代码时使用。同步脚本回归验证：`bun run test:mp-sync`。
+
 如需 H5 调试，也可执行：
 
 ```bash
