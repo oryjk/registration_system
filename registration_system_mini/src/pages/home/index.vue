@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, provide, ref, watch } from "vue";
+import { computed, nextTick, provide, ref, watch } from "vue";
 import { useAccentTheme } from "@/stores/theme";
 import { usePullRefresh } from "@/composables/usePullRefresh";
 import { APP_SCROLL_CONTROLLER, createAppScrollAnchor } from "@/components/appScroll";
@@ -13,6 +13,7 @@ import type { AvatarItem } from "@/components/ui/avatarTypes";
 import { ownHonorAvatarTeam, resolveHonorSource, honorSharePath } from "@/pages/honors/honorState";
 import HomeSectionHeader from "./components/HomeSectionHeader.vue";
 import HomeEmptyHero from "./components/HomeEmptyHero.vue";
+import HomeOnboardingTour from "./components/HomeOnboardingTour.vue";
 import HomeVenueMapEntry from "./components/HomeVenueMapEntry.vue";
 import HomeActionMatchCarousel from "./components/HomeActionMatchCarousel.vue";
 import { useHomeActionDeckDetails } from "./useHomeActionDeckDetails";
@@ -34,6 +35,8 @@ import {
   type HomeMatchSectionViewModel,
 } from "./homeMatchState";
 import { useHomeOnboardingGuide } from "./useHomeOnboardingGuide";
+import { useHomeOnboardingTour } from "./useHomeOnboardingTour";
+import { consumeHomeOnboardingTourRequest } from "@/utils/onboardingTourStorage";
 import { resolveHomeEmptyHeroState, type HomeEmptyHeroAction } from "./homeEmptyHeroState";
 import { useOnboardingNavigation } from "@/composables/useOnboardingNavigation";
 import { createHomeRuntimeConfigCycle } from "./homeRuntimeConfigCycle";
@@ -61,7 +64,7 @@ function sharePreviewAvatar() {
   uni.navigateTo({ url: `/pages/honors/index?teamId=${teamId}` });
 }
 const { syncUnreadCount } = useNotificationCenter();
-const { shouldHideCreationEntrances } = useMiniReviewStatus();
+const { shouldHideCreationEntrances, reviewStatusReady } = useMiniReviewStatus();
 // 首页 runtime config 按加载周期缓存插画请求；
 // 每轮 loadPageData reset 开启新周期，下拉刷新/隔时回访可拿到换图后的新配置，失败也可重试。
 const homeRuntimeConfig = createHomeRuntimeConfigCycle();
@@ -118,6 +121,20 @@ const heroNextMatch = computed(() => actionDeckMatches.value[actionDeckIndex.val
 const deckDetails = useHomeActionDeckDetails(actionDeckMatches, actionDeckIndex);
 const actionMatchCardTimestamp = ref(Date.now());
 const additionalOngoingMatches = computed(() => ongoingMatches.value.filter((match) => !actionDeckMatches.value.some((item) => item.id === match.id)));
+const tourPageVisible = ref(false);
+const skipAutomaticTour = ref(false);
+const homeTour = useHomeOnboardingTour({
+  userId: computed(() => currentUser.value?.id ?? null),
+  ready: computed(() => hasLoadedMatchData.value && !isLoading.value && !isRefreshing.value && reviewStatusReady.value && !avatarPreviewRendered.value),
+  pageVisible: tourPageVisible,
+  skipAutomatic: skipAutomaticTour,
+  errorMessage,
+});
+const onboardingHero = ref<InstanceType<typeof HomeEmptyHero> | null>(null);
+const tourScope = computed(() => onboardingHero.value?.getQueryScope() ?? undefined);
+const displayedHeroState = computed(() => homeTour.active.value
+  ? resolveHomeEmptyHeroState({ isGuest: false, hasTeam: false, canManageTeam: false, creationAllowed: !shouldHideCreationEntrances.value, intent: null })
+  : emptyHeroState.value);
 const shareTitle = "约球开踢：组队、报名、上场";
 const sharePath = "/pages/home/index";
 
@@ -317,6 +334,7 @@ onShow(() => {
 });
 
 onHide(() => {
+  tourPageVisible.value = false;
   avatarPreviewVisible.value = false;
   hiddenAt.value = Date.now();
   if (navigatingMatchId.value) {
@@ -329,9 +347,21 @@ const { refreshing, handleRefresherRefresh } = usePullRefresh(() => loadPageData
 // 滚动锚点提升到页面根：AppTabHeader 与滚动容器是兄弟节点，provide 必须来自页面。
 const { anchor: appScrollAnchor, controller: appScrollController } = createAppScrollAnchor();
 provide(APP_SCROLL_CONTROLLER, appScrollController);
+watch(homeTour.active, async (active) => {
+  if (!active) return;
+  await nextTick();
+  if (homeTour.active.value) appScrollController.scrollToTop();
+});
+
+// 在数据加载的 onShow 之后处理重播，避免旧的成功状态抢先启动后又被刷新中断。
+onShow(() => {
+  if (consumeHomeOnboardingTourRequest()) homeTour.requestReplay();
+  tourPageVisible.value = true;
+});
 
 onLoad((options) => {
   if (options?.scene) {
+    skipAutomaticTour.value = true;
     const source = resolveHonorSource({ scene: options.scene });
     if (source && 'code' in source) uni.navigateTo({ url: honorSharePath(source.code) });
   }
@@ -343,6 +373,7 @@ onUnload(() => {
   uni.$off("session:login-completed", handleSessionLoginCompleted);
   uni.$off("home:data-may-changed", handleHomeDataMayChanged);
   onboardingGuide.dispose();
+  homeTour.dispose();
 });
 
 onShareAppMessage(() => ({
@@ -380,7 +411,7 @@ onShareTimeline(() => ({
       </template>
     </AppTabHeader>
 
-    <AppPullScrollView ref="appScrollAnchor" :refreshing="refreshing" :locked="avatarPreviewRendered" @refresh="handleRefresherRefresh">
+    <AppPullScrollView ref="appScrollAnchor" :refreshing="refreshing" :locked="avatarPreviewRendered || homeTour.active.value" @refresh="handleRefresherRefresh">
       <view class="home-content" :style="contentStyle">
       <RunningLoader v-if="showInitialLoadingState" />
 
@@ -390,7 +421,7 @@ onShareTimeline(() => ({
         </view>
 
         <HomeActionMatchCarousel
-          v-if="heroNextMatch"
+          v-if="heroNextMatch && !homeTour.active.value"
           :matches="actionDeckMatches"
           :index="actionDeckIndex"
           :details="deckDetails.entries.value"
@@ -402,10 +433,12 @@ onShareTimeline(() => ({
           @avatar-select="openAvatarPreview"
         />
         <HomeEmptyHero
-          v-else-if="hasLoadedMatchData && !ongoingMatches.length"
-          :state="emptyHeroState"
-          :collapsed="onboardingGuide.collapsed.value"
+          v-else-if="homeTour.active.value || (hasLoadedMatchData && !ongoingMatches.length)"
+          ref="onboardingHero"
+          :state="displayedHeroState"
+          :collapsed="homeTour.active.value ? false : onboardingGuide.collapsed.value"
           :busy="guidanceNavigation.busy.value"
+          :compact="homeTour.active.value"
           :social-image-url="nextMatchSocialImageUrl"
           :onboarding-images="illustrations"
           :image-revision="illustrationRevision"
@@ -452,6 +485,15 @@ onShareTimeline(() => ({
     </AppPullScrollView>
 
     <BottomTabBar current="home" />
+
+    <HomeOnboardingTour
+      v-if="homeTour.active.value && tourScope"
+      :scope="tourScope"
+      :creation-allowed="!shouldHideCreationEntrances"
+      :theme-style="themePageStyle"
+      @finish="homeTour.finish"
+      @error="homeTour.stop"
+    />
 
     <AvatarPreviewDialog :visible="avatarPreviewVisible" :avatar="previewAvatar" :can-share="canSharePreviewAvatar" @share="sharePreviewAvatar" @close="avatarPreviewVisible = false" @presence="avatarPreviewRendered = $event" />
   </view>

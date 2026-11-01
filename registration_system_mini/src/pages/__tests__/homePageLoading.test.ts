@@ -103,7 +103,6 @@ describe("home page loading states", () => {
     ).text();
 
     expect(source.includes('<HomeEmptyHero')).toEqual(true);
-    expect(source.includes('v-else-if="hasLoadedMatchData && !ongoingMatches.length"')).toEqual(true);
     expect(source.includes("const upcomingMatches = ref<HomeMatchCardViewModel[]>([]);")).toEqual(true);
     expect(source.includes("const ongoingMatches = ref<HomeMatchCardViewModel[]>([]);")).toEqual(true);
     expect(source.includes("const endedMatches = ref<HomeMatchCardViewModel[]>([]);")).toEqual(true);

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useMinioImages } from "@/composables/useMinioImages";
-import { computed, ref, watch } from "vue";
+import { computed, getCurrentInstance, ref, watch } from "vue";
 import AppButton from "@/components/ui/AppButton.vue";
 import AppSurface from "@/components/ui/AppSurface.vue";
 import SmoothCollapse from "@/components/ui/SmoothCollapse.vue";
@@ -21,7 +21,11 @@ const props = defineProps<{
   imageRevision?: number;
   collapsed?: boolean;
   busy?: boolean;
+  compact?: boolean;
 }>();
+
+const instance = getCurrentInstance();
+defineExpose({ getQueryScope: () => instance?.proxy });
 
 const emit = defineEmits<{
   (event: "browse"): void;
@@ -197,14 +201,14 @@ function emitAction(action: HomeEmptyHeroAction) {
     <AppSurface variant="outlined" flush>
       <SmoothCollapse :visible="!collapsed">
         <view class="home-guide-expanded">
-      <view class="home-empty-hero-intro">
+      <view class="home-empty-hero-intro" :class="{ 'home-empty-hero-intro--compact': compact }">
         <view class="home-empty-hero-copy">
           <text class="home-empty-hero-kicker">{{ copy.kicker }}</text>
           <text class="home-empty-hero-title">{{ copy.title }}</text>
-          <text class="home-empty-hero-description">{{ copy.description }}</text>
+          <text v-if="!compact" class="home-empty-hero-description">{{ copy.description }}</text>
         </view>
         <view
-          v-if="showSocialImage"
+          v-if="!compact && showSocialImage"
           class="home-empty-hero-art home-empty-hero-art--social"
           aria-hidden="true"
         >
@@ -216,7 +220,7 @@ function emitAction(action: HomeEmptyHeroAction) {
           />
         </view>
 
-        <view v-else class="home-empty-hero-art" aria-hidden="true">
+        <view v-else-if="!compact" class="home-empty-hero-art" aria-hidden="true">
           <view class="home-empty-hero-field">
             <view class="home-empty-hero-circle" />
             <view class="home-empty-hero-goal home-empty-hero-goal--top" />
@@ -237,6 +241,7 @@ function emitAction(action: HomeEmptyHeroAction) {
         <button
           v-for="action in secondaryActions"
           :key="action"
+          :id="`home-onboarding-${action}`"
           :disabled="busy"
           class="home-empty-hero-action"
           hover-class="home-empty-hero-action--pressed"
@@ -262,11 +267,11 @@ function emitAction(action: HomeEmptyHeroAction) {
         <text>{{ actionCopy(tertiaryAction).title }}</text>
         <text aria-hidden="true">→</text>
       </button>
-      <text v-if="balancedChoices" class="home-guide-invite-hint">已有邀请？直接打开队友发来的邀请卡片。</text>
+      <text v-if="balancedChoices && !compact" class="home-guide-invite-hint">已有邀请？直接打开队友发来的邀请卡片。</text>
         </view>
       </SmoothCollapse>
 
-      <view class="home-guide-footer" :class="{ 'home-guide-footer--collapsed': collapsed }">
+      <view v-if="!compact" class="home-guide-footer" :class="{ 'home-guide-footer--collapsed': collapsed }">
         <text v-if="collapsed" class="home-guide-collapsed__title">下一步怎么做？</text>
         <button
           v-else-if="canChangeTask"
@@ -312,6 +317,8 @@ function emitAction(action: HomeEmptyHeroAction) {
 .home-guide-expanded {
   min-height: 0;
 }
+
+.home-empty-hero-intro.home-empty-hero-intro--compact { padding: 24rpx 28rpx; }
 
 .home-guide-footer {
   display: flex;

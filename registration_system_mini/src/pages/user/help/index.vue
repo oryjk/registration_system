@@ -8,6 +8,7 @@ import { useOnboardingNavigation } from "@/composables/useOnboardingNavigation";
 import { useAccentTheme } from "@/stores/theme";
 import { useMiniReviewStatus } from "@/stores/miniReview";
 import { getCustomNavMetrics } from "@/utils/customNav";
+import { consumeHomeOnboardingTourRequest, requestHomeOnboardingTour } from "@/utils/onboardingTourStorage";
 
 const { illustrations, illustrationRevision, refreshIllustrations } = useOnboardingIllustrations();
 const { themePageStyle } = useAccentTheme();
@@ -25,6 +26,16 @@ function joinTeam() {
 function findMatch() {
   uni.switchTab({ url: "/pages/activities/index" });
 }
+function replayOnboarding() {
+  requestHomeOnboardingTour();
+  uni.switchTab({
+    url: "/pages/home/index",
+    fail: () => {
+      consumeHomeOnboardingTourRequest();
+      uni.showToast({ title: "首页暂时无法打开，请重试", icon: "none" });
+    },
+  });
+}
 onShow(() => { void preloadMiniReviewStatus(); void refreshIllustrations(); });
 </script>
 
@@ -38,6 +49,9 @@ onShow(() => { void preloadMiniReviewStatus(); void refreshIllustrations(); });
         <text class="help-eyebrow">第一次来，从这里开始</text>
         <text class="help-title">一起踢球，只差几步</text>
         <text class="help-description">选一件现在想做的事，随时可以换一种方式参与。</text>
+      </view>
+      <view class="help-replay">
+        <AppButton block variant="outline" @click="replayOnboarding">重新查看新手引导</AppButton>
       </view>
       <view class="help-actions">
         <view v-if="!shouldHideCreationEntrances" class="help-action"><AppButton block :disabled="busy" @click="createTeam">创建球队</AppButton></view>
@@ -78,6 +92,7 @@ onShow(() => { void preloadMiniReviewStatus(); void refreshIllustrations(); });
 <style scoped>
 .help-page { min-height:100vh; padding:0 28rpx calc(env(safe-area-inset-bottom) + 48rpx); box-sizing:border-box; background:var(--ui-color-page); }
 .help-content { max-width:750rpx; margin:0 auto; }
+.help-replay { margin: 0 0 24rpx; }
 .help-intro { padding:24rpx 0; }
 .help-eyebrow { display:block; color:var(--ui-color-text-muted); font-size:24rpx; }
 .help-title { display:block; margin-top:12rpx; color:var(--ui-color-text); font-size:40rpx; font-weight:var(--ui-font-weight-heading); }
