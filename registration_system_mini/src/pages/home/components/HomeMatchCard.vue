@@ -203,7 +203,7 @@ function handleTap() {
   border-radius: var(--ui-radius-button);
 }
 .home-view-card__detail { gap: var(--ui-space-2); padding: 0 var(--ui-space-4); font-size: var(--ui-text-sm); background: var(--ui-color-accent-subtle); }
-.home-view-card__detail--icon-only { width: var(--ui-control-min-height); min-width: var(--ui-control-min-height); padding: 0; }
+.home-view-card__detail--icon-only { width: var(--ui-control-min-height); min-width: var(--ui-control-min-height); padding: 0; background: var(--ui-control-plain-bg); }
 .home-view-card__detail--pressed { background: var(--ui-color-accent-soft); }
 .home-view-card__chevron { width: var(--ui-icon-sm); height: var(--ui-icon-sm); border: 0; font-size: var(--ui-icon-sm); line-height: 1; transform: none; }
 .home-view-card--with-cover .home-view-card__main { padding: 0; }

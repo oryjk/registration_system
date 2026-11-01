@@ -346,6 +346,7 @@ page,
   --ui-list-row-gap: var(--ui-space-4);
   --ui-list-row-min-height: 88rpx;
   --ui-list-divider: var(--ui-border-hairline);
+  --ui-control-plain-bg: transparent;
   --ui-control-subtle-bg: var(--ui-color-accent-subtle);
   --ui-control-selected-bg: var(--ui-color-accent-soft);
   --ui-control-border: none;
