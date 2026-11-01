@@ -486,8 +486,9 @@ onShareTimeline(() => ({
 
     <BottomTabBar current="home" />
 
+    <!-- 显式转布尔，避免把有循环引用的 Vue 实例写入小程序 setData。 -->
     <HomeOnboardingTour
-      v-if="homeTour.active.value && tourScope"
+      v-if="homeTour.active.value && !!tourScope"
       :scope="tourScope"
       :creation-allowed="!shouldHideCreationEntrances"
       :theme-style="themePageStyle"
