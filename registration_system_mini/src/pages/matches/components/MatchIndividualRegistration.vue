@@ -195,10 +195,10 @@ function handleTeamMemberDialogVisibilityChange(visible: boolean) {
       </AppButton>
       <view class="registration-actions">
         <!-- #ifdef MP-WEIXIN -->
-        <button class="registration-share" open-type="share" hover-class="registration-share--pressed"><wd-icon name="share-external" size="34rpx" /><text>分享</text></button>
+        <button class="registration-share ui-native-button" open-type="share" hover-class="registration-share--pressed"><wd-icon name="share-external" size="34rpx" /><text>分享</text></button>
         <!-- #endif -->
         <!-- #ifndef MP-WEIXIN -->
-        <button class="registration-share" hover-class="registration-share--pressed" @tap="shareInBrowser"><wd-icon name="share-external" size="34rpx" /><text>分享</text></button>
+        <button class="registration-share ui-native-button" hover-class="registration-share--pressed" @tap="shareInBrowser"><wd-icon name="share-external" size="34rpx" /><text>分享</text></button>
         <!-- #endif -->
         <view class="registration-primary">
       <AppButton
@@ -221,6 +221,7 @@ function handleTeamMemberDialogVisibilityChange(visible: boolean) {
 </template>
 
 <style scoped>
+@import "@/styles/button-controls.css";
 .individual-mode-shell {
   display: flex;
   flex-direction: column;

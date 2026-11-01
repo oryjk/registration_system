@@ -41,7 +41,7 @@ function shareInMini(){uni.showModal({title:"分享我的荣誉",content:"请在
     <view v-if="codeError" class="honor-code-error"><text>{{codeError}}</text><AppButton size="sm" variant="outline" :loading="codeLoading" @click="ensureMiniCode().catch(()=>undefined)">重新生成</AppButton></view>
     <view class="honor-actions">
      <!-- #ifdef MP-WEIXIN -->
-     <button class="honor-share-button" open-type="share" :disabled="!shareReady || saving">发给朋友</button>
+     <button class="honor-share-button ui-native-button" open-type="share" :disabled="!shareReady || saving">发给朋友</button>
      <!-- #endif -->
      <!-- #ifdef H5 -->
      <AppButton block variant="outline" @click="shareInMini">发给朋友</AppButton>

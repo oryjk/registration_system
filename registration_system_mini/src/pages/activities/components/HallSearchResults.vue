@@ -101,7 +101,7 @@ onBeforeUnmount(() => {
     <view v-else-if="isLoading && !matches.length" class="hall-search-results__state ui-soft-panel">正在搜索比赛...</view>
     <view v-else-if="errorMessage && !matches.length" class="hall-search-results__state hall-search-results__state--error">
       <text>{{ errorMessage }}</text>
-      <view class="hall-search-results__retry" @tap="emit('retry')">点击重试</view>
+      <view class="hall-search-results__retry ui-native-button" @tap="emit('retry')">点击重试</view>
     </view>
     <view v-else-if="matches.length" class="hall-search-results__list">
       <text class="hall-search-results__caption">已找到 {{ matches.length }} 场{{ hasMore ? " · 下滑继续加载" : "" }}</text>
@@ -112,7 +112,7 @@ onBeforeUnmount(() => {
       <view class="hall-search-results__sentinel">
         <view v-if="errorMessage" class="hall-search-results__footer hall-search-results__footer--error">
           <text>{{ errorMessage }}</text>
-          <view class="hall-search-results__retry" @tap="emit('retry')">点击重试</view>
+          <view class="hall-search-results__retry ui-native-button" @tap="emit('retry')">点击重试</view>
         </view>
         <view v-else-if="isLoading" class="hall-search-results__footer">正在加载更多...</view>
         <view v-else-if="hasMore" class="hall-search-results__footer">继续下滑加载更多</view>

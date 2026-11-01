@@ -1,3 +1,4 @@
+@import "./button-controls.css";
 /* Import into scoped page styles: every selector belongs to the local native wrapper. */
 /* #ifdef MP-WEIXIN */
 .ui-card-panel, .ui-card-list { box-sizing: border-box; border: var(--ui-panel-border); border-radius: var(--ui-card-radius); background: var(--ui-card-bg); box-shadow: var(--ui-card-shadow); }

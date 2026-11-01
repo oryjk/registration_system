@@ -171,7 +171,7 @@ usePageRefresh(loadPageData);
       </view>
       <view class="billing-recharge-box">
         <input v-model="rechargeAmount" class="billing-recharge-input" type="digit" placeholder="金额" />
-        <view class="billing-hero-pill ui-subtle-control" @tap="handleRecharge">{{ isPaying ? "处理中" : "充值" }}</view>
+        <view class="billing-hero-pill ui-native-button ui-native-button--primary ui-subtle-control" @tap="handleRecharge">{{ isPaying ? "处理中" : "充值" }}</view>
       </view>
     </view>
 
@@ -203,8 +203,8 @@ usePageRefresh(loadPageData);
           <view class="billing-item-side">
             <text class="billing-amount">¥{{ (order.amount_cents / 100).toFixed(2) }}</text>
             <view class="order-action-row">
-              <text class="order-action" @tap="handleSyncOrder(order.order_no)">同步</text>
-              <text v-if="order.status === 'pending'" class="order-action order-action-danger" @tap="handleCancelOrder(order.order_no)">取消</text>
+              <text class="order-action ui-native-button" @tap="handleSyncOrder(order.order_no)">同步</text>
+              <text v-if="order.status === 'pending'" class="order-action ui-native-button order-action-danger" @tap="handleCancelOrder(order.order_no)">取消</text>
             </view>
           </view>
         </view>

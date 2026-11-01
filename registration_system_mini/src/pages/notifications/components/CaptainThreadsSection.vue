@@ -25,7 +25,7 @@ const emit = defineEmits<{
   <view class="threads-section">
     <view v-if="errorMessage && !hasLoadedOnce" class="threads-card ui-card-panel" @tap="emit('retry')">
       <view>{{ errorMessage }}</view>
-      <view class="threads-action">点击重试</view>
+      <view class="threads-action ui-native-button">点击重试</view>
     </view>
     <view v-else-if="isLoading && !hasLoadedOnce" class="threads-card ui-card-panel">正在加载留言...</view>
 
@@ -64,10 +64,10 @@ const emit = defineEmits<{
       </view>
 
       <view v-if="!items.length" class="threads-card ui-card-panel">还没有球队留言。在比赛详情页点「联系队长」即可给对方队长留言。</view>
-      <view v-else-if="hasMore" class="threads-more" @tap="emit('loadMore')">
+      <view v-else-if="hasMore" class="threads-more ui-native-button" @tap="emit('loadMore')">
         {{ isLoadingMore ? "加载中..." : "加载更多" }}
       </view>
-      <view v-else class="threads-more threads-more-end">没有更多了</view>
+      <view v-else class="threads-more ui-native-button threads-more-end">没有更多了</view>
     </template>
   </view>
 </template>

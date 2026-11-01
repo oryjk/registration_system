@@ -1,0 +1,21 @@
+/* Import into the scoped styles of the native node; never reach across a component host. */
+/* #ifdef MP-WEIXIN */
+.ui-native-button,
+.ui-subtle-control {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  text-align: center;
+}
+
+/* Use the same component tokens as AppButton, including native WeChat open-type controls. */
+.ui-native-button.ui-native-button--primary {
+  background: var(--ui-button-bg);
+  color: var(--ui-button-fg);
+}
+.ui-native-button.ui-native-button--primary[disabled] {
+  background: var(--ui-color-disabled);
+  color: var(--ui-color-text-disabled);
+}
+/* #endif */

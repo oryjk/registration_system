@@ -165,6 +165,10 @@ function handleClick(event: { stopPropagation?: () => void }) {
 }
 
 /* #ifdef MP-WEIXIN */
+.ui-button { text-align: center; }
+/* Both historical primary variants share one mobile color contract. H5 keeps its palette behavior. */
+.ui-button--dark,
+.ui-button--lime { --ui-button-current-bg: var(--ui-button-bg); --ui-button-current-fg: var(--ui-button-fg); }
 .ui-button--outline { --ui-button-current-bg: var(--ui-control-subtle-bg); border: var(--ui-control-border); }
 /* #endif */
 

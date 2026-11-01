@@ -33,7 +33,7 @@ const emit = defineEmits<{
     </view>
 
     <view
-      :class="['form-submit', isSubmitting ? 'form-submit-disabled' : '']"
+      :class="['form-submit ui-native-button ui-native-button--primary', isSubmitting ? 'form-submit-disabled' : '']"
       @tap="!isSubmitting && emit('submit')"
     >
       {{ isSubmitting ? "提交中..." : "确认接约" }}
@@ -42,6 +42,7 @@ const emit = defineEmits<{
 </template>
 
 <style scoped>
+@import "@/styles/button-controls.css";
 .form-row {
   display: flex;
   align-items: center;

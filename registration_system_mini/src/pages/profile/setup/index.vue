@@ -266,7 +266,7 @@ usePageRefresh(async () => {
           <view class="profile-phone-row">
             <input v-model="phoneInput" class="profile-editor-input profile-phone-input" type="number" maxlength="20" placeholder="可选，方便队长联系" placeholder-class="profile-setup-input-placeholder" @input="hasUnsavedEdits = true" />
             <!-- #ifdef MP-WEIXIN -->
-            <button class="profile-phone-button" hover-class="profile-editor-button--pressed" open-type="getPhoneNumber" @getphonenumber="handleGetPhoneNumber">{{ isBindingPhone ? "绑定中" : "一键绑定" }}</button>
+            <button class="profile-phone-button ui-native-button ui-native-button--primary" hover-class="profile-editor-button--pressed" open-type="getPhoneNumber" @getphonenumber="handleGetPhoneNumber">{{ isBindingPhone ? "绑定中" : "一键绑定" }}</button>
             <!-- #endif -->
           </view>
         </view>

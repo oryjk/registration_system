@@ -40,7 +40,7 @@ const captainName = computed(() => props.captain.nickname || "队长");
 
       </view>
     </view>
-    <button class="captain-contact-button" hover-class="captain-contact-button--pressed" @tap="emit('open')">联系队长</button>
+    <button class="captain-contact-button ui-native-button ui-native-button--primary" hover-class="captain-contact-button--pressed" @tap="emit('open')">联系队长</button>
 
     </view>
     <ConfirmDialog
@@ -69,6 +69,7 @@ const captainName = computed(() => props.captain.nickname || "队长");
 </template>
 
 <style scoped>
+@import "@/styles/button-controls.css";
 .captain-surface { border: var(--ui-border-default); border-radius: var(--ui-radius-card); background: var(--ui-color-surface); }
 .captain-surface--embedded { margin-top: 24rpx; border: 0; border-top: var(--ui-border-default); border-radius: 0; }
 .captain-surface--embedded .captain-card { padding: 20rpx 0 0; }
@@ -153,7 +154,7 @@ const captainName = computed(() => props.captain.nickname || "队长");
 .captain-surface--embedded { border-top: var(--ui-list-divider); border-radius: var(--ui-panel-radius); box-shadow: var(--ui-panel-shadow); margin-top: var(--ui-space-6); }
 .captain-card { padding: var(--ui-space-5) var(--ui-panel-padding); gap: var(--ui-space-5); }
 .captain-surface--embedded .captain-card { padding: var(--ui-space-5) 0 0; }
-.captain-contact-button { display: flex; align-items: center; justify-content: center; box-sizing: border-box; text-align: center; background: var(--ui-color-cta); color: var(--ui-color-cta-fg); min-height: var(--ui-control-min-height); padding: var(--ui-space-3) var(--ui-space-5); font-weight: var(--ui-font-weight-heading); }
+.captain-contact-button { min-height: var(--ui-control-min-height); padding: var(--ui-space-3) var(--ui-space-5); font-weight: var(--ui-font-weight-heading); }
 .captain-textarea { border: var(--ui-input-border); border-radius: var(--ui-input-radius); padding: var(--ui-input-padding); font-size: var(--ui-text-label); background: var(--ui-color-surface); }
 /* #endif */
 </style>

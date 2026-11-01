@@ -107,7 +107,7 @@ onShow(() => {
         </view>
         <view class="venue-map-summary">
           <text>{{ query ? `找到 ${filtered.length} 个球场` : `已收录 ${venues.length} 个球场` }}</text>
-          <button class="venue-map-all" @tap="showAll">查看全部</button>
+          <button class="venue-map-all ui-native-button" @tap="showAll">查看全部</button>
         </view>
       </view>
       <view class="venue-map-canvas">
@@ -149,7 +149,7 @@ onShow(() => {
         </template>
         <scroll-view v-if="filtered.length" scroll-x class="venue-map-venues" :scroll-into-view="selected ? `venue-${selected.id}` : ''" scroll-with-animation>
           <view class="venue-map-venues__row">
-            <button v-for="venue in filtered" :id="`venue-${venue.id}`" :key="venue.id" class="venue-map-chip" :class="{ 'venue-map-chip--selected': selectedId === venue.id }" @tap="selectedId = venue.id">
+            <button v-for="venue in filtered" :id="`venue-${venue.id}`" :key="venue.id" class="venue-map-chip ui-native-button" :class="{ 'venue-map-chip--selected': selectedId === venue.id }" @tap="selectedId = venue.id">
               {{ venue.location }}
             </button>
           </view>
@@ -163,6 +163,7 @@ onShow(() => {
 </template>
 
 <style scoped>
+@import "@/styles/button-controls.css";
 @import "@/styles/page-surfaces.css";
 .venue-map-page { height: 100vh; box-sizing: border-box; display: flex; flex-direction: column; background: var(--ui-color-page); color: var(--ui-color-text); }
 .venue-map-tools { padding: 16rpx 28rpx 12rpx; flex-shrink: 0; }
@@ -200,6 +201,7 @@ onShow(() => {
 .venue-map-warning { display: block; margin-bottom: 16rpx; font-size: 22rpx; color: var(--ui-color-text-muted); line-height: 1.5; }
 
 /* #ifdef MP-WEIXIN */
+.venue-map-all { padding: var(--ui-space-4) var(--ui-space-5); }
 .venue-map-tools { margin: var(--ui-card-gap) var(--ui-page-padding-inline); padding: var(--ui-card-padding); border: var(--ui-panel-border); border-radius: var(--ui-card-radius); background: var(--ui-card-bg); box-shadow: var(--ui-card-shadow); }
 .venue-map-state { margin: var(--ui-card-gap) var(--ui-page-padding-inline); padding: var(--ui-card-padding); border: var(--ui-panel-border); border-radius: var(--ui-card-radius); background: var(--ui-card-bg); box-shadow: var(--ui-card-shadow); }
 .venue-map-search { border: var(--ui-control-border); border-radius: var(--ui-control-radius); background: var(--ui-control-subtle-bg); height: var(--ui-input-height); padding: 0 var(--ui-input-padding); gap: var(--ui-space-3); }

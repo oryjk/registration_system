@@ -107,16 +107,16 @@ function handleRemoveMember(member: BackendTeamMember) {
           </view>
         </view>
         <view class="member-actions">
-          <view class="member-link" role="button" hover-class="member-link-pressed" @tap.stop="handleOpenMemberAttendance(member)">
+          <view class="member-link ui-native-button" role="button" hover-class="member-link-pressed" @tap.stop="handleOpenMemberAttendance(member)">
             <wd-icon name="calendar-line" size="26rpx" /><text>出勤</text>
           </view>
-          <view class="member-link" role="button" hover-class="member-link-pressed" @tap.stop="handleEditMember(member)">
+          <view class="member-link ui-native-button" role="button" hover-class="member-link-pressed" @tap.stop="handleEditMember(member)">
             <wd-icon name="edit" size="26rpx" /><text>编辑</text>
           </view>
-          <view class="member-link" role="button" hover-class="member-link-pressed" @tap.stop="handleToggleMemberStatus(member)">
+          <view class="member-link ui-native-button" role="button" hover-class="member-link-pressed" @tap.stop="handleToggleMemberStatus(member)">
             <wd-icon :name="member.status === 1 ? 'lock' : 'unlock'" size="26rpx" /><text>{{ toggleLabel(member) }}</text>
           </view>
-          <view v-if="member.role !== 'captain'" class="member-link member-link-danger" role="button" hover-class="member-link-pressed" @tap.stop="handleRemoveMember(member)">
+          <view v-if="member.role !== 'captain'" class="member-link ui-native-button member-link-danger" role="button" hover-class="member-link-pressed" @tap.stop="handleRemoveMember(member)">
             <wd-icon name="delete" size="26rpx" /><text>移除</text>
           </view>
         </view>
@@ -127,6 +127,7 @@ function handleRemoveMember(member: BackendTeamMember) {
 </template>
 
 <style scoped>
+@import "@/styles/button-controls.css";
 .member-section-count { flex-shrink: 0; padding: 6rpx 14rpx; border-radius: var(--ui-radius-round); background: var(--ui-color-neutral-bg); color: var(--ui-color-neutral-fg); font-size: 22rpx; font-variant-numeric: tabular-nums; }
 .member-card { padding: 16rpx 0; border-top: var(--ui-border-default); }
 .member-card:first-child { padding-top: 0; border-top: 0; }

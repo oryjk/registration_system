@@ -114,7 +114,7 @@ onShareTimeline(() => ({
             <text class="invite-title">邀请球友加入</text>
             <text class="invite-copy">分享邀请卡片给球友，点开即可申请加入{{ team.name }}，7 天内有效。</text>
           </view>
-          <button class="invite-share-button" open-type="share" hover-class="invite-share-button--pressed">
+          <button class="invite-share-button ui-native-button ui-native-button--primary" open-type="share" hover-class="invite-share-button--pressed">
             <wd-icon name="share-external" size="34rpx" color="var(--ui-color-accent-fg)" />
             <text class="invite-share-button__text">分享邀请，拉球友入队</text>
           </button>
