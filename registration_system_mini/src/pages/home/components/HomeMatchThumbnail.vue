@@ -24,6 +24,7 @@ function handleError() {
 </template>
 
 <style scoped>
-.home-match-thumbnail { display: flex; align-items: center; justify-content: center; width: 112rpx; height: 112rpx; border-radius: var(--ui-radius-md); overflow: hidden; background: var(--ui-color-neutral-bg); color: var(--ui-color-text-muted); }
-.home-match-thumbnail__image { display: block; width: 100%; height: 100%; }
+/* 在父卡片的原生定位容器内铺满，不依赖小程序组件宿主的百分比高度。 */
+.home-match-thumbnail { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; background: var(--ui-color-neutral-bg); color: var(--ui-color-text-muted); }
+.home-match-thumbnail__image { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
 </style>

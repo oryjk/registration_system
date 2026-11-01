@@ -21,6 +21,15 @@ const compactDateLine = computed(() => {
   return `${block.monthDay} ${block.weekday} ${block.timeLabel}`;
 });
 
+const hasCover = computed(() => {
+  // #ifdef MP-WEIXIN
+  return props.match.phase === "ended";
+  // #endif
+  // #ifndef MP-WEIXIN
+  return false;
+  // #endif
+});
+
 function handleTap() {
   if (props.match.canOpenDetail && !props.isNavigating) {
     emit("matchTap", props.match);
@@ -31,12 +40,12 @@ function handleTap() {
 <template>
   <!-- 列表统一为查看型卡；待处理记录也保留详情入口，报名展示由新的行动卡负责。 -->
   <view
-    :class="['home-view-card', isNavigating ? 'home-view-card--tapping' : '']"
+    :class="['home-view-card', isNavigating ? 'home-view-card--tapping' : '', hasCover ? 'home-view-card--with-cover' : '']"
     :hover-class="match.canOpenDetail ? 'home-view-card--pressed' : 'none'"
     @tap="handleTap"
   >
     <!-- #ifdef MP-WEIXIN -->
-    <view v-if="match.phase === 'ended'" class="home-view-card__thumbnail">
+    <view v-if="hasCover" class="home-view-card__thumbnail">
       <HomeMatchThumbnail :match="match" />
     </view>
     <!-- #endif -->
@@ -65,9 +74,6 @@ function handleTap() {
 </template>
 
 <style scoped>
-/* #ifdef MP-WEIXIN */
-.home-view-card__thumbnail { flex: 0 0 112rpx; width: 112rpx; height: 112rpx; }
-/* #endif */
 /* ===== 查看型紧凑卡 ===== */
 .home-view-card {
   display: flex;
@@ -164,6 +170,23 @@ function handleTap() {
   border-right: 4rpx solid currentColor;
   transform: translateX(-3rpx) rotate(45deg);
 }
+
+/* #ifdef MP-WEIXIN */
+.home-view-card--with-cover {
+  min-height: 160rpx;
+  padding: 0 26rpx 0 0;
+  overflow: hidden;
+}
+.home-view-card__thumbnail {
+  position: relative;
+  align-self: stretch;
+  flex: 0 0 136rpx;
+  width: 136rpx;
+}
+.home-view-card--with-cover .home-view-card__main { padding: 22rpx 0; }
+.home-view-card--with-cover .home-view-card__detail,
+.home-view-card--with-cover .home-view-card__badge { margin: 22rpx 0; }
+/* #endif */
 
 /* H5 减少动态效果：卡片按压只保留表面色反馈。 */
 @media (prefers-reduced-motion: reduce) {
