@@ -10,8 +10,8 @@
 - [x] 后端分页兼容与相关TDD/集成测试，gofmt/vet/build。
 - [x] 微信目录加载/筛选/刷新/竞态和新建队CTA，保留H5与加入业务。
 - [x] 前端测试、类型检查、MP构建、实际组件交互，独立审查。
-- [ ] 文档/记忆、main提交推送、Go接口发布检查与部署。
-- [ ] mp:release版本登记；必要时提交版本文件再push main，重跑release上传并报告版本。
+- [x] 文档/记忆、main提交推送、Go接口发布检查与部署。
+- [x] mp:release版本登记；必要时提交版本文件再push main，重跑release上传并报告版本。
 
 ## 验证与审查记录
 
@@ -20,3 +20,10 @@
 - 实际组件 320/375px 验证 51 队、输入过滤与恢复、密码输入/加入与创建事件、secondary 海军蓝白字、审核隐藏；创建CTA位于首屏。独立审查指出位置问题后已通过 slot 复用修复。
 
 - 最终类型检查、微信构建/组件/26路由/3分包/API校验通过；106个测试文件按文件隔离，722项通过。新CTA的MP slot与注册产物已核对，H5原入口保留。发布按后续 main/clean/已push 门禁执行。
+
+## 发布记录
+
+- 功能源码：`dd0b39e828e3d49b9500acaa9bfffe2436fb6843`，已合并并推送 origin/main。
+- Go：`./deploy_jd_go_h5.sh --check --skip-h5 --skip-admin` 与正式 Go-only 发布通过，镜像标签 `20261101-165611-dd0b39e828e3`，公开 HTTPS health 校验通过；无迁移、未发布 H5/管理端。
+- 小程序：在 main 工作树运行统一 `bun run mp:release`，生产 API、Git clean/main/origin 门禁及编译/组件/分包检查通过；登记库沿用 1.0.86（10086），robot=1 开发版上传成功。
+- 包体 SDK 返回：主包 1,694,801 bytes，总包 2,273,432 bytes。本文为上传后的交付记录，不改变上传源码。
