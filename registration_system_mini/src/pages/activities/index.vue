@@ -343,6 +343,7 @@ provide(APP_SCROLL_CONTROLLER, appScrollController);
             <SectionHeader title="已结束的比赛" />
             <HomeMatchList
               :matches="endedReferenceCards"
+              hide-stage-label
               :navigating-match-id="navigatingMatchId"
               @match-tap="openEndedReferenceMatch"
             />

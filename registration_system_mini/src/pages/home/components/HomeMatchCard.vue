@@ -9,6 +9,7 @@ import type { HomeMatchCardViewModel } from "@/types/viewModels";
 const props = defineProps<{
   match: HomeMatchCardViewModel;
   isNavigating: boolean;
+  hideStageLabel?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -27,6 +28,15 @@ const hasCover = computed(() => {
   // #endif
   // #ifndef MP-WEIXIN
   return false;
+  // #endif
+});
+
+const showStageLabel = computed(() => {
+  // #ifdef MP-WEIXIN
+  return !props.hideStageLabel;
+  // #endif
+  // #ifndef MP-WEIXIN
+  return true;
   // #endif
 });
 
@@ -59,12 +69,13 @@ function handleTap() {
     <button
       v-if="match.canOpenDetail"
       class="home-view-card__detail"
+      :class="{ 'home-view-card__detail--icon-only': !showStageLabel }"
       :aria-label="`${match.stage}，查看${match.title}详情`"
       :disabled="isNavigating"
       hover-class="home-view-card__detail--pressed"
       @tap.stop="handleTap"
     >
-      <text>{{ match.stage }}</text>
+      <text v-if="showStageLabel">{{ match.stage }}</text>
       <!-- #ifdef MP-WEIXIN -->
       <text class="home-view-card__chevron ui-arrow-text" aria-hidden="true">→</text>
       <!-- #endif -->
@@ -72,7 +83,7 @@ function handleTap() {
       <view class="home-view-card__chevron" aria-hidden="true" />
       <!-- #endif -->
     </button>
-    <view v-else class="home-view-card__badge">
+    <view v-else-if="showStageLabel" class="home-view-card__badge">
       <AppTag :tone="match.stageTone" size="sm">{{ match.stage }}</AppTag>
     </view>
   </view>
@@ -193,6 +204,7 @@ function handleTap() {
   border-radius: var(--ui-radius-button);
 }
 .home-view-card__detail { gap: 8rpx; padding: 0 16rpx; font-size: 22rpx; background: var(--ui-color-accent-subtle); }
+.home-view-card__detail--icon-only { width: 72rpx; min-width: 72rpx; padding: 0; }
 .home-view-card__detail--pressed { background: var(--ui-color-accent-soft); }
 .home-view-card__chevron { width: 28rpx; height: 28rpx; border: 0; font-size: 28rpx; line-height: 1; transform: none; }
 .home-view-card--with-cover .home-view-card__main { padding: 22rpx 0; }

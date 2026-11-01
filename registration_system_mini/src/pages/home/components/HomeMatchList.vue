@@ -5,6 +5,7 @@ import HomeMatchCard from "./HomeMatchCard.vue";
 defineProps<{
   matches: HomeMatchCardViewModel[];
   navigatingMatchId: string;
+  hideStageLabel?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -22,6 +23,7 @@ function handleMatchTap(match: HomeMatchCardViewModel) {
       <HomeMatchCard
         :match="match"
         :is-navigating="navigatingMatchId === match.id"
+        :hide-stage-label="hideStageLabel"
         @match-tap="handleMatchTap"
       />
       <!-- #ifdef MP-WEIXIN -->
