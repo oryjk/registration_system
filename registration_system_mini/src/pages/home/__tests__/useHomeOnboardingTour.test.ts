@@ -2,7 +2,7 @@ const bunTest: any = await import("bun:test");
 const { afterAll, afterEach, beforeEach, expect, test } = bunTest;
 import { nextTick, ref } from "vue";
 import { useHomeOnboardingTour } from "../useHomeOnboardingTour";
-import { consumeHomeOnboardingTourRequest, requestHomeOnboardingTour } from "@/utils/onboardingTourStorage";
+import { consumeHomeOnboardingTourRequest, markHomeOnboardingTourSeen, requestHomeOnboardingTour } from "@/utils/onboardingTourStorage";
 
 const storage = new Map<string, unknown>();
 const globals = globalThis as typeof globalThis & { uni: UniApp.Uni };
@@ -20,14 +20,18 @@ beforeEach(() => {
 afterEach(() => { flow?.dispose(); flow = undefined; globals.uni = originalUni; });
 afterAll(() => { globals.uni = originalUni; });
 
-function createFlow(overrides: { ready?: boolean; visible?: boolean; skip?: boolean; userId?: number | null } = {}) {
+function createFlow(overrides: { ready?: boolean; visible?: boolean; skip?: boolean; userId?: number | null; repeatWithoutTeam?: boolean } = {}) {
   const userId = ref<number | null>(overrides.userId === undefined ? 1 : overrides.userId);
   const ready = ref(overrides.ready ?? true);
   const pageVisible = ref(overrides.visible ?? true);
   const skipAutomatic = ref(overrides.skip ?? false);
   const errorMessage = ref("");
-  flow = useHomeOnboardingTour({ userId, ready, pageVisible, skipAutomatic, errorMessage });
-  return { flow, userId, ready, pageVisible, errorMessage };
+  const repeatWithoutTeam = ref(overrides.repeatWithoutTeam ?? false);
+  const entryVersion = ref(0);
+  flow = useHomeOnboardingTour({ userId, ready, pageVisible, skipAutomatic, errorMessage,
+    ...(overrides.repeatWithoutTeam === undefined ? {} : { repeatWithoutTeam, entryVersion }),
+  });
+  return { flow, userId, ready, pageVisible, errorMessage, repeatWithoutTeam, entryVersion };
 }
 
 test("waits for successful home loading and a visible page before starting", async () => {
@@ -130,6 +134,111 @@ test("a replay waits through a cached home refresh failure until a successful re
   await nextTick();
   expect(state.flow.active.value).toBe(false);
   state.errorMessage.value = "";
+  await nextTick();
+  expect(state.flow.active.value).toBe(true);
+});
+
+test("users without a team see the guide on each app entry even with an old seen record", async () => {
+  markHomeOnboardingTourSeen(1);
+  const state = createFlow({ repeatWithoutTeam: true });
+  expect(state.flow.active.value).toBe(true);
+  state.flow.finish();
+  state.pageVisible.value = false;
+  await nextTick();
+  state.pageVisible.value = true;
+  await nextTick();
+  expect(state.flow.active.value).toBe(false);
+  state.entryVersion.value++;
+  await nextTick();
+  expect(state.flow.active.value).toBe(true);
+  state.flow.finish();
+  state.flow.dispose();
+  expect(createFlow({ repeatWithoutTeam: true }).flow.active.value).toBe(true);
+});
+
+test("skip requires a choice and skipping once only lasts for the current app entry", async () => {
+  const state = createFlow({ repeatWithoutTeam: true });
+  state.flow.requestSkip();
+  expect(state.flow.confirmingSkip.value).toBe(true);
+  expect(state.flow.active.value).toBe(true);
+  state.flow.cancelSkip();
+  expect(state.flow.confirmingSkip.value).toBe(false);
+  expect(state.flow.active.value).toBe(true);
+  state.flow.requestSkip();
+  state.flow.skipOnce();
+  expect(state.flow.active.value).toBe(false);
+  state.entryVersion.value++;
+  await nextTick();
+  expect(state.flow.active.value).toBe(true);
+});
+
+test("only confirmed permanent skipping persists and remains scoped to the current account", async () => {
+  const state = createFlow({ repeatWithoutTeam: true });
+  state.flow.skipPermanently();
+  expect(state.flow.active.value).toBe(true);
+  state.flow.requestSkip();
+  state.flow.skipPermanently();
+  expect(state.flow.active.value).toBe(false);
+  state.entryVersion.value++;
+  await nextTick();
+  expect(state.flow.active.value).toBe(false);
+  state.flow.dispose();
+  const reopened = createFlow({ repeatWithoutTeam: true });
+  expect(reopened.flow.active.value).toBe(false);
+  reopened.flow.requestReplay();
+  await nextTick();
+  expect(reopened.flow.active.value).toBe(true);
+  reopened.flow.finish();
+  reopened.entryVersion.value++;
+  await nextTick();
+  expect(reopened.flow.active.value).toBe(false);
+  reopened.userId.value = 2;
+  await nextTick();
+  expect(reopened.flow.active.value).toBe(true);
+});
+
+test("users with a team keep one-time onboarding and confirmation closes when the page is hidden", async () => {
+  const state = createFlow({ repeatWithoutTeam: false });
+  state.flow.finish();
+  state.entryVersion.value++;
+  await nextTick();
+  expect(state.flow.active.value).toBe(false);
+  state.repeatWithoutTeam.value = true;
+  state.entryVersion.value++;
+  await nextTick();
+  expect(state.flow.active.value).toBe(true);
+  state.flow.requestSkip();
+  state.pageVisible.value = false;
+  await nextTick();
+  expect(state.flow.confirmingSkip.value).toBe(false);
+  expect(state.flow.active.value).toBe(false);
+});
+
+test("a completed guide stops repeating after the user joins a team", async () => {
+  const state = createFlow({ repeatWithoutTeam: true });
+  state.flow.finish();
+  state.repeatWithoutTeam.value = false;
+  state.entryVersion.value++;
+  await nextTick();
+  expect(state.flow.active.value).toBe(false);
+});
+
+test("app reentry waits for the new home refresh rather than consuming cached readiness", async () => {
+  const state = createFlow({ repeatWithoutTeam: true });
+  state.flow.finish();
+  state.entryVersion.value++;
+  state.ready.value = false;
+  await nextTick();
+  expect(state.flow.active.value).toBe(false);
+  state.ready.value = true;
+  await nextTick();
+  expect(state.flow.active.value).toBe(true);
+});
+
+test("share-link deferral only applies to its app entry, not a later ordinary reentry", async () => {
+  const state = createFlow({ repeatWithoutTeam: true, skip: true });
+  expect(state.flow.active.value).toBe(false);
+  state.entryVersion.value++;
   await nextTick();
   expect(state.flow.active.value).toBe(true);
 });

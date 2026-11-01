@@ -3,6 +3,9 @@ import { onHide, onLaunch, onPageNotFound, onShow } from "@dcloudio/uni-app";
 import { ensureSessionReady } from "@/stores/appSession";
 import { preloadMiniReviewStatus } from "@/stores/miniReview";
 import { setupMiniProgramUpdatePrompt } from "@/utils/updateManager";
+// #ifdef MP-WEIXIN
+import { beginMiniAppEntry } from "@/stores/miniAppEntry";
+// #endif
 
 const HOME_PAGE_PATH = "/pages/home/index";
 
@@ -16,6 +19,9 @@ onLaunch(() => {
 });
 
 onShow(() => {
+  // #ifdef MP-WEIXIN
+  beginMiniAppEntry();
+  // #endif
   console.log("registration_system_mini show");
 });
 

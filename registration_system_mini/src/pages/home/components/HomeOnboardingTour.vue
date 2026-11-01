@@ -7,8 +7,9 @@ const props = defineProps<{
   creationAllowed: boolean;
   themeStyle: string;
   scope?: object;
+  suspended?: boolean;
 }>();
-const emit = defineEmits<{ (event: "finish"): void; (event: "error"): void }>();
+const emit = defineEmits<{ (event: "finish"): void; (event: "skip"): void; (event: "error"): void }>();
 const current = ref(0);
 const visible = ref(false);
 let disposed = false;
@@ -69,14 +70,22 @@ function next() {
   if (lastStep.value) emit("finish");
   else current.value++;
 }
+function skip() {
+  // #ifdef MP-WEIXIN
+  emit("skip");
+  // #endif
+  // #ifndef MP-WEIXIN
+  emit("finish");
+  // #endif
+}
 </script>
 
 <template>
   <wd-root-portal>
-    <view class="app-theme-scope home-tour-theme" :style="themeStyle" @keydown.esc="emit('finish')">
-      <view v-if="!visible" class="home-tour-pending" @tap.stop @touchmove.stop.prevent />
+    <view class="app-theme-scope home-tour-theme" :style="themeStyle" @keydown.esc="skip">
+      <view v-if="!visible && !suspended" class="home-tour-pending" @tap.stop @touchmove.stop.prevent />
       <wd-tour
-        :model-value="visible"
+        :model-value="visible && !suspended"
         v-model:current="current"
         :steps="tourSteps"
         :scope="scope"
@@ -92,7 +101,7 @@ function next() {
       >
         <template #content>
           <view class="home-tour-panel" role="dialog" aria-modal="true" :aria-label="step.title" @tap.stop>
-            <button class="home-tour-close" aria-label="关闭新手引导" @tap.stop="emit('finish')">×</button>
+            <button class="home-tour-close" aria-label="关闭新手引导" @tap.stop="skip">×</button>
             <text class="home-tour-eyebrow">新手指引 · {{ current + 1 }}/{{ steps.length }}</text>
             <text class="home-tour-title">{{ step.title }}</text>
             <text class="home-tour-description">{{ step.content }}</text>
@@ -102,7 +111,7 @@ function next() {
               </view>
               <view class="home-tour-controls">
                 <button v-if="current > 0" class="home-tour-link" @tap.stop="current--">上一步</button>
-                <button v-else class="home-tour-link" @tap.stop="emit('finish')">跳过</button>
+                <button v-else class="home-tour-link" @tap.stop="skip">跳过</button>
                 <AppButton size="sm" @click="next">{{ lastStep ? '开始使用' : '下一步' }}</AppButton>
               </view>
             </view>

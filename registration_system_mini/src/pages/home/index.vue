@@ -14,6 +14,10 @@ import { ownHonorAvatarTeam, resolveHonorSource, honorSharePath } from "@/pages/
 import HomeSectionHeader from "./components/HomeSectionHeader.vue";
 import HomeEmptyHero from "./components/HomeEmptyHero.vue";
 import HomeOnboardingTour from "./components/HomeOnboardingTour.vue";
+// #ifdef MP-WEIXIN
+import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
+import { useMiniAppEntry } from "@/stores/miniAppEntry";
+// #endif
 import HomeVenueMapEntry from "./components/HomeVenueMapEntry.vue";
 import HomeActionMatchCarousel from "./components/HomeActionMatchCarousel.vue";
 import { useHomeActionDeckDetails } from "./useHomeActionDeckDetails";
@@ -131,6 +135,10 @@ const additionalOngoingMatches = computed(() => ongoingMatches.value.filter((mat
 const tourPageVisible = ref(false);
 const skipAutomaticTour = ref(false);
 const homeTour = useHomeOnboardingTour({
+  // #ifdef MP-WEIXIN
+  repeatWithoutTeam: computed(() => teamProfiles.value.length === 0),
+  entryVersion: useMiniAppEntry().entryVersion,
+  // #endif
   userId: computed(() => currentUser.value?.id ?? null),
   ready: computed(() => hasLoadedMatchData.value && !isLoading.value && !isRefreshing.value && reviewStatusReady.value && !avatarPreviewRendered.value),
   pageVisible: tourPageVisible,
@@ -517,9 +525,24 @@ onShareTimeline(() => ({
       :scope="tourScope"
       :creation-allowed="!shouldHideCreationEntrances"
       :theme-style="themePageStyle"
+      :suspended="homeTour.confirmingSkip.value"
       @finish="homeTour.finish"
+      @skip="homeTour.requestSkip"
       @error="homeTour.stop"
     />
+
+    <!-- #ifdef MP-WEIXIN -->
+    <ConfirmDialog
+      :visible="homeTour.confirmingSkip.value"
+      title="如何跳过新手引导？"
+      message="仅本次跳过，下次进入仍会提示。永久跳过后不再自动提示，你仍可从使用帮助重新查看。"
+      primary-text="仅本次跳过"
+      secondary-text="永久跳过"
+      @primary="homeTour.skipOnce"
+      @secondary="homeTour.skipPermanently"
+      @close="homeTour.cancelSkip"
+    />
+    <!-- #endif -->
 
     <AvatarPreviewDialog :visible="avatarPreviewVisible" :avatar="previewAvatar" :can-share="canSharePreviewAvatar" @share="sharePreviewAvatar" @close="avatarPreviewVisible = false" @presence="avatarPreviewRendered = $event" />
   </view>
