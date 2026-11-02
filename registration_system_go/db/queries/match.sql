@@ -1068,35 +1068,6 @@ SELECT u.id AS user_id, u.nickname, u.avatar_url
 FROM users u
 WHERE u.id = sqlc.arg('user_id');
 
--- name: ListVenueSuggestions :many
--- 常用场地建议：按使用次数与最近使用聚合；只保留带坐标的场地（无坐标不进选项），
--- 代表经纬度取该场地最近一条带坐标的比赛。
-SELECT m.location,
-       COUNT(*)::BIGINT AS use_count,
-       MAX(m.start_time)::TIMESTAMPTZ AS last_used_at,
-       (ARRAY_REMOVE(ARRAY_AGG(m.location_latitude ORDER BY m.start_time DESC NULLS LAST), NULL))[1]::DOUBLE PRECISION AS latitude,
-       (ARRAY_REMOVE(ARRAY_AGG(m.location_longitude ORDER BY m.start_time DESC NULLS LAST), NULL))[1]::DOUBLE PRECISION AS longitude
-FROM matches m
-WHERE m.location IS NOT NULL AND btrim(m.location) <> ''
-GROUP BY m.location
-HAVING COUNT(m.location_latitude) > 0
-ORDER BY use_count DESC, last_used_at DESC
-LIMIT sqlc.arg('limit_count');
-
--- name: ListVenueMap :many
--- 地图使用所有有坐标的场地；同名场地取最新一条完整坐标，避免混合两条记录的经纬度。
-SELECT DISTINCT ON (btrim(m.location))
-       btrim(m.location)::TEXT AS location,
-       m.location_latitude::DOUBLE PRECISION AS latitude,
-       m.location_longitude::DOUBLE PRECISION AS longitude,
-       COUNT(*) OVER (PARTITION BY btrim(m.location))::BIGINT AS use_count,
-       m.start_time::TIMESTAMPTZ AS last_used_at
-FROM matches m
-WHERE m.location IS NOT NULL AND btrim(m.location) <> ''
-  AND m.location_latitude BETWEEN -90 AND 90
-  AND m.location_longitude BETWEEN -180 AND 180
-ORDER BY btrim(m.location), m.start_time DESC NULLS LAST, m.id DESC;
-
 -- name: GetParticipationAvailableAt :one
 -- 比赛、报名组与入队时间均为 UTC timestamp，不依赖数据库会话时区。
 SELECT GREATEST(m.created_at, g.created_at, m.registration_start_at,

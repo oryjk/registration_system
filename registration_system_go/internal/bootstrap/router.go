@@ -15,6 +15,7 @@ import (
 	teamhttp "github.com/oryjk/registration_system/registration_system_go/internal/team/adapters/http"
 	teamfundhttp "github.com/oryjk/registration_system/registration_system_go/internal/teamfund/adapters/http"
 	userhttp "github.com/oryjk/registration_system/registration_system_go/internal/user/adapters/http"
+	venuehttp "github.com/oryjk/registration_system/registration_system_go/internal/venue/adapters/http"
 	wallethttp "github.com/oryjk/registration_system/registration_system_go/internal/wallet/adapters/http"
 )
 
@@ -36,7 +37,7 @@ type Dependencies struct {
 	AppTeamInvites     *teamhttp.AppInviteHandler
 	AppHonorShares     *teamhttp.HonorShareHandler
 	UserMatches        *matchhttp.UserHandler
-	VenueSuggestions   *matchhttp.VenueSuggestionHandler
+	Venues             *venuehttp.Handler
 	UserRegistrations  *matchhttp.UserRegistrationHandler
 	AdminMatches       *matchhttp.AdminHandler
 	AdminRegistrations *matchhttp.AdminRegistrationHandler
@@ -130,8 +131,8 @@ func NewRouter(dependencies Dependencies) *gin.Engine {
 		if dependencies.UserMatches != nil {
 			dependencies.UserMatches.RegisterRoutes(userRoutes)
 		}
-		if dependencies.VenueSuggestions != nil {
-			dependencies.VenueSuggestions.RegisterRoutes(userRoutes)
+		if dependencies.Venues != nil {
+			dependencies.Venues.RegisterUserRoutes(userRoutes)
 		}
 		if dependencies.CaptainMessages != nil {
 			dependencies.CaptainMessages.RegisterRoutes(userRoutes)
@@ -172,6 +173,9 @@ func NewRouter(dependencies Dependencies) *gin.Engine {
 		}
 		if dependencies.AdminMatches != nil {
 			dependencies.AdminMatches.RegisterRoutes(adminRoutes)
+		}
+		if dependencies.Venues != nil {
+			dependencies.Venues.RegisterAdminRoutes(adminRoutes)
 		}
 		if dependencies.AdminRegistrations != nil {
 			dependencies.AdminRegistrations.RegisterRoutes(adminRoutes)

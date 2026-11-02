@@ -333,6 +333,13 @@ type UserFeedback struct {
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 }
 
+type Venue struct {
+	Name      string             `json:"name"`
+	ImageUrl  string             `json:"image_url"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+}
+
 type WalletAccount struct {
 	UserID              int64              `json:"user_id"`
 	BalanceCents        int64              `json:"balance_cents"`

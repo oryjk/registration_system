@@ -330,23 +330,3 @@ func mapHomeEndedMatch(row matchsqlc.ListHomeEndedMatchesForUserRow) domain.Matc
 		CreatedAt: row.CreatedAt.Time, UpdatedAt: row.UpdatedAt.Time,
 	}
 }
-
-// ListVenueSuggestions 常用场地聚合（发布页建议）；只返回带坐标的场地。
-func (r *Repository) ListVenueSuggestions(ctx context.Context, limit int32) ([]ports.VenueSuggestion, error) {
-	rows, err := r.queries.ListVenueSuggestions(ctx, limit)
-	if err != nil {
-		return nil, err
-	}
-	items := make([]ports.VenueSuggestion, 0, len(rows))
-	for _, row := range rows {
-		latitude, longitude := row.Latitude, row.Longitude
-		items = append(items, ports.VenueSuggestion{
-			Location:   row.Location,
-			UseCount:   row.UseCount,
-			LastUsedAt: row.LastUsedAt.Time,
-			Latitude:   &latitude,
-			Longitude:  &longitude,
-		})
-	}
-	return items, nil
-}

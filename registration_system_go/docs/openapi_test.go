@@ -18,6 +18,7 @@ import (
 	systemhttp "github.com/oryjk/registration_system/registration_system_go/internal/system/adapters/http"
 	teamhttp "github.com/oryjk/registration_system/registration_system_go/internal/team/adapters/http"
 	userhttp "github.com/oryjk/registration_system/registration_system_go/internal/user/adapters/http"
+	venuehttp "github.com/oryjk/registration_system/registration_system_go/internal/venue/adapters/http"
 	wallethttp "github.com/oryjk/registration_system/registration_system_go/internal/wallet/adapters/http"
 )
 
@@ -34,8 +35,8 @@ func TestOpenAPIIsValidAndMatchesGinRoutes(t *testing.T) {
 	if len(missing) != 0 || len(extra) != 0 {
 		t.Fatalf("OpenAPI route mismatch\nmissing: %v\nextra: %v", missing, extra)
 	}
-	if len(documented) != 93 {
-		t.Fatalf("documented operations=%d, want 93", len(documented))
+	if len(documented) != 98 {
+		t.Fatalf("documented operations=%d, want 98", len(documented))
 	}
 }
 
@@ -73,6 +74,11 @@ func TestOpenAPISecurityMatchesPublicAndProtectedRoutes(t *testing.T) {
 		{method: http.MethodGet, path: "/api/v1/admin/wallets/{user_id}"},
 		{method: http.MethodPatch, path: "/api/v1/admin/matches/{id}/score"},
 		{method: http.MethodPost, path: "/api/v1/admin/matches/cover-images"},
+		{method: http.MethodGet, path: "/api/v1/app/venues/map"},
+		{method: http.MethodGet, path: "/api/v1/app/venues/suggestions"},
+		{method: http.MethodGet, path: "/api/v1/admin/venues"},
+		{method: http.MethodPost, path: "/api/v1/admin/venues/images"},
+		{method: http.MethodPut, path: "/api/v1/admin/venues/image"},
 		{method: http.MethodGet, path: "/api/v1/admin/users"},
 		{method: http.MethodPut, path: "/api/v1/admin/users/{id}/match-admin"},
 		{method: http.MethodDelete, path: "/api/v1/admin/users/{id}/match-admin"},
@@ -151,6 +157,7 @@ func completeRouter() *gin.Engine {
 		UserMatches:        matchhttp.NewUserHandler(nil, nil, nil, nil, nil),
 		UserRegistrations:  matchhttp.NewUserRegistrationHandler(nil),
 		AdminMatches:       matchhttp.NewAdminHandler(nil, nil),
+		Venues:             venuehttp.NewHandler(nil),
 		AdminRegistrations: matchhttp.NewAdminRegistrationHandler(nil),
 		TeamApplications:   matchhttp.NewTeamApplicationHandler(nil),
 		Payments:           paymenthttp.NewHandler(nil),

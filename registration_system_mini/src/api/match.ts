@@ -186,6 +186,7 @@ export interface BackendVenueSuggestion {
   longitude?: number | null;
   use_count: number;
   last_used_at: string;
+  image_url?: string;
 }
 
 /** 发布页常用场地建议（历史比赛场地聚合）；减少地图选点 API 消耗。 */

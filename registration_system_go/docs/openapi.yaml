@@ -1561,6 +1561,172 @@ paths:
                             format: uri
         <<: *standardErrors
 
+  /api/v1/app/venues/map:
+    get:
+      operationId: getVenueMap
+      tags: [Venues]
+      summary: 获取全部已定位球场
+      security: *bearerSecurity
+      responses:
+        "200":
+          description: 球场列表，包含可选展示图片
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessBase"
+                  - type: object
+                    required: [data]
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          type: object
+                          required: [location, latitude, longitude, use_count, last_used_at, image_url]
+                          properties:
+                            location: { type: string }
+                            latitude: { type: number, format: double }
+                            longitude: { type: number, format: double }
+                            use_count: { type: integer, format: int64 }
+                            last_used_at: { type: string, format: date-time }
+                            image_url: { type: string, default: "" }
+        <<: *standardErrors
+
+  /api/v1/app/venues/suggestions:
+    get:
+      operationId: getVenueSuggestions
+      tags: [Venues]
+      summary: 获取常用场地建议
+      security: *bearerSecurity
+      parameters:
+        - name: limit
+          in: query
+          schema: { type: integer, default: 10, maximum: 20 }
+      responses:
+        "200":
+          description: 按使用次数和最近使用排序的场地列表
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessBase"
+                  - type: object
+                    required: [data]
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          type: object
+                          required: [location, latitude, longitude, use_count, last_used_at, image_url]
+                          properties:
+                            location: { type: string }
+                            latitude: { type: number, format: double }
+                            longitude: { type: number, format: double }
+                            use_count: { type: integer, format: int64 }
+                            last_used_at: { type: string, format: date-time }
+                            image_url: { type: string, default: "" }
+        <<: *standardErrors
+
+  /api/v1/admin/venues:
+    get:
+      operationId: listAdminVenues
+      tags: [Admin Venues]
+      summary: 获取球场管理列表
+      security: *bearerSecurity
+      responses:
+        "200":
+          description: 已定位球场及展示图片
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessBase"
+                  - type: object
+                    required: [data]
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          type: object
+                          required: [location, latitude, longitude, use_count, last_used_at, image_url]
+                          properties:
+                            location: { type: string }
+                            latitude: { type: number, format: double }
+                            longitude: { type: number, format: double }
+                            use_count: { type: integer, format: int64 }
+                            last_used_at: { type: string, format: date-time }
+                            image_url: { type: string, default: "" }
+        <<: *standardErrors
+
+  /api/v1/admin/venues/images:
+    post:
+      operationId: uploadAdminVenueImage
+      tags: [Admin Venues]
+      summary: 上传球场图片
+      description: 仅管理员可用；multipart 字段 file，支持 PNG/JPEG/WebP，不超过 2MB 和 1600 万像素。上传仅保存资源，需再调用保存球场图片接口完成关联。
+      security: *bearerSecurity
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+      responses:
+        "200":
+          description: 已上传图片的公网 URL
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessBase"
+                  - type: object
+                    required: [data]
+                    properties:
+                      data:
+                        type: object
+                        required: [image_url]
+                        properties:
+                          image_url: { type: string, format: uri }
+        <<: *standardErrors
+
+  /api/v1/admin/venues/image:
+    put:
+      operationId: setAdminVenueImage
+      tags: [Admin Venues]
+      summary: 保存或清除球场图片
+      security: *bearerSecurity
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [location, image_url]
+              properties:
+                location: { type: string }
+                image_url: { type: string, description: "空串清除球场图片" }
+      responses:
+        "200":
+          description: 保存后的球场图片设置
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessBase"
+                  - type: object
+                    required: [data]
+                    properties:
+                      data:
+                        type: object
+                        required: [location, image_url]
+                        properties:
+                          location: { type: string }
+                          image_url: { type: string }
+        <<: *standardErrors
+
   /api/v1/admin/matches/{id}:
     get:
       operationId: getAdminMatch

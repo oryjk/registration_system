@@ -51,6 +51,9 @@ import (
 	userhttp "github.com/oryjk/registration_system/registration_system_go/internal/user/adapters/http"
 	userpostgres "github.com/oryjk/registration_system/registration_system_go/internal/user/adapters/postgres"
 	userapplication "github.com/oryjk/registration_system/registration_system_go/internal/user/application"
+	venuehttp "github.com/oryjk/registration_system/registration_system_go/internal/venue/adapters/http"
+	venuepostgres "github.com/oryjk/registration_system/registration_system_go/internal/venue/adapters/postgres"
+	venueapplication "github.com/oryjk/registration_system/registration_system_go/internal/venue/application"
 	wallethttp "github.com/oryjk/registration_system/registration_system_go/internal/wallet/adapters/http"
 	walletpostgres "github.com/oryjk/registration_system/registration_system_go/internal/wallet/adapters/postgres"
 	walletapplication "github.com/oryjk/registration_system/registration_system_go/internal/wallet/application"
@@ -126,7 +129,11 @@ func BuildDependencies(ctx context.Context, config Config) (Dependencies, func()
 	userMatches := matchapplication.NewUserMatchQueryService(matchRepository)
 	userMatchUpdates := matchapplication.NewUserMatchUpdateService(matchRepository, teamService, matchClock.Now)
 	userMatchHandler := matchhttp.NewUserHandler(userMatches, createMatch, finishMatch, userMatchUpdates, recordMatchScore)
-	venueSuggestions := matchhttp.NewVenueSuggestionHandler(matchapplication.NewVenueSuggestionService(matchRepository))
+	venueRepository := venuepostgres.NewRepository(pool)
+	venueHandler := venuehttp.NewHandler(
+		venueapplication.NewQueryService(venueRepository),
+		venueapplication.NewImageService(venueRepository, buildSystemAssetStore(config)),
+	)
 	adminMatches := matchapplication.NewAdminMatchService(matchRepository, matchClock, adminService)
 	adminMatchHandler := matchhttp.NewAdminHandler(adminMatches, createMatch, matchapplication.NewCoverImageService(buildSystemAssetStore(config)))
 	adminRegistrations := matchapplication.NewAdminRegistrationService(matchRepository, matchClock)
@@ -199,7 +206,7 @@ func BuildDependencies(ctx context.Context, config Config) (Dependencies, func()
 		UserProfiles: userProfileHandler, AppUsers: appUserHandler, ActiveUsers: appUserService, Teams: teamHandler, AppTeams: appTeamHandler,
 		AppTeamManage: appTeamManageHandler, AppTeamSelf: appTeamSelfHandler, AppTeamInvites: appTeamInviteHandler,
 		AppHonorShares: honorShareHandler,
-		UserMatches:    userMatchHandler, VenueSuggestions: venueSuggestions, UserRegistrations: userRegistrationHandler,
+		UserMatches:    userMatchHandler, Venues: venueHandler, UserRegistrations: userRegistrationHandler,
 		AdminMatches: adminMatchHandler, AdminRegistrations: adminRegistrationHandler, TeamApplications: teamApplicationHandler,
 		CaptainMessages: captainMessageHandler,
 		Payments:        paymentHandler, Wallets: walletHandler, MiniReviews: miniReviewHandler,

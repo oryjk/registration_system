@@ -11,6 +11,8 @@ import { buildVenueMatchCreateUrl } from "@/utils/venueMatchPreset";
 import { hasManualLogout } from "@/utils/authStorage";
 import { getCustomNavMetrics } from "@/utils/customNav";
 import { openVenueLocation } from "@/utils/venueLocation";
+import { resolveMinioImage } from "@/utils/minioImageCache";
+import { useMinioImages } from "@/composables/useMinioImages";
 import { getVenueMap } from "@/api/venue";
 import VenueCooperationEntry from "./VenueCooperationEntry.vue";
 import { filterVenueMapPoints, toVenueMapPoints, type VenueMapPoint } from "./venueMapState";
@@ -38,6 +40,8 @@ const error = ref("");
 const loginRequired = ref(false);
 const mapError = ref(false);
 const contactRendered = ref(false);
+const failedVenueImage = ref("");
+const { minioImageSrc } = useMinioImages();
 const filtered = computed(() => filterVenueMapPoints(venues.value, query.value));
 const selected = computed(() => filtered.value.find((venue) => venue.id === selectedId.value) ?? null);
 const center = computed(() => selected.value ?? filtered.value[0]);
@@ -79,6 +83,18 @@ function selectMarker(event: { detail: { markerId: number } }) {
 function showAll() {
   query.value = "";
   selectedId.value = null;
+}
+async function previewVenueImage(url: string) {
+  try {
+    const path = await resolveMinioImage(url);
+    uni.previewImage({
+      urls: [path],
+      current: path,
+      fail: () => uni.showToast({ title: "图片打开失败，请重试", icon: "none" }),
+    });
+  } catch {
+    uni.showToast({ title: "图片打开失败，请重试", icon: "none" });
+  }
 }
 onLoad(() => { void load(); });
 onShow(() => {
@@ -136,6 +152,22 @@ onShow(() => {
           <text class="venue-map-panel__eyebrow">已选球场</text>
           <view class="venue-map-selection">
             <text class="venue-map-panel__title">{{ selected.location }}</text>
+            <!-- #ifdef MP-WEIXIN -->
+            <button
+              v-if="selected.image_url && failedVenueImage !== selected.image_url"
+              class="venue-map-thumbnail"
+              hover-class="venue-map-thumbnail--pressed"
+              :aria-label="`查看${selected.location}球场大图`"
+              @tap="previewVenueImage(selected.image_url)"
+            >
+              <image
+                class="venue-map-thumbnail__image"
+                :src="minioImageSrc(selected.image_url)"
+                mode="aspectFill"
+                @error="failedVenueImage = selected.image_url || ''"
+              />
+            </button>
+            <!-- #endif -->
           </view>
           <view class="venue-map-selection-actions">
             <view class="venue-map-open"><AppButton variant="outline" @click="openVenueLocation(selected)">打开地图</AppButton></view>
@@ -184,6 +216,10 @@ onShow(() => {
 .venue-map-panel__hint { display: block; margin-top: 8rpx; font-size: 24rpx; color: var(--ui-color-text-muted); }
 .venue-map-selection { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; }
 .venue-map-selection .venue-map-panel__title { min-width: 0; flex: 1; }
+.venue-map-thumbnail { flex-shrink: 0; width: 160rpx; height: 120rpx; padding: 0; margin: 0; border: 0; border-radius: var(--ui-radius-button); overflow: hidden; background: var(--ui-color-neutral-bg); line-height: 0; }
+.venue-map-thumbnail::after { border: 0; }
+.venue-map-thumbnail--pressed { opacity: 0.8; }
+.venue-map-thumbnail__image { display: block; width: 100%; height: 100%; }
 .venue-map-selection-actions { display: flex; align-items: center; gap: 16rpx; margin-top: 20rpx; }
 .venue-map-open { flex-shrink: 0; }
 .venue-map-create { flex: 1; min-width: 0; }

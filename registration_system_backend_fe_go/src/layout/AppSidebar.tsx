@@ -4,6 +4,7 @@ import {
   ClipboardCheck,
   Coffee,
   LayoutDashboard,
+  MapPinned,
   PanelLeftClose,
   PanelLeftOpen,
   Settings,
@@ -49,6 +50,13 @@ const NAV_ITEMS: NavItem[] = [
     description: "赛事与报名",
     icon: CalendarDays,
     matchPrefixes: ["/matches"],
+  },
+  {
+    path: "/venues",
+    label: "球场管理",
+    description: "定位与展示图片",
+    icon: MapPinned,
+    matchPrefixes: ["/venues"],
   },
   {
     path: "/teams",
