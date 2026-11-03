@@ -15,6 +15,8 @@ const props = withDefaults(defineProps<{
   selectedId?: string | number | null;
   interactive?: boolean;
   disabled?: boolean;
+  /** 首页独立排版：头像占满一行，名单开关放在下方。H5 忽略。 */
+  homeLayout?: boolean;
 }>(), {
   size: "sm",
   selectedId: null,
@@ -23,6 +25,14 @@ const props = withDefaults(defineProps<{
 });
 const emit = defineEmits<{ (event: "select", id: string | number): void; (event: "layoutChange"): void; (event: "expandedChange", expanded: boolean): void }>();
 const expanded = ref(false);
+const isHomeLayout = computed(() => {
+  // #ifdef MP-WEIXIN
+  return props.homeLayout === true;
+  // #endif
+  // #ifndef MP-WEIXIN
+  return false;
+  // #endif
+});
 const containerWidth = ref(0);
 const scrollLeft = ref(0);
 const failedImages = ref<Record<string, boolean>>({});
@@ -88,7 +98,7 @@ watch(trackHeight, () => {
 </script>
 
 <template>
-  <view data-deck-ignore="true" class="expandable-avatars" @tap.stop>
+  <view data-deck-ignore="true" class="expandable-avatars" :class="{ 'expandable-avatars--home': isHomeLayout }" @tap.stop>
     <!-- 只隔离头像滚动，勿在外层拦截 touchstart，否则小程序按钮 tap 无法触发。 -->
     <view data-deck-ignore="true" class="expandable-avatars__items">
       <scroll-view data-deck-ignore="true" scroll-x :show-scrollbar="false" :scroll-left="scrollLeft" class="expandable-avatars__scroll" @touchmove.stop :style="{ height: `${trackHeight}px` }" @scroll="scrollLeft = $event.detail.scrollLeft">
@@ -122,7 +132,7 @@ watch(trackHeight, () => {
       v-if="items.length > 0"
       data-deck-ignore="true"
       class="expandable-avatars__toggle"
-      :style="{ marginTop: `${crownHeadroom}px` }"
+      :style="{ marginTop: `${isHomeLayout ? 0 : crownHeadroom}px` }"
       :disabled="disabled"
       :aria-expanded="expanded"
       :aria-label="expanded ? '收起报名名单' : '展开报名名单'"
@@ -131,7 +141,8 @@ watch(trackHeight, () => {
     >
       <text data-deck-ignore="true">{{ expanded ? '收起' : '展开' }}</text>
       <!-- #ifdef MP-WEIXIN -->
-      <text data-deck-ignore="true" class="expandable-avatars__chevron ui-arrow-text" :class="{ 'expandable-avatars__chevron--left': expanded }" aria-hidden="true">→</text>
+      <image v-if="isHomeLayout" data-deck-ignore="true" class="expandable-avatars__home-chevron" :class="{ 'expandable-avatars__home-chevron--open': expanded }" src="/static/home-icons/chevron-down.png" mode="aspectFit" aria-hidden="true" />
+      <text v-else data-deck-ignore="true" class="expandable-avatars__chevron ui-arrow-text" :class="{ 'expandable-avatars__chevron--left': expanded }" aria-hidden="true">→</text>
       <!-- #endif -->
       <!-- #ifndef MP-WEIXIN -->
       <view data-deck-ignore="true" class="expandable-avatars__chevron" :class="{ 'expandable-avatars__chevron--left': expanded }" />
@@ -186,10 +197,18 @@ watch(trackHeight, () => {
 .expandable-avatars__chevron { width: 10rpx; height: 10rpx; border-right: 3rpx solid currentColor; border-bottom: 3rpx solid currentColor; transform: rotate(-45deg); transition: transform var(--ui-motion-expand-duration) var(--ui-motion-ease-out); }
 .expandable-avatars__chevron--left { transform: rotate(135deg); }
 /* #ifdef MP-WEIXIN */
+.expandable-avatars--home { flex-direction: column; align-items: stretch; gap: 0; }
+.expandable-avatars--home .expandable-avatars__items { flex: auto; width: 100%; }
+.expandable-avatars--home .expandable-avatars__toggle { align-self: flex-end; justify-content: flex-end; min-width: var(--ui-control-min-height); min-height: var(--ui-control-min-height); margin-bottom: calc(0rpx - var(--ui-space-3)); padding: 0; color: var(--ui-home-muted); font-size: var(--ui-text-sm); }
+.expandable-avatars__home-chevron { flex-shrink: 0; width: var(--ui-icon-sm); height: var(--ui-icon-sm); transition: transform var(--ui-motion-expand-duration) var(--ui-motion-ease-out); }
+.expandable-avatars__home-chevron--open { transform: rotate(180deg); }
 .expandable-avatars__chevron { width: 32rpx; height: 32rpx; border: 0; font-size: 32rpx; line-height: 1; transform: none; }
 .expandable-avatars__chevron--left { transform: rotate(180deg); }
 /* #endif */
 @media (prefers-reduced-motion: reduce) {
   .expandable-avatars__scroll, .expandable-avatars__track, .expandable-avatars__avatar, .expandable-avatars__chevron { transition: none; }
+  /* #ifdef MP-WEIXIN */
+  .expandable-avatars__home-chevron { transition: none; }
+  /* #endif */
 }
 </style>

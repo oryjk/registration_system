@@ -104,7 +104,7 @@ function handleSelect(team: TeamProfileViewModel) {
       </view>
       <text class="home-team-entry__name">{{ currentTeam.name }}</text>
       <!-- #ifdef MP-WEIXIN -->
-      <text v-if="teams.length >= 2" class="home-team-entry__caret ui-arrow-text" :class="{ 'home-team-entry__caret--open': isOpen }" aria-hidden="true">↓</text>
+      <image v-if="teams.length >= 2" class="home-team-entry__caret" :class="{ 'home-team-entry__caret--open': isOpen }" src="/static/home-icons/chevron-down.png" mode="aspectFit" aria-hidden="true" />
       <!-- #endif -->
       <!-- #ifndef MP-WEIXIN -->
       <view v-if="teams.length >= 2" class="home-team-entry__caret" :class="{ 'home-team-entry__caret--open': isOpen }" />
@@ -139,7 +139,12 @@ function handleSelect(team: TeamProfileViewModel) {
             <wd-icon name="check" size="28rpx" color="var(--ui-color-accent-deep)" />
           </view>
           <view v-else class="home-team-option__action">
+            <!-- #ifdef MP-WEIXIN -->
+            <image class="home-team-option__chevron" src="/static/home-icons/chevron-right.png" mode="aspectFit" aria-hidden="true" />
+            <!-- #endif -->
+            <!-- #ifndef MP-WEIXIN -->
             <wd-icon name="arrow-right" size="28rpx" color="var(--ui-color-accent-deep)" />
+            <!-- #endif -->
           </view>
         </view>
       </scroll-view>
@@ -217,6 +222,10 @@ function handleSelect(team: TeamProfileViewModel) {
 /* #ifdef MP-WEIXIN */
 .home-team-entry__caret { width: 28rpx; height: 28rpx; margin: 0 4rpx 0 8rpx; border: 0; color: var(--ui-color-text-muted); font-size: 28rpx; line-height: 1; transform: none; }
 .home-team-entry__caret--open { transform: rotate(180deg); }
+.home-team-entry { gap: var(--ui-space-3); padding-left: 0; }
+.home-team-entry__logo { width: var(--ui-space-12); height: var(--ui-space-12); border-radius: var(--ui-radius-button); background: transparent; }
+.home-team-entry__name { font-size: var(--ui-text-title); }
+.home-team-option__chevron { width: var(--ui-icon-sm); height: var(--ui-icon-sm); }
 /* #endif */
 
 .home-team-overlay {

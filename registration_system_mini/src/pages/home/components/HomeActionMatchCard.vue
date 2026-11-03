@@ -1,9 +1,14 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import RegistrationProgressSummary from "@/components/ui/RegistrationProgressSummary.vue";
+// #ifndef MP-WEIXIN
 import HomeMatchCalendar from "./HomeMatchCalendar.vue";
+// #endif
 import { useMinioImages } from "@/composables/useMinioImages";
 import { DEFAULT_MATCH_COVER_URL } from "@/config/matchCover";
+// #ifdef MP-WEIXIN
+import { HOME_VISUAL_ASSETS } from "@/config/homeVisualAssets";
+// #endif
 import type { AvatarItem } from "@/components/ui/avatarTypes";
 import type { AppMatchDetailResponse } from "@/types/match";
 import type { HomeMatchCardViewModel } from "@/types/viewModels";
@@ -31,7 +36,12 @@ const emit = defineEmits<{
 const card = computed(() => buildHomeActionMatchCardState(props.match, props.detail, new Date(props.now)));
 const { minioImageSrc } = useMinioImages();
 const failedCoverUrl = ref("");
-const coverUrl = computed(() => failedCoverUrl.value === card.value.coverImageUrl ? DEFAULT_MATCH_COVER_URL : card.value.coverImageUrl);
+const coverUrl = computed(() => {
+  // #ifdef MP-WEIXIN
+  if (card.value.coverImageUrl === DEFAULT_MATCH_COVER_URL || failedCoverUrl.value === card.value.coverImageUrl) return HOME_VISUAL_ASSETS.actionCover;
+  // #endif
+  return failedCoverUrl.value === card.value.coverImageUrl ? DEFAULT_MATCH_COVER_URL : card.value.coverImageUrl;
+});
 const visiblePages = computed(() => {
   const count = props.pageCount ?? 1;
   const start = Math.max(0, Math.min((props.pageIndex ?? 0) - 2, count - 5));
@@ -43,6 +53,9 @@ const remainingLabel = computed(() => {
   return maximum && card.value.joined < maximum ? `还剩 ${maximum - card.value.joined} 个名额` : "";
 });
 const phaseLabel = computed(() => card.value.availability || (card.value.phase === "upcoming" ? "报名中" : card.value.phaseLabel));
+// #ifdef MP-WEIXIN
+const coverDate = computed(() => card.value.calendarMonth === "待定" ? "日期待定" : `${card.value.calendarMonth}${Number(card.value.calendarDay)}日`);
+// #endif
 function selectAvatar(id: string | number) {
   if (props.interactionBlocked || props.navigating) return;
   const avatar = card.value.avatars.find(item => item.id === id);
@@ -58,14 +71,26 @@ function openDetail() {
     <view class="now-card-heading">
       <image v-if="minioImageSrc(coverUrl)" class="now-cover-image" :src="minioImageSrc(coverUrl)" mode="aspectFill" aria-hidden="true" @error="failedCoverUrl = card.coverImageUrl" />
       <view class="now-cover-shade" />
+      <!-- #ifndef MP-WEIXIN -->
       <view v-if="match.signupScopeLabel" class="now-scope-badge">
         <image class="now-cover-icon" src="/static/icons/lucide/users.png" mode="aspectFit" aria-hidden="true" />
         <text>{{ match.signupScopeLabel }}</text>
       </view>
       <view class="now-calendar-position"><HomeMatchCalendar :month="card.calendarMonth" :day="card.calendarDay" :weekday="card.weekday" /></view>
+      <!-- #endif -->
+      <!-- #ifdef MP-WEIXIN -->
+      <text class="now-phase now-phase--cover" :class="{ 'now-phase--neutral': card.phase !== 'upcoming' || card.availability }">{{ phaseLabel }}</text>
+      <!-- #endif -->
       <view class="now-cover-copy">
+        <!-- #ifdef MP-WEIXIN -->
+        <text class="now-title">{{ card.title }}</text>
+        <view class="now-date-row"><text>{{ coverDate }} {{ card.weekday }} {{ card.time }}</text><text v-if="card.endTime" class="now-end-time">— {{ card.endTime }}</text></view>
+        <text v-if="match.signupScopeLabel" class="now-scope-label">{{ match.signupScopeLabel }}</text>
+        <!-- #endif -->
+        <!-- #ifndef MP-WEIXIN -->
         <view class="now-time-row"><text class="now-time">{{ card.time }}</text><text v-if="card.endTime" class="now-end-time">— {{ card.endTime }}</text></view>
         <text class="now-title">{{ card.title }}</text>
+        <!-- #endif -->
       </view>
       <view v-if="(pageCount ?? 1) > 1" class="now-page-dots" :aria-label="`第 ${(pageIndex ?? 0) + 1} 场，共 ${pageCount} 场`">
         <view v-for="page in visiblePages" :key="page" class="now-page-dot" :class="{ 'now-page-dot--active': page === (pageIndex ?? 0) }" />
@@ -74,10 +99,20 @@ function openDetail() {
     <view class="now-body">
       <view class="now-location-row">
         <view class="now-info"><image class="now-icon" src="/static/icons/lucide/map-pin.png" mode="aspectFit" aria-hidden="true" /><text class="now-location">{{ card.venue }}</text></view>
+        <!-- #ifndef MP-WEIXIN -->
         <text class="now-phase" :class="{ 'now-phase--neutral': card.phase !== 'upcoming' || card.availability }">{{ phaseLabel }}</text>
+        <!-- #endif -->
       </view>
       <view class="now-details-row">
-        <view class="now-detail-item"><image class="now-icon" src="/static/icons/lucide/trophy.png" mode="aspectFit" aria-hidden="true" /><text class="now-meta">{{ match.formatLabel }} · 对手 {{ card.opponent }}</text></view>
+        <view class="now-detail-item">
+          <!-- #ifdef MP-WEIXIN -->
+          <image class="now-icon" src="/static/icons/lucide/users.png" mode="aspectFit" aria-hidden="true" />
+          <!-- #endif -->
+          <!-- #ifndef MP-WEIXIN -->
+          <image class="now-icon" src="/static/icons/lucide/trophy.png" mode="aspectFit" aria-hidden="true" />
+          <!-- #endif -->
+          <text class="now-meta">{{ match.formatLabel }} · 对手 {{ card.opponent }}</text>
+        </view>
         <view class="now-detail-item"><image class="now-icon" src="/static/icons/lucide/wallet.png" mode="aspectFit" aria-hidden="true" /><text class="now-meta">{{ card.feeLabel }}</text></view>
       </view>
       <view v-if="match.showRegistrationProgress" class="now-registration">
@@ -96,10 +131,22 @@ function openDetail() {
       </view>
       <view class="now-action-row">
         <view class="now-personal-status">
-          <view class="now-status" :class="`now-status--${card.statusTone}`"><image class="now-status-icon" :src="`/static/icons/lucide/${card.statusIcon}.png`" mode="aspectFit" aria-hidden="true" /><text>{{ card.statusLabel }}</text></view>
+          <view class="now-status" :class="`now-status--${card.statusTone}`">
+            <!-- #ifdef MP-WEIXIN -->
+            <image class="now-status-icon" :src="card.statusTone === 'success' ? '/static/home-icons/circle-check.png' : `/static/icons/lucide/${card.statusIcon}.png`" mode="aspectFit" aria-hidden="true" />
+            <!-- #endif -->
+            <!-- #ifndef MP-WEIXIN -->
+            <image class="now-status-icon" :src="`/static/icons/lucide/${card.statusIcon}.png`" mode="aspectFit" aria-hidden="true" />
+            <!-- #endif -->
+            <text>{{ card.statusLabel }}</text>
+          </view>
           <text v-if="card.deadlineLabel || remainingLabel" class="now-deadline">{{ [remainingLabel, card.deadlineLabel].filter(Boolean).join(' · ') }}</text>
         </view>
-        <button class="now-primary ui-native-button ui-native-button--primary" :disabled="interactionBlocked || navigating || !match.canOpenDetail" hover-class="now-primary-pressed" @tap="openDetail">{{ navigating ? "正在打开…" : card.actionLabel }} <text class="ui-arrow-text now-arrow">→</text></button>
+        <button class="now-primary ui-native-button ui-native-button--primary" :disabled="interactionBlocked || navigating || !match.canOpenDetail" hover-class="now-primary-pressed" @tap="openDetail">{{ navigating ? "正在打开…" : card.actionLabel }}
+          <!-- #ifndef MP-WEIXIN -->
+          <text class="ui-arrow-text now-arrow">→</text>
+          <!-- #endif -->
+        </button>
       </view>
       <view v-if="loading || error" class="now-footer">
         <text v-if="loading" class="now-meta">正在核对报名信息…</text>
@@ -168,4 +215,30 @@ function openDetail() {
 .now-footer { margin-top: 14rpx; }
 .now-link { margin: 0; padding: 10rpx 0; border: 0; background: transparent; color: var(--now-color-muted); font-size: 22rpx; line-height: 1.5; white-space: normal; text-align: left; }
 .now-link-pressed { background: var(--now-color-soft); }
+
+/* #ifdef MP-WEIXIN */
+.home-now-card { margin-top: 0; border: var(--ui-panel-border); border-radius: var(--ui-home-radius); box-shadow: var(--ui-card-shadow); }
+.now-card-heading { min-height: var(--ui-home-cover-height); padding: var(--ui-home-padding); justify-content: center; }
+.now-cover-copy { margin-top: var(--ui-space-5); padding-right: 0; }
+.now-title { max-width: 60%; margin-top: 0; font-size: var(--ui-home-cover-title-size); line-height: var(--ui-line-height-tight); }
+.now-date-row { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--ui-space-2); margin-top: var(--ui-space-3); font-size: var(--ui-text-label); line-height: var(--ui-line-height-compact); font-variant-numeric: tabular-nums; }
+.now-date-row .now-end-time { font-size: var(--ui-text-sm); }
+.now-scope-label { display: block; margin-top: var(--ui-space-2); color: var(--now-cover-muted); font-size: var(--ui-text-xs); line-height: var(--ui-line-height-compact); }
+.now-phase--cover { position: absolute; z-index: 1; top: var(--ui-home-padding); right: var(--ui-home-padding); max-width: 38%; padding: var(--ui-space-2) var(--ui-space-4); border-radius: var(--ui-radius-round); background: var(--ui-color-accent); color: var(--ui-color-text); font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-medium); }
+.now-phase--cover.now-phase--neutral { background: var(--now-status-neutral-bg); color: var(--now-status-neutral-fg); }
+.now-body { padding: var(--ui-space-6) var(--ui-home-padding) var(--ui-home-padding); }
+.now-icon { width: var(--ui-icon-md); height: var(--ui-icon-md); margin-top: var(--ui-space-1); }
+.now-info, .now-detail-item { gap: var(--ui-space-3); }
+.now-location { font-size: var(--ui-text-subtitle); }
+.now-details-row { margin-top: var(--ui-space-5); gap: var(--ui-space-3) var(--ui-space-5); }
+.now-detail-item .now-icon { width: var(--ui-icon-md); height: var(--ui-icon-md); }
+.now-meta { font-size: var(--ui-text-body); }
+.now-registration { margin-top: var(--ui-space-6); padding-top: var(--ui-space-6); border-top: var(--ui-border-hairline); }
+.now-action-row { margin-top: var(--ui-space-6); padding-top: var(--ui-space-6); border-top: var(--ui-border-hairline); gap: var(--ui-space-4); }
+.now-status { align-items: center; gap: var(--ui-space-3); font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-heading); }
+.now-status--success { color: var(--ui-home-positive); }
+.now-status-icon { width: var(--ui-home-status-icon-size); height: var(--ui-home-status-icon-size); margin-top: 0; }
+.now-deadline { padding-left: calc(var(--ui-home-status-icon-size) + var(--ui-space-3)); color: var(--ui-home-muted); font-size: var(--ui-text-sm); }
+.now-primary { min-width: var(--ui-home-action-min-width); padding: var(--ui-space-4) var(--ui-space-6); border-radius: var(--ui-radius-card); font-size: var(--ui-text-subtitle); }
+/* #endif */
 </style>

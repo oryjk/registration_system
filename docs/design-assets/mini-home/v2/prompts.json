@@ -1,0 +1,16 @@
+{
+  "tool": "built-in imagegen",
+  "reference": "approved-home.png",
+  "assets": [
+    {
+      "file": "venue-map.webp",
+      "transparent_background": true,
+      "prompt": "Use case: compositing. Asset type: transparent football field map illustration for the approved WeChat homepage. Reference image: approved home UI. Recreate ONLY the small isometric football pitch illustration visible on the right of the pale mint '球场地图' banner, as a standalone transparent asset. Match it very closely: emerald green rectangular football pitch with accurate thin white field lines, center circle, goals at both ends, low layered white beveled rounded base, small simple green trees around the edge, large smooth turquoise map pin floating at rear right, soft tiny contact shadow. Clean light 3D isometric app illustration, sparse geometry and pleasing bright colors, no buildings or city, no fences, no roads, no extra footballs, no characters, no writing, no UI, no border, no background fill. Landscape canvas around 3:2 with the illustration centered, artwork filling frame with modest transparent margin, viewed from elevated front isometric angle exactly as the approved banner. Output genuinely transparent RGBA."
+    },
+    {
+      "file": "action-cover.webp",
+      "transparent_background": false,
+      "prompt": "Use case: compositing. Asset type: background photo for the top match card of the approved football mini-program homepage. Reference: approved Chinese UI screenshot. Recreate ONLY the photographic football pitch background visible behind the '球队友谊赛' heading in its top card. No UI or text. Match this reference closely: an EMPTY realistic outdoor football pitch late at night, rich dark navy-black sky and deep forest green surroundings, one bright white floodlight high just right of center, a white football goal towards the right edge, subdued green artificial turf across the lower half with curved white pitch lines in the foreground. The LEFT HALF is naturally DARK quiet negative space, empty grass and trees at the horizon so white UI title can be overlaid later. No people, no players, no big football in the foreground, no sun or orange sunset, no stadium seating, no building skyline. Premium realistic sports photography, softly natural subtle texture and lighting, credible bright floodlight, clean uncluttered composition, crisp pitch lines and grass. Wide landscape about 3:1 crop suitable for a shallow card banner. No logos, no watermarks, no words, no icon, no border. This is a standalone image asset, not another screen mockup."
+    }
+  ]
+}

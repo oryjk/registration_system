@@ -388,6 +388,32 @@ page,
   --ui-floating-action-inset: var(--ui-space-6);
   --ui-content-max-width: 702rpx;
 
+  /* #ifdef MP-WEIXIN */
+  /* Approved homepage, 2026-11-03. Kept separate from other pages and H5. */
+  --ui-home-muted: #65758b;
+  --ui-home-positive: #16b979;
+  --ui-home-ready-bg: #dcf9e5;
+  --ui-home-map-bg: #e6f6f1;
+  --ui-home-active: #00cfb3;
+  --ui-home-inset: var(--ui-space-5);
+  --ui-home-padding: var(--ui-space-7);
+  --ui-home-radius: 36rpx;
+  --ui-home-cover-height: 224rpx;
+  --ui-home-heading-size: var(--ui-text-display);
+  --ui-home-cover-title-size: 40rpx;
+  --ui-home-section-gap: var(--ui-space-8);
+  --ui-home-list-cover-size: 128rpx;
+  --ui-home-map-height: 152rpx;
+  --ui-home-map-art-width: 272rpx;
+  --ui-home-map-art-height: 180rpx;
+  --ui-home-map-art-inset: var(--ui-space-10);
+  --ui-home-map-copy-width: 232rpx;
+  --ui-home-progress-height: 12rpx;
+  --ui-home-status-icon-size: var(--ui-icon-control);
+  --ui-home-action-min-width: 280rpx;
+  --ui-home-tab-radius: var(--ui-space-8);
+  /* #endif */
+
   --app-primary: var(--ui-color-accent);
   --app-primary-text: var(--ui-color-accent-fg);
 

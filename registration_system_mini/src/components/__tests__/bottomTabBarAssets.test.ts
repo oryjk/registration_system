@@ -19,7 +19,7 @@ describe("bottom tab bar assets", () => {
   test("keeps the tab bar component under a single root wrapper for mp-weixin renderer stability", async () => {
     const tabBarSource = await Bun.file(sourcePath("components/BottomTabBar.vue")).text();
 
-    expect(tabBarSource.includes('<view class="custom-tabbar-shell">')).toEqual(true);
+    expect(tabBarSource.includes('<view class="custom-tabbar-shell"')).toEqual(true);
     expect(tabBarSource.includes(":class=\"['custom-tabbar', shouldShowCreateEntry ? '' : 'custom-tabbar-no-create']\"")).toEqual(true);
     expect(tabBarSource.includes(":class=\"['custom-tabbar', isOpen ? 'custom-tabbar-open' : '']\"")).toEqual(false);
   });

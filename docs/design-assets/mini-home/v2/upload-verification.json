@@ -1,0 +1,20 @@
+{
+  "assets": [
+    {
+      "url": "https://oryjk.cn:82/registration/static/home/visuals/v2/aec3a53afbd0535f68d01361.webp",
+      "status": 200,
+      "content_type": "image/webp",
+      "cache_control": "public,max-age=31536000,immutable",
+      "bytes": 37618,
+      "sha256": "aec3a53afbd0535f68d013611fe32be4b2c3996eab5e4c97676d345c0a5f0c13"
+    },
+    {
+      "url": "https://oryjk.cn:82/registration/static/home/visuals/v2/f9e0e0030d00c71f3197a943.webp",
+      "status": 200,
+      "content_type": "image/webp",
+      "cache_control": "public,max-age=31536000,immutable",
+      "bytes": 43410,
+      "sha256": "f9e0e0030d00c71f3197a9435cb3a8813b452c9caecbed93f05e0bdaf1b0612f"
+    }
+  ]
+}

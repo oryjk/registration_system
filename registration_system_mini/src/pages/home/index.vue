@@ -500,6 +500,17 @@ onShareTimeline(() => ({
         <template v-else>
           <!-- 待处理比赛统一由上方行动卡展示；下方列表仅保留进行中与已结束的查看入口。 -->
           <HomeSectionHeader v-if="!isGuestMode && additionalOngoingMatches.length" title="进行中的比赛" :action-label="ongoingMatches.length ? '更多' : undefined" @action='openMatchList("ongoing")' />
+          <!-- #ifdef MP-WEIXIN -->
+          <HomeMatchList
+            v-if="!isGuestMode && additionalOngoingMatches.length"
+            :matches="additionalOngoingMatches"
+            hide-stage-label
+            :grouped="true"
+            :navigating-match-id="navigatingMatchId"
+            @match-tap="handleMatchTap"
+          />
+          <!-- #endif -->
+          <!-- #ifndef MP-WEIXIN -->
           <HomeMatchList
             v-if="!isGuestMode && additionalOngoingMatches.length"
             :matches="additionalOngoingMatches"
@@ -507,7 +518,19 @@ onShareTimeline(() => ({
             :navigating-match-id="navigatingMatchId"
             @match-tap="handleMatchTap"
           />
+          <!-- #endif -->
           <HomeSectionHeader v-if="!isGuestMode && endedMatches.length" title="已结束的比赛" action-label="更多" @action='openMatchList("ended")' />
+          <!-- #ifdef MP-WEIXIN -->
+          <HomeMatchList
+            v-if="!isGuestMode && endedMatches.length"
+            :matches="endedMatches"
+            hide-stage-label
+            :grouped="true"
+            :navigating-match-id="navigatingMatchId"
+            @match-tap="handleMatchTap"
+          />
+          <!-- #endif -->
+          <!-- #ifndef MP-WEIXIN -->
           <HomeMatchList
             v-if="!isGuestMode && endedMatches.length"
             :matches="endedMatches"
@@ -515,6 +538,7 @@ onShareTimeline(() => ({
             :navigating-match-id="navigatingMatchId"
             @match-tap="handleMatchTap"
           />
+          <!-- #endif -->
         </template>
       </view>
     </view>
@@ -667,6 +691,7 @@ onShareTimeline(() => ({
 }
 /* #endif */
 /* #ifdef MP-WEIXIN */
+.home-content { padding-right: var(--ui-home-inset); padding-left: var(--ui-home-inset); }
 .home-empty { border: var(--ui-panel-border); border-radius: var(--ui-card-radius); background: var(--ui-card-bg); box-shadow: var(--ui-card-shadow); }
 /* #endif */
 </style>

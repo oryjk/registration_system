@@ -1,10 +1,11 @@
 /** 微信首页及相关引导页复用的压缩素材；MinIO 按内容哈希命名，图片不进包。 */
 export const HOME_VISUAL_ASSETS = {
   hero: "https://oryjk.cn:82/registration/static/home/visuals/v1/65166cb99b1a5d860e8fff7f.webp",
+  actionCover: "https://oryjk.cn:82/registration/static/home/visuals/v2/f9e0e0030d00c71f3197a943.webp",
   createTeam: "https://oryjk.cn:82/registration/static/home/visuals/v1/26de9fb699849290c0cd2d0e.webp",
   joinTeam: "https://oryjk.cn:82/registration/static/home/visuals/v1/bfecb31f2565177d39156546.webp",
   findGame: "https://oryjk.cn:82/registration/static/home/visuals/v1/be2a00dd2bb3702ef0173336.webp",
-  venueMap: "https://oryjk.cn:82/registration/static/home/visuals/v1/bf98e5a385fe831c55f8238a.webp",
+  venueMap: "https://oryjk.cn:82/registration/static/home/visuals/v2/aec3a53afbd0535f68d01361.webp",
 } as const;
 
 /** 十张默认比赛缩略图；保持顺序稳定，比赛 ID 决定分配结果。 */

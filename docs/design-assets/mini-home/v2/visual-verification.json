@@ -1,0 +1,65 @@
+{
+  "kind": "browser preview of MP-WEIXIN component templates; not WeChat native simulator",
+  "results": [
+    {
+      "scenario": "standard",
+      "width": 393,
+      "scrollWidth": 393,
+      "titleBadgeOverlap": false,
+      "statusButtonOverlap": false,
+      "avatarCount": 10,
+      "cardHeight": 467.453125,
+      "passed": true
+    },
+    {
+      "scenario": "narrow-long",
+      "width": 320,
+      "scrollWidth": 320,
+      "titleBadgeOverlap": false,
+      "statusButtonOverlap": false,
+      "avatarCount": 24,
+      "cardHeight": 427.34375,
+      "passed": true
+    },
+    {
+      "scenario": "unconfirmed",
+      "width": 320,
+      "scrollWidth": 320,
+      "titleBadgeOverlap": false,
+      "statusButtonOverlap": false,
+      "avatarCount": 10,
+      "cardHeight": 430.734375,
+      "passed": true
+    },
+    {
+      "scenario": "pending",
+      "width": 375,
+      "scrollWidth": 375,
+      "titleBadgeOverlap": false,
+      "statusButtonOverlap": false,
+      "avatarCount": 10,
+      "cardHeight": 446.453125,
+      "passed": true
+    },
+    {
+      "scenario": "unlimited",
+      "width": 430,
+      "scrollWidth": 430,
+      "titleBadgeOverlap": false,
+      "statusButtonOverlap": false,
+      "avatarCount": 10,
+      "cardHeight": 510.921875,
+      "passed": true
+    },
+    {
+      "scenario": "payment",
+      "width": 375,
+      "scrollWidth": 375,
+      "titleBadgeOverlap": false,
+      "statusButtonOverlap": false,
+      "avatarCount": 10,
+      "cardHeight": 446.453125,
+      "passed": true
+    }
+  ]
+}

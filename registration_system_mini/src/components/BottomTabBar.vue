@@ -80,6 +80,16 @@ const items: Array<{
   },
 ];
 
+function iconFor(item: typeof items[number]) {
+  // #ifdef MP-WEIXIN
+  if (props.current === "home") {
+    const icons = { home: "home-active", challenge: "football", stats: "stats", mine: "user" };
+    return `/static/home-icons/${icons[item.key]}.png`;
+  }
+  // #endif
+  return props.current === item.key ? tabBarSelectedIcons[accentTheme.value][item.key] : item.icon;
+}
+
 const switchingTab = ref(false);
 const indicatorMotion = computed(() => tabBarMotion.active.value?.to === props.current ? tabBarMotion.active.value : null);
 const indicatorStyle = computed(() => ({
@@ -161,7 +171,7 @@ function handleCreateIndividualChallenge() {
 </script>
 
 <template>
-  <view class="custom-tabbar-shell">
+  <view class="custom-tabbar-shell" :class="{ 'custom-tabbar-shell--home': props.current === 'home' }">
     <view :class="['custom-tabbar', shouldShowCreateEntry ? '' : 'custom-tabbar-no-create']">
       <view class="custom-tab-indicator-track" aria-hidden="true">
         <view
@@ -186,7 +196,7 @@ function handleCreateIndividualChallenge() {
             <image
               class="custom-tab-icon-image"
               :class="props.current === item.key ? 'custom-tab-icon-image--selected' : ''"
-              :src="props.current === item.key ? tabBarSelectedIcons[accentTheme][item.key] : item.icon"
+              :src="iconFor(item)"
               mode="aspectFit"
             />
             <view v-if="item.key === 'mine' && unreadCount > 0" class="custom-tab-badge">
@@ -214,7 +224,7 @@ function handleCreateIndividualChallenge() {
             <image
               class="custom-tab-icon-image"
               :class="props.current === item.key ? 'custom-tab-icon-image--selected' : ''"
-              :src="props.current === item.key ? tabBarSelectedIcons[accentTheme][item.key] : item.icon"
+              :src="iconFor(item)"
               mode="aspectFit"
             />
             <view v-if="item.key === 'mine' && unreadCount > 0" class="custom-tab-badge">
@@ -238,7 +248,7 @@ function handleCreateIndividualChallenge() {
             <image
               class="custom-tab-icon-image"
               :class="props.current === item.key ? 'custom-tab-icon-image--selected' : ''"
-              :src="props.current === item.key ? tabBarSelectedIcons[accentTheme][item.key] : item.icon"
+              :src="iconFor(item)"
               mode="aspectFit"
             />
             <view v-if="item.key === 'mine' && unreadCount > 0" class="custom-tab-badge">
@@ -394,6 +404,14 @@ function handleCreateIndividualChallenge() {
 .custom-tab-plus-open {
   transform: rotate(135deg);
 }
+
+/* #ifdef MP-WEIXIN */
+.custom-tabbar-shell--home .custom-tabbar { border: 0; border-radius: var(--ui-home-tab-radius); background: var(--ui-color-surface-translucent); }
+.custom-tabbar-shell--home .custom-tab-indicator { background: transparent; }
+.custom-tabbar-shell--home .custom-tab-item-active .custom-tab-label { color: var(--ui-home-active); font-weight: var(--ui-font-weight-medium); }
+.custom-tabbar-shell--home .custom-tab-label { color: var(--ui-home-muted); font-weight: var(--ui-font-weight-body); }
+.custom-tabbar-shell--home .custom-tab-plus-symbol { color: var(--ui-color-text-inverse); font-weight: var(--ui-font-weight-body); }
+/* #endif */
 
 .create-menu-overlay {
   position: fixed;

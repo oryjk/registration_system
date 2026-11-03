@@ -20,6 +20,20 @@ const props = defineProps<{
 }>();
 const emit = defineEmits<{ (event: "avatarSelect", id: string | number): void; (event: "layoutChange"): void; (event: "expandedChange", expanded: boolean): void }>();
 const state = computed(() => registrationProgressState(props.joined, props.minimum, props.maximum));
+const scaleStyle = computed(() => {
+  // #ifdef MP-WEIXIN
+  if (props.actionCard && state.value.minimumPercent !== null) return { left: `${Math.max(12, Math.min(65, state.value.minimumPercent))}%`, transform: "translateX(-50%)" };
+  // #endif
+  return {};
+});
+const avatarSize = computed(() => {
+  // #ifdef MP-WEIXIN
+  return props.actionCard ? "md" as const : "sm" as const;
+  // #endif
+  // #ifndef MP-WEIXIN
+  return "sm" as const;
+  // #endif
+});
 </script>
 
 <template>
@@ -31,7 +45,7 @@ const state = computed(() => registrationProgressState(props.joined, props.minim
     </view>
     <text v-if="subtitle" class="registration-subtitle">{{ subtitle }}</text>
     <view v-if="avatars" class="registration-crowd">
-      <ExpandableAvatarStack v-if="avatars.length" :items="avatars" size="sm" :disabled="disabled" @select="emit('avatarSelect', $event)" @layout-change="emit('layoutChange')" @expanded-change="emit('expandedChange', $event)" />
+      <ExpandableAvatarStack v-if="avatars.length" :items="avatars" :size="avatarSize" :home-layout="actionCard" :disabled="disabled" @select="emit('avatarSelect', $event)" @layout-change="emit('layoutChange')" @expanded-change="emit('expandedChange', $event)" />
       <text v-else class="registration-meta">暂无报名球员</text>
     </view>
     <view class="registration-progress">
@@ -42,7 +56,7 @@ const state = computed(() => registrationProgressState(props.joined, props.minim
       </view>
       <!-- 保留成行分隔点与分段颜色，刻度只标右端容量。 -->
       <view v-if="!compact" class="registration-scale">
-        <text v-if="actionCard && state.minimum && state.minimum !== state.maximum" class="registration-scale-start">{{ state.minimum }} 人成行</text>
+        <text v-if="actionCard && state.minimum && state.minimum !== state.maximum" class="registration-scale-start" :style="scaleStyle">{{ state.minimum }} 人成行</text>
         <text class="registration-scale-end">{{ state.minimum && state.minimum === state.maximum ? `${state.minimum} 人成行 · 满员` : state.maximum ? `最多 ${state.maximum} 人` : '人数不限' }}</text>
       </view>
     </view>
@@ -80,6 +94,17 @@ const state = computed(() => registrationProgressState(props.joined, props.minim
 .registration-readiness--pending { color: var(--now-status-warning-fg); }
 .registration-summary--action-card .registration-track { margin-top: 10rpx; }
 .registration-scale-start { position: absolute; left: 0; top: 0; }
+
+/* #ifdef MP-WEIXIN */
+.registration-summary--action-card .registration-head { align-items: center; flex-wrap: wrap; gap: var(--ui-space-3); margin-bottom: var(--ui-space-6); }
+.registration-summary--action-card .registration-title { font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-heading); }
+.registration-summary--action-card .registration-count { align-items: center; color: var(--ui-home-muted); font-size: var(--ui-text-subtitle); }
+.registration-summary--action-card .registration-count-number { color: var(--ui-color-text); font-size: var(--ui-text-display); font-weight: var(--ui-font-weight-medium); }
+.registration-summary--action-card .registration-readiness { margin-left: var(--ui-space-4); padding: var(--ui-space-1) var(--ui-space-3); border-radius: var(--ui-radius-round); background: var(--ui-home-ready-bg); color: var(--ui-color-success-fg); font-size: var(--ui-text-sm); line-height: var(--ui-line-height-compact); }
+.registration-summary--action-card .registration-readiness--pending { background: var(--ui-color-warning-bg); color: var(--ui-color-warning-fg); }
+.registration-summary--action-card .registration-track { height: var(--ui-home-progress-height); margin-top: var(--ui-space-4); }
+.registration-summary--action-card .registration-scale { margin-top: var(--ui-space-3); color: var(--ui-home-muted); }
+/* #endif */
 
 @media (prefers-reduced-motion: reduce) {
   .registration-fill, .registration-extra { transition: none; }

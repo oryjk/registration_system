@@ -10,6 +10,7 @@ const props = defineProps<{
   match: HomeMatchCardViewModel;
   isNavigating: boolean;
   hideStageLabel?: boolean;
+  grouped?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -50,7 +51,7 @@ function handleTap() {
 <template>
   <!-- 列表统一为查看型卡；待处理记录也保留详情入口，报名展示由新的行动卡负责。 -->
   <view
-    :class="['home-view-card', isNavigating ? 'home-view-card--tapping' : '', hasCover ? 'home-view-card--with-cover' : '']"
+    :class="['home-view-card', isNavigating ? 'home-view-card--tapping' : '', hasCover ? 'home-view-card--with-cover' : '', grouped ? 'home-view-card--grouped' : '']"
     :hover-class="match.canOpenDetail ? 'home-view-card--pressed' : 'none'"
     @tap="handleTap"
   >
@@ -63,7 +64,16 @@ function handleTap() {
       <view class="home-view-card__title-row">
         <text class="home-view-card__title">{{ match.title }}</text>
       </view>
+      <!-- #ifdef MP-WEIXIN -->
+      <template v-if="grouped">
+        <view class="home-view-card__info"><image class="home-view-card__info-icon" src="/static/home-icons/calendar-days.png" mode="aspectFit" aria-hidden="true" /><text>{{ compactDateLine }}</text></view>
+        <view class="home-view-card__info"><image class="home-view-card__info-icon" src="/static/icons/lucide/map-pin.png" mode="aspectFit" aria-hidden="true" /><text>{{ match.venue }}</text></view>
+      </template>
+      <text v-else class="home-view-card__meta">{{ compactDateLine }} · {{ match.venue }}</text>
+      <!-- #endif -->
+      <!-- #ifndef MP-WEIXIN -->
       <text class="home-view-card__meta">{{ compactDateLine }} · {{ match.venue }}</text>
+      <!-- #endif -->
       <text v-if="match.scoreLabel" class="home-view-card__score">{{ match.scoreNote }} {{ match.scoreLabel }}</text>
     </view>
     <button
@@ -77,7 +87,8 @@ function handleTap() {
     >
       <text v-if="showStageLabel">{{ match.stage }}</text>
       <!-- #ifdef MP-WEIXIN -->
-      <text class="home-view-card__chevron ui-arrow-text" aria-hidden="true">→</text>
+      <image v-if="grouped" class="home-view-card__line-chevron" src="/static/home-icons/chevron-right.png" mode="aspectFit" aria-hidden="true" />
+      <text v-else class="home-view-card__chevron ui-arrow-text" aria-hidden="true">→</text>
       <!-- #endif -->
       <!-- #ifndef MP-WEIXIN -->
       <view class="home-view-card__chevron" aria-hidden="true" />
@@ -209,6 +220,17 @@ function handleTap() {
 .home-view-card--with-cover .home-view-card__main { padding: 0; }
 .home-view-card--with-cover .home-view-card__detail,
 .home-view-card--with-cover .home-view-card__badge { margin: 0; }
+.home-view-card--grouped { gap: var(--ui-space-7); min-height: var(--ui-match-row-min-height); padding: var(--ui-space-5) 0; border: 0; border-radius: 0; box-shadow: none; }
+.home-view-card--grouped .home-view-card__thumbnail { flex-basis: var(--ui-home-list-cover-size); width: var(--ui-home-list-cover-size); border-radius: var(--ui-radius-button); }
+.home-view-card--grouped .home-view-card__title { font-size: var(--ui-text-title); font-weight: var(--ui-font-weight-heading); line-height: var(--ui-line-height-tight); }
+.home-view-card__info { display: flex; align-items: flex-start; gap: var(--ui-space-3); margin-top: var(--ui-space-2); color: var(--ui-home-muted); font-size: var(--ui-text-body); line-height: var(--ui-line-height-compact); }
+.home-view-card__info text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.home-view-card__info-icon { flex-shrink: 0; width: var(--ui-icon-xs); height: var(--ui-icon-xs); margin-top: var(--ui-space-1); }
+.home-view-card--grouped .home-view-card__detail { padding: 0; min-width: var(--ui-control-min-height); border: 0; color: var(--ui-home-muted); background: var(--ui-control-plain-bg); font-weight: var(--ui-font-weight-body); }
+.home-view-card--grouped .home-view-card__detail--pressed { background: var(--ui-color-accent-subtle); }
+.home-view-card__line-chevron { flex-shrink: 0; width: var(--ui-icon-md); height: var(--ui-icon-md); }
+.home-view-card--grouped.home-view-card--pressed,
+.home-view-card--grouped.home-view-card--tapping { transform: none; background: var(--ui-color-accent-subtle); }
 /* #endif */
 
 /* H5 减少动态效果：卡片按压只保留表面色反馈。 */

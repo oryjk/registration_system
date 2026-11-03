@@ -76,11 +76,20 @@ onUnmounted(() => { disposed = true; measurement++; uni.offWindowResize(measureA
     <HomeSectionHeader title="最近要处理">
       <template #actions>
         <view v-if="matches.length > 1" class="match-actions">
+          <!-- #ifdef MP-WEIXIN -->
+          <button class="match-arrow" :class="{ 'match-arrow--disabled': index === 0 }" :disabled="index === 0" aria-label="上一场比赛" @tap="step(-1)"><image class="match-arrow__icon" src="/static/home-icons/chevron-left.png" mode="aspectFit" aria-hidden="true" /></button>
+          <button class="match-arrow" :class="{ 'match-arrow--disabled': index === matches.length - 1 }" :disabled="index === matches.length - 1" aria-label="下一场比赛" @tap="step(1)"><image class="match-arrow__icon" src="/static/home-icons/chevron-right.png" mode="aspectFit" aria-hidden="true" /></button>
+          <!-- #endif -->
+          <!-- #ifndef MP-WEIXIN -->
           <button class="ui-arrow-text match-arrow" :class="{ 'match-arrow--disabled': index === 0 }" :disabled="index === 0" aria-label="上一场比赛" @tap="step(-1)">←</button>
           <button class="ui-arrow-text match-arrow" :class="{ 'match-arrow--disabled': index === matches.length - 1 }" :disabled="index === matches.length - 1" aria-label="下一场比赛" @tap="step(1)">→</button>
+          <!-- #endif -->
         </view>
       </template>
     </HomeSectionHeader>
+    <!-- #ifdef MP-WEIXIN -->
+    <view class="match-carousel__accent" aria-hidden="true"><view class="match-carousel__accent-fill" /></view>
+    <!-- #endif -->
     <swiper class="match-swiper" :style="{ height: `${height}px` }" :current="index" :duration="duration" :circular="matches.length > 1" :autoplay="matches.length > 1 && pageVisible && !rosterExpanded && !navigatingMatchId" :interval="5000" @change="change" @transition="transition" @animationfinish="finish">
       <swiper-item v-for="(match, slideIndex) in matches" :key="match.id">
         <view class="match-slide" :class="`match-slide-${slideIndex}`">
@@ -115,4 +124,11 @@ onUnmounted(() => { disposed = true; measurement++; uni.offWindowResize(measureA
 .match-arrow::after { border: 0; }
 .match-arrow--disabled { opacity: 0.3; }
 .match-slide { display: flex; flex-direction: column; box-sizing: border-box; padding: 0 4rpx 24rpx; }
+/* #ifdef MP-WEIXIN */
+.match-carousel__accent { width: 104rpx; height: var(--ui-space-2); margin-bottom: var(--ui-space-7); border-radius: var(--ui-radius-round); background: var(--ui-color-line); overflow: hidden; }
+.match-carousel__accent-fill { width: 50%; height: 100%; border-radius: var(--ui-radius-round); background: var(--ui-color-accent); }
+.match-arrow { width: var(--ui-control-min-height); height: var(--ui-control-min-height); background: transparent; }
+.match-arrow__icon { width: var(--ui-icon-md); height: var(--ui-icon-md); }
+.match-slide { padding: 0 0 var(--ui-space-5); }
+/* #endif */
 </style>
