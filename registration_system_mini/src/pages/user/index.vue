@@ -86,6 +86,9 @@ function openHelp() {
 }
 
 function openChanlun() {
+  // #ifdef MP-WEIXIN
+  if (shouldHideCreationEntrances.value) return;
+  // #endif
   uni.navigateTo({ url: "/pages/chanlun/index" });
 }
 
@@ -132,7 +135,7 @@ provide(APP_SCROLL_CONTROLLER, appScrollController);
               <text class="mine-help-icon">?</text><text class="mine-service-label">使用帮助</text><wd-icon name="arrow-right" size="26rpx" />
             </button>
             <!-- #ifdef MP-WEIXIN -->
-            <button class="mine-service ui-list-row" hover-class="mine-service--pressed" @tap="openChanlun">
+            <button v-if="!shouldHideCreationEntrances" class="mine-service ui-list-row" hover-class="mine-service--pressed" @tap="openChanlun">
               <text class="mine-help-icon">缠</text><text class="mine-service-label">缠观行情</text><wd-icon name="arrow-right" size="26rpx" />
             </button>
             <!-- #endif -->
