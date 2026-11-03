@@ -128,6 +128,7 @@ bun run dev:h5
 
 - 微信开发环境：默认 `http://172.16.60.233:18081/api/v1/app`，对 `dev`、`dev:mp-weixin` 和 `dev:mp-weixin:sync` 生效；可在 `.env.development.local` 通过 `VITE_MP_DEV_API_BASE_URL` 覆盖。Vite 仅在微信 development 编译时替换请求层的 `VITE_API_BASE_URL`。
 - H5 开发环境：`VITE_API_BASE_URL=http://127.0.0.1:18081/api/v1/app`
+- 微信开发版缠观入口默认打开 `http://172.16.60.233:5173/`，可在 `.env.development.local` 通过 `VITE_MP_DEV_CHANLUN_H5_URL` 覆盖；仅微信开发编译放行配置中的开发服务器，Mac/真机需能访问该地址，开发者工具需关闭业务域名校验。正式版入口仍预留 `https://match.oryjk.cn/chanlun/`，上线前需部署对应 H5 与 API 路由。
 - 生产环境示例值：`https://example.com/api/v1/app`
 
 请求层位于 `src/utils/request.ts`，会直接拼接：

@@ -47,6 +47,15 @@ export function isAllowedWebViewUrl(targetUrl: string): boolean {
   if (isLocalDevHost(parts.hostname)) {
     return true;
   }
+  // #ifdef MP-WEIXIN
+  // 微信开发编译允许当前配置的缠观开发服务器；正式编译不放行局域网地址。
+  if (import.meta.env.DEV) {
+    const devParts = parseUrlParts(import.meta.env.VITE_CHANLUN_H5_URL || "");
+    if (devParts && parts.hostname === devParts.hostname && parts.protocol === devParts.protocol) {
+      return true;
+    }
+  }
+  // #endif
   if (parts.protocol !== "https") {
     return false;
   }

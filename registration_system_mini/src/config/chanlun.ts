@@ -1,8 +1,9 @@
 /**
  * 缠观（行情结构分析 H5）入口配置。
  *
- * 缠观部署在既有 web-view 业务域名 `match.oryjk.cn` 的 `/chanlun/` 路径下，
- * 无需在公众平台新增业务域名；本地联调可用 VITE_CHANLUN_H5_URL 指向开发服务器。
+ * 正式环境预留既有 web-view 业务域名 `match.oryjk.cn` 的 `/chanlun/` 路径，
+ * 微信开发编译由 Vite 注入 local233 开发服务地址，可用 VITE_MP_DEV_CHANLUN_H5_URL 覆盖。
+ * H5 继续使用 VITE_CHANLUN_H5_URL；公网路径尚需部署缠观服务。
  */
 export const DEFAULT_CHANLUN_H5_URL = "https://match.oryjk.cn/chanlun/";
 
