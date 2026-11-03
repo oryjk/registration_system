@@ -1,4 +1,7 @@
 <script setup lang="ts">
+// #ifdef MP-WEIXIN
+import AppIcon from "@/components/ui/AppIcon.vue";
+// #endif
 import { onUnmounted, ref, watch } from "vue";
 import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
 import { useOverlayPresence } from "@/components/ui/useOverlayPresence";
@@ -24,12 +27,22 @@ async function previewCode() {
 <template>
   <view class="venue-cooperation">
     <button class="venue-cooperation-entry" hover-class="venue-cooperation-entry--pressed" @tap="visible = true">
-      <view class="venue-cooperation-icon"><wd-icon name="location" size="30rpx" /></view>
+      <view class="venue-cooperation-icon"><!-- #ifdef MP-WEIXIN -->
+<AppIcon name="map-pin" size="var(--ui-icon-md)" tone="default" />
+<!-- #endif -->
+<!-- #ifndef MP-WEIXIN -->
+<wd-icon name="location" size="30rpx" />
+<!-- #endif --></view>
       <view class="venue-cooperation-copy">
         <text class="venue-cooperation-title">场馆入驻</text>
         <text class="venue-cooperation-hint">创建场地 · 商务合作</text>
       </view>
+      <!-- #ifdef MP-WEIXIN -->
+      <AppIcon name="chevron-right" tone="muted" />
+      <!-- #endif -->
+      <!-- #ifndef MP-WEIXIN -->
       <text class="ui-arrow-text venue-cooperation-link">联系合作 →</text>
+      <!-- #endif -->
     </button>
     <ConfirmDialog
       :visible="visible"
@@ -61,6 +74,8 @@ async function previewCode() {
 /* #ifdef MP-WEIXIN */
 .venue-cooperation { padding: 0 var(--ui-page-padding-inline) calc(env(safe-area-inset-bottom) + var(--ui-space-3)); background: transparent; }
 .venue-cooperation-entry { border: var(--ui-panel-border); border-radius: var(--ui-card-radius); background: var(--ui-card-bg); box-shadow: var(--ui-card-shadow); min-height: var(--ui-list-row-min-height); padding: var(--ui-card-padding); gap: var(--ui-space-4); }
-.venue-cooperation-icon { width: var(--ui-icon-xl); height: var(--ui-icon-xl); background: var(--ui-control-subtle-bg); }
+.venue-cooperation-icon { width: var(--ui-icon-xl); height: var(--ui-icon-xl); background: transparent; }
+.venue-cooperation-title { font-size: var(--ui-text-label); line-height: var(--ui-line-height-compact); }
+.venue-cooperation-hint { font-size: var(--ui-text-sm); line-height: var(--ui-line-height-compact); color: var(--ui-color-text-secondary); }
 /* #endif */
 </style>

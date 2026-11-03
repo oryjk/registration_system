@@ -170,6 +170,7 @@ function handleClick(event: { stopPropagation?: () => void }) {
 .ui-button--dark,
 .ui-button--lime { --ui-button-current-bg: var(--ui-button-bg); --ui-button-current-fg: var(--ui-button-fg); }
 .ui-button--outline { --ui-button-current-bg: var(--ui-control-subtle-bg); border: var(--ui-control-border); }
+.ui-button--sm { min-height: var(--ui-control-min-height); }
 /* #endif */
 
 /* H5 减少动态效果：去掉缩放，只保留内侧阴影反馈，背景始终不透明。 */

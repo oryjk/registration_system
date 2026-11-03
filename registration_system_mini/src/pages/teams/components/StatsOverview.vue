@@ -207,4 +207,14 @@ defineProps<{
 .stats-summary-item { border-right: var(--ui-list-divider); }
 .stats-summary-item:last-child { border-right: 0; }
   /* #endif */
+
+/* #ifdef MP-WEIXIN */
+.stats-profile-avatar { border-radius: var(--ui-radius-round); background: var(--ui-color-neutral-bg); }
+.stats-profile-avatar-fallback { color: var(--ui-color-text); }
+.stats-title, .stats-subtitle { overflow-wrap: anywhere; }
+.stats-kicker, .stats-subtitle, .stats-rate-label, .stats-summary-label { color: var(--ui-color-text-secondary); }
+.stats-rate-box { flex-shrink: 0; min-width: 0; padding: var(--ui-space-2) 0 var(--ui-space-2) var(--ui-space-3); border: 0; background: transparent; }
+.stats-rate-value, .stats-summary-value { font-variant-numeric: tabular-nums; }
+.stats-summary-row { padding-right: var(--ui-space-3); padding-left: var(--ui-space-3); }
+/* #endif */
 </style>

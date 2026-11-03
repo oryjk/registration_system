@@ -32,4 +32,9 @@ defineEmits<{ (event: "team"): void; (event: "matches"): void }>();
 .joined-next__title { font-size: var(--ui-text-title); font-weight: var(--ui-font-weight-heading); }
 .joined-next__copy { font-size: var(--ui-text-body); line-height: var(--ui-line-height-body); }
 /* #endif */
+
+/* #ifdef MP-WEIXIN */
+.joined-next__title { line-height: var(--ui-line-height-tight); overflow-wrap: anywhere; }
+.joined-next__copy { color: var(--ui-color-text-secondary); }
+/* #endif */
 </style>

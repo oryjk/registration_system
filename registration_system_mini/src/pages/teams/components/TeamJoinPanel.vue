@@ -1,4 +1,7 @@
 <script setup lang="ts">
+// #ifdef MP-WEIXIN
+import AppIcon from "@/components/ui/AppIcon.vue";
+// #endif
 import { computed, shallowRef, watch } from "vue";
 import { useMinioImages } from "@/composables/useMinioImages";
 import AppButton from "@/components/ui/AppButton.vue";
@@ -83,7 +86,12 @@ function handleJoin() {
     <!-- #endif -->
     <view class="search-row">
       <view class="search-field">
+        <!-- #ifdef MP-WEIXIN -->
+        <AppIcon name="search" tone="muted" size="var(--ui-icon-md)" />
+        <!-- #endif -->
+        <!-- #ifndef MP-WEIXIN -->
         <view class="search-icon" aria-hidden="true" />
+        <!-- #endif -->
         <input :value="searchKeyword" class="search-input" placeholder="输入球队名称或关键词" confirm-type="search" @input="updateSearchKeyword" @confirm="handleSearch" />
       </view>
       <view class="search-action"><AppButton block size="sm" variant="lime" :loading="searching" :disabled="searching" @click="handleSearch">搜索</AppButton></view>
@@ -104,7 +112,15 @@ function handleJoin() {
           <text class="team-result-title">{{ team.name }}</text>
           <text class="team-result-meta"><text v-if="joinedTeamIds.includes(team.id)">已加入 · </text>{{ team.member_count }} 位队员<text v-if="team.trust_label"> · {{ team.trust_label }}</text></text>
         </view>
+        <!-- #ifdef MP-WEIXIN -->
+        <view class="team-result-choice">
+          <text v-if="selectedTeam?.id === team.id" class="team-result-action">已选</text>
+          <AppIcon :name="selectedTeam?.id === team.id ? 'circle-check' : 'chevron-right'" :tone="selectedTeam?.id === team.id ? 'default' : 'muted'" />
+        </view>
+        <!-- #endif -->
+        <!-- #ifndef MP-WEIXIN -->
         <text class="ui-arrow-text team-result-action">{{ selectedTeam?.id === team.id ? '已选 ✓' : '选择 →' }}</text>
+        <!-- #endif -->
       </view>
     </view>
     <!-- #ifdef MP-WEIXIN -->
@@ -128,7 +144,7 @@ function handleJoin() {
       <text class="join-panel-note">{{ confirmation.isMember ? '你已经是该球队成员，可直接查看球队详情。' : confirmation.requiresPassword ? '该球队设置了入队密码，请向队长获取。' : '该球队开放加入，确认后即可成为队员。' }}</text>
       <input v-if="confirmation.requiresPassword && !confirmation.isMember" :value="joinPassword" class="password-input" :disabled="!confirmationVisible" placeholder="请输入入队密码" password @input="updateJoinPassword" />
       <!-- #ifdef MP-WEIXIN -->
-      <view class="join-action"><AppButton block :disabled="!confirmationVisible || !canJoin" :loading="submitting" @click="handleJoin"><text class="ui-arrow-text">{{ confirmation.isMember ? '查看球队 →' : submitting ? '加入中…' : '确认加入球队' }}</text></AppButton></view>
+      <view class="join-action"><AppButton block :disabled="!confirmationVisible || !canJoin" :loading="submitting" @click="handleJoin">{{ confirmation.isMember ? '查看球队' : submitting ? '加入中…' : '确认加入球队' }}</AppButton></view>
       <!-- #endif -->
       <!-- #ifndef MP-WEIXIN -->
       <view class="join-action"><AppButton block :disabled="!confirmationVisible || !canJoin" :loading="submitting" @click="handleJoin">{{ confirmation.isMember ? '查看球队 →' : submitting ? '加入中…' : '确认加入球队' }}</AppButton></view>
@@ -203,5 +219,15 @@ function handleJoin() {
 .search-action { width: calc(var(--ui-space-12) * 2); --ui-button-height-sm: var(--ui-input-height); }
 .team-result-card + .team-result-card { border-top: var(--ui-list-divider); }
 .team-result-card-active { background: var(--ui-control-selected-bg); }
+/* #endif */
+
+/* #ifdef MP-WEIXIN */
+.results-count, .team-result-meta, .join-panel-note { color: var(--ui-color-text-secondary); }
+.team-result-choice { display: flex; align-items: center; justify-content: flex-end; gap: var(--ui-space-2); flex-shrink: 0; min-width: var(--ui-control-min-height); min-height: var(--ui-control-min-height); }
+.team-result-action { color: var(--ui-color-text); font-size: var(--ui-text-sm); font-weight: var(--ui-font-weight-medium); }
+.team-logo { width: var(--ui-avatar-size-lg); height: var(--ui-avatar-size-lg); border-radius: var(--ui-radius-button); }
+.team-result-card-active { border-radius: var(--ui-radius-button); }
+.team-result-card-active .team-result-title { color: var(--ui-color-text); }
+.empty-box { color: var(--ui-color-text-secondary); }
 /* #endif */
 </style>

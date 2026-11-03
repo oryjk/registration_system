@@ -154,7 +154,9 @@ const captainName = computed(() => props.captain.nickname || "队长");
 .captain-surface--embedded { border-top: var(--ui-list-divider); border-radius: var(--ui-panel-radius); box-shadow: var(--ui-panel-shadow); margin-top: var(--ui-space-6); }
 .captain-card { padding: var(--ui-space-5) var(--ui-panel-padding); gap: var(--ui-space-5); }
 .captain-surface--embedded .captain-card { padding: var(--ui-space-5) 0 0; }
-.captain-contact-button { min-height: var(--ui-control-min-height); padding: var(--ui-space-3) var(--ui-space-5); font-weight: var(--ui-font-weight-heading); }
 .captain-textarea { border: var(--ui-input-border); border-radius: var(--ui-input-radius); padding: var(--ui-input-padding); font-size: var(--ui-text-label); background: var(--ui-color-surface); }
+.captain-name { overflow-wrap: anywhere; font-size: var(--ui-text-subtitle); line-height: var(--ui-line-height-compact); }
+.captain-contact-button { min-height: var(--ui-control-min-height); padding: var(--ui-space-3) var(--ui-space-5); font-weight: var(--ui-font-weight-medium); background: var(--ui-color-neutral-bg); color: var(--ui-color-text); font-size: var(--ui-text-body); }
+.captain-counter { color: var(--ui-color-text-secondary); }
 /* #endif */
 </style>

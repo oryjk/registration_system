@@ -42,9 +42,16 @@ function handleClear() {
       />
     </view>
     <view class="form-actions">
+    <!-- #ifdef MP-WEIXIN -->
+    <AppButton block :disabled="!canSubmit" :loading="submitting" @click="handleSubmit">
+      {{ submitting ? "保存中..." : "保存入队密码" }}
+    </AppButton>
+    <!-- #endif -->
+    <!-- #ifndef MP-WEIXIN -->
     <AppButton icon="lock" block :disabled="!canSubmit" :loading="submitting" @click="handleSubmit">
       {{ submitting ? "保存中..." : "保存入队密码" }}
     </AppButton>
+    <!-- #endif -->
     <AppButton
       v-if="requiresPassword"
       block
@@ -105,5 +112,11 @@ function handleClear() {
 .status-row { margin-top: var(--ui-space-5); }
 .status-badge { padding: var(--ui-space-2) var(--ui-space-3); font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-heading); }
 .form-actions { gap: var(--ui-space-4); margin-top: var(--ui-space-7); }
+/* #endif */
+
+/* #ifdef MP-WEIXIN */
+.form-field { margin-top: var(--ui-space-6); }
+.status-row { margin-top: 0; }
+.status-badge-set { color: var(--ui-color-neutral-fg); }
 /* #endif */
 </style>

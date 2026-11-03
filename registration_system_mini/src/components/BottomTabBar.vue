@@ -82,10 +82,8 @@ const items: Array<{
 
 function iconFor(item: typeof items[number]) {
   // #ifdef MP-WEIXIN
-  if (props.current === "home") {
-    const icons = { home: "home-active", challenge: "football", stats: "stats", mine: "user" };
-    return `/static/home-icons/${icons[item.key]}.png`;
-  }
+  const icons = { home: "house", challenge: "football", stats: "chart-column", mine: "user-round" };
+  return `/static/app-icons/${icons[item.key]}-${props.current === item.key ? 'active' : 'inactive'}.png`;
   // #endif
   return props.current === item.key ? tabBarSelectedIcons[accentTheme.value][item.key] : item.icon;
 }
@@ -406,11 +404,11 @@ function handleCreateIndividualChallenge() {
 }
 
 /* #ifdef MP-WEIXIN */
-.custom-tabbar-shell--home .custom-tabbar { border: 0; border-radius: var(--ui-home-tab-radius); background: var(--ui-color-surface-translucent); }
-.custom-tabbar-shell--home .custom-tab-indicator { background: transparent; }
-.custom-tabbar-shell--home .custom-tab-item-active .custom-tab-label { color: var(--ui-home-active); font-weight: var(--ui-font-weight-medium); }
-.custom-tabbar-shell--home .custom-tab-label { color: var(--ui-home-muted); font-weight: var(--ui-font-weight-body); }
-.custom-tabbar-shell--home .custom-tab-plus-symbol { color: var(--ui-color-text-inverse); font-weight: var(--ui-font-weight-body); }
+.custom-tabbar { border: 0; border-radius: var(--ui-tabbar-radius); background: var(--ui-color-surface-translucent); }
+.custom-tab-indicator { background: transparent; }
+.custom-tab-item-active .custom-tab-label { color: var(--ui-tabbar-active); font-weight: var(--ui-font-weight-medium); }
+.custom-tab-label { color: var(--ui-color-icon-muted); font-weight: var(--ui-font-weight-body); }
+.custom-tab-plus-symbol { color: var(--ui-color-text-inverse); font-weight: var(--ui-font-weight-body); }
 /* #endif */
 
 .create-menu-overlay {

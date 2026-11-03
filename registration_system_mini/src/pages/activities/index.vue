@@ -341,12 +341,23 @@ provide(APP_SCROLL_CONTROLLER, appScrollController);
 
           <template v-if="hallEmptyMode === 'empty' && endedReferenceCards.length">
             <SectionHeader title="已结束的比赛" />
+            <!-- #ifdef MP-WEIXIN -->
+            <HomeMatchList
+              grouped
+              :matches="endedReferenceCards"
+              hide-stage-label
+              :navigating-match-id="navigatingMatchId"
+              @match-tap="openEndedReferenceMatch"
+            />
+            <!-- #endif -->
+            <!-- #ifndef MP-WEIXIN -->
             <HomeMatchList
               :matches="endedReferenceCards"
               hide-stage-label
               :navigating-match-id="navigatingMatchId"
               @match-tap="openEndedReferenceMatch"
             />
+            <!-- #endif -->
           </template>
 
           <!-- 所有筛选只作用于已加载页：过滤后为空但还有下一页时，入口不能消失。 -->

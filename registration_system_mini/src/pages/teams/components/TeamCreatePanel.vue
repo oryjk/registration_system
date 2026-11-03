@@ -54,9 +54,16 @@ function handleSubmit() {
     <!-- #ifdef MP-WEIXIN -->
     <view class="team-create-submit">
     <!-- #endif -->
+      <!-- #ifdef MP-WEIXIN -->
+      <AppButton block :disabled="!canCreate" :loading="submitting" @click="handleSubmit">
+        {{ submitting ? "创建中..." : "创建球队" }}
+      </AppButton>
+      <!-- #endif -->
+      <!-- #ifndef MP-WEIXIN -->
       <AppButton icon="plus" block :disabled="!canCreate" :loading="submitting" @click="handleSubmit">
         {{ submitting ? "创建中..." : "创建球队" }}
       </AppButton>
+      <!-- #endif -->
     <!-- #ifdef MP-WEIXIN -->
     </view>
     <!-- #endif -->
@@ -104,6 +111,6 @@ function handleSubmit() {
 /* 微信端复用统一排版尺度；H5 保留原有样式。 */
 .form-field { margin-top: var(--ui-space-6); }
 .form-label { margin-bottom: var(--ui-space-2); font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-heading); }
-.team-create-submit { padding-top: var(--ui-section-gap); }
+.team-create-submit { padding-top: var(--ui-space-8); }
 /* #endif */
 </style>

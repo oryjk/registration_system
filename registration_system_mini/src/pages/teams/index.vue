@@ -424,4 +424,10 @@ provide(APP_SCROLL_CONTROLLER, appScrollController);
 .stats-tab-card { margin-top: var(--ui-card-gap); }
 .stats-segment { margin-bottom: var(--ui-section-gap); }
 /* #endif */
+
+/* #ifdef MP-WEIXIN */
+.stats-empty { color: var(--ui-color-text-secondary); }
+.stats-empty-actions { flex-direction: column; align-items: stretch; gap: var(--ui-space-3); }
+.stats-honor-share { margin-top: var(--ui-card-gap); }
+/* #endif */
 </style>

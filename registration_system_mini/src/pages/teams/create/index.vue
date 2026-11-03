@@ -1,4 +1,7 @@
 <script setup lang="ts">
+// #ifdef MP-WEIXIN
+import AppIcon from "@/components/ui/AppIcon.vue";
+// #endif
 import { watch } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import OnboardingIllustration from "@/components/OnboardingIllustration.vue";
@@ -86,7 +89,12 @@ onShow(() => { if (createdTeamId.value) void refreshIllustrations(); });
           <image v-if="joinIllustrationSrc" class="team-create-alt__illustration" :src="joinIllustrationSrc" mode="aspectFit" aria-hidden="true" @error="joinIllustrationSrc && (joinIllustrationFailed = true)" />
           <!-- #endif -->
           <text class="team-create-alt__label">已有心仪的球队？去搜索加入</text>
+          <!-- #ifdef MP-WEIXIN -->
+          <AppIcon name="chevron-right" tone="muted" />
+          <!-- #endif -->
+          <!-- #ifndef MP-WEIXIN -->
           <text class="ui-arrow-text team-create-alt__arrow">→</text>
+          <!-- #endif -->
         </view>
       </template>
     </view>
@@ -163,5 +171,11 @@ onShow(() => { if (createdTeamId.value) void refreshIllustrations(); });
 .team-create-alt__arrow { font-size: var(--ui-text-label); font-weight: var(--ui-font-weight-heading); }
 .team-page-note { margin: var(--ui-space-1) var(--ui-space-1) var(--ui-space-5); font-size: var(--ui-text-body); line-height: var(--ui-line-height-body); }
 .team-create-alt__illustration { width: var(--ui-avatar-size-lg); height: var(--ui-avatar-size-lg); }
+/* #endif */
+
+/* #ifdef MP-WEIXIN */
+.team-create-alt { background: var(--ui-card-bg); border-radius: var(--ui-card-radius); box-shadow: var(--ui-card-shadow); }
+.team-create-alt__label, .team-page-note { color: var(--ui-color-text-secondary); }
+.created-next__title { line-height: var(--ui-line-height-tight); overflow-wrap: anywhere; }
 /* #endif */
 </style>

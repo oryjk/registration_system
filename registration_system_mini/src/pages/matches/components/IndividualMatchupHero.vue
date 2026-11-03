@@ -1,4 +1,7 @@
 <script setup lang="ts">
+// #ifdef MP-WEIXIN
+import AppIcon from "@/components/ui/AppIcon.vue";
+// #endif
 import { useMinioImages } from "@/composables/useMinioImages";
 import { computed, ref, watch } from "vue";
 import type { BackendActivity } from "@/types/backend";
@@ -78,13 +81,28 @@ const matchStatusTag = computed(() => {
         </view>
         <!-- 日期时间收敛为标题下的紧凑图标信息行，不再做大日期块。 -->
         <view class="hero-when">
+          <!-- #ifdef MP-WEIXIN -->
+          <AppIcon name="clock" size="var(--ui-icon-sm)" tone="muted" />
+          <!-- #endif -->
+          <!-- #ifndef MP-WEIXIN -->
           <image class="hero-info-icon" src="/static/icons/lucide/clock.png" mode="aspectFit" aria-hidden="true" />
+          <!-- #endif -->
           <text>{{ dateBlockDay }} {{ dateBlockWeekday }} · {{ matchClockLabel }}<text v-if="match.end_time">–{{ endClockLabel }}</text></text>
         </view>
         <!-- 人制与费用：数字与标签相邻的紧凑信息 chips。 -->
         <view class="hero-chips">
-          <view v-if="formatLabel" class="hero-info"><image class="hero-info-icon" src="/static/icons/lucide/users.png" /><text>{{ formatLabel }}</text></view>
-          <view class="hero-info"><image class="hero-info-icon" src="/static/icons/lucide/wallet.png" /><text>{{ feeText }}</text></view>
+          <view v-if="formatLabel" class="hero-info"><!-- #ifdef MP-WEIXIN -->
+<AppIcon name="users" size="var(--ui-icon-sm)" tone="muted" />
+<!-- #endif -->
+<!-- #ifndef MP-WEIXIN -->
+<image class="hero-info-icon" src="/static/icons/lucide/users.png" />
+<!-- #endif --><text>{{ formatLabel }}</text></view>
+          <view class="hero-info"><!-- #ifdef MP-WEIXIN -->
+<AppIcon name="wallet" size="var(--ui-icon-sm)" tone="muted" />
+<!-- #endif -->
+<!-- #ifndef MP-WEIXIN -->
+<image class="hero-info-icon" src="/static/icons/lucide/wallet.png" />
+<!-- #endif --><text>{{ feeText }}</text></view>
         </view>
       </view>
     </view>
@@ -92,7 +110,12 @@ const matchStatusTag = computed(() => {
     <!-- 地点独立一行，队服颜色随各队名称展示。 -->
     <view class="hero-foot">
       <view class="hero-venue" @tap="$emit('openLocation')">
+        <!-- #ifdef MP-WEIXIN -->
+        <AppIcon name="map-pin" size="var(--ui-icon-sm)" tone="muted" />
+        <!-- #endif -->
+        <!-- #ifndef MP-WEIXIN -->
         <image class="hero-info-icon" src="/static/icons/lucide/map-pin.png" mode="aspectFit" aria-hidden="true" />
+        <!-- #endif -->
         <text class="hero-venue-text">{{ matchLocation }}</text>
       </view>
     </view>
@@ -345,11 +368,23 @@ const matchStatusTag = computed(() => {
 
 }
 
-
 /* #ifdef MP-WEIXIN */
-.hero-scoreboard { padding: var(--ui-panel-padding); }
 .hero-pickup-strip { border: var(--ui-panel-border); background: var(--ui-panel-soft-bg); padding: var(--ui-space-5); }
 .hero-board { border-top: var(--ui-list-divider); margin-top: var(--ui-space-6); padding-top: var(--ui-space-6); }
-.hero-title { font-size: var(--ui-text-heading); font-weight: var(--ui-font-weight-heading); }
+.hero-scoreboard { padding: var(--ui-space-7); }
+.hero-heading { gap: var(--ui-space-3); }
+.hero-title-row { gap: var(--ui-space-4); }
+.hero-title { font-size: var(--ui-text-heading); font-weight: var(--ui-font-weight-heading); line-height: var(--ui-line-height-compact); }
+.hero-title-tags { gap: var(--ui-space-2); }
+.hero-kind { padding: var(--ui-space-1) var(--ui-space-3); border-radius: var(--ui-control-radius); font-size: var(--ui-text-xs); background: var(--ui-color-neutral-bg); color: var(--ui-color-neutral-fg); }
+.hero-when { align-items: flex-start; gap: var(--ui-space-3); font-size: var(--ui-text-label); line-height: var(--ui-line-height-compact); }
+.hero-chips { gap: var(--ui-space-6); margin-top: var(--ui-space-3); }
+.hero-info { gap: var(--ui-space-3); font-size: var(--ui-text-body); line-height: var(--ui-line-height-compact); }
+.hero-foot { margin-top: var(--ui-space-5); }
+.hero-venue { align-items: flex-start; gap: var(--ui-space-3); min-height: var(--ui-control-min-height); }
+.hero-venue-text { line-height: var(--ui-line-height-compact); font-size: var(--ui-text-label); }
+.hero-name { font-size: var(--ui-text-subtitle); line-height: var(--ui-line-height-compact); }
+.hero-vs { font-size: var(--ui-text-label); font-weight: var(--ui-font-weight-medium); }
+.hero-when, .hero-info, .hero-vs { color: var(--ui-color-text-secondary); }
 /* #endif */
 </style>

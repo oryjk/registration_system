@@ -234,8 +234,18 @@ const metaPageStyle = computed(() =>
         <view class="manage-blocked">
           <text class="manage-blocked__title">还没有球队</text>
           <text class="manage-blocked__copy">创建一支球队成为队长，或搜索加入现有球队后再回来管理。</text>
+          <!-- #ifdef MP-WEIXIN -->
+          <AppButton v-if="canShowCreateTeamEntry" variant="lime" block @click="goCreateTeam">创建球队</AppButton>
+          <!-- #endif -->
+          <!-- #ifndef MP-WEIXIN -->
           <AppButton icon="plus" v-if="canShowCreateTeamEntry" variant="lime" block @click="goCreateTeam">创建球队</AppButton>
+          <!-- #endif -->
+          <!-- #ifdef MP-WEIXIN -->
+          <AppButton variant="outline" block @click="goJoinTeam">加入球队</AppButton>
+          <!-- #endif -->
+          <!-- #ifndef MP-WEIXIN -->
           <AppButton icon="user-add" variant="outline" block @click="goJoinTeam">加入球队</AppButton>
+          <!-- #endif -->
         </view>
       </AppSurface>
     </view>
@@ -446,5 +456,10 @@ const metaPageStyle = computed(() =>
 .manage-blocked { gap: var(--ui-space-3); }
 .manage-blocked__title { font-size: var(--ui-text-heading); font-weight: var(--ui-font-weight-heading); }
 .manage-blocked__copy { font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-body); line-height: var(--ui-line-height-body); }
+/* #endif */
+
+/* #ifdef MP-WEIXIN */
+.team-manage-copy, .manage-blocked__copy { color: var(--ui-color-text-secondary); }
+.team-manage-title, .manage-blocked__title { overflow-wrap: anywhere; }
 /* #endif */
 </style>

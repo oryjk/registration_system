@@ -473,4 +473,31 @@ function closeDayMatches() {
 .legend-dot { border: var(--ui-panel-border); }
 .calendar-popup-item + .calendar-popup-item { border-top: var(--ui-list-divider); }
 /* #endif */
+
+/* #ifdef MP-WEIXIN */
+.stats-card-head { flex-direction: column; gap: var(--ui-space-4); }
+.stats-card-caption, .calendar-month-caption, .calendar-weekday, .calendar-popup-location, .stats-empty { color: var(--ui-color-text-secondary); }
+.calendar-legend { justify-content: flex-start; max-width: none; font-size: var(--ui-text-sm); font-weight: var(--ui-font-weight-body); color: var(--ui-color-text-secondary); }
+.legend-dot { width: var(--ui-space-3); height: var(--ui-space-3); }
+.legend-dot-joined { background: var(--ui-color-success-fg); }
+.legend-dot-leave { background: var(--ui-color-warning-fg); }
+.legend-dot-unchecked { background: var(--ui-color-danger-fg); }
+.calendar-weekday { font-weight: var(--ui-font-weight-medium); }
+.calendar-day { min-height: var(--ui-control-min-height); background: var(--ui-control-plain-bg); border-radius: var(--ui-radius-button); }
+.calendar-day-number { color: var(--ui-color-text-secondary); font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-medium); font-variant-numeric: tabular-nums; }
+.calendar-day-joined { background: var(--ui-color-success-bg); }
+.calendar-day-leave { background: var(--ui-color-warning-bg); }
+.calendar-day-unchecked { background: var(--ui-color-danger-bg); }
+.calendar-day-joined .calendar-day-number { color: var(--ui-color-success-fg); }
+.calendar-day-leave .calendar-day-number { color: var(--ui-color-warning-fg); }
+.calendar-day-unchecked .calendar-day-number { color: var(--ui-color-danger-fg); }
+.calendar-day-today { border: var(--ui-border-default); border-color: var(--ui-color-text); }
+.calendar-day-unchecked .calendar-more { color: var(--ui-color-danger-fg); background: var(--ui-color-surface); }
+.calendar-popup-mask { padding-bottom: calc(var(--ui-space-7) + env(safe-area-inset-bottom)); }
+.calendar-popup { padding: var(--ui-card-padding); border-radius: var(--ui-card-radius); overflow-y: auto; }
+.calendar-popup-title { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.calendar-popup-close { display: flex; align-items: center; justify-content: center; flex-shrink: 0; min-height: var(--ui-control-min-height); box-sizing: border-box; font-weight: var(--ui-font-weight-medium); }
+.calendar-popup-match, .calendar-popup-location { overflow-wrap: anywhere; }
+.calendar-popup-location { font-weight: var(--ui-font-weight-body); }
+/* #endif */
 </style>

@@ -1,4 +1,7 @@
 <script setup lang="ts">
+// #ifdef MP-WEIXIN
+import AppIcon from "@/components/ui/AppIcon.vue";
+// #endif
 import { useMinioImages } from "@/composables/useMinioImages";
 import { computed, ref, watch } from "vue";
 import type { BackendUser } from "@/types/backend";
@@ -34,19 +37,36 @@ const emit = defineEmits<{
     <view class="profile-row">
       <view class="profile-avatar">
         <image v-if="currentUser?.avatar_url && !avatarLoadFailed" :src="minioImageSrc(currentUser.avatar_url)" mode="aspectFill" @error="minioImageSrc(currentUser.avatar_url) && (avatarLoadFailed = true)" />
+        <!-- #ifdef MP-WEIXIN -->
+        <AppIcon v-else name="user-round" size="var(--ui-icon-md)" />
+        <!-- #endif -->
+        <!-- #ifndef MP-WEIXIN -->
         <wd-icon v-else name="user" size="48rpx" color="var(--ui-color-text-muted)" />
+        <!-- #endif -->
       </view>
       <view class="profile-copy">
         <text class="profile-name">{{ currentUser ? displayName : '欢迎来到约球开踢' }}</text>
         <text class="profile-meta">{{ currentUser ? (teamJoinedDaysLabel ? '加入球队 ' + teamJoinedDaysLabel : '记录每一次上场') : '登录后查看比赛与球队' }}</text>
       </view>
       <button v-if="currentUser" class="profile-edit ui-subtle-control" @tap="emit('editProfile')" aria-label="编辑资料">
-        <wd-icon name="edit" size="28rpx" /><text>编辑</text>
+        <!-- #ifdef MP-WEIXIN -->
+        <AppIcon name="pencil" size="var(--ui-icon-md)" />
+        <!-- #endif -->
+        <!-- #ifndef MP-WEIXIN -->
+        <wd-icon name="edit" size="28rpx" />
+        <!-- #endif -->
+        <text>编辑</text>
       </button>
       <AppButton v-else size="sm" @click="emit('login')">登录</AppButton>
     </view>
     <button v-if="currentUser && showProfileCompletionHint" class="profile-complete" @tap="emit('completeProfile')">
-      <text>完善头像和昵称</text><wd-icon name="arrow-right" size="24rpx" />
+      <text>完善头像和昵称</text>
+      <!-- #ifdef MP-WEIXIN -->
+      <AppIcon name="chevron-right" size="var(--ui-icon-sm)" tone="muted" />
+      <!-- #endif -->
+      <!-- #ifndef MP-WEIXIN -->
+      <wd-icon name="arrow-right" size="24rpx" />
+      <!-- #endif -->
     </button>
   </view>
 </template>
@@ -72,5 +92,8 @@ const emit = defineEmits<{
 .profile-meta { margin-top: var(--ui-space-2); font-size: var(--ui-text-sm); line-height: var(--ui-line-height-body); }
 .profile-edit { gap: var(--ui-space-2); min-height: var(--ui-control-min-height); padding: var(--ui-space-3) var(--ui-space-4); background: var(--ui-control-subtle-bg); font-size: var(--ui-text-sm); }
 .profile-complete { margin-top: var(--ui-space-5); padding-top: var(--ui-space-4); border-top: var(--ui-list-divider); font-size: var(--ui-text-body); }
+.profile-edit { background: var(--ui-color-accent-subtle); color: var(--ui-color-text); }
+.profile-complete { display: flex; align-items: center; min-height: var(--ui-control-min-height); gap: var(--ui-space-3); color: var(--ui-color-text-secondary); }
+.profile-meta,.profile-complete { color: var(--ui-color-text-secondary); }
 /* #endif */
 </style>

@@ -141,8 +141,7 @@ watch(trackHeight, () => {
     >
       <text data-deck-ignore="true">{{ expanded ? '收起' : '展开' }}</text>
       <!-- #ifdef MP-WEIXIN -->
-      <image v-if="isHomeLayout" data-deck-ignore="true" class="expandable-avatars__home-chevron" :class="{ 'expandable-avatars__home-chevron--open': expanded }" src="/static/home-icons/chevron-down.png" mode="aspectFit" aria-hidden="true" />
-      <text v-else data-deck-ignore="true" class="expandable-avatars__chevron ui-arrow-text" :class="{ 'expandable-avatars__chevron--left': expanded }" aria-hidden="true">→</text>
+      <image data-deck-ignore="true" class="expandable-avatars__home-chevron" :class="{ 'expandable-avatars__home-chevron--open': expanded }" src="/static/home-icons/chevron-down.png" mode="aspectFit" aria-hidden="true" />
       <!-- #endif -->
       <!-- #ifndef MP-WEIXIN -->
       <view data-deck-ignore="true" class="expandable-avatars__chevron" :class="{ 'expandable-avatars__chevron--left': expanded }" />
@@ -197,6 +196,7 @@ watch(trackHeight, () => {
 .expandable-avatars__chevron { width: 10rpx; height: 10rpx; border-right: 3rpx solid currentColor; border-bottom: 3rpx solid currentColor; transform: rotate(-45deg); transition: transform var(--ui-motion-expand-duration) var(--ui-motion-ease-out); }
 .expandable-avatars__chevron--left { transform: rotate(135deg); }
 /* #ifdef MP-WEIXIN */
+.expandable-avatars__toggle { min-height: var(--ui-control-min-height); color: var(--ui-color-icon-muted); font-size: var(--ui-text-sm); }
 .expandable-avatars--home { flex-direction: column; align-items: stretch; gap: 0; }
 .expandable-avatars--home .expandable-avatars__items { flex: auto; width: 100%; }
 .expandable-avatars--home .expandable-avatars__toggle { align-self: flex-end; justify-content: flex-end; min-width: var(--ui-control-min-height); min-height: var(--ui-control-min-height); margin-bottom: calc(0rpx - var(--ui-space-3)); padding: 0; color: var(--ui-home-muted); font-size: var(--ui-text-sm); }

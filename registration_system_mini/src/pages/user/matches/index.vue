@@ -107,13 +107,25 @@ usePageRefresh(loadPageData);
       <view v-else-if="!matches.length" class="empty-card ui-card-panel">
         <text class="empty-text">{{ emptyText }}</text>
       </view>
-      <HomeMatchList
-        v-else
-        :matches="matches"
-        :hide-stage-label="matchScope === 'past'"
-        :navigating-match-id="navigatingMatchId"
-        @match-tap="handleMatchTap"
-      />
+      <template v-else>
+        <!-- #ifdef MP-WEIXIN -->
+        <HomeMatchList
+          :matches="matches"
+          :grouped="matchScope === 'past'"
+          :hide-stage-label="matchScope === 'past'"
+          :navigating-match-id="navigatingMatchId"
+          @match-tap="handleMatchTap"
+        />
+        <!-- #endif -->
+        <!-- #ifndef MP-WEIXIN -->
+        <HomeMatchList
+          :matches="matches"
+          :hide-stage-label="matchScope === 'past'"
+          :navigating-match-id="navigatingMatchId"
+          @match-tap="handleMatchTap"
+        />
+        <!-- #endif -->
+      </template>
     </view>
   </view>
 </template>
@@ -174,5 +186,6 @@ usePageRefresh(loadPageData);
 .empty-card { margin-top: var(--ui-card-gap); padding: var(--ui-space-10) var(--ui-card-padding); border: var(--ui-panel-border); border-radius: var(--ui-card-radius); background: var(--ui-card-bg); box-shadow: var(--ui-card-shadow); }
 .empty-text { font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-body); line-height: var(--ui-line-height-body); }
 .match-list-note { margin: var(--ui-space-1) 0 var(--ui-space-4); font-size: var(--ui-text-body); line-height: var(--ui-line-height-body); }
+.match-list-note,.empty-text { color: var(--ui-color-text-secondary); }
 /* #endif */
 </style>

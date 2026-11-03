@@ -1,10 +1,15 @@
 <script setup lang="ts">
+// #ifdef MP-WEIXIN
+import AppIcon from "@/components/ui/AppIcon.vue";
+// #endif
 import { useMinioImages } from "@/composables/useMinioImages";
 import { computed } from "vue";
 import type { BackendTeamAttendanceRankingItem } from "@/types/backend";
 import { rankingInitial } from "../teamStatsState";
 import { activityRankingAvatar, buildActivityRanking } from "../activityRanking";
+// #ifndef MP-WEIXIN
 import ActivityTrophyIcon from "@/components/ui/ActivityTrophyIcon.vue";
+// #endif
 import type { AvatarItem } from "@/components/ui/avatarTypes";
 
 const { minioImageSrc } = useMinioImages();
@@ -55,7 +60,12 @@ const scoreRanking = computed(() => buildActivityRanking(props.rankingItems, pro
             class="ranking-tier"
             :style="{ color: `var(--ui-avatar-tier-${item.tier.tone})`, backgroundColor: `var(--ui-avatar-tier-${item.tier.tone}-bg)` }"
           >
+            <!-- #ifdef MP-WEIXIN -->
+            <AppIcon name="trophy" size="var(--ui-icon-sm)" />
+            <!-- #endif -->
+            <!-- #ifndef MP-WEIXIN -->
             <ActivityTrophyIcon />
+            <!-- #endif -->
             <text>{{ item.tier.title }}</text>
           </view>
         </view>
@@ -251,4 +261,13 @@ const scoreRanking = computed(() => buildActivityRanking(props.rankingItems, pro
 .ranking-item--pressed { background: var(--ui-control-subtle-bg); }
 .ranking-avatar { border: var(--ui-panel-border); }
   /* #endif */
+
+/* #ifdef MP-WEIXIN */
+.stats-card-caption, .ranking-columns, .ranking-unit, .stats-empty { color: var(--ui-color-text-secondary); }
+.ranking-avatar { border-radius: var(--ui-radius-round); background: var(--ui-color-neutral-bg); }
+.ranking-avatar-fallback { color: var(--ui-color-text); }
+.ranking-order { background: var(--ranking-order-bg, transparent); color: var(--ranking-order-fg, var(--ui-color-text-secondary)); }
+.ranking-rate { font-size: var(--ui-text-subtitle); }
+.ranking-tier { font-weight: var(--ui-font-weight-medium); }
+/* #endif */
 </style>

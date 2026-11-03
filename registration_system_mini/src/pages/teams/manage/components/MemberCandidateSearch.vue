@@ -47,9 +47,18 @@ function handleCandidateTap(candidate: BackendUser) {
         @input="updateUserSearchKeyword"
         @confirm="handleSearchUsers"
       />
+      <!-- #ifdef MP-WEIXIN -->
+      <view class="member-search-action">
+        <AppButton variant="outline" block :loading="userSearching" @click="handleSearchUsers">
+          {{ userSearching ? "搜索中" : "搜索" }}
+        </AppButton>
+      </view>
+      <!-- #endif -->
+      <!-- #ifndef MP-WEIXIN -->
       <AppButton icon="search-line" class="search-button" variant="outline" :loading="userSearching" @click="handleSearchUsers">
         {{ userSearching ? "搜索中" : "搜索" }}
       </AppButton>
+      <!-- #endif -->
     </view>
     <view v-if="userSearchResults.length" class="candidate-list">
       <view
@@ -187,5 +196,14 @@ function handleCandidateTap(candidate: BackendUser) {
 .candidate-card + .candidate-card { border-top: var(--ui-list-divider); }
 .candidate-card-active { background: var(--ui-control-selected-bg); }
 .team-result-action-danger { background: var(--ui-color-danger-bg); }
+/* #endif */
+
+/* #ifdef MP-WEIXIN */
+.team-result-meta { color: var(--ui-color-text-secondary); }
+.team-result-title { overflow-wrap: anywhere; }
+.member-search-action { display: flex; flex-direction: column; align-items: stretch; flex-shrink: 0; min-width: calc(var(--ui-control-min-height) * 1.5); }
+.search-row { gap: var(--ui-space-3); align-items: stretch; }
+.team-result-action { font-size: var(--ui-text-sm); font-weight: var(--ui-font-weight-medium); }
+.candidate-card-active { border-radius: var(--ui-radius-button); }
 /* #endif */
 </style>

@@ -140,7 +140,11 @@ function selectAvatar(id: string | number, participants = props.participants) {
 }
 
 /* #ifdef MP-WEIXIN */
-.payment-panel { border: var(--ui-panel-border); background: var(--ui-color-warning-bg); padding: var(--ui-space-4); border-radius: var(--ui-panel-soft-radius); }
-.payment-panel-title, .payment-panel-fee { color: var(--ui-color-warning-fg); }
+.status-title { font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-heading); }
+.status-team-progress + .status-team-progress { padding-top: var(--ui-space-6); border-top: var(--ui-list-divider); }
+.payment-panel { border: var(--ui-panel-border); background: var(--ui-color-warning-bg); padding: var(--ui-space-4); border-radius: var(--ui-panel-soft-radius); margin-top: var(--ui-space-6); }
+.payment-panel-copy { gap: var(--ui-space-2); }
+.payment-panel-title, .payment-panel-fee { color: var(--ui-color-warning-fg); overflow-wrap: anywhere; line-height: var(--ui-line-height-compact); }
+.status-countdown { font-size: var(--ui-text-sm); line-height: var(--ui-line-height-compact); color: var(--ui-color-text-secondary); }
 /* #endif */
 </style>

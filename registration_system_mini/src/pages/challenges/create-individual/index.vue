@@ -1,4 +1,7 @@
 <script setup lang="ts">
+// #ifdef MP-WEIXIN
+import AppIcon from "@/components/ui/AppIcon.vue";
+// #endif
 import { beijingTodayAt, parseDateValue } from "@/utils/datetime";
 import { usePageRefresh } from "@/composables/usePageRefresh";
 import { useAccentTheme } from "@/stores/theme";
@@ -290,7 +293,12 @@ usePageRefresh(() => refreshSessionContext());
       <view class="form-section ui-card-panel">
         <view class="form-section__head">
           <view class="form-section__mark">
+            <!-- #ifdef MP-WEIXIN -->
+            <AppIcon name="users" size="var(--ui-icon-sm)" tone="muted" />
+            <!-- #endif -->
+            <!-- #ifndef MP-WEIXIN -->
             <image class="form-section__icon" src="/static/icons/lucide/users.png" mode="aspectFit" aria-hidden="true" />
+            <!-- #endif -->
           </view>
           <view class="form-section__copy">
             <text class="form-section__title">约球信息</text>
@@ -325,7 +333,12 @@ usePageRefresh(() => refreshSessionContext());
       <view class="form-section ui-card-panel">
         <view class="form-section__head">
           <view class="form-section__mark">
+            <!-- #ifdef MP-WEIXIN -->
+            <AppIcon name="clock" size="var(--ui-icon-sm)" tone="muted" />
+            <!-- #endif -->
+            <!-- #ifndef MP-WEIXIN -->
             <image class="form-section__icon" src="/static/icons/lucide/clock.png" mode="aspectFit" aria-hidden="true" />
+            <!-- #endif -->
           </view>
           <view class="form-section__copy">
             <text class="form-section__title">比赛时间</text>
@@ -345,7 +358,12 @@ usePageRefresh(() => refreshSessionContext());
       <view class="form-section ui-card-panel">
         <view class="form-section__head">
           <view class="form-section__mark">
+            <!-- #ifdef MP-WEIXIN -->
+            <AppIcon name="map-pin" size="var(--ui-icon-sm)" tone="muted" />
+            <!-- #endif -->
+            <!-- #ifndef MP-WEIXIN -->
             <image class="form-section__icon" src="/static/icons/lucide/map-pin.png" mode="aspectFit" aria-hidden="true" />
+            <!-- #endif -->
           </view>
           <view class="form-section__copy">
             <text class="form-section__title">场地与报名</text>
@@ -368,7 +386,12 @@ usePageRefresh(() => refreshSessionContext());
           <text class="form-label">预计费用</text>
           <view class="fee-options">
             <button v-for="option in feeOptions" :key="option.value" class="fee-option" :class="{ 'fee-option--selected': form.feeType === option.value }" @tap="selectFeeType(option.value)">
+              <!-- #ifdef MP-WEIXIN -->
+              <AppIcon :name="option.value === 'free' ? 'circle-check' : option.value === 'fixed_amount' ? 'wallet' : 'users'" size="var(--ui-icon-control)" />
+              <!-- #endif -->
+              <!-- #ifndef MP-WEIXIN -->
               <image class="fee-option__icon" :src="`/static/icons/lucide/${option.icon}.png`" mode="aspectFit" />
+              <!-- #endif -->
               <text>{{ option.label }}</text>
             </button>
           </view>
@@ -653,15 +676,16 @@ usePageRefresh(() => refreshSessionContext());
 /* #ifdef MP-WEIXIN */
 .individual-create-page { padding-inline: var(--ui-page-padding-inline); padding-bottom: calc(var(--ui-page-padding-bottom) + env(safe-area-inset-bottom)); }
 .form-section { margin-top: var(--ui-card-gap); padding: var(--ui-card-padding); border: var(--ui-panel-border); border-radius: var(--ui-card-radius); background: var(--ui-card-bg); box-shadow: var(--ui-card-shadow); }
-.form-section__mark { background: var(--ui-control-subtle-bg); width: var(--ui-icon-xl); height: var(--ui-icon-xl); }
 .form-section__title { font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-heading); }
 .form-label { font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-heading); }
 .form-field { margin-top: var(--ui-space-6); }
 .form-input, .form-textarea, .form-number { border: var(--ui-input-border); border-radius: var(--ui-input-radius); font-size: var(--ui-text-label); }
 .form-input, .form-number { height: var(--ui-input-height); padding: 0 var(--ui-input-padding); }
 .form-textarea { min-height: var(--ui-textarea-min-height); padding: var(--ui-input-padding); }
-.form-summary { background: var(--ui-panel-soft-bg); padding: var(--ui-space-4); }
-.fee-option { border: var(--ui-control-border); background: var(--ui-control-subtle-bg); padding: var(--ui-space-6) var(--ui-space-2); font-size: var(--ui-text-label); gap: var(--ui-space-3); }
-.fee-option--selected { background: var(--ui-control-selected-bg); font-weight: var(--ui-font-weight-heading); }
+.form-section__mark { background: transparent; width: var(--ui-icon-xl); height: var(--ui-icon-xl); }
+.fee-option { border: var(--ui-input-border); background: var(--ui-card-bg); padding: var(--ui-space-6) var(--ui-space-2); font-size: var(--ui-text-label); gap: var(--ui-space-3); }
+.fee-option--selected { background: var(--ui-control-selected-bg); font-weight: var(--ui-font-weight-heading); border-color: var(--ui-color-accent); }
+.form-summary { background: var(--ui-panel-soft-bg); padding: var(--ui-space-4); color: var(--ui-color-text-secondary); font-size: var(--ui-text-sm); line-height: var(--ui-line-height-body); }
+.form-section__caption { font-size: var(--ui-text-sm); line-height: var(--ui-line-height-body); color: var(--ui-color-text-secondary); }
 /* #endif */
 </style>

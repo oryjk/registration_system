@@ -331,5 +331,6 @@ function handleSelect(teamId: number, isCurrent: boolean) {
 .team-switch-option__name { font-size: var(--ui-text-subtitle); line-height: var(--ui-line-height-tight); }
 .team-switch-option__meta { margin-top: var(--ui-space-2); gap: var(--ui-space-2); font-size: var(--ui-text-sm); }
 .team-switch-option__mark { padding: var(--ui-space-1) var(--ui-space-3); border: var(--ui-control-border); background: var(--ui-control-subtle-bg); font-size: var(--ui-text-xs); }
+.team-switch-sheet__caption,.team-switch-option__meta { color: var(--ui-color-text-secondary); }
 /* #endif */
 </style>

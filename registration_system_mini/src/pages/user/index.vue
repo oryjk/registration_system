@@ -1,4 +1,7 @@
 <script setup lang="ts">
+// #ifdef MP-WEIXIN
+import AppIcon from "@/components/ui/AppIcon.vue";
+// #endif
 import { usePullRefresh } from "@/composables/usePullRefresh";
 import { APP_SCROLL_CONTROLLER, createAppScrollAnchor } from "@/components/appScroll";
 import { provide, ref } from "vue";
@@ -132,21 +135,71 @@ provide(APP_SCROLL_CONTROLLER, appScrollController);
         </template>
           <view class="mine-services ui-card-list">
             <button class="mine-service ui-list-row" hover-class="mine-service--pressed" @tap="openHelp">
-              <text class="mine-help-icon">?</text><text class="mine-service-label">使用帮助</text><wd-icon name="arrow-right" size="26rpx" />
+              <!-- #ifdef MP-WEIXIN -->
+              <AppIcon name="circle-help" />
+              <!-- #endif -->
+              <!-- #ifndef MP-WEIXIN -->
+              <text class="mine-help-icon">?</text>
+              <!-- #endif -->
+              <text class="mine-service-label">使用帮助</text>
+              <!-- #ifdef MP-WEIXIN -->
+              <AppIcon name="chevron-right" size="var(--ui-icon-sm)" tone="muted" />
+              <!-- #endif -->
+              <!-- #ifndef MP-WEIXIN -->
+              <wd-icon name="arrow-right" size="26rpx" />
+              <!-- #endif -->
             </button>
             <!-- #ifdef MP-WEIXIN -->
             <button v-if="!shouldHideCreationEntrances" class="mine-service ui-list-row" hover-class="mine-service--pressed" @tap="openChanlun">
-              <text class="mine-help-icon">缠</text><text class="mine-service-label">缠观行情</text><wd-icon name="arrow-right" size="26rpx" />
+              <AppIcon name="chart-column" />
+              <text class="mine-service-label">缠观行情</text>
+              <AppIcon name="chevron-right" size="var(--ui-icon-sm)" tone="muted" />
             </button>
             <!-- #endif -->
             <button v-if="currentUser" class="mine-service ui-list-row" hover-class="mine-service--pressed" @tap="openNotifications">
-              <wd-icon name="notification" size="32rpx" /><text class="mine-service-label">消息中心</text><text v-if="unreadCount > 0" class="mine-badge">{{ unreadCount > 99 ? '99+' : unreadCount }}</text><wd-icon name="arrow-right" size="26rpx" />
+              <!-- #ifdef MP-WEIXIN -->
+              <AppIcon name="bell" size="var(--ui-icon-md)" />
+              <!-- #endif -->
+              <!-- #ifndef MP-WEIXIN -->
+              <wd-icon name="notification" size="32rpx" />
+              <!-- #endif -->
+              <text class="mine-service-label">消息中心</text><text v-if="unreadCount > 0" class="mine-badge">{{ unreadCount > 99 ? '99+' : unreadCount }}</text>
+              <!-- #ifdef MP-WEIXIN -->
+              <AppIcon name="chevron-right" size="var(--ui-icon-sm)" tone="muted" />
+              <!-- #endif -->
+              <!-- #ifndef MP-WEIXIN -->
+              <wd-icon name="arrow-right" size="26rpx" />
+              <!-- #endif -->
             </button>
             <button v-if="currentUser" class="mine-service ui-list-row" hover-class="mine-service--pressed" @tap="openContactDeveloper">
-              <wd-icon name="email" size="32rpx" /><text class="mine-service-label">联系开发者</text><wd-icon name="arrow-right" size="26rpx" />
+              <!-- #ifdef MP-WEIXIN -->
+              <AppIcon name="mail" size="var(--ui-icon-md)" />
+              <!-- #endif -->
+              <!-- #ifndef MP-WEIXIN -->
+              <wd-icon name="email" size="32rpx" />
+              <!-- #endif -->
+              <text class="mine-service-label">联系开发者</text>
+              <!-- #ifdef MP-WEIXIN -->
+              <AppIcon name="chevron-right" size="var(--ui-icon-sm)" tone="muted" />
+              <!-- #endif -->
+              <!-- #ifndef MP-WEIXIN -->
+              <wd-icon name="arrow-right" size="26rpx" />
+              <!-- #endif -->
             </button>
             <button v-if="currentUser && settingsEntryVisible" class="mine-service ui-list-row" hover-class="mine-service--pressed" @tap="openSettings">
-              <wd-icon name="settings" size="32rpx" /><text class="mine-service-label">设置</text><wd-icon name="arrow-right" size="26rpx" />
+              <!-- #ifdef MP-WEIXIN -->
+              <AppIcon name="settings" size="var(--ui-icon-md)" />
+              <!-- #endif -->
+              <!-- #ifndef MP-WEIXIN -->
+              <wd-icon name="settings" size="32rpx" />
+              <!-- #endif -->
+              <text class="mine-service-label">设置</text>
+              <!-- #ifdef MP-WEIXIN -->
+              <AppIcon name="chevron-right" size="var(--ui-icon-sm)" tone="muted" />
+              <!-- #endif -->
+              <!-- #ifndef MP-WEIXIN -->
+              <wd-icon name="arrow-right" size="26rpx" />
+              <!-- #endif -->
             </button>
           </view>
         <!-- #ifndef MP-WEIXIN -->
@@ -154,7 +207,19 @@ provide(APP_SCROLL_CONTROLLER, appScrollController);
         <!-- #endif -->
         <view v-if="currentUser && impersonationPanelVisible" class="mine-tools ui-card-list">
           <button class="mine-service ui-list-row" @tap="toolsExpanded = !toolsExpanded" :aria-expanded="toolsExpanded || impersonating">
-            <wd-icon name="tool" size="30rpx" /><text class="mine-service-label">身份切换</text><text v-if="impersonating" class="mine-tool-state">正在使用测试身份</text><wd-icon :name="toolsExpanded || impersonating ? 'arrow-up' : 'arrow-down'" size="24rpx" />
+            <!-- #ifdef MP-WEIXIN -->
+            <AppIcon name="wrench" size="var(--ui-icon-md)" />
+            <!-- #endif -->
+            <!-- #ifndef MP-WEIXIN -->
+            <wd-icon name="tool" size="30rpx" />
+            <!-- #endif -->
+            <text class="mine-service-label">身份切换</text><text v-if="impersonating" class="mine-tool-state">正在使用测试身份</text>
+            <!-- #ifdef MP-WEIXIN -->
+            <AppIcon :name="toolsExpanded || impersonating ? 'chevron-up' : 'chevron-down'" size="var(--ui-icon-sm)" tone="muted" />
+            <!-- #endif -->
+            <!-- #ifndef MP-WEIXIN -->
+            <wd-icon :name="toolsExpanded || impersonating ? 'arrow-up' : 'arrow-down'" size="24rpx" />
+            <!-- #endif -->
           </button>
           <view v-if="toolsExpanded || impersonating" class="mine-tools-content">
             <MineImpersonationPanel v-model:keyword="impersonationKeyword" :impersonating="impersonating" :can-switch="impersonationCanSwitch" :current-name="impersonationCurrentName" :results="impersonationResults" :searching="impersonationSearching" :switching="impersonationSwitching" :restoring="impersonationRestoring" :searched="impersonationSearched" @search="handleImpersonationSearch" @switch="handleImpersonationSwitch" @restore="handleImpersonationRestore" />
@@ -205,5 +270,9 @@ provide(APP_SCROLL_CONTROLLER, appScrollController);
 .mine-tools-content { padding: 0 0 var(--ui-space-4); --ui-content-surface-radius: var(--ui-panel-radius); --ui-content-surface-shadow: var(--ui-panel-shadow); }
 .mine-account-actions { gap: var(--ui-space-8); margin-top: var(--ui-section-gap); }
 .mine-account-action { padding: var(--ui-space-4) var(--ui-space-1); font-size: var(--ui-text-sm); }
+.mine-service-label { min-width: 0; font-size: var(--ui-text-subtitle); overflow-wrap: anywhere; }
+.mine-tool-state { flex-shrink: 0; font-size: var(--ui-text-xs); }
+.mine-badge { flex-shrink: 0; font-variant-numeric: tabular-nums; }
+.mine-account-action { color: var(--ui-color-text-secondary); }
 /* #endif */
 </style>

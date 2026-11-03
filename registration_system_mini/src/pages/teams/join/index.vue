@@ -88,7 +88,7 @@ onShow(() => { if (joinedTeam.value) void refreshIllustrations(); });
       >
         <!-- #ifdef MP-WEIXIN -->
         <template #createTeam>
-          <AppButton variant="secondary" block icon="plus" @click="goCreateTeam">没有找到？创建自己的球队</AppButton>
+          <AppButton variant="secondary" block @click="goCreateTeam">没有找到？创建自己的球队</AppButton>
         </template>
         <!-- #endif -->
       </TeamJoinPanel>

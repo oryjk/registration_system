@@ -377,5 +377,6 @@ usePageRefresh(() => preloadMiniReviewStatus(true));
 .contact-developer-field__input,.contact-developer-field__textarea { margin-top: var(--ui-space-3); padding: var(--ui-space-4) var(--ui-input-padding); border: var(--ui-input-border); border-radius: var(--ui-input-radius); font-size: var(--ui-text-subtitle); }
 .contact-developer-field__input { height: var(--ui-input-height); padding: 0 var(--ui-input-padding); }
 .contact-developer-field__textarea { min-height: var(--ui-textarea-min-height); }
+.contact-developer-thanks,.contact-developer-support-note,.contact-developer-qrcode-caption,.contact-developer-amount-option__label { color: var(--ui-color-text-secondary); }
 /* #endif */
 </style>

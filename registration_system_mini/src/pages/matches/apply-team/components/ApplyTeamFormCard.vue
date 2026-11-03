@@ -116,6 +116,10 @@ const emit = defineEmits<{
 
 /* #ifdef MP-WEIXIN */
 .form-textarea { border: var(--ui-input-border); border-radius: var(--ui-input-radius); min-height: var(--ui-textarea-min-height); padding: var(--ui-input-padding); font-size: var(--ui-text-label); }
-.form-submit { min-height: var(--ui-button-height-md); height: auto; border: var(--ui-control-border); border-radius: var(--ui-button-radius); background: var(--ui-color-cta); color: var(--ui-color-cta-fg); box-shadow: var(--ui-panel-shadow); font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-heading); }
+.form-row { align-items: flex-start; gap: var(--ui-space-4); }
+.form-label { flex-shrink: 0; font-size: var(--ui-text-body); line-height: var(--ui-line-height-body); }
+.form-team { min-width: 0; text-align: right; overflow-wrap: anywhere; font-size: var(--ui-text-subtitle); line-height: var(--ui-line-height-compact); }
+.form-submit { min-height: var(--ui-button-height-md); height: auto; border: var(--ui-control-border); border-radius: var(--ui-button-radius); background: var(--ui-color-cta); color: var(--ui-color-cta-fg); box-shadow: var(--ui-panel-shadow); font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-heading); margin-top: var(--ui-space-6); }
+.form-counter { position: static; display: block; margin-top: var(--ui-space-2); text-align: right; font-size: var(--ui-text-xs); color: var(--ui-color-text-secondary); }
 /* #endif */
 </style>

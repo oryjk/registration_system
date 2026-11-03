@@ -1,4 +1,7 @@
 <script setup lang="ts">
+// #ifdef MP-WEIXIN
+import AppIcon from "@/components/ui/AppIcon.vue";
+// #endif
 import { useMinioImages } from "@/composables/useMinioImages";
 import { onShareAppMessage, onShareTimeline } from "@dcloudio/uni-app";
 import { useAccentTheme } from "@/stores/theme";
@@ -85,7 +88,12 @@ onShareTimeline(() => ({
         <!-- 队费下放子页后的轻量入口：展示余额，点击进入队费缴纳页。 -->
         <view class="fund-entry ui-card-panel" hover-class="fund-entry--pressed" @tap="openTeamFund">
           <view class="fund-entry__main">
+            <!-- #ifdef MP-WEIXIN -->
+            <view class="fund-entry__heading"><AppIcon name="wallet" size="var(--ui-icon-md)" tone="muted" /><text class="fund-entry__label">队费余额</text></view>
+            <!-- #endif -->
+            <!-- #ifndef MP-WEIXIN -->
             <text class="fund-entry__label">队费余额</text>
+            <!-- #endif -->
             <view class="fund-entry__amount">
               <text class="fund-entry__symbol">¥</text>
               <text class="fund-entry__value">{{ balanceLabel }}</text>
@@ -93,7 +101,12 @@ onShareTimeline(() => ({
           </view>
           <view class="fund-entry__action">
             <text class="fund-entry__action-text">去缴纳</text>
+            <!-- #ifdef MP-WEIXIN -->
+            <AppIcon name="chevron-right" tone="muted" />
+            <!-- #endif -->
+            <!-- #ifndef MP-WEIXIN -->
             <text class="ui-arrow-text fund-entry__action-arrow">→</text>
+            <!-- #endif -->
           </view>
         </view>
 
@@ -103,9 +116,16 @@ onShareTimeline(() => ({
             <text class="manage-title">球队管理</text>
             <text class="manage-copy">资料、队员与比赛出勤管理</text>
           </view>
+          <!-- #ifdef MP-WEIXIN -->
+          <AppButton variant="outline" block @click="openTeamManage">
+            进入球队管理
+          </AppButton>
+          <!-- #endif -->
+          <!-- #ifndef MP-WEIXIN -->
           <AppButton icon="settings" variant="outline" block @click="openTeamManage">
             进入球队管理
           </AppButton>
+          <!-- #endif -->
         </AppSurface>
 
         <!-- 邀请球友（拉新）：仅队长/领队展示；open-type=share 触发与右上角菜单相同的分享配置。 -->
@@ -115,7 +135,12 @@ onShareTimeline(() => ({
             <text class="invite-copy">分享邀请卡片给球友，点开即可申请加入{{ team.name }}，7 天内有效。</text>
           </view>
           <button class="invite-share-button ui-native-button ui-native-button--primary" open-type="share" hover-class="invite-share-button--pressed">
+            <!-- #ifdef MP-WEIXIN -->
+            <AppIcon name="share-2" />
+            <!-- #endif -->
+            <!-- #ifndef MP-WEIXIN -->
             <wd-icon name="share-external" size="34rpx" color="var(--ui-color-accent-fg)" />
+            <!-- #endif -->
             <text class="invite-share-button__text">分享邀请，拉球友入队</text>
           </button>
         </AppSurface>
@@ -126,9 +151,16 @@ onShareTimeline(() => ({
             <text class="leave-title">退出球队</text>
             <text class="leave-copy">退出后不再参与本球队的比赛与报名；队费余额需为 0 才能退出。</text>
           </view>
+          <!-- #ifdef MP-WEIXIN -->
+          <AppButton variant="danger" block @click="handleLeaveTeamClick">
+            退出球队
+          </AppButton>
+          <!-- #endif -->
+          <!-- #ifndef MP-WEIXIN -->
           <AppButton icon="poweroff" variant="danger" block @click="handleLeaveTeamClick">
             退出球队
           </AppButton>
+          <!-- #endif -->
         </AppSurface>
       </template>
     </view>
@@ -532,5 +564,20 @@ onShareTimeline(() => ({
 .leave-title { font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-heading); }
 .leave-copy { font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-body); line-height: var(--ui-line-height-body); }
 .fund-entry--pressed { transform: none; background: var(--ui-control-selected-bg); }
+/* #endif */
+
+/* #ifdef MP-WEIXIN */
+.hero-row { flex-wrap: wrap; }
+.hero-copy { min-width: 0; }
+.hero-meta, .hero-description, .manage-copy, .invite-copy, .leave-copy { color: var(--ui-color-text-secondary); }
+.fund-entry__heading { display: flex; align-items: center; gap: var(--ui-space-2); }
+.fund-entry__main { min-width: 0; flex: 1; }
+.fund-entry__label { color: var(--ui-color-text-secondary); letter-spacing: normal; }
+.fund-entry__value { overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.fund-entry__action { padding: 0; background: var(--ui-control-plain-bg); }
+.fund-entry__action-text { color: var(--ui-color-text-secondary); font-size: var(--ui-text-sm); font-weight: var(--ui-font-weight-medium); }
+.leave-head { padding: 0 0 var(--ui-space-5); }
+.leave-title { color: var(--ui-color-danger-fg); }
+.invite-title { font-size: var(--ui-text-title); }
 /* #endif */
 </style>

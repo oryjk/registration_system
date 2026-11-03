@@ -1,4 +1,7 @@
 <script setup lang="ts">
+// #ifdef MP-WEIXIN
+import AppIcon from "@/components/ui/AppIcon.vue";
+// #endif
 import { computed, ref } from "vue";
 import type { AvatarItem } from "@/components/ui/avatarTypes";
 import { resolveDetailActions, type DetailAction } from "../detailPresentation";
@@ -195,7 +198,9 @@ function handleTeamMemberDialogVisibilityChange(visible: boolean) {
       </AppButton>
       <view class="registration-actions">
         <!-- #ifdef MP-WEIXIN -->
-        <button class="registration-share ui-native-button" open-type="share" hover-class="registration-share--pressed"><wd-icon name="share-external" size="34rpx" /><text>分享</text></button>
+        <button class="registration-share ui-native-button" open-type="share" hover-class="registration-share--pressed">
+          <AppIcon name="share-2" size="var(--ui-icon-sm)" tone="muted" /><text>分享</text>
+        </button>
         <!-- #endif -->
         <!-- #ifndef MP-WEIXIN -->
         <button class="registration-share ui-native-button" hover-class="registration-share--pressed" @tap="shareInBrowser"><wd-icon name="share-external" size="34rpx" /><text>分享</text></button>
@@ -209,8 +214,10 @@ function handleTeamMemberDialogVisibilityChange(visible: boolean) {
         @click="runAction(actions.primary)"
       >
         <view class="registration-button-content">
+          <!-- #ifndef MP-WEIXIN -->
           <image v-if="actions.primary === 'pay'" class="registration-action-icon" src="/static/icons/lucide/wallet.png" mode="aspectFit" aria-hidden="true" />
           <wd-icon v-else :name="actions.primary === 'roster' ? 'edit' : 'check-circle'" size="34rpx" />
+          <!-- #endif -->
           <text>{{ actionLabel(actions.primary) }}</text>
         </view>
       </AppButton>
@@ -252,7 +259,11 @@ function handleTeamMemberDialogVisibilityChange(visible: boolean) {
 .registration-primary { flex: 1; min-width: 0; }
 .registration-button-content { display: flex; align-items: center; justify-content: center; gap: 12rpx; }
 .registration-action-icon { width: 34rpx; height: 34rpx; flex-shrink: 0; }
+
 /* #ifdef MP-WEIXIN */
 .individual-mode-shell { gap: var(--ui-space-6); }
+.registration-actions { gap: var(--ui-space-4); }
+.registration-share { gap: var(--ui-space-2); background: var(--ui-color-neutral-bg); color: var(--ui-color-text-muted); font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-medium); }
+.registration-button-content { gap: var(--ui-space-3); }
 /* #endif */
 </style>

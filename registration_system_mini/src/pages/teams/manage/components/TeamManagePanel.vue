@@ -33,4 +33,10 @@ defineProps<{ title: string; caption?: string }>();
 .manage-panel-title { font-size: var(--ui-text-heading); font-weight: var(--ui-font-weight-heading); line-height: var(--ui-line-height-tight); }
 .manage-panel-caption { margin-top: var(--ui-space-2); font-size: var(--ui-text-sm); line-height: var(--ui-line-height-body); }
 /* #endif */
+
+/* #ifdef MP-WEIXIN */
+.manage-panel-caption { color: var(--ui-color-text-secondary); }
+.manage-panel-heading { align-items: flex-start; }
+.manage-panel-title { font-size: var(--ui-text-title); }
+/* #endif */
 </style>

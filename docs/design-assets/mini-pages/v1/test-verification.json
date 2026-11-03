@@ -1,0 +1,7 @@
+{
+  "files": 104,
+  "passed_files": 104,
+  "passed_tests": 673,
+  "seconds": 3.16,
+  "method": "Each source test file runs in a fresh Bun process to avoid cross-file mock.module pollution."
+}

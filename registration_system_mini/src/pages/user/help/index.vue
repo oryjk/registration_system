@@ -132,5 +132,6 @@ onShow(() => { void preloadMiniReviewStatus(); void refreshIllustrations(); });
 .help-step-number { width: var(--ui-icon-lg); height: var(--ui-icon-lg); background: var(--ui-control-subtle-bg); color: var(--ui-color-text); font-size: var(--ui-text-body); }
 .help-login-note { margin: var(--ui-space-4) 0 var(--ui-space-7); font-size: var(--ui-text-sm); line-height: var(--ui-line-height-body); }
 .help-footer { margin-top: var(--ui-section-gap); font-size: var(--ui-text-body); line-height: var(--ui-line-height-body); }
+.help-route-summary,.help-step,.help-description,.help-login-note,.help-footer { color: var(--ui-color-text-secondary); }
 /* #endif */
 </style>

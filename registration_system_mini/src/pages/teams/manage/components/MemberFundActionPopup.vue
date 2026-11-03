@@ -103,9 +103,16 @@ function yuanLabel(cents: number) {
         />
       </view>
 
+      <!-- #ifdef MP-WEIXIN -->
+      <AppButton block :loading="submitting" @click="handleSubmit">
+        {{ submitLabel }}
+      </AppButton>
+      <!-- #endif -->
+      <!-- #ifndef MP-WEIXIN -->
       <AppButton icon="check" block :loading="submitting" @click="handleSubmit">
         {{ submitLabel }}
       </AppButton>
+      <!-- #endif -->
     </view>
   </wd-popup>
 </template>
@@ -212,5 +219,15 @@ function yuanLabel(cents: number) {
 .member-fund-hint { font-size: var(--ui-text-sm); }
 .member-fund-field { gap: var(--ui-space-3); }
 .member-fund-input { padding: 0 var(--ui-input-padding); font-size: var(--ui-text-subtitle); height: var(--ui-input-height); border: var(--ui-input-border); border-radius: var(--ui-input-radius); background: var(--ui-color-surface); }
+/* #endif */
+
+/* #ifdef MP-WEIXIN */
+.member-fund-title { font-size: var(--ui-text-title); overflow-wrap: anywhere; }
+.member-fund-header > view { flex: 1; min-width: 0; }
+.member-fund-kicker, .member-fund-hint { color: var(--ui-color-text-secondary); }
+.member-fund-hint { line-height: var(--ui-line-height-body); }
+.member-fund-balance { flex-wrap: wrap; }
+.member-fund-amount, .member-fund-debt { overflow-wrap: anywhere; }
+.member-fund-input { box-sizing: border-box; width: 100%; }
 /* #endif */
 </style>

@@ -32,5 +32,6 @@ defineProps<{
 .mine-stat:nth-child(n+3) { border-top: var(--ui-list-divider); }
 .mine-stat__value { font-size: var(--ui-text-heading); font-weight: var(--ui-font-weight-heading); }
 .mine-stat__unit,.mine-stat__label { font-size: var(--ui-text-sm); }
+.mine-stat__unit,.mine-stat__label { color: var(--ui-color-text-secondary); }
 /* #endif */
 </style>

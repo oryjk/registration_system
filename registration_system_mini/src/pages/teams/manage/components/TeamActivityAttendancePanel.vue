@@ -1,4 +1,7 @@
 <script setup lang="ts">
+// #ifdef MP-WEIXIN
+import AppIcon from "@/components/ui/AppIcon.vue";
+// #endif
 import { useMinioImages } from "@/composables/useMinioImages";
 import TeamManagePanel from "./TeamManagePanel.vue";
 import RunningLoader from "@/components/ui/RunningLoader.vue";
@@ -71,7 +74,12 @@ function memberInitial(nickname: string) {
             <text class="activity-name">{{ match.activity_name }}</text>
             <text class="activity-meta">{{ formatAttendanceDate(match.holding_date) }} · {{ match.location || "地点待定" }}</text>
           </view>
+          <!-- #ifdef MP-WEIXIN -->
+          <view class="activity-expand-control"><AppIcon :name="expandedActivityId === match.activity_id ? 'chevron-up' : 'chevron-down'" tone="muted" /></view>
+          <!-- #endif -->
+          <!-- #ifndef MP-WEIXIN -->
           <text class="ui-arrow-text activity-expand-arrow" :class="{ 'activity-expand-arrow-open': expandedActivityId === match.activity_id }">›</text>
+          <!-- #endif -->
         </view>
         <SmoothCollapse :visible="expandedActivityId === match.activity_id">
           <view class="activity-detail">
@@ -168,5 +176,13 @@ function memberInitial(nickname: string) {
 .activity-member-name { font-size: var(--ui-text-label); line-height: var(--ui-line-height-body); font-weight: var(--ui-font-weight-medium); }
 .activity-member-meta { margin-top: var(--ui-space-1); font-size: var(--ui-text-sm); }
 .activity-member-status { padding: var(--ui-space-2) var(--ui-space-3); font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-heading); }
+/* #endif */
+
+/* #ifdef MP-WEIXIN */
+.activity-expand-control { display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: var(--ui-control-min-height); height: var(--ui-control-min-height); }
+.activity-meta, .activity-member-meta, .empty-box, .activity-loading { color: var(--ui-color-text-secondary); }
+.activity-attendance-card:first-child { border-top: 0; }
+.activity-stat { border-radius: var(--ui-radius-button); }
+.activity-card-topline { gap: var(--ui-space-3); }
 /* #endif */
 </style>

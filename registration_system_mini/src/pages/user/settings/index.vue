@@ -251,5 +251,6 @@ usePageRefresh(loadPageData);
 .settings-radio__label { font-size: var(--ui-text-label); font-weight: var(--ui-font-weight-heading); }
 .settings-empty { padding: var(--ui-space-8) 0 var(--ui-space-2); }
 .settings-empty__text { font-size: var(--ui-text-body); line-height: var(--ui-line-height-body); }
+.settings-item__desc,.settings-empty__text { color: var(--ui-color-text-secondary); }
 /* #endif */
 </style>

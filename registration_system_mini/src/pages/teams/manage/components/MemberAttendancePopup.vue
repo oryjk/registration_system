@@ -1,4 +1,7 @@
 <script setup lang="ts">
+// #ifdef MP-WEIXIN
+import AppIcon from "@/components/ui/AppIcon.vue";
+// #endif
 import { useMinioImages } from "@/composables/useMinioImages";
 import { useAccentTheme } from "@/stores/theme";
 const { themePageStyle } = useAccentTheme();
@@ -97,7 +100,12 @@ function handleToggleYear(year: string) {
               <text class="attendance-year-chip">{{ group.total }} 场</text>
               <text class="attendance-year-chip attendance-year-chip-joined">参加 {{ group.attended }}</text>
               <text class="attendance-year-chip attendance-year-chip-leave">请假 {{ group.leave }}</text>
+              <!-- #ifdef MP-WEIXIN -->
+              <view class="attendance-year-control"><AppIcon :name="group.collapsed ? 'chevron-down' : 'chevron-up'" tone="muted" /></view>
+              <!-- #endif -->
+              <!-- #ifndef MP-WEIXIN -->
               <text :class="['attendance-year-arrow', group.collapsed ? 'attendance-year-arrow-collapsed' : '']" class="ui-arrow-text">⌃</text>
+              <!-- #endif -->
             </view>
           </view>
           <SmoothCollapse :visible="!group.collapsed">
@@ -464,5 +472,20 @@ function handleToggleYear(year: string) {
 .attendance-year-chip, .attendance-status { border: var(--ui-control-border); }
 .attendance-item + .attendance-item { border-top: var(--ui-list-divider); }
 .member-avatar { border: var(--ui-panel-border); }
+/* #endif */
+
+/* #ifdef MP-WEIXIN */
+.attendance-profile { flex: 1; min-width: 0; }
+.attendance-profile > view { flex: 1; min-width: 0; }
+.member-edit-title { font-size: var(--ui-text-title); overflow-wrap: anywhere; }
+.member-edit-kicker, .attendance-summary-label, .attendance-item-meta, .attendance-item-count, .empty-box { color: var(--ui-color-text-secondary); }
+.member-avatar { border-radius: var(--ui-radius-round); background: var(--ui-color-neutral-bg); }
+.member-avatar-fallback { color: var(--ui-color-text); }
+.attendance-year-control { display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: var(--ui-control-min-height); height: var(--ui-control-min-height); }
+.attendance-year-header { min-height: var(--ui-control-min-height); }
+.attendance-year-title { flex-shrink: 0; }
+.attendance-year-stats { gap: var(--ui-space-1); }
+.attendance-item-side { width: auto; min-width: var(--ui-control-min-height); }
+.attendance-summary-label { font-weight: var(--ui-font-weight-body); }
 /* #endif */
 </style>

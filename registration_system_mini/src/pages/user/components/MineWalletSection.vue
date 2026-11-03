@@ -1,4 +1,7 @@
 <script setup lang="ts">
+// #ifdef MP-WEIXIN
+import AppIcon from "@/components/ui/AppIcon.vue";
+// #endif
 import SectionHeader from "@/components/ui/SectionHeader.vue";
 import AppSurface from "@/components/ui/AppSurface.vue";
 
@@ -27,7 +30,14 @@ const emit = defineEmits<{
           <text class="mine-wallet-strip__value">{{ walletSummary.balanceLabel }}</text>
           <text class="mine-wallet-strip__meta">累计支出 {{ walletSummary.totalExpenseLabel }} · {{ walletSummary.latestExpenseLabel }}</text>
         </view>
-        <button class="wallet-action ui-subtle-control" @tap="emit('openBilling')"><text>账单</text><wd-icon name="arrow-right" size="var(--ui-icon-xs)" /></button>
+        <button class="wallet-action ui-subtle-control" @tap="emit('openBilling')"><text>账单</text>
+        <!-- #ifdef MP-WEIXIN -->
+        <AppIcon name="chevron-right" size="var(--ui-icon-sm)" tone="muted" />
+        <!-- #endif -->
+        <!-- #ifndef MP-WEIXIN -->
+        <wd-icon name="arrow-right" size="var(--ui-icon-xs)" />
+        <!-- #endif -->
+        </button>
       </view>
     </AppSurface>
   </view>
@@ -96,5 +106,8 @@ const emit = defineEmits<{
 .mine-wallet-strip__value { margin-top: var(--ui-space-1); font-size: var(--ui-text-display); font-weight: var(--ui-font-weight-heading); }
 .mine-wallet-strip__meta { margin-top: var(--ui-space-2); line-height: var(--ui-line-height-body); }
 .wallet-action { gap: var(--ui-space-2); min-height: var(--ui-control-min-height); padding: var(--ui-space-3) var(--ui-space-4); border-radius: var(--ui-control-radius); background: var(--ui-control-subtle-bg); font-size: var(--ui-text-body); }
+.wallet-action { background: transparent; color: var(--ui-color-text-secondary); }
+.mine-wallet-strip__value { font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.mine-wallet-strip__label,.mine-wallet-strip__meta,.wallet-action { color: var(--ui-color-text-secondary); }
 /* #endif */
 </style>

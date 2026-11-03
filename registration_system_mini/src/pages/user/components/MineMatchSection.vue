@@ -1,4 +1,7 @@
 <script setup lang="ts">
+// #ifdef MP-WEIXIN
+import AppIcon from "@/components/ui/AppIcon.vue";
+// #endif
 import SectionHeader from "@/components/ui/SectionHeader.vue";
 import AppTag from "@/components/ui/AppTag.vue";
 import type { MineMatchSummary } from "../mineTypes";
@@ -18,8 +21,25 @@ const emit = defineEmits<{
     <SectionHeader title="我的比赛" action-label="全部" @action="emit('openAll')" />
     <view class="mine-match-list ui-plain-panel">
       <button v-for="match in matches" :key="match.id" class="mine-match-row ui-list-row" hover-class="mine-match-row--pressed" @tap="emit('openMatch', match.id)">
+        <!-- #ifdef MP-WEIXIN -->
+        <view class="match-copy">
+          <text class="match-title">{{ match.title }}</text>
+          <view class="match-meta-row"><AppIcon name="calendar-days" size="var(--ui-icon-sm)" tone="muted" /><text>{{ match.dateLabel }}</text></view>
+          <view class="match-meta-row"><AppIcon name="map-pin" size="var(--ui-icon-sm)" tone="muted" /><text>{{ match.venue }}</text></view>
+        </view>
+        <!-- #endif -->
+        <!-- #ifndef MP-WEIXIN -->
         <view class="match-copy"><text class="match-title">{{ match.title }}</text><text class="match-meta">{{ match.dateLabel }} · {{ match.venue }}</text></view>
-        <view class="match-action"><AppTag :tone="match.statusTone" size="sm">{{ match.statusLabel }}</AppTag><wd-icon name="arrow-right" size="26rpx" color="var(--ui-color-text-muted)" /></view>
+        <!-- #endif -->
+        <view class="match-action">
+          <AppTag :tone="match.statusTone" size="sm">{{ match.statusLabel }}</AppTag>
+          <!-- #ifdef MP-WEIXIN -->
+          <AppIcon name="chevron-right" size="var(--ui-icon-sm)" tone="muted" />
+          <!-- #endif -->
+          <!-- #ifndef MP-WEIXIN -->
+          <wd-icon name="arrow-right" size="26rpx" color="var(--ui-color-text-muted)" />
+          <!-- #endif -->
+        </view>
       </button>
       <text v-if="!matches.length" class="match-empty">暂无近期比赛</text>
     </view>
@@ -51,5 +71,9 @@ const emit = defineEmits<{
 .match-meta { margin-top: var(--ui-space-2); font-size: var(--ui-text-sm); overflow-wrap: anywhere; }
 .match-action { gap: var(--ui-space-2); }
 .match-empty { padding: var(--ui-list-row-padding) 0; font-size: var(--ui-text-body); }
+.match-meta-row { display: flex; align-items: flex-start; gap: var(--ui-space-2); margin-top: var(--ui-space-2); color: var(--ui-color-text-secondary); font-size: var(--ui-text-sm); line-height: var(--ui-line-height-body); }
+.match-meta-row text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.match-action { flex-direction: column; align-items: flex-end; gap: var(--ui-space-3); }
+.match-meta-row,.match-empty { color: var(--ui-color-text-secondary); }
 /* #endif */
 </style>

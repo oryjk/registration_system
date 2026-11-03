@@ -106,7 +106,10 @@ const sizeFilters: Array<{ key: HallMatchSizeFilter; label: string }> = [
 }
 
 /* #ifdef MP-WEIXIN */
-.hall-filter-chip, .hall-filter-chip-size { border: var(--ui-control-border); height: auto; min-height: var(--ui-control-min-height); padding: var(--ui-space-3) var(--ui-space-4); border-radius: var(--ui-control-radius); background: var(--ui-control-subtle-bg); font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-medium); }
-.hall-filter-chip-active { background: var(--ui-control-selected-bg); color: var(--ui-color-text); font-weight: var(--ui-font-weight-heading); }
+.hall-filters { gap: var(--ui-space-3); }
+.hall-filters-row { gap: var(--ui-space-3); }
+.hall-filter-chip, .hall-filter-chip-size { border: var(--ui-control-border); height: auto; min-height: var(--ui-control-min-height); padding: var(--ui-space-3) var(--ui-space-4); border-radius: var(--ui-control-radius); background: var(--ui-card-bg); font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-medium); border-color: transparent; }
+.hall-filter-chip-active { background: var(--ui-control-selected-bg); color: var(--ui-color-text); font-weight: var(--ui-font-weight-heading); border-color: transparent; }
+.hall-filter-chip:not(.hall-filter-chip-active) { color: var(--ui-color-text-secondary); }
 /* #endif */
 </style>

@@ -1,4 +1,7 @@
 <script setup lang="ts">
+// #ifdef MP-WEIXIN
+import AppIcon from "@/components/ui/AppIcon.vue";
+// #endif
 import { useMinioImages } from "@/composables/useMinioImages";
 import TeamManagePanel from "./TeamManagePanel.vue";
 import type { BackendTeamMember } from "@/types/backend";
@@ -108,16 +111,36 @@ function handleRemoveMember(member: BackendTeamMember) {
         </view>
         <view class="member-actions">
           <view class="member-link ui-native-button" role="button" hover-class="member-link-pressed" @tap.stop="handleOpenMemberAttendance(member)">
+            <!-- #ifdef MP-WEIXIN -->
+            <AppIcon name="calendar-days" size="var(--ui-icon-sm)" /><text>出勤</text>
+            <!-- #endif -->
+            <!-- #ifndef MP-WEIXIN -->
             <wd-icon name="calendar-line" size="26rpx" /><text>出勤</text>
+            <!-- #endif -->
           </view>
           <view class="member-link ui-native-button" role="button" hover-class="member-link-pressed" @tap.stop="handleEditMember(member)">
+            <!-- #ifdef MP-WEIXIN -->
+            <AppIcon name="pencil" size="var(--ui-icon-sm)" /><text>编辑</text>
+            <!-- #endif -->
+            <!-- #ifndef MP-WEIXIN -->
             <wd-icon name="edit" size="26rpx" /><text>编辑</text>
+            <!-- #endif -->
           </view>
           <view class="member-link ui-native-button" role="button" hover-class="member-link-pressed" @tap.stop="handleToggleMemberStatus(member)">
+            <!-- #ifdef MP-WEIXIN -->
+            <AppIcon :name="member.status === 1 ? 'lock-keyhole' : 'refresh-cw'" size="var(--ui-icon-sm)" /><text>{{ toggleLabel(member) }}</text>
+            <!-- #endif -->
+            <!-- #ifndef MP-WEIXIN -->
             <wd-icon :name="member.status === 1 ? 'lock' : 'unlock'" size="26rpx" /><text>{{ toggleLabel(member) }}</text>
+            <!-- #endif -->
           </view>
           <view v-if="member.role !== 'captain'" class="member-link ui-native-button member-link-danger" role="button" hover-class="member-link-pressed" @tap.stop="handleRemoveMember(member)">
+            <!-- #ifdef MP-WEIXIN -->
+            <AppIcon name="user-minus" size="var(--ui-icon-sm)" /><text>移除</text>
+            <!-- #endif -->
+            <!-- #ifndef MP-WEIXIN -->
             <wd-icon name="delete" size="26rpx" /><text>移除</text>
+            <!-- #endif -->
           </view>
         </view>
       </view>
@@ -165,5 +188,14 @@ function handleRemoveMember(member: BackendTeamMember) {
 .member-actions { gap: var(--ui-space-2); margin-top: var(--ui-space-3); }
 .member-link { padding: var(--ui-space-2); gap: var(--ui-space-1); font-size: var(--ui-text-body); line-height: var(--ui-line-height-body); }
 .empty-box { padding: var(--ui-space-4) 0; font-size: var(--ui-text-body); line-height: var(--ui-line-height-body); }
+/* #endif */
+
+/* #ifdef MP-WEIXIN */
+.team-result-meta, .member-paid-meta { color: var(--ui-color-text-secondary); }
+.member-paid-meta-active { color: var(--ui-color-success-fg); font-weight: var(--ui-font-weight-medium); }
+.member-link { min-height: var(--ui-control-min-height); font-size: var(--ui-text-sm); gap: var(--ui-space-1); }
+.member-card { padding: var(--ui-space-5) 0; }
+.member-card:first-child { padding-top: 0; }
+.member-card:last-child { padding-bottom: 0; }
 /* #endif */
 </style>

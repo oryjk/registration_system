@@ -1,4 +1,7 @@
 <script setup lang="ts">
+// #ifdef MP-WEIXIN
+import AppIcon from "@/components/ui/AppIcon.vue";
+// #endif
 import { usePageRefresh } from "@/composables/usePageRefresh";
 import { useAccentTheme } from "@/stores/theme";
 import { computed, ref } from "vue";
@@ -149,6 +152,20 @@ usePageRefresh(async () => {
         <view v-if="notificationItems.length" class="notice-summary"><text>未读 {{ unreadCount }} 条</text><text>点击通知标记已读</text></view>
 
         <view v-if="notificationItems.length" class="notice-list">
+          <!-- #ifdef MP-WEIXIN -->
+          <view v-for="item in notificationItems" :key="item.id" class="notice-item-shell" hover-class="notice-item-shell--pressed" role="button" @tap="void openNotification(item)">
+            <view class="notice-card-top">
+              <text class="notice-card-title">{{ item.title }}</text>
+              <text :class="['notice-kind-chip', item.read ? '' : 'notice-kind-chip-unread']">{{ item.kindLabel }}</text>
+            </view>
+            <text class="notice-card-copy">{{ item.content }}</text>
+            <view class="notice-card-bottom">
+              <text class="notice-card-time">{{ item.createdAtLabel }}</text>
+              <view class="notice-card-action"><text>{{ item.relatedPath ? "查看详情" : item.read ? "已读" : "标为已读" }}</text><AppIcon v-if="item.relatedPath" name="chevron-right" size="var(--ui-icon-sm)" tone="muted" /></view>
+            </view>
+          </view>
+          <!-- #endif -->
+          <!-- #ifndef MP-WEIXIN -->
           <view v-for="item in notificationItems" :key="item.id" class="notice-item-shell">
             <AppSurface
               variant="raised"
@@ -167,6 +184,7 @@ usePageRefresh(async () => {
               </view>
             </AppSurface>
           </view>
+          <!-- #endif -->
         </view>
         <view v-else class="notice-empty ui-card-panel">当前没有可展示的通知。</view>
       </view>
@@ -328,5 +346,15 @@ usePageRefresh(async () => {
 .notice-card-time,.notice-card-action { font-size: var(--ui-text-sm); }
 .notice-empty { margin-top: var(--ui-space-4); padding: var(--ui-card-padding); border: var(--ui-panel-border); border-radius: var(--ui-card-radius); background: var(--ui-card-bg); font-size: var(--ui-text-body); line-height: var(--ui-line-height-body); }
 .notice-summary { gap: var(--ui-space-3); margin: var(--ui-space-5) 0 0; font-size: var(--ui-text-sm); }
+/* A single card groups notifications; each native row owns its tap target. */
+.notice-list { gap: 0; padding: 0 var(--ui-card-padding); border-radius: var(--ui-card-radius); background: var(--ui-card-bg); box-shadow: var(--ui-card-shadow); overflow: hidden; }
+.notice-item-shell { padding: var(--ui-space-6) 0; }
+.notice-item-shell + .notice-item-shell { border-top: var(--ui-list-divider); }
+.notice-item-shell--pressed { background: var(--ui-control-subtle-bg); }
+.notice-card-action { display: flex; align-items: center; gap: var(--ui-space-2); min-height: var(--ui-control-min-height); color: var(--ui-color-text-secondary); }
+.notice-card-bottom { align-items: center; }
+.notice-card-time { min-width: 0; line-height: var(--ui-line-height-body); }
+.notice-kind-chip { border: 0; }
+.notice-card-copy,.notice-card-time,.notice-card-action,.notice-summary,.notice-kind-chip:not(.notice-kind-chip-unread) { color: var(--ui-color-text-secondary); }
 /* #endif */
 </style>

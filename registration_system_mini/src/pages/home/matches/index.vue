@@ -156,6 +156,17 @@ usePageRefresh(async () => {
     <AppTabHeader :title="pageMeta.title" showBack />
 
     <view class="phase-matches-content" :style="contentStyle">
+      <!-- #ifdef MP-WEIXIN -->
+      <HomeMatchList
+        :grouped="phase !== 'upcoming'"
+        v-if="visibleMatches.length"
+        :matches="visibleMatches"
+        hide-stage-label
+        :navigating-match-id="navigatingMatchId"
+        @match-tap="handleMatchTap"
+      />
+      <!-- #endif -->
+      <!-- #ifndef MP-WEIXIN -->
       <HomeMatchList
         v-if="visibleMatches.length"
         :matches="visibleMatches"
@@ -163,6 +174,7 @@ usePageRefresh(async () => {
         :navigating-match-id="navigatingMatchId"
         @match-tap="handleMatchTap"
       />
+      <!-- #endif -->
 
       <view v-if="showEmptyState" class="empty-card">
         <text class="empty-text">{{ pageMeta.emptyText }}</text>
@@ -227,15 +239,6 @@ usePageRefresh(async () => {
   background: var(--ui-color-danger-soft);
 }
 
-/* #ifdef MP-WEIXIN */
-.phase-matches-page { padding-right: var(--ui-page-padding-inline); padding-left: var(--ui-page-padding-inline); padding-bottom: var(--ui-page-padding-bottom); }
-.empty-card,
-.phase-footer { margin-top: var(--ui-section-gap); padding: var(--ui-card-padding); border: var(--ui-panel-border); border-radius: var(--ui-card-radius); box-shadow: var(--ui-card-shadow); }
-.empty-text,
-.phase-footer-text { font-size: var(--ui-text-label); line-height: var(--ui-line-height-body); font-weight: var(--ui-font-weight-medium); }
-.phase-footer { min-height: var(--ui-control-min-height); }
-.phase-footer-error { padding: var(--ui-panel-padding); border-radius: var(--ui-panel-soft-radius); background: var(--ui-color-danger-bg); }
-/* #endif */
 
 /* #ifdef H5 */
 .phase-matches-page {
@@ -251,5 +254,16 @@ usePageRefresh(async () => {
   max-width: 750rpx;
   transform: translateX(-50%);
 }
+/* #endif */
+
+/* #ifdef MP-WEIXIN */
+.phase-matches-page { padding-right: var(--ui-page-padding-inline); padding-left: var(--ui-page-padding-inline); padding-bottom: var(--ui-page-padding-bottom); }
+.empty-card,
+.phase-footer { margin-top: var(--ui-section-gap); padding: var(--ui-card-padding); border: var(--ui-panel-border); border-radius: var(--ui-card-radius); box-shadow: var(--ui-card-shadow); }
+.empty-text,
+.phase-footer-text { font-size: var(--ui-text-label); line-height: var(--ui-line-height-body); font-weight: var(--ui-font-weight-medium); }
+.phase-footer { min-height: var(--ui-control-min-height); border: 0; border-radius: 0; box-shadow: none; background: transparent; }
+.phase-footer-error { padding: var(--ui-panel-padding); border-radius: var(--ui-panel-soft-radius); background: var(--ui-color-danger-bg); color: var(--ui-color-danger-fg); }
+.empty-text, .phase-footer-text { color: var(--ui-color-text-secondary); }
 /* #endif */
 </style>

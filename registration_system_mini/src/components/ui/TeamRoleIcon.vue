@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import { computed } from "vue";
+// #ifdef MP-WEIXIN
+import AppIcon from "./AppIcon.vue";
+// #endif
 const props = defineProps<{ teamRole: string; label: string }>();
 const isCaptain = computed(() => props.teamRole === "captain" || props.teamRole === "vice_captain");
 </script>
@@ -9,7 +12,12 @@ const isCaptain = computed(() => props.teamRole === "captain" || props.teamRole 
     <view v-if="isCaptain" class="captain-armband" :class="{ 'captain-armband--vice': teamRole === 'vice_captain' }">
       <text class="captain-armband__letter">C</text>
     </view>
+    <!-- #ifdef MP-WEIXIN -->
+    <AppIcon v-else :name="teamRole === 'leader' ? 'users' : 'user-round'" size="var(--ui-icon-sm)" tone="muted" />
+    <!-- #endif -->
+    <!-- #ifndef MP-WEIXIN -->
     <wd-icon v-else :name="teamRole === 'leader' ? 'user-group' : 'user'" size="26rpx" color="var(--ui-color-text-muted)" />
+    <!-- #endif -->
   </view>
 </template>
 

@@ -1,4 +1,7 @@
 <script setup lang="ts">
+// #ifdef MP-WEIXIN
+import AppIcon from "@/components/ui/AppIcon.vue";
+// #endif
 import { useAccentTheme } from "@/stores/theme";
 import { computed } from "vue";
 import SectionHeader from "@/components/ui/SectionHeader.vue";
@@ -189,7 +192,12 @@ function handleOpenVenuePicker() {
             {{ form.location || "点击选择球场/地址" }}
           </text>
           <view class="venue-entry__icon" aria-hidden="true">
+            <!-- #ifdef MP-WEIXIN -->
+            <AppIcon name="map-pin" size="var(--ui-icon-md)" tone="muted" />
+            <!-- #endif -->
+            <!-- #ifndef MP-WEIXIN -->
             <wd-icon name="location" size="32rpx" color="var(--ui-color-text-muted)" />
+            <!-- #endif -->
           </view>
         </view>
         <text v-if="form.locationLatitude != null && form.locationLongitude != null" class="form-hint">
@@ -419,5 +427,9 @@ function handleOpenVenuePicker() {
 .form-kit-section { border-top: var(--ui-list-divider); margin-top: var(--ui-space-6); }
 .form-section-divider { border-top: var(--ui-list-divider); margin: var(--ui-space-7) 0; }
 .form-hint { border: var(--ui-panel-border); background: var(--ui-color-success-bg); color: var(--ui-color-success-fg); padding: var(--ui-space-4); font-size: var(--ui-text-sm); }
+.venue-entry__value { overflow: visible; white-space: normal; overflow-wrap: anywhere; font-size: var(--ui-text-label); line-height: var(--ui-line-height-compact); }
+.form-placeholder { font-size: var(--ui-text-label); }
+.form-static { background: var(--ui-color-neutral-bg); }
+.form-caption { font-size: var(--ui-text-sm); line-height: var(--ui-line-height-body); color: var(--ui-color-text-secondary); }
 /* #endif */
 </style>

@@ -389,6 +389,14 @@ page,
   --ui-content-max-width: 702rpx;
 
   /* #ifdef MP-WEIXIN */
+  /* Shared native icon/navigation colors extend the approved homepage palette. */
+  --ui-color-icon-muted: #65758b;
+  --ui-color-text-secondary: #65758b;
+  --ui-tabbar-active: #00cfb3;
+  --ui-tabbar-radius: var(--ui-space-8);
+  --ui-header-control-radius: var(--ui-radius-button);
+  --ui-card-radius: 36rpx;
+  --ui-card-padding: var(--ui-space-7);
   /* Approved homepage, 2026-11-03. Kept separate from other pages and H5. */
   --ui-home-muted: #65758b;
   --ui-home-positive: #16b979;

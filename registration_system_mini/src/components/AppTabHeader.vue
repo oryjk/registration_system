@@ -3,6 +3,9 @@ import { computed, inject, ref } from "vue";
 import { getCustomNavMetrics } from "@/utils/customNav";
 import { APP_SCROLL_CONTROLLER } from "@/components/appScroll";
 import FloatingLoginPrompt from "@/components/FloatingLoginPrompt.vue";
+// #ifdef MP-WEIXIN
+import AppIcon from "@/components/ui/AppIcon.vue";
+// #endif
 // #ifdef H5
 import H5TestLoginPanel from "@/components/H5TestLoginPanel.vue";
 // #endif
@@ -103,7 +106,12 @@ function handleHome() {
             aria-label="返回上一页"
             @tap.stop="handleBack"
           >
+            <!-- #ifdef MP-WEIXIN -->
+            <AppIcon name="chevron-left" size="var(--ui-icon-control)" />
+            <!-- #endif -->
+            <!-- #ifndef MP-WEIXIN -->
             <wd-icon name="arrow-left" size="36rpx" />
+            <!-- #endif -->
           </view>
           <view
             v-if="showHomeEntry"
@@ -114,7 +122,12 @@ function handleHome() {
             aria-label="回到首页"
             @tap.stop="handleHome"
           >
+            <!-- #ifdef MP-WEIXIN -->
+            <AppIcon name="house" size="var(--ui-icon-md)" />
+            <!-- #endif -->
+            <!-- #ifndef MP-WEIXIN -->
             <wd-icon name="home" size="34rpx" />
+            <!-- #endif -->
           </view>
         </view>
         <!-- 具名 title slot：允许页面替换标题区（如首页的球队切换器 + 搜索入口）；不传时回落到 title 文本。 -->
@@ -210,6 +223,12 @@ function handleHome() {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* #ifdef MP-WEIXIN */
+.app-tab-header-capsule { gap: var(--ui-space-1); }
+.app-tab-header-capsule-side { width: var(--ui-control-min-height); border-radius: var(--ui-header-control-radius); background: var(--ui-control-plain-bg); }
+.app-tab-header-capsule-side--pressed { background: var(--ui-control-subtle-bg); }
+.app-tab-header-title { font-size: var(--ui-text-title); font-weight: var(--ui-font-weight-heading); }
+/* #endif */
 @media (prefers-reduced-motion: reduce) {
   .app-tab-header-capsule-side { transition: none; }
   .app-tab-header-capsule-side--pressed { transform: none; }

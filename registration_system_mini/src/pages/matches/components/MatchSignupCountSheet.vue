@@ -1,4 +1,7 @@
 <script setup lang="ts">
+// #ifdef MP-WEIXIN
+import AppIcon from "@/components/ui/AppIcon.vue";
+// #endif
 import { computed, ref, watch } from "vue";
 import AppButton from "@/components/ui/AppButton.vue";
 import { useOverlayPresence } from "@/components/ui/useOverlayPresence";
@@ -79,12 +82,24 @@ function handleCancelRegistration() {
           <text class="signup-sheet-title">{{ isAdjusting ? "调整报名人数" : "报名散人约球" }}</text>
           <text class="signup-sheet-hint">人数包含自己，可代朋友报名</text>
         </view>
-        <button class="signup-sheet-close" aria-label="关闭报名弹窗" @tap="handleClose">×</button>
+        <button class="signup-sheet-close" aria-label="关闭报名弹窗" @tap="handleClose">
+<!-- #ifdef MP-WEIXIN -->
+<AppIcon name="x" tone="muted" />
+<!-- #endif -->
+<!-- #ifndef MP-WEIXIN -->
+×
+<!-- #endif -->
+</button>
       </view>
 
       <view class="signup-sheet-count">
         <view class="signup-sheet-count-label">
+          <!-- #ifdef MP-WEIXIN -->
+          <AppIcon name="users" size="var(--ui-icon-sm)" tone="muted" />
+          <!-- #endif -->
+          <!-- #ifndef MP-WEIXIN -->
           <image class="signup-sheet-icon" src="/static/icons/lucide/users.png" mode="aspectFit" />
+          <!-- #endif -->
           <text>参加人数</text>
         </view>
         <view class="signup-sheet-stepper">
@@ -312,4 +327,15 @@ function handleCancelRegistration() {
 /* 由原生 view 承担宽度，不依赖样式穿透小程序按钮组件。 */
 .signup-sheet-primary,
 .signup-sheet-secondary { width: 100%; }
+
+/* #ifdef MP-WEIXIN */
+.signup-sheet-panel { padding: var(--ui-space-7) var(--ui-page-padding-inline) calc(var(--ui-space-7) + env(safe-area-inset-bottom)); border-top-left-radius: var(--ui-card-radius); border-top-right-radius: var(--ui-card-radius); }
+.signup-sheet-title { font-size: var(--ui-text-title); font-weight: var(--ui-font-weight-heading); }
+.signup-sheet-close { width: var(--ui-control-min-height); height: var(--ui-control-min-height); background: transparent; }
+.signup-sheet-count { margin-top: var(--ui-space-6); padding: var(--ui-space-6) 0; border: 0; border-top: var(--ui-list-divider); border-bottom: var(--ui-list-divider); border-radius: 0; gap: var(--ui-space-5); }
+.signup-sheet-fee { align-items: flex-start; padding: var(--ui-space-6) 0; gap: var(--ui-space-4); }
+.signup-sheet-fee-total { max-width: 50%; white-space: normal; overflow-wrap: anywhere; font-size: var(--ui-text-title); }
+.signup-sheet-hint { font-size: var(--ui-text-body); line-height: var(--ui-line-height-body); }
+.signup-sheet-hint, .signup-sheet-fee-label { color: var(--ui-color-text-secondary); }
+/* #endif */
 </style>

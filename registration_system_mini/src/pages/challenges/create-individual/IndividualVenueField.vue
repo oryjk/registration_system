@@ -1,4 +1,7 @@
 <script setup lang="ts">
+// #ifdef MP-WEIXIN
+import AppIcon from "@/components/ui/AppIcon.vue";
+// #endif
 import { computed, onBeforeUnmount, ref } from "vue";
 import type { VenueHistoryItem } from "./venueHistory";
 
@@ -85,9 +88,19 @@ onBeforeUnmount(cancelClose);
 
     <view v-if="open" class="venue-field__list">
       <view class="venue-field__option venue-field__option--map" hover-class="venue-field__option--pressed" @tap="handleChooseLocation">
+        <!-- #ifdef MP-WEIXIN -->
+        <AppIcon name="map-pin" size="var(--ui-icon-sm)" tone="muted" />
+        <!-- #endif -->
+        <!-- #ifndef MP-WEIXIN -->
         <image class="venue-field__icon" src="/static/icons/lucide/map-pin.png" mode="aspectFit" aria-hidden="true" />
+        <!-- #endif -->
         <text class="venue-field__option-text">{{ venues.length ? "没有合适的历史？打开地图选择" : "没有历史？打开地图选择" }}</text>
+        <!-- #ifdef MP-WEIXIN -->
+        <AppIcon name="chevron-right" tone="muted" />
+        <!-- #endif -->
+        <!-- #ifndef MP-WEIXIN -->
         <text class="ui-arrow-text venue-field__arrow">›</text>
+        <!-- #endif -->
       </view>
 
       <template v-if="filteredVenues.length">
@@ -99,7 +112,12 @@ onBeforeUnmount(cancelClose);
           hover-class="venue-field__option--pressed"
           @tap="handleSelect(venue)"
         >
+          <!-- #ifdef MP-WEIXIN -->
+          <AppIcon name="clock" size="var(--ui-icon-sm)" tone="muted" />
+          <!-- #endif -->
+          <!-- #ifndef MP-WEIXIN -->
           <image class="venue-field__icon" src="/static/icons/lucide/clock.png" mode="aspectFit" aria-hidden="true" />
+          <!-- #endif -->
           <text class="venue-field__option-text">{{ venue.location }}</text>
         </view>
       </template>
@@ -189,8 +207,10 @@ onBeforeUnmount(cancelClose);
 
 /* #ifdef MP-WEIXIN */
 .venue-field__input { height: var(--ui-input-height); padding: 0 var(--ui-input-padding); border: var(--ui-input-border); border-radius: var(--ui-input-radius); font-size: var(--ui-text-label); }
-.venue-field__list { border: var(--ui-panel-border); box-shadow: var(--ui-panel-shadow); background: var(--ui-panel-soft-bg); padding: var(--ui-space-2); }
-.venue-field__option--map { background: var(--ui-control-subtle-bg); }
 .venue-field__option { min-height: var(--ui-control-min-height); padding: var(--ui-space-3) var(--ui-space-4); gap: var(--ui-space-3); }
+.venue-field__list { border: var(--ui-input-border); box-shadow: var(--ui-panel-shadow); background: var(--ui-color-surface); padding: var(--ui-space-2); border-radius: var(--ui-input-radius); }
+.venue-field__option--map { background: var(--ui-color-neutral-bg); }
+.venue-field__option-text { font-size: var(--ui-text-body); line-height: var(--ui-line-height-body); }
+.venue-field__heading, .venue-field__empty { color: var(--ui-color-text-secondary); }
 /* #endif */
 </style>

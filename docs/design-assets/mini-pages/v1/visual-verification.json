@@ -1,0 +1,69 @@
+{
+  "method": "Browser rendering of actual MP component templates with fixture data and native/Wot control adapters, not a WeChat simulator.",
+  "results": [
+    {
+      "page": "mine",
+      "width": 393,
+      "scrollWidth": 393,
+      "iconCount": 19,
+      "failedIcons": [],
+      "passed": true
+    },
+    {
+      "page": "mine",
+      "width": 320,
+      "scrollWidth": 320,
+      "iconCount": 19,
+      "failedIcons": [],
+      "passed": true
+    },
+    {
+      "page": "hall",
+      "width": 393,
+      "scrollWidth": 393,
+      "iconCount": 7,
+      "failedIcons": [],
+      "passed": true
+    },
+    {
+      "page": "hall",
+      "width": 320,
+      "scrollWidth": 320,
+      "iconCount": 7,
+      "failedIcons": [],
+      "passed": true
+    },
+    {
+      "page": "detail",
+      "width": 393,
+      "scrollWidth": 393,
+      "iconCount": 6,
+      "failedIcons": [],
+      "passed": true
+    },
+    {
+      "page": "detail",
+      "width": 320,
+      "scrollWidth": 320,
+      "iconCount": 6,
+      "failedIcons": [],
+      "passed": true
+    },
+    {
+      "page": "stats",
+      "width": 393,
+      "scrollWidth": 393,
+      "iconCount": 1,
+      "failedIcons": [],
+      "passed": true
+    },
+    {
+      "page": "stats",
+      "width": 320,
+      "scrollWidth": 320,
+      "iconCount": 1,
+      "failedIcons": [],
+      "passed": true
+    }
+  ]
+}

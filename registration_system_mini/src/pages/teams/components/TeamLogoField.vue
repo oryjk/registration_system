@@ -24,7 +24,12 @@ const emit = defineEmits<{ (event: 'pick'): void; (event: 'remove'): void }>();
     <view class="team-logo-field__main">
       <text class="team-logo-field__hint">{{ hint }}</text>
       <view class="team-logo-field__actions">
+        <!-- #ifdef MP-WEIXIN -->
+        <AppButton size="sm" variant="outline" :loading="loading" :disabled="disabled || loading" @click="emit('pick')">{{ loading ? '上传中...' : actionLabel }}</AppButton>
+        <!-- #endif -->
+        <!-- #ifndef MP-WEIXIN -->
         <AppButton icon="image" size="sm" variant="outline" :loading="loading" :disabled="disabled || loading" @click="emit('pick')">{{ loading ? '上传中...' : actionLabel }}</AppButton>
+        <!-- #endif -->
         <AppButton v-if="removable && src" size="sm" variant="outline" :disabled="disabled || loading" @click="emit('remove')">移除</AppButton>
       </view>
     </view>
@@ -45,5 +50,11 @@ const emit = defineEmits<{ (event: 'pick'): void; (event: 'remove'): void }>();
 .team-logo-field__preview { font-size: var(--ui-text-display); font-weight: var(--ui-font-weight-heading); }
 .team-logo-field__hint { font-size: var(--ui-text-sm); line-height: var(--ui-line-height-body); }
 .team-logo-field__actions { gap: var(--ui-space-3); margin-top: var(--ui-space-3); }
+/* #endif */
+
+/* #ifdef MP-WEIXIN */
+.team-logo-field__hint { color: var(--ui-color-text-secondary); }
+.team-logo-field__actions { gap: var(--ui-space-2); }
+.team-logo-field__preview { border-radius: var(--ui-radius-card); }
 /* #endif */
 </style>

@@ -1,4 +1,7 @@
 <script setup lang="ts">
+// #ifdef MP-WEIXIN
+import AppIcon from "@/components/ui/AppIcon.vue";
+// #endif
 import { computed, ref, watch } from "vue";
 import { onLoad, onShow } from "@dcloudio/uni-app";
 import AppTabHeader from "@/components/AppTabHeader.vue";
@@ -107,7 +110,12 @@ onShow(() => {
   <view class="app-theme-scope ui-card-page venue-map-page" :style="[themePageStyle, pagePadding]">
     <AppTabHeader title="球场地图" show-back />
     <view v-if="loading || loginRequired || error || !venues.length" class="venue-map-state">
-      <view class="venue-map-state__icon"><wd-icon name="location" size="52rpx" /></view>
+      <view class="venue-map-state__icon"><!-- #ifdef MP-WEIXIN -->
+<AppIcon name="map-pin" size="var(--ui-icon-xl)" tone="default" />
+<!-- #endif -->
+<!-- #ifndef MP-WEIXIN -->
+<wd-icon name="location" size="52rpx" />
+<!-- #endif --></view>
       <text class="venue-map-state__title">{{ loading ? '正在加载球场…' : loginRequired ? '登录后查看球场地图' : error ? '暂时无法加载球场' : '还没有已定位的球场' }}</text>
       <text class="venue-map-state__hint">{{ loading ? '整理已保存的球场位置' : error || '比赛中保存过的球场位置会显示在这里' }}</text>
       <view v-if="!loading && (loginRequired || error)" class="venue-map-state__action">
@@ -117,9 +125,19 @@ onShow(() => {
     <template v-else>
       <view class="venue-map-tools">
         <view class="venue-map-search">
+          <!-- #ifdef MP-WEIXIN -->
+          <AppIcon name="search" size="var(--ui-icon-md)" tone="muted" />
+          <!-- #endif -->
+          <!-- #ifndef MP-WEIXIN -->
           <wd-icon name="search-line" size="30rpx" />
+          <!-- #endif -->
           <input v-model="query" class="venue-map-search__input" placeholder="搜索球场名称" placeholder-class="venue-map-placeholder" confirm-type="search" />
-          <button v-if="query" class="venue-map-clear" aria-label="清空搜索" @tap="query = ''"><wd-icon name="close" size="26rpx" /></button>
+          <button v-if="query" class="venue-map-clear" aria-label="清空搜索" @tap="query = ''"><!-- #ifdef MP-WEIXIN -->
+<AppIcon name="x" size="var(--ui-icon-xs)" tone="muted" />
+<!-- #endif -->
+<!-- #ifndef MP-WEIXIN -->
+<wd-icon name="close" size="26rpx" />
+<!-- #endif --></button>
         </view>
         <view class="venue-map-summary">
           <text>{{ query ? `找到 ${filtered.length} 个球场` : `已收录 ${venues.length} 个球场` }}</text>
@@ -141,7 +159,12 @@ onShow(() => {
           @error="mapError = true"
         />
         <view v-else-if="!center" class="venue-map-no-results">
+          <!-- #ifdef MP-WEIXIN -->
+          <AppIcon name="search" size="var(--ui-icon-xl)" tone="muted" />
+          <!-- #endif -->
+          <!-- #ifndef MP-WEIXIN -->
           <wd-icon name="search-line" size="44rpx" />
+          <!-- #endif -->
           <text>没有找到这个球场</text>
           <text class="venue-map-state__hint">试试更短的名称，或查看全部球场</text>
         </view>
@@ -237,13 +260,20 @@ onShow(() => {
 .venue-map-warning { display: block; margin-bottom: 16rpx; font-size: 22rpx; color: var(--ui-color-text-muted); line-height: 1.5; }
 
 /* #ifdef MP-WEIXIN */
-.venue-map-all { padding: var(--ui-space-4) var(--ui-space-5); }
-.venue-map-tools { margin: var(--ui-card-gap) var(--ui-page-padding-inline); padding: var(--ui-card-padding); border: var(--ui-panel-border); border-radius: var(--ui-card-radius); background: var(--ui-card-bg); box-shadow: var(--ui-card-shadow); }
 .venue-map-state { margin: var(--ui-card-gap) var(--ui-page-padding-inline); padding: var(--ui-card-padding); border: var(--ui-panel-border); border-radius: var(--ui-card-radius); background: var(--ui-card-bg); box-shadow: var(--ui-card-shadow); }
-.venue-map-search { border: var(--ui-control-border); border-radius: var(--ui-control-radius); background: var(--ui-control-subtle-bg); height: var(--ui-input-height); padding: 0 var(--ui-input-padding); gap: var(--ui-space-3); }
 .venue-map-panel { margin: var(--ui-card-gap) var(--ui-page-padding-inline) calc(env(safe-area-inset-bottom) + var(--ui-space-6)); padding: var(--ui-card-padding); border: var(--ui-panel-border); border-radius: var(--ui-card-radius); background: var(--ui-card-bg); box-shadow: var(--ui-card-shadow); }
 .venue-map-panel--with-cooperation { margin-bottom: var(--ui-card-gap); }
-.venue-map-chip { border: var(--ui-control-border); border-radius: var(--ui-control-radius); background: var(--ui-control-subtle-bg); padding: var(--ui-space-4) var(--ui-space-5); font-size: var(--ui-text-body); }
-.venue-map-chip--selected { background: var(--ui-control-selected-bg); color: var(--ui-color-text); }
+.venue-map-tools { margin: var(--ui-card-gap) var(--ui-page-padding-inline); padding: 0; border: var(--ui-panel-border); border-radius: 0; background: transparent; box-shadow: none; }
+.venue-map-search { border: var(--ui-input-border); border-radius: var(--ui-input-radius); background: var(--ui-card-bg); height: var(--ui-input-height); padding: 0 var(--ui-input-padding); gap: var(--ui-space-3); }
+.venue-map-clear { width: var(--ui-control-min-height); height: var(--ui-control-min-height); }
+.venue-map-summary { font-size: var(--ui-text-sm); }
+.venue-map-all { padding: var(--ui-space-3) 0 var(--ui-space-3) var(--ui-space-4); min-height: var(--ui-control-min-height); font-size: var(--ui-text-body); }
+.venue-map-panel__title { font-size: var(--ui-text-subtitle); line-height: var(--ui-line-height-compact); }
+.venue-map-panel__hint { font-size: var(--ui-text-body); line-height: var(--ui-line-height-body); }
+.venue-map-selection-actions { gap: var(--ui-space-3); }
+.venue-map-create { display: flex; flex-direction: column; align-items: stretch; }
+.venue-map-chip { border: var(--ui-control-border); border-radius: var(--ui-control-radius); background: var(--ui-color-neutral-bg); padding: var(--ui-space-4) var(--ui-space-5); font-size: var(--ui-text-body); border-color: transparent; }
+.venue-map-chip--selected { background: var(--ui-control-selected-bg); color: var(--ui-color-text); border-color: transparent; }
+.venue-map-summary, .venue-map-panel__eyebrow, .venue-map-panel__hint, .venue-map-state__hint { color: var(--ui-color-text-secondary); }
 /* #endif */
 </style>

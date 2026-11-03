@@ -264,5 +264,6 @@ function handleKeywordInput(event: Event) {
 .impersonation-panel__result-name { overflow: visible; white-space: normal; font-size: var(--ui-text-subtitle); }
 .impersonation-panel__result-meta { font-size: var(--ui-text-sm); }
 .impersonation-panel__result-action,.impersonation-panel__empty { font-size: var(--ui-text-body); }
+.impersonation-panel__desc,.impersonation-panel__result-meta,.impersonation-panel__empty { color: var(--ui-color-text-secondary); }
 /* #endif */
 </style>

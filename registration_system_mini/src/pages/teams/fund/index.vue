@@ -241,4 +241,13 @@ const {
 .recharge-total-label { font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-medium); }
 .recharge-total-value { font-size: var(--ui-text-stat); }
 /* #endif */
+
+/* #ifdef MP-WEIXIN */
+.balance-hero-label, .balance-hero-copy, .recharge-total-label { color: var(--ui-color-text-secondary); letter-spacing: normal; }
+.balance-hero-value, .recharge-total-value { overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.balance-hero-amount { min-width: 0; max-width: 100%; }
+.balance-hero-copy { line-height: var(--ui-line-height-body); }
+.recharge-total { justify-content: space-between; margin: var(--ui-space-6) 0; }
+.recharge-error { color: var(--ui-color-danger-fg); }
+/* #endif */
 </style>

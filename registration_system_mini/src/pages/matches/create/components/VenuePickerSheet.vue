@@ -1,4 +1,7 @@
 <script setup lang="ts">
+// #ifdef MP-WEIXIN
+import AppIcon from "@/components/ui/AppIcon.vue";
+// #endif
 import { computed, ref, watch } from "vue";
 import AppButton from "@/components/ui/AppButton.vue";
 import { useOverlayPresence } from "@/components/ui/useOverlayPresence";
@@ -65,7 +68,12 @@ function handleSelect(venue: BackendVenueSuggestion) {
           <text class="venue-picker-head__caption">常用场地一键选，也可以输入地址</text>
         </view>
         <button class="venue-picker-close" hover-class="venue-picker-control--pressed" aria-label="关闭场地选择" @tap="handleClose">
+          <!-- #ifdef MP-WEIXIN -->
+          <AppIcon name="x" size="var(--ui-icon-sm)" tone="muted" />
+          <!-- #endif -->
+          <!-- #ifndef MP-WEIXIN -->
           <wd-icon name="close" size="28rpx" />
+          <!-- #endif -->
         </button>
       </view>
 
@@ -74,7 +82,12 @@ function handleSelect(venue: BackendVenueSuggestion) {
         <view class="venue-picker-field">
           <view class="venue-picker-input-shell">
             <view class="venue-picker-input-icon" aria-hidden="true">
+              <!-- #ifdef MP-WEIXIN -->
+              <AppIcon name="pencil" size="var(--ui-icon-md)" tone="default" />
+              <!-- #endif -->
+              <!-- #ifndef MP-WEIXIN -->
               <wd-icon name="edit" size="30rpx" />
+              <!-- #endif -->
             </view>
             <input
               v-model="draftLocation"
@@ -105,12 +118,22 @@ function handleSelect(venue: BackendVenueSuggestion) {
           >
             <button class="venue-picker-option__select" hover-class="venue-picker-control--pressed" @tap="handleSelect(venue)">
               <view class="venue-picker-option__icon" aria-hidden="true">
+                <!-- #ifdef MP-WEIXIN -->
+                <AppIcon name="map-pin" size="var(--ui-icon-md)" tone="default" />
+                <!-- #endif -->
+                <!-- #ifndef MP-WEIXIN -->
                 <wd-icon name="location" size="32rpx" />
+                <!-- #endif -->
               </view>
               <text class="venue-picker-option__name">{{ venue.location }}</text>
               <view v-if="venue.location === currentLocation" class="venue-picker-option__current">
                 <text>当前</text>
+                <!-- #ifdef MP-WEIXIN -->
+                <AppIcon name="check" size="var(--ui-icon-sm)" tone="default" />
+                <!-- #endif -->
+                <!-- #ifndef MP-WEIXIN -->
                 <wd-icon name="check" size="28rpx" />
+                <!-- #endif -->
               </view>
             </button>
             <button
@@ -119,14 +142,24 @@ function handleSelect(venue: BackendVenueSuggestion) {
               :aria-label="'在地图查看' + venue.location"
               @tap.stop="!leaving && emit('preview', venue)"
             >
+              <!-- #ifdef MP-WEIXIN -->
+              <AppIcon name="map-pin" size="var(--ui-icon-xs)" tone="default" />
+              <!-- #endif -->
+              <!-- #ifndef MP-WEIXIN -->
               <wd-icon name="location" size="26rpx" />
+              <!-- #endif -->
               <text>看地图</text>
             </button>
           </view>
         </view>
         <view v-if="!suggestions.length" class="venue-picker-empty">
           <view class="venue-picker-empty__icon" aria-hidden="true">
+            <!-- #ifdef MP-WEIXIN -->
+            <AppIcon name="map-pin" size="var(--ui-icon-lg)" tone="default" />
+            <!-- #endif -->
+            <!-- #ifndef MP-WEIXIN -->
             <wd-icon name="location" size="40rpx" />
+            <!-- #endif -->
           </view>
           <text class="venue-picker-empty__title">{{ loading ? "正在加载常用场地…" : "还没有常用场地" }}</text>
           <text v-if="!loading" class="venue-picker-empty__text">输入球场名称，或用地图选择地点</text>
@@ -136,7 +169,12 @@ function handleSelect(venue: BackendVenueSuggestion) {
       <view class="venue-picker-footer">
         <AppButton variant="outline" block @click="emit('chooseLocation')">
           <view class="venue-picker-map-label">
+            <!-- #ifdef MP-WEIXIN -->
+            <AppIcon name="map-pin" size="var(--ui-icon-md)" tone="default" />
+            <!-- #endif -->
+            <!-- #ifndef MP-WEIXIN -->
             <wd-icon name="location" size="30rpx" />
+            <!-- #endif -->
             <text>用地图选择地点</text>
           </view>
         </AppButton>
@@ -445,6 +483,11 @@ function handleSelect(venue: BackendVenueSuggestion) {
 .venue-picker-options { border: var(--ui-panel-border); border-radius: var(--ui-panel-radius); }
 .venue-picker-option + .venue-picker-option { border-top: var(--ui-list-divider); }
 .venue-picker-option--current { background: var(--ui-control-subtle-bg); }
-.venue-picker-option__map { border: var(--ui-control-border); background: var(--ui-control-subtle-bg); border-radius: var(--ui-control-radius); min-height: var(--ui-control-min-height); padding: 0 var(--ui-space-3); }
+.venue-picker-sheet { border-top-left-radius: var(--ui-card-radius); border-top-right-radius: var(--ui-card-radius); }
+.venue-picker-close { width: var(--ui-control-min-height); height: var(--ui-control-min-height); background: transparent; }
+.venue-picker-option__icon { background: transparent; }
+.venue-picker-option__name { white-space: normal; overflow-wrap: anywhere; font-size: var(--ui-text-label); line-height: var(--ui-line-height-compact); }
+.venue-picker-option__map { border: 0; background: transparent; border-radius: var(--ui-control-radius); min-height: var(--ui-control-min-height); padding: 0 var(--ui-space-3); font-size: var(--ui-text-sm); }
+.venue-picker-list-head__state { color: var(--ui-color-text-secondary); font-size: var(--ui-text-sm); }
 /* #endif */
 </style>

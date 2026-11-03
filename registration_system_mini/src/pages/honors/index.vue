@@ -116,5 +116,9 @@ function shareInMini(){uni.showModal({title:"分享我的荣誉",content:"请在
 .honor-recipient-cards { gap: var(--ui-card-gap); margin-top: var(--ui-card-gap); }
 .honor-password { height: var(--ui-input-height); padding: 0 var(--ui-input-padding); border: var(--ui-input-border); border-radius: var(--ui-input-radius); font-size: var(--ui-text-label); }
 .honor-home-link { margin-top: var(--ui-section-gap); padding: var(--ui-space-5) 0; font-size: var(--ui-text-body); }
+.honor-background { background: var(--ui-color-surface); }
+.honor-background--selected { background: var(--ui-control-selected-bg); border-color: var(--ui-color-accent); box-shadow: none; }
+.honor-share-button { background: var(--ui-color-surface); }
+.honor-intro-caption,.honor-card-copy,.honor-footnote,.honor-background-free,.honor-home-link { color: var(--ui-color-text-secondary); }
 /* #endif */
 </style>

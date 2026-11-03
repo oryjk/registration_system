@@ -271,4 +271,11 @@ onShow(() => { if (joined.value || team.value?.is_member) void refreshIllustrati
 .team-invite-field { margin-bottom: var(--ui-space-5); }
 .team-invite-input { padding: 0 var(--ui-input-padding); font-size: var(--ui-text-subtitle); height: var(--ui-input-height); border: var(--ui-input-border); border-radius: var(--ui-input-radius); background: var(--ui-color-surface); }
 /* #endif */
+
+/* #ifdef MP-WEIXIN */
+.team-invite-content { display: flex; flex-direction: column; gap: var(--ui-card-gap); }
+.team-invite-hero, .team-invite-next { margin-top: 0; }
+.team-invite-hero__eyebrow, .team-invite-hero__desc, .team-invite-card__copy, .team-invite-state__text { color: var(--ui-color-text-secondary); }
+.team-invite-hero__name, .team-invite-hero__desc { overflow-wrap: anywhere; }
+/* #endif */
 </style>

@@ -107,4 +107,12 @@ withDefaults(
   line-height: 1.2;
   font-weight: 500;
 }
+
+/* #ifdef MP-WEIXIN */
+.match-info-card__title { font-size: var(--ui-text-subtitle); line-height: var(--ui-line-height-compact); font-weight: var(--ui-font-weight-heading); }
+.match-info-card__list { margin-top: var(--ui-space-4); gap: var(--ui-space-3); }
+.match-info-card__item { gap: var(--ui-space-3); }
+.match-info-card__dot { color: var(--ui-color-text-secondary); font-weight: var(--ui-font-weight-body); }
+.match-info-card__text { min-width: 0; overflow-wrap: anywhere; font-size: var(--ui-text-body); line-height: var(--ui-line-height-body); color: var(--ui-color-text-secondary); }
+/* #endif */
 </style>

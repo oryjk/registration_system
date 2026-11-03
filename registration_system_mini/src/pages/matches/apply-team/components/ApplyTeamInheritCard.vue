@@ -120,9 +120,15 @@ const hostProgressLabel = hostGroup?.max_players
 }
 
 /* #ifdef MP-WEIXIN */
-.inherit-note { border: var(--ui-panel-border); padding: var(--ui-space-4); background: var(--ui-panel-soft-bg); font-weight: var(--ui-font-weight-body); }
 .inherit-rows { border-top: var(--ui-list-divider); }
-.inherit-row { border-bottom: var(--ui-list-divider); padding: var(--ui-space-4) 0; }
 .inherit-row:last-child { border-bottom: 0; }
+.inherit-head { flex-wrap: wrap; gap: var(--ui-space-4); }
+.inherit-title { min-width: 0; flex-basis: 100%; overflow-wrap: anywhere; font-size: var(--ui-text-title); line-height: var(--ui-line-height-compact); }
+.inherit-tags { flex-wrap: wrap; gap: var(--ui-space-2); }
+.inherit-row { border-bottom: var(--ui-list-divider); padding: var(--ui-space-4) 0; gap: var(--ui-space-4); }
+.inherit-row-label, .inherit-row-value { font-size: var(--ui-text-body); line-height: var(--ui-line-height-body); }
+.inherit-row-value { min-width: 0; overflow-wrap: anywhere; }
+.inherit-note { border: var(--ui-panel-border); padding: var(--ui-space-4); background: var(--ui-panel-soft-bg); font-weight: var(--ui-font-weight-body); font-size: var(--ui-text-sm); line-height: var(--ui-line-height-body); }
+.inherit-row-label, .inherit-note { color: var(--ui-color-text-secondary); }
 /* #endif */
 </style>

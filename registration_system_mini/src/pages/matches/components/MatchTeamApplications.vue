@@ -145,5 +145,10 @@ function statusOf(application: AppTeamApplication) {
 .application-card { padding: var(--ui-list-row-padding) 0; margin-top: var(--ui-space-4); border: var(--ui-panel-border); border-radius: var(--ui-panel-radius); background: transparent; }
 .application-card + .application-card { border-top: var(--ui-list-divider); }
 .applications-hint { border: var(--ui-panel-border); background: var(--ui-panel-soft-bg); padding: var(--ui-panel-padding); font-weight: var(--ui-font-weight-body); }
+.applications-title { font-size: var(--ui-text-subtitle); }
+.application-head { align-items: flex-start; }
+.application-team { min-width: 0; overflow-wrap: anywhere; font-size: var(--ui-text-subtitle); line-height: var(--ui-line-height-compact); }
+.application-introduction { overflow-wrap: anywhere; font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-body); line-height: var(--ui-line-height-body); }
+.application-time { font-weight: var(--ui-font-weight-body); line-height: var(--ui-line-height-compact); color: var(--ui-color-text-secondary); }
 /* #endif */
 </style>

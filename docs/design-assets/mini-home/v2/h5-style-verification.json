@@ -1,6 +1,7 @@
 {
   "baseline_commit": "df01197",
-  "compared_css_chunks": 24,
+  "compared_css_files": 48,
+  "grouped_asset_names": 24,
   "changed_styles_after_normalizing_vue_scopes": [],
-  "note": "Only compiler-generated component scope and keyframe hashes are normalized. All original H5 CSS chunks must match."
+  "note": "All 48 CSS files were rechecked as multisets, including 25 index chunks sharing the same normalized name. Only generated Vue scope and scoped keyframe hashes are normalized; no differences were found."
 }

@@ -45,9 +45,16 @@ function handleSubmit() {
         <textarea v-model="form.description" class="form-textarea" placeholder="球队风格、城市或比赛时间" />
       </view>
       <view class="form-actions">
+      <!-- #ifdef MP-WEIXIN -->
+      <AppButton block :disabled="!canUpdate" :loading="submitting" @click="handleSubmit">
+        {{ submitting ? "保存中..." : "保存球队资料" }}
+      </AppButton>
+      <!-- #endif -->
+      <!-- #ifndef MP-WEIXIN -->
       <AppButton icon="check" block :disabled="!canUpdate" :loading="submitting" @click="handleSubmit">
         {{ submitting ? "保存中..." : "保存球队资料" }}
       </AppButton>
+      <!-- #endif -->
       </view>
     </view>
   </TeamManagePanel>
@@ -87,5 +94,11 @@ function handleSubmit() {
 .form-label { margin-bottom: var(--ui-space-2); font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-heading); }
 .empty-box { margin-top: var(--ui-space-6); padding: var(--ui-space-5) 0; font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-body); }
 .form-actions { margin-top: var(--ui-space-7); }
+/* #endif */
+
+/* #ifdef MP-WEIXIN */
+.form-field { margin-top: var(--ui-space-6); }
+.form-field:first-child { margin-top: 0; }
+.empty-box { color: var(--ui-color-text-secondary); }
 /* #endif */
 </style>

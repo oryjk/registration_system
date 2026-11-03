@@ -1,4 +1,7 @@
 <script setup lang="ts">
+// #ifdef MP-WEIXIN
+import AppIcon from "@/components/ui/AppIcon.vue";
+// #endif
 import { useMinioImages } from "@/composables/useMinioImages";
 import AppButton from "@/components/ui/AppButton.vue";
 import AppSurface from "@/components/ui/AppSurface.vue";
@@ -45,7 +48,12 @@ const emit = defineEmits<{
           @tap="emit('secondary')"
         >
           {{ secondaryLabel }}
+          <!-- #ifdef MP-WEIXIN -->
+          <AppIcon name="chevron-right" size="var(--ui-icon-xs)" tone="muted" />
+          <!-- #endif -->
+          <!-- #ifndef MP-WEIXIN -->
           <text aria-hidden="true" class="ui-arrow-text">→</text>
+          <!-- #endif -->
         </button>
       </view>
     </view>
@@ -127,7 +135,12 @@ const emit = defineEmits<{
 .hall-empty-state__secondary--pressed {
   opacity: 0.65;
 }
+
 /* #ifdef MP-WEIXIN */
 .hall-empty-state { padding: var(--ui-card-padding); }
+.hall-empty-state__actions { display: flex; flex-direction: column; align-items: stretch; gap: var(--ui-space-2); margin-top: var(--ui-space-6); }
+.hall-empty-state__secondary { min-height: var(--ui-control-min-height); gap: var(--ui-space-2); font-size: var(--ui-text-body); }
+.hall-empty-state__description { font-size: var(--ui-text-body); line-height: var(--ui-line-height-body); }
+.hall-empty-state__description, .hall-empty-state__secondary { color: var(--ui-color-text-secondary); }
 /* #endif */
 </style>

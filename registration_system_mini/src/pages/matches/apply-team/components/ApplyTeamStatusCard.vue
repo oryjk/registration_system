@@ -103,12 +103,18 @@ const emit = defineEmits<{
   text-align: center;
 }
 
+/* #ifndef MP-WEIXIN */
 .status-actions :deep(.ui-button) {
   min-width: 260rpx;
 }
+/* #endif */
 
 /* #ifdef MP-WEIXIN */
 .status-body { border: var(--ui-panel-border); padding: var(--ui-panel-padding); background: var(--ui-panel-soft-bg); border-radius: var(--ui-panel-soft-radius); }
-.status-body-content { font-weight: var(--ui-font-weight-medium); }
+.status-head { align-items: flex-start; flex-wrap: wrap; gap: var(--ui-space-4); }
+.status-title { min-width: 0; overflow-wrap: anywhere; font-size: var(--ui-text-title); line-height: var(--ui-line-height-compact); }
+.status-body-content { font-weight: var(--ui-font-weight-medium); overflow-wrap: anywhere; font-size: var(--ui-text-body); line-height: var(--ui-line-height-body); }
+.status-actions { flex-direction: column; align-items: stretch; margin-top: var(--ui-space-6); }
+.status-body-label, .status-window-note { color: var(--ui-color-text-secondary); }
 /* #endif */
 </style>

@@ -119,9 +119,16 @@ function handleRemoveMember(member: BackendTeamMember) {
         />
         <!-- Go 队员模型只有 role/status：球衣号与队员会员开关已随 legacy Rust 字段一起移除。 -->
         <view class="member-add-action">
+        <!-- #ifdef MP-WEIXIN -->
+        <AppButton block :loading="submitting" @click="handleAddMember">
+          {{ submitting ? "提交中..." : "添加队员" }}
+        </AppButton>
+        <!-- #endif -->
+        <!-- #ifndef MP-WEIXIN -->
         <AppButton icon="user-add" block :loading="submitting" @click="handleAddMember">
           {{ submitting ? "提交中..." : "添加队员" }}
         </AppButton>
+        <!-- #endif -->
         </view>
       </view>
     </view>

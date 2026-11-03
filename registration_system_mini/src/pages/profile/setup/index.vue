@@ -1,4 +1,7 @@
 <script setup lang="ts">
+// #ifdef MP-WEIXIN
+import AppIcon from "@/components/ui/AppIcon.vue";
+// #endif
 import { useMinioImages } from "@/composables/useMinioImages";
 import { usePageRefresh } from "@/composables/usePageRefresh";
 import { useAccentTheme } from "@/stores/theme";
@@ -242,9 +245,9 @@ usePageRefresh(async () => {
           <view class="profile-avatar-copy"><text class="profile-editor-label">头像</text><text class="profile-avatar-hint">点击更换头像</text></view>
           <view class="profile-editor-avatar">
             <image v-if="avatarPreview && !avatarLoadFailed" class="profile-editor-avatar__image" :src="minioImageSrc(avatarPreview)" mode="aspectFill" @error="minioImageSrc(avatarPreview) && (avatarLoadFailed = true)" />
-            <wd-icon v-else name="user" size="42rpx" color="var(--ui-color-text-muted)" />
+            <AppIcon v-else name="user-round" size="var(--ui-icon-lg)" tone="muted" />
           </view>
-          <wd-icon name="arrow-right" size="28rpx" color="var(--ui-color-text-muted)" />
+          <AppIcon name="chevron-right" size="var(--ui-icon-sm)" tone="muted" />
         </button>
         <!-- #endif -->
         <!-- #ifndef MP-WEIXIN -->
@@ -320,5 +323,6 @@ usePageRefresh(async () => {
 .profile-phone-button { height: var(--ui-input-height); line-height: var(--ui-input-height); margin-top: var(--ui-space-3); padding: 0 var(--ui-space-4); border-radius: var(--ui-control-radius); background: var(--ui-control-subtle-bg); font-size: var(--ui-text-body); }
 .profile-editor-note { padding: var(--ui-space-4) 0 0; font-size: var(--ui-text-sm); line-height: var(--ui-line-height-body); }
 .profile-editor-actions { margin-top: var(--ui-section-gap); }
+.profile-avatar-hint,.profile-editor-note { color: var(--ui-color-text-secondary); }
 /* #endif */
 </style>

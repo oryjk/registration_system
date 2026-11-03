@@ -1,4 +1,7 @@
 <script setup lang="ts">
+// #ifdef MP-WEIXIN
+import AppIcon from "@/components/ui/AppIcon.vue";
+// #endif
 import { useMinioImages } from "@/composables/useMinioImages";
 import TeamRoleIcon from "@/components/ui/TeamRoleIcon.vue";
 import { ref } from "vue";
@@ -39,13 +42,25 @@ function handleSwitchTeam(teamId: number) {
 <template>
   <view class="mine-context-section ui-card-panel">
     <view class="section-heading"><text>我的球队</text>
-      <button v-if="teamProfiles.length > 1" class="text-action ui-subtle-control" :disabled="isSwitchingTeam" @tap="openSwitchSheet"><text>切换球队</text><wd-icon name="arrow-right" size="var(--ui-icon-xs)" /></button>
+      <button v-if="teamProfiles.length > 1" class="text-action ui-subtle-control" :disabled="isSwitchingTeam" @tap="openSwitchSheet"><text>切换球队</text>
+      <!-- #ifdef MP-WEIXIN -->
+      <AppIcon name="chevron-right" size="var(--ui-icon-sm)" tone="muted" />
+      <!-- #endif -->
+      <!-- #ifndef MP-WEIXIN -->
+      <wd-icon name="arrow-right" size="var(--ui-icon-xs)" />
+      <!-- #endif -->
+      </button>
     </view>
     <view class="team-list ui-plain-panel">
       <button v-for="team in teamProfiles" :key="team.id" class="team-row ui-list-row" hover-class="team-row--pressed" @tap="emit('manageTeam', team.id)">
         <view class="team-logo"><image v-if="team.logoUrl" :src="minioImageSrc(team.logoUrl)" mode="aspectFit" /><text v-else>{{ team.name.slice(0,1) }}</text></view>
         <view class="team-copy"><view class="team-name-row"><text class="team-name">{{ team.name }}</text><text v-if="team.id === currentTeam?.id" class="team-current">当前</text></view><view class="team-meta"><TeamRoleIcon :team-role="team.myRole" :label="team.myRoleLabel" /><text>{{ team.memberCount }} 人</text></view></view>
+        <!-- #ifdef MP-WEIXIN -->
+        <AppIcon name="chevron-right" size="var(--ui-icon-sm)" tone="muted" />
+        <!-- #endif -->
+        <!-- #ifndef MP-WEIXIN -->
         <wd-icon name="arrow-right" size="28rpx" color="var(--ui-color-text-muted)" />
+        <!-- #endif -->
       </button>
       <view v-if="!teamProfiles.length" class="team-empty">暂未加入球队</view>
     </view>
@@ -86,5 +101,8 @@ function handleSwitchTeam(teamId: number) {
 .team-meta { gap: var(--ui-space-2); margin-top: var(--ui-space-2); font-size: var(--ui-text-sm); }
 .team-current { background: var(--ui-control-subtle-bg); border-radius: var(--ui-control-radius); padding: var(--ui-space-1) var(--ui-space-3); font-size: var(--ui-text-xs); }
 .team-empty { padding: var(--ui-list-row-padding) 0; font-size: var(--ui-text-body); }
+.text-action { background: transparent; }
+.team-row { align-items: center; }
+.team-meta,.team-empty,.text-action { color: var(--ui-color-text-secondary); }
 /* #endif */
 </style>

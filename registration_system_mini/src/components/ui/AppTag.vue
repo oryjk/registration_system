@@ -45,6 +45,14 @@ const toneStyle = computed(() => {
     },
   };
 
+  // #ifdef MP-WEIXIN
+  tones.lime = { background: "var(--ui-color-accent-soft)", color: "var(--ui-color-accent-deep)" };
+  tones.green = { background: "var(--ui-color-success-bg)", color: "var(--ui-color-success-fg)" };
+  tones.amber = { background: "var(--ui-color-warning-bg)", color: "var(--ui-color-warning-fg)" };
+  tones.red = { background: "var(--ui-color-danger-bg)", color: "var(--ui-color-danger-fg)" };
+  tones.muted = { background: "var(--ui-color-neutral-bg)", color: "var(--ui-color-neutral-fg)" };
+  // #endif
+
   return tones[props.tone];
 });
 

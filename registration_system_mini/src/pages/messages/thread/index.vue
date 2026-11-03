@@ -1,4 +1,7 @@
 <script setup lang="ts">
+// #ifdef MP-WEIXIN
+import AppIcon from "@/components/ui/AppIcon.vue";
+// #endif
 import { useMinioImages } from "@/composables/useMinioImages";
 import { usePageRefresh } from "@/composables/usePageRefresh";
 import { useAccentTheme } from "@/stores/theme";
@@ -105,7 +108,12 @@ usePageRefresh(loadThread);
           <text class="thread-hero-label">关联比赛</text>
           <view class="thread-hero-main">
             <text class="thread-match">{{ thread.match_name }}</text>
+            <!-- #ifdef MP-WEIXIN -->
+            <view class="thread-hero-link"><text>查看比赛</text><AppIcon name="chevron-right" size="var(--ui-icon-sm)" tone="muted" /></view>
+            <!-- #endif -->
+            <!-- #ifndef MP-WEIXIN -->
             <text class="ui-arrow-text thread-hero-link">查看比赛 ›</text>
+            <!-- #endif -->
           </view>
           <text class="thread-copy">与 {{ counterpartLabel() }} 的留言往来</text>
         </view>
@@ -481,5 +489,10 @@ usePageRefresh(loadThread);
 .thread-textarea { padding: var(--ui-space-4) var(--ui-input-padding) var(--ui-space-9); font-size: var(--ui-text-subtitle); line-height: var(--ui-line-height-body); }
 .thread-composer-count { right: var(--ui-space-4); bottom: var(--ui-space-2); font-size: var(--ui-text-sm); }
 .thread-empty { margin-top: var(--ui-space-6); padding: var(--ui-space-6) 0; border: var(--ui-panel-border); border-radius: var(--ui-panel-radius); font-size: var(--ui-text-body); line-height: var(--ui-line-height-body); }
+.thread-hero-link { gap: var(--ui-space-2); color: var(--ui-color-text-secondary); flex-shrink: 0; }
+.thread-hero-main { flex-wrap: wrap; }
+.thread-match { flex: 1; min-width: 0; }
+.thread-bubble-other { background: var(--ui-card-bg); box-shadow: var(--ui-card-shadow); }
+.thread-hero-label,.thread-copy,.thread-hero-link,.thread-section-count,.thread-message-meta,.thread-composer-count { color: var(--ui-color-text-secondary); }
 /* #endif */
 </style>

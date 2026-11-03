@@ -147,18 +147,39 @@ function handlePaidMemberChange(event: Event) {
         </view>
 
         <view class="member-finance-actions">
+          <!-- #ifdef MP-WEIXIN -->
+          <AppButton variant="outline" size="sm" :disabled="submitting" @click="emit('recharge')">
+            充值
+          </AppButton>
+          <!-- #endif -->
+          <!-- #ifndef MP-WEIXIN -->
           <AppButton variant="outline" size="sm" icon="add" :disabled="submitting" @click="emit('recharge')">
             充值
           </AppButton>
+          <!-- #endif -->
+          <!-- #ifdef MP-WEIXIN -->
+          <AppButton variant="outline" size="sm" :disabled="submitting" @click="emit('consume')">
+            消费扣费
+          </AppButton>
+          <!-- #endif -->
+          <!-- #ifndef MP-WEIXIN -->
           <AppButton variant="outline" size="sm" icon="minus" :disabled="submitting" @click="emit('consume')">
             消费扣费
           </AppButton>
+          <!-- #endif -->
         </view>
       </view>
 
+      <!-- #ifdef MP-WEIXIN -->
+      <AppButton block :loading="submitting" @click="handleSubmit">
+        {{ submitting ? "保存中..." : "保存队员" }}
+      </AppButton>
+      <!-- #endif -->
+      <!-- #ifndef MP-WEIXIN -->
       <AppButton icon="check" block :loading="submitting" @click="handleSubmit">
         {{ submitting ? "保存中..." : "保存队员" }}
       </AppButton>
+      <!-- #endif -->
     </view>
   </wd-popup>
 </template>
@@ -310,5 +331,16 @@ function handlePaidMemberChange(event: Event) {
 .member-balance-amount { font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-heading); }
 .member-balance-debt { font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-heading); }
 .member-finance-actions { gap: var(--ui-space-4); }
+/* #endif */
+
+/* #ifdef MP-WEIXIN */
+.member-edit-title { font-size: var(--ui-text-title); overflow-wrap: anywhere; }
+.member-edit-header > view { flex: 1; min-width: 0; }
+.member-edit-kicker, .member-finance-hint, .member-readonly-label { color: var(--ui-color-text-secondary); }
+.member-finance-copy { min-width: 0; flex: 1; }
+.member-finance-hint { line-height: var(--ui-line-height-body); }
+.member-finance-readonly-row { flex-wrap: wrap; }
+.member-finance-value, .member-balance-amount, .member-balance-debt { overflow-wrap: anywhere; }
+.member-finance-actions { flex-wrap: wrap; }
 /* #endif */
 </style>

@@ -1,4 +1,7 @@
 <script setup lang="ts">
+// #ifdef MP-WEIXIN
+import AppIcon from "@/components/ui/AppIcon.vue";
+// #endif
 import { computed, ref, watch } from "vue";
 import type { AvatarItem } from "@/components/ui/avatarTypes";
 import ExpandableAvatarStack from "@/components/ui/ExpandableAvatarStack.vue";
@@ -225,7 +228,12 @@ function selectMemberAvatar(id: string | number) {
         @tap="handleSelectGroup(section.key)"
       >
         <view class="member-segment-icon-wrap">
+          <!-- #ifdef MP-WEIXIN -->
+          <AppIcon :name="section.key === 'joined' ? 'users' : section.key === 'leave' ? 'clock' : 'user-round'" size="var(--ui-icon-sm)" />
+          <!-- #endif -->
+          <!-- #ifndef MP-WEIXIN -->
           <image class="member-segment-icon" :src="`/static/icons/lucide/${section.icon}.png`" mode="aspectFit" aria-hidden="true" />
+          <!-- #endif -->
         </view>
         <view class="member-segment-copy">
           <text class="member-segment-label">{{ section.statusLabel }}</text>
@@ -322,11 +330,21 @@ function selectMemberAvatar(id: string | number) {
   font-weight: 500;
 }
 
-
 /* #ifdef MP-WEIXIN */
 .member-empty { border: var(--ui-panel-border); padding: var(--ui-space-4); background: var(--ui-panel-soft-bg); border-radius: var(--ui-panel-soft-radius); }
-.member-segment-item--joined { background: var(--ui-control-subtle-bg); }
-.member-segment-item--joined.member-segment-item-active { background: var(--ui-control-selected-bg); }
 .section-title { font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-heading); }
+.member-board-head { align-items: flex-start; gap: var(--ui-space-4); }
+.member-segment { margin-top: var(--ui-space-6); gap: var(--ui-space-3); }
+.member-segment-item { flex-direction: column; align-items: flex-start; padding: var(--ui-space-4) var(--ui-space-3); gap: var(--ui-space-3); }
+.member-segment-icon-wrap { width: var(--ui-icon-md); height: var(--ui-icon-md); }
+.member-segment-icon-wrap::before { display: none; }
+.member-segment-item--joined { background: var(--ui-color-success-bg); }
+.member-segment-item--joined.member-segment-item-active { background: var(--ui-color-success-bg); box-shadow: inset 0 0 0 1rpx var(--ui-color-success-fg); }
+.member-segment-item--leave.member-segment-item-active { background: var(--ui-color-warning-bg); box-shadow: inset 0 0 0 1rpx var(--ui-color-warning-fg); }
+.member-segment-item--pending.member-segment-item-active { background: var(--ui-color-neutral-bg); box-shadow: inset 0 0 0 1rpx var(--ui-color-neutral-fg); }
+.member-segment-copy { gap: var(--ui-space-2); width: 100%; }
+.member-segment-label { font-size: var(--ui-text-sm); line-height: var(--ui-line-height-compact); white-space: normal; overflow-wrap: anywhere; }
+.member-segment-count { font-size: var(--ui-text-title); line-height: var(--ui-line-height-tight); overflow-wrap: anywhere; }
+.member-total { font-size: var(--ui-text-body); line-height: var(--ui-line-height-compact); text-align: right; color: var(--ui-color-text-secondary); }
 /* #endif */
 </style>

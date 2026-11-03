@@ -1,4 +1,7 @@
 <script setup lang="ts">
+// #ifdef MP-WEIXIN
+import AppIcon from "@/components/ui/AppIcon.vue";
+// #endif
 import { computed } from "vue";
 import { useOverlayPresence } from "@/components/ui/useOverlayPresence";
 import { prefersReducedMotion } from "@/utils/reducedMotion";
@@ -55,20 +58,35 @@ function handlePublishIndividual() {
         @tap="handlePublishTeam"
       >
         <view class="publish-menu-action-button">
+          <!-- #ifdef MP-WEIXIN -->
+          <AppIcon name="shield" size="var(--ui-icon-lg)" />
+          <!-- #endif -->
+          <!-- #ifndef MP-WEIXIN -->
           <text class="publish-menu-action-icon">队</text>
+          <!-- #endif -->
         </view>
         <text class="publish-menu-action-label">球队约队</text>
       </view>
 
       <view class="publish-menu-action publish-menu-action-right" @tap="handlePublishIndividual">
         <view class="publish-menu-action-button">
+          <!-- #ifdef MP-WEIXIN -->
+          <AppIcon name="users" size="var(--ui-icon-lg)" />
+          <!-- #endif -->
+          <!-- #ifndef MP-WEIXIN -->
           <text class="publish-menu-action-icon">人</text>
+          <!-- #endif -->
         </view>
         <text class="publish-menu-action-label">散人约球</text>
       </view>
 
       <view class="publish-menu-close" @tap="handleClose">
+        <!-- #ifdef MP-WEIXIN -->
+        <AppIcon name="x" size="var(--ui-icon-lg)" />
+        <!-- #endif -->
+        <!-- #ifndef MP-WEIXIN -->
         <text class="publish-menu-close-symbol">×</text>
+        <!-- #endif -->
       </view>
     </view>
   </view>

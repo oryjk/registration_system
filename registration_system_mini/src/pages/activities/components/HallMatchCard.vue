@@ -1,4 +1,7 @@
 <script setup lang="ts">
+// #ifdef MP-WEIXIN
+import AppIcon from "@/components/ui/AppIcon.vue";
+// #endif
 import AppButton from "@/components/ui/AppButton.vue";
 import RegistrationProgressSummary from "@/components/ui/RegistrationProgressSummary.vue";
 import type { HallMatchCardViewModel } from "../hallMatchState";
@@ -31,12 +34,22 @@ export default { options: { virtualHost: true } };
     </view>
 
     <view class="hall-match-info">
+      <!-- #ifdef MP-WEIXIN -->
+      <AppIcon name="map-pin" size="var(--ui-icon-sm)" tone="muted" />
+      <!-- #endif -->
+      <!-- #ifndef MP-WEIXIN -->
       <image class="hall-match-icon" src="/static/icons/lucide/map-pin.png" mode="aspectFit" aria-hidden="true" />
+      <!-- #endif -->
       <text class="hall-match-location">{{ card.venue || '场地待定' }}</text>
       <text class="hall-match-format">{{ card.formatLabel }}</text>
     </view>
     <view v-if="card.hostTeamName" class="hall-match-info hall-match-team-row">
+      <!-- #ifdef MP-WEIXIN -->
+      <AppIcon name="users" size="var(--ui-icon-sm)" tone="muted" />
+      <!-- #endif -->
+      <!-- #ifndef MP-WEIXIN -->
       <image class="hall-match-icon" src="/static/icons/lucide/users.png" mode="aspectFit" aria-hidden="true" />
+      <!-- #endif -->
       <text class="hall-match-teams">{{ card.hostTeamName }}<text v-if="card.opponentName && card.opponentName !== '待定'"> · 对手 {{ card.opponentName }}</text></text>
     </view>
 
@@ -56,9 +69,19 @@ export default { options: { virtualHost: true } };
         <text v-else class="hall-match-progress-hint">报名情况见详情</text>
       </view>
       <view class="hall-match-actions">
+        <!-- #ifdef MP-WEIXIN -->
+        <button v-if="card.actionKind === 'view'" class="hall-match-view" hover-class="hall-match-view--pressed">
+          <text>{{ card.actionLabel }}</text><AppIcon name="chevron-right" tone="muted" />
+        </button>
+        <AppButton v-else block size="sm" variant="dark" :stop-propagation="false">
+          <text>{{ card.actionLabel }}</text>
+        </AppButton>
+        <!-- #endif -->
+        <!-- #ifndef MP-WEIXIN -->
         <AppButton block size="sm" :variant="card.actionKind === 'view' ? 'outline' : 'dark'" :stop-propagation="false">
           <view class="hall-match-action-content"><text>{{ card.actionLabel }}</text><text class="ui-arrow-text hall-match-arrow">→</text></view>
         </AppButton>
+        <!-- #endif -->
       </view>
     </view>
     <view v-if="card.capacityHint" class="hall-match-capacity-hint">
@@ -103,15 +126,23 @@ export default { options: { virtualHost: true } };
 .hall-match-arrow { font-size: 32rpx; line-height: 1; }
 
 /* #ifdef MP-WEIXIN */
-.hall-match-card { padding: var(--ui-card-padding); border: var(--ui-panel-border); border-radius: var(--ui-card-radius); background: var(--ui-card-bg); box-shadow: var(--ui-card-shadow); }
 .hall-match-heading { gap: var(--ui-space-4); }
-.hall-match-title { font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-heading); }
-.hall-match-time { font-size: var(--ui-text-display); font-weight: var(--ui-font-weight-heading); }
 .hall-match-tags { gap: var(--ui-space-2) var(--ui-space-3); margin-top: var(--ui-space-2); }
 .hall-match-kind { padding: var(--ui-space-1) var(--ui-space-3); background: var(--ui-control-subtle-bg); }
-.hall-match-footer { border-top: var(--ui-panel-border); margin-top: var(--ui-space-4); padding-top: 0; gap: var(--ui-space-5); }
-.hall-match-capacity-hint { padding: var(--ui-space-3) var(--ui-space-4); background: var(--ui-color-neutral-bg); }
 .hall-match-action-content { font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-heading); gap: var(--ui-space-3); }
 .hall-match-arrow { font-size: var(--ui-text-title); }
+.hall-match-card { padding: var(--ui-space-7); border: var(--ui-panel-border); border-radius: var(--ui-card-radius); background: var(--ui-card-bg); box-shadow: var(--ui-card-shadow); }
+.hall-match-title { font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-heading); line-height: var(--ui-line-height-compact); }
+.hall-match-time { font-size: var(--ui-text-heading); font-weight: var(--ui-font-weight-heading); letter-spacing: 0; }
+.hall-match-info { gap: var(--ui-space-3); margin-top: var(--ui-space-5); }
+.hall-match-team-row { margin-top: var(--ui-space-3); }
+.hall-match-location, .hall-match-teams { font-size: var(--ui-text-body); line-height: var(--ui-line-height-body); }
+.hall-match-footer { border-top: var(--ui-list-divider); margin-top: var(--ui-space-6); padding-top: var(--ui-space-5); gap: var(--ui-space-5); }
+.hall-match-capacity-hint { padding: 0; background: transparent; margin-top: var(--ui-space-4); border-radius: 0; color: var(--ui-color-neutral-fg); }
+.hall-match-actions { width: calc(var(--ui-space-10) * 4); }
+.hall-match-view { display: flex; align-items: center; justify-content: flex-end; gap: var(--ui-space-2); width: 100%; min-height: var(--ui-control-min-height); margin: 0; padding: var(--ui-space-3) 0; border: 0; background: transparent; color: var(--ui-color-text-secondary); font-size: var(--ui-text-body); line-height: var(--ui-line-height-compact); }
+.hall-match-view::after { border: 0; }
+.hall-match-view--pressed { background: var(--ui-color-neutral-bg); }
+.hall-match-calendar, .hall-match-info, .hall-match-progress-hint { color: var(--ui-color-text-secondary); }
 /* #endif */
 </style>
