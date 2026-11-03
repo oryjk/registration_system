@@ -1,5 +1,6 @@
 <script setup lang="ts">
 // #ifdef MP-WEIXIN
+import AppIcon from "@/components/ui/AppIcon.vue";
 import { computed, ref } from "vue";
 import { HOME_VISUAL_ASSETS } from "@/config/homeVisualAssets";
 import { useMinioImages } from "@/composables/useMinioImages";
@@ -28,7 +29,7 @@ function openMap() { uni.navigateTo({ url: "/pages/venues/map" }); }
       <text class="home-venue-map__hint">找个球场，约下一场</text>
     </view>
     <!-- #ifdef MP-WEIXIN -->
-    <image class="home-venue-map__arrow" src="/static/home-icons/chevron-right.png" mode="aspectFit" aria-hidden="true" />
+    <view class="home-venue-map__arrow"><AppIcon name="chevron-right" size="var(--ui-icon-md)" /></view>
     <!-- #endif -->
     <!-- #ifndef MP-WEIXIN -->
     <text class="ui-arrow-text home-venue-map__arrow">→</text>
@@ -47,14 +48,14 @@ function openMap() { uni.navigateTo({ url: "/pages/venues/map" }); }
 .home-venue-map--pressed { box-shadow: var(--ui-shadow-control-pressed); }
 /* #ifdef MP-WEIXIN */
 .home-venue-map { position: relative; min-height: var(--ui-home-map-height); gap: var(--ui-space-4); margin-top: var(--ui-space-4); padding: var(--ui-space-5) var(--ui-home-padding); overflow: hidden; border: var(--ui-panel-border); border-radius: var(--ui-home-radius); background: var(--ui-home-map-bg); box-shadow: none; }
-.home-venue-map--pressed { background: var(--ui-color-accent-soft); box-shadow: none; }
+.home-venue-map--pressed { background: var(--ui-home-map-pressed-bg); box-shadow: none; }
 .home-venue-map__illustration { position: absolute; right: var(--ui-home-map-art-inset); top: 50%; width: var(--ui-home-map-art-width); height: var(--ui-home-map-art-height); transform: translateY(-50%); pointer-events: none; }
 .home-venue-map__icon, .home-venue-map__copy, .home-venue-map__arrow { position: relative; }
 .home-venue-map__icon { width: var(--ui-icon-lg); height: var(--ui-icon-xl); border-radius: 0; background: transparent; }
 .home-venue-map__pin { width: var(--ui-icon-lg); height: var(--ui-icon-lg); }
 .home-venue-map__copy { flex: 0 1 var(--ui-home-map-copy-width); margin-right: auto; }
 .home-venue-map__title { font-size: var(--ui-text-title); white-space: nowrap; }
-.home-venue-map__hint { color: var(--ui-home-muted); font-size: var(--ui-text-sm); white-space: nowrap; }
-.home-venue-map__arrow { flex-shrink: 0; width: var(--ui-icon-md); height: var(--ui-icon-md); }
+.home-venue-map__hint { color: var(--ui-home-map-muted); font-size: var(--ui-text-sm); white-space: nowrap; }
+.home-venue-map__arrow { display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: var(--ui-icon-md); height: var(--ui-icon-md); }
 /* #endif */
 </style>
