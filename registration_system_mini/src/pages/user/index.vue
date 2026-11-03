@@ -85,6 +85,10 @@ function openHelp() {
   uni.navigateTo({ url: "/pages/user/help/index" });
 }
 
+function openChanlun() {
+  uni.navigateTo({ url: "/pages/chanlun/index" });
+}
+
 onShow(() => {
   tabBarMotion.show("mine");
   // H5 路由切换时 onShow 可能早于 TabBar 挂载，此时无需隐藏。
@@ -127,6 +131,11 @@ provide(APP_SCROLL_CONTROLLER, appScrollController);
             <button class="mine-service ui-list-row" hover-class="mine-service--pressed" @tap="openHelp">
               <text class="mine-help-icon">?</text><text class="mine-service-label">使用帮助</text><wd-icon name="arrow-right" size="26rpx" />
             </button>
+            <!-- #ifdef MP-WEIXIN -->
+            <button class="mine-service ui-list-row" hover-class="mine-service--pressed" @tap="openChanlun">
+              <text class="mine-help-icon">缠</text><text class="mine-service-label">缠观行情</text><wd-icon name="arrow-right" size="26rpx" />
+            </button>
+            <!-- #endif -->
             <button v-if="currentUser" class="mine-service ui-list-row" hover-class="mine-service--pressed" @tap="openNotifications">
               <wd-icon name="notification" size="32rpx" /><text class="mine-service-label">消息中心</text><text v-if="unreadCount > 0" class="mine-badge">{{ unreadCount > 99 ? '99+' : unreadCount }}</text><wd-icon name="arrow-right" size="26rpx" />
             </button>

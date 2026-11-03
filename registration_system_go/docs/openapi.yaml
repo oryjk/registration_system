@@ -111,6 +111,28 @@ paths:
                 $ref: "#/components/schemas/WebviewCodeExchangeEnvelope"
         <<: *standardErrors
 
+  /api/v1/app/mini-links/chanlun:
+    post:
+      operationId: createChanlunMiniLink
+      tags: [App Auth]
+      summary: 生成打开缠观落地页的小程序 URL Link
+      description: 供微信外打开的缠观 H5 引导用户进入小程序；固定落地页 pages/chanlun/index，return_query 仅允许 [A-Za-z0-9._=&-] 且不超过 512 字符。链接 30 天有效，服务端按目标缓存 1 天。
+      security: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChanlunMiniLinkRequest"
+      responses:
+        "200":
+          description: 生成成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MiniLinkEnvelope"
+        <<: *standardErrors
+
   /api/v1/app/test-auth/users:
     get:
       operationId: listH5TestLoginUsers
@@ -2596,6 +2618,26 @@ components:
                 token:
                   type: string
                   description: 用户登录 JWT
+    ChanlunMiniLinkRequest:
+      type: object
+      properties:
+        return_query:
+          type: string
+          maxLength: 512
+          description: 登录后回到缠观时附带的查询串，如 secid=1.600519&timeframe=30m
+    MiniLinkEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/SuccessBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              required: [url]
+              properties:
+                url:
+                  type: string
+                  description: 微信 URL Link
     UserUpdateMatchRequest:
       type: object
       description: 主队管理者或散人约球创建者编辑比赛；所有字段可选，省略保留原值。

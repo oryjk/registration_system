@@ -19,6 +19,8 @@ import (
 	matchhttp "github.com/oryjk/registration_system/registration_system_go/internal/match/adapters/http"
 	matchpostgres "github.com/oryjk/registration_system/registration_system_go/internal/match/adapters/postgres"
 	matchapplication "github.com/oryjk/registration_system/registration_system_go/internal/match/application"
+	minilinkhttp "github.com/oryjk/registration_system/registration_system_go/internal/minilink/adapters/http"
+	minilinkapplication "github.com/oryjk/registration_system/registration_system_go/internal/minilink/application"
 	minireviewhttp "github.com/oryjk/registration_system/registration_system_go/internal/minireview/adapters/http"
 	minireviewpostgres "github.com/oryjk/registration_system/registration_system_go/internal/minireview/adapters/postgres"
 	minireviewapplication "github.com/oryjk/registration_system/registration_system_go/internal/minireview/application"
@@ -185,6 +187,7 @@ func BuildDependencies(ctx context.Context, config Config) (Dependencies, func()
 	appTeamInviteHandler := teamhttp.NewAppInviteHandler(appTeamInviteService)
 	honorCodes := wechatcode.New(&http.Client{Timeout: 20 * time.Second}, "https://api.weixin.qq.com", config.WechatAppID, config.WechatAppSecret, buildSystemAssetStore(config))
 	honorShareHandler := teamhttp.NewHonorShareHandler(teamapplication.NewHonorShareService(teamRepository, honorCodes))
+	miniLinkHandler := minilinkhttp.NewHandler(minilinkapplication.NewService(honorCodes))
 	captainMessages := matchapplication.NewCaptainMessageService(matchRepository, matchRepository, teamService)
 	captainMessageHandler := matchhttp.NewCaptainMessageHandler(captainMessages)
 	teamFundRepository := teamfundpostgres.NewRepository(pool)
@@ -201,6 +204,7 @@ func BuildDependencies(ctx context.Context, config Config) (Dependencies, func()
 		AuthMiddleware: &authMiddleware,
 		UserAuth:       userAuthHandler, AdminAuth: adminAuthHandler,
 		WebviewCodes:  webviewCodeHandler,
+		MiniLinks:     miniLinkHandler,
 		Impersonation: impersonationHandler,
 		TestAuth:      testAuthHandler, H5TestLoginEnabled: config.H5TestLoginEnabled(),
 		UserProfiles: userProfileHandler, AppUsers: appUserHandler, ActiveUsers: appUserService, Teams: teamHandler, AppTeams: appTeamHandler,

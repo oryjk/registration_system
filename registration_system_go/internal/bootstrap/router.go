@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	authhttp "github.com/oryjk/registration_system/registration_system_go/internal/auth/adapters/http"
 	matchhttp "github.com/oryjk/registration_system/registration_system_go/internal/match/adapters/http"
+	minilinkhttp "github.com/oryjk/registration_system/registration_system_go/internal/minilink/adapters/http"
 	minireviewhttp "github.com/oryjk/registration_system/registration_system_go/internal/minireview/adapters/http"
 	notificationhttp "github.com/oryjk/registration_system/registration_system_go/internal/notification/adapters/http"
 	paymenthttp "github.com/oryjk/registration_system/registration_system_go/internal/payment/adapters/http"
@@ -23,6 +24,7 @@ type Dependencies struct {
 	AuthMiddleware     *authhttp.Middleware
 	UserAuth           *authhttp.Handler
 	WebviewCodes       *authhttp.WebviewCodeHandler
+	MiniLinks          *minilinkhttp.Handler
 	Impersonation      *authhttp.ImpersonationHandler
 	TestAuth           *authhttp.TestHandler
 	AdminAuth          *authhttp.AdminHandler
@@ -75,6 +77,10 @@ func NewRouter(dependencies Dependencies) *gin.Engine {
 	}
 	if dependencies.WebviewCodes != nil {
 		dependencies.WebviewCodes.RegisterPublicRoutes(app)
+	}
+	if dependencies.MiniLinks != nil {
+		// 微信外打开的 H5 引导进入小程序，无需登录态。
+		dependencies.MiniLinks.RegisterPublicRoutes(app)
 	}
 	if dependencies.H5TestLoginEnabled && dependencies.TestAuth != nil {
 		dependencies.TestAuth.RegisterRoutes(app)

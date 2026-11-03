@@ -76,6 +76,7 @@
 - 旧 Rust 链路的配套老管理端 `registration_system_backend_fe/` 同样已删除，两者都不再联动修改。
 - 改 Go 后端时，联动检查对接 Go 的管理端：`registration_system_backend_fe_go/src/api/`；小程序已对接 Go，用户端接口变更需同时检查 `registration_system_mini/src/api/`。
 - `registration_system_mini/` 是唯一的小程序代码库；**H5-only 页面不要加进 uni-app 项目**，统一放到 `registration_system_h5/`（见项目表）。小程序内打开 H5 页面走 web-view 嵌页（`registration_system_mini/src/utils/webview.ts` 的 `navigateToWebView`），登录态用一次性 code 兑换协议（签发 `POST /api/v1/app/auth/webview-codes`、兑换 `POST /api/v1/app/auth/webview-codes/exchange`，桥接参数 `webview_code`/`webview_identity_kind`/`webview_identity_team_id`）——`registration_system_h5/` 创建时必须实现同一套协议，细节见 `registration_system_mini/AGENTS.md` 的「web-view 嵌入 H5」一节。
+- **缠观（独立项目 `../chanlun`）对接**：缠观 H5 通过既有一次性 code 协议登录——其后端以 `webview_code` 调 `POST /api/v1/app/auth/webview-codes/exchange` 换 JWT、再读 `GET /api/v1/app/users/me` 建立自己的会话；需要登录时在 web-view 内跳回小程序 `pages/chanlun/index`，微信外则调 `POST /api/v1/app/mini-links/chanlun` 获取 URL Link。改动这三个接口或落地页参数时须同步检查缠观。
 - 改管理端或小程序页面时，确认接口字段与后端 DTO / JSON 实际返回一致。
 - 涉及认证、活动、球队、球员、账单等核心领域时，优先沿用既有命名与模块边界，不要把业务规则塞进页面层或 handler。
 - 后端数据结构变更时注意 legacy 迁移工具（`registration_system_go/scripts/migrate-legacy.sh`、`cmd/migratelegacydb`）与集成测试基建（`internal/testsupport`，每用例独立 schema）是否需要同步调整。

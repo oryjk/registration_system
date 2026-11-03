@@ -74,12 +74,21 @@ export function buildWebViewTargetUrl(targetUrl: string, code: string): string {
   return `${targetUrl.slice(0, hashIndex)}${separator}${params.join("&")}${targetUrl.slice(hashIndex)}`;
 }
 
+export interface NavigateToWebViewOptions {
+  /** 用 web-view 替换当前页（落地页中转场景），返回时不再回到中转页。 */
+  replace?: boolean;
+}
+
 /**
  * 在小程序内通过 web-view 嵌页打开 H5 页面。
  * 已登录时先向后端换取一次性 code 再跳转；code 签发失败则中止并提示。
  * 目标 URL 不在白名单内时仅 toast 提示，不跳转。
  */
-export async function navigateToWebView(targetUrl: string, title?: string): Promise<void> {
+export async function navigateToWebView(
+  targetUrl: string,
+  title?: string,
+  options: NavigateToWebViewOptions = {},
+): Promise<void> {
   if (!isAllowedWebViewUrl(targetUrl)) {
     uni.showToast({ title: "暂不支持打开该链接", icon: "none" });
     return;
@@ -100,7 +109,12 @@ export async function navigateToWebView(targetUrl: string, title?: string): Prom
   if (title) {
     query.push(`title=${encodeURIComponent(title)}`);
   }
-  uni.navigateTo({ url: `/pages/webview/index?${query.join("&")}` });
+  const url = `/pages/webview/index?${query.join("&")}`;
+  if (options.replace) {
+    uni.redirectTo({ url });
+    return;
+  }
+  uni.navigateTo({ url });
 }
 
 let pendingIngest: Promise<void> | null = null;

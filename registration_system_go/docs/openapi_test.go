@@ -14,6 +14,7 @@ import (
 	authhttp "github.com/oryjk/registration_system/registration_system_go/internal/auth/adapters/http"
 	"github.com/oryjk/registration_system/registration_system_go/internal/bootstrap"
 	matchhttp "github.com/oryjk/registration_system/registration_system_go/internal/match/adapters/http"
+	minilinkhttp "github.com/oryjk/registration_system/registration_system_go/internal/minilink/adapters/http"
 	paymenthttp "github.com/oryjk/registration_system/registration_system_go/internal/payment/adapters/http"
 	systemhttp "github.com/oryjk/registration_system/registration_system_go/internal/system/adapters/http"
 	teamhttp "github.com/oryjk/registration_system/registration_system_go/internal/team/adapters/http"
@@ -35,8 +36,8 @@ func TestOpenAPIIsValidAndMatchesGinRoutes(t *testing.T) {
 	if len(missing) != 0 || len(extra) != 0 {
 		t.Fatalf("OpenAPI route mismatch\nmissing: %v\nextra: %v", missing, extra)
 	}
-	if len(documented) != 98 {
-		t.Fatalf("documented operations=%d, want 98", len(documented))
+	if len(documented) != 99 {
+		t.Fatalf("documented operations=%d, want 99", len(documented))
 	}
 }
 
@@ -49,6 +50,7 @@ func TestOpenAPISecurityMatchesPublicAndProtectedRoutes(t *testing.T) {
 		{method: http.MethodGet, path: "/health"},
 		{method: http.MethodPost, path: "/api/v1/app/auth/wechat/login"},
 		{method: http.MethodPost, path: "/api/v1/app/auth/webview-codes/exchange"},
+		{method: http.MethodPost, path: "/api/v1/app/mini-links/chanlun"},
 		{method: http.MethodGet, path: "/api/v1/app/test-auth/users"},
 		{method: http.MethodPost, path: "/api/v1/app/test-auth/login"},
 		{method: http.MethodPost, path: "/api/v1/admin/auth/login"},
@@ -146,6 +148,7 @@ func completeRouter() *gin.Engine {
 		AuthMiddleware:     &middleware,
 		UserAuth:           authhttp.NewHandler(nil),
 		WebviewCodes:       authhttp.NewWebviewCodeHandler(nil),
+		MiniLinks:          minilinkhttp.NewHandler(nil),
 		TestAuth:           authhttp.NewTestHandler(nil, 37),
 		AdminAuth:          authhttp.NewAdminHandler(nil),
 		UserProfiles:       userhttp.NewHandler(nil, nil),

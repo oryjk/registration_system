@@ -114,6 +114,7 @@ src/
 - 登录态桥接用**一次性 code 换 token**（token 不进 URL / nginx 日志）：`navigateToWebView` 先调 `POST /auth/webview-codes` 签发 60s 一次性 code 拼进 URL query（`webview_code` 及身份选择参数）；H5 启动时 `src/main.ts` 调 `ingestWebViewAuthFromUrl()` 立即抹掉地址栏参数，再异步调 `POST /auth/webview-codes/exchange` 换正式 token 写入 `authStorage`；`appSession.ensureSessionReady` 开始前会 `await waitWebViewAuthIngest()` 等待兑换落地，避免误判游客态。兑换失败（code 过期/已用/网络异常）保持游客态。
 - H5 端 web-view 由 uni-app 编译为 iframe。
 - **H5-only 页面的归属**：后续专门跑在 H5 环境的页面（web-view 嵌页、微信内浏览器页面）不再加入本 uni-app 项目，统一放到独立项目 `registration_system_h5/`（规划待创建，纯 Web 技术栈，静态产物推送到 jd 服务器 nginx，经 `match.oryjk.cn` 对外服务）。该项目必须实现上述一次性 code 兑换协议（`webview_code`/`webview_identity_*` 参数 + 两个 `/auth/webview-codes*` 接口）作为登录态契约；本项目 `src/utils/webview.ts` 与 `src/main.ts` 里的桥接代码即为该协议的参考实现。
+- **缠观（行情 H5）入口**：`src/pages/chanlun/index.vue` 是统一落地页（「我的」入口、缠观 H5 内 `wx.miniProgram.redirectTo` 回跳、微信外 URL Link 都进这里），先 `ensureSessionReady` 完成默认登录，再 `navigateToWebView(..., { replace: true })` 打开 `src/config/chanlun.ts` 的缠观地址（默认 `https://match.oryjk.cn/chanlun/`，本地可用 `VITE_CHANLUN_H5_URL` 覆盖）。`path` 回跳参数只接受 `[A-Za-z0-9._=&-]`，与 Go `POST /mini-links/chanlun` 规则一致；入口仅微信端显示。
 - 微信侧前置条件（仓库外手动配置）：公众平台为小程序 `wx0b5cef0e7f1af280` 配置业务域名 `match.oryjk.cn`（443 端口 HTTPS，需 ICP 备案），校验文件需放到该域名根路径（jd 的 nginx-server 层操作）。
 - **业务域名硬限制**：web-view 的 src 必须是 443 默认端口的 HTTPS（业务域名不能配端口，而服务器域名/request 合法域名可以）。因此验收环境现有的 `https://oryjk.cn:82/mini-v3/` 不能直接用于 web-view，`match.oryjk.cn` 的 443 入口需指向同一份 H5 静态文件，`:82` 入口保留给浏览器直连与 API。开发者工具勾选「不校验业务域名」可绕过该限制做本地调试。
 

@@ -176,6 +176,13 @@
       }
     },
     {
+      "path": "pages/chanlun/index",
+      "style": {
+        "navigationBarTitleText": "缠观",
+        "disableScroll": true
+      }
+    },
+    {
       "path": "pages/user/help/index",
       "style": {
         "navigationBarTitleText": "使用帮助",
