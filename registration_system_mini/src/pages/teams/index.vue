@@ -248,6 +248,17 @@ provide(APP_SCROLL_CONTROLLER, appScrollController);
     <template v-if="!requiresLogin">
       <view v-if="errorMessage" class="stats-empty ui-card-panel">
         {{ errorMessage }}
+        <!-- #ifdef MP-WEIXIN -->
+        <view v-if="hasNoTeam" class="stats-empty-actions">
+          <view class="stats-empty-action">
+            <AppButton block variant="lime" @click="goJoinTeam">加入球队</AppButton>
+          </view>
+          <view v-if="canShowCreateTeamEntry" class="stats-empty-action">
+            <AppButton block variant="dark" @click="goCreateTeam">创建球队</AppButton>
+          </view>
+        </view>
+        <!-- #endif -->
+        <!-- #ifndef MP-WEIXIN -->
         <view v-if="hasNoTeam" class="stats-empty-actions">
           <AppButton class="stats-empty-action" variant="lime" @click="goJoinTeam">加入球队</AppButton>
           <AppButton
@@ -259,6 +270,7 @@ provide(APP_SCROLL_CONTROLLER, appScrollController);
             创建球队
           </AppButton>
         </view>
+        <!-- #endif -->
       </view>
       <RunningLoader v-else-if="isLoading && !hasLoadedOnce" text="正在统计战绩" />
 
@@ -427,7 +439,8 @@ provide(APP_SCROLL_CONTROLLER, appScrollController);
 
 /* #ifdef MP-WEIXIN */
 .stats-empty { color: var(--ui-color-text-secondary); }
-.stats-empty-actions { flex-direction: column; align-items: stretch; gap: var(--ui-space-3); }
+.stats-empty-actions { flex-direction: row; flex-wrap: nowrap; align-items: stretch; gap: var(--ui-space-3); }
+.stats-empty-action { display: flex; flex: 1; flex-direction: column; align-items: stretch; min-width: 0; }
 .stats-honor-share { margin-top: var(--ui-card-gap); }
 /* #endif */
 </style>
