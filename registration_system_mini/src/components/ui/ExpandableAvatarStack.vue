@@ -23,8 +23,9 @@ const props = withDefaults(defineProps<{
   interactive: true,
   disabled: false,
 });
-const emit = defineEmits<{ (event: "select", id: string | number): void; (event: "layoutChange"): void; (event: "expandedChange", expanded: boolean): void }>();
+const emit = defineEmits<{ (event: "select", id: string | number): void; (event: "layoutChange", delta?: number): void; (event: "expandedChange", expanded: boolean): void }>();
 const expanded = ref(false);
+const homeGridHeight = ref(0);
 const isHomeLayout = computed(() => {
   // #ifdef MP-WEIXIN
   return props.homeLayout === true;
@@ -68,6 +69,16 @@ async function measure() {
   viewportWidth.value = getWindowMetrics().windowWidth;
   await nextTick();
   if (disposed) return;
+  if (isHomeLayout.value) {
+    uni.createSelectorQuery().in(instance?.proxy).select(".expandable-avatars__home-grid")
+      .boundingClientRect(rect => {
+        if (disposed || version !== measurement) return;
+        const box = Array.isArray(rect) ? rect[0] : rect;
+        if (typeof box?.height === "number" && box.height > 0) homeGridHeight.value = box.height;
+        void nextTick(() => { if (!disposed) emit("layoutChange"); });
+      }).exec();
+    return;
+  }
   uni.createSelectorQuery().in(instance?.proxy).select(".expandable-avatars__items")
     .boundingClientRect(rect => {
       if (disposed || version !== measurement) return;
@@ -81,7 +92,22 @@ function toggle() {
   scrollLeft.value = 0;
   expanded.value = !expanded.value;
   emit("expandedChange", expanded.value);
+  if (isHomeLayout.value) {
+    if (homeGridHeight.value > 0) {
+      emit("layoutChange", expanded.value ? homeGridHeight.value : -homeGridHeight.value);
+    }
+    if (layoutSettleTimer !== undefined) clearTimeout(layoutSettleTimer);
+    layoutSettleTimer = setTimeout(() => { if (!disposed) emit("layoutChange"); }, 252);
+    return;
+  }
   void measure();
+}
+function rankBadgeClass(item: AvatarItem) {
+  if ((item.teamParticipationPoints ?? 0) <= 0 || !item.teamParticipationRank) return "";
+  if (item.teamParticipationRank === 1) return "expandable-avatars__home-badge--rank-1";
+  if (item.teamParticipationRank === 2) return "expandable-avatars__home-badge--rank-2";
+  if (item.teamParticipationRank === 3) return "expandable-avatars__home-badge--rank-3";
+  return "";
 }
 function imageKey(item: AvatarItem) { return `${item.id}:${item.avatarUrl}`; }
 function select(item: AvatarItem) {
@@ -99,6 +125,86 @@ watch(trackHeight, () => {
 
 <template>
   <view data-deck-ignore="true" class="expandable-avatars" :class="{ 'expandable-avatars--home': isHomeLayout }" @tap.stop>
+    <!-- #ifdef MP-WEIXIN -->
+    <template v-if="isHomeLayout">
+      <view data-deck-ignore="true" class="expandable-avatars__home-bar">
+        <scroll-view
+          data-deck-ignore="true"
+          scroll-x
+          :show-scrollbar="false"
+          class="expandable-avatars__home-scroll"
+          :class="{ 'expandable-avatars__home-scroll--dimmed': expanded }"
+          @touchmove.stop
+        >
+          <view data-deck-ignore="true" class="expandable-avatars__home-strip">
+            <view
+              v-for="item in items"
+              :key="item.id"
+              data-deck-ignore="true"
+              class="expandable-avatars__home-chip"
+              :hover-class="interactive && !disabled ? 'expandable-avatars__avatar--pressed' : 'none'"
+              @tap.stop="select(item)"
+            >
+              <view data-deck-ignore="true" class="expandable-avatars__home-chip-face" :style="{ backgroundColor: item.tone || 'var(--ui-color-text)' }">
+                <image data-deck-ignore="true" v-if="item.avatarUrl && !failedImages[imageKey(item)]" class="expandable-avatars__image" :src="minioImageSrc(item.avatarUrl)" mode="aspectFill" @error="minioImageSrc(item.avatarUrl) && (failedImages[imageKey(item)] = true)" />
+                <text data-deck-ignore="true" v-else class="expandable-avatars__fallback">{{ Array.from(item.name.trim())[0] || '?' }}</text>
+              </view>
+              <view v-if="item.isPaidMember" data-deck-ignore="true" class="expandable-avatars__home-chip-crown">
+                <MembershipCrown width="36rpx" height="20rpx" />
+              </view>
+            </view>
+          </view>
+        </scroll-view>
+        <button
+          v-if="items.length > 0"
+          data-deck-ignore="true"
+          class="expandable-avatars__home-btn"
+          :disabled="disabled"
+          :aria-expanded="expanded"
+          :aria-label="expanded ? '收起报名名单' : '展开报名名单'"
+          hover-class="expandable-avatars__toggle--pressed"
+          @tap.stop="toggle"
+        >
+          <text data-deck-ignore="true">{{ expanded ? "收起名单" : "展开名单" }}</text>
+          <image data-deck-ignore="true" class="expandable-avatars__home-chevron" :class="{ 'expandable-avatars__home-chevron--open': expanded }" src="/static/home-icons/chevron-down.png" mode="aspectFit" aria-hidden="true" />
+        </button>
+      </view>
+      <view
+        data-deck-ignore="true"
+        class="expandable-avatars__home-drawer"
+        :class="{ 'expandable-avatars__home-drawer--open': expanded }"
+        :style="{ height: `${expanded ? homeGridHeight : 0}px` }"
+      >
+        <view data-deck-ignore="true" class="expandable-avatars__home-grid">
+          <view data-deck-ignore="true" class="expandable-avatars__home-grid-cells">
+            <view
+              v-for="item in items"
+              :key="`grid-${item.id}`"
+              data-deck-ignore="true"
+              class="expandable-avatars__home-cell"
+              :hover-class="interactive && !disabled ? 'expandable-avatars__avatar--pressed' : 'none'"
+              @tap.stop="select(item)"
+            >
+              <view data-deck-ignore="true" class="expandable-avatars__home-cell-avatar">
+                <view data-deck-ignore="true" class="expandable-avatars__home-cell-face" :style="{ backgroundColor: item.tone || 'var(--ui-color-text)' }">
+                  <image data-deck-ignore="true" v-if="item.avatarUrl && !failedImages[imageKey(item)]" class="expandable-avatars__image" :src="minioImageSrc(item.avatarUrl)" mode="aspectFill" @error="minioImageSrc(item.avatarUrl) && (failedImages[imageKey(item)] = true)" />
+                  <text data-deck-ignore="true" v-else class="expandable-avatars__fallback">{{ Array.from(item.name.trim())[0] || '?' }}</text>
+                </view>
+                <view v-if="item.isPaidMember" data-deck-ignore="true" class="expandable-avatars__home-cell-crown">
+                  <MembershipCrown width="44rpx" height="24rpx" />
+                </view>
+              </view>
+              <text data-deck-ignore="true" class="expandable-avatars__home-name">{{ item.name }}</text>
+              <view v-if="hasParticipationLevel(item)" data-deck-ignore="true" class="expandable-avatars__home-badge" :class="rankBadgeClass(item)">
+                <text data-deck-ignore="true">{{ avatarParticipationLevel(item.teamCumulativeParticipationPoints) }}级</text>
+              </view>
+            </view>
+          </view>
+        </view>
+      </view>
+    </template>
+    <template v-else>
+    <!-- #endif -->
     <!-- 只隔离头像滚动，勿在外层拦截 touchstart，否则小程序按钮 tap 无法触发。 -->
     <view data-deck-ignore="true" class="expandable-avatars__items">
       <scroll-view data-deck-ignore="true" scroll-x :show-scrollbar="false" :scroll-left="scrollLeft" class="expandable-avatars__scroll" @touchmove.stop :style="{ height: `${trackHeight}px` }" @scroll="scrollLeft = $event.detail.scrollLeft">
@@ -147,6 +253,9 @@ watch(trackHeight, () => {
       <view data-deck-ignore="true" class="expandable-avatars__chevron" :class="{ 'expandable-avatars__chevron--left': expanded }" />
       <!-- #endif -->
     </button>
+    <!-- #ifdef MP-WEIXIN -->
+    </template>
+    <!-- #endif -->
   </view>
 </template>
 
@@ -198,10 +307,126 @@ watch(trackHeight, () => {
 /* #ifdef MP-WEIXIN */
 .expandable-avatars__toggle { min-height: var(--ui-control-min-height); color: var(--ui-color-icon-muted); font-size: var(--ui-text-sm); }
 .expandable-avatars--home { flex-direction: column; align-items: stretch; gap: 0; }
-.expandable-avatars--home .expandable-avatars__items { flex: auto; width: 100%; }
-.expandable-avatars--home .expandable-avatars__toggle { align-self: flex-end; justify-content: flex-end; min-width: var(--ui-control-min-height); min-height: var(--ui-control-min-height); margin-bottom: calc(0rpx - var(--ui-space-3)); padding: 0; color: var(--ui-home-muted); font-size: var(--ui-text-sm); }
+.expandable-avatars__home-bar { display: flex; align-items: center; justify-content: space-between; gap: var(--ui-space-4); width: 100%; }
+.expandable-avatars__home-scroll { flex: 1; min-width: 0; white-space: nowrap; transition: opacity var(--ui-motion-expand-duration) var(--ui-motion-ease-out); }
+.expandable-avatars__home-scroll--dimmed { opacity: 0.4; }
+.expandable-avatars__home-strip { display: inline-flex; align-items: center; padding: var(--ui-space-3) var(--ui-space-2) var(--ui-space-1) var(--ui-space-1); }
+.expandable-avatars__home-chip { position: relative; width: 64rpx; height: 64rpx; flex-shrink: 0; box-sizing: border-box; }
+.expandable-avatars__home-chip + .expandable-avatars__home-chip { margin-left: -16rpx; }
+.expandable-avatars__home-chip-face { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; border-radius: 20rpx; overflow: hidden; box-sizing: border-box; border: 0; box-shadow: 0 0 0 4rpx var(--ui-color-surface); }
+.expandable-avatars__home-chip-crown { position: absolute; top: -14rpx; right: -6rpx; z-index: 2; pointer-events: none; }
+.expandable-avatars__home-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ui-space-1);
+  flex-shrink: 0;
+  margin: 0;
+  padding: var(--ui-space-2) var(--ui-space-4);
+  border: 0;
+  border-radius: var(--ui-space-4);
+  background: var(--ui-color-page-muted);
+  color: var(--ui-home-muted);
+  font-size: var(--ui-text-body);
+  font-weight: var(--ui-font-weight-medium);
+  line-height: var(--ui-line-height-compact);
+}
+.expandable-avatars__home-btn::after { border: 0; }
 .expandable-avatars__home-chevron { flex-shrink: 0; width: var(--ui-icon-sm); height: var(--ui-icon-sm); transition: transform var(--ui-motion-expand-duration) var(--ui-motion-ease-out); }
 .expandable-avatars__home-chevron--open { transform: rotate(180deg); }
+.expandable-avatars__home-drawer {
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    height var(--ui-motion-expand-duration) var(--ui-motion-ease-out),
+    opacity var(--ui-motion-expand-duration) var(--ui-motion-ease-out);
+}
+.expandable-avatars__home-drawer--open {
+  opacity: 1;
+  pointer-events: auto;
+}
+.expandable-avatars__home-grid {
+  padding-top: var(--ui-space-5);
+  transform: translateY(-12rpx);
+  transition: transform var(--ui-motion-expand-duration) var(--ui-motion-ease-out);
+}
+.expandable-avatars__home-drawer--open .expandable-avatars__home-grid {
+  transform: translateY(0);
+}
+.expandable-avatars__home-grid-cells {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  row-gap: var(--ui-space-5);
+  column-gap: var(--ui-space-3);
+  padding-top: var(--ui-space-5);
+  border-top: var(--ui-border-hairline);
+}
+.expandable-avatars__home-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+  text-align: center;
+}
+.expandable-avatars__home-cell-avatar {
+  position: relative;
+  width: 80rpx;
+  height: 80rpx;
+  flex-shrink: 0;
+}
+.expandable-avatars__home-cell-face {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--ui-space-6);
+  overflow: hidden;
+  box-sizing: border-box;
+  border: 0;
+}
+.expandable-avatars__home-cell-crown {
+  position: absolute;
+  top: -16rpx;
+  right: -8rpx;
+  z-index: 2;
+  pointer-events: none;
+}
+.expandable-avatars__home-name {
+  max-width: 112rpx;
+  margin-top: var(--ui-space-2);
+  color: var(--ui-color-text);
+  font-size: var(--ui-text-sm);
+  font-weight: var(--ui-font-weight-medium);
+  line-height: var(--ui-line-height-tight);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.expandable-avatars__home-badge {
+  margin-top: var(--ui-space-1);
+  padding: 2rpx var(--ui-space-3);
+  border-radius: var(--ui-space-2);
+  background: var(--ui-color-page-muted);
+  color: var(--ui-home-muted);
+  font-size: var(--ui-text-xs);
+  font-weight: var(--ui-font-weight-heading);
+  line-height: var(--ui-line-height-compact);
+  font-variant-numeric: tabular-nums;
+}
+.expandable-avatars__home-badge--rank-1 {
+  background: var(--ui-avatar-attendance-gold-bg);
+  color: var(--ui-avatar-attendance-gold);
+}
+.expandable-avatars__home-badge--rank-2 {
+  background: var(--ui-avatar-attendance-silver-bg);
+  color: var(--ui-avatar-attendance-silver);
+}
+.expandable-avatars__home-badge--rank-3 {
+  background: var(--ui-avatar-attendance-bronze-bg);
+  color: var(--ui-avatar-attendance-bronze);
+}
 .expandable-avatars__chevron { width: 32rpx; height: 32rpx; border: 0; font-size: 32rpx; line-height: 1; transform: none; }
 .expandable-avatars__chevron--left { transform: rotate(180deg); }
 /* #endif */

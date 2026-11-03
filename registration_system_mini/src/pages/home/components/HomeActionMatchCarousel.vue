@@ -38,7 +38,11 @@ const duration = prefersReducedMotion() ? 0 : 220;
 let disposed = false;
 let measurement = 0;
 
-async function measureActiveCard() {
+async function measureActiveCard(delta?: unknown) {
+  if (typeof delta === 'number' && delta !== 0 && height.value > 0) {
+    height.value = Math.max(0, height.value + delta);
+    return;
+  }
   const version = ++measurement;
   await nextTick();
   if (disposed) return;
@@ -125,6 +129,7 @@ onUnmounted(() => { disposed = true; measurement++; uni.offWindowResize(measureA
 .match-arrow--disabled { opacity: 0.3; }
 .match-slide { display: flex; flex-direction: column; box-sizing: border-box; padding: 0 4rpx 24rpx; }
 /* #ifdef MP-WEIXIN */
+.match-swiper { transition: height var(--ui-motion-expand-duration) var(--ui-motion-ease-out); }
 .match-carousel__accent { width: 104rpx; height: var(--ui-space-2); margin-bottom: var(--ui-space-4); border-radius: var(--ui-radius-round); background: var(--ui-color-line); overflow: hidden; }
 .match-carousel__accent-fill { width: 50%; height: 100%; border-radius: var(--ui-radius-round); background: var(--ui-color-accent); }
 .match-arrow { width: var(--ui-control-min-height); height: var(--ui-control-min-height); background: transparent; }

@@ -29,7 +29,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (event: "matchTap", match: HomeMatchCardViewModel): void;
   (event: "retry"): void;
-  (event: "layoutChange"): void;
+  (event: "layoutChange", delta?: number): void;
   (event: "expandedChange", expanded: boolean): void;
   (event: "avatarSelect", avatar: AvatarItem): void;
 }>();
@@ -139,7 +139,7 @@ function openDetail() {
           :disabled="interactionBlocked || navigating"
           action-card
           @avatar-select="selectAvatar"
-          @layout-change="emit('layoutChange')"
+          @layout-change="emit('layoutChange', $event)"
           @expanded-change="emit('expandedChange', $event)"
         />
       </view>
@@ -154,7 +154,12 @@ function openDetail() {
             <!-- #endif -->
             <text>{{ card.statusLabel }}</text>
           </view>
+          <!-- #ifdef MP-WEIXIN -->
+          <text v-if="card.deadlineLabel" class="now-deadline">{{ card.deadlineLabel }}</text>
+          <!-- #endif -->
+          <!-- #ifndef MP-WEIXIN -->
           <text v-if="card.deadlineLabel || remainingLabel" class="now-deadline">{{ [remainingLabel, card.deadlineLabel].filter(Boolean).join(' · ') }}</text>
+          <!-- #endif -->
         </view>
         <button class="now-primary ui-native-button ui-native-button--primary" :disabled="interactionBlocked || navigating || !match.canOpenDetail" hover-class="now-primary-pressed" @tap="openDetail">{{ navigating ? "正在打开…" : card.actionLabel }}
           <!-- #ifndef MP-WEIXIN -->

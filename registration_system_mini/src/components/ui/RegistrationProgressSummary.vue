@@ -18,7 +18,7 @@ const props = defineProps<{
   /** 首页封面行动卡：紧凑进度、容量与成行状态，保留原头像交互。 */
   actionCard?: boolean;
 }>();
-const emit = defineEmits<{ (event: "avatarSelect", id: string | number): void; (event: "layoutChange"): void; (event: "expandedChange", expanded: boolean): void }>();
+const emit = defineEmits<{ (event: "avatarSelect", id: string | number): void; (event: "layoutChange", delta?: number): void; (event: "expandedChange", expanded: boolean): void }>();
 const state = computed(() => registrationProgressState(props.joined, props.minimum, props.maximum));
 const scaleStyle = computed(() => {
   // #ifdef MP-WEIXIN
@@ -34,10 +34,54 @@ const avatarSize = computed(() => {
   return "sm" as const;
   // #endif
 });
+// #ifdef MP-WEIXIN
+const actionCapacityLabel = computed(() => {
+  const max = state.value.maximum;
+  if (!max) return "人数不限";
+  const remaining = max - props.joined;
+  return remaining > 0 ? `剩 ${remaining} 个名额 / 上限 ${max} 人` : `已满员 / 上限 ${max} 人`;
+});
+// #endif
 </script>
 
 <template>
   <view class="registration-summary" :class="{ 'registration-summary--compact': compact, 'registration-summary--action-card': actionCard }">
+    <!-- #ifdef MP-WEIXIN -->
+    <template v-if="actionCard">
+      <view class="registration-head">
+        <view class="registration-head__left">
+          <text class="registration-title">已报名 {{ joined }} 人</text>
+          <text
+            v-if="state.minimum"
+            class="registration-readiness"
+            :class="{ 'registration-readiness--pending': state.belowMinimum }"
+          >{{ state.belowMinimum ? state.countLabel : `已满 ${state.minimum} 人成行` }}</text>
+        </view>
+        <text class="registration-capacity">{{ actionCapacityLabel }}</text>
+      </view>
+      <view v-if="state.progressPercent !== null" class="registration-progress">
+        <view class="registration-track">
+          <view class="registration-fill" :class="{ 'registration-fill--pending': state.belowMinimum }" :style="{ width: `${state.basePercent}%` }" />
+          <view v-if="state.extraPercent > 0" class="registration-extra" :style="{ left: `${state.basePercent}%`, width: `${state.extraPercent}%` }" />
+          <view v-if="state.minimumPercent !== null" class="registration-minimum" :style="{ left: `${state.minimumPercent}%` }" />
+        </view>
+      </view>
+      <view v-if="avatars" class="registration-crowd">
+        <ExpandableAvatarStack
+          v-if="avatars.length"
+          :items="avatars"
+          :size="avatarSize"
+          home-layout
+          :disabled="disabled"
+          @select="emit('avatarSelect', $event)"
+          @layout-change="emit('layoutChange', $event)"
+          @expanded-change="emit('expandedChange', $event)"
+        />
+        <text v-else class="registration-meta">暂无报名球员</text>
+      </view>
+    </template>
+    <template v-else>
+    <!-- #endif -->
     <view class="registration-head">
       <text class="registration-title">{{ title || '报名进度' }}</text>
       <view v-if="compact || actionCard" class="registration-count"><text class="registration-count-number">{{ joined }}</text><text>{{ state.maximum ? ` / ${state.maximum} 人` : ' 人 · 不限' }}</text><text v-if="actionCard && state.minimum" class="registration-readiness" :class="{ 'registration-readiness--pending': state.belowMinimum }">{{ state.belowMinimum ? state.countLabel : '已成行' }}</text></view>
@@ -60,6 +104,9 @@ const avatarSize = computed(() => {
         <text class="registration-scale-end">{{ state.minimum && state.minimum === state.maximum ? `${state.minimum} 人成行 · 满员` : state.maximum ? `最多 ${state.maximum} 人` : '人数不限' }}</text>
       </view>
     </view>
+    <!-- #ifdef MP-WEIXIN -->
+    </template>
+    <!-- #endif -->
   </view>
 </template>
 
@@ -96,14 +143,15 @@ const avatarSize = computed(() => {
 .registration-scale-start { position: absolute; left: 0; top: 0; }
 
 /* #ifdef MP-WEIXIN */
-.registration-summary--action-card .registration-head { align-items: center; flex-wrap: wrap; gap: var(--ui-space-3); margin-bottom: var(--ui-space-6); }
-.registration-summary--action-card .registration-title { font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-heading); }
-.registration-summary--action-card .registration-count { align-items: center; color: var(--ui-home-muted); font-size: var(--ui-text-subtitle); }
-.registration-summary--action-card .registration-count-number { color: var(--ui-color-text); font-size: var(--ui-text-display); font-weight: var(--ui-font-weight-medium); }
-.registration-summary--action-card .registration-readiness { margin-left: var(--ui-space-4); padding: var(--ui-space-1) var(--ui-space-3); border-radius: var(--ui-radius-round); background: var(--ui-home-ready-bg); color: var(--ui-color-success-fg); font-size: var(--ui-text-sm); line-height: var(--ui-line-height-compact); }
+.registration-summary--action-card .registration-head { align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--ui-space-2); margin-bottom: var(--ui-space-3); }
+.registration-summary--action-card .registration-head__left { display: flex; align-items: center; gap: var(--ui-space-3); min-width: 0; }
+.registration-summary--action-card .registration-title { font-size: var(--ui-text-label); font-weight: var(--ui-font-weight-heading); color: var(--ui-color-text); font-variant-numeric: tabular-nums; }
+.registration-summary--action-card .registration-readiness { margin-left: 0; padding: var(--ui-space-1) var(--ui-space-3); border-radius: var(--ui-space-2); background: var(--ui-home-ready-bg); color: var(--ui-home-positive); font-size: var(--ui-text-xs); font-weight: var(--ui-font-weight-heading); line-height: var(--ui-line-height-compact); }
 .registration-summary--action-card .registration-readiness--pending { background: var(--ui-color-warning-bg); color: var(--ui-color-warning-fg); }
-.registration-summary--action-card .registration-track { height: var(--ui-home-progress-height); margin-top: var(--ui-space-4); }
-.registration-summary--action-card .registration-scale { margin-top: var(--ui-space-3); color: var(--ui-home-muted); }
+.registration-summary--action-card .registration-capacity { color: var(--ui-home-muted); font-size: var(--ui-text-body); font-variant-numeric: tabular-nums; }
+.registration-summary--action-card .registration-track { height: var(--ui-space-4); margin-top: 0; border-radius: var(--ui-radius-round); }
+.registration-summary--action-card .registration-minimum { width: var(--ui-space-1); }
+.registration-summary--action-card .registration-crowd { margin-top: var(--ui-space-5); }
 /* #endif */
 
 @media (prefers-reduced-motion: reduce) {

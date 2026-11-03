@@ -105,7 +105,9 @@ function skip() {
       >
         <template #content>
           <view class="home-tour-panel" role="dialog" aria-modal="true" :aria-label="step.title" @tap.stop>
+            <!-- #ifndef MP-WEIXIN -->
             <button class="home-tour-close" aria-label="关闭新手引导" @tap.stop="skip">×</button>
+            <!-- #endif -->
             <text class="home-tour-eyebrow">新手指引 · {{ current + 1 }}/{{ steps.length }}</text>
             <text class="home-tour-title">{{ step.title }}</text>
             <text class="home-tour-description">{{ step.content }}</text>
@@ -149,4 +151,7 @@ function skip() {
 .home-tour-dot--active { width: 26rpx; background: var(--ui-color-accent); }
 .home-tour-controls { display: flex; align-items: center; gap: 12rpx; }
 .home-tour-link { display: flex; align-items: center; justify-content: center; min-height: 64rpx; margin: 0; padding: 0 10rpx; border: 0; background: transparent; color: var(--ui-color-text-muted); font-size: 24rpx; line-height: 1.4; }
+/* #ifdef MP-WEIXIN */
+.home-tour-eyebrow, .home-tour-title { padding-right: 0; }
+/* #endif */
 </style>

@@ -9,7 +9,12 @@ page,
   --ui-glass-header-shadow: 0 6rpx 24rpx rgba(var(--ui-primitive-shadow-rgb), 0.04);
   --ui-tabbar-selected-bg: #ffffff;
   /* #ifdef MP-WEIXIN */
-  --ui-tabbar-selected-bg: var(--ui-color-accent-soft);
+  --ui-glass-bg: rgba(var(--ui-primitive-surface-rgb), 0.62);
+  --ui-glass-highlight: rgba(255, 255, 255, 0.68);
+  --ui-glass-filter: blur(24px) saturate(180%);
+  --ui-glass-shadow: 0 12rpx 40rpx rgba(var(--ui-primitive-shadow-rgb), 0.12), inset 0 2rpx 0 var(--ui-glass-highlight);
+  --ui-tabbar-selected-bg: rgba(var(--ui-primitive-surface-rgb), 0.82);
+  --ui-tabbar-selected-shadow: 0 4rpx 16rpx rgba(var(--ui-primitive-shadow-rgb), 0.08), inset 0 2rpx 0 var(--ui-glass-highlight);
   /* #endif */
   --ui-tabbar-selected-text: #00214d;
   --ui-tabbar-glass-bg: var(--ui-glass-bg);

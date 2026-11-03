@@ -404,8 +404,18 @@ function handleCreateIndividualChallenge() {
 }
 
 /* #ifdef MP-WEIXIN */
-.custom-tabbar { border: 0; border-radius: var(--ui-tabbar-radius); background: var(--ui-color-surface-translucent); }
-.custom-tab-indicator { background: transparent; }
+.custom-tabbar {
+  border: 2rpx solid var(--ui-tabbar-glass-border);
+  border-radius: var(--ui-radius-round);
+  background: var(--ui-tabbar-glass-bg);
+  box-shadow: var(--ui-glass-shadow);
+  -webkit-backdrop-filter: var(--ui-glass-filter);
+  backdrop-filter: var(--ui-glass-filter);
+}
+.custom-tab-indicator {
+  background: var(--ui-tabbar-selected-bg);
+  box-shadow: var(--ui-tabbar-selected-shadow);
+}
 .custom-tab-item-active .custom-tab-label { color: var(--ui-tabbar-active); font-weight: var(--ui-font-weight-medium); }
 .custom-tab-label { color: var(--ui-color-icon-muted); font-weight: var(--ui-font-weight-body); }
 .custom-tab-plus-symbol { color: var(--ui-color-text-inverse); font-weight: var(--ui-font-weight-body); }
