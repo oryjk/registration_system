@@ -286,6 +286,8 @@ export function toHomeMatchCard(
     signupScope,
     signupScopeLabel,
     venue: item.location,
+    hostTeamName: item.host_team_name ?? "",
+    ...(summaryMatch?.host_team_logo_url ? { hostTeamLogoUrl: summaryMatch.host_team_logo_url } : {}),
     opponent: item.opponent_name ?? "待定",
     formatLabel: playersPerTeam > 0 ? `${playersPerTeam} 人制` : "人数待定",
     requiredPlayers,

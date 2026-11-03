@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import RegistrationProgressSummary from "@/components/ui/RegistrationProgressSummary.vue";
 // #ifndef MP-WEIXIN
 import HomeMatchCalendar from "./HomeMatchCalendar.vue";
@@ -55,6 +55,9 @@ const remainingLabel = computed(() => {
 const phaseLabel = computed(() => card.value.availability || (card.value.phase === "upcoming" ? "报名中" : card.value.phaseLabel));
 // #ifdef MP-WEIXIN
 const coverDate = computed(() => card.value.calendarMonth === "待定" ? "日期待定" : `${card.value.calendarMonth}${Number(card.value.calendarDay)}日`);
+const hostLogoFailed = ref(false);
+watch(() => card.value.hostTeamLogoUrl, () => { hostLogoFailed.value = false; });
+const hostLogoSrc = computed(() => hostLogoFailed.value || !card.value.hostTeamLogoUrl ? "" : minioImageSrc(card.value.hostTeamLogoUrl));
 // #endif
 function selectAvatar(id: string | number) {
   if (props.interactionBlocked || props.navigating) return;
@@ -79,13 +82,24 @@ function openDetail() {
       <view class="now-calendar-position"><HomeMatchCalendar :month="card.calendarMonth" :day="card.calendarDay" :weekday="card.weekday" /></view>
       <!-- #endif -->
       <!-- #ifdef MP-WEIXIN -->
-      <text class="now-phase now-phase--cover" :class="{ 'now-phase--neutral': card.phase !== 'upcoming' || card.availability }">{{ phaseLabel }}</text>
+      <view class="now-cover-top">
+        <text class="now-scope-inline">{{ [match.signupScopeLabel, match.formatLabel].filter(Boolean).join(" · ") }}</text>
+        <text class="now-phase now-phase--cover" :class="{ 'now-phase--neutral': card.phase !== 'upcoming' || card.availability }">{{ phaseLabel }}</text>
+      </view>
       <!-- #endif -->
       <view class="now-cover-copy">
         <!-- #ifdef MP-WEIXIN -->
         <text class="now-title">{{ card.title }}</text>
         <view class="now-date-row"><text>{{ coverDate }} {{ card.weekday }} {{ card.time }}</text><text v-if="card.endTime" class="now-end-time">— {{ card.endTime }}</text></view>
-        <text v-if="match.signupScopeLabel" class="now-scope-label">{{ match.signupScopeLabel }}</text>
+        <view v-if="card.hostTeamName || card.opponent" class="now-matchup-row">
+          <view v-if="card.hostTeamName" class="now-matchup-logo">
+            <image v-if="hostLogoSrc" class="now-matchup-logo__image" :src="hostLogoSrc" mode="aspectFill" @error="hostLogoFailed = true" />
+            <text v-else class="now-matchup-logo__initial">{{ card.hostTeamName.slice(0, 1) || "主" }}</text>
+          </view>
+          <text v-if="card.hostTeamName" class="now-matchup-team">{{ card.hostTeamName }}</text>
+          <text v-if="card.hostTeamName" class="now-matchup-vs">VS</text>
+          <text class="now-matchup-opponent">{{ card.hostTeamName ? card.opponent : `对手 ${card.opponent}` }}</text>
+        </view>
         <!-- #endif -->
         <!-- #ifndef MP-WEIXIN -->
         <view class="now-time-row"><text class="now-time">{{ card.time }}</text><text v-if="card.endTime" class="now-end-time">— {{ card.endTime }}</text></view>
@@ -99,22 +113,22 @@ function openDetail() {
     <view class="now-body">
       <view class="now-location-row">
         <view class="now-info"><image class="now-icon" src="/static/icons/lucide/map-pin.png" mode="aspectFit" aria-hidden="true" /><text class="now-location">{{ card.venue }}</text></view>
+        <!-- #ifdef MP-WEIXIN -->
+        <text class="now-fee-inline">{{ card.feeLabel }}</text>
+        <!-- #endif -->
         <!-- #ifndef MP-WEIXIN -->
         <text class="now-phase" :class="{ 'now-phase--neutral': card.phase !== 'upcoming' || card.availability }">{{ phaseLabel }}</text>
         <!-- #endif -->
       </view>
+      <!-- #ifndef MP-WEIXIN -->
       <view class="now-details-row">
         <view class="now-detail-item">
-          <!-- #ifdef MP-WEIXIN -->
-          <image class="now-icon" src="/static/icons/lucide/users.png" mode="aspectFit" aria-hidden="true" />
-          <!-- #endif -->
-          <!-- #ifndef MP-WEIXIN -->
           <image class="now-icon" src="/static/icons/lucide/trophy.png" mode="aspectFit" aria-hidden="true" />
-          <!-- #endif -->
           <text class="now-meta">{{ match.formatLabel }} · 对手 {{ card.opponent }}</text>
         </view>
         <view class="now-detail-item"><image class="now-icon" src="/static/icons/lucide/wallet.png" mode="aspectFit" aria-hidden="true" /><text class="now-meta">{{ card.feeLabel }}</text></view>
       </view>
+      <!-- #endif -->
       <view v-if="match.showRegistrationProgress" class="now-registration">
         <RegistrationProgressSummary
           :key="`${match.id}-${active !== false}`"
@@ -218,22 +232,27 @@ function openDetail() {
 
 /* #ifdef MP-WEIXIN */
 .home-now-card { margin-top: 0; border: var(--ui-panel-border); border-radius: var(--ui-home-radius); box-shadow: var(--ui-card-shadow); }
-.now-card-heading { min-height: var(--ui-home-cover-height); padding: var(--ui-home-padding); justify-content: center; }
-.now-cover-copy { margin-top: var(--ui-space-5); padding-right: 0; }
-.now-title { max-width: 60%; margin-top: 0; font-size: var(--ui-home-cover-title-size); line-height: var(--ui-line-height-tight); }
-.now-date-row { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--ui-space-2); margin-top: var(--ui-space-3); font-size: var(--ui-text-label); line-height: var(--ui-line-height-compact); font-variant-numeric: tabular-nums; }
+.now-card-heading { min-height: var(--ui-home-cover-height); padding: var(--ui-home-padding); justify-content: space-between; }
+.now-cover-top { position: relative; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: var(--ui-space-3); }
+.now-scope-inline { color: var(--now-cover-muted); font-size: var(--ui-text-body); line-height: var(--ui-line-height-compact); }
+.now-cover-copy { margin-top: var(--ui-space-4); padding-right: 0; }
+.now-title { max-width: 100%; margin-top: 0; font-size: var(--ui-home-cover-title-size); line-height: var(--ui-line-height-tight); }
+.now-date-row { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--ui-space-2); margin-top: var(--ui-space-2); color: var(--now-cover-muted); font-size: var(--ui-text-label); line-height: var(--ui-line-height-compact); font-variant-numeric: tabular-nums; }
 .now-date-row .now-end-time { font-size: var(--ui-text-sm); }
-.now-scope-label { display: block; margin-top: var(--ui-space-2); color: var(--now-cover-muted); font-size: var(--ui-text-xs); line-height: var(--ui-line-height-compact); }
-.now-phase--cover { position: absolute; z-index: 1; top: var(--ui-home-padding); right: var(--ui-home-padding); max-width: 38%; padding: var(--ui-space-2) var(--ui-space-4); border-radius: var(--ui-radius-round); background: var(--ui-color-accent); color: var(--ui-color-text); font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-medium); }
+.now-matchup-row { display: flex; align-items: center; gap: var(--ui-space-2); margin-top: var(--ui-space-4); padding-top: var(--ui-space-3); border-top: var(--now-cover-divider); font-size: var(--ui-text-subtitle); line-height: 1; }
+.now-matchup-logo { display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: var(--ui-text-subtitle); height: var(--ui-text-subtitle); overflow: hidden; border: var(--now-cover-divider); border-radius: var(--ui-radius-md); background: var(--ui-color-surface); }
+.now-matchup-logo__image { width: 100%; height: 100%; }
+.now-matchup-logo__initial { color: var(--ui-color-text); font-size: var(--ui-text-xs); font-weight: var(--ui-font-weight-heading); line-height: 1; }
+.now-matchup-team, .now-matchup-opponent { min-width: 0; overflow: hidden; color: var(--now-cover-fg); font-weight: var(--ui-font-weight-heading); white-space: nowrap; text-overflow: ellipsis; }
+.now-matchup-vs { flex-shrink: 0; padding: 0 var(--ui-space-1); color: var(--ui-color-accent); font-size: var(--ui-text-xs); font-weight: var(--ui-font-weight-heading); }
+.now-phase--cover { flex-shrink: 0; max-width: 38%; padding: var(--ui-space-1) var(--ui-space-4); border-radius: var(--ui-radius-round); background: var(--ui-color-accent); color: var(--ui-color-text); font-size: var(--ui-text-sm); font-weight: var(--ui-font-weight-heading); }
 .now-phase--cover.now-phase--neutral { background: var(--now-status-neutral-bg); color: var(--now-status-neutral-fg); }
 .now-body { padding: var(--ui-space-6) var(--ui-home-padding) var(--ui-home-padding); }
 .now-icon { width: var(--ui-icon-md); height: var(--ui-icon-md); margin-top: var(--ui-space-1); }
 .now-info, .now-detail-item { gap: var(--ui-space-3); }
-.now-location { font-size: var(--ui-text-subtitle); }
-.now-details-row { margin-top: var(--ui-space-5); gap: var(--ui-space-3) var(--ui-space-5); }
-.now-detail-item .now-icon { width: var(--ui-icon-md); height: var(--ui-icon-md); }
-.now-meta { font-size: var(--ui-text-body); }
-.now-registration { margin-top: var(--ui-space-6); padding-top: var(--ui-space-6); border-top: var(--ui-border-hairline); }
+.now-location { font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-medium); }
+.now-fee-inline { flex-shrink: 0; color: var(--ui-home-muted); font-size: var(--ui-text-body); line-height: var(--ui-line-height-compact); }
+.now-registration { margin-top: var(--ui-space-5); padding-top: var(--ui-space-5); border-top: var(--ui-border-hairline); }
 .now-action-row { margin-top: var(--ui-space-6); padding-top: var(--ui-space-6); border-top: var(--ui-border-hairline); gap: var(--ui-space-4); }
 .now-status { align-items: center; gap: var(--ui-space-3); font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-heading); }
 .now-status--success { color: var(--ui-home-positive); }

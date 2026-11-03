@@ -55,6 +55,8 @@ export interface HomeMatchCardViewModel {
   signupScopeLabel: string;
   signupScope: "external" | "internal";
   venue: string;
+  hostTeamName?: string;
+  hostTeamLogoUrl?: string;
   opponent: string;
   formatLabel: string;
   requiredPlayers: number;

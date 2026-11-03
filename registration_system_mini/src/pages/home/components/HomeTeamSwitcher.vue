@@ -223,8 +223,9 @@ function handleSelect(team: TeamProfileViewModel) {
 .home-team-entry__caret { width: 28rpx; height: 28rpx; margin: 0 4rpx 0 8rpx; border: 0; color: var(--ui-color-text-muted); font-size: 28rpx; line-height: 1; transform: none; }
 .home-team-entry__caret--open { transform: rotate(180deg); }
 .home-team-entry { gap: var(--ui-space-3); padding-left: 0; }
-.home-team-entry__logo { width: var(--ui-space-12); height: var(--ui-space-12); border-radius: var(--ui-radius-button); background: transparent; }
-.home-team-entry__name { font-size: var(--ui-text-title); }
+.home-team-entry__logo { width: var(--ui-text-heading); height: var(--ui-text-heading); border: var(--ui-border-hairline); border-radius: var(--ui-radius-md); background: var(--ui-color-surface); }
+.home-team-entry__initial { font-size: var(--ui-text-xs); line-height: 1; }
+.home-team-entry__name { font-size: var(--ui-text-heading); line-height: 1; }
 .home-team-option__chevron { width: var(--ui-icon-sm); height: var(--ui-icon-sm); }
 /* #endif */
 

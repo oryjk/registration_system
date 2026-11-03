@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref, watch } from "vue";
 import AppTag from "@/components/ui/AppTag.vue";
 // #ifdef MP-WEIXIN
+import { useMinioImages } from "@/composables/useMinioImages";
 import HomeMatchThumbnail from "./HomeMatchThumbnail.vue";
 // #endif
 import type { HomeMatchCardViewModel } from "@/types/viewModels";
@@ -16,6 +17,26 @@ const props = defineProps<{
 const emit = defineEmits<{
   (event: "matchTap", match: HomeMatchCardViewModel): void;
 }>();
+
+// #ifdef MP-WEIXIN
+const { minioImageSrc } = useMinioImages();
+const hostLogoFailed = ref(false);
+const failedAvatarIds = ref<Record<number, boolean>>({});
+watch(() => [props.match.id, props.match.hostTeamLogoUrl], () => {
+  hostLogoFailed.value = false;
+  failedAvatarIds.value = {};
+});
+const hostLogoSrc = computed(() =>
+  hostLogoFailed.value || !props.match.hostTeamLogoUrl ? "" : minioImageSrc(props.match.hostTeamLogoUrl),
+);
+const previewAvatars = computed(() => props.match.participantAvatars.slice(0, 3));
+function avatarSrc(userId: number, url: string): string {
+  return failedAvatarIds.value[userId] || !url ? "" : minioImageSrc(url);
+}
+function markAvatarFailed(userId: number, url: string) {
+  if (minioImageSrc(url)) failedAvatarIds.value = { ...failedAvatarIds.value, [userId]: true };
+}
+// #endif
 
 // 查看型卡：日期 + 星期 + 时间一行展示。
 const compactDateLine = computed(() => {
@@ -58,6 +79,10 @@ function handleTap() {
     <!-- #ifdef MP-WEIXIN -->
     <view v-if="hasCover" class="home-view-card__thumbnail">
       <HomeMatchThumbnail :match="match" />
+      <view v-if="grouped" class="home-view-card__thumb-overlay" aria-hidden="true">
+        <text class="home-view-card__thumb-date">{{ match.dateBlock.monthDay }}</text>
+        <text class="home-view-card__thumb-time">{{ match.dateBlock.timeLabel }}</text>
+      </view>
     </view>
     <!-- #endif -->
     <view class="home-view-card__main">
@@ -66,8 +91,30 @@ function handleTap() {
       </view>
       <!-- #ifdef MP-WEIXIN -->
       <template v-if="grouped">
-        <view class="home-view-card__info"><image class="home-view-card__info-icon" src="/static/home-icons/calendar-days.png" mode="aspectFit" aria-hidden="true" /><text>{{ compactDateLine }}</text></view>
-        <view class="home-view-card__info"><image class="home-view-card__info-icon" src="/static/icons/lucide/map-pin.png" mode="aspectFit" aria-hidden="true" /><text>{{ match.venue }}</text></view>
+        <view v-if="match.hostTeamName || match.opponent" class="home-view-card__matchup">
+          <view v-if="match.hostTeamName" class="home-view-card__team-logo">
+            <image v-if="hostLogoSrc" class="home-view-card__team-logo-img" :src="hostLogoSrc" mode="aspectFill" @error="hostLogoFailed = true" />
+            <text v-else class="home-view-card__team-logo-initial">{{ match.hostTeamName.slice(0, 1) || "队" }}</text>
+          </view>
+          <text v-if="match.hostTeamName" class="home-view-card__host-name">{{ match.hostTeamName }}</text>
+          <text v-if="match.hostTeamName" class="home-view-card__vs">vs</text>
+          <text class="home-view-card__opponent-name">{{ match.opponent }}</text>
+        </view>
+        <view class="home-view-card__bottom">
+          <view class="home-view-card__info">
+            <image class="home-view-card__info-icon" src="/static/icons/lucide/map-pin.png" mode="aspectFit" aria-hidden="true" />
+            <text>{{ hasCover ? match.venue : `${compactDateLine} · ${match.venue}` }}</text>
+          </view>
+          <view v-if="match.participantAvatars.length" class="home-view-card__roster">
+            <view class="home-view-card__avatars">
+              <view v-for="avatar in previewAvatars" :key="avatar.userId" class="home-view-card__avatar">
+                <image v-if="avatarSrc(avatar.userId, avatar.avatarUrl)" class="home-view-card__avatar-img" :src="avatarSrc(avatar.userId, avatar.avatarUrl)" mode="aspectFill" @error="markAvatarFailed(avatar.userId, avatar.avatarUrl)" />
+                <text v-else class="home-view-card__avatar-initial">{{ avatar.displayText }}</text>
+              </view>
+            </view>
+            <text class="home-view-card__roster-count">{{ match.participantAvatars.length }}人出战</text>
+          </view>
+        </view>
       </template>
       <text v-else class="home-view-card__meta">{{ compactDateLine }} · {{ match.venue }}</text>
       <!-- #endif -->
@@ -220,12 +267,29 @@ function handleTap() {
 .home-view-card--with-cover .home-view-card__main { padding: 0; }
 .home-view-card--with-cover .home-view-card__detail,
 .home-view-card--with-cover .home-view-card__badge { margin: 0; }
-.home-view-card--grouped { gap: var(--ui-space-7); min-height: var(--ui-match-row-min-height); padding: var(--ui-space-5) 0; border: 0; border-radius: 0; box-shadow: none; }
-.home-view-card--grouped .home-view-card__thumbnail { flex-basis: var(--ui-home-list-cover-size); width: var(--ui-home-list-cover-size); border-radius: var(--ui-radius-button); }
-.home-view-card--grouped .home-view-card__title { font-size: var(--ui-text-title); font-weight: var(--ui-font-weight-heading); line-height: var(--ui-line-height-tight); }
-.home-view-card__info { display: flex; align-items: flex-start; gap: var(--ui-space-3); margin-top: var(--ui-space-2); color: var(--ui-home-muted); font-size: var(--ui-text-body); line-height: var(--ui-line-height-compact); }
-.home-view-card__info text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
-.home-view-card__info-icon { flex-shrink: 0; width: var(--ui-icon-xs); height: var(--ui-icon-xs); margin-top: var(--ui-space-1); }
+.home-view-card--grouped { gap: var(--ui-space-6); min-height: var(--ui-match-row-min-height); padding: var(--ui-space-5) 0; border: 0; border-radius: 0; box-shadow: none; }
+.home-view-card--grouped .home-view-card__thumbnail { flex-basis: var(--ui-home-list-cover-size); width: var(--ui-home-list-cover-size); height: var(--ui-home-list-cover-size); align-self: center; border-radius: var(--ui-radius-button); }
+.home-view-card__thumb-overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding: var(--ui-space-2); background: var(--now-thumb-shade); color: var(--now-cover-fg); text-align: center; box-sizing: border-box; pointer-events: none; }
+.home-view-card__thumb-date { color: var(--now-cover-muted); font-size: var(--ui-text-xs); line-height: 1.2; font-variant-numeric: tabular-nums; }
+.home-view-card__thumb-time { font-size: var(--ui-text-sm); font-weight: var(--ui-font-weight-heading); line-height: 1.25; font-variant-numeric: tabular-nums; }
+.home-view-card--grouped .home-view-card__title { font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-heading); line-height: var(--ui-line-height-tight); }
+.home-view-card__matchup { display: flex; align-items: center; gap: var(--ui-space-2); margin-top: var(--ui-space-2); font-size: var(--ui-text-body); line-height: 1; }
+.home-view-card__team-logo { display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: var(--ui-text-body); height: var(--ui-text-body); overflow: hidden; border: var(--ui-border-hairline); border-radius: var(--ui-radius-sm); background: var(--ui-color-surface); }
+.home-view-card__team-logo-img { width: 100%; height: 100%; }
+.home-view-card__team-logo-initial { color: var(--ui-color-text); font-size: var(--ui-text-xs); font-weight: var(--ui-font-weight-heading); line-height: 1; }
+.home-view-card__host-name { min-width: 0; overflow: hidden; color: var(--ui-color-text); font-weight: var(--ui-font-weight-medium); white-space: nowrap; text-overflow: ellipsis; }
+.home-view-card__vs { flex-shrink: 0; padding: 0 var(--ui-space-1); color: var(--ui-home-muted); font-size: var(--ui-text-xs); font-weight: var(--ui-font-weight-heading); }
+.home-view-card__opponent-name { flex: 1; min-width: 0; overflow: hidden; color: var(--ui-home-muted); font-weight: var(--ui-font-weight-medium); white-space: nowrap; text-overflow: ellipsis; }
+.home-view-card__bottom { display: flex; align-items: center; justify-content: space-between; gap: var(--ui-space-3); margin-top: var(--ui-space-2); }
+.home-view-card__info { display: flex; align-items: center; flex: 1; min-width: 0; gap: var(--ui-space-2); color: var(--ui-home-muted); font-size: var(--ui-text-sm); line-height: var(--ui-line-height-compact); }
+.home-view-card__info text { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.home-view-card__info-icon { flex-shrink: 0; width: var(--ui-icon-xs); height: var(--ui-icon-xs); }
+.home-view-card__roster { display: flex; align-items: center; flex-shrink: 0; gap: var(--ui-space-2); }
+.home-view-card__avatars { display: flex; align-items: center; padding-left: var(--ui-space-2); }
+.home-view-card__avatar { display: flex; align-items: center; justify-content: center; width: var(--ui-icon-md); height: var(--ui-icon-md); margin-left: calc(var(--ui-space-2) * -1); overflow: hidden; border: var(--ui-avatar-border); border-radius: var(--ui-radius-round); background: var(--ui-color-neutral-bg); }
+.home-view-card__avatar-img { width: 100%; height: 100%; }
+.home-view-card__avatar-initial { color: var(--ui-color-text-muted); font-size: var(--ui-text-xs); font-weight: var(--ui-font-weight-medium); line-height: 1; }
+.home-view-card__roster-count { color: var(--ui-home-muted); font-size: var(--ui-text-xs); font-weight: var(--ui-font-weight-medium); font-variant-numeric: tabular-nums; }
 .home-view-card--grouped .home-view-card__detail { padding: 0; min-width: var(--ui-control-min-height); border: 0; color: var(--ui-home-muted); background: var(--ui-control-plain-bg); font-weight: var(--ui-font-weight-body); }
 .home-view-card--grouped .home-view-card__detail--pressed { background: var(--ui-color-accent-subtle); }
 .home-view-card__line-chevron { flex-shrink: 0; width: var(--ui-icon-md); height: var(--ui-icon-md); }

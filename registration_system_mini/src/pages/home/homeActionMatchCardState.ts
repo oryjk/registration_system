@@ -99,6 +99,8 @@ export function buildHomeActionMatchCardState(
     time: validDate ? formatTimeLabel(rawDate) : "时间待定",
     endTime: dateIsValid(rawEndDate) ? formatTimeLabel(rawEndDate) : "",
     venue: match?.location?.trim() || card.venue?.trim() || "场地待定",
+    hostTeamName: match?.host_team_name?.trim() || card.hostTeamName?.trim() || "",
+    hostTeamLogoUrl: (match?.host_team_logo_url || card.hostTeamLogoUrl)?.trim() || "",
     opponent: match?.opponent_name?.trim() || card.opponent?.trim() || "待定",
     feeLabel: feeLabel(detail),
     statusLabel: pendingPayment ? "已报名 · 待支付" : status,

@@ -12,14 +12,16 @@ import AvatarPreviewDialog from "@/components/ui/AvatarPreviewDialog.vue";
 import type { AvatarItem } from "@/components/ui/avatarTypes";
 import { ownHonorAvatarTeam, resolveHonorSource, honorSharePath } from "@/pages/honors/honorState";
 import HomeSectionHeader from "./components/HomeSectionHeader.vue";
+// #ifndef MP-WEIXIN
 import HomeEmptyHero from "./components/HomeEmptyHero.vue";
+import HomeVenueMapEntry from "./components/HomeVenueMapEntry.vue";
+// #endif
 import HomeOnboardingTour from "./components/HomeOnboardingTour.vue";
 // #ifdef MP-WEIXIN
 import HomeStartEntries from "./components/HomeStartEntries.vue";
 import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
 import { useMiniAppEntry } from "@/stores/miniAppEntry";
 // #endif
-import HomeVenueMapEntry from "./components/HomeVenueMapEntry.vue";
 import HomeActionMatchCarousel from "./components/HomeActionMatchCarousel.vue";
 import { useHomeActionDeckDetails } from "./useHomeActionDeckDetails";
 import HomeMatchList from "./components/HomeMatchList.vue";
@@ -160,16 +162,31 @@ function clearMatchSections() {
   endedMatches.value = [];
 }
 
+function withKnownTeamLogos(items: HomeMatchCardViewModel[]): HomeMatchCardViewModel[] {
+  if (!teamProfiles.value.length) return items;
+  const logoByName = new Map(
+    teamProfiles.value
+      .filter((team) => !!team.name && !!team.logoUrl)
+      .map((team) => [team.name.trim(), team.logoUrl]),
+  );
+  return items.map((item) => {
+    if (item.hostTeamLogoUrl || !item.hostTeamName) return item;
+    const matchedLogo = logoByName.get(item.hostTeamName.trim());
+    return matchedLogo ? { ...item, hostTeamLogoUrl: matchedLogo } : item;
+  });
+}
+
 function applyMatchSection(section: HomeMatchSectionViewModel) {
+  const items = withKnownTeamLogos(section.items);
   switch (section.phase) {
     case "upcoming":
-      upcomingMatches.value = section.items;
+      upcomingMatches.value = items;
       return;
     case "ongoing":
-      ongoingMatches.value = section.items;
+      ongoingMatches.value = items;
       return;
     case "ended":
-      endedMatches.value = section.items.slice(0, 3);
+      endedMatches.value = items.slice(0, 3);
       return;
   }
 }
@@ -440,18 +457,6 @@ onShareTimeline(() => ({
           <view class="home-refresh-chip">更新中...</view>
         </view>
 
-        <!-- #ifdef MP-WEIXIN -->
-        <view v-if="hasLoadedMatchData" class="home-start-entries">
-          <HomeStartEntries
-            ref="onboardingHero"
-            :actions="emptyHeroState.actions"
-            :busy="guidanceNavigation.busy.value"
-            @select-task="handleTaskChoice"
-            @help="openHelp"
-          />
-        </view>
-        <!-- #endif -->
-
         <HomeActionMatchCarousel
           v-if="heroNextMatch && !homeTour.active.value"
           :matches="actionDeckMatches"
@@ -464,6 +469,20 @@ onShareTimeline(() => ({
           @retry="deckDetails.reload"
           @avatar-select="openAvatarPreview"
         />
+
+        <!-- #ifdef MP-WEIXIN -->
+        <view v-if="hasLoadedMatchData" class="home-start-entries">
+          <HomeStartEntries
+            ref="onboardingHero"
+            :actions="emptyHeroState.actions"
+            :busy="guidanceNavigation.busy.value"
+            :show-hero="!heroNextMatch || homeTour.active.value"
+            @select-task="handleTaskChoice"
+            @help="openHelp"
+          />
+        </view>
+        <!-- #endif -->
+
         <!-- #ifndef MP-WEIXIN -->
         <HomeEmptyHero
           v-else-if="homeTour.active.value || (hasLoadedMatchData && !ongoingMatches.length)"
@@ -488,9 +507,9 @@ onShareTimeline(() => ({
           @expand="onboardingGuide.expand"
           @help="openHelp"
         />
-        <!-- #endif -->
 
         <HomeVenueMapEntry />
+        <!-- #endif -->
 
         <view v-if="showHomeLoadError" class="home-empty home-empty-compact">
           <view>{{ errorMessage }}</view>
@@ -580,7 +599,7 @@ onShareTimeline(() => ({
 @import "@/styles/page-surfaces.css";
 @import "@/styles/list-surfaces.css";
 /* #ifdef MP-WEIXIN */
-.home-start-entries { margin-bottom: var(--ui-card-gap); }
+.home-start-entries { margin-top: var(--ui-space-2); margin-bottom: var(--ui-card-gap); }
 /* #endif */
 
 .home-page {

@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>小程序首页视觉优化提案 · 真实数据交互预览</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --ui-ink: #00214d;
+      --ui-text-secondary: #65758b;
+      --ui-accent: #00ebc7;
+      --ui-accent-mp: #00cfb3;
+      --ui-accent-soft: #dcfff8;
+      --ui-page: #f4f6f9;
+      --ui-surface: #ffffff;
+      --ui-line: #e6ecf2;
+      --ui-positive: #16b979;
+      --ui-positive-bg: #dcf9e5;
+      --ui-gold: #d9ab38;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      margin: 0;
+      background: #0b1320;
+      color: var(--ui-ink);
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "SF Pro Display", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .tabular-nums {
+      font-variant-numeric: tabular-nums;
+    }
+
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      scrollbar-width: none;
+    }
+
+    /* 手机模拟壳 */
+    .phone-frame {
+      width: 393px;
+      height: 852px;
+      background: var(--ui-page);
+      border-radius: 48px;
+      box-shadow: 0 30px 90px rgba(0, 0, 0, 0.55), 0 0 0 10px #1e293b, 0 0 0 12px rgba(255, 255, 255, 0.12);
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+    }
+
+    .phone-scroll {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding-bottom: 112px;
+    }
+
+    /* 微信胶囊按钮模拟 */
+    .wx-capsule {
+      display: inline-flex;
+      align-items: center;
+      height: 32px;
+      padding: 0 12px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.85);
+      border: 1px solid rgba(0, 33, 77, 0.08);
+      gap: 10px;
+    }
+
+    .wx-capsule-divider {
+      width: 1px;
+      height: 14px;
+      background: rgba(0, 33, 77, 0.12);
+    }
+
+    /* 卡片柔和阴影 */
+    .card-surface {
+      background: #ffffff;
+      border-radius: 20px;
+      box-shadow: 0 8px 24px rgba(24, 55, 100, 0.05);
+      border: 1px solid rgba(228, 234, 242, 0.7);
+    }
+
+    /* 会员皇冠微摇摆 */
+    @keyframes crownSway {
+      0%, 100% { transform: rotate(-8deg) translateY(0); }
+      50% { transform: rotate(8deg) translateY(-1px); }
+    }
+    .crown-badge {
+      animation: crownSway 2.4s ease-in-out infinite;
+    }
+
+    .pressable {
+      transition: transform 120ms cubic-bezier(0.33, 0, 0.2, 1), background-color 120ms ease, box-shadow 120ms ease;
+      cursor: pointer;
+    }
+    .pressable:active {
+      transform: scale(0.98);
+    }
+  </style>
+</head>
+<body class="min-h-screen py-6 px-4 lg:px-8 flex flex-col items-center">
+
+  <!-- 顶部控制面板 -->
+  <header class="w-full max-w-6xl mb-6 bg-slate-900/90 backdrop-blur-xl border border-slate-800 rounded-2xl p-4 text-white shadow-2xl">
+    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+      <div>
+        <div class="flex items-center gap-2.5">
+          <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#00ebc7]/20 text-[#00ebc7] border border-[#00ebc7]/30">Real Data · 真实线上数据</span>
+          <h1 class="text-lg font-bold tracking-tight">微信小程序首页 · 视觉重构对比预览</h1>
+        </div>
+        <p class="text-xs text-slate-400 mt-1">
+          使用线上真实数据（球队：<strong class="text-slate-200">洺悦御府 / 东安洺悅联队</strong> · 待报名：<strong class="text-slate-200">周四友谊赛 vs 龙泉草根</strong> · 10名真实报名球员头像与星级 · 3场真实历史比赛）
+        </p>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-3">
+        <!-- 场景切换 -->
+        <div class="flex items-center bg-slate-800/90 p-1 rounded-xl border border-slate-700/70 text-xs">
+          <button onclick="setScene('with-upcoming')" id="scene-with-upcoming" class="px-3 py-1.5 rounded-lg font-medium transition-all bg-[#00ebc7] text-[#00214d]">
+            主力态：有待报名比赛
+          </button>
+          <button onclick="setScene('empty-upcoming')" id="scene-empty-upcoming" class="px-3 py-1.5 rounded-lg font-medium transition-all text-slate-300 hover:text-white">
+            引导态：无待办（对应原截图）
+          </button>
+        </div>
+
+        <!-- 视图模式切换 -->
+        <div class="flex items-center bg-slate-800/90 p-1 rounded-xl border border-slate-700/70 text-xs">
+          <button onclick="setViewMode('compare')" id="mode-compare" class="px-3 py-1.5 rounded-lg font-medium transition-all bg-white/15 text-white">
+            双机同屏对比
+          </button>
+          <button onclick="setViewMode('single')" id="mode-single" class="px-3 py-1.5 rounded-lg font-medium transition-all text-slate-300 hover:text-white">
+            单机全览切换
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 针对原截图的 4 大核心问题诊断条 -->
+    <div class="mt-3.5 pt-3.5 border-t border-slate-800/80 grid grid-cols-1 md:grid-cols-4 gap-2.5 text-xs">
+      <div class="bg-slate-800/50 rounded-xl px-3 py-2 border border-slate-700/40">
+        <span class="text-rose-400 font-semibold">痛点 1 · 头重脚轻</span>
+        <p class="text-slate-400 mt-0.5 leading-relaxed">原版「你想先做什么？」+ 3个巨型插画占掉首屏 55% 高度，老队员每次进来都被迫先看新手指引。</p>
+      </div>
+      <div class="bg-slate-800/50 rounded-xl px-3 py-2 border border-slate-700/40">
+        <span class="text-amber-400 font-semibold">痛点 2 · 风格割裂</span>
+        <p class="text-slate-400 mt-0.5 leading-relaxed">写实夜场照片、3D 卡通大图标、刺眼薄荷绿等距地图条、扁平列表混搭，缺乏统一的卡片呼吸感。</p>
+      </div>
+      <div class="bg-slate-800/50 rounded-xl px-3 py-2 border border-slate-700/40">
+        <span class="text-emerald-400 font-semibold">痛点 3 · 地图条突兀</span>
+        <p class="text-slate-400 mt-0.5 leading-relaxed">原版「球场地图」整条高饱和薄荷绿横亘在中间，既像广告横幅又破坏了页面色彩平衡。</p>
+      </div>
+      <div class="bg-slate-800/50 rounded-xl px-3 py-2 border border-slate-700/40">
+        <span class="text-sky-400 font-semibold">痛点 4 · 历史列表单薄</span>
+        <p class="text-slate-400 mt-0.5 leading-relaxed">原版左边配随机足球风景图，没有对阵双方（谁踢谁）、没有出勤头像簇与人数，像普通文章列表。</p>
+      </div>
+    </div>
+  </header>
+
+  <!-- 手机展示区 -->
+  <div id="phones-container" class="flex flex-wrap justify-center gap-8 items-start max-w-7xl w-full">
+
+    <!-- ==================== 手机 1：方案 A（赛事中枢 · 紧凑金刚区 + 战报流，推荐） ==================== -->
+    <div class="flex flex-col items-center">
+      <div class="mb-3 flex items-center gap-2">
+        <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-[#00ebc7] text-[#00214d]">方案 A（强烈推荐）</span>
+        <span class="text-sm font-semibold text-white">赛事中枢 · 紧凑 Bento 金刚区 + 俱乐部战报行</span>
+      </div>
+
+      <div class="phone-frame">
+        <!-- 顶部状态栏 + 微信导航栏 -->
+        <div class="sticky top-0 z-30 bg-[#f4f6f9]/85 backdrop-blur-md pt-3 pb-2.5 px-4 border-b border-slate-200/50">
+          <div class="flex items-center justify-between text-[11px] font-semibold text-[#00214d] mb-2 px-1">
+            <span>23:32</span>
+            <div class="w-24 h-5 bg-black rounded-full"></div>
+            <div class="flex items-center gap-1">
+              <span>5G</span>
+              <span class="px-1 py-0.2 bg-[#00214d] text-white rounded text-[9px]">100</span>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between h-9 relative">
+            <!-- 球队即标题切换器：17px 粗体标题配严格 17px 等高队徽，上下边缘与汉字笔画完全齐平 -->
+            <button onclick="toggleTeamDropdown()" class="pressable flex items-center gap-1.5 py-1 pr-2 rounded-2xl">
+              <img id="team-logo-a" src="https://oryjk.cn:82/registration/team-logos/team-11-a82b3731ecb0f91018e5369f14035d87.jpg" class="w-[17px] h-[17px] rounded-[4px] object-cover ring-1 ring-slate-900/10 bg-white shrink-0" alt="洺悦御府" />
+              <span class="text-[17px] leading-none font-semibold text-[#00214d]" id="team-name-a">洺悦御府</span>
+              <svg id="team-caret-a" class="w-4 h-4 text-[#65758b] transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m6 9 6 6 6-6"/></svg>
+            </button>
+
+            <!-- 球队下拉切换浮层（真实队徽 + 角色 + 人数） -->
+            <div id="team-dropdown-a" class="hidden absolute left-0 top-10 w-64 bg-white rounded-2xl shadow-xl border border-slate-200/80 overflow-hidden z-50 divide-y divide-slate-100">
+              <div onclick="selectTeam(0)" class="pressable p-2.5 flex items-center gap-2.5 bg-[#dcfff8]/60">
+                <img src="https://oryjk.cn:82/registration/team-logos/team-11-a82b3731ecb0f91018e5369f14035d87.jpg" class="w-8 h-8 rounded-xl object-cover shrink-0" alt="" />
+                <div class="flex-1 min-w-0">
+                  <div class="text-xs font-semibold text-[#00214d] truncate">洺悦御府</div>
+                  <div class="text-[10px] text-[#65758b]">队长 · 23 人</div>
+                </div>
+                <span class="text-[#00cfb3] text-xs font-bold">✓</span>
+              </div>
+              <div onclick="selectTeam(1)" class="pressable p-2.5 flex items-center gap-2.5 hover:bg-slate-50">
+                <img src="https://oryjk.cn:82/registration/team-logos/team-10-099d3a54ddbaef1f605d109caac0d7cf.jpg" class="w-8 h-8 rounded-xl object-cover shrink-0" alt="" />
+                <div class="flex-1 min-w-0">
+                  <div class="text-xs font-semibold text-[#00214d] truncate">东安洺悅联队</div>
+                  <div class="text-[10px] text-[#65758b]">队长 · 22 人</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="wx-capsule">
+              <svg class="w-4 h-4 text-[#00214d]" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+              <div class="wx-capsule-divider"></div>
+              <svg class="w-4 h-4 text-[#00214d]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5" fill="currentColor"/></svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- 滚动主体 -->
+        <div class="phone-scroll px-3.5 pt-3 space-y-3.5 no-scrollbar">
+
+          <!-- 【引导态专属】当切换到「无待办」时，展示精致一体化的Hero引导卡（替代原版割裂大图） -->
+          <div id="hero-guide-a" class="hidden card-surface overflow-hidden">
+            <div class="relative p-4 bg-[#00214d] text-white overflow-hidden">
+              <img src="https://oryjk.cn:82/registration/static/home/visuals/v1/65166cb99b1a5d860e8fff7f.webp" class="absolute inset-0 w-full h-full object-cover opacity-40" alt="" />
+              <div class="absolute inset-0 bg-gradient-to-r from-[#001838]/95 via-[#001838]/75 to-transparent"></div>
+              <div class="relative z-10 flex items-center justify-between">
+                <div>
+                  <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-[#00ebc7]/20 text-[#00ebc7] border border-[#00ebc7]/30">
+                    绿茵赛事管家
+                  </span>
+                  <h2 class="text-lg font-semibold mt-1.5 leading-snug">本周还没有待报名比赛</h2>
+                  <p class="text-xs text-white/75 mt-0.5">你可以发起队内约球，或去球场地图找一片好场地</p>
+                </div>
+                <button class="pressable shrink-0 px-3 py-1.5 rounded-full bg-white/15 backdrop-blur-md text-white text-xs font-medium border border-white/20">
+                  使用帮助
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 【主力态专属】首屏第一顺位：最近要处理的比赛（Action Match Card） -->
+          <section id="upcoming-section-a" class="card-surface overflow-hidden">
+            <!-- 沉浸式对阵头部 -->
+            <div class="relative p-4 text-white bg-[#00214d] overflow-hidden">
+              <img src="https://oryjk.cn:82/registration/static/home/visuals/v2/f9e0e0030d00c71f3197a943.webp" class="absolute inset-0 w-full h-full object-cover opacity-55" alt="" />
+              <div class="absolute inset-0 bg-gradient-to-b from-[#00152e]/60 via-[#00152e]/45 to-[#00152e]/92"></div>
+
+              <!-- 顶部状态行：去掉多余套娃框，仅保留轻量文字与右上角单状态签 -->
+              <div class="relative z-10 flex items-center justify-between">
+                <span class="text-xs font-medium text-white/80 tracking-wide">队内报名 · 8人制</span>
+                <span class="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#00ebc7] text-[#00214d]">报名中</span>
+              </div>
+
+              <!-- 比赛标题 + 时间 + 无框直排对阵（彻底去套娃，直接融于夜场封面） -->
+              <div class="relative z-10 mt-3.5">
+                <h3 class="text-[22px] font-semibold tracking-tight leading-tight">周四友谊赛</h3>
+                <p class="text-[13px] text-white/85 mt-1 tabular-nums">11月5日 周四 20:00 — 22:00</p>
+
+                <!-- 直接在封面上裸排对阵：14px 文字配 16px 队徽，与汉字字高视觉平齐 -->
+                <div class="mt-3 pt-2.5 border-t border-white/15 flex items-center gap-1.5 text-[14px] leading-none">
+                  <img src="https://oryjk.cn:82/registration/team-logos/team-11-a82b3731ecb0f91018e5369f14035d87.jpg" class="w-4 h-4 rounded-[4px] object-cover ring-1 ring-white/40 shrink-0" alt="洺悦御府" />
+                  <span class="font-semibold text-white truncate">洺悦御府</span>
+                  <span class="text-[11px] font-bold text-[#00ebc7] px-1 shrink-0">VS</span>
+                  <span class="font-semibold text-white/95 truncate">龙泉草根</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 卡片主体：场地 + 费用 + 报名进度 + 真实队员头像 -->
+            <div class="p-4">
+              <!-- 场地与费用行：去掉多余底色小框，直接用细线图标展示 -->
+              <div class="flex items-center justify-between gap-2 pb-3 border-b border-slate-100 text-[13px]">
+                <div class="flex items-center gap-1.5 min-w-0 text-[#00214d]">
+                  <svg class="w-4 h-4 text-[#65758b] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+                  <span class="font-medium truncate">悦享动运动公园</span>
+                </div>
+                <span class="shrink-0 text-xs text-[#65758b]">队费扣除</span>
+              </div>
+
+              <!-- 成行进度与真实头像 -->
+              <div class="mt-3">
+                <div class="flex items-center justify-between text-xs">
+                  <div class="flex items-center gap-1.5">
+                    <span class="font-semibold text-[#00214d] text-[13px] tabular-nums">已报名 10 人</span>
+                    <span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[#dcf9e5] text-[#16b979]">已满 8 人成行</span>
+                  </div>
+                  <span class="text-[#65758b] tabular-nums">剩 2 个名额 / 上限 12 人</span>
+                </div>
+
+                <!-- 三段式成行进度条（遵循 design-tokens: 达标薄荷 + 超额海军蓝） -->
+                <div class="relative h-2 rounded-full bg-slate-100 mt-2 overflow-hidden">
+                  <div class="absolute inset-y-0 left-0 bg-[#00ebc7] rounded-l-full" style="width: 66.6%"></div>
+                  <div class="absolute inset-y-0 bg-[#00214d]" style="left: 66.6%; width: 16.7%"></div>
+                  <div class="absolute inset-y-0 w-0.5 bg-white z-10" style="left: 66.6%" title="8人成行线"></div>
+                </div>
+
+                <!-- 10名真实报名球员头像（支持点击展开看等级与皇冠） -->
+                <div class="mt-3 flex items-center justify-between gap-2">
+                  <div id="avatar-collapsed-a" class="flex items-center -space-x-2 overflow-x-auto no-scrollbar py-1 pl-0.5">
+                    <!-- 真实头像列表由 JS 注入 -->
+                  </div>
+                  <button onclick="toggleRoster('a')" id="roster-btn-a" class="pressable shrink-0 text-xs font-medium text-[#65758b] hover:text-[#00214d] flex items-center gap-0.5 px-2 py-1 rounded-lg bg-slate-50">
+                    <span>展开名单</span>
+                    <svg class="w-3.5 h-3.5 transition-transform" id="roster-chevron-a" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+                  </button>
+                </div>
+
+                <!-- 展开态：带皇冠与 20级 等级标签的真实网格 -->
+                <div id="avatar-expanded-a" class="hidden mt-2.5 pt-2.5 border-t border-slate-100 grid grid-cols-5 gap-y-2.5 gap-x-1.5">
+                </div>
+              </div>
+
+              <!-- 底部个人状态 + 主操作 CTA -->
+              <div class="mt-3.5 pt-3 border-t border-slate-100 flex items-center justify-between gap-3">
+                <div class="min-w-0">
+                  <div class="flex items-center gap-1.5 text-[13px] font-semibold text-[#16b979]">
+                    <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+                    <span>我已报名参加</span>
+                  </div>
+                  <p class="text-[11px] text-[#65758b] mt-0.5 pl-5.5">开赛前可随时修改出勤状态</p>
+                </div>
+                <button class="pressable shrink-0 h-10 px-5 rounded-xl bg-[#00ebc7] text-[#00214d] font-semibold text-[14px] shadow-sm">
+                  进入报名详情
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <!-- 【核心改造】把原本占半屏的「3大插画 + 刺眼绿条地图」重构为紧凑精致的 2x2 Bento 快捷区 -->
+          <section class="grid grid-cols-2 gap-2.5">
+            <!-- 主快捷卡 1：找球踢 / 约球大厅 -->
+            <button class="pressable card-surface p-3 text-left flex items-center gap-2.5 relative overflow-hidden group">
+              <div class="w-11 h-11 rounded-2xl bg-[#dcfff8] flex items-center justify-center shrink-0">
+                <img src="https://oryjk.cn:82/registration/static/home/visuals/v1/be2a00dd2bb3702ef0173336.webp" class="w-9 h-9 object-contain" alt="" />
+              </div>
+              <div class="min-w-0 flex-1">
+                <div class="text-[14px] font-semibold text-[#00214d] leading-tight">找一场野球踢</div>
+                <div class="text-[11px] text-[#65758b] mt-0.5 truncate">散人约球 · 球队接约</div>
+              </div>
+            </button>
+
+            <!-- 主快捷卡 2：球场地图（统一进白卡体系，局部点缀球场微缩插画，不再突兀刺眼） -->
+            <button class="pressable card-surface p-3 text-left flex items-center gap-2.5 relative overflow-hidden">
+              <div class="w-11 h-11 rounded-2xl bg-emerald-50 flex items-center justify-center shrink-0 overflow-hidden">
+                <img src="https://oryjk.cn:82/registration/static/home/visuals/v2/aec3a53afbd0535f68d01361.webp" class="w-11 h-11 object-cover scale-125" alt="" />
+              </div>
+              <div class="min-w-0 flex-1">
+                <div class="text-[14px] font-semibold text-[#00214d] leading-tight flex items-center gap-1">
+                  <span>球场地图</span>
+                </div>
+                <div class="text-[11px] text-[#65758b] mt-0.5 truncate">常用绿茵场 · 导航</div>
+              </div>
+            </button>
+
+            <!-- 次级快捷卡 3：创建球队 -->
+            <button class="pressable card-surface px-3 py-2.5 text-left flex items-center gap-2.5">
+              <div class="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center shrink-0">
+                <img src="https://oryjk.cn:82/registration/static/home/visuals/v1/26de9fb699849290c0cd2d0e.webp" class="w-7 h-7 object-contain" alt="" />
+              </div>
+              <div class="min-w-0 flex-1">
+                <div class="text-[13px] font-semibold text-[#00214d]">创建我的球队</div>
+                <div class="text-[10px] text-[#65758b] truncate">建队招募 · 队费账本</div>
+              </div>
+            </button>
+
+            <!-- 次级快捷卡 4：加入球队 -->
+            <button class="pressable card-surface px-3 py-2.5 text-left flex items-center gap-2.5">
+              <div class="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center shrink-0">
+                <img src="https://oryjk.cn:82/registration/static/home/visuals/v1/bfecb31f2565177d39156546.webp" class="w-7 h-7 object-contain" alt="" />
+              </div>
+              <div class="min-w-0 flex-1">
+                <div class="text-[13px] font-semibold text-[#00214d]">加入已有球队</div>
+                <div class="text-[10px] text-[#65758b] truncate">搜队名或打开邀请卡</div>
+              </div>
+            </button>
+          </section>
+
+          <!-- 【核心改造】已结束的比赛：从「随机风景图+干瘪文字」升级为「俱乐部赛事战报列表」 -->
+          <section>
+            <div class="flex items-center justify-between px-1 mb-2">
+              <div class="flex items-center gap-2">
+                <h2 class="text-[16px] font-semibold text-[#00214d]">近期比赛战报</h2>
+                <span class="text-[11px] text-[#65758b] font-medium">已结束</span>
+              </div>
+              <button class="pressable text-xs text-[#65758b] flex items-center gap-0.5">
+                <span>全部记录</span>
+                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+              </button>
+            </div>
+
+            <div class="card-surface divide-y divide-slate-100 overflow-hidden" id="ended-list-a">
+              <!-- JS 渲染 3 场真实已结束比赛 -->
+            </div>
+          </section>
+
+        </div>
+
+        <!-- 底部悬浮 TabBar（完全对齐规范 116rpx 悬浮玻璃条） -->
+        <div class="absolute bottom-3 inset-x-3 h-[58px] rounded-[18px] bg-white/92 backdrop-blur-xl shadow-[0_8px_28px_rgba(24,55,100,0.12)] border border-white flex items-center justify-around px-2 z-30">
+          <button class="flex flex-col items-center gap-0.5 text-[#00cfb3]">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            <span class="text-[10px] font-semibold">首页</span>
+          </button>
+          <button class="flex flex-col items-center gap-0.5 text-[#65758b]">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><polygon points="12 7 16.5 10.2 14.8 15.5 9.2 15.5 7.5 10.2"/></svg>
+            <span class="text-[10px]">约队</span>
+          </button>
+          <button class="pressable w-11 h-11 rounded-2xl bg-[#00cfb3] text-white flex items-center justify-center shadow-md shadow-[#00cfb3]/30">
+            <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+          </button>
+          <button class="flex flex-col items-center gap-0.5 text-[#65758b]">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+            <span class="text-[10px]">统计</span>
+          </button>
+          <button class="flex flex-col items-center gap-0.5 text-[#65758b]">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <span class="text-[10px]">我的</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== 手机 2：方案 B（绿茵画报 · 视觉沉浸风，一体化深色引导条 + 赛程日历块） ==================== -->
+    <div id="second-phone-wrapper" class="flex flex-col items-center">
+      <div class="mb-3 flex items-center gap-2">
+        <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-sky-400 text-[#00214d]">方案 B（沉浸画报风）</span>
+        <span class="text-sm font-semibold text-white">一体化黑金球场顶卡 + 绿茵地图微缩窗 + 日历时间轴</span>
+      </div>
+
+      <div class="phone-frame">
+        <!-- 顶部状态栏 + 微信导航栏 -->
+        <div class="sticky top-0 z-30 bg-[#f4f6f9]/85 backdrop-blur-md pt-3 pb-2.5 px-4 border-b border-slate-200/50">
+          <div class="flex items-center justify-between text-[11px] font-semibold text-[#00214d] mb-2 px-1">
+            <span>23:32</span>
+            <div class="w-24 h-5 bg-black rounded-full"></div>
+            <div class="flex items-center gap-1">
+              <span>5G</span>
+              <span class="px-1 py-0.2 bg-[#00214d] text-white rounded text-[9px]">100</span>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between h-9">
+            <div class="flex items-center gap-1.5">
+              <img src="https://oryjk.cn:82/registration/team-logos/team-10-099d3a54ddbaef1f605d109caac0d7cf.jpg" class="w-[17px] h-[17px] rounded-[4px] object-cover ring-1 ring-slate-900/10 shrink-0" alt="" />
+              <div>
+                <div class="flex items-center gap-1">
+                  <span class="text-[17px] leading-none font-semibold text-[#00214d]">东安洺悅联队</span>
+                  <svg class="w-3.5 h-3.5 text-[#65758b]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m6 9 6 6 6-6"/></svg>
+                </div>
+              </div>
+            </div>
+
+            <div class="wx-capsule">
+              <svg class="w-4 h-4 text-[#00214d]" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+              <div class="wx-capsule-divider"></div>
+              <svg class="w-4 h-4 text-[#00214d]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5" fill="currentColor"/></svg>
+            </div>
+          </div>
+        </div>
+
+        <div class="phone-scroll px-3.5 pt-3 space-y-3.5 no-scrollbar">
+
+          <!-- 方案 B：把「夜场背景 + 3个快捷动作 + 球场地图」融合成一张高质感俱乐部主卡，不再拆成散乱的3块 -->
+          <section class="rounded-[22px] overflow-hidden shadow-[0_12px_32px_rgba(0,33,77,0.12)] bg-[#001a3d] text-white relative">
+            <img src="https://oryjk.cn:82/registration/static/home/visuals/v1/65166cb99b1a5d860e8fff7f.webp" class="absolute inset-0 w-full h-44 object-cover opacity-50" alt="" />
+            <div class="absolute inset-0 bg-gradient-to-b from-[#001838]/30 via-[#001838]/85 to-[#001a3d]"></div>
+
+            <div class="relative z-10 p-4">
+              <div class="flex items-start justify-between">
+                <div>
+                  <span class="text-[11px] font-medium text-[#00ebc7] tracking-wider uppercase">Matchday Hub · 绿茵主场</span>
+                  <h2 class="text-[19px] font-semibold mt-0.5">开启下一场绿茵较量</h2>
+                </div>
+                <button class="pressable text-[11px] text-white/75 bg-white/10 hover:bg-white/15 px-2.5 py-1 rounded-full backdrop-blur-md flex items-center gap-1">
+                  <span>漫游指南</span>
+                </button>
+              </div>
+
+              <!-- 3 个玻璃态胶囊入口（取代原版白底上傻大粗的 144rpx 图标） -->
+              <div class="grid grid-cols-3 gap-2 mt-3.5">
+                <button class="pressable bg-white/10 hover:bg-white/15 backdrop-blur-md border border-white/12 rounded-2xl p-2.5 flex flex-col items-center text-center">
+                  <div class="w-10 h-10 rounded-xl bg-[#00ebc7]/15 flex items-center justify-center mb-1.5">
+                    <img src="https://oryjk.cn:82/registration/static/home/visuals/v1/26de9fb699849290c0cd2d0e.webp" class="w-8 h-8 object-contain" alt="" />
+                  </div>
+                  <span class="text-xs font-semibold text-white">创建球队</span>
+                  <span class="text-[10px] text-white/60 mt-0.5">招募与队费</span>
+                </button>
+
+                <button class="pressable bg-white/10 hover:bg-white/15 backdrop-blur-md border border-white/12 rounded-2xl p-2.5 flex flex-col items-center text-center">
+                  <div class="w-10 h-10 rounded-xl bg-[#00ebc7]/15 flex items-center justify-center mb-1.5">
+                    <img src="https://oryjk.cn:82/registration/static/home/visuals/v1/bfecb31f2565177d39156546.webp" class="w-8 h-8 object-contain" alt="" />
+                  </div>
+                  <span class="text-xs font-semibold text-white">加入球队</span>
+                  <span class="text-[10px] text-white/60 mt-0.5">目录或邀请</span>
+                </button>
+
+                <button class="pressable bg-white/10 hover:bg-white/15 backdrop-blur-md border border-white/12 rounded-2xl p-2.5 flex flex-col items-center text-center">
+                  <div class="w-10 h-10 rounded-xl bg-[#00ebc7]/15 flex items-center justify-center mb-1.5">
+                    <img src="https://oryjk.cn:82/registration/static/home/visuals/v1/be2a00dd2bb3702ef0173336.webp" class="w-8 h-8 object-contain" alt="" />
+                  </div>
+                  <span class="text-xs font-semibold text-white">找一场球</span>
+                  <span class="text-[10px] text-white/60 mt-0.5">大厅与散人</span>
+                </button>
+              </div>
+
+              <!-- 内嵌式球场地图条：深色主卡底部自然过渡，不再是一块刺眼的薄荷绿膏药 -->
+              <button class="pressable mt-2.5 w-full bg-gradient-to-r from-[#00ebc7]/20 via-[#00ebc7]/12 to-white/5 border border-[#00ebc7]/30 rounded-2xl px-3.5 py-2.5 flex items-center justify-between text-left relative overflow-hidden">
+                <div class="flex items-center gap-2.5 z-10">
+                  <div class="w-8 h-8 rounded-xl bg-[#00ebc7] text-[#00214d] flex items-center justify-center shrink-0">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+                  </div>
+                  <div>
+                    <div class="text-xs font-semibold text-white flex items-center gap-1.5">
+                      <span>球场地图 · 成都常用绿茵场</span>
+                    </div>
+                    <div class="text-[10px] text-white/70 mt-0.5">长远体育公园 · 悦享动运动公园 等</div>
+                  </div>
+                </div>
+                <img src="https://oryjk.cn:82/registration/static/home/visuals/v2/aec3a53afbd0535f68d01361.webp" class="w-20 h-14 object-contain opacity-90 -my-2 mr-1" alt="" />
+              </button>
+            </div>
+          </section>
+
+          <!-- 方案 B：待处理比赛卡（白底轻盈双队徽对阵式） -->
+          <section id="upcoming-section-b" class="card-surface p-4 relative overflow-hidden">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-[#00cfb3]"></span>
+                <span class="text-xs font-semibold text-[#00214d]">本周待踢 · 队内报名中</span>
+              </div>
+              <span class="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[#dcf9e5] text-[#16b979]">10/12人 · 已成行</span>
+            </div>
+
+            <!-- 居中视觉对阵区 -->
+            <div class="mt-3 bg-[#f6f9fc] rounded-2xl p-3 flex items-center justify-between border border-slate-100">
+              <div class="flex flex-col items-center flex-1 min-w-0">
+                <div class="w-10 h-10 rounded-2xl bg-[#00214d] text-[#00ebc7] font-bold text-sm flex items-center justify-center shadow-sm">洺悦</div>
+                <span class="text-xs font-semibold text-[#00214d] mt-1.5 truncate">洺悦御府</span>
+                <span class="text-[10px] text-[#65758b]">主队 · 8人制</span>
+              </div>
+
+              <div class="flex flex-col items-center px-3">
+                <span class="text-[11px] font-semibold text-[#65758b] tabular-nums">11月05日 周四</span>
+                <span class="text-xl font-bold text-[#00214d] tabular-nums tracking-tight my-0.5">20:00</span>
+                <span class="text-[10px] px-2 py-0.5 rounded-full bg-white text-[#65758b] border border-slate-200/70">悦享动运动公园</span>
+              </div>
+
+              <div class="flex flex-col items-center flex-1 min-w-0">
+                <div class="w-10 h-10 rounded-2xl bg-amber-500/15 text-amber-800 font-bold text-sm flex items-center justify-center border border-amber-500/20">龙泉</div>
+                <span class="text-xs font-semibold text-[#00214d] mt-1.5 truncate">龙泉草根</span>
+                <span class="text-[10px] text-[#65758b]">特邀对手</span>
+              </div>
+            </div>
+
+            <!-- 头像列 + 一键报名行 -->
+            <div class="mt-3 flex items-center justify-between gap-2">
+              <div id="avatar-collapsed-b" class="flex items-center -space-x-2 overflow-x-auto no-scrollbar py-0.5"></div>
+              <button class="pressable shrink-0 h-9 px-4 rounded-xl bg-[#00ebc7] text-[#00214d] font-semibold text-xs">
+                已报名 · 查看详情
+              </button>
+            </div>
+          </section>
+
+          <!-- 方案 B：已结束的比赛（采用左侧日期月历块 + 对阵标签 + 真实出勤头像，取代毫无意义的假球场缩略图） -->
+          <section>
+            <div class="flex items-center justify-between px-1 mb-2">
+              <h2 class="text-[16px] font-semibold text-[#00214d]">已结束的比赛</h2>
+              <button class="pressable text-xs text-[#65758b] flex items-center gap-0.5">
+                <span>更多</span>
+                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+              </button>
+            </div>
+
+            <div class="space-y-2.5" id="ended-list-b">
+              <!-- JS 渲染带月历块与对阵信息的独立轻卡片 -->
+            </div>
+          </section>
+
+        </div>
+
+        <!-- 底部悬浮 TabBar -->
+        <div class="absolute bottom-3 inset-x-3 h-[58px] rounded-[18px] bg-white/92 backdrop-blur-xl shadow-[0_8px_28px_rgba(24,55,100,0.12)] border border-white flex items-center justify-around px-2 z-30">
+          <button class="flex flex-col items-center gap-0.5 text-[#00cfb3]">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            <span class="text-[10px] font-semibold">首页</span>
+          </button>
+          <button class="flex flex-col items-center gap-0.5 text-[#65758b]">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><polygon points="12 7 16.5 10.2 14.8 15.5 9.2 15.5 7.5 10.2"/></svg>
+            <span class="text-[10px]">约队</span>
+          </button>
+          <button class="pressable w-11 h-11 rounded-2xl bg-[#00cfb3] text-white flex items-center justify-center shadow-md shadow-[#00cfb3]/30">
+            <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+          </button>
+          <button class="flex flex-col items-center gap-0.5 text-[#65758b]">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+            <span class="text-[10px]">统计</span>
+          </button>
+          <button class="flex flex-col items-center gap-0.5 text-[#65758b]">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <span class="text-[10px]">我的</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 真实数据注入与交互脚本 -->
+  <script>
+    // 来自 https://oryjk.cn:82/regist-v3/api/v1/app/matches/home 的真实线上数据
+    const REAL_PARTICIPANTS = [
+      { user_id: 4, nickname: "Carl Wang", points: 685.5, rank: 1, is_paid_member: true, avatar: "https://oryjk.cn:82/regist-v3/uploads/avatars/4-1787023910246881528.jpg" },
+      { user_id: 11, nickname: "三哥的冬天", points: 626.7, rank: 2, is_paid_member: true, avatar: "https://oryjk.cn:82/registration/avatars/legacy-user-11.jpg" },
+      { user_id: 18, nickname: "杰哥.捌零後", points: 581.1, rank: 3, is_paid_member: true, avatar: "https://oryjk.cn:82/registration/avatars/legacy-user-18.jpg" },
+      { user_id: 21, nickname: "@张可以", points: 596.4, rank: 4, is_paid_member: true, avatar: "https://oryjk.cn:82/registration/avatars/legacy-user-21.jpg" },
+      { user_id: 25, nickname: "玩转", points: 565.2, rank: 7, is_paid_member: true, avatar: "https://oryjk.cn:82/registration/avatars/legacy-user-25.jpg" },
+      { user_id: 2, nickname: "寻勇", points: 469.8, rank: 6, is_paid_member: true, avatar: "https://oryjk.cn:82/registration/avatars/legacy-user-2.jpg" },
+      { user_id: 34, nickname: "王东", points: 448.2, rank: 9, is_paid_member: true, avatar: "https://oryjk.cn:82/registration/avatars/legacy-user-34.jpg" },
+      { user_id: 243, nickname: "酷派小笨熊", points: 27.0, rank: 19, is_paid_member: true, avatar: "https://oryjk.cn:82/regist-v3/uploads/avatars/243-1790051510840142588.jpg" },
+      { user_id: 177, nickname: "高久龙", points: 23.1, rank: 20, is_paid_member: true, avatar: "https://oryjk.cn:82/regist-v3/uploads/avatars/177-1789021852554635673.jpg" },
+      { user_id: 187, nickname: "简。", points: 22.2, rank: 21, is_paid_member: true, avatar: "https://oryjk.cn:82/regist-v3/uploads/avatars/187-1789022011681784032.jpg" }
+    ];
+
+    const REAL_ENDED_MATCHES = [
+      {
+        id: "74d57014-fd2f-4708-8da3-5f3d681a4a16",
+        name: "尖峰杯第五轮",
+        hostTeam: "东安洺悅联队",
+        hostLogo: "https://oryjk.cn:82/registration/team-logos/team-10-099d3a54ddbaef1f605d109caac0d7cf.jpg",
+        opponent: "讴歌淘房",
+        month: "11月",
+        day: "01",
+        weekday: "周日",
+        time: "19:00",
+        location: "长远体育公园",
+        attendedCount: 13,
+        cover: "https://oryjk.cn:82/registration/match-covers/default-pool/v1/dc6e57d71e217a48fcf0e228.webp",
+        avatars: [
+          "https://oryjk.cn:82/registration/avatars/legacy-user-6.jpg",
+          "https://oryjk.cn:82/registration/avatars/legacy-user-8.jpg",
+          "https://oryjk.cn:82/regist-v3/uploads/avatars/4-1787023910246881528.jpg",
+          "https://oryjk.cn:82/registration/avatars/legacy-user-25.jpg"
+        ]
+      },
+      {
+        id: "f312043c-ca60-4b59-9baa-5ba82a5bd262",
+        name: "周四友谊赛",
+        hostTeam: "洺悦御府",
+        hostLogo: "https://oryjk.cn:82/registration/team-logos/team-11-a82b3731ecb0f91018e5369f14035d87.jpg",
+        opponent: "尖峰",
+        month: "10月",
+        day: "29",
+        weekday: "周四",
+        time: "20:00",
+        location: "悦享动运动公园",
+        attendedCount: 12,
+        cover: "https://oryjk.cn:82/registration/match-covers/default-pool/v1/c5e5625bf912d1a3c3f28e1b.webp",
+        avatars: [
+          "https://oryjk.cn:82/regist-v3/uploads/avatars/4-1787023910246881528.jpg",
+          "https://oryjk.cn:82/registration/avatars/legacy-user-25.jpg",
+          "https://oryjk.cn:82/registration/avatars/legacy-user-2.jpg",
+          "https://oryjk.cn:82/registration/avatars/legacy-user-21.jpg"
+        ]
+      },
+      {
+        id: "e4202e90-5ec9-4ed8-aee4-8489156104cd",
+        name: "尖峰杯第 4 轮",
+        hostTeam: "东安洺悅联队",
+        hostLogo: "https://oryjk.cn:82/registration/team-logos/team-10-099d3a54ddbaef1f605d109caac0d7cf.jpg",
+        opponent: "航天铁头",
+        month: "10月",
+        day: "24",
+        weekday: "周六",
+        time: "19:00",
+        location: "长远体育公园",
+        attendedCount: 12,
+        cover: "https://oryjk.cn:82/registration/match-covers/default-pool/v1/5e6f6994a7efb3f8dceed254.webp",
+        avatars: [
+          "https://oryjk.cn:82/regist-v3/uploads/avatars/4-1787023910246881528.jpg",
+          "https://oryjk.cn:82/regist-v3/uploads/avatars/186-1789021914952937958.jpg",
+          "https://oryjk.cn:82/registration/avatars/legacy-user-26.jpg",
+          "https://oryjk.cn:82/regist-v3/uploads/avatars/272-1791522346252217210.jpg"
+        ]
+      }
+    ];
+
+    function calcLevel(points) {
+      return Math.round((points / 100) * 3);
+    }
+
+    function renderAvatars() {
+      const collapsedA = document.getElementById("avatar-collapsed-a");
+      const expandedA = document.getElementById("avatar-expanded-a");
+      const collapsedB = document.getElementById("avatar-collapsed-b");
+
+      collapsedA.innerHTML = REAL_PARTICIPANTS.map((p) => `
+        <div class="relative shrink-0" title="${p.nickname} · ${calcLevel(p.points)}级">
+          <img src="${p.avatar}" class="w-8 h-8 rounded-xl object-cover ring-2 ring-white border border-amber-400/70 bg-slate-100" alt="${p.nickname}" />
+          ${p.is_paid_member ? `<span class="crown-badge absolute -top-1.5 -right-1 text-[10px]">👑</span>` : ""}
+        </div>
+      `).join("");
+
+      collapsedB.innerHTML = REAL_PARTICIPANTS.slice(0, 7).map((p) => `
+        <div class="relative shrink-0">
+          <img src="${p.avatar}" class="w-7 h-7 rounded-xl object-cover ring-2 ring-white bg-slate-100" alt="${p.nickname}" />
+        </div>
+      `).join("") + `<span class="w-7 h-7 rounded-xl bg-slate-100 ring-2 ring-white text-[10px] font-semibold text-[#00214d] flex items-center justify-center shrink-0">+3</span>`;
+
+      expandedA.innerHTML = REAL_PARTICIPANTS.map((p) => {
+        const lv = calcLevel(p.points);
+        const rankColors = {
+          1: "bg-[#fff4d8] text-[#9a6a00] border-[#d9ab38]/40",
+          2: "bg-[#eef2f6] text-[#64748b] border-slate-300",
+          3: "bg-[#f8ede5] text-[#9d5c32] border-amber-700/30"
+        };
+        const badgeStyle = rankColors[p.rank] || "bg-slate-100 text-[#526174] border-transparent";
+        return `
+          <div class="flex flex-col items-center text-center">
+            <div class="relative">
+              <img src="${p.avatar}" class="w-10 h-10 rounded-xl object-cover ring-1 ring-amber-400 bg-slate-100" alt="${p.nickname}" />
+              ${p.is_paid_member ? `<span class="crown-badge absolute -top-2 -right-1 text-[11px]">👑</span>` : ""}
+            </div>
+            <span class="text-[11px] font-medium text-[#00214d] mt-1 max-w-[56px] truncate">${p.nickname}</span>
+            <span class="mt-0.5 px-1.5 py-0.2 rounded text-[9px] font-semibold border ${badgeStyle} tabular-nums">${lv}级</span>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function renderEndedMatches() {
+      const listA = document.getElementById("ended-list-a");
+      const listB = document.getElementById("ended-list-b");
+
+      // 方案 A：单白卡分组战报行（带缩略图/日期角标 + 对阵胶囊 + 真实参与头像簇）
+      listA.innerHTML = REAL_ENDED_MATCHES.map((m) => `
+        <div class="pressable p-3.5 flex items-center gap-3 hover:bg-slate-50/80">
+          <!-- 左侧带日期叠层的缩略封面 -->
+          <div class="relative w-16 h-16 rounded-2xl overflow-hidden shrink-0 bg-slate-200">
+            <img src="${m.cover}" class="w-full h-full object-cover" alt="" />
+            <div class="absolute inset-0 bg-gradient-to-t from-[#001838]/85 via-transparent to-transparent"></div>
+            <div class="absolute bottom-1 inset-x-1 text-center text-white leading-tight">
+              <div class="text-[10px] opacity-80">${m.month}${m.day}日</div>
+              <div class="text-[11px] font-bold tabular-nums">${m.time}</div>
+            </div>
+          </div>
+
+          <!-- 中间核心赛事信息：比赛名 + 对阵双方 + 场地与出勤头像 -->
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-1.5">
+              <h4 class="text-[15px] font-semibold text-[#00214d] truncate">${m.name}</h4>
+            </div>
+
+            <!-- 解决原版不知谁踢谁的问题：12px 文字配 14px 队徽，与单行文字严格等高对齐 -->
+            <div class="mt-1 flex items-center gap-1.5 text-xs leading-none">
+              <img src="${m.hostLogo}" class="w-3.5 h-3.5 rounded-[4px] object-cover shrink-0 ring-1 ring-slate-900/10" alt="${m.hostTeam}" />
+              <span class="font-medium text-[#00214d] truncate">${m.hostTeam}</span>
+              <span class="text-[10px] text-[#65758b] font-semibold px-0.5">vs</span>
+              <span class="font-medium text-[#65758b] truncate">${m.opponent}</span>
+            </div>
+
+            <!-- 底部：地点 + 真实出勤队友头像簇 -->
+            <div class="mt-1.5 flex items-center justify-between gap-2">
+              <span class="text-[11px] text-[#65758b] truncate flex items-center gap-1">
+                <svg class="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+                ${m.location}
+              </span>
+              <div class="flex items-center gap-1 shrink-0">
+                <div class="flex -space-x-1.5">
+                  ${m.avatars.slice(0, 3).map(url => `<img src="${url}" class="w-4 h-4 rounded-full object-cover ring-1 ring-white" alt="" />`).join("")}
+                </div>
+                <span class="text-[10px] text-[#65758b] font-medium tabular-nums">${m.attendedCount}人出战</span>
+              </div>
+            </div>
+          </div>
+
+          <svg class="w-4 h-4 text-[#65758b] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+        </div>
+      `).join("");
+
+      // 方案 B：左侧日历数字牌（无需加载风景图，纯粹赛事日程感）
+      listB.innerHTML = REAL_ENDED_MATCHES.map((m) => `
+        <div class="pressable card-surface p-3 flex items-center gap-3">
+          <div class="w-13 h-14 rounded-2xl bg-[#f4f7fb] border border-slate-200/60 flex flex-col items-center justify-center shrink-0 px-2.5">
+            <span class="text-[10px] font-medium text-[#65758b]">${m.month} · ${m.weekday}</span>
+            <span class="text-lg font-bold text-[#00214d] leading-tight tabular-nums">${m.day}</span>
+            <span class="text-[10px] text-[#65758b] tabular-nums">${m.time}</span>
+          </div>
+
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center justify-between gap-2">
+              <h4 class="text-[14px] font-semibold text-[#00214d] truncate">${m.name}</h4>
+              <span class="shrink-0 text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-[#65758b] font-medium tabular-nums">${m.attendedCount}人参加</span>
+            </div>
+            <div class="text-xs text-[#00214d]/80 font-medium mt-0.5 truncate">
+              ${m.hostTeam} <span class="text-[#65758b] font-normal">vs</span> ${m.opponent}
+            </div>
+            <div class="mt-1 flex items-center justify-between">
+              <span class="text-[11px] text-[#65758b] truncate">${m.location}</span>
+              <div class="flex -space-x-1.5">
+                ${m.avatars.map(url => `<img src="${url}" class="w-4 h-4 rounded-full object-cover ring-1 ring-white" alt="" />`).join("")}
+              </div>
+            </div>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    let rosterExpanded = false;
+    function toggleRoster() {
+      rosterExpanded = !rosterExpanded;
+      const expandedEl = document.getElementById("avatar-expanded-a");
+      const collapsedEl = document.getElementById("avatar-collapsed-a");
+      const btnText = document.querySelector("#roster-btn-a span");
+      const chevron = document.getElementById("roster-chevron-a");
+      if (rosterExpanded) {
+        expandedEl.classList.remove("hidden");
+        collapsedEl.classList.add("opacity-40");
+        btnText.textContent = "收起名单";
+        chevron.style.transform = "rotate(180deg)";
+      } else {
+        expandedEl.classList.add("hidden");
+        collapsedEl.classList.remove("opacity-40");
+        btnText.textContent = "展开名单";
+        chevron.style.transform = "rotate(0deg)";
+      }
+    }
+
+    function setScene(scene) {
+      const upcomingA = document.getElementById("upcoming-section-a");
+      const upcomingB = document.getElementById("upcoming-section-b");
+      const guideA = document.getElementById("hero-guide-a");
+      const btnWith = document.getElementById("scene-with-upcoming");
+      const btnEmpty = document.getElementById("scene-empty-upcoming");
+
+      if (scene === "empty-upcoming") {
+        upcomingA.classList.add("hidden");
+        upcomingB.classList.add("hidden");
+        guideA.classList.remove("hidden");
+        btnEmpty.className = "px-3 py-1.5 rounded-lg font-medium transition-all bg-[#00ebc7] text-[#00214d]";
+        btnWith.className = "px-3 py-1.5 rounded-lg font-medium transition-all text-slate-300 hover:text-white";
+      } else {
+        upcomingA.classList.remove("hidden");
+        upcomingB.classList.remove("hidden");
+        guideA.classList.add("hidden");
+        btnWith.className = "px-3 py-1.5 rounded-lg font-medium transition-all bg-[#00ebc7] text-[#00214d]";
+        btnEmpty.className = "px-3 py-1.5 rounded-lg font-medium transition-all text-slate-300 hover:text-white";
+      }
+    }
+
+    function setViewMode(mode) {
+      const secondPhone = document.getElementById("second-phone-wrapper");
+      const btnCompare = document.getElementById("mode-compare");
+      const btnSingle = document.getElementById("mode-single");
+      if (mode === "single") {
+        secondPhone.classList.add("hidden");
+        btnSingle.className = "px-3 py-1.5 rounded-lg font-medium transition-all bg-white/15 text-white";
+        btnCompare.className = "px-3 py-1.5 rounded-lg font-medium transition-all text-slate-300 hover:text-white";
+      } else {
+        secondPhone.classList.remove("hidden");
+        btnCompare.className = "px-3 py-1.5 rounded-lg font-medium transition-all bg-white/15 text-white";
+        btnSingle.className = "px-3 py-1.5 rounded-lg font-medium transition-all text-slate-300 hover:text-white";
+      }
+    }
+
+    const teams = [
+      { name: "洺悦御府", logo: "https://oryjk.cn:82/registration/team-logos/team-11-a82b3731ecb0f91018e5369f14035d87.jpg" },
+      { name: "东安洺悅联队", logo: "https://oryjk.cn:82/registration/team-logos/team-10-099d3a54ddbaef1f605d109caac0d7cf.jpg" }
+    ];
+    function toggleTeamDropdown() {
+      const dd = document.getElementById("team-dropdown-a");
+      const caret = document.getElementById("team-caret-a");
+      dd.classList.toggle("hidden");
+      caret.style.transform = dd.classList.contains("hidden") ? "rotate(0deg)" : "rotate(180deg)";
+    }
+    function selectTeam(idx) {
+      document.getElementById("team-name-a").textContent = teams[idx].name;
+      document.getElementById("team-logo-a").src = teams[idx].logo;
+      toggleTeamDropdown();
+    }
+
+    renderAvatars();
+    renderEndedMatches();
+  </script>
+</body>
+</html>

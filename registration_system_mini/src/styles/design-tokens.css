@@ -185,6 +185,8 @@ page,
   --now-cover-fg: #fffffe;
   --now-cover-muted: rgba(255, 255, 254, 0.85);
   --now-cover-shade: linear-gradient(90deg, rgba(0, 28, 40, 0.44), rgba(0, 28, 40, 0) 85%), linear-gradient(180deg, rgba(0, 28, 40, 0.12), rgba(0, 28, 40, 0) 20%, rgba(0, 28, 40, 0.72) 100%);
+  --now-cover-divider: 1rpx solid rgba(var(--ui-primitive-surface-rgb), 0.16);
+  --now-thumb-shade: linear-gradient(180deg, rgba(0, 24, 56, 0) 35%, rgba(0, 24, 56, 0.86) 100%);
   --now-cover-label-bg: rgba(0, 28, 40, 0.44);
   --now-cover-icon-filter: brightness(0) invert(1);
   --now-calendar-surface: var(--ui-color-surface);
