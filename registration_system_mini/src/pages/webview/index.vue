@@ -3,6 +3,7 @@ import { ref } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
 import { useAccentTheme } from "@/stores/theme";
 import { isAllowedWebViewUrl } from "@/utils/webview";
+import { readWebViewPageQuery } from "./webviewQuery";
 
 /**
  * 通用 web-view 嵌页：在小程序内打开白名单内的 H5 页面。
@@ -13,9 +14,11 @@ const { themePageStyle } = useAccentTheme();
 const targetUrl = ref("");
 
 onLoad((query) => {
-  // uni-app 已对 query 值做过一次 URL decode，这里直接用原值。
-  const url = typeof query?.url === "string" ? query.url.trim() : "";
-  const title = typeof query?.title === "string" ? query.title.trim() : "";
+  let encoded = false;
+  // #ifdef MP-WEIXIN
+  encoded = true;
+  // #endif
+  const { url, title } = readWebViewPageQuery(query, encoded);
 
   if (title) {
     uni.setNavigationBarTitle({ title });
