@@ -81,7 +81,7 @@ src/
 ```bash
 cd registration_system_mini
 bun install
-bun run dev:mp-weixin
+bun run dev
 ```
 
 微信开发者工具导入目录：
@@ -107,7 +107,7 @@ Mac 的微信开发者工具打开该 Mac 仓库下的 `registration_system_mini
 - 本地有领先提交或与远端分叉时暂停同步，手动处理后自动恢复；分支或上游变更时退出，需重新启动命令。
 - 网络失败会按间隔重试；按 `Ctrl+C` 停止同步及编译子进程。
 
-Mac 使用自己的接口环境配置连接后端；同步命令只更新代码和编译，不启动或部署后端。保留 `dev:mp-weixin` 供只监听本地代码时使用。同步脚本回归验证：`bun run test:mp-sync`。
+微信开发编译默认连接 local233 的 Go 后端（`http://172.16.60.233:18081/api/v1/app`）；同步命令只更新代码和编译，不启动或部署后端。保留 `dev:mp-weixin` 供只监听本地代码时使用，与 `dev` 等价。Mac 和真机需能访问 local233 所在网络；微信开发者工具需勾选「不校验合法域名」。同步脚本回归验证：`bun run test:mp-sync`。
 
 如需 H5 调试，也可执行：
 
@@ -126,7 +126,8 @@ bun run dev:h5
 
 例如：
 
-- 开发环境默认值：`http://127.0.0.1:18081/api/v1/app`
+- 微信开发环境：默认 `http://172.16.60.233:18081/api/v1/app`，对 `dev`、`dev:mp-weixin` 和 `dev:mp-weixin:sync` 生效；可在 `.env.development.local` 通过 `VITE_MP_DEV_API_BASE_URL` 覆盖。Vite 仅在微信 development 编译时替换请求层的 `VITE_API_BASE_URL`。
+- H5 开发环境：`VITE_API_BASE_URL=http://127.0.0.1:18081/api/v1/app`
 - 生产环境示例值：`https://example.com/api/v1/app`
 
 请求层位于 `src/utils/request.ts`，会直接拼接：

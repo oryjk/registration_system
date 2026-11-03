@@ -3,6 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "scripts": {
+    "dev": "bun run dev:mp-weixin",
     "dev:h5": "uni",
     "dev:mp-weixin": "uni -p mp-weixin",
     "dev:mp-weixin:sync": "bun scripts/dev-mp-weixin-sync.mjs",

@@ -13,6 +13,7 @@
 ```bash
 cd registration_system_mini
 bun install
+bun run dev              # 微信开发编译，连接 local233:18081
 bun run dev:mp-weixin
 bun run dev:mp-weixin:sync # Mac 自动同步远端提交并编译（local233 开发、push 后在 Mac 看效果）
 bun run test:mp-sync      # 同步与进程退出的回归测试，使用临时 Git 仓库
@@ -23,6 +24,8 @@ bun run type-check
 bun run mp:preview -- --desc "预览说明"       # 只传预览版，生成 dist/preview-qrcode.jpg
 bun run mp:release -- --desc "本次变更说明"   # 发布：构建 + 登记版本号 + miniprogram-ci 上传开发版本
 ```
+
+微信开发编译（`dev`、`dev:mp-weixin`、`dev:mp-weixin:sync`）默认连接 `http://172.16.60.233:18081/api/v1/app`，可在 `.env.development.local` 通过 `VITE_MP_DEV_API_BASE_URL` 覆盖；Vite 仅对微信 development 编译替换 API 地址，H5 开发及正式发布继续使用各自原配置。
 
 jd 环境（oryjk.cn:82）的 H5 构建由仓库根目录的 `deploy_jd_go_h5.sh` 一键完成（读取本目录 `.env.test`），不需要手动执行 `build:h5:acceptance`。
 
