@@ -1,10 +1,10 @@
 <script setup lang="ts">
-defineProps<{ title: string; actionLabel?: string }>();
+defineProps<{ title: string; actionLabel?: string; first?: boolean }>();
 const emit = defineEmits<{ (event: 'action'): void }>();
 </script>
 
 <template>
-  <view class="home-section-header">
+  <view class="home-section-header" :class="{ 'home-section-header--first': first }">
     <view class="home-section-header__heading">
       <text class="home-section-header__title">{{ title }}</text>
       <slot name="meta" />
@@ -35,6 +35,7 @@ const emit = defineEmits<{ (event: 'action'): void }>();
 .home-section-header__more::after { border: none; }
 /* #ifdef MP-WEIXIN */
 .home-section-header { margin: var(--ui-home-section-gap) 0 var(--ui-space-4); min-height: var(--ui-control-min-height); }
+.home-section-header--first { margin-top: var(--ui-space-1); margin-bottom: var(--ui-space-2); min-height: 0; }
 .home-section-header__title { font-size: var(--ui-home-heading-size); line-height: var(--ui-line-height-tight); }
 .home-section-header__more { gap: var(--ui-space-1); min-height: var(--ui-control-min-height); padding: 0; color: var(--ui-home-muted); font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-body); }
 .home-section-header__chevron { width: var(--ui-icon-sm); height: var(--ui-icon-sm); }

@@ -73,7 +73,7 @@ onUnmounted(() => { disposed = true; measurement++; uni.offWindowResize(measureA
 
 <template>
   <view class="match-carousel">
-    <HomeSectionHeader title="最近要处理">
+    <HomeSectionHeader title="最近要处理" first>
       <template #actions>
         <view v-if="matches.length > 1" class="match-actions">
           <!-- #ifdef MP-WEIXIN -->
@@ -125,7 +125,7 @@ onUnmounted(() => { disposed = true; measurement++; uni.offWindowResize(measureA
 .match-arrow--disabled { opacity: 0.3; }
 .match-slide { display: flex; flex-direction: column; box-sizing: border-box; padding: 0 4rpx 24rpx; }
 /* #ifdef MP-WEIXIN */
-.match-carousel__accent { width: 104rpx; height: var(--ui-space-2); margin-bottom: var(--ui-space-7); border-radius: var(--ui-radius-round); background: var(--ui-color-line); overflow: hidden; }
+.match-carousel__accent { width: 104rpx; height: var(--ui-space-2); margin-bottom: var(--ui-space-4); border-radius: var(--ui-radius-round); background: var(--ui-color-line); overflow: hidden; }
 .match-carousel__accent-fill { width: 50%; height: 100%; border-radius: var(--ui-radius-round); background: var(--ui-color-accent); }
 .match-arrow { width: var(--ui-control-min-height); height: var(--ui-control-min-height); background: transparent; }
 .match-arrow__icon { width: var(--ui-icon-md); height: var(--ui-icon-md); }
