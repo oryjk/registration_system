@@ -71,6 +71,10 @@ const matchStatusTag = computed(() => {
   <AppSurface variant="outlined" flush>
     <view class="hero-scoreboard">
     <view class="hero-head">
+      <!-- #ifdef MP-WEIXIN -->
+      <image class="hero-cover-image" src="/static/covers/match-stadium-cover.jpg" mode="aspectFill" aria-hidden="true" />
+      <view class="hero-cover-shade" />
+      <!-- #endif -->
       <view class="hero-heading">
         <view class="hero-title-row">
           <text class="hero-title">{{ match.name }}</text>
@@ -82,7 +86,7 @@ const matchStatusTag = computed(() => {
         <!-- 日期时间收敛为标题下的紧凑图标信息行，不再做大日期块。 -->
         <view class="hero-when">
           <!-- #ifdef MP-WEIXIN -->
-          <AppIcon name="clock" size="var(--ui-icon-sm)" tone="muted" />
+          <AppIcon name="clock" size="var(--ui-icon-sm)" color="var(--now-cover-muted)" />
           <!-- #endif -->
           <!-- #ifndef MP-WEIXIN -->
           <image class="hero-info-icon" src="/static/icons/lucide/clock.png" mode="aspectFit" aria-hidden="true" />
@@ -92,13 +96,13 @@ const matchStatusTag = computed(() => {
         <!-- 人制与费用：数字与标签相邻的紧凑信息 chips。 -->
         <view class="hero-chips">
           <view v-if="formatLabel" class="hero-info"><!-- #ifdef MP-WEIXIN -->
-<AppIcon name="users" size="var(--ui-icon-sm)" tone="muted" />
+<AppIcon name="users" size="var(--ui-icon-xs)" color="var(--now-cover-fg)" />
 <!-- #endif -->
 <!-- #ifndef MP-WEIXIN -->
 <image class="hero-info-icon" src="/static/icons/lucide/users.png" />
 <!-- #endif --><text>{{ formatLabel }}</text></view>
           <view class="hero-info"><!-- #ifdef MP-WEIXIN -->
-<AppIcon name="wallet" size="var(--ui-icon-sm)" tone="muted" />
+<AppIcon name="wallet" size="var(--ui-icon-xs)" color="var(--now-cover-fg)" />
 <!-- #endif -->
 <!-- #ifndef MP-WEIXIN -->
 <image class="hero-info-icon" src="/static/icons/lucide/wallet.png" />
@@ -109,14 +113,20 @@ const matchStatusTag = computed(() => {
 
     <!-- 地点独立一行，队服颜色随各队名称展示。 -->
     <view class="hero-foot">
-      <view class="hero-venue" @tap="$emit('openLocation')">
+      <view class="hero-venue" hover-class="hero-venue--pressed" @tap="$emit('openLocation')">
         <!-- #ifdef MP-WEIXIN -->
-        <AppIcon name="map-pin" size="var(--ui-icon-sm)" tone="muted" />
+        <AppIcon name="map-pin" size="var(--ui-icon-sm)" color="var(--ui-tabbar-active)" />
         <!-- #endif -->
         <!-- #ifndef MP-WEIXIN -->
         <image class="hero-info-icon" src="/static/icons/lucide/map-pin.png" mode="aspectFit" aria-hidden="true" />
         <!-- #endif -->
         <text class="hero-venue-text">{{ matchLocation }}</text>
+        <!-- #ifdef MP-WEIXIN -->
+        <view class="hero-venue-nav">
+          <text>导航</text>
+          <AppIcon name="chevron-right" size="var(--ui-icon-xs)" />
+        </view>
+        <!-- #endif -->
       </view>
     </view>
 
@@ -369,22 +379,27 @@ const matchStatusTag = computed(() => {
 }
 
 /* #ifdef MP-WEIXIN */
-.hero-pickup-strip { border: var(--ui-panel-border); background: var(--ui-panel-soft-bg); padding: var(--ui-space-5); }
-.hero-board { border-top: var(--ui-list-divider); margin-top: var(--ui-space-6); padding-top: var(--ui-space-6); }
-.hero-scoreboard { padding: var(--ui-space-7); }
-.hero-heading { gap: var(--ui-space-3); }
+.hero-scoreboard { padding: 0; overflow: hidden; }
+.hero-head { position: relative; padding: var(--ui-space-7); background: var(--ui-color-hero); color: var(--now-cover-fg); overflow: hidden; }
+.hero-cover-image, .hero-cover-shade { position: absolute; inset: 0; width: 100%; height: 100%; }
+.hero-cover-image { opacity: 0.72; }
+.hero-cover-shade { background: var(--now-cover-shade); }
+.hero-heading { position: relative; z-index: 1; gap: var(--ui-space-3); }
 .hero-title-row { gap: var(--ui-space-4); }
-.hero-title { font-size: var(--ui-text-heading); font-weight: var(--ui-font-weight-heading); line-height: var(--ui-line-height-compact); }
+.hero-title { color: var(--now-cover-fg); font-size: var(--ui-home-cover-title-size); font-weight: var(--ui-font-weight-heading); line-height: var(--ui-line-height-tight); text-shadow: 0 2rpx 8rpx rgba(var(--ui-primitive-ink-rgb), 0.36); }
 .hero-title-tags { gap: var(--ui-space-2); }
-.hero-kind { padding: var(--ui-space-1) var(--ui-space-3); border-radius: var(--ui-control-radius); font-size: var(--ui-text-xs); background: var(--ui-color-neutral-bg); color: var(--ui-color-neutral-fg); }
-.hero-when { align-items: flex-start; gap: var(--ui-space-3); font-size: var(--ui-text-label); line-height: var(--ui-line-height-compact); }
-.hero-chips { gap: var(--ui-space-6); margin-top: var(--ui-space-3); }
-.hero-info { gap: var(--ui-space-3); font-size: var(--ui-text-body); line-height: var(--ui-line-height-compact); }
-.hero-foot { margin-top: var(--ui-space-5); }
-.hero-venue { align-items: flex-start; gap: var(--ui-space-3); min-height: var(--ui-control-min-height); }
-.hero-venue-text { line-height: var(--ui-line-height-compact); font-size: var(--ui-text-label); }
+.hero-kind { padding: var(--ui-space-1) var(--ui-space-3); border-radius: var(--ui-radius-round); font-size: var(--ui-text-xs); font-weight: var(--ui-font-weight-heading); background: var(--ui-color-accent); color: var(--ui-color-accent-fg); }
+.hero-when { align-items: center; gap: var(--ui-space-2); margin-top: var(--ui-space-1); color: var(--now-cover-muted); font-size: var(--ui-text-body); line-height: var(--ui-line-height-compact); }
+.hero-chips { gap: var(--ui-space-3); margin-top: var(--ui-space-2); }
+.hero-info { gap: var(--ui-space-2); padding: var(--ui-space-1) var(--ui-space-3); border-radius: var(--ui-radius-round); background: var(--now-cover-label-bg); color: var(--now-cover-fg); font-size: var(--ui-text-xs); font-weight: var(--ui-font-weight-medium); line-height: var(--ui-line-height-compact); }
+.hero-foot { margin-top: 0; padding: var(--ui-space-5) var(--ui-space-7); border-bottom: var(--ui-list-divider); }
+.hero-venue { width: 100%; align-items: center; gap: var(--ui-space-3); min-height: var(--ui-control-min-height); }
+.hero-venue--pressed { opacity: 0.82; }
+.hero-venue-text { flex: 1; line-height: var(--ui-line-height-compact); font-size: var(--ui-text-label); font-weight: var(--ui-font-weight-medium); }
+.hero-venue-nav { display: inline-flex; align-items: center; gap: var(--ui-space-1); flex-shrink: 0; padding: var(--ui-space-2) var(--ui-space-4); border: var(--ui-button-outline-border); border-radius: var(--ui-radius-round); background: var(--ui-button-outline-bg); color: var(--ui-color-text); font-size: var(--ui-text-sm); font-weight: var(--ui-font-weight-heading); line-height: 1.2; }
+.hero-pickup-strip { border: var(--ui-panel-border); background: var(--ui-panel-soft-bg); padding: var(--ui-space-5); margin: var(--ui-space-5) var(--ui-space-7) var(--ui-space-7); }
+.hero-board { border-top: 0; margin-top: 0; padding: var(--ui-space-6) var(--ui-space-7) var(--ui-space-7); align-items: center; }
 .hero-name { font-size: var(--ui-text-subtitle); line-height: var(--ui-line-height-compact); }
-.hero-vs { font-size: var(--ui-text-label); font-weight: var(--ui-font-weight-medium); }
-.hero-when, .hero-info, .hero-vs { color: var(--ui-color-text-secondary); }
+.hero-vs { align-self: center; width: 56rpx; height: 56rpx; border-radius: var(--ui-radius-round); background: var(--ui-panel-soft-bg); color: var(--ui-color-text-secondary); font-size: var(--ui-text-sm); font-weight: var(--ui-font-weight-heading); }
 /* #endif */
 </style>

@@ -272,8 +272,8 @@ onShow(() => {
 .venue-map-panel__hint { font-size: var(--ui-text-body); line-height: var(--ui-line-height-body); }
 .venue-map-selection-actions { gap: var(--ui-space-3); }
 .venue-map-create { display: flex; flex-direction: column; align-items: stretch; }
-.venue-map-chip { border: var(--ui-control-border); border-radius: var(--ui-control-radius); background: var(--ui-color-neutral-bg); padding: var(--ui-space-4) var(--ui-space-5); font-size: var(--ui-text-body); border-color: transparent; }
-.venue-map-chip--selected { background: var(--ui-control-selected-bg); color: var(--ui-color-text); border-color: transparent; }
+.venue-map-chip { border: var(--ui-border-default); border-radius: var(--ui-control-radius); background: var(--ui-panel-soft-bg); color: var(--ui-color-text); padding: var(--ui-space-3) var(--ui-space-5); font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-medium); }
+.venue-map-chip--selected { border: var(--ui-button-outline-border); background: var(--ui-button-outline-bg); color: var(--ui-color-text); font-weight: var(--ui-font-weight-heading); }
 .venue-map-summary, .venue-map-panel__eyebrow, .venue-map-panel__hint, .venue-map-state__hint { color: var(--ui-color-text-secondary); }
 /* #endif */
 </style>

@@ -193,7 +193,8 @@ function handleRemoveMember(member: BackendTeamMember) {
 /* #ifdef MP-WEIXIN */
 .team-result-meta, .member-paid-meta { color: var(--ui-color-text-secondary); }
 .member-paid-meta-active { color: var(--ui-color-success-fg); font-weight: var(--ui-font-weight-medium); }
-.member-link { min-height: var(--ui-control-min-height); font-size: var(--ui-text-sm); gap: var(--ui-space-1); }
+.member-link { min-height: var(--ui-control-min-height); border: var(--ui-button-outline-border); background: var(--ui-button-outline-bg); color: var(--ui-color-text); font-size: var(--ui-text-sm); font-weight: var(--ui-font-weight-heading); gap: var(--ui-space-1); }
+.member-link-danger { border: 2rpx solid rgba(161, 52, 50, 0.28); background: var(--ui-color-danger-bg); color: var(--ui-color-danger-fg); }
 .member-card { padding: var(--ui-space-5) 0; }
 .member-card:first-child { padding-top: 0; }
 .member-card:last-child { padding-bottom: 0; }

@@ -32,7 +32,7 @@ const emit = defineEmits<{
         </view>
         <button class="wallet-action ui-subtle-control" @tap="emit('openBilling')"><text>账单</text>
         <!-- #ifdef MP-WEIXIN -->
-        <AppIcon name="chevron-right" size="var(--ui-icon-sm)" tone="muted" />
+        <AppIcon name="chevron-right" size="var(--ui-icon-xs)" />
         <!-- #endif -->
         <!-- #ifndef MP-WEIXIN -->
         <wd-icon name="arrow-right" size="var(--ui-icon-xs)" />
@@ -102,12 +102,9 @@ const emit = defineEmits<{
 /* #ifdef MP-WEIXIN */
 .mine-wallet-section { display: flex; flex-direction: column; gap: var(--ui-space-4); margin-top: var(--ui-card-gap); }
 .mine-wallet-strip { gap: var(--ui-space-5); margin-top: 0; padding: var(--ui-card-padding); background: var(--ui-card-bg); }
-.mine-wallet-strip__label,.mine-wallet-strip__meta { font-size: var(--ui-text-sm); }
-.mine-wallet-strip__value { margin-top: var(--ui-space-1); font-size: var(--ui-text-display); font-weight: var(--ui-font-weight-heading); }
+.mine-wallet-strip__label,.mine-wallet-strip__meta { color: var(--ui-color-text-secondary); font-size: var(--ui-text-sm); }
+.mine-wallet-strip__value { margin-top: var(--ui-space-1); font-size: var(--ui-text-display); font-weight: var(--ui-font-weight-heading); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .mine-wallet-strip__meta { margin-top: var(--ui-space-2); line-height: var(--ui-line-height-body); }
-.wallet-action { gap: var(--ui-space-2); min-height: var(--ui-control-min-height); padding: var(--ui-space-3) var(--ui-space-4); border-radius: var(--ui-control-radius); background: var(--ui-control-subtle-bg); font-size: var(--ui-text-body); }
-.wallet-action { background: transparent; color: var(--ui-color-text-secondary); }
-.mine-wallet-strip__value { font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
-.mine-wallet-strip__label,.mine-wallet-strip__meta,.wallet-action { color: var(--ui-color-text-secondary); }
+.wallet-action { gap: var(--ui-space-1); min-height: 64rpx; padding: 0 var(--ui-space-4); border: var(--ui-button-outline-border); border-radius: var(--ui-radius-round); background: var(--ui-button-outline-bg); color: var(--ui-color-text); font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-heading); }
 /* #endif */
 </style>

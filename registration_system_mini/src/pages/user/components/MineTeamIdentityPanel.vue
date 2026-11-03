@@ -44,7 +44,7 @@ function handleSwitchTeam(teamId: number) {
     <view class="section-heading"><text>我的球队</text>
       <button v-if="teamProfiles.length > 1" class="text-action ui-subtle-control" :disabled="isSwitchingTeam" @tap="openSwitchSheet"><text>切换球队</text>
       <!-- #ifdef MP-WEIXIN -->
-      <AppIcon name="chevron-right" size="var(--ui-icon-sm)" tone="muted" />
+      <AppIcon name="chevron-right" size="var(--ui-icon-xs)" />
       <!-- #endif -->
       <!-- #ifndef MP-WEIXIN -->
       <wd-icon name="arrow-right" size="var(--ui-icon-xs)" />
@@ -91,18 +91,16 @@ function handleSwitchTeam(teamId: number) {
 /* #ifdef MP-WEIXIN */
 .mine-context-section { margin-top: var(--ui-card-gap); }
 .section-heading { margin: 0 0 var(--ui-space-3); font-size: var(--ui-text-title); font-weight: var(--ui-font-weight-heading); }
-.text-action { min-height: var(--ui-control-min-height); padding: var(--ui-space-3) var(--ui-space-4); background: var(--ui-control-subtle-bg); font-size: var(--ui-text-sm); border-radius: var(--ui-control-radius); }
+.text-action { min-height: 56rpx; padding: 0 var(--ui-space-4); border: var(--ui-button-outline-border); border-radius: var(--ui-radius-round); background: var(--ui-button-outline-bg); color: var(--ui-color-text); font-size: var(--ui-text-sm); font-weight: var(--ui-font-weight-heading); }
 .team-list { border: var(--ui-panel-border); border-radius: var(--ui-panel-radius); }
-.team-row { gap: var(--ui-list-row-gap); min-height: var(--ui-list-row-min-height); padding: var(--ui-list-row-padding) 0; }
+.team-row { align-items: center; gap: var(--ui-list-row-gap); min-height: var(--ui-list-row-min-height); padding: var(--ui-list-row-padding) 0; }
 .team-row + .team-row { border-top: var(--ui-list-divider); }
 .team-row--pressed { background: var(--ui-control-subtle-bg); }
+.team-logo { border-radius: var(--ui-radius-button); }
 .team-name-row { flex-wrap: wrap; gap: var(--ui-space-3); }
 .team-name { font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-heading); }
-.team-meta { gap: var(--ui-space-2); margin-top: var(--ui-space-2); font-size: var(--ui-text-sm); }
-.team-current { background: var(--ui-control-subtle-bg); border-radius: var(--ui-control-radius); padding: var(--ui-space-1) var(--ui-space-3); font-size: var(--ui-text-xs); }
-.team-empty { padding: var(--ui-list-row-padding) 0; font-size: var(--ui-text-body); }
-.text-action { background: transparent; }
-.team-row { align-items: center; }
-.team-meta,.team-empty,.text-action { color: var(--ui-color-text-secondary); }
+.team-meta { gap: var(--ui-space-2); margin-top: var(--ui-space-2); color: var(--ui-color-text-secondary); font-size: var(--ui-text-sm); }
+.team-current { background: var(--ui-color-accent-soft); color: var(--ui-color-text); border-radius: var(--ui-radius-round); padding: var(--ui-space-1) var(--ui-space-3); font-size: var(--ui-text-xs); font-weight: var(--ui-font-weight-heading); }
+.team-empty { padding: var(--ui-list-row-padding) 0; color: var(--ui-color-text-secondary); font-size: var(--ui-text-body); }
 /* #endif */
 </style>

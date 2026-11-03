@@ -88,12 +88,10 @@ const emit = defineEmits<{
 /* #ifdef MP-WEIXIN */
 .mine-profile-hero { padding: var(--ui-card-padding); border: var(--ui-panel-border); border-radius: var(--ui-card-radius); background: var(--ui-card-bg); }
 .profile-row { gap: var(--ui-space-5); }
+.profile-avatar { border-radius: 28rpx; }
 .profile-name { font-size: var(--ui-text-heading); font-weight: var(--ui-font-weight-heading); }
-.profile-meta { margin-top: var(--ui-space-2); font-size: var(--ui-text-sm); line-height: var(--ui-line-height-body); }
-.profile-edit { gap: var(--ui-space-2); min-height: var(--ui-control-min-height); padding: var(--ui-space-3) var(--ui-space-4); background: var(--ui-control-subtle-bg); font-size: var(--ui-text-sm); }
-.profile-complete { margin-top: var(--ui-space-5); padding-top: var(--ui-space-4); border-top: var(--ui-list-divider); font-size: var(--ui-text-body); }
-.profile-edit { background: var(--ui-color-accent-subtle); color: var(--ui-color-text); }
-.profile-complete { display: flex; align-items: center; min-height: var(--ui-control-min-height); gap: var(--ui-space-3); color: var(--ui-color-text-secondary); }
-.profile-meta,.profile-complete { color: var(--ui-color-text-secondary); }
+.profile-meta { margin-top: var(--ui-space-2); color: var(--ui-color-text-secondary); font-size: var(--ui-text-sm); line-height: var(--ui-line-height-body); }
+.profile-edit { gap: var(--ui-space-2); min-height: 64rpx; padding: 0 var(--ui-space-4); border: var(--ui-button-outline-border); border-radius: var(--ui-radius-round); background: var(--ui-button-outline-bg); color: var(--ui-color-text); font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-heading); }
+.profile-complete { display: flex; align-items: center; min-height: var(--ui-control-min-height); gap: var(--ui-space-3); margin-top: var(--ui-space-5); padding: var(--ui-space-3) var(--ui-space-4); border: var(--ui-button-outline-border); border-radius: var(--ui-control-radius); background: var(--ui-button-outline-bg); color: var(--ui-color-text); font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-heading); }
 /* #endif */
 </style>

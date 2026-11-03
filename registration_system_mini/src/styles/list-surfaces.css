@@ -11,5 +11,5 @@
 .ui-list-row { min-height: var(--ui-list-row-min-height); padding: var(--ui-list-row-padding) 0; border: var(--ui-panel-border); border-radius: var(--ui-panel-radius); background: transparent; box-shadow: var(--ui-panel-shadow); }
 .ui-list-row + .ui-list-row { border-top: var(--ui-list-divider); }
 .ui-list-divider { height: 0; border-top: var(--ui-list-divider); }
-.ui-subtle-control { min-height: var(--ui-control-min-height); padding: var(--ui-space-3) var(--ui-space-4); border: var(--ui-control-border); border-radius: var(--ui-control-radius); background: var(--ui-control-subtle-bg); color: var(--ui-color-text); }
+.ui-subtle-control { min-height: var(--ui-control-min-height); padding: var(--ui-space-3) var(--ui-space-4); border: var(--ui-control-border); border-radius: var(--ui-control-radius); background: var(--ui-control-subtle-bg); color: var(--ui-color-text); font-weight: var(--ui-font-weight-heading); }
 /* #endif */

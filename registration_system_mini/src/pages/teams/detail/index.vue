@@ -574,8 +574,8 @@ onShareTimeline(() => ({
 .fund-entry__main { min-width: 0; flex: 1; }
 .fund-entry__label { color: var(--ui-color-text-secondary); letter-spacing: normal; }
 .fund-entry__value { overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
-.fund-entry__action { padding: 0; background: var(--ui-control-plain-bg); }
-.fund-entry__action-text { color: var(--ui-color-text-secondary); font-size: var(--ui-text-sm); font-weight: var(--ui-font-weight-medium); }
+.fund-entry__action { border: var(--ui-button-outline-border); background: var(--ui-button-outline-bg); }
+.fund-entry__action-text { color: var(--ui-color-text); font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-heading); }
 .leave-head { padding: 0 0 var(--ui-space-5); }
 .leave-title { color: var(--ui-color-danger-fg); }
 .invite-title { font-size: var(--ui-text-title); }

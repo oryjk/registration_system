@@ -404,6 +404,11 @@ page,
   --ui-header-control-radius: var(--ui-radius-button);
   --ui-card-radius: 36rpx;
   --ui-card-padding: var(--ui-space-7);
+  --ui-panel-soft-bg: var(--ui-color-page-muted);
+  --ui-control-subtle-bg: rgba(var(--ui-primitive-accent-rgb), 0.16);
+  --ui-control-border: 2rpx solid rgba(var(--ui-primitive-accent-rgb), 0.42);
+  --ui-button-outline-bg: var(--ui-color-accent-soft);
+  --ui-button-outline-border: 2rpx solid rgba(var(--ui-primitive-accent-rgb), 0.48);
   /* Approved homepage, 2026-11-03. Kept separate from other pages and H5. */
   --ui-home-muted: #65758b;
   --ui-home-positive: #16b979;

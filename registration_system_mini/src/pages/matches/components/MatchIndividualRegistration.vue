@@ -199,7 +199,7 @@ function handleTeamMemberDialogVisibilityChange(visible: boolean) {
       <view class="registration-actions">
         <!-- #ifdef MP-WEIXIN -->
         <button class="registration-share ui-native-button" open-type="share" hover-class="registration-share--pressed">
-          <AppIcon name="share-2" size="var(--ui-icon-sm)" tone="muted" /><text>分享</text>
+          <AppIcon name="share-2" size="var(--ui-icon-sm)" /><text>分享</text>
         </button>
         <!-- #endif -->
         <!-- #ifndef MP-WEIXIN -->
@@ -263,7 +263,8 @@ function handleTeamMemberDialogVisibilityChange(visible: boolean) {
 /* #ifdef MP-WEIXIN */
 .individual-mode-shell { gap: var(--ui-space-6); }
 .registration-actions { gap: var(--ui-space-4); }
-.registration-share { gap: var(--ui-space-2); background: var(--ui-color-neutral-bg); color: var(--ui-color-text-muted); font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-medium); }
+.registration-share { gap: var(--ui-space-2); border: var(--ui-button-outline-border); background: var(--ui-button-outline-bg); color: var(--ui-color-text); font-size: var(--ui-text-label); font-weight: var(--ui-font-weight-heading); }
+.registration-share--pressed { background: var(--ui-control-subtle-bg); box-shadow: var(--ui-shadow-control-pressed); }
 .registration-button-content { gap: var(--ui-space-3); }
 /* #endif */
 </style>

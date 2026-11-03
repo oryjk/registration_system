@@ -23,6 +23,10 @@ const emit = defineEmits<{ (event: "avatarSelect", avatar: AvatarItem): void }>(
 
 const hasTeamProgress = computed(() => !!props.teamProgress && props.teamProgress.length > 0);
 const hasPendingPayment = computed(() => !!props.pendingPaymentFeeLabel);
+let useActionCardLayout = false;
+// #ifdef MP-WEIXIN
+useActionCardLayout = true;
+// #endif
 function selectAvatar(id: string | number, participants = props.participants) {
   const participant = participants?.find(item => item.id === id);
   if (participant) emit("avatarSelect", participant);
@@ -47,6 +51,7 @@ function selectAvatar(id: string | number, participants = props.participants) {
             :minimum="team.required"
             :maximum="team.max"
             :avatars="team.avatars"
+            :action-card="useActionCardLayout"
             @avatar-select="selectAvatar($event, team.avatars)"
           />
         </view>
@@ -58,6 +63,7 @@ function selectAvatar(id: string | number, participants = props.participants) {
         :minimum="requiredPlayers"
         :maximum="maxPlayers"
         :avatars="participants"
+        :action-card="useActionCardLayout"
         @avatar-select="selectAvatar"
       />
 

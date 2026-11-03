@@ -204,6 +204,11 @@ const activeMemberAvatars = computed(() => activeSection.value.members.map(membe
   teamParticipationRank: member.teamParticipationRank,
   teamAttendanceRank: member.teamAttendanceRank,
 })));
+let useHomeAvatarLayout = false;
+// #ifdef MP-WEIXIN
+useHomeAvatarLayout = true;
+// #endif
+
 function selectMemberAvatar(id: string | number) {
   const avatar = activeMemberAvatars.value.find(item => item.id === id);
   if (avatar) emit("avatarSelect", avatar);
@@ -247,6 +252,7 @@ function selectMemberAvatar(id: string | number) {
         <ExpandableAvatarStack
           :key="activeSection.key"
           :items="activeMemberAvatars"
+          :home-layout="useHomeAvatarLayout"
           @select="selectMemberAvatar"
         />
       </view>
@@ -333,18 +339,18 @@ function selectMemberAvatar(id: string | number) {
 /* #ifdef MP-WEIXIN */
 .member-empty { border: var(--ui-panel-border); padding: var(--ui-space-4); background: var(--ui-panel-soft-bg); border-radius: var(--ui-panel-soft-radius); }
 .section-title { font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-heading); }
-.member-board-head { align-items: flex-start; gap: var(--ui-space-4); }
-.member-segment { margin-top: var(--ui-space-6); gap: var(--ui-space-3); }
-.member-segment-item { flex-direction: column; align-items: flex-start; padding: var(--ui-space-4) var(--ui-space-3); gap: var(--ui-space-3); }
+.member-board-head { align-items: center; gap: var(--ui-space-4); }
+.member-segment { margin-top: var(--ui-space-5); gap: var(--ui-space-3); }
+.member-segment-item { flex-direction: column; align-items: flex-start; padding: var(--ui-space-4) var(--ui-space-4); gap: var(--ui-space-2); border: 2rpx solid transparent; background: var(--ui-panel-soft-bg); box-sizing: border-box; }
 .member-segment-icon-wrap { width: var(--ui-icon-md); height: var(--ui-icon-md); }
 .member-segment-icon-wrap::before { display: none; }
-.member-segment-item--joined { background: var(--ui-color-success-bg); }
-.member-segment-item--joined.member-segment-item-active { background: var(--ui-color-success-bg); box-shadow: inset 0 0 0 1rpx var(--ui-color-success-fg); }
-.member-segment-item--leave.member-segment-item-active { background: var(--ui-color-warning-bg); box-shadow: inset 0 0 0 1rpx var(--ui-color-warning-fg); }
-.member-segment-item--pending.member-segment-item-active { background: var(--ui-color-neutral-bg); box-shadow: inset 0 0 0 1rpx var(--ui-color-neutral-fg); }
-.member-segment-copy { gap: var(--ui-space-2); width: 100%; }
-.member-segment-label { font-size: var(--ui-text-sm); line-height: var(--ui-line-height-compact); white-space: normal; overflow-wrap: anywhere; }
-.member-segment-count { font-size: var(--ui-text-title); line-height: var(--ui-line-height-tight); overflow-wrap: anywhere; }
-.member-total { font-size: var(--ui-text-body); line-height: var(--ui-line-height-compact); text-align: right; color: var(--ui-color-text-secondary); }
+.member-segment-item--joined { background: rgba(var(--ui-primitive-accent-rgb), 0.10); }
+.member-segment-item--joined.member-segment-item-active { background: var(--ui-color-accent-soft); border-color: var(--ui-tabbar-active); box-shadow: 0 6rpx 16rpx rgba(var(--ui-primitive-accent-rgb), 0.18); }
+.member-segment-item--leave.member-segment-item-active { background: var(--ui-color-warning-bg); border-color: var(--ui-color-warning-fg); }
+.member-segment-item--pending.member-segment-item-active { background: var(--ui-color-neutral-bg); border-color: var(--ui-color-line-strong); }
+.member-segment-copy { gap: var(--ui-space-1); width: 100%; }
+.member-segment-label { font-size: var(--ui-text-sm); font-weight: var(--ui-font-weight-medium); line-height: var(--ui-line-height-compact); white-space: normal; overflow-wrap: anywhere; }
+.member-segment-count { font-size: var(--ui-text-heading); font-weight: var(--ui-font-weight-heading); line-height: var(--ui-line-height-tight); overflow-wrap: anywhere; }
+.member-total { padding: var(--ui-space-1) var(--ui-space-3); border-radius: var(--ui-radius-round); background: var(--ui-panel-soft-bg); font-size: var(--ui-text-xs); font-weight: var(--ui-font-weight-heading); line-height: var(--ui-line-height-compact); text-align: right; color: var(--ui-color-text-secondary); }
 /* #endif */
 </style>

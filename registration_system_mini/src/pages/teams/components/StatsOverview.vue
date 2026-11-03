@@ -16,6 +16,10 @@ defineProps<{
 
 <template>
   <view class="stats-overview ui-card-panel">
+    <!-- #ifdef MP-WEIXIN -->
+    <image class="stats-overview-cover" src="/static/covers/match-stadium-cover.jpg" mode="aspectFill" aria-hidden="true" />
+    <view class="stats-overview-shade" />
+    <!-- #endif -->
     <view class="stats-profile">
       <image v-if="myAvatarUrl" class="stats-profile-avatar" :src="minioImageSrc(myAvatarUrl)" mode="aspectFill" />
       <view v-else class="stats-profile-avatar stats-profile-avatar-fallback">{{ myInitial }}</view>
@@ -190,31 +194,24 @@ defineProps<{
 }
 
 /* #ifdef MP-WEIXIN */
-/* 微信端复用统一排版尺度；H5 保留原有样式。 */
-.stats-overview { gap: var(--ui-space-4); margin-top: var(--ui-card-gap); }
-.stats-profile { gap: var(--ui-space-4); }
-.stats-profile-avatar-fallback { font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-heading); }
-.stats-kicker { font-size: var(--ui-text-xs); font-weight: var(--ui-font-weight-medium); }
-.stats-title { margin-top: var(--ui-space-1); font-size: var(--ui-text-heading); line-height: var(--ui-line-height-tight); font-weight: var(--ui-font-weight-heading); }
-.stats-subtitle { margin-top: var(--ui-space-1); font-size: var(--ui-text-sm); font-weight: var(--ui-font-weight-body); }
-.stats-rate-box { padding: var(--ui-space-3); min-width: calc(var(--ui-space-12) * 2); border: var(--ui-panel-border); background: transparent; }
-.stats-rate-value { font-size: var(--ui-text-display); font-weight: var(--ui-font-weight-heading); }
-.stats-rate-label { margin-top: var(--ui-space-2); font-size: var(--ui-text-xs); font-weight: var(--ui-font-weight-medium); }
-.stats-summary-row { margin-top: var(--ui-card-gap); }
-.stats-summary-value { font-size: var(--ui-text-heading); font-weight: var(--ui-font-weight-heading); }
-.stats-summary-label { margin-top: var(--ui-space-2); font-size: var(--ui-text-xs); font-weight: var(--ui-font-weight-body); }
-.stats-profile-avatar { border: var(--ui-panel-border); width: var(--ui-avatar-size-lg); height: var(--ui-avatar-size-lg); }
+/* 微信端复用首页深色球场封面质感与统一排版尺度；H5 保留原有样式。 */
+.stats-overview { position: relative; overflow: hidden; gap: var(--ui-space-4); margin-top: var(--ui-card-gap); background: var(--ui-color-hero); color: var(--now-cover-fg); }
+.stats-overview-cover, .stats-overview-shade { position: absolute; inset: 0; width: 100%; height: 100%; }
+.stats-overview-cover { opacity: 0.68; }
+.stats-overview-shade { background: var(--now-cover-shade); }
+.stats-profile { position: relative; z-index: 1; gap: var(--ui-space-4); }
+.stats-profile-avatar { border: 2rpx solid rgba(var(--ui-primitive-surface-rgb), 0.24); border-radius: var(--ui-radius-button); width: var(--ui-avatar-size-lg); height: var(--ui-avatar-size-lg); background: rgba(var(--ui-primitive-surface-rgb), 0.16); }
+.stats-profile-avatar-fallback { color: var(--now-cover-fg); font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-heading); }
+.stats-kicker { display: inline-block; padding: 2rpx var(--ui-space-2); border-radius: var(--ui-radius-round); background: var(--ui-color-accent); color: var(--ui-color-accent-fg); font-size: var(--ui-text-xs); font-weight: var(--ui-font-weight-heading); }
+.stats-title { margin-top: var(--ui-space-2); color: var(--now-cover-fg); font-size: var(--ui-text-heading); line-height: var(--ui-line-height-tight); font-weight: var(--ui-font-weight-heading); overflow-wrap: anywhere; }
+.stats-subtitle { margin-top: var(--ui-space-1); color: var(--now-cover-muted); font-size: var(--ui-text-sm); font-weight: var(--ui-font-weight-body); overflow-wrap: anywhere; }
+.stats-rate-box { position: relative; z-index: 1; flex-shrink: 0; min-width: 132rpx; padding: var(--ui-space-3) var(--ui-space-4); border: 1rpx solid rgba(var(--ui-primitive-surface-rgb), 0.22); border-radius: var(--ui-radius-button); background: var(--now-cover-label-bg); }
+.stats-rate-value { color: var(--ui-color-accent); font-size: var(--ui-text-display); font-weight: var(--ui-font-weight-heading); font-variant-numeric: tabular-nums; }
+.stats-rate-label { margin-top: var(--ui-space-1); color: var(--now-cover-muted); font-size: var(--ui-text-xs); font-weight: var(--ui-font-weight-medium); }
+.stats-summary-row { margin-top: var(--ui-card-gap); padding-right: var(--ui-space-3); padding-left: var(--ui-space-3); }
+.stats-summary-value { font-size: var(--ui-text-heading); font-weight: var(--ui-font-weight-heading); font-variant-numeric: tabular-nums; }
+.stats-summary-label { margin-top: var(--ui-space-2); color: var(--ui-color-text-secondary); font-size: var(--ui-text-xs); font-weight: var(--ui-font-weight-body); }
 .stats-summary-item { border-right: var(--ui-list-divider); }
 .stats-summary-item:last-child { border-right: 0; }
-  /* #endif */
-
-/* #ifdef MP-WEIXIN */
-.stats-profile-avatar { border-radius: var(--ui-radius-round); background: var(--ui-color-neutral-bg); }
-.stats-profile-avatar-fallback { color: var(--ui-color-text); }
-.stats-title, .stats-subtitle { overflow-wrap: anywhere; }
-.stats-kicker, .stats-subtitle, .stats-rate-label, .stats-summary-label { color: var(--ui-color-text-secondary); }
-.stats-rate-box { flex-shrink: 0; min-width: 0; padding: var(--ui-space-2) 0 var(--ui-space-2) var(--ui-space-3); border: 0; background: transparent; }
-.stats-rate-value, .stats-summary-value { font-variant-numeric: tabular-nums; }
-.stats-summary-row { padding-right: var(--ui-space-3); padding-left: var(--ui-space-3); }
 /* #endif */
 </style>

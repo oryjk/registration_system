@@ -91,12 +91,12 @@ const emit = defineEmits<{
 
 /* #ifdef MP-WEIXIN */
 .hall-calendar-track { gap: var(--ui-space-3); padding: var(--ui-space-1) 0; }
-.hall-calendar-item-active .hall-calendar-badge { color: var(--ui-color-text-secondary); }
-.hall-calendar-item-active .hall-calendar-day { color: var(--ui-color-text); }
 .hall-calendar { padding: var(--ui-space-4); border: var(--ui-panel-border); border-radius: var(--ui-card-radius); background: var(--ui-card-bg); box-shadow: var(--ui-card-shadow); box-sizing: border-box; }
-.hall-calendar-item { width: calc(var(--ui-input-height) + var(--ui-space-4)); border: var(--ui-control-border); padding: var(--ui-space-3) 0; background: transparent; border-color: transparent; border-radius: var(--ui-control-radius); }
-.hall-calendar-item-active { background: var(--ui-control-selected-bg); border-color: transparent; }
+.hall-calendar-item { width: calc(var(--ui-input-height) + var(--ui-space-4)); border: 2rpx solid transparent; padding: var(--ui-space-3) 0; background: var(--ui-panel-soft-bg); border-radius: var(--ui-control-radius); }
+.hall-calendar-item-active { background: var(--ui-color-hero); border-color: var(--ui-color-hero); box-shadow: 0 8rpx 20rpx rgba(var(--ui-primitive-ink-rgb), 0.18); }
 .hall-calendar-day { font-size: var(--ui-text-title); font-weight: var(--ui-font-weight-heading); }
 .hall-calendar-badge { font-size: var(--ui-text-xs); color: var(--ui-color-text-secondary); }
+.hall-calendar-item-active .hall-calendar-badge { color: var(--ui-color-accent); font-weight: var(--ui-font-weight-heading); }
+.hall-calendar-item-active .hall-calendar-day { color: var(--ui-color-hero-fg); }
 /* #endif */
 </style>

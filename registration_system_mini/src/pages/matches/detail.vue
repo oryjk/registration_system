@@ -503,7 +503,7 @@ const metaPageStyle = computed(() =>
 .registration-shell {
   gap: var(--ui-card-gap);
 }
-.match-manage-action { background: var(--ui-control-subtle-bg); min-height: var(--ui-control-min-height); padding: var(--ui-space-3) var(--ui-space-4); font-size: var(--ui-text-label); }
-.match-manage-action--cancel { background: var(--ui-color-danger-bg); }
+.match-manage-action { border: var(--ui-button-outline-border); background: var(--ui-button-outline-bg); min-height: var(--ui-control-min-height); padding: var(--ui-space-3) var(--ui-space-4); font-size: var(--ui-text-label); font-weight: var(--ui-font-weight-heading); }
+.match-manage-action--cancel { border: 2rpx solid rgba(161, 52, 50, 0.28); background: var(--ui-color-danger-bg); font-weight: var(--ui-font-weight-heading); }
 /* #endif */
 </style>
