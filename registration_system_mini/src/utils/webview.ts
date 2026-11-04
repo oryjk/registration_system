@@ -83,6 +83,22 @@ export function buildWebViewTargetUrl(targetUrl: string, code: string): string {
   return `${targetUrl.slice(0, hashIndex)}${separator}${params.join("&")}${targetUrl.slice(hashIndex)}`;
 }
 
+/**
+ * 为目标 H5 URL 附加一次性登录桥接 code（若当前已登录）；
+ * 未登录或签发失败时回退原 URL（以游客态进入 H5，不阻断打开）。
+ */
+export async function resolveWebViewUrl(targetUrl: string): Promise<string> {
+  if (!getAccessToken()) {
+    return targetUrl;
+  }
+  try {
+    const { code } = await createWebViewCode();
+    return buildWebViewTargetUrl(targetUrl, code);
+  } catch {
+    return targetUrl;
+  }
+}
+
 export interface NavigateToWebViewOptions {
   /** 用 web-view 替换当前页（落地页中转场景），返回时不再回到中转页。 */
   replace?: boolean;
