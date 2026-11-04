@@ -86,7 +86,7 @@ const matchStatusTag = computed(() => {
         <!-- 日期时间收敛为标题下的紧凑图标信息行，不再做大日期块。 -->
         <view class="hero-when">
           <!-- #ifdef MP-WEIXIN -->
-          <AppIcon name="clock" size="var(--ui-icon-sm)" color="var(--now-cover-muted)" />
+          <AppIcon name="clock" size="var(--ui-icon-sm)" tone="inverse" />
           <!-- #endif -->
           <!-- #ifndef MP-WEIXIN -->
           <image class="hero-info-icon" src="/static/icons/lucide/clock.png" mode="aspectFit" aria-hidden="true" />
@@ -96,13 +96,13 @@ const matchStatusTag = computed(() => {
         <!-- 人制与费用：数字与标签相邻的紧凑信息 chips。 -->
         <view class="hero-chips">
           <view v-if="formatLabel" class="hero-info"><!-- #ifdef MP-WEIXIN -->
-<AppIcon name="users" size="var(--ui-icon-xs)" color="var(--now-cover-fg)" />
+<AppIcon name="users" size="var(--ui-icon-xs)" tone="inverse" />
 <!-- #endif -->
 <!-- #ifndef MP-WEIXIN -->
 <image class="hero-info-icon" src="/static/icons/lucide/users.png" />
 <!-- #endif --><text>{{ formatLabel }}</text></view>
           <view class="hero-info"><!-- #ifdef MP-WEIXIN -->
-<AppIcon name="wallet" size="var(--ui-icon-xs)" color="var(--now-cover-fg)" />
+<AppIcon name="wallet" size="var(--ui-icon-xs)" tone="inverse" />
 <!-- #endif -->
 <!-- #ifndef MP-WEIXIN -->
 <image class="hero-info-icon" src="/static/icons/lucide/wallet.png" />
@@ -391,7 +391,7 @@ const matchStatusTag = computed(() => {
 .hero-kind { padding: var(--ui-space-1) var(--ui-space-3); border-radius: var(--ui-radius-round); font-size: var(--ui-text-xs); font-weight: var(--ui-font-weight-heading); background: var(--ui-color-accent); color: var(--ui-color-accent-fg); }
 .hero-when { align-items: center; gap: var(--ui-space-2); margin-top: var(--ui-space-1); color: var(--now-cover-muted); font-size: var(--ui-text-body); line-height: var(--ui-line-height-compact); }
 .hero-chips { gap: var(--ui-space-3); margin-top: var(--ui-space-2); }
-.hero-info { gap: var(--ui-space-2); padding: var(--ui-space-1) var(--ui-space-3); border-radius: var(--ui-radius-round); background: var(--now-cover-label-bg); color: var(--now-cover-fg); font-size: var(--ui-text-xs); font-weight: var(--ui-font-weight-medium); line-height: var(--ui-line-height-compact); }
+.hero-info { gap: var(--ui-space-2); padding: 6rpx 18rpx; border: 1rpx solid rgba(255, 255, 255, 0.22); border-radius: var(--ui-radius-round); background: rgba(255, 255, 255, 0.14); color: var(--now-cover-fg); font-size: var(--ui-text-xs); font-weight: var(--ui-font-weight-medium); line-height: var(--ui-line-height-compact); }
 .hero-foot { margin-top: 0; padding: var(--ui-space-5) var(--ui-space-7); border-bottom: var(--ui-list-divider); }
 .hero-venue { width: 100%; align-items: center; gap: var(--ui-space-3); min-height: var(--ui-control-min-height); }
 .hero-venue--pressed { opacity: 0.82; }
