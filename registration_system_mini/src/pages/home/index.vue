@@ -201,7 +201,6 @@ function openBrowseMatches() {
 }
 
 async function openCreateTeam() {
-  if (shouldHideCreationEntrances.value) return false;
   return guidanceNavigation.navigateTo("/pages/teams/create/index?from=onboarding");
 }
 
