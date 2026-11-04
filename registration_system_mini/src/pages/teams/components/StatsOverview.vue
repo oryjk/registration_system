@@ -1,8 +1,15 @@
 <script setup lang="ts">
 import { useMinioImages } from "@/composables/useMinioImages";
+// #ifdef MP-WEIXIN
+import { HOME_VISUAL_ASSETS } from "@/config/homeVisualAssets";
+// #endif
 import type { TeamStatsSummary } from "../teamStatsState";
 
 const { minioImageSrc } = useMinioImages();
+// #ifdef MP-WEIXIN
+// 与首页「最近要处理」比赛卡共用夜场球门照片（MinIO 缓存）。
+const coverSrc = () => minioImageSrc(HOME_VISUAL_ASSETS.actionCover);
+// #endif
 
 defineProps<{
   currentYear: number;
@@ -17,7 +24,7 @@ defineProps<{
 <template>
   <view class="stats-overview ui-card-panel">
     <!-- #ifdef MP-WEIXIN -->
-    <image class="stats-overview-cover" src="/static/covers/match-stadium-cover.jpg" mode="aspectFill" aria-hidden="true" />
+    <image v-if="coverSrc()" class="stats-overview-cover" :src="coverSrc()" mode="aspectFill" aria-hidden="true" />
     <view class="stats-overview-shade" />
     <!-- #endif -->
     <view class="stats-profile">
@@ -196,8 +203,7 @@ defineProps<{
 /* #ifdef MP-WEIXIN */
 /* 微信端复用首页深色球场封面质感与统一排版尺度；H5 保留原有样式。 */
 .stats-overview { position: relative; overflow: hidden; gap: var(--ui-space-4); margin-top: var(--ui-card-gap); background: var(--ui-color-hero); color: var(--now-cover-fg); }
-.stats-overview-cover, .stats-overview-shade { position: absolute; inset: 0; width: 100%; height: 100%; }
-.stats-overview-cover { opacity: 0.68; }
+.stats-overview-cover, .stats-overview-shade { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 .stats-overview-shade { background: var(--now-cover-shade); }
 .stats-profile { position: relative; z-index: 1; gap: var(--ui-space-4); }
 .stats-profile-avatar { border: 2rpx solid rgba(var(--ui-primitive-surface-rgb), 0.24); border-radius: var(--ui-radius-button); width: var(--ui-avatar-size-lg); height: var(--ui-avatar-size-lg); background: rgba(var(--ui-primitive-surface-rgb), 0.16); }
