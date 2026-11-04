@@ -58,6 +58,8 @@ ssh local109 "cd /home/wangrui/projects/registration_system_repo \
 
 **robot 双轨约定**：`robot=1` 日常开发版本，随便传互不影响；`robot=2` 是体验版专用线——首次用 robot=2 上传后，需在公众平台「版本管理 → 开发版本」对该版本点一次「选为体验版」，之后每次 robot=2 上传的新代码会自动成为体验版内容，无需再手动操作。robot=1 的上传不会影响体验版。
 
+**Agent 默认上传机器人**（用户于 2026-11-04 明确）：Agent 修改本项目后默认使用 `bun run mp:release -- --robot 2 --desc "..."` 上传，除非用户特别指定其他机器人或说明不上传；脚本自身的默认值（robot=1）不变。
+
 流程细节（统一入口 `scripts/mini-release.mjs`）：
 
 1. 清理外层 `bun run` 可能提前注入的 `VITE_*` / `UNI_*` 变量，以 `NODE_ENV=production` 和显式 `.env.production` 重建子进程环境；所有子脚本使用 Bun 与 `--no-env-file`，编译命令固定 `--mode production`。生产 API 以 `.env.production` 为准，不能用临时 shell 变量覆盖。
