@@ -1,5 +1,12 @@
 #!/usr/bin/env python3
-"""Publish the existing jd installation; --check performs read-only preflight."""
+"""Publish the registration system: Go backend to peiqian, H5/admin static files to jd.
+
+--check performs read-only preflight on both hosts.
+
+Topology (2026-11-04): the public entry stays on jd (`https://oryjk.cn:82`). jd's nginx proxies
+`/regist-v3/` over WireGuard to the Go backend on peiqian (10.8.10.2:18081), which runs next to
+PostgreSQL. The backend reaches jd's private MinIO through the WireGuard-only bridge 10.8.10.1:19000.
+"""
 import argparse
 import datetime
 import io
@@ -16,9 +23,13 @@ import time
 import urllib.request
 import uuid
 
-BASE = Path('/root/docker_data/registration-go-v3')
+WEB_BASE = Path('/root/docker_data/registration-go-v3')  # jd: MinIO, :82 forwarder, frontend releases
+GO_BASE = Path('/data/registration-go-v3')  # peiqian: Go backend compose, env, uploads, releases
 HTML = Path('/root/docker_data/nginx/html')
+NGINX_CONF = Path('/root/docker_data/nginx/conf/nginx.conf')
 ORIGIN = 'https://oryjk.cn:82'
+GO_UPSTREAM = 'upstream registration_go_backend { server 10.8.10.2:18081;'
+MINIO_OVER_WIREGUARD = 'http://10.8.10.1:19000'
 
 
 def command(*args, **kwargs):
@@ -47,13 +58,8 @@ def healthy():
     return False
 
 
-def reload_nginx():
-    # nginx resolves Docker upstream names on reload; container replacement changes IPs.
-    command('docker', 'exec', 'nginx-server', 'nginx', '-t')
-    command('docker', 'exec', 'nginx-server', 'nginx', '-s', 'reload')
-
-
 def activate_backend(base, image):
+    # jd nginx targets the fixed WireGuard address, so replacing the container needs no nginx reload.
     compose = base / 'compose.yaml'
     before = compose.read_text()
     after = with_image(before, image)
@@ -65,13 +71,11 @@ def activate_backend(base, image):
         command(*args)
         if not healthy():
             raise RuntimeError('New backend health check failed')
-        reload_nginx()
     except Exception:
         compose.write_text(before)
         command(*args)
         if not healthy():
-            raise RuntimeError('Backend rollback health check failed; inspect jd locally') from None
-        reload_nginx()
+            raise RuntimeError('Backend rollback health check failed; inspect peiqian locally') from None
         raise RuntimeError('Deployment failed; previous backend image restored. Database changes are not rolled back.') from None
 
 
@@ -94,84 +98,133 @@ def publish_static(source, destination, backup):
         raise
 
 
-def preflight():
-    for name in ['compose.yaml', 'backend.env', 'minio.env', 'nginx82.conf']:
-        if not (BASE / name).is_file():
-            raise RuntimeError('Missing existing jd deployment file: ' + name)
-    with_image((BASE / 'compose.yaml').read_text(), 'registration:preflight')
+def read_env(path):
+    return dict(line.split('=', 1) for line in path.read_text().splitlines()
+                if '=' in line and not line.startswith('#'))
+
+
+def preflight_go():
+    for name in ['compose.yaml', 'backend.env']:
+        if not (GO_BASE / name).is_file():
+            raise RuntimeError('Missing peiqian backend deployment file: ' + name)
+    with_image((GO_BASE / 'compose.yaml').read_text(), 'registration:preflight')
     # Inspect only required keys; never print env values or resolved compose config.
-    env = dict(line.split('=', 1) for line in (BASE / 'backend.env').read_text().splitlines()
-               if '=' in line and not line.startswith('#'))
+    env = read_env(GO_BASE / 'backend.env')
     for key in ['DATABASE_URL', 'JWT_SECRET', 'PUBLIC_BASE_URL', 'UPLOAD_MINIO_ENDPOINT']:
         if not env.get(key):
             raise RuntimeError('backend.env missing ' + key)
-    if env['UPLOAD_MINIO_ENDPOINT'] != 'http://registration-minio:9000':
-        raise RuntimeError('Storage must use jd private MinIO; inspect backend.env')
-    command('docker', 'compose', '-f', BASE / 'compose.yaml', 'config', '-q')
-    for container in ['nginx-server', 'registration-minio', 'registration-https82']:
+    if env['UPLOAD_MINIO_ENDPOINT'] != MINIO_OVER_WIREGUARD:
+        raise RuntimeError('Storage must use jd private MinIO over WireGuard; inspect backend.env')
+    command('docker', 'compose', '-f', GO_BASE / 'compose.yaml', 'config', '-q')
+    with urllib.request.urlopen(MINIO_OVER_WIREGUARD + '/minio/health/live', timeout=5):
+        pass
+    print('peiqian preflight passed: Compose, environment keys and MinIO over WireGuard.', flush=True)
+
+
+def preflight_web():
+    for name in ['compose.yaml', 'minio.env', 'nginx82.conf', 'minio-wg.conf']:
+        if not (WEB_BASE / name).is_file():
+            raise RuntimeError('Missing existing jd deployment file: ' + name)
+    command('docker', 'compose', '-f', WEB_BASE / 'compose.yaml', 'config', '-q')
+    for container in ['nginx-server', 'registration-minio', 'registration-https82', 'registration-minio-wg']:
         data = json.loads(command('docker', 'inspect', container, stdout=subprocess.PIPE).stdout)[0]
         if not data['State']['Running'] or 'registration-v3' not in data['NetworkSettings']['Networks']:
             raise RuntimeError(container + ' must be running on registration-v3')
+    if GO_UPSTREAM not in NGINX_CONF.read_text():
+        raise RuntimeError('jd nginx must proxy /regist-v3/ to peiqian over WireGuard; inspect nginx.conf')
     command('docker', 'exec', 'nginx-server', 'nginx', '-t')
-    print('jd preflight passed: Compose, environment keys, private network and nginx.', flush=True)
+    print('jd preflight passed: MinIO, WireGuard bridge, private network and nginx.', flush=True)
 
 
-def remote(args):
-    preflight()
+def remote_go(args):
+    preflight_go()
     if args.check:
         return
     import fcntl
-    with (BASE / '.deploy.lock').open('w') as lock:
+    with (GO_BASE / '.deploy.lock').open('w') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         release = Path(args.release)
-        if release.parent != BASE / 'releases':
+        if release.parent != GO_BASE / 'releases':
+            raise ValueError('Unexpected release directory')
+        source = release / 'registration_system_go'
+        image = 'registration-system-backend-go-v3:' + release.name
+        dockerfile = release / 'Dockerfile.runtime'
+        dockerfile.write_text(
+            'FROM debian:bookworm-slim\n'
+            'RUN useradd --system --uid 10001 --create-home app\n'
+            'WORKDIR /app\n'
+            'COPY ca-certificates.crt /etc/ssl/certs/ca-certificates.crt\n'
+            'COPY zoneinfo /usr/share/zoneinfo\n'
+            'COPY registration-system-go-api /app/registration-system-go-api\n'
+            'RUN mkdir -p /app/uploads && chown -R app:app /app\n'
+            'USER app\n'
+            'EXPOSE 18081\n'
+            'ENTRYPOINT ["/app/registration-system-go-api"]\n'
+        )
+        shutil.copy2('/etc/ssl/certs/ca-certificates.crt', release / 'ca-certificates.crt')
+        if (release / 'zoneinfo').exists():
+            shutil.rmtree(release / 'zoneinfo')
+        shutil.copytree('/usr/share/zoneinfo', release / 'zoneinfo')
+        command('docker', 'build', '-f', dockerfile, '-t', image, release)
+        if args.migrate:
+            env = read_env(GO_BASE / 'backend.env')
+            db_url = env['DATABASE_URL'].replace('@host.docker.internal:', '@127.0.0.1:')
+            migrate_env = dict(os.environ, **env, DATABASE_URL=db_url)
+            command(release / 'dbmigrate', cwd=source, env=migrate_env)
+        activate_backend(GO_BASE, image)
+        print('peiqian backend activated: ' + release.name)
+
+
+def remote_web(args):
+    preflight_web()
+    if args.check:
+        return
+    import fcntl
+    with (WEB_BASE / '.deploy.lock').open('w') as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        release = Path(args.release)
+        if release.parent != WEB_BASE / 'releases':
             raise ValueError('Unexpected release directory')
         for name, skip in [('mini-v3', args.skip_h5), ('regist-admin-v3', args.skip_admin)]:
             if not skip and not (release / name / 'index.html').is_file():
                 raise ValueError('Missing staged frontend: ' + name)
-        if not args.skip_go:
-            source = release / 'registration_system_go'
-            image = 'registration-system-backend-go-v3:' + release.name
-            command('docker', 'build', '-t', image, source)
-            if args.migrate:
-                # backend.env 自带 PATH 会覆盖镜像默认 PATH（不含 /usr/local/go/bin），
-                # 迁移必须用绝对路径调 go，否则容器启动即报 executable file not found。
-                command('docker', 'run', '--rm', '--network', 'host',
-                        '--env-file', BASE / 'backend.env',
-                        '-e', 'GOPROXY=https://goproxy.cn,direct',
-                        '-e', 'GOSUMDB=sum.golang.google.cn',
-                        '-v', str(source) + ':/src:ro', '-v', 'registration-go-mod-cache:/go/pkg/mod',
-                        '-w', '/src', 'golang:1.26.5-bookworm', '/usr/local/go/bin/go', 'run', './cmd/dbmigrate')
-            activate_backend(BASE, image)
         for name, skip in [('mini-v3', args.skip_h5), ('regist-admin-v3', args.skip_admin)]:
             if not skip:
                 backup = HTML / '_backups' / (name + '-' + release.name)
                 publish_static(release / name, HTML / name, backup)
-        print('jd release activated: ' + release.name)
+        print('jd frontend release activated: ' + release.name)
+
+
+def ssh_for(host):
+    if not re.fullmatch(r'[a-zA-Z0-9][a-zA-Z0-9_.-]*', host):
+        raise ValueError('Deploy hosts must be SSH aliases')
+    return ['ssh', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10', host]
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--check', action='store_true', help='Read-only jd preflight; no build or deployment')
+    parser.add_argument('--check', action='store_true', help='Read-only preflight on both hosts; no build or deployment')
     parser.add_argument('--skip-go', action='store_true', default=os.getenv('SKIP_GO') == '1')
     parser.add_argument('--skip-h5', action='store_true', default=os.getenv('SKIP_H5') == '1')
     parser.add_argument('--skip-admin', action='store_true', default=os.getenv('SKIP_ADMIN') == '1')
     parser.add_argument('--migrate', action='store_true', help='Run forward database migrations before backend replacement')
-    parser.add_argument('--remote', action='store_true', help=argparse.SUPPRESS)
+    parser.add_argument('--remote', choices=['go', 'web'], help=argparse.SUPPRESS)
     parser.add_argument('--release', help=argparse.SUPPRESS)
     args = parser.parse_args()
     if args.migrate and args.skip_go:
         parser.error('--migrate cannot be combined with --skip-go')
-    if args.remote:
-        remote(args)
+    if args.remote == 'go':
+        remote_go(args)
+        return
+    if args.remote == 'web':
+        remote_web(args)
         return
     repo = Path(__file__).resolve().parents[1]
-    host = os.getenv('DEPLOY_HOST', 'jd')
-    if not re.fullmatch(r'[a-zA-Z0-9][a-zA-Z0-9_.-]*', host):
-        raise ValueError('DEPLOY_HOST must be an SSH alias')
-    ssh = ['ssh', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10', host]
+    web_ssh = ssh_for(os.getenv('DEPLOY_HOST', 'jd'))
+    go_ssh = ssh_for(os.getenv('DEPLOY_GO_HOST', 'peiqian'))
     helper = Path(__file__).read_bytes()
-    command(*ssh, 'python3 - --remote --check', input=helper)
+    command(*web_ssh, 'python3 - --remote web --check', input=helper)
+    command(*go_ssh, 'python3 - --remote go --check', input=helper)
     if args.check:
         return
     if args.skip_go and args.skip_h5 and args.skip_admin:
@@ -204,21 +257,44 @@ def main():
     if command('git', 'status', '--porcelain', cwd=repo, stdout=subprocess.PIPE).stdout:
         raise RuntimeError('Build modified checkout; inspect before deployment')
     stamp = datetime.datetime.now().strftime('%Y%m%d-%H%M%S') + '-' + revision[:12]
-    release = BASE / 'releases' / stamp
-    command(*ssh, shlex.join(['mkdir', '-p', str(release)]))
+    # Backend first: frontends of the same revision may depend on new API fields.
     if not args.skip_go:
-        archive = command('git', 'archive', revision, 'registration_system_go', cwd=repo, stdout=subprocess.PIPE).stdout
-        command(*ssh, shlex.join(['tar', '-xf', '-', '-C', str(release)]), input=archive)
-    for folder, name in builds:
-        archive = io.BytesIO()
-        with tarfile.open(fileobj=archive, mode='w:gz') as tar:
-            tar.add(folder, arcname=name)
-        command(*ssh, shlex.join(['tar', '-xzf', '-', '-C', str(release)]), input=archive.getvalue())
-    flags = ['python3', '-', '--remote', '--release', str(release)]
-    for name in ['skip_go', 'skip_h5', 'skip_admin', 'migrate']:
-        if getattr(args, name):
-            flags.append('--' + name.replace('_', '-'))
-    command(*ssh, shlex.join(flags), input=helper)
+        release = GO_BASE / 'releases' / stamp
+        go_dir = repo / 'registration_system_go'
+        go_env = dict(os.environ, CGO_ENABLED='0', GOOS='linux', GOARCH='amd64')
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            api_bin = tmp_path / 'registration-system-go-api'
+            command('go', 'build', '-trimpath', '-ldflags=-s -w', '-o', api_bin, './cmd/api', cwd=go_dir, env=go_env)
+            if args.migrate:
+                mig_bin = tmp_path / 'dbmigrate'
+                command('go', 'build', '-trimpath', '-ldflags=-s -w', '-o', mig_bin, './cmd/dbmigrate', cwd=go_dir, env=go_env)
+            archive = io.BytesIO()
+            with tarfile.open(fileobj=archive, mode='w:gz') as tar:
+                tar.add(api_bin, arcname='registration-system-go-api')
+                if args.migrate:
+                    tar.add(mig_bin, arcname='dbmigrate')
+                    tar.add(go_dir / 'db/migrations', arcname='registration_system_go/db/migrations')
+        command(*go_ssh, shlex.join(['mkdir', '-p', str(release / 'registration_system_go')]))
+        command(*go_ssh, shlex.join(['tar', '-xzf', '-', '-C', str(release)]), input=archive.getvalue())
+        flags = ['python3', '-', '--remote', 'go', '--release', str(release)]
+        if args.migrate:
+            flags.append('--migrate')
+        command(*go_ssh, shlex.join(flags), input=helper)
+    if builds:
+        release = WEB_BASE / 'releases' / stamp
+        command(*web_ssh, shlex.join(['mkdir', '-p', str(release)]))
+        for folder, name in builds:
+            archive = io.BytesIO()
+            with tarfile.open(fileobj=archive, mode='w:gz') as tar:
+                tar.add(folder, arcname=name)
+            command(*web_ssh, shlex.join(['tar', '-xzf', '-', '-C', str(release)]), input=archive.getvalue())
+        flags = ['python3', '-', '--remote', 'web', '--release', str(release)]
+        for name in ['skip_h5', 'skip_admin']:
+            if getattr(args, name):
+                flags.append('--' + name.replace('_', '-'))
+        command(*web_ssh, shlex.join(flags), input=helper)
     for path, skip in [('/regist-v3/health', args.skip_go), ('/mini-v3/', args.skip_h5), ('/regist-admin-v3/', args.skip_admin)]:
         if not skip:
             command('curl', '--noproxy', '*', '--fail', '--silent', '--show-error',

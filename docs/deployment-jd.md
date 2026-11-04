@@ -1,28 +1,30 @@
-# 报名系统部署到 jd
+# 报名系统部署说明（jd 入口 + peiqian 后端与数据库）
 
-2026-09-19 更新。服务已从家庭 Windows/WSL 环境迁移到 `ssh jd`。
+2026-11-04 更新：Go 后端与缠观后端已迁移至 `ssh peiqian`（与 PostgreSQL 同机，消除跨公网逐条 SQL 往返延迟），`ssh jd` 保留公网入口、Nginx、静态前端与 MinIO，两机之间通过既有 WireGuard 隧道（jd `10.8.10.1` ↔ peiqian `10.8.10.2`）互通，无需在 peiqian 额外暴露公网端口。
 
 ## 入口与依赖
 
 | 用途 | 当前地址/目录 |
 | --- | --- |
-| Go API | `https://oryjk.cn:82/regist-v3/` |
-| 管理端 | `https://oryjk.cn:82/regist-admin-v3/` |
-| 报名 H5 | `https://oryjk.cn:82/mini-v3/` |
+| Go API | `https://oryjk.cn:82/regist-v3/`（jd Nginx 经 WireGuard 转发至 `10.8.10.2:18081`） |
+| 管理端 | `https://oryjk.cn:82/regist-admin-v3/`（jd 静态文件） |
+| 报名 H5 | `https://oryjk.cn:82/mini-v3/`（jd 静态文件） |
+| 缠观 H5 + API | `https://match.oryjk.cn/chanlun/`（jd 静态文件，`/chanlun/api/` 经 WireGuard 转发至 `10.8.10.2:8001`） |
 | 官网 | `https://oryjk.cn/`、`https://www.oryjk.cn/` |
 | 导航页 | `https://match.oryjk.cn/` |
-| Compose | `/root/docker_data/registration-go-v3/compose.yaml` |
-| 后端环境文件 | 同目录 `backend.env`（0600，不进 git、不打印） |
-| MinIO 环境文件 | 同目录 `minio.env`（0600） |
-| 本地头像等文件 | 同目录 `uploads/` → 后端 `/app/uploads` |
-| MinIO 数据 | 同目录 `minio-data/`，桶 `registration`、`seat-images` |
-| H5 / 管理端文件 | `/root/docker_data/nginx/html/mini-v3/`、`regist-admin-v3/` |
-| nginx 配置 | `/root/docker_data/nginx/conf/nginx.conf` |
+| Go 后端 Compose（peiqian） | `peiqian:/data/registration-go-v3/compose.yaml` |
+| Go 后端环境文件（peiqian） | `peiqian:/data/registration-go-v3/backend.env`（0600，不进 git、不打印） |
+| 本地头像等文件（peiqian） | `peiqian:/data/registration-go-v3/uploads/` → 后端 `/app/uploads` |
+| 缠观后端（peiqian） | `peiqian:/data/chanlun/`（systemd `chanlun.service`，端口 `8001`） |
+| jd 网关/MinIO Compose | `jd:/root/docker_data/registration-go-v3/compose.yaml` |
+| MinIO 环境与数据（jd） | `jd:/root/docker_data/registration-go-v3/minio.env`、`minio-data/`（桶 `registration`、`seat-images`） |
+| H5 / 管理端 / 缠观静态文件（jd） | `jd:/root/docker_data/nginx/html/mini-v3/`、`regist-admin-v3/`、`chanlun/` |
+| nginx 配置（jd） | `jd:/root/docker_data/nginx/conf/nginx.conf` |
 
-- `registration-system-backend-go-v3` 的端口为 `127.0.0.1:18081`；nginx 经 `registration-v3` 网络访问后端容器。
-- `registration-minio` 经该私有网络提供 `http://registration-minio:9000`；仅主机回环地址发布 `19000`。不要重新指回家庭 MinIO。
-- `registration-https82` 将 TLS 原样转发至 `nginx-server:443`，云防火墙须放行 TCP82。nginx 的 443 也已配置相同路径；现有客户端仍固定使用 :82，所以日常提供上表中的入口。
-- PostgreSQL 仍使用原远端 `registration_system_go` 数据库；本次迁移没有复制数据库或变更表结构。以服务器 `backend.env` 为准，禁止把连接串写到文档。
+- `peiqian` 上的 `registration-system-backend-go-v3` 仅绑定 `10.8.10.2:18081`（WireGuard）与 `127.0.0.1:18081`，经 `host.docker.internal:5432` 访问同机 `football-data-postgres` 容器中的 `registration_system_go` 数据库。
+- `jd` 上的 `registration-minio` 仍位于 `registration-v3` 私有网络，并通过 `registration-minio-wg` 容器在 WireGuard 地址 `10.8.10.1:19000` 向 `peiqian` 后端提供私有访问。
+- `peiqian` 上的 `chanlun.service`（`/data/chanlun`）通过 `http://127.0.0.1:18081/api/v1/app` 直连同机报名系统 Go 后端完成小程序一次性 `webview_code` 登录兑换与 URL Link 生成。
+- `jd` 上原 `registration-system-backend-go-v3` 容器已停止并设 `restart=no`（保留供紧急回滚）。
 - `nginx-server` 同时承载官网与 match 的其他业务；日常发布不重建它、不覆盖它的配置，也不重建 MinIO。
 - 用户要求 `ssh out109` 保持原来的 `oryjk.cn:2222`。主域名已指向 jd，不能据此连接家庭机器；家庭构建机使用用户维护的 `ssh local109`。
 - DDNS-Go 已停止但未删除，自动重启为 `no`。启动旧 DDNS 配置会把主域名改回家庭 IP。`harbor`/`portainer` 暂固定到迁移时的家庭 IP，家庭 IP 变化后需另行处理。

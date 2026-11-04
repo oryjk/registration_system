@@ -15,7 +15,7 @@
 - **Rust 项目（`registration_system_rs/`）已停止开发并从工作区删除**（2026-08-30，需要时从 git 历史找回）：不要恢复、重建或修改它。旧库迁移不依赖该目录（`migrate-legacy.sh` 直连线上旧库 `rs_*` 表），线上旧结构数据仍保留作为迁移源。
 - **所有后端开发都在 `registration_system_go/` 上进行**：历史数据已通过 `registration_system_go/scripts/migrate-legacy.sh` 迁入 Go 结构（独立库 `registration_system_go`）；后续增量迁移、新功能全部落在 Go 项目。
 - 小程序（`registration_system_mini/`）当前对接 Go 后端；旧版 Vue 管理端 `registration_system_backend_fe/` 已从工作区删除（需要时从 git 历史找回），Go 配套管理端是 `registration_system_backend_fe_go/`。
-- **当前服务部署在 jd**（2026-09-19 已迁移）：Go 后端、mini H5、Go 管理端使用根目录 `deploy_jd_go_h5.sh`；先运行 `./deploy_jd_go_h5.sh --check`。旧 `deploy_out109_go_h5.sh` 仅为转调 jd 的兼容入口；MinIO 已在 jd 运行，日常发布不重建它。
+- **当前服务部署架构（jd 入口 + peiqian 后端）**（2026-11-04 更新）：公网入口、Nginx、mini H5、Go 管理端、缠观 H5 与 MinIO 位于 `jd`；Go 后端（`peiqian:/data/registration-go-v3`）与缠观后端（`peiqian:/data/chanlun`）已迁移到 `peiqian` 与 PostgreSQL 同机运行，由 `jd` 的 Nginx 经 WireGuard（`10.8.10.1` ↔ `10.8.10.2`）反向代理。发布继续使用根目录 `deploy_jd_go_h5.sh`（先运行 `./deploy_jd_go_h5.sh --check`），脚本在本机静态编译 Go 二进制（约 23MB）后发往 `peiqian` 构建轻量运行镜像，无需在服务器上拉取 800MB+ 的 Go 编译镜像。
 - 当前部署拓扑、环境文件、数据目录、数据库迁移与回滚见 [`docs/deployment-jd.md`](docs/deployment-jd.md)。不要沿用旧 WSL 路径或重建 MinIO/上传卷。
 - `oryjk.cn:82` 是 jd 的兼容入口，域名未变不代表服务仍在 out109。`ssh out109` 仍按用户要求保留原域名配置，不能用于连接家庭构建机；家庭机器用用户维护的 `ssh local109`。
 - 微信小程序（mp-weixin）发布用 `registration_system_mini` 的 `bun run mp:release` 上传开发版本。**上传前必须先把本次代码提交并 push 到 `origin/main`，且工作区保持干净、本地 `HEAD` 与最新 `origin/main` 完全一致**；发布脚本会硬校验，未满足时直接拒绝上传。若版本登记生成新的 `manifest.json` / `generatedMiniProgramVersion.ts` 变更，发布会先停止，必须再提交并 push 这两个版本文件后重新执行 `mp:release`，确保微信上传包可精确追溯到 `origin/main`。**robot 双轨约定**：`robot=1`（默认）日常开发版，`robot=2` 体验版专用线（`-- --robot 2`；体验版随该槽位上传自动更新，首次需在公众平台点一次「选为体验版」）。详细流程与前置条件见 `registration_system_mini/AGENTS.md` 的「微信小程序发布」一节。
