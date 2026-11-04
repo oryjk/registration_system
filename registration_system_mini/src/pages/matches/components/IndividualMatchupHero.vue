@@ -1,6 +1,8 @@
 <script setup lang="ts">
 // #ifdef MP-WEIXIN
 import AppIcon from "@/components/ui/AppIcon.vue";
+import { DEFAULT_MATCH_COVER_URL } from "@/config/matchCover";
+import { HOME_VISUAL_ASSETS } from "@/config/homeVisualAssets";
 // #endif
 import { useMinioImages } from "@/composables/useMinioImages";
 import { computed, ref, watch } from "vue";
@@ -58,6 +60,19 @@ const formatLabel = computed(() => {
 });
 const feeText = computed(() => props.feeLabel || "费用待确认");
 
+// #ifdef MP-WEIXIN
+// 与首页「最近要处理」封面一致：优先比赛自定义封面，未配置、为旧默认图或加载失败时用夜场球门照片。
+const failedCoverUrl = ref("");
+const coverUrl = computed(() => {
+  const custom = props.match.cover?.trim() || "";
+  if (!custom || custom === DEFAULT_MATCH_COVER_URL || custom === failedCoverUrl.value) return HOME_VISUAL_ASSETS.actionCover;
+  return custom;
+});
+function handleCoverError() {
+  if (coverUrl.value !== HOME_VISUAL_ASSETS.actionCover) failedCoverUrl.value = coverUrl.value;
+}
+// #endif
+
 // 终态标识只看真实比赛状态：ended/cancelled 才显示；
 // 仅时间已过但状态未收敛（等待队长收尾）不显示，与首页“已结束”分区的时间推断区分开。
 const matchStatusTag = computed(() => {
@@ -72,7 +87,7 @@ const matchStatusTag = computed(() => {
     <view class="hero-scoreboard">
     <view class="hero-head">
       <!-- #ifdef MP-WEIXIN -->
-      <image class="hero-cover-image" src="/static/covers/match-stadium-cover.jpg" mode="aspectFill" aria-hidden="true" />
+      <image v-if="minioImageSrc(coverUrl)" class="hero-cover-image" :src="minioImageSrc(coverUrl)" mode="aspectFill" aria-hidden="true" @error="handleCoverError" />
       <view class="hero-cover-shade" />
       <!-- #endif -->
       <view class="hero-heading">
@@ -381,8 +396,7 @@ const matchStatusTag = computed(() => {
 /* #ifdef MP-WEIXIN */
 .hero-scoreboard { padding: 0; overflow: hidden; }
 .hero-head { position: relative; padding: var(--ui-space-7); background: var(--ui-color-hero); color: var(--now-cover-fg); overflow: hidden; }
-.hero-cover-image, .hero-cover-shade { position: absolute; inset: 0; width: 100%; height: 100%; }
-.hero-cover-image { opacity: 0.72; }
+.hero-cover-image, .hero-cover-shade { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 .hero-cover-shade { background: var(--now-cover-shade); }
 .hero-heading { position: relative; z-index: 1; gap: var(--ui-space-3); }
 .hero-title-row { gap: var(--ui-space-4); }
