@@ -74,7 +74,9 @@ const catalog: Record<BentoAction, BentoItem> = {
 };
 
 const entries = computed<BentoItem[]>(() => {
-  const ordered: BentoAction[] = ["browse", "venue-map", "create-team", "join-team"];
+  const ordered: BentoAction[] = ["browse", "venue-map"];
+  if (props.actions.includes("create-team")) ordered.push("create-team");
+  if (props.actions.includes("join-team")) ordered.push("join-team");
   return ordered.map((key) => catalog[key]);
 });
 
