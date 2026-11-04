@@ -67,7 +67,7 @@ export async function composeHonorImage(
  const [backdrop,avatar,crown,code]=await Promise.all([
   loadImage(background.imageUrl),
   view.avatar_url ? loadImage(view.avatar_url).catch(()=>null) : null,
-  view.is_paid_member ? loadImage("/static/icons/lucide/member-crown.png") : null,
+  view.is_paid_member ? loadImage("/static/icons/member-crown-gold.png") : null,
   kind==="poster" && miniCodeUrl ? loadImage(miniCodeUrl) : null,
  ]);
  if(!isCurrent())throw new Error("海报内容已更新");
@@ -78,7 +78,7 @@ export async function composeHonorImage(
  const fg=background.textColor,muted=background.mutedTextColor;
  if(kind==="poster") {
   text(ctx,`${view.year} · 我的足球年度`,512,225,34,muted);
-  portrait(ctx,avatar,view,422,315,180);if(crown)ctx.drawImage(crown.path,477,258,70,70);
+  portrait(ctx,avatar,view,422,315,180);if(crown)ctx.drawImage(crown.path,474,272,76,42);
   ctx.font="600 54px sans-serif";nameLines(ctx,view.nickname,700).forEach((line,index)=>text(ctx,line,512,546+index*62,54,fg,"center",600));
   ctx.font="400 32px sans-serif";nameLines(ctx,view.team_name,700,1).forEach(line=>text(ctx,line,512,665,32,muted));
   text(ctx,"年度参与星",512,721,36,muted);
@@ -94,7 +94,7 @@ export async function composeHonorImage(
   text(ctx,`记录于 ${beijingDateKey(Date.now())}`,425,1270,24,"#526174","left");
  } else {
   text(ctx,`${view.year} · 我的足球年度`,500,120,32,muted);
-  portrait(ctx,avatar,view,116,232,172);if(crown)ctx.drawImage(crown.path,168,180,65,65);
+  portrait(ctx,avatar,view,116,232,172);if(crown)ctx.drawImage(crown.path,166,193,70,39);
   ctx.font="600 54px sans-serif";nameLines(ctx,view.nickname,550).forEach((line,index)=>text(ctx,line,350,256+index*64,54,fg,"left",600));
   ctx.font="400 30px sans-serif";nameLines(ctx,view.team_name,550,1).forEach(line=>text(ctx,line,350,405,30,muted,"left"));
   text(ctx,formatHonorPoints(view.participation_points)+" 星",500,556,126,fg,"center",600);

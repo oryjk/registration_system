@@ -15,7 +15,7 @@ test("cover and poster reuse downloaded image paths within the page",async()=>{
  const view={year:2026,nickname:"球友",team_name:"球队",participation_points:259,participation_rank:4,is_paid_member:true,avatar_url:"avatar.png"} as HonorShare;
  await composeHonorImage("card",null,view,bg,"card",null,()=>true,loader.load);
  await composeHonorImage("poster",null,view,bg,"poster","actual-code.png",()=>true,loader.load);
- expect(requests).toEqual([bg.imageUrl,"avatar.png","/static/icons/lucide/member-crown.png","actual-code.png"]);
+ expect(requests).toEqual([bg.imageUrl,"avatar.png","/static/icons/member-crown-gold.png","actual-code.png"]);
 });
 test("image loading coalesces pending requests, retries failures and clears on page reset",async()=>{
  let requests=0,finish:any;

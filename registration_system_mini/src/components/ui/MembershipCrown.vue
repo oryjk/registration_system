@@ -3,8 +3,8 @@ withDefaults(defineProps<{ width?: string; height?: string }>(), { width: "40rpx
 </script>
 
 <template>
-  <!-- Lucide crown 的金色 PNG；scaleToFill 与设计稿一致，压低高度并加宽。 -->
-  <image class="membership-crown" src="/static/icons/lucide/member-crown.png" mode="scaleToFill" :style="{ width, height }" aria-hidden="true" />
+  <!-- 金属质感会员皇冠（原生 1.8:1，生成入口 scripts/generate-member-crown.mjs）；aspectFit 防止拉伸变形。 -->
+  <image class="membership-crown" src="/static/icons/member-crown-gold.png" mode="aspectFit" :style="{ width, height }" aria-hidden="true" />
 </template>
 
 <style scoped>
