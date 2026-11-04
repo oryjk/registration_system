@@ -3,7 +3,8 @@ withDefaults(defineProps<{ width?: string; height?: string }>(), { width: "40rpx
 </script>
 
 <template>
-  <!-- 金属质感会员皇冠（原生 1.8:1，生成入口 scripts/generate-member-crown.mjs）；aspectFit 防止拉伸变形。 -->
+  <!-- 金属质感会员皇冠（原生 1.8:1，生成入口 scripts/generate-member-crown.mjs）；aspectFit 防止拉伸变形。
+       静态展示：身份标识不使用常驻循环动画（2026-11-04 用户确认取消摇摆）。 -->
   <image class="membership-crown" src="/static/icons/member-crown-gold.png" mode="aspectFit" :style="{ width, height }" aria-hidden="true" />
 </template>
 
@@ -11,14 +12,5 @@ withDefaults(defineProps<{ width?: string; height?: string }>(), { width: "40rpx
 .membership-crown {
   display: block;
   pointer-events: none;
-  transform-origin: 50% 86%;
-  animation: membership-crown-sway var(--ui-avatar-crown-sway-duration, 2400ms) ease-in-out infinite;
-}
-@keyframes membership-crown-sway {
-  0%, 100% { transform: rotate(-12deg); }
-  50% { transform: rotate(12deg); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .membership-crown { animation: none; }
 }
 </style>

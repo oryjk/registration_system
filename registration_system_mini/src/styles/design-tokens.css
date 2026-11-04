@@ -258,7 +258,6 @@ page,
   --ui-avatar-restore-duration: 220ms;
   /* 两端缓、中段顺滑的减速曲线，减弱换行重排带来的跳变感。 */
   --ui-avatar-restore-easing: cubic-bezier(0.33, 0, 0.2, 1);
-  --ui-avatar-crown-sway-duration: 2400ms;
   --ui-avatar-attendance-gold: var(--ui-primitive-medal-gold);
   --ui-avatar-attendance-silver: var(--ui-primitive-medal-silver);
   --ui-avatar-attendance-bronze: var(--ui-primitive-medal-bronze);

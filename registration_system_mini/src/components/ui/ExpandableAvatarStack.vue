@@ -314,7 +314,8 @@ watch(trackHeight, () => {
 .expandable-avatars__home-chip { position: relative; width: 64rpx; height: 64rpx; flex-shrink: 0; box-sizing: border-box; }
 .expandable-avatars__home-chip + .expandable-avatars__home-chip { margin-left: -16rpx; }
 .expandable-avatars__home-chip-face { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; border-radius: 20rpx; overflow: hidden; box-sizing: border-box; border: 0; box-shadow: 0 0 0 4rpx var(--ui-color-surface); }
-.expandable-avatars__home-chip-crown { position: absolute; top: -14rpx; right: -6rpx; z-index: 2; pointer-events: none; }
+/* 皇冠居中「戴」在头像正上方，约 40% 高度压住头像上沿；strip 顶部留白恰好容纳露出部分，避免被 scroll-view 裁切。 */
+.expandable-avatars__home-chip-crown { position: absolute; top: -12rpx; left: 50%; z-index: 2; transform: translateX(-50%); pointer-events: none; }
 .expandable-avatars__home-btn {
   display: inline-flex;
   align-items: center;
@@ -388,9 +389,10 @@ watch(trackHeight, () => {
 }
 .expandable-avatars__home-cell-crown {
   position: absolute;
-  top: -16rpx;
-  right: -8rpx;
+  top: -14rpx;
+  left: 50%;
   z-index: 2;
+  transform: translateX(-50%);
   pointer-events: none;
 }
 .expandable-avatars__home-name {
