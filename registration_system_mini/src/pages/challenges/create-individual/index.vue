@@ -15,12 +15,19 @@ import MatchScheduleFields from "@/components/MatchScheduleFields.vue";
 import AppButton from "@/components/ui/AppButton.vue";
 import SegmentedControl from "@/components/ui/SegmentedControl.vue";
 import type { SegmentOption } from "@/components/ui/SegmentedControl.vue";
-import { createMatch, getMatchDetail, updateMyMatch, getVenueSuggestions } from "@/api/match";
-import type { BackendVenueSuggestion } from "@/api/match";
+import { createMatch, getMatchDetail, updateMyMatch } from "@/api/match";
+import { useVenuePicker } from "@/composables/useVenuePicker";
 import { preloadMiniReviewStatus, useMiniReviewStatus } from "@/stores/miniReview";
 import { useTeamContext } from "@/stores/teamContext";
 import { getCustomNavMetrics } from "@/utils/customNav";
+// #ifdef MP-WEIXIN
+import VenueEntryField from "@/components/VenueEntryField.vue";
+import VenuePickerSheet from "@/components/VenuePickerSheet.vue";
+import { openVenueLocation } from "@/utils/venueLocation";
+// #endif
+// #ifndef MP-WEIXIN
 import IndividualVenueField from "./IndividualVenueField.vue";
+// #endif
 import { mergeVenueHistory, readVenueHistory, rememberVenue } from "./venueHistory";
 import type { VenueHistoryItem } from "./venueHistory";
 
@@ -54,9 +61,6 @@ async function loadEditForm() {
 }
 const reviewGateReady = ref(false);
 const localVenues = ref<VenueHistoryItem[]>([]);
-const suggestedVenues = ref<BackendVenueSuggestion[]>([]);
-const venueSuggestionsRequested = ref(false);
-const venueOptions = computed(() => mergeVenueHistory(localVenues.value, suggestedVenues.value));
 
 const form = reactive({
   title: "",
@@ -70,6 +74,8 @@ const form = reactive({
   feePerPerson: "",
   note: "",
 });
+const venuePicker = useVenuePicker(form);
+const venueOptions = computed(() => mergeVenueHistory(localVenues.value, venuePicker.suggestions.value));
 
 // 比赛时间与散人对手（创建比赛）共用 MatchScheduleFields：近 7 日横滑卡 + 更多日期日历 + 时间磁贴。
 const holdingDate = ref(defaultTodayAt(20));
@@ -121,37 +127,14 @@ function handleLocationInput() {
   form.locationLongitude = null;
 }
 
-async function handleVenueFocus() {
+function handleVenueFocus() {
   localVenues.value = readVenueHistory(currentUser.value?.id ?? null);
-  if (venueSuggestionsRequested.value) return;
-  venueSuggestionsRequested.value = true;
-  try {
-    suggestedVenues.value = await getVenueSuggestions(10);
-  } catch {
-    // 已有本地历史和手动输入可继续使用，场地建议失败不阻断发布。
-  }
+  void venuePicker.loadSuggestions();
 }
 
-function handleVenueSelected(venue: VenueHistoryItem) {
-  form.location = venue.location;
-  form.locationLatitude = venue.latitude;
-  form.locationLongitude = venue.longitude;
-}
-
-function handleChooseLocation() {
-  uni.chooseLocation({
-    success(location) {
-      form.location = location.name || location.address || "";
-      form.locationLatitude = location.latitude;
-      form.locationLongitude = location.longitude;
-    },
-    fail() {
-      uni.showToast({
-        title: "未选择地点",
-        icon: "none",
-      });
-    },
-  });
+function handleOpenVenuePicker() {
+  localVenues.value = readVenueHistory(currentUser.value?.id ?? null);
+  venuePicker.open();
 }
 
 function validateForm() {
@@ -372,15 +355,21 @@ usePageRefresh(() => refreshSessionContext());
         </view>
         <view class="form-field">
           <text class="form-label">球场或地点 <text class="form-required">必填</text></text>
+          <!-- #ifdef MP-WEIXIN -->
+          <VenueEntryField :location="form.location" @open="handleOpenVenuePicker" />
+          <text v-if="form.locationLatitude != null && form.locationLongitude != null" class="form-caption">已关联地图位置，详情页可直接打开地图</text>
+          <!-- #endif -->
+          <!-- #ifndef MP-WEIXIN -->
           <IndividualVenueField
             v-model="form.location"
             :venues="venueOptions"
             :selected-from-map="form.locationLatitude != null && form.locationLongitude != null"
             @focus="handleVenueFocus"
             @manual-input="handleLocationInput"
-            @select="handleVenueSelected"
-            @choose-location="handleChooseLocation"
+            @select="venuePicker.select"
+            @choose-location="venuePicker.chooseLocation"
           />
+          <!-- #endif -->
         </view>
         <view class="form-field">
           <text class="form-label">预计费用</text>
@@ -435,6 +424,20 @@ usePageRefresh(() => refreshSessionContext());
         </view>
       </view>
     </view>
+
+    <!-- #ifdef MP-WEIXIN -->
+    <VenuePickerSheet
+      :visible="venuePicker.visible.value"
+      :suggestions="venueOptions"
+      :loading="venuePicker.loading.value"
+      :current-location="form.location"
+      @close="venuePicker.close"
+      @select="venuePicker.select"
+      @preview="openVenueLocation"
+      @manual-input="venuePicker.manualInput"
+      @choose-location="venuePicker.chooseLocation"
+    />
+    <!-- #endif -->
   </view>
 </template>
 

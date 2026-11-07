@@ -9,6 +9,7 @@ import SegmentedControl from "@/components/ui/SegmentedControl.vue";
 import AppSurface from "@/components/ui/AppSurface.vue";
 import type { SegmentOption } from "@/components/ui/SegmentedControl.vue";
 import MatchScheduleFields from "@/components/MatchScheduleFields.vue";
+import VenueEntryField from "@/components/VenueEntryField.vue";
 import TeamColorPicker from "./TeamColorPicker.vue";
 import { defaultMatchFeeType } from "./matchPublishFormModel";
 import type { MatchPublishFormModel } from "./matchPublishFormModel";
@@ -187,19 +188,7 @@ function handleOpenVenuePicker() {
       />
       <view class="form-field">
         <!-- 点击打开场地选择弹层（常用场地/手动输入/地图选点），不再直接键入。 -->
-        <view class="venue-entry" hover-class="venue-entry--pressed" @tap="handleOpenVenuePicker">
-          <text :class="['venue-entry__value', form.location ? '' : 'venue-entry__placeholder']">
-            {{ form.location || "点击选择球场/地址" }}
-          </text>
-          <view class="venue-entry__icon" aria-hidden="true">
-            <!-- #ifdef MP-WEIXIN -->
-            <AppIcon name="map-pin" size="var(--ui-icon-md)" tone="muted" />
-            <!-- #endif -->
-            <!-- #ifndef MP-WEIXIN -->
-            <wd-icon name="location" size="32rpx" color="var(--ui-color-text-muted)" />
-            <!-- #endif -->
-          </view>
-        </view>
+        <VenueEntryField :location="form.location" @open="handleOpenVenuePicker" />
         <text v-if="form.locationLatitude != null && form.locationLongitude != null" class="form-hint">
           已选择地图位置，可用于签到定位。
         </text>
@@ -336,49 +325,6 @@ function handleOpenVenuePicker() {
   color: var(--ui-color-text-muted);
 }
 
-/* 场地选择入口：与 form-input 同规格的点击框，点击打开场地选择弹层。 */
-.venue-entry {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12rpx;
-  width: 100%;
-  min-height: 84rpx;
-  padding: 0 20rpx;
-  border: var(--ui-border-default);
-  border-radius: var(--ui-radius-button);
-  background: var(--ui-color-surface);
-  box-sizing: border-box;
-}
-
-.venue-entry--pressed {
-  background: var(--ui-color-surface);
-}
-
-.venue-entry__value {
-  flex: 1;
-  min-width: 0;
-  color: var(--ui-color-text);
-  font-size: 28rpx;
-  font-weight: 500;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.venue-entry__placeholder {
-  color: var(--ui-color-text-disabled);
-}
-
-.venue-entry__icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  width: 40rpx;
-  height: 40rpx;
-}
-
 .form-placeholder {
   color: var(--ui-color-text-disabled);
   font-size: 28rpx;
@@ -420,14 +366,12 @@ function handleOpenVenuePicker() {
 .form-field { margin-top: var(--ui-space-6); }
 .form-label { margin-bottom: var(--ui-space-3); font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-heading); }
 .form-grid { gap: 0 var(--ui-space-4); }
-.form-input, .form-textarea, .form-static, .venue-entry { border: var(--ui-input-border); border-radius: var(--ui-input-radius); font-size: var(--ui-text-label); font-weight: var(--ui-font-weight-body); }
+.form-input, .form-textarea, .form-static { border: var(--ui-input-border); border-radius: var(--ui-input-radius); font-size: var(--ui-text-label); font-weight: var(--ui-font-weight-body); }
 .form-input, .form-static { height: var(--ui-input-height); padding: 0 var(--ui-input-padding); }
-.venue-entry { min-height: var(--ui-input-height); padding: var(--ui-space-3) var(--ui-input-padding); }
 .form-textarea { min-height: var(--ui-textarea-min-height); padding: var(--ui-input-padding); }
 .form-kit-section { border-top: var(--ui-list-divider); margin-top: var(--ui-space-6); }
 .form-section-divider { border-top: var(--ui-list-divider); margin: var(--ui-space-7) 0; }
 .form-hint { border: var(--ui-panel-border); background: var(--ui-color-success-bg); color: var(--ui-color-success-fg); padding: var(--ui-space-4); font-size: var(--ui-text-sm); }
-.venue-entry__value { overflow: visible; white-space: normal; overflow-wrap: anywhere; font-size: var(--ui-text-label); line-height: var(--ui-line-height-compact); }
 .form-placeholder { font-size: var(--ui-text-label); }
 .form-static { background: var(--ui-color-neutral-bg); }
 .form-caption { font-size: var(--ui-text-sm); line-height: var(--ui-line-height-body); color: var(--ui-color-text-secondary); }

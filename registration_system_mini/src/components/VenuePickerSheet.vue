@@ -6,21 +6,21 @@ import { computed, ref, watch } from "vue";
 import AppButton from "@/components/ui/AppButton.vue";
 import { useOverlayPresence } from "@/components/ui/useOverlayPresence";
 import { prefersReducedMotion } from "@/utils/reducedMotion";
-import type { BackendVenueSuggestion } from "@/api/match";
+import type { VenueOption } from "@/api/match";
 
 // 发布比赛的场地选择弹层：常用场地（历史聚合）+ 手动输入 + 地图选点，
 // 优先选常用场地以减少地图选点 API 消耗。
 const props = defineProps<{
   visible: boolean;
-  suggestions: BackendVenueSuggestion[];
+  suggestions: VenueOption[];
   loading: boolean;
   currentLocation: string;
 }>();
 
 const emit = defineEmits<{
   (event: "close"): void;
-  (event: "select", venue: BackendVenueSuggestion): void;
-  (event: "preview", venue: BackendVenueSuggestion): void;
+  (event: "select", venue: VenueOption): void;
+  (event: "preview", venue: VenueOption): void;
   (event: "manualInput", location: string): void;
   (event: "chooseLocation"): void;
 }>();
@@ -53,7 +53,7 @@ function handleConfirmManual() {
   emit("manualInput", location);
 }
 
-function handleSelect(venue: BackendVenueSuggestion) {
+function handleSelect(venue: VenueOption) {
   if (leaving.value) return;
   emit("select", venue);
 }

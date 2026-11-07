@@ -189,6 +189,9 @@ export interface BackendVenueSuggestion {
   image_url?: string;
 }
 
+/** 选择场地只依赖名称和坐标；本地历史与后端建议都可作为选项。 */
+export type VenueOption = Pick<BackendVenueSuggestion, "location" | "latitude" | "longitude">;
+
 /** 发布页常用场地建议（历史比赛场地聚合）；减少地图选点 API 消耗。 */
 export function getVenueSuggestions(limit = 10) {
   return requestApi<BackendVenueSuggestion[]>({

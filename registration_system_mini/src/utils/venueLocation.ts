@@ -1,4 +1,4 @@
-import type { BackendVenueSuggestion } from "@/api/match";
+import type { VenueOption } from "@/api/match";
 
 interface VenueMapApi {
   openLocation(options: {
@@ -11,7 +11,7 @@ interface VenueMapApi {
   showToast(options: { title: string; icon: "none" }): void;
 }
 
-export function openVenueLocation(venue: BackendVenueSuggestion, api: VenueMapApi = uni) {
+export function openVenueLocation(venue: VenueOption, api: VenueMapApi = uni) {
   const { latitude, longitude } = venue;
   if (
     typeof latitude !== "number" || !Number.isFinite(latitude) || Math.abs(latitude) > 90 ||

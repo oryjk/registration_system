@@ -107,7 +107,7 @@ describe("activities page sections", () => {
 
     expect(registeredPages(JSON.parse(pages)).some((page) => page.path === "pages/challenges/create-individual/index")).toEqual(true);
     // 散人约球对接 Go 后端：POST /matches，publication_mode=online_pickup（无球队概念）；支持编辑已发布的散人局。
-    expect(source.includes('import { createMatch, getMatchDetail, updateMyMatch, getVenueSuggestions } from "@/api/match";')).toEqual(true);
+    expect(source.includes('import { createMatch, getMatchDetail, updateMyMatch } from "@/api/match";')).toEqual(true);
     expect(source.includes('publication_mode: "online_pickup"')).toEqual(true);
     expect(source.includes("createChallenge")).toEqual(false);
     expect(source.includes("challengeKind")).toEqual(false);
@@ -135,13 +135,16 @@ describe("activities page sections", () => {
   test("supports map location picking when creating an individual challenge", async () => {
     const source = await Bun.file(sourcePath("pages/challenges/create-individual/index.vue")).text();
     const venueField = await Bun.file(sourcePath("pages/challenges/create-individual/IndividualVenueField.vue")).text();
+    const venuePicker = await Bun.file(sourcePath("composables/useVenuePicker.ts")).text();
 
-    expect(source.includes("function handleChooseLocation")).toEqual(true);
-    expect(source.includes("uni.chooseLocation")).toEqual(true);
+    expect(venuePicker.includes("uni.chooseLocation")).toEqual(true);
     expect(source.includes("function handleLocationInput")).toEqual(true);
+    // 微信端复用创建比赛的场地选择弹层；H5 保留原字段。
+    expect(source.includes("<VenueEntryField")).toEqual(true);
+    expect(source.includes("<VenuePickerSheet")).toEqual(true);
     expect(source.includes("<IndividualVenueField")).toEqual(true);
     expect(source.includes('@manual-input="handleLocationInput"')).toEqual(true);
-    expect(source.includes('@choose-location="handleChooseLocation"')).toEqual(true);
+    expect(source.includes('@choose-location="venuePicker.chooseLocation"')).toEqual(true);
     expect(venueField.includes('@tap="handleChooseLocation"')).toEqual(true);
     expect(venueField.includes('@focus="handleFocus"')).toEqual(true);
     expect(venueField.includes("没有历史？打开地图选择")).toEqual(true);

@@ -14,8 +14,9 @@ import AppButton from "@/components/ui/AppButton.vue";
 import StickyActionBar from "@/components/ui/StickyActionBar.vue";
 import AppSurface from "@/components/ui/AppSurface.vue";
 import type { MatchPublishFormModel } from "./components/matchPublishFormModel";
-import { createMatch, getMatchDetail, updateMyMatch, getVenueSuggestions, type BackendVenueSuggestion } from "@/api/match";
-import VenuePickerSheet from "./components/VenuePickerSheet.vue";
+import { createMatch, getMatchDetail, updateMyMatch } from "@/api/match";
+import { useVenuePicker } from "@/composables/useVenuePicker";
+import VenuePickerSheet from "@/components/VenuePickerSheet.vue";
 import { openVenueLocation } from "@/utils/venueLocation";
 import { readVenueMatchPreset, type VenueMatchPreset } from "@/utils/venueMatchPreset";
 import { preloadMiniReviewStatus, useMiniReviewStatus } from "@/stores/miniReview";
@@ -157,60 +158,8 @@ function handleLocationInput() {
   form.locationLongitude = null;
 }
 
-// 场地选择弹层：常用场地建议懒加载（首次打开请求一次并缓存）。
-const venuePickerVisible = ref(false);
-const venueSuggestions = ref<BackendVenueSuggestion[]>([]);
-const venueSuggestionsLoading = ref(false);
-const venueSuggestionsLoaded = ref(false);
-
-async function loadVenueSuggestions() {
-  if (venueSuggestionsLoaded.value || venueSuggestionsLoading.value) return;
-  venueSuggestionsLoading.value = true;
-  try {
-    venueSuggestions.value = await getVenueSuggestions(10);
-    venueSuggestionsLoaded.value = true;
-  } catch {
-    // 建议加载失败不阻塞选场地：弹层仍可手动输入/地图选点。
-  } finally {
-    venueSuggestionsLoading.value = false;
-  }
-}
-
-function handleOpenVenuePicker() {
-  void loadVenueSuggestions();
-  venuePickerVisible.value = true;
-}
-
-function handleVenueSelected(venue: BackendVenueSuggestion) {
-  form.location = venue.location;
-  form.locationLatitude = venue.latitude ?? null;
-  form.locationLongitude = venue.longitude ?? null;
-  venuePickerVisible.value = false;
-}
-
-function handleVenueManualInput(location: string) {
-  form.location = location;
-  form.locationLatitude = null;
-  form.locationLongitude = null;
-  venuePickerVisible.value = false;
-}
-
-function handleChooseLocation() {
-  venuePickerVisible.value = false;
-  uni.chooseLocation({
-    success(location) {
-      form.location = location.name || location.address || "";
-      form.locationLatitude = location.latitude;
-      form.locationLongitude = location.longitude;
-    },
-    fail() {
-      uni.showToast({
-        title: "未选择地点",
-        icon: "none",
-      });
-    },
-  });
-}
+const venuePicker = useVenuePicker(form);
+const { visible: venuePickerVisible, suggestions: venueSuggestions, loading: venueSuggestionsLoading } = venuePicker;
 
 async function guardReviewMode() {
   await preloadMiniReviewStatus();
@@ -335,8 +284,8 @@ usePageRefresh(() => refreshSessionContext());
         :allowed-publication-modes="allowedPublicationModes"
         :time-valid-message="timeValidMessage"
         @location-input="handleLocationInput"
-        @choose-location="handleChooseLocation"
-        @open-venue-picker="handleOpenVenuePicker"
+        @choose-location="venuePicker.chooseLocation"
+        @open-venue-picker="venuePicker.open"
       />
     </view>
 
@@ -345,11 +294,11 @@ usePageRefresh(() => refreshSessionContext());
       :suggestions="venueSuggestions"
       :loading="venueSuggestionsLoading"
       :current-location="form.location"
-      @close="venuePickerVisible = false"
-      @select="handleVenueSelected"
+      @close="venuePicker.close"
+      @select="venuePicker.select"
       @preview="openVenueLocation"
-      @manual-input="handleVenueManualInput"
-      @choose-location="handleChooseLocation"
+      @manual-input="venuePicker.manualInput"
+      @choose-location="venuePicker.chooseLocation"
     />
 
     <StickyActionBar>
