@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref, watch } from "vue";
 import { DAY_MS, beijingDateKey, beijingDateParts, beijingStartOfDay, formatTimeLabel,
   formatWeekdayLabel, mergeBeijingDate, mergeBeijingTime, pad } from "@/utils/datetime";
 
@@ -54,6 +54,45 @@ function buildRecentDateOptions() {
 
 const recentDateOptions = computed(() => buildRecentDateOptions());
 const selectedDateValue = computed(() => formatPickerDateValue(props.holdingDate));
+const selectedOutsideRecent = computed(() => {
+  let outside = false;
+  // #ifdef MP-WEIXIN
+  outside = Boolean(props.holdingDate)
+    && !recentDateOptions.value.some((option) => option.pickerValue === selectedDateValue.value);
+  // #endif
+  return outside;
+});
+const moreDateLabel = computed(() => selectedOutsideRecent.value ? formatMoreDateLabel(props.holdingDate) : "更多日期");
+
+function formatMoreDateLabel(value: number) {
+  const date = beijingDateParts(value);
+  const monthDay = `${date.month}月${date.day}日`;
+  return date.year === beijingDateParts(Date.now()).year ? monthDay : `${date.year}年${monthDay}`;
+}
+
+function dateOptionId(pickerValue: string) {
+  return `date-option-${pickerValue}`;
+}
+
+// 一屏至少能完整显示的日期卡数量；更靠后的选中项需要滚入视野。
+const FULLY_VISIBLE_DATE_COUNT = 4;
+const dateScrollAnchor = ref("");
+let tappedDateValue = "";
+
+// #ifdef MP-WEIXIN
+// 回填或日历选择时把选中卡滚入视野；点按的卡已经可见，不移动列表。
+watch(selectedDateValue, (value) => {
+  if (value === tappedDateValue) {
+    tappedDateValue = "";
+    return;
+  }
+  const options = recentDateOptions.value;
+  const index = options.findIndex((option) => option.pickerValue === value);
+  if (index < 0) return;
+  const target = index >= FULLY_VISIBLE_DATE_COUNT ? options[index] : options[0];
+  dateScrollAnchor.value = dateOptionId(target.pickerValue);
+}, { immediate: true });
+// #endif
 
 function syncDate(nextDateTimestamp: number) {
   const nextHoldingDate = mergeTime(nextDateTimestamp, formatPickerTimeValue(props.holdingDate), Date.now());
@@ -63,6 +102,8 @@ function syncDate(nextDateTimestamp: number) {
 }
 
 function handleSelectDateOption(timestamp: number) {
+  const pickerValue = beijingDateKey(timestamp);
+  tappedDateValue = pickerValue === selectedDateValue.value ? "" : pickerValue;
   syncDate(timestamp);
 }
 
@@ -93,14 +134,15 @@ function handleMatchEndTimeChange(event: Event) {
     <view class="date-head">
       <text class="date-head-title">比赛日期 · 北京时间</text>
       <picker mode="date" :value="selectedDateValue" @change="handleDatePickerChange">
-        <view class="date-more-link">更多日期</view>
+        <view :class="['date-more-link', selectedOutsideRecent ? 'date-more-link--active' : '']">{{ moreDateLabel }}</view>
       </picker>
     </view>
 
-    <scroll-view class="date-option-scroll" scroll-x>
+    <scroll-view class="date-option-scroll" scroll-x scroll-with-animation :scroll-into-view="dateScrollAnchor">
       <view class="date-option-row">
         <view
           v-for="option in recentDateOptions"
+          :id="dateOptionId(option.pickerValue)"
           :key="option.pickerValue"
           :class="['date-option-card', selectedDateValue === option.pickerValue ? 'date-option-active' : '']"
           hover-class="date-option-card--pressed"
@@ -362,6 +404,7 @@ function handleMatchEndTimeChange(event: Event) {
 .date-head { gap: var(--ui-space-4); margin-top: var(--ui-section-gap); }
 .date-head-title { font-size: var(--ui-text-label); font-weight: var(--ui-font-weight-heading); }
 .date-more-link { min-height: var(--ui-control-min-height); padding: 0 var(--ui-space-4); border: var(--ui-input-border); background: var(--ui-color-surface); font-size: var(--ui-text-sm); }
+.date-more-link--active { border-color: var(--ui-color-accent); background: var(--ui-color-accent); color: var(--ui-color-accent-fg); font-weight: var(--ui-font-weight-heading); }
 .date-option-scroll { margin-top: var(--ui-space-4); }
 .date-option-row { gap: var(--ui-space-3); }
 .date-option-card { width: var(--ui-schedule-date-width); min-height: var(--ui-schedule-date-min-height); padding: var(--ui-space-4) var(--ui-space-3); border: var(--ui-input-border); border-radius: var(--ui-control-radius); background: var(--ui-color-surface); box-shadow: var(--ui-panel-shadow); }

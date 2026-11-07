@@ -251,7 +251,7 @@ H5 日历组件为 `HomeMatchCalendar`，月份条使用主题 accent/accent-fg�
 - 确认/报名状态选择使用 `ConfirmDialog`，通过按钮文字、图标、tone 和事件区分业务，不能另写弹窗蒙层与动画。
 - 球队创建与管理的队徽区域共用 `TeamLogoField`；组件只负责预览和操作入口，上传与保存由页面负责。
 - 可编辑输入框使用主题 surface 与轻边框；灰色中性底仅用于状态、占位头像等非输入场景。
-- 微信端 `MatchScheduleFields`（创建比赛、散人约球共用）的薄荷色只表达选中：日期卡未选中、「更多日期」和时间磁贴使用 surface 与 `--ui-input-border`，选中日期使用实色 `--ui-color-accent` 底和 `--ui-color-accent-fg` 文字。
+- 微信端 `MatchScheduleFields`（创建比赛、散人约球共用）的薄荷色只表达选中：日期卡未选中、「更多日期」和时间磁贴使用 surface 与 `--ui-input-border`，选中日期使用实色 `--ui-color-accent` 底和 `--ui-color-accent-fg` 文字。选中近 7 日以外的日期时，「更多日期」按钮以同样的选中样式显示该日期；回填或日历选择的靠后日期自动滚入视野，点按日期卡不移动列表。
 - 加载态共用 `RunningLoader`，不再维护人物精灵图；图形及文字使用主题变量。
 
 头像列表统一使用 `ExpandableAvatarStack`；头像类型定义位于 `components/ui/avatarTypes.ts`。旧 `AvatarStack` 与 `DateRail` 已无运行时入口并移除。
