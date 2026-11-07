@@ -65,7 +65,12 @@ function handlePublishIndividual() {
           <text class="publish-menu-action-icon">队</text>
           <!-- #endif -->
         </view>
+        <!-- #ifdef MP-WEIXIN -->
+        <text class="publish-menu-action-label">球队比赛</text>
+        <!-- #endif -->
+        <!-- #ifndef MP-WEIXIN -->
         <text class="publish-menu-action-label">球队约队</text>
+        <!-- #endif -->
       </view>
 
       <view class="publish-menu-action publish-menu-action-right" @tap="handlePublishIndividual">

@@ -101,7 +101,20 @@ const hallEmptyMode = computed<"empty" | "filtered" | null>(() => {
 });
 const suggestedCreateLabel = computed(() => {
   if (!canOpenPublishSheet.value) return "";
-  return hasPublishIdentity.value ? "发布约队" : "发起散人约球";
+  if (!hasPublishIdentity.value) return "发起散人约球";
+  let label = "发布约队";
+  // #ifdef MP-WEIXIN
+  label = "发起比赛";
+  // #endif
+  return label;
+});
+// 队长/领队在大厅无比赛时并列两个发起入口：自己球队的比赛和散人约球。
+const showBothPublishActions = computed(() => {
+  let show = false;
+  // #ifdef MP-WEIXIN
+  show = hallEmptyMode.value === "empty" && canOpenPublishSheet.value && hasPublishIdentity.value;
+  // #endif
+  return show;
 });
 const hallEmptyTitle = computed(() => (
   hallEmptyMode.value === "empty" ? "还没人发起合适的比赛" : "这个条件下暂时没有比赛"
@@ -113,11 +126,13 @@ const hallEmptyDescription = computed(() => (
 ));
 const hallEmptyPrimaryLabel = computed(() => {
   if (hallEmptyMode.value === "filtered") return "查看全部比赛";
+  if (showBothPublishActions.value) return "发起球队比赛";
   return suggestedCreateLabel.value || "刷新看看";
 });
-const hallEmptySecondaryLabel = computed(() => (
-  hallEmptyMode.value === "filtered" ? suggestedCreateLabel.value : ""
-));
+const hallEmptySecondaryLabel = computed(() => {
+  if (showBothPublishActions.value) return "发起散人约球";
+  return hallEmptyMode.value === "filtered" ? suggestedCreateLabel.value : "";
+});
 
 function openMatchDetail(card: { id: string; actionKind: string; detailUrl: string; applyUrl: string }) {
   if (navigatingMatchId.value) return;
@@ -181,6 +196,11 @@ function handleSuggestedPublish() {
     return;
   }
   if (hasPublishIdentity.value) {
+    // #ifdef MP-WEIXIN
+    // 筛选/搜索空状态只有一个入口，由队长/领队在面板中选择比赛类型。
+    openPublishTypeSheet();
+    return;
+    // #endif
     handlePublishTeamChallenge();
     return;
   }
@@ -190,6 +210,18 @@ function handleSuggestedPublish() {
 function handleHallEmptyPrimary() {
   if (hallEmptyMode.value === "filtered") {
     resetHallFilters();
+    return;
+  }
+  if (showBothPublishActions.value) {
+    handlePublishTeamChallenge();
+    return;
+  }
+  handleSuggestedPublish();
+}
+
+function handleHallEmptySecondary() {
+  if (showBothPublishActions.value) {
+    handlePublishIndividualChallenge();
     return;
   }
   handleSuggestedPublish();
@@ -334,9 +366,10 @@ provide(APP_SCROLL_CONTROLLER, appScrollController);
             :description="hallEmptyDescription"
             :primary-label="hallEmptyPrimaryLabel"
             :secondary-label="hallEmptySecondaryLabel"
+            :secondary-as-button="showBothPublishActions"
             :background-image-url="hallEmptyMode === 'empty' ? hallEmptyBackgroundImageUrl : ''"
             @primary="handleHallEmptyPrimary"
-            @secondary="handleSuggestedPublish"
+            @secondary="handleHallEmptySecondary"
           />
 
           <template v-if="hallEmptyMode === 'empty' && endedReferenceCards.length">

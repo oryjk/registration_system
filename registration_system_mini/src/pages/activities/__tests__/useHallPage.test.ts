@@ -40,6 +40,7 @@ const endedMatch: AppMatchSummary = {
 
 const hideCreationEntrancesRef = ref(false);
 const identityRef = ref<{ kind: string; teamId: number } | null>({ kind: "team", teamId: 99 });
+const currentTeamRef = ref<{ id: number; canManageTeam: boolean; isCaptain: boolean } | null>({ id: 99, canManageTeam: true, isCaptain: true });
 let sessionRequests = 0;
 let matchRequests = 0;
 let registeringItems: AppMatchSummary[] = [match];
@@ -74,7 +75,7 @@ mock.module("@/stores/teamContext", () => ({
   useTeamContext: () => ({
     ensureSessionReady: async () => { sessionRequests += 1; },
     currentIdentity: identityRef,
-    currentTeam: ref({ id: 99, canManageTeam: true, isCaptain: true }),
+    currentTeam: currentTeamRef,
   }),
 }));
 mock.module("@/utils/authStorage", () => ({
@@ -94,6 +95,7 @@ afterEach(() => {
   globalThis.clearInterval = originalClearInterval;
   hideCreationEntrancesRef.value = false;
   identityRef.value = { kind: "team", teamId: 99 };
+  currentTeamRef.value = { id: 99, canManageTeam: true, isCaptain: true };
   sessionRequests = 0;
   matchRequests = 0;
   registeringItems = [match];
@@ -237,10 +239,20 @@ describe("useHallPage registration window clock", () => {
 describe("useHallPage publish sheet gating", () => {
   test("散人（无球队/场馆身份）也能打开发布面板，但没有球队发布身份", async () => {
     identityRef.value = null;
+    currentTeamRef.value = null;
     const page = useHallPage();
     await nextTick();
 
     expect(page.canOpenPublishSheet.value).toEqual(true);
+    expect(page.hasPublishIdentity.value).toEqual(false);
+  });
+
+  test("当前球队不可管理时，即使能管理其他球队也没有球队发布身份", async () => {
+    identityRef.value = { kind: "team", teamId: 42 };
+    currentTeamRef.value = { id: 99, canManageTeam: false, isCaptain: false };
+    const page = useHallPage();
+    await nextTick();
+
     expect(page.hasPublishIdentity.value).toEqual(false);
   });
 

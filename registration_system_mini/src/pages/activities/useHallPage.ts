@@ -65,8 +65,14 @@ export function useHallPage() {
   const showInitialLoadingState = computed(() => isLoading.value && !hasLoadedOnce.value);
   // 发布面板对所有登录用户开放（散人也能发布散人约球）；仅审核隐藏期统一关闭。
   const canOpenPublishSheet = computed(() => !shouldHideCreationEntrances.value);
-  // 球队约队/创建比赛需要可管理的球队或场馆身份；散人点击时由页面弹窗引导开通。
-  const hasPublishIdentity = computed(() => !!currentIdentity.value);
+  // 球队比赛以当前球队名义发布：微信端与创建页同样判断当前球队是否可管理（队长/领队）。
+  const hasPublishIdentity = computed(() => {
+    let hasIdentity = !!currentIdentity.value;
+    // #ifdef MP-WEIXIN
+    hasIdentity = !!currentTeam.value?.canManageTeam;
+    // #endif
+    return hasIdentity;
+  });
   // 按钮判定依赖当前球队身份：主队成员见"去报名"，其他球队队长见"接约"，其余见"查看详情"。
   const hallViewer = computed(() => ({
     teamId: currentTeam.value?.id ?? null,

@@ -13,6 +13,8 @@ defineProps<{
   description: string;
   primaryLabel: string;
   secondaryLabel?: string;
+  /** 次要入口与主入口是并列选择时渲染为按钮，默认是文字链接。 */
+  secondaryAsButton?: boolean;
   backgroundImageUrl?: string;
 }>();
 
@@ -39,10 +41,11 @@ const emit = defineEmits<{
         </view>
       </view>
 
-      <view class="hall-empty-state__actions">
+      <view :class="['hall-empty-state__actions', secondaryAsButton ? 'hall-empty-state__actions--paired' : '']">
         <AppButton block variant="lime" @click="emit('primary')">{{ primaryLabel }}</AppButton>
+        <AppButton v-if="secondaryLabel && secondaryAsButton" block variant="outline" @click="emit('secondary')">{{ secondaryLabel }}</AppButton>
         <button
-          v-if="secondaryLabel"
+          v-else-if="secondaryLabel"
           class="hall-empty-state__secondary"
           hover-class="hall-empty-state__secondary--pressed"
           @tap="emit('secondary')"
@@ -139,6 +142,7 @@ const emit = defineEmits<{
 /* #ifdef MP-WEIXIN */
 .hall-empty-state { padding: var(--ui-card-padding); }
 .hall-empty-state__actions { display: flex; flex-direction: column; align-items: stretch; gap: var(--ui-space-2); margin-top: var(--ui-space-6); }
+.hall-empty-state__actions--paired { gap: var(--ui-space-4); }
 .hall-empty-state__secondary { min-height: var(--ui-control-min-height); gap: var(--ui-space-2); font-size: var(--ui-text-body); }
 .hall-empty-state__description { font-size: var(--ui-text-body); line-height: var(--ui-line-height-body); }
 .hall-empty-state__description, .hall-empty-state__secondary { color: var(--ui-color-text-secondary); }
