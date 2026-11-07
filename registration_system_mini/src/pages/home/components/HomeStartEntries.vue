@@ -302,16 +302,14 @@ function handleTap(key: BentoAction) {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  width: 72rpx;
-  height: 72rpx;
+  width: 84rpx;
+  height: 84rpx;
   overflow: hidden;
   border-radius: var(--ui-radius-button);
   background: var(--ui-color-neutral-bg);
 }
 
 .home-bento-card__art--featured {
-  width: 84rpx;
-  height: 84rpx;
   background: var(--ui-color-accent-soft);
 }
 
@@ -320,11 +318,6 @@ function handleTap(key: BentoAction) {
 }
 
 .home-bento-card__img {
-  width: 60rpx;
-  height: 60rpx;
-}
-
-.home-bento-card--featured .home-bento-card__img {
   width: 72rpx;
   height: 72rpx;
 }
