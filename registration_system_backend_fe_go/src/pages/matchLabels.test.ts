@@ -18,6 +18,7 @@ describe("match publication mode labels", () => {
       online_team: "在线招募一支球队作为对手",
       online_individual: "在线招募个人组成对手阵容",
       online_pickup: "所有参与者都是散人，无球队概念",
+      venue_hosted: "场馆发布，分两边，每边由一支球队或散人填满",
     });
   });
 });

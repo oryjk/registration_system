@@ -10,6 +10,7 @@ export const publicationModeLabels: Record<PublicationMode, string> = {
   online_team: "线上约队",
   online_individual: "散人对手",
   online_pickup: "散人约球",
+  venue_hosted: "场馆组局",
 };
 
 export const publicationModeDescriptions: Record<PublicationMode, string> = {
@@ -17,6 +18,7 @@ export const publicationModeDescriptions: Record<PublicationMode, string> = {
   online_team: "在线招募一支球队作为对手",
   online_individual: "在线招募个人组成对手阵容",
   online_pickup: "所有参与者都是散人，无球队概念",
+  venue_hosted: "场馆发布，分两边，每边由一支球队或散人填满",
 };
 
 export function getPublicationModeLabel(value: string): string {

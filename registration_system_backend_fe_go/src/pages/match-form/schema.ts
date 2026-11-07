@@ -55,6 +55,7 @@ export const matchFormSchema = z
       "online_team",
       "online_individual",
       "online_pickup",
+      "venue_hosted",
     ]),
     host_team_id: z.number().int().positive().optional(),
     opponent_name: z.string().max(255).optional(),
@@ -101,7 +102,11 @@ export const matchFormSchema = z
     is_free: z.boolean().optional(),
   })
   .superRefine((values, context) => {
-    if (values.publication_mode !== "online_pickup" && !values.host_team_id) {
+    if (
+      values.publication_mode !== "online_pickup" &&
+      values.publication_mode !== "venue_hosted" &&
+      !values.host_team_id
+    ) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
         message: "请选择主队",

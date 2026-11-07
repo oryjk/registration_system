@@ -94,7 +94,11 @@ export function BasicSection({
                 </FormControl>
                 <SelectContent>
                   {Object.entries(publicationModeLabels)
-                    .filter(([value]) => editing || value !== "online_pickup")
+                    .filter(
+                      ([value]) =>
+                        editing ||
+                        (value !== "online_pickup" && value !== "venue_hosted"),
+                    )
                     .map(([value, label]) => (
                       <SelectItem key={value} value={value}>
                         <span className="match-type-option">
@@ -115,7 +119,7 @@ export function BasicSection({
             </FormItem>
           )}
         />
-        {mode !== "online_pickup" ? (
+        {mode !== "online_pickup" && mode !== "venue_hosted" ? (
           <FormField
             control={form.control}
             name="host_team_id"

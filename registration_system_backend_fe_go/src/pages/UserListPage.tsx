@@ -14,7 +14,10 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { useWeChatUsersQuery } from "@/hooks/queries/useUserQueries";
+import {
+  useSetUserVenueMutation,
+  useWeChatUsersQuery,
+} from "@/hooks/queries/useUserQueries";
 import { useUserListControls } from "@/hooks/useUserListControls";
 import { UserDirectoryFilters } from "./user-list/UserDirectoryFilters";
 import { UserDirectoryTable } from "./user-list/UserDirectoryTable";
@@ -22,7 +25,11 @@ import { UserDirectoryTable } from "./user-list/UserDirectoryTable";
 export default function UserListPage() {
   const controls = useUserListControls();
   const users = useWeChatUsersQuery(controls.query);
-  const error = users.error instanceof Error ? users.error.message : "";
+  const setVenue = useSetUserVenueMutation();
+  const queryError = users.error instanceof Error ? users.error.message : "";
+  const venueError =
+    setVenue.error instanceof Error ? setVenue.error.message : "";
+  const error = queryError || venueError;
 
   return (
     <div className="content-grid user-directory-page">
@@ -91,7 +98,11 @@ export default function UserListPage() {
             filtered={controls.hasAppliedFilters}
             loading={users.isLoading}
             onSort={controls.toggleSort}
+            onToggleVenue={(user) =>
+              setVenue.mutate({ userID: user.id, enabled: !user.is_venue })
+            }
             sortDirection={controls.sortDirection}
+            venueUpdating={setVenue.isPending}
             users={users.data?.items || []}
           />
           <PaginationBar

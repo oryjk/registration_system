@@ -37,6 +37,12 @@ export function setMatchAdmin(userID: number) {
   });
 }
 
+export function setUserVenue(userID: number, enabled: boolean) {
+  return request<WeChatUser>(`/users/${userID}/venue`, {
+    method: enabled ? "PUT" : "DELETE",
+  });
+}
+
 export function unsetMatchAdmin(userID: number) {
   return request<WeChatUser>(`/users/${userID}/match-admin`, {
     method: "DELETE",

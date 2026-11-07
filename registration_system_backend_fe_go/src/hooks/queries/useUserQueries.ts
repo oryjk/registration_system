@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   listWeChatUsers,
   setMatchAdmin,
+  setUserVenue,
   unsetMatchAdmin,
 } from "../../api/users";
 import type { WeChatUserListQuery } from "../../types/user";
@@ -24,6 +25,16 @@ export function useSetMatchAdminMutation() {
 
   return useMutation({
     mutationFn: (userID: number) => setMatchAdmin(userID),
+    onSuccess: () => invalidateWeChatUsers(queryClient),
+  });
+}
+
+export function useSetUserVenueMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ userID, enabled }: { userID: number; enabled: boolean }) =>
+      setUserVenue(userID, enabled),
     onSuccess: () => invalidateWeChatUsers(queryClient),
   });
 }

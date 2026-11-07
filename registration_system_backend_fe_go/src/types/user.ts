@@ -7,6 +7,7 @@ export interface WeChatUser {
   phone_number: string | null;
   status: "active" | "frozen";
   is_match_admin: boolean;
+  is_venue: boolean;
   last_active_at: string | null;
   created_at: string;
 }

@@ -394,7 +394,7 @@ export default function MatchDetailPage() {
           {detail.groups.map((group) => (
             <Card key={group.id}>
               <CardHeader>
-                <CardTitle>{`${groupLabels[group.kind]} · 队员报名`}</CardTitle>
+                <CardTitle>{`${group.side ? `${group.side === "a" ? "甲边" : "乙边"} · ` : ""}${groupLabels[group.kind]} · 队员报名`}</CardTitle>
               </CardHeader>
               <CardContent>
                 <MatchRegistrationRoster

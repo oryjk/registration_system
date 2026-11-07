@@ -3,6 +3,7 @@ import { DataTable, type DataTableColumn } from "@/components/admin/data-table";
 import { DateTimeCell } from "@/components/admin/date-time-cell";
 import { SortHeader } from "@/components/admin/sort-header";
 import { StatusBadge } from "@/components/admin/status-badge";
+import { Button } from "@/components/ui/button";
 import type { WeChatUser } from "@/types/user";
 import { UserIdentityCell } from "./UserIdentityCell";
 
@@ -12,6 +13,8 @@ interface UserDirectoryTableProps {
   filtered: boolean;
   onSort: (column: "last_active" | "created") => void;
   sortDirection: (column: "last_active" | "created") => "asc" | "desc" | null;
+  onToggleVenue: (user: WeChatUser) => void;
+  venueUpdating: boolean;
 }
 
 export function UserDirectoryTable({
@@ -20,18 +23,20 @@ export function UserDirectoryTable({
   filtered,
   onSort,
   sortDirection,
+  onToggleVenue,
+  venueUpdating,
 }: UserDirectoryTableProps) {
   const columns: DataTableColumn<WeChatUser>[] = [
     {
       key: "nickname",
       title: "用户",
-      width: "27%",
+      width: "23%",
       render: (user) => <UserIdentityCell user={user} />,
     },
     {
       key: "phone_number",
       title: "手机号",
-      width: "16%",
+      width: "13%",
       render: (user) => (
         <span className={user.phone_number ? "cell-tabular" : "cell-secondary"}>
           {user.phone_number || "未提供"}
@@ -41,10 +46,17 @@ export function UserDirectoryTable({
     {
       key: "identity",
       title: "身份",
-      width: "13%",
+      width: "15%",
       render: (user) =>
-        user.is_match_admin ? (
-          <StatusBadge label="比赛管理员" variant="info" />
+        user.is_match_admin || user.is_venue ? (
+          <>
+            {user.is_match_admin ? (
+              <StatusBadge label="比赛管理员" variant="info" />
+            ) : null}
+            {user.is_venue ? (
+              <StatusBadge label="场馆" variant="success" />
+            ) : null}
+          </>
         ) : (
           <span className="cell-secondary">普通用户</span>
         ),
@@ -52,7 +64,7 @@ export function UserDirectoryTable({
     {
       key: "status",
       title: "账号状态",
-      width: "10%",
+      width: "9%",
       render: (user) => (
         <StatusBadge
           label={user.status === "active" ? "正常" : "已冻结"}
@@ -70,7 +82,7 @@ export function UserDirectoryTable({
           onToggle={() => onSort("last_active")}
         />
       ),
-      width: "19%",
+      width: "15%",
       render: (user) => (
         <ActivityCell lastActiveAt={user.last_active_at} showStatus={false} />
       ),
@@ -85,8 +97,24 @@ export function UserDirectoryTable({
           onToggle={() => onSort("created")}
         />
       ),
-      width: "15%",
+      width: "14%",
       render: (user) => <DateTimeCell value={user.created_at} />,
+    },
+    {
+      key: "action",
+      title: "操作",
+      width: "11%",
+      render: (user) => (
+        <Button
+          disabled={venueUpdating}
+          onClick={() => onToggleVenue(user)}
+          size="sm"
+          type="button"
+          variant="outline"
+        >
+          {user.is_venue ? "取消场馆" : "设为场馆"}
+        </Button>
+      ),
     },
   ];
   return (

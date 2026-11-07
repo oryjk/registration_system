@@ -2,7 +2,8 @@ export type PublicationMode =
   | "offline_confirmed"
   | "online_team"
   | "online_individual"
-  | "online_pickup";
+  | "online_pickup"
+  | "venue_hosted";
 export type PaymentMode = "postpaid" | "prepaid";
 export type OpponentState = "no_recruitment" | "recruiting" | "confirmed";
 export type MatchStatus = "registering" | "ongoing" | "ended" | "cancelled";
@@ -86,6 +87,8 @@ export interface RegistrationGroup {
   id: string;
   kind: GroupKind;
   team_id: number | null;
+  /** 场馆组局的甲、乙两边；其他比赛类型没有。 */
+  side?: "a" | "b";
   min_players: number | null;
   max_players: number | null;
   status: GroupStatus;
