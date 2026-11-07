@@ -71,6 +71,8 @@ const coverUrl = computed(() => {
 function handleCoverError() {
   if (coverUrl.value !== HOME_VISUAL_ASSETS.actionCover) failedCoverUrl.value = coverUrl.value;
 }
+// 整行点击打开地图；没有经纬度时打不开，不显示可跳转的箭头。
+const hasLocationCoordinates = computed(() => props.match.location_latitude != null && props.match.location_longitude != null);
 // #endif
 
 // 终态标识只看真实比赛状态：ended/cancelled 才显示；
@@ -137,10 +139,7 @@ const matchStatusTag = computed(() => {
         <!-- #endif -->
         <text class="hero-venue-text">{{ matchLocation }}</text>
         <!-- #ifdef MP-WEIXIN -->
-        <view class="hero-venue-nav">
-          <text>导航</text>
-          <AppIcon name="chevron-right" size="var(--ui-icon-xs)" />
-        </view>
+        <AppIcon v-if="hasLocationCoordinates" name="chevron-right" size="var(--ui-icon-sm)" tone="muted" />
         <!-- #endif -->
       </view>
     </view>
@@ -410,7 +409,6 @@ const matchStatusTag = computed(() => {
 .hero-venue { width: 100%; align-items: center; gap: var(--ui-space-3); min-height: var(--ui-control-min-height); }
 .hero-venue--pressed { opacity: 0.82; }
 .hero-venue-text { flex: 1; line-height: var(--ui-line-height-compact); font-size: var(--ui-text-label); font-weight: var(--ui-font-weight-medium); }
-.hero-venue-nav { display: inline-flex; align-items: center; gap: var(--ui-space-1); flex-shrink: 0; padding: var(--ui-space-2) var(--ui-space-4); border: var(--ui-button-outline-border); border-radius: var(--ui-radius-round); background: var(--ui-button-outline-bg); color: var(--ui-color-text); font-size: var(--ui-text-sm); font-weight: var(--ui-font-weight-heading); line-height: 1.2; }
 .hero-pickup-strip { border: var(--ui-panel-border); background: var(--ui-panel-soft-bg); padding: var(--ui-space-5); margin: var(--ui-space-5) var(--ui-space-7) var(--ui-space-7); }
 .hero-board { border-top: 0; margin-top: 0; padding: var(--ui-space-6) var(--ui-space-7) var(--ui-space-7); align-items: center; }
 .hero-name { font-size: var(--ui-text-subtitle); line-height: var(--ui-line-height-compact); }
