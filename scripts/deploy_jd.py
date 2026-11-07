@@ -171,7 +171,7 @@ def remote_go(args):
         if args.migrate:
             env = read_env(GO_BASE / 'backend.env')
             db_url = env['DATABASE_URL'].replace('@host.docker.internal:', '@127.0.0.1:')
-            migrate_env = dict(os.environ, **env, DATABASE_URL=db_url)
+            migrate_env = {**os.environ, **env, 'DATABASE_URL': db_url}
             command(release / 'dbmigrate', cwd=source, env=migrate_env)
         activate_backend(GO_BASE, image)
         print('peiqian backend activated: ' + release.name)
