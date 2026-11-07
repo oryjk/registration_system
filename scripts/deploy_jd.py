@@ -154,6 +154,8 @@ def remote_go(args):
             'RUN useradd --system --uid 10001 --create-home app\n'
             'WORKDIR /app\n'
             'COPY ca-certificates.crt /etc/ssl/certs/ca-certificates.crt\n'
+            # The base image's own tzdata layout can conflict with the copied tree.
+            'RUN rm -rf /usr/share/zoneinfo\n'
             'COPY zoneinfo /usr/share/zoneinfo\n'
             'COPY registration-system-go-api /app/registration-system-go-api\n'
             'RUN mkdir -p /app/uploads && chown -R app:app /app\n'
