@@ -57,6 +57,7 @@ const KIND_LABELS: Record<AppMatchSummary["publication_mode"], string> = {
   online_team: "球队约队",
   online_individual: "散人约局",
   online_pickup: "散人约球",
+  venue_hosted: "场馆组局",
   offline_confirmed: "线下已约",
 };
 
@@ -64,6 +65,7 @@ const KIND_TONES: Record<AppMatchSummary["publication_mode"], AppTagTone> = {
   online_team: "blue",
   online_individual: "lime",
   online_pickup: "lime",
+  venue_hosted: "lime",
   offline_confirmed: "muted",
 };
 
@@ -75,7 +77,7 @@ function findGroupSummary(
 }
 
 function isIndividualStyle(match: AppMatchSummary): boolean {
-  return match.publication_mode === "online_individual" || match.publication_mode === "online_pickup";
+  return match.publication_mode === "online_individual" || match.publication_mode === "online_pickup" || match.publication_mode === "venue_hosted";
 }
 
 function toOpponentStateLabel(match: AppMatchSummary): { label: string; tone: AppTagTone } {
@@ -169,7 +171,18 @@ export function toHallMatchCard(
   // 有客队分组时渲染主/客两条进度条（与详情页一致）；否则保持单条进度。
   const hostMinimum = hostGroup?.min_players ?? (match.players_per_team > 0 ? match.players_per_team : null);
   const guestMinimum = resolveInheritedGuestLimit(hostMinimum, guestGroup?.min_players);
-  const progressBars = !isIndividual && guestGroup
+  const venueSides = match.publication_mode === "venue_hosted"
+    ? (match.registration_groups ?? []).filter((group) => group.side).sort((left, right) => (left.side ?? "").localeCompare(right.side ?? ""))
+    : [];
+  const progressBars = venueSides.length
+    ? venueSides.map((group) => ({
+        key: group.side ?? group.kind,
+        label: group.side_team_name || (group.attending_count > 0 ? "散人组" : "虚位以待"),
+        joined: group.attending_count,
+        required: group.min_players ?? match.players_per_team,
+        max: group.max_players,
+      }))
+    : !isIndividual && guestGroup
     ? [
         {
           key: "host",
@@ -196,7 +209,7 @@ export function toHallMatchCard(
         },
       ];
 
-  const individualFull = !isClosed && isIndividual && individualGroup?.max_players != null
+  const individualFull = !isClosed && !venueSides.length && isIndividual && individualGroup?.max_players != null
     && individualGroup.max_players > 0 && joinedPlayers >= individualGroup.max_players;
   const capacityHint = individualFull ? "暂时没有名额，可查看比赛详情" : "";
   const actionKind = isClosed || individualFull ? "view" : resolveActionKind(match, viewer, now);

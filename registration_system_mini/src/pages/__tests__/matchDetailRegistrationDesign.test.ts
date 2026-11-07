@@ -83,7 +83,7 @@ describe("match detail registration design", () => {
   test("lets individual users cancel an existing registration from the primary CTA", async () => {    const pageLogic = await matchDetailLogicSource();
 
     // 散人约球（pickup）已报名走「调整人数」面板；其余模式保持 CTA 取消报名。
-    expect(pageLogic.includes('if (isPickupMatch.value) return myRegistrationPaid.value ? "已报名" : "调整人数";')).toEqual(true);
+    expect(pageLogic.includes('if (usesSignupSheet.value) return myRegistrationPaid.value ? "已报名" : "调整人数";')).toEqual(true);
     expect(pageLogic.includes('return "取消报名";')).toEqual(true);
     expect(pageLogic.includes("handleCancelIndividualSignup")).toEqual(true);
     expect(pageLogic.includes("cancelIndividualRegistration")).toEqual(true);

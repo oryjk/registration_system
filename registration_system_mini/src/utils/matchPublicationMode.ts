@@ -27,6 +27,7 @@ export const MATCH_PUBLICATION_MODE_OPTIONS: readonly MatchPublicationModeOption
 // 散人约球有独立的发布页（无球队概念），不进创建比赛的类型选择，但展示层要认得它的标签。
 const EXTRA_PUBLICATION_MODE_LABELS: Partial<Record<AppMatchPublicationMode, string>> = {
   online_pickup: "散人约球",
+  venue_hosted: "场馆组局",
 };
 
 const publicationModeLabels: Record<string, string> = {

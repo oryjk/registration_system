@@ -30,7 +30,7 @@ export function toBackendUser(user: AppUser): BackendUser {
     avatar_url: user.avatar_url ?? "",
     phone_number: user.phone_number ?? "",
     is_manager: false,
-    is_venue: false,
+    is_venue: user.is_venue ?? false,
     is_match_admin: user.is_match_admin ?? false,
   };
 }

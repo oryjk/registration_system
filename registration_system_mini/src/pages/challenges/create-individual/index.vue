@@ -40,12 +40,17 @@ const navMetrics = getCustomNavMetrics();
 const submitting = ref(false);
 const editId = ref("");
 const editReady = ref(false);
-onLoad((query) => { editId.value = String(query?.editId || ""); });
+// 场馆组局与散人约球共用这张表单：没有主队，只是分两边、不设总上限，且只能线下结算。
+const isVenueMode = ref(false);
+onLoad((query) => {
+  editId.value = String(query?.editId || "");
+  isVenueMode.value = query?.mode === "venue";
+});
 async function loadEditForm() {
   if (!editId.value || editReady.value) return;
   const detail = await getMatchDetail(editId.value);
   const match = detail.match;
-  if (match.publication_mode !== "online_pickup") throw new Error("比赛类型不匹配");
+  if (match.publication_mode !== (isVenueMode.value ? "venue_hosted" : "online_pickup")) throw new Error("比赛类型不匹配");
   Object.assign(form, {
     title: match.name, location: match.location,
     locationLatitude: match.location_latitude ?? null, locationLongitude: match.location_longitude ?? null,
@@ -84,7 +89,13 @@ const matchEndTime = ref(defaultTodayAt(22));
 const pageStyle = computed(() => ({
   paddingTop: `${navMetrics.pageTopPadding + 8}px`,
 }));
-const heroCopy = "所有参与者都是散人，发布后球员可直接报名。";
+const heroCopy = computed(() => isVenueMode.value
+  ? "比赛分两边，每边可由一支球队占下，也可由散人报名凑满。"
+  : "所有参与者都是散人，发布后球员可直接报名。");
+const pageTitle = computed(() => {
+  const name = isVenueMode.value ? "场馆组局" : "散人约球";
+  return editId.value ? `修改${name}` : name;
+});
 
 const defaultMinPlayers = computed(() => Number(form.playersPerTeam || 0) * 2);
 const defaultMaxPlayers = computed(() => Number(form.playersPerTeam || 0) * 2 + 4);
@@ -178,9 +189,9 @@ async function handleSubmit() {
   try {
     const payload = {
       name: form.title.trim(),
-      publication_mode: "online_pickup" as const,
+      publication_mode: isVenueMode.value ? "venue_hosted" as const : "online_pickup" as const,
       players_per_team: Number(form.playersPerTeam),
-      host_capacity_limit: form.maxPlayers ? Number(form.maxPlayers) : undefined,
+      host_capacity_limit: !isVenueMode.value && form.maxPlayers ? Number(form.maxPlayers) : undefined,
       start_time: toBackendDateTime(holdingDate.value),
       end_time: toBackendDateTime(matchEndTime.value),
       location: form.location.trim(),
@@ -193,7 +204,7 @@ async function handleSubmit() {
       fee_per_person_cents: feePerPersonCents,
     };
     const detail = editId.value
-      ? await updateMyMatch(editId.value, { ...payload, max_players: Number(form.maxPlayers || defaultMaxPlayers.value) })
+      ? await updateMyMatch(editId.value, isVenueMode.value ? payload : { ...payload, max_players: Number(form.maxPlayers || defaultMaxPlayers.value) })
       : await createMatch(payload);
     uni.$emit("home:data-may-changed");
 
@@ -204,7 +215,7 @@ async function handleSubmit() {
     });
 
     uni.showToast({
-      title: editId.value ? "修改已保存" : "散人约球已发布",
+      title: editId.value ? "修改已保存" : isVenueMode.value ? "场馆组局已发布" : "散人约球已发布",
       icon: "none",
     });
     const group = detail.groups.find((item) => item.kind === "individual_opponent") ?? detail.groups[0];
@@ -257,11 +268,11 @@ usePageRefresh(() => refreshSessionContext());
 <template>
   <page-meta :page-style="themePageStyle" />
   <view v-if="reviewGateReady" class="app-theme-scope ui-card-page individual-create-page" :style="[themePageStyle, pageStyle]">
-    <AppTabHeader :title="editId ? '修改散人约球' : '散人约球'" showBack />
+    <AppTabHeader :title="pageTitle" showBack />
 
     <view class="create-page-content">
       <!-- #ifdef MP-WEIXIN -->
-      <AppPageIntro title="公开约球" :description="heroCopy" />
+      <AppPageIntro :title="isVenueMode ? '场馆组局' : '公开约球'" :description="heroCopy" />
       <!-- #endif -->
       <!-- #ifndef MP-WEIXIN -->
       <view class="create-intro">
@@ -296,11 +307,11 @@ usePageRefresh(() => refreshSessionContext());
           <view class="form-field">
             <text class="form-label">比赛人制</text>
             <view class="form-number">
-              <input v-model="form.playersPerTeam" class="form-number__input" type="number" placeholder="8" placeholder-class="form-placeholder" />
+              <input v-model="form.playersPerTeam" :disabled="isVenueMode && !!editId" class="form-number__input" type="number" placeholder="8" placeholder-class="form-placeholder" />
               <text class="form-number__unit">人 / 队</text>
             </view>
           </view>
-          <view class="form-field">
+          <view v-if="!isVenueMode" class="form-field">
             <text class="form-label">报名上限 <text class="form-optional">可选</text></text>
             <view class="form-number">
               <input v-model="form.maxPlayers" class="form-number__input" type="number" :placeholder="`${defaultMaxPlayers}`" placeholder-class="form-placeholder" />
@@ -308,7 +319,10 @@ usePageRefresh(() => refreshSessionContext());
             </view>
           </view>
         </view>
-        <text v-if="playerCountValid" class="form-summary">
+        <text v-if="playerCountValid && isVenueMode" class="form-summary">
+          每边 {{ form.playersPerTeam }} 人成行，两边都成行才开踢
+        </text>
+        <text v-else-if="playerCountValid" class="form-summary">
           {{ defaultMinPlayers }} 人可开踢 · 最多 {{ form.maxPlayers || defaultMaxPlayers }} 人报名
         </text>
       </view>
@@ -394,7 +408,7 @@ usePageRefresh(() => refreshSessionContext());
               <text class="form-number__unit">元 / 人</text>
             </view>
           </view>
-          <view class="form-field">
+          <view v-if="!isVenueMode" class="form-field">
             <text class="form-label">支付方式</text>
             <SegmentedControl :model-value="form.paymentMode" :options="paymentModeOptions" @change="handlePaymentModeChange" />
             <text class="form-caption">{{ paymentModeCaption }}</text>
@@ -419,7 +433,7 @@ usePageRefresh(() => refreshSessionContext());
         <text class="create-submit__hint">{{ submitHint }}</text>
         <view class="create-submit__button">
           <AppButton block :variant="canSubmit || submitting ? 'lime' : 'muted'" :disabled="!canSubmit" :loading="submitting" @click="handleSubmit">
-            {{ submitting ? "保存中..." : editId ? "保存修改" : "发布散人约球" }}
+            {{ submitting ? "保存中..." : editId ? "保存修改" : isVenueMode ? "发布场馆组局" : "发布散人约球" }}
           </AppButton>
         </view>
       </view>

@@ -47,7 +47,7 @@ describe("hall search union", () => {
     state.searchQuery.value = " 球场 ";
     await state.handleSearch();
     expect(calls.map(p => [p.scope, p.search, p.status, !!p.startsAfter, p.publicationModes])).toEqual([
-      ["all", "球场", "registering", true, ["online_team", "online_individual", "online_pickup"]],
+      ["all", "球场", "registering", true, ["online_team", "online_individual", "online_pickup", "venue_hosted"]],
       ["mine", "球场", undefined, false, undefined],
     ]);
     expect(state.searchMatches.value.map(m => m.id)).toEqual(["cancelled", "ended", "shared"]);

@@ -108,7 +108,7 @@ describe("activities page sections", () => {
     expect(registeredPages(JSON.parse(pages)).some((page) => page.path === "pages/challenges/create-individual/index")).toEqual(true);
     // 散人约球对接 Go 后端：POST /matches，publication_mode=online_pickup（无球队概念）；支持编辑已发布的散人局。
     expect(source.includes('import { createMatch, getMatchDetail, updateMyMatch } from "@/api/match";')).toEqual(true);
-    expect(source.includes('publication_mode: "online_pickup"')).toEqual(true);
+    expect(source.includes('"online_pickup" as const')).toEqual(true);
     expect(source.includes("createChallenge")).toEqual(false);
     expect(source.includes("challengeKind")).toEqual(false);
     expect(source.includes("now.setDate(now.getDate() + 1)")).toEqual(false);

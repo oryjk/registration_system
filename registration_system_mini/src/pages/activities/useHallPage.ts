@@ -4,7 +4,7 @@ import { toHomeMatchCard } from "@/pages/home/homeMatchState";
 import { useMiniReviewStatus } from "@/stores/miniReview";
 import { useTeamContext } from "@/stores/teamContext";
 import { getAccessToken, hasManualLogout } from "@/utils/authStorage";
-import type { AppMatchSummary } from "@/types/match";
+import type { AppMatchPublicationMode, AppMatchSummary } from "@/types/match";
 import type { HomeMatchCardViewModel } from "@/types/viewModels";
 import {
   buildHallCalendarDays,
@@ -19,7 +19,11 @@ import {
 
 const HALL_PAGE_SIZE = 20;
 const HALL_ENDED_REFERENCE_LIMIT = 3;
-const HALL_PUBLICATION_MODES = ["online_team", "online_individual", "online_pickup"] as const;
+let hallPublicationModes: AppMatchPublicationMode[] = ["online_team", "online_individual", "online_pickup"];
+// #ifdef MP-WEIXIN
+hallPublicationModes = [...hallPublicationModes, "venue_hosted"];
+// #endif
+const HALL_PUBLICATION_MODES = hallPublicationModes;
 
 interface HallPaginationState {
   page: number;
@@ -39,7 +43,7 @@ function isPaginationComplete(sourceMatches: AppMatchSummary[], pagination: Hall
 }
 
 export function useHallPage() {
-  const { ensureSessionReady, currentIdentity, currentTeam } = useTeamContext();
+  const { ensureSessionReady, currentIdentity, currentTeam, currentUser } = useTeamContext();
   const { shouldHideCreationEntrances } = useMiniReviewStatus();
 
   const isLoading = ref(false);
@@ -70,6 +74,14 @@ export function useHallPage() {
     let hasIdentity = !!currentIdentity.value;
     // #ifdef MP-WEIXIN
     hasIdentity = !!currentTeam.value?.canManageTeam;
+    // #endif
+    return hasIdentity;
+  });
+  // 场馆可发布不属于任何球队的场馆组局，与球队身份相互独立。
+  const hasVenueIdentity = computed(() => {
+    let hasIdentity = false;
+    // #ifdef MP-WEIXIN
+    hasIdentity = !!currentUser.value?.is_venue;
     // #endif
     return hasIdentity;
   });
@@ -268,6 +280,7 @@ export function useHallPage() {
     isGuestMode,
     canOpenPublishSheet,
     hasPublishIdentity,
+    hasVenueIdentity,
     hallCards,
     endedReferenceCards,
     hallViewer,

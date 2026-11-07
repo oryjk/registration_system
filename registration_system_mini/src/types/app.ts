@@ -9,6 +9,8 @@ export interface AppUser {
   status: AppUserStatus;
   /** 比赛管理员（管理端设置）：可在比赛详情页录入比赛比分。 */
   is_match_admin?: boolean;
+  /** 场馆（管理端开通）：可发布场馆组局。旧后端不返回时视为否。 */
+  is_venue?: boolean;
 }
 
 export interface LoginResponse {

@@ -38,6 +38,9 @@ export function useHallMatchSearch(isGuest: Ref<boolean>, fetchMatches = listMat
           params.status = "registering";
           params.startsAfter = searchTime;
           params.publicationModes = ["online_team", "online_individual", "online_pickup"];
+          // #ifdef MP-WEIXIN
+          params.publicationModes = [...params.publicationModes, "venue_hosted"];
+          // #endif
         }
         return fetchMatches(params);
       }));

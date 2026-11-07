@@ -1,7 +1,7 @@
 export type AppMatchStatus = "registering" | "ongoing" | "ended" | "cancelled";
 export type AppMatchUiPhase = "upcoming" | "ongoing" | "ended" | "excluded";
 export type AppMatchRegistrationStatus = "unknown" | "attending" | "leave" | "absent" | "cancelled";
-export type AppMatchPublicationMode = "offline_confirmed" | "online_team" | "online_individual" | "online_pickup";
+export type AppMatchPublicationMode = "offline_confirmed" | "online_team" | "online_individual" | "online_pickup" | "venue_hosted";
 export type AppMatchFeeType = "offline_aa" | "free" | "fixed_amount" | "team_fund";
 export type AppMatchPaymentMode = "postpaid" | "prepaid";
 
@@ -58,6 +58,9 @@ export interface AppHomeEndedMatch extends AppMatchPhaseSource {
 export interface AppMatchRegistrationGroupSummary {
   kind: AppHomeMatchGroup["kind"];
   team_id: number | null;
+  /** 场馆组局的甲、乙两边；其他比赛类型没有。 */
+  side?: "a" | "b";
+  side_team_name?: string;
   min_players: number | null;
   max_players: number | null;
   attending_count: number;
@@ -135,6 +138,9 @@ export interface AppMatchGroupDetail {
   id: string;
   kind: AppHomeMatchGroup["kind"];
   team_id: number | null;
+  /** 场馆组局的甲、乙两边；其他比赛类型没有。 */
+  side?: "a" | "b";
+  side_team_name?: string;
   status: AppHomeMatchGroup["status"];
   min_players: number | null;
   max_players: number | null;

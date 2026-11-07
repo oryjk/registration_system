@@ -36,7 +36,17 @@ export interface ListMatchesParams {
   pageSize: number;
 }
 
+// 后端默认不向旧版客户端返回场馆组局；微信端新版本要显式声明能处理的全部类型。
+function defaultPublicationModes(): AppMatchPublicationMode[] | undefined {
+  let modes: AppMatchPublicationMode[] | undefined;
+  // #ifdef MP-WEIXIN
+  modes = ["offline_confirmed", "online_team", "online_individual", "online_pickup", "venue_hosted"];
+  // #endif
+  return modes;
+}
+
 export function listMatches(params: ListMatchesParams) {
+  const publicationModes = params.publicationModes?.length ? params.publicationModes : defaultPublicationModes();
   const query = buildQueryString({
     scope: params.scope,
     status: params.status,
@@ -46,7 +56,7 @@ export function listMatches(params: ListMatchesParams) {
     ends_after: toUtcIso(params.endsAfter),
     host_team_only: params.hostTeamOnly ? true : undefined,
     date_start: toUtcIso(params.dateStart),
-    publication_modes: params.publicationModes?.length ? params.publicationModes.join(",") : undefined,
+    publication_modes: publicationModes?.join(","),
     page: params.page,
     page_size: params.pageSize,
   });

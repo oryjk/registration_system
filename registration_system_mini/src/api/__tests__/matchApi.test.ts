@@ -28,7 +28,7 @@ describe("Match API", () => {
     await listMyMatches({ page: 2, pageSize: 20 });
 
     expect(capturedCalls[0]).toEqual({
-      url: "/matches?scope=mine&page=2&page_size=20",
+      url: "/matches?scope=mine&publication_modes=offline_confirmed%2Conline_team%2Conline_individual%2Conline_pickup%2Cvenue_hosted&page=2&page_size=20",
       auth: true,
     });
   });
@@ -39,7 +39,7 @@ describe("Match API", () => {
     await listMyMatches({ page: 1, pageSize: 5, search: " 驿马河 " });
 
     expect(capturedCalls[0]).toEqual({
-      url: "/matches?scope=mine&search=%E9%A9%BF%E9%A9%AC%E6%B2%B3&page=1&page_size=5",
+      url: "/matches?scope=mine&search=%E9%A9%BF%E9%A9%AC%E6%B2%B3&publication_modes=offline_confirmed%2Conline_team%2Conline_individual%2Conline_pickup%2Cvenue_hosted&page=1&page_size=5",
       auth: true,
     });
   });
@@ -51,7 +51,7 @@ describe("Match API", () => {
     await listMatches({ scope: "others", startsAfter: new Date("2026-08-09T12:00:00.000Z"), page: 1, pageSize: 20 });
 
     expect(capturedCalls[0]).toEqual({
-      url: "/matches?scope=others&starts_after=2026-08-09T12%3A00%3A00.000Z&page=1&page_size=20",
+      url: "/matches?scope=others&starts_after=2026-08-09T12%3A00%3A00.000Z&publication_modes=offline_confirmed%2Conline_team%2Conline_individual%2Conline_pickup%2Cvenue_hosted&page=1&page_size=20",
       auth: true,
     });
   });
@@ -62,7 +62,7 @@ describe("Match API", () => {
     await listMatches({ scope: "others", startsAfter: "2026-08-09T12:00:00+08:00", page: 3, pageSize: 10 });
 
     expect(capturedCalls[0]).toEqual({
-      url: "/matches?scope=others&starts_after=2026-08-09T04%3A00%3A00.000Z&page=3&page_size=10",
+      url: "/matches?scope=others&starts_after=2026-08-09T04%3A00%3A00.000Z&publication_modes=offline_confirmed%2Conline_team%2Conline_individual%2Conline_pickup%2Cvenue_hosted&page=3&page_size=10",
       auth: true,
     });
   });
@@ -73,7 +73,7 @@ describe("Match API", () => {
     await listMatches({ scope: "mine", page: 1, pageSize: 20 });
 
     expect(capturedCalls[0]).toEqual({
-      url: "/matches?scope=mine&page=1&page_size=20",
+      url: "/matches?scope=mine&publication_modes=offline_confirmed%2Conline_team%2Conline_individual%2Conline_pickup%2Cvenue_hosted&page=1&page_size=20",
       auth: true,
     });
   });
@@ -518,5 +518,5 @@ export {};
 test("date_start sends the UTC instant of a Beijing selected date", async () => {
   capturedCalls.length = 0;
   await listMatches({ scope: "all", dateStart: "2027-01-01", page: 1, pageSize: 20 });
-  expect(capturedCalls[0]).toEqual({ url: "/matches?scope=all&date_start=2026-12-31T16%3A00%3A00.000Z&page=1&page_size=20", auth: true });
+  expect(capturedCalls[0]).toEqual({ url: "/matches?scope=all&date_start=2026-12-31T16%3A00%3A00.000Z&publication_modes=offline_confirmed%2Conline_team%2Conline_individual%2Conline_pickup%2Cvenue_hosted&page=1&page_size=20", auth: true });
 });

@@ -48,6 +48,7 @@ function setup(options: { groupId?: string; closed?: boolean; paid?: boolean } =
     myRegistrationPaid: ref(!!options.paid),
     openSignupSheet: () => {},
     closeSignupSheet: () => {},
+    reloadAfterChange: async () => {},
   };
   return { ...useMatchRegistration(state), state, notices, events };
 }

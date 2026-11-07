@@ -24,7 +24,7 @@ const props = defineProps<{
 }>();
 
 const { accentTheme } = useAccentTheme();
-const { currentTeam, currentIdentity } = useTeamContext();
+const { currentTeam, currentIdentity, currentUser } = useTeamContext();
 const { unreadCount } = useNotificationCenter();
 const { shouldHideCreationEntrances } = useMiniReviewStatus();
 const {
@@ -46,7 +46,14 @@ const { rendered: menuRendered, leaving: menuLeaving } = useOverlayPresence(
 );
 const shouldShowCreateEntry = computed(() => !shouldHideCreationEntrances.value);
 // 散人（无可管理球队/场馆身份）不能以球队名义创建比赛；按钮置灰但可点击触发引导。
-const matchCreationDisabled = computed(() => !currentIdentity.value);
+const matchCreationDisabled = computed(() => {
+  let disabled = !currentIdentity.value;
+  // #ifdef MP-WEIXIN
+  // 与创建页一致按当前球队判断；场馆身份不依赖球队。
+  disabled = !currentTeam.value?.canManageTeam && !currentUser.value?.is_venue;
+  // #endif
+  return disabled;
+});
 
 const items: Array<{
   key: TabKey;
@@ -128,6 +135,13 @@ function handleCreateMatch() {
     return;
   }
 
+  // #ifdef MP-WEIXIN
+  if (currentUser.value?.is_venue) {
+    openVenueCreation();
+    return;
+  }
+  // #endif
+
   if (!currentTeam.value) {
     uni.showToast({
       title: "请先完成登录并加入球队",
@@ -146,6 +160,21 @@ function handleCreateMatch() {
 
   uni.navigateTo({
     url: "/pages/matches/create/index",
+  });
+}
+
+// 场馆发布场馆组局；同时是队长或领队时先选比赛类型。
+function openVenueCreation() {
+  const venueUrl = "/pages/challenges/create-individual/index?mode=venue";
+  if (!currentTeam.value?.canManageTeam) {
+    uni.navigateTo({ url: venueUrl });
+    return;
+  }
+  uni.showActionSheet({
+    itemList: ["场馆组局", "球队比赛"],
+    success: ({ tapIndex }) => {
+      uni.navigateTo({ url: tapIndex === 0 ? venueUrl : "/pages/matches/create/index" });
+    },
   });
 }
 

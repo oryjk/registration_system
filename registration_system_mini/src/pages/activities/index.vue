@@ -43,6 +43,7 @@ const {
   isGuestMode,
   canOpenPublishSheet,
   hasPublishIdentity,
+  hasVenueIdentity,
   hallCards,
   endedReferenceCards,
   hallViewer,
@@ -101,18 +102,18 @@ const hallEmptyMode = computed<"empty" | "filtered" | null>(() => {
 });
 const suggestedCreateLabel = computed(() => {
   if (!canOpenPublishSheet.value) return "";
-  if (!hasPublishIdentity.value) return "发起散人约球";
+  if (!hasPublishIdentity.value && !hasVenueIdentity.value) return "发起散人约球";
   let label = "发布约队";
   // #ifdef MP-WEIXIN
   label = "发起比赛";
   // #endif
   return label;
 });
-// 队长/领队在大厅无比赛时并列两个发起入口：自己球队的比赛和散人约球。
+// 大厅无比赛时，队长/领队或场馆并列两个发起入口；两种身份都有时入口过多，改用类型面板。
 const showBothPublishActions = computed(() => {
   let show = false;
   // #ifdef MP-WEIXIN
-  show = hallEmptyMode.value === "empty" && canOpenPublishSheet.value && hasPublishIdentity.value;
+  show = hallEmptyMode.value === "empty" && canOpenPublishSheet.value && hasPublishIdentity.value !== hasVenueIdentity.value;
   // #endif
   return show;
 });
@@ -126,7 +127,7 @@ const hallEmptyDescription = computed(() => (
 ));
 const hallEmptyPrimaryLabel = computed(() => {
   if (hallEmptyMode.value === "filtered") return "查看全部比赛";
-  if (showBothPublishActions.value) return "发起球队比赛";
+  if (showBothPublishActions.value) return hasVenueIdentity.value ? "发起场馆组局" : "发起球队比赛";
   return suggestedCreateLabel.value || "刷新看看";
 });
 const hallEmptySecondaryLabel = computed(() => {
@@ -184,6 +185,11 @@ function handlePublishTeamChallenge() {
   uni.navigateTo({ url: "/pages/matches/create/index" });
 }
 
+function handlePublishVenueMatch() {
+  closePublishTypeSheet();
+  uni.navigateTo({ url: "/pages/challenges/create-individual/index?mode=venue" });
+}
+
 function handlePublishIndividualChallenge() {
   closePublishTypeSheet();
   // 散人约球：无球队概念的独立发布页（online_pickup，POST /matches）。
@@ -195,9 +201,9 @@ function handleSuggestedPublish() {
     void loadPageData({ preserveContent: true });
     return;
   }
-  if (hasPublishIdentity.value) {
+  if (hasPublishIdentity.value || hasVenueIdentity.value) {
     // #ifdef MP-WEIXIN
-    // 筛选/搜索空状态只有一个入口，由队长/领队在面板中选择比赛类型。
+    // 筛选/搜索空状态只有一个入口，由队长、领队或场馆在面板中选择比赛类型。
     openPublishTypeSheet();
     return;
     // #endif
@@ -213,7 +219,8 @@ function handleHallEmptyPrimary() {
     return;
   }
   if (showBothPublishActions.value) {
-    handlePublishTeamChallenge();
+    if (hasVenueIdentity.value) handlePublishVenueMatch();
+    else handlePublishTeamChallenge();
     return;
   }
   handleSuggestedPublish();
@@ -405,8 +412,10 @@ provide(APP_SCROLL_CONTROLLER, appScrollController);
     <PublishTypeSheet
       :visible="publishTypeSheetVisible"
       :team-publish-disabled="!hasPublishIdentity"
+      :show-venue="hasVenueIdentity"
       @close="closePublishTypeSheet"
       @publish-team="handlePublishTeamChallenge"
+      @publish-venue="handlePublishVenueMatch"
       @publish-individual="handlePublishIndividualChallenge"
     />
 

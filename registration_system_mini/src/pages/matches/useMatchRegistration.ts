@@ -37,6 +37,8 @@ interface MatchRegistrationDependencies {
   openSignupSheet: () => void;
   /** 关闭报名人数面板（提交/取消成功后由页面收起）。 */
   closeSignupSheet: () => void;
+  /** 报名状态变化后的同步；服务端可能改变用户实际所在的报名组。 */
+  reloadAfterChange: () => Promise<unknown>;
 }
 
 export function useMatchRegistration(dependencies: MatchRegistrationDependencies) {
@@ -61,6 +63,7 @@ export function useMatchRegistration(dependencies: MatchRegistrationDependencies
     myRegistrationPaid,
     openSignupSheet,
     closeSignupSheet,
+    reloadAfterChange,
   } = dependencies;
 
   function ensureRegistrationOpen() {
@@ -158,6 +161,7 @@ export function useMatchRegistration(dependencies: MatchRegistrationDependencies
       await ensureSessionReady();
       await submitIndividualRegistrationStatus("attending", registrationCount);
       applyIndividualRegistrationState(1, registrationCount);
+      await reloadAfterChange();
       uni.$emit("home:data-may-changed");
       if (requiresPrepaidPayment.value) {
         // 赛前支付：确认报名后立即拉起支付；取消/失败时报名保留，详情页可继续支付。
@@ -196,6 +200,7 @@ export function useMatchRegistration(dependencies: MatchRegistrationDependencies
       await ensureSessionReady();
       await cancelIndividualRegistrationStatus();
       applyIndividualRegistrationState(0, 0);
+      await reloadAfterChange();
       uni.$emit("home:data-may-changed");
       uni.showToast({ title: "已取消报名", icon: "none" });
     } catch (error) {

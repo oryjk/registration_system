@@ -13,7 +13,7 @@ import type {
   BackendTeamMember,
   BackendUser,
 } from "@/types/backend";
-import type { AppMatchSummary } from "@/types/match";
+import type { AppMatchGroupDetail, AppMatchSummary } from "@/types/match";
 import { getCustomNavMetrics } from "@/utils/customNav";
 import { buildMatchTeamProgress } from "./detailTeamProgress";
 import { resolveUserDisplayName, toStandLabel } from "@/utils/viewModels";
@@ -32,6 +32,7 @@ import { useMatchGuestLogin } from "./useMatchGuestLogin";
 import { useMatchTeamLogos } from "./useMatchTeamLogos";
 import { useMatchFinish } from "./useMatchFinish";
 import { useMatchScore } from "./useMatchScore";
+import { useMatchVenueSides } from "./useMatchVenueSides";
 import { useConfirmDialog } from "@/components/ui/useConfirmDialog";
 import type { ConfirmDialogOptions } from "@/components/ui";
 
@@ -71,6 +72,8 @@ export function useMatchDetailPage() {
   const publicationModeLabel = ref("其他类型");
   const selectedGroupMinPlayers = ref<number | null>(null);
   const selectedGroupMaxPlayers = ref<number | null>(null);
+  const selectedGroupKind = ref<AppMatchGroupDetail["kind"] | null>(null);
+  const venueGroups = ref<AppMatchGroupDetail[]>([]);
 
   let countdownTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -93,6 +96,10 @@ export function useMatchDetailPage() {
     registrations.value.find((item) => item.user_id === currentUser.value?.id && item.stand === 1)?.registration_count ?? 1,
   );
   const isPickupMatch = computed(() => sourceMatch.value?.publication_mode === "online_pickup");
+  const isVenueHosted = computed(() => sourceMatch.value?.publication_mode === "venue_hosted");
+  // 散人约球和场馆组局的散人边都可以一人代多人，走人数选择面板。
+  const usesSignupSheet = computed(() => isPickupMatch.value
+    || (isVenueHosted.value && selectedGroupKind.value === "individual_opponent"));
   const requiredPlayers = computed(() => match.value?.players_per_team ?? 0);
   const maxPlayers = computed(() => {
     const configuredCapacity = match.value?.team_capacity_limit;
@@ -263,7 +270,7 @@ export function useMatchDetailPage() {
     if (registrationCapacityState.value.isFull && currentStatus.value !== "参加") return "报名已满";
     if (currentStatus.value !== "参加") return "立即报名";
     // 散人约球已报名：已支付锁定为只读，未支付可调整人数。
-    if (isPickupMatch.value) return myRegistrationPaid.value ? "已报名" : "调整人数";
+    if (usesSignupSheet.value) return myRegistrationPaid.value ? "已报名" : "调整人数";
     return "取消报名";
   });
   function openMatchLocation() {
@@ -314,10 +321,26 @@ export function useMatchDetailPage() {
     confirmRegistrationAction,
     requiresPrepaidPayment,
     payRegistrationFee,
-    isPickupMatch,
+    isPickupMatch: usesSignupSheet,
     myRegistrationPaid,
     openSignupSheet,
     closeSignupSheet,
+    // 场馆组局由服务端决定排到哪边，报名后要重新读取实际所在的报名组。
+    reloadAfterChange: () => isVenueHosted.value ? loadPageData({ preserveContent: true }) : Promise.resolve(),
+  });
+
+  const venueSides = useMatchVenueSides({
+    sourceMatch,
+    groups: venueGroups,
+    viewer: computed(() => ({
+      userId: currentUser.value?.id,
+      teamId: currentTeam.value?.id ?? null,
+      canManageTeam: !!currentTeam.value?.canManageTeam,
+    })),
+    nowTick,
+    registrationOpen: computed(() => registrationWindowState.value === "open" && !isGuestMode.value),
+    confirm: confirmRegistrationAction,
+    reload: loadPageData,
   });
 
   const matchFinish = useMatchFinish({
@@ -333,7 +356,9 @@ export function useMatchDetailPage() {
   // 比赛管理员（管理端设置的微信用户）录入比分：游客模式不可见。
   const matchScore = useMatchScore({
     sourceMatch,
-    isMatchAdmin: computed(() => !isGuestMode.value && currentUser.value?.is_match_admin === true),
+    // 场馆组局的比分由发布比赛的场馆录入。
+    isMatchAdmin: computed(() => !isGuestMode.value && (currentUser.value?.is_match_admin === true
+      || (isVenueHosted.value && sourceMatch.value?.created_by_user_id === currentUser.value?.id))),
     reload: loadPageData,
   });
 
@@ -363,6 +388,8 @@ export function useMatchDetailPage() {
       matchTeamGroups.value = publicData.teamGroups;
       selectedGroupMinPlayers.value = publicData.selectedGroupMinPlayers;
       selectedGroupMaxPlayers.value = publicData.selectedGroupMaxPlayers;
+      selectedGroupKind.value = publicData.selectedGroupKind;
+      venueGroups.value = publicData.venueGroups;
       currentStatus.value = toStandLabel(toRegistrationStandCode(publicData.myRegistration?.status));
       applyMyRegistrationPaid(!!publicData.myRegistration?.paid);
       teamsById.value = {};
@@ -479,6 +506,8 @@ export function useMatchDetailPage() {
     individualCtaLabel,
     isGuestMode,
     isPickupMatch,
+    usesSignupSheet,
+    ...venueSides,
     myRegistrationPaid,
     signupSheetVisible,
     signupMaxCount,

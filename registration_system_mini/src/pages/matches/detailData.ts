@@ -3,6 +3,7 @@ import { getTeamDetail } from "@/api/team";
 import type { AppMatchDetailResponse, AppMatchGroupDetail, AppMatchParticipant, AppMatchRegistration, AppMatchSummary } from "@/types/match";
 import type { BackendActivity, BackendRegistration, BackendTeam, BackendTeamMember, BackendUser } from "@/types/backend";
 import { getMatchPublicationModeLabel } from "@/utils/matchPublicationMode";
+import { activeVenueSides } from "./venueSideState";
 
 export interface PublicMatchDetailData {
   activity: BackendActivity;
@@ -19,6 +20,9 @@ export interface PublicMatchDetailData {
   /** 当前选中报名组的最小人数（管理端「最小人数」）；散人约球的报名进度以它为目标。 */
   selectedGroupMinPlayers: number | null;
   selectedGroupMaxPlayers: number | null;
+  selectedGroupKind: AppMatchGroupDetail["kind"] | null;
+  /** 场馆组局的有效报名组，用于展示两边状态；其他比赛类型为空。 */
+  venueGroups: AppMatchGroupDetail[];
   /** 是否存在开放中的散人报名组：没有它且用户未加入任何球队时，个人报名无路径，引导先加入球队。 */
   hasOpenIndividualGroup: boolean;
 }
@@ -109,7 +113,8 @@ export function toBackendActivity(match: AppMatchSummary, group?: AppMatchGroupD
     color: match.host_color ?? "",
     opposing_color: match.away_color ?? "",
     players_per_team: match.players_per_team,
-    team_capacity_limit: group?.max_players ?? match.players_per_team,
+    // 场馆组局的球队边不设上限。
+    team_capacity_limit: group?.max_players ?? (group?.side ? undefined : match.players_per_team),
     match_kind: "external",
     source_activity_id: null,
     team_registration_count: group?.attending_count ?? null,
@@ -165,15 +170,19 @@ export function buildPublicMatchApiDetailData(
   currentUserId?: number,
   selection: MatchDetailGroupSelection = {},
 ): PublicMatchDetailData {
+  // 场馆组局的球队被移出后，旧报名组和其中的报名都不再有效。
+  const venueGroups = activeVenueSides(matchDetail.groups);
+  const groups = matchDetail.match.publication_mode === "venue_hosted" ? venueGroups : matchDetail.groups;
   const group =
-    matchDetail.groups.find((item) => item.my_registration) ??
-    matchDetail.groups.find((item) => item.id === selection.preferredGroupId) ??
+    groups.find((item) => item.my_registration && item.my_registration.status !== "cancelled") ??
+    groups.find((item) => item.my_registration) ??
+    groups.find((item) => item.id === selection.preferredGroupId) ??
     (selection.currentTeamId != null
-      ? matchDetail.groups.find((item) => item.team_id === selection.currentTeamId)
+      ? groups.find((item) => item.team_id === selection.currentTeamId)
       : undefined) ??
-    matchDetail.groups.find((item) => item.kind === "individual_opponent" && item.status === "open") ??
-    matchDetail.groups.find((item) => item.status === "open") ??
-    matchDetail.groups[0];
+    groups.find((item) => item.kind === "individual_opponent" && item.status === "open") ??
+    groups.find((item) => item.status === "open") ??
+    groups[0];
   const activity = toBackendActivity(matchDetail.match, group);
   const myRegistration = group?.my_registration ?? null;
   const participants = group?.participants ?? [];
@@ -207,10 +216,12 @@ export function buildPublicMatchApiDetailData(
     registrationGroupId: group?.id ?? "",
     publicationModeLabel: getMatchPublicationModeLabel(matchDetail.match.publication_mode),
     sourceMatch: matchDetail.match,
-    teamGroups: toTeamGroupSummaries(matchDetail.groups),
+    teamGroups: toTeamGroupSummaries(groups),
     hasOpenIndividualGroup: matchDetail.groups.some((item) => item.kind === "individual_opponent" && item.status === "open"),
     selectedGroupMinPlayers: group?.min_players ?? null,
     selectedGroupMaxPlayers: group?.max_players ?? null,
+    selectedGroupKind: group?.kind ?? null,
+    venueGroups,
     sourceTeamRegistrationCount: Math.max(
       Number(activity.team_registration_count ?? 0)
         - activityUsers.filter((item) => item.stand === 1).reduce((total, item) => total + item.registration_count, 0),
@@ -244,7 +255,7 @@ export async function loadAuthenticatedMatchDetailContext(
   loaders: Pick<MatchDetailDataLoaders, "getTeamDetail"> = defaultMatchDetailDataLoaders,
 ): Promise<AuthenticatedMatchDetailContext> {
   const { activity, activityUsers, myRegistration, currentTeamId, currentUserId, registrationTeamId } = params;
-  const teamIds = [activity.home_team_id, activity.away_team_id].filter((teamId): teamId is number => typeof teamId === "number");
+  const teamIds = [...new Set([activity.home_team_id, activity.away_team_id, registrationTeamId])].filter((teamId): teamId is number => typeof teamId === "number");
   // 球队详情接口仅成员可读：非成员浏览广场比赛详情时会 403，拿不到就跳过，
   // 不能让它把整个详情页拖进「会话失败」分支（会被误判为游客）。
   const fetchedTeamDetails = (await Promise.all(teamIds.map(async (teamId) => {

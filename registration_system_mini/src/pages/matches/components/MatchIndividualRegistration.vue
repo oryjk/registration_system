@@ -39,6 +39,8 @@ const props = defineProps<{
   registrationClosed?: boolean;
   /** 散人约球（online_pickup）：唯一有人数调整语义的类型，由页面按 publication_mode 判定后传入。 */
   isPickupMatch?: boolean;
+  /** 场馆组局不显示主客队对阵，两边状态由 venue-sides 插槽展示。 */
+  hideTeamBoard?: boolean;
   /** 人均费用标签（如 ¥25.00）；空串表示免费。 */
   feeLabel?: string;
   /** 球队约队的主/客队双边报名进度；散人约局为空。 */
@@ -146,7 +148,7 @@ function handleTeamMemberDialogVisibilityChange(visible: boolean) {
     <IndividualMatchupHero
       :match="match"
       :match-kind-label="matchKindLabel"
-      :is-pickup-match="isPickupMatch"
+      :is-pickup-match="isPickupMatch || hideTeamBoard"
       :fee-label="feeLabel"
       :joined-count="joinedCount"
       :home-team-label="homeTeamLabel"
@@ -159,6 +161,7 @@ function handleTeamMemberDialogVisibilityChange(visible: boolean) {
       :match-location="matchLocation"
       @open-location="handleOpenLocation"
     />
+    <slot name="venue-sides" />
     <MatchRegistrationStatusCard
       @avatar-select="emit('avatarSelect', $event)"
       :participants="participantPreview"

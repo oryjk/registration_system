@@ -17,6 +17,7 @@ import MatchCaptainContact from "./components/MatchCaptainContact.vue";
 import MatchScoreCard from "./components/MatchScoreCard.vue";
 import MatchScoreDialog from "./components/MatchScoreDialog.vue";
 import MatchJoinTeamSheet from "./components/MatchJoinTeamSheet.vue";
+import MatchVenueSides from "./components/MatchVenueSides.vue";
 import MatchIndividualRegistration from "./components/MatchIndividualRegistration.vue";
 import { useShareCover } from "@/composables/useShareCover";
 
@@ -71,6 +72,13 @@ const {
   canSubmitIndividualRegistration,
   isGuestMode,
   isPickupMatch,
+  usesSignupSheet,
+  isVenueMatch,
+  venueSideCards,
+  canClaimSide,
+  venueSideBusy,
+  handleClaimSide,
+  handleReleaseSide,
   myRegistrationPaid,
   myRegistrationCount,
   signupSheetVisible,
@@ -114,6 +122,10 @@ const {
 const captainContact = useMatchCaptainContact();
 function openMatchEditor() {
   if (!sourceMatch.value) return;
+  if (isVenueMatch.value) {
+    uni.navigateTo({ url: `/pages/challenges/create-individual/index?mode=venue&editId=${sourceMatch.value.id}` });
+    return;
+  }
   const page = isPickupMatch.value ? "/pages/challenges/create-individual/index" : "/pages/matches/create/index";
   uni.navigateTo({ url: `${page}?editId=${sourceMatch.value.id}` });
 }
@@ -121,7 +133,7 @@ function openMatchEditor() {
 const canEditMatch = computed(() => {
   const source = sourceMatch.value;
   if (!source || isGuestMode.value || source.status === "ended" || source.status === "cancelled") return false;
-  if (source.publication_mode === "online_pickup") return source.created_by_user_id === currentUser.value?.id;
+  if (source.publication_mode === "online_pickup" || source.publication_mode === "venue_hosted") return source.created_by_user_id === currentUser.value?.id;
   return !!source?.host_team_id
     && currentTeam.value?.id === source.host_team_id
     && !!currentTeam.value?.canManageTeam;
@@ -240,7 +252,8 @@ const metaPageStyle = computed(() =>
         :is-guest-mode="isGuestMode"
         :can-submit-individual-registration="canSubmitIndividualRegistration"
         :registration-closed="isRegistrationReadOnly"
-        :is-pickup-match="isPickupMatch"
+        :is-pickup-match="usesSignupSheet"
+        :hide-team-board="isVenueMatch"
         :my-registration-paid="myRegistrationPaid"
         :fee-label="matchFeeLabel"
         :team-progress="teamProgressItems"
@@ -254,6 +267,16 @@ const metaPageStyle = computed(() =>
         @select-team-member-stand="handleSelectTeamMemberStand"
         @dialog-visibility-change="handleTeamMemberDialogVisibilityChange"
       >
+        <template #venue-sides>
+          <MatchVenueSides
+            v-if="isVenueMatch"
+            :sides="venueSideCards"
+            :can-claim="canClaimSide"
+            :busy="venueSideBusy"
+            @claim="handleClaimSide"
+            @release="handleReleaseSide"
+          />
+        </template>
         <template #captain="{ embedded }">
       <!-- 联系主队队长：入口在此，往来留言在消息中心查看。 -->
       <MatchCaptainContact

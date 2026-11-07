@@ -10,11 +10,14 @@ const props = defineProps<{
   visible: boolean;
   /** 散人（无可管理球队/场馆身份）不能以球队名义发布，按钮置灰但可点击触发引导。 */
   teamPublishDisabled?: boolean;
+  /** 场馆账号额外显示场馆组局。 */
+  showVenue?: boolean;
 }>();
 
 const emit = defineEmits<{
   (event: "close"): void;
   (event: "publishTeam"): void;
+  (event: "publishVenue"): void;
   (event: "publishIndividual"): void;
 }>();
 
@@ -34,6 +37,11 @@ function handlePublishTeam() {
   // 事件入口检查可见状态：面板不可见/退场中一律不触发发布跳转，杜绝透明热区误触。
   if (!rendered.value || leaving.value) return;
   emit("publishTeam");
+}
+
+function handlePublishVenue() {
+  if (!rendered.value || leaving.value) return;
+  emit("publishVenue");
 }
 
 function handlePublishIndividual() {
@@ -71,6 +79,18 @@ function handlePublishIndividual() {
         <!-- #ifndef MP-WEIXIN -->
         <text class="publish-menu-action-label">球队约队</text>
         <!-- #endif -->
+      </view>
+
+      <view v-if="showVenue" class="publish-menu-action publish-menu-action-center" @tap="handlePublishVenue">
+        <view class="publish-menu-action-button">
+          <!-- #ifdef MP-WEIXIN -->
+          <AppIcon name="map-pin" size="var(--ui-icon-lg)" />
+          <!-- #endif -->
+          <!-- #ifndef MP-WEIXIN -->
+          <text class="publish-menu-action-icon">馆</text>
+          <!-- #endif -->
+        </view>
+        <text class="publish-menu-action-label">场馆组局</text>
       </view>
 
       <view class="publish-menu-action publish-menu-action-right" @tap="handlePublishIndividual">
@@ -161,6 +181,12 @@ function handlePublishIndividual() {
   left: 128rpx;
   bottom: 76rpx;
   transition-delay: 30ms;
+}
+
+.publish-menu-action-center {
+  left: calc(50% - 95rpx);
+  bottom: 176rpx;
+  transition-delay: 60ms;
 }
 
 .publish-menu-action-right {
