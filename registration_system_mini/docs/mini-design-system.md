@@ -248,7 +248,7 @@ H5 日历组件为 `HomeMatchCalendar`，月份条使用主题 accent/accent-fg�
 
 微信普通操作优先复用 `AppButton`，默认/`dark` 与 `lime` 主按钮统一消费 `--ui-button-bg/fg`，保持薄荷蓝；`secondary`、`outline`、`danger` 与禁用状态保留语义。需要原生 `open-type` 或已有原生节点的按钮，在节点所属组件的 scoped 样式导入 `button-controls.css`，使用 `ui-native-button` 让图文整体水平、垂直居中，主操作再加 `ui-native-button--primary`。共享 `ui-subtle-control` 同样使用居中规则，尺寸与圆角仍由已有 token 和组件负责。不得通过父级 scoped 样式穿透子组件，也不得将包含多列内容的列表整行/卡片强制套用按钮居中规则；H5 不应用这些覆盖。
 
-- 微信比赛详情 hero 的地点为单一入口：定位图标、地址与灰色单 chevron 同属一行，整行打开地图，不另设「导航」按钮；没有经纬度时不显示 chevron。
+- 微信比赛详情 hero 的地点为单一入口：定位图标、地址、球场插画（`HOME_VISUAL_ASSETS.venueMap`）与灰色单 chevron 同属一行，整行打开地图，不另设「导航」按钮。插画与文字并排，长地址换行不压图；没有经纬度时不显示插画和 chevron，插画加载失败时只隐藏插画。
 - 确认/报名状态选择使用 `ConfirmDialog`，通过按钮文字、图标、tone 和事件区分业务，不能另写弹窗蒙层与动画。
 - 球队创建与管理的队徽区域共用 `TeamLogoField`；组件只负责预览和操作入口，上传与保存由页面负责。
 - 可编辑输入框使用主题 surface 与轻边框；灰色中性底仅用于状态、占位头像等非输入场景。

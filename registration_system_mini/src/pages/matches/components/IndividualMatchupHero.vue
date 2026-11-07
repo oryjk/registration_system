@@ -73,6 +73,9 @@ function handleCoverError() {
 }
 // 整行点击打开地图；没有经纬度时打不开，不显示可跳转的箭头。
 const hasLocationCoordinates = computed(() => props.match.location_latitude != null && props.match.location_longitude != null);
+const venueArtFailed = ref(false);
+const showVenueArt = computed(() => hasLocationCoordinates.value && !venueArtFailed.value);
+const venueArtSrc = computed(() => minioImageSrc(HOME_VISUAL_ASSETS.venueMap));
 // #endif
 
 // 终态标识只看真实比赛状态：ended/cancelled 才显示；
@@ -139,6 +142,9 @@ const matchStatusTag = computed(() => {
         <!-- #endif -->
         <text class="hero-venue-text">{{ matchLocation }}</text>
         <!-- #ifdef MP-WEIXIN -->
+        <view v-if="showVenueArt" class="hero-venue-art">
+          <image v-if="venueArtSrc" class="hero-venue-art__image" :src="venueArtSrc" mode="aspectFit" aria-hidden="true" @error="venueArtFailed = true" />
+        </view>
         <AppIcon v-if="hasLocationCoordinates" name="chevron-right" size="var(--ui-icon-sm)" tone="muted" />
         <!-- #endif -->
       </view>
@@ -405,10 +411,12 @@ const matchStatusTag = computed(() => {
 .hero-when { align-items: center; gap: var(--ui-space-2); margin-top: var(--ui-space-1); color: var(--now-cover-muted); font-size: var(--ui-text-body); line-height: var(--ui-line-height-compact); }
 .hero-chips { gap: var(--ui-space-3); margin-top: var(--ui-space-2); }
 .hero-info { gap: var(--ui-space-2); padding: 6rpx 18rpx; border: 1rpx solid rgba(255, 255, 255, 0.22); border-radius: var(--ui-radius-round); background: rgba(255, 255, 255, 0.14); color: var(--now-cover-fg); font-size: var(--ui-text-xs); font-weight: var(--ui-font-weight-medium); line-height: var(--ui-line-height-compact); }
-.hero-foot { margin-top: 0; padding: var(--ui-space-5) var(--ui-space-7); border-bottom: var(--ui-list-divider); }
+.hero-foot { margin-top: 0; padding: var(--ui-space-3) var(--ui-space-7); border-bottom: var(--ui-list-divider); }
 .hero-venue { width: 100%; align-items: center; gap: var(--ui-space-3); min-height: var(--ui-control-min-height); }
 .hero-venue--pressed { opacity: 0.82; }
 .hero-venue-text { flex: 1; line-height: var(--ui-line-height-compact); font-size: var(--ui-text-label); font-weight: var(--ui-font-weight-medium); }
+.hero-venue-art { flex-shrink: 0; width: var(--ui-hero-venue-art-width); height: var(--ui-hero-venue-art-height); }
+.hero-venue-art__image { display: block; width: 100%; height: 100%; }
 .hero-pickup-strip { border: var(--ui-panel-border); background: var(--ui-panel-soft-bg); padding: var(--ui-space-5); margin: var(--ui-space-5) var(--ui-space-7) var(--ui-space-7); }
 .hero-board { border-top: 0; margin-top: 0; padding: var(--ui-space-6) var(--ui-space-7) var(--ui-space-7); align-items: center; }
 .hero-name { font-size: var(--ui-text-subtitle); line-height: var(--ui-line-height-compact); }

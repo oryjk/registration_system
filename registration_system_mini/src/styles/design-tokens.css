@@ -433,6 +433,8 @@ page,
   --ui-home-status-icon-size: var(--ui-icon-control);
   --ui-home-action-min-width: 280rpx;
   --ui-home-tab-radius: var(--ui-space-8);
+  --ui-hero-venue-art-width: 132rpx;
+  --ui-hero-venue-art-height: 88rpx;
   /* #endif */
 
   --app-primary: var(--ui-color-accent);
