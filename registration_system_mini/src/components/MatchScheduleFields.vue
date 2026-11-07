@@ -361,16 +361,20 @@ function handleMatchEndTimeChange(event: Event) {
 /* #ifdef MP-WEIXIN */
 .date-head { gap: var(--ui-space-4); margin-top: var(--ui-section-gap); }
 .date-head-title { font-size: var(--ui-text-label); font-weight: var(--ui-font-weight-heading); }
-.date-more-link { min-height: var(--ui-control-min-height); padding: 0 var(--ui-space-4); border: var(--ui-control-border); background: var(--ui-control-subtle-bg); font-size: var(--ui-text-sm); }
+.date-more-link { min-height: var(--ui-control-min-height); padding: 0 var(--ui-space-4); border: var(--ui-input-border); background: var(--ui-color-surface); font-size: var(--ui-text-sm); }
 .date-option-scroll { margin-top: var(--ui-space-4); }
 .date-option-row { gap: var(--ui-space-3); }
-.date-option-card { width: var(--ui-schedule-date-width); min-height: var(--ui-schedule-date-min-height); padding: var(--ui-space-4) var(--ui-space-3); border: var(--ui-control-border); border-radius: var(--ui-control-radius); background: var(--ui-control-subtle-bg); box-shadow: var(--ui-panel-shadow); }
-.date-option-active { background: var(--ui-control-selected-bg); }
+.date-option-card { width: var(--ui-schedule-date-width); min-height: var(--ui-schedule-date-min-height); padding: var(--ui-space-4) var(--ui-space-3); border: var(--ui-input-border); border-radius: var(--ui-control-radius); background: var(--ui-color-surface); box-shadow: var(--ui-panel-shadow); }
+/* 薄荷色只表达“已选中”：未选中与时间输入保持中性，选中为实色底深色字。 */
+.date-option-active { border-color: var(--ui-color-accent); background: var(--ui-color-accent); }
+.date-option-active .date-option-top,
+.date-option-active .date-option-day,
+.date-option-active .date-option-month { color: var(--ui-color-accent-fg); }
 .date-option-top { font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-medium); }
 .date-option-day { margin-top: var(--ui-space-3); font-size: var(--ui-schedule-date-font-size); font-weight: var(--ui-font-weight-heading); }
 .date-option-month { margin-top: var(--ui-space-2); font-size: var(--ui-text-xs); }
 .time-tile-grid { gap: var(--ui-space-4); margin-top: var(--ui-space-5); }
-.time-tile { min-height: var(--ui-schedule-time-min-height); padding: var(--ui-space-4) var(--ui-space-5); gap: var(--ui-space-4); border: var(--ui-control-border); background: var(--ui-control-subtle-bg); }
+.time-tile { min-height: var(--ui-schedule-time-min-height); padding: var(--ui-space-4) var(--ui-space-5); gap: var(--ui-space-4); border: var(--ui-input-border); background: var(--ui-color-surface); }
 .time-tile-label { font-size: var(--ui-text-label); font-weight: var(--ui-font-weight-medium); line-height: var(--ui-line-height-tight); }
 .time-tile-value-row { gap: var(--ui-space-3); }
 .time-tile-value { font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-heading); line-height: var(--ui-line-height-tight); }
