@@ -1,17 +1,17 @@
 -- name: GetUserByOpenID :one
-SELECT id, openid, nickname, avatar_url, real_name, phone_number, status, is_match_admin, last_active_at, created_at, updated_at
+SELECT id, openid, nickname, avatar_url, real_name, phone_number, status, is_match_admin, is_venue, last_active_at, created_at, updated_at
 FROM users
 WHERE openid = $1;
 
 -- name: GetUserByID :one
-SELECT id, openid, nickname, avatar_url, real_name, phone_number, status, is_match_admin, last_active_at, created_at, updated_at
+SELECT id, openid, nickname, avatar_url, real_name, phone_number, status, is_match_admin, is_venue, last_active_at, created_at, updated_at
 FROM users
 WHERE id = $1;
 
 -- name: CreateUser :one
 INSERT INTO users (openid, nickname, avatar_url)
 VALUES ($1, $2, $3)
-RETURNING id, openid, nickname, avatar_url, real_name, phone_number, status, is_match_admin, last_active_at, created_at, updated_at;
+RETURNING id, openid, nickname, avatar_url, real_name, phone_number, status, is_match_admin, is_venue, last_active_at, created_at, updated_at;
 
 -- name: UpdateUserProfile :one
 UPDATE users
@@ -19,7 +19,7 @@ SET nickname = $2,
     avatar_url = $3,
     updated_at = NOW()
 WHERE id = $1
-RETURNING id, openid, nickname, avatar_url, real_name, phone_number, status, is_match_admin, last_active_at, created_at, updated_at;
+RETURNING id, openid, nickname, avatar_url, real_name, phone_number, status, is_match_admin, is_venue, last_active_at, created_at, updated_at;
 
 -- name: UpdateUserBasicProfile :one
 UPDATE users
@@ -27,7 +27,7 @@ SET real_name = $2,
     phone_number = $3,
     updated_at = NOW()
 WHERE id = $1
-RETURNING id, openid, nickname, avatar_url, real_name, phone_number, status, is_match_admin, last_active_at, created_at, updated_at;
+RETURNING id, openid, nickname, avatar_url, real_name, phone_number, status, is_match_admin, is_venue, last_active_at, created_at, updated_at;
 
 -- name: UpdateUserAppProfile :one
 UPDATE users
@@ -36,7 +36,7 @@ SET nickname = $2,
     avatar_url = $4,
     updated_at = NOW()
 WHERE id = $1
-RETURNING id, openid, nickname, avatar_url, real_name, phone_number, status, is_match_admin, last_active_at, created_at, updated_at;
+RETURNING id, openid, nickname, avatar_url, real_name, phone_number, status, is_match_admin, is_venue, last_active_at, created_at, updated_at;
 
 -- name: TouchUserLastActive :exec
 UPDATE users
@@ -44,17 +44,24 @@ SET last_active_at = sqlc.arg('active_at')::timestamptz
 WHERE id = sqlc.arg('id')
   AND (last_active_at IS NULL OR last_active_at <= sqlc.arg('stale_before')::timestamptz);
 
+-- name: SetUserVenue :one
+UPDATE users
+SET is_venue = $2,
+    updated_at = NOW()
+WHERE id = $1
+RETURNING id, openid, nickname, avatar_url, real_name, phone_number, status, is_match_admin, is_venue, last_active_at, created_at, updated_at;
+
 -- name: SetUserMatchAdmin :one
 -- 设置/取消比赛管理员标记（管理端操作）。
 UPDATE users
 SET is_match_admin = $2,
     updated_at = NOW()
 WHERE id = $1
-RETURNING id, openid, nickname, avatar_url, real_name, phone_number, status, is_match_admin, last_active_at, created_at, updated_at;
+RETURNING id, openid, nickname, avatar_url, real_name, phone_number, status, is_match_admin, is_venue, last_active_at, created_at, updated_at;
 
 -- name: ListUsersForAdmin :many
 -- 管理端微信用户搜索：按昵称/姓名/手机号/用户 ID 模糊匹配，支持身份/账号状态/活跃筛选与排序。
-SELECT id, openid, nickname, avatar_url, real_name, phone_number, status, is_match_admin, last_active_at, created_at, updated_at
+SELECT id, openid, nickname, avatar_url, real_name, phone_number, status, is_match_admin, is_venue, last_active_at, created_at, updated_at
 FROM users
 WHERE (
     sqlc.arg('search')::text = ''
@@ -121,6 +128,7 @@ SELECT u.id,
        u.phone_number,
        u.status,
        u.is_match_admin,
+       u.is_venue,
        u.last_active_at,
        u.created_at,
        u.updated_at,

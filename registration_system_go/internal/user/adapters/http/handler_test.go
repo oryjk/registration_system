@@ -131,3 +131,7 @@ func (fakeAdminTokens) IssueAdmin(context.Context, int64, bool) (string, error) 
 func (fakeAdminTokens) Parse(context.Context, string) (sharedauth.Actor, error) {
 	return sharedauth.Actor{Kind: sharedauth.ActorAdmin, ID: 1}, nil
 }
+
+func (f *fakeAdminUsers) SetVenue(context.Context, sharedauth.Actor, int64, bool) (domain.User, error) {
+	return domain.User{}, nil
+}

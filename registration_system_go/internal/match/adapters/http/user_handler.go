@@ -101,11 +101,13 @@ type UserCaptainResponse struct {
 }
 
 type UserRegistrationGroupSummary struct {
-	Kind           domain.GroupKind `json:"kind"`
-	TeamID         *int64           `json:"team_id"`
-	MinPlayers     *int             `json:"min_players"`
-	MaxPlayers     *int             `json:"max_players"`
-	AttendingCount int              `json:"attending_count"`
+	Kind           domain.GroupKind  `json:"kind"`
+	TeamID         *int64            `json:"team_id"`
+	Side           *domain.GroupSide `json:"side,omitempty"`
+	SideTeamName   string            `json:"side_team_name,omitempty"`
+	MinPlayers     *int              `json:"min_players"`
+	MaxPlayers     *int              `json:"max_players"`
+	AttendingCount int               `json:"attending_count"`
 }
 
 type UserRegistrationResponse struct {
@@ -118,6 +120,8 @@ type UserGroupResponse struct {
 	ID             string                    `json:"id"`
 	Kind           domain.GroupKind          `json:"kind"`
 	TeamID         *int64                    `json:"team_id"`
+	Side           *domain.GroupSide         `json:"side,omitempty"`
+	SideTeamName   string                    `json:"side_team_name,omitempty"`
 	MinPlayers     *int                      `json:"min_players"`
 	MaxPlayers     *int                      `json:"max_players"`
 	Status         domain.GroupStatus        `json:"status"`
@@ -158,6 +162,7 @@ type UserMatchListResponse struct {
 type UserHomeGroupResponse struct {
 	ID                   string                     `json:"id"`
 	TeamID               *int64                     `json:"team_id"`
+	Side                 *domain.GroupSide          `json:"side,omitempty"`
 	Kind                 domain.GroupKind           `json:"kind"`
 	Status               domain.GroupStatus         `json:"status"`
 	MinPlayers           *int                       `json:"min_players"`
@@ -492,7 +497,7 @@ func mapUserMatch(item ports.MatchItem) UserMatchResponse {
 	groups := make([]UserRegistrationGroupSummary, 0, len(item.RegistrationGroups))
 	for _, group := range item.RegistrationGroups {
 		groups = append(groups, UserRegistrationGroupSummary{
-			Kind: group.Kind, TeamID: group.TeamID,
+			Kind: group.Kind, TeamID: group.TeamID, Side: group.Side, SideTeamName: group.SideTeamName,
 			MinPlayers: group.MinPlayers, MaxPlayers: group.MaxPlayers,
 			AttendingCount: group.AttendingCount,
 		})
@@ -535,6 +540,7 @@ func mapUserDetail(detail application.UserMatchDetail) UserMatchDetailResponse {
 		}
 		groups = append(groups, UserGroupResponse{
 			ID: state.Group.ID.String(), Kind: state.Group.Kind, TeamID: state.Group.TeamID,
+			Side: state.Group.Side, SideTeamName: state.SideTeamName,
 			MinPlayers: state.Group.MinPlayers, MaxPlayers: state.Group.MaxPlayers, Status: state.Group.Status,
 			AttendingCount: state.AttendingCount, MyRegistration: registration,
 			Participants: mapUserParticipantResponses(state.Participants),
@@ -573,6 +579,7 @@ func mapUserHome(result application.UserMatchHomeResult) UserMatchHomeResponse {
 			Group: UserHomeGroupResponse{
 				ID: item.Group.Group.ID.String(), Kind: item.Group.Group.Kind, Status: item.Group.Group.Status,
 				TeamID:     item.Group.Group.TeamID,
+				Side:       item.Group.Group.Side,
 				MinPlayers: item.Group.Group.MinPlayers, MaxPlayers: item.Group.Group.MaxPlayers,
 				AttendingCount: item.Group.AttendingCount, MyRegistrationStatus: registrationStatus,
 				Participants: mapUserParticipantResponses(item.Group.Participants),

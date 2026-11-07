@@ -25,6 +25,8 @@ type User struct {
 	Status      Status
 	// IsMatchAdmin 是否为比赛管理员（管理端设置）：可在小程序端录入比赛比分。
 	IsMatchAdmin bool
+	// IsVenue 是否为场馆（管理端开通）：可发布不属于任何球队的场馆组局。
+	IsVenue      bool
 	LastActiveAt *time.Time
 	CreatedAt    time.Time
 	UpdatedAt    time.Time

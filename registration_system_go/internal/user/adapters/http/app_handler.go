@@ -186,6 +186,6 @@ func mapProfileResponse(user domain.User) ProfileResponse {
 	return ProfileResponse{
 		ID: user.ID, Nickname: user.Nickname, AvatarURL: user.AvatarURL,
 		RealName: user.RealName, PhoneNumber: user.PhoneNumber, Status: string(user.Status),
-		IsMatchAdmin: user.IsMatchAdmin,
+		IsMatchAdmin: user.IsMatchAdmin, IsVenue: user.IsVenue,
 	}
 }

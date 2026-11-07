@@ -58,6 +58,8 @@ type UserMatchHomeResult struct {
 
 const homeSectionLimit = 3
 
+var legacyPublicationModes = []domain.PublicationMode{domain.OfflineConfirmed, domain.OnlineTeam, domain.OnlineIndividual, domain.OnlinePickup}
+
 func NewUserMatchQueryService(repository ports.UserMatchRepository) UserMatchQueryService {
 	return UserMatchQueryService{repository: repository}
 }
@@ -71,6 +73,10 @@ func (s UserMatchQueryService) List(ctx context.Context, actor sharedauth.Actor,
 	}
 	if err := validatePublicationModes(query.PublicationModes); err != nil {
 		return UserMatchListResult{}, err
+	}
+	if len(query.PublicationModes) == 0 {
+		// 已发布的旧版小程序不认识场馆组局，只有明确传类型的客户端才能查到。
+		query.PublicationModes = legacyPublicationModes
 	}
 	if query.Scope == "" {
 		query.Scope = MatchScopeAll
@@ -150,7 +156,7 @@ func (s UserMatchQueryService) Home(ctx context.Context, actor sharedauth.Actor)
 func validatePublicationModes(modes []domain.PublicationMode) error {
 	for _, mode := range modes {
 		switch mode {
-		case domain.OfflineConfirmed, domain.OnlineTeam, domain.OnlineIndividual, domain.OnlinePickup:
+		case domain.OfflineConfirmed, domain.OnlineTeam, domain.OnlineIndividual, domain.OnlinePickup, domain.VenueHosted:
 		default:
 			return sharederror.New(sharederror.KindValidation, "比赛类型筛选无效")
 		}

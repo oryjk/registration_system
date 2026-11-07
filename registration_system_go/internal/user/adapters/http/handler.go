@@ -22,6 +22,7 @@ type ProfileUpdater interface {
 type AdminUsers interface {
 	List(context.Context, sharedauth.Actor, application.AdminUserListQuery) (application.AdminUserListResult, error)
 	SetMatchAdmin(context.Context, sharedauth.Actor, int64, bool) (domain.User, error)
+	SetVenue(context.Context, sharedauth.Actor, int64, bool) (domain.User, error)
 }
 
 type Handler struct {
@@ -43,6 +44,8 @@ type ProfileResponse struct {
 	Status      string  `json:"status"`
 	// IsMatchAdmin 是否为比赛管理员：可在小程序端录入比赛比分。
 	IsMatchAdmin bool `json:"is_match_admin"`
+	// IsVenue 是否为场馆：可发布场馆组局。
+	IsVenue bool `json:"is_venue"`
 }
 
 // AdminUserResponse 管理端的微信用户条目（不暴露 openid）。
@@ -54,6 +57,7 @@ type AdminUserResponse struct {
 	PhoneNumber  *string    `json:"phone_number"`
 	Status       string     `json:"status"`
 	IsMatchAdmin bool       `json:"is_match_admin"`
+	IsVenue      bool       `json:"is_venue"`
 	LastActiveAt *time.Time `json:"last_active_at"`
 	CreatedAt    time.Time  `json:"created_at"`
 }
@@ -101,6 +105,8 @@ func (h *Handler) RegisterAdminRoutes(group *gin.RouterGroup) {
 	group.GET("/users", h.ListUsers)
 	group.PUT("/users/:id/match-admin", h.SetMatchAdmin)
 	group.DELETE("/users/:id/match-admin", h.UnsetMatchAdmin)
+	group.PUT("/users/:id/venue", h.SetVenue)
+	group.DELETE("/users/:id/venue", h.UnsetVenue)
 }
 
 // ListUsers GET /users：按昵称/姓名/手机号/用户 ID 搜索微信用户，
@@ -155,7 +161,21 @@ func (h *Handler) UnsetMatchAdmin(c *gin.Context) {
 	h.changeMatchAdmin(c, false)
 }
 
+// SetVenue PUT /users/:id/venue：把该微信用户设为场馆。
+func (h *Handler) SetVenue(c *gin.Context) {
+	h.changeUserFlag(c, true, h.users.SetVenue)
+}
+
+// UnsetVenue DELETE /users/:id/venue：取消该用户的场馆身份。
+func (h *Handler) UnsetVenue(c *gin.Context) {
+	h.changeUserFlag(c, false, h.users.SetVenue)
+}
+
 func (h *Handler) changeMatchAdmin(c *gin.Context, enabled bool) {
+	h.changeUserFlag(c, enabled, h.users.SetMatchAdmin)
+}
+
+func (h *Handler) changeUserFlag(c *gin.Context, enabled bool, update func(context.Context, sharedauth.Actor, int64, bool) (domain.User, error)) {
 	actor, ok := authhttp.ActorFromContext(c)
 	if !ok {
 		sharedhttpapi.WriteError(c, sharederror.ErrUnauthorized)
@@ -166,7 +186,7 @@ func (h *Handler) changeMatchAdmin(c *gin.Context, enabled bool) {
 		sharedhttpapi.WriteError(c, sharederror.New(sharederror.KindValidation, "用户 ID 无效"))
 		return
 	}
-	user, err := h.users.SetMatchAdmin(c.Request.Context(), actor, userID, enabled)
+	user, err := update(c.Request.Context(), actor, userID, enabled)
 	if err != nil {
 		sharedhttpapi.WriteError(c, err)
 		return
@@ -178,7 +198,7 @@ func mapAdminUser(user domain.User) AdminUserResponse {
 	return AdminUserResponse{
 		ID: user.ID, Nickname: user.Nickname, AvatarURL: user.AvatarURL,
 		RealName: user.RealName, PhoneNumber: user.PhoneNumber, Status: string(user.Status),
-		IsMatchAdmin: user.IsMatchAdmin, LastActiveAt: user.LastActiveAt, CreatedAt: user.CreatedAt,
+		IsMatchAdmin: user.IsMatchAdmin, IsVenue: user.IsVenue, LastActiveAt: user.LastActiveAt, CreatedAt: user.CreatedAt,
 	}
 }
 

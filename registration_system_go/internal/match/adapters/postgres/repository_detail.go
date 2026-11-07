@@ -54,12 +54,13 @@ func (r *Repository) FindForUser(ctx context.Context, matchID uuid.UUID, userID 
 		state := ports.UserGroupState{
 			Group: domain.RegistrationGroup{
 				ID: uuid.UUID(groupRow.ID.Bytes), MatchID: uuid.UUID(groupRow.MatchID.Bytes),
-				Kind: domain.GroupKind(groupRow.Kind), TeamID: groupRow.TeamID,
+				Kind: domain.GroupKind(groupRow.Kind), TeamID: groupRow.TeamID, Side: groupSide(groupRow.Side),
 				MinPlayers: intPointer(groupRow.MinPlayers), MaxPlayers: intPointer(groupRow.MaxPlayers),
 				Status: domain.GroupStatus(groupRow.Status), CreatedAt: groupRow.CreatedAt.Time,
 				UpdatedAt: groupRow.UpdatedAt.Time, CancelledAt: timestampPointer(groupRow.CancelledAt),
 			},
 			AttendingCount: int(groupRow.AttendingCount),
+			SideTeamName:   textValue(groupRow.SideTeamName),
 		}
 		if groupRow.MyRegistrationID.Valid && groupRow.MyRegistrationStatus != nil && groupRow.MyRegistrationCount != nil {
 			state.MyRegistration = &domain.Registration{

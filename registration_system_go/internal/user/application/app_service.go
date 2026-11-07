@@ -88,6 +88,19 @@ func (s AppService) EnsureMatchAdmin(ctx context.Context, userID int64) error {
 	return nil
 }
 
+// EnsureVenue 校验用户存在、未冻结且已开通场馆身份。
+// 实现 match 模块的 ports.VenueAccess，供发布场馆组局鉴权。
+func (s AppService) EnsureVenue(ctx context.Context, userID int64) error {
+	user, err := s.activeUser(ctx, userID)
+	if err != nil {
+		return err
+	}
+	if !user.IsVenue {
+		return sharederror.ErrForbidden
+	}
+	return nil
+}
+
 func (s AppService) activeUser(ctx context.Context, userID int64) (domain.User, error) {
 	user, found, err := s.repository.FindByID(ctx, userID)
 	if err != nil {

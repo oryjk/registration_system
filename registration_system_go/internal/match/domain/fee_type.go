@@ -35,6 +35,9 @@ func (m *Match) UpdateFeeConfig(kind FeeType, mode PaymentMode, cents int64) err
 	if err := validateFeeType(kind, mode.normalized(), cents); err != nil {
 		return err
 	}
+	if m.PublicationMode == VenueHosted && mode.normalized() == PaymentPrepaid {
+		return sharederror.New(sharederror.KindValidation, "场馆组局暂只支持线下结算")
+	}
 	if kind == FeeTeamFund && m.HostTeamID == nil {
 		return sharederror.New(sharederror.KindValidation, "队费扣除仅适用于球队比赛")
 	}

@@ -89,6 +89,8 @@ type RegistrationGroupSummary struct {
 	MatchID        uuid.UUID
 	Kind           domain.GroupKind
 	TeamID         *int64
+	Side           *domain.GroupSide
+	SideTeamName   string
 	MinPlayers     *int
 	MaxPlayers     *int
 	AttendingCount int
@@ -97,6 +99,8 @@ type RegistrationGroupSummary struct {
 type UserGroupState struct {
 	Group          domain.RegistrationGroup
 	AttendingCount int
+	// SideTeamName 场馆组局占边球队的名称；其他报名组为空。
+	SideTeamName   string
 	MyRegistration *domain.Registration
 	Participants   []UserParticipant
 }

@@ -25,6 +25,8 @@ type UserRegistrationTransaction interface {
 	FindActiveUserRegistrationInMatchForUpdate(context.Context, uuid.UUID, int64) (domain.Registration, bool, error)
 	// 调用前持有比赛行锁；专门检查当前组之外的全部有效报名。
 	HasOtherActiveRegistrationInMatch(context.Context, uuid.UUID, uuid.UUID, int64) (bool, error)
+	// 调用前持有比赛行锁；场馆组局按甲、乙顺序返回有效报名组。
+	ListActiveGroupsForUpdate(context.Context, uuid.UUID) ([]domain.RegistrationGroup, error)
 	CountAttendingForGroup(context.Context, uuid.UUID) (int, error)
 	IsActiveTeamMember(context.Context, int64, int64) (bool, error)
 	// IsTeamMember 用于管理端出勤补录，包含仍在球队名单中的冻结队员。

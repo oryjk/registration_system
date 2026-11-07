@@ -28,6 +28,7 @@ type RegistrationGroup struct {
 	MatchID     uuid.UUID
 	Kind        GroupKind
 	TeamID      *int64
+	Side        *GroupSide
 	MinPlayers  *int
 	MaxPlayers  *int
 	Status      GroupStatus

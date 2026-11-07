@@ -112,7 +112,7 @@ WHERE ($1::text IS NULL OR m.status = $1)
                   FROM team_members membership
                   WHERE membership.user_id = $4
                     AND membership.status = 'active'
-                    AND (membership.team_id = m.host_team_id OR membership.team_id = m.away_team_id)
+                    AND (membership.team_id = m.host_team_id OR membership.team_id = m.away_team_id OR membership.team_id IN (SELECT side_group.team_id FROM match_registration_groups side_group WHERE side_group.match_id = m.id AND side_group.side IS NOT NULL AND side_group.status <> 'cancelled'))
               )
           )
       )
@@ -131,7 +131,7 @@ WHERE ($1::text IS NULL OR m.status = $1)
               FROM team_members membership
               WHERE membership.user_id = $4
                 AND membership.status = 'active'
-                AND (membership.team_id = m.host_team_id OR membership.team_id = m.away_team_id)
+                AND (membership.team_id = m.host_team_id OR membership.team_id = m.away_team_id OR membership.team_id IN (SELECT side_group.team_id FROM match_registration_groups side_group WHERE side_group.match_id = m.id AND side_group.side IS NOT NULL AND side_group.status <> 'cancelled'))
           )
       )
   )
@@ -423,10 +423,11 @@ INSERT INTO match_registration_groups (
     team_id,
     min_players,
     max_players,
-    status
+    status,
+    side
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, match_id, kind, team_id, min_players, max_players, status, created_at, updated_at, cancelled_at
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING id, match_id, kind, team_id, min_players, max_players, status, created_at, updated_at, cancelled_at, side
 `
 
 type CreateRegistrationGroupParams struct {
@@ -437,6 +438,7 @@ type CreateRegistrationGroupParams struct {
 	MinPlayers *int32      `json:"min_players"`
 	MaxPlayers *int32      `json:"max_players"`
 	Status     string      `json:"status"`
+	Side       *string     `json:"side"`
 }
 
 func (q *Queries) CreateRegistrationGroup(ctx context.Context, arg CreateRegistrationGroupParams) (MatchRegistrationGroup, error) {
@@ -448,6 +450,7 @@ func (q *Queries) CreateRegistrationGroup(ctx context.Context, arg CreateRegistr
 		arg.MinPlayers,
 		arg.MaxPlayers,
 		arg.Status,
+		arg.Side,
 	)
 	var i MatchRegistrationGroup
 	err := row.Scan(
@@ -461,6 +464,7 @@ func (q *Queries) CreateRegistrationGroup(ctx context.Context, arg CreateRegistr
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.CancelledAt,
+		&i.Side,
 	)
 	return i, err
 }
@@ -635,7 +639,7 @@ func (q *Queries) FinishMatchStatus(ctx context.Context, arg FinishMatchStatusPa
 }
 
 const getActiveGuestGroupForUpdate = `-- name: GetActiveGuestGroupForUpdate :one
-SELECT id, match_id, kind, team_id, min_players, max_players, status, created_at, updated_at, cancelled_at
+SELECT id, match_id, kind, team_id, min_players, max_players, status, created_at, updated_at, cancelled_at, side
 FROM match_registration_groups
 WHERE match_id = $1
   AND kind = 'guest_team'
@@ -657,6 +661,7 @@ func (q *Queries) GetActiveGuestGroupForUpdate(ctx context.Context, matchID pgty
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.CancelledAt,
+		&i.Side,
 	)
 	return i, err
 }
@@ -903,7 +908,7 @@ func (q *Queries) GetParticipationAvailableAt(ctx context.Context, arg GetPartic
 }
 
 const getRegistrationGroupForUpdate = `-- name: GetRegistrationGroupForUpdate :one
-SELECT id, match_id, kind, team_id, min_players, max_players, status, created_at, updated_at, cancelled_at
+SELECT id, match_id, kind, team_id, min_players, max_players, status, created_at, updated_at, cancelled_at, side
 FROM match_registration_groups
 WHERE match_id = $1
   AND id = $2
@@ -929,6 +934,7 @@ func (q *Queries) GetRegistrationGroupForUpdate(ctx context.Context, arg GetRegi
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.CancelledAt,
+		&i.Side,
 	)
 	return i, err
 }
@@ -1106,6 +1112,47 @@ func (q *Queries) IsTeamRosterMember(ctx context.Context, arg IsTeamRosterMember
 	var exists bool
 	err := row.Scan(&exists)
 	return exists, err
+}
+
+const listActiveRegistrationGroupsForUpdate = `-- name: ListActiveRegistrationGroupsForUpdate :many
+SELECT id, match_id, kind, team_id, min_players, max_players, status, created_at, updated_at, cancelled_at, side
+FROM match_registration_groups
+WHERE match_id = $1
+  AND status <> 'cancelled'
+ORDER BY side NULLS LAST, created_at, id
+FOR UPDATE
+`
+
+func (q *Queries) ListActiveRegistrationGroupsForUpdate(ctx context.Context, matchID pgtype.UUID) ([]MatchRegistrationGroup, error) {
+	rows, err := q.db.Query(ctx, listActiveRegistrationGroupsForUpdate, matchID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []MatchRegistrationGroup
+	for rows.Next() {
+		var i MatchRegistrationGroup
+		if err := rows.Scan(
+			&i.ID,
+			&i.MatchID,
+			&i.Kind,
+			&i.TeamID,
+			&i.MinPlayers,
+			&i.MaxPlayers,
+			&i.Status,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.CancelledAt,
+			&i.Side,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listCaptainMessagesByThread = `-- name: ListCaptainMessagesByThread :many
@@ -1398,6 +1445,7 @@ SELECT m.id, m.name, m.publication_mode, m.opponent_state, m.status, m.host_team
        related_group.id AS group_id,
        related_group.kind AS group_kind,
        related_group.team_id AS group_team_id,
+       related_group.side AS group_side,
        related_group.min_players AS group_min_players,
        related_group.max_players AS group_max_players,
        related_group.status AS group_status,
@@ -1420,7 +1468,7 @@ FROM matches m
 LEFT JOIN teams host ON host.id = m.host_team_id
 LEFT JOIN teams away ON away.id = m.away_team_id
 JOIN LATERAL (
-    SELECT g.id, g.match_id, g.kind, g.team_id, g.min_players, g.max_players, g.status, g.created_at, g.updated_at, g.cancelled_at
+    SELECT g.id, g.match_id, g.kind, g.team_id, g.min_players, g.max_players, g.status, g.created_at, g.updated_at, g.cancelled_at, g.side
     FROM match_registration_groups g
     LEFT JOIN match_registrations own
       ON own.group_id = g.id
@@ -1500,6 +1548,7 @@ type ListHomeActionMatchesForUserRow struct {
 	GroupID                   pgtype.UUID      `json:"group_id"`
 	GroupKind                 string           `json:"group_kind"`
 	GroupTeamID               *int64           `json:"group_team_id"`
+	GroupSide                 *string          `json:"group_side"`
 	GroupMinPlayers           *int32           `json:"group_min_players"`
 	GroupMaxPlayers           *int32           `json:"group_max_players"`
 	GroupStatus               string           `json:"group_status"`
@@ -1560,6 +1609,7 @@ func (q *Queries) ListHomeActionMatchesForUser(ctx context.Context, arg ListHome
 			&i.GroupID,
 			&i.GroupKind,
 			&i.GroupTeamID,
+			&i.GroupSide,
 			&i.GroupMinPlayers,
 			&i.GroupMaxPlayers,
 			&i.GroupStatus,
@@ -1706,7 +1756,7 @@ WHERE m.status <> 'cancelled'
           FROM team_members tm
           WHERE tm.user_id = $1
             AND tm.status = 'active'
-            AND (tm.team_id = m.host_team_id OR tm.team_id = m.away_team_id)
+            AND (tm.team_id = m.host_team_id OR tm.team_id = m.away_team_id OR tm.team_id IN (SELECT side_group.team_id FROM match_registration_groups side_group WHERE side_group.match_id = m.id AND side_group.side IS NOT NULL AND side_group.status <> 'cancelled'))
       )
       OR EXISTS (
           SELECT 1
@@ -1949,7 +1999,7 @@ SELECT m.id, m.name, m.publication_mode, m.opponent_state, m.status, m.host_team
                FROM team_members membership
                WHERE membership.user_id = $1
                  AND membership.status = 'active'
-                 AND (membership.team_id = m.host_team_id OR membership.team_id = m.away_team_id)
+                 AND (membership.team_id = m.host_team_id OR membership.team_id = m.away_team_id OR membership.team_id IN (SELECT side_group.team_id FROM match_registration_groups side_group WHERE side_group.match_id = m.id AND side_group.side IS NOT NULL AND side_group.status <> 'cancelled'))
            )
        ) AS is_related_to_me
 FROM matches m
@@ -1980,7 +2030,7 @@ WHERE ($2::text IS NULL OR m.status = $2)
                   FROM team_members membership
                   WHERE membership.user_id = $1
                     AND membership.status = 'active'
-                    AND (membership.team_id = m.host_team_id OR membership.team_id = m.away_team_id)
+                    AND (membership.team_id = m.host_team_id OR membership.team_id = m.away_team_id OR membership.team_id IN (SELECT side_group.team_id FROM match_registration_groups side_group WHERE side_group.match_id = m.id AND side_group.side IS NOT NULL AND side_group.status <> 'cancelled'))
               )
           )
       )
@@ -1999,7 +2049,7 @@ WHERE ($2::text IS NULL OR m.status = $2)
               FROM team_members membership
               WHERE membership.user_id = $1
                 AND membership.status = 'active'
-                AND (membership.team_id = m.host_team_id OR membership.team_id = m.away_team_id)
+                AND (membership.team_id = m.host_team_id OR membership.team_id = m.away_team_id OR membership.team_id IN (SELECT side_group.team_id FROM match_registration_groups side_group WHERE side_group.match_id = m.id AND side_group.side IS NOT NULL AND side_group.status <> 'cancelled'))
           )
       )
   )
@@ -2292,7 +2342,8 @@ func (q *Queries) ListPendingTeamApplicationsForUpdate(ctx context.Context, matc
 }
 
 const listRegistrationGroupStatesForUser = `-- name: ListRegistrationGroupStatesForUser :many
-SELECT g.id, g.match_id, g.kind, g.team_id, g.min_players, g.max_players, g.status, g.created_at, g.updated_at, g.cancelled_at,
+SELECT g.id, g.match_id, g.kind, g.team_id, g.min_players, g.max_players, g.status, g.created_at, g.updated_at, g.cancelled_at, g.side,
+       side_team.name AS side_team_name,
        COALESCE((
            SELECT SUM(active.registration_count)
            FROM match_registrations active
@@ -2307,6 +2358,9 @@ SELECT g.id, g.match_id, g.kind, g.team_id, g.min_players, g.max_players, g.stat
        mine.updated_at AS my_registration_updated_at,
        mine.cancelled_at AS my_registration_cancelled_at
 FROM match_registration_groups g
+LEFT JOIN teams side_team
+    ON side_team.id = g.team_id
+   AND g.side IS NOT NULL
 LEFT JOIN match_registrations mine
     ON mine.group_id = g.id
    AND mine.user_id = $1
@@ -2330,6 +2384,8 @@ type ListRegistrationGroupStatesForUserRow struct {
 	CreatedAt                 pgtype.Timestamp `json:"created_at"`
 	UpdatedAt                 pgtype.Timestamp `json:"updated_at"`
 	CancelledAt               pgtype.Timestamp `json:"cancelled_at"`
+	Side                      *string          `json:"side"`
+	SideTeamName              *string          `json:"side_team_name"`
 	AttendingCount            int64            `json:"attending_count"`
 	MyRegistrationID          pgtype.UUID      `json:"my_registration_id"`
 	MyRegistrationStatus      *string          `json:"my_registration_status"`
@@ -2360,6 +2416,8 @@ func (q *Queries) ListRegistrationGroupStatesForUser(ctx context.Context, arg Li
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.CancelledAt,
+			&i.Side,
+			&i.SideTeamName,
 			&i.AttendingCount,
 			&i.MyRegistrationID,
 			&i.MyRegistrationStatus,
@@ -2380,7 +2438,7 @@ func (q *Queries) ListRegistrationGroupStatesForUser(ctx context.Context, arg Li
 }
 
 const listRegistrationGroupsByMatchID = `-- name: ListRegistrationGroupsByMatchID :many
-SELECT id, match_id, kind, team_id, min_players, max_players, status, created_at, updated_at, cancelled_at
+SELECT id, match_id, kind, team_id, min_players, max_players, status, created_at, updated_at, cancelled_at, side
 FROM match_registration_groups
 WHERE match_id = $1
 ORDER BY created_at, id
@@ -2406,6 +2464,7 @@ func (q *Queries) ListRegistrationGroupsByMatchID(ctx context.Context, matchID p
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.CancelledAt,
+			&i.Side,
 		); err != nil {
 			return nil, err
 		}
@@ -2422,14 +2481,17 @@ SELECT g.match_id,
        g.id AS group_id,
        g.kind,
        g.team_id,
+       g.side,
+       side_team.name AS side_team_name,
        g.min_players,
        g.max_players,
        COALESCE(SUM(r.registration_count) FILTER (WHERE r.status = 'attending'), 0)::bigint AS attending_count
 FROM match_registration_groups g
 LEFT JOIN match_registrations r ON r.group_id = g.id
+LEFT JOIN teams side_team ON side_team.id = g.team_id AND g.side IS NOT NULL
 WHERE g.match_id = ANY($1::uuid[])
   AND g.status <> 'cancelled'
-GROUP BY g.match_id, g.id, g.kind, g.team_id, g.min_players, g.max_players
+GROUP BY g.match_id, g.id, g.kind, g.team_id, g.side, side_team.name, g.min_players, g.max_players
 ORDER BY g.match_id, g.id
 `
 
@@ -2438,6 +2500,8 @@ type ListRegistrationSummariesForMatchesRow struct {
 	GroupID        pgtype.UUID `json:"group_id"`
 	Kind           string      `json:"kind"`
 	TeamID         *int64      `json:"team_id"`
+	Side           *string     `json:"side"`
+	SideTeamName   *string     `json:"side_team_name"`
 	MinPlayers     *int32      `json:"min_players"`
 	MaxPlayers     *int32      `json:"max_players"`
 	AttendingCount int64       `json:"attending_count"`
@@ -2457,6 +2521,8 @@ func (q *Queries) ListRegistrationSummariesForMatches(ctx context.Context, match
 			&i.GroupID,
 			&i.Kind,
 			&i.TeamID,
+			&i.Side,
+			&i.SideTeamName,
 			&i.MinPlayers,
 			&i.MaxPlayers,
 			&i.AttendingCount,
@@ -2732,6 +2798,45 @@ ORDER BY tm.user_id
 // 队长留言通知目标：该队全部在任 captain/leader。
 func (q *Queries) ListTeamManagerUserIDs(ctx context.Context, teamID int64) ([]int64, error) {
 	rows, err := q.db.Query(ctx, listTeamManagerUserIDs, teamID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []int64
+	for rows.Next() {
+		var user_id int64
+		if err := rows.Scan(&user_id); err != nil {
+			return nil, err
+		}
+		items = append(items, user_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listVenueSideNotificationRecipients = `-- name: ListVenueSideNotificationRecipients :many
+SELECT tm.user_id
+FROM team_members tm
+WHERE tm.team_id = $1
+  AND tm.status = 'active'
+  AND tm.role IN ('captain', 'leader')
+UNION
+SELECT r.user_id
+FROM match_registrations r
+WHERE r.group_id = $2
+  AND r.status <> 'cancelled'
+`
+
+type ListVenueSideNotificationRecipientsParams struct {
+	TeamID  int64       `json:"team_id"`
+	GroupID pgtype.UUID `json:"group_id"`
+}
+
+// 球队被移出时需要通知的人：该队队长、领队和已报名队员。
+func (q *Queries) ListVenueSideNotificationRecipients(ctx context.Context, arg ListVenueSideNotificationRecipientsParams) ([]int64, error) {
+	rows, err := q.db.Query(ctx, listVenueSideNotificationRecipients, arg.TeamID, arg.GroupID)
 	if err != nil {
 		return nil, err
 	}

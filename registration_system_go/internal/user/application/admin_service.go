@@ -156,3 +156,21 @@ func (s AdminUserService) SetMatchAdmin(ctx context.Context, actor sharedauth.Ac
 	}
 	return user, nil
 }
+
+// SetVenue 把任意微信用户设为/取消场馆；取消只影响之后的发布，已发布比赛仍由发布者管理。
+func (s AdminUserService) SetVenue(ctx context.Context, actor sharedauth.Actor, userID int64, enabled bool) (domain.User, error) {
+	if !actor.IsAdmin() {
+		return domain.User{}, sharederror.ErrForbidden
+	}
+	if userID <= 0 {
+		return domain.User{}, sharederror.New(sharederror.KindValidation, "用户 ID 无效")
+	}
+	user, found, err := s.repository.UpdateVenue(ctx, userID, enabled)
+	if err != nil {
+		return domain.User{}, sharederror.Wrap(sharederror.KindInternal, "更新场馆身份失败", err)
+	}
+	if !found {
+		return domain.User{}, sharederror.New(sharederror.KindNotFound, "用户不存在")
+	}
+	return user, nil
+}

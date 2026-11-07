@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"errors"
 
 	"github.com/google/uuid"
 	"github.com/oryjk/registration_system/registration_system_go/internal/match/domain"
@@ -31,15 +32,24 @@ func (u RecordMatchScore) Execute(ctx context.Context, actor sharedauth.Actor, m
 	if !actor.IsUser() {
 		return domain.Match{}, sharederror.ErrForbidden
 	}
-	if err := u.adminAccess.EnsureMatchAdmin(ctx, actor.ID); err != nil {
-		return domain.Match{}, err
+	adminErr := u.adminAccess.EnsureMatchAdmin(ctx, actor.ID)
+	if adminErr != nil && !errors.Is(adminErr, sharederror.ErrForbidden) {
+		return domain.Match{}, adminErr
 	}
 	match, _, found, err := u.repository.FindByID(ctx, matchID)
 	if err != nil {
 		return domain.Match{}, sharederror.Wrap(sharederror.KindInternal, "查询比赛失败", err)
 	}
 	if !found {
+		if adminErr != nil {
+			return domain.Match{}, adminErr
+		}
 		return domain.Match{}, sharederror.New(sharederror.KindNotFound, "比赛不存在")
+	}
+	// 场馆组局的比分由发布比赛的场馆录入，其他比赛仍只有比赛管理员可录。
+	publisher := match.PublicationMode == domain.VenueHosted && match.CreatedByUserID != nil && *match.CreatedByUserID == actor.ID
+	if adminErr != nil && !publisher {
+		return domain.Match{}, adminErr
 	}
 	if err := match.RecordScore(command.HostScore, command.AwayScore, u.clock.Now()); err != nil {
 		return domain.Match{}, err

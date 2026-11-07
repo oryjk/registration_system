@@ -45,6 +45,14 @@ func (s UserRegistrationService) Put(ctx context.Context, actor sharedauth.Actor
 		if !match.RegistrationOpenAt(now) {
 			return sharederror.New(sharederror.KindConflict, "当前不在报名时间内")
 		}
+		if domain.IsVenueIndividualGroup(group) && command.Status == domain.RegistrationAttending {
+			// 散人不选边：不管客户端传了哪个散人组，都由服务端决定。
+			group, err = resolveVenueIndividualGroup(ctx, tx, match, actor.ID, command.RegistrationCount)
+			if err != nil {
+				return err
+			}
+			groupID = group.ID
+		}
 
 		current, found, err := tx.FindUserRegistrationForUpdate(ctx, groupID, actor.ID)
 		if err != nil {
@@ -229,6 +237,9 @@ func authorizeUserRegistration(ctx context.Context, tx ports.UserRegistrationTra
 		}
 		return ensureActiveRegistrationMember(ctx, tx, *group.TeamID, userID)
 	case domain.GroupGuestTeam:
+		if group.Side != nil && group.TeamID != nil {
+			return ensureActiveRegistrationMember(ctx, tx, *group.TeamID, userID)
+		}
 		if group.TeamID == nil || match.AwayTeamID == nil || match.OpponentState != domain.OpponentConfirmed || *group.TeamID != *match.AwayTeamID {
 			return sharederror.New(sharederror.KindConflict, "客队报名组尚未确认")
 		}
@@ -261,6 +272,9 @@ func authorizeRegistrationCount(match domain.Match, group domain.RegistrationGro
 	if match.PublicationMode == domain.OnlinePickup && group.Kind == domain.GroupIndividualOpponent {
 		return nil
 	}
+	if domain.IsVenueIndividualGroup(group) {
+		return nil
+	}
 	return sharederror.New(sharederror.KindValidation, "报名人数必须为 1")
 }
 
@@ -276,6 +290,9 @@ func ensureActiveRegistrationMember(ctx context.Context, tx ports.UserRegistrati
 }
 
 func updateIndividualRegistrationState(ctx context.Context, tx ports.UserRegistrationTransaction, match *domain.Match, group *domain.RegistrationGroup, attending int, now time.Time) error {
+	if match.PublicationMode == domain.VenueHosted {
+		return updateVenueRegistrationState(ctx, tx, match, group, attending, now)
+	}
 	if group.Kind != domain.GroupIndividualOpponent {
 		return nil
 	}
@@ -295,6 +312,65 @@ func updateIndividualRegistrationState(ctx context.Context, tx ports.UserRegistr
 		return wrapUserRegistrationStoreError("更新比赛对手状态失败", err)
 	}
 	return nil
+}
+
+func updateVenueRegistrationState(ctx context.Context, tx ports.UserRegistrationTransaction, match *domain.Match, group *domain.RegistrationGroup, attending int, now time.Time) error {
+	if domain.IsVenueIndividualGroup(*group) {
+		if err := group.RecalculateIndividualStatus(attending, now); err != nil {
+			return err
+		}
+		if err := tx.UpdateGroup(ctx, *group); err != nil {
+			return wrapUserRegistrationStoreError("更新报名组状态失败", err)
+		}
+	}
+	sides, err := loadVenueSides(ctx, tx, match.ID)
+	if err != nil {
+		return err
+	}
+	if err := match.RecalculateVenueOpponent(domain.VenueSidesReady(sides, match.PlayersPerTeam), now); err != nil {
+		return err
+	}
+	if err := tx.UpdateMatchOpponent(ctx, *match); err != nil {
+		return wrapUserRegistrationStoreError("更新比赛状态失败", err)
+	}
+	return nil
+}
+
+// resolveVenueIndividualGroup 已在散人边的用户留在原来的边；新报名按甲、乙顺序排。
+// 占边球队的队员不能再以散人身份报这场。
+func resolveVenueIndividualGroup(ctx context.Context, tx ports.UserRegistrationTransaction, match domain.Match, userID int64, count int) (domain.RegistrationGroup, error) {
+	sides, err := loadVenueSides(ctx, tx, match.ID)
+	if err != nil {
+		return domain.RegistrationGroup{}, err
+	}
+	for _, side := range sides {
+		if side.Group.TeamID == nil {
+			continue
+		}
+		member, err := tx.IsActiveTeamMember(ctx, *side.Group.TeamID, userID)
+		if err != nil {
+			return domain.RegistrationGroup{}, wrapUserRegistrationStoreError("查询球队成员身份失败", err)
+		}
+		if member {
+			return domain.RegistrationGroup{}, sharederror.New(sharederror.KindConflict, "你的球队已占边，请在球队这边报名")
+		}
+	}
+	active, activeFound, err := tx.FindActiveUserRegistrationInMatchForUpdate(ctx, match.ID, userID)
+	if err != nil {
+		return domain.RegistrationGroup{}, wrapUserRegistrationStoreError("查询比赛报名状态失败", err)
+	}
+	if activeFound {
+		for _, side := range sides {
+			if side.Group.ID == active.GroupID && domain.IsVenueIndividualGroup(side.Group) {
+				return side.Group, nil
+			}
+		}
+	}
+	group, found := domain.SelectVenueIndividualSide(sides, count)
+	if !found {
+		return domain.RegistrationGroup{}, sharederror.New(sharederror.KindConflict, "报名已满")
+	}
+	return group, nil
 }
 
 func wrapUserRegistrationStoreError(message string, err error) error {

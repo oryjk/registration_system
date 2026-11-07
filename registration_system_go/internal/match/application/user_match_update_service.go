@@ -66,9 +66,15 @@ func (s UserMatchUpdateService) UpdateDetails(ctx context.Context, actor shareda
 	if !found {
 		return domain.Match{}, sharederror.New(sharederror.KindNotFound, "比赛不存在")
 	}
-	if match.PublicationMode == domain.OnlinePickup {
+	if match.PublicationMode == domain.OnlinePickup || match.PublicationMode == domain.VenueHosted {
 		if match.CreatedByUserID == nil || *match.CreatedByUserID != actor.ID {
 			return domain.Match{}, sharederror.ErrForbidden
+		}
+		if match.PublicationMode == domain.VenueHosted && command.PlayersPerTeam != nil && *command.PlayersPerTeam != match.PlayersPerTeam {
+			return domain.Match{}, sharederror.New(sharederror.KindValidation, "场馆组局发布后不能修改人制")
+		}
+		if match.PublicationMode == domain.VenueHosted && command.HostCapacityLimit != nil {
+			return domain.Match{}, sharederror.New(sharederror.KindValidation, "场馆组局不支持设置报名上限")
 		}
 	} else {
 		if match.HostTeamID == nil {

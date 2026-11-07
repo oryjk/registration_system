@@ -50,4 +50,6 @@ type AdminRepository interface {
 	CountForAdmin(context.Context, AdminUserFilter) (int64, error)
 	// UpdateMatchAdmin 设置/取消比赛管理员标记；返回 found 表示用户是否存在。
 	UpdateMatchAdmin(context.Context, int64, bool) (domain.User, bool, error)
+	// UpdateVenue 设置/取消场馆身份；返回 found 表示用户是否存在。
+	UpdateVenue(context.Context, int64, bool) (domain.User, bool, error)
 }

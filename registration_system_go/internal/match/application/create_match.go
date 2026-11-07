@@ -15,6 +15,7 @@ type CreateMatch struct {
 	teamAccess    ports.TeamAccess
 	defaultLimits ports.DefaultLimits
 	clock         ports.Clock
+	venueAccess   ports.VenueAccess
 }
 
 type CreateMatchCommand struct {
@@ -60,6 +61,12 @@ func derefPositive(value *int64) int64 {
 	return *value
 }
 
+// WithVenueAccess 开启场馆组局发布；未配置时一律拒绝。
+func (u CreateMatch) WithVenueAccess(venueAccess ports.VenueAccess) CreateMatch {
+	u.venueAccess = venueAccess
+	return u
+}
+
 func (u CreateMatch) Execute(ctx context.Context, actor sharedauth.Actor, command CreateMatchCommand) (CreateMatchResult, error) {
 	if !actor.IsUser() && !actor.IsAdmin() {
 		return CreateMatchResult{}, sharederror.ErrForbidden
@@ -68,6 +75,14 @@ func (u CreateMatch) Execute(ctx context.Context, actor sharedauth.Actor, comman
 		// 散人约球没有球队概念，任何登录用户可发布；不能再挂主队。
 		if command.HostTeamID != nil {
 			return CreateMatchResult{}, sharederror.New(sharederror.KindValidation, "散人约球不能以球队名义发布")
+		}
+	} else if command.PublicationMode == domain.VenueHosted {
+		// 第一版不提供后台代发，只有开通了场馆身份的微信用户能发布。
+		if !actor.IsUser() || u.venueAccess == nil {
+			return CreateMatchResult{}, sharederror.ErrForbidden
+		}
+		if err := u.venueAccess.EnsureVenue(ctx, actor.ID); err != nil {
+			return CreateMatchResult{}, err
 		}
 	} else if actor.IsUser() {
 		if err := u.teamAccess.EnsureManager(ctx, derefPositive(command.HostTeamID), actor.ID); err != nil {
@@ -78,7 +93,7 @@ func (u CreateMatch) Execute(ctx context.Context, actor sharedauth.Actor, comman
 	}
 	var limits domain.IndividualLimits
 	var err error
-	if command.PublicationMode == domain.OnlineIndividual {
+	if command.PublicationMode == domain.OnlineIndividual || command.PublicationMode == domain.VenueHosted {
 		limits, err = u.defaultLimits.Resolve(ctx, command.PlayersPerTeam)
 		if err != nil {
 			return CreateMatchResult{}, err

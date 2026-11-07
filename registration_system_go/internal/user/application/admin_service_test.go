@@ -111,3 +111,7 @@ func (f *fakeAdminUserRepository) CountForAdmin(_ context.Context, filter ports.
 func (f *fakeAdminUserRepository) UpdateMatchAdmin(context.Context, int64, bool) (domain.User, bool, error) {
 	return domain.User{}, false, nil
 }
+
+func (f *fakeAdminUserRepository) UpdateVenue(context.Context, int64, bool) (domain.User, bool, error) {
+	return domain.User{}, false, nil
+}

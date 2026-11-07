@@ -155,6 +155,7 @@ type GroupResponse struct {
 	ID            string                      `json:"id"`
 	Kind          domain.GroupKind            `json:"kind"`
 	TeamID        *int64                      `json:"team_id"`
+	Side          *domain.GroupSide           `json:"side,omitempty"`
 	MinPlayers    *int                        `json:"min_players"`
 	MaxPlayers    *int                        `json:"max_players"`
 	Status        domain.GroupStatus          `json:"status"`
@@ -425,7 +426,7 @@ func mapDetail(detail application.AdminMatchDetail) MatchDetailResponse {
 	groups := make([]GroupResponse, 0, len(detail.Groups))
 	for _, group := range detail.Groups {
 		groups = append(groups, GroupResponse{
-			ID: group.ID.String(), Kind: group.Kind, TeamID: group.TeamID,
+			ID: group.ID.String(), Kind: group.Kind, TeamID: group.TeamID, Side: group.Side,
 			MinPlayers: group.MinPlayers, MaxPlayers: group.MaxPlayers, Status: group.Status,
 			Registrations: mapRegistrations(rostersByGroup[group.ID]),
 		})

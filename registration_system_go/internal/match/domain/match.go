@@ -17,6 +17,8 @@ const (
 	OnlineIndividual PublicationMode = "online_individual"
 	// OnlinePickup 散人约球：所有参与者都是散人、没有球队概念；任何登录用户可发布。
 	OnlinePickup PublicationMode = "online_pickup"
+	// VenueHosted 场馆组局：比赛不属于任何球队，分甲、乙两边，每边由一支球队或散人填满。
+	VenueHosted PublicationMode = "venue_hosted"
 )
 
 // PaymentMode 报名费用的支付节奏：赛后支付（默认）或赛前报名时支付。
@@ -198,6 +200,15 @@ func NewMatch(input NewMatchInput, individualLimits IndividualLimits) (Match, []
 		CreatedByAdminID:    input.CreatedByAdminID,
 		CreatedAt:           now,
 		UpdatedAt:           now,
+	}
+	if input.PublicationMode == VenueHosted {
+		if err := individualLimits.Validate(); err != nil {
+			return Match{}, nil, err
+		}
+		return match, []RegistrationGroup{
+			newVenueIndividualGroup(matchID, SideA, individualLimits, now),
+			newVenueIndividualGroup(matchID, SideB, individualLimits, now),
+		}, nil
 	}
 	// 散人约球没有主队，全部报名进同一个散人组；其余模式先建主队组。
 	// 主队组（队内报名）的成行线 = 每队人数，随创建直接落库。
@@ -468,6 +479,22 @@ func (m *Match) RecordScore(hostScore, awayScore int, now time.Time) error {
 	return nil
 }
 
+func validateVenueInput(input NewMatchInput) error {
+	if input.HostTeamID != nil {
+		return sharederror.New(sharederror.KindValidation, "场馆组局不能以球队名义发布")
+	}
+	if input.CreatedByUserID == nil {
+		return sharederror.New(sharederror.KindValidation, "场馆组局只能由场馆账号发布")
+	}
+	if input.HostCapacityLimit != nil {
+		return sharederror.New(sharederror.KindValidation, "场馆组局不支持设置报名上限")
+	}
+	if input.PaymentMode.normalized() == PaymentPrepaid {
+		return sharederror.New(sharederror.KindValidation, "场馆组局暂只支持线下结算")
+	}
+	return nil
+}
+
 func validateNewMatchInput(input NewMatchInput) error {
 	if strings.TrimSpace(input.Name) == "" {
 		return sharederror.New(sharederror.KindValidation, "比赛名称不能为空")
@@ -479,6 +506,10 @@ func validateNewMatchInput(input NewMatchInput) error {
 	if input.PublicationMode == OnlinePickup {
 		if input.HostTeamID != nil {
 			return sharederror.New(sharederror.KindValidation, "散人约球不能以球队名义发布")
+		}
+	} else if input.PublicationMode == VenueHosted {
+		if err := validateVenueInput(input); err != nil {
+			return err
 		}
 	} else if input.HostTeamID == nil || *input.HostTeamID <= 0 {
 		return sharederror.New(sharederror.KindValidation, "发布球队无效")
@@ -520,7 +551,7 @@ func validateNewMatchInput(input NewMatchInput) error {
 		if opponentName == nil {
 			return sharederror.New(sharederror.KindValidation, "线下已约比赛必须填写对手名称")
 		}
-	case OnlineTeam, OnlineIndividual, OnlinePickup:
+	case OnlineTeam, OnlineIndividual, OnlinePickup, VenueHosted:
 		if opponentName != nil {
 			return sharederror.New(sharederror.KindValidation, "线上发布不能填写手工对手名称")
 		}

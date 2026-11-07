@@ -129,6 +129,7 @@ type MatchRegistrationGroup struct {
 	CreatedAt   pgtype.Timestamp `json:"created_at"`
 	UpdatedAt   pgtype.Timestamp `json:"updated_at"`
 	CancelledAt pgtype.Timestamp `json:"cancelled_at"`
+	Side        *string          `json:"side"`
 }
 
 type MatchSettlementBatch struct {
@@ -324,6 +325,7 @@ type User struct {
 	PhoneNumber  *string            `json:"phone_number"`
 	IsMatchAdmin bool               `json:"is_match_admin"`
 	LastActiveAt pgtype.Timestamptz `json:"last_active_at"`
+	IsVenue      bool               `json:"is_venue"`
 }
 
 type UserFeedback struct {

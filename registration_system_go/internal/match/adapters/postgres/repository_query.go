@@ -109,6 +109,8 @@ func (r *Repository) attachRegistrationGroupSummaries(ctx context.Context, items
 			MatchID:        matchID,
 			Kind:           domain.GroupKind(row.Kind),
 			TeamID:         row.TeamID,
+			Side:           groupSide(row.Side),
+			SideTeamName:   textValue(row.SideTeamName),
 			MinPlayers:     intPointer(row.MinPlayers),
 			MaxPlayers:     intPointer(row.MaxPlayers),
 			AttendingCount: int(row.AttendingCount),
@@ -147,7 +149,7 @@ func (r *Repository) ListHomeActionItems(ctx context.Context, userID int64, limi
 		group := ports.UserGroupState{
 			Group: domain.RegistrationGroup{
 				ID: uuid.UUID(row.GroupID.Bytes), MatchID: uuid.UUID(row.ID.Bytes),
-				Kind: domain.GroupKind(row.GroupKind), TeamID: row.GroupTeamID,
+				Kind: domain.GroupKind(row.GroupKind), TeamID: row.GroupTeamID, Side: groupSide(row.GroupSide),
 				MinPlayers: intPointer(row.GroupMinPlayers), MaxPlayers: intPointer(row.GroupMaxPlayers),
 				Status: domain.GroupStatus(row.GroupStatus), CreatedAt: row.GroupCreatedAt.Time,
 				UpdatedAt: row.GroupUpdatedAt.Time, CancelledAt: timestampPointer(row.GroupCancelledAt),

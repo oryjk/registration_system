@@ -102,7 +102,7 @@ SELECT m.*,
                FROM team_members membership
                WHERE membership.user_id = sqlc.arg('user_id')
                  AND membership.status = 'active'
-                 AND (membership.team_id = m.host_team_id OR membership.team_id = m.away_team_id)
+                 AND (membership.team_id = m.host_team_id OR membership.team_id = m.away_team_id OR membership.team_id IN (SELECT side_group.team_id FROM match_registration_groups side_group WHERE side_group.match_id = m.id AND side_group.side IS NOT NULL AND side_group.status <> 'cancelled'))
            )
        ) AS is_related_to_me
 FROM matches m
@@ -133,7 +133,7 @@ WHERE (sqlc.narg('status')::text IS NULL OR m.status = sqlc.narg('status'))
                   FROM team_members membership
                   WHERE membership.user_id = sqlc.arg('user_id')
                     AND membership.status = 'active'
-                    AND (membership.team_id = m.host_team_id OR membership.team_id = m.away_team_id)
+                    AND (membership.team_id = m.host_team_id OR membership.team_id = m.away_team_id OR membership.team_id IN (SELECT side_group.team_id FROM match_registration_groups side_group WHERE side_group.match_id = m.id AND side_group.side IS NOT NULL AND side_group.status <> 'cancelled'))
               )
           )
       )
@@ -152,7 +152,7 @@ WHERE (sqlc.narg('status')::text IS NULL OR m.status = sqlc.narg('status'))
               FROM team_members membership
               WHERE membership.user_id = sqlc.arg('user_id')
                 AND membership.status = 'active'
-                AND (membership.team_id = m.host_team_id OR membership.team_id = m.away_team_id)
+                AND (membership.team_id = m.host_team_id OR membership.team_id = m.away_team_id OR membership.team_id IN (SELECT side_group.team_id FROM match_registration_groups side_group WHERE side_group.match_id = m.id AND side_group.side IS NOT NULL AND side_group.status <> 'cancelled'))
           )
       )
   )
@@ -211,7 +211,7 @@ WHERE (sqlc.narg('status')::text IS NULL OR m.status = sqlc.narg('status'))
                   FROM team_members membership
                   WHERE membership.user_id = sqlc.arg('user_id')
                     AND membership.status = 'active'
-                    AND (membership.team_id = m.host_team_id OR membership.team_id = m.away_team_id)
+                    AND (membership.team_id = m.host_team_id OR membership.team_id = m.away_team_id OR membership.team_id IN (SELECT side_group.team_id FROM match_registration_groups side_group WHERE side_group.match_id = m.id AND side_group.side IS NOT NULL AND side_group.status <> 'cancelled'))
               )
           )
       )
@@ -230,7 +230,7 @@ WHERE (sqlc.narg('status')::text IS NULL OR m.status = sqlc.narg('status'))
               FROM team_members membership
               WHERE membership.user_id = sqlc.arg('user_id')
                 AND membership.status = 'active'
-                AND (membership.team_id = m.host_team_id OR membership.team_id = m.away_team_id)
+                AND (membership.team_id = m.host_team_id OR membership.team_id = m.away_team_id OR membership.team_id IN (SELECT side_group.team_id FROM match_registration_groups side_group WHERE side_group.match_id = m.id AND side_group.side IS NOT NULL AND side_group.status <> 'cancelled'))
           )
       )
   )
@@ -265,6 +265,7 @@ SELECT m.*,
        related_group.id AS group_id,
        related_group.kind AS group_kind,
        related_group.team_id AS group_team_id,
+       related_group.side AS group_side,
        related_group.min_players AS group_min_players,
        related_group.max_players AS group_max_players,
        related_group.status AS group_status,
@@ -340,7 +341,7 @@ WHERE m.status <> 'cancelled'
           FROM team_members tm
           WHERE tm.user_id = sqlc.arg('user_id')
             AND tm.status = 'active'
-            AND (tm.team_id = m.host_team_id OR tm.team_id = m.away_team_id)
+            AND (tm.team_id = m.host_team_id OR tm.team_id = m.away_team_id OR tm.team_id IN (SELECT side_group.team_id FROM match_registration_groups side_group WHERE side_group.match_id = m.id AND side_group.side IS NOT NULL AND side_group.status <> 'cancelled'))
       )
       OR EXISTS (
           SELECT 1
@@ -531,9 +532,10 @@ INSERT INTO match_registration_groups (
     team_id,
     min_players,
     max_players,
-    status
+    status,
+    side
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 RETURNING *;
 
 -- name: ListRegistrationGroupsByMatchID :many
@@ -549,6 +551,27 @@ WHERE match_id = $1
   AND kind = 'guest_team'
   AND status <> 'cancelled'
 FOR UPDATE;
+
+-- name: ListActiveRegistrationGroupsForUpdate :many
+SELECT *
+FROM match_registration_groups
+WHERE match_id = $1
+  AND status <> 'cancelled'
+ORDER BY side NULLS LAST, created_at, id
+FOR UPDATE;
+
+-- name: ListVenueSideNotificationRecipients :many
+-- 球队被移出时需要通知的人：该队队长、领队和已报名队员。
+SELECT tm.user_id
+FROM team_members tm
+WHERE tm.team_id = sqlc.arg('team_id')
+  AND tm.status = 'active'
+  AND tm.role IN ('captain', 'leader')
+UNION
+SELECT r.user_id
+FROM match_registrations r
+WHERE r.group_id = sqlc.arg('group_id')
+  AND r.status <> 'cancelled';
 
 -- name: UpdateRegistrationGroupState :exec
 UPDATE match_registration_groups
@@ -616,14 +639,17 @@ SELECT g.match_id,
        g.id AS group_id,
        g.kind,
        g.team_id,
+       g.side,
+       side_team.name AS side_team_name,
        g.min_players,
        g.max_players,
        COALESCE(SUM(r.registration_count) FILTER (WHERE r.status = 'attending'), 0)::bigint AS attending_count
 FROM match_registration_groups g
 LEFT JOIN match_registrations r ON r.group_id = g.id
+LEFT JOIN teams side_team ON side_team.id = g.team_id AND g.side IS NOT NULL
 WHERE g.match_id = ANY(sqlc.arg('match_ids')::uuid[])
   AND g.status <> 'cancelled'
-GROUP BY g.match_id, g.id, g.kind, g.team_id, g.min_players, g.max_players
+GROUP BY g.match_id, g.id, g.kind, g.team_id, g.side, side_team.name, g.min_players, g.max_players
 ORDER BY g.match_id, g.id;
 
 -- name: IsActiveTeamMember :one
@@ -671,6 +697,7 @@ SET status = EXCLUDED.status,
 
 -- name: ListRegistrationGroupStatesForUser :many
 SELECT g.*,
+       side_team.name AS side_team_name,
        COALESCE((
            SELECT SUM(active.registration_count)
            FROM match_registrations active
@@ -685,6 +712,9 @@ SELECT g.*,
        mine.updated_at AS my_registration_updated_at,
        mine.cancelled_at AS my_registration_cancelled_at
 FROM match_registration_groups g
+LEFT JOIN teams side_team
+    ON side_team.id = g.team_id
+   AND g.side IS NOT NULL
 LEFT JOIN match_registrations mine
     ON mine.group_id = g.id
    AND mine.user_id = sqlc.arg('user_id')

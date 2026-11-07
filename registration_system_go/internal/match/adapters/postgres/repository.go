@@ -229,7 +229,24 @@ func createGroupParams(group domain.RegistrationGroup) matchsqlc.CreateRegistrat
 		MinPlayers: int32Pointer(group.MinPlayers),
 		MaxPlayers: int32Pointer(group.MaxPlayers),
 		Status:     string(group.Status),
+		Side:       groupSideText(group.Side),
 	}
+}
+
+func groupSideText(side *domain.GroupSide) *string {
+	if side == nil {
+		return nil
+	}
+	value := string(*side)
+	return &value
+}
+
+func groupSide(value *string) *domain.GroupSide {
+	if value == nil {
+		return nil
+	}
+	side := domain.GroupSide(*value)
+	return &side
 }
 
 func mapMatch(row matchsqlc.Match) domain.Match {
@@ -273,6 +290,7 @@ func mapGroup(row matchsqlc.MatchRegistrationGroup) domain.RegistrationGroup {
 		MatchID:     uuid.UUID(row.MatchID.Bytes),
 		Kind:        domain.GroupKind(row.Kind),
 		TeamID:      row.TeamID,
+		Side:        groupSide(row.Side),
 		MinPlayers:  intPointer(row.MinPlayers),
 		MaxPlayers:  intPointer(row.MaxPlayers),
 		Status:      domain.GroupStatus(row.Status),

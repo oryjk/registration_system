@@ -599,3 +599,7 @@ func cloneRegistrations(source map[uuid.UUID][]domain.Registration) map[uuid.UUI
 
 var _ ports.UserRegistrationRepository = (*fakeUserRegistrationRepository)(nil)
 var _ ports.UserRegistrationTransaction = (*fakeUserRegistrationRepository)(nil)
+
+func (f *fakeUserRegistrationRepository) ListActiveGroupsForUpdate(context.Context, uuid.UUID) ([]domain.RegistrationGroup, error) {
+	return nil, nil
+}

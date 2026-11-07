@@ -118,7 +118,7 @@ func (q *Queries) CreateAdmin(ctx context.Context, arg CreateAdminParams) (Admin
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (openid, nickname, avatar_url)
 VALUES ($1, $2, $3)
-RETURNING id, openid, nickname, avatar_url, real_name, phone_number, status, is_match_admin, last_active_at, created_at, updated_at
+RETURNING id, openid, nickname, avatar_url, real_name, phone_number, status, is_match_admin, is_venue, last_active_at, created_at, updated_at
 `
 
 type CreateUserParams struct {
@@ -136,6 +136,7 @@ type CreateUserRow struct {
 	PhoneNumber  *string            `json:"phone_number"`
 	Status       string             `json:"status"`
 	IsMatchAdmin bool               `json:"is_match_admin"`
+	IsVenue      bool               `json:"is_venue"`
 	LastActiveAt pgtype.Timestamptz `json:"last_active_at"`
 	CreatedAt    pgtype.Timestamp   `json:"created_at"`
 	UpdatedAt    pgtype.Timestamp   `json:"updated_at"`
@@ -153,6 +154,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateU
 		&i.PhoneNumber,
 		&i.Status,
 		&i.IsMatchAdmin,
+		&i.IsVenue,
 		&i.LastActiveAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -229,7 +231,7 @@ func (q *Queries) GetAdminByUsername(ctx context.Context, username string) (Admi
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, openid, nickname, avatar_url, real_name, phone_number, status, is_match_admin, last_active_at, created_at, updated_at
+SELECT id, openid, nickname, avatar_url, real_name, phone_number, status, is_match_admin, is_venue, last_active_at, created_at, updated_at
 FROM users
 WHERE id = $1
 `
@@ -243,6 +245,7 @@ type GetUserByIDRow struct {
 	PhoneNumber  *string            `json:"phone_number"`
 	Status       string             `json:"status"`
 	IsMatchAdmin bool               `json:"is_match_admin"`
+	IsVenue      bool               `json:"is_venue"`
 	LastActiveAt pgtype.Timestamptz `json:"last_active_at"`
 	CreatedAt    pgtype.Timestamp   `json:"created_at"`
 	UpdatedAt    pgtype.Timestamp   `json:"updated_at"`
@@ -260,6 +263,7 @@ func (q *Queries) GetUserByID(ctx context.Context, id int64) (GetUserByIDRow, er
 		&i.PhoneNumber,
 		&i.Status,
 		&i.IsMatchAdmin,
+		&i.IsVenue,
 		&i.LastActiveAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -268,7 +272,7 @@ func (q *Queries) GetUserByID(ctx context.Context, id int64) (GetUserByIDRow, er
 }
 
 const getUserByOpenID = `-- name: GetUserByOpenID :one
-SELECT id, openid, nickname, avatar_url, real_name, phone_number, status, is_match_admin, last_active_at, created_at, updated_at
+SELECT id, openid, nickname, avatar_url, real_name, phone_number, status, is_match_admin, is_venue, last_active_at, created_at, updated_at
 FROM users
 WHERE openid = $1
 `
@@ -282,6 +286,7 @@ type GetUserByOpenIDRow struct {
 	PhoneNumber  *string            `json:"phone_number"`
 	Status       string             `json:"status"`
 	IsMatchAdmin bool               `json:"is_match_admin"`
+	IsVenue      bool               `json:"is_venue"`
 	LastActiveAt pgtype.Timestamptz `json:"last_active_at"`
 	CreatedAt    pgtype.Timestamp   `json:"created_at"`
 	UpdatedAt    pgtype.Timestamp   `json:"updated_at"`
@@ -299,6 +304,7 @@ func (q *Queries) GetUserByOpenID(ctx context.Context, openid string) (GetUserBy
 		&i.PhoneNumber,
 		&i.Status,
 		&i.IsMatchAdmin,
+		&i.IsVenue,
 		&i.LastActiveAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -315,6 +321,7 @@ SELECT u.id,
        u.phone_number,
        u.status,
        u.is_match_admin,
+       u.is_venue,
        u.last_active_at,
        u.created_at,
        u.updated_at,
@@ -337,6 +344,7 @@ type ListActiveTestLoginUsersRow struct {
 	PhoneNumber  *string            `json:"phone_number"`
 	Status       string             `json:"status"`
 	IsMatchAdmin bool               `json:"is_match_admin"`
+	IsVenue      bool               `json:"is_venue"`
 	LastActiveAt pgtype.Timestamptz `json:"last_active_at"`
 	CreatedAt    pgtype.Timestamp   `json:"created_at"`
 	UpdatedAt    pgtype.Timestamp   `json:"updated_at"`
@@ -363,6 +371,7 @@ func (q *Queries) ListActiveTestLoginUsers(ctx context.Context) ([]ListActiveTes
 			&i.PhoneNumber,
 			&i.Status,
 			&i.IsMatchAdmin,
+			&i.IsVenue,
 			&i.LastActiveAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
@@ -415,7 +424,7 @@ func (q *Queries) ListAdmins(ctx context.Context) ([]AdminUser, error) {
 }
 
 const listUsersForAdmin = `-- name: ListUsersForAdmin :many
-SELECT id, openid, nickname, avatar_url, real_name, phone_number, status, is_match_admin, last_active_at, created_at, updated_at
+SELECT id, openid, nickname, avatar_url, real_name, phone_number, status, is_match_admin, is_venue, last_active_at, created_at, updated_at
 FROM users
 WHERE (
     $1::text = ''
@@ -468,6 +477,7 @@ type ListUsersForAdminRow struct {
 	PhoneNumber  *string            `json:"phone_number"`
 	Status       string             `json:"status"`
 	IsMatchAdmin bool               `json:"is_match_admin"`
+	IsVenue      bool               `json:"is_venue"`
 	LastActiveAt pgtype.Timestamptz `json:"last_active_at"`
 	CreatedAt    pgtype.Timestamp   `json:"created_at"`
 	UpdatedAt    pgtype.Timestamp   `json:"updated_at"`
@@ -500,6 +510,7 @@ func (q *Queries) ListUsersForAdmin(ctx context.Context, arg ListUsersForAdminPa
 			&i.PhoneNumber,
 			&i.Status,
 			&i.IsMatchAdmin,
+			&i.IsVenue,
 			&i.LastActiveAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
@@ -519,7 +530,7 @@ UPDATE users
 SET is_match_admin = $2,
     updated_at = NOW()
 WHERE id = $1
-RETURNING id, openid, nickname, avatar_url, real_name, phone_number, status, is_match_admin, last_active_at, created_at, updated_at
+RETURNING id, openid, nickname, avatar_url, real_name, phone_number, status, is_match_admin, is_venue, last_active_at, created_at, updated_at
 `
 
 type SetUserMatchAdminParams struct {
@@ -536,6 +547,7 @@ type SetUserMatchAdminRow struct {
 	PhoneNumber  *string            `json:"phone_number"`
 	Status       string             `json:"status"`
 	IsMatchAdmin bool               `json:"is_match_admin"`
+	IsVenue      bool               `json:"is_venue"`
 	LastActiveAt pgtype.Timestamptz `json:"last_active_at"`
 	CreatedAt    pgtype.Timestamp   `json:"created_at"`
 	UpdatedAt    pgtype.Timestamp   `json:"updated_at"`
@@ -554,6 +566,55 @@ func (q *Queries) SetUserMatchAdmin(ctx context.Context, arg SetUserMatchAdminPa
 		&i.PhoneNumber,
 		&i.Status,
 		&i.IsMatchAdmin,
+		&i.IsVenue,
+		&i.LastActiveAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const setUserVenue = `-- name: SetUserVenue :one
+UPDATE users
+SET is_venue = $2,
+    updated_at = NOW()
+WHERE id = $1
+RETURNING id, openid, nickname, avatar_url, real_name, phone_number, status, is_match_admin, is_venue, last_active_at, created_at, updated_at
+`
+
+type SetUserVenueParams struct {
+	ID      int64 `json:"id"`
+	IsVenue bool  `json:"is_venue"`
+}
+
+type SetUserVenueRow struct {
+	ID           int64              `json:"id"`
+	Openid       string             `json:"openid"`
+	Nickname     string             `json:"nickname"`
+	AvatarUrl    *string            `json:"avatar_url"`
+	RealName     *string            `json:"real_name"`
+	PhoneNumber  *string            `json:"phone_number"`
+	Status       string             `json:"status"`
+	IsMatchAdmin bool               `json:"is_match_admin"`
+	IsVenue      bool               `json:"is_venue"`
+	LastActiveAt pgtype.Timestamptz `json:"last_active_at"`
+	CreatedAt    pgtype.Timestamp   `json:"created_at"`
+	UpdatedAt    pgtype.Timestamp   `json:"updated_at"`
+}
+
+func (q *Queries) SetUserVenue(ctx context.Context, arg SetUserVenueParams) (SetUserVenueRow, error) {
+	row := q.db.QueryRow(ctx, setUserVenue, arg.ID, arg.IsVenue)
+	var i SetUserVenueRow
+	err := row.Scan(
+		&i.ID,
+		&i.Openid,
+		&i.Nickname,
+		&i.AvatarUrl,
+		&i.RealName,
+		&i.PhoneNumber,
+		&i.Status,
+		&i.IsMatchAdmin,
+		&i.IsVenue,
 		&i.LastActiveAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -586,7 +647,7 @@ SET nickname = $2,
     avatar_url = $4,
     updated_at = NOW()
 WHERE id = $1
-RETURNING id, openid, nickname, avatar_url, real_name, phone_number, status, is_match_admin, last_active_at, created_at, updated_at
+RETURNING id, openid, nickname, avatar_url, real_name, phone_number, status, is_match_admin, is_venue, last_active_at, created_at, updated_at
 `
 
 type UpdateUserAppProfileParams struct {
@@ -605,6 +666,7 @@ type UpdateUserAppProfileRow struct {
 	PhoneNumber  *string            `json:"phone_number"`
 	Status       string             `json:"status"`
 	IsMatchAdmin bool               `json:"is_match_admin"`
+	IsVenue      bool               `json:"is_venue"`
 	LastActiveAt pgtype.Timestamptz `json:"last_active_at"`
 	CreatedAt    pgtype.Timestamp   `json:"created_at"`
 	UpdatedAt    pgtype.Timestamp   `json:"updated_at"`
@@ -627,6 +689,7 @@ func (q *Queries) UpdateUserAppProfile(ctx context.Context, arg UpdateUserAppPro
 		&i.PhoneNumber,
 		&i.Status,
 		&i.IsMatchAdmin,
+		&i.IsVenue,
 		&i.LastActiveAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -640,7 +703,7 @@ SET real_name = $2,
     phone_number = $3,
     updated_at = NOW()
 WHERE id = $1
-RETURNING id, openid, nickname, avatar_url, real_name, phone_number, status, is_match_admin, last_active_at, created_at, updated_at
+RETURNING id, openid, nickname, avatar_url, real_name, phone_number, status, is_match_admin, is_venue, last_active_at, created_at, updated_at
 `
 
 type UpdateUserBasicProfileParams struct {
@@ -658,6 +721,7 @@ type UpdateUserBasicProfileRow struct {
 	PhoneNumber  *string            `json:"phone_number"`
 	Status       string             `json:"status"`
 	IsMatchAdmin bool               `json:"is_match_admin"`
+	IsVenue      bool               `json:"is_venue"`
 	LastActiveAt pgtype.Timestamptz `json:"last_active_at"`
 	CreatedAt    pgtype.Timestamp   `json:"created_at"`
 	UpdatedAt    pgtype.Timestamp   `json:"updated_at"`
@@ -675,6 +739,7 @@ func (q *Queries) UpdateUserBasicProfile(ctx context.Context, arg UpdateUserBasi
 		&i.PhoneNumber,
 		&i.Status,
 		&i.IsMatchAdmin,
+		&i.IsVenue,
 		&i.LastActiveAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -688,7 +753,7 @@ SET nickname = $2,
     avatar_url = $3,
     updated_at = NOW()
 WHERE id = $1
-RETURNING id, openid, nickname, avatar_url, real_name, phone_number, status, is_match_admin, last_active_at, created_at, updated_at
+RETURNING id, openid, nickname, avatar_url, real_name, phone_number, status, is_match_admin, is_venue, last_active_at, created_at, updated_at
 `
 
 type UpdateUserProfileParams struct {
@@ -706,6 +771,7 @@ type UpdateUserProfileRow struct {
 	PhoneNumber  *string            `json:"phone_number"`
 	Status       string             `json:"status"`
 	IsMatchAdmin bool               `json:"is_match_admin"`
+	IsVenue      bool               `json:"is_venue"`
 	LastActiveAt pgtype.Timestamptz `json:"last_active_at"`
 	CreatedAt    pgtype.Timestamp   `json:"created_at"`
 	UpdatedAt    pgtype.Timestamp   `json:"updated_at"`
@@ -723,6 +789,7 @@ func (q *Queries) UpdateUserProfile(ctx context.Context, arg UpdateUserProfilePa
 		&i.PhoneNumber,
 		&i.Status,
 		&i.IsMatchAdmin,
+		&i.IsVenue,
 		&i.LastActiveAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,

@@ -44,6 +44,45 @@ func (t userRegistrationTransaction) FindMatchForUpdate(ctx context.Context, mat
 	return mapMatch(row), true, nil
 }
 
+func (r *Repository) WithinVenueSideTransaction(ctx context.Context, operation func(ports.VenueSideTransaction) error) error {
+	tx, err := r.database.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = tx.Rollback(ctx)
+	}()
+
+	transaction := userRegistrationTransaction{queries: r.queries.WithTx(tx)}
+	if err := operation(transaction); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+func (t userRegistrationTransaction) ListActiveGroupsForUpdate(ctx context.Context, matchID uuid.UUID) ([]domain.RegistrationGroup, error) {
+	rows, err := t.queries.ListActiveRegistrationGroupsForUpdate(ctx, pgUUID(matchID))
+	if err != nil {
+		return nil, err
+	}
+	groups := make([]domain.RegistrationGroup, 0, len(rows))
+	for _, row := range rows {
+		groups = append(groups, mapGroup(row))
+	}
+	return groups, nil
+}
+
+func (t userRegistrationTransaction) ListRemovalRecipients(ctx context.Context, teamID int64, groupID uuid.UUID) ([]int64, error) {
+	return t.queries.ListVenueSideNotificationRecipients(ctx, matchsqlc.ListVenueSideNotificationRecipientsParams{
+		TeamID: teamID, GroupID: pgUUID(groupID),
+	})
+}
+
+func (t userRegistrationTransaction) CreateGroup(ctx context.Context, group domain.RegistrationGroup) error {
+	_, err := t.queries.CreateRegistrationGroup(ctx, createGroupParams(group))
+	return err
+}
+
 func (t userRegistrationTransaction) FindGroupForUpdate(ctx context.Context, matchID, groupID uuid.UUID) (domain.RegistrationGroup, bool, error) {
 	row, err := t.queries.GetRegistrationGroupForUpdate(ctx, matchsqlc.GetRegistrationGroupForUpdateParams{
 		MatchID: pgUUID(matchID), GroupID: pgUUID(groupID),

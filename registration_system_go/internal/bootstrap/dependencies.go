@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	authhttp "github.com/oryjk/registration_system/registration_system_go/internal/auth/adapters/http"
 	"github.com/oryjk/registration_system/registration_system_go/internal/auth/adapters/jwt"
@@ -125,7 +126,7 @@ func BuildDependencies(ctx context.Context, config Config) (Dependencies, func()
 
 	matchRepository := matchpostgres.NewRepository(pool)
 	matchClock := clock.System{}
-	createMatch := matchapplication.NewCreateMatch(matchRepository, teamService, defaults.Service{}, matchClock)
+	createMatch := matchapplication.NewCreateMatch(matchRepository, teamService, defaults.Service{}, matchClock).WithVenueAccess(appUserService)
 	finishMatch := matchapplication.NewFinishMatch(matchRepository, teamService, matchClock)
 	recordMatchScore := matchapplication.NewRecordMatchScore(matchRepository, appUserService, matchClock)
 	userMatches := matchapplication.NewUserMatchQueryService(matchRepository)
@@ -181,6 +182,8 @@ func BuildDependencies(ctx context.Context, config Config) (Dependencies, func()
 	notificationRepository := notificationpostgres.NewRepository(pool)
 	notificationService := notificationapplication.NewService(notificationRepository)
 	notificationHandler := notificationhttp.NewHandler(notificationService)
+	venueSideHandler := matchhttp.NewVenueSideHandler(matchapplication.NewVenueSideService(
+		matchRepository, teamService, defaults.Service{}, venueSideNotifier{notifications: notificationService}, matchClock))
 	appTeamSelfService := teamapplication.NewAppTeamSelfService(teamRepository, teampassword.Bcrypt{}, notificationService)
 	appTeamSelfHandler := teamhttp.NewAppSelfHandler(appTeamSelfService)
 	appTeamInviteService := teamapplication.NewAppInviteService(teamRepository, []byte(config.JWTSecret))
@@ -211,7 +214,7 @@ func BuildDependencies(ctx context.Context, config Config) (Dependencies, func()
 		AppTeamManage: appTeamManageHandler, AppTeamSelf: appTeamSelfHandler, AppTeamInvites: appTeamInviteHandler,
 		AppHonorShares: honorShareHandler,
 		UserMatches:    userMatchHandler, Venues: venueHandler, UserRegistrations: userRegistrationHandler,
-		AdminMatches: adminMatchHandler, AdminRegistrations: adminRegistrationHandler, TeamApplications: teamApplicationHandler,
+		AdminMatches: adminMatchHandler, AdminRegistrations: adminRegistrationHandler, TeamApplications: teamApplicationHandler, VenueSides: venueSideHandler,
 		CaptainMessages: captainMessageHandler,
 		Payments:        paymentHandler, Wallets: walletHandler, MiniReviews: miniReviewHandler,
 		SystemRuntime: systemhttp.NewHandler(systemSettingsService, systemHomeAssets),
@@ -257,4 +260,17 @@ func buildSystemAssetStore(config Config) systemports.AssetStore {
 		return store
 	}
 	return nil
+}
+
+// venueSideNotifier 把场馆移出球队的事件写入站内通知。
+type venueSideNotifier struct {
+	notifications *notificationapplication.Service
+}
+
+func (n venueSideNotifier) NotifyVenueTeamRemoved(ctx context.Context, userID int64, matchID uuid.UUID, matchName string) error {
+	return n.notifications.Notify(ctx, notificationapplication.SystemNotification{
+		UserID: userID, Kind: "venue_team_removed", Title: "球队已被移出比赛",
+		Content:     fmt.Sprintf("你的球队已被场馆移出「%s」，队员报名已失效。", matchName),
+		RelatedType: "match", RelatedID: matchID.String(),
+	})
 }
