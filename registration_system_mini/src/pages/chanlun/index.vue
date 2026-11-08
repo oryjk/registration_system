@@ -8,7 +8,7 @@ import { getAccessToken } from "@/utils/authStorage";
 import { resolveWebViewUrl } from "@/utils/webview";
 
 /**
- * 缠观直接承载页：「我的」入口、微信外 URL Link、缠观 H5 内「去登录」都进入本页。
+ * 缠观直接承载页：微信外 URL Link、缠观 H5 内「去登录」都进入本页。
  * 本页直接挂载 <web-view>，不再做二次页面重定向或展示中间加载/重试按钮页，
  * 避免切换过渡期间闪现「进入缠观失败，请重试」按钮或出现双重加载页。
  */

@@ -88,13 +88,6 @@ function openHelp() {
   uni.navigateTo({ url: "/pages/user/help/index" });
 }
 
-function openChanlun() {
-  // #ifdef MP-WEIXIN
-  if (shouldHideCreationEntrances.value) return;
-  // #endif
-  uni.navigateTo({ url: "/pages/chanlun/index" });
-}
-
 onShow(() => {
   tabBarMotion.show("mine");
   // H5 路由切换时 onShow 可能早于 TabBar 挂载，此时无需隐藏。
@@ -149,13 +142,6 @@ provide(APP_SCROLL_CONTROLLER, appScrollController);
               <wd-icon name="arrow-right" size="26rpx" />
               <!-- #endif -->
             </button>
-            <!-- #ifdef MP-WEIXIN -->
-            <button v-if="!shouldHideCreationEntrances" class="mine-service ui-list-row" hover-class="mine-service--pressed" @tap="openChanlun">
-              <AppIcon name="chart-column" />
-              <text class="mine-service-label">缠观行情</text>
-              <AppIcon name="chevron-right" size="var(--ui-icon-sm)" tone="muted" />
-            </button>
-            <!-- #endif -->
             <button v-if="currentUser" class="mine-service ui-list-row" hover-class="mine-service--pressed" @tap="openNotifications">
               <!-- #ifdef MP-WEIXIN -->
               <AppIcon name="bell" size="var(--ui-icon-md)" />
