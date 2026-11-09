@@ -21,6 +21,10 @@ page,
   --ui-tabbar-glass-bg: var(--ui-glass-bg);
   --ui-tabbar-glass-border: var(--ui-glass-highlight);
   --ui-tabbar-clearance: calc(164rpx + env(safe-area-inset-bottom));
+  /* #ifdef MP-WEIXIN */
+  /* 微信底栏高 100rpx，比默认矮 16rpx。 */
+  --ui-tabbar-clearance: calc(148rpx + env(safe-area-inset-bottom));
+  /* #endif */
   /* Primitive */
   --ui-primitive-ink: #00214d;
   --ui-primitive-surface: #fffffe;

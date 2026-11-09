@@ -437,6 +437,7 @@ function handleCreateIndividualChallenge() {
   /* 两侧留白与底部 12rpx 一致。 */
   width: calc(100% - 24rpx);
   max-width: 726rpx;
+  height: 100rpx;
   border: 2rpx solid var(--ui-tabbar-glass-border);
   border-radius: var(--ui-radius-round);
   background: var(--ui-tabbar-glass-bg);
