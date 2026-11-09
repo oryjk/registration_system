@@ -40,6 +40,31 @@ function buildMatch(overrides: Partial<AppMatchSummary>): AppMatchSummary {
 }
 
 describe("toHallMatchCard", () => {
+  test("attaches participant avatars to progress bars only when backend returns them", () => {
+    const card = toHallMatchCard(buildMatch({
+      registration_groups: [
+        {
+          kind: "individual_opponent", team_id: null, min_players: 4, max_players: 8, attending_count: 3,
+          participants: [
+            { user_id: 11, nickname: "阿杰", avatar_url: "https://img/11.png", status: "attending" },
+            { user_id: 12, nickname: "", avatar_url: null, status: "attending" },
+          ],
+        },
+      ],
+    }));
+    expect(card.progressBars[0].avatars).toEqual([
+      { id: 11, name: "阿杰", avatarUrl: "https://img/11.png" },
+      { id: 12, name: "球友", avatarUrl: undefined },
+    ]);
+
+    const legacy = toHallMatchCard(buildMatch({
+      registration_groups: [
+        { kind: "individual_opponent", team_id: null, min_players: 4, max_players: 8, attending_count: 3 },
+      ],
+    }));
+    expect("avatars" in legacy.progressBars[0]).toEqual(false);
+  });
+
   test("maps individual match with pickup progress from individual group", () => {
     const card = toHallMatchCard(buildMatch({
       registration_groups: [

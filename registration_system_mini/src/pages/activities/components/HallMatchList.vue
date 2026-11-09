@@ -54,6 +54,7 @@ const emit = defineEmits<{
 /* #ifdef MP-WEIXIN */
 .hall-match-list { gap: 0; margin-top: var(--ui-space-4); padding: var(--ui-space-1) var(--ui-home-padding); border-radius: var(--ui-home-radius); background: var(--ui-card-bg); box-shadow: var(--ui-card-shadow); }
 .hall-match-row { position: relative; min-width: 0; }
-.hall-match-row--divided::after { content: ""; position: absolute; right: 0; bottom: 0; left: calc(var(--ui-home-list-cover-size) + var(--ui-space-6)); border-bottom: var(--ui-border-hairline); }
+/* 行下方有通栏报名进度，分割线同样通栏。 */
+.hall-match-row--divided::after { content: ""; position: absolute; right: 0; bottom: 0; left: 0; border-bottom: var(--ui-border-hairline); }
 /* #endif */
 </style>

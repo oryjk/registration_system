@@ -1,3 +1,4 @@
+import type { AvatarItem } from "@/components/ui/avatarTypes";
 import type { AppMatchRegistrationGroupSummary, AppMatchSummary } from "@/types/match";
 import type { AppTagTone } from "@/types/designSystem";
 import { DAY_MS, beijingDateKey, beijingStartOfDay, beijingDateTimeToTimestamp, formatDayNumberLabel, formatDateLabel, formatWeekdayLabel } from "@/utils/datetime";
@@ -43,7 +44,8 @@ export interface HallMatchCardViewModel {
   hostJoinedLabel: string;
   guestJoinedLabel: string;
   /** 列表进度条：球队约队有客队时为主/客两条，其余单条。 */
-  progressBars: Array<{ key: string; label: string; joined: number; required: number | null; max: number | null }>;
+  /** avatars 仅在后端返回报名者时存在；未返回时进度条不渲染头像区。 */
+  progressBars: Array<{ key: string; label: string; joined: number; required: number | null; max: number | null; avatars?: AvatarItem[] }>;
   actionKind: HallCardActionKind;
   actionLabel: string;
   capacityHint: string;
@@ -130,6 +132,18 @@ const ACTION_LABELS: Record<HallCardActionKind, string> = {
   view: "查看详情",
 };
 
+/** 后端返回报名者时附带头像列表；旧后端缺失 participants 时不带 avatars 键。 */
+function groupAvatars(group: AppMatchRegistrationGroupSummary | undefined): { avatars?: AvatarItem[] } {
+  if (!group?.participants) return {};
+  return {
+    avatars: group.participants.map((participant) => ({
+      id: participant.user_id,
+      name: participant.nickname || "球友",
+      avatarUrl: participant.avatar_url || undefined,
+    })),
+  };
+}
+
 export function toHallMatchCard(
   match: AppMatchSummary,
   viewer: HallViewerContext = DEFAULT_VIEWER,
@@ -183,6 +197,7 @@ export function toHallMatchCard(
         joined: group.attending_count,
         required: group.min_players ?? match.players_per_team,
         max: group.max_players,
+        ...groupAvatars(group),
       }))
     : !isIndividual && guestGroup
     ? [
@@ -192,6 +207,7 @@ export function toHallMatchCard(
           joined: hostGroup?.attending_count ?? 0,
           required: hostMinimum,
           max: hostMax ?? null,
+          ...groupAvatars(hostGroup),
         },
         {
           key: "guest",
@@ -199,6 +215,7 @@ export function toHallMatchCard(
           joined: guestGroup.attending_count,
           required: guestMinimum,
           max: guestMax,
+          ...groupAvatars(guestGroup),
         },
       ]
     : [
@@ -208,6 +225,7 @@ export function toHallMatchCard(
           joined: joinedPlayers,
           required: progressGroup?.min_players ?? (match.players_per_team > 0 ? match.players_per_team : null),
           max: progressGroup?.max_players ?? null,
+          ...groupAvatars(progressGroup),
         },
       ];
 

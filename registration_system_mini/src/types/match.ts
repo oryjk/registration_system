@@ -64,6 +64,8 @@ export interface AppMatchRegistrationGroupSummary {
   min_players: number | null;
   max_players: number | null;
   attending_count: number;
+  /** 列表进度条头像：按报名先后的 attending 报名者；旧后端缺失时不展示头像。 */
+  participants?: AppMatchParticipant[];
 }
 
 export interface AppMatchSummary extends AppMatchPhaseSource {
