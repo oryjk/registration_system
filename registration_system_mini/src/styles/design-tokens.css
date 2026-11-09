@@ -22,8 +22,10 @@ page,
   --ui-tabbar-glass-border: var(--ui-glass-highlight);
   --ui-tabbar-clearance: calc(164rpx + env(safe-area-inset-bottom));
   /* #ifdef MP-WEIXIN */
-  /* 微信底栏高 100rpx，比默认矮 16rpx。 */
-  --ui-tabbar-clearance: calc(148rpx + env(safe-area-inset-bottom));
+  /* 悬浮底栏可压进 iPhone 安全区，只需避开 Home 横条（距底约 13px）；无安全区的安卓保持 12rpx。 */
+  --ui-tabbar-bottom-offset: max(12rpx, calc(env(safe-area-inset-bottom) - 14px));
+  /* 微信底栏高 100rpx，另留 36rpx 呼吸空间。 */
+  --ui-tabbar-clearance: calc(136rpx + var(--ui-tabbar-bottom-offset));
   /* #endif */
   /* Primitive */
   --ui-primitive-ink: #00214d;
