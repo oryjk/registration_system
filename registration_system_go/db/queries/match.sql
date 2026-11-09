@@ -634,6 +634,22 @@ FROM match_registrations
 WHERE group_id = $1
   AND status = 'attending';
 
+-- name: ListRegistrationParticipantsForMatches :many
+-- 列表进度条头像：一次性按比赛批量取各报名组 attending 报名者的轻量资料，
+-- 按报名先后（created_at, user_id）排序，避免 N+1 查询。
+SELECT r.group_id,
+       r.user_id,
+       u.nickname,
+       u.avatar_url,
+       r.registration_count
+FROM match_registrations r
+JOIN match_registration_groups g ON g.id = r.group_id
+JOIN users u ON u.id = r.user_id
+WHERE g.match_id = ANY(sqlc.arg('match_ids')::uuid[])
+  AND g.status <> 'cancelled'
+  AND r.status = 'attending'
+ORDER BY r.group_id, r.created_at, r.user_id;
+
 -- name: ListRegistrationSummariesForMatches :many
 SELECT g.match_id,
        g.id AS group_id,

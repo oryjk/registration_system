@@ -84,9 +84,10 @@ type MatchItem struct {
 type AdminMatchItem = MatchItem
 
 // RegistrationGroupSummary 是列表场景下报名组的进度摘要：
-// 只带 kind、所属球队与人数规则，用于约队大厅等列表进度展示。
+// 带 kind、所属球队、人数规则与报名者头像，用于约队大厅等列表进度展示。
 type RegistrationGroupSummary struct {
 	MatchID        uuid.UUID
+	GroupID        uuid.UUID
 	Kind           domain.GroupKind
 	TeamID         *int64
 	Side           *domain.GroupSide
@@ -94,6 +95,8 @@ type RegistrationGroupSummary struct {
 	MinPlayers     *int
 	MaxPlayers     *int
 	AttendingCount int
+	// Participants 按报名先后的 attending 报名者，只填头像所需的轻量资料。
+	Participants []UserParticipant
 }
 
 type UserGroupState struct {

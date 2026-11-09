@@ -107,6 +107,7 @@ func (r *Repository) attachRegistrationGroupSummaries(ctx context.Context, items
 		matchID := uuid.UUID(row.MatchID.Bytes)
 		byMatchID[matchID] = append(byMatchID[matchID], ports.RegistrationGroupSummary{
 			MatchID:        matchID,
+			GroupID:        uuid.UUID(row.GroupID.Bytes),
 			Kind:           domain.GroupKind(row.Kind),
 			TeamID:         row.TeamID,
 			Side:           groupSide(row.Side),
@@ -116,10 +117,29 @@ func (r *Repository) attachRegistrationGroupSummaries(ctx context.Context, items
 			AttendingCount: int(row.AttendingCount),
 		})
 	}
+	participantRows, err := r.queries.ListRegistrationParticipantsForMatches(ctx, matchIDs)
+	if err != nil {
+		return err
+	}
+	participantsByGroupID := make(map[uuid.UUID][]ports.UserParticipant)
+	for _, row := range participantRows {
+		groupID := uuid.UUID(row.GroupID.Bytes)
+		participantsByGroupID[groupID] = append(participantsByGroupID[groupID], ports.UserParticipant{
+			UserID: row.UserID, Nickname: row.Nickname, AvatarURL: row.AvatarUrl,
+			Status: domain.RegistrationAttending, RegistrationCount: int(row.RegistrationCount),
+		})
+	}
 	for index := range items {
 		items[index].RegistrationGroups = byMatchID[items[index].Match.ID]
 		if items[index].RegistrationGroups == nil {
 			items[index].RegistrationGroups = []ports.RegistrationGroupSummary{}
+		}
+		for groupIndex := range items[index].RegistrationGroups {
+			group := &items[index].RegistrationGroups[groupIndex]
+			group.Participants = participantsByGroupID[group.GroupID]
+			if group.Participants == nil {
+				group.Participants = []ports.UserParticipant{}
+			}
 		}
 	}
 	return nil

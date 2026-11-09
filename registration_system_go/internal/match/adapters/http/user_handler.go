@@ -108,6 +108,8 @@ type UserRegistrationGroupSummary struct {
 	MinPlayers     *int              `json:"min_players"`
 	MaxPlayers     *int              `json:"max_players"`
 	AttendingCount int               `json:"attending_count"`
+	// Participants 列表进度条头像；只填 user_id、昵称、头像、状态与报名人数，积分排名类字段为 null。
+	Participants []UserParticipantResponse `json:"participants"`
 }
 
 type UserRegistrationResponse struct {
@@ -500,6 +502,7 @@ func mapUserMatch(item ports.MatchItem) UserMatchResponse {
 			Kind: group.Kind, TeamID: group.TeamID, Side: group.Side, SideTeamName: group.SideTeamName,
 			MinPlayers: group.MinPlayers, MaxPlayers: group.MaxPlayers,
 			AttendingCount: group.AttendingCount,
+			Participants:   mapUserParticipantResponses(group.Participants),
 		})
 	}
 	return UserMatchResponse{

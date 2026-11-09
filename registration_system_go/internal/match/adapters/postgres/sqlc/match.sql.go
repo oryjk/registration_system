@@ -2476,6 +2476,57 @@ func (q *Queries) ListRegistrationGroupsByMatchID(ctx context.Context, matchID p
 	return items, nil
 }
 
+const listRegistrationParticipantsForMatches = `-- name: ListRegistrationParticipantsForMatches :many
+SELECT r.group_id,
+       r.user_id,
+       u.nickname,
+       u.avatar_url,
+       r.registration_count
+FROM match_registrations r
+JOIN match_registration_groups g ON g.id = r.group_id
+JOIN users u ON u.id = r.user_id
+WHERE g.match_id = ANY($1::uuid[])
+  AND g.status <> 'cancelled'
+  AND r.status = 'attending'
+ORDER BY r.group_id, r.created_at, r.user_id
+`
+
+type ListRegistrationParticipantsForMatchesRow struct {
+	GroupID           pgtype.UUID `json:"group_id"`
+	UserID            int64       `json:"user_id"`
+	Nickname          string      `json:"nickname"`
+	AvatarUrl         *string     `json:"avatar_url"`
+	RegistrationCount int32       `json:"registration_count"`
+}
+
+// 列表进度条头像：一次性按比赛批量取各报名组 attending 报名者的轻量资料，
+// 按报名先后（created_at, user_id）排序，避免 N+1 查询。
+func (q *Queries) ListRegistrationParticipantsForMatches(ctx context.Context, matchIds []pgtype.UUID) ([]ListRegistrationParticipantsForMatchesRow, error) {
+	rows, err := q.db.Query(ctx, listRegistrationParticipantsForMatches, matchIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListRegistrationParticipantsForMatchesRow
+	for rows.Next() {
+		var i ListRegistrationParticipantsForMatchesRow
+		if err := rows.Scan(
+			&i.GroupID,
+			&i.UserID,
+			&i.Nickname,
+			&i.AvatarUrl,
+			&i.RegistrationCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listRegistrationSummariesForMatches = `-- name: ListRegistrationSummariesForMatches :many
 SELECT g.match_id,
        g.id AS group_id,

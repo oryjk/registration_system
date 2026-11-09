@@ -933,9 +933,26 @@ func TestRepositoryListsUserMatchesWithPublicationAndDateFilters(t *testing.T) {
 			if group.AttendingCount != 3 || group.MinPlayers == nil || *group.MinPlayers != 4 || group.MaxPlayers == nil || *group.MaxPlayers != 8 {
 				t.Fatalf("unexpected individual summary: %+v", group)
 			}
+			// 列表进度条头像：只带 attending 报名者，取消的报名不出现。
+			if len(group.Participants) != 2 {
+				t.Fatalf("expected two attending participants, got %+v", group.Participants)
+			}
+			countSum := 0
+			for _, participant := range group.Participants {
+				if participant.UserID == viewerID || participant.Status != domain.RegistrationAttending {
+					t.Fatalf("unexpected participant: %+v", participant)
+				}
+				countSum += participant.RegistrationCount
+			}
+			if countSum != 3 {
+				t.Fatalf("expected registration counts to sum to 3, got %+v", group.Participants)
+			}
 		case domain.GroupHostTeam:
 			if group.AttendingCount != 0 || group.TeamID == nil || *group.TeamID != teamID {
 				t.Fatalf("unexpected host summary: %+v", group)
+			}
+			if group.Participants == nil || len(group.Participants) != 0 {
+				t.Fatalf("expected empty non-nil participants for host group: %+v", group.Participants)
 			}
 		default:
 			t.Fatalf("unexpected group kind: %+v", group)
