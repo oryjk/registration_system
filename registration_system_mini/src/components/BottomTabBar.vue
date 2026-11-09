@@ -438,6 +438,7 @@ function handleCreateIndividualChallenge() {
   width: calc(100% - 24rpx);
   max-width: 726rpx;
   height: 100rpx;
+  padding: 4rpx;
   border: 2rpx solid var(--ui-tabbar-glass-border);
   border-radius: var(--ui-radius-round);
   background: var(--ui-tabbar-glass-bg);
@@ -445,10 +446,11 @@ function handleCreateIndividualChallenge() {
   -webkit-backdrop-filter: var(--ui-glass-filter);
   backdrop-filter: var(--ui-glass-filter);
 }
-/* 选中色块铺满整个 tab 格子，形成横向圆角长条而非近圆形。 */
+/* 选中色块铺满整个 tab 格子，形成横向圆角长条；四周与底栏边缘同为 4rpx。 */
+.custom-tab-indicator-track { left: 4rpx; right: 4rpx; }
 .custom-tab-indicator-lane { height: 100%; }
 .custom-tab-indicator {
-  width: calc(100% - 4rpx);
+  width: 100%;
   max-width: none;
   height: 100%;
   background: var(--ui-tabbar-selected-bg);
