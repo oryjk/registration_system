@@ -43,6 +43,7 @@ function handleTap() {
       </view>
       <view v-if="card.actionKind !== 'view'" class="hall-row__action">
         <text>{{ card.actionLabel }}</text>
+        <image class="hall-row__action-chevron" src="/static/home-icons/chevron-right.png" mode="aspectFit" aria-hidden="true" />
       </view>
       <image v-else class="hall-row__chevron" src="/static/home-icons/chevron-right.png" mode="aspectFit" aria-hidden="true" />
     </view>
@@ -89,6 +90,8 @@ function handleTap() {
 .hall-row__progress-list { display: flex; flex-direction: column; align-items: stretch; gap: var(--ui-space-4); margin-top: var(--ui-space-5); }
 .hall-row__progress { display: flex; flex-direction: column; align-items: stretch; min-width: 0; }
 .hall-row__capacity-hint { margin-top: var(--ui-space-4); padding: var(--ui-space-2) var(--ui-space-3); border-radius: var(--ui-control-radius); background: var(--ui-panel-soft-bg); color: var(--ui-color-neutral-fg); font-size: var(--ui-text-xs); line-height: 1.5; }
-.hall-row__action { display: flex; align-items: center; flex-shrink: 0; min-height: var(--ui-control-min-height); padding: 0 var(--ui-space-4); border-radius: var(--ui-radius-round); background: var(--ui-color-accent); color: var(--ui-color-accent-fg); font-size: var(--ui-text-sm); font-weight: var(--ui-font-weight-heading); white-space: nowrap; }
+/* 次级文字胶囊：浅薄荷底 + 墨色字 + 细线箭头，与类型标签同色系，不与列表抢主次。 */
+.hall-row__action { display: flex; align-items: center; flex-shrink: 0; gap: 2rpx; height: 56rpx; padding: 0 var(--ui-space-2) 0 var(--ui-space-4); border-radius: var(--ui-radius-round); background: var(--ui-color-accent-soft); color: var(--ui-color-text); font-size: var(--ui-text-sm); font-weight: var(--ui-font-weight-medium); line-height: 1; white-space: nowrap; }
+.hall-row__action-chevron { flex-shrink: 0; width: var(--ui-icon-sm); height: var(--ui-icon-sm); }
 .hall-row__chevron { flex-shrink: 0; width: var(--ui-icon-md); height: var(--ui-icon-md); }
 </style>
