@@ -23,6 +23,8 @@ export interface HallMatchCardViewModel {
   detailUrl: string;
   applyUrl: string;
   title: string;
+  /** 微信列表行缩略图；空值时按比赛 id 稳定分配默认图。 */
+  coverImageUrl: string;
   dateBlock: { monthDay: string; weekday: string; timeLabel: string };
   kindLabel: string;
   kindTone: AppTagTone;
@@ -219,6 +221,7 @@ export function toHallMatchCard(
     detailUrl: `/pages/matches/detail?id=${match.id}`,
     applyUrl: `/pages/matches/apply-team/index?id=${match.id}`,
     title: match.name,
+    coverImageUrl: match.cover_image_url ?? "",
     dateBlock: formatHomeMatchDateBlock({ dateLabel, dateSource: match.start_time }),
     kindLabel: KIND_LABELS[match.publication_mode] ?? getMatchPublicationModeLabel(match.publication_mode),
     kindTone: KIND_TONES[match.publication_mode] ?? "muted",

@@ -1,7 +1,4 @@
 <script setup lang="ts">
-// #ifdef MP-WEIXIN
-import AppIcon from "@/components/ui/AppIcon.vue";
-// #endif
 import AppButton from "@/components/ui/AppButton.vue";
 import RegistrationProgressSummary from "@/components/ui/RegistrationProgressSummary.vue";
 import type { HallMatchCardViewModel } from "../hallMatchState";
@@ -34,22 +31,12 @@ export default { options: { virtualHost: true } };
     </view>
 
     <view class="hall-match-info">
-      <!-- #ifdef MP-WEIXIN -->
-      <AppIcon name="map-pin" size="var(--ui-icon-sm)" tone="muted" />
-      <!-- #endif -->
-      <!-- #ifndef MP-WEIXIN -->
       <image class="hall-match-icon" src="/static/icons/lucide/map-pin.png" mode="aspectFit" aria-hidden="true" />
-      <!-- #endif -->
       <text class="hall-match-location">{{ card.venue || '场地待定' }}</text>
       <text class="hall-match-format">{{ card.formatLabel }}</text>
     </view>
     <view v-if="card.hostTeamName" class="hall-match-info hall-match-team-row">
-      <!-- #ifdef MP-WEIXIN -->
-      <AppIcon name="users" size="var(--ui-icon-sm)" tone="muted" />
-      <!-- #endif -->
-      <!-- #ifndef MP-WEIXIN -->
       <image class="hall-match-icon" src="/static/icons/lucide/users.png" mode="aspectFit" aria-hidden="true" />
-      <!-- #endif -->
       <text class="hall-match-teams">{{ card.hostTeamName }}<text v-if="card.opponentName && card.opponentName !== '待定'"> · 对手 {{ card.opponentName }}</text></text>
     </view>
 
@@ -69,19 +56,9 @@ export default { options: { virtualHost: true } };
         <text v-else class="hall-match-progress-hint">报名情况见详情</text>
       </view>
       <view class="hall-match-actions">
-        <!-- #ifdef MP-WEIXIN -->
-        <button v-if="card.actionKind === 'view'" class="hall-match-view" hover-class="hall-match-view--pressed">
-          <text>{{ card.actionLabel }}</text><AppIcon name="chevron-right" size="var(--ui-icon-xs)" />
-        </button>
-        <AppButton v-else block size="sm" variant="dark" :stop-propagation="false">
-          <text>{{ card.actionLabel }}</text>
-        </AppButton>
-        <!-- #endif -->
-        <!-- #ifndef MP-WEIXIN -->
         <AppButton block size="sm" :variant="card.actionKind === 'view' ? 'outline' : 'dark'" :stop-propagation="false">
           <view class="hall-match-action-content"><text>{{ card.actionLabel }}</text><text class="ui-arrow-text hall-match-arrow">→</text></view>
         </AppButton>
-        <!-- #endif -->
       </view>
     </view>
     <view v-if="card.capacityHint" class="hall-match-capacity-hint">
@@ -125,30 +102,4 @@ export default { options: { virtualHost: true } };
 .hall-match-action-content { display: flex; align-items: center; justify-content: center; gap: 12rpx; font-size: 28rpx; font-weight: 600; line-height: 1.2; white-space: nowrap; }
 .hall-match-arrow { font-size: 32rpx; line-height: 1; }
 
-/* #ifdef MP-WEIXIN */
-.hall-match-heading { gap: var(--ui-space-4); }
-.hall-match-tags { gap: var(--ui-space-2); margin-top: var(--ui-space-2); }
-.hall-match-kind { padding: var(--ui-space-1) var(--ui-space-3); border-radius: var(--ui-radius-round); background: var(--ui-color-accent-soft); color: var(--ui-color-text); font-weight: var(--ui-font-weight-heading); }
-.hall-match-status { padding: var(--ui-space-1) var(--ui-space-3); border-radius: var(--ui-radius-round); font-size: var(--ui-text-xs); font-weight: var(--ui-font-weight-heading); }
-.hall-match-status--success { background: var(--ui-color-success-bg); color: var(--ui-color-success-fg); }
-.hall-match-status--warning { background: var(--ui-color-warning-bg); color: var(--ui-color-warning-fg); }
-.hall-match-status--full { border-radius: var(--ui-radius-round); padding: var(--ui-space-1) var(--ui-space-3); font-size: var(--ui-text-xs); font-weight: var(--ui-font-weight-heading); }
-.hall-match-date { padding: var(--ui-space-2) var(--ui-space-3); border-radius: var(--ui-control-radius); background: var(--ui-panel-soft-bg); align-items: center; }
-.hall-match-action-content { font-size: var(--ui-text-subtitle); font-weight: var(--ui-font-weight-heading); gap: var(--ui-space-3); }
-.hall-match-arrow { font-size: var(--ui-text-title); }
-.hall-match-card { padding: var(--ui-space-7); border: var(--ui-panel-border); border-radius: var(--ui-card-radius); background: var(--ui-card-bg); box-shadow: var(--ui-card-shadow); }
-.hall-match-title { font-size: var(--ui-text-title); font-weight: var(--ui-font-weight-heading); line-height: var(--ui-line-height-tight); }
-.hall-match-time { font-size: var(--ui-text-heading); font-weight: var(--ui-font-weight-heading); letter-spacing: 0; color: var(--ui-color-text); }
-.hall-match-info { gap: var(--ui-space-3); margin-top: var(--ui-space-4); }
-.hall-match-team-row { margin-top: var(--ui-space-2); }
-.hall-match-location, .hall-match-teams { font-size: var(--ui-text-body); line-height: var(--ui-line-height-compact); }
-.hall-match-format { padding: 2rpx var(--ui-space-2); border-radius: var(--ui-radius-round); background: var(--ui-panel-soft-bg); color: var(--ui-color-text); font-weight: var(--ui-font-weight-medium); }
-.hall-match-footer { border-top: var(--ui-list-divider); margin-top: var(--ui-space-5); padding-top: var(--ui-space-5); gap: var(--ui-space-5); }
-.hall-match-capacity-hint { padding: var(--ui-space-2) var(--ui-space-3); background: var(--ui-panel-soft-bg); margin-top: var(--ui-space-4); border-radius: var(--ui-control-radius); color: var(--ui-color-neutral-fg); }
-.hall-match-actions { width: calc(var(--ui-space-10) * 4); }
-.hall-match-view { display: flex; align-items: center; justify-content: center; gap: var(--ui-space-1); width: 100%; min-height: var(--ui-control-min-height); margin: 0; padding: 0 var(--ui-space-4); border: var(--ui-button-outline-border); border-radius: var(--ui-control-radius); background: var(--ui-button-outline-bg); color: var(--ui-color-text); font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-heading); line-height: var(--ui-line-height-compact); box-sizing: border-box; }
-.hall-match-view::after { border: 0; }
-.hall-match-view--pressed { background: var(--ui-control-subtle-bg); box-shadow: var(--ui-shadow-control-pressed); }
-.hall-match-calendar, .hall-match-info, .hall-match-progress-hint { color: var(--ui-color-text-secondary); }
-/* #endif */
 </style>
