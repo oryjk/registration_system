@@ -178,7 +178,7 @@
     {
       "path": "pages/chanlun/index",
       "style": {
-        "navigationBarTitleText": "缠观",
+        "navigationBarTitleText": "",
         "disableScroll": true
       }
     },
