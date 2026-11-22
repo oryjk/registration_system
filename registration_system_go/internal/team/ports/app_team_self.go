@@ -13,6 +13,7 @@ type AppTeamSummary struct {
 	MemberCount int64
 	CreditScore int
 	VipUntil    *time.Time
+	VipCredits  int
 }
 
 // TeamPasswordHasher 入队口令的哈希与校验，由 bcrypt 适配器实现。

@@ -163,6 +163,25 @@ type TipFilter struct {
 	Offset int
 }
 
+// TeamVipPlan 是由 team 领域解析出的球队会员套餐规格，禁止在 payment 模块硬编码定价。
+type TeamVipPlan struct {
+	Code         string
+	Name         string
+	AmountCents  int64
+	DurationDays int
+	Credits      int
+}
+
+// TeamVipPlanResolver 供 payment 用例从 team 领域获取套餐定价与权益规格。
+type TeamVipPlanResolver interface {
+	ResolveTeamVipPlan(code string) (TeamVipPlan, error)
+}
+
+// TeamVipSettlement 球队会员订单幂等核销端口：单事务锁单并更新 teams.vip_credits 或 teams.vip_until。
+type TeamVipSettlement interface {
+	ApplyTeamVipPayment(ctx context.Context, verified VerifiedPayment, plan string, durationDays int, credits int) (SettlementResult, error)
+}
+
 type OrderNumberGenerator interface {
 	NewOrderNo() string
 }

@@ -98,6 +98,7 @@ var _ ports.TokenService = paymentTokens{}
 type fakePaymentService struct {
 	actor           sharedauth.Actor
 	createCommand   paymentapplication.CreateRechargeCommand
+	teamVipCommand  paymentapplication.CreateTeamVipCommand
 	tipCommand      paymentapplication.CreateTipCommand
 	feedbackCommand paymentapplication.CreateFeedbackCommand
 	tipListResult   paymentapplication.TipListResult
@@ -137,6 +138,11 @@ func mustHTTPOrder(t *testing.T, orderNo string, userID, amount int64) paymentdo
 
 func (f *fakePaymentService) CreateTeamMembership(_ context.Context, _ sharedauth.Actor, _ paymentapplication.CreateTeamMembershipCommand) (paymentapplication.CreateRechargeResult, error) {
 	return paymentapplication.CreateRechargeResult{}, nil
+}
+
+func (f *fakePaymentService) CreateTeamVip(_ context.Context, actor sharedauth.Actor, command paymentapplication.CreateTeamVipCommand) (paymentapplication.CreateRechargeResult, error) {
+	f.actor, f.teamVipCommand = actor, command
+	return f.createResult, f.createErr
 }
 
 func (s *fakePaymentService) CreateMatchRegistration(context.Context, sharedauth.Actor, paymentapplication.CreateMatchRegistrationCommand) (paymentapplication.CreateRechargeResult, error) {
@@ -212,4 +218,38 @@ func (f *fakePaymentService) CreateTip(_ context.Context, actor sharedauth.Actor
 
 func (f *fakePaymentService) ListTips(_ context.Context, _ sharedauth.Actor, query paymentapplication.TipListQuery) (paymentapplication.TipListResult, error) {
 	return f.tipListResult, nil
+}
+
+func TestCreateTeamVipMapsCommandAndRejectsInvalidBody(t *testing.T) {
+	order, err := paymentdomain.NewTeamVipOrder("P-vip-1", 37, 7, "yearly", 9900, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	service := &fakePaymentService{createResult: paymentapplication.CreateRechargeResult{
+		Order: order, Payment: paymentports.JSAPIParameters{Package: "prepay_id=prepay-vip-1"},
+	}}
+	router := paymentTestRouter(service)
+
+	request := httptest.NewRequest(http.MethodPost, "/app/payments/team-vip-orders", bytes.NewBufferString(`{"team_id":7,"plan":"yearly"}`))
+	request.Header.Set("Authorization", "Bearer user-token")
+	request.Header.Set("Content-Type", "application/json")
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+	body := response.Body.String()
+	if response.Code != http.StatusOK || service.actor.ID != 37 || service.teamVipCommand.TeamID != 7 || service.teamVipCommand.Plan != "yearly" {
+		t.Fatalf("status=%d actor=%+v cmd=%+v body=%s", response.Code, service.actor, service.teamVipCommand, body)
+	}
+	if !strings.Contains(body, `"kind":"team_vip"`) || !strings.Contains(body, `"vip_plan":"yearly"`) || !strings.Contains(body, `"package":"prepay_id=prepay-vip-1"`) {
+		t.Fatalf("unexpected body=%s", body)
+	}
+
+	// 缺少 plan 返回 422。
+	badReq := httptest.NewRequest(http.MethodPost, "/app/payments/team-vip-orders", bytes.NewBufferString(`{"team_id":7}`))
+	badReq.Header.Set("Authorization", "Bearer user-token")
+	badReq.Header.Set("Content-Type", "application/json")
+	badResp := httptest.NewRecorder()
+	router.ServeHTTP(badResp, badReq)
+	if badResp.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("missing plan status=%d body=%s", badResp.Code, badResp.Body.String())
+	}
 }

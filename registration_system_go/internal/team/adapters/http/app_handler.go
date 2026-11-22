@@ -37,6 +37,7 @@ type AppTeamDetailResponse struct {
 	CreditScore    int               `json:"credit_score"`
 	VipUntil       *time.Time        `json:"vip_until"`
 	IsVip          bool              `json:"is_vip"`
+	VipCredits     int               `json:"vip_credits"`
 	MyBalanceCents int64             `json:"my_balance_cents"`
 	CreatedAt      time.Time         `json:"created_at"`
 }
@@ -87,6 +88,7 @@ func (h *AppHandler) GetTeam(c *gin.Context) {
 		CaptainID: team.CaptainID, Status: team.Status, MyRole: detail.MyRole,
 		CreditScore: detail.Membership.CreditScore, VipUntil: detail.Membership.VipUntil,
 		IsVip:          detail.Membership.VipUntil != nil && detail.Membership.VipUntil.After(time.Now()),
+		VipCredits:     detail.Membership.VipCredits,
 		MyBalanceCents: detail.Membership.BalanceCents,
 		CreatedAt:      team.CreatedAt,
 	})

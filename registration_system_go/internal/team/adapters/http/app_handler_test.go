@@ -24,7 +24,7 @@ func TestAppTeamRoutesReturnPrivacyDTOs(t *testing.T) {
 	queries := &fakeAppTeamQueries{
 		detail: application.AppTeamDetail{Team: domain.Team{
 			ID: 7, Name: "东安联队", Status: domain.TeamActive, CreatedAt: now,
-		}, MyRole: domain.RoleLeader},
+		}, MyRole: domain.RoleLeader, Membership: ports.AppMembershipState{VipCredits: 2}},
 		members: []application.AppTeamMember{{AttendanceRank: func() *int64 { r := int64(2); return &r }(), AttendedCount: 12, ParticipationPoints: 945, CumulativeParticipationPoints: 6555, UserID: 42, Nickname: "阿睿", RealName: &realName, Role: domain.RoleLeader, Status: domain.MemberActive, JoinedAt: now}},
 	}
 	handler := NewAppHandler(queries, nil)
@@ -35,6 +35,7 @@ func TestAppTeamRoutesReturnPrivacyDTOs(t *testing.T) {
 
 	for _, test := range []struct{ path, want string }{
 		{path: "/teams/7", want: `"my_role":"leader"`},
+		{path: "/teams/7", want: `"vip_credits":2`},
 		{path: "/teams/7", want: `"created_at":"2026-08-08T08:00:00Z"`},
 		{path: "/teams/7/members", want: `"user_id":42`},
 		{path: "/teams/7/members", want: `"attended_count":12`},

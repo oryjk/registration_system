@@ -98,6 +98,8 @@ func (r *Repository) ListByUser(ctx context.Context, userID int64) ([]domain.Tea
 				JoinedAt: row.JoinedAt.Time,
 			},
 			MemberCount: int(row.MemberCount),
+			VipUntil:    nullableTimestamptz(row.VipUntil),
+			VipCredits:  int(row.VipCredits),
 		})
 	}
 	return items, nil
@@ -527,7 +529,11 @@ func (r *Repository) GetTeamMembershipState(ctx context.Context, teamID, userID 
 	if err != nil {
 		return ports.AppMembershipState{}, err
 	}
-	state := ports.AppMembershipState{CreditScore: int(row.CreditScore), BalanceCents: row.MyBalanceCents}
+	state := ports.AppMembershipState{
+		CreditScore:  int(row.CreditScore),
+		VipCredits:   int(row.VipCredits),
+		BalanceCents: row.MyBalanceCents,
+	}
 	if row.VipUntil.Valid {
 		vipUntil := row.VipUntil.Time
 		state.VipUntil = &vipUntil
@@ -593,6 +599,7 @@ func (r *Repository) SearchByKeywordPage(ctx context.Context, keyword string, of
 			Team:        teamFields(row.ID, row.Name, row.Description, row.LogoUrl, row.CaptainID, row.Status, row.CreatedAt, row.UpdatedAt),
 			MemberCount: row.MemberCount,
 			CreditScore: int(row.CreditScore),
+			VipCredits:  int(row.VipCredits),
 		}
 		if row.VipUntil.Valid {
 			vipUntil := row.VipUntil.Time

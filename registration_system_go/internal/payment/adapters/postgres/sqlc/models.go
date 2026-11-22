@@ -206,6 +206,7 @@ type PaymentOrder struct {
 	TeamID        *int64             `json:"team_id"`
 	Months        *int32             `json:"months"`
 	MatchID       pgtype.UUID        `json:"match_id"`
+	VipPlan       *string            `json:"vip_plan"`
 }
 
 type Team struct {
