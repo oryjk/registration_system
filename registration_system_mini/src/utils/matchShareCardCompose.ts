@@ -691,6 +691,7 @@ function drawText(
   weight: CanvasFontWeight = 700,
   italic = false,
 ) {
+  ctx.save();
   setCanvasFont(ctx, size, weight, italic);
   ctx.setFillStyle(color);
   ctx.setTextAlign(align);
@@ -698,14 +699,13 @@ function drawText(
   // 微信真机原生 bold 约 600–700；800/900 海报大字叠加同色圆角细描边，呈现真正粗黑海报体量感。
   if (weight >= 800 && typeof ctx.strokeText === "function") {
     const strokeBoost = weight >= 900 ? Math.max(1.2, size * 0.036) : Math.max(0.8, size * 0.022);
-    ctx.save();
     ctx.setStrokeStyle(color);
     ctx.setLineWidth(strokeBoost);
     setCanvasLineJoinRound(ctx);
     ctx.strokeText(value, x, y);
-    ctx.restore();
   }
   ctx.fillText(value, x, y);
+  ctx.restore();
 }
 
 function drawSlash(
@@ -914,6 +914,7 @@ function drawStadiumSpotlights(
 }
 
 function drawFireBackdrop(ctx: UniApp.CanvasContext, width: number, height: number) {
+  ctx.save();
   const bg = createCircularOrLinearGradient(
     ctx,
     500,
@@ -931,6 +932,7 @@ function drawFireBackdrop(ctx: UniApp.CanvasContext, width: number, height: numb
   );
   ctx.setFillStyle(bg);
   ctx.fillRect(0, 0, width, height);
+  ctx.restore();
 
   drawStadiumSpotlights(ctx, 0.3, 0.28);
 
@@ -1014,26 +1016,41 @@ function drawTopTimeAndBottomVenue(ctx: UniApp.CanvasContext, view: MatchShareCa
   const fittedTime = fitText(ctx, view.timeLabel, 710, 40, 26, 900);
   drawText(ctx, fittedTime.text, 512, 67, fittedTime.size, "#FFFFFF", "center", 900);
 
-  // 底部高对比白底黑字地点条（高 116px，支持 1~2 行完整展示超长场地地址，绝不因后缀挤压裁切地点）
+  // 底部高对比深红黑地点通栏 + 纯白粗黑大字（高 116px，支持 1~2 行完整展示超长场地地址；
+  // 深底白字既与红黑球场整体视觉统一，又彻底免疫微信旧版 Canvas 浅底状态异常导致黑字融底的风险）
   const barY = 684;
   const barH = 116;
-  ctx.setFillStyle("#FFFFFF");
-  ctx.fillRect(0, barY, MATCH_SHARE_CARD_WIDTH, barH);
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(0, barY);
+  ctx.lineTo(MATCH_SHARE_CARD_WIDTH, barY);
+  ctx.lineTo(MATCH_SHARE_CARD_WIDTH, barY + barH);
+  ctx.lineTo(0, barY + barH);
+  ctx.closePath();
+  ctx.setFillStyle("#1A0A10");
+  ctx.fill();
+  ctx.restore();
+
+  ctx.save();
+  ctx.setFillStyle("rgba(255, 69, 58, 0.45)");
+  ctx.fillRect(0, barY, MATCH_SHARE_CARD_WIDTH, 3);
   ctx.setFillStyle("#FF453A");
   ctx.fillRect(0, barY, 18, barH);
+  ctx.restore();
 
   const locationOnly = `📍 ${view.locationLabel}`;
   const shortSuffix = view.formatTag ? `  ·  ${view.formatTag}` : "";
   const fullWithMeta = view.venueMetaTag ? `${locationOnly}  ·  ${view.venueMetaTag}` : locationOnly;
   const withFormatOnly = `${locationOnly}${shortSuffix}`;
   const maxVenueWidth = 924;
+  const venueColor = "#FFFFFF";
 
   // 1) 优先完整单行展示（依次尝试：带赛事类型 -> 仅带人制 -> 仅场地名，绝不截断场地名）
   const singleLineCandidates = [fullWithMeta, withFormatOnly, locationOnly];
   for (const candidate of singleLineCandidates) {
     const fitted = fitText(ctx, candidate, maxVenueWidth, 34, 28, 900);
     if (!fitted.text.endsWith("…")) {
-      drawText(ctx, fitted.text, 509, barY + barH / 2, fitted.size, "#16070B", "center", 900);
+      drawText(ctx, fitted.text, 509, barY + barH / 2, fitted.size, venueColor, "center", 900);
       return;
     }
   }
@@ -1057,12 +1074,12 @@ function drawTopTimeAndBottomVenue(ctx: UniApp.CanvasContext, view: MatchShareCa
   }
 
   if (chosenLines.length <= 1) {
-    drawText(ctx, chosenLines[0] || locationOnly, 509, barY + barH / 2, chosenSize, "#16070B", "center", 900);
+    drawText(ctx, chosenLines[0] || locationOnly, 509, barY + barH / 2, chosenSize, venueColor, "center", 900);
   } else {
     const lineGap = Math.round(chosenSize * 1.42);
     const centerY = barY + barH / 2;
-    drawText(ctx, chosenLines[0]!, 509, centerY - lineGap / 2, chosenSize, "#16070B", "center", 900);
-    drawText(ctx, chosenLines[1]!, 509, centerY + lineGap / 2, chosenSize, "#16070B", "center", 900);
+    drawText(ctx, chosenLines[0]!, 509, centerY - lineGap / 2, chosenSize, venueColor, "center", 900);
+    drawText(ctx, chosenLines[1]!, 509, centerY + lineGap / 2, chosenSize, venueColor, "center", 900);
   }
 }
 
