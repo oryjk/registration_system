@@ -42,6 +42,10 @@ type UserUpdateMatchCommand struct {
 	LocationLongitude *float64
 	HostColor         *string
 	AwayColor         *string
+	HostShortsColor   *string
+	HostSocksColor    *string
+	AwayShortsColor   *string
+	AwaySocksColor    *string
 	Name              *string
 	Location          *string
 	Description       *string
@@ -52,11 +56,34 @@ type UserUpdateMatchCommand struct {
 	PublicationMode   *domain.PublicationMode
 }
 
+func (c UserUpdateMatchCommand) isEmpty() bool {
+	return c.PlayersPerTeam == nil &&
+		c.FeeType == nil &&
+		c.PaymentMode == nil &&
+		c.FeePerPersonCents == nil &&
+		c.LocationLatitude == nil &&
+		c.LocationLongitude == nil &&
+		c.HostColor == nil &&
+		c.AwayColor == nil &&
+		c.HostShortsColor == nil &&
+		c.HostSocksColor == nil &&
+		c.AwayShortsColor == nil &&
+		c.AwaySocksColor == nil &&
+		c.Name == nil &&
+		c.Location == nil &&
+		c.Description == nil &&
+		c.OpponentName == nil &&
+		c.HostCapacityLimit == nil &&
+		c.StartTime == nil &&
+		c.EndTime == nil &&
+		c.PublicationMode == nil
+}
+
 func (s UserMatchUpdateService) UpdateDetails(ctx context.Context, actor sharedauth.Actor, id uuid.UUID, command UserUpdateMatchCommand) (domain.Match, error) {
 	if !actor.IsUser() {
 		return domain.Match{}, sharederror.ErrForbidden
 	}
-	if command.PlayersPerTeam == nil && command.FeeType == nil && command.PaymentMode == nil && command.FeePerPersonCents == nil && command.LocationLatitude == nil && command.LocationLongitude == nil && command.HostColor == nil && command.AwayColor == nil && command.Name == nil && command.Location == nil && command.Description == nil && command.OpponentName == nil && command.HostCapacityLimit == nil && command.StartTime == nil && command.EndTime == nil && command.PublicationMode == nil {
+	if command.isEmpty() {
 		return domain.Match{}, sharederror.New(sharederror.KindValidation, "没有要修改的内容")
 	}
 	match, groups, found, err := s.repository.FindByID(ctx, id)
@@ -151,6 +178,8 @@ func (s UserMatchUpdateService) UpdateDetails(ctx context.Context, actor shareda
 		Location: location, LocationLatitude: latitude, LocationLongitude: longitude,
 		Description: description, OpponentName: command.OpponentName,
 		HostColor: command.HostColor, AwayColor: command.AwayColor,
+		HostShortsColor: command.HostShortsColor, HostSocksColor: command.HostSocksColor,
+		AwayShortsColor: command.AwayShortsColor, AwaySocksColor: command.AwaySocksColor,
 	}, now); err != nil {
 		return domain.Match{}, err
 	}

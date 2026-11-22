@@ -189,29 +189,48 @@ func TestAdminUpdateMatchJerseyColorThreeStates(t *testing.T) {
 	// 状态一：传值 → 命令携带原始值，回显领域归一化后的小写结果。
 	service.detail.Item.Match.HostColor = "#ff0000"
 	service.detail.Item.Match.AwayColor = "#00ff00"
-	response := patch(`,"host_color":"#FF0000","away_color":"#00FF00"`)
+	service.detail.Item.Match.HostShortsColor = "#111111"
+	service.detail.Item.Match.HostSocksColor = "#ffffff"
+	service.detail.Item.Match.AwayShortsColor = "#222222"
+	service.detail.Item.Match.AwaySocksColor = "#eeeeee"
+	response := patch(`,"host_color":"#FF0000","away_color":"#00FF00","host_shorts_color":"#111111","host_socks_color":"#FFFFFF","away_shorts_color":"#222222","away_socks_color":"#EEEEEE"`)
 	if response.Code != http.StatusOK {
 		t.Fatalf("unexpected set response %d: %s", response.Code, response.Body.String())
 	}
 	assertStringPointer(t, service.update.HostColor, "#FF0000")
 	assertStringPointer(t, service.update.AwayColor, "#00FF00")
-	if !bytes.Contains(response.Body.Bytes(), []byte(`"host_color":"#ff0000"`)) ||
-		!bytes.Contains(response.Body.Bytes(), []byte(`"away_color":"#00ff00"`)) {
-		t.Fatalf("set response missing normalized colors: %s", response.Body.String())
+	assertStringPointer(t, service.update.HostShortsColor, "#111111")
+	assertStringPointer(t, service.update.HostSocksColor, "#FFFFFF")
+	assertStringPointer(t, service.update.AwayShortsColor, "#222222")
+	assertStringPointer(t, service.update.AwaySocksColor, "#EEEEEE")
+	for _, want := range []string{
+		`"host_color":"#ff0000"`,
+		`"away_color":"#00ff00"`,
+		`"host_shorts_color":"#111111"`,
+		`"host_socks_color":"#ffffff"`,
+		`"away_shorts_color":"#222222"`,
+		`"away_socks_color":"#eeeeee"`,
+	} {
+		if !bytes.Contains(response.Body.Bytes(), []byte(want)) {
+			t.Fatalf("set response missing %s: %s", want, response.Body.String())
+		}
 	}
 
 	// 状态二：传空串 → 清除，回显 null；未携带的 away_color 保持不变。
 	service.detail.Item.Match.HostColor = ""
-	response = patch(`,"host_color":""`)
+	service.detail.Item.Match.HostShortsColor = ""
+	response = patch(`,"host_color":"","host_shorts_color":""`)
 	if response.Code != http.StatusOK {
 		t.Fatalf("unexpected clear response %d: %s", response.Code, response.Body.String())
 	}
 	assertStringPointer(t, service.update.HostColor, "")
-	if service.update.AwayColor != nil {
-		t.Fatalf("omitted away_color must stay nil, got %q", *service.update.AwayColor)
+	assertStringPointer(t, service.update.HostShortsColor, "")
+	if service.update.AwayColor != nil || service.update.AwayShortsColor != nil {
+		t.Fatalf("omitted away colors must stay nil: %+v", service.update)
 	}
-	if !bytes.Contains(response.Body.Bytes(), []byte(`"host_color":null`)) {
-		t.Fatalf("clear response must echo null host_color: %s", response.Body.String())
+	if !bytes.Contains(response.Body.Bytes(), []byte(`"host_color":null`)) ||
+		!bytes.Contains(response.Body.Bytes(), []byte(`"host_shorts_color":null`)) {
+		t.Fatalf("clear response must echo null host colors: %s", response.Body.String())
 	}
 
 	// 状态三：不带字段 → 本次不修改，值保持 null（未设置）。

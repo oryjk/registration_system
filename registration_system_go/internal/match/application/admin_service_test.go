@@ -336,6 +336,28 @@ func (f *fakeAdminAccess) EnsureSuperAdmin(_ context.Context, actor sharedauth.A
 	return f.err
 }
 
+func TestAdminUpdatesShortsAndSocksColors(t *testing.T) {
+	id := uuid.New()
+	match, groups := updatableAdminMatchFixture(id)
+	repository := &fakeAdminMatchRepository{match: match, groups: groups, found: true}
+	service := NewAdminMatchService(repository, fixedClock(), &fakeAdminAccess{})
+
+	updated, err := service.UpdateDetails(context.Background(), adminActor(3), id, UpdateMatchCommand{
+		Name: match.Name, StartTime: match.StartTime, EndTime: match.EndTime, Location: match.Location,
+		HostShortsColor: stringPointer("#112233"),
+		HostSocksColor:  stringPointer("#445566"),
+		AwayShortsColor: stringPointer("#778899"),
+		AwaySocksColor:  stringPointer("#AABBCC"),
+	})
+	if err != nil {
+		t.Fatalf("update kit colors: %v", err)
+	}
+	if updated.HostShortsColor != "#112233" || updated.HostSocksColor != "#445566" ||
+		updated.AwayShortsColor != "#778899" || updated.AwaySocksColor != "#aabbcc" {
+		t.Fatalf("unexpected kit colors: %+v", updated)
+	}
+}
+
 func adminActor(id int64) sharedauth.Actor {
 	return sharedauth.Actor{Kind: sharedauth.ActorAdmin, ID: id, IsSuperAdmin: true}
 }

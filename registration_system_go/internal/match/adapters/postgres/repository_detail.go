@@ -129,6 +129,9 @@ func mapAdminDetailMatch(row matchsqlc.GetMatchForAdminRow) domain.Match {
 		Description:   row.Description, CreatedByUserID: row.CreatedByUserID, CreatedByAdminID: row.CreatedByAdminID,
 		IsFree: row.IsFree, PaymentMode: domain.PaymentMode(row.PaymentMode), FeePerPersonCents: row.FeePerPersonCents, FeeType: domain.FeeType(row.FeeType),
 		HostColor: textValue(row.HostColor), AwayColor: textValue(row.AwayColor),
+		HostShortsColor: textValue(row.HostShortsColor), HostSocksColor: textValue(row.HostSocksColor),
+		AwayShortsColor: textValue(row.AwayShortsColor), AwaySocksColor: textValue(row.AwaySocksColor),
+		ShareBgImageURL: row.ShareBgImageUrl, ShareBgUnlocked: row.ShareBgUnlocked,
 		CreatedAt: row.CreatedAt.Time, UpdatedAt: row.UpdatedAt.Time,
 	}
 }

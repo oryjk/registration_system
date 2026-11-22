@@ -70,6 +70,12 @@ type Match struct {
 	AwayScore           *int32           `json:"away_score"`
 	FeeType             string           `json:"fee_type"`
 	CoverImageUrl       string           `json:"cover_image_url"`
+	HostShortsColor     *string          `json:"host_shorts_color"`
+	HostSocksColor      *string          `json:"host_socks_color"`
+	AwayShortsColor     *string          `json:"away_shorts_color"`
+	AwaySocksColor      *string          `json:"away_socks_color"`
+	ShareBgImageUrl     string           `json:"share_bg_image_url"`
+	ShareBgUnlocked     bool             `json:"share_bg_unlocked"`
 }
 
 type MatchCaptainMessage struct {

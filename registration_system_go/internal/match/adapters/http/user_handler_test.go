@@ -587,3 +587,28 @@ func TestMapUserParticipantResponsesCarriesTeamIdentityAndAttendance(t *testing.
 		t.Fatalf("cumulative scores must convert tenths and preserve missing team scope: %+v", responses)
 	}
 }
+
+func TestUserMatchResponseMapsKitColorsAndShareBgFields(t *testing.T) {
+	item := ports.MatchItem{
+		Match: domain.Match{
+			ID:              uuid.New(),
+			Name:            "周末友谊赛",
+			HostColor:       "#ff0000",
+			AwayColor:       "#0000ff",
+			HostShortsColor: "#111111",
+			HostSocksColor:  "",
+			AwayShortsColor: "#222222",
+			AwaySocksColor:  "#eeeeee",
+			ShareBgImageURL: "https://cdn.example.com/match-share-bgs/0123456789abcdef.webp",
+			ShareBgUnlocked: true,
+		},
+	}
+	resp := mapUserMatch(item)
+	if resp.HostShortsColor == nil || *resp.HostShortsColor != "#111111" ||
+		resp.HostSocksColor != nil ||
+		resp.AwayShortsColor == nil || *resp.AwayShortsColor != "#222222" ||
+		resp.AwaySocksColor == nil || *resp.AwaySocksColor != "#eeeeee" ||
+		resp.ShareBgImageURL != item.Match.ShareBgImageURL || !resp.ShareBgUnlocked {
+		t.Fatalf("unexpected user match response mapping: %+v", resp)
+	}
+}
