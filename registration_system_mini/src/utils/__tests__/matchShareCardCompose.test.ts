@@ -456,7 +456,12 @@ test("composeMatchShareCard renders C2 fiery backdrop with full/mixed/empty kits
     expect(mock.circularGradients.length).toEqual(1);
     expect(mock.linearGradients.length).toEqual(2);
     expect(mock.images.length).toEqual(0);
-    expect(mock.strokeTexts.map((t) => t.value)).toEqual(["MATCHDAY"]);
+    expect(mock.strokeTexts.some((t) => t.value === "MATCHDAY")).toEqual(true);
+    // 微信 CanvasContext.font 仅使用关键字 bold/normal + sans-serif，禁止数字字重（900/800）被真机静默忽略
+    expect(mock.texts.every((t) => /^(?:normal|italic) (?:normal|bold) \d+px sans-serif$/.test(t.font))).toEqual(true);
+    // 粗黑大字叠加同色 strokeText 强化海报体量感
+    expect(mock.strokeTexts.some((t) => t.value === "VS")).toEqual(true);
+    expect(mock.strokeTexts.some((t) => t.value === "河西周四 FC")).toEqual(true);
 
     const rendered = mock.texts.map((item) => item.value);
     expect(rendered.includes("11月23日 周一 19:30-21:30")).toEqual(true);
@@ -470,15 +475,16 @@ test("composeMatchShareCard renders C2 fiery backdrop with full/mixed/empty kits
     expect(rendered.includes("蓝衣")).toEqual(true);
 
     // 超长主队名在 46px 处截断，未越界
-    const homeNameDraw = mock.texts.find((t) => t.x === 80 && t.y === 152 + 132);
+    const homeNameDraw = mock.texts.find((t) => t.x === 80 && t.y === 128 + 132);
     expect(homeNameDraw?.value.endsWith("…")).toEqual(true);
-    expect(homeNameDraw?.font.includes("46px")).toEqual(true);
+    expect(homeNameDraw?.font).toEqual("normal bold 46px sans-serif");
 
-    // 底部白底通栏：超长地点截断但保留「8人制 · 约队赛」标签
-    const venueDraw = mock.texts.find((t) => t.y === 757);
-    expect(venueDraw?.value.startsWith("📍 ")).toEqual(true);
-    expect(venueDraw?.value.includes("…")).toEqual(true);
-    expect(venueDraw?.value.endsWith("8人制 · 约队赛")).toEqual(true);
+    // 底部白底通栏：超长场地自动 2 行完整展示，不再被截断
+    const venueDraws = mock.texts.filter((t) => t.y >= 684);
+    expect(venueDraws.length).toEqual(2);
+    const combinedVenue = venueDraws.map((t) => t.value).join("");
+    expect(combinedVenue).toEqual("📍 北京市朝阳区奥林匹克森林公园南园综合体育中心足球场A区标准11人制3号场地东侧入口");
+    expect(combinedVenue.includes("…")).toEqual(false);
   } finally {
     (globalThis as unknown as { uni?: typeof uni }).uni = previousUni;
   }
@@ -536,7 +542,7 @@ test("composeMatchShareCard overlays customBgImageUrl with dark crimson veil and
     expectClose(Number(customRun.images[0]?.[3]), (1600 * 800) / 900, 0.01);
     expectClose(Number(customRun.images[0]?.[4]), 800, 0.01);
     expect(customRun.fillRects.some((r) => r.fillStyle === "rgba(18, 7, 11, 0.62)")).toEqual(true);
-    expect(customRun.strokeTexts.length).toEqual(0);
+    expect(customRun.strokeTexts.some((t) => t.value === "MATCHDAY")).toEqual(false);
     // 未设置球服时，双方均显示「队服待定」且不画任何矢量图标
     expect(customRun.scales.length).toEqual(0);
     expect(customRun.texts.filter((t) => t.value === "队服待定").length).toEqual(2);

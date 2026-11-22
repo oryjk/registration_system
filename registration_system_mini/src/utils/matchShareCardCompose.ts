@@ -558,14 +558,17 @@ function setCanvasFont(
   size: number,
   weight: CanvasFontWeight = 700,
   italic = false,
-  family = "sans-serif",
 ) {
-  // 先调用 setFontSize，再写 ctx.font，避免微信旧版 CanvasContext 被 setFontSize 冲掉加粗/斜体。
+  const roundedSize = Math.round(size);
+  // 先调用 setFontSize 兜底，再写标准 WeChat CanvasContext.font：
+  // 微信小程序旧版 Canvas 仅识别关键字 normal/bold 与 sans-serif，
+  // 传数字字重（800/900）或带引号字体族会被原生静默忽略并回落为细体！
   if (typeof ctx.setFontSize === "function") {
-    ctx.setFontSize(size);
+    ctx.setFontSize(roundedSize);
   }
-  const stylePrefix = italic ? "italic " : "";
-  ctx.font = `${stylePrefix}${weight} ${size}px ${family}`;
+  const stylePrefix = italic ? "italic" : "normal";
+  const weightKeyword = weight >= 600 ? "bold" : "normal";
+  ctx.font = `${stylePrefix} ${weightKeyword} ${roundedSize}px sans-serif`;
 }
 
 function setCanvasLineJoinRound(ctx: UniApp.CanvasContext) {
@@ -637,7 +640,8 @@ function measureWidthWithFont(
   setCanvasFont(ctx, size, weight);
   const measured = ctx.measureText(value)?.width;
   if (typeof measured === "number" && Number.isFinite(measured) && measured > 0) {
-    return measured;
+    // 微信真机粗体 + 重磅描边视觉宽度通常略宽于 measureText 返回值，预留约 6% 冗余避免边界裁切。
+    return weight >= 800 ? measured * 1.06 : measured;
   }
   return Array.from(value).length * size;
 }
@@ -686,12 +690,21 @@ function drawText(
   align: "left" | "center" | "right" = "left",
   weight: CanvasFontWeight = 700,
   italic = false,
-  family = "sans-serif",
 ) {
-  setCanvasFont(ctx, size, weight, italic, family);
+  setCanvasFont(ctx, size, weight, italic);
   ctx.setFillStyle(color);
   ctx.setTextAlign(align);
   ctx.setTextBaseline("middle");
+  // 微信真机原生 bold 约 600–700；800/900 海报大字叠加同色圆角细描边，呈现真正粗黑海报体量感。
+  if (weight >= 800 && typeof ctx.strokeText === "function") {
+    const strokeBoost = weight >= 900 ? Math.max(1.2, size * 0.036) : Math.max(0.8, size * 0.022);
+    ctx.save();
+    ctx.setStrokeStyle(color);
+    ctx.setLineWidth(strokeBoost);
+    setCanvasLineJoinRound(ctx);
+    ctx.strokeText(value, x, y);
+    ctx.restore();
+  }
   ctx.fillText(value, x, y);
 }
 
@@ -923,16 +936,16 @@ function drawFireBackdrop(ctx: UniApp.CanvasContext, width: number, height: numb
 
   // 中央巨大镂空 MATCHDAY 暗纹
   ctx.save();
-  setCanvasFont(ctx, 156, 900, true, "'Arial Black', Impact, sans-serif");
+  setCanvasFont(ctx, 156, 900, true);
   ctx.setTextAlign("center");
   ctx.setTextBaseline("middle");
   if (typeof ctx.strokeText === "function") {
     ctx.setStrokeStyle("rgba(255, 255, 255, 0.065)");
     ctx.setLineWidth(4);
-    ctx.strokeText("MATCHDAY", 500, 400);
+    ctx.strokeText("MATCHDAY", 500, 382);
   } else {
     ctx.setFillStyle("rgba(255, 255, 255, 0.04)");
-    ctx.fillText("MATCHDAY", 500, 400);
+    ctx.fillText("MATCHDAY", 500, 382);
   }
   ctx.restore();
 }
@@ -997,51 +1010,60 @@ function drawBackdrop(
 
 function drawTopTimeAndBottomVenue(ctx: UniApp.CanvasContext, view: MatchShareCardViewModel) {
   // 顶部火焰斜切时间条
-  drawSlash(ctx, 140, 38, 720, 74, 24, "#FF453A");
-  const fittedTime = fitText(ctx, view.timeLabel, 672, 40, 26, 900);
-  drawText(ctx, fittedTime.text, 512, 76, fittedTime.size, "#FFFFFF", "center", 900);
+  drawSlash(ctx, 118, 30, 764, 72, 24, "#FF453A");
+  const fittedTime = fitText(ctx, view.timeLabel, 710, 40, 26, 900);
+  drawText(ctx, fittedTime.text, 512, 67, fittedTime.size, "#FFFFFF", "center", 900);
 
-  // 底部高对比白底黑字地点条
+  // 底部高对比白底黑字地点条（高 116px，支持 1~2 行完整展示超长场地地址，绝不因后缀挤压裁切地点）
+  const barY = 684;
+  const barH = 116;
   ctx.setFillStyle("#FFFFFF");
-  ctx.fillRect(0, 712, MATCH_SHARE_CARD_WIDTH, 88);
+  ctx.fillRect(0, barY, MATCH_SHARE_CARD_WIDTH, barH);
   ctx.setFillStyle("#FF453A");
-  ctx.fillRect(0, 712, 18, 88);
+  ctx.fillRect(0, barY, 18, barH);
 
-  const suffix = view.venueMetaTag ? `  ·  ${view.venueMetaTag}` : "";
-  const fullLine = `📍 ${view.locationLabel}${suffix}`;
-  const maxVenueWidth = 932;
+  const locationOnly = `📍 ${view.locationLabel}`;
+  const shortSuffix = view.formatTag ? `  ·  ${view.formatTag}` : "";
+  const fullWithMeta = view.venueMetaTag ? `${locationOnly}  ·  ${view.venueMetaTag}` : locationOnly;
+  const withFormatOnly = `${locationOnly}${shortSuffix}`;
+  const maxVenueWidth = 924;
 
-  let venueFontSize = 34;
-  let venueText = fullLine;
-  if (measureWidthWithFont(ctx, fullLine, 34, 900) <= maxVenueWidth) {
-    venueFontSize = 34;
-    venueText = fullLine;
-  } else {
-    const fittedFull = fitText(ctx, fullLine, maxVenueWidth, 32, 26, 900);
-    if (!fittedFull.text.endsWith("…")) {
-      venueFontSize = fittedFull.size;
-      venueText = fittedFull.text;
-    } else if (suffix) {
-      venueFontSize = 26;
-      const suffixWidth = measureWidthWithFont(ctx, suffix, venueFontSize, 900);
-      const locationBudget = Math.max(180, maxVenueWidth - suffixWidth);
-      const fittedLocation = fitText(
-        ctx,
-        `📍 ${view.locationLabel}`,
-        locationBudget,
-        venueFontSize,
-        venueFontSize,
-        900,
-      );
-      venueText = `${fittedLocation.text}${suffix}`;
-    } else {
-      const fallbackFit = fitText(ctx, fullLine, maxVenueWidth, 26, 22, 900);
-      venueFontSize = fallbackFit.size;
-      venueText = fallbackFit.text;
+  // 1) 优先完整单行展示（依次尝试：带赛事类型 -> 仅带人制 -> 仅场地名，绝不截断场地名）
+  const singleLineCandidates = [fullWithMeta, withFormatOnly, locationOnly];
+  for (const candidate of singleLineCandidates) {
+    const fitted = fitText(ctx, candidate, maxVenueWidth, 34, 28, 900);
+    if (!fitted.text.endsWith("…")) {
+      drawText(ctx, fitted.text, 509, barY + barH / 2, fitted.size, "#16070B", "center", 900);
+      return;
     }
   }
 
-  drawText(ctx, venueText, 508, 757, venueFontSize, "#16070B", "center", 900);
+  // 2) 场地名超过单行时，自动 2 行完整换行展示场地全称（28px -> 24px），确保长地址也能完整看清。
+  const twoLineSizes = [28, 26, 24] as const;
+  let chosenSize: number = 24;
+  let chosenLines: string[] = [];
+  for (const candidateSize of twoLineSizes) {
+    const lines = wrapTextLines(
+      locationOnly,
+      maxVenueWidth,
+      (text) => measureWidthWithFont(ctx, text, candidateSize, 900),
+      2,
+    );
+    chosenSize = candidateSize;
+    chosenLines = lines;
+    if (!lines[lines.length - 1]?.endsWith("…")) {
+      break;
+    }
+  }
+
+  if (chosenLines.length <= 1) {
+    drawText(ctx, chosenLines[0] || locationOnly, 509, barY + barH / 2, chosenSize, "#16070B", "center", 900);
+  } else {
+    const lineGap = Math.round(chosenSize * 1.42);
+    const centerY = barY + barH / 2;
+    drawText(ctx, chosenLines[0]!, 509, centerY - lineGap / 2, chosenSize, "#16070B", "center", 900);
+    drawText(ctx, chosenLines[1]!, 509, centerY + lineGap / 2, chosenSize, "#16070B", "center", 900);
+  }
 }
 
 function drawTeamBandRow(
@@ -1111,7 +1133,7 @@ function drawVersusSection(
   matchup: Extract<MatchShareMatchup, { mode: "versus" }>,
 ) {
   drawTeamBandRow(ctx, {
-    y: 152,
+    y: 128,
     accent: "#FF8A3D",
     role: "主队 HOME",
     labelColor: "#FFD166",
@@ -1121,7 +1143,7 @@ function drawVersusSection(
   });
 
   drawTeamBandRow(ctx, {
-    y: 448,
+    y: 422,
     accent: "#FF3B5C",
     role: "对手 AWAY",
     labelColor: "#FF9EAA",
@@ -1132,10 +1154,10 @@ function drawVersusSection(
 
   // 中间火焰 VS 撕裂线
   ctx.setFillStyle("#FF6B35");
-  ctx.fillRect(42, 407, 386, 6);
-  ctx.fillRect(572, 407, 386, 6);
-  drawSlash(ctx, 430, 376, 140, 66, 20, "#FF453A");
-  drawText(ctx, "VS", 510, 411, 46, "#FFFFFF", "center", 900, true, "'Arial Black', sans-serif");
+  ctx.fillRect(42, 381, 386, 6);
+  ctx.fillRect(572, 381, 386, 6);
+  drawSlash(ctx, 430, 350, 140, 66, 20, "#FF453A");
+  drawText(ctx, "VS", 510, 385, 48, "#FFFFFF", "center", 900, true);
 }
 
 function drawHeadlineSection(
@@ -1144,9 +1166,9 @@ function drawHeadlineSection(
   matchup: Extract<MatchShareMatchup, { mode: "headline" }>,
 ) {
   const cardX = 42;
-  const cardY = 162;
+  const cardY = 132;
   const cardW = 916;
-  const cardH = 496;
+  const cardH = 508;
 
   // 散人约球 / 场馆组局通栏热血大字卡
   ctx.setFillStyle("rgba(12, 6, 10, 0.60)");
