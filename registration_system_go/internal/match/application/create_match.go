@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/oryjk/registration_system/registration_system_go/internal/match/domain"
@@ -16,6 +17,7 @@ type CreateMatch struct {
 	defaultLimits ports.DefaultLimits
 	clock         ports.Clock
 	venueAccess   ports.VenueAccess
+	teamVip       ports.NewMatchDefaultShareBgResolver
 }
 
 type CreateMatchCommand struct {
@@ -37,6 +39,10 @@ type CreateMatchCommand struct {
 	Description         *string
 	HostColor           *string
 	AwayColor           *string
+	HostShortsColor     *string
+	HostSocksColor      *string
+	AwayShortsColor     *string
+	AwaySocksColor      *string
 	// IsFree 为 nil 时默认免费；历史迁移数据显式传 false。
 	IsFree *bool
 	// PaymentMode 报名费支付节奏；FeePerPersonCents 人均报名费（分）；FeeType 区分零金额的线下 AA 与免费。
@@ -64,6 +70,12 @@ func derefPositive(value *int64) int64 {
 // WithVenueAccess 开启场馆组局发布；未配置时一律拒绝。
 func (u CreateMatch) WithVenueAccess(venueAccess ports.VenueAccess) CreateMatch {
 	u.venueAccess = venueAccess
+	return u
+}
+
+// WithTeamVip 配置球队会员默认分享背景解析器：VIP 球队新建比赛时自动沿用上次上传的默认背景。
+func (u CreateMatch) WithTeamVip(teamVip ports.NewMatchDefaultShareBgResolver) CreateMatch {
+	u.teamVip = teamVip
 	return u
 }
 
@@ -120,6 +132,18 @@ func (u CreateMatch) Execute(ctx context.Context, actor sharedauth.Actor, comman
 	} else {
 		createdByAdminID = &actor.ID
 	}
+	var shareBgImageURL string
+	var shareBgUnlocked bool
+	if command.HostTeamID != nil && *command.HostTeamID > 0 && u.teamVip != nil {
+		defaultBgURL, unlocked, bgErr := u.teamVip.ResolveDefaultShareBgForNewMatch(ctx, *command.HostTeamID)
+		if bgErr != nil {
+			return CreateMatchResult{}, sharederror.Wrap(sharederror.KindInternal, "查询球队默认分享背景失败", bgErr)
+		}
+		if trimmed := strings.TrimSpace(defaultBgURL); trimmed != "" && unlocked {
+			shareBgImageURL = trimmed
+			shareBgUnlocked = true
+		}
+	}
 	match, groups, err := domain.NewMatch(domain.NewMatchInput{
 		CoverImageURL:       command.CoverImageURL,
 		Name:                command.Name,
@@ -140,6 +164,12 @@ func (u CreateMatch) Execute(ctx context.Context, actor sharedauth.Actor, comman
 		Description:         command.Description,
 		HostColor:           command.HostColor,
 		AwayColor:           command.AwayColor,
+		HostShortsColor:     command.HostShortsColor,
+		HostSocksColor:      command.HostSocksColor,
+		AwayShortsColor:     command.AwayShortsColor,
+		AwaySocksColor:      command.AwaySocksColor,
+		ShareBgImageURL:     shareBgImageURL,
+		ShareBgUnlocked:     shareBgUnlocked,
 		IsFree:              command.IsFree,
 		PaymentMode:         command.PaymentMode,
 		FeePerPersonCents:   command.FeePerPersonCents,

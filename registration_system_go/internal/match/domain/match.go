@@ -80,6 +80,12 @@ type Match struct {
 	Description         *string
 	HostColor           string
 	AwayColor           string
+	HostShortsColor     string
+	HostSocksColor      string
+	AwayShortsColor     string
+	AwaySocksColor      string
+	ShareBgImageURL     string
+	ShareBgUnlocked     bool
 	IsFree              bool
 	// PaymentMode 报名费支付节奏；FeePerPersonCents 人均报名费（分）；FeeType 区分零金额的线下 AA 与免费。
 	PaymentMode       PaymentMode
@@ -112,6 +118,12 @@ type NewMatchInput struct {
 	Description         *string
 	HostColor           *string
 	AwayColor           *string
+	HostShortsColor     *string
+	HostSocksColor      *string
+	AwayShortsColor     *string
+	AwaySocksColor      *string
+	ShareBgImageURL     string
+	ShareBgUnlocked     bool
 	IsFree              *bool
 	// PaymentMode/FeePerPersonCents 报名支付配置；PaymentMode 空串按赛后支付处理。
 	PaymentMode       PaymentMode
@@ -154,6 +166,22 @@ func NewMatch(input NewMatchInput, individualLimits IndividualLimits) (Match, []
 	if err != nil {
 		return Match{}, nil, err
 	}
+	hostShortsColor, err := normalizeOptionalColor(input.HostShortsColor)
+	if err != nil {
+		return Match{}, nil, err
+	}
+	hostSocksColor, err := normalizeOptionalColor(input.HostSocksColor)
+	if err != nil {
+		return Match{}, nil, err
+	}
+	awayShortsColor, err := normalizeOptionalColor(input.AwayShortsColor)
+	if err != nil {
+		return Match{}, nil, err
+	}
+	awaySocksColor, err := normalizeOptionalColor(input.AwaySocksColor)
+	if err != nil {
+		return Match{}, nil, err
+	}
 	if input.FeeType == FeeTeamFund && input.HostTeamID == nil {
 		return Match{}, nil, sharederror.New(sharederror.KindValidation, "队费扣除仅适用于球队比赛")
 	}
@@ -192,6 +220,12 @@ func NewMatch(input NewMatchInput, individualLimits IndividualLimits) (Match, []
 		Description:         trimOptional(input.Description),
 		HostColor:           hostColor,
 		AwayColor:           awayColor,
+		HostShortsColor:     hostShortsColor,
+		HostSocksColor:      hostSocksColor,
+		AwayShortsColor:     awayShortsColor,
+		AwaySocksColor:      awaySocksColor,
+		ShareBgImageURL:     strings.TrimSpace(input.ShareBgImageURL),
+		ShareBgUnlocked:     input.ShareBgUnlocked,
 		IsFree:              isFree,
 		PaymentMode:         paymentMode,
 		FeePerPersonCents:   input.FeePerPersonCents,
@@ -355,10 +389,14 @@ type UpdateMatchDetails struct {
 	// OpponentName 非 nil 时更新手工对手名称（传空串表示清除为 NULL）；
 	// nil 表示本次编辑不改对手。仅对线下已约（offline_confirmed）比赛有意义。
 	OpponentName *string
-	// HostColor/AwayColor 非 nil 时更新球服颜色（空串清除为 NULL）；nil 表示不改。
-	HostColor   *string
-	AwayColor   *string
-	Description *string
+	// HostColor/AwayColor 及球裤/球袜颜色非 nil 时更新（空串清除为 NULL）；nil 表示不改。
+	HostColor       *string
+	AwayColor       *string
+	HostShortsColor *string
+	HostSocksColor  *string
+	AwayShortsColor *string
+	AwaySocksColor  *string
+	Description     *string
 }
 
 func (m *Match) UpdateDetails(input UpdateMatchDetails, now time.Time) error {
@@ -377,21 +415,29 @@ func (m *Match) UpdateDetails(input UpdateMatchDetails, now time.Time) error {
 	if input.OpponentName != nil {
 		opponentName = trimOptional(input.OpponentName)
 	}
-	hostColor := m.HostColor
-	if input.HostColor != nil {
-		if v, cerr := NormalizeJerseyColor(*input.HostColor); cerr != nil {
-			return cerr
-		} else {
-			hostColor = v
-		}
+	hostColor, err := updateOptionalJerseyColor(m.HostColor, input.HostColor)
+	if err != nil {
+		return err
 	}
-	awayColor := m.AwayColor
-	if input.AwayColor != nil {
-		if v, cerr := NormalizeJerseyColor(*input.AwayColor); cerr != nil {
-			return cerr
-		} else {
-			awayColor = v
-		}
+	awayColor, err := updateOptionalJerseyColor(m.AwayColor, input.AwayColor)
+	if err != nil {
+		return err
+	}
+	hostShortsColor, err := updateOptionalJerseyColor(m.HostShortsColor, input.HostShortsColor)
+	if err != nil {
+		return err
+	}
+	hostSocksColor, err := updateOptionalJerseyColor(m.HostSocksColor, input.HostSocksColor)
+	if err != nil {
+		return err
+	}
+	awayShortsColor, err := updateOptionalJerseyColor(m.AwayShortsColor, input.AwayShortsColor)
+	if err != nil {
+		return err
+	}
+	awaySocksColor, err := updateOptionalJerseyColor(m.AwaySocksColor, input.AwaySocksColor)
+	if err != nil {
+		return err
 	}
 	validation := NewMatchInput{
 		Name: input.Name, PublicationMode: m.PublicationMode, HostTeamID: m.HostTeamID,
@@ -419,6 +465,10 @@ func (m *Match) UpdateDetails(input UpdateMatchDetails, now time.Time) error {
 	m.OpponentName = opponentName
 	m.HostColor = hostColor
 	m.AwayColor = awayColor
+	m.HostShortsColor = hostShortsColor
+	m.HostSocksColor = hostSocksColor
+	m.AwayShortsColor = awayShortsColor
+	m.AwaySocksColor = awaySocksColor
 	m.UpdatedAt = now
 	return nil
 }
@@ -537,7 +587,11 @@ func validateNewMatchInput(input NewMatchInput) error {
 	if input.LocationLatitude != nil && (*input.LocationLatitude < -90 || *input.LocationLatitude > 90 || *input.LocationLongitude < -180 || *input.LocationLongitude > 180) {
 		return sharederror.New(sharederror.KindValidation, "场地经纬度超出范围")
 	}
-	for _, color := range []*string{input.HostColor, input.AwayColor} {
+	for _, color := range []*string{
+		input.HostColor, input.AwayColor,
+		input.HostShortsColor, input.HostSocksColor,
+		input.AwayShortsColor, input.AwaySocksColor,
+	} {
 		if color == nil {
 			continue
 		}
@@ -595,4 +649,11 @@ func normalizeOptionalColor(value *string) (string, error) {
 		return "", nil
 	}
 	return NormalizeJerseyColor(*value)
+}
+
+func updateOptionalJerseyColor(current string, incoming *string) (string, error) {
+	if incoming == nil {
+		return current, nil
+	}
+	return NormalizeJerseyColor(*incoming)
 }

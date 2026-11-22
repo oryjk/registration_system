@@ -354,6 +354,39 @@ func TestUserUpdateMatchSwitchesPublicationMode(t *testing.T) {
 	})
 }
 
+func TestUserUpdateMatchDetailsUpdatesAndClearsShortsSocksColors(t *testing.T) {
+	match, groups := newUpdateTestMatch()
+	repository := &fakeUserMatchUpdateRepository{match: match, groups: groups, found: true}
+	service := NewUserMatchUpdateService(repository, fakeUserMatchAuthorizer{allowed: map[int64]bool{42: true}}, time.Now)
+
+	updated, err := service.UpdateDetails(context.Background(), sharedauth.Actor{Kind: sharedauth.ActorUser, ID: 42}, match.ID, UserUpdateMatchCommand{
+		HostShortsColor: stringPointer("#112233"),
+		HostSocksColor:  stringPointer("#AABBCC"),
+		AwayShortsColor: stringPointer("#445566"),
+		AwaySocksColor:  stringPointer("#DDEEFF"),
+	})
+	if err != nil {
+		t.Fatalf("仅更新球裤球袜颜色应成功: %v", err)
+	}
+	if updated.HostShortsColor != "#112233" || updated.HostSocksColor != "#aabbcc" ||
+		updated.AwayShortsColor != "#445566" || updated.AwaySocksColor != "#ddeeff" {
+		t.Fatalf("球裤球袜颜色未正确更新: %+v", updated)
+	}
+
+	repository.match = updated
+	cleared, err := service.UpdateDetails(context.Background(), sharedauth.Actor{Kind: sharedauth.ActorUser, ID: 42}, match.ID, UserUpdateMatchCommand{
+		HostShortsColor: stringPointer(""),
+		AwaySocksColor:  stringPointer(""),
+	})
+	if err != nil {
+		t.Fatalf("清除球裤球袜颜色应成功: %v", err)
+	}
+	if cleared.HostShortsColor != "" || cleared.HostSocksColor != "#aabbcc" ||
+		cleared.AwayShortsColor != "#445566" || cleared.AwaySocksColor != "" {
+		t.Fatalf("清除/保留状态不符: %+v", cleared)
+	}
+}
+
 func stringPointer(value string) *string { return &value }
 
 func modePointer(value domain.PublicationMode) *domain.PublicationMode { return &value }

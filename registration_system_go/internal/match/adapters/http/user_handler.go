@@ -82,6 +82,12 @@ type UserMatchResponse struct {
 	Description         *string            `json:"description"`
 	HostColor           *string            `json:"host_color"`
 	AwayColor           *string            `json:"away_color"`
+	HostShortsColor     *string            `json:"host_shorts_color"`
+	HostSocksColor      *string            `json:"host_socks_color"`
+	AwayShortsColor     *string            `json:"away_shorts_color"`
+	AwaySocksColor      *string            `json:"away_socks_color"`
+	ShareBgImageURL     string             `json:"share_bg_image_url"`
+	ShareBgUnlocked     bool               `json:"share_bg_unlocked"`
 	IsFree              bool               `json:"is_free"`
 	PaymentMode         domain.PaymentMode `json:"payment_mode"`
 	FeePerPersonCents   int64              `json:"fee_per_person_cents"`
@@ -286,6 +292,8 @@ func (h *UserHandler) Create(c *gin.Context) {
 		Location: request.Location, LocationLatitude: request.LocationLatitude, LocationLongitude: request.LocationLongitude,
 		Description: request.Description, IsFree: request.IsFree,
 		HostColor: request.HostColor, AwayColor: request.AwayColor,
+		HostShortsColor: request.HostShortsColor, HostSocksColor: request.HostSocksColor,
+		AwayShortsColor: request.AwayShortsColor, AwaySocksColor: request.AwaySocksColor,
 		PaymentMode: request.PaymentMode, FeePerPersonCents: request.FeePerPersonCents, FeeType: request.FeeType,
 	})
 	if err != nil {
@@ -309,6 +317,10 @@ type UserUpdateMatchRequest struct {
 	LocationLongitude *float64            `json:"location_longitude"`
 	HostColor         *string             `json:"host_color"`
 	AwayColor         *string             `json:"away_color"`
+	HostShortsColor   *string             `json:"host_shorts_color"`
+	HostSocksColor    *string             `json:"host_socks_color"`
+	AwayShortsColor   *string             `json:"away_shorts_color"`
+	AwaySocksColor    *string             `json:"away_socks_color"`
 	Name              *string             `json:"name"`
 	Location          *string             `json:"location"`
 	Description       *string             `json:"description"`
@@ -344,6 +356,7 @@ func (h *UserHandler) UpdateDetails(c *gin.Context) {
 	if _, err := h.update.UpdateDetails(c.Request.Context(), actor, id, application.UserUpdateMatchCommand{
 		PlayersPerTeam: request.PlayersPerTeam, FeeType: request.FeeType, PaymentMode: request.PaymentMode, FeePerPersonCents: request.FeePerPersonCents,
 		LocationLatitude: request.LocationLatitude, LocationLongitude: request.LocationLongitude, HostColor: request.HostColor, AwayColor: request.AwayColor,
+		HostShortsColor: request.HostShortsColor, HostSocksColor: request.HostSocksColor, AwayShortsColor: request.AwayShortsColor, AwaySocksColor: request.AwaySocksColor,
 		Name: request.Name, Location: request.Location, Description: request.Description,
 		OpponentName: request.OpponentName, HostCapacityLimit: request.MaxPlayers,
 		StartTime: request.StartTime, EndTime: request.EndTime,
@@ -531,6 +544,9 @@ func mapUserMatch(item ports.MatchItem) UserMatchResponse {
 		Description:   match.Description, RegistrationGroups: groups, CreatedAt: match.CreatedAt, UpdatedAt: match.UpdatedAt,
 		IsFree: match.IsFree, PaymentMode: match.PaymentMode, FeePerPersonCents: match.FeePerPersonCents, FeeType: match.FeeType,
 		HostColor: jerseyColorResponse(match.HostColor), AwayColor: jerseyColorResponse(match.AwayColor),
+		HostShortsColor: jerseyColorResponse(match.HostShortsColor), HostSocksColor: jerseyColorResponse(match.HostSocksColor),
+		AwayShortsColor: jerseyColorResponse(match.AwayShortsColor), AwaySocksColor: jerseyColorResponse(match.AwaySocksColor),
+		ShareBgImageURL: match.ShareBgImageURL, ShareBgUnlocked: match.ShareBgUnlocked,
 		HostCaptain: mapUserCaptainResponse(item.HostCaptain),
 	}
 }

@@ -63,6 +63,10 @@ type CreateMatchRequest struct {
 	Description         *string            `json:"description"`
 	HostColor           *string            `json:"host_color"`
 	AwayColor           *string            `json:"away_color"`
+	HostShortsColor     *string            `json:"host_shorts_color"`
+	HostSocksColor      *string            `json:"host_socks_color"`
+	AwayShortsColor     *string            `json:"away_shorts_color"`
+	AwaySocksColor      *string            `json:"away_socks_color"`
 	IsFree              *bool              `json:"is_free"`
 	PaymentMode         domain.PaymentMode `json:"payment_mode"`
 	FeePerPersonCents   int64              `json:"fee_per_person_cents"`
@@ -86,9 +90,13 @@ type UpdateMatchRequest struct {
 	OpponentName *string `json:"opponent_name"`
 	// HostCapacityLimit 为 nil（未传或 null）表示本次不修改主队报名上限。
 	HostCapacityLimit *int `json:"host_capacity_limit"`
-	// HostColor/AwayColor 为 nil（未传或 null）表示本次不修改；传空串表示清除。
-	HostColor *string `json:"host_color"`
-	AwayColor *string `json:"away_color"`
+	// HostColor/AwayColor 及球裤/球袜颜色为 nil（未传或 null）表示本次不修改；传空串表示清除。
+	HostColor       *string `json:"host_color"`
+	AwayColor       *string `json:"away_color"`
+	HostShortsColor *string `json:"host_shorts_color"`
+	HostSocksColor  *string `json:"host_socks_color"`
+	AwayShortsColor *string `json:"away_shorts_color"`
+	AwaySocksColor  *string `json:"away_socks_color"`
 }
 
 type optionalTimestampRequest struct {
@@ -141,6 +149,10 @@ type MatchResponse struct {
 	Description         *string            `json:"description"`
 	HostColor           *string            `json:"host_color"`
 	AwayColor           *string            `json:"away_color"`
+	HostShortsColor     *string            `json:"host_shorts_color"`
+	HostSocksColor      *string            `json:"host_socks_color"`
+	AwayShortsColor     *string            `json:"away_shorts_color"`
+	AwaySocksColor      *string            `json:"away_socks_color"`
 	IsFree              bool               `json:"is_free"`
 	PaymentMode         domain.PaymentMode `json:"payment_mode"`
 	FeePerPersonCents   int64              `json:"fee_per_person_cents"`
@@ -243,6 +255,8 @@ func (h *AdminHandler) Create(c *gin.Context) {
 		Location: request.Location, LocationLatitude: request.LocationLatitude, LocationLongitude: request.LocationLongitude,
 		Description: request.Description, IsFree: request.IsFree,
 		HostColor: request.HostColor, AwayColor: request.AwayColor,
+		HostShortsColor: request.HostShortsColor, HostSocksColor: request.HostSocksColor,
+		AwayShortsColor: request.AwayShortsColor, AwaySocksColor: request.AwaySocksColor,
 		PaymentMode: request.PaymentMode, FeePerPersonCents: request.FeePerPersonCents, FeeType: request.FeeType,
 	})
 	if err != nil {
@@ -275,6 +289,8 @@ func (h *AdminHandler) Update(c *gin.Context) {
 		OpponentName:      request.OpponentName,
 		HostCapacityLimit: request.HostCapacityLimit,
 		HostColor:         request.HostColor, AwayColor: request.AwayColor,
+		HostShortsColor: request.HostShortsColor, HostSocksColor: request.HostSocksColor,
+		AwayShortsColor: request.AwayShortsColor, AwaySocksColor: request.AwaySocksColor,
 	})
 	if err != nil {
 		sharedhttpapi.WriteError(c, err)
@@ -413,6 +429,8 @@ func mapMatch(item ports.AdminMatchItem) MatchResponse {
 		CoverImageURL: match.CoverImageURL,
 		Description:   match.Description, IsFree: match.IsFree, CreatedByUserID: match.CreatedByUserID, CreatedByAdminID: match.CreatedByAdminID,
 		HostColor: jerseyColorResponse(match.HostColor), AwayColor: jerseyColorResponse(match.AwayColor),
+		HostShortsColor: jerseyColorResponse(match.HostShortsColor), HostSocksColor: jerseyColorResponse(match.HostSocksColor),
+		AwayShortsColor: jerseyColorResponse(match.AwayShortsColor), AwaySocksColor: jerseyColorResponse(match.AwaySocksColor),
 		PaymentMode: match.PaymentMode, FeePerPersonCents: match.FeePerPersonCents, FeeType: match.FeeType,
 		CreatedAt: match.CreatedAt, UpdatedAt: match.UpdatedAt,
 	}

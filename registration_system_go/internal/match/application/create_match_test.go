@@ -265,3 +265,46 @@ func TestCreatePickupPrepaidRequiresFee(t *testing.T) {
 		t.Fatalf("unexpected payment fields: %+v", result.Match)
 	}
 }
+
+func TestCreateMatchPassesKitColorsAndInheritsVipDefaultShareBg(t *testing.T) {
+	repo := &fakeMatchRepository{}
+	vip := &fakeTeamVipEntitlement{
+		defaultURL:      "https://cdn.example.com/match-share-bgs/team-default.webp",
+		defaultUnlocked: true,
+	}
+	useCase := NewCreateMatch(repo, &fakeTeamAccess{}, &fakeDefaultLimits{}, fixedClock()).WithTeamVip(vip)
+
+	cmd := validCreateCommand(domain.OnlineTeam)
+	cmd.HostColor = stringPointer("#FF0000")
+	cmd.HostShortsColor = stringPointer("#111111")
+	cmd.HostSocksColor = stringPointer("#FFFFFF")
+	cmd.AwayColor = stringPointer("#0000FF")
+	cmd.AwayShortsColor = stringPointer("#222222")
+	cmd.AwaySocksColor = stringPointer("#EEEEEE")
+
+	result, err := useCase.Execute(context.Background(), userActor(101), cmd)
+	if err != nil {
+		t.Fatalf("create match: %v", err)
+	}
+	if result.Match.HostShortsColor != "#111111" || result.Match.HostSocksColor != "#ffffff" ||
+		result.Match.AwayShortsColor != "#222222" || result.Match.AwaySocksColor != "#eeeeee" {
+		t.Fatalf("kit colors not passed through: %+v", result.Match)
+	}
+	if result.Match.ShareBgImageURL != vip.defaultURL || !result.Match.ShareBgUnlocked {
+		t.Fatalf("expected VIP default share bg inherited: url=%q unlocked=%v", result.Match.ShareBgImageURL, result.Match.ShareBgUnlocked)
+	}
+
+	// 非 VIP（unlocked=false）不继承默认背景
+	nonVip := &fakeTeamVipEntitlement{
+		defaultURL:      "https://cdn.example.com/match-share-bgs/old.webp",
+		defaultUnlocked: false,
+	}
+	nonVipUseCase := NewCreateMatch(&fakeMatchRepository{}, &fakeTeamAccess{}, &fakeDefaultLimits{}, fixedClock()).WithTeamVip(nonVip)
+	nonVipRes, err := nonVipUseCase.Execute(context.Background(), userActor(101), validCreateCommand(domain.OnlineTeam))
+	if err != nil {
+		t.Fatalf("create non-vip match: %v", err)
+	}
+	if nonVipRes.Match.ShareBgImageURL != "" || nonVipRes.Match.ShareBgUnlocked {
+		t.Fatalf("non-vip team should not inherit share bg: %+v", nonVipRes.Match)
+	}
+}

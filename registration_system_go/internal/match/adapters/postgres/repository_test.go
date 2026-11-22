@@ -289,7 +289,11 @@ func TestRepositoryPersistsJerseyColors(t *testing.T) {
 
 	input := validOnlineTeamInput(t, ownerID, teamID)
 	host, away := "#2F6BFF", "#C8FF00"
+	hostShorts, hostSocks := "#111111", "#FFFFFF"
+	awayShorts, awaySocks := "#222222", "#33AA44"
 	input.HostColor, input.AwayColor = &host, &away
+	input.HostShortsColor, input.HostSocksColor = &hostShorts, &hostSocks
+	input.AwayShortsColor, input.AwaySocksColor = &awayShorts, &awaySocks
 	match, groups, err := domain.NewMatch(input, domain.IndividualLimits{})
 	if err != nil {
 		t.Fatalf("new match: %v", err)
@@ -303,8 +307,10 @@ func TestRepositoryPersistsJerseyColors(t *testing.T) {
 	if err != nil || !found {
 		t.Fatalf("find: %v found=%v", err, found)
 	}
-	if loaded.HostColor != "#2f6bff" || loaded.AwayColor != "#c8ff00" {
-		t.Fatalf("colors not round-tripped: %q %q", loaded.HostColor, loaded.AwayColor)
+	if loaded.HostColor != "#2f6bff" || loaded.AwayColor != "#c8ff00" ||
+		loaded.HostShortsColor != "#111111" || loaded.HostSocksColor != "#ffffff" ||
+		loaded.AwayShortsColor != "#222222" || loaded.AwaySocksColor != "#33aa44" {
+		t.Fatalf("colors not round-tripped: %+v", loaded)
 	}
 
 	// HTTP 详情/列表响应共用这些读侧映射，颜色必须原样带出。
@@ -312,8 +318,10 @@ func TestRepositoryPersistsJerseyColors(t *testing.T) {
 	if err != nil || !detailFound {
 		t.Fatalf("find for admin: %v found=%v", err, detailFound)
 	}
-	if detail.Match.HostColor != "#2f6bff" || detail.Match.AwayColor != "#c8ff00" {
-		t.Fatalf("detail colors not mapped: %q %q", detail.Match.HostColor, detail.Match.AwayColor)
+	if detail.Match.HostColor != "#2f6bff" || detail.Match.AwayColor != "#c8ff00" ||
+		detail.Match.HostShortsColor != "#111111" || detail.Match.HostSocksColor != "#ffffff" ||
+		detail.Match.AwayShortsColor != "#222222" || detail.Match.AwaySocksColor != "#33aa44" {
+		t.Fatalf("detail colors not mapped: %+v", detail.Match)
 	}
 	adminItems, err := repository.ListForAdmin(ctx, ports.AdminMatchFilter{Limit: 20})
 	if err != nil {
@@ -336,6 +344,8 @@ func TestRepositoryPersistsJerseyColors(t *testing.T) {
 	if err := loaded.UpdateDetails(domain.UpdateMatchDetails{
 		Name: loaded.Name, StartTime: loaded.StartTime, EndTime: loaded.EndTime,
 		Location: loaded.Location, HostColor: &clear, AwayColor: &clear,
+		HostShortsColor: &clear, HostSocksColor: &clear,
+		AwayShortsColor: &clear, AwaySocksColor: &clear,
 	}, time.Now().UTC()); err != nil {
 		t.Fatalf("clear colors: %v", err)
 	}
@@ -346,8 +356,105 @@ func TestRepositoryPersistsJerseyColors(t *testing.T) {
 	if err != nil {
 		t.Fatalf("refind: %v", err)
 	}
-	if reloaded.HostColor != "" || reloaded.AwayColor != "" {
-		t.Fatalf("cleared colors should be empty, got %q %q", reloaded.HostColor, reloaded.AwayColor)
+	if reloaded.HostColor != "" || reloaded.AwayColor != "" ||
+		reloaded.HostShortsColor != "" || reloaded.HostSocksColor != "" ||
+		reloaded.AwayShortsColor != "" || reloaded.AwaySocksColor != "" {
+		t.Fatalf("cleared colors should be empty, got %+v", reloaded)
+	}
+
+	// 验证自定义分享背景图更新与清除保留 unlocked 标志。
+	bgURL := "https://cdn.example.com/match-share-bgs/0123456789abcdef.webp"
+	if err := repository.UpdateShareBgImage(ctx, match.ID, bgURL, true); err != nil {
+		t.Fatalf("update share bg: %v", err)
+	}
+	withBg, found, err := repository.FindMatch(ctx, match.ID)
+	if err != nil || !found || withBg.ShareBgImageURL != bgURL || !withBg.ShareBgUnlocked {
+		t.Fatalf("share bg not persisted: found=%v match=%+v err=%v", found, withBg, err)
+	}
+	if err := repository.UpdateShareBgImage(ctx, match.ID, "", true); err != nil {
+		t.Fatalf("clear share bg: %v", err)
+	}
+	clearedBg, _, err := repository.FindMatch(ctx, match.ID)
+	if err != nil || clearedBg.ShareBgImageURL != "" || !clearedBg.ShareBgUnlocked {
+		t.Fatalf("cleared share bg should keep unlocked=true: %+v err=%v", clearedBg, err)
+	}
+}
+
+func TestMapMatchKitAndShareBgFields(t *testing.T) {
+	strPtr := func(s string) *string { return &s }
+	bgURL := "https://cdn.example.com/match-share-bgs/1234567890abcdef.webp"
+
+	m := domain.Match{
+		ID:              uuid.New(),
+		HostColor:       "#ff0000",
+		AwayColor:       "#0000ff",
+		HostShortsColor: "#111111",
+		HostSocksColor:  "#ffffff",
+		AwayShortsColor: "#222222",
+		AwaySocksColor:  "#eeeeee",
+		ShareBgImageURL: bgURL,
+		ShareBgUnlocked: true,
+	}
+	params := createMatchParams(m)
+	if params.HostShortsColor == nil || *params.HostShortsColor != "#111111" ||
+		params.HostSocksColor == nil || *params.HostSocksColor != "#ffffff" ||
+		params.AwayShortsColor == nil || *params.AwayShortsColor != "#222222" ||
+		params.AwaySocksColor == nil || *params.AwaySocksColor != "#eeeeee" ||
+		params.ShareBgImageUrl != bgURL || !params.ShareBgUnlocked {
+		t.Fatalf("createMatchParams missed kit/share-bg fields: %+v", params)
+	}
+
+	mapped := mapMatch(matchsqlc.Match{
+		HostShortsColor: strPtr("#111111"),
+		HostSocksColor:  strPtr("#ffffff"),
+		AwayShortsColor: strPtr("#222222"),
+		AwaySocksColor:  strPtr("#eeeeee"),
+		ShareBgImageUrl: bgURL,
+		ShareBgUnlocked: true,
+	})
+	if mapped.HostShortsColor != "#111111" || mapped.HostSocksColor != "#ffffff" ||
+		mapped.AwayShortsColor != "#222222" || mapped.AwaySocksColor != "#eeeeee" ||
+		mapped.ShareBgImageURL != bgURL || !mapped.ShareBgUnlocked {
+		t.Fatalf("mapMatch missed kit/share-bg fields: %+v", mapped)
+	}
+
+	detailMapped := mapAdminDetailMatch(matchsqlc.GetMatchForAdminRow{
+		HostShortsColor: strPtr("#111111"),
+		HostSocksColor:  strPtr("#ffffff"),
+		AwayShortsColor: strPtr("#222222"),
+		AwaySocksColor:  strPtr("#eeeeee"),
+		ShareBgImageUrl: bgURL,
+		ShareBgUnlocked: true,
+	})
+	if detailMapped.HostShortsColor != "#111111" || detailMapped.AwaySocksColor != "#eeeeee" ||
+		detailMapped.ShareBgImageURL != bgURL || !detailMapped.ShareBgUnlocked {
+		t.Fatalf("mapAdminDetailMatch missed kit/share-bg fields: %+v", detailMapped)
+	}
+
+	userListMapped := mapUserListMatch(matchsqlc.ListMatchesForUserRow{
+		HostShortsColor: strPtr("#111111"),
+		HostSocksColor:  strPtr("#ffffff"),
+		AwayShortsColor: strPtr("#222222"),
+		AwaySocksColor:  strPtr("#eeeeee"),
+		ShareBgImageUrl: bgURL,
+		ShareBgUnlocked: true,
+	})
+	if userListMapped.HostShortsColor != "#111111" || userListMapped.AwaySocksColor != "#eeeeee" ||
+		userListMapped.ShareBgImageURL != bgURL || !userListMapped.ShareBgUnlocked {
+		t.Fatalf("mapUserListMatch missed kit/share-bg fields: %+v", userListMapped)
+	}
+
+	adminListMapped := mapAdminListMatch(matchsqlc.ListMatchesForAdminRow{
+		HostShortsColor: strPtr("#111111"),
+		HostSocksColor:  strPtr("#ffffff"),
+		AwayShortsColor: strPtr("#222222"),
+		AwaySocksColor:  strPtr("#eeeeee"),
+		ShareBgImageUrl: bgURL,
+		ShareBgUnlocked: true,
+	})
+	if adminListMapped.HostShortsColor != "#111111" || adminListMapped.AwaySocksColor != "#eeeeee" ||
+		adminListMapped.ShareBgImageURL != bgURL || !adminListMapped.ShareBgUnlocked {
+		t.Fatalf("mapAdminListMatch missed kit/share-bg fields: %+v", adminListMapped)
 	}
 }
 

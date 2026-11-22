@@ -312,21 +312,43 @@ func TestNormalizeJerseyColor(t *testing.T) {
 
 func TestNewMatchStoresNormalizedJerseyColors(t *testing.T) {
 	host, away := "#2F6BFF", "#C8FF00"
+	hostShorts, hostSocks := "#111111", "#FFFFFF"
+	awayShorts, awaySocks := "#222222", "#33AA44"
 	input := validInput(OnlineTeam)
 	input.HostColor, input.AwayColor = &host, &away
+	input.HostShortsColor, input.HostSocksColor = &hostShorts, &hostSocks
+	input.AwayShortsColor, input.AwaySocksColor = &awayShorts, &awaySocks
+	input.ShareBgImageURL = " https://cdn.example.com/bg.png "
+	input.ShareBgUnlocked = true
 	match, _, err := NewMatch(input, IndividualLimits{})
 	if err != nil {
 		t.Fatalf("new match: %v", err)
 	}
-	if match.HostColor != "#2f6bff" || match.AwayColor != "#c8ff00" {
-		t.Fatalf("colors not normalized: %q %q", match.HostColor, match.AwayColor)
+	if match.HostColor != "#2f6bff" || match.AwayColor != "#c8ff00" ||
+		match.HostShortsColor != "#111111" || match.HostSocksColor != "#ffffff" ||
+		match.AwayShortsColor != "#222222" || match.AwaySocksColor != "#33aa44" {
+		t.Fatalf("colors not normalized: %+v", match)
+	}
+	if match.ShareBgImageURL != "https://cdn.example.com/bg.png" || !match.ShareBgUnlocked {
+		t.Fatalf("share bg fields not preserved: %q %v", match.ShareBgImageURL, match.ShareBgUnlocked)
 	}
 
 	bad := "magenta"
-	input2 := validInput(OnlineTeam)
-	input2.HostColor = &bad
-	if _, _, err := NewMatch(input2, IndividualLimits{}); err == nil {
-		t.Fatal("invalid color should fail creation")
+	for _, field := range []struct {
+		name string
+		set  func(*NewMatchInput)
+	}{
+		{"host_color", func(in *NewMatchInput) { in.HostColor = &bad }},
+		{"host_shorts_color", func(in *NewMatchInput) { in.HostShortsColor = &bad }},
+		{"host_socks_color", func(in *NewMatchInput) { in.HostSocksColor = &bad }},
+		{"away_shorts_color", func(in *NewMatchInput) { in.AwayShortsColor = &bad }},
+		{"away_socks_color", func(in *NewMatchInput) { in.AwaySocksColor = &bad }},
+	} {
+		input2 := validInput(OnlineTeam)
+		field.set(&input2)
+		if _, _, err := NewMatch(input2, IndividualLimits{}); err == nil {
+			t.Fatalf("invalid %s should fail creation", field.name)
+		}
 	}
 }
 
@@ -338,23 +360,54 @@ func TestUpdateDetailsJerseyColorThreeStates(t *testing.T) {
 	now := time.Now().UTC()
 
 	set := "#ff0000"
-	if err := match.UpdateDetails(UpdateDetailsInput(match, func(u *UpdateMatchDetails) { u.HostColor = &set }), now); err != nil {
+	shorts := "#101010"
+	socks := "#ABCDEF"
+	awayShorts := "#202020"
+	awaySocks := "#FEDCBA"
+	if err := match.UpdateDetails(UpdateDetailsInput(match, func(u *UpdateMatchDetails) {
+		u.HostColor = &set
+		u.HostShortsColor = &shorts
+		u.HostSocksColor = &socks
+		u.AwayShortsColor = &awayShorts
+		u.AwaySocksColor = &awaySocks
+	}), now); err != nil {
 		t.Fatalf("set color: %v", err)
 	}
-	if match.HostColor != "#ff0000" {
-		t.Fatalf("want #ff0000, got %q", match.HostColor)
+	if match.HostColor != "#ff0000" || match.HostShortsColor != "#101010" || match.HostSocksColor != "#abcdef" ||
+		match.AwayShortsColor != "#202020" || match.AwaySocksColor != "#fedcba" {
+		t.Fatalf("unexpected kit colors after set: %+v", match)
 	}
 
-	clear := ""
-	if err := match.UpdateDetails(UpdateDetailsInput(match, func(u *UpdateMatchDetails) { u.HostColor = &clear }), now); err != nil {
-		t.Fatalf("clear color: %v", err)
-	}
-	if match.HostColor != "" {
-		t.Fatalf("cleared color should be empty, got %q", match.HostColor)
-	}
-
+	// nil 保留原值
 	if err := match.UpdateDetails(UpdateDetailsInput(match, func(u *UpdateMatchDetails) {}), now); err != nil {
 		t.Fatalf("nil color keeps value: %v", err)
+	}
+	if match.HostShortsColor != "#101010" || match.AwaySocksColor != "#fedcba" {
+		t.Fatalf("nil update should preserve kit colors: %+v", match)
+	}
+
+	// 空串清除
+	clear := ""
+	if err := match.UpdateDetails(UpdateDetailsInput(match, func(u *UpdateMatchDetails) {
+		u.HostColor = &clear
+		u.HostShortsColor = &clear
+		u.HostSocksColor = &clear
+		u.AwayShortsColor = &clear
+		u.AwaySocksColor = &clear
+	}), now); err != nil {
+		t.Fatalf("clear color: %v", err)
+	}
+	if match.HostColor != "" || match.HostShortsColor != "" || match.HostSocksColor != "" ||
+		match.AwayShortsColor != "" || match.AwaySocksColor != "" {
+		t.Fatalf("cleared colors should be empty, got %+v", match)
+	}
+
+	// 非法颜色拒绝
+	bad := "not-a-color"
+	if err := match.UpdateDetails(UpdateDetailsInput(match, func(u *UpdateMatchDetails) {
+		u.AwayShortsColor = &bad
+	}), now); err == nil {
+		t.Fatal("invalid away shorts color should be rejected")
 	}
 }
 

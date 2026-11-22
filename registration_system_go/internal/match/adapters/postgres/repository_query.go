@@ -303,6 +303,9 @@ func mapAdminListMatch(row matchsqlc.ListMatchesForAdminRow) domain.Match {
 		CoverImageURL: row.CoverImageUrl,
 		Description:   row.Description, IsFree: row.IsFree, FeeType: domain.FeeType(row.FeeType), PaymentMode: domain.PaymentMode(row.PaymentMode), FeePerPersonCents: row.FeePerPersonCents, CreatedByUserID: row.CreatedByUserID, CreatedByAdminID: row.CreatedByAdminID,
 		HostColor: textValue(row.HostColor), AwayColor: textValue(row.AwayColor),
+		HostShortsColor: textValue(row.HostShortsColor), HostSocksColor: textValue(row.HostSocksColor),
+		AwayShortsColor: textValue(row.AwayShortsColor), AwaySocksColor: textValue(row.AwaySocksColor),
+		ShareBgImageURL: row.ShareBgImageUrl, ShareBgUnlocked: row.ShareBgUnlocked,
 		CreatedAt: row.CreatedAt.Time, UpdatedAt: row.UpdatedAt.Time,
 	}
 }
@@ -319,6 +322,9 @@ func mapUserListMatch(row matchsqlc.ListMatchesForUserRow) domain.Match {
 		CoverImageURL: row.CoverImageUrl,
 		Description:   row.Description, IsFree: row.IsFree, FeeType: domain.FeeType(row.FeeType), PaymentMode: domain.PaymentMode(row.PaymentMode), FeePerPersonCents: row.FeePerPersonCents, CreatedByUserID: row.CreatedByUserID, CreatedByAdminID: row.CreatedByAdminID,
 		HostColor: textValue(row.HostColor), AwayColor: textValue(row.AwayColor),
+		HostShortsColor: textValue(row.HostShortsColor), HostSocksColor: textValue(row.HostSocksColor),
+		AwayShortsColor: textValue(row.AwayShortsColor), AwaySocksColor: textValue(row.AwaySocksColor),
+		ShareBgImageURL: row.ShareBgImageUrl, ShareBgUnlocked: row.ShareBgUnlocked,
 		CreatedAt: row.CreatedAt.Time, UpdatedAt: row.UpdatedAt.Time,
 	}
 }
@@ -334,6 +340,10 @@ func mapHomeActionMatch(row matchsqlc.ListHomeActionMatchesForUserRow) domain.Ma
 		Location: row.Location, LocationLatitude: row.LocationLatitude, LocationLongitude: row.LocationLongitude,
 		CoverImageURL: row.CoverImageUrl,
 		Description:   row.Description, IsFree: row.IsFree, FeeType: domain.FeeType(row.FeeType), PaymentMode: domain.PaymentMode(row.PaymentMode), FeePerPersonCents: row.FeePerPersonCents, CreatedByUserID: row.CreatedByUserID, CreatedByAdminID: row.CreatedByAdminID,
+		HostColor: textValue(row.HostColor), AwayColor: textValue(row.AwayColor),
+		HostShortsColor: textValue(row.HostShortsColor), HostSocksColor: textValue(row.HostSocksColor),
+		AwayShortsColor: textValue(row.AwayShortsColor), AwaySocksColor: textValue(row.AwaySocksColor),
+		ShareBgImageURL: row.ShareBgImageUrl, ShareBgUnlocked: row.ShareBgUnlocked,
 		CreatedAt: row.CreatedAt.Time, UpdatedAt: row.UpdatedAt.Time,
 	}
 }
@@ -349,6 +359,10 @@ func mapHomeEndedMatch(row matchsqlc.ListHomeEndedMatchesForUserRow) domain.Matc
 		Location: row.Location, LocationLatitude: row.LocationLatitude, LocationLongitude: row.LocationLongitude,
 		CoverImageURL: row.CoverImageUrl,
 		Description:   row.Description, IsFree: row.IsFree, FeeType: domain.FeeType(row.FeeType), PaymentMode: domain.PaymentMode(row.PaymentMode), FeePerPersonCents: row.FeePerPersonCents, CreatedByUserID: row.CreatedByUserID, CreatedByAdminID: row.CreatedByAdminID,
+		HostColor: textValue(row.HostColor), AwayColor: textValue(row.AwayColor),
+		HostShortsColor: textValue(row.HostShortsColor), HostSocksColor: textValue(row.HostSocksColor),
+		AwayShortsColor: textValue(row.AwayShortsColor), AwaySocksColor: textValue(row.AwaySocksColor),
+		ShareBgImageURL: row.ShareBgImageUrl, ShareBgUnlocked: row.ShareBgUnlocked,
 		CreatedAt: row.CreatedAt.Time, UpdatedAt: row.UpdatedAt.Time,
 	}
 }
