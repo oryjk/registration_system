@@ -123,15 +123,21 @@ func BuildDependencies(ctx context.Context, config Config) (Dependencies, func()
 	appTeamHandler := teamhttp.NewAppHandler(appTeamService, appTeamAttendance)
 	appTeamManageService := teamapplication.NewAppManageService(teamRepository, teampassword.Bcrypt{}, buildTeamLogoStore(config))
 	appTeamManageHandler := teamhttp.NewAppManageHandler(appTeamManageService)
+	teamVipService := teamapplication.NewVipService(teamRepository)
+	appTeamVipHandler := teamhttp.NewAppVipHandler(teamVipService)
 
 	matchRepository := matchpostgres.NewRepository(pool)
 	matchClock := clock.System{}
-	createMatch := matchapplication.NewCreateMatch(matchRepository, teamService, defaults.Service{}, matchClock).WithVenueAccess(appUserService)
+	createMatch := matchapplication.NewCreateMatch(matchRepository, teamService, defaults.Service{}, matchClock).
+		WithVenueAccess(appUserService).
+		WithTeamVip(teamVipService)
 	finishMatch := matchapplication.NewFinishMatch(matchRepository, teamService, matchClock)
 	recordMatchScore := matchapplication.NewRecordMatchScore(matchRepository, appUserService, matchClock)
 	userMatches := matchapplication.NewUserMatchQueryService(matchRepository)
 	userMatchUpdates := matchapplication.NewUserMatchUpdateService(matchRepository, teamService, matchClock.Now)
 	userMatchHandler := matchhttp.NewUserHandler(userMatches, createMatch, finishMatch, userMatchUpdates, recordMatchScore)
+	matchShareBgService := matchapplication.NewShareBgService(matchRepository, teamService, matchTeamVipAdapter{vip: teamVipService}, buildSystemAssetStore(config))
+	matchShareBgHandler := matchhttp.NewShareBgHandler(matchShareBgService)
 	venueRepository := venuepostgres.NewRepository(pool)
 	venueHandler := venuehttp.NewHandler(
 		venueapplication.NewQueryService(venueRepository),
@@ -162,7 +168,8 @@ func BuildDependencies(ctx context.Context, config Config) (Dependencies, func()
 		}
 	}
 	registrationFees := matchapplication.NewRegistrationFeeService(matchRepository)
-	paymentService := paymentapplication.NewService(paymentRepository, paymentRepository, paymentRepository, paymentGateway, paymentRepository, paymentRepository, teamService, registrationFees, paymentRepository, paymentRepository, paymentorder.Generator{}, matchClock)
+	paymentService := paymentapplication.NewService(paymentRepository, paymentRepository, paymentRepository, paymentGateway, paymentRepository, paymentRepository, teamService, registrationFees, paymentRepository, paymentRepository, paymentorder.Generator{}, matchClock).
+		WithTeamVip(teamVipPlanAdapter{vip: teamVipService}, paymentRepository)
 	paymentHandler := paymenthttp.NewHandler(paymentService)
 	walletRepository := walletpostgres.NewRepository(pool)
 	walletService := walletapplication.NewService(walletRepository)
@@ -214,8 +221,9 @@ func BuildDependencies(ctx context.Context, config Config) (Dependencies, func()
 		TestAuth:      testAuthHandler, H5TestLoginEnabled: config.H5TestLoginEnabled(),
 		UserProfiles: userProfileHandler, AppUsers: appUserHandler, ActiveUsers: appUserService, Teams: teamHandler, AppTeams: appTeamHandler,
 		AppTeamManage: appTeamManageHandler, AppTeamSelf: appTeamSelfHandler, AppTeamInvites: appTeamInviteHandler,
+		AppTeamVip:     appTeamVipHandler,
 		AppHonorShares: honorShareHandler,
-		UserMatches:    userMatchHandler, MatchLineups: matchLineupHandler, Venues: venueHandler, UserRegistrations: userRegistrationHandler,
+		UserMatches:    userMatchHandler, MatchLineups: matchLineupHandler, MatchShareBgs: matchShareBgHandler, Venues: venueHandler, UserRegistrations: userRegistrationHandler,
 		AdminMatches: adminMatchHandler, AdminRegistrations: adminRegistrationHandler, TeamApplications: teamApplicationHandler, VenueSides: venueSideHandler,
 		CaptainMessages: captainMessageHandler,
 		Payments:        paymentHandler, Wallets: walletHandler, MiniReviews: miniReviewHandler,
@@ -234,6 +242,55 @@ type appTeamManagerAuthorizer struct {
 
 func (a appTeamManagerAuthorizer) AuthorizeTeamManager(ctx context.Context, actor sharedauth.Actor, teamID int64) error {
 	return a.manage.AuthorizeManager(ctx, actor, teamID)
+}
+
+// teamVipPlanAdapter 把 team 领域的会员套餐规格适配给 payment 用例，避免 payment 硬编码价格。
+type teamVipPlanAdapter struct {
+	vip *teamapplication.VipService
+}
+
+func (a teamVipPlanAdapter) ResolveTeamVipPlan(code string) (paymentports.TeamVipPlan, error) {
+	spec, err := a.vip.ResolveVipPlan(code)
+	if err != nil {
+		return paymentports.TeamVipPlan{}, err
+	}
+	return paymentports.TeamVipPlan{
+		Code:         string(spec.Code),
+		Name:         spec.Name,
+		AmountCents:  spec.PriceCents,
+		DurationDays: spec.DurationDays,
+		Credits:      spec.Credits,
+	}, nil
+}
+
+// matchTeamVipAdapter 把 team 领域 VIP 与资源库服务适配为 match 领域的 TeamVipEntitlement 端口。
+type matchTeamVipAdapter struct {
+	vip *teamapplication.VipService
+}
+
+func (a matchTeamVipAdapter) HasCustomShareBgAccess(ctx context.Context, teamID int64, matchUnlocked bool) (bool, error) {
+	return a.vip.HasCustomShareBgAccess(ctx, teamID, matchUnlocked)
+}
+
+func (a matchTeamVipAdapter) ConsumeCreditForCustomShareBg(ctx context.Context, teamID int64) (bool, error) {
+	return a.vip.ConsumeCreditForCustomShareBg(ctx, teamID)
+}
+
+func (a matchTeamVipAdapter) RecordShareBackground(ctx context.Context, teamID int64, imageURL string, uploadedByUserID int64) error {
+	var userID *int64
+	if uploadedByUserID > 0 {
+		id := uploadedByUserID
+		userID = &id
+	}
+	return a.vip.RecordShareBackground(ctx, teamID, imageURL, userID)
+}
+
+func (a matchTeamVipAdapter) HasTeamShareBackground(ctx context.Context, teamID int64, imageURL string) (bool, error) {
+	return a.vip.HasTeamShareBackground(ctx, teamID, imageURL)
+}
+
+func (a matchTeamVipAdapter) ResolveDefaultShareBgForNewMatch(ctx context.Context, teamID int64) (string, bool, error) {
+	return a.vip.ResolveDefaultShareBgForNewMatch(ctx, teamID)
 }
 
 func buildTeamLogoStore(config Config) teamapplication.TeamLogoStore {

@@ -15,6 +15,9 @@ import RunningLoader from "@/components/ui/RunningLoader.vue";
 import MatchFinishCard from "./components/MatchFinishCard.vue";
 // #ifdef MP-WEIXIN
 import MatchFinishDialog from "./components/MatchFinishDialog.vue";
+import MatchShareBgSheet from "./components/MatchShareBgSheet.vue";
+import TeamVipSheet from "./components/TeamVipSheet.vue";
+import { useMatchShareBg } from "./useMatchShareBg";
 // #endif
 import MatchCaptainContact from "./components/MatchCaptainContact.vue";
 import MatchScoreCard from "./components/MatchScoreCard.vue";
@@ -132,13 +135,28 @@ const { shareCardImageUrl, refreshShareCard } = useMatchShareCard({
   homeTeamLabel,
   displayOpponentLabel,
   homeTeamColor,
+  homeShortsColor: computed(() => sourceMatch.value?.host_shorts_color || ""),
+  homeSocksColor: computed(() => sourceMatch.value?.host_socks_color || ""),
   awayTeamColor,
+  awayShortsColor: computed(() => sourceMatch.value?.away_shorts_color || ""),
+  awaySocksColor: computed(() => sourceMatch.value?.away_socks_color || ""),
+  customBgImageUrl: computed(() => sourceMatch.value?.share_bg_image_url || ""),
   matchClockLabel,
   matchLocation,
   isPickupMatch,
   isVenueMatch,
   fallbackImageUrl: shareImageUrl,
 });
+
+// #ifdef MP-WEIXIN
+const shareBg = useMatchShareBg({
+  match,
+  sourceMatch,
+  isGuestMode,
+  currentTeam,
+  onShareBgChanged: () => refreshShareCard({ force: true }),
+});
+// #endif
 
 const { savedLineup, lineupSummaryText, myLineupRoleText, refreshLineup } = useMatchDetailLineup({
   matchId,
@@ -245,14 +263,18 @@ onShareTimeline(() => ({
 
 // page-meta：主题变量覆盖 + 任一弹层打开时锁定滚动。
 const { themePageStyle } = useAccentTheme();
-const metaPageStyle = computed(() =>
-  [
+const metaPageStyle = computed(() => {
+  let shareBgLocked = false;
+  // #ifdef MP-WEIXIN
+  shareBgLocked = shareBg.anySheetVisible.value;
+  // #endif
+  return [
     themePageStyle.value,
-    avatarPreviewRendered.value || teamMemberDialogVisible.value || confirmDialogVisible.value || finishDialogVisible.value || cancelDialogVisible.value || signupSheetVisible.value || captainContact.popupVisible.value || joinTeamSheet.sheetVisible.value || matchScore.dialogVisible.value
+    avatarPreviewRendered.value || teamMemberDialogVisible.value || confirmDialogVisible.value || finishDialogVisible.value || cancelDialogVisible.value || signupSheetVisible.value || captainContact.popupVisible.value || joinTeamSheet.sheetVisible.value || matchScore.dialogVisible.value || shareBgLocked
       ? "overflow: hidden;"
       : "",
-  ].filter(Boolean).join(";"),
-);
+  ].filter(Boolean).join(";");
+});
 </script>
 
 <template>
@@ -365,6 +387,9 @@ const metaPageStyle = computed(() =>
             <!-- #ifdef MP-WEIXIN -->
             <button v-if="canEditMatch" class="match-manage-action match-manage-action--lineup" hover-class="match-manage-action--pressed" :disabled="submittingStatus" @tap="openMatchLineup">
               排阵型
+            </button>
+            <button v-if="shareBg.canManageShareBg.value" class="match-manage-action" hover-class="match-manage-action--pressed" :disabled="submittingStatus || shareBg.isBusy.value" @tap="shareBg.openShareBgManager">
+              分享背景
             </button>
             <!-- #endif -->
             <button v-if="canEditMatch" class="match-manage-action" hover-class="match-manage-action--pressed" :disabled="submittingStatus" @tap="openMatchEditor">
@@ -519,6 +544,32 @@ const metaPageStyle = computed(() =>
       @presence="avatarPreviewRendered = $event"
     />
     <!-- #ifdef MP-WEIXIN -->
+    <MatchShareBgSheet
+      :visible="shareBg.shareBgSheetVisible.value"
+      :team-name="shareBg.hostTeamName.value"
+      :current-bg-url="shareBg.currentBgUrl.value"
+      :backgrounds="shareBg.teamBackgrounds.value"
+      :loading="shareBg.isLoadingMeta.value"
+      :busy="shareBg.isBusy.value"
+      :has-access="shareBg.hasCustomShareBgAccess.value"
+      :vip-summary-text="shareBg.vipSummaryText.value"
+      @close="shareBg.closeShareBgSheet"
+      @select-default="void shareBg.handleSelectDefault()"
+      @select-background="void shareBg.handleSelectBackground($event)"
+      @upload-new="shareBg.handleUploadNew"
+      @open-vip="shareBg.openVipSheet()"
+    />
+    <TeamVipSheet
+      :visible="shareBg.vipSheetVisible.value"
+      :team-id="shareBg.hostTeamId.value"
+      :team-name="shareBg.hostTeamName.value"
+      :vip-status="shareBg.teamVipStatus.value"
+      :is-vip="currentTeam?.isVip"
+      :vip-until="currentTeam?.vipUntil"
+      :vip-credits="currentTeam?.vipCredits"
+      @close="shareBg.closeVipSheet"
+      @purchased="void shareBg.handleVipPurchased()"
+    />
     <canvas id="match-share-card-canvas" canvas-id="match-share-card-canvas" class="match-share-canvas" />
     <!-- #endif -->
   </view>
@@ -547,12 +598,12 @@ const metaPageStyle = computed(() =>
   gap: 16rpx;
 }
 
-.match-manage-actions { display: flex; gap: 16rpx; }
+.match-manage-actions { display: flex; flex-wrap: wrap; gap: 16rpx; }
 .match-manage-action {
   display: flex;
   align-items: center;
   justify-content: center;
-  flex: 1;
+  flex: 1 1 180rpx;
   min-width: 0;
   min-height: 72rpx;
   margin: 0;
