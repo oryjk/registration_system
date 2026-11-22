@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useAccentTheme } from "@/stores/theme";
-import { computed, ref } from "vue";
+import { computed, getCurrentInstance, ref } from "vue";
 import { onShow, onHide, onShareAppMessage, onShareTimeline } from "@dcloudio/uni-app";
 import AvatarPreviewDialog from "@/components/ui/AvatarPreviewDialog.vue";
 import { ownHonorAvatarTeam } from "@/pages/honors/honorState";
@@ -22,12 +22,13 @@ import MatchIndividualRegistration from "./components/MatchIndividualRegistratio
 import { useShareCover } from "@/composables/useShareCover";
 
 import { useMatchCaptainContact } from "./useMatchCaptainContact";
+import { useMatchDetailLineup } from "./useMatchDetailLineup";
 import { useMatchDetailPage } from "./useMatchDetailPage";
+import { useMatchShareCard } from "./useMatchShareCard";
 import { useMatchTeamApplications } from "./useMatchTeamApplications";
 import MatchTeamApplications from "./components/MatchTeamApplications.vue";
 
 const { shareImageUrl, refreshShareCover } = useShareCover("match");
-onShow(() => { void refreshShareCover(); });
 
 defineOptions({ inheritAttrs: false });
 
@@ -119,6 +120,34 @@ const {
   selectOpponent: selectMatchOpponent,
 } = useMatchTeamApplications(sourceMatch, loadPageData, confirmRegistrationAction);
 
+const { shareCardImageUrl, refreshShareCard } = useMatchShareCard({
+  pageInstance: getCurrentInstance()?.proxy,
+  match,
+  matchKindLabel,
+  homeTeamLabel,
+  displayOpponentLabel,
+  homeTeamColor,
+  awayTeamColor,
+  matchClockLabel,
+  matchLocation,
+  isPickupMatch,
+  isVenueMatch,
+  fallbackImageUrl: shareImageUrl,
+});
+
+const { savedLineup, lineupSummaryText, myLineupRoleText, refreshLineup } = useMatchDetailLineup({
+  matchId,
+  sourceMatch,
+  isGuestMode,
+  currentUserId: computed(() => currentUser.value?.id),
+});
+
+onShow(() => {
+  void refreshShareCover();
+  void refreshShareCard();
+  void refreshLineup();
+});
+
 const captainContact = useMatchCaptainContact();
 function openMatchEditor() {
   if (!sourceMatch.value) return;
@@ -128,6 +157,11 @@ function openMatchEditor() {
   }
   const page = isPickupMatch.value ? "/pages/challenges/create-individual/index" : "/pages/matches/create/index";
   uni.navigateTo({ url: `${page}?editId=${sourceMatch.value.id}` });
+}
+function openMatchLineup() {
+  const id = sourceMatch.value?.id || matchId.value;
+  if (!id) return;
+  uni.navigateTo({ url: `/pages/matches/lineup/index?matchId=${encodeURIComponent(id)}` });
 }
 // 主队管理者可编辑比赛（对手名称与报名上限）；口径与接约申请的管理者判定一致。
 const canEditMatch = computed(() => {
@@ -195,13 +229,13 @@ function handleJoinSheetContactCaptain() {
 onShareAppMessage(() => ({
   title: shareTitle.value,
   path: sharePath.value,
-  imageUrl: shareImageUrl.value,
+  imageUrl: shareCardImageUrl.value,
 }));
 
 onShareTimeline(() => ({
   title: shareTitle.value,
   query: `id=${matchId.value || match.value?.id || ""}`,
-  imageUrl: shareImageUrl.value,
+  imageUrl: shareCardImageUrl.value,
 }));
 
 // page-meta：主题变量覆盖 + 任一弹层打开时锁定滚动。
@@ -298,6 +332,23 @@ const metaPageStyle = computed(() =>
 
 
 
+      <!-- #ifdef MP-WEIXIN -->
+      <!-- 已保存本场阵型时：队员/替补可直达只读查看，队长可快捷进入调整。 -->
+      <AppSurface v-if="savedLineup" variant="outlined">
+        <view class="match-lineup-entry" @tap="openMatchLineup">
+          <view class="match-lineup-entry__body">
+            <view class="match-lineup-entry__head">
+              <text class="match-lineup-entry__title">本场阵型</text>
+              <text class="match-lineup-entry__badge">{{ lineupSummaryText }}</text>
+            </view>
+            <text v-if="myLineupRoleText" class="match-lineup-entry__role">{{ myLineupRoleText }}</text>
+            <text v-else class="match-lineup-entry__hint">查看本场首发站位与替补安排</text>
+          </view>
+          <text class="match-lineup-entry__cta">{{ canEditMatch ? '调整阵型 ›' : '查看阵型 ›' }}</text>
+        </view>
+      </AppSurface>
+      <!-- #endif -->
+
       <!-- 管理区收拢：编辑/接约申请/收尾集中在同一「比赛管理」分区，各功能保留原角色门控。 -->
       <view
         v-if="canEditMatch || canManageApplications || ((canFinishMatch || canCancelMatch) && sourceMatch)"
@@ -306,6 +357,11 @@ const metaPageStyle = computed(() =>
         <SectionHeader title="比赛管理" />
         <AppSurface v-if="canEditMatch || (canCancelMatch && sourceMatch)" variant="outlined">
           <view class="match-manage-actions">
+            <!-- #ifdef MP-WEIXIN -->
+            <button v-if="canEditMatch" class="match-manage-action match-manage-action--lineup" hover-class="match-manage-action--pressed" :disabled="submittingStatus" @tap="openMatchLineup">
+              排阵型
+            </button>
+            <!-- #endif -->
             <button v-if="canEditMatch" class="match-manage-action" hover-class="match-manage-action--pressed" :disabled="submittingStatus" @tap="openMatchEditor">
               修改比赛
             </button>
@@ -439,6 +495,9 @@ const metaPageStyle = computed(() =>
       @close="avatarPreviewVisible = false"
       @presence="avatarPreviewRendered = $event"
     />
+    <!-- #ifdef MP-WEIXIN -->
+    <canvas id="match-share-card-canvas" canvas-id="match-share-card-canvas" class="match-share-canvas" />
+    <!-- #endif -->
   </view>
 </template>
 
@@ -527,6 +586,16 @@ const metaPageStyle = computed(() =>
   gap: var(--ui-card-gap);
 }
 .match-manage-action { border: var(--ui-button-outline-border); background: var(--ui-button-outline-bg); min-height: var(--ui-control-min-height); padding: var(--ui-space-3) var(--ui-space-4); font-size: var(--ui-text-label); font-weight: var(--ui-font-weight-heading); }
+.match-manage-action--lineup { border-color: var(--ui-color-accent); background: var(--ui-color-accent-soft); color: var(--ui-color-text); }
 .match-manage-action--cancel { border: 2rpx solid rgba(161, 52, 50, 0.28); background: var(--ui-color-danger-bg); font-weight: var(--ui-font-weight-heading); }
+.match-lineup-entry { display: flex; align-items: center; justify-content: space-between; gap: var(--ui-space-4); }
+.match-lineup-entry__body { display: flex; flex-direction: column; gap: var(--ui-space-2); min-width: 0; flex: 1; }
+.match-lineup-entry__head { display: flex; align-items: center; gap: var(--ui-space-2); flex-wrap: wrap; }
+.match-lineup-entry__title { font-size: var(--ui-text-title); font-weight: var(--ui-font-weight-heading); color: var(--ui-color-text); line-height: 1.3; }
+.match-lineup-entry__badge { padding: 4rpx var(--ui-space-3); border-radius: var(--ui-radius-round); background: var(--ui-color-accent-soft); color: var(--ui-color-text); font-size: var(--ui-text-sm); font-weight: var(--ui-font-weight-heading); }
+.match-lineup-entry__role { font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-heading); color: var(--ui-color-success-fg); line-height: 1.45; }
+.match-lineup-entry__hint { font-size: var(--ui-text-body); color: var(--ui-color-text-secondary); line-height: 1.45; }
+.match-lineup-entry__cta { flex-shrink: 0; font-size: var(--ui-text-label); font-weight: var(--ui-font-weight-heading); color: var(--ui-color-text); }
+.match-share-canvas { position: fixed; left: -4000px; top: 0; width: 1000px; height: 800px; pointer-events: none; }
 /* #endif */
 </style>
