@@ -19,10 +19,20 @@ export interface MatchShareCardInput {
   homeTeamLabel?: string;
   /** 对手名称 */
   opponentLabel?: string;
-  /** 主队球衣颜色（HEX 或色名） */
+  /** 主队上衣颜色（HEX 或色名） */
   homeTeamColor?: string;
-  /** 客队/对手球衣颜色（HEX 或色名） */
+  /** 主队球裤颜色（HEX 或色名） */
+  homeShortsColor?: string;
+  /** 主队球袜颜色（HEX 或色名） */
+  homeSocksColor?: string;
+  /** 客队/对手上衣颜色（HEX 或色名） */
   awayTeamColor?: string;
+  /** 客队/对手球裤颜色（HEX 或色名） */
+  awayShortsColor?: string;
+  /** 客队/对手球袜颜色（HEX 或色名） */
+  awaySocksColor?: string;
+  /** 比赛自定义分享背景图 URL（用户上传；为空时绘制默认炽烈红黑球场射灯底） */
+  customBgImageUrl?: string;
   /** 比赛开始时刻（RFC3339 / UTC ISO） */
   startTime?: string;
   /** 比赛结束时刻（RFC3339 / UTC ISO） */
@@ -44,6 +54,30 @@ export interface ParsedJerseyColor {
   swatch: string;
   /** 展示用中文色名、大写 HEX 或原始色名文案 */
   label: string;
+}
+
+export type MatchShareKitPieceKind = "shirt" | "shorts" | "socks";
+
+export interface MatchShareKitPiece {
+  kind: MatchShareKitPieceKind;
+  /** 规范化 6 位小写 HEX；非可识别色值时为空串 */
+  swatch: string;
+  /** 规范化色名，如「白色」「荧光绿」 */
+  label: string;
+  /** 紧凑单件文案，如「白衣」「黑裤」「白袜」「荧光绿衣」 */
+  compactText: string;
+}
+
+export interface MatchShareTeamKit {
+  shirt: ParsedJerseyColor | null;
+  shorts: ParsedJerseyColor | null;
+  socks: ParsedJerseyColor | null;
+  /** 所有已设置的装备件（含纯文本颜色），按 上衣 -> 球裤 -> 球袜 排序 */
+  pieces: MatchShareKitPiece[];
+  /** 可绘制矢量图标的装备件（仅包含已识别 HEX 色值的件） */
+  iconPieces: MatchShareKitPiece[];
+  /** 底部紧凑配色文案，如「白衣 · 黑裤 · 白袜」或「队服待定」 */
+  summaryText: string;
 }
 
 export interface MatchShareJerseyItem {
@@ -76,6 +110,9 @@ export interface MatchShareCardViewModel {
   matchup: MatchShareMatchup;
   timeLabel: string;
   locationLabel: string;
+  venueMetaTag: string;
+  homeKit: MatchShareTeamKit;
+  awayKit: MatchShareTeamKit;
   jerseyItems: MatchShareJerseyItem[];
   jerseyFallbackText: string;
 }
@@ -85,6 +122,8 @@ export interface ShareCardImageInfo {
   width: number;
   height: number;
 }
+
+type CanvasFontWeight = 400 | 500 | 600 | 700 | 800 | 900;
 
 // 兼容 TeamColorPicker.vue（14 色）与 TeamKitColor.vue 的既有球衣颜色映射。
 const HEX_COLOR_LABELS: Record<string, string> = {
@@ -171,8 +210,9 @@ const NAMED_JERSEY_COLORS: Record<string, ParsedJerseyColor> = {
 };
 
 const PLACEHOLDER_TEAM_LABELS = new Set(["", "待定", "对手待定", "未定"]);
+const KIT_SUFFIX_PATTERN = /(?:队服|球服|球衣|球裤|球袜|上衣|短裤|长袜|裤子|袜子)$/u;
 
-/** 将 3/6 位 HEX 或中英文色名规范化为画布色点 + 中文标签。 */
+/** 将 3/6 位 HEX 或中英文色名规范化为画布色值 + 中文标签。 */
 export function parseJerseyColor(rawColor?: string | null): ParsedJerseyColor | null {
   const raw = rawColor?.trim() || "";
   if (!raw) return null;
@@ -196,13 +236,83 @@ export function parseJerseyColor(rawColor?: string | null): ParsedJerseyColor | 
     };
   }
 
-  const normalizedName = lower.replace(/(?:队服|球服|球衣)$/u, "").trim();
-  const matched = NAMED_JERSEY_COLORS[normalizedName] ?? NAMED_JERSEY_COLORS[lower];
+  const normalizedName = lower.replace(KIT_SUFFIX_PATTERN, "").trim();
+  const matched =
+    NAMED_JERSEY_COLORS[normalizedName]
+    ?? NAMED_JERSEY_COLORS[lower]
+    ?? (normalizedName.length > 1 && /[衣裤袜]$/u.test(normalizedName)
+      ? NAMED_JERSEY_COLORS[normalizedName.slice(0, -1)]
+      : undefined);
   if (matched) return { ...matched };
 
   return {
     swatch: "",
-    label: raw.replace(/(?:队服|球服|球衣)$/u, "").trim() || raw,
+    label: raw.replace(KIT_SUFFIX_PATTERN, "").trim() || raw,
+  };
+}
+
+/** 判定装备颜色是否为浅色（白/银灰/荧光绿/黄等），浅色描深边、深色描白边。 */
+export function isLightColor(hex?: string | null): boolean {
+  if (!hex) return false;
+  const clean = hex.trim().replace("#", "");
+  if (!/^[0-9a-f]{6}$/i.test(clean)) return false;
+  const r = parseInt(clean.slice(0, 2), 16);
+  const g = parseInt(clean.slice(2, 4), 16);
+  const b = parseInt(clean.slice(4, 6), 16);
+  return (r * 299 + g * 587 + b * 114) / 1000 > 185;
+}
+
+/** 根据装备底色返回高对比描边色。 */
+export function strokeForKit(hex: string): string {
+  return isLightColor(hex) ? "rgba(15, 23, 42, 0.55)" : "rgba(255, 255, 255, 0.88)";
+}
+
+function toCompactColorLabel(label: string): string {
+  const chars = Array.from(label.trim());
+  if (chars.length === 2 && chars[1] === "色") {
+    return chars[0]!;
+  }
+  return label.trim();
+}
+
+function createKitPiece(
+  kind: MatchShareKitPieceKind,
+  parsed: ParsedJerseyColor | null,
+): MatchShareKitPiece | null {
+  if (!parsed) return null;
+  const suffix = kind === "shirt" ? "衣" : kind === "shorts" ? "裤" : "袜";
+  return {
+    kind,
+    swatch: parsed.swatch,
+    label: parsed.label,
+    compactText: `${toCompactColorLabel(parsed.label)}${suffix}`,
+  };
+}
+
+/** 将单支球队的上衣/球裤/球袜字段整理为图标绘制列表与紧凑文案。 */
+export function buildTeamKitView(
+  shirtRaw?: string | null,
+  shortsRaw?: string | null,
+  socksRaw?: string | null,
+): MatchShareTeamKit {
+  const shirt = parseJerseyColor(shirtRaw);
+  const shorts = parseJerseyColor(shortsRaw);
+  const socks = parseJerseyColor(socksRaw);
+  const pieces = [
+    createKitPiece("shirt", shirt),
+    createKitPiece("shorts", shorts),
+    createKitPiece("socks", socks),
+  ].filter((item): item is MatchShareKitPiece => item !== null);
+  const iconPieces = pieces.filter((item) => Boolean(item.swatch));
+  const summaryText = pieces.map((item) => item.compactText).join(" · ") || "队服待定";
+
+  return {
+    shirt,
+    shorts,
+    socks,
+    pieces,
+    iconPieces,
+    summaryText,
   };
 }
 
@@ -251,7 +361,7 @@ export function wrapTextLines(
   return lines;
 }
 
-/** 使用 datetime.ts 将比赛起止时刻格式化为北京时间展示文案（不截取 ISO 字符串）。 */
+/** 使用 datetime.ts 将比赛起止时刻格式化为北京时间展示文案（严禁直接截取 ISO 字符串）。 */
 export function formatMatchShareTime(
   startTime?: string | null,
   endTime?: string | null,
@@ -343,7 +453,7 @@ export function buildMatchupDisplay(input: MatchShareCardInput): MatchShareMatch
   };
 }
 
-/** 将比赛详情字段转换为分享卡绘制所需的规范化视图模型。 */
+/** 将比赛详情字段转换为 C2 分享卡绘制所需的规范化视图模型。 */
 export function buildMatchShareCardViewModel(input: MatchShareCardInput): MatchShareCardViewModel {
   const rawKind = input.matchKindLabel?.trim() || "";
   const badgeLabel = rawKind && rawKind !== "其他类型" ? rawKind : "赛事报名";
@@ -354,26 +464,28 @@ export function buildMatchShareCardViewModel(input: MatchShareCardInput): MatchS
   const matchup = buildMatchupDisplay(input);
   const timeLabel = formatMatchShareTime(input.startTime, input.endTime, input.clockFallback);
   const locationLabel = input.location?.trim().replace(/\s+/g, " ") || "地点待定";
+  const venueMetaTag = [formatTag, badgeLabel].filter(Boolean).join(" · ");
+
+  const homeKit = buildTeamKitView(input.homeTeamColor, input.homeShortsColor, input.homeSocksColor);
+  const awayKit = buildTeamKitView(input.awayTeamColor, input.awayShortsColor, input.awaySocksColor);
 
   const jerseyItems: MatchShareJerseyItem[] = [];
-  const homeKit = parseJerseyColor(input.homeTeamColor);
-  if (homeKit) {
+  if (homeKit.shirt) {
     jerseyItems.push({
       role: "home",
       roleLabel: "主",
-      swatch: homeKit.swatch,
-      label: homeKit.label,
-      displayText: `${homeKit.label}（主）`,
+      swatch: homeKit.shirt.swatch,
+      label: homeKit.shirt.label,
+      displayText: `${homeKit.shirt.label}（主）`,
     });
   }
-  const awayKit = parseJerseyColor(input.awayTeamColor);
-  if (awayKit) {
+  if (awayKit.shirt) {
     jerseyItems.push({
       role: "away",
       roleLabel: "客",
-      swatch: awayKit.swatch,
-      label: awayKit.label,
-      displayText: `${awayKit.label}（客）`,
+      swatch: awayKit.shirt.swatch,
+      label: awayKit.shirt.label,
+      displayText: `${awayKit.shirt.label}（客）`,
     });
   }
 
@@ -384,8 +496,11 @@ export function buildMatchShareCardViewModel(input: MatchShareCardInput): MatchS
     matchup,
     timeLabel,
     locationLabel,
+    venueMetaTag,
+    homeKit,
+    awayKit,
     jerseyItems,
-    jerseyFallbackText: jerseyItems.length > 0 ? "" : "球服颜色待定",
+    jerseyFallbackText: homeKit.pieces.length > 0 || awayKit.pieces.length > 0 ? "" : "队服待定",
   };
 }
 
@@ -424,6 +539,10 @@ export function createMatchShareImageLoader() {
       images.set(src, task);
       return task;
     },
+    evict(src: string) {
+      const normalized = src.trim();
+      if (normalized) drop(normalized);
+    },
     clear() {
       for (const src of Array.from(images.keys())) {
         drop(src);
@@ -432,8 +551,129 @@ export function createMatchShareImageLoader() {
   };
 }
 
-function setFont(ctx: UniApp.CanvasContext, size: number, weight: 400 | 500 | 600 | 700 = 400) {
-  ctx.font = `${weight} ${size}px sans-serif`;
+// ==================== Canvas 兼容层 ====================
+
+function setCanvasFont(
+  ctx: UniApp.CanvasContext,
+  size: number,
+  weight: CanvasFontWeight = 700,
+  italic = false,
+  family = "sans-serif",
+) {
+  // 先调用 setFontSize，再写 ctx.font，避免微信旧版 CanvasContext 被 setFontSize 冲掉加粗/斜体。
+  if (typeof ctx.setFontSize === "function") {
+    ctx.setFontSize(size);
+  }
+  const stylePrefix = italic ? "italic " : "";
+  ctx.font = `${stylePrefix}${weight} ${size}px ${family}`;
+}
+
+function setCanvasLineJoinRound(ctx: UniApp.CanvasContext) {
+  if (typeof ctx.setLineJoin === "function") {
+    ctx.setLineJoin("round");
+  }
+}
+
+function drawStrokeRectCompat(
+  ctx: UniApp.CanvasContext,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+) {
+  if (typeof ctx.strokeRect === "function") {
+    ctx.strokeRect(x, y, width, height);
+    return;
+  }
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.lineTo(x + width, y);
+  ctx.lineTo(x + width, y + height);
+  ctx.lineTo(x, y + height);
+  ctx.closePath();
+  ctx.stroke();
+}
+
+/**
+ * 微信小程序 CanvasContext 不支持 createRadialGradient，仅提供 createCircularGradient(x, y, r)；
+ * 若运行时也不支持圆形渐变，自动降级为线性渐变或纯色。
+ */
+function createCircularOrLinearGradient(
+  ctx: UniApp.CanvasContext,
+  cx: number,
+  cy: number,
+  radius: number,
+  fallbackX0: number,
+  fallbackY0: number,
+  fallbackX1: number,
+  fallbackY1: number,
+  stops: ReadonlyArray<readonly [number, string]>,
+): UniApp.CanvasGradient | string {
+  const compatCtx = ctx as UniApp.CanvasContext & {
+    createCircularGradient?: (x: number, y: number, r: number) => UniApp.CanvasGradient;
+    createLinearGradient?: (x0: number, y0: number, x1: number, y1: number) => UniApp.CanvasGradient;
+  };
+  let gradient: UniApp.CanvasGradient | null = null;
+  if (typeof compatCtx.createCircularGradient === "function") {
+    gradient = compatCtx.createCircularGradient(cx, cy, radius);
+  } else if (typeof compatCtx.createLinearGradient === "function") {
+    gradient = compatCtx.createLinearGradient(fallbackX0, fallbackY0, fallbackX1, fallbackY1);
+  }
+  if (!gradient) {
+    return stops[0]?.[1] ?? "#200910";
+  }
+  for (const [offset, color] of stops) {
+    gradient.addColorStop(offset, color);
+  }
+  return gradient;
+}
+
+function measureWidthWithFont(
+  ctx: UniApp.CanvasContext,
+  value: string,
+  size: number,
+  weight: CanvasFontWeight = 700,
+): number {
+  setCanvasFont(ctx, size, weight);
+  const measured = ctx.measureText(value)?.width;
+  if (typeof measured === "number" && Number.isFinite(measured) && measured > 0) {
+    return measured;
+  }
+  return Array.from(value).length * size;
+}
+
+/** 自适应字号拟合：从 startSize 步进缩小至 minSize，仍超宽时优雅拼接省略号。 */
+export function fitText(
+  ctx: UniApp.CanvasContext,
+  text: string,
+  maxWidth: number,
+  startSize: number,
+  minSize: number,
+  weight: CanvasFontWeight = 900,
+): { size: number; text: string } {
+  const clean = text.trim().replace(/\s+/g, " ");
+  if (!clean || maxWidth <= 0) return { size: startSize, text: "" };
+
+  let size = startSize;
+  while (size > minSize) {
+    if (measureWidthWithFont(ctx, clean, size, weight) <= maxWidth) {
+      return { size, text: clean };
+    }
+    size = Math.max(minSize, size - 3);
+  }
+
+  if (measureWidthWithFont(ctx, clean, minSize, weight) <= maxWidth) {
+    return { size: minSize, text: clean };
+  }
+
+  let chars = Array.from(clean);
+  while (
+    chars.length > 1
+    && measureWidthWithFont(ctx, `${chars.join("")}…`, minSize, weight) > maxWidth
+  ) {
+    chars = chars.slice(0, -1);
+  }
+  return { size: minSize, text: `${chars.join("")}…` };
 }
 
 function drawText(
@@ -444,69 +684,299 @@ function drawText(
   size: number,
   color: string,
   align: "left" | "center" | "right" = "left",
-  weight: 400 | 500 | 600 | 700 = 400,
+  weight: CanvasFontWeight = 700,
+  italic = false,
+  family = "sans-serif",
 ) {
-  setFont(ctx, size, weight);
+  setCanvasFont(ctx, size, weight, italic, family);
   ctx.setFillStyle(color);
   ctx.setTextAlign(align);
   ctx.setTextBaseline("middle");
   ctx.fillText(value, x, y);
 }
 
-function drawRoundRectPath(
+function drawSlash(
   ctx: UniApp.CanvasContext,
   x: number,
   y: number,
-  width: number,
-  height: number,
-  radius: number,
-) {
-  const r = Math.min(radius, width / 2, height / 2);
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.lineTo(x + width - r, y);
-  ctx.quadraticCurveTo(x + width, y, x + width, y + r);
-  ctx.lineTo(x + width, y + height - r);
-  ctx.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
-  ctx.lineTo(x + r, y + height);
-  ctx.quadraticCurveTo(x, y + height, x, y + height - r);
-  ctx.lineTo(x, y + r);
-  ctx.quadraticCurveTo(x, y, x + r, y);
-  ctx.closePath();
-}
-
-function drawPill(
-  ctx: UniApp.CanvasContext,
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-  radius: number,
+  w: number,
+  h: number,
+  skew: number,
   fill: string,
-  stroke?: string,
 ) {
-  drawRoundRectPath(ctx, x, y, width, height, radius);
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(x + skew, y);
+  ctx.lineTo(x + w + skew, y);
+  ctx.lineTo(x + w, y + h);
+  ctx.lineTo(x, y + h);
+  ctx.closePath();
   ctx.setFillStyle(fill);
   ctx.fill();
-  if (stroke) {
-    ctx.setStrokeStyle(stroke);
-    ctx.setLineWidth(2);
-    ctx.stroke();
-  }
+  ctx.restore();
 }
 
-function measureWidthWithFont(
+// ==================== 矢量球服装备图标（上衣 / 球裤 / 球袜） ====================
+
+export function drawShirtIcon(
   ctx: UniApp.CanvasContext,
-  value: string,
+  cx: number,
+  cy: number,
   size: number,
-  weight: 400 | 500 | 600 | 700 = 400,
+  fill: string,
+) {
+  const s = size / 100;
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.scale(s, s);
+  ctx.beginPath();
+  ctx.moveTo(-22, -42);
+  ctx.quadraticCurveTo(0, -30, 22, -42);
+  ctx.lineTo(48, -22);
+  ctx.lineTo(36, 2);
+  ctx.lineTo(24, -6);
+  ctx.lineTo(24, 44);
+  ctx.lineTo(-24, 44);
+  ctx.lineTo(-24, -6);
+  ctx.lineTo(-36, 2);
+  ctx.lineTo(-48, -22);
+  ctx.closePath();
+  ctx.setFillStyle(fill);
+  ctx.fill();
+  ctx.setLineWidth(4);
+  setCanvasLineJoinRound(ctx);
+  ctx.setStrokeStyle(strokeForKit(fill));
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(-16, -39);
+  ctx.quadraticCurveTo(0, -24, 16, -39);
+  ctx.setLineWidth(3);
+  ctx.setStrokeStyle(isLightColor(fill) ? "rgba(15, 23, 42, 0.32)" : "rgba(255, 255, 255, 0.45)");
+  ctx.stroke();
+  ctx.restore();
+}
+
+export function drawShortsIcon(
+  ctx: UniApp.CanvasContext,
+  cx: number,
+  cy: number,
+  size: number,
+  fill: string,
+) {
+  const s = size / 100;
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.scale(s, s);
+  ctx.beginPath();
+  ctx.moveTo(-30, -36);
+  ctx.lineTo(30, -36);
+  ctx.lineTo(38, 36);
+  ctx.lineTo(8, 36);
+  ctx.lineTo(0, 6);
+  ctx.lineTo(-8, 36);
+  ctx.lineTo(-38, 36);
+  ctx.closePath();
+  ctx.setFillStyle(fill);
+  ctx.fill();
+  ctx.setLineWidth(4);
+  setCanvasLineJoinRound(ctx);
+  ctx.setStrokeStyle(strokeForKit(fill));
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(-29, -24);
+  ctx.lineTo(29, -24);
+  ctx.setLineWidth(3);
+  ctx.setStrokeStyle(isLightColor(fill) ? "rgba(15, 23, 42, 0.28)" : "rgba(255, 255, 255, 0.42)");
+  ctx.stroke();
+  ctx.restore();
+}
+
+export function drawSocksIcon(
+  ctx: UniApp.CanvasContext,
+  cx: number,
+  cy: number,
+  size: number,
+  fill: string,
+) {
+  const s = size / 100;
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.scale(s, s);
+
+  const drawOne = (ox: number, flip: boolean) => {
+    const mx = (x: number) => (flip ? -x : x);
+    ctx.save();
+    ctx.translate(ox, 0);
+    ctx.beginPath();
+    ctx.moveTo(mx(-12), -40);
+    ctx.lineTo(mx(10), -40);
+    ctx.lineTo(mx(10), 14);
+    ctx.quadraticCurveTo(mx(10), 22, mx(19), 27);
+    ctx.quadraticCurveTo(mx(28), 32, mx(23), 40);
+    ctx.quadraticCurveTo(mx(15), 45, mx(-2), 36);
+    ctx.quadraticCurveTo(mx(-12), 30, mx(-12), 18);
+    ctx.closePath();
+    ctx.setFillStyle(fill);
+    ctx.fill();
+    ctx.setLineWidth(4);
+    setCanvasLineJoinRound(ctx);
+    ctx.setStrokeStyle(strokeForKit(fill));
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(mx(-11), -28);
+    ctx.lineTo(mx(9), -28);
+    ctx.setLineWidth(3);
+    ctx.setStrokeStyle(isLightColor(fill) ? "rgba(15, 23, 42, 0.28)" : "rgba(255, 255, 255, 0.45)");
+    ctx.stroke();
+    ctx.restore();
+  };
+
+  drawOne(-17, true);
+  drawOne(17, false);
+  ctx.restore();
+}
+
+/** 按需绘制装备横排：仅 1 件（如仅上衣）自动放大 1.18x，缺省项完全不占位。 */
+export function drawKitRow(
+  ctx: UniApp.CanvasContext,
+  items: readonly MatchShareKitPiece[],
+  anchorX: number,
+  cy: number,
+  iconSize: number,
+  gap: number,
+  align: "left" | "center" | "right" = "center",
 ): number {
-  setFont(ctx, size, weight);
-  const measured = ctx.measureText(value)?.width;
-  if (typeof measured === "number" && Number.isFinite(measured) && measured > 0) {
-    return measured;
+  if (!items.length) return 0;
+  const actualSize = items.length === 1 ? iconSize * 1.18 : iconSize;
+  const step = actualSize + gap;
+  const totalW = items.length * actualSize + (items.length - 1) * gap;
+  let startX = anchorX - totalW / 2 + actualSize / 2;
+  if (align === "left") startX = anchorX + actualSize / 2;
+  if (align === "right") startX = anchorX - totalW + actualSize / 2;
+
+  items.forEach((item, idx) => {
+    const x = startX + idx * step;
+    if (item.kind === "shirt") drawShirtIcon(ctx, x, cy, actualSize, item.swatch);
+    if (item.kind === "shorts") drawShortsIcon(ctx, x, cy, actualSize * 0.92, item.swatch);
+    if (item.kind === "socks") drawSocksIcon(ctx, x, cy, actualSize * 0.92, item.swatch);
+  });
+  return items.length;
+}
+
+// ==================== 方案 C2：炽烈球场灯光 · 上下同排横带 ====================
+
+function drawStadiumSpotlights(
+  ctx: UniApp.CanvasContext,
+  leftAlpha: number,
+  rightAlpha: number,
+) {
+  ctx.save();
+  const beam1 = ctx.createLinearGradient(120, 0, 470, 580);
+  beam1.addColorStop(0, `rgba(255, 110, 48, ${leftAlpha})`);
+  beam1.addColorStop(1, "rgba(255, 110, 48, 0)");
+  ctx.setFillStyle(beam1);
+  ctx.beginPath();
+  ctx.moveTo(60, 0);
+  ctx.lineTo(270, 0);
+  ctx.lineTo(620, 640);
+  ctx.lineTo(290, 640);
+  ctx.closePath();
+  ctx.fill();
+
+  const beam2 = ctx.createLinearGradient(880, 0, 530, 580);
+  beam2.addColorStop(0, `rgba(255, 59, 88, ${rightAlpha})`);
+  beam2.addColorStop(1, "rgba(255, 59, 88, 0)");
+  ctx.setFillStyle(beam2);
+  ctx.beginPath();
+  ctx.moveTo(940, 0);
+  ctx.lineTo(730, 0);
+  ctx.lineTo(380, 640);
+  ctx.lineTo(710, 640);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawFireBackdrop(ctx: UniApp.CanvasContext, width: number, height: number) {
+  const bg = createCircularOrLinearGradient(
+    ctx,
+    500,
+    240,
+    740,
+    500,
+    0,
+    500,
+    height,
+    [
+      [0, "#66121E"],
+      [0.52, "#200910"],
+      [1, "#09090D"],
+    ],
+  );
+  ctx.setFillStyle(bg);
+  ctx.fillRect(0, 0, width, height);
+
+  drawStadiumSpotlights(ctx, 0.3, 0.28);
+
+  // 中央巨大镂空 MATCHDAY 暗纹
+  ctx.save();
+  setCanvasFont(ctx, 156, 900, true, "'Arial Black', Impact, sans-serif");
+  ctx.setTextAlign("center");
+  ctx.setTextBaseline("middle");
+  if (typeof ctx.strokeText === "function") {
+    ctx.setStrokeStyle("rgba(255, 255, 255, 0.065)");
+    ctx.setLineWidth(4);
+    ctx.strokeText("MATCHDAY", 500, 400);
+  } else {
+    ctx.setFillStyle("rgba(255, 255, 255, 0.04)");
+    ctx.fillText("MATCHDAY", 500, 400);
   }
-  return Array.from(value).length * size;
+  ctx.restore();
+}
+
+function drawCustomPhotoBackdrop(
+  ctx: UniApp.CanvasContext,
+  backdrop: ShareCardImageInfo,
+  width: number,
+  height: number,
+) {
+  ctx.setFillStyle("#09090D");
+  ctx.fillRect(0, 0, width, height);
+
+  const ratio = Math.max(width / backdrop.width, height / backdrop.height);
+  const drawWidth = backdrop.width * ratio;
+  const drawHeight = backdrop.height * ratio;
+
+  ctx.save();
+  if (typeof ctx.rect === "function" && typeof ctx.clip === "function") {
+    ctx.beginPath();
+    ctx.rect(0, 0, width, height);
+    ctx.clip();
+  }
+  ctx.drawImage(
+    backdrop.path,
+    (width - drawWidth) / 2,
+    (height - drawHeight) / 2,
+    drawWidth,
+    drawHeight,
+  );
+  ctx.restore();
+
+  // 深红黑质感暗幕 + 上下渐变暗角 + 柔和球场射灯，确保任意照片上前景白字与装备清晰锐利。
+  ctx.setFillStyle("rgba(18, 7, 11, 0.62)");
+  ctx.fillRect(0, 0, width, height);
+
+  const vignette = ctx.createLinearGradient(0, 0, 0, height);
+  vignette.addColorStop(0, "rgba(18, 7, 11, 0.30)");
+  vignette.addColorStop(0.5, "rgba(32, 9, 16, 0.14)");
+  vignette.addColorStop(1, "rgba(9, 9, 13, 0.48)");
+  ctx.setFillStyle(vignette);
+  ctx.fillRect(0, 0, width, height);
+
+  drawStadiumSpotlights(ctx, 0.2, 0.18);
 }
 
 function drawBackdrop(
@@ -515,347 +985,248 @@ function drawBackdrop(
   width: number,
   height: number,
 ) {
-  // 深海蓝质感底色（背景图缺失或加载失败时作为最终画布背景）。
-  const baseGradient = ctx.createLinearGradient(0, 0, width, height);
-  baseGradient.addColorStop(0, "#001738");
-  baseGradient.addColorStop(0.55, "#00214d");
-  baseGradient.addColorStop(1, "#0a365c");
-  ctx.setFillStyle(baseGradient);
-  ctx.fillRect(0, 0, width, height);
-
-  if (backdrop && backdrop.width > 0 && backdrop.height > 0) {
-    const ratio = Math.max(width / backdrop.width, height / backdrop.height);
-    const drawWidth = backdrop.width * ratio;
-    const drawHeight = backdrop.height * ratio;
-    ctx.drawImage(
-      backdrop.path,
-      (width - drawWidth) / 2,
-      (height - drawHeight) / 2,
-      drawWidth,
-      drawHeight,
-    );
-
-    // 深海蓝渐变暗幕：保证微信聊天小图上前景白字始终保持高对比度。
-    const veil = ctx.createLinearGradient(0, 0, 0, height);
-    veil.addColorStop(0, "rgba(0, 26, 62, 0.72)");
-    veil.addColorStop(0.45, "rgba(0, 33, 77, 0.80)");
-    veil.addColorStop(1, "rgba(0, 20, 48, 0.94)");
-    ctx.setFillStyle(veil);
-    ctx.fillRect(0, 0, width, height);
-  } else {
-    // 无图降级时补两处极轻柔光圈，避免纯平单调。
-    ctx.beginPath();
-    ctx.arc(width - 90, 90, 240, 0, Math.PI * 2);
-    ctx.closePath();
-    ctx.setFillStyle("rgba(0, 235, 199, 0.09)");
-    ctx.fill();
-
-    ctx.beginPath();
-    ctx.arc(110, height - 110, 260, 0, Math.PI * 2);
-    ctx.closePath();
-    ctx.setFillStyle("rgba(56, 189, 248, 0.08)");
-    ctx.fill();
+  if (typeof ctx.clearRect === "function") {
+    ctx.clearRect(0, 0, width, height);
   }
-
-  // 顶部 8px 品牌薄荷蓝细饰条。
-  ctx.setFillStyle("#00ebc7");
-  ctx.fillRect(0, 0, width, 8);
+  if (backdrop && backdrop.width > 0 && backdrop.height > 0) {
+    drawCustomPhotoBackdrop(ctx, backdrop, width, height);
+    return;
+  }
+  drawFireBackdrop(ctx, width, height);
 }
 
-function drawHeaderSection(ctx: UniApp.CanvasContext, view: MatchShareCardViewModel) {
-  const left = 56;
-  const maxContentWidth = MATCH_SHARE_CARD_WIDTH - left * 2;
-  const badgeHeight = 50;
-  const badgeY = 42;
-  const badgeTextWidth = measureWidthWithFont(ctx, view.badgeLabel, 26, 600);
-  const badgeWidth = Math.max(136, Math.min(300, Math.ceil(badgeTextWidth + 48)));
+function drawTopTimeAndBottomVenue(ctx: UniApp.CanvasContext, view: MatchShareCardViewModel) {
+  // 顶部火焰斜切时间条
+  drawSlash(ctx, 140, 38, 720, 74, 24, "#FF453A");
+  const fittedTime = fitText(ctx, view.timeLabel, 672, 40, 26, 900);
+  drawText(ctx, fittedTime.text, 512, 76, fittedTime.size, "#FFFFFF", "center", 900);
 
-  drawPill(ctx, left, badgeY, badgeWidth, badgeHeight, 25, "#00ebc7");
+  // 底部高对比白底黑字地点条
+  ctx.setFillStyle("#FFFFFF");
+  ctx.fillRect(0, 712, MATCH_SHARE_CARD_WIDTH, 88);
+  ctx.setFillStyle("#FF453A");
+  ctx.fillRect(0, 712, 18, 88);
+
+  const suffix = view.venueMetaTag ? `  ·  ${view.venueMetaTag}` : "";
+  const fullLine = `📍 ${view.locationLabel}${suffix}`;
+  const maxVenueWidth = 932;
+
+  let venueFontSize = 34;
+  let venueText = fullLine;
+  if (measureWidthWithFont(ctx, fullLine, 34, 900) <= maxVenueWidth) {
+    venueFontSize = 34;
+    venueText = fullLine;
+  } else {
+    const fittedFull = fitText(ctx, fullLine, maxVenueWidth, 32, 26, 900);
+    if (!fittedFull.text.endsWith("…")) {
+      venueFontSize = fittedFull.size;
+      venueText = fittedFull.text;
+    } else if (suffix) {
+      venueFontSize = 26;
+      const suffixWidth = measureWidthWithFont(ctx, suffix, venueFontSize, 900);
+      const locationBudget = Math.max(180, maxVenueWidth - suffixWidth);
+      const fittedLocation = fitText(
+        ctx,
+        `📍 ${view.locationLabel}`,
+        locationBudget,
+        venueFontSize,
+        venueFontSize,
+        900,
+      );
+      venueText = `${fittedLocation.text}${suffix}`;
+    } else {
+      const fallbackFit = fitText(ctx, fullLine, maxVenueWidth, 26, 22, 900);
+      venueFontSize = fallbackFit.size;
+      venueText = fallbackFit.text;
+    }
+  }
+
+  drawText(ctx, venueText, 508, 757, venueFontSize, "#16070B", "center", 900);
+}
+
+function drawTeamBandRow(
+  ctx: UniApp.CanvasContext,
+  options: {
+    y: number;
+    accent: string;
+    role: string;
+    labelColor: string;
+    teamName: string;
+    pending: boolean;
+    kit: MatchShareTeamKit;
+  },
+) {
+  const { y, accent, role, labelColor, teamName, pending, kit } = options;
+
+  // 通栏球队+装备横带
+  ctx.setFillStyle("rgba(12, 6, 10, 0.58)");
+  ctx.fillRect(42, y, 916, 218);
+  // 左侧 14px 能量竖条
+  ctx.setFillStyle(accent);
+  ctx.fillRect(42, y, 14, 218);
+  ctx.setStrokeStyle("rgba(255, 255, 255, 0.12)");
+  ctx.setLineWidth(2);
+  drawStrokeRectCompat(ctx, 42, y, 916, 218);
+
+  // 左侧：角色标签 + 自适应超大粗体队名（78px 起缩至 46px 并省略）
+  drawText(ctx, role, 82, y + 48, 24, labelColor, "left", 800);
+  const fittedName = fitText(ctx, teamName, 480, 78, 46, 900);
   drawText(
     ctx,
-    view.badgeLabel,
-    left + badgeWidth / 2,
-    badgeY + badgeHeight / 2,
-    26,
-    "#00214d",
-    "center",
-    600,
+    fittedName.text,
+    80,
+    y + 132,
+    fittedName.size,
+    pending ? "rgba(255, 255, 255, 0.72)" : "#FFFFFF",
+    "left",
+    900,
   );
 
-  if (view.formatTag) {
-    const tagX = left + badgeWidth + 16;
-    const tagTextWidth = measureWidthWithFont(ctx, view.formatTag, 24, 500);
-    const tagWidth = Math.max(104, Math.ceil(tagTextWidth + 40));
-    drawPill(
-      ctx,
-      tagX,
-      badgeY,
-      tagWidth,
-      badgeHeight,
-      25,
-      "rgba(255, 255, 255, 0.14)",
-      "rgba(255, 255, 255, 0.28)",
-    );
+  // 右侧同一块内：专属装备子块（x: 584, w: 350）
+  ctx.setFillStyle("rgba(255, 255, 255, 0.08)");
+  ctx.fillRect(584, y + 20, 350, 178);
+
+  if (kit.iconPieces.length > 0) {
+    drawKitRow(ctx, kit.iconPieces, 759, y + 92, 86, 18, "center");
+    const fittedSummary = fitText(ctx, kit.summaryText, 326, 24, 18, 800);
+    drawText(ctx, fittedSummary.text, 759, y + 168, fittedSummary.size, "#FFFFFF", "center", 800);
+  } else {
+    const fittedSummary = fitText(ctx, kit.summaryText, 316, 26, 20, 800);
     drawText(
       ctx,
-      view.formatTag,
-      tagX + tagWidth / 2,
-      badgeY + badgeHeight / 2,
-      24,
-      "#fffffe",
+      fittedSummary.text,
+      759,
+      y + 109,
+      fittedSummary.size,
+      kit.pieces.length === 0 ? "rgba(255, 255, 255, 0.72)" : "#FFFFFF",
       "center",
-      500,
+      800,
     );
-  }
-
-  // 对阵模式顶部展示比赛标题（最多 1 行）；headline 模式主标题已放在核心大字区，避免重复。
-  if (view.matchup.mode === "versus") {
-    const titleLines = wrapTextLines(
-      view.title,
-      maxContentWidth,
-      (text) => measureWidthWithFont(ctx, text, 34, 600),
-      1,
-    );
-    if (titleLines[0]) {
-      drawText(ctx, titleLines[0], left, 134, 34, "rgba(255, 255, 254, 0.90)", "left", 600);
-    }
-  } else {
-    drawText(ctx, "邀请你参加比赛报名", left, 134, 30, "rgba(189, 238, 231, 0.88)", "left", 500);
   }
 }
 
-function drawTeamSide(
-  ctx: UniApp.CanvasContext,
-  roleLabel: string,
-  roleColor: string,
-  teamName: string,
-  teamColor: string,
-  centerX: number,
-  maxWidth: number,
-) {
-  drawText(ctx, roleLabel, centerX, 204, 24, roleColor, "center", 600);
-
-  const singleLineWidth = measureWidthWithFont(ctx, teamName, 48, 700);
-  if (singleLineWidth <= maxWidth) {
-    drawText(ctx, teamName, centerX, 274, 48, teamColor, "center", 700);
-    return;
-  }
-
-  const lines = wrapTextLines(
-    teamName,
-    maxWidth,
-    (text) => measureWidthWithFont(ctx, text, 42, 700),
-    2,
-  );
-  if (lines.length === 1) {
-    drawText(ctx, lines[0]!, centerX, 274, 42, teamColor, "center", 700);
-  } else {
-    drawText(ctx, lines[0]!, centerX, 252, 42, teamColor, "center", 700);
-    if (lines[1]) {
-      drawText(ctx, lines[1], centerX, 302, 42, teamColor, "center", 700);
-    }
-  }
-}
-
-function drawMatchupSection(ctx: UniApp.CanvasContext, view: MatchShareCardViewModel) {
-  const left = 56;
-  const maxContentWidth = MATCH_SHARE_CARD_WIDTH - left * 2;
-
-  if (view.matchup.mode === "versus") {
-    const vsWidth = 96;
-    const vsHeight = 54;
-    const vsX = MATCH_SHARE_CARD_WIDTH / 2 - vsWidth / 2;
-    const vsY = 247;
-    drawPill(ctx, vsX, vsY, vsWidth, vsHeight, 27, "#00ebc7");
-    drawText(
-      ctx,
-      "VS",
-      MATCH_SHARE_CARD_WIDTH / 2,
-      vsY + vsHeight / 2,
-      32,
-      "#00214d",
-      "center",
-      700,
-    );
-
-    const sideWidth = 368;
-    drawTeamSide(
-      ctx,
-      "主队",
-      "rgba(189, 238, 231, 0.85)",
-      view.matchup.homeName,
-      "#fffffe",
-      left + sideWidth / 2,
-      sideWidth,
-    );
-    drawTeamSide(
-      ctx,
-      "对手",
-      "#00ebc7",
-      view.matchup.awayName,
-      view.matchup.awayPending ? "rgba(255, 255, 254, 0.72)" : "#fffffe",
-      MATCH_SHARE_CARD_WIDTH - left - sideWidth / 2,
-      sideWidth,
-    );
-    return;
-  }
-
-  const primaryWidth52 = measureWidthWithFont(ctx, view.matchup.primaryText, 52, 700);
-  const primarySize = primaryWidth52 <= maxContentWidth ? 52 : 44;
-  const primaryLines = wrapTextLines(
-    view.matchup.primaryText,
-    maxContentWidth,
-    (text) => measureWidthWithFont(ctx, text, primarySize, 700),
-    1,
-  );
-  if (primaryLines[0]) {
-    drawText(ctx, primaryLines[0], MATCH_SHARE_CARD_WIDTH / 2, 248, primarySize, "#fffffe", "center", 700);
-  }
-  const secondaryLines = wrapTextLines(
-    view.matchup.secondaryText,
-    maxContentWidth,
-    (text) => measureWidthWithFont(ctx, text, 30, 500),
-    1,
-  );
-  if (secondaryLines[0]) {
-    drawText(ctx, secondaryLines[0], MATCH_SHARE_CARD_WIDTH / 2, 310, 30, "#bdeee7", "center", 500);
-  }
-}
-
-function drawRowTag(ctx: UniApp.CanvasContext, label: string, x: number, centerY: number) {
-  const width = 92;
-  const height = 44;
-  drawPill(ctx, x, centerY - height / 2, width, height, 12, "rgba(0, 235, 199, 0.16)");
-  drawText(ctx, label, x + width / 2, centerY, 26, "#00ebc7", "center", 600);
-}
-
-function drawJerseyRow(
+function drawVersusSection(
   ctx: UniApp.CanvasContext,
   view: MatchShareCardViewModel,
-  valueX: number,
-  maxValueWidth: number,
-  centerY: number,
+  matchup: Extract<MatchShareMatchup, { mode: "versus" }>,
 ) {
-  if (view.jerseyItems.length === 0) {
-    drawText(ctx, view.jerseyFallbackText, valueX, centerY, 32, "rgba(255, 255, 254, 0.68)", "left", 500);
+  drawTeamBandRow(ctx, {
+    y: 152,
+    accent: "#FF8A3D",
+    role: "主队 HOME",
+    labelColor: "#FFD166",
+    teamName: matchup.homeName,
+    pending: false,
+    kit: view.homeKit,
+  });
+
+  drawTeamBandRow(ctx, {
+    y: 448,
+    accent: "#FF3B5C",
+    role: "对手 AWAY",
+    labelColor: "#FF9EAA",
+    teamName: matchup.awayName,
+    pending: matchup.awayPending,
+    kit: view.awayKit,
+  });
+
+  // 中间火焰 VS 撕裂线
+  ctx.setFillStyle("#FF6B35");
+  ctx.fillRect(42, 407, 386, 6);
+  ctx.fillRect(572, 407, 386, 6);
+  drawSlash(ctx, 430, 376, 140, 66, 20, "#FF453A");
+  drawText(ctx, "VS", 510, 411, 46, "#FFFFFF", "center", 900, true, "'Arial Black', sans-serif");
+}
+
+function drawHeadlineSection(
+  ctx: UniApp.CanvasContext,
+  view: MatchShareCardViewModel,
+  matchup: Extract<MatchShareMatchup, { mode: "headline" }>,
+) {
+  const cardX = 42;
+  const cardY = 162;
+  const cardW = 916;
+  const cardH = 496;
+
+  // 散人约球 / 场馆组局通栏热血大字卡
+  ctx.setFillStyle("rgba(12, 6, 10, 0.60)");
+  ctx.fillRect(cardX, cardY, cardW, cardH);
+  ctx.setFillStyle("#FF8A3D");
+  ctx.fillRect(cardX, cardY, 14, cardH);
+  ctx.setStrokeStyle("rgba(255, 255, 255, 0.14)");
+  ctx.setLineWidth(2);
+  drawStrokeRectCompat(ctx, cardX, cardY, cardW, cardH);
+
+  // 顶部标签（如「8人制 · 散人约球 · 欢迎报名」）
+  const fittedTag = fitText(ctx, matchup.secondaryText, 820, 28, 22, 800);
+  drawText(ctx, fittedTag.text, 500, cardY + 62, fittedTag.size, "#FFD166", "center", 800);
+
+  const hasHomeKit = view.homeKit.pieces.length > 0;
+  const hasAwayKit = view.awayKit.pieces.length > 0;
+  const hasAnyKit = hasHomeKit || hasAwayKit;
+
+  if (hasAnyKit) {
+    const fittedTitle = fitText(ctx, matchup.primaryText, 820, 74, 42, 900);
+    drawText(ctx, fittedTitle.text, 500, cardY + 162, fittedTitle.size, "#FFFFFF", "center", 900);
+
+    ctx.setFillStyle("rgba(255, 107, 53, 0.55)");
+    ctx.fillRect(140, cardY + 236, 720, 4);
+
+    // 装备展示区
+    ctx.setFillStyle("rgba(255, 255, 255, 0.08)");
+    ctx.fillRect(140, cardY + 266, 720, 192);
+
+    if (hasHomeKit && hasAwayKit) {
+      if (view.homeKit.iconPieces.length > 0) {
+        drawKitRow(ctx, view.homeKit.iconPieces, 320, cardY + 340, 74, 14, "center");
+      }
+      const homeLabel = fitText(ctx, view.homeKit.summaryText, 320, 24, 18, 800);
+      drawText(ctx, homeLabel.text, 320, cardY + 420, homeLabel.size, "#FFFFFF", "center", 800);
+
+      ctx.setFillStyle("rgba(255, 255, 255, 0.16)");
+      ctx.fillRect(499, cardY + 292, 2, 140);
+
+      if (view.awayKit.iconPieces.length > 0) {
+        drawKitRow(ctx, view.awayKit.iconPieces, 680, cardY + 340, 74, 14, "center");
+      }
+      const awayLabel = fitText(ctx, view.awayKit.summaryText, 320, 24, 18, 800);
+      drawText(ctx, awayLabel.text, 680, cardY + 420, awayLabel.size, "#FFFFFF", "center", 800);
+    } else {
+      const singleKit = hasHomeKit ? view.homeKit : view.awayKit;
+      if (singleKit.iconPieces.length > 0) {
+        drawKitRow(ctx, singleKit.iconPieces, 500, cardY + 342, 88, 22, "center");
+        const label = fitText(ctx, singleKit.summaryText, 660, 26, 20, 800);
+        drawText(ctx, label.text, 500, cardY + 424, label.size, "#FFFFFF", "center", 800);
+      } else {
+        const label = fitText(ctx, singleKit.summaryText, 660, 28, 20, 800);
+        drawText(ctx, label.text, 500, cardY + 362, label.size, "#FFFFFF", "center", 800);
+      }
+    }
     return;
   }
 
-  const dotRadius = 15;
-  const dotGap = 14;
-  const itemGap = 44;
-  const fontCandidates: Array<34 | 30 | 26> = [34, 30, 26];
-
-  let chosenSize: 34 | 30 | 26 = 34;
-  for (const size of fontCandidates) {
-    const totalWidth = view.jerseyItems.reduce((sum, item, index) => {
-      const swatchSpace = item.swatch ? dotRadius * 2 + dotGap : 0;
-      const textWidth = measureWidthWithFont(ctx, item.displayText, size, 600);
-      return sum + (index > 0 ? itemGap : 0) + swatchSpace + textWidth;
-    }, 0);
-    chosenSize = size;
-    if (totalWidth <= maxValueWidth) break;
-  }
-
-  let cursorX = valueX;
-  const perItemMaxWidth = view.jerseyItems.length > 1
-    ? Math.floor((maxValueWidth - itemGap) / view.jerseyItems.length)
-    : maxValueWidth;
-
-  for (const item of view.jerseyItems) {
-    let availableTextWidth = perItemMaxWidth;
-    if (item.swatch) {
-      const dotCenterX = cursorX + dotRadius;
-      ctx.beginPath();
-      ctx.arc(dotCenterX, centerY, dotRadius, 0, Math.PI * 2);
-      ctx.closePath();
-      ctx.setFillStyle(item.swatch);
-      ctx.fill();
-      ctx.setStrokeStyle("rgba(255, 255, 255, 0.80)");
-      ctx.setLineWidth(3);
-      ctx.stroke();
-      cursorX += dotRadius * 2 + dotGap;
-      availableTextWidth = Math.max(80, perItemMaxWidth - (dotRadius * 2 + dotGap));
-    }
-
-    const [safeText] = wrapTextLines(
-      item.displayText,
-      availableTextWidth,
-      (text) => measureWidthWithFont(ctx, text, chosenSize, 600),
-      1,
-    );
-    const drawn = safeText || item.displayText;
-    drawText(ctx, drawn, cursorX, centerY, chosenSize, "#fffffe", "left", 600);
-    cursorX += measureWidthWithFont(ctx, drawn, chosenSize, 600) + itemGap;
-  }
-}
-
-function drawInfoCard(ctx: UniApp.CanvasContext, view: MatchShareCardViewModel) {
-  const cardX = 56;
-  const cardY = 368;
-  const cardWidth = MATCH_SHARE_CARD_WIDTH - cardX * 2;
-  const cardHeight = 380;
-
-  // 半透明深色毛玻璃圆角卡片。
-  drawPill(
-    ctx,
-    cardX,
-    cardY,
-    cardWidth,
-    cardHeight,
-    28,
-    "rgba(4, 21, 46, 0.76)",
-    "rgba(255, 255, 255, 0.18)",
-  );
-
-  const tagX = cardX + 36;
-  const valueX = tagX + 116;
-  const valueWidth = cardX + cardWidth - 36 - valueX;
-
-  // 第 1 行：比赛时间（高度 116px）
-  const timeCenterY = cardY + 58;
-  drawRowTag(ctx, "时间", tagX, timeCenterY);
-  const timeSize: 38 | 34 | 30 = measureWidthWithFont(ctx, view.timeLabel, 38, 600) <= valueWidth
-    ? 38
-    : measureWidthWithFont(ctx, view.timeLabel, 34, 600) <= valueWidth
-      ? 34
-      : 30;
-  const [timeLine] = wrapTextLines(
-    view.timeLabel,
-    valueWidth,
-    (text) => measureWidthWithFont(ctx, text, timeSize, 600),
-    1,
-  );
-  drawText(ctx, timeLine || view.timeLabel, valueX, timeCenterY, timeSize, "#fffffe", "left", 600);
-
-  // 分隔线 1
-  ctx.setFillStyle("rgba(255, 255, 255, 0.11)");
-  ctx.fillRect(tagX, cardY + 116, cardWidth - 72, 2);
-
-  // 第 2 行：比赛地点（高度 146px，支持 1~2 行优雅截断）
-  const locationCenterY = cardY + 116 + 73;
-  drawRowTag(ctx, "地点", tagX, locationCenterY);
-  const locationLines = wrapTextLines(
-    view.locationLabel,
-    valueWidth,
-    (text) => measureWidthWithFont(ctx, text, 34, 500),
-    2,
-  );
-  if (locationLines.length <= 1) {
-    drawText(ctx, locationLines[0] || view.locationLabel, valueX, locationCenterY, 34, "#fffffe", "left", 500);
+  // 无装备配置时，居中突出超大比赛名称与热血能量条
+  const singleFit = fitText(ctx, matchup.primaryText, 820, 78, 52, 900);
+  if (!singleFit.text.endsWith("…")) {
+    drawText(ctx, singleFit.text, 500, cardY + 226, singleFit.size, "#FFFFFF", "center", 900);
   } else {
-    drawText(ctx, locationLines[0]!, valueX, locationCenterY - 24, 34, "#fffffe", "left", 500);
-    drawText(ctx, locationLines[1]!, valueX, locationCenterY + 24, 34, "#fffffe", "left", 500);
+    const lines = wrapTextLines(
+      matchup.primaryText,
+      820,
+      (text) => measureWidthWithFont(ctx, text, 56, 900),
+      2,
+    );
+    if (lines.length <= 1) {
+      drawText(ctx, lines[0] || matchup.primaryText, 500, cardY + 226, 56, "#FFFFFF", "center", 900);
+    } else {
+      drawText(ctx, lines[0]!, 500, cardY + 194, 56, "#FFFFFF", "center", 900);
+      drawText(ctx, lines[1]!, 500, cardY + 266, 56, "#FFFFFF", "center", 900);
+    }
   }
 
-  // 分隔线 2
-  ctx.setFillStyle("rgba(255, 255, 255, 0.11)");
-  ctx.fillRect(tagX, cardY + 262, cardWidth - 72, 2);
-
-  // 第 3 行：球服颜色（高度 118px）
-  const jerseyCenterY = cardY + 262 + 59;
-  drawRowTag(ctx, "球服", tagX, jerseyCenterY);
-  drawJerseyRow(ctx, view, valueX, valueWidth, jerseyCenterY);
+  ctx.setFillStyle("#FF6B35");
+  ctx.fillRect(340, cardY + 356, 320, 6);
+  drawText(ctx, "队服待定", 500, cardY + 412, 26, "rgba(255, 255, 255, 0.72)", "center", 800);
 }
 
 async function resolveFirstAvailableBackdrop(
@@ -874,15 +1245,15 @@ async function resolveFirstAvailableBackdrop(
         return info;
       }
     } catch {
-      // 单张候选底图失败时继续尝试下一张，全失败则降级深海蓝底色。
+      // 单张自定义底图下载失败时继续尝试下一张，全失败自动无感降级为默认红黑射灯底。
     }
   }
   return null;
 }
 
 /**
- * 将比赛时间、地点、球服颜色与对阵信息合成到 1000×800（5:4）微信分享卡片上。
- * 背景图加载失败时自动降级为深海蓝质感底色，不阻断卡片合成。
+ * 将比赛时间、对阵球队、衣/裤/袜装备矢量图标与地点信息合成到 1000×800（5:4）微信分享卡片（方案 C2）。
+ * 支持自定义背景图铺底 + 深红黑暗幕；未传或加载失败时无感降级为默认炽烈红黑球场射灯底。
  */
 export async function composeMatchShareCard(
   canvasId: string,
@@ -895,14 +1266,21 @@ export async function composeMatchShareCard(
   if (!isCurrent()) throw new Error("分享卡内容已更新");
 
   const view = buildMatchShareCardViewModel(input);
-  const backdrop = await resolveFirstAvailableBackdrop(backgroundUrls, loadImage, isCurrent);
+  const candidateUrls = [
+    ...(input.customBgImageUrl?.trim() ? [input.customBgImageUrl.trim()] : []),
+    ...backgroundUrls,
+  ];
+  const backdrop = await resolveFirstAvailableBackdrop(candidateUrls, loadImage, isCurrent);
   if (!isCurrent()) throw new Error("分享卡内容已更新");
 
   const ctx = uni.createCanvasContext(canvasId, pageInstance as never);
   drawBackdrop(ctx, backdrop, MATCH_SHARE_CARD_WIDTH, MATCH_SHARE_CARD_HEIGHT);
-  drawHeaderSection(ctx, view);
-  drawMatchupSection(ctx, view);
-  drawInfoCard(ctx, view);
+  drawTopTimeAndBottomVenue(ctx, view);
+  if (view.matchup.mode === "versus") {
+    drawVersusSection(ctx, view, view.matchup);
+  } else {
+    drawHeadlineSection(ctx, view, view.matchup);
+  }
 
   return new Promise<string>((resolve, reject) => {
     ctx.draw(false, () => {

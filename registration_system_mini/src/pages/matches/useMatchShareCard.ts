@@ -1,6 +1,5 @@
 import { computed, getCurrentScope, nextTick, onScopeDispose, ref, watch, type ComputedRef, type Ref } from "vue";
 import { onUnload } from "@dcloudio/uni-app";
-import { DEFAULT_MATCH_COVER_URL } from "@/config/matchCover";
 import type { BackendActivity } from "@/types/backend";
 import {
   MATCH_SHARE_CARD_CANVAS_ID,
@@ -22,10 +21,20 @@ export interface UseMatchShareCardOptions {
   homeTeamLabel: MaybeReadonlyRef<string>;
   /** 对手名称 */
   displayOpponentLabel: MaybeReadonlyRef<string>;
-  /** 主队球衣颜色 */
+  /** 主队上衣颜色 */
   homeTeamColor: MaybeReadonlyRef<string>;
-  /** 客队/对手球衣颜色 */
+  /** 主队球裤颜色（可选） */
+  homeShortsColor?: MaybeReadonlyRef<string>;
+  /** 主队球袜颜色（可选） */
+  homeSocksColor?: MaybeReadonlyRef<string>;
+  /** 客队/对手上衣颜色 */
   awayTeamColor: MaybeReadonlyRef<string>;
+  /** 客队/对手球裤颜色（可选） */
+  awayShortsColor?: MaybeReadonlyRef<string>;
+  /** 客队/对手球袜颜色（可选） */
+  awaySocksColor?: MaybeReadonlyRef<string>;
+  /** 自定义上传的比赛分享背景图 URL（可选，通常传 sourceMatch?.share_bg_image_url） */
+  customBgImageUrl?: MaybeReadonlyRef<string>;
   /** 开始时间钟点兜底文案 */
   matchClockLabel: MaybeReadonlyRef<string>;
   /** 比赛地点 */
@@ -41,7 +50,7 @@ export interface UseMatchShareCardOptions {
 }
 
 /**
- * 仅在微信小程序端驱动隐藏 canvas 异步合成 5:4 比赛信息分享卡；
+ * 仅在微信小程序端驱动隐藏 canvas 异步合成 5:4 比赛信息分享卡（方案 C2）；
  * H5 端始终直接回落 fallbackImageUrl，保持既有分享行为不变。
  */
 export function useMatchShareCard(options: UseMatchShareCardOptions) {
@@ -64,7 +73,12 @@ export function useMatchShareCard(options: UseMatchShareCardOptions) {
       homeTeamLabel: options.homeTeamLabel.value,
       opponentLabel: options.displayOpponentLabel.value,
       homeTeamColor: options.homeTeamColor.value,
+      homeShortsColor: options.homeShortsColor?.value ?? "",
+      homeSocksColor: options.homeSocksColor?.value ?? "",
       awayTeamColor: options.awayTeamColor.value,
+      awayShortsColor: options.awayShortsColor?.value ?? "",
+      awaySocksColor: options.awaySocksColor?.value ?? "",
+      customBgImageUrl: options.customBgImageUrl?.value?.trim() || "",
       startTime: current.start_time || current.holding_date,
       endTime: current.end_time,
       clockFallback: options.matchClockLabel.value,
@@ -75,17 +89,10 @@ export function useMatchShareCard(options: UseMatchShareCardOptions) {
     };
   });
 
+  // 仅当存在用户自定义分享背景图时才拉取底图；为空时走 C2 默认炽烈红黑射灯底。
   const backgroundCandidates = computed<string[]>(() => {
-    const candidates: string[] = [];
-    const customCover = options.match.value?.cover?.trim() || "";
-    if (customCover && customCover !== DEFAULT_MATCH_COVER_URL) {
-      candidates.push(customCover);
-    }
-    const fallback = options.fallbackImageUrl.value?.trim() || "";
-    if (fallback && !candidates.includes(fallback)) {
-      candidates.push(fallback);
-    }
-    return candidates;
+    const customBg = options.customBgImageUrl?.value?.trim() || "";
+    return customBg ? [customBg] : [];
   });
 
   const renderKey = computed(() => {
@@ -99,7 +106,12 @@ export function useMatchShareCard(options: UseMatchShareCardOptions) {
       input.homeTeamLabel,
       input.opponentLabel,
       input.homeTeamColor,
+      input.homeShortsColor,
+      input.homeSocksColor,
       input.awayTeamColor,
+      input.awayShortsColor,
+      input.awaySocksColor,
+      input.customBgImageUrl,
       input.startTime,
       input.endTime,
       input.clockFallback,
@@ -147,6 +159,9 @@ export function useMatchShareCard(options: UseMatchShareCardOptions) {
     const force = !!refreshOptions?.force;
     if (!force && (key === lastQueuedKey || (key === composedKey.value && composedImageUrl.value))) {
       return;
+    }
+    if (force && input.customBgImageUrl) {
+      imageLoader.evict(input.customBgImageUrl);
     }
 
     const version = ++renderVersion;

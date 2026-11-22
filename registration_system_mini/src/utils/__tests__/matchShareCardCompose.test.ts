@@ -4,58 +4,109 @@ import {
   MATCH_SHARE_CARD_WIDTH,
   buildMatchShareCardViewModel,
   buildMatchupDisplay,
+  buildTeamKitView,
   composeMatchShareCard,
   createMatchShareImageLoader,
+  drawKitRow,
+  fitText,
   formatMatchShareTime,
+  isLightColor,
   parseJerseyColor,
+  strokeForKit,
   truncateText,
   wrapTextLines,
   type MatchShareCardInput,
 } from "@/utils/matchShareCardCompose";
 
-function createMockCanvasContext() {
-  const texts: Array<{ value: string; x: number; y: number; font: string }> = [];
-  const images: unknown[][] = [];
-  const arcs: Array<{ x: number; y: number; r: number }> = [];
-  const gradients: Array<{ stops: Array<[number, string]> }> = [];
+interface MockCanvasOptions {
+  withCircularGradient?: boolean;
+  withStrokeText?: boolean;
+}
 
-  const ctx = {
+function createMockCanvasContext(options: MockCanvasOptions = {}) {
+  const { withCircularGradient = true, withStrokeText = true } = options;
+  const texts: Array<{ value: string; x: number; y: number; font: string; fillStyle: unknown }> = [];
+  const strokeTexts: Array<{ value: string; x: number; y: number; font: string; strokeStyle: string }> = [];
+  const images: unknown[][] = [];
+  const fillRects: Array<{ x: number; y: number; w: number; h: number; fillStyle: unknown }> = [];
+  const scales: Array<{ sx: number; sy: number }> = [];
+  const translates: Array<{ x: number; y: number }> = [];
+  const filledPaths: Array<{ fillStyle: unknown; moveToCount: number }> = [];
+  const strokedPaths: Array<{ strokeStyle: string; lineWidth: number }> = [];
+  const linearGradients: Array<{ stops: Array<[number, string]> }> = [];
+  const circularGradients: Array<{ x: number; y: number; r: number; stops: Array<[number, string]> }> = [];
+  let radialGradientCalled = false;
+
+  let currentFillStyle: unknown = "#000000";
+  let currentStrokeStyle = "#000000";
+  let currentLineWidth = 1;
+  let currentMoveToCount = 0;
+
+  const ctx: Record<string, unknown> = {
     font: "400 32px sans-serif",
-    setFillStyle: () => undefined,
-    setStrokeStyle: () => undefined,
-    setLineWidth: () => undefined,
+    setFontSize: () => undefined,
+    setFillStyle: (style: unknown) => {
+      currentFillStyle = style;
+    },
+    setStrokeStyle: (style: string) => {
+      currentStrokeStyle = style;
+    },
+    setLineWidth: (width: number) => {
+      currentLineWidth = width;
+    },
+    setLineJoin: () => undefined,
     setTextAlign: () => undefined,
     setTextBaseline: () => undefined,
-    fillRect: () => undefined,
-    beginPath: () => undefined,
+    clearRect: () => undefined,
+    rect: () => undefined,
+    fillRect: (x: number, y: number, w: number, h: number) => {
+      fillRects.push({ x, y, w, h, fillStyle: currentFillStyle });
+    },
+    strokeRect: () => undefined,
+    beginPath: () => {
+      currentMoveToCount = 0;
+    },
     closePath: () => undefined,
-    moveTo: () => undefined,
+    moveTo: () => {
+      currentMoveToCount += 1;
+    },
     lineTo: () => undefined,
     quadraticCurveTo: () => undefined,
-    fill: () => undefined,
-    stroke: () => undefined,
+    fill: () => {
+      filledPaths.push({ fillStyle: currentFillStyle, moveToCount: currentMoveToCount });
+    },
+    stroke: () => {
+      strokedPaths.push({ strokeStyle: currentStrokeStyle, lineWidth: currentLineWidth });
+    },
     save: () => undefined,
     restore: () => undefined,
     clip: () => undefined,
-    arc: (x: number, y: number, r: number) => {
-      arcs.push({ x, y, r });
+    translate: (x: number, y: number) => {
+      translates.push({ x, y });
+    },
+    scale: (sx: number, sy: number) => {
+      scales.push({ sx, sy });
     },
     createLinearGradient: () => {
       const record = { stops: [] as Array<[number, string]> };
-      gradients.push(record);
+      linearGradients.push(record);
       return {
         addColorStop: (offset: number, color: string) => {
           record.stops.push([offset, color]);
         },
       };
     },
+    createRadialGradient: () => {
+      radialGradientCalled = true;
+      throw new Error("createRadialGradient is not supported in WeChat CanvasContext");
+    },
     measureText: (value: string) => {
-      const sizeMatch = /(\d+)px/.exec(ctx.font);
+      const sizeMatch = /(\d+)px/.exec(String(ctx.font));
       const size = sizeMatch ? Number(sizeMatch[1]) : 32;
       return { width: Array.from(value).length * size };
     },
     fillText: (value: string, x: number, y: number) => {
-      texts.push({ value, x, y, font: ctx.font });
+      texts.push({ value, x, y, font: String(ctx.font), fillStyle: currentFillStyle });
     },
     drawImage: (...args: unknown[]) => {
       images.push(args);
@@ -65,7 +116,38 @@ function createMockCanvasContext() {
     },
   };
 
-  return { ctx, texts, images, arcs, gradients };
+  if (withCircularGradient) {
+    ctx.createCircularGradient = (x: number, y: number, r: number) => {
+      const record = { x, y, r, stops: [] as Array<[number, string]> };
+      circularGradients.push(record);
+      return {
+        addColorStop: (offset: number, color: string) => {
+          record.stops.push([offset, color]);
+        },
+      };
+    };
+  }
+
+  if (withStrokeText) {
+    ctx.strokeText = (value: string, x: number, y: number) => {
+      strokeTexts.push({ value, x, y, font: String(ctx.font), strokeStyle: currentStrokeStyle });
+    };
+  }
+
+  return {
+    ctx: ctx as unknown as UniApp.CanvasContext,
+    texts,
+    strokeTexts,
+    images,
+    fillRects,
+    scales,
+    translates,
+    filledPaths,
+    strokedPaths,
+    linearGradients,
+    circularGradients,
+    getRadialGradientCalled: () => radialGradientCalled,
+  };
 }
 
 test("buildMatchupDisplay handles team versus, pending opponent, pickup and venue matches", () => {
@@ -163,7 +245,7 @@ test("formatMatchShareTime formats UTC instants into Beijing time including cros
   expect(formatMatchShareTime("invalid-time")).toEqual("时间待定");
 });
 
-test("parseJerseyColor handles HEX, 3-digit HEX, Chinese/English names, custom text and empty values", () => {
+test("parseJerseyColor, isLightColor and strokeForKit handle HEX, color names and light/dark borders", () => {
   expect(parseJerseyColor("#FFFFFF")).toEqual({ swatch: "#ffffff", label: "白色" });
   expect(parseJerseyColor("#ef4444")).toEqual({ swatch: "#ef4444", label: "红色" });
   expect(parseJerseyColor("#2F6BFF")).toEqual({ swatch: "#2f6bff", label: "蓝色" });
@@ -174,6 +256,8 @@ test("parseJerseyColor handles HEX, 3-digit HEX, Chinese/English names, custom t
 
   expect(parseJerseyColor("白色")).toEqual({ swatch: "#ffffff", label: "白色" });
   expect(parseJerseyColor("红色队服")).toEqual({ swatch: "#ef4444", label: "红色" });
+  expect(parseJerseyColor("黑色球裤")).toEqual({ swatch: "#111310", label: "黑色" });
+  expect(parseJerseyColor("白袜")).toEqual({ swatch: "#ffffff", label: "白色" });
   expect(parseJerseyColor("蓝")).toEqual({ swatch: "#2f6bff", label: "蓝色" });
   expect(parseJerseyColor("white")).toEqual({ swatch: "#ffffff", label: "白色" });
   expect(parseJerseyColor("BLUE")).toEqual({ swatch: "#2f6bff", label: "蓝色" });
@@ -182,66 +266,132 @@ test("parseJerseyColor handles HEX, 3-digit HEX, Chinese/English names, custom t
   expect(parseJerseyColor("")).toEqual(null);
   expect(parseJerseyColor("   ")).toEqual(null);
   expect(parseJerseyColor(null)).toEqual(null);
+
+  // 浅色（白/银灰/荧光绿/黄）描深色边，深色（红/黑/蓝）描白色边
+  expect(isLightColor("#FFFFFF")).toEqual(true);
+  expect(isLightColor("#D8DDE6")).toEqual(true);
+  expect(isLightColor("#C8FF00")).toEqual(true);
+  expect(isLightColor("#FACC15")).toEqual(true);
+  expect(isLightColor("#EF4444")).toEqual(false);
+  expect(isLightColor("#111310")).toEqual(false);
+  expect(isLightColor("#2F6BFF")).toEqual(false);
+
+  expect(strokeForKit("#FFFFFF")).toEqual("rgba(15, 23, 42, 0.55)");
+  expect(strokeForKit("#C8FF00")).toEqual("rgba(15, 23, 42, 0.55)");
+  expect(strokeForKit("#EF4444")).toEqual("rgba(255, 255, 255, 0.88)");
+  expect(strokeForKit("#111310")).toEqual("rgba(255, 255, 255, 0.88)");
 });
 
-test("buildMatchShareCardViewModel handles dual, single and missing jersey colors", () => {
+function expectClose(actual: number | undefined, expected: number, epsilon = 1e-4) {
+  expect(typeof actual === "number" && Math.abs(actual - expected) <= epsilon).toEqual(true);
+}
+
+test("buildTeamKitView and drawKitRow cover all 5 kit combinations with accurate icon count, sizing and copy", () => {
+  // 1. 全套：衣 + 裤 + 袜
+  const fullKit = buildTeamKitView("#FFFFFF", "#111310", "#FFFFFF");
+  expect(fullKit.iconPieces.map((p) => p.kind)).toEqual(["shirt", "shorts", "socks"]);
+  expect(fullKit.summaryText).toEqual("白衣 · 黑裤 · 白袜");
+  const fullCanvas = createMockCanvasContext();
+  expect(drawKitRow(fullCanvas.ctx, fullKit.iconPieces, 759, 244, 86, 18)).toEqual(3);
+  expect(fullCanvas.scales.length).toEqual(3);
+  expectClose(fullCanvas.scales[0]?.sx, 0.86);
+  expectClose(fullCanvas.scales[1]?.sx, 0.86 * 0.92);
+  expectClose(fullCanvas.scales[2]?.sx, 0.86 * 0.92);
+
+  // 2. 仅上衣（放大 1.18x 居中展示）
+  const shirtOnlyKit = buildTeamKitView("#C8FF00", "", "");
+  expect(shirtOnlyKit.iconPieces.map((p) => p.kind)).toEqual(["shirt"]);
+  expect(shirtOnlyKit.summaryText).toEqual("荧光绿衣");
+  const shirtOnlyCanvas = createMockCanvasContext();
+  expect(drawKitRow(shirtOnlyCanvas.ctx, shirtOnlyKit.iconPieces, 759, 244, 86, 18)).toEqual(1);
+  expect(shirtOnlyCanvas.scales.length).toEqual(1);
+  expectClose(shirtOnlyCanvas.scales[0]?.sx, (86 * 1.18) / 100);
+  expectClose(shirtOnlyCanvas.translates[0]?.x, 759, 0.01);
+
+  // 3. 衣 + 裤（无袜）
+  const shirtShortsKit = buildTeamKitView("#FACC15", "#111310", "");
+  expect(shirtShortsKit.iconPieces.map((p) => p.kind)).toEqual(["shirt", "shorts"]);
+  expect(shirtShortsKit.summaryText).toEqual("黄衣 · 黑裤");
+  const shirtShortsCanvas = createMockCanvasContext();
+  expect(drawKitRow(shirtShortsCanvas.ctx, shirtShortsKit.iconPieces, 759, 244, 86, 18)).toEqual(2);
+  expect(shirtShortsCanvas.scales.length).toEqual(2);
+
+  // 4. 衣 + 袜（无裤）
+  const shirtSocksKit = buildTeamKitView("#FFFFFF", "", "#2F6BFF");
+  expect(shirtSocksKit.iconPieces.map((p) => p.kind)).toEqual(["shirt", "socks"]);
+  expect(shirtSocksKit.summaryText).toEqual("白衣 · 蓝袜");
+  const shirtSocksCanvas = createMockCanvasContext();
+  expect(drawKitRow(shirtSocksCanvas.ctx, shirtSocksKit.iconPieces, 759, 244, 86, 18)).toEqual(2);
+  expect(shirtSocksCanvas.scales.length).toEqual(2);
+
+  // 5. 全未设置（不画空图标，展示「队服待定」）
+  const emptyKit = buildTeamKitView("", "", "");
+  expect(emptyKit.iconPieces.length).toEqual(0);
+  expect(emptyKit.summaryText).toEqual("队服待定");
+  const emptyCanvas = createMockCanvasContext();
+  expect(drawKitRow(emptyCanvas.ctx, emptyKit.iconPieces, 759, 244, 86, 18)).toEqual(0);
+  expect(emptyCanvas.scales.length).toEqual(0);
+  expect(emptyCanvas.filledPaths.length).toEqual(0);
+});
+
+test("buildMatchShareCardViewModel assembles C2 kit summaries, venue tag and fallback values", () => {
   const base: MatchShareCardInput = {
     name: "周日晚场约战",
-    matchKindLabel: "线下已约",
-    homeTeamLabel: "太阳神",
-    opponentLabel: "风暴队",
-    startTime: "2026-11-22T11:00:00Z",
-    endTime: "2026-11-22T13:00:00Z",
-    location: "朝阳公园足球场 3号场",
-    playersPerTeam: 7,
+    matchKindLabel: "约队赛",
+    homeTeamLabel: "洺悦御府",
+    opponentLabel: "河西周四 FC",
+    startTime: "2026-11-23T11:30:00Z",
+    endTime: "2026-11-23T13:30:00Z",
+    location: "东湖公园足球中心 5号场",
+    playersPerTeam: 8,
   };
 
-  const dual = buildMatchShareCardViewModel({
+  const full = buildMatchShareCardViewModel({
     ...base,
     homeTeamColor: "#FFFFFF",
-    awayTeamColor: "红色",
+    homeShortsColor: "#111310",
+    homeSocksColor: "#FFFFFF",
+    awayTeamColor: "#EF4444",
+    awayShortsColor: "#FFFFFF",
+    awaySocksColor: "#EF4444",
   });
-  expect(dual.badgeLabel).toEqual("线下已约");
-  expect(dual.formatTag).toEqual("7人制");
-  expect(dual.jerseyItems).toEqual([
-    { role: "home", roleLabel: "主", swatch: "#ffffff", label: "白色", displayText: "白色（主）" },
-    { role: "away", roleLabel: "客", swatch: "#ef4444", label: "红色", displayText: "红色（客）" },
-  ]);
-  expect(dual.jerseyFallbackText).toEqual("");
-
-  const homeOnly = buildMatchShareCardViewModel({
-    ...base,
-    homeTeamColor: "#2F6BFF",
-    awayTeamColor: "",
-  });
-  expect(homeOnly.jerseyItems).toEqual([
-    { role: "home", roleLabel: "主", swatch: "#2f6bff", label: "蓝色", displayText: "蓝色（主）" },
-  ]);
-  expect(homeOnly.jerseyFallbackText).toEqual("");
-
-  const awayOnly = buildMatchShareCardViewModel({
-    ...base,
-    homeTeamColor: "",
-    awayTeamColor: "荧光绿",
-  });
-  expect(awayOnly.jerseyItems).toEqual([
-    { role: "away", roleLabel: "客", swatch: "#c8ff00", label: "荧光绿", displayText: "荧光绿（客）" },
-  ]);
+  expect(full.badgeLabel).toEqual("约队赛");
+  expect(full.formatTag).toEqual("8人制");
+  expect(full.venueMetaTag).toEqual("8人制 · 约队赛");
+  expect(full.homeKit.summaryText).toEqual("白衣 · 黑裤 · 白袜");
+  expect(full.awayKit.summaryText).toEqual("红衣 · 白裤 · 红袜");
+  expect(full.jerseyFallbackText).toEqual("");
 
   const neither = buildMatchShareCardViewModel({
     ...base,
     matchKindLabel: "其他类型",
-    homeTeamColor: "",
-    awayTeamColor: "  ",
     location: "",
   });
   expect(neither.badgeLabel).toEqual("赛事报名");
   expect(neither.locationLabel).toEqual("地点待定");
-  expect(neither.jerseyItems).toEqual([]);
-  expect(neither.jerseyFallbackText).toEqual("球服颜色待定");
+  expect(neither.homeKit.summaryText).toEqual("队服待定");
+  expect(neither.awayKit.summaryText).toEqual("队服待定");
+  expect(neither.jerseyFallbackText).toEqual("队服待定");
 });
 
-test("truncateText and wrapTextLines gracefully truncate long locations within max lines", () => {
+test("fitText, truncateText and wrapTextLines shrink and ellipsize long team names and addresses", () => {
+  const { ctx } = createMockCanvasContext();
+
+  // 短队名保持最大 78px
+  const shortFit = fitText(ctx, "洺悦御府", 480, 78, 46, 900);
+  expect(shortFit).toEqual({ size: 78, text: "洺悦御府" });
+
+  // 中等长度队名自动缩小字号但不截断
+  const mediumFit = fitText(ctx, "成都高新南区联队", 480, 78, 46, 900);
+  expect(mediumFit.size < 78 && mediumFit.size >= 46).toEqual(true);
+  expect(mediumFit.text).toEqual("成都高新南区联队");
+
+  // 超长队名缩至最小 46px 并以省略号结尾，绝不越过 480px 撞到右侧装备块
+  const longFit = fitText(ctx, "成都高新南区天府绿茵足球俱乐部一队", 480, 78, 46, 900);
+  expect(longFit.size).toEqual(46);
+  expect(longFit.text.endsWith("…")).toEqual(true);
+  expect(Array.from(longFit.text).length * 46 <= 480).toEqual(true);
+
   expect(truncateText("  朝阳公园   3号场 ", 20)).toEqual("朝阳公园 3号场");
   expect(truncateText("北京市朝阳区奥林匹克森林公园南园足球场A区3号场地", 10)).toEqual("北京市朝阳区奥林匹…");
   expect(truncateText("测试", 1)).toEqual("…");
@@ -251,88 +401,92 @@ test("truncateText and wrapTextLines gracefully truncate long locations within m
   const longAddress = "北京市朝阳区奥林匹克森林公园南园综合体育中心足球场A区标准11人制3号场地东侧入口";
   const twoLines = wrapTextLines(longAddress, 340, measure, 2);
   expect(twoLines.length).toEqual(2);
-  expect(twoLines[0]!.length).toEqual(10);
   expect(twoLines[1]!.endsWith("…")).toEqual(true);
-  expect(measure(twoLines[1]!) <= 340).toEqual(true);
-
-  const oneLine = wrapTextLines(longAddress, 340, measure, 1);
-  expect(oneLine.length).toEqual(1);
-  expect(oneLine[0]!.endsWith("…")).toEqual(true);
-  expect(measure(oneLine[0]!) <= 340).toEqual(true);
 });
 
-test("composeMatchShareCard exports 1000x800 card with cover, dark veil, matchup, time, location and jersey dots", async () => {
+test("composeMatchShareCard renders C2 fiery backdrop with full/mixed/empty kits and long names", async () => {
   const previousUni = (globalThis as unknown as { uni?: typeof uni }).uni;
-  const { ctx, texts, images, arcs, gradients } = createMockCanvasContext();
+  const mock = createMockCanvasContext({ withCircularGradient: true, withStrokeText: true });
   let exportOptions: Record<string, unknown> | undefined;
 
   (globalThis as unknown as { uni: typeof uni }).uni = {
-    getImageInfo: ({ src, success }: { src: string; success: (res: { path: string; width: number; height: number }) => void }) => {
-      success({ path: `local://${src}`, width: 1600, height: 900 });
+    getImageInfo: () => {
+      throw new Error("should not download image when no customBgImageUrl is provided");
     },
-    createCanvasContext: () => ctx,
+    createCanvasContext: () => mock.ctx,
     canvasToTempFilePath: (options: Record<string, unknown> & { success: (res: { tempFilePath: string }) => void }) => {
       exportOptions = options;
-      options.success({ tempFilePath: "/tmp/match-share-card.jpg" });
+      options.success({ tempFilePath: "/tmp/match-share-c2.jpg" });
     },
   } as unknown as typeof uni;
 
   try {
-    const longLocation = "北京市朝阳区奥林匹克森林公园南园综合体育中心足球场A区标准11人制3号场地东侧入口北门";
+    const longLocation = "北京市朝阳区奥林匹克森林公园南园综合体育中心足球场A区标准11人制3号场地东侧入口";
     const path = await composeMatchShareCard(
       "match-share-card-canvas",
       {},
       {
         name: "周日晚场友谊赛",
-        matchKindLabel: "线下已约",
-        homeTeamLabel: "太阳神",
-        opponentLabel: "风暴队",
+        matchKindLabel: "约队赛",
+        homeTeamLabel: "成都高新南区天府绿茵风暴超级俱乐部联队",
+        opponentLabel: "河西周四 FC",
         homeTeamColor: "#FFFFFF",
-        awayTeamColor: "#EF4444",
-        startTime: "2026-11-22T11:00:00Z",
-        endTime: "2026-11-22T13:00:00Z",
+        homeShortsColor: "#111310",
+        homeSocksColor: "#22C55E",
+        awayTeamColor: "#2F6BFF",
+        startTime: "2026-11-23T11:30:00Z",
+        endTime: "2026-11-23T13:30:00Z",
         location: longLocation,
-        playersPerTeam: 7,
+        playersPerTeam: 8,
       },
-      ["https://cdn.example.com/cover.jpg"],
+      [],
       () => true,
     );
 
-    expect(path).toEqual("/tmp/match-share-card.jpg");
+    expect(path).toEqual("/tmp/match-share-c2.jpg");
     expect([exportOptions?.width, exportOptions?.height, exportOptions?.destWidth, exportOptions?.destHeight]).toEqual([
       MATCH_SHARE_CARD_WIDTH,
       MATCH_SHARE_CARD_HEIGHT,
       1000,
       800,
     ]);
-    // 绘制了底图且叠加了深海蓝渐变暗幕
-    expect(images.length).toEqual(1);
-    expect(images[0]?.[0]).toEqual("local://https://cdn.example.com/cover.jpg");
-    expect(gradients.length >= 2).toEqual(true);
 
-    const rendered = texts.map((item) => item.value);
-    expect(rendered.includes("太阳神")).toEqual(true);
+    // 未调用小程序不支持的 createRadialGradient，使用 createCircularGradient 绘制红黑射灯底 + MATCHDAY 暗纹
+    expect(mock.getRadialGradientCalled()).toEqual(false);
+    expect(mock.circularGradients.length).toEqual(1);
+    expect(mock.linearGradients.length).toEqual(2);
+    expect(mock.images.length).toEqual(0);
+    expect(mock.strokeTexts.map((t) => t.value)).toEqual(["MATCHDAY"]);
+
+    const rendered = mock.texts.map((item) => item.value);
+    expect(rendered.includes("11月23日 周一 19:30-21:30")).toEqual(true);
+    expect(rendered.includes("主队 HOME")).toEqual(true);
+    expect(rendered.includes("对手 AWAY")).toEqual(true);
     expect(rendered.includes("VS")).toEqual(true);
-    expect(rendered.includes("风暴队")).toEqual(true);
-    expect(rendered.includes("11月22日 周日 19:00-21:00")).toEqual(true);
-    expect(rendered.includes("白色（主）")).toEqual(true);
-    expect(rendered.includes("红色（客）")).toEqual(true);
+    expect(rendered.includes("河西周四 FC")).toEqual(true);
+    // 主队全套 3 件 + 客队仅上衣 1 件 = 4 个矢量装备图标
+    expect(mock.scales.length).toEqual(4);
+    expect(rendered.includes("白衣 · 黑裤 · 绿袜")).toEqual(true);
+    expect(rendered.includes("蓝衣")).toEqual(true);
 
-    // 两个球服颜色圆点
-    expect(arcs.filter((item) => item.r === 15).length).toEqual(2);
+    // 超长主队名在 46px 处截断，未越界
+    const homeNameDraw = mock.texts.find((t) => t.x === 80 && t.y === 152 + 132);
+    expect(homeNameDraw?.value.endsWith("…")).toEqual(true);
+    expect(homeNameDraw?.font.includes("46px")).toEqual(true);
 
-    // 超长地点被截断为最多 2 行并以省略号结尾
-    const locationTexts = rendered.filter((value) => value.includes("北京市朝阳区") || value.endsWith("…"));
-    expect(locationTexts.length <= 2).toEqual(true);
-    expect(locationTexts.some((value) => value.endsWith("…"))).toEqual(true);
+    // 底部白底通栏：超长地点截断但保留「8人制 · 约队赛」标签
+    const venueDraw = mock.texts.find((t) => t.y === 757);
+    expect(venueDraw?.value.startsWith("📍 ")).toEqual(true);
+    expect(venueDraw?.value.includes("…")).toEqual(true);
+    expect(venueDraw?.value.endsWith("8人制 · 约队赛")).toEqual(true);
   } finally {
     (globalThis as unknown as { uni?: typeof uni }).uni = previousUni;
   }
 });
 
-test("composeMatchShareCard falls back across candidate covers, degrades to navy backdrop on total failure, and aborts when stale", async () => {
+test("composeMatchShareCard overlays customBgImageUrl with dark crimson veil and gracefully degrades on download failure", async () => {
   const previousUni = (globalThis as unknown as { uni?: typeof uni }).uni;
-  const firstRun = createMockCanvasContext();
+  const customRun = createMockCanvasContext({ withCircularGradient: true, withStrokeText: true });
   const requested: string[] = [];
 
   (globalThis as unknown as { uni: typeof uni }).uni = {
@@ -346,61 +500,147 @@ test("composeMatchShareCard falls back across candidate covers, degrades to navy
       fail: (err: Error) => void;
     }) => {
       requested.push(src);
-      if (src.includes("backup-ok")) {
-        success({ path: `local://${src}`, width: 1000, height: 800 });
+      if (src.includes("custom-ok")) {
+        success({ path: `local://${src}`, width: 1600, height: 900 });
       } else {
         fail(new Error("download failed"));
       }
     },
-    createCanvasContext: () => firstRun.ctx,
+    createCanvasContext: () => customRun.ctx,
     canvasToTempFilePath: ({ success }: { success: (res: { tempFilePath: string }) => void }) => {
-      success({ tempFilePath: "/tmp/fallback-card.jpg" });
+      success({ tempFilePath: "/tmp/custom-bg-card.jpg" });
     },
   } as unknown as typeof uni;
 
   try {
-    // 第一张自定义图失败时自动回退第二张候选封面
-    const recoveredPath = await composeMatchShareCard(
+    // 1. 自定义背景图下载成功：cover 铺底 + 深红黑暗幕 + 渐变暗角 + 射灯，不画 MATCHDAY 水印
+    const okPath = await composeMatchShareCard(
       "match-share-card-canvas",
       {},
-      { name: "候选回退测试", homeTeamLabel: "甲队", opponentLabel: "乙队" },
-      ["https://cdn.example.com/broken-custom.jpg", "https://cdn.example.com/backup-ok.jpg"],
+      {
+        name: "自定义背景夜场赛",
+        homeTeamLabel: "洺悦御府",
+        opponentLabel: "朝阳联队",
+        customBgImageUrl: "https://cdn.example.com/custom-ok.jpg",
+        startTime: "2026-11-22T11:00:00Z",
+        endTime: "2026-11-22T13:00:00Z",
+      },
+      [],
       () => true,
     );
-    expect(recoveredPath).toEqual("/tmp/fallback-card.jpg");
-    expect(firstRun.images.length).toEqual(1);
-    expect(firstRun.images[0]?.[0]).toEqual("local://https://cdn.example.com/backup-ok.jpg");
+    expect(okPath).toEqual("/tmp/custom-bg-card.jpg");
+    expect(requested).toEqual(["https://cdn.example.com/custom-ok.jpg"]);
+    expect(customRun.images.length).toEqual(1);
+    expect(customRun.images[0]?.[0]).toEqual("local://https://cdn.example.com/custom-ok.jpg");
+    // 1600x900 按 cover 铺满 1000x800：scale = 800/900，drawWidth ≈ 1422.22，水平居中裁切
+    expectClose(Number(customRun.images[0]?.[3]), (1600 * 800) / 900, 0.01);
+    expectClose(Number(customRun.images[0]?.[4]), 800, 0.01);
+    expect(customRun.fillRects.some((r) => r.fillStyle === "rgba(18, 7, 11, 0.62)")).toEqual(true);
+    expect(customRun.strokeTexts.length).toEqual(0);
+    // 未设置球服时，双方均显示「队服待定」且不画任何矢量图标
+    expect(customRun.scales.length).toEqual(0);
+    expect(customRun.texts.filter((t) => t.value === "队服待定").length).toEqual(2);
 
-    // 全部背景图都失败时降级为深海蓝质感底色，不阻断合成
+    // 2. 自定义背景图下载失败：无感降级回默认 C2 红黑射灯底（即使运行时缺 createCircularGradient / strokeText 也正常渲染）
     requested.length = 0;
-    const secondRun = createMockCanvasContext();
-    (globalThis as unknown as { uni: typeof uni }).uni.createCanvasContext = () => secondRun.ctx as unknown as UniApp.CanvasContext;
+    const degradedRun = createMockCanvasContext({ withCircularGradient: false, withStrokeText: false });
+    (globalThis as unknown as { uni: typeof uni }).uni.createCanvasContext = () => degradedRun.ctx;
 
     const loader = createMatchShareImageLoader();
     const degradedPath = await composeMatchShareCard(
       "match-share-card-canvas",
       {},
       {
-        name: "散人夜场局",
-        matchKindLabel: "散人约球",
-        isPickupMatch: true,
-        startTime: "2026-11-22T11:00:00Z",
-        location: "工人体育场副场",
+        name: "降级红黑底测试",
+        homeTeamLabel: "甲队",
+        opponentLabel: "乙队",
+        homeTeamColor: "#EF4444",
+        homeShortsColor: "#FFFFFF",
+        customBgImageUrl: "https://cdn.example.com/broken-custom.jpg",
       },
-      ["https://cdn.example.com/broken-1.jpg", "https://cdn.example.com/broken-2.jpg"],
+      [],
       () => true,
       loader.load,
     );
     loader.clear();
 
-    expect(degradedPath).toEqual("/tmp/fallback-card.jpg");
-    expect(requested).toEqual([
-      "https://cdn.example.com/broken-1.jpg",
-      "https://cdn.example.com/broken-2.jpg",
-    ]);
-    expect(secondRun.images.length).toEqual(0);
-    expect(secondRun.arcs.length >= 2).toEqual(true);
-    expect(secondRun.texts.map((item) => item.value).includes("球服颜色待定")).toEqual(true);
+    expect(degradedPath).toEqual("/tmp/custom-bg-card.jpg");
+    expect(requested).toEqual(["https://cdn.example.com/broken-custom.jpg"]);
+    expect(degradedRun.images.length).toEqual(0);
+    expect(degradedRun.getRadialGradientCalled()).toEqual(false);
+    // 缺 createCircularGradient 时退化为 createLinearGradient（底色 1 + 左右射灯 2 = 3）
+    expect(degradedRun.linearGradients.length).toEqual(3);
+    // 缺 strokeText 时回退 fillText 绘制 MATCHDAY
+    expect(degradedRun.texts.some((t) => t.value === "MATCHDAY")).toEqual(true);
+    expect(degradedRun.scales.length).toEqual(2);
+    expect(degradedRun.texts.some((t) => t.value === "红衣 · 白裤")).toEqual(true);
+    expect(degradedRun.texts.some((t) => t.value === "队服待定")).toEqual(true);
+  } finally {
+    (globalThis as unknown as { uni?: typeof uni }).uni = previousUni;
+  }
+});
+
+test("composeMatchShareCard renders pickup match headline layout with/without kit and aborts when stale", async () => {
+  const previousUni = (globalThis as unknown as { uni?: typeof uni }).uni;
+  const pickupWithKit = createMockCanvasContext();
+
+  (globalThis as unknown as { uni: typeof uni }).uni = {
+    getImageInfo: () => {
+      throw new Error("unexpected getImageInfo");
+    },
+    createCanvasContext: () => pickupWithKit.ctx,
+    canvasToTempFilePath: ({ success }: { success: (res: { tempFilePath: string }) => void }) => {
+      success({ tempFilePath: "/tmp/pickup-card.jpg" });
+    },
+  } as unknown as typeof uni;
+
+  try {
+    // 散人约球（有球服配置）：展示通栏大字卡 + 人制散人标签 + 装备图标，不出现 VS
+    const path1 = await composeMatchShareCard(
+      "match-share-card-canvas",
+      {},
+      {
+        name: "工人体育场周三夜场散人局",
+        matchKindLabel: "散人约球",
+        isPickupMatch: true,
+        playersPerTeam: 8,
+        homeTeamColor: "#FFFFFF",
+        homeShortsColor: "#111310",
+        startTime: "2026-11-25T11:30:00Z",
+        endTime: "2026-11-25T13:30:00Z",
+        location: "工人体育场副场",
+      },
+      [],
+      () => true,
+    );
+    expect(path1).toEqual("/tmp/pickup-card.jpg");
+    const rendered1 = pickupWithKit.texts.map((t) => t.value);
+    expect(rendered1.includes("工人体育场周三夜场散人局")).toEqual(true);
+    expect(rendered1.includes("8人制 · 散人约球 · 欢迎报名")).toEqual(true);
+    expect(rendered1.includes("白衣 · 黑裤")).toEqual(true);
+    expect(rendered1.includes("VS")).toEqual(false);
+    expect(pickupWithKit.scales.length).toEqual(2);
+
+    // 散人约球（未配置球服）：不画空图标，显示「队服待定」
+    const pickupNoKit = createMockCanvasContext();
+    (globalThis as unknown as { uni: typeof uni }).uni.createCanvasContext = () => pickupNoKit.ctx;
+    await composeMatchShareCard(
+      "match-share-card-canvas",
+      {},
+      {
+        name: "周五晚散人快乐局",
+        matchKindLabel: "散人约球",
+        isPickupMatch: true,
+        playersPerTeam: 7,
+        startTime: "2026-11-27T12:00:00Z",
+        location: "朝阳公园足球场",
+      },
+      [],
+      () => true,
+    );
+    expect(pickupNoKit.scales.length).toEqual(0);
+    expect(pickupNoKit.texts.some((t) => t.value === "队服待定")).toEqual(true);
+    expect(pickupNoKit.texts.some((t) => t.value === "7人制 · 散人约球 · 欢迎报名")).toEqual(true);
 
     // 版本过期时立即中止且不绘制
     let staleError = "";
