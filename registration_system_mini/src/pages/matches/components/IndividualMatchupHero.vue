@@ -21,6 +21,10 @@ const props = defineProps<{
   displayOpponentLabel: string;
   homeTeamColor: string;
   awayTeamColor: string;
+  homeShortsColor?: string | null;
+  homeSocksColor?: string | null;
+  awayShortsColor?: string | null;
+  awaySocksColor?: string | null;
   /** 主/客队 Logo；空值或加载失败回落队名首字。 */
   homeTeamLogoUrl?: string;
   awayTeamLogoUrl?: string;
@@ -162,7 +166,11 @@ const matchStatusTag = computed(() => {
         <view v-else class="hero-logo hero-logo--fallback">{{ homeInitial }}</view>
         <view class="hero-team-info">
           <text class="hero-name">{{ homeTeamLabel }}</text>
-          <TeamKitColor :color="homeTeamColor" />
+          <TeamKitColor
+            :color="homeTeamColor"
+            :shorts-color="homeShortsColor ?? match.host_shorts_color"
+            :socks-color="homeSocksColor ?? match.host_socks_color"
+          />
         </view>
       </view>
       <!-- 比分只在专属比分卡展示（含管理录入入口），对阵区固定 VS，避免重复。 -->
@@ -178,7 +186,11 @@ const matchStatusTag = computed(() => {
         <view v-else class="hero-logo hero-logo--fallback">{{ awayInitial }}</view>
         <view class="hero-team-info">
           <text class="hero-name">{{ displayOpponentLabel }}</text>
-          <TeamKitColor :color="awayTeamColor" />
+          <TeamKitColor
+            :color="awayTeamColor"
+            :shorts-color="awayShortsColor ?? match.away_shorts_color"
+            :socks-color="awaySocksColor ?? match.away_socks_color"
+          />
         </view>
       </view>
     </view>

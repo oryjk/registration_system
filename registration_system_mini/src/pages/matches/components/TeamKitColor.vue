@@ -1,7 +1,36 @@
 <script setup lang="ts">
 import { computed } from "vue";
+// #ifdef MP-WEIXIN
+import KitPieceIcons from "./KitPieceIcons.vue";
+import { formatKitSummary } from "@/utils/kitColors";
+// #endif
 
-const props = defineProps<{ color: string }>();
+const props = withDefaults(
+  defineProps<{
+    color: string;
+    shortsColor?: string | null;
+    socksColor?: string | null;
+  }>(),
+  {
+    shortsColor: "",
+    socksColor: "",
+  },
+);
+
+// #ifdef MP-WEIXIN
+const mpSummary = computed(() =>
+  formatKitSummary({
+    shirt: props.color,
+    shorts: props.shortsColor,
+    socks: props.socksColor,
+  }),
+);
+const hasAnyMpColor = computed(
+  () => !!(props.color?.trim() || props.shortsColor?.trim() || props.socksColor?.trim()),
+);
+// #endif
+
+// #ifndef MP-WEIXIN
 const palette: Record<string, string> = {
   "#ffffff": "白色", "#ff0000": "红色", "#000000": "黑色",
   "#0000ff": "蓝色", "#00ff00": "绿色", "#ffff00": "黄色",
@@ -28,16 +57,35 @@ const label = computed(() => {
   if (swatch.value) return palette[swatch.value] ? palette[swatch.value] + "队服" : "队服颜色";
   return props.color.trim() + "队服";
 });
+// #endif
 </script>
 
 <template>
+  <!-- #ifdef MP-WEIXIN -->
+  <view class="team-kit team-kit--mp">
+    <KitPieceIcons
+      v-if="hasAnyMpColor"
+      :shirt-color="color"
+      :shorts-color="shortsColor"
+      :socks-color="socksColor"
+      size="sm"
+    />
+    <text class="team-kit-label">{{ mpSummary }}</text>
+  </view>
+  <!-- #endif -->
+  <!-- #ifndef MP-WEIXIN -->
   <view class="team-kit">
     <view v-if="swatch" class="team-kit-swatch" :style="{ backgroundColor: swatch }" />
     <text>{{ label }}</text>
   </view>
+  <!-- #endif -->
 </template>
 
 <style scoped>
 .team-kit { display: flex; align-items: center; justify-content: center; gap: 8rpx; color: var(--ui-color-text-muted); font-size: 20rpx; line-height: 1.4; }
 .team-kit-swatch { width: 18rpx; height: 18rpx; flex-shrink: 0; border-radius: 5rpx; box-shadow: inset 0 0 0 1rpx rgba(0, 0, 0, 0.14); }
+/* #ifdef MP-WEIXIN */
+.team-kit--mp { flex-direction: column; gap: 6rpx; margin-top: 4rpx; color: var(--ui-color-text-secondary); }
+.team-kit-label { font-size: 22rpx; line-height: 1.35; text-align: center; }
+/* #endif */
 </style>

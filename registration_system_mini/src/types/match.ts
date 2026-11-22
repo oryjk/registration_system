@@ -102,6 +102,12 @@ export interface AppMatchSummary extends AppMatchPhaseSource {
   fee_type?: AppMatchFeeType;
   host_color?: string | null;
   away_color?: string | null;
+  host_shorts_color?: string | null;
+  host_socks_color?: string | null;
+  away_shorts_color?: string | null;
+  away_socks_color?: string | null;
+  share_bg_image_url?: string | null;
+  share_bg_unlocked?: boolean;
   registration_groups?: AppMatchRegistrationGroupSummary[];
   /** 主队队长资料（详情接口填充；无主队或未设队长为 null）。 */
   host_captain?: AppMatchCaptain | null;

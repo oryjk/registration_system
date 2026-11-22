@@ -42,6 +42,9 @@ export interface MyTeam {
   joined_at: string;
   /** 活跃成员数；/teams/my 列表接口直接返回，避免未加载详情的球队显示 0 人。 */
   member_count?: number;
+  vip_until?: string | null;
+  is_vip?: boolean;
+  vip_credits?: number;
 }
 
 export interface AppTeamDetail {
@@ -52,6 +55,9 @@ export interface AppTeamDetail {
   captain_id: number | null;
   status: string;
   my_role: MyTeamRole;
+  vip_until?: string | null;
+  is_vip?: boolean;
+  vip_credits?: number;
 }
 
 export interface AppTeamMember {

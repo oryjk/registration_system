@@ -17,6 +17,7 @@ export interface TeamProfileViewModel {
   trustLabel: string;
   vipUntil: string;
   isVip: boolean;
+  vipCredits: number;
 }
 
 export type CurrentIdentityKind = "team" | "venue";

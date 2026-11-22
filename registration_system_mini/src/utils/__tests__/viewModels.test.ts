@@ -70,6 +70,7 @@ describe("buildTeamProfiles", () => {
         trustLabel: "评价稳定",
         vipUntil: "05/01 08:00",
         isVip: true,
+        vipCredits: 0,
       },
     ]);
   });

@@ -5,7 +5,9 @@ import type {
   BackendTeamMember,
   BackendTeamMemberAttendance,
   BackendTeamPasswordInfo,
+  BackendTeamShareBackgroundList,
   BackendTeamSummary,
+  BackendTeamVipStatus,
   BackendApiResponse,
   BackendTeamMatchAttendance,
 } from "@/types/backend";
@@ -68,6 +70,8 @@ function toBackendTeam(team: MyTeam | AppTeamDetail | BackendTeam): BackendTeam 
     status: teamStatusNumber(item.status ?? 1),
     credit_score: item.credit_score ?? 0,
     vip_until: item.vip_until ?? null,
+    vip_credits: item.vip_credits ?? 0,
+    default_share_bg_url: item.default_share_bg_url ?? null,
     trust_label: item.trust_label ?? "暂无评价",
     is_vip: item.is_vip ?? false,
     member_count: item.member_count,
@@ -408,6 +412,7 @@ export interface AppTeamDetailData {
   my_role: string;
   credit_score: number;
   vip_until?: string | null;
+  vip_credits?: number;
   is_vip: boolean;
   my_balance_cents?: number;
   created_at?: string | null;
@@ -416,6 +421,22 @@ export interface AppTeamDetailData {
 export function getAppTeamDetail(teamId: number) {
   return requestApi<AppTeamDetailData>({
     url: `/teams/${teamId}`,
+    auth: true,
+  });
+}
+
+/** 查询球队会员状态、单次权益余额与套餐目录（球队成员可读）。 */
+export function getTeamVipStatus(teamId: number) {
+  return requestApi<BackendTeamVipStatus>({
+    url: `/teams/${teamId}/vip`,
+    auth: true,
+  });
+}
+
+/** 查询球队已上传的自定义分享背景资源库列表（球队成员可读）。 */
+export function listTeamShareBackgrounds(teamId: number) {
+  return requestApi<BackendTeamShareBackgroundList>({
+    url: `/teams/${teamId}/share-backgrounds`,
     auth: true,
   });
 }

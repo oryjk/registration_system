@@ -46,7 +46,45 @@ export interface BackendWxMiniPaymentParams {
   pay_sign: string;
 }
 
-export type BackendPaymentOrderKind = "recharge" | "team_membership" | "match_registration" | "tip";
+export type BackendPaymentOrderKind = "recharge" | "team_membership" | "match_registration" | "tip" | "team_vip";
+
+export type TeamVipPlanCode = "once" | "monthly" | "yearly";
+
+export interface BackendTeamVipPlanSpec {
+  code: TeamVipPlanCode;
+  name: string;
+  price_cents: number;
+  duration_days: number;
+  credits: number;
+  badge?: string;
+  description: string;
+}
+
+export interface BackendTeamVipStatus {
+  team_id: number;
+  is_vip: boolean;
+  vip_until?: string | null;
+  vip_credits: number;
+  free_tier_note?: string;
+  plans?: BackendTeamVipPlanSpec[];
+  benefits?: string[];
+}
+
+export interface BackendTeamShareBackgroundItem {
+  id: number;
+  image_url: string;
+  created_at: string;
+}
+
+export interface BackendTeamShareBackgroundList {
+  items: BackendTeamShareBackgroundItem[];
+  default_image_url: string;
+}
+
+export interface BackendMatchShareBgResult {
+  share_bg_image_url: string;
+  share_bg_unlocked: boolean;
+}
 
 export interface BackendPaymentOrder {
   order_no: string;
@@ -58,6 +96,7 @@ export interface BackendPaymentOrder {
   team_id?: number | null;
   match_id?: string | null;
   months?: number | null;
+  vip_plan?: TeamVipPlanCode | null;
   status: string;
   prepay_id?: string;
   transaction_id?: string;
@@ -191,6 +230,8 @@ export interface BackendTeam {
   status: number;
   credit_score: number;
   vip_until?: string | null;
+  vip_credits?: number;
+  default_share_bg_url?: string | null;
   trust_label: string;
   is_vip: boolean;
   member_count?: number;
@@ -342,6 +383,12 @@ export interface BackendActivity {
   away_team_id?: number | null;
   color?: string | null;
   opposing_color?: string | null;
+  host_shorts_color?: string | null;
+  host_socks_color?: string | null;
+  away_shorts_color?: string | null;
+  away_socks_color?: string | null;
+  share_bg_image_url?: string | null;
+  share_bg_unlocked?: boolean;
   players_per_team?: number | null;
   team_capacity_limit?: number | null;
   match_kind?: "external" | "internal" | null;

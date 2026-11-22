@@ -53,6 +53,7 @@ export function buildTeamProfiles(
       trustLabel: team.trust_label,
       vipUntil: formatDateTimeLabel(team.vip_until),
       isVip: team.is_vip,
+      vipCredits: team.vip_credits ?? 0,
     };
   });
 }

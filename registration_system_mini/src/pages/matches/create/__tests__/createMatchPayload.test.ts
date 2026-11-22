@@ -107,10 +107,40 @@ describe("buildCreateMatchPayload", () => {
     expect(message).toEqual("线下已约比赛必须填写对手名称");
   });
 
-  test("把表单球服颜色映射为 host_color/away_color", () => {
-    const payload = buildCreateMatchPayload(withForm({ color: "#2F6BFF", opposingColor: "#C8FF00" }), hostTeam);
+  test("把表单球服颜色映射为 host_color/away_color 及可选裤袜颜色", () => {
+    const payload = buildCreateMatchPayload(
+      withForm({
+        color: "#2F6BFF",
+        shortsColor: "#111310",
+        socksColor: "#FFFFFF",
+        opposingColor: "#C8FF00",
+        opposingShortsColor: "#EF4444",
+        opposingSocksColor: "",
+      }),
+      hostTeam,
+    );
     expect(payload.host_color).toEqual("#2F6BFF");
+    expect(payload.host_shorts_color).toEqual("#111310");
+    expect(payload.host_socks_color).toEqual("#FFFFFF");
     expect(payload.away_color).toEqual("#C8FF00");
+    expect(payload.away_shorts_color).toEqual("#EF4444");
+    expect("away_socks_color" in payload).toEqual(false);
+  });
+
+  test("未设置裤袜颜色时创建 payload 不携带多余字段", () => {
+    const payload = buildCreateMatchPayload(
+      withForm({
+        shortsColor: "",
+        socksColor: "  ",
+        opposingShortsColor: "",
+        opposingSocksColor: undefined,
+      }),
+      hostTeam,
+    );
+    expect("host_shorts_color" in payload).toEqual(false);
+    expect("host_socks_color" in payload).toEqual(false);
+    expect("away_shorts_color" in payload).toEqual(false);
+    expect("away_socks_color" in payload).toEqual(false);
   });
 });
 

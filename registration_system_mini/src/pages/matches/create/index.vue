@@ -59,7 +59,13 @@ async function loadEditForm() {
     opposing: m.opponent_name || "", description: m.description || "",
     playersPerTeam: m.players_per_team,
     hostCapacityLimit: detail.groups.find(g => g.kind === "host_team")?.max_players ?? "",
-    color: m.host_color || "", opposingColor: m.away_color || "", publicationMode: m.publication_mode,
+    color: m.host_color || "",
+    shortsColor: m.host_shorts_color || "",
+    socksColor: m.host_socks_color || "",
+    opposingColor: m.away_color || "",
+    opposingShortsColor: m.away_shorts_color || "",
+    opposingSocksColor: m.away_socks_color || "",
+    publicationMode: m.publication_mode,
     feeType: m.fee_type || ((m.fee_per_person_cents ?? 0) > 0 ? "fixed_amount" : m.is_free ? "free" : "offline_aa"),
     feePerPerson: (m.fee_per_person_cents ?? 0) / 100,
   });
@@ -78,7 +84,11 @@ const form = reactive<MatchPublishFormModel>({
   playersPerTeam: "" as string | number,
   hostCapacityLimit: "" as string | number,
   color: "#FFFFFF",
+  shortsColor: "",
+  socksColor: "",
   opposingColor: "#2F6BFF",
+  opposingShortsColor: "",
+  opposingSocksColor: "",
   publicationMode: "offline_confirmed",
   activityMatchKind: "external",
   enableCheckIn: false,
@@ -142,7 +152,11 @@ function initDefaultForm() {
   form.playersPerTeam = 8;
   form.hostCapacityLimit = "";
   form.color = "#FFFFFF";
+  form.shortsColor = "";
+  form.socksColor = "";
   form.opposingColor = "#2F6BFF";
+  form.opposingShortsColor = "";
+  form.opposingSocksColor = "";
   form.publicationMode = "offline_confirmed";
   form.feeType = undefined;
   form.feePerPerson = "";
@@ -208,6 +222,12 @@ async function handleSubmit() {
       ...payload,
       description: form.description.trim(),
       opponent_name: form.opposing.trim(),
+      host_color: form.color.trim(),
+      host_shorts_color: (form.shortsColor ?? "").trim(),
+      host_socks_color: (form.socksColor ?? "").trim(),
+      away_color: form.opposingColor.trim(),
+      away_shorts_color: (form.opposingShortsColor ?? "").trim(),
+      away_socks_color: (form.opposingSocksColor ?? "").trim(),
       publication_mode: form.publicationMode === originalMode.value ? undefined : form.publicationMode,
       payment_mode: form.feeType === "fixed_amount" ? originalPaymentMode.value : "postpaid",
       max_players: payload.host_capacity_limit,

@@ -35,6 +35,7 @@ function team(overrides: Partial<TeamProfileViewModel>): TeamProfileViewModel {
     trustLabel: "信用良好",
     vipUntil: "",
     isVip: false,
+    vipCredits: 0,
     ...overrides,
   };
 }

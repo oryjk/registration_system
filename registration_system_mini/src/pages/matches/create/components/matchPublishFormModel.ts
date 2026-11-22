@@ -13,7 +13,11 @@ export interface MatchPublishFormModel {
   /** 主队报名人数上限；空表示未填，提交时回退为人制 + 2 的默认值。 */
   hostCapacityLimit: string | number;
   color: string;
+  shortsColor?: string;
+  socksColor?: string;
   opposingColor: string;
+  opposingShortsColor?: string;
+  opposingSocksColor?: string;
   publicationMode: AppMatchPublicationMode;
   activityMatchKind?: "external" | "internal";
   feeType?: import("@/types/match").AppMatchFeeType;

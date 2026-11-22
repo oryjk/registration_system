@@ -112,6 +112,12 @@ export function toBackendActivity(match: AppMatchSummary, group?: AppMatchGroupD
     away_team_id: match.away_team_id,
     color: match.host_color ?? "",
     opposing_color: match.away_color ?? "",
+    host_shorts_color: match.host_shorts_color ?? null,
+    host_socks_color: match.host_socks_color ?? null,
+    away_shorts_color: match.away_shorts_color ?? null,
+    away_socks_color: match.away_socks_color ?? null,
+    share_bg_image_url: match.share_bg_image_url ?? null,
+    share_bg_unlocked: match.share_bg_unlocked ?? false,
     players_per_team: match.players_per_team,
     // 场馆组局的球队边不设上限。
     team_capacity_limit: group?.max_players ?? (group?.side ? undefined : match.players_per_team),
