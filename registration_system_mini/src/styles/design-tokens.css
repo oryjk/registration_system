@@ -401,6 +401,25 @@ page,
   --ui-floating-action-inset: var(--ui-space-6);
   --ui-content-max-width: 702rpx;
 
+  /* 比赛排阵型：球场草坪、标线与球员点位 token */
+  --ui-lineup-grass: #237a4b;
+  --ui-lineup-grass-alt: #298653;
+  --ui-lineup-grass-deep: #1a5c38;
+  --ui-lineup-markings: rgba(255, 255, 255, 0.45);
+  --ui-lineup-pitch-ratio: 132%;
+  --ui-lineup-dot-size: 80rpx;
+  --ui-lineup-dot-box-width: 124rpx;
+  --ui-lineup-dot-box-height: 152rpx;
+  --ui-lineup-dot-border: #fffffe;
+  --ui-lineup-dot-bg: #fffffe;
+  --ui-lineup-dot-empty-bg: rgba(255, 255, 255, 0.22);
+  --ui-lineup-dot-selected-ring: var(--ui-color-accent);
+  --ui-lineup-dot-self-ring: #fde24f;
+  --ui-lineup-dot-name-bg: rgba(0, 33, 77, 0.68);
+  --ui-lineup-dot-name-fg: #fffffe;
+  --ui-lineup-sub-badge-bg: #fde24f;
+  --ui-lineup-sub-badge-fg: #00214d;
+
   /* #ifdef MP-WEIXIN */
   /* Shared native icon/navigation colors extend the approved homepage palette. */
   --ui-color-icon-muted: #65758b;

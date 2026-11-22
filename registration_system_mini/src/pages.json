@@ -260,6 +260,14 @@
             "disableScroll": false,
             "enablePullDownRefresh": true
           }
+        },
+        {
+          "path": "lineup/index",
+          "style": {
+            "navigationBarTitleText": "比赛排阵型",
+            "navigationStyle": "custom",
+            "disableScroll": false
+          }
         }
       ]
     },
