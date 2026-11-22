@@ -21,6 +21,10 @@ type FinishMatch struct {
 
 type FinishMatchCommand struct {
 	Status domain.MatchStatus
+	// HostScore/AwayScore 选填比分：仅在正常结束比赛（ended）时允许携带；
+	// 两者必须同时为空（队长跳过不填）或同时填写有效比分（0~999）。
+	HostScore *int
+	AwayScore *int
 }
 
 func NewFinishMatch(repository ports.Repository, teamAccess ports.TeamAccess, clock ports.Clock) FinishMatch {
@@ -33,6 +37,14 @@ func (u FinishMatch) Execute(ctx context.Context, actor sharedauth.Actor, matchI
 	}
 	if command.Status != domain.MatchEnded && command.Status != domain.MatchCancelled {
 		return domain.Match{}, sharederror.New(sharederror.KindValidation, "收尾状态只能是已结束或已取消")
+	}
+	hasHostScore := command.HostScore != nil
+	hasAwayScore := command.AwayScore != nil
+	if hasHostScore != hasAwayScore {
+		return domain.Match{}, sharederror.New(sharederror.KindValidation, "请同时填写双方比分，或留空不填")
+	}
+	if hasHostScore && command.Status != domain.MatchEnded {
+		return domain.Match{}, sharederror.New(sharederror.KindValidation, "只有正常结束比赛时才能录入比分")
 	}
 	match, _, found, err := u.repository.FindByID(ctx, matchID)
 	if err != nil {
@@ -48,8 +60,14 @@ func (u FinishMatch) Execute(ctx context.Context, actor sharedauth.Actor, matchI
 	if err := u.ensureTeamCaptainCanFinish(ctx, match, actor.ID); err != nil {
 		return domain.Match{}, err
 	}
-	if err := match.FinishByHost(command.Status, u.clock.Now()); err != nil {
+	now := u.clock.Now()
+	if err := match.FinishByHost(command.Status, now); err != nil {
 		return domain.Match{}, err
+	}
+	if hasHostScore {
+		if err := match.RecordScore(*command.HostScore, *command.AwayScore, now); err != nil {
+			return domain.Match{}, err
+		}
 	}
 	updated, err := u.repository.FinishUpdateStatus(ctx, match)
 	if err != nil {

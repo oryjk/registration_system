@@ -176,7 +176,23 @@ func (r *Repository) UpdateScore(ctx context.Context, match domain.Match) error 
 }
 
 // FinishUpdateStatus 条件更新：库内状态仍是非终态才写入，防止并发收尾互相覆盖。
+// 当队长结束比赛时顺带录入了比分，在同一条条件更新里原子写入状态与比分。
 func (r *Repository) FinishUpdateStatus(ctx context.Context, match domain.Match) (bool, error) {
+	if match.Status == domain.MatchEnded && match.HostScore != nil && match.AwayScore != nil {
+		result, err := r.database.Exec(ctx, `
+UPDATE matches
+SET status = $2,
+    host_score = $3,
+    away_score = $4,
+    updated_at = NOW()
+WHERE id = $1
+  AND status IN ('registering', 'ongoing')
+`, pgUUID(match.ID), string(match.Status), int32(*match.HostScore), int32(*match.AwayScore))
+		if err != nil {
+			return false, err
+		}
+		return result.RowsAffected() > 0, nil
+	}
 	rows, err := r.queries.FinishMatchStatus(ctx, matchsqlc.FinishMatchStatusParams{ID: pgUUID(match.ID), Status: string(match.Status)})
 	if err != nil {
 		return false, err

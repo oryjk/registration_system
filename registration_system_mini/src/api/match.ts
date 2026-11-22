@@ -91,12 +91,19 @@ export function getMatchDetail(matchId: string) {
   return requestApi<AppMatchDetailResponse>({ url: `/matches/${matchId}`, auth: true });
 }
 
-/** 主队管理方在比赛过结束时间后收尾：标记已结束或已取消。 */
-export function updateMatchStatus(matchId: string, status: Extract<AppMatchStatus, "ended" | "cancelled">) {
+/** 主队管理方在比赛过结束时间后收尾：标记已结束（可选顺带录入比分）或已取消。 */
+export function updateMatchStatus(
+  matchId: string,
+  status: Extract<AppMatchStatus, "ended" | "cancelled">,
+  score?: { host_score: number; away_score: number },
+) {
   return requestApi<AppMatchDetailResponse>({
     url: `/matches/${matchId}/status`,
     method: "PATCH",
-    data: { status },
+    data:
+      status === "ended" && score
+        ? { status, host_score: score.host_score, away_score: score.away_score }
+        : { status },
     auth: true,
   });
 }

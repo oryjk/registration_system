@@ -508,6 +508,40 @@ func TestUserMatchChangeStatusRejectsInvalidStatus(t *testing.T) {
 	}
 }
 
+func TestUserMatchChangeStatusForwardsOptionalScore(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	matchID := uuid.New()
+	hostScore, awayScore := 2, 0
+	service := &fakeUserMatches{detail: application.UserMatchDetail{
+		Item: ports.MatchItem{
+			Match: domain.Match{
+				ID: matchID, Name: "周六夜场", Status: domain.MatchEnded,
+				HostTeamID: int64Pointer(7), HostScore: &hostScore, AwayScore: &awayScore,
+			},
+			HostTeamName: "东安联队",
+		},
+	}}
+	finisher := &fakeUserFinishMatch{result: domain.Match{ID: matchID, Status: domain.MatchEnded, HostScore: &hostScore, AwayScore: &awayScore}}
+	handler := NewUserHandler(service, nil, finisher, nil, nil)
+	router := gin.New()
+	group := router.Group("")
+	group.Use(authhttp.NewMiddleware(fakeUserTokens{}).RequireUser())
+	handler.RegisterRoutes(group)
+
+	request := httptest.NewRequest(http.MethodPatch, "/matches/"+matchID.String()+"/status", bytes.NewBufferString(`{"status":"ended","host_score":2,"away_score":0}`))
+	request.Header.Set("Authorization", "Bearer user-token")
+	request.Header.Set("Content-Type", "application/json")
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+
+	if response.Code != http.StatusOK {
+		t.Fatalf("unexpected response %d: %s", response.Code, response.Body.String())
+	}
+	if finisher.command.Status != domain.MatchEnded || finisher.command.HostScore == nil || *finisher.command.HostScore != 2 || finisher.command.AwayScore == nil || *finisher.command.AwayScore != 0 {
+		t.Fatalf("expected optional score forwarded, got %+v", finisher.command)
+	}
+}
+
 type fakeUserFinishMatch struct {
 	result  domain.Match
 	err     error

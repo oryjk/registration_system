@@ -1460,6 +1460,30 @@ func TestRepositoryFinishUpdateStatusOnlyWritesNonTerminalMatches(t *testing.T) 
 	}
 }
 
+func TestRepositoryFinishUpdateStatusPersistsOptionalScore(t *testing.T) {
+	pool := testsupport.StartPostgres(t)
+	ctx := context.Background()
+	ownerID, hostTeamID := seedMatchOwner(t, pool)
+	match, groups := newPersistableMatch(t, ownerID, hostTeamID)
+	repository := NewRepository(pool)
+	if err := repository.CreateWithGroups(ctx, match, groups); err != nil {
+		t.Fatalf("create match: %v", err)
+	}
+
+	hostScore, awayScore := 4, 2
+	match.Status = domain.MatchEnded
+	match.HostScore = &hostScore
+	match.AwayScore = &awayScore
+	updated, err := repository.FinishUpdateStatus(ctx, match)
+	if err != nil || !updated {
+		t.Fatalf("expected conditional update with score to land, updated=%v err=%v", updated, err)
+	}
+	loaded, _, found, err := repository.FindByID(ctx, match.ID)
+	if err != nil || !found || loaded.Status != domain.MatchEnded || loaded.HostScore == nil || *loaded.HostScore != 4 || loaded.AwayScore == nil || *loaded.AwayScore != 2 {
+		t.Fatalf("expected ended status and 4:2 score persisted, got status=%s score=%v:%v (found=%v err=%v)", loaded.Status, loaded.HostScore, loaded.AwayScore, found, err)
+	}
+}
+
 func TestMapRegistrationCarriesPaidFlag(t *testing.T) {
 	row := matchsqlc.MatchRegistration{RegistrationCount: 3, Paid: true}
 	registration := mapRegistration(row)

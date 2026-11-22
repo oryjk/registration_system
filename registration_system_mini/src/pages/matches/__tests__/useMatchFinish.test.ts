@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { AppMatchSummary } from "@/types/match";
 import type { TeamProfileViewModel } from "@/types/viewModels";
-import { resolveMatchCancelState, resolveMatchFinishState } from "../useMatchFinish";
+import { parseOptionalFinishScore, resolveMatchCancelState, resolveMatchFinishState } from "../useMatchFinish";
 
 function buildSourceMatch(overrides: Partial<AppMatchSummary> = {}): AppMatchSummary {
   return {
@@ -222,5 +222,33 @@ describe("resolveMatchCancelState", () => {
       currentTeam: buildTeam({ id: 99 }),
       now: BEFORE_END,
     })).toEqual({ canCancel: false });
+  });
+});
+
+describe("parseOptionalFinishScore", () => {
+  test("allows leaving both score fields blank so the captain can skip scoring", () => {
+    expect(parseOptionalFinishScore("", "")).toEqual({ valid: true, error: "" });
+    expect(parseOptionalFinishScore("  ", " ")).toEqual({ valid: true, error: "" });
+  });
+
+  test("accepts valid 0..999 scores on both sides including 0:0", () => {
+    expect(parseOptionalFinishScore("0", "0")).toEqual({
+      valid: true,
+      score: { host_score: 0, away_score: 0 },
+      error: "",
+    });
+    expect(parseOptionalFinishScore(" 3 ", "2")).toEqual({
+      valid: true,
+      score: { host_score: 3, away_score: 2 },
+      error: "",
+    });
+  });
+
+  test("rejects filling only one side or invalid score input", () => {
+    expect(parseOptionalFinishScore("2", "").valid).toEqual(false);
+    expect(parseOptionalFinishScore("", "1").valid).toEqual(false);
+    expect(parseOptionalFinishScore("-1", "2").valid).toEqual(false);
+    expect(parseOptionalFinishScore("1000", "2").valid).toEqual(false);
+    expect(parseOptionalFinishScore("2.5", "1").valid).toEqual(false);
   });
 });

@@ -268,3 +268,54 @@ func TestFinishMatchRejectsConcurrentOverwrite(t *testing.T) {
 		t.Fatal("expected no repository write on conflict")
 	}
 }
+
+func TestFinishMatchEndsWithOptionalScore(t *testing.T) {
+	repository := &fakeFinishMatchRepository{match: endedMatch(domain.MatchOngoing), found: true}
+	useCase := NewFinishMatch(repository, &fakeTeamAccess{}, fixedClock())
+	hostScore, awayScore := 0, 3
+
+	match, err := useCase.Execute(context.Background(), userActor(42), repository.match.ID, FinishMatchCommand{
+		Status:    domain.MatchEnded,
+		HostScore: &hostScore,
+		AwayScore: &awayScore,
+	})
+	if err != nil {
+		t.Fatalf("finish match with score: %v", err)
+	}
+	if match.HostScore == nil || *match.HostScore != 0 || match.AwayScore == nil || *match.AwayScore != 3 {
+		t.Fatalf("score = %v:%v, want 0:3", match.HostScore, match.AwayScore)
+	}
+	if repository.updated.HostScore == nil || *repository.updated.HostScore != 0 || repository.updated.AwayScore == nil || *repository.updated.AwayScore != 3 {
+		t.Fatalf("repository updated score = %v:%v, want 0:3", repository.updated.HostScore, repository.updated.AwayScore)
+	}
+}
+
+func TestFinishMatchRejectsPartialInvalidOrCancelledScore(t *testing.T) {
+	one := 1
+	negative := -1
+	tooLarge := 1000
+	cases := []struct {
+		name    string
+		command FinishMatchCommand
+	}{
+		{name: "only host score", command: FinishMatchCommand{Status: domain.MatchEnded, HostScore: &one}},
+		{name: "only away score", command: FinishMatchCommand{Status: domain.MatchEnded, AwayScore: &one}},
+		{name: "cancelled with score", command: FinishMatchCommand{Status: domain.MatchCancelled, HostScore: &one, AwayScore: &one}},
+		{name: "negative score", command: FinishMatchCommand{Status: domain.MatchEnded, HostScore: &negative, AwayScore: &one}},
+		{name: "above max score", command: FinishMatchCommand{Status: domain.MatchEnded, HostScore: &one, AwayScore: &tooLarge}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			repository := &fakeFinishMatchRepository{match: endedMatch(domain.MatchOngoing), found: true}
+			useCase := NewFinishMatch(repository, &fakeTeamAccess{}, fixedClock())
+			_, err := useCase.Execute(context.Background(), userActor(42), repository.match.ID, tc.command)
+			var businessError *sharederror.Error
+			if !errors.As(err, &businessError) || businessError.Kind != sharederror.KindValidation {
+				t.Fatalf("expected validation error, got %v", err)
+			}
+			if repository.updated.Status != "" {
+				t.Fatalf("expected no repository write, got %+v", repository.updated)
+			}
+		})
+	}
+}

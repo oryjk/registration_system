@@ -13,6 +13,9 @@ import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
 import MatchSignupCountSheet from "./components/MatchSignupCountSheet.vue";
 import RunningLoader from "@/components/ui/RunningLoader.vue";
 import MatchFinishCard from "./components/MatchFinishCard.vue";
+// #ifdef MP-WEIXIN
+import MatchFinishDialog from "./components/MatchFinishDialog.vue";
+// #endif
 import MatchCaptainContact from "./components/MatchCaptainContact.vue";
 import MatchScoreCard from "./components/MatchScoreCard.vue";
 import MatchScoreDialog from "./components/MatchScoreDialog.vue";
@@ -98,6 +101,8 @@ const {
   canFinishMatch,
   canCancelMatch,
   finishDialogVisible,
+  finishHostScore,
+  finishAwayScore,
   handleOpenFinishDialog,
   handleCloseFinishDialog,
   handleFinishMatch,
@@ -418,8 +423,25 @@ const metaPageStyle = computed(() =>
       @close="handleConfirmClose"
     />
 
-    <!-- 结束比赛：主按钮=正常结束，次按钮=取消比赛，遮罩/× 只是关闭不改动状态。
+    <!-- 结束比赛：主按钮=正常结束（微信端支持选填比分），次按钮=取消比赛，遮罩/× 只是关闭不改动状态。
          赛前支付的比赛不支持取消（后端同样拦截），只保留正常结束。 -->
+    <!-- #ifdef MP-WEIXIN -->
+    <MatchFinishDialog
+      :visible="finishDialogVisible"
+      :host-team-label="sourceMatch?.host_team_name || '主队'"
+      :away-team-label="sourceMatch?.away_team_name || sourceMatch?.opponent_name || '客队'"
+      :host-score="finishHostScore"
+      :away-score="finishAwayScore"
+      :can-cancel="sourceMatch?.payment_mode !== 'prepaid'"
+      :submitting="submittingStatus"
+      @update:host-score="finishHostScore = $event"
+      @update:away-score="finishAwayScore = $event"
+      @finish="handleFinishMatch('ended')"
+      @cancel-match="handleFinishMatch('cancelled')"
+      @close="handleCloseFinishDialog"
+    />
+    <!-- #endif -->
+    <!-- #ifndef MP-WEIXIN -->
     <ConfirmDialog
       :visible="finishDialogVisible"
       title="结束比赛"
@@ -431,6 +453,7 @@ const metaPageStyle = computed(() =>
       @secondary="handleFinishMatch('cancelled')"
       @close="handleCloseFinishDialog"
     />
+    <!-- #endif -->
 
     <!-- 赛前取消比赛：创建者二次确认（danger），确认后提交 cancelled。 -->
     <ConfirmDialog

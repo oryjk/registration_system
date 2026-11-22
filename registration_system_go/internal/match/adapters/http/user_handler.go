@@ -360,6 +360,13 @@ func (h *UserHandler) UpdateDetails(c *gin.Context) {
 	sharedhttpapi.WriteSuccess(c, mapUserDetail(detail))
 }
 
+// UserFinishMatchRequest 用户端收尾比赛请求；HostScore/AwayScore 选填，仅正常结束时生效。
+type UserFinishMatchRequest struct {
+	Status    domain.MatchStatus `json:"status" binding:"required"`
+	HostScore *int               `json:"host_score"`
+	AwayScore *int               `json:"away_score"`
+}
+
 func (h *UserHandler) ChangeStatus(c *gin.Context) {
 	actor, ok := userActor(c)
 	if !ok {
@@ -370,12 +377,16 @@ func (h *UserHandler) ChangeStatus(c *gin.Context) {
 		sharedhttpapi.WriteError(c, sharederror.New(sharederror.KindValidation, "比赛 ID 无效"))
 		return
 	}
-	var request UpdateMatchStatusRequest
+	var request UserFinishMatchRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
 		sharedhttpapi.WriteError(c, sharederror.New(sharederror.KindValidation, "比赛状态不完整"))
 		return
 	}
-	if _, err := h.finish.Execute(c.Request.Context(), actor, id, application.FinishMatchCommand{Status: request.Status}); err != nil {
+	if _, err := h.finish.Execute(c.Request.Context(), actor, id, application.FinishMatchCommand{
+		Status:    request.Status,
+		HostScore: request.HostScore,
+		AwayScore: request.AwayScore,
+	}); err != nil {
 		sharedhttpapi.WriteError(c, err)
 		return
 	}

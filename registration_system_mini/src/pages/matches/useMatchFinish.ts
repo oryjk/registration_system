@@ -85,6 +85,32 @@ export function resolveMatchCancelState({
   return { canCancel: true };
 }
 
+export interface OptionalFinishScoreResult {
+  valid: boolean;
+  score?: { host_score: number; away_score: number };
+  error: string;
+}
+
+/** 结束比赛时的选填比分校验：两边都留空视为不填（放行），仅填一边或非 0~999 整数时拒绝。 */
+export function parseOptionalFinishScore(hostRaw: string, awayRaw: string): OptionalFinishScoreResult {
+  const host = hostRaw.trim();
+  const away = awayRaw.trim();
+  if (!host && !away) {
+    return { valid: true, error: "" };
+  }
+  if (!host || !away) {
+    return { valid: false, error: "请同时填写双方比分，或留空直接结束" };
+  }
+  if (!/^\d{1,3}$/.test(host) || !/^\d{1,3}$/.test(away)) {
+    return { valid: false, error: "比分需为 0 到 999 的整数" };
+  }
+  return {
+    valid: true,
+    score: { host_score: Number(host), away_score: Number(away) },
+    error: "",
+  };
+}
+
 interface MatchFinishDependencies {
   sourceMatch: Ref<AppMatchSummary | null>;
   currentTeam: ComputedRef<TeamProfileViewModel | null>;
@@ -99,6 +125,8 @@ export function useMatchFinish(dependencies: MatchFinishDependencies) {
   const { sourceMatch, currentTeam, currentUserId, isGuestMode, submittingStatus, nowTick, reload } = dependencies;
 
   const finishDialogVisible = ref(false);
+  const finishHostScore = ref("");
+  const finishAwayScore = ref("");
   const {
     confirmDialogVisible: cancelDialogVisible,
     confirmDialogState: cancelDialogState,
@@ -130,6 +158,14 @@ export function useMatchFinish(dependencies: MatchFinishDependencies) {
 
   function handleOpenFinishDialog() {
     if (!canFinishMatch.value || submittingStatus.value) return;
+    const match = sourceMatch.value;
+    if (match && match.host_score !== null && match.host_score !== undefined && match.away_score !== null && match.away_score !== undefined) {
+      finishHostScore.value = String(match.host_score);
+      finishAwayScore.value = String(match.away_score);
+    } else {
+      finishHostScore.value = "";
+      finishAwayScore.value = "";
+    }
     finishDialogVisible.value = true;
   }
 
@@ -142,9 +178,19 @@ export function useMatchFinish(dependencies: MatchFinishDependencies) {
     const match = sourceMatch.value;
     if (!match || !canFinishMatch.value || submittingStatus.value) return;
 
+    let optionalScore: { host_score: number; away_score: number } | undefined;
+    if (status === "ended") {
+      const parsed = parseOptionalFinishScore(finishHostScore.value, finishAwayScore.value);
+      if (!parsed.valid) {
+        uni.showToast({ title: parsed.error, icon: "none" });
+        return;
+      }
+      optionalScore = parsed.score;
+    }
+
     submittingStatus.value = true;
     try {
-      const detail = await updateMatchStatus(match.id, status);
+      const detail = await updateMatchStatus(match.id, status, optionalScore);
       // 状态已提交成功：先让本地收敛到接口返回的比赛，按钮立即消失。
       sourceMatch.value = detail.match;
       finishDialogVisible.value = false;
@@ -197,6 +243,8 @@ export function useMatchFinish(dependencies: MatchFinishDependencies) {
     canFinishMatch,
     canCancelMatch,
     finishDialogVisible,
+    finishHostScore,
+    finishAwayScore,
     handleOpenFinishDialog,
     handleCloseFinishDialog,
     handleFinishMatch,
