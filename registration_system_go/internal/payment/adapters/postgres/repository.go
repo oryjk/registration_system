@@ -91,6 +91,7 @@ func (r *Repository) Create(ctx context.Context, order paymentdomain.Order) erro
 		Provider: order.Provider, Channel: order.Channel, Status: string(order.Status),
 		Kind: string(order.Kind), TeamID: order.TeamID, Months: monthsToSQL(order.Months),
 		MatchID:   matchIDToSQL(order.MatchID),
+		VipPlan:   order.VipPlan,
 		CreatedAt: timestamptz(order.CreatedAt),
 	})
 	return mapConstraintError(err)
@@ -296,6 +297,7 @@ func mapOrder(row paymentsqlc.PaymentOrder) paymentdomain.Order {
 		Kind:   paymentdomain.Kind(row.Kind),
 		TeamID: row.TeamID, Months: monthsFromSQL(row.Months),
 		MatchID:   matchIDFromSQL(row.MatchID),
+		VipPlan:   row.VipPlan,
 		CreatedAt: row.CreatedAt.Time, UpdatedAt: row.UpdatedAt.Time,
 	}
 	if row.PrepayID != nil {

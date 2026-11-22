@@ -36,6 +36,12 @@ type PaymentService interface {
 	HandleNotification(context.Context, []byte) (paymentports.SettlementResult, error)
 }
 
+// TeamVipOrderCreator 是球队会员下单的可选扩展接口（*paymentapplication.Service 默认实现），
+// 保持既有 PaymentService 测试桩向后兼容。
+type TeamVipOrderCreator interface {
+	CreateTeamVip(context.Context, sharedauth.Actor, paymentapplication.CreateTeamVipCommand) (paymentapplication.CreateRechargeResult, error)
+}
+
 type Handler struct{ service PaymentService }
 
 func NewHandler(service PaymentService) *Handler { return &Handler{service: service} }
@@ -47,6 +53,11 @@ type CreateRechargeRequest struct {
 type CreateTeamMembershipRequest struct {
 	TeamID      int64 `json:"team_id" binding:"required,min=1"`
 	AmountCents int64 `json:"amount_cents" binding:"required,min=1"`
+}
+
+type CreateTeamVipRequest struct {
+	TeamID int64  `json:"team_id" binding:"required,min=1"`
+	Plan   string `json:"plan" binding:"required"`
 }
 
 type CreateMatchRegistrationRequest struct {
@@ -73,6 +84,7 @@ type OrderResponse struct {
 	TeamID        *int64               `json:"team_id"`
 	MatchID       *string              `json:"match_id"`
 	Months        *int                 `json:"months"`
+	VipPlan       *string              `json:"vip_plan,omitempty"`
 	Status        paymentdomain.Status `json:"status"`
 	PrepayID      string               `json:"prepay_id,omitempty"`
 	TransactionID string               `json:"transaction_id,omitempty"`
@@ -128,6 +140,7 @@ type wechatCallbackResponse struct {
 func (h *Handler) RegisterAppRoutes(group *gin.RouterGroup) {
 	group.POST("/payments/recharge-orders", h.CreateRecharge)
 	group.POST("/payments/team-membership-orders", h.CreateTeamMembership)
+	group.POST("/payments/team-vip-orders", h.CreateTeamVip)
 	group.POST("/payments/match-registration-orders", h.CreateMatchRegistration)
 	group.POST("/payments/tip-orders", h.CreateTip)
 	group.POST("/feedback", h.CreateFeedback)
@@ -177,6 +190,31 @@ func (h *Handler) CreateTeamMembership(c *gin.Context) {
 	}
 	result, err := h.service.CreateTeamMembership(c.Request.Context(), actor, paymentapplication.CreateTeamMembershipCommand{
 		TeamID: request.TeamID, AmountCents: request.AmountCents, ClientIP: c.ClientIP(),
+	})
+	if err != nil {
+		writePaymentError(c, err)
+		return
+	}
+	sharedhttpapi.WriteSuccess(c, CreateRechargeResponse{Order: mapOrder(result.Order), Payment: result.Payment})
+}
+
+func (h *Handler) CreateTeamVip(c *gin.Context) {
+	actor, ok := paymentActor(c)
+	if !ok {
+		return
+	}
+	creator, ok := h.service.(TeamVipOrderCreator)
+	if !ok {
+		sharedhttpapi.WriteError(c, sharederror.New(sharederror.KindInternal, "球队会员支付服务未配置"))
+		return
+	}
+	var request CreateTeamVipRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		sharedhttpapi.WriteError(c, sharederror.New(sharederror.KindValidation, "球队会员下单参数无效"))
+		return
+	}
+	result, err := creator.CreateTeamVip(c.Request.Context(), actor, paymentapplication.CreateTeamVipCommand{
+		TeamID: request.TeamID, Plan: request.Plan, ClientIP: c.ClientIP(),
 	})
 	if err != nil {
 		writePaymentError(c, err)
@@ -373,7 +411,7 @@ func mapOrder(order paymentdomain.Order) OrderResponse {
 	return OrderResponse{
 		OrderNo: order.OrderNo, UserID: order.UserID, AmountCents: order.AmountCents,
 		Provider: order.Provider, Channel: order.Channel,
-		Kind: order.Kind, TeamID: order.TeamID, MatchID: matchID, Months: order.Months, Status: order.Status,
+		Kind: order.Kind, TeamID: order.TeamID, MatchID: matchID, Months: order.Months, VipPlan: order.VipPlan, Status: order.Status,
 		PrepayID: order.PrepayID, TransactionID: order.TransactionID,
 		PaidAt: order.PaidAt, CancelledAt: order.CancelledAt,
 		CreatedAt: order.CreatedAt, UpdatedAt: order.UpdatedAt,

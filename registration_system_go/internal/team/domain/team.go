@@ -127,6 +127,8 @@ type TeamMembership struct {
 	Member Member
 	// MemberCount 该队活跃成员数（列表查询时的聚合快照，供列表接口直接返回）。
 	MemberCount int
+	VipUntil    *time.Time
+	VipCredits  int
 }
 
 func NewTeam(name string, description *string) (Team, error) {

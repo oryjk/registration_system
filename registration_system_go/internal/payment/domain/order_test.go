@@ -81,3 +81,23 @@ func TestNewTeamMembershipOrderValidatesArbitraryAmount(t *testing.T) {
 		}
 	}
 }
+
+func TestNewTeamVipOrderValidatesFields(t *testing.T) {
+	now := time.Date(2026, 11, 23, 12, 0, 0, 0, time.UTC)
+	order, err := NewTeamVipOrder("P-vip-1", 42, 7, "yearly", 9900, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if order.Kind != KindTeamVip || order.AmountCents != 9900 || order.TeamID == nil || *order.TeamID != 7 || order.VipPlan == nil || *order.VipPlan != "yearly" {
+		t.Fatalf("unexpected team vip order: %+v", order)
+	}
+	if _, err := NewTeamVipOrder("P-vip-2", 42, 0, "once", 900, now); !errors.Is(err, sharederror.ErrValidation) {
+		t.Fatalf("zero teamID err=%v", err)
+	}
+	if _, err := NewTeamVipOrder("P-vip-3", 42, 7, "   ", 900, now); !errors.Is(err, sharederror.ErrValidation) {
+		t.Fatalf("blank plan err=%v", err)
+	}
+	if _, err := NewTeamVipOrder("P-vip-4", 42, 7, "once", 0, now); !errors.Is(err, sharederror.ErrValidation) {
+		t.Fatalf("zero amount err=%v", err)
+	}
+}

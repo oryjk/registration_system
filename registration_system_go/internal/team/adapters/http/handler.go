@@ -30,13 +30,16 @@ type Handler struct {
 }
 
 type TeamMembershipResponse struct {
-	ID          int64   `json:"id"`
-	Name        string  `json:"name"`
-	Description *string `json:"description"`
-	LogoURL     *string `json:"logo_url"`
-	Role        string  `json:"role"`
-	JoinedAt    string  `json:"joined_at"`
-	MemberCount int     `json:"member_count"`
+	ID          int64      `json:"id"`
+	Name        string     `json:"name"`
+	Description *string    `json:"description"`
+	LogoURL     *string    `json:"logo_url"`
+	Role        string     `json:"role"`
+	JoinedAt    string     `json:"joined_at"`
+	MemberCount int        `json:"member_count"`
+	VipUntil    *time.Time `json:"vip_until"`
+	IsVip       bool       `json:"is_vip"`
+	VipCredits  int        `json:"vip_credits"`
 }
 
 func NewHandler(query TeamQuery, members TeamMembers) *Handler {
@@ -55,6 +58,7 @@ func (h *Handler) MyTeams(c *gin.Context) {
 		return
 	}
 	response := make([]TeamMembershipResponse, 0, len(items))
+	now := time.Now()
 	for _, item := range items {
 		response = append(response, TeamMembershipResponse{
 			ID:          item.Team.ID,
@@ -64,6 +68,9 @@ func (h *Handler) MyTeams(c *gin.Context) {
 			Role:        string(item.Member.Role),
 			JoinedAt:    item.Member.JoinedAt.UTC().Format(time.RFC3339),
 			MemberCount: item.MemberCount,
+			VipUntil:    item.VipUntil,
+			IsVip:       domain.IsVipActive(item.VipUntil, now),
+			VipCredits:  item.VipCredits,
 		})
 	}
 	sharedhttpapi.WriteSuccess(c, response)

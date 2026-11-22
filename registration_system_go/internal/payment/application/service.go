@@ -18,22 +18,31 @@ const (
 )
 
 type Service struct {
-	orders        paymentports.OrderRepository
-	users         paymentports.UserOpenIDReader
-	nicknames     paymentports.UserNicknameReader
-	gateway       paymentports.Gateway
-	settlement    paymentports.Settlement
-	memberships   paymentports.MembershipSettlement
-	teams         paymentports.TeamEligibility
-	matchFees     paymentports.MatchRegistrationFeeSource
-	registrations paymentports.RegistrationSettlement
-	tips          paymentports.TipRepository
-	orderNos      paymentports.OrderNumberGenerator
-	clock         paymentports.Clock
+	orders            paymentports.OrderRepository
+	users             paymentports.UserOpenIDReader
+	nicknames         paymentports.UserNicknameReader
+	gateway           paymentports.Gateway
+	settlement        paymentports.Settlement
+	memberships       paymentports.MembershipSettlement
+	teams             paymentports.TeamEligibility
+	matchFees         paymentports.MatchRegistrationFeeSource
+	registrations     paymentports.RegistrationSettlement
+	tips              paymentports.TipRepository
+	teamVipPlans      paymentports.TeamVipPlanResolver
+	teamVipSettlement paymentports.TeamVipSettlement
+	orderNos          paymentports.OrderNumberGenerator
+	clock             paymentports.Clock
 }
 
 func NewService(orders paymentports.OrderRepository, users paymentports.UserOpenIDReader, nicknames paymentports.UserNicknameReader, gateway paymentports.Gateway, settlement paymentports.Settlement, memberships paymentports.MembershipSettlement, teams paymentports.TeamEligibility, matchFees paymentports.MatchRegistrationFeeSource, registrations paymentports.RegistrationSettlement, tips paymentports.TipRepository, orderNos paymentports.OrderNumberGenerator, clock paymentports.Clock) *Service {
 	return &Service{orders: orders, users: users, nicknames: nicknames, gateway: gateway, settlement: settlement, memberships: memberships, teams: teams, matchFees: matchFees, registrations: registrations, tips: tips, orderNos: orderNos, clock: clock}
+}
+
+// WithTeamVip 装配球队会员套餐解析器与核销仓储，保持既有 NewService 签名向后兼容。
+func (s *Service) WithTeamVip(plans paymentports.TeamVipPlanResolver, settlement paymentports.TeamVipSettlement) *Service {
+	s.teamVipPlans = plans
+	s.teamVipSettlement = settlement
+	return s
 }
 
 const MaxFeedbackRunes = 500
@@ -148,6 +157,70 @@ type CreateTeamMembershipCommand struct {
 	TeamID      int64
 	AmountCents int64
 	ClientIP    string
+}
+
+type CreateTeamVipCommand struct {
+	TeamID   int64
+	Plan     string
+	ClientIP string
+}
+
+// CreateTeamVip 为球队创建会员开通/续费订单并发起微信 JSAPI 支付；
+// 校验当前用户为球队成员，并通过 TeamVipPlanResolver 从 team 领域解析套餐金额。
+func (s *Service) CreateTeamVip(ctx context.Context, actor sharedauth.Actor, command CreateTeamVipCommand) (CreateRechargeResult, error) {
+	if !actor.IsUser() {
+		return CreateRechargeResult{}, sharederror.ErrForbidden
+	}
+	if s.teamVipPlans == nil || s.teamVipSettlement == nil {
+		return CreateRechargeResult{}, sharederror.New(sharederror.KindInternal, "球队会员支付服务未配置")
+	}
+	if command.TeamID <= 0 {
+		return CreateRechargeResult{}, sharederror.New(sharederror.KindValidation, "球队无效")
+	}
+	if err := s.teams.EnsureActiveMember(ctx, command.TeamID, actor.ID); err != nil {
+		return CreateRechargeResult{}, err
+	}
+	plan, err := s.teamVipPlans.ResolveTeamVipPlan(command.Plan)
+	if err != nil {
+		return CreateRechargeResult{}, err
+	}
+	now := s.clock.Now()
+	order, err := paymentdomain.NewTeamVipOrder(s.orderNos.NewOrderNo(), actor.ID, command.TeamID, plan.Code, plan.AmountCents, now)
+	if err != nil {
+		return CreateRechargeResult{}, err
+	}
+	openid, err := s.users.OpenIDForUser(ctx, actor.ID)
+	if err != nil {
+		return CreateRechargeResult{}, err
+	}
+	if strings.TrimSpace(openid) == "" {
+		return CreateRechargeResult{}, sharederror.New(sharederror.KindConflict, "当前用户缺少微信身份信息")
+	}
+	if err := s.orders.Create(ctx, order); err != nil {
+		return CreateRechargeResult{}, err
+	}
+	description := "球队会员"
+	if strings.TrimSpace(plan.Name) != "" {
+		description = "球队会员-" + strings.TrimSpace(plan.Name)
+	}
+	providerResult, err := s.gateway.UnifiedOrder(ctx, paymentports.UnifiedOrderRequest{
+		OrderNo:     order.OrderNo,
+		AmountCents: order.AmountCents,
+		Description: description,
+		ClientIP:    strings.TrimSpace(command.ClientIP),
+		OpenID:      openid,
+	})
+	if err != nil {
+		if errors.Is(err, paymentports.ErrProviderRejected) {
+			_ = s.orders.MarkFailed(ctx, order.OrderNo, s.clock.Now())
+		}
+		return CreateRechargeResult{}, err
+	}
+	order, err = s.orders.SavePrepared(ctx, order.OrderNo, providerResult.PrepayID, s.clock.Now())
+	if err != nil {
+		return CreateRechargeResult{}, err
+	}
+	return CreateRechargeResult{Order: order, Payment: providerResult.Parameters}, nil
 }
 
 type CreateTipCommand struct {
@@ -411,6 +484,18 @@ func (s *Service) settleVerified(ctx context.Context, verified paymentports.Veri
 		})
 	case paymentdomain.KindTip:
 		return s.tips.ApplyTipPayment(ctx, verified)
+	case paymentdomain.KindTeamVip:
+		if order.TeamID == nil || order.VipPlan == nil || strings.TrimSpace(*order.VipPlan) == "" {
+			return paymentports.SettlementResult{}, sharederror.New(sharederror.KindConflict, "球队会员订单缺少球队或套餐信息")
+		}
+		if s.teamVipPlans == nil || s.teamVipSettlement == nil {
+			return paymentports.SettlementResult{}, sharederror.New(sharederror.KindInternal, "球队会员支付服务未配置")
+		}
+		plan, planErr := s.teamVipPlans.ResolveTeamVipPlan(*order.VipPlan)
+		if planErr != nil {
+			return paymentports.SettlementResult{}, planErr
+		}
+		return s.teamVipSettlement.ApplyTeamVipPayment(ctx, verified, plan.Code, plan.DurationDays, plan.Credits)
 	default:
 		return s.settlement.CreditRecharge(ctx, verified)
 	}

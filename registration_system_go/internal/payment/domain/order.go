@@ -29,6 +29,7 @@ const (
 	KindTeamMembership    Kind = "team_membership"
 	KindMatchRegistration Kind = "match_registration"
 	KindTip               Kind = "tip"
+	KindTeamVip           Kind = "team_vip"
 )
 
 const (
@@ -47,6 +48,7 @@ type Order struct {
 	TeamID        *int64
 	MatchID       *uuid.UUID
 	Months        *int // 历史按月计价订单的月数；新队费订单恒为 nil
+	VipPlan       *string
 	PrepayID      string
 	TransactionID string
 	PaidAt        *time.Time
@@ -116,6 +118,27 @@ func NewTipOrder(orderNo string, userID, amountCents int64, now time.Time) (Orde
 		OrderNo: orderNo, UserID: userID, AmountCents: amountCents,
 		Provider: ProviderWechat, Channel: ChannelMiniProgramJSAPI, Status: StatusPending,
 		Kind:      KindTip,
+		CreatedAt: now, UpdatedAt: now,
+	}, nil
+}
+
+// NewTeamVipOrder 为球队创建会员开通/续费订单：金额由 team 领域套餐解析（payment 不硬编码价格）。
+func NewTeamVipOrder(orderNo string, userID, teamID int64, plan string, amountCents int64, now time.Time) (Order, error) {
+	orderNo = strings.TrimSpace(orderNo)
+	plan = strings.TrimSpace(plan)
+	if orderNo == "" || len(orderNo) > 32 || userID <= 0 || teamID <= 0 {
+		return Order{}, sharederror.New(sharederror.KindValidation, "球队会员订单参数无效")
+	}
+	if plan == "" || len(plan) > 16 {
+		return Order{}, sharederror.New(sharederror.KindValidation, "球队会员套餐无效")
+	}
+	if amountCents < 1 || amountCents > MembershipMaxAmountCents {
+		return Order{}, sharederror.New(sharederror.KindValidation, "球队会员金额无效")
+	}
+	return Order{
+		OrderNo: orderNo, UserID: userID, AmountCents: amountCents,
+		Provider: ProviderWechat, Channel: ChannelMiniProgramJSAPI, Status: StatusPending,
+		Kind: KindTeamVip, TeamID: &teamID, VipPlan: &plan,
 		CreatedAt: now, UpdatedAt: now,
 	}, nil
 }

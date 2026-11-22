@@ -609,7 +609,7 @@ func (q *Queries) GetTeamJoinPasswordHash(ctx context.Context, id int64) (*strin
 }
 
 const getTeamMembershipState = `-- name: GetTeamMembershipState :one
-SELECT t.credit_score, t.vip_until, COALESCE(tm.balance_cents, 0) AS my_balance_cents
+SELECT t.credit_score, t.vip_until, t.vip_credits, COALESCE(tm.balance_cents, 0) AS my_balance_cents
 FROM teams t
 LEFT JOIN team_members tm ON tm.team_id = t.id AND tm.user_id = $2
 WHERE t.id = $1
@@ -623,13 +623,14 @@ type GetTeamMembershipStateParams struct {
 type GetTeamMembershipStateRow struct {
 	CreditScore    int32              `json:"credit_score"`
 	VipUntil       pgtype.Timestamptz `json:"vip_until"`
+	VipCredits     int32              `json:"vip_credits"`
 	MyBalanceCents int64              `json:"my_balance_cents"`
 }
 
 func (q *Queries) GetTeamMembershipState(ctx context.Context, arg GetTeamMembershipStateParams) (GetTeamMembershipStateRow, error) {
 	row := q.db.QueryRow(ctx, getTeamMembershipState, arg.ID, arg.UserID)
 	var i GetTeamMembershipStateRow
-	err := row.Scan(&i.CreditScore, &i.VipUntil, &i.MyBalanceCents)
+	err := row.Scan(&i.CreditScore, &i.VipUntil, &i.VipCredits, &i.MyBalanceCents)
 	return i, err
 }
 
@@ -679,7 +680,9 @@ SELECT t.id,
        t.created_at,
        t.updated_at,
        (SELECT COUNT(*) FROM team_members cm
-         WHERE cm.team_id = t.id AND cm.status = 'active') AS member_count
+         WHERE cm.team_id = t.id AND cm.status = 'active') AS member_count,
+       t.vip_until,
+       t.vip_credits
 FROM team_members tm
 JOIN teams t ON t.id = tm.team_id
 WHERE tm.user_id = $1
@@ -689,17 +692,19 @@ ORDER BY tm.joined_at DESC, t.id
 `
 
 type ListActiveUserTeamsRow struct {
-	ID          int64            `json:"id"`
-	Name        string           `json:"name"`
-	Description *string          `json:"description"`
-	LogoUrl     *string          `json:"logo_url"`
-	CaptainID   *int64           `json:"captain_id"`
-	Status      string           `json:"status"`
-	MemberRole  string           `json:"member_role"`
-	JoinedAt    pgtype.Timestamp `json:"joined_at"`
-	CreatedAt   pgtype.Timestamp `json:"created_at"`
-	UpdatedAt   pgtype.Timestamp `json:"updated_at"`
-	MemberCount int64            `json:"member_count"`
+	ID          int64              `json:"id"`
+	Name        string             `json:"name"`
+	Description *string            `json:"description"`
+	LogoUrl     *string            `json:"logo_url"`
+	CaptainID   *int64             `json:"captain_id"`
+	Status      string             `json:"status"`
+	MemberRole  string             `json:"member_role"`
+	JoinedAt    pgtype.Timestamp   `json:"joined_at"`
+	CreatedAt   pgtype.Timestamp   `json:"created_at"`
+	UpdatedAt   pgtype.Timestamp   `json:"updated_at"`
+	MemberCount int64              `json:"member_count"`
+	VipUntil    pgtype.Timestamptz `json:"vip_until"`
+	VipCredits  int32              `json:"vip_credits"`
 }
 
 func (q *Queries) ListActiveUserTeams(ctx context.Context, userID int64) ([]ListActiveUserTeamsRow, error) {
@@ -723,6 +728,8 @@ func (q *Queries) ListActiveUserTeams(ctx context.Context, userID int64) ([]List
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.MemberCount,
+			&i.VipUntil,
+			&i.VipCredits,
 		); err != nil {
 			return nil, err
 		}
@@ -1438,6 +1445,7 @@ SELECT t.id,
        t.status,
        t.credit_score,
        t.vip_until,
+       t.vip_credits,
        t.created_at,
        t.updated_at,
        (SELECT count(*) FROM team_members tm WHERE tm.team_id = t.id AND tm.status = 'active')::bigint AS member_count
@@ -1462,6 +1470,7 @@ type SearchActiveTeamsByKeywordRow struct {
 	Status      string             `json:"status"`
 	CreditScore int32              `json:"credit_score"`
 	VipUntil    pgtype.Timestamptz `json:"vip_until"`
+	VipCredits  int32              `json:"vip_credits"`
 	CreatedAt   pgtype.Timestamp   `json:"created_at"`
 	UpdatedAt   pgtype.Timestamp   `json:"updated_at"`
 	MemberCount int64              `json:"member_count"`
@@ -1486,6 +1495,7 @@ func (q *Queries) SearchActiveTeamsByKeyword(ctx context.Context, arg SearchActi
 			&i.Status,
 			&i.CreditScore,
 			&i.VipUntil,
+			&i.VipCredits,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.MemberCount,

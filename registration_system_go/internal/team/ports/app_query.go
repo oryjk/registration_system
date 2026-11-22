@@ -29,6 +29,7 @@ type AppMember struct {
 type AppMembershipState struct {
 	CreditScore  int
 	VipUntil     *time.Time
+	VipCredits   int
 	BalanceCents int64
 }
 

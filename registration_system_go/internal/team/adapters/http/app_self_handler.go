@@ -116,6 +116,7 @@ func (h *AppSelfHandler) SearchTeams(c *gin.Context) {
 			CreditScore:  item.CreditScore,
 			VipUntil:     item.VipUntil,
 			IsVip:        domain.IsVipActive(item.VipUntil, now),
+			VipCredits:   item.VipCredits,
 			TrustLabel:   domain.TrustLabel(item.CreditScore, domain.IsVipActive(item.VipUntil, now)),
 		})
 	}
@@ -158,6 +159,7 @@ type AppTeamSummaryResponse struct {
 	CreditScore int        `json:"credit_score"`
 	VipUntil    *time.Time `json:"vip_until"`
 	IsVip       bool       `json:"is_vip"`
+	VipCredits  int        `json:"vip_credits"`
 	TrustLabel  string     `json:"trust_label"`
 }
 
