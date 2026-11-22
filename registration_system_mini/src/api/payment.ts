@@ -3,6 +3,7 @@ import type {
   BackendPaymentOrderListResult,
   BackendPaymentOrderResult,
   BackendSyncOrderStatusResult,
+  TeamVipPlanCode,
 } from "@/types/backend";
 import { buildQueryString } from "@/utils/queryString";
 import { requestApi } from "@/utils/request";
@@ -21,6 +22,16 @@ export function createRechargeOrder(payload: { amount_cents: number }) {
 export function createTeamMembershipOrder(payload: { team_id: number; amount_cents: number }) {
   return requestApi<BackendPaymentOrderResult>({
     url: "/payments/team-membership-orders",
+    method: "POST",
+    data: payload,
+    auth: true,
+  });
+}
+
+/** 为球队创建球队会员订单（单次 / 按月 / 按年）并发起微信支付。 */
+export function createTeamVipOrder(payload: { team_id: number; plan: TeamVipPlanCode }) {
+  return requestApi<BackendPaymentOrderResult>({
+    url: "/payments/team-vip-orders",
     method: "POST",
     data: payload,
     auth: true,

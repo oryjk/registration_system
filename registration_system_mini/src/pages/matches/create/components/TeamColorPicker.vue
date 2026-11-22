@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
+import { KIT_COLOR_OPTIONS } from "@/utils/kitColors";
 
 const props = withDefaults(
   defineProps<{
@@ -8,22 +9,7 @@ const props = withDefaults(
     colorOptions?: { name: string; value: string }[];
   }>(),
   {
-    colorOptions: () => [
-      { name: "白色", value: "#FFFFFF" },
-      { name: "绿色", value: "#22C55E" },
-      { name: "红色", value: "#EF4444" },
-      { name: "蓝色", value: "#2F6BFF" },
-      { name: "黑色", value: "#111310" },
-      { name: "黄色", value: "#FACC15" },
-      { name: "橙色", value: "#FF6B35" },
-      { name: "紫色", value: "#B34DFF" },
-      { name: "粉色", value: "#EC4899" },
-      { name: "青色", value: "#06B6D4" },
-      { name: "天蓝", value: "#38BDF8" },
-      { name: "荧光绿", value: "#C8FF00" },
-      { name: "银灰", value: "#D8DDE6" },
-      { name: "灰色", value: "#94A3B8" },
-    ],
+    colorOptions: () => KIT_COLOR_OPTIONS.map(({ name, value }) => ({ name, value })),
   },
 );
 

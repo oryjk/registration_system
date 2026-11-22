@@ -1,16 +1,21 @@
 <script setup lang="ts">
 // #ifdef MP-WEIXIN
 import AppIcon from "@/components/ui/AppIcon.vue";
+import KitPieceIcons from "../../components/KitPieceIcons.vue";
+import TeamKitPickerSheet, { type TeamKitSelection } from "./TeamKitPickerSheet.vue";
+import { formatKitSummary } from "@/utils/kitColors";
 // #endif
 import { useAccentTheme } from "@/stores/theme";
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import SectionHeader from "@/components/ui/SectionHeader.vue";
 import SegmentedControl from "@/components/ui/SegmentedControl.vue";
 import AppSurface from "@/components/ui/AppSurface.vue";
 import type { SegmentOption } from "@/components/ui/SegmentedControl.vue";
 import MatchScheduleFields from "@/components/MatchScheduleFields.vue";
 import VenueEntryField from "@/components/VenueEntryField.vue";
+// #ifndef MP-WEIXIN
 import TeamColorPicker from "./TeamColorPicker.vue";
+// #endif
 import { defaultMatchFeeType } from "./matchPublishFormModel";
 import type { MatchPublishFormModel } from "./matchPublishFormModel";
 import type { AppMatchPublicationMode } from "@/types/match";
@@ -97,6 +102,59 @@ function handleOpenVenuePicker() {
   emit("openVenuePicker");
 }
 
+// #ifdef MP-WEIXIN
+const activeKitTarget = ref<"home" | "away" | null>(null);
+const kitSheetVisible = computed(() => activeKitTarget.value !== null);
+const kitSheetTitle = computed(() =>
+  activeKitTarget.value === "away" ? `搭配${opposingColorLabel.value}` : `搭配${colorLabel.value}`,
+);
+const kitSheetShirt = computed(() =>
+  activeKitTarget.value === "away" ? form.value.opposingColor : form.value.color,
+);
+const kitSheetShorts = computed(() =>
+  activeKitTarget.value === "away" ? (form.value.opposingShortsColor ?? "") : (form.value.shortsColor ?? ""),
+);
+const kitSheetSocks = computed(() =>
+  activeKitTarget.value === "away" ? (form.value.opposingSocksColor ?? "") : (form.value.socksColor ?? ""),
+);
+const homeKitSummary = computed(() =>
+  formatKitSummary({
+    shirt: form.value.color,
+    shorts: form.value.shortsColor,
+    socks: form.value.socksColor,
+  }),
+);
+const awayKitSummary = computed(() =>
+  formatKitSummary({
+    shirt: form.value.opposingColor,
+    shorts: form.value.opposingShortsColor,
+    socks: form.value.opposingSocksColor,
+  }),
+);
+
+function openKitPicker(target: "home" | "away") {
+  activeKitTarget.value = target;
+}
+
+function closeKitPicker() {
+  activeKitTarget.value = null;
+}
+
+function handleConfirmKit(selection: TeamKitSelection) {
+  if (activeKitTarget.value === "away") {
+    form.value.opposingColor = selection.shirtColor;
+    form.value.opposingShortsColor = selection.shortsColor;
+    form.value.opposingSocksColor = selection.socksColor;
+  } else if (activeKitTarget.value === "home") {
+    form.value.color = selection.shirtColor;
+    form.value.shortsColor = selection.shortsColor;
+    form.value.socksColor = selection.socksColor;
+  }
+  emit("update:modelValue", form.value);
+  activeKitTarget.value = null;
+}
+// #endif
+
 </script>
 
 <template>
@@ -160,6 +218,48 @@ function handleOpenVenuePicker() {
           <text v-else-if="selectedFeeType === 'offline_aa'" class="form-caption">费用由参与者线下分摊。</text>
         </view>
       <view v-if="!isChallenge" class="form-kit-section">
+        <!-- #ifdef MP-WEIXIN -->
+        <view class="kit-picker-list">
+          <view class="kit-picker-row" hover-class="kit-picker-row--pressed" @tap="openKitPicker('home')">
+            <view class="kit-picker-row__left">
+              <text class="kit-picker-row__label">{{ colorLabel }}</text>
+              <view class="kit-picker-row__preview">
+                <KitPieceIcons
+                  :shirt-color="form.color"
+                  :shorts-color="form.shortsColor"
+                  :socks-color="form.socksColor"
+                  size="md"
+                />
+                <text class="kit-picker-row__summary">{{ homeKitSummary }}</text>
+              </view>
+            </view>
+            <view class="kit-picker-row__action">
+              <text class="kit-picker-row__cta">点击搭配</text>
+              <AppIcon name="chevron-right" size="var(--ui-icon-sm)" tone="muted" />
+            </view>
+          </view>
+
+          <view class="kit-picker-row kit-picker-row--divider" hover-class="kit-picker-row--pressed" @tap="openKitPicker('away')">
+            <view class="kit-picker-row__left">
+              <text class="kit-picker-row__label">{{ opposingColorLabel }}</text>
+              <view class="kit-picker-row__preview">
+                <KitPieceIcons
+                  :shirt-color="form.opposingColor"
+                  :shorts-color="form.opposingShortsColor"
+                  :socks-color="form.opposingSocksColor"
+                  size="md"
+                />
+                <text class="kit-picker-row__summary">{{ awayKitSummary }}</text>
+              </view>
+            </view>
+            <view class="kit-picker-row__action">
+              <text class="kit-picker-row__cta">点击搭配</text>
+              <AppIcon name="chevron-right" size="var(--ui-icon-sm)" tone="muted" />
+            </view>
+          </view>
+        </view>
+        <!-- #endif -->
+        <!-- #ifndef MP-WEIXIN -->
         <TeamColorPicker
           :label="colorLabel"
           :model-value="form.color"
@@ -170,6 +270,7 @@ function handleOpenVenuePicker() {
           :model-value="form.opposingColor"
           @update:model-value="updateField('opposingColor', $event)"
         />
+        <!-- #endif -->
       </view>
     </AppSurface>
 
@@ -253,6 +354,18 @@ function handleOpenVenuePicker() {
       </view>
       <text v-else class="form-hint">本场不启用到场定位签到。</text>
     </AppSurface>
+
+    <!-- #ifdef MP-WEIXIN -->
+    <TeamKitPickerSheet
+      :visible="kitSheetVisible"
+      :title="kitSheetTitle"
+      :shirt-color="kitSheetShirt"
+      :shorts-color="kitSheetShorts"
+      :socks-color="kitSheetSocks"
+      @close="closeKitPicker"
+      @confirm="handleConfirmKit"
+    />
+    <!-- #endif -->
   </view>
 </template>
 
@@ -375,5 +488,15 @@ function handleOpenVenuePicker() {
 .form-placeholder { font-size: var(--ui-text-label); }
 .form-static { background: var(--ui-color-neutral-bg); }
 .form-caption { font-size: var(--ui-text-sm); line-height: var(--ui-line-height-body); color: var(--ui-color-text-secondary); }
+.kit-picker-list { display: flex; flex-direction: column; margin-top: var(--ui-space-4); }
+.kit-picker-row { display: flex; align-items: center; justify-content: space-between; gap: var(--ui-space-4); min-height: 108rpx; padding: var(--ui-space-4) var(--ui-space-2); border-radius: var(--ui-radius-button); transition: background-color var(--ui-motion-press-duration) var(--ui-motion-ease-out); }
+.kit-picker-row--divider { border-top: var(--ui-list-divider); border-top-left-radius: 0; border-top-right-radius: 0; }
+.kit-picker-row--pressed { background: var(--ui-color-accent-subtle); }
+.kit-picker-row__left { display: flex; flex-direction: column; gap: 10rpx; min-width: 0; flex: 1; }
+.kit-picker-row__label { color: var(--ui-color-text); font-size: var(--ui-text-body); font-weight: var(--ui-font-weight-heading); line-height: 1.3; }
+.kit-picker-row__preview { display: flex; align-items: center; gap: 16rpx; min-width: 0; }
+.kit-picker-row__summary { color: var(--ui-color-text-muted); font-size: var(--ui-text-body); line-height: 1.4; overflow-wrap: anywhere; }
+.kit-picker-row__action { display: flex; align-items: center; gap: 6rpx; flex-shrink: 0; }
+.kit-picker-row__cta { color: var(--ui-color-text-secondary); font-size: var(--ui-text-sm); font-weight: 500; }
 /* #endif */
 </style>

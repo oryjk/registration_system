@@ -47,6 +47,7 @@ function buildTeam(overrides: Partial<TeamProfileViewModel> = {}): TeamProfileVi
     trustLabel: "",
     vipUntil: "",
     isVip: false,
+    vipCredits: 0,
     ...overrides,
   };
 }

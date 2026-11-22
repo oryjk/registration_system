@@ -50,7 +50,11 @@ export function buildCreateMatchPayload(form: MatchPublishFormModel, hostTeam: H
     payment_mode: "postpaid",
     fee_per_person_cents: cents,
     ...(form.color ? { host_color: form.color } : {}),
+    ...(form.shortsColor?.trim() ? { host_shorts_color: form.shortsColor.trim() } : {}),
+    ...(form.socksColor?.trim() ? { host_socks_color: form.socksColor.trim() } : {}),
     ...(form.opposingColor ? { away_color: form.opposingColor } : {}),
+    ...(form.opposingShortsColor?.trim() ? { away_shorts_color: form.opposingShortsColor.trim() } : {}),
+    ...(form.opposingSocksColor?.trim() ? { away_socks_color: form.opposingSocksColor.trim() } : {}),
     ...(hasCoordinates
       ? { location_latitude: form.locationLatitude!, location_longitude: form.locationLongitude! }
       : {}),

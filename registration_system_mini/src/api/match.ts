@@ -1,5 +1,9 @@
 import { parseDateValue } from "@/utils/datetime";
+import { getApiBaseUrl } from "@/config/apiBase";
+import { getAccessToken } from "@/utils/authStorage";
 import type {
+  BackendApiResponse,
+  BackendMatchShareBgResult,
   BackendMatchSettleResult,
   BackendMatchSettlementSummary,
 } from "@/types/backend";
@@ -15,7 +19,7 @@ import type {
   AppMatchSummary,
 } from "@/types/match";
 import { buildQueryString } from "@/utils/queryString";
-import { requestApi } from "@/utils/request";
+import { ApiRequestError, requestApi } from "@/utils/request";
 
 export function getMatchHome() {
   return requestApi<AppMatchHomeResponse>({ url: "/matches/home", auth: true });
@@ -143,6 +147,10 @@ export interface CreateMatchPayload {
   fee_type?: import("@/types/match").AppMatchFeeType;
   host_color?: string;
   away_color?: string;
+  host_shorts_color?: string;
+  host_socks_color?: string;
+  away_shorts_color?: string;
+  away_socks_color?: string;
 }
 
 export function createMatch(payload: CreateMatchPayload) {
@@ -213,6 +221,54 @@ export type VenueOption = Pick<BackendVenueSuggestion, "location" | "latitude" |
 export function getVenueSuggestions(limit = 10) {
   return requestApi<BackendVenueSuggestion[]>({
     url: `/venues/suggestions?limit=${limit}`,
+    auth: true,
+  });
+}
+
+/** 主队管理者上传比赛自定义分享海报背景图（multipart file ≤2MB，jpg/png/webp）。 */
+export function uploadMatchShareBg(matchId: string, filePath: string) {
+  const token = getAccessToken();
+
+  return new Promise<BackendMatchShareBgResult>((resolve, reject) => {
+    uni.uploadFile({
+      url: `${getApiBaseUrl()}/matches/${matchId}/share-bg`,
+      filePath,
+      name: "file",
+      header: token ? { Authorization: `Bearer ${token}` } : {},
+      success: (response) => {
+        let parsed: BackendApiResponse<BackendMatchShareBgResult> | null = null;
+        try {
+          parsed = JSON.parse(response.data) as BackendApiResponse<BackendMatchShareBgResult>;
+        } catch {
+          reject(new ApiRequestError("背景图上传响应解析失败", response.statusCode));
+          return;
+        }
+        if (response.statusCode < 200 || response.statusCode >= 300 || parsed?.code !== 0 || !parsed.data) {
+          reject(new ApiRequestError(parsed?.message || "背景图上传失败", response.statusCode));
+          return;
+        }
+        resolve(parsed.data);
+      },
+      fail: () => reject(new ApiRequestError("背景图上传失败")),
+    });
+  });
+}
+
+/** 主队管理者从球队资源库切换本场比赛分享海报背景图。 */
+export function selectMatchShareBg(matchId: string, imageUrl: string) {
+  return requestApi<BackendMatchShareBgResult>({
+    url: `/matches/${matchId}/share-bg`,
+    method: "PUT",
+    data: { image_url: imageUrl },
+    auth: true,
+  });
+}
+
+/** 主队管理者清除本场比赛自定义分享海报背景图，恢复默认热血海报底。 */
+export function clearMatchShareBg(matchId: string) {
+  return requestApi<BackendMatchShareBgResult>({
+    url: `/matches/${matchId}/share-bg`,
+    method: "DELETE",
     auth: true,
   });
 }
