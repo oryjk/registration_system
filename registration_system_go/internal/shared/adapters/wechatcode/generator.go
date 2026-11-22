@@ -3,6 +3,8 @@ package wechatcode
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -40,22 +42,52 @@ func New(client *http.Client, endpoint, appID, secret string, store Store) *Gene
 	return &Generator{client: client, endpoint: strings.TrimRight(endpoint, "/"), appID: appID, secret: secret, store: store, images: make(map[string]cachedCode)}
 }
 func (g *Generator) Generate(ctx context.Context, scene, environment string) (string, error) {
+	if len(scene) != 22 || !validEnvironment(environment) {
+		return "", errors.New("invalid mini code parameters")
+	}
+	key := environment + "/" + scene
+	return g.generateCode(ctx, "pages/home/index", scene, environment, key, "static/share/honor-codes/v1/"+key)
+}
+
+// GenerateForPage 为任意小程序页面生成不限次数的小程序码，支持 1..32 字符 scene。
+func (g *Generator) GenerateForPage(ctx context.Context, page, scene, environment string) (string, error) {
+	if !validPage(page) || len(scene) < 1 || len(scene) > 32 || !validEnvironment(environment) {
+		return "", errors.New("invalid mini code parameters")
+	}
+	digest := sha256.Sum256([]byte(page + "\x00" + scene))
+	hashHex := hex.EncodeToString(digest[:])
+	cacheKey := "page/" + environment + "/" + page + "/" + scene
+	objectPrefix := "static/share/mini-codes/v1/" + environment + "/" + hashHex
+	return g.generateCode(ctx, page, scene, environment, cacheKey, objectPrefix)
+}
+
+func validEnvironment(environment string) bool {
+	return environment == "release" || environment == "trial" || environment == "develop"
+}
+
+func validPage(page string) bool {
+	if page == "" || len(page) > 128 {
+		return false
+	}
+	if strings.HasPrefix(page, "/") || strings.Contains(page, "..") || strings.ContainsAny(page, " \t\r\n?#") {
+		return false
+	}
+	return true
+}
+
+func (g *Generator) generateCode(ctx context.Context, page, scene, environment, cacheKey, objectPrefix string) (string, error) {
 	if g.store == nil {
 		return "", errors.New("mini code storage unavailable")
 	}
-	if len(scene) != 22 || (environment != "release" && environment != "trial" && environment != "develop") {
-		return "", errors.New("invalid mini code parameters")
-	}
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	key := environment + "/" + scene
-	if cached, ok := g.images[key]; ok && time.Now().Before(cached.expires) {
+	if cached, ok := g.images[cacheKey]; ok && time.Now().Before(cached.expires) {
 		return cached.url, nil
 	}
 	if err := g.ensureToken(ctx); err != nil {
 		return "", err
 	}
-	payload := map[string]any{"scene": scene, "page": "pages/home/index", "check_path": false, "env_version": environment, "width": 430}
+	payload := map[string]any{"scene": scene, "page": page, "check_path": false, "env_version": environment, "width": 430}
 	data, err := g.post(ctx, "/wxa/getwxacodeunlimit?access_token="+url.QueryEscape(g.token), payload)
 	if err != nil {
 		return "", err
@@ -80,14 +112,14 @@ func (g *Generator) Generate(ctx context.Context, scene, environment string) (st
 	if contentType == "image/jpeg" {
 		extension = ".jpg"
 	}
-	publicURL, err := g.store.Save(ctx, "static/share/honor-codes/v1/"+key+extension, contentType, data)
+	publicURL, err := g.store.Save(ctx, objectPrefix+extension, contentType, data)
 	if err != nil {
 		return "", errors.New("mini code upload failed")
 	}
 	if len(g.images) >= 256 {
 		clear(g.images)
 	}
-	g.images[key] = cachedCode{url: publicURL, expires: time.Now().Add(24 * time.Hour)}
+	g.images[cacheKey] = cachedCode{url: publicURL, expires: time.Now().Add(24 * time.Hour)}
 	return publicURL, nil
 }
 func (g *Generator) ensureToken(ctx context.Context) error {
