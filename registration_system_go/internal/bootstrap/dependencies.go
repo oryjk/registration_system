@@ -191,6 +191,8 @@ func BuildDependencies(ctx context.Context, config Config) (Dependencies, func()
 	honorCodes := wechatcode.New(&http.Client{Timeout: 20 * time.Second}, "https://api.weixin.qq.com", config.WechatAppID, config.WechatAppSecret, buildSystemAssetStore(config))
 	honorShareHandler := teamhttp.NewHonorShareHandler(teamapplication.NewHonorShareService(teamRepository, honorCodes))
 	miniLinkHandler := minilinkhttp.NewHandler(minilinkapplication.NewService(honorCodes))
+	matchLineups := matchapplication.NewLineupService(matchRepository, teamService, honorCodes, matchClock)
+	matchLineupHandler := matchhttp.NewLineupHandler(matchLineups)
 	captainMessages := matchapplication.NewCaptainMessageService(matchRepository, matchRepository, teamService)
 	captainMessageHandler := matchhttp.NewCaptainMessageHandler(captainMessages)
 	teamFundRepository := teamfundpostgres.NewRepository(pool)
@@ -213,7 +215,7 @@ func BuildDependencies(ctx context.Context, config Config) (Dependencies, func()
 		UserProfiles: userProfileHandler, AppUsers: appUserHandler, ActiveUsers: appUserService, Teams: teamHandler, AppTeams: appTeamHandler,
 		AppTeamManage: appTeamManageHandler, AppTeamSelf: appTeamSelfHandler, AppTeamInvites: appTeamInviteHandler,
 		AppHonorShares: honorShareHandler,
-		UserMatches:    userMatchHandler, Venues: venueHandler, UserRegistrations: userRegistrationHandler,
+		UserMatches:    userMatchHandler, MatchLineups: matchLineupHandler, Venues: venueHandler, UserRegistrations: userRegistrationHandler,
 		AdminMatches: adminMatchHandler, AdminRegistrations: adminRegistrationHandler, TeamApplications: teamApplicationHandler, VenueSides: venueSideHandler,
 		CaptainMessages: captainMessageHandler,
 		Payments:        paymentHandler, Wallets: walletHandler, MiniReviews: miniReviewHandler,

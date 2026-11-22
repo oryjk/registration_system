@@ -541,3 +541,65 @@ func (s *routerImpersonationService) Impersonate(_ context.Context, actorID, tar
 	s.targetID = targetUserID
 	return authapplication.ImpersonationResult{Token: "impersonated-token", User: userdomain.User{ID: targetUserID, Status: userdomain.StatusActive}}, nil
 }
+
+func TestMatchLineupRoutesAreProtectedAndVersioned(t *testing.T) {
+	matchID := uuid.New()
+	middleware := authhttp.NewMiddleware(routerAudienceTokens{})
+	service := &routerLineupService{matchID: matchID}
+	router := NewRouter(Dependencies{
+		AuthMiddleware: &middleware,
+		MatchLineups:   matchhttp.NewLineupHandler(service),
+	})
+
+	base := "/api/v1/app/matches/" + matchID.String() + "/lineup"
+	unauthorized := httptest.NewRecorder()
+	router.ServeHTTP(unauthorized, httptest.NewRequest(http.MethodGet, base, nil))
+	if unauthorized.Code != http.StatusUnauthorized {
+		t.Fatalf("未登录应返回 401，得到 %d", unauthorized.Code)
+	}
+
+	for _, tc := range []struct {
+		method string
+		path   string
+		body   string
+	}{
+		{http.MethodGet, base, ""},
+		{http.MethodPut, base, `{"formation":"1-2-1","slots":[]}`},
+		{http.MethodGet, base + "/mini-code?env=release", ""},
+	} {
+		req := httptest.NewRequest(tc.method, tc.path, bytes.NewBufferString(tc.body))
+		req.Header.Set("Authorization", "Bearer user-token")
+		if tc.body != "" {
+			req.Header.Set("Content-Type", "application/json")
+		}
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("%s %s status=%d body=%s", tc.method, tc.path, rec.Code, rec.Body.String())
+		}
+	}
+
+	unversioned := httptest.NewRecorder()
+	router.ServeHTTP(unversioned, httptest.NewRequest(http.MethodGet, "/api/app/matches/"+matchID.String()+"/lineup", nil))
+	if unversioned.Code != http.StatusNotFound {
+		t.Fatalf("无版本前缀应返回 404，得到 %d", unversioned.Code)
+	}
+}
+
+type routerLineupService struct {
+	matchID uuid.UUID
+}
+
+func (s *routerLineupService) Get(context.Context, sharedauth.Actor, uuid.UUID) (matchapplication.LineupView, bool, error) {
+	return matchapplication.LineupView{}, false, nil
+}
+
+func (s *routerLineupService) Save(context.Context, sharedauth.Actor, uuid.UUID, string, []matchdomain.LineupSlot) (matchapplication.LineupView, error) {
+	return matchapplication.LineupView{
+		Lineup: matchdomain.MatchLineup{MatchID: s.matchID, PlayersPerTeam: 5, Formation: "1-2-1", Slots: []matchdomain.LineupSlot{}},
+	}, nil
+}
+
+func (s *routerLineupService) GenerateMiniCode(context.Context, sharedauth.Actor, uuid.UUID, string) (string, error) {
+	return "https://example.test/code.png", nil
+}
