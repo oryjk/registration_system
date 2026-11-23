@@ -129,7 +129,7 @@ const {
 } = useMatchTeamApplications(sourceMatch, loadPageData, confirmRegistrationAction);
 
 const { shareCardImageUrl, refreshShareCard } = useMatchShareCard({
-  pageInstance: getCurrentInstance()?.proxy,
+  pageInstance: getCurrentInstance(),
   match,
   matchKindLabel,
   homeTeamLabel,
@@ -570,7 +570,7 @@ const metaPageStyle = computed(() => {
       @close="shareBg.closeVipSheet"
       @purchased="void shareBg.handleVipPurchased()"
     />
-    <canvas id="match-share-card-canvas" canvas-id="match-share-card-canvas" class="match-share-canvas" />
+    <canvas id="match-share-card-canvas" type="2d" class="match-share-canvas" />
     <!-- #endif -->
   </view>
 </template>

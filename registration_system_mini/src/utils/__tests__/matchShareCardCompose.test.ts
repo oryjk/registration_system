@@ -19,12 +19,13 @@ import {
 } from "@/utils/matchShareCardCompose";
 
 interface MockCanvasOptions {
-  withCircularGradient?: boolean;
+  withRadialGradient?: boolean;
   withStrokeText?: boolean;
+  tempFilePath?: string;
 }
 
 function createMockCanvasContext(options: MockCanvasOptions = {}) {
-  const { withCircularGradient = true, withStrokeText = true } = options;
+  const { withRadialGradient = true, withStrokeText = true, tempFilePath = "/tmp/match-share-c2.jpg" } = options;
   const texts: Array<{ value: string; x: number; y: number; font: string; fillStyle: unknown }> = [];
   const strokeTexts: Array<{ value: string; x: number; y: number; font: string; strokeStyle: string }> = [];
   const images: unknown[][] = [];
@@ -35,33 +36,23 @@ function createMockCanvasContext(options: MockCanvasOptions = {}) {
   const strokedPaths: Array<{ strokeStyle: string; lineWidth: number }> = [];
   const arcs: Array<{ x: number; y: number; r: number }> = [];
   const linearGradients: Array<{ stops: Array<[number, string]> }> = [];
-  const circularGradients: Array<{ x: number; y: number; r: number; stops: Array<[number, string]> }> = [];
-  let radialGradientCalled = false;
+  const radialGradients: Array<{ stops: Array<[number, string]> }> = [];
+  let exportOptions: Record<string, unknown> | undefined;
 
-  let currentFillStyle: unknown = "#000000";
-  let currentStrokeStyle = "#000000";
-  let currentLineWidth = 1;
   let currentMoveToCount = 0;
 
   const ctx: Record<string, unknown> = {
-    font: "400 32px sans-serif",
-    setFontSize: () => undefined,
-    setFillStyle: (style: unknown) => {
-      currentFillStyle = style;
-    },
-    setStrokeStyle: (style: string) => {
-      currentStrokeStyle = style;
-    },
-    setLineWidth: (width: number) => {
-      currentLineWidth = width;
-    },
-    setLineJoin: () => undefined,
-    setTextAlign: () => undefined,
-    setTextBaseline: () => undefined,
+    font: "normal normal 32px sans-serif",
+    fillStyle: "#000000",
+    strokeStyle: "#000000",
+    lineWidth: 1,
+    lineJoin: "miter",
+    textAlign: "left",
+    textBaseline: "alphabetic",
     clearRect: () => undefined,
     rect: () => undefined,
     fillRect: (x: number, y: number, w: number, h: number) => {
-      fillRects.push({ x, y, w, h, fillStyle: currentFillStyle });
+      fillRects.push({ x, y, w, h, fillStyle: ctx.fillStyle });
     },
     strokeRect: () => undefined,
     beginPath: () => {
@@ -77,10 +68,10 @@ function createMockCanvasContext(options: MockCanvasOptions = {}) {
       arcs.push({ x, y, r });
     },
     fill: () => {
-      filledPaths.push({ fillStyle: currentFillStyle, moveToCount: currentMoveToCount });
+      filledPaths.push({ fillStyle: ctx.fillStyle, moveToCount: currentMoveToCount });
     },
     stroke: () => {
-      strokedPaths.push({ strokeStyle: currentStrokeStyle, lineWidth: currentLineWidth });
+      strokedPaths.push({ strokeStyle: String(ctx.strokeStyle), lineWidth: Number(ctx.lineWidth) });
     },
     save: () => undefined,
     restore: () => undefined,
@@ -100,30 +91,23 @@ function createMockCanvasContext(options: MockCanvasOptions = {}) {
         },
       };
     },
-    createRadialGradient: () => {
-      radialGradientCalled = true;
-      throw new Error("createRadialGradient is not supported in WeChat CanvasContext");
-    },
     measureText: (value: string) => {
       const sizeMatch = /(\d+)px/.exec(String(ctx.font));
       const size = sizeMatch ? Number(sizeMatch[1]) : 32;
       return { width: Array.from(value).length * size };
     },
     fillText: (value: string, x: number, y: number) => {
-      texts.push({ value, x, y, font: String(ctx.font), fillStyle: currentFillStyle });
+      texts.push({ value, x, y, font: String(ctx.font), fillStyle: ctx.fillStyle });
     },
     drawImage: (...args: unknown[]) => {
       images.push(args);
     },
-    draw: (_reserve: boolean, done?: () => void) => {
-      done?.();
-    },
   };
 
-  if (withCircularGradient) {
-    ctx.createCircularGradient = (x: number, y: number, r: number) => {
-      const record = { x, y, r, stops: [] as Array<[number, string]> };
-      circularGradients.push(record);
+  if (withRadialGradient) {
+    ctx.createRadialGradient = () => {
+      const record = { stops: [] as Array<[number, string]> };
+      radialGradients.push(record);
       return {
         addColorStop: (offset: number, color: string) => {
           record.stops.push([offset, color]);
@@ -134,12 +118,59 @@ function createMockCanvasContext(options: MockCanvasOptions = {}) {
 
   if (withStrokeText) {
     ctx.strokeText = (value: string, x: number, y: number) => {
-      strokeTexts.push({ value, x, y, font: String(ctx.font), strokeStyle: currentStrokeStyle });
+      strokeTexts.push({ value, x, y, font: String(ctx.font), strokeStyle: String(ctx.strokeStyle) });
     };
   }
 
+  const canvas = {
+    width: 0,
+    height: 0,
+    getContext: () => ctx,
+    createImage: () => {
+      let currentSrc = "";
+      const img: {
+        width: number;
+        height: number;
+        onload: (() => void) | null;
+        onerror: ((err: unknown) => void) | null;
+        src: string;
+      } = {
+        width: 1600,
+        height: 900,
+        onload: null,
+        onerror: null,
+        get src() {
+          return currentSrc;
+        },
+        set src(next: string) {
+          currentSrc = next;
+          queueMicrotask(() => {
+            img.onload?.();
+          });
+        },
+      };
+      return img;
+    },
+    toTempFilePath: (opts: Record<string, unknown> & { success: (res: { tempFilePath: string }) => void }) => {
+      exportOptions = opts;
+      opts.success({ tempFilePath });
+    },
+  };
+
+  const createSelectorQuery = () => {
+    const query = {
+      in: () => query,
+      select: () => query,
+      fields: () => query,
+      exec: (cb: (res: Array<{ node: typeof canvas }>) => void) => cb([{ node: canvas }]),
+    };
+    return query;
+  };
+
   return {
-    ctx: ctx as unknown as UniApp.CanvasContext,
+    ctx: ctx as unknown as CanvasRenderingContext2D,
+    canvas,
+    createSelectorQuery,
     texts,
     strokeTexts,
     images,
@@ -150,8 +181,8 @@ function createMockCanvasContext(options: MockCanvasOptions = {}) {
     strokedPaths,
     arcs,
     linearGradients,
-    circularGradients,
-    getRadialGradientCalled: () => radialGradientCalled,
+    radialGradients,
+    getExportOptions: () => exportOptions,
   };
 }
 
@@ -411,18 +442,13 @@ test("fitText, truncateText and wrapTextLines shrink and ellipsize long team nam
 
 test("composeMatchShareCard renders C2 fiery backdrop with full/mixed/empty kits and long names", async () => {
   const previousUni = (globalThis as unknown as { uni?: typeof uni }).uni;
-  const mock = createMockCanvasContext({ withCircularGradient: true, withStrokeText: true });
-  let exportOptions: Record<string, unknown> | undefined;
+  const mock = createMockCanvasContext({ withRadialGradient: true, withStrokeText: true });
 
   (globalThis as unknown as { uni: typeof uni }).uni = {
     getImageInfo: () => {
       throw new Error("should not download image when no customBgImageUrl is provided");
     },
-    createCanvasContext: () => mock.ctx,
-    canvasToTempFilePath: (options: Record<string, unknown> & { success: (res: { tempFilePath: string }) => void }) => {
-      exportOptions = options;
-      options.success({ tempFilePath: "/tmp/match-share-c2.jpg" });
-    },
+    createSelectorQuery: mock.createSelectorQuery,
   } as unknown as typeof uni;
 
   try {
@@ -448,7 +474,12 @@ test("composeMatchShareCard renders C2 fiery backdrop with full/mixed/empty kits
       () => true,
     );
 
+    const exportOptions = mock.getExportOptions();
     expect(path).toEqual("/tmp/match-share-c2.jpg");
+    expect([mock.canvas.width, mock.canvas.height]).toEqual([
+      MATCH_SHARE_CARD_WIDTH,
+      MATCH_SHARE_CARD_HEIGHT,
+    ]);
     expect([exportOptions?.width, exportOptions?.height, exportOptions?.destWidth, exportOptions?.destHeight]).toEqual([
       MATCH_SHARE_CARD_WIDTH,
       MATCH_SHARE_CARD_HEIGHT,
@@ -456,15 +487,13 @@ test("composeMatchShareCard renders C2 fiery backdrop with full/mixed/empty kits
       800,
     ]);
 
-    // 未调用小程序不支持的 createRadialGradient，使用 createCircularGradient 绘制红黑射灯底 + MATCHDAY 暗纹
-    expect(mock.getRadialGradientCalled()).toEqual(false);
-    expect(mock.circularGradients.length).toEqual(1);
+    // Canvas 2D 原生使用 createRadialGradient 绘制红黑射灯底 + MATCHDAY 暗纹
+    expect(mock.radialGradients.length).toEqual(1);
     expect(mock.linearGradients.length).toEqual(2);
     expect(mock.images.length).toEqual(0);
     expect(mock.strokeTexts.some((t) => t.value === "MATCHDAY")).toEqual(true);
-    // 微信 CanvasContext.font 仅使用关键字 bold/normal + sans-serif，禁止数字字重（900/800）被真机静默忽略
+    // font 统一使用标准关键字 bold/normal + sans-serif，并叠加同色 strokeText 强化海报体量感
     expect(mock.texts.every((t) => /^(?:normal|italic) (?:normal|bold) \d+px sans-serif$/.test(t.font))).toEqual(true);
-    // 粗黑大字叠加同色 strokeText 强化海报体量感
     expect(mock.strokeTexts.some((t) => t.value === "VS")).toEqual(true);
     expect(mock.strokeTexts.some((t) => t.value === "河西周四 FC")).toEqual(true);
 
@@ -484,9 +513,18 @@ test("composeMatchShareCard renders C2 fiery backdrop with full/mixed/empty kits
     expect(homeNameDraw?.value.endsWith("…")).toEqual(true);
     expect(homeNameDraw?.font).toEqual("normal bold 46px sans-serif");
 
-    // 底部地点通栏：改用矢量定位针图标（无 📍 emoji），超长场地自动 2 行完整展示
+    // 底部地点通栏：高对比纯白底 #FFFFFF + 左侧 #FF453A 竖条 + 同色矢量定位针 + 深墨字 #16070B，超长场地自动 2 行完整展示
+    expect(
+      mock.fillRects.some(
+        (r) => r.x === 0 && r.y === 684 && r.w === MATCH_SHARE_CARD_WIDTH && r.h === 116 && r.fillStyle === "#FFFFFF",
+      ),
+    ).toEqual(true);
+    expect(
+      mock.fillRects.some((r) => r.x === 0 && r.y === 684 && r.w === 18 && r.h === 116 && r.fillStyle === "#FF453A"),
+    ).toEqual(true);
     const venueDraws = mock.texts.filter((t) => t.y >= 684);
     expect(venueDraws.length).toEqual(2);
+    expect(venueDraws.every((t) => t.fillStyle === "#16070B")).toEqual(true);
     expect(mock.arcs.filter((a) => a.y >= 684).length).toEqual(2);
     const combinedVenue = venueDraws.map((t) => t.value).join("");
     expect(combinedVenue).toEqual("北京市朝阳区奥林匹克森林公园南园综合体育中心足球场A区标准11人制3号场地东侧入口");
@@ -499,7 +537,11 @@ test("composeMatchShareCard renders C2 fiery backdrop with full/mixed/empty kits
 
 test("composeMatchShareCard overlays customBgImageUrl with dark crimson veil and gracefully degrades on download failure", async () => {
   const previousUni = (globalThis as unknown as { uni?: typeof uni }).uni;
-  const customRun = createMockCanvasContext({ withCircularGradient: true, withStrokeText: true });
+  const customRun = createMockCanvasContext({
+    withRadialGradient: true,
+    withStrokeText: true,
+    tempFilePath: "/tmp/custom-bg-card.jpg",
+  });
   const requested: string[] = [];
 
   (globalThis as unknown as { uni: typeof uni }).uni = {
@@ -519,14 +561,11 @@ test("composeMatchShareCard overlays customBgImageUrl with dark crimson veil and
         fail(new Error("download failed"));
       }
     },
-    createCanvasContext: () => customRun.ctx,
-    canvasToTempFilePath: ({ success }: { success: (res: { tempFilePath: string }) => void }) => {
-      success({ tempFilePath: "/tmp/custom-bg-card.jpg" });
-    },
+    createSelectorQuery: customRun.createSelectorQuery,
   } as unknown as typeof uni;
 
   try {
-    // 1. 自定义背景图下载成功：cover 铺底 + 深红黑暗幕 + 渐变暗角 + 射灯，不画 MATCHDAY 水印
+    // 1. 自定义背景图下载成功：通过 canvas.createImage() 载入后 cover 铺底 + 深红黑暗幕 + 渐变暗角 + 射灯，不画 MATCHDAY 水印
     const okPath = await composeMatchShareCard(
       "match-share-card-canvas",
       {},
@@ -544,7 +583,7 @@ test("composeMatchShareCard overlays customBgImageUrl with dark crimson veil and
     expect(okPath).toEqual("/tmp/custom-bg-card.jpg");
     expect(requested).toEqual(["https://cdn.example.com/custom-ok.jpg"]);
     expect(customRun.images.length).toEqual(1);
-    expect(customRun.images[0]?.[0]).toEqual("local://https://cdn.example.com/custom-ok.jpg");
+    expect((customRun.images[0]?.[0] as { src?: string })?.src).toEqual("local://https://cdn.example.com/custom-ok.jpg");
     // 1600x900 按 cover 铺满 1000x800：scale = 800/900，drawWidth ≈ 1422.22，水平居中裁切
     expectClose(Number(customRun.images[0]?.[3]), (1600 * 800) / 900, 0.01);
     expectClose(Number(customRun.images[0]?.[4]), 800, 0.01);
@@ -554,10 +593,15 @@ test("composeMatchShareCard overlays customBgImageUrl with dark crimson veil and
     expect(customRun.scales.length).toEqual(0);
     expect(customRun.texts.filter((t) => t.value === "队服待定").length).toEqual(2);
 
-    // 2. 自定义背景图下载失败：无感降级回默认 C2 红黑射灯底（即使运行时缺 createCircularGradient / strokeText 也正常渲染）
+    // 2. 自定义背景图下载失败：无感降级回默认 C2 红黑射灯底（即使运行时缺 createRadialGradient / strokeText 也正常渲染）
     requested.length = 0;
-    const degradedRun = createMockCanvasContext({ withCircularGradient: false, withStrokeText: false });
-    (globalThis as unknown as { uni: typeof uni }).uni.createCanvasContext = () => degradedRun.ctx;
+    const degradedRun = createMockCanvasContext({
+      withRadialGradient: false,
+      withStrokeText: false,
+      tempFilePath: "/tmp/custom-bg-card.jpg",
+    });
+    (globalThis as unknown as { uni: typeof uni }).uni.createSelectorQuery =
+      degradedRun.createSelectorQuery as unknown as typeof uni.createSelectorQuery;
 
     const loader = createMatchShareImageLoader();
     const degradedPath = await composeMatchShareCard(
@@ -580,8 +624,8 @@ test("composeMatchShareCard overlays customBgImageUrl with dark crimson veil and
     expect(degradedPath).toEqual("/tmp/custom-bg-card.jpg");
     expect(requested).toEqual(["https://cdn.example.com/broken-custom.jpg"]);
     expect(degradedRun.images.length).toEqual(0);
-    expect(degradedRun.getRadialGradientCalled()).toEqual(false);
-    // 缺 createCircularGradient 时退化为 createLinearGradient（底色 1 + 左右射灯 2 = 3）
+    expect(degradedRun.radialGradients.length).toEqual(0);
+    // 缺 createRadialGradient 时退化为 createLinearGradient（底色 1 + 左右射灯 2 = 3）
     expect(degradedRun.linearGradients.length).toEqual(3);
     // 缺 strokeText 时回退 fillText 绘制 MATCHDAY
     expect(degradedRun.texts.some((t) => t.value === "MATCHDAY")).toEqual(true);
@@ -595,16 +639,13 @@ test("composeMatchShareCard overlays customBgImageUrl with dark crimson veil and
 
 test("composeMatchShareCard renders pickup match headline layout with/without kit and aborts when stale", async () => {
   const previousUni = (globalThis as unknown as { uni?: typeof uni }).uni;
-  const pickupWithKit = createMockCanvasContext();
+  const pickupWithKit = createMockCanvasContext({ tempFilePath: "/tmp/pickup-card.jpg" });
 
   (globalThis as unknown as { uni: typeof uni }).uni = {
     getImageInfo: () => {
       throw new Error("unexpected getImageInfo");
     },
-    createCanvasContext: () => pickupWithKit.ctx,
-    canvasToTempFilePath: ({ success }: { success: (res: { tempFilePath: string }) => void }) => {
-      success({ tempFilePath: "/tmp/pickup-card.jpg" });
-    },
+    createSelectorQuery: pickupWithKit.createSelectorQuery,
   } as unknown as typeof uni;
 
   try {
@@ -635,8 +676,9 @@ test("composeMatchShareCard renders pickup match headline layout with/without ki
     expect(pickupWithKit.scales.length).toEqual(2);
 
     // 散人约球（未配置球服）：不画空图标，显示「队服待定」
-    const pickupNoKit = createMockCanvasContext();
-    (globalThis as unknown as { uni: typeof uni }).uni.createCanvasContext = () => pickupNoKit.ctx;
+    const pickupNoKit = createMockCanvasContext({ tempFilePath: "/tmp/pickup-card.jpg" });
+    (globalThis as unknown as { uni: typeof uni }).uni.createSelectorQuery =
+      pickupNoKit.createSelectorQuery as unknown as typeof uni.createSelectorQuery;
     await composeMatchShareCard(
       "match-share-card-canvas",
       {},
