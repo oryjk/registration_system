@@ -33,6 +33,7 @@ function createMockCanvasContext(options: MockCanvasOptions = {}) {
   const translates: Array<{ x: number; y: number }> = [];
   const filledPaths: Array<{ fillStyle: unknown; moveToCount: number }> = [];
   const strokedPaths: Array<{ strokeStyle: string; lineWidth: number }> = [];
+  const arcs: Array<{ x: number; y: number; r: number }> = [];
   const linearGradients: Array<{ stops: Array<[number, string]> }> = [];
   const circularGradients: Array<{ x: number; y: number; r: number; stops: Array<[number, string]> }> = [];
   let radialGradientCalled = false;
@@ -72,6 +73,9 @@ function createMockCanvasContext(options: MockCanvasOptions = {}) {
     },
     lineTo: () => undefined,
     quadraticCurveTo: () => undefined,
+    arc: (x: number, y: number, r: number) => {
+      arcs.push({ x, y, r });
+    },
     fill: () => {
       filledPaths.push({ fillStyle: currentFillStyle, moveToCount: currentMoveToCount });
     },
@@ -144,6 +148,7 @@ function createMockCanvasContext(options: MockCanvasOptions = {}) {
     translates,
     filledPaths,
     strokedPaths,
+    arcs,
     linearGradients,
     circularGradients,
     getRadialGradientCalled: () => radialGradientCalled,
@@ -479,11 +484,13 @@ test("composeMatchShareCard renders C2 fiery backdrop with full/mixed/empty kits
     expect(homeNameDraw?.value.endsWith("…")).toEqual(true);
     expect(homeNameDraw?.font).toEqual("normal bold 46px sans-serif");
 
-    // 底部白底通栏：超长场地自动 2 行完整展示，不再被截断
+    // 底部地点通栏：改用矢量定位针图标（无 📍 emoji），超长场地自动 2 行完整展示
     const venueDraws = mock.texts.filter((t) => t.y >= 684);
     expect(venueDraws.length).toEqual(2);
+    expect(mock.arcs.filter((a) => a.y >= 684).length).toEqual(2);
     const combinedVenue = venueDraws.map((t) => t.value).join("");
-    expect(combinedVenue).toEqual("📍 北京市朝阳区奥林匹克森林公园南园综合体育中心足球场A区标准11人制3号场地东侧入口");
+    expect(combinedVenue).toEqual("北京市朝阳区奥林匹克森林公园南园综合体育中心足球场A区标准11人制3号场地东侧入口");
+    expect(combinedVenue.includes("📍")).toEqual(false);
     expect(combinedVenue.includes("…")).toEqual(false);
   } finally {
     (globalThis as unknown as { uni?: typeof uni }).uni = previousUni;
