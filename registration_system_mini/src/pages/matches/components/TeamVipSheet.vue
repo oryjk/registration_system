@@ -21,7 +21,7 @@ interface DisplayVipPlan {
 }
 
 const DEFAULT_FREE_TIER_NOTE =
-  "免费版也可正常使用比赛分享功能（默认热血海报底）；开通球队会员可自定义上传分享背景图，并解锁未来更多球队专属权益";
+  "免费版也可正常分享比赛（默认热血海报底）；开通球队会员后，可上传球队 Logo、公司 Logo、球队合照等作为专属背景图，并持续解锁未来更多球队专属权益。";
 
 const DEFAULT_PLANS: DisplayVipPlan[] = [
   {
@@ -211,7 +211,9 @@ async function handlePurchase() {
         <view class="vip-sheet-heading">
           <view class="vip-sheet-title-row">
             <text class="vip-sheet-title">球队会员</text>
-            <text v-if="teamName" class="vip-sheet-team-pill">{{ teamName }}</text>
+            <view v-if="teamName" class="vip-sheet-team-pill">
+              <text class="vip-sheet-team-pill__text">{{ teamName }}</text>
+            </view>
           </view>
           <text class="vip-sheet-status">{{ statusSummaryText }}</text>
         </view>
@@ -225,34 +227,40 @@ async function handlePurchase() {
         </button>
       </view>
 
-      <!-- 免费版明确提示条 -->
+      <!-- 免费版明确提示条 + 具体示例 -->
       <view class="vip-free-banner">
         <!-- #ifdef MP-WEIXIN -->
-        <AppIcon name="info" size="var(--ui-icon-sm)" color="var(--ui-color-success-fg)" />
+        <view class="vip-free-banner__icon">
+          <AppIcon name="info" size="var(--ui-icon-sm)" tone="muted" />
+        </view>
         <!-- #endif -->
         <text class="vip-free-banner__text">{{ DEFAULT_FREE_TIER_NOTE }}</text>
       </view>
 
-      <!-- 3 档套餐卡片 -->
-      <view class="vip-plan-list">
-        <view
-          v-for="plan in displayPlans"
-          :key="plan.code"
-          :class="['vip-plan-card', selectedPlan === plan.code ? 'vip-plan-card--active' : '']"
-          hover-class="vip-plan-card--pressed"
-          @tap="selectPlan(plan.code)"
-        >
-          <view v-if="plan.badge" class="vip-plan-badge">
-            <text>{{ plan.badge }}</text>
-          </view>
-          <view class="vip-plan-main">
-            <view class="vip-plan-info">
-              <text class="vip-plan-name">{{ plan.name }}</text>
-              <text class="vip-plan-desc">{{ plan.description }}</text>
-            </view>
-            <view class="vip-plan-price-wrap">
-              <text class="vip-plan-price">{{ plan.priceText }}</text>
-              <text class="vip-plan-unit">{{ plan.unitText }}</text>
+      <!-- 3 档套餐卡片（独立滚动，保证底部 CTA 按钮始终可见） -->
+      <view class="vip-sheet-body">
+        <view class="vip-plan-list">
+          <view
+            v-for="plan in displayPlans"
+            :key="plan.code"
+            :class="['vip-plan-card', selectedPlan === plan.code ? 'vip-plan-card--active' : '']"
+            hover-class="vip-plan-card--pressed"
+            @tap="selectPlan(plan.code)"
+          >
+            <view class="vip-plan-main">
+              <view class="vip-plan-info">
+                <view class="vip-plan-name-row">
+                  <text class="vip-plan-name">{{ plan.name }}</text>
+                  <view v-if="plan.badge" class="vip-plan-badge">
+                    <text class="vip-plan-badge__text">{{ plan.badge }}</text>
+                  </view>
+                </view>
+                <text class="vip-plan-desc">{{ plan.description }}</text>
+              </view>
+              <view class="vip-plan-price-wrap">
+                <text class="vip-plan-price">{{ plan.priceText }}</text>
+                <text class="vip-plan-unit">{{ plan.unitText }}</text>
+              </view>
             </view>
           </view>
         </view>
@@ -307,9 +315,11 @@ async function handlePurchase() {
   left: 0;
   right: 0;
   bottom: 0;
+  display: flex;
+  flex-direction: column;
   box-sizing: border-box;
   max-height: 88vh;
-  overflow-y: auto;
+  overflow: hidden;
   padding: var(--ui-space-7) var(--ui-page-padding-inline, 28rpx) calc(var(--ui-space-7) + env(safe-area-inset-bottom));
   border-top-left-radius: var(--ui-card-radius, 36rpx);
   border-top-right-radius: var(--ui-card-radius, 36rpx);
@@ -364,13 +374,26 @@ async function handlePurchase() {
 }
 
 .vip-sheet-team-pill {
-  padding: 4rpx 14rpx;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 42rpx;
+  max-width: 320rpx;
+  padding: 0 16rpx;
   border-radius: var(--ui-radius-round);
   background: var(--ui-color-neutral-bg);
+  box-sizing: border-box;
+}
+
+.vip-sheet-team-pill__text {
+  display: block;
   color: var(--ui-color-text-muted);
   font-size: 22rpx;
   font-weight: 500;
-  line-height: 1.35;
+  line-height: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .vip-sheet-status {
@@ -387,7 +410,7 @@ async function handlePurchase() {
   flex-shrink: 0;
   width: var(--ui-control-min-height, 72rpx);
   height: var(--ui-control-min-height, 72rpx);
-  margin: 0;
+  margin: -10rpx -12rpx 0 0;
   padding: 0;
   border: 0;
   background: transparent;
@@ -406,6 +429,15 @@ async function handlePurchase() {
   padding: 18rpx 20rpx;
   border-radius: var(--ui-radius-button);
   background: var(--ui-color-success-bg);
+  flex-shrink: 0;
+}
+
+.vip-free-banner__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 4rpx;
+  flex-shrink: 0;
 }
 
 .vip-free-banner__text {
@@ -416,11 +448,17 @@ async function handlePurchase() {
   line-height: 1.5;
 }
 
+.vip-sheet-body {
+  max-height: 54vh;
+  margin-top: 24rpx;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 .vip-plan-list {
   display: flex;
   flex-direction: column;
   gap: 16rpx;
-  margin-top: 24rpx;
 }
 
 .vip-plan-card {
@@ -433,11 +471,13 @@ async function handlePurchase() {
   transition:
     border-color var(--ui-motion-press-duration) var(--ui-motion-ease-out),
     background-color var(--ui-motion-press-duration) var(--ui-motion-ease-out),
+    box-shadow var(--ui-motion-press-duration) var(--ui-motion-ease-out),
     transform var(--ui-motion-press-duration) var(--ui-motion-ease-out);
 }
 
 .vip-plan-card--active {
   border-color: var(--ui-color-accent);
+  box-shadow: inset 0 0 0 2rpx var(--ui-color-accent);
   background: var(--ui-color-accent-subtle);
 }
 
@@ -445,18 +485,30 @@ async function handlePurchase() {
   transform: scale(0.99);
 }
 
+.vip-plan-name-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10rpx;
+}
+
 .vip-plan-badge {
-  position: absolute;
-  top: -2rpx;
-  right: 20rpx;
-  padding: 4rpx 14rpx;
-  border-bottom-left-radius: 12rpx;
-  border-bottom-right-radius: 12rpx;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 34rpx;
+  padding: 0 12rpx;
+  border-radius: var(--ui-radius-round);
   background: var(--ui-color-accent);
+  box-sizing: border-box;
+}
+
+.vip-plan-badge__text {
+  display: block;
   color: var(--ui-color-accent-fg);
   font-size: 20rpx;
   font-weight: var(--ui-font-weight-heading);
-  line-height: 1.3;
+  line-height: 1;
 }
 
 .vip-plan-main {
@@ -513,6 +565,7 @@ async function handlePurchase() {
   align-items: center;
   gap: 14rpx;
   margin-top: 28rpx;
+  flex-shrink: 0;
 }
 
 .vip-sheet-cta {
