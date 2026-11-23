@@ -12,6 +12,10 @@ import { getCustomNavMetrics } from "@/utils/customNav";
 import LineupPitch from "./components/LineupPitch.vue";
 import LineupSubList from "./components/LineupSubList.vue";
 import LineupPlayerSheet from "./components/LineupPlayerSheet.vue";
+// #ifdef MP-WEIXIN
+import MatchShareBgSheet from "../components/MatchShareBgSheet.vue";
+import TeamVipSheet from "../components/TeamVipSheet.vue";
+// #endif
 import { useMatchLineupPage } from "./useMatchLineupPage";
 
 defineOptions({ inheritAttrs: false });
@@ -23,6 +27,7 @@ const {
   loading,
   errorMessage,
   match,
+  currentTeam,
   hasSavedLineup,
   playersPerTeam,
   formation,
@@ -37,7 +42,7 @@ const {
   isReadonly,
   isDirty,
   saving,
-  savingPoster,
+  canSaveLineup,
   showEmptyReadonly,
   pageTitle,
   matchTimeLabel,
@@ -47,6 +52,7 @@ const {
   selectedSlot,
   sheetTab,
   activeSlotView,
+  shareBg,
   loadPage,
   selectFormation,
   openSlotSheet,
@@ -58,13 +64,12 @@ const {
   handleRemoveSub,
   handleResetPositions,
   handleSave,
-  handleSavePoster,
   handleBackToDetail,
   friendShare,
   timelineShare,
-} = useMatchLineupPage(getCurrentInstance()?.proxy);
+} = useMatchLineupPage(getCurrentInstance());
 
-// uni-app MP 需在页面 SFC 内显式调用分享生命周期以启用原生分享菜单。
+// uni-app MP 需在页面 SFC 内显式调用分享生命周期以启用原生转发给朋友/群与分享到朋友圈。
 onShareAppMessage(friendShare);
 onShareTimeline(timelineShare);
 
@@ -74,7 +79,9 @@ const pageStyle = computed(() => ({
 }));
 
 const metaPageStyle = computed(() =>
-  [themePageStyle.value, sheetVisible.value ? "overflow: hidden;" : ""].filter(Boolean).join(";"),
+  [themePageStyle.value, sheetVisible.value || shareBg.anySheetVisible.value ? "overflow: hidden;" : ""]
+    .filter(Boolean)
+    .join(";"),
 );
 </script>
 
@@ -121,13 +128,14 @@ const metaPageStyle = computed(() =>
               </view>
             </view>
             <button
-              v-if="canEdit && !showEmptyReadonly"
+              v-if="shareBg.canManageShareBg.value && !showEmptyReadonly"
               class="match-banner__share ui-subtle-control"
               hover-class="match-banner__share--pressed"
-              open-type="share"
+              :disabled="saving || shareBg.isBusy.value"
+              @tap="shareBg.openShareBgManager"
             >
-              <AppIcon name="share-2" size="var(--ui-icon-sm)" />
-              <text class="match-banner__share-text">发给朋友</text>
+              <AppIcon name="image" size="var(--ui-icon-sm)" />
+              <text class="match-banner__share-text">分享背景</text>
             </button>
           </view>
 
@@ -182,7 +190,11 @@ const metaPageStyle = computed(() =>
           <view v-if="canEdit && !hasSavedLineup" class="prefill-tip">
             <AppIcon name="info" size="var(--ui-icon-sm)" tone="muted" />
             <text class="prefill-tip__text">
-              已按本场 {{ attendingCandidates.length }} 名已报名队员预排首发（人数不足的位置保留默认占位），调整后请点击「保存阵型」。
+              {{
+                attendingCandidates.length > 0
+                  ? `已按本场 ${attendingCandidates.length} 名已报名队员预排首发（人数不足的位置保留默认占位），调整后请点击「保存阵型」。`
+                  : "本场暂未有已报名队员，请轻点球场圆点从球队名册中选择首发或替补后再保存阵型。"
+              }}
             </text>
           </view>
 
@@ -263,7 +275,7 @@ const metaPageStyle = computed(() =>
         <button
           class="footer-btn footer-btn--subtle ui-native-button"
           hover-class="footer-btn--pressed"
-          :disabled="saving || savingPoster"
+          :disabled="saving"
           @tap="handleResetPositions"
         >
           重置站位
@@ -271,15 +283,21 @@ const metaPageStyle = computed(() =>
         <button
           class="footer-btn footer-btn--outline ui-native-button"
           hover-class="footer-btn--pressed"
-          :disabled="saving || savingPoster"
-          @tap="handleSavePoster"
+          open-type="share"
+          :disabled="saving"
         >
-          {{ savingPoster ? "生成中…" : "分享海报" }}
+          分享阵容
         </button>
         <button
-          class="footer-btn footer-btn--primary ui-native-button ui-native-button--primary"
-          hover-class="footer-btn--pressed"
-          :disabled="saving"
+          :class="[
+            'footer-btn',
+            'footer-btn--primary',
+            'ui-native-button',
+            'ui-native-button--primary',
+            !canSaveLineup ? 'footer-btn--disabled' : '',
+          ]"
+          :hover-class="canSaveLineup ? 'footer-btn--pressed' : 'none'"
+          :disabled="!canSaveLineup"
           @tap="handleSave"
         >
           {{ saving ? "保存中…" : "保存阵型" }}
@@ -288,20 +306,11 @@ const metaPageStyle = computed(() =>
 
       <view v-else class="lineup-footer__readonly-grid">
         <button
-          class="footer-btn footer-btn--outline ui-native-button"
-          hover-class="footer-btn--pressed"
-          open-type="share"
-          :disabled="savingPoster"
-        >
-          分享给朋友
-        </button>
-        <button
           class="footer-btn footer-btn--primary ui-native-button ui-native-button--primary"
           hover-class="footer-btn--pressed"
-          :disabled="savingPoster"
-          @tap="handleSavePoster"
+          open-type="share"
         >
-          {{ savingPoster ? "生成中…" : "保存海报" }}
+          分享阵容
         </button>
       </view>
     </view>
@@ -320,9 +329,36 @@ const metaPageStyle = computed(() =>
       @toggle-sub="handleToggleSub"
     />
 
-    <!-- 离屏海报与 5:4 分享图画布 -->
-    <canvas id="lineup-poster-canvas" canvas-id="lineup-poster-canvas" class="lineup-canvas lineup-canvas--poster" />
-    <canvas id="lineup-card-canvas" canvas-id="lineup-card-canvas" class="lineup-canvas lineup-canvas--card" />
+    <!-- 分享卡片背景图与球队会员抽屉（与比赛详情共享同一套球队资源库与会员权益） -->
+    <MatchShareBgSheet
+      :visible="shareBg.shareBgSheetVisible.value"
+      :team-name="shareBg.hostTeamName.value"
+      :current-bg-url="shareBg.currentBgUrl.value"
+      :backgrounds="shareBg.teamBackgrounds.value"
+      :loading="shareBg.isLoadingMeta.value"
+      :busy="shareBg.isBusy.value"
+      :has-access="shareBg.hasCustomShareBgAccess.value"
+      :vip-summary-text="shareBg.vipSummaryText.value"
+      @close="shareBg.closeShareBgSheet"
+      @select-default="void shareBg.handleSelectDefault()"
+      @select-background="void shareBg.handleSelectBackground($event)"
+      @upload-new="shareBg.handleUploadNew"
+      @open-vip="shareBg.openVipSheet()"
+    />
+    <TeamVipSheet
+      :visible="shareBg.vipSheetVisible.value"
+      :team-id="shareBg.hostTeamId.value"
+      :team-name="shareBg.hostTeamName.value"
+      :vip-status="shareBg.teamVipStatus.value"
+      :is-vip="currentTeam?.isVip"
+      :vip-until="currentTeam?.vipUntil"
+      :vip-credits="currentTeam?.vipCredits"
+      @close="shareBg.closeVipSheet"
+      @purchased="void shareBg.handleVipPurchased()"
+    />
+
+    <!-- 离屏 5:4（1000×800）标准 Canvas 2D 分享卡片画布 -->
+    <canvas id="lineup-card-canvas" type="2d" class="lineup-canvas lineup-canvas--card" />
     <!-- #endif -->
   </view>
 </template>
@@ -488,6 +524,7 @@ const metaPageStyle = computed(() =>
   color: var(--ui-color-text);
   font-size: var(--ui-text-sm);
   font-weight: var(--ui-font-weight-heading);
+  line-height: 1;
 }
 
 .match-banner__meta {
@@ -708,7 +745,7 @@ const metaPageStyle = computed(() =>
 
 .lineup-footer__readonly-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: var(--ui-space-3);
 }
 
@@ -740,6 +777,11 @@ const metaPageStyle = computed(() =>
   color: var(--ui-color-text);
 }
 
+.footer-btn--disabled {
+  background: var(--ui-color-disabled);
+  color: var(--ui-color-text-disabled);
+}
+
 .footer-btn--pressed {
   transform: scale(0.98);
   box-shadow: var(--ui-shadow-control-pressed);
@@ -752,13 +794,8 @@ const metaPageStyle = computed(() =>
   pointer-events: none;
 }
 
-.lineup-canvas--poster {
-  width: 750px;
-  height: 1280px;
-}
-
 .lineup-canvas--card {
-  width: 750px;
-  height: 600px;
+  width: 1000px;
+  height: 800px;
 }
 </style>

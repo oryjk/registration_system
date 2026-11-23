@@ -1,16 +1,17 @@
 import { computed, nextTick, ref, watch } from "vue";
 import { onLoad, onUnload } from "@dcloudio/uni-app";
 import { getMatchDetail } from "@/api/match";
-import { getMatchLineup, getMatchLineupMiniCode, saveMatchLineup } from "@/api/lineup";
+import { getMatchLineup, saveMatchLineup } from "@/api/lineup";
 import { getTeamDetail } from "@/api/team";
 import { useTeamContext } from "@/stores/teamContext";
+import type { BackendActivity } from "@/types/backend";
 import type { AppMatchSummary } from "@/types/match";
 import type {
   LineupCandidate,
   MatchLineupPlayer,
   MatchLineupSlot,
-  MiniProgramEnv,
 } from "@/types/lineup";
+import { useMatchShareBg } from "../useMatchShareBg";
 import {
   getDefaultFormation,
   getFormation,
@@ -38,35 +39,23 @@ import {
 } from "./helpers";
 import {
   buildLineupSharePayload,
-  composeLineupImage,
+  composeLineupShareCard,
   createLineupImageLoader,
   formatLineupMatchTime,
   LINEUP_CARD,
-  LINEUP_POSTER,
   type LineupPosterInput,
 } from "./lineupPoster";
 
 export type PlayerSheetTab = "starter" | "sub";
 
-function readMiniProgramEnv(): MiniProgramEnv {
-  // #ifdef MP-WEIXIN
-  try {
-    const env = uni.getAccountInfoSync().miniProgram.envVersion;
-    if (env === "develop" || env === "trial") return env;
-  } catch {
-    // 兜底正式版
-  }
-  // #endif
-  return "release";
-}
-
 export function useMatchLineupPage(pageInstance: unknown) {
-  const { currentUser, currentTeam, ensureSessionReady } = useTeamContext();
+  const { currentUser, currentTeam, ensureSessionReady, refreshSessionContext } = useTeamContext();
 
   const matchId = ref("");
   const loading = ref(true);
   const errorMessage = ref("");
   const match = ref<AppMatchSummary | null>(null);
+  const backendMatchStub = ref<BackendActivity | null>(null);
   const hasSavedLineup = ref(false);
   const isGuestMode = ref(false);
 
@@ -78,7 +67,6 @@ export function useMatchLineupPage(pageInstance: unknown) {
 
   const isDirty = ref(false);
   const saving = ref(false);
-  const savingPoster = ref(false);
   const shareCardUrl = ref("");
 
   const sheetVisible = ref(false);
@@ -89,7 +77,6 @@ export function useMatchLineupPage(pageInstance: unknown) {
   let cardRenderVersion = 0;
   let cardTimer: ReturnType<typeof setTimeout> | null = null;
   let renderQueue: Promise<unknown> = Promise.resolve();
-  let cachedMiniCodeUrl: { matchId: string; url: string } | null = null;
   let disposed = false;
 
   const imageLoader = createLineupImageLoader();
@@ -149,21 +136,47 @@ export function useMatchLineupPage(pageInstance: unknown) {
   );
   const starterCount = computed(() => pitchSlots.value.filter((item) => item.starter !== null).length);
   const subCount = computed(() => pitchSlots.value.reduce((sum, item) => sum + item.subs.length, 0));
+  /** 阵型内至少选择 1 名队员（首发或替补）后才允许保存。 */
+  const hasAnySelectedPlayer = computed(() => starterCount.value > 0 || subCount.value > 0);
+  const canSaveLineup = computed(() => !isReadonly.value && !saving.value && hasAnySelectedPlayer.value);
 
   const pageTitle = computed(() => (canEdit.value ? "比赛排阵型" : "查看阵型"));
-  const showEmptyReadonly = computed(() => !loading.value && !errorMessage.value && Boolean(match.value) && isReadonly.value && !hasSavedLineup.value);
+  const showEmptyReadonly = computed(
+    () => !loading.value && !errorMessage.value && Boolean(match.value) && isReadonly.value && !hasSavedLineup.value,
+  );
+
+  // 复用比赛详情同源的球队会员与分享背景资源库管理逻辑，背景与会员权益按球队共享。
+  const shareBg = useMatchShareBg({
+    match: backendMatchStub,
+    sourceMatch: match,
+    isGuestMode,
+    currentTeam,
+    refreshSessionContext,
+    onShareBgChanged: async () => {
+      const bgUrl = match.value?.share_bg_image_url?.trim() || "";
+      if (bgUrl) {
+        imageLoader.evict(bgUrl);
+      }
+      await renderShareCard();
+    },
+  });
 
   function buildPosterInput(): LineupPosterInput | null {
     if (!match.value) return null;
+    const hostTeamName = match.value.host_team_name?.trim() || currentTeam.value?.name?.trim() || "";
+    const opponentName = match.value.opponent_name?.trim() || "";
     return {
       matchId: match.value.id,
       matchName: match.value.name,
+      hostTeamName,
+      opponentName,
       startTime: match.value.start_time,
       endTime: match.value.end_time,
       location: match.value.location,
       playersPerTeam: playersPerTeam.value,
       formation: formation.value,
       pitchSlots: pitchSlots.value,
+      customBgImageUrl: match.value.share_bg_image_url ?? "",
     };
   }
 
@@ -192,12 +205,10 @@ export function useMatchLineupPage(pageInstance: unknown) {
     try {
       await nextTick();
       const path = await enqueueRender(() =>
-        composeLineupImage(
+        composeLineupShareCard(
           LINEUP_CARD.canvasId,
           pageInstance,
           input,
-          "card",
-          null,
           () => !disposed && version === cardRenderVersion,
           imageLoader.load,
         ),
@@ -388,7 +399,7 @@ export function useMatchLineupPage(pageInstance: unknown) {
   }
 
   async function handleSave() {
-    if (isReadonly.value || saving.value || !match.value) return;
+    if (!canSaveLineup.value || !match.value) return;
     saving.value = true;
     try {
       const response = await saveMatchLineup(match.value.id, {
@@ -420,87 +431,6 @@ export function useMatchLineupPage(pageInstance: unknown) {
       });
     } finally {
       saving.value = false;
-    }
-  }
-
-  async function fetchMiniCodeGracefully(id: string): Promise<string | null> {
-    if (cachedMiniCodeUrl && cachedMiniCodeUrl.matchId === id) {
-      return cachedMiniCodeUrl.url;
-    }
-    try {
-      const resp = await getMatchLineupMiniCode(id, readMiniProgramEnv());
-      const url = resp?.image_url?.trim() || "";
-      if (url) {
-        cachedMiniCodeUrl = { matchId: id, url };
-        return url;
-      }
-    } catch {
-      // 小程序码获取失败优雅降级，不阻断海报保存
-    }
-    return null;
-  }
-
-  async function handleSavePoster() {
-    if (savingPoster.value || !match.value) return;
-    const input = buildPosterInput();
-    if (!input) return;
-
-    savingPoster.value = true;
-    uni.showLoading({ title: "正在生成海报…", mask: true });
-    const version = loadVersion;
-    try {
-      const miniCodeUrl = await fetchMiniCodeGracefully(input.matchId);
-      if (disposed || version !== loadVersion) return;
-
-      await nextTick();
-      const posterPath = await enqueueRender(() =>
-        composeLineupImage(
-          LINEUP_POSTER.canvasId,
-          pageInstance,
-          input,
-          "poster",
-          miniCodeUrl,
-          () => !disposed && version === loadVersion,
-          imageLoader.load,
-        ),
-      );
-      if (disposed || version !== loadVersion) return;
-
-      // #ifdef MP-WEIXIN
-      await new Promise<void>((resolve, reject) => {
-        uni.saveImageToPhotosAlbum({
-          filePath: posterPath,
-          success: () => resolve(),
-          fail: reject,
-        });
-      });
-      uni.hideLoading();
-      uni.showToast({ title: "海报已保存到相册", icon: "success" });
-      // #endif
-    } catch (error) {
-      uni.hideLoading();
-      const detail =
-        error && typeof error === "object" && "errMsg" in error
-          ? String((error as { errMsg?: unknown }).errMsg ?? "")
-          : "";
-      if (/auth|deny|denied/i.test(detail)) {
-        uni.showModal({
-          title: "需要相册权限",
-          content: "允许保存到相册后，即可保存本场阵型海报。",
-          confirmText: "去设置",
-          success: (res) => {
-            if (res.confirm) uni.openSetting({});
-          },
-        });
-      } else if (!/cancel/i.test(detail)) {
-        uni.showToast({
-          title: error instanceof Error ? error.message : "海报保存失败，请重试",
-          icon: "none",
-        });
-      }
-    } finally {
-      uni.hideLoading();
-      savingPoster.value = false;
     }
   }
 
@@ -554,6 +484,14 @@ export function useMatchLineupPage(pageInstance: unknown) {
   onLoad((options) => {
     matchId.value = parseLineupMatchId(options);
     // #ifdef MP-WEIXIN
+    try {
+      uni.showShareMenu({
+        withShareTicket: true,
+        menus: ["shareAppMessage", "shareTimeline"],
+      });
+    } catch {
+      // 部分基础库不支持 menus 参数时保持 onShareAppMessage/onShareTimeline 默认生效
+    }
     void loadPage();
     // #endif
     // #ifndef MP-WEIXIN
@@ -574,6 +512,7 @@ export function useMatchLineupPage(pageInstance: unknown) {
     loading,
     errorMessage,
     match,
+    currentTeam,
     hasSavedLineup,
     playersPerTeam,
     formation,
@@ -588,7 +527,8 @@ export function useMatchLineupPage(pageInstance: unknown) {
     isReadonly,
     isDirty,
     saving,
-    savingPoster,
+    hasAnySelectedPlayer,
+    canSaveLineup,
     showEmptyReadonly,
     pageTitle,
     matchTimeLabel,
@@ -598,6 +538,7 @@ export function useMatchLineupPage(pageInstance: unknown) {
     selectedSlot,
     sheetTab,
     activeSlotView,
+    shareBg,
     loadPage,
     selectFormation,
     openSlotSheet,
@@ -609,7 +550,6 @@ export function useMatchLineupPage(pageInstance: unknown) {
     handleRemoveSub,
     handleResetPositions,
     handleSave,
-    handleSavePoster,
     handleBackToDetail,
     friendShare,
     timelineShare,

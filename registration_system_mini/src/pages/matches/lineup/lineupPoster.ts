@@ -5,19 +5,29 @@ import {
   formatWeekdayLabel,
   pad,
 } from "@/utils/datetime";
+import {
+  MATCH_SHARE_CARD_HEIGHT,
+  MATCH_SHARE_CARD_WIDTH,
+  drawLocationPinIcon,
+  drawMatchShareBackdrop,
+  drawMatchShareSlash,
+  drawMatchShareText,
+  exportCanvas2DToTempFile,
+  fitText,
+  loadCanvas2DImage,
+  measureMatchShareTextWidth,
+  queryCanvas2DNode,
+  wrapTextLines,
+  type MatchShareCanvasImage,
+  type ResolvedCanvasBackdrop,
+} from "@/utils/matchShareCardCompose";
 import { resolveMinioImage, retainMinioImage } from "@/utils/minioImageCache";
 import { avatarInitial, formatSubBadgeText } from "./helpers";
 
-export const LINEUP_POSTER = {
-  canvasId: "lineup-poster-canvas",
-  width: 750,
-  height: 1280,
-} as const;
-
 export const LINEUP_CARD = {
   canvasId: "lineup-card-canvas",
-  width: 750,
-  height: 600,
+  width: MATCH_SHARE_CARD_WIDTH,
+  height: MATCH_SHARE_CARD_HEIGHT,
 } as const;
 
 export interface LineupPosterImageInfo {
@@ -29,12 +39,16 @@ export interface LineupPosterImageInfo {
 export interface LineupPosterInput {
   matchId: string;
   matchName: string;
+  hostTeamName?: string;
+  opponentName?: string;
   startTime: string;
   endTime: string;
   location: string;
   playersPerTeam: number;
   formation: string;
   pitchSlots: PitchSlotView[];
+  /** 自定义上传的球队分享背景图 URL（球队会员功能）；为空时走默认 C2 红黑射灯底。 */
+  customBgImageUrl?: string | null;
 }
 
 export interface LineupPosterSubLine {
@@ -45,24 +59,39 @@ export interface LineupPosterSubLine {
   text: string;
 }
 
-// 装饰性海报画布色板（独立于页面语义 token）
-const PALETTE = {
-  pageBg: "#f5f7f9",
-  paper: "#fffffe",
-  ink: "#00214d",
-  body: "#1b2d45",
-  muted: "#65758b",
-  line: "#e4eaf2",
-  accent: "#00ebc7",
-  accentSoft: "#dcfff8",
-  grass: "#237a4b",
-  grassAlt: "#298653",
-  marking: "rgba(255, 255, 255, 0.5)",
-  dotBg: "#fffffe",
-  dotEmptyBg: "rgba(255, 255, 255, 0.22)",
-  nameBg: "rgba(0, 33, 77, 0.72)",
-  subBg: "#fde24f",
-  subFg: "#00214d",
+interface LoadedCanvasAvatar {
+  image: MatchShareCanvasImage;
+  width: number;
+  height: number;
+}
+
+// C2 比赛日阵型分享卡右侧战术球场几何参数（1000×800 画布内）
+const PITCH_RECT = {
+  x: 456,
+  y: 114,
+  w: 504,
+  h: 550,
+} as const;
+
+// 装饰性海报画布色板（与 C2 比赛分享卡视觉语言统一）
+const CARD_PALETTE = {
+  slashRed: "#FF453A",
+  accentOrange: "#FF8A3D",
+  dividerOrange: "#FF6B35",
+  goldLabel: "#FFD166",
+  white: "#FFFFFF",
+  ink: "#16070B",
+  panelBg: "rgba(12, 6, 10, 0.62)",
+  panelBorder: "rgba(255, 255, 255, 0.14)",
+  grass: "#1B6B42",
+  grassAlt: "#217A4C",
+  pitchBorder: "rgba(255, 255, 255, 0.24)",
+  marking: "rgba(255, 255, 255, 0.48)",
+  dotBg: "#FFFFFF",
+  dotEmptyBg: "rgba(255, 255, 255, 0.20)",
+  nameBg: "rgba(12, 6, 10, 0.86)",
+  subBg: "#FFD166",
+  subFg: "#16070B",
 } as const;
 
 const getImageInfo = (src: string): Promise<LineupPosterImageInfo> =>
@@ -96,6 +125,10 @@ export function createLineupImageLoader() {
       releases.set(src, retainMinioImage(src));
       images.set(src, task);
       return task;
+    },
+    evict(src: string) {
+      const normalized = src.trim();
+      if (normalized) drop(normalized);
     },
     clear() {
       for (const src of Array.from(images.keys())) drop(src);
@@ -139,10 +172,10 @@ export function clippedText(value: string, limit: number): string {
   return `${chars.slice(0, Math.max(1, limit - 1)).join("")}…`;
 }
 
-/** 提取海报底部展示的「替补对应」行列表。 */
+/** 提取左侧战术摘要卡展示的「替补对应」行列表。 */
 export function buildPosterSubSummaryLines(
   pitchSlots: PitchSlotView[],
-  maxLines = 6,
+  maxLines = 4,
 ): LineupPosterSubLine[] {
   const rows = pitchSlots
     .filter((entry) => entry.subs.length > 0)
@@ -154,32 +187,27 @@ export function buildPosterSubSummaryLines(
         label: entry.label,
         starterName,
         subNames,
-        text: `[${entry.label}] ${starterName} ⇄ 替补：${subNames.join("、")}`,
+        text: `[${entry.label}] ${starterName} ⇄ ${subNames.join("、")}`,
       };
     });
   return rows.slice(0, maxLines);
 }
 
-/** 计算球员圆点在海报/分享卡球场区域内的像素坐标。 */
-export function posterPlayerPoint(x: number, y: number, card = false): { x: number; y: number } {
+/** 计算球员圆点在 1000×800 C2 阵型分享卡右侧战术球场内的像素坐标。 */
+export function posterPlayerPoint(x: number, y: number): { x: number; y: number } {
   const clampedX = Math.max(0.06, Math.min(0.94, Number.isFinite(x) ? x : 0.5));
   const clampedY = Math.max(0.06, Math.min(0.94, Number.isFinite(y) ? y : 0.5));
-  if (card) {
-    // 分享卡球场区：x=95..655 (w=560), y=108..540 (h=432)，四周留边距防文字裁切
-    return {
-      x: 95 + 36 + clampedX * (560 - 72),
-      y: 108 + 26 + clampedY * (432 - 58),
-    };
-  }
-  // 竖版海报球场区：x=32..718 (w=686), y=194..874 (h=680)
+  const padX = 44;
+  const padTop = 36;
+  const padBottom = 56;
   return {
-    x: 32 + 44 + clampedX * (686 - 88),
-    y: 194 + 34 + clampedY * (680 - 78),
+    x: PITCH_RECT.x + padX + clampedX * (PITCH_RECT.w - padX * 2),
+    y: PITCH_RECT.y + padTop + clampedY * (PITCH_RECT.h - padTop - padBottom),
   };
 }
 
 function drawRoundRect(
-  ctx: UniApp.CanvasContext,
+  ctx: CanvasRenderingContext2D,
   x: number,
   y: number,
   width: number,
@@ -200,91 +228,236 @@ function drawRoundRect(
   ctx.closePath();
 }
 
-function drawText(
-  ctx: UniApp.CanvasContext,
-  value: string,
-  x: number,
-  y: number,
-  size: number,
-  color: string,
-  align: "left" | "center" | "right" = "left",
-  weight = 400,
-) {
-  ctx.setFillStyle(color);
-  ctx.setTextAlign(align);
-  ctx.setTextBaseline("middle");
-  ctx.font = `${weight} ${size}px sans-serif`;
-  ctx.fillText(value, x, y);
+function drawTopTimeBanner(ctx: CanvasRenderingContext2D, startTime: string, endTime: string) {
+  const timeText = formatLineupMatchTime(startTime, endTime);
+  drawMatchShareSlash(ctx, 118, 26, 764, 68, 22, CARD_PALETTE.slashRed);
+  const fittedTime = fitText(ctx, timeText, 710, 38, 26, 900);
+  drawMatchShareText(ctx, fittedTime.text, 511, 61, fittedTime.size, CARD_PALETTE.white, "center", 900);
 }
 
-function drawPitchField(
-  ctx: UniApp.CanvasContext,
-  field: { x: number; y: number; w: number; h: number },
-  radius: number,
-) {
-  ctx.save();
-  drawRoundRect(ctx, field.x, field.y, field.w, field.h, radius);
-  ctx.clip();
+function drawLeftTacticalCard(ctx: CanvasRenderingContext2D, input: LineupPosterInput) {
+  const cardX = 40;
+  const cardY = 114;
+  const cardW = 396;
+  const cardH = 550;
+  const contentX = cardX + 34;
+  const contentW = cardW - 56;
 
-  const stripeHeight = field.h / 8;
-  for (let i = 0; i < 8; i += 1) {
-    ctx.setFillStyle(i % 2 === 1 ? PALETTE.grassAlt : PALETTE.grass);
-    ctx.fillRect(field.x, field.y + i * stripeHeight, field.w, stripeHeight + 1);
+  // 深红黑通透战术信息卡片 + 左侧火焰橙能量条
+  ctx.save();
+  ctx.fillStyle = CARD_PALETTE.panelBg;
+  ctx.fillRect(cardX, cardY, cardW, cardH);
+  ctx.fillStyle = CARD_PALETTE.accentOrange;
+  ctx.fillRect(cardX, cardY, 12, cardH);
+  ctx.strokeStyle = CARD_PALETTE.panelBorder;
+  ctx.lineWidth = 2;
+  ctx.strokeRect(cardX, cardY, cardW, cardH);
+  ctx.restore();
+
+  // 顶部角色标签
+  drawMatchShareText(ctx, "STARTING LINEUP · 首发阵型", contentX, cardY + 38, 20, CARD_PALETTE.goldLabel, "left", 800);
+
+  // 比赛/球队主标题（最多 2 行，大号粗黑字体）
+  const headline = input.matchName?.trim() || input.hostTeamName?.trim() || "本场首发阵型";
+  const singleTitle = fitText(ctx, headline, contentW, 44, 34, 900);
+  let nextY = cardY + 114;
+  if (!singleTitle.text.endsWith("…")) {
+    drawMatchShareText(ctx, singleTitle.text, contentX, cardY + 100, singleTitle.size, CARD_PALETTE.white, "left", 900);
+    nextY = cardY + 148;
+  } else {
+    const titleLines = wrapTextLines(
+      headline,
+      contentW,
+      (text) => measureMatchShareTextWidth(ctx, text, 34, 900),
+      2,
+    );
+    drawMatchShareText(ctx, titleLines[0] || headline, contentX, cardY + 90, 34, CARD_PALETTE.white, "left", 900);
+    if (titleLines[1]) {
+      drawMatchShareText(ctx, titleLines[1], contentX, cardY + 134, 34, CARD_PALETTE.white, "left", 900);
+      nextY = cardY + 178;
+    } else {
+      nextY = cardY + 142;
+    }
   }
 
-  const insetX = field.w * 0.03;
-  const insetY = field.h * 0.025;
-  ctx.setStrokeStyle(PALETTE.marking);
-  ctx.setLineWidth(2);
-  ctx.strokeRect(field.x + insetX, field.y + insetY, field.w - insetX * 2, field.h - insetY * 2);
+  // 若有主队/对手信息则附一行简洁副标题
+  const teamMeta = input.hostTeamName?.trim()
+    ? (input.opponentName?.trim() ? `${input.hostTeamName.trim()} vs ${input.opponentName.trim()}` : input.hostTeamName.trim())
+    : "";
+  if (teamMeta && teamMeta !== headline) {
+    const fittedMeta = fitText(ctx, teamMeta, contentW, 22, 18, 700);
+    drawMatchShareText(ctx, fittedMeta.text, contentX, nextY, fittedMeta.size, "rgba(255, 255, 255, 0.72)", "left", 700);
+    nextY += 34;
+  } else {
+    nextY += 8;
+  }
+
+  // 火焰斜切阵型徽章（如：8人制 · 3-3-1）
+  const formationBadge = `${input.playersPerTeam}人制 · ${input.formation}`;
+  const badgeW = Math.min(contentW - 12, Math.max(220, measureMatchShareTextWidth(ctx, formationBadge, 28, 900) + 46));
+  const badgeH = 54;
+  drawMatchShareSlash(ctx, contentX, nextY, badgeW, badgeH, 14, CARD_PALETTE.slashRed);
+  drawMatchShareText(
+    ctx,
+    formationBadge,
+    contentX + badgeW / 2 + 7,
+    nextY + badgeH / 2 + 1,
+    28,
+    CARD_PALETTE.white,
+    "center",
+    900,
+  );
+  nextY += badgeH + 26;
+
+  // 火焰橙分割线
+  ctx.save();
+  ctx.fillStyle = CARD_PALETTE.dividerOrange;
+  ctx.fillRect(contentX, nextY, contentW, 4);
+  ctx.restore();
+  nextY += 34;
+
+  // 首发与替补人数汇总
+  const starterCount = input.pitchSlots.filter((s) => s.starter !== null).length;
+  const subCount = input.pitchSlots.reduce((sum, s) => sum + s.subs.length, 0);
+  const starterStat = `首发 ${starterCount}/${input.playersPerTeam}`;
+  const subStat = `替补 ${subCount}人`;
+  drawMatchShareText(ctx, starterStat, contentX, nextY, 26, CARD_PALETTE.white, "left", 900);
+  const starterW = measureMatchShareTextWidth(ctx, starterStat, 26, 900);
+  drawMatchShareText(ctx, "·", contentX + starterW + 14, nextY, 26, "rgba(255, 255, 255, 0.45)", "left", 800);
+  drawMatchShareText(ctx, subStat, contentX + starterW + 36, nextY, 26, CARD_PALETTE.goldLabel, "left", 900);
+  nextY += 44;
+
+  // 替补对应列表（最多展示 4 条，确保文字清晰不拥挤）
+  const subLines = buildPosterSubSummaryLines(input.pitchSlots, 4);
+  const totalWithSubs = input.pitchSlots.filter((s) => s.subs.length > 0).length;
+  const remainingHeight = cardY + cardH - 22 - nextY;
+  const maxVisibleLines = Math.max(1, Math.min(4, Math.floor(remainingHeight / 36)));
+
+  if (subLines.length > 0) {
+    subLines.slice(0, maxVisibleLines).forEach((line, idx) => {
+      const fitted = fitText(ctx, line.text, contentW, 21, 18, 700);
+      drawMatchShareText(
+        ctx,
+        fitted.text,
+        contentX,
+        nextY + idx * 36,
+        fitted.size,
+        "rgba(255, 255, 255, 0.90)",
+        "left",
+        700,
+      );
+    });
+    if (totalWithSubs > maxVisibleLines && nextY + maxVisibleLines * 36 <= cardY + cardH - 18) {
+      drawMatchShareText(
+        ctx,
+        `另有 ${totalWithSubs - maxVisibleLines} 个位置已安排替补…`,
+        contentX,
+        nextY + maxVisibleLines * 36,
+        19,
+        "rgba(255, 255, 255, 0.62)",
+        "left",
+        600,
+      );
+    }
+  } else {
+    drawMatchShareText(
+      ctx,
+      starterCount > 0 ? "首发阵型已排定" : "待队长排定首发",
+      contentX,
+      nextY,
+      22,
+      "rgba(255, 255, 255, 0.84)",
+      "left",
+      700,
+    );
+    drawMatchShareText(
+      ctx,
+      "点击卡片查看完整站位安排",
+      contentX,
+      nextY + 36,
+      20,
+      "rgba(255, 255, 255, 0.62)",
+      "left",
+      600,
+    );
+  }
+}
+
+function drawPitchField(ctx: CanvasRenderingContext2D) {
+  const { x, y, w, h } = PITCH_RECT;
+  const radius = 20;
+
+  ctx.save();
+  drawRoundRect(ctx, x, y, w, h, radius);
+  ctx.clip();
+
+  const stripeHeight = h / 8;
+  for (let i = 0; i < 8; i += 1) {
+    ctx.fillStyle = i % 2 === 1 ? CARD_PALETTE.grassAlt : CARD_PALETTE.grass;
+    ctx.fillRect(x, y + i * stripeHeight, w, stripeHeight + 1);
+  }
+
+  const insetX = w * 0.035;
+  const insetY = h * 0.03;
+  ctx.strokeStyle = CARD_PALETTE.marking;
+  ctx.lineWidth = 2;
+  ctx.strokeRect(x + insetX, y + insetY, w - insetX * 2, h - insetY * 2);
 
   // 中线与中圈
-  const midY = field.y + field.h / 2;
+  const midY = y + h / 2;
   ctx.beginPath();
-  ctx.moveTo(field.x + insetX, midY);
-  ctx.lineTo(field.x + field.w - insetX, midY);
+  ctx.moveTo(x + insetX, midY);
+  ctx.lineTo(x + w - insetX, midY);
   ctx.stroke();
 
   ctx.beginPath();
-  ctx.arc(field.x + field.w / 2, midY, field.w * 0.12, 0, Math.PI * 2);
+  ctx.arc(x + w / 2, midY, w * 0.13, 0, Math.PI * 2, false);
   ctx.stroke();
 
   // 上下禁区
-  const boxW = field.w * 0.48;
-  const boxH = field.h * 0.135;
-  const boxX = field.x + (field.w - boxW) / 2;
-  ctx.strokeRect(boxX, field.y + insetY, boxW, boxH);
-  ctx.strokeRect(boxX, field.y + field.h - insetY - boxH, boxW, boxH);
+  const boxW = w * 0.48;
+  const boxH = h * 0.135;
+  const boxX = x + (w - boxW) / 2;
+  ctx.strokeRect(boxX, y + insetY, boxW, boxH);
+  ctx.strokeRect(boxX, y + h - insetY - boxH, boxW, boxH);
+  ctx.restore();
 
+  // 球场外框微亮描边
+  ctx.save();
+  drawRoundRect(ctx, x, y, w, h, radius);
+  ctx.strokeStyle = CARD_PALETTE.pitchBorder;
+  ctx.lineWidth = 2;
+  ctx.stroke();
   ctx.restore();
 }
 
 function drawPitchPlayers(
-  ctx: UniApp.CanvasContext,
+  ctx: CanvasRenderingContext2D,
   pitchSlots: PitchSlotView[],
-  images: Map<string, LineupPosterImageInfo>,
-  card: boolean,
+  avatars: Map<string, LoadedCanvasAvatar>,
+  playersPerTeam: number,
 ) {
-  const radius = card ? 20 : 28;
-  const nameFont = card ? 15 : 20;
-  const subFont = card ? 12 : 15;
+  const compact = playersPerTeam >= 9;
+  const radius = compact ? 19 : 22;
+  const nameFont = compact ? 15 : 17;
+  const subFont = compact ? 12 : 13;
 
   for (const entry of pitchSlots) {
-    const point = posterPlayerPoint(entry.x, entry.y, card);
+    const point = posterPlayerPoint(entry.x, entry.y);
     const starter = entry.starter;
-    const avatar = starter?.avatar_url ? images.get(starter.avatar_url) : undefined;
+    const avatar = starter?.avatar_url ? avatars.get(starter.avatar_url) : undefined;
 
-    // 头像圆点
+    // 圆形头像或首字占位
     ctx.save();
     ctx.beginPath();
-    ctx.arc(point.x, point.y, radius, 0, Math.PI * 2);
+    ctx.arc(point.x, point.y, radius, 0, Math.PI * 2, false);
     ctx.clip();
-    ctx.setFillStyle(starter ? PALETTE.dotBg : PALETTE.dotEmptyBg);
+    ctx.fillStyle = starter ? CARD_PALETTE.dotBg : CARD_PALETTE.dotEmptyBg;
     ctx.fillRect(point.x - radius, point.y - radius, radius * 2, radius * 2);
     if (avatar) {
       const side = Math.min(avatar.width, avatar.height);
       ctx.drawImage(
-        avatar.path,
+        avatar.image as Parameters<CanvasRenderingContext2D["drawImage"]>[0],
         (avatar.width - side) / 2,
         (avatar.height - side) / 2,
         side,
@@ -295,185 +468,142 @@ function drawPitchPlayers(
         radius * 2,
       );
     } else if (starter) {
-      drawText(ctx, avatarInitial(starter.nickname), point.x, point.y + 1, card ? 18 : 24, PALETTE.ink, "center", 600);
+      drawMatchShareText(ctx, avatarInitial(starter.nickname), point.x, point.y + 1, compact ? 17 : 20, CARD_PALETTE.ink, "center", 800);
     } else {
-      drawText(ctx, "+", point.x, point.y, card ? 22 : 28, PALETTE.paper, "center", 600);
+      drawMatchShareText(ctx, "+", point.x, point.y, compact ? 20 : 24, CARD_PALETTE.white, "center", 700);
     }
     ctx.restore();
 
-    // 白色外描边
+    // 白色高亮圆环
     ctx.save();
     ctx.beginPath();
-    ctx.arc(point.x, point.y, radius, 0, Math.PI * 2);
-    ctx.setStrokeStyle(starter ? PALETTE.paper : "rgba(255, 255, 255, 0.72)");
-    ctx.setLineWidth(card ? 2 : 3);
+    ctx.arc(point.x, point.y, radius, 0, Math.PI * 2, false);
+    ctx.strokeStyle = starter ? CARD_PALETTE.white : "rgba(255, 255, 255, 0.72)";
+    ctx.lineWidth = 3;
     ctx.stroke();
     ctx.restore();
 
     // 姓名胶囊
-    const displayName = starter ? clippedText(starter.nickname, card ? 5 : 6) : entry.label;
-    const nameWidth = Math.max(card ? 52 : 68, Array.from(displayName).length * nameFont + (card ? 14 : 18));
-    const nameHeight = card ? 22 : 28;
-    const nameY = point.y + radius + (card ? 5 : 7);
-    ctx.setFillStyle(PALETTE.nameBg);
+    const displayName = starter ? clippedText(starter.nickname, 5) : entry.label;
+    const nameWidth = Math.max(58, measureMatchShareTextWidth(ctx, displayName, nameFont, 700) + 18);
+    const nameHeight = compact ? 22 : 25;
+    const nameY = point.y + radius + 5;
+    ctx.save();
+    ctx.fillStyle = CARD_PALETTE.nameBg;
     drawRoundRect(ctx, point.x - nameWidth / 2, nameY, nameWidth, nameHeight, nameHeight / 2);
     ctx.fill();
-    drawText(ctx, displayName, point.x, nameY + nameHeight / 2, nameFont, PALETTE.paper, "center", 600);
+    ctx.restore();
+    drawMatchShareText(ctx, displayName, point.x, nameY + nameHeight / 2 + 0.5, nameFont, CARD_PALETTE.white, "center", 700);
 
     // 替补小标
     if (entry.subs.length > 0) {
       const subLabel = formatSubBadgeText(entry.subs);
-      const subWidth = Math.max(card ? 44 : 58, Array.from(subLabel).length * subFont + (card ? 12 : 16));
-      const subHeight = card ? 18 : 22;
-      const subY = nameY + nameHeight + (card ? 3 : 4);
-      ctx.setFillStyle(PALETTE.subBg);
+      const subWidth = Math.max(48, measureMatchShareTextWidth(ctx, subLabel, subFont, 700) + 14);
+      const subHeight = compact ? 18 : 20;
+      const subY = nameY + nameHeight + 3;
+      ctx.save();
+      ctx.fillStyle = CARD_PALETTE.subBg;
       drawRoundRect(ctx, point.x - subWidth / 2, subY, subWidth, subHeight, subHeight / 2);
       ctx.fill();
-      drawText(ctx, subLabel, point.x, subY + subHeight / 2, subFont, PALETTE.subFg, "center", 600);
+      ctx.restore();
+      drawMatchShareText(ctx, subLabel, point.x, subY + subHeight / 2 + 0.5, subFont, CARD_PALETTE.subFg, "center", 800);
     }
   }
 }
 
-export function drawLineupPoster(
-  ctx: UniApp.CanvasContext,
+function drawBottomVenueBar(ctx: CanvasRenderingContext2D, location: string) {
+  const barY = 684;
+  const barH = 116;
+  ctx.save();
+  ctx.fillStyle = CARD_PALETTE.white;
+  ctx.fillRect(0, barY, MATCH_SHARE_CARD_WIDTH, barH);
+  ctx.fillStyle = CARD_PALETTE.slashRed;
+  ctx.fillRect(0, barY, 18, barH);
+  ctx.restore();
+
+  const locationOnly = location?.trim() || "场地待定";
+  const withActionHint = `${locationOnly}  ·  点击查看完整阵型`;
+  const pinHeight = 42;
+  const pinSlotWidth = 34;
+  const pinGap = 14;
+  const maxTextWidth = 872;
+  const barCenterX = 509;
+  const barCenterY = barY + barH / 2;
+
+  const drawPinAndLines = (lines: string[], fontSize: number) => {
+    const widths = lines.map((line) => measureMatchShareTextWidth(ctx, line, fontSize, 900));
+    const blockTextWidth = Math.min(maxTextWidth, Math.max(...widths, 0));
+    const totalWidth = pinSlotWidth + pinGap + blockTextWidth;
+    const startX = Math.max(40, barCenterX - totalWidth / 2);
+    const pinCx = startX + pinSlotWidth / 2;
+    const textX = startX + pinSlotWidth + pinGap;
+
+    drawLocationPinIcon(ctx, pinCx, barCenterY, pinHeight);
+    if (lines.length <= 1) {
+      drawMatchShareText(ctx, lines[0] || locationOnly, textX, barCenterY, fontSize, CARD_PALETTE.ink, "left", 900);
+      return;
+    }
+    const lineGap = Math.round(fontSize * 1.42);
+    drawMatchShareText(ctx, lines[0]!, textX, barCenterY - lineGap / 2, fontSize, CARD_PALETTE.ink, "left", 900);
+    drawMatchShareText(ctx, lines[1]!, textX, barCenterY + lineGap / 2, fontSize, CARD_PALETTE.ink, "left", 900);
+  };
+
+  for (const candidate of [withActionHint, locationOnly]) {
+    const fitted = fitText(ctx, candidate, maxTextWidth, 34, 28, 900);
+    if (!fitted.text.endsWith("…")) {
+      drawPinAndLines([fitted.text], fitted.size);
+      return;
+    }
+  }
+
+  const twoLineSizes = [28, 26, 24] as const;
+  let chosenSize: number = 24;
+  let chosenLines: string[] = [];
+  for (const candidateSize of twoLineSizes) {
+    const lines = wrapTextLines(
+      locationOnly,
+      maxTextWidth,
+      (text) => measureMatchShareTextWidth(ctx, text, candidateSize, 900),
+      2,
+    );
+    chosenSize = candidateSize;
+    chosenLines = lines;
+    if (!lines[lines.length - 1]?.endsWith("…")) {
+      break;
+    }
+  }
+  drawPinAndLines(chosenLines.length ? chosenLines : [locationOnly], chosenSize);
+}
+
+/** 在标准 Canvas 2D 上绘制 1000×800（5:4）C2 比赛日风格阵型分享卡片。 */
+export function drawLineupShareCard(
+  ctx: CanvasRenderingContext2D,
   input: LineupPosterInput,
-  images: Map<string, LineupPosterImageInfo>,
-  codeImage: LineupPosterImageInfo | null,
-  kind: "poster" | "card",
+  avatars: Map<string, LoadedCanvasAvatar>,
+  backdrop: ResolvedCanvasBackdrop | null,
 ): void {
-  const isCard = kind === "card";
-  const width = isCard ? LINEUP_CARD.width : LINEUP_POSTER.width;
-  const height = isCard ? LINEUP_CARD.height : LINEUP_POSTER.height;
-  const formationTag = `${input.playersPerTeam}人制 · ${input.formation}`;
-  const timeText = formatLineupMatchTime(input.startTime, input.endTime);
-
-  // 背景底色
-  ctx.setFillStyle(PALETTE.pageBg);
-  ctx.fillRect(0, 0, width, height);
-
-  if (isCard) {
-    // 5:4 微信分享卡片
-    ctx.setFillStyle(PALETTE.paper);
-    ctx.fillRect(0, 0, width, 96);
-
-    drawText(ctx, clippedText(input.matchName || "比赛阵型", 16), 28, 36, 30, PALETTE.ink, "left", 600);
-    drawText(ctx, clippedText(`${timeText}${input.location ? ` · ${input.location}` : ""}`, 34), 28, 72, 20, PALETTE.muted, "left", 400);
-
-    // 右上阵型胶囊
-    const badgeW = Math.max(150, Array.from(formationTag).length * 18 + 26);
-    ctx.setFillStyle(PALETTE.accent);
-    drawRoundRect(ctx, width - 28 - badgeW, 18, badgeW, 42, 21);
-    ctx.fill();
-    drawText(ctx, formationTag, width - 28 - badgeW / 2, 39, 22, PALETTE.ink, "center", 600);
-
-    const field = { x: 95, y: 108, w: 560, h: 432 };
-    drawPitchField(ctx, field, 20);
-    drawPitchPlayers(ctx, input.pitchSlots, images, true);
-
-    // 底部汇总条
-    const starterCount = input.pitchSlots.filter((s) => s.starter !== null).length;
-    const subCount = input.pitchSlots.reduce((sum, s) => sum + s.subs.length, 0);
-    const footerCopy = `首发 ${starterCount}/${input.playersPerTeam} · 替补 ${subCount} 人 · 点击查看完整阵型与替补对应`;
-    drawText(ctx, footerCopy, width / 2, 572, 21, PALETTE.body, "center", 600);
-    return;
-  }
-
-  // 竖版海报 750 x 1280
-  ctx.setFillStyle(PALETTE.paper);
-  drawRoundRect(ctx, 24, 24, 702, 152, 24);
-  ctx.fill();
-
-  // 顶部比赛信息
-  drawText(ctx, clippedText(input.matchName || "比赛阵型", 16), 48, 66, 34, PALETTE.ink, "left", 600);
-  drawText(ctx, clippedText(timeText, 30), 48, 112, 22, PALETTE.body, "left", 400);
-  drawText(ctx, clippedText(input.location || "场地待定", 24), 48, 146, 22, PALETTE.muted, "left", 400);
-
-  // 右上阵型标签
-  const tagW = Math.max(176, Array.from(formationTag).length * 20 + 28);
-  ctx.setFillStyle(PALETTE.accent);
-  drawRoundRect(ctx, 702 - tagW, 46, tagW, 46, 23);
-  ctx.fill();
-  drawText(ctx, formationTag, 702 - tagW / 2, 69, 24, PALETTE.ink, "center", 600);
-
-  // 球场
-  const field = { x: 32, y: 194, w: 686, h: 680 };
-  drawPitchField(ctx, field, 24);
-  drawPitchPlayers(ctx, input.pitchSlots, images, false);
-
-  // 底部「替补对应」与小程序码区
-  ctx.setFillStyle(PALETTE.paper);
-  drawRoundRect(ctx, 24, 892, 702, 364, 24);
-  ctx.fill();
-
-  const hasCode = Boolean(codeImage);
-  const textLimit = hasCode ? 20 : 32;
-  const subLines = buildPosterSubSummaryLines(input.pitchSlots, 6);
-  const totalWithSubs = input.pitchSlots.filter((s) => s.subs.length > 0).length;
-  const starterCount = input.pitchSlots.filter((s) => s.starter !== null).length;
-  const totalSubs = input.pitchSlots.reduce((sum, s) => sum + s.subs.length, 0);
-
-  drawText(ctx, "替补对应与人员安排", 48, 932, 28, PALETTE.ink, "left", 600);
-  drawText(
-    ctx,
-    `已安排首发 ${starterCount}/${input.playersPerTeam} 人 · 替补 ${totalSubs} 人`,
-    48,
-    968,
-    21,
-    PALETTE.muted,
-    "left",
-    400,
-  );
-
-  if (subLines.length > 0) {
-    subLines.forEach((line, index) => {
-      const rowY = 1012 + index * 36;
-      drawText(ctx, clippedText(line.text, textLimit), 48, rowY, 22, PALETTE.body, "left", 500);
-    });
-    if (totalWithSubs > subLines.length) {
-      drawText(
-        ctx,
-        `另有 ${totalWithSubs - subLines.length} 个位置已指定替补，打开小程序查看全部`,
-        48,
-        1012 + subLines.length * 36,
-        20,
-        PALETTE.muted,
-        "left",
-        400,
-      );
-    }
-  } else {
-    drawText(ctx, "本场暂未指定位置替补", 48, 1026, 23, PALETTE.muted, "left", 400);
-    drawText(ctx, "所有位置首发已就绪，点击或扫码查看实时阵型", 48, 1068, 21, PALETTE.muted, "left", 400);
-  }
-
-  // 右侧小程序码（有则画，无则优雅降级不阻断）
-  if (codeImage) {
-    const boxSize = 180;
-    const boxX = 702 - boxSize;
-    const boxY = 936;
-    ctx.setFillStyle(PALETTE.paper);
-    ctx.setStrokeStyle(PALETTE.line);
-    ctx.setLineWidth(2);
-    drawRoundRect(ctx, boxX, boxY, boxSize, boxSize, 18);
-    ctx.fill();
-    ctx.stroke();
-    ctx.drawImage(codeImage.path, boxX + 12, boxY + 12, boxSize - 24, boxSize - 24);
-    drawText(ctx, "微信扫码看阵型", boxX + boxSize / 2, boxY + boxSize + 24, 20, PALETTE.muted, "center", 500);
-  } else {
-    drawText(ctx, "微信内打开可随时查看最新排阵", 48, 1226, 20, PALETTE.muted, "left", 400);
-  }
+  drawMatchShareBackdrop(ctx, backdrop, LINEUP_CARD.width, LINEUP_CARD.height, "LINEUP");
+  drawTopTimeBanner(ctx, input.startTime, input.endTime);
+  drawLeftTacticalCard(ctx, input);
+  drawPitchField(ctx);
+  drawPitchPlayers(ctx, input.pitchSlots, avatars, input.playersPerTeam);
+  drawBottomVenueBar(ctx, input.location);
 }
 
-/** 合成竖版海报或 5:4 分享图，返回临时文件路径。 */
-export async function composeLineupImage(
+/**
+ * 使用标准 `<canvas type="2d">` 合成 1000×800（5:4）微信阵型分享卡片（支持转发群/好友与朋友圈）。
+ * 支持球队会员自定义分享背景图，下载或解码失败时优雅降级为 C2 默认炽烈红黑球场射灯底。
+ */
+export async function composeLineupShareCard(
   canvasId: string,
   pageInstance: unknown,
   input: LineupPosterInput,
-  kind: "poster" | "card",
-  miniCodeUrl: string | null,
   isCurrent: () => boolean,
   loadImage: (src: string) => Promise<LineupPosterImageInfo> = getImageInfo,
 ): Promise<string> {
+  if (!isCurrent()) throw new Error("阵型内容已更新");
+
+  const canvas = await queryCanvas2DNode(canvasId, pageInstance);
   if (!isCurrent()) throw new Error("阵型内容已更新");
 
   const avatarUrls = Array.from(
@@ -483,60 +613,56 @@ export async function composeLineupImage(
         .filter((url): url is string => Boolean(url && url.trim())),
     ),
   );
+  const customBgUrl = input.customBgImageUrl?.trim() || "";
 
-  const [loadedAvatars, codeImage] = await Promise.all([
+  const [loadedAvatars, loadedBackdrop] = await Promise.all([
     Promise.all(
       avatarUrls.map(async (url) => {
         try {
           const info = await loadImage(url);
-          return [url, info] as const;
+          if (!isCurrent() || !info?.path) return null;
+          const img = await loadCanvas2DImage(canvas, info.path);
+          const width = img.width || info.width;
+          const height = img.height || info.height;
+          if (width > 0 && height > 0) {
+            return [url, { image: img, width, height }] as const;
+          }
+          return null;
         } catch {
           return null;
         }
       }),
     ),
-    kind === "poster" && miniCodeUrl ? loadImage(miniCodeUrl).catch(() => null) : Promise.resolve(null),
+    customBgUrl
+      ? (async (): Promise<ResolvedCanvasBackdrop | null> => {
+          try {
+            const info = await loadImage(customBgUrl);
+            if (!isCurrent() || !info?.path) return null;
+            const img = await loadCanvas2DImage(canvas, info.path);
+            const width = img.width || info.width;
+            const height = img.height || info.height;
+            if (width > 0 && height > 0) {
+              return { image: img, width, height };
+            }
+            return null;
+          } catch {
+            return null;
+          }
+        })()
+      : Promise.resolve(null),
   ]);
 
   if (!isCurrent()) throw new Error("阵型内容已更新");
 
-  const images = new Map<string, LineupPosterImageInfo>();
+  const avatars = new Map<string, LoadedCanvasAvatar>();
   for (const pair of loadedAvatars) {
-    if (pair) images.set(pair[0], pair[1]);
+    if (pair) avatars.set(pair[0], pair[1]);
   }
 
-  const spec = kind === "poster" ? LINEUP_POSTER : LINEUP_CARD;
-  const ctx = uni.createCanvasContext(canvasId, pageInstance as never);
-  drawLineupPoster(ctx, input, images, codeImage, kind);
+  canvas.width = LINEUP_CARD.width;
+  canvas.height = LINEUP_CARD.height;
+  const ctx = canvas.getContext("2d");
+  drawLineupShareCard(ctx, input, avatars, loadedBackdrop);
 
-  return new Promise<string>((resolve, reject) => {
-    ctx.draw(false, () => {
-      if (!isCurrent()) {
-        reject(new Error("阵型内容已更新"));
-        return;
-      }
-      uni.canvasToTempFilePath(
-        {
-          canvasId,
-          x: 0,
-          y: 0,
-          width: spec.width,
-          height: spec.height,
-          destWidth: spec.width,
-          destHeight: spec.height,
-          fileType: "jpg",
-          quality: 0.92,
-          success: (res) => {
-            if (!isCurrent()) {
-              reject(new Error("阵型内容已更新"));
-              return;
-            }
-            resolve(res.tempFilePath);
-          },
-          fail: reject,
-        },
-        pageInstance as never,
-      );
-    });
-  });
+  return exportCanvas2DToTempFile(canvas, isCurrent, LINEUP_CARD.width, LINEUP_CARD.height);
 }

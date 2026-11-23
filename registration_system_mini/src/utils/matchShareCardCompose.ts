@@ -587,7 +587,7 @@ type SelectorQueryLike = {
   exec: (callback: (results: Array<{ node?: MatchShareCanvas2DNode } | null>) => void) => void;
 };
 
-interface ResolvedCanvasBackdrop {
+export interface ResolvedCanvasBackdrop {
   image: MatchShareCanvasImage;
   width: number;
   height: number;
@@ -606,7 +606,7 @@ function queryCanvas2DNodeOnce(canvasId: string, pageInstance: unknown): Promise
   });
 }
 
-async function queryCanvas2DNode(canvasId: string, pageInstance: unknown): Promise<MatchShareCanvas2DNode> {
+export async function queryCanvas2DNode(canvasId: string, pageInstance: unknown): Promise<MatchShareCanvas2DNode> {
   const first = await queryCanvas2DNodeOnce(canvasId, pageInstance);
   if (first) return first;
   await new Promise((resolve) => setTimeout(resolve, 120));
@@ -615,7 +615,7 @@ async function queryCanvas2DNode(canvasId: string, pageInstance: unknown): Promi
   throw new Error(`match share canvas #${canvasId} not found`);
 }
 
-function loadCanvas2DImage(
+export function loadCanvas2DImage(
   canvas: MatchShareCanvas2DNode,
   src: string,
 ): Promise<MatchShareCanvasImage> {
@@ -627,9 +627,11 @@ function loadCanvas2DImage(
   });
 }
 
-function exportCanvas2DToTempFile(
+export function exportCanvas2DToTempFile(
   canvas: MatchShareCanvas2DNode,
   isCurrent: () => boolean,
+  width: number = MATCH_SHARE_CARD_WIDTH,
+  height: number = MATCH_SHARE_CARD_HEIGHT,
 ): Promise<string> {
   return new Promise<string>((resolve, reject) => {
     const handleSuccess = (result: { tempFilePath: string }) => {
@@ -648,10 +650,10 @@ function exportCanvas2DToTempFile(
         canvas: canvas as never,
         x: 0,
         y: 0,
-        width: MATCH_SHARE_CARD_WIDTH,
-        height: MATCH_SHARE_CARD_HEIGHT,
-        destWidth: MATCH_SHARE_CARD_WIDTH,
-        destHeight: MATCH_SHARE_CARD_HEIGHT,
+        width,
+        height,
+        destWidth: width,
+        destHeight: height,
         fileType: "jpg",
         quality: 0.92,
         success: handleSuccess,
@@ -663,10 +665,10 @@ function exportCanvas2DToTempFile(
       canvas.toTempFilePath({
         x: 0,
         y: 0,
-        width: MATCH_SHARE_CARD_WIDTH,
-        height: MATCH_SHARE_CARD_HEIGHT,
-        destWidth: MATCH_SHARE_CARD_WIDTH,
-        destHeight: MATCH_SHARE_CARD_HEIGHT,
+        width,
+        height,
+        destWidth: width,
+        destHeight: height,
         fileType: "jpg",
         quality: 0.92,
         success: handleSuccess,
@@ -816,6 +818,41 @@ function drawSlash(
   ctx.fillStyle = fill;
   ctx.fill();
   ctx.restore();
+}
+
+export function measureMatchShareTextWidth(
+  ctx: CanvasRenderingContext2D,
+  value: string,
+  size: number,
+  weight: CanvasFontWeight = 700,
+): number {
+  return measureWidthWithFont(ctx, value, size, weight);
+}
+
+export function drawMatchShareText(
+  ctx: CanvasRenderingContext2D,
+  value: string,
+  x: number,
+  y: number,
+  size: number,
+  color: string,
+  align: CanvasTextAlign = "left",
+  weight: CanvasFontWeight = 700,
+  italic = false,
+) {
+  drawText(ctx, value, x, y, size, color, align, weight, italic);
+}
+
+export function drawMatchShareSlash(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  skew: number,
+  fill: string,
+) {
+  drawSlash(ctx, x, y, w, h, skew, fill);
 }
 
 // ==================== 矢量球服装备图标（上衣 / 球裤 / 球袜） ====================
@@ -1002,7 +1039,12 @@ function drawStadiumSpotlights(
   ctx.restore();
 }
 
-function drawFireBackdrop(ctx: CanvasRenderingContext2D, width: number, height: number) {
+function drawFireBackdrop(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  watermark = "MATCHDAY",
+) {
   ctx.save();
   ctx.fillStyle = createBackdropGradient(ctx, width, height);
   ctx.fillRect(0, 0, width, height);
@@ -1010,20 +1052,22 @@ function drawFireBackdrop(ctx: CanvasRenderingContext2D, width: number, height: 
 
   drawStadiumSpotlights(ctx, 0.3, 0.28);
 
-  // 中央巨大镂空 MATCHDAY 暗纹
-  ctx.save();
-  setCanvasFont(ctx, 156, 900, true);
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  if (typeof ctx.strokeText === "function") {
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.065)";
-    ctx.lineWidth = 4;
-    ctx.strokeText("MATCHDAY", 500, 382);
-  } else {
-    ctx.fillStyle = "rgba(255, 255, 255, 0.04)";
-    ctx.fillText("MATCHDAY", 500, 382);
+  // 中央巨大镂空暗纹（比赛卡为 MATCHDAY，阵型卡可复用为 LINEUP）
+  if (watermark) {
+    ctx.save();
+    setCanvasFont(ctx, 156, 900, true);
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    if (typeof ctx.strokeText === "function") {
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.065)";
+      ctx.lineWidth = 4;
+      ctx.strokeText(watermark, width / 2, 382);
+    } else {
+      ctx.fillStyle = "rgba(255, 255, 255, 0.04)";
+      ctx.fillText(watermark, width / 2, 382);
+    }
+    ctx.restore();
   }
-  ctx.restore();
 }
 
 function drawCustomPhotoBackdrop(
@@ -1068,18 +1112,28 @@ function drawCustomPhotoBackdrop(
   drawStadiumSpotlights(ctx, 0.2, 0.18);
 }
 
-function drawBackdrop(
+export function drawMatchShareBackdrop(
   ctx: CanvasRenderingContext2D,
   backdrop: ResolvedCanvasBackdrop | null,
   width: number,
   height: number,
+  watermark = "MATCHDAY",
 ) {
   ctx.clearRect(0, 0, width, height);
   if (backdrop && backdrop.width > 0 && backdrop.height > 0) {
     drawCustomPhotoBackdrop(ctx, backdrop, width, height);
     return;
   }
-  drawFireBackdrop(ctx, width, height);
+  drawFireBackdrop(ctx, width, height, watermark);
+}
+
+function drawBackdrop(
+  ctx: CanvasRenderingContext2D,
+  backdrop: ResolvedCanvasBackdrop | null,
+  width: number,
+  height: number,
+) {
+  drawMatchShareBackdrop(ctx, backdrop, width, height, "MATCHDAY");
 }
 
 /**

@@ -120,7 +120,7 @@ function handleOpenVip() {
         </view>
         <!-- #endif -->
         <text class="bg-free-banner__text">
-          免费版也可正常分享比赛（使用默认热血红黑海报底）。开通球队会员后，可上传球队 Logo、公司 Logo、球队合照等作为专属分享背景。
+          免费版也可正常分享比赛和阵型（使用默认热血红黑海报底）。开通球队会员后，可上传球队 Logo、公司 Logo、球队合照等作为专属分享背景。
         </text>
       </view>
 
