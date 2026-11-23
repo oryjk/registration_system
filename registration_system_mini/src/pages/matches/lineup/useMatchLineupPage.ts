@@ -170,9 +170,10 @@ export function useMatchLineupPage(pageInstance: unknown) {
   );
   const starterCount = computed(() => pitchSlots.value.filter((item) => item.starter !== null).length);
   const subCount = computed(() => pitchSlots.value.reduce((sum, item) => sum + item.subs.length, 0));
-  /** 阵型内至少选择 1 名队员（首发或替补）后才允许保存。 */
+  /** 阵型内至少选择 1 名队员（首发或替补）后才允许保存与分享。 */
   const hasAnySelectedPlayer = computed(() => starterCount.value > 0 || subCount.value > 0);
   const canSaveLineup = computed(() => !isReadonly.value && !saving.value && hasAnySelectedPlayer.value);
+  const canShareLineup = computed(() => !saving.value && hasAnySelectedPlayer.value);
 
   const pageTitle = computed(() => (canEdit.value ? "比赛排阵型" : "查看阵型"));
   const showEmptyReadonly = computed(
@@ -341,7 +342,15 @@ export function useMatchLineupPage(pageInstance: unknown) {
         currentTeam: currentTeam.value,
       });
 
-      if (saved) {
+      const savedHasPlayers = Boolean(
+        saved?.slots?.some(
+          (slot) =>
+            (slot.player_id !== null && slot.player_id !== undefined && slot.player_id > 0)
+            || (slot.sub_player_ids?.length ?? 0) > 0,
+        ),
+      );
+
+      if (saved && savedHasPlayers) {
         hasSavedLineup.value = true;
         const resolvedFormation = isValidFormation(size, saved.formation)
           ? saved.formation
@@ -350,7 +359,8 @@ export function useMatchLineupPage(pageInstance: unknown) {
         slots.value = normalizeLoadedSlots(saved.slots, size, resolvedFormation);
       } else {
         hasSavedLineup.value = false;
-        const defaultForm = getDefaultFormation(size);
+        const defaultForm =
+          saved && isValidFormation(size, saved.formation) ? saved.formation : getDefaultFormation(size);
         formation.value = defaultForm;
         slots.value = editable
           ? buildInitialLineupFromAttending(
@@ -359,6 +369,7 @@ export function useMatchLineupPage(pageInstance: unknown) {
               attending.map((item) => item.user_id),
             )
           : createDefaultSlots(size, defaultForm);
+        isDirty.value = editable && attending.length > 0;
       }
 
       if (editable && resolvedMatch.host_team_id) {
@@ -441,7 +452,7 @@ export function useMatchLineupPage(pageInstance: unknown) {
     scheduleShareCardRender();
   }
 
-  async function handleSave() {
+  async function persistLineup(options?: { silent?: boolean }) {
     if (!canSaveLineup.value || !match.value) return;
     saving.value = true;
     try {
@@ -465,11 +476,15 @@ export function useMatchLineupPage(pageInstance: unknown) {
       }
       hasSavedLineup.value = true;
       isDirty.value = false;
-      uni.showToast({ title: "阵型已保存", icon: "success" });
-      scheduleShareCardRender();
+      if (!options?.silent) {
+        uni.showToast({ title: "阵型已保存", icon: "success" });
+        scheduleShareCardRender();
+      }
     } catch (error) {
       uni.showToast({
-        title: error instanceof Error ? error.message : "保存阵型失败，请重试",
+        title: options?.silent
+          ? "阵型自动保存失败，请点击「保存阵型」"
+          : (error instanceof Error ? error.message : "保存阵型失败，请重试"),
         icon: "none",
       });
     } finally {
@@ -477,7 +492,20 @@ export function useMatchLineupPage(pageInstance: unknown) {
     }
   }
 
+  async function handleSave() {
+    await persistLineup({ silent: false });
+  }
+
+  function ensureLineupPersistedForShare() {
+    // 队长排完人直接点「分享阵容」或右上角转发/朋友圈时，自动将当前已排阵型同步到服务端，
+    // 防止分享卡显示新阵型但好友点进来看到的仍是旧阵型或空阵型。
+    if (canEdit.value && hasAnySelectedPlayer.value && (isDirty.value || !hasSavedLineup.value)) {
+      void persistLineup({ silent: true });
+    }
+  }
+
   function friendShare() {
+    ensureLineupPersistedForShare();
     if (!match.value) {
       return {
         title: "查看比赛阵型",
@@ -572,6 +600,7 @@ export function useMatchLineupPage(pageInstance: unknown) {
     saving,
     hasAnySelectedPlayer,
     canSaveLineup,
+    canShareLineup,
     showEmptyReadonly,
     pageTitle,
     matchTimeLabel,

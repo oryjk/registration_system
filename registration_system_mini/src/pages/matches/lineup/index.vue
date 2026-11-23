@@ -43,6 +43,7 @@ const {
   isDirty,
   saving,
   canSaveLineup,
+  canShareLineup,
   showEmptyReadonly,
   pageTitle,
   matchTimeLabel,
@@ -282,10 +283,15 @@ const metaPageStyle = computed(() =>
           重置站位
         </button>
         <button
-          class="footer-btn footer-btn--outline ui-native-button"
-          hover-class="footer-btn--pressed"
+          :class="[
+            'footer-btn',
+            'footer-btn--outline',
+            'ui-native-button',
+            !canShareLineup ? 'footer-btn--disabled' : '',
+          ]"
+          :hover-class="canShareLineup ? 'footer-btn--pressed' : 'none'"
           open-type="share"
-          :disabled="saving"
+          :disabled="!canShareLineup"
         >
           分享阵容
         </button>
