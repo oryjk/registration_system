@@ -28,9 +28,13 @@ const measuredHeight = ref(0);
 let disposed = false;
 let measurement = 0;
 let listening = false;
+let actionBarBottomExpr = "env(safe-area-inset-bottom) + var(--ui-action-bar-bottom)";
+// #ifdef MP-WEIXIN
+actionBarBottomExpr = "var(--ui-action-bar-bottom-offset)";
+// #endif
 const spacerStyle = computed(() => ({
   height: measuredHeight.value
-    ? `calc(${measuredHeight.value}rpx + env(safe-area-inset-bottom) + var(--ui-action-bar-bottom) + var(--ui-card-gap))`
+    ? `calc(${measuredHeight.value}rpx + ${actionBarBottomExpr} + var(--ui-card-gap))`
     : "var(--ui-action-bar-clearance)",
 }));
 
@@ -136,7 +140,7 @@ onUnmounted(() => {
   bottom: 0;
   z-index: 39;
   height: calc(
-    env(safe-area-inset-bottom) + var(--ui-action-bar-bottom) + var(--ui-action-bar-padding) * 2 +
+    var(--ui-action-bar-bottom-offset) + var(--ui-action-bar-padding) * 2 +
     var(--ui-button-height-md) + var(--ui-action-bar-backdrop-fade)
   );
   background: var(--ui-action-bar-backdrop-bg);
@@ -152,18 +156,18 @@ onUnmounted(() => {
   from { opacity: 1; }
   to { opacity: 0; }
 }
-.ui-sticky-action-bar { gap: var(--ui-space-4); width: calc(100% - var(--ui-floating-action-inset) * 2); max-width: var(--ui-content-max-width); border: var(--ui-action-bar-border); }
+.ui-sticky-action-bar { bottom: var(--ui-action-bar-bottom-offset); gap: var(--ui-space-4); width: calc(100% - var(--ui-floating-action-inset) * 2); max-width: var(--ui-content-max-width); border: var(--ui-action-bar-border); }
 .ui-sticky-action-bar--flat { border: var(--ui-panel-border); }
 .ui-sticky-action-bar__actions { gap: var(--ui-space-3); }
 .ui-sticky-action-bar--enter { animation: ui-action-bar-enter var(--ui-motion-overlay-duration) var(--ui-motion-ease-out) both; }
 @keyframes ui-action-bar-enter {
-  from { opacity: 0; transform: translate(-50%, calc(100% + env(safe-area-inset-bottom) + var(--ui-action-bar-bottom))); }
+  from { opacity: 0; transform: translate(-50%, calc(100% + var(--ui-action-bar-bottom-offset))); }
   to { opacity: 1; transform: translate(-50%, 0); }
 }
 .ui-sticky-action-bar--leaving { pointer-events: none; animation: ui-action-bar-leave var(--ui-motion-overlay-duration) var(--ui-motion-ease-in-out) both; }
 @keyframes ui-action-bar-leave {
   from { opacity: 1; transform: translate(-50%, 0); }
-  to { opacity: 0; transform: translate(-50%, calc(100% + env(safe-area-inset-bottom) + var(--ui-action-bar-bottom))); }
+  to { opacity: 0; transform: translate(-50%, calc(100% + var(--ui-action-bar-bottom-offset))); }
 }
 @media (prefers-reduced-motion: reduce) {
   .ui-sticky-action-backdrop--enter,
