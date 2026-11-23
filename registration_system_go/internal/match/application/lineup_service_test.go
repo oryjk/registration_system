@@ -123,27 +123,29 @@ func makeLineupTestSlots(n int, starter1, sub1 int64) []domain.LineupSlot {
 func TestLineupServiceGet(t *testing.T) {
 	match := makeLineupTestMatch(domain.OfflineConfirmed, 5, domain.MatchRegistering)
 	avatar := "https://cdn.example.com/u10.png"
-	actor := sharedauth.Actor{Kind: sharedauth.ActorUser, ID: 999}
 
 	t.Run("match not found returns 404 kind", func(t *testing.T) {
 		repo := &fakeLineupRepository{matchFound: false}
 		svc := NewLineupService(repo, fakeUserMatchAuthorizer{}, nil, fixedLineupClock{now: time.Now()})
-		_, found, err := svc.Get(context.Background(), actor, match.ID)
+		_, found, err := svc.Get(context.Background(), match.ID)
 		if !sharederror.ErrNotFound.Is(err) || found {
 			t.Fatalf("期望 NotFound，得到 found=%v err=%v", found, err)
 		}
 	})
 
-	t.Run("unsaved lineup returns found=false without error", func(t *testing.T) {
+	t.Run("unsaved lineup returns found=false with match summary without error", func(t *testing.T) {
 		repo := &fakeLineupRepository{match: match, matchFound: true, lineupFound: false}
 		svc := NewLineupService(repo, fakeUserMatchAuthorizer{}, nil, fixedLineupClock{now: time.Now()})
-		_, found, err := svc.Get(context.Background(), actor, match.ID)
+		view, found, err := svc.Get(context.Background(), match.ID)
 		if err != nil || found {
 			t.Fatalf("期望 found=false, err=nil，得到 found=%v err=%v", found, err)
 		}
+		if view.Match.ID != match.ID {
+			t.Fatalf("未保存阵型时仍应附带比赛摘要，得到 %+v", view.Match)
+		}
 	})
 
-	t.Run("any logged-in user gets saved lineup with starter and sub players", func(t *testing.T) {
+	t.Run("any visitor including non-team or guest gets saved lineup with starter, sub players and match summary", func(t *testing.T) {
 		repo := &fakeLineupRepository{
 			match:       match,
 			matchFound:  true,
@@ -160,9 +162,12 @@ func TestLineupServiceGet(t *testing.T) {
 			},
 		}
 		svc := NewLineupService(repo, fakeUserMatchAuthorizer{}, nil, fixedLineupClock{now: time.Now()})
-		view, found, err := svc.Get(context.Background(), actor, match.ID)
+		view, found, err := svc.Get(context.Background(), match.ID)
 		if err != nil || !found {
 			t.Fatalf("Get 应成功: found=%v err=%v", found, err)
+		}
+		if view.Match.ID != match.ID {
+			t.Fatalf("match 摘要不符: %+v", view.Match)
 		}
 		if len(view.Players) != 2 || view.Players[0].UserID != 10 || view.Players[1].UserID != 20 {
 			t.Fatalf("players 返回不符: %+v", view.Players)
@@ -187,7 +192,7 @@ func TestLineupServiceGet(t *testing.T) {
 			},
 		}
 		svc := NewLineupService(repo, fakeUserMatchAuthorizer{}, nil, fixedLineupClock{now: time.Now()})
-		view, found, err := svc.Get(context.Background(), actor, match.ID)
+		view, found, err := svc.Get(context.Background(), match.ID)
 		if err != nil || !found {
 			t.Fatalf("Get 应成功: found=%v err=%v", found, err)
 		}

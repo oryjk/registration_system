@@ -98,6 +98,10 @@ func NewRouter(dependencies Dependencies) *gin.Engine {
 		dependencies.MiniReviews.RegisterPublicRoutes(app)
 		dependencies.MiniReviews.RegisterAllocateRoutes(app)
 	}
+	if dependencies.MatchLineups != nil {
+		// 比赛阵型公开只读：分享到微信群/朋友圈后非本队成员与未登录游客均可直接查看阵型。
+		dependencies.MatchLineups.RegisterPublicRoutes(app)
+	}
 	admin := v1.Group("/admin")
 	if dependencies.AdminAuth != nil {
 		dependencies.AdminAuth.RegisterPublicRoutes(admin)
@@ -145,7 +149,7 @@ func NewRouter(dependencies Dependencies) *gin.Engine {
 			dependencies.UserMatches.RegisterRoutes(userRoutes)
 		}
 		if dependencies.MatchLineups != nil {
-			dependencies.MatchLineups.RegisterRoutes(userRoutes)
+			dependencies.MatchLineups.RegisterUserRoutes(userRoutes)
 		}
 		if dependencies.MatchShareBgs != nil {
 			dependencies.MatchShareBgs.RegisterRoutes(userRoutes)

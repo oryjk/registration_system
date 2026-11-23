@@ -120,11 +120,12 @@ const metaPageStyle = computed(() =>
             <view class="match-banner__heading">
               <text class="match-banner__title">{{ match.name }}</text>
               <view class="match-banner__badges">
+                <text v-if="match.host_team_name" class="match-badge match-badge--readonly">{{ match.host_team_name }}</text>
                 <text class="match-badge match-badge--accent">{{ playersPerTeam }}人制 · {{ formation }}</text>
                 <text v-if="canEdit" class="match-badge match-badge--edit">
                   {{ isDirty ? "有未保存修改" : "队长编辑模式" }}
                 </text>
-                <text v-else class="match-badge match-badge--readonly">查看模式</text>
+                <text v-else-if="hasSavedLineup" class="match-badge match-badge--readonly">首发阵型</text>
               </view>
             </view>
             <button

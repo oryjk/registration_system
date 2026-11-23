@@ -22,6 +22,11 @@ type LineupRepository interface {
 	FindUsersByIDs(context.Context, []int64) ([]LineupPlayer, error)
 }
 
+// LineupTeamNameReader 可选扩展：批量查询主客队名称，供公开阵型查看页直接展示球队名称。
+type LineupTeamNameReader interface {
+	FindTeamNamesByIDs(context.Context, []int64) (map[int64]string, error)
+}
+
 // LineupMiniCodeGenerator 定义为排阵型页面生成微信小程序码的能力。
 type LineupMiniCodeGenerator interface {
 	GenerateForPage(ctx context.Context, page, scene, environment string) (string, error)

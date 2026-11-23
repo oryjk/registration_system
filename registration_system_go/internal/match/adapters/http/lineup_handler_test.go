@@ -35,8 +35,7 @@ type fakeLineupService struct {
 	miniCodeCalls  int
 }
 
-func (f *fakeLineupService) Get(_ context.Context, actor sharedauth.Actor, _ uuid.UUID) (application.LineupView, bool, error) {
-	f.actor = actor
+func (f *fakeLineupService) Get(_ context.Context, _ uuid.UUID) (application.LineupView, bool, error) {
 	return f.getView, f.getFound, f.getErr
 }
 
@@ -59,13 +58,19 @@ func newLineupTestRouter(service LineupUseCase) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	handler := NewLineupHandler(service)
 	router := gin.New()
-	group := router.Group("")
-	group.Use(authhttp.NewMiddleware(fakeUserTokens{}).RequireUser())
-	handler.RegisterRoutes(group)
+	publicGroup := router.Group("")
+	handler.RegisterPublicRoutes(publicGroup)
+	userGroup := router.Group("")
+	userGroup.Use(authhttp.NewMiddleware(fakeUserTokens{}).RequireUser())
+	handler.RegisterUserRoutes(userGroup)
 	return router
 }
 
 func lineupRequest(router *gin.Engine, method, path, body string) *httptest.ResponseRecorder {
+	return lineupRequestWithAuth(router, method, path, body, "Bearer user-token")
+}
+
+func lineupRequestWithAuth(router *gin.Engine, method, path, body, authorization string) *httptest.ResponseRecorder {
 	var reader *bytes.Reader
 	if body == "" {
 		reader = bytes.NewReader(nil)
@@ -73,7 +78,9 @@ func lineupRequest(router *gin.Engine, method, path, body string) *httptest.Resp
 		reader = bytes.NewReader([]byte(body))
 	}
 	req := httptest.NewRequest(method, path, reader)
-	req.Header.Set("Authorization", "Bearer user-token")
+	if authorization != "" {
+		req.Header.Set("Authorization", authorization)
+	}
 	if body != "" {
 		req.Header.Set("Content-Type", "application/json")
 	}
@@ -90,6 +97,14 @@ func TestLineupHandlerGetSaveAndMiniCode(t *testing.T) {
 	updatedAt := time.Date(2026, 11, 22, 12, 0, 0, 0, time.UTC)
 
 	view := application.LineupView{
+		Match: domain.Match{
+			ID:             matchID,
+			Name:           "周四友谊赛",
+			Status:         domain.MatchRegistering,
+			PlayersPerTeam: 5,
+			Location:       "悦享动运动公园",
+		},
+		HostTeamName: "洛悦御府",
 		Lineup: domain.MatchLineup{
 			MatchID:         matchID,
 			PlayersPerTeam:  5,
@@ -109,21 +124,22 @@ func TestLineupHandlerGetSaveAndMiniCode(t *testing.T) {
 
 	service := &fakeLineupService{
 		getFound:    false,
+		getView:     application.LineupView{Match: view.Match, HostTeamName: view.HostTeamName},
 		saveView:    view,
 		miniCodeURL: "https://cdn.example.com/lineup-code.png",
 	}
 	router := newLineupTestRouter(service)
 
-	// 1. 未保存时返回 {"lineup": null}
-	emptyResp := lineupRequest(router, http.MethodGet, "/matches/"+matchID.String()+"/lineup", "")
+	// 1. 未保存时返回 {"lineup": null, "match": ...}，且不携带 Authorization 也能公开读取
+	emptyResp := lineupRequestWithAuth(router, http.MethodGet, "/matches/"+matchID.String()+"/lineup", "", "")
 	if emptyResp.Code != http.StatusOK || !bytes.Contains(emptyResp.Body.Bytes(), []byte(`"lineup":null`)) {
 		t.Fatalf("未保存阵型应返回 lineup:null, got %d: %s", emptyResp.Code, emptyResp.Body.String())
 	}
 
-	// 2. 已保存时返回完整 lineup（含 players 和非 null 的 sub_player_ids）
+	// 2. 已保存时返回完整 lineup 与 match 摘要（不携带 Authorization 也能公开读取）
 	service.getFound = true
 	service.getView = view
-	getResp := lineupRequest(router, http.MethodGet, "/matches/"+matchID.String()+"/lineup", "")
+	getResp := lineupRequestWithAuth(router, http.MethodGet, "/matches/"+matchID.String()+"/lineup", "", "")
 	if getResp.Code != http.StatusOK {
 		t.Fatalf("GET lineup 失败 %d: %s", getResp.Code, getResp.Body.String())
 	}
@@ -137,8 +153,17 @@ func TestLineupHandlerGetSaveAndMiniCode(t *testing.T) {
 	if envelope.Code != 0 || envelope.Data.Lineup == nil || envelope.Data.Lineup.Formation != "1-2-1" || len(envelope.Data.Lineup.Players) != 2 {
 		t.Fatalf("GET lineup 数据不符: %+v", envelope)
 	}
+	if envelope.Data.Match == nil || envelope.Data.Match.Name != "周四友谊赛" || envelope.Data.Match.HostTeamName != "洛悦御府" {
+		t.Fatalf("GET lineup 应附带公开比赛摘要: %+v", envelope.Data.Match)
+	}
 	if envelope.Data.Lineup.Slots[1].SubPlayerIDs == nil {
 		t.Fatalf("sub_player_ids 序列化后不应为 null: %s", getResp.Body.String())
+	}
+
+	// 2.5 未登录调用 PUT 保存必须被 401 拦截
+	unauthPut := lineupRequestWithAuth(router, http.MethodPut, "/matches/"+matchID.String()+"/lineup", `{"formation":"1-2-1","slots":[]}`, "")
+	if unauthPut.Code != http.StatusUnauthorized {
+		t.Fatalf("未登录 PUT lineup 应返回 401，得到 %d", unauthPut.Code)
 	}
 
 	// 3. PUT 保存

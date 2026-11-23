@@ -14,10 +14,13 @@ import (
 
 const lineupMiniCodePage = "pages/matches/lineup/index"
 
-// LineupView 组合已保存的比赛阵型和阵型中涉及的主力/替补用户信息。
+// LineupView 组合比赛基础摘要、已保存的比赛阵型和阵型中涉及的主力/替补用户信息。
 type LineupView struct {
-	Lineup  domain.MatchLineup
-	Players []ports.LineupPlayer
+	Match        domain.Match
+	HostTeamName string
+	AwayTeamName string
+	Lineup       domain.MatchLineup
+	Players      []ports.LineupPlayer
 }
 
 // LineupService 编排比赛排阵型的读取、保存与小程序码生成。
@@ -42,23 +45,30 @@ func NewLineupService(
 	}
 }
 
-// Get 任何已登录用户可查看指定比赛的已保存阵型（供队员与替补查看站位和替换关系）。
-func (s *LineupService) Get(ctx context.Context, actor sharedauth.Actor, matchID uuid.UUID) (LineupView, bool, error) {
-	if !actor.IsUser() {
-		return LineupView{}, false, sharederror.ErrForbidden
-	}
-	if _, found, err := s.repository.FindMatch(ctx, matchID); err != nil {
+// Get 公开只读查询指定比赛的已保存阵型与比赛摘要：不要求登录也不限制本队成员，
+// 方便转发到微信群或朋友圈后任何朋友都能直接打开查看阵型。
+func (s *LineupService) Get(ctx context.Context, matchID uuid.UUID) (LineupView, bool, error) {
+	match, found, err := s.repository.FindMatch(ctx, matchID)
+	if err != nil {
 		return LineupView{}, false, sharederror.Wrap(sharederror.KindInternal, "查询比赛失败", err)
-	} else if !found {
+	}
+	if !found {
 		return LineupView{}, false, sharederror.New(sharederror.KindNotFound, "比赛不存在")
 	}
 
-	lineup, found, err := s.repository.FindLineup(ctx, matchID)
+	hostTeamName, awayTeamName := s.loadTeamNames(ctx, match)
+	baseView := LineupView{
+		Match:        match,
+		HostTeamName: hostTeamName,
+		AwayTeamName: awayTeamName,
+	}
+
+	lineup, lineupFound, err := s.repository.FindLineup(ctx, matchID)
 	if err != nil {
 		return LineupView{}, false, sharederror.Wrap(sharederror.KindInternal, "查询比赛阵型失败", err)
 	}
-	if !found {
-		return LineupView{}, false, nil
+	if !lineupFound {
+		return baseView, false, nil
 	}
 	lineup.Slots = domain.NormalizeLineupSlots(lineup.Slots)
 
@@ -66,7 +76,9 @@ func (s *LineupService) Get(ctx context.Context, actor sharedauth.Actor, matchID
 	if err != nil {
 		return LineupView{}, false, err
 	}
-	return LineupView{Lineup: lineup, Players: players}, true, nil
+	baseView.Lineup = lineup
+	baseView.Players = players
+	return baseView, true, nil
 }
 
 // Save 保存比赛阵型；权限规则与 UserMatchUpdateService.UpdateDetails 保持完全一致。
@@ -108,7 +120,14 @@ func (s *LineupService) Save(ctx context.Context, actor sharedauth.Actor, matchI
 	if err != nil {
 		return LineupView{}, err
 	}
-	return LineupView{Lineup: saved, Players: players}, nil
+	hostTeamName, awayTeamName := s.loadTeamNames(ctx, match)
+	return LineupView{
+		Match:        match,
+		HostTeamName: hostTeamName,
+		AwayTeamName: awayTeamName,
+		Lineup:       saved,
+		Players:      players,
+	}, nil
 }
 
 // GenerateMiniCode 为比赛排阵页面生成微信小程序码，使用无横杠 32 位 hex matchID 作为 scene。
@@ -161,4 +180,33 @@ func (s *LineupService) loadPlayers(ctx context.Context, slots []domain.LineupSl
 		return []ports.LineupPlayer{}, nil
 	}
 	return players, nil
+}
+
+func (s *LineupService) loadTeamNames(ctx context.Context, match domain.Match) (string, string) {
+	reader, ok := s.repository.(ports.LineupTeamNameReader)
+	if !ok {
+		return "", ""
+	}
+	ids := make([]int64, 0, 2)
+	if match.HostTeamID != nil && *match.HostTeamID > 0 {
+		ids = append(ids, *match.HostTeamID)
+	}
+	if match.AwayTeamID != nil && *match.AwayTeamID > 0 && (match.HostTeamID == nil || *match.AwayTeamID != *match.HostTeamID) {
+		ids = append(ids, *match.AwayTeamID)
+	}
+	if len(ids) == 0 {
+		return "", ""
+	}
+	names, err := reader.FindTeamNamesByIDs(ctx, ids)
+	if err != nil || len(names) == 0 {
+		return "", ""
+	}
+	var hostName, awayName string
+	if match.HostTeamID != nil {
+		hostName = names[*match.HostTeamID]
+	}
+	if match.AwayTeamID != nil {
+		awayName = names[*match.AwayTeamID]
+	}
+	return hostName, awayName
 }

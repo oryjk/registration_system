@@ -25,7 +25,7 @@ export function useMatchDetailLineup(options: UseMatchDetailLineupOptions) {
   async function refreshLineup(): Promise<void> {
     // #ifdef MP-WEIXIN
     const id = options.sourceMatch.value?.id || options.matchId.value;
-    if (!id || options.isGuestMode.value) {
+    if (!id) {
       savedLineup.value = null;
       return;
     }

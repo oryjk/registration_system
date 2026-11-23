@@ -16,7 +16,7 @@ import (
 
 // LineupUseCase 定义比赛排阵型 HTTP 适配器依赖的应用层能力。
 type LineupUseCase interface {
-	Get(context.Context, sharedauth.Actor, uuid.UUID) (application.LineupView, bool, error)
+	Get(context.Context, uuid.UUID) (application.LineupView, bool, error)
 	Save(context.Context, sharedauth.Actor, uuid.UUID, string, []domain.LineupSlot) (application.LineupView, error)
 	GenerateMiniCode(context.Context, sharedauth.Actor, uuid.UUID, string) (string, error)
 }
@@ -53,8 +53,28 @@ type MatchLineupResponse struct {
 	UpdatedAt       time.Time              `json:"updated_at"`
 }
 
+type LineupMatchSummaryResponse struct {
+	ID              string                 `json:"id"`
+	Name            string                 `json:"name"`
+	Status          domain.MatchStatus     `json:"status"`
+	PublicationMode domain.PublicationMode `json:"publication_mode"`
+	HostTeamID      *int64                 `json:"host_team_id"`
+	AwayTeamID      *int64                 `json:"away_team_id"`
+	HostTeamName    string                 `json:"host_team_name,omitempty"`
+	AwayTeamName    string                 `json:"away_team_name,omitempty"`
+	OpponentName    *string                `json:"opponent_name"`
+	PlayersPerTeam  int                    `json:"players_per_team"`
+	StartTime       time.Time              `json:"start_time"`
+	EndTime         time.Time              `json:"end_time"`
+	Location        string                 `json:"location"`
+	ShareBgImageURL string                 `json:"share_bg_image_url"`
+	ShareBgUnlocked bool                   `json:"share_bg_unlocked"`
+	CreatedByUserID *int64                 `json:"created_by_user_id"`
+}
+
 type MatchLineupEnvelope struct {
-	Lineup *MatchLineupResponse `json:"lineup"`
+	Lineup *MatchLineupResponse        `json:"lineup"`
+	Match  *LineupMatchSummaryResponse `json:"match,omitempty"`
 }
 
 type SaveLineupRequest struct {
@@ -66,28 +86,25 @@ type LineupMiniCodeResponse struct {
 	ImageURL string `json:"image_url"`
 }
 
-// Get GET /matches/:id/lineup：获取比赛已保存阵型；尚未保存时返回 {"lineup": null}。
+// Get GET /matches/:id/lineup：公开获取比赛已保存阵型与基础比赛摘要；尚未保存时返回 {"lineup": null, "match": ...}。
 func (h *LineupHandler) Get(c *gin.Context) {
-	actor, ok := userActor(c)
-	if !ok {
-		return
-	}
 	matchID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		sharedhttpapi.WriteError(c, sharederror.New(sharederror.KindValidation, "比赛 ID 无效"))
 		return
 	}
-	view, found, err := h.service.Get(c.Request.Context(), actor, matchID)
+	view, found, err := h.service.Get(c.Request.Context(), matchID)
 	if err != nil {
 		sharedhttpapi.WriteError(c, err)
 		return
 	}
+	matchResp := mapLineupMatchSummaryResponse(view)
 	if !found {
-		sharedhttpapi.WriteSuccess(c, MatchLineupEnvelope{Lineup: nil})
+		sharedhttpapi.WriteSuccess(c, MatchLineupEnvelope{Lineup: nil, Match: matchResp})
 		return
 	}
 	resp := mapMatchLineupResponse(view)
-	sharedhttpapi.WriteSuccess(c, MatchLineupEnvelope{Lineup: &resp})
+	sharedhttpapi.WriteSuccess(c, MatchLineupEnvelope{Lineup: &resp, Match: matchResp})
 }
 
 // Save PUT /matches/:id/lineup：保存比赛排阵。
@@ -122,7 +139,7 @@ func (h *LineupHandler) Save(c *gin.Context) {
 		return
 	}
 	resp := mapMatchLineupResponse(view)
-	sharedhttpapi.WriteSuccess(c, MatchLineupEnvelope{Lineup: &resp})
+	sharedhttpapi.WriteSuccess(c, MatchLineupEnvelope{Lineup: &resp, Match: mapLineupMatchSummaryResponse(view)})
 }
 
 // MiniCode GET /matches/:id/lineup/mini-code?env=release|trial|develop：生成排阵分享小程序码。
@@ -152,10 +169,42 @@ func (h *LineupHandler) MiniCode(c *gin.Context) {
 	sharedhttpapi.WriteSuccess(c, LineupMiniCodeResponse{ImageURL: imageURL})
 }
 
-func (h *LineupHandler) RegisterRoutes(group *gin.RouterGroup) {
+func (h *LineupHandler) RegisterPublicRoutes(group *gin.RouterGroup) {
 	group.GET("/matches/:id/lineup", h.Get)
+}
+
+func (h *LineupHandler) RegisterUserRoutes(group *gin.RouterGroup) {
 	group.PUT("/matches/:id/lineup", h.Save)
 	group.GET("/matches/:id/lineup/mini-code", h.MiniCode)
+}
+
+func (h *LineupHandler) RegisterRoutes(group *gin.RouterGroup) {
+	h.RegisterPublicRoutes(group)
+	h.RegisterUserRoutes(group)
+}
+
+func mapLineupMatchSummaryResponse(view application.LineupView) *LineupMatchSummaryResponse {
+	if view.Match.ID == uuid.Nil {
+		return nil
+	}
+	return &LineupMatchSummaryResponse{
+		ID:              view.Match.ID.String(),
+		Name:            view.Match.Name,
+		Status:          view.Match.Status,
+		PublicationMode: view.Match.PublicationMode,
+		HostTeamID:      view.Match.HostTeamID,
+		AwayTeamID:      view.Match.AwayTeamID,
+		HostTeamName:    view.HostTeamName,
+		AwayTeamName:    view.AwayTeamName,
+		OpponentName:    view.Match.OpponentName,
+		PlayersPerTeam:  view.Match.PlayersPerTeam,
+		StartTime:       view.Match.StartTime,
+		EndTime:         view.Match.EndTime,
+		Location:        view.Match.Location,
+		ShareBgImageURL: view.Match.ShareBgImageURL,
+		ShareBgUnlocked: view.Match.ShareBgUnlocked,
+		CreatedByUserID: view.Match.CreatedByUserID,
+	}
 }
 
 func mapMatchLineupResponse(view application.LineupView) MatchLineupResponse {

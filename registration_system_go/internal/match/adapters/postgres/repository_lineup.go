@@ -39,6 +39,11 @@ FROM users
 WHERE id = ANY($1::bigint[])
 ORDER BY id ASC
 `
+	queryFindLineupTeamNamesByIDs = `
+SELECT id, name
+FROM teams
+WHERE id = ANY($1::bigint[])
+`
 )
 
 // FindLineup 读取指定比赛已保存的排阵；尚未排阵时返回 found=false, err=nil。
@@ -97,6 +102,34 @@ func (r *Repository) FindUsersByIDs(ctx context.Context, userIDs []int64) ([]por
 		return nil, err
 	}
 	return players, nil
+}
+
+// FindTeamNamesByIDs 批量查询主/客队名称，供阵型公开分享页展示球队身份。
+func (r *Repository) FindTeamNamesByIDs(ctx context.Context, teamIDs []int64) (map[int64]string, error) {
+	result := make(map[int64]string, len(teamIDs))
+	if len(teamIDs) == 0 {
+		return result, nil
+	}
+	rows, err := r.database.Query(ctx, queryFindLineupTeamNamesByIDs, teamIDs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var (
+			id   int64
+			name string
+		)
+		if err := rows.Scan(&id, &name); err != nil {
+			return nil, err
+		}
+		result[id] = name
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return result, nil
 }
 
 func scanMatchLineupRow(row pgx.Row) (domain.MatchLineup, error) {

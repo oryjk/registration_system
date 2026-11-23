@@ -552,10 +552,31 @@ func TestMatchLineupRoutesAreProtectedAndVersioned(t *testing.T) {
 	})
 
 	base := "/api/v1/app/matches/" + matchID.String() + "/lineup"
-	unauthorized := httptest.NewRecorder()
-	router.ServeHTTP(unauthorized, httptest.NewRequest(http.MethodGet, base, nil))
-	if unauthorized.Code != http.StatusUnauthorized {
-		t.Fatalf("未登录应返回 401，得到 %d", unauthorized.Code)
+	// 公开只读 GET 允许未登录与非本队用户直接查看阵型
+	publicGet := httptest.NewRecorder()
+	router.ServeHTTP(publicGet, httptest.NewRequest(http.MethodGet, base, nil))
+	if publicGet.Code != http.StatusOK {
+		t.Fatalf("公开 GET 阵型应返回 200，得到 %d: %s", publicGet.Code, publicGet.Body.String())
+	}
+
+	// 写入 PUT 与小程序码仍严格要求登录鉴权
+	for _, unauth := range []struct {
+		method string
+		path   string
+		body   string
+	}{
+		{http.MethodPut, base, `{"formation":"1-2-1","slots":[]}`},
+		{http.MethodGet, base + "/mini-code?env=release", ""},
+	} {
+		req := httptest.NewRequest(unauth.method, unauth.path, bytes.NewBufferString(unauth.body))
+		if unauth.body != "" {
+			req.Header.Set("Content-Type", "application/json")
+		}
+		unauthorized := httptest.NewRecorder()
+		router.ServeHTTP(unauthorized, req)
+		if unauthorized.Code != http.StatusUnauthorized {
+			t.Fatalf("未登录 %s %s 应返回 401，得到 %d", unauth.method, unauth.path, unauthorized.Code)
+		}
 	}
 
 	for _, tc := range []struct {
@@ -590,7 +611,7 @@ type routerLineupService struct {
 	matchID uuid.UUID
 }
 
-func (s *routerLineupService) Get(context.Context, sharedauth.Actor, uuid.UUID) (matchapplication.LineupView, bool, error) {
+func (s *routerLineupService) Get(context.Context, uuid.UUID) (matchapplication.LineupView, bool, error) {
 	return matchapplication.LineupView{}, false, nil
 }
 

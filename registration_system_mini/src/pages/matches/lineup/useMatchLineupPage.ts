@@ -8,6 +8,7 @@ import type { BackendActivity } from "@/types/backend";
 import type { AppMatchSummary } from "@/types/match";
 import type {
   LineupCandidate,
+  MatchLineupMatchSummary,
   MatchLineupPlayer,
   MatchLineupSlot,
 } from "@/types/lineup";
@@ -47,6 +48,39 @@ import {
 } from "./lineupPoster";
 
 export type PlayerSheetTab = "starter" | "sub";
+
+function buildMatchSummaryFromPublicLineup(summary: MatchLineupMatchSummary): AppMatchSummary {
+  return {
+    id: summary.id,
+    name: summary.name,
+    publication_mode: summary.publication_mode,
+    opponent_state: "no_recruitment",
+    status: summary.status,
+    host_team_id: summary.host_team_id,
+    away_team_id: summary.away_team_id,
+    host_team_name: summary.host_team_name ?? "",
+    away_team_name: summary.away_team_name ?? "",
+    opponent_name: summary.opponent_name ?? null,
+    players_per_team: summary.players_per_team,
+    start_time: summary.start_time,
+    end_time: summary.end_time,
+    registration_start_at: null,
+    registration_end_at: null,
+    location: summary.location,
+    location_latitude: null,
+    location_longitude: null,
+    description: null,
+    host_color: null,
+    away_color: null,
+    share_bg_image_url: summary.share_bg_image_url ?? null,
+    share_bg_unlocked: summary.share_bg_unlocked ?? false,
+    is_free: true,
+    fee_per_person_cents: 0,
+    created_by_user_id: summary.created_by_user_id ?? null,
+    created_at: summary.start_time,
+    updated_at: summary.start_time,
+  };
+}
 
 export function useMatchLineupPage(pageInstance: unknown) {
   const { currentUser, currentTeam, ensureSessionReady, refreshSessionContext } = useTeamContext();
@@ -264,19 +298,28 @@ export function useMatchLineupPage(pageInstance: unknown) {
       try {
         await ensureSessionReady();
       } catch {
-        // 允许后续按真实接口错误反馈
+        // 游客态/朋友圈单页模式/未登录状态允许继续走公开阵型只读接口展示阵型
       }
       if (disposed || version !== loadVersion) return;
       isGuestMode.value = !currentUser.value;
 
-      const [detailResp, lineupResp] = await Promise.all([
-        getMatchDetail(id),
-        getMatchLineup(id).catch(() => ({ lineup: null })),
+      // 公开拉取阵型（不要求登录、不限制本队成员）；已登录时并行拉取比赛详情供编辑态预排与成员名册使用。
+      const [lineupResp, detailResp] = await Promise.all([
+        getMatchLineup(id),
+        !isGuestMode.value ? getMatchDetail(id).catch(() => null) : Promise.resolve(null),
       ]);
       if (disposed || version !== loadVersion) return;
 
-      match.value = detailResp.match;
-      const attending = collectAttendingParticipants(detailResp, currentTeam.value?.id);
+      const resolvedMatch =
+        detailResp?.match
+        ?? (lineupResp?.match ? buildMatchSummaryFromPublicLineup(lineupResp.match) : null);
+      if (!resolvedMatch) {
+        errorMessage.value = "未找到该比赛信息";
+        return;
+      }
+
+      match.value = resolvedMatch;
+      const attending = detailResp ? collectAttendingParticipants(detailResp, currentTeam.value?.id) : [];
       attendingCandidates.value = attending;
 
       const saved = lineupResp?.lineup ?? null;
@@ -290,9 +333,9 @@ export function useMatchLineupPage(pageInstance: unknown) {
       }
       savedPlayersMap.value = savedMap;
 
-      const size = normalizePlayersPerTeam(detailResp.match.players_per_team);
+      const size = normalizePlayersPerTeam(resolvedMatch.players_per_team);
       const editable = canEditMatchLineup({
-        match: detailResp.match,
+        match: resolvedMatch,
         isGuestMode: isGuestMode.value,
         currentUserId: currentUser.value?.id,
         currentTeam: currentTeam.value,
@@ -318,9 +361,9 @@ export function useMatchLineupPage(pageInstance: unknown) {
           : createDefaultSlots(size, defaultForm);
       }
 
-      if (editable && detailResp.match.host_team_id) {
+      if (editable && resolvedMatch.host_team_id) {
         const attendingIdSet = new Set(attending.map((item) => item.user_id));
-        void loadTeamMembersIfAvailable(detailResp.match.host_team_id, attendingIdSet, version);
+        void loadTeamMembersIfAvailable(resolvedMatch.host_team_id, attendingIdSet, version);
       } else {
         teamOtherCandidates.value = [];
       }

@@ -9,7 +9,7 @@ import { requestApi } from "@/utils/request";
 export function getMatchLineup(matchId: string) {
   return requestApi<MatchLineupResponse>({
     url: `/matches/${encodeURIComponent(matchId)}/lineup`,
-    auth: true,
+    auth: false,
   });
 }
 

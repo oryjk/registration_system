@@ -1,3 +1,5 @@
+import type { AppMatchPublicationMode, AppMatchStatus } from "./match";
+
 export type LineupPosition = "GK" | "DF" | "MF" | "FW";
 
 export type LineupTeamSize = 5 | 6 | 7 | 8 | 9 | 10 | 11;
@@ -28,8 +30,28 @@ export interface MatchLineupRecord {
   updated_at: string;
 }
 
+export interface MatchLineupMatchSummary {
+  id: string;
+  name: string;
+  status: AppMatchStatus;
+  publication_mode: AppMatchPublicationMode;
+  host_team_id: number | null;
+  away_team_id: number | null;
+  host_team_name?: string | null;
+  away_team_name?: string | null;
+  opponent_name?: string | null;
+  players_per_team: number;
+  start_time: string;
+  end_time: string;
+  location: string;
+  share_bg_image_url?: string | null;
+  share_bg_unlocked?: boolean;
+  created_by_user_id?: number | null;
+}
+
 export interface MatchLineupResponse {
   lineup: MatchLineupRecord | null;
+  match?: MatchLineupMatchSummary | null;
 }
 
 export interface SaveMatchLineupPayload {
