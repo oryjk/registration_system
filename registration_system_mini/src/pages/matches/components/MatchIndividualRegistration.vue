@@ -103,6 +103,11 @@ const actions = computed(() => resolveDetailActions({
   paid: props.myRegistrationPaid,
 }));
 const busy = computed(() => props.submittingStatus || !!props.submittingPayment);
+// 微信端启用白底圆角悬浮托盘 + 底部渐隐遮罩，H5 保持原 flat 形态。
+let useFlatActionBar = true;
+// #ifdef MP-WEIXIN
+useFlatActionBar = false;
+// #endif
 function actionLabel(action: DetailAction | null) {
   if (action === "pay") return props.submittingPayment ? "支付中..." : `去支付 ${props.pendingPaymentFeeLabel}`;
   if (action === "roster") return rosterActionLabel.value;
@@ -194,7 +199,7 @@ function handleTeamMemberDialogVisibilityChange(visible: boolean) {
     />
 
     <!-- 单一行动栏：支付 > 名单状态 > 报名 CTA；支付态可叠加一个次行动入口。 -->
-    <StickyActionBar v-if="actions.primary" flat>
+    <StickyActionBar v-if="actions.primary" :flat="useFlatActionBar">
       <AppButton
         v-if="actions.secondary"
         variant="outline"
@@ -270,8 +275,8 @@ function handleTeamMemberDialogVisibilityChange(visible: boolean) {
 /* #ifdef MP-WEIXIN */
 .individual-mode-shell { gap: var(--ui-space-6); }
 .registration-actions { gap: var(--ui-space-4); }
-.registration-share { gap: var(--ui-space-2); border: var(--ui-button-outline-border); background: var(--ui-button-outline-bg); color: var(--ui-color-text); font-size: var(--ui-text-label); font-weight: var(--ui-font-weight-heading); }
-.registration-share--pressed { background: var(--ui-control-subtle-bg); box-shadow: var(--ui-shadow-control-pressed); }
+.registration-share { gap: var(--ui-space-2); border: 0; background: var(--ui-color-neutral-bg); color: var(--ui-color-text); font-size: var(--ui-text-label); font-weight: var(--ui-font-weight-heading); }
+.registration-share--pressed { background: var(--ui-color-line); box-shadow: var(--ui-shadow-control-pressed); }
 .registration-button-content { gap: var(--ui-space-3); }
 /* #endif */
 </style>

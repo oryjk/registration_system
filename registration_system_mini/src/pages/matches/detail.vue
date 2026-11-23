@@ -659,9 +659,9 @@ const metaPageStyle = computed(() => {
 .registration-shell {
   gap: var(--ui-card-gap);
 }
-.match-manage-action { border: var(--ui-button-outline-border); background: var(--ui-button-outline-bg); min-height: var(--ui-control-min-height); padding: var(--ui-space-3) var(--ui-space-4); font-size: var(--ui-text-label); font-weight: var(--ui-font-weight-heading); }
-.match-manage-action--lineup { border-color: var(--ui-color-accent); background: var(--ui-color-accent-soft); color: var(--ui-color-text); }
-.match-manage-action--cancel { border: 2rpx solid rgba(161, 52, 50, 0.28); background: var(--ui-color-danger-bg); font-weight: var(--ui-font-weight-heading); }
+.match-manage-action { border: 0; background: var(--ui-color-neutral-bg); color: var(--ui-color-text); min-height: var(--ui-control-min-height); padding: var(--ui-space-3) var(--ui-space-4); font-size: var(--ui-text-label); font-weight: var(--ui-font-weight-heading); }
+.match-manage-action--lineup { background: var(--ui-color-neutral-bg); color: var(--ui-color-text); }
+.match-manage-action--cancel { border: 0; background: var(--ui-color-danger-bg); color: var(--ui-color-danger-fg); font-weight: var(--ui-font-weight-heading); }
 .match-lineup-entry { display: flex; align-items: center; justify-content: space-between; gap: var(--ui-space-4); }
 .match-lineup-entry__body { display: flex; flex-direction: column; gap: var(--ui-space-2); min-width: 0; flex: 1; }
 .match-lineup-entry__head { display: flex; align-items: center; gap: var(--ui-space-2); flex-wrap: wrap; }

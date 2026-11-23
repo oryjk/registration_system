@@ -64,6 +64,14 @@ onUnmounted(() => {
 
 <template>
   <view v-if="rendered && reserveSpace" class="ui-sticky-action-spacer" :style="spacerStyle" aria-hidden="true" />
+  <!-- #ifdef MP-WEIXIN -->
+  <view
+    v-if="rendered && !flat"
+    class="ui-sticky-action-backdrop"
+    :class="{ 'ui-sticky-action-backdrop--enter': enterFromBottom, 'ui-sticky-action-backdrop--leaving': leaving }"
+    aria-hidden="true"
+  />
+  <!-- #endif -->
   <view v-if="rendered" class="ui-sticky-action-bar" :class="[$attrs.class, { 'ui-sticky-action-bar--flat': flat, 'ui-sticky-action-bar--enter': enterFromBottom, 'ui-sticky-action-bar--leaving': leaving }]" :style="$attrs.style">
     <view v-if="$slots.leading" class="ui-sticky-action-bar__leading">
       <slot name="leading" />
@@ -121,7 +129,30 @@ onUnmounted(() => {
 }
 
 /* #ifdef MP-WEIXIN */
-.ui-sticky-action-bar { gap: var(--ui-space-4); width: calc(100% - var(--ui-floating-action-inset) * 2); max-width: var(--ui-content-max-width); border: var(--ui-border-hairline); }
+.ui-sticky-action-backdrop {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 39;
+  height: calc(
+    env(safe-area-inset-bottom) + var(--ui-action-bar-bottom) + var(--ui-action-bar-padding) * 2 +
+    var(--ui-button-height-md) + var(--ui-action-bar-backdrop-fade)
+  );
+  background: var(--ui-action-bar-backdrop-bg);
+  pointer-events: none;
+}
+.ui-sticky-action-backdrop--enter { animation: ui-action-backdrop-enter var(--ui-motion-overlay-duration) var(--ui-motion-ease-out) both; }
+.ui-sticky-action-backdrop--leaving { animation: ui-action-backdrop-leave var(--ui-motion-overlay-duration) var(--ui-motion-ease-in-out) both; }
+@keyframes ui-action-backdrop-enter {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes ui-action-backdrop-leave {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+.ui-sticky-action-bar { gap: var(--ui-space-4); width: calc(100% - var(--ui-floating-action-inset) * 2); max-width: var(--ui-content-max-width); border: var(--ui-action-bar-border); }
 .ui-sticky-action-bar--flat { border: var(--ui-panel-border); }
 .ui-sticky-action-bar__actions { gap: var(--ui-space-3); }
 .ui-sticky-action-bar--enter { animation: ui-action-bar-enter var(--ui-motion-overlay-duration) var(--ui-motion-ease-out) both; }
@@ -135,6 +166,8 @@ onUnmounted(() => {
   to { opacity: 0; transform: translate(-50%, calc(100% + env(safe-area-inset-bottom) + var(--ui-action-bar-bottom))); }
 }
 @media (prefers-reduced-motion: reduce) {
+  .ui-sticky-action-backdrop--enter,
+  .ui-sticky-action-backdrop--leaving,
   .ui-sticky-action-bar--enter,
   .ui-sticky-action-bar--leaving { animation: none; }
 }
