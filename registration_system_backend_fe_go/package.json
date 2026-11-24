@@ -10,6 +10,7 @@
     "dev": "cross-env ADMIN_API_BASE_URL=/go-api vite --host 0.0.0.0",
     "build": "cross-env ADMIN_PUBLIC_PATH=/ ADMIN_ROUTE_BASE=/ vite build",
     "build:nginx": "cross-env ADMIN_PUBLIC_PATH=/registration-admin/ ADMIN_ROUTE_BASE=/registration-admin/ vite build",
+    "build:lan": "cross-env ADMIN_API_BASE_URL=/registration-admin-api/ip ADMIN_API_SERVER_LABEL=\"IP 直连（10.8.10.1）\" ADMIN_API_ALTERNATE_BASE_URL=/registration-admin-api/domain ADMIN_API_ALTERNATE_SERVER_LABEL=\"公网域名（oryjk.cn:82）\" bun run build:nginx",
     "build:out109": "bun run build:jd",
     "type-check": "tsc --noEmit",
     "lint": "biome check .",

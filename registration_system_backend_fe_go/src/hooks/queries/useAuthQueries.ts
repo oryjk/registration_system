@@ -5,11 +5,13 @@ import {
   getAdminToken,
   setAdminToken,
 } from "../../auth/token-storage";
+import { findAdminServer, setAdminServer } from "../../config/api";
 import { queryKeys } from "./keys";
 
 export interface AdminLoginInput {
   username: string;
   password: string;
+  serverId: string;
 }
 
 export function useCurrentAdminQuery(enabled = Boolean(getAdminToken())) {
@@ -23,9 +25,10 @@ export function useCurrentAdminQuery(enabled = Boolean(getAdminToken())) {
 
 export function useLoginMutation() {
   return useMutation({
-    mutationFn: ({ username, password }: AdminLoginInput) =>
-      loginAdmin(username, password),
-    onSuccess: (result) => {
+    mutationFn: ({ username, password, serverId }: AdminLoginInput) =>
+      loginAdmin(username, password, findAdminServer(serverId).baseUrl),
+    onSuccess: (result, { serverId }) => {
+      setAdminServer(findAdminServer(serverId).id);
       setAdminToken(result.access_token);
     },
   });

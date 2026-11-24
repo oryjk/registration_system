@@ -71,12 +71,16 @@ describe("request auth modes", () => {
     );
 
     await expect(
-      request("/auth/login", { auth: "login", method: "POST" }),
+      request("/auth/login", {
+        auth: "login",
+        apiBaseUrl: "/alternate-api",
+        method: "POST",
+      }),
     ).rejects.toEqual(expect.objectContaining({ status: 401, code: 40102 }));
 
     const [, options] = vi.mocked(fetch).mock.calls[0];
     expect(fetch).toHaveBeenCalledWith(
-      "/go-api/api/v1/admin/auth/login",
+      "/alternate-api/api/v1/admin/auth/login",
       expect.any(Object),
     );
     expect(options?.headers).not.toEqual(

@@ -5,9 +5,14 @@ import type {
 } from "../types/auth";
 import { request } from "./client";
 
-export function loginAdmin(username: string, password: string) {
+export function loginAdmin(
+  username: string,
+  password: string,
+  apiBaseUrl?: string,
+) {
   return request<AdminLoginResult>("/auth/login", {
     auth: "login",
+    apiBaseUrl,
     method: "POST",
     body: JSON.stringify({ username, password }),
   });

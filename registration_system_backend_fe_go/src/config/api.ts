@@ -1,9 +1,64 @@
 export type AuthMode = "required" | "login" | "none";
 
 const ADMIN_API_PREFIX = "/api/v1/admin";
+const SERVER_KEY = "registration-admin-go.server.v1";
+
+type AdminServerId = "default" | "alternate";
+
+interface AdminServer {
+  id: AdminServerId;
+  label: string;
+  baseUrl: string;
+}
+
+const defaultServer: AdminServer = {
+  id: "default",
+  label: import.meta.env.ADMIN_API_SERVER_LABEL?.trim() || "默认服务器",
+  baseUrl: (import.meta.env.ADMIN_API_BASE_URL?.trim() || "").replace(
+    /\/+$/,
+    "",
+  ),
+};
+const alternateBaseUrl = (
+  import.meta.env.ADMIN_API_ALTERNATE_BASE_URL?.trim() || ""
+).replace(/\/+$/, "");
+
+export const adminServers: readonly AdminServer[] =
+  alternateBaseUrl && alternateBaseUrl !== defaultServer.baseUrl
+    ? [
+        defaultServer,
+        {
+          id: "alternate",
+          label:
+            import.meta.env.ADMIN_API_ALTERNATE_SERVER_LABEL?.trim() ||
+            "备用服务器",
+          baseUrl: alternateBaseUrl,
+        },
+      ]
+    : [defaultServer];
+
+let activeServer: AdminServer | undefined;
+
+export function findAdminServer(id: string | null): AdminServer {
+  return adminServers.find((server) => server.id === id) ?? defaultServer;
+}
+
+export function getAdminServer(): AdminServer {
+  activeServer ??= findAdminServer(
+    adminServers.length > 1 ? window.localStorage.getItem(SERVER_KEY) : null,
+  );
+  return activeServer;
+}
+
+export function setAdminServer(id: AdminServerId) {
+  activeServer = findAdminServer(id);
+  if (adminServers.length > 1) {
+    window.localStorage.setItem(SERVER_KEY, activeServer.id);
+  }
+}
 
 export function getApiBaseUrl(): string {
-  return (import.meta.env.ADMIN_API_BASE_URL?.trim() || "").replace(/\/+$/, "");
+  return getAdminServer().baseUrl;
 }
 
 export function buildApiUrl(

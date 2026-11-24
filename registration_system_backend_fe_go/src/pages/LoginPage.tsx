@@ -15,11 +15,20 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { adminServers, getAdminServer } from "@/config/api";
 import { useAdminSession } from "@/features/admin-session/useAdminSession";
 import { useLoginMutation } from "@/hooks/queries/useAuthQueries";
 import { sanitizeRedirect } from "@/utils/auth-redirect";
 
 const loginSchema = z.object({
+  serverId: z.enum(["default", "alternate"]),
   username: z.string().min(1, { message: "请输入管理员账号" }),
   password: z.string().min(1, { message: "请输入密码" }),
 });
@@ -37,7 +46,11 @@ export default function LoginPage() {
   );
 
   const form = useForm<LoginFormValue>({
-    defaultValues: { username: "", password: "" },
+    defaultValues: {
+      serverId: getAdminServer().id,
+      username: "",
+      password: "",
+    },
     resolver: zodResolver(loginSchema),
   });
 
@@ -69,6 +82,38 @@ export default function LoginPage() {
 
             <Form {...form}>
               <form className="login-form" onSubmit={submit}>
+                {adminServers.length > 1 && (
+                  <FormField
+                    control={form.control}
+                    name="serverId"
+                    render={({ field }) => (
+                      <FormItem className="login-field">
+                        <FormLabel>服务器地址</FormLabel>
+                        <Select
+                          disabled={loginMutation.isPending}
+                          onValueChange={(value) => {
+                            field.onChange(value);
+                            setError("");
+                          }}
+                          value={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger ref={field.ref}>
+                              <SelectValue />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {adminServers.map(({ id, label }) => (
+                              <SelectItem key={id} value={id}>
+                                {label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </FormItem>
+                    )}
+                  />
+                )}
                 <FormField
                   control={form.control}
                   name="username"

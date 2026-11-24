@@ -31,6 +31,10 @@ location = /health {
 }
 ```
 
+内网入口 `172.16.60.233/registration-admin/` 使用 `bun run build:lan`。将 [内网 Nginx 配置](deploy/lan-nginx.conf) 放入该入口的 server 块，校验配置后重载，再替换前端产物。登录页默认选择 WireGuard 上的 IP 直连，也可选择公网域名。两条线路都通过同源代理并校验上游 HTTPS 证书。
+
+其他部署可配置 `ADMIN_API_ALTERNATE_BASE_URL` 来启用下拉框，使用 `ADMIN_API_SERVER_LABEL` 和 `ADMIN_API_ALTERNATE_SERVER_LABEL` 指定显示名称。
+
 ## 验证
 
 ```bash
@@ -77,4 +81,4 @@ bun run perf:measure -- \
 | 请求数中位数 | 10 | 16 | +6 |
 | 传输字节中位数 | 921,281 B | 931,062 B | +1.1% |
 
-当前发布目标为 jd，运行仓库根目录 `./deploy_jd_go_h5.sh`；前端目录 `/root/docker_data/nginx/html/regist-admin-v3/`。`build:out109` 仅是 `build:jd` 的旧名称别名；日常部署不要使用旧 `/registration-admin/` 入口。详见 [部署文档](../docs/deployment-jd.md)。
+公网发布目标为 jd，运行仓库根目录 `./deploy_jd_go_h5.sh`，前端部署目录为 `/root/docker_data/nginx/html/regist-admin-v3/`，网址路径为 `/regist-admin-v3/`。`build:out109` 是 `build:jd` 的兼容别名。详见 [部署文档](../docs/deployment-jd.md)。

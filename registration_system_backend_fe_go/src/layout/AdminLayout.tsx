@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { Navigate, Outlet, useLocation } from "react-router";
 import { AuthBootstrapError } from "@/components/AuthBootstrapError";
+import { adminServers } from "@/config/api";
 import { useAdminSession } from "@/features/admin-session/useAdminSession";
 import { AdminShell } from "@/layout/AdminShell";
 import { buildLoginUrl } from "@/utils/auth-redirect";
@@ -46,6 +47,7 @@ export function AdminLayout() {
   if (authBootstrapError) {
     return (
       <AuthBootstrapError
+        loginUrl={adminServers.length > 1 ? buildLoginUrl(location) : undefined}
         message={authBootstrapError}
         onRetry={() => void refresh()}
       />

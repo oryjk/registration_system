@@ -5,6 +5,7 @@ import type { ApiResponse } from "../types/api";
 
 export interface RequestOptions extends RequestInit {
   auth?: AuthMode;
+  apiBaseUrl?: string;
 }
 
 export class ApiError extends Error {
@@ -23,11 +24,14 @@ export async function request<T>(
   path: string,
   options: RequestOptions = {},
 ): Promise<T> {
-  const { auth = "required", headers, ...requestOptions } = options;
+  const { auth = "required", apiBaseUrl, headers, ...requestOptions } = options;
+  const activeBaseUrl = getApiBaseUrl();
+  const baseUrl =
+    auth === "login" ? (apiBaseUrl ?? activeBaseUrl) : activeBaseUrl;
   const token = auth === "required" ? getAdminToken() : null;
   // FormData 交给浏览器自动补 multipart boundary，手动设置 JSON Content-Type 会破坏表单解析。
   const isFormData = requestOptions.body instanceof FormData;
-  const response = await fetch(buildApiUrl(getApiBaseUrl(), auth, path), {
+  const response = await fetch(buildApiUrl(baseUrl, auth, path), {
     ...requestOptions,
     headers: {
       ...(isFormData ? {} : { "Content-Type": "application/json" }),
@@ -35,7 +39,12 @@ export async function request<T>(
       ...headers,
     },
   });
-  if (response.status === 401 && auth === "required") {
+  if (
+    response.status === 401 &&
+    auth === "required" &&
+    getApiBaseUrl() === baseUrl &&
+    getAdminToken() === token
+  ) {
     expireAdminSession();
   }
 

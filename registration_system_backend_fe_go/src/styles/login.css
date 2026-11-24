@@ -64,6 +64,7 @@
 }
 
 .login-form .ui-input,
+.login-form .select-trigger,
 .login-submit.ui-button {
   height: var(--control-height-lg);
 }

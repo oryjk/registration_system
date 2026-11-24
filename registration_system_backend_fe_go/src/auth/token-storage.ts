@@ -1,19 +1,31 @@
+import { adminServers, getApiBaseUrl } from "../config/api";
+
 const TOKEN_KEY = "registration-admin-go.token.v1";
 
-let cachedToken: string | null | undefined;
+let cachedToken: { key: string; value: string | null } | undefined;
+
+function tokenKey() {
+  return adminServers.length > 1
+    ? `${TOKEN_KEY}:${getApiBaseUrl()}`
+    : TOKEN_KEY;
+}
 
 export function getAdminToken(): string | null {
-  if (cachedToken !== undefined) return cachedToken;
-  cachedToken = window.localStorage.getItem(TOKEN_KEY);
-  return cachedToken;
+  const key = tokenKey();
+  if (cachedToken?.key !== key) {
+    cachedToken = { key, value: window.localStorage.getItem(key) };
+  }
+  return cachedToken.value;
 }
 
 export function setAdminToken(token: string) {
-  cachedToken = token;
-  window.localStorage.setItem(TOKEN_KEY, token);
+  const key = tokenKey();
+  window.localStorage.setItem(key, token);
+  cachedToken = { key, value: token };
 }
 
 export function clearAdminToken() {
-  cachedToken = null;
-  window.localStorage.removeItem(TOKEN_KEY);
+  const key = tokenKey();
+  window.localStorage.removeItem(key);
+  cachedToken = { key, value: null };
 }

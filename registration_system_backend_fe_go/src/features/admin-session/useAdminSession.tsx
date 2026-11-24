@@ -1,4 +1,4 @@
-import { useQueryClient } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   createContext,
   type ReactNode,
@@ -12,6 +12,7 @@ import { getCurrentAdmin } from "@/api/auth";
 import { ApiError } from "@/api/client";
 import { expireAdminSession } from "@/auth/session-expiry";
 import { clearAdminToken, getAdminToken } from "@/auth/token-storage";
+import { getApiBaseUrl } from "@/config/api";
 import type { AdminUser } from "@/types/auth";
 import { buildLoginUrl } from "@/utils/auth-redirect";
 
@@ -37,23 +38,46 @@ const AdminSessionContext = createContext<AdminSessionContextValue | null>(
   null,
 );
 
+function createAdminQueryClient() {
+  return new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: 1,
+        refetchOnWindowFocus: false,
+      },
+    },
+  });
+}
+
 export function AdminSessionProvider({ children }: { children: ReactNode }) {
   const [currentAdmin, setCurrentAdmin] = useState<AdminUser | null>(null);
   const [authBootstrapError, setAuthBootstrapError] = useState<string | null>(
     null,
   );
   const [bootstrapping, setBootstrapping] = useState(true);
-  const queryClient = useQueryClient();
+  const [queryClient, setQueryClient] = useState(createAdminQueryClient);
   const navigate = useNavigate();
   const location = useLocation();
 
+  const resetQueries = useCallback(() => {
+    queryClient.clear();
+    setQueryClient(createAdminQueryClient());
+  }, [queryClient]);
+
   const refresh = useCallback(async () => {
+    const token = getAdminToken();
+    const baseUrl = getApiBaseUrl();
+    const sessionChanged = () =>
+      token !== getAdminToken() || baseUrl !== getApiBaseUrl();
     setBootstrapping(true);
     setAuthBootstrapError(null);
     try {
-      setCurrentAdmin(await fetchCurrentAdmin());
+      const admin = await fetchCurrentAdmin();
+      if (sessionChanged()) return;
+      setCurrentAdmin(admin);
       setBootstrapping(false);
     } catch (reason) {
+      if (sessionChanged()) return;
       if (reason instanceof ApiError && reason.status === 401) {
         expireAdminSession();
         return;
@@ -68,12 +92,12 @@ export function AdminSessionProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(() => {
     clearAdminToken();
-    queryClient.clear();
+    resetQueries();
     setCurrentAdmin(null);
     setAuthBootstrapError(null);
     setBootstrapping(false);
     navigate("/login");
-  }, [navigate, queryClient]);
+  }, [navigate, resetQueries]);
 
   useEffect(() => {
     void refresh();
@@ -81,7 +105,7 @@ export function AdminSessionProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const handleSessionExpired = () => {
-      queryClient.clear();
+      resetQueries();
       setCurrentAdmin(null);
       setAuthBootstrapError(null);
       setBootstrapping(false);
@@ -93,13 +117,17 @@ export function AdminSessionProvider({ children }: { children: ReactNode }) {
     return () => {
       window.removeEventListener("admin-auth-expired", handleSessionExpired);
     };
-  }, [location, navigate, queryClient]);
+  }, [location, navigate, resetQueries]);
 
-  const login = useCallback((admin: AdminUser) => {
-    setCurrentAdmin(admin);
-    setAuthBootstrapError(null);
-    setBootstrapping(false);
-  }, []);
+  const login = useCallback(
+    (admin: AdminUser) => {
+      resetQueries();
+      setCurrentAdmin(admin);
+      setAuthBootstrapError(null);
+      setBootstrapping(false);
+    },
+    [resetQueries],
+  );
 
   return (
     <AdminSessionContext.Provider
@@ -112,7 +140,7 @@ export function AdminSessionProvider({ children }: { children: ReactNode }) {
         login,
       }}
     >
-      {children}
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     </AdminSessionContext.Provider>
   );
 }
