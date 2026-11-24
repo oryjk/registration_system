@@ -1,5 +1,4 @@
 import { parseDateValue } from "@/utils/datetime";
-import { getApiBaseUrl } from "@/config/apiBase";
 import { getAccessToken } from "@/utils/authStorage";
 import type {
   BackendApiResponse,
@@ -19,7 +18,7 @@ import type {
   AppMatchSummary,
 } from "@/types/match";
 import { buildQueryString } from "@/utils/queryString";
-import { ApiRequestError, requestApi } from "@/utils/request";
+import { ApiRequestError, requestApi, uploadThroughAppApi } from "@/utils/request";
 
 export function getMatchHome() {
   return requestApi<AppMatchHomeResponse>({ url: "/matches/home", auth: true });
@@ -229,27 +228,29 @@ export function getVenueSuggestions(limit = 10) {
 export function uploadMatchShareBg(matchId: string, filePath: string) {
   const token = getAccessToken();
 
-  return new Promise<BackendMatchShareBgResult>((resolve, reject) => {
-    uni.uploadFile({
-      url: `${getApiBaseUrl()}/matches/${matchId}/share-bg`,
-      filePath,
-      name: "file",
-      header: token ? { Authorization: `Bearer ${token}` } : {},
-      success: (response) => {
-        let parsed: BackendApiResponse<BackendMatchShareBgResult> | null = null;
-        try {
-          parsed = JSON.parse(response.data) as BackendApiResponse<BackendMatchShareBgResult>;
-        } catch {
-          reject(new ApiRequestError("背景图上传响应解析失败", response.statusCode));
-          return;
-        }
-        if (response.statusCode < 200 || response.statusCode >= 300 || parsed?.code !== 0 || !parsed.data) {
-          reject(new ApiRequestError(parsed?.message || "背景图上传失败", response.statusCode));
-          return;
-        }
-        resolve(parsed.data);
-      },
-      fail: () => reject(new ApiRequestError("背景图上传失败")),
+  return uploadThroughAppApi<BackendMatchShareBgResult>(`/matches/${matchId}/share-bg`, (url) => {
+    return new Promise((resolve, reject) => {
+      uni.uploadFile({
+        url,
+        filePath,
+        name: "file",
+        header: token ? { Authorization: `Bearer ${token}` } : {},
+        success: (response) => {
+          let parsed: BackendApiResponse<BackendMatchShareBgResult> | null = null;
+          try {
+            parsed = JSON.parse(response.data) as BackendApiResponse<BackendMatchShareBgResult>;
+          } catch {
+            reject(new ApiRequestError("背景图上传响应解析失败", response.statusCode));
+            return;
+          }
+          if (response.statusCode < 200 || response.statusCode >= 300 || parsed?.code !== 0 || !parsed.data) {
+            reject(new ApiRequestError(parsed?.message || "背景图上传失败", response.statusCode));
+            return;
+          }
+          resolve(parsed.data);
+        },
+        fail: () => reject(new ApiRequestError("背景图上传失败", 0, true)),
+      });
     });
   });
 }

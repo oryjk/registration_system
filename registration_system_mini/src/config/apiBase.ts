@@ -19,3 +19,11 @@ export function getApiBaseUrl(): string {
   const baseUrl = import.meta.env.VITE_API_BASE_URL?.trim() || FALLBACK_APP_API_BASE;
   return normalizeAppApiBase(baseUrl);
 }
+
+export function getBackupApiBaseUrl(): string | undefined {
+  // #ifdef MP-WEIXIN
+  const baseUrl = import.meta.env.VITE_MP_WEIXIN_BACKUP_API_BASE_URL?.trim();
+  if (baseUrl) return normalizeAppApiBase(baseUrl);
+  // #endif
+  return undefined;
+}

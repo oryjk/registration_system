@@ -155,6 +155,15 @@ describe("upload git guard", () => {
 });
 
 describe("compiled release API guard", () => {
+  test("checks the backup getter when a backup is configured", () => {
+    const root = fixture();
+    const backup = "https://backup.oryjk.cn:19443/regist-v3/api/v1/app";
+    expect(() => verifyReleaseBundle(root, productionApi, backup)).toThrow("备用 API");
+    writeFileSync(path.join(root, "dist/build/mp-weixin/config/apiBase.js"),
+      `exports.getApiBaseUrl = () => ${JSON.stringify(productionApi)}; exports.getBackupApiBaseUrl = () => ${JSON.stringify(backup)};`);
+    expect(verifyReleaseBundle(root, productionApi, backup)).toBe(productionApi);
+  });
+
   test("evaluates the actual getter, allowing an unused local fallback string", () => {
     const root = fixture();
     writeFileSync(path.join(root, "dist/build/mp-weixin/config/apiBase.js"), `const fallback = ${JSON.stringify(localApi)}; exports.getApiBaseUrl = () => ${JSON.stringify(productionApi)} || fallback;`);

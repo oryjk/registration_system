@@ -56,14 +56,20 @@ export function loadProductionEnvironment(projectRoot = defaultProjectRoot, inhe
     throw new Error("无法解析生产构建环境，已阻止构建/上传。");
   }
   const apiBase = normalizeReleaseApiBase(production.VITE_MP_WEIXIN_API_BASE_URL ?? production.VITE_API_BASE_URL);
+  const backupApiBase = production.VITE_MP_WEIXIN_BACKUP_API_BASE_URL === undefined
+    ? undefined
+    : normalizeReleaseApiBase(production.VITE_MP_WEIXIN_BACKUP_API_BASE_URL);
   if (/^(true|1)$/i.test(String(production.VITE_USE_MOCK || "").trim())) {
     throw new Error("生产发布不能启用 Mock，请检查 .env.production。");
   }
   // 将生产变量显式传给 Vite，防止 .env.local 等本地覆盖层改写发布目标。
-  return { ...clean, ...production, VITE_API_BASE_URL: apiBase, VITE_USE_MOCK: "false" };
+  return {
+    ...clean, ...production, VITE_API_BASE_URL: apiBase, VITE_USE_MOCK: "false",
+    ...(backupApiBase ? { VITE_MP_WEIXIN_BACKUP_API_BASE_URL: backupApiBase } : {}),
+  };
 }
 
-export function verifyReleaseBundle(projectRoot, expectedApiBase) {
+export function verifyReleaseBundle(projectRoot, expectedApiBase, expectedBackupApiBase) {
   const expected = normalizeReleaseApiBase(expectedApiBase);
   const dist = path.join(projectRoot, "dist", "build", "mp-weixin");
   if (!existsSync(path.join(dist, "app.json"))) {
@@ -74,17 +80,23 @@ export function verifyReleaseBundle(projectRoot, expectedApiBase) {
 
   // 检查真实返回值，而不是搜索 URL 字符串：未使用的 localhost fallback 可以仍在文件中。
   // 此模块目前无运行时依赖；独立上下文不提供 require/process，格式变化时默认拒绝上传。
-  let actual;
+  let bundle;
   try {
-    actual = runInNewContext(`${readFileSync(apiFile, "utf8")}\n;
+    bundle = runInNewContext(`${readFileSync(apiFile, "utf8")}\n;
       if (typeof exports.getApiBaseUrl !== "function") throw new Error("缺少 getApiBaseUrl");
-      exports.getApiBaseUrl();`, { exports: {} }, { timeout: 1000, filename: apiFile });
+      ({
+        primary: exports.getApiBaseUrl(),
+        backup: typeof exports.getBackupApiBaseUrl === "function" ? exports.getBackupApiBaseUrl() : undefined,
+      });`, { exports: {} }, { timeout: 1000, filename: apiFile });
   } catch {
     throw new Error("无法读取编译包的 getApiBaseUrl()，已阻止上传；请检查 config/apiBase.js。");
   }
-  actual = normalizeReleaseApiBase(actual);
+  const actual = normalizeReleaseApiBase(bundle.primary);
   if (actual !== expected) {
     throw new Error(`编译包 API 与 .env.production 不一致，已阻止上传。请重新运行 bun run mp:release。`);
+  }
+  if (expectedBackupApiBase && bundle.backup !== normalizeReleaseApiBase(expectedBackupApiBase)) {
+    throw new Error("编译包备用 API 与 .env.production 不一致，已阻止上传。");
   }
   return actual;
 }
@@ -196,7 +208,7 @@ export async function runMiniRelease(command, args = [], {
     await run("构建生产小程序", "node_modules/@dcloudio/vite-plugin-uni/bin/uni.js", ["build", "-p", "mp-weixin", "--mode", "production"]);
     await run("检查小程序组件注册", "scripts/verify-mp-component-registrations.mjs");
   }
-  const actualApi = verifyReleaseBundle(projectRoot, production.VITE_API_BASE_URL);
+  const actualApi = verifyReleaseBundle(projectRoot, production.VITE_API_BASE_URL, production.VITE_MP_WEIXIN_BACKUP_API_BASE_URL);
   console.log(`[mini-release] 编译包 API 校验通过: ${actualApi}`);
   if (command === "upload" || command === "preview") {
     if (command === "upload") {

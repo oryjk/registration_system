@@ -7,11 +7,10 @@ import type {
   BackendUserAttendanceRecord,
 } from "@/types/backend";
 import type { AppUser } from "@/types/app";
-import { getApiBaseUrl } from "@/config/apiBase";
 import { getAccessToken } from "@/utils/authStorage";
 import type { DateRangeParams } from "@/utils/dateRange";
 import { buildQueryString } from "@/utils/queryString";
-import { ApiRequestError, requestApi } from "@/utils/request";
+import { ApiRequestError, requestApi, uploadThroughAppApi } from "@/utils/request";
 
 export function getMe() {
   return requestApi<AppUser>({
@@ -69,38 +68,39 @@ export function bindMyPhoneNumber(payload: { phone_number: string }) {
 export async function uploadMyAvatar(filePath: string) {
   const token = getAccessToken();
 
-  return new Promise<BackendAvatarUploadResult>((resolve, reject) => {
-    uni.uploadFile({
-      // 已发布版本沿用旧路径 /user/avatar（Go 后端提供兼容路由）；
-      // 下个版本切换到 /users/me/avatar。
-      url: `${getApiBaseUrl()}/user/avatar`,
-      filePath,
-      name: "file",
-      header: token ? { Authorization: `Bearer ${token}` } : {},
-      success: (response) => {
-        let parsed: BackendApiResponse<BackendAvatarUploadResult> | null = null;
-        try {
-          parsed = JSON.parse(response.data) as BackendApiResponse<BackendAvatarUploadResult>;
-        } catch (error) {
-          reject(new ApiRequestError("头像上传响应解析失败"));
-          return;
-        }
+  // /user/avatar 是 Go 后端兼容已发布版本的路由。
+  return uploadThroughAppApi<BackendAvatarUploadResult>("/user/avatar", (url) => {
+    return new Promise((resolve, reject) => {
+      uni.uploadFile({
+        url,
+        filePath,
+        name: "file",
+        header: token ? { Authorization: `Bearer ${token}` } : {},
+        success: (response) => {
+          let parsed: BackendApiResponse<BackendAvatarUploadResult> | null = null;
+          try {
+            parsed = JSON.parse(response.data) as BackendApiResponse<BackendAvatarUploadResult>;
+          } catch (error) {
+            reject(new ApiRequestError("头像上传响应解析失败"));
+            return;
+          }
 
-        if (response.statusCode < 200 || response.statusCode >= 300) {
-          reject(new ApiRequestError(parsed?.message || "头像上传失败", response.statusCode));
-          return;
-        }
+          if (response.statusCode < 200 || response.statusCode >= 300) {
+            reject(new ApiRequestError(parsed?.message || "头像上传失败", response.statusCode));
+            return;
+          }
 
-        if (parsed?.code !== 0 || !parsed.data) {
-          reject(new ApiRequestError(parsed?.message || "头像上传失败", response.statusCode));
-          return;
-        }
+          if (parsed?.code !== 0 || !parsed.data) {
+            reject(new ApiRequestError(parsed?.message || "头像上传失败", response.statusCode));
+            return;
+          }
 
-        resolve(parsed.data);
-      },
-      fail: (error) => {
-        reject(new ApiRequestError(error.errMsg || "头像上传失败"));
-      },
+          resolve(parsed.data);
+        },
+        fail: (error) => {
+          reject(new ApiRequestError(error.errMsg || "头像上传失败", 0, true));
+        },
+      });
     });
   });
 }

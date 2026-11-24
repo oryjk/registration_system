@@ -1,4 +1,5 @@
-import { buildAppApiUrl, getApiBaseUrl } from "@/config/apiBase";
+import { buildAppApiUrl, getApiBaseUrl, getBackupApiBaseUrl } from "@/config/apiBase";
+import { createApiRouter } from "@/config/apiRouter";
 import { getAccessToken } from "@/utils/authStorage";
 // #ifdef H5
 import { isMockEnabled, tryMockRequest } from "@/mock";
@@ -38,6 +39,25 @@ export function isNetworkUnavailableError(error: unknown): boolean {
 
 const NETWORK_UNAVAILABLE_MESSAGE = "网络连接不可用，请检查网络后重试";
 const NETWORK_TIMEOUT_MESSAGE = "网络连接超时，请检查网络后重试";
+const REQUEST_TIMEOUT_MS = 15_000;
+const HEALTH_TIMEOUT_MS = 3_000;
+
+let configuredRouter: { primary: string; backup: string; router: ReturnType<typeof createApiRouter> } | undefined;
+
+function getRouter(primary: string) {
+  const backup = getBackupApiBaseUrl();
+  if (!backup || backup === primary) return undefined;
+  if (configuredRouter?.primary !== primary || configuredRouter.backup !== backup) {
+    configuredRouter = {
+      primary,
+      backup,
+      router: createApiRouter(primary, backup, (error) =>
+        error instanceof ApiRequestError && (error.networkFailed || [502, 503, 504].includes(error.statusCode)),
+      ),
+    };
+  }
+  return configuredRouter.router;
+}
 
 /** 断网/超时的 errMsg 形如 "request:fail " / "request:fail timeout"，统一转成用户能看懂的提示。 */
 function normalizeNetworkFailureMessage(errMsg: string): string {
@@ -66,7 +86,9 @@ export async function requestRaw<TResponse, TBody extends RequestPayload = Recor
 ): Promise<TResponse> {
   const token = options.auth ? getAccessToken() : "";
   const method = options.method ?? "GET";
-  const requestUrl = /^https?:\/\//i.test(options.url) ? options.url : buildAppApiUrl(getApiBaseUrl(), options.url);
+  const absolute = /^https?:\/\//i.test(options.url);
+  const primary = absolute ? undefined : getApiBaseUrl();
+  const requestUrl = primary ? buildAppApiUrl(primary, options.url) : options.url;
 
   // Mock 拦截：开发环境下通过 VITE_USE_MOCK 开启。
   // 开启后必须“全有或全无”：未覆盖的接口直接报错，不允许回落到真实后端，
@@ -81,13 +103,31 @@ export async function requestRaw<TResponse, TBody extends RequestPayload = Recor
   }
   // #endif
 
+  try {
+    const router = primary ? getRouter(primary) : undefined;
+    if (!router) return await sendRequest<TResponse>(requestUrl, method, options.data, token);
+
+    const send = (base: string) => sendRequest<TResponse>(buildAppApiUrl(base, options.url), method, options.data, token);
+    return await (method === "GET" ? router.read(send) : router.write(send, probeHealth));
+  } catch (error) {
+    if (error instanceof ApiRequestError && error.networkFailed) showNetworkUnavailableDialog(error.message);
+    throw error;
+  }
+}
+
+function sendRequest<TResponse>(
+  url: string,
+  method: RequestMethod,
+  data: RequestPayload,
+  token: string,
+  timeout = REQUEST_TIMEOUT_MS,
+): Promise<TResponse> {
   return new Promise<TResponse>((resolve, reject) => {
     uni.request({
-      url: requestUrl,
+      url,
       method: method as never,
-      data: options.data,
-      // 显式 15s 超时：默认 60s 会让断网场景干等太久才看到失败提示。
-      timeout: 15000,
+      data,
+      timeout,
       header: {
         "Content-Type": "application/json",
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -107,13 +147,26 @@ export async function requestRaw<TResponse, TBody extends RequestPayload = Recor
         reject(new ApiRequestError(message, statusCode));
       },
       fail: (error) => {
-        // 断网/超时不再透传晦涩的 errMsg：归一成明确文案并弹窗告知，页面 toast 同样显示这句话。
         const message = normalizeNetworkFailureMessage(error.errMsg || "");
-        showNetworkUnavailableDialog(message);
         reject(new ApiRequestError(message, 0, true));
       },
     });
   });
+}
+
+async function probeHealth(base: string): Promise<void> {
+  const url = base.replace(/\/api\/v1\/app$/i, "/health");
+  const payload = await sendRequest<BackendApiResponse<{ status: string }>>(url, "GET", undefined, "", HEALTH_TIMEOUT_MS);
+  if (payload?.code !== 0 || payload.data?.status !== "ok") {
+    throw new ApiRequestError("服务暂时不可用", 503);
+  }
+}
+
+export function uploadThroughAppApi<T>(path: string, upload: (url: string) => Promise<T>): Promise<T> {
+  const primary = getApiBaseUrl();
+  const router = getRouter(primary);
+  const send = (base: string) => upload(buildAppApiUrl(base, path));
+  return router ? router.write(send, probeHealth) : send(primary);
 }
 
 export async function requestApi<TResponse, TBody extends RequestPayload = Record<string, unknown>>(
