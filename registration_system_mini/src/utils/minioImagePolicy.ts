@@ -5,7 +5,7 @@ export const MINIO_IMAGE_MAX_ENTRIES = 128;
 
 /** Public buckets served by our current nginx/MinIO deployment. */
 export function isMinioImageUrl(url: string): boolean {
-  return /^https:\/\/(?:oryjk\.cn(?::(?:82|443))?|match\.oryjk\.cn)\/(?:registration|seat-images)\/.+/i.test(url);
+  return /^https:\/\/(?:oryjk\.cn(?::(?:82|443|18443))?|match\.oryjk\.cn)\/(?:registration|seat-images)\/.+/i.test(url);
 }
 
 export function isImmutableMinioImage(url: string): boolean {

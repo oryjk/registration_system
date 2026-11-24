@@ -55,7 +55,7 @@ export function loadProductionEnvironment(projectRoot = defaultProjectRoot, inhe
   } catch {
     throw new Error("无法解析生产构建环境，已阻止构建/上传。");
   }
-  const apiBase = normalizeReleaseApiBase(production.VITE_API_BASE_URL);
+  const apiBase = normalizeReleaseApiBase(production.VITE_MP_WEIXIN_API_BASE_URL ?? production.VITE_API_BASE_URL);
   if (/^(true|1)$/i.test(String(production.VITE_USE_MOCK || "").trim())) {
     throw new Error("生产发布不能启用 Mock，请检查 .env.production。");
   }

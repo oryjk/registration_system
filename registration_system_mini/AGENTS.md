@@ -62,7 +62,7 @@ ssh local109 "cd /home/wangrui/projects/registration_system_repo \
 
 流程细节（统一入口 `scripts/mini-release.mjs`）：
 
-1. 清理外层 `bun run` 可能提前注入的 `VITE_*` / `UNI_*` 变量，以 `NODE_ENV=production` 和显式 `.env.production` 重建子进程环境；所有子脚本使用 Bun 与 `--no-env-file`，编译命令固定 `--mode production`。生产 API 以 `.env.production` 为准，不能用临时 shell 变量覆盖。
+1. 清理外层 `bun run` 可能提前注入的 `VITE_*` / `UNI_*` 变量，以 `NODE_ENV=production` 和显式 `.env.production` 重建子进程环境；所有子脚本使用 Bun 与 `--no-env-file`，编译命令固定 `--mode production`。小程序优先读取 `VITE_MP_WEIXIN_API_BASE_URL`，H5 读取 `VITE_API_BASE_URL`。微信后台的 request、uploadFile 和 downloadFile 合法域名使用 `https://oryjk.cn:18443`。
 2. 统一入口显式调用 `scripts/sync-manifest-version.mjs`，不再依赖 package.json 的 prebuild 钩子，避免重复登记。向 Go 后端 mini-review 登记接口 `POST /mini-review/allocate` 申请版本号。**登记库（数据库）是唯一权威**：最新版本仍在审核中则**复用**，已出审核则在库内最大版本基础上 `+0.0.1` 并标记审核中；仅当库内无任何记录时才以本地 manifest 为起点。本地 manifest 不参与后续分配（多台构建机结果一致），删库重置后版本号随库回落。若服务端返回的新版本导致 `src/manifest.json` / `src/config/generatedMiniProgramVersion.ts` 发生变化，`mp:release` 会在上传前停止；必须提交并 push 这些版本文件后再次执行，第二次复用同一审核中版本才会继续构建和上传。
 3. 构建 `dist/build/mp-weixin` 并执行组件注册检查，再读取编译后的 `config/apiBase.js`，核验 `getApiBaseUrl()` 的真实返回值与生产文件一致。必须是公开域名 HTTPS 地址，禁止本机/内网 IP；缺文件、地址不一致或任一步失败均中止，不能继续上传旧包。
 4. `scripts/mini-ci.mjs` 在加载微信 SDK 前再次执行产物 API 校验；正式 upload 还会再次校验 Git 必须为 `main`、工作区干净且 `HEAD == origin/main`，因此直接调用底层脚本也不能绕过发布门禁。随后以 `manifest.json` 的 `versionName` 上传到微信后台（默认 robot=1，落在「版本管理 → 开发版本」）。`mp:preview` 只校验并上传已有生产产物，不构建、不登记版本。

@@ -11,8 +11,8 @@ const envPath = path.join(projectRoot, ".env.ci.local");
 const manifestPath = path.join(projectRoot, "src", "manifest.json");
 const generatedVersionPath = path.join(projectRoot, "src", "config", "generatedMiniProgramVersion.ts");
 
-// 审核版本登记走 Go 后端（oryjk.cn:82），密钥放在 .env.ci.local（不入 git）。
-const DEFAULT_MINI_REVIEW_API_URL = "https://oryjk.cn:82/regist-v3/api/v1/app";
+// 审核版本登记走 Go 后端，密钥放在 .env.ci.local（不入 git）。
+const DEFAULT_MINI_REVIEW_API_URL = "https://oryjk.cn:18443/regist-v3/api/v1/app";
 const DEFAULT_MINI_REVIEW_PROJECT_CODE = "registration_system_mini";
 
 function parseEnvFile(filePath) {

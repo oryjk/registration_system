@@ -62,6 +62,14 @@ afterEach(() => {
 });
 
 describe("production release environment", () => {
+  test("prefers the mini-program API over the H5 API for release builds", () => {
+    const root = fixture();
+    const miniApi = "https://api.example.com:18443/regist-v3/api/v1/app";
+    writeFileSync(path.join(root, ".env.production"),
+      `VITE_API_BASE_URL=${productionApi}\nVITE_MP_WEIXIN_API_BASE_URL=${miniApi}\n`);
+    expect(loadProductionEnvironment(root).VITE_API_BASE_URL).toBe(miniApi);
+  });
+
   test("replaces inherited development variables with the explicit production file", () => {
     const root = fixture();
     const inherited = {
