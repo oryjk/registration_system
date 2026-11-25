@@ -4,7 +4,7 @@ import type { BackendActivity } from "@/types/backend";
 import {
   MATCH_SHARE_CARD_CANVAS_ID,
   MAX_DUAL_REGISTRATION_AVATARS,
-  MAX_HEADLINE_REGISTRATION_AVATARS,
+  MAX_SINGLE_REGISTRATION_AVATARS,
   composeMatchShareCard,
   createMatchShareImageLoader,
   type MatchShareCardInput,
@@ -34,7 +34,7 @@ function serializeRegistrationKey(registration?: MatchShareRegistrationInput | n
   }
   return [
     "single",
-    serializeRegistrationGroupKey(registration.group, MAX_HEADLINE_REGISTRATION_AVATARS),
+    serializeRegistrationGroupKey(registration.group, MAX_SINGLE_REGISTRATION_AVATARS),
   ];
 }
 

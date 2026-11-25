@@ -790,10 +790,10 @@ test("composeMatchShareCard renders Plan A registration strip for single, empty,
   };
 
   try {
-    // 1. 单队报名：已报 12/8（超出可见槽位显示 +N），且含 1 个下载失败头像优雅回退首字圆圈
+    // 1. 单队报名：已报 18/8（已去掉右侧「已报」胶囊，整条可展示 16 个大头像 +「+2」+ 底部进度条），且含 1 个下载失败头像优雅回退首字圆圈
     const singleMock = createMockCanvasContext({ tempFilePath: "/tmp/reg-single.jpg" });
     installUniMock(singleMock);
-    const singleAvatars = Array.from({ length: 12 }, (_, idx) => ({
+    const singleAvatars = Array.from({ length: 18 }, (_, idx) => ({
       name: idx === 1 ? "小明" : `球员${idx + 1}`,
       avatarUrl: idx === 1 ? "https://cdn.example.com/broken.jpg" : `https://cdn.example.com/u${idx + 1}.jpg`,
       tone: "#2563EB",
@@ -815,7 +815,7 @@ test("composeMatchShareCard renders Plan A registration strip for single, empty,
         registration: {
           mode: "single",
           group: {
-            joinedCount: 12,
+            joinedCount: 18,
             requiredCount: 8,
             avatars: singleAvatars,
           },
@@ -826,15 +826,20 @@ test("composeMatchShareCard renders Plan A registration strip for single, empty,
     );
     expect(singlePath).toEqual("/tmp/reg-single.jpg");
     const singleTexts = singleMock.texts.map((t) => t.value);
-    expect(singleTexts.includes("已报 12/8 · 已成行")).toEqual(true);
+    // 已彻底去掉右侧「已报」状态胶囊
+    expect(singleTexts.some((t) => t.includes("已报 18/8"))).toEqual(false);
     // 下载失败的第 2 位球员回退绘制首字「小」
     expect(singleTexts.includes("小")).toEqual(true);
-    // 超出可见槽位绘制 +N 溢出圆圈
-    expect(singleTexts.some((t) => /^\+\d+$/.test(t))).toEqual(true);
-    // 下载成功的头像已绘制进 canvas
-    expect(singleMock.images.length >= 8).toEqual(true);
+    // 超出 16 个可见槽位绘制「+2」溢出圆圈
+    expect(singleTexts.includes("+2")).toEqual(true);
+    // 16 个可见头像中 15 个下载成功并绘制进 canvas
+    expect(singleMock.images.length).toEqual(15);
+    // 保留底部 6px 成行进度条（#00EBC7）
+    expect(
+      singleMock.fillRects.some((r) => r.y === 556 + 94 && r.h === 6 && r.fillStyle === "#00EBC7"),
+    ).toEqual(true);
 
-    // 2. 单队 0 人报名：展示虚位以待占位圆与「0/8 · 抢先报名」
+    // 2. 单队 0 人报名：无「已报」胶囊，保留虚位以待占位圆、引导文案与底部进度条底槽
     requested.length = 0;
     const emptyMock = createMockCanvasContext({ tempFilePath: "/tmp/reg-empty.jpg" });
     installUniMock(emptyMock);
@@ -860,8 +865,9 @@ test("composeMatchShareCard renders Plan A registration strip for single, empty,
     );
     expect(requested.length).toEqual(0);
     const emptyTexts = emptyMock.texts.map((t) => t.value);
-    expect(emptyTexts.includes("0/8 · 抢先报名")).toEqual(true);
+    expect(emptyTexts.some((t) => t.includes("抢先报名"))).toEqual(false);
     expect(emptyTexts.includes("虚位以待 · 快来抢占首名")).toEqual(true);
+    expect(emptyMock.fillRects.some((r) => r.y === 556 + 94 && r.h === 6)).toEqual(true);
 
     // 3. 线上约队双队模式：左右展示主队与客队进度及各自头像
     requested.length = 0;

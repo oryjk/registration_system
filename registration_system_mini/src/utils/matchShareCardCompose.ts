@@ -1590,11 +1590,12 @@ function drawHeadlineSection(
 async function resolveRegistrationAvatars(
   canvas: MatchShareCanvas2DNode,
   registration: MatchShareRegistrationInput | null,
+  singleLimit: number,
   loadImage: (src: string) => Promise<ShareCardImageInfo>,
   isCurrent: () => boolean,
 ): Promise<Map<string, LoadedShareAvatar>> {
   const result = new Map<string, LoadedShareAvatar>();
-  const urls = collectRegistrationAvatarUrls(registration);
+  const urls = collectRegistrationAvatarUrls(registration, singleLimit);
   if (urls.length === 0) return result;
 
   const entries = await Promise.all(
@@ -1674,9 +1675,12 @@ export async function composeMatchShareCard(
     ...(input.customBgImageUrl?.trim() ? [input.customBgImageUrl.trim()] : []),
     ...backgroundUrls,
   ];
+  const singleAvatarLimit = view.matchup.mode === "versus"
+    ? MAX_SINGLE_REGISTRATION_AVATARS
+    : MAX_HEADLINE_REGISTRATION_AVATARS;
   const [backdrop, loadedAvatars] = await Promise.all([
     resolveFirstAvailableBackdrop(canvas, candidateUrls, loadImage, isCurrent),
-    resolveRegistrationAvatars(canvas, view.registration, loadImage, isCurrent),
+    resolveRegistrationAvatars(canvas, view.registration, singleAvatarLimit, loadImage, isCurrent),
   ]);
   if (!isCurrent()) throw new Error("分享卡内容已更新");
 

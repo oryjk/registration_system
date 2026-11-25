@@ -50,7 +50,7 @@ const FALLBACK_AVATAR_COLORS = [
   "#9333EA",
 ];
 
-export const MAX_SINGLE_REGISTRATION_AVATARS = 10;
+export const MAX_SINGLE_REGISTRATION_AVATARS = 16;
 export const MAX_DUAL_REGISTRATION_AVATARS = 7;
 export const MAX_HEADLINE_REGISTRATION_AVATARS = 11;
 
@@ -112,6 +112,7 @@ export function formatRegistrationStatusBadge(
 /** 仅提取当前卡片可见槽位所需的去重头像 URL，避免超大局并发拉取多余图片。 */
 export function collectRegistrationAvatarUrls(
   registration?: MatchShareRegistrationInput | null,
+  singleLimit = MAX_SINGLE_REGISTRATION_AVATARS,
 ): string[] {
   if (!registration) return [];
   const urls: string[] = [];
@@ -122,34 +123,12 @@ export function collectRegistrationAvatarUrls(
     }
   };
   if (registration.mode === "single") {
-    pushFrom(registration.group.avatars, MAX_HEADLINE_REGISTRATION_AVATARS);
+    pushFrom(registration.group.avatars, singleLimit);
   } else {
     pushFrom(registration.home.avatars, MAX_DUAL_REGISTRATION_AVATARS);
     pushFrom(registration.away.avatars, MAX_DUAL_REGISTRATION_AVATARS);
   }
   return Array.from(new Set(urls));
-}
-
-function drawRoundedPill(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-  radius: number,
-) {
-  const r = Math.min(radius, width / 2, height / 2);
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.lineTo(x + width - r, y);
-  ctx.quadraticCurveTo(x + width, y, x + width, y + r);
-  ctx.lineTo(x + width, y + height - r);
-  ctx.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
-  ctx.lineTo(x + r, y + height);
-  ctx.quadraticCurveTo(x, y + height, x, y + height - r);
-  ctx.lineTo(x, y + r);
-  ctx.quadraticCurveTo(x, y, x + r, y);
-  ctx.closePath();
 }
 
 function drawBoldLabel(
@@ -176,18 +155,6 @@ function drawBoldLabel(
   }
   ctx.fillText(text, x, y);
   ctx.restore();
-}
-
-function measureBoldWidth(ctx: CanvasRenderingContext2D, text: string, size: number): number {
-  const roundedSize = Math.round(size);
-  ctx.save();
-  ctx.font = `normal bold ${roundedSize}px sans-serif`;
-  const width = ctx.measureText(text)?.width;
-  ctx.restore();
-  if (typeof width === "number" && Number.isFinite(width) && width > 0) {
-    return width * 1.05;
-  }
-  return Array.from(text).length * roundedSize;
 }
 
 /** 绘制重叠圆形头像排；超额部分自动追加 `#FF453A`「+N」圆徽章。 */
@@ -375,29 +342,14 @@ export function drawVersusRegistrationStrip(
     return;
   }
 
-  // 单队报名模式：超大头像排 + 右侧状态胶囊 + 底部通栏进度条
+  // 单队报名模式：整条释放给大头像重叠排（最多 16 个 +「+N」）+ 底部通栏进度条，不叠右侧「已报」胶囊。
   const group = registration.group;
   const status = formatRegistrationStatusBadge(group.joinedCount, group.requiredCount);
 
-  // 先测量右侧胶囊宽度，确保左侧头像排绝不与状态胶囊碰撞
-  const pillW = Math.min(340, Math.max(216, measureBoldWidth(ctx, status.text, 24) + 42));
-  const pillH = 46;
-  const pillX = barX + barW - 24 - pillW;
-  const pillY = barY + 22;
-
   const avatarStartX = 78;
   const avatarCy = barY + 46;
-  const avatarBudgetW = Math.max(120, pillX - avatarStartX - 20);
   const avatarRadius = 28;
   const avatarOverlap = 12;
-  const avatarStep = avatarRadius * 2 - avatarOverlap;
-  const fitSlots = Math.max(
-    1,
-    Math.min(MAX_SINGLE_REGISTRATION_AVATARS + 1, Math.floor((avatarBudgetW - avatarRadius * 2) / avatarStep) + 1),
-  );
-  const maxVisible = group.joinedCount > Math.min(MAX_SINGLE_REGISTRATION_AVATARS, fitSlots)
-    ? Math.max(1, Math.min(MAX_SINGLE_REGISTRATION_AVATARS, fitSlots - 1))
-    : Math.min(MAX_SINGLE_REGISTRATION_AVATARS, fitSlots);
 
   if (group.joinedCount > 0 && group.avatars.length > 0) {
     drawRegistrationAvatarStack(ctx, group.avatars, group.joinedCount, loadedAvatars, {
@@ -405,24 +357,13 @@ export function drawVersusRegistrationStrip(
       cy: avatarCy,
       radius: avatarRadius,
       overlap: avatarOverlap,
-      maxVisible,
+      maxVisible: MAX_SINGLE_REGISTRATION_AVATARS,
       ringColor: "#16070B",
     });
   } else {
     drawEmptyPlaceholderCircles(ctx, avatarStartX, avatarCy, 4, 23, 40);
     drawBoldLabel(ctx, "虚位以待 · 快来抢占首名", avatarStartX + 184, avatarCy, 23, "rgba(255, 255, 255, 0.72)", "left", false);
   }
-
-  // 右侧状态胶囊
-  ctx.save();
-  drawRoundedPill(ctx, pillX, pillY, pillW, pillH, pillH / 2);
-  ctx.fillStyle = status.pillBg;
-  ctx.fill();
-  ctx.strokeStyle = status.accentColor;
-  ctx.lineWidth = 2;
-  ctx.stroke();
-  ctx.restore();
-  drawBoldLabel(ctx, status.text, pillX + pillW / 2, pillY + pillH / 2 + 0.5, 23, status.accentColor, "center", true);
 
   // 底部 6px 成行进度条
   const trackX = 78;

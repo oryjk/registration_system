@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, provide, ref, watch } from "vue";
+import { computed, getCurrentInstance, nextTick, provide, ref, watch } from "vue";
 import { useAccentTheme } from "@/stores/theme";
 import { usePullRefresh } from "@/composables/usePullRefresh";
 import { APP_SCROLL_CONTROLLER, createAppScrollAnchor } from "@/components/appScroll";
@@ -49,9 +49,11 @@ import { useOnboardingNavigation } from "@/composables/useOnboardingNavigation";
 import { createHomeRuntimeConfigCycle } from "./homeRuntimeConfigCycle";
 import { useOnboardingIllustrations } from "@/composables/useOnboardingIllustrations";
 import { useHomeNextMatchSocialImage } from "./useHomeNextMatchSocialImage";
+// #ifdef MP-WEIXIN
+import { useHomeShareCard } from "./useHomeShareCard";
+// #endif
 
 const { shareImageUrl, refreshShareCover } = useShareCover("home");
-onShow(() => { void refreshShareCover(); });
 
 const { themePageStyle } = useAccentTheme();
 const previewAvatar = ref<AvatarItem | null>(null);
@@ -155,6 +157,26 @@ const displayedHeroState = computed(() => homeTour.active.value
   : emptyHeroState.value);
 const shareTitle = "约球开踢：组队、报名、上场";
 const sharePath = "/pages/home/index";
+
+// #ifdef MP-WEIXIN
+const homeShareCard = useHomeShareCard({
+  pageInstance: getCurrentInstance(),
+  ready: hasLoadedMatchData,
+  isGuestMode,
+  inviterName: computed(() => currentUser.value?.nickname || ""),
+  currentTeam,
+  upcomingMatches,
+  heroNextMatch,
+  fallbackImageUrl: shareImageUrl,
+});
+// #endif
+
+onShow(() => {
+  void refreshShareCover();
+  // #ifdef MP-WEIXIN
+  void homeShareCard.refreshHomeShareCard();
+  // #endif
+});
 
 function clearMatchSections() {
   upcomingMatches.value = [];
@@ -413,17 +435,39 @@ onUnload(() => {
   homeTour.dispose();
 });
 
-onShareAppMessage(() => ({
-  title: shareTitle,
-  path: sharePath,
-  imageUrl: shareImageUrl.value,
-}));
+onShareAppMessage(() => {
+  // #ifdef MP-WEIXIN
+  return {
+    title: homeShareCard.shareTitle.value,
+    path: sharePath,
+    imageUrl: homeShareCard.shareCardImageUrl.value,
+  };
+  // #endif
+  // #ifndef MP-WEIXIN
+  return {
+    title: shareTitle,
+    path: sharePath,
+    imageUrl: shareImageUrl.value,
+  };
+  // #endif
+});
 
-onShareTimeline(() => ({
-  title: shareTitle,
-  query: "",
-  imageUrl: shareImageUrl.value,
-}));
+onShareTimeline(() => {
+  // #ifdef MP-WEIXIN
+  return {
+    title: homeShareCard.shareTitle.value,
+    query: "",
+    imageUrl: homeShareCard.shareCardImageUrl.value,
+  };
+  // #endif
+  // #ifndef MP-WEIXIN
+  return {
+    title: shareTitle,
+    query: "",
+    imageUrl: shareImageUrl.value,
+  };
+  // #endif
+});
 </script>
 
 <template>
@@ -592,6 +636,10 @@ onShareTimeline(() => ({
     <!-- #endif -->
 
     <AvatarPreviewDialog :visible="avatarPreviewVisible" :avatar="previewAvatar" :can-share="canSharePreviewAvatar" @share="sharePreviewAvatar" @close="avatarPreviewVisible = false" @presence="avatarPreviewRendered = $event" />
+
+    <!-- #ifdef MP-WEIXIN -->
+    <canvas id="home-share-card-canvas" type="2d" class="home-share-card-canvas" />
+    <!-- #endif -->
   </view>
 </template>
 
@@ -712,5 +760,13 @@ onShareTimeline(() => ({
 /* #ifdef MP-WEIXIN */
 .home-content { padding-right: var(--ui-home-inset); padding-left: var(--ui-home-inset); }
 .home-empty { border: var(--ui-panel-border); border-radius: var(--ui-card-radius); background: var(--ui-card-bg); box-shadow: var(--ui-card-shadow); }
+.home-share-card-canvas {
+  position: fixed;
+  top: -9999px;
+  left: -9999px;
+  width: 1000px;
+  height: 800px;
+  pointer-events: none;
+}
 /* #endif */
 </style>
