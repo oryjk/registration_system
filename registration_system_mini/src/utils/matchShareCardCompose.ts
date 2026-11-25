@@ -5,6 +5,32 @@ import {
   formatWeekdayLabel,
 } from "@/utils/datetime";
 import { resolveMinioImage, retainMinioImage } from "@/utils/minioImageCache";
+import {
+  MAX_DUAL_REGISTRATION_AVATARS,
+  MAX_HEADLINE_REGISTRATION_AVATARS,
+  MAX_SINGLE_REGISTRATION_AVATARS,
+  collectRegistrationAvatarUrls,
+  drawHeadlineRegistrationFooter,
+  drawVersusRegistrationStrip,
+  formatRegistrationStatusBadge,
+  type LoadedShareAvatar,
+  type MatchShareAvatarItem,
+  type MatchShareRegistrationGroup,
+  type MatchShareRegistrationInput,
+} from "./matchShareCardRegistration";
+
+export type {
+  MatchShareAvatarItem,
+  MatchShareRegistrationGroup,
+  MatchShareRegistrationInput,
+};
+export {
+  MAX_DUAL_REGISTRATION_AVATARS,
+  MAX_HEADLINE_REGISTRATION_AVATARS,
+  MAX_SINGLE_REGISTRATION_AVATARS,
+  collectRegistrationAvatarUrls,
+  formatRegistrationStatusBadge,
+};
 
 export const MATCH_SHARE_CARD_WIDTH = 1000;
 export const MATCH_SHARE_CARD_HEIGHT = 800;
@@ -47,6 +73,8 @@ export interface MatchShareCardInput {
   isVenueMatch?: boolean;
   /** 每队人数（人制），如 7 -> 7人制 */
   playersPerTeam?: number | null;
+  /** 当前实时报名情况与已报名成员头像列表（方案 A：底部独立大头像报名条） */
+  registration?: MatchShareRegistrationInput | null;
 }
 
 export interface ParsedJerseyColor {
@@ -115,6 +143,7 @@ export interface MatchShareCardViewModel {
   awayKit: MatchShareTeamKit;
   jerseyItems: MatchShareJerseyItem[];
   jerseyFallbackText: string;
+  registration: MatchShareRegistrationInput | null;
 }
 
 export interface ShareCardImageInfo {
@@ -501,6 +530,7 @@ export function buildMatchShareCardViewModel(input: MatchShareCardInput): MatchS
     awayKit,
     jerseyItems,
     jerseyFallbackText: homeKit.pieces.length > 0 || awayKit.pieces.length > 0 ? "" : "队服待定",
+    registration: input.registration ?? null,
   };
 }
 
@@ -531,7 +561,7 @@ export function createMatchShareImageLoader() {
           if (images.get(src) === task) drop(src);
           throw failure;
         });
-      if (images.size >= 8) {
+      if (images.size >= 32) {
         const oldest = images.keys().next().value;
         if (oldest) drop(oldest);
       }
@@ -1265,6 +1295,7 @@ function drawTeamBandRow(
   ctx: CanvasRenderingContext2D,
   options: {
     y: number;
+    height: number;
     accent: string;
     role: string;
     labelColor: string;
@@ -1273,28 +1304,33 @@ function drawTeamBandRow(
     kit: MatchShareTeamKit;
   },
 ) {
-  const { y, accent, role, labelColor, teamName, pending, kit } = options;
+  const { y, height, accent, role, labelColor, teamName, pending, kit } = options;
+  const compact = height <= 190;
 
   // 通栏球队+装备横带
   ctx.save();
   ctx.fillStyle = "rgba(12, 6, 10, 0.58)";
-  ctx.fillRect(42, y, 916, 218);
+  ctx.fillRect(42, y, 916, height);
   // 左侧 14px 能量竖条
   ctx.fillStyle = accent;
-  ctx.fillRect(42, y, 14, 218);
+  ctx.fillRect(42, y, 14, height);
   ctx.strokeStyle = "rgba(255, 255, 255, 0.12)";
   ctx.lineWidth = 2;
-  ctx.strokeRect(42, y, 916, 218);
+  ctx.strokeRect(42, y, 916, height);
   ctx.restore();
 
-  // 左侧：角色标签 + 自适应超大粗体队名（78px 起缩至 46px 并省略）
-  drawText(ctx, role, 82, y + 48, 24, labelColor, "left", 800);
-  const fittedName = fitText(ctx, teamName, 480, 78, 46, 900);
+  // 左侧：角色标签 + 自适应超大粗体队名
+  const roleY = compact ? y + 40 : y + 48;
+  const nameY = compact ? y + 112 : y + 132;
+  const maxNameSize = compact ? 66 : 78;
+  const minNameSize = compact ? 42 : 46;
+  drawText(ctx, role, 82, roleY, compact ? 22 : 24, labelColor, "left", 800);
+  const fittedName = fitText(ctx, teamName, 480, maxNameSize, minNameSize, 900);
   drawText(
     ctx,
     fittedName.text,
     80,
-    y + 132,
+    nameY,
     fittedName.size,
     pending ? "rgba(255, 255, 255, 0.72)" : "#FFFFFF",
     "left",
@@ -1302,22 +1338,24 @@ function drawTeamBandRow(
   );
 
   // 右侧同一块内：专属装备子块（x: 584, w: 350）
+  const kitBoxPad = compact ? 16 : 20;
+  const kitBoxH = height - kitBoxPad * 2;
   ctx.save();
   ctx.fillStyle = "rgba(255, 255, 255, 0.08)";
-  ctx.fillRect(584, y + 20, 350, 178);
+  ctx.fillRect(584, y + kitBoxPad, 350, kitBoxH);
   ctx.restore();
 
   if (kit.iconPieces.length > 0) {
-    drawKitRow(ctx, kit.iconPieces, 759, y + 92, 86, 18, "center");
-    const fittedSummary = fitText(ctx, kit.summaryText, 326, 24, 18, 800);
-    drawText(ctx, fittedSummary.text, 759, y + 168, fittedSummary.size, "#FFFFFF", "center", 800);
+    drawKitRow(ctx, kit.iconPieces, 759, compact ? y + 74 : y + 92, compact ? 74 : 86, compact ? 16 : 18, "center");
+    const fittedSummary = fitText(ctx, kit.summaryText, 326, compact ? 22 : 24, 18, 800);
+    drawText(ctx, fittedSummary.text, 759, compact ? y + 142 : y + 168, fittedSummary.size, "#FFFFFF", "center", 800);
   } else {
-    const fittedSummary = fitText(ctx, kit.summaryText, 316, 26, 20, 800);
+    const fittedSummary = fitText(ctx, kit.summaryText, 316, compact ? 24 : 26, 20, 800);
     drawText(
       ctx,
       fittedSummary.text,
       759,
-      y + 109,
+      y + height / 2,
       fittedSummary.size,
       kit.pieces.length === 0 ? "rgba(255, 255, 255, 0.72)" : "#FFFFFF",
       "center",
@@ -1330,9 +1368,47 @@ function drawVersusSection(
   ctx: CanvasRenderingContext2D,
   view: MatchShareCardViewModel,
   matchup: Extract<MatchShareMatchup, { mode: "versus" }>,
+  loadedAvatars: ReadonlyMap<string, LoadedShareAvatar>,
 ) {
+  if (view.registration) {
+    // 方案 A：180px 主/客队横带 + VS 撕裂线 + 底部独立大头像报名横条（y=556..668）
+    drawTeamBandRow(ctx, {
+      y: 106,
+      height: 180,
+      accent: "#FF8A3D",
+      role: "主队 HOME",
+      labelColor: "#FFD166",
+      teamName: matchup.homeName,
+      pending: false,
+      kit: view.homeKit,
+    });
+
+    drawTeamBandRow(ctx, {
+      y: 358,
+      height: 180,
+      accent: "#FF3B5C",
+      role: "对手 AWAY",
+      labelColor: "#FF9EAA",
+      teamName: matchup.awayName,
+      pending: matchup.awayPending,
+      kit: view.awayKit,
+    });
+
+    ctx.save();
+    ctx.fillStyle = "#FF6B35";
+    ctx.fillRect(42, 319, 392, 6);
+    ctx.fillRect(566, 319, 392, 6);
+    ctx.restore();
+    drawSlash(ctx, 434, 292, 132, 60, 18, "#FF453A");
+    drawText(ctx, "VS", 509, 323, 44, "#FFFFFF", "center", 900, true);
+
+    drawVersusRegistrationStrip(ctx, view.registration, loadedAvatars);
+    return;
+  }
+
   drawTeamBandRow(ctx, {
     y: 128,
+    height: 218,
     accent: "#FF8A3D",
     role: "主队 HOME",
     labelColor: "#FFD166",
@@ -1343,6 +1419,7 @@ function drawVersusSection(
 
   drawTeamBandRow(ctx, {
     y: 422,
+    height: 218,
     accent: "#FF3B5C",
     role: "对手 AWAY",
     labelColor: "#FF9EAA",
@@ -1365,11 +1442,13 @@ function drawHeadlineSection(
   ctx: CanvasRenderingContext2D,
   view: MatchShareCardViewModel,
   matchup: Extract<MatchShareMatchup, { mode: "headline" }>,
+  loadedAvatars: ReadonlyMap<string, LoadedShareAvatar>,
 ) {
+  const hasReg = Boolean(view.registration);
   const cardX = 42;
-  const cardY = 132;
+  const cardY = hasReg ? 112 : 132;
   const cardW = 916;
-  const cardH = 508;
+  const cardH = hasReg ? 556 : 508;
 
   // 散人约球 / 场馆组局通栏热血大字卡
   ctx.save();
@@ -1383,12 +1462,61 @@ function drawHeadlineSection(
   ctx.restore();
 
   // 顶部标签（如「8人制 · 散人约球 · 欢迎报名」）
-  const fittedTag = fitText(ctx, matchup.secondaryText, 820, 28, 22, 800);
-  drawText(ctx, fittedTag.text, 500, cardY + 62, fittedTag.size, "#FFD166", "center", 800);
+  const fittedTag = fitText(ctx, matchup.secondaryText, 820, hasReg ? 26 : 28, 22, 800);
+  drawText(ctx, fittedTag.text, 500, cardY + (hasReg ? 48 : 62), fittedTag.size, "#FFD166", "center", 800);
 
   const hasHomeKit = view.homeKit.pieces.length > 0;
   const hasAwayKit = view.awayKit.pieces.length > 0;
   const hasAnyKit = hasHomeKit || hasAwayKit;
+
+  if (view.registration) {
+    // 方案 A（散人约球 / 场馆组局）：上主标题 + 中部球服/报名进度双列 + 下部居中大头像排与进度条
+    const fittedTitle = fitText(ctx, matchup.primaryText, 820, 58, 38, 900);
+    drawText(ctx, fittedTitle.text, 500, cardY + 126, fittedTitle.size, "#FFFFFF", "center", 900);
+
+    ctx.save();
+    ctx.fillStyle = "rgba(255, 107, 53, 0.55)";
+    ctx.fillRect(140, cardY + 186, 720, 4);
+    ctx.fillStyle = "rgba(255, 255, 255, 0.08)";
+    ctx.fillRect(92, cardY + 214, 816, 148);
+    ctx.restore();
+
+    const regGroup = view.registration.mode === "single" ? view.registration.group : view.registration.home;
+    const status = formatRegistrationStatusBadge(regGroup.joinedCount, regGroup.requiredCount);
+
+    if (hasAnyKit) {
+      const singleKit = hasHomeKit ? view.homeKit : view.awayKit;
+      if (singleKit.iconPieces.length > 0) {
+        drawKitRow(ctx, singleKit.iconPieces, 260, cardY + 272, 70, 14, "center");
+        const label = fitText(ctx, singleKit.summaryText, 300, 22, 18, 800);
+        drawText(ctx, label.text, 260, cardY + 334, label.size, "#FFFFFF", "center", 800);
+      } else {
+        const label = fitText(ctx, singleKit.summaryText, 300, 24, 18, 800);
+        drawText(ctx, label.text, 260, cardY + 288, label.size, "#FFFFFF", "center", 800);
+      }
+
+      ctx.save();
+      ctx.fillStyle = "rgba(255, 255, 255, 0.16)";
+      ctx.fillRect(430, cardY + 236, 2, 104);
+      ctx.restore();
+
+      drawText(ctx, "当前报名进度", 666, cardY + 258, 22, "rgba(255, 255, 255, 0.72)", "center", 700);
+      const fittedStatus = fitText(ctx, status.text, 420, 34, 24, 900);
+      drawText(ctx, fittedStatus.text, 666, cardY + 308, fittedStatus.size, status.accentColor, "center", 900);
+    } else {
+      drawText(ctx, "当前报名进度", 500, cardY + 258, 22, "rgba(255, 255, 255, 0.72)", "center", 700);
+      const fittedStatus = fitText(ctx, status.text, 740, 38, 26, 900);
+      drawText(ctx, fittedStatus.text, 500, cardY + 310, fittedStatus.size, status.accentColor, "center", 900);
+    }
+
+    drawHeadlineRegistrationFooter(ctx, view.registration, loadedAvatars, {
+      centerX: 500,
+      avatarCy: cardY + 436,
+      progressY: cardY + 506,
+      trackWidth: 760,
+    });
+    return;
+  }
 
   if (hasAnyKit) {
     const fittedTitle = fitText(ctx, matchup.primaryText, 820, 74, 42, 900);
@@ -1459,6 +1587,40 @@ function drawHeadlineSection(
   drawText(ctx, "队服待定", 500, cardY + 412, 26, "rgba(255, 255, 255, 0.72)", "center", 800);
 }
 
+async function resolveRegistrationAvatars(
+  canvas: MatchShareCanvas2DNode,
+  registration: MatchShareRegistrationInput | null,
+  loadImage: (src: string) => Promise<ShareCardImageInfo>,
+  isCurrent: () => boolean,
+): Promise<Map<string, LoadedShareAvatar>> {
+  const result = new Map<string, LoadedShareAvatar>();
+  const urls = collectRegistrationAvatarUrls(registration);
+  if (urls.length === 0) return result;
+
+  const entries = await Promise.all(
+    urls.map(async (url) => {
+      try {
+        const info = await loadImage(url);
+        if (!isCurrent() || !info?.path) return null;
+        const image = await loadCanvas2DImage(canvas, info.path);
+        const width = image.width || info.width;
+        const height = image.height || info.height;
+        if (width > 0 && height > 0) {
+          return [url, { image, width, height }] as const;
+        }
+        return null;
+      } catch {
+        // 单个头像下载或解码失败自动回退首字头像，不阻断分享卡生成。
+        return null;
+      }
+    }),
+  );
+  for (const pair of entries) {
+    if (pair) result.set(pair[0], pair[1]);
+  }
+  return result;
+}
+
 async function resolveFirstAvailableBackdrop(
   canvas: MatchShareCanvas2DNode,
   backgroundUrls: readonly string[],
@@ -1512,7 +1674,10 @@ export async function composeMatchShareCard(
     ...(input.customBgImageUrl?.trim() ? [input.customBgImageUrl.trim()] : []),
     ...backgroundUrls,
   ];
-  const backdrop = await resolveFirstAvailableBackdrop(canvas, candidateUrls, loadImage, isCurrent);
+  const [backdrop, loadedAvatars] = await Promise.all([
+    resolveFirstAvailableBackdrop(canvas, candidateUrls, loadImage, isCurrent),
+    resolveRegistrationAvatars(canvas, view.registration, loadImage, isCurrent),
+  ]);
   if (!isCurrent()) throw new Error("分享卡内容已更新");
 
   canvas.width = MATCH_SHARE_CARD_WIDTH;
@@ -1522,9 +1687,9 @@ export async function composeMatchShareCard(
   drawBackdrop(ctx, backdrop, MATCH_SHARE_CARD_WIDTH, MATCH_SHARE_CARD_HEIGHT);
   drawTopTimeAndBottomVenue(ctx, view);
   if (view.matchup.mode === "versus") {
-    drawVersusSection(ctx, view, view.matchup);
+    drawVersusSection(ctx, view, view.matchup, loadedAvatars);
   } else {
-    drawHeadlineSection(ctx, view, view.matchup);
+    drawHeadlineSection(ctx, view, view.matchup, loadedAvatars);
   }
 
   return exportCanvas2DToTempFile(canvas, isCurrent);

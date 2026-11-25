@@ -3,12 +3,70 @@ import { onUnload } from "@dcloudio/uni-app";
 import type { BackendActivity } from "@/types/backend";
 import {
   MATCH_SHARE_CARD_CANVAS_ID,
+  MAX_DUAL_REGISTRATION_AVATARS,
+  MAX_HEADLINE_REGISTRATION_AVATARS,
   composeMatchShareCard,
   createMatchShareImageLoader,
   type MatchShareCardInput,
+  type MatchShareRegistrationGroup,
+  type MatchShareRegistrationInput,
 } from "@/utils/matchShareCardCompose";
 
 type MaybeReadonlyRef<T> = Ref<T> | ComputedRef<T>;
+
+function serializeRegistrationGroupKey(group: MatchShareRegistrationGroup, limit: number) {
+  return [
+    group.label ?? "",
+    group.joinedCount,
+    group.requiredCount ?? null,
+    group.avatars.slice(0, limit).map((item) => [item.name, item.avatarUrl ?? "", item.tone ?? ""]),
+  ];
+}
+
+function serializeRegistrationKey(registration?: MatchShareRegistrationInput | null) {
+  if (!registration) return null;
+  if (registration.mode === "dual") {
+    return [
+      "dual",
+      serializeRegistrationGroupKey(registration.home, MAX_DUAL_REGISTRATION_AVATARS),
+      serializeRegistrationGroupKey(registration.away, MAX_DUAL_REGISTRATION_AVATARS),
+    ];
+  }
+  return [
+    "single",
+    serializeRegistrationGroupKey(registration.group, MAX_HEADLINE_REGISTRATION_AVATARS),
+  ];
+}
+
+function cloneRegistrationGroup(group: MatchShareRegistrationGroup): MatchShareRegistrationGroup {
+  return {
+    label: group.label,
+    joinedCount: group.joinedCount,
+    requiredCount: group.requiredCount,
+    avatars: group.avatars.map((item) => ({
+      name: item.name,
+      avatarUrl: item.avatarUrl,
+      tone: item.tone,
+    })),
+  };
+}
+
+function cloneRegistrationInput(
+  registration?: MatchShareRegistrationInput | null,
+): MatchShareRegistrationInput | null {
+  if (!registration) return null;
+  if (registration.mode === "dual") {
+    return {
+      mode: "dual",
+      home: cloneRegistrationGroup(registration.home),
+      away: cloneRegistrationGroup(registration.away),
+    };
+  }
+  return {
+    mode: "single",
+    group: cloneRegistrationGroup(registration.group),
+  };
+}
 
 export interface UseMatchShareCardOptions {
   /** 当前页面组件实例（通常在 setup 中传入 getCurrentInstance()?.proxy） */
@@ -43,6 +101,8 @@ export interface UseMatchShareCardOptions {
   isPickupMatch?: MaybeReadonlyRef<boolean>;
   /** 是否为场馆组局 */
   isVenueMatch?: MaybeReadonlyRef<boolean>;
+  /** 实时报名进度与头像数据（方案 A 独立大头像报名条） */
+  registration?: MaybeReadonlyRef<MatchShareRegistrationInput | null>;
   /** 合成未就绪或失败时的同步回落图（通常来自 useShareCover("match").shareImageUrl） */
   fallbackImageUrl: MaybeReadonlyRef<string>;
   /** 隐藏 canvas 的 id / canvas-id，默认 match-share-card-canvas */
@@ -86,6 +146,7 @@ export function useMatchShareCard(options: UseMatchShareCardOptions) {
       isPickupMatch: options.isPickupMatch?.value ?? false,
       isVenueMatch: options.isVenueMatch?.value ?? false,
       playersPerTeam: current.players_per_team,
+      registration: options.registration?.value ?? null,
     };
   });
 
@@ -119,6 +180,7 @@ export function useMatchShareCard(options: UseMatchShareCardOptions) {
       input.isPickupMatch,
       input.isVenueMatch,
       input.playersPerTeam ?? null,
+      serializeRegistrationKey(input.registration),
       backgroundCandidates.value,
     ]);
   });
@@ -165,7 +227,10 @@ export function useMatchShareCard(options: UseMatchShareCardOptions) {
     }
 
     const version = ++renderVersion;
-    const snapshotInput: MatchShareCardInput = { ...input };
+    const snapshotInput: MatchShareCardInput = {
+      ...input,
+      registration: cloneRegistrationInput(input.registration),
+    };
     const snapshotBackgrounds = [...backgroundCandidates.value];
     lastQueuedKey = key;
 

@@ -5,11 +5,13 @@ import {
   buildMatchShareCardViewModel,
   buildMatchupDisplay,
   buildTeamKitView,
+  collectRegistrationAvatarUrls,
   composeMatchShareCard,
   createMatchShareImageLoader,
   drawKitRow,
   fitText,
   formatMatchShareTime,
+  formatRegistrationStatusBadge,
   isLightColor,
   parseJerseyColor,
   strokeForKit,
@@ -711,6 +713,232 @@ test("composeMatchShareCard renders pickup match headline layout with/without ki
       staleError = error instanceof Error ? error.message : String(error);
     }
     expect(staleError).toEqual("分享卡内容已更新");
+  } finally {
+    (globalThis as unknown as { uni?: typeof uni }).uni = previousUni;
+  }
+});
+
+test("formatRegistrationStatusBadge and collectRegistrationAvatarUrls handle all thresholds and deduplicate", () => {
+  expect(formatRegistrationStatusBadge(0, 8)).toEqual({
+    text: "0/8 · 抢先报名",
+    accentColor: "#FFD166",
+    pillBg: "rgba(255, 209, 102, 0.16)",
+    ratio: 0,
+  });
+  expect(formatRegistrationStatusBadge(6, 8)).toEqual({
+    text: "已报 6/8 · 差 2 人",
+    accentColor: "#FFD166",
+    pillBg: "rgba(255, 209, 102, 0.18)",
+    ratio: 0.75,
+  });
+  expect(formatRegistrationStatusBadge(9, 8)).toEqual({
+    text: "已报 9/8 · 已成行",
+    accentColor: "#00EBC7",
+    pillBg: "rgba(0, 235, 199, 0.16)",
+    ratio: 1,
+  });
+  expect(formatRegistrationStatusBadge(5, null).text).toEqual("已报 5 人");
+  expect(formatRegistrationStatusBadge(0, null).text).toEqual("火热报名中");
+
+  const urls = collectRegistrationAvatarUrls({
+    mode: "dual",
+    home: {
+      joinedCount: 3,
+      requiredCount: 8,
+      avatars: [
+        { name: "张三", avatarUrl: "https://cdn.example.com/a.jpg" },
+        { name: "李四", avatarUrl: "https://cdn.example.com/a.jpg" },
+        { name: "王五", avatarUrl: "" },
+      ],
+    },
+    away: {
+      joinedCount: 2,
+      requiredCount: 8,
+      avatars: [
+        { name: "赵六", avatarUrl: "https://cdn.example.com/b.jpg" },
+        { name: "钱七", avatarUrl: "https://cdn.example.com/a.jpg" },
+      ],
+    },
+  });
+  expect(urls).toEqual(["https://cdn.example.com/a.jpg", "https://cdn.example.com/b.jpg"]);
+});
+
+test("composeMatchShareCard renders Plan A registration strip for single, empty, dual and headline modes", async () => {
+  const previousUni = (globalThis as unknown as { uni?: typeof uni }).uni;
+  const requested: string[] = [];
+
+  const installUniMock = (mock: ReturnType<typeof createMockCanvasContext>) => {
+    (globalThis as unknown as { uni: typeof uni }).uni = {
+      getImageInfo: ({
+        src,
+        success,
+        fail,
+      }: {
+        src: string;
+        success: (res: { path: string; width: number; height: number }) => void;
+        fail: (err: Error) => void;
+      }) => {
+        requested.push(src);
+        if (src.includes("broken")) {
+          fail(new Error("avatar download failed"));
+        } else {
+          success({ path: `local://${src}`, width: 200, height: 200 });
+        }
+      },
+      createSelectorQuery: mock.createSelectorQuery,
+    } as unknown as typeof uni;
+  };
+
+  try {
+    // 1. 单队报名：已报 12/8（超出可见槽位显示 +N），且含 1 个下载失败头像优雅回退首字圆圈
+    const singleMock = createMockCanvasContext({ tempFilePath: "/tmp/reg-single.jpg" });
+    installUniMock(singleMock);
+    const singleAvatars = Array.from({ length: 12 }, (_, idx) => ({
+      name: idx === 1 ? "小明" : `球员${idx + 1}`,
+      avatarUrl: idx === 1 ? "https://cdn.example.com/broken.jpg" : `https://cdn.example.com/u${idx + 1}.jpg`,
+      tone: "#2563EB",
+    }));
+    const singlePath = await composeMatchShareCard(
+      "match-share-card-canvas",
+      {},
+      {
+        name: "周四友谊赛",
+        matchKindLabel: "线下已约",
+        homeTeamLabel: "洺悦御府",
+        opponentLabel: "河西周四 FC",
+        homeTeamColor: "#FFFFFF",
+        awayTeamColor: "#EF4444",
+        startTime: "2026-11-26T12:00:00Z",
+        endTime: "2026-11-26T14:00:00Z",
+        location: "悦享运动公园",
+        playersPerTeam: 8,
+        registration: {
+          mode: "single",
+          group: {
+            joinedCount: 12,
+            requiredCount: 8,
+            avatars: singleAvatars,
+          },
+        },
+      },
+      [],
+      () => true,
+    );
+    expect(singlePath).toEqual("/tmp/reg-single.jpg");
+    const singleTexts = singleMock.texts.map((t) => t.value);
+    expect(singleTexts.includes("已报 12/8 · 已成行")).toEqual(true);
+    // 下载失败的第 2 位球员回退绘制首字「小」
+    expect(singleTexts.includes("小")).toEqual(true);
+    // 超出可见槽位绘制 +N 溢出圆圈
+    expect(singleTexts.some((t) => /^\+\d+$/.test(t))).toEqual(true);
+    // 下载成功的头像已绘制进 canvas
+    expect(singleMock.images.length >= 8).toEqual(true);
+
+    // 2. 单队 0 人报名：展示虚位以待占位圆与「0/8 · 抢先报名」
+    requested.length = 0;
+    const emptyMock = createMockCanvasContext({ tempFilePath: "/tmp/reg-empty.jpg" });
+    installUniMock(emptyMock);
+    await composeMatchShareCard(
+      "match-share-card-canvas",
+      {},
+      {
+        name: "周五晚场",
+        homeTeamLabel: "洺悦御府",
+        opponentLabel: "对手待定",
+        playersPerTeam: 8,
+        registration: {
+          mode: "single",
+          group: {
+            joinedCount: 0,
+            requiredCount: 8,
+            avatars: [],
+          },
+        },
+      },
+      [],
+      () => true,
+    );
+    expect(requested.length).toEqual(0);
+    const emptyTexts = emptyMock.texts.map((t) => t.value);
+    expect(emptyTexts.includes("0/8 · 抢先报名")).toEqual(true);
+    expect(emptyTexts.includes("虚位以待 · 快来抢占首名")).toEqual(true);
+
+    // 3. 线上约队双队模式：左右展示主队与客队进度及各自头像
+    requested.length = 0;
+    const dualMock = createMockCanvasContext({ tempFilePath: "/tmp/reg-dual.jpg" });
+    installUniMock(dualMock);
+    await composeMatchShareCard(
+      "match-share-card-canvas",
+      {},
+      {
+        name: "周六线上约队",
+        matchKindLabel: "线上约队",
+        homeTeamLabel: "洺悦御府",
+        opponentLabel: "朝阳联队",
+        playersPerTeam: 8,
+        registration: {
+          mode: "dual",
+          home: {
+            label: "主队",
+            joinedCount: 9,
+            requiredCount: 8,
+            avatars: [
+              { name: "张三", avatarUrl: "https://cdn.example.com/h1.jpg" },
+              { name: "李四", avatarUrl: "" },
+            ],
+          },
+          away: {
+            label: "客队",
+            joinedCount: 6,
+            requiredCount: 8,
+            avatars: [{ name: "王五", avatarUrl: "https://cdn.example.com/a1.jpg" }],
+          },
+        },
+      },
+      [],
+      () => true,
+    );
+    const dualTexts = dualMock.texts.map((t) => t.value);
+    expect(dualTexts.includes("主队 9/8")).toEqual(true);
+    expect(dualTexts.includes("客队 6/8")).toEqual(true);
+    expect(dualTexts.includes("李")).toEqual(true);
+    expect(dualMock.images.length).toEqual(2);
+
+    // 4. 散人约球大字卡模式：展示报名胶囊、居中大头像排与 +N
+    requested.length = 0;
+    const pickupMock = createMockCanvasContext({ tempFilePath: "/tmp/reg-pickup.jpg" });
+    installUniMock(pickupMock);
+    const pickupAvatars = Array.from({ length: 14 }, (_, idx) => ({
+      name: `散人${idx + 1}`,
+      avatarUrl: `https://cdn.example.com/p${idx + 1}.jpg`,
+    }));
+    await composeMatchShareCard(
+      "match-share-card-canvas",
+      {},
+      {
+        name: "工人体育场周三夜场散人局",
+        matchKindLabel: "散人约球",
+        isPickupMatch: true,
+        playersPerTeam: 8,
+        homeTeamColor: "#FFFFFF",
+        registration: {
+          mode: "single",
+          group: {
+            joinedCount: 14,
+            requiredCount: 16,
+            avatars: pickupAvatars,
+          },
+        },
+      },
+      [],
+      () => true,
+    );
+    const pickupTexts = pickupMock.texts.map((t) => t.value);
+    expect(pickupTexts.includes("已报 14/16 · 差 2 人")).toEqual(true);
+    expect(pickupTexts.includes("+3")).toEqual(true);
+    // 最多并发拉取前 11 个可见头像，避免超大局拉取多余图片
+    expect(requested.length).toEqual(11);
+    expect(pickupMock.images.length).toEqual(11);
   } finally {
     (globalThis as unknown as { uni?: typeof uni }).uni = previousUni;
   }

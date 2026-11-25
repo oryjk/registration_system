@@ -31,6 +31,7 @@ import { useMatchCaptainContact } from "./useMatchCaptainContact";
 import { useMatchDetailLineup } from "./useMatchDetailLineup";
 import { useMatchDetailPage } from "./useMatchDetailPage";
 import { useMatchShareCard } from "./useMatchShareCard";
+import type { MatchShareRegistrationInput } from "@/utils/matchShareCardCompose";
 import { useMatchTeamApplications } from "./useMatchTeamApplications";
 import MatchTeamApplications from "./components/MatchTeamApplications.vue";
 
@@ -128,6 +129,65 @@ const {
   selectOpponent: selectMatchOpponent,
 } = useMatchTeamApplications(sourceMatch, loadPageData, confirmRegistrationAction);
 
+const shareCardRegistration = computed<MatchShareRegistrationInput | null>(() => {
+  const current = match.value;
+  if (!current) return null;
+  const fallbackRequired = current.players_per_team ?? null;
+  if (teamProgressItems.value.length >= 2) {
+    const [home, away] = teamProgressItems.value;
+    return {
+      mode: "dual",
+      home: {
+        label: "主队",
+        joinedCount: home!.attending,
+        requiredCount: home!.required ?? home!.max ?? fallbackRequired,
+        avatars: (home!.avatars ?? []).map((item) => ({
+          name: item.name,
+          avatarUrl: item.avatarUrl,
+          tone: item.tone,
+        })),
+      },
+      away: {
+        label: "客队",
+        joinedCount: away!.attending,
+        requiredCount: away!.required ?? away!.max ?? fallbackRequired,
+        avatars: (away!.avatars ?? []).map((item) => ({
+          name: item.name,
+          avatarUrl: item.avatarUrl,
+          tone: item.tone,
+        })),
+      },
+    };
+  }
+  if (teamProgressItems.value.length === 1) {
+    const first = teamProgressItems.value[0]!;
+    return {
+      mode: "single",
+      group: {
+        joinedCount: first.attending,
+        requiredCount: first.required ?? first.max ?? fallbackRequired,
+        avatars: (first.avatars ?? []).map((item) => ({
+          name: item.name,
+          avatarUrl: item.avatarUrl,
+          tone: item.tone,
+        })),
+      },
+    };
+  }
+  return {
+    mode: "single",
+    group: {
+      joinedCount: joinedCount.value,
+      requiredCount: selectedGroupMinPlayers.value ?? selectedGroupMaxPlayers.value ?? fallbackRequired,
+      avatars: participantPreview.value.map((item) => ({
+        name: item.name,
+        avatarUrl: item.avatarUrl,
+        tone: item.tone,
+      })),
+    },
+  };
+});
+
 const { shareCardImageUrl, refreshShareCard } = useMatchShareCard({
   pageInstance: getCurrentInstance(),
   match,
@@ -145,6 +205,7 @@ const { shareCardImageUrl, refreshShareCard } = useMatchShareCard({
   matchLocation,
   isPickupMatch,
   isVenueMatch,
+  registration: shareCardRegistration,
   fallbackImageUrl: shareImageUrl,
 });
 
