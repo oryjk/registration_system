@@ -31,7 +31,7 @@ import { useMatchCaptainContact } from "./useMatchCaptainContact";
 import { useMatchDetailLineup } from "./useMatchDetailLineup";
 import { useMatchDetailPage } from "./useMatchDetailPage";
 import { useMatchShareCard } from "./useMatchShareCard";
-import type { MatchShareRegistrationInput } from "@/utils/matchShareCardCompose";
+import type { MatchShareRegistrationInput } from "./matchShareCardCompose";
 import { useMatchTeamApplications } from "./useMatchTeamApplications";
 import MatchTeamApplications from "./components/MatchTeamApplications.vue";
 

@@ -20,7 +20,7 @@ import {
   wrapTextLines,
   type MatchShareCanvasImage,
   type ResolvedCanvasBackdrop,
-} from "@/utils/matchShareCardCompose";
+} from "../matchShareCardCompose";
 import { resolveMinioImage, retainMinioImage } from "@/utils/minioImageCache";
 import { avatarInitial, formatSubBadgeText } from "./helpers";
 

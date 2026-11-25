@@ -18,7 +18,7 @@ import {
   truncateText,
   wrapTextLines,
   type MatchShareCardInput,
-} from "@/utils/matchShareCardCompose";
+} from "@/pages/matches/matchShareCardCompose";
 
 interface MockCanvasOptions {
   withRadialGradient?: boolean;

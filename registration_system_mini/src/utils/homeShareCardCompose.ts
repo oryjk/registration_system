@@ -1,23 +1,21 @@
-import {
-  MATCH_SHARE_CARD_HEIGHT,
-  MATCH_SHARE_CARD_WIDTH,
-  createMatchShareImageLoader,
-  fitText,
-  truncateText,
-  type MatchShareCanvasImage,
-  type ShareCardImageInfo,
-} from "./matchShareCardCompose";
-import {
-  drawRegistrationAvatarStack,
-  resolveAvatarInitial,
-  type LoadedShareAvatar,
-  type MatchShareAvatarItem,
-} from "./matchShareCardRegistration";
+import { resolveMinioImage, retainMinioImage } from "./minioImageCache";
 
-export const HOME_SHARE_CARD_WIDTH = MATCH_SHARE_CARD_WIDTH;
-export const HOME_SHARE_CARD_HEIGHT = MATCH_SHARE_CARD_HEIGHT;
+export const HOME_SHARE_CARD_WIDTH = 1000;
+export const HOME_SHARE_CARD_HEIGHT = 800;
 export const HOME_SHARE_CARD_CANVAS_ID = "home-share-card-canvas";
 export const MAX_HOME_SHARE_AVATARS = 10;
+
+export interface HomeShareAvatarItem {
+  name: string;
+  avatarUrl?: string | null;
+  tone?: string;
+}
+
+export interface HomeShareImageInfo {
+  path: string;
+  width: number;
+  height: number;
+}
 
 export interface HomeShareNextMatchInput {
   title: string;
@@ -25,7 +23,7 @@ export interface HomeShareNextMatchInput {
   venue?: string;
   joinedPlayers: number;
   requiredPlayers?: number;
-  avatars: MatchShareAvatarItem[];
+  avatars: HomeShareAvatarItem[];
 }
 
 export interface HomeShareCardInput {
@@ -60,14 +58,177 @@ export interface HomeShareCardViewModel {
   nextMatchHeadline: string;
   nextMatchJoinedLabel: string;
   nextMatchJoinedCount: number;
-  nextMatchAvatars: MatchShareAvatarItem[];
+  nextMatchAvatars: HomeShareAvatarItem[];
   footerText: string;
 }
 
-interface HomeCanvasImage extends MatchShareCanvasImage {
+interface HomeCanvasImage {
+  width: number;
+  height: number;
   src: string;
   onload: (() => void) | null;
   onerror: ((err?: unknown) => void) | null;
+}
+
+interface LoadedHomeImage {
+  image: HomeCanvasImage;
+  width: number;
+  height: number;
+}
+
+const FALLBACK_AVATAR_COLORS = [
+  "#2563EB",
+  "#059669",
+  "#D97706",
+  "#7C3AED",
+  "#DC2626",
+  "#0891B2",
+  "#4F46E5",
+  "#EA580C",
+  "#0D9488",
+  "#9333EA",
+];
+
+function cleanText(value?: string | null): string {
+  return (value ?? "").replace(/\s+/g, " ").trim();
+}
+
+function resolveInitial(name?: string | null): string {
+  const clean = cleanText(name);
+  return clean ? (Array.from(clean)[0] || "球") : "球";
+}
+
+function truncateText(text: string, maxChars: number): string {
+  const clean = cleanText(text);
+  if (!clean || maxChars <= 0) return "";
+  const chars = Array.from(clean);
+  if (chars.length <= maxChars) return clean;
+  if (maxChars === 1) return "…";
+  return `${chars.slice(0, maxChars - 1).join("")}…`;
+}
+
+function fitText(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  maxWidth: number,
+  maxSize: number,
+  minSize: number,
+  weight: 700 | 800 | 900 = 800,
+): { size: number; text: string } {
+  const clean = cleanText(text);
+  if (!clean) return { size: maxSize, text: "" };
+  const measure = (value: string, size: number) => {
+    ctx.save();
+    ctx.font = `normal ${weight >= 700 ? "bold" : "normal"} ${Math.round(size)}px sans-serif`;
+    const width = ctx.measureText(value)?.width;
+    ctx.restore();
+    if (typeof width === "number" && Number.isFinite(width) && width > 0) return width * 1.04;
+    return Array.from(value).length * Math.round(size);
+  };
+  for (let size = maxSize; size >= minSize; size -= 2) {
+    if (measure(clean, size) <= maxWidth) return { size, text: clean };
+  }
+  const chars = Array.from(clean);
+  let out = "";
+  for (const ch of chars) {
+    if (measure(`${out}${ch}…`, minSize) > maxWidth) break;
+    out += ch;
+  }
+  return { size: minSize, text: out ? `${out}…` : "…" };
+}
+
+function drawAvatarStack(
+  ctx: CanvasRenderingContext2D,
+  avatars: readonly HomeShareAvatarItem[],
+  totalCount: number,
+  loadedImages: ReadonlyMap<string, LoadedHomeImage>,
+  options: { startX: number; cy: number; radius: number; overlap: number; maxVisible: number; ringColor: string },
+) {
+  const { startX, cy, radius, overlap, maxVisible, ringColor } = options;
+  const shown = avatars.slice(0, maxVisible);
+  const extra = Math.max(0, totalCount - shown.length);
+  const step = radius * 2 - overlap;
+
+  shown.forEach((item, index) => {
+    const cx = startX + radius + index * step;
+    const url = cleanText(item.avatarUrl);
+    const loaded = url ? loadedImages.get(url) : undefined;
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2, false);
+    ctx.clip();
+    if (loaded && loaded.width > 0 && loaded.height > 0) {
+      const scale = Math.max((radius * 2) / loaded.width, (radius * 2) / loaded.height);
+      const drawW = loaded.width * scale;
+      const drawH = loaded.height * scale;
+      ctx.drawImage(loaded.image as unknown as CanvasImageSource, cx - drawW / 2, cy - drawH / 2, drawW, drawH);
+    } else {
+      const tone = cleanText(item.tone);
+      ctx.fillStyle = /^#[0-9a-f]{6}$/i.test(tone)
+        ? tone
+        : FALLBACK_AVATAR_COLORS[index % FALLBACK_AVATAR_COLORS.length]!;
+      ctx.fillRect(cx - radius, cy - radius, radius * 2, radius * 2);
+      drawText(ctx, resolveInitial(item.name), cx, cy + 1, radius * 0.88, "#FFFFFF", "center", 800);
+    }
+    ctx.restore();
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2, false);
+    ctx.strokeStyle = ringColor;
+    ctx.lineWidth = 3.5;
+    ctx.stroke();
+    ctx.restore();
+  });
+
+  if (extra > 0) {
+    const cx = startX + radius + shown.length * step;
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2, false);
+    ctx.fillStyle = "#FF453A";
+    ctx.fill();
+    ctx.strokeStyle = ringColor;
+    ctx.lineWidth = 3.5;
+    ctx.stroke();
+    ctx.restore();
+    drawText(ctx, extra > 99 ? "99+" : `+${extra}`, cx, cy + 1, radius * (extra > 9 ? 0.74 : 0.84), "#FFFFFF", "center", 800);
+  }
+}
+
+export function createHomeShareImageLoader(
+  fetcher: (src: string) => Promise<HomeShareImageInfo> = getDefaultImageInfo,
+) {
+  const cache = new Map<string, Promise<HomeShareImageInfo>>();
+  return {
+    load(src: string): Promise<HomeShareImageInfo> {
+      const clean = cleanText(src);
+      if (!clean) return Promise.reject(new Error("empty image url"));
+      const hit = cache.get(clean);
+      if (hit) return hit;
+      const task = resolveMinioImage(clean)
+        .catch(() => clean)
+        .then((resolved) => fetcher(resolved))
+        .then((info) => {
+          void retainMinioImage(clean);
+          return info;
+        })
+        .catch((err) => {
+          cache.delete(clean);
+          throw err;
+        });
+      if (cache.size >= 24) {
+        const oldest = cache.keys().next().value;
+        if (oldest) cache.delete(oldest);
+      }
+      cache.set(clean, task);
+      return task;
+    },
+    clear() {
+      cache.clear();
+    },
+  };
 }
 
 interface Canvas2DNode {
@@ -87,10 +248,6 @@ interface Canvas2DNode {
     success?: (res: { tempFilePath: string }) => void;
     fail?: (err: unknown) => void;
   }): void;
-}
-
-function cleanText(value?: string | null): string {
-  return (value ?? "").replace(/\s+/g, " ").trim();
 }
 
 /** 生成更有社交背书与传播性的首页动态分享标题。 */
@@ -161,7 +318,7 @@ export function buildHomeShareCardViewModel(input: HomeShareCardInput): HomeShar
     ribbonText,
     teamName: teamName || "约球开踢",
     teamLogoUrl,
-    teamInitial: resolveAvatarInitial(teamName || "球"),
+    teamInitial: resolveInitial(teamName || "球"),
     memberPillText,
     schedulePillText,
     creditBadgeText,
@@ -206,7 +363,7 @@ function queryCanvas2DNode(canvasId: string, pageInstance: unknown): Promise<Can
   });
 }
 
-function loadCanvas2DImage(canvas: Canvas2DNode, src: string): Promise<MatchShareCanvasImage> {
+function loadCanvas2DImage(canvas: Canvas2DNode, src: string): Promise<HomeCanvasImage> {
   return new Promise((resolve, reject) => {
     const image = canvas.createImage();
     image.onload = () => resolve(image);
@@ -215,7 +372,7 @@ function loadCanvas2DImage(canvas: Canvas2DNode, src: string): Promise<MatchShar
   });
 }
 
-function getDefaultImageInfo(src: string): Promise<ShareCardImageInfo> {
+function getDefaultImageInfo(src: string): Promise<HomeShareImageInfo> {
   return new Promise((resolve, reject) => {
     uni.getImageInfo({
       src,
@@ -440,7 +597,7 @@ function drawTeamBadge(
   cy: number,
   radius: number,
   initial: string,
-  loadedLogo?: LoadedShareAvatar,
+  loadedLogo?: LoadedHomeImage,
 ) {
   ctx.save();
   ctx.beginPath();
@@ -480,7 +637,7 @@ function drawTeamBadge(
 function drawTeamIdentityBand(
   ctx: CanvasRenderingContext2D,
   view: HomeShareCardViewModel,
-  loadedImages: ReadonlyMap<string, LoadedShareAvatar>,
+  loadedImages: ReadonlyMap<string, LoadedHomeImage>,
 ) {
   const x = 42;
   const y = 118;
@@ -625,7 +782,7 @@ function drawFeatureTilesRow(ctx: CanvasRenderingContext2D, y: number, tileHeigh
 function drawNextMatchBand(
   ctx: CanvasRenderingContext2D,
   view: HomeShareCardViewModel,
-  loadedImages: ReadonlyMap<string, LoadedShareAvatar>,
+  loadedImages: ReadonlyMap<string, LoadedHomeImage>,
 ) {
   const x = 42;
   const y = 404;
@@ -652,7 +809,7 @@ function drawNextMatchBand(
   drawText(ctx, view.nextMatchJoinedLabel, 84, y + 198, 26, "#FFD166", "left", 900);
 
   if (view.nextMatchJoinedCount > 0 && view.nextMatchAvatars.length > 0) {
-    drawRegistrationAvatarStack(
+    drawAvatarStack(
       ctx,
       view.nextMatchAvatars,
       view.nextMatchJoinedCount,
@@ -730,10 +887,10 @@ function drawBrandHeroBand(ctx: CanvasRenderingContext2D) {
 async function resolveHomeShareImages(
   canvas: Canvas2DNode,
   urls: readonly string[],
-  loadImage: (src: string) => Promise<ShareCardImageInfo>,
+  loadImage: (src: string) => Promise<HomeShareImageInfo>,
   isCurrent: () => boolean,
-): Promise<Map<string, LoadedShareAvatar>> {
-  const result = new Map<string, LoadedShareAvatar>();
+): Promise<Map<string, LoadedHomeImage>> {
+  const result = new Map<string, LoadedHomeImage>();
   if (urls.length === 0) return result;
 
   const entries = await Promise.all(
@@ -760,8 +917,6 @@ async function resolveHomeShareImages(
   return result;
 }
 
-export { createMatchShareImageLoader as createHomeShareImageLoader };
-
 /**
  * 合成首页 1000×800（5:4）方案 A 社交分享卡（球队召集令），使用标准 `<canvas type="2d">`。
  * 自动适配「有球队+下场赛程」「有球队无赛程」「无球队/游客」三种状态。
@@ -771,7 +926,7 @@ export async function composeHomeShareCard(
   pageInstance: unknown,
   input: HomeShareCardInput,
   isCurrent: () => boolean = () => true,
-  loadImage: (src: string) => Promise<ShareCardImageInfo> = getDefaultImageInfo,
+  loadImage: (src: string) => Promise<HomeShareImageInfo> = getDefaultImageInfo,
 ): Promise<string> {
   if (!isCurrent()) throw new Error("首页分享卡内容已更新");
 

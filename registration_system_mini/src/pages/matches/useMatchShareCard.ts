@@ -10,7 +10,7 @@ import {
   type MatchShareCardInput,
   type MatchShareRegistrationGroup,
   type MatchShareRegistrationInput,
-} from "@/utils/matchShareCardCompose";
+} from "./matchShareCardCompose";
 
 type MaybeReadonlyRef<T> = Ref<T> | ComputedRef<T>;
 
