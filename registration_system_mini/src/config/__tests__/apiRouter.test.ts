@@ -1,12 +1,52 @@
 import { describe, expect, test } from "bun:test";
 import { createApiRouter } from "../apiRouter";
 
-const primary = "https://oryjk.cn:18443/regist-v3/api/v1/app";
+const primary = "https://oryjk.cn/regist-v3/api/v1/app";
 const backup = "https://backup.oryjk.cn:19443/regist-v3/api/v1/app";
+const secondBackup = "https://home.oryjk.cn:18443/regist-v3/api/v1/app";
 const unavailable = new Error("gateway unavailable");
 const isUnavailable = (error: unknown) => error === unavailable;
 
 describe("App API failover", () => {
+  test("uses the second backup while the higher-priority routes are unavailable", async () => {
+    let time = 0;
+    let backupUp = false;
+    const calls: string[] = [];
+    const router = createApiRouter(primary, [backup, secondBackup], isUnavailable, () => time);
+    const send = async (base: string) => {
+      calls.push(base);
+      if (base === primary || (base === backup && !backupUp)) throw unavailable;
+      return base;
+    };
+
+    expect(await router.read(send)).toEqual(secondBackup);
+    expect(await router.read(send)).toEqual(secondBackup);
+    expect(calls).toEqual([primary, backup, secondBackup, secondBackup]);
+
+    backupUp = true;
+    time = 60_001;
+    expect(await router.read(send)).toEqual(backup);
+    expect(calls.slice(-2)).toEqual([primary, backup]);
+  });
+
+  test("preflights all origins before sending a write exactly once to the second backup", async () => {
+    const probes: string[] = [];
+    const writes: string[] = [];
+    const router = createApiRouter(primary, [backup, secondBackup], isUnavailable);
+    const result = router.write(async (base) => {
+      writes.push(base);
+      throw unavailable;
+    }, async (base) => {
+      probes.push(base);
+      if (base !== secondBackup) throw unavailable;
+    });
+
+    const outcome = await result.catch((error) => error);
+    expect(outcome === unavailable).toEqual(true);
+    expect(probes).toEqual([primary, backup, secondBackup]);
+    expect(writes).toEqual([secondBackup]);
+  });
+
   test("a safe read switches to backup and checks primary again after the cooldown", async () => {
     let time = 0;
     let primaryUp = false;

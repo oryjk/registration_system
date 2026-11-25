@@ -27,3 +27,11 @@ export function getBackupApiBaseUrl(): string | undefined {
   // #endif
   return undefined;
 }
+
+export function getSecondBackupApiBaseUrl(): string | undefined {
+  // #ifdef MP-WEIXIN
+  const baseUrl = import.meta.env.VITE_MP_WEIXIN_SECOND_BACKUP_API_BASE_URL?.trim();
+  if (baseUrl) return normalizeAppApiBase(baseUrl);
+  // #endif
+  return undefined;
+}

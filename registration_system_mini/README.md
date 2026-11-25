@@ -170,7 +170,7 @@ bun run mp:release -- --robot 2 --desc "体验版说明" # robot=2 体验版专�
 
 发布入口会清理继承的 `VITE_*` / `UNI_*` 构建变量，以 `NODE_ENV=production` 和显式 `.env.production` 重新建立子进程环境，uni-app 固定使用 `--mode production`。生产文件中的 API 不接受 shell 或本地配置覆盖；需要更换发布后端时修改该文件，不要临时给上传命令注入 `VITE_API_BASE_URL`。不要绕开统一入口手工拼接构建和上传命令。
 
-上传前读取 `dist/build/mp-weixin/config/apiBase.js` 中 `getApiBaseUrl()` 的真实返回值：必须与生产文件一致、使用 HTTPS 公共域名，并保留 `/api/v1/app` 根路径。缺失产物、本机/内网 IP、错误域名或检查失败都会中止，不能继续上传旧包。直接调用底层 `mini-ci.mjs` 同样执行此校验。
+上传前读取 `dist/build/mp-weixin/config/apiBase.js` 中主、备 API 的真实返回值，校验其与生产文件一致、使用 HTTPS 公共域名，并保留 `/api/v1/app` 根路径。直接调用底层 `mini-ci.mjs` 同样执行此校验。
 
 ```bash
 MINI_REVIEW_SKIP=1 bun run build:mp-weixin  # 只做生产构建与产物检查，不登记远程版本、不上传

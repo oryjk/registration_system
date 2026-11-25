@@ -155,6 +155,18 @@ describe("upload git guard", () => {
 });
 
 describe("compiled release API guard", () => {
+  test("checks the second backup getter against the configured endpoint", () => {
+    const root = fixture();
+    const backup = "https://backup.oryjk.cn:19443/regist-v3/api/v1/app";
+    const secondBackup = "https://home.oryjk.cn:18443/regist-v3/api/v1/app";
+    const file = path.join(root, "dist/build/mp-weixin/config/apiBase.js");
+    const source = `exports.getApiBaseUrl = () => ${JSON.stringify(productionApi)}; exports.getBackupApiBaseUrl = () => ${JSON.stringify(backup)};`;
+    writeFileSync(file, source);
+    expect(() => verifyReleaseBundle(root, productionApi, backup, secondBackup)).toThrow("第二备用 API");
+    writeFileSync(file, `${source} exports.getSecondBackupApiBaseUrl = () => ${JSON.stringify(secondBackup)};`);
+    expect(verifyReleaseBundle(root, productionApi, backup, secondBackup)).toBe(productionApi);
+  });
+
   test("checks the backup getter when a backup is configured", () => {
     const root = fixture();
     const backup = "https://backup.oryjk.cn:19443/regist-v3/api/v1/app";

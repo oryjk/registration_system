@@ -1,4 +1,4 @@
-import { buildAppApiUrl, getApiBaseUrl, getBackupApiBaseUrl } from "@/config/apiBase";
+import { buildAppApiUrl, getApiBaseUrl, getBackupApiBaseUrl, getSecondBackupApiBaseUrl } from "@/config/apiBase";
 import { createApiRouter } from "@/config/apiRouter";
 import { getAccessToken } from "@/utils/authStorage";
 // #ifdef H5
@@ -42,16 +42,25 @@ const NETWORK_TIMEOUT_MESSAGE = "网络连接超时，请检查网络后重试";
 const REQUEST_TIMEOUT_MS = 15_000;
 const HEALTH_TIMEOUT_MS = 3_000;
 
-let configuredRouter: { primary: string; backup: string; router: ReturnType<typeof createApiRouter> } | undefined;
+let configuredRouter: {
+  primary: string;
+  backup: string | undefined;
+  secondBackup: string | undefined;
+  router: ReturnType<typeof createApiRouter>;
+} | undefined;
 
 function getRouter(primary: string) {
   const backup = getBackupApiBaseUrl();
-  if (!backup || backup === primary) return undefined;
-  if (configuredRouter?.primary !== primary || configuredRouter.backup !== backup) {
+  const secondBackup = getSecondBackupApiBaseUrl();
+  if (configuredRouter?.primary !== primary || configuredRouter.backup !== backup
+    || configuredRouter.secondBackup !== secondBackup) {
+    const backups = [backup, secondBackup].filter((base): base is string => Boolean(base) && base !== primary);
+    if (!backups.length) return undefined;
     configuredRouter = {
       primary,
       backup,
-      router: createApiRouter(primary, backup, (error) =>
+      secondBackup,
+      router: createApiRouter(primary, backups, (error) =>
         error instanceof ApiRequestError && (error.networkFailed || [502, 503, 504].includes(error.statusCode)),
       ),
     };

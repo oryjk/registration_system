@@ -59,7 +59,8 @@ async function main() {
   // 即便直接调用本上传脚本，也必须先确认产物实际连接生产 API。
   // 在加载微信 SDK 前失败，避免错误构建触发任何上传副作用。
   const production = loadProductionEnvironment(projectRoot);
-  const apiBase = verifyReleaseBundle(projectRoot, production.VITE_API_BASE_URL, production.VITE_MP_WEIXIN_BACKUP_API_BASE_URL);
+  const apiBase = verifyReleaseBundle(projectRoot, production.VITE_API_BASE_URL,
+    production.VITE_MP_WEIXIN_BACKUP_API_BASE_URL, production.VITE_MP_WEIXIN_SECOND_BACKUP_API_BASE_URL);
   console.log(`[mini-ci] 上传前 API 校验通过: ${apiBase}`);
   if (command === "upload") {
     verifyUploadGitState(projectRoot);

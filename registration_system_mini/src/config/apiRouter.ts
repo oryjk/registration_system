@@ -4,10 +4,11 @@ type Route = { base: string; recheckAt: number };
 
 export function createApiRouter(
   primary: string,
-  backup: string,
+  backups: string | readonly string[],
   isUnavailable: (error: unknown) => boolean,
   now = Date.now,
 ) {
+  const origins = [...new Set([primary, ...(typeof backups === "string" ? [backups] : backups)])];
   let active: Route | undefined;
   let pendingProbe: Promise<void> | undefined;
 
@@ -15,24 +16,25 @@ export function createApiRouter(
     // An earlier request can finish after another request has already switched hosts.
     if (active !== observed) return;
     if (active?.base === base && (base === primary || now() < active.recheckAt)) return;
-    active = { base, recheckAt: base === backup ? now() + PRIMARY_RECHECK_MS : 0 };
+    active = { base, recheckAt: base === primary ? 0 : now() + PRIMARY_RECHECK_MS };
   }
 
   async function read<T>(send: (base: string) => Promise<T>): Promise<T> {
     const observed = active;
-    const first = observed?.base === backup && now() < observed.recheckAt ? backup : primary;
-    try {
-      const result = await send(first);
-      remember(first, observed);
-      return result;
-    } catch (error) {
-      if (!isUnavailable(error)) throw error;
+    const first = observed && now() < observed.recheckAt ? observed.base : primary;
+    const candidates = [first, ...origins.filter((base) => base !== first)];
+    let lastError: unknown;
+    for (const base of candidates) {
+      try {
+        const result = await send(base);
+        remember(base, observed);
+        return result;
+      } catch (error) {
+        if (!isUnavailable(error)) throw error;
+        lastError = error;
+      }
     }
-
-    const alternate = first === primary ? backup : primary;
-    const result = await send(alternate);
-    remember(alternate, observed);
-    return result;
+    throw lastError;
   }
 
   async function write<T>(send: (base: string) => Promise<T>, probe: (base: string) => Promise<void>): Promise<T> {
